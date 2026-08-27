@@ -2995,8 +2995,14 @@ export function buildBradley(P) {
   // into station slab 5 (everything faceted paints); my clean box's top face
   // slice-vanishes — the joint caps at world -0.75 give st5 a 2.72-top
   // painter (§C slice-paint law, the bmp2 r2 mechanism).
-  P.add('turret', box(0.665, 0.17, 0.60), 0.3625, 0.74, -0.60);                 // riser rear, world z -1.35..-0.75
-  P.add('turret', box(0.655, 0.17, 0.85), 0.3575, 0.74, 0.125);                 // right roof riser, top 2.72 (r3:
+  const bradleyTurretRoofY = 0.565;
+  const bradleyRiserTopY = 0.825;
+  const bradleyRiserHeight = bradleyRiserTopY - bradleyTurretRoofY;
+  const bradleyRiserCenterY = (bradleyRiserTopY + bradleyTurretRoofY) / 2;
+  P.add('turret', box(0.665, bradleyRiserHeight, 0.60),
+    0.3625, bradleyRiserCenterY, -0.60);                                        // rear riser now lands on roof
+  P.add('turret', box(0.655, bradleyRiserHeight, 0.85),
+    0.3575, bradleyRiserCenterY, 0.125);                                        // right roof riser, top 2.72 (r3:
                                                                                 //   r2: east 0.695 -> 0.685 — the
                                                                                 //   face sat 8 mm off the front 0.722
                                                                                 //   col window and AA-flickered it
@@ -3009,6 +3015,29 @@ export function buildBradley(P) {
                                                                                 //   line sits right of center and
                                                                                 //   the 0.71 edge AA-lit the 0.72
                                                                                 //   col, +0.26/+0.14 x3 cols)
+  // Side-interface bridges close the narrow daylight seams between the
+  // turret shell and its right stowage bin / gun-parented left TOW pod at
+  // neutral elevation. Both overlap the adjacent armor instead of merely
+  // touching a coplanar face, so the connections remain raster-stable.
+  const rightBinBridge = Object.freeze({ x: 0.765, y: 0.30, z: -0.015,
+    w: 0.10, h: 0.31, d: 1.24 });
+  const leftTowBridge = Object.freeze({ x: -0.765, y: 0.28, z: -0.15,
+    w: 0.09, h: 0.43, d: 1.22 });
+  P.add('turret', box(rightBinBridge.w, rightBinBridge.h, rightBinBridge.d),
+    rightBinBridge.x, rightBinBridge.y, rightBinBridge.z);
+  P.add('turret', box(leftTowBridge.w, leftTowBridge.h, leftTowBridge.d),
+    leftTowBridge.x, leftTowBridge.y, leftTowBridge.z);
+  P.turretG.userData.bradleyA2TurretClosureReceipt = Object.freeze({
+    revision: 'roof-risers-and-side-interfaces-r1',
+    roofY: bradleyTurretRoofY,
+    roofRisers: Object.freeze({
+      count: 2,
+      bottomY: bradleyTurretRoofY,
+      topY: bradleyRiserTopY,
+    }),
+    rightBinBridge,
+    leftTowBridge,
+  });
   P.add('turret', box(1.36, 0.49, 0.23), 0, 0.2975, 0.775);                     // front step, top 2.44 (90-ladder:
                                                                                 //   bottom 1.9125 -> 1.9475; r2
                                                                                 //   z-front 0.60 -> 0.44 — the 0.60
@@ -3438,6 +3467,41 @@ export function bradleyFlankDressing(P) {
     { height: 0.07, inset: 1.00 },
   ]));
   P.add('turret', cylY(0.82, 0.87, 0.16, P.q ? 22 : 14), 0, 0.005, -0.10);
+
+  // BRADLEY-ONLY BOW VOLUME: the donor tub ends at z=2.375 while the
+  // lower-bow/glacis stack begins around z=3.125. This buried tapered solid
+  // overlaps both marked faces, rises into the existing upper-glacis backer,
+  // and fans outward into the mirrored bow-corner caps below. Marder keeps
+  // the shared donor closure above but deliberately does not receive this
+  // Bradley-specific nose treatment.
+  const bowClosure = Object.freeze({
+    rearZ: 2.34,
+    frontZ: 3.13,
+    rearHalfWidthM: 0.93,
+    frontHalfWidthM: 1.24,
+    rearFloorY: 0.47,
+    frontFloorY: 0.56,
+    rearRoofY: 1.03,
+    frontRoofY: 1.20,
+  });
+  P.add('hull', slab(
+    [-bowClosure.rearHalfWidthM, bowClosure.rearFloorY, bowClosure.rearZ],
+    [bowClosure.rearHalfWidthM, bowClosure.rearFloorY, bowClosure.rearZ],
+    [bowClosure.frontHalfWidthM, bowClosure.frontFloorY, bowClosure.frontZ],
+    [-bowClosure.frontHalfWidthM, bowClosure.frontFloorY, bowClosure.frontZ],
+    [-bowClosure.rearHalfWidthM, bowClosure.rearRoofY, bowClosure.rearZ],
+    [bowClosure.rearHalfWidthM, bowClosure.rearRoofY, bowClosure.rearZ],
+    [bowClosure.frontHalfWidthM, bowClosure.frontRoofY, bowClosure.frontZ],
+    [-bowClosure.frontHalfWidthM, bowClosure.frontRoofY, bowClosure.frontZ],
+  ));
+  P.hullG.userData.bradleyGlacisClosureReceipt = Object.freeze({
+    revision: 'tub-to-bow-overlap-r1',
+    ...bowClosure,
+    tubFrontZ: 2.375,
+    lowerGlacisRearZ: 3.125,
+    rearOverlapM: 2.375 - bowClosure.rearZ,
+    frontOverlapM: bowClosure.frontZ - 3.125,
+  });
   for (const s of [-1, 1]) {
     const m = (x) => s * x;
     // §B2 DONOR BOW-CORNER CLOSURE (type89 §5.341 grammar): the bow

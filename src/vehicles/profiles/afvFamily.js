@@ -38,6 +38,7 @@ function clearUpperStructure(P) {
   for (const child of [...P.recoilG.children]) {
     if (!child.name.startsWith('rig_barrel_')) P.recoilG.remove(child);
   }
+  delete P.turretG.userData.bradleyA2TurretClosureReceipt;
 }
 
 function roofMG(P, x, y, z, seed, cls = 'mag', yaw = 0, scale = 0.82) {
@@ -212,6 +213,14 @@ function addUkrainianBradleyPackage(P) {
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 2.12, d: 0.46, h: 0.30, fill: 0.72, rails: 3, seed: 3210,
   }), 0, 0.45, -1.35);
+  // The pintle ring previously floated 31.75 cm above the donor roof. A
+  // tapered commander pedestal now carries it from the 0.565 m roof plane
+  // to the ring underside without lowering the weapon or obscuring the
+  // Bradley's hatch/periscope silhouette.
+  const roofY = 0.565;
+  const mgRingBottomY = 0.8825;
+  P.addCupola('turret', KIT.cylY(0.23, 0.18, mgRingBottomY - roofY, 18),
+    -0.42, (roofY + mgRingBottomY) / 2, -0.42);
   roofMG(P, -0.42, 0.92, -0.42, 3220, 'mag', -0.08, 0.76);
   radioPair(P, 0.78, -1.40, 3230, 0.98);
   smokePair(P, 1.00, 0.62, 0.18, 4, 3240);
@@ -233,8 +242,27 @@ function buildUAM2A3(P) {
   // §B2 sweep handoff ua(c): the ISU-pedestal pocket ([-0.687, 2.818,
   // -0.466] world, framed by mast+panel+dome) — thicken the pedestal into
   // the frame (optics-class fill, turret-local).
-  P.add('turret', KIT.box(0.26, 0.32, 0.28), -0.69, 0.90, -0.02);
+  const roofY = 0.565;
+  const isuPlinthTopY = 1.06;
+  P.add('turret', KIT.box(0.26, isuPlinthTopY - roofY, 0.28),
+    -0.69, (isuPlinthTopY + roofY) / 2, -0.02);
   P.add('turretDark', KIT.box(0.20, 0.03, 0.22), -0.69, 1.075, -0.02);
+  P.turretG.userData.uaBradleyRoofSeatingReceipt = Object.freeze({
+    revision: 'cupola-and-isu-plinth-r1',
+    roofY,
+    machineGunPedestal: Object.freeze({
+      x: -0.42,
+      z: -0.42,
+      bottomY: roofY,
+      topY: 0.8825,
+    }),
+    isuPlinth: Object.freeze({
+      x: -0.69,
+      z: -0.02,
+      bottomY: roofY,
+      topY: isuPlinthTopY,
+    }),
+  });
 }
 
 function addTerminatorStation(P) {
