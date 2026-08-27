@@ -17,7 +17,8 @@ first-layout recovery; `frameLoopScheduler.ts` owns rAF delivery and bounded
 hidden-pane recovery; `garageFramePacer.ts` suppresses redundant settled
 Garage frames while keeping interaction at display cadence; `lighting.js`,
 `post.js`, and `sky.js` build the frame;
-`cameraRig.js` owns player/cinematic poses; `quality.js` and `deviceDiag.js`
+`cameraRig.js` owns player/cinematic poses; settled showroom framing is pumped
+only by the Garage watchdog or visible motion; `quality.js` and `deviceDiag.js`
 own tiering and rescue behavior.
 
 ## Patterns to follow / invariants

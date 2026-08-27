@@ -3389,18 +3389,21 @@ function tick(nowMs) {
   const kcActive = killcam.isActive();
 
   // A settled Garage is a static presentation, not a 60 Hz game simulation.
-  // Keep camera interaction and async scene changes immediate, then skip the
-  // complete input/presentation/world/audio/shadow/post pipeline between the
-  // bounded idle paints. DOM/CSS animation continues on the compositor.
-  const showroomDirty = game.phase === 'garage' ? showroom.update(dtR) : false;
+  // Read the controller's allocation-free motion latch before doing any
+  // camera solve. Pointer input mutates that latch synchronously, so drag,
+  // zoom, spring return, and vehicle swaps still run at display cadence. A
+  // settled camera is evaluated only on the bounded watchdog paint instead
+  // of re-solving its fixed frame sixty times per second.
+  const garageAnimating = game.phase === 'garage' &&
+    (showroom.moving || pedestal.switchPending);
   // Persistent room ownership is independent of WebGL presentation cadence.
   // Keep lobby recovery and host snapshots at display cadence even while a
-  // settled Garage only paints eight frames per second.
+  // settled Garage only paints twice per second.
   if (game.phase === 'garage') networkFramePump.pump(dtR, nowMs);
   if (game.phase === 'garage' && !garageFramePacer.shouldRender(nowMs, {
-    animate: showroom.moving || pedestal.switchPending,
-    dirty: showroomDirty,
+    animate: garageAnimating,
   })) return;
+  if (game.phase === 'garage') showroom.update(dtR);
 
   // PAUSE (owner: Esc mid-game). `paused` has always gated the fixed-step sim
   // (step 2) plus input/rig, but fx kept aging, dust kept pumping off frozen

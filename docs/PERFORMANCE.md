@@ -438,15 +438,27 @@ map construction was removed entirely.
 ### 2026-08-27 static-phase CPU and residency
 
 Performance gates now measure phase CPU, forced-GC heap, scene cardinality,
-renderer residency, cache ownership, and render cadence—not FPS alone. A
-settled Garage paints at an 8 Hz safety cadence, but input and camera motion
-immediately restore display-rate frames. The showroom camera no longer walks
-the selected tank subtree to calculate bounds that fixed framing discards, and
-it no longer rewrites an identical pose indefinitely.
+renderer residency, complete-frame draw/primitive work, cache ownership, and
+render cadence—not FPS alone. A settled Garage paints at a 2 Hz watchdog
+cadence, but input and camera motion immediately restore display-rate frames.
+The showroom camera no longer walks the selected tank subtree to calculate
+bounds that fixed framing discards, and a settled camera solve runs only on a
+watchdog paint rather than every display frame.
 
 The production probe is `npm run perf:resources`; its enforceable form is
 `npm run perf:resources:gate`. It runs Garage idle, a live solo battle, and
 returned Garage in one browser so leaks and hidden ownership remain visible.
+The probe accumulates renderer diagnostics across the complete scene, shadow,
+and post stack; it does not mistake the composer's final fullscreen triangle
+for the complete frame.
+
+At 1280×577 and DPR 1, an exact production A/B reduced initial/returned
+Garage CPU from 0.106/0.117 to 0.055/0.055 core-equivalent and reduced complete
+WebGL paints from 7.5 to 2.0 per second. Forced-GC heap, resident renderer
+objects, and complete-frame geometry remained within measurement noise, so the
+gain comes from eliminating redundant static work rather than reducing visual
+content.
+
 Passive Garage dwell must report zero resident worlds; desktop
 pedestal/world/rematch caches must stay within 4/2/2 respectively.
 

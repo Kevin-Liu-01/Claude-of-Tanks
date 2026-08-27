@@ -19,18 +19,22 @@ favor of a canonical box.
 
 `src/engine/garageFramePacer.ts` is the typed owner of settled Garage cadence.
 Visible camera motion and user activity run at display cadence; a static scene
-uses an 8 Hz safety paint so asynchronous completion still appears within 125
-ms. DOM and CSS transitions remain browser-composited.
+uses a 2 Hz watchdog paint so un-signaled asynchronous completion still
+appears within 500 ms. The showroom framing solve runs only on those paints or
+while it is visibly moving. DOM and CSS transitions remain browser-composited.
 
 Persistent room/session pumping is deliberately outside this WebGL gate. A
-static Garage may paint at 8 Hz without reducing signaling recovery, host
+static Garage may paint at 2 Hz without reducing signaling recovery, host
 snapshot, or reconnect cadence.
 
 The production phase-resource gate also enforces broad release ceilings for
-task CPU, forced-GC JavaScript heap, renderer programs, geometries, and textures
-in settled Garage, active battle, and returned Garage. These are regression
-ceilings above the healthy baseline, not quality targets; they prevent a high
-FPS reading from hiding excessive resource residency.
+task CPU, forced-GC JavaScript heap, renderer programs, geometries, textures,
+complete-frame draw calls, and complete-frame primitive counts in settled
+Garage, active battle, and returned Garage. The probe disables Three's
+per-pass diagnostics reset only while measuring, so the receipt includes the
+scene, shadow maps, and postprocessing rather than the final fullscreen
+triangle alone. These are regression ceilings above the healthy baseline, not
+quality targets; they prevent a high FPS reading from hiding excessive work.
 
 Fixed showroom framing never measures the vehicle subtree and writes a camera
 pose only when framing or motion changed. Passive dwell no longer constructs a

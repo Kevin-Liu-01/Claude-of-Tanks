@@ -44,9 +44,10 @@ cache-disabled contexts and record `--cpu`, `--down-kbps`, `--up-kbps`, and
 `--latency` so a warm navigation cannot masquerade as first-visit reliability.
 Static-screen and transition claims require `npm run perf:resources:gate`; it
 records task/script CPU, forced-GC heap, scene and renderer residency, cache
-ownership, and actual paint cadence across Garage, battle, and returned Garage.
-The gate enforces broad CPU, heap, shader-program, geometry, texture, cadence,
-and cache-residency ceilings; do not reduce it to an FPS-only check.
+ownership, actual paint cadence, and complete-frame draw/primitive totals
+across Garage, battle, and returned Garage. The gate enforces broad CPU, heap,
+shader-program, geometry, texture, draw-call, primitive, cadence, and
+cache-residency ceilings; do not reduce it to an FPS-only check.
 Tank work must run `npm run tank:anatomy:update` before asset/release checks;
 the update refreshes the receipt map and only the three fleet technical views,
 preserving unrelated garage/top/side/markings assets.

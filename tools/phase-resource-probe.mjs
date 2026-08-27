@@ -41,25 +41,31 @@ const viewport = {
 // return to full-cadence Garage work or unbounded scene/heap residency does.
 const RESOURCE_BUDGETS = Object.freeze({
   garageIdle: Object.freeze({
-    taskCoreEquivalent: 0.25,
-    heapMB: 128,
-    programs: 140,
-    geometries: 450,
-    textures: 110,
+    taskCoreEquivalent: 0.15,
+    heapMB: 96,
+    programs: 110,
+    geometries: 425,
+    textures: 100,
+    calls: 1000,
+    triangles: 300_000,
   }),
   battleActive: Object.freeze({
-    taskCoreEquivalent: 0.9,
-    heapMB: 384,
-    programs: 300,
-    geometries: 900,
-    textures: 360,
+    taskCoreEquivalent: 0.65,
+    heapMB: 340,
+    programs: 280,
+    geometries: 850,
+    textures: 350,
+    calls: 800,
+    triangles: 4_500_000,
   }),
   garageReturned: Object.freeze({
-    taskCoreEquivalent: 0.3,
-    heapMB: 300,
-    programs: 320,
-    geometries: 700,
-    textures: 240,
+    taskCoreEquivalent: 0.18,
+    heapMB: 260,
+    programs: 310,
+    geometries: 650,
+    textures: 220,
+    calls: 1000,
+    triangles: 300_000,
   }),
 });
 
@@ -128,6 +134,7 @@ const delta = (after, before, name) => (after.get(name) || 0) - (before.get(name
 const sampleResources = () => page.evaluate(() => {
   const debug = window.__DEBUG;
   const renderer = debug.renderer;
+  const completeFrame = window.__PHASE_RESOURCE_LAST_RENDER || renderer.info.render;
   const geometries = new Set();
   const materials = new Set();
   const textures = new Set();
@@ -169,10 +176,10 @@ const sampleResources = () => page.evaluate(() => {
     sceneMaterials: materials.size,
     sceneTextures: textures.size,
     renderer: {
-      calls: renderer.info.render.calls,
-      triangles: renderer.info.render.triangles,
-      lines: renderer.info.render.lines,
-      points: renderer.info.render.points,
+      calls: completeFrame.calls,
+      triangles: completeFrame.triangles,
+      lines: completeFrame.lines,
+      points: completeFrame.points,
       programs: (renderer.info.programs || []).length,
       geometries: renderer.info.memory.geometries,
       textures: renderer.info.memory.textures,
@@ -229,8 +236,8 @@ const evaluateBudgets = (phases) => {
     checks.push({ name, pass: Boolean(pass), actual, limit });
   };
 
-  check('garage idle render cadence', idle?.rendersPerSecond <= 10,
-    idle?.rendersPerSecond ?? null, '<= 10 renders/s');
+  check('garage idle render cadence', idle?.rendersPerSecond <= 3,
+    idle?.rendersPerSecond ?? null, '<= 3 renders/s');
   check('garage idle CPU residency',
     idle?.taskCoreEquivalent <= RESOURCE_BUDGETS.garageIdle.taskCoreEquivalent,
     idle?.taskCoreEquivalent ?? null,
@@ -243,6 +250,12 @@ const evaluateBudgets = (phases) => {
       idle?.resources.renderer[resource] <= RESOURCE_BUDGETS.garageIdle[resource],
       idle?.resources.renderer[resource] ?? null,
       `<= ${RESOURCE_BUDGETS.garageIdle[resource]}`);
+  }
+  for (const workload of ['calls', 'triangles']) {
+    check(`garage idle complete-frame ${workload}`,
+      idle?.resources.renderer[workload] <= RESOURCE_BUDGETS.garageIdle[workload],
+      idle?.resources.renderer[workload] ?? null,
+      `<= ${RESOURCE_BUDGETS.garageIdle[workload]}`);
   }
   check('garage constructs no battlefield without intent',
     (idle?.resources.caches.worldIds?.length || 0) === 0,
@@ -265,6 +278,12 @@ const evaluateBudgets = (phases) => {
       battle?.resources.renderer[resource] ?? null,
       `<= ${RESOURCE_BUDGETS.battleActive[resource]}`);
   }
+  for (const workload of ['calls', 'triangles']) {
+    check(`active battle complete-frame ${workload}`,
+      battle?.resources.renderer[workload] <= RESOURCE_BUDGETS.battleActive[workload],
+      battle?.resources.renderer[workload] ?? null,
+      `<= ${RESOURCE_BUDGETS.battleActive[workload]}`);
+  }
   check('returned Garage CPU residency',
     returned?.taskCoreEquivalent <= RESOURCE_BUDGETS.garageReturned.taskCoreEquivalent,
     returned?.taskCoreEquivalent ?? null,
@@ -278,6 +297,13 @@ const evaluateBudgets = (phases) => {
       returned?.resources.renderer[resource] <= RESOURCE_BUDGETS.garageReturned[resource],
       returned?.resources.renderer[resource] ?? null,
       `<= ${RESOURCE_BUDGETS.garageReturned[resource]}`);
+  }
+  for (const workload of ['calls', 'triangles']) {
+    check(`returned Garage complete-frame ${workload}`,
+      returned?.resources.renderer[workload]
+        <= RESOURCE_BUDGETS.garageReturned[workload],
+      returned?.resources.renderer[workload] ?? null,
+      `<= ${RESOURCE_BUDGETS.garageReturned[workload]}`);
   }
   check('returned Garage battle pool respects resident limit',
     (returned?.resources.caches.battleVisualPool?.size || 0)
@@ -307,11 +333,31 @@ try {
   });
   await page.evaluate(() => {
     const post = window.__DEBUG.post;
+    const renderer = window.__DEBUG.renderer;
     const originalRender = post.render.bind(post);
     window.__PHASE_RESOURCE_RENDER_COUNT = 0;
+    window.__PHASE_RESOURCE_LAST_RENDER = null;
     post.render = (...args) => {
       window.__PHASE_RESOURCE_RENDER_COUNT += 1;
-      return originalRender(...args);
+      // EffectComposer normally resets renderer.info for each pass, leaving
+      // diagnostics with only the final fullscreen triangle. Accumulate the
+      // complete application frame in this probe-only wrapper so calls and
+      // primitives include the scene, shadows, and every post-process pass.
+      const previousAutoReset = renderer.info.autoReset;
+      renderer.info.autoReset = false;
+      renderer.info.reset();
+      try {
+        return originalRender(...args);
+      } finally {
+        const frame = renderer.info.render;
+        window.__PHASE_RESOURCE_LAST_RENDER = {
+          calls: frame.calls,
+          triangles: frame.triangles,
+          lines: frame.lines,
+          points: frame.points,
+        };
+        renderer.info.autoReset = previousAutoReset;
+      }
     };
   });
 
