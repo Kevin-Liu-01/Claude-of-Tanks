@@ -110,6 +110,13 @@ const reloadResult = activateSpecialAction(autoloader);
 assert.equal(reloadResult.ok, true);
 assert.equal(autoloader.combat.magazine.rounds, 0, 'manual reload discards the partial magazine');
 assert.equal(autoloader.combat.reload.kind, 'magazine');
+assert.equal(activateSpecialAction(autoloader).reason, 'MAGAZINE_RELOADING',
+  'repeating the command reports the active magazine load');
+autoloader.combat.reload.kind = 'ready';
+autoloader.combat.reload.t = 0;
+autoloader.combat.magazine.rounds = autoloader.combat.magazine.capacity;
+assert.equal(activateSpecialAction(autoloader).reason, 'MAGAZINE_FULL',
+  'a full ready rack receives a distinct denial from an active reload');
 
 assert.equal(specialActionKind(getSpec('m1a2')), SPECIAL_ACTION_KINDS.NONE,
   'vehicles without a modeled system do not receive a fake ability');

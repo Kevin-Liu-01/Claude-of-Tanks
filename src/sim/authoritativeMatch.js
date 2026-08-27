@@ -35,6 +35,7 @@ import {
   resolveHeBurst,
   resolveShellHit,
   selectShell,
+  magazineReloadDenialReason,
   startMagazineReload,
   startPostShotReload,
   tickReload,
@@ -684,9 +685,13 @@ export function createAuthoritativeMatch({
     entity.input.actionBits = 0;
     if (!bits || entity.combat.destroyed) return;
     if (bits & PLAYER_ACTION_BITS.RELOAD_MAGAZINE) {
-      if (startMagazineReload(entity.combat, entity.spec)) {
+      const reason = magazineReloadDenialReason(entity.combat);
+      if (!reason && startMagazineReload(entity.combat, entity.spec)) {
         emit('magazine_reload', { id: entity.id });
-      }
+      } else emit('magazine_reload_denied', {
+        id: entity.id,
+        reason: reason || 'NO_MAGAZINE',
+      });
     }
     if (bits & PLAYER_ACTION_BITS.SPECIAL_ACTION) {
       const result = activateSpecialAction(entity);

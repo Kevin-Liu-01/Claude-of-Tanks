@@ -323,6 +323,12 @@ assert.equal(autoEntity.combat.reload.kind, 'magazine');
 assert.ok(autoloaderMatch.snapshot({ tick: 132, serverTimeMs: 2200,
   viewerId: 'auto-a', ackInputSeq: 1 }).events.some((event) =>
   event.type === 'magazine_reload'), 'manual magazine reload is replicated');
+autoInput.get('auto-a').actionBits = PLAYER_ACTION_BITS.RELOAD_MAGAZINE;
+autoloaderMatch.step({ dt: 1 / 60, inputs: autoInput });
+assert.ok(autoloaderMatch.snapshot({ tick: 133, serverTimeMs: 2217,
+  viewerId: 'auto-a', ackInputSeq: 2 }).events.some((event) =>
+  event.type === 'magazine_reload_denied' && event.reason === 'MAGAZINE_RELOADING'),
+'authority replicates the exact active-reload denial to the requesting client');
 
 const ramMatch = createAuthoritativeMatch({
   countdownS: 0,

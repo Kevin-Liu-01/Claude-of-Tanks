@@ -54,7 +54,8 @@ interface ActionInput {
 interface ActionRules {
   selectShell(combat: CombatState, slot: number, spec: TankSpec): void;
   repairAllModules(combat: CombatState): Iterable<string>;
-  startMagazineReload(combat: CombatState, spec: TankSpec): void;
+  magazineReloadDenialReason?(combat: CombatState): string | null;
+  startMagazineReload(combat: CombatState, spec: TankSpec): boolean;
   activateSpecialAction(player: PlayerEntity): { ok: boolean; [key: string]: unknown };
   specialActionLocksShell(player: PlayerEntity): boolean;
   hasConsumableRule(slot: number): boolean;
@@ -229,7 +230,13 @@ export function createPlayerBattleActions({
     const player = battleInputAllowed() ? livePlayer() : null;
     if (!player) return;
     if (network.isActive()) network.queueAction('reloadMagazine');
-    else rules.startMagazineReload(player.combat, player.spec);
+    else {
+      const reason = rules.magazineReloadDenialReason?.(player.combat) || null;
+      const started = !reason && rules.startMagazineReload(player.combat, player.spec);
+      bus.emit(started ? 'ui:magazineReloadStarted' : 'ui:magazineReloadDenied', {
+        reason: reason || 'NO_MAGAZINE',
+      });
+    }
     bus.emit('ui:click', {});
   });
 

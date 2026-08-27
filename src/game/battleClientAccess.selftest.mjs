@@ -23,6 +23,7 @@ const runtime = {
   resolveShellHit: () => 6,
   createCombatState: () => 7,
   repairAllModules: () => 8,
+  magazineReloadDenialReason: () => 'MAGAZINE_FULL',
   startMagazineReload: () => 9,
   createShell: () => 10,
   activateSpecialAction: () => 13,
@@ -50,6 +51,7 @@ await access.preload();
 assert.equal(attempts, 2, 'a rejected battle transfer remains retryable');
 assert.equal(access.isReady(), true);
 assert.equal(access.computeDispersionRadM(), 1);
+assert.equal(access.magazineReloadDenialReason(), 'MAGAZINE_FULL');
 assert.equal(access.createShell(), 10);
 assert.equal(access.aimController.raycast(
   new THREE.Vector3(), new THREE.Vector3(0, 0, 1), 10,

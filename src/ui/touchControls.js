@@ -13,7 +13,9 @@ import {
 const CSS = `
 .cot-touch{position:fixed;inset:0;z-index:60;display:none;pointer-events:none;
   font-family:${FONT_STACK};color:#eef4f9;-webkit-user-select:none;user-select:none;
-  touch-action:none;overflow:hidden;--edge:max(14px,env(safe-area-inset-left));}
+  touch-action:none;overflow:hidden;--edge:max(14px,env(safe-area-inset-left));
+  --touch-panel:rgba(7,11,15,.94);--touch-edge:rgba(205,219,229,.34);
+  --touch-action:#f0a030;--touch-action-soft:rgba(240,160,48,.18);}
 .cot-touch-aim{position:fixed;inset:0;z-index:39;display:none;pointer-events:none;
   font-family:${FONT_STACK};color:#eef4f9;-webkit-user-select:none;user-select:none;
   touch-action:none;overflow:hidden;}
@@ -28,14 +30,16 @@ const CSS = `
 .cot-touch .joy{position:absolute;z-index:2;left:var(--edge);
   bottom:max(16px,env(safe-area-inset-bottom));width:138px;height:138px;
   border-radius:50%;pointer-events:auto;touch-action:none;
-  background:radial-gradient(circle,rgba(31,40,48,.35) 0 31%,rgba(9,14,18,.58) 33% 63%,rgba(190,205,218,.13) 64% 66%,rgba(5,8,11,.45) 67%);
-  border:2px solid rgba(218,229,238,.26);box-shadow:inset 0 0 22px rgba(0,0,0,.55),0 4px 16px rgba(0,0,0,.35);}
+  background:radial-gradient(circle,rgba(78,91,101,.24) 0 28%,transparent 29% 45%,rgba(218,230,238,.1) 46% 47%,transparent 48%),
+    conic-gradient(from 45deg,rgba(212,225,234,.08),transparent 13% 37%,rgba(212,225,234,.08) 50%,transparent 63% 87%,rgba(212,225,234,.08)),
+    radial-gradient(circle,rgba(23,31,37,.72),rgba(5,9,12,.58) 68%,rgba(2,5,8,.4));
+  border:2px solid var(--touch-edge);box-shadow:inset 0 0 0 5px rgba(3,7,10,.28),inset 0 0 25px rgba(0,0,0,.58),0 7px 20px rgba(0,0,0,.34);}
 .cot-touch .joy::before,.cot-touch .joy::after{content:"";position:absolute;left:50%;top:50%;
   background:rgba(219,231,240,.16);transform:translate(-50%,-50%);}
 .cot-touch .joy::before{width:76%;height:1px}.cot-touch .joy::after{width:1px;height:76%}
 .cot-touch .knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px;
-  border-radius:50%;background:radial-gradient(circle at 35% 30%,#596874,#202a32 58%,#0a0e12 100%);
-  border:2px solid rgba(224,234,242,.48);box-shadow:0 4px 10px rgba(0,0,0,.65),inset 0 1px 3px rgba(255,255,255,.16);}
+  border-radius:50%;background:radial-gradient(circle at 38% 30%,#778794,#34414b 35%,#151d23 72%,#080c10);
+  border:2px solid rgba(231,239,245,.58);box-shadow:0 6px 14px rgba(0,0,0,.68),inset 0 1px 4px rgba(255,255,255,.2);}
 .cot-touch .arrow{position:absolute;color:rgba(231,240,247,.72);font-size:16px;line-height:1;
   text-shadow:0 1px 3px #000}.cot-touch .arrow.u{left:61px;top:8px}.cot-touch .arrow.d{left:61px;bottom:8px}
 .cot-touch .arrow.l{left:10px;top:58px}.cot-touch .arrow.r{right:10px;top:58px}
@@ -45,12 +49,17 @@ const CSS = `
 .cot-touch .arrow.r{transform:rotate(90deg)}
 .cot-touch .round{position:absolute;z-index:3;display:flex;align-items:center;justify-content:center;
   border-radius:50%;pointer-events:auto;touch-action:none;border:2px solid rgba(220,231,239,.32);
-  background:radial-gradient(circle at 35% 28%,rgba(90,103,113,.84),rgba(22,29,35,.93) 62%,rgba(6,9,12,.96));
-  box-shadow:0 5px 16px rgba(0,0,0,.55),inset 0 1px 4px rgba(255,255,255,.16);}
+  background:radial-gradient(circle at 38% 27%,rgba(108,122,133,.8),rgba(27,36,43,.96) 48%,var(--touch-panel) 76%);
+  box-shadow:0 6px 18px rgba(0,0,0,.52),inset 0 0 0 4px rgba(3,7,10,.3),inset 0 1px 4px rgba(255,255,255,.18);
+  transition:transform 90ms ease-out,border-color 90ms ease,color 90ms ease,box-shadow 90ms ease;}
+.cot-touch .round::before{content:"";position:absolute;inset:7px;border-radius:50%;pointer-events:none;
+  border:1px solid rgba(222,233,241,.1);}
 .cot-touch .round:active,.cot-touch .round.down{transform:scale(.94);border-color:#f0ad45;
   box-shadow:0 0 18px rgba(240,150,40,.35),inset 0 2px 7px rgba(0,0,0,.65);}
 .cot-touch .fire{right:max(20px,env(safe-area-inset-right));bottom:max(22px,env(safe-area-inset-bottom));
-  width:96px;height:96px;color:#ffd27a;}
+  width:96px;height:96px;color:#ffd27a;border-color:rgba(255,190,91,.58);
+  background:radial-gradient(circle at 50% 48%,rgba(240,160,48,.24),transparent 35%),
+    radial-gradient(circle at 38% 27%,rgba(118,103,75,.88),rgba(36,31,24,.97) 48%,rgba(10,10,9,.98) 76%);}
 .cot-touch .fire svg{width:34px;height:54px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.8));}
 .cot-touch .fire .lb,.cot-touch .scope .lb,.cot-touch .autoaim .lb{position:absolute;bottom:-17px;
   left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:8px;font-weight:800;
@@ -85,10 +94,11 @@ body.cot-touch-layout[data-cot-orientation='portrait'] .cot-touch .mobile-chrome
 }
 .cot-touch .quick{width:44px;height:44px;padding:3px 2px 2px;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:1px;pointer-events:auto;touch-action:manipulation;
-  border:1px solid rgba(184,201,214,.34);border-bottom:2px solid rgba(184,201,214,.38);
-  background:linear-gradient(180deg,rgba(20,27,33,.94),rgba(7,11,15,.96));
-  color:#dce7ef;box-shadow:0 3px 12px rgba(0,0,0,.45);}
-.cot-touch .quick:active{border-color:#f0ad45;color:#ffd27a;background:rgba(48,32,12,.96);}
+  border:1px solid var(--touch-edge);border-bottom:2px solid rgba(205,219,229,.42);border-radius:2px;
+  background:linear-gradient(180deg,rgba(29,38,45,.96),var(--touch-panel));
+  color:#dce7ef;box-shadow:0 4px 13px rgba(0,0,0,.4),inset 0 1px rgba(255,255,255,.05);
+  transition:transform 90ms ease-out,border-color 90ms ease,color 90ms ease;}
+.cot-touch .quick:active{transform:scale(.95);border-color:#f0ad45;color:#ffd27a;background:rgba(48,32,12,.96);}
 .cot-touch .quick svg{width:18px;height:18px;display:block;}
 .cot-touch .quick .ql{font-family:${FONT_COND};font-size:6.5px;font-weight:800;line-height:1;
   letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;}
@@ -145,16 +155,15 @@ body.cot-touch-layout .cot-special{left:auto;right:128px;
   bottom:calc(max(22px,env(safe-area-inset-bottom)) + 112px);transform:none;
   width:64px;min-width:64px;height:64px;padding:5px;border-radius:50%;
   grid-template-columns:1fr;grid-template-rows:28px 12px;gap:0;justify-items:center;
-  border:2px solid rgba(220,231,239,.32);background:radial-gradient(circle at 35% 28%,rgba(90,103,113,.84),rgba(22,29,35,.93) 62%,rgba(6,9,12,.96));}
+  border:2px solid var(--touch-edge);background:radial-gradient(circle at 38% 27%,rgba(108,122,133,.8),rgba(27,36,43,.96) 48%,var(--touch-panel) 76%);
+  box-shadow:0 6px 18px rgba(0,0,0,.52),inset 0 0 0 4px rgba(3,7,10,.3),inset 0 1px 4px rgba(255,255,255,.18);}
 body.cot-touch-layout .cot-special:active{transform:scale(.94);}
 body.cot-touch-layout .cot-special .si svg{width:27px;height:27px;}
 body.cot-touch-layout .cot-special .sl{font-size:0;letter-spacing:.07em;text-align:center;}
 body.cot-touch-layout .cot-special .sl::after{content:attr(data-short);font-size:7px;}
 body.cot-touch-layout .cot-special .sk{display:none;}
 body.cot-touch-layout .cot-net{top:max(8px,env(safe-area-inset-top));
-  left:calc(max(8px,env(safe-area-inset-left)) + 124px);right:auto;padding:4px 7px 3px;z-index:24;
-  background:rgba(7,11,15,.68);border-left:2px solid rgba(240,160,48,.72);
-  color:#dce7ef;opacity:.88;font-size:9px;letter-spacing:.08em;}
+  left:calc(max(8px,env(safe-area-inset-left)) + 124px);right:auto;z-index:24;}
 /* The former Garage shortcut occupied the first 44 px of this corner. With
    battle exit living in Settings, let the minimap own the safe-area top row. */
 body.cot-touch-layout .cot-minimap{left:max(8px,env(safe-area-inset-left));right:auto;
@@ -167,7 +176,7 @@ body.cot-touch-layout[data-cot-orientation='portrait'] .cot-drive{
 body.cot-touch-layout .cot-dp{left:max(232px,calc(env(safe-area-inset-left) + 224px));
   bottom:max(8px,env(safe-area-inset-bottom));
   transform:scale(.58);transform-origin:left bottom;}
-body.cot-touch-layout .cot-alert{bottom:28%;font-size:12px;}
+body.cot-touch-layout .cot-alert{bottom:28%;max-width:calc(100vw - 24px);font-size:10px;white-space:normal;}
 body.cot-touch-layout .cot-bounce{top:31%;font-size:12px;}
 
 /* Shell chip label/count collision: at the 48px touch chip the
@@ -179,6 +188,9 @@ body.cot-touch-layout .cot-shell .cnt{top:2px;right:3px;bottom:auto;}
 body.cot-touch-layout .nv{padding:9px 14px;}
 body.cot-touch-layout .cot-country-chip{padding:9px 12px;}
 body.cot-touch-layout .cot-car-arrow{width:44px;}
+@media (prefers-reduced-motion:reduce){
+  .cot-touch .round,.cot-touch .quick,.cot-touch .fire-cancel{transition:none;}
+}
 `;
 
 const SHELL = uiIconSVG('shell', 34);

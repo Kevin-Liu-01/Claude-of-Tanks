@@ -8,6 +8,8 @@ const runtime = {
   hud: {
     update: (value) => calls.push(['update', value]),
     toggle: () => calls.push(['toggle']),
+    setVisible: (visible) => calls.push(['visible', visible]),
+    isVisible: () => false,
     setTelemetryProvider: (provider) => calls.push(['provider', typeof provider]),
     setCaptureHidden: (hidden) => calls.push(['hidden', hidden]),
     stats: () => ({ fps: 120 }),
@@ -39,11 +41,12 @@ const [first, second] = await Promise.all([access.preload(), access.preload()]);
 assert.equal(first, runtime);
 assert.equal(second, runtime);
 assert.equal(loads, 2, 'a failed optional transfer retries and concurrent intent coalesces');
-assert.deepEqual(calls.slice(0, 2), [['hidden', true], ['provider', 'function']]);
+assert.deepEqual(calls.slice(0, 3), [['hidden', true], ['visible', false], ['provider', 'function']]);
 
 access.update(8.3);
 access.toggle();
-assert.deepEqual(calls.slice(2), [['update', 8.3], ['toggle']]);
+assert.equal(access.isVisible(), true);
+assert.deepEqual(calls.slice(3), [['update', 8.3], ['visible', true]]);
 assert.deepEqual(access.stats(), { fps: 120 });
 assert.deepEqual(access.collectTelemetry(), { tier: 'test' });
 assert.deepEqual(await access.sampleShadowContribution(), { changed: 4 });

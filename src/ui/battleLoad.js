@@ -20,18 +20,23 @@ import { tierNumeral } from '../vehicles/tier.js';
 export { tierNumeral };
 
 const CSS = `
-.cot-bl{position:fixed;inset:0;z-index:150;display:none;flex-direction:column;
+.cot-bl{position:fixed;inset:0;z-index:150;display:none;place-items:center;
+  --bl-edge:clamp(18px,4vw,64px);--bl-panel:rgba(7,11,15,.9);
   font-family:${FONT_STACK};color:#e6edf3;-webkit-user-select:none;user-select:none;
-  background:#05080b;opacity:1;overflow:hidden;}
-.cot-bl.on{display:flex;opacity:1;}
-.cot-bl.leaving{display:flex;opacity:0;transition:opacity .28s ease;}
+  background:#05080b;opacity:1;overflow:hidden;isolation:isolate;}
+.cot-bl.on{display:grid;opacity:1;}
+.cot-bl.leaving{display:grid;opacity:0;transition:opacity .28s ease;}
 .cot-bl *{box-sizing:border-box;margin:0;padding:0;}
-/* --- map hero band ------------------------------------------------------- */
-.cot-bl .hero{position:relative;flex:0 0 40%;min-height:210px;overflow:hidden;
-  border-bottom:1px solid rgba(240,160,48,.35);}
-.cot-bl .hero .art{position:absolute;inset:-6%;background-size:cover;
-  background-position:center;filter:saturate(.86) contrast(1.05);
-  transform:scale(1.06);}
+.cot-bl::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(190,208,221,.022) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(190,208,221,.018) 1px,transparent 1px);
+  background-size:48px 48px;mask-image:linear-gradient(180deg,transparent,black 36%,black);}
+/* Full-bleed map art keeps every aspect ratio intentional; the briefing card
+   caps the information width so ultrawide screens never become empty space. */
+.cot-bl .hero{position:absolute;inset:0;z-index:-1;overflow:hidden;}
+.cot-bl .hero .art{position:absolute;inset:-4%;background-size:cover;
+  background-position:center;filter:saturate(.82) contrast(1.08) brightness(.7);
+  transform:scale(1.04);}
 .cot-bl .hero .art.none{background:linear-gradient(160deg,#1e2a1c,#0b1017 70%);}
 .cot-bl .hero .art.desert{background-image:linear-gradient(160deg,#6d5330,#241a10 72%);}
 .cot-bl .hero .art.winter{background-image:linear-gradient(160deg,#5d6b78,#141a20 72%);}
@@ -44,20 +49,27 @@ const CSS = `
 .cot-bl .hero .art.alpine{background-image:linear-gradient(160deg,#7e96a6,#121a23 72%);}
 .cot-bl .hero .art.caldera{background-image:linear-gradient(160deg,#59473f,#171316 72%);}
 .cot-bl .hero .scrim{position:absolute;inset:0;
-  background:linear-gradient(180deg,rgba(5,8,11,.62) 0%,rgba(5,8,11,.25) 40%,rgba(5,8,11,.96) 100%);}
+  background:linear-gradient(180deg,rgba(3,6,9,.2),rgba(3,6,9,.62) 38%,rgba(3,6,9,.94) 100%);}
 .cot-bl .hero .vig{position:absolute;inset:0;
-  background:radial-gradient(105% 130% at 50% 20%,rgba(0,0,0,0) 40%,rgba(0,0,0,.72) 100%);}
-.cot-bl .hero .cap{position:absolute;left:5%;right:5%;bottom:20px;text-align:center;}
+  background:radial-gradient(110% 90% at 50% 20%,transparent 24%,rgba(0,0,0,.78) 100%);}
+.cot-bl .briefing{position:relative;z-index:1;width:min(1180px,calc(100vw - (var(--bl-edge) * 2)));
+  height:min(720px,78dvh);min-height:520px;
+  display:grid;grid-template-rows:auto minmax(0,1fr) auto;align-items:stretch;
+  padding:clamp(20px,3vh,34px) clamp(18px,2.5vw,34px) clamp(16px,2.2vh,26px);
+  background:linear-gradient(180deg,rgba(9,14,18,.46),var(--bl-panel) 31%,rgba(4,7,10,.95));
+  border:1px solid rgba(177,195,208,.24);border-top-color:rgba(240,176,74,.58);
+  box-shadow:0 22px 80px rgba(0,0,0,.5),inset 0 1px rgba(255,255,255,.035);}
+.cot-bl .cap{text-align:center;padding-bottom:clamp(15px,2.5vh,27px);}
 .cot-bl .kicker{font-family:${FONT_COND};font-size:10.5px;font-weight:700;
   letter-spacing:.36em;text-indent:.36em;color:#f0a030;text-transform:uppercase;}
-.cot-bl .mapname{margin-top:8px;font-size:clamp(28px,4.6vw,50px);font-weight:800;
+.cot-bl .mapname{margin-top:7px;font-size:clamp(30px,4.1vw,52px);font-weight:800;
   letter-spacing:.14em;text-indent:.14em;text-transform:uppercase;color:#f4f8fc;
-  text-shadow:0 3px 26px rgba(0,0,0,.85);}
+  text-shadow:0 3px 22px rgba(0,0,0,.9);}
 /* --- rosters ------------------------------------------------------------- */
-.cot-bl .teams{flex:1 1 auto;display:flex;align-items:stretch;justify-content:center;
-  gap:clamp(18px,4vw,74px);padding:22px clamp(18px,5vw,74px) 0;min-height:0;}
-.cot-bl .team{flex:1 1 0;max-width:460px;min-width:0;display:flex;flex-direction:column;}
-.cot-bl .thead{display:flex;align-items:center;gap:9px;padding-bottom:7px;
+.cot-bl .teams{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);
+  align-items:center;gap:clamp(16px,3vw,42px);}
+.cot-bl .team{min-width:0;display:flex;flex-direction:column;justify-content:center;}
+.cot-bl .thead{display:flex;align-items:center;gap:9px;padding:0 8px 8px;
   border-bottom:1px solid rgba(146,164,180,.24);font-family:${FONT_COND};
   font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;}
 .cot-bl .team.ally .thead{color:#7fdc8a;border-bottom-color:rgba(127,220,138,.4);}
@@ -66,9 +78,10 @@ const CSS = `
 .cot-bl .thead .n{margin-left:auto;font-variant-numeric:tabular-nums;color:#8a97a3;
   letter-spacing:.12em;}
 .cot-bl .team.foe .thead .n{margin-left:0;margin-right:auto;}
-.cot-bl .rows{display:flex;flex-direction:column;gap:3px;padding-top:8px;}
-.cot-bl .row{display:flex;align-items:center;gap:10px;height:34px;padding:0 8px;
-  background:rgba(255,255,255,.026);border-left:2px solid transparent;}
+.cot-bl .rows{display:flex;flex-direction:column;gap:3px;padding-top:7px;}
+.cot-bl .row{display:flex;align-items:center;gap:10px;height:clamp(29px,4vh,35px);padding:0 8px;
+  background:rgba(171,193,209,.045);border:1px solid rgba(161,181,196,.07);
+  border-left:2px solid transparent;}
 .cot-bl .team.foe .row{flex-direction:row-reverse;border-left:none;
   border-right:2px solid transparent;}
 .cot-bl .team.ally .row{border-left-color:rgba(127,220,138,.42);}
@@ -84,27 +97,29 @@ const CSS = `
   color:#dfe8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-bl .team.foe .row .nm{text-align:right;}
 .cot-bl .row.me .nm{color:#ffe4b0;}
-.cot-bl .vs{flex:0 0 auto;align-self:center;font-family:${FONT_COND};font-size:13px;
-  font-weight:700;letter-spacing:.2em;color:#5d6a76;}
+.cot-bl .vs{width:48px;height:48px;display:grid;place-items:center;justify-self:center;
+  font-family:${FONT_COND};font-size:11px;font-weight:800;letter-spacing:.14em;color:#c8d4dd;
+  background:rgba(6,10,14,.82);border:1px solid rgba(240,176,74,.34);
+  box-shadow:inset 0 0 0 3px rgba(4,7,10,.75),0 8px 22px rgba(0,0,0,.4);}
 /* --- footer: progress + countdown --------------------------------------- */
-.cot-bl .foot{flex:0 0 auto;padding:18px clamp(18px,5vw,74px) 26px;}
+.cot-bl .foot{padding-top:clamp(15px,2.5vh,24px);}
 .cot-bl .fmeta{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
   margin-bottom:8px;font-family:${FONT_COND};letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
 .cot-bl .fstage{font-size:11px;font-weight:700;letter-spacing:.26em;color:#9fb0bf;
   text-transform:uppercase;}
 .cot-bl .fpct{font-size:19px;font-weight:700;color:#ffd27a;}
-.cot-bl .fbar{position:relative;height:5px;background:rgba(255,255,255,.07);
+.cot-bl .fbar{position:relative;height:5px;background:rgba(255,255,255,.07);overflow:hidden;
   box-shadow:inset 0 0 0 1px rgba(146,164,180,.22);}
 .cot-bl .ffill{position:absolute;left:0;top:0;bottom:0;width:0%;
   background:linear-gradient(90deg,#b96f10,#f0a030 65%,#ffcf7d);
   box-shadow:0 0 14px rgba(240,160,48,.5);transition:width .18s linear;}
-.cot-bl .count{margin-top:16px;text-align:center;font-family:${FONT_COND};
+.cot-bl .count{margin-top:13px;text-align:center;font-family:${FONT_COND};
   font-size:15px;font-weight:800;letter-spacing:.3em;text-indent:.3em;
   color:#dce6ee;text-transform:uppercase;min-height:24px;
   text-shadow:0 2px 8px rgba(0,0,0,.9);}
 .cot-bl .count b{color:#ffd27a;font-size:23px;text-shadow:0 0 18px rgba(240,160,48,.36);}
-.cot-bl .tip{margin-top:12px;text-align:center;font-size:12px;color:#7f8d99;
-  line-height:1.5;padding:0 8%;}
+.cot-bl .tip{margin-top:9px;text-align:center;font-size:11px;color:#82909b;
+  line-height:1.45;padding:0 5%;}
 .cot-bl .tip b{color:#c2903f;font-family:${FONT_COND};font-weight:700;
   letter-spacing:.2em;text-transform:uppercase;font-size:9.5px;margin-right:8px;}
 `;
@@ -133,10 +148,12 @@ export function createBattleLoadScreen() {
   }
   const root = document.createElement('div');
   root.className = 'cot-bl';
+  root.setAttribute('role', 'status');
+  root.setAttribute('aria-label', 'Preparing battle');
   root.innerHTML =
-    `<div class="hero"><div class="art none"></div><div class="scrim"></div><div class="vig"></div>` +
-    `<div class="cap"><div class="kicker">Random Battle &middot; Standard</div>` +
-    `<div class="mapname"></div></div></div>` +
+    `<div class="hero" aria-hidden="true"><div class="art none"></div><div class="scrim"></div><div class="vig"></div></div>` +
+    `<main class="briefing"><div class="cap"><div class="kicker">Random Battle &middot; Standard</div>` +
+    `<div class="mapname"></div></div>` +
     `<div class="teams">` +
     `<div class="team ally"><div class="thead"><span>Allies</span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
@@ -144,10 +161,10 @@ export function createBattleLoadScreen() {
     `<div class="team foe"><div class="thead"><span>Enemies</span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
     `</div>` +
-    `<div class="foot"><div class="fmeta"><div class="fstage">Loading battlefield</div>` +
+    `<div class="foot" aria-live="polite"><div class="fmeta"><div class="fstage">Loading battlefield</div>` +
     `<div class="fpct">0%</div></div>` +
-    `<div class="fbar"><div class="ffill"></div></div>` +
-    `<div class="count"></div><div class="tip"></div></div>`;
+    `<div class="fbar" role="progressbar" aria-label="Battlefield loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="ffill"></div></div>` +
+    `<div class="count"></div><div class="tip"></div></div></main>`;
   document.body.appendChild(root);
 
   const artEl = root.querySelector('.art');
@@ -160,6 +177,7 @@ export function createBattleLoadScreen() {
   const stageEl = root.querySelector('.fstage');
   const pctEl = root.querySelector('.fpct');
   const fillEl = root.querySelector('.ffill');
+  const progressEl = root.querySelector('.fbar');
   const countEl = root.querySelector('.count');
   const tipEl = root.querySelector('.tip');
 
@@ -234,6 +252,7 @@ export function createBattleLoadScreen() {
       const v = Math.max(0, Math.min(1, f));
       fillEl.style.width = `${(v * 100).toFixed(1)}%`;
       pctEl.textContent = `${Math.round(v * 100)}%`;
+      progressEl.setAttribute('aria-valuenow', String(Math.round(v * 100)));
       if (label) stageEl.textContent = label;
     },
 

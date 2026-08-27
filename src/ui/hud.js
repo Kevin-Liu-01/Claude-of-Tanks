@@ -37,6 +37,43 @@ export const AUTOLOADER_HUD_SHELLS = 4;
 const AUTOLOADER_HUD_ARC_DEPTH = 2.25;
 const AUTOLOADER_HUD_OUTER_ROTATION = 0.14;
 const AUTOLOADER_SHELL_RELOADING = 'rgba(174,184,192,0.9)';
+export const HIT_CONFIRM_LIFETIME_S = 1.4;
+
+function smoothstep01(value) {
+  const t = Math.max(0, Math.min(1, value));
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * Resolve the hit-confirm animation without allocating in the live HUD loop.
+ * The four shards snap inward immediately, hold long enough to read, then
+ * fade in place. Reduced motion keeps their position fixed throughout.
+ */
+export function hitConfirmVisualState(ageS, reducedMotion = false, out = null) {
+  const state = out || {};
+  state.visible = Number.isFinite(ageS) && ageS >= 0 && ageS <= HIT_CONFIRM_LIFETIME_S;
+  if (!state.visible) {
+    state.opacity = 0;
+    state.radius = 18.5;
+    state.length = 13;
+    state.halfWidth = 3.5;
+    state.flash = 0;
+    return state;
+  }
+
+  const enterT = Math.min(1, ageS / 0.14);
+  const enterEase = 1 - Math.pow(1 - enterT, 3);
+  const releaseT = Math.max(0, Math.min(1,
+    (ageS - 0.34) / (HIT_CONFIRM_LIFETIME_S - 0.34)));
+  const fade = ageS <= 0.34 ? 1 : 1 - smoothstep01(releaseT);
+
+  state.opacity = (0.62 + 0.38 * enterEase) * fade;
+  state.radius = reducedMotion ? 18.5 : 29 - 10.5 * enterEase;
+  state.length = reducedMotion ? 13 : 8.5 + 4.5 * enterEase;
+  state.halfWidth = reducedMotion ? 3.5 : 2.7 + 0.8 * enterEase;
+  state.flash = reducedMotion ? 0 : 1 - smoothstep01(ageS / 0.2);
+  return state;
+}
 
 /** Remaining authoritative reload fraction painted into the reticle dots. */
 export function reloadHudFraction(reload) {
@@ -104,6 +141,26 @@ function magazineShellPath(ctx, x, y, shellW, shellH) {
   ctx.lineTo(x + shellW * 0.28, y + shellH);
   ctx.lineTo(x, y + shellH * 0.82);
   ctx.lineTo(x, y + shellH * 0.28);
+  ctx.closePath();
+}
+
+function hitConfirmShardPath(ctx, cx, cy, ca, sa, radius, length, halfWidth, pad = 0) {
+  const px = -sa;
+  const py = ca;
+  const inner = radius - pad;
+  const near = radius + length * 0.28;
+  const far = radius + length * 0.78;
+  const outer = radius + length + pad;
+  const shoulderWidth = halfWidth + pad;
+  const tailWidth = halfWidth * 0.45 + pad * 0.55;
+
+  ctx.beginPath();
+  ctx.moveTo(cx + ca * inner, cy + sa * inner);
+  ctx.lineTo(cx + ca * near + px * shoulderWidth, cy + sa * near + py * shoulderWidth);
+  ctx.lineTo(cx + ca * far + px * tailWidth, cy + sa * far + py * tailWidth);
+  ctx.lineTo(cx + ca * outer, cy + sa * outer);
+  ctx.lineTo(cx + ca * far - px * tailWidth, cy + sa * far - py * tailWidth);
+  ctx.lineTo(cx + ca * near - px * shoulderWidth, cy + sa * near - py * shoulderWidth);
   ctx.closePath();
 }
 // MOBILE-UX r1 (owner: "don't let the reticle grow too large — it should only
@@ -340,7 +397,9 @@ function drawShellIcon(canvas, type) {
 
 const HUD_CSS = `
 .cot-hud{position:fixed;inset:0;pointer-events:none;z-index:40;font-family:${FONT_STACK};
-  -webkit-user-select:none;user-select:none;color:#e6edf3;overflow:hidden;}
+  --hud-panel:rgba(7,11,15,.92);--hud-edge:rgba(181,199,212,.32);
+  --hud-muted:#93a3af;--hud-text:#e8f0f5;--hud-action:#f0a030;
+  -webkit-user-select:none;user-select:none;color:var(--hud-text);overflow:hidden;}
 .cot-hud *{box-sizing:border-box;margin:0;padding:0;}
 .cot-ret{position:absolute;inset:0;width:100%;height:100%;display:block;}
 .cot-top{position:absolute;z-index:30;top:0;left:50%;transform:translateX(-50%);width:min(344px,calc(100vw - 24px));
@@ -353,10 +412,7 @@ const HUD_CSS = `
   clip-path:polygon(0 0,100% 0,calc(100% - 25px) 100%,25px 100%);}
 .cot-top::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
   background:linear-gradient(90deg,rgba(126,232,126,.12),transparent 34%,transparent 66%,rgba(240,90,90,.12));}
-.cot-top::after{content:"";position:absolute;z-index:2;left:50%;bottom:0;width:72px;height:2px;
-  transform:translateX(-50%);pointer-events:none;
-  background:linear-gradient(90deg,transparent,rgba(200,216,228,.7),transparent);
-  box-shadow:0 -1px 5px rgba(169,197,216,.18);}
+.cot-top::after{content:none;}
 .cot-top .sc,.cot-top .tm-block{position:relative;z-index:1;}
 .cot-top .sc{display:grid;grid-template-rows:10px 1fr 7px;place-items:center;gap:1px;
   min-width:0;padding:6px 7px 5px;}
@@ -388,13 +444,21 @@ const HUD_CSS = `
 .cot-top .wedge.r i.on{background:rgba(242,110,100,.95);border-color:rgba(250,130,120,.95);
   box-shadow:0 0 4px rgba(240,90,90,.4);}
 @keyframes cotChipIn{from{opacity:0}to{opacity:1}}
-/* net/perf readout (WoT battle constant): fps + ping tokens — r8: TOP-RIGHT
-   corner at 10px/0.6 alpha (WoT's placement); parked top-left at full HUD
-   weight it read as a dev overlay burned into the frame */
-.cot-net{position:absolute;z-index:20;top:5px;right:10px;font-size:10px;font-weight:700;
-  font-family:${FONT_COND};letter-spacing:.1em;
-  color:#c8d4de;opacity:.6;font-variant-numeric:tabular-nums;line-height:1;
+/* Compact player telemetry. The engineering dashboard folds this strip into
+   its richer top-right panel instead of allowing two readouts to overlap. */
+.cot-net{position:absolute;z-index:20;top:8px;right:10px;display:flex;align-items:center;
+  min-height:28px;padding:4px 8px;font-family:${FONT_COND};font-variant-numeric:tabular-nums;
+  background:linear-gradient(180deg,rgba(14,20,25,.82),rgba(5,9,12,.74));
+  border:1px solid rgba(174,193,207,.22);box-shadow:0 5px 14px rgba(0,0,0,.22);
   text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.85);}
+.cot-net-unit{min-width:42px;display:grid;grid-template-columns:auto auto;align-items:baseline;
+  justify-content:center;column-gap:4px;color:#dce6ed;}
+.cot-net-unit+.cot-net-unit{margin-left:7px;padding-left:8px;border-left:1px solid rgba(171,190,204,.2);}
+.cot-net .metric{font-size:11px;font-weight:800;line-height:1;letter-spacing:.02em;}
+.cot-net .label{font-size:6.5px;font-weight:800;line-height:1;letter-spacing:.13em;color:#8494a0;}
+.cot-net-unit.good .metric{color:#b9e7c0}.cot-net-unit.warn .metric{color:#ffd27a}
+.cot-net-unit.bad .metric{color:#ff8c82}.cot-net-unit.local .metric{color:#b9c7d1;font-size:8px;letter-spacing:.08em}
+body.cot-debug-hud .cot-net{display:none!important;}
 /* Circular analog speedometer beside the damage schematic. The 270° sweep
    leaves a quiet lower gap for the numeric speed and physical limit. */
 .cot-drive{position:absolute;z-index:20;left:169px;bottom:12px;
@@ -440,10 +504,10 @@ const HUD_CSS = `
 .cot-ear{position:absolute;top:52px;width:194px;display:flex;flex-direction:column;gap:1px;}
 .cot-ear.l{left:0;}
 .cot-ear.r{right:0;}
-.cot-ear .hd{font-size:10px;font-weight:700;letter-spacing:.2em;color:#8a97a3;
+.cot-ear .hd{font-size:9px;font-weight:800;letter-spacing:.22em;color:#95a4af;
   font-family:${FONT_COND};
-  text-transform:uppercase;padding:2px 10px 3px;display:flex;justify-content:space-between;
-  background:rgba(7,10,14,.55);}
+  text-transform:uppercase;padding:4px 10px;display:flex;justify-content:space-between;
+  background:linear-gradient(180deg,rgba(13,19,24,.82),rgba(6,10,14,.68));}
 .cot-ear.l .hd{border-left:2px solid rgba(126,232,126,.75);}
 .cot-ear.r .hd{border-right:2px solid rgba(240,90,90,.75);text-align:right;}
 .cot-er{display:flex;align-items:center;gap:5px;padding:3px 10px 4px 8px;font-size:11px;
@@ -451,14 +515,14 @@ const HUD_CSS = `
   text-shadow:0 1px 2px rgba(0,0,0,.85);}
 /* r5: FLAT single translucent dark strips + a 1px separator line (WoT ears)
    — the old fade-to-transparent gradients read as glossy web chrome */
-.cot-ear.l .cot-er{background:rgba(7,10,14,.62);
+.cot-ear.l .cot-er{background:linear-gradient(90deg,rgba(7,10,14,.76),rgba(7,10,14,.56));
   border-left:2px solid rgba(126,232,126,.75);
   box-shadow:0 1px 0 rgba(0,0,0,.45);}
 /* battle_hud r1: the right ear is a TRUE mirror of the left — row-reverse
    flips the flex order but not the padding, so the enemy silhouette sat
    10px off its edge vs the ally's 8px. Mirrored padding keeps both panels'
    row metrics identical. */
-.cot-ear.r .cot-er{background:rgba(7,10,14,.62);padding:3px 8px 4px 10px;
+.cot-ear.r .cot-er{background:linear-gradient(270deg,rgba(7,10,14,.76),rgba(7,10,14,.56));padding:3px 8px 4px 10px;
   border-right:2px solid rgba(240,90,90,.75);flex-direction:row-reverse;
   box-shadow:0 1px 0 rgba(0,0,0,.45);}
 .cot-er .ic{width:29px;height:14px;flex:0 0 auto;display:block;
@@ -614,11 +678,16 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-dmgnum .crit{font-size:10px;letter-spacing:.14em;color:#ff8a5c;vertical-align:super;margin-left:4px;}
 @keyframes cotFloat{0%{opacity:0;transform:translate(-50%,-30%)}10%{opacity:1}
   70%{opacity:.95}100%{opacity:0;transform:translate(-50%,-190%)}}
-.cot-alert{position:absolute;left:50%;bottom:23%;transform:translateX(-50%);font-size:15px;
-  font-family:${FONT_COND};
-  font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#f0b04a;
-  text-shadow:0 1px 3px rgba(0,0,0,.9);opacity:0;transition:opacity .25s ease;}
-.cot-alert.red{color:#f05a5a;}
+.cot-alert{position:absolute;left:50%;bottom:23%;max-width:calc(100vw - 32px);min-height:34px;
+  display:flex;align-items:center;justify-content:center;padding:8px 14px 8px 17px;
+  transform:translate(-50%,7px);font-family:${FONT_COND};font-size:12px;font-weight:800;
+  letter-spacing:.14em;text-align:center;text-transform:uppercase;color:#ffd27a;white-space:nowrap;
+  background:linear-gradient(100deg,rgba(7,11,15,.95),rgba(15,21,26,.91));
+  border:1px solid rgba(184,201,214,.3);border-left:3px solid var(--hud-action);
+  box-shadow:0 9px 24px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.035);
+  text-shadow:0 1px 3px rgba(0,0,0,.9);opacity:0;
+  transition:opacity .18s ease,transform .2s cubic-bezier(.2,.7,.3,1);}
+.cot-alert.red{color:#ff9b91;border-left-color:#ef6157;}
 /* battle_countdown r3: WoT-style pre-battle freeze — kicker + big numeral,
    center-upper so it never fights the reticle. The numeral pops on each
    second via a keyed scale animation; the release swaps to ROLL OUT! and
@@ -650,18 +719,20 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-prebattle .n.tick{animation:cot-pb-pop .5s cubic-bezier(.2,.7,.3,1);}
 .cot-prebattle .n.go{font-size:64px;letter-spacing:.12em;text-indent:.12em;color:#ffe4b0;}
 @keyframes cot-pb-pop{from{transform:scale(1.28);opacity:.4;}to{transform:scale(1);opacity:1;}}
-.cot-alert.show{opacity:1;}
+.cot-alert.show{opacity:1;transform:translate(-50%,0);}
 .cot-bounce{position:absolute;left:50%;top:37%;transform:translateX(-50%);font-size:15px;
   font-weight:700;letter-spacing:.06em;color:#c8d2dc;white-space:nowrap;
   text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 10px rgba(0,0,0,.5);
   opacity:0;transition:opacity .18s ease;}
 .cot-bounce.show{opacity:1;}
 .cot-special{position:absolute;z-index:24;left:50%;bottom:88px;transform:translateX(-50%);
-  min-width:154px;height:38px;padding:5px 12px 5px 8px;display:none;
+  min-width:164px;min-height:42px;padding:5px 12px 5px 8px;display:none;
   grid-template-columns:24px 1fr auto;align-items:center;gap:7px;pointer-events:auto;
-  cursor:pointer;color:#dce7ef;background:linear-gradient(180deg,rgba(20,27,33,.94),rgba(7,11,15,.96));
-  border:1px solid rgba(184,201,214,.38);border-bottom:2px solid rgba(184,201,214,.42);
-  box-shadow:0 3px 12px rgba(0,0,0,.45);font-family:${FONT_COND};text-transform:uppercase;}
+  cursor:pointer;color:#dce7ef;background:linear-gradient(180deg,rgba(22,30,36,.96),var(--hud-panel));
+  border:1px solid var(--hud-edge);border-bottom:2px solid rgba(184,201,214,.45);border-radius:2px;
+  box-shadow:0 5px 16px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.045);
+  font-family:${FONT_COND};text-transform:uppercase;
+  transition:transform .1s ease-out,border-color .12s ease,color .12s ease,background-color .12s ease;}
 .cot-special.show{display:grid;}
 .cot-special:hover{border-color:rgba(240,176,74,.72);color:#ffd27a;}
 .cot-special:active{transform:translateX(-50%) scale(.97);}
@@ -674,13 +745,15 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-special .sk{font-size:9px;font-weight:800;color:#9fb0bf;border:1px solid rgba(146,164,180,.42);
   padding:1px 4px;line-height:13px;}
 .cot-special.active .sk{color:#ffd27a;border-color:rgba(240,176,74,.6);}
+.cot-special:focus-visible,.cot-shell:focus-visible,.cot-con:focus-visible{outline:2px solid #f5c36d;outline-offset:2px;}
 @keyframes cotSpecialPulse{from{opacity:.45}to{opacity:1}}
 .cot-shells{position:absolute;z-index:24;bottom:16px;left:50%;transform:translateX(-50%);display:flex;
   gap:6px;pointer-events:auto;align-items:flex-end;}
 .cot-shell{width:64px;height:64px;background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
   border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);
   appearance:none;color:inherit;font:inherit;padding:0;cursor:pointer;position:relative;
-  transition:border-color .12s,background .12s,transform .12s ease-out;}
+  box-shadow:inset 0 1px rgba(255,255,255,.035),0 4px 13px rgba(0,0,0,.26);
+  transition:border-color .12s,background .12s,transform .1s ease-out;}
 .cot-shell:active{transform:scale(.97);}
 .cot-shell.sel{border-color:#f0a030;border-bottom-color:#f0a030;
   background:linear-gradient(180deg,rgba(34,26,12,.9),rgba(18,13,7,.92));
@@ -727,7 +800,8 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
   border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);
   appearance:none;color:inherit;font:inherit;padding:0;display:flex;align-items:center;justify-content:center;
-  transition:border-color .12s,transform .12s ease-out;}
+  box-shadow:inset 0 1px rgba(255,255,255,.035),0 4px 13px rgba(0,0,0,.26);
+  transition:border-color .12s,transform .1s ease-out;}
 .cot-con svg{width:26px;height:26px;display:block;}
 .cot-con:active{transform:scale(.97);}
 @media (hover:hover) and (pointer:fine){.cot-con:hover{border-color:rgba(210,225,240,.5);}}
@@ -872,6 +946,9 @@ export function initHud(bus) {
 
   const retCanvas = el('canvas', 'cot-ret', root);
   const ctx = retCanvas.getContext('2d');
+  const reducedMotionQuery = typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
   const hpLayer = el('div', 'cot-hpbars', root);
   const dmgLayer = el('div', 'cot-dmglayer', root);
 
@@ -912,12 +989,20 @@ export function initHud(bus) {
 
   // --- ping/fps readout (WoT battle constant, top-right corner) ---
   const netEl = el('div', 'cot-net', root);
-  netEl.textContent = '';
+  netEl.setAttribute('role', 'status');
+  netEl.setAttribute('aria-label', 'Performance and network status');
+  netEl.innerHTML = `<span class="cot-net-unit fps"><b class="metric">—</b><span class="label">FPS</span></span>` +
+    `<span class="cot-net-unit ping"><b class="metric">LOCAL</b><span class="label">LINK</span></span>`;
+  const netFpsUnit = netEl.querySelector('.fps');
+  const netPingUnit = netEl.querySelector('.ping');
+  const netFpsValue = netFpsUnit.querySelector('.metric');
+  const netPingValue = netPingUnit.querySelector('.metric');
+  const netPingLabel = netPingUnit.querySelector('.label');
   netEl.style.display = 'none'; // hidden until live frames are measured
   let netFrames = 0;       // consecutive live frames since last mode switch
   let netLastMs = 0;       // wall-clock of previous update (fps EMA only)
+  let netLastPaintMs = 0;  // DOM values update at 4 Hz, not every render frame
   let netEmaDt = 1 / 60;
-  let netLastTxt = netEl.textContent;
   // Desktop keeps the player's Interface preference. Mobile always shows the
   // compact readout directly below its top-right control row.
   let netOptIn = false;
@@ -933,14 +1018,21 @@ export function initHud(bus) {
     netFrames++;
     // forced screenshot frames run a single update after setMode — they keep
     // the deterministic default text; live battles settle onto measured fps.
-    if (netFrames < 30) return;
+    if (netFrames < 30 || now - netLastPaintMs < 250) return;
+    netLastPaintMs = now;
     netEl.style.display = '';
     const fps = Math.max(1, Math.min(999, Math.round(1 / netEmaDt)));
     // Local play has no transport hop and reports 0 ms. Multiplayer forwards
     // the runtime client's measured RTT; never synthesize a decorative ping.
     const ping = Math.max(0, Math.min(999, Math.round(Number(frame?.pingMs) || 0)));
-    const txt = `${fps} FPS  ${ping} MS`;
-    if (txt !== netLastTxt) { netEl.textContent = txt; netLastTxt = txt; }
+    netFpsValue.textContent = String(fps);
+    netFpsUnit.className = `cot-net-unit fps ${fps >= 50 ? 'good' : fps >= 28 ? 'warn' : 'bad'}`;
+    netPingValue.textContent = ping > 0 ? String(ping) : 'LOCAL';
+    netPingLabel.textContent = ping > 0 ? 'MS' : 'LINK';
+    netPingUnit.className = `cot-net-unit ping ${ping <= 0 ? 'local' : ping < 80 ? 'good' : ping < 160 ? 'warn' : 'bad'}`;
+    netEl.setAttribute('aria-label', ping > 0
+      ? `${fps} frames per second, ${ping} milliseconds latency`
+      : `${fps} frames per second, local battle`);
   }
 
   // Player speedometer: the inexpensive, compositor-owned needle samples at
@@ -1126,6 +1218,8 @@ export function initHud(bus) {
   let pbHideTimer = 0;
 
   const alertEl = el('div', 'cot-alert', root);
+  alertEl.setAttribute('role', 'status');
+  alertEl.setAttribute('aria-live', 'polite');
   const bounceEl = el('div', 'cot-bounce', root); // WoT-style "Ricochet!" line
 
   // ========================= SPOTTING SECTION ===============================
@@ -1465,6 +1559,7 @@ export function initHud(bus) {
   const hitDirs = []; // { wx, wz, kind:'pen'|'bounce'|'he', crit, dmg, t0, re, _screenAng }
   const liveNums = []; // { x, y, until } — active damage-number rects (stacking)
   let hitMark = null; // { t0, bounced } — reticle hit-confirm marker (own shots)
+  const hitConfirmScratch = {};
   let lastMagazineIndicatorY = null;
   let lastMagazineIndicatorState = null;
   const magazineHudScratch = {};
@@ -2063,40 +2158,70 @@ export function initHud(bus) {
     ctx.lineCap = 'butt';
   }
 
-  // Hit-confirm marker: four diagonal ticks flaring out of the reticle center
-  // when one of the player's shells connects (orange = damage, grey = bounce).
+  // Hit-confirm marker: four tapered lock shards snapping toward the reticle
+  // when one of the player's shells connects (amber = damage, steel = block).
   function drawHitMark(view, timeS) {
     if (!hitMark) return;
     const age = timeS - hitMark.t0;
-    // controls_gunnery r3: 1.4 s lifetime (r2's 1.0 s expired before a
-    // capture/verification pass could ever catch it and still read short on
-    // 400 m+ shots) with a brief scale-in pop so the land is unmissable.
-    if (age < 0 || age > 1.4) { hitMark = null; return; }
-    // Hold the confirmation at full strength long enough to read, then use a
-    // dark under-stroke so sunlit walls cannot erase the result marker.
-    const a = age < 0.3 ? 1 : 1 - (age - 0.3) / 1.1;
-    const scaleIn = age < 0.12 ? 0.6 + 0.4 * (age / 0.12) : 1;
-    const r1 = (13 + age * 30) * scaleIn;
-    const r2 = r1 + 14;
-    ctx.lineCap = 'round';
-    for (const pass of [
-      { c: `rgba(10,14,18,${(0.85 * a).toFixed(3)})`, lw: 8 },
-      { c: hitMark.bounced
-        ? `rgba(216,226,236,${a.toFixed(3)})`
-        : `rgba(255,158,44,${a.toFixed(3)})`, lw: 5 },
-    ]) {
-      ctx.strokeStyle = pass.c;
-      ctx.lineWidth = pass.lw;
+    const visual = hitConfirmVisualState(
+      age, !!reducedMotionQuery?.matches, hitConfirmScratch);
+    if (!visual.visible) { hitMark = null; return; }
+
+    const baseColor = hitMark.bounced ? '202,218,232' : '255,166,48';
+    const highlightColor = hitMark.bounced ? '241,247,252' : '255,235,190';
+    ctx.save();
+    ctx.lineJoin = 'miter';
+
+    // A padded near-black silhouette keeps the confirmation clean over snow,
+    // muzzle flash and bright sand without turning it into a heavy black X.
+    ctx.fillStyle = `rgba(5,8,12,${(visual.opacity * 0.86).toFixed(3)})`;
+    for (let q = 0; q < 4; q++) {
+      const ang = Math.PI / 4 + q * Math.PI / 2;
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+      hitConfirmShardPath(ctx, view.cx, view.cy, ca, sa,
+        visual.radius, visual.length, visual.halfWidth, 2.1);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = `rgba(${baseColor},${visual.opacity.toFixed(3)})`;
+    for (let q = 0; q < 4; q++) {
+      const ang = Math.PI / 4 + q * Math.PI / 2;
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+      hitConfirmShardPath(ctx, view.cx, view.cy, ca, sa,
+        visual.radius, visual.length, visual.halfWidth);
+      ctx.fill();
+
+      // A short hot facet gives each shard depth while retaining a compact,
+      // instrument-like silhouette instead of a soft mobile-game glow.
+      const px = -sa, py = ca;
+      const hi0 = visual.radius + visual.length * 0.3;
+      const hi1 = visual.radius + visual.length * 0.72;
+      ctx.strokeStyle = `rgba(${highlightColor},${(visual.opacity * 0.9).toFixed(3)})`;
+      ctx.lineWidth = 1.1;
       ctx.beginPath();
-      for (let q = 0; q < 4; q++) {
-        const ang = Math.PI / 4 + q * Math.PI / 2;
-        const ca = Math.cos(ang), sa = Math.sin(ang);
-        ctx.moveTo(view.cx + ca * r1, view.cy + sa * r1);
-        ctx.lineTo(view.cx + ca * r2, view.cy + sa * r2);
-      }
+      ctx.moveTo(view.cx + ca * hi0 + px * 0.65, view.cy + sa * hi0 + py * 0.65);
+      ctx.lineTo(view.cx + ca * hi1 + px * 0.25, view.cy + sa * hi1 + py * 0.25);
       ctx.stroke();
     }
-    ctx.lineCap = 'butt';
+
+    // Brief center spark marks the exact impact acknowledgement. It vanishes
+    // before the hold phase and is disabled entirely under reduced motion.
+    if (visual.flash > 0.001) {
+      const sparkAlpha = visual.opacity * visual.flash;
+      const sparkR = 3.5 + 2.5 * visual.flash;
+      ctx.strokeStyle = `rgba(5,8,12,${(sparkAlpha * 0.75).toFixed(3)})`;
+      ctx.lineWidth = 3.2;
+      ctx.beginPath();
+      ctx.moveTo(view.cx - sparkR, view.cy - sparkR);
+      ctx.lineTo(view.cx + sparkR, view.cy + sparkR);
+      ctx.moveTo(view.cx + sparkR, view.cy - sparkR);
+      ctx.lineTo(view.cx - sparkR, view.cy + sparkR);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(${highlightColor},${sparkAlpha.toFixed(3)})`;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   const BOUNCE_TEXT = {
@@ -3716,7 +3841,7 @@ export function initHud(bus) {
   bus.on('ui:shellSelect', ({ slot }) => selectSlot(slot));
   bus.on('ui:perfMeter', (p) => {
     netOptIn = !!(p && p.on);
-    if (!netOptIn) { netEl.style.display = 'none'; netFrames = 0; }
+    if (!netOptIn) { netEl.style.display = 'none'; netFrames = 0; netLastPaintMs = 0; }
   });
   // Live hotkey labels — settings.js broadcasts at boot and after every
   // rebind/clear/reset, so the tray never lies about the player's keys.
@@ -3747,7 +3872,15 @@ export function initHud(bus) {
   });
   bus.on('ui:specialActionDenied', ({ reason }) => {
     showAlert(reason === 'BUSY' ? 'SPECIAL ACTION IN PROGRESS'
-      : reason === 'FULL_OR_RELOADING' ? 'MAGAZINE ALREADY READY' : 'SPECIAL ACTION UNAVAILABLE', false);
+      : reason === 'MAGAZINE_RELOADING' ? 'MAGAZINE RELOAD IN PROGRESS'
+        : reason === 'MAGAZINE_FULL' ? 'MAGAZINE ALREADY FULL'
+          : 'SPECIAL ACTION UNAVAILABLE', false);
+  });
+  bus.on('ui:magazineReloadStarted', () => showAlert('MAGAZINE RELOAD STARTED', false));
+  bus.on('ui:magazineReloadDenied', ({ reason }) => {
+    showAlert(reason === 'MAGAZINE_RELOADING' ? 'MAGAZINE RELOAD IN PROGRESS'
+      : reason === 'MAGAZINE_FULL' ? 'MAGAZINE ALREADY FULL'
+        : 'MAGAZINE RELOAD UNAVAILABLE', false);
   });
   bus.on('ui:consumableUsed', ({ slot, readyAt, cooldownS }) => {
     const s = conEls[slot];
@@ -3794,8 +3927,8 @@ export function initHud(bus) {
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
       // r4: a screen_pierce that dealt 0 damage (skirt ate the shell) used to
-      // flash the ORANGE damage confirm with no number and no message —
-      // contradictory feedback. Zero-damage hits are bounces: grey ticks +
+      // flash the AMBER damage confirm with no number and no message —
+      // contradictory feedback. Zero-damage hits are bounces: steel shards +
       // ABSORBED label + bounce message.
       const bounced = hit.kind === 'ricochet' || hit.kind === 'nonpen' ||
         hit.kind === 'spaced_absorb' || hit.kind === 'era' ||
@@ -3916,7 +4049,7 @@ export function initHud(bus) {
      * Stage a deterministic hit-confirm marker (controls_gunnery r3 test
      * hook — real shots kept missing during captures, so the marker's visual
      * weight was unverifiable). Draws through the exact drawHitMark path.
-     * @param {boolean} [bounced=false] grey bounce ticks instead of orange
+     * @param {boolean} [bounced=false] steel block shards instead of amber
      */
     forceHitMark(bounced = false) {
       hitMark = { t0: lastTimeS, bounced: !!bounced };
@@ -4018,6 +4151,7 @@ export function initHud(bus) {
       netEl.style.display = 'none';
       netFrames = 0;
       netLastMs = 0;
+      netLastPaintMs = 0;
       if (m === 'hidden') {
         setTouchAmmoOpen(false);
         ctx.clearRect(0, 0, w, h);

@@ -77,6 +77,12 @@ assert.doesNotMatch(input, /innerWidth\s*(?:<|<=|>|>=)/,
 
 assert.doesNotMatch(battleLoad, /@media \([^)]*(?:width|height|orientation)/,
   'battle loading must not retain independent device breakpoint logic');
+assert.match(battleLoad,
+  /<main class="briefing">[\s\S]*role="progressbar"[\s\S]*aria-valuenow="0"/,
+  'battle loading must use one bounded briefing surface with an accessible real progress meter');
+assert.match(responsiveSurfaces,
+  /data-cot-width='phone'\] \.cot-bl \.briefing\{[\s\S]*height:calc\(100dvh/,
+  'phone loading briefings must consume safe dynamic viewport height instead of a fixed hero split');
 assert.match(responsiveSurfaces,
   /body\[data-cot-height='short'\] \.cot-bl \.team\{justify-content:center/,
   'short battle rosters need a height-aware vertical composition');
@@ -85,6 +91,22 @@ assert.match(responsiveSurfaces, /\.cot-bl \.count:empty\{display:none/,
 
 assert.doesNotMatch(hud, /cot-dlog|pushDamageLog/,
   'incoming hits must have one canonical combat-intelligence feed, not a duplicate HUD log');
+assert.match(hud,
+  /cot-net-unit fps[\s\S]*cot-net-unit ping[\s\S]*netLastPaintMs[\s\S]*now - netLastPaintMs < 250/,
+  'player FPS and latency telemetry must use structured 4 Hz instruments instead of per-frame text churn');
+assert.match(hud,
+  /MAGAZINE RELOAD IN PROGRESS[\s\S]*MAGAZINE ALREADY FULL/,
+  'magazine feedback must distinguish an active reload from a full magazine');
+assert.doesNotMatch(hud, /FULL_OR_RELOADING/,
+  'the HUD must not collapse distinct magazine reload denials into a generic state');
+assert.match(input, /showDebugHud: false[\s\S]*storedSettings\.showDebugHud[\s\S]*key === 'showDebugHud'/,
+  'debug HUD visibility must have one persisted input-setting owner');
+assert.match(settings, /Debug telemetry dashboard \(top-right\)[\s\S]*ui:debugHud/,
+  'Interface settings must expose the lazy debug dashboard');
+assert.match(main, /bus\.on\('ui:debugHud'[\s\S]*perfHud\.setVisible[\s\S]*input\.setSetting\('showDebugHud'/,
+  'settings and F8 must converge on the same diagnostics visibility path');
+assert.doesNotMatch(perfHud, /cot\.perfhud\.v1|PROD_BUILD/,
+  'the diagnostics panel must not retain a second private persistence or production gate');
 assert.match(hud, /\.cot-hpb\{[^}]*width:128px;height:31px[^}]*contain:layout paint style/,
   'world tank labels must start from stable geometry before one-time name measurement');
 assert.match(hud, /bar\.layoutW = Math\.max\(128, Math\.min\(280, measured\)\)/,

@@ -498,6 +498,10 @@ export function createBrowserBattleBridge({
           reason: event.reason,
           remainingS: event.remainingS,
         });
+    } else if (event.type === 'magazine_reload' && event.id === id) {
+        bus.emit('ui:magazineReloadStarted', {});
+    } else if (event.type === 'magazine_reload_denied' && event.id === id) {
+        bus.emit('ui:magazineReloadDenied', { reason: event.reason });
     } else if (event.type === 'special_action' && event.id === id) {
         bus.emit('ui:specialActionResult', {
           kind: event.kind,

@@ -11,6 +11,7 @@ export {
   selectShell,
   resolveShellHit,
   createCombatState,
+  magazineReloadDenialReason,
   repairAllModules,
   startMagazineReload,
 } from '../sim/damage.js';

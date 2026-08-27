@@ -18,6 +18,7 @@ export interface BattleClientAccess {
   readonly resolveShellHit: RuntimeModule['resolveShellHit'];
   readonly createCombatState: RuntimeModule['createCombatState'];
   readonly repairAllModules: RuntimeModule['repairAllModules'];
+  readonly magazineReloadDenialReason: RuntimeModule['magazineReloadDenialReason'];
   readonly startMagazineReload: RuntimeModule['startMagazineReload'];
   readonly createShell: RuntimeModule['createShell'];
   readonly activateSpecialAction: RuntimeModule['activateSpecialAction'];
@@ -103,6 +104,7 @@ export function createBattleClientAccess(
     resolveShellHit: (...args) => requireRuntime().resolveShellHit(...args),
     createCombatState: (...args) => requireRuntime().createCombatState(...args),
     repairAllModules: (...args) => requireRuntime().repairAllModules(...args),
+    magazineReloadDenialReason: (...args) => requireRuntime().magazineReloadDenialReason(...args),
     startMagazineReload: (...args) => requireRuntime().startMagazineReload(...args),
     createShell: (...args) => requireRuntime().createShell(...args),
     activateSpecialAction: (...args) => requireRuntime().activateSpecialAction(...args),

@@ -57,7 +57,8 @@ const rules = {
     combat.damagedModule = null;
     return [repaired];
   },
-  startMagazineReload() { localCalls.push('reload'); },
+  magazineReloadDenialReason(combat) { return combat.magazineReason || null; },
+  startMagazineReload() { localCalls.push('reload'); return true; },
   activateSpecialAction() {
     localCalls.push('special');
     return { ok: true, action: 'siege' };
@@ -108,6 +109,12 @@ assert.equal(actions.hasAmmo(1), false);
 player.combat.magazine = { capacity: 3 };
 input.press('shell2');
 assert.equal(localCalls.at(-1), 'reload', 'selecting the live magazine slot reloads');
+assert.ok(events.some(({ event }) => event === 'ui:magazineReloadStarted'));
+player.combat.magazineReason = 'MAGAZINE_RELOADING';
+input.press('reloadMagazine');
+assert.ok(events.some(({ event, payload }) =>
+  event === 'ui:magazineReloadDenied' && payload.reason === 'MAGAZINE_RELOADING'));
+player.combat.magazineReason = null;
 player.combat.magazine = null;
 
 player.shellLocked = true;

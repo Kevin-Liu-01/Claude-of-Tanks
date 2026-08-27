@@ -138,6 +138,13 @@ assert.equal(fired?.payload?.muzzleIndex, 1,
 assert.deepEqual(fired?.payload?.muzzlePos, [21, 3, -8],
   'network shell audio originates from the selected muzzle tip');
 
+snapshot.tick++;
+bridge.apply(snapshot, 1 / 60, [{
+  type: 'magazine_reload_denied', id: 'guest', reason: 'MAGAZINE_RELOADING',
+}]);
+assert.equal(busEvents.findLast((event) => event.type === 'ui:magazineReloadDenied')?.payload?.reason,
+  'MAGAZINE_RELOADING', 'network reload denial reaches the canonical HUD feedback path');
+
 assert.equal(bridge.endDisconnected(), true, 'an interrupted match resolves once');
 assert.equal(game.result, 'draw');
 assert.equal(game.resultReason, 'network_disconnect');

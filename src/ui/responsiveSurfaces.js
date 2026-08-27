@@ -275,25 +275,32 @@ body[data-cot-height='short'] .cot-play{align-items:flex-start;overflow-y:auto}
 body[data-cot-height='short'] .cot-play .panel{max-height:none}
 
 /* BATTLE LOADING --------------------------------------------------------- */
-body[data-cot-width='tablet'] .cot-bl .hero{flex-basis:34%;min-height:128px}
-body[data-cot-width='compact'] .cot-bl .hero,
-body[data-cot-width='phone'] .cot-bl .hero{flex-basis:34%;min-height:128px}
+body[data-cot-width='tablet'] .cot-bl,
+body[data-cot-width='compact'] .cot-bl,
+body[data-cot-width='phone'] .cot-bl{--bl-edge:max(10px,env(safe-area-inset-left))}
+body[data-cot-width='tablet'] .cot-bl .briefing,
+body[data-cot-width='compact'] .cot-bl .briefing,
+body[data-cot-width='phone'] .cot-bl .briefing{
+  width:calc(100vw - (var(--bl-edge) * 2));height:calc(100dvh - max(14px,env(safe-area-inset-top)) - max(14px,env(safe-area-inset-bottom)));
+  min-height:0;padding:clamp(14px,2.4vh,24px) clamp(10px,2.4vw,22px) max(12px,env(safe-area-inset-bottom));
+}
 body[data-cot-width='compact'] .cot-bl .teams,
 body[data-cot-width='phone'] .cot-bl .teams,
-body[data-cot-width='tablet'] .cot-bl .teams{gap:8px;padding:9px 10px 0}
+body[data-cot-width='tablet'] .cot-bl .teams{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
 body[data-cot-width='tablet'] .cot-bl .vs,
 body[data-cot-width='compact'] .cot-bl .vs,
 body[data-cot-width='phone'] .cot-bl .vs{display:none}
-body[data-cot-panels='overlay'] .cot-bl .hero .cap{bottom:12px}
+body[data-cot-panels='overlay'] .cot-bl .cap{padding-bottom:10px}
+body[data-cot-panels='overlay'] .cot-bl .cap::before{margin-bottom:5px;font-size:7px}
 body[data-cot-panels='overlay'] .cot-bl .mapname{margin-top:4px;font-size:clamp(22px,6vw,34px)}
 body[data-cot-panels='overlay'] .cot-bl .kicker{font-size:8.5px}
-body[data-cot-panels='overlay'] .cot-bl .thead{font-size:9px;padding-bottom:4px}
+body[data-cot-panels='overlay'] .cot-bl .thead{font-size:9px;padding:0 4px 4px}
 body[data-cot-panels='overlay'] .cot-bl .rows{gap:2px;padding-top:4px}
 body[data-cot-panels='overlay'] .cot-bl .row{height:27px;gap:5px;padding-inline:4px}
 body[data-cot-panels='overlay'] .cot-bl .row .tier{flex-basis:20px;font-size:9px}
 body[data-cot-panels='overlay'] .cot-bl .row .sil{flex-basis:38px;height:20px}
 body[data-cot-panels='overlay'] .cot-bl .row .nm{font-size:10px}
-body[data-cot-panels='overlay'] .cot-bl .foot{padding:9px 12px max(11px,env(safe-area-inset-bottom))}
+body[data-cot-panels='overlay'] .cot-bl .foot{padding-top:9px}
 body[data-cot-panels='overlay'] .cot-bl .fmeta{margin-bottom:5px}
 body[data-cot-panels='overlay'] .cot-bl .fstage{font-size:9px}
 body[data-cot-panels='overlay'] .cot-bl .fpct{font-size:15px}
@@ -305,17 +312,20 @@ body[data-cot-width='phone'] .cot-bl .row .tier{flex-basis:17px;font-size:8px}
 body[data-cot-width='phone'] .cot-bl .row .sil{flex-basis:31px;height:17px}
 body[data-cot-width='phone'] .cot-bl .row .nm{font-size:8.5px}
 body[data-cot-width='phone'] .cot-bl .thead{font-size:8px}
-body[data-cot-height='short'] .cot-bl .hero{flex:0 0 clamp(100px,25vh,138px);min-height:100px;max-height:138px}
-body[data-cot-height='short'] .cot-bl .hero .cap{bottom:8px}
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-bl .briefing{padding-inline:8px}
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-bl .team.foe .row{padding-left:2px}
+body[data-cot-height='short'] .cot-bl .briefing{width:calc(100vw - max(16px,env(safe-area-inset-left) + env(safe-area-inset-right)));height:calc(100dvh - 10px);padding:8px max(10px,env(safe-area-inset-left)) max(7px,env(safe-area-inset-bottom))}
+body[data-cot-height='short'] .cot-bl .cap{padding-bottom:5px}
+body[data-cot-height='short'] .cot-bl .cap::before{display:none}
 body[data-cot-height='short'] .cot-bl .mapname{margin-top:3px;font-size:clamp(21px,4vw,34px)}
 body[data-cot-height='short'] .cot-bl .kicker{font-size:7.5px}
-body[data-cot-height='short'] .cot-bl .teams{gap:8px;padding:7px max(10px,env(safe-area-inset-left)) 0}
+body[data-cot-height='short'] .cot-bl .teams{gap:8px}
 body[data-cot-height='short'] .cot-bl .team{justify-content:center}
 body[data-cot-height='short'] .cot-bl .row{height:clamp(21px,4.7vh,26px);gap:5px;padding-inline:4px}
 body[data-cot-height='short'] .cot-bl .row .tier{flex-basis:20px;font-size:8.5px}
 body[data-cot-height='short'] .cot-bl .row .sil{flex-basis:36px;height:18px}
 body[data-cot-height='short'] .cot-bl .row .nm{font-size:9.5px}
-body[data-cot-height='short'] .cot-bl .foot{padding:5px max(10px,env(safe-area-inset-left)) max(7px,env(safe-area-inset-bottom))}
+body[data-cot-height='short'] .cot-bl .foot{padding-top:5px}
 body[data-cot-height='short'] .cot-bl .fmeta{margin-bottom:3px}
 body[data-cot-height='short'] .cot-bl .fstage{font-size:8px}
 body[data-cot-height='short'] .cot-bl .fpct{font-size:13px}
@@ -732,13 +742,12 @@ body[data-cot-width='phone'] .cot-lock-toast{
   padding:8px 10px!important;font-size:9px!important;line-height:1.35;letter-spacing:.09em!important;
 }
 
-/* Opt-in engineering panels still need to remain operable on the device
-   being diagnosed. Their module-local inline geometry requires !important. */
+/* Opt-in engineering panels remain operable on the device being diagnosed. */
 body[data-cot-width='compact'] #cot-perfhud,
 body[data-cot-width='phone'] #cot-perfhud{
   top:max(8px,env(safe-area-inset-top))!important;right:max(8px,env(safe-area-inset-right))!important;
   left:max(8px,env(safe-area-inset-left))!important;width:auto!important;
-  max-height:58dvh!important;padding:8px!important;font-size:10px!important;
+  max-height:64dvh!important;font-size:10px!important;
   pointer-events:auto!important;touch-action:pan-y;overscroll-behavior:contain;
 }
 body[data-cot-width='phone'] #cot-perfhud [data-grid]{grid-template-columns:1fr!important}

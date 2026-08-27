@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import {
   AUTOLOADER_HUD_SHELLS,
+  HIT_CONFIRM_LIFETIME_S,
   autoloaderHudShellPose,
   autoloaderHudState,
+  hitConfirmVisualState,
   reloadHudFraction,
   resolveReticleAnchor,
 } from './hud.js';
@@ -97,4 +99,34 @@ const fiveRound = autoloaderHudState(
 assert.equal(fiveRound.visibleShells, 4, 'the compact rack remains capped at four silhouettes');
 assert.equal(fiveRound.overflow, 1, 'magazines above four retain an exact overflow read');
 
-console.log('hudMagazine.selftest: capacity-aware four-shell autoloader indicator passed');
+const hitEntry = hitConfirmVisualState(0);
+const hitSettled = hitConfirmVisualState(0.14);
+const hitFading = hitConfirmVisualState(1.1);
+assert.equal(hitConfirmVisualState(-0.01).visible, false, 'hit confirmation is hidden before impact');
+assert.equal(
+  hitConfirmVisualState(HIT_CONFIRM_LIFETIME_S + 0.01).visible,
+  false,
+  'hit confirmation expires after its readable lifetime',
+);
+assert.ok(
+  hitEntry.radius > hitSettled.radius,
+  'hit-confirm shards snap inward toward the reticle during entry',
+);
+assert.ok(
+  hitEntry.length < hitSettled.length,
+  'hit-confirm shards resolve from compact tips into full tapered marks',
+);
+assert.ok(
+  hitFading.opacity < hitSettled.opacity,
+  'hit confirmation fades after its full-strength hold',
+);
+const reducedEntry = hitConfirmVisualState(0, true);
+const reducedSettled = hitConfirmVisualState(0.14, true);
+assert.equal(
+  reducedEntry.radius,
+  reducedSettled.radius,
+  'reduced-motion hit confirmation never travels across the sight',
+);
+assert.equal(reducedEntry.flash, 0, 'reduced-motion hit confirmation suppresses the center spark');
+
+console.log('hudMagazine.selftest: magazine and hit-confirm HUD states passed');

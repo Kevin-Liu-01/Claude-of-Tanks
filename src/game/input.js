@@ -159,6 +159,9 @@ const DEFAULT_SETTINGS = {
   // connection/performance feedback, so new profiles start with it enabled;
   // the Interface switch remains available as an explicit opt-out.
   showPerfMeter: true,
+  // The engineering dashboard is intentionally off for players and lazy-
+  // loads only after an explicit Interface toggle or F8 press.
+  showDebugHud: false,
   // Scoped armor flashlight (official WoT/Blitz convention): new profiles
   // start with the shot-dependent red/amber/green surface overlay enabled;
   // players can opt out in Gameplay → Interface.
@@ -431,6 +434,7 @@ export function createInput(opts = {}) {
     if (AI_DIFFICULTIES.includes(storedSettings.aiDifficulty)) settings.aiDifficulty = storedSettings.aiDifficulty;
     if (RMB_MODES.includes(storedSettings.rmbMode)) settings.rmbMode = storedSettings.rmbMode;
     if (typeof storedSettings.showPerfMeter === 'boolean') settings.showPerfMeter = storedSettings.showPerfMeter;
+    if (typeof storedSettings.showDebugHud === 'boolean') settings.showDebugHud = storedSettings.showDebugHud;
     if (typeof storedSettings.armorAimOverlay === 'boolean') settings.armorAimOverlay = storedSettings.armorAimOverlay;
     if (typeof storedSettings.alarmHeartbeat === 'boolean') settings.alarmHeartbeat = storedSettings.alarmHeartbeat;
     for (const k of VOLUME_KEYS) {
@@ -962,7 +966,7 @@ export function createInput(opts = {}) {
 
     /** @returns {{sensitivity:number,invertY:boolean,sniperSensScale:number,
      *  aimSmoothing:number,padSensitivity:number,aiDifficulty:string,
-     *  showPerfMeter:boolean,armorAimOverlay:boolean,
+     *  showPerfMeter:boolean,showDebugHud:boolean,armorAimOverlay:boolean,
      *  rmbMode:('hold'|'toggle'|'freelook')}} live settings object */
     getSettings() { return settings; },
 
@@ -978,6 +982,7 @@ export function createInput(opts = {}) {
       };
       if (key === 'invertY') settings.invertY = !!value;
       else if (key === 'showPerfMeter') settings.showPerfMeter = !!value;
+      else if (key === 'showDebugHud') settings.showDebugHud = !!value;
       else if (key === 'armorAimOverlay') settings.armorAimOverlay = !!value;
       else if (key === 'alarmHeartbeat') settings.alarmHeartbeat = !!value;
       else if (key === 'sensitivity') settings.sensitivity = num(1, 0.2, 3);

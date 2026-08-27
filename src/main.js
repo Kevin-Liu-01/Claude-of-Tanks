@@ -1551,6 +1551,9 @@ const battleResultPresentation = createBattleResultPresentationRuntime({
 });
 
 const input = createInput({ lockElement: renderer.domElement });
+bus.on('ui:debugHud', (payload) => {
+  perfHud.setVisible(!!payload?.on);
+});
 const armorAimOverlay = createArmorAimOverlayAccess();
 const battleVisualStreamerAccess = createBattleVisualStreamerAccess({
   game,
@@ -1759,6 +1762,7 @@ playerBattleActions = createPlayerBattleActions({
   rules: {
     selectShell: battleClientAccess.selectShell,
     repairAllModules: battleClientAccess.repairAllModules,
+    magazineReloadDenialReason: battleClientAccess.magazineReloadDenialReason,
     startMagazineReload: battleClientAccess.startMagazineReload,
     activateSpecialAction: battleClientAccess.activateSpecialAction,
     specialActionLocksShell: battleClientAccess.specialActionLocksShell,
@@ -1816,8 +1820,14 @@ const soloBattleDeployment = createSoloBattleDeploymentRuntime({
   setDestructionWarmed: (value) => { combatDestructionEffectsWarmed = value; },
   devTrace,
 });
-// FEEL r12: perf overlay toggle works in every phase (garage included)
-input.onAction('perfHud', () => { if (diagnosticsRequested) perfHud.toggle(); });
+// The same persisted setting owns both F8 and the Interface switch. The lazy
+// facade makes this available in production without adding ordinary-player
+// transfer or per-frame work.
+input.onAction('perfHud', () => {
+  const next = !perfHud.isVisible();
+  input.setSetting('showDebugHud', next);
+  perfHud.setVisible(next);
+});
 
 // ---------------------------------------------------------------------------
 // Game flow
@@ -3283,6 +3293,7 @@ if (diagnosticsRequested) {
     console.warn('[diagnostics] optional engineering runtime failed to load', error);
   });
 }
+if (debugModeRequested() || input.getSettings().showDebugHud) perfHud.setVisible(true);
 const collectDebugTelemetry = () => perfHud.collectTelemetry();
 const sampleShadowContribution = () => perfHud.sampleShadowContribution();
 

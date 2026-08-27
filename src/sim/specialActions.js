@@ -6,6 +6,7 @@
  * authoritative matches call the same edge-triggered functions below.
  */
 import {
+  magazineReloadDenialReason,
   startMagazineReload,
 } from './damage.js';
 import {
@@ -21,7 +22,9 @@ export {
 
 const RESULT_NONE = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.NONE, reason: 'UNAVAILABLE' });
 const RESULT_BUSY = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE, reason: 'BUSY' });
-const RESULT_RELOAD_DENIED = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD, reason: 'FULL_OR_RELOADING' });
+const RESULT_RELOAD_FULL = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD, reason: 'MAGAZINE_FULL' });
+const RESULT_RELOAD_ACTIVE = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD, reason: 'MAGAZINE_RELOADING' });
+const RESULT_RELOAD_UNAVAILABLE = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD, reason: 'NO_MAGAZINE' });
 const RESULT_MISSILE = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE, active: true });
 const RESULT_MISSILE_OFF = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE, active: false });
 const RESULT_RELOAD = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD, active: true });
@@ -62,7 +65,11 @@ export function activateSpecialAction(entity) {
   }
 
   if (action.kind === SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD) {
-    return startMagazineReload(combat, entity.spec) ? RESULT_RELOAD : RESULT_RELOAD_DENIED;
+    const denied = magazineReloadDenialReason(combat);
+    if (denied === 'MAGAZINE_FULL') return RESULT_RELOAD_FULL;
+    if (denied === 'MAGAZINE_RELOADING') return RESULT_RELOAD_ACTIVE;
+    if (denied) return RESULT_RELOAD_UNAVAILABLE;
+    return startMagazineReload(combat, entity.spec) ? RESULT_RELOAD : RESULT_RELOAD_UNAVAILABLE;
   }
 
   if (action.kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {

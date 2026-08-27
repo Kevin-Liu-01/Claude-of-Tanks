@@ -1,13 +1,56 @@
-// Live performance + systems dashboard. The dashboard is deliberately opt-in
-// (`?debug=1` or F8 in development). Player-facing FPS/ping lives in hud.js;
-// production never mounts engineering frame-percentile chrome in battle.
+// Live performance + systems dashboard. The dashboard remains a lazy,
+// explicitly enabled surface; input settings own persistence while this
+// module owns only presentation and bounded 4 Hz telemetry paint.
 
-import { debugModeRequested } from '../dev/debugIntent.ts';
-
-const LS_KEY = 'cot.perfhud.v1';
-const PROD_BUILD = !!import.meta.env?.PROD;
+import { ensureStyle } from './dom.js';
+import { FONT_COND } from './fonts.js';
+import { uiIconSVG } from './uiIcons.js';
 
 export { debugModeRequested } from '../dev/debugIntent.ts';
+
+const PERF_HUD_CSS = `
+#cot-perfhud{position:fixed;top:12px;right:12px;z-index:360;
+  width:min(386px,calc(100vw - 24px));max-height:calc(100dvh - 24px);box-sizing:border-box;
+  overflow:auto;padding:0;font:10px/1.42 ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-variant-numeric:tabular-nums;color:#dce6ed;background:rgba(5,9,12,.96);
+  border:1px solid rgba(176,195,209,.3);border-top-color:rgba(240,176,74,.66);
+  box-shadow:0 18px 52px rgba(0,0,0,.55),inset 0 1px rgba(255,255,255,.035);
+  text-shadow:0 1px 2px #000;pointer-events:none;}
+#cot-perfhud *{box-sizing:border-box}
+#cot-perfhud .ph-head{position:sticky;top:0;z-index:2;display:grid;
+  grid-template-columns:32px minmax(0,1fr) auto;align-items:center;min-height:48px;padding:7px 10px;
+  background:linear-gradient(180deg,#151e24,#091015);border-bottom:1px solid rgba(177,196,210,.22);}
+#cot-perfhud .ph-icon{width:28px;height:28px;display:grid;place-items:center;color:#f0b04a;
+  border:1px solid rgba(240,176,74,.3);background:rgba(240,160,48,.07)}
+#cot-perfhud .ph-icon svg{display:block;width:17px;height:17px}
+#cot-perfhud .ph-title{font-family:${FONT_COND};font-size:11px;font-weight:800;line-height:1;
+  letter-spacing:.18em;text-transform:uppercase;color:#f2f6f9}
+#cot-perfhud .ph-sub{margin-top:5px;font-family:${FONT_COND};font-size:7px;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:#7e8e99}
+#cot-perfhud .ph-state{display:flex;align-items:center;gap:6px;font-family:${FONT_COND};font-size:8px;
+  font-weight:800;letter-spacing:.14em;color:#9ee0b0}
+#cot-perfhud .ph-state::before{content:"";width:6px;height:6px;background:#78d491;
+  box-shadow:0 0 8px rgba(120,212,145,.5)}
+#cot-perfhud.has-error .ph-state{color:#ff9b91}#cot-perfhud.has-error .ph-state::before{background:#ef6157}
+#cot-perfhud [data-grid]{display:grid;grid-template-columns:1fr 1fr;gap:1px;padding:1px;
+  background:rgba(177,196,210,.1)}
+#cot-perfhud .ph-section{min-width:0;padding:9px 10px;background:rgba(8,13,17,.98)}
+#cot-perfhud .ph-section.wide{grid-column:1/-1}
+#cot-perfhud .ph-label{margin-bottom:5px;font-family:${FONT_COND};font-size:7px;font-weight:800;
+  letter-spacing:.17em;color:#8ca09e;text-transform:uppercase}
+#cot-perfhud .ph-value{white-space:pre-wrap;color:#d7e0e4}
+#cot-perfhud .ph-actions{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+  padding:8px;background:#080d11;pointer-events:auto}
+#cot-perfhud .ph-action{min-height:44px;padding:7px;border:1px solid rgba(240,176,74,.34);border-radius:2px;
+  background:linear-gradient(180deg,rgba(240,160,48,.12),rgba(240,160,48,.045));color:#ffd796;
+  font:800 8px/1 ${FONT_COND};letter-spacing:.11em;cursor:pointer;
+  transition:transform 90ms ease-out,border-color 90ms ease,background-color 90ms ease}
+#cot-perfhud .ph-action:active{transform:scale(.97)}
+#cot-perfhud .ph-action:focus-visible{outline:2px solid #ffd27a;outline-offset:2px}
+#cot-perfhud .ph-action-status{grid-column:1/-1;min-height:14px;color:#8eaaa5;text-align:right}
+@media (hover:hover) and (pointer:fine){#cot-perfhud .ph-action:hover{border-color:rgba(240,176,74,.7);background:rgba(240,160,48,.17)}}
+@media (prefers-reduced-motion:reduce){#cot-perfhud .ph-action{transition:none}}
+`;
 
 /** Small, shareable report for issue comments; the full trace stays exportable. */
 export function buildQaSummary({ traceStats, hudSnapshot, telemetry, capturedAt = new Date().toISOString() } = {}) {
@@ -35,39 +78,22 @@ function fmtBytes(value) {
 }
 
 export function createPerfHud({ renderer, game, trace = null }) {
-  const debugRequested = debugModeRequested();
+  ensureStyle('cot-perfhud-style', PERF_HUD_CSS);
   const el = document.createElement('aside');
   el.id = 'cot-perfhud';
   el.setAttribute('aria-label', 'COT debug telemetry');
-  el.style.cssText = [
-    'position:fixed', 'top:14px', 'right:14px', 'z-index:360',
-    'width:min(390px,calc(100vw - 28px))', 'max-height:calc(100vh - 28px)',
-    'box-sizing:border-box', 'overflow:auto', 'padding:12px',
-    'font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace',
-    'font-variant-numeric:tabular-nums', 'color:#e8edf2',
-    'background:linear-gradient(145deg,rgba(9,14,18,.96),rgba(15,22,27,.91))',
-    'border:1px solid rgba(143,185,172,.34)', 'border-radius:10px',
-    'box-shadow:0 18px 55px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.04)',
-    'backdrop-filter:blur(14px)', 'pointer-events:none', 'text-shadow:0 1px 2px #000',
-  ].join(';');
   el.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div><b style="font:700 12px/1 system-ui,sans-serif;letter-spacing:.12em;color:#f3f6f7">COT TELEMETRY</b>
-        <span data-status style="margin-left:7px;color:#75d5ab">LIVE</span></div>
-      <span style="color:#77868f">F8</span>
-    </div>
-    <div data-grid style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>`;
+    <header class="ph-head"><span class="ph-icon" aria-hidden="true">${uiIconSVG('graphics', 18)}</span>
+      <div><div class="ph-title">Battle Diagnostics</div><div class="ph-sub">F8 · Settings → Interface</div></div>
+      <span class="ph-state" data-status>LIVE</span></header>
+    <div data-grid></div>`;
   const grid = el.querySelector('[data-grid]');
   const statusEl = el.querySelector('[data-status]');
   const sectionEls = new Map();
   const makeSection = (id, title, wide = false) => {
     const section = document.createElement('section');
-    section.style.cssText = [
-      wide ? 'grid-column:1/-1' : '', 'min-width:0', 'padding:8px 9px',
-      'background:rgba(255,255,255,.035)', 'border:1px solid rgba(255,255,255,.07)',
-      'border-radius:6px',
-    ].filter(Boolean).join(';');
-    section.innerHTML = `<div style="margin-bottom:5px;font:700 9px/1 system-ui,sans-serif;letter-spacing:.14em;color:#8eaaa5">${title}</div><div data-value style="white-space:pre-wrap;color:#d7e0e4"></div>`;
+    section.className = `ph-section${wide ? ' wide' : ''}`;
+    section.innerHTML = `<div class="ph-label">${title}</div><div class="ph-value" data-value></div>`;
     grid.appendChild(section);
     const value = section.querySelector('[data-value]');
     sectionEls.set(id, value);
@@ -83,17 +109,13 @@ export function createPerfHud({ renderer, game, trace = null }) {
   makeSection('memory', 'MEMORY');
   if (trace?.enabled) {
     const actions = document.createElement('div');
-    actions.style.cssText = 'grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;pointer-events:auto';
+    actions.className = 'ph-actions';
     const action = (label, title) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.textContent = label;
       button.title = title;
-      button.style.cssText = [
-        'min-height:44px', 'padding:8px', 'border:1px solid rgba(117,213,171,.42)',
-        'border-radius:5px', 'background:rgba(117,213,171,.09)', 'color:#c9f4df',
-        'font:700 9px/1 system-ui,sans-serif', 'letter-spacing:.12em', 'cursor:pointer',
-      ].join(';');
+      button.className = 'ph-action';
       actions.appendChild(button);
       return button;
     };
@@ -102,7 +124,7 @@ export function createPerfHud({ renderer, game, trace = null }) {
     const exportButton = action('EXPORT JSON', 'Download the complete bounded QA trace');
     const actionStatus = document.createElement('div');
     actionStatus.setAttribute('role', 'status');
-    actionStatus.style.cssText = 'grid-column:1/-1;min-height:14px;color:#8eaaa5;text-align:right';
+    actionStatus.className = 'ph-action-status';
     actions.appendChild(actionStatus);
     grid.appendChild(actions);
 
@@ -160,11 +182,14 @@ export function createPerfHud({ renderer, game, trace = null }) {
   let lastDom = 0;
   let telemetryProvider = null;
   let latestTelemetry = null;
-  let visible = debugRequested || (!PROD_BUILD && (() => {
-    try { return localStorage.getItem(LS_KEY) === '1'; } catch (_) { return false; }
-  })());
+  let visible = false;
   let captureHidden = false;
-  el.style.display = visible ? 'block' : 'none';
+  const applyVisibility = () => {
+    const painted = visible && !captureHidden;
+    el.style.display = painted ? 'block' : 'none';
+    document.body.classList.toggle('cot-debug-hud', painted);
+  };
+  applyVisibility();
 
   function stats() {
     const n = rn;
@@ -207,7 +232,7 @@ export function createPerfHud({ renderer, game, trace = null }) {
     const memory = t?.memory || {};
     const cascades = Array.isArray(shadow.cascades) ? shadow.cascades : [];
     statusEl.textContent = t?.error ? 'PROVIDER ERROR' : 'LIVE';
-    statusEl.style.color = t?.error ? '#ff9d7c' : '#75d5ab';
+    el.classList.toggle('has-error', !!t?.error);
     sectionEls.get('frame').textContent =
       `${s.fps.toFixed(0)} fps   1% low ${s.onePctLow.toFixed(0)}\n` +
       `${s.p50.toFixed(1)} / ${s.p95.toFixed(1)} / ${s.p99.toFixed(1)} ms\n` +
@@ -266,20 +291,16 @@ export function createPerfHud({ renderer, game, trace = null }) {
       if (!s) return;
       if (visible && !captureHidden) renderDashboard(s);
     },
-    toggle() {
-      if (debugRequested || !PROD_BUILD) {
-        visible = !visible;
-        el.style.display = visible && !captureHidden ? 'block' : 'none';
-        try { localStorage.setItem(LS_KEY, visible ? '1' : '0'); } catch (_) { /* fine */ }
-      }
-    },
+    toggle() { visible = !visible; applyVisibility(); },
+    setVisible(next) { visible = !!next; applyVisibility(); },
+    isVisible: () => visible,
     setTelemetryProvider(provider) {
       telemetryProvider = typeof provider === 'function' ? provider : null;
     },
     /** Keep developer/player diagnostics out of deterministic capture art. */
     setCaptureHidden(hidden) {
       captureHidden = !!hidden;
-      el.style.display = visible && !captureHidden ? 'block' : 'none';
+      applyVisibility();
     },
     /** Probe hooks used by performance and map-audit tooling. */
     stats,

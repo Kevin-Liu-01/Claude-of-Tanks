@@ -1596,14 +1596,23 @@ function beginMagazineReload(combatState, spec) {
   return true;
 }
 
+/** Return the exact reason a manual magazine reload cannot begin. */
+export function magazineReloadDenialReason(combatState) {
+  const magazine = combatState?.magazine;
+  if (!magazine) return 'NO_MAGAZINE';
+  if (combatState.reload?.kind === 'magazine' && combatState.reload.t > 0) {
+    return 'MAGAZINE_RELOADING';
+  }
+  if (magazine.rounds >= magazine.capacity) return 'MAGAZINE_FULL';
+  return null;
+}
+
 /**
  * Discard a partial magazine and begin a complete magazine load. Returns
  * false when the tank has no magazine, is already loading one, or is full.
  */
 export function startMagazineReload(combatState, spec) {
-  const magazine = combatState.magazine;
-  if (!magazine || magazine.rounds >= magazine.capacity) return false;
-  if (combatState.reload.kind === 'magazine' && combatState.reload.t > 0) return false;
+  if (magazineReloadDenialReason(combatState)) return false;
   return beginMagazineReload(combatState, spec);
 }
 

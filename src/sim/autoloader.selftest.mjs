@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   createCombatState,
+  magazineReloadDenialReason,
   selectShell,
   startMagazineReload,
   startPostShotReload,
@@ -75,8 +76,10 @@ function makeSpec(overrides = {}) {
   assert.equal(startMagazineReload(combat, spec), true);
   assert.equal(combat.magazine.rounds, 0, 'manual reload discards the partial magazine');
   assert.equal(combat.reload.kind, 'magazine');
+  assert.equal(magazineReloadDenialReason(combat), 'MAGAZINE_RELOADING');
   assert.equal(startMagazineReload(combat, spec), false, 'cannot restart an active magazine reload');
   tickReload(combat, 21);
+  assert.equal(magazineReloadDenialReason(combat), 'MAGAZINE_FULL');
   assert.equal(startMagazineReload(combat, spec), false, 'a full magazine needs no reload');
 }
 

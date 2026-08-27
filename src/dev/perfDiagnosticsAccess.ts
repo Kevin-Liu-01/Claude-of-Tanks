@@ -1,6 +1,8 @@
 export interface PerfHudRuntime {
   update(dtMs: number): void;
   toggle(): void;
+  setVisible(visible: boolean): void;
+  isVisible(): boolean;
   setTelemetryProvider(provider: (() => unknown) | null): void;
   setCaptureHidden(hidden: boolean): void;
   stats(): unknown;
@@ -37,6 +39,7 @@ export function createPerfDiagnosticsAccess(
   let runtime: PerfDiagnosticsRuntime | null = null;
   let pending: Promise<PerfDiagnosticsRuntime> | null = null;
   let captureHidden = false;
+  let desiredVisible = false;
   let telemetryProvider: (() => unknown) | null = null;
 
   const preload = (): Promise<PerfDiagnosticsRuntime> => {
@@ -46,6 +49,7 @@ export function createPerfDiagnosticsAccess(
       runtime = loaded;
       pending = null;
       loaded.hud.setCaptureHidden(captureHidden);
+      loaded.hud.setVisible(desiredVisible);
       if (telemetryProvider) loaded.hud.setTelemetryProvider(telemetryProvider);
       return loaded;
     });
@@ -56,11 +60,25 @@ export function createPerfDiagnosticsAccess(
     return request;
   };
 
+  const setVisible = (visible: boolean): void => {
+    desiredVisible = !!visible;
+    if (runtime) {
+      runtime.hud.setVisible(desiredVisible);
+      return;
+    }
+    if (!desiredVisible) return;
+    void preload().catch((error: unknown) => {
+      console.warn('[diagnostics] optional engineering runtime failed to load', error);
+    });
+  };
+
   return {
     preload,
     isReady: () => runtime !== null,
     update: (dtMs) => runtime?.hud.update(dtMs),
-    toggle: () => { runtime?.hud.toggle(); },
+    toggle: () => setVisible(!desiredVisible),
+    setVisible,
+    isVisible: () => desiredVisible,
     setTelemetryProvider(provider) {
       telemetryProvider = typeof provider === 'function' ? provider : null;
       runtime?.hud.setTelemetryProvider(telemetryProvider);

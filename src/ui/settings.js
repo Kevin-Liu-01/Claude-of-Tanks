@@ -760,11 +760,17 @@ export function createSettings(opts) {
     );
     onOffRow(iface, 'FPS / ping readout (top-right · default on)', 'showPerfMeter',
       emitPerfMeter);
+    onOffRow(iface, 'Debug telemetry dashboard (top-right)', 'showDebugHud',
+      emitDebugHud);
     const armorNote = el('div', 'cot-set-note', iface);
     armorNote.textContent =
       'In sniper view, aimed enemy armor is shaded from red (blocked) through amber to green ' +
       '(high penetration chance). The calculation follows the selected shell, range, angle, ' +
       'ricochet rules, ERA, tracks, and spaced armor.';
+    const debugNote = el('div', 'cot-set-note', iface);
+    debugNote.textContent =
+      'Debug telemetry folds FPS, latency, frame pacing, render load, resolution, simulation, ' +
+      'world, shadow, network, and memory diagnostics into one 4 Hz dashboard. It loads only when enabled.';
 
     const pad = groupCard(body, 'Controller');
     sliderRow(pad, 'Controller aim sensitivity', 'padSensitivity', 0.2, 3);
@@ -793,6 +799,11 @@ export function createSettings(opts) {
   /** Broadcast the persisted FPS/ping preference (default on, user opt-out). */
   function emitPerfMeter() {
     emit('ui:perfMeter', { on: !!input.getSettings().showPerfMeter });
+  }
+
+  /** Lazy engineering telemetry follows one persisted Interface setting. */
+  function emitDebugHud() {
+    emit('ui:debugHud', { on: !!input.getSettings().showDebugHud });
   }
 
   /** Broadcast the whole mix so the audio graph re-levels its channel buses. */
