@@ -877,6 +877,10 @@ preload is permitted on explicit intent, while `createFx` remains a singleton
 construction gate. Module and initializer failures are independently retryable;
 `src/main.js` supplies scene, bus, and post-composite installation as ports.
 
+`src/game/killcamAccess.ts` applies the same retry contract to replay code and
+publishes a stable inactive presentation facade. After construction, solo
+fixed-step capture is wired directly to the live killcam implementation.
+
 ### 3.9 audio — `src/audio/audio.js` (+ `src/audio/voices.js`)
 ```js
 export function createAudio() => Audio

@@ -55,3 +55,4 @@ runtime documents remain authoritative for behavior.
 - [0043 — Battle intent has one typed lifecycle owner](0043-typed-battle-intent-lifecycle.md)
 - [0044 — Baked minimaps have one typed async owner](0044-typed-minimap-asset-lifecycle.md)
 - [0045 — Combat effects have one retryable runtime owner](0045-typed-fx-runtime-lifecycle.md)
+- [0046 — Killcam has one retryable runtime owner](0046-typed-killcam-runtime-lifecycle.md)

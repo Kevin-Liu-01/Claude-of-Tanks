@@ -86,6 +86,7 @@ import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createBattleIntentRuntime } from './game/battleIntentRuntime.ts';
+import { createKillcamAccess } from './game/killcamAccess.ts';
 import { createBattleVisualPool } from './game/battleVisualPool.js';
 import { createBattleVisualStreamerAccess } from './game/battleVisualStreamerAccess.ts';
 import {
@@ -1317,29 +1318,9 @@ function updateSniperFill() {
 // End-of-battle cinematic: slow-mo tracer replay of the killing shell + x-ray
 // module breakdown. Capture hooks live in the KILL-CAM sections of state.js
 // (game.killcam); the camera is driven only via rig.setExternalPose.
-const dormantSpectate = {
-  active: false, targetId: null,
-  startObserver: () => false, stop() {},
-};
-let killcam = {
-  fxTimeScale: 1, lastBeginWallMs: 0, spectate: dormantSpectate,
-  isActive: () => false, cancel() {}, update() {},
-  playForResult: () => false, stageXrayShot() {},
-};
-let killcamModulePromise = null;
-let killcamRuntimePromise = null;
-function preloadKillcamModule() {
-  if (!killcamModulePromise) {
-    killcamModulePromise = import('./game/killcam.js').catch((error) => {
-      killcamModulePromise = null;
-      throw error;
-    });
-  }
-  return killcamModulePromise;
-}
-function ensureKillcamRuntime() {
-  if (killcamRuntimePromise) return killcamRuntimePromise;
-  killcamRuntimePromise = preloadKillcamModule().then(({ createKillCam }) => {
+const killcamAccess = createKillcamAccess({
+  loadModule: () => import('./game/killcam.js'),
+  initialize: ({ createKillCam }) => {
     const live = createKillCam({
       scene, camera, rig, heightField: hfProxy, getPlayer: () => game.player,
       getEntity: (id) => game.tankById.get(id),
@@ -1348,15 +1329,15 @@ function ensureKillcamRuntime() {
       getFx: () => fxRuntimeAccess.current,
     });
     live.bindBus(bus);
-    killcam = live;
+    // Solo fixed-step capture gets the direct implementation after entry;
+    // main/debug consumers keep the stable access facade below.
     game.killcam = live;
     return live;
-  }).catch((error) => {
-    killcamRuntimePromise = null;
-    throw error;
-  });
-  return killcamRuntimePromise;
-}
+  },
+});
+const killcam = killcamAccess.presentation;
+const preloadKillcamModule = killcamAccess.preloadModule;
+const ensureKillcamRuntime = killcamAccess.ensureRuntime;
 game.killcam = killcam;
 
 /**

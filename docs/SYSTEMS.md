@@ -65,6 +65,9 @@ strict TypeScript owners:
 - `src/fx/fxRuntimeAccess.ts` independently owns combat-effects code preload,
   singleton GPU/runtime construction, coalescing, and failure retry; intent may
   transfer the module without allocating particles, lights, or render state;
+- `src/game/killcamAccess.ts` owns replay code preload, singleton construction,
+  failure retry, and the stable no-op presentation facade used before battle;
+  the fixed-step simulation receives the direct live capture implementation;
 - `src/game/garagePedestalRuntime.ts` owns garage hero construction, shader
   submission, warm visual residency, switch convergence, and battle handoff;
 - `src/game/battleIntentRuntime.ts` owns explicit Battle preloading, concrete

@@ -64,6 +64,12 @@ consumers share one initializer. A failed chunk transfer or WebGL allocation
 clears only its own in-flight receipt, allowing the next entry attempt to
 recover without reloading the page.
 
+Killcam acquisition follows the same separation without sharing the effects
+owner. Garage and render-loop callers see one stable inactive facade until
+entry completes; the fixed-step solo simulation then receives the direct live
+capture runtime. Chunk and initializer failures remain independently retryable,
+so a lost replay download cannot permanently wedge a later match or capture.
+
 ## First-party vehicle pipeline
 
 The registry currently retains **150 vehicle records**. The production

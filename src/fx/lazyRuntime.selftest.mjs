@@ -22,6 +22,9 @@ const battleIntentRuntime = await readFile(
 const fxRuntimeAccess = await readFile(
   new URL('./fxRuntimeAccess.ts', import.meta.url), 'utf8',
 );
+const killcamAccess = await readFile(
+  new URL('../game/killcamAccess.ts', import.meta.url), 'utf8',
+);
 
 if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main)) {
   throw new Error('combat effects must not return to the garage boot graph');
@@ -62,6 +65,15 @@ if (!/const loadRuntime[^=]*=[\s\S]{0,520}Promise\.all\(\[[\s\S]{0,120}preloadMo
 if (!/window\.__SHOTS\s*=\s*\{[\s\S]{0,320}import\(['"]\.\/dev\/shotRuntime\.ts['"]\)/.test(main)
     || !/export async function setShotView[\s\S]*context\.ensureFxRuntime\(\)/.test(shotRuntime)) {
   throw new Error('deterministic shots can enter without the live effects runtime');
+}
+if (!/createKillcamAccess\(\{[\s\S]{0,220}loadModule:\s*\(\)\s*=>\s*import\(['"]\.\/game\/killcam\.js['"]\)/.test(main)
+    || !/const killcam = killcamAccess\.presentation/.test(main)
+    || !/const ensureKillcamRuntime = killcamAccess\.ensureRuntime/.test(main)) {
+  throw new Error('the composition root must delegate killcam import and runtime ownership');
+}
+if (!/if \(modulePromise === request\) modulePromise = null/.test(killcamAccess)
+    || !/if \(runtimePromise === request\) runtimePromise = null/.test(killcamAccess)) {
+  throw new Error('killcam module and runtime failures must remain independently retryable');
 }
 const networkBattle = main.slice(
   main.indexOf('async function presentNetworkBattle('),

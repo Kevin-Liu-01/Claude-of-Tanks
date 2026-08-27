@@ -23,7 +23,8 @@ wreck, Studio/shared FX, and covered deployment-program residency behind a
 retryable typed access facade; `ai.js`
 owns bot decisions and is injected into the headless multiplayer authority;
 `input.js` normalizes devices; `profile.js` persists real local match history;
-`killcam.js` and `studio.js` own separate presentation timelines.
+`killcamAccess.ts` owns retryable replay acquisition and its stable inactive
+facade; `killcam.js` and `studio.js` own separate presentation timelines.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
 residency, switch convergence, and battle visual handoff; it composes
 `garagePedestalPreloader.ts` for exact card-intent and quiet neighbor warming.
@@ -49,7 +50,9 @@ simulation or rendering imports there. Keep deterministic roster planning
 independent from combat setup so battle intent can preload exact families.
 Route Battle preload changes through `battleIntentRuntime.ts`; do not restore
 independent map plans, texture generations, or garage timers in `main.js`.
-Bot changes require both focused AI tests and battle probes.
+Acquire killcam implementation through `killcamAccess.ts`; do not restore its
+promise state in the composition root. Bot changes require both focused AI
+tests and battle probes.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
