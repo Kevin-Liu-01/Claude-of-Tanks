@@ -57,6 +57,13 @@ requests and rechecks both active-world identity and prepared world services
 after decode. A late result from a previous map is discarded; an active-map
 load error keeps the existing full-resolution procedural fallback.
 
+Combat effects have a separate typed lifecycle. Battle intent may transfer the
+effects module while the garage remains interactive, but scene objects are not
+created until Battle, Studio, or deterministic capture entry. Concurrent
+consumers share one initializer. A failed chunk transfer or WebGL allocation
+clears only its own in-flight receipt, allowing the next entry attempt to
+recover without reloading the page.
+
 ## First-party vehicle pipeline
 
 The registry currently retains **150 vehicle records**. The production

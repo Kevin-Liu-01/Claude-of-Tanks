@@ -62,6 +62,9 @@ strict TypeScript owners:
   rare shader work, cooperative yields, and stale-rematch cancellation;
 - `src/game/studioAccess.ts` owns retryable Studio/FX acquisition, the stable
   render-loop proxy, and transfer of temporary F8 ownership to the full mode;
+- `src/fx/fxRuntimeAccess.ts` independently owns combat-effects code preload,
+  singleton GPU/runtime construction, coalescing, and failure retry; intent may
+  transfer the module without allocating particles, lights, or render state;
 - `src/game/garagePedestalRuntime.ts` owns garage hero construction, shader
   submission, warm visual residency, switch convergence, and battle handoff;
 - `src/game/battleIntentRuntime.ts` owns explicit Battle preloading, concrete

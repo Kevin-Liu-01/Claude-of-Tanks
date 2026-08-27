@@ -123,6 +123,7 @@ import { createCombatWarmCoordinator } from './game/combatWarmCoordinator.ts';
 import { createDeferredCombatWarmRuntime } from './game/deferredCombatWarmRuntime.ts';
 import { createStudioAccess } from './game/studioAccess.ts';
 import { stripActivatedEra } from './game/eraActivation.ts';
+import { createFxRuntimeAccess } from './fx/fxRuntimeAccess.ts';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
 import { createBootScreen } from './ui/bootScreen.js';
@@ -395,23 +396,12 @@ let battleWarmGeneration = 0;
 // during garage boot delayed first interaction and created GPU objects the
 // garage could not display. Intent preloads the module; the opaque battle,
 // Studio, and deterministic-shot entry gates below construct exactly one live
-// instance before any consumer can emit an effect.
-let fx = null;
-let fxModulePromise = null;
-let fxRuntimePromise = null;
-function preloadFxModule() {
-  if (!fxModulePromise) {
-    fxModulePromise = import('./fx/effects.js').catch((error) => {
-      fxModulePromise = null;
-      throw error;
-    });
-  }
-  return fxModulePromise;
-}
-function ensureFxRuntime() {
-  if (fx) return Promise.resolve(fx);
-  if (fxRuntimePromise) return fxRuntimePromise;
-  fxRuntimePromise = preloadFxModule().then(({ createFx }) => {
+// instance before any consumer can emit an effect. The typed owner keeps code
+// intent separate from GPU construction and makes either failure retryable
+// without a page refresh.
+const fxRuntimeAccess = createFxRuntimeAccess({
+  loadModule: () => import('./fx/effects.js'),
+  initialize: ({ createFx }) => {
     const live = createFx(engineCtx, hfProxy, { seed: 5000 });
     scene.add(live.group);
     live.bindBus(bus);
@@ -419,13 +409,15 @@ function ensureFxRuntime() {
     // exists. Hand its late-composite activity/depth state to the existing
     // pass now; otherwise every layer-30 effect is simulated but invisible.
     post.attachLateFxState(live.group.userData.softParticles);
-    fx = live;
     return live;
-  }).catch((error) => {
-    fxRuntimePromise = null;
-    throw error;
-  });
-  return fxRuntimePromise;
+  },
+});
+const preloadFxModule = fxRuntimeAccess.preloadModule;
+const ensureFxRuntime = fxRuntimeAccess.ensureRuntime;
+function requireFxRuntime() {
+  const live = fxRuntimeAccess.current;
+  if (!live) throw new Error('combat effects runtime has not been acquired');
+  return live;
 }
 
 // Per-wheel suspension: give every battle tank the live heightfield so road
@@ -1353,7 +1345,7 @@ function ensureKillcamRuntime() {
       getEntity: (id) => game.tankById.get(id),
       getWorld: () => world, // r6: flight-cam LOS solve (foliage/terrain/props)
       // Replay impact uses the real pooled destruction effects.
-      getFx: () => fx,
+      getFx: () => fxRuntimeAccess.current,
     });
     live.bindBus(bus);
     killcam = live;
@@ -1398,10 +1390,11 @@ bus.on('shell:hit', (ev) => {
         target.state ? target.state.yaw : undefined,
       );
     }
-    if (pen && ev.pos && fx?.armorScar) {
+    const liveFx = fxRuntimeAccess.current;
+    if (pen && ev.pos && liveFx?.armorScar) {
       _v1.set(ev.pos[0], ev.pos[1], ev.pos[2]);
       _v2.set(ev.normal[0], ev.normal[1], ev.normal[2]);
-      fx.armorScar(target.visual, _v1, _v2, ev.caliberMm || 90);
+      liveFx.armorScar(target.visual, _v1, _v2, ev.caliberMm || 90);
     }
   }
   if (!game.player) return;
@@ -1439,10 +1432,11 @@ bus.on('shell:fired', (ev) => {
 // (the same fx the pole hinge-topple uses; the fall anim itself runs in
 // vegetation.js via world.crushObstacle).
 bus.on('prop:crushed', (ev) => {
-  if (!fx) return;
+  const liveFx = fxRuntimeAccess.current;
+  if (!liveFx) return;
   _v1.set(ev.pos[0], ev.pos[1], ev.pos[2]);
   _fwd.set(ev.dir[0], 0, ev.dir[2]);
-  fx.propCrush(_v1, _fwd, ev.h);
+  liveFx.propCrush(_v1, _fwd, ev.h);
 });
 // DESTRUCTIBLES r1: every destructible break (ram, shell hit, HE splash or
 // chained drum blast) reports through the destructibles.js sink — forwarded
@@ -2190,6 +2184,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       const deploymentCompileStartedAt = performance.now();
       const deploymentProgramBaseline = snapshotRendererPrograms(renderer);
       const restoreArmorWarmVisibility = armorAimOverlay.warm();
+      const fx = requireFxRuntime();
       const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({
         game, fx, post, camera, createShell,
       });
@@ -2636,6 +2631,7 @@ async function presentNetworkBattle({
     { createNetworkStatus },
     { createBrowserInputRuntime },
   ] = networkModules;
+  const fx = requireFxRuntime();
   networkFramePump.ensureInputRuntime(createBrowserInputRuntime);
   markLoadStage('modulesWorldAndConnect');
   networkStatus = createNetworkStatus();
@@ -3047,6 +3043,7 @@ function rosterRows(team) {
 }
 
 function startBattle(specId, mapId = null, opts = {}) {
+  const fx = requireFxRuntime();
   const sbtStartedAt = performance.now();
   let sbtMarkAt = sbtStartedAt;
   const sbt = { specId, stages: {} };
@@ -3233,6 +3230,7 @@ function clearBattlePresentationForExit() {
 }
 
 function enterGarage({ preserveRoom = networkRoomCoordinator.shouldPreserveAfterResult() } = {}) {
+  const fx = fxRuntimeAccess.current;
   const garageTrace = { stages: {} };
   const garageStartedAt = performance.now();
   let garageMarkedAt = garageStartedAt;
@@ -3268,7 +3266,7 @@ function enterGarage({ preserveRoom = networkRoomCoordinator.shouldPreserveAfter
   // SHOT-MODE RESET: see startBattle — the garage is a live-mode entry too.
   shotMode = false;
   perfHud.setCaptureHidden(false);
-  fx.setFrozen(false);
+  fx?.setFrozen(false);
   game.phase = 'garage';
   // Establish a new activity epoch for this garage visit. Optional workshop
   // exhibits must not inherit a stale timestamp from before the battle and
@@ -3548,6 +3546,7 @@ function setBattleVisualResident(visual, resident) {
 }
 function updateDustAndSync(dtFrame, presentationAlpha = 1) {
   const cameraPosition = camera.position;
+  const fx = fxRuntimeAccess.current;
   // Renderer frustum-culls individual meshes later, but running-gear
   // conformance happens before that traversal. Build one conservative screen
   // guard so an actor just outside the view cannot upload hundreds of hidden
@@ -3616,7 +3615,7 @@ function updateDustAndSync(dtFrame, presentationAlpha = 1) {
     // The far field is already absorbed by aerial perspective; skip vehicle
     // media beyond it instead of filling a 1024-card pool off camera.
     const vehicleFxVisible = visual.root.visible && viewDistM < 360;
-    if (game.phase === 'battle' && !combat.destroyed && vehicleFxVisible) {
+    if (fx && game.phase === 'battle' && !combat.destroyed && vehicleFxVisible) {
       // PERF (perf-budget): dust/exhaust emission was per-FRAME — an unlocked
       // 120 fps client emitted 2x the particles the fx were tuned for at 60,
       // rotating the smoke/dust pools twice as fast late-battle. Fixed 60 Hz
@@ -3760,6 +3759,7 @@ function tick(nowMs) {
   if (graphicsContextLost) return;
 
   if (battleLoadRenderingCovered) return;
+  const fx = fxRuntimeAccess.current;
 
   // Sniper-zoom de-fog: at high zoom the exp2 fog + ACES crush distant
   // contrast to haze; scale density down toward 0.35x as FOV drops below 15
@@ -3779,7 +3779,7 @@ function tick(nowMs) {
     camera.getWorldDirection(_fwd);
     if (world) world.update(0, camera.position, _fwd, null);
     updateSniperFill(); // same close-scope fill state as live play
-    fx.update(dtR, game.shells, camera, resolveFxSubject);
+    fx?.update(dtR, game.shells, camera, resolveFxSubject);
     // controls_gunnery r5: staged HUD views redraw the reticle canvas every
     // frame from the FROZEN frameInfo — the old early-return skipped
     // hud.update entirely, so any post-set() canvas state change (e.g. the
@@ -4276,7 +4276,7 @@ window.__SHOTS = {
       refreshSpotFrame,
       getWorld: () => world,
       getHud: () => hud,
-      getFx: () => fx,
+      getFx: () => fxRuntimeAccess.current,
       getKillcam: () => killcam,
       getShellCards: () => shellCards,
       game,
@@ -4388,6 +4388,7 @@ await bootStage('post', async () => {
 //   setGarageSpots), so entering battle swaps programs instead of compiling
 //   ~70 of them inside the opening frames.
 function warmStudioPipelineChunked(onProgress = null) {
+  const fx = requireFxRuntime();
   return battleWarm.warmStudioEffects({
     fx,
     post,
@@ -4443,7 +4444,7 @@ const deploymentShadowWarm = createDeploymentShadowWarmOwner({
 function createCombatWarmRuntimeContext() {
   return {
     game,
-    fx,
+    fx: requireFxRuntime(),
     post,
     renderer,
     camera,
@@ -4588,7 +4589,7 @@ const sampleShadowContribution = () => perfHud.sampleShadowContribution();
 
 window.__DEBUG = {
   scene, camera, renderer, post, lighting, game, rig, bus,
-  get fx() { return fx; },
+  get fx() { return fxRuntimeAccess.current; },
   input, // controls probe: isLocked/isCursorAim/binding introspection
   settings, // PAUSE probe: isOpen/open/close introspection
   pauseInfo, // PAUSE probe: { paused, resumes, lastDtR, lastResumeDtR }

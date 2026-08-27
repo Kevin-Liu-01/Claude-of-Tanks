@@ -19,12 +19,24 @@ const deferredWarm = await readFile(
 const battleIntentRuntime = await readFile(
   new URL('../game/battleIntentRuntime.ts', import.meta.url), 'utf8',
 );
+const fxRuntimeAccess = await readFile(
+  new URL('./fxRuntimeAccess.ts', import.meta.url), 'utf8',
+);
 
 if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main)) {
   throw new Error('combat effects must not return to the garage boot graph');
 }
 if (!main.includes("import('./fx/effects.js')")) {
   throw new Error('combat effects must retain an explicit demand-loaded chunk');
+}
+if (!/createFxRuntimeAccess\(\{[\s\S]{0,220}loadModule:\s*\(\)\s*=>\s*import\(['"]\.\/fx\/effects\.js['"]\)/.test(main)
+    || !/const preloadFxModule = fxRuntimeAccess\.preloadModule/.test(main)
+    || !/const ensureFxRuntime = fxRuntimeAccess\.ensureRuntime/.test(main)) {
+  throw new Error('the composition root must delegate FX import and construction ownership');
+}
+if (!/if \(modulePromise === request\) modulePromise = null/.test(fxRuntimeAccess)
+    || !/if \(runtimePromise === request\) runtimePromise = null/.test(fxRuntimeAccess)) {
+  throw new Error('FX module and runtime failures must remain independently retryable');
 }
 if (!/scene\.add\(live\.group\)[\s\S]{0,480}post\.attachLateFxState\(live\.group\.userData\.softParticles\)/.test(main)) {
   throw new Error('demand-loaded FX must register with the already-live late composite pass');

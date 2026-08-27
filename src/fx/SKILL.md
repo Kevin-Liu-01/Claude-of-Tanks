@@ -11,6 +11,7 @@ Render combat feedback from authoritative events without modifying simulation.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
+`fxRuntimeAccess.ts` owns retryable battle-only module/runtime acquisition,
 `effects.js` composes event reactions, `particles.js` owns pools, `clock.js`
 owns presentation time, and `impactDecals.js` owns bounded surface marks.
 
@@ -21,8 +22,9 @@ inputs only, and respect pause/killcam/shot-mode time scaling.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
-Trace the bus event, confirm pool teardown/reset paths, then test live battle,
-killcam, and rematch behavior.
+Trace the bus event, confirm the access owner is acquired before the consumer,
+confirm pool teardown/reset paths, then test live battle, killcam, and rematch
+behavior.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

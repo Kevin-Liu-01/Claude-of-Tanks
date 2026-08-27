@@ -872,6 +872,11 @@ Tracer colors/widths per shells doc §10 table. Dynamic light budget: ≤2 Point
 near a tree — SKIP for v1 unless cheap (props are static; do not add cross-module
 coupling for it).
 
+`src/fx/fxRuntimeAccess.ts` owns the browser lifecycle around this API. Module
+preload is permitted on explicit intent, while `createFx` remains a singleton
+construction gate. Module and initializer failures are independently retryable;
+`src/main.js` supplies scene, bus, and post-composite installation as ports.
+
 ### 3.9 audio — `src/audio/audio.js` (+ `src/audio/voices.js`)
 ```js
 export function createAudio() => Audio
