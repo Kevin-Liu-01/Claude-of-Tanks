@@ -9,7 +9,7 @@ interface RendererProgramInfo {
   programs?: readonly LinkedProgram[] | null;
 }
 
-interface RendererWithPrograms {
+export interface RendererWithPrograms {
   info?: RendererProgramInfo | null;
 }
 

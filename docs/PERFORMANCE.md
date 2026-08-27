@@ -426,6 +426,14 @@ gate then opened fourteen isolated Chromium profiles, synchronized the lobby,
 entered the match, and completed live firing with zero prediction hard snaps;
 its rendered p95 frame gap was 12.1 ms and maximum gap was 16.9 ms.
 
+The complete host-plus-impaired-client gate was repeated after moving the
+deployment queue into its strict-TypeScript owner. Both natural matches used
+fourteen pristine profiles and all fourteen players fired. Host rendering
+reported an 11.0 ms p95 and 24.4 ms maximum frame gap; the impaired client
+reported a 17.9 ms p95 and 26.2 ms maximum. Both paths recorded zero hard
+snaps, with worst authority steps of 2.0 ms and 1.7 ms respectively. The
+50 ms live-freeze threshold was not relaxed for the refactor.
+
 ## Reporting a performance result
 
 Record:

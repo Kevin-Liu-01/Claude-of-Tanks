@@ -57,6 +57,9 @@ strict TypeScript owners:
 - `src/game/battleModuleAccess.ts` owns retryable battle-only imports;
 - `src/game/combatWarmCoordinator.ts` owns resumable opening/rare warm receipts,
   synchronous capture drains, round resets, and countdown cancellation;
+- `src/game/deferredCombatWarmRuntime.ts` owns the revision-bound deployment
+  queue: hidden opponent visuals, opening FX, bot routes, terrain lookahead,
+  rare shader work, cooperative yields, and stale-rematch cancellation;
 - `src/game/battleWarmRuntime.ts` owns the typed Battle/Studio-only terrain,
   effect, wreck, hidden-variant, and fallback shader-warm implementation; its
   retryable access facade is acquired before any synchronous fallback drain.

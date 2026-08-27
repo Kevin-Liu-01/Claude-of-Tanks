@@ -118,6 +118,7 @@ import { SHOT_VIEWS } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 import { createBattleEntryAcquisition } from './game/battleEntryAcquisition.ts';
 import { createCombatWarmCoordinator } from './game/combatWarmCoordinator.ts';
+import { createDeferredCombatWarmRuntime } from './game/deferredCombatWarmRuntime.ts';
 import { stripActivatedEra } from './game/eraActivation.ts';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
@@ -4916,124 +4917,22 @@ function warmStudioPipelineChunked(onProgress = null) {
 // chunked owner gives the garage a painted frame between steps. A battle
 // entered mid-chunk drains the remaining generator synchronously.
 
-let deferredCombatWarmPromise = null;
-function cancelDeferredCombatWarm() {
-  combatWarm.cancelRare();
-  deferredCombatWarmPromise = null;
-}
+const deferredCombatWarm = createDeferredCombatWarmRuntime({
+  game,
+  renderer,
+  camera,
+  getBattleVisuals: () => battleVisuals,
+  combatWarm,
+  battleWarm,
+  getWorld: () => world,
+  getGeneration: () => battleWarmGeneration,
+  setPending: (pending) => { battleWarmPending = pending; },
+  prepareNextOpeningRoute,
+  devTrace,
+});
+function cancelDeferredCombatWarm() { deferredCombatWarm.cancel(); }
 function scheduleDeferredCombatWarm(generation) {
-  if (!Number.isFinite(generation) || generation !== battleWarmGeneration) {
-    battleWarmPending = false;
-    return Promise.resolve();
-  }
-  if (deferredCombatWarmPromise) return deferredCombatWarmPromise;
-  const trace = { done: false, generation, stages: {} };
-  if (typeof window !== 'undefined') window.__BATTLE_DEFERRED_WARM = trace;
-  const startedAt = performance.now();
-  const pending = (async () => {
-    // Guarantee that the first battlefield frame and countdown numeral reach
-    // the default framebuffer before any deferred atom starts.
-    await nextFrame();
-    if (generation !== battleWarmGeneration || game.phase !== 'battle') return;
-    const visibleYield = createFrameBudgetYielder(6);
-    const guardedYield = async (force = false) => {
-      await visibleYield(force);
-      if (generation !== battleWarmGeneration || game.phase !== 'battle') {
-        const error = new Error('deferred combat warm cancelled');
-        error.code = 'combat_warm_cancelled';
-        throw error;
-      }
-    };
-    // Enemies are filtered by spotting and cannot contribute a legal pixel at
-    // deployment. Build/upload/compile their exact visuals during the frozen
-    // countdown instead of extending the opaque roster screen. They remain
-    // root-hidden after program submission until updateDustAndSync observes
-    // a real spotting edge, so the optimization changes no rendered frame.
-    const enemyVisualsStartedAt = performance.now();
-    const enemyProgramBaseline = snapshotRendererPrograms(renderer);
-    await battleVisuals.stream(
-      (ent) => ent.team === 'enemy', guardedYield, null, true,
-    );
-    trace.enemyProgramUniformWarm = await warmNewRendererProgramUniforms(
-      renderer,
-      enemyProgramBaseline,
-      guardedYield,
-    );
-    trace.stages.enemyVisuals = Math.round(performance.now() - enemyVisualsStartedAt);
-    // The complete shipped FX atlases were installed under the opaque veil.
-    // Bind the opening effect programs now, while controls and simulation are
-    // still frozen; the one-second hold below guarantees first-shot fidelity.
-    const openingFxStartedAt = performance.now();
-    await combatWarm.warmOpeningChunked(6, guardedYield);
-    trace.stages.combatOpeningWarm = Math.round(performance.now() - openingFxStartedAt);
-    const navigationStartedAt = performance.now();
-    trace.navigationJobs = [];
-    for (;;) {
-      const jobStartedAt = performance.now();
-      const consumed = prepareNextOpeningRoute(game);
-      const jobMs = Math.round(performance.now() - jobStartedAt);
-      if (!consumed) break;
-      trace.navigationJobs.push(jobMs);
-      await guardedYield();
-    }
-    // The exact first 70 m of each route must be in the fast terrain cache
-    // before bots can move. Position tiles and the vegetation presentation
-    // cache were already prepared under the opaque loader.
-    await battleWarm.warmBattleTerrainTiles({
-      game,
-      world,
-      yieldForBudget: guardedYield,
-      primePresentation: false,
-    });
-    trace.stages.navigation = Math.round(performance.now() - navigationStartedAt);
-    // Far terrain retains only its visible coarse mesh during map creation.
-    // Previously its exact one-band lookahead baked every fourth playable
-    // frame for the first 0.5-1.2 s after rollout (7-18 jobs depending on the
-    // battlefield, each up to ~8.5 ms in the terrain benchmark). Build the
-    // identical meshes one at a time during the frozen countdown instead.
-    const terrainLookaheadStartedAt = performance.now();
-    let terrainLookaheadJobs = 0;
-    while (world?.warmTerrainLookahead?.(camera.position, 1) > 0) {
-      terrainLookaheadJobs++;
-      await guardedYield();
-    }
-    trace.stages.terrainLookahead = Math.round(
-      performance.now() - terrainLookaheadStartedAt,
-    );
-    trace.terrainLookaheadJobs = terrainLookaheadJobs;
-    await combatWarm.warmRareChunked(6, guardedYield);
-    if (typeof window !== 'undefined') {
-      Object.assign(trace.stages, window.__COMBAT_RARE_WARM?.stages || {});
-    }
-    trace.done = true;
-    trace.totalMs = Math.round(performance.now() - startedAt);
-    trace.finishedAtPreBattleS = Number.isFinite(game.preBattleS) ? game.preBattleS : null;
-    trace.doneBeforeRollout = game.phase === 'battle' && game.preBattleS > 0;
-    devTrace?.mark('battle:deferred-warm-end', { totalMs: trace.totalMs });
-  })().catch((error) => {
-    if (error?.code !== 'combat_warm_cancelled') {
-      trace.error = String(error);
-      console.warn('[warm] deferred deployment warm failed (continuing):', error);
-    } else {
-      trace.cancelled = true;
-    }
-    trace.done = true;
-    trace.doneBeforeRollout = false;
-    if (generation !== battleWarmGeneration) cancelDeferredCombatWarm();
-  }).finally(() => {
-    if (generation === battleWarmGeneration) battleWarmPending = false;
-    // A cancelled old round can settle after a rematch has already installed
-    // its own queue. Never let that stale finally clear the new promise.
-    const ownsSlot = deferredCombatWarmPromise === pending;
-    if (ownsSlot) deferredCombatWarmPromise = null;
-    if (typeof window !== 'undefined'
-        && generation === battleWarmGeneration
-        && (ownsSlot || window.__BATTLE_DEFERRED_WARM === trace)) {
-      window.__BATTLE_DEFERRED_WARM = trace;
-    }
-  });
-  deferredCombatWarmPromise = pending;
-  return pending;
+  return deferredCombatWarm.schedule(generation);
 }
 // Shared private HDR warmer for covered battle entry and the demand-loaded
 // fallback combat owner. Its one-eighth scale touches identical programs,
