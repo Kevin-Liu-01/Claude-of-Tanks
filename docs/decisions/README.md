@@ -76,3 +76,4 @@ runtime documents remain authoritative for behavior.
 - [0064 — Battle result presentation has one typed state machine](0064-typed-battle-result-presentation.md)
 - [0065 — Network battle activation is one atomic presentation transition](0065-typed-network-battle-activation.md)
 - [0066 — Garage and battle roots have exclusive scene residency](0066-phase-exclusive-scene-residency.md)
+- [0067 — Solo battle loading has one typed lifecycle owner](0067-typed-solo-battle-loading.md)

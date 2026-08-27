@@ -126,6 +126,9 @@ const deploymentShadowWarmSource = await readFile(
 const soloDeploymentSource = await readFile(
   new URL('../game/soloBattleDeploymentRuntime.ts', import.meta.url), 'utf8',
 );
+const soloLoadingSource = await readFile(
+  new URL('../game/soloBattleLoadingRuntime.ts', import.meta.url), 'utf8',
+);
 const battleVisualStreamerSource = await readFile(
   new URL('../game/battleVisualStreamer.ts', import.meta.url), 'utf8',
 );
@@ -210,23 +213,25 @@ const coveredSubmissionBody = soloDeploymentSource.slice(
 assert.match(coveredSubmissionBody,
   /forwardProgramWarm\.compile\(scene\)[\s\S]*createIsolatedForwardWarmBatches\(\{[\s\S]*root: fx\.group/,
   'player battle entry must submit and bind exact FX against the gameplay target');
-const worldReadyAt = mainSource.indexOf("battleLoad.progress(0.555, 'Battlefield ready')");
-const rosterAssemblyAt = mainSource.indexOf("battleLoad.progress(0.56, 'Assembling rosters')", worldReadyAt);
-const preRosterBattleLoad = mainSource.slice(
-  mainSource.indexOf('async function startBattleLoading('), rosterAssemblyAt,
+const worldReadyAt = soloLoadingSource.indexOf("battleLoad.progress(0.555, 'Battlefield ready')");
+const rosterAssemblyAt = soloLoadingSource.indexOf(
+  "battleLoad.progress(0.56, 'Assembling rosters')", worldReadyAt,
+);
+const preRosterBattleLoad = soloLoadingSource.slice(
+  soloLoadingSource.indexOf('async begin(specId'), rosterAssemblyAt,
 );
 assert.ok(worldReadyAt >= 0 && rosterAssemblyAt > worldReadyAt,
   'battlefield completion must paint before roster construction begins');
 assert.doesNotMatch(preRosterBattleLoad, /renderer\.compile\(world\.group, camera, scene\)/,
   'the world must not compile against the garage spotlight program family before battle mode');
 assert.match(preRosterBattleLoad,
-  /battleLoad\.progress\(0\.55, 'Uploading battlefield textures'\)[\s\S]{0,220}battleVisuals\.stageRootTextureUploads\(world\.group, loadYield\)/,
+  /battleLoad\.progress\(0\.55, 'Uploading battlefield textures'\)[\s\S]{0,280}battleVisuals\.stageRootTextureUploads\([\s\S]{0,80}getWorld\(\)\.group,[\s\S]{0,80}loadYield/,
   'battle entry must stage current world textures before the first full deployment frame');
 assert.match(preRosterBattleLoad,
-  /const plannedRoster = planBattleParticipantIds[\s\S]{0,1200}const rosterTextureP = battleIntent\.prepareRoster\(\{[\s\S]{0,300}rosterIds: plannedRoster[\s\S]{0,3000}battleEntryAcquisition\.acquireSolo\(\[[\s\S]{0,700}rosterTextureP/,
+  /const plannedRoster = planRoster[\s\S]{0,1200}const rosterTexture = battleIntent\.prepareRoster\(\{[\s\S]{0,300}rosterIds: plannedRoster[\s\S]{0,3000}acquisition\.acquireSolo\(\[[\s\S]{0,900}\(\) => rosterTexture/,
   'exact cold roster camouflage and texture preparation must overlap battlefield construction');
 assert.match(preRosterBattleLoad,
-  /const fxTextureP = ensureFxRuntime\(\)\.then[\s\S]{0,500}live\.preloadTextures[\s\S]{0,180}live\.warmTextures[\s\S]{0,260}battleVisuals\.stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,1000}fxTextureP/,
+  /const fxTexture = ensureFx\(\)\.then[\s\S]{0,500}live\.preloadTextures[\s\S]{0,180}live\.warmTextures[\s\S]{0,260}battleVisuals\.stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,1200}\(\) => fxTexture/,
   'exact combat atlases must install and upload alongside the independent world build');
 const stageRevealBody = battleVisualStreamerSource;
 assert.match(stageRevealBody, /forwardProgramWarm\.compile\(root\)[\s\S]{0,1400}await yieldForBudget\(true\)/,
@@ -273,11 +278,11 @@ const postWarmAt = revealWarmBody.indexOf('post.warmFirstFrame(coveredYield)');
 const revealFrameAt = revealWarmBody.indexOf('entryLifecycle.primeReveal()');
 assert.ok(shadowWarmAt >= 0 && postWarmAt > shadowWarmAt && revealFrameAt > postWarmAt,
   'solo entry must split cascade and post warming before the first full deployment frame');
-assert.match(mainSource,
-  /ensureWorld\(resolved,[\s\S]{0,180}\{ precompile: false, services: false \}\)/,
+assert.match(soloLoadingSource,
+  /ensureWorld\([\s\S]{0,500}resolved,[\s\S]{0,360}\{ precompile: false, services: false \}/,
   'solo entry must activate a battlefield without synchronous world services');
-assert.match(mainSource,
-  /startBattle\(specId, resolved,[\s\S]{0,500}prepareBattleWorldServices\(world\)/,
+assert.match(soloLoadingSource,
+  /startBattle\(specId, resolved,[\s\S]{0,500}prepareBattleWorldServices\(getWorld\(\)\)/,
   'solo entry must defer battle-only services until the real battle light set is active');
 assert.match(mainSource,
   /function prepareBattleWorldServices[\s\S]{0,700}worldServicesMapId = next\.mapId[\s\S]{0,120}minimapAssets\.queue\(next\)/,
@@ -305,18 +310,14 @@ assert.match(deploymentShadowWarmSource,
 assert.match(deploymentShadowWarmSource,
   /preservePrimedCascadesForNextFrame\(\);[\s\S]{0,180}casterState\.lods[\s\S]{0,100}autoUpdate = autoUpdate/,
   'shadow-only full cascades must keep live-camera LODs pinned until every exact map is rendered');
-assert.match(mainSource,
-  /onBattleIntent: battleIntent\.preload/,
-  'explicit Battle intent must be delegated to the typed prefetch owner');
-assert.match(mainSource,
+assert.match(soloLoadingSource,
   /const resolved = battleIntent\.consumeMap\(specId, requestedMapId\)/,
   'the Battle click must consume the exact Random world chosen during intent');
-const soloLoaderBody = mainSource.slice(
-  mainSource.indexOf('async function startBattleLoading('),
-  mainSource.indexOf('// Headless probes drive the battle entry'),
-);
+assert.match(mainSource, /onBattleIntent: battleIntent\.preload/,
+  'the composition root must wire explicit Battle intent');
+const soloLoaderBody = soloLoadingSource.slice(soloLoadingSource.indexOf('async begin(specId'));
 const loaderShowAt = soloLoaderBody.indexOf('battleLoad.show({');
-const visualStreamerAwaitAt = soloLoaderBody.indexOf('await ensureBattleVisualStreamer();');
+const visualStreamerAwaitAt = soloLoaderBody.indexOf('await ensureBattleVisuals();');
 const audioResumeAt = soloLoaderBody.indexOf('audio.resume();', loaderShowAt);
 const loadingSoundAt = soloLoaderBody.indexOf('audio.loadingOn(true);', audioResumeAt);
 const firstYieldAt = soloLoaderBody.indexOf('await nextFrame();', loaderShowAt);
@@ -329,10 +330,10 @@ assert.ok(visualStreamerAwaitAt > firstYieldAt,
   'solo battle entry must show and paint its boot-critical veil before a lazy presentation import');
 assert.ok(loadingStopAt > loadingSoundAt && ambienceAt > loadingStopAt,
   'loader audio must crossfade into battlefield ambience before reveal');
-const cameraPrepareAt = mainSource.indexOf('prepareBattleRevealCamera();');
-const revealPrimeAt = mainSource.indexOf('await battleEntryLifecycle.primeReveal();');
-const loaderFadeAt = mainSource.indexOf('await battleLoad.hide();', revealPrimeAt);
-const battleOpenAt = mainSource.indexOf('openBattle(visiblePreBattleS);', loaderFadeAt);
+const cameraPrepareAt = soloLoaderBody.indexOf('prepareRevealCamera();');
+const revealPrimeAt = soloLoaderBody.indexOf('await lifecycle.primeReveal();');
+const loaderFadeAt = soloLoaderBody.indexOf('await battleLoad.hide();', revealPrimeAt);
+const battleOpenAt = soloLoaderBody.indexOf('openBattle(visiblePreBattleSeconds);', loaderFadeAt);
 assert.ok(cameraPrepareAt >= 0 && revealPrimeAt > cameraPrepareAt &&
   loaderFadeAt > revealPrimeAt && battleOpenAt > loaderFadeAt,
   'solo battle entry must lock the chase camera and paint it before the roster loader fades');

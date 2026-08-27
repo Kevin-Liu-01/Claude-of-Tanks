@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
 const access = await readFile(new URL('./soloBattleAccess.ts', import.meta.url), 'utf8');
 const intent = await readFile(new URL('./battleIntentRuntime.ts', import.meta.url), 'utf8');
+const loading = await readFile(new URL('./soloBattleLoadingRuntime.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(main, /from ['"]\.\/game\/state\.js['"]/, 
   'garage boot must not statically import solo battle authority');
 assert.match(main, /from ['"]\.\/game\/soloBattleAccess\.ts['"]/,
@@ -18,11 +19,9 @@ assert.match(main, /preloadSoloBattle: \(\) => preloadSoloBattleRuntime\(\)/,
   'main must give Battle intent the solo authority loader');
 assert.match(intent, /const preload = \([\s\S]{0,700}ignoreFailure\(preloadSoloBattle\)/,
   'Battle intent must overlap the solo authority transfer with garage dwell');
-const battleEntry = main.slice(
-  main.indexOf('async function startBattleLoading('),
-  main.indexOf('async function beginBattleEntry('),
-);
-assert.match(battleEntry, /preloadSoloBattleRuntime\(\)/,
+assert.match(main, /preloadSoloAuthority:\s*preloadSoloBattleRuntime/,
+  'the composition root supplies the lazy solo authority to the loading owner');
+assert.match(loading, /\(\) => preloadSoloAuthority\(\)/,
   'battle entry must include solo authority in its covered parallel barrier');
 
 const runtime = await import('./soloBattleRuntime.ts');

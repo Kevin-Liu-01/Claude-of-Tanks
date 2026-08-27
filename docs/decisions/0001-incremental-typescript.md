@@ -58,6 +58,11 @@ dependency, and synchronous cached-rematch handling.
 shader submission, warm visual LRU, switch convergence, and battle handoff.
 The composition root now selects a specification through that typed boundary
 instead of carrying the lifecycle state machine itself.
+`src/game/soloBattleLoadingRuntime.ts` owns the complete covered solo loading
+transition: exact roster/world acquisition, battle-only interface and FX
+preparation, visual upload, deployment warm, reveal fallback, countdown, and
+timing receipts. The composition root supplies ports instead of retaining that
+order-sensitive policy inline.
 
 ## Consequences
 

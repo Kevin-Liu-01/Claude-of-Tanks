@@ -90,6 +90,7 @@ import { createPlayerFrameInput } from './game/playerFrameInput.ts';
 import { createBattlePresentationRuntime } from './game/battlePresentationRuntime.ts';
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
 import { createSoloBattleDeploymentRuntime } from './game/soloBattleDeploymentRuntime.ts';
+import { createSoloBattleLoadingRuntime } from './game/soloBattleLoadingRuntime.ts';
 import { createBattleVisualPool } from './game/battleVisualPool.js';
 import { createBattleVisualStreamerAccess } from './game/battleVisualStreamerAccess.ts';
 import {
@@ -1793,247 +1794,10 @@ input.onAction('perfHud', () => { if (diagnosticsRequested) perfHud.toggle(); })
 // Game flow
 // ---------------------------------------------------------------------------
 
-/**
- * PRE-BATTLE LOADING SCREEN (boot r8): WoT shows map art + both rosters +
- * progress between pressing BATTLE and the battle opening. Ours does the same
- * AND does real work behind it — the battlefield build, the roster's texture
- * bakes and the shader warm all happen while this screen is up, which is why
- * the battlefield no longer has to exist at boot.
- *
- * @param {string} specId player vehicle
- * @param {?string} mapId picked map id ('random' rolls here)
- * @returns {Promise<void>} resolves when the battle is live
- */
-async function startBattleLoading(specId, mapId = null, { randomRoster = true } = {}) {
-  // Debug/API entry can bypass the garage's ui:battleStart event.
-  post.setAdaptiveSuspended(true);
-  const shownAt = performance.now();
-  if (typeof window !== 'undefined') window.__VISUAL_LOAD_TIMINGS = [];
-  const loadYield = createOpaqueLoadingYielder(12, 80);
-  const requestedMapId = mapId || pendingMapId;
-  const resolved = battleIntent.consumeMap(specId, requestedMapId);
-  const cfg = getMapConfig(resolved);
-  // perf-smooth r1: per-stage wall-clock telemetry for the player battle-entry
-  // path (same pattern as __BOOT_TIMINGS) — probes and future perf rounds
-  // read window.__BATTLE_LOAD instead of guessing where entry time went.
-  const blt = { map: resolved, worldCached: !!worldCache.get(resolved), stages: {} };
-  let bltMark = shownAt;
-  const bltStage = (key) => {
-    const now = performance.now();
-    blt.stages[key] = Math.round(now - bltMark);
-    bltMark = now;
-  };
-  battleLoad.show({
-    mapName: cfg.name || resolved,
-    thumb: MAP_THUMBS[resolved] || '',
-    biome: resolved,
-    mode: mapId === 'random' ? 'Random Battle · Any Battlefield' : 'Random Battle · Standard',
-    allies: [], enemies: [],
-  });
-  // This function is entered synchronously from the Battle gesture. Unlock
-  // audio before the first await and start a tiny synthesized loader bed so
-  // cold world/roster work never reads as a silent frozen page.
-  audio.resume();
-  audio.loadingOn(true);
-  await nextFrame();
-  await ensureBattleVisualStreamer();
+// WoT-style player-path countdown after the opaque deployment transition.
+const PRE_BATTLE_HOLD_S = 5;
+const MIN_VISIBLE_PRE_BATTLE_S = 2;
 
-  // The combat HUD, damage schematic, and exact top-mask rig are battle-only.
-  // Start their retryable chunks at the first covered frame, then join them
-  // with the independent world/roster barrier below. Awaiting this interface
-  // group before terrain construction added its complete cold transfer and
-  // parse time directly to every first battle even though neither side
-  // consumes the other.
-  battleLoad.progress(0.01, 'Loading combat interface');
-  const battleInterfaceP = Promise.all([
-    ensureBattleHud(), ensureTouchControls(), settings.preload(), armorAimOverlay.preload(),
-  ]);
-
-  // 1. battlefield (0 → 55%). Already-cached maps skip straight through.
-  // The next roster is deterministic from battleCount, so resolve its exact
-  // profile chunks alongside the independent world build. This is a plan,
-  // not a state mutation; setupBattle below remains the sole roster owner.
-  battleLoad.progress(0.02, 'Loading battlefield');
-  const plannedRoster = planBattleParticipantIds(game, specId, randomRoster);
-  const plannedAutoCamoIds = planBattleCamoOverrides(
-    game, specId, resolved, randomRoster,
-  );
-  // The roster and its seeded battle camouflage are both known before the
-  // independent battlefield build begins. Finish/cancel any hover-time bake
-  // first so a repaint can never race an in-flight resize of the same canvas,
-  // then paint existing cache entries and create missing exact-tier textures
-  // under the loader. This whole chain overlaps terrain/vegetation/props.
-  const rosterTextureP = battleIntent.prepareRoster({
-    specId,
-    mapId: resolved,
-    rosterIds: plannedRoster,
-    autoCamoIds: plannedAutoCamoIds,
-    yieldForBudget: loadYield,
-  });
-  // Legacy battlefields author an exact wreck cast. Those synchronous wreck
-  // bakes are part of world construction, so start their profile transfers in
-  // the same barrier instead of discovering and awaiting each family late in
-  // the serial props generator. Random-pool maps keep their seeded on-demand
-  // path rather than speculatively downloading the entire modern fleet.
-  const plannedWorldVehicles = cfg.props?.tankWrecks?.ids || [];
-  // Particle atlases are independent of the battlefield graph. Decode,
-  // install and upload the exact shipped textures while terrain/vegetation/
-  // props are already consuming the opaque transition instead of waiting
-  // until the visible countdown. The later opening warm sees stable Texture
-  // objects and only submits programs; no rendered effect or quality changes.
-  const fxTextureP = ensureFxRuntime().then(async (live) => {
-    await live.preloadTextures?.();
-    live.warmTextures?.();
-    const receipt = await battleVisuals.stageRootTextureUploads(live.group, loadYield);
-    live.group.userData.battleTexturesStaged = true;
-    blt.fxTextureUpload = receipt;
-    return receipt;
-  });
-  await battleEntryAcquisition.acquireSolo([
-    () => battleInterfaceP,
-    () => ensureWorld(resolved,
-      (f, label) => battleLoad.progress(0.02 + f * 0.53, label),
-      { precompile: false, services: false }),
-    () => ensureTankBuilders([...plannedRoster, ...plannedWorldVehicles]),
-    () => preloadSoloBattleRuntime(),
-    () => preloadBattleClientRuntime(),
-    () => battleWarm.preload(),
-    () => audio.warmBattleEvents(),
-    () => fxTextureP,
-    () => ensureKillcamRuntime(),
-    () => rosterTextureP,
-  ]);
-  blt.world = (typeof window !== 'undefined' && window.__WORLD_LOAD) || null;
-  battleLoad.progress(0.55, 'Uploading battlefield textures');
-  blt.worldTextureUpload = await battleVisuals.stageRootTextureUploads(world.group, loadYield);
-  bltStage('world');
-  // Do not compile the world yet. Battle mode deliberately removes the two
-  // garage spotlights below in startBattle(); compiling here would submit a
-  // different light-count program family, then make the correct battle
-  // family link again during deployment. That redundant wrong-state pass was
-  // a measured 0.49-0.55 s main-thread task on ANGLE/Metal.
-  battleLoad.progress(0.555, 'Battlefield ready');
-  await nextFrame();
-
-  // 2. roster: pick the participants, then bake any visual still missing one
-  //    chunk-by-chunk (55 → 88%) so the bar moves through the texture bakes.
-  battleLoad.progress(0.56, 'Assembling rosters');
-  await nextFrame();
-  const playerVisualStartedAt = performance.now();
-  startBattle(specId, resolved, {
-    deferVisuals: true,
-    preBattleHold: true,
-    randomRoster,
-  });
-  // Collision is available now. The exact preloaded tactical map installs
-  // fire-and-forget; its tiny image decode overlaps the remaining roster work
-  // and can never extend click-to-visible or click-to-control latency.
-  battleLoad.progress(0.565, 'Drawing tactical map');
-  prepareBattleWorldServices(world);
-  battleLoad.progress(0.57, 'Preparing player vehicle');
-  const playerVisualTiming = {
-    specId: game.player?.specId || specId,
-    quality: 'preview',
-    startedAt: Math.round(playerVisualStartedAt),
-    buildMs: Math.round(performance.now() - playerVisualStartedAt),
-    prebakeMs: 0,
-  };
-  // Garage prioritizes response and initially reveals a never-seen vehicle
-  // with a 512/256 paint set. When that exact visual becomes the player actor,
-  // promote its shared canvases to the normal 1024/512 player tier while the
-  // opaque battle loader owns the screen. The Texture objects stay stable, so
-  // every material on the borrowed visual receives the sharper bake in place.
-  if (game.player?.visual && game.player.visual === pedestal.current) {
-    const playerPrebakeStartedAt = performance.now();
-    await prebakeSharedTextures(
-      game.player.spec, engineCtx.anisotropy ?? 4, 'preview', loadYield,
-    );
-    playerVisualTiming.prebakeMs = Math.round(performance.now() - playerPrebakeStartedAt);
-  }
-  if (typeof window !== 'undefined') {
-    (window.__VISUAL_LOAD_TIMINGS ||= []).push(playerVisualTiming);
-  }
-  const playerUploadStartedAt = performance.now();
-  // setupBattle must provide a player visual synchronously (either borrowed
-  // from the showroom or constructed as fallback) so simulation and HUD state
-  // are valid, but it does not have to upload every map in the same frame.
-  // Detach and stage that root just like the streamed allies; otherwise the
-  // first hidden battle render pays the whole upload as one 500-700 ms freeze.
-  await battleVisuals.stageBattleVisualReveal(game.player, loadYield);
-  playerVisualTiming.uploadMs = Math.round(performance.now() - playerUploadStartedAt);
-  playerVisualTiming.totalMs = Math.round(performance.now() - playerVisualStartedAt);
-  bltStage('roster');
-  battleLoad.rosters(rosterRows('player'), rosterRows('enemy'));
-  // PERF (perf-r2): bake the shot-card schematics for this exact roster now,
-  // behind the loading screen — the first hit on each enemy type used to pay
-  // a synchronous ~5-15 ms canvas bake on the very frame the shell landed.
-  hud.warmShotCards(game.tanks.map((e) => e.specId));
-  battleLoad.progress(0.58, 'Painting vehicles');
-  // The player is the only required subject for the first chase frame. Allied
-  // formation visuals stream first during the frozen countdown, then enemies.
-  const openingVisual = (ent) => ent.isPlayer;
-  if (game.tanks.some((ent) => !ent.visual && openingVisual(ent))) await nextFrame();
-  await battleVisuals.stream(openingVisual, loadYield, (fraction) => {
-    battleLoad.progress(0.58 + fraction * 0.30, 'Painting vehicles');
-  });
-  bltStage('bake');
-
-  // Finish camouflage, roster visuals, terrain, shader programs, effects,
-  // shadows and the exact reveal frame behind the opaque loader. The typed
-  // owner contains ordering, cancellation and fail-soft fallback policy.
-  battleLoad.progress(0.90, 'Preparing deployment');
-  const {
-    generation: entryWarmGeneration,
-    revealPrimed: entryRevealPrimed,
-  } = await soloBattleDeployment.warm(camoSweepP);
-  bltStage('warm');
-  // Start the cheap ambient graph before reveal as well. openBattle keeps its
-  // idempotent calls for debug/direct entry paths, but the normal player path
-  // reaches it with no cold audio work left.
-  audio.loadingOn(false);
-  audio.ambientOn(true);
-  battleLoad.progress(1, 'Ready');
-
-  // Cached maps can finish in only a few frames. Give the page enough dwell
-  // to communicate the map/rosters instead of flashing like a dropped frame.
-  const readyHoldMs = 900 - (performance.now() - shownAt);
-  if (readyHoldMs > 0) await new Promise((r) => setTimeout(r, readyHoldMs));
-
-  // 4. The visible WoT-style countdown is presentation-only. All first-use
-  // work above has completed, so these five seconds have the same render
-  // budget as live play instead of acting as an extension of the loader.
-  bltStage('holdCountdown');
-  blt.totalMs = Math.round(performance.now() - shownAt);
-  if (typeof window !== 'undefined') window.__BATTLE_LOAD = blt;
-  // Restore the full playable baseline while the opaque veil still owns the
-  // screen; any render-target resize is hidden instead of landing on the
-  // first visible battle frame.
-  post.setAdaptiveSuspended(false);
-  bltStage('restoreRenderer');
-  // A failed/interrupted warm still gets the safe reveal fallback. The normal
-  // path reuses the already-presented final-quality deployment frame instead
-  // of rendering the same scene twice behind the loader.
-  if (!entryRevealPrimed) {
-    prepareBattleRevealCamera();
-    await battleEntryLifecycle.primeReveal();
-  }
-  bltStage('primeReveal');
-  await battleLoad.hide();
-  bltStage('hide');
-  const loadingElapsedS = (performance.now() - shownAt) / 1000;
-  const visiblePreBattleS = resolveVisiblePreBattleSeconds(
-    PRE_BATTLE_HOLD_S, loadingElapsedS, MIN_VISIBLE_PRE_BATTLE_S,
-  );
-  blt.loadingElapsedMs = Math.round(loadingElapsedS * 1000);
-  blt.visiblePreBattleS = visiblePreBattleS;
-  blt.expectedClickToControlMs = Math.round(
-    loadingElapsedS * 1000 + visiblePreBattleS * 1000,
-  );
-  openBattle(visiblePreBattleS);
-  scheduleDeferredCombatWarm(entryWarmGeneration);
-  bltStage('open');
-  blt.totalMs = Math.round(performance.now() - shownAt);
-}
 // The solo battle loader is an opaque DOM surface. Rendering the newly
 // activated 3D world behind it made ordinary `nextFrame()` budget yields pay
 // the complete first world/shadow draw before the explicit offscreen warm,
@@ -2054,6 +1818,60 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
   onReveal: (receipt) => {
     if (typeof window !== 'undefined') window.__BATTLE_REVEAL = receipt;
   },
+});
+const soloBattleLoading = createSoloBattleLoadingRuntime({
+  game,
+  post,
+  battleIntent,
+  battleLoad,
+  audio,
+  acquisition: battleEntryAcquisition,
+  deployment: soloBattleDeployment,
+  lifecycle: battleEntryLifecycle,
+  getPendingMapId: () => pendingMapId,
+  getMapConfig,
+  getMapThumb: (mapId) => MAP_THUMBS[mapId] || '',
+  hasCachedWorld: (mapId) => !!worldCache.get(mapId),
+  getWorld: () => {
+    if (!world) throw new Error('solo battle loading requires an active world');
+    return world;
+  },
+  ensureWorld,
+  ensureBattleVisuals: ensureBattleVisualStreamer,
+  getBattleVisuals: () => {
+    if (!battleVisuals) throw new Error('battle visual streamer was not loaded');
+    return battleVisuals;
+  },
+  ensureBattleHud,
+  ensureTouchControls,
+  preloadSettings: () => settings.preload(),
+  preloadArmorAim: () => armorAimOverlay.preload(),
+  planRoster: (specId, randomRoster) =>
+    planBattleParticipantIds(game, specId, randomRoster),
+  planCamoOverrides: (specId, mapId, randomRoster) =>
+    planBattleCamoOverrides(game, specId, mapId, randomRoster),
+  ensureTankBuilders,
+  preloadSoloAuthority: preloadSoloBattleRuntime,
+  preloadBattleClient: preloadBattleClientRuntime,
+  preloadBattleWarm: () => battleWarm.preload(),
+  ensureKillcam: ensureKillcamRuntime,
+  ensureFx: ensureFxRuntime,
+  startBattle,
+  prepareBattleWorldServices,
+  getPedestalVisual: () => pedestal.current,
+  prebakeSharedTextures,
+  anisotropy: engineCtx.anisotropy ?? 4,
+  rosterRows,
+  warmShotCards: (specIds) => hud.warmShotCards(specIds),
+  getCamoSweep: () => camoSweepP,
+  prepareRevealCamera: prepareBattleRevealCamera,
+  resolveVisiblePreBattleSeconds,
+  preBattleHoldSeconds: PRE_BATTLE_HOLD_S,
+  minimumVisiblePreBattleSeconds: MIN_VISIBLE_PRE_BATTLE_S,
+  openBattle,
+  scheduleDeferredWarm: scheduleDeferredCombatWarm,
+  nextFrame,
+  createLoadingYielder: createOpaqueLoadingYielder,
 });
 
 /**
@@ -2192,7 +2010,7 @@ async function beginBattleEntry(specId, mapId = null, options = undefined) {
   return battleEntryLifecycle.run(async () => {
     try {
       battleEntryLifecycle.coverRendering();
-      await startBattleLoading(specId, mapId, options);
+      await soloBattleLoading.begin(specId, mapId, options);
     } catch (error) {
       console.error('[battle] entry failed', error);
       audio.loadingOn(false);
@@ -2634,7 +2452,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   if (typeof window !== 'undefined') window.__START_BATTLE_TIMINGS = sbt;
   // Debug/capture entries do not use the branded loader or its deployment
   // queue. Drain the same round receipt synchronously after the actual roster
-  // exists; the player path owns it explicitly in startBattleLoading().
+  // exists; the typed solo loading owner holds it explicitly on player entry.
   if (!opts.deferVisuals) combatWarm.drain();
   // The battle-open flyby is armed only once the player can actually SEE it:
   // the loading-screen path calls openBattle() when the screen clears.
@@ -2676,10 +2494,6 @@ function openBattle(preBattleSeconds = PRE_BATTLE_HOLD_S) {
   // edge after the AudioContext exists. Player entries emit at countdown zero.
   if (game.preBattleS <= 0) bus.emit('battle:rollout', {});
 }
-// battle_countdown r1: WoT-style pre-battle freeze length (player path only).
-const PRE_BATTLE_HOLD_S = 5;
-const MIN_VISIBLE_PRE_BATTLE_S = 2;
-
 function clearBattlePresentationForExit() {
   armorAimOverlay.clear();
   battleResultPresentation.clearPending();

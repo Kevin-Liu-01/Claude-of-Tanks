@@ -40,9 +40,10 @@ residency, switch convergence, and battle visual handoff; it composes
 drag/wheel bindings, and disposal while the engine orbit remains the only pose
 solver.
 `garageDressingOptimization.ts` finalizes the fully streamed static workshop,
-bakes descendant transforms, batches only exact repeated opaque prop meshes,
-and removes only sub-resolution fitting shadows while preserving authored
-vehicle exhibits, shadow proxies, and all color geometry.
+bakes descendant transforms, instances exact repeats, merges only compatible
+semantic-free opaque surfaces, and removes only sub-resolution fitting shadows
+while preserving authored vehicle exhibits, shadow proxies, and all color
+geometry.
 `battleIntentRuntime.ts` owns the explicit Battle hover/focus lifecycle:
 concrete Random-map reservation, exact-roster texture coalescing, stale intent
 cancellation, and the camouflage-safe handoff into covered loading. Passive
@@ -51,6 +52,9 @@ entry exclusivity across every mode and the covered default-frame reveal gate.
 `soloBattleDeploymentRuntime.ts` owns the ordered solo deployment warm from
 final camouflage through exact roster, terrain, FX, shader, CSM, post, and
 reveal preparation; callers receive only generation and reveal receipts.
+`soloBattleLoadingRuntime.ts` owns the complete covered solo entry around that
+warm: exact world/roster acquisition, progress, texture upload, visual staging,
+minimum loader dwell, reveal fallback, countdown calculation, and diagnostics.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
@@ -81,6 +85,9 @@ already-smoothed network poses. Bot changes require both focused AI tests and
 battle probes.
 Route covered solo warm changes through `soloBattleDeploymentRuntime.ts`; do
 not put shader, effect, shadow, or reveal ordering back into `main.js`.
+Route covered solo entry changes through `soloBattleLoadingRuntime.ts`; do not
+recreate its acquisition barrier, progress policy, or reveal handoff in the
+composition root.
 Route result, death-beat, and replay-handoff changes through
 `battleResultPresentationRuntime.ts`; keep those latches out of `tick()`.
 Workshop changes must preserve the typed optimization receipt and pass the

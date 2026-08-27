@@ -117,6 +117,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleEntryAcquisition.selftest.mjs',
     'src/game/battleEntryLifecycle.selftest.mjs',
     'src/game/soloBattleDeploymentRuntime.selftest.mjs',
+    'src/game/soloBattleLoadingRuntime.selftest.mjs',
     'src/game/battleWarmRuntime.selftest.mjs',
     'src/game/combatWarmCoordinator.selftest.mjs',
     'src/game/deferredCombatWarmRuntime.selftest.mjs',

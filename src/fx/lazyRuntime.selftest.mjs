@@ -19,6 +19,9 @@ const deferredWarm = await readFile(
 const soloDeployment = await readFile(
   new URL('../game/soloBattleDeploymentRuntime.ts', import.meta.url), 'utf8',
 );
+const soloLoading = await readFile(
+  new URL('../game/soloBattleLoadingRuntime.ts', import.meta.url), 'utf8',
+);
 const battleIntentRuntime = await readFile(
   new URL('../game/battleIntentRuntime.ts', import.meta.url), 'utf8',
 );
@@ -65,7 +68,6 @@ if (!/attachLateFxState\(softState\)[\s\S]{0,100}lateFx\.setSoftState\(softState
 }
 
 const requiredGates = [
-  ['solo battle', /async function startBattleLoading[\s\S]{0,5200}const fxTextureP = ensureFxRuntime\(\)/],
   ['QA battle', /async function debugStartBattle[\s\S]{0,420}ensureFxRuntime\(\)/],
 ];
 for (const [name, pattern] of requiredGates) {
@@ -129,7 +131,7 @@ if (!/image\.onload = async[\s\S]{0,260}image\.decode/.test(particles)) {
   throw new Error('particle preload must finish PNG decode before texture upload');
 }
 
-if (!/openBattle\([^;]*\);\s*scheduleDeferredCombatWarm\(entryWarmGeneration\)/.test(main)) {
+if (!/openBattle\(visiblePreBattleSeconds\);\s*scheduleDeferredWarm\(generation\)/.test(soloLoading)) {
   throw new Error('rare combat variants must start only after the first battle reveal');
 }
 const coveredWarm = soloDeployment.slice(
@@ -153,7 +155,8 @@ if (!(enemyAt >= 0 && openingAt > enemyAt && navigationAt > openingAt
     && terrainAt > navigationAt && rareAt > terrainAt)) {
   throw new Error('hidden enemy receipts and fallback opening/rare work must retain countdown order');
 }
-if (!/const fxTextureP = ensureFxRuntime\(\)\.then[\s\S]{0,420}live\.preloadTextures[\s\S]{0,120}live\.warmTextures[\s\S]{0,220}battleVisuals\.stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,900}fxTextureP/.test(main)) {
+if (!/const fxTexture = ensureFx\(\)\.then[\s\S]{0,420}live\.preloadTextures[\s\S]{0,120}live\.warmTextures[\s\S]{0,220}battleVisuals\.stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,1100}\(\) => fxTexture/.test(soloLoading)
+    || !/ensureFx:\s*ensureFxRuntime/.test(main)) {
   throw new Error('solo entry must overlap exact FX atlas decode/install/upload with world construction');
 }
 if (!/if \(initiallyHidden\) \{[\s\S]{0,900}visual\.setVisible\?\.\(false\)[\s\S]{0,900}root\.removeFromParent\(\)[\s\S]{0,180}battleVisibilityDetached = true/.test(battleVisualStreamer)

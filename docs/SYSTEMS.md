@@ -168,6 +168,12 @@ prop contacts behind one allocation-bounded interface.
 composition root supplies concrete capabilities and receives only a generation
 and reveal receipt; it must not duplicate warm ordering or shader/shadow policy.
 
+`src/game/soloBattleLoadingRuntime.ts` owns the surrounding solo transition:
+world, exact-roster, battle-interface, FX and authority acquisition share one
+barrier; then player upload, deployment warm, loader dwell, reveal fallback,
+countdown calculation and diagnostics run in one typed order. `src/main.js`
+connects its ports and no longer implements that loading state machine.
+
 `src/game/battleResultPresentationRuntime.ts` is the post-simulation result
 owner. The frame loop invokes it once after authority advances and does not own
 death-beat deadlines, replay-pending state, or result-presentation latches.
