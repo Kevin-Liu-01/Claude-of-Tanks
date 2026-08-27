@@ -4,6 +4,7 @@ import {
   beginPrivateClientMatch,
   beginPrivateHostMatch,
   buildPrivateMatchPlayers,
+  resolvePrivateMatchMap,
 } from './privateMatchHandoff.js';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
 import { PrivateRoomClientSession, PrivateRoomHostSession } from './privateRoomSession.ts';
@@ -300,6 +301,15 @@ const lobbyState = {
     { id: 'peer-1', specId: 'm1a2', team: 'bravo' },
   ],
 };
+const privateRandomCoverage = new Set();
+for (let matchSeed = 0; matchSeed < 4096; matchSeed++) {
+  privateRandomCoverage.add(resolvePrivateMatchMap({ ...lobbyState, matchSeed }));
+}
+assert.deepEqual(
+  [...privateRandomCoverage].sort(),
+  [...MAP_IDS].sort(),
+  'private/LAN Random Battle seeds can select every registered battlefield',
+);
 const filled = buildPrivateMatchPlayers({
   ...lobbyState,
   teamSize: 3,

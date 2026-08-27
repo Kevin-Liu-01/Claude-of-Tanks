@@ -1,7 +1,7 @@
 // src/world/map.js — composes terrain meshes + vegetation + props into the World.
 // Contract: docs/ARCHITECTURE.md §2.7 (World shape), §3.2 (layout rules).
 // Which battlefield gets built is driven by a map config (src/world/maps/*):
-// createMap(engineCtx, { mapId }) — 'verdant' | 'desert' | 'winter' | 'urban'.
+// createMap(engineCtx, { mapId }) — any id from maps/index.js MAP_IDS.
 
 import * as THREE from 'three';
 import { createHeightField, buildTerrainMeshes, buildTerrainMeshesAsync } from './terrain.js';

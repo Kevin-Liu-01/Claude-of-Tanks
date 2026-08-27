@@ -26,12 +26,18 @@ import blackglass from './blackglass.js';
 import titanGorge from './titanGorge.js';
 import skybridge from './skybridge.js';
 
-/** Ordered map ids (garage picker order). @type {string[]} */
-export const MAP_IDS = ['verdant', 'desert', 'winter', 'urban',
+/** Ordered map ids (garage picker order). @type {readonly string[]} */
+export const MAP_IDS = Object.freeze(['verdant', 'desert', 'winter', 'urban',
   'coastal', 'autumn', 'steppe', 'railyard',
   'frontier', 'fjord', 'delta', 'badlands',
   'monsoon', 'alpine', 'caldera', 'foundry',
-  'ruinspires', 'blackglass', 'titan_gorge', 'skybridge'];
+  'ruinspires', 'blackglass', 'titan_gorge', 'skybridge']);
+
+// Random Battle deliberately aliases the complete canonical registry. Keeping
+// one immutable list makes a newly registered battlefield immediately eligible
+// in solo, private/LAN, rematch, and ranked selection instead of requiring a
+// second hand-maintained pool.
+export const RANDOM_BATTLE_MAP_IDS = MAP_IDS;
 
 const CONFIGS = {
   verdant, desert, winter, urban, coastal, autumn, steppe, railyard,
@@ -56,7 +62,10 @@ export function getMapConfig(mapId) {
  */
 export function resolveMapId(mapId, rand = Math.random) {
   if (mapId === 'random' || !CONFIGS[mapId]) {
-    return MAP_IDS[Math.min(MAP_IDS.length - 1, Math.floor(rand() * MAP_IDS.length))];
+    const sample = Number(rand());
+    const unit = Number.isFinite(sample)
+      ? Math.max(0, Math.min(1 - Number.EPSILON, sample)) : 0;
+    return RANDOM_BATTLE_MAP_IDS[Math.floor(unit * RANDOM_BATTLE_MAP_IDS.length)];
   }
   return mapId;
 }

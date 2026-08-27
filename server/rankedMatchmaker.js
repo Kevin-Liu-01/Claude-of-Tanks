@@ -2,13 +2,12 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { sanitizeLoadout } from '../src/game/equipment.js';
 import { isGarageVisibleTankId } from '../src/game/matchmaking.js';
 import { getSpec } from '../src/vehicles/specs.js';
-import { MAP_IDS } from '../src/world/maps/index.js';
+import { RANDOM_BATTLE_MAP_IDS } from '../src/world/maps/index.js';
 import { uniquePlayerName } from '../src/net/playerNames.js';
 import { networkCamoId } from '../src/vehicles/camoPolicy.js';
 import { RatingStore } from './ratingStore.js';
 
 const TEAM_SIZES = new Set([1, 2, 3, 5, 7]);
-const MAPS = MAP_IDS;
 const QUEUE_TTL_MS = 10 * 60_000;
 const MATCH_TTL_MS = 25 * 60_000;
 const RESULT_TTL_MS = 2 * 60_000;
@@ -28,6 +27,12 @@ function randomId(prefix) {
 
 function randomToken() {
   return randomBytes(24).toString('base64url');
+}
+
+/** Ranked rotation consumes the same complete pool as every Random Battle. */
+export function rankedBattleMapForSequence(sequence) {
+  const index = Number.isSafeInteger(sequence) && sequence >= 0 ? sequence : 0;
+  return RANDOM_BATTLE_MAP_IDS[index % RANDOM_BATTLE_MAP_IDS.length];
 }
 
 function publicTicket(entry) {
@@ -161,7 +166,7 @@ export class RankedMatchmaker {
       if (team === 'alpha') alphaRating += entry.rating;
       else bravoRating += entry.rating;
     }
-    const mapId = MAPS[this.matchSequence % MAPS.length];
+    const mapId = rankedBattleMapForSequence(this.matchSequence);
     const seed = (0x6d2b79f5 ^ Math.imul(++this.matchSequence, 0x9e3779b1)) >>> 0;
     const roster = [];
     const rosterNames = [];

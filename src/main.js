@@ -1620,7 +1620,7 @@ const garage = await bootStage('ui', () => createGarage({
   onBattleIntent: preloadBattleIntent,
   onTankIntent: preloadPedestalIntent,
   onStudioIntent: preloadStudioIntent,
-  // MAP-CONFIG WIRING: battlefield picker cards (4 maps + Random)
+  // MAP-CONFIG WIRING: every registered battlefield plus Random.
   maps: garageMaps,
   // CAMO WIRING: per-tank paint picker — persists the choice and repaints the
   // shared albedo in place, so the pedestal tank updates immediately.

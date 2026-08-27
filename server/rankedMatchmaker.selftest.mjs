@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
-import { RankedMatchmaker } from './rankedMatchmaker.js';
+import { RankedMatchmaker, rankedBattleMapForSequence } from './rankedMatchmaker.js';
 import { RatingStore } from './ratingStore.js';
+import { RANDOM_BATTLE_MAP_IDS } from '../src/world/maps/index.js';
+
+assert.deepEqual(
+  RANDOM_BATTLE_MAP_IDS.map((_, index) => rankedBattleMapForSequence(index)),
+  RANDOM_BATTLE_MAP_IDS,
+  'ranked Random Battle rotates through every registered battlefield',
+);
 
 let identity = 0;
 let secret = 0;

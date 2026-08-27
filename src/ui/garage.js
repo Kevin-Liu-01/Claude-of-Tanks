@@ -561,7 +561,7 @@ const GARAGE_CSS = `
   text-transform:uppercase;margin-top:3px;}
 .cot-garage .hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   font-size:9.5px;letter-spacing:.14em;color:rgba(138,151,163,.7);text-transform:uppercase;}
-/* MAP-CONFIG WIRING: battlefield picker (4 maps + random) */
+/* MAP-CONFIG WIRING: complete registered battlefield picker + random. */
 /* camo_spotting r1: maps + camo picker stack in ONE flex column so they can
    never overlap at short viewports (the old absolute anchors collided at
    1600x900 — the RANDOM card's conic-gradient thumb showed through the camo
