@@ -123,7 +123,7 @@ for (const entity of game.allTanks) {
 }
 
 const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
-const adoptAt = main.indexOf('const adoptedBattleVisual = adoptBattlePlayerAsPedestal');
+const adoptAt = main.indexOf('const adoptedBattleVisual = pedestal.adoptBattlePlayer');
 const clearAt = main.indexOf('clearBattleAfterExit({', adoptAt);
 const preserveAt = main.indexOf('preservedVisual: adoptedBattleVisual', clearAt);
 const poolAt = main.indexOf('visualPool: battleVisualPool', preserveAt);

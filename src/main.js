@@ -82,7 +82,7 @@ import {
 } from './ui/garageStage.js';
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
-import { createGaragePedestalPreloader } from './game/garagePedestalPreloader.ts';
+import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createBattleVisualPool } from './game/battleVisualPool.js';
 import { createBattleVisualStreamerAccess } from './game/battleVisualStreamerAccess.ts';
@@ -690,237 +690,12 @@ function setGarageSunTrim(on) {
     : skyCfg);
 }
 
-let pedestalVisual = null;
-let pedestalPollToken = 0; // cancels superseded asynchronous hero builds
-// switch-desync r1: convergence bookkeeping. A switch is "pending" from the
-// moment its call bumps pedestalPollToken until any reveal path records it
-// (pedestalShownToken catches up). The watchdog below only intervenes when
-// no build or compile is pending.
-let pedestalShownToken = 0;
-let pedestalPendingSince = 0;
-const PEDESTAL_PENDING_GRACE_MS = 8000; // > the poll's 6 s reveal deadline
-function pedestalSwitchPending() {
-  return pedestalPollToken !== pedestalShownToken &&
-    performance.now() - pedestalPendingSince < PEDESTAL_PENDING_GRACE_MS;
-}
-
-// ---------------------------------------------------------------------------
-// TANK-SWITCH PERF (switching r1): warm LRU of built pedestal visuals.
-//
-// Every carousel click used to run a full createTank (texture bake + geometry
-// merge) and dispose the outgoing hero —
-// re-selecting a tank you looked at two clicks ago paid the whole build again
-// (measured 200-1200 ms to visible swap). Built heroes now PARK instead of
-// disposing: hidden, dropped 200 m below the stage, and keyed by
-// specId in insertion order (Map = LRU). Re-selecting restores position +
-// visibility in the same frame: near-zero switch.
-//
-// VRAM: parked visuals hold their per-spec texture-cache refs, so the cache
-// is capped at the central desktop/mobile residency budget (perfprobe budget:
-// a hero set is ~35 MB). Desktop retains ten recent choices so normal fleet
-// browsing remains genuinely warm; battle entry trims those convenience
-// copies before the combat roster becomes resident. Eviction detaches and
-// disposes the visual, releasing its refcounted shared textures.
-//
-// Switch latency is instrumented end-to-end: window.__SWITCH_TIMINGS rows are
-// { id, ms, path } where ms is click → hero visibly on stage.
-const pedestalCache = new Map(); // specId -> visual, oldest-first (LRU)
-const PEDESTAL_CACHE_MAX = residentLimits.pedestalVisuals;
-const PEDESTAL_PARK_Y = -200;
-if (typeof window !== 'undefined') window.__SWITCH_TIMINGS = [];
-// switch-desync r1: bounded event trace of the pedestal switch pipeline —
-// every call, path, reveal, retire, supersede and eviction lands here so a
-// live desync (stats card vs pedestal) can be root-caused from the page.
-const PED_TRACE_MAX = 500;
-if (typeof window !== 'undefined') window.__PED_TRACE = [];
-function pedTrace(ev, data) {
-  const log = (typeof window !== 'undefined' && window.__PED_TRACE) || null;
-  if (!log) return;
-  log.push(Object.assign({ t: Math.round(performance.now()), ev }, data));
-  if (log.length > PED_TRACE_MAX) log.splice(0, log.length - PED_TRACE_MAX);
-}
-function pedVisState(vis) {
-  if (!vis) return null;
-  const r = vis.root;
-  return `${vis.specId}${r.parent ? '' : '/detached'}${r.visible === false ? '/hidden' : ''}` +
-    `${r.position.y < GARAGE_POS.y - 50 ? '/parked' : ''}`;
-}
-function recordSwitch(specId, t0, path, phases = null) {
-  // every reveal path lands here — the moment a hero is ACTUALLY SHOWN.
-  // __everShown feeds the LRU eviction policy (shown heroes outlive idle
-  // prefetches, see touchCache).
-  if (pedestalVisual) pedestalVisual.__everShown = true;
-  // switch-desync r1: every recordSwitch call site is token-current (sync
-  // paths run inside their own call; async polls re-check the token first),
-  // so this is exactly "the latest requested switch has converged".
-  pedestalShownToken = pedestalPollToken;
-  // Stale-cover sweep: the hero is visibly on stage NOW — any other visual
-  // still standing there is a cover whose park was deferred (see parkVisual)
-  // or whose retire chain was superseded. Park them in the same beat so the
-  // hand-over never shows two hulls or leaves a stale one behind.
-  for (const v of pedestalCache.values()) {
-    if (v !== pedestalVisual && onStage(v)) parkVisual(v);
-  }
-  const ms = Math.round(performance.now() - t0);
-  const log = (typeof window !== 'undefined' && window.__SWITCH_TIMINGS) || null;
-  if (log) log.push({ id: specId, ms, path, ...(phases || {}) });
-  pedTrace('reveal', { id: specId, ms, path, pv: pedVisState(pedestalVisual) });
-  if (bootComplete && game.phase === 'garage') queuePedestalTexturePrefetch();
-}
-function pedestalPose(vis) {
-  // Center the rendered body mass, never the historical rig origin, contact
-  // midpoint or complete gun/antenna silhouette. This factory-owned anchor
-  // covers every fleet member, including casemates and recovered-frame
-  // builders, without translating battle/armor geometry.
-  if (vis.centerOnPresentationPoint) {
-    vis.centerOnPresentationPoint(GARAGE_POS.x, GARAGE_POS.z);
-  } else {
-    vis.root.position.x = GARAGE_POS.x;
-    vis.root.position.z = GARAGE_POS.z;
-  }
-  if (vis.seatOnFloor) {
-    vis.seatOnFloor(GARAGE_POS.y + GARAGE_PODIUM_TOP_Y_M);
-  } else {
-    vis.root.position.y = GARAGE_POS.y + 0.35;
-  }
-}
-function parkVisual(vis) {
-  if (!vis || vis === pedestalVisual) return; // re-selected while retiring
-  // switch-desync r1: NEVER strip the last visible cover off the stage while
-  // the incoming hero is still hidden (chained rapid switches: B's superseded
-  // build used to park A — the only visible hero — while C was still compiling,
-  // leaving a bare pedestal for the whole build). The deferred park
-  // is completed by the stale-cover sweep in recordSwitch the moment the
-  // current hero actually shows.
-  if (onStage(vis) && !onStage(pedestalVisual)) {
-    pedTrace('park-deferred', { id: vis.specId, pv: pedVisState(pedestalVisual) });
-    return;
-  }
-  pedTrace('park', { id: vis.specId });
-  if (vis.setVisible) vis.setVisible(false);
-  vis.root.position.y = GARAGE_POS.y + PEDESTAL_PARK_Y;
-}
-/** True when a visual is standing visibly on the garage stage (not hidden,
- * not parked 200 m down, not detached) — i.e. the player can see it. */
-function onStage(vis) {
-  if (!vis || !vis.root) return false;
-  const r = vis.root;
-  return !!r.parent && r.visible !== false &&
-    Math.abs(r.position.x - GARAGE_POS.x) < 4 &&
-    Math.abs(r.position.z - GARAGE_POS.z) < 4 &&
-    r.position.y > GARAGE_POS.y - 50;
-}
-function evictPedestalVisual(id, vis) {
-  pedestalCache.delete(id);
-  pedTrace('evict', { id: vis.specId, state: pedVisState(vis) });
-  scene.remove(vis.root);
-  vis.dispose();
-}
-function trimPedestalCache(maxEntries = PEDESTAL_CACHE_MAX) {
-  for (const [id, vis] of pedestalCache) {
-    if (pedestalCache.size <= maxEntries) break;
-    if (vis === pedestalVisual || vis.__pedestalCompiling || onStage(vis)) continue;
-    evictPedestalVisual(id, vis);
-  }
-}
-function touchCache(specId, vis) {
-  pedestalCache.delete(specId);
-  pedestalCache.set(specId, vis);
-  // Eviction policy: idle prefetches must never push a hero the player
-  // actually LOOKED AT out of the cache (real-browser session: two clicks +
-  // four neighbor prefetches evicted the boot hero). Pass 1 evicts oldest
-  // never-shown prefetches; pass 2 falls back to plain LRU order.
-  //
-  // switch-desync r1 (ROOT CAUSE of the garage tank-switch desync): touchCache
-  // runs INSIDE buildPedestalVisual, BEFORE the caller assigns pedestalVisual —
-  // so the just-built INCOMING hero is not covered by the pedestalVisual guard,
-  // and (never shown yet) pass 1 treated it as a stale prefetch. Once six
-  // already-viewed heroes filled the LRU, every new build evicted ITSELF at
-  // birth: scene.remove + dispose, then the disposed visual became the
-  // pedestal hero — empty/stale stage, and the prefetch loop rebuilt/evicted
-  // the same neighbor forever. Two additional shields:
-  //   - `vis` (the entry this call inserts) is never evictable;
-  //   - a visual standing VISIBLY on the stage (the outgoing hero covering
-  //     while the incoming one loads) is never evictable — evicting it left
-  //     a bare pedestal for the whole incoming compile. The cache may sit
-  //     one entry over budget for that window; the next touch settles it.
-  for (const pass of [1, 2]) {
-    for (const [id, v] of pedestalCache) {
-      if (pedestalCache.size <= PEDESTAL_CACHE_MAX) return;
-      if (v === pedestalVisual) continue; // never evict the live hero
-      if (v.__pedestalCompiling) continue; // async program warm owns this root
-      if (v === vis) continue;            // never evict the entry just inserted
-      if (onStage(v)) continue;           // never strip a hero off the stage
-      if (pass === 1 && v.__everShown) continue;
-      evictPedestalVisual(id, v);
-    }
-  }
-}
-/**
- * Build a pedestal-grade visual for the LRU (shared camoSeed/pose contract).
- * Cold interactive switches use the AI texture tier: the complete showroom
- * geometry, markings, materials and shaders are unchanged, but the initial
- * procedural canvases are bounded to 512/256 instead of 1024/512. At normal
- * showroom projection this remains above the tank's screen-space texel count
- * and removes the only remaining hundreds-of-milliseconds switch atom.
- * The first boot hero is prebaked at preview quality below, and a selected
- * cold hero is promoted under the opaque battle loader before combat.
- */
-function buildPedestalVisual(specId, parked = false) {
-  // The showroom hero never enters the simulation. Avoid deriving movement
-  // contact metadata from its full rendered subtree; battle/player/AI builds
-  // still run that solve normally.
-  const vis = createTank(specId, engineCtx, {
-    camoSeed: 4200, quality: 'ai', staticPreview: true,
-  });
-  const pedSpec = getSpec(specId);
-  vis.spec = pedSpec;
-  // Every showroom vehicle follows the garage floor's world-Z tread axis.
-  // Keeping this canonical also makes the podium guides continuous with the
-  // approach scuffs instead of letting vehicle-specific presentation yaw
-  // break the physical alignment.
-  vis.root.rotation.y = GARAGE_TRACK_AXIS_YAW_RAD;
-  pedestalPose(vis);
-  // A cold hero can compile its exact garage material variants below the bay
-  // before reveal. It remains attached/visible so compileAsync traverses it,
-  // but the normal render frustum cannot see it while the outgoing tank keeps
-  // covering the stage.
-  if (parked) vis.root.position.y = GARAGE_POS.y + PEDESTAL_PARK_Y;
-  scene.add(vis.root);
-  touchCache(specId, vis);
-  return vis;
-}
-async function warmPedestalPrograms(vis) {
-  if (!vis || !vis.root) return;
-  if (getDeviceTier() === 'mobile') return;
-  try {
-    // ANGLE's KHR_parallel_shader_compile completion query is not reliably
-    // non-blocking: profiling cold switches attributed 440-510 ms to
-    // getProgramParameter, whether reached by compileAsync or by an explicit
-    // program.getUniforms() read. Submit the exact programs, keep the outgoing
-    // hero visible for two painted frames while the driver links, and never
-    // force a completion query. The first visible render remains the fallback;
-    // no material, shader, or rendered detail changes.
-    renderer.compile(vis.root, camera, scene);
-    await nextFrame();
-    await nextFrame();
-  } catch (_) { /* first visible render remains the compatibility fallback */ }
-}
-const noteGarageActivity = () => {
-  garageDressingScheduler.noteActivity();
-  pedestalPreloader.invalidate();
-  if (bootComplete && game.phase === 'garage') queueWorldPrefetch(pendingMapChoice);
-};
-for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart']) {
-  window.addEventListener(type, noteGarageActivity, { capture: true, passive: true });
-}
-const requestQuietIdle = (fn) => {
-  if (window.requestIdleCallback) return window.requestIdleCallback(fn);
-  return setTimeout(fn, 800);
-};
-
 // The repair bays and component displays remain normal garage content, but
 // their complete visual stream is owned by a typed quiet-window scheduler.
+const requestQuietIdle = (callback) => {
+  if (window.requestIdleCallback) return window.requestIdleCallback(callback);
+  return setTimeout(callback, 800);
+};
 const garageDressingScheduler = createGarageDressingScheduler({
   dressing: garageDressing,
   getPhase: () => game.phase,
@@ -940,203 +715,49 @@ function frameBudgetTick(budgetMs = 6) {
     return nextFrame().then(() => { sliceAt = performance.now(); });
   };
 }
-const pedestalPreloader = createGaragePedestalPreloader({
-  getPhase: () => game.phase,
-  isBootComplete: () => bootComplete,
-  getSelectedId: () => selectedSpecId,
-  getNeighborIds: () => garage?.getNeighborIds?.(2) || [],
-  hasCachedVisual: (specId) => pedestalCache.has(specId),
+
+// Garage vehicle selection now crosses one typed lifecycle boundary. The
+// runtime owns construction, shader submission, LRU residency, convergence,
+// and visual handoff; main owns only the player's requested spec.
+const pedestal = createGaragePedestalRuntime({
+  scene,
+  renderer,
+  camera,
+  garagePosition: GARAGE_POS,
+  podiumTopY: GARAGE_PODIUM_TOP_Y_M,
+  trackAxisYawRad: GARAGE_TRACK_AXIS_YAW_RAD,
+  residentLimit: residentLimits.pedestalVisuals,
+  anisotropy: engineCtx.anisotropy ?? 4,
+  createVisual: (specId, options) => createTank(specId, engineCtx, options),
+  getSpec,
   ensureTankBuilder,
   ensureTankBuilders,
-  getSpec,
   prebakeSharedTextures,
   discardSharedTextures: discardPrebakedSharedTextures,
   createBudgetYield: frameBudgetTick,
   nextFrame,
+  getDeviceTier,
+  getPhase: () => game.phase,
+  isBootComplete: () => bootComplete,
+  getSelectedId: () => selectedSpecId,
+  getNeighborIds: () => garage?.getNeighborIds?.(2) || [],
+  getBattlePlayer: () => game.player,
+  getBattleEntity: (specId) => game.tankById.get(specId),
+  groundSampler,
   scheduleDelay: (callback, delayMs) => setTimeout(callback, delayMs),
   acquireBackgroundWork: (kind, stillValid) =>
     garageIdleWorkCoordinator.acquire(kind, stillValid),
-  anisotropy: engineCtx.anisotropy ?? 4,
+  debugTarget: typeof window !== 'undefined' ? window : null,
 });
-const queuePedestalTexturePrefetch = pedestalPreloader.queueNeighbors;
-const preloadPedestalIntent = pedestalPreloader.preloadIntent;
-function setPedestalTank(specId, force = false) {
-  if (!force && pedestalVisual && pedestalVisual.specId === specId) {
-    // switch-desync r1: a same-spec call is a no-op ONLY while the hero is
-    // actually converging (its reveal poll owns the stage) or already stands
-    // visible on the pedestal. A hidden/parked/detached same-spec visual
-    // (superseded mid-load, evicted, poll died) must RE-RUN the pipeline —
-    // the old unconditional return silently swallowed the player's last
-    // click and left the stage stale or empty forever.
-    if (pedestalSwitchPending() || onStage(pedestalVisual)) {
-      pedTrace('same-spec-return', { id: specId, pv: pedVisState(pedestalVisual) });
-      return Promise.resolve();
-    }
-    pedTrace('same-spec-rerun', { id: specId, pv: pedVisState(pedestalVisual) });
-  }
-  pedestalPollToken++;
-  pedestalPreloader.invalidate();
-  pedestalPendingSince = performance.now();
-  pedTrace('call', { id: specId, tok: pedestalPollToken, pv: pedVisState(pedestalVisual) });
-  const t0 = performance.now();
-  // The outgoing hero stays on stage while the incoming procedural texture
-  // bake advances between frames, avoiding a bare-pedestal flash.
-  const prev = pedestalVisual;
-  let prevRetired = false;
-  const retirePrev = () => {
-    if (prevRetired || !prev) return;
-    prevRetired = true;
-    parkVisual(prev);
-  };
-  // WARM PATH: parked hero — restore pose + visibility, done this frame.
-  let cached = pedestalCache.get(specId);
-  if (cached && !cached.root.parent) {
-    // evicted/disposed while it was (or was becoming) the hero — a detached
-    // root can never be re-shown; drop the corpse and rebuild from scratch.
-    pedTrace('purge-detached', { id: specId });
-    pedestalCache.delete(specId);
-    cached = undefined;
-  }
-  if (cached) {
-    const cachedToken = pedestalPollToken;
-    const revealCached = () => {
-      if (cachedToken !== pedestalPollToken) return;
-      pedestalVisual = cached;
-      touchCache(specId, cached);
-      pedestalPose(cached);
-      if (cached.setVisible) cached.setVisible(true);
-      retirePrev();
-      recordSwitch(specId, t0, 'cached');
-    };
-    if (cached.__pedestalCompileP) {
-      return cached.__pedestalCompileP.then(revealCached);
-    }
-    revealCached();
-    return Promise.resolve();
-  }
-  // perf-r5 (owner: "switching between tanks laggy"): a COLD cache build
-  // sync-baked the family canvases inside createTank — a 150-900 ms freeze on
-  // the click. Prebake CHUNKED first (painted frame between painter stages;
-  // instant no-op when the cache is warm), then build against the warm
-  // cache. The outgoing hero keeps covering the stage through the async gap
-  // (pedestalSwitchPending holds the watchdog off for 8 s) and the token
-  // discipline below discards superseded asynchronous work.
-  const buildToken = pedestalPollToken;
-  let phaseAt = performance.now();
-  const phases = { prebakeMs: 0, buildMs: 0, compileMs: 0 };
-  return Promise.all([
-    ensureTankBuilder(specId),
-    prebakeSharedTextures(
-      getSpec(specId), engineCtx.anisotropy ?? 4, 'ai', frameBudgetTick(6),
-    ).catch(() => { /* buildPedestalVisual can still acquire synchronously */ }),
-  ])
-    .then(async () => {
-      phases.prebakeMs = Math.round(performance.now() - phaseAt);
-      if (buildToken !== pedestalPollToken) {
-        pedTrace('prebake-stale', { id: specId, tok: buildToken });
-        retirePrev();
-        return;
-      }
-      phaseAt = performance.now();
-      const incoming = buildPedestalVisual(specId, true);
-      phases.buildMs = Math.round(performance.now() - phaseAt);
-      phases.decorMs = Math.round(incoming.root.userData.decorBuildMs || 0);
-      incoming.__pedestalCompiling = true;
-      // Boot's following `post` stage compiles the complete scene before the
-      // first present, so only interactive cold switches need this dedicated
-      // off-stage warm.
-      phaseAt = performance.now();
-      const compileWork = bootComplete ? warmPedestalPrograms(incoming) : Promise.resolve();
-      incoming.__pedestalCompileP = compileWork.finally(() => {
-        incoming.__pedestalCompiling = false;
-        incoming.__pedestalCompileP = null;
-        // Settle any temporary over-budget allowance made while this root was
-        // protected from eviction.
-        if (pedestalCache.get(specId) === incoming) touchCache(specId, incoming);
-      });
-      await incoming.__pedestalCompileP;
-      phases.compileMs = Math.round(performance.now() - phaseAt);
-      if (buildToken !== pedestalPollToken) {
-        pedTrace('compile-stale', { id: specId, tok: buildToken });
-        return;
-      }
-      pedestalVisual = incoming;
-      pedestalPose(incoming);
-      if (incoming.setVisible) incoming.setVisible(true);
-      retirePrev();
-      recordSwitch(specId, t0, 'procedural', phases);
-    });
-}
 
-/**
- * Reuse the just-fielded player visual as the garage hero. Battle actors and
- * pedestal previews share the same first-party geometry/material contract;
- * rebuilding the selected tank on every return added a 350-700 ms task even
- * though the complete visual was already resident one frame earlier.
- * setupBattle will pose this same entity back onto the battlefield on the
- * next deployment. A separately cached garage hero still wins when present.
- */
-function adoptBattlePlayerAsPedestal(specId) {
-  const incoming = game.player?.visual;
-  if (!incoming || incoming.specId !== specId) return false;
-  const cached = pedestalCache.get(specId);
-  // A rematch reuses the same adopted visual, which is naturally still in
-  // the cache and attached to the scene. Only prefer an attached cache entry
-  // when it is a different, dedicated garage visual.
-  if (cached?.root?.parent && cached !== incoming) return false;
-  const outgoing = pedestalVisual;
-  incoming.spec = getSpec(specId);
-  incoming.root.rotation.y =
-    (162 + (incoming.spec?.visual?.garageYawDeg || 0)) * DEG;
-  if (!incoming.root.parent) scene.add(incoming.root);
-  pedestalVisual = incoming;
-  pedestalPose(incoming);
-  incoming.setVisible?.(true);
-  incoming.__everShown = true;
-  touchCache(specId, incoming);
-  if (outgoing && outgoing !== incoming) parkVisual(outgoing);
-  pedestalPollToken++;
-  pedestalShownToken = pedestalPollToken;
-  pedTrace('adopt-battle', { id: specId, pv: pedVisState(incoming) });
-  return true;
+const noteGarageActivity = () => {
+  garageDressingScheduler.noteActivity();
+  pedestal.invalidatePreload();
+  if (bootComplete && game.phase === 'garage') queueWorldPrefetch(pendingMapChoice);
+};
+for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart']) {
+  window.addEventListener(type, noteGarageActivity, { capture: true, passive: true });
 }
-
-/**
- * Use the already-resident showroom hero as the selected player's battle
- * visual. The model, paint, and articulation contract are identical; only
- * the simulation-only terrain-contact receipt was deferred by staticPreview.
- * This removes a second full procedural build from first battle entry.
- */
-function lendPedestalToBattle(specId) {
-  const visual = pedestalVisual;
-  const ent = game.tankById.get(specId);
-  if (!visual || visual.specId !== specId || !ent) return false;
-  if (visual.__pedestalCompiling || (ent.visual && ent.visual !== visual)) return false;
-  try {
-    visual.prepareForSimulation?.();
-  } catch (_) {
-    return false;
-  }
-  ent.visual = visual;
-  visual.setGroundSampler?.(groundSampler);
-  pedTrace('lend-battle', { id: specId });
-  return true;
-}
-// switch-desync r1: CONVERGENCE WATCHDOG — the last line of defense. Whatever
-// interleaving the async seams produce (superseded builds, late compiles,
-// evictions, dead timers), the invariant is: in the garage, the SELECTED id
-// ends up visible on the pedestal. The watchdog re-runs the pipeline whenever
-// the stage disagrees with the selection AND no switch is legitimately in
-// flight (pedestalSwitchPending covers the full build window). Cheap: two
-// field reads per tick when healthy.
-setInterval(() => {
-  if (!bootComplete || game.phase !== 'garage') return;
-  const want = selectedSpecId;
-  if (!want || pedestalSwitchPending()) return;
-  if (pedestalVisual && pedestalVisual.specId === want && onStage(pedestalVisual)) return;
-  pedTrace('watchdog-resync', { want, pv: pedVisState(pedestalVisual) });
-  setPedestalTank(want, true);
-}, 500);
 // The garage hero uses the dedicated close-up preview tier. A 2048²/1024²
 // repaint was visually redundant at showroom distance and added a large cold
 // boot task (or, when deferred, an equally disruptive post-ready stall).
@@ -1148,12 +769,10 @@ await bootStage('vehicle', async () => {
   // bounded cadence, but do not charge one entire display frame for every
   // procedural texture checkpoint in the selected hero's cold bake.
   const bootVehicleYield = createOpaqueLoadingYielder(12, 80);
-  await Promise.all([
-    bootSelectedBuilderP,
-    prebakeSharedTextures(getSpec(selectedSpecId), engineCtx.anisotropy ?? 4,
-      'preview', bootVehicleYield),
-  ]);
-  await setPedestalTank(selectedSpecId);
+  await pedestal.prepareInitial(selectedSpecId, {
+    builderReady: bootSelectedBuilderP,
+    yieldForBudget: bootVehicleYield,
+  });
 });
 // LOADING PERF note (boot r9): a KHR_parallel_shader_compile overlap
 // (renderer.compileAsync kicked here, awaited in the 'post' stage) was
@@ -1193,9 +812,7 @@ function placeGarage() {
   spotA.position.set(GARAGE_POS.x + 9, GARAGE_POS.y + 11, GARAGE_POS.z + 7);
   spotB.position.set(GARAGE_POS.x - 10, GARAGE_POS.y + 8, GARAGE_POS.z - 6);
   spotTarget.position.set(GARAGE_POS.x, GARAGE_POS.y + 1.2, GARAGE_POS.z);
-  if (pedestalVisual) {
-    pedestalPose(pedestalVisual);
-  }
+  pedestal.poseCurrent();
   if (game.phase === 'garage') garageCameraPose();
 }
 
@@ -1611,7 +1228,7 @@ const garage = await bootStage('ui', () => createGarage({
     battleIntentMapPlan = null;
     selectedSpecId = specId;
     rememberSpecId(specId);
-    setPedestalTank(specId);
+    pedestal.set(specId);
     applyCamoPatternsChunked({ priorityIds: [specId], onlySpecIds: [specId] });
     networkRoomCoordinator?.syncVehicle(specId);
     networkRoomCoordinator?.syncPendingLobbySelection();
@@ -1622,7 +1239,7 @@ const garage = await bootStage('ui', () => createGarage({
   }),
   onPlayModeIntent: preloadPlayMode,
   onBattleIntent: preloadBattleIntent,
-  onTankIntent: preloadPedestalIntent,
+  onTankIntent: pedestal.preloadIntent,
   onStudioIntent: preloadStudioIntent,
   // MAP-CONFIG WIRING: every registered battlefield plus Random.
   maps: garageMaps,
@@ -1751,7 +1368,7 @@ const rig = createCameraRig(camera, {
 // own camera owners. startBattle()/enterGarage() call stop()/start().
 const showroom = (() => {
   const ctl = createShowroomOrbit(camera, rig, {
-    getSubject: () => (pedestalVisual ? pedestalVisual.root : null),
+    getSubject: () => pedestal.current?.root || null,
     getStageRect: () => (garage.getStageRect ? garage.getStageRect() : null),
     // HERO POSE (garage_ui: front+side three-quarter). The pedestal hull is
     // aligned to the floor's world-Z tread axis. Park the eye 45° off the
@@ -1955,7 +1572,7 @@ bus.on('phase:change', (ev) => {
     // roster. Keep only the selected hero on mobile and the three most-recent
     // desktop heroes; the player visual shares paint with the fielded actor
     // and still gives the garage an immediate return.
-    trimPedestalCache(getDeviceTier() === 'mobile' ? 1 : 3);
+    pedestal.trim(getDeviceTier() === 'mobile' ? 1 : 3);
   }
 });
 
@@ -2001,7 +1618,7 @@ renderer.userData.contextRecovery = {
     combatWarm.reset();
     if (getDeviceTier() === 'mobile') {
       setMobilePresetName('mobile-low');
-      trimPedestalCache(1);
+      pedestal.trim(1);
       enforceWorldCacheBudget();
     }
     await nextFrame();
@@ -2581,7 +2198,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // promote its shared canvases to the normal 1024/512 player tier while the
   // opaque battle loader owns the screen. The Texture objects stay stable, so
   // every material on the borrowed visual receives the sharper bake in place.
-  if (game.player?.visual && game.player.visual === pedestalVisual) {
+  if (game.player?.visual && game.player.visual === pedestal.current) {
     const playerPrebakeStartedAt = performance.now();
     await prebakeSharedTextures(
       game.player.spec, engineCtx.anisotropy ?? 4, 'preview', loadYield,
@@ -3615,7 +3232,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   // Normal matchmaking draws only from the curated garage roster, ranks the
   // player's era first and prefers the closest tiers. The battlefield choice
   // never changes vehicle-era matchmaking.
-  lendPedestalToBattle(specId);
+  pedestal.lendToBattle(specId);
   sbtStage('lendPlayerVisual');
   setupBattle(game, specId, world, {
     random: opts.randomRoster !== false, deferVisuals: !!opts.deferVisuals,
@@ -3803,8 +3420,8 @@ function enterGarage({ preserveRoom = networkRoomCoordinator.shouldPreserveAfter
   // camo_spotting r5: bot biome-camo overrides are battle-scoped — drop
   // them so the pedestal/picker show the player's own persisted selection.
   clearCamoOverrides();
-  const adoptedBattleVisual = adoptBattlePlayerAsPedestal(selectedSpecId)
-    ? pedestalVisual
+  const adoptedBattleVisual = pedestal.adoptBattlePlayer(selectedSpecId)
+    ? pedestal.current
     : null;
   clearBattleAfterExit({
     game,
@@ -4115,7 +3732,7 @@ function updateDustAndSync(dtFrame, presentationAlpha = 1) {
       || (_detailScreenPos.z >= -1.2 && _detailScreenPos.z <= 1.2
         && Math.abs(_detailScreenPos.x) <= 1.35
         && Math.abs(_detailScreenPos.y) <= 1.45);
-    if (game.phase !== 'garage' || visual !== pedestalVisual) {
+    if (game.phase !== 'garage' || visual !== pedestal.current) {
       visual.syncFromState(state, dtFrame, viewDistM, presented, detailVisible);
     }
     // The PLAYER's hull visibility is OWNED by the camera rig — it hides the
@@ -4801,7 +4418,7 @@ window.__SHOTS = {
       scratch3: _v3,
       computeDispersionRadM,
       bus,
-      setPedestalTank,
+      setPedestalTank: pedestal.set,
       garage,
       garageDressing,
       tankPoseFromState,
@@ -5110,12 +4727,12 @@ window.__DEBUG = {
     resolvePresetName, resolveAutoTier, reportSustainedOverload,
     setPresetName, setMobilePresetName, noteGpuRenderer,
   },
-  get pedestalVisual() { return pedestalVisual; },
-  get pedestalOnStage() { return onStage(pedestalVisual); },
+  get pedestalVisual() { return pedestal.current; },
+  get pedestalOnStage() { return pedestal.isOnStage(); },
   // switch-desync r1: the id the garage UI (stats card / card highlight)
   // believes is selected — probes assert pedestalVisual.specId === this.
   get selectedSpecId() { return selectedSpecId; },
-  get pedestalCacheIds() { return [...pedestalCache.keys()]; },
+  get pedestalCacheIds() { return [...pedestal.cacheIds]; },
   get worldCacheIds() { return [...worldCache.keys()]; },
   get residentLimits() { return { ...residentLimits }; },
   get battleVisualPool() { return battleVisualPool.stats(); },
@@ -5130,7 +4747,7 @@ window.__DEBUG = {
   // the exact pedestal construction/pose used by the garage.
   stagePedestalTank: (id) => {
     selectedSpecId = id;
-    return setPedestalTank(id, true);
+    return pedestal.set(id, true);
   },
   get world() { return world; },
   switchMap,
@@ -5226,7 +4843,7 @@ if (pendingRoomInvitePromise) {
   });
 }
 window.__GAME_READY = true;
-queuePedestalTexturePrefetch();
+pedestal.queueNeighbors();
 if (!STUDIO_BOOT_INTENT) scheduleGarageDressingBuild();
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
@@ -5236,7 +4853,7 @@ window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
 if (STUDIO_BOOT_INTENT) {
   requestQuietIdle(async () => {
     await garageDressing.pump();
-    if (!pedestalVisual) await setPedestalTank(selectedSpecId, true);
+    if (!pedestal.current) await pedestal.set(selectedSpecId, true);
   });
 }
 // MOBILE r3: black-scene watchdog — the owner's iPhone passes every synthetic

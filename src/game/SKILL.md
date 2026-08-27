@@ -24,6 +24,9 @@ retryable typed access facade; `ai.js`
 owns bot decisions and is injected into the headless multiplayer authority;
 `input.js` normalizes devices; `profile.js` persists real local match history;
 `killcam.js` and `studio.js` own separate presentation timelines.
+`garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
+residency, switch convergence, and battle visual handoff; it composes
+`garagePedestalPreloader.ts` for exact card-intent and quiet neighbor warming.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

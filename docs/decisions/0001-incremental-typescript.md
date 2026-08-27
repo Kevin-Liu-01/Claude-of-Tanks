@@ -54,6 +54,10 @@ renderer or authority contracts.
 `src/game/battleEntryAcquisition.ts` continues that sequence by owning the
 covered solo/network dependency graph, task timings, browser-host world
 dependency, and synchronous cached-rematch handling.
+`src/game/garagePedestalRuntime.ts` owns the garage hero's async construction,
+shader submission, warm visual LRU, switch convergence, and battle handoff.
+The composition root now selects a specification through that typed boundary
+instead of carrying the lifecycle state machine itself.
 
 ## Consequences
 

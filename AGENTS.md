@@ -34,7 +34,7 @@ worktree and never stage generated tank work wholesale.
 
 ## Commands
 <!-- agent-docs:auto:commands start -->
-- Package scripts detected: 77. Use `package.json` as the exhaustive source.
+- Package scripts detected: 79. Use `package.json` as the exhaustive source.
 - `npm run build` - VITE_PUBLIC_BUILD=1 vite build && node tools/strip-nc-assets.mjs
 - `npm run test` - node tools/run-selftests.mjs core
 - `npm run typecheck` - tsc -p tsconfig.json --noEmit

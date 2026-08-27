@@ -124,6 +124,9 @@ const battleVisualStreamerSource = await readFile(
 const deferredWarmSource = await readFile(
   new URL('../game/deferredCombatWarmRuntime.ts', import.meta.url), 'utf8',
 );
+const pedestalRuntimeSource = await readFile(
+  new URL('../game/garagePedestalRuntime.ts', import.meta.url), 'utf8',
+);
 const studioSource = await readFile(new URL('../game/studio.js', import.meta.url), 'utf8');
 const hudSource = await readFile(new URL('./hud.js', import.meta.url), 'utf8');
 assert.match(mainSource,
@@ -161,16 +164,16 @@ assert.match(mainSource,
 assert.match(mainSource,
   /function enterGarage[\s\S]{0,3600}setFarCascadeDormant\(true\)/,
   'returning to the enclosed garage must suspend long-range shadow redraws');
-const pedestalWarmBody = mainSource.slice(
-  mainSource.indexOf('async function warmPedestalPrograms('),
-  mainSource.indexOf('const noteGarageActivity'),
+const pedestalWarmBody = pedestalRuntimeSource.slice(
+  pedestalRuntimeSource.indexOf('const warmPrograms = async'),
+  pedestalRuntimeSource.indexOf('const set = ('),
 );
 const pedestalWarmCode = pedestalWarmBody.replace(/\/\/.*$/gm, '');
 assert.doesNotMatch(pedestalWarmBody, /renderer\.compileAsync/,
   'cold garage switches must not enter ANGLE completion polling');
 assert.doesNotMatch(pedestalWarmCode, /(?:\.getUniforms|getProgramParameter)\s*\(/,
   'cold garage switches must not force ANGLE program-completion queries');
-assert.match(pedestalWarmBody, /renderer\.compile\(vis\.root, camera, scene\)/,
+assert.match(pedestalWarmBody, /renderer\.compile\(visual\.root, camera, scene\)/,
   'cold garage switches still submit their exact shader programs before reveal');
 const openingWarmBody = battleWarmSource.slice(
   battleWarmSource.indexOf('export function* createCombatOpeningWarmSteps('),

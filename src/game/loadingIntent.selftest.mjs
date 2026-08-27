@@ -9,6 +9,9 @@ const garage = fs.readFileSync(path.join(here, '..', 'ui', 'garage.js'), 'utf8')
 const pedestalPreloader = fs.readFileSync(
   path.join(here, 'garagePedestalPreloader.ts'), 'utf8',
 );
+const pedestalRuntime = fs.readFileSync(
+  path.join(here, 'garagePedestalRuntime.ts'), 'utf8',
+);
 const studioAccess = fs.readFileSync(path.join(here, 'studioAccess.ts'), 'utf8');
 
 const neighborWarm = pedestalPreloader.slice(
@@ -36,9 +39,11 @@ assert.match(garage,
 assert.match(pedestalPreloader,
   /const preloadIntent = \(specId: string\)[\s\S]{0,800}Promise\.all\(\[[\s\S]{0,220}ensureTankBuilder\(specId\)[\s\S]{0,300}prebakeSharedTextures/,
   'tank intent must overlap the exact builder transfer and chunked texture bake');
-assert.match(main, /createGaragePedestalPreloader\(\{/,
-  'main must compose one typed neighbor and pointer-intent owner');
-assert.match(main, /onTankIntent: preloadPedestalIntent/,
+assert.match(main, /createGaragePedestalRuntime\(\{/,
+  'main must compose one typed garage-hero lifecycle owner');
+assert.match(pedestalRuntime, /createGaragePedestalPreloader\(\{/,
+  'the lifecycle owner must compose neighbor and pointer-intent warming');
+assert.match(main, /onTankIntent: pedestal\.preloadIntent/,
   'garage vehicle intent must be wired to the runtime loader');
 
 assert.match(main, /function preloadNetworkLobbyIntent\(state\)/,

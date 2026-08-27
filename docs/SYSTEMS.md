@@ -62,6 +62,8 @@ strict TypeScript owners:
   rare shader work, cooperative yields, and stale-rematch cancellation;
 - `src/game/studioAccess.ts` owns retryable Studio/FX acquisition, the stable
   render-loop proxy, and transfer of temporary F8 ownership to the full mode;
+- `src/game/garagePedestalRuntime.ts` owns garage hero construction, shader
+  submission, warm visual residency, switch convergence, and battle handoff;
 - `src/game/battleWarmRuntime.ts` owns the typed Battle/Studio-only terrain,
   effect, wreck, hidden-variant, and fallback shader-warm implementation; its
   retryable access facade is acquired before any synchronous fallback drain.
@@ -159,8 +161,11 @@ genuine input and transition lull. The background battlefield builder observes
 the same garage-activity epoch, so optional world and workshop work cannot
 independently pile onto an interactive frame.
 
-`garagePedestalPreloader.ts` separately owns card-neighbor and pointer-intent
-warming. It loads only exact vehicle families, cancels stale work after fresh
+`garagePedestalRuntime.ts` owns the selected hero as one lifecycle: construction,
+off-stage shader submission, warm visual LRU, stale-switch cancellation,
+watchdog convergence, and reuse across the battle boundary. It composes
+`garagePedestalPreloader.ts`, which owns card-neighbor and pointer-intent
+warming, loads only exact vehicle families, cancels stale work after fresh
 input, coalesces repeated intent, and bounds retained texture-only previews.
 `garageIdleWorkCoordinator.ts` serializes that paint with background world and
 workshop construction; it does not change authored work or visual quality.
