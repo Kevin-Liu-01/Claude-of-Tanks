@@ -27,7 +27,7 @@ function armorTile(P, owner, x, y, z, w, h, d, rotation = null, cap = true) {
 
 function clearUpperStructure(P) {
   P.clear('turret', 'turretDark', 'turretDetail', 'turretGlass', 'turretCloth',
-    'gun', 'gunDark', 'gunMount', 'gunMountDark');
+    'turretExternalArmor', 'gun', 'gunDark', 'gunMount', 'gunMountDark');
   P.clearDecals('turret');
   for (const child of [...P.turretG.children]) {
     if (child !== P.gunG) P.turretG.remove(child);
@@ -358,12 +358,14 @@ function buildBMPT2(P) {
   P.mats.dark.emissive.setHex(0x10150c);
   P.mats.wheels.color.setHex(0x33432e);
   P.mats.wheelsRecessed.color.setHex(0x273526);
+  P.visualEraCluster('bmpt2-relikt-hull-era', 'hull', () => {
   sideArmorCourse(P, { x: 1.73, y: 1.04, h: 0.44, d: 0.62, count: 7,
     front: 2.15, step: 0.76 });
   for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
     armorTile(P, 'hull', side * (0.27 + i * 0.31), 1.25, 2.08,
       0.28, 0.105, 0.34, [-0.29, 0, 0], true);
   }
+  });
   // OWNER "much better" ROUND (2026-08-17): the single sparse tile row read
   // as the critic's "brick ERA" defect class — a second STAGGERED course up
   // the glacis plane (half-pitch x offset, same rake) makes the dense
@@ -1464,6 +1466,7 @@ function addTerminatorT90Station(P) {
   // STATION ERA ("even some era"): K-5 class wedge clamshells hugging both
   // front cheeks (the t90a eraRuCheeks read, station-local), a staggered
   // brick cassette course on the sloped face, and flank tiles on the walls.
+  P.visualEraCluster('bmpt-t90-station-era', 'turret', () => {
   for (const side of [-1, 1]) {
     P.add('turret', box(0.42, 0.26, 0.18), side * 0.50, 0.62, 0.84,
       -0.30, -side * 0.42, 0);
@@ -1488,6 +1491,7 @@ function addTerminatorT90Station(P) {
         0.09, 0.20, 0.36, [0, 0, side * 0.05], false);
     }
   }
+  });
 
   // Full roof suite. Pano: square post + box head (§5.269 bar, no funnel).
   P.addEquipment('turret', box(0.30, 0.10, 0.32), 0.36, 0.98, -0.34);
@@ -1575,6 +1579,7 @@ function buildBMPTT90(P) {
   // 8 ERA panels per side (bottoms hold the certified 0.98 line — §B9 wheel
   // exposure), top strips lapping the fender edge, rubber fore/rear
   // sections outboard of the 1.70 track outer line.
+  P.visualEraCluster('bmpt-t90-relikt-hull-era', 'hull', () => {
   sideArmorCourse(P, { x: 1.815, y: 1.10, h: 0.24, d: 0.62, count: 8,
     front: 2.50, step: 0.70, cap: false });
   for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
@@ -1587,6 +1592,7 @@ function buildBMPTT90(P) {
     P.add('hullDark', KIT.box(0.03, 0.26, 0.34), side * 1.78, 0.98, -2.72,
       0, 0, side * 0.03);
   }
+  });
   // Twin AG-17 bow pods (hull-fixed, the real vehicle's corner stations):
   // seat buried into the bow deck, armored pod, stub tube with an explicit
   // dark mouth, drum feed lapped into the pod's inboard wall.

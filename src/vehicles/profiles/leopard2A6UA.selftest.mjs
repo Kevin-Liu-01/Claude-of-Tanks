@@ -84,15 +84,19 @@ for (const seat of receipt.frontEraSeats) {
 
 const eraMeshes = [];
 tank.root.traverse((object) => {
-  if (object.isInstancedMesh
-      && object.geometry?.type === 'BoxGeometry'
-      && Math.abs(object.geometry.parameters?.width - 0.28) < 1e-6
-      && Math.abs(object.geometry.parameters?.height - 0.13) < 1e-6
-      && Math.abs(object.geometry.parameters?.depth - 0.07) < 1e-6) eraMeshes.push(object);
+  if (object.isMesh && /ExternalArmor$/.test(object.name)) eraMeshes.push(object);
 });
-assert.equal(eraMeshes.reduce((total, mesh) => total + mesh.count, 0), 144,
-  'all six gameplay sectors have matching instanced visual tiles');
-assert.equal(eraMeshes.length, 2, 'hull and turret ERA use two shared draw buckets');
+const eraFinish = tank.root.userData.eraFinishReceipt;
+assert.ok(eraFinish, 'UA model publishes the fleet layered-ERA finish receipt');
+assert.deepEqual([...eraFinish.gameplaySectors].sort(), [...sectorNames].sort(),
+  'all six gameplay sectors participate in the merged visual finish');
+assert.equal(eraFinish.layeredCassettes, 144,
+  'all six gameplay sectors have matching layered visual cassettes');
+assert.equal(eraFinish.authoredParts, 288,
+  'each cassette contributes one body and one inset camouflage cover');
+assert.equal(eraMeshes.length, 2, 'hull and turret ERA use two merged draw buckets');
+assert.ok(eraMeshes.every((mesh) => mesh.userData.combatHitboxRole === 'externalArmor'),
+  'both merged ERA meshes retain explicit external-armor semantics');
 
 const equipment = tank.root.getObjectByName('turretEquipment');
 assert.equal(equipment?.userData.combatHitboxRole, 'equipment',

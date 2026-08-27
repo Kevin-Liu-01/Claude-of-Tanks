@@ -82,27 +82,28 @@ assert.equal(visual.isDestroyed(), false, 'garage reset restores an intact tank'
 
 visual.dispose();
 
-// ERA is a separately instanced damage layer, so exercise it on a vehicle that
-// owns real clusters instead of relying on the Abrams no-op path above.
+// ERA is an explicitly owned external-armor layer, so exercise it on a vehicle
+// that owns real clusters instead of relying on the Abrams no-op path above.
 const eraVisual = createTank('m60a3', null, {
   proceduralOnly: true,
   geometryReceipt: true,
   batchStatic: false,
 });
-const eraMatrices = new Map();
+const eraPositions = new Map();
 eraVisual.root.traverse((object) => {
-  if (object.isInstancedMesh) {
-    eraMatrices.set(object, Array.from(object.instanceMatrix.array));
-  }
+  if (!object.isMesh || !/ExternalArmor$/.test(object.name)) return;
+  const position = object.geometry.getAttribute('position');
+  if (position) eraPositions.set(position, Array.from(position.array));
 });
+assert.ok(eraPositions.size > 0, 'probe tank exposes explicit external-armor geometry');
 eraVisual.stripEra('m60a3_turret_era_front_R');
-assert.ok([...eraMatrices].some(([object, rest]) =>
-  !rest.every((value, index) => value === object.instanceMatrix.array[index])),
+assert.ok([...eraPositions].some(([position, rest]) =>
+  !rest.every((value, index) => value === position.array[index])),
   'battle damage can remove an ERA cluster');
 eraVisual.resetForGaragePresentation();
-for (const [object, rest] of eraMatrices) {
-  assert.deepEqual(Array.from(object.instanceMatrix.array), rest,
-    'garage reset re-seats every instanced ERA brick');
+for (const [position, rest] of eraPositions) {
+  assert.deepEqual(Array.from(position.array), rest,
+    'garage reset re-seats every external-armor ERA layer');
 }
 eraVisual.dispose();
 

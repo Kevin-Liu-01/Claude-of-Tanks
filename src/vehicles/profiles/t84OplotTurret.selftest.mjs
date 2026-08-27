@@ -14,7 +14,9 @@ try {
   const gunRig = tank.root.getObjectByName('rig_gun');
   const turret = turretRig?.getObjectByName('turret');
   const turretDark = turretRig?.getObjectByName('turretDark');
-  assert.ok(turretRig && gunRig && turret?.isMesh && turretDark?.isMesh,
+  const turretExternalArmor = turretRig?.getObjectByName('turretExternalArmor');
+  assert.ok(turretRig && gunRig && turret?.isMesh && turretDark?.isMesh
+    && turretExternalArmor?.isMesh,
     'T-84 keeps structural turret, ERA detail and gun geometry on articulated rigs');
 
   const receipt = turretRig.userData.t84OplotTurretReceipt;
@@ -33,8 +35,8 @@ try {
   assert.equal(receipt.bustleRearClosurePanels, 1, 'bustle has a structural rear service plate');
   assert.equal(receipt.bustleAttached, true, 'bustle is attached to the turret shell');
 
-  const position = turretDark.geometry.getAttribute('position');
-  const normal = turretDark.geometry.getAttribute('normal');
+  const position = turretExternalArmor.geometry.getAttribute('position');
+  const normal = turretExternalArmor.geometry.getAttribute('normal');
   const a = new THREE.Vector3();
   const b = new THREE.Vector3();
   const c = new THREE.Vector3();

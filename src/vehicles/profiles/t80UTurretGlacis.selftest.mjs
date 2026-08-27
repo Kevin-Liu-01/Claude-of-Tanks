@@ -15,7 +15,9 @@ try {
   const gunRig = tank.root.getObjectByName('rig_gun');
   const hull = hullRig?.getObjectByName('hull');
   const turret = turretRig?.getObjectByName('turret');
-  assert.ok(hullRig && turretRig && gunRig && hull?.isMesh && turret?.isMesh,
+  const turretExternalArmor = turretRig?.getObjectByName('turretExternalArmor');
+  assert.ok(hullRig && turretRig && gunRig && hull?.isMesh && turret?.isMesh
+    && turretExternalArmor?.isMesh,
     'T-80U keeps hull, turret, and gun geometry on articulated rigs');
 
   const glacis = hullRig.userData.t80uHullGlacisReceipt;
@@ -120,7 +122,8 @@ try {
   assert.ok(turret.geometry.boundingBox.max.x <= 1.67
     && turret.geometry.boundingBox.min.x >= -1.67,
   'restored turret stays inside its former calibrated width');
-  assert.ok(turret.geometry.boundingBox.max.z >= 1.60,
+  turretExternalArmor.geometry.computeBoundingBox();
+  assert.ok(turretExternalArmor.geometry.boundingBox.max.z >= 1.60,
     'restored clamshell reaches forward around the compact mantlet valley');
 
   for (const yaw of [0, Math.PI / 2, -Math.PI / 2, Math.PI]) {

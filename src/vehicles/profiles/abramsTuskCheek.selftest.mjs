@@ -9,9 +9,11 @@ const tank = createTank('m1a2_tusk', null, {
 const armor = tank.root.getObjectByName('turret');
 const detail = tank.root.getObjectByName('turretDetail');
 const dark = tank.root.getObjectByName('turretDark');
+const externalArmor = tank.root.getObjectByName('turretExternalArmor');
 assert.ok(armor?.geometry, 'TUSK turret armor geometry exists');
 assert.ok(detail?.geometry, 'TUSK turret detail geometry exists');
 assert.ok(dark?.geometry, 'TUSK turret dark geometry exists');
+assert.ok(externalArmor?.geometry, 'TUSK layered cheek ERA uses the external-armor mesh');
 
 const a = new THREE.Vector3();
 const b = new THREE.Vector3();
@@ -40,14 +42,16 @@ function largeCheekFaces(mesh, side) {
 }
 
 for (const side of [-1, 1]) {
-  const caps = largeCheekFaces(detail, side);
+  const cheekFaces = largeCheekFaces(externalArmor, side);
+  assert.equal(cheekFaces.length, 4,
+    `${side < 0 ? 'left' : 'right'} unified cheek keeps body and inset cap faces`);
+  const bodies = cheekFaces.slice(0, 2);
+  const caps = cheekFaces.slice(2);
   assert.equal(caps.length, 2,
     `${side < 0 ? 'left' : 'right'} unified cheek has one continuous inset cap`);
   assert.ok(caps[0].normal.distanceTo(caps[1].normal) < 1e-6,
     'inset cap shares one normal and cannot form a split or triangular tongue');
 
-  const bodies = largeCheekFaces(armor, side).filter(({ normal }) =>
-    normal.distanceTo(caps[0].normal) < 1e-6);
   assert.equal(bodies.length, 2,
     'unified cheek body remains one smooth, closed two-triangle cassette');
 

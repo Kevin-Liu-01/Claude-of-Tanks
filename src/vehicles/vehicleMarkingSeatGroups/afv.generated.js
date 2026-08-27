@@ -519,44 +519,44 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "parent": "hull",
         "size": 0.22,
         "pos": [
-          -1.8610775,
-          1.096108,
-          -0.4106001
+          -0.8958049,
+          0.6608,
+          -2.2696154
         ],
         "quaternion": [
-          -0.0063639,
-          -0.7070781,
-          -0.0063639,
-          0.7070781
+          0,
+          -0.7109461,
+          0,
+          0.7032465
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "bmpt_t90",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "visibilityClearSamples": 7,
+        "visibilityRatio": 0.7777778,
+        "maximumSurfaceErrorM": 0.5288968
       },
       {
         "kind": "designation",
         "parent": "hull",
         "size": 0.22,
         "pos": [
-          -1.8610775,
-          1.096108,
-          0.3467499
+          -1.606,
+          1.2728,
+          -0.4106001
         ],
         "quaternion": [
-          -0.0063639,
-          -0.7070781,
-          -0.0063639,
-          0.7070781
+          0,
+          -0.7071068,
+          0,
+          0.7071068
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "bmpt_t90",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.2489568
       }
     ]
   }

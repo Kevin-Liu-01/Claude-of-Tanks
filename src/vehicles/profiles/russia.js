@@ -1311,6 +1311,7 @@ function buildT64BV1(P) {
   // Four staggered Kontakt-1 glacis courses ON the measured glacis plane
   // (1.31@1.45 -> 0.94@2.38, rake -0.38): full cassette bodies with dark lid
   // seams, ending at the splash-board crease.
+  P.visualEraCluster('t64bv1-k1-hull-era', 'hull', () => {
   for (let row = 0; row < 4; row++) {
     const zr = 1.60 + row * 0.235;
     const yr = 1.253 - row * 0.0925;
@@ -1321,6 +1322,7 @@ function buildT64BV1(P) {
       P.add('hullDark', box(0.19, 0.026, 0.026), x, yr + 0.048, zr + 0.105 + Math.abs(x) * 0.045, -0.38, x * 0.10, 0);
     }
   }
+  });
   // V splash board proud of the lower glacis (measured 0.976 crest at 2.30)
   for (const s of [-1, 1]) {
     P.add('hull', box(0.50, 0.075, 0.045), s * 0.235, 0.925, 2.325, -0.38, s * 0.42, 0);
@@ -1481,6 +1483,7 @@ function buildT64BV1(P) {
   // against the boot, the 125 mm emerging above the V. Cassette seam
   // grammar rides every plate; a dark gap plate closes the vertex UNDER the
   // tube (§B2 no see-through).
+  P.visualEraCluster('t64bv1-k1-turret-era', 'turret', () => {
   for (const s of [-1, 1]) {
     const sweep = [
       [0.40, 1.045, 0.42, 0.34, 0.29],   // inner tip segment -> tip (0.24, 1.16)
@@ -1515,6 +1518,7 @@ function buildT64BV1(P) {
   P.add('turretDark', box(0.40, 0.14, 0.06), 0, 0.03, 1.12);
   P.add('turretDark', box(0.34, 0.22, 0.10), 0, 0.16, 0.98, -0.16, 0, 0);
   chamferBox(P, 'turret', 0.56, 0.22, 0.24, 0, 0.11, 1.10, 0.06);
+  });
 
   // Raised LEFT commander gallery + cupola (the print's 2.21..2.28 band)
   // seated on the dome skin, with TKN vision blocks and the hatch ring.
@@ -1879,18 +1883,30 @@ export function domeRailRu(P, rings, sz, y, len) {
 
 // K-5/K-1/relikt/erawa cheek arrays seated on a MEASURED ring profile.
 export function eraRuCheeks(P, p, kind) {
+  P.visualEraCluster(`ru-${kind}-turret-era`, 'turret', () => {
   const { box } = KIT;
   const skinD = (t, y) => {
     const r = ringSkin(p.rings, y);
     const A = r, B = r * p.sz;
     return 1 / Math.sqrt((Math.cos(t) / A) ** 2 + (Math.sin(t) / B) ** 2);
   };
+  const addCover = (x, y, z, w, hgt, d, rx, ry, rz) => {
+    const coverD = Math.min(0.014, d * 0.30);
+    P.add('turretDark', KIT.xform(
+      box(w * 0.82, hgt * 0.82, coverD),
+      0, 0, d * 0.5 + coverD * 0.5 - 0.003,
+    ), x, y, z, rx, ry, rz);
+  };
   // rCz (r9): seat the ERA ring around the DOME's plan center. The lathe is
   // authored at (cx, cz) but this ring used to revolve around z=0 — on a
   // cz -0.20 dome every front-arc cassette floated 0.2 m proud of the skin
   // in plan (t72b3m r9 workorder: 8 columns x 0.1-0.25).
-  const put = (t, y, w, hgt, d, tilt, bucket, dist) => {
-    P.add(bucket, box(w, hgt, d), Math.cos(t) * dist, y, Math.sin(t) * dist + (p.rCz ?? 0), tilt, Math.PI / 2 - t, 0);
+  const put = (t, y, w, hgt, d, tilt, bucket, dist, layered = true) => {
+    const x = Math.cos(t) * dist;
+    const z = Math.sin(t) * dist + (p.rCz ?? 0);
+    const ry = Math.PI / 2 - t;
+    P.add(bucket, box(w, hgt, d), x, y, z, tilt, ry, 0);
+    if (layered) addCover(x, y, z, w, hgt, d, tilt, ry, 0);
   };
   if (kind === 'k5') {
     // Kontakt-5 clamshell: one wedge course per cheek meeting at the mantlet,
@@ -1938,6 +1954,7 @@ export function eraRuCheeks(P, p, kind) {
       // Absent = byte-identical for every legacy caller.
       if (!p.k5LeafOff) {
       P.add(k5B, box(L, H, k5D), x - dzx, yc - dzy, z - dzz, px5, ry, rz);
+      addCover(x - dzx, yc - dzy, z - dzz, L, H, k5D, px5, ry, rz);
       P.add('turretDark', box(L + 0.01, 0.035, H - 0.04), x, yc + H / 2, z, px5, ry, rz);
       // k5Seg (§B3.1 prism sweep 2026-08-06, opt-in): the real K-5 clamshell
       // is SECTIONED — n-1 dark seams across the leaf face plus a lower lip
@@ -1962,6 +1979,8 @@ export function eraRuCheeks(P, p, kind) {
         const Dl = D - (p.k5Lower.tuck ?? 0.05);
         const hl = p.k5Lower.h ?? 0.16;
         P.add(p.k5Bucket ?? 'turretTrack', box(L * 0.94, hl, hl), Math.cos(t) * Dl, yl, Math.sin(t) * Dl, px5 + (p.k5Lower.dPitch ?? 0.35), ry, rz);
+        addCover(Math.cos(t) * Dl, yl, Math.sin(t) * Dl,
+          L * 0.94, hl, hl, px5 + (p.k5Lower.dPitch ?? 0.35), ry, rz);
         P.add('turretDark', box(L * 0.94 + 0.01, 0.03, hl - 0.03), Math.cos(t) * Dl, yl - hl / 2, Math.sin(t) * Dl, px5 + (p.k5Lower.dPitch ?? 0.35), ry, rz);
       }
       const bx = Math.cos(ry), bz = -Math.sin(ry);
@@ -2010,6 +2029,9 @@ export function eraRuCheeks(P, p, kind) {
             P.add('turretTrack', box(0.34, 0.30, tileDepth),
               Math.cos(tf) * tileDist, tY, Math.sin(tf) * tileDist + (p.rCz ?? 0),
               tilePitch, tileYaw, 0);
+            addCover(Math.cos(tf) * tileDist, tY,
+              Math.sin(tf) * tileDist + (p.rCz ?? 0),
+              0.34, 0.30, tileDepth, tilePitch, tileYaw, 0);
           } else {
             put(tf, tY, 0.34, 0.30, 0.07, -0.08, 'turretTrack', tileDist);
           }
@@ -2061,6 +2083,9 @@ export function eraRuCheeks(P, p, kind) {
             const bz = bank.z0 - along * Math.sin(bank.a) - tuck * Math.cos(bank.a);
             P.add(C.bucket ?? p.k1Bucket ?? 'turretTrack', box(C.bw ?? 0.28, C.bh ?? (p.k1H ?? 0.24), C.bd ?? 0.15),
               -s * bx, y, bz, (C.tilt ?? -0.20) - row * (C.tiltRow ?? 0.07), -s * bank.a, 0);
+            addCover(-s * bx, y, bz,
+              C.bw ?? 0.28, C.bh ?? (p.k1H ?? 0.24), C.bd ?? 0.15,
+              (C.tilt ?? -0.20) - row * (C.tiltRow ?? 0.07), -s * bank.a, 0);
           } else if (row < 3) {
             const t = Math.PI / 2 + s * ((p.k1T0 ?? 0.22) + i * (p.k1Step ?? 0.21));
             put(t, y, 0.30, p.k1H ?? 0.24, 0.16, -0.24 - row * 0.09,
@@ -2117,6 +2142,7 @@ export function eraRuCheeks(P, p, kind) {
       const ry = Math.atan2(-az, s * ax);
       const px = s * mx, pz = mz + rcz;
       P.add(bucket, box(L, H, D), px, yc, pz, tilt, ry, 0);
+      addCover(px, yc, pz, L, H, D, tilt, ry, 0);
       // flush face grammar (§C zero-growth): vertical bag/cassette seams,
       // optional row seams, rim frame strips
       for (let gi = 1; gi < segsN; gi++) {
@@ -2256,12 +2282,12 @@ export function eraRuCheeks(P, p, kind) {
             // trapezoid tops against dark gap tops; the camo top faces were
             // invisible against the camo dome (r14 close-roof verdict). Lid
             // rides 4mm INSET below the certified top corner (cap 1.690).
-            put(t, yc + rH * 0.5 - 0.006, 0.46, 0.012, rD + rDeep - 0.01, rTilt + row * 0.10, 'turretDetail', dd - rDeep / 2);
-            put(t, yc + rH * 0.38, 0.46, 0.05, rD + rDeep - 0.015, rTilt + row * 0.10, 'turretDetail', dd - rDeep / 2 + 0.010);
+            put(t, yc + rH * 0.5 - 0.006, 0.46, 0.012, rD + rDeep - 0.01, rTilt + row * 0.10, 'turretDetail', dd - rDeep / 2, false);
+            put(t, yc + rH * 0.38, 0.46, 0.05, rD + rDeep - 0.015, rTilt + row * 0.10, 'turretDetail', dd - rDeep / 2 + 0.010, false);
             // pale face plate: the course fronts sit under a dark camo
             // blotch on this print — the scheme-detail plate restores the
             // ref's pale-wedge read from dead front (4mm proud of the face)
-            put(t, yc - 0.012, 0.42, rH - 0.05, 0.008, rTilt + row * 0.10, 'turretDetail', dd + rD / 2 + 0.003);
+            put(t, yc - 0.012, 0.42, rH - 0.05, 0.008, rTilt + row * 0.10, 'turretDetail', dd + rD / 2 + 0.003, false);
             // GAP = a full-depth DARK standing plate at the pair boundary —
             // its dark top trapezoid alternates with the pale lids (the r13
             // thin seam strips + sunk backdrops never reached pixels).
@@ -2271,13 +2297,13 @@ export function eraRuCheeks(P, p, kind) {
             const tg = Math.PI / 2 + s * (rT0 + (i + 0.5) * rStep);
             const gM1 = Math.min(rH - 0.02, p.rGapH ?? Infinity);
             const gM2 = Math.min(rH - 0.01, p.rGapH ?? Infinity);
-            put(tg, yc - 0.008 - (rH - 0.02 - gM1) / 2, 0.15, gM1, rD + rDeep - 0.02, rTilt, rGapBucket, skinD(tg, yc) + dI - rDeep / 2 - 0.012);
-            put(tg, yc - 0.005 - (rH - 0.01 - gM2) / 2, 0.062, gM2, 0.016, rTilt, rGapBucket, skinD(tg, yc) + dI + rD / 2 + 0.005);
+            put(tg, yc - 0.008 - (rH - 0.02 - gM1) / 2, 0.15, gM1, rD + rDeep - 0.02, rTilt, rGapBucket, skinD(tg, yc) + dI - rDeep / 2 - 0.012, false);
+            put(tg, yc - 0.005 - (rH - 0.01 - gM2) / 2, 0.062, gM2, 0.016, rTilt, rGapBucket, skinD(tg, yc) + dI + rD / 2 + 0.005, false);
           }
         }
         // rStrip:false — on a squat dome the tilted strip corners rise to a
         // 1.85 canopy 0.2 proud of the roof (t72b3m r7 whatsat verdict)
-        if (p.rStrip !== false) put(t, 0.34, 0.50, 0.032, 0.20, -0.30, 'turretDark', skinD(t, 0.34) - 0.03);
+        if (p.rStrip !== false) put(t, 0.34, 0.50, 0.032, 0.20, -0.30, 'turretDark', skinD(t, 0.34) - 0.03, false);
       }
       // rXPairs (t72b3m visual r1, opt-in; r2 REBUILT): flank/rear ring
       // continuation — standing cassettes at wider arc seats so every
@@ -2304,20 +2330,21 @@ export function eraRuCheeks(P, p, kind) {
         put(t, yc, wd, h, xDp, tl, rBucket, skinD(t, yc) + dI - xShift);
         if (p.rSeam) {
           // pale top lid + crest + outer face (the standing-plate read)
-          put(t, yc + h * 0.5 - 0.006, wd - 0.01, 0.012, xDp - 0.01, tl, 'turretDetail', skinD(t, yc) + dI - xShift);
-          put(t, yc + h * 0.42, wd - 0.03, 0.045, xDp - 0.02, tl, 'turretDetail', skinD(t, yc) + dI - xShift + 0.008);
-          put(t, yc - 0.005, wd - 0.05, h - 0.04, 0.006, tl, 'turretDetail', skinD(t, yc) + dI + (rD - 0.02) / 2 + 0.003);
+          put(t, yc + h * 0.5 - 0.006, wd - 0.01, 0.012, xDp - 0.01, tl, 'turretDetail', skinD(t, yc) + dI - xShift, false);
+          put(t, yc + h * 0.42, wd - 0.03, 0.045, xDp - 0.02, tl, 'turretDetail', skinD(t, yc) + dI - xShift + 0.008, false);
+          put(t, yc - 0.005, wd - 0.05, h - 0.04, 0.006, tl, 'turretDetail', skinD(t, yc) + dI + (rD - 0.02) / 2 + 0.003, false);
           // GAP = full-depth dark standing plate (dark top trapezoid between
           // the pale lids) + a thin proud seam on the face line
           const tg = Math.PI / 2 + s * (tOff - 0.155);
           const gH1 = Math.min(h - 0.015, gapH ?? Infinity);
           const gH2 = Math.min(h, gapH ?? Infinity);
-          put(tg, yc - 0.006 - (h - 0.015 - gH1) / 2, 0.15, gH1, xDp - 0.015, rTilt, rGapBucket, skinD(tg, yc) + dI - xShift - 0.010);
-          put(tg, yc + 0.005 - (h - gH2) / 2, 0.07, gH2, 0.02, rTilt, rGapBucket, skinD(tg, yc) + dI + 0.012);
+          put(tg, yc - 0.006 - (h - 0.015 - gH1) / 2, 0.15, gH1, xDp - 0.015, rTilt, rGapBucket, skinD(tg, yc) + dI - xShift - 0.010, false);
+          put(tg, yc + 0.005 - (h - gH2) / 2, 0.07, gH2, 0.02, rTilt, rGapBucket, skinD(tg, yc) + dI + 0.012, false);
         }
       }
     }
   }
+  });
 }
 
 // Shtora dazzler pair seated on the measured skin (THE T-90 cue).

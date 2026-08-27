@@ -529,6 +529,7 @@ function buildT90ALegacy(P, {
   // T4A GLACIS K-5 BRICK ROWS (verdict order 5): full cassette courses in
   // the SAME certified hugged envelope (y/z/rake bands unchanged), scheme
   // bucket + dark gap seams — brick grammar instead of two lone chevrons.
+  P.visualEraCluster('t90a-k5-glacis-era', 'hull', () => {
   for (let row = 0; row < 2; row++) for (const s of [-1, 1]) {
     const ry5 = 1.13 - row * 0.065, rz5 = 2.50 + row * 0.29;
     // (outer cassette trimmed to reach x 1.064 — at 1.161 the course sat
@@ -541,6 +542,7 @@ function buildT90ALegacy(P, {
       P.add('hullDark', box(0.03, 0.05, 0.24), s * gx, ry5 - 0.003, rz5, -0.30, s * 0.13, 0);
     }
   }
+  });
   KIT.towCable(P, [[-1.25, 1.17, 2.05], [0, 1.23, 1.55], [1.25, 1.17, 2.05]]);
   // rear stack: the normalized print's tail bumps 1.44-1.49 over -3.16..-3.32
   // (stowage + drums + log at the same thin band — the 12% law watch keeps)
@@ -635,10 +637,12 @@ function buildT90ALegacy(P, {
   widthAnchor(P, 1.89, 0.95, 0.46);
   // r10b: outer course deepened to the ref's 0.691..1.223 band (front cols
   // +-1.84..1.90 read it; the old 0.93..1.11 studs left 0.18 x 4 cols)
+  P.visualEraCluster('t90a-k5-skirt-era', 'hull', () => {
   for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
     P.add('hull', box(0.05, 0.53, 0.56), s * 1.863, 0.955, 2.40 - i * 0.55);
     P.add('hullDark', box(0.04, 0.42, 0.03), s * 1.859, 0.95, 2.15 - i * 0.55);
   }
+  });
 
   // ---- turret: measured T-90A cast shell ----
   // Primary mass follows the source silhouette; every K-5/optic/weapon
@@ -692,6 +696,7 @@ function buildT90ALegacy(P, {
   // axis-aligned under-roots below instead.)
   const p5 = { rings, sz: 1.21, k5T: 0.62, k5Out: 0.24, k5Len: 0.95, k5H: 0.18, k5Y: 0.28, k5Yaw: 0.47, k5Rise: 0, k5Seg: 5, k5CapIn: 0.04, k5Lower: { dy: 0.13, h: 0.16, dPitch: 0.35, tuck: 0.05 }, k5Bucket: 'turret', k5LeafOff: true, eyeKit: true, eyeRound: true, eyeScale: 1.32, eyeX: 0.70, eyeZ: shtoraEyeZ };
   eraRuCheeks(P, p5, 'k5');
+  P.visualEraCluster('t90a-k5-turret-support-era', 'turret', () => {
   for (const s2 of [-1, 1]) {
     // The Shtora lane is now a deliberate opening in the K-5 staircase.
     // Inner and outer modules terminate on opposite sides of the emitter
@@ -712,6 +717,7 @@ function buildT90ALegacy(P, {
       [s2 * 0.54, 0.37, 1.30], [s2 * 0.86, 0.37, 1.30], [s2 * 0.86, 0.50, shtoraSupportFrontZ], [s2 * 0.54, 0.50, shtoraSupportFrontZ],
     ));
   }
+  });
   ruShtora(P, p5, 0.38);  // T3A-b3: eyes raised (ref side bottoms 1.397+ at the eye cols)
   addT90RadialArmorBelt(P, rings, 1.21, { y: 0.18, cz: -0.18, scale: 0.92 });
   addT90ACastPerimeterFlanges(P);
@@ -1155,12 +1161,14 @@ function buildT90AVladimirLegacy(P) {
   }
   // Two Kontakt-5 rows overlap the new upper glacis rather than hovering
   // behind its former terminal face.  Use armor paint, not track rubber.
+  P.visualEraCluster('t90a-vladimir-k5-glacis-era', 'hull', () => {
   for (const [y, z, depth] of [[1.245, 1.78, 0.26], [1.145, 1.99, 0.20]]) {
     for (const s of [-1, 1]) {
       P.add('hull', box(0.72, 0.075, depth), s * 0.42, y, z, upperGlacisPitch, s * 0.28, 0);
       P.add('hullDark', box(0.025, 0.080, depth * 0.78), s * 0.80, y, z, upperGlacisPitch, s * 0.28, 0);
     }
   }
+  });
   KIT.towCable(P, [[-0.95, 1.24, 1.74], [0, 1.12, 1.99], [0.95, 1.24, 1.74]]);
   // Seat the narrow Vladimir curtains directly beneath the fender lip. The
   // former 1.50 m center left their inboard edge 5 cm outside the fixed
@@ -1254,12 +1262,14 @@ function buildT90AVladimirLegacy(P) {
   // front 1.345/1.372, front cols ±1.887/1.898 read the 1.16..1.34 upper
   // lip only). Body panels face 1.87; outer lip face 1.89 = the widthM
   // pixel line (pub half-width 1.89 — WIDTH GUARD, never exceed).
+  P.visualEraCluster('t90a-vladimir-k5-skirt-era', 'hull', () => {
   for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
     const zc5 = 1.12 - i * 0.46;
     P.add('hull', box(0.05, 0.63, 0.50), s * 1.845, 1.045, zc5);
     P.add('hull', box(0.014, 0.18, 0.50), s * 1.883, 1.25, zc5);
     P.add('hullDark', box(0.04, 0.55, 0.03), s * 1.851, 1.045, zc5 - 0.25);
   }
+  });
 
   // ---- turret: dome to the normalized 2.19-2.23 roof, pano spike 2.60 ----
   P.turretG.position.set(0, 1.50, -0.75);
@@ -1864,9 +1874,11 @@ function buildPT91M(P) {
   P.add('hull', box(2.3, 0.045, 0.16), 0, 1.348, 2.61);
   // ERAWA-1 tile field on the glacis — r12: rows hugged to the re-lined
   // plate (tops ~5 mm proud; the old 1.42 row printed 1.448 vs ref 1.341)
+  P.visualEraCluster('pt91m-erawa-glacis-era', 'hull', () => {
   for (let r = 0; r < 3; r++) for (let c = 0; c < 6; c++) {
     P.add('hullTrack', box(0.27, 0.05, 0.23), -0.72 + c * 0.29, [1.35, 1.27, 1.215][r], 2.06 + r * 0.233, -0.28, 0, 0);
   }
+  });
   KIT.towCable(P, [[-1.28, 1.43, 1.88], [0, 1.49, 1.43], [1.28, 1.43, 1.88]]);
   // r27 (critic r25 order 4b): round headlight pods with brush guards on
   // both fender noses (§B3 census fitting). Guard tops 1.298 stay under the
@@ -1943,6 +1955,7 @@ function buildPT91M(P) {
   // r25 ASYM plate windows (fresh front cols): LEFT -1.792 reads 1.232..
   // 0.788, RIGHT +1.762/+1.802 read 1.373/1.333 over the 0.777 floor.
   widthAnchor(P, 1.795, 0.90, 1.26);
+  P.visualEraCluster('pt91m-erawa-skirt-era', 'hull', () => {
   for (const s of [-1, 1]) {
     for (let i = 0; i < 4; i++) {
       if (s < 0) P.add('hullTrack', box(0.065, 0.4475, 0.48), s * 1.7575, 1.011, 2.30 - i * 0.52);
@@ -1959,6 +1972,7 @@ function buildPT91M(P) {
   // r25 RIGHT-only rear skirt cassette (stations i3/i4 print the ref's
   // +1.793 edge over z -1.91..-1.05; left keeps the 1.736 face)
   P.add('hullTrack', box(0.05, 0.37, 0.86), 1.7655, 1.10, -1.48);
+  });
   // inner skirt lips (side-hidden under the 1.42 deck line): carry the
   // asymmetric front tops the digest banked — R 1.40 at +1.681 / 1.385 at
   // +1.722, L 1.245 at -1.671/-1.711.
@@ -3484,6 +3498,7 @@ function buildT90SMLegacy(P) {
   // courses render in the scheme paint — the spareTrack slot is the
   // grey-lavender read the verdict retires), dark gap seams for the
   // cassette grammar. Camo per-box sampling also breaks the flat tone.
+  P.visualEraCluster('t90sm-relikt-glacis-era', 'hull', () => {
   for (let row = 0; row < 2; row++) for (const s of [-1, 1]) {
     const ry4 = 1.26 - row * 0.06, rz4 = 2.05 + row * 0.27;
     for (const bx of [0.225, 0.60, 0.975]) {
@@ -3493,6 +3508,7 @@ function buildT90SMLegacy(P) {
       P.add('hullDark', box(0.03, 0.06, 0.26), s * gx, ry4 - 0.004, rz4, -0.42, s * 0.14, 0);
     }
   }
+  });
   // (T4S: a lower-bow splash board was DECLINED — the loft nose face at
   // 3.02 sits 2cm inside the ref's 3.00 plan-front line; any proud board
   // breaks the certified center columns. The Relikt courses above carry
@@ -4211,6 +4227,7 @@ function buildT90(P) {
   // leaving air wedges), bricks sunk 0.015 into the plate, and the
   // full-height dark gap BLOCKS replaced by flush face seams (k5Seg
   // zero-growth class — the blocks read as blue plastic cells).
+  P.visualEraCluster('t90-k5-glacis-era', 'hull', () => {
   for (const [ry5, rz5, rk5] of [[1.20, 2.575, -0.35], [1.39, 2.06, -0.35]]) {   // ON the glacis-slab plane (20.3 deg)   // centers = plate line + half brick (ON my authored deck polyline)
     for (const s of [-1, 1]) {
       for (const bx of [0.225, 0.565, 0.90]) {
@@ -4222,6 +4239,7 @@ function buildT90(P) {
       }
     }
   }
+  });
   KIT.towCable(P, [[-1.25, 1.46, 2.30], [0, 1.38, 1.90], [1.25, 1.46, 2.30]]);
   stowage(P, 'hull', P.rng, [[-0.85, 1.42, -2.86, 1.19, 0.09, 0.30]]);
   {
@@ -4266,6 +4284,7 @@ function buildT90(P) {
   };
   // skirt-front ERA course (print era05-10_hull: three tall panels per
   // side, faces at the 3.78 width line) + rubber run behind/below
+  P.visualEraCluster('t90-k5-skirt-era', 'hull', () => {
   for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
     // inner face 1.7825 overlaps the skirt-band outer face 1.7855 (§B2);
     // outer face 1.885 = the print's own ±1.83..1.91 course = the widthM
@@ -4275,6 +4294,7 @@ function buildT90(P) {
     P.add('hullDark', box(0.045, 0.50, 0.03), s * 1.858, 1.10, 2.63 - i * 0.655);
     P.add('hullDark', box(0.045, 0.04, 0.56), s * 1.858, 0.86, 2.30 - i * 0.655);
   }
+  });
   widthAnchor(P, 1.89, 0.95, 0.46);
   // Continuous full-depth skirt course from the rear guard into the forward
   // guard. Match the 0.60 m front ERA apron vertically so the eight-panel run
@@ -4326,17 +4346,18 @@ function buildT90(P) {
   // K-5 ROOF PANELS as raised armor (defect 2 "crowded crown": SCHEME
   // bucket — the spareTrack plates read as one floating tan sheet — with
   // flush dark seams; tops hold the 2.245w dims line, rolls hug the crown)
-  P.add('turret', box(0.72, 0.06, 0.74), -0.72, 0.735, 0.08, 0, 0, -0.10);
-  P.add('turret', box(0.76, 0.06, 0.86), -0.02, 0.80, -0.16);
-  P.add('turret', box(0.72, 0.06, 0.74), 0.72, 0.735, 0.08, 0, 0, 0.10);
-  for (const gs of [-0.40, 0.37]) P.add('turretDark', box(0.028, 0.052, 0.70), gs, 0.802, -0.05);
-  P.add('turretDark', box(0.70, 0.012, 0.03), -0.02, 0.832, 0.25);      // panel rim seams
-  P.add('turretDark', box(0.70, 0.012, 0.03), -0.02, 0.832, -0.55);
   // §5.29 CHEVRON as LEAF BANKS (defect 1): per side an inner + outer K-5
   // clamshell leaf — broad boxes with REAL plan depth standing 0.10-0.15
   // proud of the dome skin along the V line (±0.32,1.38)->(±1.58,0.52),
   // pitched back onto the casting; flush seam strips + end caps (k5Seg
   // zero-growth law); a dark gap plate closes the V vertex under the gun.
+  P.visualEraCluster('t90-k5-turret-era', 'turret', () => {
+  P.add('turret', box(0.72, 0.06, 0.74), -0.72, 0.735, 0.08, 0, 0, -0.10);
+  P.add('turret', box(0.76, 0.06, 0.86), -0.02, 0.80, -0.16);
+  P.add('turret', box(0.72, 0.06, 0.74), 0.72, 0.735, 0.08, 0, 0, 0.10);
+  for (const gs of [-0.40, 0.37]) P.add('turretDark', box(0.028, 0.052, 0.70), gs, 0.802, -0.05);
+  P.add('turretDark', box(0.70, 0.012, 0.03), -0.02, 0.832, 0.25);
+  P.add('turretDark', box(0.70, 0.012, 0.03), -0.02, 0.832, -0.55);
   for (const s of [-1, 1]) {
     // inner leaf: (±0.32,1.38)->(±0.92,1.10); outer leaf: (±0.95,1.06)->(±1.58,0.52)
     // LADDER-R1 (chevron-plan-footprint law, §5.60 plan receipts): the print's
@@ -4354,6 +4375,7 @@ function buildT90(P) {
     P.add('turret', KIT.xform(box(0.06, 0.32, 0.32), 0.40, 0, -0.06), s * 1.265, 0.40, 0.72, -0.40, -s * 0.71, 0);                    // outer-leaf cap
   }
   P.add('turretDark', box(0.56, 0.34, 0.04), 0, 0.42, 1.30, -0.42, 0, 0);  // V-vertex gap plate under the gun (§B2)
+  });
   const p5 = { rings, sz: 0.72, eyeKit: true, eyeRound: true, eyeZ: 1.30 };
   ruShtora(P, p5, 0.50);  // round red OTShU pair ABOVE/BETWEEN the inner leaves (print aps band)
   // smoke banks on the dome shoulders (print smokecaps: x to ±1.68,
@@ -5761,6 +5783,7 @@ function buildT90MS(P) {
   ruGlacisKit(P, { w: 3.5, y: 1.15, z: 2.72, eyeX: 0.82, eyeZ: 2.98, hookX: 0.82, hookY: 0.66, hookZ: 3.05, hlY: 1.13, hlX: 1.02 });
   // Relikt glacis cassette courses — CRITIC FIX (defect 3): per-segment
   // rakes, plate-seated centers, flush seams instead of gap blocks
+  P.visualEraCluster('t90ms-relikt-glacis-era', 'hull', () => {
   for (const [ry4, rz4, rk4] of [[1.155, 2.69, -0.35], [1.365, 2.12, -0.35]]) {   // ON the glacis-slab plane
     for (const s of [-1, 1]) {
       for (const bx of [0.225, 0.60, 0.975]) {
@@ -5772,6 +5795,7 @@ function buildT90MS(P) {
       }
     }
   }
+  });
   KIT.towCable(P, [[-1.25, 1.46, 2.30], [0, 1.38, 1.90], [1.25, 1.46, 2.30]]);
   {
     const log = FITTINGS.unditchingLog({ mats: P.mats, len: 0.9, r: 0.08, straps: 2, seed: 5 });
@@ -5796,6 +5820,7 @@ function buildT90MS(P) {
   });
   // TALL hard-skirt ERA panels (print era01-06_hull: face ±1.79, three per
   // side, y 0.76..1.43) with cassette seams; rubber hem below
+  P.visualEraCluster('t90ms-relikt-skirt-era', 'hull', () => {
   for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
     const zc = 2.07 - i * 1.33;
     P.add('hull', box(0.06, 0.24, 1.26), s * 1.76, 1.17, zc);
@@ -5805,6 +5830,7 @@ function buildT90MS(P) {
     }
     P.add('hullRubber', box(0.04, 0.08, 1.24), s * 1.75, 0.98, zc);
   }
+  });
   // rear-flank + transom PERIMETER BAR ARMOR (print cage01_hull to ±1.89 —
   // the width line; open structure per §B2 legit class 3; rear reach
   // authored to -3.62 sliver-class, hullLengthM sovereign)
@@ -5913,6 +5939,7 @@ function buildT90MS(P) {
   // deep boxes whose edges ARE the plan silhouette (proud of the prism
   // nose facets on the print's V line (±0.29,1.55)->(±1.66,0.42)), with
   // flush seams + caps — the t90sm welded-family cheek grammar.
+  P.visualEraCluster('t90ms-relikt-turret-era', 'turret', () => {
   for (const s of [-1, 1]) {
     // inner wedge: (±0.29,1.55)->(±0.95,1.18); outer: (±0.98,1.14)->(±1.62,0.46)
     P.add('turret', box(0.78, 0.46, 0.24), s * 0.62, 0.22, 1.28, -0.32, -s * 0.51, 0);
@@ -5930,6 +5957,7 @@ function buildT90MS(P) {
     P.add('turretDark', box(0.085, 0.03, 1.24), s * 1.548, 0.44, -0.52);
   }
   P.add('turretDark', box(0.54, 0.40, 0.04), 0, 0.20, 1.42, -0.32, 0, 0);   // V-vertex gap plate (§B2)
+  });
   // smoke banks behind the cheek shoulder (print smokecaps seat)
   for (const s of [-1, 1]) {
     const sb = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.040, len: 0.26, pitch: -0.42, splay: 0.30, arc: 0.5, spacing: 0.10 });
@@ -6142,6 +6170,7 @@ function rebuildT90MSTurretExact(P) {
   // side rather than four giant proxy blocks.  A 0.34 x 0.20 cassette at
   // the recovered diagonal produces the source's ~0.38 m diamond AABB;
   // each buried shoe is pulled 10% toward the shell and overlaps both.
+  P.visualEraCluster('t90ms-relikt-nose-era', 'turret', () => {
   const noseRelikt = [
     [-0.50,1.31],[-0.80,1.07],[-1.01,0.86],[-1.22,0.65],[-1.43,0.44],[-1.64,0.23],
     [ 0.44,1.31],[ 0.81,1.06],[ 1.02,0.85],[ 1.23,0.64],[ 1.44,0.43],[ 1.64,0.23],
@@ -6155,6 +6184,7 @@ function rebuildT90MSTurretExact(P) {
     P.add('turretDark', box(0.018, 0.34, 0.28), x + side * 0.105, 0.38, z, -0.22, yaw, 0);
   }
   P.add('turretDark', box(0.42, 0.28, 0.055), 0, 0.30, 1.52, -0.28, 0, 0);
+  });
 
   // Source-dominant paired frontal optic heads. Their buried rectangular
   // cradles enter the inner Relikt shoes and the annular faces finish on
@@ -6169,6 +6199,7 @@ function rebuildT90MSTurretExact(P) {
   // carriers on vehicle-right, one long carrier plus four low backing
   // shoes on vehicle-left.  Exact component boxes keep the side course
   // attached without inventing a symmetric wall.
+  P.visualEraCluster('t90ms-relikt-flank-era', 'turret', () => {
   const flankRelikt = [
     [ 1.420,0.405,-0.676,0.285,0.265,0.610, 0.07],
     [ 1.165,0.385,-1.350,0.340,0.245,0.735,-0.05],
@@ -6215,6 +6246,7 @@ function rebuildT90MSTurretExact(P) {
     [-0.298,0.386,0.29,0.40,-0.15],[-0.052,0.550,0.66,0.24,0],
     [0.188,0.386,0.29,0.40,0.15],
   ]) P.add('turret', box(w, 0.055, d), x, 0.68, z, 0, ry, 0);
+  });
 
   // Joined bustle-roof shoulder.  The removable magazine is not a box hung
   // from the cage: its roof continues the welded fighting-compartment crown

@@ -2797,7 +2797,6 @@ function m60EraCellAt(side, worldZ, heightFraction, w, h, d, castEmbedM) {
 }
 
 function addM60A3TurretEra(P) {
-  const { box } = KIT;
   const turretPivot = P.spec.armor.turretPivot;
   const frontTilesPerSide = 15;
   const sideTilesPerSide = 18;
@@ -2827,12 +2826,6 @@ function addM60A3TurretEra(P) {
     P.eraCluster(`m60a3_turret_era_front_${side > 0 ? 'R' : 'L'}`, (put) => {
       for (const cell of frontCells) putTurretLocal(put, cell);
     }, true);
-    for (const cell of frontCells) {
-      P.add('turretDark', box(cell.w * 0.32, cell.h * 0.46, 0.026),
-        cell.x - cell.nx * 0.021, cell.y - cell.ny * 0.021,
-        cell.z - cell.nz * 0.021,
-        cell.rx, cell.ry, cell.rz);
-    }
 
     const sideCells = [];
     for (let row = 0; row < 3; row++) {
@@ -2847,12 +2840,6 @@ function addM60A3TurretEra(P) {
     P.eraCluster(`m60a3_turret_era_side_${side > 0 ? 'R' : 'L'}`, (put) => {
       for (const cell of sideCells) putTurretLocal(put, cell);
     }, true);
-    for (const cell of sideCells) {
-      P.add('turretDark', box(cell.w * 0.45, cell.h * 0.48, 0.026),
-        cell.x - cell.nx * 0.021, cell.y - cell.ny * 0.021,
-        cell.z - cell.nz * 0.021,
-        cell.rx, cell.ry, cell.rz);
-    }
   }
 
   P.turretG.userData.m60a3EraReceipt = {
@@ -2863,7 +2850,9 @@ function addM60A3TurretEra(P) {
     minimumMantletClearanceM: 0.055,
     independentlyStrippableSectors: 4,
     turretLocal: true,
-    instanced: true,
+    instanced: false,
+    layeredVehicleScaleCamouflage: true,
+    layersPerCassette: 2,
     curvedSurfaceNormals: (frontTilesPerSide + sideTilesPerSide) * 2,
     tangentAxesPerTile: 2,
   };

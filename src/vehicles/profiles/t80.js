@@ -475,6 +475,7 @@ function buildT80Line(P, v) {
     // shoulder, while a deep painted shoe remains buried in the dome.  This
     // replaces the former single low wall whose upper face vanished inside
     // the BV casting.
+    P.visualEraCluster('t80bv-k1-turret-extra-era', 'turret', () => {
     for (const s of [-1, 1]) for (let i = 0; i < 5; i++) {
       const x = 0.38 + i * 0.19;
       const z = 1.47 - i * 0.18;
@@ -495,6 +496,7 @@ function buildT80Line(P, v) {
       P.add('turret', box(0.22, 0.14, 0.22), s * x, 0.15 - i * 0.006, z, -0.06, s * yaw, 0);
       P.add('turretDark', box(0.17, 0.012, 0.15), s * x, 0.226 - i * 0.006, z, -0.06, s * yaw, 0);
     }
+    });
     // The production BV's 902B system is visibly asymmetric: seven tubes
     // on the left cheek and five on the right, each on a planted shoe.
     for (const s of [-1, 1]) {
@@ -505,6 +507,7 @@ function buildT80Line(P, v) {
       smoke.rotation.y = s * 1.00;
       P.turretG.add(smoke);
     }
+    P.visualEraCluster('t80bv-k1-hull-era', 'hull', () => {
     for (let r = 0; r < 4; r++) for (let c = 0; c < 7; c++) {
       // Four dense upper-glacis courses.  The array stays on the central
       // armor plane (well inboard of both idler lanes) and follows the bow
@@ -512,6 +515,7 @@ function buildT80Line(P, v) {
       P.add('hull', box(0.30, 0.12, 0.18), -0.90 + c * 0.30, 0.84 + r * 0.115, 3.21 - r * 0.235, -1.02, 0, 0);
       P.add('hullDark', box(0.25, 0.018, 0.13), -0.90 + c * 0.30, 0.905 + r * 0.115, 3.21 - r * 0.235, -1.02, 0, 0);
     }
+    });
     // Close the real shoulder returns beneath the broadened raft.  These
     // shallow plates bridge the arrow nose to the retained corner shelves;
     // without them the added ERA made three old plan pockets fully enclosed
@@ -524,12 +528,14 @@ function buildT80Line(P, v) {
     // Full skirt-mounted K-1 cadence.  Modules overlap the retained skirt
     // faces by 15 mm, so this is additive armor rather than a replacement
     // band and cannot open the wheel well or alter the smart-track course.
+    P.visualEraCluster('t80bv-k1-skirt-era', 'hull', () => {
     for (const s of [-1, 1]) for (let i = 0; i < 11; i++) {
       const z = 2.58 - i * 0.49;
       const y = 1.09 + (i % 3 === 1 ? 0.025 : 0);
       P.add('hull', box(0.065, 0.31, 0.42), s * 1.765, y, z, 0, 0, s * (i % 2 ? 0.025 : -0.018));
       P.add('hullDark', box(0.014, 0.25, 0.34), s * 1.802, y, z, 0, 0, s * (i % 2 ? 0.025 : -0.018));
     }
+    });
   }
   const dxT = ringSkin(ringsT, 0.30) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dxT, 0.22, -0.30], Math.PI / 2);
@@ -961,6 +967,7 @@ function buildT84(P) {
   // chamfers, then carry two discrete swept cassette courses.  Deliberate
   // 12-20 mm joints remain as service seams, but every joint has camouflaged
   // carrier steel behind it: there are no through-gaps between panels.
+  P.visualEraCluster('t84-duplet-turret-era', 'turret', () => {
   for (const s of [-1, 1]) {
     P.add('turret', orientedSlab(
       [s * 0.12, 0.335, 1.78], [s * 1.08, 0.275, 1.34],
@@ -989,6 +996,7 @@ function buildT84(P) {
         0, s * 0.035, s * 0.018);
     }
   }
+  });
   // tall body walls, z −0.50..−0.98: the fresh front reads an ASYMMETRIC
   // wall-top stair at |x| 1.13..1.24 (L −1.18: 1.942 / −1.22: 1.884;
   // R +1.18: 1.994 / +1.22: 1.942 — the mapped flat 2.007 was the

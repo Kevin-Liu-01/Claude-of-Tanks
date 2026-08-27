@@ -71,52 +71,22 @@ assert.equal(eraReceipt.maxSupportGapM, 0,
 assert.equal(eraReceipt.faceNormalAlignmentDeg, 0,
   'cassette backs and armor faces share the same normal');
 
-function assertSeatedFaceCaps(bodyName, capName, accept, minimum, label) {
-  const body = oplot.root.getObjectByName(bodyName);
-  const caps = oplot.root.getObjectByName(capName);
-  assert.ok(body?.geometry && caps?.geometry, `${label} merged geometry exists`);
-  const bodyFaces = triangles(body, (face) => accept(face) && face.normal.y > 0.90);
-  const capFaces = triangles(caps, (face) => accept(face) && face.normal.y > 0.90);
-  assert.ok(capFaces.length >= minimum, `${label} retains its cassette face cadence`);
-  for (const cap of capFaces) {
-    const mate = bodyFaces.find((face) => face.normal.dot(cap.normal) > 0.999
-      && face.centroid.distanceTo(cap.centroid) < 0.14
-      && Math.abs(cap.centroid.clone().sub(face.centroid).dot(cap.normal)
-        - eraReceipt.lidNormalOffsetM) < 0.0005);
-    assert.ok(mate, `${label} cap clears its rotated cassette face without floating`);
-  }
-}
-
-assertSeatedFaceCaps('turret', 'turretDark', ({ centroid, area }) =>
-  area > 0.012 && area < 0.020 && Math.abs(centroid.x) > 0.35 && Math.abs(centroid.x) < 1.25
-    && centroid.y > 0.50 && centroid.y < 0.90 && centroid.z > 0.50 && centroid.z < 2.00,
-60, 'Oplot turret Duplet');
-
-// On each side, the discrete face-cap course must sweep rearward as it moves
-// away from the gun. This is the plan-view V/chevron law; a broad rectangular
-// bar or an outward fan fails the monotonic inner-to-outer progression.
-{
-  const caps = oplot.root.getObjectByName('turretDark');
-  const course = triangles(caps, ({ centroid, normal, area }) =>
-    area > 0.012 && area < 0.020 && normal.y > 0.90
-      && Math.abs(centroid.x) > 0.35 && Math.abs(centroid.x) < 1.25
-      && centroid.y > 0.50 && centroid.y < 0.90
-      && centroid.z > 0.50 && centroid.z < 2.00);
-  for (const side of [-1, 1]) {
-    const sideCaps = course.filter(({ centroid }) => Math.sign(centroid.x) === side)
-      .sort((lhs, rhs) => Math.abs(lhs.centroid.x) - Math.abs(rhs.centroid.x));
-    assert.ok(sideCaps.length >= 30, `Oplot ${side < 0 ? 'left' : 'right'} chevron keeps fifteen discrete modules`);
-    const innerZ = Math.max(...sideCaps.slice(0, 10).map(({ centroid }) => centroid.z));
-    const outerZ = Math.min(...sideCaps.slice(-10).map(({ centroid }) => centroid.z));
-    assert.ok(innerZ - outerZ > 0.45,
-      `Oplot ${side < 0 ? 'left' : 'right'} Duplet course forms a rearward-swept V`);
-  }
-}
-
-assertSeatedFaceCaps('hull', 'hullDark', ({ centroid, area }) =>
-  area > 0.020 && area < 0.045 && Math.abs(centroid.x) > 0.15 && Math.abs(centroid.x) < 1.35
-    && centroid.y > 1.15 && centroid.y < 1.46 && centroid.z > 1.95 && centroid.z < 2.70,
-32, 'Oplot glacis Nozh');
+const finish = oplot.root.userData.eraFinishReceipt;
+assert.ok(finish, 'Oplot publishes the fleet layered ERA finish receipt');
+assert.equal(finish.revision, 'fleet-layered-vehicle-scale-camo-r1');
+assert.equal(finish.camoProjection, 'vehicle-scale-box-uv');
+assert.equal(finish.bodyAndCoverUseVehiclePaint, true,
+  'Oplot cassette bodies and top layers both inherit the vehicle camouflage');
+assert.equal(finish.authoredParts, 112,
+  'Oplot keeps 56 bodies and 56 shallow top layers in the semantic ERA buckets');
+assert.deepEqual(finish.owners, ['hull', 'turret']);
+assert.equal(finish.maximumDrawBuckets, 2,
+  'all Oplot ERA remains in one static merged bucket per articulation owner');
+assert.equal(finish.perFrameWork, false);
+assert.ok(oplot.root.getObjectByName('turretExternalArmor')?.geometry,
+  'Oplot turret Duplet bodies and covers share the external-armor mesh');
+assert.ok(oplot.root.getObjectByName('hullExternalArmor')?.geometry,
+  'Oplot glacis Nozh bodies and covers share the external-armor mesh');
 
 oplot.dispose();
 

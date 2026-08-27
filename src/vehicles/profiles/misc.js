@@ -2022,6 +2022,7 @@ function buildAMX56(P) {
 
   // Glacis ERA: broken rows follow the raked plate; the central driver path
   // and both light clusters remain open.
+  P.visualEraCluster('amx56-glacis-era', 'hull', () => {
   for (const row of [0, 1]) {
     const y = 1.39 - row * 0.10;
     const z = 2.12 + row * 0.62;
@@ -2030,13 +2031,17 @@ function buildAMX56(P) {
       P.add('hullDark', box(0.26, 0.012, 0.018), x, y + 0.055, z + 0.20, -0.18, 0, 0);
     }
   }
+  });
   for (const s of [-1, 1]) {
+    P.visualEraCluster('amx56-skirt-era', 'hull', () => {
     for (let k = 0; k < 7; k++) {
       const z = -2.48 + k * 0.68;
       P.add('hull', box(0.042, 0.48, 0.57), s * 1.825, 1.04, z);
       P.add('hullDark', box(0.016, 0.36, 0.018), s * 1.849, 1.04, z + 0.22);
     }
+    });
     // Two-course canted cheek ERA, buried into the swept primary shell.
+    P.visualEraCluster('amx56-turret-era', 'turret', () => {
     for (let k = 0; k < 4; k++) {
       const z = 1.18 - k * 0.43;
       P.add('turret', slab(
@@ -2049,6 +2054,7 @@ function buildAMX56(P) {
       P.add('turret', box(0.13, 0.34, 0.34), s * 1.47, 0.38, z, 0, s * 0.08, 0);
       P.add('turretDark', cylZ(0.018, 0.012, 8), s * 1.54, 0.48, z, 0, Math.PI / 2, 0);
     }
+    });
   }
 
   // Distinct AMX 56 gun plant: armored root shoulders, thermal-section
@@ -2195,11 +2201,13 @@ function buildT80UNative2026(P) {
   // cols 2.36..3.02 read plate+0.02 — the proud raft owned ~6 side cols).
   // Row 2 narrows to x ±1.12: outboard of that at z ~2.9 is the idler wrap.
   const plateY = (z) => 1.353 - (z - 1.20) * 0.1145;
+  P.visualEraCluster('t80u-k5-glacis-era', 'hull', () => {
   for (let row = 0; row < 3; row++) for (let c = 0; c < (row === 2 ? 4 : 5); c++) {
     const z = 2.40 + row * 0.26;
     const x = row === 2 ? -0.84 + c * 0.56 : -1.12 + c * 0.56;
     P.add(c % 2 ? 'hullDetail' : 'hull', box(0.56, 0.05, 0.24), x, plateY(z) + 0.005, z, -6.5 * D2R, 0, 0);
   }
+  });
   // driver strip + V splash board (LOW on the gentle glacis — the r1
   // near-vertical strip and 1.49 lift eyes were the front-view 1.49 shelf)
   P.add('hull', box(0.50, 0.04, 0.30), 0, 1.245, 2.02, -0.30, 0, 0);
@@ -2369,6 +2377,7 @@ function buildT80UNative2026(P) {
   // r3g cliff form: the ref side plateau (2.18w) runs to z_w 1.51 then
   // CLIFFS to 1.62 — rails extend to z_w 1.49 and the prongs beyond the
   // cliff drop to 1.69w.
+  P.visualEraCluster('t80u-k5-turret-era', 'turret', () => {
   for (const s of [-1, 1]) {
     P.add('turret', box(0.60, 0.18, 0.50), s * 0.785, bodyY(0.21), 1.32, 0, -s * 0.55, 0);    // K-5 wedge prong
     P.add('turretDark', box(0.50, 0.035, 0.44), s * 0.76, bodyY(0.325), 1.24, 0, -s * 0.55, 0); // gap seam
@@ -2429,6 +2438,7 @@ function buildT80UNative2026(P) {
       P.add('turretDark', box(w * 0.74, 0.010, d * 0.68), s * x, roofY(y + 0.058), z, roll, -s * yaw, 0);
     }
   }
+  });
   // Continuous cast shoulder wedges.  These replace the old rectangular
   // side towers: the lower edge is buried in the pear casting while the
   // upper edge rises and narrows into the K-5 rail.  The result keeps the

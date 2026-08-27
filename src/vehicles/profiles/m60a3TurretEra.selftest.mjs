@@ -41,21 +41,30 @@ assert(receipt.castEmbedM >= 0.01 && receipt.castEmbedM <= 0.02,
 assert(receipt.minimumMantletClearanceM >= 0.04,
   'dense cheek fields preserve the moving mantlet throat');
 
-const eraMeshes = turret.children.filter((object) => object.isInstancedMesh
-  && object.geometry?.type === 'BoxGeometry'
-  && Math.abs(object.geometry.parameters?.width - 0.28) < 1e-6
-  && Math.abs(object.geometry.parameters?.height - 0.13) < 1e-6
-  && Math.abs(object.geometry.parameters?.depth - 0.07) < 1e-6);
-assert.equal(eraMeshes.length, 1, 'all turret ERA modules share one instanced draw bucket');
-assert.equal(eraMeshes[0].count, receipt.totalTiles,
-  'instanced draw bucket contains every authored turret module');
+const finish = tank.root.userData.eraFinishReceipt;
+assert.ok(finish, 'M60A3 publishes the fleet ERA finish receipt');
+assert.equal(finish.revision, 'fleet-layered-vehicle-scale-camo-r1');
+assert.equal(finish.layeredCassettes, receipt.totalTiles,
+  'every authored M60 cassette receives a distinct inset cover');
+assert.equal(finish.authoredParts, receipt.totalTiles * receipt.layersPerCassette,
+  'cassette bodies and covers are tracked in the damageable ERA ranges');
+assert.equal(finish.camoProjection, 'vehicle-scale-box-uv',
+  'the field shares one continuous vehicle-scale camouflage projection');
+assert.equal(finish.bodyAndCoverUseVehiclePaint, true,
+  'both ERA layers use vehicle paint rather than gray detail material');
+assert.equal(finish.maximumDrawBuckets, 1,
+  'all M60 turret ERA layers remain one static merged draw bucket');
+assert.equal(finish.perFrameWork, false,
+  'layering adds no frame-loop work');
 
-const matrix = new THREE.Matrix4();
-const normal = new THREE.Vector3();
+const eraMesh = tank.root.getObjectByName('turretExternalArmor');
+assert.ok(eraMesh?.geometry && !eraMesh.isInstancedMesh,
+  'M60 ERA is merged into the semantic turret external-armor bucket');
+const normalAttribute = eraMesh.geometry.getAttribute('normal');
 const surfaceNormals = [];
-for (let index = 0; index < eraMeshes[0].count; index++) {
-  eraMeshes[0].getMatrixAt(index, matrix);
-  surfaceNormals.push(normal.set(0, 0, 1).transformDirection(matrix).clone());
+for (let index = 0; index < normalAttribute.count; index += 3) {
+  surfaceNormals.push(new THREE.Vector3(
+    normalAttribute.getX(index), normalAttribute.getY(index), normalAttribute.getZ(index)));
 }
 const quantizedNormals = new Set(surfaceNormals.map((value) =>
   `${value.x.toFixed(2)},${value.y.toFixed(2)},${value.z.toFixed(2)}`));
@@ -68,19 +77,21 @@ assert(normalRange('y') >= 0.75,
 assert(normalRange('z') >= 1.50,
   'ERA wraps around the rounded nose and longitudinal cheek curve');
 
-const countStripped = () => {
+const position = eraMesh.geometry.getAttribute('position');
+const countStrippedVertices = () => {
   let stripped = 0;
-  for (let index = 0; index < eraMeshes[0].count; index++) {
-    eraMeshes[0].getMatrixAt(index, matrix);
-    if (matrix.elements[13] < -999) stripped++;
+  for (let index = 0; index < position.count; index++) {
+    if (position.getY(index) < -999) stripped++;
   }
   return stripped;
 };
 
-assert.equal(countStripped(), 0, 'all ERA modules are present on a fresh vehicle');
+assert.equal(countStrippedVertices(), 0, 'all ERA layers are present on a fresh vehicle');
 tank.stripEra('m60a3_turret_era_front_R');
-assert.equal(countStripped(), receipt.frontTilesPerSide,
-  'a frontal-sector hit removes only that sector’s visual modules');
+assert.equal(countStrippedVertices(), receipt.frontTilesPerSide * 72,
+  'a frontal-sector hit removes both 36-vertex box layers for only that sector');
+assert.equal(tank.resetEra(), true, 'round reset restores the merged ERA geometry in place');
+assert.equal(countStrippedVertices(), 0, 'reset restores every stripped body and cover vertex');
 
 tank.dispose();
-console.log('m60a3TurretEra.selftest: dense conformal turret ERA is gameplay-backed and instanced');
+console.log('m60a3TurretEra.selftest: conformal M60 ERA is layered, camouflaged, merged, and strippable');

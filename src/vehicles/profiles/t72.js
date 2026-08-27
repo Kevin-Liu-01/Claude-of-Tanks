@@ -571,6 +571,7 @@ export function buildT72B87Native(P, variant = 'b87') {
   } else if (!jaguar) {
     // Three dense, flush Kontakt-1 glacis courses. Tiles are individually
     // legible but share a buried carrier so they cannot float off the plate.
+    P.visualEraCluster('t72b87-k1-hull-era', 'hull', () => {
     P.add('hullTrack', box(2.24, 0.06, 0.82), 0, 1.26, 1.92, -0.27, 0, 0);
     for (let row = 0; row < 3; row++) {
       const z = 1.67 + row * 0.27;
@@ -581,6 +582,7 @@ export function buildT72B87Native(P, variant = 'b87') {
         P.add('hullDark', box(0.268, 0.012, 0.018), x, y + 0.057, z + 0.105, -0.30, 0, 0);
       }
     }
+    });
   }
   KIT.towCable(P, [[-1.18, 1.28, 1.45], [0, 1.34, 1.18], [1.18, 1.28, 1.45]]);
 
@@ -740,6 +742,7 @@ export function buildT72B87Native(P, variant = 'b87') {
   P.add('turretDark', cylY(b3 ? 1.53 : 1.62, b3 ? 1.53 : 1.62, 0.05, 28), 0, -0.025, b3 ? -0.02 : -0.09);
 
   if (!b3 && !jaguar) {
+  P.visualEraCluster('t72b87-k1-turret-era', 'turret', () => {
   // Kontakt-1 is planted directly into the new casting.  Four staggered
   // frontal courses descend over the cheek, a tighter inner horseshoe fills
   // the crown transition, and three mixed flank courses turn around the
@@ -785,6 +788,7 @@ export function buildT72B87Native(P, variant = 'b87') {
         s * (0.60 + i * 0.13 + row * 0.022), 0);
     }
   }
+  });
   } else if (b3) {
     // B3 turret protection: two large Kontakt-5 arrow leaves meet around
     // the armored gun tunnel, with clipped flank cassettes and a restrained
@@ -1881,6 +1885,7 @@ function buildT72B3M(P) {
   // certified 1.70-plane pokes and tone; the covered outboard strip is
   // bare plate exactly like the ref reads there (its own raft stops at
   // the tracks).
+  P.visualEraCluster('t72b3m-relikt-glacis-era', 'hull', () => {
   for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
     const px = s * (0.17 + i * 0.34);
     // hullTrack: the camo-bucket cut rendered the tilted rows BRIGHTER than
@@ -1917,6 +1922,7 @@ function buildT72B3M(P) {
   // read is the pale-plate/dark-shadow boundary, silhouette untouched.
   P.add('hullDark', box(0.70, 0.045, 0.028), -0.325, 0.585, 1.679, 0, 0, -0.12);
   P.add('hullDark', box(0.70, 0.045, 0.028), 0.325, 0.585, 1.679, 0, 0, 0.12);
+  });
   // r20 item 5 (V-DIP 3rd offense — critic r8: "sign wrong, ref board is
   // APEX-UP ~30px"): DECODED — the ref's 30 px front-view rise is the
   // PLAN-DIAGONAL: its splash board arms run from the bow corners UP the
@@ -2290,6 +2296,7 @@ function buildT72B3M(P) {
   // r6: hard plates pulled to z<=1.88 — the i=0 plate reached z 2.16 and was
   // the SECRET hullLengthM pin (6.76) + the dAlong 0.108 source; x 1.75 so
   // only the ref's own plate column (1.76) reads them, bags own 1.79-1.80
+  P.visualEraCluster('t72b3m-relikt-skirt-era', 'hull', () => {
   for (const s of [-1, 1]) {
     // r10e: bag i0 split flat — its pitched top corner (1.315 @ z 1.686)
     // owned six glacis side cols where the ref line is 1.261-1.288
@@ -2401,6 +2408,7 @@ function buildT72B3M(P) {
     P.add('hullTrack', box(0.0185, 0.475, 0.10), s * 1.7625, 0.8375, 1.77);
     for (let i = 1; i < 3; i++) P.add('hullTrack', box(0.0185, 0.60, 0.48), s * 1.7625, 0.775, 1.58 - i * 0.56);
   }
+  });
   // soft-band aft step (ref hull side carries 1.717 out to z -3.04; r9: the
   // rear face pulled off the -3.09 column edge — it read 1.66 vs ref 1.42)
   // r11: top 1.7555 (ref -3.037 col reads 1.744 — the 1.71 top printed one
@@ -4705,12 +4713,14 @@ function buildT72BU(P) {
   // Keep the raft inside the two live shoe lanes. The former ±1.15 carrier
   // clipped the smooth band by four centimetres even though the visible
   // cassettes and every individual shoe were clear.
+  P.visualEraCluster('t72bu-k5-glacis-era', 'hull', () => {
   P.add('hullTrack', box(2.18, 0.17, 0.36), 0, 1.085, 2.36, -0.32, 0, 0);
   P.add('hullTrack', box(2.18, 0.17, 0.36), 0, 1.068, 2.62, -0.32, 0, 0);
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.9, 0.14, 0.03), s * 0.58, 1.07, 2.56, -0.32, 0, 0);
   }
   P.add('hullTrack', box(0.72, 0.075, 0.30), -0.42, 1.19, 2.18, -0.40, -0.35, 0);
+  });
   // front fender prongs over the idlers (ref side nose 2.8..3.44 lives here:
   // y 0.75..1.19 at |x| 1.41..1.87 — carries hullLengthM's side body span)
   // + inner prong step (ref plan front 3.29 at |x| ~1.0..1.15)
@@ -4747,11 +4757,13 @@ function buildT72BU(P) {
   // K-5 heavy course: gate-1024 ref band z +0.84..+2.44 at |x| 1.87 with the
   // widest 1.885 lump over +2.44..+2.74 (the r3 "-0.6..+1.9" seat was the
   // flipped-digest artifact — fixed tool, re-decoded)
+  P.visualEraCluster('t72bu-k5-skirt-era', 'hull', () => {
   for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
     P.add('hull', box(0.05, 0.44, 0.52), s * 1.858, 1.00, 2.19 - i * 0.55);
     P.add('hullDark', box(0.04, 0.38, 0.03), s * 1.862, 1.00, 1.94 - i * 0.55);
   }
   for (const s of [-1, 1]) P.add('hull', box(0.045, 0.44, 0.30), s * 1.863, 1.00, 2.59);
+  });
 
   // ---- turret (mask-dump anchors): pivot +0.20, dome ±1.66 x 1.20 halfdepth,
   // crown 2.24 (+0.1..+0.7), rear slope 1.83-1.86, spike 2.37 @ -0.8, basket
@@ -4940,12 +4952,14 @@ function buildT72BUNative(P, { turretOnly = false } = {}) {
   P.add('hull', box(2.92, 0.11, 0.58), 0, 1.25, 2.36, -0.30, 0, 0);
   P.add('hull', box(2.60, 0.11, 0.50), 0, 1.18, 2.65, -0.35, 0, 0);
   P.add('hull', box(2.72, 0.07, 0.78), 0, 1.22, 1.92, -0.28, 0, 0);
+  P.visualEraCluster('t72bu-native-k5-glacis-era', 'hull', () => {
   for (let row = 0; row < 3; row++) for (let col = -4; col <= 4; col++) {
     if (row === 0 && Math.abs(col) === 4) continue;
     const z = 1.70 + row * 0.255;
     P.add('hull', box(0.275, 0.105, 0.22), col * 0.295, 1.27 - row * 0.05, z, -0.30, 0, 0);
     P.add('hullDark', box(0.235, 0.014, 0.018), col * 0.295, 1.315 - row * 0.05, z + 0.105, -0.30, 0, 0);
   }
+  });
   for (const s of [-1, 1]) {
     P.add('hull', box(0.30, 0.17, 0.34), s * 1.47, 1.13, 2.72, -0.26, 0, 0);
     KIT.headlight(P, s * 1.16, 1.22, 2.39, -0.30, 0.045);

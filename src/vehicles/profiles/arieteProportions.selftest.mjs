@@ -127,10 +127,12 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
     assert.equal(era.totalTurretCassettes, 48, 'C2 turret receives substantially denser ERA');
     assert.equal(era.sideSkirtCassettes, 52, 'C2 skirts carry two rows across all 13 bays per side');
     assert.equal(era.totalCassettes, 100, 'C2 upgrade contains one hundred seated cassettes');
-    hull.geometry.computeBoundingBox();
-    assert.ok(Math.abs(hull.geometry.boundingBox.min.x + 1.80) < 1e-5
-      && Math.abs(hull.geometry.boundingBox.max.x - 1.80) < 1e-5,
-    'C2 skirt ERA finishes flush on the published width plane');
+    const hullExternalArmor = hullRig.getObjectByName('hullExternalArmor');
+    assert.ok(hullExternalArmor?.geometry, 'C2 skirt ERA uses the hull external-armor mesh');
+    hullExternalArmor.geometry.computeBoundingBox();
+    assert.ok(Math.abs(hullExternalArmor.geometry.boundingBox.min.x + 1.812) < 1e-5
+      && Math.abs(hullExternalArmor.geometry.boundingBox.max.x - 1.812) < 1e-5,
+    'C2 layered skirt lids finish 12 mm proud of the published cassette plane');
     for (const yaw of [0, Math.PI / 3]) {
       turret.rotation.y = yaw;
       tank.root.updateMatrixWorld(true);

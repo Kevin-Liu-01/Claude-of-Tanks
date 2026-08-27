@@ -117,6 +117,25 @@ function sideSlab(P, bucket, side, b0, b1, b2, b3, t0, t1, t2, t3) {
     : slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2)));
 }
 
+function abramsEraOwner(bucket) {
+  return bucket.startsWith('hull') ? 'hull' : 'turret';
+}
+
+const ABRAMS_REACTIVE_VARIANTS = new Set(['m1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3']);
+
+function addAbramsEraLayer(P, bucket, fill) {
+  // The same surface helpers also author passive applique, sensor housings,
+  // and bustle hardware on the base M1A1/M1A2 families. Only the reactive
+  // packages get ERA finish semantics; otherwise those passive parts would
+  // be incorrectly reported and damage-grouped as explosive armor.
+  if (!ABRAMS_REACTIVE_VARIANTS.has(P.spec.id)) {
+    fill();
+    return;
+  }
+  const owner = abramsEraOwner(bucket);
+  P.visualEraCluster(`abrams-${owner}-layered-era`, owner, fill);
+}
+
 // Build a layer directly from its carrier quad.  thickness is the actual
 // outward thickness of the layer; baseOffset is where its back face sits
 // relative to the armor surface.  ERA bodies use a small negative baseOffset
@@ -159,7 +178,7 @@ function surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
     for (let i = 24; i < 30; i++) normals.setXYZ(i, n.x, n.y, n.z);
     normals.needsUpdate = true;
   }
-  P.add(bucket, geometry);
+  addAbramsEraLayer(P, bucket, () => P.add(bucket, geometry));
 }
 
 const ERA_CONTACT_OFFSET = -0.006;
@@ -172,7 +191,9 @@ function skirtArmorBox(P, bucket, side, carrierX, thickness, height, depth, y, z
   embed = 0.006) {
   const inner = carrierX - embed;
   const center = inner + thickness / 2;
-  P.add(bucket, box(thickness, height, depth), side * center, y, z);
+  addAbramsEraLayer(P, bucket, () => {
+    P.add(bucket, box(thickness, height, depth), side * center, y, z);
+  });
   return inner + thickness;
 }
 
@@ -185,11 +206,13 @@ function skirtArmorWedge(P, bucket, side, carrierX, bottomProjection,
   const inner = carrierX - embed;
   const outerBottom = inner + bottomProjection;
   const outerTop = inner + topProjection;
-  sideSlab(P, bucket, side,
-    [inner, y0, z1], [outerBottom, y0, z1],
-    [outerBottom, y0, z0], [inner, y0, z0],
-    [inner, y1, z1], [outerTop, y1, z1],
-    [outerTop, y1, z0], [inner, y1, z0]);
+  addAbramsEraLayer(P, bucket, () => {
+    sideSlab(P, bucket, side,
+      [inner, y0, z1], [outerBottom, y0, z1],
+      [outerBottom, y0, z0], [inner, y0, z0],
+      [inner, y1, z1], [outerTop, y1, z1],
+      [outerTop, y1, z0], [inner, y1, z0]);
+  });
   return {
     p00: [outerBottom, y0, z1],
     p10: [outerBottom, y0, z0],

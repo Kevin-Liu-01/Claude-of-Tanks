@@ -208,7 +208,7 @@ try {
     'five flush mounting uprights connect each rail to the bustle wall');
 
   const flankEra = parts.filter((part) => {
-    if (part.bucket !== 'turretTrack' || part.parent !== 'turretG') return false;
+    if (part.bucket !== 'turretExternalArmor' || part.parent !== 'turretG') return false;
     const height = part.max[1] - part.min[1];
     const centerX = (part.min[0] + part.max[0]) * 0.5;
     const centerZ = (part.min[2] + part.max[2]) * 0.5;
@@ -226,7 +226,7 @@ try {
     'upper cheek ERA row is complete and mirrored');
 
   const flankEraBackers = parts.filter((part) => {
-    if (part.bucket !== 'turretDark' || part.parent !== 'turretG') return false;
+    if (part.bucket !== 'turretExternalArmor' || part.parent !== 'turretG') return false;
     const width = part.max[0] - part.min[0];
     const height = part.max[1] - part.min[1];
     const depth = part.max[2] - part.min[2];

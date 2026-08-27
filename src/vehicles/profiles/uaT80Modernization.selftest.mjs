@@ -18,11 +18,12 @@ for (const [id, receipt, weaponName] of variants) {
   try {
     const turretRig = tank.root.getObjectByName('rig_turret');
     const shell = turretRig?.getObjectByName('turret');
+    const externalArmor = turretRig?.getObjectByName('turretExternalArmor');
     const equipment = turretRig?.getObjectByName('turretEquipment');
     const rws = turretRig?.getObjectByName(weaponName);
     const frontERA = turretRig?.userData.uaT80FrontERAReceipt;
 
-    assert.ok(turretRig && shell?.isMesh && equipment?.isMesh,
+    assert.ok(turretRig && shell?.isMesh && externalArmor?.isMesh && equipment?.isMesh,
       `${id}: modern turret retains structural and equipment ownership`);
     assert.equal(turretRig.userData.uaT80ModernizationSuite, receipt,
       `${id}: modernization suite is explicitly receipted`);
@@ -39,9 +40,12 @@ for (const [id, receipt, weaponName] of variants) {
       `${id}: obsolete spare-track-steel frontal blocks are removed`);
 
     shell.geometry.computeBoundingBox();
+    externalArmor.geometry.computeBoundingBox();
     equipment.geometry.computeBoundingBox();
-    assert.ok(shell.geometry.boundingBox.max.z >= 1.70,
+    assert.ok(externalArmor.geometry.boundingBox.max.z >= 1.70,
       `${id}: faceted carrier and ERA stand proud of the cast dome`);
+    assert.ok(externalArmor.material?.map,
+      `${id}: faceted ERA uses continuous vehicle-scale camouflage`);
     assert.ok(shell.geometry.boundingBox.min.z <= -1.77,
       `${id}: welded bustle overlaps the cast turret core`);
     assert.ok(equipment.geometry.boundingBox.min.z <= -1.98,

@@ -27,11 +27,13 @@ function armorCassette(P, owner, x, y, z, w, h, d, rotation = null, seam = true)
   const r = rotation || [0, 0, 0];
   const bucket = owner === 'hull' ? 'hull' : 'turret';
   const detail = owner === 'hull' ? 'hullDark' : 'turretDark';
+  P.visualEraCluster(`china-layered-${owner}-era`, owner, () => {
   P.add(bucket, KIT.box(w, h, d), x, y, z, r[0], r[1], r[2]);
   if (seam) {
     P.add(detail, KIT.box(w * 0.72, 0.018, Math.max(0.025, d * 0.07)),
       x, y + h * 0.50 + 0.010, z + d * 0.30, r[0], r[1], r[2]);
   }
+  });
 }
 
 function addChineseRoofSuite(P, options = {}) {
@@ -645,6 +647,7 @@ function buildZTZ99A2(P) {
 
   // ---- glacis chevron armor: three raked panel courses with real seam
   // breaks (slope motivates the mass — no tile blanket, no stair steps).
+  P.visualEraCluster('ztz99a2-glacis-era', 'hull', () => {
   P.add('hull', orientedSlab(
     [-1.10, 1.64, 1.35], [1.10, 1.64, 1.35], [1.10, 1.60, 1.10], [-1.10, 1.60, 1.10],
     [-0.72, 1.10, 3.40], [0.72, 1.10, 3.40], [0.72, 1.02, 3.22], [-0.72, 1.02, 3.22]));
@@ -657,6 +660,7 @@ function buildZTZ99A2(P) {
     P.add('hullDark', box(0.045, 0.045, 1.30), s * 0.91, 1.37, 2.22, -0.25, s * 0.22, 0);
   }
   P.add('hull', box(1.90, 0.05, 0.22), 0, 1.63, 1.18, -0.30, 0, 0);
+  });
   // driver center station behind the chevron crest
   P.add('hull', box(0.54, 0.05, 0.46), 0, 1.685, 0.62);
   P.add('hullDark', cylY(0.24, 0.24, 0.016, 14), 0, 1.715, 0.60);
@@ -700,7 +704,7 @@ function buildZTZ99A2(P) {
       P.add('hullDark', box(0.05, 0.06, 0.90), s * 1.829, 1.43, z);
       if (rigid) {
         armorCassette(P, 'hull', s * 1.862, 1.04, z, 0.055, 0.54, 0.78,
-          [0, 0, -s * 0.015], false);
+          [0, 0, -s * 0.015], true);
         P.add('hullDark', box(0.020, 0.030, 0.62), s * 1.887, 1.27, z);
       }
     }
@@ -779,6 +783,7 @@ function buildZTZ99A2(P) {
   }
   // deep add-on cheek cassettes following the wedge rake (the A2 tell):
   // two courses per side, seam battens between, gun channel kept open.
+  P.visualEraCluster('ztz99a2-cheek-era', 'turret', () => {
   for (const s of [-1, 1]) {
     P.add('turret', orientedSlab(
       [s * 0.34, 0.06, 1.52], [s * 0.94, 0.06, 0.90], [s * 0.80, 0.06, 0.62], [s * 0.30, 0.06, 1.18],
@@ -789,6 +794,7 @@ function buildZTZ99A2(P) {
     P.add('turretDark', box(0.035, 0.44, 0.035), s * 0.84, 0.32, 0.78, -0.42, s * 0.72, 0);
     P.add('turretDark', box(1.06, 0.026, 0.045), s * 0.80, 0.625, 0.48, 0, s * 0.62, 0);
   }
+  });
   // nose beak walls flanking the OPEN gun channel: the print's wedge line
   // keeps falling 2.5 -> 2.06 out to +1.7 world — two raked prisms continue
   // the cheek slope past the crown lip; the channel stays clear through the

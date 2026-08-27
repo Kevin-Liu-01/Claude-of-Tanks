@@ -28,12 +28,18 @@ const assertMaterialHierarchy = (id) => {
   const hullCanvas = byName(hull, 'hullCloth');
   const turretCanvas = byName(turret, 'turretCloth');
   const relikt = byName(turret, 'turretTrack');
+  const hullExternalArmor = byName(hull, 'hullExternalArmor');
+  const turretExternalArmor = byName(turret, 'turretExternalArmor');
 
   assert.ok(armor?.material?.map, `${id}: structural armor retains world-scaled camouflage`);
   for (const [label, object] of [
     ['fittings', fittings], ['deck panels', deckPanels], ['hull canvas', hullCanvas],
     ['turret canvas', turretCanvas], ['Relikt cassettes', relikt],
   ]) {
+    // T-72B3M's former hullCloth pieces are the Relikt skirt course. The
+    // fleet ERA pass deliberately moved them into the vehicle-camouflaged
+    // external-armor bucket; they are not canvas stowage.
+    if (!object && id === 't72b3m' && label === 'hull canvas') continue;
     if (!object && id === 'bmpt_terminator2') continue;
     assert.ok(object, `${id}: ${label} mesh exists`);
     assert.equal(object.material.map, null,
@@ -43,12 +49,20 @@ const assertMaterialHierarchy = (id) => {
     `${id}: small fittings do not inherit armor-scale normal noise`);
   assert.equal(fittings.material.roughnessMap, null,
     `${id}: small fittings keep a stable matte response`);
-  assert.equal(hullCanvas.material.bumpMap, null,
-    `${id}: canvas is shaped by geometry instead of armor roughness detail`);
+  if (hullCanvas) {
+    assert.equal(hullCanvas.material.bumpMap, null,
+      `${id}: canvas is shaped by geometry instead of armor roughness detail`);
+  }
   assert.equal(deckPanels.userData.appearanceRole, 'armorPaint');
   assert.equal(deckPanels.userData.appearanceSubtype, 'painted-deck-panel');
   assert.equal(relikt.userData.appearanceRole, 'armorPaint');
   assert.equal(relikt.userData.appearanceSubtype, 'painted-relikt-cassette');
+  assert.ok(hullExternalArmor?.material?.map,
+    `${id}: hull ERA uses continuous vehicle-scale camouflage`);
+  if (id === 't72b3m') {
+    assert.ok(turretExternalArmor?.material?.map,
+      `${id}: turret ERA uses continuous vehicle-scale camouflage`);
+  }
 
   tank.dispose();
 };

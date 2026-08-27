@@ -37,6 +37,8 @@ function mount(P, owner, fitting, x, y, z, rotation = null) {
 function erawaCourse(P, o) {
   const { box } = KIT;
   const bucket = o.bucket ?? 'hull';
+  const owner = bucket.startsWith('hull') ? 'hull' : 'turret';
+  P.visualEraCluster(`polish-erawa-${owner}`, owner, () => {
   const dark = o.dark ?? (bucket.startsWith('hull') ? 'hullDark' : 'turretDark');
   const nx = o.cols, ny = o.rows;
   for (let r = 0; r < ny; r++) {
@@ -59,6 +61,7 @@ function erawaCourse(P, o) {
       }
     }
   }
+  });
 }
 
 // Edge-on prism law (GEOMETRY-GATE station-slice visibility): long slab

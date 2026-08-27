@@ -82,17 +82,20 @@ for (const seat of eraReceipt.glacisEraSeats) {
   assertSurfaceSeat(seat, 0.07 * 1.08 * 0.5, 0.015, 'glacis ERA');
 }
 
-const eraMeshes = [];
-visual.root.traverse((object) => {
-  if (object.isInstancedMesh
-      && object.geometry?.type === 'BoxGeometry'
-      && Math.abs(object.geometry.parameters?.width - 0.28) < 1e-6
-      && Math.abs(object.geometry.parameters?.height - 0.13) < 1e-6
-      && Math.abs(object.geometry.parameters?.depth - 0.07) < 1e-6) eraMeshes.push(object);
-});
-assert.equal(eraMeshes.reduce((total, mesh) => total + mesh.count, 0), 162,
-  'all gameplay ERA sectors have matching instanced visual tiles');
-assert.equal(eraMeshes.length, 2, 'hull and turret ERA remain two shared draw buckets');
+const hullEra = findMesh(hullRig, 'hullExternalArmor');
+const turretEra = findMesh(turretRig, 'turretExternalArmor');
+const finish = visual.root.userData.eraFinishReceipt;
+assert.equal(finish.layeredCassettes, 162,
+  'all gameplay ERA sectors have matching layered visual cassettes');
+assert.equal(finish.authoredParts, 324,
+  'each cassette contributes one body and one inset top layer');
+assert.deepEqual(finish.owners, ['hull', 'turret']);
+assert.equal(finish.maximumDrawBuckets, 2,
+  'hull and turret ERA remain two shared static draw buckets');
+assert.equal(hullEra.geometry.getAttribute('position').count, 3600,
+  'fifty glacis cassettes and lids are merged into hull external armor');
+assert.equal(turretEra.geometry.getAttribute('position').count, 8064,
+  'one hundred twelve cheek cassettes and lids are merged into turret external armor');
 
 const cageReceipt = eraReceipt.cheekCage;
 assert.ok(cageReceipt, 'leo2a6m publishes its conformal cheek-cage receipt');

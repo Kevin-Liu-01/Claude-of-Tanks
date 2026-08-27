@@ -132,31 +132,9 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          1.284345,
-          0.4226138,
-          0.7313737
-        ],
-        "quaternion": [
-          -0.2352204,
-          0.6430927,
-          0.2503374,
-          0.6844226
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "t90a",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.23,
-        "pos": [
-          1.6534306,
+          1.6535538,
           0.10675,
-          -1.5877354
+          -1.5836288
         ],
         "quaternion": [
           0,
@@ -169,7 +147,29 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0013459
+        "maximumSurfaceErrorM": 0.0077879
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.23,
+        "pos": [
+          1.6481976,
+          0.10675,
+          -1.9541148
+        ],
+        "quaternion": [
+          0,
+          0.7279987,
+          0,
+          0.6855785
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "t90a",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0133708
       }
     ]
   },
@@ -372,22 +372,22 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          1.5718539,
-          0.4475144,
-          -0.7350051
+          -0.7011386,
+          0.8781007,
+          -1.2607417
         ],
         "quaternion": [
-          -0.0262806,
-          0.6726581,
-          0.0288695,
-          0.7389229
+          0.0018592,
+          -0.7415193,
+          0.0016822,
+          0.6709269
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "t90ms",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0004527
+        "maximumSurfaceErrorM": 0
       }
     ]
   },

@@ -6219,7 +6219,11 @@ export function createTank(specId, engineCtx, opts = {}) {
   // its one-shot charge fires.
   const destructiblePartCluster = new WeakMap();
   const destructibleClusters = new Map();
+  const layeredEraPartsByCluster = new Map();
+  const layeredEraCassetteCounts = new Map();
   let activeDestructibleCluster = null;
+  const visualEraPartsByCluster = new Map();
+  let activeVisualEraCluster = null;
   const decals = [];
   const disposables = [];
 
@@ -6245,9 +6249,31 @@ export function createTank(specId, engineCtx, opts = {}) {
     postAssemble: null,
     add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       const part = xform(geo, x, y, z, rx, ry, rz, s);
-      (buckets[bucket] || (buckets[bucket] = [])).push(part);
+      // Destructible clusters are gameplay ERA. Route every authored layer
+      // (body, inset lid and small face furniture) through the continuous
+      // vehicle-scale camouflage projection instead of allowing a profile to
+      // fall back to gray detail/cloth/track materials. The dedicated bucket
+      // also keeps bolt-on protection out of the base hull/turret hit shell.
+      const eraOwner = activeVisualEraCluster?.owner
+        ?? (activeDestructibleCluster
+          ? (bucket.startsWith('turret') ? 'turret' : 'hull')
+          : null);
+      const targetBucket = eraOwner
+        ? `${eraOwner}ExternalArmor`
+        : bucket;
+      (buckets[targetBucket] || (buckets[targetBucket] = [])).push(part);
       if (activeDestructibleCluster) {
         destructiblePartCluster.set(part, activeDestructibleCluster);
+        layeredEraPartsByCluster.set(activeDestructibleCluster,
+          (layeredEraPartsByCluster.get(activeDestructibleCluster) || 0) + 1);
+      }
+      if (activeVisualEraCluster) {
+        const name = activeVisualEraCluster.name;
+        const current = visualEraPartsByCluster.get(name);
+        visualEraPartsByCluster.set(name, {
+          owner: activeVisualEraCluster.owner,
+          count: (current?.count || 0) + 1,
+        });
       }
       // Turret glass is reserved for sights, periscopes and electro-optical
       // apertures. Publish those authored surfaces as the canonical optics
@@ -6318,7 +6344,16 @@ export function createTank(specId, engineCtx, opts = {}) {
     // authored bucket is explicit and happens before mesh merging, so no
     // hidden duplicate geometry or floating donor gun survives the delta.
     clear(...names) {
-      for (const name of names.flat()) buckets[name] = [];
+      for (const name of names.flat()) {
+        buckets[name] = [];
+        const clearedOwner = name === 'hullExternalArmor' ? 'hull'
+          : name === 'turretExternalArmor' ? 'turret' : null;
+        if (clearedOwner) {
+          for (const [sector, receipt] of visualEraPartsByCluster) {
+            if (receipt.owner === clearedOwner) visualEraPartsByCluster.delete(sector);
+          }
+        }
+      }
     },
     clearDecals(...parents) {
       const remove = new Set(parents.flat());
@@ -6363,14 +6398,60 @@ export function createTank(specId, engineCtx, opts = {}) {
     },
     // ERA cluster: brick placements in HULL frame (or turret frame if turretLocal)
     eraCluster(plateName, fill, turretLocal = false) {
-      const start = eraPlacements.length;
-      // Optional per-placement scale lets a native builder author a real
-      // large cassette from the same destructible ERA primitive instead of
-      // leaving permanent decorative panels behind after stripEra().  Every
-      // historical caller takes the exact 1×1×1 path.
-      fill((x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) =>
-        eraPlacements.push({ x, y, z, rx, ry, rz, sx, sy, sz, turretLocal }));
-      eraClusters.set(plateName, { start, end: eraPlacements.length, turretLocal });
+      const owner = turretLocal ? 'turret' : 'hull';
+      const baseWidthM = 0.28;
+      const baseHeightM = 0.13;
+      const baseDepthM = 0.07;
+      const coverInset = 0.82;
+      const coverDepthM = 0.014;
+      const coverOverlapM = 0.003;
+      let cassettes = 0;
+      // Legacy profiles supplied only transforms for one neutral instanced
+      // brick. Materialize those transforms as two merged, damageable layers:
+      // a full cassette and a shallow inset lid. Both land in the same camo
+      // bucket, so boxUV() projects one vehicle-space pattern across the
+      // complete field rather than restarting a miniature pattern per brick.
+      P.destructibleCluster(plateName, () => {
+        fill((x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => {
+          const w = baseWidthM * sx;
+          const h = baseHeightM * sy;
+          const d = baseDepthM * sz;
+          const localY = turretLocal ? y - armor.turretPivot[1] : y;
+          const localZ = turretLocal ? z - armor.turretPivot[2] : z;
+          P.addExternalArmor(owner, new THREE.BoxGeometry(w, h, d),
+            x, localY, localZ, rx, ry, rz);
+          const lidDepth = Math.min(coverDepthM, d * 0.32);
+          const lid = new THREE.BoxGeometry(w * coverInset, h * coverInset, lidDepth);
+          lid.translate(0, 0, d * 0.5 + lidDepth * 0.5 - coverOverlapM);
+          P.addExternalArmor(owner, lid, x, localY, localZ, rx, ry, rz);
+          cassettes++;
+        });
+      });
+      layeredEraCassetteCounts.set(plateName,
+        (layeredEraCassetteCounts.get(plateName) || 0) + cassettes);
+    },
+    // Profile-native ERA often uses irregular wedges/cassettes that do not
+    // map one-to-one to a gameplay plate. Keep that authored topology, but
+    // give every layer the same external-armor semantics and vehicle-space
+    // camouflage projection as damageable ERA. Repeated names accumulate so
+    // helper-authored courses can publish one fleet-level finish receipt.
+    visualEraCluster(name, owner, fill) {
+      if (typeof name !== 'string' || name.length === 0) {
+        throw new TypeError('visualEraCluster requires a non-empty name');
+      }
+      if (owner !== 'hull' && owner !== 'turret') {
+        throw new TypeError('visualEraCluster owner must be hull or turret');
+      }
+      if (typeof fill !== 'function') throw new TypeError('visualEraCluster requires a fill callback');
+      if (activeVisualEraCluster) {
+        throw new Error(`Nested visualEraCluster ${name} inside ${activeVisualEraCluster.name}`);
+      }
+      activeVisualEraCluster = { name, owner };
+      try {
+        fill();
+      } finally {
+        activeVisualEraCluster = null;
+      }
     },
     // Exact native ERA cluster: `fill` emits ordinary authored P.add parts.
     // Their geometry and merge order stay byte-for-byte identical before a
@@ -6616,6 +6697,38 @@ export function createTank(specId, engineCtx, opts = {}) {
   root.userData.eraClusterNames = Object.freeze([
     ...new Set([...eraClusters.keys(), ...destructibleClusters.keys()]),
   ].sort());
+  if (destructibleClusters.size || visualEraPartsByCluster.size) {
+    const owners = new Set();
+    if ((buckets.hullExternalArmor || []).length) {
+      owners.add('hull');
+    }
+    if ((buckets.turretExternalArmor || []).length) {
+      owners.add('turret');
+    }
+    const visualSectors = [...visualEraPartsByCluster.keys()].sort();
+    const finishSectors = [...new Set([...root.userData.eraClusterNames, ...visualSectors])].sort();
+    root.userData.eraFinishReceipt = Object.freeze({
+      revision: 'fleet-layered-vehicle-scale-camo-r1',
+      sectors: Object.freeze(finishSectors),
+      gameplaySectors: root.userData.eraClusterNames,
+      visualSectors: Object.freeze(visualSectors),
+      owners: Object.freeze([...owners].sort()),
+      camoProjection: 'vehicle-scale-box-uv',
+      bodyAndCoverUseVehiclePaint: true,
+      semanticBucket: 'externalArmor',
+      staticMergedProtection: true,
+      maximumDrawBuckets: owners.size,
+      perFrameWork: false,
+      authoredParts: [...layeredEraPartsByCluster.values(),
+        ...[...visualEraPartsByCluster.values()].map(({ count }) => count)]
+        .reduce((sum, count) => sum + count, 0),
+      layeredCassettes: [...layeredEraCassetteCounts.values()].reduce((sum, count) => sum + count, 0),
+      partsBySector: Object.freeze(Object.fromEntries(
+        [...layeredEraPartsByCluster.entries(),
+          ...[...visualEraPartsByCluster.entries()].map(([name, { count }]) => [name, count])]
+          .sort(([a], [b]) => a.localeCompare(b)))),
+    });
+  }
 
   if (typeof P.postAssemble === 'function') {
     P.postAssemble({ root, hullG, turretG, gunG, recoilG });
@@ -7962,7 +8075,7 @@ export function createTank(specId, engineCtx, opts = {}) {
         P.gear.setBroken('trackL', false);
         P.gear.setBroken('trackR', false);
       }
-      if (eraPlacements.length) seatEraBricks();
+      this.resetEra();
     },
 
     /**

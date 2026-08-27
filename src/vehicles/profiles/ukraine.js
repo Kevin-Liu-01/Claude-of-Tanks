@@ -52,9 +52,11 @@ function kTile(P, owner, x, y, z, w, h, d, rotation = null, lid = true) {
   const bucket = owner === 'hull' ? 'hullTrack' : 'turretTrack';
   const dark = owner === 'hull' ? 'hullDark' : 'turretDark';
   const r = rotation || [0, 0, 0];
-  P.add(bucket, box(w, h, d), x, y, z, r[0], r[1], r[2]);
-  if (lid) P.add(dark, box(w * 0.74, Math.min(0.024, h * 0.3), 0.024),
-    x, y + h * 0.50 - 0.015, z + d * 0.50 - 0.002, r[0], r[1], r[2]);
+  P.visualEraCluster(`ukraine-k1-${owner}`, owner, () => {
+    P.add(bucket, box(w, h, d), x, y, z, r[0], r[1], r[2]);
+    if (lid) P.add(dark, box(w * 0.74, Math.min(0.024, h * 0.3), 0.024),
+      x, y + h * 0.50 - 0.015, z + d * 0.50 - 0.002, r[0], r[1], r[2]);
+  });
 }
 
 // Surface-seated cassette. The visible face keeps the authored plane while
@@ -74,21 +76,22 @@ function seatedCassette(P, owner, x, y, z, w, h, d, rotation = null, {
   dims[axis] += embed;
   shift[axis] = contactSide * embed * 0.5;
   const body = KIT.xform(box(dims.x, dims.y, dims.z), shift.x, shift.y, shift.z);
-  if (external) P.addExternalArmor(owner, body, x, y, z, r[0], r[1], r[2]);
-  else P.add(bucket, body, x, y, z, r[0], r[1], r[2]);
-  if (!lid) return;
+  P.visualEraCluster(`ukraine-layered-${owner}`, owner, () => {
+    if (external) P.addExternalArmor(owner, body, x, y, z, r[0], r[1], r[2]);
+    else P.add(bucket, body, x, y, z, r[0], r[1], r[2]);
+    if (!lid) return;
 
-  const outward = -contactSide;
-  const lidDims = { x: w * 0.80, y: h * 0.80, z: d * 0.80 };
-  lidDims[axis] = Math.min(0.024, dims[axis] * 0.22);
-  const lidShift = { x: 0, y: 0, z: 0 };
-  // Decorative lids normally share the cassette face. A small explicit
-  // clearance is available for painted carriers whose merged surfaces would
-  // otherwise compete in the depth buffer.
-  lidShift[axis] = outward * (dims[axis] * 0.5 - embed * 0.5
-    - lidDims[axis] * 0.5 + lidClearance);
-  P.add(dark, KIT.xform(box(lidDims.x, lidDims.y, lidDims.z),
-    lidShift.x, lidShift.y, lidShift.z), x, y, z, r[0], r[1], r[2]);
+    const outward = -contactSide;
+    const lidDims = { x: w * 0.80, y: h * 0.80, z: d * 0.80 };
+    lidDims[axis] = Math.min(0.024, dims[axis] * 0.22);
+    const lidShift = { x: 0, y: 0, z: 0 };
+    // The lid is a real shallow cassette layer, not gray trim. Its inner
+    // face overlaps the body while both layers share one vehicle-space camo.
+    lidShift[axis] = outward * (dims[axis] * 0.5 - embed * 0.5
+      - lidDims[axis] * 0.5 + lidClearance);
+    P.add(dark, KIT.xform(box(lidDims.x, lidDims.y, lidDims.z),
+      lidShift.x, lidShift.y, lidShift.z), x, y, z, r[0], r[1], r[2]);
+  });
 }
 
 // Seat a cassette from the carrier face itself instead of approximating its
@@ -463,16 +466,23 @@ function buildUAT64BV(P) {
 
   // Glacis K-1 raft ON the measured plane (print rows y 0.87..1.25 over
   // build z 1.66..2.58, rake -0.36) — four staggered courses with lids.
-  for (let row = 0; row < 4; row++) {
-    const zr = 1.72 + row * 0.235;
-    const yr = 1.225 - row * 0.088;
-    for (let col = -3; col <= 3; col++) {
-      const x = col * 0.262 + (row & 1 ? 0.131 : 0);
-      if (Math.abs(x) > 0.90) continue;
-      P.add('hullTrack', box(0.245, 0.105, 0.235), x, yr, zr + Math.abs(x) * 0.045, -0.36, x * 0.10, 0);
-      P.add('hullDark', box(0.19, 0.026, 0.026), x, yr + 0.046, zr + 0.105 + Math.abs(x) * 0.045, -0.36, x * 0.10, 0);
+  P.visualEraCluster('ua-t64bv-k1-hull-glacis-era', 'hull', () => {
+    for (let row = 0; row < 4; row++) {
+      const zr = 1.72 + row * 0.235;
+      const yr = 1.225 - row * 0.088;
+      for (let col = -3; col <= 3; col++) {
+        const x = col * 0.262 + (row & 1 ? 0.131 : 0);
+        if (Math.abs(x) > 0.90) continue;
+        P.add('hullTrack', box(0.245, 0.105, 0.235), x, yr,
+          zr + Math.abs(x) * 0.045, -0.36, x * 0.10, 0);
+        // The inset cover is a second painted cassette layer. Keeping it in
+        // the ERA cluster prevents the legacy hull-dark material from turning
+        // every lid into a plain gray miniature block.
+        P.add('hullDark', box(0.19, 0.026, 0.026), x, yr + 0.046,
+          zr + 0.105 + Math.abs(x) * 0.045, -0.36, x * 0.10, 0);
+      }
     }
-  }
+  });
   for (const s of [-1, 1]) {
     P.add('hull', box(0.50, 0.075, 0.045), s * 0.235, 0.90, 2.42, -0.36, s * 0.42, 0);
     KIT.headlight(P, s * 0.72, 1.14, 2.40, -0.22, 0.068);

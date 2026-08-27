@@ -338,7 +338,7 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilitySamples": 9,
         "visibilityClearSamples": 7,
         "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.04
+        "maximumSurfaceErrorM": 0.051
       },
       {
         "kind": "designation",
@@ -360,7 +360,7 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilitySamples": 9,
         "visibilityClearSamples": 7,
         "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.04
+        "maximumSurfaceErrorM": 0.051
       },
       {
         "kind": "insignia",

@@ -72,12 +72,14 @@ function faceSeatedArmorCassette(P, owner, face, courseAxis, w, h, d, embed) {
   const center = face.point.clone().addScaledVector(normal, h / 2 - embed / 2);
   const armorBucket = owner === 'hull' ? 'hull' : 'turret';
   const detailBucket = owner === 'hull' ? 'hullDark' : 'turretDark';
-  P.add(armorBucket, KIT.box(w, h + embed, d), center.x, center.y, center.z,
-    rotation.x, rotation.y, rotation.z);
-  const lidCenter = face.point.clone().addScaledVector(normal, h + 0.006);
-  P.add(detailBucket, KIT.box(w * 0.86, 0.012, d * 0.84),
-    lidCenter.x, lidCenter.y, lidCenter.z,
-    rotation.x, rotation.y, rotation.z);
+  P.visualEraCluster(`italy-layered-${owner}`, owner, () => {
+    P.add(armorBucket, KIT.box(w, h + embed, d), center.x, center.y, center.z,
+      rotation.x, rotation.y, rotation.z);
+    const lidCenter = face.point.clone().addScaledVector(normal, h + 0.006);
+    P.add(detailBucket, KIT.box(w * 0.86, 0.012, d * 0.84),
+      lidCenter.x, lidCenter.y, lidCenter.z,
+      rotation.x, rotation.y, rotation.z);
+  });
 }
 
 // flush hatch ring + coaming (shared by the italy builders)

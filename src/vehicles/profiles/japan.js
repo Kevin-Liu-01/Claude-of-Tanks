@@ -35,23 +35,23 @@ function seatedArmorCassette(P, owner, x, y, z, w, h, d, rotation = null, {
   const shift = { x: 0, y: 0, z: 0 };
   dims[axis] += embed;
   shift[axis] = contactSide * embed * 0.5;
-  P.add(bucket, KIT.xform(KIT.box(dims.x, dims.y, dims.z),
-    shift.x, shift.y, shift.z), x, y, z, r[0], r[1], r[2]);
-  if (!lid) return;
-  const outward = -contactSide;
-  const lidDims = { x: w * 0.76, y: h * 0.76, z: d * 0.76 };
-  lidDims[axis] = Math.min(0.020, dims[axis] * 0.22);
-  const lidShift = { x: 0, y: 0, z: 0 };
-  // The old subtraction placed the lid's OUTER face exactly on the carrier's
-  // outer face. Both same-facing triangles then wrote the same depth and the
-  // camouflage/dark panel alternated as the camera moved. Seat the lid by its
-  // inner face instead: a 2 mm lap keeps physical contact while the remaining
-  // 18 mm is real geometric relief, independent of draw order or depth bias.
-  const resolvedLidEmbed = Math.min(lidEmbed, lidDims[axis] * 0.25);
-  lidShift[axis] = outward * (dims[axis] * 0.5 - embed * 0.5
-    + lidDims[axis] * 0.5 - resolvedLidEmbed);
-  P.add(detail, KIT.xform(KIT.box(lidDims.x, lidDims.y, lidDims.z),
-    lidShift.x, lidShift.y, lidShift.z), x, y, z, r[0], r[1], r[2]);
+  P.visualEraCluster(`japan-layered-${owner}`, owner, () => {
+    P.add(bucket, KIT.xform(KIT.box(dims.x, dims.y, dims.z),
+      shift.x, shift.y, shift.z), x, y, z, r[0], r[1], r[2]);
+    if (!lid) return;
+    const outward = -contactSide;
+    const lidDims = { x: w * 0.76, y: h * 0.76, z: d * 0.76 };
+    lidDims[axis] = Math.min(0.020, dims[axis] * 0.22);
+    const lidShift = { x: 0, y: 0, z: 0 };
+    // Seat the camouflaged outer layer by its inner face: a 2 mm lap keeps
+    // physical contact while the remaining relief is independent of draw
+    // order or depth bias.
+    const resolvedLidEmbed = Math.min(lidEmbed, lidDims[axis] * 0.25);
+    lidShift[axis] = outward * (dims[axis] * 0.5 - embed * 0.5
+      + lidDims[axis] * 0.5 - resolvedLidEmbed);
+    P.add(detail, KIT.xform(KIT.box(lidDims.x, lidDims.y, lidDims.z),
+      lidShift.x, lidShift.y, lidShift.z), x, y, z, r[0], r[1], r[2]);
+  });
 }
 
 function sampleFace(p00, p10, p11, p01, u, v, outwardHint) {
