@@ -74,3 +74,4 @@ runtime documents remain authoritative for behavior.
 - [0062 — Batch static presentation and pack world data](0062-static-presentation-and-packed-world-data.md)
 - [0063 — Covered solo deployment warming has one typed owner](0063-covered-solo-deployment-warm-owner.md)
 - [0064 — Battle result presentation has one typed state machine](0064-typed-battle-result-presentation.md)
+- [0065 — Network battle activation is one atomic presentation transition](0065-typed-network-battle-activation.md)

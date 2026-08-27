@@ -111,6 +111,7 @@ import { createNetworkFramePump } from './net/networkFramePump.ts';
 import { createNetworkBattleBarrier } from './net/networkBattleBarrier.ts';
 import { createNetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
 import { createNetworkBattleLaunchRuntime } from './net/networkBattleLaunchRuntime.ts';
+import { createNetworkBattleActivationRuntime } from './net/networkBattleActivationRuntime.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createTouchControlsAccess } from './ui/touchControlsAccess.ts';
@@ -2224,6 +2225,37 @@ function resetNetworkBattleState() {
   game.preBattleS = Infinity;
 }
 
+const networkBattleActivation = createNetworkBattleActivationRuntime({
+  game,
+  settings,
+  killcam,
+  // Engineering-only controller is created after ordinary boot composition;
+  // keep this port lazy so production startup never crosses its TDZ.
+  driveTest: { resetAim: () => driveTestController.resetAim() },
+  getHud: () => hud,
+  playerActions: playerBattleActions,
+  getDamagePanel: () => damagePanel,
+  rig,
+  presentation: {
+    setShotMode: (value) => { shotMode = value; },
+    setCaptureHidden: (value) => perfHud.setCaptureHidden(value),
+    setNetworkSpectator: (value) => { networkSpectator = value; },
+    setSelectedSpecId: (value) => { selectedSpecId = value; },
+    rememberSpecId,
+    setWorldDormant,
+    getWorld: () => world,
+    setCamoBiome,
+    hideGarage: () => garage.hide(),
+    hideEndOverlay: () => { endOverlay.style.display = 'none'; },
+    resetBattleResult: () => battleResultPresentation.reset(),
+    setGarageSpots,
+    setGarageSunTrim,
+    emitPhaseChange: (phase) => bus.emit('phase:change', { phase }),
+    emitConsumableReset: () => bus.emit('ui:consumableReset', {}),
+    stopShowroom: () => showroom.stop(),
+  },
+});
+
 /** Shared renderer/presentation path for private, LAN, and dedicated matches. */
 async function presentNetworkBattle({
   viewerId,
@@ -2263,7 +2295,6 @@ async function presentNetworkBattle({
   setCamoBiome(mapId);
   const spectator = own.team === 'spectator';
   const displayTeam = spectator ? 'alpha' : own.team;
-  networkSpectator = spectator;
   if (!transitionShown) {
     const pendingCfg = getMapConfig(mapId);
     bus.emit('ui:battleStart', { playerId: viewerId, specId: own.specId, mapId });
@@ -2420,47 +2451,14 @@ async function presentNetworkBattle({
   await networkBattleBarrier.waitForPeerReadiness();
   markLoadStage('readyBarrier');
 
-  shotMode = false;
-  perfHud.setCaptureHidden(false);
-  fx.setFrozen(false);
-  if (settings.isOpen()) settings.close({ noRelock: true });
-  killcam.cancel();
-  if (!spectator) {
-    selectedSpecId = own.specId;
-    rememberSpecId(own.specId);
-  }
-  driveTestController.resetAim();
-  setWorldDormant(false);
-  if (world.resetDestructibles) world.resetDestructibles();
-  game.mapId = mapId;
-  setCamoBiome(mapId);
-  hud.shotInfo.setPlayer(viewerId);
-  fx.resetAll();
-  if (!spectator) {
-    playerBattleActions.setTank(game.player.spec);
-    damagePanel.setTank(game.player.spec, game.player.visual);
-    damagePanel.setEquipment(game.player.equip || {});
-  }
-  garage.hide();
-  endOverlay.style.display = 'none';
-  battleResultPresentation.reset();
-  hud.setMode('battle');
-  game.phase = 'battle';
-  setGarageSpots(false);
-  setGarageSunTrim(false);
-  bus.emit('phase:change', { phase: 'battle' });
-  playerBattleActions.resetConsumables();
-  bus.emit('ui:consumableReset', {});
-  rig.release();
-  if (spectator) {
-    if (!killcam.spectate.startObserver()) {
-      throw new Error('No live vehicle is available to spectate.');
-    }
-    networkBridge.setPerspective(killcam.spectate.targetId);
-  } else {
-    rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
-  }
-  showroom.stop();
+  networkBattleActivation.activate({
+    viewerId,
+    own,
+    spectator,
+    mapId,
+    bridge: networkBridge,
+    fx,
+  });
   // Validate the actual loaded battlefield before removing the opaque load
   // screen. The garage boot watchdog cannot catch a map-specific poisoned
   // environment/shadow program, and discovering it after reveal presents as

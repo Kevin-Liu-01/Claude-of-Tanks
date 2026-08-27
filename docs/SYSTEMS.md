@@ -114,6 +114,10 @@ strict TypeScript owners:
 - `src/net/networkRoomCoordinator.ts` owns the persistent room UI lifecycle;
 - `src/net/networkBattleLaunchRuntime.ts` owns private/LAN, retained-room
   rematch, and ranked launch policy plus cold-entry failure cleanup;
+- `src/net/networkBattleActivationRuntime.ts` owns the atomic prepared-bridge
+  transition into live player or spectator presentation, including prior-round
+  reset, world/HUD/FX state, phase publication, camera ownership, and Garage
+  shutdown;
 - `src/net/connectionRecovery.ts` owns the single reconnect presentation edge;
 - `src/dev/debugTelemetry.ts` owns read-only diagnostics;
 - `src/dev/driveTestController.ts` owns deterministic rendered-battle QA input.

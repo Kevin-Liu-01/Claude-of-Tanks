@@ -35,6 +35,9 @@ play without importing Three.js rendering or DOM state.
   presentation, selection commands, readiness, and rematch admission.
 - `networkBattleLaunchRuntime.ts` owns private/LAN, retained-room rematch, and
   ranked launch policy, including cold-loader presentation and terminal cleanup.
+- `networkBattleActivationRuntime.ts` owns the atomic post-readiness transfer
+  into live player or spectator presentation: world/HUD/FX/result reset, phase
+  publication, camera ownership, and Garage shutdown.
 - `connectionRecovery.ts` owns reconnect status and the single bounded failure
   edge; transport replacement remains below it.
 - `rankedServiceClient.js` owns service-scoped ladder identity and queue polling;
@@ -64,6 +67,8 @@ play without importing Three.js rendering or DOM state.
   turret aim use separate bounded decay channels. Contacts may extend smoothing
   but must never change authority, collision, or ballistic state.
 - Modules remain Node-runnable with no DOM/WebGL dependency.
+- Network activation must remain one operation after the peer-ready barrier;
+  do not publish battle phase or camera state piecemeal from `main.js`.
 - Tests exercise the public host/client interface, not private internals.
 
 ## Verification
