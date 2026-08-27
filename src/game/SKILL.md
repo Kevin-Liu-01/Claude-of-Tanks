@@ -55,6 +55,10 @@ reveal preparation; callers receive only generation and reveal receipts.
 `soloBattleLoadingRuntime.ts` owns the complete covered solo entry around that
 warm: exact world/roster acquisition, progress, texture upload, visual staging,
 minimum loader dwell, reveal fallback, countdown calculation, and diagnostics.
+`soloBattleStartRuntime.ts` owns the synchronous post-acquisition transaction
+that resets round-scoped presentation, activates the world and roster, and
+publishes the solo battle phase; `soloBattleStartAccess.ts` keeps it out of
+Garage/multiplayer boot until covered solo intent.
 The corresponding multiplayer lifecycle lives in
 `src/net/networkBattlePresentationRuntime.ts`; `main.js` supplies renderer and
 world adapters but must not reimplement its preparation/readiness/reveal order.
@@ -93,6 +97,9 @@ not put shader, effect, shadow, or reveal ordering back into `main.js`.
 Route covered solo entry changes through `soloBattleLoadingRuntime.ts`; do not
 recreate its acquisition barrier, progress policy, or reveal handoff in the
 composition root.
+Route post-acquisition solo round reset and phase activation through
+`soloBattleStartRuntime.ts`; preload its access owner before the synchronous
+handoff and do not rebuild that transaction in `main.js`.
 Route cold network entry changes through `networkBattlePresentationRuntime.ts`;
 keep partial bridges private until roster preparation and initial authority
 succeed.

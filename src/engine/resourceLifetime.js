@@ -16,6 +16,24 @@ const LIMITS = Object.freeze({
   mobile: Object.freeze({ pedestalVisuals: 2, worldScenes: 1 }),
 });
 
+// Some owners retain valid GPU resources outside the active Object3D tree
+// (terrain LOD alternatives are the canonical example). A WeakMap keeps that
+// ownership explicit without putting Sets/functions into serializable
+// userData or extending the lifetime of a released scene root.
+const RETAINED_RESOURCES = new WeakMap();
+
+/**
+ * Declare resources owned by an Object3D but not necessarily attached to its
+ * current render tree. Collections stay live, so streamed additions made
+ * after registration are included in eventual disposal.
+ */
+export function registerRetainedObject3DResources(owner, resources) {
+  if (!owner?.isObject3D || !resources || typeof resources !== 'object') {
+    throw new TypeError('retained Object3D resources require an owner and resource collections');
+  }
+  RETAINED_RESOURCES.set(owner, resources);
+}
+
 /** @returns {{pedestalVisuals:number, worldScenes:number}} */
 export function residentResourceLimits(tier) {
   return LIMITS[tier === 'mobile' ? 'mobile' : 'desktop'];
@@ -38,9 +56,26 @@ function collectMaterialTextures(material, out) {
   }
 }
 
+function collectDeclaredResources(object, bag) {
+  const declared = RETAINED_RESOURCES.get(object);
+  if (!declared) return;
+  for (const geometry of declared.geometries || []) {
+    if (geometry) bag.geometries.add(geometry);
+  }
+  for (const material of declared.materials || []) {
+    if (!material) continue;
+    bag.materials.add(material);
+    collectMaterialTextures(material, bag.textures);
+  }
+  for (const texture of declared.textures || []) {
+    if (texture) bag.textures.add(texture);
+  }
+}
+
 function collectTreeResources(root, bag) {
   if (!root?.traverse) return;
   root.traverse((object) => {
+    collectDeclaredResources(object, bag);
     if (object.geometry) bag.geometries.add(object.geometry);
     const materials = Array.isArray(object.material)
       ? object.material : (object.material ? [object.material] : []);
@@ -71,6 +106,7 @@ export function disposeObject3DResources(root, { preserveRoots = [], onDispose =
   if (root?.traverse) {
     root.traverse((object) => {
       objects += 1;
+      collectDeclaredResources(object, owned);
       if (object.geometry) owned.geometries.add(object.geometry);
       const materials = Array.isArray(object.material)
         ? object.material : (object.material ? [object.material] : []);

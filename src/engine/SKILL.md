@@ -13,10 +13,12 @@ simulation.
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
 `renderer.js` creates WebGL; `viewportRuntime.ts` owns atomic resize and 0x0
-first-layout recovery; `frameLoopScheduler.ts` owns rAF delivery and bounded
-hidden-pane recovery and visible Garage clock sleep; `garageFramePacer.ts` suppresses redundant settled
-Garage frames while keeping interaction at display cadence; `lighting.js`,
-`post.js`, and `sky.js` build the frame; `renderLayers.ts` owns
+first-layout recovery; `frameLoopScheduler.ts` owns rAF delivery, bounded
+hidden-pane recovery, and visible Garage clock sleep; `garageFramePacer.ts`
+suppresses redundant settled Garage frames while keeping interaction at display
+cadence; `lighting.js` reuses proven static Garage depth maps until explicit
+presentation invalidation, then forces a complete refresh before motion;
+`post.js` and `sky.js` build the frame; `renderLayers.ts` owns
 presentation/shadow-only routing for authored proxy casters;
 `phaseSceneResidency.ts` detaches mutually exclusive Garage and battlefield
 roots while retaining their exact reusable objects;
@@ -31,6 +33,9 @@ targets/materials, and avoid shader compilation during live control windows.
 Mark geometry built only to cast shadows with `markShadowOnly()`; a
 color-write-disabled material alone does not stop Three.js from submitting it
 in the forward pass.
+Every asynchronous Garage producer that changes visible state must invalidate
+presentation; the five-second paint is a safety watchdog, not its delivery
+mechanism.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

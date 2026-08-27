@@ -62,6 +62,21 @@ Run `npm run world:props:pack` after an intentional JSON edit. The focused
 self-test compares every decoded float, index, bound, and model name against
 the source before release.
 
+### Static-phase and terrain-resource follow-up
+
+The 2026-08-27 production lifecycle gate expanded acceptance beyond FPS. A
+settled initial or returned Garage now paints at 0.2 Hz and submits no shadow
+work; paired 1280×720 captures preserve the selected tank, lighting, shadows,
+and interface. Initial Garage task residency fell from 0.014 to 0.004
+core-equivalent and the complete safety frame fell from 496 to 290 calls.
+
+Battle terrain now shares three world-local Uint16 index attributes across 116
+live LOD geometries. The exact receipt records 153,216 unique bytes,
+3,888,000 duplicate Uint16 bytes avoided, and 7,929,216 bytes removed versus
+the former per-geometry Uint32 representation. The same gate measured 260.5 MB active
+battle heap, versus 265.4 MB immediately before topology pooling, while all
+visible triangle, material, LOD, collision, and quality contracts stayed fixed.
+
 ## Reproduction
 
 ```sh

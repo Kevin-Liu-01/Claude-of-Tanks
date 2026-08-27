@@ -120,11 +120,14 @@ tank shadow proxies are exempt. Exact repeated meshes become instances; the
 remaining compatible, opaque, semantic-free workshop surfaces merge by material
 and render state in root-local space. The finalizer publishes exact batching,
 released-geometry, and before/after caster receipts to the phase-resource probe.
-A pair of full-geometry, immobile repair-bay vehicles also batches compatible
-same-material fittings inside its first-party builders. The separately posed
-salvage exhibits remain unbatched so their named component ownership is intact.
-A settled Garage paints only once per second; direct camera input, spring motion,
-and vehicle switching restore display-rate presentation immediately.
+The distant repair and salvage exhibits use the fleet's existing low-
+tessellation presentation while preserving authored dimensions and materials;
+the selectable tank remains full quality. The separately posed salvage
+exhibits remain unbatched so their named component ownership is intact. A
+settled Garage is event-invalidated and paints only once per five-second safety
+window. It also reuses completed CSM depth maps with zero shadow submissions.
+Input, resize, streamed visual work, spring motion, and vehicle switching wake
+display-rate presentation and force fresh shadows immediately.
 
 Garage and battle roots are phase-exclusive scene residents. An inactive phase
 is detached from the Three.js scene rather than merely hidden, so renderer
@@ -136,6 +139,15 @@ Immutable battlefield subtrees finalize their world matrices once and opt out
 of recursive matrix traversal. Legitimate runtime world motion continues
 through instance buffers, uniforms, geometry-LOD swaps, and visibility. Do not
 freeze a subtree that owns an animated Object3D transform.
+
+Terrain chunk topology is shared per battlefield and LOD. The exact surface
+and skirt indices fit in Uint16 and one immutable attribute is referenced by
+every 96×96, 48×48, or 24×24 chunk at that level. This removes duplicate
+JavaScript arrays and GPU element buffers without changing vertex positions,
+normals, triangles, materials, LOD transitions, or collision.
+Streamed levels not mounted on the current terrain meshes are registered with
+the world root's resource lifetime, so cache eviction releases their uploaded
+buffers as well as the active scene tree.
 
 Structure detail is paid at build time, not traversal time. Landmark façade
 parts are merged into the already-present plaster/stone/wood/roof/dark/glass

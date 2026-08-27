@@ -346,6 +346,8 @@ const sampleResources = () => page.evaluate(() => {
       phaseSceneResidency: debug.phaseSceneResidency,
       workshopOptimization:
         debug.garageDressing?.group?.userData?.optimizationReceipt || null,
+      terrainIndexPool:
+        debug.world?._buildDetail?.terrain?.indexPool || null,
     },
     renderCount: window.__PHASE_RESOURCE_RENDER_COUNT || 0,
     heapMB: performance.memory
@@ -444,12 +446,15 @@ const evaluateBudgets = (phases) => {
     checks.push({ name, pass: Boolean(pass), actual, limit });
   };
 
-  check('garage idle render cadence', idle?.rendersPerSecond <= 1.25,
-    idle?.rendersPerSecond ?? null, '<= 1.25 renders/s');
+  check('garage idle render cadence', idle?.rendersPerSecond <= 0.3,
+    idle?.rendersPerSecond ?? null, '<= 0.3 renders/s');
   check('garage idle animation clock sleeps',
-    (idle?.frameLoopTicks?.animation || 0) / (idle?.wallSeconds || 1) <= 1.25,
+    (idle?.frameLoopTicks?.animation || 0) / (idle?.wallSeconds || 1) <= 0.3,
     +((idle?.frameLoopTicks?.animation || 0) / (idle?.wallSeconds || 1)).toFixed(2),
-    '<= 1.25 animation ticks/s');
+    '<= 0.3 animation ticks/s');
+  check('garage idle shadow submissions sleep',
+    (idle?.frameWorkload?.shadowCalls?.max || 0) === 0,
+    idle?.frameWorkload?.shadowCalls?.max ?? null, '0 shadow calls');
   check('garage idle CPU residency',
     idle?.taskCoreEquivalent <= RESOURCE_BUDGETS.garageIdle.taskCoreEquivalent,
     idle?.taskCoreEquivalent ?? null,
@@ -522,6 +527,13 @@ const evaluateBudgets = (phases) => {
       battle?.resources.renderer[resource] ?? null,
       `<= ${RESOURCE_BUDGETS.battleActive[resource]}`);
   }
+  const terrainIndexPool = battle?.resources?.caches?.terrainIndexPool;
+  check('active battlefield shares exact terrain topology',
+    terrainIndexPool?.attributes <= 3
+      && terrainIndexPool?.references >= 64
+      && terrainIndexPool?.totalBytesAvoided >= 7_500_000,
+    terrainIndexPool ?? null,
+    '<= 3 index buffers, >= 64 references, >= 7.5 MB legacy index storage avoided');
   for (const resource of ['sceneGeometries', 'sceneMaterials', 'sceneTextures',
     'sceneTexturePixels']) {
     check(`active battle visible ${resource}`,
@@ -540,10 +552,13 @@ const evaluateBudgets = (phases) => {
     returned?.taskCoreEquivalent ?? null,
     `<= ${RESOURCE_BUDGETS.garageReturned.taskCoreEquivalent} core equivalent`);
   check('returned Garage animation clock sleeps',
-    (returned?.frameLoopTicks?.animation || 0) / (returned?.wallSeconds || 1) <= 1.25,
+    (returned?.frameLoopTicks?.animation || 0) / (returned?.wallSeconds || 1) <= 0.3,
     +((returned?.frameLoopTicks?.animation || 0) /
       (returned?.wallSeconds || 1)).toFixed(2),
-    '<= 1.25 animation ticks/s');
+    '<= 0.3 animation ticks/s');
+  check('returned Garage shadow submissions sleep',
+    (returned?.frameWorkload?.shadowCalls?.max || 0) === 0,
+    returned?.frameWorkload?.shadowCalls?.max ?? null, '0 shadow calls');
   check('returned Garage JavaScript heap',
     returned?.resources.heapMB <= RESOURCE_BUDGETS.garageReturned.heapMB,
     returned?.resources.heapMB ?? null,

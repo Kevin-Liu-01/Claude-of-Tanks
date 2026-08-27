@@ -78,3 +78,6 @@ runtime documents remain authoritative for behavior.
 - [0066 — Garage and battle roots have exclusive scene residency](0066-phase-exclusive-scene-residency.md)
 - [0067 — Solo battle loading has one typed lifecycle owner](0067-typed-solo-battle-loading.md)
 - [0068 — Cold network battle presentation has one typed owner](0068-typed-network-battle-presentation.md)
+- [0069 — Solo round activation is an intent-loaded transaction](0069-intent-loaded-solo-round-activation.md)
+- [0070 — Static Garage rendering is event-invalidated](0070-event-invalidated-static-garage-depth.md)
+- [0071 — Terrain chunks share world-local index topology](0071-world-local-shared-terrain-topology.md)

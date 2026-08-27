@@ -14,7 +14,7 @@ and map presentation.
 <!-- agent-docs:fill:model -->
 `worldBuildCoordinator.ts` owns map transfer, construction joins, background
 pacing, cancellation, residency, and eviction. `map.js` composes maps,
-`terrain.js` provides the height field,
+`terrain.js` provides the height field and world-local shared LOD index pools,
 `collision.js` owns broad phase/shapes, `maps/` owns layouts, and vegetation,
 props, destructibles, toppling, and wrecks own their visual/runtime layers.
 `propsModelStore.ts` owns the bounds-checked packed runtime representation of
@@ -35,6 +35,10 @@ and verify the packed representation against its authoring source.
 World meshes authored only as low-polygon shadow casters must use
 `markShadowOnly()` from `src/engine/renderLayers.ts`; keep visible geometry on
 the presentation layer and verify that native shadow submissions are unchanged.
+Terrain position/normal buffers remain chunk-local, but identical LOD topology
+must share one Uint16 index attribute per resolution within each world.
+Register off-tree streamed LOD geometries with the world root's retained
+resource lifetime so cache eviction can dispose them.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

@@ -88,6 +88,7 @@ interface GaragePedestalRuntimeOptions {
   now?(): number;
   debugTarget?: PedestalDebugTarget | null;
   warn?(message: string, error: unknown): void;
+  invalidatePresentation?(): void;
 }
 
 export interface GaragePedestalRuntime {
@@ -155,12 +156,13 @@ export function createGaragePedestalRuntime({
     ? window as unknown as PedestalDebugTarget
     : null,
   warn = (message, error) => console.warn(message, error),
+  invalidatePresentation = () => {},
 }: GaragePedestalRuntimeOptions): GaragePedestalRuntime {
   const required = [createVisual, getSpec, ensureTankBuilder, ensureTankBuilders,
     prebakeSharedTextures, discardSharedTextures, createBudgetYield, nextFrame,
     getDeviceTier, getPhase, isBootComplete, getSelectedId, getNeighborIds,
     getBattlePlayer, getBattleEntity, scheduleDelay, scheduleWatchdog,
-    cancelWatchdog, now, warn];
+    cancelWatchdog, now, warn, invalidatePresentation];
   if (required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('garage pedestal runtime requires every lifecycle port');
   }
@@ -301,6 +303,7 @@ export function createGaragePedestalRuntime({
       ...(phases || {}),
     });
     trace('reveal', { id: specId, ms: elapsedMs, path, pv: visualState(current) });
+    invalidatePresentation();
     if (isBootComplete() && getPhase() === 'garage') preloader.queueNeighbors();
   };
 
@@ -457,6 +460,7 @@ export function createGaragePedestalRuntime({
     pollToken += 1;
     shownToken = pollToken;
     trace('adopt-battle', { id: specId, pv: visualState(incoming) });
+    invalidatePresentation();
     return true;
   };
 

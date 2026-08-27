@@ -13,6 +13,8 @@ const pedestalRuntime = fs.readFileSync(
   path.join(here, 'garagePedestalRuntime.ts'), 'utf8',
 );
 const studioAccess = fs.readFileSync(path.join(here, 'studioAccess.ts'), 'utf8');
+const soloLoading = fs.readFileSync(path.join(here, 'soloBattleLoadingRuntime.ts'), 'utf8');
+const soloStartAccess = fs.readFileSync(path.join(here, 'soloBattleStartAccess.ts'), 'utf8');
 const networkLaunch = fs.readFileSync(
   path.join(here, '..', 'net', 'networkBattleLaunchRuntime.ts'), 'utf8',
 );
@@ -54,6 +56,16 @@ assert.match(pedestalRuntime, /createGaragePedestalPreloader\(\{/,
   'the lifecycle owner must compose neighbor and pointer-intent warming');
 assert.match(main, /onTankIntent: pedestal\.preloadIntent/,
   'garage vehicle intent must be wired to the runtime loader');
+assert.match(main, /createSoloBattleStartAccess\(\{/,
+  'main should compose one typed solo activation owner');
+assert.doesNotMatch(main, /function startBattle\(/,
+  'solo activation policy must not return to the composition root');
+assert.match(soloStartAccess,
+  /load = \(\) => import\('\.\/soloBattleStartRuntime\.ts'\)/,
+  'Garage boot must not evaluate solo-round activation policy');
+assert.match(soloLoading,
+  /\(\) => preloadBattleStart\(\)[\s\S]{0,900}startBattle\(specId, resolved/,
+  'covered loading must acquire the activation owner before its synchronous handoff');
 
 assert.match(main, /function preloadNetworkLobbyIntent\(state\)/,
   'joined rooms need an exact lobby-intent warm boundary');

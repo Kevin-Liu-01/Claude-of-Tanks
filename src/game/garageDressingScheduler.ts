@@ -13,6 +13,7 @@ interface GarageDressingSchedulerOptions {
   ) => Promise<{ release(): void } | null>;
   now?: () => number;
   warn?: (message: string, error: unknown) => void;
+  onVisualChange?: () => void;
   quietMs?: number;
 }
 
@@ -44,10 +45,11 @@ export function createGarageDressingScheduler({
   acquireBackgroundWork = async () => ({ release() {} }),
   now = () => performance.now(),
   warn = (message, error) => console.warn(message, messageOf(error)),
+  onVisualChange = () => {},
   quietMs = 1600,
 }: GarageDressingSchedulerOptions): GarageDressingScheduler {
   const required = [getPhase, isTransitionActive, ensureTankBuilders,
-    requestIdle, scheduleDelay, acquireBackgroundWork, now, warn];
+    requestIdle, scheduleDelay, acquireBackgroundWork, now, warn, onVisualChange];
   if (!dressing || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('garage dressing scheduler requires every runtime port');
   }
@@ -99,6 +101,7 @@ export function createGarageDressingScheduler({
       const hasBuiltCore = (dressing.group.userData.buildTimings?.length || 0) > 0;
       if (!hasBuiltCore) {
         await dressing.pump();
+        onVisualChange();
         if (!dressing.isBuilt() && getPhase() === 'garage') defer(350);
         return;
       }
@@ -119,6 +122,7 @@ export function createGarageDressingScheduler({
         return;
       }
       await dressing.pump();
+      onVisualChange();
     } catch (error: unknown) {
       warn('[garageDressing] quiet build failed —', error);
     } finally {

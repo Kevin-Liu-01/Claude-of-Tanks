@@ -138,6 +138,7 @@ export interface SoloBattleLoadingRuntimeOptions {
   preloadSoloAuthority(): Promise<unknown>;
   preloadBattleClient(): Promise<unknown>;
   preloadBattleWarm(): Promise<unknown>;
+  preloadBattleStart(): Promise<unknown>;
   ensureKillcam(): Promise<unknown>;
   ensureFx(): Promise<FxRuntime>;
   startBattle(
@@ -213,6 +214,7 @@ export function createSoloBattleLoadingRuntime({
   preloadSoloAuthority,
   preloadBattleClient,
   preloadBattleWarm,
+  preloadBattleStart,
   ensureKillcam,
   ensureFx,
   startBattle,
@@ -243,7 +245,7 @@ export function createSoloBattleLoadingRuntime({
     getBattleVisuals, ensureBattleHud, ensureTouchControls, preloadSettings,
     preloadArmorAim, planRoster, planCamoOverrides, ensureTankBuilders,
     preloadSoloAuthority, preloadBattleClient, preloadBattleWarm, ensureKillcam,
-    ensureFx, startBattle, prepareBattleWorldServices, getPedestalVisual,
+    preloadBattleStart, ensureFx, startBattle, prepareBattleWorldServices, getPedestalVisual,
     prebakeSharedTextures, rosterRows, warmShotCards, getCamoSweep,
     prepareRevealCamera, resolveVisiblePreBattleSeconds, openBattle,
     scheduleDeferredWarm, nextFrame, createLoadingYielder, now, delay];
@@ -335,6 +337,7 @@ export function createSoloBattleLoadingRuntime({
         () => preloadSoloAuthority(),
         () => preloadBattleClient(),
         () => preloadBattleWarm(),
+        () => preloadBattleStart(),
         () => audio.warmBattleEvents(),
         () => fxTexture,
         () => ensureKillcam(),

@@ -113,6 +113,7 @@ const runtime = createSoloBattleLoadingRuntime({
   preloadSoloAuthority: async () => events.push('authority:ready'),
   preloadBattleClient: async () => events.push('client:ready'),
   preloadBattleWarm: async () => events.push('warm:ready'),
+  preloadBattleStart: async () => events.push('start:ready'),
   ensureKillcam: async () => events.push('killcam:ready'),
   ensureFx: async () => ({
     group: fxGroup,
@@ -157,7 +158,7 @@ const runtime = createSoloBattleLoadingRuntime({
 
 try {
   await runtime.begin('m1a2', null, { randomRoster: false });
-  assert.equal(acquiredTasks, 10, 'all independent cold-entry tasks share one barrier');
+  assert.equal(acquiredTasks, 11, 'all independent cold-entry tasks share one barrier');
   assert.equal(shown.mapName, 'Verdant Fields');
   assert.equal(shown.mode, 'Random Battle · Standard');
   assert.equal(delayMs, 840, 'fast entries preserve the minimum loader dwell');

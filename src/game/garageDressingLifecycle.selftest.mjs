@@ -15,6 +15,7 @@ let built = false;
 let preloadCount = 0;
 let pumpCount = 0;
 let sourceLoadCount = 0;
+let visualChanges = 0;
 const idle = [];
 const delayed = [];
 const dressing = {
@@ -39,6 +40,7 @@ const scheduler = createGarageDressingScheduler({
   },
   requestIdle: (callback) => idle.push(callback),
   scheduleDelay: (callback, delayMs) => delayed.push({ callback, delayMs }),
+  onVisualChange: () => { visualChanges += 1; },
   now: () => now,
 });
 
@@ -52,6 +54,7 @@ await flush();
 assert.equal(preloadCount, 1);
 assert.equal(pumpCount, 1, 'the ordinary workshop core must build first');
 assert.equal(sourceLoadCount, 0, 'vehicle families must stay deferred until after the core');
+assert.equal(visualChanges, 1, 'each completed streamed chunk invalidates the presentation');
 const firstResume = delayed.shift();
 assert.equal(firstResume.delayMs, 350, 'unfinished chunks resume after a short lull');
 
@@ -62,6 +65,7 @@ await flush();
 assert.equal(sourceLoadCount, 1, 'the exact exhibit families load before vehicle chunks');
 assert.equal(pumpCount, 2);
 assert.equal(built, true);
+assert.equal(visualChanges, 2, 'the final vehicle chunk also requests an immediate paint');
 
 // A second owner verifies transition and fresh-input deferral without sharing
 // completion state from the happy-path stream above.

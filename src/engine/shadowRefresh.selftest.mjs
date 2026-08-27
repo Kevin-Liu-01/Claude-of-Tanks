@@ -30,6 +30,12 @@ const lightingSource = await readFile(new URL('./lighting.js', import.meta.url),
 assert.match(lightingSource,
   /function applyFarCascadeDormancy\(\)[\s\S]{0,700}canDormantShadowCascades\(csm\.lights, FAR_CASCADE_START\)[\s\S]{0,500}shadow\.autoUpdate = false/,
   'the live CSM path must gate dormancy on native depth-map readiness');
+assert.match(lightingSource,
+  /function applyStaticPresentationDormancy\(\)[\s\S]{0,500}shadow\.autoUpdate = false[\s\S]{0,200}shadow\.needsUpdate = false/,
+  'a proven-static presentation must suppress every redundant shadow submission');
+assert.match(lightingSource,
+  /setStaticPresentationDormant\(on\)[\s\S]{0,700}else forceRateCappedCascades\(\)/,
+  'releasing static dormancy must force a complete cascade refresh');
 
 function sample(hz, seconds = 2, cascades = 4) {
   const scheduler = createShadowRefreshScheduler(cascades);

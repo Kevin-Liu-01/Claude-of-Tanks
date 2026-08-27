@@ -27,6 +27,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   let cancelledWatchdog = null;
   let compileCalls = 0;
   let frameCalls = 0;
+  let presentationInvalidations = 0;
 
   const makeVisual = (specId) => {
     const root = new THREE.Object3D();
@@ -95,6 +96,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
     cancelWatchdog: (handle) => { cancelledWatchdog = handle; },
     now: () => nowMs,
     debugTarget,
+    invalidatePresentation: () => { presentationInvalidations += 1; },
   });
 
   return {
@@ -109,6 +111,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
     entities,
     get compileCalls() { return compileCalls; },
     get frameCalls() { return frameCalls; },
+    get presentationInvalidations() { return presentationInvalidations; },
     get watchdog() { return watchdog; },
     get cancelledWatchdog() { return cancelledWatchdog; },
     setPlayer(value) { player = value; },
@@ -130,6 +133,8 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   assert.equal(h.runtime.current?.root.position.y, 5.36);
   assert.equal(h.prebakes[0], 'preview', 'initial hero must preserve preview-quality paint');
   assert.equal(h.visuals.length, 1);
+  assert.equal(h.presentationInvalidations, 1,
+    'initial reveal invalidates the event-driven Garage frame');
 
   h.setBootComplete(true);
   h.setSelected('bravo');
@@ -138,12 +143,16 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   assert.equal(h.compileCalls, 1, 'cold interactive hero must submit its exact programs');
   assert.equal(h.frameCalls, 2, 'shader submission must settle behind two painted frames');
   assert.equal(h.visuals[0].root.visible, false, 'outgoing hero must be parked after reveal');
+  assert.equal(h.presentationInvalidations, 2,
+    'cold hero reveal requests one immediate presentation frame');
 
   const built = h.visuals.length;
   h.setSelected('alpha');
   await h.runtime.set('alpha');
   assert.equal(h.visuals.length, built, 'warm LRU selection must not rebuild the hero');
   assert.equal(h.runtime.current?.specId, 'alpha');
+  assert.equal(h.presentationInvalidations, 3,
+    'cached hero reveal follows the same invalidation contract');
 
   h.setSelected('charlie');
   await h.runtime.set('charlie');
@@ -161,6 +170,8 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   h.setPlayer({ visual: fielded });
   assert.equal(h.runtime.adoptBattlePlayer('delta'), true);
   assert.equal(h.runtime.current, fielded);
+  assert.equal(h.presentationInvalidations, 5,
+    'LRU reveal and adopted battle hero each invalidate the presentation');
   h.entities.set('delta', {});
   assert.equal(h.runtime.lendToBattle('delta'), true);
   assert.equal(h.entities.get('delta').visual, fielded);

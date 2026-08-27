@@ -26,15 +26,15 @@ export interface GarageFramePacerOptions {
  * permanent 60 Hz render/simulation pipeline after the scene has settled.
  *
  * The browser continues to composite DOM/CSS transitions independently. A
- * low idle cadence remains as a fail-safe for async texture/model completion,
- * so work that does not emit a dirty signal still becomes visible within one
- * second without keeping the complete GPU pipeline hot.
+ * low idle cadence remains as a fail-safe for unowned async browser work. All
+ * game-owned scene mutations emit a dirty signal, so this watchdog can stay
+ * genuinely cold without delaying interaction or streamed Garage content.
  */
 export function createGarageFramePacer({
-  idleFramesPerSecond = 1,
+  idleFramesPerSecond = 0.2,
   activeTailMs = 240,
 }: GarageFramePacerOptions = {}): GarageFramePacer {
-  const idleFps = Math.max(1, Math.min(30, idleFramesPerSecond));
+  const idleFps = Math.max(0.1, Math.min(30, idleFramesPerSecond));
   const idleIntervalMs = 1000 / idleFps;
   const tailMs = Math.max(0, activeTailMs);
   let lastRenderAt = -Infinity;

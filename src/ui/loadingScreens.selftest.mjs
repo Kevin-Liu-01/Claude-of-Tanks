@@ -338,7 +338,7 @@ assert.ok(cameraPrepareAt >= 0 && revealPrimeAt > cameraPrepareAt &&
   loaderFadeAt > revealPrimeAt && battleOpenAt > loaderFadeAt,
   'solo battle entry must lock the chase camera and paint it before the roster loader fades');
 assert.match(mainSource,
-  /post\.render\(dtR\);\s*if \(game\.phase === 'battle'\) battleEntryLifecycle\.noteBattleFrame\(\);/,
+  /post\.render\(dtR\);\s*if \(game\.phase === 'garage'\) garagePresentationDirty = false;\s*if \(game\.phase === 'battle'\) battleEntryLifecycle\.noteBattleFrame\(\);/,
   'the reveal barrier must advance only after a real battle frame is rendered');
 assert.match(battleEntryLifecycleSource,
   /noteBattleFrame\(\) \{ presentedBattleFrameSerial \+= 1; \}[\s\S]*firstRequiredSerial = presentedBattleFrameSerial \+ 1/,

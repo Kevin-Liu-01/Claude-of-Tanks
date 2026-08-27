@@ -1,6 +1,6 @@
 # 0061 — Sleep the settled Garage frame clock
 
-Status: accepted
+Status: superseded by [0070](0070-event-invalidated-static-garage-depth.md)
 
 ## Context
 

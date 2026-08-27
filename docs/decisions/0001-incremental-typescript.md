@@ -71,6 +71,10 @@ adapters.
 `src/net/networkBattlePresentationAccess.ts` keeps that deep owner out of
 Garage and solo startup until network-mode intent, while retaining retryable
 chunk acquisition after a transient first-visit failure.
+`src/game/soloBattleStartRuntime.ts` owns the synchronous transaction from an
+acquired solo world and roster to a live round, while
+`src/game/soloBattleStartAccess.ts` keeps that policy out of ordinary Garage
+and multiplayer boot until covered solo entry requests it.
 
 ## Consequences
 

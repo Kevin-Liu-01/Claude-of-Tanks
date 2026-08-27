@@ -48,10 +48,10 @@ const SALVAGE_HULL_SPEC = 'k2';
 // each parked vehicle. Salvage exhibits override batching because their named
 // component subtrees remain independently staged and rearranged below.
 const BAY_TANK_OPTS = {
-  quality: 'ai', geometryQuality: 'high', batchStatic: true, proceduralOnly: true,
+  quality: 'ai', geometryQuality: 'low', batchStatic: true, proceduralOnly: true,
 };
 const SALVAGE_TANK_OPTS = {
-  quality: 'ai', geometryQuality: 'high', batchStatic: false, proceduralOnly: true,
+  quality: 'ai', geometryQuality: 'low', batchStatic: false, proceduralOnly: true,
 };
 const MODERN_COMPONENT_SOURCES = Object.freeze([
   BAY_A_SPEC, BAY_B_SPEC, SALVAGE_TURRET_SPEC, SALVAGE_HULL_SPEC,

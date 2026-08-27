@@ -22,6 +22,9 @@ const soloDeployment = await readFile(
 const soloLoading = await readFile(
   new URL('../game/soloBattleLoadingRuntime.ts', import.meta.url), 'utf8',
 );
+const soloStart = await readFile(
+  new URL('../game/soloBattleStartRuntime.ts', import.meta.url), 'utf8',
+);
 const battleIntentRuntime = await readFile(
   new URL('../game/battleIntentRuntime.ts', import.meta.url), 'utf8',
 );
@@ -176,7 +179,7 @@ if (!/finishedAtPreBattleS[\s\S]*doneBeforeRollout[\s\S]*setPending\(false\)/.te
     || !/setPending:\s*\(pending\)[\s\S]{0,80}battleWarmPending = pending/.test(main)) {
   throw new Error('deferred warm must retain the one-second rollout hold and record completion');
 }
-if (!/setupBattle\(game, specId, world,[\s\S]{0,900}combatWarm\.reset\(\)/.test(main)
+if (!/round\.setupBattle\(game, specId, activeWorld,[\s\S]{0,500}round\.combatWarm\.reset\(\)/.test(soloStart)
   || !/const reset = \(\): void => \{[\s\S]{0,320}openingReady = false;[\s\S]{0,80}rareReady = false;/.test(combatWarmCoordinator)) {
   throw new Error('each new map/roster must receive a fresh opening and rare warm receipt');
 }
@@ -191,7 +194,7 @@ if (!hiddenVariants.includes('yield* compileAll(entity.visual.root)')
   || /initializeForwardProgramsSteps\(scene\)|renderer\.compile\(scene/.test(hiddenVariants)) {
   throw new Error('rare effects must never recompile the entire visible battlefield');
 }
-if (!/deferOpeningRoutes: !!opts\.deferVisuals/.test(main)
+if (!/deferOpeningRoutes: deferVisuals/.test(soloStart)
   || !(navigationAt >= 0 && terrainAt > navigationAt)
   || !/battleWarm\.warmBattleTerrainTiles\(\{[\s\S]{0,180}primePresentation: false/.test(deferredWarm)
   || !/opts\.deferOpeningRoutes\) game\.openingRouteJobs\.push\(prepareOpeningRoute\)/.test(state)) {

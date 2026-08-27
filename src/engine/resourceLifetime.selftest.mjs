@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
   disposeObject3DResources,
+  registerRetainedObject3DResources,
   residentResourceLimits,
 } from './resourceLifetime.js';
 
@@ -21,8 +22,10 @@ const retiredTexture = new THREE.Texture();
 const retiredGeometry = new THREE.BufferGeometry();
 const retiredMaterial = new THREE.MeshStandardMaterial({ map: sharedTexture });
 retiredMaterial.normalMap = retiredTexture;
+const dormantGeometry = new THREE.BufferGeometry();
 const retired = new THREE.Group();
 retired.add(new THREE.Mesh(retiredGeometry, retiredMaterial));
+registerRetainedObject3DResources(retired, { geometries: new Set([dormantGeometry]) });
 const parent = new THREE.Scene();
 parent.add(retired);
 
@@ -33,10 +36,12 @@ live.add(new THREE.Mesh(
 ));
 
 let geometryDisposals = 0;
+let dormantGeometryDisposals = 0;
 let materialDisposals = 0;
 let sharedTextureDisposals = 0;
 let retiredTextureDisposals = 0;
 retiredGeometry.addEventListener('dispose', () => { geometryDisposals += 1; });
+dormantGeometry.addEventListener('dispose', () => { dormantGeometryDisposals += 1; });
 retiredMaterial.addEventListener('dispose', () => { materialDisposals += 1; });
 sharedTexture.addEventListener('dispose', () => { sharedTextureDisposals += 1; });
 retiredTexture.addEventListener('dispose', () => { retiredTextureDisposals += 1; });
@@ -48,11 +53,14 @@ const released = disposeObject3DResources(retired, {
 });
 assert.equal(retired.parent, null, 'retired subtree must detach from the live scene');
 assert.equal(geometryDisposals, 1, 'retired geometry must release its GPU buffer');
+assert.equal(dormantGeometryDisposals, 1,
+  'retained off-tree geometry must release with its Object3D owner');
 assert.equal(materialDisposals, 1, 'retired material must release its program state');
 assert.equal(retiredTextureDisposals, 1, 'unshared retired texture must be released');
 assert.equal(sharedTextureDisposals, 0, 'texture used by a preserved root must stay resident');
-assert.deepEqual(released, { objects: 2, geometries: 1, materials: 1, textures: 1 });
-assert.deepEqual(disposalOrder.map(([type]) => type), ['geometry', 'material', 'texture'],
+assert.deepEqual(released, { objects: 2, geometries: 2, materials: 1, textures: 1 });
+assert.deepEqual(disposalOrder.map(([type]) => type),
+  ['geometry', 'geometry', 'material', 'texture'],
   'resource owners are notified before each owned GPU resource is disposed');
 assert.equal(disposalOrder.some(([, resource]) => resource === sharedTexture), false,
   'preserved shared resources never reach disposal callbacks');

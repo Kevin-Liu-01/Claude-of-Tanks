@@ -863,6 +863,12 @@ export function createLighting(scene, camera, sunDir) {
   // once before dormancy; otherwise strict WebGL2 drivers bind a color
   // fallback to sampler2DShadow and reject every affected scene draw.
   let farCascadeDormant = false;
+  // A settled enclosed presentation can reuse its completed shadow maps
+  // byte-for-byte. This is stronger than far-cascade dormancy: no caster,
+  // camera, or light moved, so even the near pair would only redraw the same
+  // depth image. Visible motion or a scene mutation releases the latch and
+  // forces every cascade before the next color frame.
+  let staticPresentationDormant = false;
   // r4 LP2 (teleport robustness): any event that can move casters or the
   // cascade fit wholesale — map/sun switch, frustum change, __SHOTS restage —
   // forces FULL cascade redraws for the next 2 frames, so the round-robin
@@ -895,6 +901,15 @@ export function createLighting(scene, camera, sunDir) {
       csm.lights[i].shadow.autoUpdate = false;
       csm.lights[i].shadow.needsUpdate = false;
       lastScheduledMask &= ~(1 << i);
+    }
+  }
+
+  function applyStaticPresentationDormancy() {
+    if (!staticPresentationDormant) return;
+    lastScheduledMask = 0;
+    for (const light of csm.lights) {
+      light.shadow.autoUpdate = false;
+      light.shadow.needsUpdate = false;
     }
   }
 
@@ -936,6 +951,22 @@ export function createLighting(scene, camera, sunDir) {
       if (farCascadeDormant === next) return;
       farCascadeDormant = next;
       if (next) applyFarCascadeDormancy();
+      else forceRateCappedCascades();
+    },
+
+    /**
+     * Freeze every shadow submission while a visible presentation is proven
+     * static. Existing depth maps remain bound, so the color result is exact;
+     * releasing the latch forces a complete refresh before motion resumes.
+     */
+    setStaticPresentationDormant(on) {
+      const next = !!on;
+      if (staticPresentationDormant === next) {
+        if (next) applyStaticPresentationDormancy();
+        return;
+      }
+      staticPresentationDormant = next;
+      if (next) applyStaticPresentationDormancy();
       else forceRateCappedCascades();
     },
 
@@ -1050,6 +1081,10 @@ export function createLighting(scene, camera, sunDir) {
      * @returns {void}
      */
     update(force = false, dt = 1 / 60) {
+      if (staticPresentationDormant && !force && !pendingShadowMask) {
+        applyStaticPresentationDormancy();
+        return;
+      }
       // Keep both matrices and depth maps bit-for-bit aligned with the
       // covered warm pose for the first full post frame. A forced capture or
       // pending quality resize invalidates the receipt and takes precedence.
@@ -1206,6 +1241,7 @@ export function createLighting(scene, camera, sunDir) {
         forceFrames,
         scheduledMask: lastScheduledMask,
         farCascadeDormancyRequested: farCascadeDormant,
+        staticPresentationDormant,
         farCascadeDepthReady: canDormantShadowCascades(csm.lights, FAR_CASCADE_START),
         cascades: csm.lights.map((light) => {
           const shadow = light.shadow;

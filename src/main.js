@@ -91,6 +91,7 @@ import { createBattlePresentationRuntime } from './game/battlePresentationRuntim
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
 import { createSoloBattleDeploymentRuntime } from './game/soloBattleDeploymentRuntime.ts';
 import { createSoloBattleLoadingRuntime } from './game/soloBattleLoadingRuntime.ts';
+import { createSoloBattleStartAccess } from './game/soloBattleStartAccess.ts';
 import { createBattleVisualPool } from './game/battleVisualPool.js';
 import { createBattleVisualStreamerAccess } from './game/battleVisualStreamerAccess.ts';
 import {
@@ -332,6 +333,8 @@ const hfProxy = {
 
 const garageIdleWorkCoordinator = createGarageIdleWorkCoordinator();
 const garageFramePacer = createGarageFramePacer();
+let garagePresentationDirty = true;
+let invalidateGaragePresentation = () => { garagePresentationDirty = true; };
 if (typeof window !== 'undefined') {
   window.__GARAGE_IDLE_WORK = garageIdleWorkCoordinator.stats;
 }
@@ -579,6 +582,7 @@ const garageDressingScheduler = createGarageDressingScheduler({
   scheduleDelay: (callback, delayMs) => setTimeout(callback, delayMs),
   acquireBackgroundWork: (kind, stillValid) =>
     garageIdleWorkCoordinator.acquire(kind, stillValid),
+  onVisualChange: () => invalidateGaragePresentation(),
 });
 const scheduleGarageDressingBuild = garageDressingScheduler.schedule;
 
@@ -656,15 +660,19 @@ const pedestal = createGaragePedestalRuntime({
   scheduleDelay: (callback, delayMs) => setTimeout(callback, delayMs),
   acquireBackgroundWork: (kind, stillValid) =>
     garageIdleWorkCoordinator.acquire(kind, stillValid),
+  invalidatePresentation: () => invalidateGaragePresentation(),
   debugTarget: typeof window !== 'undefined' ? window : null,
 });
 
 const noteGarageActivity = () => {
-  garageFramePacer.noteActivity(performance.now());
+  invalidateGaragePresentation();
   garageDressingScheduler.noteActivity();
   pedestal.invalidatePreload();
 };
-for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart']) {
+// Resize can arrive without pointer input (split view, orientation, browser
+// chrome collapse). Treat it as presentation activity so the new viewport is
+// painted immediately instead of waiting for the five-second safety frame.
+for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'resize']) {
   window.addEventListener(type, noteGarageActivity, { capture: true, passive: true });
 }
 // The garage hero uses the dedicated close-up preview tier. A 2048²/1024²
@@ -1821,6 +1829,75 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
     if (typeof window !== 'undefined') window.__BATTLE_REVEAL = receipt;
   },
 });
+const soloBattleStart = createSoloBattleStartAccess({
+  options: () => ({
+    state: {
+      game,
+      getPendingMapId: () => pendingMapId,
+      setSelectedSpecId: (value) => { selectedSpecId = value; },
+      rememberSpecId,
+      setShotMode: (value) => { shotMode = value; },
+      setCaptureHidden: (value) => perfHud.setCaptureHidden(value),
+      setSimulationAccumulator: (value) => { simAcc = value; },
+      setBattleStaged: (value) => { battleStaged = value; },
+      setCamoSweep: (work) => { camoSweepP = Promise.resolve(work); },
+    },
+    world: {
+      resolveMapId,
+      switchMap,
+      getActive: () => {
+        if (!world) throw new Error('solo battle start requires an active world');
+        return world;
+      },
+      setDormant: setWorldDormant,
+      scheduleBlackWatchdog: () => {
+        if (!navigator.webdriver) {
+          setTimeout(() => runSceneBlackWatchdog(renderer, scene, camera), 1800);
+        }
+      },
+    },
+    round: {
+      getFx: requireFxRuntime,
+      settings,
+      killcam,
+      armorAim: armorAimOverlay,
+      resetDriveAim: () => driveTestController.resetAim(),
+      setCamoBiome,
+      lendPlayerVisual: (specId) => pedestal.lendToBattle(specId),
+      setupBattle,
+      combatWarm,
+      presentation: battlePresentation,
+      applyPlayerCamo: (specId) => applyCamoPatterns(specId),
+      applyRosterCamo: (options) => applyCamoPatternsChunked(options),
+    },
+    ui: {
+      hud: {
+        shotInfo: { setPlayer: (playerId) => hud.shotInfo.setPlayer(playerId) },
+        setMode: (mode) => hud.setMode(mode),
+      },
+      playerActions: playerBattleActions,
+      damagePanel: {
+        setTank: (spec, visual) => damagePanel.setTank(spec, visual),
+        setEquipment: (equipment) => damagePanel.setEquipment(equipment),
+      },
+      hideGarage: () => garage.hide(),
+      hideEndOverlay: () => { endOverlay.style.display = 'none'; },
+      resetBattleResult: () => battleResultPresentation.reset(),
+      setGarageLighting: (active) => {
+        setGarageSpots(active);
+        setGarageSunTrim(active);
+      },
+      emitPhaseChange: (phase) => bus.emit('phase:change', { phase }),
+      emitConsumableReset: () => bus.emit('ui:consumableReset', {}),
+      rig,
+      stopShowroom: () => showroom.stop(),
+      openBattle,
+    },
+    recordTrace: (trace) => {
+      if (typeof window !== 'undefined') window.__START_BATTLE_TIMINGS = trace;
+    },
+  }),
+});
 const soloBattleLoading = createSoloBattleLoadingRuntime({
   game,
   post,
@@ -1856,9 +1933,10 @@ const soloBattleLoading = createSoloBattleLoadingRuntime({
   preloadSoloAuthority: preloadSoloBattleRuntime,
   preloadBattleClient: preloadBattleClientRuntime,
   preloadBattleWarm: () => battleWarm.preload(),
+  preloadBattleStart: () => soloBattleStart.preload(),
   ensureKillcam: ensureKillcamRuntime,
   ensureFx: ensureFxRuntime,
-  startBattle,
+  startBattle: soloBattleStart.start,
   prepareBattleWorldServices,
   getPedestalVisual: () => pedestal.current,
   prebakeSharedTextures,
@@ -2200,140 +2278,8 @@ function rosterRows(team) {
     .sort((a, b) => (b.isPlayer ? 1 : 0) - (a.isPlayer ? 1 : 0));
 }
 
-function startBattle(specId, mapId = null, opts = {}) {
-  const fx = requireFxRuntime();
-  const sbtStartedAt = performance.now();
-  let sbtMarkAt = sbtStartedAt;
-  const sbt = { specId, stages: {} };
-  const sbtStage = (name) => {
-    const now = performance.now();
-    sbt.stages[name] = Math.round(now - sbtMarkAt);
-    sbtMarkAt = now;
-  };
-  // battle_countdown r1: the PLAYER entry path arms an indefinite sim hold
-  // the moment the roster exists — the sim used to run live UNDER the
-  // loading screen (pointer lock is grabbed by the BATTLE click), so a
-  // click while the rosters were still up fired the gun. openBattle()
-  // resolves the hold to the visible 5 s countdown when the screen drops.
-  // Debug/probe entries (opts.preBattleHold unset) keep preBattleS = 0 and
-  // are driveable immediately, exactly as before.
-  game.preBattleS = opts.preBattleHold ? Infinity : 0;
-  // SHOT-MODE RESET (effects_combat/content_breadth r2): __SHOTS.set() freezes
-  // fx and stops the sim tick; any UI path out of shot mode (garage BATTLE
-  // button) must resume it or the battle is permanently frozen.
-  shotMode = false;
-  perfHud.setCaptureHidden(false);
-  fx.setFrozen(false);
-  // PAUSE: battle entry always clears a paused overlay (probe-driven
-  // startBattle can run with the panel up; the tick edge below then restores
-  // the audio buses). noRelock — this close must never fire a gesture-less
-  // pointer-lock request that could bump the denial streak.
-  if (settings.isOpen()) settings.close({ noRelock: true });
-  // KILL-CAM: never carry a replay across battles — and cancel BEFORE
-  // setupBattle, not after: finish() restores the victim's materials from the
-  // ghost backup captured at x-ray start (a wreck's burnt set), which would
-  // clobber the pristine materials resetDestroyed() just put back.
-  killcam.cancel();
-  armorAimOverlay.clear();
-  sbtStage('resetPresentation');
-  selectedSpecId = specId;
-  rememberSpecId(specId);
-  driveTestController.resetAim(); // sticky drive-test aim never carries across battles
-  // MAP-CONFIG WIRING: battle on the picked map ('random' rolls here)
-  switchMap(resolveMapId(mapId || pendingMapId));
-  setWorldDormant(false); // the battle world wakes up (see setWorldDormant)
-  // DESTRUCTIBLES r1: worlds are cached and reused across battles — stand
-  // every broken wall/fence/sandbag/prop back up for the rematch.
-  if (world.resetDestructibles) world.resetDestructibles();
-  sbtStage('activateWorld');
-  // MOBILE r3: second black-scene watchdog pass — terrain is only present in
-  // battle, so a device that renders the garage but blacks out the world gets
-  // caught here (see deviceDiag.js; webdriver-skipped for harness parity).
-  if (!navigator.webdriver) {
-    setTimeout(() => runSceneBlackWatchdog(renderer, scene, camera), 1800);
-  }
-  game.mapId = world.mapId;
-  // CAMO WIRING: AUTO patterns resolve to the biome of the map being fought;
-  // only tanks whose resolved pattern actually changed get repainted.
-  setCamoBiome(world.mapId);
-  // Normal matchmaking draws only from the curated garage roster, ranks the
-  // player's era first and prefers the closest tiers. The battlefield choice
-  // never changes vehicle-era matchmaking.
-  pedestal.lendToBattle(specId);
-  sbtStage('lendPlayerVisual');
-  setupBattle(game, specId, world, {
-    random: opts.randomRoster !== false, deferVisuals: !!opts.deferVisuals,
-    deferCamoRepaint: true, deferOpeningRoutes: !!opts.deferVisuals,
-  });
-  // Programs and source canvases remain cached by WebGL/the browser, but the
-  // receipt itself is round-scoped: a rematch can select a different map,
-  // roster, camouflage set and freshly constructed visual graph. Treating a
-  // prior round as globally warm skipped the new wreck textures and hidden
-  // LOD/shadow variants, moving their first touch into live combat.
-  combatWarm.reset();
-  sbtStage('setupRoster');
-  battlePresentation.primeDeploymentTerrainTiles();
-  sbtStage('terrainTiles');
-  // Fixed-step authority starts every round with a matching presentation
-  // history. Without this reset a debug/rematch entry could interpolate from
-  // the previous battlefield pose for one frame.
-  simAcc = 0;
-  battlePresentation.resetSoloPoses();
-  battleStaged = true;
-  // perf-r2f: ONE chunked sweep covers the biome flip AND the bot camo rolls
-  // setupBattle just made (its own trailing sweep is deferred by the flag
-  // above). The old back-to-back sync sweeps repainted the warm cache in a
-  // single task — a rematch measured a 14 s frame with the loading bar
-  // frozen. Chunked, the bar animates between entry repaints; the player's
-  // The player can be visible as soon as the veil drops. Repaint that one
-  // retained cache entry immediately; the rest stays chunked and completes
-  // ahead of burnt-variant warming during the frozen countdown.
-  applyCamoPatterns(specId);
-  sbtStage('playerCamo');
-  camoSweepP = applyCamoPatternsChunked({
-    priorityIds: [specId],
-    onlySpecIds: game.tanks.map((ent) => ent.specId),
-  });
-  sbtStage('scheduleRosterCamo');
-  // SHOT-INFO identity (killcam_shotinfo r3): set synchronously — hud.update
-  // only forwards it after the first rendered frame, which dropped hits
-  // resolved in the very first sim ticks (headless replays / spectators).
-  hud.shotInfo.setPlayer(game.player.id);
-  // Fresh battlefield fx: clear scars/tracers/smoke columns left on (or by)
-  // last battle's wrecks — scar decals are parented onto tank hulls and would
-  // otherwise carry into the rematch.
-  fx.resetAll();
-  sbtStage('resetEffects');
-  playerBattleActions.setTank(game.player.spec);
-  damagePanel.setTank(game.player.spec, game.player.visual);
-  damagePanel.setEquipment(game.player.equip); // EQUIPMENT SYSTEM: loadout readout
-  garage.hide();
-  endOverlay.style.display = 'none';
-  battleResultPresentation.reset();
-  hud.setMode('battle');
-  game.phase = 'battle';
-  setGarageSpots(false); // PERF: no spot-light cost on battle draws
-  setGarageSunTrim(false); // restore the map's authored warm sun
-  bus.emit('phase:change', { phase: 'battle' });
-  playerBattleActions.resetConsumables();
-  bus.emit('ui:consumableReset', {});
-  rig.release();
-  rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
-  showroom.stop(); // garage drag-orbit hands the camera back to the rig
-  sbtStage('uiAndCamera');
-  sbt.totalMs = Math.round(performance.now() - sbtStartedAt);
-  if (typeof window !== 'undefined') window.__START_BATTLE_TIMINGS = sbt;
-  // Debug/capture entries do not use the branded loader or its deployment
-  // queue. Drain the same round receipt synchronously after the actual roster
-  // exists; the typed solo loading owner holds it explicitly on player entry.
-  if (!opts.deferVisuals) combatWarm.drain();
-  // The battle-open flyby is armed only once the player can actually SEE it:
-  // the loading-screen path calls openBattle() when the screen clears.
-  if (!opts.deferVisuals) openBattle();
-}
-
 /** QA-only cold entry. Production paths already own a loading veil and call
- * startBattle only after the selected world and roster builders are ready. */
+ * the activation owner only after the selected world and roster builders are ready. */
 async function debugStartBattle(specId, mapId = null, opts = {}) {
   const resolved = resolveMapId(mapId || pendingMapId);
   await Promise.all([
@@ -2347,9 +2293,10 @@ async function debugStartBattle(specId, mapId = null, opts = {}) {
     ensureFxRuntime(),
     ensureKillcamRuntime(),
     battleWarm.preload(),
+    soloBattleStart.preload(),
   ]);
   prepareBattleWorldServices(world);
-  return startBattle(specId, resolved, opts);
+  return soloBattleStart.start(specId, resolved, opts);
 }
 
 /** Hand the screen to the battle in an immediately readable chase pose. */
@@ -2642,14 +2589,20 @@ const frameLoop = createFrameLoopScheduler({
   // A settled, room-free Garage is event-driven. CSS/UI transitions remain
   // browser-owned; the complete Three.js clock wakes for camera motion,
   // vehicle swaps, transition coverage, loading, input, or retained network
-  // authority, and otherwise runs only its one-second paint watchdog.
+  // authority, and otherwise runs only its five-second safety paint.
   shouldUseIdleCadence: () => bootComplete && game.phase === 'garage' &&
     !battleEntryLifecycle.renderingCovered && !transition.active &&
     !studio.active && !shotMode && !showroom.moving &&
     !pedestal.switchPending && !networkMatch,
-  idleIntervalMs: 1000,
+  idleIntervalMs: 5000,
 });
 rearmRafAfterContext = frameLoop.restart;
+invalidateGaragePresentation = () => {
+  garagePresentationDirty = true;
+  garageFramePacer.noteActivity(performance.now());
+  lighting.setStaticPresentationDormant(false);
+  frameLoop.restart();
+};
 bus.on('phase:change', () => frameLoop.restart());
 
 function tick(nowMs) {
@@ -2968,8 +2921,14 @@ function tick(nowMs) {
   // around is laggy" report). Splits are fov-independent; refresh only the
   // cascade geometry.
   if (camera.fov !== lastFov) { lighting.updateFov(); lastFov = camera.fov; }
+  const garageShadowsDirty = game.phase === 'garage'
+    && (garageAnimating || garagePresentationDirty);
+  lighting.setStaticPresentationDormant(
+    game.phase === 'garage' && !garageShadowsDirty,
+  );
   lighting.update(false, dtR);
   post.render(dtR);
+  if (game.phase === 'garage') garagePresentationDirty = false;
   if (game.phase === 'battle') battleEntryLifecycle.noteBattleFrame();
   perfHud.update(dtR * 1000); // FEEL r12: after render — info.render is fresh
 }

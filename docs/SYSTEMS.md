@@ -180,6 +180,13 @@ barrier; then player upload, deployment warm, loader dwell, reveal fallback,
 countdown calculation and diagnostics run in one typed order. `src/main.js`
 connects its ports and no longer implements that loading state machine.
 
+`src/game/soloBattleStartRuntime.ts` owns the synchronous activation inside
+that covered transition: replay/FX/aim reset, map and destructible activation,
+roster construction, camouflage scheduling, presentation-history reset,
+HUD/camera handoff, and battle phase publication. Its retryable access owner is
+acquired alongside the other solo dependencies, so Garage and multiplayer boot
+do not evaluate it.
+
 `src/net/networkBattlePresentationRuntime.ts` owns the equivalent cold network
 transition for private/LAN and dedicated play. It overlaps modules, battlefield,
 and transport; keeps a newly created bridge private until its roster and
@@ -256,11 +263,20 @@ and generated merge buffers have an explicit disposal owner. Transparent or
 specialized meshes and authored fleet exhibits stay independent; authored
 proxy shadows and every visible surface remain intact.
 
-The two immobile repair-bay vehicles use the normal first-party high-geometry
-builders with static batching enabled. This collapses same-material fittings
-without changing their silhouettes, materials, or texture quality. Independently
-staged salvage turret and hull exhibits remain unbatched because their named
-component subtrees are part of the workshop choreography.
+The four distant repair/salvage exhibits use the normal first-party
+distance-tessellation builders. Their authored proportions and materials stay
+unchanged while sub-pixel geometry is removed; the selectable hero remains at
+full geometry quality. Repair-bay vehicles still batch compatible static
+fittings. Independently staged salvage turret and hull exhibits remain
+unbatched because their named component subtrees are part of the workshop
+choreography.
+
+Garage presentation is event-invalidated. Vehicle reveals, streamed workshop
+chunks, input, camera motion, phase changes, context recovery, and viewport
+resize wake it immediately. Once settled, only a five-second safety paint
+remains and every active CSM depth map is reused without shadow submissions. A
+visual mutation releases that latch and forces a complete shadow refresh before
+the next moving frame.
 
 `engine/phaseSceneResidency.ts` owns the mutually exclusive Garage and battle
 roots. It detaches the inactive phase from the scene graph without disposing
@@ -506,6 +522,11 @@ world must describe matching obstacles and destructible identifiers.
 World instances may be cached between entries. Reset logic must clear
 match-specific destruction and visibility state without rebuilding immutable
 terrain unnecessarily.
+
+Terrain chunks share exact topology within a world. The 96×96, 48×48, and
+24×24 LODs each own one immutable Uint16 index attribute referenced by every
+chunk at that resolution. Positions and normals remain chunk-local; the pool is
+world-local so independent cached maps retain independent disposal lifetimes.
 
 Buildings are authored as supported assemblies before batching. The strict
 `structureConnectivity.ts` gate proves every part reaches the ground through a

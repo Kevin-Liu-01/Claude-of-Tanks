@@ -13,6 +13,7 @@ import { applySourcedTerrain } from './sourcedTextures.js';
 import { buildHorizonRing } from './maps/horizon.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.js';
+import { registerRetainedObject3DResources } from '../engine/resourceLifetime.js';
 
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -2608,7 +2609,71 @@ function buildFineGrid(hf, cx0, cz0) {
   return r.value;
 }
 
-function* buildChunkGeometrySteps(hf, cx0, cz0, segs, fine, progress = null) {
+/**
+ * Every chunk at one LOD has identical triangle topology. Keep exactly one
+ * immutable index attribute per resolution inside a battlefield instead of
+ * allocating/uploading the same array for every chunk. The largest grid is
+ * under 10k vertices, so Uint16 is exact and halves the old Uint32 footprint.
+ *
+ * The pool is intentionally world-local: disposing one cached battlefield
+ * can never invalidate a buffer still referenced by another world.
+ */
+export function acquireTerrainChunkIndex(pool, segs) {
+  const cached = pool.get(segs);
+  if (cached) {
+    cached.references++;
+    return cached.attribute;
+  }
+  const n = segs + 1;
+  const perim = 4 * segs;
+  const ring = [];
+  for (let gx = 0; gx < segs; gx++) ring.push(gx);
+  for (let gz = 0; gz < segs; gz++) ring.push(gz * n + (n - 1));
+  for (let gx = segs; gx > 0; gx--) ring.push((n - 1) * n + gx);
+  for (let gz = segs; gz > 0; gz--) ring.push(gz * n);
+  const idx = new Uint16Array(segs * segs * 6 + perim * 6);
+  let ii = 0;
+  for (let gz = 0; gz < segs; gz++) {
+    for (let gx = 0; gx < segs; gx++) {
+      const a = gz * n + gx, b = a + 1, c = a + n, d = c + 1;
+      idx[ii++] = a; idx[ii++] = c; idx[ii++] = b;
+      idx[ii++] = b; idx[ii++] = c; idx[ii++] = d;
+    }
+  }
+  for (let k = 0; k < perim; k++) {
+    const t0 = ring[k], t1 = ring[(k + 1) % perim];
+    const s0 = n * n + k, s1 = n * n + ((k + 1) % perim);
+    idx[ii++] = t0; idx[ii++] = s0; idx[ii++] = t1;
+    idx[ii++] = t1; idx[ii++] = s0; idx[ii++] = s1;
+  }
+  const attribute = new THREE.BufferAttribute(idx, 1);
+  pool.set(segs, { attribute, references: 1 });
+  return attribute;
+}
+
+function terrainIndexPoolReceipt(pool) {
+  let references = 0;
+  let uniqueBytes = 0;
+  let logicalBytes = 0;
+  for (const record of pool.values()) {
+    const bytes = record.attribute.array.byteLength;
+    references += record.references;
+    uniqueBytes += bytes;
+    logicalBytes += bytes * record.references;
+  }
+  return {
+    attributes: pool.size,
+    references,
+    uniqueBytes,
+    logicalUint16Bytes: logicalBytes,
+    avoidedBytes: logicalBytes - uniqueBytes,
+    previousUint32Bytes: logicalBytes * 2,
+    totalBytesAvoided: logicalBytes * 2 - uniqueBytes,
+  };
+}
+
+function* buildChunkGeometrySteps(hf, cx0, cz0, segs, fine, progress = null,
+  indexPool = null) {
   const n = segs + 1, step = CHUNK_SIZE / segs;
   const stride = FINE_SEGS / segs;
   const hgrid = fine?.hgrid || null;
@@ -2663,34 +2728,16 @@ function* buildChunkGeometrySteps(hf, cx0, cz0, segs, fine, progress = null) {
     const oy = -0.55, oil = 1 / Math.hypot(ox, oy, oz);
     nrm[dst * 3] = ox * oil; nrm[dst * 3 + 1] = oy * oil; nrm[dst * 3 + 2] = oz * oil;
   }
-  const idx = new Uint32Array(segs * segs * 6 + perim * 6);
-  let ii = 0;
-  for (let gz = 0; gz < segs; gz++) {
-    for (let gx = 0; gx < segs; gx++) {
-      const a = gz * n + gx, b = a + 1, c = a + n, d = c + 1;
-      idx[ii++] = a; idx[ii++] = c; idx[ii++] = b;
-      idx[ii++] = b; idx[ii++] = c; idx[ii++] = d;
-    }
-    if (progress && (gz & 7) === 7) {
-      yield [progress.done + 0.8, progress.total, false];
-    }
-  }
-  for (let k = 0; k < perim; k++) {
-    const t0 = ring[k], t1 = ring[(k + 1) % perim];
-    const s0 = n * n + k, s1 = n * n + ((k + 1) % perim);
-    idx[ii++] = t0; idx[ii++] = s0; idx[ii++] = t1;
-    idx[ii++] = t1; idx[ii++] = s0; idx[ii++] = s1;
-  }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
-  geo.setIndex(new THREE.BufferAttribute(idx, 1));
+  geo.setIndex(acquireTerrainChunkIndex(indexPool || new Map(), segs));
   geo.computeBoundingSphere();
   return geo;
 }
 
-function buildChunkGeometry(hf, cx0, cz0, segs, fine) {
-  const g = buildChunkGeometrySteps(hf, cx0, cz0, segs, fine);
+function buildChunkGeometry(hf, cx0, cz0, segs, fine, indexPool) {
+  const g = buildChunkGeometrySteps(hf, cx0, cz0, segs, fine, null, indexPool);
   let r = g.next();
   while (!r.done) r = g.next();
   return r.value;
@@ -2746,6 +2793,12 @@ function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
   const mat = createSplatMaterial(engineCtx, heightField._layout, cfg ? cfg.splat : null,
     (cfg && cfg.id) || 'verdant', heightField._mesaW || null);
   const chunks = [];
+  const terrainIndexPool = new Map();
+  // Alternative LOD geometries are retained in `chunks` even when another
+  // level is mounted on the mesh. Register the complete live set so world
+  // eviction releases uploaded dormant buffers as well as the visible tree.
+  const retainedLodGeometries = new Set();
+  registerRetainedObject3DResources(group, { geometries: retainedLodGeometries });
   const streamFarLods = streamOpts?.streamFarLods === true;
   const focus = streamOpts?.focus || heightField._layout?.spawns?.player || { x: 0, z: 0 };
   let initialGeometryCount = 0;
@@ -2773,8 +2826,9 @@ function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
       const lods = [null, null, null];
       for (const level of initialLevels) {
         lods[level] = yield* buildChunkGeometrySteps(
-          heightField, cx0, cz0, LOD_SEGS[level], fine, progress,
+          heightField, cx0, cz0, LOD_SEGS[level], fine, progress, terrainIndexPool,
         );
+        retainedLodGeometries.add(lods[level]);
         initialGeometryCount++;
       }
       const openingLevel = streamFarLods ? initialLevels[0] : 2;
@@ -2806,10 +2860,12 @@ function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
       c.fine = buildFineGrid(heightField, c.cx0, c.cz0);
     }
     c.lods[job.level] = buildChunkGeometry(
-      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine,
+      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine, terrainIndexPool,
     );
+    retainedLodGeometries.add(c.lods[job.level]);
     if (c.lods.every(Boolean)) c.fine = null;
     streamStats.streamedGeometryCount++;
+    streamStats.indexPool = terrainIndexPoolReceipt(terrainIndexPool);
     const d = Math.hypot(streamCameraX - c.cx, streamCameraZ - c.cz);
     const want = terrainLodForDistance(d, c.level);
     if (want === job.level) {
@@ -2848,6 +2904,7 @@ function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
   // the same exact meshes before controls unlock without a quality change.
   group.userData.warmStreaming = warmStreamJobs;
   group.userData.streamingStats = streamStats;
+  streamStats.indexPool = terrainIndexPoolReceipt(terrainIndexPool);
   group.userData.sourcedTexturesReady = mat.userData.sourcedTexturesReady;
   return group;
 }
