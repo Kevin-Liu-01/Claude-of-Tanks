@@ -1706,9 +1706,17 @@ function showLockToast() {
   });
 }
 
+function canRecaptureBattlePointer() {
+  const combat = game.player?.combat;
+  return game.phase === 'battle' && !game.result && !!combat && !combat.destroyed &&
+    !settings.isOpen() && !killcam.isActive() && !killcam.spectate?.active;
+}
+
 renderer.domElement.addEventListener('mousedown', () => {
   audio.resume();
-  if (game.phase !== 'battle' || settings.isOpen()) return;
+  // Once the local tank is destroyed, the cursor belongs to the death replay,
+  // spectator controls and menus. Canvas clicks must not silently take it back.
+  if (!canRecaptureBattlePointer()) return;
   if (input.isTouchLayout()) return;
   if (!input.isLocked()) input.requestLock();
 });

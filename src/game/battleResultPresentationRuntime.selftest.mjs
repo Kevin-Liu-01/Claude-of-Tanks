@@ -85,7 +85,11 @@ assert.deepEqual(delayed.runtime.snapshot(), {
   deathCamShown: true,
   pendingDeadlineMs: 2700,
 });
-assert.deepEqual(delayed.calls, [['deathCam']]);
+assert.deepEqual(delayed.calls, [['unlock'], ['deathCam']],
+  'local destruction releases pointer ownership before the death beat');
+delayed.runtime.update();
+assert.equal(delayed.calls.filter(([name]) => name === 'unlock').length, 1,
+  'the destroyed-state edge does not repeatedly request pointer unlock');
 delayed.game.result = 'defeat';
 delayed.now = 500;
 delayed.runtime.update();

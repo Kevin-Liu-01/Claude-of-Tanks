@@ -152,6 +152,10 @@ export function createBattleResultPresentationRuntime({
 
     if (!result && game.player?.combat?.destroyed && !deathCamShown) {
       deathCamShown = true;
+      // Destruction hands pointer ownership to the post-death UI immediately.
+      // Keeping the lock through the cinematic forced players to press Esc
+      // before they could use spectator and battle controls.
+      exitPointerLock();
       rig.startDeathCam?.();
       const afterDeath = (): void => {
         veilHud(false);
@@ -161,9 +165,6 @@ export function createBattleResultPresentationRuntime({
       pending = {
         deadline: now() + deathBeatMs,
         fire: () => {
-          // Releasing pointer lock may itself cost a browser frame. Do it at
-          // the covered replay boundary, never on the live destruction frame.
-          exitPointerLock();
           if (killcam.playForResult('defeat', game.timeS, afterDeath)) veilHud(true);
           else afterDeath();
         },
