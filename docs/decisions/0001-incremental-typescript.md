@@ -80,6 +80,10 @@ collider/minimap readiness, covered GPU warming, dormancy, and activation
 telemetry. The existing build coordinator remains a deeper construction/cache
 module; `main.js` now consumes one world-lifecycle interface instead of
 retaining parallel world, service, sky, and dormancy state.
+`src/game/playSurfaceRuntime.ts` owns the next Garage operation surface:
+retryable menu construction, solo bypass, active-room precedence, exact
+mode-intent preloads, and non-destructive battle dismissal. This removes the
+remaining picker promise and pending-solo state from `main.js`.
 
 ## Consequences
 

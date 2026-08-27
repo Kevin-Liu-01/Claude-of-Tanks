@@ -108,6 +108,7 @@ import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { createBattleClientAccess } from './game/battleClientAccess.ts';
 import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
+import { createPlaySurfaceRuntime } from './game/playSurfaceRuntime.ts';
 import { createNetworkBrowserSessionRuntime } from './net/networkBrowserSessionRuntime.ts';
 import { createNetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
 import { createNetworkBattleLaunchRuntime } from './net/networkBattleLaunchRuntime.ts';
@@ -849,8 +850,6 @@ const garageMaps = [
     return { id, name: c.name, thumb: MAP_THUMBS[id] || '' };
   }),
 ];
-let pendingSoloStart = null;
-let playMenuPromise = null;
 let networkRoomCoordinator = null;
 const {
   loadPlayMenuModule,
@@ -860,43 +859,9 @@ const {
   preloadNetworkRoomChatModule,
 } = createBattleModuleAccess();
 
-function preloadPlayMode(mode) {
-  ensureBattleHud().catch(() => null);
-  preloadFxModule().catch(() => null);
-  preloadKillcamModule().catch(() => null);
-  preloadNetworkBattleModules().catch(() => null);
-  preloadNetworkRoomChatModule().catch(() => null);
-  if (mode !== 'solo') networkBattlePresentation.preload().catch(() => null);
-  if (mode === 'private' || mode === 'lan') {
-    preloadPrivateMatchHandoffModule().catch(() => null);
-  } else if (mode === 'ranked') {
-    preloadDedicatedClientModule().catch(() => null);
-  }
-  loadPlayMenuModule()
-    .then((module) => module.preloadPlayMode(mode))
-    .catch(() => { /* battle click remains the retry/fallback path */ });
-}
-async function openPlayMenu(request) {
-  if (networkRoomCoordinator && await networkRoomCoordinator.showActiveRoom()) return;
-  if (playMenuPromise) {
-    const menu = await playMenuPromise;
-    if (menu?.showCurrentRoom()) return;
-  }
-  if ((request?.mode || 'solo') === 'solo') {
-    pendingSoloStart = null;
-    if (typeof request?.startSolo === 'function') {
-      request.startSolo();
-      return;
-    }
-    await beginSoloBattle({
-      specId: request?.specId || garage.getSelected(),
-      mapId: request?.mapId || garage.getSelectedMap(),
-    });
-    return;
-  }
-  pendingSoloStart = typeof request?.startSolo === 'function' ? request.startSolo : null;
-  if (!playMenuPromise) {
-    const pending = loadPlayMenuModule().then(({ createPlayMenu }) => createPlayMenu({
+const playSurface = createPlaySurfaceRuntime({
+  loadMenuModule: loadPlayMenuModule,
+  createMenuOptions: () => ({
       maps: garageMaps,
       getSelection: () => ({
         specId: garage.getSelected(),
@@ -908,40 +873,35 @@ async function openPlayMenu(request) {
       isCamoAllowed: (camo) => CAMO_PATTERN_IDS.includes(camo),
       getCamoName: (camo) => CAMO_PATTERN_LABEL[camo] || 'Factory',
       getVehicleName: (specId) => getSpec(specId).name,
-      onSolo: () => {
-        const start = pendingSoloStart;
-        pendingSoloStart = null;
-        if (start) {
-          start();
-          return;
-        }
-        beginSoloBattle({
-          specId: garage.getSelected(),
-          mapId: garage.getSelectedMap(),
-        }).catch((error) => {
-          console.error('[solo] entry failed', error);
-        });
-      },
       onNetworkStart: (request) => networkBattleLauncher.beginPrivate(request),
       onNetworkClose: (reason) => closeNetworkMatch(reason || 'room_closed'),
       onRankedStart: (request) => networkBattleLauncher.beginRanked(request),
       onLobbyChange: (context) => networkRoomCoordinator?.handleLobbyChange(context),
-    }));
-    playMenuPromise = pending;
-    pending.catch(() => {
-      if (playMenuPromise === pending) playMenuPromise = null;
-    });
-  }
-  const menu = await playMenuPromise;
-  menu.show(request?.mode, request?.invite);
-}
+  }),
+  getSelectedSpecId: () => garage.getSelected(),
+  getSelectedMapId: () => garage.getSelectedMap(),
+  startSolo: (request) => beginSoloBattle(request),
+  showActiveRoom: () => networkRoomCoordinator?.showActiveRoom() || false,
+  preloadCommon: [
+    ensureBattleHud,
+    preloadFxModule,
+    // killcam access is composed later in the battle-only section. Keep the
+    // lazy port itself behind a closure so a pristine browser can finish the
+    // composition root without touching its temporal-dead-zone binding.
+    () => preloadKillcamModule(),
+    preloadNetworkBattleModules,
+    preloadNetworkRoomChatModule,
+  ],
+  preloadNetworkPresentation: () => networkBattlePresentation.preload(),
+  preloadPrivateMatch: preloadPrivateMatchHandoffModule,
+  preloadDedicatedMatch: preloadDedicatedClientModule,
+});
 
 // Battle entry owns the play modal's visibility. Every player-facing entry
 // path emits this event, so first matches, retained-room rematches, ranked,
 // and solo all dismiss the operation picker before the next painted frame.
 bus.on('ui:battleStart', () => {
-  const menu = playMenuPromise;
-  if (menu) menu.then((runtime) => runtime.hide(false)).catch(() => null);
+  playSurface.hideForBattle();
 });
 
 const garage = await bootStage('ui', () => createGarage({
@@ -957,10 +917,10 @@ const garage = await bootStage('ui', () => createGarage({
     networkRoomCoordinator?.syncPendingLobbySelection();
   },
   onBattle: (specId, mapId) => beginBattleEntry(specId, mapId), // loading screen owns entry
-  onPlayRequest: (request) => openPlayMenu(request).catch((error) => {
+  onPlayRequest: (request) => playSurface.open(request).catch((error) => {
     console.error('[play-menu] failed to open', error);
   }),
-  onPlayModeIntent: preloadPlayMode,
+  onPlayModeIntent: playSurface.preload,
   onBattleIntent: battleIntent.preload,
   onTankIntent: pedestal.preloadIntent,
   onStudioIntent: preloadStudioIntent,
@@ -1996,7 +1956,7 @@ const networkBattleLauncher = createNetworkBattleLaunchRuntime({
 
 networkRoomCoordinator = createNetworkRoomCoordinator({
   getMatch: () => networkSession.match,
-  getPlayMenu: () => playMenuPromise,
+  getPlayMenu: playSurface.getMenuPromise,
   loadRoomChat: preloadNetworkRoomChatModule,
   getPhase: () => game.phase,
   isSettingsOpen: () => settings.isOpen(),
@@ -2322,9 +2282,7 @@ bus.on('ui:battleAgain', async () => {
 });
 
 bus.on('ui:roomOpen', async () => {
-  if (!playMenuPromise) return;
-  const menu = await playMenuPromise;
-  menu.showCurrentRoom();
+  await playSurface.showCurrentRoom();
 });
 
 bus.on('ui:roomReady', ({ ready } = {}) => {
@@ -3229,7 +3187,7 @@ const entryReady = boot.ready();
 if (pendingRoomInvitePromise) {
   Promise.all([entryReady, pendingRoomInvitePromise]).then(([, invite]) => {
     if (!invite) return;
-    return openPlayMenu({
+    return playSurface.open({
       mode: invite.mode,
       invite: { ...invite, autoJoin: true },
     });

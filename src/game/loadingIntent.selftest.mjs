@@ -15,6 +15,7 @@ const pedestalRuntime = fs.readFileSync(
 const studioAccess = fs.readFileSync(path.join(here, 'studioAccess.ts'), 'utf8');
 const soloLoading = fs.readFileSync(path.join(here, 'soloBattleLoadingRuntime.ts'), 'utf8');
 const soloStartAccess = fs.readFileSync(path.join(here, 'soloBattleStartAccess.ts'), 'utf8');
+const playSurface = fs.readFileSync(path.join(here, 'playSurfaceRuntime.ts'), 'utf8');
 const networkLaunch = fs.readFileSync(
   path.join(here, '..', 'net', 'networkBattleLaunchRuntime.ts'), 'utf8',
 );
@@ -80,9 +81,20 @@ assert.doesNotMatch(main, /async function presentNetworkBattle\(/,
 assert.match(networkPresentationAccess,
   /load = \(\) => import\('\.\/networkBattlePresentationRuntime\.ts'\)/,
   'Garage boot must not evaluate the multiplayer-only presentation runtime');
-assert.match(main,
-  /function preloadPlayMode\(mode\)[\s\S]{0,600}mode !== 'solo'\) networkBattlePresentation\.preload\(\)/,
-  'network mode intent should transfer the presentation runtime before entry');
+assert.match(main, /createPlaySurfaceRuntime\(\{/,
+  'main should compose one typed play-surface lifecycle owner');
+const playSurfaceComposition = main.slice(
+  main.indexOf('const playSurface = createPlaySurfaceRuntime({'),
+  main.indexOf("bus.on('ui:battleStart'"),
+);
+assert.doesNotMatch(playSurfaceComposition, /^\s*preloadKillcamModule,$/m,
+  'cold composition must not read the later killcam binding from its temporal dead zone');
+assert.match(playSurfaceComposition, /\(\) => preloadKillcamModule\(\)/,
+  'the later killcam binding stays behind a lazy lifecycle port');
+assert.doesNotMatch(main, /function preloadPlayMode\(/,
+  'mode preload and retry policy must not return to the composition root');
+assert.match(playSurface, /export interface PlaySurfaceRuntime/,
+  'play intent should cross a stable typed interface');
 assert.match(main,
   /function preloadNetworkLobbyIntent\(state\)[\s\S]{0,180}networkBattlePresentation\.preload\(\)/,
   'a joined waiting room should keep the presentation runtime warm');

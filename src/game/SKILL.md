@@ -49,6 +49,10 @@ concrete Random-map reservation, exact-roster texture coalescing, stale intent
 cancellation, and the camouflage-safe handoff into covered loading. Passive
 garage dwell never constructs a battlefield. `battleEntryLifecycle.ts` owns
 entry exclusivity across every mode and the covered default-frame reveal gate.
+`playSurfaceRuntime.ts` owns mode-specific menu acquisition, preload policy,
+active-room reopening, solo bypass, and battle dismissal. Later-declared lazy
+ports must stay behind closures so pristine boot never reads a temporal-dead-
+zone binding while the composition root is still evaluating.
 `soloBattleDeploymentRuntime.ts` owns the ordered solo deployment warm from
 final camouflage through exact roster, terrain, FX, shader, CSM, post, and
 reveal preparation; callers receive only generation and reveal receipts.
@@ -83,6 +87,8 @@ simulation or rendering imports there. Keep deterministic roster planning
 independent from combat setup so battle intent can preload exact families.
 Route Battle preload changes through `battleIntentRuntime.ts`; do not restore
 independent map plans, texture generations, or garage timers in `main.js`.
+Route mode-picker and retained-room changes through `playSurfaceRuntime.ts`;
+keep menu construction retryable and keep solo entry independent of the menu.
 Acquire killcam implementation through `killcamAccess.ts`; do not restore its
 promise state in the composition root. Route player shell, consumable, and
 special-action policy through `playerBattleActions.ts`; inject combat and

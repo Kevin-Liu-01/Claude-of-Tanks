@@ -153,7 +153,7 @@ const battleEntryLifecycleSource = await readFile(
   new URL('../game/battleEntryLifecycle.ts', import.meta.url), 'utf8',
 );
 assert.match(mainSource,
-  /bus\.on\('ui:battleStart', \(\) => \{[\s\S]{0,180}playMenuPromise[\s\S]{0,180}runtime\.hide\(false\)/,
+  /bus\.on\('ui:battleStart', \(\) => \{[\s\S]{0,120}playSurface\.hideForBattle\(\)/,
   'every battle entry must dismiss the play modal without closing a retained room');
 assert.match(mainSource,
   /function warmStudioPipelineChunked[\s\S]{0,600}battleWarm\.warmStudioEffects\(/,
