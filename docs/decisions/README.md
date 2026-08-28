@@ -130,3 +130,4 @@ runtime documents remain authoritative for behavior.
 - [0118 — Context-sensitive vehicle actions share one strict state machine](0118-typed-special-actions.md)
 - [0119 — Drivetrain and route planning share typed terrain capability](0119-typed-terrain-mobility.md)
 - [0120 — Pointer-lock recovery has one typed lifecycle owner](0120-typed-pointer-lock-feedback.md)
+- [0121 — Mobile auto-aim has one typed lifecycle owner](0121-typed-mobile-auto-aim-runtime.md)

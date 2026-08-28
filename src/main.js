@@ -932,11 +932,14 @@ const audio = await bootStage('audio', () => {
 // bore. Solo, private-room and diagnostic presentation therefore share the
 // same reticle, obstruction and penetration contract.
 let playerBattleActions = null;
+function playerTargetVisible(ent) {
+  return !game.spotting || game.spotting.isSpotted(ent.id, 'player', game.player);
+}
 const battleClientAccess = createBattleClientAccess(() => ({
   getGame: () => game,
   getRig: () => rig,
   worldRaycast,
-  targetVisible: mobileAutoAimVisible,
+  targetVisible: playerTargetVisible,
   getShellCards: () => playerBattleActions?.shellCards || [],
   computeDispersion: battleClientAccess.computeDispersionRadM,
 }));
@@ -1266,6 +1269,8 @@ const settings = createSettingsAccess({
 garage.attachSettingsControl(settings.gear);
 let mobileSoundMuted = false;
 let touchControls = null;
+let mobileAutoAim = null;
+let mobileAutoAimPromise = null;
 const touchControlsAccess = createTouchControlsAccess({
   input, bus,
   isBattleActive: () => game.phase === 'battle',
@@ -1281,7 +1286,10 @@ const touchControlsAccess = createTouchControlsAccess({
 });
 async function ensureTouchControls() {
   if (!input.isTouchLayout()) return null;
-  touchControls = await touchControlsAccess.preload();
+  [touchControls] = await Promise.all([
+    touchControlsAccess.preload(),
+    ensureMobileAutoAim(),
+  ]);
   return touchControls;
 }
 devTrace?.configure({
@@ -1296,41 +1304,29 @@ devTrace?.configure({
   }),
 });
 
-// MOBILE AUTO-AIM: a separate Blitz-style lock button acquires the enemy
-// closest to screen center, then the camera rig and gun continuously follow
-// that tank's center mass until the player toggles it off or the target is
-// destroyed/lost. Desktop controls remain unchanged.
-let mobileAutoAimTargetId = null;
-const mobileAutoAimPoint = new THREE.Vector3();
-function mobileAutoAimVisible(ent) {
-  return !game.spotting || game.spotting.isSpotted(ent.id, 'player', game.player);
-}
-function setMobileAutoAimTarget(ent, reason = '') {
-  mobileAutoAimTargetId = ent ? ent.id : null;
-  bus.emit('ui:autoAimState', {
-    on: !!ent,
-    targetId: ent ? ent.id : null,
-    targetName: ent && ent.spec ? ent.spec.name : '',
-    reason,
+// Mobile target acquisition, loss and retained center-mass sampling have one
+// typed lifecycle owner. Its battle geometry functions remain lazy proxies.
+async function ensureMobileAutoAim() {
+  if (mobileAutoAim) return mobileAutoAim;
+  if (mobileAutoAimPromise) return mobileAutoAimPromise;
+  mobileAutoAimPromise = import('./game/mobileAutoAimRuntime.ts').then((runtime) => {
+    mobileAutoAim = runtime.createMobileAutoAimRuntime({
+      bus,
+      input,
+      camera,
+      getPhase: () => game.phase,
+      getTanks: () => game.tanks,
+      getPlayer: () => game.player,
+      getTankById: (id) => game.tankById.get(id) || null,
+      isVisible: playerTargetVisible,
+      pickTarget: pickMobileAutoAimTarget,
+      targetCenter: mobileAutoAimCenter,
+    });
+    return mobileAutoAim;
   });
+  mobileAutoAimPromise.catch(() => { mobileAutoAimPromise = null; });
+  return mobileAutoAimPromise;
 }
-bus.on('ui:autoAimToggle', () => {
-  if (game.phase !== 'battle' || !input.isTouchLayout() || !game.player ||
-      !game.player.combat || game.player.combat.destroyed) return;
-  if (mobileAutoAimTargetId) {
-    setMobileAutoAimTarget(null, 'AUTO-AIM OFF');
-    return;
-  }
-  const target = pickMobileAutoAimTarget(
-    game.tanks, game.player, camera, mobileAutoAimVisible);
-  setMobileAutoAimTarget(target, target ? '' : 'NO TARGET NEAR RETICLE');
-});
-bus.on('tank:destroyed', ({ id }) => {
-  if (id === mobileAutoAimTargetId) setMobileAutoAimTarget(null, 'TARGET DESTROYED');
-});
-bus.on('phase:change', ({ phase }) => {
-  if (phase !== 'battle' && mobileAutoAimTargetId) setMobileAutoAimTarget(null);
-});
 
 // Pointer-lock denial, recovery gestures, the cursor-aim notice, and touch
 // refresh now have one typed listener/timer owner outside the composition root.
@@ -2226,17 +2222,7 @@ function tick(nowMs) {
   dtR = frameState.dtSeconds;
   const { inBattle, paused, livePaused } = frameState;
   const kcActive = frameState.killcamActive;
-  camInput.autoAimPoint = null;
-  if (mobileAutoAimTargetId && inBattle && !paused && !kcActive) {
-    const target = game.tankById.get(mobileAutoAimTargetId);
-    if (!input.isTouchLayout() || !target || !target.combat || target.combat.destroyed ||
-        !mobileAutoAimVisible(target)) {
-      setMobileAutoAimTarget(null, 'TARGET LOST');
-    } else {
-      mobileAutoAimCenter(target, mobileAutoAimPoint);
-      camInput.autoAimPoint = mobileAutoAimPoint;
-    }
-  }
+  camInput.autoAimPoint = mobileAutoAim?.sample(inBattle && !paused && !kcActive) || null;
   if (inBattle && !paused && !kcActive) rig.update(dtR, camInput);
   if (kcActive) killcam.update(dtR);
 
