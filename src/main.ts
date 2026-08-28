@@ -23,22 +23,30 @@
  * overlay → back to garage.
  */
 import * as THREE from 'three';
-import type { EventBus, GameState } from './game/stateCore.ts';
-import type { RosterEntity, RosterGameState } from './game/rosterState.ts';
 import type {
-  ActiveWorld,
   WorldActivationRuntime,
   WorldActivationOptions,
 } from './world/worldActivationRuntime.ts';
-import type { BattleHudRuntime, DamagePanelRuntime } from './ui/battleHudAccess.ts';
-import type { HeightField } from './world/terrain.ts';
 import type { SkyPreset } from './engine/sky.ts';
 import type { NetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
 import type { PlayerBattleActions } from './game/playerBattleActions.ts';
-import type { LazyAudio } from './audio/lazyAudio.ts';
-import type { KillcamRuntime } from './game/killcamAccess.ts';
 import type { BattleVisualStreamer } from './game/battleVisualStreamer.ts';
 import type { TouchControlsRuntime } from './ui/touchControlsAccess.ts';
+import type {
+  MainDamagePanelRuntime,
+  MainEntity,
+  MainFxModule,
+  MainFxRuntime,
+  MainGameState,
+  MainGarageRuntime,
+  MainHudRuntime,
+  MainInputRuntime,
+  MainKillcamRuntime,
+  MainLightingRuntime,
+  MainMobileAutoAimRuntime,
+  MainWorld,
+  SoloBattleRequest,
+} from './app/mainContracts.ts';
 import { createRenderer } from './engine/renderer.ts';
 import { createOffscreenSceneWarmer } from './engine/offscreenWarm.ts';
 import {
@@ -180,163 +188,6 @@ function legacyPort<T>(value: unknown): T {
   return value as T;
 }
 
-interface MainLightingRuntime {
-  setupShadowMaterial(material: THREE.Material, extraHook?: unknown): void;
-  releaseShadowMaterial(material: THREE.Material): unknown;
-  setFarCascadeDormant(dormant: boolean): void;
-  setStaticPresentationDormant(dormant: boolean): void;
-  setSun(direction: THREE.Vector3, config?: unknown): void;
-  update(force?: boolean, dt?: number): void;
-  updateFov(): void;
-  updateFrustums(): void;
-  getShadowTelemetry(): unknown;
-  primeShadowMaps(...args: unknown[]): unknown;
-  preservePrimedCascadesForNextFrame(): void;
-}
-
-interface MainGarageRuntime {
-  readonly root: HTMLElement;
-  readonly isOpen: boolean;
-  show(specId?: string): void;
-  hide(): void;
-  getSelected(): string;
-  getSelectedMap(): string;
-  getNeighborIds(radius?: number): string[];
-  getStageRect(): { x: number; y: number; w: number; h: number };
-  setRoomStatus(status?: unknown): void;
-  attachSettingsControl(control: HTMLElement): void;
-  setSelected(specId: string): void;
-}
-
-interface MainVisual extends NonNullable<RosterEntity['visual']> {
-  setTrackState?(module: string, destroyed: boolean): void;
-}
-
-interface MainFxRuntime {
-  group: THREE.Object3D;
-  bindBus(bus: EventBus): void;
-  setFrozen(frozen: boolean): void;
-  resetAll(): void;
-  update(...args: unknown[]): void;
-  clearVehicleDecals(target: unknown): void;
-  impact(...args: unknown[]): unknown;
-  dust(...args: unknown[]): unknown;
-  exhaust(...args: unknown[]): unknown;
-  propBreak(...args: unknown[]): unknown;
-  propCrush(...args: unknown[]): unknown;
-  warmOpeningEffects(...args: unknown[]): unknown;
-  destruction: unknown;
-  [key: string]: unknown;
-}
-
-interface MainFxModule {
-  createFx(...args: unknown[]): MainFxRuntime;
-}
-
-interface MainEntity extends Omit<RosterEntity, 'spec' | 'state' | 'combat' | 'visual'> {
-  spec: ReturnType<typeof getSpec> & { name: string };
-  state: ({ yaw: number } & Record<string, unknown>) | null;
-  combat: ({ destroyed?: boolean } & Record<string, unknown>) | null;
-  equip?: unknown;
-  visual: MainVisual | null;
-}
-
-interface MainSpottingRuntime {
-  isSpotted(entityId: string, observerId: string, observer: MainEntity | null): boolean;
-}
-
-type MainGameState = Omit<
-  GameState,
-  'tanks' | 'allTanks' | 'tankById' | 'player' | 'spotting'
-> & Omit<RosterGameState, 'tanks' | 'allTanks' | 'tankById'> & {
-  tanks: MainEntity[];
-  allTanks: MainEntity[];
-  tankById: Map<string, MainEntity>;
-  player: MainEntity | null;
-  spotting: MainSpottingRuntime | null;
-  killcam?: unknown;
-};
-
-interface MainWorld extends ActiveWorld<Partial<SkyPreset>> {
-  heightField: HeightField;
-  config: ActiveWorld<Partial<SkyPreset>>['config'] & { minimap?: unknown };
-  getMinimapFeatures(): unknown;
-  update(dt: number, cameraPosition: THREE.Vector3, forward?: THREE.Vector3, extra?: unknown): void;
-}
-
-interface MainHudRuntime extends BattleHudRuntime {
-  root: HTMLElement;
-  shotInfo: {
-    statsRoot?: HTMLElement;
-    setPlayer(playerId: string): void;
-  };
-  buildMinimap(heightField: HeightField, features: unknown, config: unknown, snapshot: unknown): void;
-  buildMinimapFromAsset(heightField: HeightField, url: string): Promise<boolean> | boolean;
-  preloadMinimapAsset(url: string): Promise<unknown>;
-  preBattleCountdown(seconds: number): void;
-  setMode(mode: string): void;
-  warmShotCards(specIds: readonly string[]): unknown;
-  exportMinimapBackground(type: string, quality: number): string;
-  forceHitMark(bounced: boolean): void;
-}
-
-interface MainDamagePanelRuntime extends DamagePanelRuntime {
-  root: HTMLElement;
-  setTank(spec: unknown, visual: unknown): void;
-  setEquipment(equipment: unknown): void;
-}
-
-interface SoloBattleRequest {
-  specId?: string;
-  mapId?: string | null;
-  randomRoster?: boolean;
-  gameMode?: string;
-}
-
-interface MainKillcamRuntime extends KillcamRuntime {
-  bindBus(bus: EventBus): void;
-}
-
-interface MainInputRuntime {
-  actionDefs?: Array<{ id: string }>;
-  onAction(action: string, listener: () => void): () => void;
-  getSettings(): { showDebugHud: boolean; [key: string]: unknown };
-  isTouchLayout(): boolean;
-  isLocked(): boolean;
-  isDown(action: string): boolean;
-  requestLock(): void;
-  onLockDenied(listener: () => void): () => void;
-  onLockRestored(listener: () => void): () => void;
-  setEnabled?(enabled: boolean): void;
-  setSetting(name: string, value: unknown): void;
-  [key: string]: unknown;
-}
-
-type MainMobileAutoAimRuntime = ReturnType<
-  (typeof import('./game/mobileAutoAimRuntime.ts'))['createMobileAutoAimRuntime']
->;
-
-declare global {
-  interface Window {
-    __BATTLE_REVEAL?: unknown;
-    __BOOT_MS?: number;
-    __BOOT_TIMINGS?: Record<string, number>;
-    __GAME_READY?: boolean;
-    __GARAGE_ENTRY?: unknown;
-    __GARAGE_IDLE_WORK?: unknown;
-    __MINIMAP_LOAD?: unknown;
-    __NETWORK_ENTRY_FAILURE?: unknown;
-    __NETWORK_LOAD?: unknown;
-    __PERF_HUD?: unknown;
-    __SHOTS?: unknown;
-    __START_BATTLE_TIMINGS?: unknown;
-    __STUDIO?: unknown;
-    __STUDIO_WARM?: unknown;
-    __VISUAL_LOAD_TIMINGS?: unknown[];
-    __WORLD_LOAD?: unknown;
-    __WORLD_PREFETCH?: unknown;
-  }
-}
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
 // reveal it, then start a second load".  The intent is captured before any
 // staged work so the inline boot screen can report Studio-specific progress
