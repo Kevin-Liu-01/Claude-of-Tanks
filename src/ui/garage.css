@@ -196,18 +196,48 @@
 .cot-room-reminder .rr-dot{width:7px;height:7px;border-radius:50%;background:#e5a347;box-shadow:0 0 12px #e5a347}
 .cot-room-reminder.ready .rr-dot{background:#73d58a;box-shadow:0 0 12px #73d58a}.cot-room-reminder b{color:#ffca78}
 .cot-garage-tools,.cot-garage-panel-scrim{display:none}
-.cot-garage-tools{position:absolute;z-index:12;pointer-events:auto;align-items:stretch;gap:4px}
-.cot-garage-tool{min-width:0;height:44px;padding:0 12px;display:flex;align-items:center;justify-content:center;gap:8px;
-  border:1px solid rgba(156,177,193,.3);border-bottom:2px solid rgba(156,177,193,.36);
-  background:linear-gradient(180deg,rgba(17,23,29,.96),rgba(7,11,15,.97));color:#a8b7c2;
-  font:900 7.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.13em;text-transform:uppercase;cursor:pointer;
-  box-shadow:0 6px 18px rgba(0,0,0,.32);transition:color .14s,border-color .14s,background .14s,transform .12s}
-.cot-garage-tool svg{width:17px;height:17px;flex:0 0 auto;color:#d89531}
-.cot-garage-tool:active{transform:scale(.97)}
+.cot-garage-tools{position:absolute;z-index:12;pointer-events:auto}
+.cot-garage-tools-trigger{width:196px;height:46px;padding:0 10px;display:grid;
+  grid-template-columns:30px minmax(0,1fr) 14px;align-items:center;gap:8px;text-align:left;cursor:pointer;
+  color:#d9e2e9;background:linear-gradient(155deg,rgba(20,27,34,.98),rgba(7,11,15,.98));
+  border:1px solid rgba(164,184,199,.4);border-bottom:2px solid rgba(164,184,199,.44);
+  box-shadow:0 10px 28px rgba(0,0,0,.46),inset 0 0 0 1px rgba(255,255,255,.018);
+  transition:color .14s,border-color .14s,background .14s,transform .12s}
+.cot-garage-tools-trigger:active{transform:scale(.98)}
+.cot-garage-tools-trigger[aria-expanded='true'],.cot-garage-tools-trigger.has-active-panel{
+  color:#ffe0aa;border-color:#f0a030;background:linear-gradient(155deg,rgba(46,32,15,.98),rgba(15,11,7,.98));
+  box-shadow:0 0 22px rgba(240,160,48,.13),0 10px 28px rgba(0,0,0,.46)}
+.cot-garage-tools-icon{width:30px;height:30px;display:grid;place-items:center;color:#d89531;
+  background:rgba(240,160,48,.07);border:1px solid rgba(240,176,74,.2)}
+.cot-garage-tools-icon svg{width:18px;height:18px}
+.cot-garage-tools-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cot-garage-tools-copy strong,.cot-garage-tool-copy strong{font:900 8px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}
+.cot-garage-tools-copy small,.cot-garage-tool-copy small{font:700 6.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.09em;text-transform:uppercase;color:#778895;white-space:nowrap}
+.cot-garage-tools-disclosure{display:grid;place-items:center;color:#81919d;transition:transform .14s,color .14s}
+.cot-garage-tools-disclosure svg{transform:rotate(-90deg)}
+.cot-garage-tools-trigger[aria-expanded='true'] .cot-garage-tools-disclosure{color:#f0b04a;transform:rotate(180deg)}
+.cot-garage-tools-menu[hidden]{display:none!important}
+.cot-garage-tools-menu{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);
+  width:286px;padding:6px;display:grid;gap:4px;max-height:calc(100dvh - 124px);overflow-y:auto;
+  overscroll-behavior:contain;scrollbar-width:none;background:linear-gradient(155deg,rgba(18,24,30,.995),rgba(5,8,11,.995));
+  border:1px solid rgba(166,184,199,.38);box-shadow:0 20px 54px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.018)}
+.cot-garage-tools-menu::-webkit-scrollbar{display:none}
+.cot-garage-tools-menu::before{content:'Garage setup';padding:5px 7px 3px;color:#d89b3f;
+  font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.22em;text-transform:uppercase}
+.cot-garage-tool{min-width:0;min-height:52px;padding:6px 9px;display:grid;
+  grid-template-columns:30px minmax(0,1fr) 14px;align-items:center;gap:9px;text-align:left;
+  border:1px solid rgba(156,177,193,.22);background:rgba(19,26,32,.84);color:#a8b7c2;
+  cursor:pointer;transition:color .14s,border-color .14s,background .14s,transform .12s}
+.cot-garage-tool > svg:first-child{width:18px;height:18px;justify-self:center;color:#d89531}
+.cot-garage-tool > svg:last-child{width:12px;height:12px;justify-self:end;color:#6e7e8a}
+.cot-garage-tool-copy{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cot-garage-tool:active{transform:scale(.985)}
 .cot-garage-tool[aria-expanded='true']{color:#ffe0aa;border-color:#f0a030;border-bottom-color:#f0a030;
   background:linear-gradient(180deg,rgba(49,34,15,.98),rgba(20,14,8,.98));box-shadow:0 0 18px rgba(240,160,48,.16)}
 @media (hover:hover) and (pointer:fine){
-  .cot-garage-tool:hover{color:#ffe0aa;border-color:rgba(240,176,74,.7)}
+  .cot-garage-tools-trigger:hover,.cot-garage-tool:hover{color:#ffe0aa;border-color:rgba(240,176,74,.7)}
 }
 .cot-garage-panel-scrim{position:absolute;z-index:9;inset:0;border:0;background:rgba(3,6,9,.46);
   pointer-events:auto;cursor:default;backdrop-filter:blur(2px)}
@@ -885,10 +915,8 @@ body[data-cot-panels='overlay'] .cot-battle-control{
 body[data-cot-panels='overlay'] .cot-battle{font-size:clamp(14px,1.8vw,17px)}
 body[data-cot-panels='overlay'] .cot-battle-mode{font-size:7.5px}
 body[data-cot-panels='overlay'] .cot-garage-tools{
-  display:flex;left:50%;bottom:var(--cot-tools-bottom);transform:translateX(-50%);
-  width:min(430px,calc(100vw - (var(--cot-overlay-edge) * 2)));
+  display:block;left:50%;bottom:var(--cot-tools-bottom);transform:translateX(-50%);
 }
-body[data-cot-panels='overlay'] .cot-garage-tool{flex:1 1 0}
 body[data-cot-panels='overlay'] .cot-leftcol,
 body[data-cot-panels='overlay'] .cot-garage .stats{display:none}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-garage-panel-scrim{display:block}
@@ -960,9 +988,12 @@ body[data-cot-width='phone'] .cot-battle-mode::after{right:5px}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-battle-control{
   top:max(64px,calc(env(safe-area-inset-top) + 58px));
 }
-body[data-cot-width='phone'] .cot-garage-tools{width:calc(100vw - (var(--cot-overlay-edge) * 2))}
-body[data-cot-width='phone'] .cot-garage-tool{padding:0 7px;gap:5px;font-size:6.5px;letter-spacing:.08em}
-body[data-cot-width='phone'] .cot-garage-tool svg{width:15px;height:15px}
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage[data-garage-panel='maps'] .cot-leftcol,
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage[data-garage-panel='appearance'] .cot-leftcol,
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage[data-garage-panel='dossier'] .stats{
+  top:max(120px,calc(env(safe-area-inset-top) + 114px));
+}
+body[data-cot-width='phone'] .cot-garage-tools-trigger{width:184px}
 body[data-cot-width='phone'] .cot-card{width:102px}
 body[data-cot-width='phone'] .cot-car-arrow{width:32px;flex-basis:32px}
 body[data-cot-width='phone'] .cot-record-overview{grid-template-columns:1fr}
@@ -973,19 +1004,24 @@ body[data-cot-width='phone'] .cot-record-ring{width:116px}
 body[data-cot-width='phone'] .cot-record-metrics,
 body[data-cot-width='phone'] .cot-last-battle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 
-/* Short viewports use vertical panel tabs, keeping the center sightline and
-   both horizontal roster rails usable down to 360 CSS px of height. */
+/* Short viewports keep one setup control in the side lane. The old vertical
+   stack of three tabs permanently consumed the tank silhouette and collided
+   with panel drawers; the temporary menu opens inward only on request. */
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage{
   --cot-roster-height:62px;--cot-country-bottom:70px;
 }
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage-tools{
   left:max(8px,env(safe-area-inset-left));right:auto;top:72px;bottom:auto;transform:none;
-  width:44px;flex-direction:column;
+  width:142px;
 }
-body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage-tool{
-  width:44px;height:44px;flex:0 0 44px;padding:0;
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage-tools-trigger{
+  width:142px;height:44px;grid-template-columns:28px minmax(0,1fr) 12px;padding-inline:7px;gap:7px;
 }
-body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage-tool span{display:none}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage-tools-copy small{display:none}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage-tools-menu{
+  left:calc(100% + 8px);top:0;bottom:auto;transform:none;width:min(270px,calc(100vw - 166px));
+  max-height:calc(100dvh - 82px);
+}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage[data-garage-panel='maps'] .cot-leftcol,
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{
   left:max(60px,calc(env(safe-area-inset-left) + 60px));top:72px;bottom:118px;

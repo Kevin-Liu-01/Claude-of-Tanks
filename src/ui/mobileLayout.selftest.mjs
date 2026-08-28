@@ -39,11 +39,38 @@ assert.match(garage,
   /data-garage-panel="maps"[\s\S]*data-garage-panel="appearance"[\s\S]*data-garage-panel="dossier"/,
   'overlay garages must expose explicit Battlefield, Appearance, and Dossier drawers');
 assert.match(garage,
+  /cot-garage-tools-trigger[^>]*aria-haspopup="menu"[^>]*aria-controls="cot-garage-tools-menu"[\s\S]*cot-garage-tools-menu[^>]*role="menu"[^>]*hidden/,
+  'mobile and tablet garages must consolidate drawer choices behind one accessible setup launcher');
+assert.match(garage,
+  /body\[data-cot-panels='overlay'\] \.cot-garage-tools\{[\s\S]*display:block;left:50%;bottom:var\(--cot-tools-bottom\)[\s\S]*body\[data-cot-height='short'\]\[data-cot-panels='overlay'\] \.cot-garage-tools\{[\s\S]*width:142px/,
+  'the setup launcher must own one stable roster-adjacent lane instead of three persistent phone controls');
+assert.match(garage,
+  /\.cot-garage-tools-menu\{[\s\S]*max-height:calc\(100dvh - 124px\);overflow-y:auto;[\s\S]*scrollbar-width:none/,
+  'the setup action sheet must remain bounded and scrollable without exposing a browser scrollbar');
+assert.match(garage,
+  /\.cot-garage-tool\{[\s\S]*min-height:52px[\s\S]*grid-template-columns:30px minmax\(0,1fr\) 14px/,
+  'garage setup actions must retain generous touch targets and readable icon-copy hierarchy');
+assert.match(garage,
   /body\[data-cot-panels='overlay'\] \.cot-leftcol,[\s\S]*\.cot-garage \.stats\{display:none\}/,
   'tablet and phone side panels must stay out of the tank stage until requested');
 assert.match(garage,
   /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-battle-control\{[\s\S]*top:max\(64px/,
   'portrait phones must place Battle below the brand and global controls instead of overlapping them');
+assert.match(garage,
+  /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-garage\[data-garage-panel='maps'\] \.cot-leftcol,[\s\S]*top:max\(120px,calc\(env\(safe-area-inset-top\) \+ 114px\)\)/,
+  'portrait garage drawers must begin below the lowered Battle control');
+assert.match(garage,
+  /const openMobileNavigation = \(\) => \{[\s\S]*closeBattleMenu\(\);[\s\S]*closeGarageTools\(\);[\s\S]*setGaragePanel\(''\);/,
+  'page navigation must close garage disclosures instead of stacking over them');
+assert.match(garage,
+  /function openBattleMenu\(\) \{[\s\S]*closeMobileNavigation\(\);[\s\S]*closeGarageTools\(\);[\s\S]*setGaragePanel\(''\);/,
+  'battle selection must close garage disclosures instead of stacking over them');
+assert.match(garage,
+  /if \(!openGaragePanel\(\) \|\| event\.code !== 'Escape'\) return;[\s\S]*event\.stopImmediatePropagation\(\);[\s\S]*setGaragePanel\('', \{ restoreFocus: true \}\);/,
+  'Escape must close one garage drawer without leaking into the global Settings shortcut');
+assert.match(garage,
+  /if \(!battleMenu\.classList\.contains\('open'\) \|\| event\.code !== 'Escape'\) return;[\s\S]*event\.stopImmediatePropagation\(\);[\s\S]*closeBattleMenu\(\{ restoreFocus: true \}\);/,
+  'Escape must close the Battle menu without leaking into another UI owner');
 
 assert.doesNotMatch(touch, /@media \([^)]*(?:width|height|orientation)/,
   'touch controls must consume the canonical semantic viewport contract');
