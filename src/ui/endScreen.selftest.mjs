@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { damageComparisonPercent, summarizeTeam } from './endScreen.js';
+import { damageComparisonPercent, summarizeTeam } from './endScreen.ts';
 
 const summary = summarizeTeam([
   { dead: false, kills: 2, dmg: 1_480 },

@@ -200,3 +200,4 @@ runtime documents remain authoritative for behavior.
 - [0188 — Tank thumbnails and damage masks are strict TypeScript](0188-typed-tank-thumbnail-and-mask-runtime.md)
 - [0189 — Private-room entry and lobby presentation are strict TypeScript](0189-typed-private-room-menu.md)
 - [0190 — Multiplayer menu handoffs share canonical wire contracts](0190-typed-multiplayer-ui-handoff.md)
+- [0191 — The after-action and rematch report is strict TypeScript](0191-typed-after-action-report.md)

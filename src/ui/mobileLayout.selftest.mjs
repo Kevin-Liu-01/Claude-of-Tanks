@@ -289,7 +289,7 @@ const semanticSurfaceFiles = [
   '../../index.html',
   './battleLoad.ts',
   './contextInfo.ts',
-  './endScreen.js',
+  './endScreen.ts',
   './garage.js',
   './garage.css',
   './hud.js',

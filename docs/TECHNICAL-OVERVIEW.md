@@ -252,8 +252,10 @@ synchronization.
 ### 5.5 Result and reset
 
 The authority determines the result. The presentation produces killcam and
-after-action projections from resolved state and events. Returning to the
-garage clears match-specific state while retaining safe immutable resources.
+after-action projections from resolved state and events. The after-action owner
+is strict TypeScript: summary rows, adopted controls, animation handles, and
+retained-room readiness cross explicit contracts. Returning to the garage
+clears match-specific state while retaining safe immutable resources.
 
 ## 6. Vehicle model
 

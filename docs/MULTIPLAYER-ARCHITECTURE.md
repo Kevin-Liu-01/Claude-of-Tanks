@@ -239,8 +239,9 @@ owns focus.
 Closing the result report returns to the garage without leaving the room. A
 compact room reminder remains under Battle and exposes ready/unready state.
 Ready players cannot change vehicle, equipment, or team until they unready;
-the report and lobby both show live play-again readiness. Only an explicit
-Leave command disconnects the peer.
+the strict TypeScript after-action report and lobby both show live play-again
+readiness from narrowed room-state events. Only an explicit Leave command
+disconnects the peer.
 
 Ranked uses service-scoped anonymous bearer identities, widening Elo search
 bands, server team balancing, one-time match tickets, persistent idempotent

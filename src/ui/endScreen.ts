@@ -1,5 +1,5 @@
 /**
- * endScreen.js — cinematic battle end screen (killcam_endscreen r1).
+ * endScreen.ts — typed cinematic battle end screen (killcam_endscreen r1).
  *
  * Replaces the old shot-info battle report as the end-of-battle surface.
  * Rendered INTO shotInfo's existing full-screen stats host (`.cot-si-stats`,
@@ -32,6 +32,118 @@ import { createElement as el, ensureStyle } from './dom.ts';
 import { iconUrl, maskIcon } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { getSpec } from '../vehicles/specs.js';
+import type { EventBus } from '../game/stateCore.ts';
+import type {
+  NetworkRoomPlayer,
+  NetworkRoomState,
+} from '../net/networkRoomCoordinator.ts';
+
+export type EndScreenResult = '' | 'victory' | 'defeat' | 'draw';
+
+export interface EndScreenTeamRow {
+  id: string;
+  name?: string | null;
+  specId?: string | null;
+  dmg: number;
+  kills: number;
+  dead: boolean;
+  isPlayer?: boolean;
+}
+
+export interface EndScreenKillRow {
+  id: string;
+  name?: string | null;
+  specId?: string | null;
+  dmg: number;
+}
+
+export interface EndScreenStats {
+  dealt: number;
+  received: number;
+  blocked: number;
+  fired: number;
+  hits: number;
+  pens: number;
+  assist: number;
+  modulesDestroyed?: number;
+  spotted?: number;
+  spotAttributed?: boolean;
+}
+
+export interface EndScreenBestShot {
+  damage: number;
+  shellType?: string;
+  shellName?: string;
+  targetName?: string;
+  zone?: string;
+  distM?: number;
+  destroyed?: boolean;
+}
+
+export interface EndScreenSummary {
+  result?: EndScreenResult;
+  reason?: string | null;
+  playerVehicle?: string;
+  playerSpecId?: string | null;
+  playerDead?: boolean;
+  map?: string | null;
+  timeS: number;
+  stats: EndScreenStats;
+  kills: EndScreenKillRow[];
+  bestShot?: EndScreenBestShot | null;
+  allies: EndScreenTeamRow[];
+  enemies: EndScreenTeamRow[];
+}
+
+export interface EndScreenRuntime {
+  readonly root: HTMLElement;
+  readonly visible: boolean;
+  show(result: EndScreenResult, summary: EndScreenSummary): void;
+  hide(): void;
+}
+
+interface EndScreenRoomContext {
+  state: NetworkRoomState;
+  playerId: string;
+  role?: string;
+}
+
+interface CounterState {
+  raf: number;
+  done: boolean;
+  fin(): void;
+}
+
+type NumberFormatter = (value: number) => string;
+
+interface CountUpOptions {
+  durMs?: number;
+  delayMs?: number;
+  fmt?: NumberFormatter;
+  prefix?: string;
+}
+
+interface TileOptions {
+  hot?: boolean;
+  icon?: string;
+  text?: string;
+  value?: number;
+  datasetV?: number;
+  fmt?: NumberFormatter;
+}
+
+interface TeamSummaryInput {
+  dead?: boolean;
+  kills?: unknown;
+  dmg?: unknown;
+}
+
+export interface TeamSummary {
+  total: number;
+  alive: number;
+  kills: number;
+  damage: number;
+}
 
 const COL = {
   amber: '#f0a030',
@@ -261,14 +373,14 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .cot-es-btn.ghost:hover{background:rgba(240,160,48,.16);}
 `;
 
-const fmtTime = (s) => {
+const fmtTime = (s: number): string => {
   const t = Math.max(0, Math.floor(s || 0));
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 };
-const fmtN = (n) => Math.round(n).toLocaleString('en-US');
+const fmtN = (n: number): string => Math.round(n).toLocaleString('en-US');
 
-export function summarizeTeam(rows = []) {
-  return rows.reduce((summary, row) => {
+export function summarizeTeam(rows: TeamSummaryInput[] = []): TeamSummary {
+  return rows.reduce<TeamSummary>((summary, row) => {
     summary.total += 1;
     if (!row.dead) summary.alive += 1;
     summary.kills += Math.max(0, Number(row.kills) || 0);
@@ -277,11 +389,46 @@ export function summarizeTeam(rows = []) {
   }, { total: 0, alive: 0, kills: 0, damage: 0 });
 }
 
-export function damageComparisonPercent(damage, maxDamage) {
+export function damageComparisonPercent(damage: unknown, maxDamage: unknown): number {
   const value = Math.max(0, Number(damage) || 0);
   const ceiling = Math.max(0, Number(maxDamage) || 0);
   if (ceiling <= 0) return 0;
   return Math.round(Math.min(1, value / ceiling) * 1000) / 10;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isRoomPlayer(value: unknown): value is NetworkRoomPlayer {
+  return isRecord(value) && typeof value.id === 'string';
+}
+
+function readRoomContext(value: unknown): EndScreenRoomContext | null {
+  if (!isRecord(value) || typeof value.playerId !== 'string' ||
+      !isRecord(value.state) || !Array.isArray(value.state.players) ||
+      !value.state.players.every(isRoomPlayer)) return null;
+  return {
+    state: { ...value.state, players: value.state.players },
+    playerId: value.playerId,
+    ...(typeof value.role === 'string' ? { role: value.role } : {}),
+  };
+}
+
+function requiredDescendant<T extends Element>(root: ParentNode, selector: string): T {
+  const result = root.querySelector<T>(selector);
+  if (!result) throw new Error(`end screen requires ${selector}`);
+  return result;
+}
+
+function vehicleName(specId: string | null | undefined): string {
+  if (!specId) return '';
+  try {
+    const spec: unknown = getSpec(specId);
+    return isRecord(spec) && typeof spec.name === 'string' ? spec.name : specId;
+  } catch {
+    return specId;
+  }
 }
 
 /**
@@ -291,7 +438,7 @@ export function damageComparisonPercent(damage, maxDamage) {
  *   so main.ts's veilHud/statsRoot seams keep addressing the live surface
  * @returns {{show:Function,hide:Function,visible:boolean,root:HTMLElement}}
  */
-export function createEndScreen(bus, host) {
+export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRuntime {
   ensureFonts();
   ensureStyle('cot-es-style', ES_CSS);
   host.classList.add('cot-es');
@@ -301,10 +448,11 @@ export function createEndScreen(bus, host) {
   host.setAttribute('aria-hidden', 'true');
 
   let visible = false;
-  let garageBtn = null;   // adopted integration button (survives re-renders by ref)
-  let roomContext = null;
-  let rematchPanel = null;
-  const counters = [];    // live count-up rAF handles
+  let garageBtn: HTMLButtonElement | null = null;
+  let roomContext: EndScreenRoomContext | null = null;
+  let rematchPanel: HTMLElement | null = null;
+  const counters: CounterState[] = [];
+  let api: EndScreenRuntime;
 
   // arm the legacy-overlay suppressor the moment the battle is decided —
     // endOverlayRuntime.show() runs later in the same tick and must never flash the
@@ -313,20 +461,26 @@ export function createEndScreen(bus, host) {
   // any path into a fresh battle retires the screen — including the debug
   // __DEBUG.startBattle flow, which skips the garage's ui:battleStart (the
   // garage path also lands here via hud.setMode -> shotInfo.hideStats)
-  bus.on('phase:change', (p) => { if (p && p.phase === 'battle') api.hide(); });
+  bus.on('phase:change', (payload) => {
+    if (isRecord(payload) && payload.phase === 'battle') api.hide();
+  });
   bus.on('network:roomState', (context) => {
-    roomContext = context?.state ? context : null;
+    roomContext = readRoomContext(context);
     if (rematchPanel) renderRematchPanel(rematchPanel);
   });
 
   /** Animated count-up on an element (finalizes exactly on target). */
-  function countUp(elm, target, { durMs = 1050, delayMs = 0, fmt = fmtN, prefix = '' } = {}) {
+  function countUp(
+    elm: HTMLElement,
+    target: number,
+    { durMs = 1050, delayMs = 0, fmt = fmtN, prefix = '' }: CountUpOptions = {},
+  ): void {
     const fin = () => { elm.textContent = prefix + fmt(target); };
     if (typeof document !== 'undefined' && document.hidden) { fin(); return; } // headless/throttled: no dead counters
     const state = { raf: 0, done: false, fin };
     counters.push(state);
     const t0 = performance.now() + delayMs;
-    const tick = (now) => {
+    const tick = (now: number): void => {
       if (state.done) return;
       const u = Math.min(1, Math.max(0, (now - t0) / durMs));
       const k = 1 - Math.pow(1 - u, 3); // ease-out cubic
@@ -338,7 +492,7 @@ export function createEndScreen(bus, host) {
     state.raf = requestAnimationFrame(tick);
   }
 
-  function stopCounters() {
+  function stopCounters(): void {
     for (const c of counters) {
       if (!c.done) { cancelAnimationFrame(c.raf); c.done = true; c.fin(); }
     }
@@ -350,10 +504,10 @@ export function createEndScreen(bus, host) {
    * frame) and reparent its RETURN TO GARAGE button — existing handler kept.
    * @param {HTMLElement} actions actions row to mount the button into
    */
-  function adoptEndOverlay(actions) {
-    const overlay = document.querySelector('.cot-end');
+  function adoptEndOverlay(actions: HTMLElement): HTMLButtonElement | null {
+    const overlay = document.querySelector<HTMLElement>('.cot-end');
     if (overlay) {
-      let btn = overlay.querySelector('button');
+      const btn = overlay.querySelector<HTMLButtonElement>('button');
       if (btn) {
         btn.removeAttribute('style'); // shed the inline amber pill styling
         btn.classList.add('cot-es-btn', 'ghost');
@@ -369,7 +523,12 @@ export function createEndScreen(bus, host) {
   let seq = 0; // entrance stagger index
   const nextI = () => String(seq++);
 
-  function tile(parent, key, label, opts = {}) {
+  function tile(
+    parent: HTMLElement,
+    key: string | null,
+    label: string,
+    opts: TileOptions = {},
+  ): HTMLElement {
     const t = el('div', `es-tal es-in${opts.hot ? ' hot' : ''}`, parent);
     t.style.setProperty('--i', nextI());
     const v = el('div', 'v', t);
@@ -381,15 +540,16 @@ export function createEndScreen(bus, host) {
     return t;
   }
 
-  function renderRematchPanel(panel) {
+  function renderRematchPanel(panel: HTMLElement): void {
     panel.textContent = '';
-    const state = roomContext?.state;
+    const context = roomContext;
+    const state = context?.state;
     if (!state) {
       panel.remove();
       rematchPanel = null;
       return;
     }
-    const playerId = roomContext.playerId;
+    const playerId = context.playerId;
     const me = state.players.find((player) => player.id === playerId);
     const active = state.players.filter((player) => player.team !== 'spectator');
     const readyCount = active.filter((player) => player.ready).length;
@@ -408,12 +568,13 @@ export function createEndScreen(bus, host) {
     for (const player of state.players) {
       const row = el('div', `es-room-player${player.ready ? ' ready' : ''}`, players);
       const icon = el('span', 'ri', row);
-      maskIcon(icon, player.specId, 'side_silhouette',
-        player.ready ? 'rgba(127,220,138,.88)' : 'rgba(190,204,215,.72)');
+      if (player.specId) {
+        maskIcon(icon, player.specId, 'side_silhouette',
+          player.ready ? 'rgba(127,220,138,.88)' : 'rgba(190,204,215,.72)');
+      }
       const copy = el('span', 'room-copy', row);
       const name = el('span', 'rn', copy);
-      let vehicle = player.specId || 'No vehicle';
-      try { vehicle = getSpec(player.specId)?.name || vehicle; } catch (_) { /* raw id */ }
+      const vehicle = vehicleName(player.specId) || 'No vehicle';
       name.textContent = `${player.name || 'Commander'}${player.id === playerId ? ' (You)' : ''}`;
       el('span', 'rv', copy).textContent = vehicle;
       const status = el('span', 'rs', row);
@@ -437,7 +598,7 @@ export function createEndScreen(bus, host) {
         bus.emit('ui:roomReady', { ready: !me.ready });
       });
     }
-    if (roomContext.role === 'host') {
+    if (context.role === 'host') {
       const start = el('button', `cot-es-btn ghost${everyoneReady ? ' can-start' : ''}`, controls);
       start.type = 'button';
       start.innerHTML = `<span class="btn-inner">${uiIconSVG(everyoneReady ? 'rematch' : 'clock', 17)}` +
@@ -450,7 +611,7 @@ export function createEndScreen(bus, host) {
     }
   }
 
-  const api = {
+  api = {
     root: host,
     get visible() { return visible; },
 
@@ -459,7 +620,7 @@ export function createEndScreen(bus, host) {
      * @param {''|'victory'|'defeat'|'draw'} result battle verdict
      * @param {object} sum shotInfo.buildSummary() bundle (resolved-event sums)
      */
-    show(result, sum) {
+    show(result: EndScreenResult, sum: EndScreenSummary): void {
       stopCounters();
       seq = 0;
       visible = true;
@@ -498,7 +659,7 @@ export function createEndScreen(bus, host) {
       sub.innerHTML = `${sum.playerVehicle ? `<b>${sum.playerVehicle}</b> — ` : ''}${outcomeLine}`;
       const meta = el('div', 'es-meta es-in', hero);
       meta.style.setProperty('--i', nextI());
-      const bits = [];
+      const bits: string[] = [];
       if (sum.map) bits.push(`<span>${uiIconSVG('map', 14)}<b>${sum.map}</b></span>`);
       if (sum.timeS > 0) bits.push(`<span>${uiIconSVG('clock', 14)}<b>${fmtTime(sum.timeS)}</b></span>`);
       meta.innerHTML = bits.join('');
@@ -527,7 +688,13 @@ export function createEndScreen(bus, host) {
       tile(statGrid, 'kills', 'Kills', { value: sum.kills.length, datasetV: sum.kills.length, icon: 'skull' });
 
       const secondary = el('div', 'es-stat-secondary', personal);
-      const mini = (icon, key, label, value, detail = '') => {
+      const mini = (
+        icon: string,
+        key: string | null,
+        label: string,
+        value: string,
+        detail = '',
+      ): void => {
         const item = el('div', 'es-mini', secondary);
         item.innerHTML = `<div class="mk">${uiIconSVG(icon, 14)}<span>${label}</span></div><div class="mv">${value}</div>` +
           (detail ? `<div class="md">${detail}</div>` : '');
@@ -572,7 +739,7 @@ export function createEndScreen(bus, host) {
           '<span class="si"></span>' +
           `<span class="nm">${kr.name || kr.id}</span>` +
           `<span class="dm">${kr.dmg > 0 ? fmtN(kr.dmg) : ''}</span>`;
-        maskIcon(row.querySelector('.si'), kr.specId || kr.id, 'side_silhouette',
+        maskIcon(requiredDescendant<HTMLElement>(row, '.si'), kr.specId || kr.id, 'side_silhouette',
           'rgba(255,209,102,.85)');
       }
 
@@ -596,7 +763,11 @@ export function createEndScreen(bus, host) {
       const rosters = el('div', 'es-rosters', teams);
       const maxDamage = Math.max(0, ...sum.allies.map((r) => Number(r.dmg) || 0),
         ...sum.enemies.map((r) => Number(r.dmg) || 0));
-      const teamRoster = (title, list, hostile) => {
+      const teamRoster = (
+        title: string,
+        list: EndScreenTeamRow[],
+        hostile: boolean,
+      ): void => {
         const p = el('div', `es-roster ${hostile ? 'foe' : 'ally'}`, rosters);
         p.setAttribute('role', 'group');
         p.setAttribute('aria-label', title);
@@ -613,9 +784,8 @@ export function createEndScreen(bus, host) {
         for (const r of list) {
           const row = el('div', `es-tr ${hostile ? 'foe' : 'ally'}${r.isPlayer ? ' me' : ''}${r.dead ? ' dead' : ''}`, listRoot);
           row.setAttribute('role', 'listitem');
-          let vehicle = r.specId || '';
-          try { vehicle = getSpec(r.specId)?.name || vehicle; } catch (_) { /* raw id */ }
-          const details = [vehicle];
+          const vehicle = vehicleName(r.specId);
+          const details: string[] = [vehicle];
           if (r.kills > 0) details.push(`${r.kills} kill${r.kills === 1 ? '' : 's'}`);
           row.innerHTML =
             '<span class="si"></span>' +
@@ -624,7 +794,7 @@ export function createEndScreen(bus, host) {
             '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +
             `<span class="st">${uiIconSVG(r.dead ? 'skull' : 'check', 16)}</span>`;
           const damage = Math.max(0, Number(r.dmg) || 0);
-          const output = row.querySelector('.output');
+          const output = requiredDescendant<HTMLElement>(row, '.output');
           output.setAttribute('role', 'meter');
           output.setAttribute('aria-label', 'Damage');
           output.setAttribute('aria-valuemin', '0');
@@ -632,13 +802,14 @@ export function createEndScreen(bus, host) {
           output.setAttribute('aria-valuenow', String(Math.round(damage)));
           output.setAttribute('aria-valuetext', `${fmtN(damage)} damage`);
           output.title = `${fmtN(damage)} damage`;
-          row.querySelector('.ov').textContent = fmtN(damage);
-          row.querySelector('.obar i').style.width = `${damageComparisonPercent(damage, maxDamage)}%`;
-          const stateMark = row.querySelector('.st');
+          requiredDescendant<HTMLElement>(row, '.ov').textContent = fmtN(damage);
+          requiredDescendant<HTMLElement>(row, '.obar i').style.width =
+            `${damageComparisonPercent(damage, maxDamage)}%`;
+          const stateMark = requiredDescendant<HTMLElement>(row, '.st');
           stateMark.setAttribute('role', 'img');
           stateMark.setAttribute('aria-label', r.dead ? 'Destroyed' : 'Survived');
           stateMark.title = r.dead ? 'Destroyed' : 'Survived';
-          maskIcon(row.querySelector('.si'), r.specId || r.id, 'side_silhouette',
+          maskIcon(requiredDescendant<HTMLElement>(row, '.si'), r.specId || r.id, 'side_silhouette',
             r.dead ? 'rgba(242,143,143,.8)' : 'rgba(206,220,232,0.8)');
         }
       };
@@ -678,7 +849,7 @@ export function createEndScreen(bus, host) {
     },
 
     /** Hide + finalize counters (garage entry, battle restart). */
-    hide() {
+    hide(): void {
       document.body.classList.remove('cot-es-armed'); // legacy overlay usable again
       if (!visible && !host.classList.contains('show')) return;
       visible = false;

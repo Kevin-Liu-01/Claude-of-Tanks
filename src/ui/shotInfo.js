@@ -30,9 +30,9 @@ import {
 } from '../vehicles/presentationAnchors.generated.js';
 import { getMapConfig } from '../world/maps/index.ts';
 // END SCREEN (killcam_endscreen r1): the full-screen battle report is now the
-// cinematic end screen in src/ui/endScreen.js — this module keeps ALL the
+// cinematic end screen in src/ui/endScreen.ts — this module keeps ALL the
 // bookkeeping (resolved-event sums, REPORT GATE) and hands a summary over.
-import { createEndScreen } from './endScreen.js';
+import { createEndScreen } from './endScreen.ts';
 
 const COL = {
   pen: '#f0a030',
@@ -1083,7 +1083,7 @@ export function createShotInfo(bus) {
   }
 
   // ---------- 4. session stats -> END SCREEN (killcam_endscreen r1) ----------
-  // The full-screen report rendering moved to src/ui/endScreen.js. This
+  // The full-screen report rendering moved to src/ui/endScreen.ts. This
   // module stays the single bookkeeper: buildSummary() bundles the same
   // resolved-event sums the old report printed — rosters from the
   // authoritative battle:ended payload (parity-graph evidence as fallback),
