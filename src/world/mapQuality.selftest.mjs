@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
-import { createHeightField } from './terrain.js';
+import { createHeightField } from './terrain.ts';
 import {
   HORIZON_TREELINE_ATLAS_VARIANTS,
   HORIZON_TREELINE_MAX_LAYERS,

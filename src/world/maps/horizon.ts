@@ -11,7 +11,7 @@
 // low-poly sheets, and the tuck rows hug the map rim closely enough that no
 // fog-washed floor strip or sky sliver ever shows between rim and mountains.
 //
-// Consumed by src/world/terrain.js: buildHorizonRing(engineCtx, cfg, seed).
+// Consumed by src/world/terrain.ts: buildHorizonRing(engineCtx, cfg, seed).
 // Config surface (all optional, per map): cfg.horizon = {
 //   baseHex, amp,                    — legacy tint + height scale
 //   style,                           — 'rolling'|'alpine'|'mesa'|'escarpment'

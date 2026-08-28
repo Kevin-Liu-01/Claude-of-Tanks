@@ -10,7 +10,7 @@
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
 import { getSpec } from '../vehicles/specs.js';
 import { getMapConfig } from '../world/maps/index.ts';
-import { createHeightField, createLayout } from '../world/terrain.js';
+import { createHeightField, createLayout } from '../world/terrain.ts';
 import {
   SIM_DT,
   computeDispersionRadM,

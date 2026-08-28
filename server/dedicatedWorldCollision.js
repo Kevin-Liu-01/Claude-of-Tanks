@@ -1,7 +1,7 @@
 import manifests from './world-collision-manifests.json' with { type: 'json' };
 import { createHeadlessCollisionWorld } from '../src/world/headlessCollisionWorld.ts';
 import { getMapConfig } from '../src/world/maps/index.ts';
-import { createHeightField } from '../src/world/terrain.js';
+import { createHeightField } from '../src/world/terrain.ts';
 
 const terrainByMap = new Map();
 

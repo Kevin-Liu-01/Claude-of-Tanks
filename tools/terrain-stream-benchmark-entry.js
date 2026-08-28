@@ -1,5 +1,5 @@
 import { getMapConfig } from '../src/world/maps/index.ts';
-import { buildTerrainMeshesAsync, createHeightField } from '../src/world/terrain.js';
+import { buildTerrainMeshesAsync, createHeightField } from '../src/world/terrain.ts';
 
 const config = getMapConfig('verdant');
 const heightField = createHeightField(1337, config);

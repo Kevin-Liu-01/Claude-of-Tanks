@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { acquireTerrainChunkIndex } from './terrain.js';
+import { acquireTerrainChunkIndex } from './terrain.ts';
 
 const pool = new Map();
 const nearA = acquireTerrainChunkIndex(pool, 96);

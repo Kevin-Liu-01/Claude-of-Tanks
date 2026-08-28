@@ -1,4 +1,4 @@
-// src/world/terrain.js — 1 km simplex heightfield + chunked LOD meshes + splat-blended
+// src/world/terrain.ts — 1 km simplex heightfield + chunked LOD meshes + splat-blended
 // procedural PBR ground material. Pure part (createHeightField) is node-runnable.
 // Contract: docs/ARCHITECTURE.md §2.7, §3.2; visuals per docs/research/graphics-aaa.md §6–7.
 
@@ -7,25 +7,303 @@ import {
   initialTerrainLods,
   terrainLodForDistance,
   warmTerrainLodBuilds,
+  type TerrainLodBuild,
+  type TerrainLodLevel,
 } from './terrainLodPolicy.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { applySourcedTerrain } from './sourcedTextures.ts';
-import { buildHorizonRing } from './maps/horizon.ts';
+import { buildHorizonRing, type HorizonMapConfig } from './maps/horizon.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 
-export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+type GroundType = 'hard' | 'medium' | 'soft';
+type RoadPoint = [number, number];
+type RoadLine = RoadPoint[];
+type ToneFunction = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
+type ColorTriple = readonly [number, number, number];
+type MaterialShader = Parameters<THREE.MeshStandardMaterial['onBeforeCompile']>[0];
+type MaterialShaderHook = (shader: MaterialShader) => void;
+
+interface RoadBound {
+  at: number;
+  lo?: number;
+  hi?: number;
+}
+
+interface GridRoadConfig {
+  xs: readonly (number | RoadBound)[];
+  zs: readonly (number | RoadBound)[];
+  jitter?: number;
+}
+
+interface AuthoredRoadConfig {
+  grid?: GridRoadConfig;
+  paths?: readonly (readonly (readonly [number, number])[])[];
+}
+
+interface VillageConfig {
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+  cx: number;
+  cz: number;
+  feather: number;
+  flatten: number;
+  relief?: number;
+}
+
+interface SpawnPoint {
+  x: number;
+  z: number;
+  yaw?: number;
+}
+
+interface SpawnConfig {
+  player: SpawnPoint;
+  enemies: SpawnPoint[];
+}
+
+interface MarshSourceConfig {
+  x: number;
+  z: number;
+  r: number;
+  dip?: number;
+  depth?: number;
+  level?: number;
+}
+
+interface MarshConfig extends MarshSourceConfig {
+  dip: number;
+}
+
+interface LakeConfig {
+  x: number;
+  z: number;
+  r: number;
+  depth?: number;
+  level?: number;
+}
+
+interface LandformConfig {
+  kind: string;
+  x: number;
+  z: number;
+  height: number;
+  yawDeg?: number;
+  length?: number;
+  width?: number;
+  rx?: number;
+  rz?: number;
+  r?: number;
+  corridorScale?: number;
+  settlementScale?: number;
+  wetScale?: number;
+  _c?: number;
+  _s?: number;
+}
+
+interface DuneConfig {
+  amp: number;
+}
+
+interface MesaConfig {
+  amp: number;
+  thr0: number;
+  thr1: number;
+  wallWidth?: number;
+  tierWidth?: number;
+  tierScale?: number;
+  corridorFloor?: number;
+}
+
+interface TerrainSettings {
+  hillScale: number;
+  microScale: number;
+  rimH: number;
+  village: VillageConfig;
+  marshes: MarshSourceConfig[];
+  lakes: LakeConfig[];
+  frozenMarshes: boolean;
+  dunes: DuneConfig | null;
+  mesas: MesaConfig | null;
+  landforms: LandformConfig[];
+  roads: 'country' | AuthoredRoadConfig;
+  softLakes?: boolean;
+  clearMarshVeg?: boolean;
+}
+
+interface SplatConfig {
+  grassTone?: ToneFunction | null;
+  dirtTone?: ToneFunction | null;
+  rockTone?: ToneFunction | null;
+  mudTone?: ToneFunction | null;
+  mudRough?: number;
+  sandstone?: boolean;
+  iceLake?: boolean;
+  seaLake?: boolean;
+  tintA?: ColorTriple;
+  tintB?: ColorTriple;
+  tintC?: ColorTriple;
+  roadTint?: ColorTriple;
+  marshGloss?: number;
+  microAmp?: number;
+  strata?: number;
+  pavedRoads?: boolean;
+  roadTexMix?: number;
+  townWear?: number;
+  iceDrift?: number;
+  seaFoam?: number;
+  seaRamp?: readonly [number, number];
+  midRelief?: number;
+  fieldPatch?: number;
+  sandMacro?: number;
+  iceSky?: ColorTriple;
+  midReliefFar?: number;
+  rippleDir?: readonly [number, number];
+  rippleAmp?: number;
+}
+
+interface TerrainMapConfig extends HorizonMapConfig {
+  terrain?: Partial<TerrainSettings>;
+  spawns?: SpawnConfig;
+  splat?: SplatConfig;
+}
+
+export interface TerrainLayout {
+  village: VillageConfig;
+  marshes: MarshConfig[];
+  lakes: LakeConfig[];
+  spawns: SpawnConfig;
+  roads: RoadLine[];
+  terrain: TerrainSettings;
+}
+
+export interface TerrainWarmPoint {
+  x: number;
+  z: number;
+  radiusM?: number;
+}
+
+export interface HeightField {
+  getHeightAt(x: number, z: number): number;
+  getHeightAtFast(x: number, z: number): number;
+  warmFastTilesAround(points: readonly TerrainWarmPoint[]): Generator<number, void, void>;
+  getNormalAt(x: number, z: number): THREE.Vector3;
+  getGroundType(x: number, z: number): GroundType;
+  getWaterMaskAt(x: number, z: number): number;
+  size: number;
+  minY: number;
+  maxY: number;
+  _roadDist(x: number, z: number): number;
+  _villageMask(x: number, z: number): number;
+  _noVeg(x: number, z: number): boolean;
+  _layout: TerrainLayout;
+  _mesaW: ((x: number, z: number) => number) | null;
+}
+
+interface TerrainEngineContext {
+  anisotropy?: number;
+  setupShadowMaterial(material: THREE.MeshStandardMaterial, hook: MaterialShaderHook): unknown;
+}
+
+interface TerrainTextureLayer {
+  albedo: THREE.Texture;
+  normal: THREE.Texture;
+}
+
+interface SandstoneBed {
+  y0: number;
+  y1: number;
+  marker: boolean;
+  tone: number;
+  hueJ: number;
+  hard: number;
+}
+
+interface CanvasTextureOptions {
+  srgb?: boolean;
+  anisotropy?: number;
+  repeat?: boolean;
+}
+
+interface SplatNoiseSample {
+  n1: number;
+  n2: number;
+  mA: number;
+}
+
+interface SplatFields {
+  a: Float32Array;
+  b: Float32Array;
+}
+
+interface FineGrid {
+  hgrid: Float64Array;
+  pn: number;
+  stepF: number;
+}
+
+interface TerrainIndexRecord {
+  attribute: THREE.BufferAttribute;
+  references: number;
+}
+
+type TerrainIndexPool = Map<number, TerrainIndexRecord>;
+type TerrainBuildProgress = readonly [number, number, boolean];
+type TerrainBuildTick = (completed: number, total: number) => Promise<void> | void;
+
+interface TerrainProgressState {
+  done: number;
+  total: number;
+}
+
+interface TerrainChunk {
+  mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+  lods: Array<THREE.BufferGeometry | null>;
+  fine: FineGrid | null;
+  level: TerrainLodLevel;
+  cx: number;
+  cz: number;
+  cx0: number;
+  cz0: number;
+}
+
+interface TerrainStreamOptions {
+  streamFarLods?: boolean;
+  focus?: SpawnPoint;
+}
+
+interface TerrainStreamingStats {
+  enabled: boolean;
+  totalGeometryCount: number;
+  initialGeometryCount: number;
+  initialFineGridCount: number;
+  streamedGeometryCount: number;
+  indexPool?: ReturnType<typeof terrainIndexPoolReceipt>;
+}
+
+function require2DContext(
+  canvas: HTMLCanvasElement,
+  options?: CanvasRenderingContext2DSettings,
+): CanvasRenderingContext2D {
+  const context = canvas.getContext('2d', options);
+  if (!context) throw new Error('Terrain texture canvas requires a 2D context');
+  return context;
+}
+
+export function mulberry32(a: number): () => number {return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
 const HALF = 512;
 const MAP_SIZE = 1024;
 
-function smoothstep(a, b, x) {
+function smoothstep(a: number, b: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
 }
-function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
+function clamp(x: number, a: number, b: number): number { return x < a ? a : x > b ? b : x; }
 
 // ---------------------------------------------------------------------------
 // Map layout — seed-independent composition (roads, village, spawns, marshes,
@@ -33,12 +311,12 @@ function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
 // Shared by the other world modules via heightField._layout.
 // ---------------------------------------------------------------------------
 
-function buildCountryRoads() {
-  const roadA = []; // roughly N-S, curving through the village
+function buildCountryRoads(): RoadLine[] {
+  const roadA: RoadLine = []; // roughly N-S, curving through the village
   for (let z = -HALF; z <= HALF; z += 32) {
     roadA.push([10 + 26 * Math.sin(z * 0.0062) + 8 * Math.sin(z * 0.017 + 2.1), z]);
   }
-  const roadB = []; // roughly E-W
+  const roadB: RoadLine = []; // roughly E-W
   for (let x = -HALF; x <= HALF; x += 32) {
     roadB.push([x, 46 + 34 * Math.sin(x * 0.0043 + 1.0) + 7 * Math.sin(x * 0.013 - 0.6)]);
   }
@@ -49,15 +327,15 @@ function buildCountryRoads() {
 // maps r1 (ADDITIVE): an entry may be an OBJECT {at, lo?, hi?} clipping the
 // line's along-axis extent (coastal roads must END at the shore, not pave
 // across the bay). Plain numbers keep the classic full-map span.
-function buildGridRoads(grid) {
-  const roads = [];
+function buildGridRoads(grid: GridRoadConfig): RoadLine[] {
+  const roads: RoadLine[] = [];
   const jit = grid.jitter ?? 2.5;
-  const parse = (e) => (typeof e === 'number'
+  const parse = (e: number | RoadBound): Required<RoadBound> => (typeof e === 'number'
     ? { at: e, lo: -HALF, hi: HALF }
     : { at: e.at, lo: e.lo ?? -HALF, hi: e.hi ?? HALF });
   for (let gi = 0; gi < grid.xs.length; gi++) {
     const { at: gx, lo, hi } = parse(grid.xs[gi]);
-    const line = [];
+    const line: RoadLine = [];
     for (let z = lo; z <= hi; z += 32) {
       line.push([gx + Math.sin(z * 0.011 + gi * 2.3) * jit, z]);
     }
@@ -65,7 +343,7 @@ function buildGridRoads(grid) {
   }
   for (let gi = 0; gi < grid.zs.length; gi++) {
     const { at: gz, lo, hi } = parse(grid.zs[gi]);
-    const line = [];
+    const line: RoadLine = [];
     for (let x = lo; x <= hi; x += 32) {
       line.push([x, gz + Math.sin(x * 0.011 + gi * 1.7) * jit]);
     }
@@ -79,11 +357,11 @@ function buildGridRoads(grid) {
 // provide a few control points; this resamples them to the same ~32 m spacing
 // as the legacy roads so road-distance queries and prop placement keep their
 // established cost/behavior.
-function buildPathRoads(paths) {
-  const roads = [];
+function buildPathRoads(paths: AuthoredRoadConfig['paths']): RoadLine[] {
+  const roads: RoadLine[] = [];
   for (const path of paths || []) {
     if (!Array.isArray(path) || path.length < 2) continue;
-    const line = [];
+    const line: RoadLine = [];
     for (let pi = 0; pi < path.length - 1; pi++) {
       const [ax, az] = path[pi], [bx, bz] = path[pi + 1];
       const steps = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 32));
@@ -92,13 +370,14 @@ function buildPathRoads(paths) {
         line.push([ax + (bx - ax) * t, az + (bz - az) * t]);
       }
     }
-    line.push([...path[path.length - 1]]);
+    const last = path[path.length - 1];
+    line.push([last[0], last[1]]);
     roads.push(line);
   }
   return roads;
 }
 
-const DEFAULT_TERRAIN = {
+const DEFAULT_TERRAIN: TerrainSettings = {
   hillScale: 1.0,
   microScale: 1.0,
   rimH: 24, // tall enough that the rim crest hides the fogged outer floor
@@ -120,7 +399,7 @@ const DEFAULT_TERRAIN = {
   roads: 'country',     // 'country' | {grid?,paths?}; both may be combined
 };
 
-const DEFAULT_SPAWNS = {
+const DEFAULT_SPAWNS: SpawnConfig = {
   player: { x: 14, z: -78 },
   enemies: [
     { x: -30, z: 320 }, { x: 140, z: 350 }, { x: 265, z: 235 }, { x: -215, z: 270 },
@@ -133,8 +412,8 @@ const DEFAULT_SPAWNS = {
  * @param {?object} cfg map config (src/world/maps/*) or null for defaults
  * @returns {{village:object,marshes:Array,lakes:Array,spawns:object,roads:Array}}
  */
-export function createLayout(cfg) {
-  const t = { ...DEFAULT_TERRAIN, ...(cfg && cfg.terrain ? cfg.terrain : {}) };
+export function createLayout(cfg: TerrainMapConfig | null = null): TerrainLayout {
+  const t: TerrainSettings = { ...DEFAULT_TERRAIN, ...(cfg?.terrain ?? {}) };
   t.landforms = (t.landforms || []).map((form) => {
     const yaw = THREE.MathUtils.degToRad(form.yawDeg || 0);
     return { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw) };
@@ -156,7 +435,7 @@ export function createLayout(cfg) {
   for (const enemy of enemies) {
     enemy.yaw = Math.atan2(player.x - enemy.x, player.z - enemy.z);
   }
-  let roads;
+  let roads: RoadLine[];
   if (t.roads === 'country' || !t.roads) {
     roads = buildCountryRoads();
   } else {
@@ -170,7 +449,7 @@ export function createLayout(cfg) {
     // maps r1 (ADDITIVE): per-marsh carve depth `dip` (m). Default 2.6 = the
     // classic soggy bowl every pre-existing map bakes; river maps author
     // shallow fordable channels by chaining small-dip marshes along a curve.
-    marshes: (t.marshes || []).map((m) => ({ dip: 2.6, ...m })),
+    marshes: (t.marshes || []).map((m) => Object.assign({ dip: 2.6 }, m) as MarshConfig),
     lakes: (t.lakes || []).map((l) => ({ ...l })),
     spawns: { player, enemies },
     roads,
@@ -179,7 +458,14 @@ export function createLayout(cfg) {
 }
 
 // squared point-to-segment distance, returning t of the projection
-function segDist(px, pz, ax, az, bx, bz) {
+function segDist(
+  px: number,
+  pz: number,
+  ax: number,
+  az: number,
+  bx: number,
+  bz: number,
+): { d: number; t: number } {
   const dx = bx - ax, dz = bz - az;
   const l2 = dx * dx + dz * dz;
   let t = l2 > 0 ? ((px - ax) * dx + (pz - az) * dz) / l2 : 0;
@@ -189,7 +475,7 @@ function segDist(px, pz, ax, az, bx, bz) {
 }
 
 /** Pure analytical height contribution for an authored tactical landform. */
-export function sampleLandformHeight(form, x, z) {
+export function sampleLandformHeight(form: LandformConfig, x: number, z: number): number {
   const dx = x - form.x, dz = z - form.z;
   const c = form._c ?? Math.cos(THREE.MathUtils.degToRad(form.yawDeg || 0));
   const s = form._s ?? Math.sin(THREE.MathUtils.degToRad(form.yawDeg || 0));
@@ -227,7 +513,10 @@ export function sampleLandformHeight(form, x, z) {
  *   getWaterMaskAt:function(number,number):number,
  *   size:number, minY:number, maxY:number}} HeightField (ARCHITECTURE §2.7)
  */
-export function createHeightField(seed = 1337, cfg = null) {
+export function createHeightField(
+  seed = 1337,
+  cfg: TerrainMapConfig | null = null,
+): HeightField {
   const layout = createLayout(cfg);
   const T = layout.terrain;
   const _VILLAGE = layout.village;
@@ -238,7 +527,7 @@ export function createHeightField(seed = 1337, cfg = null) {
   const noi = new SimplexNoise({ random: mulberry32((seed ^ 0x9e3779b9) >>> 0) });
 
   // --- base noise: fBm detail + domain-warped ridge, and a smooth variant ---
-  function core(x, z) {
+  function core(x: number, z: number): { d: number; s: number } {
     const wx = noi.noise(x * 0.0016 + 13.7, z * 0.0016 - 4.2) * 80;
     const wz = noi.noise(x * 0.0016 - 27.1, z * 0.0016 + 9.3) * 80;
     let rr = 1 - Math.abs(noi.noise((x + wx) * 0.0026 + 51, (z + wz) * 0.0026 - 33));
@@ -289,7 +578,7 @@ export function createHeightField(seed = 1337, cfg = null) {
     }
   }
 
-  function gridSample(arr, x, z) {
+  function gridSample(arr: ArrayLike<number>, x: number, z: number): number {
     const gx = clamp((x + HALF) / CELL, 0, GN - 1.0001);
     const gz = clamp((z + HALF) / CELL, 0, GN - 1.0001);
     const x0 = gx | 0, z0 = gz | 0, fx = gx - x0, fz = gz - z0;
@@ -299,7 +588,7 @@ export function createHeightField(seed = 1337, cfg = null) {
     return a + (b - a) * fz;
   }
 
-  function sampleMesaNoise(x, z) {
+  function sampleMesaNoise(x: number, z: number): number {
     const mwp = noi.noise(x * 0.0009 + 77, z * 0.0009 - 31) * 95;
     return noi.noise((x + mwp) * 0.0014 - 310,
       (z - mwp * 0.8) * 0.0014 + 208) * 0.5 + 0.5;
@@ -307,7 +596,7 @@ export function createHeightField(seed = 1337, cfg = null) {
 
   const villageY = core(_VILLAGE.cx, _VILLAGE.cz).s;
 
-  function villageMask(x, z) {
+  function villageMask(x: number, z: number): number {
     const dx = Math.max(_VILLAGE.x0 - x, x - _VILLAGE.x1, 0);
     const dz = Math.max(_VILLAGE.z0 - z, z - _VILLAGE.z1, 0);
     return (1 - smoothstep(0, _VILLAGE.feather, Math.hypot(dx, dz))) * (_VILLAGE.flatten ?? 0.85);
@@ -317,7 +606,13 @@ export function createHeightField(seed = 1337, cfg = null) {
   const padPts = [_SPAWN_PLAYER, ..._SPAWN_ENEMIES];
   const lakeLevels = new Float64Array(Math.max(1, _LAKES.length)); // filled below
 
-  function heightAt(x, z, padsOn, roadsOn, lakesOn = true) {
+  function heightAt(
+    x: number,
+    z: number,
+    padsOn: boolean,
+    roadsOn: boolean,
+    lakesOn = true,
+  ): number {
     x = clamp(x, -HALF, HALF); z = clamp(z, -HALF, HALF);
     const { d, s } = core(x, z);
     const cw = gridSample(gCorridor, x, z);
@@ -539,7 +834,7 @@ export function createHeightField(seed = 1337, cfg = null) {
   }
   for (let p = 0; p < padPts.length; p++) padYs[p] = heightAt(padPts[p].x, padPts[p].z, false, true);
 
-  const getHeightAt = (x, z) => heightAt(x, z, true, true);
+  const getHeightAt = (x: number, z: number): number => heightAt(x, z, true, true);
 
   // perf-r3b (CPU profile): every height query runs the full 9-octave simplex
   // stack — a live battle makes ~3.9 k queries per FRAME (LOS ray marches, AI
@@ -558,7 +853,7 @@ export function createHeightField(seed = 1337, cfg = null) {
   const FTN = Math.ceil(MAP_SIZE / FTILE);   // tiles per axis
   const fGrid = new Float32Array(FGN * FGN);
   const fBaked = new Uint8Array(FTN * FTN);
-  function bakeFastTile(tx, tz) {
+  function bakeFastTile(tx: number, tz: number): void {
     const x0 = tx * FTILE, z0 = tz * FTILE;
     const x1 = Math.min(MAP_SIZE, x0 + FTILE), z1 = Math.min(MAP_SIZE, z0 + FTILE);
     for (let gz = z0; gz <= z1; gz++) {
@@ -568,7 +863,7 @@ export function createHeightField(seed = 1337, cfg = null) {
     }
     fBaked[tz * FTN + tx] = 1;
   }
-  function getHeightAtFast(x, z) {
+  function getHeightAtFast(x: number, z: number): number {
     const gx = clamp(x + HALF, 0, MAP_SIZE - 1e-4);
     const gz = clamp(z + HALF, 0, MAP_SIZE - 1e-4);
     const x0 = gx | 0, z0 = gz | 0;
@@ -588,8 +883,10 @@ export function createHeightField(seed = 1337, cfg = null) {
    * so loading-screen callers can yield between tiles and preserve progress
    * paints on constrained devices. Each point may provide `radiusM`.
    */
-  function* warmFastTilesAround(points) {
-    const queued = new Set();
+  function* warmFastTilesAround(
+    points: readonly TerrainWarmPoint[],
+  ): Generator<number, void, void> {
+    const queued = new Set<number>();
     for (const point of points || []) {
       if (!point) continue;
       const radius = Math.max(0, Number(point.radiusM) || 0);
@@ -614,19 +911,19 @@ export function createHeightField(seed = 1337, cfg = null) {
     }
   }
 
-  function finiteCoord(value) {
+  function finiteCoord(value: number): number {
     return Number.isFinite(value) ? value : 0;
   }
 
   const _scratchN = new THREE.Vector3();
   const NEPS = 1.2;
-  function getNormalAt(x, z) {
+  function getNormalAt(x: number, z: number): THREE.Vector3 {
     const hl = getHeightAt(x - NEPS, z), hr = getHeightAt(x + NEPS, z);
     const hd = getHeightAt(x, z - NEPS), hu = getHeightAt(x, z + NEPS);
     return _scratchN.set(hl - hr, 2 * NEPS, hd - hu).normalize();
   }
 
-  function getGroundType(x, z) {
+  function getGroundType(x: number, z: number): GroundType {
     if (gridSample(gRoadDist, x, z) < 4.3) return 'hard';
     for (const lk of _LAKES) {
       // maps r1 (ADDITIVE): terrain.softLakes = liquid-water sheets (coastal
@@ -651,7 +948,7 @@ export function createHeightField(seed = 1337, cfg = null) {
    *
    * @returns {number} 0 for dry/ice, otherwise a 0..1 liquid coverage mask
    */
-  function getWaterMaskAt(x, z) {
+  function getWaterMaskAt(x: number, z: number): number {
     if (T.frozenMarshes || !cfg?.splat?.seaLake) return 0;
     for (let i = 0; i < _LAKES.length; i++) {
       const lk = _LAKES[i];
@@ -672,7 +969,7 @@ export function createHeightField(seed = 1337, cfg = null) {
   }
 
   // vegetation/prop exclusion: open water/ice + marsh cores
-  function noVeg(x, z) {
+  function noVeg(x: number, z: number): boolean {
     for (const lk of _LAKES) {
       if (Math.hypot(x - lk.x, z - lk.z) < lk.r * 1.04) return true;
     }
@@ -699,13 +996,14 @@ export function createHeightField(seed = 1337, cfg = null) {
   // DUNE slip face inherited the bedded sandstone layer and rendered as
   // horizontal terracing (the "heightmap quantization" critique). Baked to a
   // small mask (createSplatMaterial) so rock/strata live only on real mesas.
-  const mesaWeight = T.mesas ? (x, z) => {
+  const mesas = T.mesas;
+  const mesaWeight: HeightField['_mesaW'] = mesas ? (x: number, z: number): number => {
     const mn = sampleMesaNoise(x, z);
-    const band = (T.mesas.thr1 - T.mesas.thr0);
+    const band = (mesas.thr1 - mesas.thr0);
     // low edge pulled 0.55 band below thr0: the talus apron at the mesa foot
     // keeps its rock identity, the open dune field beyond it does not
-    const wall = smoothstep(T.mesas.thr0 - band * 0.55,
-      T.mesas.thr0 + band * (T.mesas.wallWidth ?? 0.42), mn);
+    const wall = smoothstep(mesas.thr0 - band * 0.55,
+      mesas.thr0 + band * (mesas.wallWidth ?? 0.42), mn);
     const rim = smoothstep(408, 468, Math.max(Math.abs(x), Math.abs(z)));
     return Math.max(wall, rim);
   } : null;
@@ -714,7 +1012,7 @@ export function createHeightField(seed = 1337, cfg = null) {
     getHeightAt, getHeightAtFast, warmFastTilesAround, getNormalAt, getGroundType,
     getWaterMaskAt,
     size: MAP_SIZE, minY, maxY,
-    _roadDist: (x, z) => gridSample(gRoadDist, x, z),
+    _roadDist: (x: number, z: number) => gridSample(gRoadDist, x, z),
     _villageMask: villageMask,
     _noVeg: noVeg,
     _layout: layout,
@@ -734,7 +1032,10 @@ const _toneHsl = { h: 0, s: 0, l: 0 };
  * @param {?function(number,number,number):number[]} fn (h,s,l) => [h,s,l]
  * @returns {Uint8ClampedArray} the same buffer
  */
-export function applyTone(px, fn) {
+export function applyTone(
+  px: Uint8ClampedArray,
+  fn: ToneFunction | null | undefined,
+): Uint8ClampedArray {
   if (!fn) return px;
   for (let i = 0; i < px.length; i += 4) {
     _toneCol.setRGB(px[i] / 255, px[i + 1] / 255, px[i + 2] / 255);
@@ -750,10 +1051,16 @@ export function applyTone(px, fn) {
 // Procedural PBR texture layers (browser-only; called from buildTerrainMeshes)
 // ---------------------------------------------------------------------------
 
-function canvasToTexture(px, s, { srgb = false, anisotropy = 16, repeat = true } = {}) {
+function canvasToTexture(
+  px: Uint8ClampedArray,
+  s: number,
+  { srgb = false, anisotropy = 16, repeat = true }: CanvasTextureOptions = {},
+): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  c.getContext('2d').putImageData(new ImageData(px, s, s), 0, 0);
+  require2DContext(c).putImageData(
+    new ImageData(px as Uint8ClampedArray<ArrayBuffer>, s, s), 0, 0,
+  );
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = repeat ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
   t.anisotropy = anisotropy;
@@ -761,9 +1068,14 @@ function canvasToTexture(px, s, { srgb = false, anisotropy = 16, repeat = true }
   return t;
 }
 
-function normalFromHeight(h, s, strength, anisotropy) {
+function normalFromHeight(
+  h: Float32Array,
+  s: number,
+  strength: number,
+  anisotropy: number,
+): THREE.CanvasTexture {
   const px = new Uint8ClampedArray(s * s * 4);
-  const H = (x, y) => h[((y + s) % s) * s + ((x + s) % s)];
+  const H = (x: number, y: number): number => h[((y + s) % s) * s + ((x + s) % s)];
   const v = new THREE.Vector3();
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
     const dx = (H(x + 1, y - 1) + 2 * H(x + 1, y) + H(x + 1, y + 1)) - (H(x - 1, y - 1) + 2 * H(x - 1, y) + H(x - 1, y + 1));
@@ -776,7 +1088,14 @@ function normalFromHeight(h, s, strength, anisotropy) {
 }
 
 // tileable simplex on a torus; integer fu/fv keep it seamless
-function torusNoise(noi, u, v, fu, fv, off) {
+function torusNoise(
+  noi: SimplexNoise,
+  u: number,
+  v: number,
+  fu: number,
+  fv: number,
+  off: number,
+): number {
   const a = u * Math.PI * 2 * fu, b = v * Math.PI * 2 * fv;
   const r1 = fu * 0.55, r2 = fv * 0.55;
   return noi.noise4d(Math.cos(a) * r1 + off, Math.sin(a) * r1 - off * 0.7,
@@ -787,7 +1106,7 @@ function torusNoise(noi, u, v, fu, fv, off) {
 // makeShaderNoiseTexture in createSplatMaterial). Lets vegetation placement
 // read the same dirt-patch/clump fields the ground shader blends with, so
 // grass thins out exactly where the terrain shows dirt.
-let _splatFields = null; // { a, b: Float32Array } — see splatFields()
+let _splatFields: SplatFields | null = null; // { a, b: Float32Array } — see splatFields()
 // PERF (performance_budget r6): the CPU twin used to evaluate ~10 analytic
 // torusNoise (4D simplex) calls per query; vegetation scatter makes 1.18 M
 // queries per boot (measured) = 10.6 M noise4d + ~42 M sin/cos — ~1.5-2 s of
@@ -802,7 +1121,7 @@ let _splatFields = null; // { a, b: Float32Array } — see splatFields()
 // delta on these smooth fields only flips statistically-marginal tuft
 // placements; grass<->dirt correlation is exact-by-construction now.
 const SPLAT_FIELD_S = 256;
-function splatFields() {
+function splatFields(): SplatFields {
   if (_splatFields) return _splatFields;
   const s = SPLAT_FIELD_S;
   const noi = new SimplexNoise({ random: mulberry32(3011) });
@@ -820,7 +1139,7 @@ function splatFields() {
 }
 // bilinear + wrap at texel centers — the sampling GL applies to the repeat-
 // wrapped uNoise texture, so the CPU twin sees what the shader sees.
-function fieldSample(g, u, v) {
+function fieldSample(g: Float32Array, u: number, v: number): number {
   const s = SPLAT_FIELD_S;
   let x = u * s - 0.5, y = v * s - 0.5;
   let x0 = Math.floor(x), y0 = Math.floor(y);
@@ -835,8 +1154,12 @@ function fieldSample(g, u, v) {
   const g01 = g[y1 * s + x0], g11 = g[y1 * s + x1];
   return g00 + (g10 - g00) * fx + (g01 - g00) * fy + (g00 - g10 - g01 + g11) * fx * fy;
 }
-function wrapUnit(t) { return t - Math.floor(t); }
-export function sampleSplatNoise(x, z, out = null) {
+function wrapUnit(t: number): number { return t - Math.floor(t); }
+export function sampleSplatNoise(
+  x: number,
+  z: number,
+  out: SplatNoiseSample | null = null,
+): SplatNoiseSample {
   const f = splatFields();
   // r6: mirror the shader's domain warp (wOff in splatCompute) — the dirt/
   // clump fields are sampled at WARPED coordinates on the GPU, so vegetation
@@ -853,7 +1176,7 @@ export function sampleSplatNoise(x, z, out = null) {
   // the shader (0.0121 .r x0.62 + 0.00779 .g x0.38 — the 83 m repeat break).
   const mA = fieldSample(f.a, wrapUnit(wx * 0.0121 + 0.63), wrapUnit(wz * 0.0121 + 0.29)) * 0.62
     + fieldSample(f.b, wrapUnit(wx * 0.00779 + 0.19), wrapUnit(wz * 0.00779 + 0.71)) * 0.38;
-  const result = out || {};
+  const result: SplatNoiseSample = out || { n1: 0, n2: 0, mA: 0 };
   result.n1 = n1 * 0.5 + 0.5;
   result.n2 = n2 * 0.5 + 0.5;
   result.mA = mA * 0.5 + 0.5;
@@ -861,10 +1184,10 @@ export function sampleSplatNoise(x, z, out = null) {
 }
 
 const _col = new THREE.Color();
-function _css(h, s, l) { _col.setHSL(h, s, l); return _col.getStyle(); }
+function _css(h: number, s: number, l: number): string { _col.setHSL(h, s, l); return _col.getStyle(); }
 
 // draw a canvas path callback at all 9 wrap offsets so the tile stays seamless
-function drawWrapped(ctx, s, fn) {
+function drawWrapped(ctx: CanvasRenderingContext2D, s: number, fn: () => void): void {
   for (const ox of [-s, 0, s]) for (const oy of [-s, 0, s]) {
     ctx.save();
     ctx.translate(ox, oy);
@@ -875,13 +1198,17 @@ function drawWrapped(ctx, s, fn) {
 
 // Painted grass layer: noise macro base + thousands of individual blade
 // strokes so the near field reads as turf, not single-frequency speckle.
-function makeGrassLayer(seed, anisotropy, tone = null) {
+function makeGrassLayer(
+  seed: number,
+  anisotropy: number,
+  tone: ToneFunction | null = null,
+): TerrainTextureLayer {
   const s = texSize(256); // loading-speed r1: sourced 1K set replaces this fallback
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x7f4a);
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const ctx = require2DContext(c, { willReadFrequently: true });
   // macro base: soil showing through + moss/dry patches at 3-7 tile frequency
   const base = ctx.createImageData(s, s);
   for (let y = 0; y < s; y++) {
@@ -960,13 +1287,17 @@ function makeGrassLayer(seed, anisotropy, tone = null) {
 
 // Painted dirt layer: clods + drawn pebbles + cracks — real macro structure
 // for the sub-10 m ground and the road gravel pass.
-function makeDirtLayer(seed, anisotropy, tone = null) {
+function makeDirtLayer(
+  seed: number,
+  anisotropy: number,
+  tone: ToneFunction | null = null,
+): TerrainTextureLayer {
   const s = texSize(256); // loading-speed r1: sourced 1K set replaces this fallback
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x2e91);
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const ctx = require2DContext(c, { willReadFrequently: true });
   const base = ctx.createImageData(s, s);
   for (let y = 0; y < s; y++) {
     const v = y / s;
@@ -1053,13 +1384,13 @@ function makeDirtLayer(seed, anisotropy, tone = null) {
 // dark meandering pressure-crack lines, faint wind-blown snow drift streaks.
 // Roughness (packed in alpha) is LOW on clear ice, high on the drifts, so the
 // sheet picks up sun/sky specular and reads as ice, not mud.
-function makeIceLayer(seed, anisotropy) {
+function makeIceLayer(seed: number, anisotropy: number): TerrainTextureLayer {
   const s = texSize(256); // loading-speed r1: distant/fallback terrain tile
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x1cE5);
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const ctx = require2DContext(c, { willReadFrequently: true });
   const base = ctx.createImageData(s, s);
   for (let y = 0; y < s; y++) {
     const v = y / s;
@@ -1100,7 +1431,7 @@ function makeIceLayer(seed, anisotropy) {
   ctx.putImageData(base, 0, 0);
   // pressure cracks: long forking dark polylines with a bright refrozen edge
   ctx.lineCap = 'round';
-  function crack(x, y, a, segs, w) {
+  function crack(x: number, y: number, a: number, segs: number, w: number): void {
     const ptsX = [x], ptsY = [y];
     for (let q = 0; q < segs; q++) {
       a += (rng() - 0.5) * 0.9;
@@ -1174,13 +1505,17 @@ function makeIceLayer(seed, anisotropy) {
 // streaks. Roughness (packed in alpha) runs LOW on open water — the splat
 // shader's marsh-gloss + fresnel terms give it the specular water identity —
 // and high on the foam streaks so they read matte.
-function makeSeaLayer(seed, anisotropy, tone = null) {
+function makeSeaLayer(
+  seed: number,
+  anisotropy: number,
+  tone: ToneFunction | null = null,
+): TerrainTextureLayer {
   const s = texSize(256); // loading-speed r1: distant/fallback terrain tile
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x5EA1);
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const ctx = require2DContext(c, { willReadFrequently: true });
   const base = ctx.createImageData(s, s);
   for (let y = 0; y < s; y++) {
     const v = y / s;
@@ -1245,12 +1580,16 @@ function makeSeaLayer(seed, anisotropy, tone = null) {
 // the bed boundaries and only granular (never swirly) fine texture. The
 // splat shader's wall projection maps v to world height, so the beds land
 // horizontal on every cliff face regardless of orientation.
-function makeSandstoneLayer(seed, anisotropy, tone = null) {
+function makeSandstoneLayer(
+  seed: number,
+  anisotropy: number,
+  tone: ToneFunction | null = null,
+): TerrainTextureLayer {
   const s = texSize(256); // loading-speed r1: distant/fallback terrain tile
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x5a4d);
   // bed table: resistant ledges, soft recessed beds, occasional dark markers
-  const beds = [];
+  const beds: SandstoneBed[] = [];
   {
     let y = 0;
     while (y < s) {
@@ -1267,7 +1606,7 @@ function makeSandstoneLayer(seed, anisotropy, tone = null) {
       y += th;
     }
   }
-  function bedAt(yw) {
+  function bedAt(yw: number): SandstoneBed {
     for (const b of beds) if (yw >= b.y0 && yw < b.y1) return b;
     return beds[beds.length - 1];
   }
@@ -1317,7 +1656,13 @@ function makeSandstoneLayer(seed, anisotropy, tone = null) {
   };
 }
 
-function makeGroundLayer(seed, kind, anisotropy, tone = null, roughMul = 1) {
+function makeGroundLayer(
+  seed: number,
+  kind: 'rock' | 'mud',
+  anisotropy: number,
+  tone: ToneFunction | null = null,
+  roughMul = 1,
+): TerrainTextureLayer {
   const s = texSize(256); // loading-speed r1: sourced 1K set replaces this fallback
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const px = new Uint8ClampedArray(s * s * 4);
@@ -1368,7 +1713,11 @@ function makeGroundLayer(seed, kind, anisotropy, tone = null, roughMul = 1) {
 // R = road core, G = wheel ruts, B = marsh wetness, A = village worn ground.
 // 2 texels/m: the rut lanes and road borders actually resolve instead of
 // smearing into 1-texel airbrush mush.
-function makeMaskTexture(seedNoi, layout, landformW = null) {
+function makeMaskTexture(
+  seedNoi: SimplexNoise,
+  layout: TerrainLayout,
+  landformW: HeightField['_mesaW'] = null,
+): THREE.DataTexture {
   const _VILLAGE = layout.village;
   const _MARSHES = [...layout.marshes, ...layout.lakes]; // lakes share the wet/ice channel
   // MOBILE r1: tier-scaled mask (features derive from T = s/MAP_SIZE, so the
@@ -1381,7 +1730,7 @@ function makeMaskTexture(seedNoi, layout, landformW = null) {
   // r6 terrain_environment: landform (mesa/rim) weight pre-sampled on a
   // coarse grid (the field is ~700 m wavelength; 4 m texels bilerped) so the
   // 2048^2 mask bake stays cheap — B channel carries it on landformW maps.
-  let landGrid = null;
+  let landGrid: Float32Array | null = null;
   const LG = 257, LCELL = MAP_SIZE / (LG - 1);
   if (landformW) {
     landGrid = new Float32Array(LG * LG);
@@ -1391,13 +1740,15 @@ function makeMaskTexture(seedNoi, layout, landformW = null) {
       }
     }
   }
-  function landAt(x, z) {
+  function landAt(x: number, z: number): number {
+    const grid = landGrid;
+    if (!grid) return 0;
     const gx = clamp((x + HALF) / LCELL, 0, LG - 1.0001);
     const gz = clamp((z + HALF) / LCELL, 0, LG - 1.0001);
     const x0 = gx | 0, z0 = gz | 0, fx = gx - x0, fz = gz - z0;
     const i = z0 * LG + x0;
-    const a = landGrid[i] + (landGrid[i + 1] - landGrid[i]) * fx;
-    const b = landGrid[i + LG] + (landGrid[i + LG + 1] - landGrid[i + LG]) * fx;
+    const a = grid[i] + (grid[i + 1] - grid[i]) * fx;
+    const b = grid[i + LG] + (grid[i + LG + 1] - grid[i + LG]) * fx;
     return a + (b - a) * fz;
   }
   const dist = new Float32Array(s * s).fill(1e9);
@@ -1480,7 +1831,7 @@ function makeMaskTexture(seedNoi, layout, landformW = null) {
   return t;
 }
 
-function makeShaderNoiseTexture(seed) {
+function makeShaderNoiseTexture(_seed: number): THREE.CanvasTexture {
   // seed stays 3011: the RG channels quantize the SAME Float32 fields the
   // CPU twin (sampleSplatNoise) samples — shared bake, see splatFields().
   const s = SPLAT_FIELD_S;
@@ -1502,7 +1853,7 @@ function makeShaderNoiseTexture(seed) {
 // Splat material
 // ---------------------------------------------------------------------------
 
-function _mustReplace(src, anchor, replacement) {
+function _mustReplace(src: string, anchor: string, replacement: string): string {
   const out = src.replace(anchor, replacement);
   if (out === src) throw new Error(`world/terrain: shader anchor missing: ${anchor}`);
   return out;
@@ -2444,7 +2795,13 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
 }
 `;
 
-function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant', landformW = null) {
+function createSplatMaterial(
+  engineCtx: TerrainEngineContext,
+  layout: TerrainLayout,
+  splatCfg: SplatConfig | null | undefined,
+  mapId = 'verdant',
+  landformW: HeightField['_mesaW'] = null,
+): THREE.MeshStandardMaterial {
   const S = splatCfg || {};
   // r6 terrain_environment: the mesa/rim landform weight rides the MASK's
   // BLUE channel on maps that provide landformW (desert — it has no marshes
@@ -2491,7 +2848,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant', lan
   // looking across the boundary; the culled backface opened a fog-bright
   // sliver through the desert canyon pass (battlefield_desert center).
   mat.side = THREE.DoubleSide;
-  const splatHook = (shader) => {
+  const splatHook: MaterialShaderHook = (shader) => {
     shader.uniforms.uAlbG = { value: layers.G.albedo };
     shader.uniforms.uAlbD = { value: layers.D.albedo };
     shader.uniforms.uAlbR = { value: layers.R.albedo };
@@ -2580,7 +2937,12 @@ const SKIRT_DROP = 6.5;
 // values at the same world coords). Bonus: 9.8k height evaluations per chunk
 // instead of 12.1k — boot gets slightly faster.
 const FINE_SEGS = 96; // must equal LOD_SEGS[0]; strides 1/2/4 stay integral
-function* buildFineGridSteps(hf, cx0, cz0, progress = null) {
+function* buildFineGridSteps(
+  hf: HeightField,
+  cx0: number,
+  cz0: number,
+  progress: TerrainProgressState | null = null,
+): Generator<TerrainBuildProgress, FineGrid, void> {
   const stepF = CHUNK_SIZE / FINE_SEGS;
   const pn = FINE_SEGS + 3; // +1 vertex row, +2 padding rows
   const hgrid = new Float64Array(pn * pn);
@@ -2602,7 +2964,7 @@ function* buildFineGridSteps(hf, cx0, cz0, progress = null) {
   return { hgrid, pn, stepF };
 }
 
-function buildFineGrid(hf, cx0, cz0) {
+function buildFineGrid(hf: HeightField, cx0: number, cz0: number): FineGrid {
   const g = buildFineGridSteps(hf, cx0, cz0);
   let r = g.next();
   while (!r.done) r = g.next();
@@ -2618,7 +2980,10 @@ function buildFineGrid(hf, cx0, cz0) {
  * The pool is intentionally world-local: disposing one cached battlefield
  * can never invalidate a buffer still referenced by another world.
  */
-export function acquireTerrainChunkIndex(pool, segs) {
+export function acquireTerrainChunkIndex(
+  pool: TerrainIndexPool,
+  segs: number,
+): THREE.BufferAttribute {
   const cached = pool.get(segs);
   if (cached) {
     cached.references++;
@@ -2626,7 +2991,7 @@ export function acquireTerrainChunkIndex(pool, segs) {
   }
   const n = segs + 1;
   const perim = 4 * segs;
-  const ring = [];
+  const ring: number[] = [];
   for (let gx = 0; gx < segs; gx++) ring.push(gx);
   for (let gz = 0; gz < segs; gz++) ring.push(gz * n + (n - 1));
   for (let gx = segs; gx > 0; gx--) ring.push((n - 1) * n + gx);
@@ -2651,7 +3016,15 @@ export function acquireTerrainChunkIndex(pool, segs) {
   return attribute;
 }
 
-function terrainIndexPoolReceipt(pool) {
+function terrainIndexPoolReceipt(pool: TerrainIndexPool): {
+  attributes: number;
+  references: number;
+  uniqueBytes: number;
+  logicalUint16Bytes: number;
+  avoidedBytes: number;
+  previousUint32Bytes: number;
+  totalBytesAvoided: number;
+} {
   let references = 0;
   let uniqueBytes = 0;
   let logicalBytes = 0;
@@ -2672,8 +3045,15 @@ function terrainIndexPoolReceipt(pool) {
   };
 }
 
-function* buildChunkGeometrySteps(hf, cx0, cz0, segs, fine, progress = null,
-  indexPool = null) {
+function* buildChunkGeometrySteps(
+  hf: HeightField,
+  cx0: number,
+  cz0: number,
+  segs: number,
+  fine: FineGrid | null,
+  progress: TerrainProgressState | null = null,
+  indexPool: TerrainIndexPool | null = null,
+): Generator<TerrainBuildProgress, THREE.BufferGeometry, void> {
   const n = segs + 1, step = CHUNK_SIZE / segs;
   const stride = FINE_SEGS / segs;
   const hgrid = fine?.hgrid || null;
@@ -2705,7 +3085,7 @@ function* buildChunkGeometrySteps(hf, cx0, cz0, segs, fine, progress = null,
     }
   }
   // perimeter vertex indices in ring order (S, E, N, W edges)
-  const ring = [];
+  const ring: number[] = [];
   for (let gx = 0; gx < segs; gx++) ring.push(gx);                       // z=min, x asc
   for (let gz = 0; gz < segs; gz++) ring.push(gz * n + (n - 1));         // x=max, z asc
   for (let gx = segs; gx > 0; gx--) ring.push((n - 1) * n + gx);         // z=max, x desc
@@ -2736,7 +3116,14 @@ function* buildChunkGeometrySteps(hf, cx0, cz0, segs, fine, progress = null,
   return geo;
 }
 
-function buildChunkGeometry(hf, cx0, cz0, segs, fine, indexPool) {
+function buildChunkGeometry(
+  hf: HeightField,
+  cx0: number,
+  cz0: number,
+  segs: number,
+  fine: FineGrid | null,
+  indexPool: TerrainIndexPool,
+): THREE.BufferGeometry {
   const g = buildChunkGeometrySteps(hf, cx0, cz0, segs, fine, null, indexPool);
   let r = g.next();
   while (!r.done) r = g.next();
@@ -2759,7 +3146,11 @@ function buildChunkGeometry(hf, cx0, cz0, segs, fine, indexPool) {
  * @param {?object} [cfg=null] map config (uses cfg.splat for the palette)
  * @returns {THREE.Group} terrain chunk group
  */
-export function buildTerrainMeshes(heightField, engineCtx, cfg = null) {
+export function buildTerrainMeshes(
+  heightField: HeightField,
+  engineCtx: TerrainEngineContext,
+  cfg: TerrainMapConfig | null = null,
+): THREE.Group {
   const g = terrainBuildSteps(heightField, engineCtx, cfg);
   let r = g.next();
   while (!r.done) r = g.next();
@@ -2774,8 +3165,14 @@ export function buildTerrainMeshes(heightField, engineCtx, cfg = null) {
  * Byte-identical output: both wrappers drain the same generator.
  * @param {?function(number, number): (Promise<void>|void)} tick
  */
-export async function buildTerrainMeshesAsync(heightField, engineCtx, cfg = null, tick = null,
-  fineSlices = false, streamOpts = null) {
+export async function buildTerrainMeshesAsync(
+  heightField: HeightField,
+  engineCtx: TerrainEngineContext,
+  cfg: TerrainMapConfig | null = null,
+  tick: TerrainBuildTick | null = null,
+  fineSlices = false,
+  streamOpts: TerrainStreamOptions | null = null,
+): Promise<THREE.Group> {
   const g = terrainBuildSteps(heightField, engineCtx, cfg, streamOpts);
   let r = g.next();
   while (!r.done) {
@@ -2785,19 +3182,24 @@ export async function buildTerrainMeshesAsync(heightField, engineCtx, cfg = null
   return r.value;
 }
 
-function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
+function* terrainBuildSteps(
+  heightField: HeightField,
+  engineCtx: TerrainEngineContext,
+  cfg: TerrainMapConfig | null,
+  streamOpts: TerrainStreamOptions | null = null,
+): Generator<TerrainBuildProgress, THREE.Group, void> {
   const group = new THREE.Group();
   group.name = 'terrain';
   group.add(buildHorizonRing(engineCtx, cfg, 1337));
   yield [0, CHUNKS * CHUNKS + 2, true]; // horizon ring built — splat bake gets its own slice
   const mat = createSplatMaterial(engineCtx, heightField._layout, cfg ? cfg.splat : null,
     (cfg && cfg.id) || 'verdant', heightField._mesaW || null);
-  const chunks = [];
-  const terrainIndexPool = new Map();
+  const chunks: TerrainChunk[] = [];
+  const terrainIndexPool: TerrainIndexPool = new Map();
   // Alternative LOD geometries are retained in `chunks` even when another
   // level is mounted on the mesh. Register the complete live set so world
   // eviction releases uploaded dormant buffers as well as the visible tree.
-  const retainedLodGeometries = new Set();
+  const retainedLodGeometries = new Set<THREE.BufferGeometry>();
   registerRetainedObject3DResources(group, { geometries: retainedLodGeometries });
   const streamFarLods = streamOpts?.streamFarLods === true;
   const focus = streamOpts?.focus || heightField._layout?.spawns?.player || { x: 0, z: 0 };
@@ -2809,7 +3211,7 @@ function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
       const cx0 = -HALF + cx * CHUNK_SIZE, cz0 = -HALF + cz * CHUNK_SIZE;
       const ccx = cx0 + CHUNK_SIZE / 2, ccz = cz0 + CHUNK_SIZE / 2;
       const openingDistance = Math.hypot(focus.x - ccx, focus.z - ccz);
-      const initialLevels = streamFarLods
+      const initialLevels: TerrainLodLevel[] = streamFarLods
         ? initialTerrainLods(openingDistance) : [0, 1, 2];
       // A far-only chunk computes the same height and fine-step normals just
       // at its 25×25 visible vertices; avoid paying for a dormant 99×99 grid.
@@ -2823,16 +3225,17 @@ function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
       const fine = needsFineGrid
         ? yield* buildFineGridSteps(heightField, cx0, cz0, progress) : null;
       if (fine) initialFineGridCount++;
-      const lods = [null, null, null];
+      const lods: Array<THREE.BufferGeometry | null> = [null, null, null];
       for (const level of initialLevels) {
-        lods[level] = yield* buildChunkGeometrySteps(
+        const geometry = yield* buildChunkGeometrySteps(
           heightField, cx0, cz0, LOD_SEGS[level], fine, progress, terrainIndexPool,
         );
-        retainedLodGeometries.add(lods[level]);
+        lods[level] = geometry;
+        retainedLodGeometries.add(geometry);
         initialGeometryCount++;
       }
       const openingLevel = streamFarLods ? initialLevels[0] : 2;
-      const mesh = new THREE.Mesh(lods[openingLevel], mat);
+      const mesh = new THREE.Mesh(lods[openingLevel]!, mat);
       mesh.receiveShadow = true;
       mesh.castShadow = false;
       mesh.matrixAutoUpdate = false;
@@ -2846,7 +3249,7 @@ function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
       yield [2 + cz * CHUNKS + cx + 1, CHUNKS * CHUNKS + 2, cx === CHUNKS - 1];
     }
   }
-  const streamStats = {
+  const streamStats: TerrainStreamingStats = {
     enabled: streamFarLods,
     totalGeometryCount: CHUNKS * CHUNKS * LOD_SEGS.length,
     initialGeometryCount,
@@ -2854,15 +3257,16 @@ function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
     streamedGeometryCount: 0,
   };
   let streamFrame = 0;
-  const buildStreamJob = (job) => {
+  const buildStreamJob = (job: TerrainLodBuild): void => {
     const c = chunks[job.index];
     if (!c.fine && job.level < 2) {
       c.fine = buildFineGrid(heightField, c.cx0, c.cz0);
     }
-    c.lods[job.level] = buildChunkGeometry(
+    const geometry = buildChunkGeometry(
       heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine, terrainIndexPool,
     );
-    retainedLodGeometries.add(c.lods[job.level]);
+    c.lods[job.level] = geometry;
+    retainedLodGeometries.add(geometry);
     if (c.lods.every(Boolean)) c.fine = null;
     streamStats.streamedGeometryCount++;
     streamStats.indexPool = terrainIndexPoolReceipt(terrainIndexPool);
@@ -2870,12 +3274,12 @@ function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
     const want = terrainLodForDistance(d, c.level);
     if (want === job.level) {
       c.level = want;
-      c.mesh.geometry = c.lods[want];
+      c.mesh.geometry = geometry;
     }
   };
   let streamCameraX = 0;
   let streamCameraZ = 0;
-  const warmStreamJobs = (camPos, maxJobs) => {
+  const warmStreamJobs = (camPos: THREE.Vector3, maxJobs: number): number => {
     if (!streamFarLods || !camPos) return 0;
     streamCameraX = camPos.x;
     streamCameraZ = camPos.z;
@@ -2883,7 +3287,7 @@ function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
       chunks, streamCameraX, streamCameraZ, maxJobs, buildStreamJob,
     );
   };
-  group.userData.updateLOD = (camPos) => {
+  group.userData.updateLOD = (camPos: THREE.Vector3): void => {
     for (const c of chunks) {
       const d = Math.hypot(camPos.x - c.cx, camPos.z - c.cz);
       const want = terrainLodForDistance(d, c.level);

@@ -7,8 +7,8 @@ export interface TerrainLodChunk {
   cx: number;
   cz: number;
   level: TerrainLodLevel;
-  present?: ArrayLike<boolean>;
-  lods?: ArrayLike<boolean>;
+  present?: ArrayLike<unknown>;
+  lods?: ArrayLike<unknown>;
 }
 
 export interface TerrainLodBuild {

@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { sampleSplatNoise, applyTone } from './terrain.js';
+import { sampleSplatNoise, applyTone } from './terrain.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { setCircleShape } from './collision.ts';
 import { treeRootDecalAreaM2, treeRootDecalRadius } from './treeGrounding.ts';

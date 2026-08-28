@@ -8,7 +8,7 @@ import {
   createHeightField as createHeightFieldLegacy,
   buildTerrainMeshes as buildTerrainMeshesLegacy,
   buildTerrainMeshesAsync as buildTerrainMeshesAsyncLegacy,
-} from './terrain.js';
+} from './terrain.ts';
 import {
   createVegetation as createVegetationLegacy,
   createVegetationAsync as createVegetationAsyncLegacy,

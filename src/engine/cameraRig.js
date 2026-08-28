@@ -151,7 +151,7 @@ function nearestZoomIndex(zoom, list) {
  *
  * @param {THREE.PerspectiveCamera} camera - the gameplay camera (rig drives
  *   position, rotation and fov; integration owns near/far/aspect)
- * @param {{ heightField: import('../world/terrain.js').HeightField,
+ * @param {{ heightField: import('../world/terrain.ts').HeightField,
  *           raycast: (origin: THREE.Vector3, dir: THREE.Vector3, maxDist: number) =>
  *             ?{ point: THREE.Vector3, normal: THREE.Vector3, dist: number, kind: string },
  *           getPlayer: () => ?object }} deps - world queries + player accessor
