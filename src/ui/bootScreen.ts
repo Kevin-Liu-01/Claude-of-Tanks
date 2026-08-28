@@ -7,7 +7,7 @@
  * from the HTML parse (no module graph, no WebGL context, no bakes); this
  * module only takes over the live parts:
  *
- *  - a progress bar driven by REAL load stages (main.js BOOT STAGES calls
+ *  - a progress bar driven by REAL load stages (main.ts BOOT STAGES calls
  *    begin()/end() around each one; weights below are measured costs, so the
  *    bar tracks wall-clock work instead of a fake timer),
  *  - the current stage name + percentage,
@@ -71,7 +71,7 @@ const TIPS = [
 
 // Weighted load stages. Weight = measured share of boot wall-clock, so the bar
 // moves at a roughly constant rate instead of parking at 40% for three seconds.
-// Keep the keys in sync with the main.js BOOT STAGES block.
+// Keep the keys in sync with the main.ts BOOT STAGES block.
 const GARAGE_STAGES = [
   ['renderer', 'Initialising renderer', 4],
   ['sky', 'Baking sky and atmosphere', 16],

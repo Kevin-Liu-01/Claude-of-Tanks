@@ -2,7 +2,7 @@
  * state.js — legacy solo battle setup and fixed-step combat integration
  * (ARCHITECTURE.md §1.5, §2.4, §4 step 2). The typed session shell/event bus
  * live in stateCore.ts; roster and visual planning live in rosterState.ts.
- * The render loop remains in main.js.
+ * The render loop remains in main.ts.
  */
 import * as THREE from 'three';
 import { getSpec } from '../vehicles/specs.js';
@@ -153,7 +153,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   // AUTO paint already matched). Runtime overrides only — localStorage and
   // the garage picker are untouched; the player's spec is never rolled
   // (participants are keyed by spec id, so no bot shares it). Seeded per
-  // battle for reproducibility. main.js startBattle calls setCamoBiome
+  // battle for reproducibility. main.ts startBattle calls setCamoBiome
   // BEFORE setupBattle, so the repaint below resolves the right biome; the
   // trailing applyCamoPatterns() also restores factory paint on entries a
   // PREVIOUS battle's overrides repainted (cheap no-op otherwise).
@@ -173,7 +173,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     }
   }
   // perf-r2f: real battle entries defer this sweep to the caller's CHUNKED
-  // pass (main.js startBattle — one yielding sweep covers biome + the rolls
+  // pass (main.ts startBattle — one yielding sweep covers biome + the rolls
   // above without pinning the loading bar). The synchronous sweep stays for
   // every other caller: ensureShotWorld's capture contract requires the
   // frame to be fully determined when setupBattle returns.
@@ -182,7 +182,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   // vehicles' visuals are EVICTED (scene detach + dispose) so only fielded
   // tanks keep generated texture sets resident — see spawnTanks.
   // PERF r3: the BOOT staging call defers the 7 enemy bakes off the
-  // load-to-ready path (opts.deferVisuals; main.js streams them post-ready
+  // load-to-ready path (opts.deferVisuals; main.ts streams them post-ready
   // via ensureStagedVisuals — see spawnTanks). Real battle entries build
   // eagerly, exactly as before.
   if (!opts.deferVisuals) {
@@ -1065,7 +1065,7 @@ function emitHitOutcome(game, bus, ev) {
     ev.targetMaxHp = target.combat ? target.combat.maxHp : 0;
   }
   // KILL-CAM CAPTURE (ADDITIVE — src/game/killcam.js): snapshot the fully
-  // resolved event chain + victim pose for lethal-shot replays. main.js
+  // resolved event chain + victim pose for lethal-shot replays. main.ts
   // assigns game.killcam; nothing here changes when it is absent.
   if (game.killcam) game.killcam.onShellHit(ev, target);
   bus.emit('shell:hit', ev);
@@ -1643,7 +1643,7 @@ export function simStep(game, bus, world, rig, collider) {
 
   // win/lose (plus draw when the 15:00 battle clock runs out).
   // killcam_shotinfo r1: the player's death no longer hard-ends the battle —
-  // WoT-style, the team fights on (main.js plays the death replay at the
+  // WoT-style, the team fights on (main.ts plays the death replay at the
   // moment of death and drops into the wreck-orbit spectate cam). DEFEAT is
   // a TEAM verdict: player dead AND no allies left standing.
   if (game.result === null && game.player) {

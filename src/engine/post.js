@@ -231,7 +231,7 @@ const AERIAL_SUN_POW = 5.0; // width of the warm forward-scatter lobe
 // near-white" on player_view): 0.41 -> 0.385 — one more step below white so
 // the brightest scatter-in convergence stays clearly a color, not a blowout.
 const AERIAL_HAZE_LUM_CAP = 0.385;
-// r9 SNIPER DE-HAZE: main.js already scales the FogExp2 density down at high
+// r9 SNIPER DE-HAZE: main.ts already scales the FogExp2 density down at high
 // zoom (fov < 15), but the aerial pass kept FULL density, so the x8 sight
 // picture stayed a desaturated teal wash — a 450 m hillside at x8 subtends
 // the screen like a 60 m object and must read correspondingly clear (WoT
@@ -1940,7 +1940,7 @@ export function createPost(renderer, scene, camera) {
   //    (1.5 → 3 → 6 → 12 → 20 s cap; a flap-free minute resets it). Recovery
   //    from a genuine load drop stays 1 step per 1.5 s — floor to 1.0 in
   //    ~4.5 s.
-  //  - hidden-document frames never govern: main.js's rAF-starvation
+  //  - hidden-document frames never govern: main.ts's rAF-starvation
   //    fallback ticks at ~10 Hz by design — that cadence says nothing about
   //    GPU cost and used to read as a permanent budget blowout.
   //  - DPR-1 FENCE: native-density desktop output never falls below 1.0. AO
@@ -2079,7 +2079,7 @@ export function createPost(renderer, scene, camera) {
   function dynGovern(dt) {
     if (adaptiveSuspended) return;
     if (!(dt > 0) || dt > 0.25) return; // hitches/tab-switch: not a trend
-    // rAF-starvation fallback frames (main.js ticks hidden documents at
+    // rAF-starvation fallback frames (main.ts ticks hidden documents at
     // ~10 Hz) carry loop cadence, not GPU cost — they must never govern.
     if (document.hidden) return;
     dynClock += dt;
@@ -2315,7 +2315,7 @@ export function createPost(renderer, scene, camera) {
       aerial.uniforms.uNear.value = camera.near;
       aerial.uniforms.uFar.value = camera.far;
       // sniper de-haze (r9): scale BOTH aerial curves down with zoom, same
-      // ramp main.js applies to the FogExp2 density — at x8 the far field
+      // ramp main.ts applies to the FogExp2 density — at x8 the far field
       // must read magnified-clear, not teal-washed (see AERIAL_ZOOM_*).
       {
         const fovK = camera.fov < AERIAL_ZOOM_FOV

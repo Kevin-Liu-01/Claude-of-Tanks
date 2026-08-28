@@ -8,7 +8,8 @@ export type BootTimings = Record<string, number>;
 export interface BootLifecycle {
   readonly startedAt: number;
   readonly timings: BootTimings;
-  run<T>(stage: string, work?: (() => T | Promise<T>) | null): Promise<T | undefined>;
+  run<T>(stage: string, work: () => T | Promise<T>): Promise<T>;
+  run(stage: string, work?: null): Promise<void>;
   completeManualStage(stage: string, stageStartedAt?: number): void;
 }
 
@@ -57,23 +58,30 @@ export function createBootLifecycle({
     lastMark = completedAt;
   };
 
+  async function run<T>(stage: string, work: () => T | Promise<T>): Promise<T>;
+  async function run(stage: string, work?: null): Promise<void>;
+  async function run<T>(
+    stage: string,
+    work?: (() => T | Promise<T>) | null,
+  ): Promise<T | undefined> {
+    markGap(stage, now());
+    screen.begin(stage);
+    await yieldFrame();
+    const stageStartedAt = now();
+    const output = work ? await work() : undefined;
+    const completedAt = now();
+    timings[stage] = Math.round(completedAt - stageStartedAt);
+    screen.end(stage);
+    if (completedAt - stageStartedAt > heavyStageMs) await yieldFrame();
+    lastMark = now();
+    return output;
+  }
+
   return {
     startedAt,
     timings,
 
-    async run<T>(stage: string, work?: (() => T | Promise<T>) | null) {
-      markGap(stage, now());
-      screen.begin(stage);
-      await yieldFrame();
-      const stageStartedAt = now();
-      const output = work ? await work() : undefined;
-      const completedAt = now();
-      timings[stage] = Math.round(completedAt - stageStartedAt);
-      screen.end(stage);
-      if (completedAt - stageStartedAt > heavyStageMs) await yieldFrame();
-      lastMark = now();
-      return output;
-    },
+    run,
 
     completeManualStage,
   };

@@ -3,7 +3,7 @@
  *
  * The room code and mode control entry. The optional host callsign improves
  * first-paint presentation only; signaling returns the authoritative host
- * identity after join. main.js parses these links and playMenu.js creates them.
+ * identity after join. main.ts parses these links and playMenu.js creates them.
  */
 import { normalizeRoomCode } from './protocol.ts';
 import { normalizePlayerName } from './playerNames.ts';

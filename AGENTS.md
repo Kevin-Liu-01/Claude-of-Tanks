@@ -16,8 +16,8 @@ worktree and never stage generated tank work wholesale.
 <!-- agent-docs:fill:architecture -->
 - `docs/ARCHITECTURE.md` — original module contracts and simulation invariants.
 - `docs/MULTIPLAYER-ARCHITECTURE.md` — authoritative multiplayer migration.
-- `src/main.js` — boot, scene composition, UI flow, render loop, and legacy
-  fixed-step integration; keep changes surgical.
+- `src/main.ts` — strict typed boot, scene composition, UI flow, and render-loop
+  wiring across remaining JavaScript ports; keep changes surgical.
 - `src/game/stateCore.ts` — dependency-free typed session shell, event bus,
   and deterministic integration RNG.
 - `src/game/state.js` — battle roster and authoritative simulation integration.

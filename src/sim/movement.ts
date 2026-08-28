@@ -403,7 +403,7 @@ const FAN_YIELD_MAX_M = 0.30;    // max softening — conform absorbs ≤ 0.35 m
 // rising clamp is always burial-safe.
 // r4-fix: 0.6 → 0.35. The slew is SIM-time but the conform ease is per
 // RENDERED frame — on a frame-starved page (or a low-fps player machine)
-// main.js batches up to MAX_SIM_STEPS ticks per frame, so at 0.6 m/s the
+// main.ts batches up to MAX_SIM_STEPS ticks per frame, so at 0.6 m/s the
 // yield could step 3-4× further per frame than the ease was budgeted for
 // (contention drive probe: −5…−6 cm wheel-rim transients at sim/wall 0.28
 // that never appear at real-time pacing). Halving the rate keeps the
@@ -1088,7 +1088,7 @@ export function updateTank(
   //     the outer track in a screen-left turn runs faster.
   // The AI is the main producer and matches: `steer = wrapAngle(bearing −
   // yaw) × k` (ai.js driveToXZ/faceYaw) needs +steer to raise yaw. Therefore
-  // the PLAYER's key map is where "right" is turned into a sign: main.js sends
+  // the PLAYER's key map is where "right" is turned into a sign: main.ts sends
   // `steer = left − right` (a D press is negative). Never invert the mapping
   // here or in ai.js — that silently breaks bot navigation; and never fix a
   // perceived inversion downstream in the renderer (it would desync the sim,

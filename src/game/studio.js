@@ -13,9 +13,9 @@
  * src/fx/effects.js), a free-fly/orbit camera, a studio-owned fx time scale
  * with freeze, and a hi-res capture path.
  *
- * Integration contract (kept deliberately tiny — see main.js):
- *   - main.js creates it once post-boot: createStudio(ctx)
- *   - main.js tick() delegates the WHOLE frame while active:
+ * Integration contract (kept deliberately tiny — see main.ts):
+ *   - main.ts creates it once post-boot: createStudio(ctx)
+ *   - main.ts tick() delegates the WHOLE frame while active:
  *       if (studio.active) { studio.tick(dtR); return; }
  *   - everything else (entry key, URL param, panel, capture, __STUDIO API)
  *     lives here. Exit hands control back through ctx.enterGarage().
@@ -102,7 +102,7 @@ const _actorSample = {
 /**
  * Create the studio. Pure setup — nothing heavy happens until enter().
  *
- * @param {object} ctx integration handles from main.js:
+ * @param {object} ctx integration handles from main.ts:
  *   renderer, scene, camera, post, lighting, fx, game, hud, garage, showroom,
  *   hfProxy, getWorld(), ensureWorld(mapId,onProgress), setWorldDormant(on),
  *   setGarageSpots(on), setGarageSunTrim(on), enterGarage(),
@@ -156,7 +156,7 @@ export function createStudio(ctx) {
 
   // fx event channel: a PRIVATE bus bound to the fx system only, so synthetic
   // events (muzzle flash, impact, smoke column, detrack burst) reuse the real
-  // effect language without touching main.js/hud/audio/killcam listeners.
+  // effect language without touching main.ts/hud/audio/killcam listeners.
   const fxBus = createBus();
   let fxBusBound = false;
   function ensureFxBus() {
@@ -2206,7 +2206,7 @@ export function createStudio(ctx) {
   async function doEnter(opts) {
     // never race the boot tail: everything the studio touches exists once
     // the game declares readiness. Direct /studio boot is explicitly invoked
-    // by main.js from its final covered stage, where all Studio dependencies
+    // by main.ts from its final covered stage, where all Studio dependencies
     // already exist but __GAME_READY deliberately has not flipped yet.
     if (!opts.coveredByBoot && !window.__GAME_READY) {
       await new Promise((res) => {

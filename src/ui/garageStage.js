@@ -4,7 +4,7 @@
 // with real lights, a hazard-striped display podium and workshop props.
 // 100% generated (canvas textures + primitive geometry) — no assets.
 //
-// Usage (integration, src/main.js):
+// Usage (integration, src/main.ts):
 //   const stage = createGarageStage(engineCtx, GARAGE_POS);
 //   scene.add(stage.group);
 // This replaces the bare pad + apron discs. The two integration-owned

@@ -571,7 +571,7 @@ export function createShotInfo(bus) {
   const statsRoot = el('div', 'cot-si-stats');
   document.body.appendChild(statsRoot);
   // END SCREEN renders into statsRoot so the integration seams keep holding:
-  // main.js veilHud() toggles this exact element around the kill-cam, and
+  // main.ts veilHud() toggles this exact element around the kill-cam, and
   // the kill-cam parity veil CSS addresses `.cot-si-stats`.
   const endScreen = createEndScreen(bus, statsRoot);
 
@@ -1203,7 +1203,7 @@ export function createShotInfo(bus) {
     // identity hardening (r3 audit): latch the player id from the sim event
     // itself — hud.update only forwards setPlayer once a frame has rendered,
     // which silently dropped a hit resolved before the first post-start
-    // frame. main.js now also sets it synchronously at battle start (see
+    // frame. main.ts now also sets it synchronously at battle start (see
     // docs/GUNNERY-CAMERA-SPEC.md); this latch covers sim-tick-driven
     // replays that never render at all.
     if (p.shooterId != null) playerId = p.shooterId;

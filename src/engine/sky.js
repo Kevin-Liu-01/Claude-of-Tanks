@@ -891,7 +891,7 @@ export function createSky(scene, renderer) {
     /**
      * LOADING PERF (boot r9): finish the deferred cloud-deck sprite bakes
      * (idempotent, ~330 ms once). applyPreset runs it on every map re-key;
-     * main.js runs it on first world activation and from post-ready idle.
+     * main.ts runs it on first world activation and from post-ready idle.
      */
     ensureCloudTextures,
     ensureCloudTexturesChunked,

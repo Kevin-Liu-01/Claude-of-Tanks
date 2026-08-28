@@ -47,7 +47,7 @@ const DIAG_UI = diagUiRequested();
  * materials (fx variants, wreck swaps, killcam ghosts) compiled mid-fight,
  * each one landing as a frame hitch in the p99 tail. Boot keeps full checks
  * (the whole main pipeline compiles behind the splash and the diag rescue
- * path needs the logs); main.js calls this once the game is up. ?diag pins
+ * path needs the logs); main.ts calls this once the game is up. ?diag pins
  * the checks for a diagnosis run. onShaderError stays installed either way —
  * it only fires from the check path, so a diag run still collects.
  */

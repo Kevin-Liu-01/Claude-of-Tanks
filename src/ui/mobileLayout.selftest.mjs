@@ -22,7 +22,7 @@ const [
   readFile(new URL('./perfHud.ts', import.meta.url), 'utf8'),
   readFile(new URL('../engine/deviceDiag.js', import.meta.url), 'utf8'),
   readFile(new URL('../engine/renderer.ts', import.meta.url), 'utf8'),
-  readFile(new URL('../main.js', import.meta.url), 'utf8'),
+  readFile(new URL('../main.ts', import.meta.url), 'utf8'),
   readFile(new URL('../game/pointerLockFeedbackRuntime.ts', import.meta.url), 'utf8'),
   readFile(new URL('../gallery/gallery.css', import.meta.url), 'utf8'),
   readFile(new URL('../docs/docs.css', import.meta.url), 'utf8'),
@@ -305,7 +305,7 @@ const semanticSurfaceFiles = [
   './responsiveSurfaces.css',
   '../engine/deviceDiag.js',
   '../engine/renderer.ts',
-  '../main.js',
+  '../main.ts',
 ];
 for (const relativePath of semanticSurfaceFiles) {
   const source = await readFile(new URL(relativePath, import.meta.url), 'utf8');

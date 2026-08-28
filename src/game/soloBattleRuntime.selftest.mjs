@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const access = await readFile(new URL('./soloBattleAccess.ts', import.meta.url), 'utf8');
 const intent = await readFile(new URL('./battleIntentRuntime.ts', import.meta.url), 'utf8');
 const loading = await readFile(new URL('./soloBattleLoadingRuntime.ts', import.meta.url), 'utf8');

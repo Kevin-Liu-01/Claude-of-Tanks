@@ -2749,7 +2749,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     /**
      * LOADING PERF (boot r9): finish the deferred particle sprite bakes
      * (idempotent, ~200 ms once). Must run before the first fx-visible frame;
-     * main.js warmCombatPipeline() is the enforcing call site.
+     * main.ts warmCombatPipeline() is the enforcing call site.
      */
     warmTextures() { particles.warmTextures(); },
 
@@ -3809,7 +3809,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * Crushable-prop impact (telephone pole / fence hit by a tank): dust
      * burst at the base, wood splinters whipped along the travel direction,
      * and a few bark chips. Called by the collision integration (see
-     * docs/SYSTEMS.md — main.js detects the overlap and
+     * docs/SYSTEMS.md — main.ts detects the overlap and
      * drives the prop's hinge-topple; this is the particle beat).
      * @param {THREE.Vector3} pos prop base (world)
      * @param {THREE.Vector3} dir tank travel direction (unit-ish, XZ)

@@ -85,7 +85,7 @@ play without importing Three.js rendering or DOM state.
   but must never change authority, collision, or ballistic state.
 - Modules remain Node-runnable with no DOM/WebGL dependency.
 - Network activation must remain one operation after the peer-ready barrier;
-  do not publish battle phase or camera state piecemeal from `main.js`.
+  do not publish battle phase or camera state piecemeal from `main.ts`.
 - A bridge must remain private until its exact roster and viewer-bearing first
   snapshot are ready. Keep that order in `networkBattlePresentationRuntime.ts`;
   failed unpublished bridges are disposed before the launcher handles cleanup.

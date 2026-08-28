@@ -1711,7 +1711,7 @@ ${snowCap ? `
   };
   const obstacles: PropsCollisionRecord[] = [];
   const colliders: CollisionRecord[] = [];
-  // crushables — the main.js hull-radius contact loop (effects_combat r1).
+  // crushables — the main.ts hull-radius contact loop (effects_combat r1).
   // Entries are telegraph poles ({index} into the pole InstancedMesh) OR
   // world-dressing r1 'loop'-contact destructibles ({recIdx} into the
   // destructible records below): flat/small clutter a hull brushes aside.
@@ -1730,8 +1730,8 @@ ${snowCap ? `
   //  1. hull overrun of a tagged CRUSHABLE OBSTACLE — the exact tree seam:
   //     state.js SAT detects, queues, calls world.crushObstacle → propIdx
   //     routes here (map.ts); state.js applies the speed bite + emits
-  //     prop:crushed (generic dust via main.js fx.propCrush);
-  //  2. hull-radius contact via the main.js crushables loop ('loop' class —
+  //     prop:crushed (generic dust via main.ts fx.propCrush);
+  //  2. hull-radius contact via the main.ts crushables loop ('loop' class —
   //     sapling-grade clutter with NO obstacle at all);
   //  3. shells — src/fx/effects.js forwards per-frame flight segments and
   //     world-impact points through src/world/destructibles.ts; light props
@@ -4985,7 +4985,7 @@ ${snowCap ? `
     rec.state = 1;
     if (rec.ob) rec.ob.crushed = true;          // ghost for collision + AI
     if (rec.col) rec.col.dead = true;           // shells/LOS pass the breach
-    if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.js loop
+    if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.ts loop
     const l = Math.hypot(dx, dz) || 1;
     if (rec.cls === 'topple') {
       setToppleAxis(_cax, dx, dz);
@@ -5051,7 +5051,7 @@ ${snowCap ? `
     return true;
   }
 
-  /** main.js crushables-loop contract (poles + 'loop'-class destructibles). */
+  /** main.ts crushables-loop contract (poles + 'loop'-class destructibles). */
   function crushProp(i: number, dx: number, dz: number, speed = 0): boolean {
     const c = crushables[i];
     if (!c || c.toppled) return false;

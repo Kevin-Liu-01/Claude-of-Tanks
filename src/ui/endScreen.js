@@ -3,7 +3,7 @@
  *
  * Replaces the old shot-info battle report as the end-of-battle surface.
  * Rendered INTO shotInfo's existing full-screen stats host (`.cot-si-stats`,
- * z 71) so every integration seam keeps working untouched: main.js's
+ * z 71) so every integration seam keeps working untouched: main.ts's
  * veilHud() toggles that exact element around the kill-cam, and the kill-cam
  * CSS parity veil (`body.cot-kc-live .cot-si-stats`) keeps hiding it while a
  * replay owns the screen. The flow is unchanged too — shotInfo buffers
@@ -288,7 +288,7 @@ export function damageComparisonPercent(damage, maxDamage) {
  * Create the end screen controller.
  * @param {{on:Function,emit:Function}} bus game event bus
  * @param {HTMLElement} host shotInfo's stats root (`.cot-si-stats`) — reused
- *   so main.js's veilHud/statsRoot seams keep addressing the live surface
+ *   so main.ts's veilHud/statsRoot seams keep addressing the live surface
  * @returns {{show:Function,hide:Function,visible:boolean,root:HTMLElement}}
  */
 export function createEndScreen(bus, host) {

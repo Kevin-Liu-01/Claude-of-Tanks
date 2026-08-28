@@ -26,7 +26,7 @@ contract. `gallery.html` and `gallery.css` own the public surface;
 <!-- agent-docs:fill:patterns -->
 - Consume `ALL_TANK_IDS`, `getSpec`, canonical labels, tiers, and `createTank`;
   never add a gallery-only roster or balance table.
-- Keep the route separate from `src/main.js` so gallery visits do not enter the
+- Keep the route separate from `src/main.ts` so gallery visits do not enter the
   playable game's boot-critical graph.
 - Treat ratings as derived presentation values and keep canonical raw values
   visible and copyable.

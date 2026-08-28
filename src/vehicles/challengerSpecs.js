@@ -313,7 +313,7 @@ export const CHALLENGER_SPECS = {
 // HMR can re-evaluate this module; the modern1.js mechanism, moved with its
 // residents). §5.75 ORDER GUARD: modern1.js registered challenger2 and
 // challenger_3 BEFORE merkava4/leo2a6, and the garage carousel is ordered by
-// ALL_TANK_IDS (main.js); modern1 always evaluates before this module (its
+// ALL_TANK_IDS (main.ts); modern1 always evaluates before this module (its
 // helpers are imported above), so re-insert at the original slot instead of
 // appending to the tail — a pure refactor must not reorder the roster.
 for (const [id, spec] of Object.entries(CHALLENGER_SPECS)) {

@@ -1,5 +1,5 @@
 /**
- * main.js — integration entry point (ARCHITECTURE.md §4, §5).
+ * main.ts — typed integration entry point (ARCHITECTURE.md §4, §5).
  *
  * Startup order (locked): createRenderer → createSky → bakeEnvironment →
  * createLighting (CSM before any material compiles) → EngineCtx →
@@ -23,6 +23,21 @@
  * overlay → back to garage.
  */
 import * as THREE from 'three';
+import type { EventBus, GameState } from './game/stateCore.ts';
+import type { RosterEntity, RosterGameState } from './game/rosterState.ts';
+import type {
+  ActiveWorld,
+  WorldActivationRuntime,
+  WorldActivationOptions,
+} from './world/worldActivationRuntime.ts';
+import type { BattleHudRuntime, DamagePanelRuntime } from './ui/battleHudAccess.ts';
+import type { HeightField } from './world/terrain.ts';
+import type { NetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
+import type { PlayerBattleActions } from './game/playerBattleActions.ts';
+import type { LazyAudio } from './audio/lazyAudio.ts';
+import type { KillcamRuntime } from './game/killcamAccess.ts';
+import type { BattleVisualStreamer } from './game/battleVisualStreamer.ts';
+import type { TouchControlsRuntime } from './ui/touchControlsAccess.ts';
 import { createRenderer } from './engine/renderer.ts';
 import { createOffscreenSceneWarmer } from './engine/offscreenWarm.ts';
 import {
@@ -152,10 +167,217 @@ import { createCombatFeedbackRuntime } from './game/combatFeedbackRuntime.ts';
 import { createRosterPresentation } from './game/rosterPresentation.ts';
 import { tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
+
+/**
+ * Explicit boundary for browser modules that have not migrated from JavaScript
+ * yet. The value remains unknown until the composition root names the exact
+ * port it consumes; this keeps legacy breadth from leaking through `any`.
+ */
+function legacyPort<T>(value: unknown): T {
+  return value as T;
+}
+
+interface MainSkyRuntime {
+  sunDir: THREE.Vector3;
+  bakeEnvironment(): void;
+  ensureCloudTextures(): void;
+  ensureCloudTexturesChunked?(yieldFrame: () => Promise<void>): Promise<void>;
+  applyPreset(config: unknown, scene: THREE.Scene): void;
+  applyFog(scene: THREE.Scene): void;
+}
+
+interface MainLightingRuntime {
+  setupShadowMaterial(material: THREE.Material, extraHook?: unknown): void;
+  releaseShadowMaterial(material: THREE.Material): unknown;
+  setFarCascadeDormant(dormant: boolean): void;
+  setStaticPresentationDormant(dormant: boolean): void;
+  setSun(direction: THREE.Vector3, config?: unknown): void;
+  update(force?: boolean, dt?: number): void;
+  updateFov(): void;
+  updateFrustums(): void;
+  getShadowTelemetry(): unknown;
+  primeShadowMaps(...args: unknown[]): unknown;
+  preservePrimedCascadesForNextFrame(): void;
+}
+
+interface MainPostRuntime {
+  composer?: { renderTarget1?: THREE.WebGLRenderTarget };
+  readonly dynScale: number;
+  readonly perfTrim: unknown;
+  readonly upscaler: unknown;
+  attachLateFxState(state: unknown): void;
+  prepareSoftParticles(): void;
+  render(dt: number): void;
+  resetAdaptiveResolution(): void;
+  resetPerfTrims(): void;
+  setAdaptiveSuspended(suspended: boolean): void;
+  setSize(width: number, height: number): void;
+  warmFirstFrame(yieldBeforePass?: unknown): Promise<Array<{ label: string; ms: number }>>;
+}
+
+interface MainGarageRuntime {
+  readonly root: HTMLElement;
+  readonly isOpen: boolean;
+  show(specId?: string): void;
+  hide(): void;
+  getSelected(): string;
+  getSelectedMap(): string;
+  getNeighborIds(radius?: number): string[];
+  getStageRect(): { x: number; y: number; w: number; h: number };
+  setRoomStatus(status?: unknown): void;
+  attachSettingsControl(control: HTMLElement): void;
+  setSelected(specId: string): void;
+}
+
+interface MainVisual extends NonNullable<RosterEntity['visual']> {
+  setTrackState?(module: string, destroyed: boolean): void;
+}
+
+interface MainFxRuntime {
+  group: THREE.Object3D;
+  bindBus(bus: EventBus): void;
+  setFrozen(frozen: boolean): void;
+  resetAll(): void;
+  update(...args: unknown[]): void;
+  clearVehicleDecals(target: unknown): void;
+  impact(...args: unknown[]): unknown;
+  dust(...args: unknown[]): unknown;
+  exhaust(...args: unknown[]): unknown;
+  propBreak(...args: unknown[]): unknown;
+  propCrush(...args: unknown[]): unknown;
+  warmOpeningEffects(...args: unknown[]): unknown;
+  destruction: unknown;
+  [key: string]: unknown;
+}
+
+interface MainFxModule {
+  createFx(...args: unknown[]): MainFxRuntime;
+}
+
+interface MainEntity extends Omit<RosterEntity, 'spec' | 'state' | 'combat' | 'visual'> {
+  spec: ReturnType<typeof getSpec> & { name: string };
+  state: ({ yaw: number } & Record<string, unknown>) | null;
+  combat: ({ destroyed?: boolean } & Record<string, unknown>) | null;
+  equip?: unknown;
+  visual: MainVisual | null;
+}
+
+interface MainSpottingRuntime {
+  isSpotted(entityId: string, observerId: string, observer: MainEntity | null): boolean;
+}
+
+type MainGameState = Omit<
+  GameState,
+  'tanks' | 'allTanks' | 'tankById' | 'player' | 'spotting'
+> & Omit<RosterGameState, 'tanks' | 'allTanks' | 'tankById'> & {
+  tanks: MainEntity[];
+  allTanks: MainEntity[];
+  tankById: Map<string, MainEntity>;
+  player: MainEntity | null;
+  spotting: MainSpottingRuntime | null;
+  killcam?: unknown;
+};
+
+interface MainWorld extends ActiveWorld {
+  heightField: HeightField;
+  config: ActiveWorld['config'] & { minimap?: unknown };
+  getMinimapFeatures(): unknown;
+  update(dt: number, cameraPosition: THREE.Vector3, forward?: THREE.Vector3, extra?: unknown): void;
+}
+
+interface MainHudRuntime extends BattleHudRuntime {
+  root: HTMLElement;
+  shotInfo: {
+    statsRoot?: HTMLElement;
+    setPlayer(playerId: string): void;
+  };
+  buildMinimap(heightField: HeightField, features: unknown, config: unknown, snapshot: unknown): void;
+  buildMinimapFromAsset(heightField: HeightField, url: string): Promise<boolean> | boolean;
+  preloadMinimapAsset(url: string): Promise<unknown>;
+  preBattleCountdown(seconds: number): void;
+  setMode(mode: string): void;
+  warmShotCards(specIds: readonly string[]): unknown;
+  exportMinimapBackground(type: string, quality: number): string;
+  forceHitMark(bounced: boolean): void;
+}
+
+interface MainDamagePanelRuntime extends DamagePanelRuntime {
+  root: HTMLElement;
+  setTank(spec: unknown, visual: unknown): void;
+  setEquipment(equipment: unknown): void;
+}
+
+interface MainCameraRigRuntime {
+  mode: string;
+  cinematicActive: boolean;
+  spectateTargetEnt: MainEntity | null;
+  externalActive: boolean;
+  aimPoint: THREE.Vector3;
+  aimDist: number;
+  zoom: number;
+  addTrauma(amount: number): void;
+  release(): void;
+  setExternalPose(position: THREE.Vector3, target: THREE.Vector3, fov?: number): void;
+  snapArcade(distance: number, yaw: number, pitch: number): void;
+  snapSniper(...args: unknown[]): void;
+  update(dt: number, input: unknown): void;
+}
+
+interface SoloBattleRequest {
+  specId?: string;
+  mapId?: string | null;
+  randomRoster?: boolean;
+  gameMode?: string;
+}
+
+interface MainKillcamRuntime extends KillcamRuntime {
+  bindBus(bus: EventBus): void;
+}
+
+interface MainInputRuntime {
+  actionDefs?: Array<{ id: string }>;
+  onAction(action: string, listener: () => void): () => void;
+  getSettings(): { showDebugHud: boolean; [key: string]: unknown };
+  isTouchLayout(): boolean;
+  isLocked(): boolean;
+  isDown(action: string): boolean;
+  requestLock(): void;
+  onLockDenied(listener: () => void): () => void;
+  onLockRestored(listener: () => void): () => void;
+  setEnabled?(enabled: boolean): void;
+  setSetting(name: string, value: unknown): void;
+  [key: string]: unknown;
+}
+
+type MainMobileAutoAimRuntime = ReturnType<
+  (typeof import('./game/mobileAutoAimRuntime.ts'))['createMobileAutoAimRuntime']
+>;
+
+declare global {
+  interface Window {
+    __BATTLE_REVEAL?: unknown;
+    __BOOT_MS?: number;
+    __BOOT_TIMINGS?: Record<string, number>;
+    __GAME_READY?: boolean;
+    __GARAGE_ENTRY?: unknown;
+    __GARAGE_IDLE_WORK?: unknown;
+    __MINIMAP_LOAD?: unknown;
+    __NETWORK_ENTRY_FAILURE?: unknown;
+    __NETWORK_LOAD?: unknown;
+    __PERF_HUD?: unknown;
+    __SHOTS?: unknown;
+    __START_BATTLE_TIMINGS?: unknown;
+    __STUDIO?: unknown;
+    __STUDIO_WARM?: unknown;
+    __VISUAL_LOAD_TIMINGS?: unknown[];
+    __WORLD_LOAD?: unknown;
+    __WORLD_PREFETCH?: unknown;
+  }
+}
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
 // reveal it, then start a second load".  The intent is captured before any
 // staged work so the inline boot screen can report Studio-specific progress
-// and main.js can hand the already-visible veil to createStudio().
+// and main.ts can hand the already-visible veil to createStudio().
 const startupIntent = createStartupIntent(globalThis.location);
 const STUDIO_BOOT_INTENT = startupIntent.studioRequested;
 const STUDIO_BOOT_MAP = startupIntent.studioMapId;
@@ -164,6 +386,9 @@ const DEG = Math.PI / 180;
 const SIM_DT = 1 / 60;
 const GARAGE_POS = new THREE.Vector3(-1500, 0, -1500);
 const pendingRoomInvitePromise = startupIntent.pendingRoomInvite;
+const minimapAssetUrl = (mapId: string): string => (
+  `${import.meta.env.BASE_URL || '/'}minimaps/${encodeURIComponent(mapId)}.webp?v=spawn-oriented-v2`
+);
 
 const {
   preload: preloadSoloBattleRuntime,
@@ -221,6 +446,7 @@ const bootStage = bootLifecycle.run;
 // Engine bootstrap (§4 startup order)
 // ---------------------------------------------------------------------------
 const container = document.getElementById('app');
+if (!container) throw new Error('application root #app is missing');
 boot.begin('renderer');
 const renderer = createRenderer(container);
 let graphicsContextLost = false;
@@ -254,11 +480,11 @@ const camera = new THREE.PerspectiveCamera(
 );
 bootLifecycle.completeManualStage('renderer', BOOT_T0);
 
-const sky = await bootStage('sky', () => {
+const sky = legacyPort<MainSkyRuntime>(await bootStage('sky', () => {
   const s = createSky(scene, renderer);
   s.bakeEnvironment();
   return s;
-});
+}));
 // Loading-budget r1: the garage cannot see the outdoor cloud decks, but a
 // battle or direct Studio entry can need them immediately. Start their two
 // deterministic canvas bakes now and let the remaining boot stages overlap
@@ -266,7 +492,9 @@ const sky = await bootStage('sky', () => {
 const bootCloudWarmP = sky.ensureCloudTexturesChunked
   ? sky.ensureCloudTexturesChunked(() => nextFrame()).catch(() => {})
   : Promise.resolve();
-const lighting = await bootStage('lighting', () => createLighting(scene, camera, sky.sunDir));
+const lighting = legacyPort<MainLightingRuntime>(
+  await bootStage('lighting', () => createLighting(scene, camera, sky.sunDir)),
+);
 // The sealed garage can only see the near/contact shadow bands. Request far
 // dormancy now; lighting deliberately renders every native CSM depth map once
 // before honoring it because all PCF samplers remain active in the shader.
@@ -278,8 +506,10 @@ const engineCtx = {
   renderer,
   scene,
   camera,
-  setupShadowMaterial: (mat, extraHook = null) => lighting.setupShadowMaterial(mat, extraHook),
-  releaseShadowMaterial: (mat) => lighting.releaseShadowMaterial(mat),
+  setupShadowMaterial: (mat: THREE.Material, extraHook: unknown = null) => (
+    lighting.setupShadowMaterial(mat, extraHook)
+  ),
+  releaseShadowMaterial: (mat: THREE.Material) => lighting.releaseShadowMaterial(mat),
   anisotropy: Math.min(8, renderer.capabilities.getMaxAnisotropy()),
   quality: 'high',
 };
@@ -302,7 +532,7 @@ const engineCtx = {
 // multi-octave height stack in camera, HUD, FX and kill-cam hot paths.
 let shotMode = false;
 const _upNormal = new THREE.Vector3(0, 1, 0);
-let worldRuntime = null;
+let worldRuntime: WorldActivationRuntime<MainWorld, unknown>;
 const currentWorld = () => worldRuntime?.current ?? null;
 const hfProxy = createLiveHeightFieldProxy({
   getWorld: currentWorld,
@@ -315,7 +545,7 @@ const garageFramePacer = createGarageFramePacer();
 let garagePresentationDirty = true;
 let invalidateGaragePresentation = () => { garagePresentationDirty = true; };
 if (typeof window !== 'undefined') window.__GARAGE_IDLE_WORK = garageIdleWorkCoordinator.stats;
-worldRuntime = createWorldActivationRuntime({
+worldRuntime = createWorldActivationRuntime<MainWorld, unknown>({
   initialMapId: 'verdant',
   coordinatorDependencies: {
     engineContext: engineCtx,
@@ -327,7 +557,9 @@ worldRuntime = createWorldActivationRuntime({
       transitionActive: transition.active,
       lastActivityAt: garageDressingScheduler.getLastActivityAt(),
     }),
-    releaseShadowMaterial: (resource) => lighting.releaseShadowMaterial(resource),
+    releaseShadowMaterial: (resource) => lighting.releaseShadowMaterial(
+      legacyPort<THREE.Material>(resource),
+    ),
     acquireBackgroundWork: (kind, stillValid) =>
       garageIdleWorkCoordinator.acquire(kind, stillValid),
   },
@@ -335,12 +567,12 @@ worldRuntime = createWorldActivationRuntime({
   setSceneWorldActive: (root, active) => garagePhasePresentation.setWorldActive(root, active),
   ensureCloudTextures: () => sky.ensureCloudTextures(),
   ensureCloudTexturesChunked: sky.ensureCloudTexturesChunked
-    ? (yieldFrame) => sky.ensureCloudTexturesChunked(yieldFrame)
+    ? (yieldFrame) => sky.ensureCloudTexturesChunked?.(yieldFrame) ?? Promise.resolve()
     : undefined,
   awaitInitialCloudWarm: () => bootCloudWarmP,
   applySkyPreset: (skyConfig) => sky.applyPreset(skyConfig, scene),
   setSun: (skyConfig) => lighting.setSun(sky.sunDir, skyConfig),
-  getFogDensity: () => scene.fog?.density ?? 0,
+  getFogDensity: () => scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0,
   onFogDensityChanged: (density) => { baseFogDensity = density; },
   canCreateCollider: () => isSoloBattleRuntimeReady(),
   createCollider: (next) => createCollider(game, next),
@@ -351,7 +583,7 @@ worldRuntime = createWorldActivationRuntime({
     hud.buildMinimap(next.heightField, next.getMinimapFeatures(), next.config.minimap,
       textured ? minimapSnapCtx() : null);
   },
-  loadMinimapAsset: (next, url) => hud.buildMinimapFromAsset(next.heightField, url),
+  loadMinimapAsset: (next, url) => hud?.buildMinimapFromAsset(next.heightField, url) ?? false,
   compilePrograms: (root) => forwardProgramWarm.compile(root),
   linkerBreathingSlices: (maxSlices) => forwardProgramWarm.linkerBreathingSlices(maxSlices),
   updateShadowFrustums: () => lighting.updateFrustums?.(),
@@ -370,7 +602,14 @@ const prefetchWorld = worldRuntime.prefetch;
 const cancelBackgroundWorldBuildsExcept = worldRuntime.cancelBackgroundExcept;
 
 /** World raycast that is safe before any battlefield exists. */
-function worldRaycast(o, d, m) { return worldRuntime.raycast(o, d, m); }
+function worldRaycast(origin: THREE.Vector3, direction: THREE.Vector3, maxDistance: number) {
+  return legacyPort<{
+    point: THREE.Vector3;
+    normal: THREE.Vector3;
+    dist: number;
+    kind: string;
+  } | null>(worldRuntime.raycast(origin, direction, maxDistance));
+}
 
 // --- game state + tanks -----------------------------------------------------
 // Device QA: `?debug=1` opts a production build into the same bounded flight
@@ -381,19 +620,19 @@ const diagnosticsRequested = import.meta.env.DEV || debugModeRequested() || navi
 const traceRequested = import.meta.env.DEV || debugModeRequested();
 const devTrace = traceRequested
   ? (await import('./dev/perfTrace.ts')).createDevTrace({
-    renderer,
+    renderer: legacyPort(renderer),
     enabled: true,
     traceMode: import.meta.env.DEV ? 'development' : 'production-qa',
   })
   : null;
 const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
 installBattleRecords(bus);
-const game = createGameState();
+const game = legacyPort<MainGameState>(createGameState());
 const rosterPresentation = createRosterPresentation({
-  getVehicleName: (specId) => getSpec(specId)?.name,
+  getVehicleName: (specId) => legacyPort<MainEntity['spec']>(getSpec(specId))?.name,
   getTier: tierNumeral,
 });
-const playerShellLog = [];
+const playerShellLog: unknown[] = [];
 const botPressure = { enemyShells: 0, aimedAtPlayer: 0, hitsOnPlayer: 0, dmgOnPlayer: 0 };
 // Randomized rosters made the two-entry detached bot cache a poor hit-rate
 // trade: it retained complete procedural tank graphs, paint canvases and GPU
@@ -403,8 +642,8 @@ const botPressure = { enemyShells: 0, aimedAtPlayer: 0, hitsOnPlayer: 0, dmgOnPl
 const battleVisualPool = createBattleVisualPool({
   capacity: 0,
 });
-game._battleVisualPool = battleVisualPool;
-devTrace?.configure({ game });
+game._battleVisualPool = legacyPort(battleVisualPool);
+devTrace?.configure({ game: legacyPort(game) });
 spawnTanks(game, engineCtx);
 // The staged default battle (screenshot contract + first BATTLE press) needs a
 // world for its spawn points, so it is staged by ensureWorld() rather than
@@ -427,8 +666,8 @@ let battleWarmGeneration = 0;
 // instance before any consumer can emit an effect. The typed owner keeps code
 // intent separate from GPU construction and makes either failure retryable
 // without a page refresh.
-const fxRuntimeAccess = createFxRuntimeAccess({
-  loadModule: () => import('./fx/effects.js'),
+const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
+  loadModule: async () => legacyPort<MainFxModule>(await import('./fx/effects.js')),
   initialize: ({ createFx }) => {
     const live = createFx(engineCtx, hfProxy, { seed: 5000 });
     scene.add(live.group);
@@ -457,7 +696,7 @@ function requireFxRuntime() {
 // capture contexts (shotMode) and the pre-world boot keep the exact analytic
 // path so the frozen screenshot/metrology contracts are byte-identical. The
 // garage pedestal never conforms at all (rigid on its disc).
-const groundSampler = (x, z) => {
+const groundSampler = (x: number, z: number) => {
   const world = currentWorld();
   return world && !shotMode && world.heightField.getHeightAtFast
     ? world.heightField.getHeightAtFast(x, z)
@@ -471,10 +710,11 @@ for (const ent of game.allTanks) {
 }
 
 // De-track visuals: thrown/repaired track bands follow the module state.
-bus.on('module:state', (ev) => {
+bus.on('module:state', (payload) => {
+  const ev = legacyPort<{ module: string; id: string; state: string }>(payload);
   if (ev.module !== 'trackL' && ev.module !== 'trackR') return;
   const t = game.tankById.get(ev.id);
-  if (t && t.visual.setTrackState) t.visual.setTrackState(ev.module, ev.state === 'red');
+  if (t?.visual?.setTrackState) t.visual.setTrackState(ev.module, ev.state === 'red');
 });
 
 // --- garage stage (12 m disc pad + 2 integration-owned spotlights) -----------
@@ -507,9 +747,9 @@ const perfHud = createPerfDiagnosticsAccess(async () => {
     renderer,
     scene,
     camera,
-    lighting,
-    post,
-    game,
+    lighting: legacyPort(lighting),
+    post: legacyPort(post),
+    game: legacyPort(game),
     getWorld: currentWorld,
     getNetworkTelemetry: () => networkSession.diagnostics(),
     resolvePresetName,
@@ -530,11 +770,11 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   stageRoot: garageStage.group,
   dressingRoot: garageDressing.group,
   garagePosition: GARAGE_POS,
-  lighting,
+  lighting: legacyPort(lighting),
   sunDirection: sky.sunDir,
   getSkyConfig: () => {
     const world = currentWorld();
-    return (world ? world.config.sky : getMapConfig(worldRuntime.pendingMapId).sky) || {};
+    return legacyPort(world ? world.config.sky : getMapConfig(worldRuntime.pendingMapId).sky) || {};
   },
   getGroundHeight: (x, z) => hfProxy.getHeightAt(x, z),
   getPhase: () => game.phase,
@@ -550,7 +790,7 @@ const placeGarage = garagePhasePresentation.place;
 
 // The repair bays and component displays remain normal garage content, but
 // their complete visual stream is owned by a typed quiet-window scheduler.
-const requestQuietIdle = (callback) => {
+const requestQuietIdle = (callback: IdleRequestCallback) => {
   if (window.requestIdleCallback) return window.requestIdleCallback(callback);
   return setTimeout(callback, 800);
 };
@@ -580,14 +820,14 @@ const battleIntent = createBattleIntentRuntime({
   prefetchWorld,
   ensureTankBuilders,
   planRoster: (specId) => planBattleParticipantIds(game, specId, true),
-  getSpec,
+  getSpec: legacyPort(getSpec),
   prebakeSharedTextures,
   createBudgetYield: createFrameBudgetYielder,
   anisotropy: engineCtx.anisotropy ?? 4,
   setCamoBiome,
   clearCamoOverrides,
   setCamoOverride,
-  applyCamoPatterns: applyCamoPatternsChunked,
+  applyCamoPatterns: legacyPort(applyCamoPatternsChunked),
   preloadBattleVisuals: () => battleVisualStreamerAccess.preload(),
   preloadAudio: () => audio.preload(),
   preloadSettings: () => settings.preload(),
@@ -597,9 +837,9 @@ const battleIntent = createBattleIntentRuntime({
   preloadSoloBattle: () => preloadSoloBattleRuntime(),
   preloadBattleClient: () => preloadBattleClientRuntime(),
   preloadKillcam: () => preloadKillcamModule(),
-  ensureFxRuntime,
+  ensureFxRuntime: legacyPort(ensureFxRuntime),
   preloadMinimap: (mapId) => ensureBattleHud()
-    .then(() => hud.preloadMinimapAsset(minimapAssetUrl(mapId))),
+    .then(() => hud?.preloadMinimapAsset(minimapAssetUrl(mapId))),
 });
 
 // Garage vehicle selection now crosses one typed lifecycle boundary. The
@@ -613,7 +853,7 @@ const pedestal = createGaragePedestalRuntime({
   residentLimit: residentLimits.pedestalVisuals,
   anisotropy: engineCtx.anisotropy ?? 4,
   createVisual: (specId, options) => createTank(specId, engineCtx, options),
-  getSpec,
+  getSpec: legacyPort(getSpec),
   ensureTankBuilder,
   ensureTankBuilders,
   prebakeSharedTextures,
@@ -636,7 +876,7 @@ const pedestal = createGaragePedestalRuntime({
   acquireBackgroundWork: (kind, stillValid) =>
     garageIdleWorkCoordinator.acquire(kind, stillValid),
   invalidatePresentation: () => invalidateGaragePresentation(),
-  debugTarget: typeof window !== 'undefined' ? window : null,
+  debugTarget: legacyPort(typeof window !== 'undefined' ? window : null),
 });
 
 const noteGarageActivity = () => {
@@ -696,7 +936,7 @@ function garageCameraPose() {
 }
 
 // --- MAP-CONFIG WIRING: map switching --------------------------------------
-function buildWorldMinimap(next, textured = true) {
+function buildWorldMinimap(next: MainWorld, textured = true) {
   worldRuntime.buildMinimap(next, textured);
 }
 
@@ -708,11 +948,15 @@ function prepareBattleWorldServices(next = currentWorld()) {
   worldRuntime.prepareBattleServices(next);
 }
 
-function switchMap(mapId) {
+function switchMap(mapId: string) {
   return worldRuntime.switchMap(mapId);
 }
 
-function ensureWorld(mapId, onProgress = null, opts = null) {
+function ensureWorld(
+  mapId?: string | null,
+  onProgress?: ((fraction: number, label: string) => void) | null,
+  opts?: WorldActivationOptions | null,
+) {
   return worldRuntime.ensure(mapId, onProgress, opts);
 }
 
@@ -727,9 +971,13 @@ function ensureBattleStaged() {
   if (battleStaged || !world) return;
   battleStaged = true;
   setupBattle(game, selectedVehicle.id, world, { deferVisuals: true });
-  playerBattleActions.setTank(game.player.spec);
-  damagePanel.setTank(game.player.spec, game.player.visual);
-  damagePanel.setEquipment(game.player.equip); // EQUIPMENT SYSTEM: loadout readout
+  const player = game.player;
+  if (!player || !playerBattleActions || !damagePanel) {
+    throw new Error('staged battle did not create its player presentation');
+  }
+  playerBattleActions.setTank(legacyPort(player.spec));
+  damagePanel.setTank(player.spec, player.visual);
+  damagePanel.setEquipment(player.equip); // EQUIPMENT SYSTEM: loadout readout
   for (const ent of game.allTanks) {
     if (ent.visual && ent.visual.setGroundSampler) ent.visual.setGroundSampler(groundSampler);
   }
@@ -744,7 +992,7 @@ function ensureBattleStaged() {
  * The garage bay is fully sealed, so none of it was ever visible from there.
  * @param {boolean} on true = dormant (garage), false = live (battle/shots)
  */
-function setWorldDormant(on) {
+function setWorldDormant(on: boolean) {
   worldRuntime.setDormant(on);
 }
 
@@ -762,13 +1010,15 @@ function minimapSnapCtx() {
 // boot r8: the minimap build (a real orthographic top-down capture of the
 // battlefield) moved to activateWorld — the HUD is hidden in the garage, so
 // nothing on the boot path can see it.
-let hud = null;
-let damagePanel = null;
+let hud: MainHudRuntime | null = null;
+let damagePanel: MainDamagePanelRuntime | null = null;
+const currentHud = (): MainHudRuntime | null => hud;
+const currentDamagePanel = (): MainDamagePanelRuntime | null => damagePanel;
 const battleHudAccess = createBattleHudAccess(bus, engineCtx);
 async function ensureBattleHud() {
   const runtime = await battleHudAccess.preload();
-  hud = runtime.hud;
-  damagePanel = runtime.damagePanel;
+  hud = legacyPort<MainHudRuntime>(runtime.hud);
+  damagePanel = legacyPort<MainDamagePanelRuntime>(runtime.damagePanel);
   worldRuntime.queueMinimap();
   return runtime;
 }
@@ -783,7 +1033,7 @@ const garageMaps = [
     return { id, name: c.name, thumb: MAP_THUMBS[id] || '', hero: MAP_HEROES[id] || '' };
   }),
 ];
-let networkRoomCoordinator = null;
+let networkRoomCoordinator: NetworkRoomCoordinator | null = null;
 const {
   loadPlayMenuModule,
   preloadNetworkBattleModules,
@@ -793,7 +1043,7 @@ const {
 } = createBattleModuleAccess();
 
 const playSurface = createPlaySurfaceRuntime({
-  loadMenuModule: loadPlayMenuModule,
+  loadMenuModule: legacyPort(loadPlayMenuModule),
   createMenuOptions: () => ({
       maps: garageMaps,
       getSelection: () => ({
@@ -802,14 +1052,16 @@ const playSurface = createPlaySurfaceRuntime({
         equipment: loadSelectedEquipment(garage.getSelected(), getSpec(garage.getSelected())),
         camo: getMultiplayerCamoSelection(garage.getSelected()),
       }),
-      isVehicleAllowed: (specId) => VISIBLE_TANK_IDS.includes(specId),
-      isCamoAllowed: (camo) => CAMO_PATTERN_IDS.includes(camo),
-      getCamoName: (camo) => CAMO_PATTERN_LABEL[camo] || 'Factory',
-      getVehicleName: (specId) => getSpec(specId).name,
-      onNetworkStart: (request) => networkBattleLauncher.beginPrivate(request),
-      onNetworkClose: (reason) => closeNetworkMatch(reason || 'room_closed'),
-      onRankedStart: (request) => networkBattleLauncher.beginRanked(request),
-      onLobbyChange: (context) => networkRoomCoordinator?.handleLobbyChange(context),
+      isVehicleAllowed: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
+      isCamoAllowed: (camo: string) => CAMO_PATTERN_IDS.includes(camo),
+      getCamoName: (camo: string) => CAMO_PATTERN_LABEL[
+        legacyPort<keyof typeof CAMO_PATTERN_LABEL>(camo)
+      ] || 'Factory',
+      getVehicleName: (specId: string) => legacyPort<MainEntity['spec']>(getSpec(specId)).name,
+      onNetworkStart: (request: unknown) => networkBattleLauncher.beginPrivate(legacyPort(request)),
+      onNetworkClose: (reason: string) => closeNetworkMatch(reason || 'room_closed'),
+      onRankedStart: (request: unknown) => networkBattleLauncher.beginRanked(legacyPort(request)),
+      onLobbyChange: (context: unknown) => networkRoomCoordinator?.handleLobbyChange(legacyPort(context)),
   }),
   getSelectedSpecId: () => garage.getSelected(),
   getSelectedMapId: () => garage.getSelectedMap(),
@@ -837,10 +1089,12 @@ bus.on('ui:battleStart', () => {
   playSurface.hideForBattle();
 });
 
-const garage = await bootStage('ui', () => createGarage({
+const garage = legacyPort<MainGarageRuntime>(await bootStage('ui', () => createGarage(legacyPort<
+  Parameters<typeof createGarage>[0]
+>({
   specs: VISIBLE_TANK_IDS.map(getSpec),
   bus,
-  onSelect: (specId) => {
+  onSelect: (specId: string) => {
     battleIntent.invalidateMapPlan();
     selectedVehicle.select(specId);
     pedestal.set(specId);
@@ -848,8 +1102,10 @@ const garage = await bootStage('ui', () => createGarage({
     networkRoomCoordinator?.syncVehicle(specId);
     networkRoomCoordinator?.syncPendingLobbySelection();
   },
-  onBattle: (specId, mapId, options) => beginBattleEntry(specId, mapId, options), // loading screen owns entry
-  onPlayRequest: (request) => playSurface.open(request).catch((error) => {
+  onBattle: (specId: string, mapId: string, options: unknown) => (
+    beginBattleEntry(specId, mapId, legacyPort(options))
+  ), // loading screen owns entry
+  onPlayRequest: (request: unknown) => playSurface.open(legacyPort(request)).catch((error) => {
     console.error('[play-menu] failed to open', error);
   }),
   onPlayModeIntent: playSurface.preload,
@@ -863,9 +1119,9 @@ const garage = await bootStage('ui', () => createGarage({
   camo: {
     patterns: CAMO_PATTERN_IDS,
     label: CAMO_PATTERN_LABEL,
-    get: (specId) => getCamoSelection(specId),
-    getCustom: (specId) => getCustomCamoSelection(specId),
-    set: (specId, patternId) => {
+    get: (specId: string) => getCamoSelection(specId),
+    getCustom: (specId: string) => getCustomCamoSelection(specId),
+    set: (specId: string, patternId: string) => {
       setCamoSelection(specId, patternId);
       // Keep the exact high-resolution paint, but yield the triggering UI
       // frame before a cold pattern bake instead of blocking the click.
@@ -875,8 +1131,8 @@ const garage = await bootStage('ui', () => createGarage({
       networkRoomCoordinator?.syncCamo(specId);
       networkRoomCoordinator?.syncPendingLobbySelection();
     },
-    setCustom: (specId, value) => {
-      setCustomCamoSelection(specId, value);
+    setCustom: (specId: string, value: unknown) => {
+      setCustomCamoSelection(specId, legacyPort(value));
       camoSweepP = applyCamoPatternsChunked({
         priorityIds: [specId], onlySpecIds: [specId],
       });
@@ -889,7 +1145,7 @@ const garage = await bootStage('ui', () => createGarage({
   // wear on the highlighted battlefield. 'random' falls back to verdant
   // inside setCamoBiome; startBattle re-calls setCamoBiome(world.mapId) after
   // the roll, so battle state is always correct regardless.
-  onMapSelect: (mapId) => {
+  onMapSelect: (mapId: string) => {
     battleIntent.invalidateMapPlan();
     if (mapId !== 'random') worldRuntime.setPendingMapId(mapId);
     cancelBackgroundWorldBuildsExcept(mapId === 'random' ? null : mapId);
@@ -902,7 +1158,7 @@ const garage = await bootStage('ui', () => createGarage({
     });
     networkRoomCoordinator?.syncPendingLobbySelection();
   },
-}));
+}))));
 
 // PRE-BATTLE LOADING SCREEN (src/ui/battleLoad.ts): map art + both rosters +
 // real build progress + countdown. Created here so its stylesheet/DOM is warm
@@ -926,11 +1182,11 @@ const audio = await bootStage('audio', () => {
 // One typed owner resolves both the camera anchor and the articulated physical
 // bore. Solo, private-room and diagnostic presentation therefore share the
 // same reticle, obstruction and penetration contract.
-let playerBattleActions = null;
-function playerTargetVisible(ent) {
+let playerBattleActions: PlayerBattleActions | null = null;
+function playerTargetVisible(ent: MainEntity) {
   return !game.spotting || game.spotting.isSpotted(ent.id, 'player', game.player);
 }
-const battleClientAccess = createBattleClientAccess(() => ({
+const battleClientAccess = createBattleClientAccess(() => legacyPort({
   getGame: () => game,
   getRig: () => rig,
   worldRaycast,
@@ -954,12 +1210,12 @@ const {
 } = battleClientAccess;
 const preloadBattleClientRuntime = battleClientAccess.preload;
 
-const rig = createCameraRig(camera, {
+const rig = legacyPort<MainCameraRigRuntime>(createCameraRig(camera, legacyPort({
   heightField: hfProxy,
   raycast: worldRaycast,
   aimRaycast: aimController.raycast,
   getPlayer: () => game.player,
-});
+})));
 
 // GARAGE SHOWROOM CAMERA: auto-framed hero pose + damped drag orbit
 // (engine/cameraRig.js createShowroomOrbit). This adapter owns the on/off
@@ -968,7 +1224,7 @@ const rig = createCameraRig(camera, {
 // own camera owners. startBattle()/enterGarage() call stop()/start().
 const showroom = createGarageShowroomRuntime({
   camera,
-  rig,
+  rig: legacyPort(rig),
   element: renderer.domElement,
   getSubject: () => pedestal.current?.root || null,
   getStageRect: () => (garage.getStageRect ? garage.getStageRect() : null),
@@ -991,22 +1247,24 @@ const showroom = createGarageShowroomRuntime({
 // when the server-aim hit is CLOSE, keeps the obstacle readable exactly like
 // WoT's scope does. Range-limited (18 m, quadratic decay) so it can never
 // relight the midfield; intensity eases in below ~20 m aim distance.
-const sniperFill = createSniperFillRuntime(scene, camera, rig);
+const sniperFill = createSniperFillRuntime(scene, camera, legacyPort(rig));
 
 // --- KILL-CAM (src/game/killcam.js) -----------------------------------------
 // End-of-battle cinematic: slow-mo tracer replay of the killing shell + x-ray
 // module breakdown. Capture hooks live in the KILL-CAM sections of state.js
 // (game.killcam); the camera is driven only via rig.setExternalPose.
 const killcamAccess = createKillcamAccess({
-  loadModule: () => import('./game/killcam.js'),
+  loadModule: async () => legacyPort<{ createKillCam: (...args: unknown[]) => MainKillcamRuntime }>(
+    await import('./game/killcam.js'),
+  ),
   initialize: ({ createKillCam }) => {
-    const live = createKillCam({
+    const live = createKillCam(legacyPort({
       scene, camera, rig, heightField: hfProxy, getPlayer: () => game.player,
-      getEntity: (id) => game.tankById.get(id),
+      getEntity: (id: string) => game.tankById.get(id),
       getWorld: currentWorld, // r6: flight-cam LOS solve (foliage/terrain/props)
       // Replay impact uses the real pooled destruction effects.
       getFx: () => fxRuntimeAccess.current,
-    });
+    }));
     live.bindBus(bus);
     // Solo fixed-step capture gets the direct implementation after entry;
     // main/debug consumers keep the stable access facade below.
@@ -1026,7 +1284,7 @@ game.killcam = killcam;
  * outside hud.root, so it gets its own visibility veil.
  * @param {boolean} on veiled (replay running)
  */
-function veilHud(on) {
+function veilHud(on: boolean) {
   // Studio and garage are valid before the battle-only HUD graph exists.
   if (hud?.root) hud.root.style.display = on ? 'none' : '';
   const sr = hud?.shotInfo?.statsRoot;
@@ -1037,7 +1295,7 @@ function veilHud(on) {
 // Discrete shell, ERA, camera-recoil, prop and Garage-residency reactions have
 // one typed owner. Its callbacks resolve the late network session lazily, so
 // the pristine composition root keeps the existing startup order.
-createCombatFeedbackRuntime({
+createCombatFeedbackRuntime(legacyPort({
   bus,
   game,
   rig,
@@ -1046,18 +1304,24 @@ createCombatFeedbackRuntime({
   hasNetworkMatch: () => !!networkSession.match,
   shotRecoilScale,
   setDestroyedEventSink,
-  trimGarageTanks: (capacity) => pedestal.trim(capacity),
+  trimGarageTanks: (capacity: number) => pedestal.trim(capacity),
   getDeviceTier,
-});
+}));
 
 sky.applyFog(scene);
 // High-zoom de-fog (WoT sniper behavior): remember the base density so the
 // render loop can scale it by FOV without mutating the sky's baseline.
-let baseFogDensity = scene.fog.density; // updated on map switch (sky preset)
-const post = createPost(renderer, scene, camera);
-const viewport = createViewportRuntime({ container, renderer, camera, post, lighting });
-const forwardProgramWarm = createForwardProgramWarmOwner({
+let baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
+const post = legacyPort<MainPostRuntime>(createPost(renderer, scene, camera));
+const viewport = createViewportRuntime({
+  container,
   renderer,
+  camera,
+  post: legacyPort(post),
+  lighting: legacyPort(lighting),
+});
+const forwardProgramWarm = createForwardProgramWarmOwner({
+  renderer: legacyPort(renderer),
   scene,
   camera,
   getTarget: () => post?.composer?.renderTarget1 || null,
@@ -1139,40 +1403,40 @@ const endOverlay = createEndOverlayRuntime({
 // Input — routed through the rebindable action layer (src/game/input.js) and
 // the settings panel (src/ui/settings.js). Zoom is the zoomIn/zoomOut actions (wheel by default).
 // ---------------------------------------------------------------------------
-const debugFlags = { forceFire: false }; // headless-test hook (window.__DEBUG.flags)
-const battleResultPresentation = createBattleResultPresentationRuntime({
+const debugFlags: { forceFire: boolean; lastEndFlow?: unknown } = { forceFire: false };
+const battleResultPresentation = createBattleResultPresentationRuntime(legacyPort({
   game,
   killcam,
   rig,
   veilHud,
   showEndOverlay: endOverlay.show,
-  emitPresented: (result) => bus.emit('battle:presented', { result }),
+  emitPresented: (result: unknown) => bus.emit('battle:presented', { result }),
   exitPointerLock: () => { document.exitPointerLock?.(); },
-  recordFlow: (receipt) => { debugFlags.lastEndFlow = receipt; },
-});
+  recordFlow: (receipt: unknown) => { debugFlags.lastEndFlow = receipt; },
+}));
 
-const input = createInput({ lockElement: renderer.domElement });
+const input = legacyPort<MainInputRuntime>(createInput({ lockElement: renderer.domElement }));
 bus.on('ui:debugHud', (payload) => {
-  perfHud.setVisible(!!payload?.on);
+  perfHud.setVisible(!!legacyPort<{ on?: boolean }>(payload).on);
 });
 const armorAimOverlay = createArmorAimOverlayAccess();
 const battleVisualStreamerAccess = createBattleVisualStreamerAccess({
   game,
   scene,
-  renderer,
+  renderer: legacyPort(renderer),
   anisotropy: engineCtx.anisotropy ?? 4,
   ensureTankBuilders,
-  nextStagedBake,
-  ensureStagedVisuals,
-  getSpec,
+  nextStagedBake: legacyPort(nextStagedBake),
+  ensureStagedVisuals: legacyPort(ensureStagedVisuals),
+  getSpec: legacyPort(getSpec),
   prebakeSharedTextures,
-  armorAimOverlay,
-  forwardProgramWarm,
+  armorAimOverlay: legacyPort(armorAimOverlay),
+  forwardProgramWarm: legacyPort(forwardProgramWarm),
   recordTiming(timing) {
     if (typeof window !== 'undefined') (window.__VISUAL_LOAD_TIMINGS ||= []).push(timing);
   },
 });
-let battleVisuals = null;
+let battleVisuals: BattleVisualStreamer | null = null;
 async function ensureBattleVisualStreamer() {
   battleVisuals = await battleVisualStreamerAccess.preload();
   return battleVisuals;
@@ -1195,9 +1459,9 @@ const settings = createSettingsAccess({
 });
 garage.attachSettingsControl(settings.gear);
 let mobileSoundMuted = false;
-let touchControls = null;
-let mobileAutoAim = null;
-let mobileAutoAimPromise = null;
+let touchControls: TouchControlsRuntime | null = null;
+let mobileAutoAim: MainMobileAutoAimRuntime | null = null;
+let mobileAutoAimPromise: Promise<MainMobileAutoAimRuntime> | null = null;
 const touchControlsAccess = createTouchControlsAccess({
   input, bus,
   isBattleActive: () => game.phase === 'battle',
@@ -1220,7 +1484,7 @@ async function ensureTouchControls() {
   return touchControls;
 }
 devTrace?.configure({
-  input,
+  input: legacyPort(input),
   getContext: () => ({
     paused: settings.isOpen(),
     killcam: killcam.isActive(),
@@ -1237,18 +1501,18 @@ async function ensureMobileAutoAim() {
   if (mobileAutoAim) return mobileAutoAim;
   if (mobileAutoAimPromise) return mobileAutoAimPromise;
   mobileAutoAimPromise = import('./game/mobileAutoAimRuntime.ts').then((runtime) => {
-    mobileAutoAim = runtime.createMobileAutoAimRuntime({
+    mobileAutoAim = runtime.createMobileAutoAimRuntime(legacyPort({
       bus,
       input,
       camera,
       getPhase: () => game.phase,
       getTanks: () => game.tanks,
       getPlayer: () => game.player,
-      getTankById: (id) => game.tankById.get(id) || null,
+      getTankById: (id: string) => game.tankById.get(id) || null,
       isVisible: playerTargetVisible,
       pickTarget: pickMobileAutoAimTarget,
       targetCenter: mobileAutoAimCenter,
-    });
+    }));
     return mobileAutoAim;
   });
   mobileAutoAimPromise.catch(() => { mobileAutoAimPromise = null; });
@@ -1258,7 +1522,7 @@ async function ensureMobileAutoAim() {
 // Pointer-lock denial, recovery gestures, the cursor-aim notice, and touch
 // refresh now have one typed listener/timer owner outside the composition root.
 createPointerLockFeedbackRuntime({
-  input,
+  input: legacyPort(input),
   bus,
   canvas: renderer.domElement,
   audioResume: () => audio.resume(),
@@ -1278,9 +1542,9 @@ createPointerLockFeedbackRuntime({
 // Its ports are stable battle-client facades, so garage boot still transfers
 // no combat implementation and input remains inert outside a live battle.
 playerBattleActions = createPlayerBattleActions({
-  game,
+  game: legacyPort(game),
   bus,
-  input,
+  input: legacyPort(input),
   isSettingsOpen: () => settings.isOpen(),
   network: {
     isActive: () => !!networkSession.match,
@@ -1288,24 +1552,24 @@ playerBattleActions = createPlayerBattleActions({
     queueAction: (action) => networkSession.queueAction(action),
   },
   rules: {
-    selectShell: battleClientAccess.selectShell,
-    repairAllModules: battleClientAccess.repairAllModules,
-    magazineReloadDenialReason: battleClientAccess.magazineReloadDenialReason,
-    startMagazineReload: battleClientAccess.startMagazineReload,
-    activateSpecialAction: battleClientAccess.activateSpecialAction,
-    specialActionLocksShell: battleClientAccess.specialActionLocksShell,
+    selectShell: legacyPort(battleClientAccess.selectShell),
+    repairAllModules: legacyPort(battleClientAccess.repairAllModules),
+    magazineReloadDenialReason: legacyPort(battleClientAccess.magazineReloadDenialReason),
+    startMagazineReload: legacyPort(battleClientAccess.startMagazineReload),
+    activateSpecialAction: legacyPort(battleClientAccess.activateSpecialAction),
+    specialActionLocksShell: legacyPort(battleClientAccess.specialActionLocksShell),
     hasConsumableRule: battleClientAccess.hasConsumableRule,
-    cooldownRemaining: battleClientAccess.cooldownRemaining,
-    resetConsumableCooldowns: battleClientAccess.resetConsumableCooldowns,
-    startConsumableCooldown: battleClientAccess.startConsumableCooldown,
+    cooldownRemaining: legacyPort(battleClientAccess.cooldownRemaining),
+    resetConsumableCooldowns: legacyPort(battleClientAccess.resetConsumableCooldowns),
+    startConsumableCooldown: legacyPort(battleClientAccess.startConsumableCooldown),
   },
 });
 const playerFrameInput = createPlayerFrameInput({
-  input,
+  input: legacyPort(input),
   hasAmmo: playerBattleActions.hasAmmo,
   forceFire: () => !!debugFlags.forceFire,
 });
-const battlePresentation = createBattlePresentationRuntime({
+const battlePresentation = createBattlePresentationRuntime(legacyPort({
   game,
   camera,
   scene,
@@ -1315,11 +1579,11 @@ const battlePresentation = createBattlePresentationRuntime({
   isNetworkMatchActive: () => !!networkSession.match,
   getPedestalVisual: () => pedestal.current,
   isCinematicActive: () => rig.cinematicActive,
-});
-// The opaque deployment transition has one typed owner. main.js coordinates
+}));
+// The opaque deployment transition has one typed owner. main.ts coordinates
 // acquisition and phase changes; this runtime owns the exact shader, shadow,
 // terrain, FX and first-frame warm order plus cancellation/fallback policy.
-const soloBattleDeployment = createSoloBattleDeploymentRuntime({
+const soloBattleDeployment = createSoloBattleDeploymentRuntime(legacyPort({
   game,
   renderer,
   scene,
@@ -1344,10 +1608,10 @@ const soloBattleDeployment = createSoloBattleDeploymentRuntime({
   prepareRevealCamera: prepareBattleRevealCamera,
   getGeneration: () => battleWarmGeneration,
   advanceGeneration: () => ++battleWarmGeneration,
-  setPending: (pending) => { battleWarmPending = pending; },
-  setDestructionWarmed: (value) => { combatDestructionEffectsWarmed = value; },
+  setPending: (pending: boolean) => { battleWarmPending = pending; },
+  setDestructionWarmed: (value: boolean) => { combatDestructionEffectsWarmed = value; },
   devTrace,
-});
+}));
 // The same persisted setting owns both F8 and the Interface switch. The lazy
 // facade makes this available in production without adding ordinary-player
 // transfer or per-frame work.
@@ -1387,17 +1651,17 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
   },
 });
 const soloBattleStart = createSoloBattleStartAccess({
-  options: () => ({
+  options: () => legacyPort({
     state: {
       game,
       getPendingMapId: () => worldRuntime.pendingMapId,
       setSelectedSpecId: selectedVehicle.set,
       rememberSpecId: selectedVehicle.remember,
-      setShotMode: (value) => { shotMode = value; },
-      setCaptureHidden: (value) => perfHud.setCaptureHidden(value),
+      setShotMode: (value: boolean) => { shotMode = value; },
+      setCaptureHidden: (value: boolean) => perfHud.setCaptureHidden(value),
       setSimulationAccumulator: () => { battleFrame.resetSimulationAccumulator(); },
-      setBattleStaged: (value) => { battleStaged = value; },
-      setCamoSweep: (work) => { camoSweepP = Promise.resolve(work); },
+      setBattleStaged: (value: boolean) => { battleStaged = value; },
+      setCamoSweep: (work: Promise<void> | void) => { camoSweepP = Promise.resolve(work); },
     },
     world: {
       resolveMapId,
@@ -1421,42 +1685,42 @@ const soloBattleStart = createSoloBattleStartAccess({
       armorAim: armorAimOverlay,
       resetDriveAim: () => driveTestController.resetAim(),
       setCamoBiome,
-      lendPlayerVisual: (specId) => pedestal.lendToBattle(specId),
+      lendPlayerVisual: (specId: string) => pedestal.lendToBattle(specId),
       setupBattle,
       combatWarm,
       presentation: battlePresentation,
-      applyPlayerCamo: (specId) => applyCamoPatterns(specId),
-      applyRosterCamo: (options) => applyCamoPatternsChunked(options),
+      applyPlayerCamo: (specId: string) => applyCamoPatterns(specId),
+      applyRosterCamo: (options: unknown) => applyCamoPatternsChunked(legacyPort(options)),
     },
     ui: {
       hud: {
-        shotInfo: { setPlayer: (playerId) => hud.shotInfo.setPlayer(playerId) },
-        setMode: (mode) => hud.setMode(mode),
+        shotInfo: { setPlayer: (playerId: string) => hud?.shotInfo.setPlayer(playerId) },
+        setMode: (mode: string) => hud?.setMode(mode),
       },
       playerActions: playerBattleActions,
       damagePanel: {
-        setTank: (spec, visual) => damagePanel.setTank(spec, visual),
-        setEquipment: (equipment) => damagePanel.setEquipment(equipment),
+        setTank: (spec: unknown, visual: unknown) => damagePanel?.setTank(spec, visual),
+        setEquipment: (equipment: unknown) => damagePanel?.setEquipment(equipment),
       },
       hideGarage: () => garage.hide(),
       hideEndOverlay: endOverlay.hide,
       resetBattleResult: () => battleResultPresentation.reset(),
-      setGarageLighting: (active) => {
+      setGarageLighting: (active: boolean) => {
         setGarageSpots(active);
         setGarageSunTrim(active);
       },
-      emitPhaseChange: (phase) => bus.emit('phase:change', { phase }),
+      emitPhaseChange: (phase: string) => bus.emit('phase:change', { phase }),
       emitConsumableReset: () => bus.emit('ui:consumableReset', {}),
       rig,
       stopShowroom: () => showroom.stop(),
       openBattle,
     },
-    recordTrace: (trace) => {
+    recordTrace: (trace: unknown) => {
       if (typeof window !== 'undefined') window.__START_BATTLE_TIMINGS = trace;
     },
   }),
 });
-const soloBattleLoading = createSoloBattleLoadingRuntime({
+const soloBattleLoading = createSoloBattleLoadingRuntime(legacyPort({
   game,
   post,
   battleIntent,
@@ -1467,8 +1731,10 @@ const soloBattleLoading = createSoloBattleLoadingRuntime({
   lifecycle: battleEntryLifecycle,
   getPendingMapId: () => worldRuntime.pendingMapId,
   getMapConfig,
-  getMapThumb: (mapId) => MAP_HEROES[mapId] || MAP_THUMBS[mapId] || '',
-  hasCachedWorld: (mapId) => !!worldCache.get(mapId),
+  getMapThumb: (mapId: string) => MAP_HEROES[
+    legacyPort<keyof typeof MAP_HEROES>(mapId)
+  ] || MAP_THUMBS[legacyPort<keyof typeof MAP_THUMBS>(mapId)] || '',
+  hasCachedWorld: (mapId: string) => !!worldCache.get(mapId),
   getWorld: () => {
     const world = currentWorld();
     if (!world) throw new Error('solo battle loading requires an active world');
@@ -1484,9 +1750,9 @@ const soloBattleLoading = createSoloBattleLoadingRuntime({
   ensureTouchControls,
   preloadSettings: () => settings.preload(),
   preloadArmorAim: () => armorAimOverlay.preload(),
-  planRoster: (specId, randomRoster) =>
+  planRoster: (specId: string, randomRoster: boolean) =>
     planBattleParticipantIds(game, specId, randomRoster),
-  planCamoOverrides: (specId, mapId, randomRoster) =>
+  planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean) =>
     planBattleCamoOverrides(game, specId, mapId, randomRoster),
   ensureTankBuilders,
   preloadSoloAuthority: preloadSoloBattleRuntime,
@@ -1500,8 +1766,8 @@ const soloBattleLoading = createSoloBattleLoadingRuntime({
   getPedestalVisual: () => pedestal.current,
   prebakeSharedTextures,
   anisotropy: engineCtx.anisotropy ?? 4,
-  rosterRows: (team) => rosterPresentation.battleRows(game.tanks, team),
-  warmShotCards: (specIds) => hud.warmShotCards(specIds),
+  rosterRows: (team: string) => rosterPresentation.battleRows(game.tanks, team),
+  warmShotCards: (specIds: readonly string[]) => hud?.warmShotCards(specIds),
   getCamoSweep: () => camoSweepP,
   prepareRevealCamera: prepareBattleRevealCamera,
   resolveVisiblePreBattleSeconds,
@@ -1511,7 +1777,7 @@ const soloBattleLoading = createSoloBattleLoadingRuntime({
   scheduleDeferredWarm: scheduleDeferredCombatWarm,
   nextFrame,
   createLoadingYielder: createOpaqueLoadingYielder,
-});
+}));
 
 /**
  * Establish the exact camera pose that the loader fade will reveal. Covered
@@ -1524,45 +1790,54 @@ function prepareBattleRevealCamera() {
   rig.release();
   rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
 }
-const networkSession = createNetworkBrowserSessionRuntime({
+const networkSession = createNetworkBrowserSessionRuntime(legacyPort({
   getPlayer: () => game.player,
   isBattleActive: () => game.phase === 'battle',
   shouldPresentDisconnect: () => game.phase === 'battle' && !game.result,
   nextFrame,
-});
+}));
 
 // Persistent subject-owned FX resolve against the presentation entity the
 // player actually sees. Network entities take priority during online battles;
 // solo falls back to the fixed-step roster.
-function resolveFxSubject(id) {
+function resolveFxSubject(id: string) {
   return networkSession.resolveEntity(id) || game.tankById.get(id) || null;
 }
 
 const networkBattlePresentation = createNetworkBattlePresentationAccess({
-  options: () => ({
+  options: () => legacyPort({
     load: {
       battleLoad,
       audio,
       lighting,
       ensureBattleVisuals: ensureBattleVisualStreamer,
       nextFrame,
-      recordTrace: (trace) => {
+      recordTrace: (trace: unknown) => {
         if (typeof window !== 'undefined') window.__NETWORK_LOAD = trace;
       },
-      setAdaptiveSuspended: (value) => post.setAdaptiveSuspended(value),
+      setAdaptiveSuspended: (value: boolean) => post.setAdaptiveSuspended(value),
     },
     roster: {
-      getMap: (mapId) => {
+      getMap: (mapId: string) => {
         const cfg = getMapConfig(mapId);
-        return { name: cfg.name || mapId, thumb: MAP_HEROES[mapId] || MAP_THUMBS[mapId] || '', biome: mapId };
+        return {
+          name: cfg.name || mapId,
+          thumb: MAP_HEROES[legacyPort<keyof typeof MAP_HEROES>(mapId)]
+            || MAP_THUMBS[legacyPort<keyof typeof MAP_THUMBS>(mapId)] || '',
+          biome: mapId,
+        };
       },
-      rows: (players, team, viewerId) => rosterPresentation.lobbyRows({ players }, team, viewerId),
-      vehicleName: (specId) => getSpec(specId)?.name || specId,
-      emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
+      rows: (players: unknown, team: string, viewerId: string) => (
+        rosterPresentation.lobbyRows({ players: legacyPort(players) }, team, viewerId)
+      ),
+      vehicleName: (specId: string) => legacyPort<MainEntity['spec']>(getSpec(specId))?.name || specId,
+      emitBattleStart: (payload: unknown) => bus.emit('ui:battleStart', payload),
       setCamoBiome,
     },
     entry: {
-      acquire: (options) => battleEntryAcquisition.acquireNetwork(options),
+      acquire: (options: unknown) => battleEntryAcquisition.acquireNetwork(
+        legacyPort<Parameters<typeof battleEntryAcquisition.acquireNetwork>[0]>(options),
+      ),
       loadModules: () => Promise.all([
         preloadNetworkBattleModules(),
         preloadBattleClientRuntime(),
@@ -1577,27 +1852,31 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
         battleWarm.preload(),
         audio.warmBattleEvents(),
       ]).then(([modules]) => modules),
-      loadWorld: (mapId, onProgress) => ensureWorld(mapId, onProgress),
-      publishMatch: (match) => networkSession.publishMatch(match),
+      loadWorld: (mapId: string, onProgress: (fraction: number, label: string) => void) => (
+        ensureWorld(mapId, onProgress)
+      ),
+      publishMatch: (match: unknown) => networkSession.publishMatch(legacyPort(match)),
       getMatch: () => networkSession.match,
     },
     bridge: {
-      installInputRuntime: (factory) => networkSession.ensureInputRuntime(factory),
-      createStatus: (factory) => factory(),
-      publishStatus: (status) => networkSession.publishStatus(status),
+      installInputRuntime: (factory: unknown) => networkSession.ensureInputRuntime(legacyPort(factory)),
+      createStatus: (factory: () => unknown) => factory(),
+      publishStatus: (status: unknown) => networkSession.publishStatus(legacyPort(status)),
       attachRecovery: () => networkSession.attachRecovery(),
-      create: (factory, request, spectator) => factory({
+      create: (factory: (options: unknown) => unknown, request: Record<string, unknown>, spectator: boolean) => factory({
         engineCtx,
         game,
         bus,
         viewerId: request.viewerId,
         spectator,
         worldCollision: currentWorld(),
-        clearVehicleDecals: (visual) => requireFxRuntime().clearVehicleDecals(visual),
+      clearVehicleDecals: (visual: unknown) => legacyPort<{
+        clearVehicleDecals(target: unknown): void;
+      }>(requireFxRuntime()).clearVehicleDecals(visual),
       }),
-      publish: (bridge) => networkSession.publishBridge(bridge),
+      publish: (bridge: unknown) => networkSession.publishBridge(legacyPort(bridge)),
       groundSampler,
-      waitForInitialSnapshot: (request) => networkSession.waitForInitialSnapshot(request),
+      waitForInitialSnapshot: (request: unknown) => networkSession.waitForInitialSnapshot(legacyPort(request)),
       waitForPeerReadiness: () => networkSession.waitForPeerReadiness(),
     },
     warm: {
@@ -1605,34 +1884,34 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
       terrain: () => {
         const world = currentWorld();
         if (!world) throw new Error('network terrain warm requires an active world');
-        return battleWarm.warmBattleTerrainTiles({
+        return battleWarm.warmBattleTerrainTiles(legacyPort({
           game, world, yieldForBudget: createFrameBudgetYielder(16),
-        });
+        }));
       },
-      wrecks: (bridge) => battleWarm.warmNetworkWrecks({
+      wrecks: (bridge: { entities: Map<string, unknown> }) => battleWarm.warmNetworkWrecks(legacyPort({
         entities: bridge.entities.values(),
-        prebakeBurntSteps,
+        prebakeBurntSteps: legacyPort(prebakeBurntSteps),
         anisotropy: engineCtx.anisotropy ?? 4,
         renderer,
         scene,
         camera,
-        compilePrograms: (root) => forwardProgramWarm.compile(root),
+      compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
         warmRender,
-      }),
-      openingEffects: (fx, bridge) => {
+      })),
+      openingEffects: (fx: unknown, bridge: { entities: Map<string, { visual?: { root?: THREE.Object3D } }> }) => {
         const decalVisual = [...bridge.entities.values()]
           .find((entity) => entity.visual?.root)?.visual || null;
-        return battleWarm.warmNetworkOpeningEffects({
+        return battleWarm.warmNetworkOpeningEffects(legacyPort({
           fx,
           post,
           camera,
           shells: game.shells,
           decalVisual,
-          compilePrograms: (root) => forwardProgramWarm.compile(root),
+          compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
           warmRender,
-        });
+        }));
       },
-      shotCards: (specIds) => hud.warmShotCards(specIds),
+      shotCards: (specIds: readonly string[]) => hud?.warmShotCards(specIds),
       compile: async () => {
         forwardProgramWarm.compile(scene);
         for (const _ of forwardProgramWarm.linkerBreathingSlices(24)) await nextFrame();
@@ -1640,30 +1919,35 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
     },
     presentation: {
       resetRoundState: resetNetworkBattleState,
-      setGarageLighting: (active) => {
+      setGarageLighting: (active: boolean) => {
         setGarageSpots(active);
         setGarageSunTrim(active);
       },
-      activate: (request) => networkBattleActivation.activate(request),
+      activate: (request: unknown) => networkBattleActivation.activate(legacyPort(request)),
       runBlackWatchdog: () => runSceneBlackWatchdog(renderer, scene, camera),
     },
   }),
 });
 
-const networkBattleLauncher = createNetworkBattleLaunchRuntime({
+const networkBattleLauncher = createNetworkBattleLaunchRuntime(legacyPort({
   lifecycle: battleEntryLifecycle,
   battleLoad,
   audio,
   getMatch: () => networkSession.match,
   getRoomCoordinator: () => networkRoomCoordinator,
   getWorldCollision: currentWorld,
-  getMapPresentation: (mapId, fallback) => {
+  getMapPresentation: (mapId: string | null, fallback: string) => {
     if (!mapId) return { name: fallback, thumb: '', biome: 'none' };
     const cfg = getMapConfig(mapId);
-    return { name: cfg.name || fallback, thumb: MAP_HEROES[mapId] || MAP_THUMBS[mapId] || '', biome: mapId };
+    return {
+      name: cfg.name || fallback,
+      thumb: MAP_HEROES[legacyPort<keyof typeof MAP_HEROES>(mapId)]
+        || MAP_THUMBS[legacyPort<keyof typeof MAP_THUMBS>(mapId)] || '',
+      biome: mapId,
+    };
   },
   rosterRows: rosterPresentation.lobbyRows,
-  emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
+  emitBattleStart: (payload: unknown) => bus.emit('ui:battleStart', payload),
   resetBattleState: resetNetworkBattleState,
   presentBattle: networkBattlePresentation.present,
   loadPrivateMatch: preloadPrivateMatchHandoffModule,
@@ -1672,11 +1956,11 @@ const networkBattleLauncher = createNetworkBattleLaunchRuntime({
   clearNetworkRound: () => networkSession.clearRound(),
   closeMatch: closeNetworkMatch,
   enterGarage: () => garageReturn.enter(),
-  setNetworkStatus: (status) => networkSession.status?.set(status),
-  recordEntryFailure: (failure) => {
+  setNetworkStatus: (status: unknown) => networkSession.status?.set(legacyPort(status)),
+  recordEntryFailure: (failure: unknown) => {
     if (typeof window !== 'undefined') window.__NETWORK_ENTRY_FAILURE = failure;
   },
-});
+}));
 
 // Joined-room intent is stronger than browsing the picker but weaker than a
 // round start. The typed owner coalesces repeated room-state packets, retries
@@ -1702,17 +1986,17 @@ networkRoomCoordinator = createNetworkRoomCoordinator({
   hasResult: () => !!game.result,
   isKillcamActive: () => killcam.isActive(),
   isSpectator: () => networkSession.spectator,
-  input,
+  input: legacyPort(input),
   setGarageStatus: (status) => garage.setRoomStatus(status),
   emitRoomState: (payload) => bus.emit('network:roomState', payload),
   preloadLobbyIntent: networkLobbyPreloader.preload,
-  equipmentFor: (specId) => loadSelectedEquipment(specId, getSpec(specId)),
+  equipmentFor: (specId: string) => loadSelectedEquipment(specId, getSpec(specId)),
   camoFor: getMultiplayerCamoSelection,
   onRematch: (state) => networkBattleLauncher.beginRematch(state),
   onClose: (reason) => closeNetworkMatch(reason),
 });
 
-bus.on('phase:change', () => networkRoomCoordinator.syncChatVisibility());
+bus.on('phase:change', () => networkRoomCoordinator?.syncChatVisibility());
 
 function disposeNetworkPresentation() {
   networkSession.disposePresentation();
@@ -1721,14 +2005,18 @@ function disposeNetworkPresentation() {
 function closeNetworkMatch(reason = 'network_match_closed') {
   networkBattleLauncher.cancel(reason);
   networkSession.close(reason);
-  networkRoomCoordinator.clear();
+  networkRoomCoordinator?.clear();
 }
 
-async function beginBattleEntry(specId, mapId = null, options = undefined) {
+async function beginBattleEntry(
+  specId: string,
+  mapId: string | null = null,
+  options: unknown = undefined,
+) {
   return battleEntryLifecycle.run(async () => {
     try {
       battleEntryLifecycle.coverRendering();
-      await soloBattleLoading.begin(specId, mapId, options);
+      await soloBattleLoading.begin(specId, mapId, legacyPort(options));
     } catch (error) {
       console.error('[battle] entry failed', error);
       audio.loadingOn(false);
@@ -1754,7 +2042,7 @@ function resetNetworkBattleState() {
   game.preBattleS = Infinity;
 }
 
-const networkBattleActivation = createNetworkBattleActivationRuntime({
+const networkBattleActivation = createNetworkBattleActivationRuntime(legacyPort({
   game,
   settings,
   killcam,
@@ -1766,9 +2054,9 @@ const networkBattleActivation = createNetworkBattleActivationRuntime({
   getDamagePanel: () => damagePanel,
   rig,
   presentation: {
-    setShotMode: (value) => { shotMode = value; },
-    setCaptureHidden: (value) => perfHud.setCaptureHidden(value),
-    setNetworkSpectator: (value) => networkSession.setSpectator(value),
+    setShotMode: (value: boolean) => { shotMode = value; },
+    setCaptureHidden: (value: boolean) => perfHud.setCaptureHidden(value),
+    setNetworkSpectator: (value: boolean) => networkSession.setSpectator(value),
     setSelectedSpecId: selectedVehicle.set,
     rememberSpecId: selectedVehicle.remember,
     setWorldDormant,
@@ -1779,11 +2067,11 @@ const networkBattleActivation = createNetworkBattleActivationRuntime({
     resetBattleResult: () => battleResultPresentation.reset(),
     setGarageSpots,
     setGarageSunTrim,
-    emitPhaseChange: (phase) => bus.emit('phase:change', { phase }),
+    emitPhaseChange: (phase: string) => bus.emit('phase:change', { phase }),
     emitConsumableReset: () => bus.emit('ui:consumableReset', {}),
     stopShowroom: () => showroom.stop(),
   },
-});
+}));
 
 /**
  * Keep bot play on the original in-page simulation path. Multiplayer's
@@ -1791,14 +2079,23 @@ const networkBattleActivation = createNetworkBattleActivationRuntime({
  * intentionally absent here: loading them for a local battle duplicated work
  * without adding any useful authority boundary.
  */
-async function beginSoloBattle({ specId, mapId, randomRoster = true, gameMode = 'standard' } = {}) {
-  const selected = VISIBLE_TANK_IDS.includes(specId) ? specId : garage.getSelected();
+async function beginSoloBattle({
+  specId,
+  mapId,
+  randomRoster = true,
+  gameMode = 'standard',
+}: SoloBattleRequest = {}) {
+  const selected = specId && VISIBLE_TANK_IDS.includes(specId) ? specId : garage.getSelected();
   return beginBattleEntry(selected, mapId || garage.getSelectedMap(), { randomRoster, gameMode });
 }
 
 /** QA-only cold entry. Production paths already own a loading veil and call
  * the activation owner only after the selected world and roster builders are ready. */
-async function debugStartBattle(specId, mapId = null, opts = {}) {
+async function debugStartBattle(
+  specId: string,
+  mapId: string | null = null,
+  opts: Record<string, unknown> = {},
+) {
   const resolved = resolveMapId(mapId || worldRuntime.pendingMapId);
   await Promise.all([
     ensureFullFleet(),
@@ -1825,7 +2122,7 @@ function openBattle(preBattleSeconds = PRE_BATTLE_HOLD_S) {
   if (game.preBattleS === Infinity) {
     game.preBattleS = preBattleSeconds;
   }
-  hud.preBattleCountdown(game.preBattleS);
+  hud?.preBattleCountdown(game.preBattleS);
   audio.resume(); // the entry-gate keypress already unlocked the context
   audio.ambientOn(true);
   // Probe/debug starts skip the visible countdown; they still get one rollout
@@ -1835,11 +2132,11 @@ function openBattle(preBattleSeconds = PRE_BATTLE_HOLD_S) {
 // Returning from battle or Studio is one typed transaction. It owns the
 // teardown order, retained-room policy, transition coalescing, and rematch
 // sequencing while main supplies concrete browser/rendering adapters.
-const garageReturn = createGarageReturnRuntime({
+const garageReturn = createGarageReturnRuntime(legacyPort({
   game,
   getSelectedSpecId: () => selectedVehicle.id,
   presentation: {
-    setAdaptiveSuspended: (suspended) => post.setAdaptiveSuspended(suspended),
+    setAdaptiveSuspended: (suspended: boolean) => post.setAdaptiveSuspended(suspended),
     clearBattle: () => {
       armorAimOverlay.clear();
       battleResultPresentation.clearPending();
@@ -1851,27 +2148,27 @@ const garageReturn = createGarageReturnRuntime({
       endOverlay.hide();
     },
     resetBattleTank: () => resetBattleTankForGarage({
-      fx: fxRuntimeAccess.current,
+      fx: legacyPort(fxRuntimeAccess.current),
       visual: game.player?.visual,
     }),
-    setShotMode: (enabled) => { shotMode = enabled; },
-    setCaptureHidden: (hidden) => perfHud.setCaptureHidden(hidden),
+    setShotMode: (enabled: boolean) => { shotMode = enabled; },
+    setCaptureHidden: (hidden: boolean) => perfHud.setCaptureHidden(hidden),
     unfreezeEffects: () => fxRuntimeAccess.current?.setFrozen(false),
     resetHudFrame: () => battleHudFrame.reset(),
   },
   network: {
-    shouldPreserveRoom: () => networkRoomCoordinator.shouldPreserveAfterResult(),
+    shouldPreserveRoom: () => networkRoomCoordinator?.shouldPreserveAfterResult() ?? false,
     disposePresentation: disposeNetworkPresentation,
     closeMatch: closeNetworkMatch,
   },
   warm: {
     invalidate: () => { battleWarmGeneration += 1; },
     cancel: cancelDeferredCombatWarm,
-    setPending: (pending) => { battleWarmPending = pending; },
+    setPending: (pending: boolean) => { battleWarmPending = pending; },
   },
   work: {
     noteActivity: () => garageDressingScheduler.noteActivity(),
-    resetFramePacer: (nowMs) => garageFramePacer.reset(nowMs),
+    resetFramePacer: (nowMs: number) => garageFramePacer.reset(nowMs),
     scheduleDressing: scheduleGarageDressingBuild,
   },
   world: {
@@ -1881,19 +2178,19 @@ const garageReturn = createGarageReturnRuntime({
       if (activeWorld && worldRuntime.servicesMapId !== activeWorld.mapId) placeGarage();
     },
     setDormant: setWorldDormant,
-    setFarCascadeDormant: (dormant) => lighting.setFarCascadeDormant(dormant),
+    setFarCascadeDormant: (dormant: boolean) => lighting.setFarCascadeDormant(dormant),
     clearCamoOverrides,
   },
   roster: {
-    adoptBattlePlayer: (specId) => pedestal.adoptBattlePlayer(specId)
+    adoptBattlePlayer: (specId: string) => pedestal.adoptBattlePlayer(specId)
       ? pedestal.current
       : null,
-    clearBattle: (preservedVisual) => clearBattleAfterExit({
-      game,
-      preservedVisual,
+    clearBattle: (preservedVisual: unknown) => clearBattleAfterExit({
+      game: legacyPort(game),
+      preservedVisual: legacyPort(preservedVisual),
       visualPool: battleVisualPool,
     }),
-    repaintHero: (specId) => applyCamoPatternsChunked({
+    repaintHero: (specId: string) => applyCamoPatternsChunked({
       priorityIds: [specId], onlySpecIds: [specId],
     }),
   },
@@ -1905,17 +2202,17 @@ const garageReturn = createGarageReturnRuntime({
     hideEndOverlay: endOverlay.hide,
     exitPointerLock: () => { if (document.exitPointerLock) document.exitPointerLock(); },
     hideHud: () => hud?.setMode?.('hidden'),
-    showGarage: (specId) => garage.show(specId),
+    showGarage: (specId: string) => garage.show(specId),
     poseGarageCamera: garageCameraPose,
     startShowroom: () => showroom.start(),
-    triggerBattle: () => document.querySelector('.cot-battle')?.click(),
+    triggerBattle: () => document.querySelector<HTMLElement>('.cot-battle')?.click(),
   },
   audio,
   transition,
   resumeGarageGpu: () => garagePhasePresentation.resumeGpu(),
   isBattleEntryPending: () => battleEntryLifecycle.pending,
-  publishTrace: (trace) => { window.__GARAGE_ENTRY = trace; },
-});
+  publishTrace: (trace: unknown) => { window.__GARAGE_ENTRY = trace; },
+}));
 const enterGarage = garageReturn.enter;
 const leaveBattleToGarage = garageReturn.leave;
 
@@ -1925,11 +2222,12 @@ bus.on('ui:roomOpen', async () => {
   await playSurface.showCurrentRoom();
 });
 
-bus.on('ui:roomReady', ({ ready } = {}) => {
-  networkRoomCoordinator.setReady(!!ready);
+bus.on('ui:roomReady', (payload) => {
+  const { ready } = legacyPort<{ ready?: boolean }>(payload);
+  networkRoomCoordinator?.setReady(!!ready);
 });
 
-bus.on('ui:roomStart', () => networkRoomCoordinator.startRound());
+bus.on('ui:roomStart', () => networkRoomCoordinator?.startRound());
 
 // ---------------------------------------------------------------------------
 // HUD frame assembly (§4 step 7)
@@ -1937,7 +2235,7 @@ bus.on('ui:roomStart', () => networkRoomCoordinator.startRound());
 // Spectator perspective, spotting disclosure, aiming, armor inspection, and
 // damage presentation share one allocation-free typed transaction. Capture
 // tooling receives the same retained frame instead of building a second HUD.
-const battleHudFrame = createBattleHudFrameRuntime({
+const battleHudFrame = createBattleHudFrameRuntime(legacyPort({
   game,
   camera,
   rig,
@@ -1949,7 +2247,7 @@ const battleHudFrame = createBattleHudFrameRuntime({
   muzzleScratch: _rayO,
   getHud: () => hud,
   getDamagePanel: () => damagePanel,
-});
+}));
 const frameInfo = battleHudFrame.frameInfo;
 const refreshSpotFrame = battleHudFrame.refreshSpotting;
 
@@ -1959,31 +2257,31 @@ const refreshSpotFrame = battleHudFrame.refreshSpotting;
 // A typed, allocation-free owner samples every device and publishes the one
 // mutable camera-input record consumed by the existing rig.
 const camInput = playerFrameInput.camera;
-const audioListener = createListenerPoseRuntime({ camera, game, rig, killcam, audio });
-const worldFramePresentation = createWorldFramePresentationRuntime({
+const audioListener = createListenerPoseRuntime(legacyPort({ camera, game, rig, killcam, audio }));
+const worldFramePresentation = createWorldFramePresentationRuntime(legacyPort({
   camera,
   rig,
   getWorld: currentWorld,
   isWorldDormant: () => worldRuntime.dormant,
   getCameraFocus: () => game.player ||
     (networkSession.spectator ? rig.spectateTargetEnt : null),
-});
+}));
 // Pause transitions, input sampling, network cadence, pre-battle hold,
 // fixed-step debt, result progression, and presentation interpolation are one
 // typed state machine. The render loop consumes only its stable receipt.
-const battleFrame = createBattleFrameRuntime({
+const battleFrame = createBattleFrameRuntime(legacyPort({
   game,
   settings,
   killcam,
   input: playerFrameInput,
   network: {
     isActive: () => !!networkSession.match,
-    pump: (dtSeconds, nowMs) => networkSession.pump(dtSeconds, nowMs),
+    pump: (dtSeconds: number, nowMs: number) => networkSession.pump(dtSeconds, nowMs),
   },
   countdown: {
     isWarmPending: () => battleWarmPending,
     advance: advancePreBattleCountdown,
-    show: (seconds) => hud.preBattleCountdown(seconds),
+    show: (seconds: number) => hud?.preBattleCountdown(seconds),
     rollout: () => bus.emit('battle:rollout', {}),
   },
   presentation: {
@@ -1995,9 +2293,9 @@ const battleFrame = createBattleFrameRuntime({
   stepSimulation: () => simStep(
     game, bus, currentWorld(), rig, worldRuntime.collider,
   ),
-  emitPause: (paused) => bus.emit('ui:pause', { on: paused }),
+  emitPause: (paused: boolean) => bus.emit('ui:pause', { on: paused }),
   simulationDt: SIM_DT,
-});
+}));
 const pauseInfo = battleFrame.pauseInfo;
 let lastMs = -1;
 let lastFov = camera.fov;
@@ -2044,7 +2342,7 @@ invalidateGaragePresentation = () => {
 };
 bus.on('phase:change', () => frameLoop.restart());
 
-function tick(nowMs) {
+function tick(nowMs: number) {
   frameLoop.schedule();
   if (lastMs < 0) lastMs = nowMs;
   const frameWallDtS = Math.max(0, (nowMs - lastMs) / 1000);
@@ -2064,7 +2362,7 @@ function tick(nowMs) {
   // (applies in shot mode too so sniper_view captures stay crisp).
   if (scene.fog) {
     const fogScale = camera.fov < 15 ? Math.max(0.22, Math.pow(camera.fov / 15, 1.6)) : 1;
-    scene.fog.density = baseFogDensity * fogScale;
+  if (scene.fog instanceof THREE.FogExp2) scene.fog.density = baseFogDensity * fogScale;
   }
 
   // SCENE STUDIO: while active the studio owns the whole frame — no battle
@@ -2154,7 +2452,10 @@ function tick(nowMs) {
 
   // Objective markers are retained, shadow-free meshes. Standard battles and
   // the garage hide the root, so the feature adds no traversal work there.
-  matchModeWorld.update(inBattle ? game.matchModeState : null, game.timeS);
+  matchModeWorld.update(
+    inBattle ? legacyPort(game.matchModeState) : null,
+    game.timeS,
+  );
 
   // 7. HUD (hidden + frozen while the kill-cam letterbox owns the screen).
   battleHudFrame.update(inBattle, kcActive);
@@ -2186,10 +2487,11 @@ function tick(nowMs) {
 // ordinary garage/battle download until set() is explicitly called.
 window.__SHOTS = {
   views: [...SHOT_VIEWS],
-  async set(name) {
-    if (!SHOT_VIEWS.includes(name)) throw new Error(`Unknown screenshot view: ${name}`);
+  async set(name: string) {
+    const shotName = legacyPort<(typeof SHOT_VIEWS)[number]>(name);
+    if (!SHOT_VIEWS.includes(shotName)) throw new Error(`Unknown screenshot view: ${name}`);
     const { setShotView } = await import('./dev/shotRuntime.ts');
-    return setShotView(name, {
+    return setShotView(shotName, legacyPort({
       preloadSoloBattleRuntime,
       preloadBattleClientRuntime,
       ensureBattleHud,
@@ -2206,23 +2508,23 @@ window.__SHOTS = {
       setupBattle,
       resetCombatWarm: () => combatWarm.reset(),
       drainCombatWarm: () => combatWarm.drain(),
-      setBattleStaged: (value) => { battleStaged = value; },
+      setBattleStaged: (value: boolean) => { battleStaged = value; },
       buildShellCards: playerBattleActions.setTank,
-      setDamagePanelTank: (spec, visual) => damagePanel.setTank(spec, visual),
-      setDamagePanelEquipment: (equipment) => damagePanel.setEquipment(equipment),
+      setDamagePanelTank: (spec: unknown, visual: unknown) => currentDamagePanel()?.setTank(spec, visual),
+      setDamagePanelEquipment: (equipment: unknown) => currentDamagePanel()?.setEquipment(equipment),
       groundSampler,
       input,
       settings,
       showroom,
-      setShotMode: (value) => { shotMode = value; },
-      setCaptureHidden: (value) => perfHud.setCaptureHidden(value),
+      setShotMode: (value: boolean) => { shotMode = value; },
+      setCaptureHidden: (value: boolean) => perfHud.setCaptureHidden(value),
       resetPostPerfTrims: () => post.resetPerfTrims(),
-      setShotHudFrame: (value) => { shotHudFrame = value; },
+      setShotHudFrame: (value: boolean) => { shotHudFrame = value; },
       setGarageSpots,
       setGarageSunTrim,
       hideGarage: () => garage.hide(),
       hideEndOverlay: endOverlay.hide,
-      setLastFov: (value) => { lastFov = value; },
+      setLastFov: (value: number) => { lastFov = value; },
       refreshSpotFrame,
       getWorld: currentWorld,
       getHud: () => hud,
@@ -2248,7 +2550,7 @@ window.__SHOTS = {
       createShell,
       resolveShellHit,
       createCombatState,
-    });
+    }));
   },
 };
 
@@ -2259,27 +2561,28 @@ window.__SHOTS = {
 // first world activation (ensureBattleStaged), not at boot — so prime the HUD
 // cards from the SELECTED SPEC here. ensureBattleStaged re-primes from the
 // real player entity when a battle actually stages.
-playerBattleActions.setTank(getSpec(selectedVehicle.id));
+playerBattleActions.setTank(legacyPort(getSpec(selectedVehicle.id)));
 garage.show(selectedVehicle.id);
 garageCameraPose(); // fallback pose until the orbit measures the hero
 showroom.start();
 garageFramePacer.reset(performance.now());
 setGarageSunTrim(true); // camo_spotting r2: boot lands on the garage screen
-hud?.setMode('hidden');
+currentHud()?.setMode('hidden');
 
 // BOOT DEFERRAL seam: the battlefield build is deferred until BATTLE is
 // pressed, so `world` is legitimately null on the garage boot path — the
 // garage bay renders without it. When a world IS already active (harness
 // staging a battlefield view before readiness), warm it as before.
-if (currentWorld()) {
-  currentWorld().update(0, camera.position);
+const bootWorld = currentWorld();
+if (bootWorld) {
+  bootWorld.update(0, camera.position);
   battlePresentation.update();
 }
 await bootStage('post', async () => {
   // Direct Studio boot has no garage hero or dressing to present. Its own
   // covered entry renders the real world/camera before the boot veil lifts.
   if (STUDIO_BOOT_INTENT) return;
-  await warmGarageGpuPipeline({
+  await warmGarageGpuPipeline(legacyPort({
     renderer,
     scene,
     camera,
@@ -2287,9 +2590,9 @@ await bootStage('post', async () => {
     forwardPrograms: forwardProgramWarm,
     post,
     timings: BOOT_TIMINGS,
-    reportProgress: (fraction) => boot.sub(fraction),
+    reportProgress: (fraction: number) => boot.sub(fraction),
     simDt: SIM_DT,
-  });
+  }));
 });
 // PERF (performance_budget r1): the combat-pipeline warms below are needed
 // before FIRST COMBAT, not before readiness — they used to run synchronously
@@ -2307,9 +2610,11 @@ await bootStage('post', async () => {
 // - light-set warm (r4): garage spots hidden changes the program hash (see
 //   setGarageSpots), so entering battle swaps programs instead of compiling
 //   ~70 of them inside the opening frames.
-function warmStudioPipelineChunked(onProgress = null) {
+function warmStudioPipelineChunked(
+  onProgress?: ((fraction: number, label: string) => void) | null,
+) {
   const fx = requireFxRuntime();
-  return battleWarm.warmStudioEffects({
+  return battleWarm.warmStudioEffects(legacyPort({
     fx,
     post,
     renderer,
@@ -2317,8 +2622,8 @@ function warmStudioPipelineChunked(onProgress = null) {
     initializeForwardPrograms: forwardProgramWarm.initializeSteps,
     isCombatPipelineWarmed: combatWarm.isRareReady,
     onProgress,
-    onTrace: (trace) => { window.__STUDIO_WARM = trace; },
-  });
+    onTrace: (trace: unknown) => { window.__STUDIO_WARM = trace; },
+  }));
 }
 // perf-r5 (owner: "first garage entry laggy"): the warm used to run as ONE
 // idle callback (~1-3 s: volley + every wreck dance + all compiles) the
@@ -2328,21 +2633,24 @@ function warmStudioPipelineChunked(onProgress = null) {
 // chunked owner gives the garage a painted frame between steps. A battle
 // entered mid-chunk drains the remaining generator synchronously.
 
-const deferredCombatWarm = createDeferredCombatWarmRuntime({
+const deferredCombatWarm = createDeferredCombatWarmRuntime(legacyPort({
   game,
   renderer,
   camera,
-  getBattleVisuals: () => battleVisuals,
+  getBattleVisuals: () => {
+    if (!battleVisuals) throw new Error('battle visual streamer was not loaded');
+    return battleVisuals;
+  },
   combatWarm,
   battleWarm,
   getWorld: currentWorld,
   getGeneration: () => battleWarmGeneration,
-  setPending: (pending) => { battleWarmPending = pending; },
+  setPending: (pending: boolean) => { battleWarmPending = pending; },
   prepareNextOpeningRoute,
   devTrace,
-});
+}));
 function cancelDeferredCombatWarm() { deferredCombatWarm.cancel(); }
-function scheduleDeferredCombatWarm(generation) {
+function scheduleDeferredCombatWarm(generation: number) {
   return deferredCombatWarm.schedule(generation);
 }
 // Shared private HDR warmer for covered battle entry and the demand-loaded
@@ -2354,7 +2662,7 @@ const deploymentShadowWarm = createDeploymentShadowWarmOwner({
   renderer,
   scene,
   camera,
-  lighting,
+  lighting: legacyPort(lighting),
   warmRender,
   getWorldGroup: () => currentWorld()?.group ?? null,
   noteFovPrimed: (fov) => { lastFov = fov; },
@@ -2387,7 +2695,7 @@ function createCombatWarmRuntimeContext() {
     markOpeningReady: () => combatWarm.markOpeningReady(),
     markRareReady: () => combatWarm.markRareReady(),
     isDestructionWarmed: () => combatDestructionEffectsWarmed,
-    setDestructionWarmed: (value) => { combatDestructionEffectsWarmed = value; },
+    setDestructionWarmed: (value: boolean) => { combatDestructionEffectsWarmed = value; },
   };
 }
 
@@ -2397,18 +2705,18 @@ function createCombatWarmRuntimeContext() {
 
 // SCENE STUDIO (staging rig + scripted marketing-shot API, src/game/studio.js):
 // entered via ?studio=1 (map via ?map=…) or F8 from the garage; scriptable via
-// window.__STUDIO (schema in docs/STUDIO.md). main.js only hands it these
+// window.__STUDIO (schema in docs/STUDIO.md). main.ts only hands it these
 // integration seams plus the one tick() branch above — entry keys, panel,
 // actors, effects, capture all live in the studio module.
-const studioAccess = createStudioAccess({
+const studioAccess = createStudioAccess(legacyPort({
   loadModule: () => import('./game/studio.js'),
   preloadFxModule,
   ensureFxRuntime,
   prepareRuntime: () => lighting.setFarCascadeDormant(false),
-  createContext: (studioFx) => ({
+  createContext: (studioFx: unknown) => ({
     renderer, scene, camera, post, lighting, game, hud, garage, showroom,
     hfProxy, getWorld: currentWorld,
-    ensureWorld: (id, onProgress) => ensureWorld(id, onProgress, {
+    ensureWorld: (id: string, onProgress: (fraction: number, label: string) => void) => ensureWorld(id, onProgress, {
       precompile: false,
       compilePrograms: true,
       services: false,
@@ -2417,13 +2725,13 @@ const studioAccess = createStudioAccess({
     setGarageSpots, setGarageSunTrim, enterGarage,
     warmStudioPipeline: warmStudioPipelineChunked,
     transition,
-    // main.js owns both direct boot and the first lazy F8 handoff.
+    // main.ts owns both direct boot and the first lazy F8 handoff.
     autoEnter: false,
     fx: studioFx,
   }),
   getPhase: () => game.phase,
   keyTarget: window,
-});
+}));
 const studio = studioAccess.presentation;
 function preloadStudioIntent() { studioAccess.preloadIntent(); }
 function loadStudioRuntime() { return studioAccess.loadRuntime(); }
@@ -2440,7 +2748,7 @@ if (STUDIO_BOOT_INTENT) {
     return runtime.enter({
       map: STUDIO_BOOT_MAP,
       coveredByBoot: true,
-      onProgress: (fraction, label) => {
+      onProgress: (fraction: number, label: string) => {
         boot.sub(fraction);
         if (label) boot.note(label);
       },
@@ -2459,7 +2767,7 @@ const driveTestRequested = import.meta.env.DEV
   || debugModeRequested()
   || navigator.webdriver;
 const driveTestController = driveTestRequested
-  ? (await import('./dev/driveTestController.ts')).createDriveTestController({
+  ? (await import('./dev/driveTestController.ts')).createDriveTestController(legacyPort({
     getGame: () => game,
     getWorld: currentWorld,
     getRig: () => rig,
@@ -2473,7 +2781,7 @@ const driveTestController = driveTestRequested
     simStep,
     resetPresentationPoses: battlePresentation.resetSoloPoses,
     resetSimAccumulator: battleFrame.resetSimulationAccumulator,
-  })
+  }))
   : {
     aimTargetId: null,
     aimAtNearest: () => null,
@@ -2487,7 +2795,7 @@ const driveTestController = driveTestRequested
 
 if (diagnosticsRequested) {
   const { createCombatTelemetry } = await import('./dev/combatTelemetry.ts');
-  createCombatTelemetry({
+  createCombatTelemetry(legacyPort({
     enabled: true,
     bus,
     getGame: () => game,
@@ -2495,7 +2803,7 @@ if (diagnosticsRequested) {
     getAimBlockedDistance: () => frameInfo.aim.blockedDistM,
     playerShellLog,
     botPressure,
-  });
+  }));
 }
 
 if (diagnosticsRequested) {
@@ -2506,7 +2814,7 @@ if (diagnosticsRequested) {
 if (debugModeRequested() || input.getSettings().showDebugHud) perfHud.setVisible(true);
 if (diagnosticsRequested) {
   const { installDebugSurface } = await import('./dev/debugSurface.ts');
-  installDebugSurface({
+  installDebugSurface(legacyPort({
     scene, camera, renderer, post, lighting, game, rig, bus, input, settings,
     pauseInfo, garage, flags: debugFlags, frameInfo, playerShellLog, botPressure,
     killcam, showroom, garageDressing, devTrace,
@@ -2529,8 +2837,8 @@ if (diagnosticsRequested) {
     getLastWorldRelease: () => (worldRuntime.lastRelease
       ? { ...worldRuntime.lastRelease } : null),
     isGraphicsContextLost: () => graphicsContextLost,
-    selectGarageTank: (id) => garage.setSelected(id),
-    stagePedestalTank: (id) => {
+    selectGarageTank: (id: string) => garage.setSelected(id),
+    stagePedestalTank: (id: string) => {
       selectedVehicle.set(id);
       return pedestal.set(id, true);
     },
@@ -2542,23 +2850,23 @@ if (diagnosticsRequested) {
     fastForward: driveTestController.fastForward,
     slayEnemies: driveTestController.slayEnemies,
     startBattle: debugStartBattle,
-    bakeMinimapForMap: async (mapId) => {
+    bakeMinimapForMap: async (mapId: string) => {
       await ensureBattleHud();
       const next = await ensureWorld(mapId, null, { precompile: false, services: false });
       buildWorldMinimap(next, true);
-      return hud.exportMinimapBackground('image/webp', 0.92);
+      return currentHud()?.exportMinimapBackground('image/webp', 0.92) || '';
     },
     beginBattleEntry,
     beginSoloBattle,
-    beginNetworkBattle: (request) => networkBattleLauncher.beginPrivate(request),
+    beginNetworkBattle: (request: unknown) => networkBattleLauncher.beginPrivate(legacyPort(request)),
     enterGarage,
     leaveBattleToGarage,
     spawnKillShell: driveTestController.spawnKillShell,
     getShotMode: () => shotMode,
-    setShotMode: (value) => { shotMode = !!value; },
-    forceHitMark: async (bounced) => {
+    setShotMode: (value: boolean) => { shotMode = !!value; },
+    forceHitMark: async (bounced: boolean) => {
       await ensureBattleHud();
-      hud.forceHitMark(!!bounced);
+      currentHud()?.forceHitMark(!!bounced);
     },
     getDamagePanel: () => damagePanel,
     getNetworkDiagnostics: () => networkSession.diagnostics(),
@@ -2567,7 +2875,7 @@ if (diagnosticsRequested) {
     ),
     collectTelemetry: () => perfHud.collectTelemetry(),
     sampleShadowContribution: () => perfHud.sampleShadowContribution(),
-    injectNetworkEvents: (events) => {
+    injectNetworkEvents: (events: unknown) => {
       const latestNetworkSnapshot = networkSession.latestSnapshot;
       if (!import.meta.env.DEV || !networkSession.bridge || !latestNetworkSnapshot) return false;
       const batch = Array.isArray(events) ? events : [];
@@ -2576,9 +2884,10 @@ if (diagnosticsRequested) {
         ? { ...latestNetworkSnapshot,
           meta: { ...latestNetworkSnapshot.meta, result: matchEnded.result } }
         : latestNetworkSnapshot;
-      return networkSession.bridge.apply(snapshot, 1 / 60, batch);
+      networkSession.bridge.apply(snapshot, 1 / 60, batch);
+      return true;
     },
-  });
+  }));
 }
 await bootStage('ready', null);
 // perf-r2: the boot pipeline is compiled and error-checked; battle-time

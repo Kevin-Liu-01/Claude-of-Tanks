@@ -1793,7 +1793,7 @@ export function tickModuleRepairs(combat: CombatState | null | undefined, dt: nu
 
 /**
  * Repair-kit consumable: every damaged module back to full HP / 'ok'
- * (module_hitbox r1 — main.js used to hand-roll this transition). Routed
+ * (module_hitbox r1 — main.ts used to hand-roll this transition). Routed
  * through the shared state machine; returns the module names fixed so the
  * caller can broadcast 'module:state' events (and decide whether the kit
  * was consumed at all).

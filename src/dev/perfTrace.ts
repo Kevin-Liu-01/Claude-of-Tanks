@@ -1,6 +1,6 @@
 // Bounded gameplay/performance flight recorder. Development enables it by
 // default; optimized production builds load it only for the explicit
-// `?debug=1` device-QA path selected in main.js.
+// `?debug=1` device-QA path selected in main.ts.
 //
 // Event objects are bounded and frames use typed columns so the recorder does
 // not manufacture the GC stalls it is meant to find. Normal production never

@@ -1357,7 +1357,7 @@ function bDrumRedBroken(rng: Rng): THREE.BufferGeometry {
  *   | 'baked' (vertex color).
  * contact: 'ob' = crushable obstacle (state.js SAT seam — resists a crawl,
  *   breaks on real overrun, exactly the tree mechanism); 'loop' = cosmetic
- *   hull-radius crush via the world.crushables loop in main.js (no obstacle
+ *   hull-radius crush via the world.crushables loop in main.ts (no obstacle
  *   at all — sapling class); 'none' = shells only.
  * r/h: record radius / height (AABB + shell sweep bounds).
  * DESTRUCTIBLES r1 knobs (consumed by props.ts):

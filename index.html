@@ -90,7 +90,7 @@
   <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
   <!-- BOOT SCREEN: the wordmark weights are on the critical paint path, so they
        are preloaded ahead of the module graph (the splash markup below is inline
-       for exactly the same reason — first paint must not wait on /src/main.js). -->
+       for exactly the same reason — first paint must not wait on /src/main.ts). -->
   <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/src/presentation/mediaArchive.css" />
@@ -137,7 +137,7 @@
        show a black screen for ~7.5 s while the vehicle textures and the 1 km
        world baked. Now the branded splash paints from the HTML itself, before
        a single module is fetched, and the bar below is driven by real load
-       stages (see bootScreen.ts / main.js BOOT STAGES).
+       stages (see bootScreen.ts / main.ts BOOT STAGES).
        --------------------------------------------------------------------- */
     /* ABC Monument Grotesk (Dinamo Typefaces — owner-provided cut, fonts r4
        owner-directed swap replacing Inter; see docs/ATTRIBUTION.md). Three
@@ -827,6 +827,6 @@
     })();
   </script>
 
-  <script type="module" src="/src/main.js"></script>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

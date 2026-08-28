@@ -1195,7 +1195,7 @@ export function initHud(bus) {
   // ===================== SPECTATE BAR (killcam_endscreen r1) ================
   // Driven by killcam.js's ally-spectate controller over the bus (additive
   // spectate:begin/change/end events). The GARAGE action adopts the
-  // integration end button's existing click handler — either where main.js
+  // integration end button's existing click handler — either where main.ts
   // built it (.cot-end) or where the end screen reparented it (.cot-es-btn).
   const specBar = el('div', 'cot-spec', root);
   specBar.innerHTML = spectatorSwitcherMarkup();
@@ -1671,7 +1671,7 @@ export function initHud(bus) {
         continue;
       }
       // SPOTTING SECTION: when the concealment sim is wired in (frame.spotting
-      // from src/sim/spotting.ts via main.js) it is the single source of truth
+      // from src/sim/spotting.ts via main.ts) it is the single source of truth
       // — camo values, bushes, fire bloom and the 5 s linger all live there.
       // The legacy range+terrain-LOS model below stays as the fallback for
       // forced screenshot frames and headless fixtures.
@@ -3016,7 +3016,7 @@ export function initHud(bus) {
   // r6 (hud_ui): REAL top-down capture of the battle scene as the minimap
   // underlay — WoT minimaps are stylized orthographic renders of the actual
   // map, and the hand-authored blob cartography read as painted dabs next to
-  // it. One ortho render into an offscreen target at map load (main.js passes
+  // it. One ortho render into an offscreen target at map load (main.ts passes
   // {renderer, scene, exclude} through buildMinimap); any failure falls back
   // to the procedural cartography below, so the harness can never go dark.
   function renderTopDownSnap(snap, N0) {
@@ -3912,7 +3912,7 @@ export function initHud(bus) {
 
   let playerRef = null;
   bus.on('tank:destroyed', (p) => { pushKill(p); });
-  // Shell hotkeys route through input.js actions only (main.js emits this) —
+  // Shell hotkeys route through input.js actions only (main.ts emits this) —
   // the HUD renders selection state from the bus instead of its own listener.
   bus.on('ui:shellSelect', ({ slot }) => selectSlot(slot));
   bus.on('ui:perfMeter', (p) => {
@@ -4312,7 +4312,7 @@ export function initHud(bus) {
      */
     update(frame) {
       // r5: only an ADVANCING frame supersedes a forced screenshot display.
-      // Shot mode (main.js, controls_gunnery r5) now re-runs hud.update every
+      // Shot mode (main.ts, controls_gunnery r5) now re-runs hud.update every
       // frozen tick with an identical timeS — those re-runs must not clear
       // forceAimDisplay state, or the staged over-target plate hides (the
       // frozen spotting sim never saw the teleported target). Live battles
@@ -4333,7 +4333,7 @@ export function initHud(bus) {
       if (frame.player) playerId = frame.player.id;
       updateSpecialAction(frame.player || playerRef);
       updateDriveReadout(frame.player || playerRef, frame.timeS);
-      // damage panel: live pose for its rotating plan view (main.js calls
+      // damage panel: live pose for its rotating plan view (main.ts calls
       // damagePanel.update right after hud.update each frame). The panel is
       // CAMERA-UP — its top is the camera's forward bearing — so it needs
       // hull yaw, hull-relative turret yaw AND the camera yaw. Camera yaw
@@ -4467,7 +4467,7 @@ export function initHud(bus) {
     },
   };
 
-  // killcam_endscreen r1: probe seam — main.js exposes no hud handle on
+  // killcam_endscreen r1: probe seam — main.ts exposes no hud handle on
   // __DEBUG, so the direction-arc / spectate-bar assertions read this
   // hud-owned hook (introspection only, no control surface).
   if (typeof window !== 'undefined') {

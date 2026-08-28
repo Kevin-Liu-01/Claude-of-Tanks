@@ -48,7 +48,7 @@ const SETTINGS_CSS = `
    sliders with amber fill, ON/OFF segmented toggles, plate group-cards on
    the slider tabs, flat-orange chamfered RESUME (BATTLE-button plate), red
    LEAVE BATTLE, overflow-gated scroll fades. Reskin only — every class the
-   probes and main.js touch keeps its name and open/close semantics. */
+   probes and main.ts touch keeps its name and open/close semantics. */
 .cot-settings{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
   background:radial-gradient(130% 100% at 50% 42%,rgba(4,7,10,.50) 0%,rgba(2,4,6,.76) 100%);
   -webkit-backdrop-filter:blur(8px) saturate(.9);backdrop-filter:blur(8px) saturate(.9);
@@ -352,7 +352,7 @@ export function createSettings(opts) {
   const canLeaveBattle = opts.canLeaveBattle || isBattleActive;
   const onLeaveBattle = opts.onLeaveBattle || null;
   const gearVisible = opts.gearVisible || (() => false);
-  // PAUSE: main.js supplies the live-battle predicate; the PAUSED header tag
+  // PAUSE: main.ts supplies the live-battle predicate; the PAUSED header tag
   // shows exactly when the open panel is what froze the sim (garage Esc and
   // the end-overlay Esc keep the plain settings header).
   const isGamePaused = opts.isGamePaused || (() => false);
@@ -464,7 +464,7 @@ export function createSettings(opts) {
   let open = false;
   // KILL-CAM awareness (controls_gunnery r7 MAJOR): every player death while
   // pointer-locked used to throw this panel open ON TOP of the death replay.
-  // The death branch in main.js calls document.exitPointerLock() with the
+  // The death branch in main.ts calls document.exitPointerLock() with the
   // battle still live (allies keep fighting), and the unlock heuristic below
   // read that as an Esc press. Track the replay via the bus — killcam:begin
   // is emitted synchronously in the same JS task as that exitPointerLock
@@ -697,7 +697,7 @@ export function createSettings(opts) {
 
     // gunnery r1 (owner): what right-click does — hold-to-aim (default),
     // toggle-aim, or the classic gun-lock free look. Persisted as
-    // settings.rmbMode; main.js routes the RMB-bound action per frame.
+    // settings.rmbMode; main.ts routes the RMB-bound action per frame.
     const RMB_MODE_DEFS = [
       ['hold', 'hold-to-aim'],
       ['toggle', 'toggle-aim'],
@@ -1208,12 +1208,12 @@ export function createSettings(opts) {
   // focus check runs a tick later: on some platforms pointerlockchange
   // fires before the blur that caused it lands.
   // controls_gunnery r7 (MAJOR — settings menu over the death kill-cam):
-  // the player-death branch in main.js exits pointer lock with the battle
+  // the player-death branch in main.ts exits pointer lock with the battle
   // still live, and this heuristic read that as an Esc press — every
   // pointer-locked death ended in an options menu nobody opened, with
   // onPanelKey swallowing the replay's ANY-KEY skip. Bail while a replay
   // owns the screen (bus-tracked, set synchronously before the unlock event
-  // can land) — and main.js's isBattleActive callback now also reports false
+  // can land) — and main.ts's isBattleActive callback now also reports false
   // once the local player is destroyed, so the no-replay death (straight to
   // the death cam) hands off with a free cursor too, exactly like WoT.
   const settingsOwnsPointerUnlock = () => shouldOpenSettingsFromPointerUnlock({

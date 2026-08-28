@@ -92,7 +92,7 @@ that resets round-scoped presentation, activates the world and roster, and
 publishes the solo battle phase; `soloBattleStartAccess.ts` keeps it out of
 Garage/multiplayer boot until covered solo intent.
 The corresponding multiplayer lifecycle lives in
-`src/net/networkBattlePresentationRuntime.ts`; `main.js` supplies renderer and
+`src/net/networkBattlePresentationRuntime.ts`; `main.ts` supplies renderer and
 world adapters but must not reimplement its preparation/readiness/reveal order.
 Keep it behind `src/net/networkBattlePresentationAccess.ts` so Garage and solo
 boot do not evaluate or allocate multiplayer-only presentation policy.
@@ -110,12 +110,12 @@ must move visual creation out of authority rather than importing more UI into
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
-Trace callers in `src/main.js`, run the nearest selftest, and preserve existing
+Trace callers in `src/main.ts`, run the nearest selftest, and preserve existing
 event payloads. Keep garage/Studio-safe state in `stateCore.ts`; do not add
 simulation or rendering imports there. Keep deterministic roster planning
 independent from combat setup so battle intent can preload exact families.
 Route Battle preload changes through `battleIntentRuntime.ts`; do not restore
-independent map plans, texture generations, or garage timers in `main.js`.
+independent map plans, texture generations, or garage timers in `main.ts`.
 Route mode-picker and retained-room changes through `playSurfaceRuntime.ts`;
 keep menu construction retryable and keep solo entry independent of the menu.
 Acquire killcam implementation through `killcamAccess.ts`; do not restore its
@@ -129,21 +129,21 @@ already-smoothed network poses. Bot changes require both focused AI tests and
 battle probes.
 Route live HUD assembly through `battleHudFrameRuntime.ts`; do not rebuild
 spectator focus, spotting, aim, armor-target filtering, or damage presentation
-inside `main.js`.
+inside `main.ts`.
 Route rendered gameplay advancement through `battleFrameRuntime.ts`; do not
 retain pause transitions, fixed-step debt, countdown release, or parallel
-solo/network authority policy in `main.js`.
+solo/network authority policy in `main.ts`.
 Route every battle/Studio return through `garageReturnRuntime.ts`; do not
 recreate replay/tank/network/world teardown order or a leave-transition latch
-in `main.js`.
+in `main.ts`.
 Route covered solo warm changes through `soloBattleDeploymentRuntime.ts`; do
-not put shader, effect, shadow, or reveal ordering back into `main.js`.
+not put shader, effect, shadow, or reveal ordering back into `main.ts`.
 Route covered solo entry changes through `soloBattleLoadingRuntime.ts`; do not
 recreate its acquisition barrier, progress policy, or reveal handoff in the
 composition root.
 Route post-acquisition solo round reset and phase activation through
 `soloBattleStartRuntime.ts`; preload its access owner before the synchronous
-handoff and do not rebuild that transaction in `main.js`.
+handoff and do not rebuild that transaction in `main.ts`.
 Route cold network entry changes through `networkBattlePresentationRuntime.ts`;
 keep partial bridges private until roster preparation and initial authority
 succeed.

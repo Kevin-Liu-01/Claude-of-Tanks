@@ -25,7 +25,7 @@ spotting, bot, destructible, and outcome rules.
 
 ## Boot, garage, and lazy work
 
-`src/main.js` owns application composition. The first visible garage frame is
+`src/main.ts` owns application composition. The first visible garage frame is
 kept deliberately narrow: renderer, garage, selected vehicle, and essential UI
 arrive first. `fleetFactory.js` maps each tank id to an import-free ownership
 manifest and downloads only that profile family before its first real build.

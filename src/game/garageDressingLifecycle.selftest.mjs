@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { createGarageDressingScheduler } from './garageDressingScheduler.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const main = fs.readFileSync(path.join(here, '..', 'main.js'), 'utf8');
+const main = fs.readFileSync(path.join(here, '..', 'main.ts'), 'utf8');
 const garageReturn = fs.readFileSync(path.join(here, 'garageReturnRuntime.ts'), 'utf8');
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));

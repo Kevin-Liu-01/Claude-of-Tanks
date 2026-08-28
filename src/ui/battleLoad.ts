@@ -6,9 +6,9 @@
  * It is shown the instant BATTLE is pressed and torn down when the battle
  * actually starts, so it also MASKS the remaining world build — the 1 km
  * battlefield (terrain bake + vegetation + props) is no longer built during
- * boot, it is built behind this screen (main.js ensureWorld → onProgress).
+ * boot, it is built behind this screen (main.ts ensureWorld → onProgress).
  *
- * Presentation only: main.js supplies already-resolved rows. Icons come from
+ * Presentation only: main.ts supplies already-resolved rows. Icons come from
  * public/icons/<id>_side_silhouette.png (tools/genIcons.mjs).
  */
 
@@ -16,7 +16,7 @@ import { FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
 
-// Backward-compatible re-export for main.js, killcam and end-screen callers.
+// Backward-compatible re-export for main.ts, killcam and end-screen callers.
 export { tierNumeral };
 
 const CSS = `

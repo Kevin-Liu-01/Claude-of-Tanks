@@ -3,7 +3,7 @@
 The critic pipeline sees the game ONLY through `node tools/screenshot.mjs`. The game
 MUST uphold this contract at all times or the build is considered broken.
 
-## Required globals (set by the game in `src/main.js` or an imported module)
+## Required globals (set by the game in `src/main.ts` or an imported module)
 
 - `window.__GAME_READY` — set to `true` only after the full scene is loaded and the
   first frame with final lighting/post-processing has rendered.

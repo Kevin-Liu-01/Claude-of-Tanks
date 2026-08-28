@@ -343,7 +343,7 @@ export function createAudio({ context: initialContext = null } = {}) {
   // KILL-CAM DUCK: replay slow-mo pulls the battle mix down (combat/engine/
   // ambience only — the radio and result stings stay up front).
   let duckK = 1;
-  // PAUSE DUCK ('ui:pause' from main.js tick): while the Esc overlay freezes
+  // PAUSE DUCK ('ui:pause' from main.ts tick): while the Esc overlay freezes
   // a live battle, the engine + combat buses drop to near-silence — the
   // frozen sim still has engine loops holding their last RPM and gun tails
   // ringing out. Near-zero (not zero) so resume never clicks. UI/music stays
@@ -2795,7 +2795,7 @@ export function createAudio({ context: initialContext = null } = {}) {
       applyChannelVolumes(true);
     });
     bus.on('killcam:impact', (e) => { if (ctx) killcamImpact(e); });
-    // PAUSE (Esc overlay over a live battle — main.js tick edge): duck the
+    // PAUSE (Esc overlay over a live battle — main.ts tick edge): duck the
     // battle beds to near-silence, restore on resume. pauseK is tracked even
     // before the context exists so a later resume() builds the graph with
     // the correct level (buildGraph -> applyChannelVolumes reads it).

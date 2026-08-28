@@ -7065,7 +7065,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   // ---- track hitbox attach (combat data only — no geometry writes) --------
   // Derived by buildRunningGear from the as-built band loop; attached onto
   // the SHARED spec.armor so every armor consumer (state.js shell sweeps,
-  // damage.ts, ai.js weak-spot probes, main.js HUD, killcam snapshots) sees
+  // damage.ts, ai.js weak-spot probes, main.ts HUD, killcam snapshots) sees
   // the real track shape. Deterministic per spec (gear cfg is authored data;
   // camoSeed/quality never move wheels), so re-attachment on every build is
   // an idempotent overwrite. Gearless builds (community GLB placeholders)

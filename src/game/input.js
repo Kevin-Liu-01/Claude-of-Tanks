@@ -151,7 +151,7 @@ const DEFAULT_SETTINGS = {
   // 'hold' = hold-to-aim (enter sniper while held, release restores the
   // prior arcade zoom + preserved aim pitch; the owner-mandated default),
   // 'toggle' = tap toggles sniper, 'freelook' = classic WoT
-  // gun-lock free look. Routed per frame by main.js; cameraRig owns the
+  // gun-lock free look. Routed per frame by main.ts; cameraRig owns the
   // hold/exit semantics (CamInput.aimHold).
   rmbMode: 'hold',
   aiDifficulty: 'normal', // bot tier for the NEXT battle: 'easy'|'normal'|'hard'
@@ -470,7 +470,7 @@ export function createInput(opts = {}) {
   // CURSOR-AIM FALLBACK: pointer lock is unavailable in some embeds (sandboxed
   // iframes / embedded panes — requestPointerLock throws a synchronous
   // SecurityError, rejects its promise, or fires 'pointerlockerror'). Latch the
-  // denial and expose it: main.js switches the turret to cursor aim (raycast
+  // denial and expose it: main.ts switches the turret to cursor aim (raycast
   // through the real cursor position) and the fire gate below accepts clicks
   // landing on the game canvas. The latch clears the moment a lock actually
   // engages, so lock-capable browsers are never degraded.
@@ -482,14 +482,14 @@ export function createInput(opts = {}) {
   //   - a denial that arrives asynchronously (promise rejection or the
   //     'pointerlockerror' event — Chrome's cooldown path) only bumps a
   //     consecutive-denial streak; the primary-button gesture retry in
-  //     main.js keeps re-attempting the lock in the meantime;
+  //     main.ts keeps re-attempting the lock in the meantime;
   //   - the cursor-aim latch engages only after LOCK_DENY_LATCH_STREAK
   //     consecutive denials, or IMMEDIATELY on a synchronous SecurityError
   //     throw (structurally lock-free environments: sandboxed iframes and
   //     embedded panes throw in-call — retrying those is pure churn, so
   //     requestLock also stops re-attempting after a hard denial);
   //   - any successful lock resets the streak, clears the latch and fires
-  //     the onLockRestored handlers (main.js drops/rearms the toast).
+  //     the onLockRestored handlers (main.ts drops/rearms the toast).
   // One physical attempt can report twice (Chrome rejects the promise AND
   // fires pointerlockerror), and the two signals can land SECONDS apart when
   // a battle-entry world build blocks the main thread between them — so the
@@ -1124,7 +1124,7 @@ export function createInput(opts = {}) {
 
     /**
      * Subscribe to the latch-released transition: a pointer lock SUCCEEDED
-     * after the cursor-aim latch had engaged (fires once per restore; main.js
+     * after the cursor-aim latch had engaged (fires once per restore; main.ts
      * uses it to drop and re-arm the fallback toast).
      * @param {() => void} cb
      * @returns {() => void} unsubscribe

@@ -137,7 +137,7 @@ export function ensureTankThumbs(_specs, _opts = {}) {
 //    disposes the temporary build, and caches masks per specId (small LRU).
 // ---------------------------------------------------------------------------
 
-let maskEngineCtx = null; // main.js hands over its engineCtx once at boot
+let maskEngineCtx = null; // main.ts hands over its engineCtx once at boot
 
 /** Wire the shared engine context (renderer + shadow hook) for mask renders.
  *  Without it, getTopDownMasks reports 'failed' and the damage panel keeps

@@ -9,7 +9,7 @@
 //  - server.warmup pre-transforms the src modules at server start, so the
 //    browser's requests hit a warm cache instead of serializing esbuild work;
 //  - a dev-only transformIndexHtml hook injects <link rel="modulepreload">
-//    for main.js's reachable STATIC import graph (relative paths only),
+//    for main.ts's reachable STATIC import graph (relative paths only),
 //    flattening the depth-first discovery waterfall into one parallel fetch
 //    wave. Dynamic imports are deliberately excluded: preloading them would
 //    defeat the source-geometry/model-loader lazy boundaries and recreate the
@@ -24,7 +24,7 @@ import { dirname, join, resolve, relative } from 'node:path';
 import { renderProductStats } from './src/productStats.ts';
 
 /**
- * Transitive relative-import closure starting at src/main.js.
+ * Transitive relative-import closure starting at src/main.ts.
  * Cheap regex scan (static `import ... from '...'`, bare `import '...'`, and
  * `export ... from '...'`); only ./ and ../
  * specifiers are followed — package imports live in the prebundle.
@@ -32,7 +32,7 @@ import { renderProductStats } from './src/productStats.ts';
  * @returns {string[]} root-absolute URL paths, entry first
  */
 function reachableSrcModules(root) {
-  const entry = resolve(root, 'src/main.js');
+  const entry = resolve(root, 'src/main.ts');
   const seen = new Set();
   const queue = [entry];
   const specRe = /(?:import|export)\s+(?:[^'"]*?\sfrom\s*)?['"]([^'"]+)['"]/g;

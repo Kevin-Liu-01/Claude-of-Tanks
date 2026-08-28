@@ -144,7 +144,7 @@ assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
 
 await import('./imagePreload.selftest.mjs');
 
-const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const networkBattleLaunchSource = await readFile(
   new URL('../net/networkBattleLaunchRuntime.ts', import.meta.url), 'utf8');
 const battlePresentationSource = await readFile(
@@ -212,7 +212,7 @@ assert.match(mainSource,
   /clearBattle: \(\) => \{[\s\S]{0,500}hud\?\.setMode\?\.\('hidden'\)/,
   'direct Studio exit cleanup must not require the battle-only HUD runtime');
 assert.match(mainSource,
-  /function veilHud\(on\)[\s\S]{0,400}hud\?\.root[\s\S]{0,300}damagePanel\?\.root/,
+  /function veilHud\(on(?::\s*boolean)?\)[\s\S]{0,400}hud\?\.root[\s\S]{0,300}damagePanel\?\.root/,
   'shared presentation cleanup must tolerate an unloaded battle HUD and damage panel');
 assert.match(garageReturnRuntimeSource, /ui\.hideHud\(\)/,
   'the Garage return owner must hide the optional battle HUD');
@@ -230,7 +230,7 @@ assert.match(garagePhasePresentationSource,
 assert.match(garageReturnRuntimeSource, /world\.setFarCascadeDormant\(true\)/,
   'the Garage return owner must request long-range shadow dormancy');
 assert.match(mainSource,
-  /setFarCascadeDormant: \(dormant\) => lighting\.setFarCascadeDormant\(dormant\)/,
+  /setFarCascadeDormant: \(dormant(?::\s*boolean)?\) => lighting\.setFarCascadeDormant\(dormant\)/,
   'returning to the enclosed garage must suspend long-range shadow redraws');
 const pedestalWarmBody = pedestalRuntimeSource.slice(
   pedestalRuntimeSource.indexOf('const warmPrograms = async'),
@@ -339,7 +339,7 @@ assert.match(worldActivationSource,
   /createMinimapAssetRuntime<World>\(\{[\s\S]{0,700}loadAsset: options\.loadMinimapAsset/,
   'the typed world owner must route exact minimap loading through its injected adapter');
 assert.match(mainSource,
-  /loadMinimapAsset: \(next, url\) => hud\.buildMinimapFromAsset\(next\.heightField, url\)/,
+  /loadMinimapAsset: \(next, url\) => hud\?\.buildMinimapFromAsset\(next\.heightField, url\) \?\? false/,
   'main composition must connect the HUD asset loader to the typed world owner');
 assert.match(minimapRuntimeSource,
   /const isCurrent[\s\S]{0,1100}await loadAsset[\s\S]{0,700}buildFallback\(world\)/,

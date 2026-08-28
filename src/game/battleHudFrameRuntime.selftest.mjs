@@ -122,7 +122,7 @@ assert.equal(runtime.frameInfo.shells, game.shells);
 
 assert.throws(() => createBattleHudFrameRuntime({}), /requires every presentation port/);
 
-const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(mainSource, /const frameInfo\s*=\s*\{/,
   'main must not rebuild the mutable HUD frame');
 assert.doesNotMatch(mainSource, /const armorScopeTargets\s*=\s*\[/,

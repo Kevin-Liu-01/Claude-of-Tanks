@@ -102,7 +102,7 @@ export function spawnTanks(game: RosterGameState, engineCtx: EngineContext) {
   // EVICTS the visuals of everyone parked (the per-spec texture cache in
   // materials.js is refcounted, so eviction frees the canvases/GPU maps).
   game._engineCtx = engineCtx;   // for lazy visual builds (ensureTankVisual)
-  game._groundSampler = null;    // set by main.js; applied to lazy visuals too
+  game._groundSampler = null;    // set by main.ts; applied to lazy visuals too
   RUNTIME_TANK_IDS.forEach((specId: string, i: number) => {
     const spec = getSpec(specId);
     const ent = {
@@ -144,7 +144,7 @@ export function spawnTanks(game: RosterGameState, engineCtx: EngineContext) {
   // heightToNormal 1050 ms + noise 2.2 s). Nobody can see the staged battle
   // behind the garage screen, so boot builds NONE of it — ensureStagedVisuals()
   // (idempotent, chunked by the caller) builds the roster post-ready, and
-  // main.js runs it synchronously from warmCombatPipeline(), which
+  // main.ts runs it synchronously from warmCombatPipeline(), which
   // __SHOTS.set() and startBattle() already invoke before anything can look
   // at the battlefield.
   //

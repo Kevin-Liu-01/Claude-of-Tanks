@@ -34,7 +34,7 @@ ARCHITECTURE.md wherever the two disagree.
                          |                           |                  |
                      Three.js scene                 HUD             audio/FX
 
-Solo composes the simulation and presentation directly in src/main.js and
+Solo composes the simulation and presentation directly in src/main.ts and
 src/game/state.js. The dependency-free typed session shell and event bus live
 in src/game/stateCore.ts. Typed roster records, battle-visual policy, and
 deterministic participant/camouflage planning live in src/game/rosterState.ts,
@@ -155,7 +155,7 @@ strict TypeScript owners:
   `src/dev/shotRuntime.ts` demand-loads all deterministic staging only after
   an engineering tool explicitly calls `window.__SHOTS.set()`.
 
-`src/main.js` still declares dependency order and connects these ports, but it
+`src/main.ts` still declares dependency order and connects these ports, but it
 does not reimplement their state machines.
 
 ## Directory ownership
@@ -176,16 +176,21 @@ does not reimplement their state machines.
 
 ## Application lifecycle
 
-src/main.js is the legacy composition root. New ownership moves out through
-tested strict-TypeScript boundaries; src/game/stateCore.ts is the shared
-session boundary, src/game/rosterState.ts owns roster/visual planning, and
-src/game/soloBattleRuntime.ts demand-loads src/game/state.js, which remains the
-legacy solo battle owner.
+`src/main.ts` is the strict TypeScript composition root. It declares startup
+and frame order, narrows DOM state, and connects typed owners. JavaScript
+subsystems that have not migrated yet cross explicit `unknown` adapters at
+this boundary instead of leaking unchecked values into typed code.
+`src/game/stateCore.ts` is the shared session boundary,
+`src/game/rosterState.ts` owns roster/visual planning, and
+`src/game/soloBattleRuntime.ts` demand-loads `src/game/state.js`, which remains
+the legacy solo battle owner.
 
 Migration is boundary-first, not extension-first. A JavaScript subsystem moves
 only when its coherent owner and focused behavioral test are clear. A rename
-to `.ts`, broad `any`, or `@ts-nocheck` does not count as migration. Refactor
-commits preserve rendering and gameplay; behavior changes land separately.
+to `.ts`, broad `any`, or `@ts-nocheck` does not count as migration. The typed
+composition root therefore carries concrete port contracts and fail-fast DOM
+requirements rather than suppressing unresolved values. Refactor commits
+preserve rendering and gameplay; behavior changes land separately.
 
 `src/game/battlePresentationRuntime.ts` is the hot rendered-vehicle owner. It
 separates fixed-step solo interpolation from already-smoothed network poses and
@@ -194,7 +199,7 @@ prop contacts behind one allocation-bounded interface.
 
 `src/game/battleFrameRuntime.ts` owns the stateful advance order above that
 presentation owner. It retains fixed-step debt, pause diagnostics, its input
-sample, and its frame receipt. `src/main.js` consumes only the receipt before
+sample, and its frame receipt. `src/main.ts` consumes only the receipt before
 continuing camera, world, effects, HUD, audio, lighting, and postprocessing.
 
 `src/game/battleHudFrameRuntime.ts` is the corresponding rendered-information
@@ -210,7 +215,7 @@ and reveal receipt; it must not duplicate warm ordering or shader/shadow policy.
 `src/game/soloBattleLoadingRuntime.ts` owns the surrounding solo transition:
 world, exact-roster, battle-interface, FX and authority acquisition share one
 barrier; then player upload, deployment warm, loader dwell, reveal fallback,
-countdown calculation and diagnostics run in one typed order. `src/main.js`
+countdown calculation and diagnostics run in one typed order. `src/main.ts`
 connects its ports and no longer implements that loading state machine.
 
 `src/game/soloBattleStartRuntime.ts` owns the synchronous activation inside
@@ -225,7 +230,7 @@ transition for private/LAN and dedicated play. It overlaps modules, battlefield,
 and transport; keeps a newly created bridge private until its roster and
 viewer-bearing first snapshot succeed; performs warmup and the all-peer barrier
 under the loader; then delegates one atomic activation and hides the loader only
-after black-frame validation. `src/main.js` supplies concrete adapters only.
+after black-frame validation. `src/main.ts` supplies concrete adapters only.
 
 `src/game/battleResultPresentationRuntime.ts` is the post-simulation result
 owner. The frame loop invokes it once after authority advances and does not own
@@ -358,7 +363,7 @@ initial state.
 `networkBattleLaunchRuntime.ts` is the common mode-launch owner above that
 presentation seam. Private/LAN first entry, retained-room rematch, and ranked
 handoff share identity validation, loader presentation, cleanup, and typed
-failure diagnostics instead of implementing parallel policies in `main.js`.
+failure diagnostics instead of implementing parallel policies in `main.ts`.
 
 `networkBattlePresentationRuntime.ts` is the deep presentation module below
 that launcher. Its single `present()` interface owns the ordering shared by

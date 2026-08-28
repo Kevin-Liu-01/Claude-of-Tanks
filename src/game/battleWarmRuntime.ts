@@ -742,7 +742,7 @@ type WarmGenerator = Generator<unknown, unknown, unknown>;
  * Legacy integration ports used by the fallback solo/capture warm path. The
  * owner is loaded only after Battle or deterministic-capture intent, while
  * retaining the exact existing generators and their synchronous drain
- * contract. These broad ports are deliberately contained at the main.js
+ * contract. These broad ports are deliberately contained at the main.ts
  * migration seam; the warm implementation itself is now typed and isolated.
  */
 export interface CombatWarmRuntimeContext {

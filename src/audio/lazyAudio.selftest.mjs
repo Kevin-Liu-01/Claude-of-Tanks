@@ -69,7 +69,7 @@ assert.deepEqual(handoffCalls, ['resume', 'mute'],
   'the adopted mixer constructs its graph before applying persisted state');
 assert.equal(handoff.ready, true, 'the mixer handoff settles without a partial instance');
 
-const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const intentSource = await readFile(
   new URL('../game/battleIntentRuntime.ts', import.meta.url), 'utf8',
 );

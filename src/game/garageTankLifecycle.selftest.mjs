@@ -122,14 +122,14 @@ for (const entity of game.allTanks) {
   assert.deepEqual(entity.input.aimPoint.xyz, [0, 0, 0], 'aim state is reset');
 }
 
-const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const garageReturn = await readFile(new URL('./garageReturnRuntime.ts', import.meta.url), 'utf8');
 const adoptAt = garageReturn.indexOf('const adoptedVisual = roster.adoptBattlePlayer');
 const clearAt = garageReturn.indexOf('roster.clearBattle(adoptedVisual)', adoptAt);
 assert.ok(adoptAt >= 0 && clearAt > adoptAt,
   'garage entry transfers its hero before clearing the completed battle');
-const adapterAt = main.indexOf('clearBattle: (preservedVisual) => clearBattleAfterExit({');
-const preserveAt = main.indexOf('preservedVisual,', adapterAt);
+const adapterAt = main.indexOf('clearBattle: (preservedVisual: unknown) => clearBattleAfterExit({');
+const preserveAt = main.indexOf('preservedVisual: legacyPort(preservedVisual),', adapterAt);
 const poolAt = main.indexOf('visualPool: battleVisualPool', preserveAt);
 assert.ok(adapterAt >= 0 && preserveAt > adapterAt && poolAt > preserveAt,
   'battle teardown preserves only the adopted hero and hands bot visuals to the bounded pool');

@@ -25,7 +25,7 @@
 //  - CAMERA SAFE: the showroom orbit reaches r≈19.3 m at y≥3.1 m — anything
 //    taller than ~2.9 m keeps its whole footprint beyond r≈20 m (the corner
 //    bays sit at r 23-26 m), so a free 360° orbit never clips into dressing.
-//  - BATTLE COST ZERO: main.js toggles group.visible with the garage spots;
+//  - BATTLE COST ZERO: main.ts toggles group.visible with the garage spots;
 //    hidden subtrees (the dim fill light included) drop out of the render
 //    list entirely, so battle frames never cull or draw any of this.
 import * as THREE from 'three';

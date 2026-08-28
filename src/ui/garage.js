@@ -728,7 +728,7 @@ export function createGarage(opts) {
 
   // --- CAMO PICKER SECTION: per-tank paint pattern -------------------------
   // opts.camo = { patterns: string[], label: {id:label}, get(specId),
-  //               set(specId, patternId) } (main.js injects the materials.js
+  //               set(specId, patternId) } (main.ts injects the materials.js
   //               persistence + live-repaint hooks). Selection is per tank,
   //               shown on the pedestal immediately, and persists via
   //               localStorage inside opts.camo.set.
@@ -1175,7 +1175,7 @@ export function createGarage(opts) {
   // Pointer sweeps across a dense carousel must not transfer half the fleet.
   // A short dwell is enough to distinguish a deliberate target; focus/touch/
   // press are already explicit and signal immediately. The eventual click
-  // joins the same builder/texture promise in main.js.
+  // joins the same builder/texture promise in main.ts.
   let tankIntentTimer = 0;
   let tankIntentId = '';
   const clearTankIntent = (specId = '') => {

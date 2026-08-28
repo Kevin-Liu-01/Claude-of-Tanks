@@ -171,7 +171,7 @@ assert.ok(rematch.calls.findIndex(([name]) => name === 'transitionEnd')
 
 assert.throws(() => createGarageReturnRuntime({}), /requires every lifecycle port/);
 
-const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(mainSource, /function enterGarage\(/,
   'main must not own the Garage return transaction');
 assert.doesNotMatch(mainSource, /let leavingBattle\s*=/,

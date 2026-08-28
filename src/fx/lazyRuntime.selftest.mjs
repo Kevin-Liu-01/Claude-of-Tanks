@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
-const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const battleVisualStreamer = await readFile(
   new URL('../game/battleVisualStreamer.ts', import.meta.url), 'utf8',
 );
@@ -53,7 +53,7 @@ if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main
 if (!main.includes("import('./fx/effects.js')")) {
   throw new Error('combat effects must retain an explicit demand-loaded chunk');
 }
-if (!/createFxRuntimeAccess\(\{[\s\S]{0,220}loadModule:\s*\(\)\s*=>\s*import\(['"]\.\/fx\/effects\.js['"]\)/.test(main)
+if (!/createFxRuntimeAccess(?:<[^>]+>)?\(\{[\s\S]{0,260}loadModule:\s*async\s*\(\)\s*=>[\s\S]{0,80}import\(['"]\.\/fx\/effects\.js['"]\)/.test(main)
     || !/const preloadFxModule = fxRuntimeAccess\.preloadModule/.test(main)
     || !/const ensureFxRuntime = fxRuntimeAccess\.ensureRuntime/.test(main)) {
   throw new Error('the composition root must delegate FX import and construction ownership');
@@ -86,7 +86,7 @@ if (!/window\.__SHOTS\s*=\s*\{[\s\S]{0,320}import\(['"]\.\/dev\/shotRuntime\.ts[
     || !/export async function setShotView[\s\S]*context\.ensureFxRuntime\(\)/.test(shotRuntime)) {
   throw new Error('deterministic shots can enter without the live effects runtime');
 }
-if (!/createKillcamAccess\(\{[\s\S]{0,220}loadModule:\s*\(\)\s*=>\s*import\(['"]\.\/game\/killcam\.js['"]\)/.test(main)
+if (!/createKillcamAccess\(\{[\s\S]{0,300}loadModule:\s*async\s*\(\)\s*=>[\s\S]{0,120}import\(['"]\.\/game\/killcam\.js['"]\)/.test(main)
     || !/const killcam = killcamAccess\.presentation/.test(main)
     || !/const ensureKillcamRuntime = killcamAccess\.ensureRuntime/.test(main)) {
   throw new Error('the composition root must delegate killcam import and runtime ownership');
@@ -176,7 +176,7 @@ if (!/function\* warmDestroyedRosterVariantsSteps\([\s\S]*prebakeBurntSteps[\s\S
   throw new Error('deferred warm lost a full-quality wreck/destruction/hidden-variant family');
 }
 if (!/finishedAtPreBattleS[\s\S]*doneBeforeRollout[\s\S]*setPending\(false\)/.test(deferredWarm)
-    || !/setPending:\s*\(pending\)[\s\S]{0,80}battleWarmPending = pending/.test(main)) {
+    || !/setPending:\s*\(pending(?::\s*boolean)?\)[\s\S]{0,80}battleWarmPending = pending/.test(main)) {
   throw new Error('deferred warm must retain the one-second rollout hold and record completion');
 }
 if (!/round\.setupBattle\(game, specId, activeWorld,[\s\S]{0,500}round\.combatWarm\.reset\(\)/.test(soloStart)

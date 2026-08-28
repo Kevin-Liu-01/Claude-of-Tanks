@@ -125,7 +125,7 @@ assert.throws(() => createBattleFrameRuntime({
   getRigMode() {}, stepSimulation() {}, emitPause() {}, simulationDt: 0,
 }), /requires every frame port|simulationDt/);
 
-const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(mainSource, /let simAcc\s*=/,
   'main must not retain fixed-step debt');
 assert.doesNotMatch(mainSource, /const pauseInfo\s*=\s*\{/,

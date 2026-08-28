@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { createHeightField } from './terrain.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const main = fs.readFileSync(path.join(here, '..', 'main.js'), 'utf8');
+const main = fs.readFileSync(path.join(here, '..', 'main.ts'), 'utf8');
 const liveProxy = fs.readFileSync(path.join(here, 'liveHeightFieldProxy.ts'), 'utf8');
 const vegetation = fs.readFileSync(path.join(here, 'vegetation.ts'), 'utf8');
 assert.match(main,

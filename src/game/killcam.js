@@ -9,7 +9,7 @@
  * rolls, modules/crew, ammo-rack flag). Nothing is recomputed and nothing
  * reads live AI state during playback.
  *
- * PLAYBACK (main.js drives it at battle end):
+ * PLAYBACK (main.ts drives it at battle end):
  *  -1. WRECK (killcam r2, death view only, freshKill flag): the player died
  *      THIS moment and the battle is decided — before any replay chrome
  *      moves the camera away, a live-action hold (~2.2 s) keeps the frame on
@@ -17,7 +17,7 @@
  *      rate: fx fireball/debris/smoke stay visible and the killcam itself
  *      advances the victim's turret-pop/burn timelines (the sim/visual sync
  *      loop is frozen during replays). Mid-battle deaths get the same beat
- *      OUTSIDE the killcam (main.js death beat — full-volume audio), so this
+ *      OUTSIDE the killcam (main.ts death beat — full-volume audio), so this
  *      phase self-gates on the freshness flag.
  *   0. APPROACH (death view only, killcam_endscreen r1) — eased push-in
  *      orbit from the player's live death view to the killer's position,
@@ -35,7 +35,7 @@
  *      analysis — detonation flash, fx fireball/debris/smoke re-fired on
  *      the restaged victim, the turret-pop arc tumbling at full rate with a
  *      brief ~0.55x dilation through the launch (fx clock scaled via
- *      main.js), the camera pushed out and eased back onto the x-ray
+ *      main.ts), the camera pushed out and eased back onto the x-ray
  *      vantage. Ammo-rack kills toss the turret (pop 1.0), plain kills jolt
  *      it (pop 0.22) — same setDestroyed grammar as live play, GLB and
  *      procedural alike. Emits 'killcam:impact' {cause,pos,timeScale} on the
@@ -446,7 +446,7 @@ const KC_CSS = `
 .cot-kc svg{display:block;flex:0 0 auto;}
 /* REPLAY OWNS THE SCREEN (r4 critical): while a replay is live, no battle-HUD
    chrome may render over the cinematic — a one-frame race in the integration
-   flyby edge-latch (main.js snapshots kcActive at frame top, the death path
+   flyby edge-latch (main.ts snapshots kcActive at frame top, the death path
    begins the replay mid-frame, the stale latch then un-veiled the HUD for the
    whole replay: team panels/kill feed/minimap/reticle over flight AND x-ray,
    photographed 1-of-2 live runs). Declarative defense: begin() stamps
@@ -686,7 +686,7 @@ function tube(a, b, radius, mat, parent, disposables) {
  * Create the kill-cam controller.
  * @param {{scene:THREE.Scene, camera:THREE.PerspectiveCamera,
  *   rig:{setExternalPose:Function}, heightField:{getHeightAt:Function},
- *   getPlayer:() => ?object, getEntity?:(id:string) => ?object}} deps injected by integration (main.js)
+ *   getPlayer:() => ?object, getEntity?:(id:string) => ?object}} deps injected by integration (main.ts)
  * @returns {object} killcam API
  */
 export function createKillCam(deps) {
@@ -696,7 +696,7 @@ export function createKillCam(deps) {
       && window.__DEBUG.game.tankById ? window.__DEBUG.game.tankById.get(id) : null));
   // World access for the flight LOS solve (r6 major): terrain/prop raycast +
   // the vegetation concealment discs the spotting sim itself uses. Prefer an
-  // injected getter (docs/GUNNERY-CAMERA-SPEC.md wires main.js to
+  // injected getter (docs/GUNNERY-CAMERA-SPEC.md wires main.ts to
   // pass `getWorld: () => world`); fall back to the debug handle so the fix
   // is live before the integration dep lands. Resolved lazily per replay —
   // the world object is REPLACED on every map switch.
@@ -704,7 +704,7 @@ export function createKillCam(deps) {
     || (() => (typeof window !== 'undefined' && window.__DEBUG ? window.__DEBUG.world : null));
   // FX system access (killcam r2): the IMPACT beat re-fires the real
   // destruction sequence (fx.destruction — fireball, debris, smoke column)
-  // on the restaged victim. Injected by main.js (getFx); the debug handle is
+  // on the restaged victim. Injected by main.ts (getFx); the debug handle is
   // the pre-integration fallback, and a missing fx system only mutes the
   // particle side of the beat (the turret pop still plays off the visual).
   const getFx = deps.getFx
@@ -1034,7 +1034,7 @@ export function createKillCam(deps) {
      *   battle-deciding death that happened THIS tick — the replay opens
      *   with the live WRECK hold (the real destruction plays on screen
      *   before the cinematic). Mid-battle deaths get their live beat from
-     *   main.js instead and never set it.
+     *   main.ts instead and never set it.
      * @returns {boolean} true if a replay started (caller defers the overlay)
      */
     playForResult(result, timeS, onDone, opts) {
@@ -1168,7 +1168,7 @@ export function createKillCam(deps) {
     },
 
     /**
-     * Fx-clock scale for THIS frame (killcam r2): main.js multiplies the
+     * Fx-clock scale for THIS frame (killcam r2): main.ts multiplies the
      * shared fx dt by it, dilating the whole destruction — particles, blast
      * light, timers AND the visual's pop/burn timelines (they age on the
      * same clock) — to ~0.55x through the impact beat's turret launch.
@@ -1350,7 +1350,7 @@ export function createKillCam(deps) {
       // evidence). Restore the live visual and re-pose it from the SNAPSHOT
       // state; finish() re-applies the wreck (settled, embers cold) so the
       // death cam afterwards is honest again. The sim/visual sync loop is
-      // frozen while the replay runs (main.js step 5), so nothing overwrites
+      // frozen while the replay runs (main.ts step 5), so nothing overwrites
       // the pose.
       restageIntact();
     }
@@ -2212,7 +2212,7 @@ export function createKillCam(deps) {
    * the detonation flash, ~IMPACT_SLOWMO through the turret launch + tumble
    * (0.22-1.0 s of the pop arc — apogee at 0.62 s), back to full rate for
    * the smoke settle and the x-ray handover. Pure function of the beat's
-   * ANIM time so main.js (fx clock), updateImpact (window) and the visual's
+   * ANIM time so main.ts (fx clock), updateImpact (window) and the visual's
    * own pop timeline (fx-clock driven) all dilate coherently.
    * @param {number} t impact-beat anim time (s)
    * @returns {number} fx dt multiplier (0..1]
@@ -2363,13 +2363,13 @@ export function createKillCam(deps) {
   }
 
   function updateImpact(dt) {
-    // anim time advances on the SAME dilated clock main.js scales the fx dt
+    // anim time advances on the SAME dilated clock main.ts scales the fx dt
     // by (fxTimeScale getter reads impactRate(pb.it)) — window, particles
     // and the visual's pop arc stay in lockstep.
     const rate = impactRate(pb.it);
     pb.it += dt * rate;
     pb.itWall += dt;
-    // the sim/visual sync loop is frozen during replays (main.js step 5) —
+    // the sim/visual sync loop is frozen during replays (main.ts step 5) —
     // the killcam drives the victim's destruction timelines itself; the
     // internal advance rides the shared fx clock, dt is just the fallback.
     if (pb.impactVis) pb.impactVis.syncFromState(pb.snapPoseState, dt * rate);
@@ -3873,7 +3873,7 @@ export function createKillCam(deps) {
   // CURSOR ORBIT + wheel zoom (killcam r2 — no button hold, see onMove),
   // auto-advance when the spectated ally dies, and the bus announcements
   // hud.js renders the spectate bar from ('spectate:begin/change/end' —
-  // additive events, no main.js wiring).
+  // additive events, no main.ts wiring).
   // Battle state is read through window.__DEBUG.game (READ-ONLY — the
   // integration seam sanctioned for this round; no game module is imported).
   const spectate = (() => {
@@ -3937,7 +3937,7 @@ export function createKillCam(deps) {
     // aim, so every mouse motion is free look: full 360° yaw, the rig clamps
     // pitch and eases both (chase free-look feel). movementX/Y works locked
     // AND unlocked (a canvas click mid-spectate re-grabs pointer lock —
-    // main.js battle mousedown — and client deltas die with the cursor);
+    // main.ts battle mousedown — and client deltas die with the cursor);
     // client-delta fallback covers browsers without movement fields.
     function onMove(e) {
       if (!on) return;

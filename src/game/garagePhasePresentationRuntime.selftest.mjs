@@ -97,7 +97,7 @@ assert.equal(worldB.parent, null);
 assert.throws(() => createGaragePhasePresentationRuntime({}),
   /requires every scene lifecycle port/);
 
-const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(mainSource, /new THREE\.SpotLight\(/,
   'main must not construct Garage phase lights');
 assert.doesNotMatch(mainSource, /function setGarageSpots\(/,

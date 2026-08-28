@@ -275,7 +275,7 @@ export function createMap(
 /**
  * BOOT DEFERRAL: same world, built one subsystem per animation frame so a
  * loading bar can report real progress and keep animating instead of freezing
- * for the whole build. main.js uses this for the pre-battle load; the
+ * for the whole build. main.ts uses this for the pre-battle load; the
  * synchronous {@link createMap} stays the path for screenshot-contract map
  * switches (which must not span frames).
  *
@@ -512,7 +512,7 @@ function assembleWorld(
      */
     getConcealment: () => vegetation.concealers || [],
     // effects_combat r1: crushable props (telegraph poles + world-dressing r1
-    // 'loop'-class small clutter) — hull overlap in main.js triggers
+    // 'loop'-class small clutter) — hull overlap in main.ts triggers
     // crushProp (hinge-topple / debris swap) + fx.propCrush splinters.
     crushables: props.crushables || [],
     crushProp: (i: number, dx: number, dz: number, speedMps = 0) => (

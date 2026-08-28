@@ -64,7 +64,7 @@ export function createRenderer(container: HTMLElement): GameRenderer {
     stencil: false,
   }) as GameRenderer;
   // WebGLRenderer is not an Object3D and therefore has no built-in userData.
-  // Reserve a small integration bag for lifecycle hooks installed by main.js.
+  // Reserve a small integration bag for lifecycle hooks installed by main.ts.
   renderer.userData = renderer.userData || {};
 
   // MOBILE r1: resolve the device tier (quality.ts) before ANY preset
@@ -85,7 +85,7 @@ export function createRenderer(container: HTMLElement): GameRenderer {
   // screen (no handler anywhere) — on phones, where the OS reclaims the GPU
   // under memory pressure, that was indistinguishable from a crash. Keep the
   // context restorable (preventDefault) and give the player a branded
-  // explanation + reload path. Once main.js has installed its recovery
+  // explanation + reload path. Once main.ts has installed its recovery
   // hooks, a successful restore keeps the current battle and rebuilds at a
   // safer preset; an early-boot loss still reloads through the fallback.
   renderer.domElement.addEventListener('webglcontextlost', (e) => {

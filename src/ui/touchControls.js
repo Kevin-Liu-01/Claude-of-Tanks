@@ -450,7 +450,7 @@ export function createTouchControls({
 
   // PINCH = SCOPE (MOBILE-UX r1, owner: pinch "should be activating scope").
   // The gesture drives the SAME rebindable action lanes the desktop wheel
-  // and SCOPE button use (input.js virtual taps -> main.js wheelStep ->
+  // and SCOPE button use (input.js virtual taps -> main.ts wheelStep ->
   // cameraRig.stepZoom) — no forked zoom logic:
   //   spread from arcade  -> sniperToggle (enter scope, the SCOPE button lane)
   //   spread in scope     -> zoomIn  (wheel-notch zoom step)

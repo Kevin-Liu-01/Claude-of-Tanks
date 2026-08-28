@@ -1247,7 +1247,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   // placeholder CanvasTexture and warmTextures() paints the real canvases in
   // by image-swap. DETERMINISM: the bakes still consume the SAME seeded
   // texRng stream in the SAME order as before — only later — so every frozen
-  // capture keeps its exact noise layout. main.js calls warmTextures() from a
+  // capture keeps its exact noise layout. main.ts calls warmTextures() from a
   // post-ready painted-frame slices and synchronously from
   // warmCombatPipeline(), which startBattle()/__SHOTS.set() already run
   // before any fx frame can render.

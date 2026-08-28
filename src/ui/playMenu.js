@@ -3,7 +3,7 @@
  *
  * This module owns the room-entry interface and translates user actions into
  * signaling/lobby commands. Canonical lobby and match state remain in src/net;
- * the menu renders that state and hands established sessions to main.js.
+ * the menu renders that state and hands established sessions to main.ts.
  */
 import { createPrivateRoomConnectionRuntime } from '../net/privateRoomConnectionRuntime.ts';
 import { resolveSignalUrl } from '../net/signalEndpoint.ts';

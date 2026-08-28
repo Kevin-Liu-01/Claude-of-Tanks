@@ -130,15 +130,18 @@ adapter change.
 | `server/` | Network services | Signaling, distributed rooms, dedicated matches, matchmaking, ratings, and HTTP surfaces |
 | `tools/` | Reproducible proof | Generators, browser probes, performance tools, geometry gates, captures, and release checks |
 
-`src/main.js` is the composition root. It should remain surgical: subsystem
-policy belongs in the owner module, not in the boot file.
+`src/main.ts` is the strict TypeScript composition root. It should remain
+surgical: subsystem policy belongs in the owner module, not in the boot file.
 
 The runtime is undergoing an incremental strict-TypeScript migration. Stable
-boundaries are extracted into `.ts` owner modules with focused tests, while
-legacy `.js` integration remains operational. This avoids a risky big-bang
-rewrite and lets each migrated boundary ship with behavioral parity evidence.
-The target state is a fully typed runtime; JavaScript interoperability is a
-temporary migration mechanism, not a permanent module tier.
+boundaries are extracted into `.ts` owner modules with focused tests. The
+application entry now compiles under the strict project configuration and
+describes its browser, rendering, UI, world, and gameplay ports explicitly.
+Remaining `.js` implementations cross that root only through narrow `unknown`
+adapters; they do not weaken the typed owners with `any` or compiler
+suppressions. This avoids a risky big-bang rewrite and lets each migrated
+boundary ship with behavioral parity evidence. JavaScript interoperability is
+a temporary migration mechanism, not a permanent module tier.
 Boot and transition screens now depend on strict shared DOM, font, icon,
 image-preload, featured-media, map-art, and tier-metadata contracts rather than
 crossing back into unchecked presentation helpers.
@@ -181,7 +184,7 @@ sequenceDiagram
 
 The entry document paints the boot surface before the main module graph is
 ready. Development-only Vite warmup and module preload flatten the static
-`src/main.js` import waterfall. Production uses bundled entries.
+`src/main.ts` import waterfall. Production uses bundled entries.
 
 ### 5.2 Garage
 

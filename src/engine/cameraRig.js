@@ -209,7 +209,7 @@ export function createCameraRig(camera, deps) {
   // solveArcade, plus an eased pose BLEND whenever the target changes so
   // cycling allies never teleports the camera (owner ask). Driven entirely
   // through rig.startSpectate / setSpectateTarget / spectateLook /
-  // stopSpectate — no main.js wiring needed (killcam.js owns the flow).
+  // stopSpectate — no main.ts wiring needed (killcam.js owns the flow).
   // killcam r2 FREE CURSOR ORBIT: yaw/pitch/dist carry eased TARGETS
   // (yawT/pitchT/distT) fed by spectateLook/spectateZoom — cursor motion
   // orbits the camera with chase-free-look damping instead of raw per-event
@@ -404,7 +404,7 @@ export function createCameraRig(camera, deps) {
   // --- cinematic letterbox (rig-owned DOM) ----------------------------------
   // The flyby must READ as an authored cinematic, not a camera bug: two black
   // bars own the frame while cine is active. Created lazily (headless-safe),
-  // torn between by every path that cancels the cinematic. main.js
+  // torn between by every path that cancels the cinematic. main.ts
   // additionally veils the battle HUD while rig.cinematicActive (see the
   // cinematicActive getter note).
   let letterboxEl = null;
@@ -598,14 +598,14 @@ export function createCameraRig(camera, deps) {
     aimPoint: new THREE.Vector3(),
     aimDist: MAX_AIM_DIST_M,
     /** True while setExternalPose pins the camera (harness/killcam framing).
-     * Consumers (main.js foliage occlusion focus) must not treat an external
+     * Consumers (main.ts foliage occlusion focus) must not treat an external
      * capture pose as a chase camera — WoT never fades foliage in replays. */
     externalActive: false,
     /** Settings flag: unlock ×16/×25 sniper zoom steps ("increased zoom"). */
     _increasedZoom: false,
     /**
      * True while the battle-open flyby drives the camera. The rig owns the
-     * cinematic LETTERBOX bars itself (setLetterbox); main.js reads this flag
+     * cinematic LETTERBOX bars itself (setLetterbox); main.ts reads this flag
      * to veil the battle HUD for the sweep's duration (a full battle HUD over
      * the opening cinematic reads as a bug — see effects_combat-r5 handoff).
      */
@@ -637,7 +637,7 @@ export function createCameraRig(camera, deps) {
       if (!player) return;
 
       // CURSOR-AIM FALLBACK: latch this frame's cursor ray inputs for
-      // updateAim (main.js sets cursorAim only while a battle is live and
+      // updateAim (main.ts sets cursorAim only while a battle is live and
       // pointer lock is unavailable).
       cursorAimOn = !!camInput.cursorAim;
       if (cursorAimOn) {
@@ -712,7 +712,7 @@ export function createCameraRig(camera, deps) {
       }
       prevAimHold = !!camInput.aimHold;
 
-      // Consume ALL wheel notches accumulated this frame (main.js clamps to
+      // Consume ALL wheel notches accumulated this frame (main.ts clamps to
       // ±3): fast flicks used to collapse to one step per render frame.
       if (camInput.wheel) {
         const wDir = camInput.wheel > 0 ? 1 : -1;

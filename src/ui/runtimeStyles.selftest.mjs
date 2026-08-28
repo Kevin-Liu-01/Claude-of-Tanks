@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const [main, garageSource, responsiveCss, garageCss] = await Promise.all([
-  readFile(new URL('../main.js', import.meta.url), 'utf8'),
+  readFile(new URL('../main.ts', import.meta.url), 'utf8'),
   readFile(new URL('./garage.js', import.meta.url), 'utf8'),
   readFile(new URL('./responsiveSurfaces.css', import.meta.url), 'utf8'),
   readFile(new URL('./garage.css', import.meta.url), 'utf8'),

@@ -9,7 +9,7 @@
 // meet here: props.ts registers per-world break handlers, effects.js registers
 // the particle-burst provider and forwards shell flight/impact events.
 //
-// Worlds are CACHED per mapId and reused across battles (main.js worldCache),
+// Worlds are CACHED per mapId and reused across battles (main.ts worldCache),
 // with only the active one visible — handlers register keyed by mapId
 // (a rebuild of the same map replaces its entry) and are dispatched only when
 // their world group is actually visible in the scene graph.
@@ -74,11 +74,11 @@ export function emitBreakFx(
 
 // DESTRUCTIBLES r1: bus seam for prop destruction — the AUDIO layer (and any
 // other bus consumer) subscribes to 'prop:destroyed' without the world layer
-// ever importing the bus. main.js wires the sink at boot; every breakRecord
+// ever importing the bus. main.ts wires the sink at boot; every breakRecord
 // in props.ts reports through here regardless of trigger path.
 let eventSink: DestroyedEventSink | null = null;
 
-/** main.js registers (ev) => bus.emit('prop:destroyed', ev). */
+/** main.ts registers (ev) => bus.emit('prop:destroyed', ev). */
 export function setDestroyedEventSink(fn: DestroyedEventSink | null): void { eventSink = fn; }
 
 /**
