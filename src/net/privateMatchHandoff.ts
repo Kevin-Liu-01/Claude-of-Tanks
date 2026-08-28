@@ -13,7 +13,10 @@ import {
   removeLobbyPlayer,
   serializeLobby,
   setLobbyPlayerConnected,
-} from './lobby.js';
+  type FinishLobbyRoundOptions,
+  type LobbyState,
+  type SerializedLobby,
+} from './lobby.ts';
 
 type Team = 'alpha' | 'bravo' | 'spectator';
 type Unsubscribe = () => void;
@@ -74,13 +77,13 @@ interface MatchSimulation {
 }
 
 interface PersistentRoomController {
-  state(): Record<string, unknown>;
-  command(playerId: string, command: Record<string, unknown>): Record<string, unknown>;
+  state(): SerializedLobby;
+  command(playerId: string, command: Record<string, unknown>): SerializedLobby;
   markPlaying(): void;
-  finish(outcome: unknown): void;
+  finish(outcome: FinishLobbyRoundOptions): void;
   disconnect(playerId: string): void;
   remove(playerId: string, reason?: string): void;
-  rejoin(playerId: string, player?: Partial<PrivateMatchPlayer>): Record<string, unknown>;
+  rejoin(playerId: string, player?: Partial<PrivateMatchPlayer>): SerializedLobby;
   metadataFor(playerId: string): Record<string, unknown>;
 }
 
@@ -106,7 +109,7 @@ interface MatchChannelHandoff {
 
 interface HostRoomSession {
   roomInfo: { peerId: string; mode?: string };
-  lobby?: { players: Map<string, PrivateMatchPlayer>; phase: string } & Record<string, unknown>;
+  lobby?: LobbyState;
   peers?: Map<string, { close?(reason?: string): void }>;
   isVehicleAllowed?(specId: string): boolean;
   isCamoAllowed?(camo: string): boolean;
@@ -158,35 +161,6 @@ const MatchAuthority = AuthoritativeMatchRuntime as unknown as AuthoritativeMatc
 const MatchClient = MatchClientRuntime as unknown as MatchClientConstructor;
 const makeAuthoritativeSimulation = createAuthoritativeMatch as unknown as PrivateSimulationFactory;
 const readVehicleSpec = getSpec as unknown as (id: string) => VehicleSpecView;
-const serializePrivateLobby = serializeLobby as unknown as (
-  lobby: NonNullable<HostRoomSession['lobby']>,
-) => Record<string, unknown>;
-const applyPrivateLobbyCommand = applyLobbyCommand as unknown as (
-  lobby: NonNullable<HostRoomSession['lobby']>,
-  playerId: string,
-  command: Record<string, unknown>,
-  guards: Record<string, (value: string) => boolean>,
-) => void;
-const addPrivateLobbyPlayer = addLobbyPlayer as unknown as (
-  lobby: NonNullable<HostRoomSession['lobby']>,
-  player: Pick<PrivateMatchPlayer, 'id' | 'name'>,
-) => void;
-const finishPrivateLobbyRound = finishLobbyRound as unknown as (
-  lobby: NonNullable<HostRoomSession['lobby']>,
-  outcome: unknown,
-) => void;
-const markPrivateLobbyRoundPlaying = markLobbyRoundPlaying as unknown as (
-  lobby: NonNullable<HostRoomSession['lobby']>,
-) => void;
-const removePrivateLobbyPlayer = removeLobbyPlayer as unknown as (
-  lobby: NonNullable<HostRoomSession['lobby']>,
-  playerId: string,
-) => void;
-const setPrivateLobbyPlayerConnected = setLobbyPlayerConnected as unknown as (
-  lobby: NonNullable<HostRoomSession['lobby']>,
-  playerId: string,
-  connected: boolean,
-) => void;
 
 function seededUnit(seed: number): () => number {
   let value = seed >>> 0;
@@ -272,24 +246,24 @@ function createPersistentRoomController(
   const lobby = session?.lobby;
   if (!lobby || !(lobby.players instanceof Map)) return null;
   return {
-    state: () => serializePrivateLobby(lobby),
+    state: () => serializeLobby(lobby),
     command(playerId: string, command: Record<string, unknown>) {
-      applyPrivateLobbyCommand(lobby, playerId, command, {
+      applyLobbyCommand(lobby, playerId, command, {
         isVehicleAllowed: session.isVehicleAllowed || (() => true),
         isCamoAllowed: session.isCamoAllowed || (() => true),
         isMapAllowed: session.isMapAllowed || (() => true),
       });
-      return serializePrivateLobby(lobby);
+      return serializeLobby(lobby);
     },
-    markPlaying() { markPrivateLobbyRoundPlaying(lobby); },
-    finish(outcome: unknown) { finishPrivateLobbyRound(lobby, outcome); },
+    markPlaying() { markLobbyRoundPlaying(lobby); },
+    finish(outcome: FinishLobbyRoundOptions) { finishLobbyRound(lobby, outcome); },
     disconnect(playerId: string) {
       if (lobby.players.has(String(playerId))) {
-        setPrivateLobbyPlayerConnected(lobby, String(playerId), false);
+        setLobbyPlayerConnected(lobby, String(playerId), false);
       }
     },
     remove(playerId: string, reason = 'left') {
-      removePrivateLobbyPlayer(lobby, playerId);
+      removeLobbyPlayer(lobby, playerId);
       const rtcPeer = session.peers?.get?.(String(playerId));
       rtcPeer?.close?.(reason);
       session.peers?.delete?.(String(playerId));
@@ -303,11 +277,11 @@ function createPersistentRoomController(
             code: 'room_seat_unavailable',
           });
         }
-        addPrivateLobbyPlayer(lobby, { id, name: player.name || 'Player' });
+        addLobbyPlayer(lobby, { id, name: player.name || 'Player' });
       } else {
-        setPrivateLobbyPlayerConnected(lobby, id, true);
+        setLobbyPlayerConnected(lobby, id, true);
       }
-      return serializePrivateLobby(lobby);
+      return serializeLobby(lobby);
     },
     metadataFor(playerId: string) {
       const player = lobby.players.get(String(playerId));

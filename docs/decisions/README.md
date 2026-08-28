@@ -99,3 +99,4 @@ runtime documents remain authoritative for behavior.
 - [0087 — Reconnect status has one strict typed surface](0087-typed-network-status-surface.md)
 - [0088 — Garage phase presentation has one typed owner](0088-typed-garage-phase-presentation.md)
 - [0089 — Private match handoff is strict TypeScript](0089-typed-private-match-handoff.md)
+- [0090 — Canonical lobby policy is strict TypeScript](0090-typed-lobby-state-machine.md)

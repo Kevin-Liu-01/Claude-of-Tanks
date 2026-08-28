@@ -23,7 +23,7 @@ import {
   createLobby,
   removeLobbyPlayer,
   serializeLobby,
-} from './lobby.js';
+} from './lobby.ts';
 import { createLoopbackTransportPair } from './loopbackTransport.js';
 import {
   automaticPlayerName,

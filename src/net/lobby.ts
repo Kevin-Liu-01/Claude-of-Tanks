@@ -1,32 +1,149 @@
 import { MAX_PLAYERS, MAX_SPECTATORS, normalizeRoomCode } from './protocol.js';
 import { normalizePlayerName, uniquePlayerName } from './playerNames.js';
 import { networkCamoId } from '../vehicles/camoPolicy.js';
-import { normalizeGameMode } from '../sim/matchModes.ts';
+import { normalizeGameMode, type GameModeId } from '../sim/matchModes.ts';
 
-export const LOBBY_PHASES = Object.freeze({
+export const LOBBY_PHASES = {
   WAITING: 'waiting',
   STARTING: 'starting',
   PLAYING: 'playing',
   FINISHED: 'finished',
-});
+} as const;
 
-export const LOBBY_TEAMS = Object.freeze({
+export const LOBBY_TEAMS = {
   ALPHA: 'alpha',
   BRAVO: 'bravo',
   SPECTATOR: 'spectator',
-});
+} as const;
 
-const TEAM_SET = new Set(Object.values(LOBBY_TEAMS));
+export type LobbyPhase = typeof LOBBY_PHASES[keyof typeof LOBBY_PHASES];
+export type LobbyTeam = typeof LOBBY_TEAMS[keyof typeof LOBBY_TEAMS];
+
+export interface LobbyPlayer {
+  id: string;
+  name: string;
+  team: LobbyTeam;
+  specId: string | null;
+  equipment: string[];
+  camo: string;
+  ready: boolean;
+  connected: boolean;
+  isHost: boolean;
+  rating: number | null;
+}
+
+export interface LobbyResult {
+  round: number;
+  result: string | null;
+  reason: string | null;
+}
+
+export interface LobbyState {
+  roomCode: string;
+  mode: string;
+  gameMode: GameModeId;
+  phase: LobbyPhase;
+  hostId: string;
+  maxPlayers: number;
+  maxSpectators: number;
+  allowTeamSwitch: boolean;
+  locked: boolean;
+  mapId: string;
+  teamSize: number;
+  revision: number;
+  updatedAtTick: number;
+  matchSeed: number | null;
+  round: number;
+  lastResult: LobbyResult | null;
+  players: Map<string, LobbyPlayer>;
+}
+
+export interface SerializedLobby extends Omit<LobbyState, 'players' | 'updatedAtTick'> {
+  players: LobbyPlayer[];
+}
+
+interface LobbyPlayerInput {
+  id?: unknown;
+  name?: unknown;
+  team?: unknown;
+  specId?: unknown;
+  equipment?: unknown;
+  camo?: unknown;
+  isHost?: boolean;
+  rating?: unknown;
+}
+
+export interface CreateLobbyOptions {
+  roomCode?: unknown;
+  hostId?: unknown;
+  hostName?: unknown;
+  maxPlayers?: number;
+  maxSpectators?: number;
+  mode?: unknown;
+  gameMode?: unknown;
+  mapId?: unknown;
+  allowTeamSwitch?: boolean;
+  hostSpecId?: unknown;
+  hostEquipment?: unknown;
+  hostCamo?: unknown;
+  teamSize?: number;
+}
+
+export interface AddLobbyPlayerOptions extends LobbyPlayerInput {
+  id?: unknown;
+  name?: unknown;
+}
+
+interface LobbyCommand extends Record<string, unknown> {
+  type?: unknown;
+  name?: unknown;
+  specId?: unknown;
+  equipment?: unknown;
+  camo?: unknown;
+  ready?: unknown;
+  team?: unknown;
+  gameMode?: unknown;
+  teamSize?: unknown;
+  mapId?: unknown;
+  locked?: unknown;
+  matchSeed?: unknown;
+}
+
+interface LobbyCommandGuards {
+  isVehicleAllowed(specId: string, player: LobbyPlayer, lobby: LobbyState): boolean;
+  isCamoAllowed(camo: string, player: LobbyPlayer, lobby: LobbyState): boolean;
+  isMapAllowed(mapId: string, lobby: LobbyState): boolean;
+}
+
+export interface FinishLobbyRoundOptions {
+  result?: unknown;
+  reason?: unknown;
+}
+
+const normalizeName = normalizePlayerName as unknown as (value: unknown) => string;
+const allocateUniqueName = uniquePlayerName as unknown as (
+  requested: string,
+  existingNames: string[],
+) => string;
+const normalizeCamo = networkCamoId as unknown as (value: string) => string;
+
+const TEAM_SET = new Set<LobbyTeam>(Object.values(LOBBY_TEAMS));
+
+function isLobbyTeam(value: unknown): value is LobbyTeam {
+  return typeof value === 'string' && TEAM_SET.has(value as LobbyTeam);
+}
 
 export class LobbyError extends Error {
-  constructor(code, message) {
+  readonly code: string;
+
+  constructor(code: string, message: string) {
     super(message);
     this.name = 'LobbyError';
     this.code = code;
   }
 }
 
-function cleanId(value, field = 'playerId') {
+function cleanId(value: unknown, field = 'playerId'): string {
   const id = String(value || '').trim();
   if (!/^[a-zA-Z0-9_-]{1,48}$/.test(id)) {
     throw new LobbyError('invalid_id', `${field} must be 1-48 safe characters`);
@@ -34,20 +151,24 @@ function cleanId(value, field = 'playerId') {
   return id;
 }
 
-function cleanName(value) {
-  const name = normalizePlayerName(value);
+function cleanName(value: unknown): string {
+  const name = normalizeName(value);
   if (!name) throw new LobbyError('invalid_name', 'player name is required');
   return name;
 }
 
-function availableName(lobby, value, excludingId = null) {
+function availableName(
+  lobby: LobbyState,
+  value: unknown,
+  excludingId: string | null = null,
+): string {
   const requested = cleanName(value);
-  return uniquePlayerName(requested, [...lobby.players.values()]
+  return allocateUniqueName(requested, [...lobby.players.values()]
     .filter((player) => player.id !== excludingId)
     .map((player) => player.name));
 }
 
-function cleanSpecId(value) {
+function cleanSpecId(value: unknown): string {
   const id = String(value || '').trim();
   if (!/^[a-z0-9_-]{1,64}$/.test(id)) {
     throw new LobbyError('invalid_vehicle', 'vehicle id is invalid');
@@ -55,9 +176,9 @@ function cleanSpecId(value) {
   return id;
 }
 
-function cleanEquipment(value) {
+function cleanEquipment(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  const clean = [];
+  const clean: string[] = [];
   for (const entry of value) {
     const id = String(entry || '').trim();
     if (!/^[a-z0-9_-]{1,32}$/.test(id) || clean.includes(id)) continue;
@@ -67,7 +188,7 @@ function cleanEquipment(value) {
   return clean;
 }
 
-function cleanCamo(value) {
+function cleanCamo(value: unknown): string {
   const id = String(value || 'factory').trim();
   if (!/^[a-z0-9_-]{1,32}$/.test(id)) {
     throw new LobbyError('invalid_camo', 'camouflage id is invalid');
@@ -75,7 +196,7 @@ function cleanCamo(value) {
   return id;
 }
 
-function countTeam(lobby, team, excluding = null) {
+function countTeam(lobby: LobbyState, team: LobbyTeam, excluding: string | null = null): number {
   let count = 0;
   for (const player of lobby.players.values()) {
     if (player.id !== excluding && player.team === team) count++;
@@ -83,42 +204,42 @@ function countTeam(lobby, team, excluding = null) {
   return count;
 }
 
-function activePlayers(lobby) {
+function activePlayers(lobby: LobbyState): LobbyPlayer[] {
   return [...lobby.players.values()].filter((player) => player.team !== LOBBY_TEAMS.SPECTATOR);
 }
 
-function autoTeam(lobby) {
+function autoTeam(lobby: LobbyState): typeof LOBBY_TEAMS.ALPHA | typeof LOBBY_TEAMS.BRAVO {
   if (lobby.gameMode === 'endless_horde') return LOBBY_TEAMS.ALPHA;
   const alpha = countTeam(lobby, LOBBY_TEAMS.ALPHA);
   const bravo = countTeam(lobby, LOBBY_TEAMS.BRAVO);
   return alpha <= bravo ? LOBBY_TEAMS.ALPHA : LOBBY_TEAMS.BRAVO;
 }
 
-function assertWaiting(lobby) {
+function assertWaiting(lobby: LobbyState): void {
   if (lobby.phase !== LOBBY_PHASES.WAITING) {
     throw new LobbyError('lobby_locked', 'lobby can only be edited while waiting');
   }
 }
 
-function assertHost(lobby, playerId) {
+function assertHost(lobby: LobbyState, playerId: string): void {
   if (lobby.hostId !== playerId) {
     throw new LobbyError('host_only', 'only the host may perform this action');
   }
 }
 
-function requirePlayer(lobby, playerId) {
+function requirePlayer(lobby: LobbyState, playerId: string): LobbyPlayer {
   const player = lobby.players.get(playerId);
   if (!player) throw new LobbyError('unknown_player', `unknown player: ${playerId}`);
   return player;
 }
 
-function markChanged(lobby) {
+function markChanged(lobby: LobbyState): LobbyState {
   lobby.revision++;
   lobby.updatedAtTick++;
   return lobby;
 }
 
-function assertPlayerEditable(player) {
+function assertPlayerEditable(player: LobbyPlayer): void {
   if (player.ready) {
     throw new LobbyError('vehicle_locked', 'unready before changing your vehicle or team');
   }
@@ -126,18 +247,19 @@ function assertPlayerEditable(player) {
 
 function createPlayer({
   id, name, team, specId = null, equipment = [], camo = 'factory', isHost = false, rating = null,
-}) {
+}: LobbyPlayerInput): LobbyPlayer {
+  if (!isLobbyTeam(team)) throw new LobbyError('invalid_team', 'player team is required');
   return {
     id: cleanId(id),
     name: cleanName(name),
     team,
     specId: specId ? cleanSpecId(specId) : null,
     equipment: cleanEquipment(equipment),
-    camo: networkCamoId(cleanCamo(camo)),
+    camo: normalizeCamo(cleanCamo(camo)),
     ready: false,
     connected: true,
     isHost,
-    rating: Number.isFinite(rating) ? Math.round(rating) : null,
+    rating: Number.isFinite(rating) ? Math.round(Number(rating)) : null,
   };
 }
 
@@ -156,7 +278,7 @@ export function createLobby({
   hostEquipment = [],
   hostCamo = 'factory',
   teamSize = 1,
-} = {}) {
+}: CreateLobbyOptions = {}): LobbyState {
   const code = normalizeRoomCode(roomCode);
   if (code.length !== 6) throw new LobbyError('invalid_room_code', 'room code must be 6 characters');
   if (!Number.isInteger(maxPlayers) || maxPlayers < 2 || maxPlayers > MAX_PLAYERS) {
@@ -170,7 +292,7 @@ export function createLobby({
     throw new LobbyError('invalid_team_size', 'team size must be between 1 and 7');
   }
   const id = cleanId(hostId, 'hostId');
-  const lobby = {
+  const lobby: LobbyState = {
     roomCode: code,
     mode: String(mode || 'private'),
     gameMode: normalizeGameMode(gameMode),
@@ -187,7 +309,7 @@ export function createLobby({
     matchSeed: null,
     round: 0,
     lastResult: null,
-    players: new Map(),
+    players: new Map<string, LobbyPlayer>(),
   };
   lobby.players.set(id, createPlayer({
     id,
@@ -202,7 +324,7 @@ export function createLobby({
 }
 
 /** Add one authenticated signaling peer. The host remains the policy owner. */
-export function addLobbyPlayer(lobby, {
+export function addLobbyPlayer(lobby: LobbyState, {
   id,
   name,
   team = null,
@@ -210,14 +332,15 @@ export function addLobbyPlayer(lobby, {
   equipment = [],
   camo = 'factory',
   rating = null,
-} = {}) {
+}: AddLobbyPlayerOptions = {}): LobbyState {
   assertWaiting(lobby);
   if (lobby.locked) throw new LobbyError('lobby_locked', 'lobby is locked');
   const playerId = cleanId(id);
   if (lobby.players.has(playerId)) throw new LobbyError('duplicate_player', 'player already joined');
-  let targetTeam = lobby.gameMode === 'endless_horde'
+  const requestedTeam: unknown = lobby.gameMode === 'endless_horde'
     ? LOBBY_TEAMS.ALPHA : team || autoTeam(lobby);
-  if (!TEAM_SET.has(targetTeam)) throw new LobbyError('invalid_team', 'unknown team');
+  if (!isLobbyTeam(requestedTeam)) throw new LobbyError('invalid_team', 'unknown team');
+  let targetTeam: LobbyTeam = requestedTeam;
   if (targetTeam === LOBBY_TEAMS.SPECTATOR) {
     if (countTeam(lobby, targetTeam) >= lobby.maxSpectators) {
       throw new LobbyError('spectators_full', 'spectator slots are full');
@@ -256,7 +379,7 @@ export function addLobbyPlayer(lobby, {
 }
 
 /** Remove a player and deterministically migrate private/LAN host ownership. */
-export function removeLobbyPlayer(lobby, playerId) {
+export function removeLobbyPlayer(lobby: LobbyState, playerId: unknown): LobbyState {
   const id = cleanId(playerId);
   if (!lobby.players.delete(id)) return lobby;
   if (lobby.hostId === id && lobby.players.size) {
@@ -269,7 +392,11 @@ export function removeLobbyPlayer(lobby, playerId) {
 }
 
 /** Preserve a room seat while its RTC transport is being recovered. */
-export function setLobbyPlayerConnected(lobby, playerId, connected) {
+export function setLobbyPlayerConnected(
+  lobby: LobbyState,
+  playerId: unknown,
+  connected: unknown,
+): LobbyState {
   const player = requirePlayer(lobby, cleanId(playerId));
   const next = !!connected;
   if (player.connected === next) return lobby;
@@ -281,17 +408,24 @@ export function setLobbyPlayerConnected(lobby, playerId, connected) {
  * Apply one validated player command. Policy is centralized here so WebRTC,
  * WebSocket, and loopback sessions cannot disagree about lobby behavior.
  */
-export function applyLobbyCommand(lobby, playerId, command, {
-  isVehicleAllowed = () => true,
-  isCamoAllowed = () => true,
-  isMapAllowed = () => true,
-} = {}) {
+export function applyLobbyCommand(
+  lobby: LobbyState,
+  playerId: unknown,
+  rawCommand: unknown,
+  guards: Partial<LobbyCommandGuards> = {},
+): LobbyState {
+  const {
+    isVehicleAllowed = () => true,
+    isCamoAllowed = () => true,
+    isMapAllowed = () => true,
+  } = guards;
   assertWaiting(lobby);
   const id = cleanId(playerId);
   const player = requirePlayer(lobby, id);
-  if (!command || typeof command !== 'object') {
+  if (!rawCommand || typeof rawCommand !== 'object') {
     throw new LobbyError('invalid_command', 'lobby command must be an object');
   }
+  const command = rawCommand as LobbyCommand;
 
   switch (command.type) {
     case 'set_name':
@@ -318,7 +452,7 @@ export function applyLobbyCommand(lobby, playerId, command, {
       if (!isCamoAllowed(camo, player, lobby)) {
         throw new LobbyError('camo_not_allowed', 'camouflage is unavailable in this lobby');
       }
-      player.camo = networkCamoId(camo);
+      player.camo = normalizeCamo(camo);
       player.ready = false;
       break;
     }
@@ -334,7 +468,7 @@ export function applyLobbyCommand(lobby, playerId, command, {
         throw new LobbyError('team_switch_disabled', 'team switching is disabled');
       }
       const team = command.team;
-      if (!TEAM_SET.has(team)) throw new LobbyError('invalid_team', 'unknown team');
+      if (!isLobbyTeam(team)) throw new LobbyError('invalid_team', 'unknown team');
       if (lobby.gameMode === 'endless_horde' && team === LOBBY_TEAMS.BRAVO) {
         throw new LobbyError('cooperative_team', 'Horde players deploy together on Alpha');
       }
@@ -401,10 +535,11 @@ export function applyLobbyCommand(lobby, playerId, command, {
       if (players.some((entry) => !entry.ready || !entry.specId)) {
         throw new LobbyError('players_not_ready', 'every active player must be ready');
       }
-      if (!Number.isSafeInteger(command.matchSeed) || command.matchSeed < 0) {
+      const matchSeed = command.matchSeed;
+      if (typeof matchSeed !== 'number' || !Number.isSafeInteger(matchSeed) || matchSeed < 0) {
         throw new LobbyError('invalid_seed', 'host must provide an unsigned match seed');
       }
-      lobby.matchSeed = command.matchSeed;
+      lobby.matchSeed = matchSeed;
       lobby.round = (Number(lobby.round) || 0) + 1;
       lobby.phase = LOBBY_PHASES.STARTING;
       lobby.locked = true;
@@ -417,7 +552,7 @@ export function applyLobbyCommand(lobby, playerId, command, {
 }
 
 /** Mark a fully loaded round live without rebuilding the persistent room. */
-export function markLobbyRoundPlaying(lobby) {
+export function markLobbyRoundPlaying(lobby: LobbyState): LobbyState {
   if (lobby.phase !== LOBBY_PHASES.STARTING) return lobby;
   lobby.phase = LOBBY_PHASES.PLAYING;
   lobby.locked = true;
@@ -425,7 +560,10 @@ export function markLobbyRoundPlaying(lobby) {
 }
 
 /** Return a completed room round to editable readiness while retaining peers. */
-export function finishLobbyRound(lobby, { result = null, reason = null } = {}) {
+export function finishLobbyRound(
+  lobby: LobbyState,
+  { result = null, reason = null }: FinishLobbyRoundOptions = {},
+): LobbyState {
   if (lobby.phase !== LOBBY_PHASES.PLAYING && lobby.phase !== LOBBY_PHASES.STARTING) {
     return lobby;
   }
@@ -442,7 +580,7 @@ export function finishLobbyRound(lobby, { result = null, reason = null } = {}) {
 }
 
 /** Plain-data snapshot safe to send to every lobby participant. */
-export function serializeLobby(lobby) {
+export function serializeLobby(lobby: LobbyState): SerializedLobby {
   return {
     roomCode: lobby.roomCode,
     mode: lobby.mode,

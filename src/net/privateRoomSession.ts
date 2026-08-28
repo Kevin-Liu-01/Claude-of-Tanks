@@ -1,4 +1,4 @@
-import { createLobby } from './lobby.js';
+import { createLobby } from './lobby.ts';
 import { LobbyHostRuntime } from './lobbyRuntime.js';
 import {
   createWebRTCPeer,

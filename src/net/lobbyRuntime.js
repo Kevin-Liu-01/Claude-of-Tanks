@@ -11,7 +11,7 @@ import {
   applyLobbyCommand,
   removeLobbyPlayer,
   serializeLobby,
-} from './lobby.js';
+} from './lobby.ts';
 
 const MATCH_HANDOFF_TYPES = new Set([
   MESSAGE_TYPES.HELLO,

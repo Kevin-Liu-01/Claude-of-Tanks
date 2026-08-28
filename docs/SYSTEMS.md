@@ -699,7 +699,7 @@ Presentation additionally caps a rendered frame to 0.20 m of horizontal and
 
 ## Lobby and room lifecycle
 
-src/net/lobby.js is the canonical owner of team capacity, spectators,
+src/net/lobby.ts is the canonical owner of team capacity, spectators,
 readiness, selections, map, format, host permissions, lock policy, and start
 policy. UI submits commands and renders room state; it does not mutate the
 canonical roster locally.

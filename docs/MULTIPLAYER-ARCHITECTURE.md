@@ -175,7 +175,7 @@ game keeps its own deterministic tank simulation and authority contracts.
 
 ## Lobbies, spectators, bots, and ranking
 
-`src/net/lobby.js` is the only owner of room capacity, team switching,
+`src/net/lobby.ts` is the only owner of room capacity, team switching,
 spectators, readiness, vehicle/loadout selection, team size, map choice,
 locking, host permissions, and start policy. Empty 1v1/2v2/3v3/5v5/7v7 slots are
 filled deterministically by authority-owned bots. Bots use seeded diverse

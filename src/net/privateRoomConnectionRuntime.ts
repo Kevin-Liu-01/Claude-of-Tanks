@@ -1,4 +1,8 @@
-import { serializeLobby } from './lobby.js';
+import {
+  serializeLobby,
+  type LobbyState as LobbyModel,
+  type SerializedLobby,
+} from './lobby.ts';
 import { RoomSignalingClient } from './signalingClient.js';
 import {
   PrivateRoomClientSession,
@@ -7,7 +11,7 @@ import {
 import type { IceConfiguration } from './iceConfig.ts';
 
 type Unsubscribe = () => void;
-type LobbyState = Record<string, unknown> & { players?: unknown[] };
+type LobbyState = SerializedLobby;
 
 interface RoomPlayerIdentity {
   id: string;
@@ -125,7 +129,7 @@ const DEFAULT_ADAPTERS: ConnectionAdapters = {
     new PrivateRoomHostSession(options) as unknown as HostSessionLike,
   createClientSession: (options) =>
     new PrivateRoomClientSession(options) as unknown as ClientSessionLike,
-  serializeLobby: (lobby) => serializeLobby(lobby) as LobbyState,
+  serializeLobby: (lobby) => serializeLobby(lobby as LobbyModel),
 };
 
 /**
