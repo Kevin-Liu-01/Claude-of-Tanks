@@ -20,6 +20,9 @@ assert.match(liveProxy,
 assert.match(vegetation,
   /const grassAhead = grassFadeEnd \+ \(movedFromSpawn > 28 \? CHUNK_SIZE \* 0\.5 : 32\)/,
   'live grass streaming keeps a bounded half-chunk lookahead without changing its fade band');
+assert.match(vegetation,
+  /mesh\.computeBoundingSphere\(\);\s*mesh\.frustumCulled = true;/,
+  'static midfield chunks retain exact density while Three culls the rear hemisphere');
 
 const field = createHeightField(1337);
 

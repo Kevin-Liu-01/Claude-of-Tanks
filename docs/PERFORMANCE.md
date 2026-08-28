@@ -552,6 +552,25 @@ This distinction prevents a lower final-pass counter or a high FPS result from
 hiding excess scene traversal, texture memory, program diversity, or shadow
 work.
 
+The subsequent display-work pass kept the pinned roster, camera, viewport,
+quality, and complete visual scene unchanged. Static midfield grass chunks now
+carry conservative instance bounds, allowing the renderer to reject whole
+chunks behind the camera. Non-player vehicle presentation outside a generous
+viewport guard band advances articulated hierarchy and running gear at 30 Hz
+with accumulated elapsed time; simulation, effects, shadows, the player, and
+every on-screen actor retain their existing cadence, and viewport re-entry
+forces an exact first-frame pose. The opening terrain cache also warms a narrow
+spawn-heading corridor and the first 120 m of bot routes behind the deployment
+veil instead of synchronously computing those tiles during rollout.
+
+On the identical production resource scenario, active task CPU moved from
+0.474 to 0.334 core-equivalent, forced-GC heap from 268.7 to 264.6 MB, median
+complete-frame submissions from 586 to 573, and median submitted triangles
+from 3,599,773 to 3,485,145. Programs, renderer geometries, textures, scene
+objects, shadow policy, and Garage residency did not increase. The initial
+Garage remained asleep at 0.003 core-equivalent and 64.1 MB. These numbers are
+a controlled before/after regression receipt, not a cross-device FPS claim.
+
 Authored low-polygon tank, canopy, and wreck shadow proxies now live on a
 dedicated shadow-only render layer. Three.js otherwise submits a
 `colorWrite: false` proxy during the forward pass even though it cannot change
@@ -734,6 +753,9 @@ regression record.
 - No one-draw-per-prop submission for exact repeated opaque workshop meshes.
 - No serial profile-chunk await inside roster visual construction.
 - No track deformation or instance upload for an unchanged parked/off-screen actor.
+- No display-rate hierarchy sync for a non-player actor wholly outside the
+  presentation-camera guard band; re-entry must synchronize immediately.
+- No map-wide grass chunk may opt out of conservative frustum rejection.
 - No stable reticle Canvas2D repaint at the display refresh rate.
 - No `colorWrite: false` authored shadow proxy on the presentation-camera
   layer; route it through `markShadowOnly()` and preserve native shadow work.

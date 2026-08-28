@@ -145,11 +145,23 @@ function createHarness({ tanks = [], network = false, spotted = true, world = nu
 {
   const near = createEntity({ id: 'near', position: new Vector3(0, 0, -20) });
   const offscreen = createEntity({ id: 'offscreen', position: new Vector3(500, 0, -20) });
-  const harness = createHarness({ tanks: [near.entity, offscreen.entity] });
+  const harness = createHarness({ tanks: [near.entity, offscreen.entity], network: true });
   harness.runtime.update(1 / 60);
   assert.equal(near.syncs[0][4], true, 'on-screen running gear retains full detail cadence');
   assert.equal(offscreen.syncs[0][4], false,
     'off-screen running gear receives the reduced-detail signal');
+  harness.runtime.update(1 / 60);
+  assert.equal(near.syncs.length, 2, 'visible actors remain presentation-synced every frame');
+  assert.equal(offscreen.syncs.length, 1,
+    'off-screen actors skip hierarchy work between their bounded cadence');
+  harness.runtime.update(1 / 60);
+  assert.equal(offscreen.syncs.length, 2, 'off-screen actors catch up at 30 Hz');
+  assert.ok(Math.abs(offscreen.syncs[1][1] - 1 / 30) < 1e-9,
+    'off-screen presentation receives the accumulated elapsed time');
+  offscreen.entity.state.pos.set(0, 0, -20);
+  harness.runtime.update(1 / 120);
+  assert.equal(offscreen.syncs.length, 3,
+    'viewport re-entry synchronizes the exact pose on its first visible frame');
 }
 
 {

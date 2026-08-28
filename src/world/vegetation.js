@@ -1839,7 +1839,15 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
       }
       mesh.castShadow = false;
       mesh.receiveShadow = true;
-      mesh.frustumCulled = false; // visibility handled per-chunk in update()
+      // The instances in this mesh never move and belong to one 128 m map
+      // chunk. Preserve the radial density/LOD policy in update(), but also
+      // let Three reject complete chunks behind the camera. The old global
+      // opt-out submitted every in-range chunk, including the rear
+      // hemisphere, which could double midfield grass triangles without
+      // contributing a pixel. Compute the conservative full-count sphere
+      // once; later prefix-count density changes remain safely inside it.
+      mesh.computeBoundingSphere();
+      mesh.frustumCulled = true;
       mesh.visible = false;
       mesh.matrixAutoUpdate = false;
       mesh.userData.aoExclude = true; // GTAO override prepass ignores alphaTest

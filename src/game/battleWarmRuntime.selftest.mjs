@@ -14,10 +14,52 @@ import {
 import {
   invalidateBattleWarmRuntime,
   stageCombatFxProgramSubmission,
+  warmBattleTerrainTiles,
   warmNetworkOpeningEffects,
   warmNetworkWrecks,
   warmStudioEffects,
 } from './battleWarmRuntime.ts';
+
+let warmedTerrainPoints = null;
+let terrainYieldCount = 0;
+let presentationPrimeCount = 0;
+await warmBattleTerrainTiles({
+  game: {
+    tanks: [
+      {
+        isPlayer: true,
+        state: { pos: { x: 10, y: 2, z: 20 }, yaw: Math.PI / 2 },
+      },
+      {
+        isPlayer: false,
+        state: { pos: { x: 0, y: 0, z: 0 }, yaw: 0 },
+        _openingRoute: [[25, 0], [50, 0], [75, 0], [100, 0], [125, 0]],
+      },
+    ],
+    player: {
+      state: { pos: { x: 10, y: 2, z: 20 }, yaw: Math.PI / 2 },
+    },
+  },
+  world: {
+    heightField: {
+      * warmFastTilesAround(points) {
+        warmedTerrainPoints = points;
+        yield 'terrain-batch';
+      },
+    },
+    update() { presentationPrimeCount += 1; },
+  },
+  yieldForBudget: async () => { terrainYieldCount += 1; },
+});
+assert.deepEqual(
+  warmedTerrainPoints.slice(0, 4).map(({ x, z, radiusM }) => [Math.round(x), Math.round(z), radiusM]),
+  [[10, 20, 64], [90, 20, 10], [122, 20, 10], [154, 20, 10]],
+  'opening warm includes the player steering disc and narrow spawn-heading corridor',
+);
+assert.ok(warmedTerrainPoints.some(({ x, radiusM }) => x >= 100 && radiusM === 10),
+  'bot terrain warming reaches the first 120 m of its opening route');
+assert.equal(terrainYieldCount, 2, 'tile work and the presentation prime both yield cooperatively');
+assert.equal(presentationPrimeCount, 1, 'the exact opening presentation is primed behind the veil');
 
 function createFxProbe() {
   const group = new Group();

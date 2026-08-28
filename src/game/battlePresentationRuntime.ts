@@ -48,6 +48,8 @@ interface TankEntity {
   _spotFade?: number;
   _fxAcc?: number;
   _dustTravelAcc?: number;
+  _offscreenPresentationS?: number;
+  _wasDetailVisible?: boolean;
 }
 
 interface SpottingState {
@@ -121,6 +123,13 @@ export function createBattlePresentationRuntime({
   getPedestalVisual,
   isCinematicActive,
 }: BattlePresentationRuntimeOptions): BattlePresentationRuntime {
+  // A tank outside a generous camera guard band cannot contribute a visible
+  // articulated pose. Keep authoritative state and FX at their existing
+  // cadence, but collapse its expensive hierarchy/running-gear presentation
+  // to 30 Hz. Re-entry is edge-triggered and therefore exact on the first
+  // frame that can reach the viewport; the player and every visible actor
+  // remain full-rate at any display refresh.
+  const OFFSCREEN_PRESENTATION_INTERVAL_S = 1 / 30;
   const detailScreenPosition = new Vector3();
   const forward = new Vector3();
   const right = new Vector3();
@@ -237,7 +246,11 @@ export function createBattlePresentationRuntime({
         } else if (game.phase === 'battle' && !entity.isPlayer) {
           visual.setVisible(true);
         }
-        if (!actorVisible) continue;
+        if (!actorVisible) {
+          entity._offscreenPresentationS = OFFSCREEN_PRESENTATION_INTERVAL_S;
+          entity._wasDetailVisible = false;
+          continue;
+        }
 
         const presented = presentationStateFor(
           entity,
@@ -252,10 +265,29 @@ export function createBattlePresentationRuntime({
           || (detailScreenPosition.z >= -1.2 && detailScreenPosition.z <= 1.2
             && Math.abs(detailScreenPosition.x) <= 1.35
             && Math.abs(detailScreenPosition.y) <= 1.45);
-        if (game.phase !== 'garage' || visual !== pedestalVisual) {
+        const wasDetailVisible = entity._wasDetailVisible;
+        entity._wasDetailVisible = detailVisible;
+        let presentationDt = dtFrame;
+        let shouldSync = true;
+        if (game.phase === 'battle' && !detailVisible && !entity.isPlayer
+            && dtFrame !== undefined) {
+          entity._offscreenPresentationS = Math.min(
+            0.12,
+            (entity._offscreenPresentationS || 0) + Math.max(0, dtFrame),
+          );
+          shouldSync = wasDetailVisible !== false
+            || entity._offscreenPresentationS >= OFFSCREEN_PRESENTATION_INTERVAL_S;
+          if (shouldSync) {
+            presentationDt = entity._offscreenPresentationS;
+            entity._offscreenPresentationS = 0;
+          }
+        } else {
+          entity._offscreenPresentationS = 0;
+        }
+        if (shouldSync && (game.phase !== 'garage' || visual !== pedestalVisual)) {
           visual.syncFromState(
             state,
-            dtFrame,
+            presentationDt,
             viewDistanceM,
             presented,
             detailVisible,

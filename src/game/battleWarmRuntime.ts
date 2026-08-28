@@ -91,10 +91,27 @@ export async function warmBattleTerrainTiles({
   if (typeof warmer !== 'function') return;
   const points: TerrainWarmPoint[] = [];
   for (const entity of game.tanks) {
-    const position = entity?.state?.pos;
+    const state = entity?.state;
+    const position = state?.pos;
     if (!position) continue;
     points.push({ x: position.x, z: position.z, radiusM: entity.isPlayer ? 64 : 0 });
-    if (entity.isPlayer || !Array.isArray(entity._openingRoute)) continue;
+    if (entity.isPlayer) {
+      // A player can cover roughly 140 m during the opening live window. The
+      // 64 m deployment disc handles steering; extend a narrow corridor along
+      // the spawn heading so ordinary straight-line acceleration never has
+      // to synchronously bake a terrain tile after controls unlock. This is
+      // only three small, overlapping points—not a costly larger square.
+      const yaw = Number(state.yaw) || 0;
+      for (const distanceM of [80, 112, 144]) {
+        points.push({
+          x: position.x + Math.sin(yaw) * distanceM,
+          z: position.z + Math.cos(yaw) * distanceM,
+          radiusM: 10,
+        });
+      }
+      continue;
+    }
+    if (!Array.isArray(entity._openingRoute)) continue;
     let lastX = position.x;
     let lastZ = position.z;
     let routeM = 0;
@@ -110,11 +127,11 @@ export async function warmBattleTerrainTiles({
       sinceWarmM += stepM;
       lastX = waypointX;
       lastZ = waypointZ;
-      if (sinceWarmM >= 24 || routeM >= 70) {
+      if (sinceWarmM >= 24 || routeM >= 120) {
         points.push({ x: waypointX, z: waypointZ, radiusM: 10 });
         sinceWarmM = 0;
       }
-      if (routeM >= 70) break;
+      if (routeM >= 120) break;
     }
   }
   for (const _tile of warmer.call(heightField, points)) {
