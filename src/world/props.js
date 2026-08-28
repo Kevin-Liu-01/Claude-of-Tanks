@@ -9,7 +9,7 @@ import { applyTone } from './terrain.js';
 import { getDeviceTier } from '../engine/quality.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
-import { applySourcedBuildings } from './sourcedTextures.js';
+import { applySourcedBuildings } from './sourcedTextures.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtras } from './maps/mapKits.ts'; // content_breadth r2
 // world-dressing r1: building-catalog extension + destructible small props

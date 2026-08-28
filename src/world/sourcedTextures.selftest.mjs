@@ -56,7 +56,7 @@ globalThis.Image = TestImage;
 
 const {
   applySourcedBuildings, applySourcedTerrain, composeAlbedo, composeSurface,
-} = await import('./sourcedTextures.js');
+} = await import('./sourcedTextures.ts');
 const image = (pixels) => ({ width: 2, height: 2, pixels: new Uint8ClampedArray(pixels) });
 
 const color = image([

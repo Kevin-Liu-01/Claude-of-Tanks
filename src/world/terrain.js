@@ -9,7 +9,7 @@ import {
   warmTerrainLodBuilds,
 } from './terrainLodPolicy.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
-import { applySourcedTerrain } from './sourcedTextures.js';
+import { applySourcedTerrain } from './sourcedTextures.ts';
 import { buildHorizonRing } from './maps/horizon.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.ts';
@@ -2460,7 +2460,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant', lan
     D: makeDirtLayer(3001, aniso, S.dirtTone || null),
     // r7: cfg.splat.sandstone routes the R layer to the stratified
     // sedimentary painter (desert cliffs). The sourced Rock063 set is
-    // disabled for that map in sourcedTextures.js — its wavy metamorphic
+    // disabled for that map in sourcedTextures.ts — its wavy metamorphic
     // structure was the "wet-sand swirl" artifact on every canyon wall.
     R: S.sandstone
       ? makeSandstoneLayer(3002, aniso, S.rockTone || null)
@@ -2474,7 +2474,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant', lan
   // Deep-hunt 2026-07: sourced CC0 PBR sets (ambientCG/Poly Haven, see
   // docs/ATTRIBUTION.md) replace the procedural layer textures in place when
   // available; procedural stays the synchronous fallback behind the flag in
-  // sourcedTextures.js and on any load failure.
+  // sourcedTextures.ts and on any load failure.
   const sourcedTexturesReady = applySourcedTerrain(mapId, layers, S);
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
   const mask = makeMaskTexture(maskNoi, layout, landformW);

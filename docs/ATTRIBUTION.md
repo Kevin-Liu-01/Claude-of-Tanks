@@ -239,10 +239,10 @@ Candidate kept as **strong maybe** (not integrated; procedural remains source of
 
 All CC0; license verified on each asset page at download time. Winners ship
 from `public/textures/terrain/` (splat layers, wired via
-`src/world/sourcedTextures.js` + `src/world/terrain.js`) and
+`src/world/sourcedTextures.ts` + `src/world/terrain.js`) and
 `public/textures/buildings/` (village materials via `src/world/props.js`).
 The procedural painters remain the synchronous fallback behind the
-`USE_SOURCED_*` flags in `src/world/sourcedTextures.js`. Only the 1K
+`USE_SOURCED_*` flags in `src/world/sourcedTextures.ts`. Only the 1K
 Color/NormalGL/Roughness/AmbientOcclusion maps are kept; preview PNGs and the
 losing candidates were deleted.
 
@@ -289,7 +289,7 @@ Judged with before/after harness renders (`battlefield`, `player_view`,
 `battlefield_winter`, `battlefield_urban`, `battlefield_desert`).
 
 - **Terrain splat layers — SOURCED KEPT** on all 4 maps (per-map layer plan in
-  `src/world/sourcedTextures.js`: verdant grass/dirt/rock, desert
+  `src/world/sourcedTextures.ts`: verdant grass/dirt/rock, desert
   withered-grass/sand/rock63, winter snow/dirt/rock, urban
   grass/dirt/paving-stones; the mud/marsh layer stays procedural everywhere —
   its puddle/ice gloss response drives `uMarshGloss`). Near-field turf, dirt

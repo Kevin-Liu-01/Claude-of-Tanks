@@ -1,4 +1,4 @@
-// src/world/sourcedTextures.js — sourced CC0 PBR texture hookup (ambientCG /
+// src/world/sourcedTextures.ts — sourced CC0 PBR texture hookup (ambientCG /
 // Poly Haven sets committed under public/textures/, see docs/ATTRIBUTION.md).
 //
 // Deep-hunt integration 2026-07: the terrain splat layers and the village
@@ -21,18 +21,68 @@ import * as THREE from 'three';
 // 1024² albedo+normal canvases ≈ 40-70 MB). Desktop sizes are unchanged.
 import { texSize } from '../engine/quality.ts';
 
+interface SourceTextureSet {
+  color: string;
+  normal: string;
+  rough: string;
+  ao: string;
+}
+
+type LayerKey = 'G' | 'D' | 'R' | 'M';
+type BuildingBucket = 'plaster' | 'roof' | 'wood' | 'stone';
+type Tint = readonly [number, number, number];
+
+interface ComposeOptions {
+  roughInAlpha?: boolean;
+  separateSurface?: boolean;
+  roughMul?: number;
+  tint?: Tint | null;
+  desat?: number;
+  lift?: number;
+}
+
+interface TerrainPlanOptions extends ComposeOptions {
+  set: keyof typeof SETS;
+}
+
+type TerrainPlanEntry = keyof typeof SETS | TerrainPlanOptions | null;
+type TerrainPlan = Partial<Record<LayerKey, TerrainPlanEntry>>;
+
+interface TextureLayer {
+  albedo: THREE.Texture;
+  normal: THREE.Texture;
+  surface?: THREE.Texture;
+}
+
+interface CompositeCacheEntry {
+  size: number;
+  canvas: HTMLCanvasElement;
+  surface: HTMLCanvasElement | null;
+}
+
+interface NormalCacheEntry {
+  size: number;
+  canvas: HTMLCanvasElement;
+}
+
+type BuildingTint = Tint | Pick<ComposeOptions, 'tint' | 'desat' | 'lift'>;
+
+function isTint(value: BuildingTint): value is Tint {
+  return Array.isArray(value);
+}
+
 const TT = '/textures/terrain';
 const TB = '/textures/buildings';
 
 // ambientCG 1K JPG naming
-const acg = (dir, base) => ({
+const acg = (dir: string, base: string): SourceTextureSet => ({
   color: `${dir}/${base}_1K-JPG_Color.jpg`,
   normal: `${dir}/${base}_1K-JPG_NormalGL.jpg`,
   rough: `${dir}/${base}_1K-JPG_Roughness.jpg`,
   ao: `${dir}/${base}_1K-JPG_AmbientOcclusion.jpg`,
 });
 // Poly Haven 1K JPG naming
-const ph = (dir, base) => ({
+const ph = (dir: string, base: string): SourceTextureSet => ({
   color: `${dir}/${base}_diff_1k.jpg`,
   normal: `${dir}/${base}_nor_gl_1k.jpg`,
   rough: `${dir}/${base}_rough_1k.jpg`,
@@ -52,7 +102,7 @@ const SETS = {
   roof: acg(TB, 'RoofingTiles012A'),
   wood: acg(TB, 'Planks023A'),
   brick: acg(TB, 'Bricks097'),
-};
+} satisfies Record<string, SourceTextureSet>;
 
 // Per-map terrain layer plan (null = keep procedural layer). M (mud/marsh)
 // stays procedural everywhere: its puddle/ice gloss response is authored into
@@ -61,7 +111,7 @@ const SETS = {
 // albedo (Ground071 ships saturated orange — desaturated toward earth brown
 // so dirt roads stop glowing against the graded grass), roughMul raises the
 // packed roughness floor so sourced sets never reintroduce specular sheen.
-const TERRAIN_PLAN = {
+const TERRAIN_PLAN: Record<string, TerrainPlan> = {
   verdant: {
     G: { set: 'grass', roughMul: 1.25 },
     D: { set: 'dirt', tint: [0.82, 0.80, 0.76], roughMul: 1.3 },
@@ -182,57 +232,74 @@ const TERRAIN_PLAN = {
   },
 };
 
-const _imgCache = new Map();
-function loadImage(url) {
+const _imgCache = new Map<string, Promise<HTMLImageElement>>();
+function loadImage(url: string): Promise<HTMLImageElement> {
   if (!_imgCache.has(url)) {
-    _imgCache.set(url, new Promise((res, rej) => {
+    _imgCache.set(url, new Promise<HTMLImageElement>((resolve, reject) => {
       const im = new Image();
-      im.onload = () => res(im);
-      im.onerror = () => rej(new Error(`sourced texture missing: ${url}`));
+      im.onload = () => resolve(im);
+      im.onerror = () => reject(new Error(`sourced texture missing: ${url}`));
       im.src = url;
     }));
   }
-  return _imgCache.get(url);
+  return _imgCache.get(url)!;
 }
 
 // Readback-heavy AO and roughness decoding shares one opted-in scratch
 // surface. Creating two fresh default contexts for every layer triggered the
 // browser's Canvas2D readback slow-path and repeated allocations during map
 // switches.
-let _readbackCanvas = null;
-let _readbackCtx = null;
+let _readbackCanvas: HTMLCanvasElement | null = null;
+let _readbackCtx: CanvasRenderingContext2D | null = null;
 let _readbackSize = 0;
-function readScaledPixels(image, size) {
+function canvasContext(
+  canvas: HTMLCanvasElement,
+  options?: CanvasRenderingContext2DSettings,
+): CanvasRenderingContext2D {
+  const context = canvas.getContext('2d', options);
+  if (!context) throw new Error('Canvas2D is unavailable for sourced texture composition');
+  return context;
+}
+
+function readScaledPixels(
+  image: CanvasImageSource | null | undefined,
+  size: number,
+): Uint8ClampedArray | null {
   if (!image) return null;
   if (!_readbackCanvas) {
     _readbackCanvas = document.createElement('canvas');
-    _readbackCtx = _readbackCanvas.getContext('2d', { willReadFrequently: true });
+    _readbackCtx = canvasContext(_readbackCanvas, { willReadFrequently: true });
   }
   if (_readbackSize !== size) {
     _readbackCanvas.width = size;
     _readbackCanvas.height = size;
     _readbackSize = size;
   }
+  if (!_readbackCtx) throw new Error('Canvas2D readback context was not initialized');
   _readbackCtx.drawImage(image, 0, 0, size, size);
   return _readbackCtx.getImageData(0, 0, size, size).data;
 }
 
-function touchLru(cache, key, value, limit) {
+function touchLru<K, V>(cache: Map<K, V>, key: K, value: V, limit: number): V {
   cache.delete(key);
   cache.set(key, value);
-  while (cache.size > limit) cache.delete(cache.keys().next().value);
+  while (cache.size > limit) {
+    const oldest = cache.keys().next().value;
+    if (oldest === undefined) break;
+    cache.delete(oldest);
+  }
   return value;
 }
 
 // A recent battlefield's expensive color/AO/roughness composites survive a
 // rematch without retaining the fork's 16 full-size canvases. Normals are
 // cheaper but still reused for the four most recent source sets.
-const _compositeCache = new Map();
-const _normalCache = new Map();
+const _compositeCache = new Map<string, CompositeCacheEntry>();
+const _normalCache = new Map<string, NormalCacheEntry>();
 const COMPOSITE_CACHE_MAX = 8;
 const NORMAL_CACHE_MAX = 4;
 
-function compositeKey(setKey, opts = {}) {
+function compositeKey(setKey: string, opts: ComposeOptions = {}): string {
   const {
     roughInAlpha = false,
     separateSurface = false,
@@ -248,11 +315,22 @@ function compositeKey(setKey, opts = {}) {
  * Compose color * AO with roughness packed into alpha (terrain contract) or
  * alpha=255 (props). Returns a canvas sized to the color map (max 1024).
  */
-export function composeAlbedo(color, ao, rough, { roughInAlpha = false, roughMul = 1, tint = null, desat = 0, lift = 0 } = {}) {
+export function composeAlbedo(
+  color: HTMLImageElement,
+  ao: HTMLImageElement | null,
+  rough: HTMLImageElement | null,
+  {
+    roughInAlpha = false,
+    roughMul = 1,
+    tint = null,
+    desat = 0,
+    lift = 0,
+  }: ComposeOptions = {},
+): HTMLCanvasElement {
   const s = Math.min(color.width, texSize(1024)); // MOBILE r1: tier-scaled compose
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const ctx = canvasContext(c, { willReadFrequently: true });
   ctx.drawImage(color, 0, 0, s, s);
   const px = ctx.getImageData(0, 0, s, s);
   const d = px.data;
@@ -285,12 +363,17 @@ export function composeAlbedo(color, ao, rough, { roughInAlpha = false, roughMul
 }
 
 /** Pack AO (red) and roughness (green) into one linear building surface map. */
-export function composeSurface(ao, rough, size, roughMul = 1) {
+export function composeSurface(
+  ao: HTMLImageElement | null,
+  rough: HTMLImageElement | null,
+  size: number,
+  roughMul = 1,
+): HTMLCanvasElement {
   const aod = readScaledPixels(ao, size);
   const rgd = readScaledPixels(rough, size);
   const c = document.createElement('canvas');
   c.width = c.height = size;
-  const ctx = c.getContext('2d');
+  const ctx = canvasContext(c);
   const px = ctx.createImageData(size, size);
   const d = px.data;
   for (let i = 0; i < d.length; i += 4) {
@@ -303,16 +386,16 @@ export function composeSurface(ao, rough, size, roughMul = 1) {
   return c;
 }
 
-function normalCanvas(img) {
+function normalCanvas(img: HTMLImageElement): HTMLCanvasElement {
   const s = Math.min(img.width, texSize(1024)); // MOBILE r1: tier-scaled compose
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  c.getContext('2d').drawImage(img, 0, 0, s, s);
+  canvasContext(c).drawImage(img, 0, 0, s, s);
   return c;
 }
 
 /** Swap a CanvasTexture's backing image in place (bindings stay valid). */
-function swapTexture(tex, canvas) {
+function swapTexture(tex: THREE.Texture, canvas: HTMLCanvasElement): void {
   // dispose FIRST (r3): once the texture has rendered a frame, the GL side
   // holds immutable storage at the procedural canvas size (512) — assigning
   // the 1024 sourced compose without disposing makes the sub-image upload
@@ -326,7 +409,11 @@ function swapTexture(tex, canvas) {
   tex.needsUpdate = true;
 }
 
-async function applySet(setKey, layer, opts) {
+async function applySet(
+  setKey: keyof typeof SETS,
+  layer: TextureLayer,
+  opts: ComposeOptions,
+): Promise<void> {
   const set = SETS[setKey];
   const [color, normal, rough, ao] = await Promise.all([
     loadImage(set.color), loadImage(set.normal),
@@ -347,7 +434,7 @@ async function applySet(setKey, layer, opts) {
   }
   touchLru(_compositeCache, key, composite, COMPOSITE_CACHE_MAX);
   swapTexture(layer.albedo, composite.canvas);
-  if (separateSurface && composite.surface) swapTexture(layer.surface, composite.surface);
+  if (layer.surface && composite.surface) swapTexture(layer.surface, composite.surface);
 
   let normalEntry = _normalCache.get(setKey);
   if (!normalEntry || normalEntry.size !== size) {
@@ -366,16 +453,27 @@ async function applySet(setKey, layer, opts) {
  * @param {object} S splat cfg (uses mudRough for the M roughness multiplier)
  * @returns {Promise<void[]>} resolves after every requested layer settled
  */
-export function applySourcedTerrain(mapId, layers, S = {}) {
+export function applySourcedTerrain(
+  mapId: string,
+  layers: Partial<Record<LayerKey, TextureLayer>>,
+  S: { mudRough?: number } = {},
+): Promise<void[]> {
   const plan = TERRAIN_PLAN[mapId] || TERRAIN_PLAN.verdant;
-  const jobs = [];
-  for (const key of ['G', 'D', 'R', 'M']) {
-    if (!plan[key] || !layers[key]) continue;
-    const entry = typeof plan[key] === 'string' ? { set: plan[key] } : plan[key];
+  const jobs: Array<Promise<void>> = [];
+  for (const key of ['G', 'D', 'R', 'M'] as const) {
+    const planEntry = plan[key];
+    const layer = layers[key];
+    if (!planEntry || !layer) continue;
+    const entry: TerrainPlanOptions = typeof planEntry === 'string'
+      ? { set: planEntry }
+      : planEntry;
     const roughMul = (key === 'M' ? (S.mudRough ?? 1) : 1) * (entry.roughMul ?? 1);
-    jobs.push(applySet(entry.set, layers[key], {
+    jobs.push(applySet(entry.set, layer, {
       roughInAlpha: true, roughMul, tint: entry.tint || null,
-    }).catch((e) => console.warn(`[sourcedTextures] terrain ${mapId}/${key}:`, e.message)));
+    }).catch((error: unknown) => console.warn(
+      `[sourcedTextures] terrain ${mapId}/${key}:`,
+      error instanceof Error ? error.message : String(error),
+    )));
   }
   return Promise.all(jobs);
 }
@@ -389,7 +487,7 @@ export function applySourcedTerrain(mapId, layers, S = {}) {
 // Per-map albedo tints for the sourced building sets (multiplies RGB after
 // AO) — the raw CC0 sets ignore cfg.props.tones, so urban kept terracotta
 // roofs and desert adobe stayed white without these.
-const BUILDING_TINTS = {
+const BUILDING_TINTS: Record<string, Partial<Record<BuildingBucket, BuildingTint>>> = {
   urban:  { roof: [0.52, 0.55, 0.62], plaster: [0.88, 0.86, 0.82] }, // slate / sooty render
   desert: { plaster: [1.08, 0.92, 0.70], wood: [1.05, 0.95, 0.80] }, // sand-plaster adobe
   // r5 terrain_environment: winter roofs were still SATURATED ORANGE under a
@@ -432,8 +530,13 @@ const BUILDING_TINTS = {
   },
 };
 
-export function applySourcedBuildings(sets, mapId) {
-  const plan = { plaster: 'plaster', roof: 'roof', wood: 'wood' };
+export function applySourcedBuildings(
+  sets: Partial<Record<BuildingBucket, TextureLayer>>,
+  mapId: string,
+): Promise<void[]> {
+  const plan: Partial<Record<BuildingBucket, keyof typeof SETS>> = {
+    plaster: 'plaster', roof: 'roof', wood: 'wood',
+  };
   // maps r1: the rail yard's industrial halls are brick like the town's
   if ((mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera')
       && sets.stone) plan.stone = 'brick';
@@ -441,13 +544,20 @@ export function applySourcedBuildings(sets, mapId) {
   // patchwork (cfg.props.tones.roof) that the single-tint sourced set cannot
   // reproduce — the uniform maroon roofscape was a top critic complaint
   if (mapId === 'urban') delete plan.roof;
-  const jobs = [];
+  const jobs: Array<Promise<void>> = [];
   for (const [bucket, setKey] of Object.entries(plan)) {
-    if (!sets[bucket]) continue;
-    const tw = (BUILDING_TINTS[mapId] || {})[bucket] || null;
-    const opts = tw && !Array.isArray(tw) ? tw : { tint: tw };
-    jobs.push(applySet(setKey, sets[bucket], { roughInAlpha: false, ...opts })
-      .catch((e) => console.warn(`[sourcedTextures] building ${bucket}:`, e.message)));
+    const bucketKey = bucket as BuildingBucket;
+    const layer = sets[bucketKey];
+    if (!layer || !setKey) continue;
+    const tint = BUILDING_TINTS[mapId]?.[bucketKey] ?? null;
+    const opts: ComposeOptions = tint === null
+      ? { tint: null }
+      : isTint(tint) ? { tint } : tint;
+    jobs.push(applySet(setKey, layer, { roughInAlpha: false, ...opts })
+      .catch((error: unknown) => console.warn(
+        `[sourcedTextures] building ${bucket}:`,
+        error instanceof Error ? error.message : String(error),
+      )));
   }
   return Promise.all(jobs);
 }
