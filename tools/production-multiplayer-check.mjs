@@ -29,6 +29,34 @@ async function fetchJson(fetchImpl, url, options, label) {
   return body;
 }
 
+function validateSignaling(signal) {
+  if (signal.ok !== true || signal.distributed !== true || signal.redis?.ok !== true ||
+      signal.redis?.command !== 'ready' || signal.redis?.subscriber !== 'ready') {
+    const error = new Error('distributed signaling is not fully ready');
+    error.code = 'signal_not_ready';
+    throw error;
+  }
+  return signal;
+}
+
+function validateIce(ice) {
+  const relays = turnUrls(ice.iceServers);
+  if (!relays.length) {
+    const error = new Error('ICE response has no TURN relay');
+    error.code = 'turn_relay_missing';
+    throw error;
+  }
+  return { ice, relays };
+}
+
+function failureRecord(reason) {
+  return {
+    code: reason?.code || 'dependency_check_failed',
+    message: reason?.message || String(reason),
+    detail: reason?.detail || null,
+  };
+}
+
 /** Prove the two production dependencies required by a first-time friend join. */
 export async function checkProductionMultiplayer({
   baseUrl = 'https://cot.kevinliu.studio',
@@ -45,19 +73,32 @@ export async function checkProductionMultiplayer({
     cache: 'no-store',
     signal: AbortSignal.timeout(timeoutMs),
   }, url.pathname === '/api/signal' ? 'signal' : 'ice');
-  const [signal, ice] = await Promise.all([request(signalUrl), request(iceUrl)]);
-  if (signal.ok !== true || signal.distributed !== true || signal.redis?.ok !== true ||
-      signal.redis?.command !== 'ready' || signal.redis?.subscriber !== 'ready') {
-    const error = new Error('distributed signaling is not fully ready');
-    error.code = 'signal_not_ready';
+  const [signalResult, iceResult] = await Promise.allSettled([
+    request(signalUrl).then(validateSignaling),
+    request(iceUrl).then(validateIce),
+  ]);
+  const dependencies = {
+    signal: signalResult.status === 'fulfilled'
+      ? { ok: true }
+      : { ok: false, ...failureRecord(signalResult.reason) },
+    ice: iceResult.status === 'fulfilled'
+      ? { ok: true }
+      : { ok: false, ...failureRecord(iceResult.reason) },
+  };
+  const failures = [signalResult, iceResult].filter((result) => result.status === 'rejected');
+  if (failures.length === 1) {
+    const error = failures[0].reason;
+    error.dependencies = dependencies;
     throw error;
   }
-  const relays = turnUrls(ice.iceServers);
-  if (!relays.length) {
-    const error = new Error('ICE response has no TURN relay');
-    error.code = 'turn_relay_missing';
+  if (failures.length > 1) {
+    const error = new Error('signaling and TURN dependency checks both failed');
+    error.code = 'production_dependencies_failed';
+    error.detail = dependencies;
+    error.dependencies = dependencies;
     throw error;
   }
+  const { ice, relays } = iceResult.value;
   return {
     ok: true,
     origin,
@@ -81,6 +122,7 @@ if (isCli) {
       code: error?.code || 'production_multiplayer_check_failed',
       message: error?.message || String(error),
       detail: error?.detail || null,
+      dependencies: error?.dependencies || null,
     }, null, 2));
     process.exitCode = 1;
   }

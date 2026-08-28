@@ -42,7 +42,8 @@ await assert.rejects(checkProductionMultiplayer({
     })
     : response(503, { error: 'turn_service_unconfigured' }),
 }), (error) => error.code === 'ice_http_503' &&
-  error.detail === 'turn_service_unconfigured');
+  error.detail === 'turn_service_unconfigured' &&
+  error.dependencies.signal.ok === true && error.dependencies.ice.ok === false);
 
 await assert.rejects(checkProductionMultiplayer({
   fetchImpl: async (url) => String(url).endsWith('/api/signal')
@@ -53,4 +54,14 @@ await assert.rejects(checkProductionMultiplayer({
     : response(200, { iceServers: [{ urls: 'stun:stun.example.test' }] }),
 }), (error) => error.code === 'turn_relay_missing');
 
-console.log('production-multiplayer-check.selftest: signaling and mandatory TURN gates passed');
+await assert.rejects(checkProductionMultiplayer({
+  fetchImpl: async (url) => String(url).endsWith('/api/signal')
+    ? response(500, { error: 'function_invocation_failed' })
+    : response(503, { error: 'turn_service_unconfigured' }),
+}), (error) => error.code === 'production_dependencies_failed' &&
+  error.detail.signal.code === 'signal_http_500' &&
+  error.detail.signal.detail === 'function_invocation_failed' &&
+  error.detail.ice.code === 'ice_http_503' &&
+  error.detail.ice.detail === 'turn_service_unconfigured');
+
+console.log('production-multiplayer-check.selftest: independent signaling and TURN gates passed');
