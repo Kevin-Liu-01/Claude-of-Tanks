@@ -11,11 +11,13 @@
 
 import * as THREE from 'three';
 import { MARKET_BUILDERS } from './mapKits.js';
-import { RAIL_BUILDERS } from './railKit.js'; // maps r1: railyard + coastal kits
+import { RAIL_BUILDERS } from './railKit.ts'; // maps r1: railyard + coastal kits
 import { gablePrism as createGablePrism } from '../propGeometry.ts';
 import {
   addConnectedExterior,
   type GeometryBuckets,
+  type StructureBuilder,
+  type StructureDimensions,
 } from './exteriorDetailKit.ts';
 
 interface BuildingParts extends GeometryBuckets {
@@ -26,17 +28,6 @@ interface BuildingParts extends GeometryBuckets {
   dark: THREE.BufferGeometry[];
   glass?: THREE.BufferGeometry[];
 }
-
-export interface StructureDimensions {
-  w: number;
-  d: number;
-  h: number;
-}
-
-export type StructureBuilder = (
-  rng: () => number,
-  buckets: GeometryBuckets,
-) => StructureDimensions;
 
 // --- tiny local twins of the props.js geometry helpers (not exported there) --
 function box(w: number, h: number, d: number, uvScale = 0.5): THREE.BoxGeometry {

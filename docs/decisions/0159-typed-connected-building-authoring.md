@@ -4,10 +4,11 @@ Status: accepted
 
 ## Decision
 
-The shared exterior-detail pass and the urban landmark builder registry are
-strict TypeScript. Geometry buckets, structure builders, support records,
-building envelopes, inferred catalog profiles, and connectivity receipts use
-explicit contracts before their meshes are merged into the runtime world.
+The shared exterior-detail pass and the urban, rail, and village landmark
+builder registries are strict TypeScript. Geometry buckets, structure
+builders, support records, building envelopes, inferred catalog profiles, and
+connectivity receipts use explicit contracts before their meshes are merged
+into the runtime world.
 
 ## Why
 
@@ -19,8 +20,8 @@ while the parts still have semantic names and support relationships.
 
 ## Consequences
 
-- Church, factory, catalog, façade, service, roof, and attachment geometry is
-  unchanged.
+- Church, factory, rail, village, catalog, façade, service, roof, and attachment
+  geometry is unchanged.
 - Connectivity remains measured before merge, with the same 0.065 m support
   tolerance and zero additional runtime scene nodes.
 - Building registries now share one typed builder and geometry-bucket shape.

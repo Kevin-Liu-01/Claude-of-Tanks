@@ -26,9 +26,27 @@ export interface ExteriorReceipt {
 }
 
 export interface GeometryBuckets {
+  plaster: THREE.BufferGeometry[];
+  stone: THREE.BufferGeometry[];
+  roof: THREE.BufferGeometry[];
+  wood: THREE.BufferGeometry[];
+  dark: THREE.BufferGeometry[];
+  glass?: THREE.BufferGeometry[];
+  baked?: THREE.BufferGeometry[];
   [name: string]: THREE.BufferGeometry[] | undefined;
   [EXTERIOR_RECEIPTS]?: ExteriorReceipt[];
 }
+
+export interface StructureDimensions {
+  w: number;
+  d: number;
+  h: number;
+}
+
+export type StructureBuilder = (
+  rng: () => number,
+  buckets: GeometryBuckets,
+) => StructureDimensions;
 
 interface ExteriorEnvelope {
   w: number;

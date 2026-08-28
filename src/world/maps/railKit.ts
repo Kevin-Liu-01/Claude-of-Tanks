@@ -1,4 +1,4 @@
-// src/world/maps/railKit.js — industrial + maritime landmark builders for the
+// src/world/maps/railKit.ts — industrial + maritime landmark builders for the
 // maps r1 battlefields (railyard, coastal). Registered into props.js
 // BUILDER_BY_NAME through maps/urbanKit.ts URBAN_BUILDERS (same zero-props.js-
 // change contract as the desert bazaar kit):
@@ -11,12 +11,26 @@ import * as THREE from 'three';
 import {
   box, gablePrism as createGablePrism, jitterUV, scaleUV,
 } from '../propGeometry.ts';
+import type {
+  GeometryBuckets,
+  StructureBuilder,
+  StructureDimensions,
+} from './exteriorDetailKit.ts';
 
-const gablePrism = (width, height, depth) => createGablePrism(width, height, depth, 0.5);
+const gablePrism = (width: number, height: number, depth: number): THREE.BufferGeometry => (
+  createGablePrism(width, height, depth, 0.5)
+);
 
 /** Flat vertex paint (with slight per-vertex value jitter) for the matte
  * vertex-colored 'baked' bucket — the container/tar-deck material. */
-function paintGeo(geo, rng, r, g, b, jitter = 0.06) {
+function paintGeo(
+  geo: THREE.BufferGeometry,
+  rng: () => number,
+  r: number,
+  g: number,
+  b: number,
+  jitter = 0.06,
+): THREE.BufferGeometry {
   const n = geo.attributes.position.count;
   const col = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
@@ -38,8 +52,13 @@ function paintGeo(geo, rng, r, g, b, jitter = 0.06) {
  * timber sliding doors on the street face, clerestory window band, roof
  * ridge vents. The rail yard's bread-and-butter block.
  */
-export function makeWarehouse(rng, buckets) {
-  const parts = { plaster: [], stone: [], roof: [], wood: [], dark: [], baked: [] };
+export function makeWarehouse(
+  rng: () => number,
+  buckets: GeometryBuckets,
+): StructureDimensions {
+  const parts: GeometryBuckets = {
+    plaster: [], stone: [], roof: [], wood: [], dark: [], baked: [],
+  };
   if (buckets.glass) parts.glass = [];
   const pane = parts.glass || parts.dark;
   const w = 13.5 + rng() * 3, d = 21 + rng() * 5, wallH = 5.4 + rng() * 0.8, roofH = 1.9;
@@ -85,7 +104,11 @@ export function makeWarehouse(rng, buckets) {
     crate.translate((rng() - 0.5) * w * 0.6, 0.7 + cs / 2, d / 2 + 1.0 + rng() * 0.8);
     parts.wood.push(jitterUV(crate, rng));
   }
-  for (const key of Object.keys(parts)) for (const g of parts[key]) buckets[key] && buckets[key].push(g);
+  for (const key of Object.keys(parts)) {
+    const source = parts[key];
+    const target = buckets[key];
+    if (source && target) for (const geometry of source) target.push(geometry);
+  }
   return { w: w + 0.4, d: d + 3.0, h: wallH + roofH + 0.8 };
 }
 
@@ -95,7 +118,10 @@ export function makeWarehouse(rng, buckets) {
  * olive, tan) on the matte 'baked' bucket; corrugation is left to the grime
  * shader at this scale.
  */
-export function makeContainerRow(rng, buckets) {
+export function makeContainerRow(
+  rng: () => number,
+  buckets: GeometryBuckets,
+): StructureDimensions {
   const target = buckets.baked || buckets.dark;
   // LINEAR-space vertex colors (the 'baked' material multiplies them raw):
   // sRGB-looking values rendered as pastel candy — these are authored dark
@@ -137,9 +163,12 @@ export function makeContainerRow(rng, buckets) {
  * spanning them, trolley + hook block and a cabin — the yard's skyline
  * landmark (~12.5 m).
  */
-export function makeGantry(rng, buckets) {
+export function makeGantry(
+  rng: () => number,
+  buckets: GeometryBuckets,
+): StructureDimensions {
   const span = 15 + rng() * 2, legH = 9.5 + rng() * 1.2, girderH = 1.35;
-  const mk = (g) => buckets.dark.push(g);
+  const mk = (geometry: THREE.BufferGeometry): void => { buckets.dark.push(geometry); };
   for (const s of [-1, 1]) { // A-frame leg towers
     const lx = s * span / 2;
     for (const dz of [-1.7, 1.7]) {
@@ -201,7 +230,10 @@ export function makeGantry(rng, buckets) {
 }
 
 /** Riveted water tower: cylindrical tank on four braced legs + conical cap. */
-export function makeWaterTower(rng, buckets) {
+export function makeWaterTower(
+  rng: () => number,
+  buckets: GeometryBuckets,
+): StructureDimensions {
   const legH = 7.2 + rng() * 0.8, tankH = 3.4, tankR = 2.5;
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
     const leg = box(0.3, legH + 0.4, 0.3, 1.2);
@@ -234,7 +266,10 @@ export function makeWaterTower(rng, buckets) {
 
 /** Standalone round brick smokestack (~17 m) on a square plinth — the
  * overcast skyline needs verticals even where no factory slot landed. */
-export function makeStack(rng, buckets) {
+export function makeStack(
+  rng: () => number,
+  buckets: GeometryBuckets,
+): StructureDimensions {
   const stackH = 15.5 + rng() * 3;
   const plinth = box(3.2, 1.6, 3.2, 0.7);
   plinth.translate(0, 0.7, 0);
@@ -250,7 +285,10 @@ export function makeStack(rng, buckets) {
 }
 
 /** Open-sided loading shed: platform, posts, mono-pitch roof, crate stacks. */
-export function makeShed(rng, buckets) {
+export function makeShed(
+  rng: () => number,
+  buckets: GeometryBuckets,
+): StructureDimensions {
   const w = 9 + rng() * 2, d = 6.4, ph = 3.4 + rng() * 0.4;
   const plat = box(w, 0.55, d, 0.6);
   plat.translate(0, 0.27, 0);
@@ -280,7 +318,10 @@ export function makeShed(rng, buckets) {
 
 /** Whitewashed lighthouse: tapered tower, gallery ring, dark lantern and red
  * cap (~15 m) — the fishing village's vertical landmark. */
-export function makeLighthouse(rng, buckets) {
+export function makeLighthouse(
+  rng: () => number,
+  buckets: GeometryBuckets,
+): StructureDimensions {
   const towH = 11.5 + rng() * 1.5;
   const base = new THREE.CylinderGeometry(2.4, 2.7, 1.2, 12, 1);
   scaleUV(base, 5, 1);
@@ -315,7 +356,10 @@ export function makeLighthouse(rng, buckets) {
 
 /** Timber boat shed: low gabled plank hall with a wide slipway mouth and an
  * upturned dinghy alongside. */
-export function makeBoatshed(rng, buckets) {
+export function makeBoatshed(
+  rng: () => number,
+  buckets: GeometryBuckets,
+): StructureDimensions {
   const w = 7.4 + rng() * 1.2, d = 9.5 + rng() * 1.5, wallH = 2.8, roofH = 1.7;
   const base = box(w + 0.3, 0.5, d + 0.3, 0.7);
   base.translate(0, -0.05, 0);
@@ -355,7 +399,10 @@ export function makeBoatshed(rng, buckets) {
 
 /** Net-drying racks + stacked crab pots and fish crates — a working quay
  * plot that fills a village slot without another cottage. */
-export function makeNetYard(rng, buckets) {
+export function makeNetYard(
+  rng: () => number,
+  buckets: GeometryBuckets,
+): StructureDimensions {
   const w = 8.5, d = 6.5;
   for (let r = 0; r < 2; r++) { // net rack rows: posts + two rails + hung mesh
     const rz = -d / 2 + 1.4 + r * 3.2;
@@ -389,7 +436,7 @@ export function makeNetYard(rng, buckets) {
 
 /** Builders keyed by plan name — spread into URBAN_BUILDERS (props.js
  * BUILDER_BY_NAME contract, see maps/urbanKit.ts). */
-export const RAIL_BUILDERS = {
+export const RAIL_BUILDERS: Record<string, StructureBuilder> = {
   warehouse: makeWarehouse,
   containerRow: makeContainerRow,
   gantry: makeGantry,

@@ -8,10 +8,10 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // Yard plan: industry-heavy with a couple of worker rowhouses and ruins so
 // the depot reads lived-in and fought-over. 'warehouse'/'containerRow'/
-// 'gantry'/'watertower'/'stack'/'shed' come from maps/railKit.js; 'factory'
+// 'gantry'/'watertower'/'stack'/'shed' come from maps/railKit.ts; 'factory'
 // from maps/urbanKit.ts.
 const PLAN = [
-  // world-dressing r1: 'depot' (canopied platform hall, maps/villageKit.js)
+  // world-dressing r1: 'depot' (canopied platform hall, maps/villageKit.ts)
   // anchors the passenger side of the yard
   'warehouse', 'containerRow', 'factory', 'depot', 'foundryoffice', 'watertower',
   'containerRow', 'ruin', 'warehouse', 'gantry', 'stack', 'shed',

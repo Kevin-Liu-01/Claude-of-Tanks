@@ -1,4 +1,4 @@
-// src/world/maps/villageKit.js — world-dressing r1: the BUILDING CATALOG
+// src/world/maps/villageKit.ts — world-dressing r1: the BUILDING CATALOG
 // extension. Per-theme building types beyond the original cottage/barn/tower
 // set: farm (farmhouse, granary, chapel, windmill), winter (log cabin, alpine
 // house, onion-dome church, woodshed), desert (minaret), urban (corner shop),
@@ -10,17 +10,41 @@
 
 import * as THREE from 'three';
 import { box, gablePrism, scaleUV, slabBox } from '../propGeometry.ts';
-function pushParts(buckets, parts) {
+import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
+
+interface BuildingParts {
+  [name: string]: THREE.BufferGeometry[];
+  plaster: THREE.BufferGeometry[];
+  plaster2: THREE.BufferGeometry[];
+  plaster3: THREE.BufferGeometry[];
+  stone: THREE.BufferGeometry[];
+  roof: THREE.BufferGeometry[];
+  wood: THREE.BufferGeometry[];
+  dark: THREE.BufferGeometry[];
+  glass: THREE.BufferGeometry[];
+  curtain: THREE.BufferGeometry[];
+}
+
+function pushParts(buckets: GeometryBuckets, parts: BuildingParts): void {
   for (const key of Object.keys(parts)) {
-    if (!buckets[key]) continue;
-    for (const g of parts[key]) buckets[key].push(g);
+    const target = buckets[key];
+    if (!target) continue;
+    for (const geometry of parts[key]) target.push(geometry);
   }
 }
-function newParts() {
+function newParts(): BuildingParts {
   return { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [], glass: [], curtain: [] };
 }
 /** classic two-slab gable roof + ridge cap into parts.roof */
-function gableRoof(parts, w, d, wallH, roofH, over, thick = 0.12) {
+function gableRoof(
+  parts: BuildingParts,
+  w: number,
+  d: number,
+  wallH: number,
+  roofH: number,
+  over: number,
+  thick = 0.12,
+): number {
   const slope = Math.hypot(w / 2 + over, roofH + 0.1);
   const ang = Math.atan2(roofH + 0.1, w / 2 + over);
   for (const side of [-1, 1]) {
@@ -38,7 +62,11 @@ function gableRoof(parts, w, d, wallH, roofH, over, thick = 0.12) {
 // ---------------------------------------------------------------------------
 
 /** 1.5-story farmhouse: main gabled block + lower cross-wing + porch. */
-export function makeFarmhouse(rng, buckets, wallBucket = 'plaster') {
+export function makeFarmhouse(
+  rng: () => number,
+  buckets: GeometryBuckets,
+  wallBucket = 'plaster',
+): StructureDimensions {
   const w = 6.4 + rng() * 1.4, d = 8.6 + rng() * 2.0;
   const wallH = 3.3, roofH = 2.2 + rng() * 0.5, over = 0.4;
   const parts = newParts();
@@ -111,7 +139,7 @@ export function makeFarmhouse(rng, buckets, wallBucket = 'plaster') {
 }
 
 /** Granary raised on staddle stones: small wood loft, steps, gable roof. */
-export function makeGranary(rng, buckets) {
+export function makeGranary(rng: () => number, buckets: GeometryBuckets): StructureDimensions {
   const w = 3.4 + rng() * 0.8, d = 4.4 + rng() * 1.0;
   const raise = 0.85, wallH = 2.3, roofH = 1.5 + rng() * 0.3, over = 0.42;
   const parts = newParts();
@@ -161,7 +189,7 @@ export function makeGranary(rng, buckets) {
 }
 
 /** Small stone chapel: nave, steep roof, bell gable with a hung bell. */
-export function makeChapel(rng, buckets) {
+export function makeChapel(rng: () => number, buckets: GeometryBuckets): StructureDimensions {
   const w = 5.0 + rng() * 0.8, d = 7.6 + rng() * 1.4;
   const wallH = 3.6, roofH = 2.6 + rng() * 0.4, over = 0.35;
   const parts = newParts();
@@ -200,7 +228,7 @@ export function makeChapel(rng, buckets) {
 }
 
 /** Tower windmill: tapered stone drum, wood cap, 4 lattice sails. */
-export function makeMill(rng, buckets) {
+export function makeMill(rng: () => number, buckets: GeometryBuckets): StructureDimensions {
   const r0 = 2.6 + rng() * 0.3, r1 = 1.9, h = 7.4 + rng() * 0.8;
   const parts = newParts();
   const base = new THREE.CylinderGeometry(r0 + 0.35, r0 + 0.5, 1.0, 12, 1);
@@ -255,7 +283,7 @@ export function makeMill(rng, buckets) {
 // ---------------------------------------------------------------------------
 
 /** Log cabin: stacked round-log walls, crossed corner ends, low gable. */
-export function makeLogCabin(rng, buckets) {
+export function makeLogCabin(rng: () => number, buckets: GeometryBuckets): StructureDimensions {
   const w = 4.8 + rng() * 1.0, d = 6.2 + rng() * 1.4;
   const nLogs = 7, logR = 0.19;
   const wallH = nLogs * logR * 2 * 0.88;
@@ -296,7 +324,11 @@ export function makeLogCabin(rng, buckets) {
 
 /** Alpine house: plastered ground floor, timber upper, DEEP low-pitch eaves,
  * gable balcony rail. */
-export function makeAlpine(rng, buckets, wallBucket = 'plaster') {
+export function makeAlpine(
+  rng: () => number,
+  buckets: GeometryBuckets,
+  wallBucket = 'plaster',
+): StructureDimensions {
   const w = 7.0 + rng() * 1.4, d = 9.0 + rng() * 1.8;
   const gfH = 2.6, ufH = 2.3, roofH = 1.7 + rng() * 0.3, over = 1.05;
   const parts = newParts();
@@ -336,7 +368,7 @@ export function makeAlpine(rng, buckets, wallBucket = 'plaster') {
 }
 
 /** Winter church: stone nave + tower with onion dome and spire cross. */
-export function makeOnionChurch(rng, buckets) {
+export function makeOnionChurch(rng: () => number, buckets: GeometryBuckets): StructureDimensions {
   const w = 6.4 + rng() * 0.8, d = 9.4 + rng() * 1.4;
   const wallH = 4.2, roofH = 2.8, over = 0.4;
   const parts = newParts();
@@ -383,7 +415,7 @@ export function makeOnionChurch(rng, buckets) {
 }
 
 /** Open-front woodshed: mono-pitch roof, slat walls, stacked firewood fill. */
-export function makeWoodshed(rng, buckets) {
+export function makeWoodshed(rng: () => number, buckets: GeometryBuckets): StructureDimensions {
   const w = 3.6 + rng() * 0.8, d = 4.6 + rng() * 1.0;
   const hLo = 2.0, hHi = 2.8;
   const parts = newParts();
@@ -426,7 +458,7 @@ export function makeWoodshed(rng, buckets) {
 // ---------------------------------------------------------------------------
 
 /** Minaret: tapered round shaft, balcony ring, lantern + small dome. */
-export function makeMinaret(rng, buckets) {
+export function makeMinaret(rng: () => number, buckets: GeometryBuckets): StructureDimensions {
   const r = 1.35 + rng() * 0.15, h = 10.5 + rng() * 1.5;
   const parts = newParts();
   const plinth = box(r * 2.6, 1.4, r * 2.6, 0.7);
@@ -463,7 +495,11 @@ export function makeMinaret(rng, buckets) {
 
 /** Urban corner shop: 2-story block, chamfered corner entrance, display
  * glass on both street faces, signboard + string course. */
-export function makeCornerShop(rng, buckets, wallBucket = 'plaster') {
+export function makeCornerShop(
+  rng: () => number,
+  buckets: GeometryBuckets,
+  wallBucket = 'plaster',
+): StructureDimensions {
   const w = 8.0 + rng() * 1.6, d = 8.0 + rng() * 1.6;
   const wallH = 6.6, roofH = 0.7;
   const parts = newParts();
@@ -539,7 +575,11 @@ export function makeCornerShop(rng, buckets, wallBucket = 'plaster') {
 }
 
 /** Rail platform depot: long low hall, raised platform slab, post canopy. */
-export function makeDepot(rng, buckets, wallBucket = 'plaster') {
+export function makeDepot(
+  rng: () => number,
+  buckets: GeometryBuckets,
+  wallBucket = 'plaster',
+): StructureDimensions {
   const w = 6.0 + rng() * 0.8, d = 16 + rng() * 4;
   const wallH = 3.8, roofH = 1.7, over = 0.5;
   const parts = newParts();
@@ -583,7 +623,7 @@ export function makeDepot(rng, buckets, wallBucket = 'plaster') {
 }
 
 /** Plan-name builders (spread into props.js BUILDER_BY_NAME). */
-export const VILLAGE_BUILDERS = {
+export const VILLAGE_BUILDERS: Record<string, StructureBuilder> = {
   farmhouse: makeFarmhouse,
   granary: makeGranary,
   chapel: makeChapel,

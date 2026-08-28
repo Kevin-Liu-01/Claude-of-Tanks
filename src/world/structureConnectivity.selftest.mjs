@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { VILLAGE_BUILDERS } from './maps/villageKit.js';
+import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { STRUCTURE_BUILDERS } from './maps/structureKit.js';
 import { certifyGroundedStructureParts } from './structureConnectivity.ts';
