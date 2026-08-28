@@ -15,7 +15,7 @@ import { createParticleSystem, mulberry32, makeFbm } from './particles.js';
 import { LATE_FX_LAYER } from './layers.js';
 import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.ts';
 import { createImpactDecals } from './impactDecals.js';
-import { syncSubjectEmitterAnchor } from './effectAttachments.js';
+import { syncSubjectEmitterAnchor } from './effectAttachments.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
 // world-dressing r1: destructible small-prop seam — fx registers the
 // kind-flavored break bursts and forwards shell flight/impact data so light

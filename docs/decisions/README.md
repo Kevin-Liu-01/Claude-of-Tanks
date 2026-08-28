@@ -136,3 +136,4 @@ runtime documents remain authoritative for behavior.
 - [0124 — World frame presentation has one typed owner](0124-typed-world-frame-presentation.md)
 - [0125 — JavaScript serverless closures remain runtime-complete](0125-serverless-runtime-closure.md)
 - [0126 — Shared FX time has one strict typed contract](0126-typed-fx-clock.md)
+- [0127 — Continuous FX attachments have typed ownership](0127-typed-fx-attachments.md)

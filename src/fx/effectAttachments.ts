@@ -25,9 +25,56 @@ export const EFFECT_ATTACHMENT_POLICY = Object.freeze({
   propBreak: 'world-space-burst',
   propCrush: 'world-space-burst',
   loosePropHit: 'world-space-burst',
-});
+} as const);
 
-function ensureLocalPos(emitter) {
+type EffectAttachmentPolicy = typeof EFFECT_ATTACHMENT_POLICY;
+export type EffectFamily = keyof EffectAttachmentPolicy;
+export type EffectAttachmentMode = EffectAttachmentPolicy[EffectFamily];
+
+interface MutablePosition {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface MutableVector3 extends MutablePosition {
+  set(x: number, y: number, z: number): MutableVector3;
+}
+
+interface VisualAnchorRoot {
+  worldToLocal(position: MutableVector3): MutableVector3;
+  localToWorld(position: MutableVector3): MutableVector3;
+  updateWorldMatrix?(updateParents: boolean, updateChildren: boolean): void;
+}
+
+export interface EffectEmitterAnchor {
+  pos: number[];
+  localPos?: number[];
+  anchorSpace?: object;
+  anchorMode?: 'visual-root' | 'state-yaw';
+}
+
+export interface EffectSubjectAnchor {
+  visual?: { root?: unknown };
+  state?: {
+    pos?: Partial<MutablePosition>;
+    yaw?: number;
+  };
+}
+
+function isVisualAnchorRoot(value: unknown): value is VisualAnchorRoot {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<VisualAnchorRoot>;
+  return typeof candidate.worldToLocal === 'function' &&
+    typeof candidate.localToWorld === 'function';
+}
+
+function isFinitePosition(value: Partial<MutablePosition> | undefined): value is MutablePosition {
+  return !!value && Number.isFinite(value.x) &&
+    Number.isFinite(value.y) && Number.isFinite(value.z);
+}
+
+function ensureLocalPos(emitter: EffectEmitterAnchor): number[] {
   return emitter.localPos || (emitter.localPos = [0, 0, 0]);
 }
 
@@ -47,12 +94,15 @@ function ensureLocalPos(emitter) {
  * @param {{set:Function,x:number,y:number,z:number}} scratch THREE.Vector3-like
  * @returns {boolean} true when the source was resolved and refreshed
  */
-export function syncSubjectEmitterAnchor(emitter, subject, scratch) {
+export function syncSubjectEmitterAnchor(
+  emitter: EffectEmitterAnchor | null | undefined,
+  subject: EffectSubjectAnchor | null | undefined,
+  scratch: MutableVector3 | null | undefined,
+): boolean {
   if (!emitter || !emitter.pos || !subject || !scratch) return false;
 
   const root = subject.visual && subject.visual.root;
-  if (root && typeof root.worldToLocal === 'function' &&
-      typeof root.localToWorld === 'function') {
+  if (isVisualAnchorRoot(root)) {
     if (typeof root.updateWorldMatrix === 'function') root.updateWorldMatrix(true, false);
     const local = ensureLocalPos(emitter);
     if (emitter.anchorMode !== 'visual-root' || emitter.anchorSpace !== root) {
@@ -70,10 +120,11 @@ export function syncSubjectEmitterAnchor(emitter, subject, scratch) {
 
   const state = subject.state;
   const p = state && state.pos;
-  if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.z)) {
+  if (!isFinitePosition(p)) {
     return false;
   }
-  const yaw = Number.isFinite(state.yaw) ? state.yaw : 0;
+  const stateYaw = state?.yaw;
+  const yaw = typeof stateYaw === 'number' && Number.isFinite(stateYaw) ? stateYaw : 0;
   const c = Math.cos(yaw), s = Math.sin(yaw);
   const local = ensureLocalPos(emitter);
   if (emitter.anchorMode !== 'state-yaw' || emitter.anchorSpace !== subject) {

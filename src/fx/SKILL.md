@@ -13,7 +13,8 @@ Render combat feedback from authoritative events without modifying simulation.
 <!-- agent-docs:fill:model -->
 `fxRuntimeAccess.ts` owns retryable battle-only module/runtime acquisition,
 `effects.js` composes event reactions, `particles.js` owns pools, `clock.ts`
-owns presentation time, and `impactDecals.js` owns bounded surface marks.
+owns presentation time, `effectAttachments.ts` owns continuous emitter anchor
+contracts, and `impactDecals.js` owns bounded surface marks.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

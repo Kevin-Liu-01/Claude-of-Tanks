@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {
   EFFECT_ATTACHMENT_POLICY,
   syncSubjectEmitterAnchor,
-} from './effectAttachments.js';
+} from './effectAttachments.ts';
 
 function near(actual, expected, label, eps = 1e-6) {
   if (Math.abs(actual - expected) > eps) {
