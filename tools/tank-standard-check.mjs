@@ -79,10 +79,16 @@ function releaseLock() { if (!lockHeld) return; lockHeld = false; try { rmdirSyn
 process.on('exit', releaseLock);
 
 // --- phase 0: optional fresh gate run (manages its own lock) ----------------
+// A forced run may legitimately skip a registered comparison oracle when its
+// ignored/local source model is absent from this worktree. Keep the historical
+// packet for authoring reference, but do not mistake it for a measurement made
+// by this release run.
+let freshGateStartedAt = null;
 if (forceGate && ids.length) {
   // The geometry gate filters this fleet to IDs with registered local
   // comparison oracles. --check ensures an eligible oracle failure remains a
   // hard release failure rather than being mistaken for a procedural-only ID.
+  freshGateStartedAt = Date.now();
   execFileSync('node', ['tools/geometry-gate.mjs', `--ids=${ids.join(',')}`, '--check'], { stdio: 'inherit' });
 }
 
@@ -183,11 +189,14 @@ for (const id of ids) {
   try {
     const p = `docs/geometry-gate/${id}.json`;
     const j = JSON.parse(readFileSync(p, 'utf8'));
-    gateApplicable = true;
+    const packetMtime = statSync(p).mtimeMs;
+    gateApplicable = freshGateStartedAt === null || packetMtime >= freshGateStartedAt;
     const c = j.components;
-    min = j.geoMin;
-    row = [c.hullCurves, c.wholeCurves, c.turretCurves, c.stations, c.dims, c.floaters].join('/');
-    age = `${Math.round((Date.now() - statSync(p).mtimeMs) / 60000)}m`;
+    if (gateApplicable) {
+      min = j.geoMin;
+      row = [c.hullCurves, c.wholeCurves, c.turretCurves, c.stations, c.dims, c.floaters].join('/');
+      age = `${Math.round((Date.now() - packetMtime) / 60000)}m`;
+    }
   } catch { /* keep placeholder */ }
   const cl = clip.get(id);
   const clipStr = cl ? `${cl.front}/${cl.rear}+${cl.sweepBand}/${cl.sweepShoe}` : '—';

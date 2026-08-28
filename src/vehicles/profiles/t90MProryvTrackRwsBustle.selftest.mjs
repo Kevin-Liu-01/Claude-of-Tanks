@@ -22,7 +22,7 @@ try {
   assert.ok(near(track.roadWheelSpanM, 3.60), 'six road-wheel stations use the corrected long T-90 wheelbase');
   assert.ok(near(track.sprocketZ, -2.46) && near(track.idlerZ, 2.54),
     'terminal wheels occupy the corrected long-hull stations');
-  assert.ok(near(track.structuralHullLengthM, 6.76), 'structural hull spans the corrected T-90 length');
+  assert.ok(near(track.structuralHullLengthM, 6.86), 'structural hull spans the shared RU-417/Burlak length');
   assert.ok(near(track.trackEnvelopeHeightM, 0.93), 'linked course spans the 930-mm vertical envelope');
   assert.ok(near(track.rideHeightIncreaseM, 0.16), 'finished hull and turret gain 160 mm of ride height');
   assert.equal(track.roadWheelStations, 6, 'native six-station cadence is preserved');
@@ -47,10 +47,26 @@ try {
   assert.ok(equipment, 'T-90M exposes its remote station receipt');
   assert.equal(equipment.remoteWeapon, 'kord', 'right tower carries a Kord-class weapon');
   assert.equal(equipment.remoteControlled, true, 'Kord station is remotely controlled');
-  assert.equal(equipment.remoteWeaponSide, 'right', 'station remains on the requested turret side');
+  assert.equal(equipment.remoteWeaponSide, 'left', 'station occupies the Tagil-style offset turret side');
   assert.equal(equipment.armoredTower, true, 'station uses an armored tower mount');
+  assert.equal(equipment.panoramicIntegrated, true,
+    'panoramic sight and Kord are consolidated into one automated station');
+  assert.equal(equipment.separateManualWeaponStations, 0,
+    'no second hand-served roof weapon remains');
   const remoteKord = turretRig.getObjectByName('t90mProryvRemoteKord');
   assert.ok(remoteKord, 'named remote Kord assembly is present');
+  const automatedStation = turretRig.userData.t90mProryvAutomatedStationReceipt;
+  assert.equal(automatedStation?.family, 'tagil-integrated-automated-station-r1',
+    'Proryv uses the shared Tagil-derived station grammar');
+  assert.equal(automatedStation?.panoramicIntegrated, true,
+    'station receipt binds the panoramic head to the remote weapon');
+  assert.equal(automatedStation?.separateManualWeaponStations, 0,
+    'station receipt rejects additional manual pintles');
+  let weaponStationCount = 0;
+  turretRig.traverse((node) => {
+    if (node.userData?.fitting === 'pintleMG' && node.userData?.fittingRoot) weaponStationCount++;
+  });
+  assert.equal(weaponStationCount, 1, 'Proryv has exactly one external roof weapon station');
 
   const roof = turretRig.userData.t90mProryvRoofSeatingReceipt;
   assert.ok(roof, 'T-90M exposes its roof seating receipt');
@@ -66,6 +82,19 @@ try {
     'panoramic housing overlaps its buried roof carrier');
   assert.ok(roof.commanderBottomY <= 0.70 && roof.gunnerBottomY <= 0.70
     && roof.rwsBottomY <= 0.70, 'all three circular roof stations enter the crown');
+
+  const familyHull = hullRig.userData.t90mProryvHullFamilyReceipt;
+  assert.equal(familyHull?.family, 't90-burlak-pressure-hull-r1',
+    'Proryv uses the canonical T-90/Burlak pressure-hull section');
+  assert.ok(near(familyHull.yOffset, -0.20),
+    'construction offset compensates the later 160-mm installed ride lift');
+  assert.equal(familyHull.sponsonMode, 'flat-return-clearance',
+    'concealed Proryv sponson uses a continuous return-run clearance plane');
+  assert.ok(near(familyHull.sponsonFloorY, 1.19),
+    'concealed sponson floor clears the animated return run without crossing the deck');
+  assert.deepEqual(familyHull.sectionStations,
+    { deck: 10, belly: 9, upperWidth: 6, lowerWidth: 6 },
+    'Proryv keeps every canonical family section station');
 
   const searchlight = turretRig.userData.t90mProryvSearchlightReceipt;
   assert.ok(searchlight, 'T-90M exposes its searchlight material receipt');
@@ -102,7 +131,7 @@ try {
   const tierXTrack = tierXTank.root.getObjectByName('rig_hull')?.userData.t90mProryvTrackReceipt;
   assert.ok(tierXTrack, 'tier-X T-90M Proryv publishes the shared long-chassis receipt');
   assert.ok(near(tierXTrack.roadWheelSpanM, 3.60)
-    && near(tierXTrack.structuralHullLengthM, 6.76),
+    && near(tierXTrack.structuralHullLengthM, 6.86),
   'tier-IX T-90M and tier-X Proryv use the same corrected long hull');
 } finally {
   tierXTank.dispose();
