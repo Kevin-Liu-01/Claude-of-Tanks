@@ -84,8 +84,12 @@ assert.ok(collisionMatch.entityById.get('wall-a').state.pos.z < -38,
 const collisionEvents = collisionMatch.snapshot({
   tick: 360, serverTimeMs: 6000, viewerId: 'wall-a', ackInputSeq: 1,
 }).events;
-assert.ok(collisionEvents.some((event) => event.type === 'shell_impact' && event.kind === 'prop'),
-  'rendered world collider blocks authoritative shells');
+const structureImpact = collisionEvents.find((event) => event.type === 'shell_impact' && event.kind === 'prop');
+assert.ok(structureImpact, 'rendered world collider blocks authoritative shells');
+assert.equal(structureImpact.shellType, 'APFSDS',
+  'authoritative structure impacts preserve their shell presentation class');
+assert.ok(structureImpact.caliberMm > 0 && Number.isFinite(structureImpact.ny),
+  'authoritative structure impacts carry caliber and a usable surface normal');
 
 const crushWall = {
   ...wall,

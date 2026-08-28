@@ -3167,9 +3167,14 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           const he = st === 'HE' || st === 'HESH';
           notifyShellImpact(e.pos[0], e.pos[1], e.pos[2], { he, r: he ? 4.6 : 1.0 });
         }
-        if (!e.hitTerrain) return;
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
-        dirtPlume(_v3, 76, false);
+        if (e.hitKind === 'prop') {
+          if (Array.isArray(e.normal)) _v4.set(e.normal[0], e.normal[1], e.normal[2]).normalize();
+          else _v4.copy(_UP);
+          fx.impact('structure', _v3, _v4, e.caliberMm || 90);
+          return;
+        }
+        if (e.hitTerrain) dirtPlume(_v3, e.caliberMm || 76, false);
       });
       bus.on('tank:destroyed', (e) => {
         // Transition from a moving live-tank emitter to one world-fixed wreck
@@ -3428,6 +3433,33 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           heFireball(pos, caliberMm);
           if (pos.y - groundY(pos.x, pos.z) < 2.5) dirtPlume(pos, caliberMm, true);
           break;
+        case 'structure': {
+          // World colliders are real shell targets. Give walls, buildings and
+          // hard props a compact flash, chipped material and an outward dust
+          // pulse so a stopped tracer can never read as having passed through.
+          hitFlash(pos, normal, s * 0.65, 0xffedc7, 0xd59a55);
+          sparkFan(pos, normal, 12, 13 * s, 0.85, 0xffcf83, 0.38, 0.022 * dk, 0.018);
+          impactSmoke(pos, normal, 5, 0.72 * s, 0x777069, 0xa29a8e, 0.5);
+          basisFrom(normal, _v1, _v2);
+          for (let i = 0; i < 6; i++) {
+            const a = rng() * Math.PI * 2;
+            const side = 1.5 + rng() * 3;
+            _debO.pos[0] = pos.x + normal.x * 0.04;
+            _debO.pos[1] = pos.y + normal.y * 0.04;
+            _debO.pos[2] = pos.z + normal.z * 0.04;
+            _debO.vel[0] = normal.x * (3 + rng() * 5) + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * side;
+            _debO.vel[1] = normal.y * (3 + rng() * 5) + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * side + 1.5;
+            _debO.vel[2] = normal.z * (3 + rng() * 5) + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * side;
+            _debO.life = 0.75 + rng() * 0.45;
+            _debO.scale = 0.045 + rng() * 0.055;
+            _debO.spin = 10 + rng() * 18;
+            _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+            _debO.groundY = groundY(pos.x, pos.z); _debO.hot = false;
+            _debO.seed = rng(); _debO.birthOffset = 0;
+            particles.emit('debris', _debO);
+          }
+          break;
+        }
         case 'terrain':
           dirtPlume(pos, caliberMm, caliberMm >= 105);
           break;

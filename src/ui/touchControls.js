@@ -163,7 +163,7 @@ body.cot-touch-layout .cot-special .sl{font-size:0;letter-spacing:.07em;text-ali
 body.cot-touch-layout .cot-special .sl::after{content:attr(data-short);font-size:7px;}
 body.cot-touch-layout .cot-special .sk{display:none;}
 body.cot-touch-layout .cot-net{top:max(8px,env(safe-area-inset-top));
-  left:calc(max(8px,env(safe-area-inset-left)) + 124px);right:auto;z-index:24;}
+  left:calc(max(8px,env(safe-area-inset-left)) + 124px);right:auto;width:max-content;z-index:24;}
 /* The former Garage shortcut occupied the first 44 px of this corner. With
    battle exit living in Settings, let the minimap own the safe-area top row. */
 body.cot-touch-layout .cot-minimap{left:max(8px,env(safe-area-inset-left));right:auto;
@@ -176,8 +176,39 @@ body.cot-touch-layout[data-cot-orientation='portrait'] .cot-drive{
 body.cot-touch-layout .cot-dp{left:max(232px,calc(env(safe-area-inset-left) + 224px));
   bottom:max(8px,env(safe-area-inset-bottom));
   transform:scale(.58);transform-origin:left bottom;}
+/* Compact phones keep the canonical damage-panel HP source instead of
+   spawning a second mobile health widget. Only the expensive schematic,
+   crew and equipment detail collapse; the live HP row stays bottom-center. */
+body.cot-touch-layout[data-cot-width='compact'] .cot-dp,
+body.cot-touch-layout[data-cot-width='phone'] .cot-dp,
+body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp{
+  display:block!important;left:50%!important;bottom:max(8px,env(safe-area-inset-bottom))!important;
+  width:clamp(112px,38vw,184px);min-height:34px;padding:7px 8px 6px;
+  transform:translateX(-50%)!important;transform-origin:center bottom!important;
+  z-index:var(--hud-layer-controls,24);background:linear-gradient(180deg,rgba(13,19,24,.94),rgba(5,9,12,.92));
+}
+body.cot-touch-layout[data-cot-width='compact'] .cot-dp canvas,
+body.cot-touch-layout[data-cot-width='compact'] .cot-dp .crew,
+body.cot-touch-layout[data-cot-width='compact'] .cot-dp .equiprow,
+body.cot-touch-layout[data-cot-width='compact'] .cot-dp .fire,
+body.cot-touch-layout[data-cot-width='phone'] .cot-dp canvas,
+body.cot-touch-layout[data-cot-width='phone'] .cot-dp .crew,
+body.cot-touch-layout[data-cot-width='phone'] .cot-dp .equiprow,
+body.cot-touch-layout[data-cot-width='phone'] .cot-dp .fire,
+body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp canvas,
+body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp .crew,
+body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp .equiprow,
+body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp .fire{display:none!important;}
+body.cot-touch-layout[data-cot-width='compact'] .cot-dp .hptrack,
+body.cot-touch-layout[data-cot-width='phone'] .cot-dp .hptrack,
+body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp .hptrack{margin-bottom:0;height:6px;}
 body.cot-touch-layout .cot-alert{bottom:28%;max-width:calc(100vw - 24px);font-size:10px;white-space:normal;}
-body.cot-touch-layout .cot-bounce{top:31%;font-size:12px;}
+body.cot-touch-layout .cot-sixth{top:max(70px,12%);width:min(214px,calc(100vw - 24px));
+  min-height:42px;grid-template-columns:36px minmax(0,1fr);}
+body.cot-touch-layout .cot-sixth .sig svg{width:21px;height:21px;}
+body.cot-touch-layout .cot-sixth .copy{padding:6px 9px 7px;}
+body.cot-touch-layout .cot-sixth .lb{font-size:10px;}
+body.cot-touch-layout .cot-sixth .sub{font-size:7px;letter-spacing:.12em;}
 
 /* Shell chip label/count collision: at the 48px touch chip the
    selected slot's long class label (APFSDS, 35px) ran under the ammo count

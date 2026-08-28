@@ -40,7 +40,7 @@ const CREW_SVG = {
 };
 
 const DP_CSS = `
-.cot-dp{position:absolute;left:12px;bottom:12px;width:136px;pointer-events:none;
+.cot-dp{position:absolute;z-index:var(--hud-layer-controls,24);left:12px;bottom:12px;width:136px;pointer-events:none;
   font-family:${FONT_STACK};color:#e6edf3;background:linear-gradient(180deg,rgba(10,14,18,.72),rgba(6,9,12,.8));
   border:1px solid rgba(146,164,180,.25);box-shadow:0 6px 22px rgba(0,0,0,.5);
   padding:7px 8px 8px;-webkit-user-select:none;user-select:none;}

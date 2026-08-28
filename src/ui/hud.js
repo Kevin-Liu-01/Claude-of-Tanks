@@ -39,6 +39,28 @@ const AUTOLOADER_HUD_OUTER_ROTATION = 0.14;
 const AUTOLOADER_SHELL_RELOADING = 'rgba(174,184,192,0.9)';
 export const HIT_CONFIRM_LIFETIME_S = 1.4;
 
+/**
+ * Convert physical aim constraints into one stable, player-facing warning.
+ * A blocked bore tints immediately, but its copy appears only after the aim
+ * controller's dwell gate so rough terrain cannot flicker text every frame.
+ */
+export function aimWarningState(view, out = null) {
+  const state = out || {};
+  state.visible = false;
+  state.kind = '';
+  state.text = '';
+  if (view?.blockedDistM != null) {
+    state.kind = 'blocked';
+    state.visible = !!view.blockedLabel;
+    state.text = `MUZZLE BLOCKED · ${Math.round(view.blockedDistM)} M`;
+  } else if (view?.gunLimitSpec) {
+    state.kind = 'limit';
+    state.visible = true;
+    state.text = 'GUN TRAVEL LIMIT';
+  }
+  return state;
+}
+
 function smoothstep01(value) {
   const t = Math.max(0, Math.min(1, value));
   return t * t * (3 - 2 * t);
@@ -206,6 +228,16 @@ const _ndc = new THREE.Vector3();
 const _tmp = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
 const _reticleAnchor = { x: 0, y: 0, single: false };
+const aimWarningScratch = {};
+const MODULE_ALERT_ICON_IDS = new Set([
+  'gun', 'turretRing', 'gunMount', 'autoloader', 'feedSystem', 'missileRack',
+  'engine', 'transmission', 'fuelTank', 'ammoRack', 'radio', 'optics',
+]);
+
+function moduleAlertIcon(moduleId) {
+  if (moduleId === 'trackL' || moduleId === 'trackR') return 'track';
+  return MODULE_ALERT_ICON_IDS.has(moduleId) ? moduleId : 'damage';
+}
 
 // spotting model (WoT-style): max spot range + persistence after LOS is lost
 // camo_spotting r3: import the sim's constants instead of duplicating them —
@@ -396,13 +428,15 @@ function drawShellIcon(canvas, type) {
 // not visible").
 
 const HUD_CSS = `
-.cot-hud{position:fixed;inset:0;pointer-events:none;z-index:40;font-family:${FONT_STACK};
+.cot-hud{position:fixed;inset:0;pointer-events:none;z-index:40;font-family:${FONT_STACK};isolation:isolate;
   --hud-panel:rgba(7,11,15,.92);--hud-edge:rgba(181,199,212,.32);
   --hud-muted:#93a3af;--hud-text:#e8f0f5;--hud-action:#f0a030;
+  --hud-layer-world:6;--hud-layer-sight:8;--hud-layer-status:18;
+  --hud-layer-controls:24;--hud-layer-score:30;
   -webkit-user-select:none;user-select:none;color:var(--hud-text);overflow:hidden;}
 .cot-hud *{box-sizing:border-box;margin:0;padding:0;}
-.cot-ret{position:absolute;inset:0;width:100%;height:100%;display:block;}
-.cot-top{position:absolute;z-index:30;top:0;left:50%;transform:translateX(-50%);width:min(344px,calc(100vw - 24px));
+.cot-ret{position:absolute;z-index:var(--hud-layer-sight);inset:0;width:100%;height:100%;display:block;}
+.cot-top{position:absolute;z-index:var(--hud-layer-score);top:0;left:50%;transform:translateX(-50%);width:min(344px,calc(100vw - 24px));
   min-height:62px;display:grid;grid-template-columns:minmax(78px,1fr) 86px minmax(78px,1fr);
   align-items:stretch;padding:0 25px 8px;isolation:isolate;overflow:hidden;
   background:linear-gradient(180deg,rgba(18,24,30,.98),rgba(7,10,14,.93));
@@ -446,7 +480,7 @@ const HUD_CSS = `
 @keyframes cotChipIn{from{opacity:0}to{opacity:1}}
 /* Compact player telemetry. The engineering dashboard folds this strip into
    its richer top-right panel instead of allowing two readouts to overlap. */
-.cot-net{position:absolute;z-index:20;top:8px;right:10px;display:flex;align-items:center;
+.cot-net{position:absolute;z-index:var(--hud-layer-controls);top:8px;right:10px;display:flex;align-items:center;
   min-height:28px;padding:4px 8px;font-family:${FONT_COND};font-variant-numeric:tabular-nums;
   background:linear-gradient(180deg,rgba(14,20,25,.82),rgba(5,9,12,.74));
   border:1px solid rgba(174,193,207,.22);box-shadow:0 5px 14px rgba(0,0,0,.22);
@@ -461,7 +495,7 @@ const HUD_CSS = `
 body.cot-debug-hud .cot-net{display:none!important;}
 /* Circular analog speedometer beside the damage schematic. The 270° sweep
    leaves a quiet lower gap for the numeric speed and physical limit. */
-.cot-drive{position:absolute;z-index:20;left:169px;bottom:12px;
+.cot-drive{position:absolute;z-index:var(--hud-layer-controls);left:169px;bottom:12px;
   width:108px;height:108px;border-radius:50%;pointer-events:none;overflow:hidden;
   contain:layout paint style;
   font-family:${FONT_COND};font-variant-numeric:tabular-nums;color:#edf3f7;
@@ -501,7 +535,7 @@ body.cot-debug-hud .cot-net{display:none!important;}
 @media (prefers-reduced-motion:reduce){
   .cot-drive .arc-value,.cot-drive .needle{transition:none;}
 }
-.cot-ear{position:absolute;top:52px;width:194px;display:flex;flex-direction:column;gap:1px;}
+.cot-ear{position:absolute;z-index:var(--hud-layer-status);top:52px;width:194px;display:flex;flex-direction:column;gap:1px;}
 .cot-ear.l{left:0;}
 .cot-ear.r{right:0;}
 .cot-ear .hd{font-size:9px;font-weight:800;letter-spacing:.22em;color:#95a4af;
@@ -573,7 +607,7 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-ear.l .cot-er.dead{border-left-color:rgba(126,232,126,.3);}
 .cot-ear.r .cot-er.dead{border-right-color:rgba(240,90,90,.3);}
 .cot-er.dead .hpm{display:none;}
-.cot-killfeed{position:absolute;top:52px;left:210px;display:flex;flex-direction:column;
+.cot-killfeed{position:absolute;z-index:var(--hud-layer-status);top:52px;left:210px;display:flex;flex-direction:column;
   gap:5px;align-items:flex-start;max-width:420px;}
 .cot-kf{display:flex;gap:7px;align-items:baseline;padding:5px 16px 5px 12px;font-size:12.5px;
   letter-spacing:.03em;background:linear-gradient(270deg,rgba(8,12,16,0) 0%,rgba(8,12,16,.82) 26%);
@@ -585,10 +619,10 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-kf .d{color:#8a97a3;font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;}
 .cot-kf .c{color:#f0b04a;font-size:10px;letter-spacing:.1em;font-weight:700;}
 .cot-kf .si{width:30px;height:12px;flex:0 0 auto;align-self:center;display:inline-block;}
-.cot-dmglayer{position:absolute;inset:0;}
+.cot-dmglayer{position:absolute;z-index:calc(var(--hud-layer-world) + 1);inset:0;}
 /* Spectator command strip: battle-HUD steel, amber acquisition marks, and the
    shared icon set keep this state legible without covering the chase view. */
-.cot-spec{position:absolute;left:50%;bottom:16px;transform:translate(-50%,14px);
+.cot-spec{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:16px;transform:translate(-50%,14px);
   opacity:0;display:none;pointer-events:auto;align-items:stretch;overflow:hidden;
   grid-template-columns:88px minmax(210px,1fr) 164px 116px;column-gap:0;
   width:min(760px,calc(100vw - 32px));min-width:0;min-height:82px;
@@ -678,23 +712,28 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-dmgnum .crit{font-size:10px;letter-spacing:.14em;color:#ff8a5c;vertical-align:super;margin-left:4px;}
 @keyframes cotFloat{0%{opacity:0;transform:translate(-50%,-30%)}10%{opacity:1}
   70%{opacity:.95}100%{opacity:0;transform:translate(-50%,-190%)}}
-.cot-alert{position:absolute;left:50%;bottom:23%;max-width:calc(100vw - 32px);min-height:34px;
-  display:flex;align-items:center;justify-content:center;padding:8px 14px 8px 17px;
+.cot-alert{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:23%;max-width:calc(100vw - 32px);min-height:38px;
+  display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 14px;
   transform:translate(-50%,7px);font-family:${FONT_COND};font-size:12px;font-weight:800;
   letter-spacing:.14em;text-align:center;text-transform:uppercase;color:#ffd27a;white-space:nowrap;
   background:linear-gradient(100deg,rgba(7,11,15,.95),rgba(15,21,26,.91));
-  border:1px solid rgba(184,201,214,.3);border-left:3px solid var(--hud-action);
+  border:1px solid rgba(184,201,214,.3);border-bottom:2px solid rgba(240,160,48,.72);
   box-shadow:0 9px 24px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.035);
   text-shadow:0 1px 3px rgba(0,0,0,.9);opacity:0;
   transition:opacity .18s ease,transform .2s cubic-bezier(.2,.7,.3,1);}
-.cot-alert.red{color:#ff9b91;border-left-color:#ef6157;}
+.cot-alert-icon{width:18px;height:18px;display:grid;place-items:center;flex:0 0 auto;}
+.cot-alert-icon svg{display:block;width:18px;height:18px;}
+.cot-alert-copy{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.cot-alert.danger{color:#ff9b91;border-bottom-color:#ef6157;}
+.cot-alert.success{color:#a8e8b2;border-bottom-color:#68cf78;}
+.cot-alert.info{color:#cbd8e2;border-bottom-color:#8fa3b4;}
 /* battle_countdown r3: WoT-style pre-battle freeze — kicker + big numeral,
    center-upper so it never fights the reticle. The numeral pops on each
    second via a keyed scale animation; the release swaps to ROLL OUT! and
    fades. Both lines use dark text edges instead of backdrops so terrain stays
    visible behind them. Fixed grid rows keep the numeral anchored while the
    kicker hides for rollout. Pure overlay: pointer-events none, no page layout impact. */
-.cot-prebattle{position:absolute;left:50%;top:22%;transform:translateX(-50%);
+.cot-prebattle{position:absolute;z-index:var(--hud-layer-status);left:50%;top:22%;transform:translateX(-50%);
   width:min(390px,calc(100vw - 32px));display:grid;grid-template-columns:minmax(0,1fr);
   grid-template-rows:30px 92px;
   row-gap:7px;justify-items:center;text-align:center;pointer-events:none;
@@ -720,12 +759,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-prebattle .n.go{font-size:64px;letter-spacing:.12em;text-indent:.12em;color:#ffe4b0;}
 @keyframes cot-pb-pop{from{transform:scale(1.28);opacity:.4;}to{transform:scale(1);opacity:1;}}
 .cot-alert.show{opacity:1;transform:translate(-50%,0);}
-.cot-bounce{position:absolute;left:50%;top:37%;transform:translateX(-50%);font-size:15px;
-  font-weight:700;letter-spacing:.06em;color:#c8d2dc;white-space:nowrap;
-  text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 10px rgba(0,0,0,.5);
-  opacity:0;transition:opacity .18s ease;}
-.cot-bounce.show{opacity:1;}
-.cot-special{position:absolute;z-index:24;left:50%;bottom:88px;transform:translateX(-50%);
+.cot-special{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:88px;transform:translateX(-50%);
   min-width:164px;min-height:42px;padding:5px 12px 5px 8px;display:none;
   grid-template-columns:24px 1fr auto;align-items:center;gap:7px;pointer-events:auto;
   cursor:pointer;color:#dce7ef;background:linear-gradient(180deg,rgba(22,30,36,.96),var(--hud-panel));
@@ -747,7 +781,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-special.active .sk{color:#ffd27a;border-color:rgba(240,176,74,.6);}
 .cot-special:focus-visible,.cot-shell:focus-visible,.cot-con:focus-visible{outline:2px solid #f5c36d;outline-offset:2px;}
 @keyframes cotSpecialPulse{from{opacity:.45}to{opacity:1}}
-.cot-shells{position:absolute;z-index:24;bottom:16px;left:50%;transform:translateX(-50%);display:flex;
+.cot-shells{position:absolute;z-index:var(--hud-layer-controls);bottom:16px;left:50%;transform:translateX(-50%);display:flex;
   gap:6px;pointer-events:auto;align-items:flex-end;}
 .cot-shell{width:64px;height:64px;background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
   border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);
@@ -817,7 +851,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-con.used{opacity:.35;filter:grayscale(1);}
 .cot-con.deny{animation:cotConDeny .3s;}
 @keyframes cotConDeny{0%,100%{border-color:rgba(146,164,180,.28);}50%{border-color:rgba(240,90,90,.9);}}
-.cot-hpbars{position:absolute;z-index:1;inset:0;}
+.cot-hpbars{position:absolute;z-index:var(--hud-layer-world);inset:0;}
 .cot-hpb{position:absolute;width:128px;height:31px;text-align:center;will-change:transform;
   contain:layout paint style;transform:translate3d(0,0,0);}
 .cot-hpb .nm{height:21px;padding:2px 7px 3px;font-size:11px;font-weight:750;letter-spacing:.045em;color:#ff746a;
@@ -839,7 +873,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 /* Over-target marker: a stable-height instrument follows the exact projected
    turret roof. Width changes only when its target copy changes, preserving
    complete names without causing steady-state frame reflow. */
-.cot-tgt{position:absolute;z-index:4;width:176px;height:64px;text-align:center;display:none;
+.cot-tgt{position:absolute;z-index:var(--hud-layer-world);width:176px;height:64px;text-align:center;display:none;
   will-change:transform;contain:layout paint style;transform:translate3d(0,0,0);}
 .cot-tgt .bk{height:64px;padding:4px 8px 3px;background:none;}
 /* Tight glyph shadows preserve contrast without painting a dark rectangle
@@ -880,30 +914,31 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   border-left:5px solid transparent;border-right:5px solid transparent;
   border-top:6px solid rgba(255,120,110,.95);
   filter:drop-shadow(0 1px 1px rgba(0,0,0,.65));}
-.cot-minimap{position:absolute;z-index:20;right:16px;bottom:16px;width:220px;height:220px;
+.cot-minimap{position:absolute;z-index:var(--hud-layer-controls);right:16px;bottom:16px;width:220px;height:220px;
   border:1px solid rgba(210,225,240,.28);box-shadow:0 6px 22px rgba(0,0,0,.55);
   background:#0d1310;}
 .cot-minimap canvas{display:block;width:100%;height:100%;}
-/* SPOTTING SECTION: sixth-sense lamp (lights 3 s after you are spotted) */
-.cot-sixth{position:absolute;top:14%;left:50%;transform:translateX(-50%);
-  display:flex;flex-direction:column;align-items:center;gap:2px;
-  opacity:0;transition:opacity .15s ease;pointer-events:none;}
-.cot-sixth.on{opacity:1;}
-.cot-sixth svg{filter:drop-shadow(0 0 12px rgba(255,186,60,.9)) drop-shadow(0 2px 4px rgba(0,0,0,.7));
-  animation:cotSixthPulse 1.1s ease-in-out infinite;}
-@keyframes cotSixthPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
-.cot-sixth .lb{font-size:11px;font-weight:800;letter-spacing:.32em;color:#ffb02e;
-  font-family:${FONT_COND};text-transform:uppercase;
-  text-shadow:0 1px 3px rgba(0,0,0,.95);}
-/* SPOTTING SECTION: spotted-eye lamp — r2: three states. Red wide-open eye
-   while actively spotted (sixth-sense gated), dim green closed eye while the
-   sim says the player is concealed (in bush / high camo), faint neutral
-   outline while merely exposed. The player's OWN concealment is not secret —
-   only the spotted state stays behind the 3 s lamp gate.
-   r7 MAJOR: the lamp perches on the damage panel's top edge (setDamagePanel
-   re-parents it). r8: it perches ON A CHIP — a small dark tab growing off
-   the panel's top-left border, so the glyph is grouped with the instrument
-   instead of floating unanchored in empty screen space. */
+/* Detection is one compact instrument, revealed after the authoritative
+   sixth-sense delay. A finite entry sweep replaces the old forever-pulsing
+   bulb, keeping motion quiet while the state remains active. */
+.cot-sixth{position:absolute;z-index:var(--hud-layer-controls);top:12%;left:50%;
+  width:min(248px,calc(100vw - 28px));min-height:48px;transform:translate(-50%,-6px);
+  display:grid;grid-template-columns:42px minmax(0,1fr);align-items:center;
+  color:#ffd27a;background:linear-gradient(105deg,rgba(24,13,8,.96),rgba(9,13,17,.94));
+  border:1px solid rgba(240,113,75,.48);border-bottom:2px solid #ed704b;
+  box-shadow:0 10px 28px rgba(0,0,0,.45),inset 0 1px rgba(255,226,181,.06);
+  opacity:0;transition:opacity .16s ease,transform .2s cubic-bezier(.2,.7,.3,1);pointer-events:none;}
+.cot-sixth.on{opacity:1;transform:translate(-50%,0);animation:cotDetectedIn .28s ease-out 1;}
+.cot-sixth .sig{height:100%;display:grid;place-items:center;color:#ff8767;
+  border-right:1px solid rgba(240,113,75,.3);background:rgba(240,88,58,.08);}
+.cot-sixth .sig svg{width:24px;height:24px;display:block;filter:drop-shadow(0 0 7px rgba(255,99,66,.45));}
+.cot-sixth .copy{min-width:0;padding:7px 12px 8px;display:flex;flex-direction:column;gap:3px;}
+.cot-sixth .lb{font:850 12px/1 ${FONT_COND};letter-spacing:.23em;text-transform:uppercase;color:#ff9b73;}
+.cot-sixth .sub{font:700 8px/1 ${FONT_COND};letter-spacing:.16em;text-transform:uppercase;color:#aebbc5;}
+@keyframes cotDetectedIn{0%{clip-path:inset(0 50% 0 50%)}100%{clip-path:inset(0)}}
+/* Concealment is a quiet positive-state chip on the damage panel. Detection
+   belongs exclusively to the authoritative sixth-sense instrument above, so
+   the same threat is never presented twice. */
 .cot-camoind{position:absolute;bottom:150px;left:14px;width:46px;height:40px;
   display:flex;align-items:center;justify-content:center;pointer-events:none;}
 .cot-camoind.onpanel{left:-1px;top:-29px;bottom:auto;width:36px;height:29px;
@@ -912,14 +947,15 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-camoind.onpanel svg{width:21px;height:21px;}
 .cot-camoind svg{display:block;flex:0 0 auto;transition:opacity .2s;
   filter:drop-shadow(0 1px 2px rgba(0,0,0,.85));}
-.cot-camoind.spotted svg{
-  filter:drop-shadow(0 0 7px rgba(240,90,90,.7)) drop-shadow(0 1px 2px rgba(0,0,0,.85));}
 /* camo_spotting r2: brighter concealed glow — the dim green closed eye was
    nearly invisible against bright terrain at 1080p */
 .cot-camoind.hidden-in-bush svg{
   filter:drop-shadow(0 0 6px rgba(120,225,140,.75)) drop-shadow(0 1px 2px rgba(0,0,0,.85));}
 .cot-camoind.conceal-pulse{animation:cotConcealPulse .7s ease-out 1;}
 @keyframes cotConcealPulse{0%{transform:scale(1)}35%{transform:scale(1.3)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){
+  .cot-sixth.on,.cot-camoind.conceal-pulse{animation:none;}
+}
 `;
 
 function penColor(r) {
@@ -1220,7 +1256,8 @@ export function initHud(bus) {
   const alertEl = el('div', 'cot-alert', root);
   alertEl.setAttribute('role', 'status');
   alertEl.setAttribute('aria-live', 'polite');
-  const bounceEl = el('div', 'cot-bounce', root); // WoT-style "Ricochet!" line
+  const alertIconEl = el('span', 'cot-alert-icon', alertEl);
+  const alertCopyEl = el('span', 'cot-alert-copy', alertEl);
 
   // ========================= SPOTTING SECTION ===============================
   // Sixth-sense lamp: 'player:spotted' (src/game/state.js spotting wiring)
@@ -1228,14 +1265,9 @@ export function initHud(bus) {
   // synthesized two-tone sting. Battle restarts reset the lamp (sim clock
   // restarts at 0).
   const sixthEl = el('div', 'cot-sixth', root);
-  sixthEl.innerHTML =
-    `<svg viewBox="0 0 24 24" width="42" height="42">` +
-    `<path fill="#ffc94d" d="M12 2.2a6.6 6.6 0 0 0-3.7 12.06c.7.5 1.1 1.24 1.2 2.04h5c.1-.8.5-1.55 1.2-2.04A6.6 6.6 0 0 0 12 2.2Z"/>` +
-    `<rect x="9.4" y="17.2" width="5.2" height="1.6" rx="0.8" fill="#c8933a"/>` +
-    `<rect x="9.9" y="19.4" width="4.2" height="1.5" rx="0.75" fill="#a87828"/>` +
-    `<path stroke="#ffd98a" stroke-width="1.3" stroke-linecap="round" fill="none" ` +
-    `d="M12 0.2v-0.1M3.4 3.9l1.2 1.2M20.6 3.9l-1.2 1.2M1.2 10.5h1.7M21.1 10.5h1.7"/>` +
-    `</svg><div class="lb">Spotted</div>`;
+  sixthEl.innerHTML = `<span class="sig">${uiIconSVG('optics', 24)}</span>` +
+    `<span class="copy"><span class="lb">Detected</span>` +
+    `<span class="sub">Enemy has visual contact</span></span>`;
   let sixthPendingS = -1; // sim time the lamp should light (spot time + 3 s)
   let sixthUntilS = -1;
   let sixthOn = false;
@@ -1280,13 +1312,9 @@ export function initHud(bus) {
     }
   }
 
-  // Spotted-eye lamp (icon only — WoT-mod grammar, no numeric readout).
-  // r2 (camo_spotting): three states driven by the getConcealment snapshot —
-  // red open eye while SPOTTED (sixth-sense gated, unchanged), dim green
-  // closed eye while the sim says we are concealed (bush working / high
-  // camo), faint neutral outline otherwise. The richer snapshot fields
-  // (inBush, camo, fired) are the player's own information; only 'spotted'
-  // stays behind the lamp gate.
+  // Concealment has one separate, positive-state chip. Detection belongs to
+  // the delayed instrument above; rendering a second red eye here duplicated
+  // the same condition and made the damage panel look like debug telemetry.
   const camoInd = el('div', 'cot-camoind', root);
   camoInd.innerHTML =
     `<svg viewBox="0 0 24 24" width="32" height="32">` +
@@ -1301,44 +1329,24 @@ export function initHud(bus) {
   const camoEyeEl = camoInd.querySelector('.ceye');
   const camoLidEl = camoInd.querySelector('.clid');
   const camoPupEl = camoInd.querySelector('.cpup');
-  let camoIndState = 'off'; // 'off'|'spotted'|'concealed'|'exposed'
+  let camoIndState = 'off'; // 'off'|'concealed'
   function updateCamoIndicator(sp) {
-    let state = 'off';
-    if (sp) {
-      if (sp.spotted) state = 'spotted';
-      else if ((sp.inBush && !sp.fired) || sp.camo >= 0.40) state = 'concealed';
-      else state = 'exposed';
-    }
+    const state = sp && !sp.spotted && ((sp.inBush && !sp.fired) || sp.camo >= 0.40)
+      ? 'concealed' : 'off';
     if (state === camoIndState) return;
     const prev = camoIndState;
     camoIndState = state;
-    // r7-2 (round critique: "a permanently visible dimmed eye reads as debug
-    // UI — WoT's lamp only appears when spotted"): the EXPOSED state renders
-    // NOTHING, unconditionally (the old first-battle "teach" mode kept a
-    // faint grey eye on screen for the whole session in fresh profiles /
-    // screenshot captures). The chip only pops with signal: red eye while
-    // spotted (sixth-sense gated, sim-side ~10 s decay), green closed eye
-    // while a bush/camo is actually working.
-    camoInd.style.display = state === 'spotted' || state === 'concealed' ? 'flex' : 'none';
-    camoInd.classList.toggle('spotted', state === 'spotted');
+    // No neutral or detected duplicate lives here. This chip appears only
+    // when concealment is actively helping the player's own tank.
+    camoInd.style.display = state === 'concealed' ? 'flex' : 'none';
     camoInd.classList.toggle('hidden-in-bush', state === 'concealed');
-    // camo_spotting r2: one-shot pulse on the exposed→concealed flip so the
-    // player notices the bush start working (spotted state untouched — it
-    // stays behind the sixth-sense fuse).
+    // One-shot entry pulse makes the off→concealed transition discoverable.
     camoInd.classList.remove('conceal-pulse');
-    if (state === 'concealed' && (prev === 'exposed' || prev === 'spotted')) {
+    if (state === 'concealed' && prev === 'off') {
       void camoInd.offsetWidth; // restart the animation
       camoInd.classList.add('conceal-pulse');
     }
-    if (state === 'spotted') {
-      camoEyeEl.style.display = '';
-      camoLidEl.style.display = 'none';
-      camoPupEl.style.display = '';
-      camoEyeEl.setAttribute('stroke', '#f05a5a');
-      camoPupEl.setAttribute('fill', '#f05a5a');
-      camoPupEl.setAttribute('r', '3.6');
-      camoSvgEl.style.opacity = '1';
-    } else if (state === 'concealed') {
+    if (state === 'concealed') {
       camoEyeEl.style.display = 'none';   // closed eye: lid arc + lashes only
       camoLidEl.style.display = '';
       camoPupEl.style.display = 'none';
@@ -1564,7 +1572,6 @@ export function initHud(bus) {
   let lastMagazineIndicatorState = null;
   const magazineHudScratch = {};
   const magazineShellPoseScratch = {};
-  let bounceTimer = null;
   const hpPool = new Map(); // tank id -> { root, fill, nm, lastFrac }
   const spotById = new Map(); // tank id -> { vis, lastT, lastX, lastZ, ever }
   let mapWorldSize = 1024;
@@ -2224,23 +2231,6 @@ export function initHud(bus) {
     ctx.restore();
   }
 
-  const BOUNCE_TEXT = {
-    ricochet: 'Ricochet!',
-    nonpen: 'That one did not penetrate.',
-    spaced_absorb: 'The spaced armor absorbed it.',
-    era: 'Their reactive armor ate that shell.',
-    screen_pierce: 'The spaced armor absorbed it.', // 0-damage pierce (r4)
-  };
-
-  function showBounceMessage(kind) {
-    const text = BOUNCE_TEXT[kind];
-    if (!text) return;
-    bounceEl.textContent = text;
-    bounceEl.classList.add('show');
-    if (bounceTimer) clearTimeout(bounceTimer);
-    bounceTimer = setTimeout(() => bounceEl.classList.remove('show'), 2200);
-  }
-
   // WoT dual-element system: a fixed central GUN MARKER (pen-color-coded)
   // plus a separate DISPERSION CIRCLE that blooms with movement/firing and
   // converges while holding the aim. The sim folds hull/turret movement AND
@@ -2681,19 +2671,31 @@ export function initHud(bus) {
         ctx.stroke();
       }
     }
-    if (blocked) {
-      // blocking distance under the aim circle (controls_gunnery r2)
-      ctx.fillStyle = PEN_RED;
-      ctx.font = `700 12.5px ${FONT_COND}`;
-      ctx.fillText(`PATH BLOCKED ${Math.round(view.blockedDistM)} m`, cx, cy + Math.max(58, r + 19));
-    } else if (view.gunLimitSpec) {
-      // r3 (gameplay_feel): label only genuine spec pins (depression/
-      // elevation/casemate) or terrain-clearance pins at range — the tint
-      // above still marks every pin, so close-range clearance pins stay
-      // quiet instead of shouting GUN LIMIT across rough ground.
-      ctx.fillStyle = 'rgba(170,180,190,0.95)';
-      ctx.font = `700 12.5px ${FONT_COND}`;
-      ctx.fillText('GUN LIMIT', cx, cy + Math.max(58, r + 19));
+    const warning = aimWarningState(view, aimWarningScratch);
+    if (warning.visible) {
+      const y = cy + Math.max(62, r + 24);
+      const danger = warning.kind === 'blocked';
+      ctx.font = `800 10.5px ${FONT_COND}`;
+      const textW = ctx.measureText(warning.text).width;
+      const chipW = textW + 32;
+      const chipX = cx - chipW * 0.5;
+      ctx.fillStyle = danger ? 'rgba(36,10,10,.92)' : 'rgba(12,17,22,.9)';
+      ctx.fillRect(chipX, y - 14, chipW, 24);
+      ctx.strokeStyle = danger ? 'rgba(240,90,90,.78)' : 'rgba(170,180,190,.55)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(chipX + 0.5, y - 13.5, chipW - 1, 23);
+      // Compact alert triangle: an icon, not a decorative glyph character.
+      ctx.beginPath();
+      ctx.moveTo(chipX + 13, y - 8);
+      ctx.lineTo(chipX + 19, y + 3);
+      ctx.lineTo(chipX + 7, y + 3);
+      ctx.closePath();
+      ctx.strokeStyle = danger ? PEN_RED : 'rgba(190,201,210,.92)';
+      ctx.stroke();
+      ctx.fillStyle = danger ? '#ff9b91' : 'rgba(205,216,224,.96)';
+      ctx.textAlign = 'left';
+      ctx.fillText(warning.text, chipX + 25, y + 1);
+      ctx.textAlign = 'center';
     }
     ctx.shadowBlur = 0;
     ctx.textAlign = 'left';
@@ -3826,9 +3828,11 @@ export function initHud(bus) {
     while (hitDirs.length > 5) hitDirs.shift();
   }
 
-  function showAlert(text, red) {
-    alertEl.textContent = text;
-    alertEl.classList.toggle('red', !!red);
+  function showAlert(text, { tone = 'warning', icon = 'info' } = {}) {
+    alertCopyEl.textContent = text;
+    alertIconEl.innerHTML = uiIconSVG(icon, 18);
+    alertEl.classList.remove('danger', 'warning', 'success', 'info');
+    alertEl.classList.add(tone);
     alertEl.classList.add('show');
     if (alertTimer) clearTimeout(alertTimer);
     alertTimer = setTimeout(() => alertEl.classList.remove('show'), 2400);
@@ -3864,23 +3868,26 @@ export function initHud(bus) {
   bus.on('ui:specialActionResult', ({ kind, active }) => {
     if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {
       showAlert(active ? 'ATGM GUIDANCE ENGAGED · CLICK TO FIRE'
-        : 'ATGM GUIDANCE DISENGAGED', false);
+        : 'ATGM GUIDANCE DISENGAGED', { icon: 'missileRack', tone: active ? 'success' : 'info' });
     }
     else if (kind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM) {
-      showAlert(active ? 'SUSPENSION AIM ENGAGED' : 'SUSPENSION AIM DISENGAGED', false);
-    } else if (kind === SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD) showAlert('MAGAZINE RELOAD STARTED', false);
+      showAlert(active ? 'SUSPENSION AIM ENGAGED' : 'SUSPENSION AIM DISENGAGED',
+        { icon: 'gunMount', tone: active ? 'success' : 'info' });
+    } else if (kind === SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD) {
+      showAlert('MAGAZINE RELOAD STARTED', { icon: 'shell' });
+    }
   });
   bus.on('ui:specialActionDenied', ({ reason }) => {
     showAlert(reason === 'BUSY' ? 'SPECIAL ACTION IN PROGRESS'
       : reason === 'MAGAZINE_RELOADING' ? 'MAGAZINE RELOAD IN PROGRESS'
         : reason === 'MAGAZINE_FULL' ? 'MAGAZINE ALREADY FULL'
-          : 'SPECIAL ACTION UNAVAILABLE', false);
+          : 'SPECIAL ACTION UNAVAILABLE', { icon: 'clock', tone: 'info' });
   });
-  bus.on('ui:magazineReloadStarted', () => showAlert('MAGAZINE RELOAD STARTED', false));
+  bus.on('ui:magazineReloadStarted', () => showAlert('MAGAZINE RELOAD STARTED', { icon: 'shell' }));
   bus.on('ui:magazineReloadDenied', ({ reason }) => {
     showAlert(reason === 'MAGAZINE_RELOADING' ? 'MAGAZINE RELOAD IN PROGRESS'
       : reason === 'MAGAZINE_FULL' ? 'MAGAZINE ALREADY FULL'
-        : 'MAGAZINE RELOAD UNAVAILABLE', false);
+        : 'MAGAZINE RELOAD UNAVAILABLE', { icon: reason === 'MAGAZINE_FULL' ? 'check' : 'clock', tone: 'info' });
   });
   bus.on('ui:consumableUsed', ({ slot, readyAt, cooldownS }) => {
     const s = conEls[slot];
@@ -3888,13 +3895,16 @@ export function initHud(bus) {
     conReadyAt[slot] = readyAt;
     conCooldownS[slot] = cooldownS;
     updateConsumableCooldowns(lastTimeS);
-    showAlert(`${CONSUMABLES[slot].label.toUpperCase()} USED`, false);
+    const icons = ['repair', 'medkit', 'extinguisher'];
+    showAlert(`${CONSUMABLES[slot].label.toUpperCase()} USED`, { icon: icons[slot] || 'check', tone: 'success' });
   });
   bus.on('ui:consumableDenied', ({ slot, reason, remainingS }) => {
     if (reason === 'NOTHING') {
-      showAlert(slot === 2 ? 'NO FIRE TO EXTINGUISH' : slot === 1 ? 'CREW UNHARMED' : 'NOTHING TO REPAIR', false);
+      const icons = ['repair', 'medkit', 'extinguisher'];
+      showAlert(slot === 2 ? 'NO FIRE TO EXTINGUISH' : slot === 1 ? 'CREW UNHARMED' : 'NOTHING TO REPAIR',
+        { icon: icons[slot] || 'info', tone: 'info' });
     } else if (reason === 'COOLDOWN') {
-      showAlert(`READY IN ${Math.ceil(remainingS || 0)} S`, false);
+      showAlert(`READY IN ${Math.ceil(remainingS || 0)} S`, { icon: 'clock', tone: 'info' });
     }
     const s = conEls[slot];
     if (s) { s.classList.remove('deny'); void s.offsetWidth; s.classList.add('deny'); }
@@ -3910,8 +3920,9 @@ export function initHud(bus) {
     }
   });
   bus.on('ui:autoAimState', ({ on, targetName, reason }) => {
-    if (on) showAlert(`AUTO-AIM: ${String(targetName || 'TARGET').toUpperCase()}`, false);
-    else if (reason) showAlert(reason, false);
+    if (on) showAlert(`AUTO-AIM: ${String(targetName || 'TARGET').toUpperCase()}`,
+      { icon: 'autoAim', tone: 'success' });
+    else if (reason) showAlert(reason, { icon: 'autoAim', tone: 'info' });
   });
   // Minimap size cycle (3 steps) — the canvas keeps its fixed 2x internal
   // resolution; CSS scales it, so blips/labels stay proportionate.
@@ -3934,7 +3945,6 @@ export function initHud(bus) {
         hit.kind === 'spaced_absorb' || hit.kind === 'era' ||
         (hit.kind === 'screen_pierce' && !(hit.damage > 0));
       hitMark = { t0: lastTimeS, bounced };
-      if (bounced) showBounceMessage(hit.kind);
     }
     if (playerId != null && hit.targetId === playerId) {
       pushHitDirection(hit, playerRef);
@@ -3943,11 +3953,13 @@ export function initHud(bus) {
   bus.on('module:state', (p) => {
     if (playerId == null || p.id !== playerId || p.state === 'ok') return;
     const label = moduleAlertLabel(p.module);
+    const icon = moduleAlertIcon(p.module);
     // repaired:true = auto-repair finished (red → yellow). This used to toast
     // '<MODULE> DAMAGED' — a recovery announced as fresh damage (the audio
     // layer already said 'repairs' over it). WoT language: 'Track repaired'.
-    if (p.repaired) { showAlert(`${label} REPAIRED`, false); return; }
-    showAlert(p.state === 'red' ? `${label} DESTROYED` : `${label} DAMAGED`, p.state === 'red');
+    if (p.repaired) { showAlert(`${label} REPAIRED`, { icon, tone: 'success' }); return; }
+    showAlert(p.state === 'red' ? `${label} DESTROYED` : `${label} DAMAGED`,
+      { icon, tone: p.state === 'red' ? 'danger' : 'warning' });
   });
 
   // ---------- aim view assembly ----------

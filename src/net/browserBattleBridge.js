@@ -443,6 +443,11 @@ export function createBrowserBattleBridge({
           shellId: event.shellId,
           shooterId: event.shooterId,
           hitTerrain: event.kind === 'terrain',
+          hitKind: event.kind,
+          surfaceKind: event.surfaceKind || event.kind,
+          normal: [event.nx || 0, event.ny ?? 1, event.nz || 0],
+          shellType: event.shellType,
+          caliberMm: event.caliberMm,
           pos: [event.x, event.y, event.z],
         });
     } else if (event.type === 'tank_destroyed') {

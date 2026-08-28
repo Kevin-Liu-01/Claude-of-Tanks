@@ -145,6 +145,18 @@ bridge.apply(snapshot, 1 / 60, [{
 assert.equal(busEvents.findLast((event) => event.type === 'ui:magazineReloadDenied')?.payload?.reason,
   'MAGAZINE_RELOADING', 'network reload denial reaches the canonical HUD feedback path');
 
+snapshot.tick++;
+bridge.apply(snapshot, 1 / 60, [{
+  type: 'shell_impact', shellId: 78, shooterId: 'host', kind: 'prop',
+  surfaceKind: 'building', x: 3, y: 2, z: 9, nx: 0, ny: 0.2, nz: -0.98,
+  shellType: 'APFSDS', caliberMm: 120,
+}]);
+const structureExpired = busEvents.findLast((event) => event.type === 'shell:expired');
+assert.equal(structureExpired?.payload?.hitKind, 'prop',
+  'network structure collisions reach the canonical world-impact presentation event');
+assert.deepEqual(structureExpired?.payload?.normal, [0, 0.2, -0.98]);
+assert.equal(structureExpired?.payload?.caliberMm, 120);
+
 assert.equal(bridge.endDisconnected(), true, 'an interrupted match resolves once');
 assert.equal(game.result, 'draw');
 assert.equal(game.resultReason, 'network_disconnect');

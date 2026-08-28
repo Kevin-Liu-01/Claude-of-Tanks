@@ -92,4 +92,24 @@ assert.deepEqual(bore.toArray(), [0, 0, 1]);
 assert.deepEqual(target.toArray(), [0, 2, 100]);
 assert.equal(controller.muzzlePathBlockDist(muzzle, target, 0.2), 5);
 
+// Dispersion describes possible shell spread, not the physical centerline of
+// the gun. A lower spread-fringe ray used to create false PATH BLOCKED alerts
+// whenever the aim circle grazed terrain while the bore itself was clear.
+const clearBoreController = createAimController({
+  getGame: () => game,
+  getRig: () => rig,
+  worldRaycast(origin, dir) {
+    if (dir.y >= -0.001) return null;
+    return {
+      point: origin.clone().addScaledVector(dir, 5), normal: null, dist: 5, kind: 'terrain',
+    };
+  },
+  targetVisible: () => true,
+  getShellCards: () => ['shell'],
+  computeDispersion: () => 8,
+  now: () => now,
+});
+assert.equal(clearBoreController.muzzlePathBlockDist(muzzle, target, 8), null,
+  'a clear physical bore must not inherit a false warning from shell dispersion');
+
 console.log('aimController.selftest: shared camera/bore aim owner passed');

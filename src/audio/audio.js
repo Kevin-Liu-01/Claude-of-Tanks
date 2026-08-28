@@ -2625,9 +2625,9 @@ export function createAudio({ context: initialContext = null } = {}) {
     // Shells that terminate in the world (dirt/rubble) were silent before the
     // SOUND overhaul — fx already keyed off this event, audio now does too.
     bus.on('shell:expired', (e) => {
-      if (ctx && e && e.hitTerrain && e.pos) {
+      if (ctx && e && (e.hitTerrain || e.hitKind === 'prop') && e.pos) {
         dirtImpact(e.pos[0], e.pos[1], e.pos[2]);
-        logSound('shell:expired', { id: e.shellId, hitTerrain: true });
+        logSound('shell:expired', { id: e.shellId, hitKind: e.hitKind || 'terrain' });
       }
     });
     bus.on('player:reload', (e) => {

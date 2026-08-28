@@ -1266,8 +1266,15 @@ function stepShells(game, bus, world) {
       }
       bus.emit('shell:expired', {
         shellId: shell.id,
+        shooterId: shell.shooterId,
         pos: [worldHit.point.x, worldHit.point.y, worldHit.point.z],
         hitTerrain: worldHit.kind === 'terrain',
+        hitKind: worldHit.kind,
+        surfaceKind: worldHit.record?.kind || worldHit.kind,
+        normal: worldHit.normal
+          ? [worldHit.normal.x, worldHit.normal.y, worldHit.normal.z] : null,
+        shellType: shell.spec.type,
+        caliberMm: shell.spec.caliberMm,
       });
     } else if (shell.dead) {
       // lifetime expiry mid-air

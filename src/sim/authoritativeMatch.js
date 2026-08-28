@@ -299,6 +299,7 @@ function segmentWorldHit(worldCollision, heightField, from, to) {
       t: Math.max(0, Math.min(1, hit.dist / distance)),
       kind: hit.kind,
       record: hit.record || null,
+      normal: hit.normal || null,
     } : null;
   }
   const t = segmentTerrainHit(heightField, from, to);
@@ -872,9 +873,15 @@ export function createAuthoritativeMatch({
           shellId: shell.id,
           shooterId: shell.shooterId,
           kind: worldHit.kind,
+          surfaceKind: worldHit.record?.kind || worldHit.kind,
           x: shell.pos.x,
           y: shell.pos.y,
           z: shell.pos.z,
+          nx: worldHit.normal?.x || 0,
+          ny: worldHit.normal?.y || 1,
+          nz: worldHit.normal?.z || 0,
+          shellType: shell.spec.type,
+          caliberMm: shell.spec.caliberMm,
         });
         continue;
       }

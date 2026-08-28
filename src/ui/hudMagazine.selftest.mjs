@@ -4,10 +4,27 @@ import {
   HIT_CONFIRM_LIFETIME_S,
   autoloaderHudShellPose,
   autoloaderHudState,
+  aimWarningState,
   hitConfirmVisualState,
   reloadHudFraction,
   resolveReticleAnchor,
 } from './hud.js';
+
+assert.deepEqual(
+  aimWarningState({ blockedDistM: 18.4, blockedLabel: false }),
+  { visible: false, kind: 'blocked', text: 'MUZZLE BLOCKED · 18 M' },
+  'a new bore obstruction tints the sight without flashing unstable copy',
+);
+assert.deepEqual(
+  aimWarningState({ blockedDistM: 18.4, blockedLabel: true }),
+  { visible: true, kind: 'blocked', text: 'MUZZLE BLOCKED · 18 M' },
+  'a continuous bore obstruction gains exact distance copy after its dwell',
+);
+assert.deepEqual(
+  aimWarningState({ blockedDistM: null, gunLimitSpec: true }),
+  { visible: true, kind: 'limit', text: 'GUN TRAVEL LIMIT' },
+  'physical articulation limits remain distinct from blocked muzzle paths',
+);
 
 assert.deepEqual(
   resolveReticleAnchor({ cx: 640, cy: 360, gunX: 612, gunY: 348, singleReticle: true }),

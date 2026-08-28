@@ -492,9 +492,6 @@ body.cot-touch-layout[data-cot-width='phone'] .cot-special{
 }
 body.cot-touch-layout[data-cot-width='compact'] .cot-minimap,
 body.cot-touch-layout[data-cot-width='phone'] .cot-minimap{width:92px!important;height:92px!important}
-body.cot-touch-layout[data-cot-width='compact'] .cot-dp,
-body.cot-touch-layout[data-cot-width='phone'] .cot-dp{display:none}
-
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch-aim .aimhint::after{content:' · LANDSCAPE RECOMMENDED'}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch .mobile-chrome{top:calc(max(8px,env(safe-area-inset-top)) + 48px)}
 body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-minimap{
@@ -506,6 +503,12 @@ body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'
 body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-net{
   top:calc(max(8px,env(safe-area-inset-top)) + 100px);
   left:calc(max(8px,env(safe-area-inset-left)) + 100px);
+}
+/* Keep the contact warning out of the top-control/minimap row. It is a
+   transient battlefield state, so it owns the first clear lane below those
+   persistent instruments instead of covering either one. */
+body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-sixth{
+  top:calc(max(8px,env(safe-area-inset-top)) + 200px);
 }
 body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-killfeed{top:calc(max(4px,env(safe-area-inset-top)) + 130px)}
 body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-touch .autoaim,
@@ -558,8 +561,15 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
 }
 body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch-aim .aimhint{right:20%;bottom:27%}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-minimap{width:106px!important;height:106px!important}
+/* The two 106 px corner instruments leave a deliberately bounded center
+   lane on small landscape phones. Compress and bias the score plate into
+   that lane so neither the minimap nor the three global controls cover it. */
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-top{
+  left:calc(50% - 18px);width:294px;padding:5px 18px 7px;
+  grid-template-columns:minmax(62px,1fr) 72px minmax(62px,1fr);
+}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-net{
-  left:calc(max(8px,env(safe-area-inset-left)) + 114px);
+  top:calc(max(8px,env(safe-area-inset-top)) + 50px);left:auto;right:max(10px,env(safe-area-inset-right));
 }
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-shells{
   right:max(10px,env(safe-area-inset-right));bottom:calc(max(28px,env(safe-area-inset-bottom)) + 274px);gap:4px;
@@ -576,8 +586,12 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
   left:max(218px,calc(env(safe-area-inset-left) + 218px));bottom:max(7px,env(safe-area-inset-bottom));
   transform:scale(.54);transform-origin:left bottom;
 }
-body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-alert{bottom:27%}
-body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-bounce{top:30%}
+/* At handset landscape heights the center stack has three independent
+   signals: detection, transient system status, and physical muzzle warning.
+   Give each a fixed lane so none can cover the others or the bottom HP row. */
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-alert{
+  top:118px;bottom:auto;max-width:180px;
+}
 
 body[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-touch .joy{width:108px;height:108px}
 body[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-touch .knob{width:46px;height:46px;margin:-23px}
@@ -597,7 +611,13 @@ body.cot-touch-layout[data-cot-height-density='tight'] .cot-minimap{width:92px!i
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-cons{flex-direction:row;bottom:calc(max(26px,env(safe-area-inset-bottom)) + 94px)!important}
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-shells{bottom:calc(max(26px,env(safe-area-inset-bottom)) + 150px)!important}
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-special{right:160px;bottom:calc(max(26px,env(safe-area-inset-bottom)) + 94px)!important}
-body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp{display:none}
+
+/* The portrait scope action shares the auto-aim row. Leaving it on the fire
+   row put its label over the canonical bottom-center health instrument. */
+body.cot-touch-layout[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-touch .scope,
+body.cot-touch-layout[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-touch .scope{
+  bottom:105px;
+}
 
 /* ROOM CHAT -------------------------------------------------------------- */
 body[data-cot-height='compact'] .cot-room-chat,

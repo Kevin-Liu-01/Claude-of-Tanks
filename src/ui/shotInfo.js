@@ -91,7 +91,7 @@ GLYPH.shield = uiIconSVG('shield', 12);
 GLYPH.skull = uiIconSVG('skull', 12);
 
 const SI_CSS = `
-.cot-si{position:absolute;inset:0;pointer-events:none;font-family:${FONT_STACK};color:${COL.text};}
+.cot-si{position:absolute;z-index:var(--hud-layer-status,18);inset:0;pointer-events:none;font-family:${FONT_STACK};color:${COL.text};}
 .cot-si *{box-sizing:border-box;margin:0;padding:0;}
 .cot-si-cardhost{position:absolute;right:16px;top:var(--cot-si-card-top,var(--cot-si-roster-bottom,272px));width:320px;display:flex;
   flex-direction:column;gap:6px;align-items:stretch;contain:layout style;}
@@ -239,7 +239,7 @@ body.cot-si-report .cot-end{align-items:center !important;
    and reset() restore everything for the next battle. */
 body.cot-si-report .cot-killfeed,body.cot-si-report .cot-ear,
 body.cot-si-report .cot-top,
-body.cot-si-report .cot-alert,body.cot-si-report .cot-bounce,
+body.cot-si-report .cot-alert,
 body.cot-si-report .cot-sixth,body.cot-si-report .cot-tgt,
 body.cot-si-report .cot-net,body.cot-si-report .cot-camoind,
 body.cot-si-report .cot-shells,body.cot-si-report .cot-minimap,

@@ -60,15 +60,33 @@ assert.match(touch,
 assert.match(touch,
   /body\.cot-touch-layout \.cot-net\{top:max\(8px[\s\S]*left:calc\(max\(8px[\s\S]*body\.cot-touch-layout \.cot-drive\{display:block!important/,
   'mobile must reuse the analog drive gauge and place FPS/ping beside the minimap');
-assert.match(responsiveSurfaces,
-  /body\.cot-touch-layout\[data-cot-width='phone'\] \.cot-dp\{display:none\}/,
-  'phone touch layouts must shed the secondary damage panel before it overlaps driving controls');
+assert.match(touch,
+  /body\.cot-touch-layout\[data-cot-width='compact'\] \.cot-dp,[\s\S]*data-cot-width='phone'[\s\S]*display:block!important;left:50%!important;[\s\S]*width:clamp\(112px,38vw,184px\)/,
+  'phone touch layouts must reuse the canonical damage panel as a bottom health instrument');
+assert.match(touch,
+  /data-cot-width='phone'\] \.cot-dp canvas,[\s\S]*data-cot-width='phone'\] \.cot-dp \.crew,[\s\S]*display:none!important/,
+  'compact health must shed schematic detail instead of creating a duplicate mobile HP owner');
 assert.match(responsiveSurfaces,
   /body\[data-cot-height-density='tight'\]\[data-cot-orientation='landscape'\] \.cot-touch \.joy/,
   'very short landscape controls must use the shared tight-height tier');
 assert.match(responsiveSurfaces,
   /data-cot-width-density='narrow'\]\[data-cot-orientation='portrait'\] \.cot-touch \.autoaim\{right:152px\}[\s\S]*\.cot-special\{right:96px\}/,
   'ultra-narrow portrait controls must separate auto-aim from the joystick and special action');
+assert.match(responsiveSurfaces,
+  /data-cot-panels='overlay'\]\[data-cot-orientation='portrait'\] \.cot-sixth\{[\s\S]*\+ 200px\)/,
+  'portrait detection must occupy a clear lane below the minimap and global controls');
+assert.match(responsiveSurfaces,
+  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-net\{[\s\S]*top:calc\(max\(8px[\s\S]*left:auto;right:max\(10px/,
+  'short landscape FPS and ping must clear both the score plate and minimap');
+assert.match(responsiveSurfaces,
+  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-top\{[\s\S]*left:calc\(50% - 18px\);width:294px[\s\S]*grid-template-columns:minmax\(62px,1fr\) 72px/,
+  'short landscape score plate must stay inside the lane between corner controls');
+assert.match(responsiveSurfaces,
+  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-alert\{[\s\S]*top:118px;bottom:auto/,
+  'short landscape system alerts must not collide with muzzle warnings or bottom health');
+assert.match(responsiveSurfaces,
+  /data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-touch \.scope\{[\s\S]*bottom:105px/,
+  'portrait scope must share the auto-aim row instead of covering the health instrument');
 assert.match(input,
   /document\.body\?\.dataset\?\.cotInput[\s\S]*responsiveInput === 'coarse'[\s\S]*responsiveInput === 'fine'/,
   'battle input must consume the canonical interaction-mode contract');
@@ -91,6 +109,16 @@ assert.match(responsiveSurfaces, /\.cot-bl \.count:empty\{display:none/,
 
 assert.doesNotMatch(hud, /cot-dlog|pushDamageLog/,
   'incoming hits must have one canonical combat-intelligence feed, not a duplicate HUD log');
+assert.doesNotMatch(hud, /cot-bounce|showBounceMessage|BOUNCE_TEXT/,
+  'ricochets must not create a second generic toast beside the hit marker and combat record');
+assert.match(hud, /MUZZLE BLOCKED · \$\{Math\.round\(view\.blockedDistM\)\} M[\s\S]*GUN TRAVEL LIMIT/,
+  'aim warnings must distinguish a physical bore obstruction from a gun travel limit');
+assert.match(hud, /state\.visible = !!view\.blockedLabel/,
+  'blocked-path copy must honor the stable dwell gate instead of flickering with every terrain graze');
+assert.match(hud, /--hud-layer-world:6;--hud-layer-sight:8;--hud-layer-status:18;[\s\S]*--hud-layer-controls:24;--hud-layer-score:30/,
+  'battle UI must declare one ordered layer contract with world indicators below fixed controls');
+assert.match(hud, /Detected[\s\S]*Enemy has visual contact/,
+  'sixth sense must present one explicit detection state with supporting copy');
 assert.match(hud,
   /cot-net-unit fps[\s\S]*cot-net-unit ping[\s\S]*netLastPaintMs[\s\S]*now - netLastPaintMs < 250/,
   'player FPS and latency telemetry must use structured 4 Hz instruments instead of per-frame text churn');

@@ -143,7 +143,6 @@ export function createAimController(deps: AimControllerDependencies): AimControl
   const bore = new THREE.Vector3();
   const gunTarget = new THREE.Vector3();
   const targetDelta = new THREE.Vector3();
-  const grazePoint = new THREE.Vector3();
   const pathDir = new THREE.Vector3();
   const aimPose = { pos: new THREE.Vector3() };
 
@@ -210,7 +209,7 @@ export function createAimController(deps: AimControllerDependencies): AimControl
   function muzzlePathBlockDist(
     origin: THREE.Vector3,
     aimPoint: THREE.Vector3,
-    dispersionRadM: number,
+    _dispersionRadM: number,
   ): number | null {
     pathDir.copy(aimPoint).sub(origin);
     const pathLength = pathDir.length();
@@ -218,17 +217,6 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     pathDir.multiplyScalar(1 / pathLength);
     const blocked = deps.worldRaycast(origin, pathDir, pathLength - 1.5);
     if (blocked) return blocked.dist;
-    if (dispersionRadM > 0.1) {
-      grazePoint.copy(aimPoint);
-      grazePoint.y -= dispersionRadM * 0.65;
-      pathDir.copy(grazePoint).sub(origin);
-      const grazeLength = pathDir.length();
-      if (grazeLength > 12) {
-        pathDir.multiplyScalar(1 / grazeLength);
-        const graze = deps.worldRaycast(origin, pathDir, grazeLength * 0.85);
-        if (graze) return graze.dist;
-      }
-    }
     return null;
   }
 
