@@ -94,12 +94,12 @@ import { createBattleResultPresentationRuntime } from './game/battleResultPresen
 import { createSoloBattleDeploymentRuntime } from './game/soloBattleDeploymentRuntime.ts';
 import { createSoloBattleLoadingRuntime } from './game/soloBattleLoadingRuntime.ts';
 import { createSoloBattleStartAccess } from './game/soloBattleStartAccess.ts';
-import { createBattleVisualPool } from './game/battleVisualPool.js';
+import { createBattleVisualPool } from './game/battleVisualPool.ts';
 import { createBattleVisualStreamerAccess } from './game/battleVisualStreamerAccess.ts';
 import {
   clearBattleAfterExit,
   resetBattleTankForGarage,
-} from './game/garageTankLifecycle.js';
+} from './game/garageTankLifecycle.ts';
 // Engineering diagnostics stay out of ordinary production boot. A tiny typed
 // facade transfers the exact HUD/telemetry runtime only for explicit QA,
 // development, or automation sessions.

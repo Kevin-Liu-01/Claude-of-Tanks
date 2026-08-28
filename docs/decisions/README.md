@@ -114,3 +114,4 @@ runtime documents remain authoritative for behavior.
 - [0102 — Match authority and clients share one strict typed runtime](0102-typed-match-runtime.md)
 - [0103 — Network battle presentation has one strict typed bridge](0103-typed-network-presentation-bridge.md)
 - [0104 — Pure gameplay policy leaves are strict TypeScript](0104-typed-gameplay-policy-leaves.md)
+- [0105 — Render-state lifecycles are strict TypeScript](0105-typed-render-state-lifecycles.md)

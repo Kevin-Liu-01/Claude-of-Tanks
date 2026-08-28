@@ -6,15 +6,69 @@
  * Reset both owners at the same phase boundary so neither can leak into the
  * showroom.
  *
- * @param {{
- *   fx: {resetAll: () => void},
- *   visual?: {
- *     resetForGaragePresentation?: () => void,
- *     resetDestroyed?: () => void,
- *   } | null,
- * }} deps
  */
-export function resetBattleTankForGarage({ fx, visual = null }) {
+export interface LifecycleVisual {
+  resetForGaragePresentation?(): void;
+  resetDestroyed?(): void;
+  setVisible?(visible: boolean): void;
+  dispose?(): void;
+}
+
+interface LifecycleInput {
+  throttle: number;
+  steer: number;
+  brake: boolean;
+  fire: boolean;
+  shellSlot: number;
+  aimPoint?: { set?(x: number, y: number, z: number): unknown };
+}
+
+interface LifecycleEntity {
+  visual: LifecycleVisual | null;
+  state: unknown;
+  combat: unknown;
+  specialAction: unknown;
+  equip: unknown;
+  ai: unknown;
+  aiCtl: unknown;
+  team: string;
+  isPlayer: boolean;
+  rigidGear: boolean;
+  contactGeom: unknown;
+  _destroyedAnnounced: boolean;
+  _glbContactStampedVisual?: unknown;
+  _openingRoute?: unknown;
+  _lastImpactT?: number;
+  _reloadEvent?: unknown;
+  _soloRenderPose?: unknown;
+  _spotFade?: number;
+  _fxAcc?: number;
+  _dustTravelAcc?: number;
+  input?: LifecycleInput | null;
+}
+
+export interface BattleExitState {
+  allTanks?: LifecycleEntity[];
+  tanks: unknown[];
+  shells: unknown[];
+  player: unknown | null;
+  spotting: unknown | null;
+  result: unknown | null;
+  resultReason: unknown | null;
+  preBattleS: number;
+  timeS: number;
+  fireTickAcc: number;
+  nextShellId: number;
+  openingRouteJobs?: unknown[];
+}
+
+export function resetBattleTankForGarage({
+  fx,
+  visual = null,
+}: {
+  fx: { resetAll(): void };
+  visual?: LifecycleVisual | null;
+}): void {
   if (!fx || typeof fx.resetAll !== 'function') {
     throw new TypeError('garage lifecycle requires an FX reset owner');
   }
@@ -39,13 +93,16 @@ export function resetBattleTankForGarage({ fx, visual = null }) {
  * remain reusable, but no simulation, damage, AI, shell or presentation state
  * survives the phase boundary.
  *
- * @param {{
- *   game: object,
- *   preservedVisual?: object|null,
- *   visualPool?: {release: (visual: object) => boolean}|null,
- * }} deps
  */
-export function clearBattleAfterExit({ game, preservedVisual = null, visualPool = null }) {
+export function clearBattleAfterExit({
+  game,
+  preservedVisual = null,
+  visualPool = null,
+}: {
+  game: BattleExitState;
+  preservedVisual?: LifecycleVisual | null;
+  visualPool?: { release(visual: LifecycleVisual): boolean } | null;
+}): void {
   if (!game) throw new TypeError('garage lifecycle requires battle state');
 
   for (const entity of game.allTanks || []) {

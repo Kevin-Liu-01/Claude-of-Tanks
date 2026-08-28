@@ -7,7 +7,7 @@ import {
   createTankPresentationPose,
   resetTankPresentationPose,
   sampleTankPresentationPose,
-} from './presentationPose.js';
+} from './presentationPose.ts';
 
 function createEntity({
   id = 'tank',

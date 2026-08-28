@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import {
   clearBattleAfterExit,
   resetBattleTankForGarage,
-} from './garageTankLifecycle.js';
+} from './garageTankLifecycle.ts';
 
 const order = [];
 resetBattleTankForGarage({

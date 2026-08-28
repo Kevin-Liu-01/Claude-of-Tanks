@@ -7,6 +7,7 @@ import {
 } from 'three';
 
 import type { BattleClientAccess } from './battleClientAccess.ts';
+import type { TankPresentationTracker } from './presentationPose.ts';
 import type { GameState } from './stateCore.ts';
 
 interface TankState {
@@ -15,9 +16,7 @@ interface TankState {
   speed: number;
 }
 
-interface PresentedTankState extends TankState {
-  [key: string]: unknown;
-}
+interface PresentedTankState extends TankState {}
 
 interface TankVisual {
   root: Object3D;
@@ -44,7 +43,7 @@ interface TankEntity {
     dims: { heightM: number; widthM: number; hullLengthM: number };
   };
   input: { throttle?: number };
-  _soloRenderPose?: unknown;
+  _soloRenderPose?: TankPresentationTracker;
   _spotFade?: number;
   _fxAcc?: number;
   _dustTravelAcc?: number;

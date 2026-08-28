@@ -36,7 +36,7 @@ export {
   createTankPresentationPose,
   resetTankPresentationPose,
   sampleTankPresentationPose,
-} from './presentationPose.js';
+} from './presentationPose.ts';
 export {
   mobileAutoAimCenter,
   pickMobileAutoAimTarget,

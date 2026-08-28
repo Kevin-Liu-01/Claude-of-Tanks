@@ -4,7 +4,7 @@ import {
   createTankPresentationPose,
   resetTankPresentationPose,
   sampleTankPresentationPose,
-} from './presentationPose.js';
+} from './presentationPose.ts';
 
 const SIM_DT = 1 / 60;
 

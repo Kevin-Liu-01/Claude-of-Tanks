@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createBattleVisualPool } from './battleVisualPool.js';
+import { createBattleVisualPool } from './battleVisualPool.ts';
 
 function makeVisual(specId) {
   const parent = {

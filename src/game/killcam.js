@@ -88,7 +88,7 @@ import {
 import {
   alignReplayPoseToShot, captureReplayPose, createReplayFlightTimeline,
   replayDistanceAtTime, replayStateFromPose,
-} from './replayPose.js';
+} from './replayPose.ts';
 
 const XRAY_HOLD_S = 7.0;
 const FLIGHT_MIN_S = 1.9;

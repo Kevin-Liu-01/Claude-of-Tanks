@@ -5,24 +5,96 @@
  * most recently completed simulation ticks, which trades one fixed step of
  * presentation latency for uniform motion at every display refresh rate.
  */
+import { Vector3 } from 'three';
 
 const POSITION_SNAP_M_SQ = 2.5 * 2.5;
 const ANGLE_SNAP_RAD = Math.PI * 0.75;
 
-function finite(value, fallback = 0) {
-  return Number.isFinite(value) ? value : fallback;
+interface PoseVector {
+  x?: number;
+  y?: number;
+  z?: number;
 }
 
-function angleDelta(from, to) {
+interface PoseTrackScroll {
+  l?: number;
+  r?: number;
+}
+
+interface PoseSpring {
+  p?: number;
+  r?: number;
+  pv?: number;
+  rv?: number;
+}
+
+export interface TankPoseSource {
+  pos?: PoseVector;
+  yaw?: number;
+  speed?: number;
+  verticalSpeed?: number;
+  grounded?: boolean;
+  yawRate?: number;
+  visualPitch?: number;
+  visualRoll?: number;
+  turretYaw?: number;
+  gunPitch?: number;
+  trackScroll?: PoseTrackScroll;
+  _swayEst?: number;
+  _susp?: PoseSpring;
+  _flinch?: PoseSpring;
+}
+
+interface MutableTrackScroll {
+  l: number;
+  r: number;
+}
+
+interface MutableSpring {
+  p: number;
+  r: number;
+  pv: number;
+  rv: number;
+}
+
+export interface TankPresentationSample {
+  pos: Vector3;
+  yaw: number;
+  speed: number;
+  verticalSpeed: number;
+  grounded: boolean;
+  yawRate: number;
+  visualPitch: number;
+  visualRoll: number;
+  turretYaw: number;
+  gunPitch: number;
+  trackScroll: MutableTrackScroll;
+  _swayEst: number;
+  _susp: MutableSpring;
+  _flinch: MutableSpring;
+}
+
+export interface TankPresentationTracker {
+  initialized: boolean;
+  previous: TankPresentationSample;
+  current: TankPresentationSample;
+  pose: TankPresentationSample;
+}
+
+function finite(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function angleDelta(from: number, to: number): number {
   let delta = (to - from) % (Math.PI * 2);
   if (delta > Math.PI) delta -= Math.PI * 2;
   else if (delta < -Math.PI) delta += Math.PI * 2;
   return delta;
 }
 
-function createSample() {
+function createSample(): TankPresentationSample {
   return {
-    pos: { x: 0, y: 0, z: 0 },
+    pos: new Vector3(),
     yaw: 0,
     speed: 0,
     verticalSpeed: 0,
@@ -39,7 +111,10 @@ function createSample() {
   };
 }
 
-function readSample(out, state) {
+function readSample(
+  out: TankPresentationSample,
+  state: TankPoseSource | null | undefined,
+): TankPresentationSample {
   out.pos.x = finite(state?.pos?.x);
   out.pos.y = finite(state?.pos?.y);
   out.pos.z = finite(state?.pos?.z);
@@ -66,7 +141,10 @@ function readSample(out, state) {
   return out;
 }
 
-function copySample(out, source) {
+function copySample(
+  out: TankPresentationSample,
+  source: TankPresentationSample,
+): TankPresentationSample {
   out.pos.x = source.pos.x;
   out.pos.y = source.pos.y;
   out.pos.z = source.pos.z;
@@ -93,11 +171,16 @@ function copySample(out, source) {
   return out;
 }
 
-function lerp(a, b, t) {
+function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-function lerpSample(out, previous, current, alpha) {
+function lerpSample(
+  out: TankPresentationSample,
+  previous: TankPresentationSample,
+  current: TankPresentationSample,
+  alpha: number,
+): TankPresentationSample {
   const t = Math.max(0, Math.min(1, finite(alpha, 1)));
   out.pos.x = lerp(previous.pos.x, current.pos.x, t);
   out.pos.y = lerp(previous.pos.y, current.pos.y, t);
@@ -125,7 +208,9 @@ function lerpSample(out, previous, current, alpha) {
   return out;
 }
 
-export function createTankPresentationPose(state = null) {
+export function createTankPresentationPose(
+  state: TankPoseSource | null = null,
+): TankPresentationTracker {
   const tracker = {
     initialized: false,
     previous: createSample(),
@@ -136,7 +221,10 @@ export function createTankPresentationPose(state = null) {
   return tracker;
 }
 
-export function resetTankPresentationPose(tracker, state) {
+export function resetTankPresentationPose(
+  tracker: TankPresentationTracker | null | undefined,
+  state: TankPoseSource | null | undefined,
+): TankPresentationSample | null {
   if (!tracker || !state) return null;
   readSample(tracker.current, state);
   copySample(tracker.previous, tracker.current);
@@ -146,7 +234,10 @@ export function resetTankPresentationPose(tracker, state) {
 }
 
 /** Capture one newly completed authority tick. */
-export function advanceTankPresentationPose(tracker, state) {
+export function advanceTankPresentationPose(
+  tracker: TankPresentationTracker,
+  state: TankPoseSource,
+): TankPresentationSample | null {
   if (!tracker?.initialized) return resetTankPresentationPose(tracker, state);
   copySample(tracker.previous, tracker.current);
   readSample(tracker.current, state);
@@ -160,7 +251,11 @@ export function advanceTankPresentationPose(tracker, state) {
 }
 
 /** Return the stable, reused pose object for the current render fraction. */
-export function sampleTankPresentationPose(tracker, state, alpha) {
+export function sampleTankPresentationPose(
+  tracker: TankPresentationTracker,
+  state: TankPoseSource,
+  alpha: number,
+): TankPresentationSample {
   if (!tracker?.initialized) resetTankPresentationPose(tracker, state);
   return lerpSample(tracker.pose, tracker.previous, tracker.current, alpha);
 }

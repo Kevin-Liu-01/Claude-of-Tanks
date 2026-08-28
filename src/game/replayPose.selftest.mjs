@@ -2,7 +2,7 @@ import { Vector3 } from 'three';
 import {
   alignReplayPoseToShot, captureReplayPose, createReplayFlightTimeline,
   replayDistanceAtTime, replayStateFromPose,
-} from './replayPose.js';
+} from './replayPose.ts';
 
 const state = {
   pos: new Vector3(4, 2, 8), yaw: Math.PI, visualPitch: 0.04, visualRoll: -0.02,

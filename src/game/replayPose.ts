@@ -1,12 +1,55 @@
 import { Vector3 } from 'three';
 
-function wrapPi(a) {
+interface VectorLike {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface ReplayPoseState {
+  pos: VectorLike;
+  yaw?: number;
+  visualPitch?: number;
+  visualRoll?: number;
+  turretYaw?: number;
+  gunPitch?: number;
+}
+
+export interface ReplayPose {
+  pos: [number, number, number];
+  yaw: number;
+  pitch: number;
+  roll: number;
+  turretYaw: number;
+  gunPitch: number;
+}
+
+export interface ReplayGunLimits {
+  gunArcDeg?: number;
+  gunDepressionDeg?: number;
+  gunElevationDeg?: number;
+}
+
+export interface ReplayFlightTimeline {
+  total: number;
+  duration: number;
+  distances: Float32Array;
+  times: Float32Array;
+}
+
+export interface ReplayFlightOptions {
+  slowRate?: number;
+  slowStartM?: number;
+  slowFullM?: number;
+}
+
+function wrapPi(a: number): number {
   while (a > Math.PI) a -= Math.PI * 2;
   while (a < -Math.PI) a += Math.PI * 2;
   return a;
 }
 
-export function captureReplayPose(state) {
+export function captureReplayPose(state: ReplayPoseState): ReplayPose {
   return {
     pos: [state.pos.x, state.pos.y, state.pos.z],
     yaw: state.yaw || 0,
@@ -18,7 +61,11 @@ export function captureReplayPose(state) {
 }
 
 /** Guarantee the replayed barrel follows the shell's captured launch vector. */
-export function alignReplayPoseToShot(pose, dir, spec) {
+export function alignReplayPoseToShot(
+  pose: ReplayPose | null | undefined,
+  dir: ArrayLike<number> | null | undefined,
+  spec?: ReplayGunLimits | null,
+): ReplayPose | null | undefined {
   if (!pose || !dir || dir.length < 3) return pose;
   const dx = Number(dir[0]) || 0;
   const dy = Number(dir[1]) || 0;
@@ -27,7 +74,7 @@ export function alignReplayPoseToShot(pose, dir, spec) {
   if (horiz < 1e-8) return pose;
   const worldYaw = Math.atan2(dx, dz);
   let relYaw = wrapPi(worldYaw - pose.yaw);
-  const arc = spec && Number.isFinite(spec.gunArcDeg)
+  const arc = spec && typeof spec.gunArcDeg === 'number' && Number.isFinite(spec.gunArcDeg)
     ? Math.abs(spec.gunArcDeg) * Math.PI / 180 : Infinity;
   // Casemates cannot visually lay beyond their traverse arc. Turn the hull
   // into the shot rather than replaying a shell that exits through the flank.
@@ -44,7 +91,7 @@ export function alignReplayPoseToShot(pose, dir, spec) {
   return pose;
 }
 
-export function replayStateFromPose(pose) {
+export function replayStateFromPose(pose: ReplayPose) {
   return {
     pos: new Vector3(pose.pos[0], pose.pos[1], pose.pos[2]),
     yaw: pose.yaw, visualPitch: pose.pitch, visualRoll: pose.roll,
@@ -53,7 +100,7 @@ export function replayStateFromPose(pose) {
   };
 }
 
-function smoothstep(x, min, max) {
+function smoothstep(x: number, min: number, max: number): number {
   if (max <= min) return x >= max ? 1 : 0;
   const t = Math.max(0, Math.min(1, (x - min) / (max - min)));
   return t * t * (3 - 2 * t);
@@ -66,7 +113,11 @@ function smoothstep(x, min, max) {
  * lookup table rather than per-frame integration: the shell reaches the
  * armor on the exact final frame regardless of refresh rate or a long rAF.
  */
-export function createReplayFlightTimeline(totalM, durationS, opts = {}) {
+export function createReplayFlightTimeline(
+  totalM: number,
+  durationS: number,
+  opts: ReplayFlightOptions = {},
+): ReplayFlightTimeline {
   const total = Math.max(0, Number(totalM) || 0);
   const duration = Math.max(0.001, Number(durationS) || 0.001);
   const slowRate = Math.max(0.05, Math.min(1, Number(opts.slowRate) || 0.25));
@@ -100,7 +151,10 @@ export function createReplayFlightTimeline(totalM, durationS, opts = {}) {
 }
 
 /** Sample a replay timeline at wall-clock time, returning traveled meters. */
-export function replayDistanceAtTime(timeline, elapsedS) {
+export function replayDistanceAtTime(
+  timeline: ReplayFlightTimeline | null | undefined,
+  elapsedS: number,
+): number {
   if (!timeline || timeline.total <= 0) return 0;
   const t = Number(elapsedS) || 0;
   if (t <= 0) return 0;
