@@ -3,7 +3,7 @@ import {
   TREE_ROOT_DECAL_MAX_RADIUS_M,
   treeRootDecalAreaM2,
   treeRootDecalRadius,
-} from './treeGrounding.js';
+} from './treeGrounding.ts';
 
 assert.equal(treeRootDecalRadius(1.3), 1.3,
   'ordinary trunks keep their authored root radius');

@@ -20,7 +20,7 @@ import {
 } from './maps/structureKit.js';
 import { addCatalogExterior, addConnectedExterior } from './maps/exteriorDetailKit.js';
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.ts';
-import { setToppleAxis, settledToppleAngle } from './topple.js';
+import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { createUtilityNetwork } from './utilityNetwork.ts';
 import {
   LOOSE_PROP_STEP_S, createLoosePropBody, kickLooseProp, resetLoosePropBody,

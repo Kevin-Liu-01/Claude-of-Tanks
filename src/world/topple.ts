@@ -5,6 +5,16 @@
 // axis must be direction x up: (dz, 0, -dx). Using the opposite cross product
 // makes the object fall back toward the rammer.
 
+interface MutableAxis<T> {
+  set(x: number, y: number, z: number): T;
+}
+
+interface HeightField {
+  getHeightAt(x: number, z: number): number;
+}
+
+const TOPPLE_SAMPLES = Object.freeze([0.45, 0.7, 1] as const);
+
 /**
  * Set `out` to the normalized hinge axis that tips +Y toward (dx, 0, dz).
  * A zero direction gets the deterministic +Z fall axis.
@@ -13,7 +23,7 @@
  * @param {number} dz
  * @returns {*} out
  */
-export function setToppleAxis(out, dx, dz) {
+export function setToppleAxis<T extends MutableAxis<T>>(out: T, dx: number, dz: number): T {
   const l = Math.hypot(dx, dz);
   if (l > 1e-8) return out.set(dz / l, 0, -dx / l);
   return out.set(1, 0, 0);
@@ -35,18 +45,28 @@ export function setToppleAxis(out, dx, dz) {
  * @param {number} [radius=0.1] approximate resting radius in metres
  * @returns {number} positive hinge rotation in radians
  */
-export function settledToppleAngle(heightField, x, y, z, dx, dz, height, radius = 0.1) {
+export function settledToppleAngle(
+  heightField: HeightField | null | undefined,
+  x: number,
+  y: number,
+  z: number,
+  dx: number,
+  dz: number,
+  height: number,
+  radius = 0.1,
+): number {
   const h = Math.max(0.25, Number(height) || 0.25);
   const r = Math.max(0.015, Number(radius) || 0.1);
   const l = Math.hypot(dx, dz);
   const ux = l > 1e-8 ? dx / l : 0;
   const uz = l > 1e-8 ? dz / l : 1;
-  const sample = heightField && typeof heightField.getHeightAt === 'function'
-    ? (sx, sz) => heightField.getHeightAt(sx, sz) : () => y;
+  const sampleTerrain = !!heightField && typeof heightField.getHeightAt === 'function';
   let needCos = -0.24; // allow a downhill rest up to about 104 degrees
   // Ignore the flared hinge root and solve against the useful trunk/post run.
-  for (const f of [0.45, 0.7, 1]) {
-    const groundDelta = sample(x + ux * h * f, z + uz * h * f) - y;
+  for (const f of TOPPLE_SAMPLES) {
+    const sampleX = x + ux * h * f;
+    const sampleZ = z + uz * h * f;
+    const groundDelta = (sampleTerrain ? heightField.getHeightAt(sampleX, sampleZ) : y) - y;
     needCos = Math.max(needCos, (groundDelta + r) / (h * f));
   }
   needCos = Math.max(-0.24, Math.min(0.44, needCos));

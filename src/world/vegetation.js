@@ -8,9 +8,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { sampleSplatNoise, applyTone } from './terrain.js';
-import { setToppleAxis, settledToppleAngle } from './topple.js';
+import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { setCircleShape } from './collision.js';
-import { treeRootDecalAreaM2, treeRootDecalRadius } from './treeGrounding.js';
+import { treeRootDecalAreaM2, treeRootDecalRadius } from './treeGrounding.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';

@@ -5,7 +5,7 @@
 
 import { Quaternion, Vector3 } from 'three';
 import { readFileSync } from 'node:fs';
-import { setToppleAxis, settledToppleAngle } from './topple.js';
+import { setToppleAxis, settledToppleAngle } from './topple.ts';
 
 const axis = new Vector3();
 const up = new Vector3(0, 1, 0);
