@@ -219,6 +219,8 @@ export interface MovementInput {
   steer?: number;
   brake?: boolean;
   aimPoint?: Vector3 | null;
+  /** Hold the current articulated turret/gun/hydraulic lay while sight aim moves. */
+  aimLocked?: boolean;
   [name: string]: unknown;
 }
 
@@ -1111,7 +1113,8 @@ export function updateTank(
   // rotate toward the target in world space regardless of drive direction.
   const gunArc = gunArcRadFor(spec);
   let steerCmd = steer * steerSign;
-  if (steer === 0 && gunArc !== Infinity && input.aimPoint && !debuff.immobile) {
+  if (steer === 0 && gunArc !== Infinity && input.aimPoint && !input.aimLocked &&
+      !debuff.immobile) {
     const wantRel = wrapAngle(Math.atan2(
       input.aimPoint.x - state.pos.x, input.aimPoint.z - state.pos.z) - state.yaw);
     const excess = Math.abs(wantRel) - gunArc;
@@ -1394,7 +1397,11 @@ export function updateTank(
   // math runs solely while a Strv mode is engaged or its offset is settling.
   if ((state.suspensionAim && hydraulicAim) || suspensionAimPitch !== 0) {
     let suspensionAimTarget = 0;
-    if (state.suspensionAim && input.aimPoint) {
+    if (input.aimLocked) {
+      // Fixed-gun siege vehicles hold their current hydraulic attitude just
+      // like a turreted vehicle holds turret yaw and gun pitch.
+      suspensionAimTarget = suspensionAimPitch;
+    } else if (state.suspensionAim && input.aimPoint) {
       let requestedPitch;
       if (fixedHydraulicGun) {
         // Feedback from the ACTUAL rendered fixed bore. Terrain pitch, roll,
@@ -2070,7 +2077,7 @@ export function updateTank(
   // ---- turret & gun chase the world aim point (limits in hull space) ----
   const aim = input.aimPoint;
   const prevTurretYaw = state.turretYaw;
-  if (aim) {
+  if (aim && !input.aimLocked) {
     // Solve the requested ray in the actual rendered hull frame. The former
     // small-angle subtraction (`world pitch - hull pitch/roll contribution`)
     // missed by more than a degree on combined sidehills. Firing then hid that
@@ -2210,6 +2217,12 @@ export function updateTank(
     state._gunLimitHoldS = labelWant ? (state._gunLimitHoldS || 0) + dt : 0;
       state.gunLimitSpec = state._gunLimitHoldS >= GUN_LIMIT_LABEL_DWELL_S;
     }
+  } else if (input.aimLocked) {
+    // Holding the gun is deliberate, not a mechanical limit. Clear any old
+    // pin label while preserving the exact articulated angles above.
+    state.atGunLimit = false;
+    state.gunLimitSpec = false;
+    state._gunLimitHoldS = 0;
   }
   state.turretYawRate = wrapAngle(state.turretYaw - prevTurretYaw) / dt;
 

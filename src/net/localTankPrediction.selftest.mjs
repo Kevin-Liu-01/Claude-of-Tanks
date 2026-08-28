@@ -71,7 +71,7 @@ assert.deepEqual(
 predictor.reconcile(authority(1, null, 300, -220));
 const driving = {
   throttle: 1, steer: 0, brake: false, fire: false,
-  aimYaw: 0, aimPitch: 0, shellSlot: 0,
+  aimYaw: 0, aimPitch: 0, shellSlot: 0, aimLocked: false,
 };
 for (let seq = 0; seq < 4; seq++) predictor.recordInput(driving, 1 / 60, seq);
 assert.ok(entity.state.pos.z > -220,
@@ -91,6 +91,48 @@ predictor.reconcile(authority(6, 3, 20, 0), 1 / 60);
 assert.ok(Math.abs(entity.state.pos.x - 20) < 1e-6,
   'large authority corrections hard-snap instead of dragging across the map');
 assert.equal(predictor.getStats().hardSnaps, 1);
+
+// The prediction copy must honor the same gun-hold state as host authority;
+// otherwise the local barrel chases the sight and snaps backward on snapshot.
+{
+  const holdState = createTankState(SPEC, new Vector3(), 0);
+  const holdEntity = {
+    spec: SPEC,
+    state: holdState,
+    combat: null,
+    contactGeom: null,
+    rigidGear: false,
+  };
+  const hold = new LocalTankPredictor({ entity: holdEntity, heightField: FIELD });
+  hold.reconcile(authority(0, null));
+  for (let seq = 0; seq < 120; seq++) hold.recordInput({
+    ...driving,
+    throttle: 0,
+    aimYaw: 0.55,
+    aimPitch: 0.12,
+  }, 1 / 60, seq);
+  const heldYaw = hold.simEntity.state.turretYaw;
+  const heldPitch = hold.simEntity.state.gunPitch;
+  for (let seq = 120; seq < 180; seq++) hold.recordInput({
+    ...driving,
+    throttle: 0,
+    aimYaw: -0.8,
+    aimPitch: -0.08,
+    aimLocked: true,
+  }, 1 / 60, seq);
+  assert.ok(Math.abs(hold.simEntity.state.turretYaw - heldYaw) < 1e-12 &&
+    Math.abs(hold.simEntity.state.gunPitch - heldPitch) < 1e-12,
+  'local prediction holds both articulated axes while the network sight moves');
+  hold.recordInput({
+    ...driving,
+    throttle: 0,
+    aimYaw: -0.8,
+    aimPitch: -0.08,
+    aimLocked: false,
+  }, 1 / 60, 180);
+  assert.ok(Math.abs(hold.simEntity.state.turretYaw - heldYaw) > 1e-4,
+    'local prediction releases the gun toward the latest sight without a snap');
+}
 
 // A destroyed local vehicle is intentionally locked to its terminal authority
 // pose. Repeated wreck snapshots are lifecycle synchronization, not repeated

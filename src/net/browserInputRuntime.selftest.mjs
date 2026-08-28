@@ -10,6 +10,7 @@ const player = {
     steer: -0.2,
     brake: false,
     fire: false,
+    aimLocked: true,
     aimPoint: { x: 20, y: 4, z: -5 },
     shellSlot: 2,
   },
@@ -22,6 +23,7 @@ let frame = runtime.frame(player);
 assert.ok(frame);
 assert.equal(frame.aimYaw, Math.PI / 2);
 assert.equal(frame.shellSlot, 2);
+assert.equal(frame.aimLocked, true, 'browser input carries the physical-gun hold state');
 assert.equal(frame.actionBits,
   PLAYER_ACTION_BITS.FIRST_AID | PLAYER_ACTION_BITS.RELOAD_MAGAZINE);
 

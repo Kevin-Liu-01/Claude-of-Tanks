@@ -70,7 +70,9 @@ const owner = createPlayerFrameInput({
 });
 const player = {
   combat: { destroyed: false },
-  input: { throttle: 9, steer: 9, brake: true, fire: true, shellSlot: 0 },
+  input: {
+    throttle: 9, steer: 9, brake: true, fire: true, shellSlot: 0, aimLocked: true,
+  },
 };
 const sample = {
   dtSeconds: 1 / 60,
@@ -84,7 +86,7 @@ const sample = {
 
 owner.poll(sample);
 assert.deepEqual(player.input, {
-  throttle: 0, steer: 0, brake: false, fire: false, shellSlot: 0,
+  throttle: 0, steer: 0, brake: false, fire: false, shellSlot: 0, aimLocked: false,
 }, 'non-battle frames clear every driving edge');
 
 sample.inBattle = true;
@@ -151,11 +153,15 @@ assert.equal(camera.shiftPressed, true, 'cursor fallback maps freelook RMB to sn
 input.cursorAim = false;
 camera = owner.poll(sample);
 assert.equal(camera.rmb, true);
+assert.equal(player.input.aimLocked, true,
+  'RMB free-look holds the physical gun while the sight remains live');
 assert.equal(camera.shiftPressed, false);
 
 input.down.delete('freeCamera');
 input.down.add('freeLook');
 assert.equal(owner.poll(sample).rmb, true, 'dedicated free-look remains mode independent');
+assert.equal(player.input.aimLocked, true,
+  'the dedicated Caps/RB action publishes the same gun-hold state');
 
 sample.paused = true;
 input.mouse = { x: 1, y: 1 };
@@ -166,6 +172,7 @@ assert.equal(camera.mouseDY, 0);
 assert.equal(camera.wheel, 0);
 assert.equal(player.input.throttle, 0);
 assert.equal(player.input.fire, false);
+assert.equal(player.input.aimLocked, false, 'pausing releases the held gun state');
 
 sample.paused = false;
 sample.cameraLocked = true;
@@ -173,12 +180,14 @@ input.down.add('sniperToggle');
 camera = owner.poll(sample);
 assert.equal(camera.shiftPressed, false);
 assert.equal(camera.rmb, false);
+assert.equal(player.input.aimLocked, false, 'camera-locked phases cannot retain gun hold');
 
 sample.cameraLocked = false;
 sample.killcamActive = true;
 input.state.forward = true;
 owner.poll(sample);
 assert.equal(player.input.throttle, 0, 'killcam frames cannot leak driving input');
+assert.equal(player.input.aimLocked, false, 'killcam frames cannot retain a physical-gun hold');
 
 owner.dispose();
 sample.killcamActive = false;

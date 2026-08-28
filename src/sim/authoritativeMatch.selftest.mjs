@@ -254,6 +254,30 @@ assert.ok(ordinaryBore.dot(new Vector3(
   ordinaryEvent.dx, ordinaryEvent.dy, ordinaryEvent.dz,
 )) > 1 - 1e-10, 'ordinary network shot leaves exactly on the articulated bore');
 
+// Gun hold must survive the complete network-authority path: the server keeps
+// receiving the live sight ray while the physical turret and gun stay at their
+// current lay. Releasing the hold lets the articulation chase that latest ray.
+guidedInput.get('guided-a').fire = false;
+guidedInput.get('guided-a').aimLocked = true;
+const authorityHeldYaw = guidedShooter.state.turretYaw;
+const authorityHeldPitch = guidedShooter.state.gunPitch;
+const authorityOldAim = guidedShooter.input.aimPoint.clone();
+guidedInput.get('guided-a').aimYaw = -0.75;
+guidedInput.get('guided-a').aimPitch = 0.12;
+for (let i = 0; i < 30; i++) guidedMatch.step({ dt: 1 / 60, inputs: guidedInput });
+assert.equal(guidedShooter.input.aimLocked, true,
+  'authority copies the held gun state from network input');
+assert.ok(guidedShooter.input.aimPoint.distanceTo(authorityOldAim) > 100,
+  'authority continues updating the live sight ray during gun hold');
+assert.ok(Math.abs(guidedShooter.state.turretYaw - authorityHeldYaw) < 1e-12,
+  'authority preserves turret rotation during gun hold');
+assert.ok(Math.abs(guidedShooter.state.gunPitch - authorityHeldPitch) < 1e-12,
+  'authority preserves gun elevation during gun hold');
+guidedInput.get('guided-a').aimLocked = false;
+for (let i = 0; i < 30; i++) guidedMatch.step({ dt: 1 / 60, inputs: guidedInput });
+assert.ok(Math.abs(guidedShooter.state.turretYaw - authorityHeldYaw) > 0.05,
+  'authority releases the turret toward the current live sight');
+
 const firing = new Map([
   ['alpha-1', {
     throttle: 0, steer: 0, brake: true, fire: true,

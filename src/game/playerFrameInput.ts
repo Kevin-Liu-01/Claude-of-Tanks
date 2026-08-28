@@ -38,6 +38,7 @@ interface TankInput {
   brake: boolean;
   fire: boolean;
   shellSlot: number;
+  aimLocked?: boolean;
 }
 
 interface PlayerEntity {
@@ -166,9 +167,12 @@ export function createPlayerFrameInput({
       const rmbHeld = input.isDown('freeCamera');
       const freeLookHeld = input.isDown('freeLook');
       const sniperToggleHeld = input.isDown('sniperToggle');
-      camera.rmb = inBattle && !paused && !cameraLocked && !cursorAim
+      const liveBattleAimAvailable = inBattle && !paused && !killcamActive &&
+        !cameraLocked && !!player && !player.combat.destroyed;
+      camera.rmb = liveBattleAimAvailable && !cursorAim
         && (freeLookHeld || (rmbMode === 'freelook' && rmbHeld));
-      camera.aimHold = inBattle && !paused && !cameraLocked
+      if (player?.input) player.input.aimLocked = camera.rmb;
+      camera.aimHold = liveBattleAimAvailable
         && rmbMode === 'hold' && rmbHeld;
       camera.shiftPressed = !cameraLocked && (
         sniperToggleHeld

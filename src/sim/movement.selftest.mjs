@@ -814,6 +814,34 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(depressed.state.atGunLimit, 'gun lay: depression stop reports a pinned reticle');
 }
 
+// --------------------------------------- 9d. sight-independent gun hold --
+// Caps/RB/RMB gun hold is not a frozen world target. The camera may publish a
+// new sight ray every frame while the articulated turret and gun retain their
+// exact current lay; release then lets both axes catch up normally.
+{
+  const field = makeField(() => 0);
+  const ent = makeEntity(field, 0, 0, 0);
+  ent.input.aimPoint = new Vector3(180, 35, 260);
+  run(ent, field, 300);
+  const heldYaw = ent.state.turretYaw;
+  const heldPitch = ent.state.gunPitch;
+
+  ent.input.aimLocked = true;
+  ent.input.aimPoint.set(-260, -12, 180);
+  run(ent, field, 120);
+  near(ent.state.turretYaw, heldYaw, 1e-12,
+    'gun hold: live sight movement preserves turret rotation exactly');
+  near(ent.state.gunPitch, heldPitch, 1e-12,
+    'gun hold: live sight movement preserves gun elevation exactly');
+
+  ent.input.aimLocked = false;
+  run(ent, field, 180);
+  assert(Math.abs(ent.state.turretYaw - heldYaw) > 0.25,
+    'gun hold: release lets turret rotation catch up to the current sight');
+  assert(Math.abs(ent.state.gunPitch - heldPitch) > 0.02,
+    'gun hold: release lets gun elevation catch up to the current sight');
+}
+
 // -------------------------------------- 10. IFV autocannon burst grouping --
 // Ten rounds at the roster's fastest 0.35 s cadence must remain close to the fully aimed cone.
 // The alternate missile rail and non-IFV guns retain normal cannon bloom.

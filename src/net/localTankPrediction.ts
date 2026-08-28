@@ -40,6 +40,7 @@ export interface PredictionInput {
   aimYaw?: number;
   aimPitch?: number;
   aimDistance?: number;
+  aimLocked?: boolean;
   actionBits?: number;
 }
 
@@ -71,7 +72,7 @@ export interface PredictionEntity {
 
 export interface PredictionSimEntity extends PredictionEntity {
   input: Required<Pick<PredictionInput,
-    'throttle' | 'steer' | 'brake' | 'fire' | 'shellSlot'>> & {
+    'throttle' | 'steer' | 'brake' | 'fire' | 'shellSlot' | 'aimLocked'>> & {
     aimPoint: Vector3;
   };
   _predictionStaticContacts?: number;
@@ -204,6 +205,7 @@ function applyInput(entity: PredictionSimEntity, input: PredictionInput) {
   entity.input.steer = input.steer || 0;
   entity.input.brake = !!input.brake;
   entity.input.fire = !!input.fire;
+  entity.input.aimLocked = !!input.aimLocked;
   entity.input.shellSlot = (input.shellSlot || 0) | 0;
   decodeAimIntent(input, entity.state.pos, entity.input.aimPoint);
 }
@@ -334,6 +336,7 @@ export class LocalTankPredictor {
         steer: 0,
         brake: false,
         fire: false,
+        aimLocked: false,
         shellSlot: 0,
         aimPoint: state.aimPoint.clone(),
       },

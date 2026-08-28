@@ -6,6 +6,7 @@ const held = {
   steer: 0,
   brake: false,
   fire: false,
+  aimLocked: false,
   shellSlot: 0,
   actionBits: 0,
 };
@@ -36,6 +37,14 @@ cadence.advance(1 / 240);
 assert.equal(cadence.shouldSend({ ...held, actionBits: 4 }), true,
   'one-shot action bits bypass the held-state interval');
 cadence.commit({ ...held, actionBits: 4 });
+cadence.advance(1 / 240);
+assert.equal(cadence.shouldSend({ ...held, aimLocked: true }), true,
+  'gun-hold press edges bypass the held-state interval');
+cadence.commit({ ...held, aimLocked: true });
+cadence.advance(1 / 240);
+assert.equal(cadence.shouldSend({ ...held, aimLocked: false }), true,
+  'gun-hold release reaches authority without waiting for cadence');
+cadence.commit({ ...held, aimLocked: false });
 cadence.advance(1 / 240);
 assert.equal(cadence.shouldSend({ ...held, throttle: 0.5 }), true,
   'meaningful analog changes bypass the held-state interval');

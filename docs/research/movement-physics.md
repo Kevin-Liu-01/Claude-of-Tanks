@@ -344,10 +344,12 @@ switching modes never snaps the view.
   at the raycast hit, and the gun converges on that 3-D point (server-aim). Draw a second
   small marker where the gun actually points *now* (gun marker) so the player sees turret lag;
   WoT's optional "server reticle" is exactly this authoritative gun-aim indicator.
-- **Gun lock / free look**: hold the dedicated Free Look action (`Caps Lock`
-  by default, secondary `Left Alt`, controller `RB`) to move the camera while
-  freezing the aim point, turret, and hull. RMB can provide the same behavior
-  when its setting is `freelook`.
+- **Gun hold / free aim**: hold the dedicated action (`Caps Lock` by default,
+  secondary `Left Alt`, controller `RB`) to preserve the current turret
+  rotation and gun elevation while the camera keeps updating the live sight
+  point. Release lets the gun catch up without snapping the camera. Guided
+  missiles continue receiving the live sight. RMB can provide the same
+  behavior when its setting is `freelook`.
 
 ### 9.2 Sniper — first person from the gun
 

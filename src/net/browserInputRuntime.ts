@@ -20,6 +20,7 @@ interface BrowserInputPlayer {
     steer?: number;
     brake?: boolean;
     fire?: boolean;
+    aimLocked?: boolean;
     aimPoint?: VectorLike | null;
     shellSlot?: number;
   } | null;
@@ -31,6 +32,7 @@ export interface BrowserNetworkInputFrame extends NetworkInputSample {
   steer: number;
   brake: boolean;
   fire: boolean;
+  aimLocked: boolean;
   aimYaw: number;
   aimPitch: number;
   aimDistance: number;
@@ -80,6 +82,7 @@ export class BrowserInputRuntime {
       steer: player.input.steer || 0,
       brake: !!player.input.brake,
       fire: !!player.input.fire,
+      aimLocked: !!player.input.aimLocked,
       ...encodeAimIntent(pos, target),
       shellSlot: player.input.shellSlot! | 0,
       actionBits: this.#pendingActionBits & ACTION_MASK,
