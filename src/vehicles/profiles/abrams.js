@@ -8231,7 +8231,7 @@ function buildAbramsX(P) {
   // class, the m1a2 works-field precedent). A proc-only re-parent regresses
   // the certified hull row (the two matched whip columns go only-ref), so
   // the fix is COUPLED: land a turretFollowers extension on the abramsx
-  // MODEL_SOURCE registration (userdrops4.js — outside this single-owner
+  // MODEL_SOURCE registration (abramsConceptSpecs.ts — outside this single-owner
   // file) in the SAME commit that flips this toggle. The turret-side
   // branch below is the READY half: pods re-based on the shell chamfer at
   // the same (±1.15, world -1.98) stations, rod tops 4.12 EXACT (world
