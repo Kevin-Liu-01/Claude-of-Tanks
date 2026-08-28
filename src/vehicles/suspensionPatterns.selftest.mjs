@@ -6,7 +6,7 @@ import {
   SUSPENSION_PATTERN_DEFINITIONS,
   SUSPENSION_PATTERN_IDS,
   suspensionPatternFor,
-} from './suspensionPatterns.js';
+} from './suspensionPatterns.ts';
 
 await import('./profiles/k1a1Geometry.selftest.mjs');
 
@@ -14,7 +14,7 @@ await import('./profiles/k1a1Geometry.selftest.mjs');
 // fleet; this test intentionally certifies that full runtime registry.
 await import('./tankFactory.js');
 const { ALL_TANK_IDS, getSpec } = await import('./specs.js');
-const { wheelPatternFor } = await import('./wheelPatterns.js');
+const { wheelPatternFor } = await import('./wheelPatterns.ts');
 
 const counts = new Map(SUSPENSION_PATTERN_IDS.map((id) => [id, 0]));
 for (const id of ALL_TANK_IDS) {

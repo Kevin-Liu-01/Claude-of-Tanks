@@ -1,5 +1,5 @@
-import { WHEEL_PATTERN_DEFINITIONS } from './wheelPatterns.js';
-import { SUSPENSION_PATTERN_DEFINITIONS } from './suspensionPatterns.js';
+import { WHEEL_PATTERN_DEFINITIONS } from './wheelPatterns.ts';
+import { SUSPENSION_PATTERN_DEFINITIONS } from './suspensionPatterns.ts';
 
 const ROAD_WHEEL_NAMES = new Set([
   'gearRoadWheelTires',

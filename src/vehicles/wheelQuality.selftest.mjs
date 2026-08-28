@@ -5,7 +5,7 @@ import {
   WHEEL_PATTERN_DEFINITIONS,
   WHEEL_PATTERN_IDS,
   wheelPatternFor,
-} from './wheelPatterns.js';
+} from './wheelPatterns.ts';
 import { auditTankWheelQuality } from './wheelQuality.js';
 
 const patternUse = new Map();

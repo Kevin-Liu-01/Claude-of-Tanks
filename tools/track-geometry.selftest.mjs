@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { KIT } from '../src/vehicles/tankFactory.js';
-import { TRACK_PATTERN_DEFINITIONS } from '../src/vehicles/trackPatterns.js';
+import { TRACK_PATTERN_DEFINITIONS } from '../src/vehicles/trackPatterns.ts';
 
 const signedArea2 = (points) => points.reduce((sum, a, i) => {
   const b = points[(i + 1) % points.length];

@@ -103,11 +103,25 @@ export const TRACK_PATTERN_DEFINITIONS = Object.freeze({
     pinStyle: 'end-caps', pinRadius: 0.042,
     shadePalette: Object.freeze([0x292b2a, 0x333532, 0x3b3d39]),
   }),
-});
+} as const);
 
-export const TRACK_PATTERN_IDS = Object.freeze(Object.keys(TRACK_PATTERN_DEFINITIONS));
+export type TrackPatternId = keyof typeof TRACK_PATTERN_DEFINITIONS;
+export type TrackPatternDefinition = typeof TRACK_PATTERN_DEFINITIONS[TrackPatternId];
+export type TrackPattern = Readonly<{ id: TrackPatternId } & TrackPatternDefinition>;
 
-const FAMILY_RULES = Object.freeze([
+interface TrackPatternSpec {
+  id?: unknown;
+}
+
+interface WheelPatternReference {
+  id?: unknown;
+}
+
+export const TRACK_PATTERN_IDS = Object.freeze(
+  Object.keys(TRACK_PATTERN_DEFINITIONS) as TrackPatternId[],
+);
+
+const FAMILY_RULES: ReadonlyArray<readonly [RegExp, TrackPatternId]> = Object.freeze([
   [/(?:^|_)t95(?:$|_)/, 'siege-wide'],
   [/(?:tiger1|panther_g|jpz_e100|sturmtiger)/, 'interleaved-cleat'],
   [/(?:m4a3e8|t34_85|kv2|isu152|isu122s)/, 'early-cast-steel'],
@@ -122,7 +136,11 @@ const FAMILY_RULES = Object.freeze([
 ]);
 
 /** Resolve one stable shoe construction for a vehicle's complete track train. */
-export function trackPatternFor(spec, wheelPattern = null, override = null) {
+export function trackPatternFor(
+  spec: TrackPatternSpec | null | undefined,
+  wheelPattern: string | WheelPatternReference | null = null,
+  override: TrackPatternId | null = null,
+): TrackPattern {
   if (override != null) {
     if (!TRACK_PATTERN_DEFINITIONS[override]) {
       throw new Error(`Unknown track pattern: ${override}`);

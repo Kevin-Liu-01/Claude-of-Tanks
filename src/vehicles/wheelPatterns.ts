@@ -54,11 +54,22 @@ export const WHEEL_PATTERN_DEFINITIONS = Object.freeze({
     label: 'six-spoke solid bogie wheel', motif: 'solid-spoke', fasteners: 6,
     pockets: 6, idlerHoles: 6, endFasteners: 6, rollerHub: 0.48,
   }),
-});
+} as const);
 
-export const WHEEL_PATTERN_IDS = Object.freeze(Object.keys(WHEEL_PATTERN_DEFINITIONS));
+export type WheelPatternId = keyof typeof WHEEL_PATTERN_DEFINITIONS;
+export type WheelPatternDefinition = typeof WHEEL_PATTERN_DEFINITIONS[WheelPatternId];
+export type WheelPattern = Readonly<{ id: WheelPatternId } & WheelPatternDefinition>;
 
-const FAMILY_RULES = Object.freeze([
+interface WheelPatternSpec {
+  id?: unknown;
+  nation?: unknown;
+}
+
+export const WHEEL_PATTERN_IDS = Object.freeze(
+  Object.keys(WHEEL_PATTERN_DEFINITIONS) as WheelPatternId[],
+);
+
+const FAMILY_RULES: ReadonlyArray<readonly [RegExp, WheelPatternId]> = Object.freeze([
   // Character-defining running gear wins over broad national defaults.
   [/(?:^|_)(?:m4a3e8|t95)(?:$|_)/, 'solid-bogie-six'],
   [/(?:t34_85|type59|kv2|bmp2|isu152|isu122s)/, 'christie-six'],
@@ -78,7 +89,7 @@ const FAMILY_RULES = Object.freeze([
   [/(?:t62|t64|t72|t80|t84|t90|pt91|ztz85|type99|ztz99|bmpt|ua_t)/, 'pressed-six'],
 ]);
 
-const NATION_FALLBACKS = Object.freeze({
+const NATION_FALLBACKS: Readonly<Record<string, readonly WheelPatternId[]>> = Object.freeze({
   china: ['pressed-six', 'christie-six'],
   france: ['scalloped-six', 'deep-dish-eight'],
   germany: ['radial-eight', 'interleaved-dish'],
@@ -96,7 +107,7 @@ const NATION_FALLBACKS = Object.freeze({
   ukraine: ['pressed-six', 'deep-dish-eight'],
 });
 
-function stableIndex(value, length) {
+function stableIndex(value: unknown, length: number): number {
   let hash = 2166136261;
   for (const ch of String(value || 'wheel')) {
     hash ^= ch.charCodeAt(0);
@@ -106,7 +117,11 @@ function stableIndex(value, length) {
 }
 
 /** Resolve one stable mechanical motif for a vehicle's complete wheel train. */
-export function wheelPatternFor(spec, style = 'rubber', override = null) {
+export function wheelPatternFor(
+  spec: WheelPatternSpec | null | undefined,
+  style = 'rubber',
+  override: WheelPatternId | null = null,
+): WheelPattern {
   if (override != null) {
     if (!WHEEL_PATTERN_DEFINITIONS[override]) {
       throw new Error(`Unknown wheel pattern: ${override}`);

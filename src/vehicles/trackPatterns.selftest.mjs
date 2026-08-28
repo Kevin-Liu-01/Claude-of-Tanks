@@ -8,7 +8,7 @@ await import('./tankFactory.js');
 const { ALL_TANK_IDS, TANK_SPECS } = await import('./specs.js');
 const {
   TRACK_PATTERN_DEFINITIONS, TRACK_PATTERN_IDS, trackPatternFor,
-} = await import('./trackPatterns.js');
+} = await import('./trackPatterns.ts');
 
 const expected = new Map([
   ['tiger1', 'interleaved-cleat'],

@@ -318,7 +318,10 @@ terrain support, collision context, and the fixed time step. It returns
 authoritative pose, velocity, hull attitude, support state, and track travel.
 
 Presentation uses support and travel for wheels, tracks, and suspension. It
-does not feed cosmetic placement back into authority.
+does not feed cosmetic placement back into authority. The closed mechanical
+vocabularies in `src/vehicles/wheelPatterns.ts`,
+`src/vehicles/trackPatterns.ts`, and `src/vehicles/suspensionPatterns.ts`
+resolve one deterministic complete running-gear family per vehicle.
 
 ### 7.2 Aiming and firing
 

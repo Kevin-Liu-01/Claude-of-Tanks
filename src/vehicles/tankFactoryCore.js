@@ -14,9 +14,9 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.js';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.js';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.js';
-import { wheelPatternFor } from './wheelPatterns.js';
-import { trackPatternFor } from './trackPatterns.js';
-import { suspensionPatternFor } from './suspensionPatterns.js';
+import { wheelPatternFor } from './wheelPatterns.ts';
+import { trackPatternFor } from './trackPatterns.ts';
+import { suspensionPatternFor } from './suspensionPatterns.ts';
 import { presentationAnchorFor } from './presentationAnchors.generated.js';
 import {
   SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord, vehicleMarkingSeats,

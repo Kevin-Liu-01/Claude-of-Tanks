@@ -40,12 +40,26 @@ export const SUSPENSION_PATTERN_DEFINITIONS = Object.freeze({
     jointRadiusRatio: 0.24, jointWidthRatio: 0.82,
     armSegments: 12, wheelEndTaper: 0.76,
   }),
-});
+} as const);
+
+export type SuspensionPatternId = keyof typeof SUSPENSION_PATTERN_DEFINITIONS;
+export type SuspensionPatternDefinition = typeof SUSPENSION_PATTERN_DEFINITIONS[SuspensionPatternId];
+export type SuspensionPattern = Readonly<{
+  id: SuspensionPatternId;
+} & SuspensionPatternDefinition>;
+
+interface SuspensionPatternSpec {
+  id?: unknown;
+}
+
+interface WheelPatternReference {
+  id?: unknown;
+}
 
 export const SUSPENSION_PATTERN_IDS = Object.freeze(
-  Object.keys(SUSPENSION_PATTERN_DEFINITIONS));
+  Object.keys(SUSPENSION_PATTERN_DEFINITIONS) as SuspensionPatternId[]);
 
-const FAMILY_RULES = Object.freeze([
+const FAMILY_RULES: ReadonlyArray<readonly [RegExp, SuspensionPatternId]> = Object.freeze([
   [/(?:^|_)(?:m1a1|m1a2|abramsx|ua_m1a1)(?:$|_)/, 'abrams-torsion-arm'],
   [/^(?:t64bv1|ua_t64bv)$/, 't64-torsion-arm'],
   [/(?:^|_)(?:m4a3e8|centurion3|centurion5|strv81|chieftain5|chieftain_mk10)(?:$|_)/,
@@ -55,7 +69,11 @@ const FAMILY_RULES = Object.freeze([
 ]);
 
 /** Resolve one stable hull-to-wheel suspension layout for a complete gear unit. */
-export function suspensionPatternFor(spec, wheelPattern = null, override = null) {
+export function suspensionPatternFor(
+  spec: SuspensionPatternSpec | null | undefined,
+  wheelPattern: WheelPatternReference | null = null,
+  override: SuspensionPatternId | null = null,
+): SuspensionPattern {
   if (override != null) {
     const definition = SUSPENSION_PATTERN_DEFINITIONS[override];
     if (!definition) throw new Error(`Unknown suspension pattern: ${override}`);

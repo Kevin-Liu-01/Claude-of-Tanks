@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.js';
 import { getSpec, MODEL_SOURCE } from '../specs.js';
 import { tankTier } from '../tier.ts';
-import { wheelPatternFor } from '../wheelPatterns.js';
+import { wheelPatternFor } from '../wheelPatterns.ts';
 import { resolveCamoVisual } from '../materials.js';
 import { vehicleMarkingAnchor } from '../vehicleMarkings.js';
 import { createTankState, SIM_DT } from '../../sim/movement.ts';
