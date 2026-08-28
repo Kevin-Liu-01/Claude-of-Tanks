@@ -12,7 +12,7 @@ import {
   developmentOnlyReason,
   isProductionHiddenTankId,
   isRetiredHistoricalTank,
-} from './rosterPolicy.js';
+} from './rosterPolicy.ts';
 import { FIRST_PARTY_VEHICLE_AUTHORSHIP } from '../authorship.ts';
 import { applyVehicleTaxonomy } from './taxonomy.ts';
 import {

@@ -20,7 +20,7 @@ export const NATIVE_VARIANT_FAMILIES = Object.freeze({
   t90: Object.freeze([
     't90', 't90a', 't90a_vladimir', 't90a_burlak', 't90sm', 't90m', 't90ms', 't90m_proryv',
   ]),
-});
+} as const);
 
 export const NATIVE_FAMILY_ORDER = Object.freeze({
   soviet_modern_mbt: Object.freeze([
@@ -56,9 +56,9 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   poland: Object.freeze([
     't72m1_jaguar', 'pt91_twardy', 'pl01',
   ]),
-});
+} as const);
 
-export function applyNativeFamilyOrder(ids = ALL_TANK_IDS) {
+export function applyNativeFamilyOrder(ids: string[] = ALL_TANK_IDS): string[] {
   for (const family of Object.values(NATIVE_FAMILY_ORDER)) {
     const present = family.filter((id) => ids.includes(id));
     if (present.length < 2) continue;

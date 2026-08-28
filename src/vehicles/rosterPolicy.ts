@@ -12,14 +12,24 @@ export const DEV_FLEET_LABEL = 'DEV';
 // These records stay registered and usable by local vehicle/gallery tooling,
 // but do not appear in production carousels or matchmaking. Keep every
 // production exclusion here so UI surfaces cannot quietly diverge.
-export const PRODUCTION_HIDDEN_TANK_IDS = new Set([
+export const PRODUCTION_HIDDEN_TANK_IDS = new Set<string>([
   'panther_g', 'tiger1', 'sturmtiger', 'jpz_e100',
   'm26_pershing', 'm45_patton', 't95', 'isu122s', 'isu152',
   'newc_tiger', 'newc_pziii', 'bmp1', 'm1128', 'm1296', 'm1a2_legacy',
   'recon_tank', 'q_heavy',
 ]);
 
-export const RETIRED_EXTERNAL_PLACEHOLDER_IDS = new Set(['recon_tank', 'q_heavy']);
+export const RETIRED_EXTERNAL_PLACEHOLDER_IDS = new Set<string>(['recon_tank', 'q_heavy']);
+
+interface DevelopmentFleetEnvironment {
+  DEV?: unknown;
+  [key: string]: unknown;
+}
+
+interface RosterPolicySpec {
+  id?: unknown;
+  era?: unknown;
+}
 
 /**
  * Unlock the full saved fleet only in Vite's local development server.
@@ -28,7 +38,7 @@ export const RETIRED_EXTERNAL_PLACEHOLDER_IDS = new Set(['recon_tank', 'q_heavy'
  * VITE_* values are embedded into client code. Production builds remain
  * curated even if the variable is accidentally present in their environment.
  */
-export function developmentFleetEnabled(env = {}) {
+export function developmentFleetEnabled(env: DevelopmentFleetEnvironment = {}): boolean {
   return env?.DEV === true && env?.[DEV_FLEET_ENV_KEY] === DEV_FLEET_KEY;
 }
 
@@ -38,7 +48,7 @@ const VITE_ENV = typeof import.meta !== 'undefined' && import.meta.env
 
 export const DEV_FLEET_ACTIVE = developmentFleetEnabled(VITE_ENV);
 
-export function isProductionHiddenTankId(id) {
+export function isProductionHiddenTankId(id: unknown): id is string {
   return typeof id === 'string' && PRODUCTION_HIDDEN_TANK_IDS.has(id);
 }
 
@@ -79,22 +89,27 @@ export const RETAINED_COLD_WAR_IDS = Object.freeze([
   't95',
 ]);
 
-const RETAINED_WW2 = new Set(RETAINED_WW2_IDS);
-const HISTORICAL_COLD_WAR_CANDIDATES = new Set(HISTORICAL_COLD_WAR_CANDIDATE_IDS);
-const RETAINED_COLD_WAR = new Set(RETAINED_COLD_WAR_IDS);
+const RETAINED_WW2 = new Set<string>(RETAINED_WW2_IDS);
+const HISTORICAL_COLD_WAR_CANDIDATES = new Set<string>(HISTORICAL_COLD_WAR_CANDIDATE_IDS);
+const RETAINED_COLD_WAR = new Set<string>(RETAINED_COLD_WAR_IDS);
 
 /** Whether a registered spec is intentionally absent from the live roster. */
-export function isRetiredHistoricalTank(spec) {
+export function isRetiredHistoricalTank(spec: RosterPolicySpec | null | undefined): boolean {
   if (!spec || !spec.id) return false;
-  if (HISTORICAL_COLD_WAR_CANDIDATES.has(spec.id)) return !RETAINED_COLD_WAR.has(spec.id);
-  return spec.era === 'ww2' && !RETAINED_WW2.has(spec.id);
+  const id = String(spec.id);
+  if (HISTORICAL_COLD_WAR_CANDIDATES.has(id)) return !RETAINED_COLD_WAR.has(id);
+  return spec.era === 'ww2' && !RETAINED_WW2.has(id);
 }
 
 /** Stable explanation used by developer tags and the roster report. */
-export function developmentOnlyReason(spec, { activeRoster = false } = {}) {
+export function developmentOnlyReason(
+  spec: RosterPolicySpec | null | undefined,
+  { activeRoster = false }: { activeRoster?: boolean } = {},
+): string {
   if (!spec?.id) return 'unregistered';
-  if (RETIRED_EXTERNAL_PLACEHOLDER_IDS.has(spec.id)) return 'reference-placeholder';
-  if (isProductionHiddenTankId(spec.id)) return 'production-curation';
+  const id = String(spec.id);
+  if (RETIRED_EXTERNAL_PLACEHOLDER_IDS.has(id)) return 'reference-placeholder';
+  if (isProductionHiddenTankId(id)) return 'production-curation';
   if (isRetiredHistoricalTank(spec)) return 'historical-archive';
   return activeRoster ? 'development-only' : 'saved-development-model';
 }

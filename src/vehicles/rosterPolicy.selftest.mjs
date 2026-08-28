@@ -8,7 +8,7 @@ import {
   RETAINED_WW2_IDS,
   developmentFleetEnabled,
   isRetiredHistoricalTank,
-} from './rosterPolicy.js';
+} from './rosterPolicy.ts';
 
 const retainedWw2 = new Set(RETAINED_WW2_IDS);
 const retainedColdWar = new Set(RETAINED_COLD_WAR_IDS);

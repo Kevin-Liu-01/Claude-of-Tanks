@@ -167,7 +167,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 
 ## Policy ownership
 
-- `src/vehicles/rosterPolicy.js` owns explicit production exclusions and the local-development gate.
+- `src/vehicles/rosterPolicy.ts` owns explicit production exclusions and the local-development gate.
 - `src/vehicles/taxonomy.ts` owns the public era taxonomy and every saved vehicle assignment.
 - `src/vehicles/specs.js` publishes saved, production, visible, and runtime projections and stamps every spec with canonical roster metadata.
 - Production visibility is independent from record retention: hiding a vehicle never deletes its authored spec or tooling access.

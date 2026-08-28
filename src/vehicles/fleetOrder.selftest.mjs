@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 const { createTank } = await import('./tankFactory.js');
 const { ALL_TANK_IDS } = await import('./specs.js');
-const { NATIVE_FAMILY_ORDER, NATIVE_VARIANT_FAMILIES } = await import('./fleetOrder.js');
+const { NATIVE_FAMILY_ORDER, NATIVE_VARIANT_FAMILIES } = await import('./fleetOrder.ts');
 
 for (const [name, family] of Object.entries(NATIVE_FAMILY_ORDER)) {
   const present = family.filter((id) => ALL_TANK_IDS.includes(id));

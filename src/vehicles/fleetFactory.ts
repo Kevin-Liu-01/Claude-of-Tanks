@@ -54,7 +54,7 @@ import {
   VISIBLE_TANK_IDS,
   finalizeFirstPartyRoster,
 } from './specs.js';
-import { applyNativeFamilyOrder } from './fleetOrder.js';
+import { applyNativeFamilyOrder } from './fleetOrder.ts';
 
 type ProfileBuilderPort = unknown;
 

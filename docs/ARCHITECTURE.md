@@ -137,10 +137,12 @@ browser presentation consumer.
 ## 2. Shared data structures (exact shapes)
 
 ### 2.1 `TankId` and roster constants
-```js
-// specs.js — locked ids, locked order (garage carousel order):
-export const TANK_IDS = ['m4a3e8','tiger1','t34_85','is2','panther_g','m1a2','t90m','leo2a7'];
-```
+
+`specs.js` owns stable vehicle IDs and registered records.
+`rosterPolicy.ts` derives the production, development, and reference
+projections; `fleetOrder.ts` then makes each related native family contiguous
+in historical/design progression. Registration order is never a UI or
+matchmaking contract.
 
 ### 2.2 `TankSpec` (exported by `src/vehicles/specs.js`)
 ```js

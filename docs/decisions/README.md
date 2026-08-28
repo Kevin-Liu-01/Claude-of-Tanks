@@ -206,3 +206,4 @@ runtime documents remain authoritative for behavior.
 - [0194 — Fleet presentation contracts are strict TypeScript](0194-typed-fleet-presentation-contracts.md)
 - [0195 — Camouflage policy is independent from its typed painter](0195-typed-camouflage-policy-and-painter.md)
 - [0196 — Running-gear families use one typed mechanical vocabulary](0196-typed-running-gear-vocabulary.md)
+- [0197 — Fleet projections and family order are strict TypeScript](0197-typed-roster-projections-and-order.md)

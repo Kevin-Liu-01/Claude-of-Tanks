@@ -103,9 +103,9 @@ exhaust density fixed across 60, 120, and 240 Hz displays.
 
 ## First-party vehicle pipeline
 
-The registry currently retains **150 vehicle records**. The production
-projection exposes **111**; an explicit local-development key unlocks all
-**148 first-party playable models** with `DEV` labels, while two generic
+The registry currently retains **156 vehicle records**. The production
+projection exposes **117**; an explicit local-development key unlocks all
+**154 first-party playable models** with `DEV` labels, while two generic
 reference placeholders remain report-only. The generated inventory is
 maintained in `VEHICLE-ROSTER.md`.
 Playable geometry is assembled at runtime from authored profile stations,

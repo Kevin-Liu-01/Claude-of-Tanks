@@ -9,7 +9,7 @@
 import {
   DEV_FLEET_ACTIVE,
   PRODUCTION_HIDDEN_TANK_IDS,
-} from '../vehicles/rosterPolicy.js';
+} from '../vehicles/rosterPolicy.ts';
 
 // Compatibility export for existing tests/tools. The policy itself lives with
 // the vehicle registry so every carousel and battle path shares one source.
