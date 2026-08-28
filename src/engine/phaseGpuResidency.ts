@@ -1,4 +1,4 @@
-import { releaseObject3DGpuResources } from './resourceLifetime.js';
+import { releaseObject3DGpuResources } from './resourceLifetime.ts';
 import type { Object3D } from 'three';
 
 interface GpuReleaseReceipt {

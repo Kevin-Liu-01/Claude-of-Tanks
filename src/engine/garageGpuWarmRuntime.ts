@@ -1,6 +1,6 @@
 import type { Camera, Object3D, Scene, WebGLRenderer } from 'three';
 import { createFrameBudgetYielder } from './frameScheduler.ts';
-import { warmSceneOffscreenBatched } from './offscreenWarm.js';
+import { warmSceneOffscreenBatched } from './offscreenWarm.ts';
 
 type WarmYield = (force?: boolean) => Promise<unknown>;
 

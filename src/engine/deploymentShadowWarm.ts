@@ -8,7 +8,7 @@ import type {
   Scene,
   WebGLRenderer,
 } from 'three';
-import { createOffscreenSceneWarmer } from './offscreenWarm.js';
+import { createOffscreenSceneWarmer } from './offscreenWarm.ts';
 
 type BudgetYield = (covered?: boolean) => Promise<void>;
 type WarmRender = (() => void) & { dispose?: () => void };

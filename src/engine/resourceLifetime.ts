@@ -6,6 +6,54 @@
  * merely setting `visible = false` does not protect the browser from reclaiming
  * the context after several map or showroom switches.
  */
+import type {
+  BufferGeometry,
+  Material,
+  Object3D,
+  Texture,
+} from 'three';
+
+export interface ResourceLimits {
+  readonly pedestalVisuals: number;
+  readonly worldScenes: number;
+}
+
+export interface RetainedObject3DResources {
+  geometries?: Iterable<BufferGeometry>;
+  materials?: Iterable<Material>;
+  textures?: Iterable<Texture>;
+}
+
+export interface ResourceDisposalReceipt {
+  objects: number;
+  geometries: number;
+  materials: number;
+  textures: number;
+}
+
+type ResourceKind = 'geometry' | 'material' | 'texture';
+type DisposableResource = BufferGeometry | Material | Texture;
+
+interface ResourceDisposalOptions {
+  preserveRoots?: Object3D[];
+  releaseMaterials?: boolean;
+  onDispose?: ((kind: ResourceKind, resource: DisposableResource) => void) | null;
+}
+
+interface ResourceObject extends Object3D {
+  geometry?: BufferGeometry;
+  material?: Material | Material[];
+  skeleton?: { boneTexture?: Texture | null };
+  isBatchedMesh?: boolean;
+  isInstancedMesh?: boolean;
+  dispose?(): void;
+}
+
+interface ResourceBag {
+  geometries: Set<BufferGeometry>;
+  materials: Set<Material>;
+  textures: Set<Texture>;
+}
 
 const LIMITS = Object.freeze({
   // Keep enough recent heroes/maps for quick backtracking without allowing a
@@ -20,14 +68,17 @@ const LIMITS = Object.freeze({
 // (terrain LOD alternatives are the canonical example). A WeakMap keeps that
 // ownership explicit without putting Sets/functions into serializable
 // userData or extending the lifetime of a released scene root.
-const RETAINED_RESOURCES = new WeakMap();
+const RETAINED_RESOURCES = new WeakMap<Object3D, RetainedObject3DResources>();
 
 /**
  * Declare resources owned by an Object3D but not necessarily attached to its
  * current render tree. Collections stay live, so streamed additions made
  * after registration are included in eventual disposal.
  */
-export function registerRetainedObject3DResources(owner, resources) {
+export function registerRetainedObject3DResources(
+  owner: Object3D,
+  resources: RetainedObject3DResources,
+): void {
   if (!owner?.isObject3D || !resources || typeof resources !== 'object') {
     throw new TypeError('retained Object3D resources require an owner and resource collections');
   }
@@ -35,28 +86,36 @@ export function registerRetainedObject3DResources(owner, resources) {
 }
 
 /** @returns {{pedestalVisuals:number, worldScenes:number}} */
-export function residentResourceLimits(tier) {
+export function residentResourceLimits(tier: unknown): ResourceLimits {
   return LIMITS[tier === 'mobile' ? 'mobile' : 'desktop'];
 }
 
-function collectMaterialTextures(material, out) {
+function isTexture(value: unknown): value is Texture {
+  return value !== null && typeof value === 'object'
+    && (value as { isTexture?: boolean }).isTexture === true;
+}
+
+function collectMaterialTextures(material: Material | null | undefined, out: Set<Texture>): void {
   if (!material) return;
   for (const value of Object.values(material)) {
-    if (value?.isTexture) out.add(value);
+    if (isTexture(value)) out.add(value);
     else if (Array.isArray(value)) {
-      for (const item of value) if (item?.isTexture) out.add(item);
+      for (const item of value) if (isTexture(item)) out.add(item);
     }
   }
-  for (const uniform of Object.values(material.uniforms || {})) {
+  const uniforms = (material as unknown as {
+    uniforms?: Record<string, { value?: unknown } | null | undefined>;
+  }).uniforms;
+  for (const uniform of Object.values(uniforms || {})) {
     const value = uniform?.value;
-    if (value?.isTexture) out.add(value);
+    if (isTexture(value)) out.add(value);
     else if (Array.isArray(value)) {
-      for (const item of value) if (item?.isTexture) out.add(item);
+      for (const item of value) if (isTexture(item)) out.add(item);
     }
   }
 }
 
-function collectDeclaredResources(object, bag) {
+function collectDeclaredResources(object: Object3D, bag: ResourceBag): void {
   const declared = RETAINED_RESOURCES.get(object);
   if (!declared) return;
   for (const geometry of declared.geometries || []) {
@@ -72,18 +131,21 @@ function collectDeclaredResources(object, bag) {
   }
 }
 
-function collectTreeResources(root, bag) {
+function collectTreeResources(root: Object3D | null | undefined, bag: ResourceBag): void {
   if (!root?.traverse) return;
   root.traverse((object) => {
     collectDeclaredResources(object, bag);
-    if (object.geometry) bag.geometries.add(object.geometry);
-    const materials = Array.isArray(object.material)
-      ? object.material : (object.material ? [object.material] : []);
+    const resourceObject = object as ResourceObject;
+    if (resourceObject.geometry) bag.geometries.add(resourceObject.geometry);
+    const materials = Array.isArray(resourceObject.material)
+      ? resourceObject.material : (resourceObject.material ? [resourceObject.material] : []);
     for (const material of materials) {
       bag.materials.add(material);
       collectMaterialTextures(material, bag.textures);
     }
-    if (object.skeleton?.boneTexture) bag.textures.add(object.skeleton.boneTexture);
+    if (resourceObject.skeleton?.boneTexture) {
+      bag.textures.add(resourceObject.skeleton.boneTexture);
+    }
   });
 }
 
@@ -106,26 +168,37 @@ function collectTreeResources(root, bag) {
  * @returns {{objects:number, geometries:number, materials:number, textures:number}}
  */
 export function releaseObject3DGpuResources(
-  root,
-  { preserveRoots = [], releaseMaterials = true, onDispose = null } = {},
-) {
-  const keep = { geometries: new Set(), materials: new Set(), textures: new Set() };
+  root: Object3D | null | undefined,
+  {
+    preserveRoots = [],
+    releaseMaterials = true,
+    onDispose = null,
+  }: ResourceDisposalOptions = {},
+): ResourceDisposalReceipt {
+  const keep: ResourceBag = {
+    geometries: new Set(), materials: new Set(), textures: new Set(),
+  };
   for (const preserveRoot of preserveRoots) collectTreeResources(preserveRoot, keep);
 
-  const owned = { geometries: new Set(), materials: new Set(), textures: new Set() };
+  const owned: ResourceBag = {
+    geometries: new Set(), materials: new Set(), textures: new Set(),
+  };
   let objects = 0;
   if (root?.traverse) {
     root.traverse((object) => {
       objects += 1;
       collectDeclaredResources(object, owned);
-      if (object.geometry) owned.geometries.add(object.geometry);
-      const materials = Array.isArray(object.material)
-        ? object.material : (object.material ? [object.material] : []);
+      const resourceObject = object as ResourceObject;
+      if (resourceObject.geometry) owned.geometries.add(resourceObject.geometry);
+      const materials = Array.isArray(resourceObject.material)
+        ? resourceObject.material : (resourceObject.material ? [resourceObject.material] : []);
       for (const material of materials) {
         owned.materials.add(material);
         collectMaterialTextures(material, owned.textures);
       }
-      if (object.skeleton?.boneTexture) owned.textures.add(object.skeleton.boneTexture);
+      if (resourceObject.skeleton?.boneTexture) {
+        owned.textures.add(resourceObject.skeleton.boneTexture);
+      }
     });
   }
 
@@ -163,28 +236,39 @@ export function releaseObject3DGpuResources(
  * @param {{preserveRoots?: import('three').Object3D[], onDispose?: Function}} [opts]
  * @returns {{objects:number, geometries:number, materials:number, textures:number}}
  */
-export function disposeObject3DResources(root, { preserveRoots = [], onDispose = null } = {}) {
-  const keep = { geometries: new Set(), materials: new Set(), textures: new Set() };
+export function disposeObject3DResources(
+  root: Object3D | null | undefined,
+  { preserveRoots = [], onDispose = null }: ResourceDisposalOptions = {},
+): ResourceDisposalReceipt {
+  const keep: ResourceBag = {
+    geometries: new Set(), materials: new Set(), textures: new Set(),
+  };
   for (const preserveRoot of preserveRoots) collectTreeResources(preserveRoot, keep);
 
-  const owned = { geometries: new Set(), materials: new Set(), textures: new Set() };
+  const owned: ResourceBag = {
+    geometries: new Set(), materials: new Set(), textures: new Set(),
+  };
   let objects = 0;
   if (root?.traverse) {
     root.traverse((object) => {
       objects += 1;
       collectDeclaredResources(object, owned);
-      if (object.geometry) owned.geometries.add(object.geometry);
-      const materials = Array.isArray(object.material)
-        ? object.material : (object.material ? [object.material] : []);
+      const resourceObject = object as ResourceObject;
+      if (resourceObject.geometry) owned.geometries.add(resourceObject.geometry);
+      const materials = Array.isArray(resourceObject.material)
+        ? resourceObject.material : (resourceObject.material ? [resourceObject.material] : []);
       for (const material of materials) {
         owned.materials.add(material);
         collectMaterialTextures(material, owned.textures);
       }
-      if (object.skeleton?.boneTexture) owned.textures.add(object.skeleton.boneTexture);
+      if (resourceObject.skeleton?.boneTexture) {
+        owned.textures.add(resourceObject.skeleton.boneTexture);
+      }
       // Batched/instanced meshes may own private GPU textures that are not
       // reachable through `material` (matrices, visibility, morph data).
-      if ((object.isBatchedMesh || object.isInstancedMesh) && typeof object.dispose === 'function') {
-        object.dispose();
+      if ((resourceObject.isBatchedMesh || resourceObject.isInstancedMesh)
+        && typeof resourceObject.dispose === 'function') {
+        resourceObject.dispose();
       }
     });
   }

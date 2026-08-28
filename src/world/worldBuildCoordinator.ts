@@ -6,7 +6,7 @@ import {
 import {
   disposeObject3DResources,
   residentResourceLimits,
-} from '../engine/resourceLifetime.js';
+} from '../engine/resourceLifetime.ts';
 
 interface WorldScene {
   group: THREE.Object3D;

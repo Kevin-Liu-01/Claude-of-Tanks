@@ -5,7 +5,7 @@ import {
   releaseObject3DGpuResources,
   registerRetainedObject3DResources,
   residentResourceLimits,
-} from './resourceLifetime.js';
+} from './resourceLifetime.ts';
 
 assert.deepEqual(residentResourceLimits('mobile'), {
   pedestalVisuals: 2,

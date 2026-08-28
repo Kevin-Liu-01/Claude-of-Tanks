@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createOffscreenSceneWarmer, warmSceneOffscreenBatched } from './offscreenWarm.js';
+import { createOffscreenSceneWarmer, warmSceneOffscreenBatched } from './offscreenWarm.ts';
 
 function fakeRenderer({ throwOnRender = false } = {}) {
   const prior = { name: 'prior-target' };

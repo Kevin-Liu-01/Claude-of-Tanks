@@ -24,7 +24,7 @@
  */
 import * as THREE from 'three';
 import { createRenderer } from './engine/renderer.js';
-import { createOffscreenSceneWarmer } from './engine/offscreenWarm.js';
+import { createOffscreenSceneWarmer } from './engine/offscreenWarm.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
   mountDiagOverlay, runSceneBlackWatchdog, reclaimShadows,
