@@ -1,4 +1,7 @@
 import { mountBattleReels } from './battleReels.ts';
+import { mountDocsIcons } from './docsIcons.ts';
+
+mountDocsIcons();
 
 const navLinks = [...document.querySelectorAll<HTMLAnchorElement>('.docs-toc a[href^="#"]')];
 const sections = navLinks.map((link) => document.querySelector(link.hash))
