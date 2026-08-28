@@ -1394,7 +1394,7 @@ export function createKillCam(deps) {
     // ERA/screen honesty (r6 major): penRollMm is the shell's RESIDUAL pen —
     // ERA tiles and spaced screens already cut it in-event before the main
     // plate test — and a bare 461/898 on an ERA'd glacis read as a broken
-    // ±25% RNG. With the additive payload field penRollFreshMm (damage.js
+    // ±25% RNG. With the additive payload field penRollFreshMm (damage.ts
     // stamps the pre-degradation roll, see docs/GUNNERY-CAMERA-SPEC.md) the row prints the
     // cut explicitly: 'fresh → residual / nominal · ERA'. Payloads without
     // the field still get the qualifier whenever the event itself proves a
@@ -3278,7 +3278,7 @@ export function createKillCam(deps) {
     // chip gets a leader line to its module dot and joins the vertical
     // deconfliction pass in projectLabels(). Every number rendered here comes
     // straight from the sim event — module damage is ev.modulesHit[i].dmg
-    // (the actual rolled value damage.js applied); when a payload predates
+    // (the actual rolled value damage.ts applied); when a payload predates
     // that field the number is OMITTED rather than fabricated.
     const d = ensureDom();
     d.root.classList.add('xr'); // fade in the x-ray backdrop dim

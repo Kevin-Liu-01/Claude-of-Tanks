@@ -241,7 +241,7 @@ function traceCollisionShell(cells, frame, out) {
  * moves the marker and makes the decal detach as the gun traverses.
  *
  * Numeric fields avoid allocating three additional arrays for every armor,
- * module and crew candidate in the hot trace. damage.js materializes arrays
+ * module and crew candidate in the hot trace. damage.ts materializes arrays
  * only for the decisive hit event that crosses the presentation boundary.
  */
 function finishFrameHit(hit, frame, t, nx = null, ny = null, nz = null) {
@@ -310,7 +310,7 @@ function edgeInside(a, b) {
 /**
  * Segment-vs-AABB slab test in a local frame. On hit, `_aabbExitT` holds the
  * exit parameter (the box SPAN along the segment is [entry, _aabbExitT] —
- * damage.js rolls a module when the post-penetration path overlaps that span,
+ * damage.ts rolls a module when the post-penetration path overlaps that span,
  * not merely when the entry face sits behind armor).
  * @param {number} frame frame index
  * @param {Array} min [x,y,z]
@@ -678,7 +678,7 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
 
   if (trackShapes) {
     // one module record per module name (min entry / max exit across the
-    // side's prisms — exact single-AABB record semantics for damage.js's
+    // side's prisms — exact single-AABB record semantics for damage.ts's
     // straddler/post-pen sweep); one PLATE record per crossed prism face
     // (the external track screen, with the true face normal).
     let spanL = null;
@@ -790,7 +790,7 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
         kind: 'module',
         module: 'gun',
         external: true,
-        // The barrel doubles as spaced armor (armor doc §4/§7): damage.js
+        // The barrel doubles as spaced armor (armor doc §4/§7): damage.ts
         // charges a radius-scaled screen thickness against crossing shells.
         barrel: true,
         barrelRadiusM: armorModel.gunBarrel.radiusM,
@@ -841,7 +841,7 @@ export function queryAimArmor(from, dir, maxDist, pose, armorModel, eraSpent = E
 
 /**
  * Enumerate every module/crew box of an armor model with its world-space
- * center. The HE blast sweep (damage.js) distance-tests these against the
+ * center. The HE blast sweep (damage.ts) distance-tests these against the
  * blast sphere so boxes OFF the flight/burst ray — tracks beside a ground
  * burst, the rear engine on a turret hit — are still reachable, per shells
  * doc §6 / armor doc §8 step 3. Order is fixed for RNG determinism: modules

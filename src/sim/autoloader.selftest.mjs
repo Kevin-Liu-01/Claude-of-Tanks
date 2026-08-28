@@ -6,7 +6,7 @@ import {
   startMagazineReload,
   startPostShotReload,
   tickReload,
-} from './damage.js';
+} from './damage.ts';
 
 function makeSpec(overrides = {}) {
   const base = {

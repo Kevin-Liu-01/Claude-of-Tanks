@@ -7,6 +7,7 @@ import type {
   ArmorOverlayTarget,
 } from './armorAimOverlay.ts';
 import type { GameState } from './stateCore.ts';
+import type { DamageShellSpec } from '../sim/damage.ts';
 
 interface HudTankEntity extends ArmorOverlayTarget {
   team: string;
@@ -14,7 +15,7 @@ interface HudTankEntity extends ArmorOverlayTarget {
   visual?: { root: Object3D };
   spec?: {
     armor?: ArmorOverlayModel;
-    gun?: { shells?: unknown[] };
+    gun?: { shells?: DamageShellSpec[] };
   };
 }
 

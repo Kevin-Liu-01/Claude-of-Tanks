@@ -19,7 +19,7 @@ import { Euler, Quaternion, Vector3 } from 'three';
 import { computeDispersionRadM } from '../sim/movement.ts';
 import { solveBallisticGunLay } from '../sim/ballistics.ts';
 import { tankPoseFromState, queryAimArmor } from '../sim/armor.js';
-import { blastRadiusM, estimatePenRatio, isHeClass } from '../sim/damage.js';
+import { blastRadiusM, estimatePenRatio, isHeClass } from '../sim/damage.ts';
 import { terrainTravelCostFactor } from '../sim/terrainMobility.ts';
 
 /**

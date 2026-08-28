@@ -7,7 +7,8 @@
 
 import * as THREE from 'three';
 import { queryAimArmor, tankPoseFromState } from '../sim/armor.js';
-import { estimatePenRatio } from '../sim/damage.js';
+import { estimatePenRatio } from '../sim/damage.ts';
+import type { AimArmorInfo, DamageShellSpec } from '../sim/damage.ts';
 
 const SAMPLE_INTERVAL_MS = 110;
 const SAMPLE_BATCH_SIZE = 48;
@@ -81,7 +82,7 @@ export interface ArmorOverlayEntry {
   sampleFrameIndex: number;
   samplePointIndex: number;
   nextSampleMs: number;
-  lastShellSpec: unknown;
+  lastShellSpec: DamageShellSpec | null;
 }
 
 export interface ArmorAimOverlayUpdateOptions {
@@ -89,7 +90,7 @@ export interface ArmorAimOverlayUpdateOptions {
   scoped: boolean;
   targets?: readonly ArmorOverlayTarget[];
   target?: ArmorOverlayTarget | null;
-  shellSpec?: unknown;
+  shellSpec?: DamageShellSpec | null;
   muzzle?: THREE.Vector3 | null;
   nowMs?: number;
 }
@@ -264,7 +265,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
 
   function sampleBatch(
     entry: ArmorOverlayEntry,
-    shellSpec: unknown,
+    shellSpec: DamageShellSpec | null | undefined,
     muzzle: THREE.Vector3 | null | undefined,
   ): boolean {
     const target = entry.target;
@@ -289,7 +290,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
         const info = queryAimArmor(
           muzzle, _dir, Math.min(MAX_QUERY_M, distance + 0.3), pose, armor,
           target.combat.eraSpent,
-        );
+        ) as AimArmorInfo | null;
         const ratio = info ? estimatePenRatio(shellSpec, info.distM, info) : NaN;
         paintSample(frame.color, samplePoint.offset, penetrationColor(ratio, _color));
       }
@@ -347,7 +348,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     const sampleNowMs = typeof nowMs === 'number' && Number.isFinite(nowMs) ? nowMs : 0;
     for (const entry of visibleEntries) {
       if (entry.lastShellSpec !== shellSpec) {
-        entry.lastShellSpec = shellSpec;
+        entry.lastShellSpec = shellSpec ?? null;
         entry.nextSampleMs = -Infinity;
         entry.sampling = false;
       }

@@ -9,20 +9,20 @@
 // load and the array is clamped to the slot count).
 //
 // EFFECT WIRING MAP — which effects are REAL (wired into the live sim):
-//   reload      × on reload time        sim/damage.js startReload
+//   reload      × on reload time        sim/damage.ts startReload
 //   aimTime     × on aim-settle tau     sim/movement.ts readDebuffs
 //   bloom       × on movement-bloom     sim/movement.ts (dispersion excess
 //                 excess                 while moving/rotating)
 //   traverse    × on hull traverse      sim/movement.ts readDebuffs
 //   turret      × on turret traverse    sim/movement.ts readDebuffs
-//   repair      × on auto-repair RATE   sim/damage.js tickModuleRepairs
-//   heSplash    × on HE splash dmg IN   sim/damage.js (non-pen HE burst +
+//   repair      × on auto-repair RATE   sim/damage.ts tickModuleRepairs
+//   heSplash    × on HE splash dmg IN   sim/damage.ts (non-pen HE burst +
 //                                        blast-sphere splash; full HE pens
 //                                        are NOT reduced — WoT parity)
-//   crewHe      × on HE crew-hit odds   sim/damage.js rollCrewHit
-//   engineFire  × on fire IGNITE odds   sim/damage.js applyModuleDamage
-//   fireTicks   × on fire duration      sim/damage.js applyModuleDamage
-//   extinguish  × on self-extinguish    sim/damage.js tickFire
+//   crewHe      × on HE crew-hit odds   sim/damage.ts rollCrewHit
+//   engineFire  × on fire IGNITE odds   sim/damage.ts applyModuleDamage
+//   fireTicks   × on fire duration      sim/damage.ts applyModuleDamage
+//   extinguish  × on self-extinguish    sim/damage.ts tickFire
 //   moduleHp    × per-module max HP     applyEquipmentToCombat (below)
 //   view/viewStill/camo/camoStill       sim/spotting.js EQUIPMENT table
 //                                        (same ids — spotting owns vision)

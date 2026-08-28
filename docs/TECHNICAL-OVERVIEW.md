@@ -287,7 +287,7 @@ A client cannot submit a hit, damage value, or authoritative muzzle transform.
 `src/sim/ballistics.ts` advances the shell and finds an impact candidate.
 `src/sim/armor.js` evaluates the struck plate, including slope, impact angle,
 normalization, ricochet, overmatch, spaced layers, composites, ERA, and
-kinetic/chemical protection. `src/sim/damage.js` applies vehicle, module, crew,
+kinetic/chemical protection. `src/sim/damage.ts` applies vehicle, module, crew,
 fire, and destruction state.
 
 Killcam data is emitted by this resolution. The killcam never performs a

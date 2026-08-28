@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createShell, guideShellToward } from '../../sim/ballistics.ts';
-import { createCombatState, startReload } from '../../sim/damage.js';
+import { createCombatState, startReload } from '../../sim/damage.ts';
 import {
   SPECIAL_ACTION_KINDS,
   createSpecialActionState,

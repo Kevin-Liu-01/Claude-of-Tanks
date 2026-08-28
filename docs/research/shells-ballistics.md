@@ -1,7 +1,7 @@
 # Shells & Ballistics Spec — claude-of-tanks
 
 NOTE: on any conflict with armor-penetration.md, armor-penetration.md wins —
-it is the implementation authority for damage.js.
+it is the implementation authority for damage.ts.
 
 Research-backed, implementable spec for shell types, ballistics, gun accuracy, reload,
 and tracer visuals for a World of Tanks-style arcade tank game. All formulas are the

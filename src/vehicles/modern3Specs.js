@@ -224,7 +224,7 @@ export const MODERN3_SPECS = {
     pivotStyle: 'neutral',
     turretTraverseDegS: 60, gunPitchDegS: 40, gunElevationDeg: 30, gunDepressionDeg: 9,
     gun: {
-      // §6.4 per-shell reloads are LIVE (sim/damage.js startReload): the M242
+      // §6.4 per-shell reloads are LIVE (sim/damage.ts startReload): the M242
       // cycles 0.42 s bursts for sustained support fire while the TOW rail
       // pays its full 14 s. gun.reloadS carries the headline burst value
       // (garage card + fallback); per-shell counts size the belts vs. rails.
@@ -286,7 +286,7 @@ export const MODERN3_SPECS = {
     pivotStyle: 'pivot',
     turretTraverseDegS: 50, gunPitchDegS: 36, gunElevationDeg: 30, gunDepressionDeg: 5,
     gun: {
-      // §17.4 per-shell reloads are LIVE (sim/damage.js startReload): 2A42
+      // §17.4 per-shell reloads are LIVE (sim/damage.ts startReload): 2A42
       // 0.28 s bursts / 16 s Konkurs rail. Belt split is the real 160/340.
       caliberMm: 30, reloadS: 0.28, baseAccuracy: 0.32, aimTimeS: 1.4,
       soundProfile: '2a42',
@@ -334,7 +334,7 @@ export const MODERN3_SPECS = {
     // Unmanned RCT30: fast stabilized drives, +45 elevation class.
     turretTraverseDegS: 60, gunPitchDegS: 45, gunElevationDeg: 45, gunDepressionDeg: 10,
     gun: {
-      // MK30-2/ABM per-shell reloads are LIVE (sim/damage.js startReload):
+      // MK30-2/ABM per-shell reloads are LIVE (sim/damage.ts startReload):
       // 0.35 s bursts on the belts, 15 s on the Spike rail.
       caliberMm: 30, reloadS: 0.35, baseAccuracy: 0.28, aimTimeS: 1.3,
       soundProfile: 'mk30-2',
@@ -409,7 +409,7 @@ export const MODERN3_SPECS = {
     pivotStyle: 'neutral',
     turretTraverseDegS: 48, gunPitchDegS: 36, gunElevationDeg: 30, gunDepressionDeg: 8,
     gun: {
-      // 35 mm KDE per-shell reloads are LIVE (sim/damage.js startReload):
+      // 35 mm KDE per-shell reloads are LIVE (sim/damage.ts startReload):
       // 0.5 s bursts — the heaviest AFV autocannon round — / 18 s Jyu-MAT.
       caliberMm: 35, reloadS: 0.52, baseAccuracy: 0.30, aimTimeS: 1.4,
       soundProfile: 'kde-35',

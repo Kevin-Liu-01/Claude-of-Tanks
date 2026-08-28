@@ -14,7 +14,7 @@ export {
   magazineReloadDenialReason,
   repairAllModules,
   startMagazineReload,
-} from '../sim/damage.js';
+} from '../sim/damage.ts';
 export { createShell } from '../sim/ballistics.ts';
 export {
   activateSpecialAction,

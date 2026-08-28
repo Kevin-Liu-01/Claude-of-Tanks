@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { queryAimArmor, tankPoseFromState, traceTank } from '../sim/armor.js';
-import { estimatePenRatio } from '../sim/damage.js';
+import { estimatePenRatio } from '../sim/damage.ts';
+import type {
+  DamageArmorPlate,
+  DamageShellSpec,
+  PlateHit,
+} from '../sim/damage.ts';
 
 interface AimWorldHit {
   point: THREE.Vector3;
@@ -34,7 +39,7 @@ interface AimSpec {
     turretless?: boolean;
     boundingRadiusM: number;
   };
-  gun: { shells: object[] };
+  gun: { shells: DamageShellSpec[] };
 }
 
 interface ArmorTraceHit {
@@ -43,11 +48,11 @@ interface ArmorTraceHit {
 }
 
 interface AimArmorInfo {
-  plate: object;
+  plate: DamageArmorPlate;
   impactAngleDeg: number;
   point: THREE.Vector3;
   distM: number;
-  layers: object[];
+  layers: PlateHit[];
 }
 
 interface AimVisual {

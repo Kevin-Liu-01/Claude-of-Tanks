@@ -22,7 +22,7 @@ export interface SpecialActionState {
   returnShellSlot: number;
   returnReloadT: number;
   returnReloadTotalS: number;
-  returnReloadKind: string;
+  returnReloadKind: 'ready' | 'shell' | 'intraClip' | 'magazine';
 }
 
 const DESCRIPTOR_NONE = Object.freeze({

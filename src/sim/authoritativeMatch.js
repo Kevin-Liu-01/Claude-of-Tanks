@@ -42,7 +42,7 @@ import {
   tickReload,
   tickFire,
   tickModuleRepairs,
-} from './damage.js';
+} from './damage.ts';
 import { createSpottingSystem } from './spotting.js';
 import { captureWorldSnapshot } from '../net/snapshot.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';

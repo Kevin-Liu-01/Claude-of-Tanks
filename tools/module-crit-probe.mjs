@@ -16,7 +16,7 @@ import { Vector3 } from 'three';
 await import('../src/vehicles/tankFactory.js');
 const { TANK_SPECS } = await import('../src/vehicles/specs.js');
 const { traceTank } = await import('../src/sim/armor.js');
-const { resolveShellHit, createCombatState } = await import('../src/sim/damage.js');
+const { resolveShellHit, createCombatState } = await import('../src/sim/damage.ts');
 
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : d; };

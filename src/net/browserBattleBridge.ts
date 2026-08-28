@@ -1,5 +1,5 @@
 import { Vector3 } from 'three';
-import { createCombatState } from '../sim/damage.js';
+import { createCombatState } from '../sim/damage.ts';
 import { createTankState, shotRecoilScale } from '../sim/movement.ts';
 import type {
   MovementArmorSpec,

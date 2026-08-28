@@ -8,7 +8,8 @@
 import {
   magazineReloadDenialReason,
   startMagazineReload,
-} from './damage.js';
+} from './damage.ts';
+import type { CombatState, DamageTankSpec } from './damage.ts';
 import {
   SPECIAL_ACTION_KINDS,
 } from './specialActionPolicy.ts';
@@ -32,20 +33,10 @@ export interface SpecialActionResult {
   active?: boolean;
 }
 
-interface SpecialActionCombatState {
-  destroyed?: boolean;
-  shellSlot: number;
-  reload: {
-    t: number;
-    totalS: number;
-    kind: string;
-  };
-}
-
 interface SpecialActionEntity {
-  spec?: SpecialActionSpec;
+  spec?: SpecialActionSpec & DamageTankSpec;
   state?: { suspensionAim?: boolean };
-  combat?: SpecialActionCombatState;
+  combat?: CombatState;
   input?: { shellSlot?: number };
   specialAction?: SpecialActionState;
 }
@@ -108,7 +99,7 @@ export function activateSpecialAction(
     if (denied === 'MAGAZINE_FULL') return RESULT_RELOAD_FULL;
     if (denied === 'MAGAZINE_RELOADING') return RESULT_RELOAD_ACTIVE;
     if (denied) return RESULT_RELOAD_UNAVAILABLE;
-    return startMagazineReload(combat, entity.spec) ? RESULT_RELOAD : RESULT_RELOAD_UNAVAILABLE;
+    return startMagazineReload(combat, entity.spec!) ? RESULT_RELOAD : RESULT_RELOAD_UNAVAILABLE;
   }
 
   if (action.kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {

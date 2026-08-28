@@ -5,9 +5,9 @@
  * Covers: catalog integrity (ids, categories, effect vocabulary, spotting
  * table cross-refs), loadout sanitizing (slot cap, dedupe, era gate),
  * multiplier folding, combat-state attachment (module durability scaling),
- * and the LIVE sim hooks it can reach headlessly: reload (damage.js
- * startReload), fire self-extinguish (damage.js tickFire), HE surface-burst
- * splash reduction (damage.js resolveShellHit), aim/traverse debuff folding
+ * and the LIVE sim hooks it can reach headlessly: reload (damage.ts
+ * startReload), fire self-extinguish (damage.ts tickFire), HE surface-burst
+ * splash reduction (damage.ts resolveShellHit), aim/traverse debuff folding
  * (movement.ts via updateTank is exercised in the battle probe instead), and
  * the spotting view/camo tables (sim/spotting.js).
  */
@@ -18,7 +18,7 @@ import {
 } from './equipment.ts';
 import {
   createCombatState, startReload, tickFire, resolveShellHit,
-} from '../sim/damage.js';
+} from '../sim/damage.ts';
 import { createShell } from '../sim/ballistics.ts';
 import {
   EQUIPMENT as SPOT_EQUIP, equipViewMult, equipCamoBonus,
@@ -147,7 +147,7 @@ console.log('[4] combat-state attachment + module durability');
     'equip ids + equipMults attached to the combat state');
 }
 
-console.log('[5] LIVE hook: reload (damage.js startReload)');
+console.log('[5] LIVE hook: reload (damage.ts startReload)');
 {
   const bare = createCombatState(ww2Spec);
   startReload(bare, ww2Spec);
@@ -167,7 +167,7 @@ console.log('[5] LIVE hook: reload (damage.js startReload)');
     'equipment stacks multiplicatively with the dead-loader ×1.5');
 }
 
-console.log('[6] LIVE hook: fire self-extinguish (damage.js tickFire)');
+console.log('[6] LIVE hook: fire self-extinguish (damage.ts tickFire)');
 {
   const mkBurning = (ids) => {
     const c = createCombatState(modernSpec);
@@ -185,7 +185,7 @@ console.log('[6] LIVE hook: fire self-extinguish (damage.js tickFire)');
   assert(kitted.combat.fire.burning === false, 'roll 0.2 vs auto_ext 0.24: extinguished');
 }
 
-console.log('[7] LIVE hook: HE surface-burst splash (damage.js resolveShellHit)');
+console.log('[7] LIVE hook: HE surface-burst splash (damage.ts resolveShellHit)');
 {
   const HE = {
     name: 'HE-122', type: 'HE', caliberMm: 122, pen100Mm: 61, pen1000Mm: 61,

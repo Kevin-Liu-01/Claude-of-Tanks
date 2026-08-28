@@ -1,5 +1,5 @@
 /**
- * damage.js — complete hit resolution per docs/research/armor-penetration.md
+ * damage.ts — complete hit resolution per docs/research/armor-penetration.md
  * §12 and shells-ballistics.md: ricochet, normalization with overmatch,
  * KE/CE effective thickness with slope exponents, ERA (incl. tandem bypass),
  * spaced-armor absorption with HEAT air-gap decay, the gun barrel as a
@@ -18,9 +18,245 @@
 
 import { Vector3, Matrix4, Quaternion, Euler } from 'three';
 import { penAtDistanceMm } from './ballistics.ts';
+import type {
+  BallisticShellSpec,
+  ShellEntity,
+} from './ballistics.ts';
 import { tankPoseFromState, traceTank, blastTargets } from './armor.js';
 import { CORE_MODULE_IDS, MODULE_DEFS, MODULE_IDS } from './moduleCatalog.ts';
+import type { ModuleId } from './moduleCatalog.ts';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
+
+type Rng = () => number;
+type Vec3Tuple = [number, number, number];
+type ShellClass = 'KE' | 'CE' | 'HE';
+type ModuleStateName = 'ok' | 'yellow' | 'red';
+type ReloadKind = 'ready' | 'shell' | 'intraClip' | 'magazine';
+
+interface ShellBehavior {
+  kindClass: ShellClass;
+  normDeg: number;
+  ricochetDeg: number;
+  slopeExp: number;
+  spallBonus?: number;
+}
+
+export interface DamageShellSpec extends BallisticShellSpec {
+  name: string;
+  type: string;
+  caliberMm: number;
+  pen100Mm: number;
+  pen1000Mm: number;
+  pen2000Mm?: number;
+  dmg: number;
+  moduleDmg?: number;
+  reloadS?: number;
+  effectiveOvermatchCaliberMm?: number;
+  tandem?: boolean;
+}
+
+export interface DamageShell extends ShellEntity<DamageShellSpec> {
+  freshPenRollMm?: number;
+}
+
+export interface EraProtection {
+  keReduction: number;
+  ceFlatMm: number;
+}
+
+export interface DamageArmorPlate {
+  name: string;
+  physicalMm: number;
+  keMm: number;
+  ceMm: number;
+  kind: 'main' | 'spaced' | 'external' | 'era' | string;
+  verts?: number[][];
+  era?: EraProtection | null;
+  moduleLink?: ModuleId | null;
+}
+
+interface DamageVolume {
+  module: ModuleId;
+}
+
+interface CrewVolume {
+  crew: string;
+}
+
+export interface DamageArmorModel {
+  hullPlates?: DamageArmorPlate[];
+  turretPlates?: DamageArmorPlate[];
+  modules?: DamageVolume[];
+  crew?: CrewVolume[];
+  turretPivot?: number[];
+  boundingRadiusM?: number;
+  collisionShells?: {
+    hull?: unknown[];
+    turret?: unknown[];
+  };
+  _seamMm?: number;
+  _seamPlate?: DamageArmorPlate | null;
+  __hullAabb?: ArmorAabb | null;
+}
+
+export interface DamageGunSpec {
+  reloadS: number;
+  shells?: DamageShellSpec[];
+  autoloader?: {
+    magazineSize: number;
+    fullReloadS?: number;
+    intraClipS?: number;
+  } | null;
+}
+
+export interface DamageTankSpec {
+  era: string;
+  hp: number;
+  gun: DamageGunSpec;
+  armor?: DamageArmorModel | null;
+  dims?: { heightM: number };
+}
+
+export interface CombatModuleState {
+  hp: number;
+  maxHp: number;
+  state: ModuleStateName;
+  repairT: number;
+}
+
+export interface CombatState {
+  hp: number;
+  maxHp: number;
+  destroyed: boolean;
+  modules: Partial<Record<ModuleId, CombatModuleState>>;
+  crew: Record<string, boolean>;
+  fire: { burning: boolean; tickTimer: number; ticksLeft: number };
+  eraSpent: Set<string>;
+  reload: { t: number; totalS: number; kind: ReloadKind };
+  magazine: { rounds: number; capacity: number } | null;
+  shellSlot: number;
+  equipMults?: Partial<Record<string, number>>;
+}
+
+export interface DamageTankState {
+  pos: Vector3;
+  yaw: number;
+  visualPitch: number;
+  visualRoll: number;
+}
+
+export interface DamageTarget {
+  id: string;
+  spec: DamageTankSpec & { armor: DamageArmorModel };
+  state: DamageTankState;
+  combat: CombatState;
+}
+
+interface ArmorHitBase {
+  t: number;
+  tExit?: number;
+  point: Vector3;
+  normal?: Vector3;
+  impactFrame?: string;
+  impactLocalX?: number;
+  impactLocalY?: number;
+  impactLocalZ?: number;
+  impactLocalNormalX?: number;
+  impactLocalNormalY?: number;
+  impactLocalNormalZ?: number;
+  impactLocalDirX?: number;
+  impactLocalDirY?: number;
+  impactLocalDirZ?: number;
+}
+
+export interface PlateHit extends ArmorHitBase {
+  kind: 'plate';
+  plate: DamageArmorPlate;
+  impactAngleDeg: number;
+  normal: Vector3;
+}
+
+export interface ModuleHit extends ArmorHitBase {
+  kind: 'module';
+  module: ModuleId;
+  external?: boolean;
+  barrel?: boolean;
+  barrelRadiusM?: number;
+}
+
+export interface CrewHit extends ArmorHitBase {
+  kind: 'crew';
+  crew: string;
+}
+
+export type ArmorHit = PlateHit | ModuleHit | CrewHit;
+
+export interface HitEvent {
+  kind: string;
+  shellId: number;
+  shellType: string;
+  caliberMm: number;
+  attackerId: string;
+  targetId: string | null;
+  pos: Vec3Tuple;
+  normal: Vec3Tuple;
+  impactAngleDeg: number;
+  effectiveMm: number;
+  penRollMm: number;
+  damage: number;
+  targetHpAfter: number;
+  modulesHit: Array<{ module: ModuleId; newState: ModuleStateName; dmg: number }>;
+  crewHit: string[];
+  fireStarted: boolean;
+  ammoRacked: boolean;
+  destroyed: boolean;
+  eraPlate: string | null;
+  shellName: string;
+  penRollFreshMm: number;
+  flightDistM: number;
+  dmgRoll: number;
+  zone: string | null;
+  plateKind: string | null;
+  physicalMm: number;
+  nominalMm: number;
+  localPos: Vec3Tuple | null;
+  localDir: Vec3Tuple | null;
+  impactFrame: string | null;
+  impactLocalPos: Vec3Tuple | null;
+  impactLocalNormal: Vec3Tuple | null;
+  impactLocalDir: Vec3Tuple | null;
+}
+
+interface ResolutionContext {
+  combat: CombatState;
+  shellSpec: DamageShellSpec;
+  rng: Rng;
+  modulesHit: HitEvent['modulesHit'];
+  crewHit: string[];
+  chanceScale?: number;
+  dmgScale?: number;
+}
+
+interface ArmorAabb {
+  min: Vec3Tuple;
+  max: Vec3Tuple;
+}
+
+export interface AimArmorInfo {
+  plate: DamageArmorPlate;
+  impactAngleDeg: number;
+  point: Vector3;
+  distM: number;
+  layers?: PlateHit[];
+}
+
+function isPlateHit(hit: ArmorHit): hit is PlateHit {
+  return hit.kind === 'plate';
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
 
 const DEG_TO_RAD = Math.PI / 180;
 
@@ -38,7 +274,7 @@ const SHELL_BEHAVIOR = {
   HEAT: { kindClass: 'CE', normDeg: 0, ricochetDeg: 85, slopeExp: 1.0 },
   HE: { kindClass: 'HE', normDeg: 0, ricochetDeg: Infinity, slopeExp: 1.0, spallBonus: 1.0 },
   HESH: { kindClass: 'HE', normDeg: 0, ricochetDeg: Infinity, slopeExp: 1.0, spallBonus: 1.25 },
-};
+} as const satisfies Readonly<Record<string, ShellBehavior>>;
 
 /**
  * Behavior lookup that fails loudly on unknown shell types instead of
@@ -46,9 +282,9 @@ const SHELL_BEHAVIOR = {
  * @param {string} type ShellSpec.type
  * @returns {object} SHELL_BEHAVIOR entry
  */
-function behaviorOf(type) {
-  const b = SHELL_BEHAVIOR[type];
-  if (!b) throw new Error(`damage.js: unknown shell type '${type}' — add it to SHELL_BEHAVIOR`);
+function behaviorOf(type: string): ShellBehavior {
+  const b = SHELL_BEHAVIOR[type as keyof typeof SHELL_BEHAVIOR];
+  if (!b) throw new Error(`damage.ts: unknown shell type '${type}' — add it to SHELL_BEHAVIOR`);
   return b;
 }
 
@@ -61,7 +297,7 @@ function behaviorOf(type) {
  * @param {string} type ShellSpec.type
  * @returns {boolean}
  */
-export function isHeClass(type) {
+export function isHeClass(type: string): boolean {
   return behaviorOf(type).kindClass === 'HE';
 }
 
@@ -117,7 +353,7 @@ const _heTo = new Vector3();
 const HE_NEAREST_INSET_M = 0.01;
 
 /** ±25% uniform roll. @param {function} rng @param {number} avg @returns {number} */
-function rollUniform(rng, avg) {
+function rollUniform(rng: Rng, avg: number): number {
   return avg * (0.75 + rng() * 0.5);
 }
 
@@ -146,7 +382,11 @@ const RAM_MAX_TOTAL = 900;       // freight-train cap (60+ km/h closing)
  * @param {number} closingMps closing speed along the contact normal (m/s)
  * @returns {{total:number,toA:number,toB:number}} hp damage (toA = rammer)
  */
-export function ramDamage(massAT, massBT, closingMps) {
+export function ramDamage(
+  massAT: number,
+  massBT: number,
+  closingMps: number,
+): { total: number; toA: number; toB: number } {
   const mA = massAT > 0 ? massAT : 40;
   const mB = massBT > 0 ? massBT : 40;
   const c = Math.abs(Number(closingMps));
@@ -164,13 +404,13 @@ export function ramDamage(massAT, massBT, closingMps) {
  * EQUIPMENT SYSTEM (game/equipment.ts): multiplier off CombatState.equipMults,
  * defaulting to 1 so combat states without a loadout (probes, selftests,
  * throwaway states) resolve exactly as before. The record is attached once
- * per battle by applyEquipmentToCombat; damage.js stays pure — the loadout
+ * per battle by applyEquipmentToCombat; damage.ts stays pure — the loadout
  * travels WITH the combat state.
  * @param {?object} combat CombatState
  * @param {string} key equipMults field
  * @returns {number}
  */
-function equipMult(combat, key) {
+function equipMult(combat: CombatState | null | undefined, key: string): number {
   const m = combat && combat.equipMults;
   const v = m && m[key];
   return typeof v === 'number' && isFinite(v) ? v : 1;
@@ -184,18 +424,18 @@ function equipMult(combat, key) {
  * @param {object} spec TankSpec
  * @returns {object} CombatState
  */
-export function createCombatState(spec) {
+export function createCombatState(spec: DamageTankSpec): CombatState {
   const scale = isPostwarVehicleEra(spec.era) ? 2.5 : 1;
-  const modules = {};
+  const modules: Partial<Record<ModuleId, CombatModuleState>> = {};
   const authored = spec.armor && Array.isArray(spec.armor.modules) && spec.armor.modules.length
-    ? new Set(spec.armor.modules.map((box) => box.module))
+    ? new Set<ModuleId>(spec.armor.modules.map((box) => box.module))
     : new Set([...CORE_MODULE_IDS, 'turretRing']);
   for (const name of MODULE_IDS) {
     if (!authored.has(name)) continue;
     const hp = MODULE_DEFS[name].hp * scale;
     modules[name] = { hp, maxHp: hp, state: 'ok', repairT: 0 };
   }
-  const crew = {};
+  const crew: Record<string, boolean> = {};
   const roster =
     spec.armor && Array.isArray(spec.armor.crew) && spec.armor.crew.length
       ? spec.armor.crew.map((c) => c.crew)
@@ -229,8 +469,10 @@ export function createCombatState(spec) {
  * @param {object} shellSpec ShellSpec
  * @returns {number} caliber in mm for overmatch checks
  */
-function overmatchCaliberMm(shellSpec) {
-  if (shellSpec.effectiveOvermatchCaliberMm > 0) return shellSpec.effectiveOvermatchCaliberMm;
+function overmatchCaliberMm(shellSpec: DamageShellSpec): number {
+  if ((shellSpec.effectiveOvermatchCaliberMm ?? 0) > 0) {
+    return shellSpec.effectiveOvermatchCaliberMm!;
+  }
   if (shellSpec.type === 'APFSDS') return shellSpec.caliberMm * 0.6;
   return shellSpec.caliberMm;
 }
@@ -245,7 +487,11 @@ function overmatchCaliberMm(shellSpec) {
  * @param {number} impactAngleDeg raw angle from the outward normal
  * @returns {{effMm: number, effAngleDeg: number}}
  */
-function effectiveThickness(shellSpec, plate, impactAngleDeg) {
+function effectiveThickness(
+  shellSpec: DamageShellSpec,
+  plate: DamageArmorPlate,
+  impactAngleDeg: number,
+): { effMm: number; effAngleDeg: number } {
   const b = behaviorOf(shellSpec.type);
   let norm = b.normDeg;
   const T = plate.physicalMm;
@@ -270,7 +516,11 @@ function effectiveThickness(shellSpec, plate, impactAngleDeg) {
  * @param {object} plate Plate
  * @returns {boolean}
  */
-function wouldRicochet(shellSpec, impactAngleDeg, plate) {
+function wouldRicochet(
+  shellSpec: DamageShellSpec,
+  impactAngleDeg: number,
+  plate: DamageArmorPlate,
+): boolean {
   const b = behaviorOf(shellSpec.type);
   if (b.kindClass === 'HE') return false;
   if (
@@ -291,7 +541,7 @@ function wouldRicochet(shellSpec, impactAngleDeg, plate) {
  * @param {object} m module record {hp,maxHp,state,repairT}
  * @returns {'ok'|'yellow'|'red'} the new state
  */
-function refreshModuleState(m) {
+function refreshModuleState(m: CombatModuleState): ModuleStateName {
   const prev = m.state;
   m.state = m.hp <= 0 ? 'red' : m.hp <= m.maxHp * 0.5 ? 'yellow' : 'ok';
   if (m.state === 'red' && prev !== 'red') m.repairT = 0; // count-up starts now
@@ -307,7 +557,10 @@ function refreshModuleState(m) {
  * @param {string} moduleName ModuleName
  * @returns {{fireStarted: boolean, ammoRacked: boolean}}
  */
-function rollModuleDamage(ctx, moduleName) {
+function rollModuleDamage(
+  ctx: ResolutionContext,
+  moduleName: ModuleId,
+): { fireStarted: boolean; ammoRacked: boolean } {
   const res = { fireStarted: false, ammoRacked: false };
   const m = ctx.combat.modules[moduleName];
   if (!m) return res;
@@ -357,7 +610,7 @@ function rollModuleDamage(ctx, moduleName) {
  * @param {boolean} isHe use the reduced HE-splash chance
  * @returns {void}
  */
-function rollCrewHit(ctx, crewName, isHe) {
+function rollCrewHit(ctx: ResolutionContext, crewName: string, isHe: boolean): void {
   const roll = ctx.rng(); // always consumed — fixed order
   if (!(crewName in ctx.combat.crew) || ctx.combat.crew[crewName] === false) return;
   // EQUIPMENT SYSTEM: spall liner halves crew hits from HE splash only —
@@ -377,7 +630,7 @@ function rollCrewHit(ctx, crewName, isHe) {
  * @param {boolean} ammoRacked an ammo rack went red this resolution
  * @returns {boolean} the tank is (now) destroyed
  */
-function finalizeTarget(combat, ammoRacked) {
+function finalizeTarget(combat: CombatState, ammoRacked: boolean): boolean {
   if (ammoRacked) combat.hp = 0;
   if (combat.hp <= 0) {
     combat.hp = 0;
@@ -399,7 +652,7 @@ function finalizeTarget(combat, ammoRacked) {
  * @param {string|null} targetId
  * @returns {object} HitEvent with defaults
  */
-function baseEvent(shell, targetId) {
+function baseEvent(shell: DamageShell, targetId: string | null): HitEvent {
   return {
     kind: 'nonpen',
     shellId: shell.id,
@@ -454,9 +707,15 @@ function baseEvent(shell, targetId) {
  * @param {Vector3|null} vel world shell velocity (pre-deflection) or blast dir
  * @returns {void}
  */
-function stampShotInfo(event, hit, shellSpec, target, vel) {
+function stampShotInfo(
+  event: HitEvent,
+  hit: ArmorHit | null,
+  shellSpec: DamageShellSpec,
+  target: DamageTarget | null,
+  vel: Vector3 | null,
+): void {
   if (hit) {
-    if (hit.plate) {
+    if (hit.kind === 'plate') {
       event.zone = hit.plate.name;
       event.plateKind = hit.plate.kind;
       event.physicalMm = hit.plate.physicalMm;
@@ -465,22 +724,27 @@ function stampShotInfo(event, hit, shellSpec, target, vel) {
       // composite plate must report the CE rating the pen check actually used.
       const b = behaviorOf(shellSpec.type);
       event.nominalMm = b.kindClass === 'KE' ? hit.plate.keMm : hit.plate.ceMm;
-    } else if (hit.barrel) {
+    } else if (hit.kind === 'module' && hit.barrel) {
       event.zone = 'gun_barrel';
     } else if (hit.kind === 'module') {
       event.zone = hit.module;
     }
-    if (hit.impactFrame && Number.isFinite(hit.impactLocalX)) {
+    if (hit.impactFrame && isFiniteNumber(hit.impactLocalX)
+        && isFiniteNumber(hit.impactLocalY) && isFiniteNumber(hit.impactLocalZ)) {
       event.impactFrame = hit.impactFrame;
       event.impactLocalPos = [
         hit.impactLocalX, hit.impactLocalY, hit.impactLocalZ,
       ];
-      if (Number.isFinite(hit.impactLocalNormalX)) {
+      if (isFiniteNumber(hit.impactLocalNormalX)
+          && isFiniteNumber(hit.impactLocalNormalY)
+          && isFiniteNumber(hit.impactLocalNormalZ)) {
         event.impactLocalNormal = [
           hit.impactLocalNormalX, hit.impactLocalNormalY, hit.impactLocalNormalZ,
         ];
       }
-      if (Number.isFinite(hit.impactLocalDirX)) {
+      if (isFiniteNumber(hit.impactLocalDirX)
+          && isFiniteNumber(hit.impactLocalDirY)
+          && isFiniteNumber(hit.impactLocalDirZ)) {
         event.impactLocalDir = [
           hit.impactLocalDirX, hit.impactLocalDirY, hit.impactLocalDirZ,
         ];
@@ -501,7 +765,7 @@ function stampShotInfo(event, hit, shellSpec, target, vel) {
 }
 
 /** Stamp a plate intersection onto an event. */
-function stampImpact(event, hit, effMm, penMm) {
+function stampImpact(event: HitEvent, hit: PlateHit, effMm: number, penMm: number): void {
   event.pos = [hit.point.x, hit.point.y, hit.point.z];
   if (hit.normal) event.normal = [hit.normal.x, hit.normal.y, hit.normal.z];
   event.impactAngleDeg = hit.impactAngleDeg ?? 0;
@@ -510,8 +774,10 @@ function stampImpact(event, hit, effMm, penMm) {
 }
 
 /** Spaced-armor value of a gun-barrel crossing (armor doc §4/§7). */
-function barrelScreenMm(hit) {
-  const r = hit.barrelRadiusM > 0 ? hit.barrelRadiusM : BARREL_DEFAULT_RADIUS_M;
+function barrelScreenMm(hit: ModuleHit): number {
+  const r = (hit.barrelRadiusM ?? 0) > 0
+    ? hit.barrelRadiusM!
+    : BARREL_DEFAULT_RADIUS_M;
   return Math.min(
     BARREL_SCREEN_MAX_MM,
     Math.max(BARREL_SCREEN_MIN_MM, r * BARREL_SCREEN_MM_PER_RADIUS_M)
@@ -526,7 +792,7 @@ function barrelScreenMm(hit) {
  * @param {object} hit plate intersection with point + normal
  * @returns {void}
  */
-function deflectShell(shell, hit) {
+function deflectShell(shell: DamageShell, hit: PlateHit): void {
   shell.bounces += 1;
   _reflN.copy(hit.normal);
   const vdotn = shell.vel.dot(_reflN);
@@ -544,7 +810,7 @@ function deflectShell(shell, hit) {
  * @param {function} rng
  * @returns {void}
  */
-function ensurePenRoll(shell, rng) {
+function ensurePenRoll(shell: DamageShell, rng: Rng): void {
   if (shell.penRollDone) return;
   // True arc length accumulated by stepShell (gravity-bent paths are longer
   // than age × muzzle velocity); fall back for shells that never stepped.
@@ -565,11 +831,11 @@ function ensurePenRoll(shell, rng) {
  * @param {object} armorModel ArmorModel
  * @returns {number} mm
  */
-function seamArmorMm(armorModel) {
+function seamArmorMm(armorModel: DamageArmorModel): number {
   if (armorModel._seamMm != null) return armorModel._seamMm;
   let mm = Infinity;
   let plate = null;
-  const scan = (plates) => {
+  const scan = (plates: DamageArmorPlate[] | undefined): void => {
     if (!plates) return;
     for (const p of plates) {
       if ((p.kind || 'main') !== 'main') continue;
@@ -603,7 +869,12 @@ function seamArmorMm(armorModel) {
  * @param {function} rng () => [0,1)
  * @returns {object} HitEvent
  */
-export function resolveShellHit(shell, target, hits, rng) {
+export function resolveShellHit(
+  shell: DamageShell,
+  target: DamageTarget,
+  hits: ArmorHit[],
+  rng: Rng,
+): HitEvent {
   const spec = shell.spec;
   const combat = target.combat;
   const behavior = behaviorOf(spec.type);
@@ -642,7 +913,7 @@ export function resolveShellHit(shell, target, hits, rng) {
 
   let pen = shell.remainingPenMm;
   let hullPen = false;
-  let entryPoint = null;
+  let entryPoint: Vector3 | null = null;
   const limitM = (spec.caliberMm * POSTPEN_CALIBERS) / 1000;
   let decided = false;
   // STRADDLING-BOX DEFERRAL (module_hitbox r1): internal module/crew boxes are
@@ -652,7 +923,7 @@ export function resolveShellHit(shell, target, hits, rng) {
   // even though the shell crosses the box interior after penetrating. Such
   // boxes are parked here and rolled at the pen when their span (t..tExit)
   // extends past the penetrated plate.
-  const straddlers = [];
+  const straddlers: Array<ModuleHit | CrewHit> = [];
 
   for (const hit of hits) {
     if (hullPen && entryPoint && hit.point.distanceTo(entryPoint) > limitM) break;
@@ -787,7 +1058,7 @@ export function resolveShellHit(shell, target, hits, rng) {
         // Rolled in trace order, before any deeper intersection, keeping the
         // per-shot RNG sequence deterministic.
         for (const pb of straddlers) {
-          if (!(pb.tExit > hit.t)) continue;
+          if (!(pb.tExit! > hit.t)) continue;
           if (pb.kind === 'crew') {
             rollCrewHit(ctx, pb.crew, false);
           } else {
@@ -910,6 +1181,7 @@ export function resolveShellHit(shell, target, hits, rng) {
     !shell.carriedThrough &&
     entryPoint !== null;
   if (carries) {
+    const exitEntryPoint = entryPoint!;
     shell.carriedThrough = true;
     // Exit point just past the target's broadphase sphere so next frame's
     // sweep starts outside the victim.
@@ -918,12 +1190,12 @@ export function resolveShellHit(shell, target, hits, rng) {
     const boundR = (armor && armor.boundingRadiusM) || 4;
     _center.copy(target.state.pos);
     _center.y += target.spec.dims ? target.spec.dims.heightM * 0.5 : 1.2;
-    _carryV.subVectors(_center, entryPoint);
+    _carryV.subVectors(_center, exitEntryPoint);
     const proj = _carryV.dot(_carryDir);
     const d2 = Math.max(0, _carryV.lengthSq() - proj * proj);
     const half = Math.sqrt(Math.max(0, boundR * boundR - d2));
     const exitDist = Math.max(0, proj) + half + 0.05;
-    _exitPos.copy(entryPoint).addScaledVector(_carryDir, exitDist);
+    _exitPos.copy(exitEntryPoint).addScaledVector(_carryDir, exitDist);
 
     // The exit is NOT free (armor doc §7: remainingPen after passing through
     // everything): re-trace the exit segment from OUTSIDE back toward the
@@ -934,11 +1206,11 @@ export function resolveShellHit(shell, target, hits, rng) {
     if (armor && target.state) {
       const exitHits = traceTank(
         _exitPos,
-        entryPoint,
+        exitEntryPoint,
         tankPoseFromState(target.state),
         armor,
         combat.eraSpent
-      );
+      ) as ArmorHit[];
       let exitPen = shell.remainingPenMm;
       for (const eh of exitHits) {
         if (eh.kind !== 'plate' || eh.plate.kind === 'era') continue;
@@ -985,7 +1257,15 @@ export function resolveShellHit(shell, target, hits, rng) {
  * @param {string|null} skipModule module already rolled at full odds
  * @returns {void}
  */
-function sweepHeBlast(ctx, event, target, center, radiusM, hits, skipModule) {
+function sweepHeBlast(
+  ctx: ResolutionContext,
+  event: HitEvent,
+  target: DamageTarget,
+  center: Vector3,
+  radiusM: number,
+  hits: ArmorHit[] | null,
+  skipModule: ModuleId | null | undefined,
+): void {
   const armor = target.spec ? target.spec.armor : null;
   const rolled = new Set(skipModule ? [skipModule] : []);
   const useBoxes =
@@ -995,12 +1275,13 @@ function sweepHeBlast(ctx, event, target, center, radiusM, hits, skipModule) {
     for (const box of boxes) {
       if (box.point.distanceTo(center) > radiusM) continue;
       if (box.kind === 'module') {
-        if (rolled.has(box.name)) continue;
-        rolled.add(box.name);
-        const external = box.external || box.name === 'gun';
+        const moduleName = box.name as ModuleId;
+        if (rolled.has(moduleName)) continue;
+        rolled.add(moduleName);
+        const external = box.external || moduleName === 'gun';
         ctx.chanceScale = external ? 1 : 0.5;
         ctx.dmgScale = external ? 1 : 0.5;
-        const r = rollModuleDamage(ctx, box.name);
+        const r = rollModuleDamage(ctx, moduleName);
         event.fireStarted = event.fireStarted || r.fireStarted;
         event.ammoRacked = event.ammoRacked || r.ammoRacked;
       } else {
@@ -1041,7 +1322,7 @@ function sweepHeBlast(ctx, event, target, center, radiusM, hits, skipModule) {
  * @param {Array<object>} hits traceTank result against the wreck
  * @returns {object} HitEvent (targetId null, damage 0)
  */
-function resolveWreckHit(shell, hits) {
+function resolveWreckHit(shell: DamageShell, hits: ArmorHit[]): HitEvent {
   const spec = shell.spec;
   const b = behaviorOf(spec.type);
   const event = baseEvent(shell, null);
@@ -1050,7 +1331,7 @@ function resolveWreckHit(shell, hits) {
   if (b.kindClass === 'HE') {
     // Detonates on the first surface of the wreck — fireball, no victims here
     // (the caller's burst resolution splashes live tanks around the point).
-    const first = hits.find((h) => h.kind === 'plate') || hits[0] || null;
+    const first = hits.find(isPlateHit) || hits[0] || null;
     event.kind = 'he_splash';
     if (first) event.pos = [first.point.x, first.point.y, first.point.z];
     if (first && first.normal) event.normal = [first.normal.x, first.normal.y, first.normal.z];
@@ -1060,7 +1341,7 @@ function resolveWreckHit(shell, hits) {
 
   for (const hit of hits) {
     if (hit.kind !== 'plate') {
-      if (hit.barrel) {
+      if (hit.kind === 'module' && hit.barrel) {
         pen -= barrelScreenMm(hit);
         if (pen <= 0) {
           event.kind = 'nonpen';
@@ -1127,7 +1408,10 @@ function resolveWreckHit(shell, hits) {
  * @returns {{armorMm: number, gapM: number}} extra armor behind the screen
  *   and the air gap to it (both 0 when plateHit is already main armor)
  */
-function heScreenStack(hits, plateHit) {
+function heScreenStack(
+  hits: ArmorHit[],
+  plateHit: PlateHit,
+): { armorMm: number; gapM: number } {
   let armorMm = 0;
   let gapM = 0;
   if (plateHit.plate.kind === 'spaced' || plateHit.plate.kind === 'external') {
@@ -1153,13 +1437,19 @@ function heScreenStack(hits, plateHit) {
  * @param {function} rng
  * @returns {object} HitEvent (kind 'he_pen' | 'he_splash')
  */
-function heDirectHit(shell, target, hits, dmgRoll, rng) {
+function heDirectHit(
+  shell: DamageShell,
+  target: DamageTarget,
+  hits: ArmorHit[],
+  dmgRoll: number,
+  rng: Rng,
+): HitEvent {
   const spec = shell.spec;
   const combat = target.combat;
   const event = baseEvent(shell, target.id);
   const ctx = { combat, shellSpec: spec, rng, modulesHit: event.modulesHit, crewHit: event.crewHit };
 
-  let plateHit = null;
+  let plateHit: PlateHit | null = null;
   let eraArmorMm = 0; // popped tiles add their thickness to splash armor (§11.2)
   for (const hit of hits || []) {
     if (hit.kind !== 'plate') continue;
@@ -1254,9 +1544,9 @@ function heDirectHit(shell, target, hits, dmgRoll, rng) {
  * @param {object} armor ArmorModel
  * @returns {null | {min: number[], max: number[]}}
  */
-function hullAabbOf(armor) {
+function hullAabbOf(armor: DamageArmorModel): ArmorAabb | null {
   if (armor.__hullAabb !== undefined) return armor.__hullAabb;
-  let aabb = null;
+  let aabb: ArmorAabb | null = null;
   if (Array.isArray(armor.hullPlates)) {
     for (const plate of armor.hullPlates) {
       if (plate.kind === 'era' || !Array.isArray(plate.verts)) continue;
@@ -1291,7 +1581,11 @@ function hullAabbOf(armor) {
  * @param {object} pose tankPoseFromState result
  * @returns {Array<object>|null} traceTank hits toward the nearest point
  */
-function nearestPointTrace(burstPoint, tank, pose) {
+function nearestPointTrace(
+  burstPoint: Vector3,
+  tank: DamageTarget,
+  pose: object,
+): ArmorHit[] | null {
   const armor = tank.spec.armor;
   const aabb = hullAabbOf(armor);
   if (!aabb) return null;
@@ -1321,7 +1615,13 @@ function nearestPointTrace(burstPoint, tank, pose) {
   // Extend 1 m past the nearest surface point so the segment fully crosses
   // the plate it lands on.
   _heTo.multiplyScalar((dLen + 1) / dLen).add(burstPoint);
-  const hits = traceTank(burstPoint, _heTo, pose, tank.spec.armor, tank.combat.eraSpent);
+  const hits = traceTank(
+    burstPoint,
+    _heTo,
+    pose,
+    tank.spec.armor,
+    tank.combat.eraSpent,
+  ) as ArmorHit[];
   for (const hit of hits) {
     if (hit.kind === 'plate' && hit.plate.kind !== 'era') return hits;
   }
@@ -1343,7 +1643,14 @@ function nearestPointTrace(burstPoint, tank, pose) {
  * @param {function} rng
  * @returns {Array<object>} HitEvent[]
  */
-export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHits, rng) {
+export function resolveHeBurst(
+  shell: DamageShell,
+  burstPoint: Vector3,
+  tanks: DamageTarget[],
+  directTarget: DamageTarget | null,
+  directHits: ArmorHit[] | null,
+  rng: Rng,
+): HitEvent[] {
   const spec = shell.spec;
   // Arc-length correction (killcam_shotinfo r2): HE shells always die at the
   // burst — trim the unused remainder of the final integration step.
@@ -1355,7 +1662,7 @@ export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHit
   const dmgRoll = shell.dmgRoll;
   shell.dead = true;
 
-  const events = [];
+  const events: HitEvent[] = [];
   let directPen = false;
   let directHadPlate = false;
 
@@ -1366,7 +1673,7 @@ export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHit
     const ev = baseEvent(shell, null);
     ev.kind = 'he_splash';
     ev.pos = [burstPoint.x, burstPoint.y, burstPoint.z];
-    const firstPlate = directHits ? directHits.find((h) => h.kind === 'plate') : null;
+    const firstPlate = directHits ? directHits.find(isPlateHit) : null;
     if (firstPlate && firstPlate.normal) {
       ev.normal = [firstPlate.normal.x, firstPlate.normal.y, firstPlate.normal.z];
     }
@@ -1406,8 +1713,16 @@ export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHit
     // crosses. Center ray remains the fallback for probes without hull
     // plates or bursts inside the hull volume.
     let hits = nearestPointTrace(burstPoint, tank, pose);
-    if (!hits) hits = traceTank(burstPoint, _center, pose, armor, tank.combat.eraSpent);
-    let plateHit = null;
+    if (!hits) {
+      hits = traceTank(
+        burstPoint,
+        _center,
+        pose,
+        armor,
+        tank.combat.eraSpent,
+      ) as ArmorHit[];
+    }
+    let plateHit: PlateHit | null = null;
     for (const hit of hits) {
       if (hit.kind !== 'plate' || hit.plate.kind === 'era') continue;
       plateHit = hit;
@@ -1478,7 +1793,10 @@ export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHit
  * @param {function} rng
  * @returns {{damage: number, extinguished: boolean, destroyed: boolean}}
  */
-export function tickFire(entity, rng) {
+export function tickFire(
+  entity: { combat?: CombatState | null },
+  rng: Rng,
+): { damage: number; extinguished: boolean; destroyed: boolean } {
   const combat = entity.combat;
   if (!combat || !combat.fire.burning || combat.destroyed) {
     return { damage: 0, extinguished: false, destroyed: combat ? combat.destroyed : false };
@@ -1487,7 +1805,7 @@ export function tickFire(entity, rng) {
   combat.hp = Math.max(0, combat.hp - damage);
 
   let ammoRacked = false;
-  for (const name of ['engine', 'fuelTank', 'ammoRack']) {
+  for (const name of ['engine', 'fuelTank', 'ammoRack'] as const satisfies readonly ModuleId[]) {
     const m = combat.modules[name];
     if (!m || m.hp <= 0) continue;
     m.hp = Math.max(0, m.hp - FIRE_TICK_MODULE_DMG);
@@ -1524,12 +1842,13 @@ export function tickFire(entity, rng) {
  * @param {number} dt seconds since the last tick
  * @returns {string[]} module names that just turned yellow
  */
-export function tickModuleRepairs(combat, dt) {
-  const repaired = [];
+export function tickModuleRepairs(combat: CombatState | null | undefined, dt: number): string[] {
+  const repaired: string[] = [];
   if (!combat || combat.destroyed || !combat.modules) return repaired;
   const rate = equipMult(combat, 'repair');
-  for (const name of Object.keys(combat.modules)) {
+  for (const name of Object.keys(combat.modules) as ModuleId[]) {
     const m = combat.modules[name];
+    if (!m) continue;
     if (m.state !== 'red') continue;
     m.repairT += dt * rate;
     if (m.repairT >= REPAIR_S) {
@@ -1551,11 +1870,12 @@ export function tickModuleRepairs(combat, dt) {
  * @param {object} combat CombatState
  * @returns {string[]} module names restored to 'ok'
  */
-export function repairAllModules(combat) {
-  const fixed = [];
+export function repairAllModules(combat: CombatState | null | undefined): string[] {
+  const fixed: string[] = [];
   if (!combat || !combat.modules) return fixed;
-  for (const name of Object.keys(combat.modules)) {
+  for (const name of Object.keys(combat.modules) as ModuleId[]) {
     const m = combat.modules[name];
+    if (!m) continue;
     if (m.state === 'ok') continue;
     m.hp = m.maxHp;
     refreshModuleState(m); // full HP ⇒ 'ok', repairT cleared
@@ -1576,7 +1896,11 @@ export function repairAllModules(combat) {
  *   callers without it keep the old same-duration restart.
  * @returns {void}
  */
-export function selectShell(combatState, slot, spec) {
+export function selectShell(
+  combatState: CombatState,
+  slot: number,
+  spec?: DamageTankSpec,
+): void {
   if (spec && spec.gun.shells) slot = Math.max(0, Math.min(spec.gun.shells.length - 1, slot | 0));
   if (slot === combatState.shellSlot) return;
   combatState.shellSlot = slot;
@@ -1585,7 +1909,7 @@ export function selectShell(combatState, slot, spec) {
 }
 
 /** Shared crew, module, and equipment multiplier for a new load cycle. */
-function reloadMultiplier(combatState, spec) {
+function reloadMultiplier(combatState: CombatState, spec: DamageTankSpec): number {
   let mult = 1;
   if ('loader' in combatState.crew && combatState.crew.loader === false) mult *= 1.5;
   const rack = combatState.modules && combatState.modules.ammoRack;
@@ -1606,7 +1930,7 @@ function reloadMultiplier(combatState, spec) {
   return mult;
 }
 
-function beginMagazineReload(combatState, spec) {
+function beginMagazineReload(combatState: CombatState, spec: DamageTankSpec): boolean {
   const magazine = combatState.magazine;
   const autoloader = spec.gun && spec.gun.autoloader;
   if (!magazine || !autoloader) return false;
@@ -1620,7 +1944,9 @@ function beginMagazineReload(combatState, spec) {
 }
 
 /** Return the exact reason a manual magazine reload cannot begin. */
-export function magazineReloadDenialReason(combatState) {
+export function magazineReloadDenialReason(
+  combatState: CombatState | null | undefined,
+): 'NO_MAGAZINE' | 'MAGAZINE_RELOADING' | 'MAGAZINE_FULL' | null {
   const magazine = combatState?.magazine;
   if (!magazine) return 'NO_MAGAZINE';
   if (combatState.reload?.kind === 'magazine' && combatState.reload.t > 0) {
@@ -1634,7 +1960,7 @@ export function magazineReloadDenialReason(combatState) {
  * Discard a partial magazine and begin a complete magazine load. Returns
  * false when the tank has no magazine, is already loading one, or is full.
  */
-export function startMagazineReload(combatState, spec) {
+export function startMagazineReload(combatState: CombatState, spec: DamageTankSpec): boolean {
   if (magazineReloadDenialReason(combatState)) return false;
   return beginMagazineReload(combatState, spec);
 }
@@ -1644,7 +1970,7 @@ export function startMagazineReload(combatState, spec) {
  * available atomically when a full magazine reload completes.
  * @returns {boolean} true only on the ready edge
  */
-export function tickReload(combatState, dt) {
+export function tickReload(combatState: CombatState | null | undefined, dt: number): boolean {
   if (!combatState || combatState.reload.t <= 0) return false;
   const remaining = combatState.reload.t - dt;
   combatState.reload.t = remaining <= 1e-9 ? 0 : remaining;
@@ -1661,7 +1987,7 @@ export function tickReload(combatState, dt) {
  * rounds remain, otherwise the complete magazine reload. Conventional guns
  * retain their one-shell reload behavior.
  */
-export function startPostShotReload(combatState, spec) {
+export function startPostShotReload(combatState: CombatState, spec: DamageTankSpec): void {
   const magazine = combatState.magazine;
   const autoloader = spec.gun && spec.gun.autoloader;
   if (!magazine || !autoloader) {
@@ -1689,7 +2015,7 @@ export function startPostShotReload(combatState, spec) {
  * @param {object} spec TankSpec
  * @returns {void}
  */
-export function startReload(combatState, spec) {
+export function startReload(combatState: CombatState, spec: DamageTankSpec): void {
   if (combatState.magazine && spec.gun.autoloader) {
     beginMagazineReload(combatState, spec);
     return;
@@ -1723,7 +2049,11 @@ export function startReload(combatState, spec) {
  * @returns {number} remainingAvgPen / effectiveMm (0 with no plate, on
  *   ricochet, or when a screen/ERA soaks the whole pen)
  */
-export function estimatePenRatio(shellSpec, distM, plateInfo) {
+export function estimatePenRatio(
+  shellSpec: DamageShellSpec,
+  distM: number,
+  plateInfo: AimArmorInfo | null | undefined,
+): number {
   if (!plateInfo || !plateInfo.plate) return 0;
   const layers = plateInfo.layers;
   const b = behaviorOf(shellSpec.type);
@@ -1798,7 +2128,7 @@ export function estimatePenRatio(shellSpec, distM, plateInfo) {
  * @param {number} caliberMm
  * @returns {number} radius in meters
  */
-export function blastRadiusM(caliberMm) {
+export function blastRadiusM(caliberMm: number): number {
   const caliber = Math.max(0, Number(caliberMm) || 0);
   return Math.min(8, Math.max(1, 0.66 * Math.pow(caliber / 30, 1.3)));
 }

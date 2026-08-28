@@ -8,7 +8,7 @@
  * yaw = 0 faces +Z, positive pitch = nose up.
  * ROLL SIGN (locked by the renderer): every consumer composes the pose as
  * rotation.set(-visualPitch, yaw, visualRoll, 'YXZ') (tankFactory syncFromState,
- * armor buildFrames, damage.js, killcam) — under that composition POSITIVE roll
+ * armor buildFrames, damage.ts, killcam) — under that composition POSITIVE roll
  * lifts the RIGHT side (worldY of a hull-local point = pos.y
  * + x·sin(roll)·cos(pitch) + z·sin(pitch)). The r5 terrain-contact gate traced
  * one track buried ~1 m while the other floated at rest to the old fit using
@@ -774,7 +774,7 @@ function readDebuffs(
     // faster settle), vertical stabilizer shrinks the movement-bloom EXCESS
     // (bloomMult <1, applied at the bloom target below). All stack
     // multiplicatively with the damage/crew debuffs above, exactly like the
-    // ammo-rack × loader stack in damage.js startReload.
+    // ammo-rack × loader stack in damage.ts startReload.
     const em = combat.equipMults;
     if (em) {
       if (typeof em.traverse === 'number') traverseMult *= em.traverse;

@@ -505,7 +505,7 @@ authority while keeping close-range aim consistent with solo play.
 ## Ballistics, armor, and damage
 
 src/sim/ballistics.ts advances shells and resolves candidate impacts.
-src/sim/armor.js evaluates the struck plate. src/sim/damage.js applies vehicle,
+src/sim/armor.js evaluates the struck plate. src/sim/damage.ts applies vehicle,
 module, crew, fire, and destruction state.
 
 Explosive reactive armor is a one-shot authoritative plate, not a cosmetic hit

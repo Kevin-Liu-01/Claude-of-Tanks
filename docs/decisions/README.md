@@ -178,3 +178,4 @@ runtime documents remain authoritative for behavior.
 - [0166 — The vegetation runtime is strict TypeScript](0166-typed-vegetation-runtime.md)
 - [0167 — The props runtime is strict TypeScript](0167-typed-props-runtime.md)
 - [0168 — Movement and rigid-body simulation are strict TypeScript](0168-typed-movement-runtime.md)
+- [0169 — Damage and ERA authority are strict TypeScript](0169-typed-damage-runtime.md)

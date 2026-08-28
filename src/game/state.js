@@ -23,7 +23,7 @@ import { tankPoseFromState, traceTank } from '../sim/armor.js';
 import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
   selectShell, startPostShotReload, startReload, tickReload, isHeClass, ramDamage,
-} from '../sim/damage.js';
+} from '../sim/damage.ts';
 import {
   completeGuidedMissileFlight,
   createSpecialActionState,
@@ -53,7 +53,7 @@ import {
 export { createBus, createGameState, mulberry32 } from './stateCore.ts';
 
 const COMBAT_SEED = 6000;
-// module repair duration lives with the state machine: sim/damage.js REPAIR_S
+// module repair duration lives with the state machine: sim/damage.ts REPAIR_S
 const FIRE_TICK_S = 0.5;
 const BATTLE_TIME_LIMIT_S = 900; // 15:00 clock (HUD counts it down) — timeout = draw
 
@@ -1352,7 +1352,7 @@ function stepShells(game, bus, world) {
 }
 
 /** Red-module auto-repair to yellow after REPAIR_S (§2.4 locked). The state
- * transition lives in sim/damage.js tickModuleRepairs — ONE module state
+ * transition lives in sim/damage.ts tickModuleRepairs — ONE module state
  * machine (module_hitbox r1); the toolbox repair-rate equipment multiplier
  * is honored there. This wrapper only broadcasts the results. */
 function tickRepairs(game, bus, dt) {
@@ -1499,7 +1499,7 @@ export function simStep(game, bus, world, rig, collider) {
   // tick. Each collision is detected up to twice (once per side's movement
   // update, with mirrored roles); dedupe by unordered pair keeping the
   // detection with the highest closing speed. Damage split is mass-weighted
-  // kinetic (sim/damage.js ramDamage); wrecks still bruise the hull that
+  // kinetic (sim/damage.ts ramDamage); wrecks still bruise the hull that
   // plows into them but take nothing. The wall-impact clank/jolt feedback
   // already fires from the movement blocked-drive path — this block adds hp,
   // kill attribution ('ram' cause) and the tank:ram event only.

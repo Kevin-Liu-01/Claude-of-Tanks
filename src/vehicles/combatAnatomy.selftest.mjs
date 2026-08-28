@@ -4,7 +4,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTank } from './tankFactory.js';
 import { Vector3 } from 'three';
-import { createCombatState, startReload } from '../sim/damage.js';
+import { createCombatState, startReload } from '../sim/damage.ts';
 import { traceTank } from '../sim/armor.js';
 import { CORE_MODULE_IDS, MODULE_IDS } from '../sim/moduleCatalog.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.js';

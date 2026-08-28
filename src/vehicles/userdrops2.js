@@ -149,7 +149,7 @@ const USERDROP2_SPECS = {
     terrainResistance: WHEELED_TR,
     turretTraverseDegS: 40, gunPitchDegS: 40, gunElevationDeg: 30, gunDepressionDeg: 8,
     gun: {
-      // XM813 Bushmaster per-shell reloads are LIVE (sim/damage.js
+      // XM813 Bushmaster per-shell reloads are LIVE (sim/damage.ts
       // startReload): 0.35 s bursts, belt counts sized to match.
       caliberMm: 30, reloadS: 0.35, baseAccuracy: 0.30, aimTimeS: 1.4,
       bloom: BLOOM_MODERN,

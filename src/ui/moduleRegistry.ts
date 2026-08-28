@@ -5,7 +5,7 @@
 // ('Fuel' vs 'Fuel Tank'). Pure data — no DOM, no three.
 //
 // The SIM truth lives elsewhere and is deliberately not re-exported here:
-//   - module HP / save-throw / fire tables + state machine: src/sim/damage.js
+//   - module HP / save-throw / fire tables + state machine: src/sim/damage.ts
 //   - module state broadcasts: the 'module:state' bus event
 //     ({ id, module, state }) emitted by game/state.js — audio, HUD and
 //     killcam all subscribe to that one channel.

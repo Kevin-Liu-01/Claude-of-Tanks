@@ -29,7 +29,7 @@ import {
   blastRadiusM,
   isHeClass,
   ramDamage,
-} from './damage.js';
+} from './damage.ts';
 
 // ---------------------------------------------------------------- harness --
 let failures = 0;
@@ -1218,7 +1218,7 @@ function mkShell(shellSpec, distM = 100) {
 
 // ----- external module boxes (optics) damageable without penetration --------
 // Armor doc §12: tracks, gun, viewports are external. traceTank flags optics
-// boxes external by default; damage.js honors hit.external.
+// boxes external by default; damage.ts honors hit.external.
 {
   const target = mkTarget();
   const shell = mkShell(AP100, 100);

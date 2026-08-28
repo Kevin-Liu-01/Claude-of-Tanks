@@ -934,10 +934,10 @@ export function createShotInfo(bus) {
       // Roll colored green/red vs the nominal it was rolled from.
       // ERA/screen honesty (r6 major): penRollMm is the shell's RESIDUAL pen
       // — ERA tiles / spaced screens already cut it in-event before the main
-      // plate test (damage.js: pen *= 1 - era.keReduction) — and a bare
+      // plate test (damage.ts: pen *= 1 - era.keReduction) — and a bare
       // '461 / 898 mm' on an ERA'd T-80U glacis read as a broken ±25% RNG.
       // When the payload carries the pre-degradation roll (penRollFreshMm,
-      // additive damage.js stamp per docs/GUNNERY-CAMERA-SPEC.md)
+      // additive damage.ts stamp per docs/GUNNERY-CAMERA-SPEC.md)
       // the row prints the cut explicitly: '894 → 461 / 896 mm'. Payloads
       // without the field still get the qualifier whenever the event itself
       // proves a cut (eraPlate set, or a residual impossible from a ±25%

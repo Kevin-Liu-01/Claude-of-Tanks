@@ -20,7 +20,7 @@ Module ownership (file paths are FIXED):
 | world    | `src/world/terrain.ts`, `src/world/vegetation.ts`, `src/world/props.ts`, `src/world/map.ts` |
 | vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.js`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
 | movement | `src/sim/movement.ts` |
-| combat   | `src/sim/ballistics.ts`, `src/sim/armor.js`, `src/sim/damage.js`, `src/sim/combat.selftest.mjs` |
+| combat   | `src/sim/ballistics.ts`, `src/sim/armor.js`, `src/sim/damage.ts`, `src/sim/combat.selftest.mjs` |
 | ai       | `src/game/ai.js` |
 | hud      | `src/ui/hud.js`, `src/ui/garage.js`, `src/ui/damagePanel.js` |
 | fx       | `src/fx/effects.js`, `src/fx/particles.js` |
@@ -114,7 +114,7 @@ function createBus(){ const m=new Map(); return {
 | event | payload | emitted by |
 |---|---|---|
 | `shell:fired` | `{ shellId, shooterId, isPlayer, shellType, caliberMm, muzzlePos:vec3, dir:vec3 }` | integration (after `createShell`) |
-| `shell:hit` | `HitEvent` (§2.6) | integration (from damage.js return) |
+| `shell:hit` | `HitEvent` (§2.6) | integration (from damage.ts return) |
 | `shell:expired` | `{ shellId, pos:vec3, hitTerrain:boolean }` | integration |
 | `tank:destroyed` | `{ id, specId, pos:vec3, killerId, cause:'shot'|'fire'|'ammorack' }` | integration |
 | `tank:fire` | `{ id, burning:boolean }` | integration |
@@ -274,7 +274,7 @@ TankEntity = {
   id: string, specId: TankId, spec: TankSpec,
   team: 'player'|'enemy', isPlayer: boolean,
   state: TankState,        // owned by movement.ts
-  combat: CombatState,     // owned by damage.js
+  combat: CombatState,     // owned by damage.ts
   input: TankInput,        // written by integration (player) or ai.js
   visual: TankVisual|null, // owned by tankFactory (null in headless tests)
   ai: object|null,         // opaque, owned by ai.js
@@ -327,12 +327,12 @@ ShellEntity = {
   spec: ShellSpec,
   pos: THREE.Vector3, prevPos: THREE.Vector3, vel: THREE.Vector3,
   ageS: number, dead: boolean,
-  penRollDone: boolean, remainingPenMm: number,   // set by damage.js during resolution
+  penRollDone: boolean, remainingPenMm: number,   // set by damage.ts during resolution
   bounces: number,
 }
 ```
 
-### 2.6 `HitEvent` (returned by damage.js, emitted as `shell:hit`)
+### 2.6 `HitEvent` (returned by damage.ts, emitted as `shell:hit`)
 ```js
 HitEvent = {
   kind: 'pen'|'nonpen'|'ricochet'|'spaced_absorb'|'era'|'he_pen'|'he_splash'|'terrain',
@@ -691,7 +691,7 @@ of tankFactory's order) → turret local for turret plates/boxes (−turretYaw a
 turretPivot, and −gunPitch about gunPivot for `gunFollow` plates). Use Matrix4 built
 once per trace.
 
-#### 3.5.3 `damage.js`
+#### 3.5.3 `damage.ts`
 ```js
 export function createCombatState(spec) => CombatState        // §2.4; module HP table:
 //   trackL/R 100, engine 160, fuelTank 120, ammoRack 150, gun 150, radio 90,

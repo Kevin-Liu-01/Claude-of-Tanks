@@ -10,8 +10,8 @@ pass (2026-07-31); sources of record are listed per section.
 | Concern | Owner | Consumers |
 | --- | --- | --- |
 | Closed armor cells / smooth module and crew volumes | `spec.armor` (authored zones finalized by `vehicles/combatAnatomy.js`) | `sim/armor.js` `traceTank`, Gallery diagnostics, scoped armor flashlight |
-| Hit resolution (saves, damage, fire, detonation) | `src/sim/damage.js` | `game/state.js` stepShells |
-| Module state machine (`ok`/`yellow`/`red`, repairs) | `src/sim/damage.js` (`refreshModuleState`, `tickModuleRepairs`, `repairAllModules`) | state.js game loop, main.js repair-kit consumable |
+| Hit resolution (saves, damage, fire, detonation) | `src/sim/damage.ts` | `game/state.js` stepShells |
+| Module state machine (`ok`/`yellow`/`red`, repairs) | `src/sim/damage.ts` (`refreshModuleState`, `tickModuleRepairs`, `repairAllModules`) | state.js game loop, main.js repair-kit consumable |
 | State broadcasts | `module:state` bus event `{ id, module, state, repaired? }` emitted by `game/state.js` only | audio.js, hud.js alerts, (killcam/damage panel read CombatState directly) |
 | Presentation (labels, colors, order) | `src/ui/moduleRegistry.ts` | hud.js, damagePanel.js, shotInfo.js, killcam.js |
 
@@ -19,7 +19,7 @@ The `repaired: true` payload flag marks a red→yellow RECOVERY so the HUD
 toasts `<MODULE> REPAIRED` instead of `DAMAGED`; audio infers direction from
 its own prev-state tracker and ignores the flag.
 
-## Hit pipeline (sim/damage.js `resolveShellHit`)
+## Hit pipeline (sim/damage.ts `resolveShellHit`)
 
 Ordered `traceTank` intersections: ricochet on raw angle → ERA tiles → spaced
 screens (HEAT gap decay) → main-armor pen check → 10-caliber post-pen sweep
@@ -36,7 +36,7 @@ rolling module/crew volumes. Two rules matter for module correctness:
   entry point do not roll (spall cone dissipates). Straddlers begin AT the
   pen point, so the limit cannot exclude them.
 
-## Balance tables (source of record: `src/sim/damage.js`)
+## Balance tables (source of record: `src/sim/damage.ts`)
 
 Module HP (`MODULE_HP`, ×2.5 on `era: 'modern'` specs):
 
