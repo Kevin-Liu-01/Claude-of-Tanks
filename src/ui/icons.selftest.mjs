@@ -3,7 +3,7 @@
 import { readFile } from 'node:fs/promises';
 import './contextInfo.selftest.mjs';
 import './garageDossier.selftest.mjs';
-import { EQUIPMENT_CATALOG } from '../game/equipment.js';
+import { EQUIPMENT_CATALOG } from '../game/equipment.ts';
 import { equipIconIds, equipIconSVG } from './equipIcons.js';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
 import { shellIconSVG, shellIconTypes } from './shellIcons.ts';

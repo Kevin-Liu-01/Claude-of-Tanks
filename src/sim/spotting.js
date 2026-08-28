@@ -221,7 +221,7 @@ function fireCamoLossFor(caliberMm) {
 // Wire-up lives in game/state.js (getEquipment dep) + the garage loadout UI.
 // EQUIPMENT SYSTEM: this table owns only the VISION/CONCEALMENT effects; the
 // full catalog (reload/aim/repair/durability/fire gear + slot logic + AI
-// defaults) lives in game/equipment.js and references these same ids.
+// defaults) lives in game/equipment.ts and references these same ids.
 // ---------------------------------------------------------------------------
 export const EQUIPMENT = {
   camo_net:   { label: 'Camouflage Net',       camoStill: 0.12 },

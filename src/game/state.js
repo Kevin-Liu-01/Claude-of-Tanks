@@ -37,12 +37,12 @@ import { getStoredDifficulty } from './input.js';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.js';
 import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.js';
-// EQUIPMENT SYSTEM (game/equipment.js): per-tank loadouts — the player's
+// EQUIPMENT SYSTEM (game/equipment.ts): per-tank loadouts — the player's
 // persisted picks, per-role AI defaults, and the equipMults record the
 // damage/movement/repair hooks read off CombatState.
 import {
   loadEquipment as loadEquipmentCatalog, applyEquipmentToCombat, defaultLoadoutFor,
-} from './equipment.js';
+} from './equipment.ts';
 import { mulberry32 } from './stateCore.ts';
 import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
 import {
@@ -116,7 +116,7 @@ const _firedEv = {
  */
 /**
  * EQUIPMENT (camo_spotting r1 → EQUIPMENT SYSTEM): per-tank loadout persisted
- * in localStorage (`cot.equip.<specId>`). Now delegates to game/equipment.js,
+ * in localStorage (`cot.equip.<specId>`). Now delegates to game/equipment.ts,
  * which validates ids against the full catalog, era-gates modern-only gear
  * and clamps to the 3 slots. Kept as an export for compatibility.
  * @param {string} specId

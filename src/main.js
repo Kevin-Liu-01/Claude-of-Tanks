@@ -119,7 +119,7 @@ import { createNetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
 import { createNetworkBattleLaunchRuntime } from './net/networkBattleLaunchRuntime.ts';
 import { createNetworkBattleActivationRuntime } from './net/networkBattleActivationRuntime.ts';
 import { createNetworkBattlePresentationAccess } from './net/networkBattlePresentationAccess.ts';
-import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
+import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createTouchControlsAccess } from './ui/touchControlsAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';

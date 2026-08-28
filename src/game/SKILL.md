@@ -25,6 +25,9 @@ owns bot decisions and is injected into the headless multiplayer authority;
 `input.js` normalizes devices; `profile.ts` persists real local match history;
 `playerBattleActions.ts` owns ammunition, consumable, special-action, and
 local-versus-network command policy without importing the combat runtime;
+`equipment.ts` owns the strict catalog, persistence, legal-loadout, multiplier,
+combat-attachment, bot-default, and Garage-stat contract shared by both
+authorities;
 `playerFrameInput.ts` owns allocation-free per-frame movement, fire, mouse,
 touch, cursor fallback, zoom, free-look, and sniper-mode sampling;
 `battleFrameRuntime.ts` owns pause edges, retained input sampling, network

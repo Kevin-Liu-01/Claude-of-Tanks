@@ -161,7 +161,7 @@ export function ramDamage(massAT, massBT, closingMps) {
 }
 
 /**
- * EQUIPMENT SYSTEM (game/equipment.js): multiplier off CombatState.equipMults,
+ * EQUIPMENT SYSTEM (game/equipment.ts): multiplier off CombatState.equipMults,
  * defaulting to 1 so combat states without a loadout (probes, selftests,
  * throwaway states) resolve exactly as before. The record is attached once
  * per battle by applyEquipmentToCombat; damage.js stays pure — the loadout

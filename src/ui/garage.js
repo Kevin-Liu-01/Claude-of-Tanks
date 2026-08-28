@@ -16,14 +16,14 @@ import {
   CUSTOM_CAMO_ID, customCamoPatternId,
 } from '../vehicles/camoPolicy.js';
 import { createInfoButton } from './contextInfo.js';
-// EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.js), the
+// EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
 // white-silhouette icon set (equipIcons.js), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
 // with the battle sim.
 import {
   EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS, EQUIP_CATEGORIES,
   loadEquipment, saveEquipment, equipEligible, computeEquipMults,
-} from '../game/equipment.js';
+} from '../game/equipment.ts';
 import { equipIconSVG } from './equipIcons.js';
 import { uiIconSVG } from './uiIcons.ts';
 import { shellIconSVG } from './shellIcons.ts';
@@ -891,7 +891,7 @@ export function createGarage(opts) {
     sidebarSizeObserver.observe(root.querySelector('.cot-leftcol'));
   }
   // --- EQUIPMENT SYSTEM: slot boxes on the stats card + item picker --------
-  // Catalog/persistence/era-gating live in game/equipment.js (localStorage
+  // Catalog/persistence/era-gating live in game/equipment.ts (localStorage
   // `cot.equip.<specId>`, read battle-side by game/state.js at spawn). The
   // three slot boxes are rendered INTO the stats card by renderStats (the
   // card rebuilds its innerHTML per vehicle), so slot clicks are delegated
@@ -1327,7 +1327,7 @@ export function createGarage(opts) {
     // group, higher-is-better (reload inverted) — see STAT_RANGES above
     const grp = statGroupOf(spec);
     // EQUIPMENT SYSTEM: fold the mounted loadout into the displayed stats —
-    // the same multipliers/tables the battle sim reads (equipment.js +
+    // the same multipliers/tables the battle sim reads (equipment.ts +
     // spotting.js), so the card IS the loadout preview. Modified values tint
     // green with the stock number in the tooltip.
     // §5.31b PRINT VIEWER: print cards show STOCK stats — no loadout is

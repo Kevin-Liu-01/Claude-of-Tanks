@@ -46,7 +46,7 @@ import {
 import { createSpottingSystem } from './spotting.js';
 import { captureWorldSnapshot } from '../net/snapshot.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.js';
-import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.js';
+import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.ts';
 import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.js';
 import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.js';
 import { CONSUMABLE_RULES, cooldownRemaining } from '../game/consumables.ts';

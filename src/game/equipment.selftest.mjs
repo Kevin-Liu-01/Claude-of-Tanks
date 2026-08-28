@@ -15,7 +15,7 @@ import {
   EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS, EQUIP_CATEGORIES,
   sanitizeLoadout, computeEquipMults, applyEquipmentToCombat,
   defaultLoadoutFor, AI_DEFAULT_LOADOUTS, equipEligible, equipModifiedStats,
-} from './equipment.js';
+} from './equipment.ts';
 import {
   createCombatState, startReload, tickFire, resolveShellHit,
 } from '../sim/damage.js';

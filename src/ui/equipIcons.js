@@ -124,7 +124,7 @@ const GLYPHS = {
 
 /**
  * Inline SVG for an equipment item.
- * @param {string} id catalog item id (game/equipment.js)
+ * @param {string} id catalog item id (game/equipment.ts)
  * @param {number} [size] rendered square size in px (crisp 20-48)
  * @param {string} [ink] fill/stroke color
  * @returns {string} '<svg …>…</svg>' or '' for unknown ids

@@ -535,7 +535,7 @@ function readDebuffs(combat, out) {
       if (crew.driver === false) { accelMult = DRIVER_DEAD_MULT; traverseMult = DRIVER_DEAD_MULT; }
       if (crew.gunner === false) aimTimeMult = GUNNER_DEAD_AIMTIME_MULT;
     }
-    // EQUIPMENT SYSTEM (game/equipment.js): loadout multipliers attached to
+    // EQUIPMENT SYSTEM (game/equipment.ts): loadout multipliers attached to
     // the combat state once per battle. Improved rotation raises hull+turret
     // traverse (traverse >1 ⇒ rate UP), GLD/vents cut aim time (aimTime <1 ⇒
     // faster settle), vertical stabilizer shrinks the movement-bloom EXCESS

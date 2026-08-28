@@ -1,4 +1,4 @@
-// src/game/equipment.js — WoT-style equipment catalog + loadout logic.
+// src/game/equipment.ts — WoT-style equipment catalog + loadout logic.
 // PURE data/logic module: no three import, no DOM requirement (localStorage
 // is feature-detected), runs under plain node (selftest:
 // src/game/equipment.selftest.mjs).
@@ -31,6 +31,93 @@
 
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.js';
 
+export type EquipmentEra = 'all' | 'modern';
+export type EquipmentCategoryId = 'all' | 'fire' | 'recon' | 'mobility' | 'survival';
+export type EquipmentModuleId = 'trackL' | 'trackR' | 'ammoRack' | 'fuelTank';
+
+export interface EquipmentEffects {
+  reload?: number;
+  aimTime?: number;
+  bloom?: number;
+  traverse?: number;
+  turret?: number;
+  repair?: number;
+  heSplash?: number;
+  crewHe?: number;
+  engineFire?: number;
+  fireTicks?: number;
+  extinguish?: number;
+  moduleHp?: Partial<Record<EquipmentModuleId, number>>;
+}
+
+export interface EquipmentItem {
+  id: string;
+  name: string;
+  short: string;
+  cat: Exclude<EquipmentCategoryId, 'all'>;
+  era: EquipmentEra;
+  desc: string;
+  effects: EquipmentEffects;
+  spot?: boolean;
+}
+
+export interface EquipmentCategory {
+  id: EquipmentCategoryId;
+  label: string;
+}
+
+export interface EquipmentSpecLike {
+  era?: unknown;
+  role?: string;
+  gun?: {
+    autoloader?: unknown;
+  };
+}
+
+export interface EquipmentStatsSpec extends EquipmentSpecLike {
+  gun: {
+    autoloader?: unknown;
+    reloadS: number;
+    aimTimeS: number;
+  };
+  hullTraverseDegS: number;
+}
+
+export interface EquipmentMultipliers {
+  reload: number;
+  aimTime: number;
+  bloom: number;
+  traverse: number;
+  turret: number;
+  repair: number;
+  heSplash: number;
+  crewHe: number;
+  engineFire: number;
+  fireTicks: number;
+  extinguish: number;
+  moduleHp: Partial<Record<EquipmentModuleId, number>>;
+}
+
+export interface EquipmentCombatState {
+  equip?: string[];
+  equipMults?: EquipmentMultipliers;
+  modules?: Record<string, {
+    maxHp: number;
+    hp: number;
+  }>;
+}
+
+export interface ModifiedEquipmentStat {
+  base: number;
+  mod: number;
+}
+
+export interface EquipmentModifiedStats {
+  reloadS: ModifiedEquipmentStat;
+  aimTimeS: ModifiedEquipmentStat;
+  traverseDegS: ModifiedEquipmentStat;
+}
+
 /** Equipment slots per vehicle (WoT standard). */
 export const EQUIP_SLOTS = 3;
 
@@ -41,7 +128,7 @@ export const EQUIP_SLOTS = 3;
  * view/camo numbers live in spotting.js EQUIPMENT (kept there so the
  * spotting selftest keeps owning its constants).
  */
-export const EQUIPMENT_CATALOG = [
+export const EQUIPMENT_CATALOG: readonly EquipmentItem[] = [
   // --- FIREPOWER -----------------------------------------------------------
   {
     id: 'rammer', name: 'Gun Rammer', short: 'Rammer', cat: 'fire', era: 'all',
@@ -120,10 +207,12 @@ export const EQUIPMENT_CATALOG = [
 ];
 
 /** id -> catalog item. */
-export const EQUIPMENT_BY_ID = new Map(EQUIPMENT_CATALOG.map((e) => [e.id, e]));
+export const EQUIPMENT_BY_ID: ReadonlyMap<string, EquipmentItem> = new Map(
+  EQUIPMENT_CATALOG.map((item) => [item.id, item]),
+);
 
 /** Picker categories in display order. */
-export const EQUIP_CATEGORIES = [
+export const EQUIP_CATEGORIES: readonly EquipmentCategory[] = [
   { id: 'all', label: 'All' },
   { id: 'fire', label: 'Firepower' },
   { id: 'recon', label: 'Recon' },
@@ -137,7 +226,10 @@ export const EQUIP_CATEGORIES = [
  * @param {object} spec TankSpec-like ({ era })
  * @returns {boolean}
  */
-export function equipEligible(item, spec) {
+export function equipEligible(
+  item: EquipmentItem | string,
+  spec?: EquipmentSpecLike | null,
+): boolean {
   const it = typeof item === 'string' ? EQUIPMENT_BY_ID.get(item) : item;
   if (!it) return false;
   // Magazine autoloaders cannot mount a gun rammer in the WoT equipment
@@ -155,8 +247,11 @@ export function equipEligible(item, spec) {
  * @param {?object} [spec] when given, era-illegal items are dropped
  * @returns {Array<string>}
  */
-export function sanitizeLoadout(ids, spec) {
-  const out = [];
+export function sanitizeLoadout(
+  ids: readonly string[] | null | undefined,
+  spec?: EquipmentSpecLike | null,
+): string[] {
+  const out: string[] = [];
   if (Array.isArray(ids)) {
     for (const id of ids) {
       if (!EQUIPMENT_BY_ID.has(id) || out.includes(id)) continue;
@@ -168,8 +263,8 @@ export function sanitizeLoadout(ids, spec) {
   return out;
 }
 
-const storageKey = (specId) => `cot.equip.${specId}`;
-const hasStorage = () => typeof localStorage !== 'undefined';
+const storageKey = (specId: string): string => `cot.equip.${specId}`;
+const hasStorage = (): boolean => typeof localStorage !== 'undefined';
 
 /**
  * Per-tank saved loadout (localStorage `cot.equip.<specId>`), sanitized.
@@ -177,7 +272,7 @@ const hasStorage = () => typeof localStorage !== 'undefined';
  * @param {?object} [spec] optional spec for era validation
  * @returns {Array<string>} equipped ids (possibly empty)
  */
-export function loadEquipment(specId, spec) {
+export function loadEquipment(specId: string, spec?: EquipmentSpecLike | null): string[] {
   if (!hasStorage()) return [];
   try {
     const raw = localStorage.getItem(storageKey(specId));
@@ -195,7 +290,11 @@ export function loadEquipment(specId, spec) {
  * @param {?object} [spec]
  * @returns {Array<string>} the sanitized array actually saved
  */
-export function saveEquipment(specId, ids, spec) {
+export function saveEquipment(
+  specId: string,
+  ids: readonly string[],
+  spec?: EquipmentSpecLike | null,
+): string[] {
   const clean = sanitizeLoadout(ids, spec);
   if (hasStorage()) {
     try {
@@ -213,8 +312,10 @@ export function saveEquipment(specId, ids, spec) {
  * @param {?Array<string>} ids equipped item ids
  * @returns {object} equipMults
  */
-export function computeEquipMults(ids) {
-  const m = {
+export function computeEquipMults(
+  ids: readonly string[] | null | undefined,
+): EquipmentMultipliers {
+  const m: EquipmentMultipliers = {
     reload: 1, aimTime: 1, bloom: 1, traverse: 1, turret: 1, repair: 1,
     heSplash: 1, crewHe: 1, engineFire: 1, fireTicks: 1, extinguish: 1,
     moduleHp: {},
@@ -236,8 +337,10 @@ export function computeEquipMults(ids) {
     if (e.fireTicks) m.fireTicks *= e.fireTicks;
     if (e.extinguish) m.extinguish *= e.extinguish;
     if (e.moduleHp) {
-      for (const [mod, f] of Object.entries(e.moduleHp)) {
-        m.moduleHp[mod] = (m.moduleHp[mod] || 1) * f;
+      for (const mod of Object.keys(e.moduleHp) as EquipmentModuleId[]) {
+        const factor = e.moduleHp[mod];
+        if (factor === undefined) continue;
+        m.moduleHp[mod] = (m.moduleHp[mod] || 1) * factor;
       }
     }
   }
@@ -253,16 +356,22 @@ export function computeEquipMults(ids) {
  * @param {?object} [spec] spec for era validation
  * @returns {Array<string>} the sanitized ids that took effect
  */
-export function applyEquipmentToCombat(combat, ids, spec) {
+export function applyEquipmentToCombat(
+  combat: EquipmentCombatState,
+  ids: readonly string[] | null | undefined,
+  spec?: EquipmentSpecLike | null,
+): string[] {
   const clean = sanitizeLoadout(ids, spec);
   const mults = computeEquipMults(clean);
   combat.equip = clean;
   combat.equipMults = mults;
-  for (const [mod, f] of Object.entries(mults.moduleHp)) {
+  for (const mod of Object.keys(mults.moduleHp) as EquipmentModuleId[]) {
+    const factor = mults.moduleHp[mod];
+    if (factor === undefined) continue;
     const rec = combat.modules && combat.modules[mod];
     if (!rec) continue;
-    rec.maxHp *= f;
-    rec.hp *= f;
+    rec.maxHp *= factor;
+    rec.hp *= factor;
   }
   return clean;
 }
@@ -271,7 +380,7 @@ export function applyEquipmentToCombat(combat, ids, spec) {
 // AI parity — per-role default loadouts so bots fight with the same tools.
 // Era-illegal picks are filtered per spec.
 // ---------------------------------------------------------------------------
-export const AI_DEFAULT_LOADOUTS = {
+export const AI_DEFAULT_LOADOUTS: Readonly<Record<string, readonly string[]>> = {
   heavy:  ['rammer', 'spall_liner', 'toolbox'],
   medium: ['rammer', 'vents', 'gld'],
   light:  ['optics', 'vents', 'camo_net'],
@@ -286,11 +395,11 @@ export const AI_DEFAULT_LOADOUTS = {
  * @param {object} spec TankSpec-like ({ role, era })
  * @returns {Array<string>}
  */
-export function defaultLoadoutFor(spec) {
+export function defaultLoadoutFor(spec: EquipmentSpecLike): string[] {
   if (spec?.gun?.autoloader && spec.role === 'mbt') {
     return sanitizeLoadout(['vents', 'vstab', 'optics'], spec);
   }
-  const list = (spec && AI_DEFAULT_LOADOUTS[spec.role]) || AI_DEFAULT_LOADOUTS.medium;
+  const list = AI_DEFAULT_LOADOUTS[spec.role ?? ''] || AI_DEFAULT_LOADOUTS.medium;
   return sanitizeLoadout(list, spec);
 }
 
@@ -308,7 +417,10 @@ export function defaultLoadoutFor(spec) {
  * @returns {{reloadS:{base:number,mod:number}, aimTimeS:{base:number,mod:number},
  *            traverseDegS:{base:number,mod:number}}}
  */
-export function equipModifiedStats(spec, ids) {
+export function equipModifiedStats(
+  spec: EquipmentStatsSpec,
+  ids: readonly string[] | null | undefined,
+): EquipmentModifiedStats {
   const m = computeEquipMults(sanitizeLoadout(ids, spec));
   return {
     reloadS: { base: spec.gun.reloadS, mod: spec.gun.reloadS * m.reload },

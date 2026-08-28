@@ -22,7 +22,7 @@ import { getTopDownMasks } from './tankThumbs.js';
 // same white-silhouette glyphs as the garage slots, at healthy-pip alpha.
 import { equipIconSVG } from './equipIcons.js';
 import { uiIconSVG } from './uiIcons.ts';
-import { EQUIPMENT_BY_ID } from '../game/equipment.js';
+import { EQUIPMENT_BY_ID } from '../game/equipment.ts';
 
 // WoT module-state ramp (ORANGE damaged, RED knocked out) + crew order come
 // from the shared module registry — one presentation truth across the damage
@@ -732,7 +732,7 @@ export function createDamagePanel() {
     /**
      * EQUIPMENT SYSTEM: show the mounted loadout (call with the player's
      * equip ids after setTank; null/[] clears the row and it collapses).
-     * @param {?Array<string>} ids equipment ids (game/equipment.js catalog)
+     * @param {?Array<string>} ids equipment ids (game/equipment.ts catalog)
      */
     setEquipment(ids) {
       let html = '';
