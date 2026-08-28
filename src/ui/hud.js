@@ -12,8 +12,8 @@ import { uiPixelRatio } from '../engine/resolutionPolicy.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import {
   MINIMAP_NORTH_UP,
-  MINIMAP_SPAWN_FLIPPED,
   minimapRotationForSpawnYaw,
+  orientMinimapDirection,
   orientMinimapPoint,
   orientMinimapYaw,
 } from './minimapOrientation.ts';
@@ -1560,6 +1560,7 @@ export function initHud(bus) {
   // memory-pressure canvas purge, which left live blips over a blank panel.
   let mmBg = null;
   let minimapRotation = MINIMAP_NORTH_UP;
+  let minimapDeploymentYaw = null;
   let minimapOrientationLocked = false;
 
   // --- internal state ---
@@ -3377,7 +3378,7 @@ export function initHud(bus) {
   // Shared minimap chrome: 10x10 grid, coordinate strips, inner vignette —
   // drawn over BOTH underlay styles (ortho capture and procedural fallback).
   function drawMinimapChrome(octx) {
-    const flipped = minimapRotation === MINIMAP_SPAWN_FLIPPED;
+    const flipped = Math.cos(minimapRotation) < 0;
     // grid 10x10
     octx.strokeStyle = 'rgba(230,240,250,0.11)';
     octx.lineWidth = 0.7;
@@ -3418,30 +3419,41 @@ export function initHud(bus) {
   }
 
   function drawMinimapBackground() {
+    mmCtx.fillStyle = '#0b100e';
+    mmCtx.fillRect(0, 0, MM, MM);
     if (mmBg) {
       mmCtx.save();
-      if (minimapRotation === MINIMAP_SPAWN_FLIPPED) {
-        mmCtx.translate(MM, MM);
-        mmCtx.rotate(Math.PI);
+      mmCtx.translate(MM * 0.5, MM * 0.5);
+      mmCtx.rotate(minimapRotation);
+      // A rotated square otherwise exposes black corner wedges on maps with
+      // a strongly angled deployment axis. Reflected neighbor tiles extend
+      // only the outside-of-bounds scenery, meet the real map edge without a
+      // seam, and leave the central tile/marker coordinates mathematically
+      // exact. Draw from the retained Image each repaint so iPadOS cannot
+      // purge a second cached canvas behind the live HUD.
+      for (let tileY = -1; tileY <= 1; tileY++) {
+        for (let tileX = -1; tileX <= 1; tileX++) {
+          const flipX = tileX !== 0;
+          const flipY = tileY !== 0;
+          const left = (tileX - 0.5) * MM;
+          const top = (tileY - 0.5) * MM;
+          mmCtx.save();
+          mmCtx.translate(flipX ? left + MM : left, flipY ? top + MM : top);
+          mmCtx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+          mmCtx.drawImage(mmBg, 0, 0, MM, MM);
+          mmCtx.restore();
+        }
       }
-      mmCtx.drawImage(mmBg, 0, 0, MM, MM);
       mmCtx.restore();
-    } else {
-      mmCtx.fillStyle = '#141b16';
-      mmCtx.fillRect(0, 0, MM, MM);
     }
-    // Labels stay upright and retain the true grid identities after a flip.
+    // Labels stay upright and reverse on the opposite deployment so the
+    // established battlefield grid identity survives the heading-up view.
     drawMinimapChrome(mmCtx);
   }
 
   // Team spawn flags (mode objective markers for annihilation): captured from
   // the rosters' first battle frame, when every tank still sits on its spawn.
   function captureSpawnFlags(frame) {
-    if (!minimapOrientationLocked && frame.player?.state) {
-      minimapRotation = minimapRotationForSpawnYaw(frame.player.state.yaw);
-      minimapOrientationLocked = true;
-      mmDirty = true;
-    }
     const tanks = frame.tanks || [];
     let ax = 0, az = 0, an = 0, ex = 0, ez = 0, en = 0;
     for (const t of tanks) {
@@ -3450,6 +3462,23 @@ export function initHud(bus) {
       else { ex += t.state.pos.x; ez += t.state.pos.z; en++; }
     }
     if (!an || !en) return;
+    if (!minimapOrientationLocked) {
+      // Derive the stable deployment axis from both team centroids. Locking
+      // the first local yaw was racy in network rooms: the first presentation
+      // frame can still contain the default 0-radian pose before the server's
+      // opposite-side spawn arrives, leaving that client exactly backwards.
+      const ownX = ax / an;
+      const ownZ = az / an;
+      const foeX = ex / en;
+      const foeZ = ez / en;
+      const dx = foeX - ownX;
+      const dz = foeZ - ownZ;
+      if (Math.hypot(dx, dz) < mapWorldSize * 0.2) return;
+      minimapDeploymentYaw = Math.atan2(dx, dz);
+      minimapRotation = minimapRotationForSpawnYaw(minimapDeploymentYaw);
+      minimapOrientationLocked = true;
+      mmDirty = true;
+    }
     // r4: each base carries a team-tinted cap fill so BOTH bases read on the
     // map (the old white 7% fill made the own-base marker invisible under
     // the ally blip cluster at spawn — the map read one-sided).
@@ -3690,7 +3719,7 @@ export function initHud(bus) {
         // translucent fill + faint edge rays so the wedge reads even over
         // bright terrain
         _fwd.set(0, 0, -1).transformDirection(frame.camera.matrixWorld);
-        const camAng = Math.atan2(-_fwd.z, _fwd.x) + minimapRotation;
+        const camAng = orientMinimapDirection(_fwd.x, _fwd.z, minimapRotation);
         const wr = 36;
         mmCtx.fillStyle = 'rgba(235,245,255,0.15)';
         mmCtx.beginPath();
@@ -4299,6 +4328,7 @@ export function initHud(bus) {
         nickById.clear();
         spawnFlags = null; // re-capture from the new battle's spawn frame
         minimapRotation = MINIMAP_NORTH_UP;
+        minimapDeploymentYaw = null;
         minimapOrientationLocked = false;
         // SPOTTING SECTION: disarm the sixth-sense lamp (sim clock restarts)
         sixthPendingS = -1;
@@ -4488,7 +4518,9 @@ export function initHud(bus) {
         hud.exportMinimapBackground(type, quality),
       getMinimapState: () => ({
         rotationRad: minimapRotation,
-        flipped: minimapRotation === MINIMAP_SPAWN_FLIPPED,
+        rotationDeg: minimapRotation * 180 / Math.PI,
+        deploymentYawRad: minimapDeploymentYaw,
+        flipped: Math.cos(minimapRotation) < 0,
         orientationLocked: minimapOrientationLocked,
         backgroundKind: !mmBg ? 'none' : (mmBg.tagName === 'IMG' ? 'image' : 'canvas'),
         backgroundReady: !!mmBg && (mmBg.tagName === 'IMG'
