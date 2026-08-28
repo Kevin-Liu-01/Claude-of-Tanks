@@ -27375,7 +27375,7 @@
           }
         ]
       },
-      "geometryHash": "0b5775b0",
+      "geometryHash": "30c25104",
       "metadataHash": "30d5ef90",
       "presentationAnchor": {
         "xM": 0.0002,
@@ -27473,24 +27473,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69399,
-          "sha256": "e99c0aae94716f0bca7e709af8450cea19349e7556c3154d2f0113a2f4c1a0ec"
+          "bytes": 69116,
+          "sha256": "0a78186a6f9f0f7ca884f92a8ece704cfa631214f27577c2f96b8049b99c02e8"
         },
         "armorSide": {
           "file": "challenger2e_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70454,
-          "sha256": "593f6f471e7789b92c84d9b3b6c2c7dec5a6cb429f115efbeb7e1e34531aafc7"
+          "bytes": 70545,
+          "sha256": "500e6411e34b350feefb048a544f251c9dcca9886141c2029d59b3efb6a24e7c"
         },
         "modulesSide": {
           "file": "challenger2e_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74042,
-          "sha256": "7ed2f1c2e064cdbd88c66d45199ef985bf742c526573bb58408cdde47f577bc3"
+          "bytes": 73816,
+          "sha256": "47347ba39f16e65d09307b8bdc3ac567c468e87c4f9ae542e6f6267391798e9c"
         },
         "markings": {
           "file": "challenger2e_markings.png",
@@ -174897,7 +174897,7 @@
           }
         ]
       },
-      "geometryHash": "ec94e8f6",
+      "geometryHash": "a2a5d93e",
       "metadataHash": "fef2c320",
       "presentationAnchor": {
         "xM": 0.0001,
@@ -174995,24 +174995,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70853,
-          "sha256": "d01fb0a379c649771a069a6bfe5101f6af8d6078bfd17f0b749eb530b01d264a"
+          "bytes": 70847,
+          "sha256": "d02867a1e413c9cad96b9002ef37c27babb6d42437b6121ab894a614664d254c"
         },
         "armorSide": {
           "file": "ua_challenger2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73135,
-          "sha256": "736313cea6b7b8e23c357e07043d2071c7a502e21381ff7aa452e5bb5c6db4aa"
+          "bytes": 72567,
+          "sha256": "5fbf2010f22605ae00683a241411be41b8effa5ad58925b780beedb7b782e9ea"
         },
         "modulesSide": {
           "file": "ua_challenger2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75762,
-          "sha256": "365d122e0227ad70a0d076693435940ed029859b6d5fa27b64dc8b27997ee3da"
+          "bytes": 75602,
+          "sha256": "5cb42203a980ba74319f18316db4fae17e495ea746eaa94ee4d539294968f51e"
         },
         "markings": {
           "file": "ua_challenger2_markings.png",

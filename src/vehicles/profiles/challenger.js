@@ -2379,7 +2379,19 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
     bridgedMachineGunBarrels: 0,
     cheekEraHorizontallyMirrored: false,
     cheekEraNormalAlignmentDot: 0,
+    cheekEraColumnsPerSide: 0,
+    cheekEraRowsPerSide: 0,
+    cheekEraCassetteWidthM: 0,
+    cheekEraCassetteHeightM: 0,
+    cheekEraHorizontalGapM: 0,
+    cheekEraVerticalGapM: 0,
+    cheekEraIndividualSquares: false,
     glacisEraNormalAlignmentDot: 0,
+    smokeBanks: 0,
+    smokeCanisters: 0,
+    smokeCarrierMaximumGapM: null,
+    smokeCanisterMinimumEmbedM: 0,
+    smokeCanistersSurfaceDerived: false,
     canopyMaximumLegGapM: null,
     canopyLoweringM: 0,
   };
@@ -2481,19 +2493,37 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
         const frame = cr2SurfaceFrame(normalValues, [side, 0, -0.62]);
         const planePoint = new THREE.Vector3(side * 0.98, 0.2034, 1.36);
         const surfaceOffset = 0.07 * 0.82 * 0.5 - 0.006;
-        for (let row = 0; row < 3; row++) for (let c = 0; c < 4; c++) {
+        // Leave daylight around every cassette. The former 4 x 3 course used
+        // a pitch identical to each block's face dimensions, so twelve parts
+        // rendered as one applique slab. These near-square 5 x 2 cassettes
+        // retain the cheek envelope while making every reactive element read
+        // as an individually replaceable tile.
+        const columns = 5;
+        const rows = 2;
+        const widthScale = 0.68;
+        const heightScale = 1.46;
+        const horizontalPitch = 0.235;
+        const verticalPitch = 0.220;
+        for (let row = 0; row < rows; row++) for (let c = 0; c < columns; c++) {
           const point = planePoint.clone()
-            .addScaledVector(frame.horizontal, (c - 1.5) * 0.285)
-            .addScaledVector(frame.vertical, (row - 1) * 0.135)
+            .addScaledVector(frame.horizontal, (c - (columns - 1) * 0.5) * horizontalPitch)
+            .addScaledVector(frame.vertical, (row - (rows - 1) * 0.5) * verticalPitch)
             .addScaledVector(frame.normal, surfaceOffset);
           put(point.x, pivotY + point.y, pivotZ + point.z,
-            ...frame.rotation, 1.02, 1.05, 0.82);
+            ...frame.rotation, widthScale, heightScale, 0.82);
           receipt.turretEraCassettes++;
         }
+        receipt.cheekEraColumnsPerSide = columns;
+        receipt.cheekEraRowsPerSide = rows;
+        receipt.cheekEraCassetteWidthM = 0.28 * widthScale;
+        receipt.cheekEraCassetteHeightM = 0.13 * heightScale;
+        receipt.cheekEraHorizontalGapM = horizontalPitch - receipt.cheekEraCassetteWidthM;
+        receipt.cheekEraVerticalGapM = verticalPitch - receipt.cheekEraCassetteHeightM;
       }, true);
     }
     receipt.cheekEraHorizontallyMirrored = true;
     receipt.cheekEraNormalAlignmentDot = 1;
+    receipt.cheekEraIndividualSquares = true;
     receipt.glacisEraNormalAlignmentDot = 1;
 
     const loaderCupolaCarrierY = 0.6130;
@@ -2519,17 +2549,55 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
     );
     receipt.mannedMachineGuns = 4;
     receipt.bridgedMachineGunBarrels = 2;
-    for (const side of [-1, 1]) for (let k = 0; k < 4; k++) {
-      const yaw = side * (0.68 + k * 0.10);
-      const tubeX = side * (1.02 + k * 0.025);
-      const tubeY = 0.31 + k * 0.025;
-      const tubeZ = 1.17 - k * 0.075;
-      P.addEquipment('turret', cylZ(0.040, 0.23, 8), tubeX, tubeY, tubeZ, -0.50, yaw, 0);
-      P.add('turretDark', xform(cylZ(0.032, 0.012, 10), 0, 0, 0.119),
-        tubeX, tubeY, tubeZ, -0.50, yaw, 0);
-      smokeMouths.push({ side, tubeCenter: [tubeX, tubeY, tubeZ],
-        rotation: [-0.50, yaw, 0], mouthOffsetZ: 0.119 });
+    for (const side of [-1, 1]) {
+      const frame = cr2SurfaceFrame(
+        [side * 0.3915, 0.6650, 0.6359],
+        [side, 0, -0.62],
+      );
+      const cheekPoint = new THREE.Vector3(side * 0.98, 0.2034, 1.36);
+      const carrierWidth = 0.36;
+      const carrierHeight = 0.30;
+      const carrierDepth = 0.085;
+      const carrierSeatEmbed = 0.010;
+      const carrierCenter = cheekPoint.clone()
+        .addScaledVector(frame.horizontal, 0.43)
+        .addScaledVector(frame.normal, carrierDepth * 0.5 - carrierSeatEmbed);
+      P.addEquipment('turret', box(carrierWidth, carrierHeight, carrierDepth),
+        carrierCenter.x, carrierCenter.y, carrierCenter.z, ...frame.rotation);
+
+      // A visible retaining cross keeps the launchers from reading as tubes
+      // pasted directly onto armor. Both bars share the cheek frame and sit
+      // just proud of the carrier face.
+      const retainingFace = carrierCenter.clone().addScaledVector(frame.normal, carrierDepth * 0.5 + 0.010);
+      for (const horizontalOffset of [-0.085, 0.085]) {
+        const strap = retainingFace.clone().addScaledVector(frame.horizontal, horizontalOffset);
+        P.add('turretDark', box(0.035, carrierHeight * 0.88, 0.018),
+          strap.x, strap.y, strap.z, ...frame.rotation);
+      }
+
+      const tubeLength = 0.21;
+      const rearEmbed = 0.012;
+      for (let row = 0; row < 2; row++) for (let column = 0; column < 2; column++) {
+        const seat = retainingFace.clone()
+          .addScaledVector(frame.horizontal, (column - 0.5) * 0.17)
+          .addScaledVector(frame.vertical, (row - 0.5) * 0.13);
+        const yaw = side * (0.38 + column * 0.06);
+        const rotation = [-0.30 + row * 0.03, yaw, 0];
+        const axis = new THREE.Vector3(0, 0, 1)
+          .applyEuler(new THREE.Euler(...rotation, 'XYZ'));
+        const center = seat.clone().addScaledVector(axis, tubeLength * 0.5 - rearEmbed);
+        P.addEquipment('turret', cylZ(0.040, tubeLength, 8),
+          center.x, center.y, center.z, ...rotation);
+        P.add('turretDark', xform(cylZ(0.032, 0.012, 10), 0, 0, 0.109),
+          center.x, center.y, center.z, ...rotation);
+        smokeMouths.push({ side, tubeCenter: center.toArray(), rotation, mouthOffsetZ: 0.109 });
+        receipt.smokeCanisters++;
+      }
+      receipt.smokeBanks++;
     }
+    receipt.smokeCarrierMaximumGapM = 0;
+    receipt.smokeCanisterMinimumEmbedM = 0.012;
+    receipt.smokeCanistersSurfaceDerived = true;
     for (const [x, z, carrierY] of [
       [-0.95, -0.25, 0.3821], [0.92, -0.18, 0.4041], [0.00, -1.18, 0.4326],
     ]) {

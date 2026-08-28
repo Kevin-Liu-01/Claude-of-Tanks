@@ -91,8 +91,20 @@ for (const id of ['fv4034', 'challenger2e', 'ua_challenger2']) {
       `${id} carries exactly two rear auxiliary fuel barrels`);
     assert.equal(receipt.glacisEraCassettes, 30,
       `${id} glacis ERA field remains symmetric and complete`);
-    assert.equal(receipt.turretEraCassettes, 24,
+    assert.equal(receipt.turretEraCassettes, 20,
       `${id} cheek ERA field remains symmetric and complete`);
+    assert.equal(receipt.cheekEraColumnsPerSide, 5,
+      `${id} cheek ERA must use five separated columns per side`);
+    assert.equal(receipt.cheekEraRowsPerSide, 2,
+      `${id} cheek ERA must use two separated rows per side`);
+    assert.equal(receipt.cheekEraIndividualSquares, true,
+      `${id} cheek ERA must read as individual square cassettes`);
+    assert.ok(Math.abs(receipt.cheekEraCassetteWidthM - receipt.cheekEraCassetteHeightM) < 0.002,
+      `${id} cheek ERA faces must remain square`);
+    assert.ok(receipt.cheekEraHorizontalGapM >= 0.04,
+      `${id} cheek ERA needs a visible horizontal gap between cassettes`);
+    assert.ok(receipt.cheekEraVerticalGapM >= 0.025,
+      `${id} cheek ERA needs a visible vertical gap between cassettes`);
     assert.equal(receipt.cheekEraHorizontallyMirrored, true,
       `${id} cheek ERA courses must mirror horizontally across the turret`);
     close(receipt.cheekEraNormalAlignmentDot, 1,
@@ -103,6 +115,16 @@ for (const id of ['fv4034', 'challenger2e', 'ua_challenger2']) {
       `${id} cupolas, machine guns, tower, and roof equipment must all publish seats`);
     assert.equal(receipt.bridgedMachineGunBarrels, 2,
       `${id} MAG barrels must bridge directly into their receivers`);
+    assert.equal(receipt.smokeBanks, 2,
+      `${id} must carry one reseated smoke bank on each turret cheek`);
+    assert.equal(receipt.smokeCanisters, 8,
+      `${id} reseated smoke banks must retain eight launchers`);
+    assert.equal(receipt.smokeCarrierMaximumGapM, 0,
+      `${id} smoke-bank carriers must remain flush with the cheeks`);
+    assert.ok(receipt.smokeCanisterMinimumEmbedM >= 0.01,
+      `${id} smoke launchers must overlap their carrier instead of floating`);
+    assert.equal(receipt.smokeCanistersSurfaceDerived, true,
+      `${id} smoke banks must derive their seats from the cheek surfaces`);
     for (const sector of [
       'cr2e_glacis_era_L', 'cr2e_glacis_era_R',
       'cr2e_skirt_era_L', 'cr2e_skirt_era_R',
