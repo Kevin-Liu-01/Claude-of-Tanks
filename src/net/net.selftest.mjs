@@ -24,7 +24,7 @@ import {
   removeLobbyPlayer,
   serializeLobby,
 } from './lobby.ts';
-import { createLoopbackTransportPair } from './loopbackTransport.js';
+import { createLoopbackTransportPair } from './loopbackTransport.ts';
 import {
   automaticPlayerName,
   normalizePlayerName,
@@ -34,7 +34,7 @@ import {
   createWebRTCDataChannelTransport,
   createWebRTCSplitTransport,
   createWebSocketTransport,
-} from './channelTransport.js';
+} from './channelTransport.ts';
 import {
   SnapshotAssembler,
   SnapshotBuffer,

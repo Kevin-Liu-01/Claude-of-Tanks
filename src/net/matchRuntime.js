@@ -11,7 +11,7 @@ import {
   normalizeRoomChatText,
   validateEnvelope,
 } from './protocol.ts';
-import { TransportClosedError } from './loopbackTransport.js';
+import { TransportClosedError } from './loopbackTransport.ts';
 import { SnapshotAssembler, SnapshotBuffer, createSnapshotDelta } from './snapshot.js';
 
 function validateRate(tickHz, snapshotHz) {

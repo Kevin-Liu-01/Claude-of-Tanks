@@ -1,4 +1,4 @@
-import { createWebSocketTransport } from './channelTransport.js';
+import { createWebSocketTransport } from './channelTransport.ts';
 import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.js';
 import { MatchClientRuntime } from './matchRuntime.js';
 

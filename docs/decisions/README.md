@@ -104,3 +104,4 @@ runtime documents remain authoritative for behavior.
 - [0092 — The multiplayer wire protocol is strict TypeScript](0092-typed-wire-protocol.md)
 - [0093 — Room entry and commander identity are strict TypeScript](0093-typed-room-entry-identity.md)
 - [0094 — Durable browser signaling has one strict typed owner](0094-typed-durable-signaling-client.md)
+- [0095 — Every match transport has one strict bounded contract](0095-typed-bounded-transports.md)

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createLoopbackTransportPair } from './loopbackTransport.js';
+import { createLoopbackTransportPair } from './loopbackTransport.ts';
 import {
   beginPrivateClientMatch,
   beginPrivateHostMatch,

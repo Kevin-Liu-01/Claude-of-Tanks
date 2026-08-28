@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { MESSAGE_TYPES, createEnvelope } from './protocol.ts';
-import { TransportClosedError } from './loopbackTransport.js';
+import { TransportClosedError } from './loopbackTransport.ts';
 import { captureWorldSnapshot } from './snapshot.js';
 import { AuthoritativeMatchRuntime } from './matchRuntime.js';
 

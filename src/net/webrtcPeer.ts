@@ -1,17 +1,14 @@
-import { createWebRTCSplitTransport } from './channelTransport.js';
+import {
+  createWebRTCSplitTransport,
+  type ChannelTransport,
+} from './channelTransport.ts';
 
 export type RtcSignal =
   | { kind: 'ice'; candidate: RTCIceCandidateInit }
   | { kind: 'description'; description: RTCSessionDescriptionInit }
   | { kind: 'restart' };
 
-export interface MatchTransport {
-  readonly readyState: string;
-  send(message: unknown): boolean;
-  onMessage(listener: (message: unknown) => void): () => void;
-  onClose?(listener: (reason: string) => void): () => void;
-  close(reason?: string): void;
-}
+export type MatchTransport = ChannelTransport;
 
 export interface WebRtcPeerSession {
   readonly role: 'host' | 'client';

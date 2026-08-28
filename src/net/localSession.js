@@ -1,4 +1,4 @@
-import { createLoopbackTransportPair } from './loopbackTransport.js';
+import { createLoopbackTransportPair } from './loopbackTransport.ts';
 import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
 
 /**

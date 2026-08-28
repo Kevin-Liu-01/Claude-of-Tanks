@@ -30,7 +30,7 @@ play without importing Three.js rendering or DOM state.
 - `snapshot.js` owns quantization, visibility filtering, and interpolation.
 - `snapshotWireCodec.js` owns compact binary snapshot rows; protocol v2 uses
   explicit snapshot acknowledgements, per-peer deltas, and periodic keyframes.
-- `loopbackTransport.js`, `channelTransport.js`, and `webrtcPeer.ts` implement
+- `loopbackTransport.ts`, `channelTransport.ts`, and `webrtcPeer.ts` implement
   the same bounded transport contract.
 - `localSession.js` proves solo play traverses the real host/client path.
 - `localTankPrediction.ts` owns typed local input replay and presentation-only

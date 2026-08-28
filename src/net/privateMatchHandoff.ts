@@ -2,7 +2,7 @@ import { resolveMapId } from '../world/maps/index.js';
 import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
-import { createLoopbackTransportPair } from './loopbackTransport.js';
+import { createLoopbackTransportPair } from './loopbackTransport.ts';
 import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
 import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.js';
 import {
