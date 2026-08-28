@@ -1,4 +1,4 @@
-import { createInfoButton } from '../ui/contextInfo.js';
+import { createInfoButton } from '../ui/contextInfo.ts';
 import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.js';
 
 const MANIFEST_URL = '/media/showcase-r1/manifest.json';

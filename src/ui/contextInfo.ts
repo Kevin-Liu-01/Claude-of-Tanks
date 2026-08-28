@@ -3,7 +3,61 @@
 // interaction works with mouse, keyboard, touch, and gamepad-emulated focus.
 
 import { createModal } from './modal.ts';
+import type { ModalController, ModalSize } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
+
+type LiveValue<T> = T | (() => T);
+type InfoImageFit = 'cover' | 'contain';
+
+interface InfoImageRecord {
+  src?: unknown;
+  alt?: unknown;
+  fit?: unknown;
+  caption?: unknown;
+}
+
+export type InfoImage = string | InfoImageRecord | null | undefined;
+export type InfoImageSource = LiveValue<InfoImage>;
+
+export interface ResolvedInfoImage {
+  src: string;
+  alt: string;
+  fit: InfoImageFit;
+  caption: string;
+}
+
+interface InfoImageDefaults {
+  alt?: string;
+  fit?: InfoImageFit;
+  caption?: string;
+}
+
+interface InfoSection {
+  icon?: string;
+  title?: string;
+  text?: string;
+}
+
+export interface InfoButtonOptions {
+  label?: string;
+  title?: string;
+  text?: LiveValue<string>;
+  json?: LiveValue<unknown> | null;
+  className?: string;
+  eyebrow?: LiveValue<string>;
+  subtitle?: LiveValue<string>;
+  size?: ModalSize;
+  image?: InfoImageSource | null;
+  images?: LiveValue<InfoImage | InfoImage[]> | null;
+  imageAlt?: string;
+  imageFit?: InfoImageFit;
+  imageCaption?: string;
+  sections?: LiveValue<InfoSection[] | null> | null;
+}
+
+export interface InfoButton extends HTMLButtonElement {
+  disposeInfo(): void;
+}
 
 const CSS = `
 .cot-info-trigger{position:relative;box-sizing:border-box;width:20px;height:20px;min-width:20px;min-height:20px;
@@ -49,7 +103,7 @@ function ensureCss() {
   document.head.appendChild(style);
 }
 
-function clipboardWrite(value) {
+function clipboardWrite(value: string): Promise<void> {
   if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(value);
   const textarea = document.createElement('textarea');
   textarea.value = value;
@@ -63,16 +117,19 @@ function clipboardWrite(value) {
 }
 
 /** Resolve static or live media options without coupling callers to the DOM. */
-export function resolveInfoImage(image, { alt = '', fit = 'cover', caption = '' } = {}) {
-  let value = image;
+export function resolveInfoImage(
+  image: InfoImageSource,
+  { alt = '', fit = 'cover', caption = '' }: InfoImageDefaults = {},
+): ResolvedInfoImage | null {
+  let value: InfoImage;
   try {
-    if (typeof value === 'function') value = value();
-  } catch (_) {
+    value = typeof image === 'function' ? image() : image;
+  } catch {
     return null;
   }
   if (!value) return null;
   if (typeof value === 'string') return { src: value, alt, fit, caption };
-  if (typeof value !== 'object' || !value.src) return null;
+  if (!value.src) return null;
   return {
     src: String(value.src),
     alt: String(value.alt ?? alt),
@@ -82,19 +139,24 @@ export function resolveInfoImage(image, { alt = '', fit = 'cover', caption = '' 
 }
 
 /** Resolve a live gallery and discard missing/invalid entries. */
-export function resolveInfoImages(images, fallback = {}) {
-  let values = images;
+export function resolveInfoImages(
+  images: LiveValue<InfoImage | InfoImage[]>,
+  fallback: InfoImageDefaults = {},
+): ResolvedInfoImage[] {
+  let values: InfoImage | InfoImage[];
   try {
-    if (typeof values === 'function') values = values();
-  } catch (_) {
+    values = typeof images === 'function' ? images() : images;
+  } catch {
     return [];
   }
   if (!Array.isArray(values)) values = values ? [values] : [];
-  return values.map((value) => resolveInfoImage(value, fallback)).filter(Boolean);
+  return values
+    .map((value) => resolveInfoImage(value, fallback))
+    .filter((value): value is ResolvedInfoImage => value !== null);
 }
 
-function resolveValue(value, fallback = '') {
-  try { return typeof value === 'function' ? value() : value; } catch (_) { return fallback; }
+function resolveValue<T>(value: LiveValue<T>, fallback: T): T {
+  try { return typeof value === 'function' ? (value as () => T)() : value; } catch { return fallback; }
 }
 
 /** Create an icon button that opens a rich shared modal dossier. */
@@ -102,9 +164,9 @@ export function createInfoButton({
   label, title, text = '', json = null, className = '', eyebrow = 'Field manual',
   subtitle = '', size = 'large', image = null, images = null,
   imageAlt = '', imageFit = 'cover', imageCaption = '', sections = null,
-} = {}) {
+}: InfoButtonOptions = {}): InfoButton {
   ensureCss();
-  const button = document.createElement('button');
+  const button = document.createElement('button') as InfoButton;
   button.type = 'button';
   button.className = `cot-info-trigger${className ? ` ${className}` : ''}`;
   button.innerHTML = uiIconSVG('info', 13, 'currentColor', 'cot-info-trigger__icon');
@@ -112,13 +174,16 @@ export function createInfoButton({
   button.setAttribute('aria-haspopup', 'dialog');
   button.setAttribute('aria-expanded', 'false');
 
-  let modal = null;
-  let copyButton = null;
-  const content = () => JSON.stringify(resolveValue(json, {}) ?? {}, null, 2);
-  const ensureModal = () => {
+  let modal: ModalController | null = null;
+  let copyButton: HTMLButtonElement | null = null;
+  const content = () => JSON.stringify(json == null ? {} : resolveValue(json, {}), null, 2) ?? '{}';
+  const ensureModal = (): ModalController => {
     if (modal) return modal;
     modal = createModal({
-      title: title || 'More information', eyebrow, subtitle, size,
+      title: title || 'More information',
+      eyebrow: resolveValue(eyebrow, 'Field manual'),
+      subtitle: resolveValue(subtitle, ''),
+      size,
       className: 'cot-info-dialog',
       onOpen: () => button.setAttribute('aria-expanded', 'true'),
       onClose: () => button.setAttribute('aria-expanded', 'false'),
@@ -130,11 +195,16 @@ export function createInfoButton({
       copyButton.innerHTML = `${uiIconSVG('copy', 16)}<span>Copy JSON</span>`;
       copyButton.addEventListener('click', () => {
         clipboardWrite(content()).then(() => {
-          copyButton.querySelector('span').textContent = 'Copied';
+          const labelElement = copyButton?.querySelector('span');
+          if (labelElement) labelElement.textContent = 'Copied';
           window.setTimeout(() => {
-            if (copyButton?.isConnected) copyButton.querySelector('span').textContent = 'Copy JSON';
+            const connectedLabel = copyButton?.isConnected ? copyButton.querySelector('span') : null;
+            if (connectedLabel) connectedLabel.textContent = 'Copy JSON';
           }, 1200);
-        }).catch(() => { copyButton.querySelector('span').textContent = 'Copy failed'; });
+        }).catch(() => {
+          const labelElement = copyButton?.querySelector('span');
+          if (labelElement) labelElement.textContent = 'Copy failed';
+        });
       });
       modal.footer.appendChild(copyButton);
     }
@@ -149,7 +219,10 @@ export function createInfoButton({
     dialog.body.textContent = '';
     const root = document.createElement('article');
     root.className = 'cot-info-modal';
-    const mediaValues = resolveInfoImages(images || image, { alt: imageAlt, fit: imageFit, caption: imageCaption });
+    const mediaSource = images || image;
+    const mediaValues = mediaSource
+      ? resolveInfoImages(mediaSource, { alt: imageAlt, fit: imageFit, caption: imageCaption })
+      : [];
     if (mediaValues.length) {
       const media = document.createElement('div');
       media.className = 'cot-info-modal__media';
@@ -181,8 +254,7 @@ export function createInfoButton({
       lead.textContent = textValue;
       root.appendChild(lead);
     }
-    let sectionValues = resolveValue(sections, []);
-    if (!Array.isArray(sectionValues)) sectionValues = [];
+    const sectionValues = sections == null ? [] : resolveValue(sections, []) || [];
     if (sectionValues.length) {
       const sectionGrid = document.createElement('div');
       sectionGrid.className = 'cot-info-modal__sections';
@@ -216,7 +288,7 @@ export function createInfoButton({
   button.addEventListener('click', (event) => {
     event.stopPropagation();
     render();
-    modal.open({ trigger: button });
+    ensureModal().open({ trigger: button });
   });
   button.disposeInfo = () => {
     modal?.dispose();

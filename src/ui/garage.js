@@ -15,7 +15,7 @@ import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import {
   CUSTOM_CAMO_ID, customCamoPatternId,
 } from '../vehicles/camoPolicy.js';
-import { createInfoButton } from './contextInfo.js';
+import { createInfoButton } from './contextInfo.ts';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
 // white-silhouette icon set (equipIcons.ts), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree

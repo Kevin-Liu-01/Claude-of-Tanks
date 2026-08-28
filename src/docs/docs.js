@@ -65,7 +65,7 @@ function stopArchiveMotion() {
 function mountArchiveMotionInfo() {
   archiveMotionPromise ??= Promise.all([
     import('../presentation/captureRecipes.js'),
-    import('../ui/contextInfo.js'),
+    import('../ui/contextInfo.ts'),
   ]).then(async ([{ loadCaptureRecipes, recipeForMedia }, { createInfoButton }]) => {
     const catalog = await loadCaptureRecipes();
     archiveDialog.querySelectorAll('.docs-motion-grid video').forEach((video) => {

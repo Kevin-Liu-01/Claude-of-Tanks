@@ -17,7 +17,7 @@ import { FEATURED_SHOTS } from './featuredShots.ts';
 import { mountMediaArchive } from '../presentation/mediaArchive.js';
 import { PRODUCT_STATS } from '../productStats.js';
 import { vehicleEraLabel } from '../vehicles/taxonomy.ts';
-import { createInfoButton } from './contextInfo.js';
+import { createInfoButton } from './contextInfo.ts';
 
 const STUDIO_GROUP_INFO = Object.freeze({
   Battlefield: 'Choose the live battlefield, seed, and environmental foundation used by the current composition.',

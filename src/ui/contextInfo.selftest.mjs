@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { resolveInfoImage, resolveInfoImages } from './contextInfo.js';
+import { resolveInfoImage, resolveInfoImages } from './contextInfo.ts';
 import { MODAL_FOCUSABLE_SELECTOR, normalizeModalSize } from './modal.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
 

@@ -14,7 +14,7 @@ import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.js';
 import { uiIconSVG } from '../ui/uiIcons.ts';
 import { iconUrl } from '../ui/icons.ts';
 import { flagIconUrl } from '../ui/flags.ts';
-import { createInfoButton } from '../ui/contextInfo.js';
+import { createInfoButton } from '../ui/contextInfo.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.js';
 
 const $ = (selector) => document.querySelector(selector);
