@@ -21,7 +21,8 @@ allocation-free chase-camera occlusion focus passed to an active world,
 `terrain.js` provides the height field and world-local shared LOD index pools,
 `terrainLodPolicy.ts` owns typed allocation-free visible/prefetch scheduling,
 `liveHeightFieldProxy.ts` selects cached live versus exact authoring queries,
-`collision.js` owns broad phase/shapes, `maps/` owns layouts, and vegetation,
+`collision.ts` owns strict allocation-free broad phase and narrow-phase shape
+contracts, `maps/` owns layouts, and vegetation,
 props, toppling, and wrecks own their visual/runtime layers.
 `destructibles.ts` is the typed, allocation-free active-world seam between
 shell traffic, break FX, prop destruction events, and cached map handlers.

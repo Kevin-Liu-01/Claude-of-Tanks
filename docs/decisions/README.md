@@ -144,3 +144,4 @@ runtime documents remain authoritative for behavior.
 - [0132 — Prop placement shares typed terrain support](0132-typed-prop-placement.md)
 - [0133 — Headless collision inflation has a typed boundary](0133-typed-headless-collision-world.md)
 - [0134 — Loose-prop physics has a strict fixed-step contract](0134-typed-loose-prop-physics.md)
+- [0135 — World collision primitives share a strict contract](0135-typed-world-collision.md)

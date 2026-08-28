@@ -28,7 +28,7 @@ import {
 } from './loosePropPhysics.ts';
 import {
   cloneCollisionRecord, convexHull2, setCircleShape, setConvexShape, setObbShape,
-} from './collision.js';
+} from './collision.ts';
 import {
   hedgehogBeamSpecs, planGroundedObbPose, planGroundedSegment, planUtilityPoleStation,
   sampleDiscGround, sampleObbGround,

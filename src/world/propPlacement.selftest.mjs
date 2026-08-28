@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import { pushHullFromObstacle, rayCollisionRecord, setObbShape } from './collision.js';
+import { pushHullFromObstacle, rayCollisionRecord, setObbShape } from './collision.ts';
 import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.js';
 import {
   UTILITY_POLE_PAIR_MAX_RELIEF,

@@ -8,7 +8,7 @@ import { createHeightField, buildTerrainMeshes, buildTerrainMeshesAsync } from '
 import { createVegetation, createVegetationAsync } from './vegetation.js';
 import { createProps, createPropsAsync, preloadPropModels } from './props.js';
 import { getMapConfig } from './maps/index.js';
-import { createObstacleGrid, rayCollisionRecord } from './collision.js';
+import { createObstacleGrid, rayCollisionRecord } from './collision.ts';
 
 const _pt = new THREE.Vector3();
 const _bisA = new THREE.Vector3();

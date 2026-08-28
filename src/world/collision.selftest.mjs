@@ -3,7 +3,7 @@ import { Vector3 } from 'three';
 import {
   convexHull2, createObstacleGrid, pushHullFromObstacle,
   pushHullFromHull, rayCollisionRecord, setCircleShape, setConvexShape, setObbShape,
-} from './collision.js';
+} from './collision.ts';
 
 const rec = (y1 = 3) => ({ min: [0, 0, 0], max: [0, y1, 0] });
 const push = () => ({ x: 0, y: 0, z: 0, set() {} });

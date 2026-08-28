@@ -8,8 +8,69 @@
 
 const EPS = 1e-9;
 
+export type Bounds3 = [number, number, number];
+
+export type CollisionShape =
+  | { kind: 'obb'; cx: number; cz: number; hw: number; hl: number; yaw: number }
+  | { kind: 'circle'; cx: number; cz: number; r: number }
+  | { kind: 'convex'; cx: number; cz: number; points: number[] };
+
+export interface CollisionRecord {
+  min: Bounds3;
+  max: Bounds3;
+  shape2?: CollisionShape;
+  crushable?: boolean;
+  crushMin?: number;
+  crushKeep?: number;
+  kind?: string;
+  treeIdx?: number;
+  propIdx?: number;
+  crushed?: boolean;
+  dead?: boolean;
+  __gridStamp?: number;
+}
+
+interface Position2 {
+  x: number;
+  z: number;
+}
+
+interface Vector3Like extends Position2 {
+  y: number;
+}
+
+interface MutableVector3Like extends Vector3Like {
+  set(x: number, y: number, z: number): unknown;
+}
+
+interface Push2 extends Position2 {
+  x: number;
+  z: number;
+}
+
+interface AxisOverlap {
+  overlap: number;
+  nx: number;
+  nz: number;
+}
+
+export type ObstacleQuery = (
+  minX: number,
+  minZ: number,
+  maxX: number,
+  maxZ: number,
+  out: CollisionRecord[],
+) => CollisionRecord[];
+
 /** Attach a tight oriented-box footprint while retaining a world AABB. */
-export function setObbShape(rec, cx, cz, halfWidth, halfLength, yaw = 0) {
+export function setObbShape(
+  rec: CollisionRecord,
+  cx: number,
+  cz: number,
+  halfWidth: number,
+  halfLength: number,
+  yaw = 0,
+) {
   const hw = Math.max(0, halfWidth);
   const hl = Math.max(0, halfLength);
   const cs = Math.abs(Math.cos(yaw));
@@ -23,7 +84,7 @@ export function setObbShape(rec, cx, cz, halfWidth, halfLength, yaw = 0) {
 }
 
 /** Attach a circular footprint (finite vertical cylinder in ray tests). */
-export function setCircleShape(rec, cx, cz, radius) {
+export function setCircleShape(rec: CollisionRecord, cx: number, cz: number, radius: number) {
   const r = Math.max(0, radius);
   rec.min[0] = cx - r; rec.max[0] = cx + r;
   rec.min[2] = cz - r; rec.max[2] = cz + r;
@@ -32,31 +93,31 @@ export function setCircleShape(rec, cx, cz, radius) {
 }
 
 /** Monotone-chain convex hull of [x,z] pairs. Returns CCW flat coordinates. */
-export function convexHull2(points) {
+export function convexHull2(points: ReadonlyArray<readonly [number, number]>) {
   if (!points || points.length < 3) return [];
   const p = points.map((v) => [v[0], v[1]])
     .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  const cross = (o, a, b) =>
+  const cross = (o: readonly number[], a: readonly number[], b: readonly number[]) =>
     (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-  const lower = [];
+  const lower: number[][] = [];
   for (const v of p) {
     while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], v) <= 0) lower.pop();
     lower.push(v);
   }
-  const upper = [];
+  const upper: number[][] = [];
   for (let i = p.length - 1; i >= 0; i--) {
     const v = p[i];
     while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], v) <= 0) upper.pop();
     upper.push(v);
   }
   lower.pop(); upper.pop();
-  const out = [];
+  const out: number[] = [];
   for (const v of lower.concat(upper)) out.push(v[0], v[1]);
   return out;
 }
 
 /** Attach a convex projected footprint while retaining its enclosing AABB. */
-export function setConvexShape(rec, points) {
+export function setConvexShape(rec: CollisionRecord, points: number[]) {
   if (!points || points.length < 6) return rec;
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   let sx = 0, sz = 0;
@@ -74,17 +135,23 @@ export function setConvexShape(rec, points) {
 }
 
 /** Copy a shape record without sharing mutable min/max arrays. */
-export function cloneCollisionRecord(rec) {
-  const out = { ...rec, min: rec.min.slice(), max: rec.max.slice() };
+export function cloneCollisionRecord(rec: CollisionRecord): CollisionRecord {
+  const out: CollisionRecord = { ...rec, min: [...rec.min], max: [...rec.max] };
   if (rec.shape2) {
     out.shape2 = { ...rec.shape2 };
-    if (rec.shape2.points) out.shape2.points = rec.shape2.points.slice();
+    if (rec.shape2.kind === 'convex' && out.shape2.kind === 'convex') {
+      out.shape2.points = rec.shape2.points.slice();
+    }
   }
   return out;
 }
 
-function testAxis(nx, nz, pos, fx, fz, rx, rz, halfL, halfW,
-  minB, maxB, centerBX, centerBZ, best) {
+function testAxis(
+  nx: number, nz: number, pos: Position2,
+  fx: number, fz: number, rx: number, rz: number,
+  halfL: number, halfW: number, minB: number, maxB: number,
+  centerBX: number, centerBZ: number, best: AxisOverlap,
+) {
   const ll = Math.hypot(nx, nz);
   if (ll < EPS) return true;
   nx /= ll; nz /= ll;
@@ -101,7 +168,11 @@ function testAxis(nx, nz, pos, fx, fz, rx, rz, halfL, halfW,
   return true;
 }
 
-function testConvexAxis(ax, az, pts, shape, pos, fx, fz, rx, rz, halfL, halfW, best) {
+function testConvexAxis(
+  ax: number, az: number, pts: number[], shape: Extract<CollisionShape, { kind: 'convex' }>,
+  pos: Position2, fx: number, fz: number, rx: number, rz: number,
+  halfL: number, halfW: number, best: AxisOverlap,
+) {
   const ll = Math.hypot(ax, az);
   if (ll < EPS) return true;
   const nx = ax / ll, nz = az / ll;
@@ -114,8 +185,12 @@ function testConvexAxis(ax, az, pts, shape, pos, fx, fz, rx, rz, halfL, halfW, b
     minB, maxB, shape.cx, shape.cz, best);
 }
 
-function testObbAxis(nx, nz, box, ofx, ofz, orx, orz,
-  pos, fx, fz, rx, rz, halfL, halfW, best) {
+function testObbAxis(
+  nx: number, nz: number, box: Extract<CollisionShape, { kind: 'obb' }>,
+  ofx: number, ofz: number, orx: number, orz: number,
+  pos: Position2, fx: number, fz: number, rx: number, rz: number,
+  halfL: number, halfW: number, best: AxisOverlap,
+) {
   const c = box.cx * nx + box.cz * nz;
   const r = box.hl * Math.abs(ofx * nx + ofz * nz) +
     box.hw * Math.abs(orx * nx + orz * nz);
@@ -127,7 +202,13 @@ function testObbAxis(nx, nz, box, ofx, ofz, orx, orz,
  * Tight hull-OBB vs environment-footprint push-out. Adds the minimum
  * translation to `outPush`; returns false when separated.
  */
-export function pushHullFromObstacle(pos, fx, fz, rx, rz, halfL, halfW, ob, outPush) {
+export function pushHullFromObstacle(
+  pos: Position2,
+  fx: number, fz: number, rx: number, rz: number,
+  halfL: number, halfW: number,
+  ob: CollisionRecord,
+  outPush: Push2,
+) {
   const sh = ob.shape2;
   if (sh && sh.kind === 'circle') {
     // Circle center in hull-local (right/forward) coordinates.
@@ -139,7 +220,7 @@ export function pushHullFromObstacle(pos, fx, fz, rx, rz, halfL, halfW, ob, outP
     const vx = qx - cx, vz = qz - cz;
     const d2 = vx * vx + vz * vz;
     if (d2 >= sh.r * sh.r) return false;
-    let px, pz, depth;
+    let px: number, pz: number, depth: number;
     if (d2 > EPS) {
       const d = Math.sqrt(d2);
       px = vx / d; pz = vz / d; depth = sh.r - d;
@@ -197,9 +278,11 @@ export function pushHullFromObstacle(pos, fx, fz, rx, rz, halfL, halfW, ob, outP
  * allocating temporary obstacle records.
  */
 export function pushHullFromHull(
-  ax, az, afx, afz, arx, arz, aHalfL, aHalfW,
-  bx, bz, bfx, bfz, brx, brz, bHalfL, bHalfW,
-  outPush,
+  ax: number, az: number, afx: number, afz: number,
+  arx: number, arz: number, aHalfL: number, aHalfW: number,
+  bx: number, bz: number, bfx: number, bfz: number,
+  brx: number, brz: number, bHalfL: number, bHalfW: number,
+  outPush: Push2,
 ) {
   const best = _pushBest;
   best.overlap = Infinity; best.nx = 0; best.nz = 0;
@@ -217,10 +300,12 @@ export function pushHullFromHull(
 }
 
 function testHullAxis(
-  nx, nz,
-  ax, az, afx, afz, arx, arz, aHalfL, aHalfW,
-  bx, bz, bfx, bfz, brx, brz, bHalfL, bHalfW,
-  best,
+  nx: number, nz: number,
+  ax: number, az: number, afx: number, afz: number,
+  arx: number, arz: number, aHalfL: number, aHalfW: number,
+  bx: number, bz: number, bfx: number, bfz: number,
+  brx: number, brz: number, bHalfL: number, bHalfW: number,
+  best: AxisOverlap,
 ) {
   const length = Math.hypot(nx, nz);
   if (length < EPS) return true;
@@ -242,13 +327,24 @@ function testHullAxis(
 }
 
 const _pushBest = { overlap: Infinity, nx: 0, nz: 0 };
-const _fallbackBox = { cx: 0, cz: 0, hw: 0, hl: 0, yaw: 0 };
+const _fallbackBox: Extract<CollisionShape, { kind: 'obb' }> = {
+  kind: 'obb', cx: 0, cz: 0, hw: 0, hl: 0, yaw: 0,
+};
 const _localO = { x: 0, y: 0, z: 0 };
 const _localD = { x: 0, y: 0, z: 0 };
-const _localRec = { min: [0, 0, 0], max: [0, 0, 0] };
-const _localN = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } };
+const _localRec: CollisionRecord = { min: [0, 0, 0], max: [0, 0, 0] };
+const _localN: MutableVector3Like = {
+  x: 0, y: 0, z: 0,
+  set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; },
+};
 
-function rayAabb(origin, dir, rec, maxDist, outNormal) {
+function rayAabb(
+  origin: Vector3Like,
+  dir: Vector3Like,
+  rec: CollisionRecord,
+  maxDist: number,
+  outNormal: MutableVector3Like,
+) {
   let tmin = 0, tmax = maxDist, axis = -1, sign = 1;
   for (let a = 0; a < 3; a++) {
     const o = a === 0 ? origin.x : a === 1 ? origin.y : origin.z;
@@ -272,7 +368,13 @@ function rayAabb(origin, dir, rec, maxDist, outNormal) {
 }
 
 /** Ray against the tight footprint extruded from minY to maxY. */
-export function rayCollisionRecord(origin, dir, rec, maxDist, outNormal) {
+export function rayCollisionRecord(
+  origin: Vector3Like,
+  dir: Vector3Like,
+  rec: CollisionRecord,
+  maxDist: number,
+  outNormal: MutableVector3Like,
+) {
   const sh = rec.shape2;
   if (!sh) return rayAabb(origin, dir, rec, maxDist, outNormal);
   if (sh.kind === 'obb') {
@@ -363,12 +465,12 @@ export function rayCollisionRecord(origin, dir, rec, maxDist, outNormal) {
 }
 
 /** Static uniform-grid broad phase. Query writes into the caller-owned array. */
-export function createObstacleGrid(records, cellSize = 24) {
-  const cells = new Map();
+export function createObstacleGrid(records: CollisionRecord[], cellSize = 24): ObstacleQuery {
+  const cells = new Map<number, CollisionRecord[]>();
   const inv = 1 / cellSize;
   // Numeric signed-16 packing avoids allocating "x,z" strings in every
   // per-tank query. Battlefield cell coordinates are comfortably inside it.
-  const key = (x, z) => (x + 32768) * 65536 + (z + 32768);
+  const key = (x: number, z: number) => (x + 32768) * 65536 + (z + 32768);
   for (let i = 0; i < records.length; i++) {
     const r = records[i];
     const x0 = Math.floor(r.min[0] * inv), x1 = Math.floor(r.max[0] * inv);
@@ -381,7 +483,9 @@ export function createObstacleGrid(records, cellSize = 24) {
     }
   }
   let stamp = 0;
-  return function query(minX, minZ, maxX, maxZ, out) {
+  return function query(
+    minX: number, minZ: number, maxX: number, maxZ: number, out: CollisionRecord[],
+  ) {
     out.length = 0;
     stamp++;
     if (stamp >= 0x7fffffff) { stamp = 1; for (const r of records) r.__gridStamp = 0; }

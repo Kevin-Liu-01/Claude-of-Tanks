@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
-import { createObstacleGrid, rayCollisionRecord } from './collision.js';
+import { createObstacleGrid, rayCollisionRecord } from './collision.ts';
+import type { CollisionRecord } from './collision.ts';
 
-type Bounds3 = [number, number, number];
 type PackedShape =
   | readonly ['o', number, number, number, number, number]
   | readonly ['c', number, number, number]
@@ -16,25 +16,6 @@ interface PackedCollisionRecord {
   k?: string | null;
   t?: number | null;
   p?: number | null;
-}
-
-type CollisionShape =
-  | { kind: 'obb'; cx: number; cz: number; hw: number; hl: number; yaw: number }
-  | { kind: 'circle'; cx: number; cz: number; r: number }
-  | { kind: 'convex'; cx: number; cz: number; points: number[] };
-
-interface CollisionRecord {
-  min: Bounds3;
-  max: Bounds3;
-  shape2?: CollisionShape;
-  crushable?: boolean;
-  crushMin?: number;
-  crushKeep?: number;
-  kind?: string;
-  treeIdx?: number;
-  propIdx?: number;
-  crushed?: boolean;
-  dead?: boolean;
 }
 
 interface ConcealmentRecord {
