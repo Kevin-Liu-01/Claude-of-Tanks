@@ -13,12 +13,12 @@ for (const key of docsIconKeys()) {
 }
 
 const placeholders = [...docs.matchAll(/data-doc-icon="([^"]+)"/g)].map((match) => match[1]);
-assert.ok(placeholders.length >= 50, 'Docs landing page uses icon wayfinding throughout the page');
+assert.ok(placeholders.length >= 55, 'Docs landing page uses icon wayfinding throughout the page');
 for (const key of placeholders) {
   assert.ok(Object.hasOwn(DOCS_ICON_SPECS, key), `Docs placeholder ${key} has a typed icon mapping`);
 }
 
-assert.equal((docs.match(/class="docs-chapter-media"/g) || []).length, 7,
+assert.equal((docs.match(/class="docs-chapter-media"/g) || []).length, 12,
   'all focused field manuals have a visual icon plate');
 assert.equal((docs.match(/class="doc-section-icon"/g) || []).length, 12,
   'all overview chapters have a section icon');

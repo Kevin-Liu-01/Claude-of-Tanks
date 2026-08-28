@@ -14,11 +14,16 @@ Use the official pages below as the primary public sources. Current runtime docu
 ## Technical documentation
 
 - [Technical field manual](https://cot.kevinliu.studio/docs): Documentation index and current system overview.
+- [How the game was built](https://cot.kevinliu.studio/docs/build): Direct Three.js architecture, Claude Code and Codex worktrees, browser proof loops, durable project memory, and main-first release practice.
+- [Procedural model pipeline](https://cot.kevinliu.studio/docs/models): Reference study, first-party coded geometry, articulated rigs, combat anatomy, generated icons and technical cards, and visual graduation gates.
 - [Simulation and combat](https://cot.kevinliu.studio/docs/simulation): Fixed-step simulation, aim, ballistics, armor traces, damage, reloads, special weapons, and verification.
 - [Vehicles and running gear](https://cot.kevinliu.studio/docs/vehicles): Shared vehicle specifications, procedural rigs, combat anatomy, tracks, suspension, recoil, LOD, and release checks.
-- [Renderer and performance](https://cot.kevinliu.studio/docs/rendering): Three.js ownership, adaptive quality, pixel density, shadows, warmup, GPU recovery, mobile behavior, and performance validation.
+- [Renderer and graphics](https://cot.kevinliu.studio/docs/rendering): Three.js ownership, adaptive quality, pixel density, shadows, post-processing, and GPU recovery.
+- [Performance and loading](https://cot.kevinliu.studio/docs/performance): Cold boot, staged battle warmup, first-combat frames, frame-gap attribution, constrained devices, and release budgets.
 - [Battlefields and destruction](https://cot.kevinliu.studio/docs/worlds): Twenty maps, terrain, routes, structures, collision, vegetation, props, destructibles, wrecks, and world verification.
+- [Bots and tactical AI](https://cot.kevinliu.studio/docs/ai): Shared deterministic perception, route planning, weapon-aware fire control, friendly-fire safety, survival, and authority tests.
 - [Multiplayer authority](https://cot.kevinliu.studio/docs/multiplayer): Rooms, authoritative state, input intent, filtered snapshots, prediction, spotting, bots, reconnection, and ranked services.
+- [Audio and battlefield FX](https://cot.kevinliu.studio/docs/audio): Event-driven weapons, engines, impacts, spatial listening, bounded mixing, crew radio, and time-scaled killcam sound.
 - [Interface and controls](https://cot.kevinliu.studio/docs/interface): Garage, HUD, dual reticle, ammunition, killcam, spectator mode, reports, settings, desktop input, and touch controls.
 - [Scene Studio and capture](https://cot.kevinliu.studio/docs/studio): Scene format, placement, cameras, timelines, effects, capture output, and review workflow.
 

@@ -14,7 +14,15 @@
   </url>
   <url>
     <loc>https://cot.kevinliu.studio/docs</loc>
-    <lastmod>2026-08-25</lastmod>
+    <lastmod>2026-08-28</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/docs/build</loc>
+    <lastmod>2026-08-28</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/docs/models</loc>
+    <lastmod>2026-08-28</lastmod>
   </url>
   <url>
     <loc>https://cot.kevinliu.studio/docs/simulation</loc>
@@ -29,12 +37,24 @@
     <lastmod>2026-08-25</lastmod>
   </url>
   <url>
+    <loc>https://cot.kevinliu.studio/docs/performance</loc>
+    <lastmod>2026-08-28</lastmod>
+  </url>
+  <url>
     <loc>https://cot.kevinliu.studio/docs/worlds</loc>
     <lastmod>2026-08-25</lastmod>
   </url>
   <url>
+    <loc>https://cot.kevinliu.studio/docs/ai</loc>
+    <lastmod>2026-08-28</lastmod>
+  </url>
+  <url>
     <loc>https://cot.kevinliu.studio/docs/multiplayer</loc>
     <lastmod>2026-08-25</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/docs/audio</loc>
+    <lastmod>2026-08-28</lastmod>
   </url>
   <url>
     <loc>https://cot.kevinliu.studio/docs/interface</loc>

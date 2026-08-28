@@ -78,7 +78,7 @@ function rewriteRoutes(req, res, next) {
   }
   else if (path === '/home' || path === '/home/') req.url = '/home.html' + query;
   else if (path === '/docs' || path === '/docs/') req.url = '/docs.html' + query;
-  else if (/^\/docs\/(simulation|vehicles|rendering|worlds|multiplayer|interface|studio)\/?$/.test(path)) {
+  else if (/^\/docs\/(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio)\/?$/.test(path)) {
     const topic = path.split('/').filter(Boolean).at(-1);
     req.url = `/docs-${topic}.html${query}`;
   }
@@ -135,11 +135,16 @@ export default {
         home: resolve(process.cwd(), 'home.html'),
         docs: resolve(process.cwd(), 'docs.html'),
         docsTopic: resolve(process.cwd(), 'docs-topic.html'),
+        docsBuild: resolve(process.cwd(), 'docs-build.html'),
+        docsModels: resolve(process.cwd(), 'docs-models.html'),
         docsSimulation: resolve(process.cwd(), 'docs-simulation.html'),
         docsVehicles: resolve(process.cwd(), 'docs-vehicles.html'),
         docsRendering: resolve(process.cwd(), 'docs-rendering.html'),
+        docsPerformance: resolve(process.cwd(), 'docs-performance.html'),
         docsWorlds: resolve(process.cwd(), 'docs-worlds.html'),
+        docsAi: resolve(process.cwd(), 'docs-ai.html'),
         docsMultiplayer: resolve(process.cwd(), 'docs-multiplayer.html'),
+        docsAudio: resolve(process.cwd(), 'docs-audio.html'),
         docsInterface: resolve(process.cwd(), 'docs-interface.html'),
         docsStudio: resolve(process.cwd(), 'docs-studio.html'),
         gallery: resolve(process.cwd(), 'gallery.html'),
@@ -149,8 +154,10 @@ export default {
   optimizeDeps: {
     entries: [
       'index.html', 'home.html', 'docs.html', 'docs-topic.html', 'gallery.html',
+      'docs-build.html', 'docs-models.html',
       'docs-simulation.html', 'docs-vehicles.html', 'docs-rendering.html',
-      'docs-worlds.html', 'docs-multiplayer.html', 'docs-interface.html', 'docs-studio.html',
+      'docs-performance.html', 'docs-worlds.html', 'docs-ai.html',
+      'docs-multiplayer.html', 'docs-audio.html', 'docs-interface.html', 'docs-studio.html',
     ],
     include: [
       'three',

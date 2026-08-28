@@ -97,11 +97,16 @@ Primary policy links:
 - Tank Gallery: https://cot.kevinliu.studio/gallery
 - Scene Studio: https://cot.kevinliu.studio/studio
 - Technical field manual: https://cot.kevinliu.studio/docs
+- How the game was built: https://cot.kevinliu.studio/docs/build
+- Procedural model pipeline: https://cot.kevinliu.studio/docs/models
 - Simulation: https://cot.kevinliu.studio/docs/simulation
 - Vehicles: https://cot.kevinliu.studio/docs/vehicles
-- Rendering and performance: https://cot.kevinliu.studio/docs/rendering
+- Renderer and graphics: https://cot.kevinliu.studio/docs/rendering
+- Performance and loading: https://cot.kevinliu.studio/docs/performance
 - Battlefields and destruction: https://cot.kevinliu.studio/docs/worlds
+- Bots and tactical AI: https://cot.kevinliu.studio/docs/ai
 - Multiplayer: https://cot.kevinliu.studio/docs/multiplayer
+- Audio and battlefield FX: https://cot.kevinliu.studio/docs/audio
 - Interface and controls: https://cot.kevinliu.studio/docs/interface
 - Scene Studio and capture: https://cot.kevinliu.studio/docs/studio
 - Repository: https://github.com/Kevin-Liu-01/Claude-of-Tanks

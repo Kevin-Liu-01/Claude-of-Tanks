@@ -5,11 +5,16 @@
 ## Manual
 
 - [Field manual index](https://cot.kevinliu.studio/docs): Current system overview, build facts, visual evidence, and links to every detailed guide.
+- [How the game was built](https://cot.kevinliu.studio/docs/build): Three.js architecture, Claude Code and Codex worktrees, browser proof, durable instructions, and main-first releases.
+- [Procedural model pipeline](https://cot.kevinliu.studio/docs/models): Reference intake, procedural construction, articulation, anatomy, generated icons and cards, and acceptance gates.
 - [Simulation and combat](https://cot.kevinliu.studio/docs/simulation): Fixed 60 Hz loop, aim, projectiles, armor, damage, reloads, special weapons, and tests.
 - [Vehicles and running gear](https://cot.kevinliu.studio/docs/vehicles): Vehicle specifications, procedural rigs, anatomy, tracks, suspension, recoil, LOD, and release verification.
-- [Renderer and performance](https://cot.kevinliu.studio/docs/rendering): Three.js rendering, adaptive quality, pixel density, shadows, loading, warmup, recovery, and mobile GPU behavior.
+- [Renderer and graphics](https://cot.kevinliu.studio/docs/rendering): Three.js rendering, adaptive quality, pixel density, shadows, post-processing, recovery, and mobile GPU behavior.
+- [Performance and loading](https://cot.kevinliu.studio/docs/performance): Cold boot, staged battle loading, frame evidence, constrained devices, and release budgets.
 - [Battlefields and destruction](https://cot.kevinliu.studio/docs/worlds): Twenty authored maps, terrain, routes, structures, collision, environment, destruction, props, and wrecks.
+- [Bots and tactical AI](https://cot.kevinliu.studio/docs/ai): Perception, deterministic route planning, gun handling, team safety, survival behavior, and tests.
 - [Multiplayer authority](https://cot.kevinliu.studio/docs/multiplayer): Rooms, input intent, authority, snapshots, prediction, reconciliation, spotting, bots, and ranked services.
+- [Audio and battlefield FX](https://cot.kevinliu.studio/docs/audio): Weapons, engines, spatial listeners, bounded mix state, crew radio, and killcam timing.
 - [Interface and controls](https://cot.kevinliu.studio/docs/interface): Garage, HUD, aiming feedback, ammunition, killcam, spectator mode, reports, settings, desktop input, and touch.
 - [Scene Studio and capture](https://cot.kevinliu.studio/docs/studio): Scene data, maps, vehicles, cameras, effects, timeline, stills, GIFs, video, and review workflow.
 
