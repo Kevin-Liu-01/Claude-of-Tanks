@@ -5,7 +5,7 @@ Last reviewed: 2026-08-26
 ## Scope and honesty boundary
 
 The playable fleet has an explicit entry in
-`src/vehicles/internalLayoutRegistry.js`. Each entry identifies its crew roster,
+`src/vehicles/internalLayoutRegistry.ts`. Each entry identifies its crew roster,
 crew owner frame and station band, powerpack/transmission end, ammunition form,
 and any autoloader, weapon feed, or missile stowage. The registry is consumed by
 combat anatomy, Gallery diagnostics, and the kill cam; it is not a decorative
@@ -54,7 +54,7 @@ placement.
 
 The complete source manifest, including source kind and stable identifiers used
 by runtime records, lives next to the exact fleet mapping in
-`src/vehicles/internalLayoutRegistry.js`.
+`src/vehicles/internalLayoutRegistry.ts`.
 
 ## Visual-form contract
 

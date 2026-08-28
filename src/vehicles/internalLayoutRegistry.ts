@@ -3,6 +3,39 @@
 // diagnostics and the kill cam. Exact armour envelopes remain geometry-derived
 // in combatAnatomyCalibrations.js; classified dimensions are never invented.
 
+export interface InternalLayoutSource {
+  readonly title: string;
+  readonly url: string;
+  readonly kind: string;
+}
+
+export interface InternalCrewStation {
+  readonly role: string;
+  readonly frame: 'hull' | 'turret';
+  readonly station: string;
+}
+
+export interface InternalSystemPlacement {
+  readonly placement: string;
+  readonly form: string;
+}
+
+export interface InternalSystems {
+  readonly engine: InternalSystemPlacement;
+  readonly transmission: InternalSystemPlacement;
+  readonly optics: InternalSystemPlacement;
+  readonly ammoRack: InternalSystemPlacement;
+  readonly autoloader: InternalSystemPlacement | null;
+  readonly feedSystem: InternalSystemPlacement | null;
+  readonly missileRack: InternalSystemPlacement | null;
+}
+
+type InternalCrewTuple = readonly [
+  role: string,
+  frame: InternalCrewStation['frame'],
+  station: string,
+];
+
 export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
   bundeswehrLeopard: Object.freeze({
     title: 'Bundeswehr — Leopard 2 anatomy and equipment',
@@ -154,10 +187,26 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://roe.ru/production/land-forces/boevye-bronirovannye-mashiny/boevaya-mashina-podderzhki-tankov-bmpt/',
     kind: 'manufacturer',
   }),
-});
+} satisfies Record<string, InternalLayoutSource>);
 
-const crew = (...stations) => stations.map(([role, frame, station]) => ({ role, frame, station }));
-const systems = (overrides = {}) => ({
+type InternalLayoutSourceId = keyof typeof INTERNAL_LAYOUT_SOURCES;
+
+export interface InternalLayoutDefinition {
+  readonly confidence: string;
+  readonly sources: readonly InternalLayoutSourceId[];
+  readonly crew: readonly InternalCrewStation[];
+  readonly systems: InternalSystems;
+}
+
+export interface InternalLayoutRecord extends InternalLayoutDefinition {
+  readonly id: string;
+  readonly layoutKey: string;
+}
+
+const crew = (...stations: InternalCrewTuple[]): InternalCrewStation[] => (
+  stations.map(([role, frame, station]) => ({ role, frame, station }))
+);
+const systems = (overrides: Partial<InternalSystems> = {}): InternalSystems => ({
   engine: { placement: 'rear', form: 'dieselPowerpack' },
   transmission: { placement: 'rear', form: 'integratedFinalDrive' },
   optics: { placement: 'visibleSightStations', form: 'sightAndVisionBlocks' },
@@ -270,7 +319,7 @@ const LAYOUTS = Object.freeze({
   bmptThree: { confidence: 'platform-inferred', sources: ['roeBmpt'], crew: IFV_TWO_MAN_TURRET, systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
   fictionalAuto: { confidence: 'owner-directed', sources: [], crew: THREE_MAN_AUTO, systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   fictionalIfv: { confidence: 'owner-directed', sources: [], crew: IFV_TWO_MAN_TURRET, systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
-});
+} satisfies Record<string, InternalLayoutDefinition>);
 
 const IDS_BY_LAYOUT = Object.freeze({
   tigerI: ['tiger1'],
@@ -304,10 +353,13 @@ const IDS_BY_LAYOUT = Object.freeze({
   bmptThree: ['bmpt_terminator2'],
   fictionalAuto: ['carro45t', 'pl01', 'pl01_105'],
   fictionalIfv: ['upior'],
-});
+} satisfies Record<keyof typeof LAYOUTS, readonly string[]>);
 
-const entries = {};
-for (const [layoutKey, ids] of Object.entries(IDS_BY_LAYOUT)) {
+const entries: Record<string, InternalLayoutRecord> = {};
+for (const [layoutKey, ids] of Object.entries(IDS_BY_LAYOUT) as Array<[
+  keyof typeof IDS_BY_LAYOUT,
+  readonly string[],
+]>) {
   const layout = LAYOUTS[layoutKey];
   for (const id of ids) {
     if (entries[id]) throw new Error(`duplicate internal layout for ${id}`);
@@ -315,8 +367,10 @@ for (const [layoutKey, ids] of Object.entries(IDS_BY_LAYOUT)) {
   }
 }
 
-export const INTERNAL_LAYOUT_BY_TANK = Object.freeze(entries);
+export const INTERNAL_LAYOUT_BY_TANK: Readonly<Record<string, InternalLayoutRecord>> = (
+  Object.freeze(entries)
+);
 
-export function internalLayoutFor(id) {
+export function internalLayoutFor(id: string): InternalLayoutRecord | null {
   return INTERNAL_LAYOUT_BY_TANK[id] || null;
 }

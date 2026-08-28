@@ -228,3 +228,4 @@ runtime documents remain authoritative for behavior.
 - [0216 — Type 99 combat envelopes are strict TypeScript](0216-typed-type99-armor.md)
 - [0217 — The application composition root has a dedicated contract surface](0217-main-composition-contracts.md)
 - [0218 — Soviet-family chevron ERA construction is strict TypeScript](0218-typed-soviet-chevron-era.md)
+- [0219 — Vehicle internal-layout evidence is strict TypeScript](0219-typed-internal-layout-registry.md)

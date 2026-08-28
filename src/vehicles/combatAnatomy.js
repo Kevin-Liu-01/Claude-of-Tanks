@@ -5,7 +5,7 @@
 
 import { MODULE_IDS } from '../sim/moduleCatalog.ts';
 import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
-import { internalLayoutFor } from './internalLayoutRegistry.js';
+import { internalLayoutFor } from './internalLayoutRegistry.ts';
 
 const FINALIZED = Symbol.for('claude-of-tanks.combat-anatomy.v2');
 const MISSILE_RELOAD_FLOOR_S = 8;
