@@ -54569,7 +54569,7 @@
           }
         ]
       },
-      "geometryHash": "cdc08ec6",
+      "geometryHash": "9dd730fd",
       "metadataHash": "62376c37",
       "presentationAnchor": {
         "xM": 0.0001,
@@ -54669,24 +54669,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72647,
-          "sha256": "215cad740bf70b9d91abcec374185153a0f5b82be99f1dc2cc1fdecc6267e126"
+          "bytes": 72686,
+          "sha256": "e36df2f28f1b75dcedaff71da54f9ac58f9d0e45cd7597c82e0757c03a59c435"
         },
         "armorSide": {
           "file": "leo1a5_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70524,
-          "sha256": "a1b08687dd0d9b79fe976c29602287e927200de5888c645d83da01ef15f66bfe"
+          "bytes": 70307,
+          "sha256": "dcb11310980aeef1d51bb7d14243734eed447d7fe1ec464c01b4a338a28a2819"
         },
         "modulesSide": {
           "file": "leo1a5_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77144,
-          "sha256": "5d4af6fae083c05fbfe611d0cef9761c72291124fce34fa487d6f10cba297c54"
+          "bytes": 77329,
+          "sha256": "fbdd130ebd00aff686231a8f6dd42f191dba3a1d1e9247217496bfe4c8fc48ca"
         },
         "markings": {
           "file": "leo1a5_markings.png",
@@ -89503,7 +89503,7 @@
           }
         ]
       },
-      "geometryHash": "bb8346b8",
+      "geometryHash": "43e8d096",
       "metadataHash": "bddbebac",
       "presentationAnchor": {
         "xM": -0.0003,
@@ -89563,24 +89563,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84934,
-          "sha256": "80b92a021d5613323b2f158d16fc6dd741c362cb47ab1a8adb8204459b576307"
+          "bytes": 85089,
+          "sha256": "41d1f7693e3108ef968fc56c0ed351e375a9440690a1e2bc45df68e2f83dedd9"
         },
         "armorSide": {
           "file": "m551_sheridan_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84839,
-          "sha256": "3da6d055ca379e48f6ee20f700a5f0d07f4664d1fdebb89bb14398ebf80f0a1f"
+          "bytes": 84810,
+          "sha256": "aaf20c0d9b375e38f69427ea0b65624407ed6dbe6f215badae175e8bbb3c15fa"
         },
         "modulesSide": {
           "file": "m551_sheridan_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85246,
-          "sha256": "a65f66805160f67742a4e658337956088cf645b00e3c01e126198f05abce287c"
+          "bytes": 85277,
+          "sha256": "97ba9d5c41de56efed6178c6f3a75e5c0e3b8290913603cd665f976c81990161"
         },
         "angle": {
           "file": "m551_sheridan_angle.webp",

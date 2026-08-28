@@ -52,6 +52,9 @@ try {
     commanderAmmoBoxClosed: true,
     turretRoofClosed: true,
     mantletProfile: 'faceted-chevron-flat-backed-m81',
+    mantletSideChevron: true,
+    mantletStraightRidge: true,
+    mantletRidgeWidth: 1.03,
     hullCreaseDeg: 16,
     turretCreaseDeg: 13,
   });
@@ -88,6 +91,25 @@ try {
   rim.geometry.boundingBox.getSize(rimSize);
   assert.ok(rimSize.x < rimSize.y * 0.12 && rimSize.x < rimSize.z * 0.12,
     'road-wheel rings lie in the YZ wheel-face plane, not perpendicular to the discs');
+
+  const gunMount = tank.root.getObjectByName('gunMount');
+  const gunPosition = gunMount.geometry.getAttribute('position');
+  const hasGunVertex = (x, y, z, tolerance = 1e-5) => {
+    for (let index = 0; index < gunPosition.count; index++) {
+      if (Math.abs(gunPosition.getX(index) - x) <= tolerance
+        && Math.abs(gunPosition.getY(index) - y) <= tolerance
+        && Math.abs(gunPosition.getZ(index) - z) <= tolerance) return true;
+    }
+    return false;
+  };
+  assert.ok(hasGunVertex(-0.5112, 0.0186, 0.86)
+    && hasGunVertex(0.5188, 0.0186, 0.86),
+  'M81 upper and lower skins meet across one straight forward ridge');
+  assert.equal(hasGunVertex(0.0038, 0.2836, 0.86), false,
+    'M81 ridge has no separated upper ledge or intervening front band');
+  assert.ok(hasGunVertex(-0.5112, -0.2464, 0.18)
+    && hasGunVertex(0.5188, 0.2836, 0.18),
+  'M81 mantlet keeps a broad planar rear attachment face');
 
   const era = tank.root.userData.eraFinishReceipt;
   assert.equal(era?.camoProjection, 'vehicle-scale-box-uv');

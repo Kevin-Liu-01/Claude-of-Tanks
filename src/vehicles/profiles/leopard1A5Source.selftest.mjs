@@ -254,6 +254,10 @@ assert.deepEqual(gunRig.userData.leopard1A5MantletReceipt, {
   shapedButterflyCasting: true,
   flatFacetedFace: true,
   flatRearContactFace: true,
+  sideChevron: true,
+  straightRidge: true,
+  ridgeWidth: 1.00,
+  ridgeZ: 0.38,
   turretReceiver: true,
   width: 1.32,
   height: 0.55,
@@ -289,6 +293,22 @@ assert.ok(Math.abs((Math.max(...rearXs) - Math.min(...rearXs)) - 1.22) <= 1e-6,
   'flat rear contact face keeps the authored 1.22 m width');
 assert.ok(Math.abs((Math.max(...rearYs) - Math.min(...rearYs)) - 0.46) <= 1e-6,
   'flat rear contact face keeps the authored 0.46 m height');
+
+const hasMountVertex = (x, y, z, tolerance = 1e-5) => {
+  for (let index = 0; index < mountPosition.count; index++) {
+    if (Math.abs(mountPosition.getX(index) - x) <= tolerance
+      && Math.abs(mountPosition.getY(index) - y) <= tolerance
+      && Math.abs(mountPosition.getZ(index) - z) <= tolerance) return true;
+  }
+  return false;
+};
+assert.ok(hasMountVertex(-0.50, 0, 0.38) && hasMountVertex(0.50, 0, 0.38),
+  'Leopard 1A5 upper and lower skins meet across one straight forward ridge');
+assert.equal(hasMountVertex(0, 0.24, 0.38), false,
+  'Leopard 1A5 ridge has no separated upper ledge or intervening front band');
+assert.ok(hasMountVertex(0.64, 0.29, -0.30)
+  && hasMountVertex(-0.64, -0.29, -0.30),
+  'Leopard 1A5 chevron casting tapers back into its broad planar seat');
 
 const receiver = new THREE.Box3(
   new THREE.Vector3(-0.58, 0.22, 0.70),

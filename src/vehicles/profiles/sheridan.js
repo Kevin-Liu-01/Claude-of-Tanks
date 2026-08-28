@@ -420,7 +420,7 @@ const hullSection = (bottomHalf, bottomY, beltHalf, beltY, sideHalf, sideY, roof
 
 function buildSheridan(P) {
   const {
-    xform, box, cylX, cylY, cylZ, sph, torus, frustum, polyMultiLoft,
+    xform, box, cylX, cylY, cylZ, sph, torus, frustum, straightRidgeGunMask,
     buildRunningGear, fenders, headlight, liftEye, periscope,
   } = KIT;
 
@@ -852,13 +852,13 @@ function buildSheridan(P) {
     0.20, 0.68,
   ));
   P.add('turretDark', box(0.70, 0.32, 0.026), 0, 0.44, 1.585);
-  P.addGunExtra(polyMultiLoft([
-    [-0.515, 0.18], [-0.515, 0.75], [0, 0.86],
-    [0.515, 0.75], [0.515, 0.18],
-  ], [
-    { height: -0.255, inset: 1 },
-    { height: 0.275, inset: 1 },
-  ]), 0.0038, 0.0186, 0);
+  P.addGunExtra(straightRidgeGunMask({
+    rearHalfWidth: 0.515,
+    rearHalfHeight: 0.265,
+    ridgeHalfWidth: 0.515,
+    rearZ: 0.18,
+    ridgeZ: 0.86,
+  }), 0.0038, 0.0186, 0);
   // The M81's articulated geometry continues through the turret to the
   // breech. Object_16 separates this hidden run into three nearly circular
   // connected islands and one rear trunnion plate. Omitting them made the
@@ -1185,6 +1185,9 @@ function buildSheridan(P) {
       commanderAmmoBoxClosed: true,
       turretRoofClosed: true,
       mantletProfile: 'faceted-chevron-flat-backed-m81',
+      mantletSideChevron: true,
+      mantletStraightRidge: true,
+      mantletRidgeWidth: 1.03,
       hullCreaseDeg: SHERIDAN_HULL_CREASE_DEG,
       turretCreaseDeg: SHERIDAN_TURRET_CREASE_DEG,
     };

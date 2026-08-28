@@ -10962,7 +10962,7 @@ function buildLeo1A5Profile(P) {
 function buildLeo1A5ArticulatedProfile(P) {
   const { box, cylX, cylY, cylZ, torus, sph, buildGun, buildRunningGear,
     headlight, liftEye, towCable, stowage, jerryCan, tarpRoll, ammoCan,
-    shovelTool, xform } = KIT;
+    shovelTool, xform, straightRidgeGunMask } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
   // Leopard 1 upper glacis: 60 degrees from vertical (30 degrees above the
@@ -11446,21 +11446,17 @@ function buildLeo1A5ArticulatedProfile(P) {
   P.addGunExtra(new THREE.BoxGeometry(
     mantletRearPad.width, mantletRearPad.height, mantletRearPad.depth,
   ), 0, 0, mantletRearPad.z);
-  P.addGunExtra(slab(
-    [-0.64, -0.21, -0.30], [0.64, -0.21, -0.30], [0.58, -0.22, 0.04], [-0.58, -0.22, 0.04],
-    [-0.64, 0.21, -0.30], [0.64, 0.21, -0.30], [0.58, 0.22, 0.04], [-0.58, 0.22, 0.04]));
-  P.addGunExtra(slab(
-    [-0.59, -0.20, -0.04], [0.59, -0.20, -0.04], [0.52, -0.17, 0.27], [-0.52, -0.17, 0.27],
-    [-0.59, 0.20, -0.04], [0.59, 0.20, -0.04], [0.49, 0.17, 0.27], [-0.49, 0.17, 0.27]));
-  for (const s of [-1, 1]) {
-    P.addGunExtra(xform(sph(1, P.q ? 22 : 14), 0, 0, 0, 0, 0, 0, [0.23, 0.21, 0.16]), s * 0.55, -0.01, 0.09);
-  }
-  P.addGunExtra(slab(
-    [-0.57, 0.16, -0.06], [0.57, 0.16, -0.06], [0.48, 0.18, 0.38], [-0.48, 0.18, 0.38],
-    [-0.55, 0.30, -0.08], [0.55, 0.30, -0.08], [0.44, 0.25, 0.34], [-0.44, 0.25, 0.34]));
-  P.addGunExtra(slab(
-    [-0.50, -0.29, -0.04], [0.50, -0.29, -0.04], [0.39, -0.24, 0.34], [-0.39, -0.24, 0.34],
-    [-0.54, -0.17, -0.06], [0.54, -0.17, -0.06], [0.43, -0.15, 0.36], [-0.43, -0.15, 0.36]));
+  P.addGunExtra(straightRidgeGunMask({
+    rearHalfWidth: 0.64,
+    rearHalfHeight: 0.29,
+    ridgeHalfWidth: 0.50,
+    rearZ: -0.30,
+    ridgeZ: 0.38,
+  }));
+  // The former ellipsoid shoulder ears projected ahead of the angular mask
+  // in exact side view and visually replaced its new ridge with a round
+  // blob. The connected mask already tapers from its 1.28 m rear butterfly
+  // seat to the 1.00 m front course, so no separate rounded caps are needed.
   P.addGunExtraDark(xform(sph(1, P.q ? 20 : 14), 0, 0, 0, 0, 0, 0, [0.54, 0.12, 0.10]), 0, 0, -0.13);
   P.addGunExtra(cylZ(0.18, 0.30, P.q ? 20 : 14, 0.20), 0, 0, 0.38);
   P.addGunExtraDark(cylZ(0.026, 0.10, 9), 0.37, 0.06, 0.37);
@@ -11472,6 +11468,10 @@ function buildLeo1A5ArticulatedProfile(P) {
     shapedButterflyCasting: true,
     flatFacetedFace: true,
     flatRearContactFace: true,
+    sideChevron: true,
+    straightRidge: true,
+    ridgeWidth: 1.00,
+    ridgeZ: 0.38,
     turretReceiver: true,
     width: 1.32,
     height: 0.55,

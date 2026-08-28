@@ -242,6 +242,47 @@ function polyMultiLoft(plan, rings) {
   return g;
 }
 
+// Closed angular mask with a planar rear seat whose upper and lower skins
+// converge on one straight, full-width forward ridge. This makes the direct
+// side silhouette a literal chevron: there is no intervening vertical band,
+// rounded cap, or point apex between the two planes.
+function straightRidgeGunMask({
+  rearHalfWidth, rearHalfHeight, ridgeHalfWidth, rearZ, ridgeZ,
+}) {
+  if (rearHalfWidth <= 0 || rearHalfHeight <= 0
+    || ridgeHalfWidth <= 0 || ridgeZ <= rearZ) {
+    throw new RangeError('straightRidgeGunMask expects positive dimensions and a forward ridge');
+  }
+  const back = [
+    [-rearHalfWidth, -rearHalfHeight, rearZ],
+    [rearHalfWidth, -rearHalfHeight, rearZ],
+    [rearHalfWidth, rearHalfHeight, rearZ],
+    [-rearHalfWidth, rearHalfHeight, rearZ],
+  ];
+  const ridgeLeft = [-ridgeHalfWidth, 0, ridgeZ];
+  const ridgeRight = [ridgeHalfWidth, 0, ridgeZ];
+  const positions = [];
+  const tri = (a, b, c) => positions.push(...a, ...b, ...c);
+
+  // Planar rear seat, two broad skins, and triangular end caps. Both skins
+  // share the exact ridge vertices so the seam cannot split or kink.
+  tri(back[0], back[3], back[2]);
+  tri(back[0], back[2], back[1]);
+  tri(back[3], ridgeLeft, ridgeRight);
+  tri(back[3], ridgeRight, back[2]);
+  tri(back[0], back[1], ridgeRight);
+  tri(back[0], ridgeRight, ridgeLeft);
+  tri(back[0], ridgeLeft, back[3]);
+  tri(back[1], back[2], ridgeRight);
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(
+    new Array((positions.length / 3) * 2).fill(0), 2));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 // World-scale box-projected UVs so camo density is uniform across all parts.
 function boxUV(geo, scale = 0.35) {
   const pos = geo.attributes.position, nor = geo.attributes.normal;
@@ -3423,6 +3464,7 @@ function grilleIndices(highDetail, count, lowCount = 3) {
 // ---------------------------------------------------------------------------
 export const KIT = {
   xform, box, cylX, cylY, cylZ, sph, torus, lathe, slab, frustum, polyTurret, polyLoft, polyMultiLoft,
+  straightRidgeGunMask,
   mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometry,
   simplifiedTrackShoeGeometry, trackHitboxHull,
   runningGearContactPatch,
