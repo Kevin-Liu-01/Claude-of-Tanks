@@ -54,14 +54,14 @@ const SETTINGS_CSS = `
   background:radial-gradient(130% 100% at 50% 42%,rgba(4,7,10,.50) 0%,rgba(2,4,6,.76) 100%);
   -webkit-backdrop-filter:blur(8px) saturate(.9);backdrop-filter:blur(8px) saturate(.9);
   font-family:${FONT_STACK};color:#e6edf3;-webkit-user-select:none;user-select:none;}
-.cot-settings.open{display:flex;animation:cotSetVeil .20s ease-out;}
+.cot-settings.open{display:flex;animation:cotSetVeil var(--cot-motion-base) var(--cot-ease-out);}
 .cot-settings *{box-sizing:border-box;margin:0;padding:0;}
 .cot-set-panel{position:relative;width:744px;max-width:96vw;max-height:88vh;
   display:flex;flex-direction:column;
   background:linear-gradient(180deg,rgba(12,17,22,.96),rgba(6,9,12,.985));
   border:1px solid rgba(146,164,180,.30);
   box-shadow:0 24px 90px rgba(0,0,0,.8),inset 0 1px 0 rgba(235,243,250,.05);}
-.cot-settings.open .cot-set-panel{animation:cotSetIn .26s cubic-bezier(.21,.9,.24,1) backwards;}
+.cot-settings.open .cot-set-panel{animation:cotSetIn var(--cot-motion-slow) var(--cot-ease-drawer) backwards;}
 @keyframes cotSetVeil{from{opacity:0;}}
 @keyframes cotSetIn{from{opacity:0;transform:translateY(14px) scale(.985);}}
 .cot-set-hdr{display:flex;align-items:center;gap:12px;padding:15px 22px 11px;}
@@ -85,14 +85,17 @@ const SETTINGS_CSS = `
   align-items:center;justify-content:center;
   border:1px solid rgba(146,164,180,.35);border-bottom:2px solid rgba(146,164,180,.45);
   background:rgba(11,15,20,.7);color:#9fb0bf;font-family:${FONT_STACK};font-size:13px;
-  line-height:1;transition:color .12s,border-color .12s;}
+  line-height:1;transition:color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
+    transform var(--cot-motion-fast) var(--cot-ease-out);}
+.cot-set-close:active{transform:scale(.96);}
 .cot-set-close:hover{color:#f0b04a;border-color:rgba(240,176,74,.6);}
 /* segmented tabs: hover plate + amber active underline (garage era-chip kit) */
 .cot-set-tabs{display:flex;gap:2px;padding:0 22px;border-bottom:1px solid rgba(146,164,180,.22);
   background:linear-gradient(180deg,rgba(146,164,180,.05),rgba(146,164,180,0));}
 .cot-set-tab{position:relative;cursor:pointer;background:none;border:none;
   font-family:${FONT_STACK};font-size:11px;font-weight:700;letter-spacing:.22em;color:#8a97a3;
-  text-transform:uppercase;padding:11px 16px 10px;transition:color .12s,background .12s;}
+  text-transform:uppercase;padding:11px 16px 10px;
+  transition:color var(--cot-motion-fast) ease,background-color var(--cot-motion-fast) ease;}
 .cot-set-tab:hover{color:#c6d2dc;background:rgba(146,164,180,.07);}
 .cot-set-tab.sel{color:#ffd27a;background:linear-gradient(180deg,rgba(240,160,48,.10),rgba(240,160,48,0));}
 .cot-set-tab.sel::after{content:'';position:absolute;left:6px;right:6px;bottom:-1px;height:2px;
@@ -261,7 +264,9 @@ const SETTINGS_CSS = `
   background:linear-gradient(180deg,rgba(30,38,46,.9),rgba(16,21,26,.95));
   border:1px solid rgba(146,164,180,.42);border-bottom:2px solid rgba(88,102,115,.8);
   box-shadow:inset 0 1px 0 rgba(235,243,250,.07);
-  transition:color .12s,border-color .12s,background .12s;}
+  transition:color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
+    background-color var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out);}
+.cot-set-seg button:active{transform:scale(.97);}
 .cot-set-seg button:hover{color:#c6d2dc;border-color:rgba(210,225,240,.55);}
 .cot-set-seg button.sel{color:#ffd27a;border-color:rgba(240,176,74,.75);border-bottom-color:#f0a030;
   background:linear-gradient(180deg,rgba(58,40,14,.92),rgba(30,20,8,.95));

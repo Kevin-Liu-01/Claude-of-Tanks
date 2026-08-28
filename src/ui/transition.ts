@@ -29,8 +29,8 @@ import {
 } from './featuredShots.ts';
 import { isImagePreloaded, preloadImage } from './imagePreload.ts';
 
-const FADE_IN_MS = 240;
-const FADE_OUT_MS = 340;
+const FADE_IN_MS = 190;
+const FADE_OUT_MS = 140;
 
 export interface TransitionOptions {
   readonly kicker?: string;
@@ -57,15 +57,15 @@ export interface TransitionScreen {
 const CSS = `
 .cot-trans{position:fixed;inset:0;z-index:170;display:none;align-items:center;
   justify-content:center;flex-direction:column;background:#05080b;opacity:0;
-  transition:opacity ${FADE_IN_MS}ms ease;font-family:${FONT_STACK};color:#e6edf3;
+  transition:opacity ${FADE_IN_MS}ms var(--cot-ease-out);font-family:${FONT_STACK};color:#e6edf3;
   -webkit-user-select:none;user-select:none;cursor:default;overflow:hidden;}
 .cot-trans.on{display:flex;}
 .cot-trans.lit{opacity:1;}
-.cot-trans.out{opacity:0;transition:opacity ${FADE_OUT_MS}ms ease;}
+.cot-trans.out{opacity:0;transition:opacity ${FADE_OUT_MS}ms var(--cot-ease-out);}
 .cot-trans *{box-sizing:border-box;margin:0;padding:0;}
 .cot-trans .bg{position:absolute;inset:-2%;background-size:cover;
   background-position:center;filter:saturate(.88) contrast(1.04);
-  transform:scale(1.02);transition:transform 6s ease-out;}
+  transform:scale(1.02);transition:transform 6s var(--cot-ease-soft);}
 .cot-trans.lit .bg{transform:scale(1.07);}
 .cot-trans .scrim{position:absolute;inset:0;
   background:linear-gradient(180deg,rgba(5,8,11,.78) 0%,rgba(5,8,11,.46) 46%,rgba(5,8,11,.9) 100%);}
@@ -73,7 +73,8 @@ const CSS = `
   background:radial-gradient(108% 125% at 50% 38%,rgba(0,0,0,0) 38%,rgba(0,0,0,.74) 100%);}
 .cot-trans .core{position:relative;display:flex;flex-direction:column;align-items:center;
   transform:translateY(8px);opacity:0;
-  transition:transform 480ms cubic-bezier(.2,.7,.2,1),opacity 360ms ease;}
+  transition:transform var(--cot-motion-slow) var(--cot-ease-out),
+    opacity var(--cot-motion-base) var(--cot-ease-out);}
 .cot-trans.lit .core{transform:translateY(0);opacity:1;}
 .cot-trans .mark{width:46px;height:46px;object-fit:contain;
   filter:drop-shadow(0 4px 18px rgba(0,0,0,.7));}
@@ -97,6 +98,9 @@ const CSS = `
 .cot-trans .mfill{position:absolute;left:0;top:0;bottom:0;width:0%;
   background:linear-gradient(90deg,#b96f10,#f0a030 65%,#ffcf7d);
   box-shadow:0 0 14px rgba(240,160,48,.5);transition:width .16s linear;}
+@media (prefers-reduced-motion:reduce){
+  .cot-trans .bg,.cot-trans .core{transform:none!important;}
+}
 `;
 
 /** @returns {boolean} true when transitions must be invisible (probes). */

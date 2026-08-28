@@ -56,7 +56,8 @@ function ensureStyle(): void {
     min-width:220px;padding:10px 18px;border:1px solid rgba(238,166,67,.62);background:rgba(9,13,18,.94);
     box-shadow:0 12px 36px rgba(0,0,0,.52);color:#f2bd73;font:800 11px system-ui,sans-serif;
     letter-spacing:.12em;text-align:center;text-transform:uppercase;opacity:0;pointer-events:none;
-    transition:opacity .18s ease,transform .18s ease}.cot-network-status.show{opacity:1;transform:translate(-50%,0)}
+    transition:opacity var(--cot-motion-base) var(--cot-ease-out),
+      transform var(--cot-motion-base) var(--cot-ease-out)}.cot-network-status.show{opacity:1;transform:translate(-50%,0)}
     .cot-network-status.failed{color:#ff887b;border-color:rgba(255,103,91,.7)}
     .cot-network-diagnostics{position:fixed;left:8px;top:64px;z-index:89;display:none;
     padding:7px 9px;border-left:1px solid rgba(90,196,255,.55);background:rgba(5,10,16,.72);

@@ -618,7 +618,7 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-kf{display:flex;gap:7px;align-items:baseline;padding:5px 16px 5px 12px;font-size:12.5px;
   letter-spacing:.03em;background:linear-gradient(270deg,rgba(8,12,16,0) 0%,rgba(8,12,16,.82) 26%);
   border-left:2px solid #f05a5a;text-shadow:0 1px 2px rgba(0,0,0,.8);
-  transition:opacity .9s ease;opacity:1;}
+  transition:opacity var(--cot-motion-slow) var(--cot-ease-out);opacity:1;}
 .cot-kf.out{opacity:0;}
 .cot-kf .k{color:#cfe3f4;font-weight:600;}
 .cot-kf .v{color:#f28f8f;font-weight:600;}
@@ -636,8 +636,9 @@ body.cot-debug-hud .cot-net{display:none!important;}
     linear-gradient(112deg,rgba(17,25,31,.985),rgba(8,13,17,.98) 62%,rgba(13,19,24,.985));
   border:1px solid rgba(161,181,196,.32);
   box-shadow:0 16px 46px rgba(0,0,0,.64),inset 0 1px rgba(255,255,255,.035);
-  padding:6px 7px 6px 6px;transition:opacity .32s ease .12s,
-  transform .42s cubic-bezier(.2,.7,.3,1) .12s;}
+  padding:6px 7px 6px 6px;
+  transition:opacity var(--cot-motion-slow) var(--cot-ease-out) var(--cot-motion-instant),
+    transform var(--cot-motion-scene) var(--cot-ease-drawer) var(--cot-motion-instant);}
 .cot-spec.show{display:grid;}
 .cot-spec.in{opacity:1;transform:translate(-50%,0);}
 .cot-spec .portrait{position:relative;display:grid;place-items:center;overflow:hidden;
@@ -658,8 +659,8 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-spec .who span{margin-top:6px;font-family:${FONT_COND};font-weight:700;font-size:9px;line-height:1;
   letter-spacing:.14em;color:#aab8c2;text-transform:uppercase;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
-@keyframes cotSpecSw{0%{opacity:.15;transform:translateY(5px);}100%{opacity:1;transform:none;}}
-.cot-spec .who.sw{animation:cotSpecSw .35s ease;}
+@keyframes cotSpecSw{0%{opacity:.2;transform:translateY(4px);}100%{opacity:1;transform:none;}}
+.cot-spec .who.sw{animation:cotSpecSw var(--cot-motion-base) var(--cot-ease-out);}
 .cot-spec .switch{align-self:center;justify-self:center;width:136px;height:48px;display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:1fr;grid-auto-flow:column;
   overflow:hidden;border:1px solid rgba(176,192,204,.22);border-radius:3px;
@@ -668,17 +669,20 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-spec .cycle{min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;
   flex-flow:row nowrap;padding:0 10px;font-family:${FONT_COND};text-transform:uppercase;color:#a9b6c0;cursor:pointer;
   border:0;border-radius:0;background:transparent;
-  transition:transform 160ms ease-out,background-color 120ms ease,border-color 120ms ease,color 120ms ease;}
+  transition:transform var(--cot-motion-fast) var(--cot-ease-out),
+    background-color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
+    color var(--cot-motion-fast) ease;}
 .cot-spec .cycle+.cycle{border-left:1px solid rgba(176,192,204,.18);}
 .cot-spec .cycle-icon{display:grid;place-items:center;color:#e2ebf1;opacity:.82;
-  transition:transform 160ms ease-out,color 120ms ease,opacity 120ms ease;}
+  transition:transform var(--cot-motion-fast) var(--cot-ease-out),
+    color var(--cot-motion-fast) ease,opacity var(--cot-motion-fast) ease;}
 .cot-spec .cycle-icon svg{display:block;width:12px;height:12px;}
 .cot-spec .cycle kbd{width:24px;height:24px;display:grid;place-items:center;padding:0;
   font:800 10px/1 ui-monospace,SFMono-Regular,monospace;color:#ffc76b;
   border:1px solid rgba(240,176,74,.38);border-bottom-color:rgba(240,176,74,.6);border-radius:2px;
   background:linear-gradient(180deg,rgba(240,176,74,.15),rgba(240,160,48,.055));
   box-shadow:inset 0 1px rgba(255,229,182,.1),0 2px 0 rgba(3,6,9,.78);
-  transition:transform 100ms ease-out;}
+  transition:transform var(--cot-motion-instant) var(--cot-ease-out);}
 .cot-spec .cycle:active{transform:scale(.97);}
 .cot-spec .cycle:focus-visible,.cot-spec .gar:focus-visible{outline:2px solid #d9e4eb;
   outline-offset:2px;}
@@ -687,7 +691,9 @@ body.cot-debug-hud .cot-net{display:none!important;}
   text-transform:uppercase;color:#f0b04a;cursor:pointer;border:1px solid rgba(240,176,74,.48);border-radius:2px;
   background:linear-gradient(180deg,rgba(240,160,48,.16),rgba(240,160,48,.06));white-space:nowrap;
   box-shadow:inset 0 1px rgba(255,224,166,.06),0 5px 18px rgba(0,0,0,.16);
-  transition:transform 160ms ease-out,background-color 120ms ease,border-color 120ms ease,color 120ms ease;}
+  transition:transform var(--cot-motion-fast) var(--cot-ease-out),
+    background-color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
+    color var(--cot-motion-fast) ease;}
 .cot-spec .gar-icon,.cot-spec .gar-icon svg{display:block;width:19px;height:19px;}
 .cot-spec .gar:active{transform:scale(.97);}
 @media (hover:hover) and (pointer:fine){
@@ -726,7 +732,8 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   border:1px solid rgba(184,201,214,.3);border-bottom:2px solid rgba(240,160,48,.72);
   box-shadow:0 9px 24px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.035);
   text-shadow:0 1px 3px rgba(0,0,0,.9);opacity:0;
-  transition:opacity .18s ease,transform .2s cubic-bezier(.2,.7,.3,1);}
+  transition:opacity var(--cot-motion-base) var(--cot-ease-out),
+    transform var(--cot-motion-base) var(--cot-ease-out);}
 .cot-alert-icon{width:18px;height:18px;display:grid;place-items:center;flex:0 0 auto;}
 .cot-alert-icon svg{display:block;width:18px;height:18px;}
 .cot-alert-copy{min-width:0;overflow:hidden;text-overflow:ellipsis;}
@@ -743,7 +750,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   width:min(390px,calc(100vw - 32px));display:grid;grid-template-columns:minmax(0,1fr);
   grid-template-rows:30px 92px;
   row-gap:7px;justify-items:center;text-align:center;pointer-events:none;
-  opacity:0;transition:opacity .3s ease;}
+  opacity:0;transition:opacity var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-prebattle.on{opacity:1;}
 .cot-prebattle .k{display:inline-block;padding:7px 18px 6px;font-family:${FONT_COND};
   font-size:17px;font-weight:900;line-height:1;letter-spacing:.3em;text-indent:.3em;
@@ -751,7 +758,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   text-shadow:-1px -1px 0 rgba(4,7,10,.98),1px -1px 0 rgba(4,7,10,.98),
     -1px 1px 0 rgba(4,7,10,.98),1px 1px 0 rgba(4,7,10,.98),
     0 2px 8px rgba(0,0,0,.9),0 0 16px rgba(240,160,48,.24);
-  transition:opacity .15s ease;}
+  transition:opacity var(--cot-motion-fast) var(--cot-ease-out);}
 .cot-prebattle.rollout .k{visibility:hidden;opacity:0;}
 .cot-prebattle .n{width:100%;height:92px;display:flex;align-items:center;justify-content:center;
   font-family:${FONT_STACK};font-size:92px;
@@ -761,7 +768,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
     2px 2px 0 rgba(4,7,10,.98),0 2px 0 rgba(4,7,10,.98),
     -2px 2px 0 rgba(4,7,10,.98),-2px 0 0 rgba(4,7,10,.98),
     0 2px 10px rgba(0,0,0,.85),0 0 34px rgba(240,160,48,.35);}
-.cot-prebattle .n.tick{animation:cot-pb-pop .5s cubic-bezier(.2,.7,.3,1);}
+.cot-prebattle .n.tick{animation:cot-pb-pop var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-prebattle .n.go{font-size:64px;letter-spacing:.12em;text-indent:.12em;color:#ffe4b0;}
 @keyframes cot-pb-pop{from{transform:scale(1.28);opacity:.4;}to{transform:scale(1);opacity:1;}}
 .cot-alert.show{opacity:1;transform:translate(-50%,0);}
@@ -933,8 +940,10 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   color:#ffd46f;background:linear-gradient(105deg,rgba(29,22,8,.96),rgba(9,13,17,.94));
   border:1px solid rgba(240,184,72,.5);border-bottom:2px solid #e9ad3e;
   box-shadow:0 10px 28px rgba(0,0,0,.45),inset 0 1px rgba(255,226,181,.06);
-  opacity:0;transition:opacity .16s ease,transform .2s cubic-bezier(.2,.7,.3,1);pointer-events:none;}
-.cot-sixth.on{opacity:1;transform:translate(-50%,0);animation:cotDetectedIn .28s ease-out 1;}
+  opacity:0;transition:opacity var(--cot-motion-fast) var(--cot-ease-out),
+    transform var(--cot-motion-base) var(--cot-ease-out);pointer-events:none;}
+.cot-sixth.on{opacity:1;transform:translate(-50%,0);
+  animation:cotDetectedIn var(--cot-motion-slow) var(--cot-ease-out) 1;}
 .cot-sixth .sig{height:100%;display:grid;place-items:center;color:#ffd05c;
   border-right:1px solid rgba(240,184,72,.32);background:rgba(240,184,72,.09);}
 .cot-sixth .sig svg{width:24px;height:24px;display:block;filter:drop-shadow(0 0 7px rgba(255,202,72,.46));}

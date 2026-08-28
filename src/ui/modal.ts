@@ -67,14 +67,16 @@ export function normalizeModalSize(value: unknown): ModalSize {
 
 const CSS = `
 .cot-modal-root{position:fixed;inset:0;z-index:10050;display:grid;place-items:center;padding:clamp(12px,3vw,38px);
-  font-family:${FONT_STACK};color:#e9eff4;opacity:0;pointer-events:none;transition:opacity .2s ease}
+  font-family:${FONT_STACK};color:#e9eff4;opacity:0;pointer-events:none;
+  transition:opacity var(--cot-motion-base) var(--cot-ease-out)}
 .cot-modal-root[hidden]{display:none}.cot-modal-root.is-open{opacity:1;pointer-events:auto}
 .cot-modal-backdrop{position:absolute;inset:0;background:rgba(1,4,7,.78);backdrop-filter:blur(9px) saturate(.72)}
 .cot-modal{--cot-modal-max:680px;position:relative;display:flex;flex-direction:column;width:min(100%,var(--cot-modal-max));
   max-height:min(88vh,900px);overflow:hidden;border:1px solid rgba(165,183,198,.28);border-top-color:rgba(240,176,74,.76);
   background:linear-gradient(155deg,rgba(16,23,29,.99),rgba(5,8,11,.995));box-shadow:0 28px 90px rgba(0,0,0,.76);
-  transform:translateY(18px);transition:transform .24s cubic-bezier(.2,.72,.25,1)}
-.cot-modal-root.is-open .cot-modal{transform:translateY(0)}
+  transform:translateY(12px) scale(.992);
+  transition:transform var(--cot-motion-slow) var(--cot-ease-drawer)}
+.cot-modal-root.is-open .cot-modal{transform:translateY(0) scale(1)}
 .cot-modal[data-size='small']{--cot-modal-max:500px}.cot-modal[data-size='large']{--cot-modal-max:900px}
 .cot-modal[data-size='wide']{--cot-modal-max:1120px}
 .cot-modal::before{content:"";position:absolute;z-index:3;left:0;top:0;width:96px;height:2px;
@@ -86,7 +88,9 @@ const CSS = `
 .cot-modal__title{margin:0;color:#f3f6f8;font:800 clamp(21px,3vw,30px)/1.08 ${FONT_STACK};letter-spacing:-.025em}
 .cot-modal__subtitle{max-width:720px;margin:8px 0 0;color:#8fa0ad;font:650 13px/1.5 ${FONT_STACK}}
 .cot-modal__close{width:40px;height:40px;display:grid;place-items:center;padding:0;border:1px solid rgba(165,183,198,.24);
-  background:rgba(4,7,10,.64);color:#9cadb9;cursor:pointer;transition:color .14s,border-color .14s,background .14s,transform .12s}
+  background:rgba(4,7,10,.64);color:#9cadb9;cursor:pointer;
+  transition:color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
+    background-color var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out)}
 .cot-modal__close:hover,.cot-modal__close:focus-visible{color:#ffd27a;border-color:#f0a030;background:rgba(240,160,48,.1);outline:none}
 .cot-modal__close:active{transform:scale(.96)}
 .cot-modal__body{min-height:0;overflow:auto;overscroll-behavior:contain;padding:clamp(18px,3vw,30px);scrollbar-width:thin;
@@ -98,7 +102,9 @@ const CSS = `
 .cot-modal__footer:empty{display:none}
 .cot-modal__button{min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 16px;
   border:1px solid rgba(165,183,198,.3);background:rgba(10,15,19,.86);color:#c5d0d8;cursor:pointer;
-  font:900 10px/1 ${FONT_COND};letter-spacing:.13em;text-transform:uppercase;transition:color .14s,border-color .14s,background .14s,transform .12s}
+  font:900 10px/1 ${FONT_COND};letter-spacing:.13em;text-transform:uppercase;
+  transition:color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
+    background-color var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out)}
 .cot-modal__button:hover,.cot-modal__button:focus-visible{border-color:#e69a2d;color:#ffd27a;background:rgba(230,154,45,.1);outline:none}
 .cot-modal__button:active{transform:scale(.97)}.cot-modal__button--primary{border-color:#f0b04a;background:linear-gradient(#efaa45,#c8731d);color:#1c1003}
 .cot-modal__button--primary:hover,.cot-modal__button--primary:focus-visible{background:linear-gradient(#ffc164,#df8525);color:#120a02}

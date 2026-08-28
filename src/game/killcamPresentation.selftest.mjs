@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('./killcam.js', import.meta.url), 'utf8');
+const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 const state = readFileSync(new URL('./state.ts', import.meta.url), 'utf8');
 const effects = readFileSync(new URL('../fx/effects.js', import.meta.url), 'utf8');
 const responsive = readFileSync(new URL('../ui/responsiveSurfaces.css', import.meta.url), 'utf8');
+const cameraRig = readFileSync(new URL('../engine/cameraRig.js', import.meta.url), 'utf8');
 
 assert.match(source, /import \{ uiIconSVG \} from '\.\.\/ui\/uiIcons\.ts';/,
   'killcam presentation uses the shared SVG icon registry');
@@ -44,6 +46,9 @@ assert.match(responsive,
 assert.match(responsive,
   /body\[data-cot-height='short'\] \.cot-kc-micro,[\s\S]*?\.cot-kc-label\.nm\{display:none!important\}/,
   'short landscape hides secondary micro and near-miss tags');
+assert.match(responsive,
+  /body\[data-cot-width='phone'\] \.cot-spec\{[\s\S]*?transform:translateY\(14px\)[\s\S]*?\.cot-spec\.in\{transform:translateY\(0\)\}/,
+  'phone spectator bar cancels the desktop horizontal centering transform');
 assert.match(source, /const panelEls = \[dom\.title, dom\.skip, dom\.annot,/,
   'projected callouts reserve the fixed title, skip control, and analysis cards');
 assert.match(source, /w - it\.lw - 8/,
@@ -62,6 +67,26 @@ assert.match(source, /function beginFiring\(\)[\s\S]*restageAttacker\(\)[\s\S]*r
   'projectile playback visibly fires the restored attacker from its rendered muzzle');
 assert.match(source, /function updateCollision\(dt\)[\s\S]*applyReplaySurfaceState\(tvis, pb\.snap\.moduleStates[\s\S]*vehicleCollision/,
   'collision contact applies resolved module failures and dedicated impact effects');
+assert.match(main, /createKillCam\([\s\S]*getGame: \(\) => game/,
+  'production composition injects canonical game state into the killcam');
+assert.match(source, /const gameRef = \(\) => \{[\s\S]*getGame \? getGame\(\) : null/,
+  'spectator target selection uses the injected game-state getter');
+assert.match(source, /function beginCameraHandoff[\s\S]*function setReplayCamera/,
+  'killcam owns a continuous phase-to-phase camera handoff');
+assert.match(source, /beginCameraHandoff\(\);[\s\S]*pb\.phase = 'flight';[\s\S]*setReplayCamera\(_a, _b, 50 - 8 \* k, dt\)/,
+  'attacker firing blends continuously into the projectile chase');
+assert.match(source, /function beginXray\(\) \{[\s\S]*beginCameraHandoff\(\)[\s\S]*setReplayCamera\(pb\.xcam\.pos, pb\.xcam\.look, 42, 0\)/,
+  'collision, direct-analysis, and skipped paths blend into the x-ray camera');
+assert.doesNotMatch(source, /body\.cot-kc-live \.cot-hud\{display:none/,
+  'replay HUD suppression keeps layout geometry mounted');
+assert.doesNotMatch(source, /\.cot-kc\.out \.cot-kc-bart,[\s\S]{0,120}height:51vh/,
+  'exit no longer fakes a viewport resize with expanding letterbox bars');
+assert.doesNotMatch(source, /Math\.exp\(-pb\.itWall \/ 0\.16\)/,
+  'impact no longer jumps to a peak lens punch on its first frame');
+assert.match(cameraRig, /nextFov = spec\.fromFov \+ \(55 - spec\.fromFov\) \* k/,
+  'spectator entry blends its lens instead of snapping out of the killcam FOV');
+assert.match(cameraRig, /function spectateBlendDuration\(ent\)[\s\S]*Math\.hypot\(dx, dy, dz\)/,
+  'long-distance spectator target changes receive a distance-aware blend');
 assert.match(state, /applyLethalRamModuleDamage[\s\S]*game\.killcam\.onRam\(ramEvent, a, b\)/,
   'authoritative ram resolution records module failures before live wreck presentation');
 assert.match(effects, /vehicleCollision\(pos, normal, closingMps = 0\)[\s\S]*sparkFan[\s\S]*debris/,

@@ -1,0 +1,30 @@
+/* Claude of Tanks motion contract.
+ *
+ * Keep interaction motion crisp and interruptible. Full-screen state changes
+ * may use the scene duration; frequently used controls stay in the fast/base
+ * bands. These variables are intentionally framework-free so injected HUD,
+ * garage, modal, loading, and public-page styles all share the same rhythm.
+ */
+:root {
+  --cot-motion-instant: 90ms;
+  --cot-motion-fast: 140ms;
+  --cot-motion-base: 190ms;
+  --cot-motion-slow: 260ms;
+  --cot-motion-scene: 420ms;
+  --cot-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --cot-ease-move: cubic-bezier(.65, 0, .35, 1);
+  --cot-ease-drawer: cubic-bezier(.32, .72, 0, 1);
+  --cot-ease-soft: cubic-bezier(.22, 1, .36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --cot-motion-instant: 1ms;
+    --cot-motion-fast: 1ms;
+    --cot-motion-base: 1ms;
+    --cot-motion-slow: 1ms;
+    --cot-motion-scene: 1ms;
+  }
+
+  html { scroll-behavior: auto !important; }
+}

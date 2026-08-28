@@ -156,7 +156,11 @@ export function preloadPlayMode(mode: PlayMode): Promise<RankedServiceModule | n
 const CSS = `
 .cot-play{position:fixed;inset:0;z-index:92;display:none;align-items:center;justify-content:center;
   padding:24px;background:rgba(3,5,8,.76);backdrop-filter:blur(12px);font-family:${FONT_STACK};color:#edf3f7;}
-.cot-play.show{display:flex}.cot-play *{box-sizing:border-box}.cot-play .panel{position:relative;width:min(980px,96vw);
+.cot-play.show{display:flex;animation:cotPlayVeil var(--cot-motion-base) var(--cot-ease-out)}
+.cot-play.show .panel{animation:cotPlayPanel var(--cot-motion-slow) var(--cot-ease-drawer) backwards}
+@keyframes cotPlayVeil{from{opacity:0}}
+@keyframes cotPlayPanel{from{opacity:0;transform:translateY(12px) scale(.992)}}
+.cot-play *{box-sizing:border-box}.cot-play .panel{position:relative;width:min(980px,96vw);
   max-height:92vh;overflow:auto;background:linear-gradient(155deg,rgba(18,24,30,.985),rgba(7,10,14,.99));
   border:1px solid rgba(181,197,210,.3);box-shadow:0 30px 100px rgba(0,0,0,.72);padding:28px;}
 .cot-play .close{position:absolute;right:14px;top:12px;width:40px;height:40px;border:0;background:none;
@@ -180,7 +184,9 @@ const CSS = `
 .cot-play .rule-heading span{color:#7e909d;font-size:9px}.cot-play .rules{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
 .cot-play .rule{display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;gap:9px;min-height:54px;
   padding:7px 9px;text-align:left;color:#aebdc7;background:rgba(10,15,20,.78);border:1px solid rgba(151,170,184,.22);
-  cursor:pointer;transition:border-color .15s ease,background .15s ease,color .15s ease,transform .15s ease}
+  cursor:pointer;transition:border-color var(--cot-motion-fast) ease,
+    background-color var(--cot-motion-fast) ease,color var(--cot-motion-fast) ease,
+    transform var(--cot-motion-fast) var(--cot-ease-out)}
 .cot-play .rule:hover,.cot-play .rule.on{color:#fff0d8;border-color:#e69a36;background:rgba(230,154,54,.1);transform:translateY(-1px)}
 .cot-play .rule svg{display:block}.cot-play .rule-copy{display:grid;min-width:0;gap:2px}.cot-play .rule-copy b{overflow:hidden;
   color:inherit;font:900 9px ${FONT_COND};letter-spacing:.08em;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase}
@@ -201,19 +207,22 @@ const CSS = `
   text-transform:uppercase;color:#8fa1ae}.cot-play .menu-select{position:relative;min-width:0}.cot-play .menu-select-trigger{
   position:relative;display:flex;align-items:center;gap:9px;width:100%;height:42px;padding:0 38px 0 12px;text-align:left;
   color:#edf3f7;background:linear-gradient(180deg,#11171d,#080c11);border:1px solid rgba(161,180,195,.36);
-  font:700 12px ${FONT_STACK};cursor:pointer;transition:border-color .14s ease,background .14s ease,box-shadow .14s ease}
+  font:700 12px ${FONT_STACK};cursor:pointer;transition:border-color var(--cot-motion-fast) ease,
+    background-color var(--cot-motion-fast) ease,box-shadow var(--cot-motion-fast) ease}
 .cot-play .menu-select-trigger:hover{border-color:rgba(230,154,54,.72);background:linear-gradient(180deg,#161c22,#0b1015)}
 .cot-play .menu-select.open .menu-select-trigger{border-color:#e69a36;box-shadow:0 0 0 2px rgba(230,154,54,.1)}
 .cot-play .menu-select-trigger::after{content:"";
   position:absolute;right:13px;top:50%;width:7px;height:7px;border-right:2px solid #cbd6dd;border-bottom:2px solid #cbd6dd;
-  transform:translateY(-68%) rotate(45deg);transition:transform .14s ease}.cot-play .menu-select.open .menu-select-trigger::after{
+  transform:translateY(-68%) rotate(45deg);
+  transition:transform var(--cot-motion-fast) var(--cot-ease-out)}.cot-play .menu-select.open .menu-select-trigger::after{
   transform:translateY(-30%) rotate(225deg)}.cot-play .menu-select-list{position:fixed;z-index:112;display:none;gap:3px;
   padding:6px;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;background:linear-gradient(155deg,#1b2229,#090d12 82%);
   border:1px solid rgba(230,154,54,.62);box-shadow:0 24px 60px rgba(0,0,0,.72),inset 0 1px rgba(255,255,255,.04)}
 .cot-play .menu-select-list::-webkit-scrollbar{display:none}.cot-play .menu-select.open .menu-select-list{display:grid}
 .cot-play .menu-select-option{position:relative;display:flex;align-items:center;gap:10px;min-height:40px;padding:0 34px 0 11px;
   overflow:hidden;text-align:left;color:#c8d3db;background:rgba(255,255,255,.015);border:1px solid transparent;
-  font:700 12px ${FONT_STACK};cursor:pointer;transition:border-color .12s ease,background .12s ease,color .12s ease}
+  font:700 12px ${FONT_STACK};cursor:pointer;transition:border-color var(--cot-motion-fast) ease,
+    background-color var(--cot-motion-fast) ease,color var(--cot-motion-fast) ease}
 .cot-play .menu-select-option::after{content:"";position:absolute;right:13px;top:50%;width:9px;height:5px;border-left:2px solid transparent;
   border-bottom:2px solid transparent;transform:translateY(-65%) rotate(-45deg)}.cot-play .menu-select-option:hover,
 .cot-play .menu-select-option.on{color:#fff2df;background:linear-gradient(90deg,rgba(230,154,54,.16),rgba(230,154,54,.05));
@@ -315,7 +324,7 @@ const CSS = `
   grid-template-columns:34px 1fr 100px 90px;gap:10px;padding:8px 10px;background:rgba(13,18,24,.88);
   color:#aebdc8;font-size:10px}.cot-play .ladder-row b{color:#edf3f7}.cot-play .rank-profile{margin-top:10px;
   color:#eeb46b;font:800 10px ${FONT_COND};letter-spacing:.1em;text-transform:uppercase}
-@media(prefers-reduced-motion:reduce){.cot-play button.action.needs-ready,.cot-play button.action.can-start{animation:none;
+@media(prefers-reduced-motion:reduce){.cot-play,.cot-play .panel,.cot-play button.action.needs-ready,.cot-play button.action.can-start{animation:none;
   box-shadow:0 0 0 3px rgba(230,154,54,.16),0 0 18px rgba(230,154,54,.34)}.cot-play .menu-select-trigger,
   .cot-play .menu-select-trigger::after,.cot-play .menu-select-option{transition:none}}
 `;

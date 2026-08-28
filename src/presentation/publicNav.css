@@ -1,3 +1,5 @@
+@import url('../ui/motion.css');
+
 .public-nav{
   position:sticky;
   z-index:110;
@@ -53,14 +55,15 @@
   font-weight:900;
   letter-spacing:.13em;
   text-transform:uppercase;
-  transition:background .16s ease,border-color .16s ease,color .16s ease,transform .16s ease;
+  transition:background-color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
+    color var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out);
 }
 .public-nav__icon{
   width:14px;
   height:14px;
   flex:none;
   opacity:.72;
-  transition:opacity .16s ease,transform .16s ease;
+  transition:opacity var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out);
 }
 .public-nav__icon--tank{width:20px;height:16px}
 .public-nav__icon--studio{width:18px;height:16px}

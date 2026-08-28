@@ -19,9 +19,9 @@
  *      loop is frozen during replays). Mid-battle deaths get the same beat
  *      OUTSIDE the killcam (main.ts death beat — full-volume audio), so this
  *      phase self-gates on the freshness flag.
- *   0. APPROACH (death view only, killcam_endscreen r1) — eased push-in
+ *   0. APPROACH — eased establishing arc
  *      orbit from the player's live death view to the killer's position,
- *      landing exactly on the flight chase-cam's first pose (no cuts). A
+ *      landing exactly on the restored attacker's firing pose (no cuts). A
  *      shock flash + sliding letterbox + staggered chrome open the replay;
  *      a screen-space grade (desaturate + vignette) ramps over the death
  *      view. Exit is a letterbox close + fade-through-black into whatever
@@ -103,6 +103,7 @@ const FLIGHT_MAX_S = 3.4;
 const APPROACH_S = 1.6;        // push-in orbit duration
 const FIRING_HOLD_S = 0.78;    // readable attacker + muzzle/recoil beat
 const COLLISION_HOLD_S = 1.45; // rewind -> metal contact -> module failure
+const CAMERA_HANDOFF_S = 0.62; // phase-to-phase pose/fov continuity
 const COLLISION_CONTACT_U = 0.66;
 const SLOWMO_RATE = 0.25;      // terminal speed factor at the plate
 const SLOWMO_START_M = 44;     // ramp begins this far from impact
@@ -170,6 +171,8 @@ const _d = new THREE.Vector3();
 const _s = new THREE.Vector3();
 const _a = new THREE.Vector3();
 const _b = new THREE.Vector3();
+const _camPos = new THREE.Vector3();
+const _camLook = new THREE.Vector3();
 const _proj = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _e = new THREE.Euler();
@@ -458,7 +461,13 @@ const KC_CSS = `
    the replay is active whatever the caller ordering. .cot-hud contains every
    battle element incl. the damage panel + shot-info layer; .cot-si-stats is
    the battle report (already killcam:done-gated, veiled here for parity). */
-body.cot-kc-live .cot-hud{display:none !important;}
+/* Keep HUD geometry mounted while the replay owns the frame. Removing it
+   with display:none made the replay entry/exit read as a viewport layout
+   shift, especially when the spectator bar mounted at the black handoff. */
+.cot-hud{transition:opacity var(--cot-motion-base) var(--cot-ease-out),visibility 0s linear 0s;}
+body.cot-kc-live .cot-hud{opacity:0 !important;visibility:hidden !important;
+  pointer-events:none !important;transition:opacity var(--cot-motion-base) var(--cot-ease-out),
+    visibility 0s linear var(--cot-motion-base);}
 body.cot-kc-live .cot-si-stats{visibility:hidden !important;}
 /* X-RAY BACKDROP SCRIM (r4 major): the old veil was a pure edge vignette —
    0% dim at the victim — so sunlit grass behind the ghost stayed at full
@@ -469,13 +478,14 @@ body.cot-kc-live .cot-si-stats{visibility:hidden !important;}
    the 3D scene itself (beginXray dims sun/hemi so terrain drops BEFORE the
    translucent skin blends over it — the unlit ghost material keeps its own
    brightness, making ghost contrast scene-luminance-INVARIANT). */
-.cot-kc-veil{position:absolute;inset:0;opacity:0;transition:opacity .5s ease;
+.cot-kc-veil{position:absolute;inset:0;opacity:0;
+  transition:opacity var(--cot-motion-scene) var(--cot-ease-out);
   background:radial-gradient(ellipse 56% 50% at var(--kcvx,50%) var(--kcvy,55%),
     rgba(5,9,14,.14) 0%,rgba(5,9,14,.17) 26%,rgba(5,9,14,.28) 54%,
     rgba(5,9,14,.42) 78%,rgba(5,9,14,.52) 100%);}
 .cot-kc.xr .cot-kc-veil{opacity:1;}
 @keyframes cotKcIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
-.cot-kc-anim{opacity:0;animation:cotKcIn .35s ease forwards;}
+.cot-kc-anim{opacity:0;animation:cotKcIn var(--cot-motion-slow) var(--cot-ease-out) forwards;}
 line.cot-kc-anim{animation-name:cotKcInLine;}
 @keyframes cotKcInLine{from{opacity:0;}to{opacity:.85;}}
 .cot-kc-micro{position:absolute;z-index:8;display:flex;align-items:center;gap:5px;white-space:nowrap;
@@ -494,52 +504,58 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 /* ENTRY / EXIT TRANSITIONS (killcam_endscreen r1): the replay never pops in a
    single frame. Entry: the letterbox bars SLIDE shut while title/annot/skip
    fade-slide in staggered behind them (.in); a shock flash (.cot-kc-flash)
-   synced to the killing hit whites the frame for ~120 ms and decays. Exit:
-   the bars grow to swallow the frame (.out) under a body-level
-   fade-through-black (.cot-kc-fadeblk — appended to <body> so it outlives
+   synced to the killing hit warms the frame briefly and decays. Exit:
+   the chrome fades under a body-level fade-through-black
+   (.cot-kc-fadeblk — appended to <body> so it outlives
    the root teardown happening BEHIND it, and z-80 so nothing pops over it).
    Staged harness frames (.now) hard-disable every timeline so captures stay
    deterministic. cancel() strips all of these classes — tested explicitly. */
 .cot-kc .cot-kc-bart,.cot-kc .cot-kc-barb{
-  transition:transform .5s cubic-bezier(.2,.8,.25,1),height .42s cubic-bezier(.55,.06,.75,.4);}
+  transition:transform var(--cot-motion-scene) var(--cot-ease-drawer),
+    opacity var(--cot-motion-base) var(--cot-ease-out);}
 .cot-kc .cot-kc-bart{transform:translateY(-102%);}
 .cot-kc .cot-kc-barb{transform:translateY(102%);}
 .cot-kc.in .cot-kc-bart,.cot-kc.in .cot-kc-barb{transform:none;}
-.cot-kc.out .cot-kc-bart,.cot-kc.out .cot-kc-barb{height:51vh;
-  background:#000;transform:none;}
+.cot-kc.out .cot-kc-bart,.cot-kc.out .cot-kc-barb{opacity:0;transform:none;}
 .cot-kc .cot-kc-title{opacity:0;transform:translate(-50%,-8px);
-  transition:opacity .45s ease .28s,transform .45s ease .28s;}
+  transition:opacity var(--cot-motion-slow) var(--cot-ease-out) var(--cot-motion-instant),
+    transform var(--cot-motion-slow) var(--cot-ease-out) var(--cot-motion-instant);}
 .cot-kc.in .cot-kc-title{opacity:1;transform:translate(-50%,0);}
-.cot-kc .cot-kc-skip{opacity:0;transition:opacity .5s ease .85s;}
+.cot-kc .cot-kc-skip{opacity:0;
+  transition:opacity var(--cot-motion-base) var(--cot-ease-out) var(--cot-motion-slow);}
 .cot-kc.in .cot-kc-skip{opacity:1;}
-.cot-kc .cot-kc-annot{transition:opacity .5s ease .5s,transform .5s ease .5s;
+.cot-kc .cot-kc-annot{
+  transition:opacity var(--cot-motion-slow) var(--cot-ease-out) var(--cot-motion-fast),
+    transform var(--cot-motion-slow) var(--cot-ease-out) var(--cot-motion-fast);
   opacity:0;transform:translateY(10px);}
 .cot-kc.in .cot-kc-annot{opacity:1;transform:none;}
 .cot-kc.out .cot-kc-title,.cot-kc.out .cot-kc-annot,.cot-kc.out .cot-kc-skip,
 .cot-kc.out .cot-kc-killer,.cot-kc.out .cot-kc-label,.cot-kc.out .cot-kc-micro,
 .cot-kc.out .cot-kc-dot,.cot-kc.out .cot-kc-dmg,.cot-kc.out .cot-kc-leader{
-  opacity:0 !important;transition:opacity .24s ease !important;}
+  opacity:0 !important;transition:opacity var(--cot-motion-fast) var(--cot-ease-out) !important;}
 .cot-kc.now *{transition:none !important;animation:none !important;}
 .cot-kc.now .cot-kc-title{opacity:1;transform:translate(-50%,0);}
 .cot-kc.now .cot-kc-skip{opacity:1;}
 .cot-kc.now .cot-kc-annot{opacity:1;transform:none;}
-.cot-kc-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;}
-.cot-kc-flash.go{animation:cotKcFlash .36s cubic-bezier(.2,.6,.5,1) forwards;}
-@keyframes cotKcFlash{0%{opacity:.94;}33%{opacity:.5;}100%{opacity:0;}}
+.cot-kc-flash{position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 52%,rgba(255,244,218,.78),rgba(242,165,54,.2) 34%,transparent 72%);
+  opacity:0;pointer-events:none;}
+.cot-kc-flash.go{animation:cotKcFlash var(--cot-motion-scene) var(--cot-ease-out) forwards;}
+@keyframes cotKcFlash{0%{opacity:.62;}33%{opacity:.28;}100%{opacity:0;}}
 /* DEATH-VIEW GRADE (killcam_endscreen r1): subtle desaturation + vignette
    ramp over the whole death replay — screen-space only (the post chain is
    not this module's), ramped by CSS opacity so cancel() cleanly restores. */
 .cot-kc-grade{position:absolute;inset:0;pointer-events:none;opacity:0;
-  transition:opacity 1.2s ease;
+  transition:opacity var(--cot-motion-scene) var(--cot-ease-out);
   -webkit-backdrop-filter:saturate(.62) contrast(1.05);
   backdrop-filter:saturate(.62) contrast(1.05);
   background:radial-gradient(ellipse 80% 70% at 50% 50%,rgba(0,0,0,0) 50%,
     rgba(6,8,11,.34) 84%,rgba(4,6,9,.5) 100%);}
 .cot-kc.grade .cot-kc-grade{opacity:1;}
 .cot-kc-fadeblk{position:fixed;inset:0;z-index:80;background:#000;opacity:0;
-  pointer-events:none;transition:opacity .42s ease;}
+  pointer-events:none;transition:opacity var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-kc-fadeblk.in{opacity:1;}
-.cot-kc-fadeblk.lift{transition:opacity .34s ease;}
+.cot-kc-fadeblk.lift{transition:opacity var(--cot-motion-base) var(--cot-ease-out);}
 /* KILLER CARD (killcam_endscreen r1): who killed you — name, vehicle, shell,
    damage, distance — revealed during the x-ray hold in the Inter/amber HUD
    language. Right side; the armor annotation block owns the left. */
@@ -548,7 +564,9 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   border:1px solid var(--kc-line);border-right:3px solid var(--kc-red);
   box-shadow:0 16px 38px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.035);
   padding:0 12px 10px;opacity:0;
-  transform:translateY(12px);transition:opacity .55s ease,transform .55s ease;
+  transform:translateY(10px);
+  transition:opacity var(--cot-motion-slow) var(--cot-ease-out),
+    transform var(--cot-motion-slow) var(--cot-ease-out);
   display:none;}
 .cot-kc-killer.on{display:block;}
 .cot-kc-killer.rv{opacity:1;transform:none;}
@@ -669,6 +687,13 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-dmg .ico{color:var(--kc-amber);}
 .cot-kc-leader{position:absolute;z-index:7;inset:0;width:100%;height:100%;overflow:visible;}
 .cot-kc-flash{z-index:12;}
+@media (prefers-reduced-motion:reduce){
+  .cot-kc .cot-kc-bart,.cot-kc .cot-kc-barb{transform:none!important;}
+  .cot-kc .cot-kc-title{transform:translate(-50%,0)!important;}
+  .cot-kc .cot-kc-annot,.cot-kc .cot-kc-killer{transform:none!important;}
+  .cot-kc .cot-kc-anim{animation:none!important;opacity:1;}
+  .cot-kc-flash.go{animation:none!important;opacity:.12;}
+}
 `;
 
 /** Cylinder mesh between two points (local space of `parent`). */
@@ -689,11 +714,14 @@ function tube(a, b, radius, mat, parent, disposables) {
  * Create the kill-cam controller.
  * @param {{scene:THREE.Scene, camera:THREE.PerspectiveCamera,
  *   rig:{setExternalPose:Function}, heightField:{getHeightAt:Function},
- *   getPlayer:() => ?object, getEntity?:(id:string) => ?object}} deps injected by integration (main.ts)
+ *   getPlayer:() => ?object, getGame?:() => ?object,
+ *   getEntity?:(id:string) => ?object}} deps injected by integration (main.ts)
  * @returns {object} killcam API
  */
 export function createKillCam(deps) {
   const { scene, camera, rig, heightField, getPlayer } = deps;
+  const getGame = deps.getGame
+    || (() => (typeof window !== 'undefined' && window.__DEBUG ? window.__DEBUG.game : null));
   const getEntity = deps.getEntity
     || ((id) => (typeof window !== 'undefined' && window.__DEBUG && window.__DEBUG.game
       && window.__DEBUG.game.tankById ? window.__DEBUG.game.tankById.get(id) : null));
@@ -1411,6 +1439,7 @@ export function createKillCam(deps) {
       impactVis: null,  // victim visual driven through the impact beat
       xrayAng0: 0,      // orbit angle inherited from the impact drift
       xrayHoldS: XRAY_HOLD_S, // trimmed by beginXray to the replay budget
+      cameraBlend: null, // continuous pose/fov handoff between replay phases
       // killcam r3 own-death finale: the destruction beat plays AFTER the
       // x-ray. finalePending arms the re-order (cleared once it fires or a
       // skip cancels it), isFinale marks the beat currently running as the
@@ -1763,11 +1792,13 @@ export function createKillCam(deps) {
         // WRECK HOLD (killcam r2): a fresh battle-deciding own death plays
         // out LIVE on screen before the replay — the approach follows it.
         if (wreckHold && beginWreck('approach')) return;
-        // DEATH SEQUENCE (killcam_endscreen r1): when the PLAYER is the
-        // victim, the replay no longer hard-cuts to the killer's muzzle —
-        // an eased push-in orbit carries the camera from the player's live
-        // death view to the exact first chase-cam pose, then the shot flies.
-        if (pb.isDeathView && beginApproach()) return;
+        // Establishing move: never hard-cut from the live view to the
+        // restored attacker's muzzle. The arc lands on the firing pose, then
+        // a second continuous handoff follows the projectile into flight.
+        // Every projectile replay gets a continuous establishing move. For a
+        // player-scored kill this is usually a short arc from their existing
+        // chase view; for a death it travels to the restored attacker.
+        if (beginApproach()) return;
         beginFiring();
         return;
       }
@@ -2021,7 +2052,7 @@ export function createKillCam(deps) {
     hideFx();       // deferred begin()-time suppression (see wreckHold)
     restageIntact();  // deferred pre-wreck restage — the replay shows the hit
     if (next === 'approach') {
-      if (pb.isDeathView && beginApproach()) return;
+      if (beginApproach()) return;
       beginFiring();
       return;
     }
@@ -2072,6 +2103,40 @@ export function createKillCam(deps) {
       if (found) break;
     }
     if (!found) outPos.copy(candidate);
+  }
+
+  /**
+   * Capture the currently painted camera before a replay phase changes its
+   * target pose. The next phase advances this handoff itself, so a moving
+   * target (projectile chase, collision orbit, x-ray drift) stays live while
+   * position, look direction, and lens converge without a cut.
+   */
+  function beginCameraHandoff(duration = CAMERA_HANDOFF_S) {
+    if (!pb) return;
+    camera.getWorldDirection(_d);
+    pb.cameraBlend = {
+      t: 0,
+      dur: Math.max(0.001, duration),
+      fromPos: camera.position.clone(),
+      fromLook: camera.position.clone().addScaledVector(_d, 24),
+      fromFov: camera.fov,
+    };
+  }
+
+  /** Apply a replay camera target through the active continuous handoff. */
+  function setReplayCamera(pos, look, fov, dt = 0) {
+    const blend = pb && pb.cameraBlend;
+    if (!blend) {
+      rig.setExternalPose(pos, look, fov);
+      return;
+    }
+    blend.t = Math.min(blend.dur, blend.t + Math.max(0, dt));
+    const u = blend.t / blend.dur;
+    const k = u * u * u * (u * (u * 6 - 15) + 10);
+    _camPos.lerpVectors(blend.fromPos, pos, k);
+    _camLook.lerpVectors(blend.fromLook, look, k);
+    rig.setExternalPose(_camPos, _camLook, blend.fromFov + (fov - blend.fromFov) * k);
+    if (u >= 1) pb.cameraBlend = null;
   }
 
   function beginFiring() {
@@ -2126,7 +2191,7 @@ export function createKillCam(deps) {
     }
     const u = Math.min(1, shot.t / FIRING_HOLD_S);
     _a.copy(shot.pos).addScaledVector(shot.side, Math.sin(u * Math.PI) * 0.25);
-    rig.setExternalPose(_a, shot.look, 46);
+    setReplayCamera(_a, shot.look, 46, dt);
     if (pb.muzzleLight) {
       pb.muzzleLight.intensity = 95 * Math.max(0, 1 - shot.t / 0.2);
       if (pb.replayMuzzle) pb.muzzleLight.position.copy(pb.replayMuzzle);
@@ -2135,6 +2200,7 @@ export function createKillCam(deps) {
       restoreReplayVegetation();
       hideFx();
       for (const o of [pb.core, pb.streak, pb.halo, pb.tail]) if (o) o.visible = true;
+      beginCameraHandoff();
       pb.phase = 'flight';
       updateFlight(0);
     }
@@ -2205,6 +2271,7 @@ export function createKillCam(deps) {
     };
     pb.phase = 'collision';
     hideReplayVegetation();
+    beginCameraHandoff(0.72);
     updateCollision(0);
   }
 
@@ -2252,7 +2319,7 @@ export function createKillCam(deps) {
       / (1 - COLLISION_CONTACT_U) * Math.PI) : 0;
     _a.copy(c.cameraPos).addScaledVector(c.side, bump * 0.5);
     _a.y += bump * 0.35;
-    rig.setExternalPose(_a, c.cameraLook, 48 + bump * 3);
+    setReplayCamera(_a, c.cameraLook, 48 + bump * 3, dt);
     if (u >= 1) {
       prepareCollisionAnalysis();
       beginXray();
@@ -2260,11 +2327,10 @@ export function createKillCam(deps) {
   }
 
   /**
-   * DEATH-SEQUENCE APPROACH (killcam_endscreen r1): eased push-in orbit from
-   * the live camera pose (wherever the player died looking) toward the
-   * killer's position, landing EXACTLY on the flight chase-cam's first pose
-   * so the whole death sequence is one continuous camera move — no cuts, no
-   * teleports. Terrain-aware: the blended path is height-clamped every frame
+   * REPLAY APPROACH: eased establishing arc from the live camera pose toward
+   * the restored attacker, landing EXACTLY on its firing pose so the whole
+   * replay is one continuous camera move — no cuts, no teleports. This runs
+   * for scored kills as well as deaths. Terrain-aware: the blended path is height-clamped every frame
    * and pre-lifted clear of foliage volumes / props with the same clearance
    * solve the flight LOS pass uses (cameraRig collision grammar, read-only).
    * @returns {boolean} false when no meaningful move exists (skip to flight)
@@ -2281,8 +2347,7 @@ export function createKillCam(deps) {
     const toLook = new THREE.Vector3();
     firingCameraPose(toPos, toLook);
     const fromPos = camera.position.clone();
-    // a dead-on-top-of-the-muzzle camera has nothing to push through
-    if (fromPos.distanceTo(toPos) < 3) return false;
+    const travel = fromPos.distanceTo(toPos);
     camera.getWorldDirection(_d);
     const fromLook = fromPos.clone().addScaledVector(_d, 26);
     // lateral sweep axis: the push curves around rather than dollying straight
@@ -2293,15 +2358,15 @@ export function createKillCam(deps) {
     if (flat > 1e-3) side.crossVectors(_s.multiplyScalar(1 / flat), UP);
     pb.app = {
       t: 0,
-      dur: APPROACH_S,
+      dur: THREE.MathUtils.clamp(0.58 + travel * 0.025, 0.68, APPROACH_S),
       fromPos,
       fromLook,
       fromFov: camera.fov,
       toPos,
       toLook,
       side,
-      sideAmt: THREE.MathUtils.clamp(flat * 0.12, 2.5, 13),
-      lift: THREE.MathUtils.clamp(fromPos.distanceTo(toPos) * 0.09, 3.5, 15),
+      sideAmt: THREE.MathUtils.clamp(flat * 0.12, 0, 13),
+      lift: THREE.MathUtils.clamp(travel * 0.09, 0, 15),
       losLift: 0,
     };
     // clearance pre-solve: the mid-arc must not dip through a canopy or lose
@@ -2355,7 +2420,7 @@ export function createKillCam(deps) {
     }
     // muzzle glow swells as the camera arrives — the shot is about to re-fire
     if (pb.muzzleLight) pb.muzzleLight.intensity = 70 * THREE.MathUtils.smoothstep(u, 0.78, 1);
-    rig.setExternalPose(_a, _b, a.fromFov + (50 - a.fromFov) * k);
+    rig.setExternalPose(_a, _b, a.fromFov + (46 - a.fromFov) * k);
     if (u >= 1) {
       beginFiring();
     }
@@ -2595,7 +2660,7 @@ export function createKillCam(deps) {
       pb.tail.scale.set(th, 1, th);
       pb.halo.scale.set(1.7 * th, 1.7 * th, 1);
     }
-    rig.setExternalPose(_a, _b, 50 - 8 * k);
+    setReplayCamera(_a, _b, 50 - 8 * k, dt);
     // The shell has arrived. killcam r2: the kill plays out LIVE (impact
     // beat) before the analytical x-ray takes the frame. killcam r3: on an
     // OWN death that order is inverted — the tank the player just watched
@@ -2826,13 +2891,15 @@ export function createKillCam(deps) {
       c.y + o.y * scale + bump * 1.1,
       c.z + (-o.x * sa + o.z * ca) * scale,
     );
-    // concussion: a sharp decaying jitter through the first ~0.5 s — additive
-    // and deterministic (no rng: staged captures must repeat)
-    const shake = 0.16 * Math.exp(-pb.itWall / 0.22);
+    // Concussion grows from zero and settles at a low frequency. Starting at
+    // peak displacement made the exact impact frame jump, while 47-61 Hz
+    // oscillation read as camera jitter on low-refresh/mobile displays.
+    const shakeIn = THREE.MathUtils.smoothstep(pb.itWall, 0, 0.08);
+    const shake = 0.055 * shakeIn * Math.exp(-pb.itWall / 0.3);
     if (shake > 0.004) {
-      _a.x += Math.sin(pb.itWall * 61.0) * shake;
-      _a.y += Math.sin(pb.itWall * 47.0 + 1.7) * shake * 0.7;
-      _a.z += Math.cos(pb.itWall * 53.0 + 0.6) * shake;
+      _a.x += Math.sin(pb.itWall * 19.0) * shake;
+      _a.y += Math.sin(pb.itWall * 14.0) * shake * 0.55;
+      _a.z += Math.sin(pb.itWall * 17.0) * shake;
     }
     if (heightField) {
       const minY = heightField.getHeightAt(_a.x, _a.z) + 1.0;
@@ -2842,9 +2909,11 @@ export function createKillCam(deps) {
     // framed, then settles back onto the x-ray look point
     _b.copy(pb.xcam.look);
     _b.y += bump * Math.max(1.2, (pb.snap.heightM || 2.4) * 0.55);
-    // fov: detonation punch (fast decay) over the base the x-ray hold uses
-    const fov = 42 + 5 * Math.exp(-pb.itWall / 0.16);
-    rig.setExternalPose(_a, _b, fov);
+    // Lens pulse also starts at the inherited 42° frame, peaks after impact,
+    // and returns to 42°; there is no first-frame FOV discontinuity.
+    const lensU = Math.min(1, pb.itWall / 0.42);
+    const fov = 42 + 2.4 * Math.sin(Math.PI * lensU) * Math.exp(-pb.itWall / 0.38);
+    setReplayCamera(_a, _b, fov, dt);
     // hand the beat over: window served (anim time), or the wall-clock stall
     // guard (a starved pane must still finish the battle flow). killcam r3 —
     // the own-death FINALE is the last beat of the replay, so it runs the
@@ -3019,6 +3088,7 @@ export function createKillCam(deps) {
 
   function beginXray() {
     if (pb.phase === 'xray') return;
+    beginCameraHandoff();
     if (pb.replayKind === 'collision') prepareCollisionAnalysis();
     pb.phase = 'xray';
     pb.xt = 0;
@@ -3918,7 +3988,7 @@ export function createKillCam(deps) {
     });
 
     // 6. camera + first label projection
-    rig.setExternalPose(pb.xcam.pos, pb.xcam.look, 42);
+    setReplayCamera(pb.xcam.pos, pb.xcam.look, 42, 0);
     projectLabels();
   }
 
@@ -4165,7 +4235,7 @@ export function createKillCam(deps) {
       const minY = heightField.getHeightAt(_a.x, _a.z) + 1.0;
       if (_a.y < minY) _a.y = minY;
     }
-    rig.setExternalPose(_a, pb.xcam.look, 42);
+    setReplayCamera(_a, pb.xcam.look, 42, dt);
     projectLabels();
     // killer card reveal: a beat into the hold, after the shot has landed
     // and the label cascade started — death view only (populated in beginXray)
@@ -4311,8 +4381,9 @@ export function createKillCam(deps) {
   // auto-advance when the spectated ally dies, and the bus announcements
   // hud.js renders the spectate bar from ('spectate:begin/change/end' —
   // additive events, no main.ts wiring).
-  // Battle state is read through window.__DEBUG.game (READ-ONLY — the
-  // integration seam sanctioned for this round; no game module is imported).
+  // Battle state comes from the composition root's injected getter. The old
+  // diagnostics-only window.__DEBUG.game dependency made this silently fail
+  // in production builds, so no spectator target or bar could ever appear.
   const spectate = (() => {
     let on = false;
     let observerAllTeams = false;
@@ -4322,9 +4393,7 @@ export function createKillCam(deps) {
     let lastX = null; // clientX/Y fallback deltas (movementX preferred)
     let lastY = null;
     const gameRef = () => {
-      try {
-        return (typeof window !== 'undefined' && window.__DEBUG) ? window.__DEBUG.game : null;
-      } catch (_) { return null; }
+      try { return getGame ? getGame() : null; } catch (_) { return null; }
     };
     const livingAllies = () => {
       const g = gameRef();

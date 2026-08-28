@@ -175,8 +175,8 @@ const ES_CSS = `
 @keyframes cotEsIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
 @keyframes cotEsHero{from{opacity:0;transform:translateY(-10px) scale(.96);letter-spacing:.5em;}
   to{opacity:1;transform:none;}}
-.cot-es .es-in{opacity:0;animation:cotEsIn .55s cubic-bezier(.2,.7,.3,1) forwards;
-  animation-delay:calc(var(--i,0)*85ms);}
+.cot-es .es-in{opacity:0;animation:cotEsIn var(--cot-motion-slow) var(--cot-ease-out) forwards;
+  animation-delay:calc(var(--i,0)*45ms);}
 /* --- hero ----------------------------------------------------------------- */
 .cot-es .es-kick{font-family:${FONT_COND};font-weight:800;font-size:11.5px;
   letter-spacing:.34em;text-indent:.34em;color:${COL.amber};text-transform:uppercase;
@@ -184,7 +184,7 @@ const ES_CSS = `
 .cot-es .es-ban{margin-top:6px;font-weight:800;font-size:clamp(44px,5.8vw,68px);
   line-height:1;letter-spacing:.18em;text-indent:.18em;text-align:center;
   text-transform:uppercase;opacity:0;
-  animation:cotEsHero .7s cubic-bezier(.16,.8,.3,1) forwards;
+  animation:cotEsHero var(--cot-motion-scene) var(--cot-ease-soft) forwards;
   text-shadow:0 3px 30px rgba(0,0,0,.85);}
 .cot-es .es-ban.v{color:#eafce9;text-shadow:0 0 34px rgba(127,220,138,.35),0 3px 30px rgba(0,0,0,.85);}
 .cot-es .es-ban.d{color:#fceeec;text-shadow:0 0 34px rgba(242,110,100,.32),0 3px 30px rgba(0,0,0,.85);}
@@ -354,6 +354,10 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .cot-es-btn.ready-now{color:#b8f2c2;border-color:rgba(127,220,138,.6);background:rgba(31,88,45,.68)}
 @keyframes cotEsReadyPulse{50%{box-shadow:0 0 0 5px rgba(240,160,48,.16),0 0 26px rgba(240,160,48,.42)}}
 .cot-es .cot-es-btn.can-start,.cot-es .cot-es-btn.needs-ready:not(:disabled){animation:cotEsReadyPulse 1.35s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){
+  .cot-es .es-in,.cot-es .es-ban,.cot-es .cot-es-btn.can-start,
+  .cot-es .cot-es-btn.needs-ready:not(:disabled){animation:none!important;opacity:1;transform:none;}
+}
 /* --- actions -------------------------------------------------------------- */
 .cot-es .es-actions{display:flex;gap:14px;margin-top:1.8vh;padding:4px 10px;
   flex:0 0 auto;pointer-events:auto;z-index:2;}

@@ -87,6 +87,7 @@ import {
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.js';
 import { createBattleHudAccess } from './ui/battleHudAccess.ts';
+import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
 import './ui/garage.css';
 import { createGarage } from './ui/garage.js';
@@ -1221,6 +1222,7 @@ const killcamAccess = createKillcamAccess({
   initialize: ({ createKillCam }) => {
     const live = createKillCam(legacyPort({
       scene, camera, rig, heightField: hfProxy, getPlayer: () => game.player,
+      getGame: () => game,
       getEntity: (id: string) => game.tankById.get(id),
       getWorld: currentWorld, // r6: flight-cam LOS solve (foliage/terrain/props)
       // Replay impact uses the real pooled destruction effects.

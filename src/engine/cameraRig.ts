@@ -168,6 +168,7 @@ interface SpectateState {
   blendDur: number;
   fromPos: THREE.Vector3;
   fromLook: THREE.Vector3;
+  fromFov: number;
 }
 
 export interface CameraRig {
@@ -286,10 +287,11 @@ export function createCameraRig(
   // orbits the camera with chase-free-look damping instead of raw per-event
   // steps, full 360° yaw, pitch clamped, wheel zoom clamped + eased.
   let spec: SpectateState | null = null; // { ent, yaw, yawT, pitch, pitchT, dist, distT, pivot,
-                     //   blendT, blendDur, fromPos, fromLook }
+                     //   blendT, blendDur, fromPos, fromLook, fromFov }
   const _specFrom = new THREE.Vector3();
   const _specFromLook = new THREE.Vector3();
   const _specLook = new THREE.Vector3();
+  let specFromFov = 55;
   const SPEC_DIST_M = 14;
   const SPEC_DIST_MIN = 7;   // wheel-in floor (never inside the hull)
   const SPEC_DIST_MAX = 26;  // wheel-out ceiling (ally stays readable)
@@ -301,6 +303,15 @@ export function createCameraRig(
   // unlocked cursor must reach all the way around before it hits the screen
   // edge). Damped by SPEC_LOOK_TAU_S above, so the higher gain stays smooth.
   const SPEC_SENS = BASE_SENS * 1.8;
+
+  function spectateBlendDuration(ent: CameraEntity | null): number {
+    if (!ent || !ent.state || !ent.state.pos) return SPEC_BLEND_S;
+    const dx = ent.state.pos.x - camera.position.x;
+    const dy = ent.state.pos.y - camera.position.y;
+    const dz = ent.state.pos.z - camera.position.z;
+    return THREE.MathUtils.clamp(0.82 + Math.hypot(dx, dy, dz) / 190,
+      SPEC_BLEND_S, 2.45);
+  }
 
   /** Resolve the arcade orbit pivot for the current player into `out`. */
   function pivotTargetFor(player: CameraEntity, out: THREE.Vector3): THREE.Vector3 {
@@ -617,6 +628,7 @@ export function createCameraRig(
     const minY = heightField.getHeightAt(_desired.x, _desired.z) + CAMERA_MIN_CLEARANCE_M;
     if (_desired.y < minY) _desired.y = minY;
     _specLook.copy(activeSpectate.pivot);
+    let nextFov = 55;
     // eased handover blend (target switch / spectate entry)
     if (activeSpectate.blendT < activeSpectate.blendDur) {
       activeSpectate.blendT = Math.min(activeSpectate.blendDur, activeSpectate.blendT + Math.max(0, dt));
@@ -624,6 +636,7 @@ export function createCameraRig(
       const k = u * u * u * (u * (u * 6 - 15) + 10); // smootherstep
       _desired.lerpVectors(activeSpectate.fromPos, _desired, k);
       _specLook.lerpVectors(activeSpectate.fromLook, _specLook, k);
+      nextFov = activeSpectate.fromFov + (55 - activeSpectate.fromFov) * k;
       // the interpolated path must respect the terrain floor too — a blend
       // across a ridge otherwise dips the camera through the crest
       const bMinY = heightField.getHeightAt(_desired.x, _desired.z) + CAMERA_MIN_CLEARANCE_M;
@@ -632,7 +645,7 @@ export function createCameraRig(
     camera.position.copy(_desired);
     camera.up.set(0, 1, 0);
     camera.lookAt(_specLook);
-    setFov(55);
+    setFov(nextFov);
   }
 
   /** Capture the live camera pose as the FROM side of a spectate blend. */
@@ -640,6 +653,7 @@ export function createCameraRig(
     _specFrom.copy(camera.position);
     camera.getWorldDirection(_viewDir);
     _specFromLook.copy(camera.position).addScaledVector(_viewDir, SPEC_DIST_M);
+    specFromFov = camera.fov;
   }
 
   /** Hand control back to the arcade rig exactly where the flyby lands. */
@@ -1031,9 +1045,10 @@ export function createCameraRig(
         distT: SPEC_DIST_M,
         pivot: null,
         blendT: 0,
-        blendDur: SPEC_BLEND_S,
+        blendDur: spectateBlendDuration(ent),
         fromPos: _specFrom,
         fromLook: _specFromLook,
+        fromFov: specFromFov,
       };
       rig.mode = 'ARCADE';
       applyPlayerVisibility(getPlayer(), true);
@@ -1056,7 +1071,8 @@ export function createCameraRig(
       spec.pitchT = SPEC_PITCH;
       spec.pivot = null;
       spec.blendT = 0;
-      spec.blendDur = SPEC_BLEND_S;
+      spec.blendDur = spectateBlendDuration(ent);
+      spec.fromFov = specFromFov;
     },
 
     /**

@@ -25,7 +25,7 @@ const CSS = `
   font-family:${FONT_STACK};color:#e6edf3;-webkit-user-select:none;user-select:none;
   background:#05080b;opacity:1;overflow:hidden;isolation:isolate;}
 .cot-bl.on{display:grid;opacity:1;}
-.cot-bl.leaving{display:grid;opacity:0;transition:opacity .28s ease;}
+.cot-bl.leaving{display:grid;opacity:0;transition:opacity var(--cot-motion-base) var(--cot-ease-out);}
 .cot-bl *{box-sizing:border-box;margin:0;padding:0;}
 .cot-bl::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
   background-image:linear-gradient(rgba(190,208,221,.022) 1px,transparent 1px),
@@ -122,6 +122,7 @@ const CSS = `
   line-height:1.45;padding:0 5%;}
 .cot-bl .tip b{color:#c2903f;font-family:${FONT_COND};font-weight:700;
   letter-spacing:.2em;text-transform:uppercase;font-size:9.5px;margin-right:8px;}
+@media (prefers-reduced-motion:reduce){.cot-bl.leaving{transition-duration:1ms;}}
 `;
 
 const BATTLE_TIPS = [
@@ -320,7 +321,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
           covering = false;
         }
         resolve();
-      }, 320));
+      }, 230));
     },
   };
   return api;

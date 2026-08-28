@@ -17,12 +17,12 @@
 .media-archive-toolbar{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:0 0 22px}
 .media-archive-filters{display:flex;gap:7px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px}
 .media-archive-filters::-webkit-scrollbar{display:none}
-.media-archive-filter{flex:none;min-height:36px;padding:0 12px;border:1px solid var(--cot-line);background:rgba(8,12,16,.76);color:var(--cot-muted);font:800 8px/1 'ABC Monument Grotesk',sans-serif;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:color .16s ease,border-color .16s ease,background-color .16s ease,transform .16s ease}
+.media-archive-filter{flex:none;min-height:36px;padding:0 12px;border:1px solid var(--cot-line);background:rgba(8,12,16,.76);color:var(--cot-muted);font:800 8px/1 'ABC Monument Grotesk',sans-serif;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,background-color var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out)}
 .media-archive-filter:active{transform:scale(.98)}
 .media-archive-filter[aria-pressed='true']{color:#0a0d10;border-color:var(--cot-amber);background:var(--cot-amber)}
 .media-archive-status{display:flex;align-items:center;gap:12px;flex:none}
 .media-archive-count{flex:none;color:var(--cot-gold);font:800 9px/1 ui-monospace,SFMono-Regular,monospace;letter-spacing:.12em;text-transform:uppercase}
-.media-archive-more{min-height:36px;padding:0 13px;border:1px solid var(--cot-amber);background:rgba(240,160,48,.08);color:var(--cot-gold);font:800 8px/1 'ABC Monument Grotesk',sans-serif;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:color .16s ease,background-color .16s ease,transform .16s ease}
+.media-archive-more{min-height:36px;padding:0 13px;border:1px solid var(--cot-amber);background:rgba(240,160,48,.08);color:var(--cot-gold);font:800 8px/1 'ABC Monument Grotesk',sans-serif;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:color var(--cot-motion-fast) ease,background-color var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out)}
 .media-archive-more:active{transform:scale(.98)}
 .media-archive-more[hidden]{display:none}
 .media-archive-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:1px;background:var(--cot-line)}
@@ -30,7 +30,7 @@
 .media-archive-card-open{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;background:#030608;overflow:hidden;text-align:left;cursor:zoom-in;color:var(--cot-ink)}
 .media-archive-card:nth-child(11n+1),.media-archive-card:nth-child(11n+8){grid-column:span 8;grid-row:span 2;aspect-ratio:auto;min-height:clamp(420px,50vw,760px)}
 .media-archive-card:nth-child(11n+4),.media-archive-card:nth-child(11n+5){grid-column:span 6}
-.media-archive-card img{width:100%;height:100%;object-fit:cover;filter:saturate(.94) contrast(1.035);transition:transform .5s cubic-bezier(.2,.7,.2,1),filter .3s ease}
+.media-archive-card img{width:100%;height:100%;object-fit:cover;filter:saturate(.94) contrast(1.035);transition:transform var(--cot-motion-scene) var(--cot-ease-out),filter var(--cot-motion-base) ease}
 .media-archive-card::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,rgba(2,5,7,.94),rgba(2,5,7,.12) 48%,transparent 72%);pointer-events:none}
 .media-archive-card:active img{transform:scale(1.012)}
 .media-archive-card-copy{position:absolute;z-index:2;left:18px;right:18px;bottom:16px;display:flex;align-items:end;justify-content:space-between;gap:16px;pointer-events:none}
@@ -59,7 +59,7 @@
 .media-lightbox figcaption span{color:var(--cot-amber);font-size:7px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
 .media-lightbox figcaption strong{margin-top:3px;font-size:15px;text-transform:uppercase}
 .media-lightbox figcaption small{color:var(--cot-muted);font-size:8px;letter-spacing:.13em;text-transform:uppercase}
-.media-lightbox button{min-width:42px;min-height:42px;border:1px solid var(--cot-line);background:transparent;color:var(--cot-gold);cursor:pointer;font-size:20px;transition:border-color .16s ease,background-color .16s ease,transform .16s ease}
+.media-lightbox button{min-width:42px;min-height:42px;border:1px solid var(--cot-line);background:transparent;color:var(--cot-gold);cursor:pointer;font-size:20px;transition:border-color var(--cot-motion-fast) ease,background-color var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out)}
 .media-lightbox button:active{transform:scale(.97)}
 
 body[data-cot-width='tablet'] .media-archive-grid,

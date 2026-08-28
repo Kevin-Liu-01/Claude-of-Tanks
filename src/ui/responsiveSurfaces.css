@@ -73,7 +73,9 @@ body[data-cot-width='compact'] .cot-spec{width:min(620px,calc(100vw - (var(--cot
 body[data-cot-width='phone'] .cot-spec{
   left:var(--cot-edge);right:auto;width:calc(100vw - (var(--cot-edge) * 2));
   grid-template-columns:62px minmax(0,1fr) 96px 46px;min-height:62px;padding:4px;
+  transform:translateY(14px);
 }
+body[data-cot-width='phone'] .cot-spec.in{transform:translateY(0)}
 body[data-cot-width='phone'] .cot-spec .portrait img{width:58px;height:52px}
 body[data-cot-width='phone'] .cot-spec .identity{padding:4px 8px}
 body[data-cot-width='phone'] .cot-spec .spec-status{margin-bottom:5px;font-size:7px;letter-spacing:.12em}

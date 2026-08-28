@@ -772,14 +772,14 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
    Centered elements keep their translateX(-50%) inside the keyframes. */
 .cot-garage.enter .band-top,.cot-garage.enter .band-bot,
 .cot-garage.enter .band-l,.cot-garage.enter .band-r{
-  animation:cot-g-fade .30s ease-out backwards;}
+  animation:cot-g-fade var(--cot-motion-base) var(--cot-ease-out) backwards;}
 .cot-garage.enter .title,.cot-garage.enter .cot-nav,
 .cot-garage.enter .cot-leftcol,
-.cot-garage.enter .hint{animation:cot-g-fade .34s ease-out .05s backwards;}
-.cot-garage.enter .stats{animation:cot-g-rise .36s ease-out .08s backwards;}
-.cot-garage.enter .cot-battle-control{animation:cot-g-drop-c .36s ease-out .05s backwards;}
-.cot-garage.enter .cot-country-rail{animation:cot-g-rise-c .32s ease-out .10s backwards;}
-.cot-garage.enter .cot-carousel{animation:cot-g-rise-c .36s ease-out .14s backwards;}
+.cot-garage.enter .hint{animation:cot-g-fade var(--cot-motion-base) var(--cot-ease-out) 45ms backwards;}
+.cot-garage.enter .stats{animation:cot-g-rise var(--cot-motion-slow) var(--cot-ease-out) 70ms backwards;}
+.cot-garage.enter .cot-battle-control{animation:cot-g-drop-c var(--cot-motion-slow) var(--cot-ease-out) 45ms backwards;}
+.cot-garage.enter .cot-country-rail{animation:cot-g-rise-c var(--cot-motion-slow) var(--cot-ease-out) 90ms backwards;}
+.cot-garage.enter .cot-carousel{animation:cot-g-rise-c var(--cot-motion-slow) var(--cot-ease-out) 120ms backwards;}
 /* MARKETING FEATURED PANEL: rotating in-engine action stills (see
    tools/marketing-shots). Bottom-anchored under the camo grid in the left
    column; purely decorative, so on short viewports it is the element that
@@ -790,7 +790,8 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   width:20px;height:32px;display:flex;align-items:center;justify-content:center;
   background:rgba(5,8,11,.6);border:1px solid rgba(146,164,180,.35);color:#d9e3ec;
   font-size:14px;line-height:1;cursor:pointer;opacity:0;padding:0 0 2px;
-  transition:opacity .15s,border-color .15s,color .15s;}
+  transition:opacity var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
+    color var(--cot-motion-fast) ease;}
 .cot-featured .fshot:hover .fnav{opacity:.92;}
 .cot-featured .fnav:hover{border-color:rgba(240,176,74,.7);color:#ffd27a;}
 .cot-featured .fnav.prev{left:0;}
@@ -809,9 +810,9 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   box-shadow:0 6px 20px rgba(0,0,0,.45);transition:border-color .15s;}
 .cot-featured .fshot:hover{border-color:rgba(240,176,74,.6);}
 .cot-featured .fly{position:absolute;inset:0;background-size:cover;background-position:center 40%;
-  opacity:0;transform:scale(1.05);transition:opacity .8s ease;}
+  opacity:0;transform:scale(1.025);transition:opacity var(--cot-motion-scene) var(--cot-ease-out);}
 .cot-featured .fly.on{opacity:1;transform:scale(1);
-  transition:opacity .8s ease,transform 8.5s linear;}
+  transition:opacity var(--cot-motion-scene) var(--cot-ease-out),transform 7s linear;}
 .cot-featured .fcap{position:absolute;left:0;right:0;bottom:0;padding:14px 8px 5px;
   font-size:8px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#d9e3ec;
   background:linear-gradient(0deg,rgba(5,8,11,.9),rgba(5,8,11,0));white-space:nowrap;
