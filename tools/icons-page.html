@@ -175,7 +175,6 @@ function renderedPresentationCenter(visual) {
   // This is the exact fit box inspectOne uses for the shipped orthographic
   // assets. Keep it before the centroid-only visibility exclusions below.
   const iconBox = new THREE.Box3().setFromObject(root);
-  const iconProjection = assetProjection(iconBox, visual.presentationAnchor);
   const hidden = [];
   root.traverse((object) => {
     const materials = Array.isArray(object.material) ? object.material : [object.material];
@@ -229,15 +228,20 @@ function renderedPresentationCenter(visual) {
   // With a downward camera and +Z as screen-up, screen-right maps to world
   // -X. Preserve that handedness when converting the measured pixel centroid
   // back into the vehicle's local presentation coordinates.
-  const xM = boundsCenter.x - (pixelX / canvas.width - 0.5) * half * 2;
-  const zM = boundsCenter.z + (0.5 - pixelY / canvas.height) * half * 2;
+  const xM = Number((boundsCenter.x - (pixelX / canvas.width - 0.5) * half * 2).toFixed(4));
+  const zM = Number((boundsCenter.z + (0.5 - pixelY / canvas.height) * half * 2).toFixed(4));
+  // The update writes this newly measured anchor. Compute the paired fit from
+  // that same rounded value, not from the previous generated anchor imported
+  // when the page started, or the projection lags every anchor change by one
+  // generation and the public manifest cannot match runtime exactly.
+  const iconProjection = assetProjection(iconBox, { xM, zM });
   const anchorPixelX = canvas.width * (0.5
     - (visual.presentationAnchor.xM - boundsCenter.x) / (half * 2));
   const anchorPixelY = canvas.height * (0.5
     - (visual.presentationAnchor.zM - boundsCenter.z) / (half * 2));
   return {
-    xM: Number(xM.toFixed(4)),
-    zM: Number(zM.toFixed(4)),
+    xM,
+    zM,
     currentAnchor: {
       xM: Number(visual.presentationAnchor.xM.toFixed(4)),
       zM: Number(visual.presentationAnchor.zM.toFixed(4)),

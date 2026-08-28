@@ -58,25 +58,47 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
     "seats": [
       {
         "kind": "designation",
+        "parent": "hull",
+        "size": 0.3,
+        "pos": [
+          0.8,
+          1.3697338,
+          3.5880871
+        ],
+        "quaternion": [
+          -0.6952285,
+          0,
+          0,
+          0.7187888
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0006
+      },
+      {
+        "kind": "designation",
         "parent": "turret",
         "size": 0.3,
         "pos": [
-          1.1865218,
-          0.2698399,
-          -1.4500205
+          -1.376,
+          0.2744954,
+          -1.45
         ],
         "quaternion": [
-          -0.3091157,
-          0.6373027,
-          0.308062,
-          0.6351304
+          0,
+          -0.7071068,
+          0,
+          0.7071068
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.0764629
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0006
       },
       {
         "kind": "insignia",
@@ -85,7 +107,7 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "pos": [
           -1.376,
           0.267,
-          -1.50322
+          -1.81324
         ],
         "quaternion": [
           0,
@@ -98,13 +120,57 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0006
       }
     ]
   },
   "challenger2": {
     "schemaVersion": 1,
     "seats": [
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.3,
+        "pos": [
+          0.8,
+          1.3697338,
+          3.5880871
+        ],
+        "quaternion": [
+          -0.6952285,
+          0,
+          0,
+          0.7187888
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0006
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.3,
+        "pos": [
+          -1.376,
+          0.2744954,
+          -1.45
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0006
+      },
       {
         "kind": "insignia",
         "parent": "turret",
@@ -125,29 +191,7 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.26,
-        "pos": [
-          1.1449986,
-          0.3348873,
-          -0.4986698
-        ],
-        "quaternion": [
-          -0.2581586,
-          0.6563833,
-          0.2594605,
-          0.6596934
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "challenger2",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 7,
-        "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.0129317
+        "maximumSurfaceErrorM": 0.0006
       }
     ]
   },
@@ -159,22 +203,22 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "parent": "turret",
         "size": 0.3,
         "pos": [
-          1.1865218,
-          0.2698399,
-          -1.4500205
+          -1.376,
+          0.2744954,
+          -1.45
         ],
         "quaternion": [
-          -0.3091157,
-          0.6373027,
-          0.308062,
-          0.6351304
+          0,
+          -0.7071068,
+          0,
+          0.7071068
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.0764629
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0006
       },
       {
         "kind": "insignia",
@@ -196,7 +240,7 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.002
+        "maximumSurfaceErrorM": 0.0028
       }
     ]
   },
@@ -223,16 +267,16 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0006
       },
       {
         "kind": "designation",
-        "parent": "hull",
-        "size": 0.24,
+        "parent": "turret",
+        "size": 0.3,
         "pos": [
-          -1.861,
-          1.1445,
-          0.4970001
+          -1.376,
+          0.2744954,
+          -1.45
         ],
         "quaternion": [
           0,
@@ -240,12 +284,12 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
           0,
           0.7071068
         ],
-        "surfaceMesh": "hull",
-        "anchorProfile": "ua_challenger2",
+        "surfaceMesh": "turret",
+        "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0006
       }
     ]
   },
