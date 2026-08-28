@@ -48,15 +48,14 @@ for (const [id, expected] of Object.entries(CASES)) {
     assert.equal(fit.supersededExternalEraCleared, true,
       't90: obsolete donor ERA is cleared before the final package is authored');
     assert.equal(fit.canonicalEraSector, 't90-k5-turret-era');
-    assert.equal(fit.fanSeats.length, 22,
-      't90: all primary and staggered turret cassettes are seat-checked');
-    for (const seat of fit.fanSeats) {
-      const verticalHalfExtent = Math.abs(Math.cos(seat.pitch)) * seat.height * 0.5
-        + Math.abs(Math.sin(seat.pitch)) * seat.depth * 0.5;
-      const lowerFaceY = seat.y - verticalHalfExtent;
-      assert.ok(Math.abs(lowerFaceY - (fit.armorSeatPlaneY - fit.armorEmbedM)) <= EPSILON,
-        't90: each rotated ERA cassette sits flush with only the intended embed');
-    }
+    assert.equal(fit.chevronEra.rowsPerCheek, 2,
+      't90: two joined carrier rows form the K-5 side-view chevron');
+    assert.equal(fit.chevronEra.carriersPerRow, 2,
+      't90: every row retains inner and outer swept carriers');
+    assert.equal(fit.chevronEra.tilesTotal, 24,
+      't90: three exact-surface tiles occupy every carrier face');
+    assert.equal(fit.chevronEra.exactSurfaceOffsets, true,
+      't90: each cassette face is derived from its carrier plane');
     assert.equal(fit.shtoraClearsMantlet, true,
       't90: both enlarged Shtora heads clear the mantlet');
     assert.ok(fit.mantletClearanceM >= 0.05,

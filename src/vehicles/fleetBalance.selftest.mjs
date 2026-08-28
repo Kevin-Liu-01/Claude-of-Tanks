@@ -164,7 +164,8 @@ for (const [id, tier, hp, alpha, penetration, frontalKe] of siegeLine) {
     `${id}: side shot meets an exact low-hull collision face instead of a donor box`);
 }
 
-const proryv = TANK_SPECS.t90m;
+const retainedT90M = TANK_SPECS.t90m;
+const proryv = TANK_SPECS.t90m_proryv;
 assert.deepEqual({
   hp: proryv.hp,
   reverse: proryv.reverseSpeedKmh,
@@ -172,8 +173,9 @@ assert.deepEqual({
   alpha: proryv.gun.shells[0].dmg,
   pen100: proryv.gun.shells[0].pen100Mm,
   pen2000: proryv.gun.shells[0].pen2000Mm,
-}, { hp: 2700, reverse: 12, reload: 6.4, alpha: 560, pen100: 855, pen2000: 720 },
+}, { hp: 2850, reverse: 12, reload: 6.4, alpha: 560, pen100: 855, pen2000: 720 },
 'Proryv owns its complete tier-X assault profile');
+assert.equal(retainedT90M.hp, 2700, 'the retained tier-IX T-90M keeps its established combat profile');
 assert.equal(proryv.armor.hullPlates.find((plate) => plate.name === 'upper_glacis').keMm, 560,
   'Proryv composite glacis is hardened');
 assert.equal(proryv.armor.turretPlates.find((plate) => plate.name === 'turret_cheek_R').keMm,
@@ -189,6 +191,8 @@ assert.equal(penAtDistanceMm(proryv.gun.shells[0], 2000), 720,
   'ballistics consumes the exact authored long-range penetration');
 assert.equal(garageStatGroup(proryv), '10/modern',
   'garage normalizes Proryv against its actual matchmaking peers');
+assert.equal(garageStatGroup(retainedT90M), '9/modern',
+  'garage normalizes the retained T-90M against its new tier-IX peers');
 assert.equal(garageStatGroup(TANK_SPECS.strv103a), '9/cold-war',
   'garage normalizes the 103A against its Cold War tier peers');
 
@@ -333,7 +337,7 @@ assert.equal(garageStatGroup(m3a3), '10/modern',
 const authority = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0,
   players: [
-    { id: 'proryv-player', specId: 't90m', team: 'alpha' },
+    { id: 'proryv-player', specId: 't90m_proryv', team: 'alpha' },
     { id: 'strv-player', specId: 'strv103', team: 'bravo' },
   ],
 });

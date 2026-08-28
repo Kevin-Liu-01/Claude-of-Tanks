@@ -19,6 +19,7 @@
 // primitive construction — measured dimensions only, no source topology.
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.js';
+import { addSovietChevronEra } from './sovietChevronEra.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 // THREE is used only for the t72b3m r23 light-immune flat class (kf51 r7
@@ -1529,26 +1530,32 @@ function buildT64BV1(P) {
   chamferBox(P, 'turret', 2.16, 0.50, 0.56, 0, 0.35, -0.94, 0.12);
   chamferBox(P, 'turret', 1.96, 0.40, 0.24, 0, 0.34, -1.34, 0.10);
 
-  // §5.37 RATIFIED CHEVRON (preserved): per side a continuous 0.62-rad
-  // swept K-1 wing-plate line whose inner tips MEET AT A POINTED TIP tucked
-  // against the boot, the 125 mm emerging above the V. Cassette seam
-  // grammar rides every plate; a dark gap plate closes the vertex UNDER the
-  // tube (§B2 no see-through).
-  P.visualEraCluster('t64bv1-k1-turret-era', 'turret', () => {
+  // Compact Kontakt-1 interpretation of the approved Tagil construction.
+  // Two shallow rows meet beside the gun to form a real < / > section, but
+  // the smaller T-64 casting keeps two shorter plan carriers and two tiles
+  // per face instead of inheriting the T-90MS footprint wholesale.
+  addSovietChevronEra(P, {
+    sector: 't64bv1-k1-turret-era',
+    receiptKey: 't64BV1ChevronEraReceipt',
+    family: 't64bv1-kontakt1-compact-chevron-r1',
+    plans: [
+      [[0.24, 1.10], [0.34, 1.19], [0.79, 0.86], [0.69, 0.76]],
+      [[0.70, 0.80], [0.80, 0.90], [1.19, 0.58], [1.09, 0.48]],
+    ],
+    rows: [
+      { y0: 0.13, y1: 0.31, z0: -0.07, z1: 0.055 },
+      { y0: 0.31, y1: 0.49, z0: 0.055, z1: -0.065 },
+    ],
+    tileRanges: [[0.08, 0.46], [0.54, 0.92]],
+    carrierBucket: 'turret',
+    tileBucket: 'turretTrack',
+    tileDepthM: 0.060,
+    gasketDepthM: 0.022,
+    tilePadY: 0.010,
+    centerClosure: { width: 0.34, height: 0.18, depth: 0.055, y: 0.23, z: 1.18, rx: -0.18 },
+  });
+  P.visualEraCluster('t64bv1-k1-turret-flank-era', 'turret', () => {
   for (const s of [-1, 1]) {
-    const sweep = [
-      [0.40, 1.045, 0.42, 0.34, 0.29],   // inner tip segment -> tip (0.24, 1.16)
-      [0.765, 0.785, 0.50, 0.38, 0.295], // mid cheek segment
-      [1.125, 0.530, 0.44, 0.42, 0.32],  // outer cheek segment
-    ];
-    for (let i = 0; i < sweep.length; i++) {
-      const [x, z, w, h, yc] = sweep[i];
-      // face-normal offset for the rotated plate: n = (s*sin 0.62, 0, cos 0.62)
-      const fx = 0.088 * Math.sin(0.62), fz = 0.088 * Math.cos(0.62);
-      P.add('turretTrack', box(w, h, 0.20), s * x, yc, z, -0.14, s * 0.62, s * (0.05 - i * 0.010));
-      P.add('turretDark', box(w * 0.76, 0.026, 0.030), s * (x + fx), yc + h * 0.48, z + fz, -0.14, s * 0.62, 0);
-      P.add('turretDark', box(0.026, h * 0.78, 0.030), s * (x + fx), yc, z + fz, -0.14, s * 0.62, 0);
-    }
     // three K-1 flank returns per side along the cheek line (the print's
     // LEFT flank sits measurably inboard — front col -1.40 reads 1.26)
     const fxr = s < 0 ? 1.243 : 1.285;

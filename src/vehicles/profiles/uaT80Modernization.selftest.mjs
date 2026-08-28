@@ -29,20 +29,21 @@ for (const [id, receipt, weaponName] of variants) {
       `${id}: modernization suite is explicitly receipted`);
     assert.ok(rws?.isGroup && rws.parent === turretRig,
       `${id}: Kord RWS yaws with the turret`);
-    assert.deepEqual(frontERA, {
-      family: 'ua-t80-faceted-t90-front-r2',
-      paintedArmorOnly: true,
-      cheekCassettes: 20,
-      mantletCassettes: 2,
-      shoulderReturnCassettes: 6,
-    }, `${id}: frontal T-90-style ERA has the complete receipted cassette set`);
+    assert.equal(frontERA.paintedArmorOnly, true);
+    assert.equal(frontERA.cheekCassettes, 24,
+      `${id}: two-row frontal carriers expose all face tiles`);
+    assert.equal(frontERA.mantletCassettes, 0,
+      `${id}: no loose mantlet cassette duplicates the joined center closure`);
+    assert.equal(frontERA.shoulderReturnCassettes, 6);
+    assert.equal(frontERA.rowsPerCheek, 2);
+    assert.equal(frontERA.exactSurfaceOffsets, true);
     assert.equal(turretRig.getObjectByName('turretTrack'), undefined,
       `${id}: obsolete spare-track-steel frontal blocks are removed`);
 
     shell.geometry.computeBoundingBox();
     externalArmor.geometry.computeBoundingBox();
     equipment.geometry.computeBoundingBox();
-    assert.ok(externalArmor.geometry.boundingBox.max.z >= 1.70,
+    assert.ok(externalArmor.geometry.boundingBox.max.z >= 1.64,
       `${id}: faceted carrier and ERA stand proud of the cast dome`);
     assert.ok(externalArmor.material?.map,
       `${id}: faceted ERA uses continuous vehicle-scale camouflage`);

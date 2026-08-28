@@ -36,7 +36,7 @@ import {
 // 2a7 and fully focus on the 2a7v') — its TANK_SPECS row STAYS as the
 // leo2_revolution make() donor (userdrops5); it just never enters
 // TANK_IDS/ALL_TANK_IDS, so no garage card, no ledger row.
-export const TANK_IDS = ['m4a3e8', 'tiger1', 't34_85', 'is2', 'panther_g', 'm1a2', 't90m'];
+export const TANK_IDS = ['m4a3e8', 'tiger1', 't34_85', 'is2', 'panther_g', 'm1a2', 't90m', 't90m_proryv'];
 
 
 // controls_gunnery r2: afterShot 4/3 → 2.8/2.2 with the movement.js LN6
@@ -703,7 +703,7 @@ export const TANK_SPECS = {
   },
 
   t90m: {
-    id: 't90m', name: 'T-90M Proryv', nation: 'Russia', era: 'modern', role: 'mbt',
+    id: 't90m', name: 'T-90M', nation: 'Russia', era: 'modern', role: 'mbt',
     hp: 2700,
     enginePowerHp: 1130, weightTons: 48, topSpeedKmh: 65, reverseSpeedKmh: 12,
     hullTraverseDegS: 44,
@@ -780,6 +780,15 @@ TANK_SPECS.m1a2.visual.number = '23';
     { kind: 'era', era: l.era });
   t90.hullPlates.splice(0, 1, mk('glacis_era_L', -1.5, -0.02), mk('glacis_era_R', 0.02, 1.5));
 }
+
+// The established Proryv reconstruction remains addressable as T-90M at
+// tier IX.  Tier X is a distinct first-party configuration with the denser
+// two-row Relikt chevron front; both share the corrected long T-90 chassis.
+TANK_SPECS.t90m_proryv = structuredClone(TANK_SPECS.t90m);
+TANK_SPECS.t90m_proryv.id = 't90m_proryv';
+TANK_SPECS.t90m_proryv.name = 'T-90M Proryv';
+TANK_SPECS.t90m_proryv.hp = 2850;
+TANK_SPECS.t90m_proryv.visual.number = '623';
 
 // ===========================================================================
 // FIRST-PARTY PROCEDURAL EXPANSION TANKS.
@@ -1739,6 +1748,7 @@ export const MODEL_SOURCE = {
   m1a2: { source: 'procedural' },
   m1a2_legacy: { source: 'procedural' },
   t90m: { source: 'procedural' },
+  t90m_proryv: { source: 'procedural' },
   leo2a7: { source: 'procedural' },
 };
 

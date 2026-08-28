@@ -25,6 +25,7 @@
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT, FITTINGS, buildProfile } from './kit.js';
+import { addSovietChevronEra } from './sovietChevronEra.js';
 import { domeBoxPlanSeat } from './russia.js';
 
 // ---------------------------------------------------------------------------
@@ -2425,50 +2426,30 @@ function buildT80UNative2026(P) {
   // r3g cliff form: the ref side plateau (2.18w) runs to z_w 1.51 then
   // CLIFFS to 1.62 — rails extend to z_w 1.49 and the prongs beyond the
   // cliff drop to 1.69w.
+  addSovietChevronEra(P, {
+    sector: 't80u-k5-turret-front-era',
+    receiptKey: 't80UChevronEraReceipt',
+    family: 't80u-kontakt5-cast-chevron-r1',
+    plans: [
+      [[0.19, 1.39], [0.30, 1.51], [0.80, 1.12], [0.69, 0.99]],
+      [[0.70, 1.02], [0.82, 1.14], [1.34, 0.62], [1.22, 0.50]],
+    ],
+    rows: [
+      { y0: bodyY(0.12), y1: bodyY(0.34), z0: -0.09, z1: 0.075 },
+      { y0: bodyY(0.34), y1: bodyY(0.57), z0: 0.075, z1: -0.085 },
+    ],
+    tileRanges: [[0.06, 0.30], [0.34, 0.66], [0.70, 0.94]],
+    tileDepthM: 0.080,
+    gasketDepthM: 0.030,
+    centerClosure: { width: 0.42, height: 0.22, depth: 0.060, y: bodyY(0.24), z: 1.50, rx: -0.23 },
+  });
+  // Preserve the falling flank returns and crown field, now joined to one
+  // coherent two-row frontal carrier rather than a second nested box fan.
   P.visualEraCluster('t80u-k5-turret-era', 'turret', () => {
   for (const s of [-1, 1]) {
-    P.add('turret', box(0.60, 0.18, 0.50), s * 0.785, bodyY(0.21), 1.32, 0, -s * 0.55, 0);    // K-5 wedge prong
-    P.add('turretDark', box(0.50, 0.035, 0.44), s * 0.76, bodyY(0.325), 1.24, 0, -s * 0.55, 0); // gap seam
-    P.add('turret', box(0.42, 0.216, 0.75), s * 0.38, bodyY(0.475), 0.90);                     // clam top, inboard low course
-    // outboard RAIL (2.145w) to the z_w 1.49 cliff: LEFT full width; RIGHT
-    // narrowed to x 0.58-0.78 (ref front cols 0.79-0.92 top out at 1.964;
-    // stations slice the rails at z 0.95-1.15 — full deletion cost 6 pts)
-    if (s < 0) P.add('turret', box(0.30, 0.162, 1.18), -0.75, bodyY(0.58), 0.67, 0, 0.06, 0);
-    else P.add('turret', box(0.20, 0.252, 1.44), 0.68, bodyY(0.625), 0.62);
-    P.add('turretDetail', box(0.32, 0.162, 0.62), s * 1.30, bodyY(0.47), -0.10, 0, s * 0.10, 0);
-  }
-  // Dense T-90-family Kontakt-5 fan on the T-80U casting.  Keep the pear-
-  // shaped dome and its broad clamshell carriers, but break the visible
-  // armor into seven closely nested cheek cassettes and five falling flank
-  // returns per side.  Each cassette has a smaller shoe buried into the
-  // carrier by 45-65 mm, so no module reads as a loose box hovering over the
-  // casting.  The tighter cadence also carries the protection all the way
-  // from the mantlet valley into the smoke-bank shoulder.
-  for (const s of [-1, 1]) {
-    for (const [x, y, z, yaw, roll, w, h, d] of [
-      [0.25, 0.42, 1.43, 0.12, -0.39, 0.30, 0.17, 0.32],
-      [0.42, 0.46, 1.35, 0.22, -0.41, 0.33, 0.18, 0.35],
-      [0.61, 0.49, 1.24, 0.32, -0.41, 0.36, 0.19, 0.38],
-      [0.81, 0.51, 1.08, 0.43, -0.39, 0.39, 0.20, 0.40],
-      [1.00, 0.50, 0.89, 0.53, -0.36, 0.38, 0.20, 0.39],
-      [1.17, 0.47, 0.68, 0.61, -0.32, 0.35, 0.19, 0.36],
-      [1.30, 0.43, 0.43, 0.68, -0.27, 0.31, 0.18, 0.33],
-    ]) {
-      const shoeY = bodyY(y) - h * 0.23;
-      const cassetteY = bodyY(y);
-      const shoe = seatEra(s * (x - 0.028), shoeY, z,
-        w * 0.86, h * 0.55, d * 0.80, roll, -s * yaw, 0.045);
-      const cassette = seatEra(s * x, cassetteY, z,
-        w, h * 0.90, d, roll, -s * yaw);
-      P.add('turret', box(w * 0.86, h * 0.55, d * 0.80),
-        shoe.x, shoeY, shoe.z, roll, -s * yaw, 0);
-      P.add('turret', box(w, h * 0.90, d),
-        cassette.x, cassetteY, cassette.z, roll, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.68), 0, h * 0.47, 0.030),
-        cassette.x, cassetteY, cassette.z, roll, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(0.016, h * 0.67, d * 0.62), w * 0.45, 0, 0.025),
-        cassette.x, cassetteY, cassette.z, roll, -s * yaw, 0);
-    }
+    // The former seven-cassette frontal staircase lived here. The shared
+    // two-row carrier above now owns that entire forward sector, so only the
+    // genuine flank-return course continues around the cast shoulder.
     for (const [x, y, z, yaw, w, h, d] of [
       [1.40, 0.39, 0.22, 0.40, 0.28, 0.17, 0.29],
       [1.46, 0.375, -0.05, 0.27, 0.27, 0.17, 0.28],
@@ -2644,7 +2625,8 @@ function buildT80UNative2026(P) {
   P.turretG.userData.t80uT90StyleTurretReceipt = Object.freeze({
     architecture: 'cast-dome-t90-k5-package',
     replacementTurret: false,
-    frontEraModulesPerSide: 7,
+    frontCarrierSurfacesPerSide: 4,
+    frontEraTilesPerSide: 12,
     flankEraModulesPerSide: 5,
     crownEraModulesPerSide: 3,
     eraSupportEmbedM: 0.045,

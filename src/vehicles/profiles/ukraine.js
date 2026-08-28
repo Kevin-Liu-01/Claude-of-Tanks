@@ -21,6 +21,7 @@
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.js';
+import { addSovietChevronEra } from './sovietChevronEra.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 import { addVehicleGhillieSuit } from '../ghillieSuit.js';
 import {
@@ -211,64 +212,49 @@ function modernT80CheekCarrier(s) {
 // segmented clamshell read from front, quarter and plan views.
 function addFacetedT80FrontERA(P, variant) {
   const kursk = variant === 'kursk';
+  const plans = kursk ? [
+    [[0.12, 1.46], [0.24, 1.59], [0.78, 1.21], [0.66, 1.08]],
+    [[0.67, 1.12], [0.80, 1.24], [1.33, 0.69], [1.20, 0.57]],
+  ] : [
+    [[0.12, 1.45], [0.23, 1.57], [0.74, 1.20], [0.63, 1.08]],
+    [[0.64, 1.11], [0.76, 1.22], [1.27, 0.72], [1.15, 0.60]],
+  ];
+  const rows = kursk ? [
+    { y0: 0.11, y1: 0.34, z0: -0.09, z1: 0.075 },
+    { y0: 0.34, y1: 0.58, z0: 0.075, z1: -0.085 },
+  ] : [
+    { y0: 0.10, y1: 0.32, z0: -0.08, z1: 0.065 },
+    { y0: 0.32, y1: 0.55, z0: 0.065, z1: -0.075 },
+  ];
+  const chevron = addSovietChevronEra(P, {
+    sector: `ua-t80-${variant}-front-era`,
+    receiptKey: 'uaT80ChevronEraReceipt',
+    family: kursk
+      ? 'ua-t80u-kursk-kontakt5-chevron-r1'
+      : 'ua-t80bv-kontakt1-chevron-r1',
+    plans,
+    rows,
+    tileRanges: [[0.06, 0.30], [0.34, 0.66], [0.70, 0.94]],
+    tileDepthM: kursk ? 0.080 : 0.064,
+    gasketDepthM: kursk ? 0.030 : 0.024,
+    centerClosure: {
+      width: kursk ? 0.43 : 0.39,
+      height: kursk ? 0.23 : 0.21,
+      depth: 0.060,
+      y: kursk ? 0.235 : 0.215,
+      z: 1.59,
+      rx: -0.22,
+    },
+  });
   const receipt = {
-    family: 'ua-t80-faceted-t90-front-r2',
+    family: chevron.family,
     paintedArmorOnly: true,
-    cheekCassettes: 0,
+    cheekCassettes: chevron.tilesTotal,
     mantletCassettes: 0,
     shoulderReturnCassettes: 6,
+    rowsPerCheek: chevron.rowsPerCheek,
+    exactSurfaceOffsets: chevron.exactSurfaceOffsets,
   };
-
-  const addCassette = (face, w, h, d, kind) => {
-    const cassette = faceSeatedCassette(P, 'turret',
-      face.point.toArray(), face.normal.toArray(), face.du.toArray(),
-      w, h, d, { embed: 0.040, painted: true, lid: false });
-
-    // A recessed gasket is slightly wider than the cassette and intersects
-    // the carrier plane. Only its narrow perimeter remains visible, producing
-    // a stable modular joint without a coplanar overlay or a dark panel face.
-    P.add('turretDark', KIT.xform(
-      KIT.box(w + 0.040, 0.020, d + 0.040),
-      0, -h * 0.50 + 0.004, 0,
-    ), cassette.center.x, cassette.center.y, cassette.center.z,
-    cassette.rotation.x, cassette.rotation.y, cassette.rotation.z);
-
-    // Short flush service mark: enough contrast to expose the face angle at
-    // garage/game scale, but far smaller than the removed steel/black blocks.
-    P.add('turretDark', KIT.xform(
-      KIT.box(0.026, 0.012, d * 0.52),
-      w * 0.24, h * 0.50 + 0.006, 0,
-    ), cassette.center.x, cassette.center.y, cassette.center.z,
-    cassette.rotation.x, cassette.rotation.y, cassette.rotation.z);
-
-    receipt[kind] += 1;
-  };
-
-  for (const s of [-1, 1]) {
-    const { front: frontFace } = modernT80CheekCarrier(s);
-
-    // Three stepped banks follow the carrier's compound pitch. Their centers
-    // are staggered so the outer silhouette reads as interlocking wedges,
-    // rather than the old ring of unrelated floating boxes.
-    const banks = [
-      { v: 0.72, us: [0.20, 0.49, 0.78], w: 0.17, h: kursk ? 0.115 : 0.105, d: 0.31 },
-      { v: 0.43, us: [0.16, 0.40, 0.64, 0.86], w: 0.18, h: kursk ? 0.125 : 0.115, d: 0.255 },
-      { v: 0.15, us: [0.21, 0.50, 0.79], w: 0.14, h: kursk ? 0.135 : 0.125, d: 0.29 },
-    ];
-    for (const bank of banks) {
-      for (const u of bank.us) {
-        const face = sampleFace(...frontFace, u, bank.v, [0, 0, 1]);
-        addCassette(face, bank.w, bank.h, bank.d, 'cheekCassettes');
-      }
-    }
-
-    // The inner nose panel closes each bank at the mantlet without crossing
-    // the gun aperture. It is seated on the same face, so there is no detached
-    // V-tip or center seam floating ahead of the casting.
-    const nose = sampleFace(...frontFace, 0.055, 0.39, [0, 0, 1]);
-    addCassette(nose, 0.22, kursk ? 0.13 : 0.12, 0.23, 'mantletCassettes');
-  }
-
   P.turretG.userData.uaT80FrontERAReceipt = Object.freeze(receipt);
 }
 

@@ -84,6 +84,7 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   t90sm: anchor('turret', 'left', 0.37, 0.48, 0.24, 1),
   t90ms: anchor('turret', 'right', 0.34, 0.49, 0.24, -1),
   t90m: anchor('turret', 'left', 0.36, 0.46, 0.24, 1),
+  t90m_proryv: anchor('turret', 'left', 0.36, 0.46, 0.24, 1),
   udes03: anchor('hull', 'right', 0.45, 0.84, 0.22, -1),
   strv103: anchor('hull', 'right', 0.46, 0.66, 0.27, -1),
   strv103a: anchor('hull', 'left', 0.44, 0.64, 0.27, 1),

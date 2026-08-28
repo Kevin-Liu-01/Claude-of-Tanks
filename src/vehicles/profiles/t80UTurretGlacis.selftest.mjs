@@ -79,8 +79,10 @@ try {
   assert.equal(modernizedTurret.architecture, 'cast-dome-t90-k5-package');
   assert.equal(modernizedTurret.replacementTurret, false,
     'modernized protection preserves the characteristic T-80U cast dome');
-  assert.ok(modernizedTurret.frontEraModulesPerSide >= 7,
-    'each turret cheek carries a dense seven-module Kontakt-5 fan');
+  assert.equal(modernizedTurret.frontCarrierSurfacesPerSide, 4,
+    'each turret cheek carries two joined Kontakt-5 rows across two plan surfaces');
+  assert.equal(modernizedTurret.frontEraTilesPerSide, 12,
+    'every chevron carrier surface exposes three distinct Kontakt-5 tiles');
   assert.ok(modernizedTurret.flankEraModulesPerSide >= 5,
     'Kontakt-5 continues into at least five flank return modules per side');
   assert.ok(modernizedTurret.crownEraModulesPerSide >= 3,

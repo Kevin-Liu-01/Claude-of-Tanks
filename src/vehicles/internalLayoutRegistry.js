@@ -286,7 +286,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   abrams: ['m1a1', 'm1a2', 'm1a2_tusk', 'm1a2_legacy', 'm1a1ha', 'm1a2_sepv2', 'm1a2_sepv3', 'ua_m1a1'],
   merkava: ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b'],
   sovietManual: ['t62mv1'],
-  sovietAz: ['t72b3m', 't72bu', 'pt91m', 't90', 't90a', 't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 'type99a', 'ztz99a2', 't72m1_jaguar', 'pt91_twardy'],
+  sovietAz: ['t72b3m', 't72bu', 'pt91m', 't90', 't90a', 't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv', 'type99a', 'ztz99a2', 't72m1_jaguar', 'pt91_twardy'],
   sovietMz: ['t64bv1', 't80', 't80b', 't80bv', 't80u', 't84', 'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m'],
   bustleAuto: ['k2', 'k2b', 'type90', 'type90a', 'type10', 'type10b', 'leclerc', 'leclerc_xlr', 'amx56'],
   fixedAuto: ['udes03', 'strv103a', 'strv103'],

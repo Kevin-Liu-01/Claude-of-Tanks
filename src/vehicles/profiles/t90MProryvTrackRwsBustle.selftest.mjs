@@ -19,6 +19,10 @@ try {
   const track = hullRig.userData.t90mProryvTrackReceipt;
   assert.ok(track, 'T-90M exposes its installed running-gear receipt');
   assert.ok(near(track.roadWheelRadiusM, 0.31), 'road wheels use the non-overlapping 310-mm radius');
+  assert.ok(near(track.roadWheelSpanM, 3.60), 'six road-wheel stations use the corrected long T-90 wheelbase');
+  assert.ok(near(track.sprocketZ, -2.46) && near(track.idlerZ, 2.54),
+    'terminal wheels occupy the corrected long-hull stations');
+  assert.ok(near(track.structuralHullLengthM, 6.76), 'structural hull spans the corrected T-90 length');
   assert.ok(near(track.trackEnvelopeHeightM, 0.93), 'linked course spans the 930-mm vertical envelope');
   assert.ok(near(track.rideHeightIncreaseM, 0.16), 'finished hull and turret gain 160 mm of ride height');
   assert.equal(track.roadWheelStations, 6, 'native six-station cadence is preserved');
@@ -86,6 +90,22 @@ try {
   }
 } finally {
   tank.dispose();
+}
+
+const tierXTank = createTank('t90m_proryv', null, {
+  proceduralOnly: true,
+  quality: 'high',
+  camoSeed: 4242,
+  geometryReceipt: true,
+});
+try {
+  const tierXTrack = tierXTank.root.getObjectByName('rig_hull')?.userData.t90mProryvTrackReceipt;
+  assert.ok(tierXTrack, 'tier-X T-90M Proryv publishes the shared long-chassis receipt');
+  assert.ok(near(tierXTrack.roadWheelSpanM, 3.60)
+    && near(tierXTrack.structuralHullLengthM, 6.76),
+  'tier-IX T-90M and tier-X Proryv use the same corrected long hull');
+} finally {
+  tierXTank.dispose();
 }
 
 console.log('t90MProryvTrackRwsBustle.selftest: tracks, seated roof fittings, camouflaged light, remote Kord, and attached rear assembly verified');

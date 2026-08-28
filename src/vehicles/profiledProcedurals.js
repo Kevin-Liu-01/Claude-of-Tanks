@@ -55,6 +55,7 @@ const RUSSIA_PROFILES = {
   t80b: T80_PROFILES.t80b,
   t80bv: T80_PROFILES.t80bv,
   t90m: T90_PROFILES.t90m,
+  t90m_proryv: T90_PROFILES.t90m_proryv,
   t54: RUSSIA_RESIDUE_PROFILES.t54,
   t44: RUSSIA_RESIDUE_PROFILES.t44,
   // §5.304: type59 renders the china.js redesign (WZ-120 dome on the widened

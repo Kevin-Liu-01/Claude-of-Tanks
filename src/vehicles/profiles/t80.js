@@ -1,6 +1,7 @@
 // Pure family extraction from russia.js (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.js';
+import { addSovietChevronEra } from './sovietChevronEra.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 import { addVehicleGhillieSuit } from '../ghillieSuit.js';
 import {
@@ -479,24 +480,26 @@ function buildT80Line(P, v) {
       eraSurfaceSeats.push(seat);
       return seat;
     };
-    // Tagil-style frontal protection: a planted, faceted module course on
-    // each side of the gun.  Each outer module steps down/back with the cast
-    // shoulder, while a deep painted shoe remains buried in the dome.  This
-    // replaces the former single low wall whose upper face vanished inside
-    // the BV casting.
+    addSovietChevronEra(P, {
+      sector: 't80bv-k1-turret-front-era',
+      receiptKey: 't80BVChevronEraReceipt',
+      family: 't80bv-kontakt1-cast-chevron-r1',
+      plans: [
+        [[0.23, 1.31], [0.34, 1.41], [0.78, 1.02], [0.67, 0.91]],
+        [[0.68, 0.95], [0.79, 1.05], [1.20, 0.60], [1.09, 0.50]],
+      ],
+      rows: [
+        { y0: 0.12, y1: 0.315, z0: -0.075, z1: 0.060 },
+        { y0: 0.315, y1: 0.505, z0: 0.060, z1: -0.070 },
+      ],
+      tileRanges: [[0.07, 0.29], [0.34, 0.66], [0.71, 0.93]],
+      tileBucket: 'turretTrack',
+      tileDepthM: 0.060,
+      gasketDepthM: 0.022,
+      centerClosure: { width: 0.36, height: 0.18, depth: 0.055, y: 0.23, z: 1.43, rx: -0.20 },
+    });
+    // Continue the coherent front into the cast shoulder and flank wrap.
     P.visualEraCluster('t80bv-k1-turret-extra-era', 'turret', () => {
-    for (const s of [-1, 1]) for (let i = 0; i < 5; i++) {
-      const x = 0.38 + i * 0.19;
-      const z = 1.47 - i * 0.18;
-      const y = 0.44 - i * 0.012;
-      const yaw = 0.76;
-      const shoe = seatEra(s * (x - 0.025), y - 0.055, z - 0.035,
-        0.31, 0.20, 0.25, -0.22, s * yaw, 0.045);
-      const cassette = seatEra(s * x, y, z, 0.35, 0.27, 0.28, -0.22, s * yaw);
-      P.add('turret', box(0.31, 0.20, 0.25), shoe.x, y - 0.055, shoe.z, -0.22, s * yaw, 0);
-      P.add('turret', box(0.35, 0.27, 0.28), cassette.x, y, cassette.z, -0.22, s * yaw, 0);
-      P.add('turretDark', box(0.27, 0.022, 0.21), cassette.x, y + 0.145, cassette.z, -0.22, s * yaw, 0);
-    }
     // Continue the Kontakt-1 blanket into six individually readable flank
     // cassettes per side.  Their buried inner shoes overlap the existing
     // cast carriers; dark caps expose the module cadence at gameplay scale.

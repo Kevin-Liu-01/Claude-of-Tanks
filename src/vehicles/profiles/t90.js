@@ -1,6 +1,7 @@
 // Pure family extraction from russia.js (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.js';
+import { addSovietChevronEra } from './sovietChevronEra.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 import {
   loftHull,
@@ -791,7 +792,23 @@ function buildT90ALegacy(P, {
   // broad-plate read comes from the TWO-LEAF clamshell (k5Lower) + the
   // axis-aligned under-roots below instead.)
   const p5 = { rings, sz: 1.21, k5T: 0.62, k5Out: 0.24, k5Len: 0.95, k5H: 0.18, k5Y: 0.28, k5Yaw: 0.47, k5Rise: 0, k5Seg: 5, k5CapIn: 0.04, k5Lower: { dy: 0.13, h: 0.16, dPitch: 0.35, tuck: 0.05 }, k5Bucket: 'turret', k5LeafOff: true, eyeKit: true, eyeRound: true, eyeScale: 1.32, eyeX: 0.70, eyeZ: shtoraEyeZ };
-  eraRuCheeks(P, p5, 'k5');
+  addSovietChevronEra(P, {
+    sector: 't90a-k5-turret-era',
+    receiptKey: 't90AChevronEraReceipt',
+    family: 't90a-kontakt5-shtora-chevron-r1',
+    plans: [
+      [[0.20, 1.48], [0.30, 1.60], [0.83, 1.27], [0.72, 1.14]],
+      [[0.73, 1.18], [0.84, 1.30], [1.38, 0.76], [1.26, 0.64]],
+    ],
+    rows: [
+      { y0: 0.09, y1: 0.30, z0: -0.09, z1: 0.075 },
+      { y0: 0.30, y1: 0.52, z0: 0.075, z1: -0.085 },
+    ],
+    tileRanges: [[0.06, 0.29], [0.335, 0.665], [0.71, 0.94]],
+    tileDepthM: 0.080,
+    gasketDepthM: 0.030,
+    centerClosure: { width: 0.40, height: 0.23, depth: 0.060, y: 0.225, z: 1.62, rx: -0.24 },
+  });
   P.visualEraCluster('t90a-k5-turret-support-era', 'turret', () => {
   for (const s2 of [-1, 1]) {
     // The Shtora lane is now a deliberate opening in the K-5 staircase.
@@ -4962,7 +4979,6 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
   // the raised production gun band instead of leaving them either on the
   // crown or down against the hull roof. Their unequal authored heights still
   // require distinct seat drops before the shared installed lift is applied.
-  const frontArmorDrop = burlakBase ? 0.245 - frontPackageLift : 0;
   const shtoraDrop = burlakBase ? 0.31 - frontPackageLift : 0;
 
   // Six low Kontakt-5 crown plates follow the flattened pear cap.  The old
@@ -4972,7 +4988,6 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
   const burlakCrownDrop = burlakBase ? 0.090 : 0;
   const armorSeatPlaneY = burlakBase ? 0.325 : 0.30;
   const armorEmbedM = 0.012;
-  const armorFanSeats = [];
   P.visualEraCluster('t90-k5-turret-era', 'turret', () => {
     for (const [x, y, z, w, d, yaw, roll] of [
       [-0.28, 0.742, 0.19, 0.46, 0.52, -0.07, -0.06],
@@ -4987,51 +5002,23 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
       P.add('turretDark', box(w * 0.78, 0.010, d * 0.72), x, seatedY + 0.031, z, -0.05, yaw, roll);
     }
 
-    // K-5 clamshell: every cassette is solved from the selected 0.325 m
-    // turret shoulder plane. Its rotated lower extent enters that plane by
-    // only 12 mm, eliminating the old deep intersection while preserving the
-    // authored fan angles and plan positions.
-    for (const s of [-1, 1]) {
-      for (const [x, _oldY, z, yaw, roll, w, h, d] of [
-        [0.28, 0.36, 1.30, 0.18, -0.50, 0.30, 0.21, 0.36],
-        [0.49, 0.41, 1.17, 0.32, -0.52, 0.36, 0.25, 0.42],
-        [0.73, 0.42, 1.01, 0.44, -0.48, 0.41, 0.27, 0.44],
-        [0.98, 0.41, 0.82, 0.57, -0.44, 0.44, 0.27, 0.43],
-        [1.21, 0.38, 0.60, 0.67, -0.39, 0.43, 0.26, 0.41],
-        [1.39, 0.34, 0.35, 0.51, -0.32, 0.40, 0.23, 0.37],
-        [1.53, 0.30, 0.09, 0.28, -0.25, 0.34, 0.20, 0.33],
-      ]) {
-        const seatedY = burlakBase
-          ? seatArmorOnHorizontalPlane(armorSeatPlaneY, h, d, roll, armorEmbedM)
-          : _oldY - frontArmorDrop;
-        const seatedZ = z + frontPackageForward;
-        armorFanSeats.push(Object.freeze({ side: s, x: s * x, y: seatedY, z: seatedZ, pitch: roll, width: w, height: h, depth: d }));
-        P.add('turret', KIT.xform(box(w * 0.82, h * 0.58, d * 0.76), 0, -h * 0.20, -0.09), s * (x - 0.035), seatedY, seatedZ, roll, -s * yaw, 0);
-        P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.055), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
-        P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.70), 0, h * 0.52, 0.040), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
-        P.add('turretDark', KIT.xform(box(0.018, h * 0.76, d * 0.64), w * 0.44, 0, 0.035), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
-      }
-      P.add('turret', box(0.18, 0.24, 0.52), s * 1.16, 0.27 - frontArmorDrop, 0.19 + frontPackageForward, 0, 0, -s * 0.18);
-    }
-    if (burlakBase) {
-      // A second stagger uses the same seating equation, so its lower faces
-      // cannot phase through the shared shoulder plate either.
-      for (const s of [-1, 1]) {
-        for (const [x, _oldY, z, yaw, roll, w, h, d] of [
-          [0.34, 0.31, 1.13, 0.24, -0.39, 0.29, 0.18, 0.31],
-          [0.61, 0.34, 0.92, 0.38, -0.35, 0.33, 0.19, 0.34],
-          [0.91, 0.34, 0.67, 0.54, -0.30, 0.36, 0.19, 0.35],
-          [1.18, 0.31, 0.39, 0.66, -0.24, 0.34, 0.18, 0.32],
-        ]) {
-          const seatedY = seatArmorOnHorizontalPlane(armorSeatPlaneY, h, d, roll, armorEmbedM);
-          const seatedZ = z + frontPackageForward;
-          armorFanSeats.push(Object.freeze({ side: s, x: s * x, y: seatedY, z: seatedZ, pitch: roll, width: w, height: h, depth: d }));
-          P.add('turret', KIT.xform(box(w * 0.80, h * 0.52, d * 0.70), 0, -h * 0.24, -0.085), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
-          P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.050), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
-          P.add('turretDark', KIT.xform(box(w * 0.68, 0.010, d * 0.62), 0, h * 0.52, 0.030), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
-        }
-      }
-    }
+  });
+  const t90ChevronReceipt = addSovietChevronEra(P, {
+    sector: 't90-k5-turret-era',
+    receiptKey: 't90ChevronEraReceipt',
+    family: 't90-ru417-kontakt5-chevron-r1',
+    plans: [
+      [[0.19, 1.20], [0.30, 1.34], [0.83, 1.02], [0.71, 0.89]],
+      [[0.72, 0.93], [0.84, 1.06], [1.43, 0.49], [1.30, 0.37]],
+    ],
+    rows: [
+      { y0: 0.08, y1: 0.29, z0: -0.09, z1: 0.08 },
+      { y0: 0.29, y1: 0.51, z0: 0.08, z1: -0.09 },
+    ],
+    tileRanges: [[0.06, 0.30], [0.34, 0.66], [0.70, 0.94]],
+    tileDepthM: 0.080,
+    gasketDepthM: 0.030,
+    centerClosure: { width: 0.42, height: 0.23, depth: 0.060, y: 0.22, z: 1.36, rx: -0.24 },
   });
   P.add('turretDark', box(0.54, 0.30, 0.055), 0, 0.39 + frontPackageLift, 1.29 + frontPackageForward, -0.40, 0, 0);
   // The compact first pass left the OTShU heads looking like indicator lamps
@@ -5075,7 +5062,7 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
       canonicalEraSector: 't90-k5-turret-era',
       armorSeatPlaneY,
       armorEmbedM,
-      fanSeats: Object.freeze(armorFanSeats),
+      chevronEra: t90ChevronReceipt,
       shtoraEyeX,
       shtoraEyeScale,
       shtoraCenterY,
@@ -7114,21 +7101,21 @@ function replaceT90MProryvHull(P) {
   // shoulders are carried above them by the sloped upper hull.
   loftHull(P, {
     deck: [
-      [-3.05, 1.15], [-2.78, 1.23], [-2.28, 1.29], [-1.45, 1.32],
-      [0.55, 1.32], [1.42, 1.29], [2.15, 1.21], [2.70, 1.06],
-      [3.08, 0.86], [3.25, 0.68],
+      [-3.31, 1.15], [-2.98, 1.23], [-2.28, 1.29], [-1.45, 1.32],
+      [0.55, 1.32], [1.42, 1.29], [2.15, 1.21], [2.82, 1.06],
+      [3.30, 0.86], [3.45, 0.68],
     ],
     belly: [
-      [-3.05, 0.73], [-2.72, 0.49], [-2.36, 0.34], [2.38, 0.34],
-      [2.88, 0.46], [3.25, 0.60],
+      [-3.31, 0.73], [-2.96, 0.49], [-2.54, 0.34], [2.48, 0.34],
+      [3.10, 0.46], [3.45, 0.60],
     ],
-    wUp: [[-3.05, 1.42], [-2.74, 1.62], [2.92, 1.62], [3.25, 1.28]],
-    wLo: [[-3.05, 0.94], [3.25, 0.94]],
+    wUp: [[-3.31, 1.42], [-2.98, 1.62], [3.12, 1.62], [3.45, 1.28]],
+    wLo: [[-3.31, 0.94], [3.45, 0.94]],
     // Preserve the complete low outer hull, glacis and rear wall while its
     // concealed sponson floor clears the full native return run. The former
     // 0.82-m centre/terminal floor coincided with the 0.84-m shoe crowns;
     // 1.21 m is the existing shoulder datum and changes no visible outline.
-    sponsonY: [[-3.05, 1.21], [3.25, 1.21]],
+    sponsonY: [[-3.31, 1.21], [3.45, 1.21]],
   });
 
   // Layered glacis and supported shoulder bridges.  The center plate is
@@ -7170,7 +7157,7 @@ function replaceT90MProryvHull(P) {
   // behind the idler, visually merging the two into one terminal wheel.
   // A shorter centered cadence opens distinct bays for both raised end
   // wheels without changing the hull or skirt envelope.
-  const wheelZs = evenStations(6, 3.30, 0.15);
+  const wheelZs = evenStations(6, 3.60, 0.15);
   // The former 480 mm radius overlapped adjacent tires by 300 mm at this
   // dense 660 mm cadence.  Keep the established 85 mm loaded foot while
   // opening a visible 40 mm bay between every pair.
@@ -7178,11 +7165,15 @@ function replaceT90MProryvHull(P) {
   const gear = buildRunningGear(P, {
     style: 'rubber', wheelR: 0.31, wheelW: 0.22, wheelY, xc: 1.435,
     dishR: 0.86, wheelZs,
-    sprocket: { z: -2.20, y: 0.84, r: 0.33 },
-    idler: { z: 2.50, y: 0.69, r: 0.29 },
-    rollers: [-1.28, -0.30, 0.70, 1.60].map((z) => ({ z, y: 0.97, r: 0.096 })),
+    sprocket: { z: -2.46, y: 0.84, r: 0.33 },
+    // Keep the longer loaded wheelbase, but do not drag the idler under the
+    // descending V-bow.  At +2.76 m the animated upper transition cut into
+    // both the lower glacis and its shoulder skin; +2.54 m leaves the real
+    // wheel-to-wheel clearance while keeping a visibly longer T-90 course.
+    idler: { z: 2.54, y: 0.69, r: 0.29 },
+    rollers: [-1.48, -0.39, 0.70, 1.79].map((z) => ({ z, y: 0.97, r: 0.096 })),
     trackW: 0.50, topY: 0.98, botY: 0.05, paintedEnds: false,
-    coveredTop: true, arms: false, contactZF: 2.18, contactZR: -1.88,
+    coveredTop: true, arms: false, contactZF: 2.22, contactZR: -2.14,
   });
   // These annuli, hubs and bolts are wheel-face anatomy, so every layer is
   // instanced by the canonical gear unit and follows suspension travel/spin.
@@ -7205,12 +7196,12 @@ function replaceT90MProryvHull(P) {
   // at the terminal mudguards.  Their upper lips are separate structural
   // fender rails instead of one IFV-like vertical wall.
   ruSkirtBand(P, {
-    x: 1.80, th: 0.075, z0: -2.58, z1: 2.55, yTop: 1.27, yBot: 0.92,
+    x: 1.80, th: 0.075, z0: -2.84, z1: 2.81, yTop: 1.27, yBot: 0.92,
     panels: 6, lipX: 1.76, lipY: 0.94, dressIn: 0.08,
   });
   for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.34, 0.48, 0.055), s * 1.64, 0.91, 3.00, 0, -s * 0.20, 0);
-    P.add('hullRubber', box(0.34, 0.58, 0.055), s * 1.64, 0.88, -2.76, 0, s * 0.16, 0);
+    P.add('hullRubber', box(0.34, 0.48, 0.055), s * 1.64, 0.91, 3.20, 0, -s * 0.20, 0);
+    P.add('hullRubber', box(0.34, 0.58, 0.055), s * 1.64, 0.88, -3.02, 0, s * 0.16, 0);
   }
 
   // Low driver/engine deck with distinct hatches, periscopes and grilles.
@@ -7236,28 +7227,28 @@ function replaceT90MProryvHull(P) {
 
   // Layered asymmetric transom: backed louvres, service bays, strapped
   // drums, recovery cable, tow points and a full-width unditching log.
-  P.add('hull', box(3.02, 0.60, 0.095), 0, 0.93, -3.03);
-  P.add('hullDark', box(2.82, 0.20, 0.020), 0, 1.13, -3.086);
+  P.add('hull', box(3.02, 0.60, 0.095), 0, 0.93, -3.29);
+  P.add('hullDark', box(2.82, 0.20, 0.020), 0, 1.13, -3.346);
   for (const [x, w, n] of [[-0.86, 0.86, 5], [0.10, 0.72, 4], [0.84, 0.48, 3]]) {
-    P.add('hullDark', box(w, 0.24, 0.028), x, 1.16, -3.092);
-    for (let k = 0; k < n; k++) P.add('hullDetail', box(w * 0.82, 0.018, 0.015), x, 1.07 + k * (0.18 / Math.max(1, n - 1)), -3.112);
+    P.add('hullDark', box(w, 0.24, 0.028), x, 1.16, -3.352);
+    for (let k = 0; k < n; k++) P.add('hullDetail', box(w * 0.82, 0.018, 0.015), x, 1.07 + k * (0.18 / Math.max(1, n - 1)), -3.372);
   }
   for (const s of [-1, 1]) {
     // Fixed rear fuel drums sit on the transom cradle below the rotating
     // magazine. Their forward arcs overlap the backed hull rear and the
     // full straps return into a broad lower shoe.
-    P.add('hullCloth', cylX(0.20, 0.72, 14), s * 0.62, 1.46, -3.18);
-    for (const x of [s * 0.35, s * 0.66, s * 0.92]) P.add('hullDark', box(0.035, 0.26, 0.30), x, 1.46, -3.18);
-    P.add('hullDark', box(0.78, 0.055, 0.24), s * 0.62, 1.315, -3.13);
-    P.add('hullDark', torus(0.095, 0.020, 14), s * 0.82, 0.62, -3.10, Math.PI / 2, 0, 0);
-    P.add('hullDetail', box(0.18, 0.12, 0.035), s * 1.27, 1.00, -3.10);
-    P.add('hullGlass', box(0.10, 0.07, 0.010), s * 1.27, 1.03, -3.128);
+    P.add('hullCloth', cylX(0.20, 0.72, 14), s * 0.62, 1.46, -3.44);
+    for (const x of [s * 0.35, s * 0.66, s * 0.92]) P.add('hullDark', box(0.035, 0.26, 0.30), x, 1.46, -3.44);
+    P.add('hullDark', box(0.78, 0.055, 0.24), s * 0.62, 1.315, -3.39);
+    P.add('hullDark', torus(0.095, 0.020, 14), s * 0.82, 0.62, -3.36, Math.PI / 2, 0, 0);
+    P.add('hullDetail', box(0.18, 0.12, 0.035), s * 1.27, 1.00, -3.36);
+    P.add('hullGlass', box(0.10, 0.07, 0.010), s * 1.27, 1.03, -3.388);
   }
-  P.add('hullCloth', cylX(0.105, 1.48, 14), 0, 0.79, -3.16);
-  for (const x of [-1.05, -0.50, 0.05, 0.60, 1.15]) P.add('hullDark', box(0.045, 0.25, 0.24), x, 0.79, -3.16);
+  P.add('hullCloth', cylX(0.105, 1.48, 14), 0, 0.79, -3.42);
+  for (const x of [-1.05, -0.50, 0.05, 0.60, 1.15]) P.add('hullDark', box(0.045, 0.25, 0.24), x, 0.79, -3.42);
   const rearCable = FITTINGS.towCable({
     mats: P.mats, eyes: false, r: 0.018,
-    pts: [[-1.02, 0.62, -3.13], [-0.52, 0.48, -3.17], [0, 0.43, -3.18], [0.52, 0.48, -3.17], [1.02, 0.62, -3.13]], seed: 91,
+    pts: [[-1.02, 0.62, -3.39], [-0.52, 0.48, -3.43], [0, 0.43, -3.44], [0.52, 0.48, -3.43], [1.02, 0.62, -3.39]], seed: 91,
   });
   P.hullG.add(rearCable);
 }
@@ -7350,6 +7341,7 @@ function replaceT90MProryvTurret(P) {
     ));
   }
 
+  const usesChevronFront = P.spec.id === 't90m_proryv';
   // Proryv Relikt fan: seven unequal, deeply planted modules per cheek plus
   // a staggered inner brow and broken flank course. Width, pitch and depth
   // deliberately vary; the
@@ -7357,6 +7349,7 @@ function replaceT90MProryvTurret(P) {
   for (const s of [-1, 1]) {
     const side = s > 0 ? 'R' : 'L';
     P.destructibleCluster(`turret_era_${side}`, () => {
+      if (!usesChevronFront) {
       for (const [x, y, z, yaw, roll, w, h, d] of [
         [0.27, 0.34, 1.31, 0.14, -0.34, 0.32, 0.27, 0.39],
         [0.49, 0.36, 1.18, 0.29, -0.37, 0.38, 0.31, 0.43],
@@ -7379,6 +7372,7 @@ function replaceT90MProryvTurret(P) {
       ]) {
         P.add('turretCloth', box(w, 0.20, d), s * x, y, z, -0.14, -s * yaw, -s * 0.12);
         P.add('turretDark', box(w * 0.72, 0.014, d * 0.70), s * x, y + 0.105, z, -0.14, -s * yaw, -s * 0.12);
+      }
       }
     });
     P.destructibleCluster(`side_era_${side}`, () => {
@@ -7893,6 +7887,26 @@ function buildT90MProryvNative2026(P) {
   buildT90MProryv(P);
   replaceT90MProryvHull(P);
   replaceT90MProryvTurret(P);
+  if (P.spec.id === 't90m_proryv') {
+    addSovietChevronEra(P, {
+      sector: 't90m-proryv-relikt-turret-era',
+      receiptKey: 't90MProryvChevronEraReceipt',
+      family: 't90m-proryv-relikt-chevron-r1',
+      plans: [
+        [[0.18, 1.34], [0.30, 1.48], [0.91, 1.12], [0.78, 0.97]],
+        [[0.79, 1.02], [0.93, 1.16], [1.57, 0.53], [1.43, 0.39]],
+      ],
+      rows: [
+        { y0: 0.07, y1: 0.33, z0: -0.11, z1: 0.10 },
+        { y0: 0.33, y1: 0.61, z0: 0.10, z1: -0.11 },
+      ],
+      tileRanges: [[0.055, 0.295], [0.335, 0.665], [0.705, 0.945]],
+      tileDepthM: 0.092,
+      gasketDepthM: 0.034,
+      tilePadY: 0.014,
+      centerClosure: { width: 0.44, height: 0.26, depth: 0.070, y: 0.25, z: 1.51, rx: -0.26 },
+    });
+  }
   enhanceT90MProryvSurface2026(P);
   finishT90MProryvOwner2026(P);
   refineT90MProryvArmor2026(P);
@@ -7933,6 +7947,10 @@ function buildT90MProryvNative2026(P) {
   P.hullG.userData.t90mProryvTrackReceipt = {
     roadWheelRadiusM: 0.31,
     roadWheelCenterY: 0.395,
+    roadWheelSpanM: 3.60,
+    sprocketZ: -2.46,
+    idlerZ: 2.54,
+    structuralHullLengthM: 6.76,
     trackBottomY: 0.05,
     trackTopY: 0.98,
     trackEnvelopeHeightM: 0.93,
@@ -8341,4 +8359,5 @@ export const T90_PROFILES = {
   t90sm: { build: buildT90SM },
   t90a_vladimir: { build: buildT90AVladimir },
   t90m: { build: buildT90MProryvNative2026 },
+  t90m_proryv: { build: buildT90MProryvNative2026 },
 };

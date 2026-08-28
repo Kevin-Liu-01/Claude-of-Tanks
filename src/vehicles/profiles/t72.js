@@ -1,6 +1,7 @@
 // Pure family extraction from russia.js (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.js';
+import { addSovietChevronEra } from './sovietChevronEra.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 import {
   loftHull,
@@ -4801,8 +4802,23 @@ function buildT72BU(P) {
   // (k5LeafOff law). Plan cost at the ±0.2-0.35 cols vs the print's
   // 1.38-1.44w mantlet-floor line = the §B7/§5.29 owner-order cap.
   const p5 = { rings, sz: 0.72, k5Len: 0.90, k5H: 0.18, k5Y: 0.22, k5Yaw: 0.38, k5Seg: 4, eyeZ: 1.62, k5LeafOff: true };
-  eraRuCheeks(P, p5, 'k5');
-  eraRuCheeks(P, { tip: { x: 0.19, z: 1.32, ox: 1.25, oz: 0.55, y: 0.22, h: 0.18, d: 0.12, tilt: -0.18, segs: 4, rows: 0, gap: false, lip: { h: 0.07, dy: 0.0, dPitch: 0.30, tuck: 0.04 } } }, 'tip');
+  addSovietChevronEra(P, {
+    sector: 't72bu-k5-turret-era',
+    receiptKey: 't72BUChevronEraReceipt',
+    family: 't72bu-kontakt5-broad-chevron-r1',
+    plans: [
+      [[0.18, 1.25], [0.28, 1.35], [0.78, 1.01], [0.68, 0.91]],
+      [[0.69, 0.94], [0.79, 1.04], [1.27, 0.58], [1.17, 0.48]],
+    ],
+    rows: [
+      { y0: 0.10, y1: 0.285, z0: -0.08, z1: 0.07 },
+      { y0: 0.285, y1: 0.47, z0: 0.07, z1: -0.08 },
+    ],
+    tileRanges: [[0.07, 0.31], [0.35, 0.65], [0.69, 0.93]],
+    tileDepthM: 0.075,
+    gasketDepthM: 0.028,
+    centerClosure: { width: 0.40, height: 0.21, depth: 0.060, y: 0.22, z: 1.36, rx: -0.22 },
+  });
   ruShtora(P, p5, 0.42);
   // TIP-round §5.29 equipment: the obr-1992 carries 902A Tucha banks on
   // BOTH upper cheeks flanking the Shtora eyes — six angled tubes per

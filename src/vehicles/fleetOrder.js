@@ -18,7 +18,7 @@ export const NATIVE_VARIANT_FAMILIES = Object.freeze({
     't80', 't80b', 't80bv', 't80u', 't84',
   ]),
   t90: Object.freeze([
-    't90', 't90a', 't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m',
+    't90', 't90a', 't90a_vladimir', 't90a_burlak', 't90sm', 't90m', 't90ms', 't90m_proryv',
   ]),
 });
 

@@ -52,7 +52,7 @@ const ERA_VEHICLE_IDS = Object.freeze({
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([
     'm1a2_legacy', 'm1a2', 't72b3m', 'pt91m', 't84', 't90', 't90a',
-    't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 't72b3',
+    't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv', 't72b3',
     'leo2a7', 'strv122', 'challenger2', 'k2', 'k1a1', 'type10', 'recon_tank',
     'spz_puma', 'ariete', 'ariete_c1', 'leo2a4_otco', 'leo2a4m', 'leo2a5',
     'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2_revolution', 'leo2a7v', 'leclerc', 'leclerc_xlr',
