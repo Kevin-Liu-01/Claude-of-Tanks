@@ -33,6 +33,8 @@ primitives are strict TypeScript owners. Extend their exported contracts rather
 than creating screen-local unchecked copies.
 The public and Studio capture gallery shares `presentation/mediaArchive.ts`;
 keep manifest transfer lazy, pagination bounded, and lightbox cleanup explicit.
+`presentation/publicPages.ts` owns typed, save-data-aware hero, screenshot-rail,
+deferred-image, and viewport-video lifecycles outside the game runtime.
 The reusable accessible dialog lifecycle, focus trap, dismissal guard, and body
 scroll ownership live in `modal.ts`; feature panels only own dialog content.
 Rich contextual dossiers, live image resolution, and JSON-copy controls live in

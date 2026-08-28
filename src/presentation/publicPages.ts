@@ -1,7 +1,26 @@
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 
 const responsiveLayout = installResponsiveLayout();
-const isCompactSurface = () => ['phone', 'compact'].includes(responsiveLayout.snapshot()?.widthBand);
+const isCompactSurface = (): boolean => {
+  const widthBand = responsiveLayout.snapshot()?.widthBand;
+  return widthBand === 'phone' || widthBand === 'compact';
+};
+
+interface NetworkInformation extends EventTarget {
+  saveData?: boolean;
+  effectiveType?: string;
+}
+
+interface NavigatorWithDeviceHints extends Navigator {
+  connection?: NetworkInformation;
+  mozConnection?: NetworkInformation;
+  webkitConnection?: NetworkInformation;
+  deviceMemory?: number;
+}
+
+const deviceNavigator = navigator as NavigatorWithDeviceHints;
+const networkConnection = (): NetworkInformation | undefined =>
+  deviceNavigator.connection || deviceNavigator.mozConnection || deviceNavigator.webkitConnection;
 
 // The media archive is used by docs, not the landing page. Keep its manifest,
 // rendering code, and CSS out of the home critical path.
@@ -12,21 +31,21 @@ if (document.querySelector('[data-media-archive]')) {
   ]).then(([, { autoMountMediaArchives }]) => autoMountMediaArchives());
 }
 
-function mountHeroRail(root) {
-  const slides = [...root.querySelectorAll('[data-hero-slide]')];
+function mountHeroRail(root: Element): void {
+  const slides = [...root.querySelectorAll<HTMLImageElement>('[data-hero-slide]')];
   if (slides.length < 2) return;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  const limitsMotion = () => reducedMotion.matches || isCompactSurface() || connection?.saveData;
+  const connection = networkConnection();
+  const limitsMotion = (): boolean => reducedMotion.matches || isCompactSurface() || !!connection?.saveData;
   let activeIndex = Math.max(0, slides.findIndex((slide) => slide.classList.contains('is-active')));
   let advanceTimer = 0;
 
-  const stopTimer = () => {
+  const stopTimer = (): void => {
     clearTimeout(advanceTimer);
     advanceTimer = 0;
   };
 
-  const expose = (index) => {
+  const expose = (index: number): void => {
     slides.forEach((slide, slideIndex) => {
       const active = slideIndex === index;
       slide.classList.toggle('is-active', active);
@@ -35,20 +54,20 @@ function mountHeroRail(root) {
     activeIndex = index;
   };
 
-  const hydrate = async (slide) => {
+  const hydrate = async (slide: HTMLImageElement | undefined): Promise<void> => {
     if (!slide?.dataset.src || slide.currentSrc) return;
     slide.src = slide.dataset.src;
     delete slide.dataset.src;
     try { await slide.decode(); } catch (_) {}
   };
 
-  const scheduleAdvance = () => {
+  const scheduleAdvance = (): void => {
     stopTimer();
     if (limitsMotion() || document.hidden) return;
     advanceTimer = window.setTimeout(advance, 5600);
   };
 
-  const advance = async () => {
+  const advance = async (): Promise<void> => {
     stopTimer();
     if (limitsMotion() || document.hidden) return;
     const nextIndex = (activeIndex + 1) % slides.length;
@@ -58,7 +77,7 @@ function mountHeroRail(root) {
     scheduleAdvance();
   };
 
-  const applyMotionPreference = () => {
+  const applyMotionPreference = (): void => {
     stopTimer();
     if (limitsMotion()) expose(0);
     else scheduleAdvance();
@@ -73,26 +92,26 @@ function mountHeroRail(root) {
 
 document.querySelectorAll('[data-hero-rail]').forEach(mountHeroRail);
 
-function mountShotRail(rail) {
-  const section = rail.closest('.v5-authored');
-  const cards = [...rail.querySelectorAll('figure')];
-  const previous = section?.querySelector('[data-shot-previous]');
-  const next = section?.querySelector('[data-shot-next]');
-  const position = section?.querySelector('[data-shot-position]');
-  const progress = section?.querySelector('[data-shot-progress]');
+function mountShotRail(rail: HTMLElement): void {
+  const section = rail.closest<HTMLElement>('.v5-authored');
+  const cards = [...rail.querySelectorAll<HTMLElement>('figure')];
+  const previous = section?.querySelector<HTMLButtonElement>('[data-shot-previous]');
+  const next = section?.querySelector<HTMLButtonElement>('[data-shot-next]');
+  const position = section?.querySelector<HTMLElement>('[data-shot-position]');
+  const progress = section?.querySelector<HTMLElement>('[data-shot-progress]');
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   if (!section || cards.length < 2 || !previous || !next || !position || !progress) return;
 
   let activeIndex = 0;
   let updateFrame = 0;
 
-  const nearestCardIndex = () => cards.reduce((nearest, card, index) => (
+  const nearestCardIndex = (): number => cards.reduce((nearest, card, index) => (
     Math.abs(card.offsetLeft - rail.scrollLeft) < Math.abs(cards[nearest].offsetLeft - rail.scrollLeft)
       ? index
       : nearest
   ), 0);
 
-  const update = () => {
+  const update = (): void => {
     updateFrame = 0;
     activeIndex = nearestCardIndex();
     const maxScroll = Math.max(1, rail.scrollWidth - rail.clientWidth);
@@ -104,12 +123,12 @@ function mountShotRail(rail) {
     next.disabled = rail.scrollLeft >= maxScroll - 2;
   };
 
-  const requestUpdate = () => {
+  const requestUpdate = (): void => {
     if (updateFrame) return;
     updateFrame = requestAnimationFrame(update);
   };
 
-  const showCard = (index) => {
+  const showCard = (index: number): void => {
     activeIndex = Math.max(0, Math.min(cards.length - 1, index));
     rail.scrollTo({
       left: cards[activeIndex].offsetLeft,
@@ -129,58 +148,59 @@ function mountShotRail(rail) {
   update();
 }
 
-document.querySelectorAll('[data-shot-rail]').forEach(mountShotRail);
+document.querySelectorAll<HTMLElement>('[data-shot-rail]').forEach(mountShotRail);
 
-function mountDeferredImage(image) {
+function mountDeferredImage(image: HTMLImageElement): void {
   const observer = new IntersectionObserver(([entry]) => {
     if (!entry.isIntersecting) return;
-    image.src = image.dataset.src;
+    image.src = image.dataset.src || '';
     delete image.dataset.src;
     observer.disconnect();
   }, { rootMargin: '80px 20%' });
   observer.observe(image);
 }
 
-document.querySelectorAll('img[data-deferred-src]').forEach((image) => {
-  image.dataset.src = image.dataset.deferredSrc;
+document.querySelectorAll<HTMLImageElement>('img[data-deferred-src]').forEach((image) => {
+  image.dataset.src = image.dataset.deferredSrc || '';
   delete image.dataset.deferredSrc;
   mountDeferredImage(image);
 });
 
-function mountViewportVideo(video) {
+function mountViewportVideo(video: HTMLVideoElement): void {
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  const source = video.querySelector('source[data-src]');
+  const connection = networkConnection();
+  const source = video.querySelector<HTMLSourceElement>('source[data-src]');
   if (!source) return;
 
-  const lowPowerDevice = Number.isFinite(navigator.deviceMemory) && navigator.deviceMemory <= 4;
-  const releaseGraceMs = () => {
+  const lowPowerDevice = typeof deviceNavigator.deviceMemory === 'number'
+    && Number.isFinite(deviceNavigator.deviceMemory) && deviceNavigator.deviceMemory <= 4;
+  const releaseGraceMs = (): number => {
     if (document.hidden) return 5000;
     if (lowPowerDevice || connection?.saveData) return 8000;
     return isCompactSurface() ? 15000 : 30000;
   };
-  const manualPlayback = () => reducedMotion.matches || connection?.saveData
+  const manualPlayback = (): boolean => reducedMotion.matches || !!connection?.saveData
     || /(^|-)2g$/.test(connection?.effectiveType || '')
     || (isCompactSurface() && lowPowerDevice);
   let visible = false;
   let loaded = false;
   let releaseTimer = 0;
-  let control = null;
+  let control: HTMLButtonElement | null = null;
 
-  const setControlVisible = (show) => {
+  const setControlVisible = (show: boolean): void => {
     if (control) control.hidden = !show;
   };
 
-  const loadSource = () => {
+  const loadSource = (): void => {
     if (loaded) return;
-    const useMobileProxy = isCompactSurface() && source.dataset.mobileSrc;
-    source.src = useMobileProxy ? source.dataset.mobileSrc : source.dataset.src;
-    source.type = useMobileProxy ? (source.dataset.mobileType || 'video/mp4') : source.dataset.type;
+    const mobileSource = isCompactSurface() ? source.dataset.mobileSrc : undefined;
+    source.src = mobileSource || source.dataset.src || '';
+    source.type = mobileSource ? (source.dataset.mobileType || 'video/mp4') : (source.dataset.type || '');
     video.load();
     loaded = true;
   };
 
-  const releaseSource = () => {
+  const releaseSource = (): void => {
     clearTimeout(releaseTimer);
     releaseTimer = 0;
     video.pause();
@@ -191,7 +211,7 @@ function mountViewportVideo(video) {
     setControlVisible(manualPlayback());
   };
 
-  const sync = () => {
+  const sync = (): void => {
     clearTimeout(releaseTimer);
     releaseTimer = 0;
     if (!visible || document.hidden) {
@@ -249,4 +269,4 @@ function mountViewportVideo(video) {
   document.addEventListener('visibilitychange', sync);
 }
 
-document.querySelectorAll('[data-autoplay-video]').forEach(mountViewportVideo);
+document.querySelectorAll<HTMLVideoElement>('[data-autoplay-video]').forEach(mountViewportVideo);

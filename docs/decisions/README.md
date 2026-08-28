@@ -156,3 +156,4 @@ runtime documents remain authoritative for behavior.
 - [0144 — Static wreck baking has a typed geometry contract](0144-typed-wreck-baking.md)
 - [0145 — Performance diagnostics have a typed lazy surface](0145-typed-performance-hud.md)
 - [0146 — Public capture archives share a typed lazy owner](0146-typed-media-archive.md)
+- [0147 — Public media lifecycles are typed and viewport-scoped](0147-typed-public-media-lifecycles.md)

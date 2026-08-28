@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const source = await readFile(new URL('./publicPages.js', import.meta.url), 'utf8');
+const source = await readFile(new URL('./publicPages.ts', import.meta.url), 'utf8');
 
 assert.match(source, /rootMargin: '25% 0px'/,
   'landing videos should start transfer before they become visible');

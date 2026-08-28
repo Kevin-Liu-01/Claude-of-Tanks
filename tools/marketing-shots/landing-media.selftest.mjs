@@ -8,7 +8,7 @@ const mobileVideoManifest = JSON.parse(await readFile(resolve(root, 'public/medi
 const home = await readFile(resolve(root, 'home.html'), 'utf8');
 const presentation = await readFile(resolve(root, 'public/home.css'), 'utf8');
 const threeMark = await readFile(resolve(root, 'public/brand/threejs-mark.svg'), 'utf8');
-const publicPages = await readFile(resolve(root, 'src/presentation/publicPages.js'), 'utf8');
+const publicPages = await readFile(resolve(root, 'src/presentation/publicPages.ts'), 'utf8');
 const main = home.match(/<main>([\s\S]*?)<\/main>/)?.[1] || '';
 
 assert.equal(main.includes('<p class="micro">'), false, 'landing sections do not use eyebrow copy');
@@ -28,7 +28,7 @@ assert.match(presentation, /\.v5-shot-rail\{[^}]*scrollbar-width:none/,
   'the screenshot gallery hides the large native scrollbar');
 assert.match(presentation, /\.v5-shot-rail::\-webkit-scrollbar\{display:none\}/,
   'the screenshot gallery hides the WebKit scrollbar');
-assert.match(publicPages, /function mountShotRail\(rail\)/,
+assert.match(publicPages, /function mountShotRail\(rail(?:: HTMLElement)?\)/,
   'the screenshot gallery mounts accessible controls and progress');
 assert.match(home, /class="v5-maker-mark"[^>]*aria-hidden="true"/,
   'the landing credit displays the official Three.js mark');
