@@ -12,7 +12,7 @@
  */
 import * as THREE from 'three';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.js';
-import { LATE_FX_LAYER } from './layers.js';
+import { LATE_FX_LAYER } from './layers.ts';
 import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.ts';
 import { createImpactDecals } from './impactDecals.js';
 import { syncSubjectEmitterAnchor } from './effectAttachments.ts';

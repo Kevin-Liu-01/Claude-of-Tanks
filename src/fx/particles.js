@@ -13,7 +13,7 @@
  * createParticleSystem().
  */
 import * as THREE from 'three';
-import { LATE_FX_LAYER } from './layers.js';
+import { LATE_FX_LAYER } from './layers.ts';
 
 // Transparent combat FX render after the opaque/world post passes so their
 // shaders can sample resolved scene depth without a framebuffer feedback loop.

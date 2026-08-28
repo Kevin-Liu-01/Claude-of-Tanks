@@ -47,7 +47,7 @@ const DEFAULT_LOADERS: BattleHudLoaders = {
   // immediate construction; consumers receive the explicit runtime contract.
   hud: async () => await import('./hud.js') as unknown as HudModule,
   damagePanel: async () => await import('./damagePanel.js') as unknown as DamagePanelModule,
-  tankThumbs: async () => await import('./tankThumbs.js') as unknown as TankThumbModule,
+  tankThumbs: async () => await import('./tankThumbs.ts') as unknown as TankThumbModule,
 };
 
 export function createBattleHudAccess(

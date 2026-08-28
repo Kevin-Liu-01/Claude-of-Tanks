@@ -1,4 +1,4 @@
-// src/ui/tankThumbs.js — stable garage tank portraits.
+// src/ui/tankThumbs.ts — stable garage tank portraits.
 //
 // The old implementation rebuilt every portrait in an offscreen WebGL
 // renderer after the garage opened. It created a WebGL context per vehicle,
@@ -17,15 +17,90 @@ import { iconUrl } from './icons.ts';
 import * as THREE from 'three';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.js';
 
-const FALLBACK_VIEWS = ['angle', 'side', 'side_silhouette'];
+const FALLBACK_VIEWS = ['angle', 'side', 'side_silhouette'] as const;
 let errorGuardInstalled = false;
 
+interface TopMaskEngineContext {
+  renderer: THREE.WebGLRenderer;
+}
+
+interface TankMaskVisual {
+  root: THREE.Object3D;
+  dispose(): void;
+}
+
+interface TankMaskSpec {
+  id: string;
+  dims?: {
+    overallLengthM?: number;
+    hullLengthM?: number;
+  };
+  armor?: {
+    turretPivot?: readonly [number, number, number];
+    gunBarrel?: {
+      lengthM?: number;
+    };
+  };
+}
+
+interface MaskPassResult {
+  canvas: HTMLCanvasElement;
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+}
+
+export interface TopDownMaskEntry {
+  ready: true;
+  hull: {
+    canvas: HTMLCanvasElement;
+    camX: number;
+    camZ: number;
+    halfM: number;
+    cx: number;
+    cz: number;
+    radiusM: number;
+    widthM: number;
+    lengthM: number;
+  };
+  turret: {
+    canvas: HTMLCanvasElement;
+    camX: number;
+    camZ: number;
+    halfM: number;
+    radiusM: number;
+  };
+  pivot: [number, number];
+  pxPerM: number;
+}
+
+type MaskCacheValue = TopDownMaskEntry | 'pending' | 'failed';
+
+function canvas2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('tankThumbs.ts: Canvas2D is unavailable');
+  return context;
+}
+
+function asTopMaskEngineContext(value: unknown): TopMaskEngineContext | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as { renderer?: unknown };
+  return candidate.renderer instanceof THREE.WebGLRenderer
+    ? { renderer: candidate.renderer }
+    : null;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 /** Stable portrait URL for a tank. @param {string} specId */
-export function getTankThumb(specId) {
+export function getTankThumb(specId: string): string {
   return iconUrl(specId, FALLBACK_VIEWS[0]);
 }
 
-function advanceFallback(img) {
+function advanceFallback(img: HTMLImageElement): void {
   const id = img && img.dataset && img.dataset.cotThumb;
   if (!id) return;
   const next = Number(img.dataset.cotIconFallback || 0) + 1;
@@ -41,7 +116,7 @@ function advanceFallback(img) {
   img.style.visibility = 'hidden';
 }
 
-function installErrorGuard() {
+function installErrorGuard(): void {
   if (errorGuardInstalled || typeof document === 'undefined') return;
   errorGuardInstalled = true;
   // Resource errors do not bubble, so listen during capture. This also covers
@@ -57,11 +132,12 @@ function installErrorGuard() {
  * Normalize every tank portrait under `root` to its packaged transparent PNG.
  * @param {Document|Element} root
  */
-function applyTankThumbs(root) {
+function applyTankThumbs(root: ParentNode): void {
   if (!root || !root.querySelectorAll) return;
   installErrorGuard();
-  for (const img of root.querySelectorAll('img[data-cot-thumb]')) {
+  for (const img of root.querySelectorAll<HTMLImageElement>('img[data-cot-thumb]')) {
     const id = img.dataset.cotThumb;
+    if (!id) continue;
     const savedFallback = Number(img.dataset.cotIconFallback || 0);
     const fallback = Math.min(Math.max(savedFallback, 0), FALLBACK_VIEWS.length - 1);
     const expected = iconUrl(id, FALLBACK_VIEWS[fallback]);
@@ -80,21 +156,22 @@ function applyTankThumbs(root) {
 }
 
 /** Re-apply one portrait (or all portraits) without doing any GPU work. */
-export function requeueTankThumbs(specId = null) {
+export function requeueTankThumbs(specId: string | null = null): void {
   if (typeof document === 'undefined') return;
   installErrorGuard();
-  for (const img of document.querySelectorAll('img[data-cot-thumb]')) {
+  for (const img of document.querySelectorAll<HTMLImageElement>('img[data-cot-thumb]')) {
     if (specId != null && img.dataset.cotThumb !== specId) continue;
     if (!img.getAttribute('src')) {
       img.dataset.cotIconFallback = '0';
       img.style.visibility = '';
-      img.src = getTankThumb(img.dataset.cotThumb);
+      const id = img.dataset.cotThumb;
+      if (id) img.src = getTankThumb(id);
     }
   }
 }
 
 /** Screenshot compatibility: packaged icons need no render queue to drain. */
-export function drainTankThumbs() {
+export function drainTankThumbs(): void {
   if (typeof document !== 'undefined') applyTankThumbs(document);
 }
 
@@ -102,7 +179,7 @@ export function drainTankThumbs() {
  * Compatibility entry point used by garage setup. The specs/options are kept
  * in the signature so callers do not need special cases.
  */
-export function ensureTankThumbs(_specs, _opts = {}) {
+export function ensureTankThumbs(_specs: unknown, _opts: unknown = {}): void {
   if (typeof document === 'undefined') return;
   applyTankThumbs(document);
   document.dispatchEvent(new CustomEvent('cot:tank-thumbs'));
@@ -137,33 +214,43 @@ export function ensureTankThumbs(_specs, _opts = {}) {
 //    disposes the temporary build, and caches masks per specId (small LRU).
 // ---------------------------------------------------------------------------
 
-let maskEngineCtx = null; // main.ts hands over its engineCtx once at boot
+let maskEngineCtx: TopMaskEngineContext | null = null; // main.ts hands over its engineCtx once at boot
 
 /** Wire the shared engine context (renderer + shadow hook) for mask renders.
  *  Without it, getTopDownMasks reports 'failed' and the damage panel keeps
  *  its vector fallback (harness/booth contexts). @param {object} engineCtx */
-export function initTopMaskRig(engineCtx) {
-  maskEngineCtx = engineCtx || null;
+export function initTopMaskRig(engineCtx: unknown): void {
+  maskEngineCtx = asTopMaskEngineContext(engineCtx);
 }
 
 const MASK_RT_SIZE = 384;  // supersampled render
 const MASK_SIZE = 192;     // cached layer canvas (downscale = cheap AA)
 const MASK_MARGIN_M = 0.35;
-const maskCache = new Map(); // specId -> entry | 'pending' | 'failed'
+const maskCache = new Map<string, MaskCacheValue>();
 const MASK_CACHE_MAX = 10;
-let maskRT = null;
-let maskPixels = null;
+let maskRT: THREE.WebGLRenderTarget | null = null;
+let maskPixels: Uint8Array | null = null;
 
 /** One alpha-coverage pass -> white mask canvas (also reports plan bounds).
  *  @returns {{canvas:HTMLCanvasElement,minX:number,maxX:number,minZ:number,maxZ:number}|null} */
-function renderMaskPass(scene, camX, camZ, halfM) {
-  const renderer = maskEngineCtx.renderer;
+function renderMaskPass(
+  scene: THREE.Scene,
+  camX: number,
+  camZ: number,
+  halfM: number,
+): MaskPassResult | null {
+  const engine = maskEngineCtx;
+  if (!engine) return null;
+  const renderer = engine.renderer;
   if (!maskRT) {
     maskRT = new THREE.WebGLRenderTarget(MASK_RT_SIZE, MASK_RT_SIZE, {
       depthBuffer: true, stencilBuffer: false,
     });
     maskPixels = new Uint8Array(MASK_RT_SIZE * MASK_RT_SIZE * 4);
   }
+  const target = maskRT;
+  const pixels = maskPixels;
+  if (!target || !pixels) return null;
   const prevTarget = renderer.getRenderTarget();
   const prevColor = new THREE.Color();
   renderer.getClearColor(prevColor);
@@ -174,11 +261,11 @@ function renderMaskPass(scene, camX, camZ, halfM) {
   cam.lookAt(camX, 0, camZ);
   cam.updateMatrixWorld(true);
   try {
-    renderer.setRenderTarget(maskRT);
+    renderer.setRenderTarget(target);
     renderer.setClearColor(0x000000, 0);
     renderer.clear(true, true, false);
     renderer.render(scene, cam);
-    renderer.readRenderTargetPixels(maskRT, 0, 0, MASK_RT_SIZE, MASK_RT_SIZE, maskPixels);
+    renderer.readRenderTargetPixels(target, 0, 0, MASK_RT_SIZE, MASK_RT_SIZE, pixels);
   } finally {
     renderer.setRenderTarget(prevTarget);
     renderer.setClearColor(prevColor, prevAlpha);
@@ -187,7 +274,7 @@ function renderMaskPass(scene, camX, camZ, halfM) {
   const S = MASK_RT_SIZE;
   const big = document.createElement('canvas');
   big.width = S; big.height = S;
-  const bctx = big.getContext('2d');
+  const bctx = canvas2d(big);
   const img = bctx.createImageData(S, S);
   const d = img.data;
   let px0 = S, px1 = -1, py0 = S, py1 = -1;
@@ -195,7 +282,7 @@ function renderMaskPass(scene, camX, camZ, halfM) {
     const src = (S - 1 - y) * S * 4;
     const dst = y * S * 4;
     for (let x = 0; x < S; x++) {
-      const a = maskPixels[src + x * 4 + 3];
+      const a = pixels[src + x * 4 + 3];
       if (a > 8) {
         const o = dst + x * 4;
         d[o] = 255; d[o + 1] = 255; d[o + 2] = 255; d[o + 3] = a;
@@ -208,7 +295,7 @@ function renderMaskPass(scene, camX, camZ, halfM) {
   bctx.putImageData(img, 0, 0);
   const out = document.createElement('canvas');
   out.width = MASK_SIZE; out.height = MASK_SIZE;
-  out.getContext('2d').drawImage(big, 0, 0, MASK_SIZE, MASK_SIZE);
+  canvas2d(out).drawImage(big, 0, 0, MASK_SIZE, MASK_SIZE);
   // opaque pixel bounds back in METERS (pixel x = camX-half..camX+half maps
   // world -x; pixel y top = camZ+half): used for tight panel scaling.
   const mPerPx = (halfM * 2) / S;
@@ -222,7 +309,10 @@ function renderMaskPass(scene, camX, camZ, halfM) {
 }
 
 /** Render both layers for a built visual. @returns {object|null} entry */
-function renderMaskEntry(visual, spec) {
+function renderMaskEntry(
+  visual: TankMaskVisual,
+  spec: TankMaskSpec,
+): TopDownMaskEntry | null {
   const root = visual.root;
   const scene = new THREE.Scene();
   scene.add(root);
@@ -297,7 +387,11 @@ function renderMaskEntry(visual, spec) {
  * @param {?object} sourceVisual optional already-built first-party visual
  * @returns {?object}
  */
-export function getTopDownMasks(spec, onReady, sourceVisual = null) {
+export function getTopDownMasks(
+  spec: TankMaskSpec,
+  onReady: (() => void) | null,
+  sourceVisual: TankMaskVisual | null = null,
+): TopDownMaskEntry | null {
   if (!spec || typeof document === 'undefined') return null;
   const id = spec.id;
   const got = maskCache.get(id);
@@ -310,8 +404,8 @@ export function getTopDownMasks(spec, onReady, sourceVisual = null) {
   const clonedRoot = sourceVisual?.root?.clone?.(true) || null;
   // defer off the caller's frame (setTank runs on the boot path)
   setTimeout(async () => {
-    let visual = null;
-    let entry = null;
+    let visual: TankMaskVisual | null = null;
+    let entry: TopDownMaskEntry | null = null;
     try {
       // Exact fleet chunks can still be in flight when the damage panel asks
       // for its first mask. Join that same demand-load promise before the
@@ -320,10 +414,10 @@ export function getTopDownMasks(spec, onReady, sourceVisual = null) {
       if (!clonedRoot) await ensureTankBuilder(id);
       visual = clonedRoot
         ? { root: clonedRoot, dispose() {} }
-        : createTank(id, maskEngineCtx, { camoSeed: 4000, quality: 'high' });
+        : createTank(id, maskEngineCtx, { camoSeed: 4000, quality: 'high' }) as TankMaskVisual;
       entry = renderMaskEntry(visual, spec);
-    } catch (e) {
-      console.warn(`[tankThumbs] top-down mask build failed for ${id}:`, e.message);
+    } catch (error: unknown) {
+      console.warn(`[tankThumbs] top-down mask build failed for ${id}:`, errorMessage(error));
     }
     if (!entry) {
       maskCache.set(id, 'failed');
@@ -332,14 +426,15 @@ export function getTopDownMasks(spec, onReady, sourceVisual = null) {
     }
     maskCache.set(id, entry);
     while (maskCache.size > MASK_CACHE_MAX) {
-      const oldest = maskCache.keys().next().value;
+      const oldest = maskCache.keys().next().value as string | undefined;
       if (oldest === id) break;
+      if (oldest === undefined) break;
       maskCache.delete(oldest);
     }
     if (onReady) onReady();
     // First-party procedural geometry is final at construction time; there
     // is no asynchronous sourced-model swap to poll or capture again.
-    try { visual.dispose(); } catch (_) { /* released */ }
+    try { visual?.dispose(); } catch { /* released */ }
   }, 0);
   return null;
 }

@@ -1,7 +1,7 @@
 // src/ui/damagePanel.js — bottom-left player damage panel, WoT panel
 // language. r9 REBUILD (owner: "reflect the actual top down view of the tank,
 // and make the hull move correctly"): the plan view is now the REAL vehicle —
-// two orthographic top-down masks of the actual built model (tankThumbs.js
+// two orthographic top-down masks of the actual built model (tankThumbs.ts
 // getTopDownMasks: hull layer, turret+gun layer) — and the panel is
 // CAMERA-UP: the hull layer rotates with the true hull heading relative to
 // the camera yaw, the turret+gun layer with hull+turret, so the panel gun
@@ -17,7 +17,7 @@
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { ensureStyle } from './dom.ts';
-import { getTopDownMasks } from './tankThumbs.js';
+import { getTopDownMasks } from './tankThumbs.ts';
 // EQUIPMENT SYSTEM: quiet mounted-loadout readout at the panel foot — the
 // same white-silhouette glyphs as the garage slots, at healthy-pip alpha.
 import { equipIconSVG } from './equipIcons.ts';

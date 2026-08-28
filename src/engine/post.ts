@@ -63,7 +63,7 @@ import {
   reconstructionSharpness,
   type ReconstructionMode,
 } from './renderScalePolicy.ts';
-import { LATE_FX_LAYER } from '../fx/layers.js';
+import { LATE_FX_LAYER } from '../fx/layers.ts';
 
 interface ReconstructionTelemetry {
   mode: ReconstructionMode;

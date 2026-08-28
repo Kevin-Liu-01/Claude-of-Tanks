@@ -9,7 +9,7 @@ import { preloadImage, preloadImageWhenIdle } from './imagePreload.ts';
 import { flagIconHTML, flagIconUrl } from './flags.ts';
 import { flagIconCode } from './flagCodes.ts';
 import { iconUrl } from './icons.ts';
-import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.js';
+import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.ts';
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import {

@@ -167,6 +167,9 @@ Battle and Garage camera ownership is strict as well. Arcade, sniper, aim-ray,
 cinematic, death, spectate, capture, recoil, collision, and showroom framing
 states share one typed owner, while the composition root consumes that owner
 directly instead of maintaining a partial duplicate interface.
+Packaged tank portraits and battle-only top-down damage masks are strict too:
+DOM fallbacks, lazy fleet builds, offscreen targets, pixel readback, Canvas2D
+downsampling, layer metadata, and bounded cache states have one explicit owner.
 Pure keyboard, flag, glyph, minimap, drive-readout, spectator, map-preview, and
 Garage-order policy is also typed and remains directly Node-testable.
 The browser input layer now exports strict action, binding, settings, gamepad,
