@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.js';
+import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.ts';
 
 assert.deepEqual(spectatorCardModel({ count: 7, index: 3, specId: 'm1a2_sepv3' }), {
   icon: '/icons/m1a2_sepv3_angle.webp',

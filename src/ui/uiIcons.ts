@@ -2,7 +2,7 @@
 // rounded 1.7px keyline and restrained solid accents so garage, HUD, mobile
 // controls and combat reports read as one authored set at 12-34px.
 
-const P = {
+const P: Readonly<Record<string, string>> = {
   garage: '<image href="/brand/nav/garage.svg" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>',
   studio: '<image href="/brand/nav/studio.svg" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>',
   home: '<image href="/brand/nav/home.svg" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>',
@@ -79,11 +79,11 @@ const P = {
 };
 
 /** Return a crisp inline SVG from the shared UI set. */
-export function uiIconSVG(id, size = 24, color = 'currentColor', className = '') {
+export function uiIconSVG(id: string, size = 24, color = 'currentColor', className = ''): string {
   const body = P[id];
   if (!body) return '';
   const cls = className ? ` class="${className}"` : '';
   return `<svg${cls} viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" style="color:${color}">${body}</svg>`;
 }
 
-export function uiIconIds() { return Object.keys(P); }
+export function uiIconIds(): string[] { return Object.keys(P); }

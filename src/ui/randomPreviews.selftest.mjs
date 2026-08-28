@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomMapPreviewEntries } from './randomPreviews.js';
+import { randomMapPreviewEntries } from './randomPreviews.ts';
 
 const maps = [
   { id: 'random', thumb: '' },

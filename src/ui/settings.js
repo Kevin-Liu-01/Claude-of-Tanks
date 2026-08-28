@@ -30,9 +30,9 @@
 // Behavior is UNCHANGED: same classes, same rebind/persistence/pause flow.
 
 import { FONT_STACK, ensureFonts } from './fonts.ts';
-import { uiIconSVG } from './uiIcons.js';
+import { uiIconSVG } from './uiIcons.ts';
 import { isAnyModalOpen } from './modal.js';
-import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.js';
+import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
 import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,

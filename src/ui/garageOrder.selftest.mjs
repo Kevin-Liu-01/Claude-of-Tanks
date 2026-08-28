@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import {
   compareCountryThenTierThenName, countryFilterGroups, defaultGarageMapId,
   horizontalRailState, horizontalRailWheelDelta,
-} from './garageOrder.js';
+} from './garageOrder.ts';
 
 const garageSource = await readFile(new URL('./garage.js', import.meta.url), 'utf8');
 

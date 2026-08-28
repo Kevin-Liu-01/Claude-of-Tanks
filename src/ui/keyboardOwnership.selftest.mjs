@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {
   isEditingControl,
   shouldOpenSettingsFromPointerUnlock,
-} from './keyboardOwnership.js';
+} from './keyboardOwnership.ts';
 
 const input = { tagName: 'INPUT', isContentEditable: false };
 const canvas = { tagName: 'CANVAS', isContentEditable: false };

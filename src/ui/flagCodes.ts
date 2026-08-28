@@ -5,7 +5,7 @@
 // Community is not a country and intentionally uses flag-icons' `xx` unknown
 // territory mark instead of presenting a fictional workshop badge as a flag.
 
-export const FLAG_ICON_CODE_BY_NATION = Object.freeze({
+export const FLAG_ICON_CODE_BY_NATION: Readonly<Record<string, string>> = Object.freeze({
   USA: 'us',
   Germany: 'de',
   USSR: 'ru',
@@ -24,6 +24,6 @@ export const FLAG_ICON_CODE_BY_NATION = Object.freeze({
   Community: 'xx',
 });
 
-export function flagIconCode(nation) {
+export function flagIconCode(nation: string): string {
   return FLAG_ICON_CODE_BY_NATION[nation] || 'xx';
 }

@@ -5,8 +5,8 @@ import './contextInfo.selftest.mjs';
 import './garageDossier.selftest.mjs';
 import { EQUIPMENT_CATALOG } from '../game/equipment.js';
 import { equipIconIds, equipIconSVG } from './equipIcons.js';
-import { uiIconIds, uiIconSVG } from './uiIcons.js';
-import { shellIconSVG, shellIconTypes } from './shellIcons.js';
+import { uiIconIds, uiIconSVG } from './uiIcons.ts';
+import { shellIconSVG, shellIconTypes } from './shellIcons.ts';
 
 const equipIds = new Set(equipIconIds());
 for (const item of EQUIPMENT_CATALOG) {

@@ -1,5 +1,5 @@
 import { createModal } from './modal.js';
-import { uiIconSVG } from './uiIcons.js';
+import { uiIconSVG } from './uiIcons.ts';
 import { customCamoPatternId, normalizeCustomCamo } from '../vehicles/camoPolicy.js';
 import { CUSTOM_CAMO_ASSETS, paintCustomCamoStrokes } from '../vehicles/customCamoCanvas.js';
 import type { CustomCamoStudioController } from './customCamoStudioAccess.ts';

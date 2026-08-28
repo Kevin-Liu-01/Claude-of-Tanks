@@ -3,7 +3,7 @@
 // interaction works with mouse, keyboard, touch, and gamepad-emulated focus.
 
 import { createModal } from './modal.js';
-import { uiIconSVG } from './uiIcons.js';
+import { uiIconSVG } from './uiIcons.ts';
 
 const CSS = `
 .cot-info-trigger{position:relative;box-sizing:border-box;width:20px;height:20px;min-width:20px;min-height:20px;

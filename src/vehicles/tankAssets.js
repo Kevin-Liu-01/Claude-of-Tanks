@@ -2,7 +2,7 @@
 // Keep the view list centralized: adding a required output here makes every
 // registered tank fail the release gate until that output is generated.
 
-import { flagIconCode } from '../ui/flagCodes.js';
+import { flagIconCode } from '../ui/flagCodes.ts';
 import { tankTier, tierNumeral } from './tier.ts';
 import { tankLabelRecord } from './tankLabels.js';
 import { vehicleMarkingRecord } from './vehicleMarkings.js';

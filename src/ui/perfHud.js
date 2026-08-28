@@ -4,7 +4,7 @@
 
 import { ensureStyle } from './dom.ts';
 import { FONT_COND } from './fonts.ts';
-import { uiIconSVG } from './uiIcons.js';
+import { uiIconSVG } from './uiIcons.ts';
 
 export { debugModeRequested } from '../dev/debugIntent.ts';
 

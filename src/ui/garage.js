@@ -7,8 +7,8 @@ import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { ensureStyle } from './dom.ts';
 import { FEATURED_SHOTS } from './featuredShots.ts';
 import { preloadImage, preloadImageWhenIdle } from './imagePreload.ts';
-import { flagIconHTML, flagIconUrl } from './flags.js';
-import { flagIconCode } from './flagCodes.js';
+import { flagIconHTML, flagIconUrl } from './flags.ts';
+import { flagIconCode } from './flagCodes.ts';
 import { iconUrl } from './icons.ts';
 import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.js';
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
@@ -26,16 +26,16 @@ import {
   loadEquipment, saveEquipment, equipEligible, computeEquipMults,
 } from '../game/equipment.js';
 import { equipIconSVG } from './equipIcons.js';
-import { uiIconSVG } from './uiIcons.js';
-import { shellIconSVG } from './shellIcons.js';
+import { uiIconSVG } from './uiIcons.ts';
+import { shellIconSVG } from './shellIcons.ts';
 import {
   garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageStatGroup,
 } from './garageDossier.js';
-import { createRandomMapMosaic } from './randomPreviews.js';
+import { createRandomMapMosaic } from './randomPreviews.ts';
 import {
   compareCountryThenTierThenName, countryFilterGroups, defaultGarageMapId,
   horizontalRailState, horizontalRailWheelDelta,
-} from './garageOrder.js';
+} from './garageOrder.ts';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { tankTier, tierNumeral } from '../vehicles/tier.ts';
 import { vehicleEraLabel } from '../vehicles/taxonomy.js';

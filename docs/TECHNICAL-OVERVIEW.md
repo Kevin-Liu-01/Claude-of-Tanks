@@ -142,6 +142,8 @@ temporary migration mechanism, not a permanent module tier.
 Boot and transition screens now depend on strict shared DOM, font, icon,
 image-preload, featured-media, map-art, and tier-metadata contracts rather than
 crossing back into unchecked presentation helpers.
+Pure keyboard, flag, glyph, minimap, drive-readout, spectator, map-preview, and
+Garage-order policy is also typed and remains directly Node-testable.
 
 ## 5. Runtime lifecycle
 

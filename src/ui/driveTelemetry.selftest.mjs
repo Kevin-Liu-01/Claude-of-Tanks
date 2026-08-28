@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.js';
+import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
 
 const out = {};
 fillDriveTelemetry(out, { speed: 10 }, { topSpeedKmh: 60, reverseSpeedKmh: 18 });

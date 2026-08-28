@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {
   garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem,
 } from './garageDossier.js';
-import { shellIconSVG, shellIconTypes } from './shellIcons.js';
+import { shellIconSVG, shellIconTypes } from './shellIcons.ts';
 
 const anatomy = {
   armor: {

@@ -6,8 +6,8 @@
 // Contract: docs/ARCHITECTURE.md §3.7.1.
 import * as THREE from 'three';
 import { createElement as el, ensureStyle } from './dom.ts';
-import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.js';
-import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.js';
+import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.ts';
+import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
 import { uiPixelRatio } from '../engine/resolutionPolicy.js';
 import { getDeviceTier } from '../engine/quality.js';
 import {
@@ -16,7 +16,7 @@ import {
   minimapRotationForSpawnYaw,
   orientMinimapPoint,
   orientMinimapYaw,
-} from './minimapOrientation.js';
+} from './minimapOrientation.ts';
 
 // --- palette (locked colors per ARCHITECTURE §3.7.1) ---
 const PEN_GREEN = '#7ee87e';
@@ -202,7 +202,7 @@ const RET_CEIL_FRAC = 0.15;
 // Shared Inter type system (see src/ui/fonts.ts): FONT_COND drives the
 // numeral/label hierarchy with tabular figures (weight floor 500).
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
-import { uiIconSVG } from './uiIcons.js';
+import { uiIconSVG } from './uiIcons.ts';
 import {
   CONSUMABLE_READY_MARK, CONSUMABLE_RULES, cooldownRemaining,
 } from '../game/consumables.js';

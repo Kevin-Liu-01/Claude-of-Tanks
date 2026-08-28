@@ -4,7 +4,7 @@
 // popovers with unreadably small type.
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
-import { uiIconSVG } from './uiIcons.js';
+import { uiIconSVG } from './uiIcons.ts';
 
 export const MODAL_FOCUSABLE_SELECTOR = [
   'a[href]', 'button:not([disabled])', 'input:not([disabled])',

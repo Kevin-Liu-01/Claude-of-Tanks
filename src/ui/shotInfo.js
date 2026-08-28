@@ -16,7 +16,7 @@
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
 import { nominalPenFor, shellDisplayName, zoneLabel } from './hitEventFormat.js';
-import { uiIconSVG } from './uiIcons.js';
+import { uiIconSVG } from './uiIcons.ts';
 import { maskIcon, iconUrl } from './icons.ts';
 import { MODULE_LABEL, CREW_LABEL, STATE_COLOR } from './moduleRegistry.js';
 import {

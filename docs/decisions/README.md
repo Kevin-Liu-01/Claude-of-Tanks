@@ -94,3 +94,4 @@ runtime documents remain authoritative for behavior.
 - [0082 — Shadow projection, depth, and temporal darkness stay coherent](0082-temporally-stable-shadow-composition.md)
 - [0083 — Boot and transition UI have strict typed contracts](0083-typed-ui-flow-surfaces.md)
 - [0084 — Shared presentation primitives are strict TypeScript](0084-typed-presentation-primitives.md)
+- [0085 — Pure UI presentation policy is strict TypeScript](0085-typed-ui-presentation-policy.md)

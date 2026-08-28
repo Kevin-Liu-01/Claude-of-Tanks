@@ -73,7 +73,7 @@
 import * as THREE from 'three';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.ts';
 import { createElement as el, ensureStyle } from '../ui/dom.ts';
-import { uiIconSVG } from '../ui/uiIcons.js';
+import { uiIconSVG } from '../ui/uiIcons.ts';
 import { nominalPenFor, shellDisplayName, zoneLabel } from '../ui/hitEventFormat.js';
 import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.js';
 import { getSpec } from '../vehicles/specs.js';

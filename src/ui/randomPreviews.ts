@@ -5,12 +5,24 @@
  */
 export const RANDOM_MAP_PREVIEW_IDS = Object.freeze([
   'verdant', 'desert', 'winter', 'foundry',
-]);
+] as const);
 
-export function randomMapPreviewEntries(maps, count = 4) {
+export interface MapPreview {
+  readonly id: string;
+  readonly thumb?: string;
+}
+
+export interface RandomMapMosaicOptions {
+  readonly showCount?: boolean;
+}
+
+export function randomMapPreviewEntries<T extends MapPreview>(
+  maps: readonly T[] | null | undefined,
+  count = 4,
+): T[] {
   const available = (maps || []).filter((map) => map?.id !== 'random' && map?.thumb);
   const byId = new Map(available.map((map) => [map.id, map]));
-  const picked = [];
+  const picked: T[] = [];
   for (const id of RANDOM_MAP_PREVIEW_IDS) {
     const map = byId.get(id);
     if (map && !picked.includes(map)) picked.push(map);
@@ -21,7 +33,10 @@ export function randomMapPreviewEntries(maps, count = 4) {
   return picked.slice(0, Math.max(0, count));
 }
 
-export function createRandomMapMosaic(maps, { showCount = false } = {}) {
+export function createRandomMapMosaic(
+  maps: readonly MapPreview[] | null | undefined,
+  { showCount = false }: RandomMapMosaicOptions = {},
+): HTMLDivElement {
   const mosaic = document.createElement('div');
   mosaic.className = 'random-map-mosaic';
   mosaic.setAttribute('aria-hidden', 'true');

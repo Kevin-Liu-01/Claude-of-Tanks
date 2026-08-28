@@ -3,7 +3,7 @@
 // vector used by keyboard, mouse, and gamepad controls.
 
 import { FONT_STACK, FONT_COND } from './fonts.ts';
-import { uiIconSVG } from './uiIcons.js';
+import { uiIconSVG } from './uiIcons.ts';
 import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
   MOBILE_PRESET_ORDER, PRESET_ORDER, PRESETS, resolvePresetName,

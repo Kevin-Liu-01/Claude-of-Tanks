@@ -21,7 +21,7 @@ import { getTopDownMasks } from './tankThumbs.js';
 // EQUIPMENT SYSTEM: quiet mounted-loadout readout at the panel foot — the
 // same white-silhouette glyphs as the garage slots, at healthy-pip alpha.
 import { equipIconSVG } from './equipIcons.js';
-import { uiIconSVG } from './uiIcons.js';
+import { uiIconSVG } from './uiIcons.ts';
 import { EQUIPMENT_BY_ID } from '../game/equipment.js';
 
 // WoT module-state ramp (ORANGE damaged, RED knocked out) + crew order come

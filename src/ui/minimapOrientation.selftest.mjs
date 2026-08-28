@@ -6,7 +6,7 @@ import {
   minimapRotationForSpawnYaw,
   orientMinimapPoint,
   orientMinimapYaw,
-} from './minimapOrientation.js';
+} from './minimapOrientation.ts';
 
 assert.equal(minimapRotationForSpawnYaw(0), MINIMAP_NORTH_UP,
   'the near-side north-facing spawn keeps the authored map orientation');

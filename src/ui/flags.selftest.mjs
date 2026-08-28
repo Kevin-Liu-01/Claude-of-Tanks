@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { FLAG_ICON_CODE_BY_NATION, flagIconCode } from './flagCodes.js';
+import { FLAG_ICON_CODE_BY_NATION, flagIconCode } from './flagCodes.ts';
 
 const expected = {
   USA: 'us', Germany: 'de', USSR: 'ru', Russia: 'ru', 'USSR/Russia': 'ru',
@@ -22,11 +22,11 @@ for (const code of new Set(Object.values(expected))) {
 }
 
 const uiDir = dirname(fileURLToPath(import.meta.url));
-const flagsSource = await readFile(join(uiDir, 'flags.js'), 'utf8');
+const flagsSource = await readFile(join(uiDir, 'flags.ts'), 'utf8');
 assert.doesNotMatch(flagsSource, /<svg|<rect|<polygon|function star/, 'flag UI no longer draws replacement flags');
 
 const srcRoot = join(uiDir, '..');
-for (const relative of ['ui/garage.js', 'ui/flags.js', 'ui/flagCodes.js']) {
+for (const relative of ['ui/garage.js', 'ui/flags.ts', 'ui/flagCodes.ts']) {
   const source = await readFile(join(srcRoot, relative), 'utf8');
   assert.doesNotMatch(source, /[\u{1F1E6}-\u{1F1FF}]/u, `${relative} has no native flag emoji`);
 }
