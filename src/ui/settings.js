@@ -31,7 +31,7 @@
 
 import { FONT_STACK, ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { isAnyModalOpen } from './modal.js';
+import { isAnyModalOpen } from './modal.ts';
 import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
 import {

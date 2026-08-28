@@ -13,9 +13,47 @@ export const MODAL_FOCUSABLE_SELECTOR = [
 ].join(',');
 
 const MODAL_SIZES = new Set(['small', 'medium', 'large', 'wide']);
+export type ModalSize = 'small' | 'medium' | 'large' | 'wide';
+
+export interface ModalOpenOptions {
+  trigger?: HTMLElement | null;
+}
+
+export interface ModalCloseOptions {
+  restoreFocus?: boolean;
+  immediate?: boolean;
+}
+
+export interface ModalController {
+  root: HTMLDivElement;
+  panel: HTMLElement;
+  header: HTMLElement;
+  body: HTMLDivElement;
+  footer: HTMLElement;
+  closeButton: HTMLButtonElement;
+  isOpen(): boolean;
+  setTitle(value: unknown): void;
+  setEyebrow(value: unknown): void;
+  setSubtitle(value: unknown): void;
+  open(options?: ModalOpenOptions): void;
+  close(options?: ModalCloseOptions): void;
+  dispose(): void;
+}
+
+export interface ModalOptions {
+  title?: string;
+  eyebrow?: string;
+  subtitle?: string;
+  size?: ModalSize | string;
+  closeLabel?: string;
+  className?: string;
+  onOpen?: ((controller: ModalController) => void) | null;
+  onClose?: ((controller: ModalController) => void) | null;
+}
+
 let serial = 0;
-let activeModal = null;
-let savedBodyOverflow = null;
+let activeModal: ModalController | null = null;
+let savedBodyOverflow: string | null = null;
 let modalDismissGuardUntil = 0;
 
 export function isAnyModalOpen() {
@@ -23,8 +61,8 @@ export function isAnyModalOpen() {
   return !!activeModal || now < modalDismissGuardUntil;
 }
 
-export function normalizeModalSize(value) {
-  return MODAL_SIZES.has(value) ? value : 'medium';
+export function normalizeModalSize(value: unknown): ModalSize {
+  return typeof value === 'string' && MODAL_SIZES.has(value) ? value as ModalSize : 'medium';
 }
 
 const CSS = `
@@ -101,7 +139,7 @@ function unlockBody() {
 export function createModal({
   title = 'Details', eyebrow = 'Field manual', subtitle = '', size = 'medium',
   closeLabel = 'Close dialog', className = '', onOpen = null, onClose = null,
-} = {}) {
+}: ModalOptions = {}): ModalController {
   ensureCss();
   const id = `cot-modal-${++serial}`;
   const root = document.createElement('div');
@@ -147,37 +185,38 @@ export function createModal({
   root.append(backdrop, panel);
   document.body.appendChild(root);
 
-  let trigger = null;
+  let trigger: HTMLElement | null = null;
   let disposed = false;
   let closeTimer = 0;
-  const controller = {
+  const controller: ModalController = {
     root, panel, header, body, footer, closeButton,
     isOpen: () => activeModal === controller,
-    setTitle(value) { titleEl.textContent = String(value || 'Details'); },
-    setEyebrow(value) { eyebrowEl.textContent = String(value || 'Field manual'); },
-    setSubtitle(value) {
+    setTitle(value: unknown) { titleEl.textContent = String(value || 'Details'); },
+    setEyebrow(value: unknown) { eyebrowEl.textContent = String(value || 'Field manual'); },
+    setSubtitle(value: unknown) {
       subtitleEl.textContent = String(value || '');
       subtitleEl.hidden = !value;
       if (value) panel.setAttribute('aria-describedby', subtitleEl.id);
       else panel.removeAttribute('aria-describedby');
     },
-    open({ trigger: nextTrigger = null } = {}) {
+    open({ trigger: nextTrigger = null }: ModalOpenOptions = {}) {
       if (disposed) return;
       window.clearTimeout(closeTimer);
       if (activeModal && activeModal !== controller) activeModal.close({ restoreFocus: false, immediate: true });
-      trigger = nextTrigger || document.activeElement;
+      trigger = nextTrigger || (document.activeElement instanceof HTMLElement
+        ? document.activeElement : null);
       body.scrollTop = 0;
       root.hidden = false;
       activeModal = controller;
       lockBody();
       requestAnimationFrame(() => {
         root.classList.add('is-open');
-        const preferred = body.querySelector('[autofocus]') || closeButton;
+        const preferred = body.querySelector<HTMLElement>('[autofocus]') || closeButton;
         preferred.focus({ preventScroll: true });
       });
       onOpen?.(controller);
     },
-    close({ restoreFocus = true, immediate = false } = {}) {
+    close({ restoreFocus = true, immediate = false }: ModalCloseOptions = {}) {
       if (disposed || (root.hidden && activeModal !== controller)) return;
       window.clearTimeout(closeTimer);
       root.classList.remove('is-open');
@@ -190,7 +229,7 @@ export function createModal({
       if (wasActive) unlockBody();
       const finish = () => {
         root.hidden = true;
-        if (restoreFocus && trigger?.isConnected && typeof trigger.focus === 'function') trigger.focus({ preventScroll: true });
+        if (restoreFocus && trigger?.isConnected) trigger.focus({ preventScroll: true });
         trigger = null;
       };
       if (immediate || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) finish();
@@ -217,7 +256,7 @@ export function createModal({
       return;
     }
     if (event.key !== 'Tab') return;
-    const focusable = [...panel.querySelectorAll(MODAL_FOCUSABLE_SELECTOR)]
+    const focusable = [...panel.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR)]
       .filter((node) => !node.hidden && node.getClientRects().length && node.getAttribute('aria-hidden') !== 'true');
     if (!focusable.length) {
       event.preventDefault();
@@ -225,7 +264,7 @@ export function createModal({
       return;
     }
     const first = focusable[0];
-    const last = focusable.at(-1);
+    const last = focusable[focusable.length - 1];
     if (event.shiftKey && document.activeElement === first) {
       event.preventDefault();
       last.focus();

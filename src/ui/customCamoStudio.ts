@@ -1,4 +1,4 @@
-import { createModal } from './modal.js';
+import { createModal } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { customCamoPatternId, normalizeCustomCamo } from '../vehicles/camoPolicy.js';
 import { CUSTOM_CAMO_ASSETS, paintCustomCamoStrokes } from '../vehicles/customCamoCanvas.js';
@@ -31,14 +31,6 @@ interface CustomCamoOptions {
   setCustom(specId: string, draft: CustomCamoDraft): void;
 }
 
-interface ModalController {
-  body: HTMLElement;
-  footer: HTMLElement;
-  open(options?: { trigger?: HTMLElement | null }): void;
-  close(options?: { restoreFocus?: boolean; immediate?: boolean }): void;
-  dispose(): void;
-}
-
 export interface CustomCamoStudioOptions {
   button: HTMLButtonElement;
   camo: CustomCamoOptions;
@@ -51,14 +43,6 @@ export interface CustomCamoStudioOptions {
 }
 
 const normalizeDraft = normalizeCustomCamo as unknown as (value?: unknown) => CustomCamoDraft;
-const createStudioModal = createModal as unknown as (options: {
-  title: string;
-  eyebrow: string;
-  subtitle: string;
-  size: string;
-  onOpen: () => void;
-  onClose: () => void;
-}) => ModalController;
 const normalized = (value?: unknown): CustomCamoDraft => normalizeDraft(value);
 
 /**
@@ -75,7 +59,7 @@ export function createCustomCamoStudio({
   let drawingStroke = -1;
   let draft = normalized();
 
-  const modal = createStudioModal({
+  const modal = createModal({
     title: 'Custom camouflage studio',
     eyebrow: 'Local paint laboratory',
     subtitle: 'Author one seamless tile, preview it on the selected vehicle, then save it to this device.',

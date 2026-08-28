@@ -2,7 +2,7 @@
 // Info triggers deliberately open on activation (never hover) so the same
 // interaction works with mouse, keyboard, touch, and gamepad-emulated focus.
 
-import { createModal } from './modal.js';
+import { createModal } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
 
 const CSS = `

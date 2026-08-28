@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { resolveInfoImage, resolveInfoImages } from './contextInfo.js';
-import { MODAL_FOCUSABLE_SELECTOR, normalizeModalSize } from './modal.js';
+import { MODAL_FOCUSABLE_SELECTOR, normalizeModalSize } from './modal.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
 
 assert(uiIconIds().includes('info'), 'the shared UI set owns the info glyph');

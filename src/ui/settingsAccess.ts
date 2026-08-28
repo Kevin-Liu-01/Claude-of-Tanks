@@ -1,5 +1,5 @@
 import { createElement, ensureStyle } from './dom.ts';
-import { isAnyModalOpen } from './modal.js';
+import { isAnyModalOpen } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
 
 interface SettingsInput {

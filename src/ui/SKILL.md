@@ -29,6 +29,8 @@ values; never add third-party network traffic to boot or Garage presentation.
 Shared DOM, font, generated-icon, image-preload, featured-media, and map-art
 primitives are strict TypeScript owners. Extend their exported contracts rather
 than creating screen-local unchecked copies.
+The reusable accessible dialog lifecycle, focus trap, dismissal guard, and body
+scroll ownership live in `modal.ts`; feature panels only own dialog content.
 Keep browser-independent presentation policy in the typed keyboard, glyph,
 flag, minimap, telemetry, spectator, preview, and ordering modules so the large
 screen renderers do not redeclare those rules.
