@@ -8,7 +8,7 @@ import {
   terrainLodForDistance,
   warmTerrainLodBuilds,
 } from './terrainLodPolicy.js';
-import { SimplexNoise } from '../engine/simplexFast.js';
+import { SimplexNoise } from '../engine/simplexFast.ts';
 import { applySourcedTerrain } from './sourcedTextures.js';
 import { buildHorizonRing } from './maps/horizon.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)

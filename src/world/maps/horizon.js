@@ -25,7 +25,7 @@
 // }
 
 import * as THREE from 'three';
-import { SimplexNoise } from '../../engine/simplexFast.js';
+import { SimplexNoise } from '../../engine/simplexFast.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../../engine/quality.ts';
 

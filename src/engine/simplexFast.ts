@@ -11,6 +11,10 @@
 // are accumulated in the exact same order as the original, so every result
 // is the same IEEE-754 double the three.js class returns.
 
+export interface SimplexRandomSource {
+  random(): number;
+}
+
 const F2 = 0.5 * (Math.sqrt(3.0) - 1.0);
 const G2 = (3.0 - Math.sqrt(3.0)) / 6.0;
 const F3 = 1.0 / 3.0;
@@ -47,9 +51,13 @@ const SIMPLEX = new Uint8Array([
   2, 1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 0, 2, 0, 0, 0, 0, 3, 2, 0, 1, 3, 2, 1, 0,
 ]);
 
-class SimplexNoise {
+export class SimplexNoise {
 
-  constructor(r = Math) {
+  private readonly _perm: Int32Array;
+  private readonly _pm12: Int32Array;
+  private readonly _pm32: Int32Array;
+
+  constructor(r: SimplexRandomSource = Math) {
     // identical rng consumption to the three.js class: 256 draws
     const p = new Int32Array(256);
     for (let i = 0; i < 256; i++) p[i] = Math.floor(r.random() * 256);
@@ -67,7 +75,7 @@ class SimplexNoise {
     this._pm32 = permMod32;
   }
 
-  noise(xin, yin) {
+  noise(xin: number, yin: number): number {
     const perm = this._perm;
     const pm12 = this._pm12;
     let n0, n1, n2;
@@ -111,7 +119,7 @@ class SimplexNoise {
     return 70.0 * (n0 + n1 + n2);
   }
 
-  noise3d(xin, yin, zin) {
+  noise3d(xin: number, yin: number, zin: number): number {
     const perm = this._perm;
     const pm12 = this._pm12;
     let n0, n1, n2, n3;
@@ -179,7 +187,7 @@ class SimplexNoise {
     return 32.0 * (n0 + n1 + n2 + n3);
   }
 
-  noise4d(x, y, z, w) {
+  noise4d(x: number, y: number, z: number, w: number): number {
     const perm = this._perm;
     const pm32 = this._pm32;
     let n0, n1, n2, n3, n4;
@@ -275,5 +283,3 @@ class SimplexNoise {
   }
 
 }
-
-export { SimplexNoise };
