@@ -922,7 +922,10 @@ async function collectFullReport(page, renderedRole) {
     const shadowSample = await window.__DEBUG.sampleShadowContribution();
     const telemetry = window.__DEBUG.telemetry();
     const glError = window.__DEBUG.renderer.getContext().getError();
-    const overlay = document.querySelector('vite-error-overlay, .vite-error-overlay, [data-vite-dev-id]');
+    // Vite marks every legitimate development stylesheet with
+    // `data-vite-dev-id`; that attribute is not an error signal. Only the
+    // actual custom error-overlay surface should fail the rendered gate.
+    const overlay = document.querySelector('vite-error-overlay, .vite-error-overlay');
     return {
       role,
       playerId: state.roomInfo.peerId,
