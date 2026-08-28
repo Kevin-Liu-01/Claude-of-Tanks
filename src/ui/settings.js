@@ -38,7 +38,7 @@ import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
   MOBILE_PRESET_ORDER, PRESET_ORDER, PRESETS,
   setMobilePresetName, setPresetName,
-} from '../engine/quality.js';
+} from '../engine/quality.ts';
 
 const SETTINGS_CSS = `
 /* settings_ui r2 (owner: "make our settings screen look much better"):

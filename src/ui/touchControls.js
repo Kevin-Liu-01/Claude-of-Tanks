@@ -8,7 +8,7 @@ import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
   MOBILE_PRESET_ORDER, PRESET_ORDER, PRESETS, resolvePresetName,
   setMobilePresetName, setPresetName,
-} from '../engine/quality.js';
+} from '../engine/quality.ts';
 
 const CSS = `
 .cot-touch{position:fixed;inset:0;z-index:60;display:none;pointer-events:none;

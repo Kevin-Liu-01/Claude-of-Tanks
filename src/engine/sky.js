@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged);
 // read inside the bake functions (post-renderer), never at module eval.
-import { texSize } from './quality.js';
+import { texSize } from './quality.ts';
 import { enforceEnvValidity } from './deviceDiag.js';
 import { bakeCirrusPixels, bakeCumulusPixels } from './skyCloudBake.ts';
 

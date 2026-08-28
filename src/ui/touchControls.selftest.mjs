@@ -1,5 +1,5 @@
 import { createMobileFireGesture, nextQuickGraphicsPreset } from './touchControls.js';
-import { MOBILE_PRESET_ORDER, PRESETS } from '../engine/quality.js';
+import { MOBILE_PRESET_ORDER, PRESETS } from '../engine/quality.ts';
 
 if (nextQuickGraphicsPreset('low') !== 'medium' ||
     nextQuickGraphicsPreset('ultra') !== 'low') {

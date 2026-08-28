@@ -9,11 +9,11 @@
  *
  * The renderer pixel ratio here sizes only the canvas/default framebuffer;
  * the composer's INTERNAL resolution is capped separately by the quality
- * preset (quality.js maxPixelRatio) and scaled live by the post.js dynamic
+ * preset (quality.ts maxPixelRatio) and scaled live by the post.js dynamic
  * resolution governor.
  */
 import * as THREE from 'three';
-import { getDeviceTier, resolveDeviceTier, noteGpuRenderer } from './quality.js';
+import { getDeviceTier, resolveDeviceTier, noteGpuRenderer } from './quality.ts';
 import { outputResolution, type OutputResolution } from './resolutionPolicy.ts';
 import { routeShadowOnlyLayer } from './renderLayers.ts';
 
@@ -67,12 +67,12 @@ export function createRenderer(container: HTMLElement): GameRenderer {
   // Reserve a small integration bag for lifecycle hooks installed by main.js.
   renderer.userData = renderer.userData || {};
 
-  // MOBILE r1: resolve the device tier (quality.js) before ANY preset
+  // MOBILE r1: resolve the device tier (quality.ts) before ANY preset
   // consumer runs — sky bake, lighting, post and every texture bake read the
   // ladder after this point. Also captures gl MAX_TEXTURE_SIZE for the
   // central texSize() clamp.
   resolveDeviceTier(renderer);
-  // perf-r2e ADAPTIVE AUTO TIER: hand quality.js the unmasked GPU string so
+  // perf-r2e ADAPTIVE AUTO TIER: hand quality.ts the unmasked GPU string so
   // the auto preset can start conservatively on integrated/software parts
   // (a weak dpr-1 laptop is NOT the mobile tier but cannot hold 'high').
   try {

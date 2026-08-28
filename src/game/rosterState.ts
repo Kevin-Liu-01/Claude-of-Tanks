@@ -9,7 +9,7 @@ import { getSpec, TANK_IDS, RUNTIME_TANK_IDS } from '../vehicles/specs.js';
 import { createTank } from '../vehicles/fleetFactory.js';
 import { tankTier } from '../vehicles/tier.ts';
 import { isGarageVisibleTankId, rankMatchCandidates } from './matchmaking.ts';
-import { getDeviceTier } from '../engine/quality.js';
+import { getDeviceTier } from '../engine/quality.ts';
 import { mulberry32 } from './stateCore.ts';
 
 interface BattleVisual {

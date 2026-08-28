@@ -27,7 +27,7 @@
 import * as THREE from 'three';
 import { SimplexNoise } from '../../engine/simplexFast.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
-import { texSize } from '../../engine/quality.js';
+import { texSize } from '../../engine/quality.ts';
 
 function mulberry32(a) {
   return function () {

@@ -9,7 +9,7 @@ import {
   reconstructionMode,
   reconstructionSharpness,
 } from './renderScalePolicy.ts';
-import { PRESETS } from './quality.js';
+import { PRESETS } from './quality.ts';
 
 const high = {
   maxPixelRatio: 1.5,

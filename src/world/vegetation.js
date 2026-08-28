@@ -12,7 +12,7 @@ import { setToppleAxis, settledToppleAngle } from './topple.js';
 import { setCircleShape } from './collision.js';
 import { treeRootDecalAreaM2, treeRootDecalRadius } from './treeGrounding.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
-import { getDeviceTier, texSize } from '../engine/quality.js';
+import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);

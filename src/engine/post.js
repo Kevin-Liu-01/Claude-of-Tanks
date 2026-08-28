@@ -48,7 +48,7 @@ import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
-import { getPreset, onPresetChange, reportSustainedOverload } from './quality.js';
+import { getPreset, onPresetChange, reportSustainedOverload } from './quality.ts';
 import {
   baseDynamicScale,
   dynamicScaleFloor,
@@ -1492,12 +1492,12 @@ class LateFxPass extends Pass {
  * @returns {Post}
  */
 export function createPost(renderer, scene, camera) {
-  // Quality preset (src/engine/quality.js): caps the composer's internal
+  // Quality preset (src/engine/quality.ts): caps the composer's internal
   // pixel ratio (render scale — the final pass upscales to the native canvas)
   // and scales the AO/bloom buffers. At devicePixelRatio 1 the renderer ratio
   // is 1.0 (below every cap) and aoScale is 1 on the auto tier, so nothing
   // changes vs. the original chain; on retina (dpr >= 2) the 'high' tier is
-  // what keeps the >=60 median / >=45 p5 fps budget (see quality.js header).
+  // what keeps the >=60 median / >=45 p5 fps budget (see quality.ts header).
   let preset = getPreset();
   const size = renderer.getDrawingBufferSize(new THREE.Vector2());
 

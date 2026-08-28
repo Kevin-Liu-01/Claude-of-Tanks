@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
-import { getDeviceTier, getPreset, onPresetChange } from './quality.js';
+import { getDeviceTier, getPreset, onPresetChange } from './quality.ts';
 import {
   canDormantShadowCascades,
   createShadowRefreshScheduler,
@@ -26,7 +26,7 @@ const CASCADES = 4;
 // Battlefield establishing shots read objects out to ~500 m; with the clearer
 // exp2 fog (sky.js) shadows must hold that far or buildings/trees float.
 // PERF: shadow range and per-cascade map sizes now come from the graphics
-// quality preset (src/engine/quality.js — ultra [4096,4096,4096,2048], high
+// quality preset (src/engine/quality.ts — ultra [4096,4096,4096,2048], high
 // [4096,2048,2048,1024]; medium/low trade range+resolution for fill rate,
 // and PCF radii are penumbra-compensated per size — see applyShadowSizes).
 // The farther cascades cover 100s of meters, where their smaller texels remain
@@ -128,14 +128,14 @@ const SHADOW_BIAS = -0.0002;
 // "extremely wide, over-blurred dark stripes" and the tank shadow had no
 // crisp contact core. Penumbra width must track occluder thickness, not
 // drown it: near-cascade contact shadows now stay tight under the hull, and
-// the far cascades (bumped to 4096 in quality.js so their texels shrank 2x)
+// the far cascades (bumped to 4096 in quality.ts so their texels shrank 2x)
 // keep a modest distance softening instead of a smear.
 // r6: [1.3, 1.7, 2.1, 2.5] → [1.5, 2.2, 3.0, 3.8] — the r5 values swung too
 // tight: fence/pole shadows read "uniformly hard at every distance, no
 // penumbra widening". Cascade 0 keeps a near-crisp contact core (1.5 texels
 // on a 4096 map is ~2 cm of penumbra); the widening now roughly DOUBLES per
 // cascade band, the PCSS-style distance ramp, and cascades 1-2 run at 4096
-// (quality.js) so even 3.0 texels stays a soft edge, not a smear.
+// (quality.ts) so even 3.0 texels stays a soft edge, not a smear.
 // r5 (critique: "the player tank's cast shadow edge shows stair-step
 // shadow-map aliasing at standard chase distance"): cascade 0/1 radii
 // 1.5/2.2 → 2.1/2.7 — the 5-tap Vogel disk at 1.5 texels leaves visible

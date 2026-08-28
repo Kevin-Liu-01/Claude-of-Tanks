@@ -1,5 +1,5 @@
 /**
- * quality.js — graphics quality presets (performance budget owner).
+ * quality.ts — graphics quality presets (performance budget owner).
  *
  * The perf budget (>=60 fps median / >=45 fps p5 at 1080p) must hold at the
  * DEFAULT settings on a retina display (devicePixelRatio 2), where the
@@ -49,6 +49,32 @@
  * - low   : SMAA only, 0.75 ratio, AO off, half-res bloom, 2048/1024
  *           cascades, shorter shadow range.
  */
+import type { WebGLRenderer } from 'three';
+
+export type DeviceTier = 'mobile' | 'desktop';
+export type DesktopPresetName = 'low' | 'medium' | 'high' | 'ultra';
+export type MobilePresetName = 'mobile-low' | 'mobile' | 'mobile-high';
+export type PresetName = DesktopPresetName | MobilePresetName;
+export type PresetChoice = 'auto' | DesktopPresetName;
+
+export interface QualityPreset {
+  readonly label: string;
+  readonly msaaSamples: number;
+  readonly maxPixelRatio: number;
+  readonly adaptiveBasePixelRatio?: number;
+  readonly dynMin: number;
+  readonly aoScale: number;
+  readonly bloomScale: number;
+  readonly shadowMapSizes: readonly [number, number, number, number];
+  readonly shadowMaxFar: number;
+  readonly textureScale?: number;
+  readonly vehicleTextureScale?: number;
+  readonly textureCap?: number;
+}
+
+type AutoTier = 'low' | 'medium' | 'high';
+type PresetListener = (preset: QualityPreset) => void;
+type DeviceNavigator = Navigator & { deviceMemory?: number };
 
 const LS_KEY = 'cot.gfxPreset';
 const LS_MOBILE_KEY = 'cot.gfxMobilePreset';
@@ -71,7 +97,7 @@ let _mobileResetHandled = false;
 // navigator.deviceMemory where available. iPadOS 13+ masquerades as
 // Macintosh — its touch points give it away.
 // ---------------------------------------------------------------------------
-let _deviceTier = null;      // 'mobile' | 'desktop' once resolved
+let _deviceTier: DeviceTier | null = null; // resolved once
 let _glMaxTexSize = 16384;   // renderer capability, captured at resolve time
 
 /**
@@ -81,14 +107,14 @@ let _glMaxTexSize = 16384;   // renderer capability, captured at resolve time
  * @param {THREE.WebGLRenderer} [renderer] capability source (maxTextureSize)
  * @returns {'mobile'|'desktop'}
  */
-export function resolveDeviceTier(renderer) {
+export function resolveDeviceTier(renderer?: WebGLRenderer): DeviceTier {
   if (_deviceTier) return _deviceTier;
   try {
     if (renderer && renderer.capabilities && renderer.capabilities.maxTextureSize) {
       _glMaxTexSize = renderer.capabilities.maxTextureSize;
     }
   } catch (_) { /* capability probe only */ }
-  let forced = null;
+  let forced: DeviceTier | null = null;
   try {
     const t = new URLSearchParams(window.location.search).get('tier');
     if (t === 'mobile' || t === 'desktop') forced = t;
@@ -98,7 +124,7 @@ export function resolveDeviceTier(renderer) {
   } else {
     let mobile = false;
     try {
-      const nav = navigator;
+      const nav = navigator as DeviceNavigator;
       const ua = nav.userAgent || '';
       const touchPts = nav.maxTouchPoints || 0;
       const phoneUA = /Android|iPhone|iPad|iPod|Windows Phone|Mobile|Silk/i.test(ua);
@@ -119,7 +145,7 @@ export function resolveDeviceTier(renderer) {
 }
 
 /** @returns {'mobile'|'desktop'} resolved tier ('desktop' until resolved) */
-export function getDeviceTier() { return _deviceTier || 'desktop'; }
+export function getDeviceTier(): DeviceTier { return _deviceTier || 'desktop'; }
 
 /**
  * CENTRAL texture-resolution lever. Texture/canvas creation sites pass their
@@ -129,7 +155,7 @@ export function getDeviceTier() { return _deviceTier || 'desktop'; }
  * @param {number} px authored texture dimension
  * @returns {number} dimension to allocate on the active tier
  */
-export function texSize(px, textureClass = 'world') {
+export function texSize(px: number, textureClass: 'world' | 'vehicle' = 'world'): number {
   const p = getPreset();
   const scale = textureClass === 'vehicle'
     ? (p.vehicleTextureScale || p.textureScale || 1)
@@ -138,7 +164,7 @@ export function texSize(px, textureClass = 'world') {
   return Math.max(1, Math.round(Math.min(scaled, p.textureCap || Infinity, _glMaxTexSize)));
 }
 
-export const PRESETS = {
+export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   // r5: cascade 2 (roughly the 130-230 m band where pole/tree/building
   // shadows are most readable at gameplay camera angles) went 2048 → 4096 on
   // ultra/high — at 2048 its ~0.15 m texels x the PCF disk radius produced
@@ -299,10 +325,10 @@ export const PRESETS = {
   },
 };
 
-export const PRESET_ORDER = ['low', 'medium', 'high', 'ultra'];
-export const MOBILE_PRESET_ORDER = ['mobile-low', 'mobile', 'mobile-high'];
+export const PRESET_ORDER: readonly DesktopPresetName[] = ['low', 'medium', 'high', 'ultra'];
+export const MOBILE_PRESET_ORDER: readonly MobilePresetName[] = ['mobile-low', 'mobile', 'mobile-high'];
 
-const listeners = new Set();
+const listeners = new Set<PresetListener>();
 
 // ---------------------------------------------------------------------------
 // ADAPTIVE AUTO TIER (perf-r2e, owner report: "someone with a weaker laptop
@@ -322,18 +348,18 @@ const listeners = new Set();
 const LS_AUTO_TIER = 'cot.gfxAutoTier';
 const LS_AUTO_POLICY = 'cot.gfxAutoTierPolicy';
 const AUTO_POLICY_VERSION = 'clarity-r2';
-const AUTO_ORDER = ['low', 'medium', 'high']; // ultra stays explicit opt-in
+const AUTO_ORDER: readonly AutoTier[] = ['low', 'medium', 'high']; // ultra stays explicit opt-in
 let _gpuRendererString = '';
 let _autoPolicyHandled = false;
 
 /** Record the unmasked GL renderer string (createRenderer calls this once). */
-export function noteGpuRenderer(str) {
+export function noteGpuRenderer(str: unknown): void {
   _gpuRendererString = String(str || '');
   try { console.info(`[quality] gpu: ${_gpuRendererString || '(masked)'}`); } catch (_) { /* ok */ }
 }
 
 /** Conservative hardware classification: null = no cap (full 'high'). */
-function heuristicAutoCap() {
+function heuristicAutoCap(): AutoTier | null {
   const gpu = _gpuRendererString.toLowerCase();
   // software rasterizers: nothing rescues these — floor tier
   if (/swiftshader|llvmpipe|software|basic render/.test(gpu)) return 'low';
@@ -351,10 +377,10 @@ function heuristicAutoCap() {
     && /\b(?:radeon(?:\(tm\))?\s+graphics|vega)\b/.test(gpu);
   if (intelIntegrated || amdIntegrated
     || /\b(mali|adreno|powervr|videocore)\b/.test(gpu)) return 'medium';
-  let mem = null;
-  let cores = null;
+  let mem: number | null | undefined = null;
+  let cores: number | null | undefined = null;
   try {
-    mem = navigator.deviceMemory;
+    mem = (navigator as DeviceNavigator).deviceMemory;
     cores = navigator.hardwareConcurrency;
   } catch (_) { /* unavailable */ }
   // Masked GPU strings are common. A small-memory/four-core desktop is much
@@ -370,7 +396,7 @@ function heuristicAutoCap() {
 }
 
 /** The persisted governor demotion ('medium'|'low'), if any. ?gfxreset clears. */
-function storedAutoTier() {
+function storedAutoTier(): AutoTier | null {
   try {
     if (new URLSearchParams(window.location.search).has('gfxreset')) {
       window.localStorage.removeItem(LS_AUTO_TIER);
@@ -391,13 +417,13 @@ function storedAutoTier() {
       }
     }
     const v = window.localStorage.getItem(LS_AUTO_TIER);
-    return AUTO_ORDER.includes(v) ? v : null;
+    return v === 'low' || v === 'medium' || v === 'high' ? v : null;
   } catch (_) { return null; }
 }
 
 /** Resolve what 'auto' means on this device right now. */
-export function resolveAutoTier() {
-  let tier = 'high';
+export function resolveAutoTier(): AutoTier {
+  let tier: AutoTier = 'high';
   const cap = heuristicAutoCap();
   const stored = storedAutoTier();
   for (const t of [cap, stored]) {
@@ -414,13 +440,14 @@ export function resolveAutoTier() {
  * preset or the tier is already at the floor.
  * @returns {boolean} true if a tier step was applied
  */
-export function reportSustainedOverload() {
+export function reportSustainedOverload(): boolean {
   if (getDeviceTier() === 'mobile') return false;
   if (getStoredChoice() !== 'auto') return false;
   const cur = resolveAutoTier();
   const i = AUTO_ORDER.indexOf(cur);
   if (i <= 0) return false;
   const next = AUTO_ORDER[i - 1];
+  if (!next) return false;
   try { window.localStorage.setItem(LS_AUTO_TIER, next); } catch (_) { /* ok */ }
   try {
     console.info(`[quality] sustained overload at '${cur}' with no headroom — auto tier now '${next}' (pick a preset in Settings to override; ?gfxreset clears)`);
@@ -431,16 +458,16 @@ export function reportSustainedOverload() {
 }
 
 /** The user's stored choice: a preset name or 'auto' (default). */
-export function getStoredChoice() {
+export function getStoredChoice(): PresetChoice {
   try {
     const v = window.localStorage.getItem(LS_KEY);
-    if (v === 'auto' || PRESET_ORDER.includes(v)) return v;
+    if (v === 'auto' || v === 'low' || v === 'medium' || v === 'high' || v === 'ultra') return v;
   } catch (_) { /* storage blocked — fall through to auto */ }
   return 'auto';
 }
 
 /** Mobile-safe quick quality choice, separate from the desktop picker. */
-export function getMobilePresetChoice() {
+export function getMobilePresetChoice(): MobilePresetName {
   try {
     if (!_mobileResetHandled) {
       _mobileResetHandled = true;
@@ -450,7 +477,7 @@ export function getMobilePresetChoice() {
       }
     }
     const v = window.localStorage.getItem(LS_MOBILE_KEY);
-    if (MOBILE_PRESET_ORDER.includes(v)) return v;
+    if (v === 'mobile-low' || v === 'mobile' || v === 'mobile-high') return v;
   } catch (_) { /* storage blocked — balanced is the safe default */ }
   return 'mobile';
 }
@@ -468,7 +495,7 @@ export function getMobilePresetChoice() {
  * but now lets its dynamic raster ratio absorb scheduling/GPU pressure instead
  * of permanently presenting every Retina player with a 1.0x upscaled scene.
  */
-export function resolvePresetName(choice = getStoredChoice()) {
+export function resolvePresetName(choice: PresetChoice = getStoredChoice()): PresetName {
   // MOBILE r1: the device tier OWNS the ladder on phones/tablets. A stored
   // desktop choice (or a tap on the settings picker) must never re-enable the
   // desktop texture/shadow footprint on a device that OOMs under it — that is
@@ -481,15 +508,15 @@ export function resolvePresetName(choice = getStoredChoice()) {
 }
 
 /** Apply one of the three mobile-safe live presets. */
-export function setMobilePresetName(name) {
-  if (!MOBILE_PRESET_ORDER.includes(name)) return;
+export function setMobilePresetName(name: string): void {
+  if (name !== 'mobile-low' && name !== 'mobile' && name !== 'mobile-high') return;
   try { window.localStorage.setItem(LS_MOBILE_KEY, name); } catch (_) { /* ok */ }
   const preset = getPreset();
   for (const fn of listeners) fn(preset);
 }
 
 /** @returns {typeof PRESETS[keyof typeof PRESETS]} the active preset object */
-export function getPreset() {
+export function getPreset(): QualityPreset {
   return PRESETS[resolvePresetName()];
 }
 
@@ -500,8 +527,9 @@ export function getPreset() {
  * @param {string} name - 'auto' | 'low' | 'medium' | 'high' | 'ultra'
  * @returns {void}
  */
-export function setPresetName(name) {
-  if (name !== 'auto' && !PRESET_ORDER.includes(name)) return;
+export function setPresetName(name: string): void {
+  if (name !== 'auto' && name !== 'low' && name !== 'medium'
+    && name !== 'high' && name !== 'ultra') return;
   try { window.localStorage.setItem(LS_KEY, name); } catch (_) { /* ok */ }
   // perf-r2e: an explicit preset pick takes control back from the adaptive
   // auto tier — clear any persisted governor demotion so a later return to
@@ -518,7 +546,7 @@ export function setPresetName(name) {
  * @param {(preset: object) => void} fn
  * @returns {() => void}
  */
-export function onPresetChange(fn) {
+export function onPresetChange(fn: PresetListener): () => boolean {
   listeners.add(fn);
   return () => listeners.delete(fn);
 }

@@ -70,7 +70,7 @@ garage frame during a cold network handoff.
 
 ## Quality policy
 
-src/engine/quality.js combines capability information with measured behavior.
+src/engine/quality.ts combines capability information with measured behavior.
 Presentation controls include:
 
 - internal resolution scale;

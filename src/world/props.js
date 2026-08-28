@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SimplexNoise } from '../engine/simplexFast.js';
 import { applyTone } from './terrain.js';
-import { getDeviceTier } from '../engine/quality.js';
+import { getDeviceTier } from '../engine/quality.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
 import { applySourcedBuildings } from './sourcedTextures.js';

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { PRESETS } from './quality.js';
+import { PRESETS } from './quality.ts';
 import {
   SHADOW_NORMAL_BIAS_MAX_M,
   SHADOW_NORMAL_BIAS_MIN_M,

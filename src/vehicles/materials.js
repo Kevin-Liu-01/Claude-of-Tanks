@@ -24,12 +24,12 @@ export { CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID } from './camoPoli
 import { tagVehicleMaterial } from './appearanceAudit.js';
 import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from './vehicleMarkings.js';
 import { isPostwarVehicleEra } from './taxonomy.js';
-// MOBILE r1: central texture-resolution lever (quality.js). Every canvas bake
+// MOBILE r1: central texture-resolution lever (quality.ts). Every canvas bake
 // below allocates through texSize(): desktop tiers get the authored size
 // unchanged; the mobile tier halves it and clamps to the device texture cap.
 // The painters are all canvas.width-relative, so this is a pure resolution
 // change — identical feature plan, quarter the pixels at scale 0.5.
-import { texSize } from '../engine/quality.js';
+import { texSize } from '../engine/quality.ts';
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}

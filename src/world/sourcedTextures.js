@@ -19,7 +19,7 @@ import * as THREE from 'three';
 // MOBILE r1: central tier texture scale — the sourced photo-set composites
 // below were the largest world textures left on the mobile tier (7-10 live
 // 1024² albedo+normal canvases ≈ 40-70 MB). Desktop sizes are unchanged.
-import { texSize } from '../engine/quality.js';
+import { texSize } from '../engine/quality.ts';
 
 const TT = '/textures/terrain';
 const TB = '/textures/buildings';

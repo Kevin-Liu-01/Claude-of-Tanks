@@ -29,7 +29,7 @@ roots while retaining their exact reusable objects;
 release geometry buffers and textures, but preserve compiled materials and
 restore through a covered real render rather than isolated `compileAsync`;
 `cameraRig.js` owns player/cinematic poses; settled showroom framing is pumped
-only by the Garage watchdog or visible motion; `quality.js` and `deviceDiag.js`
+only by the Garage watchdog or visible motion; `quality.ts` and `deviceDiag.js`
 own tiering and rescue behavior.
 
 ## Patterns to follow / invariants

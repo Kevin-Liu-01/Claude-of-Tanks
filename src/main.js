@@ -33,7 +33,7 @@ import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
   reportSustainedOverload, setPresetName, setMobilePresetName,
   noteGpuRenderer, getDeviceTier,
-} from './engine/quality.js';
+} from './engine/quality.ts';
 import { createSky } from './engine/sky.js';
 import { createLighting } from './engine/lighting.js';
 import { createPost } from './engine/post.js';
