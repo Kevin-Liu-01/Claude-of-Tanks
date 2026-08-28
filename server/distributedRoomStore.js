@@ -8,7 +8,7 @@
 import { randomUUID } from 'node:crypto';
 import { Redis as RestRedis } from '@upstash/redis';
 import IORedis from 'ioredis';
-import { createRoomCode } from '../src/net/protocol.ts';
+import { createRoomCode } from './roomCode.js';
 
 const DEFAULT_ROOM_TTL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_DELIVERY_TTL_MS = 10 * 60 * 1000;

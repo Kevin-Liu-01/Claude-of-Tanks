@@ -13,6 +13,8 @@ The signaling server relays WebRTC descriptions/ICE only and never gameplay.
 ## Mental model and invariants
 
 - `roomStore.js` owns private-room rendezvous membership.
+- `roomCode.js` keeps room-code generation inside the JavaScript serverless
+  closure; production `.js` entries must not import raw `.ts` source files.
 - `signalingServer.js` owns HTTP upgrade, origin/rate/payload gates, and relay.
 - `dedicatedMatchRegistry.js` owns authenticated match lifecycle and reconnects.
 - `dedicatedMatchServer.js` owns the authoritative WebSocket service boundary.

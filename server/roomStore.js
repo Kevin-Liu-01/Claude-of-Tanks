@@ -5,7 +5,7 @@
  * identity for invitation presentation, and relays only WebRTC rendezvous
  * messages. Gameplay state never enters this store.
  */
-import { createRoomCode } from '../src/net/protocol.ts';
+import { createRoomCode } from './roomCode.js';
 
 const DEFAULT_ROOM_TTL_MS = 24 * 60 * 60 * 1000;
 
