@@ -103,9 +103,12 @@ const FLIGHT_MAX_S = 3.4;
 // (WT death-cam retime). EXIT: letterbox close + fade-through-black into
 // whatever follows (spectate / end screen).
 const APPROACH_S = 1.6;        // push-in orbit duration
-const FIRING_HOLD_S = 0.78;    // readable attacker + muzzle/recoil beat
+const FIRING_CAPTURE_S = 0.78; // deterministic still-frame staging only
 const COLLISION_HOLD_S = 1.45; // rewind -> metal contact -> module failure
 const CAMERA_HANDOFF_S = 0.62; // phase-to-phase pose/fov continuity
+const SHOT_ACQUIRE_S = 0.42;   // readable shooter-to-chase acceleration, never a cut
+const SHOT_TRACK_FOV = 50;     // shared approach endpoint + flight-start lens
+const MUZZLE_FX_S = 0.2;       // keep the flash alive into the moving shot
 const COLLISION_CONTACT_U = 0.66;
 const SLOWMO_RATE = 0.25;      // terminal speed factor at the plate
 const SLOWMO_START_M = 44;     // ramp begins this far from impact
@@ -1226,8 +1229,8 @@ export function createKillCam(deps) {
       api.cancel();
       begin(snap, 'death', null, phase === 'xray');
       if (phase === 'firing') {
-        beginFiring();
-        updateFiring(FIRING_HOLD_S * 0.12);
+        beginFiring(true);
+        updateFiring(FIRING_CAPTURE_S * 0.12);
       } else if (phase === 'collision') {
         beginCollision();
         updateCollision(COLLISION_HOLD_S * (COLLISION_CONTACT_U + 0.08));
@@ -1420,6 +1423,7 @@ export function createKillCam(deps) {
       contactT: 0, contactDir: null, // readable shell-on-armor transition
       app: null, // death-sequence push-in approach state
       shot: null, // attacker firing beat before projectile flight
+      shotFxT: 0, shotFxLive: false, // muzzle flash overlaps chase acquisition
       collision: null, // two-vehicle rewind/contact beat
       isDeathView: false, // player is the victim (grade + killer card + approach)
       killerShown: false,
@@ -2157,11 +2161,10 @@ export function createKillCam(deps) {
     if (u >= 1) pb.cameraBlend = null;
   }
 
-  function beginFiring() {
+  function beginFiring(stagedHold = false) {
     if (!pb || pb.replayKind !== 'projectile') return;
     if (!pb.snap.attackerEnt || !pb.snap.attackerPose || !pb.replayMuzzle) {
-      pb.phase = 'flight';
-      updateFlight(0);
+      beginShotFlight();
       return;
     }
     restageIntact(true);
@@ -2171,6 +2174,8 @@ export function createKillCam(deps) {
     firingCameraPose(pos, look);
     pb.shot = { t: 0, fired: true, pos, look, side: _s.clone() };
     pb.phase = 'firing';
+    pb.shotFxT = 0;
+    pb.shotFxLive = true;
     hideReplayVegetation();
     for (const o of [pb.core, pb.streak, pb.halo, pb.tail]) if (o) o.visible = false;
     if (pb.shellLight) pb.shellLight.intensity = 0;
@@ -2196,7 +2201,22 @@ export function createKillCam(deps) {
         muzzleIndex: pb.snap.muzzleIndex ?? -1,
       });
     }
-    updateFiring(0);
+    if (stagedHold) updateFiring(0);
+    else beginShotFlight();
+  }
+
+  /**
+   * Start projectile motion on the same frame as the gun event. The approach
+   * has already landed on the shared shooter/launch pose, so this handoff
+   * accelerates toward the moving chase target without a cut or static hold.
+   */
+  function beginShotFlight() {
+    if (!pb) return;
+    restoreReplayVegetation();
+    for (const o of [pb.core, pb.streak, pb.halo, pb.tail]) if (o) o.visible = true;
+    beginCameraHandoff(SHOT_ACQUIRE_S);
+    pb.phase = 'flight';
+    updateFlight(0);
   }
 
   function updateFiring(dt) {
@@ -2204,7 +2224,7 @@ export function createKillCam(deps) {
     if (!shot) return;
     shot.t += Math.max(0, dt);
     pinAttackerAtFiringPose(dt);
-    const u = Math.min(1, shot.t / FIRING_HOLD_S);
+    const u = Math.min(1, shot.t / FIRING_CAPTURE_S);
     _a.copy(shot.pos).addScaledVector(shot.side, Math.sin(u * Math.PI) * 0.25);
     setReplayCamera(_a, shot.look, 46, dt);
     if (pb.muzzleLight) {
@@ -2212,12 +2232,9 @@ export function createKillCam(deps) {
       if (pb.replayMuzzle) pb.muzzleLight.position.copy(pb.replayMuzzle);
     }
     if (u >= 1) {
-      restoreReplayVegetation();
       hideFx();
-      for (const o of [pb.core, pb.streak, pb.halo, pb.tail]) if (o) o.visible = true;
-      beginCameraHandoff();
-      pb.phase = 'flight';
-      updateFlight(0);
+      pb.shotFxLive = false;
+      beginShotFlight();
     }
   }
 
@@ -2343,11 +2360,12 @@ export function createKillCam(deps) {
 
   /**
    * REPLAY APPROACH: eased establishing arc from the live camera pose toward
-   * the restored attacker, landing EXACTLY on its firing pose so the whole
-   * replay is one continuous camera move — no cuts, no teleports. This runs
-   * for scored kills as well as deaths. Terrain-aware: the blended path is height-clamped every frame
-   * and pre-lifted clear of foliage volumes / props with the same clearance
-   * solve the flight LOS pass uses (cameraRig collision grammar, read-only).
+   * the restored attacker, landing EXACTLY on the shared shooter/launch pose
+   * so the gun event and moving shot share one composition. This runs for
+   * scored kills as well as deaths. Terrain-aware: the blended path is
+   * height-clamped every frame and pre-lifted clear of foliage volumes / props
+   * with the same clearance solve the flight LOS pass uses (cameraRig collision
+   * grammar, read-only).
    * @returns {boolean} false when no meaningful move exists (skip to flight)
    */
   function beginApproach() {
@@ -2364,7 +2382,7 @@ export function createKillCam(deps) {
     restageAttacker();
     const toPos = new THREE.Vector3();
     const toLook = new THREE.Vector3();
-    firingCameraPose(toPos, toLook);
+    flightStartPose(toPos, toLook);
     const fromPos = camera.position.clone();
     const travel = fromPos.distanceTo(toPos);
     camera.getWorldDirection(_d);
@@ -2440,26 +2458,16 @@ export function createKillCam(deps) {
     }
     // muzzle glow swells as the camera arrives — the shot is about to re-fire
     if (pb.muzzleLight) pb.muzzleLight.intensity = 70 * THREE.MathUtils.smoothstep(u, 0.78, 1);
-    rig.setExternalPose(_a, _b, a.fromFov + (46 - a.fromFov) * k);
+    rig.setExternalPose(_a, _b, a.fromFov + (SHOT_TRACK_FOV - a.fromFov) * k);
     if (u >= 1) {
       beginFiring();
     }
   }
 
-  /** Flight chase-cam pose at launch (u = 0) — the approach lands on it. */
+  /** Shared firing/flight pose at launch — the approach lands on it and the
+   * shell departs immediately while the restored shooter remains in frame. */
   function flightStartPose(outPos, outLook) {
-    pb.segIdx = 0;
-    sampleTraj(0, _p, _d);
-    _s.crossVectors(_d, UP);
-    if (_s.lengthSq() < 1e-6) _s.set(1, 0, 0); else _s.normalize();
-    outPos.copy(_p).addScaledVector(_d, -9.0).addScaledVector(_s, 2.7);
-    outPos.y += 1.35;
-    if (pb.flightLift) outPos.y += pb.flightLift[0];
-    if (heightField) {
-      const minY = heightField.getHeightAt(outPos.x, outPos.z) + 0.8;
-      if (outPos.y < minY) outPos.y = minY;
-    }
-    outLook.copy(_p).addScaledVector(_d, 10).lerp(pb.xcam.center, 0.4);
+    firingCameraPose(outPos, outLook);
     pb.segIdx = 0;
   }
 
@@ -2603,6 +2611,18 @@ export function createKillCam(deps) {
 
   function updateFlight(dt) {
     pb.t = Math.min(pb.dur, pb.t + Math.max(0, dt));
+    // The battle presentation can repaint actors between replay ticks. Keep
+    // the restored killer at its captured firing transform through the camera
+    // acquisition so the muzzle flash, recoil and departing shell visibly
+    // belong to the same tank. Passing dt advances recoil without allocating.
+    if (pb.t <= SHOT_ACQUIRE_S) pinAttackerAtFiringPose(dt);
+    if (pb.shotFxLive) {
+      pb.shotFxT += Math.max(0, dt);
+      if (pb.shotFxT >= MUZZLE_FX_S) {
+        hideFx();
+        pb.shotFxLive = false;
+      }
+    }
     // Refresh-rate invariant timing: the normalized lookup contains the
     // whole terminal slow-motion ramp, so it reaches the plate at exactly
     // pb.dur. The previous per-frame integrator treated pb.dur as a baseline
@@ -2624,7 +2644,9 @@ export function createKillCam(deps) {
     pb.tail.position.copy(_p).addScaledVector(_d, -6.4);
     pb.tail.quaternion.setFromUnitVectors(_Y, _s.copy(_d).negate());
     pb.shellLight.position.set(_p.x, _p.y + 0.5, _p.z);
-    pb.muzzleLight.intensity = 70 * Math.max(0, 1 - u * 2.2); // fades early
+    pb.muzzleLight.intensity = pb.shotFxLive
+      ? 70 * Math.max(0, 1 - pb.shotFxT / MUZZLE_FX_S)
+      : 0;
 
     // chase camera: behind + beside the tracer, blending into the x-ray pose.
     // r2 cinematography fix: the old 8.5-15.5 m trail distance + look-at 16 m
@@ -2680,7 +2702,7 @@ export function createKillCam(deps) {
       pb.tail.scale.set(th, 1, th);
       pb.halo.scale.set(1.7 * th, 1.7 * th, 1);
     }
-    setReplayCamera(_a, _b, 50 - 8 * k, dt);
+    setReplayCamera(_a, _b, SHOT_TRACK_FOV - 8 * k, dt);
     // The shell has arrived. killcam r2: the kill plays out LIVE (impact
     // beat) before the analytical x-ray takes the frame. killcam r3: on an
     // OWN death that order is inverted — the tank the player just watched

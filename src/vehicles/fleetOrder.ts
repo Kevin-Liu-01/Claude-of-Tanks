@@ -23,6 +23,9 @@ export const NATIVE_VARIANT_FAMILIES = Object.freeze({
 } as const);
 
 export const NATIVE_FAMILY_ORDER = Object.freeze({
+  sheridan: Object.freeze([
+    'm551_sheridan', 'm551a1_tts',
+  ]),
   soviet_modern_mbt: Object.freeze([
     't62mv1', 't64bv1',
     ...NATIVE_VARIANT_FAMILIES.t72,
@@ -36,7 +39,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   ]),
   challenger: Object.freeze([
     'chieftain5', 'chieftain_mk10', 'challenger1', 'fv4034', 'challenger2',
-    'challenger2e', 'ua_challenger2', 'challenger_3',
+    'challenger2e', 'ua_challenger2', 'challenger_3', 'challenger_3x',
   ]),
   japan_mbt: Object.freeze([
     'stb1', 'type74', 'type90', 'type90a', 'type10', 'type10b',

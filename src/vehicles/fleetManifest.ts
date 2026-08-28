@@ -18,6 +18,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   ]),
   challenger: Object.freeze([
     'challenger1', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger_3',
+    'challenger_3x',
   ]),
   leopard: Object.freeze([
     'leo2a4', 'leo2a6', 'leo2a5', 'leo2a7v', 'leopard2_proto',
@@ -64,7 +65,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   korea: Object.freeze(['k2b']),
   japan: Object.freeze(['stb1', 'type90a', 'type10b']),
   germany: Object.freeze(['leo2a4_otco']),
-  sheridan: Object.freeze(['m551_sheridan']),
+  sheridan: Object.freeze(['m551_sheridan', 'm551a1_tts']),
 } as const);
 
 export type FleetGroup = keyof typeof FLEET_GROUP_IDS;

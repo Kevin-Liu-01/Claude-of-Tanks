@@ -278,6 +278,12 @@ function renderTopicPage(): void {
     <nav class="topic-nav" aria-label="Technical manual sections"><div class="shell"><a href="/docs"><span class="topic-nav-icon" data-doc-icon="manual"></span><span>Manual index</span></a>${topicNav}</div></nav>
     <div class="shell topic-layout"><article><nav class="topic-section-map" aria-label="On this page">${sectionMap}</nav>${topic.sections.map((section, index) => sectionMarkup(section, index, topic.sectionIcons[index] || topic.icon, topic.media[index === 1 ? 0 : index === 3 ? 1 : -1])).join('')}</article><aside><span class="topic-aside-icon" data-doc-icon="${topic.icon}"></span><p>Manual section</p><strong>${topic.label}</strong><span>Current runtime contracts, implementation choices, and verification paths.</span><a href="/docs">All documentation →</a></aside></div>`;
   mountDocsIcons(root);
+
+  const navStrip = root.querySelector<HTMLElement>('.topic-nav .shell');
+  const activeTopic = navStrip?.querySelector<HTMLElement>('[aria-current="page"]');
+  if (navStrip && activeTopic && navStrip.scrollWidth > navStrip.clientWidth) {
+    navStrip.scrollLeft = Math.max(0, activeTopic.offsetLeft - (navStrip.clientWidth - activeTopic.offsetWidth) / 2);
+  }
 }
 
 if (typeof document !== 'undefined') renderTopicPage();

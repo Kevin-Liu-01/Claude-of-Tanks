@@ -61,7 +61,7 @@ is therefore procedural-only frames + the shared-base gate row (type10
 
 ## §5.364 packet — pivot re-auth + owner orders (rides the shared base) (2026-08-17)
 - Item 1 (§5.362 finding): rig/sim pivots re-authored to the exact
-  retired-remap outputs in japan.js (post-clone block; see the type10.md
+  retired-remap outputs in japan.ts (post-clone block; see the type10.md
   §5.364 packet for the law and derivation): turretPivot
   `[0, 1.8027777777777776, 0.2713333333333332]`, gunPivot
   `[0, 0.4511015831134565, 1.1771211453744495]` (the B's measured turret

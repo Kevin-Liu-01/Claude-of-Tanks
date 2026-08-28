@@ -2252,6 +2252,97 @@ function cr2MountedMg(P, { x, y, z, cls = 'mag', seed = 1, rotationY = 0,
   return mg;
 }
 
+/** Challenger 2's source-matched remote weapon tower. Keep this assembly in
+ * one builder so the 2E derivatives inherit the same roof seat, open cradle,
+ * transverse MAG, optics, and articulated boom as the baseline vehicle. */
+function buildChallenger2WeaponTower(P) {
+  const { box, cylX, cylY, cylZ, torus } = KIT;
+
+  P.add('turretDark', box(0.111, 0.110, 0.110), 0.7095, 0.7126, 0.136);
+  P.addEquipment('turret', box(0.081, 0.080, 0.080), 0.7095, 0.7226, 0.136);
+  for (const x of [0.605, 0.824]) P.addEquipment('turret', box(0.035, 0.129, 0.380),
+    x, 0.7775, 0.515);
+  for (const z of [0.412, 0.695]) P.add('turretDetail', box(0.264, 0.030, 0.026),
+    0.7095, 0.810, z);
+  P.add('turretGlass', box(0.19, 0.055, 0.014), 0.7095, 0.790, 0.713);
+  P.addEquipment('turret', cylY(0.145, 0.155, 0.070, P.q ? 22 : 14), 0.77, 0.690, 0.20);
+  P.add('turretDark', torus(0.140, 0.010, P.q ? 22 : 14), 0.77, 0.730, 0.20);
+  for (const x of [0.70, 0.85]) {
+    P.addEquipment('turret', box(0.032, 0.18, 0.12), x, 0.805, 0.20);
+    P.add('turretDetail', box(0.018, 0.15, 0.018), x, 0.805, 0.20);
+  }
+  for (const x of [0.685, 0.865]) {
+    P.add('turretDark', cylX(0.052, 0.020, P.q ? 16 : 10), x, 0.835, 0.20);
+  }
+  P.add('turretDetail', box(0.024, 0.18, 0.030), 0.725, 0.815, 0.18,
+    0, 0, -0.38);
+  P.add('turretDetail', box(0.024, 0.18, 0.030), 0.825, 0.815, 0.18,
+    0, 0, 0.38);
+  P.add('turretDark', box(0.105, 0.090, 0.13), 0.655, 0.825, 0.15);
+  P.add('turretDetail', box(0.075, 0.018, 0.10), 0.655, 0.878, 0.15);
+  P.add('turretGlass', box(0.11, 0.055, 0.012), 0.775, 0.855, 0.282);
+  P.addEquipment('turret', box(0.11, 0.105, 0.20), 0.80, 0.865, 0.20);
+  P.add('turretDark', cylX(0.022, 0.34, P.q ? 16 : 10), 0.98, 0.910, 0.20);
+  P.add('turretDark', cylX(0.034, 0.065, P.q ? 16 : 10), 1.16, 0.830, 0.20);
+
+  const stationMg = new THREE.Group();
+  const stationReceiver = new THREE.Mesh(box(0.18, 0.080, 0.15), P.mats.dark);
+  stationReceiver.position.set(0.775, 0.905, 0.20);
+  stationReceiver.castShadow = stationReceiver.receiveShadow = true;
+  stationMg.add(stationReceiver);
+  const stationTube = new THREE.Mesh(cylX(0.018, 0.62, P.q ? 16 : 10), P.mats.dark);
+  stationTube.position.set(0.84, 0.925, 0.20);
+  stationTube.castShadow = stationTube.receiveShadow = true;
+  stationMg.add(stationTube);
+  FITTINGS.markExact(stationMg, 'pintleMG');
+  P.turretG.add(stationMg);
+
+  for (const x of [0.685, 0.735]) {
+    P.add('turretDark', cylZ(0.012, 0.58, P.q ? 14 : 10), x, 0.902, 0.015);
+  }
+  for (const z of [-0.25, -0.02, 0.27]) {
+    P.add('turretDetail', box(0.075, 0.025, 0.025), 0.710, 0.910, z);
+  }
+  P.addEquipment('turret', box(0.073, 0.060, 0.282), 0.710, 0.921, 0.442);
+  P.add('turretGlass', box(0.050, 0.036, 0.012), 0.710, 0.922, 0.589);
+  for (const x of [0.680, 0.740]) P.add('turretDark', box(0.010, 0.052, 0.242),
+    x, 0.921, 0.442);
+  for (const z of [0.335, 0.445, 0.555]) {
+    P.add('turretDetail', cylX(0.018, 0.071, P.q ? 14 : 10), 0.710, 0.949, z);
+    P.add('turretDark', cylX(0.010, 0.078, P.q ? 12 : 8), 0.710, 0.950, z);
+  }
+  P.add('turretDark', box(0.041, 0.027, 0.053), 0.7095, 0.9215, 0.6485);
+  P.add('turretGlass', box(0.030, 0.018, 0.012), 0.7095, 0.922, 0.676);
+  P.add('turretDark', box(0.042, 0.028, 0.083), 0.709, 0.921, -0.315);
+  P.add('turretDetail', box(0.030, 0.018, 0.014), 0.709, 0.922, -0.359);
+  P.add('turretDark', box(0.046, 0.030, 0.974), 0.710, 0.912, 0.776);
+  for (const z of [0.64, 0.96, 1.22]) {
+    P.add('turretDetail', cylZ(0.022, 0.055, P.q ? 14 : 10), 0.710, 0.912, z);
+  }
+  P.addEquipment('turret', box(0.060, 0.10, 0.15), 0.75, 0.940, 0.47);
+  P.addEquipment('turret', box(0.060, 0.10, 0.20), 0.75, 0.940, -0.12);
+  if (P.q) for (let k = 0; k < 6; k++) {
+    const x = 0.708 + k * 0.025;
+    P.add('turretDetail', box(0.018, 0.018, 0.13), x,
+      0.940 - Math.abs(k - 2.5) * 0.003, 0.21);
+    P.add('turretDark', box(0.010, 0.012, 0.10), x,
+      0.947 - Math.abs(k - 2.5) * 0.003, 0.21);
+  }
+
+  const receipt = Object.freeze({
+    exactChallenger2Assembly: true,
+    localSeat: [0.7095, 0.690, 0.20],
+    ringRearZ: 0.355,
+    receiverSupportFrontZ: 0.325,
+    planOverlapM: 0.030,
+    ringTopY: 0.725,
+    receiverSupportBottomY: 0.713,
+    verticalOverlapM: 0.012,
+  });
+  P.turretG.userData.challenger2WeaponTowerReceipt = receipt;
+  return receipt;
+}
+
 function cr2SurfaceFrame(normalValues, horizontalHint) {
   const normal = new THREE.Vector3(...normalValues).normalize();
   const horizontal = new THREE.Vector3(...horizontalHint);
@@ -2288,7 +2379,19 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
     bridgedMachineGunBarrels: 0,
     cheekEraHorizontallyMirrored: false,
     cheekEraNormalAlignmentDot: 0,
+    cheekEraColumnsPerSide: 0,
+    cheekEraRowsPerSide: 0,
+    cheekEraCassetteWidthM: 0,
+    cheekEraCassetteHeightM: 0,
+    cheekEraHorizontalGapM: 0,
+    cheekEraVerticalGapM: 0,
+    cheekEraIndividualSquares: false,
     glacisEraNormalAlignmentDot: 0,
+    smokeBanks: 0,
+    smokeCanisters: 0,
+    smokeCarrierMaximumGapM: null,
+    smokeCanisterMinimumEmbedM: 0,
+    smokeCanistersSurfaceDerived: false,
     canopyMaximumLegGapM: null,
     canopyLoweringM: 0,
   };
@@ -2390,19 +2493,37 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
         const frame = cr2SurfaceFrame(normalValues, [side, 0, -0.62]);
         const planePoint = new THREE.Vector3(side * 0.98, 0.2034, 1.36);
         const surfaceOffset = 0.07 * 0.82 * 0.5 - 0.006;
-        for (let row = 0; row < 3; row++) for (let c = 0; c < 4; c++) {
+        // Leave daylight around every cassette. The former 4 x 3 course used
+        // a pitch identical to each block's face dimensions, so twelve parts
+        // rendered as one applique slab. These near-square 5 x 2 cassettes
+        // retain the cheek envelope while making every reactive element read
+        // as an individually replaceable tile.
+        const columns = 5;
+        const rows = 2;
+        const widthScale = 0.68;
+        const heightScale = 1.46;
+        const horizontalPitch = 0.235;
+        const verticalPitch = 0.220;
+        for (let row = 0; row < rows; row++) for (let c = 0; c < columns; c++) {
           const point = planePoint.clone()
-            .addScaledVector(frame.horizontal, (c - 1.5) * 0.285)
-            .addScaledVector(frame.vertical, (row - 1) * 0.135)
+            .addScaledVector(frame.horizontal, (c - (columns - 1) * 0.5) * horizontalPitch)
+            .addScaledVector(frame.vertical, (row - (rows - 1) * 0.5) * verticalPitch)
             .addScaledVector(frame.normal, surfaceOffset);
           put(point.x, pivotY + point.y, pivotZ + point.z,
-            ...frame.rotation, 1.02, 1.05, 0.82);
+            ...frame.rotation, widthScale, heightScale, 0.82);
           receipt.turretEraCassettes++;
         }
+        receipt.cheekEraColumnsPerSide = columns;
+        receipt.cheekEraRowsPerSide = rows;
+        receipt.cheekEraCassetteWidthM = 0.28 * widthScale;
+        receipt.cheekEraCassetteHeightM = 0.13 * heightScale;
+        receipt.cheekEraHorizontalGapM = horizontalPitch - receipt.cheekEraCassetteWidthM;
+        receipt.cheekEraVerticalGapM = verticalPitch - receipt.cheekEraCassetteHeightM;
       }, true);
     }
     receipt.cheekEraHorizontallyMirrored = true;
     receipt.cheekEraNormalAlignmentDot = 1;
+    receipt.cheekEraIndividualSquares = true;
     receipt.glacisEraNormalAlignmentDot = 1;
 
     const loaderCupolaCarrierY = 0.6130;
@@ -2418,6 +2539,7 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
     cr2MountedMg(P, { x: -0.58, y: loaderMgSeatY, z: -0.74, cls: 'mag', seed: 51, rotationY: -0.18 });
     cr2MountedMg(P, { x: 0.56, y: commanderMgSeatY, z: -0.60, cls: 'm2', seed: 52, rotationY: 0.16, shield: true });
     cr2MountedMg(P, { x: 0.05, y: rearMgSeatY, z: -1.55, cls: 'mag', seed: 53, rotationY: Math.PI });
+    buildChallenger2WeaponTower(P);
     roofSeats.push(
       { label: `${variant}-loader-cupola`, carrierY: loaderCupolaCarrierY, bottomY: loaderCupolaBaseY },
       { label: `${variant}-commander-cupola`, carrierY: commanderCupolaCarrierY, bottomY: commanderCupolaBaseY },
@@ -2425,19 +2547,57 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
       { label: `${variant}-commander-machine-gun`, carrierY: commanderMgSeatY + 0.005, bottomY: commanderMgSeatY },
       { label: `${variant}-rear-machine-gun`, carrierY: rearMgCarrierY, bottomY: rearMgSeatY },
     );
-    receipt.mannedMachineGuns = 3;
+    receipt.mannedMachineGuns = 4;
     receipt.bridgedMachineGunBarrels = 2;
-    for (const side of [-1, 1]) for (let k = 0; k < 4; k++) {
-      const yaw = side * (0.68 + k * 0.10);
-      const tubeX = side * (1.02 + k * 0.025);
-      const tubeY = 0.31 + k * 0.025;
-      const tubeZ = 1.17 - k * 0.075;
-      P.addEquipment('turret', cylZ(0.040, 0.23, 8), tubeX, tubeY, tubeZ, -0.50, yaw, 0);
-      P.add('turretDark', xform(cylZ(0.032, 0.012, 10), 0, 0, 0.119),
-        tubeX, tubeY, tubeZ, -0.50, yaw, 0);
-      smokeMouths.push({ side, tubeCenter: [tubeX, tubeY, tubeZ],
-        rotation: [-0.50, yaw, 0], mouthOffsetZ: 0.119 });
+    for (const side of [-1, 1]) {
+      const frame = cr2SurfaceFrame(
+        [side * 0.3915, 0.6650, 0.6359],
+        [side, 0, -0.62],
+      );
+      const cheekPoint = new THREE.Vector3(side * 0.98, 0.2034, 1.36);
+      const carrierWidth = 0.36;
+      const carrierHeight = 0.30;
+      const carrierDepth = 0.085;
+      const carrierSeatEmbed = 0.010;
+      const carrierCenter = cheekPoint.clone()
+        .addScaledVector(frame.horizontal, 0.43)
+        .addScaledVector(frame.normal, carrierDepth * 0.5 - carrierSeatEmbed);
+      P.addEquipment('turret', box(carrierWidth, carrierHeight, carrierDepth),
+        carrierCenter.x, carrierCenter.y, carrierCenter.z, ...frame.rotation);
+
+      // A visible retaining cross keeps the launchers from reading as tubes
+      // pasted directly onto armor. Both bars share the cheek frame and sit
+      // just proud of the carrier face.
+      const retainingFace = carrierCenter.clone().addScaledVector(frame.normal, carrierDepth * 0.5 + 0.010);
+      for (const horizontalOffset of [-0.085, 0.085]) {
+        const strap = retainingFace.clone().addScaledVector(frame.horizontal, horizontalOffset);
+        P.add('turretDark', box(0.035, carrierHeight * 0.88, 0.018),
+          strap.x, strap.y, strap.z, ...frame.rotation);
+      }
+
+      const tubeLength = 0.21;
+      const rearEmbed = 0.012;
+      for (let row = 0; row < 2; row++) for (let column = 0; column < 2; column++) {
+        const seat = retainingFace.clone()
+          .addScaledVector(frame.horizontal, (column - 0.5) * 0.17)
+          .addScaledVector(frame.vertical, (row - 0.5) * 0.13);
+        const yaw = side * (0.38 + column * 0.06);
+        const rotation = [-0.30 + row * 0.03, yaw, 0];
+        const axis = new THREE.Vector3(0, 0, 1)
+          .applyEuler(new THREE.Euler(...rotation, 'XYZ'));
+        const center = seat.clone().addScaledVector(axis, tubeLength * 0.5 - rearEmbed);
+        P.addEquipment('turret', cylZ(0.040, tubeLength, 8),
+          center.x, center.y, center.z, ...rotation);
+        P.add('turretDark', xform(cylZ(0.032, 0.012, 10), 0, 0, 0.109),
+          center.x, center.y, center.z, ...rotation);
+        smokeMouths.push({ side, tubeCenter: center.toArray(), rotation, mouthOffsetZ: 0.109 });
+        receipt.smokeCanisters++;
+      }
+      receipt.smokeBanks++;
     }
+    receipt.smokeCarrierMaximumGapM = 0;
+    receipt.smokeCanisterMinimumEmbedM = 0.012;
+    receipt.smokeCanistersSurfaceDerived = true;
     for (const [x, z, carrierY] of [
       [-0.95, -0.25, 0.3821], [0.92, -0.18, 0.4041], [0.00, -1.18, 0.4326],
     ]) {
@@ -2446,7 +2606,7 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
       P.add('turretGlass', box(0.12, 0.09, 0.012), x, y + 0.06, z + 0.108);
       roofSeats.push({ label: `${variant}-roof-equipment-${x}`, carrierY, bottomY: y - 0.12 });
     }
-    receipt.roofAttachmentCount = 8;
+    receipt.roofAttachmentCount = 9;
     for (const side of [-1, 1]) {
       P.add('hullDetail', cylZ(0.25, 1.02, P.q ? 20 : 14), side * 0.62, 1.80, -3.30);
       for (const z of [-3.63, -2.97]) {
@@ -2520,6 +2680,7 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
 }
 
 const CHALLENGER2_FAMILY_SCALE = 1.10;
+const CHALLENGER3_FAMILY_SCALE = 1.10;
 
 function scaleChallenger2Family(P) {
   const scale = CHALLENGER2_FAMILY_SCALE;
@@ -2558,6 +2719,206 @@ function scaleChallenger2Family(P) {
   });
   P.hullG.userData.challenger2FamilyScaleReceipt = receipt;
   P.turretG.userData.challenger2FamilyScaleReceipt = receipt;
+}
+
+function scaleChallenger3Family(P) {
+  const scale = CHALLENGER3_FAMILY_SCALE;
+  P.hullG.scale.multiplyScalar(scale);
+  P.turretG.scale.multiplyScalar(scale);
+  P.turretG.position.multiplyScalar(scale);
+
+  if (P.gear?.contactGeom) {
+    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM']) {
+      P.gear.contactGeom[key] *= scale;
+    }
+    if (P.gear.contactGeom.endRise) {
+      for (const key of ['dzM', 'frontM', 'rearM']) P.gear.contactGeom.endRise[key] *= scale;
+    }
+  }
+  for (const lane of P.gear?.trackHitbox || []) {
+    lane.x0 *= scale;
+    lane.x1 *= scale;
+    lane.poly = lane.poly.map(([z, y]) => [z * scale, y * scale]);
+  }
+
+  const receipt = Object.freeze({
+    uniformScale: scale,
+    turretPivotScaled: true,
+    trackContactMetadataScaled: true,
+    trackHitGeometryScaled: true,
+  });
+  P.hullG.userData.challenger3FamilyScaleReceipt = receipt;
+  P.turretG.userData.challenger3FamilyScaleReceipt = receipt;
+}
+
+function buildChallenger3XPackage(P) {
+  const { box, cylX, cylY, cylZ, frustum, torus, tarpRoll, jerryCan, ammoCan } = KIT;
+  const [turretPivotX, turretPivotY, turretPivotZ] = P.spec.armor.turretPivot;
+  const receipt = {
+    variant: 'challenger_3x',
+    enhancedSkirtPanels: 0,
+    skirtHangers: 0,
+    glacisEraCassettes: 0,
+    skirtEraCassettes: 0,
+    cheekEraCassettes: 0,
+    turretSideEraCassettes: 0,
+    autocannonStations: 0,
+    radarArrays: 0,
+    searchlights: 0,
+    bustleCageRails: 0,
+    stowageItems: 0,
+    equipmentSeatsFlush: true,
+  };
+
+  // A real carrier and discrete hangers turn the enlarged skirts into one
+  // continuous protection assembly. The ERA sits outside the carrier and
+  // remains clear of the live linked-shoe sweep.
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.16, 0.82, 7.18), side * 1.82, 1.05, -0.10);
+    P.add('hullDark', box(0.035, 0.09, 7.22), side * 1.91, 1.43, -0.10);
+    for (let station = 0; station < 9; station++) {
+      const z = 3.18 - station * 0.82;
+      P.add('hullDetail', box(0.035, 0.76, 0.035), side * 1.915, 1.04, z - 0.40);
+      P.add('hullDetail', box(0.22, 0.10, 0.08), side * 1.73, 1.43, z);
+      receipt.enhancedSkirtPanels++;
+      receipt.skirtHangers++;
+    }
+    const sector = `c3x_skirt_era_${side > 0 ? 'R' : 'L'}`;
+    P.eraCluster(sector, (place) => {
+      for (let row = 0; row < 3; row++) {
+        for (let station = 0; station < 13; station++) {
+          place(
+            side * 1.965, 0.79 + row * 0.235, 3.18 - station * 0.55,
+            0, side * Math.PI / 2, 0,
+            1.72, 1.42, 1.22,
+          );
+          receipt.skirtEraCassettes++;
+        }
+      }
+    });
+  }
+
+  // Four shallow courses follow the actual Challenger glacis normal. Split
+  // left/right sector names keep the damage and depletion state honest.
+  const glacisFrame = cr2SurfaceFrame([0, 0.9718, 0.2358], [1, 0, 0]);
+  for (const side of [-1, 1]) {
+    const sector = `c3x_glacis_era_${side > 0 ? 'R' : 'L'}`;
+    P.eraCluster(sector, (place) => {
+      for (let row = 0; row < 4; row++) {
+        const z = 3.45 - row * 0.32;
+        const surfaceY = 1.24 + (3.60 - z) * (0.31 / 1.28);
+        for (let station = 0; station < 5; station++) {
+          const point = new THREE.Vector3(side * (0.18 + station * 0.29), surfaceY, z)
+            .addScaledVector(glacisFrame.normal, 0.020);
+          place(point.x, point.y, point.z, ...glacisFrame.rotation, 0.94, 1.76, 0.80);
+          receipt.glacisEraCassettes++;
+        }
+      }
+    });
+  }
+
+  // The cheek courses are individual cassettes laid in the ruled cheek
+  // plane, rather than a pair of rectangular applique slabs.
+  for (const side of [-1, 1]) {
+    const frame = cr2SurfaceFrame([side * 0.42, 0.66, 0.62], [side, 0, -0.56]);
+    const sector = `c3x_turret_cheek_era_${side > 0 ? 'R' : 'L'}`;
+    P.eraCluster(sector, (place) => {
+      const origin = new THREE.Vector3(side * 0.91, 0.22, 1.13);
+      for (let row = 0; row < 4; row++) {
+        for (let station = 0; station < 4; station++) {
+          const point = origin.clone()
+            .addScaledVector(frame.horizontal, (station - 1.5) * 0.285)
+            .addScaledVector(frame.vertical, (row - 1.5) * 0.145)
+            .addScaledVector(frame.normal, 0.018);
+          place(
+            point.x + turretPivotX, point.y + turretPivotY, point.z + turretPivotZ,
+            ...frame.rotation, 0.98, 1.06, 0.82,
+          );
+          receipt.cheekEraCassettes++;
+        }
+      }
+    }, true);
+
+    const sideSector = `c3x_turret_side_era_${side > 0 ? 'R' : 'L'}`;
+    P.add('turret', box(0.13, 0.67, 3.12), side * 1.49, 0.40, -1.62);
+    P.eraCluster(sideSector, (place) => {
+      for (let row = 0; row < 3; row++) {
+        for (let station = 0; station < 8; station++) {
+          place(
+            side * 1.75, turretPivotY + 0.20 + row * 0.205,
+            turretPivotZ - 2.90 + station * 0.37,
+            0, side * Math.PI / 2, 0,
+            1.24, 1.30, 1.20,
+          );
+          receipt.turretSideEraCassettes++;
+        }
+      }
+    }, true);
+  }
+
+  // Two independent 30 mm stations key into the turret shoulders. Their
+  // roots overlap the armor wall and their barrels overlap their receivers,
+  // so the pair reads as machinery carried by the turret instead of props.
+  for (const side of [-1, 1]) {
+    const x = side * 1.48;
+    P.addEquipment('turret', box(0.32, 0.36, 0.52), side * 1.38, 0.48, -0.78);
+    P.addEquipment('turret', frustum(0.24, 0.34, -0.34, 0.20, 0.28, -0.28, 0, 0.34),
+      x, 0.67, -0.45);
+    P.add('turretDark', cylY(0.16, 0.18, 0.10, 12), x, 0.54, -0.64);
+    P.add('turretDark', cylZ(0.052, 1.30, 12), x, 0.73, 0.35);
+    P.add('turretDetail', cylZ(0.072, 0.24, 12), x, 0.73, -0.16);
+    P.add('turretDark', box(0.13, 0.13, 0.09), x, 0.73, 1.03);
+    P.add('turretGlass', box(0.13, 0.09, 0.014), x - side * 0.17, 0.67, -0.29, 0, side * Math.PI / 2, 0);
+    receipt.autocannonStations++;
+  }
+
+  // Oversized left-cheek searchlight with a buried shoe and protected lens.
+  P.addEquipment('turret', box(0.58, 0.42, 0.42), -0.67, 0.36, 1.28);
+  P.add('turretDetail', box(0.68, 0.10, 0.52), -0.67, 0.18, 1.14);
+  P.add('turretDark', cylZ(0.205, 0.15, 18), -0.67, 0.36, 1.52);
+  P.add('turretGlass', cylZ(0.165, 0.018, 18), -0.67, 0.36, 1.605);
+  P.add('turretDetail', torus(0.205, 0.018, 18), -0.67, 0.36, 1.605);
+  receipt.searchlights = 1;
+
+  // A wide AESA panel sits on a two-stage, cross-braced rear roof mast.
+  P.addEquipment('turret', box(0.64, 0.15, 0.58), 0, 0.70, -2.18);
+  P.add('turretDark', cylY(0.19, 0.23, 0.12, 12), 0, 0.82, -2.18);
+  P.addEquipment('turret', box(0.13, 0.56, 0.13), 0, 1.08, -2.18);
+  for (const side of [-1, 1]) {
+    P.add('turretDetail', cylX(0.022, 0.58, 8), side * 0.16, 1.08, -2.18, 0, 0, side * 0.48);
+  }
+  P.addEquipment('turret', box(0.90, 0.52, 0.08), 0, 1.39, -2.14, -0.08, 0, 0);
+  P.add('turretDark', box(0.78, 0.40, 0.018), 0, 1.39, -2.095, -0.08, 0, 0);
+  for (const x of [-0.30, 0, 0.30]) P.add('turretDetail', box(0.018, 0.44, 0.014), x, 1.39, -2.083, -0.08, 0, 0);
+  receipt.radarArrays = 1;
+
+  // A deeper bustle cage and mixed field kit distinguish the X from the
+  // production Challenger 3 without turning the roof into one solid block.
+  for (const side of [-1, 1]) {
+    for (const y of [0.25, 0.48, 0.71]) {
+      P.add('turretDetail', box(0.035, 0.035, 1.72), side * 1.58, y, -2.45);
+      receipt.bustleCageRails++;
+    }
+    for (const z of [-1.62, -2.04, -2.46, -2.88, -3.30]) {
+      P.add('turretDetail', box(0.035, 0.48, 0.035), side * 1.58, 0.48, z);
+      receipt.bustleCageRails++;
+    }
+  }
+  tarpRoll(P, 'turretCloth', -0.88, 0.68, -2.86, 0.62, 0.14, true);
+  jerryCan(P, 'turretCloth', 0.92, 0.50, -3.00, 0.10);
+  ammoCan(P, 'turretDark', 1.10, 0.48, -2.55, -0.12);
+  ammoCan(P, 'turretDark', -1.12, 0.48, -2.45, 0.12);
+  for (const x of [-0.62, 0, 0.62]) {
+    P.addEquipment('turret', box(0.48, 0.18, 0.46), x, 0.72, -2.85);
+    receipt.stowageItems++;
+  }
+  receipt.stowageItems += 4;
+
+  receipt.totalEraCassettes = receipt.glacisEraCassettes + receipt.skirtEraCassettes
+    + receipt.cheekEraCassettes + receipt.turretSideEraCassettes;
+  const frozen = Object.freeze(receipt);
+  P.hullG.userData.challenger3XReceipt = frozen;
+  P.turretG.userData.challenger3XReceipt = frozen;
 }
 
 function buildChallenger2(P) {
@@ -3642,99 +4003,7 @@ function buildChallenger2(P) {
   // The previous +z 1.54 m tube and half-metre roof crate were both axis and
   // scale errors.  Preserve the open fork, compact receiver, feed links and
   // short transverse GPMG as the source actually arranges them.
-  // 472-triangle lower tier, exact local bbox x=.654..765/y=.701..811/
-  // z=.081..191.  It is the missing mechanical transition between roof and
-  // cradle, not a generic pedestal cylinder.
-  P.add('turretDark', box(0.111, 0.110, 0.110), 0.7095, 0.7126, 0.136);
-  P.addEquipment('turret', box(0.081, 0.080, 0.080), 0.7095, 0.7226, 0.136);
-  // 114-triangle lower receiver support, source bbox
-  // x=.572..847/y=.713..842/z=.390..717.  Keep the center open: paired
-  // longitudinal cheeks and end braces carry the receiver above the roof.
-  // Carry the receiver cheeks forward into the trunnion ring.  The former
-  // z=.4035 front faces stopped 48 mm short of the ring; the extended cheeks
-  // now overlap it by 30 mm in plan and 12 mm vertically.
-  for (const x of [0.605, 0.824]) P.addEquipment('turret', box(0.035, 0.129, 0.380),
-    x, 0.7775, 0.515);
-  for (const z of [0.412, 0.695]) P.add('turretDetail', box(0.264, 0.030, 0.026),
-    0.7095, 0.810, z);
-  P.add('turretGlass', box(0.19, 0.055, 0.014), 0.7095, 0.790, 0.713);
-  P.addEquipment('turret', cylY(0.145, 0.155, 0.070, P.q ? 22 : 14), 0.77, 0.690, 0.20);
-  P.add('turretDark', torus(0.140, 0.010, P.q ? 22 : 14), 0.77, 0.730, 0.20);
-  for (const x of [0.70, 0.85]) {
-    P.addEquipment('turret', box(0.032, 0.18, 0.12), x, 0.805, 0.20);
-    P.add('turretDetail', box(0.018, 0.15, 0.018), x, 0.805, 0.20);
-  }
-  // Open cradle articulation: paired trunnion discs, diagonal fork braces
-  // and a separate ammunition/drive pod preserve daylight through the
-  // station while giving the mechanism the layered read of the print.
-  for (const x of [0.685, 0.865]) {
-    P.add('turretDark', cylX(0.052, 0.020, P.q ? 16 : 10), x, 0.835, 0.20);
-  }
-  P.add('turretDetail', box(0.024, 0.18, 0.030), 0.725, 0.815, 0.18,
-    0, 0, -0.38);
-  P.add('turretDetail', box(0.024, 0.18, 0.030), 0.825, 0.815, 0.18,
-    0, 0, 0.38);
-  P.add('turretDark', box(0.105, 0.090, 0.13), 0.655, 0.825, 0.15);
-  P.add('turretDetail', box(0.075, 0.018, 0.10), 0.655, 0.878, 0.15);
-  // The source-specific receiver and transverse tube are grouped below as a
-  // marker-carrying exact fitting; keeping them in the merged bucket would
-  // visually duplicate the certified assembly.
-  P.add('turretGlass', box(0.11, 0.055, 0.012), 0.775, 0.855, 0.282);
-  P.addEquipment('turret', box(0.11, 0.105, 0.20), 0.80, 0.865, 0.20);
-  P.add('turretDark', cylX(0.022, 0.34, P.q ? 16 : 10), 0.98, 0.910, 0.20);
-  P.add('turretDark', cylX(0.034, 0.065, P.q ? 16 : 10), 1.16, 0.830, 0.20);
-  // Connected-component RWS hierarchy.  The source carries a transverse
-  // GPMG plus a folded longitudinal assembly: an OPEN twin-rail cradle over
-  // z=-.28..+.30, a thicker receiver at .30..58, and a narrow articulated
-  // boom to z=1.26.  Author those three masses separately rather than the
-  // former monolithic tube or the temporary row of loose optic blocks.
-  // Challenger 2's source carries a folded transverse L7A2/MAG integrated
-  // into the remote cradle, not the generic free-standing pintle envelope.
-  // Preserve the already certified exterior byte-for-byte and register that
-  // real receiver+tube assembly through the exact-fitting contract.
-  const stationMg = new THREE.Group();
-  const stationReceiver = new THREE.Mesh(box(0.18, 0.080, 0.15), P.mats.dark);
-  stationReceiver.position.set(0.775, 0.905, 0.20);
-  stationReceiver.castShadow = stationReceiver.receiveShadow = true;
-  stationMg.add(stationReceiver);
-  const stationTube = new THREE.Mesh(cylX(0.018, 0.62, P.q ? 16 : 10), P.mats.dark);
-  stationTube.position.set(0.84, 0.925, 0.20);
-  stationTube.castShadow = stationTube.receiveShadow = true;
-  stationMg.add(stationTube);
-  FITTINGS.markExact(stationMg, 'pintleMG');
-  P.turretG.add(stationMg);
-  for (const x of [0.685, 0.735]) {
-    P.add('turretDark', cylZ(0.012, 0.58, P.q ? 14 : 10), x, 0.902, 0.015);
-  }
-  for (const z of [-0.25, -0.02, 0.27]) {
-    P.add('turretDetail', box(0.075, 0.025, 0.025), 0.710, 0.910, z);
-  }
-  P.addEquipment('turret', box(0.073, 0.060, 0.282), 0.710, 0.921, 0.442);
-  P.add('turretGlass', box(0.050, 0.036, 0.012), 0.710, 0.922, 0.589);
-  for (const x of [0.680, 0.740]) P.add('turretDark', box(0.010, 0.052, 0.242),
-    x, 0.921, 0.442);
-  for (const z of [0.335, 0.445, 0.555]) {
-    P.add('turretDetail', cylX(0.018, 0.071, P.q ? 14 : 10), 0.710, 0.949, z);
-    P.add('turretDark', cylX(0.010, 0.078, P.q ? 12 : 8), 0.710, 0.950, z);
-  }
-  // Two independently bounded RWS heads from the source census.  Their
-  // small end modules terminate the open rails and receiver, supplying the
-  // missing connected hierarchy without enlarging the station envelope.
-  P.add('turretDark', box(0.041, 0.027, 0.053), 0.7095, 0.9215, 0.6485);
-  P.add('turretGlass', box(0.030, 0.018, 0.012), 0.7095, 0.922, 0.676);
-  P.add('turretDark', box(0.042, 0.028, 0.083), 0.709, 0.921, -0.315);
-  P.add('turretDetail', box(0.030, 0.018, 0.014), 0.709, 0.922, -0.359);
-  P.add('turretDark', box(0.046, 0.030, 0.974), 0.710, 0.912, 0.776);
-  for (const z of [0.64, 0.96, 1.22]) {
-    P.add('turretDetail', cylZ(0.022, 0.055, P.q ? 14 : 10), 0.710, 0.912, z);
-  }
-  P.addEquipment('turret', box(0.060, 0.10, 0.15), 0.75, 0.940, 0.47);
-  P.addEquipment('turret', box(0.060, 0.10, 0.20), 0.75, 0.940, -0.12);
-  if (P.q) for (let k = 0; k < 6; k++) {
-    const x = 0.708 + k * 0.025;
-    P.add('turretDetail', box(0.018, 0.018, 0.13), x, 0.940 - Math.abs(k - 2.5) * 0.003, 0.21);
-    P.add('turretDark', box(0.010, 0.012, 0.10), x, 0.947 - Math.abs(k - 2.5) * 0.003, 0.21);
-  }
+  buildChallenger2WeaponTower(P);
   P.add('turret', box(0.08, 0.25, 0.22), 0.40, 0.225, 0.25);                  // narrow 1.91 m right roof step
   // Source-connected outboard roof modules are low bases plus separated
   // episcope heads.  Collapsing each assembly into one tall cuboid erased
@@ -4570,6 +4839,7 @@ function buildChallenger3(P) {
     [0.46, 0.42, 0.02, 1.23, 0.49, 1.185],
     [0.46, 0.42, 0.02, 1.23, 0.49, 0.275],
   ]);
+  if (P.spec.id === 'challenger_3x') buildChallenger3XPackage(P);
   P.hullG.userData.challenger3HullClosureReceipt = {
     upperGlacisSeam: {
       innerX: 1.60,
@@ -4597,6 +4867,7 @@ function buildChallenger3(P) {
   // geometry — never floated mid-air)
   P.decal('hull', 'soot', null, 0.42, [-0.45, 1.10, -3.962], Math.PI);
   P.topY = 1.05;
+  scaleChallenger3Family(P);
 }
 /** Builder table merged into tankFactory.BUILDERS by the extension hook. */
 export const CHALLENGER_BUILDERS = {
@@ -4605,4 +4876,5 @@ export const CHALLENGER_BUILDERS = {
   challenger2e: buildChallenger2,
   ua_challenger2: buildChallenger2,
   challenger_3: buildChallenger3,
+  challenger_3x: buildChallenger3,
 };

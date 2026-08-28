@@ -22,7 +22,7 @@ import { paintCustomCamoStrokes } from './customCamoCanvas.ts';
 
 export { CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID } from './camoPolicy.ts';
 import { tagVehicleMaterial } from './appearanceAudit.ts';
-import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from './vehicleMarkings.js';
+import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from './vehicleMarkings.ts';
 import { isPostwarVehicleEra } from './taxonomy.ts';
 // MOBILE r1: central texture-resolution lever (quality.ts). Every canvas bake
 // below allocates through texSize(): desktop tiers get the authored size

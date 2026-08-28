@@ -34,15 +34,15 @@ import './modern3Specs.js';
 import './userdrops5.js';
 import './userdrops6.js';
 import './franceSpecs.ts';
-import './ukraine.js';
-import './china.js';
-import './sweden.js';
-import './poland.js';
+import './ukraine.ts';
+import './china.ts';
+import './sweden.ts';
+import './poland.ts';
 import './korea.ts';
-import './japan.js';
-import './germany.js';
+import './japan.ts';
+import './germany.ts';
 import './afvFamily.js';
-import './sheridan.js';
+import './sheridan.ts';
 
 import {
   ALL_TANK_IDS,

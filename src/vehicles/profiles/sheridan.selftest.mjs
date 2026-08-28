@@ -5,18 +5,118 @@ import { specialActionGuidesShell } from '../../sim/specialActions.ts';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.js';
 import { tankTier } from '../tier.ts';
+import { garageStatGroup } from '../../ui/garageDossier.ts';
 
 const spec = getSpec('m551_sheridan');
+const ttsSpec = getSpec('m551a1_tts');
 assert.ok(spec, 'M551 Sheridan is registered');
-assert.equal(tankTier(spec.id), 10, 'Sheridan is a Tier X vehicle');
+assert.ok(ttsSpec, 'M551A1 TTS is registered');
+assert.equal(tankTier(spec.id), 9, 'Sheridan is a Tier IX vehicle');
 assert.equal(spec.role, 'light');
 assert.equal(spec.gun.caliberMm, 152);
 assert.equal(spec.gun.primaryGuided, true);
 assert.equal(spec.gun.shells.length, 1, 'Sheridan is a dedicated missile-only tank');
 assert.equal(spec.gun.shells[0].guided, true);
 assert.match(spec.gun.shells[0].name, /MGM-51C Shillelagh/i);
+assert.deepEqual({
+  hp: spec.hp,
+  enginePowerHp: spec.enginePowerHp,
+  reverseSpeedKmh: spec.reverseSpeedKmh,
+  hullTraverseDegS: spec.hullTraverseDegS,
+  turretTraverseDegS: spec.turretTraverseDegS,
+  gunPitchDegS: spec.gunPitchDegS,
+  terrainResistance: spec.terrainResistance,
+  reloadS: spec.gun.reloadS,
+  baseAccuracy: spec.gun.baseAccuracy,
+  aimTimeS: spec.gun.aimTimeS,
+  bloom: spec.gun.bloom,
+}, {
+  hp: 2050,
+  enginePowerHp: 400,
+  reverseSpeedKmh: 24,
+  hullTraverseDegS: 54,
+  turretTraverseDegS: 46,
+  gunPitchDegS: 36,
+  terrainResistance: { hard: 0.58, medium: 0.72, soft: 1.12 },
+  reloadS: 8.6,
+  baseAccuracy: 0.28,
+  aimTimeS: 1.45,
+  bloom: { move: 0.06, hullRot: 0.07, turret: 0.05, afterShot: 1.8 },
+}, 'Sheridan owns its complete Tier IX light-missile handling envelope');
+assert.deepEqual({
+  pen100Mm: spec.gun.shells[0].pen100Mm,
+  pen1000Mm: spec.gun.shells[0].pen1000Mm,
+  dmg: spec.gun.shells[0].dmg,
+  velocityMps: spec.gun.shells[0].velocityMps,
+  guidanceTurnRateRadS: spec.gun.shells[0].guidanceTurnRateRadS,
+  reloadS: spec.gun.shells[0].reloadS,
+  count: spec.gun.shells[0].count,
+}, {
+  pen100Mm: 900,
+  pen1000Mm: 900,
+  dmg: 800,
+  velocityMps: 208,
+  guidanceTurnRateRadS: 0.84,
+  reloadS: 8.6,
+  count: 14,
+}, 'dedicated Shillelagh channel is competitive at Tier IX');
+assert.equal(garageStatGroup(spec), '9/cold-war',
+  'garage compares Sheridan against its actual Tier IX peers');
+const starship = getSpec('m60a2');
+const starshipMissile = starship.gun.shells.find((round) => round.guided === true);
+assert.ok(spec.hp < starship.hp, 'Sheridan remains less durable than the M60A2 Starship');
+assert.ok(spec.enginePowerHp / spec.weightTons > starship.enginePowerHp / starship.weightTons,
+  'Sheridan retains its light-tank mobility advantage over the Starship');
+assert.ok(spec.gun.reloadS < starshipMissile.reloadS,
+  'missile-only Sheridan cycles faster than the Starship secondary missile channel');
 assert.ok(spec.armor.modules.some((module) => module.module === 'missileRack'),
   'damageable combat anatomy includes the missile stowage');
+assert.equal(tankTier(ttsSpec.id), 10, 'M551A1 TTS is the Tier X Sheridan variant');
+assert.equal(ttsSpec.variantOf, spec.id);
+assert.equal(ttsSpec.era, 'next-generation');
+assert.deepEqual({
+  hp: ttsSpec.hp,
+  enginePowerHp: ttsSpec.enginePowerHp,
+  weightTons: ttsSpec.weightTons,
+  reverseSpeedKmh: ttsSpec.reverseSpeedKmh,
+  reloadS: ttsSpec.gun.reloadS,
+  accuracy: ttsSpec.gun.baseAccuracy,
+  aimTimeS: ttsSpec.gun.aimTimeS,
+}, {
+  hp: 2450,
+  enginePowerHp: 520,
+  weightTons: 24.8,
+  reverseSpeedKmh: 28,
+  reloadS: 7.4,
+  accuracy: 0.24,
+  aimTimeS: 1.25,
+}, 'TTS owns an explicit Tier X light-missile balance envelope');
+assert.deepEqual({
+  name: ttsSpec.gun.shells[0].name,
+  pen100Mm: ttsSpec.gun.shells[0].pen100Mm,
+  pen1000Mm: ttsSpec.gun.shells[0].pen1000Mm,
+  dmg: ttsSpec.gun.shells[0].dmg,
+  velocityMps: ttsSpec.gun.shells[0].velocityMps,
+  guidanceTurnRateRadS: ttsSpec.gun.shells[0].guidanceTurnRateRadS,
+  count: ttsSpec.gun.shells[0].count,
+}, {
+  name: 'MGM-51E TTS Shillelagh ATGM',
+  pen100Mm: 1050,
+  pen1000Mm: 1050,
+  dmg: 880,
+  velocityMps: 240.5,
+  guidanceTurnRateRadS: 0.98,
+  count: 18,
+}, 'TTS remains dedicated to a substantially upgraded guided missile channel');
+assert.equal(garageStatGroup(ttsSpec), '10/next-generation');
+for (const sector of [
+  'm551a1_tts_glacis_era', 'm551a1_tts_hull_era_R', 'm551a1_tts_hull_era_L',
+  'm551a1_tts_turret_era_R', 'm551a1_tts_turret_era_L', 'm551a1_tts_turret_roof_era',
+]) {
+  assert.ok([...ttsSpec.armor.hullPlates, ...ttsSpec.armor.turretPlates]
+    .some((plate) => plate.name === sector && plate.kind === 'era'),
+  `${sector} is backed by damageable gameplay ERA`);
+}
 
 const missile = createShell(
   spec.gun.shells[0], spec.id, true,
@@ -36,6 +136,7 @@ const tank = createTank(spec.id, null, {
   camoSeed: 4242,
   geometryReceipt: true,
 });
+let baseRunningGearContract;
 try {
   const hull = tank.root.getObjectByName('rig_hull');
   assert.deepEqual(hull?.userData.sheridanReceipt, {
@@ -48,20 +149,46 @@ try {
     rearFuelCenterZ: -3.12,
     backgroundTrackPanels: 0,
     endWheelScale: 1.25,
+    returnRollersPerSide: 3,
+    returnRollerProfile: [
+      { z: 1.45, y: 0.926, r: 0.095 },
+      { z: 0, y: 0.945, r: 0.095 },
+      { z: -1.45, y: 0.964, r: 0.095 },
+    ],
     roadWheelFaceProfile: 'stepped-noncoplanar-v2',
     commanderAmmoBoxClosed: true,
     turretRoofClosed: true,
-    mantletProfile: 'faceted-chevron-flat-backed-m81',
-    mantletSideChevron: true,
-    mantletStraightRidge: true,
-    mantletRidgeWidth: 1.03,
+    mantletProfile: 'faceted-forward-trapezoid-integrated-m81',
+    mantletSideTrapezoid: true,
+    mantletForwardFace: true,
+    mantletIntegratedReceiver: true,
+    mantletFrontWidth: 0.97,
+    mantletFrontHeight: 0.22,
     hullCreaseDeg: 16,
     turretCreaseDeg: 13,
   });
 
   const gear = hull.userData.runningGearReceipts?.at(-1);
+  baseRunningGearContract = {
+    wheelZs: gear.wheelZs,
+    wheelR: gear.wheelR,
+    wheelY: gear.wheelY,
+    sprocket: gear.sprocket,
+    idler: gear.idler,
+    xcLeft: gear.xcLeft,
+    xcRight: gear.xcRight,
+    trackW: gear.trackW,
+    trackTh: gear.trackTh,
+    botY: gear.botY,
+    topY: gear.topY,
+    loopPoints: gear.loopPoints,
+    loopLengthM: gear.loopLengthM,
+    shoeCountPerSide: gear.shoeCountPerSide,
+    shoePitchM: gear.shoePitchM,
+  };
   assert.equal(gear?.wheelZs.length, 5, 'five road wheels are authored per side');
-  assert.equal(gear?.shoeCountPerSide, 89, 'track links fully close the enlarged end-wheel course');
+  assert.equal(gear?.shoeCountPerSide, 88,
+    'track links fully close the enlarged, return-roller-supported course');
   assert.equal(gear?.sprocket.r, 0.305, 'rear sprocket is exactly 25% larger');
   assert.equal(gear?.idler.r, 0.2375, 'front idler is exactly 25% larger');
   assert.ok(gear?.shoePadCoverageRatio >= 0.90, 'track shoes retain full-width pad coverage');
@@ -76,6 +203,23 @@ try {
   };
   assert.ok(turnDeg(gear.loopPoints.at(-1), gear.loopPoints[0], gear.loopPoints[1]) < 10,
     'rear wrap closes through a smooth tangent instead of a pointed vertex');
+
+  const returnRollers = tank.root.getObjectByName('gearReturnRollerTires');
+  const returnRollerDiscs = tank.root.getObjectByName('gearReturnRollerDiscs');
+  assert.equal(returnRollers?.count, 6, 'three return rollers support each Sheridan track');
+  assert.equal(returnRollerDiscs?.count, 6, 'every return roller retains a separate wheel face');
+  const rollerMatrix = new THREE.Matrix4();
+  const rollerPosition = new THREE.Vector3();
+  const rightRollerStations = [];
+  for (let index = 0; index < returnRollers.count; index++) {
+    returnRollers.getMatrixAt(index, rollerMatrix);
+    rollerPosition.setFromMatrixPosition(rollerMatrix);
+    if (rollerPosition.x > 0) rightRollerStations.push([
+      Number(rollerPosition.z.toFixed(3)), Number(rollerPosition.y.toFixed(3)),
+    ]);
+  }
+  assert.deepEqual(rightRollerStations, [[1.45, 0.926], [0, 0.945], [-1.45, 0.964]],
+    'return roller crowns rise smoothly toward the rear sprocket tangent');
 
   assert.ok(tank.root.getObjectByName('sheridanCommanderM2AmmoBox'),
     'the commander M2 rack contains a closed ammunition box');
@@ -102,14 +246,17 @@ try {
     }
     return false;
   };
-  assert.ok(hasGunVertex(-0.5112, 0.0186, 0.86)
-    && hasGunVertex(0.5188, 0.0186, 0.86),
-  'M81 upper and lower skins meet across one straight forward ridge');
-  assert.equal(hasGunVertex(0.0038, 0.2836, 0.86), false,
-    'M81 ridge has no separated upper ledge or intervening front band');
+  assert.ok(hasGunVertex(-0.4812, -0.0914, 0.86)
+    && hasGunVertex(0.4888, 0.1286, 0.86),
+  'M81 mantlet terminates in a finite forward face instead of a point ridge');
+  assert.equal(hasGunVertex(0.5188, 0.0186, 0.86), false,
+    'M81 side no longer converges into the old triangular ridge vertex');
   assert.ok(hasGunVertex(-0.5112, -0.2464, 0.18)
     && hasGunVertex(0.5188, 0.2836, 0.18),
   'M81 mantlet keeps a broad planar rear attachment face');
+  assert.ok(hasGunVertex(-0.49, -0.24, 0.48)
+    && hasGunVertex(0.45, 0.24, 0.48),
+  'marked turret receiver is transformed into and merged with the gun-owned mantlet');
 
   const era = tank.root.userData.eraFinishReceipt;
   assert.equal(era?.camoProjection, 'vehicle-scale-box-uv');
@@ -131,4 +278,76 @@ try {
   tank.dispose();
 }
 
-console.log('sheridan.selftest: Tier X missile channel, five-wheel track course, layered ERA and dual MG verified');
+const ttsTank = createTank(ttsSpec.id, null, {
+  proceduralOnly: true,
+  quality: 'high',
+  camoSeed: 4242,
+  geometryReceipt: true,
+});
+try {
+  const hull = ttsTank.root.getObjectByName('rig_hull');
+  const receipt = hull?.userData.sheridanReceipt;
+  assert.equal(receipt?.roadWheelsPerSide, 5);
+  assert.equal(receipt?.roofMachineGuns, 1,
+    'the exposed commander M2 is removed while the loader weapon remains');
+  assert.equal(receipt?.rearFuelDrums, 0,
+    'the TTS engine-deck extension replaces the donor rear drum cradle');
+  assert.deepEqual(receipt?.ttsUpgrade, {
+    rearDeckEndZ: -3.62,
+    runningGearReused: true,
+    remoteAutocannonCaliberMm: 30,
+    largeGunRightSearchlight: true,
+    additionalEraCassettes: 56,
+    rearFuelDrums: 0,
+  });
+
+  const gear = hull.userData.runningGearReceipts?.at(-1);
+  const ttsRunningGearContract = {
+    wheelZs: gear.wheelZs,
+    wheelR: gear.wheelR,
+    wheelY: gear.wheelY,
+    sprocket: gear.sprocket,
+    idler: gear.idler,
+    xcLeft: gear.xcLeft,
+    xcRight: gear.xcRight,
+    trackW: gear.trackW,
+    trackTh: gear.trackTh,
+    botY: gear.botY,
+    topY: gear.topY,
+    loopPoints: gear.loopPoints,
+    loopLengthM: gear.loopLengthM,
+    shoeCountPerSide: gear.shoeCountPerSide,
+    shoePitchM: gear.shoePitchM,
+  };
+  assert.deepEqual(ttsRunningGearContract, baseRunningGearContract,
+    'M551A1 TTS reuses the Sheridan wheels and complete closed track loop exactly');
+
+  assert.ok(ttsTank.root.getObjectByName('m551a1TtsAutocannonMechanism'));
+  assert.ok(ttsTank.root.getObjectByName('turretEquipment'),
+    'remote-station armor is merged into the vehicle-scale camouflage bucket');
+  assert.ok(ttsTank.root.getObjectByName('turretGlass'),
+    'remote-station apertures are merged into the canonical optics bucket');
+  assert.equal(ttsTank.root.getObjectByName('sheridanCommanderM2AmmoBox'), undefined,
+    'the manned commander M2 and ammunition rack do not survive inside the TTS station');
+  const fittings = [];
+  ttsTank.root.traverse((object) => {
+    if (object.userData?.fittingRoot) fittings.push(object.userData.fitting);
+  });
+  assert.equal(fittings.filter((kind) => kind === 'pintleMG').length, 2,
+    'TTS has one retained loader gun plus one exact remote autocannon fitting');
+
+  const era = ttsTank.root.userData.eraFinishReceipt;
+  assert.equal(era?.camoProjection, 'vehicle-scale-box-uv');
+  assert.equal(era?.bodyAndCoverUseVehiclePaint, true);
+  assert.equal(era?.layeredCassettes, 94);
+  assert.deepEqual(new Set(era?.gameplaySectors), new Set([
+    'sheridan_glacis_era', 'sheridan_skirt_era_L', 'sheridan_skirt_era_R',
+    'sheridan_turret_era_L', 'sheridan_turret_era_R',
+    'm551a1_tts_glacis_era', 'm551a1_tts_hull_era_L', 'm551a1_tts_hull_era_R',
+    'm551a1_tts_turret_era_L', 'm551a1_tts_turret_era_R', 'm551a1_tts_turret_roof_era',
+  ]));
+} finally {
+  ttsTank.dispose();
+}
+
+console.log('sheridan.selftest: Tier IX base and Tier X TTS missile/geometry contracts verified');

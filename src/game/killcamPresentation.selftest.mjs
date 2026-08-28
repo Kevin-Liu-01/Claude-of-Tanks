@@ -63,10 +63,10 @@ assert.match(source, /replayKind: 'collision'[\s\S]*trajPts: null/,
   'collision deaths use an explicit replay type with no projectile trajectory');
 assert.match(source, /if \(pb\.replayKind === 'collision'\)[\s\S]*beginCollision\(\);[\s\S]*return;[\s\S]*const raw = snap\.trajPts/,
   'collision playback exits before any tracer geometry can be allocated');
-assert.match(source, /function beginFiring\(\)[\s\S]*restageAttacker\(\)[\s\S]*recoilKick\([\s\S]*muzzleFlash\(/,
+assert.match(source, /function beginFiring\(stagedHold = false\)[\s\S]*restageAttacker\(\)[\s\S]*recoilKick\([\s\S]*muzzleFlash\(/,
   'projectile playback visibly fires the restored attacker from its rendered muzzle');
-assert.match(source, /function beginApproach\(\)[\s\S]*restageIntact\(\);[\s\S]*restageAttacker\(\);[\s\S]*firingCameraPose/,
-  'the attacker is restored before the establishing camera computes or paints its destination');
+assert.match(source, /function beginApproach\(\)[\s\S]*restageIntact\(\);[\s\S]*restageAttacker\(\);[\s\S]*flightStartPose/,
+  'the attacker is restored before the establishing camera lands on the projectile chase pose');
 assert.match(source, /function updateApproach\(dt\)[\s\S]*pinAttackerAtFiringPose\(0\)/,
   'every approach frame pins the attacker to its recorded firing pose');
 assert.match(source, /function pinAttackerAtFiringPose[\s\S]*setVisible\(true\)[\s\S]*syncFromState\(pb\.attackerPoseState/,
@@ -79,8 +79,16 @@ assert.match(source, /const gameRef = \(\) => \{[\s\S]*getGame \? getGame\(\) : 
   'spectator target selection uses the injected game-state getter');
 assert.match(source, /function beginCameraHandoff[\s\S]*function setReplayCamera/,
   'killcam owns a continuous phase-to-phase camera handoff');
-assert.match(source, /beginCameraHandoff\(\);[\s\S]*pb\.phase = 'flight';[\s\S]*setReplayCamera\(_a, _b, 50 - 8 \* k, dt\)/,
-  'attacker firing blends continuously into the projectile chase');
+assert.match(source, /function beginFiring\(stagedHold = false\)[\s\S]*if \(stagedHold\) updateFiring\(0\);[\s\S]*else beginShotFlight\(\);/,
+  'live playback starts projectile motion on the same frame as the gun event');
+assert.match(source, /function beginShotFlight\(\)[\s\S]*beginCameraHandoff\(SHOT_ACQUIRE_S\);[\s\S]*pb\.phase = 'flight';[\s\S]*updateFlight\(0\);/,
+  'the projectile chase accelerates continuously from the painted launch frame');
+assert.match(source, /function flightStartPose\(outPos, outLook\)[\s\S]*firingCameraPose\(outPos, outLook\)/,
+  'the approach and first flight frame retain a readable rear-quarter shooter composition');
+assert.match(source, /function updateFlight\(dt\)[\s\S]*pb\.t <= SHOT_ACQUIRE_S[\s\S]*pinAttackerAtFiringPose\(dt\)/,
+  'the restored shooter remains visible and animates recoil through chase acquisition');
+assert.match(source, /function beginApproach\(\)[\s\S]*flightStartPose\(toPos, toLook\)[\s\S]*SHOT_TRACK_FOV/,
+  'approach position, target, and lens exactly match the launch frame');
 assert.match(source, /function beginXray\(\) \{[\s\S]*beginCameraHandoff\(\)[\s\S]*setReplayCamera\(pb\.xcam\.pos, pb\.xcam\.look, 42, 0\)/,
   'collision, direct-analysis, and skipped paths blend into the x-ray camera');
 assert.doesNotMatch(source, /body\.cot-kc-live \.cot-hud\{display:none/,

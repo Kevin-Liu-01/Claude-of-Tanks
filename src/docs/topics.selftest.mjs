@@ -15,6 +15,8 @@ assert.deepEqual([...TOPIC_ORDER], expected, 'the manual keeps one deliberate pu
 assert.deepEqual(Object.keys(topics).sort(), [...expected].sort(), 'every topic is present in navigation');
 
 const landing = readFileSync(join(ROOT, 'docs.html'), 'utf8');
+const docsCss = readFileSync(join(ROOT, 'src/docs/docs.css'), 'utf8');
+const topicsSource = readFileSync(join(ROOT, 'src/docs/topics.ts'), 'utf8');
 for (const id of TOPIC_ORDER) {
   const topic = topics[id];
   assert.ok(topic, `${id} has a topic definition`);
@@ -28,6 +30,10 @@ for (const id of TOPIC_ORDER) {
   assert.ok(existsSync(join(ROOT, `docs-${id}.html`)), `${id} has an independently indexed HTML entry`);
   assert.match(landing, new RegExp(`href="/docs/${id}"`), `${id} is discoverable from the manual index`);
 }
+
+assert.match(docsCss, /\.topic-nav \.shell\{display:grid;grid-template-columns:minmax\(120px,\.72fr\) repeat\(6,minmax\(0,1fr\)\)/, 'wide manuals expose every topic in a balanced two-row grid');
+assert.match(docsCss, /\.topic-nav \.shell\{display:flex;gap:1px;overflow-x:auto;[^}]*scrollbar-width:thin\}/, 'narrow manuals keep an explicit scrollable topic strip');
+assert.match(topicsSource, /navStrip\.scrollLeft = Math\.max\(0, activeTopic\.offsetLeft/, 'narrow manuals reveal their active topic without moving the page');
 
 const buildText = [topics.build.lede, ...topics.build.sections.flat()].join(' ');
 assert.match(buildText, /Claude Code and Codex/);

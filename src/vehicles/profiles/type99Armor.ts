@@ -8,9 +8,34 @@
 // so their collision geometry can follow each authored silhouette without
 // importing either render-heavy profile.
 
-const FY4 = Object.freeze({ keReduction: 0.22, ceFlatMm: 380 });
+import type {
+  ArmorEnvelope,
+  ArmorPlate,
+  CrewBox,
+  ModuleBox,
+  PlateOptions,
+  Vec3Tuple,
+} from '../specHelpers.ts';
 
-function armorPlate(name, physicalMm, verts, options = {}) {
+type MutableVec3 = [number, number, number];
+type Quad = [MutableVec3, MutableVec3, MutableVec3, MutableVec3];
+type YZPoint = readonly [number, number];
+type SideStation = readonly [number, number, number, number];
+type DeckStation = readonly [number, number, number];
+
+interface EraReduction {
+  readonly keReduction: number;
+  readonly ceFlatMm: number;
+}
+
+const FY4: EraReduction = Object.freeze({ keReduction: 0.22, ceFlatMm: 380 });
+
+function armorPlate(
+  name: string,
+  physicalMm: number,
+  verts: Quad,
+  options: PlateOptions = {},
+): ArmorPlate {
   return {
     name,
     verts,
@@ -25,7 +50,15 @@ function armorPlate(name, physicalMm, verts, options = {}) {
 }
 
 // +Z-facing planar quad. `bottom`/`top` are [y,z] profile points.
-function frontPlate(name, physicalMm, x0, x1, bottom, top, options) {
+function frontPlate(
+  name: string,
+  physicalMm: number,
+  x0: number,
+  x1: number,
+  bottom: YZPoint,
+  top: YZPoint,
+  options: PlateOptions = {},
+): ArmorPlate {
   return armorPlate(name, physicalMm, [
     [x0, bottom[0], bottom[1]], [x1, bottom[0], bottom[1]],
     [x1, top[0], top[1]], [x0, top[0], top[1]],
@@ -34,7 +67,13 @@ function frontPlate(name, physicalMm, x0, x1, bottom, top, options) {
 
 // Mirrored side plates from two profile stations [z, bottomY, topY, x].
 // The winding faces away from the hull on each side.
-function sidePlatePair(name, physicalMm, front, rear, options) {
+function sidePlatePair(
+  name: string,
+  physicalMm: number,
+  front: SideStation,
+  rear: SideStation,
+  options: PlateOptions = {},
+): [ArmorPlate, ArmorPlate] {
   const xf = front[3], xr = rear[3];
   return [
     armorPlate(`${name}_R`, physicalMm, [
@@ -49,14 +88,28 @@ function sidePlatePair(name, physicalMm, front, rear, options) {
 }
 
 // Upward-facing deck quad between [z, y, halfWidth] stations.
-function deckPlate(name, physicalMm, front, rear, options) {
+function deckPlate(
+  name: string,
+  physicalMm: number,
+  front: DeckStation,
+  rear: DeckStation,
+  options: PlateOptions = {},
+): ArmorPlate {
   return armorPlate(name, physicalMm, [
     [-front[2], front[1], front[0]], [front[2], front[1], front[0]],
     [rear[2], rear[1], rear[0]], [-rear[2], rear[1], rear[0]],
   ], options);
 }
 
-function rearPlate(name, physicalMm, halfWidth, z, bottomY, topY, options) {
+function rearPlate(
+  name: string,
+  physicalMm: number,
+  halfWidth: number,
+  z: number,
+  bottomY: number,
+  topY: number,
+  options: PlateOptions = {},
+): ArmorPlate {
   return armorPlate(name, physicalMm, [
     [halfWidth, bottomY, z], [-halfWidth, bottomY, z],
     [-halfWidth, topY, z], [halfWidth, topY, z],
@@ -67,23 +120,39 @@ function rearPlate(name, physicalMm, halfWidth, z, bottomY, topY, options) {
 // Combat quads must remain planar, so represent it as the same two triangles
 // the rendered slab uses. Repeating the final vertex keeps the existing
 // convex-quad trace contract while preserving the exact triangular face.
-function splitFace(name, physicalMm, [a, b, c, d], options, sharedName = true) {
+function splitFace(
+  name: string,
+  physicalMm: number,
+  [a, b, c, d]: Quad,
+  options: PlateOptions = {},
+  sharedName = true,
+): ArmorPlate[] {
   return [
     armorPlate(sharedName ? name : `${name}_A`, physicalMm, [a, b, c, c], options),
     armorPlate(sharedName ? name : `${name}_B`, physicalMm, [a, c, d, d], options),
   ];
 }
 
-function moduleBox(module, min, max, turretLocal = false) {
+function moduleBox(
+  module: string,
+  min: Vec3Tuple,
+  max: Vec3Tuple,
+  turretLocal = false,
+): ModuleBox {
   return { module, min, max, turretLocal };
 }
 
-function crewBox(crew, min, max, turretLocal = false) {
+function crewBox(
+  crew: string,
+  min: Vec3Tuple,
+  max: Vec3Tuple,
+  turretLocal = false,
+): CrewBox {
   return { crew, min, max, turretLocal };
 }
 
-function type99AArmor() {
-  const hullPlates = [
+function type99AArmor(): ArmorEnvelope {
+  const hullPlates: ArmorPlate[] = [
     // FY-4 is split at the centerline so one impact cannot spend both halves.
     frontPlate('glacis_era_L', 15, -1.34, 0, [1.215, 3.02], [1.50, 2.02],
       { kind: 'era', era: FY4 }),
@@ -143,7 +212,7 @@ function type99AArmor() {
     deckPlate('hull_roof_engine', 45, [-1.48, 1.78, 1.60], [-3.52, 1.78, 1.58]),
   ];
 
-  const turretPlates = [
+  const turretPlates: ArmorPlate[] = [
     // ERA follows the same swept cheek courses visible on the authored
     // welded shell instead of the former 0.8 m-deep rectangular cap.
     ...splitFace('turret_era_R', 15, [
@@ -207,8 +276,8 @@ function type99AArmor() {
   };
 }
 
-function ztz99A2Armor() {
-  const hullPlates = [
+function ztz99A2Armor(): ArmorEnvelope {
+  const hullPlates: ArmorPlate[] = [
     frontPlate('glacis_era_L', 15, -1.22, 0, [1.02, 3.42], [1.64, 1.35],
       { kind: 'era', era: FY4 }),
     frontPlate('glacis_era_R', 15, 0, 1.22, [1.02, 3.42], [1.64, 1.35],
@@ -262,7 +331,7 @@ function ztz99A2Armor() {
     deckPlate('hull_roof_rear', 45, [-2.05, 1.72, 1.66], [-4.05, 1.60, 1.62]),
   ];
 
-  const turretPlates = [
+  const turretPlates: ArmorPlate[] = [
     ...splitFace('turret_era_R', 15, [
       [0.20, 0.30, 1.60], [1.55, 0.08, 0.16],
       [1.14, 0.62, 0.10], [0.20, 0.82, 0.92],
@@ -324,7 +393,9 @@ function ztz99A2Armor() {
   };
 }
 
-export function createType99Armor(variant) {
+export function createType99Armor(
+  variant: 'type99a' | 'ztz99a2',
+): ArmorEnvelope {
   if (variant === 'type99a') return type99AArmor();
   if (variant === 'ztz99a2') return ztz99A2Armor();
   throw new Error(`Unknown Type 99 armor variant: ${variant}`);

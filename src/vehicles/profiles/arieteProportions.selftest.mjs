@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.js';
-import { vehicleMarkingAnchor } from '../vehicleMarkings.js';
+import { vehicleMarkingAnchor } from '../vehicleMarkings.ts';
 
 function countPanelCarrierFaces(mesh) {
   const position = mesh.geometry.getAttribute('position');

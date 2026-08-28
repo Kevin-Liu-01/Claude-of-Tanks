@@ -12,7 +12,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.js';
 import {
   INTERNAL_LAYOUT_BY_TANK,
   INTERNAL_LAYOUT_SOURCES,
-} from './internalLayoutRegistry.js';
+} from './internalLayoutRegistry.ts';
 
 const VEHICLE_SOURCE_ROOT = dirname(fileURLToPath(import.meta.url));
 const DIRECT_ARMOR_ADD = /P\.add\(\s*['"](?:hull|turret)['"]/;

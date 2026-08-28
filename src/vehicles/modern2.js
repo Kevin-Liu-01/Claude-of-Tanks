@@ -20,7 +20,7 @@ import { KIT } from './tankFactoryCore.js';
 // synchronous top-level createTank rigs.
 import { FITTINGS, muzzleBore } from './profiles/kit.js';
 import { buildM1A1BareHull } from './profiles/abrams.js';
-import { createType99Armor } from './profiles/type99Armor.js';
+import { createType99Armor } from './profiles/type99Armor.ts';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import {
   plate as par,

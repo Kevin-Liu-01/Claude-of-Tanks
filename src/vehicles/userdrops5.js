@@ -343,7 +343,7 @@ const SPECS = [
 // trunnion on the rendered line (armor frame: turretPivot [0, 1.4463,
 // 0.2287] + gunPivot = the world trunnion) and true the barrel run to the
 // rendered muzzle (5.9594 − 1.30 = 4.66 m). type90a structuredClones this
-// row in src/vehicles/japan.js and stays in lockstep. §5.361 rig-anchor
+// row in src/vehicles/japan.ts and stays in lockstep. §5.361 rig-anchor
 // law: pivots are authored data — this is the authored correction, never a
 // calibration remap.
 {

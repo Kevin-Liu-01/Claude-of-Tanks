@@ -121,7 +121,7 @@ published 2.14 p95-sovereign — resident-class cap).
 
 ## Wiring checklist (§5.287 — every consumer named)
 
-- `src/vehicles/sweden.js` — SWEDEN_IDS + SWEDEN_SPECS.strv103a
+- `src/vehicles/sweden.ts` — SWEDEN_IDS + SWEDEN_SPECS.strv103a
   (variant of strv103; class td; stats 1000 hp / 540 hp / 37.0 t /
   45 km/h; same L74 shells/reload; dims per published A)
 - `src/vehicles/profiles/sweden.js` — buildStrv103A + SWEDEN_PROFILES row
@@ -129,7 +129,7 @@ published 2.14 p95-sovereign — resident-class cap).
 - `src/vehicles/tier.ts` — strv103a: 8 (one below the B per the
   earlier-mark convention: centurion3/5, ariete/c1, t80/t80b)
 - `src/vehicles/tankLabels.ts` — "Strv 103A" + aliases
-- `src/vehicles/vehicleMarkings.js` — hull/left anchor (B is hull/right)
+- `src/vehicles/vehicleMarkings.ts` — hull/left anchor (B is hull/right)
 - `src/vehicles/fleetOrder.ts` — sweden family order strv81 → strv103a →
   strv103 → strv122
 - `src/vehicles/rosterPolicy.ts` — COLD_WAR_IDS + RETAINED_COLD_WAR_IDS

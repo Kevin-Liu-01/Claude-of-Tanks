@@ -3,6 +3,39 @@
 // diagnostics and the kill cam. Exact armour envelopes remain geometry-derived
 // in combatAnatomyCalibrations.js; classified dimensions are never invented.
 
+export interface InternalLayoutSource {
+  readonly title: string;
+  readonly url: string;
+  readonly kind: string;
+}
+
+export interface InternalCrewStation {
+  readonly role: string;
+  readonly frame: 'hull' | 'turret';
+  readonly station: string;
+}
+
+export interface InternalSystemPlacement {
+  readonly placement: string;
+  readonly form: string;
+}
+
+export interface InternalSystems {
+  readonly engine: InternalSystemPlacement;
+  readonly transmission: InternalSystemPlacement;
+  readonly optics: InternalSystemPlacement;
+  readonly ammoRack: InternalSystemPlacement;
+  readonly autoloader: InternalSystemPlacement | null;
+  readonly feedSystem: InternalSystemPlacement | null;
+  readonly missileRack: InternalSystemPlacement | null;
+}
+
+type InternalCrewTuple = readonly [
+  role: string,
+  frame: InternalCrewStation['frame'],
+  station: string,
+];
+
 export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
   bundeswehrLeopard: Object.freeze({
     title: 'Bundeswehr — Leopard 2 anatomy and equipment',
@@ -154,10 +187,26 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://roe.ru/production/land-forces/boevye-bronirovannye-mashiny/boevaya-mashina-podderzhki-tankov-bmpt/',
     kind: 'manufacturer',
   }),
-});
+} satisfies Record<string, InternalLayoutSource>);
 
-const crew = (...stations) => stations.map(([role, frame, station]) => ({ role, frame, station }));
-const systems = (overrides = {}) => ({
+type InternalLayoutSourceId = keyof typeof INTERNAL_LAYOUT_SOURCES;
+
+export interface InternalLayoutDefinition {
+  readonly confidence: string;
+  readonly sources: readonly InternalLayoutSourceId[];
+  readonly crew: readonly InternalCrewStation[];
+  readonly systems: InternalSystems;
+}
+
+export interface InternalLayoutRecord extends InternalLayoutDefinition {
+  readonly id: string;
+  readonly layoutKey: string;
+}
+
+const crew = (...stations: InternalCrewTuple[]): InternalCrewStation[] => (
+  stations.map(([role, frame, station]) => ({ role, frame, station }))
+);
+const systems = (overrides: Partial<InternalSystems> = {}): InternalSystems => ({
   engine: { placement: 'rear', form: 'dieselPowerpack' },
   transmission: { placement: 'rear', form: 'integratedFinalDrive' },
   optics: { placement: 'visibleSightStations', form: 'sightAndVisionBlocks' },
@@ -270,7 +319,7 @@ const LAYOUTS = Object.freeze({
   bmptThree: { confidence: 'platform-inferred', sources: ['roeBmpt'], crew: IFV_TWO_MAN_TURRET, systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
   fictionalAuto: { confidence: 'owner-directed', sources: [], crew: THREE_MAN_AUTO, systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   fictionalIfv: { confidence: 'owner-directed', sources: [], crew: IFV_TWO_MAN_TURRET, systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
-});
+} satisfies Record<string, InternalLayoutDefinition>);
 
 const IDS_BY_LAYOUT = Object.freeze({
   tigerI: ['tiger1'],
@@ -281,7 +330,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   pershingFive: ['m26_pershing', 'm45_patton', 'm46_patton', 'm47_patton'],
   westernManualHullAmmo: ['strv81', 'chieftain5', 'chieftain_mk10', 'k1a1', 'stb1', 'type74', 'amx40', 'type59', 'ztz85_iii', 'm60a1', 'amx30', 'amx30b2', 'm48', 'm60a2', 'vickers_mk1', 'centurion3', 'centurion5', 'm60a3'],
   arieteManual: ['ariete', 'ariete_c1', 'ariete_c2'],
-  westernTwoPart: ['challenger1', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger_3'],
+  westernTwoPart: ['challenger1', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger_3', 'challenger_3x'],
   leopard: ['leo1a5', 'leopard2_proto', 'leo2a4', 'leo2a4_otco', 'leo2a4m', 'leo2a5', 'leo2a6', 'leo2a6m', 'leo2_revolution', 'leo2a7v', 'strv122', 'leo2a6_ua'],
   abrams: ['m1a1', 'm1a2', 'm1a2_tusk', 'm1a2_legacy', 'm1a1ha', 'm1a2_sepv2', 'm1a2_sepv3', 'ua_m1a1'],
   merkava: ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b'],
@@ -291,7 +340,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   bustleAuto: ['k2', 'k2b', 'type90', 'type90a', 'type10', 'type10b', 'leclerc', 'leclerc_xlr', 'amx56'],
   fixedAuto: ['udes03', 'strv103a', 'strv103'],
   mbt70: ['mbt70'],
-  sheridan: ['m551_sheridan'],
+  sheridan: ['m551_sheridan', 'm551a1_tts'],
   armata: ['t14'],
   kf51: ['kf51', 'kf51b'],
   abramsX: ['abramsx'],
@@ -304,10 +353,13 @@ const IDS_BY_LAYOUT = Object.freeze({
   bmptThree: ['bmpt_terminator2'],
   fictionalAuto: ['carro45t', 'pl01', 'pl01_105'],
   fictionalIfv: ['upior'],
-});
+} satisfies Record<keyof typeof LAYOUTS, readonly string[]>);
 
-const entries = {};
-for (const [layoutKey, ids] of Object.entries(IDS_BY_LAYOUT)) {
+const entries: Record<string, InternalLayoutRecord> = {};
+for (const [layoutKey, ids] of Object.entries(IDS_BY_LAYOUT) as Array<[
+  keyof typeof IDS_BY_LAYOUT,
+  readonly string[],
+]>) {
   const layout = LAYOUTS[layoutKey];
   for (const id of ids) {
     if (entries[id]) throw new Error(`duplicate internal layout for ${id}`);
@@ -315,8 +367,10 @@ for (const [layoutKey, ids] of Object.entries(IDS_BY_LAYOUT)) {
   }
 }
 
-export const INTERNAL_LAYOUT_BY_TANK = Object.freeze(entries);
+export const INTERNAL_LAYOUT_BY_TANK: Readonly<Record<string, InternalLayoutRecord>> = (
+  Object.freeze(entries)
+);
 
-export function internalLayoutFor(id) {
+export function internalLayoutFor(id: string): InternalLayoutRecord | null {
   return INTERNAL_LAYOUT_BY_TANK[id] || null;
 }

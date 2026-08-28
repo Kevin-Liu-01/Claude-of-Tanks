@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {
   SURFACE_MARKING_STYLE, VEHICLE_MARKING_ANCHORS, vehicleMarkingAnchor,
   vehicleMarkingRecord, vehicleMarkingSeats,
-} from './vehicleMarkings.js';
+} from './vehicleMarkings.ts';
 
 const nations = ['USA', 'Germany', 'USSR', 'Russia', 'UK', 'France', 'China', 'Israel', 'Italy', 'Japan', 'Poland', 'South Korea', 'Sweden', 'Ukraine'];
 const records = nations.map((nation, index) => vehicleMarkingRecord({

@@ -52,5 +52,54 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "maximumSurfaceErrorM": 0.0087833
       }
     ]
+  },
+  "m551a1_tts": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.28,
+        "pos": [
+          -1.1930161,
+          0.4253775,
+          -0.3615784
+        ],
+        "quaternion": [
+          0.3545374,
+          -0.7112209,
+          0.2708098,
+          0.5432588
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0086098
+      },
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.22,
+        "pos": [
+          1.156,
+          0.414062,
+          -0.9806139
+        ],
+        "quaternion": [
+          0,
+          0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "m551a1_tts",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      }
+    ]
   }
 });

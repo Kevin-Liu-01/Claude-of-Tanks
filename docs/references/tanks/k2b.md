@@ -64,7 +64,7 @@ k2's oracle onto it). Bar for future fidelity rounds = photo class.
 2. `src/vehicles/korea.ts` — KOREA_IDS/KOREA_SPECS (typed variant
    machinery, South Korea), TANK_SPECS/MODEL_SOURCE/ALL_TANK_IDS
    registration.
-3. `src/vehicles/tankFactory.ts` — `import './korea.ts';` (after poland.js,
+3. `src/vehicles/tankFactory.ts` — `import './korea.ts';` (after poland.ts,
    before finalizeFirstPartyRoster, so the K2 donor rig exists first).
 4. `src/vehicles/profiledProcedurals.ts` — KOREA_PROFILES import + spread
    into PROCEDURAL_PROFILES (builder reaches BUILDERS via the standard
@@ -72,7 +72,7 @@ k2's oracle onto it). Bar for future fidelity rounds = photo class.
 5. `src/vehicles/tier.ts` — `k2b: 9` (k2's tier).
 6. `src/vehicles/tankLabels.ts` — LABEL_OVERRIDES row (displayName/shortName
    `K2B`, aliases `K2B Black Panther`, `Korean stealth K2`).
-7. `src/vehicles/vehicleMarkings.js` — `k2b: anchor('hull','left',0.44,
+7. `src/vehicles/vehicleMarkings.ts` — `k2b: anchor('hull','left',0.44,
    0.61,0.26,1)` (the old pl01's proven seat on the faceted hull-side
    panels — same geometry).
 

@@ -64,7 +64,7 @@ figure. The print is a self-consistent 3.98-wide-over-cage vehicle; the
 - Gun (from the baked tube, measurement only): tube rings to muzzle world
   7.18 at my anchor = rear cage -3.80 + overall 10.97 EXACT.
 
-## Spec decisions (src/vehicles/germany.js — silhouette* strip law applied)
+## Spec decisions (src/vehicles/germany.ts — silhouette* strip law applied)
 dims 7.72 / 10.97 / **3.98** (over-cage, print-verified) / **3.03**
 (published over-PERI; the PERI crown is authored 0.34 deep = 3+ side
 columns so the p95 heightM law lands ON it — whips excluded by the

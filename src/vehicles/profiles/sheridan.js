@@ -14,6 +14,11 @@ const SHERIDAN_HULL_CREASE_DEG = 16;
 const SHERIDAN_TURRET_CREASE_DEG = 13;
 const SHERIDAN_END_WHEEL_SCALE = 1.25;
 const SHERIDAN_REAR_FUEL_Z = -3.12;
+const SHERIDAN_RETURN_ROLLERS = Object.freeze([
+  Object.freeze({ z: 1.45, y: 0.926, r: 0.095 }),
+  Object.freeze({ z: 0.00, y: 0.945, r: 0.095 }),
+  Object.freeze({ z: -1.45, y: 0.964, r: 0.095 }),
+]);
 const SHERIDAN_TURRET_ROOF_PLAN = Object.freeze([
   [0.0619, -0.9573], [0.4054, -0.7439], [0.5562, -0.3040], [0.7030, 0.1371],
   [0.6089, 0.5674], [0.1998, 0.7885], [-0.2139, 0.7928], [-0.5984, 0.5314],
@@ -247,6 +252,50 @@ function measuredGunSidePlate(profile, minX, maxX) {
   return geometry;
 }
 
+// Closed M81 mantlet shell with a short forward face. The former mask ended
+// in a zero-height ridge, making each side a triangle. Keeping a reduced but
+// finite front height turns that side elevation into the requested trapezoid
+// while retaining the Sheridan's straight, faceted casting language.
+function forwardTrapezoidGunMask({
+  rearHalfWidth, rearHalfHeight, frontHalfWidth, frontHalfHeight, rearZ, frontZ,
+}) {
+  if (rearHalfWidth <= 0 || rearHalfHeight <= 0
+    || frontHalfWidth <= 0 || frontHalfHeight <= 0 || frontZ <= rearZ) {
+    throw new RangeError('forwardTrapezoidGunMask expects positive dimensions and a forward face');
+  }
+  const rear = [
+    [-rearHalfWidth, -rearHalfHeight, rearZ],
+    [rearHalfWidth, -rearHalfHeight, rearZ],
+    [rearHalfWidth, rearHalfHeight, rearZ],
+    [-rearHalfWidth, rearHalfHeight, rearZ],
+  ];
+  const front = [
+    [-frontHalfWidth, -frontHalfHeight, frontZ],
+    [frontHalfWidth, -frontHalfHeight, frontZ],
+    [frontHalfWidth, frontHalfHeight, frontZ],
+    [-frontHalfWidth, frontHalfHeight, frontZ],
+  ];
+  const positions = [];
+  const tri = (a, b, c) => positions.push(...a, ...b, ...c);
+  const quad = (a, b, c, d) => {
+    tri(a, b, c);
+    tri(a, c, d);
+  };
+  quad(rear[0], rear[3], rear[2], rear[1]);
+  quad(front[0], front[1], front[2], front[3]);
+  quad(rear[3], front[3], front[2], rear[2]);
+  quad(rear[0], rear[1], front[1], front[0]);
+  quad(rear[0], front[0], front[3], rear[3]);
+  quad(rear[1], rear[2], front[2], front[1]);
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(
+    new Array((positions.length / 3) * 2).fill(0), 2));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 // Build a cylinder on a measured 3D centerline. Three.js cylinders point up
 // local +Y; reference fittings such as Sheridan's smoke dischargers are both
 // pitched and splayed, so two Euler guesses cannot preserve their surveyed
@@ -413,6 +462,222 @@ function measuredCommanderM2(P) {
   return group;
 }
 
+// Purpose-built remote 30 mm station for the M551A1 TTS. This deliberately
+// does not reuse the AbramsX XM914 silhouette: a low hexagonal turntable,
+// split asymmetric shield, side ammunition coffin and separate sight head
+// give the Sheridan demonstrator its own compact airborne-vehicle solution.
+// The group remains one exact fitting for equipment census purposes.
+function sheridanTtsAutocannon(P) {
+  const group = new THREE.Group();
+  group.name = 'm551a1TtsRemoteAutocannon';
+  group.userData.remoteControlled = true;
+  group.userData.caliberMm = 30;
+
+  const body = [];
+  const dark = [];
+  const detail = [];
+  const glass = [];
+  const { box, cylX, cylY, cylZ, frustum, torus, xform, mergeAll } = KIT;
+
+  // Foundation is buried through the commander's roof ring so the station
+  // has a visible load path instead of hovering over the old manned mount.
+  body.push(xform(cylY(0.285, 0.335, 0.185, P.q ? 20 : 14), -0.49, 0.846, -0.43));
+  dark.push(xform(torus(0.275, 0.030, P.q ? 22 : 16), -0.49, 0.942, -0.43));
+  body.push(xform(frustum(0.31, 0.27, -0.28, 0.27, 0.24, -0.24, 0.93, 1.16),
+    -0.49, 0, -0.43));
+  dark.push(xform(cylX(0.085, 0.66, P.q ? 18 : 12), -0.49, 1.205, -0.28));
+
+  // Breech and recoil cradle. Angled cheek plates leave a service gap below
+  // the weapon while the top bridge joins both halves along a straight line.
+  body.push(xform(box(0.46, 0.25, 0.58), -0.49, 1.30, -0.06));
+  for (const side of [-1, 1]) {
+    body.push(xform(box(0.115, 0.49, 0.66), -0.49 + side * 0.285, 1.34, -0.06,
+      0, 0, side * 0.18));
+    dark.push(xform(box(0.040, 0.30, 0.48), -0.49 + side * 0.215, 1.31, -0.02));
+  }
+  body.push(xform(box(0.62, 0.09, 0.62), -0.49, 1.59, -0.06));
+  detail.push(xform(box(0.54, 0.025, 0.54), -0.49, 1.648, -0.06));
+
+  // 30 mm barrel, articulated sleeve and block muzzle all face vehicle +Z.
+  dark.push(xform(cylZ(0.055, 1.18, P.q ? 20 : 14), -0.49, 1.345, 0.80));
+  body.push(xform(cylZ(0.095, 0.28, P.q ? 20 : 14), -0.49, 1.345, 0.30));
+  dark.push(xform(cylZ(0.073, 0.12, P.q ? 18 : 12), -0.49, 1.345, 1.43));
+  dark.push(xform(cylZ(0.025, 0.020, P.q ? 14 : 10), -0.49, 1.345, 1.50));
+  for (const z of [0.45, 0.67, 0.89]) {
+    detail.push(xform(torus(0.064, 0.010, P.q ? 18 : 12), -0.49, 1.345, z));
+  }
+
+  // Asymmetric ammunition coffin and protected feed bridge distinguish the
+  // TTS station from the AbramsX's open feed-wheel architecture.
+  body.push(xform(box(0.36, 0.42, 0.54), -0.88, 1.34, -0.16, 0, -0.08, 0));
+  detail.push(xform(box(0.38, 0.035, 0.56), -0.88, 1.565, -0.16, 0, -0.08, 0));
+  dark.push(xform(box(0.16, 0.13, 0.28), -0.70, 1.42, 0.10, 0, -0.28, 0));
+  for (const y of [1.23, 1.43]) {
+    detail.push(xform(box(0.025, 0.025, 0.46), -1.07, y, -0.16, 0, -0.08, 0));
+  }
+
+  // Independent gun-right EO head with two apertures and a laser-warning
+  // crown. It is armored, but remains visibly separate from the feed box.
+  body.push(xform(box(0.28, 0.34, 0.30), -0.11, 1.43, -0.12, 0, 0.10, 0));
+  dark.push(xform(box(0.245, 0.27, 0.028), -0.095, 1.43, 0.045, 0, 0.10, 0));
+  glass.push(xform(box(0.095, 0.105, 0.024), -0.145, 1.48, 0.066, 0, 0.10, 0));
+  glass.push(xform(box(0.060, 0.060, 0.024), -0.035, 1.37, 0.075, 0, 0.10, 0));
+  detail.push(xform(cylY(0.045, 0.055, 0.085, P.q ? 14 : 10), -0.11, 1.645, -0.12));
+
+  // Painted armor and fittings must enter the normal profile buckets. Those
+  // buckets apply one vehicle-space box projection after merge; attaching the
+  // raw meshes directly to the articulated group would restart with white
+  // vertex colors and make the station look like an unpainted proxy.
+  P.addEquipment('turret', mergeAll(body));
+  P.add('turretDetail', mergeAll(detail));
+  P.add('turretGlass', mergeAll(glass));
+
+  const addMesh = (name, parts, material, appearanceRole) => {
+    const geometry = mergeAll(parts);
+    geometry.setAttribute('color', new THREE.BufferAttribute(
+      new Float32Array(geometry.attributes.position.count * 3).fill(1), 3));
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = name;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData.appearanceRole = appearanceRole;
+    group.add(mesh);
+  };
+  addMesh('m551a1TtsAutocannonMechanism', dark, P.mats.dark, 'machineGun');
+  FITTINGS.markExact(group, 'pintleMG');
+  return group;
+}
+
+function buildSheridanTtsUpgrade(P) {
+  const { box, cylY, cylZ, torus, xform } = KIT;
+
+  // The rear deck extension overlaps the original stern by 0.59 m and stays
+  // wholly above the unchanged sprocket/track course. Sparse straight
+  // stations retain the welded Sheridan language instead of rounding the
+  // extension into a generic engine pod.
+  P.add('hull', toCreasedNormals(measuredStationLoft([
+    { z: -3.62, points: [
+      [-1.18, 1.13], [1.18, 1.13], [1.30, 1.27], [1.22, 1.51],
+      [0.78, 1.60], [-0.78, 1.60], [-1.22, 1.51], [-1.30, 1.27],
+    ] },
+    { z: -3.28, points: [
+      [-1.22, 1.12], [1.22, 1.12], [1.34, 1.28], [1.29, 1.55],
+      [0.82, 1.64], [-0.82, 1.64], [-1.29, 1.55], [-1.34, 1.28],
+    ] },
+    { z: -2.55, points: [
+      [-1.22, 1.13], [1.22, 1.13], [1.38, 1.30], [1.32, 1.57],
+      [0.82, 1.65], [-0.82, 1.65], [-1.32, 1.57], [-1.38, 1.30],
+    ] },
+  ]), SHERIDAN_HULL_CREASE_DEG * D2R));
+
+  // Split grille banks, armored APU and electronics enclosures sit directly
+  // on the new deck. Their bases penetrate the 1.60 m crown by 20–35 mm.
+  for (const x of [-0.48, 0.15]) {
+    P.add('hullDark', box(0.52, 0.026, 0.72), x, 1.626, -3.08);
+    for (let index = 0; index < 7; index++) {
+      P.add('hullDetail', box(0.46, 0.020, 0.030), x, 1.644,
+        -3.36 + index * 0.09);
+    }
+  }
+  P.addEquipment('hull', box(0.48, 0.25, 0.62), 0.86, 1.72, -3.03, 0, -0.05, 0);
+  P.add('hullDark', box(0.43, 0.035, 0.57), 0.86, 1.858, -3.03, 0, -0.05, 0);
+  P.addEquipment('hull', box(0.40, 0.19, 0.42), -0.92, 1.69, -3.18, 0, 0.08, 0);
+  P.add('hullDetail', box(0.34, 0.025, 0.36), -0.92, 1.798, -3.18, 0, 0.08, 0);
+  for (const x of [-1.08, 0, 1.08]) {
+    P.add('hullDark', box(0.055, 0.22, 0.82), x, 1.54, -3.16, 0.05, 0, 0);
+  }
+
+  // Full-width upper-side applique and a second glacis course. These are
+  // damageable ERA sectors with the fleet-standard two-layer camouflaged
+  // cassette construction supplied by eraCluster.
+  P.eraCluster('m551a1_tts_glacis_era', (put) => {
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 6; col++) {
+        put((col - 2.5) * 0.40, 1.40 + row * 0.18, 2.38 - row * 0.37,
+          -25 * D2R, 0, 0, 1.28, 1.28, 0.64);
+      }
+    }
+  });
+  for (const side of [-1, 1]) {
+    P.addExternalArmor('hull', box(0.075, 0.24, 5.72), side * 1.435, 1.38, -0.28);
+    P.eraCluster(`m551a1_tts_hull_era_${side > 0 ? 'R' : 'L'}`, (put) => {
+      for (let index = 0; index < 12; index++) {
+        put(side * 1.475, 1.41, 2.24 - index * 0.48,
+          0, side * Math.PI / 2, 0, 1.32, 1.35, 0.62);
+      }
+    });
+  }
+
+  // Angular armored bustle and cheek shoulders establish the variant's new
+  // turret mass while overlapping the original cast shell on every seam.
+  P.add('turret', box(2.30, 0.58, 0.96), 0, 0.48, -1.31);
+  P.add('turret', box(1.86, 0.22, 0.82), 0, 0.83, -1.26, -0.05, 0, 0);
+  for (const side of [-1, 1]) {
+    P.add('turret', box(0.26, 0.58, 1.22), side * 1.13, 0.45, 0.58,
+      0, -side * 0.28, 0);
+    P.addExternalArmor('turret', box(0.13, 0.50, 1.18), side * 1.27, 0.48, 0.52,
+      0, -side * 0.28, 0);
+    P.eraCluster(`m551a1_tts_turret_era_${side > 0 ? 'R' : 'L'}`, (put) => {
+      for (let index = 0; index < 6; index++) {
+        put(side * (1.29 - index * 0.075), 1.92 + index * 0.018,
+          0.18 + index * 0.22, 0, side * (1.22 - index * 0.11), 0,
+          1.10, 1.40, 0.72);
+      }
+    }, true);
+  }
+  P.eraCluster('m551a1_tts_turret_roof_era', (put) => {
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 4; col++) {
+        put((col - 1.5) * 0.40, 2.292, 0.50 - row * 0.42,
+          -Math.PI / 2, 0, 0, 1.25, 1.25, 0.55);
+      }
+    }
+  }, true);
+
+  // Large protected searchlight to gun-right, as in the supplied silhouette.
+  // A deep bracket crosses into the cheek; the lens is proud of the housing.
+  P.addEquipment('turret', box(0.48, 0.54, 0.40), 0.66, 0.56, 1.32, 0, -0.04, 0);
+  P.add('turretDark', box(0.43, 0.49, 0.035), 0.66, 0.56, 1.535, 0, -0.04, 0);
+  P.addModuleVisual('optics', 'turretGlass', box(0.35, 0.40, 0.026),
+    0.66, 0.56, 1.558, 0, -0.04, 0);
+  P.add('turretDetail', box(0.14, 0.20, 0.46), 0.39, 0.41, 1.23, 0, -0.22, 0);
+  for (const side of [-1, 1]) {
+    P.add('turretDark', cylY(0.035, 0.035, 0.64, P.q ? 14 : 10),
+      0.66 + side * 0.27, 0.56, 1.34);
+  }
+
+  // Additional armored lamp emplacements, laser-warning nodes and roof
+  // electronics reinforce the high-technology TTS read without changing the
+  // underlying running gear.
+  for (const side of [-1, 1]) {
+    P.addEquipment('hull', box(0.32, 0.22, 0.25), side * 1.02, 1.38, 2.52,
+      -0.14, 0, 0);
+    P.add('hullDark', box(0.27, 0.17, 0.025), side * 1.02, 1.39, 2.66,
+      -0.14, 0, 0);
+    P.add('hullGlass', box(0.19, 0.10, 0.020), side * 1.02, 1.40, 2.678,
+      -0.14, 0, 0);
+    P.addEquipment('turret', xform(cylY(0.075, 0.090, 0.15, P.q ? 16 : 10),
+      0, 0, 0, 0, 0, 0), side * 0.82, 0.90, -0.72);
+    P.add('turretGlass', box(0.11, 0.07, 0.020), side * 0.82, 0.92, -0.63);
+  }
+  P.addEquipment('turret', box(0.46, 0.26, 0.46), 0.44, 0.99, -0.52, 0, 0.10, 0);
+  P.add('turretGlass', box(0.28, 0.13, 0.025), 0.44, 1.01, -0.275, 0, 0.10, 0);
+  P.add('turretDark', cylY(0.050, 0.070, 0.50, P.q ? 16 : 10),
+    -0.96, 1.10, -1.48);
+  P.add('turretDetail', cylY(0.014, 0.014, 1.42, P.q ? 12 : 8),
+    -0.96, 2.04, -1.48);
+
+  P.turretG.add(sheridanTtsAutocannon(P));
+  return {
+    rearDeckEndZ: -3.62,
+    runningGearReused: true,
+    remoteAutocannonCaliberMm: 30,
+    largeGunRightSearchlight: true,
+    additionalEraCassettes: 56,
+    rearFuelDrums: 0,
+  };
+}
+
 const hullSection = (bottomHalf, bottomY, beltHalf, beltY, sideHalf, sideY, roofHalf, roofY) => [
   [-roofHalf, roofY], [-sideHalf, sideY], [-beltHalf, beltY], [-bottomHalf, bottomY],
   [bottomHalf, bottomY], [beltHalf, beltY], [sideHalf, sideY], [roofHalf, roofY],
@@ -420,9 +685,10 @@ const hullSection = (bottomHalf, bottomY, beltHalf, beltY, sideHalf, sideY, roof
 
 function buildSheridan(P) {
   const {
-    xform, box, cylX, cylY, cylZ, sph, torus, frustum, straightRidgeGunMask,
+    xform, box, cylX, cylY, cylZ, sph, torus, frustum,
     buildRunningGear, fenders, headlight, liftEye, periscope,
   } = KIT;
+  const isTts = P.spec.id === 'm551a1_tts';
 
   // Amphibious aluminum hull rebuilt from eleven source-derived convex
   // transverse sections. The lower courses form a deliberate recessed track
@@ -566,7 +832,11 @@ function buildSheridan(P) {
     // 110 mm proxy circle.
     sprocket: { z: -2.440, y: 0.767, r: 0.244 * SHERIDAN_END_WHEEL_SCALE },
     idler: { z: 2.886, y: 0.764, r: 0.190 * SHERIDAN_END_WHEEL_SCALE },
-    rollers: [],
+    // Three compact return rollers follow the slight rise toward the rear
+    // drive wheel. Their crowns land on the terminal-wheel tangent, so the
+    // newly supported top course remains continuous rather than zig-zagging.
+    rollerR: 0.095,
+    rollers: SHERIDAN_RETURN_ROLLERS.map((roller) => ({ ...roller })),
     trackW: 0.48,
     trackTh: 0.085,
     topY: 0.86,
@@ -637,24 +907,26 @@ function buildSheridan(P) {
     P.add('hullDetail', torus(0.10, 0.022, 12), side * 0.76, 0.73, 2.91, Math.PI / 2, 0, 0);
   }
 
-  // Twin giant rear fuel drums: move the cylinders aft of the sloped rear
-  // plate and bridge them back to it with a real cradle. The old Z=-2.59 m
-  // centers buried most of each drum inside the hull shell.
-  P.add('hullDetail', box(2.25, 0.06, 0.16), 0, 1.42, -2.91);
-  for (const x of [-0.58, 0.58]) {
-    P.addEquipment('hull', cylX(0.29, 0.96, P.q ? 22 : 14),
-      x, 1.58, SHERIDAN_REAR_FUEL_Z);
-    P.add('hullDark', cylX(0.298, 0.055, P.q ? 22 : 14),
-      x - 0.28, 1.58, SHERIDAN_REAR_FUEL_Z);
-    P.add('hullDark', cylX(0.298, 0.055, P.q ? 22 : 14),
-      x + 0.28, 1.58, SHERIDAN_REAR_FUEL_Z);
-    // Lower saddle and upper tie meet the cylinder skin and terminate in the
-    // rear armor instead of merely sharing its volume.
-    P.add('hullDetail', box(0.08, 0.34, 0.34), x, 1.45, -2.98, -0.26, 0, 0);
-    P.add('hullDark', box(0.07, 0.13, 0.30), x, 1.72, -2.96, 0.42, 0, 0);
-  }
-  for (const x of [-1.08, 0, 1.08]) {
-    P.add('hullDark', box(0.055, 0.42, 0.30), x, 1.54, -2.96, -0.20, 0, 0);
+  if (!isTts) {
+    // Twin giant rear fuel drums: move the cylinders aft of the sloped rear
+    // plate and bridge them back to it with a real cradle. The old Z=-2.59 m
+    // centers buried most of each drum inside the hull shell.
+    P.add('hullDetail', box(2.25, 0.06, 0.16), 0, 1.42, -2.91);
+    for (const x of [-0.58, 0.58]) {
+      P.addEquipment('hull', cylX(0.29, 0.96, P.q ? 22 : 14),
+        x, 1.58, SHERIDAN_REAR_FUEL_Z);
+      P.add('hullDark', cylX(0.298, 0.055, P.q ? 22 : 14),
+        x - 0.28, 1.58, SHERIDAN_REAR_FUEL_Z);
+      P.add('hullDark', cylX(0.298, 0.055, P.q ? 22 : 14),
+        x + 0.28, 1.58, SHERIDAN_REAR_FUEL_Z);
+      // Lower saddle and upper tie meet the cylinder skin and terminate in the
+      // rear armor instead of merely sharing its volume.
+      P.add('hullDetail', box(0.08, 0.34, 0.34), x, 1.45, -2.98, -0.26, 0, 0);
+      P.add('hullDark', box(0.07, 0.13, 0.30), x, 1.72, -2.96, 0.42, 0, 0);
+    }
+    for (const x of [-1.08, 0, 1.08]) {
+      P.add('hullDark', box(0.055, 0.42, 0.30), x, 1.54, -2.96, -0.20, 0, 0);
+    }
   }
 
   // Low asymmetric cast turret. These are 24 equal-perimeter samples from
@@ -841,23 +1113,25 @@ function buildSheridan(P) {
     P.addEquipment('turret', box(w, h, d), x, y, z, 0, yaw, 0);
   }
 
-  // Exact connected-component reconstruction of the M81 gun assembly. A
-  // turret-fixed receiver plate gives the mantlet a broad flat attachment
-  // face, while the gun-owned outer casting uses straight chamfered planes.
-  // The two solids overlap inside the turret nose so elevation can never
-  // reveal a floating collar or a daylight gap.
-  P.add('turret', frustum(
+  // Exact connected-component reconstruction of the M81 gun assembly. Move
+  // the marked front receiver out of the turret bucket and into gunMount in
+  // gun-pivot coordinates (turret-local pivot Y=.44, Z=1.10). It now pitches
+  // with the mantlet instead of remaining behind as a disconnected triangle.
+  P.addGunExtra(frustum(
     0.49, 1.58, 1.39,
     0.45, 1.58, 1.40,
     0.20, 0.68,
-  ));
+  ), 0, -0.44, -1.10);
+  // A recessed stationary seal remains inside the opening and is fully
+  // overlapped by the articulated receiver at neutral and elevated poses.
   P.add('turretDark', box(0.70, 0.32, 0.026), 0, 0.44, 1.585);
-  P.addGunExtra(straightRidgeGunMask({
+  P.addGunExtra(forwardTrapezoidGunMask({
     rearHalfWidth: 0.515,
     rearHalfHeight: 0.265,
-    ridgeHalfWidth: 0.515,
+    frontHalfWidth: 0.485,
+    frontHalfHeight: 0.110,
     rearZ: 0.18,
-    ridgeZ: 0.86,
+    frontZ: 0.86,
   }), 0.0038, 0.0186, 0);
   // The M81's articulated geometry continues through the turret to the
   // breech. Object_16 separates this hidden run into three nearly circular
@@ -1051,9 +1325,9 @@ function buildSheridan(P) {
         0, 0, 0, 0, 0, 0, [1, 1, 1.271]),
         station.x, 0.7720, station.z);
     }
-    if (station.mg === 'm2') {
+    if (station.mg === 'm2' && !isTts) {
       P.turretG.add(measuredCommanderM2(P));
-    } else {
+    } else if (station.mg !== 'm2') {
       const mg = FITTINGS.pintleMG({
         mats: P.mats,
         cls: station.mg,
@@ -1155,6 +1429,8 @@ function buildSheridan(P) {
     }
   }
 
+  const ttsReceipt = isTts ? buildSheridanTtsUpgrade(P) : null;
+
   // Keep both unit insignia and tactical numbers on clean, mirrored side
   // surfaces so neither the skirt ERA nor the asymmetric roof weapons can
   // hide the production marking seats.
@@ -1175,25 +1451,31 @@ function buildSheridan(P) {
       roadWheelsPerSide: 5,
       missileOnly: true,
       layeredEraSectors: 5,
-      roofMachineGuns: 2,
-      rearFuelDrums: 2,
-      fuelDrumSupportRails: 3,
-      rearFuelCenterZ: SHERIDAN_REAR_FUEL_Z,
+      roofMachineGuns: isTts ? 1 : 2,
+      rearFuelDrums: isTts ? 0 : 2,
+      fuelDrumSupportRails: isTts ? 0 : 3,
+      rearFuelCenterZ: isTts ? null : SHERIDAN_REAR_FUEL_Z,
       backgroundTrackPanels: 0,
       endWheelScale: SHERIDAN_END_WHEEL_SCALE,
+      returnRollersPerSide: SHERIDAN_RETURN_ROLLERS.length,
+      returnRollerProfile: SHERIDAN_RETURN_ROLLERS.map(({ z, y, r }) => ({ z, y, r })),
       roadWheelFaceProfile: 'stepped-noncoplanar-v2',
       commanderAmmoBoxClosed: true,
       turretRoofClosed: true,
-      mantletProfile: 'faceted-chevron-flat-backed-m81',
-      mantletSideChevron: true,
-      mantletStraightRidge: true,
-      mantletRidgeWidth: 1.03,
+      mantletProfile: 'faceted-forward-trapezoid-integrated-m81',
+      mantletSideTrapezoid: true,
+      mantletForwardFace: true,
+      mantletIntegratedReceiver: true,
+      mantletFrontWidth: 0.97,
+      mantletFrontHeight: 0.22,
       hullCreaseDeg: SHERIDAN_HULL_CREASE_DEG,
       turretCreaseDeg: SHERIDAN_TURRET_CREASE_DEG,
+      ...(isTts ? { ttsUpgrade: ttsReceipt } : {}),
     };
   }
 }
 
 export const SHERIDAN_PROFILES = Object.freeze({
   m551_sheridan: Object.freeze({ build: buildSheridan }),
+  m551a1_tts: Object.freeze({ build: buildSheridan }),
 });

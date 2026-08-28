@@ -137,7 +137,7 @@ REMOVAL CHECKLIST (§5.287 wiring law in reverse — every registration):
   the id — registered-but-tierless and tiered-but-unregistered both
   covered; 114 tanks).
 - src/vehicles/tankLabels.ts: label block removed.
-- src/vehicles/vehicleMarkings.js: anchor row removed, comment updated.
+- src/vehicles/vehicleMarkings.ts: anchor row removed, comment updated.
 - tools/procedural-fidelity.html + tools/visual-evaluator-page.html +
   tools/tmp-tank-critic.html: REG rows removed.
 - tools/vertex-extract.mjs: REG row (8 lines) removed.

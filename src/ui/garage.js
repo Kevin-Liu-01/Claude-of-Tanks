@@ -282,13 +282,27 @@ export function createGarage(opts) {
     `<span class="choice-name">Endless Horde</span><small>Waves</small></button>` +
     `</div><button class="cot-room-reminder" type="button" aria-label="Open active room">` +
     `<span class="rr-dot"></span><span class="rr-copy"></span></button></div>` +
-    `<div class="cot-garage-tools" role="toolbar" aria-label="Garage panels">` +
-    `<button class="cot-garage-tool" type="button" data-garage-panel="maps" aria-expanded="false" ` +
-    `aria-controls="cot-garage-maps">${uiIconSVG('map', 17)}<span>Battlefields</span></button>` +
-    `<button class="cot-garage-tool" type="button" data-garage-panel="appearance" aria-expanded="false" ` +
-    `aria-controls="cot-garage-camos">${uiIconSVG('camouflage', 17)}<span>Appearance</span></button>` +
-    `<button class="cot-garage-tool" type="button" data-garage-panel="dossier" aria-expanded="false" ` +
-    `aria-controls="cot-garage-dossier">${uiIconSVG('battleRecord', 17)}<span>Dossier</span></button></div>` +
+    `<div class="cot-garage-tools">` +
+    `<button class="cot-garage-tools-trigger" type="button" aria-haspopup="menu" aria-expanded="false" ` +
+    `aria-controls="cot-garage-tools-menu" aria-label="Open garage setup">` +
+    `<span class="cot-garage-tools-icon">${uiIconSVG('garage', 18)}</span>` +
+    `<span class="cot-garage-tools-copy"><strong>Garage setup</strong>` +
+    `<small>Map · paint · dossier</small></span>` +
+    `<span class="cot-garage-tools-disclosure">${uiIconSVG('chevronRight', 12)}</span></button>` +
+    `<div class="cot-garage-tools-menu" id="cot-garage-tools-menu" role="menu" ` +
+    `aria-label="Garage setup" hidden>` +
+    `<button class="cot-garage-tool" type="button" role="menuitem" data-garage-panel="maps" ` +
+    `aria-expanded="false" aria-controls="cot-garage-maps">${uiIconSVG('map', 18)}` +
+    `<span class="cot-garage-tool-copy"><strong>Battlefields</strong><small>Choose the operation map</small></span>` +
+    `${uiIconSVG('chevronRight', 12)}</button>` +
+    `<button class="cot-garage-tool" type="button" role="menuitem" data-garage-panel="appearance" ` +
+    `aria-expanded="false" aria-controls="cot-garage-camos">${uiIconSVG('camouflage', 18)}` +
+    `<span class="cot-garage-tool-copy"><strong>Appearance</strong><small>Camouflage and paint</small></span>` +
+    `${uiIconSVG('chevronRight', 12)}</button>` +
+    `<button class="cot-garage-tool" type="button" role="menuitem" data-garage-panel="dossier" ` +
+    `aria-expanded="false" aria-controls="cot-garage-dossier">${uiIconSVG('battleRecord', 18)}` +
+    `<span class="cot-garage-tool-copy"><strong>Dossier</strong><small>Stats, armor and equipment</small></span>` +
+    `${uiIconSVG('chevronRight', 12)}</button></div></div>` +
     `<button class="cot-garage-panel-scrim" type="button" aria-label="Close garage panel"></button>` +
     `<div class="stats" id="cot-garage-dossier"></div>` +
     `<div class="cot-country-rail">` +
@@ -474,6 +488,8 @@ export function createGarage(opts) {
   const recordClose = root.querySelector('.cot-record-close');
   const mobileNavTrigger = root.querySelector('.cot-mobile-nav-trigger');
   const mobileNavMenu = root.querySelector('.cot-mobile-nav-menu');
+  const garageToolsTrigger = root.querySelector('.cot-garage-tools-trigger');
+  const garageToolsMenu = root.querySelector('.cot-garage-tools-menu');
   const garagePanelButtons = [...root.querySelectorAll('.cot-garage-tool')];
   const garagePanelScrim = root.querySelector('.cot-garage-panel-scrim');
 
@@ -495,6 +511,8 @@ export function createGarage(opts) {
   let recordRestoreFocus = null;
   const isRecordOpen = () => recordModal.classList.contains('open');
   const openServiceRecord = () => {
+    closeGarageTools();
+    setGaragePanel('');
     refreshServiceRecord();
     recordRestoreFocus = document.activeElement;
     recordModal.hidden = false;
@@ -519,6 +537,21 @@ export function createGarage(opts) {
     if (restoreFocus) mobileNavTrigger.focus();
   };
   const isOverlayPanelLayout = () => document.body.dataset.cotPanels === 'overlay';
+  const isGarageToolsOpen = () => !garageToolsMenu.hidden;
+  const closeGarageTools = ({ restoreFocus = false } = {}) => {
+    if (!isGarageToolsOpen()) return;
+    garageToolsMenu.hidden = true;
+    garageToolsTrigger.setAttribute('aria-expanded', 'false');
+    garageToolsTrigger.setAttribute('aria-label', 'Open garage setup');
+    if (restoreFocus) garageToolsTrigger.focus();
+  };
+  const openGarageTools = () => {
+    closeBattleMenu();
+    closeMobileNavigation();
+    garageToolsMenu.hidden = false;
+    garageToolsTrigger.setAttribute('aria-expanded', 'true');
+    garageToolsTrigger.setAttribute('aria-label', 'Close garage setup');
+  };
   const openGaragePanel = () => root.dataset.garagePanel || '';
   const setGaragePanel = (panel = '', { restoreFocus = false } = {}) => {
     const previous = openGaragePanel();
@@ -529,8 +562,9 @@ export function createGarage(opts) {
       const expanded = button.dataset.garagePanel === next;
       button.setAttribute('aria-expanded', String(expanded));
     });
+    garageToolsTrigger.classList.toggle('has-active-panel', !!next);
     if (restoreFocus && previous) {
-      garagePanelButtons.find((button) => button.dataset.garagePanel === previous)?.focus();
+      garageToolsTrigger.focus();
     }
     requestAnimationFrame(() => {
       syncSidebarPanelHeight();
@@ -540,15 +574,28 @@ export function createGarage(opts) {
   garagePanelButtons.forEach((button) => button.addEventListener('click', () => {
     emit('ui:click', {});
     const panel = button.dataset.garagePanel;
+    closeGarageTools();
     setGaragePanel(openGaragePanel() === panel ? '' : panel);
   }));
+  garageToolsTrigger.addEventListener('click', () => {
+    emit('ui:click', {});
+    if (isGarageToolsOpen()) {
+      closeGarageTools();
+      return;
+    }
+    if (openGaragePanel()) setGaragePanel('');
+    openGarageTools();
+  });
   garagePanelScrim.addEventListener('click', () => setGaragePanel('', { restoreFocus: true }));
   window.addEventListener('cot:layoutchange', () => {
+    closeGarageTools();
     if (!isOverlayPanelLayout()) setGaragePanel('');
     syncSidebarPanelHeight();
   });
   const openMobileNavigation = () => {
     closeBattleMenu();
+    closeGarageTools();
+    setGaragePanel('');
     mobileNavMenu.hidden = false;
     mobileNavTrigger.setAttribute('aria-expanded', 'true');
     mobileNavTrigger.setAttribute('aria-label', 'Close navigation menu');
@@ -559,9 +606,14 @@ export function createGarage(opts) {
     else openMobileNavigation();
   });
   document.addEventListener('pointerdown', (event) => {
-    if (!isMobileNavigationOpen() || event.target === mobileNavTrigger ||
-      mobileNavTrigger.contains(event.target) || mobileNavMenu.contains(event.target)) return;
-    closeMobileNavigation();
+    if (isMobileNavigationOpen() && event.target !== mobileNavTrigger &&
+      !mobileNavTrigger.contains(event.target) && !mobileNavMenu.contains(event.target)) {
+      closeMobileNavigation();
+    }
+    if (isGarageToolsOpen() && event.target !== garageToolsTrigger &&
+      !garageToolsTrigger.contains(event.target) && !garageToolsMenu.contains(event.target)) {
+      closeGarageTools();
+    }
   });
   // Escape belongs to the open disclosure. Capture it before the game's
   // rebindable input layer so closing navigation cannot also open Settings.
@@ -570,6 +622,24 @@ export function createGarage(opts) {
     event.preventDefault();
     event.stopImmediatePropagation();
     closeMobileNavigation({ restoreFocus: true });
+  }, true);
+  window.addEventListener('keydown', (event) => {
+    if (!isGarageToolsOpen() || event.code !== 'Escape') return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closeGarageTools({ restoreFocus: true });
+  }, true);
+  window.addEventListener('keydown', (event) => {
+    if (!openGaragePanel() || event.code !== 'Escape') return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    setGaragePanel('', { restoreFocus: true });
+  }, true);
+  window.addEventListener('keydown', (event) => {
+    if (!battleMenu.classList.contains('open') || event.code !== 'Escape') return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closeBattleMenu({ restoreFocus: true });
   }, true);
   // Capture before the global rebindable input layer is created. Escape must
   // close this modal without also firing the settings-menu action behind it.
@@ -1553,6 +1623,8 @@ export function createGarage(opts) {
   }
   function openBattleMenu() {
     closeMobileNavigation();
+    closeGarageTools();
+    setGaragePanel('');
     battleMenu.classList.add('open');
     battleModeBtn.setAttribute('aria-expanded', 'true');
     const activeRule = battleGameMode === 'standard' ? null
@@ -1790,9 +1862,18 @@ export function createGarage(opts) {
       }
     });
   }
+  root.querySelector('.cot-settings-slot').addEventListener('pointerdown', () => {
+    closeGarageTools();
+    setGaragePanel('');
+  });
   function onKey(e) {
     if (!api.isOpen) return;
     if (e.target?.closest?.('.cot-modal')) return;
+    if (e.code === 'Escape' && isGarageToolsOpen()) {
+      closeGarageTools({ restoreFocus: true });
+      e.preventDefault();
+      return;
+    }
     if (e.code === 'Escape' && openGaragePanel()) {
       setGaragePanel('', { restoreFocus: true });
       e.preventDefault();
@@ -1827,6 +1908,7 @@ export function createGarage(opts) {
      */
     show(selected = 'm1a1') {
       refreshServiceRecord();
+      closeGarageTools();
       setGaragePanel('');
       root.style.display = 'block';
       // garage_ui entrance: re-arm the chrome fade/rise on every open (boot
@@ -1855,6 +1937,7 @@ export function createGarage(opts) {
       customCamoStudioAccess?.peek()?.close({ restoreFocus: false, immediate: true });
       closeServiceRecord({ restoreFocus: false });
       closeMobileNavigation();
+      closeGarageTools();
       closeBattleMenu();
       setGaragePanel('');
       root.style.display = 'none';

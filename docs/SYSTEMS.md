@@ -183,6 +183,8 @@ does not reimplement their state machines.
 and frame order, narrows DOM state, and connects typed owners. JavaScript
 subsystems that have not migrated yet cross explicit `unknown` adapters at
 this boundary instead of leaking unchecked values into typed code.
+`src/app/mainContracts.ts` contains the root's type-only compatibility ports
+and browser QA globals; it owns no runtime initialization or lifecycle state.
 `src/game/stateCore.ts` is the shared session boundary,
 `src/game/rosterState.ts` owns roster/visual planning, and
 `src/game/soloBattleRuntime.ts` demand-loads the strict `src/game/state.ts`
