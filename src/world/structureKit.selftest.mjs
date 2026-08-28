@@ -16,11 +16,16 @@ function seeded(seed = 0x51a7c7) {
 }
 
 const ids = STRUCTURE_CATALOG.map(({ id }) => id);
-assert.equal(ids.length, 28, 'twenty-eight new building types are registered');
+assert.equal(ids.length, 35, 'thirty-five new building types are registered');
 assert.equal(new Set(ids).size, ids.length, 'new building ids are unique');
-assert.equal(Object.keys(STRUCTURE_BUILDERS).length, 12, 'twelve heavyweight merged buildings');
-assert.equal(Object.keys(DESTRUCTIBLE_BUILDING_TYPES).length, 16,
-  'sixteen light buildings have destruction states');
+assert.equal(Object.keys(STRUCTURE_BUILDERS).length, 15, 'fifteen heavyweight merged buildings');
+assert.equal(Object.keys(DESTRUCTIBLE_BUILDING_TYPES).length, 20,
+  'twenty light buildings have destruction states');
+
+const HIGH_RISE_IDS = [
+  'megatower', 'arcology', 'needletower', 'broadcasttower', 'terracetower',
+];
+const highRiseDimensions = new Map();
 
 let connectedHeavyStructures = 0;
 function boundsGap(a, b) {
@@ -59,6 +64,14 @@ for (const [id, build] of Object.entries(STRUCTURE_BUILDERS)) {
     }
   }
   assert.equal(connected.size, geos.length, `${id}: no disconnected or floating authored part`);
+  if (HIGH_RISE_IDS.includes(id)) {
+    assert.ok(info.h >= 48, `${id}: skyline-scale crown height`);
+    assert.ok(geos.length >= 100, `${id}: detailed four-sided facade and crown assembly`);
+    assert.ok(buckets.glass.length >= 24, `${id}: facade glazing covers more than one elevation`);
+    assert.ok(buckets.roof.length + buckets.dark.length >= 7 && buckets.dark.length >= 4,
+      `${id}: connected roof silhouette has crown and structural detail`);
+    highRiseDimensions.set(id, `${info.w.toFixed(1)}:${info.d.toFixed(1)}:${info.h.toFixed(1)}`);
+  }
   const supported = geos.filter((geo) => geo.userData.structureSupport);
   if (supported.length) {
     connectedHeavyStructures++;
@@ -67,6 +80,10 @@ for (const [id, build] of Object.entries(STRUCTURE_BUILDERS)) {
       `${id}: no authored exterior part floats from its declared support`);
   }
 }
+assert.equal(highRiseDimensions.size, HIGH_RISE_IDS.length,
+  'every authored skyscraper participates in the skyline quality gate');
+assert.ok(new Set(highRiseDimensions.values()).size >= 4,
+  'skyscraper families keep visibly distinct proportions and crown heights');
 assert.ok(connectedHeavyStructures >= 9,
   'at least nine heavyweight families use the connected exterior authoring contract');
 
@@ -122,6 +139,6 @@ for (const mapId of MAP_IDS) {
   }
 }
 assert.deepEqual([...used].sort(), [...ids].sort(),
-  'all twenty-eight new structure types are deliberately assigned to maps');
+  'all thirty-five new structure types are deliberately assigned to maps');
 
-console.log('structureKit.selftest: 28 new types; 16 destructible; all maps covered');
+console.log('structureKit.selftest: 35 new types; 20 destructible; all maps covered');

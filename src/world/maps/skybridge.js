@@ -64,12 +64,15 @@ export default {
   props: {
     plan: [
       'arcology', 'factory', 'gantry', 'parkingdeck', 'ruin', 'foundryoffice',
-      'warehouse', 'megatower', 'containerRow', 'depot', 'ruin', 'civichall',
-      'arcology', 'watertower', 'factory', 'parkingdeck', 'gantry', 'ruin',
-      'foundryoffice', 'warehouse', 'megatower', 'depot', 'containerRow', 'ruin',
-      'civichall', 'factory', 'parkingdeck', 'arcology', 'gantry', 'ruin',
+      'warehouse', 'needletower', 'containerRow', 'depot', 'ruin', 'civichall',
+      'broadcasttower', 'watertower', 'factory', 'parkingdeck', 'gantry', 'ruin',
+      'foundryoffice', 'warehouse', 'terracetower', 'depot', 'containerRow', 'ruin',
+      'civichall', 'factory', 'parkingdeck', 'megatower', 'gantry', 'ruin',
     ],
-    destructibleBuildings: ['motorpool', 'quonsethut', 'transformershed', 'guardpost'],
+    destructibleBuildings: [
+      'motorpool', 'quonsethut', 'transformershed', 'guardpost',
+      'securityoffice', 'servicegarage', 'relaystation',
+    ],
     tacticalBeats: [
       { id: 'western-abutment', role: 'brawl', x: -266, z: 94, yawDeg: -4,
         structure: 'motorpool', redoubt: true, outcrop: { count: 8, radius: 13, scaleMax: 4.0 }, wreck: true, wreckOffsetZ: -18 },

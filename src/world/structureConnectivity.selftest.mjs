@@ -26,7 +26,7 @@ const entries = [
   ...Object.entries(URBAN_BUILDERS),
   ...Object.entries(STRUCTURE_BUILDERS),
 ];
-assert.equal(entries.length, 38, 'all heavyweight and site structure families are certified');
+assert.equal(entries.length, 41, 'all heavyweight and site structure families are certified');
 assert.equal(new Set(entries.map(([id]) => id)).size, entries.length,
   'structure registries cannot silently replace a duplicate family id');
 
@@ -54,4 +54,4 @@ assert.throws(
   'the authoring gate rejects a fixture that cannot reach ground or another support',
 );
 
-console.log('structureConnectivity.selftest: 38 heavyweight/site families × 2 variants are grounded');
+console.log('structureConnectivity.selftest: 41 heavyweight/site families × 2 variants are grounded');

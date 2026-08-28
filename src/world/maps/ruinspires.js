@@ -5,14 +5,14 @@
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 
 const PLAN = [
-  'megatower', 'parkingdeck', 'ruin', 'arcology', 'factory', 'megatower',
-  'civichall', 'parkingdeck', 'ruin', 'foundryoffice', 'megatower', 'warehouse',
+  'megatower', 'parkingdeck', 'ruin', 'needletower', 'factory', 'broadcasttower',
+  'civichall', 'parkingdeck', 'ruin', 'foundryoffice', 'terracetower', 'warehouse',
   'arcology', 'ruin', 'parkingdeck', 'factory', 'civichall', 'megatower',
-  'containerRow', 'ruin', 'parkingdeck', 'arcology', 'foundryoffice', 'megatower',
-  'factory', 'ruin', 'civichall', 'parkingdeck', 'megatower', 'warehouse',
+  'containerRow', 'ruin', 'parkingdeck', 'broadcasttower', 'foundryoffice', 'needletower',
+  'factory', 'ruin', 'civichall', 'parkingdeck', 'terracetower', 'warehouse',
   'arcology', 'ruin', 'factory', 'parkingdeck', 'megatower', 'civichall',
-  'foundryoffice', 'ruin', 'arcology', 'parkingdeck', 'factory', 'megatower',
-  'warehouse', 'ruin', 'civichall', 'parkingdeck', 'megatower', 'arcology',
+  'foundryoffice', 'ruin', 'needletower', 'parkingdeck', 'factory', 'broadcasttower',
+  'warehouse', 'ruin', 'civichall', 'parkingdeck', 'terracetower', 'arcology',
 ];
 
 export default {
@@ -57,7 +57,10 @@ export default {
   },
   props: {
     plan: PLAN,
-    destructibleBuildings: ['guardpost', 'transformershed', 'fieldhospital', 'quonsethut'],
+    destructibleBuildings: [
+      'guardpost', 'transformershed', 'fieldhospital', 'quonsethut',
+      'securityoffice', 'relaystation', 'corneroffice',
+    ],
     tacticalBeats: [
       { id: 'ministry-steps', role: 'brawl', x: -184, z: 82, yawDeg: 90,
         structure: 'fieldhospital', redoubt: true, wreck: true, wreckOffsetX: 18 },

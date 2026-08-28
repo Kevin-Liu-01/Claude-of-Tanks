@@ -208,7 +208,8 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
 for (const mapId of ['ruinspires', 'blackglass']) {
   const config = getMapConfig(mapId);
   const monumental = config.props.plan.filter((kind) =>
-    ['megatower', 'arcology', 'parkingdeck', 'civichall'].includes(kind));
+    ['megatower', 'arcology', 'needletower', 'broadcasttower', 'terracetower',
+      'parkingdeck', 'civichall'].includes(kind));
   assert.ok(monumental.length >= 18,
     `${mapId}: destroyed city skyline has at least eighteen monumental structures`);
   assert.ok(config.props.rubblePiles >= 150,

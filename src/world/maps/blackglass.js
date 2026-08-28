@@ -53,14 +53,17 @@ export default {
   },
   props: {
     plan: [
-      'arcology', 'megatower', 'parkingdeck', 'civichall', 'ruin', 'arcology',
-      'factory', 'parkingdeck', 'megatower', 'foundryoffice', 'ruin', 'civichall',
+      'arcology', 'needletower', 'parkingdeck', 'civichall', 'ruin', 'terracetower',
+      'factory', 'parkingdeck', 'broadcasttower', 'foundryoffice', 'ruin', 'civichall',
       'arcology', 'parkingdeck', 'warehouse', 'megatower', 'ruin', 'factory',
-      'civichall', 'parkingdeck', 'arcology', 'ruin', 'megatower', 'foundryoffice',
-      'warehouse', 'parkingdeck', 'arcology', 'civichall', 'ruin', 'megatower',
-      'factory', 'parkingdeck', 'arcology', 'ruin', 'civichall', 'megatower',
+      'civichall', 'parkingdeck', 'needletower', 'ruin', 'terracetower', 'foundryoffice',
+      'warehouse', 'parkingdeck', 'broadcasttower', 'civichall', 'ruin', 'megatower',
+      'factory', 'parkingdeck', 'arcology', 'ruin', 'civichall', 'needletower',
     ],
-    destructibleBuildings: ['motorpool', 'transformershed', 'commandtent', 'checkpointhut'],
+    destructibleBuildings: [
+      'motorpool', 'transformershed', 'commandtent', 'checkpointhut',
+      'servicegarage', 'relaystation', 'corneroffice',
+    ],
     tacticalBeats: [
       { id: 'sunken-exchange', role: 'brawl', x: -58, z: 42, yawDeg: 45,
         structure: 'motorpool', redoubt: true, wreck: true, wreckOffsetX: -18 },

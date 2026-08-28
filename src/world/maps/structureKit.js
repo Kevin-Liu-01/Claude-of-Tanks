@@ -1,6 +1,6 @@
-// src/world/maps/structureKit.js — twenty-eight additional battlefield
-// structures. Twelve heavyweight landmarks merge into the existing textured
-// building buckets; sixteen light buildings use one vertex-painted geometry
+// src/world/maps/structureKit.js — thirty-five additional battlefield
+// structures. Fifteen heavyweight landmarks merge into the existing textured
+// building buckets; twenty light buildings use one vertex-painted geometry
 // per family and have persistent broken-state debris for the destructible
 // instance system in props.js.
 
@@ -36,6 +36,17 @@ function slab(w, h, d, uv = 0.45) {
     const i = f * 4 + k;
     attr.setXY(i, attr.getX(i) * su[f] * uv, attr.getY(i) * sv[f] * uv);
   }
+  return geo;
+}
+
+function facadePanel(w, h, face = 'front') {
+  // Window bays only need a camera-facing skin: the surrounding mullions and
+  // transfer ledges provide the physical reveal. Two-triangle panels preserve
+  // the richer facade at one sixth the raster/merge cost of tiny boxes.
+  const geo = scaleUV(new THREE.PlaneGeometry(w, h), w * 0.88, h * 0.88);
+  if (face === 'back') geo.rotateY(Math.PI);
+  else if (face === 'right') geo.rotateY(Math.PI / 2);
+  else if (face === 'left') geo.rotateY(-Math.PI / 2);
   return geo;
 }
 
@@ -345,17 +356,123 @@ export function makeRangerLodge(rng, buckets, wallBucket = 'wood') {
 // exposed slabs and bridge stumps) instead of adding transparent shell meshes.
 // -------------------------------------------------------------------------
 
-function addTowerWindowBands(out, w, d, y0, y1, step = 3.1) {
-  for (let y = y0; y < y1; y += step) {
-    out.dark.push(box(w * 0.76, 1.0, 0.10, 0.9).translate(0, y, d / 2 + 0.06));
-    out.dark.push(box(w * 0.76, 1.0, 0.10, 0.9).translate(0, y, -d / 2 - 0.06));
-    out.glass.push(box(0.10, 1.0, d * 0.68, 0.9).translate(w / 2 + 0.06, y, 0));
-    out.glass.push(box(0.10, 1.0, d * 0.68, 0.9).translate(-w / 2 - 0.06, y, 0));
+function addTowerFacadeGrid(out, {
+  x = 0, z = 0, w, d, y0, y1, step = 3.1, bays = 4, sideBays = 5,
+  frameBucket = 'stone', alternateLit = true,
+}) {
+  const bayW = w / bays;
+  const sideBayW = d / sideBays;
+  let floor = 0;
+  for (let y = y0; y < y1; y += step, floor++) {
+    for (let bay = 0; bay < bays; bay++) {
+      const bx = x - w / 2 + bayW * (bay + 0.5);
+      const bucket = alternateLit && (floor * 3 + bay * 5) % 13 === 0 ? 'curtain' : 'glass';
+      out[bucket].push(facadePanel(bayW * 0.72, 1.18, 'front')
+        .translate(bx, y, z + d / 2 + 0.055));
+      out.glass.push(facadePanel(bayW * 0.72, 1.18, 'back')
+        .translate(bx, y, z - d / 2 - 0.055));
+    }
+    for (let bay = 0; bay < sideBays; bay++) {
+      const bz = z - d / 2 + sideBayW * (bay + 0.5);
+      const bucket = alternateLit && (floor * 7 + bay * 3) % 17 === 0 ? 'curtain' : 'glass';
+      out[bucket].push(facadePanel(sideBayW * 0.70, 1.18, 'right')
+        .translate(x + w / 2 + 0.055, y, bz));
+      out.glass.push(facadePanel(sideBayW * 0.70, 1.18, 'left')
+        .translate(x - w / 2 - 0.055, y, bz));
+    }
   }
-  for (const side of [-1, 1]) {
-    out.stone.push(box(0.42, y1 - y0 + 1.0, 0.52).translate(side * (w * 0.40), (y0 + y1) / 2, d / 2 + 0.11));
-    out.stone.push(box(0.42, y1 - y0 + 1.0, 0.52).translate(side * (w * 0.40), (y0 + y1) / 2, -d / 2 - 0.11));
+
+  // Deep vertical mullions and transfer-floor ledges turn the texture into a
+  // readable facade at both street and skyline distances. They stay in the
+  // existing material buckets, so the whole city still merges to the same
+  // handful of draw calls.
+  const facadeH = Math.max(1, y1 - y0 + step * 0.45);
+  const facadeY = (y0 + y1) / 2 - step * 0.14;
+  for (let bay = 1; bay < bays; bay++) {
+    const bx = x - w / 2 + bayW * bay;
+    out[frameBucket].push(detailUv(box(0.18, facadeH, 0.22)
+      .translate(bx, facadeY, z + d / 2 + 0.055)));
+    out[frameBucket].push(detailUv(box(0.18, facadeH, 0.22)
+      .translate(bx, facadeY, z - d / 2 - 0.055)));
   }
+  for (let bay = 1; bay < sideBays; bay++) {
+    const bz = z - d / 2 + sideBayW * bay;
+    out[frameBucket].push(detailUv(box(0.22, facadeH, 0.18)
+      .translate(x + w / 2 + 0.055, facadeY, bz)));
+    out[frameBucket].push(detailUv(box(0.22, facadeH, 0.18)
+      .translate(x - w / 2 - 0.055, facadeY, bz)));
+  }
+  for (let y = y0 - step * 0.48; y < y1; y += step * 3) {
+    out[frameBucket].push(detailUv(slab(w + 0.28, 0.20, d + 0.28, 0.7)
+      .translate(x, y, z)));
+  }
+}
+
+function addConnectedCrown(out, {
+  x = 0, z = 0, roofY, baseW = 4.8, style = 'needle', yaw = 0,
+}) {
+  const baseD = style === 'forked' ? baseW * 0.72 : baseW;
+  out.roof.push(slab(baseW, 0.46, baseD).translate(x, roofY + 0.23, z));
+
+  if (style === 'broadcast') {
+    const pedestalH = 1.35;
+    out.dark.push(box(baseW * 0.62, pedestalH, baseD * 0.62)
+      .translate(x, roofY + 0.46 + pedestalH / 2 - 0.03, z));
+    const mastBase = roofY + 0.46 + pedestalH - 0.06;
+    const mastH = 8.4;
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const leg = box(0.16, mastH, 0.16);
+      leg.rotateZ(sx * -0.075);
+      leg.rotateX(sz * 0.075);
+      out.dark.push(leg.translate(x + sx * 0.48, mastBase + mastH / 2, z + sz * 0.48));
+    }
+    for (let i = 0; i <= 4; i++) {
+      const y = mastBase + i * mastH / 4;
+      out.dark.push(box(1.12 - i * 0.13, 0.14, 1.12 - i * 0.13).translate(x, y, z));
+    }
+    out.dark.push(cylinder(0.10, 0.13, 4.6, 8)
+      .translate(x, mastBase + mastH + 2.25, z));
+    out.curtain.push(cylinder(0.24, 0.24, 0.26, 10)
+      .translate(x, mastBase + mastH + 4.5, z));
+    return mastBase + mastH + 4.65;
+  }
+
+  if (style === 'forked') {
+    const shoulderH = 1.1;
+    out.stone.push(box(baseW * 0.68, shoulderH, baseD * 0.70)
+      .translate(x, roofY + 0.46 + shoulderH / 2 - 0.03, z));
+    const y0 = roofY + 0.46 + shoulderH - 0.06;
+    for (const side of [-1, 1]) {
+      const sx = x + side * baseW * 0.21;
+      const blade = box(0.34, 6.8, 0.42);
+      blade.rotateZ(side * -0.08);
+      out.dark.push(blade.translate(sx, y0 + 3.4, z));
+      const finial = new THREE.ConeGeometry(0.34, 2.3, 6, 1);
+      finial.rotateY(yaw + Math.PI / 6);
+      finial.translate(sx - side * 0.27, y0 + 7.62, z);
+      out.roof.push(finial);
+    }
+    out.dark.push(box(baseW * 0.56, 0.24, 0.30).translate(x, y0 + 4.4, z));
+    return y0 + 8.8;
+  }
+
+  const tiers = [
+    [baseW * 0.72, 1.10], [baseW * 0.50, 1.18], [baseW * 0.31, 1.05],
+  ];
+  let cursor = roofY + 0.42;
+  for (let i = 0; i < tiers.length; i++) {
+    const [tw, th] = tiers[i];
+    out[i === 1 ? 'stone' : 'roof'].push(box(tw, th, tw * 0.86)
+      .translate(x, cursor + th / 2, z));
+    cursor += th - 0.04;
+  }
+  const needle = new THREE.ConeGeometry(baseW * 0.18, 7.6, 8, 1);
+  needle.rotateY(yaw + Math.PI / 8);
+  needle.translate(x, cursor + 3.72, z);
+  out.roof.push(needle);
+  out.dark.push(cylinder(0.085, 0.12, 4.0, 8).translate(x, cursor + 9.38, z));
+  out.curtain.push(cylinder(0.22, 0.22, 0.22, 10).translate(x, cursor + 11.28, z));
+  return cursor + 11.4;
 }
 
 /** Bombed 55 m office tower with an asymmetrical collapsed crown. */
@@ -379,7 +496,10 @@ export function makeMegatower(rng, buckets, wallBucket = 'plaster3') {
     .translate(-w * 0.25, upperBase + (upperH - 2.0) / 2, -d * 0.06));
   out.stone.push(box(w * 0.25, upperH - 7.0, d * 0.28)
     .translate(w * 0.11, upperBase + (upperH - 7.0) / 2, -d * 0.25));
-  addTowerWindowBands(out, w, d, podiumH + 3.0, podiumH + lowerH - 1.0, 3.0);
+  addTowerFacadeGrid(out, {
+    w, d, y0: podiumH + 3.0, y1: podiumH + lowerH - 1.0,
+    step: 3.0, bays: 5, sideBays: 6,
+  });
   for (let y = upperBase + 3.0; y < upperBase + upperH - 2.0; y += 3.0) {
     out.dark.push(box(w * 0.27, 0.9, 0.10).translate(-w * 0.25, y, d * 0.29));
     out.glass.push(box(0.10, 0.9, d * 0.48).translate(-w * 0.08, y, -d * 0.06));
@@ -399,10 +519,15 @@ export function makeMegatower(rng, buckets, wallBucket = 'plaster3') {
     const col = box(0.36, h, 0.36); col.rotateZ((rng() - 0.5) * 0.18);
     out.dark.push(col.translate(x, podiumH + lowerH + h / 2, z));
   }
-  const mast = box(0.28, 10.0, 0.28); mast.rotateZ(-0.22);
-  out.dark.push(mast.translate(-2.8, podiumH + lowerH + upperH + 3.0, -1.5));
+  // The surviving west spine carries a complete stepped communications crown.
+  // Its broad base overlaps the roof slab before narrowing to the needle, so
+  // even the damaged variant has no hovering antenna or unsupported finial.
+  const spireTop = addConnectedCrown(out, {
+    x: -w * 0.25, z: -d * 0.06,
+    roofY: upperBase + upperH - 2.0, baseW: 4.6, style: 'broadcast', yaw: -0.18,
+  });
   finish(buckets, out);
-  return { w: w + 5.2, d: d + 4.2, h: podiumH + lowerH + upperH + 9.2 };
+  return { w: w + 5.2, d: d + 4.2, h: spireTop };
 }
 
 /** Twin stepped arcology slabs joined by a damaged high skybridge. */
@@ -426,13 +551,13 @@ export function makeArcology(rng, buckets, wallBucket = 'stone') {
     out.dark.push(box(0.48, 7.0, 0.48)
       .translate(x + towerW * 0.13, intactH + 3.5, d * 0.15));
   }
-  // Explicit facade ribbons preserve the gap between both towers.
+  // Explicit facade grids preserve the gap between both towers while giving
+  // each slab its own bay cadence and weather-catching frame depth.
   for (const [x, h] of [[-9.0, hA], [9.0, hB]]) {
-    for (let y = 3.2; y < h - 8.5; y += 3.2) {
-      out.dark.push(box(towerW * 0.78, 0.95, 0.10).translate(x, y, d / 2 + 0.06));
-      out.glass.push(box(0.10, 0.95, d * 0.7).translate(x + towerW / 2 + 0.06, y, 0));
-      out.glass.push(box(0.10, 0.95, d * 0.7).translate(x - towerW / 2 - 0.06, y, 0));
-    }
+    addTowerFacadeGrid(out, {
+      x, w: towerW, d, y0: 3.2, y1: h - 8.5, step: 3.2,
+      bays: 3, sideBays: 5, frameBucket: x < 0 ? 'stone' : 'dark',
+    });
   }
   out.stone.push(box(30.5, 3.4, 5.2).translate(0, 22.0, -1.2));
   out.dark.push(box(8.0, 2.7, 5.35).translate(2.5, 22.0, -1.2)); // blown bridge bay
@@ -442,8 +567,115 @@ export function makeArcology(rng, buckets, wallBucket = 'stone') {
   }
   out.roof.push(slab(6.0, 0.4, d * 0.84).translate(-12.0, hA + 0.2, -d * 0.04));
   out.roof.push(slab(6.0, 0.4, d * 0.84).translate(6.0, hB + 0.2, -d * 0.04));
+  const leftTop = addConnectedCrown(out, {
+    x: -12.0, z: -d * 0.04, roofY: hA + 0.40, baseW: 4.2, style: 'forked', yaw: 0.08,
+  });
+  addConnectedCrown(out, {
+    x: 6.0, z: -d * 0.04, roofY: hB + 0.40, baseW: 3.8, style: 'needle', yaw: -0.12,
+  });
   finish(buckets, out);
-  return { w: 31.0, d: d + 1.2, h: hA + 0.5 };
+  return { w: 31.0, d: d + 1.2, h: leftTop };
+}
+
+/** Slender setback tower with a polished civic needle and deep stone fins. */
+export function makeNeedleTower(rng, buckets, wallBucket = 'plaster2') {
+  const out = parts(), w = 14.0, d = 16.0, podiumH = 5.4;
+  out.stone.push(box(w + 4.8, podiumH, d + 4.8).translate(0, podiumH / 2, 0));
+  out.dark.push(box(5.2, 3.1, 0.16).translate(0, 1.55, d / 2 + 2.47));
+  const stages = [
+    { w, d, h: 24, y: podiumH, bucket: wallBucket },
+    { w: w * 0.80, d: d * 0.84, h: 12, y: podiumH + 23.8, bucket: 'plaster3' },
+    { w: w * 0.58, d: d * 0.62, h: 8.6, y: podiumH + 35.6, bucket: 'stone' },
+  ];
+  for (let i = 0; i < stages.length; i++) {
+    const stage = stages[i];
+    out[stage.bucket].push(box(stage.w, stage.h, stage.d)
+      .translate(0, stage.y + stage.h / 2, 0));
+    out.roof.push(slab(stage.w + 0.42, 0.24, stage.d + 0.42)
+      .translate(0, stage.y + stage.h + 0.10, 0));
+    addTowerFacadeGrid(out, {
+      w: stage.w, d: stage.d, y0: stage.y + 2.6,
+      y1: stage.y + stage.h - 1.1, step: i === 0 ? 3.0 : 2.8,
+      bays: i === 0 ? 4 : 3, sideBays: i === 0 ? 5 : 3,
+      frameBucket: i === 2 ? 'dark' : 'stone',
+    });
+  }
+  const roofY = stages.at(-1).y + stages.at(-1).h + 0.22;
+  const spireTop = addConnectedCrown(out, {
+    roofY, baseW: 5.0, style: 'needle', yaw: (rng() - 0.5) * 0.18,
+  });
+  finish(buckets, out);
+  return { w: w + 5.0, d: d + 5.0, h: spireTop };
+}
+
+/** Offset broadcast headquarters with stacked terraces and a lattice mast. */
+export function makeBroadcastTower(rng, buckets, wallBucket = 'plaster3') {
+  const out = parts(), w = 19.0, d = 15.0, podiumH = 6.2;
+  out.stone.push(box(w + 5.0, podiumH, d + 5.0).translate(0, podiumH / 2, 0));
+  const coreH = 29.0;
+  out[wallBucket].push(box(w, coreH, d).translate(0, podiumH + coreH / 2, 0));
+  out.plaster2.push(box(w * 0.62, 9.5, d * 0.78)
+    .translate(-w * 0.17, podiumH + coreH + 4.7, -d * 0.04));
+  out.stone.push(box(w * 0.34, 6.0, d * 0.55)
+    .translate(w * 0.25, podiumH + coreH + 3.0, d * 0.14));
+  addTowerFacadeGrid(out, {
+    w, d, y0: podiumH + 3.0, y1: podiumH + coreH - 1.0,
+    step: 3.15, bays: 5, sideBays: 4, frameBucket: 'dark',
+  });
+  addTowerFacadeGrid(out, {
+    x: -w * 0.17, z: -d * 0.04, w: w * 0.62, d: d * 0.78,
+    y0: podiumH + coreH + 2.5, y1: podiumH + coreH + 8.5,
+    step: 2.8, bays: 3, sideBays: 3,
+  });
+  const terraceBase = podiumH + coreH + 9.5;
+  let terraceTop = terraceBase;
+  for (let i = 0; i < 3; i++) {
+    const terraceY = terraceBase + i * 0.22;
+    out.roof.push(slab(w * (0.88 - i * 0.15), 0.26, d * (0.88 - i * 0.12))
+      .translate(-w * 0.08, terraceY, -d * 0.02));
+    terraceTop = terraceY + 0.13;
+  }
+  const spireTop = addConnectedCrown(out, {
+    x: -w * 0.17, z: -d * 0.04, roofY: terraceTop,
+    baseW: 5.1, style: 'broadcast', yaw: (rng() - 0.5) * 0.12,
+  });
+  finish(buckets, out);
+  return { w: w + 5.2, d: d + 5.2, h: spireTop };
+}
+
+/** Broad terraced financial tower with an asymmetric split-blade crown. */
+export function makeTerraceTower(rng, buckets, wallBucket = 'stone') {
+  const out = parts(), w = 21.0, d = 18.0, podiumH = 5.8;
+  out.plaster3.push(box(w + 4.0, podiumH, d + 4.0).translate(0, podiumH / 2, 0));
+  const lowerH = 22.0;
+  out[wallBucket].push(box(w, lowerH, d).translate(0, podiumH + lowerH / 2, 0));
+  const shoulderY = podiumH + lowerH;
+  out.plaster2.push(box(w * 0.76, 10.0, d * 0.82)
+    .translate(w * 0.06, shoulderY + 5.0, -d * 0.03));
+  out[wallBucket].push(box(w * 0.48, 8.0, d * 0.60)
+    .translate(-w * 0.08, shoulderY + 13.9, d * 0.04));
+  addTowerFacadeGrid(out, {
+    w, d, y0: podiumH + 2.8, y1: shoulderY - 1.0,
+    step: 3.0, bays: 6, sideBays: 5,
+  });
+  addTowerFacadeGrid(out, {
+    x: w * 0.06, z: -d * 0.03, w: w * 0.76, d: d * 0.82,
+    y0: shoulderY + 2.7, y1: shoulderY + 9.1,
+    step: 2.8, bays: 4, sideBays: 4, frameBucket: 'dark',
+  });
+  for (let i = 0; i < 4; i++) {
+    out.roof.push(slab(w + 1.4 - i * 2.6, 0.30, d + 1.4 - i * 2.0)
+      .translate(i * 0.35, shoulderY + i * 2.7, -i * 0.20));
+  }
+  const upperRoofY = shoulderY + 17.9;
+  out.roof.push(slab(w * 0.50, 0.34, d * 0.62)
+    .translate(-w * 0.08, upperRoofY + 0.17, d * 0.04));
+  const spireTop = addConnectedCrown(out, {
+    x: -w * 0.08, z: d * 0.04, roofY: upperRoofY + 0.34,
+    baseW: 5.7, style: 'forked', yaw: (rng() - 0.5) * 0.12,
+  });
+  finish(buckets, out);
+  return { w: w + 4.4, d: d + 4.4, h: spireTop };
 }
 
 /** Open-sided concrete parking deck: a broad, tank-scale urban landmark. */
@@ -513,6 +745,9 @@ export const STRUCTURE_BUILDERS = {
   rangerlodge: makeRangerLodge,
   megatower: makeMegatower,
   arcology: makeArcology,
+  needletower: makeNeedleTower,
+  broadcasttower: makeBroadcastTower,
+  terracetower: makeTerraceTower,
   parkingdeck: makeParkingDeck,
   civichall: makeCivicHall,
 };
@@ -528,6 +763,7 @@ const PAL = {
   canvas: [0x95866a, 0xb7ab8d, 0x605b4d],
   khaki: [0x596044, 0x78805c, 0x2e3529],
   steel: [0x51575b, 0x747b7c, 0x272d31],
+  urbanSteel: [0x596065, 0x8b9293, 0x242a2e],
   desert: [0xa18a67, 0xc0ad83, 0x655845],
   nordic: [0x4b382c, 0x8b765e, 0x242b2c],
 };
@@ -802,6 +1038,98 @@ function makeCheckpointHut(rng) {
   return mergeConnectedStructure('checkpointhut', out);
 }
 
+function makeSecurityOffice(rng) {
+  const out = [], p = PAL.urbanSteel, w = 7.2, d = 8.6, h = 4.8;
+  colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
+  colored(out, slab(w + 0.55, 0.24, d + 0.55).translate(0, h + 0.08, 0), p[2], rng);
+  for (const side of [-1, 1]) for (const x of [-2.25, 0, 2.25]) {
+    colored(out, box(1.28, 1.25, 0.09).translate(x, 3.05, side * (d / 2 + 0.04)),
+      side > 0 && x === 0 ? 0x9ca488 : 0x58737b, rng, 0.035);
+  }
+  for (const x of [-2.25, 0, 2.25]) {
+    colored(out, box(0.12, 1.62, 0.13).translate(x - 0.72, 3.05, d / 2 + 0.04), p[1], _detailRng);
+    colored(out, box(0.12, 1.62, 0.13).translate(x + 0.72, 3.05, d / 2 + 0.04), p[1], _detailRng);
+  }
+  colored(out, box(1.45, 2.55, 0.12).translate(0, 1.28, d / 2 + 0.06), p[2], rng);
+  colored(out, slab(3.6, 0.14, 1.45).rotateX(-0.08)
+    .translate(0, 3.15, d / 2 + 0.62), p[1], rng);
+  for (const x of [-1.55, 1.55]) {
+    colored(out, box(0.13, 3.05, 0.13).translate(x, 1.52, d / 2 + 1.18), p[2], rng);
+  }
+  colored(out, box(w + 0.10, 0.18, 0.18).translate(0, 1.72, d / 2 + 0.04), p[1], _detailRng);
+  return mergeConnectedStructure('securityoffice', out);
+}
+
+function makeServiceGarage(rng) {
+  const out = [], p = PAL.urbanSteel, w = 9.6, d = 11.2, h = 5.0;
+  colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
+  const roof = slab(w + 0.7, 0.22, d + 0.7); roof.rotateZ(-0.055);
+  colored(out, roof.translate(0, h + 0.10, 0), p[1], rng);
+  for (const x of [-2.55, 2.0]) {
+    colored(out, box(3.6, 3.55, 0.12).translate(x, 1.78, d / 2 + 0.07), p[2], rng);
+    for (let y = 0.5; y < 3.45; y += 0.48) {
+      colored(out, box(3.35, 0.075, 0.10).translate(x, y, d / 2 + 0.15), p[1], _detailRng);
+    }
+    colored(out, box(3.95, 0.24, 0.22).translate(x, 3.68, d / 2 + 0.04), p[1], _detailRng);
+  }
+  for (const side of [-1, 1]) {
+    colored(out, box(0.10, 1.3, 2.2).translate(side * (w / 2 + 0.04), 3.05, -2.2),
+      0x58737b, rng, 0.035);
+  }
+  colored(out, box(2.6, 1.0, 1.45).translate(-3.25, 0.5, -d / 2 - 0.66), p[1], rng);
+  colored(out, box(0.22, 5.85, 0.22).translate(3.65, 2.92, -4.45), p[2], rng);
+  colored(out, cylinder(0.30, 0.30, 0.24, 10).translate(3.65, 5.90, -4.45), p[1], rng);
+  return mergeConnectedStructure('servicegarage', out);
+}
+
+function makeRelayStation(rng) {
+  const out = [], p = PAL.urbanSteel, w = 6.2, d = 6.8, h = 4.2;
+  colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
+  colored(out, slab(w + 0.5, 0.24, d + 0.5).translate(0, h + 0.10, 0), p[2], rng);
+  for (const x of [-1.85, 0, 1.85]) {
+    for (let y = 1.0; y <= 2.9; y += 0.38) {
+      colored(out, box(1.05, 0.08, 0.10).translate(x, y, d / 2 + 0.07), p[1], _detailRng);
+    }
+  }
+  colored(out, box(2.0, 2.9, 0.12).translate(0, 1.45, -d / 2 - 0.06), p[2], rng);
+  colored(out, box(2.1, 0.72, 2.1).translate(0, h + 0.48, 0), p[1], rng);
+  const mastY = h + 0.80;
+  for (const side of [-1, 1]) {
+    const leg = box(0.14, 5.4, 0.14); leg.rotateZ(side * -0.075);
+    colored(out, leg.translate(side * 0.36, mastY + 2.65, 0), p[2], rng);
+  }
+  for (let i = 0; i < 4; i++) {
+    colored(out, box(0.92 - i * 0.12, 0.12, 0.22)
+      .translate(0, mastY + i * 1.45, 0), p[1], _detailRng);
+  }
+  colored(out, cylinder(0.10, 0.13, 2.7, 8).translate(0, mastY + 6.55, 0), p[2], rng);
+  colored(out, cylinder(0.28, 0.28, 0.20, 10).translate(0, mastY + 7.84, 0), 0xa66d31, rng);
+  return mergeConnectedStructure('relaystation', out);
+}
+
+function makeCornerOffice(rng) {
+  const out = [], p = PAL.urbanSteel, w = 8.4, d = 8.4, h = 6.6;
+  colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
+  colored(out, slab(w + 0.5, 0.24, d + 0.5).translate(0, h + 0.10, 0), p[2], rng);
+  for (const y of [2.25, 4.75]) {
+    for (const x of [-2.65, -0.9, 0.9, 2.65]) {
+      const paneColor = (Math.round(x * 10 + y * 7) % 3 === 0) ? 0xa49b7c : 0x58737b;
+      colored(out, box(1.12, 1.18, 0.09).translate(x, y, d / 2 + 0.04), paneColor, rng, 0.035);
+      colored(out, box(0.09, 1.18, 1.12).translate(w / 2 + 0.04, y, x), paneColor, rng, 0.035);
+    }
+    colored(out, box(w + 0.10, 0.18, 0.18).translate(0, y - 0.76, d / 2 + 0.04), p[1], _detailRng);
+    colored(out, box(0.18, 0.18, d + 0.10).translate(w / 2 + 0.04, y - 0.76, 0), p[1], _detailRng);
+  }
+  colored(out, box(1.5, 2.55, 0.12).translate(-2.55, 1.28, d / 2 + 0.06), p[2], rng);
+  colored(out, slab(3.2, 0.14, 1.25).rotateX(-0.07)
+    .translate(-2.55, 3.10, d / 2 + 0.53), p[1], rng);
+  for (const x of [-3.85, -1.25]) {
+    colored(out, box(0.13, 3.0, 0.13).translate(x, 1.5, d / 2 + 1.04), p[2], rng);
+  }
+  colored(out, box(2.5, 0.74, 2.2).translate(1.65, h + 0.49, -1.5), p[1], rng);
+  return mergeConnectedStructure('corneroffice', out);
+}
+
 function lightMeta(id, family, hw, hl, h, pal, build, debrisMaterial = 'wood') {
   const surfaceMaterial = debrisMaterial === 'canvas'
     ? 'structureCanvas'
@@ -835,6 +1163,10 @@ export const DESTRUCTIBLE_BUILDING_TYPES = {
   quonsethut: lightMeta('quonsethut', 'industrial', 3.7, 6.2, 4.0, PAL.steel, makeQuonsetHut, 'metal'),
   transformershed: lightMeta('transformershed', 'industrial', 3.0, 2.8, 4.7, PAL.steel, makeTransformerShed, 'metal'),
   checkpointhut: lightMeta('checkpointhut', 'military', 2.5, 3.7, 3.3, PAL.steel, makeCheckpointHut, 'metal'),
+  securityoffice: lightMeta('securityoffice', 'urban', 4.0, 5.1, 5.2, PAL.urbanSteel, makeSecurityOffice, 'metal'),
+  servicegarage: lightMeta('servicegarage', 'urban-industrial', 5.3, 6.3, 6.2, PAL.urbanSteel, makeServiceGarage, 'metal'),
+  relaystation: lightMeta('relaystation', 'urban-industrial', 3.5, 3.8, 12.9, PAL.urbanSteel, makeRelayStation, 'metal'),
+  corneroffice: lightMeta('corneroffice', 'urban', 4.7, 4.7, 7.5, PAL.urbanSteel, makeCornerOffice, 'metal'),
 };
 
 export const STRUCTURE_CATALOG = [
