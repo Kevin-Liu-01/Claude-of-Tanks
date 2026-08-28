@@ -1,4 +1,4 @@
-import { normalizeRoomCode } from './protocol.js';
+import { normalizeRoomCode } from './protocol.ts';
 
 const MAX_SIGNAL_BYTES = 128 * 1024;
 const MAX_QUEUED_EVENTS = 64;

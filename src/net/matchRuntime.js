@@ -10,7 +10,7 @@ import {
   normalizePlayerInput,
   normalizeRoomChatText,
   validateEnvelope,
-} from './protocol.js';
+} from './protocol.ts';
 import { TransportClosedError } from './loopbackTransport.js';
 import { SnapshotAssembler, SnapshotBuffer, createSnapshotDelta } from './snapshot.js';
 

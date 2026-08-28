@@ -330,7 +330,7 @@ flowchart TB
 
 ### 8.1 Protocol
 
-`src/net/protocol.js` defines versioned envelopes and validation. Protocol
+`src/net/protocol.ts` defines strict versioned envelopes and validation. Protocol
 parsing rejects invalid types, bounds, identifiers, and sequencing before
 those values enter match policy.
 

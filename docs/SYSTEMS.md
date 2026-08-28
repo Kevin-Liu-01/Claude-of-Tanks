@@ -646,7 +646,8 @@ so ammo-rack and ordinary destruction can produce the correct first effect.
 
 ## Multiplayer protocol
 
-src/net/protocol.js defines protocol version 4 envelopes and validation.
+`src/net/protocol.ts` defines strict protocol-version-7 envelopes, sequence
+arithmetic, and untrusted player-input validation.
 src/net/matchRuntime.js owns authority ticking, input ordering, readiness,
 viewer snapshots, acknowledgements, and catch-up bounds.
 

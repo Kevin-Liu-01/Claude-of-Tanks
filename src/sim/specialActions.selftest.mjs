@@ -10,7 +10,7 @@ import {
   guideShellToward,
 } from './ballistics.js';
 import { createAuthoritativeMatch } from './authoritativeMatch.js';
-import { PLAYER_ACTION_BITS } from '../net/protocol.js';
+import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
 import { captureEntitySnapshot, SNAPSHOT_FLAGS } from '../net/snapshot.js';
 import {
   SPECIAL_ACTION_KINDS,

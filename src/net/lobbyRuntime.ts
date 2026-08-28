@@ -4,7 +4,8 @@ import {
   isSequenceNewer,
   nextSequence,
   validateEnvelope,
-} from './protocol.js';
+  type MessageType,
+} from './protocol.ts';
 import { GAME_MODE_IDS, type GameModeId } from '../sim/matchModes.ts';
 import {
   LOBBY_PHASES,
@@ -22,12 +23,6 @@ import {
 } from './lobby.ts';
 
 type Unsubscribe = () => void;
-
-interface MessageEnvelope {
-  type: string;
-  seq: number;
-  payload: unknown;
-}
 
 export interface LobbyTransport {
   readonly readyState?: string;
@@ -71,7 +66,7 @@ interface RuntimePeer {
   unsubscribeClose: Unsubscribe | null;
 }
 
-const MATCH_HANDOFF_TYPES = new Set<string>([
+const MATCH_HANDOFF_TYPES = new Set<MessageType>([
   MESSAGE_TYPES.HELLO,
   MESSAGE_TYPES.READY,
   MESSAGE_TYPES.INPUT,
@@ -82,18 +77,6 @@ const MAX_PENDING_HANDOFF_MESSAGES = 64;
 const LOBBY_PHASE_SET = new Set<string>(Object.values(LOBBY_PHASES));
 const LOBBY_TEAM_SET = new Set<string>(Object.values(LOBBY_TEAMS));
 const GAME_MODE_SET = new Set<string>(GAME_MODE_IDS);
-
-const makeEnvelope = createEnvelope as unknown as (
-  type: string,
-  payload: unknown,
-  options: { seq: number; ack: number; tick: number },
-) => unknown;
-const readEnvelope = validateEnvelope as unknown as (raw: unknown) => MessageEnvelope;
-const sequenceIsNewer = isSequenceNewer as unknown as (
-  candidate: number,
-  previous: number,
-) => boolean;
-const incrementSequence = nextSequence as unknown as (sequence: number) => number;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -238,20 +221,20 @@ export class LobbyHostRuntime {
     return () => { this.detachPeer(id, 'detached'); };
   }
 
-  #send(peer: RuntimePeer, type: string, payload: unknown): boolean {
-    const accepted = peer.transport.send(makeEnvelope(type, payload, {
+  #send(peer: RuntimePeer, type: MessageType, payload: unknown): boolean {
+    const accepted = peer.transport.send(createEnvelope(type, payload, {
       seq: peer.sendSeq,
       ack: peer.lastRecvSeq == null ? 0 : peer.lastRecvSeq,
       tick: this.lobby.revision,
     }));
-    peer.sendSeq = incrementSequence(peer.sendSeq);
+    peer.sendSeq = nextSequence(peer.sendSeq);
     if (!accepted) peer.transport.close('backpressure_limit');
     return accepted;
   }
 
   #receive(peer: RuntimePeer, raw: unknown): void {
     try {
-      const message = readEnvelope(raw);
+      const message = validateEnvelope(raw);
       if (this.lobby.phase === LOBBY_PHASES.STARTING &&
           MATCH_HANDOFF_TYPES.has(message.type)) {
         if (peer.pendingHandoffMessages.length >= MAX_PENDING_HANDOFF_MESSAGES) {
@@ -262,7 +245,7 @@ export class LobbyHostRuntime {
         peer.pendingHandoffMessages.push(raw);
         return;
       }
-      if (peer.lastRecvSeq != null && !sequenceIsNewer(message.seq, peer.lastRecvSeq)) return;
+      if (peer.lastRecvSeq != null && !isSequenceNewer(message.seq, peer.lastRecvSeq)) return;
       peer.lastRecvSeq = message.seq;
       if (message.type === MESSAGE_TYPES.HELLO) {
         this.broadcast();
@@ -379,20 +362,20 @@ export class LobbyClientRuntime {
       : null;
   }
 
-  #send(type: string, payload: unknown): boolean {
-    const accepted = this.transport.send(makeEnvelope(type, payload, {
+  #send(type: MessageType, payload: unknown): boolean {
+    const accepted = this.transport.send(createEnvelope(type, payload, {
       seq: this.sendSeq,
       ack: this.lastRecvSeq == null ? 0 : this.lastRecvSeq,
       tick: this.state ? this.state.revision : 0,
     }));
-    this.sendSeq = incrementSequence(this.sendSeq);
+    this.sendSeq = nextSequence(this.sendSeq);
     return accepted;
   }
 
   #receive(raw: unknown): void {
     try {
-      const message = readEnvelope(raw);
-      if (this.lastRecvSeq != null && !sequenceIsNewer(message.seq, this.lastRecvSeq)) return;
+      const message = validateEnvelope(raw);
+      if (this.lastRecvSeq != null && !isSequenceNewer(message.seq, this.lastRecvSeq)) return;
       this.lastRecvSeq = message.seq;
       if (message.type === MESSAGE_TYPES.LOBBY_STATE) {
         const state = readSerializedLobby(message.payload);

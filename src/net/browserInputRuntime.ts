@@ -1,6 +1,6 @@
 import { encodeAimIntent } from './aimIntent.js';
 import { NetworkInputCadence, type NetworkInputSample } from './inputCadence.ts';
-import { PLAYER_ACTION_BITS } from './protocol.js';
+import { PLAYER_ACTION_BITS } from './protocol.ts';
 
 type ActionName = 'reloadMagazine' | 'specialAction';
 

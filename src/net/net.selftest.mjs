@@ -13,7 +13,7 @@ import {
   normalizeRoomChatText,
   normalizeRoomCode,
   validateEnvelope,
-} from './protocol.js';
+} from './protocol.ts';
 import {
   LOBBY_PHASES,
   LOBBY_TEAMS,

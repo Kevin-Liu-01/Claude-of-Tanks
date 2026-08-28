@@ -5,7 +5,7 @@
  * first-paint presentation only; signaling returns the authoritative host
  * identity after join. main.js parses these links and playMenu.js creates them.
  */
-import { normalizeRoomCode } from './protocol.js';
+import { normalizeRoomCode } from './protocol.ts';
 import { normalizePlayerName } from './playerNames.js';
 
 const INVITE_ROOM_PARAM = 'room';

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { BrowserInputRuntime } from './browserInputRuntime.ts';
-import { PLAYER_ACTION_BITS } from './protocol.js';
+import { PLAYER_ACTION_BITS } from './protocol.ts';
 
 const runtime = new BrowserInputRuntime();
 const player = {

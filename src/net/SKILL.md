@@ -12,7 +12,8 @@ play without importing Three.js rendering or DOM state.
 
 ## Mental model & key files
 
-- `protocol.js` owns wire vocabulary and untrusted input validation.
+- `protocol.ts` owns the strict wire vocabulary, envelopes, sequence arithmetic,
+  and untrusted input validation.
 - `lobby.ts` owns the strict canonical room model: teams, capacity, readiness,
   permissions, host migration, round state, and start policy.
 - `lobbyRuntime.ts` owns typed lobby transport sequencing, payload admission,

@@ -8,7 +8,7 @@
 import { createPrivateRoomConnectionRuntime } from '../net/privateRoomConnectionRuntime.ts';
 import { resolveSignalUrl } from '../net/signalEndpoint.js';
 import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.js';
-import { normalizeRoomCode } from '../net/protocol.js';
+import { normalizeRoomCode } from '../net/protocol.ts';
 import { createRoomInviteUrl, roomInviteTitle } from '../net/roomInvite.js';
 import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';

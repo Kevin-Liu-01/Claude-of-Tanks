@@ -23,7 +23,7 @@ export const PLAYER_ACTION_BITS = Object.freeze({
   EXTINGUISHER: 1 << 2,
   RELOAD_MAGAZINE: 1 << 3,
   SPECIAL_ACTION: 1 << 4,
-});
+} as const);
 
 export const MESSAGE_TYPES = Object.freeze({
   HELLO: 'hello',
@@ -42,51 +42,95 @@ export const MESSAGE_TYPES = Object.freeze({
   PONG: 'pong',
   ERROR: 'error',
   LEAVE: 'leave',
-});
+} as const);
 
-const MESSAGE_TYPE_SET = new Set(Object.values(MESSAGE_TYPES));
+export type MessageType = typeof MESSAGE_TYPES[keyof typeof MESSAGE_TYPES];
+
+export interface ProtocolEnvelope<TPayload = unknown> {
+  v: typeof PROTOCOL_VERSION;
+  type: MessageType;
+  seq: number;
+  ack: number;
+  tick: number;
+  payload: TPayload | null;
+}
+
+export interface EnvelopeOptions {
+  seq?: number;
+  ack?: number;
+  tick?: number;
+}
+
+export interface NormalizedPlayerInput {
+  inputSeq: number;
+  clientTick: number;
+  snapshotAckTick: number;
+  throttle: number;
+  steer: number;
+  brake: boolean;
+  fire: boolean;
+  aimYaw: number;
+  aimPitch: number;
+  aimDistance: number;
+  shellSlot: 0 | 1 | 2;
+  actionBits: number;
+}
+
+const MESSAGE_TYPE_SET = new Set<MessageType>(Object.values(MESSAGE_TYPES));
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_CODE_LENGTH = 6;
 const MAX_SEQUENCE = 0x7fffffff;
 const MIN_AIM_DISTANCE_M = 0.01;
 const MAX_AIM_DISTANCE_M = 2000;
+const AMBIGUOUS_ROOM_CHARACTERS: Readonly<Record<string, string>> = Object.freeze({
+  0: 'Q',
+  1: 'L',
+  I: 'L',
+  O: 'Q',
+});
 
 export class ProtocolError extends Error {
-  constructor(code, message) {
+  readonly code: string;
+
+  constructor(code: string, message: string) {
     super(message);
     this.name = 'ProtocolError';
     this.code = code;
   }
 }
 
-function assertFiniteNumber(value, field) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function assertFiniteNumber(value: unknown, field: string): number {
   if (!Number.isFinite(value)) {
     throw new ProtocolError('invalid_number', `${field} must be finite`);
   }
-  return value;
+  return Number(value);
 }
 
-function assertSequence(value, field) {
-  if (!Number.isSafeInteger(value) || value < 0 || value > MAX_SEQUENCE) {
+function assertSequence(value: unknown, field: string): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 0 || Number(value) > MAX_SEQUENCE) {
     throw new ProtocolError('invalid_sequence', `${field} must be an unsigned sequence`);
   }
-  return value;
+  return Number(value);
 }
 
-function clamp(value, lo, hi) {
+function clamp(value: number, lo: number, hi: number): number {
   return value < lo ? lo : value > hi ? hi : value;
 }
 
 /** Normalize a human-entered private-room code. */
-export function normalizeRoomCode(value) {
+export function normalizeRoomCode(value: unknown): string {
   return String(value || '')
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, '')
-    .replace(/[01IO]/g, (char) => ({ 0: 'Q', 1: 'L', I: 'L', O: 'Q' })[char])
+    .replace(/[01IO]/g, (char) => AMBIGUOUS_ROOM_CHARACTERS[char] || char)
     .slice(0, ROOM_CODE_LENGTH);
 }
 
-function cryptoUnit() {
+function cryptoUnit(): number {
   const cryptoApi = globalThis.crypto;
   if (!cryptoApi || typeof cryptoApi.getRandomValues !== 'function') {
     throw new ProtocolError('secure_random_unavailable',
@@ -101,7 +145,7 @@ function cryptoUnit() {
  * Create a readable, collision-resistant-enough room code for signaling.
  * Production callers use Web Crypto; deterministic tests inject `rng`.
  */
-export function createRoomCode(rng = cryptoUnit) {
+export function createRoomCode(rng: () => number = cryptoUnit): string {
   let out = '';
   for (let i = 0; i < ROOM_CODE_LENGTH; i++) {
     const unit = assertFiniteNumber(rng(), 'rng()');
@@ -118,7 +162,7 @@ export function createRoomCode(rng = cryptoUnit) {
  * authority. Chat stays plain text: controls, bidi overrides, and invisible
  * joiners are removed so a message cannot visually impersonate UI chrome.
  */
-export function normalizeRoomChatText(value) {
+export function normalizeRoomChatText(value: unknown): string {
   if (typeof value !== 'string') {
     throw new ProtocolError('invalid_chat', 'chat text must be a string');
   }
@@ -136,13 +180,13 @@ export function normalizeRoomChatText(value) {
 }
 
 /** Create one wire envelope. */
-export function createEnvelope(type, payload, {
-  seq = 0,
-  ack = 0,
-  tick = 0,
-} = {}) {
+export function createEnvelope<TPayload>(
+  type: MessageType,
+  payload: TPayload,
+  { seq = 0, ack = 0, tick = 0 }: EnvelopeOptions = {},
+): ProtocolEnvelope<TPayload> {
   if (!MESSAGE_TYPE_SET.has(type)) {
-    throw new ProtocolError('unknown_message_type', `unknown message type: ${type}`);
+    throw new ProtocolError('unknown_message_type', `unknown message type: ${String(type)}`);
   }
   return {
     v: PROTOCOL_VERSION,
@@ -155,16 +199,16 @@ export function createEnvelope(type, payload, {
 }
 
 /** Validate untrusted transport data before dispatch. */
-export function validateEnvelope(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+export function validateEnvelope(value: unknown): ProtocolEnvelope {
+  if (!isRecord(value)) {
     throw new ProtocolError('invalid_envelope', 'message must be an object');
   }
   if (value.v !== PROTOCOL_VERSION) {
     throw new ProtocolError('protocol_mismatch',
       `expected protocol ${PROTOCOL_VERSION}, received ${String(value.v)}`);
   }
-  if (!MESSAGE_TYPE_SET.has(value.type)) {
-    throw new ProtocolError('unknown_message_type', `unknown message type: ${value.type}`);
+  if (typeof value.type !== 'string' || !MESSAGE_TYPE_SET.has(value.type as MessageType)) {
+    throw new ProtocolError('unknown_message_type', `unknown message type: ${String(value.type)}`);
   }
   assertSequence(value.seq, 'seq');
   assertSequence(value.ack, 'ack');
@@ -172,7 +216,7 @@ export function validateEnvelope(value) {
   if (!Object.hasOwn(value, 'payload')) {
     throw new ProtocolError('invalid_envelope', 'payload field is required');
   }
-  return value;
+  return value as unknown as ProtocolEnvelope;
 }
 
 /**
@@ -181,8 +225,8 @@ export function validateEnvelope(value) {
  * preserves the finite camera-hit point (and therefore close-range parallax)
  * without accepting an unbounded client-authored world position.
  */
-export function normalizePlayerInput(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+export function normalizePlayerInput(value: unknown): NormalizedPlayerInput {
+  if (!isRecord(value)) {
     throw new ProtocolError('invalid_input', 'input must be an object');
   }
   const inputSeq = assertSequence(value.inputSeq, 'inputSeq');
@@ -216,16 +260,16 @@ export function normalizePlayerInput(value) {
     aimYaw,
     aimPitch,
     aimDistance,
-    shellSlot,
+    shellSlot: shellSlot as 0 | 1 | 2,
     actionBits,
   };
 }
 
-export function nextSequence(value) {
+export function nextSequence(value: number): number {
   return value >= MAX_SEQUENCE ? 0 : value + 1;
 }
 
-export function isSequenceNewer(candidate, previous) {
+export function isSequenceNewer(candidate: number, previous: number): boolean {
   if (candidate === previous) return false;
   const range = MAX_SEQUENCE + 1;
   const delta = (candidate - previous + range) % range;

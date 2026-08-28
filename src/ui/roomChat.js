@@ -1,4 +1,4 @@
-import { MAX_ROOM_CHAT_LENGTH } from '../net/protocol.js';
+import { MAX_ROOM_CHAT_LENGTH } from '../net/protocol.ts';
 import { FONT_COND, FONT_STACK } from './fonts.ts';
 
 const STYLE_ID = 'cot-room-chat-style';
