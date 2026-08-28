@@ -41,6 +41,8 @@ play without importing Three.js rendering or DOM state.
   the identity-bound idempotent READY retry lease.
 - `networkRoomCoordinator.ts` owns browser room subscriptions, garage/menu/chat
   presentation, selection commands, readiness, and rematch admission.
+- `networkLobbyPreloader.ts` coalesces joined-room transfers, retries failed
+  optional chunks, and warms only new roster builders or changed fixed maps.
 - `networkBattleLaunchRuntime.ts` owns private/LAN, retained-room rematch, and
   ranked launch policy, including cold-loader presentation and terminal cleanup.
 - `networkBattlePresentationRuntime.ts` owns the shared cold-client path from

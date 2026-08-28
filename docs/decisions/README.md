@@ -147,3 +147,4 @@ runtime documents remain authoritative for behavior.
 - [0135 — World collision primitives share a strict contract](0135-typed-world-collision.md)
 - [0136 — Shared modal lifecycle has one typed owner](0136-typed-modal-lifecycle.md)
 - [0137 — Context dossiers have one typed resolver](0137-typed-context-dossiers.md)
+- [0138 — Lobby intent preparation is retryable and delta-based](0138-network-lobby-preload-owner.md)

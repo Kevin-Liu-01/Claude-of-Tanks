@@ -118,6 +118,7 @@ import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
 import { createPlaySurfaceRuntime } from './game/playSurfaceRuntime.ts';
 import { createNetworkBrowserSessionRuntime } from './net/networkBrowserSessionRuntime.ts';
 import { createNetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
+import { createNetworkLobbyPreloader } from './net/networkLobbyPreloader.ts';
 import { createNetworkBattleLaunchRuntime } from './net/networkBattleLaunchRuntime.ts';
 import { createNetworkBattleActivationRuntime } from './net/networkBattleActivationRuntime.ts';
 import { createNetworkBattlePresentationAccess } from './net/networkBattlePresentationAccess.ts';
@@ -1540,33 +1541,6 @@ function resolveFxSubject(id) {
   return networkSession.resolveEntity(id) || game.tankById.get(id) || null;
 }
 
-/**
- * A joined lobby is stronger intent than browsing the multiplayer picker, but
- * weaker than starting a round. Transfer the exact roster code immediately;
- * build only a fixed host-selected battlefield, and let the existing garage-
- * lull gate keep terrain work out of active room interaction.
- */
-function preloadNetworkLobbyIntent(state) {
-  if (!state || game.phase !== 'garage' || state.phase !== 'waiting') return;
-  networkBattlePresentation.preload().catch(() => null);
-  battleVisualStreamerAccess.preload().catch(() => null);
-  preloadNetworkBattleModules().catch(() => null);
-  preloadNetworkRoomChatModule().catch(() => null);
-  const rosterIds = [];
-  for (const player of state.players || []) {
-    if (player.specId) rosterIds.push(player.specId);
-  }
-  ensureTankBuilders(rosterIds).catch(() => null);
-  loadWorldModule().catch(() => null);
-  const mapId = state.mapId;
-  if (!mapId || mapId === 'random') {
-    cancelBackgroundWorldBuildsExcept(null);
-    return;
-  }
-  cancelBackgroundWorldBuildsExcept(mapId);
-  prefetchWorld(mapId);
-}
-
 const networkBattlePresentation = createNetworkBattlePresentationAccess({
   options: () => ({
     load: {
@@ -1707,6 +1681,21 @@ const networkBattleLauncher = createNetworkBattleLaunchRuntime({
   },
 });
 
+// Joined-room intent is stronger than browsing the picker but weaker than a
+// round start. The typed owner coalesces repeated room-state packets, retries
+// failed optional transfers, and warms only newly introduced vehicle builders.
+const networkLobbyPreloader = createNetworkLobbyPreloader({
+  getGamePhase: () => game.phase,
+  preloadPresentation: () => networkBattlePresentation.preload(),
+  preloadVisuals: () => battleVisualStreamerAccess.preload(),
+  preloadBattleModules: preloadNetworkBattleModules,
+  preloadChat: preloadNetworkRoomChatModule,
+  ensureTankBuilders,
+  loadWorldModule,
+  cancelBackgroundWorldBuildsExcept,
+  prefetchWorld,
+});
+
 networkRoomCoordinator = createNetworkRoomCoordinator({
   getMatch: () => networkSession.match,
   getPlayMenu: playSurface.getMenuPromise,
@@ -1719,7 +1708,7 @@ networkRoomCoordinator = createNetworkRoomCoordinator({
   input,
   setGarageStatus: (status) => garage.setRoomStatus(status),
   emitRoomState: (payload) => bus.emit('network:roomState', payload),
-  preloadLobbyIntent: preloadNetworkLobbyIntent,
+  preloadLobbyIntent: networkLobbyPreloader.preload,
   equipmentFor: (specId) => loadSelectedEquipment(specId, getSpec(specId)),
   camoFor: getMultiplayerCamoSelection,
   onRematch: (state) => networkBattleLauncher.beginRematch(state),
