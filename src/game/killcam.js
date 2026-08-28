@@ -835,7 +835,10 @@ export function createKillCam(deps) {
     leader.setAttribute('class', 'cot-kc-leader');
     root.appendChild(leader);
     const labelHost = el('div', 'cot-kc-labelhost', root);
-    dom = { root, titleT, titleS, hdK, hdW, rows, banner, annot, labelHost, leader, flash, killer: killerRefs };
+    dom = {
+      root, title, titleT, titleS, skip, hdK, hdW, rows, banner, annot,
+      labelHost, leader, flash, killer: killerRefs,
+    };
     return dom;
   }
 
@@ -1092,6 +1095,10 @@ export function createKillCam(deps) {
           }
         }
       }
+      // The staged capture reveals the killer card after beginXray's first
+      // projection. Re-project once with that card visible so screenshots
+      // exercise the same reserved-space layout as a live replay frame.
+      projectLabels();
     },
 
     /** @returns {boolean} a replay (or staged frame) is on screen */
@@ -3382,7 +3389,25 @@ export function createKillCam(deps) {
     };
     const MOD_STATE_WORD = { red: 'DESTROYED', yellow: 'DAMAGED', ok: 'HIT' };
     const MOD_STATE_COLOR = { red: '#ff5a4a', yellow: '#ffb43c', ok: '#8a97a3' };
+    // A shell can cross more than one physical volume assigned to the same
+    // module. The simulation correctly applies both impulses, but the replay
+    // should present one final-state callout rather than stacking two TRACK R
+    // cards at the same anchor. Preserve total resolved damage and the most
+    // severe resulting state.
+    const moduleLabels = new Map();
+    const stateRank = { ok: 0, yellow: 1, red: 2 };
     for (const m of ev.modulesHit) {
+      const prev = moduleLabels.get(m.module);
+      if (!prev) {
+        moduleLabels.set(m.module, { ...m });
+        continue;
+      }
+      if ((stateRank[m.newState] || 0) > (stateRank[prev.newState] || 0)) {
+        prev.newState = m.newState;
+      }
+      if (Number.isFinite(m.dmg)) prev.dmg = (Number.isFinite(prev.dmg) ? prev.dmg : 0) + m.dmg;
+    }
+    for (const m of moduleLabels.values()) {
       const seg = anchors.get(`m:${m.module}`);
       if (!seg) continue;
       seg.getWorldPosition(_p);
@@ -3393,7 +3418,7 @@ export function createKillCam(deps) {
         MODULE_LABEL[m.module] || m.module,
         `${MOD_STATE_WORD[m.newState] || 'HIT'}${dmgTxt}`, false, ok, `m:${m.module}`);
     }
-    for (const c of ev.crewHit) {
+    for (const c of new Set(ev.crewHit)) {
       const seg = anchors.get(`c:${c}`);
       if (!seg) continue;
       seg.getWorldPosition(_p);
@@ -3598,9 +3623,10 @@ export function createKillCam(deps) {
     // the compact ballistic card share the bottom third of the frame. Move a
     // colliding callout toward the unobstructed center instead of letting its
     // text ghost through a panel; leaders retain the anchor relationship.
+    let panelRects = [];
     if (dom) {
-      const panelEls = [dom.annot, dom.killer && dom.killer.root].filter(Boolean);
-      const panelRects = panelEls
+      const panelEls = [dom.title, dom.skip, dom.annot, dom.killer && dom.killer.root].filter(Boolean);
+      panelRects = panelEls
         .filter((node) => getComputedStyle(node).display !== 'none')
         .map((node) => node.getBoundingClientRect())
         .filter((r) => r.width > 0 && r.height > 0);
@@ -3614,6 +3640,41 @@ export function createKillCam(deps) {
               : r.bottom + 8;
           }
         }
+      }
+    }
+    // Geometry and fixed-panel repulsion can move two independently solved
+    // labels back onto the same screen row (most visibly the entry-plate and
+    // damage cards at the impact point). Run one final bounded label-only
+    // separation pass after every other obstacle has settled.
+    {
+      const priority = (it) => it.big ? 3 : it.micro ? 1 : 2;
+      const visible = pb.labels.filter((it) => !it.hidden)
+        .sort((a, b) => priority(b) - priority(a) || a.top - b.top || a.left - b.left);
+      const minTop = h * 0.095;
+      const maxBottom = h * 0.885;
+      const hitsPanel = (it, top) => panelRects.some((r) =>
+        it.left < r.right + 6 && r.left < it.left + it.lw + 6 &&
+        top < r.bottom + 6 && r.top < top + it.lh + 6);
+      const placed = [];
+      const fits = (it, top) => top >= minTop && top + it.lh <= maxBottom &&
+        !hitsPanel(it, top) && !placed.some((other) =>
+          it.left < other.left + other.lw + 5 && other.left < it.left + it.lw + 5 &&
+          top < other.top + other.lh + 4 && other.top < top + it.lh + 4);
+      for (const it of visible) {
+        const desired = it.top;
+        if (!fits(it, desired)) {
+          const candidates = [minTop, maxBottom - it.lh];
+          for (const other of placed) {
+            if (it.left >= other.left + other.lw + 5 || other.left >= it.left + it.lw + 5) continue;
+            candidates.push(other.top - it.lh - 5, other.top + other.lh + 5);
+          }
+          const valid = candidates.filter((top) => fits(it, top));
+          if (valid.length) {
+            valid.sort((a, b) => Math.abs(a - desired) - Math.abs(b - desired));
+            it.top = valid[0];
+          }
+        }
+        placed.push(it);
       }
     }
     // pass 3: write DOM positions + leader lines dot -> chip edge
@@ -3630,6 +3691,10 @@ export function createKillCam(deps) {
       if (!it.big) {
         it.top = Math.min(Math.max(it.top, h * 0.095), h * 0.885 - it.lh);
       }
+      // Mobile-safe horizontal clamp: wide labels anchored to terminal road
+      // wheels or long barrels used to escape the portrait frame even after
+      // the vertical repulsion pass had cleared the fixed cards.
+      it.left = Math.min(Math.max(it.left, 8), Math.max(8, w - it.lw - 8));
       it.label.style.left = `${it.left.toFixed(1)}px`;
       it.label.style.top = `${it.top.toFixed(1)}px`;
       if (it.dot) {

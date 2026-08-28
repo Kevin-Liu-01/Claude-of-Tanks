@@ -622,12 +622,26 @@ body[data-cot-width='compact'] .cot-kc-annot,
 body[data-cot-width='phone'] .cot-kc-annot{left:var(--cot-edge);width:min(280px,calc(100vw - (var(--cot-edge) * 2)))}
 body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-kc-killer,
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-kc-killer{
-  top:70px;right:var(--cot-edge);width:min(244px,calc(100vw - (var(--cot-edge) * 2)));
+  top:max(66px,calc(env(safe-area-inset-top) + 58px));right:var(--cot-edge);bottom:auto;
+  width:min(360px,calc(100vw - (var(--cot-edge) * 2)));
 }
 body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-kc-annot,
-body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-kc-annot{bottom:max(54px,env(safe-area-inset-bottom))}
-body[data-cot-height='short'] .cot-kc-annot{left:var(--cot-edge);bottom:48px;width:min(260px,38vw)}
-body[data-cot-height='short'] .cot-kc-killer{right:var(--cot-edge);top:auto;bottom:48px;width:min(244px,36vw)}
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-kc-annot{
+  bottom:max(48px,calc(env(safe-area-inset-bottom) + 34px));
+  width:min(360px,calc(100vw - (var(--cot-edge) * 2)));
+}
+body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-kc-killer,
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-kc-killer,
+body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-kc-annot,
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-kc-annot{max-height:calc(31dvh - 12px);overflow:hidden}
+body[data-cot-height='short'] .cot-kc-annot{
+  left:var(--cot-edge);bottom:38px;width:min(200px,35vw);max-height:calc(100dvh - 82px);overflow:hidden;
+  background:linear-gradient(145deg,rgba(17,25,31,.92),rgba(7,12,16,.9));
+}
+body[data-cot-height='short'] .cot-kc-killer{
+  right:var(--cot-edge);top:auto;bottom:38px;width:min(188px,33vw);max-height:calc(100dvh - 82px);overflow:hidden;
+  background:linear-gradient(145deg,rgba(17,25,31,.92),rgba(7,12,16,.9));
+}
 body[data-cot-width='compact'] .cot-kc-title,
 body[data-cot-width='phone'] .cot-kc-title{padding-inline:18px}
 body[data-cot-width='compact'] .cot-kc-title .t,
@@ -644,8 +658,29 @@ body[data-cot-width='compact'] .cot-kc-dmg,
 body[data-cot-width='phone'] .cot-kc-dmg{font-size:20px;padding:3px 7px 4px}
 body[data-cot-height='short'] .cot-kc-title{top:4px;min-width:280px;padding-block:5px 6px}
 body[data-cot-height='short'] .cot-kc-skip{bottom:8px}
-body[data-cot-height='short'] .cot-kc-annot .hd{padding-block:5px 4px}
-body[data-cot-height='short'] .cot-kc-rows{padding-top:4px;gap-block:2px}
+body[data-cot-height='short'] .cot-kc-annot{padding-bottom:5px}
+body[data-cot-height='short'] .cot-kc-annot .hd{padding:4px 7px}
+body[data-cot-height='short'] .cot-kc-annot .hd .m{display:none}
+body[data-cot-height='short'] .cot-kc-annot .shellrow{gap:4px}
+body[data-cot-height='short'] .cot-kc-annot .hd .k{font-size:10px;line-height:1.12}
+body[data-cot-height='short'] .cot-kc-annot .hd .w{font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body[data-cot-height='short'] .cot-kc-rows{padding:4px 7px 0;gap:1px 7px}
+body[data-cot-height='short'] .cot-kc-kv{gap:4px;font-size:8px;line-height:1.2;min-width:0}
+body[data-cot-height='short'] .cot-kc-kv>span{gap:3px;min-width:0}
+body[data-cot-height='short'] .cot-kc-kv b{white-space:nowrap}
+body[data-cot-height='short'] .cot-kc-pencap{display:none}
+body[data-cot-height='short'] .cot-kc-banner{margin:4px 7px 0;padding:3px 5px;font-size:8px}
+body[data-cot-height='short'] .cot-kc-killer{padding:0 7px 6px}
+body[data-cot-height='short'] .cot-kc-killer .kk{padding:5px 0 4px;font-size:7px}
+body[data-cot-height='short'] .cot-kc-killer .nm{margin-top:4px;font-size:12px;gap:5px}
+body[data-cot-height='short'] .cot-kc-killer .nm .sil{width:42px;height:20px}
+body[data-cot-height='short'] .cot-kc-killer .rows{margin-top:4px;padding-top:4px;gap:1px 7px}
+body[data-cot-height='short'] .cot-kc-killer .kv{font-size:8px;gap:3px;min-width:0}
+body[data-cot-height='short'] .cot-kc-killer .kv b{white-space:nowrap}
+body[data-cot-height='short'] .cot-kc-micro,
+body[data-cot-height='short'] .cot-kc-label.nm{display:none!important}
+body[data-cot-height='compact'][data-cot-orientation='portrait'] .cot-kc-micro,
+body[data-cot-height='compact'][data-cot-orientation='portrait'] .cot-kc-label.nm{display:none!important}
 
 /* CONTEXT HELP ----------------------------------------------------------- */
 body[data-cot-width='compact'] .cot-info-popover,

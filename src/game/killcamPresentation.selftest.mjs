@@ -36,5 +36,19 @@ assert.match(responsive, /body\[data-cot-width='phone'\]\[data-cot-orientation='
   'portrait killcam has a dedicated safe-area layout');
 assert.match(responsive, /body\[data-cot-height='short'\] \.cot-kc-(?:annot|killer)/,
   'short landscape killcam has a dedicated compact layout');
+assert.match(responsive,
+  /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-kc-killer\{[\s\S]*?bottom:auto;/,
+  'portrait killer card clears the desktop bottom constraint instead of stretching vertically');
+assert.match(responsive,
+  /body\[data-cot-height='short'\] \.cot-kc-micro,[\s\S]*?\.cot-kc-label\.nm\{display:none!important\}/,
+  'short landscape hides secondary micro and near-miss tags');
+assert.match(source, /const panelEls = \[dom\.title, dom\.skip, dom\.annot,/,
+  'projected callouts reserve the fixed title, skip control, and analysis cards');
+assert.match(source, /w - it\.lw - 8/,
+  'projected callouts clamp within the horizontal viewport');
+assert.match(source, /const moduleLabels = new Map\(\)/,
+  'multiple physical hits on one module collapse into one final-state callout');
+assert.match(source, /final bounded label-only[\s\S]*const placed = \[\][\s\S]*const fits/,
+  'label separation is repeated after geometry and fixed-panel repulsion');
 
 console.log('killcam presentation selftest passed');
