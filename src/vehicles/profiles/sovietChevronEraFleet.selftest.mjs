@@ -4,18 +4,20 @@ import { getSpec } from '../specs.js';
 import { tankTier } from '../tier.ts';
 
 const cases = Object.freeze({
-  t64bv1: 't64BV1ChevronEraReceipt',
-  t72bu: 't72BUChevronEraReceipt',
-  t80u: 't80UChevronEraReceipt',
-  t80bv: 't80BVChevronEraReceipt',
-  ua_t80bv: 'uaT80ChevronEraReceipt',
-  ua_t80u_kursk: 'uaT80ChevronEraReceipt',
-  t90a: 't90AChevronEraReceipt',
-  t90: 't90ChevronEraReceipt',
-  t90m_proryv: 't90MProryvChevronEraReceipt',
+  t64bv1: Object.freeze({ receiptKey: 't64BV1ChevronEraReceipt', forwardM: 0 }),
+  t72bu: Object.freeze({ receiptKey: 't72BUChevronEraReceipt', forwardM: 0 }),
+  t80u: Object.freeze({ receiptKey: 't80UChevronEraReceipt', forwardM: 0 }),
+  t80bv: Object.freeze({ receiptKey: 't80BVChevronEraReceipt', forwardM: 0.18 }),
+  ua_t80bv: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14 }),
+  ua_t80u_kursk: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14 }),
+  t90a: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0.14 }),
+  t90a_burlak: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0 }),
+  t90a_vladimir: Object.freeze({ receiptKey: 't90aVladimirChevronEraReceipt', forwardM: 0.12 }),
+  t90: Object.freeze({ receiptKey: 't90ChevronEraReceipt', forwardM: 0.27 }),
+  t90m_proryv: Object.freeze({ receiptKey: 't90MProryvChevronEraReceipt', forwardM: 0 }),
 });
 
-for (const [id, receiptKey] of Object.entries(cases)) {
+for (const [id, expected] of Object.entries(cases)) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',
@@ -24,13 +26,13 @@ for (const [id, receiptKey] of Object.entries(cases)) {
   });
   try {
     const turret = tank.root.getObjectByName('rig_turret');
-    const receipt = turret?.userData[receiptKey];
+    const receipt = turret?.userData[expected.receiptKey];
     assert.ok(receipt, `${id}: publishes its chevron ERA receipt`);
     assert.equal(receipt.rowsPerCheek, 2, `${id}: has two joined carrier rows per cheek`);
     assert.ok(receipt.carriersPerRow >= 2, `${id}: has multiple plan carriers per row`);
     assert.ok(receipt.tilesPerCarrierSurface >= 2, `${id}: has distinct ERA tiles on every carrier`);
     assert.equal(receipt.exactSurfaceOffsets, true, `${id}: derives tile faces from carrier planes`);
-    assert.equal(receipt.forwardM, id === 't90' ? 0.27 : 0,
+    assert.equal(receipt.forwardM, expected.forwardM,
       `${id}: seats its chevrons on the variant's installed front datum`);
     assert.equal(receipt.carrierSurfacesTotal,
       receipt.rowsPerCheek * receipt.carriersPerRow * 2,

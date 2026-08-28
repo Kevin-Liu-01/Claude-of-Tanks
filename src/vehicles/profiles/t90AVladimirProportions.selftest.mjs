@@ -166,6 +166,16 @@ try {
   assert.ok(near(proportion.shtoraToGunAxisM, 0.12), 'Shtora optical centres sit 120 mm above the gun axis');
   assert.ok(near(proportion.shtoraCenterY - gunRig.position.y, proportion.shtoraToGunAxisM),
     'Shtora-to-gun alignment receipt matches the articulated gun rig');
+  assert.ok(near(proportion.chevronForwardM, 0.12),
+    'Vladimir installs its complete frontal chevron ahead of the cast cheek');
+  assert.equal(proportion.chevronRowsPerCheek, 2,
+    'Vladimir exposes both joined chevron rows on each cheek');
+  assert.equal(proportion.chevronTilesTotal, 24,
+    'Vladimir keeps three distinct K-5 tiles on every chevron carrier face');
+  assert.ok(proportion.chevronInnerLaneClearanceM >= 0.025,
+    'inner chevron carriers leave a physical lane around each Shtora housing');
+  assert.ok(proportion.chevronOuterLaneClearanceM >= 0.10,
+    'outer chevron carriers remain clear of each Shtora housing');
 
   const position = turret.geometry.attributes.position;
   let topCourseVertices = 0;
@@ -270,10 +280,11 @@ try {
     const depth = part.max[2] - part.min[2];
     const centerX = (part.min[0] + part.max[0]) * 0.5;
     const centerZ = (part.min[2] + part.max[2]) * 0.5;
-    return width > 0.29 && height > 0.20 && depth > 0.33
+    return width > 0.29 && height > 0.20 && depth > 0.33 && depth < 0.50
       && Math.abs(centerX) > 0.9 && centerZ > 0.30;
   });
-  assert.equal(flankEra.length, 12, 'twelve sloped flank ERA cassettes form the two-row grid');
+  assert.equal(flankEra.length, eraSeat.cassetteCount,
+    'the twelve sloped flank cassettes remain distinct from the deeper frontal chevron carriers');
   assert.equal(flankEra.filter((part) => (part.min[0] + part.max[0]) * 0.5 < 0).length, 6,
     'six ERA cassettes seat on the left cheek');
   assert.equal(flankEra.filter((part) => (part.min[0] + part.max[0]) * 0.5 > 0).length, 6,

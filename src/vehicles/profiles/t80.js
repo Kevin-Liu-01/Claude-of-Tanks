@@ -496,6 +496,10 @@ function buildT80Line(P, v) {
       tileBucket: 'turretTrack',
       tileDepthM: 0.060,
       gasketDepthM: 0.022,
+      // The cast shell previously swallowed the carrier faces in quarter
+      // views. Move the complete carrier-and-tile package to the installed
+      // cheek datum; its long rear edges remain buried in the dome.
+      forwardM: 0.18,
       centerClosure: { width: 0.36, height: 0.18, depth: 0.055, y: 0.23, z: 1.43, rx: -0.20 },
     });
     // Continue the coherent front into the cast shoulder and flank wrap.

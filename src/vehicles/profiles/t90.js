@@ -471,7 +471,10 @@ const T90A_ORIGINAL_TURRET_SEAT_Z_M = 0.12;
 const T90A_TURRET_SEAT_Z_M = 0.02;
 const T90A_TURRET_REARWARD_SHIFT_M = T90A_ORIGINAL_TURRET_SEAT_Z_M - T90A_TURRET_SEAT_Z_M;
 const T90A_ORIGINAL_SHTORA_EYE_Z_M = 1.80;
-const T90A_SHTORA_EYE_Z_M = 1.60;
+// The frontal K-5 package now sits on the visible cheek datum. Keep the
+// complete OTShU housing (not only its red lens) ahead of the tile faces so
+// the dazzler and the two-row chevron remain separately readable.
+const T90A_SHTORA_EYE_Z_M = 1.76;
 const T90A_SHTORA_LOCAL_REARWARD_SHIFT_M = T90A_ORIGINAL_SHTORA_EYE_Z_M - T90A_SHTORA_EYE_Z_M;
 const T90A_SHTORA_SUPPORT_FRONT_Z_M = T90A_SHTORA_EYE_Z_M - 0.04;
 const T90A_GUN_RADIUS_SCALE = 1.08;
@@ -482,6 +485,7 @@ function buildT90ALegacy(P, {
   shtoraEyeZ = T90A_SHTORA_EYE_Z_M,
   shtoraLocalRearwardShiftM = T90A_SHTORA_LOCAL_REARWARD_SHIFT_M,
   shtoraSupportFrontZ = T90A_SHTORA_SUPPORT_FRONT_Z_M,
+  chevronForwardM = 0.14,
   gunRadiusScale = T90A_GUN_RADIUS_SCALE,
   recordSeatReceipt = true,
 } = {}) {
@@ -792,7 +796,7 @@ function buildT90ALegacy(P, {
   // broad-plate read comes from the TWO-LEAF clamshell (k5Lower) + the
   // axis-aligned under-roots below instead.)
   const p5 = { rings, sz: 1.21, k5T: 0.62, k5Out: 0.24, k5Len: 0.95, k5H: 0.18, k5Y: 0.28, k5Yaw: 0.47, k5Rise: 0, k5Seg: 5, k5CapIn: 0.04, k5Lower: { dy: 0.13, h: 0.16, dPitch: 0.35, tuck: 0.05 }, k5Bucket: 'turret', k5LeafOff: true, eyeKit: true, eyeRound: true, eyeScale: 1.32, eyeX: 0.70, eyeZ: shtoraEyeZ };
-  addSovietChevronEra(P, {
+  const t90aChevron = addSovietChevronEra(P, {
     sector: 't90a-k5-turret-era',
     receiptKey: 't90AChevronEraReceipt',
     family: 't90a-kontakt5-shtora-chevron-r1',
@@ -807,8 +811,17 @@ function buildT90ALegacy(P, {
     tileRanges: [[0.06, 0.29], [0.335, 0.665], [0.71, 0.94]],
     tileDepthM: 0.080,
     gasketDepthM: 0.030,
+    // Seat the whole K-5 clamshell on the visible welded cheek face. The
+    // previous zero offset left most of both rows inside the T-90SM-derived
+    // foundation even though their plan geometry was otherwise correct.
+    forwardM: chevronForwardM,
     centerClosure: { width: 0.40, height: 0.23, depth: 0.060, y: 0.225, z: 1.62, rx: -0.24 },
   });
+  const shtoraHousingRearZ = shtoraEyeZ - 0.11 * p5.eyeScale;
+  const shtoraHousingFrontZ = shtoraEyeZ + 0.11 * p5.eyeScale;
+  const shtoraLensFrontZ = shtoraEyeZ + 0.130 * p5.eyeScale;
+  const shtoraChevronDepthClearanceM = shtoraHousingFrontZ - t90aChevron.frontmostTileZM;
+  const shtoraSupportBodyOverlapM = shtoraSupportFrontZ - shtoraHousingRearZ;
   P.visualEraCluster('t90a-k5-turret-support-era', 'turret', () => {
   for (const s2 of [-1, 1]) {
     // The Shtora lane is now a deliberate opening in the K-5 staircase.
@@ -1080,6 +1093,11 @@ function buildT90ALegacy(P, {
       shtoraEyeZ,
       shtoraLocalRearwardShiftM,
       shtoraSupportFrontZ,
+      shtoraHousingRearZ,
+      shtoraHousingFrontZ,
+      shtoraLensFrontZ,
+      shtoraChevronDepthClearanceM,
+      shtoraSupportBodyOverlapM,
       gunRadiusScale,
       cupolaCount: 2,
       leftCupola: [t90aRoofStations.left.x, t90aRoofStations.left.z],
@@ -1516,6 +1534,33 @@ function buildT90AVladimirLegacy(P) {
     k5LayeredFlankTiles: true,
   };
   eraRuCheeks(P, p5, 'k5');
+  // The legacy Vladimir build intentionally disabled eraRuCheeks' generic
+  // front leaves while retaining its conformal flank banks. Replace those
+  // leaves with the same exact-surface two-row grammar used by the rest of
+  // the family. The inner and outer carriers stop on opposite sides of each
+  // OTShU housing, so the red lenses remain unobstructed while the joined
+  // chevron reads clearly ahead of the cast cheek in front and quarter view.
+  const vladimirChevronForwardM = 0.12;
+  const vladimirChevronInnerOuterX = 0.39;
+  const vladimirChevronOuterInnerX = 0.91;
+  const vladimirChevron = addSovietChevronEra(P, {
+    sector: 't90a-vladimir-k5-turret-front-era',
+    receiptKey: 't90aVladimirChevronEraReceipt',
+    family: 't90a-vladimir-kontakt5-shtora-chevron-r1',
+    plans: [
+      [[0.08, 0.92], [0.14, 1.14], [vladimirChevronInnerOuterX, 1.02], [0.33, 0.82]],
+      [[0.82, 0.73], [vladimirChevronOuterInnerX, 1.03], [1.32, 0.55], [1.20, 0.30]],
+    ],
+    rows: [
+      { y0: 0.09, y1: 0.30, z0: -0.085, z1: 0.070 },
+      { y0: 0.30, y1: 0.51, z0: 0.070, z1: -0.080 },
+    ],
+    tileRanges: [[0.06, 0.29], [0.335, 0.665], [0.71, 0.94]],
+    tileDepthM: 0.080,
+    gasketDepthM: 0.030,
+    forwardM: vladimirChevronForwardM,
+    centerClosure: { width: 0.24, height: 0.22, depth: 0.055, y: 0.22, z: 1.17, rx: -0.22 },
+  });
   P.turretG.userData.t90aVladimirEraSeatReceipt = Object.freeze({
     revision: 'faceted-carrier-k5-r1',
     owner: 'rig_turret',
@@ -1547,6 +1592,9 @@ function buildT90AVladimirLegacy(P) {
   const gunAxisY = 0.16;
   const shtoraCenterY = 0.28;
   const shtoraSupportY = shtoraCenterY - 0.08;
+  const shtoraHousingHalfWidthM = 0.12 * p5.eyeScale;
+  const shtoraInnerEdgeX = p5.eyeX - shtoraHousingHalfWidthM;
+  const shtoraOuterEdgeX = p5.eyeX + shtoraHousingHalfWidthM;
   for (const s of [-1, 1]) {
     P.add('turret', KIT.xform(box(0.34, 0.28, 0.44), 0, 0, -0.04),
       s * 0.60, shtoraSupportY, 1.04, -0.22, -s * 0.12, 0);
@@ -1590,6 +1638,13 @@ function buildT90AVladimirLegacy(P) {
     shtoraSupportY,
     shtoraLoweredM: cheekRiseM,
     shtoraToGunAxisM: shtoraCenterY - gunAxisY,
+    chevronForwardM: vladimirChevron.forwardM,
+    chevronRowsPerCheek: vladimirChevron.rowsPerCheek,
+    chevronTilesTotal: vladimirChevron.tilesTotal,
+    chevronFrontmostTileZM: vladimirChevron.frontmostTileZM,
+    shtoraHousingHalfWidthM,
+    chevronInnerLaneClearanceM: shtoraInnerEdgeX - vladimirChevronInnerOuterX,
+    chevronOuterLaneClearanceM: vladimirChevronOuterInnerX - shtoraOuterEdgeX,
   };
   // Vladimir ESSA hierarchy.  A long, narrow optical run and one distinct
   // outer service body replace the old staircase of tall touching boxes.
@@ -8242,6 +8297,7 @@ function buildT90BurlakHybridNative2026(P) {
     shtoraEyeZ: T90A_ORIGINAL_SHTORA_EYE_Z_M,
     shtoraLocalRearwardShiftM: 0,
     shtoraSupportFrontZ: T90A_ORIGINAL_SHTORA_EYE_Z_M - 0.04,
+    chevronForwardM: 0,
     gunRadiusScale: 1,
     recordSeatReceipt: false,
   });

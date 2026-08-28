@@ -36,6 +36,10 @@ for (const [id, receipt, weaponName] of variants) {
       `${id}: no loose mantlet cassette duplicates the joined center closure`);
     assert.equal(frontERA.shoulderReturnCassettes, 6);
     assert.equal(frontERA.rowsPerCheek, 2);
+    assert.equal(frontERA.forwardM, 0.14,
+      `${id}: complete chevron package is installed on the visible cheek face`);
+    assert.ok(frontERA.frontmostTileZM >= 1.79,
+      `${id}: frontal ERA faces remain visibly proud of the welded carrier`);
     assert.equal(frontERA.exactSurfaceOffsets, true);
     assert.equal(turretRig.getObjectByName('turretTrack'), undefined,
       `${id}: obsolete spare-track-steel frontal blocks are removed`);

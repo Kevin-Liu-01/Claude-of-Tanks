@@ -212,6 +212,7 @@ function modernT80CheekCarrier(s) {
 // segmented clamshell read from front, quarter and plan views.
 function addFacetedT80FrontERA(P, variant) {
   const kursk = variant === 'kursk';
+  const chevronForwardM = 0.14;
   const plans = kursk ? [
     [[0.12, 1.46], [0.24, 1.59], [0.78, 1.21], [0.66, 1.08]],
     [[0.67, 1.12], [0.80, 1.24], [1.33, 0.69], [1.20, 0.57]],
@@ -237,6 +238,10 @@ function addFacetedT80FrontERA(P, variant) {
     tileRanges: [[0.06, 0.30], [0.34, 0.66], [0.70, 0.94]],
     tileDepthM: kursk ? 0.080 : 0.064,
     gasketDepthM: kursk ? 0.030 : 0.024,
+    // Both modernized cheeks stand ahead of their donor cast domes. Keep
+    // the exact variant plans, but install the complete two-row package on
+    // that visible face rather than leaving its tiles buried in the shell.
+    forwardM: chevronForwardM,
     centerClosure: {
       width: kursk ? 0.43 : 0.39,
       height: kursk ? 0.23 : 0.21,
@@ -253,6 +258,8 @@ function addFacetedT80FrontERA(P, variant) {
     mantletCassettes: 0,
     shoulderReturnCassettes: 6,
     rowsPerCheek: chevron.rowsPerCheek,
+    forwardM: chevron.forwardM,
+    frontmostTileZM: chevron.frontmostTileZM,
     exactSurfaceOffsets: chevron.exactSurfaceOffsets,
   };
   P.turretG.userData.uaT80FrontERAReceipt = Object.freeze(receipt);

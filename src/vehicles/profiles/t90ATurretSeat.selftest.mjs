@@ -32,9 +32,16 @@ try {
   assert.ok(receipt, 'T-90A exposes its turret, Shtora, and cannon adjustment receipt');
   near(turret.position.z, 0.02, 'turret yaw seat moves rearward to the accepted station');
   near(receipt.turretRearwardShiftM, 0.10, 'turret moves rearward by 100 mm');
-  near(receipt.shtoraEyeZ, 1.60, 'Shtora eyes move rearward against the turret cheeks');
-  near(receipt.shtoraLocalRearwardShiftM, 0.20, 'Shtora eyes move rearward by 200 mm locally');
-  near(receipt.shtoraSupportFrontZ, 1.56, 'Shtora support shoes follow the emitters');
+  near(receipt.shtoraEyeZ, 1.76, 'Shtora housings move ahead of the advanced cheek ERA');
+  near(receipt.shtoraLocalRearwardShiftM, 0.04, 'Shtora remains 40 mm behind its original local datum');
+  near(receipt.shtoraSupportFrontZ, 1.72, 'Shtora support shoes follow the advanced emitters');
+  near(receipt.shtoraHousingRearZ, 1.6148, 'Shtora housing rear stays buried in its tapered pedestal');
+  near(receipt.shtoraHousingFrontZ, 1.9052, 'complete Shtora housings project beyond the chevron faces');
+  near(receipt.shtoraLensFrontZ, 1.9316, 'red lenses remain the frontmost optical surface');
+  assert.ok(receipt.shtoraChevronDepthClearanceM >= 0.045,
+    'Shtora housing faces clear the advanced ERA by a visible margin');
+  assert.ok(receipt.shtoraSupportBodyOverlapM >= 0.10,
+    'advanced Shtora bodies remain physically embedded in their support shoes');
   near(receipt.gunRadiusScale, 1.08, 'cannon cross-section grows by eight percent');
   assert.equal(receipt.cupolaCount, 2, 'RU-112 carries two complete roof cupolas');
   assert.deepEqual(receipt.leftCupola, [-0.35, -0.48], 'left cupola occupies the left roof station');
@@ -91,10 +98,16 @@ try {
     return Math.abs(width - 0.24 * 1.32) < 2e-5
       && Math.abs(height - 0.27 * 1.32) < 2e-5
       && Math.abs(depth - 0.22 * 1.32) < 2e-5
-      && Math.abs(centerZ - 1.60) < 2e-5;
+      && Math.abs(centerZ - 1.76) < 2e-5;
   });
   assert.equal(shtoraBodies.length, 2,
-    'both Shtora emitter bodies occupy the rearward seat');
+    'both complete Shtora emitter bodies occupy the advanced seat');
+  const chevron = turret.userData.t90AChevronEraReceipt;
+  assert.ok(chevron, 'T-90A publishes its advanced chevron receipt');
+  for (const body of shtoraBodies) {
+    assert.ok(body.max[2] - chevron.frontmostTileZM >= 0.045,
+      'actual Shtora housing geometry stands visibly ahead of the frontmost ERA tile');
+  }
 
   for (const yawDeg of [0, 45, -90, 180]) {
     turret.rotation.y = THREE.MathUtils.degToRad(yawDeg);
