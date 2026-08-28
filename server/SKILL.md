@@ -16,7 +16,7 @@ The signaling server relays WebRTC descriptions/ICE only and never gameplay.
 - `roomCode.js` keeps room-code generation inside the JavaScript serverless
   closure; production `.js` entries must not import raw `.ts` source files.
 - `signalingServer.js` owns HTTP upgrade, origin/rate/payload gates, and relay.
-- `dedicatedMatchRegistry.js` owns authenticated match lifecycle and reconnects.
+- `dedicatedMatchRegistry.ts` owns authenticated match lifecycle and reconnects.
 - `dedicatedMatchServer.js` owns the authoritative WebSocket service boundary.
 - `rankedMatchmaker.js` owns bounded queues, team balance, and match-ticket handoff;
   `ratingStore.js` owns bearer identities, persistent Elo, and idempotent results.

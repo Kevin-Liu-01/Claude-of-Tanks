@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
 import { beginDedicatedClientMatch, connectDedicatedMatch } from '../src/net/dedicatedClient.ts';
-import { DedicatedMatchRegistry } from './dedicatedMatchRegistry.js';
+import { DedicatedMatchRegistry } from './dedicatedMatchRegistry.ts';
 import { createDedicatedMatchServer } from './dedicatedMatchServer.js';
 
 let tokenCounter = 0;
@@ -100,6 +100,8 @@ for (let attempt = 0; attempt < 100 && resilient.client === replacedClient; atte
 assert.notEqual(resilient.client, replacedClient, 'dedicated session reconnects with the same ticket');
 assert.ok(resilient.client.connected);
 assert.ok(reconnectStates.includes('reconnecting') && reconnectStates.includes('reconnected'));
+assert.equal(registry.matches.get('ranked_test_1').players.get('p1').connected, true,
+  'the retired socket close cannot mark its replacement connection offline');
 assert.equal(registry.matches.get('ranked_test_1').simulation.entityById.get('p1'), preservedEntity,
   'reconnect preserves the authoritative entity instead of respawning it');
 assert.equal(preservedEntity.combat.hp, 1234, 'reconnect preserves combat state');

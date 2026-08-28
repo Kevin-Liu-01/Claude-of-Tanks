@@ -2,7 +2,7 @@ import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { createWebSocketTransport } from '../src/net/channelTransport.ts';
-import { DedicatedMatchRegistry } from './dedicatedMatchRegistry.js';
+import { DedicatedMatchRegistry } from './dedicatedMatchRegistry.ts';
 import { RankedMatchmaker } from './rankedMatchmaker.js';
 import { RatingStore } from './ratingStore.js';
 
