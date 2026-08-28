@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 
 const EPSILON = 1e-9;
 const near = (actual, expected, message) => {

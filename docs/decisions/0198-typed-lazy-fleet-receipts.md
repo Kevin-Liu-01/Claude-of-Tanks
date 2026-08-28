@@ -14,7 +14,7 @@ payloads and loader tables remain generator-owned JavaScript; authored browser
 and tooling code must not import those payloads directly.
 
 The browser loads only receipt groups required by the requested vehicle IDs.
-The eager `tankFactory.js` tooling facade registers the complete generated set
+The eager `tankFactory.ts` tooling facade registers the complete generated set
 for release audits that intentionally inspect every vehicle.
 
 ## Why

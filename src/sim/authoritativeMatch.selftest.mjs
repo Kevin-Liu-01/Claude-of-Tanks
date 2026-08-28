@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Euler, Quaternion, Vector3 } from 'three';
-import '../vehicles/tankFactory.js'; // register the full authored fleet
+import '../vehicles/tankFactory.ts'; // register the full authored fleet
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
 import { MAP_IDS } from '../world/maps/index.ts';

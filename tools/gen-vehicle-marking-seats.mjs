@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createTank } from '../src/vehicles/tankFactory.js';
+import { createTank } from '../src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS } from '../src/vehicles/specs.js';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 

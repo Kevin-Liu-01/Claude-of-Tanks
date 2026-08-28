@@ -700,7 +700,7 @@ under-glacis voids are orders on every tank.
   builders use the top-level `import { FITTINGS }` — there is no
   kitFittings(); KIT.fittings attaches post-init via microtask; and an
   extension module as import ENTRY throws kit.js's TDZ spuriously —
-  smoke-load via tankFactory.js. SWEPT-PLANAR CORE (§B1): behind
+  smoke-load via tankFactory.ts. SWEPT-PLANAR CORE (§B1): behind
   plan-swept raked cheeks an axis-aligned core pokes the rake or opens a
   top-down valley — author L/R half-slabs with vertical front faces on
   the cheek top-rear edge line. CHEEK-APEX GLACIS SEAT: apex overhang

@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 await import('./profiles/t72TrackFinish.selftest.mjs');
-await import('./tankFactory.js');
+await import('./tankFactory.ts');
 const { ALL_TANK_IDS, TANK_SPECS } = await import('./specs.js');
 const {
   TRACK_PATTERN_DEFINITIONS, TRACK_PATTERN_IDS, trackPatternFor,

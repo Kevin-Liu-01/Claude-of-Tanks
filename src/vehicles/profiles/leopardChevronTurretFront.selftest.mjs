@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 
 const modernProfiles = new Map([
   ['leo2a5', 'leopard-2a5'],

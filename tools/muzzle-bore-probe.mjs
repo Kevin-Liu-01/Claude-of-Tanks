@@ -6,7 +6,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import '../src/vehicles/tankFactory.js';
+import '../src/vehicles/tankFactory.ts';
 import { getSpec } from '../src/vehicles/specs.js';
 import { expectedMuzzleBoreCount } from '../src/vehicles/tankAssets.ts';
 

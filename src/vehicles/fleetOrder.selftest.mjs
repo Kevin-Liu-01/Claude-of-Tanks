@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-const { createTank } = await import('./tankFactory.js');
+const { createTank } = await import('./tankFactory.ts');
 const { ALL_TANK_IDS } = await import('./specs.js');
 const { NATIVE_FAMILY_ORDER, NATIVE_VARIANT_FAMILIES } = await import('./fleetOrder.ts');
 

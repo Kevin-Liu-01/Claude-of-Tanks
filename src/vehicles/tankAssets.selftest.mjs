@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import './fleetFloorClearance.selftest.mjs';
-import { createTank } from './tankFactory.js';
+import { createTank } from './tankFactory.ts';
 import {
   ALL_TANK_IDS,
   DEVELOPMENT_TANK_IDS,

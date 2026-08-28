@@ -28,7 +28,7 @@ Camo generator: `paintCamo` (materials.js) — scheme painters consume
 `visual.patches`; the darkest member is the blotch/black class (nato painter:
 `black = patches[0]`, core alpha 0.95). Proc albedo pipeline: paintCamo →
 `exposureTrim` ×0.86 (materials.js) → at render ×bakeDirt vertex dust
-(tankFactory.js:3330 — NOT in the materials lane: deck up-face AO ×0.84, hem
+(tankFactory.ts:3330 — NOT in the materials lane: deck up-face AO ×0.84, hem
 channels ×(0.728, 0.660, 0.541) at d=0.85) → vehicleAmbientFloorHook deep-shade
 rolloff (materials.js: `vehFloorL *= mix(0.30, 1, smoothstep(0.025, 0.09,
 vehLuma))` — near-black texels keep 30% of the readability floor; leo2a5 r8
@@ -131,7 +131,7 @@ exposureTrim, and hem texels then take bakeDirt ×0.66 G (vs the ref bake's
 and the 95 threshold sits above it. Opening this from materials.js would mean
 lifting the light class or the exposure trim — both banned (19 graduates'
 med/hue windows are scored against them; the trim is the roster-cohesion
-calibration). The pale reach lever is bakeDirt-lane (tankFactory.js hem
+calibration). The pale reach lever is bakeDirt-lane (tankFactory.ts hem
 constants) and/or the lit-response side. Note t84 GRADUATED 2026-08-04 (19th)
 with this residual banked — the window is frozen evidence now.
 
@@ -246,13 +246,13 @@ their lane stabilizes.
 
 # bakeDirt-lane round (the TRUE B3 fix — §7.1 executed) — 2026-08-04
 
-Lane: tankFactory.js bakeDirt/dust constants ONLY (the two §7.1 levers).
+Lane: tankFactory.ts bakeDirt/dust constants ONLY (the two §7.1 levers).
 Baseline: HEAD c1160ed working tree carrying three concurrent-lane edits —
 russia BUCKET_DEF park (kept byte-exact), patton r8 (+131/−5 dropped 16:20
 MID-ROUND), leopard r10 (leo2a5 broken `evenStations` TDZ 16:05→16:44+).
 All verdict evidence below is same-tree A/B (see the m47 redo note).
 
-## R1. Constants before/after (bakeDirt, tankFactory.js ~3350)
+## R1. Constants before/after (bakeDirt, tankFactory.ts ~3350)
 
 | lever | before | after | disposition |
 |---|---|---|---|
@@ -340,7 +340,7 @@ is NOT a valid stability probe: the COMMITTED file throws the same
 `evenStations` TDZ standalone (kit.js-cycle artifact, like modern3.js)
 while rendering perfectly in-app — the probe that matters is a critic
 render. Resolution: `git worktree` at HEAD c1160ed + this round's
-tankFactory.js copied in (their tree untouched, single-owner law) —
+tankFactory.ts copied in (their tree untouched, single-owner law) —
 committed leopard renders CLEAN there, and the A/B baseline reproduced
 the r8 packet EXACTLY (gear sub45 2358, hull-side med 71.4, hash
 50c34724 = the materials-round baseline hash).

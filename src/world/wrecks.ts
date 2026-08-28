@@ -3,7 +3,7 @@
 //
 // The old props.ts hulks were generic box sketches; the owner asked for the
 // map wrecks to be "our actual tank models". This module builds a roster
-// vehicle through the live factory (src/vehicles/tankFactory.js), applies the
+// vehicle through the live factory (src/vehicles/tankFactory.ts), applies the
 // settled destroyed pose via the factory's own wreck machinery
 // (setDestroyed({pop, ageS: large}) — the exact precedent the killcam uses:
 // wreckSeat capture, askew turret, drooped gun), then BAKES the posed

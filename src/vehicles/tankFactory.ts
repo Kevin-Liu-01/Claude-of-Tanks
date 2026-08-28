@@ -1,5 +1,7 @@
-// Public fleet factory facade. It evaluates spec packs in donor order, seals
-// the selectable roster, and configures the cycle-free implementation once.
+// Typed eager fleet factory facade for release tools and headless audits. It
+// evaluates spec packs in donor order, seals the selectable roster, and
+// configures the cycle-free implementation once. Player boot uses the
+// demand-loaded fleetFactory.ts boundary instead.
 
 import { configureTankFactory } from './tankFactoryCore.js';
 import { MODERN3_BUILDERS } from './modern3.js';
@@ -46,9 +48,11 @@ import {
 } from './specs.js';
 import { applyNativeFamilyOrder } from './fleetOrder.ts';
 
+const tankSpecs = TANK_SPECS as unknown as Record<string, unknown>;
+
 registerCombatAnatomyCalibrations(COMBAT_ANATOMY_CALIBRATIONS);
 finalizeFirstPartyRoster();
-for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(TANK_SPECS[id]);
+for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(tankSpecs[id]);
 registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);
 for (const ids of [
   ALL_TANK_IDS,

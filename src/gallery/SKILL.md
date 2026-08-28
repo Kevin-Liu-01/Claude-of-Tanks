@@ -55,7 +55,7 @@ contract. `gallery.html` and `gallery.css` own the public surface;
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
-Importing `tankFactory.js` registers the complete expansion fleet before the
+Importing `tankFactory.ts` registers the complete expansion fleet before the
 browser reads `ALL_TANK_IDS`; tests must reproduce that import order. Armor
 plates and internal volumes are diagnostic combat data, not visible-mesh
 extractions or real-world engineering claims. Turret-local overlays must remain

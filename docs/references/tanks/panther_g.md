@@ -16,7 +16,7 @@ procedural-fidelity override row, no ledger/gate JSON, no GLB on disk —
 the 'panther' hits in models/ are the K2 Black Panther + KF51 Panther,
 different vehicles). **FALSE-0 LAW: never gate.** Bar = PHOTO-CLASS
 FLOW (14-view rig + §B battery + published dims). Live builder:
-tankFactory.js core map `buildPanther` (verified: NO profile override
+tankFactory.ts core map `buildPanther` (verified: NO profile override
 exists in PROFILED_BUILDERS; §5.247 lane brief confirmed).
 
 ## Corroborated dimensions (photo-class targets = spec dims)

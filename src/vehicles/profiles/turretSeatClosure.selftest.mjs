@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 
 const CASES = [
   { id: 'leo2a6', y: [-0.125, -0.105], samples: [[0.92, 0.38], [-0.92, 0.38], [0.92, -0.72], [-0.92, -0.72]] },

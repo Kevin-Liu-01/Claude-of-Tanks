@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 
 const materialsSource = readFileSync(new URL('../materials.js', import.meta.url), 'utf8');
 assert.match(materialsSource,

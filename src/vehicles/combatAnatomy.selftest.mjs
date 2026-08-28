@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createTank } from './tankFactory.js';
+import { createTank } from './tankFactory.ts';
 import { Vector3 } from 'three';
 import { createCombatState, startReload } from '../sim/damage.ts';
 import { traceTank } from '../sim/armor.ts';

@@ -3,7 +3,7 @@
 // under ./profiles/ (one owner per family — see docs/BUILD-STANDARD.md),
 // and the shared geometry machinery lives in ./profiles/kit.js. This module
 // only merges the family maps and exposes the same PROCEDURAL_PROFILES /
-// PROFILED_BUILDERS interface tankFactory.js has always consumed.
+// PROFILED_BUILDERS interface tankFactory.ts has always consumed.
 //
 // All profiles are original primitive reconstructions informed by normalized
 // local reference renders and real vehicle dimensions. They intentionally do

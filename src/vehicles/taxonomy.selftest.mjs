@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import './tankFactory.js';
+import './tankFactory.ts';
 import { SAVED_TANK_IDS, TANK_SPECS } from './specs.js';
 import {
   VEHICLE_ERAS,

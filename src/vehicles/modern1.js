@@ -6,7 +6,7 @@
 // moved to profiles/challenger.js (§5.75 family-module split) — that module
 // imports the spec-table helpers exported below.
 //
-// Registration pattern: tankFactory.js passes MODERN1_BUILDERS through the
+// Registration pattern: tankFactory.ts passes MODERN1_BUILDERS through the
 // checked factory-configuration gate. Specs and
 // model-source rows register HERE by mutating the exported tables from
 // specs.js — specs.js itself is untouched (it is concurrently edited by the

@@ -19,7 +19,7 @@ import { KIT, FITTINGS, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 import { addVehicleGhillieSuit } from '../ghillieSuit.js';
 
-// KIT is populated by tankFactory.js, which sits on the other side of an
+// KIT is populated by tankFactory.ts, which sits on the other side of an
 // import cycle with the profile modules — resolve members lazily.
 const {
   box, cylX, cylY, cylZ, sph, torus, slab, frustum, polyTurret, buildRunningGear, buildGun,

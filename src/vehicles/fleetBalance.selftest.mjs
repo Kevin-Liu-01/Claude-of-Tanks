@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import './tankFactory.js';
+import './tankFactory.ts';
 import {
   PRODUCTION_TANK_IDS, SAVED_TANK_IDS, TANK_SPECS,
 } from './specs.js';

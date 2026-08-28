@@ -707,7 +707,7 @@ reach rule already skips by design — not debt.
 FIX (split-only, zero transforms): ruGlacisKit gains opt-in `eyeSplit`
 (default byte-identical — t72b3m/t84 frozen proofs below) routing the
 tori into per-side hullTrackDetailL/R buckets; BUCKET_DEF gains
-hullTrackDetailL/R: ['hullG','detail'] (tankFactory.js, the e3918e6
+hullTrackDetailL/R: ['hullG','detail'] (tankFactory.ts, the e3918e6
 rider class: same 'detail' material slot + LOD path as hullDetail, no
 other caller — NEEDS ORCHESTRATOR LANDING with the russia.js change in
 one commit). Each merged mesh keeps an honest one-sided AABB (reach

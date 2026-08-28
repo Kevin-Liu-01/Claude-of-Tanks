@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import '../src/vehicles/tankFactory.js';
+import '../src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS } from '../src/vehicles/specs.js';
 
 const outputArg = process.argv.find((arg) => arg.startsWith('--sheet='));

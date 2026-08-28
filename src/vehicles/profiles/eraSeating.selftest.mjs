@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 import { TANK_SPECS } from '../specs.js';
 import './leopard2A7VGunEra.selftest.mjs';
 

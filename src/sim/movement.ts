@@ -527,7 +527,7 @@ const SWAY_TAU_S = -SIM_DT / Math.log(1 - 0.12);
 // syncFromState): the renderer adds a restrained transient spring to the
 // hull rotation on top of visualPitch/visualRoll, so the support solve must
 // clear the terrain at THAT pose. Constants must stay in lockstep with
-// tankFactory.js (SUSP_W/SUSP_Z, accel squat, 4-corner fit, clamps) — see
+// tankFactory.ts (SUSP_W/SUSP_Z, accel squat, 4-corner fit, clamps) — see
 // docs/research/movement-physics.md for the movement model.
 const SUSP_W = 7.2;
 const SUSP_Z = 0.65;
@@ -545,7 +545,7 @@ const SUSP_K_GAIN = 0.76;
 // distance). The support solve therefore clears the terrain at the AMPLIFIED
 // pose — otherwise the exaggerated transient buries a track end ~10 cm on
 // rough ground (r3 drive gate: minClear −11.7 cm before this fold). Constants
-// MUST stay in lockstep with tankFactory.js SUSP_VIS_P/SUSP_VIS_R/SWAY_VIS;
+// MUST stay in lockstep with tankFactory.ts SUSP_VIS_P/SUSP_VIS_R/SWAY_VIS;
 // tankFactory's half-lift compensation hack is removed by the REQUIRED
 // movement contract in docs/research/movement-physics.md — the solve is the
 // single authority. (The r2 handoff carried the same hunk but it was never

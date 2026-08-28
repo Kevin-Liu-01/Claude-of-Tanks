@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 
 const EXPECTED_ROAD_WHEEL_ZS = [2.48, 1.55, 0.62, -0.31, -1.24, -2.17];
 const EXPECTED_RETURN_ROLLER_ZS = [1.61, 0.20, -1.21];

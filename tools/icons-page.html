@@ -6,7 +6,7 @@
 // Offscreen studio for tools/genIcons.mjs. It renders the shipped model and
 // derives technical diagrams from the same armor/module data used in combat.
 import * as THREE from 'three';
-import { createTank } from '/src/vehicles/tankFactory.js';
+import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS, DEVELOPMENT_TANK_IDS, getSpec } from '/src/vehicles/specs.js';
 import {
   TANK_ASSET_SCHEMA_VERSION, geometryFingerprint, metadataFingerprint,

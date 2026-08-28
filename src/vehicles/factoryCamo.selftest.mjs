@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import './tankFactory.js';
+import './tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.js';
 import { CAMO_PATTERN_IDS, factoryThemePatternId, isPlainGreenFactoryVisual } from './camoPolicy.ts';
 import { resolveCamoVisual } from './materials.js';

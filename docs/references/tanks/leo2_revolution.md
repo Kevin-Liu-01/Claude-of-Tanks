@@ -1660,7 +1660,7 @@ LAW DISCOVERIES (for the bank):
    front 1.766 x43). Narrow it to the witness column instead of
    deleting/lowering — the honest row keeps its read at zero cost.
 4. **LIVE-TREE FROZEN-SIB VERIFICATION HAZARD** (process, for §F):
-   sibling-agent WIP in shared modules (tankFactory.js here) transiently
+   sibling-agent WIP in shared modules (tankFactory.ts here) transiently
    changes every family build (-4 track meshes fleet-wide, track-clip
    blind-spots, all four leopard hashes moved). Frozen-hash proofs and
    §B batteries must come from a CLEAN-ROOM WORKTREE (committed HEAD +

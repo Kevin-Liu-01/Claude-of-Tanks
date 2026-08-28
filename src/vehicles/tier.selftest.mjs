@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import './profiles/t90SprocketTier.selftest.mjs';
-import './tankFactory.js'; // evaluates every registration wave
+import './tankFactory.ts'; // evaluates every registration wave
 import { SAVED_TANK_IDS } from './specs.js';
 import { ROMAN_TIER, TANK_TIER, tankTier, tierNumeral } from './tier.ts';
 

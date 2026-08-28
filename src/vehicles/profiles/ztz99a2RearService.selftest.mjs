@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 
 const tank = createTank('ztz99a2', null, {
   proceduralOnly: true,

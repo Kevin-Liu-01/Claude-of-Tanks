@@ -71,7 +71,7 @@
 <title>winding-audit</title>
 <script type="module">
 import * as THREE from 'three';
-import { KIT, createTank } from '/src/vehicles/tankFactory.js';
+import { KIT, createTank } from '/src/vehicles/tankFactory.ts';
 import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
 
 const params = new URLSearchParams(location.search);
@@ -128,7 +128,7 @@ if (mode === 'list') {
       if (outward < 6) {
         const stack = (new Error()).stack || '';
         const site = (stack.split('\n')
-          .find((l) => /src\/vehicles\/(?:profiles\/)?[\w.-]+\.js/.test(l) && !/tankFactory\.js/.test(l)) || '')
+          .find((l) => /src\/vehicles\/(?:profiles\/)?[\w.-]+\.(?:js|ts)/.test(l) && !/tankFactory\.ts/.test(l)) || '')
           .replace(/^\s+at\s+/, '').replace(location.origin, '');
         const xs = c8.map((p) => p[0]);
         const ys = c8.map((p) => p[1]);

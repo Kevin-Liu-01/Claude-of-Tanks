@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 
 // Explicit policy list: every production-visible vehicle with authored ERA,
 // reactive composite cassettes, or a first-party visual ERA package must opt

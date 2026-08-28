@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import '../src/vehicles/tankFactory.js';
+import '../src/vehicles/tankFactory.ts';
 import {
   FIRST_PARTY_LICENSE,
   PROJECT_PACKAGE_LICENSE,

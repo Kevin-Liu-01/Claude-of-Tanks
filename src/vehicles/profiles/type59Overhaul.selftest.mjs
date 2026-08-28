@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.js';
 
 const near = (value, expected, epsilon = 1e-6) => Math.abs(value - expected) <= epsilon;

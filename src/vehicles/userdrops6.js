@@ -213,7 +213,7 @@ export const USERDROP6_TANK_IDS = SPECS.map((s) => s.id);
 export const USERDROP6_SOURCED_IDS = USERDROP6_TANK_IDS.filter((id) => !['m60a3', 'isu122s', 'isu152', 'm47_patton', 'centurion3', 'centurion5', 'm46_patton', 'm26_pershing', 'm45_patton'].includes(id));
 
 // USER DROPS wave 8 (scout-gen2 integration): chain-loaded here because
-// tankFactory.js (the usual registration hook) is frozen during the fleet
+// tankFactory.ts (the usual registration hook) is frozen during the fleet
 // waves — this import keeps wave-8 rows registered for every consumer that
 // imports the spec chain (game, icons page, fidelity/geometry harnesses).
 import './userdrops7.js';

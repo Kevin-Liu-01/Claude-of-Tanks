@@ -1,7 +1,7 @@
 /** Regression coverage for ordinary, explicit, per-vehicle IFV stats. */
 
 import assert from 'node:assert/strict';
-import './tankFactory.js'; // registers the complete modern roster
+import './tankFactory.ts'; // registers the complete modern roster
 import { ALL_TANK_IDS, TANK_SPECS, getSpec } from './specs.js';
 
 const EXPECTED = Object.freeze({

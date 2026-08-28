@@ -36,7 +36,7 @@ const server = await createServer({
   server: { host: '127.0.0.1', port: 7600 + (process.pid % 200), strictPort: true, hmr: false, watch: null },
 });
 await server.listen();
-await server.ssrLoadModule('/src/vehicles/tankFactory.js');
+await server.ssrLoadModule('/src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS } = await server.ssrLoadModule('/src/vehicles/specs.js');
 const tankAssets = JSON.parse(readFileSync(resolve(root, 'public/icons/tank-assets.json'), 'utf8'));
 const registeredIds = Object.keys(tankAssets.tanks || {});

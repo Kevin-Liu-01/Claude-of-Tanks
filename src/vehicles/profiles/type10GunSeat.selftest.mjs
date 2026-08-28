@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './type10GunSeat.js';
 
 const closeTo = (actual, expected, tolerance, label) => {

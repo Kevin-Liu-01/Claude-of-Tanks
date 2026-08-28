@@ -64,7 +64,7 @@ k2's oracle onto it). Bar for future fidelity rounds = photo class.
 2. `src/vehicles/korea.js` — NEW: KOREA_IDS/KOREA_SPECS (old variant
    machinery, South Korea), TANK_SPECS/MODEL_SOURCE/ALL_TANK_IDS
    registration.
-3. `src/vehicles/tankFactory.js` — `import './korea.js';` (after poland.js,
+3. `src/vehicles/tankFactory.ts` — `import './korea.js';` (after poland.js,
    before finalizeFirstPartyRoster, so the K2 donor rig exists first).
 4. `src/vehicles/profiledProcedurals.js` — KOREA_PROFILES import + spread
    into PROCEDURAL_PROFILES (builder reaches BUILDERS via the standard

@@ -6200,7 +6200,7 @@ function applyVerifiedVehicleMarkingSeats(marking, decals, seats) {
 
 export function createTank(specId, engineCtx, opts = {}) {
   if (!factoryConfigured) {
-    throw new Error('Import tankFactory.js instead of the unconfigured tankFactoryCore.js');
+    throw new Error('Import tankFactory.ts instead of the unconfigured tankFactoryCore.js');
   }
   const {
     camoSeed = 4000,

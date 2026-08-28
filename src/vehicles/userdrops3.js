@@ -29,7 +29,7 @@
 //
 // Registration contract identical to userdrops.js/userdrops2.js: pure data +
 // side effect on the shared specs.js roster tables; imported by
-// tankFactory.js AFTER the modern spec modules so the MODEL_SOURCE
+// tankFactory.ts AFTER the modern spec modules so the MODEL_SOURCE
 // assignments override 'procedural'.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';

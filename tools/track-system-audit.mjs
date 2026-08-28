@@ -14,7 +14,7 @@ import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-await import('../src/vehicles/tankFactory.js');
+await import('../src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS } = await import('../src/vehicles/specs.js');
 
 const idArg = process.argv.find((arg) => arg.startsWith('--ids='));

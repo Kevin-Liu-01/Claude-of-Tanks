@@ -139,7 +139,7 @@ Relevant implementation:
 - src/sim/movement.ts
 - src/world/terrain.ts
 - src/world/collision.js
-- src/vehicles/tankFactory.js
+- src/vehicles/tankFactory.ts
 - tools/track-geometry.selftest.mjs
 
 ## Visibility, bots, and battlefield knowledge

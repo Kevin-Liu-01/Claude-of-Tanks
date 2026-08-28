@@ -263,7 +263,7 @@ const server = await createServer({
 
 let report;
 try {
-  await server.ssrLoadModule('/src/vehicles/tankFactory.js');
+  await server.ssrLoadModule('/src/vehicles/tankFactory.ts');
   const { ALL_TANK_IDS, TANK_SPECS, MODEL_SOURCE } = await server.ssrLoadModule('/src/vehicles/specs.js');
   const rows = [];
   for (const id of ALL_TANK_IDS) {

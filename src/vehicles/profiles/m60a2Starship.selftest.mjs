@@ -7,7 +7,7 @@ import {
   createSpecialActionState,
   specialActionKind,
 } from '../../sim/specialActions.ts';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.js';
 
 const spec = getSpec('m60a2');

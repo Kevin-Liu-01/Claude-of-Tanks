@@ -479,11 +479,11 @@ try {
   console.log(`[audio-probe] voice lines played: ${[...new Set(voiceLog)].join(', ') || '(none)'}`);
 
   // Console gate. KNOWN-UNRELATED quarantine: the tank-model agents' work in
-  // flight on this tree throws in tankFactory.js syncFromState (wheel-spin
+  // flight on this tree throws in tankFactory.ts syncFromState (wheel-spin
   // quaternion on a mid-swap rigid gear) during ANY battle — visual-sync, not
   // audio. Those are reported as warnings so the AUDIO gate stays meaningful;
   // everything else fails the probe.
-  const KNOWN_UNRELATED = /syncFromState|multiplyQuaternions|tankFactory\.js/;
+  const KNOWN_UNRELATED = /syncFromState|multiplyQuaternions|tankFactory\.ts/;
   const audioErrors = consoleErrors.filter((e) => !KNOWN_UNRELATED.test(e));
   const quarantined = consoleErrors.filter((e) => KNOWN_UNRELATED.test(e));
   if (quarantined.length) {

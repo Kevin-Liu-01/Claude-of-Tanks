@@ -15,7 +15,7 @@ combat anatomy") APPLIED fresh calibration: `finalizeCombatAnatomy`
 (src/vehicles/combatAnatomy.js) passed `armor.turretPivot` / `armor.gunPivot`
 through the plate→receipt remap (`reconcileFrame` points list +
 `reconcileChildFrame` pivot splice). Those arrays are RIG anchors:
-tankFactory.js:4795/4798 seats the visual rig_turret/rig_gun at exactly them,
+tankFactory.ts:4795/4798 seats the visual rig_turret/rig_gun at exactly them,
 and every receipt is measured INSIDE those rig frames (localEnvelope relative
 to rig_hull/rig_turret). The remap authored-plate-bounds → measured-envelope
 is only ~identity where authored hull plates match the visual envelope; on

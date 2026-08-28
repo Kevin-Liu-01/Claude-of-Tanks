@@ -21,7 +21,7 @@
 //    hull rock.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createTank } from './tankFactory.js';
+import { createTank } from './tankFactory.ts';
 import { getSpec, TANK_SPECS } from './specs.js';
 import { createTankState } from '../sim/movement.ts';
 import './garagePresentation.selftest.mjs';

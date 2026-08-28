@@ -69,7 +69,7 @@ ripped channels (see ATTRIBUTION.md evaluation records), so they are procedural 
 - **sourced-ready** — clean permissive GLB already on disk; integration only.
 - **variant** — CC-BY 4.0 derivative of an on-disk CC-BY base (legal and encouraged;
   record base model + author + "modified" note per CC-BY 4.0 in ATTRIBUTION.md).
-- **procedural** — HD `tankFactory.js` build to the visual specs below. Procedural
+- **procedural** — HD `tankFactory.ts` build to the visual specs below. Procedural
   family reuse (e.g. Leo 2A6 sharing the 2A7 hull) is noted per vehicle but is not a
   license "variant".
 

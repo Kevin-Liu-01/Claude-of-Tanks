@@ -1,6 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import '../src/vehicles/tankFactory.js';
+import '../src/vehicles/tankFactory.ts';
 import {
   DEVELOPMENT_TANK_IDS,
   PRODUCTION_TANK_IDS,

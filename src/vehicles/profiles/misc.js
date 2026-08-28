@@ -140,7 +140,7 @@ function trunnionRoll(P, rollR, rollW, o = {}) {
 // §C MISSING-SIDE fix (owner report 2026-08-06, "ariete and leclerc are
 // missing left side of turrets"): KIT.slab builds its six faces for ONE
 // ring handedness — corners in plan order (-x,+z),(+x,+z),(+x,-z),(-x,-z),
-// bottom then top (tankFactory.js:128). A mirrored call (x *= -1 without
+// bottom then top (tankFactory.ts:128). A mirrored call (x *= -1 without
 // re-ordering — the `for (const s of [-1,1])` pattern) hands it the
 // OPPOSITE orientation: all six faces come out INWARD and the solid is
 // backface-culled in every FrontSide render — game, critic pairs,

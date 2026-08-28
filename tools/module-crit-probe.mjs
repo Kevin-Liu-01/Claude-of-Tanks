@@ -13,7 +13,7 @@
 
 import { Vector3 } from 'three';
 
-await import('../src/vehicles/tankFactory.js');
+await import('../src/vehicles/tankFactory.ts');
 const { TANK_SPECS } = await import('../src/vehicles/specs.js');
 const { traceTank } = await import('../src/sim/armor.ts');
 const { resolveShellHit, createCombatState } = await import('../src/sim/damage.ts');

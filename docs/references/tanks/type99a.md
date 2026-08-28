@@ -337,7 +337,7 @@ continuity and no front-corner sky pocket. **KEEP `cf97a01b`; the §5.52
    './profiles/kit.js'`, dereferenced inside builder bodies. No
    `kitFittings()` exists (a slice-3 first cut invented one and threw);
    `KIT.fittings` attaches via queueMicrotask AFTER init and can be
-   undefined in synchronous rigs. Smoke-load via tankFactory.js — an
+   undefined in synchronous rigs. Smoke-load via tankFactory.ts — an
    extension module as import ENTRY throws the kit.js TDZ spuriously.
 2. **ERA-DEF/GEOMETRY COUPLING**: rebuilding ERA-carrying geometry to a
    new §D width anchor REQUIRES the era-kind armor plate defs to move

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createShell, guideShellToward } from '../../sim/ballistics.ts';
 import { specialActionGuidesShell } from '../../sim/specialActions.ts';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.js';
 import { tankTier } from '../tier.ts';
 

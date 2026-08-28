@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 
 const near = (a, b, epsilon = 1e-4) => Math.abs(a - b) <= epsilon;
 const hasVertexAtX = (mesh, x, epsilon = 1e-4) => {

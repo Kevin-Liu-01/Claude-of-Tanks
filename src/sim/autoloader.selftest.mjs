@@ -119,7 +119,7 @@ function makeSpec(overrides = {}) {
   assert.equal(combat.reload.kind, 'ready');
 }
 
-await import('../vehicles/tankFactory.js');
+await import('../vehicles/tankFactory.ts');
 const { getSpec } = await import('../vehicles/specs.js');
 for (const [id, capacity, cycleS, reloadS] of [
   ['leclerc', 3, 2.5, 18.5],

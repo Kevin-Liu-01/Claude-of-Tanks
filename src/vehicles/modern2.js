@@ -7,7 +7,7 @@
 //   leo1a5  Leopard 1A5        (§10, priority 4)
 //   t14     T-14 Armata        (§16, priority 4)
 //
-// Registration pattern (established by modern1.js): tankFactory.js passes
+// Registration pattern (established by modern1.js): tankFactory.ts passes
 // MODERN2_BUILDERS through the checked factory-configuration gate; builders
 // draw on tankFactoryCore's exported geometry KIT. Specs/model-source rows
 // register here by mutating the exported specs.js tables (specs.js itself is

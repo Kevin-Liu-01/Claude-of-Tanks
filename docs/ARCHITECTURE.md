@@ -599,7 +599,7 @@ Browser consumers must await the builder gate before the first synchronous
 `createTank` for an id. The strict import-free `fleetManifest.ts` owns the
 id-to-family mapping; the loader table must cover every family at compile time,
 and concurrent requests share one retryable promise. A missing gate throws
-instead of silently constructing a legacy fallback. `tankFactory.js` remains
+instead of silently constructing a legacy fallback. `tankFactory.ts` remains
 the eager facade for Node audits and release tools that intentionally sweep the
 whole roster. Geometry-derived combat-anatomy and vehicle-marking receipts use
 the same demand boundary through `combatAnatomyCalibrationLoader.ts` and

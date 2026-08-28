@@ -13,7 +13,7 @@ materials, and garage ordering.
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
 `specs.js` is the registry, `fleetManifest.ts` and `fleetFactory.ts` own the
-typed browser demand graph, `tankFactory.js` builds/synchronizes eager audit visuals,
+typed browser demand graph, `tankFactory.ts` builds/synchronizes eager audit visuals,
 `profiles/` owns authored families, `taxonomy.ts` owns the strict era/role
 vocabulary and complete saved-fleet assignment, `tier.ts` and `fleetOrder.ts`
 own remaining metadata, and `tankAssets.ts` owns UI asset mappings.
@@ -78,8 +78,8 @@ The authored receipt boundaries are `combatAnatomyCalibrationRegistry.ts`,
 `combatAnatomyCalibrationLoader.ts`, `vehicleMarkingSeatRegistry.ts`, and
 `vehicleMarkingSeatLoader.ts`. Keep grouped `*.generated.js` payloads owned by
 their generators; browser consumers must acquire receipts through the typed
-loaders, while fleet-wide release tools may use the eager `tankFactory.js`
-facade.
+loaders, while fleet-wide release tools use the eager typed `tankFactory.ts`
+facade. Player boot must continue through the demand-loaded `fleetFactory.ts`.
 Keep semantic finish policy in `appearanceAudit.ts`: builders tag materials,
 while that module alone normalizes working-gear colors and audits armor/gear
 role separation. Do not repair a palette issue by stripping geometry or by

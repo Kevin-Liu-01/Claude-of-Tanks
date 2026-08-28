@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import '../vehicles/tankFactory.js'; // register the full authored fleet
+import '../vehicles/tankFactory.ts'; // register the full authored fleet
 import { getSpec } from '../vehicles/specs.js';
 import { createCombatState, startPostShotReload } from './damage.ts';
 import { createTankState, SIM_DT, updateTank } from './movement.ts';

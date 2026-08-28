@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 
 const near = (value, expected, epsilon = 1e-4) =>
   Math.abs(value - expected) <= epsilon;

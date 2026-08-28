@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 
 function closeTo(actual, expected, label, epsilon = 1e-6) {
   assert.ok(Math.abs(actual - expected) <= epsilon,

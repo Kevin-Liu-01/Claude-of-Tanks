@@ -156,7 +156,7 @@ roster's only Terminator since the ground-up `bmpt` row above was removed.)
 ORDER (verbatim): "make the terminator 2 much better and have 2 shooting
 holes for both its barrels (create this in code) with a super fast reload".
 
-TWIN-BORE CAPABILITY (CORE, tankFactory.js): the fallback-bore pass used
+TWIN-BORE CAPABILITY (CORE, tankFactory.ts): the fallback-bore pass used
 to install exactly ONE rim/annulus/disc assembly at the muzzle anchor and
 suppress authored bores — twin-gun tanks physically could not show two
 mouths (the owner's screenshot: one floating center mouth between two

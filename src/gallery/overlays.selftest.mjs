@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import '../vehicles/tankFactory.js';
+import '../vehicles/tankFactory.ts';
 import { MODULE_IDS } from '../sim/moduleCatalog.ts';
 import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.js';
 import {

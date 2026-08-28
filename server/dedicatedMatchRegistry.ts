@@ -2,7 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 // The full authored fleet registers through tankFactory's module graph. No
 // visual is instantiated here, but loading this side-effect boundary ensures
 // Node authority resolves the exact same specs/armor as the browser garage.
-import '../src/vehicles/tankFactory.js';
+import '../src/vehicles/tankFactory.ts';
 import {
   AuthoritativeMatchRuntime,
   type MatchSimulation,

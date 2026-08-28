@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 
 const EPSILON_M = 1e-6;
 const tank = createTank('m1a2_tusk', null, {

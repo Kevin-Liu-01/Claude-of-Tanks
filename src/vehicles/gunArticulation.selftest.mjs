@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createTank } from './tankFactory.js';
+import { createTank } from './tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.js';
 
 const DEG = Math.PI / 180;

@@ -9,7 +9,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 // Loading the factory registers every extension pack before the projections
 // are measured. The shared stats module itself deliberately avoids this cost.
-await import('./vehicles/tankFactory.js');
+await import('./vehicles/tankFactory.ts');
 const {
   ALL_TANK_IDS,
   DEVELOPMENT_TANK_IDS,

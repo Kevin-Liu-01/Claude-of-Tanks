@@ -245,7 +245,7 @@ try {
   if (state.ctxState !== 'running') { failed = true; errors.push(`AudioContext not running: ${state.ctxState}`); }
 
   // 5) console gate (quarantine the known-unrelated tankFactory wheel-sync)
-  const KNOWN_UNRELATED = /syncFromState|multiplyQuaternions|tankFactory\.js/;
+  const KNOWN_UNRELATED = /syncFromState|multiplyQuaternions|tankFactory\.ts/;
   const audioErrors = consoleErrors.filter((e) => !KNOWN_UNRELATED.test(e));
   const quarantined = consoleErrors.filter((e) => KNOWN_UNRELATED.test(e));
   if (quarantined.length) console.warn(`[voice-smoke] ${quarantined.length} known-unrelated console error(s) quarantined`);

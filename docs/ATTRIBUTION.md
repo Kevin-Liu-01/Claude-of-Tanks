@@ -487,7 +487,7 @@ Specs + registration: `src/vehicles/variants.js`.
 Derivative renders (icons `public/icons/m1a1_*`, `t90a_*`, `m1a2_tusk_*`,
 generated 2026-07-28 by tools/genIcons.mjs) are covered by the rows above.
 All three variants are registered playables (src/vehicles/variants.js,
-imported by tankFactory.js) and carry their credit line on the garage stats
+imported by tankFactory.ts) and carry their credit line on the garage stats
 card (spec.community), satisfying the
 CC-BY 4.0 attribution + "modified" indication requirements in-product as well
 as in this file. The remaining 16 modern-expansion vehicles (modern1/2/3.js

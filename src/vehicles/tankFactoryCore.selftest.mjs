@@ -52,7 +52,7 @@ assert.throws(() => KIT.grilleIndices(false, 0, 3), RangeError);
 
 assert.throws(
   () => createTank('m4a3e8', null, { proceduralOnly: true, geometryReceipt: true }),
-  /Import tankFactory\.js/,
+  /Import tankFactory\.ts/,
   'the internal core rejects use before the public fleet facade configures it',
 );
 assert.throws(

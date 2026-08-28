@@ -6,7 +6,7 @@
 // NOTE: leclerc/amx30/amx30b2 stay in profiles/misc.js (family migration
 // is a separate, owner-approvable move).
 //
-// Registration pattern (modern3.js): tankFactory.js passes FRANCE_BUILDERS
+// Registration pattern (modern3.js): tankFactory.ts passes FRANCE_BUILDERS
 // through the checked factory-configuration gate; builders draw on
 // tankFactoryCore's exported geometry KIT.
 

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 
 const cases = Object.freeze({
   t80bv: Object.freeze({ cassetteSeats: 24, minimumSurfaceGapM: -0.05 }),

@@ -408,9 +408,9 @@ try {
   }
 
   // --- console gate (same known-unrelated quarantine as tools/audio-probe.mjs:
-  // in-flight tank-model agents throw in tankFactory.js wheel sync during any
+  // in-flight tank-model agents throw in tankFactory.ts wheel sync during any
   // battle — visual, not audio; everything else fails the smoke) --------------
-  const KNOWN_UNRELATED = /syncFromState|multiplyQuaternions|tankFactory\.js/;
+  const KNOWN_UNRELATED = /syncFromState|multiplyQuaternions|tankFactory\.ts/;
   const sfxErrors = consoleErrors.filter((e) => !KNOWN_UNRELATED.test(e));
   const quarantined = consoleErrors.filter((e) => KNOWN_UNRELATED.test(e));
   if (quarantined.length) {

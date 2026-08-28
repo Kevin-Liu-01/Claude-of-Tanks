@@ -45,7 +45,7 @@ the canonical `src/vehicles/` sources.
 flowchart LR
     Registry[src/vehicles/specs.js] --> Catalog[src/gallery/catalog.js]
     Labels[tankLabels.ts and tier.ts] --> Catalog
-    Registry --> Factory[src/vehicles/tankFactory.js]
+    Registry --> Factory[src/vehicles/tankFactory.ts]
     Factory --> Viewer[Three.js inspection viewer]
     Registry --> Overlays[src/gallery/overlays.js]
     Overlays --> Viewer

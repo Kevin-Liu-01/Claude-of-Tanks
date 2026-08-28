@@ -2,7 +2,7 @@
 
 Cosmetic external-stowage / fittings layer for the whole fleet.
 Code: `src/vehicles/decorations.js` (kit library + manifests + placement
-engine), one seam in `src/vehicles/tankFactory.js` (`dressTank`, end of
+engine), one seam in `src/vehicles/tankFactory.ts` (`dressTank`, end of
 `createTank`). Quality bench: `tools/decoration-board.html`, driven headlessly
 by `tools/decoration-eval.mjs` (own vite, 7xxx ports).
 

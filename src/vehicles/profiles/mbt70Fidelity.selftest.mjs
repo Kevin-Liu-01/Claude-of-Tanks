@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 import { getSpec, MODEL_SOURCE } from '../specs.js';
 import { tankTier } from '../tier.ts';
 import { wheelPatternFor } from '../wheelPatterns.ts';

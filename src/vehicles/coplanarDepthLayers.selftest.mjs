@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createTank } from './tankFactory.js';
+import { createTank } from './tankFactory.ts';
 
 for (const options of [
   { proceduralOnly: true, geometryReceipt: true, quality: 'high' },

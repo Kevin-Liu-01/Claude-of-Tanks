@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 
 const variants = [
   ['ua_t80bv', 't80bv-ua-t90-style', 'uaT80ModernKord_bv'],

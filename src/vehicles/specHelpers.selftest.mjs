@@ -9,7 +9,7 @@ import {
   communityArmor,
   modernArmor,
 } from './specHelpers.js';
-import './tankFactory.js';
+import './tankFactory.ts';
 import { SAVED_TANK_IDS, TANK_SPECS } from './specs.js';
 
 const quad = plate('test', 40, [0, 0, 0], [2, 0, 0], [0, 3, 1], {

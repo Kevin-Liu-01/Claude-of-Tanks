@@ -46,7 +46,7 @@ for (const id of ownerHidden) {
   assert(PRODUCTION_HIDDEN_TANK_IDS.has(id), `${id}: owner production exclusion is centralized`);
 }
 
-await import('./tankFactory.js');
+await import('./tankFactory.ts');
 const {
   ALL_TANK_IDS,
   DEVELOPMENT_TANK_IDS,

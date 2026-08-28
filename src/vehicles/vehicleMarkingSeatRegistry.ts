@@ -1,7 +1,7 @@
 // Runtime registry for release-verified vehicle marking seats.
 //
 // The browser registers only the family it is about to construct. Fleet-wide
-// tools register the complete generated receipt set from tankFactory.js. This
+// tools register the complete generated receipt set from tankFactory.ts. This
 // keeps exact, pre-solved paint placement while avoiding an all-fleet payload
 // on the first garage visit.
 

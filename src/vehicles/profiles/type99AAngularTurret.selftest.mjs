@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Box3, Vector3 } from 'three';
-import { createTank } from '../tankFactory.js';
+import { createTank } from '../tankFactory.ts';
 
 const tank = createTank('type99a', null, {
   proceduralOnly: true,

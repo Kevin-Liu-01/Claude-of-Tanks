@@ -625,7 +625,7 @@ diff bbox **None** (the 1.7645/1.740 deckCaps own the front columns at
 construction), left/right 51x8 px deck-line serrations, rear 290x11,
 close-roof 65x55 corner — nothing anywhere else.
 
-CONCURRENT-LANE LOG (r7-critic protocol): tankFactory.js carries an
+CONCURRENT-LANE LOG (r7-critic protocol): tankFactory.ts carries an
 uncommitted russia-lane bucket addition (hullTrackDetailL/R — no patton
 caller, renders byte-identical for this family); modern3.js passed
 through a broken mid-edit window (unclosed brace, vite import-analysis
