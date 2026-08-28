@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
-import { STRUCTURE_BUILDERS } from './maps/structureKit.js';
+import { STRUCTURE_BUILDERS } from './maps/structureKit.ts';
 import { certifyGroundedStructureParts } from './structureConnectivity.ts';
 
 const BUCKET_NAMES = [

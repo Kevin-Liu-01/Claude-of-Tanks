@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS, STRUCTURE_CATALOG,
-} from './maps/structureKit.js';
+} from './maps/structureKit.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 
 function seeded(seed = 0x51a7c7) {

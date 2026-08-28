@@ -17,7 +17,7 @@ import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG, bSandbagBroken } from './maps/inhabitKit.js';
 import {
   DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS,
-} from './maps/structureKit.js';
+} from './maps/structureKit.ts';
 import { addCatalogExterior, addConnectedExterior } from './maps/exteriorDetailKit.ts';
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';

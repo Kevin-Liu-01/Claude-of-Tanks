@@ -1,4 +1,4 @@
-// src/world/maps/structureKit.js — thirty-five additional battlefield
+// src/world/maps/structureKit.ts — thirty-five additional battlefield
 // structures. Fifteen heavyweight landmarks merge into the existing textured
 // building buckets; twenty light buildings use one vertex-painted geometry
 // per family and have persistent broken-state debris for the destructible
@@ -7,28 +7,101 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { addConnectedExterior } from './exteriorDetailKit.ts';
+import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
 import { certifyGroundedStructureParts } from '../structureConnectivity.ts';
+
+type Rng = () => number;
+type Palette = readonly [number, number, number];
+
+interface StructureParts extends GeometryBuckets {
+  [name: string]: THREE.BufferGeometry[];
+  plaster2: THREE.BufferGeometry[];
+  plaster3: THREE.BufferGeometry[];
+  glass: THREE.BufferGeometry[];
+  curtain: THREE.BufferGeometry[];
+  straw: THREE.BufferGeometry[];
+  baked: THREE.BufferGeometry[];
+}
+
+type FacadeFace = 'front' | 'back' | 'right' | 'left';
+
+interface TowerFacadeOptions {
+  x?: number;
+  z?: number;
+  w: number;
+  d: number;
+  y0: number;
+  y1: number;
+  step?: number;
+  bays?: number;
+  sideBays?: number;
+  frameBucket?: string;
+  alternateLit?: boolean;
+}
+
+interface ConnectedCrownOptions {
+  x?: number;
+  z?: number;
+  roofY: number;
+  baseW?: number;
+  style?: 'needle' | 'forked' | 'broadcast';
+  yaw?: number;
+}
+
+interface GableLightOptions {
+  w: number;
+  d: number;
+  wallH: number;
+  roofH: number;
+  pal: Palette;
+  porch?: number;
+  raised?: number;
+  chimney?: boolean;
+  windows?: number;
+}
+
+type LightStructureBuilder = (rng: Rng) => THREE.BufferGeometry;
+type DebrisMaterial = 'wood' | 'canvas' | 'metal';
+
+export interface DestructibleBuildingType {
+  id: string;
+  family: string;
+  cls: 'break';
+  mat: 'structureCanvas' | 'structureMetal' | 'structureWood';
+  surfaceMaterial: 'structureCanvas' | 'structureMetal' | 'structureWood';
+  contact: 'ob';
+  collider: true;
+  hw: number;
+  hl: number;
+  r: number;
+  h: number;
+  keep: number;
+  crushMin: number;
+  build: LightStructureBuilder;
+  instanceTintStrength: number;
+  broken: LightStructureBuilder;
+}
 
 const _color = new THREE.Color();
 const _detailRng = () => 0.5;
 
-function scaleUV(geo, su = 1, sv = 1) {
+function scaleUV<T extends THREE.BufferGeometry>(geo: T, su = 1, sv = 1): T {
   const uv = geo.attributes.uv;
   if (!uv) return geo;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
   return geo;
 }
 
-function box(w, h, d, uv = 0.55) {
+function box(w: number, h: number, d: number, uv = 0.55): THREE.BoxGeometry {
   return scaleUV(new THREE.BoxGeometry(w, h, d), Math.max(w, d) * uv, h * uv);
 }
 
-function detailUv(geo) {
+function detailUv<T extends THREE.BufferGeometry>(geo: T): T {
   geo.userData.detailUv = true;
   return geo;
 }
 
-function slab(w, h, d, uv = 0.45) {
+function slab(w: number, h: number, d: number, uv = 0.45): THREE.BoxGeometry {
   const geo = new THREE.BoxGeometry(w, h, d);
   const attr = geo.attributes.uv;
   const su = [d, d, w, w, w, w], sv = [h, h, d, d, h, h];
@@ -39,7 +112,7 @@ function slab(w, h, d, uv = 0.45) {
   return geo;
 }
 
-function facadePanel(w, h, face = 'front') {
+function facadePanel(w: number, h: number, face: FacadeFace = 'front'): THREE.PlaneGeometry {
   // Window bays only need a camera-facing skin: the surrounding mullions and
   // transfer ledges provide the physical reveal. Two-triangle panels preserve
   // the richer facade at one sixth the raster/merge cost of tiny boxes.
@@ -50,11 +123,11 @@ function facadePanel(w, h, face = 'front') {
   return geo;
 }
 
-function cylinder(rt, rb, h, segments = 10) {
+function cylinder(rt: number, rb: number, h: number, segments = 10): THREE.CylinderGeometry {
   return scaleUV(new THREE.CylinderGeometry(rt, rb, h, segments, 1), 1.5, 1.2);
 }
 
-function gable(w, h, d) {
+function gable(w: number, h: number, d: number): THREE.ExtrudeGeometry {
   const shape = new THREE.Shape();
   shape.moveTo(-w / 2, 0);
   shape.lineTo(w / 2, 0);
@@ -65,7 +138,7 @@ function gable(w, h, d) {
   return scaleUV(geo, 0.5, 0.5);
 }
 
-function archShell(w, h, d) {
+function archShell(w: number, h: number, d: number): THREE.ExtrudeGeometry {
   const shape = new THREE.Shape();
   const r = w / 2;
   shape.moveTo(-r, 0);
@@ -80,7 +153,7 @@ function archShell(w, h, d) {
   return scaleUV(geo, 0.55, 0.55);
 }
 
-function paint(geo, hex, rng, jitter = 0.075) {
+function paint<T extends THREE.BufferGeometry>(geo: T, hex: number, rng: Rng, jitter = 0.075): T {
   const n = geo.attributes.position.count;
   const colors = new Float32Array(n * 3);
   // THREE.Color.set(hex) already converts authored sRGB hex values into the
@@ -98,8 +171,13 @@ function paint(geo, hex, rng, jitter = 0.075) {
   return geo;
 }
 
-function merge(parts) {
-  return mergeGeometries(parts.map((geo) => (geo.index ? geo.toNonIndexed() : geo)), false);
+function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
+  const geometry = mergeGeometries(
+    parts.map((geo) => (geo.index ? geo.toNonIndexed() : geo)),
+    false,
+  );
+  if (!geometry) throw new Error('structure geometry merge produced no result');
+  return geometry;
 }
 
 /**
@@ -109,32 +187,40 @@ function merge(parts) {
  * floating porch, ladder, service box or roof sheet, so the receipt belongs
  * at this boundary rather than in the renderer or destruction path.
  */
-function mergeConnectedStructure(id, parts) {
+function mergeConnectedStructure(id: string, parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   const connectivity = certifyGroundedStructureParts(id, parts);
   const geometry = merge(parts);
   geometry.userData.structureConnectivity = connectivity;
   return geometry;
 }
 
-function push(parts, bucket, geo) {
+function push(parts: StructureParts, bucket: string, geo: THREE.BufferGeometry): void {
   (parts[bucket] || parts.dark).push(geo);
 }
 
-function finish(buckets, parts) {
+function finish(buckets: GeometryBuckets, parts: StructureParts): void {
   for (const [bucket, geos] of Object.entries(parts)) {
-    if (!buckets[bucket]) continue;
-    for (const geo of geos) buckets[bucket].push(geo);
+    const target = buckets[bucket];
+    if (!target) continue;
+    for (const geo of geos) target.push(geo);
   }
 }
 
-function parts() {
+function parts(): StructureParts {
   return {
     plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [],
     dark: [], glass: [], curtain: [], straw: [], baked: [],
   };
 }
 
-function addGableRoof(out, w, d, wallH, roofH, over = 0.4) {
+function addGableRoof(
+  out: StructureParts,
+  w: number,
+  d: number,
+  wallH: number,
+  roofH: number,
+  over = 0.4,
+): void {
   const slope = Math.hypot(w / 2 + over, roofH + 0.08);
   const angle = Math.atan2(roofH + 0.08, w / 2 + over);
   for (const side of [-1, 1]) {
@@ -146,7 +232,15 @@ function addGableRoof(out, w, d, wallH, roofH, over = 0.4) {
   out.roof.push(slab(0.34, 0.14, d + over * 2).translate(0, wallH + roofH + 0.04, 0));
 }
 
-function addWindow(out, x, y, z, face = 'z', wide = 0.9, tall = 1.15) {
+function addWindow(
+  out: StructureParts,
+  x: number,
+  y: number,
+  z: number,
+  face: 'x' | 'z' = 'z',
+  wide = 0.9,
+  tall = 1.15,
+): void {
   const pane = face === 'z' ? box(wide, tall, 0.06) : box(0.06, tall, wide);
   const sill = face === 'z' ? box(wide + 0.18, 0.10, 0.16) : box(0.16, 0.10, wide + 0.18);
   const lit = Math.abs(Math.round(x * 17 + y * 11 + z * 7)) % 5 === 0;
@@ -176,7 +270,7 @@ function addWindow(out, x, y, z, face = 'z', wide = 0.9, tall = 1.15) {
 // Heavy structures — merged into the established building material buckets.
 // -------------------------------------------------------------------------
 
-export function makeTavern(rng, buckets, wallBucket = 'plaster') {
+export function makeTavern(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster'): StructureDimensions {
   const out = parts(), w = 9.2, d = 12.4, wallH = 4.7, roofH = 2.7;
   out.stone.push(box(w + 0.5, 1.0, d + 0.5).translate(0, 0.05, 0));
   out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
@@ -199,7 +293,7 @@ export function makeTavern(rng, buckets, wallBucket = 'plaster') {
   return { w: w + 0.5, d: d + 2.5, h: wallH + roofH + 1.0 };
 }
 
-export function makeSchoolhouse(rng, buckets, wallBucket = 'plaster2') {
+export function makeSchoolhouse(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster2'): StructureDimensions {
   const out = parts(), w = 8.6, d = 13.6, wallH = 4.3, roofH = 3.0;
   out.stone.push(box(w + 0.45, 1.1, d + 0.45).translate(0, 0, 0));
   out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
@@ -220,7 +314,7 @@ export function makeSchoolhouse(rng, buckets, wallBucket = 'plaster2') {
   return { w: w + 0.5, d: d + 2.5, h: wallH + roofH + 4.0 };
 }
 
-export function makeFireStation(rng, buckets, wallBucket = 'stone') {
+export function makeFireStation(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
   const out = parts(), w = 11.4, d = 15.0, wallH = 5.4;
   out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
   out.roof.push(slab(w + 0.5, 0.28, d + 0.5).translate(0, wallH + 0.12, 0));
@@ -240,7 +334,7 @@ export function makeFireStation(rng, buckets, wallBucket = 'stone') {
   return { w: w + 0.4, d: d + 0.4, h: towerH + 2.3 };
 }
 
-export function makeFishery(rng, buckets) {
+export function makeFishery(rng: Rng, buckets: GeometryBuckets): StructureDimensions {
   const out = parts(), w = 10.2, d = 15.5, wallH = 4.4, roofH = 1.8;
   out.wood.push(box(w, wallH, d).translate(0, wallH / 2 + 0.35, 0));
   out.wood.push(gable(w, roofH, 0.3).translate(0, wallH + 0.35, d / 2 - 0.15));
@@ -259,7 +353,7 @@ export function makeFishery(rng, buckets) {
   return { w: w + 8.0, d: d + 4.5, h: wallH + roofH + 1.0 };
 }
 
-export function makeBathhouse(rng, buckets, wallBucket = 'plaster3') {
+export function makeBathhouse(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3'): StructureDimensions {
   const out = parts(), w = 12.4, d = 11.0, wallH = 4.5;
   out.stone.push(box(w + 0.5, 1.0, d + 0.5).translate(0, 0.05, 0));
   out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
@@ -278,7 +372,7 @@ export function makeBathhouse(rng, buckets, wallBucket = 'plaster3') {
   return { w: w + 0.5, d: d + 2.2, h: wallH + 3.2 };
 }
 
-export function makeCaravanserai(rng, buckets, wallBucket = 'plaster') {
+export function makeCaravanserai(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster'): StructureDimensions {
   const out = parts(), w = 21.0, d = 19.0, wallH = 5.2;
   // Courtyard plan: four occupied perimeter wings, fortified gate towers.
   out[wallBucket].push(box(w, wallH, 4.0).translate(0, wallH / 2, -d / 2 + 2.0));
@@ -307,7 +401,7 @@ export function makeCaravanserai(rng, buckets, wallBucket = 'plaster') {
   return { w: w + 0.4, d: d + 0.4, h: 7.4 };
 }
 
-export function makeFoundryOffice(rng, buckets, wallBucket = 'stone') {
+export function makeFoundryOffice(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
   const out = parts(), w = 13.0, d = 14.0, wallH = 5.8;
   out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
   // A three-bay sawtooth roof preserves the industrial silhouette.
@@ -328,7 +422,7 @@ export function makeFoundryOffice(rng, buckets, wallBucket = 'stone') {
   return { w: w + 0.4, d: d + 0.4, h: wallH + 4.0 };
 }
 
-export function makeRangerLodge(rng, buckets, wallBucket = 'wood') {
+export function makeRangerLodge(rng: Rng, buckets: GeometryBuckets, wallBucket = 'wood'): StructureDimensions {
   const out = parts(), w = 10.8, d = 13.4, wallH = 4.0, roofH = 3.5;
   out.stone.push(box(w + 0.5, 1.2, d + 0.5).translate(0, 0, 0));
   out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
@@ -356,10 +450,10 @@ export function makeRangerLodge(rng, buckets, wallBucket = 'wood') {
 // exposed slabs and bridge stumps) instead of adding transparent shell meshes.
 // -------------------------------------------------------------------------
 
-function addTowerFacadeGrid(out, {
+function addTowerFacadeGrid(out: StructureParts, {
   x = 0, z = 0, w, d, y0, y1, step = 3.1, bays = 4, sideBays = 5,
   frameBucket = 'stone', alternateLit = true,
-}) {
+}: TowerFacadeOptions): void {
   const bayW = w / bays;
   const sideBayW = d / sideBays;
   let floor = 0;
@@ -408,9 +502,9 @@ function addTowerFacadeGrid(out, {
   }
 }
 
-function addConnectedCrown(out, {
+function addConnectedCrown(out: StructureParts, {
   x = 0, z = 0, roofY, baseW = 4.8, style = 'needle', yaw = 0,
-}) {
+}: ConnectedCrownOptions): number {
   const baseD = style === 'forked' ? baseW * 0.72 : baseW;
   out.roof.push(slab(baseW, 0.46, baseD).translate(x, roofY + 0.23, z));
 
@@ -476,7 +570,7 @@ function addConnectedCrown(out, {
 }
 
 /** Bombed 55 m office tower with an asymmetrical collapsed crown. */
-export function makeMegatower(rng, buckets, wallBucket = 'plaster3') {
+export function makeMegatower(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3'): StructureDimensions {
   const out = parts(), w = 18.5, d = 20.5, podiumH = 6.0;
   out.stone.push(box(w + 5.0, podiumH, d + 4.0).translate(0, podiumH / 2, 0));
   out.dark.push(box(w * 0.55, 3.5, 0.16).translate(0, 1.75, d / 2 + 2.08));
@@ -531,9 +625,13 @@ export function makeMegatower(rng, buckets, wallBucket = 'plaster3') {
 }
 
 /** Twin stepped arcology slabs joined by a damaged high skybridge. */
-export function makeArcology(rng, buckets, wallBucket = 'stone') {
+export function makeArcology(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
   const out = parts(), towerW = 12.0, d = 22.0, hA = 39.0, hB = 33.0;
-  for (const [x, h, bucket] of [[-9.0, hA, wallBucket], [9.0, hB, 'plaster3']]) {
+  const towers: Array<readonly [number, number, string]> = [
+    [-9.0, hA, wallBucket],
+    [9.0, hB, 'plaster3'],
+  ];
+  for (const [x, h, bucket] of towers) {
     const intactH = h - 8.0;
     out[bucket].push(box(towerW, intactH, d).translate(x, intactH / 2, 0));
     // Unequal surviving roof lobes leave a deep shell-bite through the crown.
@@ -578,7 +676,7 @@ export function makeArcology(rng, buckets, wallBucket = 'stone') {
 }
 
 /** Slender setback tower with a polished civic needle and deep stone fins. */
-export function makeNeedleTower(rng, buckets, wallBucket = 'plaster2') {
+export function makeNeedleTower(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster2'): StructureDimensions {
   const out = parts(), w = 14.0, d = 16.0, podiumH = 5.4;
   out.stone.push(box(w + 4.8, podiumH, d + 4.8).translate(0, podiumH / 2, 0));
   out.dark.push(box(5.2, 3.1, 0.16).translate(0, 1.55, d / 2 + 2.47));
@@ -600,7 +698,8 @@ export function makeNeedleTower(rng, buckets, wallBucket = 'plaster2') {
       frameBucket: i === 2 ? 'dark' : 'stone',
     });
   }
-  const roofY = stages.at(-1).y + stages.at(-1).h + 0.22;
+  const finalStage = stages[stages.length - 1];
+  const roofY = finalStage.y + finalStage.h + 0.22;
   const spireTop = addConnectedCrown(out, {
     roofY, baseW: 5.0, style: 'needle', yaw: (rng() - 0.5) * 0.18,
   });
@@ -609,7 +708,7 @@ export function makeNeedleTower(rng, buckets, wallBucket = 'plaster2') {
 }
 
 /** Offset broadcast headquarters with stacked terraces and a lattice mast. */
-export function makeBroadcastTower(rng, buckets, wallBucket = 'plaster3') {
+export function makeBroadcastTower(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3'): StructureDimensions {
   const out = parts(), w = 19.0, d = 15.0, podiumH = 6.2;
   out.stone.push(box(w + 5.0, podiumH, d + 5.0).translate(0, podiumH / 2, 0));
   const coreH = 29.0;
@@ -644,7 +743,7 @@ export function makeBroadcastTower(rng, buckets, wallBucket = 'plaster3') {
 }
 
 /** Broad terraced financial tower with an asymmetric split-blade crown. */
-export function makeTerraceTower(rng, buckets, wallBucket = 'stone') {
+export function makeTerraceTower(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
   const out = parts(), w = 21.0, d = 18.0, podiumH = 5.8;
   out.plaster3.push(box(w + 4.0, podiumH, d + 4.0).translate(0, podiumH / 2, 0));
   const lowerH = 22.0;
@@ -679,7 +778,7 @@ export function makeTerraceTower(rng, buckets, wallBucket = 'stone') {
 }
 
 /** Open-sided concrete parking deck: a broad, tank-scale urban landmark. */
-export function makeParkingDeck(rng, buckets) {
+export function makeParkingDeck(rng: Rng, buckets: GeometryBuckets): StructureDimensions {
   const out = parts(), w = 27.0, d = 22.0, floors = 5, floorH = 2.65;
   for (let i = 0; i <= floors; i++) {
     out.stone.push(slab(w, 0.32, d).translate(0, i * floorH + 0.16, 0));
@@ -711,7 +810,7 @@ export function makeParkingDeck(rng, buckets) {
 }
 
 /** Monumental civic hall with bombed rotunda and deep colonnade. */
-export function makeCivicHall(rng, buckets, wallBucket = 'plaster2') {
+export function makeCivicHall(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster2'): StructureDimensions {
   const out = parts(), w = 31.0, d = 18.0, h = 10.5;
   out[wallBucket].push(box(w, h, d).translate(0, h / 2, 0));
   out.stone.push(slab(w + 2.0, 0.55, d + 2.0).translate(0, 0.28, 0));
@@ -734,7 +833,7 @@ export function makeCivicHall(rng, buckets, wallBucket = 'plaster2') {
   return { w: w + 2.2, d: d + 4.8, h: h + 4.2 };
 }
 
-export const STRUCTURE_BUILDERS = {
+export const STRUCTURE_BUILDERS: Record<string, StructureBuilder> = {
   tavern: makeTavern,
   schoolhouse: makeSchoolhouse,
   firestation: makeFireStation,
@@ -766,15 +865,24 @@ const PAL = {
   urbanSteel: [0x596065, 0x8b9293, 0x242a2e],
   desert: [0xa18a67, 0xc0ad83, 0x655845],
   nordic: [0x4b382c, 0x8b765e, 0x242b2c],
-};
+} as const satisfies Record<string, Palette>;
 
-function colored(partsOut, geo, color, rng, jitter = 0.08) {
+function colored<T extends THREE.BufferGeometry>(
+  partsOut: THREE.BufferGeometry[],
+  geo: T,
+  color: number,
+  rng: Rng,
+  jitter = 0.08,
+): T {
   partsOut.push(paint(geo, color, rng, jitter));
   return geo;
 }
 
-function gableLight({ w, d, wallH, roofH, pal, porch = 0, raised = 0, chimney = false, windows = 2 }, rng) {
-  const out = [], [wall, trim, dark] = pal;
+function gableLight({
+  w, d, wallH, roofH, pal, porch = 0, raised = 0, chimney = false, windows = 2,
+}: GableLightOptions, rng: Rng): THREE.BufferGeometry[] {
+  const out: THREE.BufferGeometry[] = [];
+  const [wall, trim, dark] = pal;
   if (raised > 0) {
     for (const x of [-w * 0.38, w * 0.38]) for (const z of [-d * 0.38, d * 0.38]) {
       colored(out, box(0.16, raised, 0.16).translate(x, raised / 2, z), dark, rng);
@@ -835,8 +943,14 @@ function gableLight({ w, d, wallH, roofH, pal, porch = 0, raised = 0, chimney = 
   return out;
 }
 
-function debris(meta, pal, rng, material = 'wood') {
-  const out = [], [base, trim, dark] = pal;
+function debris(
+  meta: Pick<DestructibleBuildingType, 'hw' | 'hl' | 'h'>,
+  pal: Palette,
+  rng: Rng,
+  material: DebrisMaterial = 'wood',
+): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [];
+  const [base, trim, dark] = pal;
   const count = material === 'canvas' ? 11 : 15;
   for (let i = 0; i < count; i++) {
     const a = rng() * Math.PI * 2, radius = Math.sqrt(rng()) * Math.max(meta.hw, meta.hl) * 0.82;
@@ -876,14 +990,14 @@ function debris(meta, pal, rng, material = 'wood') {
   return merge(out);
 }
 
-function makeFieldHut(rng) {
+function makeFieldHut(rng: Rng): THREE.BufferGeometry {
   const out = gableLight({ w: 4.2, d: 5.6, wallH: 2.45, roofH: 1.35, pal: PAL.timber, porch: 1.1, chimney: true }, rng);
   colored(out, box(1.4, 0.75, 0.55).translate(-1.15, 0.4, 3.15), PAL.paleWood[1], rng);
   return mergeConnectedStructure('fieldhut', out);
 }
 
-function makeLeanTo(rng) {
-  const out = [], p = PAL.paleWood;
+function makeLeanTo(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.paleWood;
   for (const x of [-2.4, 2.4]) for (const z of [-2.0, 2.0]) colored(out, box(0.16, 2.8, 0.16).translate(x, 1.4, z), p[2], rng);
   colored(out, box(5.2, 2.3, 0.18).translate(0, 1.15, -2.05), p[0], rng);
   const roof = slab(5.8, 0.12, 5.0); roof.rotateX(-0.18); colored(out, roof.translate(0, 2.75, 0), p[1], rng);
@@ -891,8 +1005,8 @@ function makeLeanTo(rng) {
   return mergeConnectedStructure('leanto', out);
 }
 
-function makeHuntingBlind(rng) {
-  const out = [], p = PAL.timber, y = 3.1;
+function makeHuntingBlind(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.timber, y = 3.1;
   for (const x of [-1.15, 1.15]) for (const z of [-1.15, 1.15]) colored(out, box(0.16, y, 0.16).translate(x, y / 2, z), p[2], rng);
   colored(out, box(2.8, 2.2, 2.8).translate(0, y + 1.1, 0), p[0], rng);
   colored(out, slab(3.2, 0.12, 3.3).rotateZ(0.10).translate(0, y + 2.3, 0), p[1], rng);
@@ -901,7 +1015,7 @@ function makeHuntingBlind(rng) {
   return mergeConnectedStructure('huntingblind', out);
 }
 
-function makeFisherShack(rng) {
+function makeFisherShack(rng: Rng): THREE.BufferGeometry {
   const out = gableLight({ w: 4.8, d: 6.2, wallH: 2.7, roofH: 1.45, pal: PAL.nordic, porch: 1.5, raised: 0.45 }, rng);
   for (const x of [-1.8, 0, 1.8]) {
     colored(out, box(0.10, 2.2, 0.10).translate(x, 1.1, -3.65), PAL.nordic[2], rng);
@@ -913,36 +1027,36 @@ function makeFisherShack(rng) {
   return mergeConnectedStructure('fishershack', out);
 }
 
-function makeSaunaHut(rng) {
+function makeSaunaHut(rng: Rng): THREE.BufferGeometry {
   const out = gableLight({ w: 4.6, d: 5.0, wallH: 2.5, roofH: 1.65, pal: PAL.nordic, chimney: true, windows: 1 }, rng);
   for (let y = 0.45; y < 2.4; y += 0.38) colored(out, box(4.75, 0.10, 0.12).translate(0, y, 2.56), PAL.nordic[1], rng);
   colored(out, box(1.2, 0.28, 1.2).translate(1.3, 0.14, 3.1), PAL.nordic[2], rng);
   return mergeConnectedStructure('saunahut', out);
 }
 
-function makeAlpineRefuge(rng) {
+function makeAlpineRefuge(rng: Rng): THREE.BufferGeometry {
   const out = gableLight({ w: 6.0, d: 7.0, wallH: 2.8, roofH: 2.7, pal: PAL.nordic, porch: 1.0, chimney: true }, rng);
   for (const x of [-2.3, -0.8, 0.8, 2.3]) colored(out, box(0.12, 0.9, 0.12).translate(x, 3.25, 3.85), PAL.nordic[1], rng);
   colored(out, box(5.4, 0.12, 0.15).translate(0, 3.7, 3.85), PAL.nordic[2], rng);
   return mergeConnectedStructure('alpinerefuge', out);
 }
 
-function makeStiltHouse(rng) {
+function makeStiltHouse(rng: Rng): THREE.BufferGeometry {
   const out = gableLight({ w: 5.6, d: 7.2, wallH: 2.7, roofH: 1.8, pal: PAL.paleWood, porch: 1.3, raised: 2.0 }, rng);
   for (let i = 0; i < 6; i++) colored(out, box(1.0, 0.10, 0.18).translate(3.0, 0.35 + i * 0.34, 2.6 + i * 0.22), PAL.paleWood[1], rng);
   colored(out, box(0.12, 2.6, 0.12).rotateX(-0.58).translate(3.0, 1.2, 3.15), PAL.paleWood[2], rng);
   return mergeConnectedStructure('stilthouse', out);
 }
 
-function makeLonghouse(rng) {
+function makeLonghouse(rng: Rng): THREE.BufferGeometry {
   const out = gableLight({ w: 6.8, d: 12.8, wallH: 2.8, roofH: 3.7, pal: PAL.timber, windows: 3 }, rng);
   for (const z of [-4.3, -1.4, 1.4, 4.3]) for (const side of [-1, 1]) colored(out, box(0.12, 2.2, 0.12).translate(side * 3.46, 1.1, z), PAL.timber[1], rng);
   const ridge = cylinder(0.18, 0.18, 13.6, 7); ridge.rotateX(Math.PI / 2); colored(out, ridge.translate(0, 6.55, 0), PAL.timber[2], rng);
   return mergeConnectedStructure('longhouse', out);
 }
 
-function makeDesertTent(rng) {
-  const out = [], p = PAL.desert, w = 5.2, d = 7.6, h = 2.8;
+function makeDesertTent(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.desert, w = 5.2, d = 7.6, h = 2.8;
   const shape = new THREE.Shape(); shape.moveTo(-w / 2, 0); shape.lineTo(0, h); shape.lineTo(w / 2, 0); shape.closePath();
   const tent = new THREE.ExtrudeGeometry(shape, { depth: d, bevelEnabled: false }); tent.translate(0, 0, -d / 2);
   colored(out, tent, p[0], rng, 0.12);
@@ -955,8 +1069,8 @@ function makeDesertTent(rng) {
   return mergeConnectedStructure('deserttent', out);
 }
 
-function makeCommandTent(rng) {
-  const out = [], p = PAL.khaki, w = 6.2, d = 8.2, wall = 1.15, roof = 2.35;
+function makeCommandTent(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.khaki, w = 6.2, d = 8.2, wall = 1.15, roof = 2.35;
   colored(out, box(w, wall, d).translate(0, wall / 2, 0), p[0], rng);
   colored(out, gable(w, roof, d).translate(0, wall, 0), p[1], rng);
   for (const z of [-3.0, 0, 3.0]) colored(out, box(0.10, wall + roof + 0.3, 0.10).translate(0, (wall + roof) / 2, z), p[2], rng);
@@ -966,8 +1080,8 @@ function makeCommandTent(rng) {
   return mergeConnectedStructure('commandtent', out);
 }
 
-function makeFieldHospital(rng) {
-  const out = [], p = PAL.canvas;
+function makeFieldHospital(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.canvas;
   for (const x of [-2.7, 2.7]) {
     colored(out, box(4.5, 1.05, 8.8).translate(x, 0.53, 0), p[0], rng);
     colored(out, gable(4.5, 2.0, 8.8).translate(x, 1.05, 0), p[1], rng);
@@ -980,8 +1094,8 @@ function makeFieldHospital(rng) {
   return mergeConnectedStructure('fieldhospital', out);
 }
 
-function makeGuardPost(rng) {
-  const out = [], p = PAL.steel, y0 = 1.2;
+function makeGuardPost(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.steel, y0 = 1.2;
   colored(out, box(3.2, 2.6, 3.2).translate(0, y0 + 1.3, 0), p[0], rng);
   for (const side of [-1, 1]) {
     colored(out, box(2.2, 0.65, 0.08).translate(0, y0 + 1.65, side * 1.64), 0x73909a, rng);
@@ -993,8 +1107,8 @@ function makeGuardPost(rng) {
   return mergeConnectedStructure('guardpost', out);
 }
 
-function makeMotorPool(rng) {
-  const out = [], p = PAL.steel, w = 9.0, d = 11.5;
+function makeMotorPool(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 9.0, d = 11.5;
   for (const x of [-w / 2, 0, w / 2]) for (const z of [-d / 2, d / 2]) colored(out, box(0.22, 3.8, 0.22).translate(x, 1.9, z), p[2], rng);
   const roof = slab(w + 0.8, 0.16, d + 0.8); roof.rotateZ(0.11); colored(out, roof.translate(0, 3.9, 0), p[0], rng);
   colored(out, box(2.0, 0.25, 7.0).translate(0, 0.05, 0), p[2], rng);
@@ -1003,8 +1117,8 @@ function makeMotorPool(rng) {
   return mergeConnectedStructure('motorpool', out);
 }
 
-function makeQuonsetHut(rng) {
-  const out = [], p = PAL.steel, w = 6.8, d = 11.5, h = 3.8;
+function makeQuonsetHut(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 6.8, d = 11.5, h = 3.8;
   colored(out, archShell(w, h, d), p[0], rng, 0.10);
   for (let z = -d / 2 + 0.8; z < d / 2; z += 1.15) {
     const rib = archShell(w + 0.12, h + 0.08, 0.08); rib.translate(0, 0, z); colored(out, rib, p[1], rng, 0.04);
@@ -1014,8 +1128,8 @@ function makeQuonsetHut(rng) {
   return mergeConnectedStructure('quonsethut', out);
 }
 
-function makeTransformerShed(rng) {
-  const out = [], p = PAL.steel, w = 5.4, d = 5.0, h = 3.4;
+function makeTransformerShed(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 5.4, d = 5.0, h = 3.4;
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
   colored(out, slab(w + 0.5, 0.18, d + 0.5).rotateZ(-0.09).translate(0, h + 0.1, 0), p[2], rng);
   for (const x of [-1.55, 0, 1.55]) for (let y = 1.0; y <= 2.5; y += 0.38) colored(out, box(0.95, 0.08, 0.08).translate(x, y, d / 2 + 0.08), p[1], rng);
@@ -1027,8 +1141,8 @@ function makeTransformerShed(rng) {
   return mergeConnectedStructure('transformershed', out);
 }
 
-function makeCheckpointHut(rng) {
-  const out = [], p = PAL.steel, w = 4.0, d = 5.2, h = 3.0;
+function makeCheckpointHut(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 4.0, d = 5.2, h = 3.0;
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
   colored(out, slab(w + 0.7, 0.16, d + 1.1).rotateZ(0.08).translate(0, h + 0.08, 0), p[2], rng);
   for (const side of [-1, 1]) colored(out, box(0.08, 1.0, 2.7).translate(side * (w / 2 + 0.05), 1.95, 0), 0x718b90, rng);
@@ -1038,8 +1152,8 @@ function makeCheckpointHut(rng) {
   return mergeConnectedStructure('checkpointhut', out);
 }
 
-function makeSecurityOffice(rng) {
-  const out = [], p = PAL.urbanSteel, w = 7.2, d = 8.6, h = 4.8;
+function makeSecurityOffice(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.urbanSteel, w = 7.2, d = 8.6, h = 4.8;
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
   colored(out, slab(w + 0.55, 0.24, d + 0.55).translate(0, h + 0.08, 0), p[2], rng);
   for (const side of [-1, 1]) for (const x of [-2.25, 0, 2.25]) {
@@ -1060,8 +1174,8 @@ function makeSecurityOffice(rng) {
   return mergeConnectedStructure('securityoffice', out);
 }
 
-function makeServiceGarage(rng) {
-  const out = [], p = PAL.urbanSteel, w = 9.6, d = 11.2, h = 5.0;
+function makeServiceGarage(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.urbanSteel, w = 9.6, d = 11.2, h = 5.0;
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
   const roof = slab(w + 0.7, 0.22, d + 0.7); roof.rotateZ(-0.055);
   colored(out, roof.translate(0, h + 0.10, 0), p[1], rng);
@@ -1082,8 +1196,8 @@ function makeServiceGarage(rng) {
   return mergeConnectedStructure('servicegarage', out);
 }
 
-function makeRelayStation(rng) {
-  const out = [], p = PAL.urbanSteel, w = 6.2, d = 6.8, h = 4.2;
+function makeRelayStation(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.urbanSteel, w = 6.2, d = 6.8, h = 4.2;
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
   colored(out, slab(w + 0.5, 0.24, d + 0.5).translate(0, h + 0.10, 0), p[2], rng);
   for (const x of [-1.85, 0, 1.85]) {
@@ -1107,8 +1221,8 @@ function makeRelayStation(rng) {
   return mergeConnectedStructure('relaystation', out);
 }
 
-function makeCornerOffice(rng) {
-  const out = [], p = PAL.urbanSteel, w = 8.4, d = 8.4, h = 6.6;
+function makeCornerOffice(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.urbanSteel, w = 8.4, d = 8.4, h = 6.6;
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
   colored(out, slab(w + 0.5, 0.24, d + 0.5).translate(0, h + 0.10, 0), p[2], rng);
   for (const y of [2.25, 4.75]) {
@@ -1130,23 +1244,34 @@ function makeCornerOffice(rng) {
   return mergeConnectedStructure('corneroffice', out);
 }
 
-function lightMeta(id, family, hw, hl, h, pal, build, debrisMaterial = 'wood') {
-  const surfaceMaterial = debrisMaterial === 'canvas'
+function lightMeta(
+  id: string,
+  family: string,
+  hw: number,
+  hl: number,
+  h: number,
+  pal: Palette,
+  build: LightStructureBuilder,
+  debrisMaterial: DebrisMaterial = 'wood',
+): DestructibleBuildingType {
+  const surfaceMaterial: DestructibleBuildingType['surfaceMaterial'] = debrisMaterial === 'canvas'
     ? 'structureCanvas'
     : debrisMaterial === 'metal' ? 'structureMetal' : 'structureWood';
   const instanceTintStrength = debrisMaterial === 'metal'
     ? 0.035 : debrisMaterial === 'canvas' ? 0.045 : 0.07;
-  const meta = {
-    id, family, cls: 'break', mat: surfaceMaterial, surfaceMaterial,
-    contact: 'ob', collider: true,
+  const base = {
+    id, family, cls: 'break' as const, mat: surfaceMaterial, surfaceMaterial,
+    contact: 'ob' as const, collider: true as const,
     hw, hl, r: Math.hypot(hw, hl), h, keep: 0.84, crushMin: 4.5, build,
     instanceTintStrength,
   };
-  meta.broken = (rng) => debris(meta, pal, rng, debrisMaterial);
-  return meta;
+  return {
+    ...base,
+    broken: (rng: Rng) => debris(base, pal, rng, debrisMaterial),
+  };
 }
 
-export const DESTRUCTIBLE_BUILDING_TYPES = {
+export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingType> = {
   fieldhut: lightMeta('fieldhut', 'rural', 2.3, 3.5, 4.1, PAL.timber, makeFieldHut),
   leanto: lightMeta('leanto', 'rural', 2.9, 2.6, 3.1, PAL.paleWood, makeLeanTo),
   huntingblind: lightMeta('huntingblind', 'woodland', 1.8, 1.8, 5.5, PAL.timber, makeHuntingBlind),
