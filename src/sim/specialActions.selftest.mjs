@@ -9,7 +9,7 @@ import {
   createShell,
   guideShellToward,
 } from './ballistics.ts';
-import { createAuthoritativeMatch } from './authoritativeMatch.js';
+import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
 import { captureEntitySnapshot, SNAPSHOT_FLAGS } from '../net/snapshot.ts';
 import {

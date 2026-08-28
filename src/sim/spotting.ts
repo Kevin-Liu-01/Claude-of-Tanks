@@ -69,7 +69,7 @@ export interface SpottingTank {
   };
   combat?: {
     destroyed?: boolean;
-    modules?: Partial<Record<string, { state?: SpottingModuleState }>>;
+    modules?: Partial<Record<'optics' | 'radio', { state?: SpottingModuleState }>>;
   };
 }
 
@@ -273,7 +273,7 @@ function clamp(x: number, lo: number, hi: number): number {
  */
 function moduleStateOf(
   ent: SpottingTank | null | undefined,
-  name: string,
+  name: 'optics' | 'radio',
 ): SpottingModuleState {
   const m = ent && ent.combat && ent.combat.modules && ent.combat.modules[name];
   return m && m.state ? m.state : 'ok';

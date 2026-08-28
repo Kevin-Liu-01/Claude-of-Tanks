@@ -42,8 +42,8 @@ export interface TankBodyEntity {
     weightTons: number;
     dims: { hullLengthM: number; widthM: number; heightM: number };
     armor?: {
-      turretPivot?: number[];
-      bodyContactPoints?: { hull?: number[]; turret?: number[] };
+      turretPivot?: readonly number[];
+      bodyContactPoints?: { hull?: readonly number[]; turret?: readonly number[] };
     };
   };
   state: TankBodyState;

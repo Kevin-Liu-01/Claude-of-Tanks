@@ -4,7 +4,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 // Node authority resolves the exact same specs/armor as the browser garage.
 import '../src/vehicles/tankFactory.js';
 import { AuthoritativeMatchRuntime } from '../src/net/matchRuntime.ts';
-import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.js';
+import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.ts';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.js';
 
 const MATCH_ID_RE = /^[a-zA-Z0-9_-]{6,64}$/;

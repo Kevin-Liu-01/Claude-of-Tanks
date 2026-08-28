@@ -181,3 +181,4 @@ runtime documents remain authoritative for behavior.
 - [0169 — Damage and ERA authority are strict TypeScript](0169-typed-damage-runtime.md)
 - [0170 — Armor tracing and articulation frames are strict TypeScript](0170-typed-armor-tracing.md)
 - [0171 — Spotting authority is strict TypeScript](0171-typed-spotting-authority.md)
+- [0172 — The headless match authority is strict TypeScript](0172-typed-authoritative-match.md)

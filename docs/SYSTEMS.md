@@ -42,7 +42,7 @@ so garage and battle-intent loading can use them without owning the solo combat
 graph. src/game/soloBattleRuntime.ts is the typed lazy boundary that acquires
 the legacy solo authority only on Battle or capture intent. LAN, private, and
 ranked modes use
-src/sim/authoritativeMatch.js behind the protocol and browser presentation
+src/sim/authoritativeMatch.ts behind the protocol and browser presentation
 bridge. These compositions share movement, aiming, ballistics, armor, damage,
 spotting, bot, destructible, and result rules.
 

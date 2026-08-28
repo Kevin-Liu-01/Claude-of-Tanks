@@ -64,6 +64,7 @@ export interface DamageShellSpec extends BallisticShellSpec {
   reloadS?: number;
   effectiveOvermatchCaliberMm?: number;
   tandem?: boolean;
+  soundProfile?: string;
 }
 
 export interface DamageShell extends ShellEntity<DamageShellSpec> {

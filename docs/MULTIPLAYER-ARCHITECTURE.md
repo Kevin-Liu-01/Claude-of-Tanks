@@ -31,7 +31,8 @@ its dedicated service explicitly negotiates another ruleset.
 
 ## Runtime boundaries
 
-- `src/sim/authoritativeMatch.js` is the renderer-free battle authority.
+- `src/sim/authoritativeMatch.ts` is the strict renderer-free battle authority
+  shared by browser-hosted and dedicated matches.
 - `src/net/matchRuntime.ts` owns fixed ticks, input ordering, readiness,
   viewer-specific snapshots, catch-up limits, and connection state.
 - `src/net/browserBattleBridge.ts` turns authority snapshots and events into

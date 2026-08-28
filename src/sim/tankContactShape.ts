@@ -18,7 +18,7 @@ export interface TankContactRect {
 
 interface ContactSpec {
   dims: { widthM: number; hullLengthM: number; heightM: number };
-  armor?: { bodyContactPoints?: { hull?: number[] } };
+  armor?: { bodyContactPoints?: { hull?: readonly number[] } };
 }
 
 const cache = new WeakMap<object, { source: unknown; rect: TankContactRect }>();

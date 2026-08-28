@@ -6,7 +6,7 @@ import {
   buildPrivateMatchPlayers,
   resolvePrivateMatchMap,
 } from './privateMatchHandoff.ts';
-import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
+import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
 import { PrivateRoomClientSession, PrivateRoomHostSession } from './privateRoomSession.ts';
 import { MatchClientRuntime } from './matchRuntime.ts';
 import { MATCH_CONTROL_CHANNEL_LABEL, MATCH_STATE_CHANNEL_LABEL } from './webrtcPeer.ts';
