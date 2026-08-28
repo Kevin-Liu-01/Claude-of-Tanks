@@ -3,7 +3,7 @@
 // explicit typed deltas.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
-import { createType99Armor } from './profiles/type99Armor.js';
+import { createType99Armor } from './profiles/type99Armor.ts';
 import type { ArmorEnvelope } from './specHelpers.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import {
@@ -109,7 +109,7 @@ const CHINA_SPECS = {
     },
     reloadS: 6.4,
     // The A2 has a distinct ground-up ring seat, hull and turret bustle.
-    armor: createType99Armor('ztz99a2') as unknown as ArmorEnvelope,
+    armor: createType99Armor('ztz99a2'),
     armorFactor: 1.12,
   }),
 } satisfies Record<string, FleetTankSpec>;

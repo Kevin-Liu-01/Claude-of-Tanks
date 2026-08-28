@@ -4,7 +4,7 @@ import { traceTank } from '../../sim/armor.ts';
 import { combatAnatomyCalibration } from '../combatAnatomy.js';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.js';
-import { createType99Armor } from './type99Armor.js';
+import { createType99Armor } from './type99Armor.ts';
 
 const pose = {
   pos: new Vector3(), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,

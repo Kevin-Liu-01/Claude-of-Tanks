@@ -9,9 +9,9 @@ fleet registry. Their delta contract permits only identity, presentation,
 dimensions, bounded mobility/aiming fields, reload, an optional replacement
 armor envelope, and non-external armor scaling.
 
-Keep `createType99Armor` behind an explicit legacy JavaScript boundary until
-that geometry-derived armor constructor is migrated separately. The focused
-Type 99 armor suite validates the asserted envelope.
+Consume the strict `createType99Armor` result directly. ADR 0216 migrated the
+geometry-derived constructor and removed the temporary legacy assertion; the
+focused Type 99 armor suite validates the envelope.
 
 ## Why
 
