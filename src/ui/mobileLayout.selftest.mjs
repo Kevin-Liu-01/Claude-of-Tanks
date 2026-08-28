@@ -5,7 +5,7 @@ await import('./responsiveLayout.selftest.mjs');
 
 const [
   garageSource, touch, battleLoad, hud, shotInfo, playMenu, settings, publicNav, responsiveSurfaces, input,
-  networkStatus, transition, perfHud, deviceDiag, renderer, main, gallery, docs,
+  networkStatus, transition, perfHud, deviceDiag, renderer, main, pointerLockFeedback, gallery, docs,
 ] = await Promise.all([
   readFile(new URL('./garage.js', import.meta.url), 'utf8'),
   readFile(new URL('./touchControls.js', import.meta.url), 'utf8'),
@@ -23,6 +23,7 @@ const [
   readFile(new URL('../engine/deviceDiag.js', import.meta.url), 'utf8'),
   readFile(new URL('../engine/renderer.ts', import.meta.url), 'utf8'),
   readFile(new URL('../main.js', import.meta.url), 'utf8'),
+  readFile(new URL('../game/pointerLockFeedbackRuntime.ts', import.meta.url), 'utf8'),
   readFile(new URL('../gallery/gallery.css', import.meta.url), 'utf8'),
   readFile(new URL('../docs/docs.css', import.meta.url), 'utf8'),
 ]);
@@ -273,7 +274,7 @@ for (const [source, pattern, label] of [
   [perfHud, /el\.id = 'cot-perfhud'/, 'performance dashboard'],
   [deviceDiag, /el\.id = 'cot-diag'/, 'compatibility diagnostics'],
   [renderer, /el\.id = 'cot-ctxlost'/, 'graphics recovery'],
-  [main, /t\.className = 'cot-lock-toast'/, 'pointer-lock fallback'],
+  [pointerLockFeedback, /element\.className = 'cot-lock-toast'/, 'pointer-lock fallback'],
 ]) assert.match(source, pattern, `${label} surface must remain present while responsive composition owns its geometry`);
 
 const semanticSurfaceFiles = [

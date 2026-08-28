@@ -144,6 +144,7 @@ import { createBattleLoadScreen } from './ui/battleLoad.ts';
 import { createEndOverlayRuntime } from './ui/endOverlayRuntime.ts';
 import { createStartupIntent } from './game/startupIntent.ts';
 import { createSelectedVehicleSelection } from './game/selectedVehicleSelection.ts';
+import { createPointerLockFeedbackRuntime } from './game/pointerLockFeedbackRuntime.ts';
 import { tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
@@ -1331,85 +1332,22 @@ bus.on('phase:change', ({ phase }) => {
   if (phase !== 'battle' && mobileAutoAimTargetId) setMobileAutoAimTarget(null);
 });
 
-// CURSOR-AIM FALLBACK: pointer lock durably unavailable (sandboxed iframes,
-// embedded panes) — the input layer flips to cursor aim; tell the player ONCE
-// so the control change isn't mysterious. Battle input itself never depends
-// on the lock: turret = terrain point under the cursor, LMB fires as normal.
-// lock_retry r1: onLockDenied now fires only on the DURABLE latch (3
-// consecutive denials, or a synchronous SecurityError — input.js), so
-// Chrome's ~1.3 s post-Esc re-lock cooldown no longer flips the session into
-// cursor aim off a single transient denial; interim primary-button gestures
-// keep retrying the lock (canvas mousedown below). A lock that later
-// SUCCEEDS unlatches the fallback — drop the toast and re-arm it.
-let lockToastShown = false; // re-armed by onLockRestored
-let lockToastEl = null;     // live toast node, removed on restore
-input.onLockDenied(() => {
-  if (lockToastShown) return;
-  lockToastShown = true;
-  // gunnery r1: the denial usually lands on the BATTLE click itself — before
-  // the battle-load screen (z 150) has even mounted and ~10 s before it
-  // clears — so an immediate toast (z 66) lived and died entirely underneath
-  // it. Defer the append until the battlefield is actually on screen (phase
-  // battle, load screen gone) so the player reads the control change.
-  const waitForStage = (fn) => {
-    if (game.phase !== 'battle' || document.querySelector('.cot-bl.on')) {
-      setTimeout(() => waitForStage(fn), 400);
-    } else fn();
-  };
-  // lockToastShown re-check: a lock restored while the toast was still
-  // queued behind the load screen must cancel the (now false) message.
-  waitForStage(() => { if (lockToastShown) showLockToast(); });
-});
-input.onLockRestored(() => {
-  lockToastShown = false;
-  if (lockToastEl) { lockToastEl.remove(); lockToastEl = null; }
-});
-function showLockToast() {
-  const t = document.createElement('div');
-  t.textContent = 'Mouse capture unavailable — cursor aim enabled';
-  t.className = 'cot-lock-toast';
-  t.style.cssText =
-    'position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:66;' +
-    'padding:9px 22px;pointer-events:none;background:rgba(9,13,17,.88);' +
-    'border:1px solid rgba(240,176,74,.55);color:#ffd27a;' +
-    "font-family:'ABC Monument Grotesk','Segoe UI',Roboto,Helvetica,Arial,sans-serif;" +
-    'font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;' +
-    'box-shadow:0 4px 18px rgba(0,0,0,.5);opacity:1;transition:opacity 1.2s ease;';
-  document.body.appendChild(t);
-  lockToastEl = t;
-  // Fade timers start from the first frame that could PAINT the toast, not
-  // from append: battle entry can block the main thread for seconds building
-  // the world, and wall-clock timers would expire the toast the moment the
-  // screen unfroze (nextFrame's timer fallback covers rAF-starved panes).
-  nextFrame().then(() => {
-    setTimeout(() => { t.style.opacity = '0'; }, 4500);
-    setTimeout(() => { t.remove(); if (lockToastEl === t) lockToastEl = null; }, 5900);
-  });
-}
-
-function canRecaptureBattlePointer() {
-  const combat = game.player?.combat;
-  return game.phase === 'battle' && !game.result && !!combat && !combat.destroyed &&
-    !settings.isOpen() && !killcam.isActive() && !killcam.spectate?.active;
-}
-
-renderer.domElement.addEventListener('mousedown', () => {
-  audio.resume();
-  // Once the local tank is destroyed, the cursor belongs to the death replay,
-  // spectator controls and menus. Canvas clicks must not silently take it back.
-  if (!canRecaptureBattlePointer()) return;
-  if (input.isTouchLayout()) return;
-  if (!input.isLocked()) input.requestLock();
-});
-
-// Battle start: desktop grabs the pointer inside the BATTLE-click gesture.
-// The old eight-second controls strip is deliberately retired; it covered
-// the battlefield on every round even after players knew the bindings.
-bus.on('ui:battleStart', () => {
-  ensureTouchControls().then((controls) => controls?.refresh()).catch(() => null);
-  if (!input.isTouchLayout()) {
-    input.requestLock();
-  }
+// Pointer-lock denial, recovery gestures, the cursor-aim notice, and touch
+// refresh now have one typed listener/timer owner outside the composition root.
+createPointerLockFeedbackRuntime({
+  input,
+  bus,
+  canvas: renderer.domElement,
+  audioResume: () => audio.resume(),
+  isBattleStageVisible: () => game.phase === 'battle' &&
+    !document.querySelector('.cot-bl.on'),
+  canRecapturePointer: () => {
+    const combat = game.player?.combat;
+    return game.phase === 'battle' && !game.result && !!combat && !combat.destroyed &&
+      !settings.isOpen() && !killcam.isActive() && !killcam.spectate?.active;
+  },
+  ensureTouchControls,
+  nextFrame,
 });
 
 // Shell inventory, consumable cooldowns, special actions, and the exact

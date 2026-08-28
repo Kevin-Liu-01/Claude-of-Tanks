@@ -30,6 +30,8 @@ combat-attachment, bot-default, and Garage-stat contract shared by both
 authorities;
 `playerFrameInput.ts` owns allocation-free per-frame movement, fire, mouse,
 touch, cursor fallback, zoom, free-look, and sniper-mode sampling;
+`pointerLockFeedbackRuntime.ts` owns pointer-lock denial/restoration listeners,
+the delayed cursor-aim notice, canvas recapture, and battle-start touch refresh;
 `battleFrameRuntime.ts` owns pause edges, retained input sampling, network
 cadence, pre-battle hold, fixed-step debt, result progression, and rendered
 pose interpolation;
