@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
 import { beginDedicatedClientMatch, connectDedicatedMatch } from '../src/net/dedicatedClient.ts';
 import { DedicatedMatchRegistry } from './dedicatedMatchRegistry.ts';
-import { createDedicatedMatchServer } from './dedicatedMatchServer.js';
+import { createDedicatedMatchServer } from './dedicatedMatchServer.ts';
 
 let tokenCounter = 0;
 const registry = new DedicatedMatchRegistry({

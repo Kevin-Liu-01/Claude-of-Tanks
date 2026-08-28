@@ -17,7 +17,7 @@ The signaling server relays WebRTC descriptions/ICE only and never gameplay.
   closure; production `.js` entries must not import raw `.ts` source files.
 - `signalingServer.js` owns HTTP upgrade, origin/rate/payload gates, and relay.
 - `dedicatedMatchRegistry.ts` owns authenticated match lifecycle and reconnects.
-- `dedicatedMatchServer.js` owns the authoritative WebSocket service boundary.
+- `dedicatedMatchServer.ts` owns the authoritative WebSocket service boundary.
 - `rankedMatchmaker.js` owns bounded queues, team balance, and match-ticket handoff;
   `ratingStore.js` owns bearer identities, persistent Elo, and idempotent results.
 - `dedicatedWorldCollision.js` inflates match-local state from the generated

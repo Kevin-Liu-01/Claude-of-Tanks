@@ -1,6 +1,7 @@
 import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import { createWebSocketTransport } from '../src/net/channelTransport.ts';
 import { DedicatedMatchRegistry } from './dedicatedMatchRegistry.ts';
 import { RankedMatchmaker } from './rankedMatchmaker.js';
@@ -9,7 +10,80 @@ import { RatingStore } from './ratingStore.js';
 const AUTH_TIMEOUT_MS = 5000;
 const MAX_MESSAGES_PER_SECOND = 180;
 
-function json(response, status, body, headers = {}) {
+type AllowedOriginsInput = string | readonly string[] | null;
+
+interface RankedStats {
+  queuedPlayers: number;
+  ratedMatches: number;
+}
+
+interface RankedMatchmakerLike {
+  createIdentity(input: { name?: unknown }): unknown;
+  leaderboard(limit: unknown): unknown;
+  profile(playerId: string): unknown;
+  join(input: Record<string, unknown>): unknown;
+  poll(ticketId: string, token: string): unknown;
+  cancel(ticketId: string, token: string): boolean;
+  reconcile(): void;
+  stats(): RankedStats;
+}
+
+interface RatingStoreConstructor {
+  new(options?: { filePath?: string | null }): unknown;
+}
+
+interface RankedMatchmakerConstructor {
+  new(options: {
+    registry: DedicatedMatchRegistry;
+    ratings: unknown;
+  }): RankedMatchmakerLike;
+}
+
+export interface DedicatedMatchServerOptions {
+  host?: string;
+  port?: number;
+  allowedOrigins?: AllowedOriginsInput;
+  autoTick?: boolean;
+  registry?: DedicatedMatchRegistry;
+  matchmaker?: RankedMatchmakerLike;
+}
+
+export interface DedicatedMatchServerService {
+  registry: DedicatedMatchRegistry;
+  matchmaker: RankedMatchmakerLike;
+  server: http.Server;
+  sockets: WebSocketServer;
+  address: AddressInfo;
+  advance(elapsedMs: number): number;
+  close(reason?: string): Promise<void>;
+}
+
+interface MatchAuthMessage extends Record<string, unknown> {
+  type: 'match_auth';
+  matchId?: unknown;
+  playerId?: unknown;
+  token?: unknown;
+}
+
+interface HttpError extends Error {
+  status?: number;
+  code?: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function asHttpError(value: unknown): HttpError {
+  return value instanceof Error ? value as HttpError : new Error(String(value));
+}
+
+function json(
+  response: http.ServerResponse,
+  status: number,
+  body: unknown,
+  headers: http.OutgoingHttpHeaders = {},
+): void {
   const data = JSON.stringify(body);
   response.writeHead(status, {
     'content-type': 'application/json; charset=utf-8',
@@ -20,7 +94,10 @@ function json(response, status, body, headers = {}) {
   response.end(data);
 }
 
-function corsHeaders(request, origins) {
+function corsHeaders(
+  request: http.IncomingMessage,
+  origins: ReadonlySet<string> | null,
+): http.OutgoingHttpHeaders {
   const origin = request.headers.origin;
   if (!origin || (origins && !origins.has(origin))) return {};
   return {
@@ -31,28 +108,52 @@ function corsHeaders(request, origins) {
   };
 }
 
-function bearer(request) {
+function bearer(request: http.IncomingMessage): string {
   const match = /^Bearer\s+(.+)$/i.exec(String(request.headers.authorization || ''));
   return match ? match[1] : '';
 }
 
-async function readJson(request, maxBytes = 16 * 1024) {
+async function readJson(
+  request: http.IncomingMessage,
+  maxBytes = 16 * 1024,
+): Promise<Record<string, unknown>> {
   let size = 0;
-  const chunks = [];
+  const chunks: Buffer[] = [];
   for await (const chunk of request) {
-    size += chunk.length;
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += bytes.length;
     if (size > maxBytes) throw Object.assign(new Error('request body is too large'), { status: 413 });
-    chunks.push(chunk);
+    chunks.push(bytes);
   }
   if (!chunks.length) return {};
-  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+  try {
+    const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    if (!isRecord(parsed)) throw new Error('request body must be a JSON object');
+    return parsed;
+  }
   catch (_) { throw Object.assign(new Error('request body must be valid JSON'), { status: 400 }); }
 }
 
-function parseAllowedOrigins(value) {
+function parseAllowedOrigins(value: AllowedOriginsInput): Set<string> | null {
   if (!value) return null;
-  const values = Array.isArray(value) ? value : String(value).split(',');
+  const values: readonly string[] = Array.isArray(value) ? value : String(value).split(',');
   return new Set(values.map((origin) => origin.trim()).filter(Boolean));
+}
+
+function parseMatchAuth(raw: RawData): MatchAuthMessage | null {
+  let value: unknown;
+  try { value = JSON.parse(String(raw)) as unknown; } catch (_) { return null; }
+  if (!isRecord(value) || value.type !== 'match_auth') return null;
+  return value as MatchAuthMessage;
+}
+
+function createDefaultMatchmaker(registry: DedicatedMatchRegistry): RankedMatchmakerLike {
+  const RatingStoreClass = RatingStore as unknown as RatingStoreConstructor;
+  const RankedMatchmakerClass = RankedMatchmaker as unknown as RankedMatchmakerConstructor;
+  return new RankedMatchmakerClass({
+    registry,
+    ratings: new RatingStoreClass({ filePath: process.env.COT_RATING_FILE || null }),
+  });
 }
 
 export async function createDedicatedMatchServer({
@@ -61,11 +162,8 @@ export async function createDedicatedMatchServer({
   allowedOrigins = null,
   autoTick = true,
   registry = new DedicatedMatchRegistry(),
-  matchmaker = new RankedMatchmaker({
-    registry,
-    ratings: new RatingStore({ filePath: process.env.COT_RATING_FILE || null }),
-  }),
-} = {}) {
+  matchmaker = createDefaultMatchmaker(registry),
+}: DedicatedMatchServerOptions = {}): Promise<DedicatedMatchServerService> {
   const origins = parseAllowedOrigins(allowedOrigins);
   const server = http.createServer(async (request, response) => {
     const headers = corsHeaders(request, origins);
@@ -73,8 +171,8 @@ export async function createDedicatedMatchServer({
       json(response, 403, { error: 'origin_forbidden' });
       return;
     }
-    let url;
-    try { url = new URL(request.url, 'http://localhost'); }
+    let url: URL;
+    try { url = new URL(String(request.url || ''), 'http://localhost'); }
     catch (_) { json(response, 400, { error: 'invalid_url' }, headers); return; }
     if (request.method === 'OPTIONS' && url.pathname.startsWith('/ranked/')) {
       response.writeHead(204, headers);
@@ -110,7 +208,8 @@ export async function createDedicatedMatchServer({
             cancelled ? { cancelled: true } : { error: 'ticket_not_cancellable' }, headers);
         } else json(response, 405, { error: 'method_not_allowed' }, headers);
       } else json(response, 404, { error: 'not_found' }, headers);
-    } catch (error) {
+    } catch (caught) {
+      const error = asHttpError(caught);
       json(response, error.status || (error.code === 'ranked_auth_failed' ? 401 : 400), {
         error: error.code || 'invalid_request',
         message: error.message,
@@ -124,27 +223,27 @@ export async function createDedicatedMatchServer({
   });
 
   server.on('upgrade', (request, socket, head) => {
-    let path;
-    try { path = new URL(request.url, 'http://localhost').pathname; } catch (_) { path = ''; }
+    let path: string;
+    try { path = new URL(String(request.url || ''), 'http://localhost').pathname; }
+    catch (_) { path = ''; }
     const origin = request.headers.origin;
     if (path !== '/match' || (origins && (!origin || !origins.has(origin)))) {
       socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
       socket.destroy();
       return;
     }
-    sockets.handleUpgrade(request, socket, head, (websocket) => {
+    sockets.handleUpgrade(request, socket, head, (websocket: WebSocket) => {
       sockets.emit('connection', websocket, request);
     });
   });
 
-  sockets.on('connection', (socket) => {
+  sockets.on('connection', (socket: WebSocket) => {
     let authenticated = false;
     const timeout = setTimeout(() => socket.close(4401, 'authentication_timeout'), AUTH_TIMEOUT_MS);
-    const authenticate = (raw) => {
+    const authenticate = (raw: RawData): void => {
       if (authenticated) return;
-      let message;
-      try { message = JSON.parse(String(raw)); } catch (_) { message = null; }
-      if (!message || message.type !== 'match_auth') {
+      const message = parseMatchAuth(raw);
+      if (!message) {
         socket.close(4401, 'authentication_required');
         return;
       }
@@ -178,7 +277,7 @@ export async function createDedicatedMatchServer({
     socket.once('close', () => clearTimeout(timeout));
   });
 
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, host, () => {
       server.off('error', reject);
@@ -186,7 +285,7 @@ export async function createDedicatedMatchServer({
     });
   });
 
-  let timer = null;
+  let timer: ReturnType<typeof setInterval> | null = null;
   let lastTickMs = performance.now();
   if (autoTick) {
     timer = setInterval(() => {
@@ -198,23 +297,27 @@ export async function createDedicatedMatchServer({
     if (typeof timer.unref === 'function') timer.unref();
   }
 
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('dedicated match server did not bind a TCP address');
+  }
   return {
     registry,
     matchmaker,
     server,
     sockets,
-    address: server.address(),
-    advance(elapsedMs) {
+    address,
+    advance(elapsedMs: number): number {
       const steps = registry.advance(elapsedMs);
       matchmaker.reconcile();
       return steps;
     },
-    async close(reason = 'server_closed') {
+    async close(reason = 'server_closed'): Promise<void> {
       if (timer) clearInterval(timer);
       registry.close(reason);
       for (const client of sockets.clients) client.close(1001, reason);
-      await new Promise((resolve) => sockets.close(() => resolve()));
-      await new Promise((resolve) => server.close(() => resolve()));
+      await new Promise<void>((resolve) => sockets.close(() => resolve()));
+      await new Promise<void>((resolve) => server.close(() => resolve()));
     },
   };
 }

@@ -59,7 +59,7 @@ its dedicated service explicitly negotiates another ruleset.
   tooling; normal solo play does not load it.
 - `src/net/privateRoomSession.ts` and `privateMatchHandoff.ts` own WebRTC lobby
   composition, seeded bot fill, and channel handoff.
-- `server/dedicatedMatchServer.js` and `dedicatedMatchRegistry.ts` own ranked
+- `server/dedicatedMatchServer.ts` and `dedicatedMatchRegistry.ts` own ranked
   WebSocket authority and reconnectable match lifetimes.
 
 All twenty maps use the same authored collision, terrain, foliage concealment,

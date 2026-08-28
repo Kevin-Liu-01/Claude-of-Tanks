@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createDedicatedMatchServer } from '../../server/dedicatedMatchServer.js';
+import { createDedicatedMatchServer } from '../../server/dedicatedMatchServer.ts';
 import { createRankedServiceClient, rankedMatchWebSocketUrl } from './rankedServiceClient.ts';
 
 const service = await createDedicatedMatchServer({ autoTick: false });
