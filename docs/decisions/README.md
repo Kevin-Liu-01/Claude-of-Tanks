@@ -230,3 +230,4 @@ runtime documents remain authoritative for behavior.
 - [0218 — Soviet-family chevron ERA construction is strict TypeScript](0218-typed-soviet-chevron-era.md)
 - [0219 — Vehicle internal-layout evidence is strict TypeScript](0219-typed-internal-layout-registry.md)
 - [0220 — Vehicle marking anchors and painters are strict TypeScript](0220-typed-vehicle-markings.md)
+- [0221 — AFV family registration is strict TypeScript](0221-typed-afv-family-registration.md)

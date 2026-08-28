@@ -33,7 +33,7 @@ import './poland.ts';
 import './korea.ts';
 import './japan.ts';
 import './germany.ts';
-import './afvFamily.js';
+import './afvFamily.ts';
 import './sheridan.ts';
 
 import {

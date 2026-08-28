@@ -18,7 +18,20 @@
 // their rows.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
-import { shell, modernArmor as ifvArmor } from './specHelpers.ts';
+import {
+  shell,
+  modernArmor as ifvArmor,
+  type ShellSpec,
+} from './specHelpers.ts';
+import type {
+  AimBloom,
+  FleetDimensions,
+  FleetGunSpec,
+  FleetTankSpec,
+} from './specContracts.ts';
+import { bindFleetRegistries, registerFleetSpecs } from './fleetSpecRegistry.ts';
+
+const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
 const AFV_FAMILY_IDS = Object.freeze([
   'bmp3_rok',
@@ -33,10 +46,39 @@ const AFV_FAMILY_IDS = Object.freeze([
   'upior',
   // §5.363 owner order — the Terminator on a T-90 hull (new id, tier 10)
   'bmpt_t90',
-]);
+] as const);
 
-function variant(id, donorId, o) {
-  const donor = TANK_SPECS[donorId];
+type AFVStatOverrides = Partial<Pick<FleetTankSpec,
+  | 'hp'
+  | 'enginePowerHp'
+  | 'weightTons'
+  | 'topSpeedKmh'
+  | 'reverseSpeedKmh'
+  | 'hullTraverseDegS'
+  | 'turretTraverseDegS'
+  | 'gunPitchDegS'
+  | 'gunElevationDeg'
+  | 'gunDepressionDeg'
+>>;
+
+interface AFVVariantOptions {
+  name: string;
+  nation: string;
+  number: string;
+  base: string;
+  weather: string;
+  patches: string[];
+  dims?: Partial<FleetDimensions>;
+  trackWidthM?: number;
+  stats?: AFVStatOverrides;
+  gun?: Partial<FleetGunSpec>;
+  shells?: ShellSpec[];
+  scheme?: string;
+  camoScale?: number;
+}
+
+function variant(id: string, donorId: string, o: AFVVariantOptions): FleetTankSpec {
+  const donor = registries.tankSpecs[donorId];
   if (!donor) throw new Error(`AFV family donor missing: ${donorId}`);
   const spec = structuredClone(donor);
   spec.id = id;
@@ -64,26 +106,53 @@ function variant(id, donorId, o) {
   return spec;
 }
 
-const ap = (name, caliberMm, pen, damage, velocityMps, count, reloadS = 0.42) => ({
+type Penetration = number | [number, number, number];
+
+const ap = (
+  name: string,
+  caliberMm: number,
+  pen: Penetration,
+  damage: number,
+  velocityMps: number,
+  count: number,
+  reloadS = 0.42,
+): ShellSpec => ({
   name, type: 'APFSDS', caliberMm,
   pen100Mm: Array.isArray(pen) ? pen[0] : Math.round(pen * 1.10),
   pen1000Mm: Array.isArray(pen) ? pen[1] : Math.round(pen * 1.04),
   pen2000Mm: Array.isArray(pen) ? pen[2] : pen, dmg: damage,
   moduleDmg: caliberMm, tracer: 'APFSDS', velocityMps, count, reloadS,
 });
-const heat = (name, caliberMm, pen, damage, velocityMps, count, reloadS, soundProfile) =>
+const heat = (
+  name: string,
+  caliberMm: number,
+  pen: number,
+  damage: number,
+  velocityMps: number,
+  count: number,
+  reloadS: number,
+  soundProfile: string,
+): ShellSpec =>
   shell(name, 'HEAT', caliberMm, pen, pen, damage, velocityMps, {
     pen2000Mm: pen, count, reloadS, guided: true, soundProfile,
   });
-const he = (name, caliberMm, damage, velocityMps, count, reloadS = 0.42, soundProfile) => ({
+const he = (
+  name: string,
+  caliberMm: number,
+  damage: number,
+  velocityMps: number,
+  count: number,
+  reloadS = 0.42,
+  soundProfile?: string,
+): ShellSpec => ({
   name, type: 'HE', caliberMm, pen100Mm: 8, pen1000Mm: 8, pen2000Mm: 8,
   dmg: damage, moduleDmg: caliberMm, tracer: 'HE', velocityMps, count, reloadS,
   soundProfile,
 });
 
-const BLOOM_IFV = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
+const BLOOM_IFV: AimBloom = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
 
-const AFV_FAMILY_SPECS = {
+const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
   bmp3_rok: variant('bmp3_rok', 'bmp2', {
     name: 'BMP-3 (ROK)', nation: 'South Korea', number: 'ROK 3',
     base: '#465341', weather: '#5e6753', patches: ['#2d352c', '#69604b', '#81765b'],
@@ -432,8 +501,4 @@ AFV_FAMILY_SPECS.bmpt_t90 = variant('bmpt_t90', 't90a', {
   ],
 });
 
-for (const id of AFV_FAMILY_IDS) {
-  TANK_SPECS[id] = TANK_SPECS[id] || AFV_FAMILY_SPECS[id];
-  MODEL_SOURCE[id] = MODEL_SOURCE[id] || { source: 'procedural' };
-  if (!ALL_TANK_IDS.includes(id)) ALL_TANK_IDS.push(id);
-}
+registerFleetSpecs(registries, AFV_FAMILY_IDS, AFV_FAMILY_SPECS);
