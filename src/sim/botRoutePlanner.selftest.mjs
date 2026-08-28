@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.js';
+import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.ts';
 
 function seeded(seed) {
   return () => {

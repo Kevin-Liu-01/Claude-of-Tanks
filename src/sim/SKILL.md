@@ -20,7 +20,7 @@ those rules with match-local world collision for every network authority;
 machine for guided missiles, suspension aim, and manual magazine reloads;
 `terrainMobility.ts` owns the allocation-free drivetrain/grip capability math
 shared by movement and bot navigation;
-`botRoutePlanner.js` builds one seeded traversability grid per match and feeds
+`botRoutePlanner.ts` builds one typed seeded traversability grid per match and feeds
 renderer-free openings into the game AI controller.
 
 ## Patterns to follow / invariants

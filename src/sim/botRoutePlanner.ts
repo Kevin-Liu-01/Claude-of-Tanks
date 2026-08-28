@@ -4,6 +4,7 @@ import {
   terrainSlopeMargin,
   terrainTravelCostFactor,
 } from './terrainMobility.ts';
+import type { TerrainMobilitySpec } from './terrainMobility.ts';
 
 const WORLD_MIN = -500;
 const WORLD_MAX = 500;
@@ -13,32 +14,94 @@ const SQRT2 = Math.SQRT2;
 const GROUND_HARD = 0;
 const GROUND_MEDIUM = 1;
 const GROUND_SOFT = 2;
+const NEIGHBOR_STEPS: ReadonlyArray<readonly [number, number, number]> = [
+  [-1, 0, 1], [1, 0, 1], [0, -1, 1], [0, 1, 1],
+  [-1, -1, SQRT2], [1, -1, SQRT2], [-1, 1, SQRT2], [1, 1, SQRT2],
+];
 
-function encodeGroundType(type) {
+type GroundType = 'hard' | 'medium' | 'soft';
+export type BotRoutePoint = [number, number];
+
+interface Position2 {
+  x: number;
+  z: number;
+}
+
+interface NavigationHeightField {
+  getHeightAt(x: number, z: number): number;
+  getGroundType?(x: number, z: number): string;
+}
+
+interface NavigationObstacle {
+  min: readonly number[];
+  max: readonly number[];
+  crushed?: boolean;
+  crushable?: boolean;
+}
+
+type ObstacleQuery = (
+  minX: number, minZ: number, maxX: number, maxZ: number, out: NavigationObstacle[],
+) => NavigationObstacle[];
+
+export interface BotNavigationGrid {
+  readonly heights: Float32Array;
+  readonly blocked: Uint8Array;
+  readonly groundTypes: Uint8Array;
+}
+
+interface BotNavigationGridOptions {
+  heightField?: NavigationHeightField;
+  queryObstacles?: ObstacleQuery | null;
+  getObstacles?: () => NavigationObstacle[];
+}
+
+interface BotRouteOptions extends BotNavigationGridOptions {
+  start?: Position2;
+  goal?: Position2;
+  navigation?: BotNavigationGrid | null;
+  rng?: () => number;
+  role?: string;
+  spec?: TerrainMobilitySpec;
+  useRoleDetour?: boolean;
+}
+
+interface HeapNode {
+  index: number;
+  ix: number;
+  iz: number;
+  score: number;
+}
+
+interface RouteSolution {
+  points: BotRoutePoint[];
+  cost: number;
+}
+
+function encodeGroundType(type: string) {
   return type === 'hard' ? GROUND_HARD : type === 'soft' ? GROUND_SOFT : GROUND_MEDIUM;
 }
 
-function decodeGroundType(type) {
+function decodeGroundType(type: number): GroundType {
   return type === GROUND_HARD ? 'hard' : type === GROUND_SOFT ? 'soft' : 'medium';
 }
 
-function clamp(value, min, max) {
+function clamp(value: number, min: number, max: number) {
   return value < min ? min : value > max ? max : value;
 }
 
-function cellIndex(ix, iz) {
+function cellIndex(ix: number, iz: number) {
   return iz * GRID_N + ix;
 }
 
-function worldCell(value) {
+function worldCell(value: number) {
   return clamp(Math.round((value - WORLD_MIN) / CELL_M), 0, GRID_N - 1);
 }
 
-function worldCoord(index) {
+function worldCoord(index: number) {
   return WORLD_MIN + index * CELL_M;
 }
 
-function hashNoise(seed, ix, iz) {
+function hashNoise(seed: number, ix: number, iz: number) {
   let value = seed ^ Math.imul(ix + 17, 0x9e3779b1) ^ Math.imul(iz + 31, 0x85ebca6b);
   value ^= value >>> 16;
   value = Math.imul(value, 0x7feb352d);
@@ -48,8 +111,9 @@ function hashNoise(seed, ix, iz) {
 }
 
 class MinHeap {
+  items: HeapNode[];
   constructor() { this.items = []; }
-  push(node) {
+  push(node: HeapNode) {
     const items = this.items;
     items.push(node);
     let index = items.length - 1;
@@ -61,7 +125,7 @@ class MinHeap {
     }
     items[index] = node;
   }
-  pop() {
+  pop(): HeapNode | null {
     const items = this.items;
     if (!items.length) return null;
     const root = items[0];
@@ -74,18 +138,18 @@ class MinHeap {
         const right = left + 1;
         const child = right < items.length && items[right].score < items[left].score
           ? right : left;
-        if (items[child].score >= tail.score) break;
+        if (items[child].score >= tail!.score) break;
         items[index] = items[child];
         index = child;
       }
-      items[index] = tail;
+      items[index] = tail!;
     }
     return root;
   }
   get length() { return this.items.length; }
 }
 
-function roleOffset(role, rng) {
+function roleOffset(role: string, rng: () => number) {
   const magnitude = role === 'scout' ? 150 + rng() * 100
     : role === 'flanker' ? 90 + rng() * 100
       : role === 'sniper' ? 55 + rng() * 95
@@ -98,14 +162,14 @@ export function createBotNavigationGrid({
   heightField,
   queryObstacles = null,
   getObstacles = () => [],
-} = {}) {
+}: BotNavigationGridOptions = {}): Readonly<BotNavigationGrid> {
   if (!heightField || typeof heightField.getHeightAt !== 'function') {
     throw new TypeError('heightField is required');
   }
   const heights = new Float32Array(GRID_N * GRID_N);
   const blocked = new Uint8Array(GRID_N * GRID_N);
   const groundTypes = new Uint8Array(GRID_N * GRID_N);
-  const candidates = [];
+  const candidates: NavigationObstacle[] = [];
   const obstacles = getObstacles() || [];
   for (let iz = 0; iz < GRID_N; iz++) {
     for (let ix = 0; ix < GRID_N; ix++) {
@@ -150,11 +214,12 @@ export function planBotRoute({
   role = 'flanker',
   spec,
   useRoleDetour = true,
-} = {}) {
+}: BotRouteOptions = {}): BotRoutePoint[] {
   if (!start || !goal) {
     throw new TypeError('start and goal are required');
   }
-  if (!spec || !spec.terrainResistance || !(spec.enginePowerHp > 0) || !(spec.weightTons > 0)) {
+  if (!spec || !spec.terrainResistance || !(Number(spec.enginePowerHp) > 0) ||
+      !(Number(spec.weightTons) > 0)) {
     throw new TypeError('spec with drivetrain and terrain resistance is required');
   }
   const seed = (rng() * 0x100000000) >>> 0;
@@ -171,7 +236,7 @@ export function planBotRoute({
     throw new TypeError('navigation must be a bot navigation grid');
   }
 
-  function nearestOpen(ix, iz) {
+  function nearestOpen(ix: number, iz: number): [number, number] {
     for (let radius = 0; radius < 8; radius++) {
       for (let dz = -radius; dz <= radius; dz++) {
         for (let dx = -radius; dx <= radius; dx++) {
@@ -186,9 +251,9 @@ export function planBotRoute({
     return [ix, iz];
   }
 
-  function solve(from, to) {
-    let [sx, sz] = nearestOpen(worldCell(from.x), worldCell(from.z));
-    let [gx, gz] = nearestOpen(worldCell(to.x), worldCell(to.z));
+  function solve(from: Position2, to: Position2): RouteSolution {
+    const [sx, sz] = nearestOpen(worldCell(from.x), worldCell(from.z));
+    const [gx, gz] = nearestOpen(worldCell(to.x), worldCell(to.z));
     const startIndex = cellIndex(sx, sz);
     const goalIndex = cellIndex(gx, gz);
     const count = GRID_N * GRID_N;
@@ -200,16 +265,13 @@ export function planBotRoute({
     const heap = new MinHeap();
     costs[startIndex] = 0;
     heap.push({ index: startIndex, ix: sx, iz: sz, score: 0 });
-    const steps = [
-      [-1, 0, 1], [1, 0, 1], [0, -1, 1], [0, 1, 1],
-      [-1, -1, SQRT2], [1, -1, SQRT2], [-1, 1, SQRT2], [1, 1, SQRT2],
-    ];
     while (heap.length) {
       const node = heap.pop();
+      if (!node) break;
       if (closed[node.index]) continue;
       closed[node.index] = 1;
       if (node.index === goalIndex) break;
-      for (const [dx, dz, distanceScale] of steps) {
+      for (const [dx, dz, distanceScale] of NEIGHBOR_STEPS) {
         const nx = node.ix + dx;
         const nz = node.iz + dz;
         if (nx < 0 || nz < 0 || nx >= GRID_N || nz >= GRID_N) continue;
@@ -237,7 +299,7 @@ export function planBotRoute({
     if (parents[goalIndex] < 0 && goalIndex !== startIndex) {
       return { points: [], cost: Infinity };
     }
-    const path = [];
+    const path: BotRoutePoint[] = [];
     let current = goalIndex;
     while (current >= 0) {
       const ix = current % GRID_N;
@@ -284,7 +346,7 @@ export function planBotRoute({
   }
   if (!raw.length) return [];
 
-  const points = [];
+  const points: BotRoutePoint[] = [];
   for (let index = 1; index < raw.length; index++) {
     const prior = raw[index - 1];
     const current = raw[index];

@@ -31,7 +31,7 @@ import {
   specialActionGuidesShell,
 } from '../sim/specialActions.ts';
 import { createAI, roleOf } from './ai.js';
-import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.js';
+import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
 import { getStoredDifficulty } from './input.js';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source

@@ -542,7 +542,7 @@ marked and receive the view required for spectating.
 Bots output the same control vocabulary as human players. Route planning and
 local steering are separate:
 
-- src/sim/botRoutePlanner.js chooses traversable strategic routes;
+- src/sim/botRoutePlanner.ts chooses traversable strategic routes;
 - src/game/ai.js and server authority logic turn those routes into immediate
   movement, aim, fire, and recovery controls.
 

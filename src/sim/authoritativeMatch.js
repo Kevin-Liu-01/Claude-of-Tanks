@@ -48,7 +48,7 @@ import { captureWorldSnapshot } from '../net/snapshot.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
 import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.ts';
 import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.js';
-import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.js';
+import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from '../game/consumables.ts';
 import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
 import { decodeAimIntent } from '../net/aimIntent.ts';
