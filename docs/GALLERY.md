@@ -70,7 +70,7 @@ in the dossier and in copied data.
 
 ### Viewer
 
-`gallery.js` owns the renderer, camera, lighting, environment, roster
+`gallery.ts` owns the renderer, camera, lighting, environment, roster
 interaction, selected vehicle, articulation controls, URL state, and browser
 automation contract. It constructs vehicles with:
 

@@ -8,18 +8,62 @@ import {
   serializeGallerySpec,
   technicalLabel,
 } from './catalog.ts';
+import type { GalleryRecord, GalleryVehicleSpec } from './catalog.ts';
 import { compareVehicleEras, VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
 import { createInspectionOverlay, inspectionLegend } from './overlays.ts';
+import type { InspectionMode } from './overlays.ts';
 import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
 import { iconUrl } from '../ui/icons.ts';
 import { flagIconUrl } from '../ui/flags.ts';
 import { createInfoButton } from '../ui/contextInfo.ts';
+import type { InfoButtonOptions, InfoImage } from '../ui/contextInfo.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 
-const $ = (selector) => document.querySelector(selector);
+type GalleryMode = InspectionMode | 'markup';
+type GalleryView = 'hero' | 'front' | 'left' | 'right' | 'rear' | 'top'
+  | 'elevated-left' | 'elevated-right';
 
-const GALLERY_SECTION_INFO = Object.freeze({
+interface GalleryVisual {
+  root: THREE.Object3D;
+  dispose(): void;
+  centerOnPresentationPoint?(x: number, z: number): void;
+  seatOnFloor?(floorY: number): void;
+  presentationAnchorWorld?(target: THREE.Vector3): unknown;
+}
+
+interface SurfaceInspectionInfo {
+  faceIndex: number;
+  ownership: string;
+  mesh: string;
+  instanceId: number | null;
+  point: number[];
+}
+
+interface GallerySelectController {
+  control: HTMLElement;
+  close(restoreFocus?: boolean): void;
+}
+
+interface GalleryLoadOptions {
+  view?: string;
+  mode?: string;
+}
+
+declare global {
+  interface Window {
+    __TANK_GALLERY_READY?: boolean;
+    __TANK_GALLERY?: Record<string, unknown>;
+  }
+}
+
+const $ = <T extends HTMLElement = HTMLInputElement>(selector: string): T => {
+  const element = document.querySelector<T>(selector);
+  if (!element) throw new Error(`Missing Tank Gallery element: ${selector}`);
+  return element;
+};
+
+const GALLERY_SECTION_INFO: Readonly<Record<string, string>> = Object.freeze({
   'Operational profile': 'Normalized combat-role ratings derived from the currently selected gameplay specification.',
   'Technical summary': 'A concise description and authored highlights for the selected first-party procedural vehicle.',
   Articulation: 'Live controls for the same hull, turret, and gun rig used by the game.',
@@ -28,15 +72,21 @@ const GALLERY_SECTION_INFO = Object.freeze({
   'Ammunition suite': 'The selected vehicle’s shell families, 1 km penetration, damage, and ballistic role.',
 });
 
-function appendGalleryInfo(target, options) {
+function appendGalleryInfo(
+  target: Element | null | undefined,
+  options: InfoButtonOptions,
+): void {
   if (target && !target.querySelector(':scope > .cot-info-trigger')) {
     target.appendChild(createInfoButton(options));
   }
 }
 
-function galleryVehicleImage(view = 'angle', caption = 'Procedural vehicle render') {
+function galleryVehicleImage(
+  view = 'angle',
+  caption = 'Procedural vehicle render',
+): InfoImage {
   if (!selectedId) return null;
-  const spec = getSpec(selectedId);
+  const spec = getSpec(selectedId) as GalleryVehicleSpec;
   const name = spec.label?.displayName || spec.name;
   return {
     src: iconUrl(spec.id, view),
@@ -46,7 +96,7 @@ function galleryVehicleImage(view = 'angle', caption = 'Procedural vehicle rende
   };
 }
 
-function mountGalleryInfo() {
+function mountGalleryInfo(): void {
   const workspaceHeads = document.querySelectorAll('.workspace-group-head');
   appendGalleryInfo(workspaceHeads[0], {
     label: 'About the fleet archive', title: 'Fleet archive',
@@ -71,7 +121,7 @@ function mountGalleryInfo() {
   });
   document.querySelectorAll('.section-label').forEach((heading) => {
     const label = heading.querySelector('span')?.textContent.trim();
-    if (GALLERY_SECTION_INFO[label]) appendGalleryInfo(heading, {
+    if (label && GALLERY_SECTION_INFO[label]) appendGalleryInfo(heading, {
       label: `About ${label}`, title: label, text: GALLERY_SECTION_INFO[label],
       image: () => galleryVehicleImage(
         label === 'Specification' || label === 'Ammunition suite' ? 'side' : 'angle',
@@ -82,26 +132,29 @@ function mountGalleryInfo() {
 }
 
 mountGalleryInfo();
-const viewport = $('#viewport');
-const vehicleList = $('#vehicleList');
-const loadingState = $('#loadingState');
-const modeButtons = [...document.querySelectorAll('[data-mode]')];
-const viewButtons = [...document.querySelectorAll('[data-view]')];
+const viewport = $<HTMLElement>('#viewport');
+const vehicleList = $<HTMLElement>('#vehicleList');
+const loadingState = $<HTMLElement>('#loadingState');
+const modeButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-mode]')];
+const viewButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-view]')];
 for (const button of viewButtons) {
   const label = button.textContent.trim();
   button.replaceChildren();
-  button.insertAdjacentHTML('beforeend', `<i class="view-button-icon">${cameraViewGlyphSVG(button.dataset.view)}</i><span>${label}</span>`);
+  button.insertAdjacentHTML('beforeend', `<i class="view-button-icon">${cameraViewGlyphSVG(button.dataset.view || 'hero')}</i><span>${label}</span>`);
   button.title = `${label} camera view`;
 }
 const autoRotateButton = $('#autoRotate');
 autoRotateButton.replaceChildren();
 autoRotateButton.insertAdjacentHTML('beforeend', `<i class="view-button-icon">${cameraViewGlyphSVG('auto')}</i><span>Auto</span>`);
 autoRotateButton.title = 'Toggle automatic rotation';
-document.querySelectorAll('[data-ui-icon]').forEach((element) => {
-  element.innerHTML = uiIconSVG(element.dataset.uiIcon, 16);
+document.querySelectorAll<HTMLElement>('[data-ui-icon]').forEach((element) => {
+  element.innerHTML = uiIconSVG(element.dataset.uiIcon || 'info', 16);
 });
-const viewerHelpItem = (icon, label) => `<span><i>${uiIconSVG(icon, 11)}</i>${label}</span>`;
-const records = buildGalleryRecords(VISIBLE_TANK_IDS.map(getSpec));
+const viewerHelpItem = (icon: string, label: string): string =>
+  `<span><i>${uiIconSVG(icon, 11)}</i>${label}</span>`;
+const records = buildGalleryRecords(
+  VISIBLE_TANK_IDS.map((id) => getSpec(id) as GalleryVehicleSpec),
+);
 const recordById = new Map(records.map((record) => [record.id, record]));
 
 const renderer = new THREE.WebGLRenderer({
@@ -166,7 +219,11 @@ for (const [inner, outer, color, opacity] of [
   scene.add(ring);
 }
 
-const engineCtx = { setupShadowMaterial: (material) => material, anisotropy: 1, renderer };
+const engineCtx = {
+  setupShadowMaterial: (material: THREE.Material): THREE.Material => material,
+  anisotropy: 1,
+  renderer,
+};
 const raycaster = new THREE.Raycaster();
 const pointerNdc = new THREE.Vector2();
 const currentBounds = new THREE.Box3();
@@ -174,16 +231,16 @@ const currentCenter = new THREE.Vector3();
 const viewDirection = new THREE.Vector3();
 const presentationCenter = new THREE.Vector3();
 
-let visual = null;
+let visual: GalleryVisual | null = null;
 let overlay = createInspectionOverlay(null, null, 'appearance');
-let selectedId = null;
-let activeMode = 'appearance';
-let filteredRecords = records;
-let pointerStart = null;
+let selectedId: string | null = null;
+let activeMode: GalleryMode = 'appearance';
+let filteredRecords: GalleryRecord[] = records;
+let pointerStart: { x: number; y: number } | null = null;
 let loadVersion = 0;
-let toastTimer = 0;
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
-const VIEW_DIRECTIONS = Object.freeze({
+const VIEW_DIRECTIONS: Readonly<Record<GalleryView, readonly [number, number, number]>> = Object.freeze({
   hero: [-1, 0.45, 1],
   front: [0, 0.07, 1],
   left: [-1, 0.06, 0],
@@ -194,14 +251,16 @@ const VIEW_DIRECTIONS = Object.freeze({
   'elevated-right': [1, 0.6, 0.2],
 });
 
-function effectiveVisible(object) {
-  for (let node = object; node; node = node.parent) if (!node.visible) return false;
+function effectiveVisible(object: THREE.Object3D): boolean {
+  for (let node: THREE.Object3D | null = object; node; node = node.parent) {
+    if (!node.visible) return false;
+  }
   return true;
 }
 
-function forceHeroLod(root) {
+function forceHeroLod(root: THREE.Object3D): void {
   root.traverse((object) => {
-    if (!object.isLOD) return;
+    if (!(object instanceof THREE.LOD)) return;
     object.autoUpdate = false;
     object.levels.forEach((level, index) => {
       if (level.object) level.object.visible = index === 0;
@@ -209,14 +268,14 @@ function forceHeroLod(root) {
   });
 }
 
-function visibleBox(root) {
+function visibleBox(root: THREE.Object3D): THREE.Box3 {
   currentBounds.makeEmpty();
   root.updateMatrixWorld(true);
   root.traverse((object) => {
-    if (!(object.isMesh || object.isInstancedMesh) || !object.geometry) return;
+    if (!(object instanceof THREE.Mesh) || !object.geometry) return;
     if (!effectiveVisible(object) || object.userData.gallerySurfaceMarkup) return;
     if (object.name.startsWith('gallery_') || /shadow/i.test(object.name || '')) return;
-    if (object.isInstancedMesh) {
+    if (object instanceof THREE.InstancedMesh) {
       if (!object.count) return;
       object.computeBoundingBox();
       if (object.boundingBox && !object.boundingBox.isEmpty()) {
@@ -225,13 +284,16 @@ function visibleBox(root) {
       return;
     }
     if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
-    currentBounds.union(object.geometry.boundingBox.clone().applyMatrix4(object.matrixWorld));
+    const boundingBox = object.geometry.boundingBox;
+    if (boundingBox) currentBounds.union(boundingBox.clone().applyMatrix4(object.matrixWorld));
   });
   return currentBounds;
 }
 
-function frameView(name = 'hero') {
+function frameView(requestedName = 'hero'): void {
   if (!visual) return;
+  const name: GalleryView = requestedName in VIEW_DIRECTIONS
+    ? requestedName as GalleryView : 'hero';
   const bounds = visibleBox(visual.root);
   bounds.getCenter(currentCenter);
   // Keep the platform and rendered body mass at the view center. Full visible
@@ -255,7 +317,7 @@ function frameView(name = 'hero') {
   viewButtons.forEach((button) => button.classList.toggle('active', button.dataset.view === name));
 }
 
-function showToast(message) {
+function showToast(message: string): void {
   const toast = $('#toast');
   toast.textContent = message;
   toast.classList.add('show');
@@ -263,7 +325,7 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
 }
 
-function poseRecord() {
+function poseRecord(): { hullYawDeg: number; turretYawDeg: number; gunPitchDeg: number } {
   return {
     hullYawDeg: Number($('#hullYaw').value),
     turretYawDeg: Number($('#turretYaw').value),
@@ -271,17 +333,18 @@ function poseRecord() {
   };
 }
 
-function renderSurfaceInspection(info) {
+function renderSurfaceInspection(info: Record<string, unknown> | null): void {
   const readout = $('#inspectionReadout');
   if (!info) {
     readout.hidden = true;
     return;
   }
-  $('#inspectionId').textContent = `F${info.faceIndex}`;
-  $('#inspectionOwner').textContent = info.ownership;
-  $('#inspectionTitle').textContent = info.mesh;
-  const instance = info.instanceId === null ? '' : ` · instance ${info.instanceId}`;
-  $('#inspectionDetails').textContent = `Triangle ${info.faceIndex}${instance} · world [${info.point.join(', ')}]`;
+  const surface = info as unknown as SurfaceInspectionInfo;
+  $('#inspectionId').textContent = `F${surface.faceIndex}`;
+  $('#inspectionOwner').textContent = surface.ownership;
+  $('#inspectionTitle').textContent = surface.mesh;
+  const instance = surface.instanceId === null ? '' : ` · instance ${surface.instanceId}`;
+  $('#inspectionDetails').textContent = `Triangle ${surface.faceIndex}${instance} · world [${surface.point.join(', ')}]`;
   readout.hidden = false;
 }
 
@@ -296,7 +359,7 @@ const surfaceMarkup = createSurfaceMarkup({
   onHover: renderSurfaceInspection,
 });
 
-function updateUrl() {
+function updateUrl(): void {
   if (!selectedId) return;
   const url = new URL(location.href);
   url.searchParams.set('id', selectedId);
@@ -305,11 +368,11 @@ function updateUrl() {
   history.replaceState({ id: selectedId, layer: activeMode }, '', `${url.pathname}${url.search}`);
 }
 
-function renderLegend() {
+function renderLegend(): void {
   const root = $('#overlayLegend');
   const legend = activeMode === 'markup'
     ? [['Selected surface', '#ff5a5f'], ['Hover triangle', '#65a9ff']]
-    : inspectionLegend(activeMode);
+    : inspectionLegend(activeMode as InspectionMode);
   root.replaceChildren(...legend.map(([label, color]) => {
     const item = document.createElement('span');
     item.style.setProperty('--legend', color);
@@ -319,7 +382,7 @@ function renderLegend() {
   }));
 }
 
-function renderRoster() {
+function renderRoster(): void {
   const fragment = document.createDocumentFragment();
   for (const record of filteredRecords) {
     const button = document.createElement('button');
@@ -365,16 +428,16 @@ function renderRoster() {
   $('#archiveCount').textContent = `${filteredRecords.length} of ${records.length} records`;
 }
 
-function renderDossier(record) {
+function renderDossier(record: GalleryRecord): void {
   const allIndex = records.findIndex((item) => item.id === record.id) + 1;
   $('#dossierIndex').textContent = String(allIndex).padStart(3, '0');
   $('#dossierMeta').textContent = `${record.nation} // ${record.era} // Tier ${record.tierNumeral}`;
   $('#dossierName').textContent = record.displayName;
   $('#dossierDesignation').textContent = `fleet://${record.id} · ${record.era}`;
-  $('#dossierAuthor').textContent = `Original procedural model by ${record.authorship.creator}`;
+  $('#dossierAuthor').textContent = `Original procedural model by ${record.authorship?.creator || 'Kevin B. Liu'}`;
   $('#dossierTankIcon').src = record.image;
   $('#dossierTankIcon').alt = `${record.displayName} side profile`;
-  const ratingPresentation = {
+  const ratingPresentation: Readonly<Record<string, { tone: string; icon: string }>> = {
     firepower: { tone: '#e9a346', icon: 'damage' },
     protection: { tone: '#67d19a', icon: 'shield' },
     mobility: { tone: '#64cfdb', icon: 'speed' },
@@ -425,7 +488,7 @@ function renderDossier(record) {
     row.className = 'ammunition';
     const identity = document.createElement('span');
     const name = document.createElement('strong');
-    name.textContent = shell.name;
+    name.textContent = shell.name || shell.type;
     const type = document.createElement('small');
     type.textContent = `${shell.type} // ${shell.velocityMps.toLocaleString('en-US')} m/s`;
     identity.append(name, type);
@@ -439,7 +502,7 @@ function renderDossier(record) {
   }));
 }
 
-function updateArticulation() {
+function updateArticulation(): void {
   if (!visual) return;
   const hullYaw = Number($('#hullYaw').value);
   const turretYaw = Number($('#turretYaw').value);
@@ -456,7 +519,7 @@ function updateArticulation() {
   surfaceMarkup.updatePose();
 }
 
-function configureArticulation(spec) {
+function configureArticulation(spec: GalleryVehicleSpec): void {
   const hullInput = $('#hullYaw');
   const turretInput = $('#turretYaw');
   const gunInput = $('#gunPitch');
@@ -471,12 +534,17 @@ function configureArticulation(spec) {
   updateArticulation();
 }
 
-function setMode(nextMode, announce = true) {
-  if (!['appearance', 'armor', 'modules', 'crew', 'markup'].includes(nextMode)) nextMode = 'appearance';
+function setMode(requestedMode: string | undefined, announce = true): void {
+  const nextMode: GalleryMode = ['appearance', 'armor', 'modules', 'crew', 'markup']
+    .includes(requestedMode || '') ? requestedMode as GalleryMode : 'appearance';
   activeMode = nextMode;
   overlay.clear();
-  const spec = selectedId ? getSpec(selectedId) : null;
-  overlay = createInspectionOverlay(spec, visual, activeMode === 'markup' ? 'appearance' : activeMode);
+  const spec = selectedId ? getSpec(selectedId) as GalleryVehicleSpec : null;
+  overlay = createInspectionOverlay(
+    spec as unknown as Parameters<typeof createInspectionOverlay>[0],
+    visual,
+    activeMode === 'markup' ? 'appearance' : activeMode,
+  );
   surfaceMarkup.setActive(activeMode === 'markup');
   modeButtons.forEach((button) => button.classList.toggle('active', button.dataset.mode === activeMode));
   $('#inspectionReadout').hidden = true;
@@ -496,7 +564,7 @@ function setMode(nextMode, announce = true) {
   }
 }
 
-function disposeTank() {
+function disposeTank(): void {
   surfaceMarkup.detachTank();
   overlay.clear();
   overlay = createInspectionOverlay(null, null, 'appearance');
@@ -507,12 +575,16 @@ function disposeTank() {
   visual = null;
 }
 
-function nextFrame() {
-  return new Promise((resolve) => requestAnimationFrame(resolve));
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
-async function loadTank(id, options = {}) {
-  if (!recordById.has(id)) id = records[0]?.id;
+async function loadTank(
+  requestedId: string | null | undefined,
+  options: GalleryLoadOptions = {},
+): Promise<void> {
+  let id = requestedId;
+  if (!id || !recordById.has(id)) id = records[0]?.id;
   if (!id) return;
   const version = ++loadVersion;
   loadingState.classList.remove('hidden');
@@ -523,9 +595,14 @@ async function loadTank(id, options = {}) {
   selectedId = id;
   await ensureTankBuilder(id);
   if (version !== loadVersion) return;
-  const spec = getSpec(id);
+  const spec = getSpec(id) as GalleryVehicleSpec;
   const record = recordById.get(id);
-  visual = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+  if (!record) throw new Error(`Missing Gallery record for ${id}`);
+  visual = createTank(id, engineCtx, {
+    camoSeed: 4242,
+    quality: 'high',
+    proceduralOnly: true,
+  }) as GalleryVisual;
   visual.centerOnPresentationPoint?.(0, 0);
   visual.seatOnFloor?.(GALLERY_FLOOR_Y_M);
   scene.add(visual.root);
@@ -543,27 +620,28 @@ async function loadTank(id, options = {}) {
   window.__TANK_GALLERY_READY = true;
 }
 
-function renderInspection(hit) {
-  const data = hit?.object?.userData?.inspection;
+function renderInspection(hit: THREE.Intersection<THREE.Object3D> | undefined): void {
+  const data = hit?.object?.userData?.inspection as Record<string, unknown> | undefined;
   const readout = $('#inspectionReadout');
-  if (!data) {
+  if (!data || !hit) {
     readout.hidden = true;
     overlay.emphasize(null);
     return;
   }
-  overlay.emphasize(hit.object);
-  $('#inspectionId').textContent = data.id;
-  $('#inspectionOwner').textContent = data.owner;
-  $('#inspectionTitle').textContent = data.title;
+  overlay.emphasize(hit.object as THREE.Mesh);
+  $('#inspectionId').textContent = String(data.id || '');
+  $('#inspectionOwner').textContent = String(data.owner || '');
+  $('#inspectionTitle').textContent = String(data.title || '');
   if (data.mode === 'armor') {
     $('#inspectionDetails').textContent = `${technicalLabel(data.kind)} layer · ${data.physicalMm} mm physical · ${data.keMm} mm KE · ${data.ceMm} mm CE`;
   } else {
-    $('#inspectionDetails').textContent = `${data.mode === 'crew' ? 'Crew station' : 'Internal module'} · ${data.dimensionsM.join(' × ')} m kill-cam anatomy model`;
+    const dimensions = Array.isArray(data.dimensionsM) ? data.dimensionsM : [];
+    $('#inspectionDetails').textContent = `${data.mode === 'crew' ? 'Crew station' : 'Internal module'} · ${dimensions.join(' × ')} m kill-cam anatomy model`;
   }
   readout.hidden = false;
 }
 
-function pickInspection(clientX, clientY) {
+function pickInspection(clientX: number, clientY: number): void {
   if (!overlay.pickables.length) return;
   const rect = renderer.domElement.getBoundingClientRect();
   pointerNdc.set(((clientX - rect.left) / rect.width) * 2 - 1, -(((clientY - rect.top) / rect.height) * 2 - 1));
@@ -571,7 +649,7 @@ function pickInspection(clientX, clientY) {
   renderInspection(raycaster.intersectObjects(overlay.pickables, false)[0]);
 }
 
-function applyFilters() {
+function applyFilters(): void {
   filteredRecords = filterGalleryRecords(records, {
     query: $('#gallerySearch').value,
     nation: $('#nationFilter').value,
@@ -580,9 +658,9 @@ function applyFilters() {
   renderRoster();
 }
 
-const gallerySelects = [];
+const gallerySelects: GallerySelectController[] = [];
 
-const GALLERY_ERA_ICONS = Object.freeze({
+const GALLERY_ERA_ICONS: Readonly<Record<string, string>> = Object.freeze({
   [VEHICLE_ERAS.INTERWAR]: 'eraInterwar',
   [VEHICLE_ERAS.WORLD_WAR_II]: 'eraWorldWarII',
   [VEHICLE_ERAS.COLD_WAR]: 'eraColdWar',
@@ -590,7 +668,10 @@ const GALLERY_ERA_ICONS = Object.freeze({
   [VEHICLE_ERAS.NEXT_GENERATION]: 'eraNextGeneration',
 });
 
-function createGallerySelectIcon(select, option) {
+function createGallerySelectIcon(
+  select: HTMLSelectElement,
+  option: HTMLOptionElement,
+): HTMLSpanElement {
   const icon = document.createElement('span');
   icon.className = 'gallery-select-icon';
   icon.setAttribute('aria-hidden', 'true');
@@ -610,7 +691,11 @@ function createGallerySelectIcon(select, option) {
   return icon;
 }
 
-function renderGallerySelectChoice(target, select, option) {
+function renderGallerySelectChoice(
+  target: HTMLElement,
+  select: HTMLSelectElement,
+  option: HTMLOptionElement | undefined,
+): void {
   target.replaceChildren();
   if (!option) return;
   const choice = document.createElement('span');
@@ -622,7 +707,7 @@ function renderGallerySelectChoice(target, select, option) {
   target.append(choice);
 }
 
-function mountGallerySelect(select) {
+function mountGallerySelect(select: HTMLSelectElement): GallerySelectController | null {
   const field = select.closest('.gallery-filter');
   const label = field?.querySelector('.filter-label');
   if (!field || !label) return null;
@@ -659,12 +744,12 @@ function mountGallerySelect(select) {
     return button;
   });
 
-  function selectedIndex() {
+  function selectedIndex(): number {
     const index = optionButtons.findIndex((button) => button.dataset.value === select.value);
     return index < 0 ? 0 : index;
   }
 
-  function syncSelection() {
+  function syncSelection(): void {
     const index = selectedIndex();
     renderGallerySelectChoice(valueLabel, select, options[index]);
     optionButtons.forEach((button, buttonIndex) => {
@@ -672,14 +757,14 @@ function mountGallerySelect(select) {
     });
   }
 
-  function close(restoreFocus = false) {
+  function close(restoreFocus = false): void {
     if (!control.classList.contains('open')) return;
     control.classList.remove('open');
     trigger.setAttribute('aria-expanded', 'false');
     if (restoreFocus) trigger.focus();
   }
 
-  function open(index = selectedIndex()) {
+  function open(index = selectedIndex()): void {
     for (const item of gallerySelects) {
       if (item.control !== control) item.close();
     }
@@ -688,8 +773,8 @@ function mountGallerySelect(select) {
     optionButtons[Math.max(0, Math.min(optionButtons.length - 1, index))]?.focus();
   }
 
-  function choose(button) {
-    select.value = button.dataset.value;
+  function choose(button: HTMLButtonElement): void {
+    select.value = button.dataset.value || '';
     syncSelection();
     select.dispatchEvent(new Event('change', { bubbles: true }));
     close(true);
@@ -728,7 +813,7 @@ function mountGallerySelect(select) {
         return;
       } else return;
       event.preventDefault();
-      optionButtons[nextIndex].focus();
+      optionButtons[nextIndex]?.focus();
     });
   });
   select.addEventListener('change', syncSelection);
@@ -743,17 +828,20 @@ function mountGallerySelect(select) {
   return api;
 }
 
-function populateFilters() {
+function populateFilters(): void {
   const nations = [...new Set(records.map((record) => record.nation))].sort();
   const eras = [...new Map(records.map((record) => [record.eraKey, record.era])).entries()]
-    .sort((a, b) => compareVehicleEras(a[0], b[0]));
+    .sort((a, b) => compareVehicleEras(
+      a[0] as Parameters<typeof compareVehicleEras>[0],
+      b[0] as Parameters<typeof compareVehicleEras>[1],
+    ));
   $('#nationFilter').append(...nations.map((nation) => new Option(nation, nation)));
   $('#eraFilter').append(...eras.map(([key, label]) => new Option(label, key)));
-  mountGallerySelect($('#nationFilter'));
-  mountGallerySelect($('#eraFilter'));
+  mountGallerySelect($<HTMLSelectElement>('#nationFilter'));
+  mountGallerySelect($<HTMLSelectElement>('#eraFilter'));
 }
 
-async function writeClipboard(text, successMessage) {
+async function writeClipboard(text: string, successMessage: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
     showToast(successMessage);
@@ -762,7 +850,7 @@ async function writeClipboard(text, successMessage) {
   }
 }
 
-function resize() {
+function resize(): void {
   const width = Math.max(1, viewport.clientWidth);
   const height = Math.max(1, viewport.clientHeight);
   renderer.setSize(width, height, false);
@@ -787,7 +875,11 @@ $('#autoRotate').addEventListener('click', () => {
 $('#copyLink').addEventListener('click', () => writeClipboard(location.href, 'Gallery link copied'));
 $('#copySpec').addEventListener('click', () => {
   if (!selectedId) return;
-  writeClipboard(JSON.stringify(serializeGallerySpec(getSpec(selectedId)), null, 2), 'Vehicle data copied');
+  writeClipboard(JSON.stringify(
+    serializeGallerySpec(getSpec(selectedId) as GalleryVehicleSpec),
+    null,
+    2,
+  ), 'Vehicle data copied');
 });
 renderer.domElement.addEventListener('pointerdown', (event) => {
   pointerStart = { x: event.clientX, y: event.clientY };
@@ -832,7 +924,7 @@ document.addEventListener('keydown', (event) => {
 });
 document.addEventListener('pointerdown', (event) => {
   for (const item of gallerySelects) {
-    if (!item.control.contains(event.target)) item.close();
+    if (!(event.target instanceof Node) || !item.control.contains(event.target)) item.close();
   }
 });
 
@@ -855,7 +947,7 @@ animate();
 
 const initial = new URLSearchParams(location.search);
 const preferredId = initial.get('id');
-const initialId = recordById.has(preferredId)
+const initialId = preferredId && recordById.has(preferredId)
   ? preferredId
   : (recordById.has('m1a2') ? 'm1a2' : records[0]?.id);
 loadTank(initialId, { mode: initial.get('layer') || 'appearance' });

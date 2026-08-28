@@ -25,10 +25,16 @@ interface GalleryAutoloaderSpec {
   fullReloadS?: number;
 }
 
-interface GalleryVehicleSpec {
+export interface GalleryVehicleSpec {
   id: string;
   name?: string;
-  authorship?: unknown;
+  label?: { displayName?: string };
+  authorship?: {
+    creator?: string;
+    creatorUrl?: string;
+    copyright?: string;
+    license?: string;
+  };
   nation?: string;
   era?: string;
   hp?: number;
@@ -38,6 +44,10 @@ interface GalleryVehicleSpec {
   reverseSpeedKmh?: number;
   hullTraverseDegS?: number;
   turretTraverseDegS?: number;
+  role?: string;
+  gunTraverseDeg?: number;
+  gunDepressionDeg?: number;
+  gunElevationDeg?: number;
   roster?: { developmentOnly?: boolean; tag?: string; reason?: string };
   dims?: {
     hullLengthM?: number;

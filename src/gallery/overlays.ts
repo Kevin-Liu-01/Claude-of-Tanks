@@ -6,7 +6,7 @@ import {
 } from '../vehicles/internalAnatomyVisuals.js';
 
 type Vec3Tuple = readonly [number, number, number];
-type InspectionMode = 'appearance' | 'armor' | 'modules' | 'crew';
+export type InspectionMode = 'appearance' | 'armor' | 'modules' | 'crew';
 type OverlayResource = THREE.BufferGeometry | THREE.Material;
 
 interface ArmorPlate {
