@@ -55,7 +55,7 @@ play without importing Three.js rendering or DOM state.
 - `connectionRecovery.ts` owns reconnect status and the single bounded failure
   edge; transport replacement remains below it.
 - `rankedServiceClient.ts` owns service-scoped ladder identity and queue polling;
-  `dedicatedClient.js` owns authenticated WebSocket handoff and reconnect.
+  `dedicatedClient.ts` owns authenticated WebSocket handoff and reconnect.
 - `privateRoomSession.ts` owns typed lobby WebRTC composition and
   `rtcIceLease.ts` owns expiring TURN generations;
   `privateMatchHandoff.ts` is the strict lobby-to-match boundary: it

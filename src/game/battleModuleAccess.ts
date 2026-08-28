@@ -3,7 +3,7 @@ type BrowserBattleBridgeModule = typeof import('../net/browserBattleBridge.js');
 type NetworkStatusModule = typeof import('../ui/networkStatus.ts');
 type BrowserInputRuntimeModule = typeof import('../net/browserInputRuntime.ts');
 type PrivateMatchHandoffModule = typeof import('../net/privateMatchHandoff.ts');
-type DedicatedClientModule = typeof import('../net/dedicatedClient.js');
+type DedicatedClientModule = typeof import('../net/dedicatedClient.ts');
 type RoomChatModule = typeof import('../ui/roomChat.js');
 
 export type NetworkBattleModules = [
@@ -36,7 +36,7 @@ const DEFAULT_LOADERS: BattleModuleLoaders = {
     import('../net/browserInputRuntime.ts'),
   ]),
   privateMatchHandoff: async () => await import('../net/privateMatchHandoff.ts'),
-  dedicatedClient: async () => await import('../net/dedicatedClient.js'),
+  dedicatedClient: async () => await import('../net/dedicatedClient.ts'),
   roomChat: async () => await import('../ui/roomChat.js'),
 };
 

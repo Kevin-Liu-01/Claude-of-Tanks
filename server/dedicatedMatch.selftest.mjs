@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
-import { beginDedicatedClientMatch, connectDedicatedMatch } from '../src/net/dedicatedClient.js';
+import { beginDedicatedClientMatch, connectDedicatedMatch } from '../src/net/dedicatedClient.ts';
 import { DedicatedMatchRegistry } from './dedicatedMatchRegistry.js';
 import { createDedicatedMatchServer } from './dedicatedMatchServer.js';
 
@@ -129,5 +129,35 @@ p2.client.close('test_done');
 p3.client.close('test_done');
 p4.client.close('test_done');
 await service.close('test_done');
+
+class NeverOpenSocket {
+  constructor() {
+    this.binaryType = 'blob';
+    this.listeners = new Map();
+    this.closed = false;
+    NeverOpenSocket.instance = this;
+  }
+  addEventListener(type, listener) {
+    if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+    this.listeners.get(type).add(listener);
+  }
+  removeEventListener(type, listener) { this.listeners.get(type)?.delete(listener); }
+  send() { throw new Error('socket never opened'); }
+  close() { this.closed = true; }
+}
+const stalled = connectDedicatedMatch({
+  url: 'ws://127.0.0.1:9/match',
+  matchId: 'timeout-test',
+  playerId: 'timeout-player',
+  token: 'timeout-token',
+  WebSocketImpl: NeverOpenSocket,
+  timeoutMs: 1,
+});
+await assert.rejects(stalled.ready, /match connection timed out/);
+assert.equal(NeverOpenSocket.instance.closed, true,
+  'timed-out dedicated connections close their unused socket');
+assert.equal([...NeverOpenSocket.instance.listeners.values()]
+  .reduce((total, listeners) => total + listeners.size, 0), 0,
+  'timed-out dedicated connections remove every socket listener');
 
 console.log('dedicatedMatch.selftest: four-player auth, sync, authority, and health passed');
