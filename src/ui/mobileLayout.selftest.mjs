@@ -21,7 +21,7 @@ const [
   readFile(new URL('./transition.ts', import.meta.url), 'utf8'),
   readFile(new URL('./perfHud.js', import.meta.url), 'utf8'),
   readFile(new URL('../engine/deviceDiag.js', import.meta.url), 'utf8'),
-  readFile(new URL('../engine/renderer.js', import.meta.url), 'utf8'),
+  readFile(new URL('../engine/renderer.ts', import.meta.url), 'utf8'),
   readFile(new URL('../main.js', import.meta.url), 'utf8'),
   readFile(new URL('../gallery/gallery.css', import.meta.url), 'utf8'),
   readFile(new URL('../docs/docs.css', import.meta.url), 'utf8'),
@@ -300,7 +300,7 @@ const semanticSurfaceFiles = [
   './touchControls.js',
   './transition.ts',
   '../engine/deviceDiag.js',
-  '../engine/renderer.js',
+  '../engine/renderer.ts',
   '../main.js',
 ];
 for (const relativePath of semanticSurfaceFiles) {

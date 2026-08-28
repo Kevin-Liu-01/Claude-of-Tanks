@@ -1,5 +1,5 @@
 /**
- * renderer.js — WebGLRenderer construction per docs/research/graphics-aaa.md §1.
+ * renderer.ts — WebGLRenderer construction per docs/research/graphics-aaa.md §1.
  *
  * Context AA is intentionally OFF because the EffectComposer never presents
  * the default framebuffer directly. post.js instead gives the actual 3D scene
@@ -14,15 +14,31 @@
  */
 import * as THREE from 'three';
 import { getDeviceTier, resolveDeviceTier, noteGpuRenderer } from './quality.js';
-import { outputResolution } from './resolutionPolicy.ts';
+import { outputResolution, type OutputResolution } from './resolutionPolicy.ts';
 import { routeShadowOnlyLayer } from './renderLayers.ts';
+
+interface ContextRecoveryOwner {
+  onLost?(): void;
+  onRestored?(): boolean | void | Promise<boolean | void>;
+}
+
+export type GameRenderer = THREE.WebGLRenderer & {
+  userData: {
+    outputResolution?: OutputResolution;
+    contextRecovery?: ContextRecoveryOwner;
+  };
+};
 
 // The canvas is the final display surface, not the expensive scene/post
 // resolution. DPR-3 phones now get a true native backing store instead of a
 // DPR-2 canvas that the browser stretches a second time. Large mobile/tablet
 // viewports remain bounded by resolutionPolicy's output-pixel budget; the
 // composer's independently adaptive resolution still owns the heavy work.
-function applyOutputResolution(renderer, width, height) {
+function applyOutputResolution(
+  renderer: THREE.WebGLRenderer,
+  width: number,
+  height: number,
+): OutputResolution {
   const resolution = outputResolution({
     width,
     height,
@@ -30,7 +46,7 @@ function applyOutputResolution(renderer, width, height) {
     mobile: getDeviceTier() === 'mobile',
   });
   renderer.setPixelRatio(resolution.pixelRatio);
-  renderer.userData.outputResolution = resolution;
+  (renderer as GameRenderer).userData.outputResolution = resolution;
   return resolution;
 }
 
@@ -41,12 +57,12 @@ function applyOutputResolution(renderer, width, height) {
  *   client size (falling back to the window size) drives the initial viewport.
  * @returns {THREE.WebGLRenderer} configured renderer (ACES, sRGB out, PCF soft shadows)
  */
-export function createRenderer(container) {
+export function createRenderer(container: HTMLElement): GameRenderer {
   const renderer = new THREE.WebGLRenderer({
     antialias: false,
     powerPreference: 'high-performance',
     stencil: false,
-  });
+  }) as GameRenderer;
   // WebGLRenderer is not an Object3D and therefore has no built-in userData.
   // Reserve a small integration bag for lifecycle hooks installed by main.js.
   renderer.userData = renderer.userData || {};
@@ -137,7 +153,7 @@ export function createRenderer(container) {
  * dependency), idempotent, sits above every game surface. The message keeps to
  * the boot splash's visual language (dark steel, orange accent, Inter stack).
  */
-function showContextLossOverlay(recovering = false) {
+function showContextLossOverlay(recovering = false): void {
   try {
     if (document.getElementById('cot-ctxlost')) return;
     const el = document.createElement('div');
@@ -179,7 +195,7 @@ function showContextLossOverlay(recovering = false) {
  * @param {THREE.PerspectiveCamera} camera - gameplay camera
  * @returns {void}
  */
-export function onResize(renderer, camera) {
+export function onResize(renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera): void {
   const parent = renderer.domElement.parentElement;
   const width = (parent && parent.clientWidth) || window.innerWidth;
   const height = (parent && parent.clientHeight) || window.innerHeight;

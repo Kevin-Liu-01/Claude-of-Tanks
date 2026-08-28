@@ -921,7 +921,7 @@ const AerialShader = {
 // AAA tank games ship a strong LUT: warm highlights, cooled shadows, punchy
 // contrast, subtle vignette"): contrast 1.30 → 1.36 around the same measured
 // 0.33 pivot, saturation 1.06 → 1.09, vignette 0.24 → 0.26, and the split-
-// tone poles pushed ~20% further apart (below). Paired with renderer.js
+// tone poles pushed ~20% further apart (below). Paired with renderer.ts
 // exposure 1.16 → 1.20 so the midtone band holds its WoT-reference level
 // while lit-vs-shadow separation deepens (contrast alone would drag the
 // sub-pivot playfield darker — the r7 failure mode).
@@ -2397,7 +2397,7 @@ export function createPost(renderer, scene, camera) {
      * Resize the whole chain. Pass CSS-pixel dimensions; the composer applies
      * its pixel ratio internally and every pass (GTAO, bloom, SMAA) is resized
      * through `EffectComposer.setSize`. The renderer itself is resized by
-     * `renderer.js/onResize` — call that first.
+     * `renderer.ts/onResize` — call that first.
      * @param {number} w - width in CSS pixels
      * @param {number} h - height in CSS pixels
      * @returns {void}

@@ -1,6 +1,6 @@
 import type { PerspectiveCamera, WebGLRenderer } from 'three';
 
-import { onResize } from './renderer.js';
+import { onResize } from './renderer.ts';
 
 interface PostViewportOwner {
   setSize(width: number, height: number): void;

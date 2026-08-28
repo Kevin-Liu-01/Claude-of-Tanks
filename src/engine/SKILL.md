@@ -12,7 +12,7 @@ simulation.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`renderer.js` creates WebGL; `viewportRuntime.ts` owns atomic resize and 0x0
+`renderer.ts` creates WebGL; `viewportRuntime.ts` owns atomic resize and 0x0
 first-layout recovery; `frameLoopScheduler.ts` owns rAF delivery, bounded
 hidden-pane recovery, and visible Garage clock sleep; `garageFramePacer.ts`
 suppresses redundant settled Garage frames while keeping interaction at display

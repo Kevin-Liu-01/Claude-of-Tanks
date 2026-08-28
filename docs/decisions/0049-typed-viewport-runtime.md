@@ -22,7 +22,7 @@ interval.
 
 The runtime accepts an explicit environment and renderer resize port for
 Node-runnable verification. Production uses the browser and the existing
-`renderer.js/onResize` policy.
+`renderer.ts/onResize` policy.
 
 ## Consequences
 

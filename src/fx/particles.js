@@ -1208,7 +1208,7 @@ class Pool {
 
 /**
  * Create the pooled instanced particle system.
- * @param {import('../engine/renderer.js').EngineCtx|object} engineCtx render bundle (§2.8)
+ * @param {object} engineCtx render bundle (§2.8)
  * @param {{ seed?: number }} [opts]
  * @returns {Particles} { group, update(dt), setFrozen(frozen, atTimeS), emit(poolName, opts), pools, resetAll() }
  */

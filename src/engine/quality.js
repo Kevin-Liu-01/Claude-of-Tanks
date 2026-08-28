@@ -56,7 +56,7 @@ let _mobileResetHandled = false;
 
 // ---------------------------------------------------------------------------
 // MOBILE r1: DEVICE TIER (mobile/tablet vs desktop), resolved ONCE at boot by
-// createRenderer (renderer.js) and overridable via ?tier=mobile|desktop for
+// createRenderer (renderer.ts) and overridable via ?tier=mobile|desktop for
 // testing. Phones were bricking on the deployed build because 'auto' resolved
 // to the 'high' DESKTOP preset everywhere: ~0.5 GB of GPU textures (full GLB
 // roster + hero-grade canvas bakes) + 4096² shadow cascades on devices whose

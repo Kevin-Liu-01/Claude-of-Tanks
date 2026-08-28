@@ -120,3 +120,4 @@ runtime documents remain authoritative for behavior.
 - [0108 — Render policy and cloud bakes are strict TypeScript](0108-typed-render-policy-and-cloud-bakes.md)
 - [0109 — GPU lifetime and offscreen warming are strict TypeScript](0109-typed-gpu-lifetime-and-offscreen-warm.md)
 - [0110 — The browser debug surface is demand loaded](0110-demand-loaded-debug-surface.md)
+- [0111 — Renderer and context recovery have strict contracts](0111-typed-renderer-context-lifecycle.md)

@@ -601,7 +601,7 @@ self-test proves every float and index matches the source.
 
 ## Renderer and quality
 
-src/engine/renderer.js owns the WebGL renderer and render-loop integration.
+src/engine/renderer.ts owns the WebGL renderer and render-loop integration.
 Lighting, sky, post, camera, quality policy, warmup, and device diagnosis remain
 separate modules so a failed optional path can degrade independently.
 

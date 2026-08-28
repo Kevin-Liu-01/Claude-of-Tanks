@@ -23,7 +23,7 @@
  * overlay → back to garage.
  */
 import * as THREE from 'three';
-import { createRenderer } from './engine/renderer.js';
+import { createRenderer } from './engine/renderer.ts';
 import { createOffscreenSceneWarmer } from './engine/offscreenWarm.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,

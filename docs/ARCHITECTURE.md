@@ -16,7 +16,7 @@ Module ownership (file paths are FIXED):
 
 | Builder | Files |
 |---|---|
-| engine   | `src/engine/renderer.js`, `src/engine/lighting.js`, `src/engine/post.js`, `src/engine/sky.js`, `src/engine/cameraRig.js` |
+| engine   | `src/engine/renderer.ts`, `src/engine/lighting.js`, `src/engine/post.js`, `src/engine/sky.js`, `src/engine/cameraRig.js` |
 | world    | `src/world/terrain.js`, `src/world/vegetation.js`, `src/world/props.js`, `src/world/map.js` |
 | vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.js`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
 | movement | `src/sim/movement.js` |
@@ -390,7 +390,7 @@ EngineCtx = {
 
 ### 3.1 engine — `src/engine/`
 
-#### 3.1.1 `renderer.js`
+#### 3.1.1 `renderer.ts`
 ```js
 export function createRenderer(container /* HTMLElement */) => THREE.WebGLRenderer
 // exactly per graphics-aaa §1: antialias:false, stencil:false, high-performance,
