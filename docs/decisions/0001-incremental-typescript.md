@@ -88,6 +88,10 @@ remaining picker promise and pending-solo state from `main.js`.
 perspective, spotting disclosure, aim publication, scoped plate-inspection
 targets, and damage presentation now leave `tick()` together behind one
 retained strict-TypeScript frame interface.
+`src/game/battleFrameRuntime.ts` owns pause transitions, retained input
+sampling, network cadence, countdown release, bounded fixed-step debt, result
+progression, and interpolation. `main.js` retains render composition but no
+longer owns gameplay-advance state.
 
 ## Consequences
 

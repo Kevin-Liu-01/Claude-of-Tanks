@@ -86,6 +86,7 @@ import { createBattleIntentRuntime } from './game/battleIntentRuntime.ts';
 import { createKillcamAccess } from './game/killcamAccess.ts';
 import { createPlayerBattleActions } from './game/playerBattleActions.ts';
 import { createPlayerFrameInput } from './game/playerFrameInput.ts';
+import { createBattleFrameRuntime } from './game/battleFrameRuntime.ts';
 import { createBattlePresentationRuntime } from './game/battlePresentationRuntime.ts';
 import { createBattleHudFrameRuntime } from './game/battleHudFrameRuntime.ts';
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
@@ -152,7 +153,6 @@ const STUDIO_BOOT_MAP = INITIAL_PARAMS.get('map') || 'verdant';
 const DEG = Math.PI / 180;
 const SIM_DT = 1 / 60;
 const GARAGE_POS = new THREE.Vector3(-1500, 0, -1500);
-const MAX_SIM_STEPS = 4;
 const DEFAULT_SPEC_ID = 'm1a1';
 const LAST_SPEC_KEY = 'cot.lastTank.v1';
 // Keep invite parsing off the normal garage boot graph. Only an actual room
@@ -1642,7 +1642,7 @@ const soloBattleStart = createSoloBattleStartAccess({
       rememberSpecId,
       setShotMode: (value) => { shotMode = value; },
       setCaptureHidden: (value) => perfHud.setCaptureHidden(value),
-      setSimulationAccumulator: (value) => { simAcc = value; },
+      setSimulationAccumulator: () => { battleFrame.resetSimulationAccumulator(); },
       setBattleStaged: (value) => { battleStaged = value; },
       setCamoSweep: (work) => { camoSweepP = Promise.resolve(work); },
     },
@@ -2318,13 +2318,38 @@ const camInput = playerFrameInput.camera;
 const _listenerPose = {
   pos: null, forward: _fwd, kind: 'camera', ownerId: null, scoped: false,
 }; // reused — no per-frame literal
-let simAcc = 0;
+// Pause transitions, input sampling, network cadence, pre-battle hold,
+// fixed-step debt, result progression, and presentation interpolation are one
+// typed state machine. The render loop consumes only its stable receipt.
+const battleFrame = createBattleFrameRuntime({
+  game,
+  settings,
+  killcam,
+  input: playerFrameInput,
+  network: {
+    isActive: () => !!networkSession.match,
+    pump: (dtSeconds, nowMs) => networkSession.pump(dtSeconds, nowMs),
+  },
+  countdown: {
+    isWarmPending: () => battleWarmPending,
+    advance: advancePreBattleCountdown,
+    show: (seconds) => hud.preBattleCountdown(seconds),
+    rollout: () => bus.emit('battle:rollout', {}),
+  },
+  presentation: {
+    captureSoloPose: battlePresentation.captureSoloPoses,
+    update: battlePresentation.update,
+    updateResult: battleResultPresentation.update,
+  },
+  getRigMode: () => rig.mode,
+  stepSimulation: () => simStep(
+    game, bus, currentWorld(), rig, worldRuntime.collider,
+  ),
+  emitPause: (paused) => bus.emit('ui:pause', { on: paused }),
+  simulationDt: SIM_DT,
+});
+const pauseInfo = battleFrame.pauseInfo;
 let lastMs = -1;
-// PAUSE (owner: "pause mid game if u press escape"): live-battle pause
-// bookkeeping — see the PAUSE block in tick(). `lastResumeDtR` is the dt the
-// first frame after a resume actually integrated; tools/pause-probe.mjs
-// asserts it never exceeds SIM_DT (no pause-duration catch-up hop).
-const pauseInfo = { paused: false, resumes: 0, lastDtR: 0, lastResumeDtR: -1 };
 let lastFov = camera.fov;
 // controls_gunnery r5: true while the current __SHOTS view staged a live HUD
 // frame (player_view / sniper_view) — those views re-run hud.update each
@@ -2383,7 +2408,6 @@ function tick(nowMs) {
   if (battleEntryLifecycle.renderingCovered) return;
   const fx = fxRuntimeAccess.current;
   const world = currentWorld();
-  const collider = worldRuntime.collider;
 
   // Sniper-zoom de-fog: at high zoom the exp2 fog + ACES crush distant
   // contrast to haze; scale density down toward 0.35x as FOV drops below 15
@@ -2417,17 +2441,6 @@ function tick(nowMs) {
     return;
   }
 
-  const inBattle = game.phase === 'battle';
-  const paused = settings.isOpen(); // settings panel freezes the battle
-  // The load screen remains physically composited for its 280 ms fade after
-  // hide() is requested. Drain input during that complete interval without
-  // applying it to the rig; otherwise the battle-button/pointer-lock gesture
-  // can reveal a steep orbit and openBattle() used to snap it back afterward.
-  const battleEntryCameraLocked = inBattle && battleLoad?.covering === true;
-  // KILL-CAM: while the replay runs, the sim/rig/visual-sync are all frozen —
-  // resuming just continues the fixed-step loop (no drifted timers).
-  const kcActive = killcam.isActive();
-
   // A settled Garage is a static presentation, not a 60 Hz game simulation.
   // Read the controller's allocation-free motion latch before doing any
   // camera solve. Pointer input mutates that latch synchronously, so drag,
@@ -2445,99 +2458,17 @@ function tick(nowMs) {
   })) return;
   if (game.phase === 'garage') showroom.update(dtR);
 
-  // PAUSE (owner: Esc mid-game). `paused` has always gated the fixed-step sim
-  // (step 2) plus input/rig, but fx kept aging, dust kept pumping off frozen
-  // hulls and the engine mix kept roaring — an open menu over a live battle,
-  // not a pause. `livePaused` is the real pause gate: the Esc overlay over a
-  // LIVE battle only. Kill-cam replays and the end overlay keep their
-  // existing Esc behavior (the replay owns the frame; the post-result sim
-  // plays out behind the report), garage/shot/studio never reach here with
-  // inBattle set. The camera simply HOLDS while paused (rig already gated on
-  // !paused) — no sim advancement of any kind behind the overlay.
-  const livePaused = paused && inBattle && !kcActive && !game.result;
-  if (livePaused !== pauseInfo.paused) {
-    pauseInfo.paused = livePaused;
-    if (!livePaused) {
-      // RESUME dt clamp — extension of the 0.1 s frame clamp above: the
-      // first un-paused frame integrates at most ONE sim step, so a pause of
-      // any length can never land a 4-step catch-up hop (starved-rAF panes
-      // tick sparsely during the pause, leaving a full 0.1 s gap otherwise).
-      dtR = Math.min(dtR, SIM_DT);
-      pauseInfo.resumes += 1;
-      pauseInfo.lastResumeDtR = dtR;
-    }
-    // audio.js: engine/battle buses duck to near-silence while paused,
-    // restore on resume (UI clicks and crew voices stay up).
-    bus.emit('ui:pause', { on: livePaused });
-  }
-  pauseInfo.lastDtR = dtR;
-
-  // 1. Poll the complete rebindable device state through one typed owner.
-  // It reuses its scratch records and clears consumed wheel/mouse edges, so
-  // neither the render loop nor the input hot path allocates per frame.
-  playerFrameInput.poll({
-    dtSeconds: dtR,
-    inBattle,
-    paused,
-    killcamActive: kcActive,
-    cameraLocked: battleEntryCameraLocked,
-    rigMode: rig.mode,
-    player: game.player,
-  });
-
-  // Network authority keeps pumping while the loading screen owns the page,
-  // then consumes the same polled controls once the shared countdown opens.
-  if (game.phase !== 'garage') networkSession.pump(dtR, nowMs);
-
-  // 2. fixed-step simulation (held while the settings panel is open)
-  if (inBattle && !paused && !kcActive) {
-    // battle_countdown r1: pre-battle hold — the sim does not step AT ALL
-    // while preBattleS > 0 (no movement, no AI, no fire, no battle clock;
-    // spawn poses were support-solved at roster build). The camera rig runs
-    // outside the sim, so looking around stays free, exactly like WoT's
-    // pre-battle freeze. simAcc stays drained so release cannot replay a
-    // catch-up burst of queued sim steps. The rest of the frame (rig,
-    // visuals, fx, render) runs normally; entry loading must already be done
-    // so this phase has the same frame budget as live play.
-    if (networkSession.match) {
-      // The server/host owns both the countdown and every simulation step.
-      // `game.preBattleS` is presentation copied from snapshot metadata.
-      hud.preBattleCountdown(game.preBattleS);
-      simAcc = 0;
-    } else if (game.preBattleS > 0) {
-      if (game.preBattleS !== Infinity) { // Infinity = still under the loading screen
-        const heldS = game.preBattleS;
-        // Covered entry warm normally finishes before the world is revealed.
-        // Keep the final-second hold as a fail-safe for an interrupted/future
-        // entry path; controls must never release while construction is live.
-        game.preBattleS = advancePreBattleCountdown(
-          game.preBattleS, frameWallDtS, battleWarmPending,
-        );
-        hud.preBattleCountdown(game.preBattleS); // 0 on the crossing frame = release flash
-        if (heldS > 0 && game.preBattleS === 0) bus.emit('battle:rollout', {});
-      }
-      simAcc = 0;
-    } else {
-      simAcc = Math.min(simAcc + dtR, SIM_DT * MAX_SIM_STEPS);
-      while (simAcc >= SIM_DT) {
-        simStep(game, bus, world, rig, collider);
-        battlePresentation.captureSoloPoses();
-        simAcc -= SIM_DT;
-      }
-    }
-    // Cinematic death beats, result replay handoff and final overlay
-    // presentation have one typed owner outside the render loop.
-    battleResultPresentation.update();
-  }
-
-  // 3. presentation pose + camera rig. Resolve the hull/turret hierarchy
-  // BEFORE the camera asks for its turret/gun anchors; both now consume the
-  // same interpolated pose in the same frame instead of the camera chasing
-  // yesterday's visual transform while the tank jumps to today's sim tick.
-  if (!kcActive && !livePaused) {
-    const presentationAlpha = networkSession.match ? 1 : simAcc / SIM_DT;
-    battlePresentation.update(dtR, presentationAlpha);
-  }
+  // One typed transaction advances pause/input/network/countdown/simulation,
+  // then resolves tank presentation before the camera consumes its anchors.
+  const frameState = battleFrame.advance(
+    dtR,
+    frameWallDtS,
+    nowMs,
+    game.phase === 'battle' && battleLoad?.covering === true,
+  );
+  dtR = frameState.dtSeconds;
+  const { inBattle, paused, livePaused } = frameState;
+  const kcActive = frameState.killcamActive;
   camInput.autoAimPoint = null;
   if (mobileAutoAimTargetId && inBattle && !paused && !kcActive) {
     const target = game.tankById.get(mobileAutoAimTargetId);
@@ -2946,7 +2877,7 @@ const driveTestController = driveTestRequested
     heightField: hfProxy,
     simStep,
     resetPresentationPoses: battlePresentation.resetSoloPoses,
-    resetSimAccumulator: () => { simAcc = 0; },
+    resetSimAccumulator: battleFrame.resetSimulationAccumulator,
   })
   : {
     aimTargetId: null,

@@ -149,6 +149,9 @@ const worldActivationSource = await readFile(
 const playerFrameInputSource = await readFile(
   new URL('../game/playerFrameInput.ts', import.meta.url), 'utf8',
 );
+const battleFrameRuntimeSource = await readFile(
+  new URL('../game/battleFrameRuntime.ts', import.meta.url), 'utf8',
+);
 const battleEntryLifecycleSource = await readFile(
   new URL('../game/battleEntryLifecycle.ts', import.meta.url), 'utf8',
 );
@@ -351,10 +354,10 @@ assert.match(battleEntryLifecycleSource,
   /noteBattleFrame\(\) \{ presentedBattleFrameSerial \+= 1; \}[\s\S]*firstRequiredSerial = presentedBattleFrameSerial \+ 1/,
   'the typed reveal owner must wait for a newer presented battle frame');
 assert.match(mainSource,
-  /const battleEntryCameraLocked = inBattle && battleLoad\?\.covering === true;/,
+  /battleFrame\.advance\([\s\S]{0,180}game\.phase === 'battle' && battleLoad\?\.covering === true,/,
   'camera input must stay locked through the complete loader fade');
-assert.match(mainSource,
-  /playerFrameInput\.poll\(\{[\s\S]{0,260}cameraLocked: battleEntryCameraLocked/,
+assert.match(battleFrameRuntimeSource,
+  /inputSample\.cameraLocked = cameraLocked;[\s\S]{0,180}input\.poll\(inputSample\);/,
   'the render loop must pass the complete loader fade lock to the frame-input owner');
 assert.match(playerFrameInputSource,
   /input\.consumeMouseDelta\(mouse,[\s\S]{0,180}camera\.mouseDX = paused \|\| cameraLocked \? 0 : mouse\.x;/,

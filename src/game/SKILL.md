@@ -27,6 +27,9 @@ owns bot decisions and is injected into the headless multiplayer authority;
 local-versus-network command policy without importing the combat runtime;
 `playerFrameInput.ts` owns allocation-free per-frame movement, fire, mouse,
 touch, cursor fallback, zoom, free-look, and sniper-mode sampling;
+`battleFrameRuntime.ts` owns pause edges, retained input sampling, network
+cadence, pre-battle hold, fixed-step debt, result progression, and rendered
+pose interpolation;
 `battlePresentationRuntime.ts` owns solo/network pose selection, spotting
 residency, running-gear detail cadence, vehicle FX, and light prop contact;
 `battleHudFrameRuntime.ts` owns the retained HUD frame, spectator perspective,
@@ -104,6 +107,9 @@ battle probes.
 Route live HUD assembly through `battleHudFrameRuntime.ts`; do not rebuild
 spectator focus, spotting, aim, armor-target filtering, or damage presentation
 inside `main.js`.
+Route rendered gameplay advancement through `battleFrameRuntime.ts`; do not
+retain pause transitions, fixed-step debt, countdown release, or parallel
+solo/network authority policy in `main.js`.
 Route covered solo warm changes through `soloBattleDeploymentRuntime.ts`; do
 not put shader, effect, shadow, or reveal ordering back into `main.js`.
 Route covered solo entry changes through `soloBattleLoadingRuntime.ts`; do not
