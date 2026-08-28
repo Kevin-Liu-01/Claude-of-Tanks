@@ -3,7 +3,7 @@
 // class stats inherit the nearest researched vehicle and are then adjusted to
 // keep each variant identifiable and matchmaking-safe.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
-import { shell } from './specHelpers.js';
+import { shell } from './specHelpers.ts';
 
 const copy = (v) => JSON.parse(JSON.stringify(v));
 // Reference assets never become playables, including in local development.

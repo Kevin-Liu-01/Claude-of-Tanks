@@ -8,7 +8,7 @@ import {
   apfsdsPenetration,
   communityArmor,
   modernArmor,
-} from './specHelpers.js';
+} from './specHelpers.ts';
 import './tankFactory.ts';
 import { SAVED_TANK_IDS, TANK_SPECS } from './specs.js';
 

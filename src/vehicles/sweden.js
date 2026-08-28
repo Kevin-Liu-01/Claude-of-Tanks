@@ -7,7 +7,7 @@ import {
 import {
   frontPlate, rearPlate, rightSidePlate, leftSidePlate, roofPlate,
   moduleBox, crewBox,
-} from './specHelpers.js';
+} from './specHelpers.ts';
 
 const SWEDEN_IDS = Object.freeze(['strv81', 'udes03', 'strv103a', 'strv122']);
 

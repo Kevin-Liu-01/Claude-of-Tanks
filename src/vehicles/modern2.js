@@ -35,7 +35,7 @@ import {
   crewBox as cbox,
   shell,
   apfsdsPenetration as apfsdsPens,
-} from './specHelpers.js';
+} from './specHelpers.ts';
 
 // type99a RE-LISTED 2026-08-08 (§5.38 owner priority wave: "fully model a
 // custom type99a based on this model" — the Type 99A2 print drop VOIDS the

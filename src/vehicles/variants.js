@@ -41,7 +41,7 @@
 // creation, e.g. `import './vehicles/variants.js'`.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
-import { shell, apfsdsPenetration as apfsdsPens } from './specHelpers.js';
+import { shell, apfsdsPenetration as apfsdsPens } from './specHelpers.ts';
 
 const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
 

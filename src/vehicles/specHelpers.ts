@@ -1,8 +1,81 @@
 // Pure constructors shared by fleet spec packs. Keep this module free of
 // registry imports so extension packs can use it without creating cycles.
 
-export function plate(name, physicalMm, v0, v1, v3, o = {}) {
-  const v2 = [v1[0] + v3[0] - v0[0], v1[1] + v3[1] - v0[1], v1[2] + v3[2] - v0[2]];
+export type Vec3Tuple = readonly [number, number, number];
+export type MutableVec3Tuple = [number, number, number];
+
+export interface PlateOptions {
+  ceMm?: number;
+  era?: unknown;
+  gunFollow?: boolean;
+  keMm?: number;
+  kind?: string;
+  moduleLink?: string;
+}
+
+export interface ArmorPlate {
+  name: string;
+  verts: [Vec3Tuple, Vec3Tuple, MutableVec3Tuple, Vec3Tuple];
+  physicalMm: number;
+  keMm: number;
+  ceMm: number;
+  kind: string;
+  era: unknown | null;
+  moduleLink: string | null;
+  gunFollow: boolean;
+}
+
+export interface ModuleBox {
+  module: string;
+  min: Vec3Tuple;
+  max: Vec3Tuple;
+  turretLocal: boolean;
+}
+
+export interface CrewBox {
+  crew: string;
+  min: Vec3Tuple;
+  max: Vec3Tuple;
+  turretLocal: boolean;
+}
+
+export interface ShellSpec extends Record<string, unknown> {
+  name: string;
+  type: string;
+  caliberMm: number;
+  pen100Mm: number;
+  pen1000Mm: number;
+  dmg: number;
+  velocityMps: number;
+  moduleDmg: number;
+  tracer: string;
+}
+
+export interface ArmorEnvelope {
+  boundingRadiusM: number;
+  turretless?: boolean;
+  turretPivot: MutableVec3Tuple;
+  gunPivot: MutableVec3Tuple;
+  gunBarrel: { lengthM: number; radiusM: number };
+  hullPlates: ArmorPlate[];
+  turretPlates: ArmorPlate[];
+  modules: ModuleBox[];
+  crew: CrewBox[];
+}
+
+export function plate(
+  name: string,
+  physicalMm: number,
+  v0: Vec3Tuple,
+  v1: Vec3Tuple,
+  v3: Vec3Tuple,
+  o: PlateOptions = {},
+): ArmorPlate {
+  const v2: MutableVec3Tuple = [
+    v1[0] + v3[0] - v0[0],
+    v1[1] + v3[1] - v0[1],
+    v1[2] + v3[2] - v0[2],
+  ];
   return {
     name,
     verts: [v0, v1, v2, v3],
@@ -16,30 +89,64 @@ export function plate(name, physicalMm, v0, v1, v3, o = {}) {
   };
 }
 
-export const frontPlate = (name, mm, w, yB, zB, yT, zT, o) =>
+export const frontPlate = (
+  name: string, mm: number, w: number, yB: number, zB: number, yT: number, zT: number,
+  o: PlateOptions = {},
+): ArmorPlate =>
   plate(name, mm, [-w, yB, zB], [w, yB, zB], [-w, yT, zT], o);
-export const rearPlate = (name, mm, w, yB, zB, yT, zT, o) =>
+export const rearPlate = (
+  name: string, mm: number, w: number, yB: number, zB: number, yT: number, zT: number,
+  o: PlateOptions = {},
+): ArmorPlate =>
   plate(name, mm, [w, yB, zB], [-w, yB, zB], [w, yT, zT], o);
-export const rightSidePlate = (name, mm, xB, yB, xT, yT, zR, zF, o) =>
+export const rightSidePlate = (
+  name: string, mm: number, xB: number, yB: number, xT: number, yT: number,
+  zR: number, zF: number, o: PlateOptions = {},
+): ArmorPlate =>
   plate(name, mm, [xB, yB, zF], [xB, yB, zR], [xT, yT, zF], o);
-export const leftSidePlate = (name, mm, xB, yB, xT, yT, zR, zF, o) =>
+export const leftSidePlate = (
+  name: string, mm: number, xB: number, yB: number, xT: number, yT: number,
+  zR: number, zF: number, o: PlateOptions = {},
+): ArmorPlate =>
   plate(name, mm, [-xB, yB, zR], [-xB, yB, zF], [-xT, yT, zR], o);
-export const roofPlate = (name, mm, w, y, zR, zF, o) =>
+export const roofPlate = (
+  name: string, mm: number, w: number, y: number, zR: number, zF: number,
+  o: PlateOptions = {},
+): ArmorPlate =>
   plate(name, mm, [-w, y, zF], [w, y, zF], [-w, y, zR], o);
-export const rightCheekPlate = (name, mm, xIn, zIn, xOut, zOut, y0, y1, tb = 0, xi = 0, o) =>
+export const rightCheekPlate = (
+  name: string, mm: number, xIn: number, zIn: number, xOut: number, zOut: number,
+  y0: number, y1: number, tb = 0, xi = 0, o: PlateOptions = {},
+): ArmorPlate =>
   plate(name, mm, [xIn, y0, zIn], [xOut, y0, zOut], [xIn - xi, y1, zIn - tb], o);
-export const leftCheekPlate = (name, mm, xIn, zIn, xOut, zOut, y0, y1, tb = 0, xi = 0, o) =>
+export const leftCheekPlate = (
+  name: string, mm: number, xIn: number, zIn: number, xOut: number, zOut: number,
+  y0: number, y1: number, tb = 0, xi = 0, o: PlateOptions = {},
+): ArmorPlate =>
   plate(name, mm, [-xOut, y0, zOut], [-xIn, y0, zIn], [-xOut + xi, y1, zOut - tb], o);
 
-export const moduleBox = (module, min, max, turretLocal = false) => ({ module, min, max, turretLocal });
-export const crewBox = (crew, min, max, turretLocal = false) => ({ crew, min, max, turretLocal });
+export const moduleBox = (
+  module: string, min: Vec3Tuple, max: Vec3Tuple, turretLocal = false,
+): ModuleBox => ({ module, min, max, turretLocal });
+export const crewBox = (
+  crew: string, min: Vec3Tuple, max: Vec3Tuple, turretLocal = false,
+): CrewBox => ({ crew, min, max, turretLocal });
 
-export const shell = (name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps, extra) => ({
+export const shell = (
+  name: string,
+  type: string,
+  caliberMm: number,
+  pen100Mm: number,
+  pen1000Mm: number,
+  dmg: number,
+  velocityMps: number,
+  extra: Readonly<Record<string, unknown>> | null = null,
+): ShellSpec => ({
     name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps,
     moduleDmg: caliberMm, tracer: type, ...(extra || {}),
 });
 
-export const apfsdsPenetration = (quoted2km) => {
+export const apfsdsPenetration = (quoted2km: number): [number, number, number] => {
   const pen1000 = quoted2km / 0.90;
   return [Math.round(pen1000 / 0.91), Math.round(pen1000), quoted2km];
 };
@@ -49,7 +156,34 @@ export const apfsdsPenetration = (quoted2km) => {
  * the layout flag from their records; one of those also disallows turretless
  * sizing. The options make those schema exceptions explicit and testable.
  */
-export function communityArmor(o, { exposeTurretless = true, allowTurretless = true } = {}) {
+export interface CommunityArmorInput {
+  lenM: number;
+  widM: number;
+  hgtM: number;
+  turretPivot: Vec3Tuple;
+  gunPivot: Vec3Tuple;
+  barrelLenM: number;
+  barrelRadM: number;
+  frontMm: number;
+  sideMm: number;
+  rearMm: number;
+  roofMm: number;
+  tFrontMm: number;
+  tSideMm: number;
+  tRearMm: number;
+  mantletMm: number;
+  turretless?: boolean;
+}
+
+export interface CommunityArmorOptions {
+  exposeTurretless?: boolean;
+  allowTurretless?: boolean;
+}
+
+export function communityArmor(
+  o: CommunityArmorInput,
+  { exposeTurretless = true, allowTurretless = true }: CommunityArmorOptions = {},
+): ArmorEnvelope {
   const hl = o.lenM / 2;
   const hw = o.widM / 2;
   const inW = hw * 0.62;
@@ -114,10 +248,42 @@ export function communityArmor(o, { exposeTurretless = true, allowTurretless = t
  * Build the shared modern fighting-compartment envelope used by MBT and IFV
  * packs. Inputs and returned records stay in runtime meters and millimeters.
  */
-export function modernArmor(o) {
+type ArmorTriple = readonly [number, number, number];
+
+export interface ModernArmorInput {
+  hl: number;
+  hw: number;
+  inW: number;
+  floor: number;
+  trkTop: number;
+  roofY: number;
+  turretPivot: Vec3Tuple;
+  gunPivot: Vec3Tuple;
+  barrelLenM: number;
+  barrelRadM: number;
+  glacis: ArmorTriple;
+  lower: ArmorTriple;
+  side: ArmorTriple;
+  skirt?: ArmorTriple | null;
+  rear: number;
+  roof: number;
+  tw: number;
+  tFrontZ: number;
+  tRearZ: number;
+  tH: number;
+  cheek: ArmorTriple;
+  tSide: ArmorTriple;
+  tRear: number;
+  tRoof: number;
+  mantlet: ArmorTriple;
+  loader?: boolean;
+  bustleAmmo?: boolean;
+}
+
+export function modernArmor(o: ModernArmorInput): ArmorEnvelope {
   const { hl, hw, inW, floor, trkTop, roofY, tw, tFrontZ, tRearZ, tH } = o;
   const tp = o.turretPivot;
-  const armor = (v) => ({ keMm: v[1], ceMm: v[2] });
+  const armor = (v: ArmorTriple): PlateOptions => ({ keMm: v[1], ceMm: v[2] });
   return {
     boundingRadiusM: hl + o.barrelLenM * 0.5 + 0.4,
     turretPivot: [tp[0], tp[1], tp[2]],

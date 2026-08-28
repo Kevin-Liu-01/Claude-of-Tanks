@@ -33,7 +33,7 @@ import {
   shell,
   apfsdsPenetration as apfsdsPens,
   communityArmor as buildCommunityArmor,
-} from './specHelpers.js';
+} from './specHelpers.ts';
 
 const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
 

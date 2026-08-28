@@ -15,7 +15,7 @@ import {
   moduleBox,
   crewBox,
   shell,
-} from './specHelpers.js';
+} from './specHelpers.ts';
 
 const ERA = Object.freeze({ keReduction: 0.18, ceFlatMm: 360 });
 const eraOptions = { kind: 'era', era: ERA, keMm: 15, ceMm: 15 };

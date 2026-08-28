@@ -6,7 +6,7 @@
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import {
   frontPlate, rightSidePlate, leftSidePlate, rightCheekPlate, leftCheekPlate,
-} from './specHelpers.js';
+} from './specHelpers.ts';
 
 const GERMANY_IDS = Object.freeze(['leo2a4_otco', 'leo2a4m', 'leo2a6m']);
 

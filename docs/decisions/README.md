@@ -211,3 +211,4 @@ runtime documents remain authoritative for behavior.
 - [0199 — Vehicle appearance roles are strict TypeScript](0199-typed-vehicle-appearance-roles.md)
 - [0200 — Running-gear quality receipts are strict TypeScript](0200-typed-running-gear-quality-receipts.md)
 - [0201 — The eager fleet facade is strict TypeScript](0201-typed-eager-fleet-facade.md)
+- [0202 — Fleet spec constructors are strict TypeScript](0202-typed-fleet-spec-constructors.md)

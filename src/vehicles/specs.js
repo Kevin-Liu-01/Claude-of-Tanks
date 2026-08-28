@@ -29,7 +29,7 @@ import {
   shell,
   apfsdsPenetration as apfsdsPens,
   communityArmor,
-} from './specHelpers.js';
+} from './specHelpers.ts';
 
 /** Foundational roster ids in their locked relative garage-carousel order. */
 // leo2a7 REMOVED from the roster BY OWNER 2026-08-06 ('remove the leopard

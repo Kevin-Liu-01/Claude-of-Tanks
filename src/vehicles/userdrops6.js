@@ -6,7 +6,7 @@ import {
   leftCheekPlate as chL,
   rightSidePlate as sR,
   leftSidePlate as sL,
-} from './specHelpers.js';
+} from './specHelpers.ts';
 
 const copy = (v) => JSON.parse(JSON.stringify(v));
 // Reference assets never become playables, including in local development.

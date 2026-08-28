@@ -18,7 +18,7 @@
 // their rows.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
-import { shell, modernArmor as ifvArmor } from './specHelpers.js';
+import { shell, modernArmor as ifvArmor } from './specHelpers.ts';
 
 const AFV_FAMILY_IDS = Object.freeze([
   'bmp3_rok',

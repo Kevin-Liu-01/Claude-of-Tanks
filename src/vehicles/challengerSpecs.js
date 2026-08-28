@@ -17,7 +17,7 @@ import {
   crewBox as cbox,
   shell,
   apfsdsPenetration as apfsdsPens,
-} from './specHelpers.js';
+} from './specHelpers.ts';
 
 // ===========================================================================
 // Modern-class residents (spec+build, the modern1.js pattern): challenger2 +

@@ -15,7 +15,7 @@
 //     resolve the rows through their procedural family donors
 //     (publicVisualFallback) and tools/strip-nc-assets.mjs deletes the GLBs.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
-import { shell } from './specHelpers.js';
+import { shell } from './specHelpers.ts';
 
 const copy = (v) => JSON.parse(JSON.stringify(v));
 // Reference assets never become playables, including in local development.

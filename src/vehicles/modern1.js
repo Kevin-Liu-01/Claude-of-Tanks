@@ -30,7 +30,7 @@ import {
   crewBox as cbox,
   shell,
   apfsdsPenetration as apfsdsPens,
-} from './specHelpers.js';
+} from './specHelpers.ts';
 
 const D2R = Math.PI / 180;
 

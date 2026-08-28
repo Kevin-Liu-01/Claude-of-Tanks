@@ -549,6 +549,10 @@ export const TANK_IDS;                       // §2.1 locked order
 export const TANK_SPECS: { [TankId]: TankSpec };
 export function getSpec(id) => TankSpec      // throws on unknown id
 ```
+`specHelpers.ts` is the registry-free typed constructor boundary for armor
+quads, shells, internal module/crew boxes, and shared armor envelopes. It uses
+meter-space three-value tuples and millimeter resistance values and must remain
+free of DOM, Three.js, builder, and registry imports.
 Locked stat values (transcribe the rest from tank-roster.md; these resolve ambiguity):
 
 | id | hp | hullTraverseDegS | turretTraverseDegS | baseAccuracy | aimTimeS | terrainResistance | pivotStyle | reloadS |
