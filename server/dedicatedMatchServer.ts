@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import { createWebSocketTransport } from '../src/net/channelTransport.ts';
 import { DedicatedMatchRegistry } from './dedicatedMatchRegistry.ts';
-import { RankedMatchmaker } from './rankedMatchmaker.js';
+import { RankedMatchmaker } from './rankedMatchmaker.ts';
 import { RatingStore } from './ratingStore.ts';
 
 const AUTH_TIMEOUT_MS = 5000;
@@ -12,41 +12,18 @@ const MAX_MESSAGES_PER_SECOND = 180;
 
 type AllowedOriginsInput = string | readonly string[] | null;
 
-interface RankedStats {
-  queuedPlayers: number;
-  ratedMatches: number;
-}
-
-interface RankedMatchmakerLike {
-  createIdentity(input: { name?: unknown }): unknown;
-  leaderboard(limit: unknown): unknown;
-  profile(playerId: string): unknown;
-  join(input: Record<string, unknown>): unknown;
-  poll(ticketId: string, token: string): unknown;
-  cancel(ticketId: string, token: string): boolean;
-  reconcile(): void;
-  stats(): RankedStats;
-}
-
-interface RankedMatchmakerConstructor {
-  new(options: {
-    registry: DedicatedMatchRegistry;
-    ratings: unknown;
-  }): RankedMatchmakerLike;
-}
-
 export interface DedicatedMatchServerOptions {
   host?: string;
   port?: number;
   allowedOrigins?: AllowedOriginsInput;
   autoTick?: boolean;
   registry?: DedicatedMatchRegistry;
-  matchmaker?: RankedMatchmakerLike;
+  matchmaker?: RankedMatchmaker;
 }
 
 export interface DedicatedMatchServerService {
   registry: DedicatedMatchRegistry;
-  matchmaker: RankedMatchmakerLike;
+  matchmaker: RankedMatchmaker;
   server: http.Server;
   sockets: WebSocketServer;
   address: AddressInfo;
@@ -143,9 +120,8 @@ function parseMatchAuth(raw: RawData): MatchAuthMessage | null {
   return value as MatchAuthMessage;
 }
 
-function createDefaultMatchmaker(registry: DedicatedMatchRegistry): RankedMatchmakerLike {
-  const RankedMatchmakerClass = RankedMatchmaker as unknown as RankedMatchmakerConstructor;
-  return new RankedMatchmakerClass({
+function createDefaultMatchmaker(registry: DedicatedMatchRegistry): RankedMatchmaker {
+  return new RankedMatchmaker({
     registry,
     ratings: new RatingStore({ filePath: process.env.COT_RATING_FILE || null }),
   });

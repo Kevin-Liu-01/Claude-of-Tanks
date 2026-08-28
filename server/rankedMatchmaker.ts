@@ -1,42 +1,139 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { sanitizeLoadout } from '../src/game/equipment.ts';
+import {
+  sanitizeLoadout,
+  type EquipmentSpecLike,
+} from '../src/game/equipment.ts';
 import { isGarageVisibleTankId } from '../src/game/matchmaking.ts';
 import { getSpec } from '../src/vehicles/specs.js';
 import { RANDOM_BATTLE_MAP_IDS } from '../src/world/maps/index.ts';
 import { uniquePlayerName } from '../src/net/playerNames.ts';
 import { networkCamoId } from '../src/vehicles/camoPolicy.js';
-import { RatingStore } from './ratingStore.ts';
+import { DedicatedMatchRegistry } from './dedicatedMatchRegistry.ts';
+import {
+  RatingStore,
+  type PublicRatingProfile,
+  type RatedPlayer,
+  type RatedResult,
+  type RatingIdentity,
+  type RatingLeaderboardEntry,
+} from './ratingStore.ts';
 
 const TEAM_SIZES = new Set([1, 2, 3, 5, 7]);
 const QUEUE_TTL_MS = 10 * 60_000;
 const MATCH_TTL_MS = 25 * 60_000;
 const RESULT_TTL_MS = 2 * 60_000;
 
-function hashToken(token) {
+type RankedTicketStatus = 'queued' | 'matched' | 'finished' | 'cancelled' | 'expired';
+type RankedTeam = 'alpha' | 'bravo';
+
+export interface RankedRosterPlayer extends RatedPlayer {
+  name: string;
+  specId: string;
+  equipment: string[];
+  camo: string;
+  rating: number;
+}
+
+export type PublicRankedRosterPlayer = Omit<RankedRosterPlayer, 'equipment'>;
+
+export interface RankedMatchAssignment {
+  matchId: string;
+  playerId: string;
+  token: string;
+  mapId: string;
+  roster: PublicRankedRosterPlayer[];
+}
+
+interface RankedQueueEntry {
+  id: string;
+  tokenHash: Buffer;
+  playerId: string;
+  name: string;
+  rating: number;
+  specId: string;
+  equipment: string[];
+  camo: string;
+  teamSize: number;
+  queuedAtMs: number;
+  matchedAtMs?: number;
+  status: RankedTicketStatus;
+  match: RankedMatchAssignment | null;
+  result: RatedResult | null;
+  profile: PublicRatingProfile | null;
+  completedAtMs: number | null;
+}
+
+interface TrackedRatedMatch {
+  entries: RankedQueueEntry[];
+  players: RatedPlayer[];
+  settled: boolean;
+}
+
+export interface PublicRankedTicket {
+  ticketId: string;
+  status: RankedTicketStatus;
+  queuedAtMs: number;
+  teamSize: number;
+  rating: number;
+  match?: RankedMatchAssignment | null;
+  result?: RatedResult | null;
+  profile?: PublicRatingProfile | null;
+}
+
+export interface RankedJoinResult extends PublicRankedTicket {
+  ticketToken: string;
+}
+
+export interface RankedJoinOptions {
+  playerId?: unknown;
+  identityToken?: unknown;
+  specId?: unknown;
+  equipment?: string[];
+  camo?: unknown;
+  teamSize?: unknown;
+}
+
+export interface RankedMatchmakerOptions {
+  registry?: DedicatedMatchRegistry;
+  ratings?: RatingStore;
+  now?: () => number;
+  ticketIdFactory?: () => string;
+  ticketTokenFactory?: () => string;
+  maxActivePlayers?: number;
+  maxEntries?: number;
+}
+
+export interface RankedMatchmakerStats {
+  queuedPlayers: number;
+  ratedMatches: number;
+}
+
+function hashToken(token: unknown): Buffer {
   return createHash('sha256').update(String(token)).digest();
 }
 
-function tokenMatches(expected, received) {
+function tokenMatches(expected: Buffer, received: unknown): boolean {
   const actual = hashToken(received);
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-function randomId(prefix) {
+function randomId(prefix: string): string {
   return `${prefix}_${randomBytes(12).toString('base64url')}`;
 }
 
-function randomToken() {
+function randomToken(): string {
   return randomBytes(24).toString('base64url');
 }
 
 /** Ranked rotation consumes the same complete pool as every Random Battle. */
-export function rankedBattleMapForSequence(sequence) {
-  const index = Number.isSafeInteger(sequence) && sequence >= 0 ? sequence : 0;
+export function rankedBattleMapForSequence(sequence: unknown): string {
+  const candidate = Number(sequence);
+  const index = Number.isSafeInteger(candidate) && candidate >= 0 ? candidate : 0;
   return RANDOM_BATTLE_MAP_IDS[index % RANDOM_BATTLE_MAP_IDS.length];
 }
 
-function publicTicket(entry) {
-  const base = {
+function publicTicket(entry: RankedQueueEntry): PublicRankedTicket {
+  const base: PublicRankedTicket = {
     ticketId: entry.id,
     status: entry.status,
     queuedAtMs: entry.queuedAtMs,
@@ -54,6 +151,18 @@ function publicTicket(entry) {
 
 /** Bounded server-owned queue that emits authenticated dedicated-match tickets. */
 export class RankedMatchmaker {
+  readonly registry: DedicatedMatchRegistry;
+  readonly ratings: RatingStore;
+  readonly now: () => number;
+  readonly ticketIdFactory: () => string;
+  readonly ticketTokenFactory: () => string;
+  readonly maxActivePlayers: number;
+  readonly maxEntries: number;
+  readonly entries = new Map<string, RankedQueueEntry>();
+  readonly activeByPlayer = new Map<string, string>();
+  readonly ratedMatches = new Map<string, TrackedRatedMatch>();
+  matchSequence = 0;
+
   constructor({
     registry,
     ratings = new RatingStore(),
@@ -62,7 +171,7 @@ export class RankedMatchmaker {
     ticketTokenFactory = randomToken,
     maxActivePlayers = 2048,
     maxEntries = 4096,
-  } = {}) {
+  }: RankedMatchmakerOptions = {}) {
     if (!registry || typeof registry.createMatch !== 'function') {
       throw new TypeError('dedicated match registry is required');
     }
@@ -74,17 +183,28 @@ export class RankedMatchmaker {
     this.maxActivePlayers = Math.max(2, Math.min(10_000, Number(maxActivePlayers) || 2048));
     this.maxEntries = Math.max(this.maxActivePlayers, Math.min(20_000,
       Number(maxEntries) || 4096));
-    this.entries = new Map();
-    this.activeByPlayer = new Map();
-    this.ratedMatches = new Map();
-    this.matchSequence = 0;
   }
 
-  createIdentity(input) { return this.ratings.createIdentity(input); }
-  profile(playerId) { return this.ratings.profile(playerId); }
-  leaderboard(limit) { return this.ratings.leaderboard(limit); }
+  createIdentity(input: { name?: unknown }): RatingIdentity {
+    return this.ratings.createIdentity(input);
+  }
 
-  join({ playerId, identityToken, specId, equipment = [], camo = 'factory', teamSize = 1 } = {}) {
+  profile(playerId: unknown): PublicRatingProfile | null {
+    return this.ratings.profile(playerId);
+  }
+
+  leaderboard(limit: unknown): RatingLeaderboardEntry[] {
+    return this.ratings.leaderboard(limit);
+  }
+
+  join({
+    playerId,
+    identityToken,
+    specId,
+    equipment = [],
+    camo = 'factory',
+    teamSize = 1,
+  }: RankedJoinOptions = {}): RankedJoinResult {
     const id = String(playerId || '');
     if (!this.ratings.authenticate(id, identityToken)) {
       throw Object.assign(new Error('ranked identity authentication failed'), {
@@ -104,7 +224,7 @@ export class RankedMatchmaker {
     if (!TEAM_SIZES.has(size)) throw new TypeError('team size must be 1, 2, 3, 5, or 7');
     const vehicleId = String(specId || '');
     if (!isGarageVisibleTankId(vehicleId)) throw new TypeError('vehicle is unavailable in ranked play');
-    const spec = getSpec(vehicleId);
+    const spec = getSpec(vehicleId) as EquipmentSpecLike | null | undefined;
     if (!spec) throw new TypeError('unknown ranked vehicle');
     const ticketId = String(this.ticketIdFactory());
     const ticketToken = String(this.ticketTokenFactory());
@@ -113,7 +233,8 @@ export class RankedMatchmaker {
     }
     if (ticketToken.length < 24) throw new Error('ticket factory returned a weak token');
     const profile = this.ratings.profile(id);
-    const entry = {
+    if (!profile) throw new Error('authenticated ranked profile is unavailable');
+    const entry: RankedQueueEntry = {
       id: ticketId,
       tokenHash: hashToken(ticketToken),
       playerId: id,
@@ -121,7 +242,7 @@ export class RankedMatchmaker {
       rating: profile.rating,
       specId: vehicleId,
       equipment: sanitizeLoadout(equipment, spec),
-      camo: networkCamoId(camo),
+      camo: String(networkCamoId(camo)),
       teamSize: size,
       queuedAtMs: this.now(),
       status: 'queued',
@@ -136,13 +257,13 @@ export class RankedMatchmaker {
     return { ...publicTicket(entry), ticketToken };
   }
 
-  poll(ticketId, ticketToken) {
+  poll(ticketId: unknown, ticketToken: unknown): PublicRankedTicket | null {
     const entry = this.entries.get(String(ticketId));
     if (!entry || !tokenMatches(entry.tokenHash, ticketToken)) return null;
     return publicTicket(entry);
   }
 
-  cancel(ticketId, ticketToken) {
+  cancel(ticketId: unknown, ticketToken: unknown): boolean {
     const entry = this.entries.get(String(ticketId));
     if (!entry || !tokenMatches(entry.tokenHash, ticketToken) || entry.status !== 'queued') return false;
     entry.status = 'cancelled';
@@ -151,10 +272,10 @@ export class RankedMatchmaker {
     return true;
   }
 
-  #matchGroup(group) {
+  #matchGroup(group: RankedQueueEntry[]): void {
     const ordered = group.slice().sort((a, b) => b.rating - a.rating ||
       a.queuedAtMs - b.queuedAtMs || a.playerId.localeCompare(b.playerId));
-    const teams = { alpha: [], bravo: [] };
+    const teams: Record<RankedTeam, RankedQueueEntry[]> = { alpha: [], bravo: [] };
     let alphaRating = 0;
     let bravoRating = 0;
     for (const entry of ordered) {
@@ -168,9 +289,9 @@ export class RankedMatchmaker {
     }
     const mapId = rankedBattleMapForSequence(this.matchSequence);
     const seed = (0x6d2b79f5 ^ Math.imul(++this.matchSequence, 0x9e3779b1)) >>> 0;
-    const roster = [];
-    const rosterNames = [];
-    for (const team of ['alpha', 'bravo']) {
+    const roster: RankedRosterPlayer[] = [];
+    const rosterNames: string[] = [];
+    for (const team of ['alpha', 'bravo'] as const) {
       for (const entry of teams[team]) {
         const name = uniquePlayerName(entry.name, rosterNames);
         rosterNames.push(name);
@@ -194,10 +315,12 @@ export class RankedMatchmaker {
     const ticketByPlayer = new Map(created.tickets.map((ticket) => [ticket.playerId, ticket]));
     const publicRoster = roster.map(({ equipment: _equipment, ...player }) => player);
     for (const entry of group) {
+      const ticket = ticketByPlayer.get(entry.playerId);
+      if (!ticket) throw new Error(`dedicated ticket missing for ${entry.playerId}`);
       entry.status = 'matched';
       entry.matchedAtMs = this.now();
       entry.match = {
-        ...ticketByPlayer.get(entry.playerId),
+        ...ticket,
         mapId,
         roster: publicRoster,
       };
@@ -209,14 +332,15 @@ export class RankedMatchmaker {
     });
   }
 
-  pump() {
+  pump(): RankedMatchmakerStats {
     const now = this.now();
     for (const entry of this.entries.values()) {
       if (entry.status === 'queued' && now - entry.queuedAtMs > QUEUE_TTL_MS) {
         entry.status = 'expired';
         entry.completedAtMs = now;
         this.activeByPlayer.delete(entry.playerId);
-      } else if (entry.status === 'matched' && now - entry.matchedAtMs > MATCH_TTL_MS) {
+      } else if (entry.status === 'matched' && entry.matchedAtMs != null &&
+          now - entry.matchedAtMs > MATCH_TTL_MS) {
         entry.status = 'expired';
         entry.completedAtMs = now;
         this.activeByPlayer.delete(entry.playerId);
@@ -248,21 +372,23 @@ export class RankedMatchmaker {
     return this.stats();
   }
 
-  reconcile() {
+  reconcile(): void {
     const now = this.now();
     for (const [matchId, tracked] of this.ratedMatches) {
       if (tracked.settled) continue;
       const match = this.registry.matches.get(matchId);
       if (!match?.simulation?.result) continue;
+      const result = match.simulation.result;
+      if (result !== 'alpha' && result !== 'bravo' && result !== 'draw') continue;
       const updates = this.ratings.recordTeamMatch({
         matchId,
-        result: match.simulation.result,
+        result,
         players: tracked.players,
       });
       const byPlayer = new Map((updates || []).map((entry) => [entry.playerId, entry]));
       for (const entry of tracked.entries) {
         entry.status = 'finished';
-        entry.result = match.simulation.result;
+        entry.result = result;
         entry.profile = byPlayer.get(entry.playerId) || this.ratings.profile(entry.playerId);
         entry.completedAtMs = now;
         this.activeByPlayer.delete(entry.playerId);
@@ -272,7 +398,7 @@ export class RankedMatchmaker {
     this.pump();
   }
 
-  stats() {
+  stats(): RankedMatchmakerStats {
     let queuedPlayers = 0;
     for (const entry of this.entries.values()) if (entry.status === 'queued') queuedPlayers++;
     return { queuedPlayers, ratedMatches: this.ratedMatches.size };

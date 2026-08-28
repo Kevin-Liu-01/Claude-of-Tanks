@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { RankedMatchmaker, rankedBattleMapForSequence } from './rankedMatchmaker.js';
+import { RankedMatchmaker, rankedBattleMapForSequence } from './rankedMatchmaker.ts';
 import { RatingStore } from './ratingStore.ts';
 import { RANDOM_BATTLE_MAP_IDS } from '../src/world/maps/index.ts';
 

@@ -753,7 +753,7 @@ Redis connectivity is deployment-critical for distributed room lookup and
 must be monitored separately from WebRTC gameplay.
 
 server/dedicatedMatchServer.ts owns ranked WebSocket sessions.
-server/rankedMatchmaker.js owns queue grouping.
+server/rankedMatchmaker.ts owns queue grouping.
 server/ratingStore.ts owns idempotent rating settlement.
 
 Private browser hosts are trusted. Ranked moves authority to the service.
