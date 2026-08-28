@@ -6453,6 +6453,13 @@ function rebuildT90MSTurretExact(P) {
     { name: 'lower', y0: 0.11, y1: 0.34, z0: -0.10, z1: 0.09 },
     { name: 'upper', y0: 0.34, y1: 0.59, z0: 0.09, z1: -0.11 },
   ];
+  // Three tighter face modules occupy the same carrier interval that used to
+  // hold two broad blocks. Preserve a narrow gasket seam between neighbors
+  // and the original eight-percent end margin so density increases without
+  // widening the approved chevron footprint or crowding either optic head.
+  const chevronTileRanges = [
+    [0.080, 0.340], [0.370, 0.630], [0.660, 0.920],
+  ];
   const mirroredChevronRow = (side, plan, row) => orientedSlab(
     ...plan.map(([x, z]) => [side * x, row.y0, z + row.z0]),
     ...plan.map(([x, z]) => [side * x, row.y1, z + row.z1]),
@@ -6469,16 +6476,17 @@ function rebuildT90MSTurretExact(P) {
     rowsPerCheek: chevronRows.length,
     modulesPerRow: 2,
     modulesTotal: chevronRows.length * 2 * 2,
-    squareTilesTotal: 16,
+    tilesPerCarrierSurface: chevronTileRanges.length,
+    squareTilesTotal: chevronRows.length * 2 * 2 * chevronTileRanges.length,
     ridgeY: 0.34,
     ridgeZOffset: 0.09,
     rearEdgeZOffset: -0.10,
   });
 
   // Relikt arrowhead face details repeat the same TWO-row section instead of
-  // covering it with one tall cassette. Six paired stations per cheek make
-  // the upper and lower arms readable while their buried shoes overlap the
-  // main carriers rather than creating a second floating armor bank.
+  // covering it with one tall cassette. Three tightly grouped modules fill
+  // each carrier surface while their buried shoes overlap the main carriers
+  // rather than creating a second floating armor bank.
   P.visualEraCluster('t90ms-relikt-nose-era', 'turret', () => {
   const noseReliktSegments = [
     // a/b trace the OUTER face of each main carrier module in plan. Their
@@ -6514,7 +6522,7 @@ function rebuildT90MSTurretExact(P) {
   for (const side of [-1, 1]) {
     for (const segment of noseReliktSegments) {
       for (const row of chevronRows) {
-        for (const [t0, t1] of [[0.08, 0.47], [0.53, 0.92]]) {
+        for (const [t0, t1] of chevronTileRanges) {
           // The backing shoe is a few millimetres wider/taller so each ERA
           // square has a dark gasket. The face itself is an exact offset of
           // the carrier surface: no guessed Euler rotation, no buried tile.

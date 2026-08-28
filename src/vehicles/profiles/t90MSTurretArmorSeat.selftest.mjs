@@ -17,8 +17,8 @@ try {
     't90ms: fitted chevrons remain registered as visible ERA');
   assert.equal(receipt.partsBySector['t90ms-relikt-turret-era'], 8,
     't90ms: keeps two rows of two main-chevron modules on both cheeks');
-  assert.equal(receipt.partsBySector['t90ms-relikt-nose-era'], 33,
-    't90ms: mounts sixteen framed ERA squares directly on the chevron surfaces');
+  assert.equal(receipt.partsBySector['t90ms-relikt-nose-era'], 49,
+    't90ms: mounts twenty-four framed ERA modules inside the same chevron footprint');
   assert.equal(receipt.partsBySector['t90ms-relikt-flank-era'], 54,
     't90ms: retains the exact cheek, shoulder and flank cassette course');
 
@@ -64,7 +64,8 @@ try {
     rowsPerCheek: 2,
     modulesPerRow: 2,
     modulesTotal: 8,
-    squareTilesTotal: 16,
+    tilesPerCarrierSurface: 3,
+    squareTilesTotal: 24,
     ridgeY: 0.34,
     ridgeZOffset: 0.09,
     rearEdgeZOffset: -0.10,
@@ -84,4 +85,4 @@ try {
   tank.dispose();
 }
 
-console.log('t90MSTurretArmorSeat.selftest: cheek chevrons and 54 projected turret ERA parts pass');
+console.log('t90MSTurretArmorSeat.selftest: dense cheek modules and 54 projected turret ERA parts pass');

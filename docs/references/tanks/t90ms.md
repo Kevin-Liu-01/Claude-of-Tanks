@@ -112,8 +112,9 @@ The former long rectangular cabinet turret and small buried wheels are
 retired. `rebuildT90MSTurretExact` constructs one joined low clipped-diamond
 welded shell from measured longitudinal stations, then seats two joined Relikt
 rows per cheek—upper and lower arms forming the side-view chevron—with two
-modules along each row and sixteen framed ERA squares mounted directly on
-those four mirrored surfaces beside the optic pair. All 54 remaining flank,
+modules along each row and 24 tightly grouped ERA modules mounted directly on
+those four mirrored surfaces beside the optic pair. They retain the previous
+carrier footprint and optic clearance. All 54 remaining flank,
 lower-cheek, shoulder, and roof ERA parts are projected from that same measured
 station loft: their backs share the carrier facet and their thickness follows
 its local outward normal. The frontal optic pair, crown plates and tapered
