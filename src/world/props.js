@@ -25,7 +25,7 @@ import { createUtilityNetwork } from './utilityNetwork.ts';
 import {
   LOOSE_PROP_STEP_S, createLoosePropBody, kickLooseProp, resetLoosePropBody,
   resolveLoosePropObstacle, resolveLoosePropPair, stepLoosePropBody,
-} from './loosePropPhysics.js';
+} from './loosePropPhysics.ts';
 import {
   cloneCollisionRecord, convexHull2, setCircleShape, setConvexShape, setObbShape,
 } from './collision.js';

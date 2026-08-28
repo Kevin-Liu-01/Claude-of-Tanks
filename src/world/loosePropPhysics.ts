@@ -11,7 +11,72 @@ export const LOOSE_PROP_STEP_S = 1 / 60;
 const GRAVITY = 9.81;
 const EPS = 1e-8;
 
-function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+export type LoosePropKickCause = 'ram' | 'shell' | 'blast';
+
+export interface LoosePropBodyOptions {
+  x: number;
+  baseY: number;
+  z: number;
+  radius: number;
+  height: number;
+  mass?: number;
+  restitution?: number;
+  friction?: number;
+  airDrag?: number;
+  angularDrag?: number;
+  spinBias?: number;
+  groundConstrained?: boolean;
+}
+
+export interface LoosePropBody {
+  homeX: number;
+  homeBaseY: number;
+  homeZ: number;
+  x: number;
+  y: number;
+  z: number;
+  radius: number;
+  height: number;
+  invMass: number;
+  restitution: number;
+  friction: number;
+  airDrag: number;
+  angularDrag: number;
+  spinBias: -1 | 1;
+  groundConstrained: boolean;
+  vx: number;
+  vy: number;
+  vz: number;
+  wx: number;
+  wy: number;
+  wz: number;
+  qx: number;
+  qy: number;
+  qz: number;
+  qw: number;
+  active: boolean;
+  cooldownS: number;
+  sleepS: number;
+}
+
+interface SurfaceNormal {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface LoosePropObstacle {
+  min: readonly [number, number, number];
+  max: readonly [number, number, number];
+  crushed?: boolean;
+  dead?: boolean;
+  shape2?:
+    | { kind: 'circle'; cx: number; cz: number; r: number }
+    | { kind: 'obb'; cx: number; cz: number; hw: number; hl: number; yaw: number }
+    | { kind: 'convex'; cx: number; cz: number; points: number[] };
+}
+
+function clamp(v: number, lo: number, hi: number) { return v < lo ? lo : v > hi ? hi : v; }
 
 /** Create one sleeping body. `baseY` is the authored mesh's ground origin. */
 export function createLoosePropBody({
@@ -19,7 +84,7 @@ export function createLoosePropBody({
   mass = 1, restitution = 0.32, friction = 2.2,
   airDrag = 0.16, angularDrag = 0.42, spinBias = 1,
   groundConstrained = false,
-}) {
+}: LoosePropBodyOptions): LoosePropBody {
   const h = Math.max(0.12, height);
   const r = Math.max(0.08, Math.min(radius, h * 0.62));
   return {
@@ -31,7 +96,7 @@ export function createLoosePropBody({
     friction: Math.max(0.2, friction),
     airDrag: Math.max(0, airDrag),
     angularDrag: Math.max(0, angularDrag),
-    spinBias: spinBias < 0 ? -1 : 1,
+    spinBias: spinBias < 0 ? -1 as const : 1 as const,
     groundConstrained: !!groundConstrained,
     vx: 0, vy: 0, vz: 0,
     wx: 0, wy: 0, wz: 0,
@@ -42,7 +107,7 @@ export function createLoosePropBody({
   };
 }
 
-export function resetLoosePropBody(b) {
+export function resetLoosePropBody(b: LoosePropBody) {
   b.x = b.homeX; b.y = b.homeBaseY + b.height * 0.5; b.z = b.homeZ;
   b.vx = 0; b.vy = 0; b.vz = 0;
   b.wx = 0; b.wy = 0; b.wz = 0;
@@ -55,7 +120,13 @@ export function resetLoosePropBody(b) {
  * Apply a repeatable hull/shell/blast kick. Returns false during the short
  * contact debounce so one overlapping tank does not inject energy at 60 Hz.
  */
-export function kickLooseProp(b, dx, dz, speed = 0, cause = 'ram') {
+export function kickLooseProp(
+  b: LoosePropBody,
+  dx: number,
+  dz: number,
+  speed = 0,
+  cause: LoosePropKickCause = 'ram',
+) {
   if (b.cooldownS > 0) return false;
   const ll = Math.hypot(dx, dz);
   const ux = ll > EPS ? dx / ll : 0;
@@ -97,7 +168,7 @@ export function kickLooseProp(b, dx, dz, speed = 0, cause = 'ram') {
   return true;
 }
 
-function integrateQuaternion(b, dt) {
+function integrateQuaternion(b: LoosePropBody, dt: number) {
   const qx = b.qx, qy = b.qy, qz = b.qz, qw = b.qw;
   const hx = b.wx * dt * 0.5, hy = b.wy * dt * 0.5, hz = b.wz * dt * 0.5;
   b.qx = qx + hx * qw + hy * qz - hz * qy;
@@ -112,7 +183,12 @@ function integrateQuaternion(b, dt) {
 // visual tumble. Their center follows the terrain directly, so no contact can
 // accumulate vertical energy. The support interpolation keeps an upright cone
 // on its base and a fallen cone on its side without a full rigid-body solver.
-function stepGroundConstrainedBody(b, dt, heightAt, bounds) {
+function stepGroundConstrainedBody(
+  b: LoosePropBody,
+  dt: number,
+  heightAt: (x: number, z: number) => number,
+  bounds: number,
+) {
   b.cooldownS = Math.max(0, b.cooldownS - dt);
   const drag = Math.max(0, 1 - (b.airDrag + b.friction) * dt);
   b.vx *= drag; b.vz *= drag;
@@ -154,7 +230,13 @@ function stepGroundConstrainedBody(b, dt, heightAt, bounds) {
  * Advance one fixed step. Return bits: 1 moved, 2 bounced, 4 went to sleep.
  * `normalAt` may return a reused scratch object.
  */
-export function stepLoosePropBody(b, dt, heightAt, normalAt = null, bounds = 486) {
+export function stepLoosePropBody(
+  b: LoosePropBody,
+  dt: number,
+  heightAt: (x: number, z: number) => number,
+  normalAt: ((x: number, z: number) => SurfaceNormal) | null = null,
+  bounds = 486,
+) {
   if (!b.active || dt <= 0) return 0;
   if (b.groundConstrained) return stepGroundConstrainedBody(b, dt, heightAt, bounds);
   b.cooldownS = Math.max(0, b.cooldownS - dt);
@@ -219,7 +301,7 @@ export function stepLoosePropBody(b, dt, heightAt, normalAt = null, bounds = 486
   return flags;
 }
 
-function applyWallBounce(b, nx, nz, depth) {
+function applyWallBounce(b: LoosePropBody, nx: number, nz: number, depth: number) {
   b.x += nx * depth; b.z += nz * depth;
   const vn = b.vx * nx + b.vz * nz;
   if (vn < 0) {
@@ -234,7 +316,7 @@ function applyWallBounce(b, nx, nz, depth) {
 }
 
 /** Resolve a loose body's circle against one authored static obstacle. */
-export function resolveLoosePropObstacle(b, ob) {
+export function resolveLoosePropObstacle(b: LoosePropBody, ob: LoosePropObstacle | null | undefined) {
   if (!ob || ob.crushed || ob.dead) return false;
   if (b.y + b.radius < ob.min[1] || b.y - b.radius > ob.max[1]) return false;
   const sh = ob.shape2;
@@ -275,7 +357,7 @@ export function resolveLoosePropObstacle(b, ob) {
 }
 
 /** Resolve two loose circles. Return wake bits: 1 for a, 2 for b. */
-export function resolveLoosePropPair(a, b) {
+export function resolveLoosePropPair(a: LoosePropBody, b: LoosePropBody) {
   if ((!a.active && !b.active) || Math.abs(a.y - b.y) > a.radius + b.radius) return 0;
   const dx = b.x - a.x, dz = b.z - a.z;
   const rr = a.radius + b.radius, d2 = dx * dx + dz * dz;

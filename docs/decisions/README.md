@@ -143,3 +143,4 @@ runtime documents remain authoritative for behavior.
 - [0131 — Shared prop geometry has a typed ownership boundary](0131-typed-prop-geometry.md)
 - [0132 — Prop placement shares typed terrain support](0132-typed-prop-placement.md)
 - [0133 — Headless collision inflation has a typed boundary](0133-typed-headless-collision-world.md)
+- [0134 — Loose-prop physics has a strict fixed-step contract](0134-typed-loose-prop-physics.md)

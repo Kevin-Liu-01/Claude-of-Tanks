@@ -3,7 +3,7 @@ import {
   LOOSE_PROP_STEP_S, createLoosePropBody, kickLooseProp,
   resetLoosePropBody, resolveLoosePropObstacle, resolveLoosePropPair,
   stepLoosePropBody,
-} from './loosePropPhysics.js';
+} from './loosePropPhysics.ts';
 import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.js';
 
 const flat = () => 0;

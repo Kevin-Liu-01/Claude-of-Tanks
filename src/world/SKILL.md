@@ -42,6 +42,8 @@ the attributed `props-models.json` authoring source; regenerate it with
 `headlessCollisionWorld.ts` owns the typed inflation and query facade for exact
 authored collision records on a dedicated server without importing renderer or
 DOM state.
+`loosePropPhysics.ts` owns deterministic fixed-step impulses, terrain support,
+sleep, static contact, and pair response for lightweight battlefield dressing.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
