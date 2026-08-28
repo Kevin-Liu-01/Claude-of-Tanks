@@ -1,6 +1,6 @@
 // src/world/maps/railyard.ts — maps r1: flat brownfield rail depot under an
 // overcast sky (Ensk's industrial quarter, minus the town). Warehouse rows,
-// container ranks and gantry cranes along a fan of sidings (maps/mapKits.js
+// container ranks and gantry cranes along a fan of sidings (maps/mapKits.ts
 // lays the physical track geometry), smokestack verticals, concrete/gravel
 // splats, lamppost-lined paved roads and heavy battle scarring.
 

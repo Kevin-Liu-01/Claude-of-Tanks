@@ -10,7 +10,7 @@
 // pushing THREE.BufferGeometry parts into buckets.{plaster,stone,roof,wood,dark}.
 
 import * as THREE from 'three';
-import { MARKET_BUILDERS } from './mapKits.js';
+import { MARKET_BUILDERS } from './mapKits.ts';
 import { RAIL_BUILDERS } from './railKit.ts'; // maps r1: railyard + coastal kits
 import { gablePrism as createGablePrism } from '../propGeometry.ts';
 import {
@@ -198,7 +198,7 @@ export function makeFactory(rng: () => number, buckets: GeometryBuckets): Struct
 }
 
 /** Builders keyed by plan name — spread into props.js BUILDER_BY_NAME.
- * content_breadth r2: the desert bazaar builders (maps/mapKits.js) ride the
+ * content_breadth r2: the desert bazaar builders (maps/mapKits.ts) ride the
  * same registry, so 'market' / 'marketRow' plan entries work map-wide with
  * no props.js change. */
 export const URBAN_BUILDERS: Record<string, StructureBuilder> = {

@@ -214,11 +214,11 @@ export default {
 
   props: {
     // r2 (content_breadth): plan 10 -> 18 slots — three more adobe clusters
-    // plus a souk ('market'/'marketRow' builders, maps/mapKits.js via the
+    // plus a souk ('market'/'marketRow' builders, maps/mapKits.ts via the
     // urbanKit registry) so the crossroads reads as a lived-in bazaar town
     // r5 (content_breadth): WALLED COMPOUNDS. The critique's midfield read
     // was "~6 small boxes scattered on a bare sand pan with no compound
-    // walls/courtyards" — four 'compound'/'compoundSouk' slots (mapKits.js:
+    // walls/courtyards" — four 'compound'/'compoundSouk' slots (mapKits.ts:
     // mud-brick perimeter + gate, 2-story house, annex, well/souk anchor,
     // courtyard clutter) cluster the loose adobes into real family blocks.
     // world-dressing r1: + a minaret over the bazaar skyline (the settlement

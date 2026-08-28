@@ -74,7 +74,7 @@ export default {
     // white-blue smudge" in the establishing shot; less windblown snow on the
     // sheet exposes the refrozen crack veins + glossy clear-ice fields so the
     // basin finally reads as ICE (pairs with the new shoreline reed/pressure-
-    // ridge dressing in maps/mapKits.js)
+    // ridge dressing in maps/mapKits.ts)
     // r4: 0.18 -> 0.12 — pairs with the darker makeIceLayer fields; less
     // wind-blown snow albedo re-burying the clear-ice interior
     // r6 (content_breadth): 0.12 -> 0.20 — the critique flipped back: the

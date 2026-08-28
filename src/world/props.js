@@ -11,7 +11,7 @@ import { markShadowOnly } from '../engine/renderLayers.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
 import { applySourcedBuildings } from './sourcedTextures.js';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
-import { dressMapExtras } from './maps/mapKits.js'; // content_breadth r2
+import { dressMapExtras } from './maps/mapKits.ts'; // content_breadth r2
 // world-dressing r1: building-catalog extension + destructible small props
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG, bSandbagBroken } from './maps/inhabitKit.js';

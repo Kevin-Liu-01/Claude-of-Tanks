@@ -1,4 +1,4 @@
-// src/world/maps/mapKits.js — per-map set-dressing extras beyond the generic
+// src/world/maps/mapKits.ts — per-map set-dressing extras beyond the generic
 // props vocabulary (content_breadth r2).
 //
 // Two exports:
@@ -21,13 +21,66 @@
 import * as THREE from 'three';
 import { box, jitterUV, scaleUV } from '../propGeometry.ts';
 import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.ts';
+import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
+
+type Rng = () => number;
+type GeometryBucketName = keyof GeometryBuckets & string;
+
+interface DressingBuckets extends GeometryBuckets {
+  straw: THREE.BufferGeometry[];
+  baked?: THREE.BufferGeometry[];
+}
+
+interface DressingHeightField {
+  getHeightAt(x: number, z: number): number;
+  _roadDist(x: number, z: number): number;
+}
+
+interface LayoutDisc {
+  x: number;
+  z: number;
+  r: number;
+}
+
+interface DressingLayout {
+  lakes?: LayoutDisc[];
+  marshes?: LayoutDisc[];
+  roads: Array<Array<readonly [number, number]>>;
+  village: { x0: number; z0: number; z1: number };
+}
+
+interface GroundingReceipt {
+  kind: string;
+  x: number;
+  y: number;
+  z: number;
+  [name: string]: unknown;
+}
+
+interface DressingContext {
+  mapId?: string;
+  extraKits?: readonly string[] | null;
+  L: DressingLayout;
+  heightField: DressingHeightField;
+  rng: Rng;
+  buckets: DressingBuckets;
+  groundingReceipts?: GroundingReceipt[] | null;
+}
+
+type FocusedDressingContext = Pick<
+  DressingContext,
+  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts'
+>;
 
 const _groundUp = new THREE.Vector3(0, 1, 0);
 const _groundRight = new THREE.Vector3(1, 0, 0);
 const _groundNormal = new THREE.Vector3();
 const _groundQuat = new THREE.Quaternion();
 
-function applyGroundNormal(geometry, pose) {
+function applyGroundNormal(
+  geometry: THREE.BufferGeometry,
+  pose: { normalX: number; normalY: number; normalZ: number },
+): void {
   _groundNormal.set(pose.normalX, pose.normalY, pose.normalZ);
   _groundQuat.setFromUnitVectors(_groundUp, _groundNormal);
   geometry.applyQuaternion(_groundQuat);
@@ -40,7 +93,7 @@ function applyGroundNormal(geometry, pose) {
 // A single souk stall: timber posts under a sagging fabric awning, a low
 // counter, crate + pot clutter and a ground rug. Reads as commerce at the
 // crossroads without blocking a driving lane (h kept low, footprint small).
-function makeMarketStall(rng, buckets) {
+function makeMarketStall(rng: Rng, buckets: GeometryBuckets): StructureDimensions {
   const w = 6.6, d = 5.2;
   const ph = 2.2 + rng() * 0.4;
   // 4 corner posts (slightly splayed like re-driven timber)
@@ -89,17 +142,21 @@ function makeMarketStall(rng, buckets) {
 
 // Two stalls back-to-back with a shared alley of clutter — fills a wider
 // road-side slot so the bazaar reads as a block, not a lone tent.
-function makeMarketRow(rng, buckets) {
+function makeMarketRow(rng: Rng, buckets: GeometryBuckets): StructureDimensions {
   const a = makeMarketStall(rng, buckets);
   // second stall, offset along x, mirrored
-  const tmp = { wood: [], plaster: [], stone: [], roof: [] };
+  const tmp: GeometryBuckets = {
+    wood: [], plaster: [], stone: [], roof: [], dark: [],
+  };
   const b = makeMarketStall(rng, tmp);
   const off = a.w / 2 + b.w / 2 - 1.2;
-  for (const key of Object.keys(tmp)) {
-    for (const g of tmp[key]) {
+  for (const [key, geometries] of Object.entries(tmp)) {
+    const target = buckets[key];
+    if (!geometries || !target) continue;
+    for (const g of geometries) {
       g.rotateY(Math.PI + (rng() - 0.5) * 0.2);
       g.translate(off, 0, (rng() - 0.5) * 1.2);
-      buckets[key].push(g);
+      target.push(g);
     }
   }
   // shared clutter: sacks (straw-less desert: use stone-toned bags -> plaster)
@@ -127,14 +184,20 @@ function makeMarketRow(rng, buckets) {
 
 // mud-brick perimeter wall with a gate gap on the street face (+z), coping
 // course and gate posts. Returns nothing; pushes into buckets.
-function compoundWall(rng, buckets, w, d, wallH) {
+function compoundWall(
+  rng: Rng,
+  buckets: GeometryBuckets,
+  w: number,
+  d: number,
+  wallH: number,
+): number {
   const T = 0.42;
   // coping rides the SAME plaster print as the wall — the derived plaster2
   // shift renders as a saturated orange stripe under the desert sun (probed
   // on the r5 establishing shot); the 0.14 m geometric lip alone reads as a
   // finished mud-brick cap
-  const cop = (g) => buckets.plaster.push(jitterUV(g, rng));
-  const wal = (g) => buckets.plaster.push(jitterUV(g, rng));
+  const cop = (geometry: THREE.BufferGeometry) => buckets.plaster.push(jitterUV(geometry, rng));
+  const wal = (geometry: THREE.BufferGeometry) => buckets.plaster.push(jitterUV(geometry, rng));
   // back + side walls (slight per-run lean/settle so runs read hand-built)
   const runs = [
     { x: 0, z: -d / 2, wx: w, wz: T },
@@ -180,14 +243,24 @@ function compoundWall(rng, buckets, w, d, wallH) {
 
 // flat-roofed adobe block with parapet, viga beam ends, door + windows on the
 // courtyard face — the same massing language as props.js makeAdobe.
-function adobeBlock(rng, buckets, bw, bd, bh, x, z, doorAxis = 'z', tone = 'plaster') {
-  const wal = buckets[tone] ? tone : 'plaster';
+function adobeBlock(
+  rng: Rng,
+  buckets: GeometryBuckets,
+  bw: number,
+  bd: number,
+  bh: number,
+  x: number,
+  z: number,
+  doorAxis: 'x' | 'z' = 'z',
+  tone: GeometryBucketName = 'plaster',
+): void {
+  const wallTarget = buckets[tone] ?? buckets.plaster;
   const base = box(bw + 0.25, 0.6, bd + 0.25, 0.8);
   base.translate(x, -0.1, z);
   buckets.stone.push(jitterUV(base, rng));
   const blk = box(bw, bh, bd, 0.6);
   blk.translate(x, bh / 2, z);
-  buckets[wal].push(jitterUV(blk, rng));
+  wallTarget.push(jitterUV(blk, rng));
   // parapet
   for (const [px, pz, pw, pdep] of [
     [0, bd / 2 - 0.08, bw, 0.16], [0, -bd / 2 + 0.08, bw, 0.16],
@@ -195,7 +268,7 @@ function adobeBlock(rng, buckets, bw, bd, bh, x, z, doorAxis = 'z', tone = 'plas
   ]) {
     const p = box(pw, 0.42, pdep, 0.8);
     p.translate(x + px, bh + 0.21, z + pz);
-    buckets[wal].push(jitterUV(p, rng));
+    wallTarget.push(jitterUV(p, rng));
   }
   // roof deck: sun-bleached MUD roof (BASE plaster tone), not wood planking —
   // from the raised establishing camera a big timber deck read as a dark
@@ -235,12 +308,12 @@ function adobeBlock(rng, buckets, bw, bd, bh, x, z, doorAxis = 'z', tone = 'plas
   if (rng() < 0.5) { // rooftop stair hut
     const hut = box(bw * 0.32, 0.9, bd * 0.3, 0.8);
     hut.translate(x - bw * 0.2, bh + 0.45, z - bd * 0.2);
-    buckets[wal].push(jitterUV(hut, rng));
+    wallTarget.push(jitterUV(hut, rng));
   }
 }
 
 // courtyard well: stone ring, two posts, crossbar + bucket
-function courtyardWell(rng, buckets, x, z) {
+function courtyardWell(rng: Rng, buckets: GeometryBuckets, x: number, z: number): void {
   const ring = new THREE.CylinderGeometry(0.85, 0.95, 0.85, 9, 1);
   scaleUV(ring, 3, 1);
   ring.translate(x, 0.42, z);
@@ -264,7 +337,13 @@ function courtyardWell(rng, buckets, x, z) {
 }
 
 // scattered courtyard living clutter: crates, clay pots, sacks, a rug
-function courtyardClutter(rng, buckets, w, d, n) {
+function courtyardClutter(
+  rng: Rng,
+  buckets: GeometryBuckets,
+  w: number,
+  d: number,
+  n: number,
+): void {
   for (let k = 0; k < n; k++) {
     const cx = (rng() - 0.5) * (w - 5), cz = (rng() - 0.5) * (d - 5);
     const roll = rng();
@@ -301,7 +380,7 @@ function courtyardClutter(rng, buckets, w, d, n) {
  * annex, well anchor, courtyard clutter. w runs ALONG the street so the
  * footprint stays shallow enough for the road-side placement lattice.
  */
-function makeCompound(rng, buckets) {
+function makeCompound(rng: Rng, buckets: GeometryBuckets): StructureDimensions {
   const w = 21 + rng() * 3, d = 13.5 + rng() * 1.5;
   const wallH = 2.05 + rng() * 0.3;
   compoundWall(rng, buckets, w, d, wallH);
@@ -336,7 +415,7 @@ function makeCompound(rng, buckets) {
  * Souk compound: walled yard with a shop row along the back wall, an awning
  * stall, corner watch-post and dense goods clutter — the market anchor.
  */
-function makeCompoundSouk(rng, buckets) {
+function makeCompoundSouk(rng: Rng, buckets: GeometryBuckets): StructureDimensions {
   const w = 19 + rng() * 2.5, d = 13 + rng() * 1.5;
   const wallH = 1.95 + rng() * 0.25;
   compoundWall(rng, buckets, w, d, wallH);
@@ -389,7 +468,7 @@ function makeCompoundSouk(rng, buckets) {
 }
 
 /** Plan-name builders to spread into URBAN_BUILDERS (props.js contract). */
-export const MARKET_BUILDERS = {
+export const MARKET_BUILDERS: Record<string, StructureBuilder> = {
   market: makeMarketStall, marketRow: makeMarketRow,
   compound: makeCompound, compoundSouk: makeCompoundSouk,
 };
@@ -400,7 +479,13 @@ export const MARKET_BUILDERS = {
 
 // One clump of frozen shoreline reeds: 6-11 thin rimed stalks with a couple
 // of bent heads. Straw bucket — winter maps tone straw to pale rime.
-function reedClump(buckets, rng, x, y, z) {
+function reedClump(
+  buckets: DressingBuckets,
+  rng: Rng,
+  x: number,
+  y: number,
+  z: number,
+): void {
   // stalks sized to survive establishing-shot minification (~350 m): a
   // 5 cm-wide stick disappears at that range, so the clump reads through a
   // few taller, thicker rimed stems over a skirt of short ones
@@ -433,7 +518,15 @@ function reedClump(buckets, rng, x, y, z) {
 // WIDE segments whose visible top faces dominate (the winter snow-cap shader
 // whitens them, so the run reads as a bright ridge line with soft side
 // shadows), plus only the odd small upthrust plate on the crest.
-function pressureRidge(buckets, rng, cx, cz, y, ang, len) {
+function pressureRidge(
+  buckets: DressingBuckets,
+  rng: Rng,
+  cx: number,
+  cz: number,
+  y: number,
+  ang: number,
+  len: number,
+): void {
   const n = Math.max(6, Math.round(len / 1.7));
   const bend = (rng() - 0.5) * 0.9; // gentle S-curve along the run
   for (let k = 0; k < n; k++) {
@@ -462,8 +555,16 @@ function pressureRidge(buckets, rng, cx, cz, y, ang, len) {
 
 // Weathered rowboat frozen into the sheet near the shore — planked sides,
 // transom and two bench thwarts, listing a few degrees.
-function frozenRowboat(buckets, rng, heightField, x, z, yaw, groundingReceipts) {
-  const parts = [];
+function frozenRowboat(
+  buckets: DressingBuckets,
+  rng: Rng,
+  heightField: DressingHeightField,
+  x: number,
+  z: number,
+  yaw: number,
+  groundingReceipts?: GroundingReceipt[] | null,
+): void {
+  const parts: THREE.BufferGeometry[] = [];
   const L = 3.4, W = 1.25, H = 0.52;
   const pose = planGroundedObbPose(heightField, x, z, L * 0.5, W * 0.5, yaw, 0.10);
   for (const s of [-1, 1]) { // side planks (two lapped strakes each)
@@ -501,7 +602,15 @@ function frozenRowboat(buckets, rng, heightField, x, z, yaw, groundingReceipts) 
 
 // Short timber jetty walking off the shore onto the ice: paired piles with a
 // plank deck, ending in a slight sag.
-function jetty(buckets, rng, x0, z0, ang, y, len = 7.5) {
+function jetty(
+  buckets: DressingBuckets,
+  rng: Rng,
+  x0: number,
+  z0: number,
+  ang: number,
+  y: number,
+  len = 7.5,
+): void {
   const n = Math.round(len / 1.9);
   const dx = Math.cos(ang), dz = Math.sin(ang);
   const px = -dz, pz = dx; // deck width axis
@@ -531,7 +640,7 @@ function jetty(buckets, rng, x0, z0, ang, y, len = 7.5) {
  */
 export function dressMapExtras({
   mapId, extraKits = null, L, heightField, rng, buckets, groundingReceipts = null,
-}) {
+}: DressingContext): void {
   // Configurable kit dispatch lets new maps compose the production dressing
   // vocabulary without cloning geometry builders. Legacy ids resolve to the
   // exact one kit they used before, preserving their RNG stream and output.
@@ -614,7 +723,7 @@ export function dressMapExtras({
       // small per-streak yaw jitter; several short tail segments trail off
       // downwind so the shapes read carved, not stamped.
       const WIND_YAW = -0.6;
-      const lens = (x, z, r, h, streak) => {
+      const lens = (x: number, z: number, r: number, h: number, streak: boolean): void => {
         // These lenses are broad enough to sit directly under a chase camera.
         // The former 10×5 sphere left metre-wide planar facets across a
         // 20-30 m streak; at grazing angles they read as torn white polygons
@@ -673,8 +782,17 @@ export function dressMapExtras({
 
 // Open clinker fishing boat beached above the surf: planked sides, transom,
 // thwarts, a short mast with a furled boom. Reads "working beach" at range.
-function beachedBoat(buckets, rng, heightField, x, z, yaw, withMast, groundingReceipts) {
-  const parts = [];
+function beachedBoat(
+  buckets: DressingBuckets,
+  rng: Rng,
+  heightField: DressingHeightField,
+  x: number,
+  z: number,
+  yaw: number,
+  withMast: boolean,
+  groundingReceipts?: GroundingReceipt[] | null,
+): void {
+  const parts: THREE.BufferGeometry[] = [];
   const L = 4.6 + rng() * 1.2, W = 1.6, H = 0.72;
   const pose = planGroundedObbPose(heightField, x, z, L * 0.5, W * 0.5, yaw, 0.06);
   for (const s of [-1, 1]) {
@@ -724,7 +842,9 @@ function beachedBoat(buckets, rng, heightField, x, z, yaw, withMast, groundingRe
   });
 }
 
-function dressCoastalShore({ L, heightField, rng, buckets, groundingReceipts }) {
+function dressCoastalShore({
+  L, heightField, rng, buckets, groundingReceipts,
+}: FocusedDressingContext): void {
   if (!L.lakes || !L.lakes.length) return;
   // land direction: the sea circles sit on the east edge, land is -x — the
   // dressing hugs whichever shore arc faces the map interior
@@ -793,7 +913,7 @@ function dressCoastalShore({ L, heightField, rng, buckets, groundingReceipts }) 
 // maps r1 — AUTUMN RIVER dressing (ruined bridge, ford posts, bank reeds)
 // =============================================================================
 
-function dressAutumnRiver({ L, heightField, rng, buckets }) {
+function dressAutumnRiver({ L, heightField, rng, buckets }: FocusedDressingContext): void {
   const links = (L.marshes || []).filter((m) => m.r <= 40); // river chain links
   if (links.length < 3) return;
   // --- bank reeds: clumps along both banks of every link -------------------
@@ -854,7 +974,7 @@ function dressAutumnRiver({ L, heightField, rng, buckets }) {
   }
   // --- ford marker posts where the roads wade the river ---------------------
   // scan each road polyline for enter/exit transitions across the channel
-  const inRiver = (x, z) => {
+  const inRiver = (x: number, z: number): boolean => {
     for (const m of links) if (Math.hypot(x - m.x, z - m.z) < m.r * 0.85) return true;
     return false;
   };
@@ -894,7 +1014,14 @@ function dressAutumnRiver({ L, heightField, rng, buckets }) {
 // One rail line: ballast bed + twin rails + sleepers, laid in ~10 m segments
 // that follow the terrain (the yard is near-flat; segments tilt to match).
 // Soft dressing by contract — hulls roll over the 0.2 m bed like a curb.
-function railLine(buckets, rng, heightField, x, z0, z1) {
+function railLine(
+  buckets: DressingBuckets,
+  rng: Rng,
+  heightField: DressingHeightField,
+  x: number,
+  z0: number,
+  z1: number,
+): void {
   const segL = 10;
   const n = Math.max(1, Math.round((z1 - z0) / segL));
   for (let k = 0; k < n; k++) {
@@ -938,7 +1065,13 @@ function railLine(buckets, rng, heightField, x, z0, z1) {
 }
 
 // timber-and-steel buffer stop closing a stub track
-function bufferStop(buckets, rng, heightField, x, z) {
+function bufferStop(
+  buckets: DressingBuckets,
+  rng: Rng,
+  heightField: DressingHeightField,
+  x: number,
+  z: number,
+): void {
   const y = heightField.getHeightAt(x, z);
   for (const s of [-0.72, 0.72]) {
     const strut = box(0.18, 1.5, 0.18, 1.4);
@@ -951,7 +1084,7 @@ function bufferStop(buckets, rng, heightField, x, z) {
   buckets.wood.push(jitterUV(beam, rng));
 }
 
-function dressRailYard({ L, heightField, rng, buckets }) {
+function dressRailYard({ L, heightField, rng, buckets }: FocusedDressingContext): void {
   const v = L.village;
   // --- the track fan: parallel sidings east of the yard's center road ------
   // (positions authored against the railyard.js grid: roads at x=-120/0/130)
