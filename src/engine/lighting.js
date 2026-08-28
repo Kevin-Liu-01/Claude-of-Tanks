@@ -17,7 +17,10 @@ import {
   isContinuousShadowCascade,
   mergeRequiredShadowWork,
 } from './shadowRefresh.js';
-import { snapShadowCoordinate } from './shadowStability.js';
+import {
+  shadowNormalBiasForTexel,
+  snapShadowCoordinate,
+} from './shadowStability.ts';
 
 const CASCADES = 4;
 // Battlefield establishing shots read objects out to ~500 m; with the clearer
@@ -46,6 +49,7 @@ const _stableBounds = new THREE.Box3();
 const _stableCenter = new THREE.Vector3();
 const _stableOrigin = new THREE.Vector3();
 const _stableUp = new THREE.Vector3(0, 1, 0);
+const _stableDesiredCenters = [];
 
 /**
  * Allocation-free CSM refit with per-cascade texel snapping.
@@ -53,13 +57,15 @@ const _stableUp = new THREE.Vector3(0, 1, 0);
  * csm.shadowMapSize value. Our quality ladder deliberately mixes 4096/2048
  * (down to 1024/512 on mobile), so the stock path moves the far projection
  * in half-texel increments and makes its shadows shimmer as the camera moves.
+ * @returns {number} bit mask of cascades whose desired snapped pose changed
  */
-function updateStableCascades(csm) {
+function prepareStableCascades(csm) {
   const camera = csm.camera;
   _stableLightOrientation.lookAt(_stableOrigin, csm.lightDirection, _stableUp);
   _stableLightOrientationInverse.copy(_stableLightOrientation).invert();
   _stableCameraToLight.multiplyMatrices(_stableLightOrientationInverse, camera.matrixWorld);
 
+  let changedMask = 0;
   for (let i = 0; i < csm.frustums.length; i++) {
     const light = csm.lights[i];
     const shadow = light.shadow;
@@ -80,13 +86,39 @@ function updateStableCascades(csm) {
     _stableCenter.y = snapShadowCoordinate(_stableCenter.y, texelHeight);
     _stableCenter.applyMatrix4(_stableLightOrientation);
 
-    light.position.copy(_stableCenter);
-    light.target.position.copy(_stableCenter).add(csm.lightDirection);
+    let desired = _stableDesiredCenters[i];
+    if (!desired) {
+      desired = new THREE.Vector3();
+      _stableDesiredCenters[i] = desired;
+    }
+    desired.copy(_stableCenter);
+    if (light.position.distanceToSquared(desired) > 1e-12) {
+      changedMask |= 1 << i;
+    }
+  }
+  return changedMask;
+}
+
+/** Apply prepared light poses only to cascades whose depth map renders now. */
+function applyStableCascadePoses(csm, mask) {
+  for (let i = 0; i < csm.lights.length; i++) {
+    if (!(mask & (1 << i))) continue;
+    const desired = _stableDesiredCenters[i];
+    if (!desired) continue;
+    const light = csm.lights[i];
+    light.position.copy(desired);
+    light.target.position.copy(desired).add(csm.lightDirection);
   }
 }
 
+/** Prepare and apply every cascade for teleports, sun changes and captures. */
+function updateStableCascades(csm) {
+  const changedMask = prepareStableCascades(csm);
+  applyStableCascadePoses(csm, (2 ** csm.lights.length) - 1);
+  return changedMask;
+}
+
 const SHADOW_BIAS = -0.0002;
-const SHADOW_NORMAL_BIAS = 0.045; // kills acne on terrain slopes (CSM only exposes shadowBias)
 // r4 penumbra: r185's PCF getShadow() is a 5-tap Vogel disk rotated per-pixel
 // by interleaved gradient noise, and its disk radius comes straight from
 // `shadow.radius` (in shadow-map texels). The default 1.0 produced razor-hard
@@ -792,6 +824,18 @@ export function createLighting(scene, camera, sunDir) {
   // vehicle cast shadows that the broken Basic-packing path was dropping.
   patchShadowDepthPacking();
 
+  /** Keep receiver separation proportional to each physical shadow texel. */
+  function applyShadowNormalBias(i) {
+    const shadow = csm.lights[i].shadow;
+    const span = shadow.camera.right - shadow.camera.left;
+    const worldUnitsPerTexel = span / Math.max(1, shadow.mapSize.x);
+    shadow.normalBias = shadowNormalBiasForTexel(worldUnitsPerTexel);
+  }
+
+  function applyShadowNormalBiases() {
+    for (let i = 0; i < csm.lights.length; i++) applyShadowNormalBias(i);
+  }
+
   /** Resize one cascade, retaining every other live map until its own turn. */
   function applyShadowSize(i, size) {
     const shadow = csm.lights[i].shadow;
@@ -808,6 +852,7 @@ export function createLighting(scene, camera, sunDir) {
         shadow.map = null;
       }
     }
+    applyShadowNormalBias(i);
     shadow.needsUpdate = true;
   }
 
@@ -822,7 +867,6 @@ export function createLighting(scene, camera, sunDir) {
   }
 
   for (let i = 0; i < csm.lights.length; i++) {
-    csm.lights[i].shadow.normalBias = SHADOW_NORMAL_BIAS;
     csm.lights[i].shadow.radius = SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)];
     csm.lights[i].color.setHex(SUN_COLOR);
     // Near maps stay on Three's continuous update path so moving contact
@@ -850,13 +894,17 @@ export function createLighting(scene, camera, sunDir) {
     if (csm.maxFar !== p.shadowMaxFar) {
       csm.maxFar = p.shadowMaxFar;
       csm.updateFrustums();
+      applyShadowNormalBiases();
     }
   });
   const shadowScheduler = createShadowRefreshScheduler(csm.lights.length, {
     nearCount: Math.min(FAR_CASCADE_START, csm.lights.length),
   });
+  const allCascadeMask = (2 ** csm.lights.length) - 1;
+  const continuousCascadeMask = (2 ** Math.min(FAR_CASCADE_START, csm.lights.length)) - 1;
   let shFrame = 0;
   let lastScheduledMask = 0;
+  let lastFitChangedMask = 0;
   // The enclosed garage never exposes the 100-700 m cascade bands. Their
   // redraws can sleep there, but every CSM sampler still participates in the
   // compiled PCF shader. Therefore cold boot must render each native depth map
@@ -1081,6 +1129,7 @@ export function createLighting(scene, camera, sunDir) {
      * @returns {void}
      */
     update(force = false, dt = 1 / 60) {
+      lastFitChangedMask = 0;
       if (staticPresentationDormant && !force && !pendingShadowMask) {
         applyStaticPresentationDormancy();
         return;
@@ -1113,7 +1162,7 @@ export function createLighting(scene, camera, sunDir) {
           break;
         }
       }
-      updateStableCascades(csm);
+      lastFitChangedMask = prepareStableCascades(csm);
       _cullTick++; // cascades refit — the per-cascade frustum memo is stale
       shFrame++;
       const step = Math.max(0, Math.min(0.05, Number(dt) || 0));
@@ -1121,6 +1170,7 @@ export function createLighting(scene, camera, sunDir) {
       if (force || forceFrames > 0) {
         if (forceFrames > 0) forceFrames--;
         lastScheduledMask = shadowScheduler.forceMask();
+        applyStableCascadePoses(csm, allCascadeMask);
         for (let i = 0; i < csm.lights.length; i++) {
           csm.lights[i].shadow.needsUpdate = true;
         }
@@ -1128,6 +1178,7 @@ export function createLighting(scene, camera, sunDir) {
       } else if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.forceAll) {
         // bisect hook: every cascade re-renders every frame (no round-robin)
         lastScheduledMask = shadowScheduler.forceMask();
+        applyStableCascadePoses(csm, allCascadeMask);
         for (let i = 0; i < csm.lights.length; i++) csm.lights[i].shadow.needsUpdate = true;
       } else if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.freezeMask !== undefined) {
         // bisect hook: masked cascades stop re-rendering entirely (matrix
@@ -1135,6 +1186,7 @@ export function createLighting(scene, camera, sunDir) {
         // cascades render every frame, unmasked far ones every frame too so
         // robin staleness never confounds the freeze comparison.
         const mask = window.__SHADOW_DEBUG.freezeMask | 0;
+        applyStableCascadePoses(csm, allCascadeMask & ~mask);
         for (let i = 0; i < csm.lights.length; i++) {
           const sh = csm.lights[i].shadow;
           if (mask & (1 << i)) { sh.autoUpdate = false; sh.needsUpdate = false; } else {
@@ -1159,6 +1211,14 @@ export function createLighting(scene, camera, sunDir) {
           lastScheduledMask = mergeRequiredShadowWork(
             lastScheduledMask, transitionCascade, csm.lights.length, 1);
         }
+        // A rate-capped far map must keep its projection and depth texture as
+        // one atomic pair. Prepare every snapped fit above, but apply a far fit
+        // only on that cascade's scheduled render frame. The alternate map may
+        // be one frame old, yet it remains internally coherent instead of
+        // sampling stale depth through a newly moved matrix—the visible flash.
+        // Near fits still follow every presented frame. This preserves the
+        // existing two-near/one-far 60 Hz cost ceiling.
+        applyStableCascadePoses(csm, continuousCascadeMask | lastScheduledMask);
         for (let i = 0; i < csm.lights.length; i++) {
           if (lastScheduledMask & (1 << i)) csm.lights[i].shadow.needsUpdate = true;
         }
@@ -1184,10 +1244,12 @@ export function createLighting(scene, camera, sunDir) {
     updateFov() {
       csm._initCascades();
       csm._updateShadowBounds();
+      applyShadowNormalBiases();
     },
 
     updateFrustums() {
       csm.updateFrustums();
+      applyShadowNormalBiases();
       forceRateCappedCascades(); // cascade boxes jumped — stale maps would smear
     },
 
@@ -1240,6 +1302,7 @@ export function createLighting(scene, camera, sunDir) {
         frame: shFrame,
         forceFrames,
         scheduledMask: lastScheduledMask,
+        fitChangedMask: lastFitChangedMask,
         farCascadeDormancyRequested: farCascadeDormant,
         staticPresentationDormant,
         farCascadeDepthReady: canDormantShadowCascades(csm.lights, FAR_CASCADE_START),

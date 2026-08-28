@@ -215,9 +215,19 @@ Garage, live battle, and returned Garage. The probe pins one mixed modern 7v7
 roster and waits for all fourteen visuals, preventing random vehicle selection
 from hiding a resource regression. It also rejects a frame that submits all
 four CSM cascades: near shadows remain current while the two distant cascades
-alternate, with independent shadow-call and shadow-triangle ceilings. Its
-limits track the measured production baseline rather than serving as loose
-theoretical maxima.
+alternate. A distant cascade holds its snapped projection until its matching
+depth-map turn, avoiding a new-matrix/old-depth flash without adding a fourth
+shadow submission. Independent shadow-call and shadow-triangle ceilings remain,
+and the limits track the measured production baseline rather than serving as
+loose theoretical maxima.
+
+The rendered stability audit separately covers raw CSM motion and the final
+post-composed frame. Receiver normal bias scales with each cascade's physical
+texel footprint, bounded tightly enough to retain near contact while preventing
+far terrain and vegetation acne. Temporal GTAO may preserve brighter history
+to reject a one-frame dark pulse, but never carries stale darkness onto a newly
+exposed surface. These policies add no render pass, texture, or frame-loop
+allocation.
 
 Combat warming has two ownership phases. The opaque loader builds the exact
 roster, presents one real deployment-camera frame, and prepares only opening

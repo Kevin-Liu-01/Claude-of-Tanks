@@ -169,6 +169,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/renderScalePolicy.selftest.mjs',
     'src/engine/shadowStability.selftest.mjs',
     'src/engine/shadowRefresh.selftest.mjs',
+    'src/engine/temporalAoPolicy.selftest.mjs',
     'src/audio/voices.selftest.mjs',
     'src/audio/audioTiming.selftest.mjs',
     'src/net/net.selftest.mjs',

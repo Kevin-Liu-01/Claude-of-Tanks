@@ -39,6 +39,10 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
+import {
+  TEMPORAL_AO_CURRENT_WEIGHT,
+  TEMPORAL_AO_DARK_RELEASE_SLACK,
+} from './temporalAoPolicy.ts';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
@@ -1661,17 +1665,23 @@ export function createPost(renderer, scene, camera) {
   //    reprojection is exact for them — no motion vectors needed.
   //  - RECTIFY: clamp the reprojected history to the min/max of the current
   //    frame's 5-tap AO neighborhood (standard TAA neighborhood clamping).
-  //    Disocclusions and moving tanks can't ghost beyond local contrast by
-  //    construction, so no depth-history reject pass is needed.
+  //    Neighborhood rectification bounds history spatially; the asymmetric
+  //    release below handles stale-dark disocclusion without another depth-
+  //    history pass or render target.
   //  - ACCUMULATE: fixed k=0.15 toward the current frame (~85% history).
   //    Boil amplitude drops ~6x once the history tracks the world.
+  //  - RELEASE: history may suppress a one-frame dark occlusion spike, but it
+  //    may never keep a newly exposed surface darker than the current AO.
+  //    This asymmetric clamp is the missing disocclusion rule:
+  //    foliage/card edges settle into shade instead of flashing into it, while
+  //    stale dark contact patches clear in one frame rather than trailing the
+  //    camera through overlapping tree and structure silhouettes.
   // Off-screen reprojections and the first frame after a >250 ms gap (map
   // switch, AO re-enable, resize) take the current frame verbatim.
   // Integration: GTAOPass.OUTPUT.Off runs G-buffer + AO + denoise and skips
   // composition, so the wrapper below lets the stock pass do all the work,
   // reprojects pdRenderTarget into a ping-pong history, then reproduces the
   // two-step Default composition (copy + multiply-blend) fed by the history.
-  const AO_TAA_K = 0.15;
   {
     if (GTAOPass.OUTPUT.Off !== -1 || GTAOPass.OUTPUT.Default !== 0) {
       throw new Error('post.js: GTAOPass.OUTPUT enum changed — re-verify the ao-boil r3 render wrapper');
@@ -1685,7 +1695,7 @@ export function createPost(renderer, scene, camera) {
         uPrevViewProj: { value: new THREE.Matrix4() },
         uTexel: { value: new THREE.Vector2(1 / 512, 1 / 512) },
         uSeed: { value: 1 },
-        uBlendK: { value: AO_TAA_K },
+        uBlendK: { value: TEMPORAL_AO_CURRENT_WEIGHT },
       },
       vertexShader: 'varying vec2 vUv;\nvoid main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
       fragmentShader: `
@@ -1712,6 +1722,11 @@ export function createPost(renderer, scene, camera) {
           vec3 mn = min(now.rgb, min(min(n1, n2), min(n3, n4)));
           vec3 mx = max(now.rgb, max(max(n1, n2), max(n3, n4)));
           vec3 hist = clamp(texture2D(tPrev, prevUv).rgb, mn, mx);
+          // Responsive AO resolve: preserve bright history to reject a
+          // transient dark sample, but release stale darkness immediately on
+          // disocclusion. A symmetric history blend is what made tree/contact
+          // shadows pulse dark-light-dark during camera motion.
+          hist = max(hist, now.rgb - vec3(${TEMPORAL_AO_DARK_RELEASE_SLACK.toFixed(3)}));
           float k = (off || uSeed > 0.5) ? 1.0 : uBlendK;
           gl_FragColor = vec4(mix(hist, now.rgb, k), 1.0);
         }`,
@@ -1779,7 +1794,7 @@ export function createPost(renderer, scene, camera) {
       // moving. Once the camera is still, the current AO is deterministic;
       // resolve it immediately instead of letting old darkness crawl/fade for
       // several more frames after the player stops looking around.
-      emaMat.uniforms.uBlendK.value = cameraMoved ? AO_TAA_K : 1.0;
+      emaMat.uniforms.uBlendK.value = cameraMoved ? TEMPORAL_AO_CURRENT_WEIGHT : 1.0;
       this._renderPass(renderer2, emaMat, emaCur, 0xffffff, 1.0);
       // this frame's view-projection becomes next frame's reprojection source
       prevViewProj.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);

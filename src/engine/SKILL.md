@@ -18,7 +18,9 @@ hidden-pane recovery, and visible Garage clock sleep; `garageFramePacer.ts`
 suppresses redundant settled Garage frames while keeping interaction at display
 cadence; `lighting.js` reuses proven static Garage depth maps until explicit
 presentation invalidation, then forces a complete refresh before motion;
-`post.js` and `sky.js` build the frame; `renderLayers.ts` owns
+`shadowStability.ts` owns texel snapping and cascade-scaled receiver bias;
+`post.js` and `sky.js` build the frame, while `temporalAoPolicy.ts` owns the
+asymmetric stale-dark release used by temporal GTAO; `renderLayers.ts` owns
 presentation/shadow-only routing for authored proxy casters;
 `phaseSceneResidency.ts` detaches mutually exclusive Garage and battlefield
 roots while retaining their exact reusable objects;
@@ -44,11 +46,17 @@ Do not dispose inactive-phase materials merely to lower the live program count:
 returning can create a larger cache of light-count variants and a visible
 compile spike. Gate programs, buffers, textures, heap, objects, calls and
 triangles independently with `npm run perf:resources:gate`.
+Keep each rate-capped far-cascade projection paired with the depth map rendered
+from that pose. Do not move its light fit on an unscheduled frame. Shadow visual
+changes must pass both the raw CSM motion comparison and composed temporal-AO
+motion gate in `tools/render-stability-audit.mjs`.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
 Capture baseline boot/frame probes on the target tier, change one cost center,
-then compare both visual evidence and worst-frame metrics.
+then compare both visual evidence and worst-frame metrics. For a shadow flash,
+first force all CSM cascades to distinguish raw shadow-map cadence from the
+GTAO/post composition before changing quality or refresh policy.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

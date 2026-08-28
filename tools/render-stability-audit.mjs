@@ -49,6 +49,16 @@ for (const preset of presets) {
     await window.__SHOTS.set('battlefield');
     D.post.pinDynScale(1);
     await new Promise((resolve) => setTimeout(resolve, 700));
+    // Marketing-shot staging deliberately freezes completed shadow maps. This
+    // audit exercises moving gameplay, so release that presentation-only latch
+    // before checking live cascade cadence.
+    D.lighting.setStaticPresentationDormant(false);
+    // Releasing a dormant presentation intentionally spends two covered force
+    // frames before normal scheduling resumes. Shot mode is event-driven and
+    // may not present those frames by itself, so advance the scheduler here.
+    D.lighting.update(false);
+    D.lighting.update(false);
+    D.lighting.update(false);
 
     // Regression for the live-only shadow flash: the old adaptive trim path
     // switched both near cascades to half/third-rate manual updates. Static
@@ -165,24 +175,41 @@ for (const preset of presets) {
     let motionVisiblyChangedSamples = 0;
     let motionMaxVisiblyChangedSamplesPerFrame = 0;
     let motionMaxRgbDelta = 0;
+    const motionSchedule = [];
     motionOffsets.forEach((offset, frame) => {
       const actual = directCapture(offset, false);
+      const shadowState = D.lighting.getShadowTelemetry();
+      const motionFrameState = {
+        offset,
+        scheduledMask: shadowState.scheduledMask,
+        fitChangedMask: shadowState.fitChangedMask,
+        visiblyChangedSamples: 0,
+        maxRgbDelta: 0,
+      };
+      motionSchedule.push(motionFrameState);
       const expected = directReference[frame];
       let visiblyChangedThisFrame = 0;
       for (let i = 0; i < actual.length; i += 4) {
         const delta = Math.abs(actual[i] - expected[i])
           + Math.abs(actual[i + 1] - expected[i + 1])
           + Math.abs(actual[i + 2] - expected[i + 2]);
-        if (delta > 0) motionChangedSamples++;
+        // Frame zero is the explicit reset/prime at an unchanged camera pose.
+        // Ultra's 4096² depth targets can produce a handful of edge-raster
+        // differences when rerendered twice, but that is not a motion-cadence
+        // defect and the frozen-frame contract below owns static stability.
+        const isMotionFrame = frame > 0;
+        if (delta > 0 && isMotionFrame) motionChangedSamples++;
         // A summed delta of 1-3 is one 8-bit rounding step per channel, not
         // a visible refresh. Preserve it in telemetry, but gate the phase
         // jump that caused the reported flash (measured at 62-79 RGB).
-        if (delta > 3) {
+        if (delta > 3 && isMotionFrame) {
           motionVisiblyChangedSamples++;
           visiblyChangedThisFrame++;
         }
-        if (delta > motionMaxRgbDelta) motionMaxRgbDelta = delta;
+        if (isMotionFrame && delta > motionMaxRgbDelta) motionMaxRgbDelta = delta;
+        if (delta > motionFrameState.maxRgbDelta) motionFrameState.maxRgbDelta = delta;
       }
+      motionFrameState.visiblyChangedSamples = visiblyChangedThisFrame;
       motionMaxVisiblyChangedSamplesPerFrame = Math.max(
         motionMaxVisiblyChangedSamplesPerFrame, visiblyChangedThisFrame);
     });
@@ -194,6 +221,86 @@ for (const preset of presets) {
       savedScissor.x, savedScissor.y, savedScissor.z, savedScissor.w);
     D.renderer.setScissorTest(savedScissorTest);
     D.renderer.autoClear = savedAutoClear;
+
+    // Raw CSM stability is only half of the final image. High uses half-res
+    // GTAO with temporal reprojection, and stale dark history used to trail
+    // camera motion around overlapping trees/structures even while the shadow
+    // maps themselves were byte-stable. Compare the ordinary temporally
+    // composed output against current-frame AO with every CSM cascade forced
+    // current. A healthy resolver may retain brighter history to suppress a
+    // transient dark pulse, but must not leave a visibly darker trail on a
+    // newly exposed surface. High is the default desktop path and therefore
+    // owns this full-resolution release gate; the scalar policy has a focused
+    // unit test and the remaining presets retain the raw/frozen CSM contracts.
+    const auditTemporalAo = ${JSON.stringify(preset === 'high')};
+    let aoTemporalComparedSamples = 0;
+    let aoTemporalVisibleSamples = 0;
+    let aoTemporalDarkerSamples = 0;
+    let aoTemporalStrongDarkSamples = 0;
+    let aoTemporalMaxStrongDarkSamplesPerFrame = 0;
+    let aoTemporalMaxRgbDelta = 0;
+    let aoTemporalRgbDeltaSum = 0;
+    if (auditTemporalAo) {
+      const aoGl = D.renderer.getContext();
+      const aoWidth = aoGl.drawingBufferWidth;
+      const aoHeight = aoGl.drawingBufferHeight;
+      const aoBytes = aoWidth * aoHeight * 4;
+      const aoOffsets = [0, 0.6, 1.2, 1.8, 2.4, 3.0, 3.6, 4.2, 4.8, 5.4];
+      const aoPos = basePos.clone();
+      const aoLook = baseLook.clone();
+      const aoDelta = right.clone();
+      const savedAoEmaOff = window.__AO_EMA_OFF;
+      const setAoPose = (offset) => {
+        aoDelta.copy(right).multiplyScalar(offset);
+        aoPos.copy(basePos).add(aoDelta);
+        aoLook.copy(baseLook).add(aoDelta);
+        D.rig.setExternalPose(aoPos, aoLook, camera.fov);
+        camera.updateMatrixWorld(true);
+        D.lighting.update(true);
+      };
+      const captureAo = () => {
+        D.post.render(1 / 60);
+        const pixels = new Uint8Array(aoBytes);
+        aoGl.readPixels(
+          0, 0, aoWidth, aoHeight,
+          aoGl.RGBA, aoGl.UNSIGNED_BYTE, pixels);
+        return pixels;
+      };
+
+      window.__AO_EMA_OFF = false;
+      setAoPose(0);
+      for (let frame = 0; frame < 8; frame++) captureAo();
+      for (let frame = 1; frame < aoOffsets.length; frame++) {
+        setAoPose(aoOffsets[frame]);
+        window.__AO_EMA_OFF = true;
+        const current = captureAo();
+        window.__AO_EMA_OFF = false;
+        const temporal = captureAo();
+        let strongDarkThisFrame = 0;
+        // Quarter-density readback analysis keeps the audit cheap while still
+        // sampling hundreds of thousands of pixels over the camera sweep.
+        for (let i = 0; i < aoBytes; i += 16) {
+          const signed = (temporal[i] - current[i])
+            + (temporal[i + 1] - current[i + 1])
+            + (temporal[i + 2] - current[i + 2]);
+          const delta = Math.abs(temporal[i] - current[i])
+            + Math.abs(temporal[i + 1] - current[i + 1])
+            + Math.abs(temporal[i + 2] - current[i + 2]);
+          aoTemporalComparedSamples++;
+          aoTemporalRgbDeltaSum += delta;
+          if (delta > 6) aoTemporalVisibleSamples++;
+          if (signed < -6) aoTemporalDarkerSamples++;
+          if (signed < -24) {
+            aoTemporalStrongDarkSamples++;
+            strongDarkThisFrame++;
+          }
+          aoTemporalMaxRgbDelta = Math.max(aoTemporalMaxRgbDelta, delta);
+        }
+        aoTemporalMaxStrongDarkSamplesPerFrame = Math.max(
+          aoTemporalMaxStrongDarkSamplesPerFrame, strongDarkThisFrame);
+      }
+      window.__AO_EMA_OFF = savedAoEmaOff;
+    }
 
     D.rig.setExternalPose(basePos, baseLook, camera.fov);
     camera.updateMatrixWorld(true);
@@ -312,6 +419,15 @@ for (const preset of presets) {
       motionVisiblyChangedSamples,
       motionMaxVisiblyChangedSamplesPerFrame,
       motionMaxRgbDelta,
+      motionSchedule,
+      aoTemporalComparedSamples,
+      aoTemporalVisibleSamples,
+      aoTemporalDarkerSamples,
+      aoTemporalStrongDarkSamples,
+      aoTemporalMaxStrongDarkSamplesPerFrame,
+      aoTemporalMaxRgbDelta,
+      aoTemporalMeanRgbDelta: aoTemporalRgbDeltaSum
+        / Math.max(1, aoTemporalComparedSamples),
       trimShadowThrottle: trimTelemetry.shadows.throttle,
       trimmedNearAutoUpdate,
       lods,
@@ -356,6 +472,20 @@ for (const preset of presets) {
       + `(max RGB delta ${result.motionMaxRgbDelta})`,
     );
   }
+  // Baseline before the responsive release was 8,149 strongly over-darkened
+  // samples / 1,661,760 compared (0.49%). The release policy targets zero.
+  // Gate at 0.2%: this remains well below the reproduced failure while allowing
+  // the two independently rendered GTAO samples to differ at thin raster edges
+  // after a live Ultra -> High sampling/resolution transition.
+  const aoStrongDarkRatio = result.aoTemporalStrongDarkSamples
+    / Math.max(1, result.aoTemporalComparedSamples);
+  if (result.aoTemporalComparedSamples > 0 && aoStrongDarkRatio > 0.002) {
+    reasons.push(
+      `${result.aoTemporalStrongDarkSamples} strongly over-darkened temporal AO samples `
+      + `(${(aoStrongDarkRatio * 100).toFixed(3)}%, max frame `
+      + `${result.aoTemporalMaxStrongDarkSamplesPerFrame})`,
+    );
+  }
   if (result.trimShadowThrottle !== 0) {
     reasons.push(`adaptive trim enabled shadow throttle ${result.trimShadowThrottle}`);
   }
@@ -374,6 +504,12 @@ for (const preset of presets) {
     if (!cascade.allocated || cascade.allocatedSize !== cascade.size) {
       reasons.push(`cascade ${index} allocation mismatch`);
     }
+    if (cascade.normalBias < 0.045 - 1e-9 || cascade.normalBias > 0.28 + 1e-9) {
+      reasons.push(`cascade ${index} normal bias ${cascade.normalBias} is outside its bound`);
+    }
+    if (index > 0 && cascade.normalBias + 1e-9 < result.cascades[index - 1].normalBias) {
+      reasons.push(`cascade ${index} normal bias regressed with distance`);
+    }
   });
   if (reasons.length) failures.push({ preset, reasons });
   console.log(
@@ -381,6 +517,9 @@ for (const preset of presets) {
     + `align=${result.maxAlignmentError.toExponential(1)} `
     + `step=${result.maxStepError.toExponential(1)} `
     + `crossings=${result.transitions} lods=${result.lods} `
+    + (result.aoTemporalComparedSamples > 0
+      ? `aoDark=${result.aoTemporalStrongDarkSamples} `
+      : '')
     + `calls=${result.renderer.calls} tris=${Math.round(result.renderer.triangles / 1000)}k`,
   );
 }
@@ -603,7 +742,7 @@ console.log(
 
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify({
-  version: 5,
+  version: 6,
   capturedAt: new Date().toISOString(),
   deviceTier,
   failures,

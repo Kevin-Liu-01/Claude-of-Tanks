@@ -36,6 +36,9 @@ assert.match(lightingSource,
 assert.match(lightingSource,
   /setStaticPresentationDormant\(on\)[\s\S]{0,700}else forceRateCappedCascades\(\)/,
   'releasing static dormancy must force a complete cascade refresh');
+assert.match(lightingSource,
+  /applyStableCascadePoses\(csm, continuousCascadeMask \| lastScheduledMask\)/,
+  'a far-cascade fit must move only with the depth-map frame that owns it');
 
 function sample(hz, seconds = 2, cascades = 4) {
   const scheduler = createShadowRefreshScheduler(cascades);
