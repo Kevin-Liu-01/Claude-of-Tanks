@@ -121,7 +121,7 @@ published 2.14 p95-sovereign — resident-class cap).
 
 ## Wiring checklist (§5.287 — every consumer named)
 
-- `src/vehicles/sweden.js` — SWEDEN_IDS + SWEDEN_SPECS.strv103a
+- `src/vehicles/sweden.ts` — SWEDEN_IDS + SWEDEN_SPECS.strv103a
   (variant of strv103; class td; stats 1000 hp / 540 hp / 37.0 t /
   45 km/h; same L74 shells/reload; dims per published A)
 - `src/vehicles/profiles/sweden.js` — buildStrv103A + SWEDEN_PROFILES row

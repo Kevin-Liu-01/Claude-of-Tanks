@@ -28,7 +28,7 @@ import './userdrops5.js';
 import './userdrops6.js';
 import './ukraine.ts';
 import './china.ts';
-import './sweden.js';
+import './sweden.ts';
 import './poland.ts';
 import './korea.ts';
 import './japan.ts';

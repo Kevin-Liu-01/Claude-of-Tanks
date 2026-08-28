@@ -18,7 +18,7 @@ extract auto-flip read flip:true; carried in the row per the ztz99a2
 convention so every harness agrees — fidelity/critic/evaluator maps +
 vertex REG).
 
-## Dims true-up (spec change in src/vehicles/sweden.js)
+## Dims true-up (spec change in src/vehicles/sweden.ts)
 `hullLengthM 7.82 -> 7.56`. 7.82 was a donor-clone registration error: the
 committed centurion3 family value is 7.56 (same chassis) and the print's own
 hull mask reads 7.565. Overall 9.85 / width 3.39 / height 3.01 stay the
