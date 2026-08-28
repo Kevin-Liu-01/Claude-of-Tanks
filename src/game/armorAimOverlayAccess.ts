@@ -1,11 +1,10 @@
-export interface ArmorAimOverlayRuntime {
-  prime(target: unknown): unknown;
-  warm(): () => void;
-  update(options: unknown): void;
-  hide(): void;
-  clear(): void;
-  dispose(): void;
-}
+import type { ArmorAimOverlayRuntime } from './armorAimOverlay.ts';
+
+export type {
+  ArmorAimOverlayRuntime,
+  ArmorOverlayModel,
+  ArmorOverlayTarget,
+} from './armorAimOverlay.ts';
 
 interface ArmorAimOverlayModule {
   createArmorAimOverlay(): ArmorAimOverlayRuntime;
@@ -18,7 +17,7 @@ export interface ArmorAimOverlayAccess extends ArmorAimOverlayRuntime {
 }
 
 const loadDefaultOverlay = async (): Promise<ArmorAimOverlayModule> =>
-  await import('./armorAimOverlay.js') as unknown as ArmorAimOverlayModule;
+  await import('./armorAimOverlay.ts') as ArmorAimOverlayModule;
 
 /**
  * Retryable battle-only owner for the exact plate flashlight. The overlay is

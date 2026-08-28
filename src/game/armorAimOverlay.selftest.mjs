@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createArmorAimOverlay } from './armorAimOverlay.js';
+import { createArmorAimOverlay } from './armorAimOverlay.ts';
 
 const plate = {
   name: 'test_glacis', kind: 'main', physicalMm: 50, keMm: 50, ceMm: 50,

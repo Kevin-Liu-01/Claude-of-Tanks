@@ -37,6 +37,7 @@ allocation-free center-mass sample consumed by the camera input;
 `sniperFillRuntime.ts` owns the retained shadow-free close-cover scope light;
 `combatFeedbackRuntime.ts` owns discrete ERA, hit-confirm, camera-recoil,
 prop-destruction, and Garage-residency reactions on the shared event bus;
+`armorAimOverlay.ts` owns the typed, bounded scoped plate-penetration overlay;
 `battleFrameRuntime.ts` owns pause edges, retained input sampling, network
 cadence, pre-battle hold, fixed-step debt, result progression, and rendered
 pose interpolation;

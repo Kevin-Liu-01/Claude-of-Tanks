@@ -11,7 +11,9 @@ the input layer.
 ## Decision
 
 `armorAimOverlayAccess.ts` is the retryable owner for the scoped armor
-inspection runtime.
+inspection runtime. `armorAimOverlay.ts` is its strict implementation contract
+for target anatomy, articulated frame meshes, retained color buffers, and the
+bounded update transaction.
 
 - Battle intent starts the module transfer.
 - Covered battle entry awaits acquisition before any roster visual is primed.

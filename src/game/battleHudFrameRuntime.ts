@@ -1,16 +1,19 @@
-import { PerspectiveCamera, Vector3 } from 'three';
+import { Object3D, PerspectiveCamera, Vector3 } from 'three';
 
 import type { AimController, AimFrame } from './aimController.ts';
-import type { ArmorAimOverlayRuntime } from './armorAimOverlayAccess.ts';
+import type {
+  ArmorAimOverlayRuntime,
+  ArmorOverlayModel,
+  ArmorOverlayTarget,
+} from './armorAimOverlay.ts';
 import type { GameState } from './stateCore.ts';
 
-interface HudTankEntity {
-  id: string;
+interface HudTankEntity extends ArmorOverlayTarget {
   team: string;
-  state?: unknown;
-  combat?: { destroyed?: boolean; shellSlot?: number } | null;
-  visual?: { root?: { visible?: boolean } | null } | null;
+  combat?: { destroyed?: boolean; shellSlot?: number; eraSpent?: Set<string> } | null;
+  visual?: { root: Object3D };
   spec?: {
+    armor?: ArmorOverlayModel;
     gun?: { shells?: unknown[] };
   };
 }

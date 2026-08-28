@@ -23,7 +23,87 @@ const _world = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 const _pose = { pos: new THREE.Vector3() };
 
-function penetrationColor(ratio, out) {
+interface ArmorOverlayFace {
+  indices: readonly number[];
+  normal: readonly number[];
+  center: number[];
+  internal?: boolean;
+}
+
+interface ArmorOverlayCell {
+  vertices: readonly (readonly number[])[];
+  faces?: readonly ArmorOverlayFace[];
+}
+
+export interface ArmorOverlayModel {
+  collisionShells?: {
+    hull?: readonly ArmorOverlayCell[];
+    turret?: readonly ArmorOverlayCell[];
+  };
+  [key: string]: unknown;
+}
+
+interface ArmorOverlayVisual {
+  root: THREE.Object3D;
+}
+
+export interface ArmorOverlayTarget {
+  id: string;
+  state?: unknown;
+  combat?: {
+    destroyed?: boolean;
+    eraSpent?: Set<string>;
+  } | null;
+  visual?: ArmorOverlayVisual;
+  spec?: { armor?: ArmorOverlayModel };
+}
+
+interface ArmorOverlaySample {
+  center: number[];
+  offset: number;
+}
+
+export interface ArmorOverlayFrame {
+  owner: THREE.Object3D;
+  mesh: THREE.Mesh;
+  geometry: THREE.BufferGeometry;
+  color: THREE.Float32BufferAttribute;
+  samples: ArmorOverlaySample[];
+}
+
+export interface ArmorOverlayEntry {
+  target: ArmorOverlayTarget;
+  group: THREE.Group;
+  frames: ArmorOverlayFrame[];
+  visible: boolean;
+  inScope: boolean;
+  sampling: boolean;
+  sampleFrameIndex: number;
+  samplePointIndex: number;
+  nextSampleMs: number;
+  lastShellSpec: unknown;
+}
+
+export interface ArmorAimOverlayUpdateOptions {
+  enabled: boolean;
+  scoped: boolean;
+  targets?: readonly ArmorOverlayTarget[];
+  target?: ArmorOverlayTarget | null;
+  shellSpec?: unknown;
+  muzzle?: THREE.Vector3 | null;
+  nowMs?: number;
+}
+
+export interface ArmorAimOverlayRuntime {
+  prime(target: ArmorOverlayTarget | null | undefined): ArmorOverlayEntry | null;
+  warm(): () => void;
+  update(options: ArmorAimOverlayUpdateOptions): void;
+  hide(): void;
+  clear(): void;
+  dispose(): void;
+}
+
+function penetrationColor(ratio: number, out: THREE.Color): THREE.Color {
   if (!Number.isFinite(ratio)) return out.copy(NEUTRAL);
   if (ratio <= 0.72) return out.copy(LOW);
   if (ratio < 1) return out.copy(LOW).lerp(MID, (ratio - 0.72) / 0.28);
@@ -31,15 +111,22 @@ function penetrationColor(ratio, out) {
   return out.copy(HIGH);
 }
 
-function ownerForFrame(visual, turretLocal) {
+function ownerForFrame(
+  visual: ArmorOverlayVisual | undefined,
+  turretLocal: boolean,
+): THREE.Object3D | null {
   if (!visual?.root) return null;
   return visual.root.getObjectByName(turretLocal ? 'rig_turret' : 'rig_hull') || visual.root;
 }
 
-function buildFrameGeometry(cells) {
-  const positions = [];
-  const colors = [];
-  const samples = [];
+function buildFrameGeometry(cells: readonly ArmorOverlayCell[] | undefined): {
+  geometry: THREE.BufferGeometry;
+  color: THREE.Float32BufferAttribute;
+  samples: ArmorOverlaySample[];
+} | null {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const samples: ArmorOverlaySample[] = [];
   for (const cell of cells || []) {
     for (const face of cell.faces || []) {
       if (face.internal) continue;
@@ -72,7 +159,11 @@ function buildFrameGeometry(cells) {
   return { geometry, color, samples };
 }
 
-function paintSample(attribute, offset, color) {
+function paintSample(
+  attribute: THREE.Float32BufferAttribute,
+  offset: number,
+  color: THREE.Color,
+): void {
   for (let vertex = 0; vertex < 3; vertex++) {
     attribute.setXYZ(offset + vertex, color.r, color.g, color.b);
   }
@@ -81,8 +172,8 @@ function paintSample(attribute, offset, color) {
 /**
  * @returns {{prime:Function,warm:Function,update:Function,hide:Function,clear:Function,dispose:Function}}
  */
-export function createArmorAimOverlay() {
-  const entries = new Map();
+export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
+  const entries = new Map<string, ArmorOverlayEntry>();
   const material = new THREE.MeshBasicMaterial({
     vertexColors: true,
     transparent: true,
@@ -96,17 +187,20 @@ export function createArmorAimOverlay() {
     polygonOffsetUnits: -4,
   });
   material.name = 'cot:scoped-armor-flashlight';
-  const visibleEntries = [];
+  const visibleEntries: ArmorOverlayEntry[] = [];
   let sampleCursor = 0;
 
-  function prime(target) {
-    if (!target?.id || !target.visual?.root || entries.has(target.id)) return entries.get(target?.id) || null;
+  function prime(target: ArmorOverlayTarget | null | undefined): ArmorOverlayEntry | null {
+    if (!target?.id || !target.visual?.root) return null;
+    const existing = entries.get(target.id);
+    if (existing) return existing;
     const group = new THREE.Group();
     group.name = `armor_flashlight_${target.id}`;
     group.visible = false;
     group.renderOrder = 92;
-    const frames = [];
-    for (const [key, turretLocal] of [['hull', false], ['turret', true]]) {
+    const frames: ArmorOverlayFrame[] = [];
+    const frameKinds = [['hull', false], ['turret', true]] as const;
+    for (const [key, turretLocal] of frameKinds) {
       const cells = target.spec?.armor?.collisionShells?.[key] || [];
       const built = buildFrameGeometry(cells);
       const owner = ownerForFrame(target.visual, turretLocal);
@@ -138,8 +232,8 @@ export function createArmorAimOverlay() {
     return entry;
   }
 
-  function warm() {
-    const warmed = [];
+  function warm(): () => void {
+    const warmed: THREE.Mesh[] = [];
     for (const entry of entries.values()) {
       for (const frame of entry.frames) {
         if (frame.mesh.visible) continue;
@@ -152,13 +246,13 @@ export function createArmorAimOverlay() {
     };
   }
 
-  function setVisible(entry, visible) {
+  function setVisible(entry: ArmorOverlayEntry | null, visible: boolean): void {
     if (!entry || entry.visible === visible) return;
     entry.visible = visible;
     for (const frame of entry.frames) frame.mesh.visible = visible;
   }
 
-  function hide() {
+  function hide(): void {
     if (!visibleEntries.length) return;
     for (const entry of entries.values()) {
       setVisible(entry, false);
@@ -168,10 +262,14 @@ export function createArmorAimOverlay() {
     visibleEntries.length = 0;
   }
 
-  function sampleBatch(entry, shellSpec, muzzle) {
+  function sampleBatch(
+    entry: ArmorOverlayEntry,
+    shellSpec: unknown,
+    muzzle: THREE.Vector3 | null | undefined,
+  ): boolean {
     const target = entry.target;
-    if (!target?.state || !target?.combat || !shellSpec || !muzzle) return true;
-    const armor = target.spec.armor;
+    const armor = target.spec?.armor;
+    if (!target?.state || !target?.combat || !armor || !shellSpec || !muzzle) return true;
     const pose = tankPoseFromState(target.state, _pose);
     let remaining = SAMPLE_BATCH_SIZE;
     while (entry.sampleFrameIndex < entry.frames.length && remaining > 0) {
@@ -204,7 +302,7 @@ export function createArmorAimOverlay() {
     return entry.sampleFrameIndex >= entry.frames.length;
   }
 
-  function addScopedTarget(candidate) {
+  function addScopedTarget(candidate: ArmorOverlayTarget | null | undefined): void {
     if (!candidate || candidate.combat?.destroyed || !candidate.visual?.root?.visible) return;
     const entry = prime(candidate);
     if (!entry?.frames.length) return;
@@ -217,7 +315,15 @@ export function createArmorAimOverlay() {
     visibleEntries.push(entry);
   }
 
-  function update({ enabled, scoped, targets, target, shellSpec, muzzle, nowMs }) {
+  function update({
+    enabled,
+    scoped,
+    targets,
+    target,
+    shellSpec,
+    muzzle,
+    nowMs,
+  }: ArmorAimOverlayUpdateOptions): void {
     if (!enabled || !scoped) {
       hide();
       return;
@@ -238,7 +344,7 @@ export function createArmorAimOverlay() {
     }
     if (!visibleEntries.length) return;
 
-    const sampleNowMs = Number.isFinite(nowMs) ? nowMs : 0;
+    const sampleNowMs = typeof nowMs === 'number' && Number.isFinite(nowMs) ? nowMs : 0;
     for (const entry of visibleEntries) {
       if (entry.lastShellSpec !== shellSpec) {
         entry.lastShellSpec = shellSpec;
@@ -268,7 +374,7 @@ export function createArmorAimOverlay() {
     }
   }
 
-  function clear() {
+  function clear(): void {
     hide();
     for (const entry of entries.values()) {
       for (const frame of entry.frames) {
@@ -281,7 +387,7 @@ export function createArmorAimOverlay() {
     sampleCursor = 0;
   }
 
-  function dispose() {
+  function dispose(): void {
     clear();
     material.dispose();
   }

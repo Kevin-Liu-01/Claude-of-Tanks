@@ -131,7 +131,7 @@ spotting (spotting.js).
 
 ## Presentation contracts
 
-- Scoped armor flashlight (`game/armorAimOverlay.js`): default-on, optional in
+- Scoped armor flashlight (`game/armorAimOverlay.ts`): default-on, optional in
   Gameplay → Interface, and visible only in the gunner scope on an already
   spotted live target. It renders the same closed collision faces used by
   combat and colors them continuously red → amber → green by the selected
