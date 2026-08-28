@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { isKillcamGhostSurface } from './killcamGhostPolicy.js';
+import { isKillcamGhostSurface } from './killcamGhostPolicy.ts';
 
 const mesh = (material, userData = {}) => ({ isMesh: true, material, userData });
 

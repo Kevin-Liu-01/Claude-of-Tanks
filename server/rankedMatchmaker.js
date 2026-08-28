@@ -1,6 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { sanitizeLoadout } from '../src/game/equipment.js';
-import { isGarageVisibleTankId } from '../src/game/matchmaking.js';
+import { isGarageVisibleTankId } from '../src/game/matchmaking.ts';
 import { getSpec } from '../src/vehicles/specs.js';
 import { RANDOM_BATTLE_MAP_IDS } from '../src/world/maps/index.js';
 import { uniquePlayerName } from '../src/net/playerNames.ts';

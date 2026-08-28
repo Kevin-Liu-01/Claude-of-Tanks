@@ -1,20 +1,35 @@
-import { Vector3 } from 'three';
+import { Vector3, type Camera } from 'three';
+
+export interface MobileAutoAimEntity {
+  team?: unknown;
+  state: { pos: Vector3 };
+  spec: { dims: { heightM: number } };
+  combat: { destroyed?: boolean };
+}
 
 const _center = new Vector3();
 const _ndc = new Vector3();
 
 /** Center-mass point used by both acquisition and the live lock. */
-export function mobileAutoAimCenter(entity, out) {
+export function mobileAutoAimCenter(
+  entity: MobileAutoAimEntity,
+  out: Vector3,
+): Vector3 {
   out.copy(entity.state.pos);
   out.y += entity.spec.dims.heightM * 0.5;
   return out;
 }
 
 /** Pick the closest-to-reticle visible enemy inside a generous lock window. */
-export function pickMobileAutoAimTarget(tanks, player, camera, isVisible = () => true) {
+export function pickMobileAutoAimTarget<T extends MobileAutoAimEntity>(
+  tanks: readonly T[] | null | undefined,
+  player: T | null | undefined,
+  camera: Camera | null | undefined,
+  isVisible: (entity: T) => boolean = () => true,
+): T | null {
   if (!player || !camera || !Array.isArray(tanks)) return null;
   camera.updateMatrixWorld(true);
-  let best = null;
+  let best: T | null = null;
   let bestScore = Infinity;
   for (const ent of tanks) {
     if (!ent || ent === player || ent.team === player.team || !ent.state || !ent.spec ||

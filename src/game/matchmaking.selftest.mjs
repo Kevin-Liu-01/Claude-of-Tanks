@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   GARAGE_HIDDEN_TANK_IDS, isGarageVisibleTankId, rankMatchCandidates,
-} from './matchmaking.js';
+} from './matchmaking.ts';
 
 const tiers = { player: 8, peerA: 8, peerB: 9, far: 5, otherEra: 8, recon_tank: 8, q_heavy: 9 };
 const tierOf = (id) => tiers[id] ?? 6;

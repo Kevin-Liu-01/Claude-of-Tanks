@@ -1,5 +1,5 @@
 import { PerspectiveCamera, Vector3 } from 'three';
-import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './mobileAutoAim.js';
+import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './mobileAutoAim.ts';
 import { battleGeometryQuality } from './rosterState.ts';
 
 if (battleGeometryQuality(true, 'desktop') !== 'high') {

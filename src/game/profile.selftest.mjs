@@ -11,7 +11,7 @@ const {
   getPlayerRecord,
   installBattleRecords,
   recordBattleResult,
-} = await import('./profile.js');
+} = await import('./profile.ts');
 
 const handlers = new Map();
 const bus = {

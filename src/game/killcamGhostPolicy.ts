@@ -6,7 +6,20 @@
  * colorWrite disabled. Replacing those materials in the kill-cam exposes the
  * coarse hulls as giant translucent wedges around guns and roof fittings.
  */
-export function isKillcamGhostSurface(object) {
+interface GhostMaterial {
+  visible?: boolean;
+  colorWrite?: boolean;
+  transparent?: boolean;
+  opacity?: number;
+}
+
+interface GhostSurface {
+  isMesh?: boolean;
+  userData?: { authoredShadowProxy?: boolean };
+  material?: GhostMaterial | GhostMaterial[] | null;
+}
+
+export function isKillcamGhostSurface(object: GhostSurface | null | undefined): boolean {
   if (!object?.isMesh || object.userData?.authoredShadowProxy) return false;
   const materials = Array.isArray(object.material)
     ? object.material

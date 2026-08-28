@@ -15,7 +15,12 @@ import {
 // the vehicle registry so every carousel and battle path shares one source.
 export const GARAGE_HIDDEN_TANK_IDS = PRODUCTION_HIDDEN_TANK_IDS;
 
-export const isGarageVisibleTankId = (id) =>
+export interface MatchCandidate {
+  specId: string;
+  spec?: { era?: string | null } | null;
+}
+
+export const isGarageVisibleTankId = (id: unknown): id is string =>
   typeof id === 'string' && (DEV_FLEET_ACTIVE || !GARAGE_HIDDEN_TANK_IDS.has(id));
 
 /**
@@ -26,11 +31,16 @@ export const isGarageVisibleTankId = (id) =>
  * equally suitable candidates, so successive battles still feel varied.
  * Hidden/non-garage registry entries are removed before ranking.
  */
-export function rankMatchCandidates(candidates, player, tierOf) {
-  const playerEra = player && player.spec ? player.spec.era : null;
+export function rankMatchCandidates<T extends MatchCandidate>(
+  candidates: readonly (T | null | undefined)[] | null | undefined,
+  player: T,
+  tierOf: (specId: string) => number,
+): T[] {
+  const playerEra = player?.spec?.era ?? null;
   const playerTier = tierOf(player.specId);
   return (candidates || [])
-    .filter((ent) => ent && ent !== player && isGarageVisibleTankId(ent.specId))
+    .filter((ent): ent is T =>
+      !!ent && ent !== player && isGarageVisibleTankId(ent.specId))
     .map((ent, shuffleIndex) => ({
       ent,
       shuffleIndex,

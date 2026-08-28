@@ -36,10 +36,10 @@ import {
   compareCountryThenTierThenName, countryFilterGroups, defaultGarageMapId,
   horizontalRailState, horizontalRailWheelDelta,
 } from './garageOrder.ts';
-import { isGarageVisibleTankId } from '../game/matchmaking.js';
+import { isGarageVisibleTankId } from '../game/matchmaking.ts';
 import { tankTier, tierNumeral } from '../vehicles/tier.ts';
 import { vehicleEraLabel } from '../vehicles/taxonomy.js';
-import { getPlayerRecord } from '../game/profile.js';
+import { getPlayerRecord } from '../game/profile.ts';
 import { mountGitHubStars } from './githubStars.ts';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,

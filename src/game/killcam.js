@@ -79,7 +79,7 @@ import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.ts';
 import { getSpec } from '../vehicles/specs.js';
 import { iconUrl } from '../ui/icons.ts';
 import { tierNumeral } from '../ui/battleLoad.ts';
-import { isKillcamGhostSurface } from './killcamGhostPolicy.js';
+import { isKillcamGhostSurface } from './killcamGhostPolicy.ts';
 import {
   addInternalCrewModel,
   addInternalDrivetrainModel,

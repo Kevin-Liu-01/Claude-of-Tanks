@@ -3,7 +3,12 @@
  * warmup to spill into live controls. Network matches do not use this helper;
  * their authoritative countdown arrives in snapshots.
  */
-export function advancePreBattleCountdown(seconds, dtS, warmPending, holdAtS = 1) {
+export function advancePreBattleCountdown(
+  seconds: number,
+  dtS: number,
+  warmPending: boolean,
+  holdAtS = 1,
+): number {
   if (!Number.isFinite(seconds)) return seconds;
   if (seconds <= 0) return 0;
   const dt = Number.isFinite(dtS) ? Math.max(0, dtS) : 0;
@@ -17,8 +22,10 @@ export function advancePreBattleCountdown(seconds, dtS, warmPending, holdAtS = 1
  * while a slow first world build no longer pays the complete countdown again.
  */
 export function resolveVisiblePreBattleSeconds(
-  totalSeconds, loadingElapsedSeconds, minimumVisibleSeconds = 2,
-) {
+  totalSeconds: number,
+  loadingElapsedSeconds: number,
+  minimumVisibleSeconds = 2,
+): number {
   const total = Number.isFinite(totalSeconds) ? Math.max(0, totalSeconds) : 0;
   const elapsed = Number.isFinite(loadingElapsedSeconds)
     ? Math.max(0, loadingElapsedSeconds)

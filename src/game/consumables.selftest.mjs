@@ -1,7 +1,7 @@
 import {
   CONSUMABLE_READY_MARK, CONSUMABLE_RULES, cooldownRemaining,
   resetConsumableCooldowns, startConsumableCooldown,
-} from './consumables.js';
+} from './consumables.ts';
 
 const readyAt = [0, 0, 0];
 if (CONSUMABLE_READY_MARK !== '∞') throw new Error('ready marker must communicate infinite uses');

@@ -25,12 +25,12 @@ export {
   cooldownRemaining,
   resetConsumableCooldowns,
   startConsumableCooldown,
-} from './consumables.js';
-export { CONSUMABLE_RULES } from './consumables.js';
+} from './consumables.ts';
+export { CONSUMABLE_RULES } from './consumables.ts';
 export {
   advancePreBattleCountdown,
   resolveVisiblePreBattleSeconds,
-} from './preBattleCountdown.js';
+} from './preBattleCountdown.ts';
 export {
   advanceTankPresentationPose,
   createTankPresentationPose,
@@ -40,4 +40,4 @@ export {
 export {
   mobileAutoAimCenter,
   pickMobileAutoAimTarget,
-} from './mobileAutoAim.js';
+} from './mobileAutoAim.ts';

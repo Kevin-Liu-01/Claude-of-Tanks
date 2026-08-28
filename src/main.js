@@ -71,7 +71,7 @@ import {
 } from './vehicles/materials.js';
 import { createBattleHudAccess } from './ui/battleHudAccess.ts';
 import { createGarage } from './ui/garage.js';
-import { getLastBattleRecord, installBattleRecords } from './game/profile.js';
+import { getLastBattleRecord, installBattleRecords } from './game/profile.ts';
 import {
   createGarageStage, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
 } from './ui/garageStage.js';

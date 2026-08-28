@@ -17,7 +17,7 @@ import {
   TANK_PRESENTATION_ANCHORS,
   TANK_PRESENTATION_PROJECTIONS,
 } from './presentationAnchors.generated.js';
-import { isKillcamGhostSurface } from '../game/killcamGhostPolicy.js';
+import { isKillcamGhostSurface } from '../game/killcamGhostPolicy.ts';
 import { FIRST_PARTY_LICENSE } from '../authorship.js';
 
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9, 'release contract includes nine views/diagrams');

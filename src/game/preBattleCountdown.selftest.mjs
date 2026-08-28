@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {
   advancePreBattleCountdown,
   resolveVisiblePreBattleSeconds,
-} from './preBattleCountdown.js';
+} from './preBattleCountdown.ts';
 
 assert.equal(advancePreBattleCountdown(5, 0.25, false), 4.75);
 assert.equal(advancePreBattleCountdown(1.1, 0.25, true), 1);

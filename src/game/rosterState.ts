@@ -8,7 +8,7 @@ import { Vector3, type Object3D, type Scene } from 'three';
 import { getSpec, TANK_IDS, RUNTIME_TANK_IDS } from '../vehicles/specs.js';
 import { createTank } from '../vehicles/fleetFactory.js';
 import { tankTier } from '../vehicles/tier.ts';
-import { isGarageVisibleTankId, rankMatchCandidates } from './matchmaking.js';
+import { isGarageVisibleTankId, rankMatchCandidates } from './matchmaking.ts';
 import { getDeviceTier } from '../engine/quality.js';
 import { mulberry32 } from './stateCore.ts';
 
@@ -315,7 +315,7 @@ export function pickBattleParticipants(
   playerSpecId: string,
   randomize: boolean,
   battleOrdinal = game.battleCount,
-) {
+): RosterEntity[] {
   const player = game.tankById.get(playerSpecId);
   if (!player) throw new Error(`unknown battle vehicle: ${playerSpecId}`);
   const enemySlots = randomize ? 13 : 7;
@@ -329,7 +329,7 @@ export function pickBattleParticipants(
   if (Array.isArray(forced) && forced.length) {
     const list = forced
       .map((id) => game.tankById.get(id))
-      .filter((e) => e && e !== player);
+      .filter((entity): entity is RosterEntity => !!entity && entity !== player);
     // BATTLE-AI r7: random battles are 7v7 now — a pinned lineup shorter than
     // the slot count (perfprobe's 7-id worst case predates 7v7) TOPS UP from
     // the seeded shuffle so the perf gate measures a real 14-tank battle, not
@@ -368,7 +368,10 @@ export function pickBattleParticipants(
     others = rankMatchCandidates(others, player, tankTier);
   } else {
     // deterministic staged battle (boot, screenshot contract): core roster
-    others = TANK_IDS.filter((id) => id !== playerSpecId).map((id) => game.tankById.get(id));
+    others = TANK_IDS
+      .filter((id) => id !== playerSpecId)
+      .map((id) => game.tankById.get(id))
+      .filter((entity): entity is RosterEntity => !!entity);
   }
   return [player, ...others.slice(0, enemySlots)];
 }

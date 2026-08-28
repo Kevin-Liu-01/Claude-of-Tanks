@@ -205,7 +205,7 @@ import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import {
   CONSUMABLE_READY_MARK, CONSUMABLE_RULES, cooldownRemaining,
-} from '../game/consumables.js';
+} from '../game/consumables.ts';
 // Pre-rendered tank icons (tools/genIcons.mjs): side silhouettes drive the
 // kill feed + ambient nameplates. Minimap blips and team-panel rows use the
 // vector vehicle-silhouette/arrow language instead (WoT reads shape + heading, not

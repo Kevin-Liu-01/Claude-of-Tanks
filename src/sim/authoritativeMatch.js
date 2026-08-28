@@ -49,7 +49,7 @@ import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.js';
 import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.js';
 import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.js';
 import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.js';
-import { CONSUMABLE_RULES, cooldownRemaining } from '../game/consumables.js';
+import { CONSUMABLE_RULES, cooldownRemaining } from '../game/consumables.ts';
 import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
 import { decodeAimIntent } from '../net/aimIntent.ts';
 import {
