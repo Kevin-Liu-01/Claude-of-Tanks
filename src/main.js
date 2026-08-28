@@ -47,8 +47,6 @@ import { createBootLifecycle } from './engine/bootLifecycle.ts';
 import { createViewportRuntime } from './engine/viewportRuntime.ts';
 import { createFrameLoopScheduler } from './engine/frameLoopScheduler.ts';
 import { createGarageFramePacer } from './engine/garageFramePacer.ts';
-import { createPhaseSceneResidency } from './engine/phaseSceneResidency.ts';
-import { createRetainedPhaseGpuResidency } from './engine/phaseGpuResidency.ts';
 import { createForwardProgramWarmOwner } from './engine/programWarm.ts';
 import { warmGarageGpuPipeline } from './engine/garageGpuWarmRuntime.ts';
 import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
@@ -83,6 +81,7 @@ import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createGarageReturnRuntime } from './game/garageReturnRuntime.ts';
+import { createGaragePhasePresentationRuntime } from './game/garagePhasePresentationRuntime.ts';
 import { createBattleIntentRuntime } from './game/battleIntentRuntime.ts';
 import { createKillcamAccess } from './game/killcamAccess.ts';
 import { createPlayerBattleActions } from './game/playerBattleActions.ts';
@@ -347,8 +346,8 @@ worldRuntime = createWorldActivationRuntime({
     acquireBackgroundWork: (kind, stillValid) =>
       garageIdleWorkCoordinator.acquire(kind, stillValid),
   },
-  swapSceneWorld: (previous, next) => phaseSceneResidency.swapWorld(previous, next),
-  setSceneWorldActive: (root, active) => phaseSceneResidency.setWorldActive(root, active),
+  swapSceneWorld: (previous, next) => garagePhasePresentation.swapWorld(previous, next),
+  setSceneWorldActive: (root, active) => garagePhasePresentation.setWorldActive(root, active),
   ensureCloudTextures: () => sky.ensureCloudTextures(),
   ensureCloudTexturesChunked: sky.ensureCloudTexturesChunked
     ? (yieldFrame) => sky.ensureCloudTexturesChunked(yieldFrame)
@@ -360,7 +359,7 @@ worldRuntime = createWorldActivationRuntime({
   onFogDensityChanged: (density) => { baseFogDensity = density; },
   canCreateCollider: () => isSoloBattleRuntimeReady(),
   createCollider: (next) => createCollider(game, next),
-  placeGarage,
+  placeGarage: () => garagePhasePresentation.place(),
   isMinimapReady: () => !!hud,
   buildMinimap: (next, textured) => {
     if (!hud) return;
@@ -533,71 +532,32 @@ const perfHud = createPerfDiagnosticsAccess(async () => {
   return { hud: hudRuntime, telemetry };
 });
 if (typeof window !== 'undefined') window.__PERF_HUD = perfHud;
-// hud_ui r2: key 160 → 112, penumbra 0.45 → 0.6 — the warm key stacked with
-// the stage floods and clipped the turntable floor right of the tank to 255.
-// hud_ui r5 (+ tank_models r5 garage-key rolloff): 112 → 78 / 80 → 58 with
-// wider penumbras — the light pool under the turntable was a blown-out
-// uniform white disc with a hard rim; lower peak stops the clip to paper
-// white, wider penumbra turns the pool edge into a radial falloff.
-// camo_spotting r2: neutralize the warm key + cool fill — desert/winter camo
-// schemes rendered honey-gold/cream on the pedestal vs their in-battle tone.
-const spotA = new THREE.SpotLight(0xf2f0e8, 64, 60, 0.5, 0.85, 1.6);
-spotA.position.set(GARAGE_POS.x + 9, GARAGE_POS.y + 11, GARAGE_POS.z + 7);
-const spotB = new THREE.SpotLight(0xdce3ec, 48, 60, 0.6, 0.8, 1.6);
-spotB.position.set(GARAGE_POS.x - 10, GARAGE_POS.y + 8, GARAGE_POS.z - 6);
-const spotTarget = new THREE.Object3D();
-spotTarget.position.set(GARAGE_POS.x, GARAGE_POS.y + 1.2, GARAGE_POS.z);
-scene.add(spotTarget, spotA, spotB);
-spotA.target = spotTarget;
-spotB.target = spotTarget;
-const phaseSceneResidency = createPhaseSceneResidency({
+// One typed phase owner keeps the Garage's authored neutral lighting exact,
+// detaches its complete scene graph during battle, renews dressing GPU
+// residency under the return veil, and re-seats every stage root together.
+// Existing camera and pedestal owners remain the only pose solvers.
+const garagePhasePresentation = createGaragePhasePresentationRuntime({
   scene,
-  garageRoots: [garageStage.group, garageDressing.group, spotTarget, spotA, spotB],
-});
-const garageGpuResidency = createRetainedPhaseGpuResidency({
-  root: garageDressing.group,
-  preserveRoots: [scene],
-  // `warmRender` is created later in the composition sequence; defer lookup
-  // until Garage return instead of reading its lexical binding during boot.
+  stageRoot: garageStage.group,
+  dressingRoot: garageDressing.group,
+  garagePosition: GARAGE_POS,
+  lighting,
+  sunDirection: sky.sunDir,
+  getSkyConfig: () => {
+    const world = currentWorld();
+    return (world ? world.config.sky : getMapConfig(worldRuntime.pendingMapId).sky) || {};
+  },
+  getGroundHeight: (x, z) => hfProxy.getHeightAt(x, z),
+  getPhase: () => game.phase,
+  posePedestal: () => pedestal.poseCurrent(),
+  poseCamera: () => garageCameraPose(),
+  // Both bindings are initialized before either covered return can run.
   warmRender: () => warmRender(),
   nextFrame,
 });
-// PERF (performance_budget r4): the garage spots light NOTHING in battle (60 m
-// range, garage is 1500+ m from the battlefield) yet every battle draw paid
-// their per-material spot-light uniform uploads and per-fragment loop
-// (uniform3f measured 3.8 s of a 35 s battle profile). Hide them outside the
-// garage; both light-count shader variants are pre-compiled at boot so the
-// toggle never causes a mid-battle compile storm.
-function setGarageSpots(on) {
-  if (spotA.visible === on) return;
-  if (!on) lighting.setFarCascadeDormant(false);
-  // Garage and battle are mutually exclusive. Detach the complete hangar,
-  // workshop and light roots instead of merely hiding them: retained objects
-  // remount unchanged, while active battle scene/matrix/project walks cannot
-  // reach hundreds of off-map Garage descendants.
-  phaseSceneResidency.setGarageActive(on);
-  if (!on) garageGpuResidency.suspend();
-}
-
-// camo_spotting r2: the pedestal is keyed by the ACTIVE MAP's warm sun
-// (verdant 0xfff1dc @ 4.5) — desert paint read honey-gold and winter wash
-// cream on the turntable vs the same paint's in-battle tone. While the garage
-// screen is up the sun is re-keyed to near-neutral white and trimmed (at the
-// map's full 4.5 the hull sat at 0.85+ display luma, inside the post grade's
-// WARM highlight split-tone pole); battle entry / staged shots restore the
-// map's authored sun via the same setSun call.
-const GARAGE_SUN_COLOR = 0xf2f0ea;
-function setGarageSunTrim(on) {
-  // boot r8: the world is deferred, so fall back to the config of the map the
-  // garage is currently pointing at (identical to the old boot, which read
-  // verdant's config off the eagerly built world).
-  const world = currentWorld();
-  const skyCfg = (world ? world.config.sky : getMapConfig(worldRuntime.pendingMapId).sky) || {};
-  lighting.setSun(sky.sunDir, on
-    ? { ...skyCfg, sunColorHex: GARAGE_SUN_COLOR,
-        sunIntensity: (skyCfg.sunIntensity ?? 4.5) * 0.55 }
-    : skyCfg);
-}
+const setGarageSpots = garagePhasePresentation.setActive;
+const setGarageSunTrim = garagePhasePresentation.setSunTrim;
+const placeGarage = garagePhasePresentation.place;
 
 // The repair bays and component displays remain normal garage content, but
 // their complete visual stream is owned by a typed quiet-window scheduler.
@@ -755,18 +715,6 @@ function garageCameraPose() {
 }
 
 // --- MAP-CONFIG WIRING: map switching --------------------------------------
-// Re-seat the garage stage on the active map's edge terrain height.
-function placeGarage() {
-  GARAGE_POS.y = hfProxy.getHeightAt(GARAGE_POS.x, GARAGE_POS.z);
-  garageStage.group.position.copy(GARAGE_POS);
-  garageDressing.group.position.copy(GARAGE_POS); // dressing re-seats with the stage
-  spotA.position.set(GARAGE_POS.x + 9, GARAGE_POS.y + 11, GARAGE_POS.z + 7);
-  spotB.position.set(GARAGE_POS.x - 10, GARAGE_POS.y + 8, GARAGE_POS.z - 6);
-  spotTarget.position.set(GARAGE_POS.x, GARAGE_POS.y + 1.2, GARAGE_POS.z);
-  pedestal.poseCurrent();
-  if (game.phase === 'garage') garageCameraPose();
-}
-
 function buildWorldMinimap(next, textured = true) {
   worldRuntime.buildMinimap(next, textured);
 }
@@ -2193,7 +2141,7 @@ const garageReturn = createGarageReturnRuntime({
   },
   audio,
   transition,
-  resumeGarageGpu: () => garageGpuResidency.resume(),
+  resumeGarageGpu: () => garagePhasePresentation.resumeGpu(),
   isBattleEntryPending: () => battleEntryLifecycle.pending,
   publishTrace: (trace) => { window.__GARAGE_ENTRY = trace; },
 });
@@ -2865,8 +2813,8 @@ window.__DEBUG = {
   get battleVisualPool() { return battleVisualPool.stats(); },
   get garageFramePacer() { return { ...garageFramePacer.stats }; },
   get frameLoopScheduler() { return { ...frameLoop.stats }; },
-  get phaseSceneResidency() { return { ...phaseSceneResidency.stats }; },
-  get garageGpuResidency() { return garageGpuResidency.diagnostics(); },
+  get phaseSceneResidency() { return garagePhasePresentation.diagnostics().scene; },
+  get garageGpuResidency() { return garagePhasePresentation.diagnostics().gpu; },
   get lastWorldRelease() {
     return worldRuntime.lastRelease ? { ...worldRuntime.lastRelease } : null;
   },

@@ -48,6 +48,10 @@ solver.
 `garageReturnRuntime.ts` owns battle/Studio return teardown, retained-room
 policy, world/hero handoff, coalesced leave transitions, and Battle Again
 sequencing.
+`garagePhasePresentationRuntime.ts` owns the authored Garage key lights,
+neutral showroom sun, mutually exclusive scene membership, renewable dressing
+GPU residency, world-root swaps, and terrain-relative stage placement. Camera
+framing and pedestal pose math remain with their existing owners.
 `garageDressingOptimization.ts` finalizes the fully streamed static workshop,
 bakes descendant transforms, instances exact repeats, merges only compatible
 semantic-free opaque surfaces, and removes only sub-resolution fitting shadows

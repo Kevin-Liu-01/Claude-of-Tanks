@@ -188,6 +188,9 @@ const battleFrameRuntimeSource = await readFile(
 const garageReturnRuntimeSource = await readFile(
   new URL('../game/garageReturnRuntime.ts', import.meta.url), 'utf8',
 );
+const garagePhasePresentationSource = await readFile(
+  new URL('../game/garagePhasePresentationRuntime.ts', import.meta.url), 'utf8',
+);
 const battleEntryLifecycleSource = await readFile(
   new URL('../game/battleEntryLifecycle.ts', import.meta.url), 'utf8',
 );
@@ -221,8 +224,8 @@ assert.match(studioSource,
 assert.match(mainSource,
   /if \(!STUDIO_BOOT_INTENT\) lighting\.setFarCascadeDormant\(true\);/,
   'cold garage boot must request long-range shadow dormancy after native-map priming');
-assert.match(mainSource,
-  /function setGarageSpots\(on\)[\s\S]{0,180}if \(!on\) lighting\.setFarCascadeDormant\(false\);/,
+assert.match(garagePhasePresentationSource,
+  /const setActive = \(active: boolean\)[\s\S]{0,180}if \(!active\) lighting\.setFarCascadeDormant\(false\);/,
   'battle lighting must wake full-range shadows inside the covered entry');
 assert.match(garageReturnRuntimeSource, /world\.setFarCascadeDormant\(true\)/,
   'the Garage return owner must request long-range shadow dormancy');

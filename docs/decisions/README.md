@@ -97,3 +97,4 @@ runtime documents remain authoritative for behavior.
 - [0085 — Pure UI presentation policy is strict TypeScript](0085-typed-ui-presentation-policy.md)
 - [0086 — Combat presentation metadata is strict TypeScript](0086-typed-combat-presentation-metadata.md)
 - [0087 — Reconnect status has one strict typed surface](0087-typed-network-status-surface.md)
+- [0088 — Garage phase presentation has one typed owner](0088-typed-garage-phase-presentation.md)
