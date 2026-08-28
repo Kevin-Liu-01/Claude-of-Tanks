@@ -218,3 +218,4 @@ runtime documents remain authoritative for behavior.
 - [0206 — Eager and demand-loaded profiles share one typed adapter](0206-typed-profile-builder-adapter.md)
 - [0207 — Korean variant registration is strict TypeScript](0207-typed-korean-variant-registration.md)
 - [0208 — Fleet spec registration has one validated mutation boundary](0208-centralize-fleet-spec-registration.md)
+- [0209 — Ukrainian variant registration is strict TypeScript](0209-typed-ukrainian-variant-registration.md)

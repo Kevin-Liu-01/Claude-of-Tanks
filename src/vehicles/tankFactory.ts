@@ -26,7 +26,7 @@ import './userdrops3.js';
 import './userdrops4.js';
 import './userdrops5.js';
 import './userdrops6.js';
-import './ukraine.js';
+import './ukraine.ts';
 import './china.js';
 import './sweden.js';
 import './poland.js';
