@@ -224,3 +224,4 @@ runtime documents remain authoritative for behavior.
 - [0212 — German variant and fitted ERA registration is strict TypeScript](0212-typed-german-variant-registration.md)
 - [0213 — Japanese balance and rig registration is strict TypeScript](0213-typed-japanese-variant-registration.md)
 - [0214 — Swedish siege-line registration is strict TypeScript](0214-typed-swedish-siege-registration.md)
+- [0215 — Sheridan armor and missile registration is strict TypeScript](0215-typed-sheridan-registration.md)
