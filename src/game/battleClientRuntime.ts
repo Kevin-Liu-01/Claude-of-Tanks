@@ -20,7 +20,7 @@ export {
   activateSpecialAction,
   specialActionLocksShell,
 } from '../sim/specialActions.js';
-export { isPostwarVehicleEra } from '../vehicles/taxonomy.js';
+export { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
 export {
   cooldownRemaining,
   resetConsumableCooldowns,

@@ -8,7 +8,7 @@ import {
   isVehicleRole,
   vehicleEraForId,
   vehicleEraLabel,
-} from './taxonomy.js';
+} from './taxonomy.ts';
 
 const counts = new Map(VEHICLE_ERA_ORDER.map((era) => [era, 0]));
 for (const id of SAVED_TANK_IDS) {

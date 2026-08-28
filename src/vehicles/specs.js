@@ -14,7 +14,7 @@ import {
   isRetiredHistoricalTank,
 } from './rosterPolicy.js';
 import { FIRST_PARTY_VEHICLE_AUTHORSHIP } from '../authorship.js';
-import { applyVehicleTaxonomy } from './taxonomy.js';
+import { applyVehicleTaxonomy } from './taxonomy.ts';
 import {
   plate as par,
   frontPlate as fr,

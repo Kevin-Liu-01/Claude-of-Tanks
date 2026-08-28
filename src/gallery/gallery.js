@@ -8,7 +8,7 @@ import {
   serializeGallerySpec,
   technicalLabel,
 } from './catalog.js';
-import { compareVehicleEras, VEHICLE_ERAS } from '../vehicles/taxonomy.js';
+import { compareVehicleEras, VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
 import { createInspectionOverlay, inspectionLegend } from './overlays.js';
 import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.js';
 import { uiIconSVG } from '../ui/uiIcons.ts';

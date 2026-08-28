@@ -12,7 +12,7 @@ import {
   TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, expectedMuzzleBoreCount, geometryFingerprint, metadataFingerprint,
   requiredTankAssetFiles, tankAssetMetadata,
 } from './tankAssets.js';
-import { VEHICLE_ERA_META } from './taxonomy.js';
+import { VEHICLE_ERA_META } from './taxonomy.ts';
 import {
   TANK_PRESENTATION_ANCHORS,
   TANK_PRESENTATION_PROJECTIONS,

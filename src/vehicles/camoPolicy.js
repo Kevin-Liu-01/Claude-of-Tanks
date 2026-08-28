@@ -7,7 +7,7 @@
  * allowlist and remain local single-player presentation only.
  */
 
-import { VEHICLE_ERAS } from './taxonomy.js';
+import { VEHICLE_ERAS } from './taxonomy.ts';
 import { CUSTOM_CAMO_ASSETS, CUSTOM_CAMO_BRUSHES } from './customCamoCanvas.js';
 
 export const CAMO_PATTERN_IDS = Object.freeze([

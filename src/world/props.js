@@ -39,7 +39,7 @@ import {
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.js';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.js';
-import { isPostwarVehicleEra } from '../vehicles/taxonomy.js';
+import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
 import { preloadPropModels, requirePropModels } from './propsModelStore.ts';
 import { writeStructureInstanceTint } from './structureInstanceAppearance.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { isPostwarVehicleEra } from './taxonomy.js';
+import { isPostwarVehicleEra } from './taxonomy.ts';
 
 export const CREW_STANDING_HEIGHT_M = 5 * 0.3048;
 export const CREW_ARMOR_CLEARANCE_M = 0.035;

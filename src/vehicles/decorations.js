@@ -51,7 +51,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import {
   vehicleAmbientFloorHook, getKitPaintTexture, getSharedRoughnessTexture,
 } from './materials.js';
-import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.js';
+import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.ts';
 
 // ---------------------------------------------------------------------------
 // Deterministic seeding — spec id ONLY (mandate: stable per vehicle).

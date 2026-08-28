@@ -10,9 +10,11 @@ export const VEHICLE_ERAS = Object.freeze({
   COLD_WAR: 'cold-war',
   MODERN: 'modern',
   NEXT_GENERATION: 'next-generation',
-});
+} as const);
 
-export const VEHICLE_ERA_ORDER = Object.freeze([
+export type VehicleEra = typeof VEHICLE_ERAS[keyof typeof VEHICLE_ERAS];
+
+export const VEHICLE_ERA_ORDER: readonly VehicleEra[] = Object.freeze([
   VEHICLE_ERAS.INTERWAR,
   VEHICLE_ERAS.WORLD_WAR_II,
   VEHICLE_ERAS.COLD_WAR,
@@ -20,7 +22,12 @@ export const VEHICLE_ERA_ORDER = Object.freeze([
   VEHICLE_ERAS.NEXT_GENERATION,
 ]);
 
-export const VEHICLE_ERA_META = Object.freeze({
+export interface VehicleEraMetadata {
+  label: string;
+  shortLabel: string;
+}
+
+export const VEHICLE_ERA_META: Readonly<Record<VehicleEra, VehicleEraMetadata>> = Object.freeze({
   [VEHICLE_ERAS.INTERWAR]: Object.freeze({ label: 'Interwar', shortLabel: 'Interwar' }),
   [VEHICLE_ERAS.WORLD_WAR_II]: Object.freeze({ label: 'World War II', shortLabel: 'WWII' }),
   [VEHICLE_ERAS.COLD_WAR]: Object.freeze({ label: 'Cold War', shortLabel: 'Cold War' }),
@@ -28,7 +35,7 @@ export const VEHICLE_ERA_META = Object.freeze({
   [VEHICLE_ERAS.NEXT_GENERATION]: Object.freeze({ label: 'Next Generation', shortLabel: 'Next Gen' }),
 });
 
-const ERA_VEHICLE_IDS = Object.freeze({
+const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.freeze({
   [VEHICLE_ERAS.INTERWAR]: Object.freeze([
     'leichttraktor',
   ]),
@@ -68,7 +75,7 @@ const ERA_VEHICLE_IDS = Object.freeze({
   ]),
 });
 
-const ERA_BY_VEHICLE_ID = new Map();
+const ERA_BY_VEHICLE_ID = new Map<string, VehicleEra>();
 for (const era of VEHICLE_ERA_ORDER) {
   for (const id of ERA_VEHICLE_IDS[era]) {
     if (ERA_BY_VEHICLE_ID.has(id)) throw new Error(`Duplicate vehicle era assignment: ${id}`);
@@ -78,37 +85,48 @@ for (const era of VEHICLE_ERA_ORDER) {
 
 export const VEHICLE_ROLES = Object.freeze([
   'light', 'medium', 'heavy', 'td', 'mbt', 'ifv', 'spg',
-]);
+] as const);
 
-const VEHICLE_ROLE_SET = new Set(VEHICLE_ROLES);
+export type VehicleRole = typeof VEHICLE_ROLES[number];
 
-export function vehicleEraForId(id) {
+const VEHICLE_ROLE_SET = new Set<string>(VEHICLE_ROLES);
+
+export function vehicleEraForId(id: unknown): VehicleEra | null {
   return ERA_BY_VEHICLE_ID.get(String(id || '')) || null;
 }
 
-export function vehicleEraLabel(era, { short = false } = {}) {
-  const meta = VEHICLE_ERA_META[era];
+export function vehicleEraLabel(era: unknown, { short = false }: { short?: boolean } = {}): string {
+  const meta = typeof era === 'string'
+    ? VEHICLE_ERA_META[era as VehicleEra]
+    : undefined;
   return meta ? (short ? meta.shortLabel : meta.label) : 'Unclassified Era';
 }
 
-export function compareVehicleEras(a, b) {
+export function compareVehicleEras(a: VehicleEra, b: VehicleEra): number {
   return VEHICLE_ERA_ORDER.indexOf(a) - VEHICLE_ERA_ORDER.indexOf(b);
 }
 
 /** Postwar vehicle technologies shared by Cold War and newer platforms. */
-export function isPostwarVehicleEra(era) {
+export function isPostwarVehicleEra(era: unknown): boolean {
   return era === VEHICLE_ERAS.COLD_WAR
     || era === VEHICLE_ERAS.MODERN
     || era === VEHICLE_ERAS.NEXT_GENERATION;
 }
 
 /** Modern presentation family used by contemporary and demonstrator designs. */
-export function isContemporaryVehicleEra(era) {
+export function isContemporaryVehicleEra(era: unknown): boolean {
   return era === VEHICLE_ERAS.MODERN || era === VEHICLE_ERAS.NEXT_GENERATION;
 }
 
-export function isVehicleRole(role) {
-  return VEHICLE_ROLE_SET.has(role);
+export function isVehicleRole(role: unknown): role is VehicleRole {
+  return typeof role === 'string' && VEHICLE_ROLE_SET.has(role);
+}
+
+export interface VehicleTaxonomySpec {
+  id?: unknown;
+  role?: unknown;
+  era?: unknown;
+  class?: unknown;
 }
 
 /**
@@ -116,7 +134,9 @@ export function isVehicleRole(role) {
  * Throws on drift so a newly registered tank cannot silently fall into a
  * generic UI bucket or reintroduce the retired `class` field.
  */
-export function applyVehicleTaxonomy(spec) {
+export function applyVehicleTaxonomy<T extends VehicleTaxonomySpec>(
+  spec: T,
+): T & { era: VehicleEra; role: VehicleRole } {
   if (!spec?.id) throw new Error('Cannot classify a vehicle without an id');
   if (Object.prototype.hasOwnProperty.call(spec, 'class')) {
     throw new Error(`${spec.id}: retired vehicle class field is not allowed; use mechanical role`);
@@ -125,5 +145,5 @@ export function applyVehicleTaxonomy(spec) {
   if (!era) throw new Error(`${spec.id}: missing canonical vehicle era assignment`);
   if (!isVehicleRole(spec.role)) throw new Error(`${spec.id}: invalid mechanical role ${String(spec.role)}`);
   spec.era = era;
-  return spec;
+  return spec as T & { era: VehicleEra; role: VehicleRole };
 }

@@ -37,7 +37,7 @@ import {
 } from './garageOrder.ts';
 import { isGarageVisibleTankId } from '../game/matchmaking.ts';
 import { tankTier, tierNumeral } from '../vehicles/tier.ts';
-import { vehicleEraLabel } from '../vehicles/taxonomy.js';
+import { vehicleEraLabel } from '../vehicles/taxonomy.ts';
 import { getPlayerRecord } from '../game/profile.ts';
 import { mountGitHubStars } from './githubStars.ts';
 import {

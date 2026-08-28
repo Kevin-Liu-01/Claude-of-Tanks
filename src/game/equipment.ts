@@ -29,7 +29,7 @@
 // Nothing in the catalog is cosmetic-only.
 
 
-import { isPostwarVehicleEra } from '../vehicles/taxonomy.js';
+import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
 
 export type EquipmentEra = 'all' | 'modern';
 export type EquipmentCategoryId = 'all' | 'fire' | 'recon' | 'mobility' | 'survival';

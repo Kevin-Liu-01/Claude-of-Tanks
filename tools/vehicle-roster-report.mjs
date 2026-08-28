@@ -8,7 +8,7 @@ import {
   TANK_SPECS,
 } from '../src/vehicles/specs.js';
 import { tankTier, tierNumeral } from '../src/vehicles/tier.ts';
-import { vehicleEraLabel } from '../src/vehicles/taxonomy.js';
+import { vehicleEraLabel } from '../src/vehicles/taxonomy.ts';
 
 const REPORT_URL = new URL('../docs/VEHICLE-ROSTER.md', import.meta.url);
 const REASON_LABELS = Object.freeze({
@@ -57,7 +57,7 @@ function buildReport() {
     '## Policy ownership',
     '',
     '- `src/vehicles/rosterPolicy.js` owns explicit production exclusions and the local-development gate.',
-    '- `src/vehicles/taxonomy.js` owns the public era taxonomy and every saved vehicle assignment.',
+    '- `src/vehicles/taxonomy.ts` owns the public era taxonomy and every saved vehicle assignment.',
     '- `src/vehicles/specs.js` publishes saved, production, visible, and runtime projections and stamps every spec with canonical roster metadata.',
     '- Production visibility is independent from record retention: hiding a vehicle never deletes its authored spec or tooling access.',
     '',
