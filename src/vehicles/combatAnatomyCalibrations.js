@@ -18,6 +18,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_MODERN3CORE } from './comba
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_PATTON } from './combatAnatomyGroups/patton.generated.js';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_POLAND } from './combatAnatomyGroups/poland.generated.js';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_RUSSIA } from './combatAnatomyGroups/russia.generated.js';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SHERIDAN } from './combatAnatomyGroups/sheridan.generated.js';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SOVIETHEAVY } from './combatAnatomyGroups/sovietHeavy.generated.js';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SWEDEN } from './combatAnatomyGroups/sweden.generated.js';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T72 } from './combatAnatomyGroups/t72.generated.js';
@@ -46,6 +47,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze(Object.assign({},
   CALIBRATIONS_PATTON,
   CALIBRATIONS_POLAND,
   CALIBRATIONS_RUSSIA,
+  CALIBRATIONS_SHERIDAN,
   CALIBRATIONS_SOVIETHEAVY,
   CALIBRATIONS_SWEDEN,
   CALIBRATIONS_T72,

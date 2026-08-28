@@ -236,6 +236,25 @@ const LOCAL_REFERENCE_OVERRIDES = {
   m45_patton: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m45_patton.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   m46_patton: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m46_patton.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   m60a2: { source:'glb', glb:{ path:'/models/tanks/community/m60a2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // Owner-supplied Sheridan print: local-only comparison oracle. Blender
+  // connected-component inspection resolves the generic object names into
+  // honest articulation buckets without copying any source geometry into the
+  // runtime: 2/5 tracks, 18..25 running gear + hull, 3/4/7..15/17 turret,
+  // and 6/16 the complete M81 gun assembly.
+  m551_sheridan: { source:'glb', glb:{
+    path:'/models/community-candidates/m551_sheridan_war_thunder.glb',
+    turretNode:'^Object_(?:3|4|8|9|10|11|13|14|15)$',
+    componentSubsets:[
+      { node:'^Object_12$', owner:'turret', minVertices:76, worldMinY:1.59, excludeRemainderFromHull:true },
+      // Object_17 fuses twenty roof-ring quads with two bow-hull loops. Only
+      // the islands above 2.2 m articulate with the turret.
+      { node:'^Object_17$', owner:'turret', worldMinY:2.2 },
+      // Object_7 fuses the 14-vertex recoil cage rail with twelve hull cable
+      // and fitting islands. Route only that measured island to the gun.
+      { node:'^Object_7$', owner:'gun', minVertices:12, maxVertices:16 },
+    ],
+    gunNode:'^Object_(?:6|16)$', componentMasks:true, directGunComponentMasks:true,
+  } },
   merkava2b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava2b.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
   merkava2d: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava2d.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
   merkava4b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava4b.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
@@ -632,6 +651,14 @@ document.querySelector('#title').textContent = `${spec.name} — reference vs au
 document.querySelector('#summary').textContent = source?.glb?.path || 'No sourced reference';
 
 const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false, preserveDrawingBuffer:true, powerPreference:'high-performance' });
+// Silhouette and geometry gates must measure occupied geometry, never albedo
+// or scene lighting. A dark tread/camouflage texel previously fell below the
+// red-channel threshold and could make hiding a mesh increase its mask area.
+// One shared unlit override keeps source and procedural masks deterministic.
+const geometryMaskMaterial = new THREE.MeshBasicMaterial({
+  color: 0xffffff,
+  side: THREE.DoubleSide,
+});
 renderer.setSize(SIZE, SIZE, false);
 renderer.setPixelRatio(1);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -826,13 +853,42 @@ function setPart(root, part) {
   });
 }
 
+// `scene.overrideMaterial` does not suppress InstancedMesh.instanceColor:
+// Three.js still multiplies the white mask material by each instance's tint.
+// Dark track-shoe palettes can therefore write depth as near-black and punch
+// holes through the otherwise continuous belt, while an uninstanced source
+// reference stays solid. Silhouette gates measure occupied geometry only, so
+// temporarily detach instance colors for every mask render and restore the
+// live vehicle immediately afterward. This does not touch matrices, materials,
+// draw counts, shaded boards, or gameplay rendering.
+function renderGeometryOnly(camera) {
+  const coloredInstances = [];
+  for (const root of [reference.root, procedural.root]) {
+    root.traverse((object) => {
+      if (!object.isInstancedMesh || !object.instanceColor) return;
+      coloredInstances.push([object, object.instanceColor]);
+      object.instanceColor = null;
+    });
+  }
+  try {
+    renderer.render(scene, camera);
+  } finally {
+    for (const [object, instanceColor] of coloredInstances) {
+      object.instanceColor = instanceColor;
+    }
+  }
+}
+
 function renderMask(visual, other, camera, part='whole') {
   visual.root.visible = true;
   other.root.visible = false;
   setPart(visual.root, part);
   renderer.setRenderTarget(target);
   renderer.clear(true, true, true);
-  renderer.render(scene, camera);
+  const previousOverride = scene.overrideMaterial;
+  scene.overrideMaterial = geometryMaskMaterial;
+  renderGeometryOnly(camera);
+  scene.overrideMaterial = previousOverride;
   const rgba = new Uint8Array(SIZE * SIZE * 4);
   renderer.readRenderTargetPixels(target, 0, 0, SIZE, SIZE, rgba);
   const mask = new Uint8Array(SIZE * SIZE);
@@ -1358,7 +1414,10 @@ if (params.get('profiles')) {
     renderer.setRenderTarget(ptarget);
     renderer.setSize(PSIZE, PSIZE, false);
     renderer.clear(true, true, true);
-    renderer.render(scene, camera);
+    const previousOverride = scene.overrideMaterial;
+    scene.overrideMaterial = geometryMaskMaterial;
+    renderGeometryOnly(camera);
+    scene.overrideMaterial = previousOverride;
     const rgba = new Uint8Array(PSIZE * PSIZE * 4);
     renderer.readRenderTargetPixels(ptarget, 0, 0, PSIZE, PSIZE, rgba);
     const m = new Uint8Array(PSIZE * PSIZE);
@@ -1469,7 +1528,10 @@ if (params.get('geo')) {
     renderer.setRenderTarget(gtarget);
     renderer.setSize(GSIZE, GSIZE, false);
     renderer.clear(true, true, true);
-    renderer.render(scene, camera);
+    const previousOverride = scene.overrideMaterial;
+    scene.overrideMaterial = geometryMaskMaterial;
+    renderGeometryOnly(camera);
+    scene.overrideMaterial = previousOverride;
     const rgba = new Uint8Array(GSIZE * GSIZE * 4);
     renderer.readRenderTargetPixels(gtarget, 0, 0, GSIZE, GSIZE, rgba);
     const m = new Uint8Array(GSIZE * GSIZE);
@@ -1922,7 +1984,7 @@ if (params.get('geo')) {
 // Diagnosis hook for headless probes (ancestry/classification questions).
 window.__FIDELITY_DEBUG = {
   reference, procedural, setPart, baseVisible, renderMask, cameraFor, ANGLES,
-  bounds, alignMask, rawMasks, rawDirectTurretMasks,
+  TRUE_AXES, bounds, alignMask, rawMasks, rawDirectTurretMasks,
 };
 window.__FIDELITY_READY=true;
 renderer.setRenderTarget(null);

@@ -19,6 +19,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_MODERN3CORE } from './vehicleMarkingSeat
 import { VEHICLE_MARKING_SEATS as SEATS_PATTON } from './vehicleMarkingSeatGroups/patton.generated.js';
 import { VEHICLE_MARKING_SEATS as SEATS_POLAND } from './vehicleMarkingSeatGroups/poland.generated.js';
 import { VEHICLE_MARKING_SEATS as SEATS_RUSSIA } from './vehicleMarkingSeatGroups/russia.generated.js';
+import { VEHICLE_MARKING_SEATS as SEATS_SHERIDAN } from './vehicleMarkingSeatGroups/sheridan.generated.js';
 import { VEHICLE_MARKING_SEATS as SEATS_SOVIETHEAVY } from './vehicleMarkingSeatGroups/sovietHeavy.generated.js';
 import { VEHICLE_MARKING_SEATS as SEATS_SWEDEN } from './vehicleMarkingSeatGroups/sweden.generated.js';
 import { VEHICLE_MARKING_SEATS as SEATS_T72 } from './vehicleMarkingSeatGroups/t72.generated.js';
@@ -49,6 +50,7 @@ export const VEHICLE_MARKING_SEATS = Object.freeze(Object.assign({},
   SEATS_PATTON,
   SEATS_POLAND,
   SEATS_RUSSIA,
+  SEATS_SHERIDAN,
   SEATS_SOVIETHEAVY,
   SEATS_SWEDEN,
   SEATS_T72,

@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **151 saved vehicle records**: **112 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **152 saved vehicle records**: **113 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -159,6 +159,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 149 | PROD | `bmp3` | BMP-3 | Russia | VIII | Cold War | Production |
 | 150 | PROD | `upior` | Upiór IFV | Poland | IX | Next Generation | Production |
 | 151 | PROD | `bmpt_t90` | BMPT T-90 | Russia | X | Modern | Production |
+| 152 | PROD | `m551_sheridan` | M551 Sheridan | USA | X | Cold War | Production |
 
 ## Policy ownership
 

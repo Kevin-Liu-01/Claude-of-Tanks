@@ -59,7 +59,7 @@ export const RETAINED_WW2_IDS = Object.freeze([
 // as modern by that catalog (Abrams, T-80/T-90, post-1991 T-72s, Challengers,
 // Merkavas and IFVs) remain in the modern fleet.
 export const HISTORICAL_COLD_WAR_CANDIDATE_IDS = Object.freeze([
-  'm46_patton', 'm47_patton', 'm48', 'm60a1', 'm60a2', 'm60a3', 'mbt70',
+  'm46_patton', 'm47_patton', 'm48', 'm60a1', 'm60a2', 'm60a3', 'mbt70', 'm551_sheridan',
   'leo1a5',
   't54', 'type59', 't62mv1', 't64bv1', 't72b_1987',
   'centurion3', 'centurion5', 'chieftain5', 'chieftain_mk10', 'vickers_mk1',
@@ -75,7 +75,7 @@ export const RETAINED_COLD_WAR_IDS = Object.freeze([
   'type59', 'type74', 'udes03', 'strv103', 'strv103a',
   't62mv1', 't64bv1', 'leo1a5',
   'm46_patton', 'm47_patton', 'm48',
-  'm60a1', 'm60a2', 'm60a3', 'mbt70',
+  'm60a1', 'm60a2', 'm60a3', 'mbt70', 'm551_sheridan',
   't95',
 ]);
 

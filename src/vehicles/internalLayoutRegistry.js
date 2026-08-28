@@ -29,6 +29,11 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://www.scribd.com/document/647553432/M2-Bradley-M3-Turret-Operators-Manual-TM-9-2350-252-10-2-1984',
     kind: 'technical-manual-scan',
   }),
+  usArmySheridan: Object.freeze({
+    title: 'U.S. Army — M551 Sheridan historical vehicle record',
+    url: 'https://home.army.mil/mccoy/download_file/view/e92c872e-9f06-4f7f-9c44-d78560690da3/576',
+    kind: 'operator-history',
+  }),
   t72Manual: Object.freeze({
     title: 'T-72B technical description and operating instructions',
     url: 'https://djvu.online/file/9mQtcIE6pVd0Q',
@@ -238,6 +243,10 @@ const LAYOUTS = Object.freeze({
   mbt70: { confidence: 'platform-inferred', sources: ['usArmySystems'], crew: crew(
     ['driver', 'turret', 'frontLeft'], ['gunner', 'turret', 'frontRight'], ['commander', 'turret', 'rearRight'],
   ), systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' }, missileRack: { placement: 'turret', form: 'gunLaunchedRounds' } }) },
+  sheridan: { confidence: 'documented', sources: ['usArmySheridan'], crew: FOUR_MAN_TURRET, systems: systems({
+    ammoRack: { placement: 'hull', form: 'mixed152mmStowage' },
+    missileRack: { placement: 'hull', form: 'gunLaunchedRounds' },
+  }) },
   armata: { confidence: 'platform-inferred', sources: ['rostecArmataOptics'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'frontCenter'], ['commander', 'hull', 'frontRight'],
   ), systems: systems({ optics: { placement: 'turretPerimeter', form: 'distributedElectroOpticalSuite' }, ammoRack: { placement: 'hull', form: 'isolatedCarousel' }, autoloader: { placement: 'hull', form: 'unmannedTurretCarousel' } }) },
@@ -282,6 +291,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   bustleAuto: ['k2', 'k2b', 'type90', 'type90a', 'type10', 'type10b', 'leclerc', 'leclerc_xlr', 'amx56'],
   fixedAuto: ['udes03', 'strv103a', 'strv103'],
   mbt70: ['mbt70'],
+  sheridan: ['m551_sheridan'],
   armata: ['t14'],
   kf51: ['kf51', 'kf51b'],
   abramsX: ['abramsx'],

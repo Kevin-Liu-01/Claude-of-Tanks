@@ -34,6 +34,7 @@ import { KOREA_PROFILES } from './profiles/korea.js';
 import { JAPAN_PROFILES } from './profiles/japan.js';
 import { GERMANY_PROFILES } from './profiles/germany.js';
 import { AFV_FAMILY_PROFILES } from './profiles/afvFamily.js';
+import { SHERIDAN_PROFILES } from './profiles/sheridan.js';
 
 // Preserve the historical Russia key order exactly while the builders live
 // in family modules. Carousel/roster order is part of the pure-refactor law.
@@ -85,6 +86,7 @@ export const PROCEDURAL_PROFILES = {
   ...JAPAN_PROFILES,
   ...GERMANY_PROFILES,
   ...AFV_FAMILY_PROFILES,
+  ...SHERIDAN_PROFILES,
 };
 
 // A profile may carry `build(P, profile)` for a fully custom construction

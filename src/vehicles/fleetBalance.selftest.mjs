@@ -105,7 +105,7 @@ const missileVelocityByVehicle = new Map([
   ['mbt70', 208], ['fv510_milan', 130], ['m60a2', 208], ['bmp3_rok', 240.5],
   ['ua_m2a3_bradley', 195], ['bmpt_terminator2', 357.5], ['bwp1', 117],
   ['marder1a3', 130], ['m3a3_bradley', 195], ['bmp3', 240.5], ['upior', 117],
-  ['bmpt_t90', 357.5],
+  ['bmpt_t90', 357.5], ['m551_sheridan', 208],
 ]);
 const guided = [];
 for (const id of SAVED_TANK_IDS) {

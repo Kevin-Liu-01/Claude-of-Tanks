@@ -161,6 +161,16 @@ const CRITIC_REFERENCE_OVERRIDES = {
   m45_patton: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m45_patton.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   m46_patton: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m46_patton.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   m60a2: { source:'glb', glb:{ path:'/models/tanks/community/m60a2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  m551_sheridan: { source:'glb', glb:{
+    path:'/models/community-candidates/m551_sheridan_war_thunder.glb',
+    turretNode:'^Object_(?:3|4|8|9|10|11|13|14|15)$',
+    componentSubsets:[
+      { node:'^Object_12$', owner:'turret', minVertices:76, worldMinY:1.59, excludeRemainderFromHull:true },
+      { node:'^Object_17$', owner:'turret', worldMinY:2.2 },
+      { node:'^Object_7$', owner:'gun', minVertices:12, maxVertices:16 },
+    ],
+    gunNode:'^Object_(?:6|16)$', componentMasks:true, directGunComponentMasks:true,
+  } },
   merkava2b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava2b.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
   merkava2d: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava2d.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
   merkava4b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava4b.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },

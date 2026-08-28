@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-08-22T12:17:39.946Z",
+ "generatedAt": "2026-08-28T04:04:58.486Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 35,
- "total": 122,
+ "total": 123,
  "rows": [
   {
    "id": "recon_tank",
@@ -824,6 +824,19 @@
     "stations": 84.6,
     "turretCurves": 76.1,
     "wholeCurves": 77.5,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "m551_sheridan",
+   "geoMin": 76.7,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 80.4,
+    "stations": 89.2,
+    "turretCurves": 78.5,
+    "wholeCurves": 76.7,
     "dims": 100,
     "floaters": 100
    }

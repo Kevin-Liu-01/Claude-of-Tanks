@@ -1,0 +1,78 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { createShell, guideShellToward } from '../../sim/ballistics.js';
+import { specialActionGuidesShell } from '../../sim/specialActions.js';
+import { createTank } from '../tankFactory.js';
+import { getSpec } from '../specs.js';
+import { tankTier } from '../tier.ts';
+
+const spec = getSpec('m551_sheridan');
+assert.ok(spec, 'M551 Sheridan is registered');
+assert.equal(tankTier(spec.id), 10, 'Sheridan is a Tier X vehicle');
+assert.equal(spec.role, 'light');
+assert.equal(spec.gun.caliberMm, 152);
+assert.equal(spec.gun.primaryGuided, true);
+assert.equal(spec.gun.shells.length, 1, 'Sheridan is a dedicated missile-only tank');
+assert.equal(spec.gun.shells[0].guided, true);
+assert.match(spec.gun.shells[0].name, /MGM-51C Shillelagh/i);
+assert.ok(spec.armor.modules.some((module) => module.module === 'missileRack'),
+  'damageable combat anatomy includes the missile stowage');
+
+const missile = createShell(
+  spec.gun.shells[0], spec.id, true,
+  new THREE.Vector3(), new THREE.Vector3(0, 0, 1), 60,
+);
+const initialSpeed = missile.vel.length();
+assert.equal(specialActionGuidesShell({ spec }, missile), true,
+  'the primary Shillelagh remains continuously guided without a secondary-weapon mode');
+assert.equal(guideShellToward(missile, new THREE.Vector3(18, 2, 80), 1 / 60), true);
+assert.ok(missile.vel.x > 0, 'Shillelagh steers toward the sight-owned target');
+assert.ok(Math.abs(missile.vel.length() - initialSpeed) < 1e-9,
+  'guided steering preserves authored missile speed');
+
+const tank = createTank(spec.id, null, {
+  proceduralOnly: true,
+  quality: 'high',
+  camoSeed: 4242,
+  geometryReceipt: true,
+});
+try {
+  const hull = tank.root.getObjectByName('rig_hull');
+  assert.deepEqual(hull?.userData.sheridanReceipt, {
+    roadWheelsPerSide: 5,
+    missileOnly: true,
+    layeredEraSectors: 5,
+    roofMachineGuns: 2,
+    rearFuelDrums: 2,
+    fuelDrumSupportRails: 3,
+    hullCreaseDeg: 16,
+    turretCreaseDeg: 13,
+  });
+
+  const gear = hull.userData.runningGearReceipts?.at(-1);
+  assert.equal(gear?.wheelZs.length, 5, 'five road wheels are authored per side');
+  assert.equal(gear?.shoeCountPerSide, 83, 'track links fully close the measured course');
+  assert.ok(gear?.shoePadCoverageRatio >= 0.90, 'track shoes retain full-width pad coverage');
+  assert.equal(gear?.suspensionDynamic, true, 'road wheels retain dynamic swing arms');
+
+  const era = tank.root.userData.eraFinishReceipt;
+  assert.equal(era?.camoProjection, 'vehicle-scale-box-uv');
+  assert.equal(era?.bodyAndCoverUseVehiclePaint, true);
+  assert.equal(era?.layeredCassettes, 38);
+  assert.deepEqual(new Set(era?.gameplaySectors), new Set([
+    'sheridan_glacis_era',
+    'sheridan_skirt_era_L', 'sheridan_skirt_era_R',
+    'sheridan_turret_era_L', 'sheridan_turret_era_R',
+  ]));
+
+  const fittings = [];
+  tank.root.traverse((object) => {
+    if (object.userData?.fittingRoot) fittings.push(object.userData.fitting);
+  });
+  assert.equal(fittings.filter((kind) => kind === 'pintleMG').length, 2,
+    'both roof stations have a seated machine gun');
+} finally {
+  tank.dispose();
+}
+
+console.log('sheridan.selftest: Tier X missile channel, five-wheel track course, layered ERA and dual MG verified');

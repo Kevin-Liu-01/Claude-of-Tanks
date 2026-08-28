@@ -62,6 +62,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   korea: Object.freeze(['k2b']),
   japan: Object.freeze(['stb1', 'type90a', 'type10b']),
   germany: Object.freeze(['leo2a4_otco']),
+  sheridan: Object.freeze(['m551_sheridan']),
 });
 
 export const FLEET_GROUP_BY_ID = Object.freeze(Object.fromEntries(

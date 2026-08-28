@@ -32,6 +32,7 @@ import './korea.js';
 import './japan.js';
 import './germany.js';
 import './afvFamily.js';
+import './sheridan.js';
 
 import {
   ALL_TANK_IDS,

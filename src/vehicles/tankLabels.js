@@ -6,6 +6,10 @@
 // abbreviations.
 
 const LABEL_OVERRIDES = Object.freeze({
+  m551_sheridan: {
+    displayName: 'M551 Sheridan', shortName: 'M551',
+    searchAliases: ['Sheridan', 'M551 Shillelagh', 'US airborne light tank'],
+  },
   t95: { displayName: 'T95', searchAliases: ['T95 Doomturtle'] },
   strv81: {
     displayName: 'Stridsvagn 81', shortName: 'Strv 81',

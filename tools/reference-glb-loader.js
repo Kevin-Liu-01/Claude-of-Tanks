@@ -27,6 +27,104 @@ function attachAll(parent, nodes) {
   for (const node of roots) parent.attach(node);
 }
 
+// Split selected connected islands from one fused source mesh without
+// changing the rendered whole. Some comparison prints collapse armor,
+// fittings, and interior pieces into a generic Object_N mesh; a node-name
+// regex alone cannot form an honest component mask. This remains strictly in
+// the tool-only oracle loader and never supplies production geometry.
+function extractConnectedSubset(root, rule, label) {
+  if (!rule?.node) return { subsets: [], remainders: [] };
+  const subsets = [];
+  const remainders = [];
+  const scratch = new THREE.Vector3();
+  for (const node of matchingNodes(root, rule.node)) {
+    if (!node.isMesh || !node.geometry?.index || !node.geometry?.attributes?.position) continue;
+    node.updateWorldMatrix(true, false);
+    const geometry = node.geometry;
+    const index = geometry.index.array;
+    const positions = geometry.attributes.position;
+    const parents = Array.from({ length: positions.count }, (_, vertex) => vertex);
+    const find = (vertex) => {
+      let rootVertex = vertex;
+      while (parents[rootVertex] !== rootVertex) rootVertex = parents[rootVertex];
+      while (parents[vertex] !== vertex) {
+        const next = parents[vertex];
+        parents[vertex] = rootVertex;
+        vertex = next;
+      }
+      return rootVertex;
+    };
+    const union = (left, right) => {
+      left = find(left);
+      right = find(right);
+      if (left !== right) parents[right] = left;
+    };
+    for (let cursor = 0; cursor < index.length; cursor += 3) {
+      union(index[cursor], index[cursor + 1]);
+      union(index[cursor], index[cursor + 2]);
+    }
+    const components = new Map();
+    for (let cursor = 0; cursor < index.length; cursor += 3) {
+      const componentRoot = find(index[cursor]);
+      let component = components.get(componentRoot);
+      if (!component) {
+        component = { indices: [], vertices: new Set(), bounds: new THREE.Box3() };
+        components.set(componentRoot, component);
+      }
+      for (let offset = 0; offset < 3; offset++) {
+        const vertex = index[cursor + offset];
+        component.indices.push(vertex);
+        component.vertices.add(vertex);
+      }
+    }
+    for (const component of components.values()) {
+      for (const vertex of component.vertices) {
+        scratch.fromBufferAttribute(positions, vertex).applyMatrix4(node.matrixWorld);
+        component.bounds.expandByPoint(scratch);
+      }
+    }
+    const selected = [];
+    const remaining = [];
+    for (const component of components.values()) {
+      const vertexCount = component.vertices.size;
+      const matches = (rule.minVertices == null || vertexCount >= rule.minVertices)
+        && (rule.maxVertices == null || vertexCount <= rule.maxVertices)
+        && (rule.worldMinY == null || component.bounds.min.y >= rule.worldMinY)
+        && (rule.worldMaxY == null || component.bounds.max.y <= rule.worldMaxY);
+      (matches ? selected : remaining).push(...component.indices);
+    }
+    if (!selected.length || !remaining.length) continue;
+    const IndexArray = geometry.index.array.constructor;
+    const subsetIndexed = geometry.clone();
+    subsetIndexed.setIndex(new THREE.BufferAttribute(IndexArray.from(selected), 1));
+    // Compact the position stream as well as the index stream. Box3 and
+    // BufferGeometry.computeBoundingBox intentionally scan every attribute
+    // vertex, including vertices no longer referenced by a subset index. A
+    // sparse clone therefore rendered correctly but reported the original
+    // fused node's bounds, poisoning normalization/dimension diagnostics.
+    const subsetGeometry = subsetIndexed.toNonIndexed();
+    subsetIndexed.dispose();
+    subsetGeometry.clearGroups();
+    subsetGeometry.computeBoundingBox();
+    subsetGeometry.computeBoundingSphere();
+    const remainingIndexed = geometry.clone();
+    remainingIndexed.setIndex(new THREE.BufferAttribute(IndexArray.from(remaining), 1));
+    const remainingGeometry = remainingIndexed.toNonIndexed();
+    remainingIndexed.dispose();
+    remainingGeometry.clearGroups();
+    remainingGeometry.computeBoundingBox();
+    remainingGeometry.computeBoundingSphere();
+    node.geometry = remainingGeometry;
+    remainders.push(node);
+    const subset = node.clone(false);
+    subset.name = `${node.name}__${label}`;
+    subset.geometry = subsetGeometry;
+    node.parent.add(subset);
+    subsets.push(subset);
+  }
+  return { subsets, remainders };
+}
+
 /**
  * Tool-only source-oracle loader.
  *
@@ -49,7 +147,9 @@ export async function loadReferenceGlb(source, specId, spec) {
   turret.name = 'rig_turret';
   const gun = new THREE.Group();
   gun.name = 'rig_gun';
-  root.add(hull, turret);
+  const unclassified = new THREE.Group();
+  unclassified.name = 'reference_unclassified';
+  root.add(hull, turret, unclassified);
   turret.add(gun);
 
   const authoredFrame = new THREE.Group();
@@ -78,7 +178,35 @@ export async function loadReferenceGlb(source, specId, spec) {
   root.updateMatrixWorld(true);
 
   if (!cfg.fixedMount && cfg.turretNode) {
-    const turretNodes = matchingNodes(gltf.scene, cfg.turretNode);
+    // Generic source meshes occasionally fuse several ownership domains into
+    // one Object_N node. Allow the fidelity registration to split any number
+    // of connected-island rules and route only the selected islands to their
+    // honest articulation owner. Remainders stay under authoredFrame (hull)
+    // unless the rule explicitly marks them as non-comparable internals.
+    const semanticSubsets = { turret: [], gun: [], unclassified: [] };
+    const subsetRules = [
+      ...(cfg.turretComponentSubset
+        ? [{ ...cfg.turretComponentSubset, owner: 'turret' }]
+        : []),
+      ...(Array.isArray(cfg.componentSubsets) ? cfg.componentSubsets : []),
+    ];
+    for (let index = 0; index < subsetRules.length; index++) {
+      const rule = subsetRules[index];
+      const owner = rule.owner || 'unclassified';
+      if (!(owner in semanticSubsets)) {
+        throw new Error(`${specId} component subset has invalid owner ${owner}`);
+      }
+      const subset = extractConnectedSubset(
+        gltf.scene, rule, `${owner}Subset${index}`);
+      semanticSubsets[owner].push(...subset.subsets);
+      if (rule.excludeRemainderFromHull) {
+        attachAll(unclassified, subset.remainders);
+      }
+    }
+    const turretNodes = [
+      ...matchingNodes(gltf.scene, cfg.turretNode),
+      ...semanticSubsets.turret,
+    ];
     const turretFollowers = matchingNodes(gltf.scene, cfg.turretFollowers);
     // Keep the comparison rig on the source file's authored rotation centre.
     // Re-parenting a turret under a pivot left at the scene origin makes it
@@ -95,7 +223,10 @@ export async function loadReferenceGlb(source, specId, spec) {
     }
     attachAll(turret, [...turretNodes, ...turretFollowers]);
 
-    const gunNodes = matchingNodes(root, cfg.gunNode);
+    const gunNodes = [
+      ...matchingNodes(root, cfg.gunNode),
+      ...semanticSubsets.gun,
+    ];
     const gunFollowers = matchingNodes(root, cfg.gunFollowers);
     if (cfg.autoPivot && gunNodes.length) {
       const pivotWorld = gunNodes[0].getWorldPosition(new THREE.Vector3());

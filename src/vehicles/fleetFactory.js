@@ -42,6 +42,7 @@ import './korea.js';
 import './japan.js';
 import './germany.js';
 import './afvFamily.js';
+import './sheridan.js';
 
 import {
   ALL_TANK_IDS,
@@ -136,6 +137,7 @@ const GROUP_LOADERS = Object.freeze({
   korea: () => import('./profiles/korea.js').then((mod) => registerProfiles(mod.KOREA_PROFILES)),
   japan: () => import('./profiles/japan.js').then((mod) => registerProfiles(mod.JAPAN_PROFILES)),
   germany: () => import('./profiles/germany.js').then((mod) => registerProfiles(mod.GERMANY_PROFILES)),
+  sheridan: () => import('./profiles/sheridan.js').then((mod) => registerProfiles(mod.SHERIDAN_PROFILES)),
 });
 const groupPromises = new Map();
 const readyGroups = new Set();

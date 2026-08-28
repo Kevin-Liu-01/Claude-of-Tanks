@@ -48,7 +48,7 @@ const ERA_VEHICLE_IDS = Object.freeze({
     'm1a1ha', 'm60a1', 'merkava1b', 'merkava2b', 'merkava2d', 'fv510_milan',
     't54', 'amx30', 'amx30b2', 'm48', 'm60a2', 'm60a3', 'vickers_mk1',
     'centurion3', 'centurion5', 'charioteer', 'm46_patton', 'm47_patton',
-    'type59', 'ztz85_iii', 'bwp1', 'marder1a3',
+    'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan',
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([
     'm1a2_legacy', 'm1a2', 't72b3m', 'pt91m', 't84', 't90', 't90a',

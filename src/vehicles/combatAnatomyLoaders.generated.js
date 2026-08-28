@@ -20,6 +20,7 @@ export const COMBAT_ANATOMY_GROUP_LOADERS = Object.freeze({
   "patton": () => import('./combatAnatomyGroups/patton.generated.js'),
   "poland": () => import('./combatAnatomyGroups/poland.generated.js'),
   "russia": () => import('./combatAnatomyGroups/russia.generated.js'),
+  "sheridan": () => import('./combatAnatomyGroups/sheridan.generated.js'),
   "sovietHeavy": () => import('./combatAnatomyGroups/sovietHeavy.generated.js'),
   "sweden": () => import('./combatAnatomyGroups/sweden.generated.js'),
   "t72": () => import('./combatAnatomyGroups/t72.generated.js'),

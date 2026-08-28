@@ -109,7 +109,7 @@ spotting (spotting.js).
 ## Probes / gates
 
 - `node src/vehicles/combatAnatomy.selftest.mjs` — fleet-wide generated-data
-  gate: all 122 playable tanks, exact roof structures, supported smooth shapes,
+  gate: all 123 playable tanks, exact roof structures, supported smooth shapes,
   internal-shape containment, and deterministic front/side/top seam rays.
 - `node tools/module-hit-probe.mjs` — legacy targeted pure-sim probe (all roster
   ~2 s). Structural containment, scripted mega-pen shots through every

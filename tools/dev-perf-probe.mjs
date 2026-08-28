@@ -20,6 +20,8 @@ function option(name, fallback) {
 }
 const profileName = option('profile', 'normal');
 const entryMode = option('entry', 'debug');
+const tankId = option('id', 'm1a2');
+const mapId = option('map', 'verdant');
 if (!['debug', 'real'].includes(entryMode)) throw new Error('--entry must be debug or real');
 const deviceTier = option('tier', 'desktop');
 if (!['desktop', 'mobile'].includes(deviceTier)) throw new Error('--tier must be desktop or mobile');
@@ -243,14 +245,14 @@ try {
 
   // Queue the synchronous battle constructor as a page task, so DevTools gets
   // control back before it starts. The two marks expose its exact wall block.
-  await page.evaluate((entry) => {
+  await page.evaluate(({ entry, tankId, mapId }) => {
     setTimeout(async () => {
-      window.__DEV_TRACE.mark('battle:start-request', { tank: 'm1a2', entry });
-      if (entry === 'real') await window.__DEBUG.beginSoloBattle({ specId: 'm1a2', mapId: 'verdant' });
-      else await window.__DEBUG.startBattle('m1a2');
-      window.__DEV_TRACE.mark('battle:start-returned', { entry });
+      window.__DEV_TRACE.mark('battle:start-request', { tank: tankId, map: mapId, entry });
+      if (entry === 'real') await window.__DEBUG.beginSoloBattle({ specId: tankId, mapId });
+      else await window.__DEBUG.startBattle(tankId, mapId);
+      window.__DEV_TRACE.mark('battle:start-returned', { tank: tankId, map: mapId, entry });
     }, 0);
-  }, entryMode);
+  }, { entry: entryMode, tankId, mapId });
   await page.waitForFunction(
     'window.__DEV_TRACE.tail(20, "mark").some((row) => row.name === "battle:start-returned")',
     { timeout: openTimeoutMs, polling: 50 });
