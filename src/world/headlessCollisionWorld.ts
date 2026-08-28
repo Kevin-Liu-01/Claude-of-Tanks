@@ -1,9 +1,92 @@
 import { Vector3 } from 'three';
 import { createObstacleGrid, rayCollisionRecord } from './collision.js';
 
-function unpackRecord(packed) {
+type Bounds3 = [number, number, number];
+type PackedShape =
+  | readonly ['o', number, number, number, number, number]
+  | readonly ['c', number, number, number]
+  | readonly ['v', ...number[]];
+
+interface PackedCollisionRecord {
+  b: readonly [number, number, number, number, number, number];
+  s?: PackedShape;
+  q?: boolean;
+  m?: number | null;
+  e?: number | null;
+  k?: string | null;
+  t?: number | null;
+  p?: number | null;
+}
+
+type CollisionShape =
+  | { kind: 'obb'; cx: number; cz: number; hw: number; hl: number; yaw: number }
+  | { kind: 'circle'; cx: number; cz: number; r: number }
+  | { kind: 'convex'; cx: number; cz: number; points: number[] };
+
+interface CollisionRecord {
+  min: Bounds3;
+  max: Bounds3;
+  shape2?: CollisionShape;
+  crushable?: boolean;
+  crushMin?: number;
+  crushKeep?: number;
+  kind?: string;
+  treeIdx?: number;
+  propIdx?: number;
+  crushed?: boolean;
+  dead?: boolean;
+}
+
+interface ConcealmentRecord {
+  x: number;
+  z: number;
+  r: number;
+  add: number;
+}
+
+interface CollisionManifest {
+  obstacles: PackedCollisionRecord[];
+  colliders: PackedCollisionRecord[];
+  concealers?: Array<readonly [number, number, number, number]>;
+}
+
+interface HeadlessHeightField {
+  maxY: number;
+  getHeightAt(x: number, z: number): number;
+  getHeightAtFast?(x: number, z: number): number;
+  getNormalAt(x: number, z: number): Vector3;
+}
+
+interface HeadlessCollisionWorldOptions {
+  mapId?: string;
+  heightField?: HeadlessHeightField;
+  manifest?: CollisionManifest;
+}
+
+export interface HeadlessRayHit {
+  point: Vector3;
+  normal: Vector3;
+  dist: number;
+  kind: 'terrain' | 'prop';
+  record: CollisionRecord | null;
+}
+
+export interface HeadlessCollisionWorld {
+  mapId?: string;
+  heightField: HeadlessHeightField;
+  raycast(origin: Vector3, direction: Vector3, maxDistance: number): HeadlessRayHit | null;
+  getObstacles(): CollisionRecord[];
+  getColliders(): CollisionRecord[];
+  getConcealment(): ConcealmentRecord[];
+  queryObstacles(
+    minX: number, minZ: number, maxX: number, maxZ: number, out: CollisionRecord[],
+  ): CollisionRecord[];
+  crushObstacle(obstacle: CollisionRecord | null | undefined): boolean;
+}
+
+function unpackRecord(packed: PackedCollisionRecord): CollisionRecord {
   const bounds = packed.b;
-  const record = {
+  const record: CollisionRecord = {
     min: [bounds[0], bounds[1], bounds[2]],
     max: [bounds[3], bounds[4], bounds[5]],
   };
@@ -15,7 +98,7 @@ function unpackRecord(packed) {
   } else if (shape?.[0] === 'c') {
     record.shape2 = { kind: 'circle', cx: shape[1], cz: shape[2], r: shape[3] };
   } else if (shape?.[0] === 'v') {
-    const points = shape.slice(1);
+    const points = shape.slice(1) as number[];
     let cx = 0;
     let cz = 0;
     for (let index = 0; index < points.length; index += 2) {
@@ -35,29 +118,32 @@ function unpackRecord(packed) {
 }
 
 /** Inflate one captured visual-world manifest into a match-local facade. */
-export function createHeadlessCollisionWorld({ mapId, heightField, manifest } = {}) {
+export function createHeadlessCollisionWorld(
+  { mapId, heightField, manifest }: HeadlessCollisionWorldOptions = {},
+): HeadlessCollisionWorld {
   if (!heightField || typeof heightField.getHeightAt !== 'function') {
     throw new TypeError('heightField is required');
   }
   if (!manifest || !Array.isArray(manifest.obstacles) || !Array.isArray(manifest.colliders)) {
     throw new TypeError('collision manifest is required');
   }
+  const worldHeightField = heightField;
   const obstacles = manifest.obstacles.map(unpackRecord);
   const colliders = manifest.colliders.map(unpackRecord);
   const concealers = (manifest.concealers || []).map(([x, z, r, add]) => ({ x, z, r, add }));
   const queryObstacles = createObstacleGrid(obstacles);
   const queryColliders = createObstacleGrid(colliders);
-  const candidates = [];
+  const candidates: CollisionRecord[] = [];
   const point = new Vector3();
   const bisectPoint = new Vector3();
   const hitNormal = new Vector3();
   const bestNormal = new Vector3();
-  const fastHeightAt = heightField.getHeightAtFast || heightField.getHeightAt;
+  const fastHeightAt = worldHeightField.getHeightAtFast || worldHeightField.getHeightAt;
 
-  function raycast(origin, direction, maxDistance) {
+  function raycast(origin: Vector3, direction: Vector3, maxDistance: number): HeadlessRayHit | null {
     let bestDistance = Infinity;
-    let bestKind = null;
-    let bestRecord = null;
+    let bestKind: 'prop' | null = null;
+    let bestRecord: CollisionRecord | null = null;
     const endX = origin.x + direction.x * maxDistance;
     const endZ = origin.z + direction.z * maxDistance;
     queryColliders(
@@ -91,7 +177,7 @@ export function createHeadlessCollisionWorld({ mapId, heightField, manifest } = 
         priorDistance = distance;
         distance = Math.min(distance + step, limit);
         point.copy(direction).multiplyScalar(distance).add(origin);
-        if (direction.y > 0 && point.y > heightField.maxY + 2) break;
+        if (direction.y > 0 && point.y > worldHeightField.maxY + 2) break;
         clearance = point.y - fastHeightAt(point.x, point.z);
         if (clearance <= 0) {
           let lo = priorDistance;
@@ -109,8 +195,8 @@ export function createHeadlessCollisionWorld({ mapId, heightField, manifest } = 
       }
     }
 
-    let hitDistance;
-    let kind;
+    let hitDistance: number;
+    let kind: 'terrain' | 'prop';
     if (terrainDistance >= 0 && terrainDistance < bestDistance) {
       hitDistance = terrainDistance;
       kind = 'terrain';
@@ -122,7 +208,7 @@ export function createHeadlessCollisionWorld({ mapId, heightField, manifest } = 
     }
     const hitPoint = new Vector3().copy(direction).multiplyScalar(hitDistance).add(origin);
     const normal = kind === 'terrain'
-      ? heightField.getNormalAt(hitPoint.x, hitPoint.z).clone()
+      ? worldHeightField.getNormalAt(hitPoint.x, hitPoint.z).clone()
       : bestNormal.clone();
     return {
       point: hitPoint,
@@ -133,7 +219,7 @@ export function createHeadlessCollisionWorld({ mapId, heightField, manifest } = 
     };
   }
 
-  function crushObstacle(obstacle) {
+  function crushObstacle(obstacle: CollisionRecord | null | undefined) {
     if (!obstacle || obstacle.crushed) return false;
     obstacle.crushed = true;
     if (obstacle.propIdx != null) {
@@ -149,7 +235,7 @@ export function createHeadlessCollisionWorld({ mapId, heightField, manifest } = 
 
   return {
     mapId,
-    heightField,
+    heightField: worldHeightField,
     raycast,
     getObstacles: () => obstacles,
     getColliders: () => colliders,

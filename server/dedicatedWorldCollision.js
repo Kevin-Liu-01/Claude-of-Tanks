@@ -1,5 +1,5 @@
 import manifests from './world-collision-manifests.json' with { type: 'json' };
-import { createHeadlessCollisionWorld } from '../src/world/headlessCollisionWorld.js';
+import { createHeadlessCollisionWorld } from '../src/world/headlessCollisionWorld.ts';
 import { getMapConfig } from '../src/world/maps/index.js';
 import { createHeightField } from '../src/world/terrain.js';
 

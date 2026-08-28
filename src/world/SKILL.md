@@ -39,8 +39,9 @@ without creating per-building materials.
 `propsModelStore.ts` owns the bounds-checked packed runtime representation of
 the attributed `props-models.json` authoring source; regenerate it with
 `npm run world:props:pack` after intentional source changes.
-`headlessCollisionWorld.js` inflates the captured authored records for a
-dedicated server without importing any renderer or DOM state.
+`headlessCollisionWorld.ts` owns the typed inflation and query facade for exact
+authored collision records on a dedicated server without importing renderer or
+DOM state.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
