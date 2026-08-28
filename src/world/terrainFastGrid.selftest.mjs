@@ -7,7 +7,7 @@ import { createHeightField } from './terrain.ts';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const main = fs.readFileSync(path.join(here, '..', 'main.js'), 'utf8');
 const liveProxy = fs.readFileSync(path.join(here, 'liveHeightFieldProxy.ts'), 'utf8');
-const vegetation = fs.readFileSync(path.join(here, 'vegetation.js'), 'utf8');
+const vegetation = fs.readFileSync(path.join(here, 'vegetation.ts'), 'utf8');
 assert.match(main,
   /const hfProxy = createLiveHeightFieldProxy\(\{[\s\S]{0,180}useExactHeight: \(\) => shotMode/,
   'main delegates terrain mode and world lifetime to the typed proxy');

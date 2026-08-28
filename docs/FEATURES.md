@@ -137,7 +137,7 @@ This separation is important:
 Relevant implementation:
 
 - src/sim/movement.js
-- src/world/terrain.js
+- src/world/terrain.ts
 - src/world/collision.js
 - src/vehicles/tankFactory.js
 - tools/track-geometry.selftest.mjs

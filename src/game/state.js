@@ -897,7 +897,7 @@ function measureContactGeom(ent) {
  *    no rounded invisible shoulders or overlapping track corners;
  *  - broad phase stays a cheap circle reject (footprint circumradius).
  * CRUSHABLE props (round critique MAJOR "nothing in the world crushes"):
- * obstacle records tagged `crushable` by the world layer (vegetation.js tags
+ * obstacle records tagged `crushable` by the world layer (vegetation.ts tags
  * tree trunks — see docs/SYSTEMS.md) do NOT wall a hull that
  * is already moving faster than CRUSH_MIN_MPS: the overlap is queued on
  * `pendingCrush` and simStep fells the prop (world.crushObstacle topple
@@ -1456,7 +1456,7 @@ export function simStep(game, bus, world, rig, collider) {
 
   // b2. crushable props (gameplay_feel r6): resolve the hull-overrun crushes
   // the collider queued this tick — mark the record dead for all collision/AI
-  // consumers, fell the world visual (topple anim — vegetation.js/map.ts via
+  // consumers, fell the world visual (topple anim — vegetation.ts/map.ts via
   // world.crushObstacle, see docs/SYSTEMS.md), bite a little
   // momentum (WoT: small trees barely slow a hull) and announce for fx/audio.
   const pending = collider.pendingCrush;

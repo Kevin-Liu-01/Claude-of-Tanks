@@ -78,7 +78,7 @@ export default {
     grassDensity: 1.1,
     bushCount: 0.55,
     bushSpecies: 'oak',
-    // planted WINDBREAK LINES (vegetation.js belts, maps r1): field-boundary
+    // planted WINDBREAK LINES (vegetation.ts belts, maps r1): field-boundary
     // rows that read as the steppe's signature man-made geometry and serve
     // as the map's concealment corridors
     belts: [

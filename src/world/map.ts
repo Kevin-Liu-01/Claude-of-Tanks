@@ -12,7 +12,7 @@ import {
 import {
   createVegetation as createVegetationLegacy,
   createVegetationAsync as createVegetationAsyncLegacy,
-} from './vegetation.js';
+} from './vegetation.ts';
 import {
   createProps as createPropsLegacy,
   createPropsAsync as createPropsAsyncLegacy,
@@ -536,7 +536,7 @@ function assembleWorld(
     decorationGroundingReceipts: props.decorationGroundingReceipts || [],
     // gameplay_feel r6: crushable OBSTACLE records. state.js's collider
     // queues the hull overrun, marks the record `crushed`, then calls this
-    // for the world-side fall/break. Tree trunks (treeIdx, vegetation.js)
+    // for the world-side fall/break. Tree trunks (treeIdx, vegetation.ts)
     // hinge-topple; world-dressing r1 destructible props (propIdx, props.js
     // — fences, carts, stalls, bales, lamps...) topple or swap to debris via
     // the same seam.

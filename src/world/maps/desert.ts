@@ -150,7 +150,7 @@ export default {
     loneCount: 36, // r4: a few more standalone palms breaking the open flats
     rimCount: 22,
     // terrain_environment r3: dense understory scrub INSIDE the oases — the
-    // palm clusters stood as bare sticks on clean sand (vegetation.js
+    // palm clusters stood as bare sticks on clean sand (vegetation.ts
     // clusterScrub: >1 puts ~55% of the shrubs at the trunk bases)
     clusterScrub: 2.3,
     // r5 terrain_environment: keep the establishing camera's foreground frame
@@ -205,7 +205,7 @@ export default {
         // the ~0.85-luminance sand (critique, major). Dusty pale olive keeps
         // ~1.6:1 contrast at range and lets the aerial haze melt the crowns
         // toward the dune tone instead of punching black specks; pairs with
-        // the crown-scaled contact-shadow blobs (vegetation.js) that tie
+        // the crown-scaled contact-shadow blobs (vegetation.ts) that tie
         // each cluster to the ground.
         canopy: { hue: 0.24, sat: 0.17, l0: 0.33, l1: 0.52 },
       },

@@ -83,7 +83,7 @@ export const CAMO_PAINT_BONUS = 0.035; // biome-MATCHED camo pattern (+3.5%, r3)
 // a firing tank in forest still carried ~0.65 total — at 250 m+ the WoT
 // fire-reveal moment never happened outside isolated bushes. 0.5 keeps
 // deliberate double-bush play (2 x 0.35 still caps) while bloom-hot forest
-// targets light up. Pairs with vegetation.js canopy add 0.13 -> 0.08
+// targets light up. Pairs with vegetation.ts canopy add 0.13 -> 0.08
 // (bushes stay 0.35): trees soft-conceal, bushes are the real hides.
 export const MAX_BUSH_BONUS = 0.5;     // stacked-foliage cap
 const FIRE_CAMO_LOSS = 0.82;    // fallback own-camo loss at full bloom (unknown caliber)

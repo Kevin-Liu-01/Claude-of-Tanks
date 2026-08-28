@@ -125,13 +125,13 @@ export default {
       // saturated green pine breaking the set (critique, major). Both
       // species now run a HOAR-FROST palette: twig/needle textures pushed
       // toward pale rime, near-card tints cooled and lifted, and the new
-      // `snow` knob (vegetation.js, handoff r3) lays a white top-weighted
+      // `snow` knob (vegetation.ts, handoff r3) lays a white top-weighted
       // snow load on the card cloud. `jitterHue` clamps the per-instance
       // hue jitter (authored for verdant variety) to near value-only so no
       // lone summer-green tree can survive on a snow map.
       birch: {
         // r4 (content_breadth): snow 0.60 -> 0.75 — feeds the new branch-
-        // conforming snow-cap lobes in vegetation.js buildBirchGeometry (the
+        // conforming snow-cap lobes in vegetation.ts buildBirchGeometry (the
         // crowns read as "floating white confetti" without an opaque snow
         // mass tying the card cloud together)
         cardHue: 0.58, cardSat: 0.03, cardL0: 0.46,
@@ -150,7 +150,7 @@ export default {
         // r6 terrain_environment: 0.55 -> 0.90 — "conifers carry zero snow
         // load and read summer-green against full snow cover" (critique).
         // Feeds the strengthened card whitening AND the new opaque bough
-        // snow lobes in vegetation.js buildPineTrunk.
+        // snow lobes in vegetation.ts buildPineTrunk.
         snow: 0.90, jitterHue: 0.22,
       },
     },

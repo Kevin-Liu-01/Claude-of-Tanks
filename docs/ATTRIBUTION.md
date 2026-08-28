@@ -239,7 +239,7 @@ Candidate kept as **strong maybe** (not integrated; procedural remains source of
 
 All CC0; license verified on each asset page at download time. Winners ship
 from `public/textures/terrain/` (splat layers, wired via
-`src/world/sourcedTextures.ts` + `src/world/terrain.js`) and
+`src/world/sourcedTextures.ts` + `src/world/terrain.ts`) and
 `public/textures/buildings/` (village materials via `src/world/props.js`).
 The procedural painters remain the synchronous fallback behind the
 `USE_SOURCED_*` flags in `src/world/sourcedTextures.ts`. Only the 1K
