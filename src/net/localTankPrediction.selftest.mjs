@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createTankState } from '../sim/movement.js';
 import { LocalTankPredictor } from './localTankPrediction.ts';
-import { SNAPSHOT_FLAGS } from './snapshot.js';
+import { SNAPSHOT_FLAGS } from './snapshot.ts';
 
 const SPEC = {
   enginePowerHp: 1500,

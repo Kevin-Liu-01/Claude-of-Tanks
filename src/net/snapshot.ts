@@ -18,7 +18,7 @@ const ENTITY_DELTA_FIELDS = Object.freeze([
   'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
   'hp', 'maxHp', 'reloadMs', 'reloadTotalMs', 'reloadKind',
   'magazineRounds', 'magazineCapacity', 'shellSlot', 'flags', 'eraSpent',
-]);
+] as const);
 
 const SNAPSHOT_RELOAD_KINDS = Object.freeze({
   ready: 0,
@@ -28,7 +28,7 @@ const SNAPSHOT_RELOAD_KINDS = Object.freeze({
 });
 const SNAPSHOT_RELOAD_KIND_NAMES = Object.freeze([
   'ready', 'shell', 'intraClip', 'magazine',
-]);
+] as const);
 
 export const SNAPSHOT_FLAGS = Object.freeze({
   DESTROYED: 1 << 0,
@@ -40,32 +40,208 @@ export const SNAPSHOT_FLAGS = Object.freeze({
   AIRBORNE: 1 << 6,
 });
 
-function finite(value, fallback = 0) {
-  return Number.isFinite(value) ? value : fallback;
+type ReloadKindName = 'ready' | 'shell' | 'intraClip' | 'magazine';
+type VectorAxis = 0 | 1 | 2;
+
+interface SnapshotStateSource {
+  pos?: unknown;
+  speed?: unknown;
+  yaw?: unknown;
+  verticalSpeed?: unknown;
+  visualPitch?: unknown;
+  visualRoll?: unknown;
+  turretYaw?: unknown;
+  gunPitch?: unknown;
+  grounded?: boolean;
+  _ride?: { v?: unknown } | null;
 }
 
-function quantize(value, scale) {
+interface SnapshotCombatSource {
+  destroyed?: boolean;
+  fire?: { burning?: boolean } | null;
+  hp?: unknown;
+  maxHp?: unknown;
+  reload?: { t?: unknown; totalS?: unknown; kind?: unknown } | null;
+  magazine?: { rounds?: unknown; capacity?: unknown } | null;
+  shellSlot?: unknown;
+  eraSpent?: Set<string> | null;
+}
+
+export interface SnapshotEntitySource {
+  id?: unknown;
+  specId?: unknown;
+  spec?: { id?: unknown } | null;
+  team?: unknown;
+  spotted?: boolean;
+  state?: SnapshotStateSource | null;
+  combat?: SnapshotCombatSource | null;
+  input?: { fire?: boolean } | null;
+  specialAction?: {
+    active?: boolean;
+    pendingFire?: boolean;
+    inFlightShellId?: unknown;
+  } | null;
+}
+
+export interface SnapshotShellSource {
+  id?: unknown;
+  shooterId?: unknown;
+  dead?: boolean;
+  pos?: unknown;
+  vel?: unknown;
+  spec?: { type?: unknown; guided?: boolean } | null;
+}
+
+export interface QuantizedEntitySnapshot {
+  id: string;
+  specId: string;
+  team: string;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  yaw: number;
+  pitch: number;
+  roll: number;
+  turretYaw: number;
+  gunPitch: number;
+  hp: number;
+  maxHp: number;
+  reloadMs: number;
+  reloadTotalMs: number;
+  reloadKind: number;
+  magazineRounds: number;
+  magazineCapacity: number;
+  shellSlot: number;
+  flags: number;
+  eraSpent?: string[];
+}
+
+export interface QuantizedShellSnapshot {
+  id: number;
+  shooterId: string;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  type: string;
+  guided: boolean;
+}
+
+export interface WorldSnapshot {
+  tick: number;
+  serverTimeMs: number;
+  ackInputSeq: number;
+  entities: QuantizedEntitySnapshot[];
+  shells: QuantizedShellSnapshot[];
+  events: unknown[];
+  meta: Record<string, unknown> | null;
+}
+
+export interface SnapshotPacket extends WorldSnapshot {
+  baseTick?: number;
+  removedEntityIds?: string[];
+}
+
+export interface DecodedEntitySnapshot {
+  id: string;
+  specId: string;
+  team: string;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  yaw: number;
+  pitch: number;
+  roll: number;
+  turretYaw: number;
+  gunPitch: number;
+  hp: number;
+  maxHp: number;
+  reloadS: number;
+  reloadTotalS: number;
+  reloadKind: ReloadKindName;
+  magazineRounds: number;
+  magazineCapacity: number;
+  shellSlot: number;
+  flags: number;
+  eraSpent: string[];
+  [REST_POSE]?: RestPose;
+}
+
+interface RestPose {
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  pitch: number;
+  roll: number;
+}
+
+export interface ImmediateAuthoritySnapshot {
+  tick: number;
+  serverTimeMs: number;
+  ackInputSeq: number;
+  entity: DecodedEntitySnapshot;
+}
+
+export interface SampledSnapshotFrame {
+  tick: number;
+  serverTimeMs: number;
+  ackInputSeq: number;
+  entities: DecodedEntitySnapshot[];
+  shells: QuantizedShellSnapshot[];
+  events: unknown[];
+  meta: Record<string, unknown> | null;
+  immediateAuthority: ImmediateAuthoritySnapshot | null;
+}
+
+export interface CaptureWorldSnapshotOptions {
+  tick?: number;
+  serverTimeMs?: number;
+  entities?: Iterable<SnapshotEntitySource> | null;
+  shells?: Iterable<SnapshotShellSource> | null;
+  events?: unknown[] | null;
+  viewerId?: unknown;
+  ackInputSeq?: number;
+  canObserve?: (viewerId: string, entity: SnapshotEntitySource) => boolean;
+  canObserveShell?: (viewerId: string, shell: SnapshotShellSource) => boolean;
+  canObserveEvent?: (viewerId: string, event: unknown) => boolean;
+  meta?: Record<string, unknown> | null;
+}
+
+function finite(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function quantize(value: unknown, scale: number): number {
   return Math.round(finite(value) * scale);
 }
 
-function quantizeAngle(value) {
+function quantizeAngle(value: unknown): number {
   let angle = finite(value);
   while (angle > Math.PI) angle -= Math.PI * 2;
   while (angle < -Math.PI) angle += Math.PI * 2;
   return Math.round(angle * ANGLE_SCALE);
 }
 
-function dequantizeAngle(value) {
+function dequantizeAngle(value: number): number {
   return value / ANGLE_SCALE;
 }
 
-function vectorAxis(vector, axis) {
+function vectorAxis(vector: unknown, axis: VectorAxis): number {
   if (Array.isArray(vector)) return finite(vector[axis]);
   if (!vector || typeof vector !== 'object') return 0;
-  return finite(vector[axis === 0 ? 'x' : axis === 1 ? 'y' : 'z']);
+  return finite((vector as Record<string, unknown>)[axis === 0 ? 'x' : axis === 1 ? 'y' : 'z']);
 }
 
-function entityFlags(entity) {
+function entityFlags(entity: SnapshotEntitySource): number {
   let flags = 0;
   const combat = entity.combat || {};
   if (combat.destroyed) flags |= SNAPSHOT_FLAGS.DESTROYED;
@@ -81,12 +257,17 @@ function entityFlags(entity) {
 }
 
 /** Capture one active tank without retaining mutable simulation objects. */
-export function captureEntitySnapshot(entity) {
+export function captureEntitySnapshot(
+  entity: SnapshotEntitySource | null | undefined,
+): QuantizedEntitySnapshot | null {
   if (!entity || !entity.state || !entity.combat) return null;
   const state = entity.state;
   const speed = finite(state.speed);
   const yaw = finite(state.yaw);
-  const snapshot = {
+  const reloadKind = typeof entity.combat.reload?.kind === 'string'
+    ? entity.combat.reload.kind
+    : 'ready';
+  const snapshot: QuantizedEntitySnapshot = {
     id: String(entity.id),
     specId: String(entity.specId || (entity.spec && entity.spec.id) || ''),
     team: String(entity.team || ''),
@@ -94,7 +275,7 @@ export function captureEntitySnapshot(entity) {
     y: quantize(vectorAxis(state.pos, 1), POSITION_SCALE),
     z: quantize(vectorAxis(state.pos, 2), POSITION_SCALE),
     vx: quantize(Math.sin(yaw) * speed, VELOCITY_SCALE),
-    vy: quantize(finite(state.verticalSpeed, state._ride?.v), VELOCITY_SCALE),
+    vy: quantize(finite(state.verticalSpeed, finite(state._ride?.v)), VELOCITY_SCALE),
     vz: quantize(Math.cos(yaw) * speed, VELOCITY_SCALE),
     yaw: quantizeAngle(yaw),
     pitch: quantizeAngle(state.visualPitch),
@@ -107,10 +288,10 @@ export function captureEntitySnapshot(entity) {
     reloadTotalMs: Math.max(0, Math.round(finite(
       entity.combat.reload && entity.combat.reload.totalS,
     ) * 1000)),
-    reloadKind: SNAPSHOT_RELOAD_KINDS[entity.combat.reload?.kind] ?? 0,
-    magazineRounds: Math.max(0, entity.combat.magazine?.rounds | 0),
-    magazineCapacity: Math.max(0, entity.combat.magazine?.capacity | 0),
-    shellSlot: Math.max(0, Math.min(2, entity.combat.shellSlot | 0)),
+    reloadKind: SNAPSHOT_RELOAD_KINDS[reloadKind as keyof typeof SNAPSHOT_RELOAD_KINDS] ?? 0,
+    magazineRounds: Math.max(0, Number(entity.combat.magazine?.rounds) | 0),
+    magazineCapacity: Math.max(0, Number(entity.combat.magazine?.capacity) | 0),
+    shellSlot: Math.max(0, Math.min(2, Number(entity.combat.shellSlot) | 0)),
     flags: entityFlags(entity),
   };
   if (entity.combat.eraSpent?.size) {
@@ -119,7 +300,9 @@ export function captureEntitySnapshot(entity) {
   return snapshot;
 }
 
-function captureShellSnapshot(shell) {
+function captureShellSnapshot(
+  shell: SnapshotShellSource | null | undefined,
+): QuantizedShellSnapshot | null {
   if (!shell || shell.dead || !shell.pos) return null;
   return {
     id: Number(shell.id) || 0,
@@ -153,9 +336,12 @@ export function captureWorldSnapshot({
   canObserveShell = () => true,
   canObserveEvent = () => true,
   meta = null,
-} = {}) {
-  if (!Number.isSafeInteger(tick) || tick < 0) throw new TypeError('tick must be unsigned');
-  if (!Number.isFinite(serverTimeMs) || serverTimeMs < 0) {
+}: CaptureWorldSnapshotOptions = {}): WorldSnapshot {
+  if (typeof tick !== 'number' || !Number.isSafeInteger(tick) || tick < 0) {
+    throw new TypeError('tick must be unsigned');
+  }
+  if (typeof serverTimeMs !== 'number' || !Number.isFinite(serverTimeMs) ||
+      serverTimeMs < 0) {
     throw new TypeError('serverTimeMs must be non-negative');
   }
   const viewer = String(viewerId || '');
@@ -185,7 +371,10 @@ export function captureWorldSnapshot({
   };
 }
 
-function sameEntitySnapshot(a, b) {
+function sameEntitySnapshot(
+  a: QuantizedEntitySnapshot | null | undefined,
+  b: QuantizedEntitySnapshot | null | undefined,
+): boolean {
   if (!a || !b) return false;
   for (const field of ENTITY_DELTA_FIELDS) {
     if (field === 'eraSpent') {
@@ -211,7 +400,10 @@ function sameEntitySnapshot(a, b) {
  * baseline. Shells and events stay self-contained because they are transient;
  * stable tank state is reduced to changed rows plus explicit removals.
  */
-export function createSnapshotDelta(current, baseline = null) {
+export function createSnapshotDelta(
+  current: WorldSnapshot,
+  baseline: WorldSnapshot | null = null,
+): SnapshotPacket {
   if (!current || !Number.isSafeInteger(current.tick) || !Array.isArray(current.entities)) {
     throw new TypeError('current full snapshot is required');
   }
@@ -223,13 +415,13 @@ export function createSnapshotDelta(current, baseline = null) {
     throw new TypeError('baseline must be an older full snapshot');
   }
   const baselineById = new Map(baseline.entities.map((entity) => [entity.id, entity]));
-  const currentIds = new Set();
-  const changed = [];
+  const currentIds = new Set<string>();
+  const changed: QuantizedEntitySnapshot[] = [];
   for (const entity of current.entities) {
     currentIds.add(entity.id);
     if (!sameEntitySnapshot(entity, baselineById.get(entity.id))) changed.push(entity);
   }
-  const removedEntityIds = [];
+  const removedEntityIds: string[] = [];
   for (const entity of baseline.entities) {
     if (!currentIds.has(entity.id)) removedEntityIds.push(entity.id);
   }
@@ -243,20 +435,22 @@ export function createSnapshotDelta(current, baseline = null) {
 
 /** Reconstruct ACK-based deltas into full snapshots for the jitter buffer. */
 export class SnapshotAssembler {
-  constructor({ capacity = 96 } = {}) {
+  readonly capacity: number;
+  private readonly history = new Map<number, WorldSnapshot>();
+
+  constructor({ capacity = 96 }: { capacity?: number } = {}) {
     if (!Number.isInteger(capacity) || capacity < 2) {
       throw new TypeError('snapshot assembler capacity must be at least two');
     }
     this.capacity = capacity;
-    this.history = new Map();
   }
 
-  accept(packet) {
+  accept(packet: SnapshotPacket): WorldSnapshot | null {
     if (!packet || !Number.isSafeInteger(packet.tick) || !Array.isArray(packet.entities)) {
       throw new TypeError('invalid snapshot packet');
     }
     const baseTick = packet.baseTick == null ? -1 : packet.baseTick;
-    let entities;
+    let entities: QuantizedEntitySnapshot[];
     if (baseTick === -1) {
       entities = packet.entities.slice();
     } else {
@@ -281,16 +475,21 @@ export class SnapshotAssembler {
     };
     this.history.set(full.tick, full);
     while (this.history.size > this.capacity) {
-      this.history.delete(this.history.keys().next().value);
+      const oldestTick = this.history.keys().next().value;
+      if (oldestTick == null) break;
+      this.history.delete(oldestTick);
     }
     return full;
   }
 
-  clear() { this.history.clear(); }
+  clear(): void { this.history.clear(); }
 }
 
-export function decodeEntitySnapshot(entity, target = null) {
-  const out = target || {};
+export function decodeEntitySnapshot(
+  entity: QuantizedEntitySnapshot,
+  target: DecodedEntitySnapshot | null = null,
+): DecodedEntitySnapshot {
+  const out = target || {} as DecodedEntitySnapshot;
   out.id = entity.id;
   out.specId = entity.specId;
   out.team = entity.team;
@@ -318,18 +517,25 @@ export function decodeEntitySnapshot(entity, target = null) {
   return out;
 }
 
-function shortestAngleDelta(from, to) {
+function shortestAngleDelta(from: number, to: number): number {
   let delta = to - from;
   while (delta > Math.PI) delta -= Math.PI * 2;
   while (delta < -Math.PI) delta += Math.PI * 2;
   return delta;
 }
 
-function lerpAngle(a, b, t) {
+function lerpAngle(a: number, b: number, t: number): number {
   return a + shortestAngleDelta(a, b) * t;
 }
 
-function hermite(p0, v0, p1, v1, t, durationS) {
+function hermite(
+  p0: number,
+  v0: number,
+  p1: number,
+  v1: number,
+  t: number,
+  durationS: number,
+): number {
   const t2 = t * t;
   const t3 = t2 * t;
   const h00 = 2 * t3 - 3 * t2 + 1;
@@ -343,7 +549,14 @@ function hermite(p0, v0, p1, v1, t, durationS) {
 // chassis floor. Their reported vertical velocity remains useful as a tangent
 // but is not allowed to overshoot the two authoritative heights. Airborne
 // motion keeps ordinary Hermite so ballistic arcs remain velocity-correct.
-function monotoneHermite(p0, v0, p1, v1, t, durationS) {
+function monotoneHermite(
+  p0: number,
+  v0: number,
+  p1: number,
+  v1: number,
+  t: number,
+  durationS: number,
+): number {
   if (!(durationS > 0)) return p1;
   const slope = (p1 - p0) / durationS;
   if (Math.abs(slope) < 1e-8) return p0;
@@ -360,8 +573,15 @@ function monotoneHermite(p0, v0, p1, v1, t, durationS) {
   return hermite(p0, m0, p1, m1, t, durationS);
 }
 
-function interpolateEntity(aRaw, bRaw, t, durationS, target = null,
-  scratchA = null, scratchB = null) {
+function interpolateEntity(
+  aRaw: QuantizedEntitySnapshot,
+  bRaw: QuantizedEntitySnapshot,
+  t: number,
+  durationS: number,
+  target: DecodedEntitySnapshot | null = null,
+  scratchA: DecodedEntitySnapshot | null = null,
+  scratchB: DecodedEntitySnapshot | null = null,
+): DecodedEntitySnapshot {
   const a = decodeEntitySnapshot(aRaw, scratchA);
   const b = decodeEntitySnapshot(bRaw, scratchB);
   const out = decodeEntitySnapshot(bRaw, target);
@@ -384,7 +604,11 @@ function interpolateEntity(aRaw, bRaw, t, durationS, target = null,
   return out;
 }
 
-function extrapolateEntity(raw, extraS, target = null) {
+function extrapolateEntity(
+  raw: QuantizedEntitySnapshot,
+  extraS: number,
+  target: DecodedEntitySnapshot | null = null,
+): DecodedEntitySnapshot {
   const entity = decodeEntitySnapshot(raw, target);
   entity.x += entity.vx * extraS;
   entity.y += entity.vy * extraS;
@@ -393,7 +617,7 @@ function extrapolateEntity(raw, extraS, target = null) {
   return entity;
 }
 
-function stabilizeRestPose(entity) {
+function stabilizeRestPose(entity: DecodedEntitySnapshot): DecodedEntitySnapshot {
   let rest = entity[REST_POSE];
   if (!rest) {
     rest = {
@@ -453,7 +677,53 @@ function stabilizeRestPose(entity) {
  * Client-side jitter buffer. It renders slightly behind authority, uses
  * Hermite motion for tracked vehicles, and bounds extrapolation during loss.
  */
+export interface SnapshotBufferOptions {
+  interpolationDelayMs?: number;
+  maxExtrapolationMs?: number;
+  capacity?: number;
+  immediateEntityId?: string | null;
+  adaptiveDelay?: boolean;
+  maxInterpolationDelayMs?: number;
+}
+
+export interface SnapshotBufferStats {
+  interpolationDelayMs: number;
+  targetInterpolationDelayMs: number;
+  arrivalJitterMs: number;
+  acceptedSnapshots: number;
+  rejectedSnapshots: number;
+  sampleCount: number;
+  extrapolatedSamples: number;
+  bufferedSnapshots: number;
+}
+
 export class SnapshotBuffer {
+  readonly baseInterpolationDelayMs: number;
+  interpolationDelayMs: number;
+  targetInterpolationDelayMs: number;
+  readonly maxInterpolationDelayMs: number;
+  readonly adaptiveDelay: boolean;
+  readonly maxExtrapolationMs: number;
+  readonly capacity: number;
+  readonly immediateEntityId: string | null;
+  readonly snapshots: WorldSnapshot[] = [];
+  latestTick = -1;
+  arrivalJitterMs = 0;
+  private lastArrivalMs: number | null = null;
+  private lastServerTimeMs: number | null = null;
+  private lastSampleServerTimeMs: number | null = null;
+  private lastRenderTimeMs: number | null = null;
+  private acceptedSnapshots = 0;
+  private rejectedSnapshots = 0;
+  private sampleCount = 0;
+  private extrapolatedSamples = 0;
+  private readonly sampleFrame: SampledSnapshotFrame;
+  private readonly sampleEntities = new Map<string, DecodedEntitySnapshot>();
+  private readonly olderById = new Map<string, QuantizedEntitySnapshot>();
+  private readonly decodeScratchA = {} as DecodedEntitySnapshot;
+  private readonly decodeScratchB = {} as DecodedEntitySnapshot;
+  private readonly immediateAuthority: ImmediateAuthoritySnapshot;
+
   constructor({
     interpolationDelayMs = 100,
     maxExtrapolationMs = 250,
@@ -461,7 +731,7 @@ export class SnapshotBuffer {
     immediateEntityId = null,
     adaptiveDelay = interpolationDelayMs > 0,
     maxInterpolationDelayMs = Math.max(interpolationDelayMs, 220),
-  } = {}) {
+  }: SnapshotBufferOptions = {}) {
     if (interpolationDelayMs < 0 || maxExtrapolationMs < 0 || capacity < 2 ||
         maxInterpolationDelayMs < interpolationDelayMs) {
       throw new TypeError('invalid snapshot buffer configuration');
@@ -474,17 +744,6 @@ export class SnapshotBuffer {
     this.maxExtrapolationMs = maxExtrapolationMs;
     this.capacity = capacity;
     this.immediateEntityId = immediateEntityId == null ? null : String(immediateEntityId);
-    this.snapshots = [];
-    this.latestTick = -1;
-    this.arrivalJitterMs = 0;
-    this.lastArrivalMs = null;
-    this.lastServerTimeMs = null;
-    this.lastSampleServerTimeMs = null;
-    this.lastRenderTimeMs = null;
-    this.acceptedSnapshots = 0;
-    this.rejectedSnapshots = 0;
-    this.sampleCount = 0;
-    this.extrapolatedSamples = 0;
     // Presentation sampling runs once per render frame. Reuse its output
     // graph so 120 Hz multiplayer does not allocate a frame plus N entity
     // objects and a lookup Map every tick.
@@ -498,14 +757,15 @@ export class SnapshotBuffer {
       meta: null,
       immediateAuthority: null,
     };
-    this.sampleEntities = new Map();
-    this.olderById = new Map();
-    this.decodeScratchA = {};
-    this.decodeScratchB = {};
-    this.immediateAuthority = { tick: 0, serverTimeMs: 0, ackInputSeq: 0, entity: {} };
+    this.immediateAuthority = {
+      tick: 0,
+      serverTimeMs: 0,
+      ackInputSeq: 0,
+      entity: {} as DecodedEntitySnapshot,
+    };
   }
 
-  push(snapshot, receivedAtMs = null) {
+  push(snapshot: WorldSnapshot, receivedAtMs: number | null = null): boolean {
     if (!snapshot || !Number.isSafeInteger(snapshot.tick) ||
         !Number.isFinite(snapshot.serverTimeMs) || !Array.isArray(snapshot.entities)) {
       throw new TypeError('invalid snapshot');
@@ -522,10 +782,11 @@ export class SnapshotBuffer {
     return true;
   }
 
-  #observeArrival(serverTimeMs, receivedAtMs) {
-    if (!this.adaptiveDelay || !Number.isFinite(receivedAtMs)) return;
-    if (this.lastArrivalMs != null && receivedAtMs >= this.lastArrivalMs &&
-        serverTimeMs > this.lastServerTimeMs) {
+  #observeArrival(serverTimeMs: number, receivedAtMs: number | null): void {
+    if (!this.adaptiveDelay || typeof receivedAtMs !== 'number' ||
+        !Number.isFinite(receivedAtMs)) return;
+    if (this.lastArrivalMs != null && this.lastServerTimeMs != null &&
+        receivedAtMs >= this.lastArrivalMs && serverTimeMs > this.lastServerTimeMs) {
       const arrivalSpacing = receivedAtMs - this.lastArrivalMs;
       const authoritySpacing = serverTimeMs - this.lastServerTimeMs;
       const variation = Math.abs(arrivalSpacing - authoritySpacing);
@@ -543,7 +804,7 @@ export class SnapshotBuffer {
     this.lastServerTimeMs = serverTimeMs;
   }
 
-  clear() {
+  clear(): void {
     this.snapshots.length = 0;
     this.latestTick = -1;
     this.interpolationDelayMs = this.baseInterpolationDelayMs;
@@ -557,7 +818,7 @@ export class SnapshotBuffer {
     this.olderById.clear();
   }
 
-  getStats() {
+  getStats(): SnapshotBufferStats {
     return {
       interpolationDelayMs: this.interpolationDelayMs,
       targetInterpolationDelayMs: this.targetInterpolationDelayMs,
@@ -570,16 +831,16 @@ export class SnapshotBuffer {
     };
   }
 
-  sampleEntity(id) {
+  private sampleEntity(id: string): DecodedEntitySnapshot {
     let entity = this.sampleEntities.get(id);
     if (!entity) {
-      entity = {};
+      entity = {} as DecodedEntitySnapshot;
       this.sampleEntities.set(id, entity);
     }
     return entity;
   }
 
-  sample(localServerTimeMs) {
+  sample(localServerTimeMs: number): SampledSnapshotFrame | null {
     if (!this.snapshots.length) return null;
     this.sampleCount++;
     if (this.adaptiveDelay) {
@@ -612,8 +873,8 @@ export class SnapshotBuffer {
       renderTime = this.lastRenderTimeMs;
     }
     this.lastRenderTimeMs = renderTime;
-    let older = null;
-    let newer = null;
+    let older: WorldSnapshot | null = null;
+    let newer: WorldSnapshot | null = null;
     for (const snapshot of this.snapshots) {
       if (snapshot.serverTimeMs <= renderTime) older = snapshot;
       if (snapshot.serverTimeMs >= renderTime) {
@@ -656,7 +917,7 @@ export class SnapshotBuffer {
     // extrapolator; opponents and teammates remain safely buffered. This is
     // still server truth—there is no client-side collision or damage sim—and
     // corrections remain small because snapshots arrive at 20 Hz.
-    let immediateAuthority = null;
+    let immediateAuthority: ImmediateAuthoritySnapshot | null = null;
     if (this.immediateEntityId) {
       const latest = this.snapshots[this.snapshots.length - 1];
       const raw = latest.entities.find((entity) => entity.id === this.immediateEntityId);

@@ -43,7 +43,7 @@ import {
   captureWorldSnapshot,
   createSnapshotDelta,
   decodeEntitySnapshot,
-} from './snapshot.js';
+} from './snapshot.ts';
 import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
 import { snapshotWireCodec } from './snapshotWireCodec.ts';
 import { createLocalMatchSession } from './localSession.js';

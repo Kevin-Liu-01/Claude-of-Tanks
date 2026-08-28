@@ -110,3 +110,4 @@ runtime documents remain authoritative for behavior.
 - [0098 — Ranked browser service access is strict TypeScript](0098-typed-ranked-service-client.md)
 - [0099 — Adverse network certification has a strict transport contract](0099-typed-adverse-network-transport.md)
 - [0100 — Dedicated browser matches have one strict reconnect owner](0100-typed-dedicated-client.md)
+- [0101 — Snapshot interpolation has one strict typed model](0101-typed-snapshot-interpolation.md)

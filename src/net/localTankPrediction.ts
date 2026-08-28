@@ -2,7 +2,7 @@ import { Vector3 } from 'three';
 import { SIM_DT, createTankState, updateTank } from '../sim/movement.js';
 import { isSequenceNewer } from './protocol.ts';
 import { decodeAimIntent } from './aimIntent.ts';
-import { SNAPSHOT_FLAGS } from './snapshot.js';
+import { SNAPSHOT_FLAGS } from './snapshot.ts';
 import {
   PREDICTION_CORRECTION_KEYS,
   decayPredictionCorrection,

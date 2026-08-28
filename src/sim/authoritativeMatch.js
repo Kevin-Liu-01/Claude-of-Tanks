@@ -44,7 +44,7 @@ import {
   tickModuleRepairs,
 } from './damage.js';
 import { createSpottingSystem } from './spotting.js';
-import { captureWorldSnapshot } from '../net/snapshot.js';
+import { captureWorldSnapshot } from '../net/snapshot.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.js';
 import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.js';
 import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.js';

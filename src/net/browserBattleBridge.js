@@ -8,7 +8,7 @@ import { tankContactRect } from '../sim/tankContactShape.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.js';
 import { LocalTankPredictor } from './localTankPrediction.ts';
 import { PresentationEventQueue } from './presentationEventQueue.ts';
-import { SNAPSHOT_FLAGS } from './snapshot.js';
+import { SNAPSHOT_FLAGS } from './snapshot.ts';
 import { createSpecialActionState } from '../sim/specialActions.js';
 
 const POS_SCALE = 100;

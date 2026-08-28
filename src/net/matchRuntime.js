@@ -12,7 +12,7 @@ import {
   validateEnvelope,
 } from './protocol.ts';
 import { TransportClosedError } from './loopbackTransport.ts';
-import { SnapshotAssembler, SnapshotBuffer, createSnapshotDelta } from './snapshot.js';
+import { SnapshotAssembler, SnapshotBuffer, createSnapshotDelta } from './snapshot.ts';
 
 function validateRate(tickHz, snapshotHz) {
   if (!Number.isInteger(tickHz) || tickHz < 10 || tickHz > 120) {

@@ -11,7 +11,7 @@ import {
 } from './ballistics.js';
 import { createAuthoritativeMatch } from './authoritativeMatch.js';
 import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
-import { captureEntitySnapshot, SNAPSHOT_FLAGS } from '../net/snapshot.js';
+import { captureEntitySnapshot, SNAPSHOT_FLAGS } from '../net/snapshot.ts';
 import {
   SPECIAL_ACTION_KINDS,
   activateSpecialAction,
