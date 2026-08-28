@@ -629,7 +629,7 @@ state-restoring shadow A/B probe.
 
 ## Presentation bridge and effects
 
-src/net/browserBattleBridge.js applies sampled authority state to browser game
+src/net/browserBattleBridge.ts applies sampled authority state to browser game
 state. The main render loop owns the final visual synchronization, avoiding a
 second full tank sync in the same frame.
 

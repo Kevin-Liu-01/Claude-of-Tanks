@@ -363,7 +363,7 @@ protocol and service contract.
 
 ## 9. Presentation and performance
 
-`src/net/browserBattleBridge.js` applies sampled authority state to the
+`src/net/browserBattleBridge.ts` applies sampled authority state to the
 browser model. The main render loop owns final tank synchronization. The
 presentation event queue applies critical transitions immediately and admits
 heavy cosmetic effects within a bounded frame budget.

@@ -34,7 +34,7 @@ its dedicated service explicitly negotiates another ruleset.
 - `src/sim/authoritativeMatch.js` is the renderer-free battle authority.
 - `src/net/matchRuntime.ts` owns fixed ticks, input ordering, readiness,
   viewer-specific snapshots, catch-up limits, and connection state.
-- `src/net/browserBattleBridge.js` turns authority snapshots and events into
+- `src/net/browserBattleBridge.ts` turns authority snapshots and events into
   first-party Three.js visuals without resolving gameplay locally.
 - `src/net/networkFramePump.ts` owns browser host/client frame order, input
   cadence, reliable-event draining, snapshot waits, and diagnostics.

@@ -1,4 +1,11 @@
 import { throwIfNetworkBattleEntryAborted } from './networkBattleEntryAbort.ts';
+import type {
+  BrowserBattleBridge,
+  createBrowserBattleBridge,
+} from './browserBattleBridge.ts';
+import type { createBrowserInputRuntime } from './browserInputRuntime.ts';
+import type { SampledSnapshotFrame } from './snapshot.ts';
+import type { createNetworkStatus } from '../ui/networkStatus.ts';
 
 type MaybePromise<T> = T | PromiseLike<T>;
 
@@ -37,42 +44,23 @@ interface NetworkMatchPort {
   close?(reason?: string): unknown;
 }
 
-interface NetworkEntityVisualPort {
-  setGroundSampler?(sampler: (x: number, z: number) => unknown): void;
-}
-
-interface NetworkEntityPort {
-  specId: string;
-  visual?: NetworkEntityVisualPort | null;
-}
-
-interface NetworkBridgePort {
-  entities: Map<string, NetworkEntityPort>;
-  prepareRoster(
-    players: NetworkBattlePresentationPlayer[],
-    onProgress: (fraction: number, specId: string) => void,
-  ): Promise<void>;
-  apply(snapshot: unknown, dt: number): void;
-  dispose(): void;
-}
+type NetworkBridgePort = BrowserBattleBridge;
 
 interface NetworkStatusPort {
   set?(status: unknown): void;
   dispose?(): void;
 }
 
-type NetworkFactory = (...args: any[]) => any;
-
 interface BrowserBattleBridgeModulePort {
-  createBrowserBattleBridge: NetworkFactory;
+  createBrowserBattleBridge: typeof createBrowserBattleBridge;
 }
 
 interface NetworkStatusModulePort {
-  createNetworkStatus: NetworkFactory;
+  createNetworkStatus: typeof createNetworkStatus;
 }
 
 interface BrowserInputRuntimeModulePort {
-  createBrowserInputRuntime: NetworkFactory;
+  createBrowserInputRuntime: typeof createBrowserInputRuntime;
 }
 
 type NetworkEntryModules = readonly [
@@ -139,18 +127,20 @@ export interface NetworkBattlePresentationOptions {
     getMatch(): NetworkMatchPort | null;
   };
   bridge: {
-    installInputRuntime(factory: NetworkFactory): void;
-    createStatus(factory: NetworkFactory): NetworkStatusPort;
+    installInputRuntime(factory: typeof createBrowserInputRuntime): void;
+    createStatus(factory: typeof createNetworkStatus): NetworkStatusPort;
     publishStatus(status: NetworkStatusPort): void;
     attachRecovery(client: unknown, status: NetworkStatusPort): void;
     create(
-      factory: NetworkFactory,
+      factory: typeof createBrowserBattleBridge,
       request: NetworkBattlePresentationRequest,
       spectator: boolean,
     ): NetworkBridgePort;
     publish(bridge: NetworkBridgePort): void;
     groundSampler(x: number, z: number): unknown;
-    waitForInitialSnapshot(request: { viewerId: string; spectator: boolean }): Promise<unknown>;
+    waitForInitialSnapshot(
+      request: { viewerId: string; spectator: boolean },
+    ): Promise<SampledSnapshotFrame>;
     waitForPeerReadiness(): Promise<unknown>;
   };
   warm: {
@@ -351,7 +341,7 @@ export function createNetworkBattlePresentationRuntime({
         entity.visual?.setGroundSampler?.(bridge.groundSampler);
       }
       load.battleLoad.progress(0.84, 'Synchronizing authority');
-      let initial: unknown;
+      let initial: SampledSnapshotFrame;
       try {
         initial = await bridge.waitForInitialSnapshot({ viewerId, spectator });
         throwIfNetworkBattleEntryAborted(signal);

@@ -61,7 +61,7 @@ play without importing Three.js rendering or DOM state.
   `privateMatchHandoff.ts` is the strict lobby-to-match boundary: it
   deterministically fills open team slots with bots
   and releases those same channels to match authority.
-- `browserBattleBridge.js` is presentation-only and must stay lazy from main.
+- `browserBattleBridge.ts` is presentation-only and must stay lazy from main.
 
 ## Patterns and invariants
 

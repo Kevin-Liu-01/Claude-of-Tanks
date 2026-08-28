@@ -7,9 +7,315 @@ import { prebakeSharedTextures } from '../vehicles/materials.js';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.js';
 import { LocalTankPredictor } from './localTankPrediction.ts';
-import { PresentationEventQueue } from './presentationEventQueue.ts';
-import { SNAPSHOT_FLAGS } from './snapshot.ts';
+import {
+  PresentationEventQueue,
+  type PresentationEvent,
+} from './presentationEventQueue.ts';
+import {
+  SNAPSHOT_FLAGS,
+  type DecodedEntitySnapshot,
+  type ImmediateAuthoritySnapshot,
+  type QuantizedShellSnapshot,
+  type SampledSnapshotFrame,
+} from './snapshot.ts';
+import type {
+  LocalPredictionStats,
+  PredictionInput,
+  PredictionSimEntity,
+  PredictionTankState,
+} from './localTankPrediction.ts';
 import { createSpecialActionState } from '../sim/specialActions.js';
+
+type Unsubscribe = () => void;
+type Team = string | null;
+
+interface ShellSpec extends Record<string, unknown> {
+  name?: string;
+  type?: string;
+  soundProfile?: string;
+}
+
+interface TankSpec extends Record<string, unknown> {
+  id: string;
+  name?: string;
+  dims: { widthM: number; hullLengthM: number; heightM: number };
+  armor?: { bodyContactPoints?: { hull?: number[] } };
+  gun?: {
+    shells?: ShellSpec[];
+    soundProfile?: string;
+  };
+}
+
+interface BridgeTankState extends PredictionTankState {
+  suspensionAim?: boolean;
+}
+
+interface BridgeCombatState {
+  hp: number;
+  maxHp: number;
+  destroyed: boolean;
+  shellSlot: number;
+  reload: { t: number; totalS: number; kind: string };
+  magazine: { rounds: number; capacity: number } | null;
+  fire: { burning: boolean };
+}
+
+interface BridgeSpecialActionState {
+  kind?: string;
+  active: boolean;
+  pendingFire: boolean;
+}
+
+interface TankVisual {
+  root: unknown;
+  contactGeom?: unknown;
+  setVisible(visible: boolean): void;
+  syncFromState(state: BridgeTankState, dt: number): void;
+  dispose(): void;
+  recoilKick?(dt: number, scale: number): number | null;
+  gunMuzzleWorld?(target: Vector3, muzzleIndex: number): Vector3;
+  stripEra?(plateName: string): void;
+  resetEra?(): void;
+  setDestroyed?(options: { pop: boolean }): void;
+  resetDestroyed?(): void;
+  setGroundSampler?(sampler: (x: number, z: number) => unknown): void;
+}
+
+interface BridgeInput {
+  throttle: number;
+  steer: number;
+  brake: boolean;
+  fire: boolean;
+  shellSlot: number;
+  aimPoint: Vector3;
+}
+
+interface BridgeEntity extends PredictionSimEntity {
+  id: string;
+  specId: string;
+  spec: TankSpec;
+  camo: string;
+  displayName: string | null;
+  networkTeam: string;
+  team: 'player' | 'enemy';
+  isPlayer: boolean;
+  state: BridgeTankState;
+  combat: BridgeCombatState;
+  specialAction: BridgeSpecialActionState;
+  input: BridgeInput;
+  visual: TankVisual;
+  networkVisible: boolean;
+  predictor?: LocalTankPredictor;
+  _networkPoseReady: boolean;
+  _networkDestroyed: boolean;
+  _networkDestroyPop?: boolean;
+  _networkEraSpent?: Set<string>;
+  _lastX: number;
+  _lastZ: number;
+}
+
+interface RosterPlayer {
+  id: string;
+  name?: string;
+  specId: string;
+  camo?: string;
+  team?: string;
+}
+
+interface EntitySeed extends RosterPlayer {
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+}
+
+interface CollisionObstacle {
+  min: [number, number, number];
+  max: [number, number, number];
+  crushed?: boolean;
+  crushable?: boolean;
+  crushMin?: number;
+}
+
+interface HeightField {
+  getHeightAt(x: number, z: number): number;
+}
+
+interface WorldCollision {
+  heightField?: HeightField;
+  queryObstacles?(
+    minX: number,
+    minZ: number,
+    maxX: number,
+    maxZ: number,
+    target: CollisionObstacle[],
+  ): CollisionObstacle[];
+  getObstacles?(): CollisionObstacle[];
+  crushObstacle?(
+    obstacle: CollisionObstacle,
+    directionX: number,
+    directionZ: number,
+    speedMps: number,
+  ): void;
+}
+
+interface EngineContext {
+  scene: { add(object: unknown): void };
+  anisotropy?: number;
+}
+
+interface SpottingFacade {
+  isSpotted(targetId: string): boolean;
+  getConcealment(): Record<string, number | boolean>;
+}
+
+interface BrowserGameState {
+  tanks: BridgeEntity[];
+  tankById: Map<string, BridgeEntity>;
+  player: BridgeEntity | null;
+  shells: BridgeShell[];
+  spotting: SpottingFacade | null;
+  allTanks?: Array<{ visual?: TankVisual | null }>;
+  timeS: number;
+  preBattleS: number;
+  result?: string | null;
+  resultReason?: string | null;
+  mapId?: string;
+  gameMode?: unknown;
+  matchModeState?: unknown;
+}
+
+interface EventBus {
+  emit(type: string, payload: Record<string, unknown>): void;
+}
+
+interface BridgeShell {
+  id: number;
+  shooterId: string;
+  pos: Vector3;
+  prevPos: Vector3;
+  vel: Vector3;
+  spec: { type: string; tracer: string; guided: boolean };
+  dead: boolean;
+  ageS: number;
+  distM: number;
+  spawnedAtS?: number;
+}
+
+interface LegacyGameState {
+  tanks: BridgeEntity[];
+  tankById: Map<string, BridgeEntity>;
+  player: BridgeEntity | null;
+  shells: BridgeShell[];
+  spotting: SpottingFacade | null;
+}
+
+interface BridgeEvent extends PresentationEvent {
+  id?: string;
+  shooterId?: string;
+  attackerId?: string;
+  killerId?: string;
+  cause?: string;
+  shellId?: number;
+  shellType?: string;
+  shellName?: string;
+  weaponSound?: string;
+  caliberMm?: number;
+  velocityMps?: number;
+  timeS?: number;
+  x?: number;
+  y?: number;
+  z?: number;
+  dx?: number;
+  dy?: number;
+  dz?: number;
+  nx?: number;
+  ny?: number;
+  nz?: number;
+  kind?: string;
+  surfaceKind?: string;
+  obstacleIndex?: number;
+  directionX?: number;
+  directionZ?: number;
+  speedMps?: number;
+  result?: string;
+  reason?: string;
+  slot?: unknown;
+  cooldownS?: unknown;
+  readyAt?: unknown;
+  remainingS?: unknown;
+  active?: boolean;
+  module?: unknown;
+  state?: unknown;
+  source?: unknown;
+  burning?: boolean;
+  aId?: string;
+  bId?: string;
+  damageA?: number;
+  damageB?: number;
+  closingMps?: number;
+}
+
+type CreateTankVisual = (
+  specId: string,
+  engineCtx: EngineContext,
+  options: { camoSeed: number; camoPattern: string; quality: string },
+) => TankVisual;
+
+type PrepareVisualTextures = (
+  spec: TankSpec,
+  anisotropy: number,
+  quality: string,
+  tick: () => Promise<void>,
+  camo: string,
+) => Promise<unknown>;
+
+export interface BrowserBattleBridgeOptions {
+  engineCtx: EngineContext;
+  game: BrowserGameState;
+  bus: EventBus;
+  viewerId: unknown;
+  spectator?: boolean;
+  worldCollision?: WorldCollision | null;
+  createTankVisual?: CreateTankVisual;
+  prepareVisualTextures?: PrepareVisualTextures;
+  clearVehicleDecals?: ((visual: TankVisual) => void) | null;
+}
+
+export interface BrowserBattleBridge {
+  entities: Map<string, BridgeEntity>;
+  roster: BridgeEntity[];
+  prepareRoster(
+    players: RosterPlayer[],
+    onProgress?: ((fraction: number, specId: string) => void) | null,
+  ): Promise<void>;
+  mount(): void;
+  apply(snapshot: SampledSnapshotFrame, dt?: number, reliableEvents?: PresentationEvent[]): boolean;
+  endDisconnected(): boolean;
+  recordInput(input: PredictionInput | null, dt: number, inputSeq: number): boolean;
+  getPredictionStats(): LocalPredictionStats | null;
+  getPresentationEventStats(): Record<string, unknown>;
+  setPerspective(entityId: unknown): boolean;
+  unmount(): void;
+  dispose(): void;
+}
+
+const readSpec = getSpec as unknown as (id: string) => TankSpec;
+const makeTankState = createTankState as unknown as (
+  spec: TankSpec,
+  position: Vector3,
+  yaw: number,
+) => BridgeTankState;
+const makeCombatState = createCombatState as unknown as (spec: TankSpec) => BridgeCombatState;
+const makeSpecialActionState = createSpecialActionState as unknown as (
+  spec: TankSpec,
+) => BridgeSpecialActionState;
+const defaultCreateTankVisual = createTank as unknown as CreateTankVisual;
+const defaultPrepareVisualTextures = prebakeSharedTextures as unknown as PrepareVisualTextures;
+const recoilScale = shotRecoilScale as unknown as (
+  spec: TankSpec,
+  shell: ShellSpec | null,
+) => number;
 
 const POS_SCALE = 100;
 const VEL_SCALE = 100;
@@ -17,7 +323,7 @@ const MAP_HALF_M = 508;
 const _muzzleTip = new Vector3(); // §5.362 twin-plant flash-origin scratch
 const _predictionContactCenter = new Vector3();
 
-function hashString(value) {
+function hashString(value: unknown): number {
   let hash = 2166136261;
   for (const char of String(value)) {
     hash ^= char.charCodeAt(0);
@@ -26,8 +332,8 @@ function hashString(value) {
   return hash >>> 0;
 }
 
-function nextFrame() {
-  return new Promise((resolve) => {
+function nextFrame(): Promise<void> {
+  return new Promise<void>((resolve) => {
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => resolve());
     else setTimeout(resolve, 0);
   });
@@ -45,38 +351,43 @@ export function createBrowserBattleBridge({
   viewerId,
   spectator = false,
   worldCollision = null,
-  createTankVisual = createTank,
-  prepareVisualTextures = prebakeSharedTextures,
+  createTankVisual = defaultCreateTankVisual,
+  prepareVisualTextures = defaultPrepareVisualTextures,
   clearVehicleDecals = null,
-} = {}) {
+}: BrowserBattleBridgeOptions): BrowserBattleBridge {
   if (!engineCtx || !engineCtx.scene || !game) throw new TypeError('engineCtx and game are required');
   const id = String(viewerId || '');
   if (!id) throw new TypeError('viewerId is required');
-  const entities = new Map();
-  const roster = [];
-  const shellById = new Map();
-  const visibleRoster = [];
-  const liveShells = [];
-  let viewerTeam = null;
-  let perspectiveTeam = null;
-  let snapshotPhase = null;
+  const entities = new Map<string, BridgeEntity>();
+  const roster: BridgeEntity[] = [];
+  const shellById = new Map<number, BridgeShell>();
+  const visibleRoster: BridgeEntity[] = [];
+  const liveShells: BridgeShell[] = [];
+  let viewerTeam: Team = null;
+  let perspectiveTeam: Team = null;
+  let snapshotPhase: string | null = null;
   let mounted = false;
-  let legacyState = null;
-  const destructionCause = new Map();
-  const nearbyPredictionObstacles = [];
+  let legacyState: LegacyGameState | null = null;
+  const destructionCause = new Map<string, string>();
+  const nearbyPredictionObstacles: CollisionObstacle[] = [];
   let appliedDestructibleRevision = -1;
   let visualDestroyCount = 0;
   let visualDestroyTotalMs = 0;
   let visualDestroyMaxMs = 0;
 
-  function collidePrediction(entity, pos, _radius, outPush) {
+  function collidePrediction(
+    entity: PredictionSimEntity,
+    pos: Vector3,
+    _radius: number,
+    outPush: Vector3,
+  ): boolean {
     outPush.set(0, 0, 0);
     const safeX = Math.max(-MAP_HALF_M, Math.min(MAP_HALF_M, pos.x));
     const safeZ = Math.max(-MAP_HALF_M, Math.min(MAP_HALF_M, pos.z));
     outPush.x = safeX - pos.x;
     outPush.z = safeZ - pos.z;
     if (!worldCollision) return outPush.x !== 0 || outPush.z !== 0;
-    const contactRect = tankContactRect(entity.spec);
+    const contactRect = tankContactRect(entity.spec as unknown as TankSpec);
     const halfL = contactRect.halfLength;
     const halfW = contactRect.halfWidth;
     const yaw = entity.state.yaw;
@@ -141,35 +452,39 @@ export function createBrowserBattleBridge({
     return outPush.x !== 0 || outPush.z !== 0;
   }
 
-  function ensureEntity(snapshot) {
-    let entity = entities.get(snapshot.id);
-    if (entity) {
-      if (snapshot.name) entity.displayName = snapshot.name;
-      return entity;
+  function ensureEntity(snapshot: EntitySeed | DecodedEntitySnapshot): BridgeEntity {
+    const existing = entities.get(snapshot.id);
+    const displayName = 'name' in snapshot && typeof snapshot.name === 'string'
+      ? snapshot.name : null;
+    const camo = 'camo' in snapshot && typeof snapshot.camo === 'string'
+      ? snapshot.camo : 'factory';
+    if (existing) {
+      if (displayName) existing.displayName = displayName;
+      return existing;
     }
-    const spec = getSpec(snapshot.specId);
+    const spec = readSpec(snapshot.specId);
     const pos = new Vector3(snapshot.x, snapshot.y, snapshot.z);
-    const state = createTankState(spec, pos, snapshot.yaw);
-    const combat = createCombatState(spec);
+    const state = makeTankState(spec, pos, snapshot.yaw);
+    const combat = makeCombatState(spec);
     const visual = createTankVisual(spec.id, engineCtx, {
       camoSeed: 4000 + (hashString(snapshot.id) % 100000),
-      camoPattern: snapshot.camo || 'factory',
+      camoPattern: camo,
       quality: snapshot.id === id ? 'high' : 'ai',
     });
     engineCtx.scene.add(visual.root);
     visual.setVisible(false);
-    entity = {
+    const entity: BridgeEntity = {
       id: snapshot.id,
       specId: spec.id,
       spec,
-      camo: snapshot.camo || 'factory',
-      displayName: snapshot.name || null,
-      networkTeam: snapshot.team,
+      camo,
+      displayName,
+      networkTeam: String(snapshot.team || ''),
       team: 'enemy',
       isPlayer: !spectator && snapshot.id === id,
       state,
       combat,
-      specialAction: createSpecialActionState(spec),
+      specialAction: makeSpecialActionState(spec),
       input: {
         throttle: 0,
         steer: 0,
@@ -199,7 +514,10 @@ export function createBrowserBattleBridge({
     return entity;
   }
 
-  async function prepareRoster(players, onProgress = null) {
+  async function prepareRoster(
+    players: RosterPlayer[],
+    onProgress: ((fraction: number, specId: string) => void) | null = null,
+  ): Promise<void> {
     const active = (players || []).filter((player) => player.team !== 'spectator');
     const warmed = new Set();
     for (let index = 0; index < active.length; index++) {
@@ -212,7 +530,7 @@ export function createBrowserBattleBridge({
         warmed.add(warmKey);
         try {
           await prepareVisualTextures(
-            getSpec(player.specId),
+            readSpec(player.specId),
             engineCtx.anisotropy ?? 4,
             quality,
             nextFrame,
@@ -233,7 +551,12 @@ export function createBrowserBattleBridge({
     }
   }
 
-  function updateEntity(entity, snapshot, dt, immediateAuthority = null) {
+  function updateEntity(
+    entity: BridgeEntity,
+    snapshot: DecodedEntitySnapshot,
+    dt: number,
+    immediateAuthority: ImmediateAuthoritySnapshot | null = null,
+  ): void {
     entity.networkTeam = snapshot.team;
     if (!spectator && entity.id === id) viewerTeam = snapshot.team;
     const referenceTeam = spectator ? perspectiveTeam : viewerTeam;
@@ -325,7 +648,7 @@ export function createBrowserBattleBridge({
     entity.visual.setVisible(true);
   }
 
-  function visualDestroy(entity) {
+  function visualDestroy(entity: BridgeEntity): void {
     const pop = destructionCause.get(entity.id) === 'ammo_rack';
     if (entity._networkDestroyed && entity._networkDestroyPop === pop) return;
     entity._networkDestroyed = true;
@@ -347,7 +670,7 @@ export function createBrowserBattleBridge({
     }
   }
 
-  function updateShells(rawShells) {
+  function updateShells(rawShells: QuantizedShellSnapshot[]): void {
     const live = new Set();
     for (const raw of rawShells || []) {
       const shellId = Number(raw.id);
@@ -390,10 +713,10 @@ export function createBrowserBattleBridge({
     game.shells = liveShells;
   }
 
-  function emitEvent(event) {
-    if (!bus || typeof bus.emit !== 'function') return;
+  function emitEvent(event: BridgeEvent): void {
+    if (typeof event.type !== 'string') return;
     if (event.type === 'shell_fired') {
-        const shooter = entities.get(event.shooterId);
+        const shooter = entities.get(String(event.shooterId || ''));
         // §5.362 fleet recoil in networked battles: the authoritative sim
         // fires server-side, so play the same presentation recuperator
         // stroke the local sim would (state.js tryFire wiring) on the
@@ -402,13 +725,13 @@ export function createBrowserBattleBridge({
         // fired shell exactly like the local path.
         let muzzlePos = [event.x, event.y, event.z];
         let shellSpec = null;
-        let muzzleIndex = -1;
+        let muzzleIndex: number | null = -1;
         if (shooter && shooter.visual && shooter.visual.recoilKick) {
           const shells = (shooter.spec && shooter.spec.gun && shooter.spec.gun.shells) || [];
           shellSpec = shells.find((s) => s.name === event.shellName)
             || shells.find((s) => s.type === event.shellType) || null;
           muzzleIndex = shooter.visual.recoilKick(
-            0, shotRecoilScale(shooter.spec, shellSpec));
+            0, recoilScale(shooter.spec, shellSpec));
           // Twin-plant ids: the flash spawns at the firing barrel's tip
           // (the visual owns the alternation cursor here — the server's
           // center-bore ballistics stay authoritative for the shell).
@@ -451,7 +774,7 @@ export function createBrowserBattleBridge({
           pos: [event.x, event.y, event.z],
         });
     } else if (event.type === 'tank_destroyed') {
-        const entity = entities.get(event.id);
+        const entity = entities.get(String(event.id || ''));
         bus.emit('tank:destroyed', {
           id: event.id,
           specId: entity && entity.specId,
@@ -460,15 +783,18 @@ export function createBrowserBattleBridge({
           pos: entity ? [entity.state.pos.x, entity.state.pos.y, entity.state.pos.z] : null,
         });
     } else if (event.type === 'world_prop_destroyed') {
-        const obstacle = worldCollision && typeof worldCollision.getObstacles === 'function'
-          ? worldCollision.getObstacles()[event.obstacleIndex]
+        const collision = worldCollision;
+        const obstacleIndex = Number(event.obstacleIndex);
+        const obstacle = collision && typeof collision.getObstacles === 'function' &&
+            Number.isSafeInteger(obstacleIndex) && obstacleIndex >= 0
+          ? collision.getObstacles()[obstacleIndex]
           : null;
-        if (obstacle && !obstacle.crushed && typeof worldCollision.crushObstacle === 'function') {
-          worldCollision.crushObstacle(
+        if (obstacle && !obstacle.crushed && typeof collision?.crushObstacle === 'function') {
+          collision.crushObstacle(
             obstacle,
-            event.directionX,
-            event.directionZ,
-            event.speedMps,
+            Number(event.directionX) || 0,
+            Number(event.directionZ) || 0,
+            Number(event.speedMps) || 0,
           );
         }
         bus.emit('prop:crushed', {
@@ -546,9 +872,11 @@ export function createBrowserBattleBridge({
     }
   }
 
-  const presentationEvents = new PresentationEventQueue({ emit: emitEvent });
+  const presentationEvents = new PresentationEventQueue({
+    emit: (event) => emitEvent(event as BridgeEvent),
+  });
 
-  function resultRoster() {
+  function resultRoster(): Array<Record<string, unknown>> {
     return [...entities.values()].map((entity) => ({
       id: entity.id,
       name: entity.displayName || entity.spec?.name || entity.specId,
@@ -560,7 +888,7 @@ export function createBrowserBattleBridge({
     }));
   }
 
-  function reconcileDestructibles(meta) {
+  function reconcileDestructibles(meta: Record<string, unknown> | null): void {
     const revision = Number(meta?.destructibleRevision);
     if (!Number.isSafeInteger(revision) || revision < 0 ||
         revision <= appliedDestructibleRevision) return;
@@ -584,7 +912,7 @@ export function createBrowserBattleBridge({
     appliedDestructibleRevision = revision;
   }
 
-  function mount() {
+  function mount(): void {
     if (mounted) return;
     mounted = true;
     legacyState = {
@@ -612,14 +940,21 @@ export function createBrowserBattleBridge({
     };
   }
 
-  function apply(snapshot, dt = 1 / 60, reliableEvents = []) {
+  function apply(
+    snapshot: SampledSnapshotFrame,
+    dt = 1 / 60,
+    reliableEvents: PresentationEvent[] = [],
+  ): boolean {
     if (!snapshot) return false;
-    snapshotPhase = snapshot.meta?.phase || snapshotPhase;
+    if (typeof snapshot.meta?.phase === 'string') snapshotPhase = snapshot.meta.phase;
     // Index destruction causes before state reconciliation so an ammo-rack
     // turret pop is staged once, with the correct variant, instead of first
     // creating a generic wreck and rebuilding it when the event arrives.
     for (const event of reliableEvents) {
-      if (event?.type === 'tank_destroyed') destructionCause.set(event.id, event.cause);
+      if (event.type === 'tank_destroyed' && typeof event.id === 'string' &&
+          typeof event.cause === 'string') {
+        destructionCause.set(event.id, event.cause);
+      }
     }
     for (const entity of entities.values()) entity.networkVisible = false;
     // Establish the viewer's team before classifying any other entity.
@@ -644,11 +979,11 @@ export function createBrowserBattleBridge({
     game.tanks = visibleRoster;
     game.tankById = entities;
     game.player = spectator ? null : entities.get(id) || null;
-    game.timeS = snapshot.meta?.battleTimeMs != null
-      ? snapshot.meta.battleTimeMs / 1000
+    game.timeS = Number.isFinite(snapshot.meta?.battleTimeMs)
+      ? Number(snapshot.meta?.battleTimeMs) / 1000
       : snapshot.serverTimeMs / 1000;
-    game.preBattleS = snapshot.meta?.countdownMs != null
-      ? snapshot.meta.countdownMs / 1000
+    game.preBattleS = Number.isFinite(snapshot.meta?.countdownMs)
+      ? Number(snapshot.meta?.countdownMs) / 1000
       : 0;
     game.gameMode = snapshot.meta?.gameMode || 'standard';
     game.matchModeState = snapshot.meta?.modeState || null;
@@ -665,7 +1000,8 @@ export function createBrowserBattleBridge({
       const authorityResult = snapshot.meta.result;
       game.result = spectator ? 'draw' : authorityResult === 'draw' ? 'draw'
         : authorityResult === viewerTeam ? 'victory' : 'defeat';
-      game.resultReason = snapshot.meta.resultReason || 'elimination';
+      game.resultReason = typeof snapshot.meta.resultReason === 'string'
+        ? snapshot.meta.resultReason : 'elimination';
       bus.emit('battle:ended', {
         result: game.result,
         reason: game.resultReason,
@@ -677,7 +1013,7 @@ export function createBrowserBattleBridge({
     return true;
   }
 
-  function endDisconnected() {
+  function endDisconnected(): boolean {
     if (game.result) return false;
     game.result = 'draw';
     game.resultReason = 'network_disconnect';
@@ -691,7 +1027,7 @@ export function createBrowserBattleBridge({
     return true;
   }
 
-  function setPerspective(entityId) {
+  function setPerspective(entityId: unknown): boolean {
     if (!spectator) return false;
     const target = entities.get(String(entityId || ''));
     if (!target) return false;
@@ -702,17 +1038,17 @@ export function createBrowserBattleBridge({
     return true;
   }
 
-  function recordInput(input, dt, inputSeq) {
+  function recordInput(input: PredictionInput | null, dt: number, inputSeq: number): boolean {
     if (spectator || snapshotPhase !== 'playing') return false;
     const own = entities.get(id);
     return own?.predictor?.recordInput(input, dt, inputSeq) || false;
   }
 
-  function getPredictionStats() {
+  function getPredictionStats(): LocalPredictionStats | null {
     return entities.get(id)?.predictor?.getStats() || null;
   }
 
-  function unmount() {
+  function unmount(): void {
     if (!mounted || !legacyState) return;
     game.tanks = legacyState.tanks;
     game.tankById = legacyState.tankById;
@@ -726,7 +1062,7 @@ export function createBrowserBattleBridge({
     legacyState = null;
   }
 
-  function dispose() {
+  function dispose(): void {
     unmount();
     for (const entity of entities.values()) entity.visual.dispose();
     entities.clear();

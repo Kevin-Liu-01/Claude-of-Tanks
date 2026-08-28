@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import { createBrowserBattleBridge } from './browserBattleBridge.js';
+import { createBrowserBattleBridge } from './browserBattleBridge.ts';
 import { SNAPSHOT_FLAGS } from './snapshot.ts';
 
 const visuals = [];
