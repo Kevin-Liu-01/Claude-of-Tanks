@@ -12,7 +12,7 @@
  */
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { iconUrl } from './icons.js';
-import { MAP_THUMBS } from './mapThumbs.js';
+import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.js';
 import { FEATURED_SHOTS } from './featuredShots.js';
 import { mountMediaArchive } from '../presentation/mediaArchive.js';
 import { PRODUCT_STATS } from '../productStats.js';
@@ -1014,7 +1014,7 @@ export function createStudioPanel(S) {
         caption: `${info.name || id} // module layout`,
       }];
     }
-    const src = MAP_THUMBS[S.mapId];
+    const src = MAP_HEROES[S.mapId] || MAP_THUMBS[S.mapId];
     if (!src) return [];
     const info = S.getMapInfo ? S.getMapInfo(S.mapId) : { name: S.mapId };
     const shot = FEATURED_SHOTS.find((entry) => entry.maps?.includes(S.mapId)) || FEATURED_SHOTS[0];
@@ -1389,7 +1389,7 @@ export function createStudioPanel(S) {
       badgeMap.textContent = id ? id.toUpperCase() : '';
       if (!id) return;
       const info = S.getMapInfo ? S.getMapInfo(id) : { name: id };
-      mapHero.src = MAP_THUMBS[id] || '';
+      mapHero.src = MAP_HEROES[id] || MAP_THUMBS[id] || '';
       mapName.textContent = info.name || id;
       mapId.textContent = id.toUpperCase();
       mapBtn.setAttribute('aria-label', `Choose battlefield. Current: ${info.name || id}`);

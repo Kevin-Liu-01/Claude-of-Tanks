@@ -1658,7 +1658,7 @@ export function createGarage(opts) {
         if (!selected) return [];
         const action = FEATURED_SHOTS.find((shot) => shot.maps?.includes(selected.id));
         return [{
-          src: selected.thumb,
+          src: selected.hero || selected.thumb,
           alt: `${selected.name} battlefield preview`,
           caption: `${selected.name} // battlefield preview`,
         }, action ? {

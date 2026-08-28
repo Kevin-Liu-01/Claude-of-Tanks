@@ -58,7 +58,7 @@ import { setDestroyedEventSink } from './world/destructibles.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
 import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
-import { MAP_THUMBS } from './ui/mapThumbs.js';
+import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.js';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.js';
 import {
   createTank, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
@@ -845,10 +845,10 @@ async function ensureBattleHud() {
 await bootStage('hud');
 
 const garageMaps = [
-  { id: 'random', name: 'Random', thumb: '' },
+  { id: 'random', name: 'Random', thumb: '', hero: '' },
   ...MAP_IDS.map((id) => {
     const c = getMapConfig(id);
-    return { id, name: c.name, thumb: MAP_THUMBS[id] || '' };
+    return { id, name: c.name, thumb: MAP_THUMBS[id] || '', hero: MAP_HEROES[id] || '' };
   }),
 ];
 let networkRoomCoordinator = null;
@@ -1714,7 +1714,7 @@ const soloBattleLoading = createSoloBattleLoadingRuntime({
   lifecycle: battleEntryLifecycle,
   getPendingMapId: () => worldRuntime.pendingMapId,
   getMapConfig,
-  getMapThumb: (mapId) => MAP_THUMBS[mapId] || '',
+  getMapThumb: (mapId) => MAP_HEROES[mapId] || MAP_THUMBS[mapId] || '',
   hasCachedWorld: (mapId) => !!worldCache.get(mapId),
   getWorld: () => {
     const world = currentWorld();
@@ -1828,7 +1828,7 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
     roster: {
       getMap: (mapId) => {
         const cfg = getMapConfig(mapId);
-        return { name: cfg.name || mapId, thumb: MAP_THUMBS[mapId] || '', biome: mapId };
+        return { name: cfg.name || mapId, thumb: MAP_HEROES[mapId] || MAP_THUMBS[mapId] || '', biome: mapId };
       },
       rows: (players, team, viewerId) => lobbyRosterRows({ players }, team, viewerId),
       vehicleName: (specId) => getSpec(specId)?.name || specId,
@@ -1934,7 +1934,7 @@ const networkBattleLauncher = createNetworkBattleLaunchRuntime({
   getMapPresentation: (mapId, fallback) => {
     if (!mapId) return { name: fallback, thumb: '', biome: 'none' };
     const cfg = getMapConfig(mapId);
-    return { name: cfg.name || fallback, thumb: MAP_THUMBS[mapId] || '', biome: mapId };
+    return { name: cfg.name || fallback, thumb: MAP_HEROES[mapId] || MAP_THUMBS[mapId] || '', biome: mapId };
   },
   rosterRows: lobbyRosterRows,
   emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),

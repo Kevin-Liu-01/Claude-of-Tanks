@@ -878,7 +878,7 @@ export function createPlayMenu({
     battlefieldArt.classList.toggle('is-random', randomBattlefield);
     battlefieldArt.style.backgroundImage = randomBattlefield
       ? 'none'
-      : `url("${selectedMap.thumb.replace(/"/g, '%22')}")`;
+      : `url("${(selectedMap.hero || selectedMap.thumb).replace(/"/g, '%22')}")`;
     battlefieldRole.textContent = role === 'host' ? 'Host selectable' : 'Selected by host';
     battlefieldCard.classList.toggle('guest', role !== 'host');
     sizeSelect.value = String(next.teamSize || 1);

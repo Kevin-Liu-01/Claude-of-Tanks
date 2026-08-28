@@ -688,10 +688,11 @@ bergman-derived siblings above.
   derivative renders of the community assets tabled above —
   those rows' attribution covers the derived images. All other icons render
   100% procedural geometry (no third-party content).
-- `public/maps/{verdant,desert,winter,urban}.png` — map-picker thumbnails
-  captured from the game's own render; derivative only of this repo's
-  procedural world + the CC0 texture sets listed above (no attribution duty
-  for CC0).
+- `public/maps/*.webp` and `public/maps/thumbs/*.webp` — native-4K battlefield
+  hero images plus lightweight picker derivatives for all shipped maps,
+  captured from the game's own deterministic render; derivative only of this
+  repo's procedural world + the CC0 texture sets listed above (no attribution
+  duty for CC0).
 
 ## Audio (public/audio/) — 100% local synthesis, no third-party recordings sampled
 

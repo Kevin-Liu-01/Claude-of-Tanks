@@ -10,8 +10,41 @@ import {
   nextFeaturedShot,
 } from './featuredShots.js';
 import { BOOT_HERO_SHOTS } from './bootScreen.js';
-import { MAP_THUMBS } from './mapThumbs.js';
+import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.js';
 import { MAP_IDS } from '../world/maps/index.js';
+
+function webpDimensions(buffer) {
+  assert.equal(buffer.subarray(0, 4).toString(), 'RIFF', 'map image must be RIFF WebP');
+  assert.equal(buffer.subarray(8, 12).toString(), 'WEBP', 'map image must be WebP');
+  for (let offset = 12; offset + 8 <= buffer.length;) {
+    const kind = buffer.subarray(offset, offset + 4).toString();
+    const size = buffer.readUInt32LE(offset + 4);
+    const data = offset + 8;
+    if (kind === 'VP8 ') {
+      return [buffer.readUInt16LE(data + 6) & 0x3fff, buffer.readUInt16LE(data + 8) & 0x3fff];
+    }
+    if (kind === 'VP8L') {
+      const bits = buffer.readUInt32LE(data + 1);
+      return [(bits & 0x3fff) + 1, ((bits >>> 14) & 0x3fff) + 1];
+    }
+    if (kind === 'VP8X') {
+      return [buffer.readUIntLE(data + 4, 3) + 1, buffer.readUIntLE(data + 7, 3) + 1];
+    }
+    offset = data + size + (size & 1);
+  }
+  throw new Error('map image is missing a WebP dimensions chunk');
+}
+
+assert.deepEqual(Object.keys(MAP_HEROES), Object.keys(MAP_THUMBS),
+  'every map picker image must have a matching high-resolution hero');
+for (const mapId of MAP_IDS) {
+  const hero = await readFile(new URL(`../../public${MAP_HEROES[mapId]}`, import.meta.url));
+  const thumb = await readFile(new URL(`../../public${MAP_THUMBS[mapId]}`, import.meta.url));
+  assert.deepEqual(webpDimensions(hero), [3840, 2160], `${mapId} hero must remain native 4K`);
+  assert.deepEqual(webpDimensions(thumb), [1280, 720], `${mapId} picker must remain 720p`);
+  assert.ok(hero.length > thumb.length * 3,
+    `${mapId} picker must remain a materially lighter derivative than its hero`);
+}
 
 const minimapAssets = await Promise.all(MAP_IDS.map(async (mapId) => ({
   mapId,
