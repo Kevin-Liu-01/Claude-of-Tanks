@@ -8,6 +8,125 @@ import { uiIconSVG } from './uiIcons.ts';
 
 export { debugModeRequested } from '../dev/debugIntent.ts';
 
+interface RendererDiagnostics {
+  info: {
+    render: { calls: number; triangles: number };
+    programs?: unknown[] | null;
+    memory: { geometries: number; textures: number };
+  };
+}
+
+interface DebugGameState {
+  phase: string;
+  timeS: number;
+}
+
+interface PerfTracePort {
+  enabled?: boolean;
+  mark(name: string, payload: unknown): void;
+  stats(): unknown;
+  download(): string | null | undefined;
+}
+
+interface QualityTelemetry {
+  buffer?: string;
+  dpr?: number | string;
+  dynScale?: number | string;
+  preset?: string;
+  tier?: string;
+  perfTrim?: number | string;
+  gpu?: string;
+}
+
+interface SimulationTelemetry {
+  phase?: string;
+  map?: string;
+  timeS?: number;
+  alive?: number | string;
+  tanks?: number | string;
+  shells?: number | string;
+}
+
+interface WorldTelemetry {
+  obstacles?: number | string;
+  colliders?: number | string;
+  concealers?: number | string;
+  destructibles?: number | string;
+  wrecks?: number | string;
+  looseActive?: number | string;
+  looseTotal?: number | string;
+}
+
+interface ShadowCascadeTelemetry {
+  size?: number | string;
+  allocated?: boolean;
+  radius?: number;
+}
+
+interface ShadowTelemetry {
+  enabled?: boolean;
+  rescue?: string;
+  maxFar?: number | string;
+  throttle?: number | string;
+  cascades?: ShadowCascadeTelemetry[];
+  casters?: number | string;
+  receivers?: number | string;
+  shaderErrors?: number;
+}
+
+interface NetworkTelemetry {
+  connected?: boolean;
+  rttMs?: number;
+  jitterMs?: number;
+  lossPct?: number;
+  bufferedBytes?: number;
+}
+
+interface MemoryTelemetry { drawBuffer?: string }
+
+interface DebugTelemetry {
+  error?: unknown;
+  quality?: QualityTelemetry;
+  simulation?: SimulationTelemetry;
+  world?: WorldTelemetry;
+  shadows?: ShadowTelemetry;
+  network?: NetworkTelemetry;
+  memory?: MemoryTelemetry;
+}
+
+interface FrameStats {
+  fps: number;
+  onePctLow: number;
+  p50: number;
+  p95: number;
+  p99: number;
+  worstStall: number;
+  calls: number;
+  tris: number;
+  programs: number;
+  geometries: number;
+  textures: number;
+  heapMB: number;
+  heapLimitMB: number;
+  simPct: number;
+}
+
+interface QaSummaryOptions {
+  traceStats?: unknown;
+  hudSnapshot?: { stats?: unknown; telemetry?: unknown } | null;
+  telemetry?: unknown;
+  capturedAt?: string;
+}
+
+interface BrowserPerformanceMemory {
+  usedJSHeapSize: number;
+  jsHeapSizeLimit: number;
+}
+
+interface PerformanceWithMemory extends Performance {
+  memory?: BrowserPerformanceMemory;
+}
+
 const PERF_HUD_CSS = `
 #cot-perfhud{position:fixed;top:12px;right:12px;z-index:360;
   width:min(386px,calc(100vw - 24px));max-height:calc(100dvh - 24px);box-sizing:border-box;
@@ -53,7 +172,12 @@ const PERF_HUD_CSS = `
 `;
 
 /** Small, shareable report for issue comments; the full trace stays exportable. */
-export function buildQaSummary({ traceStats, hudSnapshot, telemetry, capturedAt = new Date().toISOString() } = {}) {
+export function buildQaSummary({
+  traceStats,
+  hudSnapshot,
+  telemetry,
+  capturedAt = new Date().toISOString(),
+}: QaSummaryOptions = {}) {
   return {
     capturedAt,
     trace: traceStats || null,
@@ -62,14 +186,14 @@ export function buildQaSummary({ traceStats, hudSnapshot, telemetry, capturedAt 
   };
 }
 
-function fmtCount(value) {
+function fmtCount(value: unknown): string {
   const n = Number(value) || 0;
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}m`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(0)}k`;
   return String(n);
 }
 
-function fmtBytes(value) {
+function fmtBytes(value: unknown): string {
   const n = Number(value);
   if (!Number.isFinite(n) || n < 0) return '—';
   if (n >= 1048576) return `${(n / 1048576).toFixed(1)} MB`;
@@ -77,7 +201,15 @@ function fmtBytes(value) {
   return `${n.toFixed(0)} B`;
 }
 
-export function createPerfHud({ renderer, game, trace = null }) {
+export function createPerfHud({
+  renderer,
+  game,
+  trace = null,
+}: {
+  renderer: RendererDiagnostics;
+  game: DebugGameState;
+  trace?: PerfTracePort | null;
+}) {
   ensureStyle('cot-perfhud-style', PERF_HUD_CSS);
   const el = document.createElement('aside');
   el.id = 'cot-perfhud';
@@ -87,15 +219,24 @@ export function createPerfHud({ renderer, game, trace = null }) {
       <div><div class="ph-title">Battle Diagnostics</div><div class="ph-sub">F8 · Settings → Interface</div></div>
       <span class="ph-state" data-status>LIVE</span></header>
     <div data-grid></div>`;
-  const grid = el.querySelector('[data-grid]');
-  const statusEl = el.querySelector('[data-status]');
-  const sectionEls = new Map();
-  const makeSection = (id, title, wide = false) => {
+  const gridNode = el.querySelector<HTMLElement>('[data-grid]');
+  const statusNode = el.querySelector<HTMLElement>('[data-status]');
+  if (!gridNode || !statusNode) throw new Error('performance HUD template is incomplete');
+  const grid: HTMLElement = gridNode;
+  const statusEl: HTMLElement = statusNode;
+  const sectionEls = new Map<string, HTMLElement>();
+  const sectionValue = (id: string): HTMLElement => {
+    const value = sectionEls.get(id);
+    if (!value) throw new Error(`performance HUD section ${id} is unavailable`);
+    return value;
+  };
+  const makeSection = (id: string, title: string, wide = false): HTMLElement => {
     const section = document.createElement('section');
     section.className = `ph-section${wide ? ' wide' : ''}`;
     section.innerHTML = `<div class="ph-label">${title}</div><div class="ph-value" data-value></div>`;
     grid.appendChild(section);
-    const value = section.querySelector('[data-value]');
+    const value = section.querySelector<HTMLElement>('[data-value]');
+    if (!value) throw new Error(`performance HUD section ${id} is incomplete`);
     sectionEls.set(id, value);
     return value;
   };
@@ -110,7 +251,7 @@ export function createPerfHud({ renderer, game, trace = null }) {
   if (trace?.enabled) {
     const actions = document.createElement('div');
     actions.className = 'ph-actions';
-    const action = (label, title) => {
+    const action = (label: string, title: string): HTMLButtonElement => {
       const button = document.createElement('button');
       button.type = 'button';
       button.textContent = label;
@@ -128,7 +269,7 @@ export function createPerfHud({ renderer, game, trace = null }) {
     actions.appendChild(actionStatus);
     grid.appendChild(actions);
 
-    const setStatus = (message, error = false) => {
+    const setStatus = (message: string, error = false): void => {
       actionStatus.textContent = message;
       actionStatus.style.color = error ? '#ff9d7c' : '#8fe0bd';
       setTimeout(() => { if (actionStatus.textContent === message) actionStatus.textContent = ''; }, 3500);
@@ -168,7 +309,7 @@ export function createPerfHud({ renderer, game, trace = null }) {
   const sorted = new Float32Array(240);
   let ri = 0;
   let rn = 0;
-  const stalls = [];
+  const stalls: Array<{ t: number; d: number }> = [];
   try {
     new PerformanceObserver((list) => {
       const now = performance.now();
@@ -180,8 +321,8 @@ export function createPerfHud({ renderer, game, trace = null }) {
   let wall0 = 0;
   let simPct = -1;
   let lastDom = 0;
-  let telemetryProvider = null;
-  let latestTelemetry = null;
+  let telemetryProvider: (() => DebugTelemetry | null | undefined) | null = null;
+  let latestTelemetry: DebugTelemetry | null = null;
   let visible = false;
   let captureHidden = false;
   const applyVisibility = () => {
@@ -191,7 +332,7 @@ export function createPerfHud({ renderer, game, trace = null }) {
   };
   applyVisibility();
 
-  function stats() {
+  function stats(): FrameStats | null {
     const n = rn;
     if (!n) return null;
     sorted.set(ring.subarray(0, n));
@@ -199,7 +340,8 @@ export function createPerfHud({ renderer, game, trace = null }) {
     let sum = 0;
     for (let i = 0; i < n; i++) sum += view[i];
     const avg = sum / n;
-    const at = (p) => view[Math.min(n - 1, Math.floor((n - 1) * p))];
+    const at = (p: number): number => view[Math.min(n - 1, Math.floor((n - 1) * p))];
+    const memory = (performance as PerformanceWithMemory).memory;
     return {
       fps: avg > 0 ? 1000 / avg : 0,
       onePctLow: at(0.99) > 0 ? 1000 / at(0.99) : 0,
@@ -212,16 +354,20 @@ export function createPerfHud({ renderer, game, trace = null }) {
       programs: (renderer.info.programs || []).length,
       geometries: renderer.info.memory.geometries,
       textures: renderer.info.memory.textures,
-      heapMB: performance.memory ? performance.memory.usedJSHeapSize / 1048576 : -1,
-      heapLimitMB: performance.memory ? performance.memory.jsHeapSizeLimit / 1048576 : -1,
+      heapMB: memory ? memory.usedJSHeapSize / 1048576 : -1,
+      heapLimitMB: memory ? memory.jsHeapSizeLimit / 1048576 : -1,
       simPct,
     };
   }
 
-  function renderDashboard(s) {
+  function renderDashboard(s: FrameStats): void {
     let t = latestTelemetry;
     if (telemetryProvider) {
-      try { t = telemetryProvider() || null; } catch (error) { t = { error: String(error?.message || error) }; }
+      try {
+        t = telemetryProvider() || null;
+      } catch (error: unknown) {
+        t = { error: error instanceof Error ? error.message : String(error) };
+      }
       latestTelemetry = t;
     }
     const q = t?.quality || {};
@@ -233,35 +379,35 @@ export function createPerfHud({ renderer, game, trace = null }) {
     const cascades = Array.isArray(shadow.cascades) ? shadow.cascades : [];
     statusEl.textContent = t?.error ? 'PROVIDER ERROR' : 'LIVE';
     el.classList.toggle('has-error', !!t?.error);
-    sectionEls.get('frame').textContent =
+    sectionValue('frame').textContent =
       `${s.fps.toFixed(0)} fps   1% low ${s.onePctLow.toFixed(0)}\n` +
       `${s.p50.toFixed(1)} / ${s.p95.toFixed(1)} / ${s.p99.toFixed(1)} ms\n` +
       `stall ${s.worstStall ? `${s.worstStall.toFixed(0)} ms` : '—'}   sim ${s.simPct >= 0 ? `${s.simPct.toFixed(0)}%` : '—'}`;
-    sectionEls.get('render').textContent =
+    sectionValue('render').textContent =
       `${s.calls} calls   ${fmtCount(s.tris)} tri\n` +
       `${s.programs} programs\n${s.geometries} geo   ${s.textures} tex`;
-    sectionEls.get('quality').textContent =
+    sectionValue('quality').textContent =
       `${q.buffer || '—'} buffer  dpr ${q.dpr ?? '—'}  scale ${q.dynScale ?? '—'}\n` +
       `${q.preset || '—'} / ${q.tier || '—'}   trim ${q.perfTrim ?? '—'}   ${q.gpu || 'GPU unavailable'}`;
-    sectionEls.get('simulation').textContent =
+    sectionValue('simulation').textContent =
       `${sim.phase || game.phase || '—'}   ${sim.map || 'no map'}\n` +
       `${Number(sim.timeS || 0).toFixed(1)} s   tanks ${sim.alive ?? '—'}/${sim.tanks ?? '—'}   shells ${sim.shells ?? '—'}`;
-    sectionEls.get('world').textContent =
+    sectionValue('world').textContent =
       `${world.obstacles ?? '—'} obstacles   ${world.colliders ?? '—'} colliders\n` +
       `${world.concealers ?? '—'} conceal   ${world.destructibles ?? '—'} destruct\n` +
       `${world.wrecks ?? '—'} wreck sites   loose ${world.looseActive ?? '—'}/${world.looseTotal ?? '—'} awake`;
-    sectionEls.get('shadows').textContent =
+    sectionValue('shadows').textContent =
       `${shadow.enabled ? 'ON' : 'OFF'}${shadow.rescue ? ` · rescue ${shadow.rescue}` : ''}   far ${shadow.maxFar ?? '—'}m   throttle ${shadow.throttle ?? '—'}\n` +
       (cascades.length
-        ? cascades.map((c, i) => `C${i} ${c.size ?? '—'}${c.allocated ? '✓' : '…'} r${Number(c.radius || 0).toFixed(2)}`).join('   ')
+        ? cascades.map((c: ShadowCascadeTelemetry, i: number) => `C${i} ${c.size ?? '—'}${c.allocated ? '✓' : '…'} r${Number(c.radius || 0).toFixed(2)}`).join('   ')
         : 'cascade telemetry unavailable') +
       `\n${shadow.casters ?? '—'} casters   ${shadow.receivers ?? '—'} receivers   shader errors ${shadow.shaderErrors ?? 0}`;
-    sectionEls.get('network').textContent = network.connected == null
+    sectionValue('network').textContent = network.connected == null
       ? 'local / offline\nno transport overhead'
       : `${network.connected ? 'connected' : 'disconnected'}   RTT ${Number(network.rttMs || 0).toFixed(0)} ms\n` +
         `jitter ${Number(network.jitterMs || 0).toFixed(0)} ms   loss ${Number(network.lossPct || 0).toFixed(1)}%\n` +
         `buffer ${fmtBytes(network.bufferedBytes)}`;
-    sectionEls.get('memory').textContent =
+    sectionValue('memory').textContent =
       `${s.heapMB >= 0 ? `${s.heapMB.toFixed(0)} / ${s.heapLimitMB.toFixed(0)} MB JS` : 'JS heap unavailable'}\n` +
       `${memory.drawBuffer || q.buffer || '—'} draw buffer`;
   }
@@ -269,7 +415,7 @@ export function createPerfHud({ renderer, game, trace = null }) {
   return {
     el,
     /** Call once per rAF, AFTER the render (dtMs = frame delta). */
-    update(dtMs) {
+    update(dtMs: number) {
       if (dtMs > 0 && dtMs < 1000) {
         ring[ri] = dtMs;
         ri = (ri + 1) % ring.length;
@@ -292,14 +438,14 @@ export function createPerfHud({ renderer, game, trace = null }) {
       if (visible && !captureHidden) renderDashboard(s);
     },
     toggle() { visible = !visible; applyVisibility(); },
-    setVisible(next) { visible = !!next; applyVisibility(); },
+    setVisible(next: boolean) { visible = next; applyVisibility(); },
     isVisible: () => visible,
-    setTelemetryProvider(provider) {
+    setTelemetryProvider(provider: (() => DebugTelemetry | null | undefined) | null) {
       telemetryProvider = typeof provider === 'function' ? provider : null;
     },
     /** Keep developer/player diagnostics out of deterministic capture art. */
-    setCaptureHidden(hidden) {
-      captureHidden = !!hidden;
+    setCaptureHidden(hidden: boolean) {
+      captureHidden = hidden;
       applyVisibility();
     },
     /** Probe hooks used by performance and map-audit tooling. */

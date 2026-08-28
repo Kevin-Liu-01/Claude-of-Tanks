@@ -500,7 +500,7 @@ const { stage: garageStage, dressing: garageDressing } = await bootStage('garage
 // module and every frame call below remains a single null-checked no-op.
 const perfHud = createPerfDiagnosticsAccess(async () => {
   const [{ createPerfHud }, { createDebugTelemetryOwner }] = await Promise.all([
-    import('./ui/perfHud.js'),
+    import('./ui/perfHud.ts'),
     import('./dev/debugTelemetry.ts'),
   ]);
   const telemetry = createDebugTelemetryOwner({

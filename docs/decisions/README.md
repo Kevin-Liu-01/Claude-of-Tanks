@@ -154,3 +154,4 @@ runtime documents remain authoritative for behavior.
 - [0142 — Bot routes share a typed terrain-capability grid](0142-typed-bot-route-planner.md)
 - [0143 — Roster presentation has one typed policy](0143-typed-roster-presentation.md)
 - [0144 — Static wreck baking has a typed geometry contract](0144-typed-wreck-baking.md)
+- [0145 — Performance diagnostics have a typed lazy surface](0145-typed-performance-hud.md)

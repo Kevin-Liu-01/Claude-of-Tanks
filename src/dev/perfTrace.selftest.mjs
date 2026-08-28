@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createDevTraceCore } from './perfTrace.js';
-import { buildQaSummary } from '../ui/perfHud.js';
+import { buildQaSummary } from '../ui/perfHud.ts';
 import { debugModeRequested } from './debugIntent.ts';
 
 let clock = 1000;
