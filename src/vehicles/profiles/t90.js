@@ -6099,8 +6099,14 @@ function rebuildT90MSTurretExact(P) {
   // low welded primary body (x +/-1.82, z -2.39..+1.45, broad roof near
   // 2.10 m) plus one offset panoramic/RWS tower.  The superseded candidate
   // turned that thin tower datum into a full-width rectangular turret.
+  // The source rebuild replaces the complete rotating armor package. Clear
+  // the legacy course here, then recreate its required four-panel chevron
+  // against the exact welded shell below; carrying the old boxes through
+  // would preserve their obsolete pivot, reversed plan angle and rectangular
+  // ends instead of the Tagil's tapered cheek armor.
   P.clear('turret', 'turretDetail', 'turretDark', 'turretCloth', 'turretGlass',
-    'turretTrack', 'gun', 'gunDark', 'gunMount', 'gunMountDark');
+    'turretTrack', 'turretExternalArmor',
+    'gun', 'gunDark', 'gunMount', 'gunMountDark');
   for (const child of [...P.turretG.children]) {
     if (child !== P.gunG) P.turretG.remove(child);
   }
@@ -6143,7 +6149,7 @@ function rebuildT90MSTurretExact(P) {
   // Joined outer diamond skin: the measured inner casting above supplies
   // the load path, while this continuous low wrapper owns the clipped
   // Tagil cheek/shoulder silhouette. Every station overlaps that core.
-  P.add('turret', weldedStationLoft([
+  const outerSkinStations = [
     [ 1.34, 0.05, 0.46, -0.33, 0.33, -0.25, 0.25, -0.25, 0.25],
     [ 1.10, 0.03, 0.55, -0.78, 0.78, -0.52, 0.52, -0.62, 0.62],
     [ 0.70, 0.12, 0.60, -1.27, 1.27, -0.96, 0.96, -0.84, 0.84],
@@ -6153,7 +6159,94 @@ function rebuildT90MSTurretExact(P) {
     [-1.20, 0.13, 0.45, -1.27, 1.27, -1.06, 1.06, -0.77, 0.77],
     [-1.48, 0.12, 0.38, -1.08, 1.08, -0.91, 0.91, -0.82, 0.82],
     [-1.72, 0.15, 0.32, -0.88, 0.88, -0.75, 0.75, -0.70, 0.70],
-  ]));
+  ];
+  P.add('turret', weldedStationLoft(outerSkinStations));
+
+  // Sample the exact outer wrapper used above. All non-frontal Relikt is
+  // generated from these same planes below, so every cassette back shares
+  // its carrier surface instead of approximating it with rotated boxes.
+  const skinStationAt = (z) => {
+    const front = outerSkinStations[0];
+    const rear = outerSkinStations[outerSkinStations.length - 1];
+    if (z >= front[0]) return front;
+    if (z <= rear[0]) return rear;
+    for (let i = 0; i < outerSkinStations.length - 1; i++) {
+      const a = outerSkinStations[i];
+      const b = outerSkinStations[i + 1];
+      if (z > a[0] || z < b[0]) continue;
+      const t = (z - a[0]) / (b[0] - a[0]);
+      return a.map((value, index) => index === 0
+        ? z
+        : value + (b[index] - value) * t);
+    }
+    return rear;
+  };
+  const skinPoint = (side, z, v) => {
+    const station = skinStationAt(z);
+    const [, y0, y1, xl, xr, xbl, xbr, xtl, xtr] = station;
+    const clampedV = Math.max(0, Math.min(1, v));
+    const midV = 0.46;
+    const bottomX = side > 0 ? xbr : xbl;
+    const middleX = side > 0 ? xr : xl;
+    const topX = side > 0 ? xtr : xtl;
+    const x = clampedV <= midV
+      ? bottomX + (middleX - bottomX) * (clampedV / midV)
+      : middleX + (topX - middleX) * ((clampedV - midV) / (1 - midV));
+    return [x, y0 + (y1 - y0) * clampedV, z];
+  };
+  const skinNormal = (side, z, v) => {
+    const dz = 0.008;
+    const dv = 0.008;
+    const pz0 = skinPoint(side, z - dz, v);
+    const pz1 = skinPoint(side, z + dz, v);
+    const pv0 = skinPoint(side, z, Math.max(0, v - dv));
+    const pv1 = skinPoint(side, z, Math.min(1, v + dv));
+    const tz = pz1.map((value, i) => value - pz0[i]);
+    const tv = pv1.map((value, i) => value - pv0[i]);
+    let normal = [
+      tv[1] * tz[2] - tv[2] * tz[1],
+      tv[2] * tz[0] - tv[0] * tz[2],
+      tv[0] * tz[1] - tv[1] * tz[0],
+    ];
+    if (normal[0] * side < 0) normal = normal.map((value) => -value);
+    const length = Math.hypot(...normal) || 1;
+    return normal.map((value) => value / length);
+  };
+  const offsetPoint = (point, normal, offset) => point.map((value, i) => value + normal[i] * offset);
+  const skinPatchSlab = (side, frontZ, rearZ, lowerV, upperV, depth, seat = 0.002) => {
+    const anchors = [
+      [frontZ, lowerV], [rearZ, lowerV],
+      [rearZ, upperV], [frontZ, upperV],
+    ];
+    const back = anchors.map(([z, v]) => {
+      const point = skinPoint(side, z, v);
+      return offsetPoint(point, skinNormal(side, z, v), seat);
+    });
+    const face = anchors.map(([z, v]) => {
+      const point = skinPoint(side, z, v);
+      return offsetPoint(point, skinNormal(side, z, v), seat + depth);
+    });
+    return orientedSlab(...back, ...face);
+  };
+  const roofPoint = (x, z) => {
+    const [, , y] = skinStationAt(z);
+    return [x, y, z];
+  };
+  const roofNormal = (z) => {
+    const dz = 0.008;
+    const rearPoint = roofPoint(0, z - dz);
+    const frontPoint = roofPoint(0, z + dz);
+    const tangentZ = frontPoint.map((value, i) => value - rearPoint[i]);
+    const normal = [-tangentZ[1], tangentZ[0], 0];
+    const length = Math.hypot(...normal) || 1;
+    return normal.map((value) => value / length);
+  };
+  const roofPatchSlab = (x0, x1, frontZ, rearZ, depth, seat = 0.002) => {
+    const anchors = [[x0, frontZ], [x1, frontZ], [x1, rearZ], [x0, rearZ]];
+    const back = anchors.map(([x, z]) => offsetPoint(roofPoint(x, z), roofNormal(z), seat));
+    const face = anchors.map(([x, z]) => offsetPoint(roofPoint(x, z), roofNormal(z), seat + depth));
+    return orientedSlab(...back, ...face);
+  };
   // Buried rotating ring closes the central load path without widening the
   // measured shell; its upper half is swallowed by the y=1.443 base ring.
   P.add('turretDark', cylY(0.76, 0.88, 0.16, 24), 0, 0.015, -0.06);
@@ -6166,22 +6259,94 @@ function rebuildT90MSTurretExact(P) {
   P.add('turret', box(0.50, 0.070, 0.82), 0.74, 0.590, -0.42, -0.065, 0.10, 0);
   for (const x of [-0.18, 0.48]) P.add('turretDark', box(0.025, 0.055, 0.72), x, 0.662, -0.34);
 
-  // Relikt arrowhead, measured as the six connected cassette islands per
-  // side rather than four giant proxy blocks.  A 0.34 x 0.20 cassette at
-  // the recovered diagonal produces the source's ~0.38 m diamond AABB;
-  // each buried shoe is pulled 10% toward the shell and overlaps both.
-  P.visualEraCluster('t90ms-relikt-nose-era', 'turret', () => {
-  const noseRelikt = [
-    [-0.50,1.31],[-0.80,1.07],[-1.01,0.86],[-1.22,0.65],[-1.43,0.44],[-1.64,0.23],
-    [ 0.44,1.31],[ 0.81,1.06],[ 1.02,0.85],[ 1.23,0.64],[ 1.44,0.43],[ 1.64,0.23],
+  // Main frontal Relikt chevrons. Each cheek has TWO genuinely separate ERA
+  // rows: a lower arm climbing forward to the ridge and an upper arm falling
+  // back from it.  In an exact side view those joined rows form the requested
+  // < / > section; in plan, two longitudinal modules per row still follow the
+  // welded turret's rearward sweep from gun mask to shoulder.  A single tall
+  // carrier cannot encode that section and was the reason the previous pass
+  // only read as a staircase.
+  const innerChevronPlan = [
+    [0.28, 1.35], [0.42, 1.50], [0.96, 1.17], [0.82, 1.02],
   ];
-  for (const [x, z] of noseRelikt) {
-    const side = Math.sign(x) || 1;
-    const yaw = side * 2.30;
-    P.add('turretDark', box(0.22, 0.22, 0.24), x * 0.90, 0.27, z * 0.90, -0.18, yaw, 0);
-    P.add('turret', box(0.20, 0.42, 0.34), x, 0.38, z, -0.22, yaw, 0);
-    P.add('turretDark', box(0.17, 0.025, 0.29), x, 0.594, z + 0.045, -0.22, yaw, 0);
-    P.add('turretDark', box(0.018, 0.34, 0.28), x + side * 0.105, 0.38, z, -0.22, yaw, 0);
+  const outerChevronPlan = [
+    [0.79, 1.04], [0.94, 1.18], [1.50, 0.61], [1.35, 0.47],
+  ];
+  const chevronRows = [
+    // y0/y1 bound a row; z0/z1 move its rear edge and shared forward ridge.
+    { name: 'lower', y0: 0.11, y1: 0.34, z0: -0.10, z1: 0.09 },
+    { name: 'upper', y0: 0.34, y1: 0.59, z0: 0.09, z1: -0.11 },
+  ];
+  const mirroredChevronRow = (side, plan, row) => orientedSlab(
+    ...plan.map(([x, z]) => [side * x, row.y0, z + row.z0]),
+    ...plan.map(([x, z]) => [side * x, row.y1, z + row.z1]),
+  );
+  P.visualEraCluster('t90ms-relikt-turret-era', 'turret', () => {
+    for (const side of [-1, 1]) {
+      for (const row of chevronRows) {
+        P.add('turret', mirroredChevronRow(side, innerChevronPlan, row));
+        P.add('turret', mirroredChevronRow(side, outerChevronPlan, row));
+      }
+    }
+  });
+  P.turretG.userData.t90MSCheekEraReceipt = Object.freeze({
+    rowsPerCheek: chevronRows.length,
+    modulesPerRow: 2,
+    modulesTotal: chevronRows.length * 2 * 2,
+    squareTilesTotal: 16,
+    ridgeY: 0.34,
+    ridgeZOffset: 0.09,
+    rearEdgeZOffset: -0.10,
+  });
+
+  // Relikt arrowhead face details repeat the same TWO-row section instead of
+  // covering it with one tall cassette. Six paired stations per cheek make
+  // the upper and lower arms readable while their buried shoes overlap the
+  // main carriers rather than creating a second floating armor bank.
+  P.visualEraCluster('t90ms-relikt-nose-era', 'turret', () => {
+  const noseReliktSegments = [
+    // a/b trace the OUTER face of each main carrier module in plan. Their
+    // bounds stay beside the paired circular optic heads instead of running
+    // down the whole turret flank.
+    { a: [0.42, 1.50], b: [0.96, 1.17] },
+    { a: [0.94, 1.18], b: [1.50, 0.61] },
+  ];
+  const tileSlab = (side, segment, row, t0, t1, depth, padT = 0, padY = 0) => {
+    const { a, b } = segment;
+    const dx = b[0] - a[0];
+    const dz = b[1] - a[1];
+    const edgeLength = Math.hypot(dx, dz);
+    const nx = side * (-dz / edgeLength);
+    const nz = dx / edgeLength;
+    const loT = Math.max(0, t0 - padT);
+    const hiT = Math.min(1, t1 + padT);
+    const loY = row.y0 + padY;
+    const hiY = row.y1 - padY;
+    const zAtY = (y) => row.z0 + (row.z1 - row.z0) * ((y - row.y0) / (row.y1 - row.y0));
+    const point = (t, y, push = 0) => [
+      side * (a[0] + dx * t) + nx * push,
+      y,
+      a[1] + dz * t + zAtY(y) + nz * push,
+    ];
+    const back = [point(loT, loY), point(hiT, loY), point(hiT, hiY), point(loT, hiY)];
+    const front = [
+      point(loT, loY, depth), point(hiT, loY, depth),
+      point(hiT, hiY, depth), point(loT, hiY, depth),
+    ];
+    return orientedSlab(...back, ...front);
+  };
+  for (const side of [-1, 1]) {
+    for (const segment of noseReliktSegments) {
+      for (const row of chevronRows) {
+        for (const [t0, t1] of [[0.08, 0.47], [0.53, 0.92]]) {
+          // The backing shoe is a few millimetres wider/taller so each ERA
+          // square has a dark gasket. The face itself is an exact offset of
+          // the carrier surface: no guessed Euler rotation, no buried tile.
+          P.add('turretDark', tileSlab(side, segment, row, t0, t1, 0.030, 0.018, -0.008));
+          P.add('turret', tileSlab(side, segment, row, t0, t1, 0.070, 0, 0.015));
+        }
+      }
+    }
   }
   P.add('turretDark', box(0.42, 0.28, 0.055), 0, 0.30, 1.52, -0.28, 0, 0);
   });
@@ -6196,56 +6361,80 @@ function rebuildT90MSTurretExact(P) {
   }
 
   // Rear-flank Relikt is deliberately asymmetric in the print: two large
-  // carriers on vehicle-right, one long carrier plus four low backing
-  // shoes on vehicle-left.  Exact component boxes keep the side course
-  // attached without inventing a symmetric wall.
+  // carriers on vehicle-right and one on vehicle-left. Their backs, dark
+  // shoes and face inserts are three offsets of the SAME sampled turret
+  // facet, keeping the whole stack flush without erasing that asymmetry.
   P.visualEraCluster('t90ms-relikt-flank-era', 'turret', () => {
-  const flankRelikt = [
-    [ 1.420,0.405,-0.676,0.285,0.265,0.610, 0.07],
-    [ 1.165,0.385,-1.350,0.340,0.245,0.735,-0.05],
-    [-1.225,0.400,-1.175,0.292,0.255,0.625, 0.04],
-  ];
-  for (const [x,y,z,w,h,d,roll] of flankRelikt) {
-    const side = Math.sign(x);
-    P.add('turretDark', box(0.16, h * 0.72, d * 0.88), x - side * 0.12, y - 0.03, z);
-    P.add('turret', box(w, h, d), x, y, z, -0.08, -side * 0.10, side * roll);
-    P.add('turretDark', box(w * 0.82, 0.020, d * 0.86), x, y + h * 0.50, z, -0.08, -side * 0.10, side * roll);
-  }
-  const flankShoes = [
-    [1.328,0.247,-0.486],[1.218,0.247,-0.839],[1.107,0.253,-1.190],[0.996,0.265,-1.543],
-    [-1.072,0.250,-1.205],[-1.184,0.246,-0.875],[-1.298,0.252,-0.545],[-1.408,0.242,-0.215],
-  ];
-  for (const [x,y,z] of flankShoes) {
-    const stagger = Math.round(Math.abs(z) * 10) % 2 ? -0.055 : 0.035;
-    P.add('turret', box(0.36, 0.16, 0.38), x, y, z, -0.10 + stagger, -Math.sign(x) * 0.08, Math.sign(x) * stagger);
-    P.add('turretDark', box(0.30, 0.018, 0.31), x, y + 0.086, z, -0.10 + stagger, -Math.sign(x) * 0.08, Math.sign(x) * stagger);
-  }
+    const flankCarriers = [
+      { side: 1, z: -0.676, spanZ: 0.610, lowerV: 0.50, upperV: 0.91 },
+      { side: 1, z: -1.350, spanZ: 0.735, lowerV: 0.48, upperV: 0.92 },
+      { side: -1, z: -1.175, spanZ: 0.625, lowerV: 0.48, upperV: 0.92 },
+    ];
+    for (const { side, z, spanZ, lowerV, upperV } of flankCarriers) {
+      const frontZ = z + spanZ * 0.5;
+      const rearZ = z - spanZ * 0.5;
+      P.add('turretDark', skinPatchSlab(side, frontZ + 0.014, rearZ - 0.014,
+        lowerV - 0.018, upperV + 0.018, 0.024, 0.001));
+      P.add('turret', skinPatchSlab(side, frontZ, rearZ, lowerV, upperV, 0.088, 0.003));
+      P.add('turretDark', skinPatchSlab(side, frontZ - 0.035, rearZ + 0.035,
+        lowerV + 0.045, upperV - 0.045, 0.094, 0.004));
+    }
+
+    // Lower cassette shoes follow the lower wrapper facet. The stagger is
+    // longitudinal only; it no longer changes roll or breaks surface contact.
+    const flankShoes = [
+      [1, -0.486], [1, -0.839], [1, -1.190], [1, -1.543],
+      [-1, -1.205], [-1, -0.875], [-1, -0.545], [-1, -0.215],
+    ];
+    for (const [side, z] of flankShoes) {
+      const stagger = Math.round(Math.abs(z) * 10) % 2 ? -0.028 : 0.018;
+      const centerZ = z + stagger;
+      P.add('turret', skinPatchSlab(side, centerZ + 0.185, centerZ - 0.185,
+        0.11, 0.42, 0.064, 0.002));
+      P.add('turretDark', skinPatchSlab(side, centerZ + 0.150, centerZ - 0.150,
+        0.145, 0.385, 0.069, 0.004));
+    }
 
   // Irregular roof-edge Relikt continues the cheek blanket into the welded
   // shoulder and bustle transition.  These low cassettes overlap the outer
   // skin from below and stop short of the central crew-station court.  They
   // replace the former empty shoulder strip that made the side mask too
   // thin and the top plan too hollow despite correct outer extrema.
-  for (const side of [-1, 1]) {
-    for (const [z, x, w, d, y, ry, rz] of [
-      [ 0.46, 1.08, 0.42, 0.46, 0.65, 0.14, 0.04],
-      [-0.02, 1.15, 0.40, 0.48, 0.67,-0.04,-0.03],
-      [-0.52, 1.18, 0.38, 0.46, 0.66, 0.08, 0.05],
-      [-0.98, 1.12, 0.40, 0.42, 0.64,-0.10,-0.04],
-    ]) {
-      P.add('turretDark', box(w * 0.78, 0.14, d * 0.80), side * (x - 0.06), y - 0.09, z, -0.08, side * ry, side * rz);
-      P.add('turret', box(w, 0.24, d), side * x, y, z, -0.10, side * ry, side * rz);
-      P.add('turretDark', box(w * 0.84, 0.018, d * 0.82), side * x, y + 0.126, z, -0.10, side * ry, side * rz);
+    for (const side of [-1, 1]) {
+      for (const [z, spanZ, lowerV, upperV] of [
+        [0.46, 0.46, 0.58, 0.95],
+        [-0.02, 0.48, 0.57, 0.95],
+        [-0.52, 0.46, 0.56, 0.94],
+        [-0.98, 0.42, 0.55, 0.93],
+      ]) {
+        const frontZ = z + spanZ * 0.5;
+        const rearZ = z - spanZ * 0.5;
+        P.add('turretDark', skinPatchSlab(side, frontZ + 0.012, rearZ - 0.012,
+          lowerV - 0.015, upperV + 0.015, 0.020, 0.001));
+        P.add('turret', skinPatchSlab(side, frontZ, rearZ,
+          lowerV, upperV, 0.076, 0.002));
+        P.add('turretDark', skinPatchSlab(side, frontZ - 0.030, rearZ + 0.030,
+          lowerV + 0.040, upperV - 0.040, 0.081, 0.004));
+      }
     }
-  }
 
-  // Source ERA10 roof course: shallow overlapping plates, never another
-  // raised cabinet.  The inner edges bury into the joined crown.
-  for (const [x,z,w,d,ry] of [
-    [-0.235,-0.153,0.29,0.52,-0.10],[0.120,-0.154,0.29,0.52,0.10],
-    [-0.298,0.386,0.29,0.40,-0.15],[-0.052,0.550,0.66,0.24,0],
-    [0.188,0.386,0.29,0.40,0.15],
-  ]) P.add('turret', box(w, 0.055, d), x, 0.68, z, 0, ry, 0);
+    // Source ERA10 roof course: each shallow plate now follows the changing
+    // crown height between stations instead of hovering at one global Y.
+    for (const [x, z, w, d] of [
+      [-0.235, -0.153, 0.29, 0.52], [0.120, -0.154, 0.29, 0.52],
+      [-0.298, 0.386, 0.29, 0.40], [-0.052, 0.550, 0.66, 0.24],
+      [0.188, 0.386, 0.29, 0.40],
+    ]) P.add('turret', roofPatchSlab(x - w * 0.5, x + w * 0.5,
+      z + d * 0.5, z - d * 0.5, 0.052, 0.002));
+  });
+  P.turretG.userData.t90MSFlankEraSeatReceipt = Object.freeze({
+    revision: 'outer-skin-projected-r1',
+    projectedParts: 54,
+    flankCarriers: 3,
+    lowerCassettes: 8,
+    shoulderCassettes: 8,
+    roofPlates: 5,
+    maxBackGapM: 0.004,
   });
 
   // Joined bustle-roof shoulder.  The removable magazine is not a box hung

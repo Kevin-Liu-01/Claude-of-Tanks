@@ -110,9 +110,14 @@ tread/suspension nodes):
 
 The former long rectangular cabinet turret and small buried wheels are
 retired. `rebuildT90MSTurretExact` constructs one joined low clipped-diamond
-welded shell from measured longitudinal stations, then buries irregular
-Relikt cassettes, the frontal optic pair, crown plates and the tapered
-removable bustle into that carrier. The panoramic/RWS head, Kord, smoke banks,
+welded shell from measured longitudinal stations, then seats two joined Relikt
+rows per cheek—upper and lower arms forming the side-view chevron—with two
+modules along each row and sixteen framed ERA squares mounted directly on
+those four mirrored surfaces beside the optic pair. All 54 remaining flank,
+lower-cheek, shoulder, and roof ERA parts are projected from that same measured
+station loft: their backs share the carrier facet and their thickness follows
+its local outward normal. The frontal optic pair, crown plates and tapered
+removable bustle remain seated in that carrier. The panoramic/RWS head, Kord, smoke banks,
 antenna and rear cage use visible plinths, collars, brackets or continuous
 returns. The hull now presents six large independently readable rubber-tired
 road wheels, a raised short side cover, one native linked-shoe course, unequal
