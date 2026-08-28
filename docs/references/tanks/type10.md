@@ -435,10 +435,10 @@ profiles/japan.js addType10BPackage, re-seated at scale).
     1.1771211453744495]` (the +11 mm x = the certified asymmetric turret
     envelope map, −1.573..+1.595); type10b `[0, 0.4511015831134565,
     1.1771211453744495]`.
-  - SITE: japan.js post-clone re-seat block (NOT the modern3 armor row —
+  - SITE: japan.ts post-clone re-seat block (NOT the modern3 armor row —
     userdrops5's type90 clones that armor through fitArmorToDims, which
     scales pivots; a donor-row edit would have silently moved the
-    byte-held type90 hit frame; japan.js evaluates after userdrops5 in
+    byte-held type90 hit frame; japan.ts evaluates after userdrops5 in
     tankFactory's registration order). modern3 row carries the
     clone-frame law comment.
 - PROOF: with item 1 alone the builds returned to the CERTIFIED BYTES —

@@ -1073,7 +1073,7 @@ overshooting the rendered tip by 0.65 m.
   With the inherited `turretPivot [0, 1.4462686567164178, 0.2287280701754386]`
   the sim trunnion composes to **(0, 1.6860, 1.3000)** = the rendered
   trunnion exactly, and 1.30 + 4.66 = 5.96 vs the rendered 5.9594 (0.6 cm).
-  type90a inherits both through japan.js's `variant()` clone (no refit).
+  type90a inherits both through japan.ts's `variant()` clone (no refit).
   §5.369's type10-pair block is untouched and still evaluates after
   userdrops5, so the pair never sees these values.
 

@@ -39,7 +39,7 @@ import './china.ts';
 import './sweden.js';
 import './poland.ts';
 import './korea.ts';
-import './japan.js';
+import './japan.ts';
 import './germany.ts';
 import './afvFamily.js';
 import './sheridan.js';

@@ -222,3 +222,4 @@ runtime documents remain authoritative for behavior.
 - [0210 — Chinese variant registration is strict TypeScript](0210-typed-chinese-variant-registration.md)
 - [0211 — Polish variant registration is strict TypeScript](0211-typed-polish-variant-registration.md)
 - [0212 — German variant and fitted ERA registration is strict TypeScript](0212-typed-german-variant-registration.md)
+- [0213 — Japanese balance and rig registration is strict TypeScript](0213-typed-japanese-variant-registration.md)
