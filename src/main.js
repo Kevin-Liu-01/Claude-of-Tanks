@@ -55,6 +55,7 @@ import { createDeploymentShadowWarmOwner } from './engine/deploymentShadowWarm.t
 import { setDestroyedEventSink } from './world/destructibles.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
+import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';
 import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.js';
@@ -190,8 +191,6 @@ const _v3 = new THREE.Vector3();
 const _rayO = new THREE.Vector3();
 const _rayD = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
-// chase-camera occlusion focus (player hull center, lifted to turret height)
-const _occlFocus = new THREE.Vector3();
 
 // ---------------------------------------------------------------------------
 // BOOT STAGES (src/ui/bootScreen.ts)
@@ -2066,6 +2065,14 @@ const refreshSpotFrame = battleHudFrame.refreshSpotting;
 // mutable camera-input record consumed by the existing rig.
 const camInput = playerFrameInput.camera;
 const audioListener = createListenerPoseRuntime({ camera, game, rig, killcam, audio });
+const worldFramePresentation = createWorldFramePresentationRuntime({
+  camera,
+  rig,
+  getWorld: currentWorld,
+  isWorldDormant: () => worldRuntime.dormant,
+  getCameraFocus: () => game.player ||
+    (networkSession.spectator ? rig.spectateTargetEnt : null),
+});
 // Pause transitions, input sampling, network cadence, pre-battle hold,
 // fixed-step debt, result progression, and presentation interpolation are one
 // typed state machine. The render loop consumes only its stable receipt.
@@ -2236,30 +2243,8 @@ function tick(nowMs) {
   }
   updateSniperFill(); // close-quarters scope readability (see definition)
 
-  // 4. world LOD/wind (+ WoT-style near-grass suppression while scoped, and
-  // chase-camera foliage occlusion fade along player→camera in arcade).
-  // r5: rig.aimDist drives the scope-ray foliage corridor length so the cull
-  // opens the sight line all the way to the aimed target, not just 70 m.
-  // GARAGE PERF (boot r8): a dormant battle world costs nothing per frame —
-  // no terrain LOD swap, no vegetation wind rebuild, no prop animation.
-  if (world && !worldRuntime.dormant) {
-    world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, false, camera.fov, rig.aimDist);
-  }
-  camera.getWorldDirection(_fwd);
-  let occlFocus = null;
-  const cameraFocus = game.player || (networkSession.spectator ? rig.spectateTargetEnt : null);
-  // lighting_post r2: never run the chase-camera occlusion fade during an
-  // external capture pose (setExternalPose keeps mode ARCADE) — the fade
-  // dithered bushes into screen-door noise in staged combat_firing frames.
-  if (inBattle && !kcActive && rig.mode === 'ARCADE' && !rig.externalActive &&
-      cameraFocus && cameraFocus.state &&
-      cameraFocus.visual && cameraFocus.visual.root.visible) {
-    // Keep foliage fading attached to the same interpolated hull pose the
-    // player sees; authority can be up to one fixed step ahead on solo clients.
-    occlFocus = cameraFocus.visual.root.getWorldPosition(_occlFocus);
-    occlFocus.y += cameraFocus.spec.dims.heightM * 0.75;
-  }
-  if (world && !worldRuntime.dormant) world.update(dtR, camera.position, _fwd, occlFocus);
+  // 4. retained terrain/vegetation presentation; dormant Garage does no work.
+  worldFramePresentation.update(dtR, inBattle, kcActive);
 
   // 5. fx — dt 0 while live-paused pins the shared particle clock, which is
   // the one timeline every particle/timer/light/decal ages against (the same

@@ -16,6 +16,8 @@ and map presentation.
 pacing, cancellation, residency, and eviction. `worldActivationRuntime.ts`
 owns the single active battlefield, atmosphere re-keying, collider/minimap
 readiness, covered GPU warm, dormancy, and activation telemetry. `map.js` composes maps,
+`worldFramePresentationRuntime.ts` owns scoped foliage suppression and the
+allocation-free chase-camera occlusion focus passed to an active world,
 `terrain.js` provides the height field and world-local shared LOD index pools,
 `liveHeightFieldProxy.ts` selects cached live versus exact authoring queries,
 `collision.js` owns broad phase/shapes, `maps/` owns layouts, and vegetation,

@@ -133,3 +133,4 @@ runtime documents remain authoritative for behavior.
 - [0121 — Mobile auto-aim has one typed lifecycle owner](0121-typed-mobile-auto-aim-runtime.md)
 - [0122 — Audio listener pose has one typed frame owner](0122-typed-audio-listener-pose.md)
 - [0123 — Gesture-time audio handoff is strict TypeScript](0123-typed-lazy-audio-handoff.md)
+- [0124 — World frame presentation has one typed owner](0124-typed-world-frame-presentation.md)
