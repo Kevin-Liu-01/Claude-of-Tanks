@@ -1,5 +1,5 @@
 // utilityNetwork.ts — deterministic, renderer-free utility-pole topology and
-// catenary sampling. props.js owns the one InstancedMesh; this module owns the
+// catenary sampling. props.ts owns the one InstancedMesh; this module owns the
 // linked state so a fallen pole drags only its adjacent spans to the ground.
 
 const DEFAULT_SEGMENTS = 16;
@@ -64,7 +64,7 @@ function rotateAttachment(
   const ax = state.axisX / len, az = state.axisZ / len;
   const c = Math.cos(state.angle), s = Math.sin(state.angle);
   const dot = ax * vx + az * vz;
-  // Rodrigues rotation around the same world-space hinge used by props.js.
+  // Rodrigues rotation around the same world-space hinge used by props.ts.
   const crossX = -az * vy;
   const crossY = az * vx - ax * vz;
   const crossZ = ax * vy;

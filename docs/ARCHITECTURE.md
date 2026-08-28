@@ -17,7 +17,7 @@ Module ownership (file paths are FIXED):
 | Builder | Files |
 |---|---|
 | engine   | `src/engine/renderer.ts`, `src/engine/lighting.js`, `src/engine/post.js`, `src/engine/sky.js`, `src/engine/cameraRig.js` |
-| world    | `src/world/terrain.ts`, `src/world/vegetation.ts`, `src/world/props.js`, `src/world/map.ts` |
+| world    | `src/world/terrain.ts`, `src/world/vegetation.ts`, `src/world/props.ts`, `src/world/map.ts` |
 | vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.js`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
 | movement | `src/sim/movement.js` |
 | combat   | `src/sim/ballistics.ts`, `src/sim/armor.js`, `src/sim/damage.js`, `src/sim/combat.selftest.mjs` |
@@ -508,7 +508,7 @@ Exports locked in §2.7. Additional requirements:
 - `vegetation.ts`: `createVegetation(heightField, engineCtx, seed = 2001) =>
   { group, update(dt, camPos), setWindTime(t), treeObstacles: AABB[] }` — instanced
   grass + trees + wind per doc §8.
-- `props.js`: `createProps(heightField, engineCtx, seed = 2002) =>
+- `props.ts`: `createProps(heightField, engineCtx, seed = 2002) =>
   { group, obstacles: AABB[], colliders /* for raycast */, features /* minimap */ }` —
   rocks, ~10-building village, walls/cover, roads are terrain-material features
   (getGroundType returns 'hard' on them).

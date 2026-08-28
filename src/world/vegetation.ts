@@ -3751,7 +3751,7 @@ function* vegetationBuildSteps(
   // overlap detection (hull OBB vs the tagged treeObstacles record above) and
   // calls world.crushObstacle → crushTree(ob, dx, dz); the fall recomposes
   // tree.mat from the ORIGINAL placement about the trunk base every tick
-  // (props.js crushProp pattern) and writes it through the existing near/far
+  // (props.ts crushProp pattern) and writes it through the existing near/far
   // slot plumbing (writeTreeSlot handles the ranged GPU uploads), so the
   // felled trunk persists as set dressing exactly where it dropped.
   interface TreeCrushAnimation {

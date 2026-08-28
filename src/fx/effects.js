@@ -3852,7 +3852,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * carts, crates and stalls; sprung staves for barrels; a slow straw puff
      * for hay; terracotta shards for pottery; a spark clang for metal. Rides
      * the same debris/dust particle language as propCrush/module hits.
-     * Called through the src/world/destructibles.ts seam (props.js caps the
+     * Called through the src/world/destructibles.ts seam (props.ts caps the
      * rate — max ~6 flavored bursts per frame).
      * @param {string} kind destructible kind ('barrel', 'fenceplank', ...)
      * @param {THREE.Vector3} pos break point (world)
@@ -3862,7 +3862,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     propBreak(kind, pos, dir, heightM = 1.2) {
       const gy = groundY(pos.x, pos.z);
       // DESTRUCTIBLES r1: dir now carries MAGNITUDE — 1 = shell-grade break,
-      // a ramming hull scales it with its overrun speed (props.js breakRecord)
+      // a ramming hull scales it with its overrun speed (props.ts breakRecord)
       // so every throw velocity below inherits the tank's momentum.
       const fam = kind === 'drumblast' ? 'drumblast'
         : /fieldhut|leanto|huntingblind|fishershack|saunahut|alpinerefuge|stilthouse|longhouse/.test(kind) ? 'woodbuilding'
@@ -3881,7 +3881,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       if (fam === 'woodbuilding' || fam === 'canvasbuilding' || fam === 'metalbuilding') {
         // Building-scale collapse: more mass and a wider ground-hugging dust
         // front than the small-prop burst, while retaining the global six-
-        // bursts-per-frame cap in props.js. Persistent large debris is the
+        // bursts-per-frame cap in props.ts. Persistent large debris is the
         // broken instance; these particles sell the instant of collapse.
         const canvas = fam === 'canvasbuilding', metal = fam === 'metalbuilding';
         if (metal) {
@@ -4387,7 +4387,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   };
 
   // world-dressing r1: hand the destructible-prop seam its particle provider —
-  // props.js emits (kind, pos, dir, h) whenever a small prop breaks/topples
+  // props.ts emits (kind, pos, dir, h) whenever a small prop breaks/topples
   // and the kind-flavored burst renders through fx.propBreak above.
   {
     const _bkPos = new THREE.Vector3();

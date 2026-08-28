@@ -2,7 +2,7 @@
 // structures. Fifteen heavyweight landmarks merge into the existing textured
 // building buckets; twenty light buildings use one vertex-painted geometry
 // per family and have persistent broken-state debris for the destructible
-// instance system in props.js.
+// instance system in props.ts.
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';

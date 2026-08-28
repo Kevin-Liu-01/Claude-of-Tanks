@@ -6,7 +6,7 @@
 // fn(rng, buckets, wallBucket?) pushes composed BufferGeometry into the shared
 // material buckets and returns the {w,d,h} footprint for obstacles/AABBs.
 // Each carries 2-3 rng-driven size/roof/material variants and a grounded
-// foundation course (the props.js grounding precedent).
+// foundation course (the props.ts grounding precedent).
 
 import * as THREE from 'three';
 import { box, gablePrism, scaleUV, slabBox } from '../propGeometry.ts';
@@ -622,7 +622,7 @@ export function makeDepot(
   return { w: w + pw + 1.2, d: d + 2.6, h: wallH + roofH + 0.6 };
 }
 
-/** Plan-name builders (spread into props.js BUILDER_BY_NAME). */
+/** Plan-name builders (spread into props.ts BUILDER_BY_NAME). */
 export const VILLAGE_BUILDERS: Record<string, StructureBuilder> = {
   farmhouse: makeFarmhouse,
   granary: makeGranary,

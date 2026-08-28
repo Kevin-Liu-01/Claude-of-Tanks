@@ -17,7 +17,7 @@ import {
   createProps as createPropsLegacy,
   createPropsAsync as createPropsAsyncLegacy,
   preloadPropModels,
-} from './props.js';
+} from './props.ts';
 import { getMapConfig, type BattlefieldMapConfig } from './maps/index.ts';
 import {
   createObstacleGrid,
@@ -537,7 +537,7 @@ function assembleWorld(
     // gameplay_feel r6: crushable OBSTACLE records. state.js's collider
     // queues the hull overrun, marks the record `crushed`, then calls this
     // for the world-side fall/break. Tree trunks (treeIdx, vegetation.ts)
-    // hinge-topple; world-dressing r1 destructible props (propIdx, props.js
+    // hinge-topple; world-dressing r1 destructible props (propIdx, props.ts
     // — fences, carts, stalls, bales, lamps...) topple or swap to debris via
     // the same seam.
     crushObstacle: (
@@ -549,7 +549,7 @@ function assembleWorld(
       if (!ob) return false;
       if (ob.treeIdx != null && vegetation.crushTree) return vegetation.crushTree(ob, dx, dz);
       // DESTRUCTIBLES r1: the overrun speed rides through so debris inherits
-      // the hull's velocity (props.js breakRecord scales the throw).
+      // the hull's velocity (props.ts breakRecord scales the throw).
       if (ob.propIdx != null && props.crushDestructible) return props.crushDestructible(ob.propIdx, dx, dz, speedMps, 'ram');
       return false;
     },

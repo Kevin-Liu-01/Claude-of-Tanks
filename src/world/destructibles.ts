@@ -4,9 +4,9 @@
 // Why this module exists: shells resolve in src/game/state.js (frozen) and
 // their impact/flight data surfaces in src/fx/effects.js (bus listeners +
 // per-frame shell loop). The destructible props themselves live in
-// src/world/props.js. Neither layer may import the other's heavyweight module
+// src/world/props.ts. Neither layer may import the other's heavyweight module
 // (fx -> props would pull the whole world builder into the fx layer), so both
-// meet here: props.js registers per-world break handlers, effects.js registers
+// meet here: props.ts registers per-world break handlers, effects.js registers
 // the particle-burst provider and forwards shell flight/impact events.
 //
 // Worlds are CACHED per mapId and reused across battles (main.js worldCache),
@@ -54,7 +54,7 @@ let fxProvider: BreakFxProvider | null = null;
 export function setBreakFxProvider(fn: BreakFxProvider | null): void { fxProvider = fn; }
 
 /**
- * props.js calls this whenever a destructible breaks or topples — the FX cap
+ * props.ts calls this whenever a destructible breaks or topples — the FX cap
  * lives on the props side (it knows batch sizes); this just forwards.
  * dx/dz carry MAGNITUDE (impact energy): 1 = shell-grade break, ramming hulls
  * scale it with their overrun speed so debris inherits the tank's velocity.
@@ -75,7 +75,7 @@ export function emitBreakFx(
 // DESTRUCTIBLES r1: bus seam for prop destruction — the AUDIO layer (and any
 // other bus consumer) subscribes to 'prop:destroyed' without the world layer
 // ever importing the bus. main.js wires the sink at boot; every breakRecord
-// in props.js reports through here regardless of trigger path.
+// in props.ts reports through here regardless of trigger path.
 let eventSink: DestroyedEventSink | null = null;
 
 /** main.js registers (ev) => bus.emit('prop:destroyed', ev). */
@@ -91,7 +91,7 @@ export function emitDestroyed(event: DestroyedPropEvent): void {
 const worlds: WorldDestructibleEntry[] = [];
 
 /**
- * props.js registers one entry per built world (keyed by mapId — rebuilding a
+ * props.ts registers one entry per built world (keyed by mapId — rebuilding a
  * map replaces its stale entry instead of stacking).
  * @param {{key:string, isActive:function():boolean,
  *   sweep:function(number,number,number,number,number,number):void,

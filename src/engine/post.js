@@ -352,7 +352,7 @@ const EM_SHOULDER_START = 1.55;
 const EM_SHOULDER_RANGE = 3.6; // asymptote = START + RANGE
 // aa-r1 SPECULAR-AA FIREFLY CLAMP (owner: "glass ... still anti aliasing a
 // lot"): sub-pixel smooth-surface speculars — window-pane env glints
-// (props.js glass: roughness 0.18 / envMapIntensity 1.5 on panes a few px
+// (props.ts glass: roughness 0.18 / envMapIntensity 1.5 on panes a few px
 // tall), glazed roof-tile rims, gun-tube top edges, far pole tips — rasterize
 // as ISOLATED 1px HDR spikes that pop in/out with every sub-pixel camera
 // step. MSAA-2 averages but cannot stabilize them, SMAA ignores lone pixels

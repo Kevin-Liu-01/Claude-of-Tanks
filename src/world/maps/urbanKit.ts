@@ -1,11 +1,11 @@
 // src/world/maps/urbanKit.ts — town landmark builders for the urban map:
 // a church (tall square tower + spire over a steep-roofed nave) and a small
-// brick factory (long hall + round chimney stack). Registered into props.js
+// brick factory (long hall + round chimney stack). Registered into props.ts
 // BUILDER_BY_NAME (see docs/SYSTEMS.md) so map plans can
 // place 'church' / 'factory' entries; both give the shelled-town skyline the
 // vertical landmarks it was missing.
 //
-// Builders follow the props.js contract exactly:
+// Builders follow the props.ts contract exactly:
 //   make<X>(rng, buckets, wallBucket?) -> {w, d, h}   (footprint + height)
 // pushing THREE.BufferGeometry parts into buckets.{plaster,stone,roof,wood,dark}.
 
@@ -29,7 +29,7 @@ interface BuildingParts extends GeometryBuckets {
   glass?: THREE.BufferGeometry[];
 }
 
-// --- tiny local twins of the props.js geometry helpers (not exported there) --
+// --- tiny local twins of the props.ts geometry helpers (not exported there) --
 function box(w: number, h: number, d: number, uvScale = 0.5): THREE.BoxGeometry {
   const g = new THREE.BoxGeometry(w, h, d);
   const uv = g.attributes.uv;
@@ -91,9 +91,9 @@ export function makeChurch(_rng: () => number, buckets: GeometryBuckets): Struct
   const parts: BuildingParts = {
     plaster: [], stone: [], roof: [], wood: [], dark: [],
   };
-  // content_breadth r3: window panes ride the props.js 'glass' bucket when
+  // content_breadth r3: window panes ride the props.ts 'glass' bucket when
   // the facade-variety patch is applied (sky-catching panes); falls back to
-  // 'dark' cleanly on an unpatched props.js.
+  // 'dark' cleanly on an unpatched props.ts.
   if (buckets.glass) parts.glass = [];
   const pane = parts.glass || parts.dark;
   const w = 9.2, d = 17.5, wallH = 5.6, roofH = 3.4;
@@ -197,10 +197,10 @@ export function makeFactory(rng: () => number, buckets: GeometryBuckets): Struct
   return { w: w + 0.4, d: d + 0.4, h: stackH + 1 };
 }
 
-/** Builders keyed by plan name — spread into props.js BUILDER_BY_NAME.
+/** Builders keyed by plan name — spread into props.ts BUILDER_BY_NAME.
  * content_breadth r2: the desert bazaar builders (maps/mapKits.ts) ride the
  * same registry, so 'market' / 'marketRow' plan entries work map-wide with
- * no props.js change. */
+ * no props.ts change. */
 export const URBAN_BUILDERS: Record<string, StructureBuilder> = {
   church: makeChurch, factory: makeFactory, ...MARKET_BUILDERS,
   ...RAIL_BUILDERS, // maps r1: warehouse/gantry/containerRow/… + coastal kit

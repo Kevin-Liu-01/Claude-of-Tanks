@@ -178,7 +178,7 @@ screenshot harness plus custom close-up camera poses; per-category verdicts.
 **KEPT (winners, files above remain in repo):**
 - **Telephone pole** (Poly by Google, CC-BY 3.0) — crossarms, insulators and
   wire spans beat the plain procedural cylinder poles. Placed via
-  InstancedMesh along road A (`SOURCED.poles` in src/world/props.js).
+  InstancedMesh along road A (`SOURCED.poles` in src/world/props.ts).
 - **Sandbag emplacements** — "Sack Trench" + "Sack Trench Small" (Quaternius,
   CC0) and "Sandbags" (J-Toastie, CC-BY 3.0). No procedural equivalent
   existed; tan bags sit naturally in the palette. InstancedMesh clusters along
@@ -240,7 +240,7 @@ Candidate kept as **strong maybe** (not integrated; procedural remains source of
 All CC0; license verified on each asset page at download time. Winners ship
 from `public/textures/terrain/` (splat layers, wired via
 `src/world/sourcedTextures.ts` + `src/world/terrain.ts`) and
-`public/textures/buildings/` (village materials via `src/world/props.js`).
+`public/textures/buildings/` (village materials via `src/world/props.ts`).
 The procedural painters remain the synchronous fallback behind the
 `USE_SOURCED_*` flags in `src/world/sourcedTextures.ts`. Only the 1K
 Color/NormalGL/Roughness/AmbientOcclusion maps are kept; preview PNGs and the

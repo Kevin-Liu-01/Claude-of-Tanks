@@ -2,14 +2,14 @@
 // props vocabulary (content_breadth r2).
 //
 // Two exports:
-//   MARKET_BUILDERS — plan-name builders (props.js BUILDER_BY_NAME contract:
+//   MARKET_BUILDERS — plan-name builders (props.ts BUILDER_BY_NAME contract:
 //     make<X>(rng, buckets, wallBucket?) -> {w,d,h}) for the desert bazaar.
 //     Spread into URBAN_BUILDERS (maps/urbanKit.ts) so map plans can place
-//     'market' entries with ZERO props.js changes.
+//     'market' entries with ZERO props.ts changes.
 //   dressMapExtras(ctx) — explicit-position dressing that the road-side plan
 //     mechanism cannot reach: Frosthollow's frozen-lake basin gets shoreline
 //     reed stands, refrozen pressure-ridge slab chains, a frozen-in rowboat
-//     and a short timber jetty. Hooked from props.js right before the bucket
+//     and a short timber jetty. Hooked from props.ts right before the bucket
 //     merge (see docs/SYSTEMS.md — one import + one call).
 //
 // All geometry is procedural THREE.BufferGeometry pushed into the existing
@@ -242,7 +242,7 @@ function compoundWall(
 }
 
 // flat-roofed adobe block with parapet, viga beam ends, door + windows on the
-// courtyard face — the same massing language as props.js makeAdobe.
+// courtyard face — the same massing language as props.ts makeAdobe.
 function adobeBlock(
   rng: Rng,
   buckets: GeometryBuckets,
@@ -467,7 +467,7 @@ function makeCompoundSouk(rng: Rng, buckets: GeometryBuckets): StructureDimensio
   return { w: w + 0.5, d: d + 0.5, h: th + 0.3 };
 }
 
-/** Plan-name builders to spread into URBAN_BUILDERS (props.js contract). */
+/** Plan-name builders to spread into URBAN_BUILDERS (props.ts contract). */
 export const MARKET_BUILDERS: Record<string, StructureBuilder> = {
   market: makeMarketStall, marketRow: makeMarketRow,
   compound: makeCompound, compoundSouk: makeCompoundSouk,
@@ -634,7 +634,7 @@ function jetty(
 }
 
 /**
- * Map-specific dressing pass — call from props.js createProps right before
+ * Map-specific dressing pass — call from props.ts createProps right before
  * the bucket merge ("--- merge buckets into one mesh per material ---").
  * @param {object} ctx {mapId, L (layout), heightField, rng, buckets}
  */

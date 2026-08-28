@@ -3,11 +3,11 @@
 // stalls, benches, churns, laundry lines, pottery, oil drums, sleds, firewood,
 // street lamps) plus the wooden FENCE segment kit — every type built twice:
 // an INTACT geometry and a flattened BROKEN debris variant, both centered on
-// XZ with base at y=0, so props.js can run them as per-type InstancedMesh
-// pools with per-instance swap-out on destruction (see props.js destructible
+// XZ with base at y=0, so props.ts can run them as per-type InstancedMesh
+// pools with per-instance swap-out on destruction (see props.ts destructible
 // layer + src/world/destructibles.ts seam).
 //
-// Material contract (props.js): mat 'wood'/'straw' types carry UVs and ride
+// Material contract (props.ts): mat 'wood'/'straw' types carry UVs and ride
 // the map-toned textured materials; mat 'baked' types carry vertex colors and
 // ride the shared matte vertex-color material (grime/snow-cap shader hooks
 // apply to all of them, so winter gets snow-covered variants for free).
@@ -407,7 +407,7 @@ function bChurn(rng: Rng): THREE.BufferGeometry { // baked: galvanized milk chur
 }
 
 // Lightweight metal dressing below shares the deterministic loose-body path
-// in props.js. Each mesh is still authored base-at-y=0 and centered on XZ so
+// in props.ts. Each mesh is still authored base-at-y=0 and centered on XZ so
 // its visual tumble can rotate around the real mid-height.
 function bTrashcan(rng: Rng): THREE.BufferGeometry {
   const parts = [];
@@ -865,7 +865,7 @@ function bGateBroken(rng: Rng): THREE.BufferGeometry {
 // ---------------------------------------------------------------------------
 // DESTRUCTIBLES r1 — heavier light-cover + vehicle families. Same intact/
 // broken pairing as the r1 kit; the new metadata knobs (keep/crushMin/
-// collider/explosive) are consumed by props.js (see DESTRUCTIBLE_TYPES docs).
+// collider/explosive) are consumed by props.ts (see DESTRUCTIBLE_TYPES docs).
 // ---------------------------------------------------------------------------
 
 export const WALL_SEG = 3.0; // wall-kit module pitch, meters
@@ -901,7 +901,7 @@ function charPaint<T extends THREE.BufferGeometry>(geo: T, rng: Rng, rustBias = 
 }
 
 // --- masonry wall modules (WALL_SEG pitch, run along local Z) ---------------
-// UV'd for the map-toned stone/plaster materials (props.js routes meta.mat).
+// UV'd for the map-toned stone/plaster materials (props.ts routes meta.mat).
 // Irregular per-course offsets kill the one-box-per-6m silhouette the old
 // merged runs had; the broken state is a low crumbled remnant + tumbled
 // blocks — drive-over rubble that persists for the battle.
@@ -976,7 +976,7 @@ function bWallAdobeBroken(rng: Rng): THREE.BufferGeometry {
 }
 
 // --- sandbag emplacement (broken state for the sourced baked intact) --------
-// The intact geometry is the licensed baked model (props.js LOCAL kinds need
+// The intact geometry is the licensed baked model (props.ts LOCAL kinds need
 // bakedGeometry, so the kind entries live there); this is the shared
 // driven-through state: bags burst, split and spilled.
 export function bSandbagBroken(rng: Rng): THREE.BufferGeometry {
@@ -1360,7 +1360,7 @@ function bDrumRedBroken(rng: Rng): THREE.BufferGeometry {
  *   hull-radius crush via the world.crushables loop in main.js (no obstacle
  *   at all — sapling class); 'none' = shells only.
  * r/h: record radius / height (AABB + shell sweep bounds).
- * DESTRUCTIBLES r1 knobs (consumed by props.js):
+ * DESTRUCTIBLES r1 knobs (consumed by props.ts):
  *   keep: per-overrun speed retention (ob.crushKeep — 0.97 sandbags barely
  *     bite, 0.82 stone wall scrubs hard; default state.js CRUSH_SPEED_KEEP);
  *   crushMin: overrun threshold m/s override (ob.crushMin);

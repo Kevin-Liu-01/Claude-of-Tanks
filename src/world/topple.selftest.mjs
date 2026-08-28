@@ -38,7 +38,7 @@ if (!(downAng > flatAng)) throw new Error('downhill ground should let a fall lea
 
 // These pose functions execute once per active destruction animation per RAF
 // frame. Keep their transform composition allocation-free as the world grows.
-const propsSource = readFileSync(new URL('./props.js', import.meta.url), 'utf8');
+const propsSource = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 for (const [name, endNeedle] of [
   ['poseToppled', 'function pushCrushAnim('],
   ['poseTossed', 'const _looseQ'],

@@ -9,7 +9,7 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // ruins interleaved (1 in 5) for shelled-town texture, plus real vertical
 // landmarks — a church (spire) and a factory (chimney stack) — and two
 // squat towers. 'church'/'factory' come from maps/urbanKit.ts (registered
-// in props.js BUILDER_BY_NAME; they degrade to cottages if unregistered).
+// in props.ts BUILDER_BY_NAME; they degrade to cottages if unregistered).
 const PLAN = [];
 for (let i = 0; i < 108; i++) {
   if (i === 4) PLAN.push('church');
@@ -87,7 +87,7 @@ export default {
     // r5: town-core ground reads packed dirt/rubble dust, not lawn
     // terrain_environment r3: 2.3 -> 1.7 — at 2.3 the wear channel painted
     // one continuous muddy noise smear between the blocks; the new courtyard
-    // wear DECALS (props.js) carry structured paths/yards instead
+    // wear DECALS (props.ts) carry structured paths/yards instead
     townWear: 1.7,
   },
 
@@ -132,7 +132,7 @@ export default {
       // the whole town recycled ONE white-plaster box ("kit-bash at mid
       // distance" critique). plaster2 = warm ochre-cream (Central European
       // lime render), plaster3 = muted grey-green (weathered distemper).
-      // Consumed by the props.js facade-variety patch (handoff r3); inert
+      // Consumed by the props.ts facade-variety patch (handoff r3); inert
       // until that lands.
       plaster2: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.45 + 0.14), clamp01(l * 0.84)],
       plaster3: (h: number, s: number, l: number) => [0.21, clamp01(s * 0.28 + 0.05), clamp01(l * 0.80)],

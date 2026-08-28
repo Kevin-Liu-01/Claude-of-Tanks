@@ -1,7 +1,7 @@
 // src/world/wrecks.ts — DESTRUCTIBLES r1: REAL-ROSTER TANK WRECKS as static
 // battlefield dressing.
 //
-// The old props.js hulks were generic box sketches; the owner asked for the
+// The old props.ts hulks were generic box sketches; the owner asked for the
 // map wrecks to be "our actual tank models". This module builds a roster
 // vehicle through the live factory (src/vehicles/tankFactory.js), applies the
 // settled destroyed pose via the factory's own wreck machinery
@@ -19,7 +19,7 @@
 //    HARD-SKIPS on that flag, so this path never interacts with the
 //    decoration system or the geometry-gate metrology guards. tankFactory
 //    itself is NOT modified — the bake is a pure consumer.
-//  - Wrecks are DRESSING: props.js gives them solid obstacles + colliders;
+//  - Wrecks are DRESSING: props.ts gives them solid obstacles + colliders;
 //    they are never in game.tanks, never spotted, never on the minimap.
 //  - Failure-tolerant: profile builders are actively iterated by the
 //    fidelity program — any per-id build failure returns null and the caller
@@ -207,7 +207,7 @@ export function bakeTankWreck(
     const nrm = merged.attributes.normal;
     const nV = pos.count;
     const col = new Float32Array(nV * 3);
-    // stay inside the PROVEN charPaint value band (props.js r7 hulks:
+    // stay inside the PROVEN charPaint value band (props.ts r7 hulks:
     // v 0.055-0.105) — the first cut carried an up-facing "ash" bonus to
     // ~0.16 albedo which tonemapped to TAN under a 3.5+ sun (steppe/verdant
     // frame review); charred steel must stay near-black even sunlit.

@@ -188,7 +188,7 @@ export default {
     // "raw icosphere" in the establishing foreground was rock instance 49
     // at [67,-226]). Under the BRIGHT overcast fill (hemi 0.92, env 0.60)
     // even mid-grey albedo renders pale, so the sides must go properly dark;
-    // the geometry's up-facing gradient (props.js) keeps snow-dusted caps.
+    // the geometry's up-facing gradient (props.ts) keeps snow-dusted caps.
     rockTone: (h: number, s: number, l: number) => [0.60, 0.05, clamp01(l * 0.70 + 0.02)],
     wallStoneChance: 0.25,
     wallRuns: [

@@ -1,5 +1,5 @@
 // ruinspires.js — a destroyed vertical megacity. Monumental procedural
-// towers are bucket-merged by props.js, preserving the ordinary map draw-call
+// towers are bucket-merged by props.ts, preserving the ordinary map draw-call
 // shape while the six-lane street plan creates true urban canyons.
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));

@@ -479,7 +479,7 @@ export function applySourcedTerrain(
 }
 
 /**
- * Village building hookup — called by props.js after the procedural building
+ * Village building hookup — called by props.ts after the procedural building
  * textures exist. Same in-place swap contract as the terrain path.
  * @param {object} sets { plaster?, roof?, wood?, stone? } of { albedo, normal }
  * @param {string} mapId map id (urban swaps the stone bucket to brick)
@@ -492,7 +492,7 @@ const BUILDING_TINTS: Record<string, Partial<Record<BuildingBucket, BuildingTint
   desert: { plaster: [1.08, 0.92, 0.70], wood: [1.05, 0.95, 0.80] }, // sand-plaster adobe
   // r5 terrain_environment: winter roofs were still SATURATED ORANGE under a
   // deep-snow sky (critique) — the multiply tint cannot desaturate terracotta.
-  // Cooled + 62% desaturated + lifted frost; the props.js up-face snow-cap
+  // Cooled + 62% desaturated + lifted frost; the props.ts up-face snow-cap
   // shader lays the actual white load on the slopes.
   winter: { roof: { tint: [0.96, 1.02, 1.14], desat: 0.62, lift: 0.10 } },
   // maps r1 (ADDITIVE):
