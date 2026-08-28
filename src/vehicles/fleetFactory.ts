@@ -13,13 +13,13 @@ import {
   ensureVehicleMarkingSeats,
   ensureVehicleMarkingSeatsForIds,
   isVehicleMarkingSeatsReady,
-} from './vehicleMarkingSeatLoader.js';
+} from './vehicleMarkingSeatLoader.ts';
 import {
   ensureAllCombatAnatomyGroups,
   ensureCombatAnatomyCalibration,
   ensureCombatAnatomyCalibrations,
   isCombatAnatomyCalibrationReady,
-} from './combatAnatomyCalibrationLoader.js';
+} from './combatAnatomyCalibrationLoader.ts';
 import { finalizeCombatAnatomy } from './combatAnatomy.js';
 
 import './variants.js';

@@ -35,8 +35,8 @@ execFileSync(process.execPath, [join(here, '../../tools/gen-legacy-fleet-specs.m
 });
 const facadeUrl = pathToFileURL(join(here, 'fleetFactory.ts')).href;
 const specsUrl = pathToFileURL(join(here, 'specs.js')).href;
-const markingRegistryUrl = pathToFileURL(join(here, 'vehicleMarkingSeatRegistry.js')).href;
-const anatomyRegistryUrl = pathToFileURL(join(here, 'combatAnatomyCalibrationRegistry.js')).href;
+const markingRegistryUrl = pathToFileURL(join(here, 'vehicleMarkingSeatRegistry.ts')).href;
+const anatomyRegistryUrl = pathToFileURL(join(here, 'combatAnatomyCalibrationRegistry.ts')).href;
 const facadeSource = await readFile(join(here, 'fleetFactory.ts'), 'utf8');
 assert.doesNotMatch(facadeSource, /from ['"]\.\/modern[12]\.js['"]/,
   'browser fleet facade must not statically import combined legacy builders');

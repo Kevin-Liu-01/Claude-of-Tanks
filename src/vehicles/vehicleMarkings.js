@@ -1,5 +1,5 @@
 import { flagIconCode } from '../ui/flagCodes.ts';
-export { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.js';
+export { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.ts';
 
 const VEHICLE_MARKING_SCHEMA_VERSION = 1;
 

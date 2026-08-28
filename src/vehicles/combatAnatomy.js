@@ -4,7 +4,7 @@
 // Pure array math: no DOM, WebGL or Three dependency.
 
 import { MODULE_IDS } from '../sim/moduleCatalog.ts';
-import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.js';
+import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.js';
 
 const FINALIZED = Symbol.for('claude-of-tanks.combat-anatomy.v2');
@@ -1018,4 +1018,4 @@ export function finalizeCombatAnatomy(spec, calibration = combatAnatomyCalibrati
   return spec;
 }
 
-export { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.js';
+export { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';

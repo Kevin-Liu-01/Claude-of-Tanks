@@ -10,9 +10,9 @@ import { CHALLENGER_BUILDERS } from './profiles/challenger.js';
 import { FITTINGS } from './profiles/kit.js';
 import { PROFILED_BUILDERS } from './profiledProcedurals.js';
 import { VEHICLE_MARKING_SEATS } from './vehicleMarkingSeats.generated.js';
-import { registerVehicleMarkingSeatRecords } from './vehicleMarkingSeatRegistry.js';
+import { registerVehicleMarkingSeatRecords } from './vehicleMarkingSeatRegistry.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.js';
-import { registerCombatAnatomyCalibrations } from './combatAnatomyCalibrationRegistry.js';
+import { registerCombatAnatomyCalibrations } from './combatAnatomyCalibrationRegistry.ts';
 import { finalizeCombatAnatomy } from './combatAnatomy.js';
 
 // These modules register specs at evaluation time. Keep donor waves ahead of
