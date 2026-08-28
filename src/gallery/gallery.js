@@ -9,13 +9,13 @@ import {
   technicalLabel,
 } from './catalog.ts';
 import { compareVehicleEras, VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
-import { createInspectionOverlay, inspectionLegend } from './overlays.js';
+import { createInspectionOverlay, inspectionLegend } from './overlays.ts';
 import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.js';
 import { uiIconSVG } from '../ui/uiIcons.ts';
 import { iconUrl } from '../ui/icons.ts';
 import { flagIconUrl } from '../ui/flags.ts';
 import { createInfoButton } from '../ui/contextInfo.ts';
-import { cameraViewGlyphSVG } from './viewGlyphs.js';
+import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 
 const $ = (selector) => document.querySelector(selector);
 

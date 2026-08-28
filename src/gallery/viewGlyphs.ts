@@ -1,4 +1,10 @@
-const VIEW_POSITIONS = Object.freeze({
+export const CAMERA_VIEW_IDS = Object.freeze([
+  'hero', 'front', 'left', 'right', 'rear', 'top', 'elevated-left', 'elevated-right', 'auto',
+] as const);
+
+export type CameraViewId = typeof CAMERA_VIEW_IDS[number];
+
+const VIEW_POSITIONS: Partial<Record<CameraViewId, readonly [number, number]>> = Object.freeze({
   hero: [4, 4],
   front: [12, 2.5],
   left: [2.5, 12],
@@ -8,11 +14,11 @@ const VIEW_POSITIONS = Object.freeze({
   'elevated-right': [20.5, 6],
 });
 
-const tankPlan = () => `
+const tankPlan = (): string => `
   <path class="camera-view-glyph__tank" d="M8.5 8.4h7v7.8h-7zM10.1 6.7h3.8v3.4h-3.8zM11.4 3.8h1.2v3.4h-1.2z"/>
   <path class="camera-view-glyph__track" d="M7 8v8.7M17 8v8.7"/>`;
 
-function marker(x, y, elevated = false) {
+function marker(x: number, y: number, elevated = false): string {
   const dx = 12 - x;
   const dy = 12 - y;
   const length = Math.hypot(dx, dy) || 1;
@@ -24,20 +30,21 @@ function marker(x, y, elevated = false) {
     ${elevated ? `<path class="camera-view-glyph__height" d="M${x - 2.2} ${y - 2.2}L${x} ${y - 4.2}l2.2 2"/>` : ''}`;
 }
 
-export const CAMERA_VIEW_IDS = Object.freeze([
-  'hero', 'front', 'left', 'right', 'rear', 'top', 'elevated-left', 'elevated-right', 'auto',
-]);
-
-export function cameraViewGlyphSVG(view) {
-  if (!CAMERA_VIEW_IDS.includes(view)) throw new Error(`Unknown camera view: ${view}`);
+export function cameraViewGlyphSVG(view: string): string {
+  if (!(CAMERA_VIEW_IDS as readonly string[]).includes(view)) {
+    throw new Error(`Unknown camera view: ${view}`);
+  }
+  const cameraView = view as CameraViewId;
   let overlay = '';
-  if (view === 'top') {
+  if (cameraView === 'top') {
     overlay = '<path class="camera-view-glyph__focus" d="M5 8V5h3M16 5h3v3M19 16v3h-3M8 19H5v-3"/>';
-  } else if (view === 'auto') {
+  } else if (cameraView === 'auto') {
     overlay = '<path class="camera-view-glyph__orbit" d="M4.2 9.2A8.2 8.2 0 0 1 18 5.4l1.8-.2-.3-1.8M19.8 14.8A8.2 8.2 0 0 1 6 18.6l-1.8.2.3 1.8"/>';
   } else {
-    const [x, y] = VIEW_POSITIONS[view];
-    overlay = marker(x, y, view.startsWith('elevated-'));
+    const position = VIEW_POSITIONS[cameraView];
+    if (!position) throw new Error(`Camera marker unavailable: ${cameraView}`);
+    const [x, y] = position;
+    overlay = marker(x, y, cameraView.startsWith('elevated-'));
   }
   return `<svg class="camera-view-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${tankPlan()}${overlay}</svg>`;
 }

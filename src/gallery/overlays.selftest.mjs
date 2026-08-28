@@ -7,7 +7,7 @@ import {
   CREW_ARMOR_CLEARANCE_M,
   CREW_STANDING_HEIGHT_M,
 } from '../vehicles/internalAnatomyVisuals.js';
-import { createInspectionOverlay } from './overlays.js';
+import { createInspectionOverlay } from './overlays.ts';
 
 function visualRoot() {
   const root = new THREE.Group();

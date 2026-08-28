@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { CAMERA_VIEW_IDS, cameraViewGlyphSVG } from './viewGlyphs.js';
+import { CAMERA_VIEW_IDS, cameraViewGlyphSVG } from './viewGlyphs.ts';
 
 assert.equal(CAMERA_VIEW_IDS.length, 9);
 for (const view of CAMERA_VIEW_IDS) {
