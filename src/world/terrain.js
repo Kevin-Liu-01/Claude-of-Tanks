@@ -2753,7 +2753,7 @@ function buildChunkGeometry(hf, cx0, cz0, segs, fine, indexPool) {
 
 /**
  * Build the chunked-LOD terrain mesh group with the splat-blended PBR material.
- * The returned group exposes `group.userData.updateLOD(camPos)` for map.js.
+ * The returned group exposes `group.userData.updateLOD(camPos)` for map.ts.
  * @param {object} heightField HeightField from createHeightField
  * @param {object} engineCtx EngineCtx (ARCHITECTURE §2.8)
  * @param {?object} [cfg=null] map config (uses cfg.splat for the palette)

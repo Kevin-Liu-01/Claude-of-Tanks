@@ -1209,7 +1209,7 @@ ${snowCap ? `
   // a destructible RECORD. Three trigger paths, all landing in breakRecord():
   //  1. hull overrun of a tagged CRUSHABLE OBSTACLE — the exact tree seam:
   //     state.js SAT detects, queues, calls world.crushObstacle → propIdx
-  //     routes here (map.js); state.js applies the speed bite + emits
+  //     routes here (map.ts); state.js applies the speed bite + emits
   //     prop:crushed (generic dust via main.js fx.propCrush);
   //  2. hull-radius contact via the main.js crushables loop ('loop' class —
   //     sapling-grade clutter with NO obstacle at all);
@@ -4195,7 +4195,7 @@ ${snowCap ? `
   for (let i = 0; i < destructibles.length; i++) destructibles[i]._destructibleIndex = i;
 
   // Dedicated static broad phase for awake clutter. It uses its own stamp so
-  // it cannot interfere with map.js's movement grid over the same records.
+  // it cannot interfere with map.ts's movement grid over the same records.
   const LOOSE_CELL = 12;
   const looseCells = new Map();
   const looseCellKey = (x, z) => (x + 32768) * 65536 + (z + 32768);
@@ -4403,7 +4403,7 @@ ${snowCap ? `
     return true;
   }
 
-  /** map.js crushObstacle seam for prop-tagged crushable obstacles. */
+  /** map.ts crushObstacle seam for prop-tagged crushable obstacles. */
   function crushDestructible(propIdx, dx, dz, speed = 0, cause = 'ram') {
     return breakRecord(propIdx, dx, dz, speed, cause);
   }

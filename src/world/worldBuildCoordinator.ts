@@ -159,7 +159,7 @@ export function createWorldBuildCoordinator(
     if (!modulePromise) {
       modulePromise = dependencies.loadModule
         ? dependencies.loadModule()
-        : import('./map.js') as Promise<WorldMapModule>;
+        : import('./map.ts') as Promise<WorldMapModule>;
     }
     return modulePromise;
   };

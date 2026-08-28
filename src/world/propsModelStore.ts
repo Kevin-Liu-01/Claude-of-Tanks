@@ -83,7 +83,7 @@ let loadPromise: Promise<BakedPropModels> | null = null;
 
 async function loadPackedModels(): Promise<BakedPropModels> {
   if (typeof DecompressionStream !== 'function') {
-    const fallback = await import('./propsModelFallback.js');
+    const fallback = await import('./propsModelFallback.ts');
     return fallback.loadFallbackPropModels() as BakedPropModels;
   }
   const url = new URL('./props-models.bin.gz', import.meta.url);

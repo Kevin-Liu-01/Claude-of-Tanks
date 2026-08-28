@@ -15,7 +15,7 @@ and map presentation.
 `worldBuildCoordinator.ts` owns map transfer, construction joins, background
 pacing, cancellation, residency, and eviction. `worldActivationRuntime.ts`
 owns the single active battlefield, atmosphere re-keying, collider/minimap
-readiness, covered GPU warm, dormancy, and activation telemetry. `map.js` composes maps,
+readiness, covered GPU warm, dormancy, and activation telemetry. `map.ts` composes maps,
 `worldFramePresentationRuntime.ts` owns scoped foliage suppression and the
 allocation-free chase-camera occlusion focus passed to an active world,
 `terrain.js` provides the height field and world-local shared LOD index pools,

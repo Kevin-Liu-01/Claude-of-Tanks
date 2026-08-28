@@ -1,14 +1,254 @@
-// src/world/map.js — composes terrain meshes + vegetation + props into the World.
+// src/world/map.ts — composes terrain meshes + vegetation + props into the World.
 // Contract: docs/ARCHITECTURE.md §2.7 (World shape), §3.2 (layout rules).
 // Which battlefield gets built is driven by a map config (src/world/maps/*):
 // createMap(engineCtx, { mapId }) — any id from maps/index.ts MAP_IDS.
 
 import * as THREE from 'three';
-import { createHeightField, buildTerrainMeshes, buildTerrainMeshesAsync } from './terrain.js';
-import { createVegetation, createVegetationAsync } from './vegetation.js';
-import { createProps, createPropsAsync, preloadPropModels } from './props.js';
-import { getMapConfig } from './maps/index.ts';
-import { createObstacleGrid, rayCollisionRecord } from './collision.ts';
+import {
+  createHeightField as createHeightFieldLegacy,
+  buildTerrainMeshes as buildTerrainMeshesLegacy,
+  buildTerrainMeshesAsync as buildTerrainMeshesAsyncLegacy,
+} from './terrain.js';
+import {
+  createVegetation as createVegetationLegacy,
+  createVegetationAsync as createVegetationAsyncLegacy,
+} from './vegetation.js';
+import {
+  createProps as createPropsLegacy,
+  createPropsAsync as createPropsAsyncLegacy,
+  preloadPropModels,
+} from './props.js';
+import { getMapConfig, type BattlefieldMapConfig } from './maps/index.ts';
+import {
+  createObstacleGrid,
+  rayCollisionRecord,
+  type CollisionRecord,
+  type ObstacleQuery,
+} from './collision.ts';
+
+interface EngineContext {
+  scene: THREE.Scene;
+}
+
+interface WorldOptions {
+  mapId?: string;
+  seed?: number;
+}
+
+interface WorldSlicingOptions {
+  fineSlices?: boolean;
+}
+
+type WorldBuildProgress = (label: string, fraction: number) => Promise<void> | void;
+type BuildSliceProgress = (completed: number, total: number) => Promise<void>;
+
+interface SpawnLayoutPoint {
+  x: number;
+  z: number;
+  yaw?: number;
+}
+
+interface LayoutDisc {
+  x: number;
+  z: number;
+  r: number;
+  [key: string]: unknown;
+}
+
+interface HeightFieldLayout {
+  spawns: { player: SpawnLayoutPoint; enemies: SpawnLayoutPoint[] };
+  roads: Array<Array<readonly [number, number]>>;
+  marshes: LayoutDisc[];
+  lakes: LayoutDisc[];
+}
+
+export interface WorldHeightField {
+  _layout: HeightFieldLayout;
+  maxY: number;
+  getHeightAt(x: number, z: number): number;
+  getHeightAtFast?(x: number, z: number): number;
+  getNormalAt(x: number, z: number): THREE.Vector3;
+}
+
+interface TerrainUserData {
+  sourcedTexturesReady?: Promise<unknown>;
+  streamingStats?: unknown;
+  updateLOD(cameraPosition: THREE.Vector3): void;
+  warmStreaming?(cameraPosition: THREE.Vector3, maxJobs: number): number;
+  [key: string]: unknown;
+}
+
+type TerrainRoot = THREE.Object3D & { userData: TerrainUserData };
+
+export interface ConcealmentDisc {
+  x: number;
+  z: number;
+  r: number;
+  add: number;
+}
+
+interface VegetationRuntime {
+  group: THREE.Object3D;
+  treeObstacles: CollisionRecord[];
+  concealers?: ConcealmentDisc[];
+  _clusters: Array<{ x: number; z: number; r: number }>;
+  _buildDetail?: unknown;
+  update(
+    deltaSeconds: number,
+    cameraPosition: THREE.Vector3,
+    cameraForward?: THREE.Vector3 | null,
+    focusPosition?: THREE.Vector3 | null,
+  ): void;
+  setWindTime(timeSeconds: number): void;
+  setSniperFade(
+    fraction: number,
+    immediate?: boolean,
+    fovDegrees?: number | null,
+    aimDistanceMeters?: number | null,
+  ): void;
+  crushTree?(record: CollisionRecord, dx: number, dz: number): unknown;
+  resetToppled?(): void;
+}
+
+interface MapFeatureRecord {
+  [key: string]: unknown;
+}
+
+interface PropsRuntime {
+  group: THREE.Object3D;
+  obstacles: CollisionRecord[];
+  colliders: CollisionRecord[];
+  sourcedTexturesReady?: Promise<unknown>;
+  features: {
+    buildings: MapFeatureRecord[];
+    tacticalBeats: MapFeatureRecord[];
+  };
+  crushables?: unknown[];
+  destructibles?: unknown[];
+  looseRecords?: unknown[];
+  tankWreckSpots?: unknown[];
+  utilityPolePlacements?: unknown[];
+  decorationGroundingReceipts?: unknown[];
+  crushProp?(index: number, dx: number, dz: number, speedMetersPerSecond: number): unknown;
+  crushDestructible?(
+    index: number,
+    dx: number,
+    dz: number,
+    speedMetersPerSecond: number,
+    cause: string,
+  ): unknown;
+  getLoosePropStats?(): { total: number; active: number };
+  resetDestructibles?(): void;
+  updateProps?(deltaSeconds: number, cameraPosition: THREE.Vector3): void;
+}
+
+export interface WorldRayHit {
+  point: THREE.Vector3;
+  normal: THREE.Vector3;
+  dist: number;
+  kind: 'terrain' | 'prop';
+  record: CollisionRecord | null;
+}
+
+export interface WorldRuntime {
+  mapId: string;
+  config: BattlefieldMapConfig;
+  heightField: WorldHeightField;
+  minimapTextureState: { settled: boolean; promise: Promise<void> };
+  raycast(origin: THREE.Vector3, direction: THREE.Vector3, maxDistance: number): WorldRayHit | null;
+  getObstacles(): CollisionRecord[];
+  getColliders(): CollisionRecord[];
+  queryObstacles: ObstacleQuery;
+  getConcealment(): ConcealmentDisc[];
+  crushables: unknown[];
+  crushProp(index: number, dx: number, dz: number, speedMetersPerSecond?: number): unknown;
+  destructibles: unknown[];
+  looseProps: unknown[];
+  getLoosePropStats(): { total: number; active: number };
+  tankWreckSpots: unknown[];
+  utilityPolePlacements: unknown[];
+  decorationGroundingReceipts: unknown[];
+  crushObstacle(
+    record: CollisionRecord | null | undefined,
+    dx: number,
+    dz: number,
+    speedMetersPerSecond?: number,
+  ): unknown;
+  resetDestructibles(): void;
+  spawnPoints: {
+    player: { pos: [number, number, number]; yaw?: number };
+    enemies: Array<{ pos: [number, number, number]; yaw?: number }>;
+  };
+  getMinimapFeatures(): {
+    roads: Array<Array<[number, number]>>;
+    buildings: MapFeatureRecord[];
+    tacticalBeats: MapFeatureRecord[];
+    treeClusters: Array<{ x: number; z: number; r: number }>;
+    waterOrSoft: LayoutDisc[];
+  };
+  update(
+    deltaSeconds: number,
+    cameraPosition: THREE.Vector3,
+    cameraForward?: THREE.Vector3 | null,
+    focusPosition?: THREE.Vector3 | null,
+  ): void;
+  warmTerrainLookahead(cameraPosition: THREE.Vector3, maxJobs?: number): number;
+  setWindTime(timeSeconds: number): void;
+  setSniperFade(
+    fraction: number,
+    immediate?: boolean,
+    fovDegrees?: number | null,
+    aimDistanceMeters?: number | null,
+  ): void;
+  group: THREE.Group;
+  _buildDetail?: { vegetation: unknown; terrain: unknown };
+}
+
+const createHeightField = createHeightFieldLegacy as unknown as (
+  seed: number,
+  config: BattlefieldMapConfig,
+) => WorldHeightField;
+const buildTerrainMeshes = buildTerrainMeshesLegacy as unknown as (
+  heightField: WorldHeightField,
+  engineContext: EngineContext,
+  config: BattlefieldMapConfig,
+) => TerrainRoot;
+const buildTerrainMeshesAsync = buildTerrainMeshesAsyncLegacy as unknown as (
+  heightField: WorldHeightField,
+  engineContext: EngineContext,
+  config: BattlefieldMapConfig,
+  onProgress: BuildSliceProgress,
+  fineSlices: boolean,
+  options: { streamFarLods: boolean; focus: SpawnLayoutPoint },
+) => Promise<TerrainRoot>;
+const createVegetation = createVegetationLegacy as unknown as (
+  heightField: WorldHeightField,
+  engineContext: EngineContext,
+  seed: number,
+  config: BattlefieldMapConfig,
+) => VegetationRuntime;
+const createVegetationAsync = createVegetationAsyncLegacy as unknown as (
+  heightField: WorldHeightField,
+  engineContext: EngineContext,
+  seed: number,
+  config: BattlefieldMapConfig,
+  onProgress: BuildSliceProgress,
+  fineSlices: boolean,
+) => Promise<VegetationRuntime>;
+const createProps = createPropsLegacy as unknown as (
+  heightField: WorldHeightField,
+  engineContext: EngineContext,
+  seed: number,
+  config: BattlefieldMapConfig,
+) => PropsRuntime;
+const createPropsAsync = createPropsAsyncLegacy as unknown as (
+  heightField: WorldHeightField,
+  engineContext: EngineContext,
+  seed: number,
+  config: BattlefieldMapConfig,
+  onProgress: BuildSliceProgress,
+  fineSlices: boolean,
+) => Promise<PropsRuntime>;
 
 const _pt = new THREE.Vector3();
 const _bisA = new THREE.Vector3();
@@ -19,7 +259,11 @@ const _bisA = new THREE.Vector3();
  * @param {{mapId?:string, seed?:number}} [opts] world options
  * @returns {object} World (ARCHITECTURE §2.7) + {mapId, config}
  */
-export function createMap(engineCtx, { mapId = 'verdant', seed = 1337 } = {}) {
+export function createMap(
+  engineContext: unknown,
+  { mapId = 'verdant', seed = 1337 }: WorldOptions = {},
+): WorldRuntime {
+  const engineCtx = engineContext as EngineContext;
   const config = getMapConfig(mapId);
   const heightField = createHeightField(seed, config);
   const terrain = buildTerrainMeshes(heightField, engineCtx, config);
@@ -41,22 +285,31 @@ export function createMap(engineCtx, { mapId = 'verdant', seed = 1337 } = {}) {
  *   BEFORE each subsystem with (label, fractionComplete); await it to yield
  * @returns {Promise<object>} World (ARCHITECTURE §2.7) + {mapId, config}
  */
-export async function createMapAsync(engineCtx, { mapId = 'verdant', seed = 1337 } = {},
-  onStep = null, { fineSlices = false } = {}) {
+export async function createMapAsync(
+  engineContext: unknown,
+  { mapId = 'verdant', seed = 1337 }: WorldOptions = {},
+  onStep: WorldBuildProgress | null = null,
+  { fineSlices = false }: WorldSlicingOptions = {},
+): Promise<WorldRuntime> {
+  const engineCtx = engineContext as EngineContext;
   const config = getMapConfig(mapId);
   // Transfer/decompress the exact authored sandbag and utility-pole streams
   // while terrain and vegetation occupy the main thread. Previously their
   // 1.2 MB numeric JSON lived inside the map JavaScript chunk and had to be
   // parsed before even the height field could start.
   const propModelsReady = preloadPropModels();
-  const step = async (label, f) => { if (onStep) await onStep(label, f); };
+  const step = async (label: string, fraction: number): Promise<void> => {
+    if (onStep) await onStep(label, fraction);
+  };
   // perf-r3 (play-session probe): the old five-yield build left each
   // subsystem ATOMIC — 1.5-2.4 s tasks that pinned the loading bar (and
   // fused into a single ~29 s task on a loaded machine). Each subsystem now
   // drains its chunked twin, yielding through `step` after every slice so
   // the bar creeps THROUGH a subsystem instead of jumping between them.
-  const sub = (label, f0, f1) => (done, total) =>
-    step(label, f0 + (f1 - f0) * Math.min(1, done / Math.max(1, total)));
+  const sub = (label: string, f0: number, f1: number): BuildSliceProgress => (
+    completed: number,
+    total: number,
+  ) => step(label, f0 + (f1 - f0) * Math.min(1, completed / Math.max(1, total)));
   await step('Surveying terrain', 0.0);
   const heightField = createHeightField(seed, config);
   await step('Building terrain meshes', 0.34);
@@ -91,7 +344,14 @@ export async function createMapAsync(engineCtx, { mapId = 'verdant', seed = 1337
  * world object.
  * @returns {object} World (ARCHITECTURE §2.7)
  */
-function assembleWorld(engineCtx, config, heightField, terrain, vegetation, props) {
+function assembleWorld(
+  engineCtx: EngineContext,
+  config: BattlefieldMapConfig,
+  heightField: WorldHeightField,
+  terrain: TerrainRoot,
+  vegetation: VegetationRuntime,
+  props: PropsRuntime,
+): WorldRuntime {
   const layout = heightField._layout;
 
   const group = new THREE.Group();
@@ -123,15 +383,15 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
   // The narrow phase still uses the authored OBB/circle/convex footprint.
   const queryObstacles = createObstacleGrid(obstacles);
   const queryColliders = createObstacleGrid(props.colliders);
-  const rayCandidates = [];
+  const rayCandidates: CollisionRecord[] = [];
 
   const sp = layout.spawns;
-  const spawnPoints = {
+  const spawnPoints: WorldRuntime['spawnPoints'] = {
     player: {
       pos: [sp.player.x, heightField.getHeightAt(sp.player.x, sp.player.z), sp.player.z],
       yaw: sp.player.yaw,
     },
-    enemies: sp.enemies.map((e) => ({
+    enemies: sp.enemies.map((e: SpawnLayoutPoint) => ({
       pos: [e.x, heightField.getHeightAt(e.x, e.z), e.z],
       yaw: e.yaw,
     })),
@@ -141,7 +401,10 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
   // stable readiness seam so presentation snapshots cannot permanently bake
   // the procedural fallback on a cold hostname while a warm cache captures
   // the final materials.
-  const minimapTextureState = { settled: false, promise: null };
+  const minimapTextureState: WorldRuntime['minimapTextureState'] = {
+    settled: false,
+    promise: Promise.resolve(),
+  };
   minimapTextureState.promise = Promise.all([
     terrain.userData.sourcedTexturesReady || Promise.resolve(),
     props.sourcedTexturesReady || Promise.resolve(),
@@ -163,9 +426,15 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
   // above keeps the exact analytic query.
   const hAtF = heightField.getHeightAtFast || heightField.getHeightAt;
 
-  function raycast(origin, dir, maxDist) {
+  function raycast(
+    origin: THREE.Vector3,
+    dir: THREE.Vector3,
+    maxDist: number,
+  ): WorldRayHit | null {
     // props first — they bound the terrain march
-    let best = Infinity, bestKind = null, bestRecord = null;
+    let best = Infinity;
+    let bestKind: WorldRayHit['kind'] | null = null;
+    let bestRecord: CollisionRecord | null = null;
     const ex = origin.x + dir.x * maxDist;
     const ez = origin.z + dir.z * maxDist;
     queryColliders(
@@ -213,7 +482,8 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
         if (t >= limit) break;
       }
     }
-    let hitT, kind;
+    let hitT: number;
+    let kind: WorldRayHit['kind'];
     if (terrainT >= 0 && terrainT < best) { hitT = terrainT; kind = 'terrain'; }
     else if (bestKind && best <= maxDist) { hitT = best; kind = 'prop'; }
     else return null;
@@ -245,7 +515,9 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
     // 'loop'-class small clutter) — hull overlap in main.js triggers
     // crushProp (hinge-topple / debris swap) + fx.propCrush splinters.
     crushables: props.crushables || [],
-    crushProp: (i, dx, dz, speedMps = 0) => props.crushProp && props.crushProp(i, dx, dz, speedMps),
+    crushProp: (i: number, dx: number, dz: number, speedMps = 0) => (
+      props.crushProp?.(i, dx, dz, speedMps)
+    ),
     // world-dressing r1: destructible small-prop records (probes/debug —
     // gameplay paths run through crushObstacle/crushProp/the fx seam)
     destructibles: props.destructibles || [],
@@ -268,7 +540,12 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
     // hinge-topple; world-dressing r1 destructible props (propIdx, props.js
     // — fences, carts, stalls, bales, lamps...) topple or swap to debris via
     // the same seam.
-    crushObstacle: (ob, dx, dz, speedMps = 0) => {
+    crushObstacle: (
+      ob: CollisionRecord | null | undefined,
+      dx: number,
+      dz: number,
+      speedMps = 0,
+    ) => {
       if (!ob) return false;
       if (ob.treeIdx != null && vegetation.crushTree) return vegetation.crushTree(ob, dx, dz);
       // DESTRUCTIBLES r1: the overrun speed rides through so debris inherits
@@ -285,11 +562,17 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
     spawnPoints,
     /** @returns {{roads:Array, buildings:Array, tacticalBeats:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
     getMinimapFeatures: () => ({
-      roads: layout.roads.map((nodes) => nodes.map(([x, z]) => [x, z])),
-      buildings: props.features.buildings.map((b) => ({ ...b })),
-      tacticalBeats: props.features.tacticalBeats.map((beat) => ({ ...beat })),
-      treeClusters: vegetation._clusters.map((c) => ({ x: c.x, z: c.z, r: c.r })),
-      waterOrSoft: [...layout.marshes, ...layout.lakes].map((m) => ({ x: m.x, z: m.z, r: m.r })),
+      roads: layout.roads.map((nodes: Array<readonly [number, number]>) => (
+        nodes.map(([x, z]: readonly [number, number]) => [x, z] as [number, number])
+      )),
+      buildings: props.features.buildings.map((building: MapFeatureRecord) => ({ ...building })),
+      tacticalBeats: props.features.tacticalBeats.map((beat: MapFeatureRecord) => ({ ...beat })),
+      treeClusters: vegetation._clusters.map((cluster: { x: number; z: number; r: number }) => ({
+        x: cluster.x, z: cluster.z, r: cluster.r,
+      })),
+      waterOrSoft: [...layout.marshes, ...layout.lakes].map((disc: LayoutDisc) => ({
+        ...disc,
+      })),
     }),
     /**
      * Per-frame world update: terrain LOD swap + vegetation wind/density.
@@ -300,7 +583,12 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
      * @param {THREE.Vector3|null} [focusPos] chase-camera focus — non-null
      *   enables the tree occlusion fade along focus→camera
      */
-    update(dt, cameraPos, cameraFwd = null, focusPos = null) {
+    update(
+      dt: number,
+      cameraPos: THREE.Vector3,
+      cameraFwd: THREE.Vector3 | null = null,
+      focusPos: THREE.Vector3 | null = null,
+    ) {
       terrain.userData.updateLOD(cameraPos);
       vegetation.update(dt, cameraPos, cameraFwd, focusPos);
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
@@ -310,11 +598,11 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
      * Used only during the frozen deployment countdown; live streaming keeps
      * its conservative one-job-per-four-frames fallback.
      */
-    warmTerrainLookahead(cameraPos, maxJobs = 1) {
+    warmTerrainLookahead(cameraPos: THREE.Vector3, maxJobs = 1) {
       return terrain.userData.warmStreaming?.(cameraPos, maxJobs) || 0;
     },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
-    setWindTime(t) { vegetation.setWindTime(t); },
+    setWindTime(t: number) { vegetation.setWindTime(t); },
     /**
      * Sniper near-grass suppression passthrough (see vegetation.setSniperFade).
      * @param {number} f target fade 0..1
@@ -324,7 +612,12 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
      * @param {number} [aimDistM] live server-aim distance (rig.aimDist) — the
      *   scope-ray foliage corridor is culled out to this distance (r5)
      */
-    setSniperFade(f, immediate = false, fovDeg = null, aimDistM = null) {
+    setSniperFade(
+      f: number,
+      immediate = false,
+      fovDeg: number | null = null,
+      aimDistM: number | null = null,
+    ) {
       vegetation.setSniperFade(f, immediate, fovDeg, aimDistM);
     },
     group,

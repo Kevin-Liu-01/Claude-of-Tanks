@@ -17,7 +17,7 @@ Module ownership (file paths are FIXED):
 | Builder | Files |
 |---|---|
 | engine   | `src/engine/renderer.ts`, `src/engine/lighting.js`, `src/engine/post.js`, `src/engine/sky.js`, `src/engine/cameraRig.js` |
-| world    | `src/world/terrain.js`, `src/world/vegetation.js`, `src/world/props.js`, `src/world/map.js` |
+| world    | `src/world/terrain.js`, `src/world/vegetation.js`, `src/world/props.js`, `src/world/map.ts` |
 | vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.js`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
 | movement | `src/sim/movement.js` |
 | combat   | `src/sim/ballistics.ts`, `src/sim/armor.js`, `src/sim/damage.js`, `src/sim/combat.selftest.mjs` |
@@ -359,7 +359,7 @@ HeightField = {
   size: 1024, minY: number, maxY: number,
 }
 
-// map.js — composes terrain meshes + vegetation + props into a scene:
+// map.ts — composes terrain meshes + vegetation + props into a scene:
 createMap(engineCtx, { seed = 1337 } = {}) => World       // engineCtx: §3.1.6
 World = {
   heightField: HeightField,
@@ -497,14 +497,14 @@ other freely (single builder).
 
 ### 3.2 world — `src/world/`
 Exports locked in §2.7. Additional requirements:
-- Browser integration imports `map.js` dynamically on first battlefield use.
+- Browser integration imports `map.ts` dynamically on first battlefield use.
   `worldBuildCoordinator.ts` owns in-flight joins, background promotion,
   cancellation, residency, and eviction. A cold debug/capture switch is
   asynchronous; production battle and Studio entry await the same cached
   `ensureWorld` promise.
 - `terrain.js` also exports `buildTerrainMeshes(heightField, engineCtx) => THREE.Group`
   (chunked LOD meshes + splat material per graphics doc §6–7; uses
-  `engineCtx.setupShadowMaterial(mat, splatHook)`); `map.js` calls it.
+  `engineCtx.setupShadowMaterial(mat, splatHook)`); `map.ts` calls it.
 - `vegetation.js`: `createVegetation(heightField, engineCtx, seed = 2001) =>
   { group, update(dt, camPos), setWindTime(t), treeObstacles: AABB[] }` — instanced
   grass + trees + wind per doc §8.
