@@ -160,3 +160,4 @@ runtime documents remain authoritative for behavior.
 - [0148 — Public presentation runtime is strict TypeScript](0148-typed-public-presentation-runtime.md)
 - [0149 — Technical manual runtime is strict TypeScript](0149-typed-docs-runtime.md)
 - [0150 — Gallery dossiers derive from one typed vehicle contract](0150-typed-gallery-catalog.md)
+- [0151 — Public analytics stays typed and off the game path](0151-typed-public-analytics.md)

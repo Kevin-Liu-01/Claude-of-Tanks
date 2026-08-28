@@ -18,7 +18,7 @@ const entrypoints = [
 const gameEntry = await readFile('index.html', 'utf8');
 assert.doesNotMatch(
   gameEntry,
-  /src=["']\/src\/analytics\.js["']/,
+  /src=["']\/src\/analytics\.ts["']/,
   'the latency-sensitive game entry must not schedule third-party analytics',
 );
 
@@ -29,7 +29,7 @@ assert.equal(
   'Vercel Analytics must remain a production dependency',
 );
 
-const analyticsSource = await readFile('src/analytics.js', 'utf8');
+const analyticsSource = await readFile('src/analytics.ts', 'utf8');
 assert.match(analyticsSource, /import\(['"]@vercel\/analytics['"]\)/, 'analytics module lazily imports the Vercel client');
 assert.match(analyticsSource, /\binject\s*\(/, 'analytics module injects the Vercel client');
 assert.match(analyticsSource, /import\.meta\.env\.PROD/, 'analytics mode follows the Vite production environment');
@@ -37,7 +37,7 @@ assert.match(analyticsSource, /requestIdleCallback/, 'analytics stays outside th
 
 for (const entrypoint of entrypoints) {
   const html = await readFile(entrypoint, 'utf8');
-  const references = html.match(/src=["']\/src\/analytics\.js["']/g) ?? [];
+  const references = html.match(/src=["']\/src\/analytics\.ts["']/g) ?? [];
   assert.equal(references.length, 1, `${entrypoint} must load analytics exactly once`);
 }
 

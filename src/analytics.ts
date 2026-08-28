@@ -1,4 +1,4 @@
-const mountAnalytics = () => import('@vercel/analytics').then(({ inject }) => inject({
+const mountAnalytics = (): Promise<unknown> => import('@vercel/analytics').then(({ inject }) => inject({
   mode: import.meta.env.PROD ? 'production' : 'development',
 }));
 
