@@ -5,6 +5,7 @@ export interface PlaySurfaceRequest {
   invite?: unknown;
   specId?: string;
   mapId?: string;
+  gameMode?: string;
   startSolo?: () => MaybePromise<unknown>;
 }
 
@@ -29,7 +30,7 @@ interface PlaySurfaceRuntimeOptions {
   createMenuOptions(): Record<string, unknown>;
   getSelectedSpecId(): string;
   getSelectedMapId(): string;
-  startSolo(request: { specId: string; mapId: string }): MaybePromise<unknown>;
+  startSolo(request: { specId: string; mapId: string; gameMode?: string }): MaybePromise<unknown>;
   showActiveRoom(): MaybePromise<boolean>;
   preloadCommon: Array<() => MaybePromise<unknown>>;
   preloadNetworkPresentation(): MaybePromise<unknown>;
@@ -101,13 +102,14 @@ export function createPlaySurfaceRuntime({
       }
       const menu = module.createPlayMenu({
         ...createMenuOptions(),
-        onSolo: () => {
+        onSolo: (request: { gameMode?: string } = {}) => {
           const requested = pendingSoloStart;
           pendingSoloStart = null;
           if (requested) runSolo(requested);
           else runSolo(() => startSolo({
             specId: getSelectedSpecId(),
             mapId: getSelectedMapId(),
+            ...(request.gameMode == null ? {} : { gameMode: request.gameMode }),
           }));
         },
       });
@@ -157,6 +159,7 @@ export function createPlaySurfaceRuntime({
         else await startSolo({
           specId: request.specId || getSelectedSpecId(),
           mapId: request.mapId || getSelectedMapId(),
+          ...(request.gameMode == null ? {} : { gameMode: request.gameMode }),
         });
         return;
       }

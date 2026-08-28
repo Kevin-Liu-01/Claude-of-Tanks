@@ -90,6 +90,7 @@ import { createPlayerFrameInput } from './game/playerFrameInput.ts';
 import { createBattleFrameRuntime } from './game/battleFrameRuntime.ts';
 import { createBattlePresentationRuntime } from './game/battlePresentationRuntime.ts';
 import { createBattleHudFrameRuntime } from './game/battleHudFrameRuntime.ts';
+import { createMatchModeWorldPresentation } from './game/matchModeWorldPresentation.ts';
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
 import { createSoloBattleDeploymentRuntime } from './game/soloBattleDeploymentRuntime.ts';
 import { createSoloBattleLoadingRuntime } from './game/soloBattleLoadingRuntime.ts';
@@ -251,6 +252,7 @@ installShaderErrorCollector(renderer);
 const _diag = runDeviceDiag(renderer);
 const _diagRescue = applyDiagRescue(renderer, _diag);
 const scene = new THREE.Scene();
+const matchModeWorld = createMatchModeWorldPresentation(scene);
 // The scene root is permanently identity. Leaving matrixAutoUpdate enabled
 // marks it dirty every render and propagates `force=true` through every world
 // and vehicle descendant, defeating the static-world matrix freeze below.
@@ -918,7 +920,7 @@ const garage = await bootStage('ui', () => createGarage({
     networkRoomCoordinator?.syncVehicle(specId);
     networkRoomCoordinator?.syncPendingLobbySelection();
   },
-  onBattle: (specId, mapId) => beginBattleEntry(specId, mapId), // loading screen owns entry
+  onBattle: (specId, mapId, options) => beginBattleEntry(specId, mapId, options), // loading screen owns entry
   onPlayRequest: (request) => playSurface.open(request).catch((error) => {
     console.error('[play-menu] failed to open', error);
   }),
@@ -2057,9 +2059,9 @@ const networkBattleActivation = createNetworkBattleActivationRuntime({
  * intentionally absent here: loading them for a local battle duplicated work
  * without adding any useful authority boundary.
  */
-async function beginSoloBattle({ specId, mapId, randomRoster = true } = {}) {
+async function beginSoloBattle({ specId, mapId, randomRoster = true, gameMode = 'standard' } = {}) {
   const selected = VISIBLE_TANK_IDS.includes(specId) ? specId : garage.getSelected();
-  return beginBattleEntry(selected, mapId || garage.getSelectedMap(), { randomRoster });
+  return beginBattleEntry(selected, mapId || garage.getSelectedMap(), { randomRoster, gameMode });
 }
 
 /** Rows for the pre-battle roster panels. @param {string} team @returns {Array} */
@@ -2456,6 +2458,10 @@ function tick(nowMs) {
     fx.update(livePaused ? 0 : dtR * (kcActive ? killcam.fxTimeScale : 1),
       game.shells, camera, resolveFxSubject);
   }
+
+  // Objective markers are retained, shadow-free meshes. Standard battles and
+  // the garage hide the root, so the feature adds no traversal work there.
+  matchModeWorld.update(inBattle ? game.matchModeState : null, game.timeS);
 
   // 7. HUD (hidden + frozen while the kill-cam letterbox owns the screen).
   battleHudFrame.update(inBattle, kcActive);

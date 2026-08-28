@@ -46,6 +46,13 @@ src/sim/authoritativeMatch.js behind the protocol and browser presentation
 bridge. These compositions share movement, aiming, ballistics, armor, damage,
 spotting, bot, destructible, and result rules.
 
+`src/sim/matchModes.ts` overlays deterministic objective policy on those shared
+rules. Standard Battle leaves elimination behavior unchanged. Capture the Flag,
+Zone Control, Turbo Ball, and Endless Horde own only scores, objectives,
+respawns, wave/loot state, and bot objective points. Solo and network authority
+compose the same controller; `src/game/matchModeWorldPresentation.ts` consumes
+its state through lazy retained meshes without becoming gameplay authority.
+
 The composition root delegates its order-sensitive browser lifecycles to
 strict TypeScript owners:
 

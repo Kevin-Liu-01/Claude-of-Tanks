@@ -43,9 +43,10 @@ export function resolvePrivateMatchMap(lobbyState) {
 /** Deterministically fill empty lobby slots with authority-owned bots. */
 export function buildPrivateMatchPlayers(lobbyState) {
   const lobby = validateStartingLobby(lobbyState);
+  const horde = lobby.gameMode === 'endless_horde';
   const humans = lobby.players
     .filter((player) => player.team !== 'spectator')
-    .map((player) => ({ ...player, bot: false }));
+    .map((player) => ({ ...player, team: horde ? 'alpha' : player.team, bot: false }));
   const teamSize = Math.max(1, Math.min(7, Number(lobby.teamSize) || 1));
   const counts = {
     alpha: humans.filter((player) => player.team === 'alpha').length,
@@ -67,7 +68,8 @@ export function buildPrivateMatchPlayers(lobbyState) {
   const players = humans.slice();
   let poolIndex = 0;
   for (const team of ['alpha', 'bravo']) {
-    for (let index = counts[team]; index < teamSize; index++) {
+    const targetSize = horde && team === 'alpha' ? counts.alpha : teamSize;
+    for (let index = counts[team]; index < targetSize; index++) {
       const specId = pool[poolIndex++ % pool.length];
       players.push({
         id: `bot-${team}-${index}-${(lobby.matchSeed >>> 0).toString(36)}`,
@@ -161,6 +163,7 @@ export function beginPrivateHostMatch({
     players,
     mapId,
     seed: lobby.matchSeed,
+    gameMode: lobby.gameMode,
     worldCollision,
     ...(battleLimitS === undefined ? {} : { battleLimitS }),
   });
@@ -234,6 +237,7 @@ export function beginPrivateHostMatch({
         players: buildPrivateMatchPlayers(next),
         mapId: nextMapId,
         seed: next.matchSeed,
+        gameMode: next.gameMode,
         worldCollision: nextCollision,
       });
       host.replaceSimulation(simulation, { round: Number(next.round) || 1 });

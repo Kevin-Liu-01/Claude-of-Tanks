@@ -358,6 +358,22 @@ const botLobby = createLobby({
 applyLobbyCommand(botLobby, 'solo', { type: 'set_ready', ready: true });
 applyLobbyCommand(botLobby, 'solo', { type: 'start', matchSeed: 77 });
 assert.equal(serializeLobby(botLobby).teamSize, 3, 'one human may start a bot-filled match');
+const hordeLobby = createLobby({
+  roomCode: 'HOR234', hostId: 'horde-host', hostName: 'Host', hostSpecId: 'm1a2',
+  gameMode: 'endless_horde', teamSize: 1,
+});
+addLobbyPlayer(hordeLobby, { id: 'horde-a', name: 'Ally A', specId: 'm1a2' });
+addLobbyPlayer(hordeLobby, { id: 'horde-b', name: 'Ally B', specId: 'm1a2' });
+assert.equal(hordeLobby.teamSize, 3, 'co-op horde expands human capacity as allies join');
+assert.deepEqual([...hordeLobby.players.values()].map((player) => player.team),
+  ['alpha', 'alpha', 'alpha'], 'horde seats every human on the cooperative team');
+expectCode(() => applyLobbyCommand(hordeLobby, 'horde-a', {
+  type: 'set_team', team: LOBBY_TEAMS.BRAVO,
+}), LobbyError, 'cooperative_team');
+applyLobbyCommand(hordeLobby, 'horde-host', {
+  type: 'set_game_mode', gameMode: 'zone_control',
+});
+assert.equal(serializeLobby(hordeLobby).gameMode, 'zone_control');
 const observerLobby = createLobby({
   roomCode: 'OBS234', hostId: 'observer', hostName: 'Observer', hostSpecId: 'm1a2', teamSize: 1,
 });

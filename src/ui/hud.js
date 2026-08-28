@@ -477,6 +477,12 @@ const HUD_CSS = `
   box-shadow:0 0 4px rgba(126,232,126,.4);}
 .cot-top .wedge.r i.on{background:rgba(242,110,100,.95);border-color:rgba(250,130,120,.95);
   box-shadow:0 0 4px rgba(240,90,90,.4);}
+.cot-mode-status{position:absolute;z-index:var(--hud-layer-score);top:66px;left:50%;transform:translateX(-50%);
+  min-height:28px;display:none;align-items:center;gap:8px;padding:5px 11px;color:#e8f0f5;
+  background:rgba(7,11,15,.88);border:1px solid rgba(176,194,208,.28);box-shadow:0 5px 14px rgba(0,0,0,.38);
+  font:800 8px ${FONT_COND};letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;}
+.cot-mode-status.show{display:flex}.cot-mode-status .mi,.cot-mode-status .mi svg{display:block;width:15px;height:15px}
+.cot-mode-status .mi{color:#f0a030}.cot-mode-status .mv{color:#fff1d6;font-variant-numeric:tabular-nums}
 @keyframes cotChipIn{from{opacity:0}to{opacity:1}}
 /* Compact player telemetry. The engineering dashboard folds this strip into
    its richer top-right panel instead of allowing two readouts to overlap. */
@@ -1020,8 +1026,19 @@ export function initHud(bus) {
   const fgEl = topPlate.querySelector('.fg');
   const feEl = topPlate.querySelector('.fe');
   const tmEl = topPlate.querySelector('.tm');
+  const allyLabelEl = topPlate.querySelector('.sc.ally .team-label');
+  const enemyLabelEl = topPlate.querySelector('.sc.enemy .team-label');
+  const timerLabelEl = topPlate.querySelector('.tm-label');
   const wedgeL = topPlate.querySelector('.wedge.l');
   const wedgeR = topPlate.querySelector('.wedge.r');
+  const modeStatusEl = el('div', 'cot-mode-status', root);
+  modeStatusEl.setAttribute('role', 'status');
+  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mn"></span><span class="mv"></span>`;
+  const modeStatusIcon = modeStatusEl.querySelector('.mi');
+  const modeStatusName = modeStatusEl.querySelector('.mn');
+  const modeStatusValue = modeStatusEl.querySelector('.mv');
+  let lastModeStatus = '';
+  let objectiveTeam = 'alpha';
 
   // --- ping/fps readout (WoT battle constant, top-right corner) ---
   const netEl = el('div', 'cot-net', root);
@@ -1780,6 +1797,61 @@ export function initHud(bus) {
         }
       }
     }
+    const modeState = frame.matchModeState;
+    if (modeState && modeState.id && modeState.id !== 'standard') {
+      const ownTeam = modeState.perspectiveTeam === 'bravo' ? 'bravo' : 'alpha';
+      objectiveTeam = ownTeam;
+      const enemyTeam = ownTeam === 'alpha' ? 'bravo' : 'alpha';
+      const horde = modeState.id === 'endless_horde' ? modeState.horde : null;
+      const ownScore = horde ? `W${horde.wave}` : Math.round(modeState.score?.[ownTeam] || 0);
+      const enemyScore = horde ? Math.round(horde.alive || 0)
+        : Math.round(modeState.score?.[enemyTeam] || 0);
+      const score = `${modeState.id}|${ownScore}:${enemyScore}|${allyAlive}/${allyTotal}|${enemyAlive}/${enemyTotal}`;
+      if (score !== lastScore) {
+        fgEl.textContent = String(ownScore);
+        feEl.textContent = String(enemyScore);
+        allyLabelEl.textContent = horde ? 'Wave' : 'Allies';
+        enemyLabelEl.textContent = horde ? 'Hostiles' : 'Enemy';
+        wedgeL.textContent = '';
+        wedgeR.textContent = '';
+        earL.querySelector('.al').textContent = `${allyAlive} / ${allyTotal}`;
+        earR.querySelector('.al').textContent = `${enemyAlive} / ${enemyTotal}`;
+        lastScore = score;
+      }
+      const waitS = horde ? Math.ceil(horde.nextWaveInS || 0) : 0;
+      const timer = waitS > 0 ? `${waitS}s` : fmtTimer(BATTLE_DURATION_S - frame.timeS);
+      timerLabelEl.textContent = waitS > 0 ? 'Next wave' :
+        modeState.id === 'capture_the_flag' ? 'Capture 3' :
+          modeState.id === 'zone_control' ? 'First 1000' :
+            modeState.id === 'turbo_ball' ? 'First 5' : 'Survive';
+      if (timer !== lastTimer) { tmEl.textContent = timer; lastTimer = timer; }
+      const modeCopy = modeState.id === 'capture_the_flag'
+        ? `FLAGS ${ownScore} / ${modeState.target || 3}`
+        : modeState.id === 'zone_control'
+          ? `CONTROL ${ownScore} / ${modeState.target || 1000}`
+          : modeState.id === 'turbo_ball'
+            ? `GOALS ${ownScore} / ${modeState.target || 5}`
+            : `WAVE ${horde?.wave || 1} · ${horde?.alive || 0} HOSTILES · AMMO ${modeState.playerAmmo ?? '—'} / ${modeState.playerAmmoCapacity ?? '—'}`;
+      const modeStatus = `${modeState.id}|${modeCopy}`;
+      if (modeStatus !== lastModeStatus) {
+        const icon = modeState.id === 'capture_the_flag' ? 'modeFlag'
+          : modeState.id === 'zone_control' ? 'modeZones'
+            : modeState.id === 'turbo_ball' ? 'modeTurbo' : 'modeHorde';
+        modeStatusIcon.innerHTML = uiIconSVG(icon, 15, 'currentColor');
+        modeStatusName.textContent = modeState.label || 'Objective';
+        modeStatusValue.textContent = modeCopy;
+        modeStatusEl.classList.add('show');
+        lastModeStatus = modeStatus;
+      }
+      return;
+    }
+    if (lastModeStatus) {
+      modeStatusEl.classList.remove('show');
+      lastModeStatus = '';
+    }
+    allyLabelEl.textContent = 'Allies';
+    enemyLabelEl.textContent = 'Enemy';
+    timerLabelEl.textContent = 'Time';
     const score = `${enemyTotal - enemyAlive}:${allyTotal - allyAlive}|${allyAlive}/${allyTotal}|${enemyAlive}/${enemyTotal}`;
     if (score !== lastScore) {
       const allyKills = enemyTotal - enemyAlive;
@@ -3923,6 +3995,40 @@ export function initHud(bus) {
     if (on) showAlert(`AUTO-AIM: ${String(targetName || 'TARGET').toUpperCase()}`,
       { icon: 'autoAim', tone: 'success' });
     else if (reason) showAlert(reason, { icon: 'autoAim', tone: 'info' });
+  });
+  bus.on('mode:ammo_empty', ({ id }) => {
+    if (playerId == null || id === playerId) {
+      showAlert('AMMUNITION EMPTY · FIND A CACHE', { icon: 'shell', tone: 'danger' });
+    }
+  });
+  bus.on('mode:pickup_collected', ({ by, kind }) => {
+    if (playerId != null && by !== playerId) return;
+    showAlert(kind === 'heal' ? 'FIELD REPAIR ACQUIRED' : 'AMMUNITION ACQUIRED', {
+      icon: kind === 'heal' ? 'repair' : 'shell', tone: 'success',
+    });
+  });
+  bus.on('mode:wave_started', ({ wave }) => {
+    showAlert(`WAVE ${Math.max(1, Number(wave) || 1)} INBOUND`, {
+      icon: 'modeHorde', tone: 'warning',
+    });
+  });
+  bus.on('mode:flag_captured', ({ team }) => {
+    const allied = team === objectiveTeam;
+    showAlert(allied ? 'ALLIED FLAG CAPTURE' : 'ENEMY FLAG CAPTURE', {
+      icon: 'modeFlag', tone: allied ? 'success' : 'danger',
+    });
+  });
+  bus.on('mode:zone_captured', ({ team }) => {
+    const allied = team === objectiveTeam;
+    showAlert(allied ? 'SECTOR SECURED' : 'SECTOR LOST', {
+      icon: 'modeZones', tone: allied ? 'success' : 'danger',
+    });
+  });
+  bus.on('mode:goal_scored', ({ team }) => {
+    const allied = team === objectiveTeam;
+    showAlert(allied ? 'ALLIED GOAL' : 'ENEMY GOAL', {
+      icon: 'modeTurbo', tone: allied ? 'success' : 'danger',
+    });
   });
   // Minimap size cycle (3 steps) — the canvas keeps its fixed 2x internal
   // resolution; CSS scales it, so blips/labels stay proportionate.

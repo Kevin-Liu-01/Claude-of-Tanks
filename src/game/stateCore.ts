@@ -33,6 +33,10 @@ export interface GameState {
   resultReason: string | null;
   spotting: unknown | null;
   openingRouteJobs: unknown[];
+  gameMode: string;
+  matchModeState: unknown | null;
+  matchModeController: unknown | null;
+  modeEvents: Array<{ type: string; payload: Record<string, unknown> }>;
 }
 
 /** Canonical deterministic PRNG used by the legacy solo runtime. */
@@ -105,5 +109,9 @@ export function createGameState(): GameState {
     resultReason: null,
     spotting: null,
     openingRouteJobs: [],
+    gameMode: 'standard',
+    matchModeState: null,
+    matchModeController: null,
+    modeEvents: [],
   };
 }

@@ -71,6 +71,7 @@ export interface BattleHudFrameInfo {
   aim: AimFrame;
   killfeedHandledByBus: boolean;
   spotting: BattleHudSpotFrame | null;
+  matchModeState: unknown | null;
 }
 
 export interface BattleHudFrameRuntimeOptions {
@@ -151,6 +152,7 @@ export function createBattleHudFrameRuntime({
     },
     killfeedHandledByBus: true,
     spotting: null,
+    matchModeState: null,
   };
 
   const armorTargets: HudTankEntity[] = [];
@@ -182,6 +184,7 @@ export function createBattleHudFrameRuntime({
     frameInfo.player = null;
     frameInfo.tanks = game.tanks;
     frameInfo.shells = game.shells;
+    frameInfo.matchModeState = game.matchModeState;
   };
 
   const update = (inBattle: boolean, killcamActive: boolean): void => {
@@ -208,6 +211,7 @@ export function createBattleHudFrameRuntime({
     frameInfo.tanks = game.tanks;
     frameInfo.rosterTanks = bridge?.roster || game.tanks;
     frameInfo.shells = game.shells;
+    frameInfo.matchModeState = game.matchModeState;
     refreshSpotting(focus);
 
     const localPlayer = player();

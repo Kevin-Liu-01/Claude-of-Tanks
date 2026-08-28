@@ -801,8 +801,16 @@ export function updateTank(entity, heightField, dt, collide = null) {
   const rx = Math.cos(state.yaw), rz = -Math.sin(state.yaw);  // rightAxis
   const terrPitch = state._terr.pitch;
 
-  const topMps = spec.topSpeedKmh / 3.6;
-  const revMps = spec.reverseSpeedKmh / 3.6;
+  // Objective modes may opt a tank into a faster ruleset without mutating the
+  // shared vehicle spec (or changing standard-battle handling). Keep the
+  // multiplier on the authoritative entity so local and network simulations
+  // apply the same transmission limits.
+  const modeSpeedMult = clamp(
+    Number.isFinite(entity.modeSpeedMultiplier) ? entity.modeSpeedMultiplier : 1,
+    0.25, 3,
+  );
+  const topMps = spec.topSpeedKmh / 3.6 * modeSpeedMult;
+  const revMps = spec.reverseSpeedKmh / 3.6 * modeSpeedMult;
 
   // ---- hull traverse (wiki formula reduced: Tr = Tn × Rh/Rx × Pc, + debuffs) ----
   // STEERING SIGN (locked — every producer of input.steer depends on it):
@@ -869,7 +877,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
 
   // ---- longitudinal speed ----
   const pSpec = (spec.enginePowerHp * debuff.powerMult) / spec.weightTons;
-  const accel = K_ACCEL * (pSpec / R) * debuff.accelMult;
+  const accel = K_ACCEL * (pSpec / R) * debuff.accelMult * Math.sqrt(modeSpeedMult);
   const driveSign = throttle !== 0 ? Math.sign(throttle) : Math.sign(state.speed);
   const pitchAlong = terrPitch * (driveSign || 1);
   let vLim = throttle >= 0 ? topMps : revMps;

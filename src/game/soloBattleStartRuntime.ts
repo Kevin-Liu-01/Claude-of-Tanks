@@ -4,6 +4,7 @@ export interface SoloBattleStartOptions {
   deferVisuals?: boolean;
   preBattleHold?: boolean;
   randomRoster?: boolean;
+  gameMode?: string;
 }
 
 interface SoloBattlePlayer {
@@ -75,6 +76,7 @@ export interface SoloBattleStartRuntimeOptions {
         deferVisuals: boolean;
         deferCamoRepaint: boolean;
         deferOpeningRoutes: boolean;
+        gameMode?: string;
       },
     ): void;
     combatWarm: { reset(): void; drain(): unknown };
@@ -154,6 +156,7 @@ export function createSoloBattleStartRuntime({
       deferVisuals = false,
       preBattleHold = false,
       randomRoster = true,
+      gameMode = 'standard',
     } = {}) {
       if (!specId) throw new TypeError('solo battle start requires a vehicle specification');
 
@@ -196,6 +199,7 @@ export function createSoloBattleStartRuntime({
         deferVisuals,
         deferCamoRepaint: true,
         deferOpeningRoutes: deferVisuals,
+        ...(gameMode === 'standard' ? {} : { gameMode }),
       });
       round.combatWarm.reset();
       mark('setupRoster');

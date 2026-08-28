@@ -1,6 +1,7 @@
 import { MAX_PLAYERS, MAX_SPECTATORS, normalizeRoomCode } from './protocol.js';
 import { normalizePlayerName, uniquePlayerName } from './playerNames.js';
 import { networkCamoId } from '../vehicles/camoPolicy.js';
+import { normalizeGameMode } from '../sim/matchModes.ts';
 
 export const LOBBY_PHASES = Object.freeze({
   WAITING: 'waiting',
@@ -87,6 +88,7 @@ function activePlayers(lobby) {
 }
 
 function autoTeam(lobby) {
+  if (lobby.gameMode === 'endless_horde') return LOBBY_TEAMS.ALPHA;
   const alpha = countTeam(lobby, LOBBY_TEAMS.ALPHA);
   const bravo = countTeam(lobby, LOBBY_TEAMS.BRAVO);
   return alpha <= bravo ? LOBBY_TEAMS.ALPHA : LOBBY_TEAMS.BRAVO;
@@ -147,6 +149,7 @@ export function createLobby({
   maxPlayers = MAX_PLAYERS,
   maxSpectators = MAX_SPECTATORS,
   mode = 'private',
+  gameMode = 'standard',
   mapId = 'random',
   allowTeamSwitch = true,
   hostSpecId = null,
@@ -170,6 +173,7 @@ export function createLobby({
   const lobby = {
     roomCode: code,
     mode: String(mode || 'private'),
+    gameMode: normalizeGameMode(gameMode),
     phase: LOBBY_PHASES.WAITING,
     hostId: id,
     maxPlayers,
@@ -211,7 +215,8 @@ export function addLobbyPlayer(lobby, {
   if (lobby.locked) throw new LobbyError('lobby_locked', 'lobby is locked');
   const playerId = cleanId(id);
   if (lobby.players.has(playerId)) throw new LobbyError('duplicate_player', 'player already joined');
-  let targetTeam = team || autoTeam(lobby);
+  let targetTeam = lobby.gameMode === 'endless_horde'
+    ? LOBBY_TEAMS.ALPHA : team || autoTeam(lobby);
   if (!TEAM_SET.has(targetTeam)) throw new LobbyError('invalid_team', 'unknown team');
   if (targetTeam === LOBBY_TEAMS.SPECTATOR) {
     if (countTeam(lobby, targetTeam) >= lobby.maxSpectators) {
@@ -221,8 +226,16 @@ export function addLobbyPlayer(lobby, {
     if (activePlayers(lobby).length >= lobby.maxPlayers) {
       throw new LobbyError('lobby_full', 'player slots are full');
     }
-    const teamCap = lobby.teamSize;
-    if (activePlayers(lobby).length >= lobby.teamSize * 2) {
+    if (lobby.gameMode === 'endless_horde') {
+      const nextCount = activePlayers(lobby).length + 1;
+      if (nextCount > 7) {
+        throw new LobbyError('horde_capacity', 'Horde supports up to seven co-op players');
+      }
+      lobby.teamSize = Math.max(lobby.teamSize, nextCount);
+    }
+    const teamCap = lobby.gameMode === 'endless_horde' ? 7 : lobby.teamSize;
+    if (lobby.gameMode !== 'endless_horde' &&
+        activePlayers(lobby).length >= lobby.teamSize * 2) {
       throw new LobbyError('lobby_full', 'all human team slots are full');
     }
     if (countTeam(lobby, targetTeam) >= teamCap) targetTeam = autoTeam(lobby);
@@ -322,6 +335,9 @@ export function applyLobbyCommand(lobby, playerId, command, {
       }
       const team = command.team;
       if (!TEAM_SET.has(team)) throw new LobbyError('invalid_team', 'unknown team');
+      if (lobby.gameMode === 'endless_horde' && team === LOBBY_TEAMS.BRAVO) {
+        throw new LobbyError('cooperative_team', 'Horde players deploy together on Alpha');
+      }
       if (team === LOBBY_TEAMS.SPECTATOR) {
         if (countTeam(lobby, team, id) >= lobby.maxSpectators) {
           throw new LobbyError('spectators_full', 'spectator slots are full');
@@ -334,6 +350,21 @@ export function applyLobbyCommand(lobby, playerId, command, {
       }
       player.team = team;
       player.ready = false;
+      break;
+    }
+    case 'set_game_mode': {
+      assertHost(lobby, id);
+      const gameMode = normalizeGameMode(command.gameMode);
+      if (gameMode === 'endless_horde') {
+        const players = activePlayers(lobby);
+        if (players.length > 7) {
+          throw new LobbyError('horde_capacity', 'Horde supports up to seven co-op players');
+        }
+        lobby.teamSize = Math.max(lobby.teamSize, players.length);
+        for (const entry of players) entry.team = LOBBY_TEAMS.ALPHA;
+      }
+      lobby.gameMode = gameMode;
+      for (const entry of lobby.players.values()) entry.ready = false;
       break;
     }
     case 'set_team_size': {
@@ -415,6 +446,7 @@ export function serializeLobby(lobby) {
   return {
     roomCode: lobby.roomCode,
     mode: lobby.mode,
+    gameMode: normalizeGameMode(lobby.gameMode),
     phase: lobby.phase,
     hostId: lobby.hostId,
     maxPlayers: lobby.maxPlayers,

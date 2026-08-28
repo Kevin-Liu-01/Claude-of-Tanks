@@ -47,8 +47,9 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
   <img src="public/brand/nav/studio.svg" width="72" alt="Scene Studio icon" title="Direct">
 </p>
 
-- **Fight:** enter solo or multiplayer battles with physical shell travel, armor geometry, component damage, spotting,
-  terrain, collision, destructible structures, persistent wrecks, and authority-owned results.
+- **Fight:** enter Standard Battle, Capture the Flag, Zone Control, armed super-speed Turbo Ball, or cooperative
+  Endless Horde in solo or multiplayer, with physical shell travel, armor geometry, component damage, spotting,
+  terrain, collision, destructible structures, persistent wrecks, mode-specific respawns, and authority-owned results.
 - **Inspect:** open any vehicle in Tank Gallery, articulate the live rig, isolate armor or internal anatomy, and export an
   exact-surface review packet from the same specification used in combat.
 - **Direct:** stage any roster vehicle on any battlefield in Scene Studio, animate actors and cameras, schedule game FX,
@@ -62,7 +63,7 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
 | Worlds | **20** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
-| Play | Solo bots, persistent private rooms, LAN rooms, room chat, spectators, rematches, and dedicated ranked authority |
+| Play | Five battle rules, solo bots, persistent private rooms, LAN rooms, room chat, spectators, respawns, rematches, and dedicated ranked authority |
 | Platforms | Mouse/keyboard and complete touch controls with safe-area layout and device-adaptive rendering |
 | Tools | Scene Studio, Tank Gallery, exact-surface review, deterministic capture, vehicle anatomy, and release gates |
 

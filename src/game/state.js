@@ -44,6 +44,7 @@ import {
   loadEquipment as loadEquipmentCatalog, applyEquipmentToCombat, defaultLoadoutFor,
 } from './equipment.js';
 import { mulberry32 } from './stateCore.ts';
+import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
 import {
   autoCamoIdsForBattle,
   ensureTankVisual,
@@ -136,6 +137,10 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   game.combatRng = mulberry32(COMBAT_SEED);
   game.result = null;
   game.resultReason = null;
+  game.gameMode = normalizeGameMode(opts.gameMode);
+  game.matchModeState = null;
+  game.matchModeController = null;
+  game.modeEvents.length = 0;
   game.battleCount++;
   game.openingRouteJobs.length = 0;
 
@@ -437,6 +442,8 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     _spawnPos.set(spawn.pos[0], spawn.pos[1], spawn.pos[2]);
     ent.team = isPlayer || isAlly ? 'player' : 'enemy';
     ent.isPlayer = isPlayer;
+    ent.bot = !isPlayer;
+    ent.modeActive = true;
     ent.state = createTankState(ent.spec, _spawnPos, spawn.yaw);
     ent.combat = createCombatState(ent.spec);
     ent.specialAction = createSpecialActionState(ent.spec);
@@ -610,6 +617,45 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
       ent.visual.setVisible(true);
     }
   });
+
+  game.matchModeController = createMatchModeController({
+    mode: game.gameMode,
+    entities: game.tanks,
+    seed: COMBAT_SEED + game.battleCount,
+    terrainHeight: (x, z) => world.heightField.getHeightAt(x, z),
+    emit: (type, payload) => game.modeEvents.push({ type, payload }),
+    setActive(ent, active) {
+      ent.modeActive = active;
+      ent.visual?.setVisible(active);
+    },
+    revive(ent, spawn, healthScale) {
+      _spawnPos.set(spawn.x, world.heightField.getHeightAt(spawn.x, spawn.z), spawn.z);
+      ent.state = createTankState(ent.spec, _spawnPos, spawn.yaw);
+      ent.combat = createCombatState(ent.spec);
+      if (healthScale !== 1) {
+        ent.combat.maxHp = Math.max(1, Math.round(ent.combat.maxHp * healthScale));
+        ent.combat.hp = ent.combat.maxHp;
+      }
+      applyEquipmentToCombat(ent.combat, ent.equip || defaultLoadoutFor(ent.spec), ent.spec);
+      ent.specialAction = createSpecialActionState(ent.spec);
+      ent.input.throttle = 0;
+      ent.input.steer = 0;
+      ent.input.brake = false;
+      ent.input.fire = false;
+      ent.input.shellSlot = 0;
+      ent.input.aimPoint.copy(ent.state.aimPoint);
+      ent._destroyedAnnounced = false;
+      ent.visual?.resetDestroyed?.();
+      ent.visual?.setVisible(true);
+      refreshContactGeometry(ent);
+      for (let tick = 0; tick < 30; tick++) {
+        updateTank(ent, world.heightField, SIM_DT);
+      }
+      ent.visual?.syncFromState?.(ent.state);
+    },
+  });
+  game.matchModeState = game.matchModeController.state;
+  game._nextModeRouteS = 0;
 }
 
 /**
@@ -899,7 +945,7 @@ function makeCollide(game, world) {
 
     // --- other tanks: exact-shell bounds as oriented rectangles ------------
     for (const other of game.tanks) {
-      if (other === self || !other.state) continue;
+      if (other === self || other.modeActive === false || !other.state) continue;
       const otherRect = tankContactRect(other.spec);
       const oHalfW = otherRect.halfWidth;
       const oHalfL = otherRect.halfLength;
@@ -1096,6 +1142,10 @@ function tryFire(game, ent, bus, rig) {
     if (newBase > oldBase) { startReload(c, ent.spec); return; }
   }
   const shellSpec = ent.spec.gun.shells[c.shellSlot];
+  if (!game.matchModeController?.consumeShot(ent)) {
+    bus.emit('mode:ammo_empty', { id: ent.id });
+    return;
+  }
   const guidedSpecial = !!(shellSpec.guided && ent.specialAction?.active &&
     ent.specialAction.pendingFire && c.shellSlot === ent.specialAction.missileSlot);
 
@@ -1213,6 +1263,7 @@ function stepShells(game, bus, world) {
       guideShellToward(shell, shooter.input?.aimPoint, SIM_DT);
     }
     stepShell(shell, SIM_DT);
+    if (game.matchModeController?.tryHitBall(shell)) continue;
 
     _seg.copy(shell.pos).sub(shell.prevPos);
     const segLen = _seg.length();
@@ -1232,7 +1283,7 @@ function stepShells(game, bus, world) {
     for (const ent of game.tanks) {
       // Wrecks stay in the broadphase: resolveShellHit branches to
       // resolveWreckHit for destroyed hulls (cover tactics — WoT core).
-      if (!ent.state || !ent.combat) continue;
+      if (ent.modeActive === false || !ent.state || !ent.combat) continue;
       if (ent.id === shell.shooterId) continue;
       const r = ent.spec.armor.boundingRadiusM;
       _toC.copy(ent.state.pos);
@@ -1343,13 +1394,31 @@ export function simStep(game, bus, world, rig, collider) {
   }
 
   // a. AI writes inputs
+  if (game.gameMode !== 'standard' && game.timeS >= (game._nextModeRouteS || 0)) {
+    game._nextModeRouteS = game.timeS + (game.gameMode === 'turbo_ball' ? 1.25 : 4);
+    for (const ent of game.tanks) {
+      if (!ent.aiCtl || ent.modeActive === false || ent.combat?.destroyed) continue;
+      const target = game.matchModeController?.botTarget(ent);
+      if (!target) continue;
+      const moved = Math.hypot(
+        target.x - (ent._modeTargetX ?? Infinity),
+        target.z - (ent._modeTargetZ ?? Infinity),
+      );
+      if (moved < 18 && game.gameMode !== 'turbo_ball') continue;
+      ent._modeTargetX = target.x;
+      ent._modeTargetZ = target.z;
+      ent.aiCtl.setWaypoints([[target.x, target.z]], { loop: false });
+    }
+  }
   for (const ent of game.tanks) {
-    if (ent.aiCtl && !ent.combat.destroyed) ent.aiCtl.update(dt, game.timeS);
+    if (ent.modeActive !== false && ent.aiCtl && !ent.combat.destroyed) {
+      ent.aiCtl.update(dt, game.timeS);
+    }
   }
 
   // b. movement
   for (const ent of game.tanks) {
-    if (!ent.state || ent.combat.destroyed) continue;
+    if (ent.modeActive === false || !ent.state || ent.combat.destroyed) continue;
     refreshContactGeometry(ent);
     collider.setSelf(ent);
     updateTank(ent, world.heightField, dt, collider.collide);
@@ -1497,7 +1566,7 @@ export function simStep(game, bus, world, rig, collider) {
   // renewed motion, preserving real teammate recovery and preventing immortal
   // overturned bots from holding a match open indefinitely.
   for (const ent of game.tanks) {
-    if (!ent.state || !ent.combat || ent.combat.destroyed) continue;
+    if (ent.modeActive === false || !ent.state || !ent.combat || ent.combat.destroyed) continue;
     if (!stepRolloverLifecycle(ent.state, dt)) continue;
     bus.emit('tank:autoflip', { id: ent.id, specId: ent.specId });
   }
@@ -1505,7 +1574,7 @@ export function simStep(game, bus, world, rig, collider) {
   // c. reload timers + firing
   for (const ent of game.tanks) {
     const c = ent.combat;
-    if (!c || c.destroyed) continue;
+    if (ent.modeActive === false || !c || c.destroyed) continue;
     const reload = c.reload;
     if (reload.t > 0) {
       const wasReloading = reload.t;
@@ -1552,7 +1621,7 @@ export function simStep(game, bus, world, rig, collider) {
     game.fireTickAcc -= FIRE_TICK_S;
     for (const ent of game.tanks) {
       const c = ent.combat;
-      if (!c || c.destroyed || !c.fire.burning) continue;
+      if (ent.modeActive === false || !c || c.destroyed || !c.fire.burning) continue;
       const r = tickFire(ent, game.combatRng);
       if (r.extinguished) bus.emit('tank:fire', { id: ent.id, burning: false });
       if (r.destroyed && !ent._destroyedAnnounced) {
@@ -1561,6 +1630,16 @@ export function simStep(game, bus, world, rig, collider) {
     }
   }
   tickRepairs(game, bus, dt);
+
+  const modeOutcome = game.matchModeController?.step(dt, game.timeS) || null;
+  if (game.matchModeState && game.player?.combat) {
+    game.matchModeState.playerAmmo = game.player.combat.modeAmmo ?? null;
+    game.matchModeState.playerAmmoCapacity = game.player.combat.modeAmmoCapacity ?? null;
+  }
+  for (const event of game.modeEvents) {
+    bus.emit(event.type.replace(/^mode_/, 'mode:'), event.payload);
+  }
+  game.modeEvents.length = 0;
 
   // win/lose (plus draw when the 15:00 battle clock runs out).
   // killcam_shotinfo r1: the player's death no longer hard-ends the battle —
@@ -1577,14 +1656,25 @@ export function simStep(game, bus, world, rig, collider) {
       if (ent.team === 'enemy') enemiesLeft++;
       else if (!game.player || ent.id !== game.player.id) alliesLeft++;
     }
-    if (enemiesLeft === 0) {
-      game.result = 'victory';
-      game.resultReason = 'elimination';
-    } else if (game.player.combat.destroyed && alliesLeft === 0) {
-      game.result = 'defeat';
-      game.resultReason = 'elimination';
-    } else if (game.timeS >= BATTLE_TIME_LIMIT_S) {
-      game.result = 'draw';
+    if (modeOutcome) {
+      game.result = modeOutcome.result === 'draw' ? 'draw'
+        : modeOutcome.result === 'alpha' ? 'victory' : 'defeat';
+      game.resultReason = modeOutcome.reason;
+    } else if (!game.matchModeController || game.matchModeController.usesElimination) {
+      if (enemiesLeft === 0) {
+        game.result = 'victory';
+        game.resultReason = 'elimination';
+      } else if (game.player.combat.destroyed && alliesLeft === 0) {
+        game.result = 'defeat';
+        game.resultReason = 'elimination';
+      } else if (game.timeS >= BATTLE_TIME_LIMIT_S) {
+        game.result = 'draw';
+        game.resultReason = 'time_limit';
+      }
+    } else if (game.gameMode !== 'endless_horde' && game.timeS >= BATTLE_TIME_LIMIT_S) {
+      const score = game.matchModeController.state.score;
+      game.result = score.alpha === score.bravo ? 'draw'
+        : score.alpha > score.bravo ? 'victory' : 'defeat';
       game.resultReason = 'time_limit';
     }
     // SHOT-INFO ENRICHMENT (additive): announce the decision once so results

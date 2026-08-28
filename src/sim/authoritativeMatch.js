@@ -60,6 +60,7 @@ import {
   specialActionGuidesShell,
   specialActionLocksShell,
 } from './specialActions.js';
+import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 
 const BATTLE_LIMIT_S = 15 * 60;
 const FIRE_TICK_S = 0.5;
@@ -270,7 +271,8 @@ function firstTankTrace(shell, entities) {
   let bestDistance = Infinity;
   const segmentLength = shell.prevPos.distanceTo(shell.pos);
   for (const target of entities) {
-    if (target.id === shell.shooterId || !target.state || !target.combat) continue;
+    if (target.id === shell.shooterId || target.modeActive === false ||
+        !target.state || !target.combat) continue;
     const radius = finite(target.spec.armor && target.spec.armor.boundingRadiusM,
       target.spec.dims.hullLengthM * 0.65);
     const centerDistance = target.state.pos.distanceTo(shell.prevPos);
@@ -318,6 +320,7 @@ export function createAuthoritativeMatch({
   seed = 6000,
   battleLimitS = BATTLE_LIMIT_S,
   countdownS = 5,
+  gameMode = 'standard',
   worldCollision = null,
 } = {}) {
   if (!Array.isArray(players) || players.length < 1 || players.length > 14) {
@@ -360,6 +363,7 @@ export function createAuthoritativeMatch({
   const pendingCrushSet = new Set();
   const pendingRams = [];
   const ramPairTime = new Map();
+  const activeBodyEntities = [];
 
   for (const record of players) {
     const id = String(record && record.id || '').trim();
@@ -376,9 +380,11 @@ export function createAuthoritativeMatch({
     input.aimPoint.copy(state.aimPoint);
     const combat = createCombatState(spec);
     const bot = !!record.bot;
+    const loadout = Array.isArray(record.equipment)
+      ? record.equipment.slice() : defaultLoadoutFor(spec);
     const equipment = applyEquipmentToCombat(
       combat,
-      Array.isArray(record.equipment) ? record.equipment : defaultLoadoutFor(spec),
+      loadout,
       spec,
     );
     const entity = {
@@ -389,6 +395,7 @@ export function createAuthoritativeMatch({
       state,
       combat,
       equip: equipment,
+      loadout,
       input,
       bot,
       isPlayer: !bot,
@@ -475,8 +482,38 @@ export function createAuthoritativeMatch({
     pendingEvents.push({ type, timeS, ...payload });
   }
 
+  function reviveForMode(entity, spawn, healthScale = 1) {
+    _spawn.set(spawn.x, heightField.getHeightAt(spawn.x, spawn.z), spawn.z);
+    entity.state = createTankState(entity.spec, _spawn, spawn.yaw);
+    entity.input = makeInput();
+    entity.input.aimPoint.copy(entity.state.aimPoint);
+    entity.combat = createCombatState(entity.spec);
+    if (healthScale !== 1) {
+      entity.combat.maxHp = Math.max(1, Math.round(entity.combat.maxHp * healthScale));
+      entity.combat.hp = entity.combat.maxHp;
+    }
+    entity.equip = applyEquipmentToCombat(
+      entity.combat, entity.loadout || defaultLoadoutFor(entity.spec), entity.spec,
+    );
+    entity.consumableReadyAt = [0, 0, 0];
+    entity.specialAction = createSpecialActionState(entity.spec);
+    for (let n = 0; n < 30; n++) updateTank(entity, heightField, SIM_DT);
+  }
+
+  const normalizedGameMode = normalizeGameMode(gameMode);
+  const modeController = createMatchModeController({
+    mode: normalizedGameMode,
+    entities,
+    seed,
+    revive: reviveForMode,
+    setActive(entity, active) { entity.modeActive = active; },
+    terrainHeight: (x, z) => heightField.getHeightAt(x, z),
+    emit,
+  });
+  let nextModeRouteS = 0;
+
   function applyNetworkInput(entity, input) {
-    if (!input || entity.combat.destroyed) {
+    if (!input || entity.modeActive === false || entity.combat.destroyed) {
       entity.input.throttle = 0;
       entity.input.steer = 0;
       entity.input.brake = true;
@@ -558,7 +595,7 @@ export function createAuthoritativeMatch({
     // Match the local simulation's exact-shell OBB contact. Shared geometry
     // keeps private rooms and solo from disagreeing at rectangular shoulders.
     for (const other of entities) {
-      if (other === entity || !other.state) continue;
+      if (other === entity || other.modeActive === false || !other.state) continue;
       const otherRect = tankContactRect(other.spec);
       const otherHalfW = otherRect.halfWidth;
       const otherHalfL = otherRect.halfLength;
@@ -762,6 +799,10 @@ export function createAuthoritativeMatch({
         return;
       }
     }
+    if (!modeController.consumeShot(entity)) {
+      emit('mode_ammo_empty', { id: entity.id });
+      return;
+    }
     const gun = gunWorldPose(entity);
     _gunDir.copy(gun.direction);
     const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
@@ -848,6 +889,7 @@ export function createAuthoritativeMatch({
         guideShellToward(shell, shooter.input?.aimPoint, dt);
       }
       stepShell(shell, dt);
+      if (modeController.tryHitBall(shell)) continue;
       const worldHit = segmentWorldHit(worldCollision, heightField, shell.prevPos, shell.pos);
       const tankHit = firstTankTrace(shell, entities);
       const segmentLength = shell.prevPos.distanceTo(shell.pos);
@@ -927,7 +969,22 @@ export function createAuthoritativeMatch({
     }
   }
 
-  function determineResult() {
+  function determineResult(modeResult = null) {
+    if (modeResult) {
+      result = modeResult.result;
+      resultReason = modeResult.reason;
+      emit('match_ended', { result, reason: resultReason });
+      return;
+    }
+    if (!modeController.usesElimination) {
+      if (normalizedGameMode === 'endless_horde' || timeS < battleLimitS) return;
+      resultReason = 'time_limit';
+      const modeScore = modeController.state.score;
+      result = modeScore.alpha === modeScore.bravo
+        ? 'draw' : modeScore.alpha > modeScore.bravo ? TEAM_ALPHA : TEAM_BRAVO;
+      emit('match_ended', { result, reason: resultReason });
+      return;
+    }
     let alpha = 0;
     let bravo = 0;
     for (const entity of entities) {
@@ -951,6 +1008,8 @@ export function createAuthoritativeMatch({
     get result() { return result; },
     get resultReason() { return resultReason; },
     get phase() { return phase; },
+    gameMode: normalizedGameMode,
+    modeController,
 
     onMatchReady() {
       if (phase !== 'loading') return;
@@ -993,17 +1052,40 @@ export function createAuthoritativeMatch({
       }
       if (phase !== 'playing') return;
       timeS += dt;
+      if (normalizedGameMode !== 'standard' && timeS >= nextModeRouteS) {
+        nextModeRouteS = timeS + (normalizedGameMode === 'turbo_ball' ||
+          normalizedGameMode === 'endless_horde' ? 1.25 : 3);
+        for (const entity of entities) {
+          if (!entity.bot || entity.modeActive === false || entity.combat.destroyed) continue;
+          const target = modeController.botTarget(entity);
+          if (!target) continue;
+          const moved = Math.hypot(
+            target.x - (entity._modeTargetX ?? Infinity),
+            target.z - (entity._modeTargetZ ?? Infinity),
+          );
+          if (moved < 12 && normalizedGameMode !== 'turbo_ball' &&
+              normalizedGameMode !== 'endless_horde') continue;
+          entity._modeTargetX = target.x;
+          entity._modeTargetZ = target.z;
+          entity.aiCtl?.setWaypoints([[target.x, target.z]], { loop: false });
+        }
+      }
       for (const entity of entities) {
+        if (entity.modeActive === false) continue;
         if (entity.bot) entity.aiCtl?.update(dt, timeS);
         else applyNetworkInput(entity, inputs.get(entity.id));
         useConsumables(entity);
       }
       for (const entity of entities) {
-        if (entity.combat.destroyed) continue;
+        if (entity.modeActive === false || entity.combat.destroyed) continue;
         updateTank(entity, heightField, dt,
           (pos, radius, out) => collideFor(entity, pos, radius, out));
       }
-      resolveTankBodyContacts(entities, dt,
+      activeBodyEntities.length = 0;
+      for (const entity of entities) {
+        if (entity.modeActive !== false) activeBodyEntities.push(entity);
+      }
+      resolveTankBodyContacts(activeBodyEntities, dt,
         (upper, lower, closing) => pendingRams.push({
           a: upper,
           b: lower,
@@ -1012,11 +1094,12 @@ export function createAuthoritativeMatch({
       resolvePendingCrushes();
       resolvePendingRams();
       for (const entity of entities) {
-        if (entity.combat.destroyed || !stepRolloverLifecycle(entity.state, dt)) continue;
+        if (entity.modeActive === false || entity.combat.destroyed ||
+            !stepRolloverLifecycle(entity.state, dt)) continue;
         emit('tank_autoflip', { id: entity.id });
       }
       for (const entity of entities) {
-        if (entity.combat.destroyed) continue;
+        if (entity.modeActive === false || entity.combat.destroyed) continue;
         if (entity.combat.reload.t > 0) {
           tickReload(entity.combat, dt);
         }
@@ -1027,7 +1110,7 @@ export function createAuthoritativeMatch({
       if (fireTickAcc >= FIRE_TICK_S) {
         fireTickAcc -= FIRE_TICK_S;
         for (const entity of entities) {
-          if (entity.combat.destroyed) continue;
+          if (entity.modeActive === false || entity.combat.destroyed) continue;
           const fire = tickFire(entity, rng);
           if (fire.extinguished) emit('tank_fire', { id: entity.id, burning: false });
           if (fire.destroyed) emit('tank_destroyed', {
@@ -1038,25 +1121,27 @@ export function createAuthoritativeMatch({
         }
       }
       for (const entity of entities) {
+        if (entity.modeActive === false) continue;
         for (const module of tickModuleRepairs(entity.combat, dt)) {
           emit('module_state', { id: entity.id, module, state: 'yellow', repaired: true });
         }
       }
       updateVisibility();
-      determineResult();
+      determineResult(modeController.step(dt, timeS));
     },
 
     snapshot({ tick, serverTimeMs, viewerId, ackInputSeq }) {
       const viewer = entityById.get(viewerId);
-      const canObserve = (_id, entity) => !viewer || entity.team === viewer.team ||
-        entity.combat.destroyed || spotting.isSpotted(entity.id, viewer.team, viewer);
+      const canObserve = (_id, entity) => entity.modeActive !== false &&
+        (!viewer || entity.team === viewer.team || entity.combat.destroyed ||
+          spotting.isSpotted(entity.id, viewer.team, viewer));
       const canObserveShell = (_id, shell) => {
         const shooter = entityById.get(shell.shooterId);
         return !shooter || canObserve(viewerId, shooter);
       };
       const canObserveEvent = (_id, event) => {
         if (!viewer) return true;
-        if (event.type === 'world_prop_destroyed') return true;
+        if (event.type === 'world_prop_destroyed' || event.type.startsWith('mode_')) return true;
         for (const id of [
           event.id, event.shooterId, event.targetId, event.killerId,
           event.aId, event.bId,
@@ -1086,6 +1171,10 @@ export function createAuthoritativeMatch({
           resultReason,
           destructibleRevision,
           destroyedObstacleIndices: destroyedObstacleIndices.slice(),
+          ...(normalizedGameMode === 'standard' ? {} : {
+            gameMode: normalizedGameMode,
+            modeState: modeController.serialize(viewerId),
+          }),
         },
       });
     },

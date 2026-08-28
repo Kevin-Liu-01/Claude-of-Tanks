@@ -16,11 +16,13 @@ import { uiIconSVG } from './uiIcons.ts';
 import { ensureStyle } from './dom.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import { loadIceConfiguration } from '../net/iceConfig.ts';
+import { GAME_MODE_DEFINITIONS, normalizeGameMode } from '../sim/matchModes.ts';
 
 const STYLE_ID = 'cot-play-menu-style';
 const PLAYER_ID_KEY = 'cot.player.id.v1';
 const PLAYER_NAME_KEY = 'cot.player.name.v1';
 const ROOM_SIZE_KEY = 'cot.room.size.v1';
+const GAME_MODE_KEY = 'cot.game.mode.v1';
 let rankedServiceModulePromise = null;
 function loadRankedServiceModule() {
   if (!rankedServiceModulePromise) {
@@ -60,6 +62,18 @@ const CSS = `
   right:15px;top:13px;display:grid;width:36px;height:36px;place-items:center;color:#d7e1e8;background:rgba(5,9,13,.6);
   border:1px solid rgba(159,178,192,.26)}.cot-play .mode:hover .mode-icon,.cot-play .mode.on .mode-icon{color:#ffb452;
   border-color:rgba(230,154,54,.72);background:rgba(230,154,54,.09)}.cot-play .mode-icon svg{display:block}
+.cot-play .rule-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:18px 0 8px}
+.cot-play .rule-heading b{font:900 10px ${FONT_COND};letter-spacing:.2em;text-transform:uppercase;color:#d9e3e9}
+.cot-play .rule-heading span{color:#7e909d;font-size:9px}.cot-play .rules{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.cot-play .rule{display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;gap:9px;min-height:54px;
+  padding:7px 9px;text-align:left;color:#aebdc7;background:rgba(10,15,20,.78);border:1px solid rgba(151,170,184,.22);
+  cursor:pointer;transition:border-color .15s ease,background .15s ease,color .15s ease,transform .15s ease}
+.cot-play .rule:hover,.cot-play .rule.on{color:#fff0d8;border-color:#e69a36;background:rgba(230,154,54,.1);transform:translateY(-1px)}
+.cot-play .rule svg{display:block}.cot-play .rule-copy{display:grid;min-width:0;gap:2px}.cot-play .rule-copy b{overflow:hidden;
+  color:inherit;font:900 9px ${FONT_COND};letter-spacing:.08em;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase}
+.cot-play .rule-copy small{color:#728591;font:700 7px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase}
+.cot-play .rule:disabled{transform:none;cursor:not-allowed}.cot-play.lobby-active .rule-heading{margin-top:10px}
+.cot-play.lobby-active .rules{grid-template-columns:repeat(5,minmax(110px,1fr))}
 .cot-play .room{display:none;margin-top:18px;padding-top:18px;
   border-top:1px solid rgba(160,180,195,.2)}.cot-play .room.show{display:block}.cot-play .setup{display:grid;gap:12px}
 .cot-play .room.connected .setup{display:none}.cot-play .identity{display:flex;align-items:end;gap:14px}
@@ -191,6 +205,8 @@ const CSS = `
 @media(prefers-reduced-motion:reduce){.cot-play button.action.needs-ready,.cot-play button.action.can-start{animation:none;
   box-shadow:0 0 0 3px rgba(230,154,54,.16),0 0 18px rgba(230,154,54,.34)}.cot-play .menu-select-trigger,
   .cot-play .menu-select-trigger::after,.cot-play .menu-select-option{transition:none}}
+@media(max-width:760px){.cot-play .rules{grid-template-columns:repeat(2,1fr)}.cot-play .rule:last-child{grid-column:span 2}
+  .cot-play .rule-heading span{display:none}}
 `;
 
 function stored(key, fallback) {
@@ -416,6 +432,9 @@ export function createPlayMenu({
   ensureStyle(STYLE_ID, CSS);
   const root = document.createElement('div');
   root.className = 'cot-play';
+  const ruleCards = Object.values(GAME_MODE_DEFINITIONS).map((rule) =>
+    `<button class="rule" data-game-mode="${rule.id}" type="button" title="${rule.description}">
+      ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${rule.label}</b><small>${rule.shortLabel}</small></span></button>`).join('');
   root.innerHTML = `<div class="panel"><button class="close" type="button" aria-label="Close">×</button>
     <div class="eyebrow">Choose operation</div><h2>Play Claude of Tanks</h2>
     <p class="lead">One vehicle roster. Four direct ways to deploy.</p>
@@ -425,6 +444,8 @@ export function createPlayMenu({
       <button class="mode" data-mode="lan" type="button"><span class="mode-icon">${uiIconSVG('battleLan', 24)}</span><i>Local network</i><b>LAN lobby</b><span class="mode-desc">Use the same lobby over Wi-Fi with minimal route latency.</span></button>
       <button class="mode" data-mode="ranked" type="button"><span class="mode-icon">${uiIconSVG('battleRanked', 24)}</span><i>Dedicated</i><b>Ranked</b><span class="mode-desc">Server-authoritative queue and rating. Service endpoint required.</span></button>
     </div>
+    <div class="rule-heading"><b>Battle rules</b><span>One deterministic ruleset for solo, private, and LAN play.</span></div>
+    <div class="rules" role="list" aria-label="Battle rules">${ruleCards}</div>
     <section class="room"><div class="setup">
       <div class="identity"><label>Callsign<input data-field="name" maxlength="24" autocomplete="nickname"></label>
         <span class="identity-note">A unique callsign is ready automatically. Edit it only if you want to.</span></div>
@@ -521,6 +542,7 @@ export function createPlayMenu({
   const teamSelect = root.querySelector('[data-control="team"]');
   const sizeSelect = root.querySelector('[data-control="size"]');
   const mapSelect = root.querySelector('[data-control="map"]');
+  const ruleButtons = [...root.querySelectorAll('[data-game-mode]')];
   const mapList = mapSelect.querySelector('[role="listbox"]');
   const mapById = new Map();
   const battlefieldCount = maps.filter((map) => map.id !== 'random').length;
@@ -614,6 +636,18 @@ export function createPlayMenu({
   let rankedTicket = null;
   let rankedAbort = null;
   let invitedHostName = null;
+  let selectedGameMode = normalizeGameMode(stored(GAME_MODE_KEY, 'standard'));
+
+  function showSelectedGameMode(next = selectedGameMode, { fromLobby = false } = {}) {
+    selectedGameMode = normalizeGameMode(next);
+    remember(GAME_MODE_KEY, selectedGameMode);
+    for (const button of ruleButtons) {
+      button.classList.toggle('on', button.dataset.gameMode === selectedGameMode);
+      button.setAttribute('aria-pressed', String(button.dataset.gameMode === selectedGameMode));
+      button.disabled = fromLobby && (role !== 'host' || state?.phase !== 'waiting');
+    }
+  }
+  showSelectedGameMode();
 
   function adoptRoomConnection(connection) {
     session = connection.session;
@@ -883,6 +917,7 @@ export function createPlayMenu({
     battlefieldCard.classList.toggle('guest', role !== 'host');
     sizeSelect.value = String(next.teamSize || 1);
     createSizeSelect.value = sizeSelect.value;
+    showSelectedGameMode(next.gameMode || 'standard', { fromLobby: true });
     const me = next.players.find((player) => player.id === ownId());
     if (me) {
       teamSelect.value = me.team;
@@ -901,7 +936,8 @@ export function createPlayMenu({
       readyBtn.classList.remove('needs-ready', 'is-ready');
       readyBtn.removeAttribute('aria-pressed');
     }
-    teamSelect.disabled = next.phase !== 'waiting' || !!me?.ready;
+    teamSelect.disabled = next.phase !== 'waiting' || !!me?.ready ||
+      next.gameMode === 'endless_horde';
     mapSelect.disabled = role !== 'host' || next.phase !== 'waiting';
     sizeSelect.disabled = role !== 'host' || next.phase !== 'waiting';
     startBtn.style.display = role === 'host' ? '' : 'none';
@@ -959,7 +995,9 @@ export function createPlayMenu({
       row.append(host, playerName, vehicle, team, ready);
       playersEl.appendChild(row);
     }
-    const fillNote = ` Bots fill empty slots to ${next.teamSize || 1} per team.`;
+    const fillNote = next.gameMode === 'endless_horde'
+      ? ' All players deploy together; escalating enemy waves are authority-owned.'
+      : ` Bots fill empty slots to ${next.teamSize || 1} per team.`;
     const relayNote = mode === 'private' && roomIce && !roomIce.relayAvailable
       ? ' TURN relay is unavailable; restrictive networks may not connect.'
       : '';
@@ -971,7 +1009,7 @@ export function createPlayMenu({
 
   async function connectRoom(kind) {
     if (connecting || session || privateRoomConnection.connecting || privateRoomConnection.current) return;
-    const selection = getSelection();
+    const selection = { ...getSelection(), gameMode: selectedGameMode };
     const name = normalizePlayerName(nameInput.value) || automaticPlayerName(ownPlayerId);
     if (!name) throw new Error('Enter a player name');
     nameInput.value = name;
@@ -1023,7 +1061,11 @@ export function createPlayMenu({
     const button = root.querySelector(`.mode[data-mode="${nextMode}"]`);
     if (!button) return;
     closeMenuSelects();
-    if (nextMode === 'solo') { hide(); if (onSolo) onSolo(); return; }
+    if (nextMode === 'solo') {
+      hide();
+      if (onSolo) onSolo({ gameMode: selectedGameMode });
+      return;
+    }
     closeCurrentSession('mode_changed');
     mode = nextMode;
     for (const item of root.querySelectorAll('.mode')) item.classList.toggle('on', item === button);
@@ -1051,6 +1093,14 @@ export function createPlayMenu({
   root.querySelectorAll('.mode').forEach((button) => button.addEventListener('click', () => {
     selectMode(button.dataset.mode);
   }));
+  for (const button of ruleButtons) {
+    button.addEventListener('click', () => {
+      const next = normalizeGameMode(button.dataset.gameMode);
+      if (state && (role !== 'host' || state.phase !== 'waiting')) return;
+      showSelectedGameMode(next, { fromLobby: !!state });
+      if (state) command({ type: 'set_game_mode', gameMode: next });
+    });
+  }
   createBtn.addEventListener('click', async () => {
     setStatus('Creating room…');
     try { await connectRoom('create'); setStatus('Room ready. Copy the invite link.'); }

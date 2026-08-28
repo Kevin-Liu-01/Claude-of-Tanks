@@ -61,6 +61,10 @@ assert.ok(!events.some((event) => event[1] === 'dedicated'),
 await runtime.open({ mode: 'solo', specId: 't90m', mapId: 'desert' });
 assert.deepEqual(soloStarts, [{ specId: 't90m', mapId: 'desert' }]);
 assert.equal(createCalls, 0, 'solo entry does not construct the play menu');
+await runtime.open({ mode: 'solo', specId: 'm1a2', mapId: 'winter', gameMode: 'zone_control' });
+assert.deepEqual(soloStarts.at(-1), {
+  specId: 'm1a2', mapId: 'winter', gameMode: 'zone_control',
+}, 'solo objective selection reaches the battle-loading boundary');
 
 activeRoom = true;
 await runtime.open({ mode: 'private' });

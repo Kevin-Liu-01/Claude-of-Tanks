@@ -16,6 +16,7 @@ GEOMETRY-GATE.md own vehicle-authoring acceptance.
 | TECHNICAL-OVERVIEW.md | Engineers and technical reviewers | Current architecture, authority boundaries, runtime lifecycle, source ownership, and verification model |
 | FEATURES.md | Players, reviewers, contributors | Visible features connected to their implementation and verification |
 | HOW-IT-WORKS.md | Technical readers | Technical description of the current game from boot to results |
+| GAME-MODES.md | Players and engineers | Standard, flag, zone, Turbo Ball, and Horde rules, authority, presentation, and tests |
 | SYSTEMS.md | Engineers | Current subsystem ownership, data flow, lifecycle, and invariants |
 | DEVELOPMENT.md | Engineers and release owners | Local setup, services, test matrix, tools, and release procedure |
 | decisions/ | Contributors | Architecture decisions and migration constraints |
@@ -35,6 +36,7 @@ component. Six published contact sheets preserve the human visual-review pass.
 | Document | Authoritative scope |
 | --- | --- |
 | MULTIPLAYER-ARCHITECTURE.md | Authority arrangements, protocol v5, delivery, prediction, rooms, signaling, ranked services, trust, and verification |
+| GAME-MODES.md | Shared deterministic objectives, respawns, scores, waves, loot, bot targets, and presentation |
 | PERFORMANCE.md | Boot, route isolation, device quality, render recovery, frame ownership, event budgets, and measurement |
 | STUDIO.md | Scene Studio interaction, scripted API, scene schema, effects, capture, and determinism |
 | GALLERY.md | Tank Gallery architecture, dossiers, diagnostic overlays, exact-surface markup, exports, interaction, and verification |

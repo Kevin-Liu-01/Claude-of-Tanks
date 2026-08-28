@@ -21,6 +21,14 @@ commanders may field the same tank without aliasing state. Solo remains a
 separate optimized composition of the same core movement, armor, ballistics,
 damage, spotting, and AI modules.
 
+The deployment choice and battle rule are independent. Private and LAN rooms
+can run Standard Battle, Capture the Flag, Zone Control, Turbo Ball, or Endless
+Horde. The host owns `gameMode` in canonical lobby state; changing it clears
+ready flags, and every round hands that value to the same renderer-free
+authority used by solo. Horde seats every human on Alpha and fills only the
+Bravo wave pool with authority-owned bots. Ranked remains Standard Battle until
+its dedicated service explicitly negotiates another ruleset.
+
 ## Runtime boundaries
 
 - `src/sim/authoritativeMatch.js` is the renderer-free battle authority.

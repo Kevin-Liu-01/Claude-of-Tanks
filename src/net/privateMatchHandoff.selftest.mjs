@@ -343,6 +343,20 @@ const twoByTwo = buildPrivateMatchPlayers({
 assert.equal(twoByTwo.length, 4, '2v2 creates exactly two authority-owned teams of two');
 assert.deepEqual(twoByTwo.map((player) => player.team).sort(),
   ['alpha', 'alpha', 'bravo', 'bravo']);
+const hordeRoster = buildPrivateMatchPlayers({
+  ...lobbyState,
+  gameMode: 'endless_horde',
+  teamSize: 4,
+  players: [
+    { id: 'host-1', specId: 'm1a2', team: 'alpha' },
+    { id: 'peer-1', specId: 'challenger3', team: 'bravo' },
+  ],
+});
+assert.equal(hordeRoster.filter((player) => !player.bot).length, 2);
+assert.ok(hordeRoster.filter((player) => !player.bot)
+  .every((player) => player.team === 'alpha'), 'horde seats all humans cooperatively');
+assert.equal(hordeRoster.filter((player) => player.team === 'bravo' && player.bot).length, 4,
+  'horde fills only the enemy wave pool with authority-owned bots');
 const hostSession = {
   roomInfo: { peerId: 'host-1', mode: 'lan' },
   takeMatchChannels: () => [{ peerId: 'peer-1', transport: remote.host }],

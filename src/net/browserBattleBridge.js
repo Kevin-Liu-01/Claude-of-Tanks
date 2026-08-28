@@ -541,6 +541,8 @@ export function createBrowserBattleBridge({
           map: game.mapId,
           roster: resultRoster(),
         });
+    } else if (event.type?.startsWith('mode_')) {
+        bus.emit(event.type.replace(/^mode_/, 'mode:'), event);
     }
   }
 
@@ -648,6 +650,8 @@ export function createBrowserBattleBridge({
     game.preBattleS = snapshot.meta?.countdownMs != null
       ? snapshot.meta.countdownMs / 1000
       : 0;
+    game.gameMode = snapshot.meta?.gameMode || 'standard';
+    game.matchModeState = snapshot.meta?.modeState || null;
     updateShells(snapshot.shells);
     presentationEvents.enqueue(reliableEvents);
     presentationEvents.flush();

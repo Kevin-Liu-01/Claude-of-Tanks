@@ -17,6 +17,7 @@ interface RoomPlayerIdentity {
 interface RoomSelection {
   specId: string;
   mapId: string;
+  gameMode?: string;
   equipment: string[];
   camo: string;
 }
@@ -262,6 +263,7 @@ PrivateRoomConnectionRuntime {
           hostEquipment: [...(request.selection.equipment || [])],
           hostCamo: request.selection.camo,
           mapId: request.selection.mapId,
+          gameMode: request.selection.gameMode || 'standard',
           teamSize: request.teamSize,
           iceServers: ice.iceServers,
           relayOnly: ice.relayOnly,

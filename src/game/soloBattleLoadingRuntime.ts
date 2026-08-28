@@ -1,4 +1,5 @@
 import type { Object3D } from 'three';
+import { gameModeDefinition, normalizeGameMode } from '../sim/matchModes.ts';
 import type { WorkYielder } from '../engine/frameScheduler.ts';
 import type {
   BattleVisualEntity,
@@ -144,7 +145,12 @@ export interface SoloBattleLoadingRuntimeOptions {
   startBattle(
     specId: string,
     mapId: string,
-    options: { deferVisuals: boolean; preBattleHold: boolean; randomRoster: boolean },
+    options: {
+      deferVisuals: boolean;
+      preBattleHold: boolean;
+      randomRoster: boolean;
+      gameMode?: string;
+    },
   ): void;
   prepareBattleWorldServices(world: LoadingWorld): void;
   getPedestalVisual(): unknown;
@@ -178,7 +184,7 @@ export interface SoloBattleLoadingRuntime {
   begin(
     specId: string,
     mapId?: string | null,
-    options?: { randomRoster?: boolean },
+    options?: { randomRoster?: boolean; gameMode?: string },
   ): Promise<void>;
 }
 
@@ -261,13 +267,14 @@ export function createSoloBattleLoadingRuntime({
   const host = globalThis as LoadingHost;
 
   return {
-    async begin(specId, mapId = null, { randomRoster = true } = {}) {
+    async begin(specId, mapId = null, { randomRoster = true, gameMode = 'standard' } = {}) {
       // Debug/API entry can bypass the Garage's ui:battleStart event.
       post.setAdaptiveSuspended(true);
       const shownAt = now();
       host.__VISUAL_LOAD_TIMINGS = [];
       const loadYield = createLoadingYielder(12, 80);
       const requestedMapId = mapId || getPendingMapId();
+      const normalizedGameMode = normalizeGameMode(gameMode);
       const resolved = battleIntent.consumeMap(specId, requestedMapId);
       const config = getMapConfig(resolved);
       const trace: BattleLoadTrace = {
@@ -286,9 +293,10 @@ export function createSoloBattleLoadingRuntime({
         mapName: config.name || resolved,
         thumb: getMapThumb(resolved),
         biome: resolved,
-        mode: mapId === 'random'
-          ? 'Random Battle · Any Battlefield'
-          : 'Random Battle · Standard',
+        mode: normalizedGameMode === 'standard'
+          ? mapId === 'random' ? 'Random Battle · Any Battlefield' : 'Random Battle · Standard'
+          : `${gameModeDefinition(normalizedGameMode).label} · ${
+            mapId === 'random' ? 'Any Battlefield' : 'Selected Battlefield'}`,
         allies: [],
         enemies: [],
       });
@@ -361,6 +369,7 @@ export function createSoloBattleLoadingRuntime({
         deferVisuals: true,
         preBattleHold: true,
         randomRoster,
+        ...(normalizedGameMode === 'standard' ? {} : { gameMode: normalizedGameMode }),
       });
       battleLoad.progress(0.565, 'Drawing tactical map');
       prepareBattleWorldServices(getWorld());

@@ -131,6 +131,7 @@ export interface PrivateRoomHostOptions {
   hostEquipment?: string[];
   hostCamo?: string;
   mapId?: string;
+  gameMode?: string;
   teamSize?: number;
   iceServers?: RTCIceServer[];
   relayOnly?: boolean;
@@ -171,6 +172,7 @@ const createTypedLobby = createLobby as unknown as (options: {
   maxPlayers: number;
   mode: string;
   mapId: string;
+  gameMode: string;
   teamSize: number;
 }) => LobbyState;
 
@@ -224,6 +226,7 @@ export class PrivateRoomHostSession {
     hostEquipment = [],
     hostCamo = 'factory',
     mapId = 'random',
+    gameMode = 'standard',
     teamSize = 2,
     iceServers = [],
     relayOnly = false,
@@ -260,6 +263,7 @@ export class PrivateRoomHostSession {
       hostCamo,
       maxPlayers: roomInfo.maxPlayers || 14,
       mode: roomInfo.mode || 'private',
+      gameMode,
       mapId,
       teamSize,
     });

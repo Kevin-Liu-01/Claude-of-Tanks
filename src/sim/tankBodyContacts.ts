@@ -37,6 +37,7 @@ export interface TankBodyState {
 
 export interface TankBodyEntity {
   id?: string;
+  modeActive?: boolean;
   spec: {
     weightTons: number;
     dims: { hullLengthM: number; widthM: number; heightM: number };
@@ -236,7 +237,7 @@ export function resolveTankBodyContacts(
   let contacts = 0;
   for (let i = 0; i < entities.length; i++) {
     const a = entities[i];
-    if (!a?.state || !a.spec?.dims) continue;
+    if (!a?.state || !a.spec?.dims || a.modeActive === false) continue;
     const aState = a.state;
     const aRect = tankContactRect(a.spec);
     const aHalfW = aRect.halfWidth;
@@ -250,7 +251,7 @@ export function resolveTankBodyContacts(
 
     for (let j = i + 1; j < entities.length; j++) {
       const b = entities[j];
-      if (!b?.state || !b.spec?.dims) continue;
+      if (!b?.state || !b.spec?.dims || b.modeActive === false) continue;
       if (!isDynamicBodyContact(a) && !isDynamicBodyContact(b)) continue;
       const bState = b.state;
       const bRect = tankContactRect(b.spec);

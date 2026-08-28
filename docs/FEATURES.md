@@ -19,7 +19,7 @@ stack, authoring tools, test rigs, and public presentation.
 | Battlefields | 20 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
 | Presentation | Direct Three.js WebGL rendering with adaptive quality |
-| Modes | Solo bots, private room codes, LAN rooms, and ranked service flow |
+| Modes | Standard Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde; solo, private, LAN, and ranked deployment |
 | Platforms | Desktop and mobile browsers |
 | Authoring | Scene Studio and Tank Gallery surface markup |
 | Progression | No currency, experience grind, or tech-tree lock |
@@ -32,6 +32,23 @@ At the time of this document update it reports 123 first-party procedural battle
 playables, no GLB-sourced playables, and seven isolated comparison candidates.
 The canonical saved-roster report separately tracks all 152 records, including
 development-only vehicles and two reference-only placeholders.
+
+## Battle rules
+
+Five rule sets use the same complete armored-combat simulation. Standard
+Battle is the unchanged elimination game. Capture the Flag adds flag carry,
+drop, return, three-capture scoring, and six-second respawns. Zone Control
+scores three capturable sectors until one team reaches 1,000 points. Turbo Ball
+gives both teams super-fast tanks and a physical ball that can be moved by a
+hull or a shell; guns, armor, and damage remain active. Endless Horde is
+cooperative: escalating bot waves increase in number, durability, and speed,
+while deterministic floating repair and ammunition caches become progressively
+harder to sustain.
+
+The room host selects the rule before ready-up. The choice persists through
+the authoritative lobby handoff and rematches. Objective bots pursue live
+flags, uncaptured zones, the ball, or the nearest opposing survivor instead of
+continuing the Standard Battle opening route. See `docs/GAME-MODES.md`.
 
 ## Armored combat
 

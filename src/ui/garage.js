@@ -44,6 +44,7 @@ import { mountGitHubStars } from './githubStars.ts';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.js';
+import { normalizeGameMode } from '../sim/matchModes.ts';
 
 const NATION_LABEL = {
   USA: 'USA', Germany: 'GER', USSR: 'USSR', Russia: 'RUS', 'USSR/Russia': 'RUS',
@@ -241,7 +242,7 @@ const GARAGE_CSS = `
    chamfered plate is now an SVG background (rasterized with proper edge
    anti-aliasing) carrying only a 1px outline and a darker bottom edge. */
 .cot-battle-control{position:absolute;top:26px;left:50%;transform:translateX(-50%);
-  pointer-events:auto;width:252px;height:46px;display:flex;z-index:4;
+  pointer-events:auto;width:252px;height:46px;display:flex;z-index:20;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 252 46'%3E%3Cpath d='M11.2 .5H240.8L251.5 23 240.8 45.5H11.2L.5 23Z' fill='%23ee8912' stroke='%238a4a06' stroke-width='1'/%3E%3Cpath d='M1.4 24.8 11.8 45.1h228.4l10.4-20.3' fill='none' stroke='%23a85a05' stroke-width='2' opacity='.9'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat;
   transition:filter .12s,transform .06s;}
 .cot-battle-control:hover{filter:brightness(1.07);}
@@ -261,6 +262,7 @@ const GARAGE_CSS = `
 .cot-battle-mode[aria-expanded='true']::after{transform:rotate(180deg);}
 .cot-battle:active,.cot-battle-mode:active{transform:translateY(1px);}
 .cot-battle-menu{position:absolute;top:calc(100% + 7px);right:0;width:206px;display:none;
+  max-height:min(620px,calc(100vh - 120px));overflow-y:auto;overscroll-behavior:contain;
   padding:5px;background:rgba(8,11,15,.98);border:1px solid rgba(177,194,208,.32);
   box-shadow:0 12px 34px rgba(0,0,0,.68);}
 .cot-battle-menu.open{display:grid;gap:3px;}
@@ -304,6 +306,8 @@ const GARAGE_CSS = `
   background:rgba(230,139,26,.13);color:#ffd28e;}
 .cot-battle-choice:hover .choice-icon,.cot-battle-choice[aria-checked='true'] .choice-icon{
   color:#ffc66c;border-color:rgba(240,176,74,.42);background:rgba(230,139,26,.12);}
+.cot-battle-menu-label{padding:8px 9px 5px;color:#6f818f;font:900 7px ${FONT_COND};letter-spacing:.18em;
+  text-transform:uppercase;border-top:1px solid rgba(146,164,180,.14)}
 .cot-garage .stats{position:absolute;right:22px;top:86px;width:var(--cot-garage-sidebar-width);padding:0;pointer-events:auto;
   background:transparent;border:0;box-shadow:none;}
 .cot-garage .stats::before{display:none;}
@@ -953,7 +957,7 @@ body[data-cot-panels='overlay'] .cot-header-nav .nv .nvi{width:16px;height:16px}
 body[data-cot-panels='overlay'] .cot-nav .cot-settings-slot,
 body[data-cot-panels='overlay'] .cot-nav .cot-gear{width:44px;height:44px;min-height:44px}
 body[data-cot-panels='overlay'] .cot-battle-control{
-  top:max(12px,env(safe-area-inset-top));width:clamp(196px,28vw,238px);height:44px;z-index:14;
+  top:max(12px,env(safe-area-inset-top));width:clamp(196px,28vw,238px);height:44px;z-index:20;
 }
 body[data-cot-panels='overlay'] .cot-battle{font-size:clamp(14px,1.8vw,17px)}
 body[data-cot-panels='overlay'] .cot-battle-mode{font-size:7.5px}
@@ -1275,6 +1279,19 @@ export function createGarage(opts) {
     `<button class="cot-battle-choice" type="button" role="menuitemradio" data-mode="ranked" aria-checked="false">` +
     `<span class="choice-icon">${uiIconSVG('battleRanked', 17)}</span>` +
     `<span class="choice-name">Ranked</span><small>ELO</small></button>` +
+    `<div class="cot-battle-menu-label">Solo rules</div>` +
+    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="capture_the_flag" aria-checked="false">` +
+    `<span class="choice-icon">${uiIconSVG('modeFlag', 17)}</span>` +
+    `<span class="choice-name">Capture Flag</span><small>CTF</small></button>` +
+    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="zone_control" aria-checked="false">` +
+    `<span class="choice-icon">${uiIconSVG('modeZones', 17)}</span>` +
+    `<span class="choice-name">Zone Control</span><small>1000</small></button>` +
+    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="turbo_ball" aria-checked="false">` +
+    `<span class="choice-icon">${uiIconSVG('modeTurbo', 17)}</span>` +
+    `<span class="choice-name">Turbo Ball</span><small>Goals</small></button>` +
+    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="endless_horde" aria-checked="false">` +
+    `<span class="choice-icon">${uiIconSVG('modeHorde', 17)}</span>` +
+    `<span class="choice-name">Endless Horde</span><small>Waves</small></button>` +
     `</div><button class="cot-room-reminder" type="button" aria-label="Open active room">` +
     `<span class="rr-dot"></span><span class="rr-copy"></span></button></div>` +
     `<div class="cot-garage-tools" role="toolbar" aria-label="Garage panels">` +
@@ -1460,7 +1477,8 @@ export function createGarage(opts) {
   const battleBtn = root.querySelector('.cot-battle');
   const battleModeBtn = root.querySelector('.cot-battle-mode');
   const battleMenu = root.querySelector('.cot-battle-menu');
-  const battleChoices = [...root.querySelectorAll('.cot-battle-choice')];
+  const battleChoices = [...root.querySelectorAll('.cot-battle-choice[data-mode]')];
+  const battleRuleChoices = [...root.querySelectorAll('.cot-battle-choice[data-game-mode]')];
   const roomReminder = root.querySelector('.cot-room-reminder');
   const mapsEl = root.querySelector('.cot-maps');
   const recordTrigger = root.querySelector('.cot-record-trigger');
@@ -1473,6 +1491,7 @@ export function createGarage(opts) {
 
   let selectedId = specs.length ? specs[0].id : null;
   let battleMode = 'solo';
+  let battleGameMode = 'standard';
   let vehicleLocked = false;
   const cardById = new Map();
   const specById = new Map();
@@ -2490,7 +2509,7 @@ export function createGarage(opts) {
     api.setSelected(next.id);
   }
 
-  function launchBattle(specId, mapId, { emitClick = true } = {}) {
+  function launchBattle(specId, mapId, { emitClick = true, gameMode = battleGameMode } = {}) {
     // Battle entry must be unstoppable: the pre-battle emits fan out to five+
     // subscribers (audio click, pointer-lock grab, killcam/shot-log resets…)
     // and any one of them throwing in an exotic environment would silently
@@ -2502,7 +2521,7 @@ export function createGarage(opts) {
     } catch (err) {
       console.error('[garage] battle-start listener failed:', err);
     }
-    if (onBattle) onBattle(specId, mapId); // MAP-CONFIG WIRING
+    if (onBattle) onBattle(specId, mapId, { gameMode }); // MAP-CONFIG WIRING
   }
 
   function battle() {
@@ -2514,9 +2533,13 @@ export function createGarage(opts) {
       try { emit('ui:click', {}); } catch (_) { /* presentation-only */ }
       opts.onPlayRequest({
         mode: battleMode,
+        gameMode: battleGameMode,
         specId,
         mapId,
-        startSolo: () => launchBattle(specId, mapId, { emitClick: false }),
+        startSolo: () => launchBattle(specId, mapId, {
+          emitClick: false,
+          gameMode: battleGameMode,
+        }),
       });
       return;
     }
@@ -2529,6 +2552,12 @@ export function createGarage(opts) {
     lan: { short: 'LAN', label: 'LAN', icon: 'battleLan' },
     ranked: { short: 'RANK', label: 'Ranked', icon: 'battleRanked' },
   };
+  const battleRuleMeta = {
+    capture_the_flag: { short: 'CTF', label: 'Capture the Flag', icon: 'modeFlag' },
+    zone_control: { short: '1000', label: 'Zone Control', icon: 'modeZones' },
+    turbo_ball: { short: 'BALL', label: 'Turbo Ball', icon: 'modeTurbo' },
+    endless_horde: { short: 'WAVE', label: 'Endless Horde', icon: 'modeHorde' },
+  };
   function closeBattleMenu({ restoreFocus = false } = {}) {
     battleMenu.classList.remove('open');
     battleModeBtn.setAttribute('aria-expanded', 'false');
@@ -2538,12 +2567,15 @@ export function createGarage(opts) {
     closeMobileNavigation();
     battleMenu.classList.add('open');
     battleModeBtn.setAttribute('aria-expanded', 'true');
-    battleChoices.find((choice) => choice.dataset.mode === battleMode)?.focus();
+    const activeRule = battleGameMode === 'standard' ? null
+      : battleRuleChoices.find((choice) => choice.dataset.gameMode === battleGameMode);
+    (activeRule || battleChoices.find((choice) => choice.dataset.mode === battleMode))?.focus();
   }
   function setBattleMode(nextMode) {
     const meta = battleModeMeta[nextMode];
     if (!meta) return;
     battleMode = nextMode;
+    if (nextMode === 'solo') battleGameMode = 'standard';
     if (nextMode !== 'solo' && opts.onPlayModeIntent) {
       try { opts.onPlayModeIntent(nextMode); } catch (_) { /* optional warm path */ }
     }
@@ -2553,6 +2585,23 @@ export function createGarage(opts) {
     battleBtn.setAttribute('aria-label', `Start ${meta.label} battle`);
     for (const choice of battleChoices) {
       choice.setAttribute('aria-checked', String(choice.dataset.mode === nextMode));
+    }
+    for (const choice of battleRuleChoices) choice.setAttribute('aria-checked', 'false');
+  }
+  function setBattleGameMode(nextMode) {
+    const id = normalizeGameMode(nextMode);
+    const meta = battleRuleMeta[id];
+    if (!meta) return;
+    battleMode = 'solo';
+    battleGameMode = id;
+    try { localStorage.setItem('cot.game.mode.v1', id); } catch (_) { /* session-only */ }
+    battleModeBtn.querySelector('span').textContent = meta.short;
+    battleBtn.querySelector('.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
+    battleModeBtn.setAttribute('aria-label', `Battle rules: ${meta.label}. Change battle type`);
+    battleBtn.setAttribute('aria-label', `Start ${meta.label}`);
+    for (const choice of battleChoices) choice.setAttribute('aria-checked', 'false');
+    for (const choice of battleRuleChoices) {
+      choice.setAttribute('aria-checked', String(choice.dataset.gameMode === id));
     }
   }
 
@@ -2582,6 +2631,11 @@ export function createGarage(opts) {
   for (const choice of battleChoices) choice.addEventListener('click', () => {
     emit('ui:click', {});
     setBattleMode(choice.dataset.mode);
+    closeBattleMenu({ restoreFocus: true });
+  });
+  for (const choice of battleRuleChoices) choice.addEventListener('click', () => {
+    emit('ui:click', {});
+    setBattleGameMode(choice.dataset.gameMode);
     closeBattleMenu({ restoreFocus: true });
   });
   root.addEventListener('pointerdown', (event) => {
