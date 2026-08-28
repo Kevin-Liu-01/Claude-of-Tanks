@@ -10,7 +10,65 @@ import * as THREE from 'three';
 const SUPPORT_EPSILON = 0.065;
 const EXTERIOR_RECEIPTS = Symbol('exterior-detail-receipts');
 
-function box(w, h, d) {
+export interface ExteriorSupportRecord {
+  building: string;
+  part: string;
+  support: string;
+  gap: number;
+}
+
+export interface ExteriorReceipt {
+  id: string;
+  profile: string;
+  added: number;
+  maxSupportGap: number;
+  records: ExteriorSupportRecord[];
+}
+
+export interface GeometryBuckets {
+  [name: string]: THREE.BufferGeometry[] | undefined;
+  [EXTERIOR_RECEIPTS]?: ExteriorReceipt[];
+}
+
+interface ExteriorEnvelope {
+  w: number;
+  d: number;
+  wallH: number;
+  id: string;
+  profile: string;
+}
+
+interface ExteriorOptions {
+  id?: string;
+  w?: number;
+  d?: number;
+  wallH?: number;
+  profile?: string;
+  variant?: number;
+}
+
+interface ExteriorAuthor {
+  add(
+    partId: string,
+    preferredBucket: string,
+    geometry: THREE.BufferGeometry,
+    supportId?: string,
+  ): THREE.BufferGeometry;
+  receipt(): ExteriorReceipt;
+}
+
+interface BuildingInfo {
+  h?: number;
+}
+
+interface InferredEnvelope {
+  w: number;
+  d: number;
+  wallH: number;
+  score: number;
+}
+
+function box(w: number, h: number, d: number): THREE.BoxGeometry {
   const geo = new THREE.BoxGeometry(w, h, d);
   const uv = geo.attributes.uv;
   const su = Math.max(w, d) * 0.9;
@@ -20,29 +78,39 @@ function box(w, h, d) {
   return geo;
 }
 
-function cylinder(radius, height, segments = 8) {
+function cylinder(radius: number, height: number, segments = 8): THREE.CylinderGeometry {
   const geo = new THREE.CylinderGeometry(radius, radius, height, segments, 1);
   geo.userData.detailUv = true;
   return geo;
 }
 
-function boundsOf(geo) {
+function boundsOf(geo: THREE.BufferGeometry): THREE.Box3 {
   geo.computeBoundingBox();
+  if (!geo.boundingBox) throw new Error('exterior detail geometry has no bounding box');
   return geo.boundingBox.clone();
 }
 
-function aabbGap(a, b) {
+function aabbGap(a: THREE.Box3, b: THREE.Box3): number {
   const dx = Math.max(0, b.min.x - a.max.x, a.min.x - b.max.x);
   const dy = Math.max(0, b.min.y - a.max.y, a.min.y - b.max.y);
   const dz = Math.max(0, b.min.z - a.max.z, a.min.z - b.max.z);
   return Math.hypot(dx, dy, dz);
 }
 
-function bucket(parts, preferred, fallback = 'dark') {
-  return parts[preferred] || parts[fallback] || Object.values(parts).find(Array.isArray);
+function bucket(
+  parts: GeometryBuckets,
+  preferred: string,
+  fallback = 'dark',
+): THREE.BufferGeometry[] {
+  const selected = parts[preferred] || parts[fallback]
+    || Object.values(parts).find((value): value is THREE.BufferGeometry[] => Array.isArray(value));
+  if (!selected) throw new Error(`exterior detail has no geometry bucket for ${preferred}`);
+  return selected;
 }
 
-function detailAuthor(parts, { w, d, wallH, id, profile }) {
+function detailAuthor(parts: GeometryBuckets, {
+  w, d, wallH, id, profile,
+}: ExteriorEnvelope): ExteriorAuthor {
   const supports = new Map([
     ['wall', new THREE.Box3(
       new THREE.Vector3(-w / 2, 0, -d / 2),
@@ -53,9 +121,14 @@ function detailAuthor(parts, { w, d, wallH, id, profile }) {
       new THREE.Vector3(w, 0.08, d),
     )],
   ]);
-  const records = [];
+  const records: ExteriorSupportRecord[] = [];
 
-  const add = (partId, preferredBucket, geo, supportId = 'wall') => {
+  const add = (
+    partId: string,
+    preferredBucket: string,
+    geo: THREE.BufferGeometry,
+    supportId = 'wall',
+  ): THREE.BufferGeometry => {
     const support = supports.get(supportId);
     if (!support) throw new Error(`${id}: missing exterior support ${supportId}`);
     const bounds = boundsOf(geo);
@@ -63,10 +136,13 @@ function detailAuthor(parts, { w, d, wallH, id, profile }) {
     if (gap > SUPPORT_EPSILON) {
       throw new Error(`${id}: floating exterior part ${partId} (${gap.toFixed(3)} m from ${supportId})`);
     }
-    geo.userData.structureSupport = { building: id, part: partId, support: supportId, gap };
+    const record: ExteriorSupportRecord = {
+      building: id, part: partId, support: supportId, gap,
+    };
+    geo.userData.structureSupport = record;
     bucket(parts, preferredBucket).push(geo);
     supports.set(partId, bounds);
-    records.push(geo.userData.structureSupport);
+    records.push(record);
     return geo;
   };
 
@@ -77,10 +153,20 @@ function detailAuthor(parts, { w, d, wallH, id, profile }) {
   };
 }
 
-function addCourses(author, w, d, wallH, material) {
+function addCourses(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+  material: string,
+): void {
   const lowY = Math.min(0.72, wallH * 0.18);
   const highY = Math.max(lowY + 0.55, wallH - 0.32);
-  for (const [name, y] of [['plinth', lowY], ['cornice', highY]]) {
+  const courses: ReadonlyArray<readonly [string, number]> = [
+    ['plinth', lowY],
+    ['cornice', highY],
+  ];
+  for (const [name, y] of courses) {
     author.add(`${name}-front`, material,
       box(w + 0.20, name === 'plinth' ? 0.24 : 0.18, 0.14)
         .translate(0, y, d / 2 + 0.025));
@@ -96,7 +182,13 @@ function addCourses(author, w, d, wallH, material) {
   }
 }
 
-function addCornerPiers(author, w, d, wallH, material) {
+function addCornerPiers(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+  material: string,
+): void {
   const pierH = Math.max(1.4, wallH - 0.22);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     author.add(`pier-${sx}-${sz}`, material,
@@ -105,7 +197,14 @@ function addCornerPiers(author, w, d, wallH, material) {
   }
 }
 
-function addFacadeBayRhythm(author, w, d, wallH, profile, variant) {
+function addFacadeBayRhythm(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+  profile: string,
+  variant: number,
+): void {
   if (!['urban', 'civic', 'industrial', 'desert'].includes(profile)) return;
   const material = profile === 'industrial' ? 'dark' : 'stone';
   const pierW = profile === 'desert' ? 0.24 : 0.14;
@@ -167,7 +266,12 @@ function addFacadeBayRhythm(author, w, d, wallH, profile, variant) {
   }
 }
 
-function addRainwater(author, w, d, wallH) {
+function addRainwater(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+): void {
   const frontZ = d / 2 + 0.055;
   const pipeY = wallH * 0.48;
   for (const sx of [-1, 1]) {
@@ -182,7 +286,13 @@ function addRainwater(author, w, d, wallH) {
       .translate(0, wallH - 0.10, frontZ), 'wall');
 }
 
-function addServiceCluster(author, w, d, wallH, industrial = false) {
+function addServiceCluster(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+  industrial = false,
+): void {
   const sideX = w / 2 + 0.075;
   const unitY = Math.min(wallH - 0.72, industrial ? 2.45 : 2.05);
   const unitD = industrial ? 1.35 : 0.92;
@@ -203,7 +313,13 @@ function addServiceCluster(author, w, d, wallH, industrial = false) {
     box(0.18, 0.28, 0.34).translate(w / 2 + 0.055, 0.52, -d * 0.14), 'wall');
 }
 
-function addSupportedAwning(author, w, d, wallH, material) {
+function addSupportedAwning(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+  material: string,
+): void {
   const awningW = Math.min(w * 0.52, 5.8);
   const awningD = Math.min(1.25, d * 0.18);
   const y = Math.min(wallH - 0.42, 2.85);
@@ -219,7 +335,14 @@ function addSupportedAwning(author, w, d, wallH, material) {
   }
 }
 
-function addEntryAssembly(author, w, d, wallH, profile, variant) {
+function addEntryAssembly(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+  profile: string,
+  variant: number,
+): void {
   const industrial = profile === 'industrial';
   const timber = profile === 'timber' || profile === 'rural';
   const doorW = industrial ? Math.min(2.4, w * 0.28) : Math.min(1.35, w * 0.18);
@@ -256,7 +379,14 @@ function addEntryAssembly(author, w, d, wallH, profile, variant) {
   }
 }
 
-function addProfileSignature(author, w, d, wallH, profile, variant) {
+function addProfileSignature(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+  profile: string,
+  variant: number,
+): void {
   const frontZ = d / 2 + 0.06;
   if (profile === 'rural' || profile === 'timber') {
     // Asymmetric shutter groups break the repeated blank-house silhouette.
@@ -324,7 +454,14 @@ function addProfileSignature(author, w, d, wallH, profile, variant) {
   }
 }
 
-function addRoofService(author, w, d, wallH, profile, variant) {
+function addRoofService(
+  author: ExteriorAuthor,
+  w: number,
+  d: number,
+  wallH: number,
+  profile: string,
+  variant: number,
+): void {
   if (!['urban', 'civic', 'industrial'].includes(profile)) return;
   const x = (variant % 2 === 0 ? -1 : 1) * Math.min(w * 0.24, 2.1);
   const z = (variant % 3 - 1) * Math.min(d * 0.16, 1.8);
@@ -340,10 +477,18 @@ function addRoofService(author, w, d, wallH, profile, variant) {
  *
  * @returns {{id:string,profile:string,added:number,maxSupportGap:number,records:Array<object>}}
  */
-export function addConnectedExterior(parts, {
-  id = 'building', w, d, wallH, profile = 'rural', variant = 0,
-} = {}) {
-  if (!(w > 1 && d > 1 && wallH > 1)) throw new TypeError(`${id}: invalid exterior envelope`);
+export function addConnectedExterior(
+  parts: GeometryBuckets,
+  options: ExteriorOptions = {},
+): ExteriorReceipt {
+  const {
+    id = 'building', w, d, wallH, profile = 'rural', variant = 0,
+  } = options;
+  if (!(typeof w === 'number' && w > 1
+      && typeof d === 'number' && d > 1
+      && typeof wallH === 'number' && wallH > 1)) {
+    throw new TypeError(`${id}: invalid exterior envelope`);
+  }
   const author = detailAuthor(parts, { w, d, wallH, id, profile });
   const masonry = profile !== 'timber' && profile !== 'canvas';
   addCourses(author, w, d, wallH, masonry ? 'stone' : 'wood');
@@ -372,22 +517,27 @@ export function addConnectedExterior(parts, {
     addSupportedAwning(author, w, d, wallH, profile === 'desert' ? 'wood' : 'roof');
   }
   const receipt = author.receipt();
-  if (!parts[EXTERIOR_RECEIPTS]) {
-    Object.defineProperty(parts, EXTERIOR_RECEIPTS, { value: [], enumerable: false });
+  let receipts = parts[EXTERIOR_RECEIPTS];
+  if (!receipts) {
+    receipts = [];
+    Object.defineProperty(parts, EXTERIOR_RECEIPTS, { value: receipts, enumerable: false });
   }
-  parts[EXTERIOR_RECEIPTS].push(receipt);
+  receipts.push(receipt);
   return receipt;
 }
 
-const CATALOG_PROFILES = {
+const CATALOG_PROFILES: Readonly<Record<string, string>> = {
   farmhouse: 'rural', granary: 'timber', chapel: 'civic', logcabin: 'timber',
   alpine: 'timber', woodshed: 'timber', minaret: 'desert', cornershop: 'urban',
   depot: 'industrial', warehouse: 'industrial', boatshed: 'timber',
   lighthouse: 'civic', shed: 'industrial', compound: 'desert',
 };
 
-function inferCenteredWallEnvelope(parts, info) {
-  let best = null;
+function inferCenteredWallEnvelope(
+  parts: GeometryBuckets,
+  info: BuildingInfo,
+): InferredEnvelope | null {
+  let best: InferredEnvelope | null = null;
   for (const key of ['plaster', 'plaster2', 'plaster3', 'stone', 'wood']) {
     for (const geo of parts[key] || []) {
       const bounds = boundsOf(geo);
@@ -404,13 +554,20 @@ function inferCenteredWallEnvelope(parts, info) {
 }
 
 /** Add the shared façade pass to catalog builders that expose a centered body. */
-export function addCatalogExterior(parts, { id, info, variant = 0 } = {}) {
+export function addCatalogExterior(
+  parts: GeometryBuckets,
+  {
+    id,
+    info,
+    variant = 0,
+  }: { id?: string; info?: BuildingInfo; variant?: number } = {},
+): ExteriorReceipt | null {
   if (parts[EXTERIOR_RECEIPTS]?.length) return parts[EXTERIOR_RECEIPTS][0];
-  const profile = CATALOG_PROFILES[id];
+  const profile = id ? CATALOG_PROFILES[id] : undefined;
   if (!profile) return null;
   const envelope = inferCenteredWallEnvelope(parts, info || {});
   if (!envelope) return null;
   return addConnectedExterior(parts, { id, profile, variant, ...envelope });
 }
 
-export function exteriorSupportEpsilon() { return SUPPORT_EPSILON; }
+export function exteriorSupportEpsilon(): number { return SUPPORT_EPSILON; }

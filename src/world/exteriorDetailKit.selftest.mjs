@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
   addCatalogExterior, addConnectedExterior, exteriorSupportEpsilon,
-} from './maps/exteriorDetailKit.js';
+} from './maps/exteriorDetailKit.ts';
 
 const bucketNames = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark'];
 const makeParts = () => Object.fromEntries(bucketNames.map((name) => [name, []]));

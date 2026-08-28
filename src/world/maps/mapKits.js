@@ -4,7 +4,7 @@
 // Two exports:
 //   MARKET_BUILDERS — plan-name builders (props.js BUILDER_BY_NAME contract:
 //     make<X>(rng, buckets, wallBucket?) -> {w,d,h}) for the desert bazaar.
-//     Spread into URBAN_BUILDERS (maps/urbanKit.js) so map plans can place
+//     Spread into URBAN_BUILDERS (maps/urbanKit.ts) so map plans can place
 //     'market' entries with ZERO props.js changes.
 //   dressMapExtras(ctx) — explicit-position dressing that the road-side plan
 //     mechanism cannot reach: Frosthollow's frozen-lake basin gets shoreline

@@ -10,7 +10,7 @@ import { getDeviceTier } from '../engine/quality.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
 import { applySourcedBuildings } from './sourcedTextures.js';
-import { URBAN_BUILDERS } from './maps/urbanKit.js';
+import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtras } from './maps/mapKits.js'; // content_breadth r2
 // world-dressing r1: building-catalog extension + destructible small props
 import { VILLAGE_BUILDERS } from './maps/villageKit.js';
@@ -18,7 +18,7 @@ import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG, bSandbagBroken } from './maps/
 import {
   DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS,
 } from './maps/structureKit.js';
-import { addCatalogExterior, addConnectedExterior } from './maps/exteriorDetailKit.js';
+import { addCatalogExterior, addConnectedExterior } from './maps/exteriorDetailKit.ts';
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { createUtilityNetwork } from './utilityNetwork.ts';
@@ -1526,7 +1526,7 @@ ${snowCap ? `
   const BUILDER_BY_NAME = {
     cottage: makeCottage, barn: makeBarn, tower: makeTower, ruin: makeRuin,
     adobe: makeAdobe, rowhouse: makeRowhouse,
-    ...URBAN_BUILDERS, // church / factory landmarks (maps/urbanKit.js)
+    ...URBAN_BUILDERS, // church / factory landmarks (maps/urbanKit.ts)
     // world-dressing r1: per-theme catalog — farmhouse/granary/chapel/mill,
     // logcabin/alpine/onionchurch/woodshed, minaret, cornershop, depot
     ...VILLAGE_BUILDERS,

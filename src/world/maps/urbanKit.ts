@@ -1,4 +1,4 @@
-// src/world/maps/urbanKit.js — town landmark builders for the urban map:
+// src/world/maps/urbanKit.ts — town landmark builders for the urban map:
 // a church (tall square tower + spire over a steep-roofed nave) and a small
 // brick factory (long hall + round chimney stack). Registered into props.js
 // BUILDER_BY_NAME (see docs/SYSTEMS.md) so map plans can
@@ -13,10 +13,33 @@ import * as THREE from 'three';
 import { MARKET_BUILDERS } from './mapKits.js';
 import { RAIL_BUILDERS } from './railKit.js'; // maps r1: railyard + coastal kits
 import { gablePrism as createGablePrism } from '../propGeometry.ts';
-import { addConnectedExterior } from './exteriorDetailKit.js';
+import {
+  addConnectedExterior,
+  type GeometryBuckets,
+} from './exteriorDetailKit.ts';
+
+interface BuildingParts extends GeometryBuckets {
+  plaster: THREE.BufferGeometry[];
+  stone: THREE.BufferGeometry[];
+  roof: THREE.BufferGeometry[];
+  wood: THREE.BufferGeometry[];
+  dark: THREE.BufferGeometry[];
+  glass?: THREE.BufferGeometry[];
+}
+
+export interface StructureDimensions {
+  w: number;
+  d: number;
+  h: number;
+}
+
+export type StructureBuilder = (
+  rng: () => number,
+  buckets: GeometryBuckets,
+) => StructureDimensions;
 
 // --- tiny local twins of the props.js geometry helpers (not exported there) --
-function box(w, h, d, uvScale = 0.5) {
+function box(w: number, h: number, d: number, uvScale = 0.5): THREE.BoxGeometry {
   const g = new THREE.BoxGeometry(w, h, d);
   const uv = g.attributes.uv;
   const su = uvScale, sv = uvScale;
@@ -24,15 +47,29 @@ function box(w, h, d, uvScale = 0.5) {
   return g;
 }
 
-const gablePrism = (width, height, depth) => createGablePrism(width, height, depth, 0.5);
+const gablePrism = (width: number, height: number, depth: number): THREE.BufferGeometry => (
+  createGablePrism(width, height, depth, 0.5)
+);
 
-function pushParts(buckets, parts) {
+function pushParts(buckets: GeometryBuckets, parts: BuildingParts): void {
   for (const key of Object.keys(parts)) {
-    for (const g of parts[key]) buckets[key].push(g);
+    const source = parts[key];
+    if (!source?.length) continue;
+    const target = buckets[key];
+    if (!target) throw new Error(`building target bucket is missing: ${key}`);
+    for (const geometry of source) target.push(geometry);
   }
 }
 
-function addSideWindow(parts, paneBucket, x, y, z, width, height) {
+function addSideWindow(
+  parts: BuildingParts,
+  paneBucket: THREE.BufferGeometry[],
+  x: number,
+  y: number,
+  z: number,
+  width: number,
+  height: number,
+): void {
   const outward = Math.sign(x) || 1;
   const faceX = x + outward * 0.01;
   paneBucket.push(box(0.08, height, width).translate(faceX, y, z));
@@ -59,8 +96,10 @@ function addSideWindow(parts, paneBucket, x, y, z, width, height) {
  * @param {object} buckets geometry buckets {plaster,stone,roof,wood,dark}
  * @returns {{w:number,d:number,h:number}} footprint + height
  */
-export function makeChurch(rng, buckets) {
-  const parts = { plaster: [], stone: [], roof: [], wood: [], dark: [] };
+export function makeChurch(_rng: () => number, buckets: GeometryBuckets): StructureDimensions {
+  const parts: BuildingParts = {
+    plaster: [], stone: [], roof: [], wood: [], dark: [],
+  };
   // content_breadth r3: window panes ride the props.js 'glass' bucket when
   // the facade-variety patch is applied (sky-catching panes); falls back to
   // 'dark' cleanly on an unpatched props.js.
@@ -121,8 +160,10 @@ export function makeChurch(rng, buckets) {
  * @param {object} buckets geometry buckets {plaster,stone,roof,wood,dark}
  * @returns {{w:number,d:number,h:number}} footprint + height
  */
-export function makeFactory(rng, buckets) {
-  const parts = { plaster: [], stone: [], roof: [], wood: [], dark: [] };
+export function makeFactory(rng: () => number, buckets: GeometryBuckets): StructureDimensions {
+  const parts: BuildingParts = {
+    plaster: [], stone: [], roof: [], wood: [], dark: [],
+  };
   // content_breadth r3: see makeChurch — glass panes when available
   if (buckets.glass) parts.glass = [];
   const pane = parts.glass || parts.dark;
@@ -169,7 +210,7 @@ export function makeFactory(rng, buckets) {
  * content_breadth r2: the desert bazaar builders (maps/mapKits.js) ride the
  * same registry, so 'market' / 'marketRow' plan entries work map-wide with
  * no props.js change. */
-export const URBAN_BUILDERS = {
+export const URBAN_BUILDERS: Record<string, StructureBuilder> = {
   church: makeChurch, factory: makeFactory, ...MARKET_BUILDERS,
   ...RAIL_BUILDERS, // maps r1: warehouse/gantry/containerRow/… + coastal kit
 };

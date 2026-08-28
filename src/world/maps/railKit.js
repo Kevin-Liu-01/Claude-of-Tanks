@@ -1,6 +1,6 @@
 // src/world/maps/railKit.js — industrial + maritime landmark builders for the
 // maps r1 battlefields (railyard, coastal). Registered into props.js
-// BUILDER_BY_NAME through maps/urbanKit.js URBAN_BUILDERS (same zero-props.js-
+// BUILDER_BY_NAME through maps/urbanKit.ts URBAN_BUILDERS (same zero-props.js-
 // change contract as the desert bazaar kit):
 //   make<X>(rng, buckets, wallBucket?) -> {w, d, h}
 // pushing THREE.BufferGeometry into buckets.{plaster,stone,roof,wood,dark,
@@ -388,7 +388,7 @@ export function makeNetYard(rng, buckets) {
 }
 
 /** Builders keyed by plan name — spread into URBAN_BUILDERS (props.js
- * BUILDER_BY_NAME contract, see maps/urbanKit.js). */
+ * BUILDER_BY_NAME contract, see maps/urbanKit.ts). */
 export const RAIL_BUILDERS = {
   warehouse: makeWarehouse,
   containerRow: makeContainerRow,

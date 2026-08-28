@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { addConnectedExterior } from './exteriorDetailKit.js';
+import { addConnectedExterior } from './exteriorDetailKit.ts';
 import { certifyGroundedStructureParts } from '../structureConnectivity.ts';
 
 const _color = new THREE.Color();

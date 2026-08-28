@@ -2,7 +2,7 @@
 // extension. Per-theme building types beyond the original cottage/barn/tower
 // set: farm (farmhouse, granary, chapel, windmill), winter (log cabin, alpine
 // house, onion-dome church, woodshed), desert (minaret), urban (corner shop),
-// railyard (platform depot). Same plan-builder contract as maps/urbanKit.js:
+// railyard (platform depot). Same plan-builder contract as maps/urbanKit.ts:
 // fn(rng, buckets, wallBucket?) pushes composed BufferGeometry into the shared
 // material buckets and returns the {w,d,h} footprint for obstacles/AABBs.
 // Each carries 2-3 rng-driven size/roof/material variants and a grounded

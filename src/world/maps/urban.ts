@@ -8,7 +8,7 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // Street-wall plan: mostly rowhouses so every block frontage reads built-up,
 // ruins interleaved (1 in 5) for shelled-town texture, plus real vertical
 // landmarks — a church (spire) and a factory (chimney stack) — and two
-// squat towers. 'church'/'factory' come from maps/urbanKit.js (registered
+// squat towers. 'church'/'factory' come from maps/urbanKit.ts (registered
 // in props.js BUILDER_BY_NAME; they degrade to cottages if unregistered).
 const PLAN = [];
 for (let i = 0; i < 108; i++) {
