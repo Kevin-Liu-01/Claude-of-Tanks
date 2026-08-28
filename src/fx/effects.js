@@ -851,8 +851,6 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     anisotropy: engineCtx && engineCtx.anisotropy,
     seed: (seed ^ 0x51f7a3) >>> 0,
   });
-  /** The shell:hit event currently being dispatched (dedupe for armorScar). */
-  let liveHitEv = null;
   /** targetId -> game entity, resolved through the debug surface (the fx
    *  module owns no game-state reference; window.__DEBUG.game is assigned at
    *  boot before any battle can start — same window-global pattern as
@@ -3137,16 +3135,13 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           fx.impact('era', _v3, _v4, e.caliberMm);
         }
         fx.impact(e.kind, _v3, _v4, e.caliberMm);
-        // Ballistic scarring: stamp the mark for this hit into the struck
-        // node's local space. This runs BEFORE main.js's shell:hit listener
-        // (fx.bindBus registers first), so the armorScar call that follows
-        // for pens sees __cotDecalStamped and never double-marks.
-        liveHitEv = e;
+        // Ballistic scarring has exactly one event owner. The FX runtime is
+        // demand-loaded after main's presentation listeners, so attempting
+        // to dedupe a second main-thread stamp by subscription order is not
+        // reliable. All shell:hit marks are authored here from the exact
+        // authoritative articulation-local contact data.
         const ent = decalEntityFor(e.targetId);
-        if (ent && impactDecals.stampFromEvent(e, ent)) e.__cotDecalStamped = true;
-        // the marker only means something to listeners of THIS event's
-        // synchronous dispatch — never let it leak into later direct calls
-        queueMicrotask(() => { if (liveHitEv === e) liveHitEv = null; });
+        if (ent) impactDecals.stampFromEvent(e, ent);
       });
       bus.on('shell:expired', (e) => {
         // world-dressing r1: close out the shell's destructible-prop story —
@@ -3470,16 +3465,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     },
 
     /**
-     * Stamp a persistent armor-scar decal onto a struck vehicle at a
-     * penetration point (legacy entry point — main.js calls this for pens).
+     * Stamp a persistent armor-scar decal directly onto a struck vehicle.
      *
-     * The full ballistic-scarring stamp (pen/ricochet/HE routed by
-     * HitEvent.kind, turret-local placement, tangent-aligned gouges) runs in
-     * bindBus's shell:hit handler, which sees the event FIRST (fx.bindBus
-     * registers before main.js's own shell:hit listener). When that handler
-     * already stamped the in-flight event this call is a no-op; otherwise
-     * (direct callers, no resolvable entity) it stamps a hull-frame pen mark
-     * from the world-space args.
+     * This legacy entry point is reserved for non-event callers such as
+     * Studio dressing and covered battle warmup. Live combat shell:hit marks
+     * are owned exclusively by bindBus above, which preserves their exact
+     * articulation-local frame and guarantees one mark per hit event.
      * @param {object} visual TankVisual (needs .root)
      * @param {THREE.Vector3} pos world impact point
      * @param {THREE.Vector3} normal outward surface normal (world)
@@ -3487,9 +3478,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      */
     armorScar(visual, pos, normal, caliberMm) {
       if (!visual || !visual.root) return;
-      if (liveHitEv && liveHitEv.__cotDecalStamped) return; // already marked
-      impactDecals.stampDirect(visual, pos, normal, caliberMm,
-        liveHitEv ? liveHitEv.kind : 'pen');
+      impactDecals.stampDirect(visual, pos, normal, caliberMm, 'pen');
     },
 
     /** @returns {object} live impact-decal counters (probes/perf gates) */
@@ -4318,7 +4307,6 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       for (const r of muzzleRings) { r.bornAt = -1e9; r.mesh.visible = false; r.mat.opacity = 0; }
       muzzleRingCursor = 0;
       impactDecals.clearAll();
-      liveHitEv = null;
       for (const st of lightStates) { st.bornAt = -1e9; st.light.intensity = 0; }
     },
 

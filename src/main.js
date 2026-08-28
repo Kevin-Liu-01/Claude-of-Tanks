@@ -1115,8 +1115,9 @@ function veilHud(on) {
 // Player combat feedback: non-spatial hit-confirm blip for own shells that
 // connect (bright = damage, dull = bounce), camera flinch when taking a hit.
 bus.on('shell:hit', (ev) => {
-  // Receiving-end reactions on ANY struck tank: caliber-scaled hull flinch,
-  // plus a persistent armor scar decal at penetration points.
+  // Receiving-end reaction on ANY struck tank: caliber-scaled hull flinch.
+  // Persistent armor scars are owned exclusively by effects.js's shell:hit
+  // listener so one authoritative hit can never be stamped twice.
   const target = ev.targetId ? game.tankById.get(ev.targetId) : null;
   if (target?.visual) stripActivatedEra(ev, target.visual);
   if (target && target.visual && ev.normal) {
@@ -1127,12 +1128,6 @@ bus.on('shell:hit', (ev) => {
         ((ev.caliberMm || 90) / 100) * (pen ? 1 : 0.55),
         target.state ? target.state.yaw : undefined,
       );
-    }
-    const liveFx = fxRuntimeAccess.current;
-    if (pen && ev.pos && liveFx?.armorScar) {
-      _v1.set(ev.pos[0], ev.pos[1], ev.pos[2]);
-      _v2.set(ev.normal[0], ev.normal[1], ev.normal[2]);
-      liveFx.armorScar(target.visual, _v1, _v2, ev.caliberMm || 90);
     }
   }
   if (!game.player) return;
