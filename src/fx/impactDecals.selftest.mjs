@@ -11,18 +11,20 @@ if (IMPACT_DECAL_LIFT_M !== SURFACE_MARKING_STYLE.surfaceLiftM) {
   throw new Error('impact scars and painted designations must share one surface-layer contract');
 }
 
-// The lazy FX runtime subscribes after main's always-live presentation
-// listener. Impact decals therefore need one event owner: effects.js. If the
-// main listener also calls the legacy direct API, every penetration receives
+// The lazy FX runtime subscribes after the always-live typed combat-feedback
+// owner. Impact decals therefore need one event owner: effects.js. If the
+// feedback listener also calls the legacy direct API, every penetration gets
 // one hull-local mark followed by a second authoritative articulation-local
 // mark from the same shell:hit dispatch.
-const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
-const shellHitStart = mainSource.indexOf("bus.on('shell:hit'");
-const shellHitEnd = mainSource.indexOf("bus.on('shell:fired'", shellHitStart);
+const feedbackSource = await readFile(
+  new URL('../game/combatFeedbackRuntime.ts', import.meta.url), 'utf8',
+);
+const shellHitStart = feedbackSource.indexOf("listen('shell:hit'");
+const shellHitEnd = feedbackSource.indexOf("listen('shell:fired'", shellHitStart);
 if (shellHitStart < 0 || shellHitEnd < 0) {
   throw new Error('battle shell:hit presentation listener is missing');
 }
-const shellHitListener = mainSource.slice(shellHitStart, shellHitEnd);
+const shellHitListener = feedbackSource.slice(shellHitStart, shellHitEnd);
 if (shellHitListener.includes('.armorScar(')) {
   throw new Error('battle shell:hit must not stamp a second legacy impact decal');
 }
