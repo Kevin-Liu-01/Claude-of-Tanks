@@ -232,3 +232,4 @@ runtime documents remain authoritative for behavior.
 - [0220 — Vehicle marking anchors and painters are strict TypeScript](0220-typed-vehicle-markings.md)
 - [0221 — AFV family registration is strict TypeScript](0221-typed-afv-family-registration.md)
 - [0222 — The German OTCO profile adapter is strict TypeScript](0222-typed-german-otco-profile.md)
+- [0223 — Procedural profile adapters share strict assembly contracts](0223-typed-procedural-profile-ports.md)

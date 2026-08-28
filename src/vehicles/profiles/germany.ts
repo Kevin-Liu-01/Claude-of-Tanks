@@ -11,42 +11,19 @@
 import { KIT, FITTINGS, orientedSlab } from './kit.js';
 import { buildLeo2A4 } from './leopard.js';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type {
+  ProceduralBuilderPort,
+  TransformObjectPort,
+  Vec3Tuple,
+  VehicleAssemblyOwner,
+} from '../proceduralBuilderContracts.ts';
 
-type Vec3Tuple = [number, number, number];
 type Quad = [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
-type AssemblyOwner = 'hull' | 'turret';
-
-interface TransformPort {
-  readonly position: { set(x: number, y: number, z: number): unknown };
-  readonly rotation: { set(x: number, y: number, z: number): unknown };
-}
-
-interface GroupPort {
-  add(object: TransformPort): unknown;
-}
-
-interface GermanBuilderPort {
-  readonly hullG: GroupPort;
-  readonly turretG: GroupPort;
-  readonly mats: unknown;
-  topY?: number;
-  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
-  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
-  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
-  decal(
-    owner: AssemblyOwner,
-    kind: string,
-    label: string,
-    scale: number,
-    position: Vec3Tuple,
-    yaw: number,
-  ): unknown;
-}
 
 function mount(
-  P: GermanBuilderPort,
-  owner: AssemblyOwner,
-  fitting: TransformPort,
+  P: ProceduralBuilderPort,
+  owner: VehicleAssemblyOwner,
+  fitting: TransformObjectPort,
   x: number,
   y: number,
   z: number,
@@ -58,8 +35,8 @@ function mount(
 }
 
 function plate(
-  P: GermanBuilderPort,
-  owner: AssemblyOwner,
+  P: ProceduralBuilderPort,
+  owner: VehicleAssemblyOwner,
   x: number,
   y: number,
   z: number,
@@ -90,7 +67,7 @@ function mirroredSlab(side: number, lower: Quad, upper: Quad): unknown {
   return orientedSlab(...row(lower), ...row(upper));
 }
 
-function radioPair(P: GermanBuilderPort, y: number, z: number, seed: number, spread = 1.03): void {
+function radioPair(P: ProceduralBuilderPort, y: number, z: number, seed: number, spread = 1.03): void {
   for (const side of [-1, 1]) {
     P.add('turretDetail', KIT.cylY(0.035, 0.045, 0.06, 10), side * spread, y, z);
     mount(P, 'turret', FITTINGS.antennaWhip({
@@ -101,7 +78,7 @@ function radioPair(P: GermanBuilderPort, y: number, z: number, seed: number, spr
 }
 
 function roofWeapon(
-  P: GermanBuilderPort,
+  P: ProceduralBuilderPort,
   x: number,
   y: number,
   z: number,
@@ -118,7 +95,7 @@ function roofWeapon(
   }), x, y + 0.11, z, [0, yaw, 0]);
 }
 
-function gunPlant(P: GermanBuilderPort, width: number, depth: number, coaxX = 0.31): void {
+function gunPlant(P: ProceduralBuilderPort, width: number, depth: number, coaxX = 0.31): void {
   P.addGunExtra(KIT.box(width, 0.52, 0.26), 0, -0.015, 0.39);
   P.addGunExtra(KIT.cylZ(0.21, depth, 20, 0.17), 0, 0, 0.70);
   P.addGunExtraDark(KIT.cylZ(0.038, 0.095, 10), coaxX, 0.075, 0.60);
@@ -126,7 +103,7 @@ function gunPlant(P: GermanBuilderPort, width: number, depth: number, coaxX = 0.
     side * width * 0.34, -0.12, 0.48);
 }
 
-function addOTCOPackage(P: GermanBuilderPort): void {
+function addOTCOPackage(P: ProceduralBuilderPort): void {
   // Retain the boxy A4 turret but give this field-modernized variant a dense
   // net/stowage silhouette and a supported roof weapon. The quarantined game
   // extraction supplies only broad visual cues, never topology.
@@ -155,7 +132,7 @@ function addOTCOPackage(P: GermanBuilderPort): void {
   P.topY = Math.max(P.topY || 0, 1.42);
 }
 
-function buildLeo2A4OTCO(P: GermanBuilderPort): void {
+function buildLeo2A4OTCO(P: ProceduralBuilderPort): void {
   buildLeo2A4(P);
   addOTCOPackage(P);
 }
