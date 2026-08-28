@@ -8,7 +8,7 @@ const pageFiles = ['home.html', 'gallery.html', 'docs.html'];
 const supportingFiles = [
   'README.md',
   'src/gallery/catalog.js',
-  'src/presentation/mediaArchive.js',
+  'src/presentation/mediaArchive.ts',
 ];
 const retiredPhrases = [
   'Every system. In the frame.',

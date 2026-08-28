@@ -1,43 +1,77 @@
 import { createInfoButton } from '../ui/contextInfo.ts';
+import type { InfoButton } from '../ui/contextInfo.ts';
 import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.js';
 
 const MANIFEST_URL = '/media/showcase-r1/manifest.json';
-let manifestPromise;
+interface PresentationShot {
+  src: string;
+  alt: string;
+  feature: string;
+  map: string;
+  title: string;
+  kind?: string;
+  effects?: string[];
+  sequence?: number;
+}
 
-export function loadPresentationManifest() {
+interface PresentationManifest { shots: PresentationShot[] }
+
+interface MediaArchiveOptions {
+  mode?: string;
+  kinds?: string[];
+  limit?: number;
+  pageSize?: number;
+  feature?: string;
+  filters?: boolean;
+}
+
+interface CaptureRecipeCatalog {
+  media?: Record<string, string>;
+  recipes?: Record<string, unknown>;
+}
+
+let manifestPromise: Promise<PresentationManifest> | undefined;
+
+export function loadPresentationManifest(): Promise<PresentationManifest> {
   if (!manifestPromise) {
     manifestPromise = fetch(MANIFEST_URL).then((response) => {
       if (!response.ok) throw new Error(`Presentation archive unavailable (${response.status})`);
-      return response.json();
+      return response.json() as Promise<PresentationManifest>;
     });
   }
   return manifestPromise;
 }
 
-function ensureLightbox() {
-  let dialog = document.querySelector('.media-lightbox');
+function ensureLightbox(): HTMLDialogElement {
+  let dialog = document.querySelector<HTMLDialogElement>('.media-lightbox');
   if (dialog) return dialog;
   dialog = document.createElement('dialog');
   dialog.className = 'media-lightbox';
   dialog.innerHTML = `<figure><img alt=""><figcaption><div><span></span><strong></strong><small></small></div><button type="button" aria-label="Close full-screen image">×</button></figcaption></figure>`;
-  dialog.querySelector('button').addEventListener('click', () => dialog.close());
+  const closeButton = dialog.querySelector<HTMLButtonElement>('button');
+  if (!closeButton) throw new Error('media lightbox close control is unavailable');
+  closeButton.addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
   document.body.appendChild(dialog);
   return dialog;
 }
 
-function openShot(shot) {
+function openShot(shot: PresentationShot): void {
   const dialog = ensureLightbox();
-  const image = dialog.querySelector('img');
+  const image = dialog.querySelector<HTMLImageElement>('img');
+  const feature = dialog.querySelector<HTMLElement>('span');
+  const title = dialog.querySelector<HTMLElement>('strong');
+  const effects = dialog.querySelector<HTMLElement>('small');
+  if (!image || !feature || !title || !effects) throw new Error('media lightbox is incomplete');
   image.src = shot.src;
   image.alt = shot.alt;
-  dialog.querySelector('span').textContent = `${shot.feature} // ${shot.map}`;
-  dialog.querySelector('strong').textContent = shot.title;
-  dialog.querySelector('small').textContent = shot.effects?.length ? shot.effects.join(' · ').replaceAll('_', ' ') : 'Game-rendered capture';
+  feature.textContent = `${shot.feature} // ${shot.map}`;
+  title.textContent = shot.title;
+  effects.textContent = shot.effects?.length ? shot.effects.join(' · ').replaceAll('_', ' ') : 'Game-rendered capture';
   dialog.showModal();
 }
 
-function shotCard(shot, index, recipe) {
+function shotCard(shot: PresentationShot, index: number, recipe: unknown): HTMLElement {
   const card = document.createElement('article');
   card.className = 'media-archive-card';
   const button = document.createElement('button');
@@ -74,11 +108,14 @@ function shotCard(shot, index, recipe) {
   return card;
 }
 
-function normalize(value) {
+function normalize(value: unknown): string {
   return String(value || '').trim().toLowerCase();
 }
 
-export async function mountMediaArchive(root, options = {}) {
+export async function mountMediaArchive(
+  root: HTMLElement | null | undefined,
+  options: MediaArchiveOptions = {},
+) {
   if (!root || root.dataset.mediaMounted === 'true') return null;
   root.dataset.mediaMounted = 'true';
   root.classList.add('media-archive');
@@ -89,8 +126,10 @@ export async function mountMediaArchive(root, options = {}) {
   ]);
   const allowedKinds = options.kinds?.length ? new Set(options.kinds.map(normalize)) : null;
   const source = manifest.shots.filter((shot) => !allowedKinds || allowedKinds.has(normalize(shot.kind)));
-  const limit = Number.isFinite(options.limit) ? options.limit : source.length;
-  const pageSize = Number.isFinite(options.pageSize) ? Math.max(1, options.pageSize) : limit;
+  const limit = typeof options.limit === 'number' && Number.isFinite(options.limit)
+    ? options.limit : source.length;
+  const pageSize = typeof options.pageSize === 'number' && Number.isFinite(options.pageSize)
+    ? Math.max(1, options.pageSize) : limit;
   let visibleLimit = Math.min(pageSize, limit);
   let active = normalize(options.feature || 'all');
 
@@ -113,12 +152,12 @@ export async function mountMediaArchive(root, options = {}) {
   const featureOrder = ['all', 'studio direction', 'interface', 'killcam', 'gunnery', 'destruction', 'armor impacts', 'track physics', 'world system', 'tank design', 'battlefield atmosphere'];
   const available = new Set(source.map((shot) => normalize(shot.feature)));
   const features = featureOrder.filter((feature) => feature === 'all' || available.has(feature));
-  function render() {
-    grid.querySelectorAll('.cot-info-trigger').forEach((button) => button.disposeInfo?.());
+  function render(): void {
+    grid.querySelectorAll<InfoButton>('.cot-info-trigger').forEach((button) => button.disposeInfo());
     const filtered = source.filter((shot) => active === 'all' || normalize(shot.feature) === active).slice(0, limit);
     const visible = filtered.slice(0, visibleLimit);
     grid.replaceChildren(...visible.map((shot, index) =>
-      shotCard(shot, index, recipeForMedia(recipes, shot.src))));
+      shotCard(shot, index, recipeForMedia(recipes as CaptureRecipeCatalog, shot.src))));
     count.value = `${String(visible.length).padStart(2, '0')} / ${String(filtered.length).padStart(2, '0')} frames`;
     const remaining = filtered.length - visible.length;
     loadMore.hidden = remaining <= 0;
@@ -145,8 +184,8 @@ export async function mountMediaArchive(root, options = {}) {
   return { manifest, render, root };
 }
 
-export function autoMountMediaArchives(scope = document) {
-  for (const root of scope.querySelectorAll('[data-media-archive]')) {
+export function autoMountMediaArchives(scope: ParentNode = document): void {
+  for (const root of scope.querySelectorAll<HTMLElement>('[data-media-archive]')) {
     const kinds = root.dataset.kinds ? root.dataset.kinds.split(',') : undefined;
     mountMediaArchive(root, {
       mode: root.dataset.mode || undefined,
@@ -155,8 +194,9 @@ export function autoMountMediaArchives(scope = document) {
       feature: root.dataset.feature || undefined,
       kinds,
       filters: root.dataset.filters !== 'false',
-    }).catch((error) => {
-      root.innerHTML = `<p class="media-archive-count">${error.message}</p>`;
+    }).catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      root.innerHTML = `<p class="media-archive-count">${message}</p>`;
     });
   }
 }

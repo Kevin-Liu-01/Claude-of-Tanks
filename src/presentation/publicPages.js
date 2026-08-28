@@ -8,7 +8,7 @@ const isCompactSurface = () => ['phone', 'compact'].includes(responsiveLayout.sn
 if (document.querySelector('[data-media-archive]')) {
   Promise.all([
     import('./mediaArchive.css'),
-    import('./mediaArchive.js'),
+    import('./mediaArchive.ts'),
   ]).then(([, { autoMountMediaArchives }]) => autoMountMediaArchives());
 }
 

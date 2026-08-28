@@ -86,7 +86,7 @@ The viewer constructs a single vehicle at a time. Selecting another vehicle
 removes and disposes the previous model before constructing the replacement.
 
 The viewer header also opens the shared presentation archive. Gallery mounts
-`src/presentation/mediaArchive.js` only when the dialog is requested; the
+`src/presentation/mediaArchive.ts` only when the dialog is requested; the
 component fetches `public/media/showcase-r1/manifest.json`, lazy-loads its
 WebP frames in a horizontally scrollable compact rail, and reuses the same
 lightbox/filter semantics as the landing page, field manual, and Studio. This

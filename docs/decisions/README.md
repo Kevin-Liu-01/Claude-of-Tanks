@@ -155,3 +155,4 @@ runtime documents remain authoritative for behavior.
 - [0143 — Roster presentation has one typed policy](0143-typed-roster-presentation.md)
 - [0144 — Static wreck baking has a typed geometry contract](0144-typed-wreck-baking.md)
 - [0145 — Performance diagnostics have a typed lazy surface](0145-typed-performance-hud.md)
+- [0146 — Public capture archives share a typed lazy owner](0146-typed-media-archive.md)

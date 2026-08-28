@@ -57,7 +57,7 @@ automatically so headless capture tools can enter Studio.
   the shared 88-frame archive for composition, lighting, effects, and vehicle
   placement reference.
 
-The archive drawer uses the same `src/presentation/mediaArchive.js` component as
+The archive drawer uses the same `src/presentation/mediaArchive.ts` component as
 the landing page, public field manual, and Tank Gallery. It reads the checked-in
 showcase manifest and loads its compact image rail only when opened, so the 88
 reference frames do not add image transfers to Studio startup.

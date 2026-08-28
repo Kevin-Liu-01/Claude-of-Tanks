@@ -98,7 +98,7 @@ archiveOpen?.addEventListener('click', () => {
   archiveDialog.querySelectorAll('video').forEach((video) => {
     video.play().catch(() => {});
   });
-  archiveMountPromise ??= import('../presentation/mediaArchive.js')
+  archiveMountPromise ??= import('../presentation/mediaArchive.ts')
     .then(({ mountMediaArchive }) => mountMediaArchive(
       document.querySelector('#docsArchiveBody'),
       { mode: 'wall', limit: 88, filters: false },
