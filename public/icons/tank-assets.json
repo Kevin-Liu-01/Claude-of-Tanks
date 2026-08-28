@@ -177577,13 +177577,13 @@
       "metadataHash": "5cec2e07",
       "presentationAnchor": {
         "xM": 0.0002,
-        "zM": -0.0148
+        "zM": -0.0139
       },
-      "presentationHash": "4e159851",
+      "presentationHash": "2cf43171",
       "presentationProjection": {
         "centerYM": 1.9268,
-        "topHalfM": 6.6329,
-        "sideHalfM": 3.3164
+        "topHalfM": 6.6319,
+        "sideHalfM": 3.316
       },
       "appearance": {
         "version": 1,
