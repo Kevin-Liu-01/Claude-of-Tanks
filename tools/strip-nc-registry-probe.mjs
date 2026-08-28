@@ -31,7 +31,7 @@ process.on('unhandledRejection', (e) => {
 
 const specs = await import(path.join(ROOT, 'src', 'vehicles', 'specs.js'));
 for (const mod of ['modern1.js', 'modern2.js', 'modern3.js',
-  'variants.js', 'userdrops.js', 'userdrops2.js', 'userdrops3.js',
+  'variants.js', 'userdrops2.js', 'userdrops3.js',
   'abramsConceptSpecs.ts', 'userdrops5.js', 'userdrops6.js', 'userdrops7.js']) {
   const p = path.join(ROOT, 'src', 'vehicles', mod);
   if (!existsSync(p)) continue;

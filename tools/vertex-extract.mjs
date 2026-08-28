@@ -270,7 +270,7 @@ const REG = {
   // fidelity harness LOCAL_REFERENCE_OVERRIDES (quarantine oracles),
   // recon_tank specs.js MODEL_SOURCE. pubDims from the spec dims rows
   // (modern2.js t80u/leclerc, modern3.js ariete, userdrops5 type90 make(),
-  // misc.js TYPE74_SPEC, specs.js recon_tank).
+  // profiles/miscSpecs.ts TYPE74_SPEC, specs.js recon_tank).
   leclerc: {
     path: 'public/models/tanks/char_leclerc_andertan.glb',
     // raw GLB name is 'Cylinder.086' — GLTFLoader sanitizes the dot out;

@@ -216,7 +216,7 @@ if (TANK_SPECS.leclerc && !TANK_SPECS.leclerc.community) {
   };
 }
 // tank_models r3 QUARANTINE DELIST (same rule as the SHIP_USERDROP2_NEW gate
-// below + userdrops.js ariete/type74): the CC-BY-NC-SA bergman swaps for
+// below + the retired Ariete/Type 74 quarantine module): the CC-BY-NC-SA bergman swaps for
 // leo2a4/bmp2 fall back to their procedural modern2/modern3 builds — no
 // personal-use asset ships as a playable and no 'QUARANTINE' license line
 // reaches the player-facing panel.

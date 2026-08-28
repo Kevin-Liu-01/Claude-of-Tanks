@@ -49,7 +49,7 @@ LOCAL_REFERENCE_OVERRIDES exactly like ariete; never a shipped source).
 Skinned armature (Tower_9 yaw bone, Gun_7 pitch bone, wheels as bones);
 loader uses scaleToOverall because the barrel verts live in the skinned hull
 mesh. ROSTER NOTE: the type74 SPEC was delisted with the quarantined GLB
-(userdrops.js SHIP_QUARANTINE_USERDROPS=false) because it had "no procedural
+(the retired quarantine registry never shipped it) because it had "no procedural
 fallback"; the misc.js profile now registers the spec with an original
 procedural build (clean license), which is the substitution that delist
 comment asked for. Width-normalized (3.18) station readings: overall 9.09,

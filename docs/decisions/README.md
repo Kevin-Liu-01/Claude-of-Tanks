@@ -234,3 +234,4 @@ runtime documents remain authoritative for behavior.
 - [0222 — The German OTCO profile adapter is strict TypeScript](0222-typed-german-otco-profile.md)
 - [0223 — Procedural profile adapters share strict assembly contracts](0223-typed-procedural-profile-ports.md)
 - [0224 — Abrams concept registration has a truthful typed owner](0224-typed-abrams-concept-registration.md)
+- [0225 — Dead quarantine spec construction is not part of runtime](0225-retire-dead-quarantine-specs.md)
