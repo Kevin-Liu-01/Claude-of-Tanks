@@ -3,7 +3,7 @@ import { createTank } from '../tankFactory.js';
 
 const EPSILON = 1e-6;
 const CASES = Object.freeze({
-  t90: Object.freeze({ radius: 0.34, centerY: 0.33, footY: -0.01, minGap: 0.10 }),
+  t90: Object.freeze({ radius: 0.34, centerY: 0.435, footY: 0.095, minGap: 0.10 }),
   t90ms: Object.freeze({ radius: 0.34, centerY: 0.35, footY: 0.01, minGap: 0.108 }),
   t90m: Object.freeze({ radius: 0.31, centerY: 0.395, footY: 0.085, minGap: 0.04 }),
 });
@@ -38,8 +38,8 @@ for (const [id, expected] of Object.entries(CASES)) {
     if (id === 't90') {
       const attachment = hull.userData.t90AttachmentReceipt;
       assert.ok(attachment, 't90: exposes skirt and terminal-guard attachment receipt');
-      assert.ok(attachment.skirt.z0 <= receipt.sprocket.z - receipt.sprocket.r,
-        't90: skirt reaches behind the rear final-drive sprocket');
+      assert.ok(attachment.skirt.z0 > receipt.sprocket.z + receipt.sprocket.r,
+        't90: solid skirt stops ahead of the rear final-drive quarter');
       assert.ok(attachment.skirt.z1 >= receipt.idler.z + receipt.idler.r,
         't90: skirt reaches beyond the forward idler');
       assert.ok(attachment.skirt.yBot <= receipt.topY,
@@ -47,11 +47,16 @@ for (const [id, expected] of Object.entries(CASES)) {
       assert.ok(attachment.skirt.yTop >= 1.43,
         't90: skirt meets the upper fender course');
       assert.ok(attachment.skirt.height >= 0.60,
-        't90: full-length skirt retains the front ERA apron depth');
-      assert.equal(attachment.skirt.panels, 8,
-        't90: each side keeps an eight-panel full-length skirt course');
+        't90: remaining solid skirt retains the front ERA apron depth');
+      assert.equal(attachment.skirt.panels, 6,
+        't90: each side keeps a six-panel forward solid skirt course');
       assert.equal(attachment.skirt.sides, 2,
-        't90: full-length skirts are authored on both sides');
+        't90: solid skirts are authored on both sides');
+      assert.equal(attachment.skirt.rearQuarterReplacedByCage, true,
+        't90: rear quarter is explicitly replaced by the stand-off cage');
+      assert.ok(Math.abs((receipt.wheelY - receipt.wheelR)
+        - (receipt.botY + receipt.trackTh * 0.5)) <= EPSILON,
+      't90: road-wheel feet meet the lower-track upper face without clipping');
 
       const mg = tank.root.getObjectByName('fitting_pintleMG');
       assert.ok(mg, 't90: exposes the mounted NSVT fitting');

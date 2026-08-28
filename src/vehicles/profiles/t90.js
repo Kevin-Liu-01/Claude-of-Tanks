@@ -370,6 +370,102 @@ function addT90SMTurretFoundation(P, { position = [0, 1.40, 0.09] } = {}) {
   return { tw, f, b, h };
 }
 
+// Replace the aft quarter of a solid skirt with a real stand-off slat field.
+// The grid is authored as bolt-on external armor: it can defeat shaped-charge
+// jets without inflating the base hull hit shell, while paired buried brackets
+// make the visual load path into the fender explicit.  Each T-90 family member
+// supplies its own hull stations instead of inheriting Tagil's dimensions.
+function addT90RearQuarterSlatCage(P, {
+  variant,
+  originalSkirtRearZ,
+  originalSkirtFrontZ,
+  solidSkirtRearZ,
+  cageRearZ = originalSkirtRearZ,
+  cageFrontZ = solidSkirtRearZ + 0.08,
+  xInner,
+  xOuter,
+  yBottom,
+  yTop,
+  horizontalRails = 6,
+  verticalStiles = 7,
+  bracketStations = 4,
+}) {
+  const { box } = KIT;
+  const cageDepth = cageFrontZ - cageRearZ;
+  const cageHeight = yTop - yBottom;
+  const standoff = xOuter - xInner;
+  if (!(cageDepth > 0 && cageHeight > 0 && standoff > 0)) {
+    throw new Error(`${variant}: invalid rear-quarter slat-cage envelope`);
+  }
+  const cageCenterZ = (cageRearZ + cageFrontZ) * 0.5;
+  const cageCenterY = (yBottom + yTop) * 0.5;
+  const xMid = (xInner + xOuter) * 0.5;
+  const sector = `${variant}-rear-quarter-slat-cage`;
+
+  P.visualEraCluster(sector, 'hull', () => {
+    for (const s of [-1, 1]) {
+      // Full-length horizontal bars and close-spaced vertical stiles form the
+      // actual stand-off screen. End frames overlap the neighboring solid
+      // skirt and rear guard rather than ending as unsupported linework.
+      for (let i = 0; i < horizontalRails; i++) {
+        const y = yBottom + cageHeight * i / (horizontalRails - 1);
+        P.add('hull', box(0.044, 0.038, cageDepth), s * xOuter, y, cageCenterZ);
+      }
+      for (let i = 0; i < verticalStiles; i++) {
+        const z = cageRearZ + cageDepth * i / (verticalStiles - 1);
+        P.add('hull', box(0.048, cageHeight + 0.04, 0.042), s * xOuter, cageCenterY, z);
+      }
+
+      // Paired outboard stubs and inboard mounting posts describe the cage's
+      // stand-off load path without drawing a solid bar through the live shoe
+      // envelope.  Leaving the small service gap between them is deliberate:
+      // it keeps the open cage volume ventilated in plan view instead of
+      // partitioning it into false enclosed hull cells.
+      for (let i = 0; i < bracketStations; i++) {
+        const z = cageRearZ + cageDepth * (i + 0.5) / bracketStations;
+        const stubDepth = Math.min(0.065, standoff * 0.40);
+        for (const y of [yBottom + 0.09, yTop - 0.09]) {
+          P.add('hull', box(stubDepth, 0.052, 0.065),
+            s * (xOuter - stubDepth * 0.5), y, z);
+        }
+        P.add('hull', box(0.052, cageHeight * 0.62, 0.070),
+          s * xInner, cageCenterY, z);
+      }
+      P.add('hull', box(standoff + 0.08, 0.09, 0.11),
+        s * xMid, yTop - 0.035, cageFrontZ - 0.015);
+    }
+  });
+
+  const removedLength = solidSkirtRearZ - originalSkirtRearZ;
+  const originalLength = originalSkirtFrontZ - originalSkirtRearZ;
+  P.hullG.userData.t90RearQuarterCageReceipt = Object.freeze({
+    variant,
+    sector,
+    originalSkirtRearZ,
+    originalSkirtFrontZ,
+    solidSkirtRearZ,
+    cageZRange: Object.freeze([cageRearZ, cageFrontZ]),
+    cageYRange: Object.freeze([yBottom, yTop]),
+    xInner,
+    xOuter,
+    standoffM: standoff,
+    horizontalRails,
+    verticalStiles,
+    bracketStations,
+    sides: 2,
+    solidCageOverlapM: cageFrontZ - solidSkirtRearZ,
+    replacedFraction: removedLength / originalLength,
+    baseHullEnvelopeUnchanged: true,
+    attached: true,
+  });
+}
+
+function seatArmorOnHorizontalPlane(planeY, height, depth, pitch, embed = 0.012) {
+  const verticalHalfExtent = Math.abs(Math.cos(pitch)) * height * 0.5
+    + Math.abs(Math.sin(pitch)) * depth * 0.5;
+  return planeY + verticalHalfExtent - embed;
+}
+
 const T90A_ORIGINAL_TURRET_SEAT_Z_M = 0.12;
 const T90A_TURRET_SEAT_Z_M = 0.02;
 const T90A_TURRET_REARWARD_SHIFT_M = T90A_ORIGINAL_TURRET_SEAT_Z_M - T90A_TURRET_SEAT_Z_M;
@@ -1255,7 +1351,24 @@ function buildT90AVladimirLegacy(P) {
   // The asymmetric side heads at this station were part of that same fused
   // turret export.  Their turret-owned replacements are seated with the
   // rail frame below instead of remaining fixed above the fenders.
-  ruSkirtBand(P, { x: 1.78, z0: -4.00, z1: 1.70, yTop: 1.30, yBot: 0.78, lipY: 0.87, firstYBot: 0.78, firstLipY: 0.81, panels: 7 });
+  const vladimirSolidSkirt = Object.freeze({
+    x: 1.78, z0: -2.575, z1: 1.70, yTop: 1.30, yBot: 0.78,
+    lipY: 0.87, firstYBot: 0.78, firstLipY: 0.81, panels: 5,
+  });
+  ruSkirtBand(P, vladimirSolidSkirt);
+  addT90RearQuarterSlatCage(P, {
+    variant: 't90a_vladimir',
+    originalSkirtRearZ: -4.00,
+    originalSkirtFrontZ: 1.70,
+    solidSkirtRearZ: vladimirSolidSkirt.z0,
+    xInner: 1.80,
+    xOuter: 1.98,
+    yBottom: 0.73,
+    yTop: 1.30,
+    horizontalRails: 5,
+    verticalStiles: 7,
+    bracketStations: 4,
+  });
   // K-5 heavy course (rTAIL r13 re-decode): the ref outer course band is
   // TALLER and REARWARD of the r12 seat — AddOnWheel verts at x 1.82..1.89
   // span y 0.727..1.357 over z -0.52..+1.38 (plan cols ±1.868/1.895 read
@@ -3597,35 +3710,14 @@ function buildT90SMLegacy(P) {
   // mask dump.)
   // r11: band at 1.765 (faces 1.725/1.805) — the ref carries the 0.946..
   // 1.286 skirt band INTO the ±1.717 col family my 1.74-face missed.
-  ruSkirtBand(P, { x: 1.765, z0: -1.86, z1: 3.10, yTop: 1.24, yBot: 0.94, panels: 7, th: 0.08, lipYL: 0.985 });
+  ruSkirtBand(P, { x: 1.765, z0: -1.10, z1: 3.10, yTop: 1.24, yBot: 0.94, panels: 6, th: 0.08, lipYL: 0.985 });
   // bow skirt end-caps: standard-check found enclosed top-down cells at
   // (±1.7, z 3.02) between the lip-row end (3.00) and the flap (3.10) —
   // §B2 NO-HOLES caps close the ring.
   for (const s of [-1, 1]) P.add('hull', box(0.145, 0.34, 0.08), s * 1.7325, 1.11, 3.02);
-  // r10 DEEP REAR SKIRT SECTIONS (fresh front digest): the ref front flank
-  // band |x| 1.67..1.81 spans DOWN to 0.404-0.447 (left) / 0.404 (right at
-  // 1.77 only) where the shallow 0.94 band left 0.86-0.93 bottoms — rubber
-  // sections hang below the fixed band in the rear z-band only (side-safe:
-  // the track ramp is lower everywhere they live). Asymmetric per the print.
-  // r11 (probe): the panels' 1.745 inner face partial-lit the ±1.717/1.728
-  // cols the ref holds at 0.946 — sections live at [1.758, 1.813] where the
-  // ref's 0.404 band actually runs (both sides; the left adds the 1.665..
-  // 1.705 run for its 0.447@-1.674 col, right stays clear per ref 0.872).
-  for (let i = 0; i < 3; i++) {
-    P.add('hullRubber', box(0.055, 0.54, 0.33), -1.7855, 0.69, -1.52 - i * 0.36);
-    const zc = -1.52 - i * 0.36, z0 = zc - 0.165, z1 = zc + 0.165;
-    // T6SM-c: the right deep skirt has a rising outer hem in the recovered
-    // front print: 0.42 m at x=1.758, 0.58 m at x=1.813.  The old constant
-    // rectangle could match either the 1.77 or 1.81 column, never both.
-    P.add('hullRubber', orientedSlab(
-      [1.758, 0.42, z0], [1.813, 0.58, z0], [1.813, 0.58, z1], [1.758, 0.42, z1],
-      [1.758, 0.96, z0], [1.813, 0.96, z0], [1.813, 0.96, z1], [1.758, 0.96, z1],
-    ));
-  }
-  // T5H-b: the r11 packet's LEFT 1.665..1.705 inboard run (its 0.447 read
-  // at the -1.674 front col) was decoded but never authored — the col has
-  // been the top front item since. Left only (print asym).
-  P.add('hullRubber', box(0.030, 0.54, 0.33), -1.680, 0.69, -1.70);  // T5H-c: x -1.695..-1.665 — the first cut's -1.71 edge bled 12mm into the -1.717 window (whole-row err 0.281)
+  // The former deep rubber aft panels are deliberately absent: this is the
+  // quarter now occupied by the open stand-off cage, not a cage layered over
+  // an opaque second curtain.
   // rear corner mud flaps: ref plan rear -3.29..-3.35 at |x| 1.26..1.69
   // (t72bu fender-prong class), hung at the fender line so the side rack
   // band keeps its 1.0 raked floor.
@@ -3633,25 +3725,9 @@ function buildT90SMLegacy(P) {
     P.add('hullRubber', box(0.44, 0.19, 0.19), s * 1.475, 1.04, -3.055); // T5H-b/e: corner flaps rear -3.15 (teeter compromise); front -2.96 clear of the -2.905 shoe reach
     P.add('hull', box(0.05, 0.16, 0.16), s * 1.44, 1.10, -3.04);      // flap bracket onto the corner bin (§B2) — T5H-e: front -2.96 (the -2.72 front rode the sprocket-wrap shoe envelope: exact-audit rear blind-spot 24 vox, band 0; §B4 shoe bar). Still bridges flap (-3.15..-2.93) onto bin (-3.15..-2.91).
   }
-  // r11 (probe): the ref's 0.585 deep band spans x 1.81..1.87 with only a
-  // 0.893..0.936 sliver at 1.898 — the old 1.86..1.91 full-height panels
-  // painted the ±1.898 col 0.3 deep. Main course pulled to [1.81, 1.868]
-  // (left runs to 1.888 — ref 0.574@-1.887, print skew) under a thin outer
-  // lip at the 1.91 width line; dark seams ride the main face.
-  for (const s of [-1, 1]) {
-    // r12 PROBE-FRAME TRUE-UP (§D): the outer lip's 1.910 extent was the
-    // widest authored face — the harness width-normalization scaled EVERY
-    // authored coordinate ×0.9895, landing all the r11-decoded seats 1%
-    // inboard/short (the ±1.64 ground cols lit 4.7mm of their windows; the
-    // muzzle sat 6.135). Lip pulled to 1.883 so the 1.890 widthAnchor
-    // defines the width line: scale 1.0, authored = world.
-    for (let i = 0; i < 4; i++) {
-      P.add('hull', box(s < 0 ? 0.078 : 0.058, 0.35, 0.44), s * (s < 0 ? 1.849 : 1.839), 0.765, -2.55 + i * 0.47);
-      P.add('hull', box(0.042, 0.05, 0.44), s * 1.868, 0.915, -2.55 + i * 0.47);
-      P.add('hull', box(s < 0 ? 0.058 : 0.037, 0.37, 0.44), s * (s < 0 ? 1.859 : 1.8485), 1.125, -2.55 + i * 0.47);  // T5H-c: LEFT face 1.888 (ref -1.887 col band 0.574..1.308), RIGHT stays 1.867 (ref +1.898 is the bare 0.893..0.936 sliver — the symmetric extension painted it 1.308, err 0.197; print skew)
-      P.add('hullDark', box(0.04, 0.30, 0.03), s * 1.845, 0.765, -2.32 + i * 0.47);
-    }
-  }
+  // The former solid outer aft course is likewise removed; the replacement
+  // cage is installed after the owner finish so no later skirt pass can fill
+  // the open cells again.
 
   // ---- WELDED turret: faceted prism + squared removable bustle ----
   // r6: prism roof shaved to the ref's 1.99 face-roof line; the 2.24-2.26
@@ -4255,7 +4331,10 @@ function buildT90(P) {
     // Keep each wheel distinct at the fixed 780 mm cadence.  The former
     // 520 mm radius made adjacent tires overlap by 260 mm.  A 340 mm radius
     // leaves 100 mm of daylight while preserving the loaded -10 mm foot.
-    style: 'rubber', wheelR: 0.34, wheelW: 0.22, wheelY: 0.33, xc: 1.395, dishR: 0.74,
+    // Lift the RU-417 road-wheel axles until the loaded tire feet meet the
+    // upper face of the 90 mm track course. The former 0.33 m seat buried
+    // 105 mm of every tire through the lower run and caused visible z-fight.
+    style: 'rubber', wheelR: 0.34, wheelW: 0.22, wheelY: 0.435, xc: 1.395, dishR: 0.74,
     wheelZs: [-1.90, -1.12, -0.34, 0.44, 1.22, 2.00],
     // Seat the final drive under the rear transom instead of crowding the
     // last road wheel. Its 299 mm radius is exactly thirty percent larger
@@ -4296,15 +4375,27 @@ function buildT90(P) {
   }
   });
   widthAnchor(P, 1.89, 0.95, 0.46);
-  // Continuous full-depth skirt course from the rear guard into the forward
-  // guard. Match the 0.60 m front ERA apron vertically so the eight-panel run
-  // protects the complete track shoulder instead of collapsing to a thin
-  // fender strip behind the three forward blocks.
+  // The solid curtain now stops at the rear-quarter break. A variant-sized
+  // stand-off cage below replaces the removed aft panels instead of being
+  // layered over a still-contiguous skirt.
   const t90SkirtCourse = Object.freeze({
-    x: 1.7675, th: 0.036, z0: -3.10, z1: 3.40,
-    yTop: 1.44, yBot: 0.82, panels: 8, lipX: 1.755,
+    x: 1.7675, th: 0.036, z0: -1.48, z1: 3.40,
+    yTop: 1.44, yBot: 0.82, panels: 6, lipX: 1.755,
   });
   ruSkirtBand(P, t90SkirtCourse);
+  addT90RearQuarterSlatCage(P, {
+    variant: 't90',
+    originalSkirtRearZ: -3.10,
+    originalSkirtFrontZ: 3.40,
+    solidSkirtRearZ: t90SkirtCourse.z0,
+    xInner: 1.74,
+    xOuter: 1.98,
+    yBottom: 0.76,
+    yTop: 1.43,
+    horizontalRails: 6,
+    verticalStiles: 7,
+    bracketStations: 4,
+  });
   for (const s of [-1, 1]) {
     const side = s < 0 ? 'left' : 'right';
     // Keep the established lower edges, but carry each rubber sheet upward
@@ -4327,6 +4418,7 @@ function buildT90(P) {
       height: t90SkirtCourse.yTop - t90SkirtCourse.yBot,
       panels: t90SkirtCourse.panels,
       sides: 2,
+      rearQuarterReplacedByCage: true,
     }),
     guardLabels: Object.freeze([
       't90-rear-mudguard-left', 't90-rear-mudguard-right',
@@ -4554,6 +4646,7 @@ function finishT90BaseAuthored(P) {
   // shoulder.  Their inboard shoes are deliberately broad and deeply buried;
   // the visible faces follow the casting's aft falloff instead of forming a
   // small level belt across the middle of the turret.
+  P.visualEraCluster('t90-k5-turret-flank-era', 'turret', () => {
   for (const s of [-1, 1]) {
     for (const [x, y, z, yaw, roll, w, h, d] of [
       [1.48, 0.31,  0.02,  0.22, -0.22, 0.38, 0.20, 0.36],
@@ -4581,6 +4674,7 @@ function finishT90BaseAuthored(P) {
     }
 
   }
+  });
 
   // Two unequal radio stations, both short enough to preserve the source's
   // low skyline and both entering broad collars on the rear crown.
@@ -4764,7 +4858,7 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
   P.turretG.clear();
   P.turretG.add(P.gunG);
   P.clear(
-    'turret', 'turretDetail', 'turretDark', 'turretCloth', 'turretGlass', 'turretTrack',
+    'turret', 'turretExternalArmor', 'turretDetail', 'turretDark', 'turretCloth', 'turretGlass', 'turretTrack',
     'gun', 'gunDark', 'gunMount', 'gunMountDark',
   );
   // Seat the cast ring on the deck instead of burying its lower 10 cm into
@@ -4836,75 +4930,85 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
   // blanket.  Split, angled plates preserve the modular seams and leave the
   // hatch/sight foundations clear.
   const burlakCrownDrop = burlakBase ? 0.090 : 0;
-  for (const [x, y, z, w, d, yaw, roll] of [
-    [-0.28, 0.742, 0.19, 0.46, 0.52, -0.07, -0.06],
-    [0.27, 0.746, 0.17, 0.44, 0.50, 0.08, 0.05],
-    [-0.74, 0.704, 0.02, 0.43, 0.52, -0.14, -0.09],
-    [0.73, 0.708, 0.00, 0.42, 0.50, 0.13, 0.08],
-    [-0.43, 0.704, -0.42, 0.46, 0.40, -0.05, -0.04],
-    [0.45, 0.704, -0.44, 0.44, 0.39, 0.06, 0.04],
-  ]) {
-    const seatedY = y - burlakCrownDrop;
-    P.add('turret', box(w, 0.052, d), x, seatedY, z, -0.05, yaw, roll);
-    P.add('turretDark', box(w * 0.78, 0.010, d * 0.72), x, seatedY + 0.031, z, -0.05, yaw, roll);
-  }
-
-  // K-5 clamshell: seven planted cassettes per side follow the new casting's
-  // mantlet-to-flank curve.  Sizes and pitch change at every station; a
-  // smaller scheme-colored shoe sits underneath each cassette and sinks into
-  // the cast face, so the heavy fan reads supported rather than pasted on.
-  for (const s of [-1, 1]) {
-    for (const [x, y, z, yaw, roll, w, h, d] of [
-      [0.28, 0.36, 1.30, 0.18, -0.50, 0.30, 0.21, 0.36],
-      [0.49, 0.41, 1.17, 0.32, -0.52, 0.36, 0.25, 0.42],
-      [0.73, 0.42, 1.01, 0.44, -0.48, 0.41, 0.27, 0.44],
-      [0.98, 0.41, 0.82, 0.57, -0.44, 0.44, 0.27, 0.43],
-      [1.21, 0.38, 0.60, 0.67, -0.39, 0.43, 0.26, 0.41],
-      [1.39, 0.34, 0.35, 0.51, -0.32, 0.40, 0.23, 0.37],
-      [1.53, 0.30, 0.09, 0.28, -0.25, 0.34, 0.20, 0.33],
+  const armorSeatPlaneY = burlakBase ? 0.325 : 0.30;
+  const armorEmbedM = 0.012;
+  const armorFanSeats = [];
+  P.visualEraCluster('t90-k5-turret-era', 'turret', () => {
+    for (const [x, y, z, w, d, yaw, roll] of [
+      [-0.28, 0.742, 0.19, 0.46, 0.52, -0.07, -0.06],
+      [0.27, 0.746, 0.17, 0.44, 0.50, 0.08, 0.05],
+      [-0.74, 0.704, 0.02, 0.43, 0.52, -0.14, -0.09],
+      [0.73, 0.708, 0.00, 0.42, 0.50, 0.13, 0.08],
+      [-0.43, 0.704, -0.42, 0.46, 0.40, -0.05, -0.04],
+      [0.45, 0.704, -0.44, 0.44, 0.39, 0.06, 0.04],
     ]) {
-      const seatedY = y - frontArmorDrop;
-      const seatedZ = z + frontPackageForward;
-      P.add('turret', KIT.xform(box(w * 0.82, h * 0.58, d * 0.76), 0, -h * 0.20, -0.09), s * (x - 0.035), seatedY, seatedZ, roll, -s * yaw, 0);
-      P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.055), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.70), 0, h * 0.52, 0.040), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(0.018, h * 0.76, d * 0.64), w * 0.44, 0, 0.035), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
+      const seatedY = y - burlakCrownDrop;
+      P.add('turret', box(w, 0.052, d), x, seatedY, z, -0.05, yaw, roll);
+      P.add('turretDark', box(w * 0.78, 0.010, d * 0.72), x, seatedY + 0.031, z, -0.05, yaw, roll);
     }
-    P.add('turret', box(0.18, 0.24, 0.52), s * 1.16, 0.27 - frontArmorDrop, 0.19 + frontPackageForward, 0, 0, -s * 0.18);
-  }
-  if (burlakBase) {
-    // The clipped shell exposes a broader, flatter cheek than the earlier
-    // cast loft.  A second unequal inner stagger carries the heavy K-5 fan
-    // down into that face, so the modules read as planted armor instead of a
-    // single crown comb inherited from the discarded dome.
+
+    // K-5 clamshell: every cassette is solved from the selected 0.325 m
+    // turret shoulder plane. Its rotated lower extent enters that plane by
+    // only 12 mm, eliminating the old deep intersection while preserving the
+    // authored fan angles and plan positions.
     for (const s of [-1, 1]) {
-      for (const [x, y, z, yaw, roll, w, h, d] of [
-        [0.34, 0.31, 1.13, 0.24, -0.39, 0.29, 0.18, 0.31],
-        [0.61, 0.34, 0.92, 0.38, -0.35, 0.33, 0.19, 0.34],
-        [0.91, 0.34, 0.67, 0.54, -0.30, 0.36, 0.19, 0.35],
-        [1.18, 0.31, 0.39, 0.66, -0.24, 0.34, 0.18, 0.32],
+      for (const [x, _oldY, z, yaw, roll, w, h, d] of [
+        [0.28, 0.36, 1.30, 0.18, -0.50, 0.30, 0.21, 0.36],
+        [0.49, 0.41, 1.17, 0.32, -0.52, 0.36, 0.25, 0.42],
+        [0.73, 0.42, 1.01, 0.44, -0.48, 0.41, 0.27, 0.44],
+        [0.98, 0.41, 0.82, 0.57, -0.44, 0.44, 0.27, 0.43],
+        [1.21, 0.38, 0.60, 0.67, -0.39, 0.43, 0.26, 0.41],
+        [1.39, 0.34, 0.35, 0.51, -0.32, 0.40, 0.23, 0.37],
+        [1.53, 0.30, 0.09, 0.28, -0.25, 0.34, 0.20, 0.33],
       ]) {
-        const seatedY = y - frontArmorDrop;
+        const seatedY = burlakBase
+          ? seatArmorOnHorizontalPlane(armorSeatPlaneY, h, d, roll, armorEmbedM)
+          : _oldY - frontArmorDrop;
         const seatedZ = z + frontPackageForward;
-        P.add('turret', KIT.xform(box(w * 0.80, h * 0.52, d * 0.70), 0, -h * 0.24, -0.085), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
-        P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.050), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
-        P.add('turretDark', KIT.xform(box(w * 0.68, 0.010, d * 0.62), 0, h * 0.52, 0.030), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
+        armorFanSeats.push(Object.freeze({ side: s, x: s * x, y: seatedY, z: seatedZ, pitch: roll, width: w, height: h, depth: d }));
+        P.add('turret', KIT.xform(box(w * 0.82, h * 0.58, d * 0.76), 0, -h * 0.20, -0.09), s * (x - 0.035), seatedY, seatedZ, roll, -s * yaw, 0);
+        P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.055), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
+        P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.70), 0, h * 0.52, 0.040), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
+        P.add('turretDark', KIT.xform(box(0.018, h * 0.76, d * 0.64), w * 0.44, 0, 0.035), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
+      }
+      P.add('turret', box(0.18, 0.24, 0.52), s * 1.16, 0.27 - frontArmorDrop, 0.19 + frontPackageForward, 0, 0, -s * 0.18);
+    }
+    if (burlakBase) {
+      // A second stagger uses the same seating equation, so its lower faces
+      // cannot phase through the shared shoulder plate either.
+      for (const s of [-1, 1]) {
+        for (const [x, _oldY, z, yaw, roll, w, h, d] of [
+          [0.34, 0.31, 1.13, 0.24, -0.39, 0.29, 0.18, 0.31],
+          [0.61, 0.34, 0.92, 0.38, -0.35, 0.33, 0.19, 0.34],
+          [0.91, 0.34, 0.67, 0.54, -0.30, 0.36, 0.19, 0.35],
+          [1.18, 0.31, 0.39, 0.66, -0.24, 0.34, 0.18, 0.32],
+        ]) {
+          const seatedY = seatArmorOnHorizontalPlane(armorSeatPlaneY, h, d, roll, armorEmbedM);
+          const seatedZ = z + frontPackageForward;
+          armorFanSeats.push(Object.freeze({ side: s, x: s * x, y: seatedY, z: seatedZ, pitch: roll, width: w, height: h, depth: d }));
+          P.add('turret', KIT.xform(box(w * 0.80, h * 0.52, d * 0.70), 0, -h * 0.24, -0.085), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
+          P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.050), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
+          P.add('turretDark', KIT.xform(box(w * 0.68, 0.010, d * 0.62), 0, h * 0.52, 0.030), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
+        }
       }
     }
-  }
+  });
   P.add('turretDark', box(0.54, 0.30, 0.055), 0, 0.39 + frontPackageLift, 1.29 + frontPackageForward, -0.40, 0, 0);
   // The compact first pass left the OTShU heads looking like indicator lamps
   // on the larger cheek face. Restore their visual authority and bury the
   // housings into the mantlet shoulders; the apertures remain inside armor.
+  const shtoraEyeScale = burlakBase ? 1.55 : 1.28;
+  const shtoraEyeX = burlakBase ? 0.78 : 0.57;
+  const shtoraCenterY = 0.48 - shtoraDrop;
   ruShtora(P, {
     rings, sz: 0.72, eyeKit: true, eyeRound: true,
     // The plain T-90 uses the owner's larger twin dazzler signature on the
     // exact Burlak shoulder; sibling T-90A/Vladimir variants keep their
     // already-approved proportions.
-    eyeScale: burlakBase ? 1.55 : 1.28,
-    eyeX: burlakBase ? 0.60 : 0.57,
+    eyeScale: shtoraEyeScale,
+    eyeX: shtoraEyeX,
     eyeZ: 1.24 + frontPackageForward,
-  }, 0.48 - shtoraDrop);
+  }, shtoraCenterY);
   if (!vladimir) {
     if (P._shtoraRed) {
       P._shtoraRed.color.setHex(0x35120c);
@@ -4917,11 +5021,29 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
       P.add('turret', orientedSlab(
         [-0.17, -0.15, -0.11], [0.17, -0.15, -0.11], [0.17, -0.15, 0.11], [-0.17, -0.15, 0.11],
         [-0.13, 0.15, -0.09], [0.13, 0.15, -0.09], [0.13, 0.15, 0.09], [-0.13, 0.15, 0.09],
-      ), s * 0.55, 0.47 - shtoraDrop, 1.13 + frontPackageForward, -0.30, -s * 0.15, 0);
+      ), s * (shtoraEyeX - 0.06), 0.47 - shtoraDrop, 1.13 + frontPackageForward, -0.30, -s * 0.15, 0);
       P.add('turret', KIT.xform(box(0.34, 0.23, 0.42), 0, 0, -0.09), s * 0.30, 0.34 - shtoraDrop, 1.20 + frontPackageForward, -0.38, -s * 0.23, 0);
-      P.add('turret', KIT.xform(box(0.21, 0.20, 0.34), 0, -0.015, -0.06), s * 0.76, 0.38 - shtoraDrop, 1.05 + frontPackageForward, -0.28, -s * 0.34, 0);
-      P.add('turretDark', box(0.034, 0.22, 0.19), s * 0.75, 0.45 - shtoraDrop, 1.16 + frontPackageForward, -0.20, -s * 0.30, 0);
+      P.add('turret', KIT.xform(box(0.21, 0.20, 0.34), 0, -0.015, -0.06), s * (shtoraEyeX + 0.10), 0.38 - shtoraDrop, 1.05 + frontPackageForward, -0.28, -s * 0.34, 0);
+      P.add('turretDark', box(0.034, 0.22, 0.19), s * (shtoraEyeX + 0.09), 0.45 - shtoraDrop, 1.16 + frontPackageForward, -0.20, -s * 0.30, 0);
     }
+  }
+  if (burlakBase) {
+    const shtoraInnerEdgeX = shtoraEyeX - 0.12 * shtoraEyeScale;
+    const mantletHalfWidthM = 0.54;
+    P.turretG.userData.t90TurretProtectionFitReceipt = Object.freeze({
+      supersededExternalEraCleared: true,
+      canonicalEraSector: 't90-k5-turret-era',
+      armorSeatPlaneY,
+      armorEmbedM,
+      fanSeats: Object.freeze(armorFanSeats),
+      shtoraEyeX,
+      shtoraEyeScale,
+      shtoraCenterY,
+      shtoraInnerEdgeX,
+      mantletHalfWidthM,
+      mantletClearanceM: shtoraInnerEdgeX - mantletHalfWidthM,
+      shtoraClearsMantlet: shtoraInnerEdgeX > mantletHalfWidthM,
+    });
   }
 
   // Shoulder-mounted 902B banks, seated on solid armor shoes.
@@ -5622,7 +5744,7 @@ function finishT90SMOwnerRedesign(P) {
   // rectangular plates above a fully exposed wheel course. These thin
   // inboard leaves overlap the existing upper skirt band and remain clear of
   // the native animated shoes.
-  const z0 = -2.50, z1 = 2.75, panels = 7, dz = (z1 - z0) / panels;
+  const z0 = -1.10, z1 = 2.75, panels = 5, dz = (z1 - z0) / panels;
   for (const s of [-1, 1]) {
     // Inboard of the recovered outer skirt lip: side cameras retain the
     // full scallop, while front cameras correctly see the shallow outer
@@ -5685,6 +5807,20 @@ function buildT90SM(P) {
   // their ownership/seating in place rather than replacing them with a
   // sparse modern-family proxy.
   finishT90SMOwnerRedesign(P);
+  addT90RearQuarterSlatCage(P, {
+    variant: 't90sm',
+    originalSkirtRearZ: -2.50,
+    originalSkirtFrontZ: 3.10,
+    solidSkirtRearZ: -1.10,
+    cageRearZ: -2.72,
+    xInner: 1.68,
+    xOuter: 1.85,
+    yBottom: 0.60,
+    yTop: 1.24,
+    horizontalRails: 6,
+    verticalStiles: 7,
+    bracketStations: 4,
+  });
   // T6SM-d: narrow longitudinal belly-edge channels reproduce the recovered
   // front-view drop at |x|=1.13.  They lap the 0.44-m loft floor, remain
   // 6 mm inboard of the track lane, and are invisible in side/plan bounds.
