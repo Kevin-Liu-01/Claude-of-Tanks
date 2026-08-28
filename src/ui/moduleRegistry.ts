@@ -7,7 +7,7 @@
 // The SIM truth lives elsewhere and is deliberately not re-exported here:
 //   - module HP / save-throw / fire tables + state machine: src/sim/damage.ts
 //   - module state broadcasts: the 'module:state' bus event
-//     ({ id, module, state }) emitted by game/state.js — audio, HUD and
+//     ({ id, module, state }) emitted by game/state.ts — audio, HUD and
 //     killcam all subscribe to that one channel.
 
 import { MODULE_LABEL as CATALOG_MODULE_LABEL } from '../sim/moduleCatalog.ts';

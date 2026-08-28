@@ -308,7 +308,7 @@ const RMB_MODES: readonly RmbMode[] = ['hold', 'toggle', 'freelook']; // gunnery
 /**
  * AI difficulty persisted with the other gameplay settings (cot.settings.v1,
  * editable in the settings panel's GAMEPLAY tab). Pure localStorage read — no
- * input instance needed, so game/state.js can call it at battle setup.
+ * input instance needed, so game/state.ts can call it at battle setup.
  * @returns {'easy'|'normal'|'hard'}
  */
 export function getStoredDifficulty() {

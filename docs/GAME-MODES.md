@@ -30,7 +30,7 @@ entities, a seed, terrain height, and explicit hooks for revival, visibility,
 and events. It advances only from the caller's fixed 1/60-second step and does
 not import the DOM, Three.js, transport code, wall clock, or `Math.random()`.
 
-Solo composes the controller in `src/game/state.js`. Private and LAN authority
+Solo composes the controller in `src/game/state.ts`. Private and LAN authority
 compose the same controller through `src/sim/authoritativeMatch.ts`. The room's
 canonical `gameMode` is selected by the host, serialized with lobby state, and
 handed into every rematch. Clients receive viewer-specific mode presentation

@@ -5,7 +5,7 @@ const battleVisualStreamer = await readFile(
   new URL('../game/battleVisualStreamer.ts', import.meta.url), 'utf8',
 );
 const post = await readFile(new URL('../engine/post.js', import.meta.url), 'utf8');
-const state = await readFile(new URL('../game/state.js', import.meta.url), 'utf8');
+const state = await readFile(new URL('../game/state.ts', import.meta.url), 'utf8');
 const particles = await readFile(new URL('./particles.js', import.meta.url), 'utf8');
 const battleWarm = await readFile(new URL('../game/battleWarmRuntime.ts', import.meta.url), 'utf8');
 const combatWarmCoordinator = await readFile(

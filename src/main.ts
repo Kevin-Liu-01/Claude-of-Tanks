@@ -1251,7 +1251,7 @@ const sniperFill = createSniperFillRuntime(scene, camera, legacyPort(rig));
 
 // --- KILL-CAM (src/game/killcam.js) -----------------------------------------
 // End-of-battle cinematic: slow-mo tracer replay of the killing shell + x-ray
-// module breakdown. Capture hooks live in the KILL-CAM sections of state.js
+// module breakdown. Capture hooks live in the KILL-CAM sections of state.ts
 // (game.killcam); the camera is driven only via rig.setExternalPose.
 const killcamAccess = createKillcamAccess({
   loadModule: async () => legacyPort<{ createKillCam: (...args: unknown[]) => MainKillcamRuntime }>(

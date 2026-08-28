@@ -150,6 +150,11 @@ Garage-order policy is also typed and remains directly Node-testable.
 The browser input layer now exports strict action, binding, settings, gamepad,
 touch-vector, and pointer-lock contracts; persisted JSON is narrowed before it
 can affect a live control state.
+The demand-loaded solo authority is strict TypeScript as well: inactive pooled
+roster records and active simulation entities are separate types, while world,
+collision, AI, shell, match-mode, event, and camera seams are explicit. This
+keeps combat out of first-paint evaluation without leaving the fixed-step owner
+unchecked.
 Module/crew vocabulary, technical dossiers, hit formatting, shot-diagram
 projection, and reconnect diagnostics now expose strict contracts to their
 legacy renderers as the migration boundary advances inward.

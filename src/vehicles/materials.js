@@ -3559,7 +3559,7 @@ export function getMultiplayerCamoSelection(specId) {
 // BOT BIOME CAMO (camo_spotting r5): runtime per-spec pattern overrides.
 // AI roster tanks kept factory green on snow/dunes while the player's AUTO
 // paint matched the biome — fields of parade-green bots flagged the maps as
-// artificial (critic minor). state.js setupBattle rolls a per-battle chance
+// artificial (critic minor). state.ts setupBattle rolls a per-battle chance
 // per NON-PLAYER participant and points its spec here (usually at 'auto',
 // which tracks the active biome); the garage picker and localStorage are
 // untouched, so the player's own selections never see these. The player's
@@ -3635,7 +3635,7 @@ const PATTERN_SEASON = {
 
 /**
  * True when the tank's resolved pattern MATCHES the active battlefield biome
- * (spotting camo paint bonus — state.js getCamoBonus consumes this).
+ * (spotting camo paint bonus — state.ts getCamoBonus consumes this).
  * camo_spotting r3: WoT grants the paint bonus only when the camo season
  * matches the map type — that is what makes AUTO strategically meaningful.
  * AUTO always qualifies: it resolves to a member of the

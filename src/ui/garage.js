@@ -892,7 +892,7 @@ export function createGarage(opts) {
   }
   // --- EQUIPMENT SYSTEM: slot boxes on the stats card + item picker --------
   // Catalog/persistence/era-gating live in game/equipment.ts (localStorage
-  // `cot.equip.<specId>`, read battle-side by game/state.js at spawn). The
+  // `cot.equip.<specId>`, read battle-side by game/state.ts at spawn). The
   // three slot boxes are rendered INTO the stats card by renderStats (the
   // card rebuilds its innerHTML per vehicle), so slot clicks are delegated
   // from statsEl here; the picker is a side panel anchored next to the card.

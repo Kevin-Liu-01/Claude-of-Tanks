@@ -1277,7 +1277,7 @@ export function initHud(bus) {
   const alertCopyEl = el('span', 'cot-alert-copy', alertEl);
 
   // ========================= SPOTTING SECTION ===============================
-  // Sixth-sense lamp: 'player:spotted' (src/game/state.js spotting wiring)
+  // Sixth-sense lamp: 'player:spotted' (src/game/state.ts spotting wiring)
   // arms a 3 s fuse; when it burns down the bulb lights for 8 s with a short
   // synthesized two-tone sting. Battle restarts reset the lamp (sim clock
   // restarts at 0).

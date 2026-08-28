@@ -1,7 +1,7 @@
 /**
  * killcam.js — War Thunder-class kill camera (integration-owned module).
  *
- * CAPTURE: state.js calls `game.killcam.recordSimStep(game)` every fixed step
+ * CAPTURE: state.ts calls `game.killcam.recordSimStep(game)` every fixed step
  * (shell trajectory points) and `game.killcam.onShellHit(ev, target)` for every
  * resolved HitEvent (clearly-marked KILL-CAM sections there). Everything shown
  * during a replay comes from those snapshots — shooter/target poses, the full
@@ -987,7 +987,7 @@ export function createKillCam(deps) {
     },
 
     /**
-     * Called by state.js once per fixed sim step: append live shell positions
+     * Called by state.ts once per fixed sim step: append live shell positions
      * to their trajectory traces (KILL-CAM capture hook).
      * @param {object} game game state ({shells})
      */
@@ -1009,7 +1009,7 @@ export function createKillCam(deps) {
     },
 
     /**
-     * Called by state.js for every resolved HitEvent (KILL-CAM capture hook).
+     * Called by state.ts for every resolved HitEvent (KILL-CAM capture hook).
      * Snapshots lethal chains for the player-death and victory replays.
      * @param {object} ev enriched HitEvent @param {?object} target TankEntity
      */
@@ -1224,7 +1224,7 @@ export function createKillCam(deps) {
     staged = false;
     lastBeginWallMs = performance.now();
     // REPORT GATE (r6 critical): announce that the replay owns the screen.
-    // state.js emits battle:ended in the same JS task begin() runs in, and
+    // state.ts emits battle:ended in the same JS task begin() runs in, and
     // shotInfo.js used to render its full-screen battle report on that event
     // immediately — the z-71 DEFEAT panel buried the still-playing z-60
     // flight + x-ray hold. shotInfo now BUFFERS the report while a replay is
@@ -1755,7 +1755,7 @@ export function createKillCam(deps) {
 
   // ---------------------------------------------------------------------------
   // WRECK HOLD (killcam r2) — live-action opening on the player's own fresh
-  // wreck: the REAL destruction (state.js setDestroyed + the tank:destroyed
+  // wreck: the REAL destruction (state.ts setDestroyed + the tank:destroyed
   // fx/audio that fired this same tick) plays at full rate while the camera
   // eases from the death view onto a slow orbit. The sim/visual sync loop is
   // frozen during replays, so the killcam advances the victim's pop/burn
@@ -3295,7 +3295,7 @@ export function createKillCam(deps) {
       d.killer.name.textContent = kName;
       const tier = ev.attackerSpecId ? tierNumeral(ev.attackerSpecId) : '';
       // vehicle line never repeats the headline: attackerName usually IS the
-      // vehicle (state.js enrichment) — then the line carries the tier alone
+      // vehicle (state.ts enrichment) — then the line carries the tier alone
       const vehBits = [];
       if (tier) vehBits.push(`Tier ${tier}`);
       if (vSpec && !kName.toLowerCase().includes(vSpec.name.toLowerCase())) vehBits.push(vSpec.name);

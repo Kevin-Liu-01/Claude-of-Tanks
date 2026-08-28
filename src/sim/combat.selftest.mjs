@@ -912,7 +912,7 @@ function mkShell(shellSpec, distM = 100) {
 }
 
 // ----------------- red modules stay red for the full repair duration -------
-// repairT is a COUNT-UP accumulator (LOCKED, shared with game/state.js
+// repairT is a COUNT-UP accumulator (LOCKED, shared with game/state.ts
 // tickRepairs: `m.repairT += dt; if (m.repairT >= 10) → yellow`). A fresh red
 // must start at 0 so the module stays red for ~10 s of simulated ticks.
 {
@@ -927,7 +927,7 @@ function mkShell(shellSpec, distM = 100) {
   assert(m.state === 'red', `track destroyed ⇒ red (got ${m.state})`);
   near(m.repairT, 0, 1e-9, 'fresh red arms repairT at 0 (count-up)');
 
-  // Replicate the game-loop repair ticker exactly (game/state.js).
+  // Replicate the game-loop repair ticker exactly (game/state.ts).
   const dt = 1 / 60;
   const MODULE_REPAIR_S = 10;
   let repairedAtS = -1;
@@ -1285,7 +1285,7 @@ function mkShell(shellSpec, distM = 100) {
   }
   assert(threw, 'unknown shell type raises a clear error');
 
-  // isHeClass is the LOCKED game-loop routing predicate (game/state.js must
+  // isHeClass is the LOCKED game-loop routing predicate (game/state.ts must
   // burst-resolve any type where this is true — string-comparing 'HE' would
   // leave HESH detonating nowhere and splashing no one).
   assert(isHeClass('HE') === true, 'isHeClass: HE routes to burst resolution');

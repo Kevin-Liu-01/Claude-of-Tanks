@@ -465,7 +465,7 @@ function wouldRicochet(
 /**
  * Update a module's yellow/red state after an HP change; arms the auto-repair
  * timer on a fresh red. `repairT` is a COUNT-UP accumulator (LOCKED
- * convention, shared with game/state.js tickRepairs): it starts at 0 when the
+ * convention, shared with game/state.ts tickRepairs): it starts at 0 when the
  * module goes red and the repair loop adds dt until it reaches REPAIR_S — so a
  * red module stays red for the full repair duration.
  * @param {object} m module record {hp,maxHp,state,repairT}
@@ -1760,7 +1760,7 @@ export function tickFire(
  * Advance red-module auto-repairs one tick (armor doc §9; ARCHITECTURE §2.4
  * locked: a red module self-repairs to YELLOW at 50% HP after REPAIR_S).
  * This is the one module state transition that used to live outside this
- * file — game/state.js hand-rolled the red→yellow flip next to a duplicate
+ * file — game/state.ts hand-rolled the red→yellow flip next to a duplicate
  * of REPAIR_S (module_hitbox r1 consolidation). The toolbox equipment
  * multiplies the count-up RATE (equipMults.repair, default 1): ×1.25 turns
  * yellow at 8 s while the §2.4 duration stays the unequipped baseline.

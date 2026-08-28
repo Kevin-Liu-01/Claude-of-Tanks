@@ -7,7 +7,7 @@
 // bind Escape itself; right-click a chip to clear it. Conflicts highlight both
 // rows and offer a swap. GAMEPLAY tab: mouse sensitivity, sniper sensitivity,
 // aim smoothing (0 % = raw 1:1 input), invert-Y, AI difficulty (easy/normal/
-// hard segmented picker — consumed by game/state.js via getStoredDifficulty at
+// hard segmented picker — consumed by game/state.ts via getStoredDifficulty at
 // battle setup), controller aim sensitivity — each slider is paired with a
 // numeric entry field. SOUND tab: master/engine/gunfire/ambience/UI volume
 // sliders (persisted with the gameplay settings; broadcast live over the bus

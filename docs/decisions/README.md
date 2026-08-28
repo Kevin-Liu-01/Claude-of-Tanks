@@ -190,3 +190,4 @@ runtime documents remain authoritative for behavior.
 - [0178 — The complete signaling deployment closure is strict TypeScript](0178-typed-signaling-deployment.md)
 - [0179 — The application composition root is strict TypeScript](0179-typed-application-composition-root.md)
 - [0180 — Browser action input is strict TypeScript](0180-typed-browser-action-input.md)
+- [0181 — Solo battle authority is strict TypeScript](0181-typed-solo-battle-authority.md)

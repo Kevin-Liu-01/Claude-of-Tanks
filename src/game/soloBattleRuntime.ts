@@ -8,4 +8,4 @@ export {
   prepareNextOpeningRoute,
   setupBattle,
   simStep,
-} from './state.js';
+} from './state.ts';

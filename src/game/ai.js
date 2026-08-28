@@ -132,7 +132,7 @@ const BURST_RETREAT_WINDOW_S = 4;
 // Shared fire-discipline constants. Both teams run the same controller and
 // therefore obey the same corridor, moving-friendly prediction and HE splash
 // rules. The authoritative simulation repeats this check immediately before
-// spawning a bot shell (state.js), so a stale controller decision cannot hit
+// spawning a bot shell (state.ts), so a stale controller decision cannot hit
 // a teammate that crossed the muzzle between AI and fire phases.
 const FRIENDLY_CORRIDOR_PAD_M = 1.25;
 const FRIENDLY_HE_PAD_M = 1.5;
@@ -186,7 +186,7 @@ const PLAYER_AGGRO_WINDOW_S = 25;
 // went dark again while the aggro'd bot stalled in a losBlockedT>5 chase.
 // Decisive r5 probe: 3 penetrating player hits, 29+ enemy shells over two
 // 60 s runs, ZERO aimed within 4° of the player — functionally invulnerable.
-// Now every player SHOT (state.js fans out shell:fired to notifyPlayerFired)
+// Now every player SHOT (state.ts fans out shell:fired to notifyPlayerFired)
 // re-reveals the player to all enemies within earshot for this window, the
 // aggro'd bots hard-commit (2 s vantage threshold, unconditional engage-range
 // bonus), and a stalemate breaker forces silent bots with a known contact to
@@ -210,7 +210,7 @@ const STALEMATE_PUSH_S = 8;      // duration of one forced push window
 // "player-committed" bot was actually driving at the player's escorts; and
 // (2) nothing ever forced a bot that could ALREADY see the player to convert
 // commitment into trigger time ranked above the closer allied brawl. Now
-// state.js distance-ranks the shell:fired fan-out, and the nearest ranked
+// state.ts distance-ranks the shell:fired fan-out, and the nearest ranked
 // bots (rank <= PLAYER_LOCK_RANK) with a clear personal ray LOCK the player
 // as target outright for PLAYER_LOCK_S — no d² ally bias, no cover roll, no
 // memory expiry — refreshed on every subsequent player shot.
@@ -3052,7 +3052,7 @@ export function createAI(entity, opts = {}) {
 
   /**
    * PLAYER MUZZLE-FLASH INTEL (controls_gunnery r5): the player FIRED within
-   * earshot (state.js fans this out to enemies within 420 m on every player
+   * earshot (state.ts fans this out to enemies within 420 m on every player
    * shell:fired). Muzzle flash + tracer reveal the shooter — the player
    * claims the sticky attacker-of-record slot and idle bots commit to the
    * contact immediately. camo_spotting r2: actual VISIBILITY of the shooter
@@ -3064,7 +3064,7 @@ export function createAI(entity, opts = {}) {
    * threat-weighted re-rank handle that on the next LOS tick.
    * @param {object} shooterEnt the player TankEntity that fired
    * @param {number} [rank=99] distance rank among this shot's earshot
-   *   receivers (0 = nearest enemy to the player; state.js sorts the fan-out)
+   *   receivers (0 = nearest enemy to the player; state.ts sorts the fan-out)
    */
   function notifyPlayerFired(shooterEnt, rank = 99) {
     if (!shooterEnt || !shooterEnt.state || !shooterEnt.combat ||

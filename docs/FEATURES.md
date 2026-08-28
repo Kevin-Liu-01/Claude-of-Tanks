@@ -69,7 +69,7 @@ Relevant implementation:
 
 - src/sim/ballistics.ts
 - src/net/aimIntent.ts
-- src/game/state.js
+- src/game/state.ts
 - docs/GUNNERY-CAMERA-SPEC.md
 
 ### Plate-level armor

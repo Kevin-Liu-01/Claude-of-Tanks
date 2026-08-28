@@ -468,7 +468,7 @@ export function createShotViews({
     }
     if (!ev) ev = tryOne(1.05, 0, 4242); // unreachable fallback, keeps recipe total
     ev.attackerName = shooter.spec.name;
-    // killcam_shotinfo r3: match live events (state.js enriches every hit
+    // killcam_shotinfo r3: match live events (state.ts enriches every hit
     // with attackerSpecId) so pen-roll annotations can resolve the shell.
     ev.attackerSpecId = shooter.specId;
     ev.targetName = target.spec.name;

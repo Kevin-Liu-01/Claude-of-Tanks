@@ -2901,7 +2901,7 @@ function* vegetationBuildSteps(
     });
     if (withObstacle) {
       // gameplay_feel r6 (round critique MAJOR): tree trunks are CRUSHABLE —
-      // state.js's collider drives a moving hull THROUGH the tagged record,
+      // state.ts's collider drives a moving hull THROUGH the tagged record,
       // marks it `crushed` and calls world.crushObstacle → crushTree below
       // for the hinge-topple. treeIdx links the record to its tree instance.
       treeObstacles.push(setCircleShape({
@@ -3747,7 +3747,7 @@ function* vegetationBuildSteps(
   }
 
   // gameplay_feel r6 (round critique MAJOR "no crushable vegetation"): trees
-  // with trunk obstacles hinge-topple under a moving hull. state.js owns the
+  // with trunk obstacles hinge-topple under a moving hull. state.ts owns the
   // overlap detection (hull OBB vs the tagged treeObstacles record above) and
   // calls world.crushObstacle → crushTree(ob, dx, dz); the fall recomposes
   // tree.mat from the ORIGINAL placement about the trunk base every tick

@@ -1355,14 +1355,14 @@ function bDrumRedBroken(rng: Rng): THREE.BufferGeometry {
  *   pushed repeatedly, bounce, tumble, collide and settle.
  * mat: 'wood' | 'straw' | 'stone' | 'plaster' (map-toned textured materials)
  *   | 'baked' (vertex color).
- * contact: 'ob' = crushable obstacle (state.js SAT seam — resists a crawl,
+ * contact: 'ob' = crushable obstacle (state.ts SAT seam — resists a crawl,
  *   breaks on real overrun, exactly the tree mechanism); 'loop' = cosmetic
  *   hull-radius crush via the world.crushables loop in main.ts (no obstacle
  *   at all — sapling class); 'none' = shells only.
  * r/h: record radius / height (AABB + shell sweep bounds).
  * DESTRUCTIBLES r1 knobs (consumed by props.ts):
  *   keep: per-overrun speed retention (ob.crushKeep — 0.97 sandbags barely
- *     bite, 0.82 stone wall scrubs hard; default state.js CRUSH_SPEED_KEEP);
+ *     bite, 0.82 stone wall scrubs hard; default state.ts CRUSH_SPEED_KEEP);
  *   crushMin: overrun threshold m/s override (ob.crushMin);
  *   collider: record blocks SHELLS/LOS while intact (flagged dead on break —
  *     walls/trucks are real cover until breached; everything else stays

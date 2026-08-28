@@ -534,7 +534,7 @@ function assembleWorld(
     // single posts required on shelves and gorge shoulders.
     utilityPolePlacements: props.utilityPolePlacements || [],
     decorationGroundingReceipts: props.decorationGroundingReceipts || [],
-    // gameplay_feel r6: crushable OBSTACLE records. state.js's collider
+    // gameplay_feel r6: crushable OBSTACLE records. state.ts's collider
     // queues the hull overrun, marks the record `crushed`, then calls this
     // for the world-side fall/break. Tree trunks (treeIdx, vegetation.ts)
     // hinge-topple; world-dressing r1 destructible props (propIdx, props.ts

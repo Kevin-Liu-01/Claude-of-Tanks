@@ -10,9 +10,9 @@ pass (2026-07-31); sources of record are listed per section.
 | Concern | Owner | Consumers |
 | --- | --- | --- |
 | Closed armor cells / smooth module and crew volumes | `spec.armor` (authored zones finalized by `vehicles/combatAnatomy.js`) | `sim/armor.ts` `traceTank`, Gallery diagnostics, scoped armor flashlight |
-| Hit resolution (saves, damage, fire, detonation) | `src/sim/damage.ts` | `game/state.js` stepShells |
-| Module state machine (`ok`/`yellow`/`red`, repairs) | `src/sim/damage.ts` (`refreshModuleState`, `tickModuleRepairs`, `repairAllModules`) | state.js game loop, main.ts repair-kit consumable |
-| State broadcasts | `module:state` bus event `{ id, module, state, repaired? }` emitted by `game/state.js` only | audio.js, hud.js alerts, (killcam/damage panel read CombatState directly) |
+| Hit resolution (saves, damage, fire, detonation) | `src/sim/damage.ts` | `game/state.ts` stepShells |
+| Module state machine (`ok`/`yellow`/`red`, repairs) | `src/sim/damage.ts` (`refreshModuleState`, `tickModuleRepairs`, `repairAllModules`) | state.ts game loop, main.ts repair-kit consumable |
+| State broadcasts | `module:state` bus event `{ id, module, state, repaired? }` emitted by `game/state.ts` only | audio.js, hud.js alerts, (killcam/damage panel read CombatState directly) |
 | Presentation (labels, colors, order) | `src/ui/moduleRegistry.ts` | hud.js, damagePanel.js, shotInfo.js, killcam.js |
 
 The `repaired: true` payload flag marks a red→yellow RECOVERY so the HUD

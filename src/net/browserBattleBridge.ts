@@ -718,7 +718,7 @@ export function createBrowserBattleBridge({
         const shooter = entities.get(String(event.shooterId || ''));
         // §5.362 fleet recoil in networked battles: the authoritative sim
         // fires server-side, so play the same presentation recuperator
-        // stroke the local sim would (state.js tryFire wiring) on the
+        // stroke the local sim would (state.ts tryFire wiring) on the
         // shooter's first-party visual — flash and barrel throw share this
         // one event. Belt rounds resolve the shared rapid scale from the
         // fired shell exactly like the local path.

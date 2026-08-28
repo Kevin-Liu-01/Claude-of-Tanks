@@ -31,12 +31,12 @@
 //
 // BATTLE-ENTRY GATE DECISION (boot r9 loading flow): entering battle
 // deliberately takes SECONDS — spawnTanks defers every staged visual to the
-// post-ready idle pump (state.js perf r3/r4), and the entry path builds the
+// post-ready idle pump (state.ts perf r3/r4), and the entry path builds the
 // world + roster texture bakes behind the pre-battle loading screen
 // (~10 s on a cold first entry). The probe's original contract — phase ===
 // 'battle' within 900 ms of the click — asserted an implementation detail
 // that no longer exists, and failed both modes against a perfectly healthy
-// entry. A state.js-side reordering (warming the roster before the click)
+// entry. A state.ts-side reordering (warming the roster before the click)
 // was evaluated and REJECTED: pre-building visuals is exactly the
 // load-to-ready regression the deferral ships to avoid, and the loading
 // screen is the designed entry experience. The probe therefore treats the

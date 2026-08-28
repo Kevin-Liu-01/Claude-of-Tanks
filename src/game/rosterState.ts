@@ -1,7 +1,7 @@
 /**
  * Garage-safe roster, battle-visual construction, and deterministic battle
  * planning. Combat initialization and fixed-step simulation remain in
- * state.js so this module can be loaded without ballistics, damage, AI, or
+ * state.ts so this module can be loaded without ballistics, damage, AI, or
  * spotting.
  */
 import { Vector3, type Object3D, type Scene } from 'three';

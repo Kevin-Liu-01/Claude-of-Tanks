@@ -1,7 +1,7 @@
 // src/world/destructibles.ts — the seam between the FX layer and the world
 // prop layer for destructible small props (world-dressing r1).
 //
-// Why this module exists: shells resolve in src/game/state.js (frozen) and
+// Why this module exists: shells resolve in src/game/state.ts (frozen) and
 // their impact/flight data surfaces in src/fx/effects.js (bus listeners +
 // per-frame shell loop). The destructible props themselves live in
 // src/world/props.ts. Neither layer may import the other's heavyweight module

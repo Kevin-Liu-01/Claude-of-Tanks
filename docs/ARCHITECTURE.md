@@ -25,7 +25,7 @@ Module ownership (file paths are FIXED):
 | hud      | `src/ui/hud.js`, `src/ui/garage.js`, `src/ui/damagePanel.js` |
 | fx       | `src/fx/effects.js`, `src/fx/particles.js` |
 | audio    | `src/audio/audio.js` |
-| integration (LATER, not now) | `src/main.js`, `src/game/state.js` |
+| integration | `src/main.ts`, `src/game/state.ts` |
 
 Research docs each builder MUST read: `docs/research/graphics-aaa.md` (engine, world,
 fx), `docs/research/movement-physics.md` (engine cameraRig, movement, vehicles specs),
@@ -763,7 +763,7 @@ AIController = {
 Behavior: every non-player tank on both teams uses this same controller and difficulty
 tier. Role comes only from its own TankSpec (`scout|sniper|brawler|flanker`). Target
 selection is spotting-gated, LOS-confirmed, HP/threat weighted, and coordinates focus
-fire in groups of 2–3 without dogpiling. Travel-time lead is iterated twice; state.js
+fire in groups of 2–3 without dogpiling. Travel-time lead is iterated twice; state.ts
 owns ballistic elevation. Armor probes choose weak spots/shells and two non-pens trigger
 a flank. Normal-tier locks are reaction 0.55 s, fire factor 1.0, aim error ×1.25;
 easy/hard remain 1.2/0.3 s, 0.6/1.2 and ×2.0/×1.0.
@@ -774,7 +774,7 @@ support (or away from the threat when alone). Navigation includes obstacle corne
 teammate separation, stuck recovery and firing-lane relocation.
 
 Before firing, `botFriendlyFireRisk()` predicts teammate motion through the shell
-corridor and HE blast radius. A blocked bot holds fire and moves laterally; state.js
+corridor and HE blast radius. A blocked bot holds fire and moves laterally; state.ts
 repeats the same guard authoritatively, makes bot HE splash team-safe, and applies zero
 same-team ram damage. The human player's trigger remains unrestricted. All randomness
 flows through `opts.rng`.

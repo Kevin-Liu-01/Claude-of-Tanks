@@ -360,7 +360,7 @@ function fireCamoLossFor(caliberMm: number | null | undefined): number {
 //   camoStill — own-camo bonus while the TANK sits still     (camo net)
 //   view      — view-range multiplier bonus, always active   (vents/optics)
 //   viewStill — view-range bonus while the SPOTTER is still  (binoculars)
-// Wire-up lives in game/state.js (getEquipment dep) + the garage loadout UI.
+// Wire-up lives in game/state.ts (getEquipment dep) + the garage loadout UI.
 // EQUIPMENT SYSTEM: this table owns only the VISION/CONCEALMENT effects; the
 // full catalog (reload/aim/repair/durability/fire gear + slot logic + AI
 // defaults) lives in game/equipment.ts and references these same ids.

@@ -155,7 +155,7 @@ const trendNote = opt('note', '');
 // seeded shuffle draws for the current content pool. The round-2 critic
 // measured 1095 worst-frame calls on one random roster and 470 on another on
 // the IDENTICAL build; a budget that depends on the draw is not a gate.
-// Requires the state.js flags.forceRoster hook (performance_budget-r3.md §4)
+// Requires the state.ts flags.forceRoster hook (performance_budget-r3.md §4)
 // — on trees without it the flag is simply ignored and the seeded draw runs.
 // `--roster random` restores the legacy seeded draw (for trend comparisons);
 // `--roster a,b,c` pins any explicit lineup (7 enemies max).
@@ -214,7 +214,7 @@ const BUDGET = {
   // maps per vehicle x a 17-vehicle pool resident at boot). This headless Mac
   // can't observe the consequence, but on 2-4 GB VRAM cards eviction thrash
   // collapses fps entirely. 512 = the ratchet target promised when the gate
-  // was first widened; the parked-pool visual eviction (game/state.js) is what
+  // was first widened; the parked-pool visual eviction (game/state.ts) is what
   // makes it holdable — only fielded vehicles keep generated maps resident.
   sceneTextureMBMax: 512,
   // "Stable heap": gate on min(raw trend, post-GC floor trend) — a leak

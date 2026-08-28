@@ -2675,7 +2675,7 @@ export function createAudio({ context: initialContext = null } = {}) {
       }
     });
     bus.on('tank:destroyed', (e) => { if (ctx) onTankDestroyed(e); });
-    // gameplay_feel r2: blocked-drive collision feedback (state.js emits once
+    // gameplay_feel r2: blocked-drive collision feedback (state.ts emits once
     // per genuine hit, 5.4 km/h closing-speed floor)
     bus.on('tank:impact', (e) => { if (ctx) onTankImpact(e); });
     bus.on('tank:ram', (e) => { if (ctx) onTankRam(e); });

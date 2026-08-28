@@ -1728,8 +1728,8 @@ ${snowCap ? `
   // troughs, lamps, ...) is an instance in a per-type InstancedMesh pool with
   // a destructible RECORD. Three trigger paths, all landing in breakRecord():
   //  1. hull overrun of a tagged CRUSHABLE OBSTACLE — the exact tree seam:
-  //     state.js SAT detects, queues, calls world.crushObstacle → propIdx
-  //     routes here (map.ts); state.js applies the speed bite + emits
+  //     state.ts SAT detects, queues, calls world.crushObstacle → propIdx
+  //     routes here (map.ts); state.ts applies the speed bite + emits
   //     prop:crushed (generic dust via main.ts fx.propCrush);
   //  2. hull-radius contact via the main.ts crushables loop ('loop' class —
   //     sapling-grade clutter with NO obstacle at all);
@@ -1875,7 +1875,7 @@ ${snowCap ? `
         setObbShape(ob, x, z, rr, rr, yaw);
       }
       // DESTRUCTIBLES r1: per-kind overrun feel — momentum bite + threshold
-      // ride the obstacle record into the state.js crush seam.
+      // ride the obstacle record into the state.ts crush seam.
       if (meta.keep != null) ob.crushKeep = meta.keep;
       if (meta.crushMin != null) ob.crushMin = meta.crushMin;
       rec.ob = ob;

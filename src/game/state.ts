@@ -1,10 +1,41 @@
 /**
- * state.js — legacy solo battle setup and fixed-step combat integration
+ * state.ts — legacy solo battle setup and fixed-step combat integration
  * (ARCHITECTURE.md §1.5, §2.4, §4 step 2). The typed session shell/event bus
  * live in stateCore.ts; roster and visual planning live in rosterState.ts.
  * The render loop remains in main.ts.
  */
 import * as THREE from 'three';
+import type { ArmorIntersection, ArmorModel } from '../sim/armor.ts';
+import type { BotRoutePoint } from '../sim/botRoutePlanner.ts';
+import type {
+  DamageGunSpec,
+  DamageShell,
+  DamageShellSpec,
+  DamageTankSpec,
+  CombatState,
+  HitEvent,
+} from '../sim/damage.ts';
+import type {
+  MovementArmorSpec,
+  MovementContactGeometry,
+  MovementGunSpec,
+  MovementHeightField,
+  MovementInput,
+  MovementSpec,
+  TankState,
+} from '../sim/movement.ts';
+import type {
+  GameModeId,
+  MatchModeController,
+  MatchModeEntity,
+  MatchModePresentationState,
+  MatchModeSpawn,
+} from '../sim/matchModes.ts';
+import type { SpecialActionSpec, SpecialActionState } from '../sim/specialActionPolicy.ts';
+import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spotting.ts';
+import type { CollisionRecord } from '../world/collision.ts';
+import type { EventBus, RandomSource } from './stateCore.ts';
+import type { RosterEntity, RosterGameState } from './rosterState.ts';
 import { getSpec } from '../vehicles/specs.js';
 import { tankTier } from '../vehicles/tier.ts';
 import {
@@ -52,6 +83,285 @@ import {
 } from './rosterState.ts';
 export { createBus, createGameState, mulberry32 } from './stateCore.ts';
 
+type TeamId = 'player' | 'enemy';
+type Vec3Tuple = [number, number, number];
+type Waypoint = BotRoutePoint;
+
+interface SoloGunSpec extends MovementGunSpec, DamageGunSpec {
+  shells: DamageShellSpec[];
+  muzzles?: readonly unknown[];
+  soundProfile?: string;
+  primaryGuided?: boolean;
+}
+
+type SoloArmorSpec = ArmorModel & MovementArmorSpec & {
+  boundingRadiusM: number;
+};
+
+type SoloSpec = Omit<MovementSpec, 'gun' | 'armor'> &
+  Omit<DamageTankSpec, 'gun' | 'armor' | 'dims'> &
+  Omit<SpecialActionSpec, 'gun'> & {
+    id: string;
+    name: string;
+    dims: MovementSpec['dims'];
+    gun: SoloGunSpec;
+    armor: SoloArmorSpec;
+  };
+
+interface SoloCombatState extends CombatState {
+  modeAmmo?: number | null;
+  modeAmmoCapacity?: number | null;
+  muzzleCursor?: number;
+}
+
+interface SoloInput extends MovementInput {
+  throttle: number;
+  steer: number;
+  brake: boolean;
+  fire: boolean;
+  shellSlot: number;
+  aimPoint: THREE.Vector3;
+}
+
+interface SoloVisualContactGeometry extends MovementContactGeometry {
+  bottomYM?: number | null;
+}
+
+interface SoloVisual {
+  specId: string;
+  root: THREE.Object3D;
+  contactGeom?: SoloVisualContactGeometry | null;
+  setVisible(visible: boolean): void;
+  syncFromState(state: TankState): void;
+  resetDestroyed?(): void;
+  dispose(): void;
+  gunMuzzleWorld(out: THREE.Vector3, muzzleIndex?: number): void;
+  gunDirWorld?(out: THREE.Vector3): void;
+  gunPivotWorld(out: THREE.Vector3): void;
+  recoilKick(amount?: number, scale?: number, muzzleIndex?: number): void;
+  setDestroyed(options: { pop: boolean }): void;
+}
+
+interface SoloAiController {
+  update(dt: number, timeS: number): void;
+  setWaypoints(points: Waypoint[], options?: { loop?: boolean }): void;
+  notifyShellResult(event: SoloHitEvent): void;
+  notifyUnderFire?(shooter: SoloEntity): void;
+  notifyPlayerFired?(shooter: SoloEntity, rank?: number): void;
+}
+
+interface ReloadPresentationEvent {
+  t: number;
+  total: number;
+  progress: number;
+  kind: string;
+  caliberMm: number;
+  magazineRounds: number;
+  magazineCapacity: number;
+  done: boolean;
+}
+
+type SoloPooledEntity = Omit<RosterEntity,
+  'spec' | 'team' | 'state' | 'combat' | 'specialAction' | 'input' | 'visual' |
+  'contactGeom' | 'aiCtl'> & {
+    spec: SoloSpec;
+    team: TeamId;
+    state: TankState | null;
+    combat: SoloCombatState | null;
+    specialAction: SpecialActionState | null;
+    input: SoloInput;
+    visual: SoloVisual | null;
+    contactGeom: MovementContactGeometry | null;
+    aiCtl: SoloAiController | null;
+    bot?: boolean;
+    modeActive?: boolean;
+    equip?: string[];
+    _glbContactStampedVisual?: SoloVisual | null;
+    _openingRoute?: Waypoint[] | null;
+    _lastImpactT?: number;
+    _modeTargetX?: number;
+    _modeTargetZ?: number;
+    _reloadEvent?: ReloadPresentationEvent;
+  };
+
+type SoloEntity = Omit<SoloPooledEntity, 'state' | 'combat' | 'specialAction'> & {
+  state: TankState;
+  combat: SoloCombatState;
+  specialAction: SpecialActionState;
+};
+
+interface SoloHitEvent extends HitEvent {
+  timeS?: number;
+  attackerName?: string;
+  attackerSpecId?: string;
+  targetName?: string;
+  targetSpecId?: string;
+  targetMaxHp?: number;
+}
+
+interface KillcamRecorder {
+  onShellHit(event: SoloHitEvent, target: SoloPooledEntity | null): void;
+  recordSimStep(game: SoloGameState): void;
+}
+
+interface EngineContext {
+  scene: THREE.Scene;
+}
+
+interface ModeEvent {
+  type: string;
+  payload: Record<string, unknown>;
+}
+
+interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 'tanks' | '_engineCtx'> {
+  allTanks: SoloPooledEntity[];
+  tankById: Map<string, SoloPooledEntity>;
+  tanks: SoloEntity[];
+  _engineCtx: EngineContext;
+  shells: DamageShell[];
+  nextShellId: number;
+  timeS: number;
+  fireTickAcc: number;
+  combatRng: RandomSource;
+  result: 'victory' | 'defeat' | 'draw' | null;
+  resultReason: string | null;
+  gameMode: GameModeId;
+  matchModeState: MatchModePresentationState | null;
+  matchModeController: MatchModeController | null;
+  modeEvents: ModeEvent[];
+  player: SoloEntity | null;
+  spotting: SpottingSystem | null;
+  openingRouteJobs: Array<() => void>;
+  mapId: string;
+  killcam?: KillcamRecorder | null;
+  _nextModeRouteS?: number;
+  _ramPairT?: Map<string, number>;
+}
+
+interface SpawnPoint {
+  pos: Vec3Tuple;
+  yaw: number;
+}
+
+interface VillageBounds {
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+}
+
+interface SoloHeightField extends MovementHeightField {
+  getNormalAt?(x: number, z: number): { y: number };
+  _layout?: { village?: VillageBounds | null };
+}
+
+interface SoloWorldHit {
+  dist: number;
+  point: THREE.Vector3;
+  normal?: THREE.Vector3 | null;
+  kind?: string;
+  record?: SoloObstacle | null;
+}
+
+interface SoloObstacle extends CollisionRecord {
+  _pressT?: number;
+  _pressS?: number;
+}
+
+interface SoloWorld {
+  spawnPoints: { player: SpawnPoint; enemies: SpawnPoint[] };
+  heightField: SoloHeightField;
+  raycast(origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDist: number): SoloWorldHit | null;
+  getObstacles(): SoloObstacle[];
+  queryObstacles?: (
+    minX: number,
+    minZ: number,
+    maxX: number,
+    maxZ: number,
+    out: SoloObstacle[],
+  ) => SoloObstacle[];
+  getConcealment?(): ConcealerDisc[];
+  crushObstacle?(obstacle: SoloObstacle, dirX: number, dirZ: number, speedMps: number): void;
+}
+
+interface SetupBattleOptions {
+  random?: boolean;
+  gameMode?: unknown;
+  deferCamoRepaint?: boolean;
+  deferVisuals?: boolean;
+  deferOpeningRoutes?: boolean;
+}
+
+interface CameraRig {
+  addTrauma(amount: number): void;
+  recoilKick?(pitch: number, scale: number): void;
+}
+
+interface RamContact {
+  a: SoloEntity;
+  b: SoloEntity;
+  closing: number;
+  nx: number;
+  nz: number;
+}
+
+interface CrushContact {
+  ob: SoloObstacle;
+  ent: SoloEntity;
+}
+
+interface CollisionBundle {
+  collide(pos: THREE.Vector3, radiusM: number, outPush: THREE.Vector3): boolean;
+  setSelf(entity: SoloEntity): void;
+  queueRam(a: SoloEntity, b: SoloEntity, closing: number, nx?: number, nz?: number): void;
+  pendingCrush: CrushContact[];
+  pendingRams: RamContact[];
+}
+
+interface ShellFiredEvent {
+  shellId: number;
+  shooterId: string;
+  isPlayer: boolean;
+  shellType: string;
+  shellName: string;
+  caliberMm: number;
+  velocityMps: number;
+  timeS: number;
+  muzzlePos: Vec3Tuple;
+  dir: Vec3Tuple;
+  weaponSound: string | null;
+  muzzleIndex: number;
+}
+
+function asModeEntity(entity: SoloEntity): MatchModeEntity {
+  return entity;
+}
+
+function asSoloEntity(entity: MatchModeEntity): SoloEntity {
+  return entity as unknown as SoloEntity;
+}
+
+function isActiveSoloEntity(
+  entity: SoloPooledEntity | null | undefined,
+): entity is SoloEntity {
+  return !!(entity?.state && entity.combat && entity.specialAction);
+}
+
+function equipmentCombat(combat: SoloCombatState) {
+  return combat as unknown as Parameters<typeof applyEquipmentToCombat>[0];
+}
+
+interface SoloDebugFlags {
+  rosterExact?: boolean;
+}
+
+function soloDebugFlags(): SoloDebugFlags | null {
+  const root = globalThis as typeof globalThis & {
+    __DEBUG?: { flags?: SoloDebugFlags };
+  };
+  return root.__DEBUG?.flags || null;
+}
+
 const COMBAT_SEED = 6000;
 // module repair duration lives with the state machine: sim/damage.ts REPAIR_S
 const FIRE_TICK_S = 0.5;
@@ -73,8 +383,15 @@ const _contactCenter = new THREE.Vector3();
 // fired-event payload is a reused scratch object (every consumer — fx muzzle
 // flash, audio gunshot/whizz, HUD ammo counter, killcam traj-start, shot-info
 // counters — reads it synchronously inside emit; verified 2026-07-28).
-const _shellPool = [];
-function acquireShell(shellSpec, shooterId, isPlayer, muzzlePos, dir, id) {
+const _shellPool: DamageShell[] = [];
+function acquireShell(
+  shellSpec: DamageShellSpec,
+  shooterId: string,
+  isPlayer: boolean,
+  muzzlePos: THREE.Vector3,
+  dir: THREE.Vector3,
+  id: number,
+): DamageShell {
   const sh = _shellPool.pop();
   if (!sh) return createShell(shellSpec, shooterId, isPlayer, muzzlePos, dir, id);
   sh.id = id;
@@ -95,10 +412,11 @@ function acquireShell(shellSpec, shooterId, isPlayer, muzzlePos, dir, id) {
   sh.gravityMps2 = shellGravityMps2(shellSpec);
   return sh;
 }
-const _firedEv = {
+const _firedEv: ShellFiredEvent = {
   shellId: 0, shooterId: '', isPlayer: false, shellType: '', shellName: '',
   caliberMm: 0, velocityMps: 0, timeS: 0,
   muzzlePos: [0, 0, 0], dir: [0, 0, 0],
+  weaponSound: null, muzzleIndex: -1,
 };
 
 
@@ -122,12 +440,17 @@ const _firedEv = {
  * @param {string} specId
  * @returns {?Array<string>} equipped item ids, or null when none saved
  */
-export function loadEquipment(specId) {
+export function loadEquipment(specId: string): string[] | null {
   const arr = loadEquipmentCatalog(specId, getSpec(specId));
   return arr.length ? arr : null;
 }
 
-export function setupBattle(game, playerSpecId, world, opts = {}) {
+export function setupBattle(
+  game: SoloGameState,
+  playerSpecId: string,
+  world: SoloWorld,
+  opts: SetupBattleOptions = {},
+): void {
   const sp = world.spawnPoints;
   for (const sh of game.shells) { if (_shellPool.length < 64) _shellPool.push(sh); }
   game.shells.length = 0;
@@ -146,7 +469,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
 
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
   // null state/combat — every sim/HUD/audio consumer guards on those).
-  game.tanks = pickBattleParticipants(game, playerSpecId, !!opts.random);
+  game.tanks = pickBattleParticipants(game, playerSpecId, !!opts.random) as SoloEntity[];
   // BOT BIOME CAMO (camo_spotting r5): non-player participants of a random
   // battle roll a 60% chance of fielding the biome-matched AUTO pattern so
   // snowfields/dunes stop being full of factory-green bots (the player's
@@ -190,8 +513,9 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   } else {
     ensureTankVisual(game, game.tanks[0]); // the player is always staged
   }
+  const activeEntities = new Set<SoloPooledEntity>(game.tanks);
   for (const ent of game.allTanks) {
-    if (game.tanks.includes(ent)) continue;
+    if (activeEntities.has(ent)) continue;
     ent.state = null;
     ent.combat = null;
     ent.ai = null;
@@ -215,15 +539,18 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   // SPOTTING WIRING: fresh concealment/spotting sim bound to this battle's
   // world (raycast for hard cover, vegetation discs for bush concealment).
   game.spotting = createSpottingSystem({
-    getTanks: () => game.tanks,
+    getTanks: () => game.tanks as SpottingTank[],
     raycast: world.raycast,
     concealers: world.getConcealment ? world.getConcealment() : [],
-    getCamoBonus: (ent) => (hasCamoPaint(ent.specId) ? CAMO_PAINT_BONUS : 0),
+    getCamoBonus: (tank) => {
+      const ent = tank as SpottingTank & { specId: string };
+      return hasCamoPaint(ent.specId) ? CAMO_PAINT_BONUS : 0;
+    },
     // EQUIPMENT layer: vision/concealment items resolve from the loadout
     // attached at spawn (player = saved picks, AI = role defaults) — the
     // old per-check localStorage read leaked the PLAYER'S saved loadout onto
     // any bot fielding the same spec.
-    getEquipment: (ent) => ent.equip || null,
+    getEquipment: (tank) => (tank as SpottingTank & { equip?: string[] }).equip || null,
     rng: mulberry32(9100),
   });
 
@@ -233,16 +560,31 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     getObstacles: () => world.getObstacles(),
     queryObstacles: world.queryObstacles || null,
     // BATTLE-AI r7: vegetation concealment discs — scouts pick spotting legs
-    // through real bushes (state.js nudges their waypoints; ai.js may sample
+    // through real bushes (state.ts nudges their waypoints; ai.js may sample
     // them for repositioning). Absent in headless fixtures.
     getConcealment: () => (world.getConcealment ? world.getConcealment() : []),
   };
   // One immutable terrain/ground/cover scan is shared by every local bot.
   // Opening doctrine still authors the tactical points below; A* only expands
   // each leg into a path this specific drivetrain can actually traverse.
+  const botObstacleQuery = world.queryObstacles
+    ? (
+        minX: number,
+        minZ: number,
+        maxX: number,
+        maxZ: number,
+        out: Array<{ min: readonly number[]; max: readonly number[] }>,
+      ) => world.queryObstacles!(
+        minX,
+        minZ,
+        maxX,
+        maxZ,
+        out as unknown as SoloObstacle[],
+      )
+    : null;
   const botNavigation = createBotNavigationGrid({
     heightField: world.heightField,
-    queryObstacles: world.queryObstacles || null,
+    queryObstacles: botObstacleQuery,
     getObstacles: () => world.getObstacles(),
   });
 
@@ -255,13 +597,12 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   // deterministic staged battle keeps the legacy 3-ally pick and its locked
   // team assignments so the establishing-shot framing remains unchanged.
   const nonPlayers = game.tanks.filter((e) => e.specId !== playerSpecId);
-  let allyPick;
+  let allyPick: SoloEntity[];
   if (opts.random) {
     // flags.rosterExact (perf A/B tooling): a pinned short roster splits at
     // the LEGACY ally count (3) so an 8-tank control battle mirrors the old
     // 4v4 shape instead of 7v1.
-    const exactCap = typeof window !== 'undefined' && window.__DEBUG &&
-      window.__DEBUG.flags && window.__DEBUG.flags.rosterExact &&
+    const exactCap = soloDebugFlags()?.rosterExact &&
       nonPlayers.length < 13 ? 3 : 6;
     const allyCap = Math.min(exactCap, Math.max(1, nonPlayers.length - 1));
     const enemyCap = nonPlayers.length - allyCap;
@@ -308,7 +649,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   const _perpZ = -Math.sin(_ppYaw);
   const _fwdX = Math.sin(_ppYaw);
   const _fwdZ = Math.cos(_ppYaw);
-  const _allyTaken = []; // settled ally cells — no two allies share a cell
+  const _allyTaken: Waypoint[] = []; // settled ally cells — no two allies share a cell
   // Enemy spawn centroid: the allies' opening push target.
   let _ecx = 0, _ecz = 0;
   for (const es of sp.enemies) { _ecx += es.pos[0]; _ecz += es.pos[2]; }
@@ -317,12 +658,14 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
 
   // BATTLE-AI r7 OPENING PLANS: per-team role counters (ai.js roleOf) so each
   // role opens on its own doctrine lane — see the waypoint block below.
-  const _roleCounts = { player: {}, enemy: {} };
-  const _teamHasBrawler = { player: false, enemy: false };
-  const _teamHasScout = { player: false, enemy: false };
+  const _roleCounts: Record<TeamId, Record<string, number | boolean>> = {
+    player: {}, enemy: {},
+  };
+  const _teamHasBrawler: Record<TeamId, boolean> = { player: false, enemy: false };
+  const _teamHasScout: Record<TeamId, boolean> = { player: false, enemy: false };
   for (const e of game.tanks) {
     if (e.specId === playerSpecId) continue;
-    const team = allySet.has(e) ? 'player' : 'enemy';
+    const team: TeamId = allySet.has(e) ? 'player' : 'enemy';
     const r = roleOf(e.spec);
     if (r === 'brawler') _teamHasBrawler[team] = true;
     if (r === 'scout') _teamHasScout[team] = true;
@@ -332,7 +675,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   // system would resolve it on the first meter of drive. 2.6 m margin ~=
   // hull half-width + clearance.
   const _obstacles = world.getObstacles ? world.getObstacles() : [];
-  const _cellBlocked = (x, z, margin = 2.6) => {
+  const _cellBlocked = (x: number, z: number, margin = 2.6): boolean => {
     for (const o of _obstacles) {
       if (o.crushed) continue;
       if (x > o.min[0] - margin && x < o.max[0] + margin &&
@@ -343,7 +686,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   const _conceal = world.getConcealment ? world.getConcealment() : [];
   // Snap a scout leg onto the nearest REAL bush (add >= 0.3 — canopy discs
   // soft-conceal at 0.08 and are not hides) within 45 m, else keep the leg.
-  const _bushNudge = (x, z) => {
+  const _bushNudge = (x: number, z: number): Waypoint => {
     let bx = x, bz = z, best = 45;
     for (const c of _conceal) {
       if (!c || c.add < 0.3) continue;
@@ -352,7 +695,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     }
     return [bx, bz];
   };
-  const _clampW = (v) => Math.max(-460, Math.min(460, v));
+  const _clampW = (v: number): number => Math.max(-460, Math.min(460, v));
   // BATTLE-AI r7 TOWN SKIRT: on block-grid maps (urban/railyard — town rect
   // >= 200 m wide) opening-lane waypoints that land INSIDE the town are
   // pushed out past the nearest rect edge, so the two fronts meet on the
@@ -363,7 +706,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   const _village = world.heightField && world.heightField._layout
     ? world.heightField._layout.village : null;
   const _skirtTown = !!(_village && (_village.x1 - _village.x0) >= 200);
-  const _skirtWp = (wx, wz) => {
+  const _skirtWp = (wx: number, wz: number): Waypoint => {
     if (!_skirtTown) return [wx, wz];
     const v = _village;
     const pad = 24, out = 45;
@@ -384,7 +727,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   game.tanks.forEach((ent, i) => {
     const isPlayer = ent.specId === playerSpecId;
     const isAlly = !isPlayer && allySet.has(ent);
-    let spawn;
+    let spawn: SpawnPoint;
     if (isPlayer) {
       spawn = sp.player;
     } else if (isAlly) {
@@ -455,7 +798,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     ent.equip = isPlayer
       ? (loadEquipment(ent.specId) || [])
       : defaultLoadoutFor(ent.spec);
-    applyEquipmentToCombat(ent.combat, ent.equip, ent.spec);
+    applyEquipmentToCombat(equipmentCombat(ent.combat), ent.equip, ent.spec);
     ent.input.throttle = 0;
     ent.input.steer = 0;
     ent.input.brake = false;
@@ -477,7 +820,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     } else {
       const botRng = mulberry32(7000 + i);
       const routeRng = mulberry32(17000 + i);
-      ent.aiCtl = createAI(ent, {
+      const aiController = createAI(ent, {
         difficulty: getStoredDifficulty(),
         rng: botRng,
         deps: {
@@ -494,11 +837,12 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
           // charter) from the bot's OWN team's intel, with the bot as the
           // radio-debuff receiver (simulation_correctness r1).
           spotting: {
-            isSpotted: (id, receiver) =>
+            isSpotted: (id: string, receiver: SpottingTank | null) =>
               (game.spotting ? game.spotting.isSpotted(id, ent.team, receiver) : true),
           },
         },
-      });
+      }) as SoloAiController;
+      ent.aiCtl = aiController;
       // BATTLE-AI r7 OPENING PLANS: each bot opens on its CLASS doctrine lane
       // (ai.js roleOf — driven by the bot's own spec) instead of the old
       // one-size standoff push. Both teams advance from their own spawn zones
@@ -537,11 +881,12 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
         rc._scoutLane = true;
         role = 'scout';
       }
-      const n = rc[role] || 0; // 0-based index within role+team
+      const previousRoleCount = rc[role];
+      const n = typeof previousRoleCount === 'number' ? previousRoleCount : 0;
       rc[role] = n + 1;
       // opposite teams fan to opposite sides first so lanes interleave
       const side = (n % 2 === 0 ? 1 : -1) * (ent.team === 'enemy' ? 1 : -1);
-      const W = [];
+      const W: Waypoint[] = [];
       if (role === 'sniper') {
         // sightline post on the own half, fanned off the advance axis
         const f = 0.30 + (n % 3) * 0.06;
@@ -579,8 +924,8 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
         const [wx, wz] = wi < W.length - 1 ? _skirtWp(pt[0], pt[1]) : pt;
         return [_clampW(wx), _clampW(wz)];
       });
-      const prepareOpeningRoute = () => {
-        const terrainWaypoints = [];
+      const prepareOpeningRoute = (): void => {
+        const terrainWaypoints: Waypoint[] = [];
         let routeStart = { x: spawn.pos[0], z: spawn.pos[2] };
         for (const [wx, wz] of doctrineWaypoints) {
           const leg = planBotRoute({
@@ -596,7 +941,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
           terrainWaypoints.push(...leg);
           routeStart = { x: wx, z: wz };
         }
-        ent.aiCtl.setWaypoints(terrainWaypoints, { loop: false });
+        aiController.setWaypoints(terrainWaypoints, { loop: false });
         // Retain the immutable battle-start copy so main can prime the fast
         // terrain grid before rollout instead of baking under moving bots.
         ent._openingRoute = terrainWaypoints;
@@ -620,15 +965,17 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
 
   game.matchModeController = createMatchModeController({
     mode: game.gameMode,
-    entities: game.tanks,
+    entities: game.tanks.map(asModeEntity),
     seed: COMBAT_SEED + game.battleCount,
     terrainHeight: (x, z) => world.heightField.getHeightAt(x, z),
     emit: (type, payload) => game.modeEvents.push({ type, payload }),
-    setActive(ent, active) {
+    setActive(modeEntity, active) {
+      const ent = asSoloEntity(modeEntity);
       ent.modeActive = active;
       ent.visual?.setVisible(active);
     },
-    revive(ent, spawn, healthScale) {
+    revive(modeEntity: MatchModeEntity, spawn: MatchModeSpawn, healthScale: number) {
+      const ent = asSoloEntity(modeEntity);
       _spawnPos.set(spawn.x, world.heightField.getHeightAt(spawn.x, spawn.z), spawn.z);
       ent.state = createTankState(ent.spec, _spawnPos, spawn.yaw);
       ent.combat = createCombatState(ent.spec);
@@ -636,7 +983,11 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
         ent.combat.maxHp = Math.max(1, Math.round(ent.combat.maxHp * healthScale));
         ent.combat.hp = ent.combat.maxHp;
       }
-      applyEquipmentToCombat(ent.combat, ent.equip || defaultLoadoutFor(ent.spec), ent.spec);
+      applyEquipmentToCombat(
+        equipmentCombat(ent.combat),
+        ent.equip || defaultLoadoutFor(ent.spec),
+        ent.spec,
+      );
       ent.specialAction = createSpecialActionState(ent.spec);
       ent.input.throttle = 0;
       ent.input.steer = 0;
@@ -664,7 +1015,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
  * setupBattle's original eager behavior by omitting deferOpeningRoutes.
  * @returns {boolean} true when a job was consumed
  */
-export function prepareNextOpeningRoute(game) {
+export function prepareNextOpeningRoute(game: SoloGameState): boolean {
   const job = game.openingRouteJobs.shift();
   if (!job) return false;
   job();
@@ -681,7 +1032,7 @@ export function prepareNextOpeningRoute(game) {
  * @param {object} ent pool entity
  * @returns {void}
  */
-function refreshContactGeometry(ent) {
+function refreshContactGeometry(ent: SoloEntity): void {
   if (!ent.visual) return;
   ent.rigidGear = false;
   // MOVEMENT r1 (fidelity-rebuild fallout): PROCEDURAL visuals carry as-built
@@ -696,7 +1047,8 @@ function refreshContactGeometry(ent) {
     if (d) {
       const L = d.hullLengthM;
       const W = d.widthM;
-      const clamp = (x, lo, hi) => (x < lo ? lo : (x > hi ? hi : x));
+      const clamp = (x: number, lo: number, hi: number): number =>
+        (x < lo ? lo : (x > hi ? hi : x));
       ent.contactGeom = {
         halfLenM: cg.halfLenM != null
           ? clamp(cg.halfLenM, CONTACT_LEN_FRAC_MIN * L, CONTACT_LEN_FRAC_MAX * L)
@@ -757,7 +1109,7 @@ const CONTACT_BOTY_MAX = 0.30;
 // the fixed guard rather than trust them.
 const CONTACT_PAN_MIN = 0.12;
 const CONTACT_PAN_MAX = 0.70;
-function measureContactGeom(ent) {
+function measureContactGeom(ent: SoloEntity): MovementContactGeometry | null {
   const root = ent.visual && ent.visual.root;
   const spec = ent.spec;
   if (!root || !spec || !spec.dims) return null;
@@ -767,14 +1119,19 @@ function measureContactGeom(ent) {
     root.updateMatrixWorld(true);
     const invRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
     const rel = new THREE.Matrix4();
-    const meshes = [];
-    root.traverse((o) => {
-      if (!o.isMesh || o.isInstancedMesh || !o.geometry) return;
+    const meshes: Array<{
+      o: THREE.Mesh;
+      pa: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
+    }> = [];
+    root.traverse((object) => {
+      if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh || !object.geometry) return;
+      const o = object;
       // skip hidden subtrees (the swapped-out procedural gear) and non-color
       // helpers (shadow proxies write no color but DO define the cast shadow
       // silhouette — they clone hidden gear geometry, so keep them out too)
-      if (o.material && o.material.colorWrite === false) return;
-      let p = o;
+      const material = Array.isArray(o.material) ? o.material[0] : o.material;
+      if (material && material.colorWrite === false) return;
+      let p: THREE.Object3D | null = o;
       let vis = true;
       while (p && p !== root) { if (!p.visible) { vis = false; break; } p = p.parent; }
       if (!vis) return;
@@ -809,7 +1166,7 @@ function measureContactGeom(ent) {
       }
     }
     if (!ys.length) return null;
-    const denseFloor = (list) => {
+    const denseFloor = (list: number[]): number => {
       list.sort((a, b) => a - b);
       let floor = list[0];
       if (list.length >= 12) {
@@ -831,6 +1188,7 @@ function measureContactGeom(ent) {
       for (const { o } of meshes) {
         if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
         const bb = o.geometry.boundingBox;
+        if (!bb) continue;
         rel.multiplyMatrices(invRoot, o.matrixWorld);
         let mnX = Infinity, mxX = -Infinity, mnY = Infinity;
         for (const cx of [bb.min.x, bb.max.x]) {
@@ -864,7 +1222,8 @@ function measureContactGeom(ent) {
       n++;
     }
     if (n < CONTACT_MIN_SAMPLES || zMax - zMin < 1 || xMax - xMin < 0.5) return null;
-    const clamp = (x, lo, hi) => (x < lo ? lo : (x > hi ? hi : x));
+    const clamp = (x: number, lo: number, hi: number): number =>
+      (x < lo ? lo : (x > hi ? hi : x));
     return {
       halfLenM: clamp((zMax - zMin) / 2, CONTACT_LEN_FRAC_MIN * L, CONTACT_LEN_FRAC_MAX * L),
       halfWidM: clamp((xMax - xMin) / 2, CONTACT_WID_FRAC_MIN * W, CONTACT_WID_FRAC_MAX * W),
@@ -879,7 +1238,7 @@ function measureContactGeom(ent) {
       // rise for the line-end guard samples (procedural rigs export exact)
       endRise: { dzM: 0.4, frontM: 0.12, rearM: 0.12 },
     };
-  } catch (e) {
+  } catch {
     return null; // scan is best-effort: fall back to spec fractions
   }
 }
@@ -917,18 +1276,18 @@ const CRUSH_SPEED_KEEP = 0.94;   // per-prop momentum bite (v *= keep on crush)
 // nudge (no throttle) still never fells anything.
 const CRUSH_PRESS_S = 0.45;      // s of held-throttle contact that fells a trunk
 const CRUSH_PRESS_GAP_S = 0.2;   // press bookkeeping resets after this gap
-function makeCollide(game, world) {
-  let self = null;
+function makeCollide(game: SoloGameState, world: SoloWorld): CollisionBundle {
+  let self: SoloEntity | null = null;
   const obstacles = world.getObstacles();
-  const nearby = [];
-  const pendingCrush = [];
+  const nearby: SoloObstacle[] = [];
+  const pendingCrush: CrushContact[] = [];
   // RAMMING: tank-tank contacts this tick, resolved by simStep after the
   // movement loop (mirror of pendingCrush). Each entry records the CONTACT
   // normal and both hulls' velocity vectors AT detection time — resolving
   // later from live state would read speeds the blocked-drive bleed has
   // already zeroed and see every head-on ram as a 0 m/s kiss.
-  const pendingRams = [];
-  function collide(pos, radiusM, outPush) {
+  const pendingRams: RamContact[] = [];
+  function collide(pos: THREE.Vector3, radiusM: number, outPush: THREE.Vector3): boolean {
     outPush.set(0, 0, 0);
     let pushed = false;
     const spec = self ? self.spec : null;
@@ -1039,8 +1398,8 @@ function makeCollide(game, world) {
   }
   return {
     collide,
-    setSelf(e) { self = e; },
-    queueRam(a, b, closing, nx = 0, nz = 0) {
+    setSelf(e: SoloEntity) { self = e; },
+    queueRam(a: SoloEntity, b: SoloEntity, closing: number, nx = 0, nz = 0) {
       if (closing > 0) pendingRams.push({ a, b, closing, nx, nz });
     },
     pendingCrush,
@@ -1049,12 +1408,12 @@ function makeCollide(game, world) {
 }
 
 /** Emit the derived bus events flagged inside one HitEvent. */
-function emitHitOutcome(game, bus, ev) {
-  const target = ev.targetId ? game.tankById.get(ev.targetId) : null;
+function emitHitOutcome(game: SoloGameState, bus: EventBus, ev: SoloHitEvent): void {
+  const target = ev.targetId ? game.tankById.get(ev.targetId) || null : null;
   // SHOT-INFO ENRICHMENT (ADDITIVE ONLY — consumed by src/ui/shotInfo.js):
   // resolve ids to names/spec ids + stamp sim time. Existing fields untouched.
   ev.timeS = game.timeS;
-  const attacker = ev.attackerId ? game.tankById.get(ev.attackerId) : null;
+  const attacker = ev.attackerId ? game.tankById.get(ev.attackerId) || null : null;
   if (attacker && attacker.spec) {
     ev.attackerName = attacker.spec.name;
     ev.attackerSpecId = attacker.specId;
@@ -1079,7 +1438,7 @@ function emitHitOutcome(game, bus, ev) {
   if (ev.fireStarted && ev.targetId) {
     bus.emit('tank:fire', { id: ev.targetId, burning: true });
   }
-  if (ev.destroyed && target && !target._destroyedAnnounced) {
+  if (ev.destroyed && isActiveSoloEntity(target) && !target._destroyedAnnounced) {
     announceDestroyed(game, bus, target, ev.attackerId, ev.ammoRacked ? 'ammorack' : 'shot');
   }
   const shooter = game.tankById.get(ev.attackerId);
@@ -1088,7 +1447,7 @@ function emitHitOutcome(game, bus, ev) {
   // (tracer + muzzle flash). The victim and teammates within 200 m turn on
   // the attacker even when the shot came from outside their normal spotting
   // and engage envelopes — return fire pressure is core WoT feel.
-  if (shooter && target && target.state && target.combat &&
+  if (isActiveSoloEntity(shooter) && isActiveSoloEntity(target) &&
       shooter.team !== target.team) {
     for (const ent of game.tanks) {
       if (ent.team !== target.team || !ent.aiCtl || !ent.state ||
@@ -1100,11 +1459,17 @@ function emitHitOutcome(game, bus, ev) {
   }
 }
 
-function announceDestroyed(game, bus, ent, killerId, cause) {
+function announceDestroyed(
+  game: SoloGameState,
+  bus: EventBus,
+  ent: SoloEntity,
+  killerId: string | null,
+  cause: 'ammorack' | 'shot' | 'ram' | 'fire',
+): void {
   ent._destroyedAnnounced = true;
   // turret toss is RESERVED for ammo-rack detonations (WoT spectacle);
   // plain HP kills / burn-outs keep the turret seated (gun droop + smoke)
-  ent.visual.setDestroyed({ pop: cause === 'ammorack' });
+  ent.visual?.setDestroyed({ pop: cause === 'ammorack' });
   bus.emit('tank:destroyed', {
     id: ent.id,
     specId: ent.specId,
@@ -1115,7 +1480,12 @@ function announceDestroyed(game, bus, ent, killerId, cause) {
 }
 
 /** Fire the loaded shell if the trigger is held and the gun is ready. */
-function tryFire(game, ent, bus, rig) {
+function tryFire(
+  game: SoloGameState,
+  ent: SoloEntity,
+  bus: EventBus,
+  rig: CameraRig | null,
+): void {
   const c = ent.combat;
   if (!ent.input.fire || c.destroyed || c.reload.t > 0) return;
   if (c.magazine && c.magazine.rounds <= 0) return;
@@ -1142,7 +1512,7 @@ function tryFire(game, ent, bus, rig) {
     if (newBase > oldBase) { startReload(c, ent.spec); return; }
   }
   const shellSpec = ent.spec.gun.shells[c.shellSlot];
-  if (!game.matchModeController?.consumeShot(ent)) {
+  if (!game.matchModeController?.consumeShot(asModeEntity(ent))) {
     bus.emit('mode:ammo_empty', { id: ent.id });
     return;
   }
@@ -1168,11 +1538,13 @@ function tryFire(game, ent, bus, rig) {
     muzzleIndex = (c.muzzleCursor || 0) % gunMuzzles.length;
     c.muzzleCursor = muzzleIndex + 1;
   }
-  ent.visual.gunMuzzleWorld(_muzzle, muzzleIndex);
-  if (ent.visual.gunDirWorld) {
-    ent.visual.gunDirWorld(_dir);
+  const visual = ent.visual;
+  if (!visual) return;
+  visual.gunMuzzleWorld(_muzzle, muzzleIndex);
+  if (visual.gunDirWorld) {
+    visual.gunDirWorld(_dir);
   } else {
-    ent.visual.gunPivotWorld(_pivot);
+    visual.gunPivotWorld(_pivot);
     _dir.copy(_muzzle).sub(_pivot).normalize();
   }
 
@@ -1188,7 +1560,7 @@ function tryFire(game, ent, bus, rig) {
   // still produces full bloom and physical/presentation recoil.
   const recoilScale = shotRecoilScale(ent.spec, shellSpec);
   fireRecoil(ent.state, ent.spec, shellSpec);
-  ent.visual.recoilKick(0, recoilScale, muzzleIndex);
+  visual.recoilKick(0, recoilScale, muzzleIndex);
   if (ent.isPlayer && rig) {
     // Dedicated feel pass: the old fixed impulse made a 30 mm autocannon and
     // a 152 mm siege gun kick the camera identically. Scale both concussion
@@ -1236,7 +1608,7 @@ function tryFire(game, ent, bus, rig) {
     // r4: earshot 420 -> 500 m — the intel radius must exceed the worst
     // spawn standoff (~450 m) the same way engageRangeM had to (r7 tier
     // note), or opening snipes from spawn draw zero receivers at all.
-    const near = [];
+    const near: Array<{ e: SoloEntity; d2: number }> = [];
     for (const e of game.tanks) {
       if (e === ent || e.team === ent.team || !e.aiCtl || !e.state ||
           !e.combat || e.combat.destroyed) continue;
@@ -1247,19 +1619,19 @@ function tryFire(game, ent, bus, rig) {
     near.sort((a, b) => a.d2 - b.d2);
     for (let i = 0; i < near.length; i++) {
       const e = near[i].e;
-      if (e.aiCtl.notifyPlayerFired) e.aiCtl.notifyPlayerFired(ent, i);
+      e.aiCtl?.notifyPlayerFired?.(ent, i);
     }
   }
 }
 
 /** Advance all live shells one step and resolve collisions. */
-function stepShells(game, bus, world) {
+function stepShells(game: SoloGameState, bus: EventBus, world: SoloWorld): void {
   const shells = game.shells;
   for (let si = 0; si < shells.length; si++) {
     const shell = shells[si];
     if (shell.dead) continue;
     const shooter = game.tankById.get(shell.shooterId);
-    if (specialActionGuidesShell(shooter, shell)) {
+    if (isActiveSoloEntity(shooter) && specialActionGuidesShell(shooter, shell)) {
       guideShellToward(shell, shooter.input?.aimPoint, SIM_DT);
     }
     stepShell(shell, SIM_DT);
@@ -1278,8 +1650,8 @@ function stepShells(game, bus, world) {
 
     // Broadphase: nearest tank whose armor trace yields intersections.
     let bestT = Infinity;
-    let bestEnt = null;
-    let bestHits = null;
+    let bestEnt: SoloEntity | null = null;
+    let bestHits: ArmorIntersection[] | null = null;
     for (const ent of game.tanks) {
       // Wrecks stay in the broadphase: resolveShellHit branches to
       // resolveWreckHit for destroyed hulls (cover tactics — WoT core).
@@ -1299,7 +1671,7 @@ function stepShells(game, bus, world) {
       if (t < bestT) { bestT = t; bestEnt = ent; bestHits = hits; }
     }
 
-    if (bestEnt && bestT <= worldT) {
+    if (bestEnt && bestHits && bestT <= worldT) {
       if (isHeClass(shell.spec.type)) {
         const burst = bestHits[0].point;
         const events = resolveHeBurst(shell, burst, game.tanks, bestEnt, bestHits, game.combatRng);
@@ -1338,7 +1710,7 @@ function stepShells(game, bus, world) {
     if (shells[i].dead) {
       const shell = shells[i];
       const shooter = game.tankById.get(shell.shooterId);
-      if (completeGuidedMissileFlight(shooter, shell.id)) {
+      if (isActiveSoloEntity(shooter) && completeGuidedMissileFlight(shooter, shell.id)) {
         bus.emit('ui:specialActionResult', {
           kind: shooter.specialAction.kind,
           active: false,
@@ -1355,7 +1727,7 @@ function stepShells(game, bus, world) {
  * transition lives in sim/damage.ts tickModuleRepairs — ONE module state
  * machine (module_hitbox r1); the toolbox repair-rate equipment multiplier
  * is honored there. This wrapper only broadcasts the results. */
-function tickRepairs(game, bus, dt) {
+function tickRepairs(game: SoloGameState, bus: EventBus, dt: number): void {
   for (const ent of game.tanks) {
     if (!ent.combat) continue;
     for (const name of tickModuleRepairs(ent.combat, dt)) {
@@ -1376,7 +1748,13 @@ function tickRepairs(game, bus, dt) {
  * @param {object} collider makeCollide bundle (created once via createCollider)
  * @returns {void}
  */
-export function simStep(game, bus, world, rig, collider) {
+export function simStep(
+  game: SoloGameState,
+  bus: EventBus,
+  world: SoloWorld,
+  rig: CameraRig | null,
+  collider: CollisionBundle,
+): void {
   const dt = SIM_DT;
   game.timeS += dt;
 
@@ -1398,7 +1776,7 @@ export function simStep(game, bus, world, rig, collider) {
     game._nextModeRouteS = game.timeS + (game.gameMode === 'turbo_ball' ? 1.25 : 4);
     for (const ent of game.tanks) {
       if (!ent.aiCtl || ent.modeActive === false || ent.combat?.destroyed) continue;
-      const target = game.matchModeController?.botTarget(ent);
+      const target = game.matchModeController?.botTarget(asModeEntity(ent));
       if (!target) continue;
       const moved = Math.hypot(
         target.x - (ent._modeTargetX ?? Infinity),
@@ -1452,7 +1830,13 @@ export function simStep(game, bus, world, rig, collider) {
   // airborne roof landings, stacking and off-center rollover impulse.
   resolveTankBodyContacts(game.tanks, dt,
     (upper, lower, closing, nx, nz) =>
-      collider.queueRam(upper, lower, closing, nx, nz));
+      collider.queueRam(
+        upper as unknown as SoloEntity,
+        lower as unknown as SoloEntity,
+        closing,
+        nx,
+        nz,
+      ));
 
   // b2. crushable props (gameplay_feel r6): resolve the hull-overrun crushes
   // the collider queued this tick — mark the record dead for all collision/AI
@@ -1506,7 +1890,7 @@ export function simStep(game, bus, world, rig, collider) {
   const rams = collider.pendingRams;
   if (rams && rams.length) {
     if (!game._ramPairT) game._ramPairT = new Map();
-    const best = new Map(); // pairKey -> contact with max closing
+    const best = new Map<string, RamContact>(); // pairKey -> contact with max closing
     for (const q of rams) {
       const key = q.a.id < q.b.id ? `${q.a.id}|${q.b.id}` : `${q.b.id}|${q.a.id}`;
       const cur = best.get(key);
@@ -1702,6 +2086,6 @@ export function simStep(game, bus, world, rig, collider) {
  * @param {object} world World
  * @returns {{collide:Function, setSelf:Function}}
  */
-export function createCollider(game, world) {
+export function createCollider(game: SoloGameState, world: SoloWorld): CollisionBundle {
   return makeCollide(game, world);
 }

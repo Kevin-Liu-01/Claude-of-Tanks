@@ -18,7 +18,7 @@ and deterministic participant/camouflage planning; `rosterPresentation.ts`
 owns consistent lobby and pre-battle display rows without importing rendering
 or authority code; `soloBattleAccess.ts` owns
 retryable lazy acquisition while `soloBattleRuntime.ts` is the typed import
-boundary for legacy solo authority in `state.js`, which owns battle setup and
+boundary for legacy solo authority in `state.ts`, which owns battle setup and
 the fixed battle step; `battleEntryAcquisition.ts` owns covered solo/network
 dependency order and timing; `battleWarmRuntime.ts` owns battle-only terrain,
 wreck, Studio/shared FX, and covered deployment-program residency behind a
@@ -102,11 +102,11 @@ boot do not evaluate or allocate multiplayer-only presentation policy.
 Keep authoritative rules deterministic and Node-runnable. Inject world, bus,
 RNG, and presentation dependencies. Keep garage-safe session data in
 `stateCore.ts`, visual/roster policy in `rosterState.ts`, and combat integration
-in `state.js`. Keep roster naming, filtering, and local-player ordering in
-`rosterPresentation.ts`. Garage boot must not statically import `state.js`; acquire it
+in `state.ts`. Keep roster naming, filtering, and local-player ordering in
+`rosterPresentation.ts`. Garage boot must not statically import `state.ts`; acquire it
 through `soloBattleAccess.ts` on Battle or capture intent. Multiplayer work
 must move visual creation out of authority rather than importing more UI into
-`state.js`.
+`state.ts`.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
@@ -154,7 +154,7 @@ phase resource gate; do not re-enable shadows on every tiny static fitting.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
-`state.js` still mixes solo battle orchestration with some visual lifecycle
+`state.ts` still mixes solo battle orchestration with some visual lifecycle
 calls; deepen that seam incrementally through `rosterState.ts` without pulling
 the solo graph back into garage boot. Entity IDs historically equal spec IDs
 and must not remain so in multiplayer.

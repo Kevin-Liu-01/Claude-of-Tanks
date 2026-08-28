@@ -348,7 +348,7 @@ const HALF_WID_FRAC = 0.5;       // contact-line half-width = 0.5 × widthM (tra
 // beyond each real track end: on WoT-typical rolling ground the lowest
 // rendered vertex rode a MEDIAN 20-21 cm above the heightfield (53-69 cm
 // peaks at speed) and PARKED hovering 21 cm — photographed daylight under
-// the whole wheel run on desert. state.js therefore scans the swapped
+// the whole wheel run on desert. state.ts therefore scans the swapped
 // visual's low band (vertices within 5 cm of min-Y, exactly like the r7
 // probe) when it detects the swap and publishes the measured geometry as
 // `entity.contactGeom = { halfLenM, halfWidM, zCenterM }`; the solve below
@@ -887,7 +887,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     suspensionAim: false,
     suspensionAimPitch: 0,
     // r2 blocked-drive impact telemetry: closing speed (m/s) the collision
-    // pushback absorbed this tick (0 = no blocked contact). state.js reads it
+    // pushback absorbed this tick (0 = no blocked contact). state.ts reads it
     // right after updateTank to emit ONE 'tank:impact' bus event per hit.
     impactMps: 0,
     _spring: {
@@ -971,7 +971,7 @@ export function resetTankVerticalState(
  * Mutates `entity.state` in place; touches nothing else.
  *
  * @param {object} entity - `{ spec, state, input, combat }` (combat may be null ⇒ healthy).
- *   Optional `entity.rigidGear === true` (stamped by state.js when the active
+ *   Optional `entity.rigidGear === true` (stamped by state.ts when the active
  *   visual lacks a complete wheel + track conformance layer) hard-clamps every
  *   support fan line — see the FAN_YIELD_* / r5 hard-gate note in the solve.
  * @param {object} heightField - `{ getHeightAt(x,z), getNormalAt(x,z), getGroundType(x,z) }`.
@@ -1046,7 +1046,7 @@ export function updateTank(
   // the SUPPORT_LEN_FRAC note) — the support lines must ride the rendered
   // track bottoms, not the spec hull box.
   // MOVEMENT r1 (fidelity-rebuild fallout): EVERY visual now publishes its
-  // as-built footprint (state.js stamps it from tankFactory's rest scan /
+  // as-built footprint (state.ts stamps it from tankFactory's rest scan /
   // gear metadata — the rebuilt profiles moved wheel/track lines off the old
   // hull-local y = 0 / ±0.45 L assumption). cg.bottomYM is the hull-local
   // height of the lowest rendered surface: the support lines live at THAT
@@ -1309,7 +1309,7 @@ export function updateTank(
         const blocked = clamp(Math.abs(pushFwd) / travel, 0, 1);
         const lost = Math.abs(state.speed) * blocked;
         state.speed *= 1 - blocked;
-        // Impact telemetry for integration (state.js): closing speed the wall
+        // Impact telemetry for integration (state.ts): closing speed the wall
         // absorbed THIS tick, in m/s. A genuine hit reads several m/s on the
         // first contact tick; while held against the wall afterwards the
         // per-tick re-acceleration is only ~accel·dt (< 0.2 m/s), so the

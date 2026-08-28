@@ -603,12 +603,12 @@ export function createShotInfo(bus) {
 
   // --- team-wide roster bookkeeping (battle report) -------------------------
   // Every combatant seen in ANY bus event (shell:hit fires for AI-vs-AI hits
-  // too, enriched with names/specIds by state.js) — dmg/kills/dead are pure
+  // too, enriched with names/specIds by state.ts) — dmg/kills/dead are pure
   // event sums, never re-simulated. Team split: every shell:hit /
   // tank:destroyed edge asserts attacker and target are on OPPOSING teams
   // (symmetric-teams charter: no friendly targeting), so a parity union-find
   // anchored at the player resolves ally/enemy for the whole battle graph.
-  // A `battle:ended` payload roster (additive state.js enrichment, see
+  // A `battle:ended` payload roster (additive state.ts enrichment, see
   // docs/SYSTEMS.md) overrides with authoritative teams when present.
   const combatants = new Map(); // id -> {name,specId,dmg,kills,dead}
   let endRoster = null;         // battle:ended payload roster (if provided)
@@ -1309,7 +1309,7 @@ export function createShotInfo(bus) {
   });
 
   // --- REPORT GATE: battle-report rendering deferred past the kill-cam ------
-  // state.js emits battle:ended in the very sim step the player dies, but
+  // state.ts emits battle:ended in the very sim step the player dies, but
   // the composition root starts the kill-cam replay LATER in the same task — rendering
   // the report synchronously buried the still-playing slow-mo flight and the
   // whole 7 s x-ray hold under the full-screen DEFEAT panel (z 71 over the
@@ -1381,7 +1381,7 @@ export function createShotInfo(bus) {
       if (me && me.id != null) playerId = me.id;
     }
     // report header data (r3): battle duration is the payload's end-of-battle
-    // sim clock (setupBattle zeroes it), map id is an additive state.js
+    // sim clock (setupBattle zeroes it), map id is an additive state.ts
     // enrichment (docs/SYSTEMS.md) — the header simply omits what is absent
     endInfo = p ? { timeS: p.timeS, map: p.map || null, reason: p.reason || null } : null;
     pendingReport = p ? (p.result || '') : '';

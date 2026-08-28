@@ -2676,7 +2676,7 @@ function buildRunningGear(P, cfg) {
   // print's raised floor line), so that assumption is stale fleet-wide:
   // parked tanks rendered up to +3.7 cm of daylight (procedural) and crest
   // driving perched on up to ~1 m of phantom contact per end. Publish the
-  // EXACT as-built numbers for the solve (state.js stamps ent.contactGeom):
+  // EXACT as-built numbers for the solve (state.ts stamps ent.contactGeom):
   //   halfLenM/zCenterM — the flat ground-contact run (the trapezoid base
   //     trackLoopPoints actually lays down: road-wheel patch ± 0.5 wheelR);
   //   halfWidM          — outer track edge (xc + trackW/2);
@@ -6983,7 +6983,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   // 0/0 — exactly what the first syncFromState composes; instanced wheels and
   // link pads otherwise still carry identity matrices at this point), then
   // scan the whole visual for the lowest rendered surface and the contact
-  // footprint. state.js stamps this onto the entity for movement.ts; the
+  // footprint. state.ts stamps this onto the entity for movement.ts; the
   // gear's analytic flat-run span wins over the scan's low band (the band
   // includes approach/departure ramps), while the scan owns the bottom (a
   // rebuilt hull keel can undercut the gear floor).
@@ -7064,7 +7064,7 @@ export function createTank(specId, engineCtx, opts = {}) {
 
   // ---- track hitbox attach (combat data only — no geometry writes) --------
   // Derived by buildRunningGear from the as-built band loop; attached onto
-  // the SHARED spec.armor so every armor consumer (state.js shell sweeps,
+  // the SHARED spec.armor so every armor consumer (state.ts shell sweeps,
   // damage.ts, ai.js weak-spot probes, main.ts HUD, killcam snapshots) sees
   // the real track shape. Deterministic per spec (gear cfg is authored data;
   // camoSeed/quality never move wheels), so re-attachment on every build is
@@ -7309,7 +7309,7 @@ export function createTank(specId, engineCtx, opts = {}) {
     // the latter must still include a long cannon so captures never clip it.
     presentationAnchor,
     // as-built rest contact metadata for the movement support solve (see the
-    // measureRestContact note; state.js stamps it onto the battle entity)
+    // measureRestContact note; state.ts stamps it onto the battle entity)
     contactGeom,
     // Lowest conservative rest-pose envelope used only to seat a neutral
     // showroom/gallery visual on a rigid surface. Battle movement continues

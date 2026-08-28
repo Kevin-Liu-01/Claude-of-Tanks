@@ -35,7 +35,7 @@ ARCHITECTURE.md wherever the two disagree.
                      Three.js scene                 HUD             audio/FX
 
 Solo composes the simulation and presentation directly in src/main.ts and
-src/game/state.js. The dependency-free typed session shell and event bus live
+src/game/state.ts. The dependency-free typed session shell and event bus live
 in src/game/stateCore.ts. Typed roster records, battle-visual policy, and
 deterministic participant/camouflage planning live in src/game/rosterState.ts,
 so garage and battle-intent loading can use them without owning the solo combat
@@ -185,8 +185,11 @@ subsystems that have not migrated yet cross explicit `unknown` adapters at
 this boundary instead of leaking unchecked values into typed code.
 `src/game/stateCore.ts` is the shared session boundary,
 `src/game/rosterState.ts` owns roster/visual planning, and
-`src/game/soloBattleRuntime.ts` demand-loads `src/game/state.js`, which remains
-the legacy solo battle owner.
+`src/game/soloBattleRuntime.ts` demand-loads the strict `src/game/state.ts`
+solo authority. That authority distinguishes inactive pooled Garage records
+from live battle entities and gives setup, bot doctrine, collision, shells,
+damage events, match-mode adapters, and fixed-step simulation explicit
+contracts without moving them onto the Garage boot path.
 
 Migration is boundary-first, not extension-first. A JavaScript subsystem moves
 only when its coherent owner and focused behavioral test are clear. A rename
