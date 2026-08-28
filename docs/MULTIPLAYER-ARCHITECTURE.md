@@ -41,6 +41,11 @@ damage, spotting, and AI modules.
   network-mode or joined-lobby intent and retries a transient chunk failure.
 - `src/net/connectionRecovery.ts` owns the single reconnect/failure
   presentation edge while the session rebuilds transport underneath it.
+- `src/net/privateRoomConnectionRuntime.ts` owns private/LAN room acquisition,
+  parallel signaling and ICE discovery, stable-host reload detection, cold
+  guest selection replay, state observation, cancellation generations, and
+  the exact handoff/teardown order. The play menu renders and commands the
+  resulting connection but cannot construct a second transport lifecycle.
 - `src/net/localSession.js` provides loopback authority for protocol tests and
   tooling; normal solo play does not load it.
 - `src/net/privateRoomSession.ts` and `privateMatchHandoff.js` own WebRTC lobby
@@ -239,6 +244,15 @@ duplicate SDP, and reserves ICE restart for a later bounded attempt or an
 explicit disconnected/failed connection state. This prevents a slow first
 load from racing two offer generations while retaining automatic recovery
 from genuine route changes.
+
+Lobby acquisition is generation-guarded too. Signaling room creation/join and
+ICE discovery start in parallel, but a mode change, modal dismissal, or room
+close invalidates the attempt immediately. A late response is closed rather
+than republishing a stale lobby above the Garage. A truly cold guest waits for
+the peer runtime, then replays vehicle, equipment, and camouflage as ordered
+reliable commands before the menu permits readiness. Once the battle room
+coordinator adopts the transport, the menu forgets its acquisition generation
+without closing the handed-off session.
 
 The room-ready promise also survives a bounded replacement of the opening RTC
 generation. A guest that times out before its match client exists rotates its

@@ -5,10 +5,8 @@
  * signaling/lobby commands. Canonical lobby and match state remain in src/net;
  * the menu renders that state and hands established sessions to main.js.
  */
-import { PrivateRoomClientSession, PrivateRoomHostSession } from '../net/privateRoomSession.ts';
-import { RoomSignalingClient } from '../net/signalingClient.js';
+import { createPrivateRoomConnectionRuntime } from '../net/privateRoomConnectionRuntime.ts';
 import { resolveSignalUrl } from '../net/signalEndpoint.js';
-import { serializeLobby } from '../net/lobby.js';
 import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.js';
 import { normalizeRoomCode } from '../net/protocol.js';
 import { createRoomInviteUrl, roomInviteTitle } from '../net/roomInvite.js';
@@ -617,6 +615,29 @@ export function createPlayMenu({
   let rankedAbort = null;
   let invitedHostName = null;
 
+  function adoptRoomConnection(connection) {
+    session = connection.session;
+    role = connection.role;
+    roomIce = connection.ice;
+  }
+
+  const privateRoomConnection = createPrivateRoomConnectionRuntime({
+    loadIce: iceServers,
+    isVehicleAllowed,
+    isCamoAllowed,
+    isMapAllowed: (mapId) => maps.some((map) => map.id === mapId),
+    onHostStart: (lobbyState, connection) => {
+      adoptRoomConnection(connection);
+      beginNetworkHandoff(lobbyState, 'host');
+    },
+    onClientClose: (reason) => {
+      closeCurrentSession(reason, { skipTransportClose: true });
+      setStatus('The host closed this room.', true);
+      onNetworkClose(reason);
+    },
+    onError: (error) => setStatus(error?.message || String(error), true),
+  });
+
   function hostNameFromRoom(value) {
     const explicit = normalizePlayerName(value?.hostName);
     if (explicit) return explicit;
@@ -695,35 +716,13 @@ export function createPlayMenu({
     joinBtn.disabled = next || unavailable || codeInput.value.length !== 6;
   }
 
-  function createHostSession({ signaling, roomInfo, name, selection, ice, teamSize }) {
-    return new PrivateRoomHostSession({
-      signaling,
-      roomInfo,
-      hostName: name,
-      hostSpecId: selection.specId,
-      hostEquipment: selection.equipment,
-      hostCamo: selection.camo,
-      mapId: selection.mapId,
-      teamSize,
-      iceServers: ice.iceServers,
-      relayOnly: ice.relayOnly,
-      iceExpiresInSeconds: ice.expiresInSeconds,
-      refreshIceConfiguration: () => iceServers(mode),
-      isVehicleAllowed,
-      isCamoAllowed,
-      isMapAllowed: (mapId) => maps.some((map) => map.id === mapId),
-      onStart: (lobbyState) => beginNetworkHandoff(lobbyState, 'host'),
-      onError: (error) => setStatus(error.message, true),
-    });
-  }
-
   function closeCurrentSession(reason = 'menu_closed', { skipTransportClose = false } = {}) {
     if (unsubscribeState) unsubscribeState();
     unsubscribeState = null;
-    if (!skipTransportClose) {
-      if (activeRoom) activeRoom.leave(reason);
-      else if (session) session.close(reason);
-    }
+    if (activeRoom && !skipTransportClose) activeRoom.leave(reason);
+    else privateRoomConnection.close(reason, {
+      transportAlreadyClosed: skipTransportClose,
+    });
     session = null;
     roomIce = null;
     activeRoom = null;
@@ -971,7 +970,7 @@ export function createPlayMenu({
   }
 
   async function connectRoom(kind) {
-    if (connecting || session) return;
+    if (connecting || session || privateRoomConnection.connecting || privateRoomConnection.current) return;
     const selection = getSelection();
     const name = normalizePlayerName(nameInput.value) || automaticPlayerName(ownPlayerId);
     if (!name) throw new Error('Enter a player name');
@@ -983,65 +982,37 @@ export function createPlayMenu({
         ? 'Automatic LAN signaling is unavailable. Open connection settings to enter a fallback address.'
         : 'Private lobby signaling is unavailable on this deployment.');
     }
-    const signaling = new RoomSignalingClient({ url: signalUrl });
     const player = { id: ownPlayerId, name };
     setConnecting(true);
     try {
+      const teamSize = Number(createSizeSelect.value);
       if (kind === 'create') {
-        const teamSize = Number(createSizeSelect.value);
         remember(ROOM_SIZE_KEY, String(teamSize));
-        const [roomInfo, ice] = await Promise.all([
-          signaling.createRoom({ player, mode, maxPlayers: 14 }),
-          iceServers(mode),
-        ]);
-        roomIce = ice;
-        session = createHostSession({ signaling, roomInfo, name, selection, ice, teamSize });
-        role = 'host';
-        unsubscribeState = session.runtime.onState(renderLobby);
-        renderLobby(serializeLobby(session.lobby));
-      } else {
-        const [roomInfo, ice] = await Promise.all([
-          signaling.joinRoom({ roomCode: codeInput.value, player }),
-          iceServers(mode),
-        ]);
-        roomIce = ice;
-        if (roomInfo.hostId === roomInfo.peerId) {
-          // The stable browser player id owns this room. This is a host-page
-          // reload, not a guest joining itself: rebuild browser authority and
-          // offer fresh peer connections to all retained signaling members.
-          const teamSize = Number(createSizeSelect.value);
-          session = createHostSession({ signaling, roomInfo, name, selection, ice, teamSize });
-          role = 'host';
-          resetInvitation();
-          unsubscribeState = session.runtime.onState(renderLobby);
-          renderLobby(serializeLobby(session.lobby));
-        } else {
-          presentInvitation(hostNameFromRoom(roomInfo), roomInfo.roomCode, false);
-          session = new PrivateRoomClientSession({
-            signaling,
-            roomInfo,
-            iceServers: ice.iceServers,
-            relayOnly: ice.relayOnly,
-            iceExpiresInSeconds: ice.expiresInSeconds,
-            refreshIceConfiguration: () => iceServers(mode),
-            onError: (error) => setStatus(error.message, true),
-            onClose: (reason) => {
-              closeCurrentSession(reason, { skipTransportClose: true });
-              setStatus('The host closed this room.', true);
-              onNetworkClose(reason);
-            },
-          });
-          role = 'client';
-          const runtime = await session.ready;
-          unsubscribeState = runtime.onState(renderLobby);
-          await session.submit({ type: 'select_vehicle', specId: selection.specId });
-          await session.submit({ type: 'select_equipment', equipment: selection.equipment });
-          await session.submit({ type: 'select_camo', camo: selection.camo });
-        }
       }
+      const connection = await privateRoomConnection.connect({
+        kind,
+        mode,
+        signalUrl,
+        roomCode: kind === 'join' ? codeInput.value : undefined,
+        player,
+        selection,
+        teamSize,
+        maxPlayers: 14,
+      });
+      if (!connection) return;
+      adoptRoomConnection(connection);
+      if (handedOff) return;
+      if (kind === 'join' && role === 'host') resetInvitation();
+      else if (role === 'client') {
+        presentInvitation(
+          hostNameFromRoom(connection.roomInfo),
+          connection.roomInfo.roomCode,
+          false,
+        );
+      }
+      unsubscribeState = privateRoomConnection.observe(renderLobby);
     } catch (error) {
       closeCurrentSession('connection_failed');
-      signaling.close('connection_failed');
       throw error;
     } finally {
       setConnecting(false);
@@ -1210,6 +1181,10 @@ export function createPlayMenu({
         typeof adapter.command !== 'function' || typeof adapter.leave !== 'function') {
       throw new TypeError('active room adapter is incomplete');
     }
+    // The network room coordinator now owns this transport. Relinquish the
+    // menu acquisition generation without closing the handed-off session.
+    privateRoomConnection.forget();
+    session = null;
     activeRoom = adapter;
     role = adapter.role;
     mode = adapter.state.mode || 'private';

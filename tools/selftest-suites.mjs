@@ -191,6 +191,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/net/localTankPrediction.selftest.mjs',
     'src/net/adverseNetworkTransport.selftest.mjs',
     'src/net/privateMatchHandoff.selftest.mjs',
+    'src/net/privateRoomConnectionRuntime.selftest.mjs',
     'src/net/rankedServiceClient.selftest.mjs',
     'server/signaling.selftest.mjs',
     'api/ice.selftest.mjs',
