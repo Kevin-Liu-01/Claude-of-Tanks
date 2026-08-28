@@ -633,7 +633,7 @@ src/net/browserBattleBridge.js applies sampled authority state to browser game
 state. The main render loop owns the final visual synchronization, avoiding a
 second full tank sync in the same frame.
 
-src/net/presentationEventQueue.js separates critical and cosmetic work:
+src/net/presentationEventQueue.ts separates critical and cosmetic work:
 
 - critical state and report transitions apply immediately;
 - heavy remote smoke, debris, sparks, and destruction work is admitted within

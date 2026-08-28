@@ -1,4 +1,4 @@
-import { encodeAimIntent } from './aimIntent.js';
+import { encodeAimIntent } from './aimIntent.ts';
 import { NetworkInputCadence, type NetworkInputSample } from './inputCadence.ts';
 import { PLAYER_ACTION_BITS } from './protocol.ts';
 

@@ -267,7 +267,7 @@ Network events can arrive in a batch even when the original actions were
 spread across authority ticks. Running every explosion, wreck swap, debris
 emitter, smoke column, and audio effect synchronously can create a long task.
 
-src/net/presentationEventQueue.js classifies work:
+src/net/presentationEventQueue.ts classifies work:
 
 - durable and critical state applies immediately;
 - inexpensive presentation may run immediately;

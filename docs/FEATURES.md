@@ -68,7 +68,7 @@ its traverse.
 Relevant implementation:
 
 - src/sim/ballistics.js
-- src/net/aimIntent.js
+- src/net/aimIntent.ts
 - src/game/state.js
 - docs/GUNNERY-CAMERA-SPEC.md
 

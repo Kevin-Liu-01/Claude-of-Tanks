@@ -7,7 +7,7 @@ import { prebakeSharedTextures } from '../vehicles/materials.js';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.js';
 import { LocalTankPredictor } from './localTankPrediction.ts';
-import { PresentationEventQueue } from './presentationEventQueue.js';
+import { PresentationEventQueue } from './presentationEventQueue.ts';
 import { SNAPSHOT_FLAGS } from './snapshot.js';
 import { createSpecialActionState } from '../sim/specialActions.js';
 

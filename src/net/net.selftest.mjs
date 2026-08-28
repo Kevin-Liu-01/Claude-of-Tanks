@@ -47,7 +47,7 @@ import {
 import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
 import { snapshotWireCodec } from './snapshotWireCodec.ts';
 import { createLocalMatchSession } from './localSession.js';
-import { decodeAimIntent, encodeAimIntent } from './aimIntent.js';
+import { decodeAimIntent, encodeAimIntent } from './aimIntent.ts';
 import {
   MATCH_CHANNEL_LABEL,
   MATCH_CONTROL_CHANNEL_LABEL,

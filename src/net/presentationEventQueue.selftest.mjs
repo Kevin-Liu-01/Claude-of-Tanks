@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { PresentationEventQueue } from './presentationEventQueue.js';
+import { PresentationEventQueue } from './presentationEventQueue.ts';
 
 const emitted = [];
 const queue = new PresentationEventQueue({
