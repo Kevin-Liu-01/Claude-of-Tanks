@@ -1925,6 +1925,22 @@ export function createKillCam(deps) {
     }
   }
 
+  /** Keep the restored shooter on its recorded firing transform while the
+   * establishing camera travels toward it. The battle visual sync can still
+   * paint between replay ticks, so a one-time restage is not sufficient: it
+   * allowed the live actor pose to flash back in and then snap into place at
+   * beginFiring(). This lock is allocation-free and remains active through
+   * the firing hold, where `dt` also advances the authored recoil response. */
+  function pinAttackerAtFiringPose(dt = 0) {
+    if (!pb || !pb.attackerPoseState) return;
+    const ent = pb.snap.attackerEnt;
+    if (!ent || ent === pb.snap.targetEnt || !ent.visual) return;
+    const vis = ent.visual;
+    if (vis.setVisible) vis.setVisible(true);
+    vis.syncFromState(pb.attackerPoseState, Math.max(0, dt));
+    if (vis.root) vis.root.updateMatrixWorld(true);
+  }
+
   function applyReplaySurfaceState(vis, moduleStates, eraSpent) {
     if (!vis) return;
     if (vis.setTrackState) {
@@ -2185,10 +2201,7 @@ export function createKillCam(deps) {
     const shot = pb.shot;
     if (!shot) return;
     shot.t += Math.max(0, dt);
-    const attacker = pb.snap.attackerEnt;
-    if (attacker?.visual && pb.attackerPoseState) {
-      attacker.visual.syncFromState(pb.attackerPoseState, dt);
-    }
+    pinAttackerAtFiringPose(dt);
     const u = Math.min(1, shot.t / FIRING_HOLD_S);
     _a.copy(shot.pos).addScaledVector(shot.side, Math.sin(u * Math.PI) * 0.25);
     setReplayCamera(_a, shot.look, 46, dt);
@@ -2343,6 +2356,10 @@ export function createKillCam(deps) {
     // skipped beat). Idempotent, so the earlier begin()/endWreck restages
     // stay exactly as they were.
     restageIntact();
+    // The actor must already occupy the recorded firing pose before the very
+    // first approach frame is painted. beginFiring() repeats this restage as
+    // a safety net, but it must never be the first visible pose correction.
+    restageAttacker();
     const toPos = new THREE.Vector3();
     const toLook = new THREE.Vector3();
     firingCameraPose(toPos, toLook);
@@ -2408,6 +2425,7 @@ export function createKillCam(deps) {
   function updateApproach(dt) {
     const a = pb.app;
     a.t += dt;
+    pinAttackerAtFiringPose(0);
     const u = Math.min(1, a.t / a.dur);
     const k = u * u * u * (u * (u * 6 - 15) + 10); // smootherstep push-in
     _a.lerpVectors(a.fromPos, a.toPos, k)

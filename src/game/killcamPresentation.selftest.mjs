@@ -6,7 +6,7 @@ const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 const state = readFileSync(new URL('./state.ts', import.meta.url), 'utf8');
 const effects = readFileSync(new URL('../fx/effects.js', import.meta.url), 'utf8');
 const responsive = readFileSync(new URL('../ui/responsiveSurfaces.css', import.meta.url), 'utf8');
-const cameraRig = readFileSync(new URL('../engine/cameraRig.js', import.meta.url), 'utf8');
+const cameraRig = readFileSync(new URL('../engine/cameraRig.ts', import.meta.url), 'utf8');
 
 assert.match(source, /import \{ uiIconSVG \} from '\.\.\/ui\/uiIcons\.ts';/,
   'killcam presentation uses the shared SVG icon registry');
@@ -65,6 +65,12 @@ assert.match(source, /if \(pb\.replayKind === 'collision'\)[\s\S]*beginCollision
   'collision playback exits before any tracer geometry can be allocated');
 assert.match(source, /function beginFiring\(\)[\s\S]*restageAttacker\(\)[\s\S]*recoilKick\([\s\S]*muzzleFlash\(/,
   'projectile playback visibly fires the restored attacker from its rendered muzzle');
+assert.match(source, /function beginApproach\(\)[\s\S]*restageIntact\(\);[\s\S]*restageAttacker\(\);[\s\S]*firingCameraPose/,
+  'the attacker is restored before the establishing camera computes or paints its destination');
+assert.match(source, /function updateApproach\(dt\)[\s\S]*pinAttackerAtFiringPose\(0\)/,
+  'every approach frame pins the attacker to its recorded firing pose');
+assert.match(source, /function pinAttackerAtFiringPose[\s\S]*setVisible\(true\)[\s\S]*syncFromState\(pb\.attackerPoseState/,
+  'the approach pose lock keeps the restored attacker visible without allocating per frame');
 assert.match(source, /function updateCollision\(dt\)[\s\S]*applyReplaySurfaceState\(tvis, pb\.snap\.moduleStates[\s\S]*vehicleCollision/,
   'collision contact applies resolved module failures and dedicated impact effects');
 assert.match(main, /createKillCam\([\s\S]*getGame: \(\) => game/,
@@ -83,9 +89,9 @@ assert.doesNotMatch(source, /\.cot-kc\.out \.cot-kc-bart,[\s\S]{0,120}height:51v
   'exit no longer fakes a viewport resize with expanding letterbox bars');
 assert.doesNotMatch(source, /Math\.exp\(-pb\.itWall \/ 0\.16\)/,
   'impact no longer jumps to a peak lens punch on its first frame');
-assert.match(cameraRig, /nextFov = spec\.fromFov \+ \(55 - spec\.fromFov\) \* k/,
+assert.match(cameraRig, /nextFov = activeSpectate\.fromFov \+ \(55 - activeSpectate\.fromFov\) \* k/,
   'spectator entry blends its lens instead of snapping out of the killcam FOV');
-assert.match(cameraRig, /function spectateBlendDuration\(ent\)[\s\S]*Math\.hypot\(dx, dy, dz\)/,
+assert.match(cameraRig, /function spectateBlendDuration\(ent: CameraEntity \| null\): number[\s\S]*Math\.hypot\(dx, dy, dz\)/,
   'long-distance spectator target changes receive a distance-aware blend');
 assert.match(state, /applyLethalRamModuleDamage[\s\S]*game\.killcam\.onRam\(ramEvent, a, b\)/,
   'authoritative ram resolution records module failures before live wreck presentation');
