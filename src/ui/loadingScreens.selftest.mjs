@@ -8,9 +8,9 @@ import {
   TRANSITION_SHOTS,
   featuredShotForMap,
   nextFeaturedShot,
-} from './featuredShots.js';
+} from './featuredShots.ts';
 import { BOOT_HERO_SHOTS } from './bootScreen.ts';
-import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.js';
+import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 import { MAP_IDS } from '../world/maps/index.js';
 
 function webpDimensions(buffer) {

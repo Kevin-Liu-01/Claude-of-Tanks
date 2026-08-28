@@ -1,4 +1,4 @@
-import { createElement, ensureStyle } from './dom.js';
+import { createElement, ensureStyle } from './dom.ts';
 import { isAnyModalOpen } from './modal.js';
 import { uiIconSVG } from './uiIcons.js';
 

@@ -1,4 +1,4 @@
-// src/ui/fonts.js — shared UI typography: self-hosted ABC Monument Grotesk
+// src/ui/fonts.ts — shared UI typography: self-hosted ABC Monument Grotesk
 // (Dinamo Typefaces — commercial face, owner-provided cut; see
 // docs/ATTRIBUTION.md) + the canonical font stacks and type tokens every UI
 // module imports. Injecting once here keeps all screens (garage, HUD,
@@ -34,7 +34,7 @@ export const FONT_COND = "'ABC Monument Grotesk','Arial Narrow','Avenir Next Con
 
 // Weights the UI actually uses (resolved against the face ranges below).
 // Floor is 500: nothing below medium anywhere in the UI.
-const WEIGHTS = [500, 600, 700, 800];
+const WEIGHTS = [500, 600, 700, 800] as const;
 
 const FONT_DIR = '/fonts/abc-monument-grotesk';
 
@@ -65,7 +65,7 @@ let warmed = false;
  * Inject the @font-face rules (idempotent) and pre-warm the hosted weights so
  * overlays never flash fallback glyphs. Safe to call from every UI module.
  */
-export function ensureFonts() {
+export function ensureFonts(): void {
   if (!document.getElementById('cot-fonts')) {
     const s = document.createElement('style');
     s.id = 'cot-fonts';

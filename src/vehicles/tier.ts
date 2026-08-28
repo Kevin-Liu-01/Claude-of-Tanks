@@ -43,16 +43,21 @@ export const TANK_TIER = Object.freeze({
   bmp3: 8, upior: 9,
   // §5.363: the T-90-hull Terminator sits one over bmpt_terminator2.
   bmpt_t90: 10,
-});
+} as const);
 
-export const ROMAN_TIER = Object.freeze(['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']);
+export const ROMAN_TIER = Object.freeze([
+  '', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X',
+] as const);
+
+const TIER_BY_ID: Readonly<Record<string, number>> = TANK_TIER;
+const NUMERAL_BY_TIER: Readonly<Record<number, string>> = ROMAN_TIER;
 
 /** Numeric tier for gameplay ordering; unknown developer rows default to VI. */
-export function tankTier(id) {
-  return TANK_TIER[id] ?? 6;
+export function tankTier(id: string): number {
+  return TIER_BY_ID[id] ?? 6;
 }
 
 /** Roman tier for UI; unknown rows stay blank so missing data is visible. */
-export function tierNumeral(id) {
-  return ROMAN_TIER[TANK_TIER[id]] || '';
+export function tierNumeral(id: string): string {
+  return NUMERAL_BY_TIER[TIER_BY_ID[id]] || '';
 }

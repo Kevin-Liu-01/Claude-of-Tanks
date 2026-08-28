@@ -13,11 +13,11 @@
 //   4. SESSION STATS — end-of-battle report (bus 'battle:ended').
 // Mounted by the clearly-marked SHOT-INFO section in src/ui/hud.js.
 
-import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
-import { createElement as el, ensureStyle } from './dom.js';
+import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
+import { createElement as el, ensureStyle } from './dom.ts';
 import { nominalPenFor, shellDisplayName, zoneLabel } from './hitEventFormat.js';
 import { uiIconSVG } from './uiIcons.js';
-import { maskIcon, iconUrl } from './icons.js';
+import { maskIcon, iconUrl } from './icons.ts';
 import { MODULE_LABEL, CREW_LABEL, STATE_COLOR } from './moduleRegistry.js';
 import {
   createShotDiagramProjection,

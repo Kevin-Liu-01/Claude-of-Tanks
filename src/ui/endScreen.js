@@ -27,9 +27,9 @@
  * base-capture mechanic, so no capture stat is fabricated.
  */
 
-import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
-import { createElement as el, ensureStyle } from './dom.js';
-import { iconUrl, maskIcon } from './icons.js';
+import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
+import { createElement as el, ensureStyle } from './dom.ts';
+import { iconUrl, maskIcon } from './icons.ts';
 import { uiIconSVG } from './uiIcons.js';
 import { getSpec } from '../vehicles/specs.js';
 

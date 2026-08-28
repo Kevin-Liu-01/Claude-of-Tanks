@@ -4,7 +4,7 @@ import './tankFactory.js';
 import {
   PRODUCTION_TANK_IDS, SAVED_TANK_IDS, TANK_SPECS,
 } from './specs.js';
-import { tankTier } from './tier.js';
+import { tankTier } from './tier.ts';
 import { createCombatState, startReload } from '../sim/damage.js';
 import { penAtDistanceMm } from '../sim/ballistics.js';
 import { traceTank } from '../sim/armor.js';

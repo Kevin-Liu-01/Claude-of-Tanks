@@ -9,7 +9,7 @@
 // every UI surface and keep this module as the small compatibility layer used
 // by the garage and screenshot harness.
 
-import { iconUrl } from './icons.js';
+import { iconUrl } from './icons.ts';
 // TOP-DOWN MASK RIG (damage panel r9) — see the section at the bottom of this
 // file: an offscreen orthographic render of the ACTUAL built vehicle (hull
 // layer and turret+gun layer separately), replacing the baked one-piece

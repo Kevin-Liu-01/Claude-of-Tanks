@@ -58,7 +58,7 @@ import { setDestroyedEventSink } from './world/destructibles.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
 import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
-import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.js';
+import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.js';
 import {
   createTank, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
@@ -140,7 +140,7 @@ import { createFxRuntimeAccess } from './fx/fxRuntimeAccess.ts';
 // paint never waits on this module graph) and the pre-battle roster screen.
 import { createBootScreen } from './ui/bootScreen.ts';
 import { createBattleLoadScreen } from './ui/battleLoad.ts';
-import { tierNumeral } from './vehicles/tier.js';
+import { tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
 // reveal it, then start a second load".  The intent is captured before any

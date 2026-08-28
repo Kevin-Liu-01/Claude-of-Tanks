@@ -3,7 +3,7 @@
 
 import { CREW_LABEL, MODULE_LABEL } from './moduleRegistry.js';
 import { SPECIAL_ACTION_KINDS, specialActionDescriptor } from '../sim/specialActionPolicy.ts';
-import { tankTier } from '../vehicles/tier.js';
+import { tankTier } from '../vehicles/tier.ts';
 
 const MODULE_ICON = Object.freeze({ trackL: 'track', trackR: 'track' });
 const CREW_ICON = Object.freeze({

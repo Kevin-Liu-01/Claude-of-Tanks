@@ -1,5 +1,5 @@
 /**
- * featuredShots.js — the ONE canonical list of featured stills.
+ * featuredShots.ts — the ONE canonical list of featured stills.
  *
  * Consumed by the boot splash (bootScreen.ts), the garage battle gallery
  * (garage.js) and the state-transition loading screens (transition.ts).
@@ -11,7 +11,17 @@
  * surfaces use the smaller `TRANSITION_SHOTS` set so older marketing renders
  * stay browsable without returning to the player-facing loading rotation.
  */
-export const FEATURED_SHOTS = [
+export interface FeaturedShot {
+  readonly img: string;
+  readonly bootImg?: string;
+  readonly cap: string;
+  readonly maps?: readonly string[];
+  readonly focal: string;
+  readonly handmade?: boolean;
+  readonly animated?: boolean;
+}
+
+export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
   {
     img: '/media/featured/f7_studio_t90_column_fire.webp',
     bootImg: '/media/featured/f7_studio_t90_column_fire.boot.webp',
@@ -100,16 +110,16 @@ export const FEATURED_SHOTS = [
     img: '/media/feature-evidence-r2/studio-action.webp',
     cap: 'Scene Studio — directed urban battle', focal: '50% 52%', handmade: true,
   },
-];
+]);
 
 /** Just the image URLs (boot hero + transition backdrops). */
 export const TRANSITION_SHOTS = FEATURED_SHOTS.filter((shot) => shot.maps?.length);
 export const FEATURED_IMAGES = TRANSITION_SHOTS.map((s) => s.img);
 
-let rotation = [];
+let rotation: FeaturedShot[] = [];
 let previousImage = '';
 
-function refillRotation() {
+function refillRotation(): void {
   rotation = [...TRANSITION_SHOTS];
   for (let i = rotation.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -121,15 +131,16 @@ function refillRotation() {
 }
 
 /** Next curated capture, shuffled without immediate repeats. */
-export function nextFeaturedShot() {
+export function nextFeaturedShot(): FeaturedShot {
   if (!rotation.length) refillRotation();
   const shot = rotation.shift();
+  if (!shot) throw new Error('No transition shots are configured');
   previousImage = shot.img;
   return shot;
 }
 
 /** Backward-compatible random-shot name; now uses the non-repeating rotation. */
-export function randomFeaturedShot() {
+export function randomFeaturedShot(): FeaturedShot {
   return nextFeaturedShot();
 }
 
@@ -139,7 +150,7 @@ export function randomFeaturedShot() {
  * the same operation.
  * @param {string} mapId
  */
-export function featuredShotForMap(mapId) {
+export function featuredShotForMap(mapId: string): FeaturedShot {
   const key = String(mapId || '').trim().toLowerCase();
   return TRANSITION_SHOTS.find((shot) => shot.maps?.includes(key)) || nextFeaturedShot();
 }

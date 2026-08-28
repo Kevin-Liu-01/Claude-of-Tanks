@@ -12,9 +12,9 @@
  * public/icons/<id>_side_silhouette.png (tools/genIcons.mjs).
  */
 
-import { FONT_STACK, FONT_COND } from './fonts.js';
-import { iconUrl } from './icons.js';
-import { tierNumeral } from '../vehicles/tier.js';
+import { FONT_STACK, FONT_COND } from './fonts.ts';
+import { iconUrl } from './icons.ts';
+import { tierNumeral } from '../vehicles/tier.ts';
 
 // Backward-compatible re-export for main.js, killcam and end-screen callers.
 export { tierNumeral };

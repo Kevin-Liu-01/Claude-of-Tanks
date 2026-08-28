@@ -1,5 +1,5 @@
 import { tankDisplayName, tankLabelRecord } from '../vehicles/tankLabels.js';
-import { tankTier, tierNumeral } from '../vehicles/tier.js';
+import { tankTier, tierNumeral } from '../vehicles/tier.ts';
 import { vehicleEraLabel } from '../vehicles/taxonomy.js';
 
 function clamp(value, min = 0, max = 100) {

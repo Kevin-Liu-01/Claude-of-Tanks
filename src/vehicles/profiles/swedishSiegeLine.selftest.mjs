@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.js';
 import { getSpec } from '../specs.js';
-import { tankTier } from '../tier.js';
+import { tankTier } from '../tier.ts';
 import { NATIVE_FAMILY_ORDER } from '../fleetOrder.js';
 import { createTankState, SIM_DT, updateTank } from '../../sim/movement.js';
 import { SPECIAL_ACTION_KINDS, specialActionKind } from '../../sim/specialActions.js';

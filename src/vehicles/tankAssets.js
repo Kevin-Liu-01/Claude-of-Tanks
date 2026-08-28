@@ -3,7 +3,7 @@
 // registered tank fail the release gate until that output is generated.
 
 import { flagIconCode } from '../ui/flagCodes.js';
-import { tankTier, tierNumeral } from './tier.js';
+import { tankTier, tierNumeral } from './tier.ts';
 import { tankLabelRecord } from './tankLabels.js';
 import { vehicleMarkingRecord } from './vehicleMarkings.js';
 

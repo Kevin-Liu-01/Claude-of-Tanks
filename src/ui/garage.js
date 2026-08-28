@@ -3,13 +3,13 @@
 // bottom tank carousel, right stats card, top-center BATTLE button.
 // Contract: docs/ARCHITECTURE.md §3.7.3.
 
-import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
-import { ensureStyle } from './dom.js';
-import { FEATURED_SHOTS } from './featuredShots.js';
-import { preloadImage, preloadImageWhenIdle } from './imagePreload.js';
+import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
+import { ensureStyle } from './dom.ts';
+import { FEATURED_SHOTS } from './featuredShots.ts';
+import { preloadImage, preloadImageWhenIdle } from './imagePreload.ts';
 import { flagIconHTML, flagIconUrl } from './flags.js';
 import { flagIconCode } from './flagCodes.js';
-import { iconUrl } from './icons.js';
+import { iconUrl } from './icons.ts';
 import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.js';
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
@@ -37,10 +37,10 @@ import {
   horizontalRailState, horizontalRailWheelDelta,
 } from './garageOrder.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
-import { tankTier, tierNumeral } from '../vehicles/tier.js';
+import { tankTier, tierNumeral } from '../vehicles/tier.ts';
 import { vehicleEraLabel } from '../vehicles/taxonomy.js';
 import { getPlayerRecord } from '../game/profile.js';
-import { mountGitHubStars } from './githubStars.js';
+import { mountGitHubStars } from './githubStars.ts';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.js';
@@ -1364,7 +1364,7 @@ export function createGarage(opts) {
   // created programmatically so the main markup block stays untouched; it
   // crossfades every 8 s, click advances, hover pauses. Images lazy-load —
   // a missing set simply never shows the panel's layers (gradient card).
-  // r9.5: the list moved to featuredShots.js — ONE copy shared with the boot
+  // r9.5: the list moved to featuredShots.ts — ONE copy shared with the boot
   // splash and the transition screens (hand-synced copies drifted from disk
   // twice; r9.1 was the "always the same picture" bug that caused).
   (() => {

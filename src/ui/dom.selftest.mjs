@@ -16,7 +16,7 @@ globalThis.document = {
   },
 };
 
-const { createElement, ensureStyle } = await import('./dom.js');
+const { createElement, ensureStyle } = await import('./dom.ts');
 
 const style = ensureStyle('test-style', '.test{}');
 assert.equal(style.id, 'test-style');

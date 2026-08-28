@@ -14,19 +14,19 @@ const COMPACT_NUMBER = new Intl.NumberFormat('en', {
   maximumFractionDigits: 1,
 });
 const FULL_NUMBER = new Intl.NumberFormat('en');
-const starNodes = new Set();
+const starNodes = new Set<Element>();
 
-export function formatGitHubStarCount(count) {
+export function formatGitHubStarCount(count: number): string {
   return COMPACT_NUMBER.format(count);
 }
 
-function renderGitHubStarCount(count) {
+function renderGitHubStarCount(count: number): void {
   const compactCount = formatGitHubStarCount(count);
   const fullCount = FULL_NUMBER.format(count);
 
   for (const node of starNodes) {
     node.textContent = compactCount;
-    const control = node.closest('a[href*="github.com/Kevin-Liu-01/"]');
+    const control = node.closest<HTMLAnchorElement>('a[href*="github.com/Kevin-Liu-01/"]');
     if (!control) continue;
     if (!control.dataset.githubLabel) {
       control.dataset.githubLabel = control.getAttribute('aria-label') ||
@@ -40,15 +40,15 @@ function renderGitHubStarCount(count) {
  * Retained for compatibility with existing mounts. The refresh is deliberately
  * local: callers get a resolved receipt without issuing third-party traffic.
  */
-export function refreshGitHubStars() {
+export function refreshGitHubStars(): Promise<number> {
   renderGitHubStarCount(FALLBACK_GITHUB_STAR_COUNT);
   return Promise.resolve(FALLBACK_GITHUB_STAR_COUNT);
 }
 
 /** Register every repository star-count node under root without network I/O. */
-export function mountGitHubStars(root = document) {
-  if (root?.matches?.('[data-github-stars]')) starNodes.add(root);
-  for (const node of root?.querySelectorAll?.('[data-github-stars]') || []) starNodes.add(node);
+export function mountGitHubStars(root: Document | Element = document): Promise<number | null> {
+  if ('matches' in root && root.matches('[data-github-stars]')) starNodes.add(root);
+  for (const node of root.querySelectorAll<Element>('[data-github-stars]')) starNodes.add(node);
   if (!starNodes.size) return Promise.resolve(null);
   return refreshGitHubStars();
 }

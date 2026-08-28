@@ -6,7 +6,7 @@ import {
   FALLBACK_GITHUB_STAR_COUNT,
   formatGitHubStarCount,
   mountGitHubStars,
-} from '../ui/githubStars.js';
+} from '../ui/githubStars.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const pages = [

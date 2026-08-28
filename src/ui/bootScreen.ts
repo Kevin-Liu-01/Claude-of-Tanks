@@ -24,9 +24,9 @@
  * still be captured.
  */
 
-import { TRANSITION_SHOTS } from './featuredShots.js';
-import { mountGitHubStars } from './githubStars.js';
-import { preloadImage } from './imagePreload.js';
+import { TRANSITION_SHOTS } from './featuredShots.ts';
+import { mountGitHubStars } from './githubStars.ts';
+import { preloadImage } from './imagePreload.ts';
 
 declare global {
   interface Window {
@@ -109,7 +109,7 @@ const $ = <ElementType extends HTMLElement = HTMLElement>(id: string): ElementTy
 // Marketing backdrop set (in-engine action stills — tools/marketing-shots).
 // All are lazy-loaded AFTER the splash has painted, so the boot critical
 // path never waits on them (bootgate-probe guards the timing).
-// r9.5: the list lives in featuredShots.js — ONE copy shared with the
+// r9.5: the list lives in featuredShots.ts — ONE copy shared with the
 // garage gallery and the state-transition screens, because hand-synced
 // copies drifted from disk twice (the r9.1 "same picture every load" bug).
 // Keep the first percentage screen on the curated current-capture pool. Export

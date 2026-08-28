@@ -95,6 +95,9 @@ file and suppress checking. The durable policy and completed owner sequence are
 recorded in `docs/decisions/0001-incremental-typescript.md`. The completed
 migration removes `allowJs`; until then, every slice must reduce the runtime
 JavaScript inventory without adding unchecked replacement modules.
+Generators must follow migrations too: `tools/map-thumbs.mjs`, for example,
+writes `src/ui/mapThumbs.ts` so regeneration cannot restore a deleted `.js`
+owner.
 
 This covers performance instrumentation, renderer recovery helpers, audio,
 protocol validation, browser bridge behavior, reliable presentation events,

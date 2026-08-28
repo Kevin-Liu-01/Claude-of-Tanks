@@ -1,8 +1,8 @@
-// src/ui/mapThumbs.js — GENERATED map art served from public/maps/.
+// src/ui/mapThumbs.ts — GENERATED map art served from public/maps/.
 // Regenerate via: node tools/screenshot.mjs --width 3840 --height 2160 --dyn-scale 1 && node tools/map-thumbs.mjs
 // Empty string = no thumbnail yet; the picker falls back to a CSS gradient.
 
-export const MAP_THUMBS = {
+export const MAP_THUMBS = Object.freeze({
   verdant: '/maps/thumbs/verdant.webp',
   desert: '/maps/thumbs/desert.webp',
   winter: '/maps/thumbs/winter.webp',
@@ -23,9 +23,9 @@ export const MAP_THUMBS = {
   blackglass: '/maps/thumbs/blackglass.webp',
   titan_gorge: '/maps/thumbs/titan_gorge.webp',
   skybridge: '/maps/thumbs/skybridge.webp',
-};
+});
 
-export const MAP_HEROES = {
+export const MAP_HEROES = Object.freeze({
   verdant: '/maps/verdant.webp',
   desert: '/maps/desert.webp',
   winter: '/maps/winter.webp',
@@ -46,4 +46,6 @@ export const MAP_HEROES = {
   blackglass: '/maps/blackglass.webp',
   titan_gorge: '/maps/titan_gorge.webp',
   skybridge: '/maps/skybridge.webp',
-};
+});
+
+export type MapThumbnailId = keyof typeof MAP_THUMBS;

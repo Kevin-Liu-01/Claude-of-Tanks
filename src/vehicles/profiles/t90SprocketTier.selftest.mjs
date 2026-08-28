@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.js';
-import { tankTier, tierNumeral } from '../tier.js';
+import { tankTier, tierNumeral } from '../tier.ts';
 
 const EPSILON = 1e-6;
 const CONFIGS = Object.freeze({

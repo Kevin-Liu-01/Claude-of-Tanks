@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.js';
 import { getSpec, MODEL_SOURCE } from '../specs.js';
-import { tankTier } from '../tier.js';
+import { tankTier } from '../tier.ts';
 import { wheelPatternFor } from '../wheelPatterns.js';
 import { resolveCamoVisual } from '../materials.js';
 import { vehicleMarkingAnchor } from '../vehicleMarkings.js';

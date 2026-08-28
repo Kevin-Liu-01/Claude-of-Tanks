@@ -139,6 +139,9 @@ legacy `.js` integration remains operational. This avoids a risky big-bang
 rewrite and lets each migrated boundary ship with behavioral parity evidence.
 The target state is a fully typed runtime; JavaScript interoperability is a
 temporary migration mechanism, not a permanent module tier.
+Boot and transition screens now depend on strict shared DOM, font, icon,
+image-preload, featured-media, map-art, and tier-metadata contracts rather than
+crossing back into unchecked presentation helpers.
 
 ## 5. Runtime lifecycle
 

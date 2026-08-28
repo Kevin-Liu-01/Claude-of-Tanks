@@ -5,7 +5,7 @@
 // indicator. DOM/canvas only — no scene objects.
 // Contract: docs/ARCHITECTURE.md §3.7.1.
 import * as THREE from 'three';
-import { createElement as el, ensureStyle } from './dom.js';
+import { createElement as el, ensureStyle } from './dom.ts';
 import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.js';
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.js';
 import { uiPixelRatio } from '../engine/resolutionPolicy.js';
@@ -199,9 +199,9 @@ function hitConfirmShardPath(ctx, cx, cy, ca, sa, radius, length, halfWidth, pad
 //             can never balloon past ~15% of the frame's short side.
 const RET_FLOOR_PX = 11;
 const RET_CEIL_FRAC = 0.15;
-// Shared Inter type system (see src/ui/fonts.js): FONT_COND drives the
+// Shared Inter type system (see src/ui/fonts.ts): FONT_COND drives the
 // numeral/label hierarchy with tabular figures (weight floor 500).
-import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
+import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.js';
 import {
   CONSUMABLE_READY_MARK, CONSUMABLE_RULES, cooldownRemaining,
@@ -210,9 +210,9 @@ import {
 // kill feed + ambient nameplates. Minimap blips and team-panel rows use the
 // vector vehicle-silhouette/arrow language instead (WoT reads shape + heading, not
 // per-vehicle profiles, at those sizes).
-import { maskIcon, tintedIcon } from './icons.js';
+import { maskIcon, tintedIcon } from './icons.ts';
 import { moduleAlertLabel } from './moduleRegistry.js';
-import { tierNumeral } from '../vehicles/tier.js';
+import { tierNumeral } from '../vehicles/tier.ts';
 // SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,
 // incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.js.
 import { createShotInfo } from './shotInfo.js';

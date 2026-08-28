@@ -15,8 +15,8 @@
 // r2). HP bar and fire indicator.
 // Contract: docs/ARCHITECTURE.md §3.7.2 (API preserved; setPose added).
 
-import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
-import { ensureStyle } from './dom.js';
+import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
+import { ensureStyle } from './dom.ts';
 import { getTopDownMasks } from './tankThumbs.js';
 // EQUIPMENT SYSTEM: quiet mounted-loadout readout at the panel foot — the
 // same white-silhouette glyphs as the garage slots, at healthy-pip alpha.

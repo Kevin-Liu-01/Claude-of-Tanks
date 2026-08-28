@@ -69,7 +69,7 @@ k2's oracle onto it). Bar for future fidelity rounds = photo class.
 4. `src/vehicles/profiledProcedurals.js` — KOREA_PROFILES import + spread
    into PROCEDURAL_PROFILES (builder reaches BUILDERS via the standard
    profile merge).
-5. `src/vehicles/tier.js` — `k2b: 9` (k2's tier).
+5. `src/vehicles/tier.ts` — `k2b: 9` (k2's tier).
 6. `src/vehicles/tankLabels.js` — LABEL_OVERRIDES row (displayName/shortName
    `K2B`, aliases `K2B Black Panther`, `Korean stealth K2`).
 7. `src/vehicles/vehicleMarkings.js` — `k2b: anchor('hull','left',0.44,

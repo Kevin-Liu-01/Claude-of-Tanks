@@ -7,7 +7,7 @@ import {
   SAVED_TANK_IDS,
   TANK_SPECS,
 } from '../src/vehicles/specs.js';
-import { tankTier, tierNumeral } from '../src/vehicles/tier.js';
+import { tankTier, tierNumeral } from '../src/vehicles/tier.ts';
 import { vehicleEraLabel } from '../src/vehicles/taxonomy.js';
 
 const REPORT_URL = new URL('../docs/VEHICLE-ROSTER.md', import.meta.url);

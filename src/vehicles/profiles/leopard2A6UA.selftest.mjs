@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.js';
 import { GHILLIE_SUIT_CONFIGS } from '../ghillieSuit.js';
 import { getSpec } from '../specs.js';
-import { tankTier } from '../tier.js';
+import { tankTier } from '../tier.ts';
 
 const id = 'leo2a6_ua';
 const spec = getSpec(id);

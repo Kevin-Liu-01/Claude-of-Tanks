@@ -71,13 +71,13 @@
  * external-pose API) — the rig is used, never modified.
  */
 import * as THREE from 'three';
-import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.js';
-import { createElement as el, ensureStyle } from '../ui/dom.js';
+import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.ts';
+import { createElement as el, ensureStyle } from '../ui/dom.ts';
 import { uiIconSVG } from '../ui/uiIcons.js';
 import { nominalPenFor, shellDisplayName, zoneLabel } from '../ui/hitEventFormat.js';
 import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.js';
 import { getSpec } from '../vehicles/specs.js';
-import { iconUrl } from '../ui/icons.js';
+import { iconUrl } from '../ui/icons.ts';
 import { tierNumeral } from '../ui/battleLoad.ts';
 import { isKillcamGhostSurface } from './killcamGhostPolicy.js';
 import {

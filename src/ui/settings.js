@@ -29,11 +29,11 @@
 // BATTLE plate) + red-outline LEAVE BATTLE, overflow-gated scroll fades.
 // Behavior is UNCHANGED: same classes, same rebind/persistence/pause flow.
 
-import { FONT_STACK, ensureFonts } from './fonts.js';
+import { FONT_STACK, ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.js';
 import { isAnyModalOpen } from './modal.js';
 import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.js';
-import { createElement as el, ensureStyle } from './dom.js';
+import { createElement as el, ensureStyle } from './dom.ts';
 import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
   MOBILE_PRESET_ORDER, PRESET_ORDER, PRESETS,

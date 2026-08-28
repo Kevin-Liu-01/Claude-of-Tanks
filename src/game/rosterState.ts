@@ -7,7 +7,7 @@
 import { Vector3, type Object3D, type Scene } from 'three';
 import { getSpec, TANK_IDS, RUNTIME_TANK_IDS } from '../vehicles/specs.js';
 import { createTank } from '../vehicles/fleetFactory.js';
-import { tankTier } from '../vehicles/tier.js';
+import { tankTier } from '../vehicles/tier.ts';
 import { isGarageVisibleTankId, rankMatchCandidates } from './matchmaking.js';
 import { getDeviceTier } from '../engine/quality.js';
 import { mulberry32 } from './stateCore.ts';
@@ -296,7 +296,7 @@ function textureQualityFor(game: RosterGameState, ent: RosterEntity) {
 }
 
 // Matchmaking and every tier badge consume the same canonical table in
-// vehicles/tier.js. This prevents a newly added tank from showing one tier in
+// vehicles/tier.ts. This prevents a newly added tank from showing one tier in
 // the garage while being matched as another.
 
 /**

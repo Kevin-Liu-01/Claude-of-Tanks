@@ -133,7 +133,7 @@ REMOVAL CHECKLIST (§5.287 wiring law in reverse — every registration):
 - src/vehicles/profiles/afvFamily.js: buildBMPT + its section header (185
   lines) + AFV_FAMILY_PROFILES registry row removed (grep-verified: the
   only references were the definition and the registry row).
-- src/vehicles/tier.js: `bmpt: 9` removed (tier.selftest green without
+- src/vehicles/tier.ts: `bmpt: 9` removed (tier.selftest green without
   the id — registered-but-tierless and tiered-but-unregistered both
   covered; 114 tanks).
 - src/vehicles/tankLabels.js: label block removed.

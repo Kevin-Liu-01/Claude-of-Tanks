@@ -10,10 +10,10 @@ import { resolveSignalUrl } from '../net/signalEndpoint.js';
 import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.js';
 import { normalizeRoomCode } from '../net/protocol.js';
 import { createRoomInviteUrl, roomInviteTitle } from '../net/roomInvite.js';
-import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.js';
-import { iconUrl } from './icons.js';
+import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.ts';
+import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.js';
-import { ensureStyle } from './dom.js';
+import { ensureStyle } from './dom.ts';
 import { createRandomMapMosaic } from './randomPreviews.js';
 import { loadIceConfiguration } from '../net/iceConfig.ts';
 

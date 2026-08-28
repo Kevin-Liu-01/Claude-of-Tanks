@@ -4,13 +4,30 @@
  * this module only coalesces concurrent requests and records successful URLs.
  */
 
-const inFlight = new Map();
-const loaded = new Set();
-const idleScheduled = new Set();
+export type ImagePriority = 'low' | 'auto' | 'high';
+
+export interface ImagePreloadOptions {
+  readonly priority?: ImagePriority;
+  readonly decode?: boolean;
+}
+
+interface ImagePreloadRecord {
+  readonly image: HTMLImageElement;
+  priority: ImagePriority;
+  readonly promise: Promise<string | null>;
+}
+
+type IdleCapableGlobal = typeof globalThis & {
+  requestIdleCallback?: (callback: IdleRequestCallback) => number;
+};
+
+const inFlight = new Map<string, ImagePreloadRecord>();
+const loaded = new Set<string>();
+const idleScheduled = new Set<string>();
 const PRIORITY = Object.freeze({ low: 0, auto: 1, high: 2 });
 
 /** @returns {boolean} whether the URL completed a prior load. */
-export function isImagePreloaded(url) {
+export function isImagePreloaded(url: string): boolean {
   return loaded.has(url);
 }
 
@@ -23,7 +40,10 @@ export function isImagePreloaded(url) {
  * @param {{priority?:'low'|'auto'|'high', decode?:boolean}} [options]
  * @returns {Promise<string|null>}
  */
-export function preloadImage(url, { priority = 'auto', decode = true } = {}) {
+export function preloadImage(
+  url: string,
+  { priority = 'auto', decode = true }: ImagePreloadOptions = {},
+): Promise<string | null> {
   if (!url || typeof Image === 'undefined') return Promise.resolve(null);
   if (loaded.has(url)) return Promise.resolve(url);
 
@@ -39,9 +59,9 @@ export function preloadImage(url, { priority = 'auto', decode = true } = {}) {
   const image = new Image();
   image.decoding = 'async';
   image.fetchPriority = priority;
-  const record = { image, priority, promise: null };
-  record.promise = new Promise((resolve) => {
-    const finish = (result) => {
+  let record: ImagePreloadRecord;
+  const promise = new Promise<string | null>((resolve) => {
+    const finish = (result: string | null): void => {
       image.onload = null;
       image.onerror = null;
       if (inFlight.get(url) === record) inFlight.delete(url);
@@ -50,15 +70,16 @@ export function preloadImage(url, { priority = 'auto', decode = true } = {}) {
     };
     image.onload = async () => {
       if (decode && typeof image.decode === 'function') {
-        try { await image.decode(); } catch (_) { /* a completed load is usable */ }
+        try { await image.decode(); } catch { /* a completed load is usable */ }
       }
       finish(url);
     };
     image.onerror = () => finish(null);
   });
+  record = { image, priority, promise };
   inFlight.set(url, record);
   image.src = url;
-  return record.promise;
+  return promise;
 }
 
 /**
@@ -68,11 +89,12 @@ export function preloadImage(url, { priority = 'auto', decode = true } = {}) {
  * @param {string} url
  * @returns {number|null} requestIdleCallback handle when scheduled
  */
-export function preloadImageWhenIdle(url) {
+export function preloadImageWhenIdle(url: string): number | null {
+  const idleGlobal = globalThis as IdleCapableGlobal;
   if (!url || loaded.has(url) || inFlight.has(url) || idleScheduled.has(url) ||
-      typeof globalThis.requestIdleCallback !== 'function') return null;
+      typeof idleGlobal.requestIdleCallback !== 'function') return null;
   idleScheduled.add(url);
-  return globalThis.requestIdleCallback(() => {
+  return idleGlobal.requestIdleCallback(() => {
     idleScheduled.delete(url);
     preloadImage(url, { priority: 'low' });
   });

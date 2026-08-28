@@ -83,17 +83,19 @@ for (const [id, view] of Object.entries(VIEWS)) {
   console.log(`[thumbs] ${id} <- ${view} (${HERO_W}x${HERO_H} hero + ${THUMB_W}x${THUMB_H} picker, WebP q${QUALITY})`);
 }
 
-const mod = `// src/ui/mapThumbs.js — GENERATED map art served from public/maps/.
+const mod = `// src/ui/mapThumbs.ts — GENERATED map art served from public/maps/.
 // Regenerate via: node tools/screenshot.mjs --width 3840 --height 2160 --dyn-scale 1 && node tools/map-thumbs.mjs
 // Empty string = no thumbnail yet; the picker falls back to a CSS gradient.
 
-export const MAP_THUMBS = {
+export const MAP_THUMBS = Object.freeze({
 ${Object.entries(entries).map(([id, uri]) => `  ${id}: '${uri}',`).join('\n')}
-};
+});
 
-export const MAP_HEROES = {
+export const MAP_HEROES = Object.freeze({
 ${Object.entries(heroes).map(([id, uri]) => `  ${id}: '${uri}',`).join('\n')}
-};
+});
+
+export type MapThumbnailId = keyof typeof MAP_THUMBS;
 `;
-writeFileSync(resolve('src/ui/mapThumbs.js'), mod);
-console.log('[thumbs] wrote src/ui/mapThumbs.js');
+writeFileSync(resolve('src/ui/mapThumbs.ts'), mod);
+console.log('[thumbs] wrote src/ui/mapThumbs.ts');

@@ -21,7 +21,7 @@ class FakeImage {
 globalThis.Image = FakeImage;
 
 const { isImagePreloaded, preloadImage, preloadImageWhenIdle } =
-  await import('./imagePreload.js');
+  await import('./imagePreload.ts');
 
 const first = preloadImage('/shared.webp', { priority: 'low' });
 const duplicate = preloadImage('/shared.webp', { priority: 'high' });

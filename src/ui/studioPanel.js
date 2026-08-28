@@ -10,10 +10,10 @@
  * Layout: right workspace dock, top-left phase badge with EXIT,
  * bottom-left key hints + live camera readout.
  */
-import { FONT_STACK, ensureFonts } from './fonts.js';
-import { iconUrl } from './icons.js';
-import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.js';
-import { FEATURED_SHOTS } from './featuredShots.js';
+import { FONT_STACK, ensureFonts } from './fonts.ts';
+import { iconUrl } from './icons.ts';
+import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
+import { FEATURED_SHOTS } from './featuredShots.ts';
 import { mountMediaArchive } from '../presentation/mediaArchive.js';
 import { PRODUCT_STATS } from '../productStats.js';
 import { vehicleEraLabel } from '../vehicles/taxonomy.js';

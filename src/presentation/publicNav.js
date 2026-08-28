@@ -2,7 +2,7 @@ import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 
 installResponsiveLayout();
 
-const mountStars = () => import('../ui/githubStars.js')
+const mountStars = () => import('../ui/githubStars.ts')
   .then(({ mountGitHubStars }) => mountGitHubStars(document));
 
 function mountMobileNavigation() {

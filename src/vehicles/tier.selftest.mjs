@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import './profiles/t90SprocketTier.selftest.mjs';
 import './tankFactory.js'; // evaluates every registration wave
 import { SAVED_TANK_IDS } from './specs.js';
-import { ROMAN_TIER, TANK_TIER, tankTier, tierNumeral } from './tier.js';
+import { ROMAN_TIER, TANK_TIER, tankTier, tierNumeral } from './tier.ts';
 
 const missing = SAVED_TANK_IDS.filter((id) => !Object.hasOwn(TANK_TIER, id));
 assert.deepEqual(missing, [], `registered tanks missing a tier: ${missing.join(', ')}`);

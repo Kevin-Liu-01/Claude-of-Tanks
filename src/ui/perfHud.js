@@ -2,8 +2,8 @@
 // explicitly enabled surface; input settings own persistence while this
 // module owns only presentation and bounded 4 Hz telemetry paint.
 
-import { ensureStyle } from './dom.js';
-import { FONT_COND } from './fonts.js';
+import { ensureStyle } from './dom.ts';
+import { FONT_COND } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.js';
 
 export { debugModeRequested } from '../dev/debugIntent.ts';

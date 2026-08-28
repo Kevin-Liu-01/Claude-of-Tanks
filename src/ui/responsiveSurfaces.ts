@@ -1,4 +1,4 @@
-import { ensureStyle } from './dom.js';
+import { ensureStyle } from './dom.ts';
 
 /*
  * Shared responsive composition for runtime UI surfaces. Component files own

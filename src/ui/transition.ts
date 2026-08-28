@@ -19,15 +19,15 @@
  * dwell, preserving the old call timing exactly.
  */
 
-import { FONT_STACK, FONT_COND } from './fonts.js';
+import { FONT_STACK, FONT_COND } from './fonts.ts';
 import {
   FEATURED_IMAGES,
   FEATURED_SHOTS,
   TRANSITION_SHOTS,
   featuredShotForMap,
   randomFeaturedShot,
-} from './featuredShots.js';
-import { isImagePreloaded, preloadImage } from './imagePreload.js';
+} from './featuredShots.ts';
+import { isImagePreloaded, preloadImage } from './imagePreload.ts';
 
 const FADE_IN_MS = 240;
 const FADE_OUT_MS = 340;

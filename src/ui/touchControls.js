@@ -2,7 +2,7 @@
 // every gesture enters game/input.js as the same named action or aim/move
 // vector used by keyboard, mouse, and gamepad controls.
 
-import { FONT_STACK, FONT_COND } from './fonts.js';
+import { FONT_STACK, FONT_COND } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.js';
 import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,

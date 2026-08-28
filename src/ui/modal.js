@@ -3,7 +3,7 @@
 // locking, and the visual treatment so dialogs do not drift into bespoke
 // popovers with unreadably small type.
 
-import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
+import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.js';
 
 export const MODAL_FOCUSABLE_SELECTOR = [

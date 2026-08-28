@@ -6,7 +6,7 @@
  */
 import * as THREE from 'three';
 import { getSpec } from '../vehicles/specs.js';
-import { tankTier } from '../vehicles/tier.js';
+import { tankTier } from '../vehicles/tier.ts';
 import {
   createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
 } from '../sim/movement.js';

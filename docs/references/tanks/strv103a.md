@@ -126,7 +126,7 @@ published 2.14 p95-sovereign — resident-class cap).
   45 km/h; same L74 shells/reload; dims per published A)
 - `src/vehicles/profiles/sweden.js` — buildStrv103A + SWEDEN_PROFILES row
   (profiledProcedurals.js spreads SWEDEN_PROFILES — no edit needed there)
-- `src/vehicles/tier.js` — strv103a: 8 (one below the B per the
+- `src/vehicles/tier.ts` — strv103a: 8 (one below the B per the
   earlier-mark convention: centurion3/5, ariete/c1, t80/t80b)
 - `src/vehicles/tankLabels.js` — "Strv 103A" + aliases
 - `src/vehicles/vehicleMarkings.js` — hull/left anchor (B is hull/right)
