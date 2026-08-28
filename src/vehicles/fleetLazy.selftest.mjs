@@ -8,7 +8,7 @@ import { MISC_PROFILES } from './profiles/misc.js';
 import { FLEET_GROUP_IDS } from './fleetManifest.ts';
 const canonicalOnlyIds = new Set([
   'amx40', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2',
-  'challenger_3', 'mbt70', 't14',
+  'challenger_3', 'challenger_3x', 'mbt70', 't14',
   'k2', 'k1a1', 'type10', 'm2a2_bradley', 'bmp2', 'type89',
 ]);
 const owners = new Map();
@@ -77,7 +77,7 @@ execFileSync(process.execPath, ['--input-type=module', '-e', `
   assert.equal(fleet.isTankBuilderReady('challenger2'), false);
   await fleet.ensureTankBuilder('challenger2');
   assert.equal(fleet.isTankBuilderReady('challenger2'), true);
-  for (const id of ['leclerc', 'challenger2', 'challenger_3', 'amx40']) {
+  for (const id of ['leclerc', 'challenger2', 'challenger_3', 'challenger_3x', 'amx40']) {
     const visual = fleet.createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
     visual.dispose();
   }

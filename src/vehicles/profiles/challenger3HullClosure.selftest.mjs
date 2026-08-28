@@ -10,10 +10,21 @@ const tank = createTank('challenger_3', null, {
 
 try {
   const hullRig = tank.root.getObjectByName('rig_hull');
+  const turretRig = tank.root.getObjectByName('rig_turret');
   const hull = tank.root.getObjectByName('hull');
   const hullDetail = tank.root.getObjectByName('hullDetail');
   assert.ok(hullRig && hull?.isMesh && hullDetail?.isMesh,
     'Challenger 3 keeps structural hull and fittings under rig_hull');
+  assert.deepEqual(hullRig.scale.toArray(), [1.1, 1.1, 1.1],
+    'Challenger 3 hull is uniformly ten percent larger');
+  assert.deepEqual(turretRig?.scale.toArray(), [1.1, 1.1, 1.1],
+    'Challenger 3 turret and articulated equipment share the ten percent enlargement');
+  assert.deepEqual(hullRig.userData.challenger3FamilyScaleReceipt, {
+    uniformScale: 1.1,
+    turretPivotScaled: true,
+    trackContactMetadataScaled: true,
+    trackHitGeometryScaled: true,
+  }, 'enlargement keeps external movement and damage metadata in the rendered frame');
 
   const receipt = hullRig.userData.challenger3HullClosureReceipt;
   assert.deepEqual(receipt?.upperGlacisSeam, {
@@ -70,4 +81,66 @@ try {
   tank.dispose();
 }
 
-console.log('challenger3HullClosure.selftest: glacis seams, skirt carriers, and proxy cleanup verified');
+const challenger3X = createTank('challenger_3x', null, {
+  proceduralOnly: true,
+  quality: 'high',
+  camoSeed: 4242,
+  geometryReceipt: true,
+});
+
+try {
+  const hullRig = challenger3X.root.getObjectByName('rig_hull');
+  const turretRig = challenger3X.root.getObjectByName('rig_turret');
+  const receipt = hullRig?.userData.challenger3XReceipt;
+
+  assert.ok(receipt && receipt === turretRig?.userData.challenger3XReceipt,
+    'Challenger 3 X package receipt is shared by both articulation owners');
+  assert.deepEqual({
+    enhancedSkirtPanels: receipt.enhancedSkirtPanels,
+    skirtHangers: receipt.skirtHangers,
+    glacisEraCassettes: receipt.glacisEraCassettes,
+    skirtEraCassettes: receipt.skirtEraCassettes,
+    cheekEraCassettes: receipt.cheekEraCassettes,
+    turretSideEraCassettes: receipt.turretSideEraCassettes,
+    totalEraCassettes: receipt.totalEraCassettes,
+    autocannonStations: receipt.autocannonStations,
+    radarArrays: receipt.radarArrays,
+    searchlights: receipt.searchlights,
+    bustleCageRails: receipt.bustleCageRails,
+    stowageItems: receipt.stowageItems,
+    equipmentSeatsFlush: receipt.equipmentSeatsFlush,
+  }, {
+    enhancedSkirtPanels: 18,
+    skirtHangers: 18,
+    glacisEraCassettes: 40,
+    skirtEraCassettes: 78,
+    cheekEraCassettes: 32,
+    turretSideEraCassettes: 48,
+    totalEraCassettes: 198,
+    autocannonStations: 2,
+    radarArrays: 1,
+    searchlights: 1,
+    bustleCageRails: 16,
+    stowageItems: 7,
+    equipmentSeatsFlush: true,
+  }, 'Challenger 3 X retains its complete armor and equipment package');
+
+  assert.deepEqual(challenger3X.root.userData.eraClusterNames, [
+    'c3x_glacis_era_L',
+    'c3x_glacis_era_R',
+    'c3x_skirt_era_L',
+    'c3x_skirt_era_R',
+    'c3x_turret_cheek_era_L',
+    'c3x_turret_cheek_era_R',
+    'c3x_turret_side_era_L',
+    'c3x_turret_side_era_R',
+  ], 'every visible Challenger 3 X ERA field is registered for one-shot depletion');
+  assert.equal(challenger3X.root.userData.eraFinishReceipt?.bodyAndCoverUseVehiclePaint, true,
+    'ERA faces and covers inherit the vehicle camouflage instead of a generic slab color');
+  assert.equal(challenger3X.root.userData.eraFinishReceipt?.semanticBucket, 'externalArmor',
+    'ERA remains selectable and damageable as external armor');
+} finally {
+  challenger3X.dispose();
+}
+
+console.log('challenger3HullClosure.selftest: scale, hull closure, and Challenger 3 X package verified');

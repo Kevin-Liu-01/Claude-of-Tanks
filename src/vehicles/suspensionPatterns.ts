@@ -64,7 +64,7 @@ const FAMILY_RULES: ReadonlyArray<readonly [RegExp, SuspensionPatternId]> = Obje
   [/^(?:t64bv1|ua_t64bv)$/, 't64-torsion-arm'],
   [/(?:^|_)(?:m4a3e8|centurion3|centurion5|strv81|chieftain5|chieftain_mk10)(?:$|_)/,
     'paired-bogie'],
-  [/(?:^|_)(?:mbt70|strv103|strv103a|udes03|stb1|type74|type90|type90a|type10|type10b|pl01|k1a1|k2|k2b|challenger1|challenger2|challenger_3)(?:$|_)/,
+  [/(?:^|_)(?:mbt70|strv103|strv103a|udes03|stb1|type74|type90|type90a|type10|type10b|pl01|k1a1|k2|k2b|challenger1|challenger2|challenger_3|challenger_3x)(?:$|_)/,
     'hydropneumatic-link'],
 ]);
 

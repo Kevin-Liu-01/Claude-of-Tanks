@@ -59,7 +59,7 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
 
 | | Current runtime |
 | --- | --- |
-| Fleet | **117** production-visible and **154** keyed local-development procedural vehicles across **156** saved roster records; **0** GLB-sourced playables |
+| Fleet | **118** production-visible and **155** keyed local-development procedural vehicles across **157** saved roster records; **0** GLB-sourced playables |
 | Worlds | **20** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
@@ -67,7 +67,7 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
 | Platforms | Mouse/keyboard and complete touch controls with safe-area layout and device-adaptive rendering |
 | Tools | Scene Studio, Tank Gallery, exact-surface review, deterministic capture, vehicle anatomy, and release gates |
 
-The provenance gate currently reports **127 first-party procedural battle playables, 0 GLB-sourced playables, and 7
+The provenance gate currently reports **128 first-party procedural battle playables, 0 GLB-sourced playables, and 7
 tracked external comparison models with exact source records**. Comparison inputs are never a playable loading path and are stripped from public builds.
 
 ## Field footage
@@ -113,7 +113,7 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 </tr>
 <tr>
 <td width="50%"><img src="public/media/feature-evidence-r2/gallery-carro45t-modules.webp" alt="Carro 45t internal modules and crew shown in Tank Gallery"><br><sub><b>Internal anatomy:</b> the Gallery shows crew, gun, turret ring, engine, fuel, ammunition, tracks, optics, radio, and vehicle-specific feed or missile systems.</sub></td>
-<td width="50%"><img src="public/media/feature-evidence-r2/garage-fleet.webp" alt="Claude of Tanks garage displaying the procedural vehicle fleet"><br><sub><b>One shared fleet:</b> battle, garage, Gallery, Studio, bots, icons, diagrams, and technical dossiers read the same vehicle specifications—117 in production or 154 in keyed local development.</sub></td>
+<td width="50%"><img src="public/media/feature-evidence-r2/garage-fleet.webp" alt="Claude of Tanks garage displaying the procedural vehicle fleet"><br><sub><b>One shared fleet:</b> battle, garage, Gallery, Studio, bots, icons, diagrams, and technical dossiers read the same vehicle specifications—118 in production or 155 in keyed local development.</sub></td>
 </tr>
 </table>
 

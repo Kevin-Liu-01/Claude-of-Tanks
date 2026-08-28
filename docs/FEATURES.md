@@ -28,7 +28,7 @@ The executable provenance check is:
 
     npm run tank:native:check
 
-At the time of this document update it reports 127 first-party procedural battle
+At the time of this document update it reports 128 first-party procedural battle
 playables, no GLB-sourced playables, and seven isolated comparison candidates.
 The canonical saved-roster report separately tracks all 156 records, including
 development-only vehicles and two reference-only placeholders.

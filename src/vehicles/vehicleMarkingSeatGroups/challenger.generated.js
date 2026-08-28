@@ -316,7 +316,7 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0006
       },
       {
         "kind": "designation",
@@ -338,7 +338,7 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.4290816
+        "maximumSurfaceErrorM": 0.4756731
       },
       {
         "kind": "designation",
@@ -360,7 +360,7 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.4264639
+        "maximumSurfaceErrorM": 0.4729372
       },
       {
         "kind": "insignia",
@@ -382,7 +382,56 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0027112
+        "maximumSurfaceErrorM": 0.0031883
+      }
+    ]
+  },
+  "challenger_3x": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.24,
+        "pos": [
+          -1.6511432,
+          0.6938332,
+          -1.9791999
+        ],
+        "quaternion": [
+          -0.1851978,
+          -0.6824235,
+          -0.1851978,
+          0.6824235
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger_3x",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 7,
+        "visibilityRatio": 0.7777778,
+        "maximumSurfaceErrorM": 0.122143
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.24,
+        "pos": [
+          -1.3620078,
+          0.4162626,
+          0.1880001
+        ],
+        "quaternion": [
+          -0.0391032,
+          -0.7060247,
+          -0.0391032,
+          0.7060247
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger_3x",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.002791
       }
     ]
   }

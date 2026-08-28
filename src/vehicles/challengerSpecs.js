@@ -169,6 +169,28 @@ function armorChallenger3() {
     ],
   };
 }
+
+const CHALLENGER3X_ERA = Object.freeze({ keReduction: 0.30, ceFlatMm: 460 });
+
+function armorChallenger3X() {
+  const armor = armorChallenger3();
+  const era = { kind: 'era', era: CHALLENGER3X_ERA, keMm: 220, ceMm: 680 };
+
+  armor.hullPlates.push(
+    fr('c3x_glacis_era_R', 22, 1.42, 1.20, 3.62, 1.58, 2.28, era),
+    fr('c3x_glacis_era_L', 22, 1.42, 1.20, 3.62, 1.58, 2.28, era),
+    sR('c3x_skirt_era_R', 22, 1.96, 0.68, 1.96, 1.46, -3.62, 3.38, era),
+    sL('c3x_skirt_era_L', 22, 1.96, 0.68, 1.96, 1.46, -3.62, 3.38, era),
+  );
+  armor.turretPlates.push(
+    chR('c3x_turret_cheek_era_R', 22, 0.30, 1.62, 1.42, 0.92, 0.05, 0.80, 0.18, 0, era),
+    chL('c3x_turret_cheek_era_L', 22, 0.30, 1.62, 1.42, 0.92, 0.05, 0.80, 0.18, 0, era),
+    sR('c3x_turret_side_era_R', 22, 1.76, 0.16, 1.76, 0.78, -3.12, -0.30, era),
+    sL('c3x_turret_side_era_L', 22, 1.76, 0.16, 1.76, 0.78, -3.12, -0.30, era),
+  );
+  armor.boundingRadiusM = 6.85;
+  return armor;
+}
 // ---------------------------------------------------------------------------
 // Specs (stats per roster §18.3-4; CR3 per its packet)
 // ---------------------------------------------------------------------------
@@ -299,7 +321,7 @@ export const CHALLENGER_SPECS = {
     // figures anchor the row (CR3 reuses the CR2 hull; L55A1 is L/55).
     // heightM is the sensor-inclusive datum (packet-filed 2.49 -> ~2.95:
     // RWS/pano/whips carry the p95 on both the print and the build).
-    dims: { hullLengthM: 8.33, overallLengthM: 11.50, widthM: 3.52, heightM: 2.95 },
+    dims: { hullLengthM: 9.16, overallLengthM: 12.65, widthM: 3.87, heightM: 3.25 },
     armor: armorChallenger3(),
     visual: {
       // British 2-tone black-over-green, distinct number from the CR2 (§H.3
@@ -307,7 +329,33 @@ export const CHALLENGER_SPECS = {
       scheme: 'stripes', base: '#414c38', weather: '#4a5540', patches: ['#1e201d'],
       marking: 'number', number: '30', trackWidthM: 0.65, camoScale: 0.48,
     },
-  },};
+  },
+  challenger_3x: {
+    id: 'challenger_3x', name: 'Challenger 3 X', nation: 'UK', era: 'modern', role: 'mbt',
+    hp: 2780,
+    enginePowerHp: 1800, weightTons: 76, topSpeedKmh: 58, reverseSpeedKmh: 22,
+    hullTraverseDegS: 36,
+    terrainResistance: { hard: 0.72, medium: 0.84, soft: 1.56 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 40, gunPitchDegS: 32, gunElevationDeg: 21, gunDepressionDeg: 10,
+    gun: {
+      caliberMm: 120, reloadS: 6.1, baseAccuracy: 0.23, aimTimeS: 1.55,
+      bloom: { move: 0.035, hullRot: 0.055, turret: 0.05, afterShot: 2.0 },
+      shells: [
+        shell('DM73 APFSDS', 'APFSDS', 120, apfsdsPens(680)[0], apfsdsPens(680)[1], 530, 1750, { pen2000Mm: apfsdsPens(680)[2] }),
+        shell('DM12A2 HEAT-MP', 'HEAT', 120, 600, 600, 480, 1400),
+        shell('DM11 HE-ABM', 'HE', 120, 40, 40, 590, 1000),
+      ],
+    },
+    dims: { hullLengthM: 9.16, overallLengthM: 12.65, widthM: 4.45, heightM: 3.58 },
+    armor: armorChallenger3X(),
+    visual: {
+      scheme: 'digital', base: '#384436', weather: '#59624c',
+      patches: ['#171d1a', '#69705a', '#2a322b'],
+      marking: 'number', number: '3X', trackWidthM: 0.68, camoScale: 0.40,
+    },
+  },
+};
 
 // Register specs + model-source rows + garage roster ids (idempotent — vite
 // HMR can re-evaluate this module; the modern1.js mechanism, moved with its

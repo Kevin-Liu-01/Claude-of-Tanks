@@ -70,7 +70,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'm3a3_bradley', 'bmpt_t90', 'm1128', 'm1296',
   ]),
   [VEHICLE_ERAS.NEXT_GENERATION]: Object.freeze([
-    'challenger_3', 'type10b', 'ariete_c2', 't14', 'kf51', 'kf51b', 'abramsx',
+    'challenger_3', 'challenger_3x', 'type10b', 'ariete_c2', 't14', 'kf51', 'kf51b', 'abramsx',
     'pl01', 'pl01_105', 'upior', 'm551a1_tts',
   ]),
 });

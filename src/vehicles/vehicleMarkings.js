@@ -114,6 +114,7 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   challenger2e: anchor('turret', 'right', 0.35, 0.44, 0.24, -1),
   ua_challenger2: anchor('hull', 'left', 0.40, 0.60, 0.24, 1),
   challenger_3: anchor('turret', 'left', 0.35, 0.46, 0.26, 1),
+  challenger_3x: anchor('turret', 'left', 0.32, 0.46, 0.24, 1),
   k2: anchor('turret', 'right', 0.39, 0.44, 0.24, -1),
   k1a1: anchor('turret', 'left', 0.42, 0.46, 0.24, 1),
   // K2B (§5.299): the resurrected pre-§5.248 pl01 geometry — reuse that
