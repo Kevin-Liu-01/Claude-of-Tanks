@@ -129,7 +129,7 @@ published 2.14 p95-sovereign — resident-class cap).
 - `src/vehicles/tier.ts` — strv103a: 8 (one below the B per the
   earlier-mark convention: centurion3/5, ariete/c1, t80/t80b)
 - `src/vehicles/tankLabels.ts` — "Strv 103A" + aliases
-- `src/vehicles/vehicleMarkings.js` — hull/left anchor (B is hull/right)
+- `src/vehicles/vehicleMarkings.ts` — hull/left anchor (B is hull/right)
 - `src/vehicles/fleetOrder.ts` — sweden family order strv81 → strv103a →
   strv103 → strv122
 - `src/vehicles/rosterPolicy.ts` — COLD_WAR_IDS + RETAINED_COLD_WAR_IDS

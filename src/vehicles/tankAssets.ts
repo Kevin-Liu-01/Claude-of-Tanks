@@ -5,7 +5,7 @@
 import { flagIconCode } from '../ui/flagCodes.ts';
 import { tankTier, tierNumeral } from './tier.ts';
 import { tankLabelRecord } from './tankLabels.ts';
-import { vehicleMarkingRecord } from './vehicleMarkings.js';
+import { vehicleMarkingRecord } from './vehicleMarkings.ts';
 
 type NumericPoint = Array<number | null>;
 

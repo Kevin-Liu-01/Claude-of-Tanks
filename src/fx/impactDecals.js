@@ -40,7 +40,7 @@
  */
 import * as THREE from 'three';
 import { mulberry32, makeFbm } from './particles.js';
-import { SURFACE_MARKING_STYLE } from '../vehicles/vehicleMarkings.js';
+import { SURFACE_MARKING_STYLE } from '../vehicles/vehicleMarkings.ts';
 
 /** Per-vehicle decal budget (oldest evicted beyond this). */
 export const IMPACT_DECAL_CAP = 24;

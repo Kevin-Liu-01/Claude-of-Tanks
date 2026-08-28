@@ -4,7 +4,7 @@
 // Units per ARCHITECTURE §1.2 — suffixed fields keep human units; consumers convert.
 
 import { tankLabelRecord } from './tankLabels.ts';
-import { vehicleMarkingRecord } from './vehicleMarkings.js';
+import { vehicleMarkingRecord } from './vehicleMarkings.ts';
 import {
   DEV_FLEET_ACTIVE,
   DEV_FLEET_LABEL,

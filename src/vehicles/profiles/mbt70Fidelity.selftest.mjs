@@ -5,7 +5,7 @@ import { getSpec, MODEL_SOURCE } from '../specs.js';
 import { tankTier } from '../tier.ts';
 import { wheelPatternFor } from '../wheelPatterns.ts';
 import { resolveCamoVisual } from '../materials.js';
-import { vehicleMarkingAnchor } from '../vehicleMarkings.js';
+import { vehicleMarkingAnchor } from '../vehicleMarkings.ts';
 import { createTankState, SIM_DT } from '../../sim/movement.ts';
 
 const spec = getSpec('mbt70');

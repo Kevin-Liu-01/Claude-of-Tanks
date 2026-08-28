@@ -20,7 +20,7 @@ import { suspensionPatternFor } from './suspensionPatterns.ts';
 import { presentationAnchorFor } from './presentationAnchors.generated.js';
 import {
   SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord, vehicleMarkingSeats,
-} from './vehicleMarkings.js';
+} from './vehicleMarkings.ts';
 // DECORATION SYSTEM (2026-07): cosmetic stowage/fittings layer — attaches
 // under dedicated rig_decor_hull / rig_decor_turret groups at the end of
 // createTank (see the seam near the GLB-swap block). Skipped for

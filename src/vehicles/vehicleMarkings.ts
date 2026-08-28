@@ -1,6 +1,47 @@
 import { flagIconCode } from '../ui/flagCodes.ts';
 export { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.ts';
 
+export interface VehicleMarkingAnchor {
+  readonly schemaVersion: number;
+  readonly owner: 'hull' | 'turret';
+  readonly side: 'left' | 'right';
+  readonly longitudinal: number;
+  readonly vertical: number;
+  readonly sizeM: number;
+  readonly designationDirection: -1 | 1;
+}
+
+interface CountryMarking {
+  readonly countryLabel: string;
+  readonly filterLabel: string;
+  readonly insignia: string;
+  readonly designation: string;
+}
+
+interface VehicleMarkingSpec {
+  readonly id?: string;
+  readonly nation?: string;
+  readonly visual?: { readonly number?: string };
+}
+
+export interface VehicleMarkingRecord {
+  readonly schemaVersion: number;
+  readonly countryCode: string;
+  readonly countryLabel: string;
+  readonly filterLabel: string;
+  readonly insignia: string;
+  readonly tacticalNumber: string;
+  readonly designation: string;
+  readonly markingCode: string;
+}
+
+export interface CanvasBounds {
+  readonly x?: number;
+  readonly y?: number;
+  readonly width?: number;
+  readonly height?: number;
+}
+
 const VEHICLE_MARKING_SCHEMA_VERSION = 1;
 
 const VEHICLE_MARKING_ANCHOR_SCHEMA_VERSION = 1;
@@ -22,7 +63,7 @@ export const SURFACE_MARKING_STYLE = Object.freeze({
   wearSeedSalt: 0x4d41524b,
 });
 
-const COUNTRY_MARKINGS = Object.freeze({
+const COUNTRY_MARKINGS: Readonly<Record<string, CountryMarking>> = Object.freeze({
   us: Object.freeze({ countryLabel: 'United States', filterLabel: 'US', insignia: 'us-star', designation: 'US' }),
   de: Object.freeze({ countryLabel: 'Germany', filterLabel: 'DE', insignia: 'de-cross', designation: 'BW' }),
   ru: Object.freeze({ countryLabel: 'Russia', filterLabel: 'RU', insignia: 'ru-star', designation: 'RU' }),
@@ -46,7 +87,14 @@ const COUNTRY_MARKINGS = Object.freeze({
 // still allowing related family members to choose different turret/hull
 // stations.  `longitudinal` runs rear (0) -> bow (1); `vertical` runs bottom
 // (0) -> roof (1) inside the selected articulation owner.
-const anchor = (owner, side, longitudinal, vertical, sizeM, designationDirection = -1) => Object.freeze({
+const anchor = (
+  owner: VehicleMarkingAnchor['owner'],
+  side: VehicleMarkingAnchor['side'],
+  longitudinal: number,
+  vertical: number,
+  sizeM: number,
+  designationDirection: VehicleMarkingAnchor['designationDirection'] = -1,
+): VehicleMarkingAnchor => Object.freeze({
   schemaVersion: VEHICLE_MARKING_ANCHOR_SCHEMA_VERSION,
   owner,
   side,
@@ -56,7 +104,7 @@ const anchor = (owner, side, longitudinal, vertical, sizeM, designationDirection
   designationDirection,
 });
 
-export const VEHICLE_MARKING_ANCHORS = Object.freeze({
+export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnchor>> = Object.freeze({
   tiger1: anchor('turret', 'right', 0.46, 0.48, 0.30, 1),
   panther_g: anchor('turret', 'left', 0.42, 0.50, 0.29, -1),
   m1a2: anchor('turret', 'left', 0.43, 0.43, 0.27, 1),
@@ -219,9 +267,11 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   upior: anchor('hull', 'right', 0.42, 0.60, 0.22, -1),
 });
 
-export function vehicleMarkingAnchor(specOrId) {
+export function vehicleMarkingAnchor(
+  specOrId: string | Pick<VehicleMarkingSpec, 'id'> | null | undefined,
+): VehicleMarkingAnchor | null {
   const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
-  return VEHICLE_MARKING_ANCHORS[id] || null;
+  return VEHICLE_MARKING_ANCHORS[id as string] || null;
 }
 
 /**
@@ -232,7 +282,7 @@ export function vehicleMarkingAnchor(specOrId) {
  * receipts directly instead of ray-testing every armor triangle again on
  * each garage switch or bot spawn.
  */
-function stableNumber(id) {
+function stableNumber(id: string | null | undefined): string {
   let hash = 0x811c9dc5;
   for (const ch of String(id || 'tank')) {
     hash ^= ch.charCodeAt(0);
@@ -241,13 +291,18 @@ function stableNumber(id) {
   return String(100 + (hash % 900));
 }
 
-function cleanTacticalNumber(value, id) {
+function cleanTacticalNumber(
+  value: string | null | undefined,
+  id: string | null | undefined,
+): string {
   const text = String(value || '').toUpperCase().replace(/[^A-Z0-9 -]/g, '').replace(/\s+/g, ' ').trim();
   return text || stableNumber(id);
 }
 
-export function vehicleMarkingRecord(spec) {
-  const countryCode = flagIconCode(spec?.nation);
+export function vehicleMarkingRecord(
+  spec: VehicleMarkingSpec | null | undefined,
+): VehicleMarkingRecord {
+  const countryCode = flagIconCode(spec?.nation as string);
   const country = COUNTRY_MARKINGS[countryCode] || COUNTRY_MARKINGS.xx;
   const tacticalNumber = cleanTacticalNumber(spec?.visual?.number, spec?.id);
   const designationPrefix = spec?.nation === 'USSR' ? 'SU' : country.designation;
@@ -263,7 +318,14 @@ export function vehicleMarkingRecord(spec) {
   });
 }
 
-function starPath(ctx, cx, cy, outer, inner = outer * 0.42, points = 5) {
+function starPath(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  outer: number,
+  inner = outer * 0.42,
+  points = 5,
+): void {
   ctx.beginPath();
   for (let i = 0; i < points * 2; i++) {
     const angle = -Math.PI / 2 + i * Math.PI / points;
@@ -275,7 +337,13 @@ function starPath(ctx, cx, cy, outer, inner = outer * 0.42, points = 5) {
   ctx.closePath();
 }
 
-function crossPath(ctx, cx, cy, size, arm = 0.31) {
+function crossPath(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  size: number,
+  arm = 0.31,
+): void {
   const h = size / 2, a = size * arm / 2;
   ctx.beginPath();
   ctx.moveTo(cx - a, cy - h); ctx.lineTo(cx + a, cy - h);
@@ -287,13 +355,25 @@ function crossPath(ctx, cx, cy, size, arm = 0.31) {
   ctx.closePath();
 }
 
-function ring(ctx, cx, cy, radius, color) {
+function ring(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  color: string,
+): void {
   ctx.fillStyle = color;
   ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill();
 }
 
 /** Draw a deterministic, country-specific vehicle insignia into any 2D canvas. */
-export function drawNationalInsignia(ctx, insignia, cx, cy, size) {
+export function drawNationalInsignia(
+  ctx: CanvasRenderingContext2D,
+  insignia: string,
+  cx: number,
+  cy: number,
+  size: number,
+): void {
   const r = size / 2;
   ctx.save();
   ctx.lineJoin = 'round';
@@ -363,7 +443,11 @@ export function drawNationalInsignia(ctx, insignia, cx, cy, size) {
   ctx.restore();
 }
 
-export function drawTacticalNumber(ctx, record, bounds = {}) {
+export function drawTacticalNumber(
+  ctx: CanvasRenderingContext2D,
+  record: VehicleMarkingRecord,
+  bounds: CanvasBounds = {},
+): void {
   const x = bounds.x ?? 0, y = bounds.y ?? 0, width = bounds.width ?? ctx.canvas.width, height = bounds.height ?? ctx.canvas.height;
   ctx.save();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -379,7 +463,11 @@ export function drawTacticalNumber(ctx, record, bounds = {}) {
 }
 
 /** Combined tactical marking used by generated identity cards. */
-export function drawVehicleDesignation(ctx, record, bounds = {}) {
+export function drawVehicleDesignation(
+  ctx: CanvasRenderingContext2D,
+  record: VehicleMarkingRecord,
+  bounds: CanvasBounds = {},
+): void {
   const x = bounds.x ?? 0, y = bounds.y ?? 0, width = bounds.width ?? ctx.canvas.width, height = bounds.height ?? ctx.canvas.height;
   const emblemSize = Math.min(height * 0.68, width * 0.34);
   drawNationalInsignia(ctx, record.insignia, x + width * 0.25, y + height / 2, emblemSize);

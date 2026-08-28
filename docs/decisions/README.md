@@ -229,3 +229,4 @@ runtime documents remain authoritative for behavior.
 - [0217 — The application composition root has a dedicated contract surface](0217-main-composition-contracts.md)
 - [0218 — Soviet-family chevron ERA construction is strict TypeScript](0218-typed-soviet-chevron-era.md)
 - [0219 — Vehicle internal-layout evidence is strict TypeScript](0219-typed-internal-layout-registry.md)
+- [0220 — Vehicle marking anchors and painters are strict TypeScript](0220-typed-vehicle-markings.md)
