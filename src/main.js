@@ -108,6 +108,7 @@ import {
 import { debugModeRequested } from './dev/debugIntent.ts';
 import { createPerfDiagnosticsAccess } from './dev/perfDiagnosticsAccess.ts';
 import { createLazyAudio } from './audio/lazyAudio.js';
+import { createListenerPoseRuntime } from './audio/listenerPoseRuntime.ts';
 import { createInput } from './game/input.js';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { createBattleClientAccess } from './game/battleClientAccess.ts';
@@ -189,10 +190,6 @@ const _v3 = new THREE.Vector3();
 const _rayO = new THREE.Vector3();
 const _rayD = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
-// SOUND r3: hybrid listener anchor. Direction follows the camera, but world
-// distance follows the tank the player inhabits/spectates so pulling the
-// third-person camera back cannot mute the tank and its immediate neighbors.
-const _audioPos = new THREE.Vector3();
 // chase-camera occlusion focus (player hull center, lifted to turret height)
 const _occlFocus = new THREE.Vector3();
 
@@ -2068,9 +2065,7 @@ const refreshSpotFrame = battleHudFrame.refreshSpotting;
 // A typed, allocation-free owner samples every device and publishes the one
 // mutable camera-input record consumed by the existing rig.
 const camInput = playerFrameInput.camera;
-const _listenerPose = {
-  pos: null, forward: _fwd, kind: 'camera', ownerId: null, scoped: false,
-}; // reused — no per-frame literal
+const audioListener = createListenerPoseRuntime({ camera, game, rig, killcam, audio });
 // Pause transitions, input sampling, network cadence, pre-battle hold,
 // fixed-step debt, result progression, and presentation interpolation are one
 // typed state machine. The render loop consumes only its stable receipt.
@@ -2284,35 +2279,8 @@ function tick(nowMs) {
   // 7. HUD (hidden + frozen while the kill-cam letterbox owns the screen).
   battleHudFrame.update(inBattle, kcActive);
 
-  // 8. audio
-  camera.getWorldDirection(_fwd);
-  // World audio uses a HYBRID listener, matching vehicle games: azimuth comes
-  // from the camera (so looking around still pans correctly), while distance
-  // comes from the occupied vehicle. The old camera-position distance made a
-  // 24 m arcade chase offset attenuate even the player's own engine/cannon;
-  // entering sniper moved the camera to the trunnion and falsely made the
-  // whole nearby mix spring back. Kill-cam deliberately returns to the
-  // cinematic camera; spectator mode follows its current ally.
-  let audioEnt = null;
-  if (inBattle && !kcActive && !killcam.isActive()) {
-    const spectateId = killcam.spectate.active ? killcam.spectate.targetId : null;
-    audioEnt = spectateId ? game.tankById.get(spectateId) : game.player;
-  }
-  if (audioEnt && audioEnt.state && audioEnt.state.pos) {
-    _audioPos.copy(audioEnt.state.pos);
-    _audioPos.y += (audioEnt.spec && audioEnt.spec.dims
-      ? audioEnt.spec.dims.heightM * 0.68 : 1.6);
-    _listenerPose.pos = _audioPos;
-    _listenerPose.kind = killcam.spectate.active ? 'spectated-tank' : 'player-tank';
-    _listenerPose.ownerId = audioEnt.id;
-    _listenerPose.scoped = rig.mode === 'SNIPER' && !!camera.userData.scoped;
-  } else {
-    _listenerPose.pos = camera.position;
-    _listenerPose.kind = kcActive || killcam.isActive() ? 'killcam-camera' : 'camera';
-    _listenerPose.ownerId = null;
-    _listenerPose.scoped = false;
-  }
-  audio.update(dtR, _listenerPose, game.tanks);
+  // 8. hybrid camera/occupied-vehicle listener (allocation-free typed owner)
+  audioListener.update(dtR, inBattle, kcActive);
 
   // 9-10. shadows + post
   // FEEL r12: fov lerps (scope zoom / aim transitions / per-shot recoil

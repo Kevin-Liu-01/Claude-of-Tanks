@@ -184,6 +184,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/temporalAoPolicy.selftest.mjs',
     'src/audio/voices.selftest.mjs',
     'src/audio/audioTiming.selftest.mjs',
+    'src/audio/listenerPoseRuntime.selftest.mjs',
     'src/net/net.selftest.mjs',
     'src/net/inputCadence.selftest.mjs',
     'src/net/browserInputRuntime.selftest.mjs',
