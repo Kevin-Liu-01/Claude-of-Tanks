@@ -3,7 +3,7 @@ import { Vector3 } from 'three';
 import {
   createDedicatedWorldCollision,
   dedicatedCollisionManifestStats,
-} from './dedicatedWorldCollision.js';
+} from './dedicatedWorldCollision.ts';
 import { MAP_IDS } from '../src/world/maps/index.ts';
 
 const expected = {

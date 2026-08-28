@@ -14,7 +14,7 @@ import {
   type AuthoritativePlayerRecord,
   type AuthoritativeWorldCollision,
 } from '../src/sim/authoritativeMatch.ts';
-import { createDedicatedWorldCollision } from './dedicatedWorldCollision.js';
+import { createDedicatedWorldCollision } from './dedicatedWorldCollision.ts';
 
 const MATCH_ID_RE = /^[a-zA-Z0-9_-]{6,64}$/;
 const PLAYER_ID_RE = /^[a-zA-Z0-9_-]{1,48}$/;

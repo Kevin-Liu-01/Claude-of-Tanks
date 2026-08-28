@@ -208,7 +208,7 @@ async function startLightAuthority(authorityPage) {
     const state = globalThis.__COT_DUAL;
     const [{ beginPrivateHostMatch }, { createDedicatedWorldCollision }] = await Promise.all([
       import('/src/net/privateMatchHandoff.ts'),
-      import('/server/dedicatedWorldCollision.js'),
+      import('/server/dedicatedWorldCollision.ts'),
       import('/src/vehicles/tankFactory.js'),
     ]);
     state.worldCollision = createDedicatedWorldCollision(state.startingLobby.mapId);

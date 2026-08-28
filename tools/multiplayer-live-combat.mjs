@@ -514,7 +514,7 @@ async function beginHostLight(page, lobby) {
     const state = globalThis.__COT_LIVE_7V7;
     const [{ beginPrivateHostMatch }, { createDedicatedWorldCollision }] = await Promise.all([
       import('/src/net/privateMatchHandoff.ts'),
-      import('/server/dedicatedWorldCollision.js'),
+      import('/server/dedicatedWorldCollision.ts'),
       // Side-effect-only fleet registration. The full app imports this chain
       // through main.js; the lightweight authority page deliberately does not.
       import('/src/vehicles/tankFactory.js'),

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { buildPrivateMatchPlayers } from '../src/net/privateMatchHandoff.ts';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.ts';
 import { MAP_IDS } from '../src/world/maps/index.ts';
-import { createDedicatedWorldCollision } from './dedicatedWorldCollision.js';
+import { createDedicatedWorldCollision } from './dedicatedWorldCollision.ts';
 
 const MAPS = process.env.COT_PACING_MAPS
   ? process.env.COT_PACING_MAPS.split(',').filter((id) => MAP_IDS.includes(id))
