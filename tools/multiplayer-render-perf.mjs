@@ -421,7 +421,7 @@ async function runNetwork(origin, signalUrl, renderedRole) {
       await guestPage.evaluate(() => {
         const state = globalThis.__COT_RENDER_PERF;
         state.handoff = (async () => {
-          const { beginPrivateClientMatch } = await import('/src/net/privateMatchHandoff.js');
+          const { beginPrivateClientMatch } = await import('/src/net/privateMatchHandoff.ts');
           state.match = await beginPrivateClientMatch({
             session: state.session,
             playerId: state.roomInfo.peerId,
@@ -508,7 +508,7 @@ async function runNetwork(origin, signalUrl, renderedRole) {
     }
 
     await hostPage.evaluate(async () => {
-      const { beginPrivateHostMatch } = await import('/src/net/privateMatchHandoff.js');
+      const { beginPrivateHostMatch } = await import('/src/net/privateMatchHandoff.ts');
       const state = globalThis.__COT_RENDER_PERF;
       state.match = beginPrivateHostMatch({
         session: state.session,

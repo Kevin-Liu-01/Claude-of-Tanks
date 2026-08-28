@@ -413,7 +413,7 @@ async function triggerGuestLight(page) {
     state.handoffDone = false;
     state.handoffError = null;
     state.handoffPromise = (async () => {
-      const { beginPrivateClientMatch } = await import('/src/net/privateMatchHandoff.js');
+      const { beginPrivateClientMatch } = await import('/src/net/privateMatchHandoff.ts');
       state.match = await beginPrivateClientMatch({
         session: state.session,
         playerId: state.roomInfo.peerId,
@@ -506,7 +506,7 @@ async function beginHostLight(page, lobby) {
   await page.evaluate(async ({ lobbyState, complete, battleLimitS }) => {
     const state = globalThis.__COT_LIVE_7V7;
     const [{ beginPrivateHostMatch }, { createDedicatedWorldCollision }] = await Promise.all([
-      import('/src/net/privateMatchHandoff.js'),
+      import('/src/net/privateMatchHandoff.ts'),
       import('/server/dedicatedWorldCollision.js'),
       // Side-effect-only fleet registration. The full app imports this chain
       // through main.js; the lightweight authority page deliberately does not.

@@ -5,7 +5,7 @@ import {
   beginPrivateHostMatch,
   buildPrivateMatchPlayers,
   resolvePrivateMatchMap,
-} from './privateMatchHandoff.js';
+} from './privateMatchHandoff.ts';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
 import { PrivateRoomClientSession, PrivateRoomHostSession } from './privateRoomSession.ts';
 import { MatchClientRuntime } from './matchRuntime.js';

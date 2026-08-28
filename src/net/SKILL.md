@@ -50,7 +50,8 @@ play without importing Three.js rendering or DOM state.
   `dedicatedClient.js` owns authenticated WebSocket handoff and reconnect.
 - `privateRoomSession.ts` owns typed lobby WebRTC composition and
   `rtcIceLease.ts` owns expiring TURN generations;
-  `privateMatchHandoff.js` deterministically fills open team slots with bots
+  `privateMatchHandoff.ts` is the strict lobby-to-match boundary: it
+  deterministically fills open team slots with bots
   and releases those same channels to match authority.
 - `browserBattleBridge.js` is presentation-only and must stay lazy from main.
 

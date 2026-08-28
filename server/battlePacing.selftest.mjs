@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildPrivateMatchPlayers } from '../src/net/privateMatchHandoff.js';
+import { buildPrivateMatchPlayers } from '../src/net/privateMatchHandoff.ts';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.js';
 import { MAP_IDS } from '../src/world/maps/index.js';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.js';

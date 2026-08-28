@@ -208,7 +208,7 @@ try {
   ]);
 
   const hostMatch = await hostPage.evaluate(async () => {
-    const { beginPrivateHostMatch } = await import('/src/net/privateMatchHandoff.js');
+    const { beginPrivateHostMatch } = await import('/src/net/privateMatchHandoff.ts');
     const state = globalThis.__COT_SOAK;
     state.match = beginPrivateHostMatch({
       session: state.session,
@@ -223,7 +223,7 @@ try {
     };
   });
   const guestMatch = await guestPage.evaluate(async () => {
-    const { beginPrivateClientMatch } = await import('/src/net/privateMatchHandoff.js');
+    const { beginPrivateClientMatch } = await import('/src/net/privateMatchHandoff.ts');
     const state = globalThis.__COT_SOAK;
     state.match = await beginPrivateClientMatch({
       session: state.session,
@@ -443,7 +443,7 @@ try {
     ] = await Promise.all([
       import('/src/net/signalingClient.js'),
       import('/src/net/privateRoomSession.ts'),
-      import('/src/net/privateMatchHandoff.js'),
+      import('/src/net/privateMatchHandoff.ts'),
     ]);
     const signalingClient = new RoomSignalingClient({ url });
     const roomInfo = await signalingClient.joinRoom({

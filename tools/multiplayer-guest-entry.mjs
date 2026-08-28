@@ -85,7 +85,7 @@ try {
       teamSize: 1,
       onStart: (lobbyState) => {
         state.lobby = lobbyState;
-        state.startPromise = import('/src/net/privateMatchHandoff.js')
+        state.startPromise = import('/src/net/privateMatchHandoff.ts')
           .then(({ beginPrivateHostMatch }) => {
             state.match = beginPrivateHostMatch({ session: state.session, lobbyState });
             state.match.ready();

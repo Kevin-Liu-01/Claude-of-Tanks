@@ -290,7 +290,7 @@ try {
   console.log(`[multiplayer-soak] all ${playerCount} peers received the start transition`);
 
   const hostMatch = await hostPage.evaluate(async () => {
-    const { beginPrivateHostMatch } = await import('/src/net/privateMatchHandoff.js');
+    const { beginPrivateHostMatch } = await import('/src/net/privateMatchHandoff.ts');
     const state = globalThis.__COT_ROSTER_SOAK;
     state.match = beginPrivateHostMatch({ session: state.session, lobbyState: state.startingLobby });
     state.advanceDurations = [];
@@ -301,7 +301,7 @@ try {
     };
   });
   const guestMatches = await Promise.all(guestPages.map((page) => page.evaluate(async () => {
-    const { beginPrivateClientMatch } = await import('/src/net/privateMatchHandoff.js');
+    const { beginPrivateClientMatch } = await import('/src/net/privateMatchHandoff.ts');
     const state = globalThis.__COT_ROSTER_SOAK;
     state.match = await beginPrivateClientMatch({
       session: state.session,

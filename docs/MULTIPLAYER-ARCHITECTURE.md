@@ -56,7 +56,7 @@ its dedicated service explicitly negotiates another ruleset.
   resulting connection but cannot construct a second transport lifecycle.
 - `src/net/localSession.js` provides loopback authority for protocol tests and
   tooling; normal solo play does not load it.
-- `src/net/privateRoomSession.ts` and `privateMatchHandoff.js` own WebRTC lobby
+- `src/net/privateRoomSession.ts` and `privateMatchHandoff.ts` own WebRTC lobby
   composition, seeded bot fill, and channel handoff.
 - `server/dedicatedMatchServer.js` and `dedicatedMatchRegistry.js` own ranked
   WebSocket authority and reconnectable match lifetimes.
