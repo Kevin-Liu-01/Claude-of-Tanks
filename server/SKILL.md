@@ -19,7 +19,7 @@ The signaling server relays WebRTC descriptions/ICE only and never gameplay.
 - `dedicatedMatchRegistry.ts` owns authenticated match lifecycle and reconnects.
 - `dedicatedMatchServer.ts` owns the authoritative WebSocket service boundary.
 - `rankedMatchmaker.js` owns bounded queues, team balance, and match-ticket handoff;
-  `ratingStore.js` owns bearer identities, persistent Elo, and idempotent results.
+  `ratingStore.ts` owns bearer identities, persistent Elo, and idempotent results.
 - `dedicatedWorldCollision.js` inflates match-local state from the generated
   twenty-map collision manifest; do not hand-edit that manifest.
 - A v1 browser-hosted room closes if its host leaves; never silently migrate a

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { RatingStore, rankForRating } from './ratingStore.js';
+import { RatingStore, rankForRating } from './ratingStore.ts';
 
 let id = 0;
 let secret = 0;

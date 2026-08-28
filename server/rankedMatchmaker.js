@@ -5,7 +5,7 @@ import { getSpec } from '../src/vehicles/specs.js';
 import { RANDOM_BATTLE_MAP_IDS } from '../src/world/maps/index.ts';
 import { uniquePlayerName } from '../src/net/playerNames.ts';
 import { networkCamoId } from '../src/vehicles/camoPolicy.js';
-import { RatingStore } from './ratingStore.js';
+import { RatingStore } from './ratingStore.ts';
 
 const TEAM_SIZES = new Set([1, 2, 3, 5, 7]);
 const QUEUE_TTL_MS = 10 * 60_000;

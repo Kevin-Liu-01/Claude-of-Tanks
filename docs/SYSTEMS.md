@@ -754,7 +754,7 @@ must be monitored separately from WebRTC gameplay.
 
 server/dedicatedMatchServer.ts owns ranked WebSocket sessions.
 server/rankedMatchmaker.js owns queue grouping.
-server/ratingStore.js owns idempotent rating settlement.
+server/ratingStore.ts owns idempotent rating settlement.
 
 Private browser hosts are trusted. Ranked moves authority to the service.
 

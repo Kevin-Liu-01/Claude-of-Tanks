@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { RankedMatchmaker, rankedBattleMapForSequence } from './rankedMatchmaker.js';
-import { RatingStore } from './ratingStore.js';
+import { RatingStore } from './ratingStore.ts';
 import { RANDOM_BATTLE_MAP_IDS } from '../src/world/maps/index.ts';
 
 assert.deepEqual(

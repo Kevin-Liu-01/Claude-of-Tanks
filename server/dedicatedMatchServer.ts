@@ -5,7 +5,7 @@ import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import { createWebSocketTransport } from '../src/net/channelTransport.ts';
 import { DedicatedMatchRegistry } from './dedicatedMatchRegistry.ts';
 import { RankedMatchmaker } from './rankedMatchmaker.js';
-import { RatingStore } from './ratingStore.js';
+import { RatingStore } from './ratingStore.ts';
 
 const AUTH_TIMEOUT_MS = 5000;
 const MAX_MESSAGES_PER_SECOND = 180;
@@ -26,10 +26,6 @@ interface RankedMatchmakerLike {
   cancel(ticketId: string, token: string): boolean;
   reconcile(): void;
   stats(): RankedStats;
-}
-
-interface RatingStoreConstructor {
-  new(options?: { filePath?: string | null }): unknown;
 }
 
 interface RankedMatchmakerConstructor {
@@ -148,11 +144,10 @@ function parseMatchAuth(raw: RawData): MatchAuthMessage | null {
 }
 
 function createDefaultMatchmaker(registry: DedicatedMatchRegistry): RankedMatchmakerLike {
-  const RatingStoreClass = RatingStore as unknown as RatingStoreConstructor;
   const RankedMatchmakerClass = RankedMatchmaker as unknown as RankedMatchmakerConstructor;
   return new RankedMatchmakerClass({
     registry,
-    ratings: new RatingStoreClass({ filePath: process.env.COT_RATING_FILE || null }),
+    ratings: new RatingStore({ filePath: process.env.COT_RATING_FILE || null }),
   });
 }
 
