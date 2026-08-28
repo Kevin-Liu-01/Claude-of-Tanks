@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createLazyAudio, startFallbackLoadingTone } from './lazyAudio.js';
+import { createLazyAudio, startFallbackLoadingTone } from './lazyAudio.ts';
 
 class FakeParam {
   constructor(value = 0) { this.value = value; }
@@ -73,7 +73,7 @@ const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8'
 const intentSource = await readFile(
   new URL('../game/battleIntentRuntime.ts', import.meta.url), 'utf8',
 );
-assert.match(mainSource, /import \{ createLazyAudio \} from '\.\/audio\/lazyAudio\.js';/,
+assert.match(mainSource, /import \{ createLazyAudio \} from '\.\/audio\/lazyAudio\.ts';/,
   'the garage boot graph uses the boot-light audio facade');
 assert.doesNotMatch(mainSource, /from '\.\/audio\/audio\.js';/,
   'the full mixer is not a static boot dependency');

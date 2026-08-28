@@ -107,7 +107,7 @@ import {
 // development, or automation sessions.
 import { debugModeRequested } from './dev/debugIntent.ts';
 import { createPerfDiagnosticsAccess } from './dev/perfDiagnosticsAccess.ts';
-import { createLazyAudio } from './audio/lazyAudio.js';
+import { createLazyAudio } from './audio/lazyAudio.ts';
 import { createListenerPoseRuntime } from './audio/listenerPoseRuntime.ts';
 import { createInput } from './game/input.js';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';

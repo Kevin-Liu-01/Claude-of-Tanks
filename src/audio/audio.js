@@ -291,6 +291,7 @@ export function resolveReloadCuePlan(totalS, kind = 'shell', caliberMm = 100) {
  *   hitConfirm: (kind: string, damage?: number) => void,
  * }} Audio interface per ARCHITECTURE.md §3.9.
  */
+/** @param {{ context?: AudioContext | null }} [options] */
 export function createAudio({ context: initialContext = null } = {}) {
   /** @type {AudioContext|null} */
   let ctx = initialContext;
@@ -2617,7 +2618,7 @@ export function createAudio({ context: initialContext = null } = {}) {
   /**
    * Subscribe to game events. Safe to call before resume() — handlers no-op
    * until the context exists.
-   * @param {{on: (ev: string, fn: Function) => Function}} bus injected event bus
+   * @param {import('../game/stateCore.ts').EventBus} bus injected event bus
    */
   function bindBus(bus) {
     bus.on('shell:fired', (e) => { if (ctx) onShellFired(e); });

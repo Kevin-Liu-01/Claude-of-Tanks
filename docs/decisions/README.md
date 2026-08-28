@@ -132,3 +132,4 @@ runtime documents remain authoritative for behavior.
 - [0120 — Pointer-lock recovery has one typed lifecycle owner](0120-typed-pointer-lock-feedback.md)
 - [0121 — Mobile auto-aim has one typed lifecycle owner](0121-typed-mobile-auto-aim-runtime.md)
 - [0122 — Audio listener pose has one typed frame owner](0122-typed-audio-listener-pose.md)
+- [0123 — Gesture-time audio handoff is strict TypeScript](0123-typed-lazy-audio-handoff.md)

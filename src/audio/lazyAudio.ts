@@ -9,7 +9,54 @@
  * autoplay-policy gap.
  */
 
-function stopFallback(record, fadeS = 0.08) {
+import type { AudioListenerPose } from './listenerPoseRuntime.ts';
+import type { EventBus } from '../game/stateCore.ts';
+
+interface FallbackLoadingTone {
+  context: AudioContext;
+  gain: GainNode;
+  nodes: OscillatorNode[];
+}
+
+interface AudioMixer {
+  bindBus(bus: EventBus): void;
+  resume(): void;
+  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly unknown[]): void;
+  setMasterVolume(value: number): void;
+  mute(muted: boolean): void;
+  playGarageSting(): void;
+  loadingOn(active: boolean): void;
+  warmBattleEvents?(): unknown;
+  ambientOn(active: boolean): void;
+  hitConfirm(kind: string, damage: number): void;
+}
+
+interface AudioMixerModule {
+  createAudio(options: { context: AudioContext | null }): AudioMixer;
+}
+
+export interface LazyAudioOptions {
+  loadMixer?(): Promise<AudioMixerModule | null>;
+  createContext?(): AudioContext | null;
+}
+
+export interface LazyAudio {
+  preload(): Promise<AudioMixerModule | null>;
+  resume(): void;
+  bindBus(bus: EventBus): void;
+  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly unknown[]): void;
+  setMasterVolume(value: number): void;
+  mute(muted: boolean): void;
+  playGarageSting(): void;
+  loadingOn(active: boolean): void;
+  warmBattleEvents(): Promise<unknown>;
+  ambientOn(active: boolean): void;
+  hitConfirm(kind: string, damage?: number): void;
+  readonly ready: boolean;
+  readonly loadingActive: boolean;
+}
+
+function stopFallback(record: FallbackLoadingTone | null, fadeS = 0.08): void {
   if (!record) return;
   const { context, gain, nodes } = record;
   const now = context.currentTime;
@@ -27,7 +74,7 @@ function stopFallback(record, fadeS = 0.08) {
 }
 
 /** Immediate loading sound: no fetch, decode, timer, or frame-loop work. */
-export function startFallbackLoadingTone(context) {
+export function startFallbackLoadingTone(context: AudioContext | null): FallbackLoadingTone | null {
   if (!context) return null;
   const now = context.currentTime;
   const gain = context.createGain();
@@ -69,29 +116,32 @@ export function startFallbackLoadingTone(context) {
 export function createLazyAudio({
   loadMixer = () => import('./audio.js'),
   createContext = () => {
-    const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
+    const scope = globalThis as typeof globalThis & {
+      webkitAudioContext?: typeof AudioContext;
+    };
+    const AC = scope.AudioContext || scope.webkitAudioContext;
     return AC ? new AC({ latencyHint: 'interactive' }) : null;
   },
-} = {}) {
-  let context = null;
-  let real = null;
-  let modulePromise = null;
-  let realPromise = null;
-  let bus = null;
-  let fallback = null;
+}: LazyAudioOptions = {}): LazyAudio {
+  let context: AudioContext | null = null;
+  let real: AudioMixer | null = null;
+  let modulePromise: Promise<AudioMixerModule | null> | null = null;
+  let realPromise: Promise<AudioMixer | null> | null = null;
+  let bus: EventBus | null = null;
+  let fallback: FallbackLoadingTone | null = null;
   let loadingRequested = false;
   let ambientRequested = false;
   let muted = false;
   let garageStingPending = false;
 
-  const unlockContext = () => {
+  const unlockContext = (): AudioContext | null => {
     if (!context) context = createContext();
     if (!context) return null;
-    if (context.state === 'suspended') context.resume();
+    if (context.state === 'suspended') void context.resume();
     return context;
   };
 
-  const settleReal = (created) => {
+  const settleReal = (created: AudioMixer): AudioMixer => {
     real = created;
     if (bus) real.bindBus(bus);
     // createAudio may adopt an already-unlocked context. Construct its graph
@@ -113,7 +163,7 @@ export function createLazyAudio({
     return real;
   };
 
-  const preload = () => {
+  const preload = (): Promise<AudioMixerModule | null> => {
     if (!modulePromise) {
       modulePromise = loadMixer().catch((error) => {
         modulePromise = null;
@@ -124,7 +174,7 @@ export function createLazyAudio({
     return modulePromise;
   };
 
-  const ensureReal = () => {
+  const ensureReal = (): Promise<AudioMixer | null> => {
     if (real) return Promise.resolve(real);
     if (!realPromise) {
       realPromise = preload().then((module) => (
@@ -136,13 +186,13 @@ export function createLazyAudio({
     return realPromise;
   };
 
-  const resume = () => {
+  const resume = (): void => {
     unlockContext();
     if (real) real.resume();
-    else ensureReal();
+    else void ensureReal();
   };
 
-  const loadingOn = (on) => {
+  const loadingOn = (on: boolean): void => {
     loadingRequested = !!on;
     if (real) {
       real.loadingOn(loadingRequested);
@@ -151,7 +201,7 @@ export function createLazyAudio({
     if (loadingRequested) {
       const unlocked = unlockContext();
       if (unlocked && !fallback) fallback = startFallbackLoadingTone(unlocked);
-      ensureReal();
+      void ensureReal();
     } else if (fallback) {
       stopFallback(fallback, 0.16);
       fallback = null;
@@ -161,30 +211,32 @@ export function createLazyAudio({
   return {
     preload,
     resume,
-    bindBus(nextBus) {
+    bindBus(nextBus: EventBus) {
       bus = nextBus;
       if (real) real.bindBus(nextBus);
     },
-    update(dt, listener, tanks) { real?.update(dt, listener, tanks); },
-    setMasterVolume(value) { real?.setMasterVolume(value); },
-    mute(on) {
+    update(dt: number, listener: AudioListenerPose, tanks: readonly unknown[]) {
+      real?.update(dt, listener, tanks);
+    },
+    setMasterVolume(value: number) { real?.setMasterVolume(value); },
+    mute(on: boolean) {
       muted = !!on;
       if (fallback) fallback.gain.gain.value = muted ? 0.0001 : 0.055;
       real?.mute(muted);
     },
     playGarageSting() {
       if (real) real.playGarageSting();
-      else { garageStingPending = true; ensureReal(); }
+      else { garageStingPending = true; void ensureReal(); }
     },
     loadingOn,
     warmBattleEvents() {
       return ensureReal().then((mixer) => mixer?.warmBattleEvents?.());
     },
-    ambientOn(on) {
+    ambientOn(on: boolean) {
       ambientRequested = !!on;
       real?.ambientOn(ambientRequested);
     },
-    hitConfirm(kind, damage = 0) { real?.hitConfirm(kind, damage); },
+    hitConfirm(kind: string, damage = 0) { real?.hitConfirm(kind, damage); },
     get ready() { return !!real; },
     get loadingActive() { return !!fallback || loadingRequested; },
   };
