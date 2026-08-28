@@ -11331,12 +11331,26 @@ function buildLeo1A5ArticulatedProfile(P) {
   P.decal('turret', 'crossgrey', null, 0.28, [-1.225, 0.48, -0.52], -Math.PI / 2, 0, -0.18);
   P.decal('turret', 'number', P.spec.visual.number || '123', 0.21, [1.17, 0.61, -1.05], Math.PI / 2, 0, 0.14);
 
-  // Broad cast butterfly saddle and source-length L7A3. A tapered rear seat
-  // overlaps the turret embrasure; the shallow faceted center shield and
-  // flattened shoulder ears continue the adjacent cheek rake instead of
-  // protruding as a separate round casting. Sloped brow/chin plates close the
-  // remaining transition into the turret face.
+  // Broad cast butterfly saddle and source-length L7A3. The turret owns a
+  // flat receiver plate while the moving mantlet owns a matching planar rear
+  // pad. Their volumes overlap through the complete legal pitch range, so the
+  // attachment side reads as a real bolted seat instead of tapering into the
+  // turret through the rounded shoulder ears. The shallow faceted center
+  // shield and flattened ears retain the established Leopard 1 silhouette.
+  const mantletReceiver = {
+    width: 1.16, height: 0.50, depth: 0.18, y: 0.47, z: 0.79,
+  };
+  const mantletRearPad = {
+    width: 1.22, height: 0.46, depth: 0.16, z: -0.34,
+  };
+  P.add('turret', new THREE.BoxGeometry(
+    mantletReceiver.width, mantletReceiver.height, mantletReceiver.depth,
+  ), 0, mantletReceiver.y, mantletReceiver.z);
+  P.add('turretDark', new THREE.BoxGeometry(1.10, 0.44, 0.018), 0, mantletReceiver.y, 0.889);
   P.gunG.position.set(0, 0.47, 1.15);
+  P.addGunExtra(new THREE.BoxGeometry(
+    mantletRearPad.width, mantletRearPad.height, mantletRearPad.depth,
+  ), 0, 0, mantletRearPad.z);
   P.addGunExtra(slab(
     [-0.64, -0.21, -0.30], [0.64, -0.21, -0.30], [0.58, -0.22, 0.04], [-0.58, -0.22, 0.04],
     [-0.64, 0.21, -0.30], [0.64, 0.21, -0.30], [0.58, 0.22, 0.04], [-0.58, 0.22, 0.04]));
@@ -11362,9 +11376,20 @@ function buildLeo1A5ArticulatedProfile(P) {
     seated: true,
     shapedButterflyCasting: true,
     flatFacetedFace: true,
+    flatRearContactFace: true,
+    turretReceiver: true,
     width: 1.32,
     height: 0.55,
     faceDepth: 0.31,
+    rearContactWidth: mantletRearPad.width,
+    rearContactHeight: mantletRearPad.height,
+    rearContactDepth: mantletRearPad.depth,
+    rearContactZ: mantletRearPad.z,
+    receiverWidth: mantletReceiver.width,
+    receiverHeight: mantletReceiver.height,
+    receiverDepth: mantletReceiver.depth,
+    receiverY: mantletReceiver.y,
+    receiverZ: mantletReceiver.z,
     barrelRadius: 0.064,
   };
 

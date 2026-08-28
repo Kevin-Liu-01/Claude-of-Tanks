@@ -253,10 +253,54 @@ assert.deepEqual(gunRig.userData.leopard1A5MantletReceipt, {
   seated: true,
   shapedButterflyCasting: true,
   flatFacetedFace: true,
+  flatRearContactFace: true,
+  turretReceiver: true,
   width: 1.32,
   height: 0.55,
   faceDepth: 0.31,
+  rearContactWidth: 1.22,
+  rearContactHeight: 0.46,
+  rearContactDepth: 0.16,
+  rearContactZ: -0.34,
+  receiverWidth: 1.16,
+  receiverHeight: 0.50,
+  receiverDepth: 0.18,
+  receiverY: 0.47,
+  receiverZ: 0.79,
   barrelRadius: 0.064,
 }, 'the flatter faceted mantlet and thicker L7 remain seated in the turret embrasure');
+
+// The side facing the turret is a literal planar pad, not a rounded cap. The
+// center of that pad remains buried in the fixed receiver at both legal pitch
+// limits, proving the visible attachment does not open when the gun moves.
+const mountPosition = mesh('gunMount').geometry.attributes.position;
+let rearZ = Infinity;
+for (let i = 0; i < mountPosition.count; i++) rearZ = Math.min(rearZ, mountPosition.getZ(i));
+const rearVertices = [];
+for (let i = 0; i < mountPosition.count; i++) {
+  if (Math.abs(mountPosition.getZ(i) - rearZ) <= 1e-6) {
+    rearVertices.push([mountPosition.getX(i), mountPosition.getY(i)]);
+  }
+}
+assert.ok(rearVertices.length >= 6, 'mantlet exposes a triangulated flat rear contact face');
+const rearXs = rearVertices.map(([x]) => x);
+const rearYs = rearVertices.map(([, y]) => y);
+assert.ok(Math.abs((Math.max(...rearXs) - Math.min(...rearXs)) - 1.22) <= 1e-6,
+  'flat rear contact face keeps the authored 1.22 m width');
+assert.ok(Math.abs((Math.max(...rearYs) - Math.min(...rearYs)) - 0.46) <= 1e-6,
+  'flat rear contact face keeps the authored 0.46 m height');
+
+const receiver = new THREE.Box3(
+  new THREE.Vector3(-0.58, 0.22, 0.70),
+  new THREE.Vector3(0.58, 0.72, 0.88),
+);
+for (const pitchDeg of [-9, 0, 20]) {
+  gunRig.rotation.x = -THREE.MathUtils.degToRad(pitchDeg);
+  const contactCenter = new THREE.Vector3(0, 0, -0.42).applyEuler(gunRig.rotation).add(gunRig.position);
+  assert.ok(receiver.containsPoint(contactCenter),
+    `mantlet rear pad remains inside the turret receiver at ${pitchDeg} degrees`);
+}
+gunRig.rotation.x = 0;
+visual.root.updateMatrixWorld(true);
 
 console.log('leopard1A5Source.selftest: source envelope, Leopard course, closed fenders, rear fuel cans, seated rig, and A5 kit pass');
