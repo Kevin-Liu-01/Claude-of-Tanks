@@ -5,7 +5,7 @@
 
 ## Context
 
-`src/main.js` must declare startup order and connect renderer, simulation, UI,
+`src/main.ts` must declare startup order and connect renderer, simulation, UI,
 and network ports. It had also accumulated phase-owned state machines. Garage
 camera pointer capture and multiplayer mode launches each repeated their own
 enablement, cleanup, and failure rules inline, making unrelated composition
@@ -13,7 +13,7 @@ changes risky and leaving those rules outside TypeScript verification.
 
 ## Decision
 
-Keep `src/main.js` as the composition root, but move a lifecycle when it has a
+Keep `src/main.ts` as the strict composition root, but move a lifecycle when it has a
 coherent owner and a realistic public-interface test.
 
 - `garageShowroomRuntime.ts` owns the Garage-only phase latch, pointer capture,
@@ -29,13 +29,13 @@ either state machine.
 
 ## Consequences
 
-- `src/main.js` loses more than 200 lines without changing visual or gameplay
+- `src/main.ts` loses more than 200 lines without changing visual or gameplay
   behavior.
 - RTC entry and rematch changes have one policy owner and can be tested without
   WebGL, signaling, or a browser room.
 - Showroom listeners have explicit disposal and cannot leak into later phases.
-- A mechanical `.js` to `.ts` rename is still forbidden; migration requires a
-  smaller interface and behavioral proof.
+- Dead one-line adapters with no caller are deleted; retained adapters must
+  translate a real port or protect lifecycle ownership.
 
 ## Verification
 

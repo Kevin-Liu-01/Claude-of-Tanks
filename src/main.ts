@@ -903,10 +903,6 @@ function buildWorldMinimap(next: MainWorld, textured = true) {
   worldRuntime.buildMinimap(next, textured);
 }
 
-function prepareWorldServices(next = currentWorld()) {
-  worldRuntime.prepareServices(next);
-}
-
 function prepareBattleWorldServices(next = currentWorld()) {
   worldRuntime.prepareBattleServices(next);
 }

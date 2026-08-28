@@ -922,7 +922,7 @@ coupling for it).
 `src/fx/fxRuntimeAccess.ts` owns the browser lifecycle around this API. Module
 preload is permitted on explicit intent, while `createFx` remains a singleton
 construction gate. Module and initializer failures are independently retryable;
-`src/main.js` supplies scene, bus, and post-composite installation as ports.
+`src/main.ts` supplies scene, bus, and post-composite installation as ports.
 
 Rendered vehicle state is owned by `src/game/battlePresentationRuntime.ts`.
 Solo entities sample one fixed-step presentation buffer; network entities use
@@ -1091,7 +1091,7 @@ Camera shake (rig-internal) applies after step 3's solve, before step 9.
 
 ## 5. Screenshot contract — who provides what
 
-`src/main.js` (integration) implements `window.__SHOTS` using ONLY the hooks below.
+`src/main.ts` (integration) implements `window.__SHOTS` using ONLY the hooks below.
 Every `set(name)`: `fx.resetAll()`, `fx.setFrozen(true, VIEW_TIME[name])`,
 `world.setWindTime(VIEW_TIME[name])`, garage hidden unless noted, hud mode per table,
 zero tank inputs, then camera placement, `camera.updateProjectionMatrix()`,
@@ -1127,4 +1127,4 @@ only after the §4 startup sequence completes. Determinism: everything seeded (�
    ship `combat.selftest.mjs` passing under `node` (§3.5.4).
 5. JSDoc `@param`/`@returns` on every exported function (types per this doc).
 6. Do not modify: `package.json`, `index.html`, `tools/screenshot.mjs`,
-   `docs/*`, `src/main.js`, or any file outside your module's directory list.
+   `docs/*`, `src/main.ts`, or any file outside your module's directory list.
