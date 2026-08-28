@@ -16,7 +16,7 @@ import {
   createShadowRefreshScheduler,
   isContinuousShadowCascade,
   mergeRequiredShadowWork,
-} from './shadowRefresh.js';
+} from './shadowRefresh.ts';
 import {
   shadowNormalBiasForTexel,
   snapShadowCoordinate,

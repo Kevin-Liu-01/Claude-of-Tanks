@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { bakeCirrusPixels, bakeCumulusPixels } from './skyCloudBake.js';
+import { bakeCirrusPixels, bakeCumulusPixels } from './skyCloudBake.ts';
 
 const config = Object.freeze({
   seed: 777,

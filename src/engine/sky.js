@@ -19,7 +19,7 @@ import { Sky } from 'three/examples/jsm/objects/Sky.js';
 // read inside the bake functions (post-renderer), never at module eval.
 import { texSize } from './quality.js';
 import { enforceEnvValidity } from './deviceDiag.js';
-import { bakeCirrusPixels, bakeCumulusPixels } from './skyCloudBake.js';
+import { bakeCirrusPixels, bakeCumulusPixels } from './skyCloudBake.ts';
 
 const SUN_ELEVATION_DEG = 32; // slightly lower sun → longer, more readable shadows
 // 140° put the sun almost directly BEHIND the standard chase/establishing
@@ -717,7 +717,7 @@ export function createSky(scene, renderer) {
   const cloudWorkerPromise = typeof Worker === 'undefined' ? null : new Promise((resolve) => {
     let worker;
     try {
-      worker = new Worker(new URL('./skyCloudWorker.js', import.meta.url), { type: 'module' });
+      worker = new Worker(new URL('./skyCloudWorker.ts', import.meta.url), { type: 'module' });
     } catch (error) {
       cloudWorkerSettled = true;
       console.warn('[sky] cloud worker unavailable; using synchronous fallback:', error.message);

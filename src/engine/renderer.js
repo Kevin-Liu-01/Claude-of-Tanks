@@ -14,7 +14,7 @@
  */
 import * as THREE from 'three';
 import { getDeviceTier, resolveDeviceTier, noteGpuRenderer } from './quality.js';
-import { outputResolution } from './resolutionPolicy.js';
+import { outputResolution } from './resolutionPolicy.ts';
 import { routeShadowOnlyLayer } from './renderLayers.ts';
 
 // The canvas is the final display surface, not the expensive scene/post

@@ -4,7 +4,7 @@ import {
   outputPixelRatio,
   outputResolution,
   uiPixelRatio,
-} from './resolutionPolicy.js';
+} from './resolutionPolicy.ts';
 
 assert.equal(outputPixelRatio({ width: 892, height: 412, devicePixelRatio: 3, mobile: true }), 3,
   'DPR-3 phone landscapes must receive a native backing store');

@@ -1,7 +1,7 @@
 /**
  * Output-resolution policy shared by the WebGL canvas, HUD canvases, and
  * Node regression tests. Scene/post resolution remains independently adaptive
- * in renderScalePolicy.js; this module owns the final display backing store.
+ * in renderScalePolicy.ts; this module owns the final display backing store.
  */
 
 export const DESKTOP_OUTPUT_DPR_CAP = 2;
@@ -11,7 +11,27 @@ export const MOBILE_OUTPUT_DPR_CAP = 3;
 // default framebuffer plus equally large reconstruction targets.
 export const MOBILE_OUTPUT_PIXEL_BUDGET = 4_000_000;
 
-function finitePositive(value, fallback) {
+export interface OutputResolutionOptions {
+  width?: unknown;
+  height?: unknown;
+  devicePixelRatio?: unknown;
+  mobile?: boolean;
+  mobilePixelBudget?: unknown;
+}
+
+export interface OutputResolution {
+  width: number;
+  height: number;
+  devicePixelRatio: number;
+  pixelRatio: number;
+  bufferWidth: number;
+  bufferHeight: number;
+  outputPixels: number;
+  native: boolean;
+  budgetLimited: boolean;
+}
+
+function finitePositive(value: unknown, fallback: number): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
@@ -23,7 +43,7 @@ export function outputPixelRatio({
   devicePixelRatio = 1,
   mobile = false,
   mobilePixelBudget = MOBILE_OUTPUT_PIXEL_BUDGET,
-} = {}) {
+}: OutputResolutionOptions = {}): number {
   const dpr = finitePositive(devicePixelRatio, 1);
   const cap = mobile ? MOBILE_OUTPUT_DPR_CAP : DESKTOP_OUTPUT_DPR_CAP;
   const desired = Math.min(dpr, cap);
@@ -34,7 +54,9 @@ export function outputPixelRatio({
 }
 
 /** Full diagnostic record used by renderer.userData and browser QA. */
-export function outputResolution(options = {}) {
+export function outputResolution(
+  options: OutputResolutionOptions = {},
+): OutputResolution {
   const width = Math.max(1, Math.round(finitePositive(options.width, 1)));
   const height = Math.max(1, Math.round(finitePositive(options.height, 1)));
   const devicePixelRatio = finitePositive(options.devicePixelRatio, 1);
@@ -55,7 +77,11 @@ export function outputResolution(options = {}) {
 }
 
 /** Small/full-screen HUD canvases follow the same phone-native density cap. */
-export function uiPixelRatio(width, height, devicePixelRatio = (typeof window !== 'undefined'
-  ? window.devicePixelRatio : 1), mobile = false) {
+export function uiPixelRatio(
+  width: unknown,
+  height: unknown,
+  devicePixelRatio: unknown = typeof window !== 'undefined' ? window.devicePixelRatio : 1,
+  mobile = false,
+): number {
   return outputPixelRatio({ width, height, devicePixelRatio, mobile });
 }

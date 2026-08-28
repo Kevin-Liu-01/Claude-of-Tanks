@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { createElement as el, ensureStyle } from './dom.ts';
 import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.ts';
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
-import { uiPixelRatio } from '../engine/resolutionPolicy.js';
+import { uiPixelRatio } from '../engine/resolutionPolicy.ts';
 import { getDeviceTier } from '../engine/quality.js';
 import {
   MINIMAP_NORTH_UP,

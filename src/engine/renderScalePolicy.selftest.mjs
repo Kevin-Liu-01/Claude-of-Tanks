@@ -8,7 +8,7 @@ import {
   overloadReliefLever,
   reconstructionMode,
   reconstructionSharpness,
-} from './renderScalePolicy.js';
+} from './renderScalePolicy.ts';
 import { PRESETS } from './quality.js';
 
 const high = {

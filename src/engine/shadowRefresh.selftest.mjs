@@ -6,7 +6,7 @@ import {
   createShadowRefreshScheduler,
   isContinuousShadowCascade,
   mergeRequiredShadowWork,
-} from './shadowRefresh.js';
+} from './shadowRefresh.ts';
 
 assert.equal(isContinuousShadowCascade(0), true, 'hero cascade refreshes every presented frame');
 assert.equal(isContinuousShadowCascade(1), true, 'contact cascade refreshes every presented frame');

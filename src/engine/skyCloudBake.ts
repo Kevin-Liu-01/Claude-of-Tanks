@@ -4,8 +4,36 @@
  */
 
 /** Deterministic PRNG (Mulberry32). */
-function mulberry32(a) {
-  return function next() {
+type Color3 = readonly [number, number, number];
+type RandomSource = () => number;
+type NoiseSampler = (u: number, v: number) => number;
+
+export interface CumulusBakeConfig {
+  seed: number;
+  warp: number;
+  macroAniso: number;
+  threshold: number;
+  cluster: number;
+  edge: number;
+  edgeWisp: number;
+  coreWidth: number;
+  marchSteps: number;
+  marchStepPx: number;
+  shadeK: number;
+  lit: Color3;
+  shade: Color3;
+  silver: number;
+  detailAmp: number;
+  alphaVariation: number;
+  maxAlpha: number;
+}
+
+export interface CirrusBakeConfig {
+  seed: number;
+}
+
+function mulberry32(a: number): RandomSource {
+  return function next(): number {
     a |= 0;
     a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
@@ -15,21 +43,21 @@ function mulberry32(a) {
 }
 
 /** Build a period-one value-noise FBM sampler in both axes. */
-function makeFbm(rng, octaves, base) {
-  const lattices = [];
+function makeFbm(rng: RandomSource, octaves: number, base: number): NoiseSampler {
+  const lattices: Array<{ n: number; grid: Float32Array }> = [];
   for (let o = 0; o < octaves; o++) {
     const n = base << o;
     const grid = new Float32Array(n * n);
     for (let i = 0; i < grid.length; i++) grid[i] = rng();
     lattices.push({ n, grid });
   }
-  const smooth = (t) => t * t * (3 - 2 * t);
-  return function fbm(u, v) {
+  const smooth = (t: number): number => t * t * (3 - 2 * t);
+  return function fbm(u: number, v: number): number {
     let sum = 0;
     let amp = 0.55;
     let tot = 0;
     for (let o = 0; o < octaves; o++) {
-      const { n, grid } = lattices[o];
+      const { n, grid } = lattices[o]!;
       let uu = (u + o * 0.37) % 1;
       if (uu < 0) uu += 1;
       let vv = (v + o * 0.61) % 1;
@@ -44,10 +72,10 @@ function makeFbm(rng, octaves, base) {
       const xb = (x0 + 1) % n;
       const ya = y0 % n;
       const yb = (y0 + 1) % n;
-      const g00 = grid[ya * n + xa];
-      const g10 = grid[ya * n + xb];
-      const g01 = grid[yb * n + xa];
-      const g11 = grid[yb * n + xb];
+      const g00 = grid[ya * n + xa]!;
+      const g10 = grid[ya * n + xb]!;
+      const g01 = grid[yb * n + xa]!;
+      const g11 = grid[yb * n + xb]!;
       sum += (g00 + (g10 - g00) * fx + (g01 - g00) * fy
         + (g00 - g10 - g01 + g11) * fx * fy) * amp;
       tot += amp;
@@ -57,17 +85,21 @@ function makeFbm(rng, octaves, base) {
   };
 }
 
-function clampNum(x, lo, hi) {
+function clampNum(x: number, lo: number, hi: number): number {
   return x < lo ? lo : (x > hi ? hi : x);
 }
 
-function smoothstepNum(a, b, x) {
+function smoothstepNum(a: number, b: number, x: number): number {
   const t = clampNum((x - a) / (b - a), 0, 1);
   return t * t * (3 - 2 * t);
 }
 
 /** Return the exact RGBA bytes for the low cumulus deck. */
-export function bakeCumulusPixels(width, height, config) {
+export function bakeCumulusPixels(
+  width: number,
+  height: number,
+  config: CumulusBakeConfig,
+): Uint8ClampedArray {
   const {
     seed, warp, macroAniso, threshold, cluster, edge, edgeWisp, coreWidth,
     marchSteps, marchStepPx, shadeK, lit, shade, silver, detailAmp,
@@ -110,7 +142,7 @@ export function bakeCumulusPixels(width, height, config) {
     for (let x = 0; x < width; x++) {
       const i = y * width + x;
       const o = i * 4;
-      const m = mask[i];
+      const m = mask[i]!;
       if (m <= 0) {
         pixels[o + 3] = 0;
         continue;
@@ -119,10 +151,11 @@ export function bakeCumulusPixels(width, height, config) {
       for (let s = 1; s <= marchSteps; s++) {
         let yy = (y - s * marchStepPx) % height;
         if (yy < 0) yy += height;
-        occl += sigma[yy * width + x];
+        occl += sigma[yy * width + x]!;
       }
       const light = Math.pow(Math.exp(-shadeK * occl), 0.85);
-      const silverLine = 1 + silver * (1 - core[i]) * light;
+      const coreValue = core[i]!;
+      const silverLine = 1 + silver * (1 - coreValue) * light;
       pixels[o] = Math.min(255, Math.round(255
         * (shade[0] + (lit[0] - shade[0]) * light) * silverLine));
       pixels[o + 1] = Math.min(255, Math.round(255
@@ -131,16 +164,20 @@ export function bakeCumulusPixels(width, height, config) {
         * (shade[2] + (lit[2] - shade[2]) * light) * silverLine * 0.97));
       const macroA = 1 - alphaVariation
         * (1 - fbmM(x / width, ((y / height) * macroAniso) % 1));
-      const hfA = 1 - detailAmp * (1 - core[i]) * fbmHF(x / width, y / height);
+      const hfA = 1 - detailAmp * (1 - coreValue) * fbmHF(x / width, y / height);
       pixels[o + 3] = Math.round(255 * maxAlpha * macroA * hfA * m
-        * (0.30 + 0.70 * core[i]));
+        * (0.30 + 0.70 * coreValue));
     }
   }
   return pixels;
 }
 
 /** Return the exact RGBA bytes for the high cirrus deck. */
-export function bakeCirrusPixels(width, height, config) {
+export function bakeCirrusPixels(
+  width: number,
+  height: number,
+  config: CirrusBakeConfig,
+): Uint8ClampedArray {
   const { seed } = config;
   const rng = mulberry32(seed + 11);
   const fbm = makeFbm(rng, 4, 4);
@@ -148,8 +185,8 @@ export function bakeCirrusPixels(width, height, config) {
   const fbmB = makeFbm(rng, 2, 2);
   const fbmE = makeFbm(rng, 3, 14);
   const pixels = new Uint8ClampedArray(width * height * 4);
-  const litColor = [1.0, 0.99, 0.955];
-  const shadeColor = [0.66, 0.72, 0.85];
+  const litColor: Color3 = [1.0, 0.99, 0.955];
+  const shadeColor: Color3 = [0.66, 0.72, 0.85];
   for (let y = 0; y < height; y++) {
     const v = y / height;
     for (let x = 0; x < width; x++) {

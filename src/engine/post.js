@@ -56,7 +56,7 @@ import {
   overloadReliefLever,
   reconstructionMode,
   reconstructionSharpness,
-} from './renderScalePolicy.js';
+} from './renderScalePolicy.ts';
 import { LATE_FX_LAYER } from '../fx/layers.js';
 
 // r5 bloom retune ("muzzle flash is three enormous structureless gaussian

@@ -7,7 +7,7 @@
  * frame through the full HDR post chain. Measured on this class of GPU that
  * requires scaled AO/bloom and adaptive relief to stay inside the budget.
  * (native-output r1: the renderer CANVAS may back at mobile DPR 3 under the
- * output-pixel budget — see resolutionPolicy.js — but only the final
+ * output-pixel budget — see resolutionPolicy.ts — but only the final
  * reconstruction pass rasterizes there; every cap below still governs the
  * expensive composer chain.)
  *

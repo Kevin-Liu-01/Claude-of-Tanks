@@ -10,7 +10,7 @@
 export const SHADOW_REFRESH_INTERVAL_S = 1 / 60;
 
 /** Near cascades follow the display cadence; farther cascades may be scheduled. */
-export function isContinuousShadowCascade(cascadeIndex, nearCount = 2) {
+export function isContinuousShadowCascade(cascadeIndex: number, nearCount = 2): boolean {
   const index = cascadeIndex | 0;
   const count = Math.max(0, nearCount | 0);
   return index >= 0 && index < count;
@@ -26,7 +26,14 @@ export function isContinuousShadowCascade(cascadeIndex, nearCount = 2) {
  * @param {number} [startIndex=2]
  * @returns {boolean}
  */
-export function canDormantShadowCascades(lights, startIndex = 2) {
+interface ShadowLightLike {
+  shadow?: { map?: { depthTexture?: { isDepthTexture?: boolean } } | null };
+}
+
+export function canDormantShadowCascades(
+  lights: readonly ShadowLightLike[] | null | undefined,
+  startIndex = 2,
+): boolean {
   if (!Array.isArray(lights)) return false;
   const start = Math.max(0, startIndex | 0);
   for (let i = start; i < lights.length; i++) {
@@ -40,8 +47,12 @@ export function canDormantShadowCascades(lights, startIndex = 2) {
  * high-refresh per-frame map budget. Existing scheduled work keeps its bit
  * order; a required bit replaces excess work instead of stacking onto it.
  */
-export function mergeRequiredShadowWork(scheduledMask, requiredIndex,
-  cascadeCount, maxJobs = 2) {
+export function mergeRequiredShadowWork(
+  scheduledMask: number,
+  requiredIndex: number,
+  cascadeCount: number,
+  maxJobs = 2,
+): number {
   const count = Math.max(0, Math.min(30, cascadeCount | 0));
   if (requiredIndex < 0 || requiredIndex >= count || maxJobs <= 0) return 0;
   const validMask = count > 0 ? (2 ** count) - 1 : 0;
@@ -63,7 +74,22 @@ export function mergeRequiredShadowWork(scheduledMask, requiredIndex,
  * @param {number} cascadeCount
  * @param {{nearCount?:number, intervalS?:number}} [opts]
  */
-export function createShadowRefreshScheduler(cascadeCount, opts = {}) {
+export interface ShadowRefreshOptions {
+  nearCount?: number;
+  intervalS?: number;
+}
+
+export interface ShadowRefreshScheduler {
+  step(dtS: number): number;
+  reset(resetCadence?: boolean): void;
+  forceMask(): number;
+  readonly lastMask: number;
+}
+
+export function createShadowRefreshScheduler(
+  cascadeCount: number,
+  opts: ShadowRefreshOptions = {},
+): ShadowRefreshScheduler {
   const count = Math.max(0, Math.min(30, cascadeCount | 0));
   const nearCount = Math.max(0, Math.min(count, opts.nearCount ?? 2));
   const intervalS = Math.max(1 / 240, Number(opts.intervalS) || SHADOW_REFRESH_INTERVAL_S);
@@ -85,7 +111,7 @@ export function createShadowRefreshScheduler(cascadeCount, opts = {}) {
   let highRefreshMode = false;
   let lastMask = 0;
 
-  function reset(resetCadence = false) {
+  function reset(resetCadence = false): void {
     nearAcc.fill(0);
     // Keep the near pair phase-aligned and offset the alternating far stream.
     // At 120+ Hz this yields one near-pair frame, then one far-only frame:
@@ -101,12 +127,12 @@ export function createShadowRefreshScheduler(cascadeCount, opts = {}) {
     lastMask = 0;
   }
 
-  function allMask() {
+  function allMask(): number {
     return count > 0 ? (2 ** count) - 1 : 0;
   }
 
   /** Reset phase and return a mask that refreshes every cascade now. */
-  function forceMask() {
+  function forceMask(): number {
     reset();
     lastMask = allMask();
     return lastMask;
@@ -117,7 +143,7 @@ export function createShadowRefreshScheduler(cascadeCount, opts = {}) {
    * @param {number} dtS render-frame delta
    * @returns {number} cascade bit mask
    */
-  function step(dtS) {
+  function step(dtS: number): number {
     const dt = Math.max(0, Math.min(intervalS * 2, Number(dtS) || 0));
     if (!(dt > 0) || count === 0) {
       lastMask = 0;
