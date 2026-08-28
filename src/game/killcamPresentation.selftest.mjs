@@ -83,8 +83,12 @@ assert.match(source, /function beginFiring\(stagedHold = false\)[\s\S]*if \(stag
   'live playback starts projectile motion on the same frame as the gun event');
 assert.match(source, /function beginShotFlight\(\)[\s\S]*beginCameraHandoff\(SHOT_ACQUIRE_S\);[\s\S]*pb\.phase = 'flight';[\s\S]*updateFlight\(0\);/,
   'the projectile chase accelerates continuously from the painted launch frame');
+assert.match(source, /function flightStartPose\(outPos, outLook\)[\s\S]*firingCameraPose\(outPos, outLook\)/,
+  'the approach and first flight frame retain a readable rear-quarter shooter composition');
+assert.match(source, /function updateFlight\(dt\)[\s\S]*pb\.t <= SHOT_ACQUIRE_S[\s\S]*pinAttackerAtFiringPose\(dt\)/,
+  'the restored shooter remains visible and animates recoil through chase acquisition');
 assert.match(source, /function beginApproach\(\)[\s\S]*flightStartPose\(toPos, toLook\)[\s\S]*SHOT_TRACK_FOV/,
-  'approach position, target, and lens exactly match the first flight frame');
+  'approach position, target, and lens exactly match the launch frame');
 assert.match(source, /function beginXray\(\) \{[\s\S]*beginCameraHandoff\(\)[\s\S]*setReplayCamera\(pb\.xcam\.pos, pb\.xcam\.look, 42, 0\)/,
   'collision, direct-analysis, and skipped paths blend into the x-ray camera');
 assert.doesNotMatch(source, /body\.cot-kc-live \.cot-hud\{display:none/,

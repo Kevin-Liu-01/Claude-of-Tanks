@@ -106,7 +106,7 @@ const APPROACH_S = 1.6;        // push-in orbit duration
 const FIRING_CAPTURE_S = 0.78; // deterministic still-frame staging only
 const COLLISION_HOLD_S = 1.45; // rewind -> metal contact -> module failure
 const CAMERA_HANDOFF_S = 0.62; // phase-to-phase pose/fov continuity
-const SHOT_ACQUIRE_S = 0.28;   // launch-to-chase acceleration, never a cut
+const SHOT_ACQUIRE_S = 0.42;   // readable shooter-to-chase acceleration, never a cut
 const SHOT_TRACK_FOV = 50;     // shared approach endpoint + flight-start lens
 const MUZZLE_FX_S = 0.2;       // keep the flash alive into the moving shot
 const COLLISION_CONTACT_U = 0.66;
@@ -2207,9 +2207,8 @@ export function createKillCam(deps) {
 
   /**
    * Start projectile motion on the same frame as the gun event. The approach
-   * has already landed on updateFlight(0)'s exact pose, so this handoff only
-   * eases camera velocity as the moving chase target pulls away; it never
-   * blends between two different compositions or lenses.
+   * has already landed on the shared shooter/launch pose, so this handoff
+   * accelerates toward the moving chase target without a cut or static hold.
    */
   function beginShotFlight() {
     if (!pb) return;
@@ -2361,11 +2360,12 @@ export function createKillCam(deps) {
 
   /**
    * REPLAY APPROACH: eased establishing arc from the live camera pose toward
-   * the restored attacker, landing EXACTLY on the projectile chase camera's
-   * launch pose so the gun event and moving shot share one composition. This runs
-   * for scored kills as well as deaths. Terrain-aware: the blended path is height-clamped every frame
-   * and pre-lifted clear of foliage volumes / props with the same clearance
-   * solve the flight LOS pass uses (cameraRig collision grammar, read-only).
+   * the restored attacker, landing EXACTLY on the shared shooter/launch pose
+   * so the gun event and moving shot share one composition. This runs for
+   * scored kills as well as deaths. Terrain-aware: the blended path is
+   * height-clamped every frame and pre-lifted clear of foliage volumes / props
+   * with the same clearance solve the flight LOS pass uses (cameraRig collision
+   * grammar, read-only).
    * @returns {boolean} false when no meaningful move exists (skip to flight)
    */
   function beginApproach() {
@@ -2464,20 +2464,10 @@ export function createKillCam(deps) {
     }
   }
 
-  /** Flight chase-cam pose at launch (u = 0) — the approach lands on it. */
+  /** Shared firing/flight pose at launch — the approach lands on it and the
+   * shell departs immediately while the restored shooter remains in frame. */
   function flightStartPose(outPos, outLook) {
-    pb.segIdx = 0;
-    sampleTraj(0, _p, _d);
-    _s.crossVectors(_d, UP);
-    if (_s.lengthSq() < 1e-6) _s.set(1, 0, 0); else _s.normalize();
-    outPos.copy(_p).addScaledVector(_d, -9.0).addScaledVector(_s, 2.7);
-    outPos.y += 1.35;
-    if (pb.flightLift) outPos.y += pb.flightLift[0];
-    if (heightField) {
-      const minY = heightField.getHeightAt(outPos.x, outPos.z) + 0.8;
-      if (outPos.y < minY) outPos.y = minY;
-    }
-    outLook.copy(_p).addScaledVector(_d, 10).lerp(pb.xcam.center, 0.4);
+    firingCameraPose(outPos, outLook);
     pb.segIdx = 0;
   }
 
@@ -2621,6 +2611,11 @@ export function createKillCam(deps) {
 
   function updateFlight(dt) {
     pb.t = Math.min(pb.dur, pb.t + Math.max(0, dt));
+    // The battle presentation can repaint actors between replay ticks. Keep
+    // the restored killer at its captured firing transform through the camera
+    // acquisition so the muzzle flash, recoil and departing shell visibly
+    // belong to the same tank. Passing dt advances recoil without allocating.
+    if (pb.t <= SHOT_ACQUIRE_S) pinAttackerAtFiringPose(dt);
     if (pb.shotFxLive) {
       pb.shotFxT += Math.max(0, dt);
       if (pb.shotFxT >= MUZZLE_FX_S) {
