@@ -2,7 +2,7 @@
 // Usage: node tools/spotting-check.mjs
 //
 // Boots the game (vite + puppeteer, same harness pattern as screenshot.mjs),
-// then verifies the live battle wiring of src/sim/spotting.js:
+// then verifies the live battle wiring of src/sim/spotting.ts:
 //   1. garage camo picker exists and repaints without console errors
 //   2. a stationary tank IN A BUSH is NOT spotted at a range where the same
 //      tank on open ground IS spotted (same observer, hard LOS verified)

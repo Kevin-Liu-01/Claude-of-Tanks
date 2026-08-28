@@ -243,10 +243,10 @@ function moduleAlertIcon(moduleId) {
 // camo_spotting r3: import the sim's constants instead of duplicating them —
 // hardcoded copies drifted on every retune (persist 4 vs the sim's 5).
 import { MAX_SPOT_RANGE_M as SPOT_RANGE_M, SPOT_LINGER_S as SPOT_PERSIST_S }
-  from '../sim/spotting.js';
+  from '../sim/spotting.ts';
 // SPOTTING SECTION: single source of truth for the sixth-sense timing —
 // the lamp fuse/window MUST match the sim's getConcealment display gate.
-import { SIXTH_SENSE_DELAY_S, SIXTH_SENSE_SHOW_S } from '../sim/spotting.js';
+import { SIXTH_SENSE_DELAY_S, SIXTH_SENSE_SHOW_S } from '../sim/spotting.ts';
 const BATTLE_DURATION_S = 900; // 15:00 countdown
 
 // Default shell card data (used only when a forced screenshot aim view arrives
@@ -1671,7 +1671,7 @@ export function initHud(bus) {
         continue;
       }
       // SPOTTING SECTION: when the concealment sim is wired in (frame.spotting
-      // from src/sim/spotting.js via main.js) it is the single source of truth
+      // from src/sim/spotting.ts via main.js) it is the single source of truth
       // — camo values, bushes, fire bloom and the 5 s linger all live there.
       // The legacy range+terrain-LOS model below stays as the fallback for
       // forced screenshot frames and headless fixtures.

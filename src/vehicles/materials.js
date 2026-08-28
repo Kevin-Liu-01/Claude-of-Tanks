@@ -3472,7 +3472,7 @@ function* burntBakeSteps(entry, aniso) {
 // Patterns repaint the SHARED per-spec albedo canvas in place, so the garage
 // pedestal, battle tanks, and any sourced-GLB overlay all update live without
 // rebuilding geometry. A pattern grants the small concealment bonus (see
-// src/sim/spotting.js CAMO_PAINT_BONUS) only when it MATCHES the active
+// src/sim/spotting.ts CAMO_PAINT_BONUS) only when it MATCHES the active
 // battlefield biome — hasCamoPaint() below; AUTO always matches.
 // ===========================================================================
 

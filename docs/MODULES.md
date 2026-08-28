@@ -73,7 +73,7 @@ to yellow (50% HP) after `REPAIR_S = 10 s` — count-up accumulator, toolbox
 equipment ×1.25 rate. Debuffs: yellow gun σ×2, red gun cannot fire, yellow/red
 ammo rack ×1.5 reload, dead loader ×1.5 reload (multiplicative), red tracks
 immobilize (movement.ts), red engine caps drive power, optics/radio degrade
-spotting (spotting.js).
+spotting (spotting.ts).
 
 ## Combat anatomy — where collision and internal volumes come from
 

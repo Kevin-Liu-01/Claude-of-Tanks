@@ -9,7 +9,7 @@
  * startReload), fire self-extinguish (damage.ts tickFire), HE surface-burst
  * splash reduction (damage.ts resolveShellHit), aim/traverse debuff folding
  * (movement.ts via updateTank is exercised in the battle probe instead), and
- * the spotting view/camo tables (sim/spotting.js).
+ * the spotting view/camo tables (sim/spotting.ts).
  */
 import {
   EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS, EQUIP_CATEGORIES,
@@ -22,7 +22,7 @@ import {
 import { createShell } from '../sim/ballistics.ts';
 import {
   EQUIPMENT as SPOT_EQUIP, equipViewMult, equipCamoBonus,
-} from '../sim/spotting.js';
+} from '../sim/spotting.ts';
 import { Vector3 } from 'three';
 
 let failures = 0;
@@ -81,7 +81,7 @@ console.log('[1] catalog integrity');
       assert(KNOWN_EFFECTS.has(k), `'${it.id}' effect '${k}' is a wired vocabulary key`);
     }
     if (it.spot) {
-      assert(!!SPOT_EQUIP[it.id], `'${it.id}' marked spot ⇒ present in spotting.js EQUIPMENT`);
+      assert(!!SPOT_EQUIP[it.id], `'${it.id}' marked spot ⇒ present in spotting.ts EQUIPMENT`);
     }
     const hasSim = Object.keys(it.effects || {}).length > 0;
     assert(hasSim || it.spot, `'${it.id}' has at least one REAL effect (sim or spotting)`);
@@ -222,7 +222,7 @@ console.log('[7] LIVE hook: HE surface-burst splash (damage.ts resolveShellHit)'
     `spall liner soaks 25% of splash (${bare.damage.toFixed(1)} → ${lined.damage.toFixed(1)})`);
 }
 
-console.log('[8] spotting table: view/camo items (sim/spotting.js)');
+console.log('[8] spotting table: view/camo items (sim/spotting.ts)');
 {
   near(equipViewMult(['optics'], true), 1.10, 1e-9, 'coated optics +10% view, moving');
   near(equipViewMult(['optics', 'binoculars'], false), 1.10 * 1.25, 1e-9,

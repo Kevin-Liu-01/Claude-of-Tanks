@@ -24,7 +24,7 @@
 //   fireTicks   × on fire duration      sim/damage.ts applyModuleDamage
 //   extinguish  × on self-extinguish    sim/damage.ts tickFire
 //   moduleHp    × per-module max HP     applyEquipmentToCombat (below)
-//   view/viewStill/camo/camoStill       sim/spotting.js EQUIPMENT table
+//   view/viewStill/camo/camoStill       sim/spotting.ts EQUIPMENT table
 //                                        (same ids — spotting owns vision)
 // Nothing in the catalog is cosmetic-only.
 
@@ -125,7 +125,7 @@ export const EQUIP_SLOTS = 3;
  * The catalog. Order = garage picker order (grouped by category).
  * `era`: 'all' | 'modern' — modern-only gear never mounts on WWII tanks.
  * `effects` use the wiring vocabulary above; `spot` marks items whose
- * view/camo numbers live in spotting.js EQUIPMENT (kept there so the
+ * view/camo numbers live in spotting.ts EQUIPMENT (kept there so the
  * spotting selftest keeps owning its constants).
  */
 export const EQUIPMENT_CATALOG: readonly EquipmentItem[] = [

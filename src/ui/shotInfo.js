@@ -589,7 +589,7 @@ export function createShotInfo(bus) {
 
   // --- spotting assist (r3) --------------------------------------------------
   // Driven purely by the sim's tank:spotted events. When the payload carries
-  // spotterId (additive spotting.js enrichment, see docs/SYSTEMS.md), a rising
+  // spotterId (additive spotting.ts enrichment, see docs/SYSTEMS.md), a rising
   // edge with spotterId === player marks the target "lit by you"; ally
   // (non-player) damage on that target within ASSIST_WINDOW_S then counts as
   // spotting-assist damage — WoT's 'damage upon your spotting'. The window is

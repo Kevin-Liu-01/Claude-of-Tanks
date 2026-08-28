@@ -43,7 +43,7 @@ import {
   tickFire,
   tickModuleRepairs,
 } from './damage.ts';
-import { createSpottingSystem } from './spotting.js';
+import { createSpottingSystem } from './spotting.ts';
 import { captureWorldSnapshot } from '../net/snapshot.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
 import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.ts';

@@ -14,7 +14,8 @@ Own authoritative armored-combat math at a fixed 60 Hz step.
 `movement.ts` owns tank state and terrain contact; `armor.ts` owns hit geometry;
 `ballistics.ts` owns typed shells, gravity, guidance, penetration falloff, gun
 lay, and dispersion; `damage.ts` owns penetration/modules/crew/fire;
-`spotting.js` owns visibility and team intel; `authoritativeMatch.js` composes
+`spotting.ts` owns strict renderer-free visibility and team-intel contracts;
+`authoritativeMatch.js` composes
 those rules with match-local world collision for every network authority;
 `specialActionPolicy.ts` and `specialActions.ts` own the strict shared state
 machine for guided missiles, suspension aim, and manual magazine reloads;

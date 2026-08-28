@@ -1,4 +1,4 @@
-// Selftest for src/sim/spotting.js — run: node src/sim/spotting.selftest.mjs
+// Selftest for src/sim/spotting.ts — run: node src/sim/spotting.selftest.mjs
 // Pure-logic checks: formula/clamps, camo tables, fire bloom decay, bush
 // concealment + the 15 m rule, spotted linger, camo-paint bonus, staggering.
 
@@ -11,7 +11,7 @@ import {
   viewRangeOf, baseCamoOf, fireBloomAt, spotRangeM, combineCamo,
   bushBonusBetween, checkIntervalS, createSpottingSystem,
   effectiveViewRangeM, signalRangeM,
-} from './spotting.js';
+} from './spotting.ts';
 
 let passed = 0;
 let failed = 0;

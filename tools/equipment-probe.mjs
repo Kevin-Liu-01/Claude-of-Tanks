@@ -10,7 +10,7 @@
 //                 engine set red repairs to yellow at 8 s vs 10 s.
 //   C. durability — t90m with Wet Ammo Rack: ammoRack maxHp 375 → 562.5.
 //   D. view     — t90m with Coated Optics: the live entity's spotter view
-//                 multiplier (real sim/spotting.js module) reads ×1.10.
+//                 multiplier (real sim/spotting.ts module) reads ×1.10.
 //   E. AI parity — every bot fields its class-default kit (equipMults live).
 // Plus garage evidence screenshots: stat card with slots + tinted modified
 // rows, the picker (categories, era-locked tiles), a pick round-trip, and
@@ -344,7 +344,7 @@ try {
     await new Promise((r) => setTimeout(r, 400));
     const g = window.__DEBUG.game;
     for (const t of g.tanks) if (!t.isPlayer) t.aiCtl = null;
-    const spot = await import('/src/sim/spotting.js');
+    const spot = await import('/src/sim/spotting.ts');
     const p = g.player;
     return {
       equip: p.equip,

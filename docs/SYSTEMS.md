@@ -530,7 +530,7 @@ Persistent facts are never represented only by one-shot events.
 
 ## Spotting and hidden information
 
-src/sim/spotting.js owns visibility. It evaluates view range, concealment,
+src/sim/spotting.ts is the strict renderer-free visibility authority. It evaluates view range, concealment,
 movement and firing state, foliage, line of sight, and radio relationships.
 
 In network play, matchRuntime produces a viewer-specific snapshot. Hidden

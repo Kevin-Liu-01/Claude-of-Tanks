@@ -507,7 +507,7 @@ function assembleWorld(
     /** Allocation-free local obstacle broad phase; caller owns `out`. */
     queryObstacles,
     /**
-     * SPOTTING WIRING: vegetation concealment discs for src/sim/spotting.js.
+     * SPOTTING WIRING: vegetation concealment discs for src/sim/spotting.ts.
      * @returns {Array<{x:number,z:number,r:number,add:number}>}
      */
     getConcealment: () => vegetation.concealers || [],

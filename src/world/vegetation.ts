@@ -2819,7 +2819,7 @@ function* vegetationBuildSteps(
   const trees: TreeRecord[] = []; // { x,z,species,variant, mat: Matrix4, tint: Color, near: bool }
   const treeObstacles: TreeObstacle[] = [];
   // SPOTTING WIRING: concealment discs {x,z,r,add} sampled by the spotting
-  // sim (src/sim/spotting.js) — bushes conceal strongly, tree canopies mildly.
+  // sim (src/sim/spotting.ts) — bushes conceal strongly, tree canopies mildly.
   const concealers: ConcealmentDisc[] = [];
   function siteOk(x: number, z: number, margin: number): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
@@ -2911,7 +2911,7 @@ function* vegetationBuildSteps(
       // camo_spotting r3 forest balance: 0.13 stacked any clump to the bush
       // cap — bloom-hot forest campers at 250 m+ never lit up. Canopies
       // soft-conceal (0.08); bushes (0.35) stay the real hides. Pairs with
-      // MAX_BUSH_BONUS 0.6 -> 0.5 in src/sim/spotting.js (already applied).
+      // MAX_BUSH_BONUS 0.6 -> 0.5 in src/sim/spotting.ts (already applied).
       concealers.push({ x, z, r: 2.3 * sc, add: 0.08 }); // canopy soft-conceals
     }
   }

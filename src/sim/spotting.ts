@@ -1,5 +1,5 @@
 /**
- * spotting.js — WoT-style concealment & spotting simulation (pure logic,
+ * spotting.ts — WoT-style concealment & spotting simulation (pure logic,
  * node-runnable; selftest: src/sim/spotting.selftest.mjs).
  *
  * Model (locked by the camo/spotting charter):
@@ -40,9 +40,138 @@
  *    spotter's view range; a damaged radio halves the signal range over which
  *    a spot is shared to teammates (isSpotted's optional receiver argument).
  *
- * No three.js imports: positions/directions are duck-typed {x,y,z} and the
+ * No three.js imports: positions/directions use a structural {x,y,z} contract and the
  * injected `raycast(origin, dir, maxDist)` only ever READS those fields.
  */
+
+export interface SpottingVector3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export type SpottingModuleState = 'ok' | 'yellow' | 'red';
+
+export interface SpottingTankSpec {
+  id: string;
+  role?: string;
+  dims?: { heightM: number };
+  gun?: { caliberMm?: number | null };
+}
+
+export interface SpottingTank {
+  id: string;
+  team: string;
+  spec: SpottingTankSpec;
+  state: {
+    pos: SpottingVector3;
+    speed?: number;
+  };
+  combat?: {
+    destroyed?: boolean;
+    modules?: Partial<Record<string, { state?: SpottingModuleState }>>;
+  };
+}
+
+export interface ConcealerDisc {
+  x: number;
+  z: number;
+  r: number;
+  add: number;
+}
+
+export interface SpottingRayHit {
+  dist: number;
+}
+
+export interface SpottingDependencies {
+  getTanks: () => SpottingTank[];
+  raycast?: (
+    origin: SpottingVector3,
+    direction: SpottingVector3,
+    maxDist: number,
+  ) => SpottingRayHit | null | undefined;
+  concealers?: ConcealerDisc[];
+  getCamoBonus?: (tank: SpottingTank) => number;
+  getEquipment?: (tank: SpottingTank) => readonly string[] | null | undefined;
+  rng?: () => number;
+  teams?: readonly string[];
+}
+
+export interface SpottingEvent {
+  id: string;
+  team: string;
+  timeS: number;
+  spotterId: string;
+}
+
+export interface ConcealmentSnapshot {
+  camo: number;
+  base: number;
+  paint: number;
+  equip: number;
+  bush: number;
+  bloom: number;
+  moving: boolean;
+  fired: boolean;
+  inBush: boolean;
+  spotted: boolean;
+}
+
+export interface SpottingSystem {
+  update(dt: number, timeS: number): SpottingEvent[];
+  forceCheck(timeS: number): SpottingEvent[];
+  isSpotted(id: string, team: string, receiver?: SpottingTank | null): boolean;
+  notifyFired(id: string, timeS: number, caliberMm?: number | null): void;
+  getConcealment(tank: SpottingTank, timeS: number): ConcealmentSnapshot;
+  bushBonusBetween(spotter: SpottingTank, target: SpottingTank, timeS: number): number;
+  testSpot(spotter: SpottingTank, target: SpottingTank, timeS: number): boolean;
+  readonly raycastCalls: number;
+  reset(): void;
+}
+
+interface CamoRow {
+  still: number;
+  moving: number;
+}
+
+interface EquipmentVisionEffect {
+  label: string;
+  camo?: number;
+  camoStill?: number;
+  view?: number;
+  viewStill?: number;
+}
+
+interface CamoParts {
+  base: number;
+  paint?: number;
+  equip?: number;
+  bloom?: number;
+  bush?: number;
+  fireLoss?: number;
+}
+
+interface SpotterContact {
+  id: string;
+  x: number;
+  z: number;
+  shareM: number;
+}
+
+interface TeamSpotState {
+  spotted: boolean;
+  lastPassS: number;
+  spottedAtS: number;
+  spotter: SpotterContact | null;
+}
+
+interface SpottingRecord {
+  firedAtS: number;
+  nextCheckS: number;
+  fireLoss?: number;
+  byTeam: Record<string, TeamSpotState>;
+}
 
 // ---------------------------------------------------------------------------
 // Tuning tables
@@ -96,13 +225,13 @@ const CHECK_FAR_S = 2.0;
 const LOS_TOLERANCE_M = 2.0;           // raycast slack when the hit is the target
 
 /** Per-tank view range in meters (modern optics/thermals out-spot WW2 glass). */
-export const VIEW_RANGE_M = {
+export const VIEW_RANGE_M: Readonly<Record<string, number>> = {
   m4a3e8: 370, tiger1: 370, t34_85: 360, is2: 350, panther_g: 380,
   m1a2: 445, t90m: 430, leo2a7: 445,
 };
 
 /** Per-tank base camo { still, moving } in [0,1]. */
-export const BASE_CAMO = {
+export const BASE_CAMO: Readonly<Record<string, CamoRow>> = {
   m4a3e8:    { still: 0.24, moving: 0.18 },
   tiger1:    { still: 0.11, moving: 0.07 },
   t34_85:    { still: 0.26, moving: 0.20 },
@@ -114,7 +243,7 @@ export const BASE_CAMO = {
 };
 
 /** Mechanical-role fallbacks for specs not in the tables. */
-const ROLE_CAMO = {
+const ROLE_CAMO: Readonly<Record<string, CamoRow>> = {
   light:  { still: 0.34, moving: 0.34 },
   medium: { still: 0.23, moving: 0.17 },
   heavy:  { still: 0.12, moving: 0.08 },
@@ -122,13 +251,18 @@ const ROLE_CAMO = {
   td:     { still: 0.30, moving: 0.18 },
   spg:    { still: 0.08, moving: 0.05 },
 };
-const ROLE_VIEW_M = { light: 390, medium: 370, heavy: 360, mbt: 440, td: 370, spg: 340 };
+const ROLE_VIEW_M: Readonly<Record<string, number>> = {
+  light: 390, medium: 370, heavy: 360, mbt: 440, td: 370, spg: 340,
+};
+const DEFAULT_CAMO: CamoRow = { still: 0.23, moving: 0.17 };
 
 // ---------------------------------------------------------------------------
 // Pure helpers
 // ---------------------------------------------------------------------------
 
-function clamp(x, lo, hi) { return x < lo ? lo : x > hi ? hi : x; }
+function clamp(x: number, lo: number, hi: number): number {
+  return x < lo ? lo : x > hi ? hi : x;
+}
 
 /**
  * Module state off a duck-typed entity ('ok' when the entity carries no
@@ -137,7 +271,10 @@ function clamp(x, lo, hi) { return x < lo ? lo : x > hi ? hi : x; }
  * @param {string} name module name
  * @returns {'ok'|'yellow'|'red'}
  */
-function moduleStateOf(ent, name) {
+function moduleStateOf(
+  ent: SpottingTank | null | undefined,
+  name: string,
+): SpottingModuleState {
   const m = ent && ent.combat && ent.combat.modules && ent.combat.modules[name];
   return m && m.state ? m.state : 'ok';
 }
@@ -148,7 +285,7 @@ function moduleStateOf(ent, name) {
  * @param {object} ent TankEntity-like ({spec, combat?})
  * @returns {number} meters
  */
-export function effectiveViewRangeM(ent) {
+export function effectiveViewRangeM(ent: SpottingTank): number {
   const vr = viewRangeOf(ent.spec);
   return moduleStateOf(ent, 'optics') !== 'ok' ? vr * OPTICS_VIEW_FACTOR : vr;
 }
@@ -159,7 +296,7 @@ export function effectiveViewRangeM(ent) {
  * @param {object} ent TankEntity-like
  * @returns {number} meters
  */
-export function signalRangeM(ent) {
+export function signalRangeM(ent: SpottingTank): number {
   return moduleStateOf(ent, 'radio') !== 'ok'
     ? SIGNAL_RANGE_M * RADIO_DAMAGED_FACTOR
     : SIGNAL_RANGE_M;
@@ -170,9 +307,10 @@ export function signalRangeM(ent) {
  * @param {object} spec TankSpec-like ({ id, role })
  * @returns {number} meters
  */
-export function viewRangeOf(spec) {
-  if (spec && VIEW_RANGE_M[spec.id] != null) return VIEW_RANGE_M[spec.id];
-  return (spec && ROLE_VIEW_M[spec.role]) || 370;
+export function viewRangeOf(spec: SpottingTankSpec | null | undefined): number {
+  const exact = spec ? VIEW_RANGE_M[spec.id] : undefined;
+  if (exact != null) return exact;
+  return (spec?.role ? ROLE_VIEW_M[spec.role] : undefined) || 370;
 }
 
 /**
@@ -181,8 +319,12 @@ export function viewRangeOf(spec) {
  * @param {boolean} moving hull is moving
  * @returns {number} camo in [0,1]
  */
-export function baseCamoOf(spec, moving) {
-  const row = (spec && (BASE_CAMO[spec.id] || ROLE_CAMO[spec.role])) || ROLE_CAMO.medium;
+export function baseCamoOf(
+  spec: SpottingTankSpec | null | undefined,
+  moving: boolean,
+): number {
+  const row = (spec && (BASE_CAMO[spec.id] || (spec.role ? ROLE_CAMO[spec.role] : undefined)))
+    || DEFAULT_CAMO;
   return moving ? row.moving : row.still;
 }
 
@@ -190,7 +332,7 @@ export function baseCamoOf(spec, moving) {
  * Firing bloom at `timeS` for a shot fired at `firedAtS` (1 → just fired).
  * @returns {number} bloom in [0,1]
  */
-export function fireBloomAt(firedAtS, timeS) {
+export function fireBloomAt(firedAtS: number, timeS: number): number {
   const age = timeS - firedAtS;
   if (age < 0) return 0;
   const b = Math.exp(-age / FIRE_BLOOM_TAU_S);
@@ -206,8 +348,8 @@ export function fireBloomAt(firedAtS, timeS) {
  * @param {?number} caliberMm shooter's gun caliber
  * @returns {number} own-camo fraction lost at full bloom, in [0.55, 0.90]
  */
-function fireCamoLossFor(caliberMm) {
-  if (!(caliberMm > 0)) return FIRE_CAMO_LOSS;
+function fireCamoLossFor(caliberMm: number | null | undefined): number {
+  if (caliberMm == null || caliberMm <= 0) return FIRE_CAMO_LOSS;
   return 0.55 + 0.35 * clamp((caliberMm - 50) / 100, 0, 1);
 }
 
@@ -223,7 +365,7 @@ function fireCamoLossFor(caliberMm) {
 // full catalog (reload/aim/repair/durability/fire gear + slot logic + AI
 // defaults) lives in game/equipment.ts and references these same ids.
 // ---------------------------------------------------------------------------
-export const EQUIPMENT = {
+export const EQUIPMENT: Readonly<Record<string, EquipmentVisionEffect>> = {
   camo_net:   { label: 'Camouflage Net',       camoStill: 0.12 },
   binoculars: { label: 'Binocular Telescope',  viewStill: 0.25 },
   vents:      { label: 'Improved Ventilation', camo: 0.02, view: 0.025 },
@@ -237,7 +379,10 @@ export const EQUIPMENT = {
  * @param {boolean} moving hull is moving (disables *Still effects)
  * @returns {number} camo bonus in [0, ~0.14]
  */
-export function equipCamoBonus(equipIds, moving) {
+export function equipCamoBonus(
+  equipIds: readonly string[] | null | undefined,
+  moving: boolean,
+): number {
   if (!equipIds) return 0;
   let b = 0;
   for (let i = 0; i < equipIds.length; i++) {
@@ -255,7 +400,10 @@ export function equipCamoBonus(equipIds, moving) {
  * @param {boolean} moving spotter hull is moving (disables *Still effects)
  * @returns {number} multiplier >= 1
  */
-export function equipViewMult(equipIds, moving) {
+export function equipViewMult(
+  equipIds: readonly string[] | null | undefined,
+  moving: boolean,
+): number {
   if (!equipIds) return 1;
   let m = 1;
   for (let i = 0; i < equipIds.length; i++) {
@@ -274,7 +422,7 @@ export function equipViewMult(equipIds, moving) {
  * @param {number} targetCamo total target camo [0,1]
  * @returns {number} meters
  */
-export function spotRangeM(viewRangeM, targetCamo) {
+export function spotRangeM(viewRangeM: number, targetCamo: number): number {
   const c = clamp(targetCamo, 0, 1);
   const r = viewRangeM - (viewRangeM - MIN_SPOT_RANGE_M) * c;
   return clamp(r, MIN_SPOT_RANGE_M, MAX_SPOT_RANGE_M);
@@ -290,14 +438,14 @@ export function spotRangeM(viewRangeM, targetCamo) {
  *          bush?:number, fireLoss?:number}} p
  * @returns {number} camo in [0, 0.95]
  */
-export function combineCamo(p) {
+export function combineCamo(p: CamoParts): number {
   const loss = p.fireLoss != null ? p.fireLoss : FIRE_CAMO_LOSS;
   const own = (p.base + (p.paint || 0) + (p.equip || 0)) * (1 - loss * (p.bloom || 0));
   return clamp(own + (p.bush || 0), 0, 0.95);
 }
 
 /** Check cadence by spotter→target distance (0.5–2 s, per the charter). */
-export function checkIntervalS(distM) {
+export function checkIntervalS(distM: number): number {
   return distM < 120 ? CHECK_NEAR_S : distM < 280 ? CHECK_MID_S : CHECK_FAR_S;
 }
 
@@ -309,7 +457,14 @@ export function checkIntervalS(distM) {
  * @param {Array<{x:number,z:number,r:number,add:number}>} concealers
  * @returns {number} bonus in [0, MAX_BUSH_BONUS]
  */
-export function bushBonusBetween(concealers, sx, sz, tx, tz, targetFired) {
+export function bushBonusBetween(
+  concealers: readonly ConcealerDisc[] | null | undefined,
+  sx: number,
+  sz: number,
+  tx: number,
+  tz: number,
+  targetFired: boolean,
+): number {
   if (!concealers || concealers.length === 0) return 0;
   const dx = tx - sx, dz = tz - sz;
   const len2 = dx * dx + dz * dz;
@@ -340,7 +495,7 @@ export function bushBonusBetween(concealers, sx, sz, tx, tz, targetFired) {
 // Spotting system
 // ---------------------------------------------------------------------------
 
-const TEAMS = ['player', 'enemy'];
+const TEAMS: readonly string[] = ['player', 'enemy'];
 
 /**
  * Create the battle spotting system.
@@ -359,7 +514,7 @@ const TEAMS = ['player', 'enemy'];
  * @param {() => number} [deps.rng] deterministic PRNG for check staggering.
  * @returns {object} SpottingSystem
  */
-export function createSpottingSystem(deps) {
+export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem {
   if (!deps || typeof deps.getTanks !== 'function') {
     throw new Error('createSpottingSystem: deps.getTanks is required');
   }
@@ -372,8 +527,8 @@ export function createSpottingSystem(deps) {
     ? [...new Set(deps.teams.map(String))]
     : TEAMS;
 
-  function makeTeamState() {
-    return Object.fromEntries(teams.map((team) => [team, {
+  function makeTeamState(): Record<string, TeamSpotState> {
+    return Object.fromEntries(teams.map((team): [string, TeamSpotState] => [team, {
       spotted: false,
       lastPassS: -1e9,
       spottedAtS: -1e9,
@@ -382,14 +537,14 @@ export function createSpottingSystem(deps) {
   }
 
   /** per-tank record: fire bloom + per-observing-team spotted state */
-  const recs = new Map(); // id -> rec
+  const recs = new Map<string, SpottingRecord>();
   let raycastCalls = 0;   // instrumentation (selftest asserts staggering)
-  const events = [];      // reused churn buffer returned by update()
+  const events: SpottingEvent[] = []; // reused churn buffer returned by update()
 
-  const _o = { x: 0, y: 0, z: 0 };
-  const _d = { x: 0, y: 0, z: 0 };
+  const _o: SpottingVector3 = { x: 0, y: 0, z: 0 };
+  const _d: SpottingVector3 = { x: 0, y: 0, z: 0 };
 
-  function recOf(ent) {
+  function recOf(ent: SpottingTank): SpottingRecord {
     let r = recs.get(ent.id);
     if (!r) {
       r = {
@@ -402,14 +557,16 @@ export function createSpottingSystem(deps) {
     return r;
   }
 
-  function alive(e) {
-    return e && e.state && (!e.combat || !e.combat.destroyed);
+  function alive(e: SpottingTank | null | undefined): e is SpottingTank {
+    return Boolean(e && e.state && (!e.combat || !e.combat.destroyed));
   }
 
-  function eyeY(e) { return e.state.pos.y + (e.spec.dims ? e.spec.dims.heightM : 2.6) * 0.9; }
+  function eyeY(e: SpottingTank): number {
+    return e.state.pos.y + (e.spec.dims ? e.spec.dims.heightM : 2.6) * 0.9;
+  }
 
   /** Hard-cover LOS: clear to either the turret top or the hull center. */
-  function hardLos(spotter, target) {
+  function hardLos(spotter: SpottingTank, target: SpottingTank): boolean {
     if (!raycast) return true;
     const sp = spotter.state.pos, tp = target.state.pos;
     const h = target.spec.dims ? target.spec.dims.heightM : 2.6;
@@ -430,11 +587,19 @@ export function createSpottingSystem(deps) {
   // PERF: reused arg/result objects for the staggered checks (same pattern as
   // _conc below) — checkTarget/canSpot ran every 0.5-2 s per tank and were the
   // last steady allocation sites in the spotting path.
-  const _camoArgs = { base: 0, paint: 0, equip: 0, bloom: 0, bush: 0, fireLoss: 0 };
-  const _seenVia = Object.fromEntries(teams.map((team) => [team, null]));
+  const _camoArgs: Required<CamoParts> = {
+    base: 0, paint: 0, equip: 0, bloom: 0, bush: 0, fireLoss: 0,
+  };
+  const _seenVia = Object.fromEntries(
+    teams.map((team): [string, SpotterContact | null] => [team, null]),
+  ) as Record<string, SpotterContact | null>;
 
   /** Full spot test: does `spotter` see `target` right now? */
-  function canSpot(spotter, target, timeS) {
+  function canSpot(
+    spotter: SpottingTank,
+    target: SpottingTank,
+    timeS: number,
+  ): boolean {
     const sp = spotter.state.pos, tp = target.state.pos;
     const dx = tp.x - sp.x, dy = tp.y - sp.y, dz = tp.z - sp.z;
     const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
@@ -453,7 +618,7 @@ export function createSpottingSystem(deps) {
     _camoArgs.equip = equipCamoBonus(getEquipment(target), moving);
     _camoArgs.bloom = bloom;
     _camoArgs.bush = bush;
-    _camoArgs.fireLoss = rec.fireLoss;
+    _camoArgs.fireLoss = rec.fireLoss ?? FIRE_CAMO_LOSS;
     const camo = combineCamo(_camoArgs);
     // spotter view range: module damage (optics) x equipment (binocs/vents)
     const spotterMoving = Math.abs(spotter.state.speed || 0) > MOVING_SPEED_MPS;
@@ -478,7 +643,11 @@ export function createSpottingSystem(deps) {
   }
 
   /** Run the spot checks for one target against every live opposing tank. */
-  function checkTarget(target, tanks, timeS) {
+  function checkTarget(
+    target: SpottingTank,
+    tanks: readonly SpottingTank[],
+    timeS: number,
+  ): void {
     const rec = recOf(target);
     let nearest = Infinity;
     // Per team: the best spotter that passed this round (null = not seen).
@@ -524,12 +693,12 @@ export function createSpottingSystem(deps) {
   }
 
   // reused result object for getConcealment (no per-frame allocation)
-  const _conc = {
+  const _conc: ConcealmentSnapshot = {
     camo: 0, base: 0, paint: 0, equip: 0, bush: 0, bloom: 0,
     moving: false, fired: false, inBush: false, spotted: false,
   };
 
-  const sys = {
+  const sys: SpottingSystem = {
     /**
      * Advance the system. Cheap unless a target's check timer fires.
      * @param {number} dt seconds (unused directly; kept for symmetry)
@@ -537,7 +706,7 @@ export function createSpottingSystem(deps) {
      * @returns {Array<{id:string,team:string,timeS:number}>} newly-spotted
      *   events (buffer reused across calls — consume synchronously)
      */
-    update(dt, timeS) {
+    update(_dt: number, timeS: number): SpottingEvent[] {
       events.length = 0;
       const tanks = deps.getTanks();
       for (let i = 0; i < tanks.length; i++) {
@@ -550,7 +719,7 @@ export function createSpottingSystem(deps) {
     },
 
     /** Force an immediate check of every live tank (tests/debug). */
-    forceCheck(timeS) {
+    forceCheck(timeS: number): SpottingEvent[] {
       events.length = 0;
       const tanks = deps.getTanks();
       for (const t of tanks) {
@@ -571,7 +740,7 @@ export function createSpottingSystem(deps) {
      * @param {'player'|'enemy'} team observing team
      * @param {object} [receiver] TankEntity-like teammate asking for the intel
      */
-    isSpotted(id, team, receiver) {
+    isSpotted(id: string, team: string, receiver?: SpottingTank | null): boolean {
       const r = recs.get(id);
       const st = r ? r.byTeam[team] : null;
       if (!st || !st.spotted) return false;
@@ -590,7 +759,7 @@ export function createSpottingSystem(deps) {
      * shooter's `spec.gun.caliberMm` via getTanks(); unknown guns keep the
      * flat FIRE_CAMO_LOSS fallback.
      */
-    notifyFired(id, timeS, caliberMm) {
+    notifyFired(id: string, timeS: number, caliberMm?: number | null): void {
       let r = recs.get(id);
       if (!r) {
         r = {
@@ -610,8 +779,9 @@ export function createSpottingSystem(deps) {
       if (cal == null) {
         const tanks = deps.getTanks();
         for (let i = 0; i < tanks.length; i++) {
-          if (tanks[i].id === id) {
-            cal = tanks[i].spec && tanks[i].spec.gun ? tanks[i].spec.gun.caliberMm : null;
+          const tank = tanks[i];
+          if (tank && tank.id === id) {
+            cal = tank.spec.gun?.caliberMm ?? null;
             break;
           }
         }
@@ -625,7 +795,7 @@ export function createSpottingSystem(deps) {
      * NOT the raw team intel — use isSpotted() for the server truth.
      * Returns a REUSED object — copy if you must keep it.
      */
-    getConcealment(ent, timeS) {
+    getConcealment(ent: SpottingTank, timeS: number): ConcealmentSnapshot {
       const rec = recOf(ent);
       const p = ent.state.pos;
       const moving = Math.abs(ent.state.speed || 0) > MOVING_SPEED_MPS;
@@ -686,7 +856,7 @@ export function createSpottingSystem(deps) {
       _camoArgs.equip = _conc.equip;
       _camoArgs.bloom = bloom;
       _camoArgs.bush = bush;
-      _camoArgs.fireLoss = rec.fireLoss;
+      _camoArgs.fireLoss = rec.fireLoss ?? FIRE_CAMO_LOSS;
       _conc.camo = combineCamo(_camoArgs);
       // Sixth-sense display gate (r8 major): the HUD eye flipped red the
       // instant the enemy check passed, leaking exactly the information the
@@ -696,7 +866,7 @@ export function createSpottingSystem(deps) {
       // window (WoT: after the bulb dies you do NOT know you are still seen).
       // Raw state stays on isSpotted() for enemies/minimap/AI.
       const opp = teams.find((team) => team !== ent.team);
-      const st = rec.byTeam[opp];
+      const st = opp ? rec.byTeam[opp] : undefined;
       const knownAge = st?.spotted ? timeS - st.spottedAtS : -1;
       _conc.spotted = knownAge >= SIXTH_SENSE_DELAY_S &&
         knownAge <= SIXTH_SENSE_DELAY_S + SIXTH_SENSE_SHOW_S;
@@ -704,7 +874,11 @@ export function createSpottingSystem(deps) {
     },
 
     /** Bush bonus along the observer→target LOS (debug/tests). */
-    bushBonusBetween(spotter, target, timeS) {
+    bushBonusBetween(
+      spotter: SpottingTank,
+      target: SpottingTank,
+      timeS: number,
+    ): number {
       const rec = recOf(target);
       return bushBonusBetween(concealers,
         spotter.state.pos.x, spotter.state.pos.z,
@@ -713,15 +887,17 @@ export function createSpottingSystem(deps) {
     },
 
     /** One-shot spot test bypassing timers/linger (debug/tests). */
-    testSpot(spotter, target, timeS) { return canSpot(spotter, target, timeS); },
+    testSpot(spotter: SpottingTank, target: SpottingTank, timeS: number): boolean {
+      return canSpot(spotter, target, timeS);
+    },
 
     /** Raycast-call counter (selftest asserts checks are staggered). */
     get raycastCalls() { return raycastCalls; },
 
-    reset() { recs.clear(); },
+    reset(): void { recs.clear(); },
   };
 
-  function bushNearby(p) {
+  function bushNearby(p: SpottingVector3): boolean {
     for (let i = 0; i < concealers.length; i++) {
       const c = concealers[i];
       const dx = c.x - p.x, dz = c.z - p.z;

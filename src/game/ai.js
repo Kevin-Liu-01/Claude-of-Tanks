@@ -177,7 +177,7 @@ const PLAYER_THREAT_DIST_MULT = 0.35; // player counts as 35% of its true d² wh
 // A PLAYER shooter now also claims a dedicated sticky slot with a longer
 // window (muzzle flash + tracer are intel). camo_spotting r2: the slot no
 // longer bypasses the spotting gate — the firing-player reveal itself now
-// lives in the sim (spotting.js muzzle-flash branch resolves it through the
+// lives in the sim (spotting.ts muzzle-flash branch resolves it through the
 // camo formula); the slot keeps the position intel + priority sticky.
 const PLAYER_AGGRO_WINDOW_S = 25;
 // PLAYER MUZZLE-FLASH INTEL (controls_gunnery r5): r4's playerAggro only
@@ -357,7 +357,7 @@ export function botFriendlyFireRisk(shooter, aimPoint, shellSpec, candidates) {
  *   `{ heightField, raycast(origin,dir,maxDist), getEnemies(): TankEntity[], getObstacles(): AABB[],
  *      spotting?: { isSpotted(id): boolean } }`
  *   When `spotting` is provided, target ACQUISITION goes through the
- *   concealment sim (src/sim/spotting.js): tanks the AI's team has not
+ *   concealment sim (src/sim/spotting.ts): tanks the AI's team has not
  *   spotted are invisible to it — exactly like the player's minimap/HUD.
  *   Raw raycast LOS is still required to actually FIRE.
  * @returns {{ update(dt:number, timeS:number): void,
@@ -391,7 +391,7 @@ export function createAI(entity, opts = {}) {
     ? deps.spotting : null;
   // camo_spotting r2: the under-fire/muzzle-intel windows NO LONGER bypass
   // the concealment formula. Fire reveal now resolves INSIDE the spotting sim
-  // (spotting.js: notifyFired pulls the shooter's next check in, and the
+  // (spotting.ts: notifyFired pulls the shooter's next check in, and the
   // muzzle-flash branch of canSpot reveals a bloom-hot shooter with no real
   // foliage cover even beyond the camo-formula spot range) — so a revealed
   // shooter arrives through isSpotted like any other contact, while a deep

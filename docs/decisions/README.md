@@ -180,3 +180,4 @@ runtime documents remain authoritative for behavior.
 - [0168 — Movement and rigid-body simulation are strict TypeScript](0168-typed-movement-runtime.md)
 - [0169 — Damage and ERA authority are strict TypeScript](0169-typed-damage-runtime.md)
 - [0170 — Armor tracing and articulation frames are strict TypeScript](0170-typed-armor-tracing.md)
+- [0171 — Spotting authority is strict TypeScript](0171-typed-spotting-authority.md)

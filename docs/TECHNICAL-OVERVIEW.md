@@ -295,7 +295,7 @@ second armor calculation.
 
 ### 7.4 Spotting
 
-`src/sim/spotting.js` evaluates range, concealment, movement and firing state,
+`src/sim/spotting.ts` evaluates range, concealment, movement and firing state,
 foliage, line of sight, and radio relationships. Network authority then
 creates a viewer-specific snapshot with hidden transforms removed.
 

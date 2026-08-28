@@ -157,7 +157,7 @@ obstacles, and failed climbs.
 
 Relevant implementation:
 
-- src/sim/spotting.js
+- src/sim/spotting.ts
 - src/sim/botRoutePlanner.ts
 - src/game/ai.js
 - server/authoritativeBots.selftest.mjs

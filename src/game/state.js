@@ -35,7 +35,7 @@ import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.ts
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
 import { getStoredDifficulty } from './input.js';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
-import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.js';
+import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.ts';
 import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.js';
 // EQUIPMENT SYSTEM (game/equipment.ts): per-tank loadouts — the player's
 // persisted picks, per-role AI defaults, and the equipMults record the
@@ -1219,7 +1219,7 @@ function tryFire(game, ent, bus, rig) {
   startPostShotReload(c, ent.spec);
   if (guidedSpecial) finishSpecialActionFire(ent, shell.id);
   // SPOTTING WIRING: firing blooms the shooter's camo (with decay) and lights
-  // up any concealing foliage within 15 m (see src/sim/spotting.js).
+  // up any concealing foliage within 15 m (see src/sim/spotting.ts).
   if (game.spotting) game.spotting.notifyFired(ent.id, game.timeS);
   // PLAYER MUZZLE-FLASH INTEL (controls_gunnery r5): a firing player is
   // visible intel — muzzle flash + tracer — to every enemy within 420 m,

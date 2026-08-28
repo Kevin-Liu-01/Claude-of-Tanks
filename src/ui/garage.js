@@ -42,7 +42,7 @@ import { getPlayerRecord } from '../game/profile.ts';
 import { mountGitHubStars } from './githubStars.ts';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
-} from '../sim/spotting.js';
+} from '../sim/spotting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
 
 const NATION_LABEL = {
@@ -1328,7 +1328,7 @@ export function createGarage(opts) {
     const grp = statGroupOf(spec);
     // EQUIPMENT SYSTEM: fold the mounted loadout into the displayed stats —
     // the same multipliers/tables the battle sim reads (equipment.ts +
-    // spotting.js), so the card IS the loadout preview. Modified values tint
+    // spotting.ts), so the card IS the loadout preview. Modified values tint
     // green with the stock number in the tooltip.
     // §5.31b PRINT VIEWER: print cards show STOCK stats — no loadout is
     // read (or ever written) for a view-only 'print:<id>' pseudo-spec.
