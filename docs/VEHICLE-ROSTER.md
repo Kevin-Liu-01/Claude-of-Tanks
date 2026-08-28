@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **155 saved vehicle records**: **116 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **156 saved vehicle records**: **117 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -30,139 +30,140 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 20 | PROD | `t90a_vladimir` | T-90A Vladimir | Russia | IX | Modern | Production |
 | 21 | PROD | `t90a_burlak` | T-90A Burlak | USSR/Russia | X | Modern | Production |
 | 22 | PROD | `t90sm` | T-90SM | Russia | IX | Modern | Production |
-| 23 | PROD | `t90ms` | T-90MS Tagil | USSR/Russia | X | Modern | Production |
-| 24 | PROD | `t90m` | T-90M Proryv | Russia | X | Modern | Production |
-| 25 | DEV | `leo2a7` | Leopard 2A7 | Germany | X | Modern | Saved development model |
-| 26 | PROD | `m1a2` | M1A2 Abrams | USA | X | Modern | Production |
-| 27 | PROD | `strv81` | Stridsvagn 81 | Sweden | VII | Cold War | Production |
-| 28 | PROD | `udes03` | UDES 03 | Sweden | VIII | Cold War | Production |
-| 29 | PROD | `strv103a` | Stridsvagn 103A | Sweden | IX | Cold War | Production |
-| 30 | PROD | `strv103` | Stridsvagn 103B | Sweden | X | Cold War | Production |
-| 31 | PROD | `strv122` | Stridsvagn 122 | Sweden | X | Modern | Production |
-| 32 | DEV | `is3` | IS-3 | USSR | VIII | World War II | Historical archive |
-| 33 | DEV | `t34_85_cad` | T-34-85 obr. 1944 | USSR | VI | World War II | Historical archive |
-| 34 | DEV | `newc_tiger` | Tiger I Early | Germany | VII | World War II | Production curation |
-| 35 | DEV | `newc_pziii` | Panzer III Ausf. J | Germany | IV | World War II | Production curation |
-| 36 | DEV | `pziii_konserwa` | Panzer III Ausf. E | Germany | III | World War II | Historical archive |
-| 37 | DEV | `leichttraktor` | Leichttraktor | Germany | I | Interwar | Saved development model |
-| 38 | REF | `recon_tank` | Recon Tank (Mophs) | Community | VIII | Modern | Reference placeholder |
-| 39 | REF | `q_heavy` | Heavy Tank (Quaternius) | Community | IX | World War II | Reference placeholder |
-| 40 | PROD | `kv2` | KV-2 | USSR | VII | World War II | Production |
-| 41 | DEV | `tiger2` | Tiger II | Germany | VIII | World War II | Historical archive |
-| 42 | DEV | `sherman_jumbo` | M4A3E2 Sherman Jumbo | USA | VI | World War II | Historical archive |
-| 43 | DEV | `jagdtiger` | Jagdtiger | Germany | IX | World War II | Historical archive |
-| 44 | DEV | `jpz_e100` | Jagdpanzer E100 | Germany | X | World War II | Production curation |
-| 45 | DEV | `sturmtiger` | Sturmtiger | Germany | VIII | World War II | Production curation |
-| 46 | DEV | `t95` | T95 | USA | IX | World War II | Production curation |
-| 47 | DEV | `t30` | T30 | USA | IX | World War II | Historical archive |
-| 48 | DEV | `is7` | IS-7 | USSR | X | Cold War | Saved development model |
-| 49 | DEV | `object279` | Object 279 | USSR | X | Cold War | Saved development model |
-| 50 | DEV | `is6b` | IS-6B | USSR | VIII | World War II | Historical archive |
-| 51 | DEV | `is1` | IS-1 | USSR | V | World War II | Historical archive |
-| 52 | PROD | `chieftain5` | Chieftain Mk 5 | UK | VII | Cold War | Production |
-| 53 | PROD | `chieftain_mk10` | Chieftain Mk 10 | UK | VII | Cold War | Production |
-| 54 | PROD | `challenger1` | Challenger 1 Mk 3 | UK | VIII | Cold War | Production |
-| 55 | PROD | `fv4034` | FV4034 | UK | VIII | Cold War | Production |
-| 56 | PROD | `challenger2` | Challenger 2 | UK | IX | Modern | Production |
-| 57 | PROD | `challenger2e` | Challenger 2E | UK | X | Modern | Production |
-| 58 | PROD | `ua_challenger2` | Challenger 2 (Ukraine) | Ukraine | X | Modern | Production |
-| 59 | PROD | `challenger_3` | Challenger 3 | UK | X | Next Generation | Production |
-| 60 | PROD | `k2` | K2 Black Panther | South Korea | IX | Modern | Production |
-| 61 | PROD | `k1a1` | K1A1 | South Korea | VIII | Modern | Production |
-| 62 | PROD | `stb1` | STB-1 | Japan | VII | Cold War | Production |
-| 63 | PROD | `type74` | Type 74 | Japan | VIII | Cold War | Production |
-| 64 | PROD | `type90` | Type 90 (Kyū-maru) | Japan | IX | Cold War | Production |
-| 65 | PROD | `type90a` | Type 90A | Japan | IX | Cold War | Production |
-| 66 | PROD | `type10` | Type 10 | Japan | X | Modern | Production |
-| 67 | PROD | `type10b` | Type 10B | Japan | X | Next Generation | Production |
-| 68 | PROD | `m2a2_bradley` | M2A2 Bradley | USA | VIII | Cold War | Production |
-| 69 | PROD | `bmp2` | BMP-2 | USSR | VII | Cold War | Production |
-| 70 | PROD | `spz_puma` | Schützenpanzer Puma | Germany | VIII | Modern | Production |
-| 71 | PROD | `type89` | Type 89 IFV | Japan | VII | Cold War | Production |
-| 72 | PROD | `carro45t` | Carro 45t | Italy | VIII | Cold War | Production |
-| 73 | PROD | `ariete` | C1 Ariete Preserie | Italy | VIII | Modern | Production |
-| 74 | PROD | `ariete_c1` | C1 Ariete | Italy | IX | Modern | Production |
-| 75 | PROD | `ariete_c2` | C2 Ariete | Italy | X | Next Generation | Production |
-| 76 | PROD | `amx40` | AMX-40 | France | IX | Cold War | Production |
-| 77 | PROD | `leo1a5` | Leopard 1A5 | Germany | VII | Cold War | Production |
-| 78 | PROD | `leopard2_proto` | Leopard 2 Prototype | Germany | VIII | Cold War | Production |
-| 79 | PROD | `leo2a4` | Leopard 2A4 | Germany | VIII | Cold War | Production |
-| 80 | PROD | `leo2a4_otco` | Leopard 2A4 OTCO | Germany | VIII | Modern | Production |
-| 81 | PROD | `leo2a4m` | Leopard 2A4M | Germany | IX | Modern | Production |
-| 82 | PROD | `leo2a5` | Leopard 2A5 | Germany | IX | Modern | Production |
-| 83 | PROD | `leo2a6` | Leopard 2A6 | Germany | IX | Modern | Production |
-| 84 | PROD | `leo2a6m` | Leopard 2A6M | Germany | X | Modern | Production |
-| 85 | PROD | `leo2_revolution` | Leopard 2 Revolution | Germany | X | Modern | Production |
-| 86 | PROD | `leo2a7v` | Leopard 2A7V | Germany | X | Modern | Production |
-| 87 | PROD | `leclerc` | Leclerc S2 | France | IX | Modern | Production |
-| 88 | PROD | `leclerc_xlr` | Leclerc XLR | France | X | Modern | Production |
-| 89 | PROD | `amx56` | AMX 56 | France | X | Modern | Production |
-| 90 | PROD | `type59` | Type 59 | China | VII | Cold War | Production |
-| 91 | PROD | `ztz85_iii` | ZTZ-85-III | China | VIII | Cold War | Production |
-| 92 | PROD | `type99a` | ZTZ-99A (Type 99A) | China | IX | Modern | Production |
-| 93 | PROD | `ztz99a2` | ZTZ-99A2 | China | X | Modern | Production |
-| 94 | PROD | `mbt70` | MBT-70 | Germany | X | Cold War | Production |
-| 95 | PROD | `t14` | T-14 Armata | Russia | X | Next Generation | Production |
-| 96 | DEV | `t72b3` | T-72B3 | Russia | VIII | Modern | Saved development model |
-| 97 | DEV | `merkava4` | Merkava IVm Windbreaker | Israel | IX | Modern | Saved development model |
-| 98 | PROD | `m1a1` | M1A1 Abrams | USA | IX | Cold War | Production |
-| 99 | PROD | `m1a2_tusk` | M1A2 Abrams TUSK | USA | X | Modern | Production |
-| 100 | PROD | `kf51` | KF51 Panther | Germany | X | Next Generation | Production |
-| 101 | PROD | `kf51b` | KF51B Panther | Germany | X | Next Generation | Production |
-| 102 | PROD | `abramsx` | AbramsX | USA | X | Next Generation | Production |
-| 103 | PROD | `fv510` | FV510 Warrior | UK | VII | Cold War | Production |
-| 104 | PROD | `m1a1ha` | M1A1 Abrams HA | USA | IX | Cold War | Production |
-| 105 | PROD | `m1a2_sepv2` | M1A2 Abrams SEPv2 | USA | X | Modern | Production |
-| 106 | PROD | `m1a2_sepv3` | M1A2 Abrams SEPv3 | USA | X | Modern | Production |
-| 107 | PROD | `m60a1` | M60A1 Patton | USA | VIII | Cold War | Production |
-| 108 | PROD | `merkava1b` | Merkava Mk 1B | Israel | VII | Cold War | Production |
-| 109 | PROD | `merkava2b` | Merkava Mk 2B | Israel | VIII | Cold War | Production |
-| 110 | PROD | `merkava2d` | Merkava Mk 2D | Israel | VIII | Cold War | Production |
-| 111 | PROD | `merkava3c` | Merkava Mk 3C | Israel | IX | Modern | Production |
-| 112 | PROD | `merkava3d` | Merkava Mk 3D | Israel | X | Modern | Production |
-| 113 | PROD | `merkava4b` | Merkava Mk 4B | Israel | X | Modern | Production |
-| 114 | PROD | `fv510_milan` | FV510 Warrior MILAN | UK | IX | Cold War | Production |
-| 115 | DEV | `t44` | T-44 | USSR | VII | World War II | Historical archive |
-| 116 | DEV | `t54` | T-54 | USSR/Russia | VII | Cold War | Historical archive |
-| 117 | PROD | `amx30` | AMX-30B | France | VII | Cold War | Production |
-| 118 | PROD | `amx30b2` | AMX-30B2 | France | VIII | Cold War | Production |
-| 119 | PROD | `m48` | M48A5 Patton | USA | VIII | Cold War | Production |
-| 120 | PROD | `m60a2` | M60A2 Starship | USA | IX | Cold War | Production |
-| 121 | PROD | `vickers_mk1` | Vickers MBT Mk 1 | UK | VII | Cold War | Production |
-| 122 | DEV | `is3_bergman` | IS-3 Late | USSR | VIII | World War II | Historical archive |
-| 123 | DEV | `isu152` | ISU-152 | USSR | VIII | World War II | Production curation |
-| 124 | DEV | `isu122s` | ISU-122S | USSR | VIII | World War II | Production curation |
-| 125 | PROD | `centurion3` | Centurion Mk 3 | UK | VII | Cold War | Production |
-| 126 | PROD | `centurion5` | Centurion Mk 5/2 | UK | VIII | Cold War | Production |
-| 127 | DEV | `comet` | A34 Comet | UK | VII | World War II | Historical archive |
-| 128 | DEV | `challenger_cruiser` | A30 Challenger | UK | VI | World War II | Historical archive |
-| 129 | DEV | `charioteer` | FV4101 Charioteer | UK | VIII | Cold War | Saved development model |
-| 130 | PROD | `m46_patton` | M46 Patton | USA | VII | Cold War | Production |
-| 131 | PROD | `m47_patton` | M47 Patton | USA | VII | Cold War | Production |
-| 132 | DEV | `m26_pershing` | M26 Pershing | USA | VIII | World War II | Production curation |
-| 133 | DEV | `m45_patton` | M45 Patton | USA | VIII | World War II | Production curation |
-| 134 | PROD | `m60a3` | M60A3 | USA | VIII | Cold War | Production |
-| 135 | PROD | `ua_t64bv` | T-64BV Donbas | Ukraine | VIII | Modern | Production |
-| 136 | PROD | `ua_t80bv` | T-80BV (Ukraine) | Ukraine | IX | Modern | Production |
-| 137 | PROD | `ua_t80u_kursk` | T-80U Kursk | Ukraine | IX | Modern | Production |
-| 138 | PROD | `ua_t84_oplot_m` | T-84BM Oplot-M | Ukraine | X | Modern | Production |
-| 139 | PROD | `ua_m1a1` | M1A1 Abrams UA | Ukraine | IX | Modern | Production |
-| 140 | PROD | `leo2a6_ua` | Leopard 2A6 UA | Ukraine | X | Modern | Production |
-| 141 | PROD | `t72m1_jaguar` | T-72M1 Jaguar | Poland | VIII | Modern | Production |
-| 142 | PROD | `pt91_twardy` | PT-91A Twardy | Poland | IX | Modern | Production |
-| 143 | PROD | `pl01` | PL-01 | Poland | X | Next Generation | Production |
-| 144 | PROD | `pl01_105` | PL-01 (105) | Poland | X | Next Generation | Production |
-| 145 | PROD | `k2b` | K2B | South Korea | X | Modern | Production |
-| 146 | PROD | `bmp3_rok` | BMP-3 (ROK) | South Korea | VIII | Modern | Production |
-| 147 | PROD | `ua_m2a3_bradley` | M2A3 Bradley (Ukraine) | Ukraine | IX | Modern | Production |
-| 148 | PROD | `bmpt_terminator2` | BMPT Terminator 2 | Russia | IX | Modern | Production |
-| 149 | PROD | `bwp1` | BWP-1 (Bojowy Wóz Piechoty 1) | Poland | IX | Cold War | Production |
-| 150 | PROD | `marder1a3` | Schützenpanzer Marder 1A3 | Germany | VII | Cold War | Production |
-| 151 | PROD | `m3a3_bradley` | M3A3 Bradley CFV | USA | X | Modern | Production |
-| 152 | PROD | `bmp3` | BMP-3 | Russia | VIII | Cold War | Production |
-| 153 | PROD | `upior` | Upiór IFV | Poland | IX | Next Generation | Production |
-| 154 | PROD | `bmpt_t90` | BMPT T-90 | Russia | X | Modern | Production |
-| 155 | PROD | `m551_sheridan` | M551 Sheridan | USA | X | Cold War | Production |
+| 23 | PROD | `t90m` | T-90M | Russia | IX | Modern | Production |
+| 24 | PROD | `t90ms` | T-90MS Tagil | USSR/Russia | X | Modern | Production |
+| 25 | PROD | `t90m_proryv` | T-90M Proryv | Russia | X | Modern | Production |
+| 26 | DEV | `leo2a7` | Leopard 2A7 | Germany | X | Modern | Saved development model |
+| 27 | PROD | `m1a2` | M1A2 Abrams | USA | X | Modern | Production |
+| 28 | PROD | `strv81` | Stridsvagn 81 | Sweden | VII | Cold War | Production |
+| 29 | PROD | `udes03` | UDES 03 | Sweden | VIII | Cold War | Production |
+| 30 | PROD | `strv103a` | Stridsvagn 103A | Sweden | IX | Cold War | Production |
+| 31 | PROD | `strv103` | Stridsvagn 103B | Sweden | X | Cold War | Production |
+| 32 | PROD | `strv122` | Stridsvagn 122 | Sweden | X | Modern | Production |
+| 33 | DEV | `is3` | IS-3 | USSR | VIII | World War II | Historical archive |
+| 34 | DEV | `t34_85_cad` | T-34-85 obr. 1944 | USSR | VI | World War II | Historical archive |
+| 35 | DEV | `newc_tiger` | Tiger I Early | Germany | VII | World War II | Production curation |
+| 36 | DEV | `newc_pziii` | Panzer III Ausf. J | Germany | IV | World War II | Production curation |
+| 37 | DEV | `pziii_konserwa` | Panzer III Ausf. E | Germany | III | World War II | Historical archive |
+| 38 | DEV | `leichttraktor` | Leichttraktor | Germany | I | Interwar | Saved development model |
+| 39 | REF | `recon_tank` | Recon Tank (Mophs) | Community | VIII | Modern | Reference placeholder |
+| 40 | REF | `q_heavy` | Heavy Tank (Quaternius) | Community | IX | World War II | Reference placeholder |
+| 41 | PROD | `kv2` | KV-2 | USSR | VII | World War II | Production |
+| 42 | DEV | `tiger2` | Tiger II | Germany | VIII | World War II | Historical archive |
+| 43 | DEV | `sherman_jumbo` | M4A3E2 Sherman Jumbo | USA | VI | World War II | Historical archive |
+| 44 | DEV | `jagdtiger` | Jagdtiger | Germany | IX | World War II | Historical archive |
+| 45 | DEV | `jpz_e100` | Jagdpanzer E100 | Germany | X | World War II | Production curation |
+| 46 | DEV | `sturmtiger` | Sturmtiger | Germany | VIII | World War II | Production curation |
+| 47 | DEV | `t95` | T95 | USA | IX | World War II | Production curation |
+| 48 | DEV | `t30` | T30 | USA | IX | World War II | Historical archive |
+| 49 | DEV | `is7` | IS-7 | USSR | X | Cold War | Saved development model |
+| 50 | DEV | `object279` | Object 279 | USSR | X | Cold War | Saved development model |
+| 51 | DEV | `is6b` | IS-6B | USSR | VIII | World War II | Historical archive |
+| 52 | DEV | `is1` | IS-1 | USSR | V | World War II | Historical archive |
+| 53 | PROD | `chieftain5` | Chieftain Mk 5 | UK | VII | Cold War | Production |
+| 54 | PROD | `chieftain_mk10` | Chieftain Mk 10 | UK | VII | Cold War | Production |
+| 55 | PROD | `challenger1` | Challenger 1 Mk 3 | UK | VIII | Cold War | Production |
+| 56 | PROD | `fv4034` | FV4034 | UK | VIII | Cold War | Production |
+| 57 | PROD | `challenger2` | Challenger 2 | UK | IX | Modern | Production |
+| 58 | PROD | `challenger2e` | Challenger 2E | UK | X | Modern | Production |
+| 59 | PROD | `ua_challenger2` | Challenger 2 (Ukraine) | Ukraine | X | Modern | Production |
+| 60 | PROD | `challenger_3` | Challenger 3 | UK | X | Next Generation | Production |
+| 61 | PROD | `k2` | K2 Black Panther | South Korea | IX | Modern | Production |
+| 62 | PROD | `k1a1` | K1A1 | South Korea | VIII | Modern | Production |
+| 63 | PROD | `stb1` | STB-1 | Japan | VII | Cold War | Production |
+| 64 | PROD | `type74` | Type 74 | Japan | VIII | Cold War | Production |
+| 65 | PROD | `type90` | Type 90 (Kyū-maru) | Japan | IX | Cold War | Production |
+| 66 | PROD | `type90a` | Type 90A | Japan | IX | Cold War | Production |
+| 67 | PROD | `type10` | Type 10 | Japan | X | Modern | Production |
+| 68 | PROD | `type10b` | Type 10B | Japan | X | Next Generation | Production |
+| 69 | PROD | `m2a2_bradley` | M2A2 Bradley | USA | VIII | Cold War | Production |
+| 70 | PROD | `bmp2` | BMP-2 | USSR | VII | Cold War | Production |
+| 71 | PROD | `spz_puma` | Schützenpanzer Puma | Germany | VIII | Modern | Production |
+| 72 | PROD | `type89` | Type 89 IFV | Japan | VII | Cold War | Production |
+| 73 | PROD | `carro45t` | Carro 45t | Italy | VIII | Cold War | Production |
+| 74 | PROD | `ariete` | C1 Ariete Preserie | Italy | VIII | Modern | Production |
+| 75 | PROD | `ariete_c1` | C1 Ariete | Italy | IX | Modern | Production |
+| 76 | PROD | `ariete_c2` | C2 Ariete | Italy | X | Next Generation | Production |
+| 77 | PROD | `amx40` | AMX-40 | France | IX | Cold War | Production |
+| 78 | PROD | `leo1a5` | Leopard 1A5 | Germany | VII | Cold War | Production |
+| 79 | PROD | `leopard2_proto` | Leopard 2 Prototype | Germany | VIII | Cold War | Production |
+| 80 | PROD | `leo2a4` | Leopard 2A4 | Germany | VIII | Cold War | Production |
+| 81 | PROD | `leo2a4_otco` | Leopard 2A4 OTCO | Germany | VIII | Modern | Production |
+| 82 | PROD | `leo2a4m` | Leopard 2A4M | Germany | IX | Modern | Production |
+| 83 | PROD | `leo2a5` | Leopard 2A5 | Germany | IX | Modern | Production |
+| 84 | PROD | `leo2a6` | Leopard 2A6 | Germany | IX | Modern | Production |
+| 85 | PROD | `leo2a6m` | Leopard 2A6M | Germany | X | Modern | Production |
+| 86 | PROD | `leo2_revolution` | Leopard 2 Revolution | Germany | X | Modern | Production |
+| 87 | PROD | `leo2a7v` | Leopard 2A7V | Germany | X | Modern | Production |
+| 88 | PROD | `leclerc` | Leclerc S2 | France | IX | Modern | Production |
+| 89 | PROD | `leclerc_xlr` | Leclerc XLR | France | X | Modern | Production |
+| 90 | PROD | `amx56` | AMX 56 | France | X | Modern | Production |
+| 91 | PROD | `type59` | Type 59 | China | VII | Cold War | Production |
+| 92 | PROD | `ztz85_iii` | ZTZ-85-III | China | VIII | Cold War | Production |
+| 93 | PROD | `type99a` | ZTZ-99A (Type 99A) | China | IX | Modern | Production |
+| 94 | PROD | `ztz99a2` | ZTZ-99A2 | China | X | Modern | Production |
+| 95 | PROD | `mbt70` | MBT-70 | Germany | X | Cold War | Production |
+| 96 | PROD | `t14` | T-14 Armata | Russia | X | Next Generation | Production |
+| 97 | DEV | `t72b3` | T-72B3 | Russia | VIII | Modern | Saved development model |
+| 98 | DEV | `merkava4` | Merkava IVm Windbreaker | Israel | IX | Modern | Saved development model |
+| 99 | PROD | `m1a1` | M1A1 Abrams | USA | IX | Cold War | Production |
+| 100 | PROD | `m1a2_tusk` | M1A2 Abrams TUSK | USA | X | Modern | Production |
+| 101 | PROD | `kf51` | KF51 Panther | Germany | X | Next Generation | Production |
+| 102 | PROD | `kf51b` | KF51B Panther | Germany | X | Next Generation | Production |
+| 103 | PROD | `abramsx` | AbramsX | USA | X | Next Generation | Production |
+| 104 | PROD | `fv510` | FV510 Warrior | UK | VII | Cold War | Production |
+| 105 | PROD | `m1a1ha` | M1A1 Abrams HA | USA | IX | Cold War | Production |
+| 106 | PROD | `m1a2_sepv2` | M1A2 Abrams SEPv2 | USA | X | Modern | Production |
+| 107 | PROD | `m1a2_sepv3` | M1A2 Abrams SEPv3 | USA | X | Modern | Production |
+| 108 | PROD | `m60a1` | M60A1 Patton | USA | VIII | Cold War | Production |
+| 109 | PROD | `merkava1b` | Merkava Mk 1B | Israel | VII | Cold War | Production |
+| 110 | PROD | `merkava2b` | Merkava Mk 2B | Israel | VIII | Cold War | Production |
+| 111 | PROD | `merkava2d` | Merkava Mk 2D | Israel | VIII | Cold War | Production |
+| 112 | PROD | `merkava3c` | Merkava Mk 3C | Israel | IX | Modern | Production |
+| 113 | PROD | `merkava3d` | Merkava Mk 3D | Israel | X | Modern | Production |
+| 114 | PROD | `merkava4b` | Merkava Mk 4B | Israel | X | Modern | Production |
+| 115 | PROD | `fv510_milan` | FV510 Warrior MILAN | UK | IX | Cold War | Production |
+| 116 | DEV | `t44` | T-44 | USSR | VII | World War II | Historical archive |
+| 117 | DEV | `t54` | T-54 | USSR/Russia | VII | Cold War | Historical archive |
+| 118 | PROD | `amx30` | AMX-30B | France | VII | Cold War | Production |
+| 119 | PROD | `amx30b2` | AMX-30B2 | France | VIII | Cold War | Production |
+| 120 | PROD | `m48` | M48A5 Patton | USA | VIII | Cold War | Production |
+| 121 | PROD | `m60a2` | M60A2 Starship | USA | IX | Cold War | Production |
+| 122 | PROD | `vickers_mk1` | Vickers MBT Mk 1 | UK | VII | Cold War | Production |
+| 123 | DEV | `is3_bergman` | IS-3 Late | USSR | VIII | World War II | Historical archive |
+| 124 | DEV | `isu152` | ISU-152 | USSR | VIII | World War II | Production curation |
+| 125 | DEV | `isu122s` | ISU-122S | USSR | VIII | World War II | Production curation |
+| 126 | PROD | `centurion3` | Centurion Mk 3 | UK | VII | Cold War | Production |
+| 127 | PROD | `centurion5` | Centurion Mk 5/2 | UK | VIII | Cold War | Production |
+| 128 | DEV | `comet` | A34 Comet | UK | VII | World War II | Historical archive |
+| 129 | DEV | `challenger_cruiser` | A30 Challenger | UK | VI | World War II | Historical archive |
+| 130 | DEV | `charioteer` | FV4101 Charioteer | UK | VIII | Cold War | Saved development model |
+| 131 | PROD | `m46_patton` | M46 Patton | USA | VII | Cold War | Production |
+| 132 | PROD | `m47_patton` | M47 Patton | USA | VII | Cold War | Production |
+| 133 | DEV | `m26_pershing` | M26 Pershing | USA | VIII | World War II | Production curation |
+| 134 | DEV | `m45_patton` | M45 Patton | USA | VIII | World War II | Production curation |
+| 135 | PROD | `m60a3` | M60A3 | USA | VIII | Cold War | Production |
+| 136 | PROD | `ua_t64bv` | T-64BV Donbas | Ukraine | VIII | Modern | Production |
+| 137 | PROD | `ua_t80bv` | T-80BV (Ukraine) | Ukraine | IX | Modern | Production |
+| 138 | PROD | `ua_t80u_kursk` | T-80U Kursk | Ukraine | IX | Modern | Production |
+| 139 | PROD | `ua_t84_oplot_m` | T-84BM Oplot-M | Ukraine | X | Modern | Production |
+| 140 | PROD | `ua_m1a1` | M1A1 Abrams UA | Ukraine | IX | Modern | Production |
+| 141 | PROD | `leo2a6_ua` | Leopard 2A6 UA | Ukraine | X | Modern | Production |
+| 142 | PROD | `t72m1_jaguar` | T-72M1 Jaguar | Poland | VIII | Modern | Production |
+| 143 | PROD | `pt91_twardy` | PT-91A Twardy | Poland | IX | Modern | Production |
+| 144 | PROD | `pl01` | PL-01 | Poland | X | Next Generation | Production |
+| 145 | PROD | `pl01_105` | PL-01 (105) | Poland | X | Next Generation | Production |
+| 146 | PROD | `k2b` | K2B | South Korea | X | Modern | Production |
+| 147 | PROD | `bmp3_rok` | BMP-3 (ROK) | South Korea | VIII | Modern | Production |
+| 148 | PROD | `ua_m2a3_bradley` | M2A3 Bradley (Ukraine) | Ukraine | IX | Modern | Production |
+| 149 | PROD | `bmpt_terminator2` | BMPT Terminator 2 | Russia | IX | Modern | Production |
+| 150 | PROD | `bwp1` | BWP-1 (Bojowy Wóz Piechoty 1) | Poland | IX | Cold War | Production |
+| 151 | PROD | `marder1a3` | Schützenpanzer Marder 1A3 | Germany | VII | Cold War | Production |
+| 152 | PROD | `m3a3_bradley` | M3A3 Bradley CFV | USA | X | Modern | Production |
+| 153 | PROD | `bmp3` | BMP-3 | Russia | VIII | Cold War | Production |
+| 154 | PROD | `upior` | Upiór IFV | Poland | IX | Next Generation | Production |
+| 155 | PROD | `bmpt_t90` | BMPT T-90 | Russia | X | Modern | Production |
+| 156 | PROD | `m551_sheridan` | M551 Sheridan | USA | X | Cold War | Production |
 
 ## Policy ownership
 
