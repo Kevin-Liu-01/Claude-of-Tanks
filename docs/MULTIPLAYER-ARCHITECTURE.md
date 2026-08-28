@@ -15,6 +15,11 @@ mode while preserving the game's established high-refresh performance.
 | Private code | one trusted browser host | WebRTC, with configured TURN fallback | unranked |
 | Ranked | dedicated Node service | authenticated WebSocket | server-owned Elo |
 
+`src/ui/playMenu.ts` owns the strict browser entry boundary for these modes:
+persisted identity and invite input are normalized before signaling, ICE and
+lobby state remain typed through create/join and ready-up, and the acquisition
+session is relinquished only when the active room coordinator accepts it.
+
 Network modes change who hosts and how packets travel while sharing one combat
 authority. Player/entity identity is independent from vehicle identity, so two
 commanders may field the same tank without aliasing state. Solo remains a

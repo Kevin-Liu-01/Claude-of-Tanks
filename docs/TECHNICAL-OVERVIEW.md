@@ -170,6 +170,10 @@ directly instead of maintaining a partial duplicate interface.
 Packaged tank portraits and battle-only top-down damage masks are strict too:
 DOM fallbacks, lazy fleet builds, offscreen targets, pixel readback, Canvas2D
 downsampling, layer metadata, and bounded cache states have one explicit owner.
+The private-room operation surface is strict TypeScript end to end: mode and
+map selection, signaling acquisition, ICE, named invites, lobby snapshots,
+readiness, retained-room reattachment, and ranked queues cross explicit ports
+before any session can hand off into battle.
 Pure keyboard, flag, glyph, minimap, drive-readout, spectator, map-preview, and
 Garage-order policy is also typed and remains directly Node-testable.
 The browser input layer now exports strict action, binding, settings, gamepad,

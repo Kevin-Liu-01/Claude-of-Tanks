@@ -5,7 +5,7 @@
 
 ## Context
 
-`playMenu.js` created signaling, awaited ICE, selected host versus guest
+`playMenu.ts` created signaling, awaited ICE, selected host versus guest
 authority, constructed the peer session, subscribed to lobby state, replayed a
 cold guest's Garage selection, and duplicated teardown. Closing or changing
 the modal while either network request was pending could let a late response

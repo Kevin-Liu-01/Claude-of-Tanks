@@ -5,26 +5,139 @@
  * signaling/lobby commands. Canonical lobby and match state remain in src/net;
  * the menu renders that state and hands established sessions to main.ts.
  */
-import { createPrivateRoomConnectionRuntime } from '../net/privateRoomConnectionRuntime.ts';
+import {
+  createPrivateRoomConnectionRuntime,
+  type PrivateRoomConnection,
+} from '../net/privateRoomConnectionRuntime.ts';
 import { resolveSignalUrl } from '../net/signalEndpoint.ts';
 import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.ts';
 import { normalizeRoomCode } from '../net/protocol.ts';
-import { createRoomInviteUrl, roomInviteTitle } from '../net/roomInvite.ts';
+import {
+  createRoomInviteUrl,
+  roomInviteTitle,
+  type RoomInviteMode,
+} from '../net/roomInvite.ts';
 import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { ensureStyle } from './dom.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
-import { loadIceConfiguration } from '../net/iceConfig.ts';
-import { GAME_MODE_DEFINITIONS, normalizeGameMode } from '../sim/matchModes.ts';
+import { loadIceConfiguration, type IceConfiguration } from '../net/iceConfig.ts';
+import {
+  GAME_MODE_DEFINITIONS,
+  normalizeGameMode,
+  type GameModeId,
+} from '../sim/matchModes.ts';
+import type { LobbyPlayer, LobbyTeam, SerializedLobby } from '../net/lobby.ts';
+import type {
+  RankedQueueState,
+  RankedQueueTicket,
+  RankedServiceClient,
+} from '../net/rankedServiceClient.ts';
 
 const STYLE_ID = 'cot-play-menu-style';
 const PLAYER_ID_KEY = 'cot.player.id.v1';
 const PLAYER_NAME_KEY = 'cot.player.name.v1';
 const ROOM_SIZE_KEY = 'cot.room.size.v1';
 const GAME_MODE_KEY = 'cot.game.mode.v1';
-let rankedServiceModulePromise = null;
-function loadRankedServiceModule() {
+type RankedServiceModule = typeof import('../net/rankedServiceClient.ts');
+type PlayMode = 'solo' | RoomInviteMode | 'ranked';
+type RoomSession = PrivateRoomConnection['session'];
+type RoomRole = PrivateRoomConnection['role'];
+type MaybePromise<T> = T | PromiseLike<T>;
+
+export interface PlayMenuMap {
+  id: string;
+  name: string;
+  thumb?: string;
+  hero?: string;
+}
+
+export interface PlayMenuSelection {
+  specId: string;
+  mapId: string;
+  equipment: string[];
+  camo: string;
+}
+
+export interface PlayMenuLobbyContext {
+  state: SerializedLobby;
+  playerId: string;
+  role: RoomRole;
+}
+
+export interface ActiveRoomAdapter {
+  state: SerializedLobby;
+  playerId: string;
+  role: RoomRole;
+  command(command: Record<string, unknown>): unknown;
+  leave(reason?: string): unknown;
+}
+
+export interface PlayMenuOptions {
+  maps?: PlayMenuMap[];
+  getSelection(): PlayMenuSelection;
+  onSolo?(request: { gameMode: GameModeId }): unknown;
+  onNetworkStart?(request: {
+    role: RoomRole;
+    session: RoomSession;
+    lobbyState: SerializedLobby;
+  }): MaybePromise<unknown>;
+  onNetworkClose?(reason: string): void;
+  onRankedStart?(request: {
+    serviceUrl: string;
+    state: RankedQueueState;
+  }): MaybePromise<unknown>;
+  onLobbyChange?(context: PlayMenuLobbyContext | null): void;
+  isVehicleAllowed?(specId: string): boolean;
+  isCamoAllowed?(camo: string): boolean;
+  getCamoName?(camo: string): string;
+  getVehicleName?(specId: string): string;
+}
+
+export interface PlayMenuInvite {
+  roomCode?: unknown;
+  hostName?: unknown;
+  autoJoin?: boolean;
+}
+
+export interface PlayMenuRuntime {
+  root: HTMLDivElement;
+  show(initialMode?: PlayMode | null, invite?: PlayMenuInvite | null): void;
+  hide(closeSession?: boolean): void;
+  dispose(): void;
+  attachActiveRoom(adapter: ActiveRoomAdapter): void;
+  updateActiveRoom(state: SerializedLobby): boolean;
+  detachActiveRoom(): void;
+  showActiveRoom(): boolean;
+  showCurrentRoom(): boolean;
+  syncGarageSelection(): boolean;
+}
+
+interface MenuSelectElement extends HTMLDivElement {
+  value: string;
+  disabled: boolean;
+}
+
+interface MenuSelectController {
+  close(restoreFocus?: boolean): void;
+  positionList(): void;
+}
+
+interface MenuBinding {
+  control: MenuSelectElement;
+  controller: MenuSelectController;
+}
+
+interface LeaderboardPlayer {
+  place: string | number;
+  name: string;
+  rank: string;
+  rating: string | number;
+}
+
+let rankedServiceModulePromise: Promise<RankedServiceModule> | null = null;
+function loadRankedServiceModule(): Promise<RankedServiceModule> {
   if (!rankedServiceModulePromise) {
     const request = import('../net/rankedServiceClient.ts');
     rankedServiceModulePromise = request;
@@ -36,7 +149,7 @@ function loadRankedServiceModule() {
 }
 
 /** Warm only code implied by an explicit garage mode selection. */
-export function preloadPlayMode(mode) {
+export function preloadPlayMode(mode: PlayMode): Promise<RankedServiceModule | null> {
   return mode === 'ranked' ? loadRankedServiceModule() : Promise.resolve(null);
 }
 
@@ -207,23 +320,59 @@ const CSS = `
   .cot-play .menu-select-trigger::after,.cot-play .menu-select-option{transition:none}}
 `;
 
-function stored(key, fallback) {
-  try { return localStorage.getItem(key) || fallback; } catch (_) { return fallback; }
+function requiredElement<T extends Element>(root: ParentNode, selector: string): T {
+  const element = root.querySelector<T>(selector);
+  if (!element) throw new Error(`playMenu.ts: required element missing: ${selector}`);
+  return element;
 }
 
-function remember(key, value) {
-  try { localStorage.setItem(key, value); } catch (_) { /* session-only */ }
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
-function rememberRoomUrl(roomCode, mode, hostName = null) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function leaderboardPlayers(value: unknown): LeaderboardPlayer[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!isRecord(entry)) return [];
+    return [{
+      place: typeof entry.place === 'number' || typeof entry.place === 'string' ? entry.place : '',
+      name: String(entry.name || 'Commander'),
+      rank: String(entry.rank || 'Unranked'),
+      rating: typeof entry.rating === 'number' || typeof entry.rating === 'string' ? entry.rating : 0,
+    }];
+  });
+}
+
+function recordText(value: Record<string, unknown>, key: string, fallback = ''): string {
+  const field = value[key];
+  return field == null ? fallback : String(field);
+}
+
+function stored(key: string, fallback: string): string {
+  try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
+}
+
+function remember(key: string, value: string): void {
+  try { localStorage.setItem(key, value); } catch { /* session-only */ }
+}
+
+function rememberRoomUrl(
+  roomCode: unknown,
+  mode: unknown,
+  hostName: unknown = null,
+): void {
   if (typeof location === 'undefined' || typeof history === 'undefined') return;
   try {
     const invite = createRoomInviteUrl({ roomCode, mode, hostName, baseUrl: location.href });
     history.replaceState(history.state, '', invite);
-  } catch (_) { /* URL persistence is a convenience, never a room dependency */ }
+  } catch { /* URL persistence is a convenience, never a room dependency */ }
 }
 
-function clearRoomUrl() {
+function clearRoomUrl(): void {
   if (typeof location === 'undefined' || typeof history === 'undefined') return;
   try {
     const url = new URL(location.href);
@@ -232,16 +381,16 @@ function clearRoomUrl() {
     url.searchParams.delete('mode');
     url.searchParams.delete('host');
     history.replaceState(history.state, '', url.href);
-  } catch (_) { /* cosmetic */ }
+  } catch { /* cosmetic */ }
 }
 
-function lobbyTeamLabel(team) {
+function lobbyTeamLabel(team: LobbyTeam): string {
   if (team === 'alpha') return 'Team Alpha';
   if (team === 'bravo') return 'Team Bravo';
   return 'Spectator';
 }
 
-function playerId() {
+function playerId(): string {
   let id = stored(PLAYER_ID_KEY, '');
   if (/^[a-zA-Z0-9_-]{8,48}$/.test(id)) return id;
   const uuid = globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function'
@@ -252,21 +401,26 @@ function playerId() {
   return id;
 }
 
-function bindMenuSelect(control, { beforeOpen = null } = {}) {
-  const trigger = control.querySelector('[data-select-trigger]');
-  const list = control.querySelector('[role="listbox"]');
-  const valueLabel = trigger.querySelector('[data-select-value]');
-  const metaLabel = trigger.querySelector('[data-select-meta]');
-  const triggerThumb = trigger.querySelector('[data-select-thumb]');
-  const options = [...control.querySelectorAll('[role="option"]')];
+function bindMenuSelect(
+  control: MenuSelectElement,
+  { beforeOpen = null }: {
+    beforeOpen?: ((control: MenuSelectElement) => void) | null;
+  } = {},
+): MenuSelectController {
+  const trigger = requiredElement<HTMLButtonElement>(control, '[data-select-trigger]');
+  const list = requiredElement<HTMLElement>(control, '[role="listbox"]');
+  const valueLabel = requiredElement<HTMLElement>(trigger, '[data-select-value]');
+  const metaLabel = trigger.querySelector<HTMLElement>('[data-select-meta]');
+  const triggerThumb = trigger.querySelector<HTMLElement>('[data-select-thumb]');
+  const options = [...control.querySelectorAll<HTMLButtonElement>('[role="option"]')];
   let disabled = false;
 
-  function selectedIndex() {
+  function selectedIndex(): number {
     const index = options.findIndex((option) => option.dataset.value === control.dataset.value);
     return index < 0 ? 0 : index;
   }
 
-  function setValue(nextValue, emit = false) {
+  function setValue(nextValue: unknown, emit = false): void {
     const option = options.find((item) => item.dataset.value === String(nextValue));
     if (!option) return;
     control.dataset.value = option.dataset.value;
@@ -285,14 +439,14 @@ function bindMenuSelect(control, { beforeOpen = null } = {}) {
     if (emit) control.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  function close(restoreFocus = false) {
+  function close(restoreFocus = false): void {
     if (!control.classList.contains('open')) return;
     control.classList.remove('open');
     trigger.setAttribute('aria-expanded', 'false');
     if (restoreFocus) trigger.focus();
   }
 
-  function positionList() {
+  function positionList(): void {
     const rect = trigger.getBoundingClientRect();
     const margin = 10;
     const viewportWidth = document.documentElement.clientWidth;
@@ -319,7 +473,7 @@ function bindMenuSelect(control, { beforeOpen = null } = {}) {
     control.classList.toggle('drop-up', !openBelow);
   }
 
-  function open(index = selectedIndex()) {
+  function open(index = selectedIndex()): void {
     if (disabled) return;
     if (beforeOpen) beforeOpen(control);
     control.classList.add('open');
@@ -333,12 +487,12 @@ function bindMenuSelect(control, { beforeOpen = null } = {}) {
   Object.defineProperty(control, 'value', {
     configurable: true,
     get: () => control.dataset.value,
-    set: (nextValue) => setValue(nextValue),
+    set: (nextValue: unknown) => setValue(nextValue),
   });
   Object.defineProperty(control, 'disabled', {
     configurable: true,
     get: () => disabled,
-    set: (nextDisabled) => {
+    set: (nextDisabled: unknown) => {
       disabled = !!nextDisabled;
       control.classList.toggle('disabled', disabled);
       control.setAttribute('aria-disabled', String(disabled));
@@ -392,22 +546,21 @@ function bindMenuSelect(control, { beforeOpen = null } = {}) {
   return { close, positionList };
 }
 
-function defaultSignalUrl(lan = false) {
+function defaultSignalUrl(): string {
   return resolveSignalUrl({
     configured: import.meta.env.VITE_SIGNAL_URL,
-    lan,
     protocol: location.protocol,
     hostname: location.hostname,
   });
 }
 
-function defaultRankedUrl() {
+function defaultRankedUrl(): string {
   const configured = import.meta.env.VITE_MATCH_SERVICE_URL;
   if (configured) return configured;
   return `${location.protocol}//${location.hostname}:8790`;
 }
 
-async function iceServers(mode) {
+async function iceServers(mode: string): Promise<IceConfiguration> {
   const configured = import.meta.env.VITE_ICE_CONFIG_URL;
   const endpoint = configured || (location.protocol === 'https:' ? '/api/ice' : '');
   return loadIceConfiguration({ mode, endpoint });
@@ -425,7 +578,7 @@ export function createPlayMenu({
   isCamoAllowed = () => true,
   getCamoName = (camo) => camo || 'Factory',
   getVehicleName = (specId) => specId,
-} = {}) {
+}: PlayMenuOptions): PlayMenuRuntime {
   ensureFonts();
   ensureStyle(STYLE_ID, CSS);
   const root = document.createElement('div');
@@ -524,25 +677,25 @@ export function createPlayMenu({
     </div><div class="rank-profile"></div><div class="ladder"></div></section></div>`;
   document.body.appendChild(root);
 
-  const panel = root.querySelector('.panel');
-  const closeBtn = root.querySelector('.close');
-  const room = root.querySelector('.room');
-  const ranked = root.querySelector('.ranked');
-  const lobbyEl = root.querySelector('.lobby');
-  const eyebrow = root.querySelector('.eyebrow');
-  const menuTitle = root.querySelector('h2');
-  const menuLead = root.querySelector('.lead');
-  const status = root.querySelector('.status');
-  const nameInput = root.querySelector('[data-field="name"]');
-  const signalInput = root.querySelector('[data-field="signal"]');
-  const codeInput = root.querySelector('[data-field="code"]');
-  const createSizeSelect = root.querySelector('[data-field="create-size"]');
-  const teamSelect = root.querySelector('[data-control="team"]');
-  const sizeSelect = root.querySelector('[data-control="size"]');
-  const mapSelect = root.querySelector('[data-control="map"]');
-  const ruleButtons = [...root.querySelectorAll('[data-game-mode]')];
-  const mapList = mapSelect.querySelector('[role="listbox"]');
-  const mapById = new Map();
+  const panel = requiredElement<HTMLElement>(root, '.panel');
+  const closeBtn = requiredElement<HTMLButtonElement>(root, '.close');
+  const room = requiredElement<HTMLElement>(root, '.room');
+  const ranked = requiredElement<HTMLElement>(root, '.ranked');
+  const lobbyEl = requiredElement<HTMLElement>(root, '.lobby');
+  const eyebrow = requiredElement<HTMLElement>(root, '.eyebrow');
+  const menuTitle = requiredElement<HTMLHeadingElement>(root, 'h2');
+  const menuLead = requiredElement<HTMLParagraphElement>(root, '.lead');
+  const status = requiredElement<HTMLElement>(root, '.status');
+  const nameInput = requiredElement<HTMLInputElement>(root, '[data-field="name"]');
+  const signalInput = requiredElement<HTMLInputElement>(root, '[data-field="signal"]');
+  const codeInput = requiredElement<HTMLInputElement>(root, '[data-field="code"]');
+  const createSizeSelect = requiredElement<MenuSelectElement>(root, '[data-field="create-size"]');
+  const teamSelect = requiredElement<MenuSelectElement>(root, '[data-control="team"]');
+  const sizeSelect = requiredElement<MenuSelectElement>(root, '[data-control="size"]');
+  const mapSelect = requiredElement<MenuSelectElement>(root, '[data-control="map"]');
+  const ruleButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-game-mode]')];
+  const mapList = requiredElement<HTMLElement>(mapSelect, '[role="listbox"]');
+  const mapById = new Map<string, PlayMenuMap>();
   const battlefieldCount = maps.filter((map) => map.id !== 'random').length;
   for (const map of maps) {
     mapById.set(map.id, map);
@@ -569,42 +722,43 @@ export function createPlayMenu({
     option.append(thumb, copy);
     mapList.appendChild(option);
   }
-  const menuBindings = [];
-  function closeMenuSelects(except = null) {
+  const menuBindings: MenuBinding[] = [];
+  function closeMenuSelects(except: MenuSelectElement | null = null): void {
     for (const binding of menuBindings) {
       if (binding.control !== except) binding.controller.close();
     }
   }
-  function bindRoomMenu(control) {
-    const binding = { control, controller: null };
-    binding.controller = bindMenuSelect(control, { beforeOpen: closeMenuSelects });
+  function bindRoomMenu(control: MenuSelectElement): MenuSelectController {
+    const controller = bindMenuSelect(control, { beforeOpen: closeMenuSelects });
+    const binding: MenuBinding = { control, controller };
     menuBindings.push(binding);
-    return binding.controller;
+    return controller;
   }
   bindRoomMenu(createSizeSelect);
   bindRoomMenu(teamSelect);
   bindRoomMenu(sizeSelect);
   bindRoomMenu(mapSelect);
-  const battlefieldCard = root.querySelector('.battlefield-card');
-  const battlefieldArt = root.querySelector('.battlefield-art');
+  const battlefieldCard = requiredElement<HTMLElement>(root, '.battlefield-card');
+  const battlefieldArt = requiredElement<HTMLElement>(root, '.battlefield-art');
   battlefieldArt.appendChild(createRandomMapMosaic(maps, { showCount: true }));
-  const battlefieldName = root.querySelector('[data-map-name]');
-  const battlefieldRole = root.querySelector('[data-map-role]');
-  const playersEl = root.querySelector('.players');
-  const codeEl = root.querySelector('.code');
-  const readyBtn = root.querySelector('[data-action="ready"]');
-  const startBtn = root.querySelector('[data-action="start"]');
-  const leaveBtn = root.querySelector('[data-action="leave"]');
-  const createBtn = root.querySelector('[data-action="create"]');
-  const joinBtn = root.querySelector('[data-action="join"]');
-  const note = root.querySelector('.note');
-  const rankedName = root.querySelector('[data-ranked="name"]');
-  const rankedService = root.querySelector('[data-ranked="service"]');
-  const rankedSize = root.querySelector('[data-ranked="size"]');
-  const rankedQueueBtn = root.querySelector('[data-ranked="queue"]');
-  const rankedCancelBtn = root.querySelector('[data-ranked="cancel"]');
-  const rankedProfile = root.querySelector('.rank-profile');
-  const ladder = root.querySelector('.ladder');
+  const battlefieldName = requiredElement<HTMLElement>(root, '[data-map-name]');
+  const battlefieldRole = requiredElement<HTMLElement>(root, '[data-map-role]');
+  const playersEl = requiredElement<HTMLElement>(root, '.players');
+  const codeEl = requiredElement<HTMLElement>(root, '.code');
+  const readyBtn = requiredElement<HTMLButtonElement>(root, '[data-action="ready"]');
+  const startBtn = requiredElement<HTMLButtonElement>(root, '[data-action="start"]');
+  const leaveBtn = requiredElement<HTMLButtonElement>(root, '[data-action="leave"]');
+  const createBtn = requiredElement<HTMLButtonElement>(root, '[data-action="create"]');
+  const joinBtn = requiredElement<HTMLButtonElement>(root, '[data-action="join"]');
+  const copyBtn = requiredElement<HTMLButtonElement>(root, '[data-action="copy"]');
+  const note = requiredElement<HTMLElement>(root, '.note');
+  const rankedName = requiredElement<HTMLInputElement>(root, '[data-ranked="name"]');
+  const rankedService = requiredElement<HTMLInputElement>(root, '[data-ranked="service"]');
+  const rankedSize = requiredElement<HTMLSelectElement>(root, '[data-ranked="size"]');
+  const rankedQueueBtn = requiredElement<HTMLButtonElement>(root, '[data-ranked="queue"]');
+  const rankedCancelBtn = requiredElement<HTMLButtonElement>(root, '[data-ranked="cancel"]');
+  const rankedProfile = requiredElement<HTMLElement>(root, '.rank-profile');
+  const ladder = requiredElement<HTMLElement>(root, '.ladder');
   const defaultDocumentTitle = document.documentElement.dataset.baseTitle || document.title;
   const defaultEyebrow = eyebrow.textContent;
   const defaultMenuTitle = menuTitle.textContent;
@@ -621,22 +775,25 @@ export function createPlayMenu({
   rankedSize.value = createSizeSelect.value;
   rankedService.value = defaultRankedUrl();
 
-  let mode = null;
-  let session = null;
-  let roomIce = null;
-  let state = null;
-  let role = null;
-  let unsubscribeState = null;
+  let mode: PlayMode | null = null;
+  let session: RoomSession | null = null;
+  let roomIce: IceConfiguration | null = null;
+  let state: SerializedLobby | null = null;
+  let role: RoomRole | null = null;
+  let unsubscribeState: (() => void) | null = null;
   let handedOff = false;
-  let activeRoom = null;
+  let activeRoom: ActiveRoomAdapter | null = null;
   let connecting = false;
-  let rankedClient = null;
-  let rankedTicket = null;
-  let rankedAbort = null;
-  let invitedHostName = null;
+  let rankedClient: RankedServiceClient | null = null;
+  let rankedTicket: RankedQueueTicket | null = null;
+  let rankedAbort: AbortController | null = null;
+  let invitedHostName: string | null = null;
   let selectedGameMode = normalizeGameMode(stored(GAME_MODE_KEY, 'standard'));
 
-  function showSelectedGameMode(next = selectedGameMode, { fromLobby = false } = {}) {
+  function showSelectedGameMode(
+    next: unknown = selectedGameMode,
+    { fromLobby = false }: { fromLobby?: boolean } = {},
+  ): void {
     selectedGameMode = normalizeGameMode(next);
     remember(GAME_MODE_KEY, selectedGameMode);
     for (const button of ruleButtons) {
@@ -647,7 +804,7 @@ export function createPlayMenu({
   }
   showSelectedGameMode();
 
-  function adoptRoomConnection(connection) {
+  function adoptRoomConnection(connection: PrivateRoomConnection): void {
     session = connection.session;
     role = connection.role;
     roomIce = connection.ice;
@@ -667,22 +824,25 @@ export function createPlayMenu({
       setStatus('The host closed this room.', true);
       onNetworkClose(reason);
     },
-    onError: (error) => setStatus(error?.message || String(error), true),
+    onError: (error) => setStatus(errorMessage(error), true),
   });
 
-  function hostNameFromRoom(value) {
-    const explicit = normalizePlayerName(value?.hostName);
+  function hostNameFromRoom(value: unknown): string {
+    if (!isRecord(value)) return '';
+    const explicit = normalizePlayerName(value.hostName);
     if (explicit) return explicit;
-    const hostId = value?.hostId;
-    const players = Array.isArray(value?.players) ? value.players : value?.peers;
+    const hostId = value.hostId;
+    const players = Array.isArray(value.players) ? value.players : value.peers;
     const host = Array.isArray(players)
-      ? players.find((player) =>
-        player?.isHost || player?.id === hostId || player?.peerId === hostId)
+      ? players.find((player) => isRecord(player) && (
+        player.isHost === true || player.id === hostId || player.peerId === hostId))
       : null;
-    return normalizePlayerName(host?.name || host?.player?.name);
+    if (!isRecord(host)) return '';
+    const nestedPlayer = isRecord(host.player) ? host.player : null;
+    return normalizePlayerName(host.name || nestedPlayer?.name);
   }
 
-  function presentInvitation(hostName, roomCode, connected = false) {
+  function presentInvitation(hostName: unknown, roomCode: unknown, connected = false): void {
     const resolvedHost = normalizePlayerName(hostName);
     if (resolvedHost) invitedHostName = resolvedHost;
     const code = normalizeRoomCode(roomCode);
@@ -695,7 +855,7 @@ export function createPlayMenu({
     document.title = menuTitle.textContent + ' — Claude of Tanks';
   }
 
-  function resetInvitation() {
+  function resetInvitation(): void {
     invitedHostName = null;
     root.classList.remove('invite-entry');
     eyebrow.textContent = defaultEyebrow;
@@ -704,17 +864,19 @@ export function createPlayMenu({
     if (document.title.startsWith('Join ')) document.title = defaultDocumentTitle;
   }
 
-  function setStatus(message, error = false) {
-    status.textContent = message || '';
+  function setStatus(message: unknown, error = false): void {
+    status.textContent = message == null ? '' : String(message);
     status.classList.toggle('err', !!error);
   }
 
-  function notifyLobbyChange(next = state) {
+  function notifyLobbyChange(next: SerializedLobby | null = state): void {
     if (typeof onLobbyChange !== 'function' || activeRoom) return;
     try {
+      const currentPlayerId = ownId();
+      if (next && !currentPlayerId) return;
       onLobbyChange(next ? {
         state: next,
-        playerId: ownId(),
+        playerId: currentPlayerId || '',
         role: role || 'client',
       } : null);
     } catch (error) {
@@ -722,33 +884,45 @@ export function createPlayMenu({
     }
   }
 
-  function setClosePurpose(inRoom) {
+  function setClosePurpose(inRoom: boolean): void {
     const label = inRoom ? 'Back to garage — stay in room' : 'Close';
     closeBtn.setAttribute('aria-label', label);
     closeBtn.title = label;
   }
 
-  function ownId() {
-    return activeRoom?.playerId || (session && session.roomInfo && session.roomInfo.peerId);
+  function ownId(): string | undefined {
+    return activeRoom?.playerId || session?.roomInfo.peerId;
   }
 
-  function command(command) {
+  function command(command: Record<string, unknown>): void {
     try {
-      const result = activeRoom
-        ? activeRoom.command(command)
-        : role === 'host' ? session.command(command) : session.submit(command);
-      Promise.resolve(result).catch((error) => setStatus(error.message, true));
-    } catch (error) { setStatus(error.message, true); }
+      if (activeRoom) {
+        Promise.resolve(activeRoom.command(command))
+          .catch((error: unknown) => setStatus(errorMessage(error), true));
+        return;
+      }
+      const activeSession = session;
+      if (!activeSession) throw new Error('Room session is unavailable');
+      const result = role === 'host' && 'command' in activeSession
+        ? activeSession.command(command)
+        : 'submit' in activeSession
+          ? activeSession.submit(command)
+          : Promise.reject(new Error('Room command channel is unavailable'));
+      Promise.resolve(result).catch((error: unknown) => setStatus(errorMessage(error), true));
+    } catch (error: unknown) { setStatus(errorMessage(error), true); }
   }
 
-  function setConnecting(next) {
+  function setConnecting(next: boolean): void {
     connecting = next;
     const unavailable = !signalInput.value.trim();
     createBtn.disabled = next || unavailable;
     joinBtn.disabled = next || unavailable || codeInput.value.length !== 6;
   }
 
-  function closeCurrentSession(reason = 'menu_closed', { skipTransportClose = false } = {}) {
+  function closeCurrentSession(
+    reason = 'menu_closed',
+    { skipTransportClose = false }: { skipTransportClose?: boolean } = {},
+  ): void {
     if (unsubscribeState) unsubscribeState();
     unsubscribeState = null;
     if (activeRoom && !skipTransportClose) activeRoom.leave(reason);
@@ -778,7 +952,7 @@ export function createPlayMenu({
     rankedCancelBtn.disabled = true;
   }
 
-  function renderLeaderboard(players = []) {
+  function renderLeaderboard(players: LeaderboardPlayer[] = []): void {
     ladder.textContent = '';
     for (const player of players.slice(0, 8)) {
       const row = document.createElement('div');
@@ -796,25 +970,25 @@ export function createPlayMenu({
     }
   }
 
-  async function refreshRanked() {
+  async function refreshRanked(): Promise<void> {
     const { createRankedServiceClient } = await loadRankedServiceModule();
     rankedClient = createRankedServiceClient({ url: rankedService.value.trim() });
     const identity = rankedClient.identity();
     if (identity) {
       try {
         const profile = await rankedClient.profile(identity.playerId);
-        rankedProfile.textContent = `${profile.rank} · ${profile.rating} ELO · ${profile.matches} matches`;
-      } catch (error) {
-        if (error.status !== 404) throw error;
+        rankedProfile.textContent = `${recordText(profile, 'rank', 'Unranked')} · ${recordText(profile, 'rating', '1000')} ELO · ${recordText(profile, 'matches', '0')} matches`;
+      } catch (error: unknown) {
+        if (!isRecord(error) || error.status !== 404) throw error;
         rankedClient.clearIdentity();
         rankedProfile.textContent = 'New commanders begin at 1000 ELO';
       }
     } else rankedProfile.textContent = 'New commanders begin at 1000 ELO';
     const board = await rankedClient.leaderboard(8);
-    renderLeaderboard(board.players);
+    renderLeaderboard(leaderboardPlayers(board.players));
   }
 
-  async function queueRanked() {
+  async function queueRanked(): Promise<void> {
     if (rankedTicket) return;
     const selection = getSelection();
     const name = rankedName.value.trim().replace(/\s+/g, ' ').slice(0, 24);
@@ -825,27 +999,33 @@ export function createPlayMenu({
     rankedQueueBtn.disabled = true;
     rankedCancelBtn.disabled = false;
     rankedAbort = new AbortController();
-    rankedTicket = await rankedClient.join({
+    const activeRankedClient = rankedClient;
+    if (!activeRankedClient) throw new Error('Ranked service is unavailable');
+    rankedTicket = await activeRankedClient.join({
       name,
       specId: selection.specId,
       equipment: selection.equipment,
       camo: selection.camo,
       teamSize: Number(rankedSize.value),
     });
-    setStatus(`Searching ${rankedSize.value}v${rankedSize.value} near ${rankedTicket.rating} ELO…`);
-    const state = rankedTicket.status === 'matched' ? rankedTicket : await rankedTicket.wait({
-      signal: rankedAbort.signal,
-      onUpdate: (next) => setStatus(`Searching near ${next.rating} ELO…`),
+    const activeTicket = rankedTicket;
+    const activeAbort = rankedAbort;
+    setStatus(`Searching ${rankedSize.value}v${rankedSize.value} near ${recordText(activeTicket, 'rating', '1000')} ELO…`);
+    const queueState: RankedQueueState = activeTicket.status === 'matched'
+      ? { ...activeTicket, status: 'matched' }
+      : await activeTicket.wait({
+      signal: activeAbort.signal,
+      onUpdate: (next) => setStatus(`Searching near ${recordText(next, 'rating', '1000')} ELO…`),
     });
-    if (rankedAbort.signal.aborted) return;
+    if (activeAbort.signal.aborted) return;
     handedOff = true;
     try {
       // Let the battle owner mount its opaque transition synchronously before
       // this menu disappears. A cold dedicated-client import used to expose
       // one or more garage frames between these two operations.
-      const handoff = onRankedStart && onRankedStart({
-        serviceUrl: rankedClient.webSocketUrl,
-        state,
+      const handoff = onRankedStart?.({
+        serviceUrl: activeRankedClient.webSocketUrl,
+        state: queueState,
       });
       hide(false);
       await Promise.resolve(handoff);
@@ -856,28 +1036,43 @@ export function createPlayMenu({
     }
   }
 
-  function beginNetworkHandoff(next, nextRole = role) {
+  function beginNetworkHandoff(
+    next: SerializedLobby,
+    nextRole: RoomRole | null = role,
+  ): boolean {
     if (handedOff) return false;
+    const activeSession = session;
+    if (!activeSession || !nextRole) {
+      setStatus('Room session is unavailable.', true);
+      return false;
+    }
     handedOff = true;
     let start;
     try {
       // The callback's synchronous prefix mounts the opaque battle cover.
       // Invoke it before any more lobby DOM work and before closing the menu;
       // guest machines otherwise pay that work with the garage underneath.
-      start = Promise.resolve(onNetworkStart &&
-        onNetworkStart({ role: nextRole, session, lobbyState: next }));
-    } catch (error) {
+      start = Promise.resolve(onNetworkStart?.({
+        role: nextRole,
+        session: activeSession,
+        lobbyState: next,
+      }));
+    } catch (error: unknown) {
       handedOff = false;
-      setStatus(error.message, true);
+      setStatus(errorMessage(error), true);
       return false;
     }
     notifyLobbyChange(null);
     hide(false);
-    start.catch((error) => { handedOff = false; show(); setStatus(error.message, true); });
+    start.catch((error: unknown) => {
+      handedOff = false;
+      show();
+      setStatus(errorMessage(error), true);
+    });
     return true;
   }
 
-  function renderLobby(next) {
+  function renderLobby(next: SerializedLobby): void {
     state = next;
     const roomHostName = hostNameFromRoom(next);
     // Every browser carries the live room in its canonical URL. A guest can
@@ -910,7 +1105,7 @@ export function createPlayMenu({
     battlefieldArt.classList.toggle('is-random', randomBattlefield);
     battlefieldArt.style.backgroundImage = randomBattlefield
       ? 'none'
-      : `url("${(selectedMap.hero || selectedMap.thumb).replace(/"/g, '%22')}")`;
+      : `url("${String(selectedMap?.hero || selectedMap?.thumb || '').replace(/"/g, '%22')}")`;
     battlefieldRole.textContent = role === 'host' ? 'Host selectable' : 'Selected by host';
     battlefieldCard.classList.toggle('guest', role !== 'host');
     sizeSelect.value = String(next.teamSize || 1);
@@ -1005,7 +1200,7 @@ export function createPlayMenu({
       fillNote + relayNote;
   }
 
-  async function connectRoom(kind) {
+  async function connectRoom(kind: 'create' | 'join'): Promise<void> {
     if (connecting || session || privateRoomConnection.connecting || privateRoomConnection.current) return;
     const selection = { ...getSelection(), gameMode: selectedGameMode };
     const name = normalizePlayerName(nameInput.value) || automaticPlayerName(ownPlayerId);
@@ -1027,7 +1222,7 @@ export function createPlayMenu({
       }
       const connection = await privateRoomConnection.connect({
         kind,
-        mode,
+        mode: mode === 'lan' ? 'lan' : 'private',
         signalUrl,
         roomCode: kind === 'join' ? codeInput.value : undefined,
         player,
@@ -1055,8 +1250,8 @@ export function createPlayMenu({
     }
   }
 
-  function selectMode(nextMode) {
-    const button = root.querySelector(`.mode[data-mode="${nextMode}"]`);
+  function selectMode(nextMode: PlayMode): void {
+    const button = root.querySelector<HTMLButtonElement>(`.mode[data-mode="${nextMode}"]`);
     if (!button) return;
     closeMenuSelects();
     if (nextMode === 'solo') {
@@ -1071,12 +1266,12 @@ export function createPlayMenu({
       room.classList.remove('show');
       ranked.classList.add('show');
       setStatus('Server-authoritative matchmaking. Your rating is owned by the match service.');
-      refreshRanked().catch((error) => setStatus(error.message, true));
+      refreshRanked().catch((error: unknown) => setStatus(errorMessage(error), true));
       return;
     }
     ranked.classList.remove('show');
     room.classList.add('show');
-    signalInput.value = defaultSignalUrl(mode === 'lan');
+    signalInput.value = defaultSignalUrl();
     setConnecting(false);
     if (!signalInput.value) {
       setStatus(mode === 'lan'
@@ -1088,8 +1283,11 @@ export function createPlayMenu({
         : 'Create a code or join an existing room.');
     }
   }
-  root.querySelectorAll('.mode').forEach((button) => button.addEventListener('click', () => {
-    selectMode(button.dataset.mode);
+  root.querySelectorAll<HTMLButtonElement>('.mode').forEach((button) => button.addEventListener('click', () => {
+    const requested = button.dataset.mode;
+    if (requested === 'solo' || requested === 'private' || requested === 'lan' || requested === 'ranked') {
+      selectMode(requested);
+    }
   }));
   for (const button of ruleButtons) {
     button.addEventListener('click', () => {
@@ -1102,18 +1300,20 @@ export function createPlayMenu({
   createBtn.addEventListener('click', async () => {
     setStatus('Creating room…');
     try { await connectRoom('create'); setStatus('Room ready. Copy the invite link.'); }
-    catch (error) { setStatus(error.message, true); }
+    catch (error: unknown) { setStatus(errorMessage(error), true); }
   });
   joinBtn.addEventListener('click', async () => {
     setStatus('Joining room…');
     try { await connectRoom('join'); setStatus('Connected. Choose a team and ready up.'); }
-    catch (error) { setStatus(error.message, true); }
+    catch (error: unknown) { setStatus(errorMessage(error), true); }
   });
   rankedQueueBtn.addEventListener('click', async () => {
     setStatus('Joining ranked queue…');
     try { await queueRanked(); }
-    catch (error) {
-      if (error.name !== 'AbortError') setStatus(error.message, true);
+    catch (error: unknown) {
+      if (!(error instanceof Error) || error.name !== 'AbortError') {
+        setStatus(errorMessage(error), true);
+      }
       rankedTicket = null;
       rankedQueueBtn.disabled = false;
       rankedCancelBtn.disabled = true;
@@ -1121,13 +1321,13 @@ export function createPlayMenu({
   });
   rankedCancelBtn.addEventListener('click', async () => {
     if (rankedAbort) rankedAbort.abort();
-    try { if (rankedTicket) await rankedTicket.cancel(); } catch (_) { /* queue may have matched */ }
+    try { if (rankedTicket) await rankedTicket.cancel(); } catch { /* queue may have matched */ }
     rankedTicket = null;
     rankedQueueBtn.disabled = false;
     rankedCancelBtn.disabled = true;
     setStatus('Ranked search cancelled.');
   });
-  root.querySelector('[data-action="copy"]').addEventListener('click', async () => {
+  copyBtn.addEventListener('click', async () => {
     if (!state) return;
     const inviteUrl = createRoomInviteUrl({
       roomCode: state.roomCode,
@@ -1138,7 +1338,7 @@ export function createPlayMenu({
     try {
       await navigator.clipboard.writeText(inviteUrl);
       setStatus('Invite link copied. Send it to another player.');
-    } catch (_) {
+    } catch {
       setStatus(`Invite link: ${inviteUrl}`);
     }
   });
@@ -1184,20 +1384,25 @@ export function createPlayMenu({
     rankedSize.value = createSizeSelect.value;
   });
   signalInput.addEventListener('input', () => setConnecting(connecting));
-  root.querySelector('.close').addEventListener('click', () => hide());
+  closeBtn.addEventListener('click', () => hide());
   root.addEventListener('pointerdown', (event) => {
-    if (!event.target.closest('.menu-select')) closeMenuSelects();
+    if (!(event.target instanceof Element) || !event.target.closest('.menu-select')) {
+      closeMenuSelects();
+    }
   });
   panel.addEventListener('scroll', () => closeMenuSelects(), { passive: true });
   const closeMenusOnResize = () => closeMenuSelects();
   window.addEventListener('resize', closeMenusOnResize, { passive: true });
   root.addEventListener('click', (event) => { if (event.target === root) hide(); });
 
-  function show(initialMode = null, invite = null) {
+  function show(
+    initialMode: PlayMode | null = null,
+    invite: PlayMenuInvite | null = null,
+  ): void {
     if (showCurrentRoom()) return;
     root.classList.add('show');
     if (initialMode) selectMode(initialMode);
-    const inviteCode = normalizeRoomCode(invite && invite.roomCode);
+    const inviteCode = normalizeRoomCode(invite?.roomCode);
     if (inviteCode.length !== 6 || !invite?.autoJoin || session || connecting) return;
     codeInput.value = inviteCode;
     presentInvitation(invite.hostName, inviteCode, false);
@@ -1207,9 +1412,9 @@ export function createPlayMenu({
       : 'Joining invited game…');
     connectRoom('join')
       .then(() => setStatus('Connected. Choose a team and ready up.'))
-      .catch((error) => setStatus(error.message, true));
+      .catch((error: unknown) => setStatus(errorMessage(error), true));
   }
-  function hide(closeSession = true) {
+  function hide(closeSession = true): void {
     closeMenuSelects();
     root.classList.remove('show');
     const parkedInGarage = !!(session && state?.phase === 'waiting');
@@ -1217,14 +1422,14 @@ export function createPlayMenu({
       closeCurrentSession('menu_closed');
     }
   }
-  function dispose() {
+  function dispose(): void {
     handedOff = false;
     if (activeRoom || session) closeCurrentSession('menu_disposed');
     else hide(false);
     window.removeEventListener('resize', closeMenusOnResize);
     root.remove();
   }
-  function attachActiveRoom(adapter) {
+  function attachActiveRoom(adapter: ActiveRoomAdapter): void {
     if (!adapter || !adapter.state || !adapter.playerId ||
         typeof adapter.command !== 'function' || typeof adapter.leave !== 'function') {
       throw new TypeError('active room adapter is incomplete');
@@ -1235,17 +1440,17 @@ export function createPlayMenu({
     session = null;
     activeRoom = adapter;
     role = adapter.role;
-    mode = adapter.state.mode || 'private';
+    mode = adapter.state.mode === 'lan' ? 'lan' : 'private';
     handedOff = false;
     renderLobby(adapter.state);
   }
-  function updateActiveRoom(next) {
+  function updateActiveRoom(next: SerializedLobby): boolean {
     if (!activeRoom || !next) return false;
     activeRoom.state = next;
     renderLobby(next);
     return true;
   }
-  function detachActiveRoom() {
+  function detachActiveRoom(): void {
     activeRoom = null;
     session = null;
     state = null;
@@ -1256,7 +1461,7 @@ export function createPlayMenu({
     root.classList.remove('lobby-active');
     setClosePurpose(false);
   }
-  function showCurrentRoom() {
+  function showCurrentRoom(): boolean {
     const next = activeRoom?.state || state;
     if (!next || (!activeRoom && !session)) return false;
     ranked.classList.remove('show');
@@ -1266,7 +1471,7 @@ export function createPlayMenu({
     syncGarageSelection();
     return true;
   }
-  function syncGarageSelection() {
+  function syncGarageSelection(): boolean {
     if (!session || activeRoom || handedOff || state?.phase !== 'waiting') return false;
     const me = state.players?.find((player) => player.id === ownId());
     if (!me || me.ready) return false;

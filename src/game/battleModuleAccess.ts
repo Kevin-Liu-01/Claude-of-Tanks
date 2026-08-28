@@ -1,4 +1,4 @@
-type PlayMenuModule = typeof import('../ui/playMenu.js');
+type PlayMenuModule = typeof import('../ui/playMenu.ts');
 type BrowserBattleBridgeModule = typeof import('../net/browserBattleBridge.ts');
 type NetworkStatusModule = typeof import('../ui/networkStatus.ts');
 type BrowserInputRuntimeModule = typeof import('../net/browserInputRuntime.ts');
@@ -29,7 +29,7 @@ export interface BattleModuleAccess {
 }
 
 const DEFAULT_LOADERS: BattleModuleLoaders = {
-  playMenu: async () => await import('../ui/playMenu.js'),
+  playMenu: async () => await import('../ui/playMenu.ts'),
   networkBattle: async () => await Promise.all([
     import('../net/browserBattleBridge.ts'),
     import('../ui/networkStatus.ts'),

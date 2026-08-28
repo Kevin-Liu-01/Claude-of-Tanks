@@ -215,7 +215,7 @@ assert.ok(failed.calls.some(([name, reason]) =>
   name === 'signal-close' && reason === 'connection_failed'));
 
 assert.deepEqual(host.errors, []);
-const playMenuSource = await readFile(new URL('../ui/playMenu.js', import.meta.url), 'utf8');
+const playMenuSource = await readFile(new URL('../ui/playMenu.ts', import.meta.url), 'utf8');
 assert.match(playMenuSource, /createPrivateRoomConnectionRuntime\(\{/,
   'the play menu delegates private and LAN acquisition to the typed lifecycle owner');
 assert.doesNotMatch(playMenuSource, /new RoomSignalingClient|new PrivateRoom(?:Host|Client)Session/,
