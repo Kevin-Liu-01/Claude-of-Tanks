@@ -91,7 +91,7 @@ authority's completed calculation; they do not run a second approximation.
 
 Relevant implementation:
 
-- src/sim/armor.js
+- src/sim/armor.ts
 - src/sim/ballistics.ts
 - src/ui/shotInfo.js
 - src/game/killcam.js

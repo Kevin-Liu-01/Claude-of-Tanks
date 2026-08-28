@@ -6,7 +6,12 @@
 // visibility; direct reticle contact only supplies the ordinary HUD marker.
 
 import * as THREE from 'three';
-import { queryAimArmor, tankPoseFromState } from '../sim/armor.js';
+import { queryAimArmor, tankPoseFromState } from '../sim/armor.ts';
+import type {
+  ArmorCollisionCell,
+  ArmorModel,
+  ArmorPoseState,
+} from '../sim/armor.ts';
 import { estimatePenRatio } from '../sim/damage.ts';
 import type { AimArmorInfo, DamageShellSpec } from '../sim/damage.ts';
 
@@ -22,27 +27,12 @@ const NEUTRAL = new THREE.Color(0x66737f);
 const _color = new THREE.Color();
 const _world = new THREE.Vector3();
 const _dir = new THREE.Vector3();
-const _pose = { pos: new THREE.Vector3() };
+const _pose = {
+  pos: new THREE.Vector3(), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
+};
 
-interface ArmorOverlayFace {
-  indices: readonly number[];
-  normal: readonly number[];
-  center: number[];
-  internal?: boolean;
-}
-
-interface ArmorOverlayCell {
-  vertices: readonly (readonly number[])[];
-  faces?: readonly ArmorOverlayFace[];
-}
-
-export interface ArmorOverlayModel {
-  collisionShells?: {
-    hull?: readonly ArmorOverlayCell[];
-    turret?: readonly ArmorOverlayCell[];
-  };
-  [key: string]: unknown;
-}
+type ArmorOverlayCell = ArmorCollisionCell;
+export type ArmorOverlayModel = ArmorModel;
 
 interface ArmorOverlayVisual {
   root: THREE.Object3D;
@@ -50,7 +40,7 @@ interface ArmorOverlayVisual {
 
 export interface ArmorOverlayTarget {
   id: string;
-  state?: unknown;
+  state?: ArmorPoseState;
   combat?: {
     destroyed?: boolean;
     eraSpent?: Set<string>;
@@ -60,7 +50,7 @@ export interface ArmorOverlayTarget {
 }
 
 interface ArmorOverlaySample {
-  center: number[];
+  center: readonly number[];
   offset: number;
 }
 

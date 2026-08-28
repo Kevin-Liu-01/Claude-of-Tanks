@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { queryAimArmor, tankPoseFromState, traceTank } from '../sim/armor.js';
+import { queryAimArmor, tankPoseFromState, traceTank } from '../sim/armor.ts';
+import type { ArmorModel, ArmorPoseState } from '../sim/armor.ts';
 import { estimatePenRatio } from '../sim/damage.ts';
 import type {
   DamageArmorPlate,
@@ -14,12 +15,8 @@ interface AimWorldHit {
   kind: string;
 }
 
-interface AimState {
-  pos: THREE.Vector3;
+interface AimState extends ArmorPoseState {
   speed: number;
-  yaw?: number;
-  turretYaw?: number;
-  gunPitch?: number;
   atGunLimit?: boolean;
   gunLimitSpec?: boolean;
 }
@@ -35,10 +32,7 @@ interface AimCombat {
 interface AimSpec {
   hydropneumaticAim?: boolean;
   dims: { heightM: number };
-  armor: {
-    turretless?: boolean;
-    boundingRadiusM: number;
-  };
+  armor: ArmorModel & { boundingRadiusM: number };
   gun: { shells: DamageShellSpec[] };
 }
 
@@ -149,7 +143,9 @@ export function createAimController(deps: AimControllerDependencies): AimControl
   const gunTarget = new THREE.Vector3();
   const targetDelta = new THREE.Vector3();
   const pathDir = new THREE.Vector3();
-  const aimPose = { pos: new THREE.Vector3() };
+  const aimPose = {
+    pos: new THREE.Vector3(), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
+  };
 
   let stickyUntilMs = -Infinity;
   let stickyDistM = 0;

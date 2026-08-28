@@ -1,5 +1,5 @@
 // Type 99 family armor envelopes. These are combat surfaces, not render-only
-// diagram art: sim/armor.js traces shells against these exact quads.
+// diagram art: sim/armor.ts traces shells against these exact quads.
 //
 // The original Type 99 rows inherited mbtArmor's generic two-box side view.
 // Both playable vehicles were later rebuilt around measured, multi-course

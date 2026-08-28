@@ -19,7 +19,7 @@ import { stepRolloverLifecycle } from '../sim/rollover.ts';
 import {
   createShell, stepShell, applyDispersion, guideShellToward, shellGravityMps2,
 } from '../sim/ballistics.ts';
-import { tankPoseFromState, traceTank } from '../sim/armor.js';
+import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
   selectShell, startPostShotReload, startReload, tickReload, isHeClass, ramDamage,

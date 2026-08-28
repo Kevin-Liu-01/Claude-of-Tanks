@@ -216,7 +216,7 @@ try {
 
         // armor-side references — trace the DECK RAY through the armor model
         // exactly like a plunging shell: straight down at the engine bay center.
-        const { traceTank } = await import('/src/sim/armor.js');
+        const { traceTank } = await import('/src/sim/armor.ts');
         const pose = {
           pos: new THREE.Vector3(0, 0, 0), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
         };

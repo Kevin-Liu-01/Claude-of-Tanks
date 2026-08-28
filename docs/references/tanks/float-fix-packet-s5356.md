@@ -43,7 +43,7 @@ src/vehicles/combatAnatomy.js only:
 - Rig-anchor law documented in the module comment.
 
 Coherence: receipts are rig-frame envelopes, so the sim turret frame
-(hull·T(turretPivot), src/sim/armor.js) anchored at the authored pivot puts
+(hull·T(turretPivot), src/sim/armor.ts) anchored at the authored pivot puts
 calibrated turret plates exactly on the visual turret; ERA seating
 (tankFactory seatEraBricks) subtracts the pivot the rig re-adds —
 world-invariant either way.

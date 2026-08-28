@@ -285,7 +285,7 @@ A client cannot submit a hit, damage value, or authoritative muzzle transform.
 ### 7.3 Armor and damage
 
 `src/sim/ballistics.ts` advances the shell and finds an impact candidate.
-`src/sim/armor.js` evaluates the struck plate, including slope, impact angle,
+`src/sim/armor.ts` evaluates the struck plate, including slope, impact angle,
 normalization, ricochet, overmatch, spaced layers, composites, ERA, and
 kinetic/chemical protection. `src/sim/damage.ts` applies vehicle, module, crew,
 fire, and destruction state.

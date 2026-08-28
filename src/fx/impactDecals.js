@@ -22,7 +22,7 @@
  *           soot blot, low alpha at the edge, no hole
  *  - scuff  blunt non-penetration: small chipped-paint dish, no hole
  *
- * Placement: uses the exact articulation-local contact emitted by armor.js
+ * Placement: uses the exact articulation-local contact emitted by armor.ts
  * (HitEvent.impactFrame / impactLocal*) so a hull, traversed turret, or
  * elevated gun-housing strike is parented directly to the rig that was
  * traced. Legacy events retain the hull-local envelope fallback. This keeps

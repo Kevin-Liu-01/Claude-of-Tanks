@@ -6,7 +6,7 @@ export {
 export {
   tankPoseFromState,
   traceTank,
-} from '../sim/armor.js';
+} from '../sim/armor.ts';
 export {
   selectShell,
   resolveShellHit,

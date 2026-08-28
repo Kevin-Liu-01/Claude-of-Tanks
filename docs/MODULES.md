@@ -9,7 +9,7 @@ pass (2026-07-31); sources of record are listed per section.
 
 | Concern | Owner | Consumers |
 | --- | --- | --- |
-| Closed armor cells / smooth module and crew volumes | `spec.armor` (authored zones finalized by `vehicles/combatAnatomy.js`) | `sim/armor.js` `traceTank`, Gallery diagnostics, scoped armor flashlight |
+| Closed armor cells / smooth module and crew volumes | `spec.armor` (authored zones finalized by `vehicles/combatAnatomy.js`) | `sim/armor.ts` `traceTank`, Gallery diagnostics, scoped armor flashlight |
 | Hit resolution (saves, damage, fire, detonation) | `src/sim/damage.ts` | `game/state.js` stepShells |
 | Module state machine (`ok`/`yellow`/`red`, repairs) | `src/sim/damage.ts` (`refreshModuleState`, `tickModuleRepairs`, `repairAllModules`) | state.js game loop, main.js repair-kit consumable |
 | State broadcasts | `module:state` bus event `{ id, module, state, repaired? }` emitted by `game/state.js` only | audio.js, hud.js alerts, (killcam/damage panel read CombatState directly) |

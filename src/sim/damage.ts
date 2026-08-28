@@ -22,7 +22,18 @@ import type {
   BallisticShellSpec,
   ShellEntity,
 } from './ballistics.ts';
-import { tankPoseFromState, traceTank, blastTargets } from './armor.js';
+import { tankPoseFromState, traceTank, blastTargets } from './armor.ts';
+import type {
+  AimArmorInfo as ArmorAimArmorInfo,
+  ArmorCrewIntersection,
+  ArmorIntersection,
+  ArmorModel,
+  ArmorModuleIntersection,
+  ArmorPlate,
+  ArmorPlateIntersection,
+  ArmorPoseState,
+  TankArmorPose,
+} from './armor.ts';
 import { CORE_MODULE_IDS, MODULE_DEFS, MODULE_IDS } from './moduleCatalog.ts';
 import type { ModuleId } from './moduleCatalog.ts';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
@@ -59,45 +70,8 @@ export interface DamageShell extends ShellEntity<DamageShellSpec> {
   freshPenRollMm?: number;
 }
 
-export interface EraProtection {
-  keReduction: number;
-  ceFlatMm: number;
-}
-
-export interface DamageArmorPlate {
-  name: string;
-  physicalMm: number;
-  keMm: number;
-  ceMm: number;
-  kind: 'main' | 'spaced' | 'external' | 'era' | string;
-  verts?: number[][];
-  era?: EraProtection | null;
-  moduleLink?: ModuleId | null;
-}
-
-interface DamageVolume {
-  module: ModuleId;
-}
-
-interface CrewVolume {
-  crew: string;
-}
-
-export interface DamageArmorModel {
-  hullPlates?: DamageArmorPlate[];
-  turretPlates?: DamageArmorPlate[];
-  modules?: DamageVolume[];
-  crew?: CrewVolume[];
-  turretPivot?: number[];
-  boundingRadiusM?: number;
-  collisionShells?: {
-    hull?: unknown[];
-    turret?: unknown[];
-  };
-  _seamMm?: number;
-  _seamPlate?: DamageArmorPlate | null;
-  __hullAabb?: ArmorAabb | null;
-}
+export type DamageArmorPlate = ArmorPlate;
+export type DamageArmorModel = ArmorModel;
 
 export interface DamageGunSpec {
   reloadS: number;
@@ -138,12 +112,7 @@ export interface CombatState {
   equipMults?: Partial<Record<string, number>>;
 }
 
-export interface DamageTankState {
-  pos: Vector3;
-  yaw: number;
-  visualPitch: number;
-  visualRoll: number;
-}
+export type DamageTankState = ArmorPoseState;
 
 export interface DamageTarget {
   id: string;
@@ -152,44 +121,10 @@ export interface DamageTarget {
   combat: CombatState;
 }
 
-interface ArmorHitBase {
-  t: number;
-  tExit?: number;
-  point: Vector3;
-  normal?: Vector3;
-  impactFrame?: string;
-  impactLocalX?: number;
-  impactLocalY?: number;
-  impactLocalZ?: number;
-  impactLocalNormalX?: number;
-  impactLocalNormalY?: number;
-  impactLocalNormalZ?: number;
-  impactLocalDirX?: number;
-  impactLocalDirY?: number;
-  impactLocalDirZ?: number;
-}
-
-export interface PlateHit extends ArmorHitBase {
-  kind: 'plate';
-  plate: DamageArmorPlate;
-  impactAngleDeg: number;
-  normal: Vector3;
-}
-
-export interface ModuleHit extends ArmorHitBase {
-  kind: 'module';
-  module: ModuleId;
-  external?: boolean;
-  barrel?: boolean;
-  barrelRadiusM?: number;
-}
-
-export interface CrewHit extends ArmorHitBase {
-  kind: 'crew';
-  crew: string;
-}
-
-export type ArmorHit = PlateHit | ModuleHit | CrewHit;
+export type PlateHit = ArmorPlateIntersection;
+export type ModuleHit = ArmorModuleIntersection;
+export type CrewHit = ArmorCrewIntersection;
+export type ArmorHit = ArmorIntersection;
 
 export interface HitEvent {
   kind: string;
@@ -238,17 +173,11 @@ interface ResolutionContext {
 }
 
 interface ArmorAabb {
-  min: Vec3Tuple;
-  max: Vec3Tuple;
+  min: number[];
+  max: number[];
 }
 
-export interface AimArmorInfo {
-  plate: DamageArmorPlate;
-  impactAngleDeg: number;
-  point: Vector3;
-  distM: number;
-  layers?: PlateHit[];
-}
+export type AimArmorInfo = ArmorAimArmorInfo;
 
 function isPlateHit(hit: ArmorHit): hit is PlateHit {
   return hit.kind === 'plate';
@@ -685,7 +614,7 @@ function baseEvent(shell: DamageShell, targetId: string | null): HitEvent {
     nominalMm: 0,                  // nominal RHAe the shell class sees (ke/ce base)
     localPos: null,                // hit point in HULL-LOCAL space [x,y,z]
     localDir: null,                // shell direction in HULL-LOCAL space [x,y,z]
-    // Exact articulation-local contact emitted by armor.js. Unlike localPos,
+    // Exact articulation-local contact emitted by armor.ts. Unlike localPos,
     // this remains stable on a traversed turret or elevated gun housing and
     // lets decals attach to the actual rig node without an envelope guess.
     impactFrame: null,             // 'hull' | 'turret' | 'gun' | 'barrel'
@@ -699,7 +628,7 @@ function baseEvent(shell: DamageShell, targetId: string | null): HitEvent {
  * SHOT-INFO ENRICHMENT (additive): stamp zone id, nominal armor and the hit
  * point/shell direction transformed into the target's HULL-LOCAL frame (exact
  * inverse of the tankFactory 'YXZ' visual mapping, same convention as
- * armor.js buildFrames). Never touches pre-existing event fields.
+ * armor.ts buildFrames). Never touches pre-existing event fields.
  * @param {object} event HitEvent being built (event.pos already stamped)
  * @param {object|null} hit the decisive traceTank intersection (plate/module)
  * @param {object} shellSpec ShellSpec
@@ -1584,7 +1513,7 @@ function hullAabbOf(armor: DamageArmorModel): ArmorAabb | null {
 function nearestPointTrace(
   burstPoint: Vector3,
   tank: DamageTarget,
-  pose: object,
+  pose: TankArmorPose,
 ): ArmorHit[] | null {
   const armor = tank.spec.armor;
   const aabb = hullAabbOf(armor);

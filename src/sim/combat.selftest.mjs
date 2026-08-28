@@ -17,7 +17,7 @@ import {
   solveBallisticGunLay,
   shellGravityMps2,
 } from './ballistics.ts';
-import { tankPoseFromState, traceTank, queryAimArmor } from './armor.js';
+import { tankPoseFromState, traceTank, queryAimArmor } from './armor.ts';
 import {
   createCombatState,
   resolveShellHit,
@@ -224,7 +224,7 @@ function mkShell(shellSpec, distM = 100) {
 
 }
 
-// --------------------------------------------- armor.js geometry & frames --
+// --------------------------------------------- armor.ts geometry & frames --
 {
   const armorModel = {
     boundingRadiusM: 4,

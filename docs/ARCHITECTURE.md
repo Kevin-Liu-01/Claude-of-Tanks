@@ -20,7 +20,7 @@ Module ownership (file paths are FIXED):
 | world    | `src/world/terrain.ts`, `src/world/vegetation.ts`, `src/world/props.ts`, `src/world/map.ts` |
 | vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.js`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
 | movement | `src/sim/movement.ts` |
-| combat   | `src/sim/ballistics.ts`, `src/sim/armor.js`, `src/sim/damage.ts`, `src/sim/combat.selftest.mjs` |
+| combat   | `src/sim/ballistics.ts`, `src/sim/armor.ts`, `src/sim/damage.ts`, `src/sim/combat.selftest.mjs` |
 | ai       | `src/game/ai.js` |
 | hud      | `src/ui/hud.js`, `src/ui/garage.js`, `src/ui/damagePanel.js` |
 | fx       | `src/fx/effects.js`, `src/fx/particles.js` |
@@ -48,7 +48,7 @@ vehicles specs, ai), `docs/research/tank-roster.md` (vehicles, hud garage),
   Hull attitude mapping to the visual root is locked as: `root.rotation.order = 'YXZ'`;
   `rotation.y = yaw`, `rotation.x = -visualPitch` (positive pitch = nose up),
   `rotation.z = visualRoll` (positive roll = right side down). Only tankFactory's
-  `syncFromState` and armor.js's inverse transform implement this mapping; everyone else
+  `syncFromState` and armor.ts's inverse transform implement this mapping; everyone else
   treats `yaw/pitch/roll` as plain numbers.
 - **turretYaw** is hull-relative, radians, 0 = gun forward, same sign sense as hull yaw.
 - **gunPitch** is relative to the hull plane, radians, **positive = muzzle up**.
@@ -260,7 +260,7 @@ longer per-tank rectangle stacks: `attachTrackShapes` (specs.js) derives one
 convex prism per side from each profile's `trackLoopPoints` at spec time, and
 `tankFactory.trackHitboxHull` mirrors the same derivation for the visual
 debug hull, so the killcam and combat agree by construction. Combat raycasts
-enter through `intersectTrackPrism` (src/sim/armor.js) before the plate walk
+enter through `intersectTrackPrism` (src/sim/armor.ts) before the plate walk
 (`moduleLink 'trackL'/'trackR'` semantics unchanged); the killcam renders the
 true trapezoid + loop-following slats via `addTrackPrism`. The prisms are
 derived data — never hand-author them; fix the gear loop instead. Hash/gate
@@ -671,7 +671,7 @@ export function applyDispersion(dir: Vector3, dispersionRadM_at100 /* i.e. r(100
 export const SHELL_MAX_LIFETIME_S = 6;
 ```
 
-#### 3.5.2 `armor.js`
+#### 3.5.2 `armor.ts`
 ```js
 export function tankPoseFromState(state) => Pose
 Pose = { pos: Vector3, yaw, pitch, roll, turretYaw, gunPitch }   // radians

@@ -1,5 +1,5 @@
 /**
- * armor.js — armor zone lookup: traces world-space shell segments through a
+ * armor.ts — armor zone lookup: traces world-space shell segments through a
  * tank's ArmorModel (closed collision shells, precise module/crew volumes,
  * external plates and gun barrel) and returns
  * ordered intersections for damage resolution and HUD/AI armor queries.
@@ -21,6 +21,242 @@
  */
 
 import { Vector3, Matrix4, Quaternion, Euler } from 'three';
+import type { ModuleId } from './moduleCatalog.ts';
+
+type FrameIndex = 0 | 1 | 2 | 3;
+type Vec3Tuple = readonly [number, number, number];
+type TrackModuleId = 'trackL' | 'trackR';
+
+export interface ArmorPoseState {
+  pos: Vector3;
+  yaw: number;
+  visualPitch: number;
+  visualRoll: number;
+  turretYaw: number;
+  gunPitch: number;
+}
+
+export interface TankArmorPose {
+  pos: Vector3;
+  yaw: number;
+  pitch: number;
+  roll: number;
+  turretYaw: number;
+  gunPitch: number;
+}
+
+export interface EraProtection {
+  keReduction: number;
+  ceFlatMm: number;
+}
+
+export interface ArmorPlate {
+  name: string;
+  verts: readonly Vec3Tuple[];
+  physicalMm: number;
+  keMm: number;
+  ceMm: number;
+  kind: 'main' | 'spaced' | 'external' | 'era' | string;
+  era?: EraProtection | null;
+  moduleLink?: ModuleId | null;
+  gunFollow?: boolean;
+}
+
+export interface ArmorCollisionFace {
+  indices: readonly number[];
+  normal: Vec3Tuple;
+  center: Vec3Tuple;
+  internal?: boolean;
+  constant: number;
+  plate: ArmorPlate;
+}
+
+export interface ArmorCollisionCell {
+  min: Vec3Tuple;
+  max: Vec3Tuple;
+  vertices: readonly Vec3Tuple[];
+  faces: ArmorCollisionFace[];
+}
+
+interface AabbPart {
+  min: Vec3Tuple;
+  max: Vec3Tuple;
+  center?: Vec3Tuple;
+  kind?: never;
+}
+
+interface EllipsoidShape {
+  kind: 'ellipsoid';
+  center: Vec3Tuple;
+  radii: Vec3Tuple;
+}
+
+interface EllipticCylinderShape {
+  kind: 'ellipticCylinder';
+  center: Vec3Tuple;
+  radii: readonly [number, number];
+  axis: 0 | 1 | 2;
+  halfLength: number;
+}
+
+interface CapsuleShape {
+  kind: 'capsule';
+  a: Vec3Tuple;
+  b: Vec3Tuple;
+  radius: number;
+}
+
+type ArmorVolumeShape = EllipsoidShape | EllipticCylinderShape | CapsuleShape;
+
+interface ArmorVolumeBase extends AabbPart {
+  turretLocal?: boolean;
+  external?: boolean;
+  shapes?: ArmorVolumeShape[];
+  parts?: AabbPart[];
+}
+
+interface ArmorModuleVolume extends ArmorVolumeBase {
+  module: ModuleId;
+}
+
+interface ArmorCrewVolume extends ArmorVolumeBase {
+  crew: string;
+}
+
+interface TrackPrismShape {
+  x0: number;
+  x1: number;
+  poly: readonly (readonly [number, number])[];
+  module: TrackModuleId;
+  plate: ArmorPlate;
+}
+
+export interface ArmorModel {
+  turretPivot?: Vec3Tuple | number[];
+  gunPivot?: Vec3Tuple | number[];
+  hullPlates?: ArmorPlate[];
+  turretPlates?: ArmorPlate[];
+  collisionShells?: {
+    hull?: readonly ArmorCollisionCell[];
+    turret?: readonly ArmorCollisionCell[];
+  };
+  trackShapes?: TrackPrismShape[];
+  modules?: ArmorModuleVolume[];
+  crew?: ArmorCrewVolume[];
+  gunBarrel?: { lengthM: number; radiusM: number };
+  boundingRadiusM?: number;
+  turretless?: boolean;
+  _seamMm?: number;
+  _seamPlate?: ArmorPlate | null;
+  __hullAabb?: { min: number[]; max: number[] } | null;
+}
+
+interface IntersectionBase {
+  t: number;
+  tExit?: number;
+  point: Vector3;
+  normal?: Vector3;
+  impactFrame: string;
+  impactLocalX: number;
+  impactLocalY: number;
+  impactLocalZ: number;
+  impactLocalDirX: number;
+  impactLocalDirY: number;
+  impactLocalDirZ: number;
+  impactLocalNormalX?: number;
+  impactLocalNormalY?: number;
+  impactLocalNormalZ?: number;
+}
+
+export interface ArmorPlateIntersection extends IntersectionBase {
+  kind: 'plate';
+  plate: ArmorPlate;
+  impactAngleDeg: number;
+  normal: Vector3;
+  collisionFace?: ArmorCollisionFace;
+}
+
+export interface ArmorModuleIntersection extends IntersectionBase {
+  kind: 'module';
+  module: ModuleId;
+  external?: boolean;
+  barrel?: boolean;
+  barrelRadiusM?: number;
+}
+
+export interface ArmorCrewIntersection extends IntersectionBase {
+  kind: 'crew';
+  crew: string;
+}
+
+export type ArmorIntersection =
+  | ArmorPlateIntersection
+  | ArmorModuleIntersection
+  | ArmorCrewIntersection;
+
+interface RawArmorIntersection {
+  t: number;
+  tExit?: number;
+  kind: 'plate' | 'module' | 'crew';
+  plate?: ArmorPlate;
+  module?: ModuleId;
+  crew?: string;
+  impactAngleDeg?: number;
+  collisionFace?: ArmorCollisionFace;
+  external?: boolean;
+  barrel?: boolean;
+  barrelRadiusM?: number;
+  point?: Vector3;
+  normal?: Vector3;
+  impactFrame?: string;
+  impactLocalX?: number;
+  impactLocalY?: number;
+  impactLocalZ?: number;
+  impactLocalDirX?: number;
+  impactLocalDirY?: number;
+  impactLocalDirZ?: number;
+  impactLocalNormalX?: number;
+  impactLocalNormalY?: number;
+  impactLocalNormalZ?: number;
+}
+
+interface CellInterval {
+  t: number;
+  tExit: number;
+  face: ArmorCollisionFace | null;
+}
+
+export interface AimArmorInfo {
+  plate: ArmorPlate;
+  impactAngleDeg: number;
+  point: Vector3;
+  distM: number;
+  layers: ArmorPlateIntersection[];
+}
+
+export interface BlastTarget {
+  kind: 'module' | 'crew';
+  name: string;
+  external: boolean;
+  point: Vector3;
+}
+
+function volumeCenter(shape: AabbPart | ArmorVolumeShape): Vec3Tuple {
+  if (shape.kind === 'capsule') {
+    return [
+      (shape.a[0] + shape.b[0]) * 0.5,
+      (shape.a[1] + shape.b[1]) * 0.5,
+      (shape.a[2] + shape.b[2]) * 0.5,
+    ];
+  }
+  if (shape.kind === 'ellipsoid' || shape.kind === 'ellipticCylinder') return shape.center;
+  if (shape.center) return shape.center;
+  return [
+    (shape.min[0] + shape.max[0]) * 0.5,
+    (shape.min[1] + shape.max[1]) * 0.5,
+    (shape.min[2] + shape.max[2]) * 0.5,
+  ];
+}
 
 const DEG_PER_RAD = 180 / Math.PI;
 
@@ -46,7 +282,7 @@ const FR_HULL = 0;
 const FR_TURRET = 1;
 const FR_GUN = 2;
 const FR_BARREL = 3;
-const FRAME_NAME = ['hull', 'turret', 'gun', 'barrel'];
+const FRAME_NAME = ['hull', 'turret', 'gun', 'barrel'] as const;
 const _fromL = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
 const _toL = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
 const _dirL = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
@@ -65,7 +301,7 @@ const _pt = new Vector3();
 const _tmp = new Vector3();
 const _to = new Vector3();
 
-const EMPTY_SET = new Set();
+const EMPTY_SET: ReadonlySet<string> = new Set<string>();
 
 /**
  * Extract the rigid pose combat needs from a TankState (ARCHITECTURE.md
@@ -81,8 +317,13 @@ const EMPTY_SET = new Set();
  *   scratch to reuse; omit for the allocating form (identical result).
  * @returns {{pos: Vector3, yaw: number, pitch: number, roll: number, turretYaw: number, gunPitch: number}} Pose
  */
-export function tankPoseFromState(state, out = null) {
-  const pose = out || { pos: new Vector3() };
+export function tankPoseFromState(
+  state: ArmorPoseState,
+  out: TankArmorPose | null = null,
+): TankArmorPose {
+  const pose = out || {
+    pos: new Vector3(), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
+  };
   if (!pose.pos) pose.pos = new Vector3();
   pose.pos.copy(state.pos);
   pose.yaw = state.yaw;
@@ -98,7 +339,7 @@ export function tankPoseFromState(state, out = null) {
  * @param {object} pose Pose from tankPoseFromState
  * @param {object} armorModel ArmorModel
  */
-function buildFrames(pose, armorModel) {
+function buildFrames(pose: TankArmorPose, armorModel: ArmorModel): void {
   // Forward hull matrix — exact tankFactory mapping ('YXZ', y=yaw,
   // x=-pitch, z=roll), inverted here for world → hull local.
   _euler.set(-pose.pitch, pose.yaw, pose.roll, 'YXZ');
@@ -138,7 +379,7 @@ function buildFrames(pose, armorModel) {
  * @param {Vector3} from world segment start
  * @param {Vector3} to world segment end
  */
-function localizeSegment(from, to) {
+function localizeSegment(from: Vector3, to: Vector3): void {
   for (let f = 0; f < 4; f++) {
     _fromL[f].copy(from).applyMatrix4(_inverse[f]);
     _toL[f].copy(to).applyMatrix4(_inverse[f]);
@@ -151,14 +392,14 @@ function localizeSegment(from, to) {
 // armor mesh and form a closed longitudinal shell; each face already points
 // at the canonical authored plate whose thickness/statistics it inherits.
 let _convexExitT = 1;
-let _convexFace = null;
-function intersectConvexCell(frame, cell) {
+let _convexFace: ArmorCollisionFace | null = null;
+function intersectConvexCell(frame: FrameIndex, cell: ArmorCollisionCell): number {
   if (intersectAABB(frame, cell.min, cell.max) < 0) return -1;
   const f = _fromL[frame];
   const d = _dirL[frame];
   let t0 = 0;
   let t1 = 1;
-  let entryFace = null;
+  let entryFace: ArmorCollisionFace | null = null;
   for (const face of cell.faces) {
     const n = face.normal;
     const distance = n[0] * f.x + n[1] * f.y + n[2] * f.z + face.constant;
@@ -184,9 +425,9 @@ function intersectConvexCell(frame, cell) {
   return Math.max(0, t0);
 }
 
-const _cellIntervals = [];
-const _cellIntervalPool = [];
-function cellInterval(index) {
+const _cellIntervals: CellInterval[] = [];
+const _cellIntervalPool: CellInterval[] = [];
+function cellInterval(index: number): CellInterval {
   let record = _cellIntervalPool[index];
   if (!record) {
     record = { t: 0, tExit: 0, face: null };
@@ -195,7 +436,11 @@ function cellInterval(index) {
   return record;
 }
 
-function traceCollisionShell(cells, frame, out) {
+function traceCollisionShell(
+  cells: readonly ArmorCollisionCell[] | undefined,
+  frame: FrameIndex,
+  out: ArmorIntersection[],
+): void {
   if (!Array.isArray(cells) || !cells.length) return;
   _cellIntervals.length = 0;
   for (const cell of cells) {
@@ -244,7 +489,14 @@ function traceCollisionShell(cells, frame, out) {
  * module and crew candidate in the hot trace. damage.ts materializes arrays
  * only for the decisive hit event that crosses the presentation boundary.
  */
-function finishFrameHit(hit, frame, t, nx = null, ny = null, nz = null) {
+function finishFrameHit(
+  hit: RawArmorIntersection,
+  frame: FrameIndex,
+  t: number,
+  nx: number | null = null,
+  ny: number | null = null,
+  nz: number | null = null,
+): ArmorIntersection {
   _pt.copy(_fromL[frame]).addScaledVector(_dirL[frame], t);
   hit.impactFrame = FRAME_NAME[frame];
   hit.impactLocalX = _pt.x;
@@ -260,7 +512,7 @@ function finishFrameHit(hit, frame, t, nx = null, ny = null, nz = null) {
     hit.impactLocalNormalZ = nz;
     hit.normal = _n.set(nx, ny, nz).clone().transformDirection(_forward[frame]);
   }
-  return hit;
+  return hit as ArmorIntersection;
 }
 
 /**
@@ -270,7 +522,7 @@ function finishFrameHit(hit, frame, t, nx = null, ny = null, nz = null) {
  * @param {Array} verts 4 CCW-from-outside [x,y,z] vertices
  * @returns {number} segment parameter t in [0,1], or -1 on miss
  */
-function intersectQuad(frame, verts) {
+function intersectQuad(frame: FrameIndex, verts: readonly Vec3Tuple[]): number {
   _v0.fromArray(verts[0]);
   _v1.fromArray(verts[1]);
   _v2.fromArray(verts[2]);
@@ -300,7 +552,7 @@ function intersectQuad(frame, verts) {
  * @param {Vector3} b edge end
  * @returns {boolean} point is on the interior side of edge a→b
  */
-function edgeInside(a, b) {
+function edgeInside(a: Vector3, b: Vector3): boolean {
   _e1.subVectors(b, a);
   _e2.subVectors(_pt, a);
   _tmp.crossVectors(_e1, _e2);
@@ -318,7 +570,7 @@ function edgeInside(a, b) {
  * @returns {number} entry parameter t in [0,1] (0 when starting inside), or -1
  */
 let _aabbExitT = 1;
-function intersectAABB(frame, min, max) {
+function intersectAABB(frame: FrameIndex, min: Vec3Tuple, max: Vec3Tuple): number {
   const f = _fromL[frame];
   const d = _dirL[frame];
   let t0 = 0;
@@ -346,7 +598,7 @@ function intersectAABB(frame, min, max) {
 }
 
 let _shapeExitT = 1;
-function intersectEllipsoid(frame, shape) {
+function intersectEllipsoid(frame: FrameIndex, shape: EllipsoidShape): number {
   const f = _fromL[frame];
   const d = _dirL[frame];
   const c = shape.center;
@@ -376,7 +628,7 @@ function intersectEllipsoid(frame, shape) {
   return Math.max(0, t0);
 }
 
-function intersectEllipticCylinder(frame, shape) {
+function intersectEllipticCylinder(frame: FrameIndex, shape: EllipticCylinderShape): number {
   const f = _fromL[frame];
   const d = _dirL[frame];
   const center = shape.center;
@@ -428,7 +680,7 @@ function intersectEllipticCylinder(frame, shape) {
 
 let _intervalT0 = 0;
 let _intervalT1 = 1;
-function sphereInterval(frame, center, radius) {
+function sphereInterval(frame: FrameIndex, center: Vec3Tuple, radius: number): boolean {
   const f = _fromL[frame];
   const d = _dirL[frame];
   const ox = f.x - center[0];
@@ -449,7 +701,12 @@ function sphereInterval(frame, center, radius) {
   return true;
 }
 
-function cylinderInterval(frame, a, b, radius) {
+function cylinderInterval(
+  frame: FrameIndex,
+  a: Vec3Tuple,
+  b: Vec3Tuple,
+  radius: number,
+): boolean {
   const f = _fromL[frame];
   const d = _dirL[frame];
   const bax = b[0] - a[0];
@@ -497,7 +754,7 @@ function cylinderInterval(frame, a, b, radius) {
   return true;
 }
 
-function intersectCapsule(frame, shape) {
+function intersectCapsule(frame: FrameIndex, shape: CapsuleShape): number {
   let t0 = Infinity;
   let t1 = -Infinity;
   if (cylinderInterval(frame, shape.a, shape.b, shape.radius)) {
@@ -517,7 +774,7 @@ function intersectCapsule(frame, shape) {
   return t0;
 }
 
-function intersectVolumeShape(frame, shape) {
+function intersectVolumeShape(frame: FrameIndex, shape: ArmorVolumeShape): number {
   if (!shape) return -1;
   if (shape.kind === 'ellipsoid') return intersectEllipsoid(frame, shape);
   if (shape.kind === 'capsule') return intersectCapsule(frame, shape);
@@ -541,7 +798,7 @@ let _prismExitT = 1;
 let _pnx = 0;
 let _pny = 0;
 let _pnz = 0;
-function intersectTrackPrism(frame, shape) {
+function intersectTrackPrism(frame: FrameIndex, shape: TrackPrismShape): number {
   const f = _fromL[frame];
   const d = _dirL[frame];
   let t0 = 0;
@@ -596,7 +853,7 @@ function intersectTrackPrism(frame, shape) {
  * @param {number} radiusM cylinder radius
  * @returns {number} parameter t in [0,1], or -1
  */
-function intersectBarrel(lengthM, radiusM) {
+function intersectBarrel(lengthM: number, radiusM: number): number {
   const f = _fromL[FR_BARREL];
   const d = _dirL[FR_BARREL];
   const a = d.x * d.x + d.y * d.y;
@@ -628,12 +885,17 @@ function intersectBarrel(lengthM, radiusM) {
  * @param {Set<string>} [eraSpent] names of detonated ERA plates
  * @returns {Array<object>} sorted Intersection[] (ARCHITECTURE.md §3.5.2)
  */
-export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
+export function traceTank(
+  from: Vector3,
+  to: Vector3,
+  pose: TankArmorPose,
+  armorModel: ArmorModel,
+  eraSpent: ReadonlySet<string> = EMPTY_SET,
+): ArmorIntersection[] {
   buildFrames(pose, armorModel);
   localizeSegment(from, to);
 
-  /** @type {Array<object>} */
-  const out = [];
+  const out: ArmorIntersection[] = [];
 
   // TRACK-HITBOX schema: real track prisms REPLACE the legacy full-length
   // rectangle plate + AABB pair for ray tests (specs.attachTrackShapes).
@@ -643,14 +905,18 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
   const trackShapes = Array.isArray(armorModel.trackShapes) && armorModel.trackShapes.length
     ? armorModel.trackShapes
     : null;
-  const trackCovered = (name) => {
+  const trackCovered = (name: ModuleId | null | undefined): boolean => {
     if (!trackShapes || !name) return false;
     for (const s of trackShapes) if (s.module === name) return true;
     return false;
   };
 
   const collisionShells = armorModel.collisionShells || null;
-  const testPlates = (plates, frame, replaceMain) => {
+  const testPlates = (
+    plates: ArmorPlate[] | undefined,
+    frame: FrameIndex,
+    replaceMain: boolean,
+  ): void => {
     if (!plates) return;
     for (const plate of plates) {
       if (replaceMain && (plate.kind || 'main') === 'main') continue;
@@ -681,8 +947,8 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
     // side's prisms — exact single-AABB record semantics for damage.ts's
     // straddler/post-pen sweep); one PLATE record per crossed prism face
     // (the external track screen, with the true face normal).
-    let spanL = null;
-    let spanR = null;
+    let spanL: { t: number; tExit: number } | null = null;
+    let spanR: { t: number; tExit: number } | null = null;
     for (const shape of trackShapes) {
       const t = intersectTrackPrism(FR_HULL, shape);
       if (t < 0) continue;
@@ -705,7 +971,10 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
         if (_prismExitT > span.tExit) span.tExit = _prismExitT;
       }
     }
-    for (const [module, span] of [['trackL', spanL], ['trackR', spanR]]) {
+    const spans: Array<[TrackModuleId, { t: number; tExit: number } | null]> = [
+      ['trackL', spanL], ['trackR', spanR],
+    ];
+    for (const [module, span] of spans) {
       if (!span) continue;
       out.push(finishFrameHit({
         t: span.t,
@@ -818,11 +1087,18 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
  * @param {Set<string>} [eraSpent] names of already-detonated ERA tiles
  * @returns {null | {plate: object, impactAngleDeg: number, point: Vector3, distM: number, layers: Array<object>}}
  */
-export function queryAimArmor(from, dir, maxDist, pose, armorModel, eraSpent = EMPTY_SET) {
+export function queryAimArmor(
+  from: Vector3,
+  dir: Vector3,
+  maxDist: number,
+  pose: TankArmorPose,
+  armorModel: ArmorModel,
+  eraSpent: ReadonlySet<string> = EMPTY_SET,
+): AimArmorInfo | null {
   _to.copy(from).addScaledVector(dir, maxDist);
   const hits = traceTank(from, _to, pose, armorModel, eraSpent);
-  const layers = [];
-  let first = null;
+  const layers: ArmorPlateIntersection[] = [];
+  let first: ArmorPlateIntersection | null = null;
   for (const hit of hits) {
     if (hit.kind !== 'plate') continue;
     layers.push(hit);
@@ -856,9 +1132,9 @@ export function queryAimArmor(from, dir, maxDist, pose, armorModel, eraSpent = E
  * @param {object} armorModel ArmorModel
  * @returns {Array<{kind: ('module'|'crew'), name: string, external: boolean, point: Vector3}>}
  */
-export function blastTargets(pose, armorModel) {
+export function blastTargets(pose: TankArmorPose, armorModel: ArmorModel): BlastTarget[] {
   buildFrames(pose, armorModel);
-  const out = [];
+  const out: BlastTarget[] = [];
   if (armorModel.modules) {
     for (const box of armorModel.modules) {
       const m = box.turretLocal ? _turretM : _hullM;
@@ -867,17 +1143,7 @@ export function blastTargets(pose, armorModel) {
       const shapeCount = shapes ? shapes.length : parts ? parts.length : 1;
       for (let index = 0; index < shapeCount; index++) {
         const shape = shapes ? shapes[index] : parts ? parts[index] : box;
-        const center = shape.kind === 'capsule'
-          ? [
-            (shape.a[0] + shape.b[0]) * 0.5,
-            (shape.a[1] + shape.b[1]) * 0.5,
-            (shape.a[2] + shape.b[2]) * 0.5,
-          ]
-          : shape.center || [
-            (shape.min[0] + shape.max[0]) * 0.5,
-            (shape.min[1] + shape.max[1]) * 0.5,
-            (shape.min[2] + shape.max[2]) * 0.5,
-          ];
+        const center = volumeCenter(shape);
         out.push({
           kind: 'module',
           name: box.module,
@@ -895,17 +1161,7 @@ export function blastTargets(pose, armorModel) {
       const m = box.turretLocal ? _turretM : _hullM;
       const shapes = Array.isArray(box.shapes) && box.shapes.length ? box.shapes : [box];
       for (const shape of shapes) {
-        const center = shape.kind === 'capsule'
-          ? [
-            (shape.a[0] + shape.b[0]) * 0.5,
-            (shape.a[1] + shape.b[1]) * 0.5,
-            (shape.a[2] + shape.b[2]) * 0.5,
-          ]
-          : shape.center || [
-            (shape.min[0] + shape.max[0]) * 0.5,
-            (shape.min[1] + shape.max[1]) * 0.5,
-            (shape.min[2] + shape.max[2]) * 0.5,
-          ];
+        const center = volumeCenter(shape);
         out.push({
           kind: 'crew',
           name: box.crew,

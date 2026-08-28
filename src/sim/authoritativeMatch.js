@@ -27,7 +27,7 @@ import { stepRolloverLifecycle } from './rollover.ts';
 import {
   applyDispersion, createShell, guideShellToward, stepShell,
 } from './ballistics.ts';
-import { tankPoseFromState, traceTank } from './armor.js';
+import { tankPoseFromState, traceTank } from './armor.ts';
 import {
   createCombatState,
   isHeClass,

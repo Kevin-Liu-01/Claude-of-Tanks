@@ -29,7 +29,7 @@ import { writeFileSync } from 'node:fs';
 // same way the game does. tankFactory is node-safe (no DOM at module scope).
 await import('../src/vehicles/tankFactory.js');
 const { TANK_SPECS, ALL_TANK_IDS } = await import('../src/vehicles/specs.js');
-const { traceTank } = await import('../src/sim/armor.js');
+const { traceTank } = await import('../src/sim/armor.ts');
 const { resolveShellHit } = await import('../src/sim/damage.ts');
 
 const args = process.argv.slice(2);

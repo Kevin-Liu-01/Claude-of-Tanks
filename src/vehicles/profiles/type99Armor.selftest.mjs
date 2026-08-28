@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import { traceTank } from '../../sim/armor.js';
+import { traceTank } from '../../sim/armor.ts';
 import { combatAnatomyCalibration } from '../combatAnatomy.js';
 import { createTank } from '../tankFactory.js';
 import { getSpec } from '../specs.js';
