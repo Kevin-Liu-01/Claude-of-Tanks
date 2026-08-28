@@ -22,7 +22,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, rmdirSync, statSync, writeFileSync, readdirSync, unlinkSync, utimesSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { MAP_IDS } from '../src/world/maps/index.js';
+import { MAP_IDS } from '../src/world/maps/index.ts';
 
 // --- exclusive harness lock (FIFO ticket protocol, see screenshot.mjs) ------
 const LOCK_DIR = '/tmp/cot-shots.lock';

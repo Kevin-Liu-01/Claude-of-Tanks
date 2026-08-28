@@ -1,4 +1,4 @@
-// src/world/maps/verdant.js — the classic grassland village battlefield
+// src/world/maps/verdant.ts — the classic grassland village battlefield
 // (Malinovka/Prokhorovka vibes). This config reproduces the original
 // hardcoded map exactly: every field left undefined falls back to the
 // defaults baked into terrain/vegetation/props.

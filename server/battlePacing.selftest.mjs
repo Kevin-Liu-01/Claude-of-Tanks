@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { buildPrivateMatchPlayers } from '../src/net/privateMatchHandoff.ts';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.js';
-import { MAP_IDS } from '../src/world/maps/index.js';
+import { MAP_IDS } from '../src/world/maps/index.ts';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.js';
 
 const MAPS = process.env.COT_PACING_MAPS

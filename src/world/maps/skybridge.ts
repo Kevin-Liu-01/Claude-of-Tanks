@@ -2,7 +2,7 @@
 // rock shoulders define three vertical lanes while a ruined arcology bridge
 // and industrial control district anchor the center.
 
-const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 export default {
   id: 'skybridge',
@@ -41,11 +41,11 @@ export default {
     ],
   },
   splat: {
-    grassTone: (h, s, l) => [0.09, clamp01(s * 0.40), clamp01(l * 0.52)],
-    dirtTone: (h, s, l) => [0.06, clamp01(s * 0.42), clamp01(l * 0.48 + 0.04)],
+    grassTone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.40), clamp01(l * 0.52)],
+    dirtTone: (h: number, s: number, l: number) => [0.06, clamp01(s * 0.42), clamp01(l * 0.48 + 0.04)],
     sandstone: true,
-    rockTone: (h, s, l) => [0.045, clamp01(s * 0.56), clamp01(0.40 + (l - 0.5) * 0.72)],
-    mudTone: (h, s, l) => [0.54, clamp01(s * 0.72), clamp01(l * 0.58)],
+    rockTone: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.56), clamp01(0.40 + (l - 0.5) * 0.72)],
+    mudTone: (h: number, s: number, l: number) => [0.54, clamp01(s * 0.72), clamp01(l * 0.58)],
     // The drowned gorge is navigable liquid, not a blue-grey terrain stain.
     // It shares the terrain material and interaction mask, so this adds no
     // water mesh or draw pass while tracks receive the common wake/spray path.

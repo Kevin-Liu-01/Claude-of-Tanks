@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { getMapConfig, MAP_IDS } from './maps/index.js';
+import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { createHeightField } from './terrain.js';
 import {
   HORIZON_TREELINE_ATLAS_VARIANTS,

@@ -1,7 +1,7 @@
-// src/world/maps/winter.js — Erlenberg vibes: snow splat, a frozen lake you
+// src/world/maps/winter.ts — Erlenberg vibes: snow splat, a frozen lake you
 // can drive across, bare birches, snow-dusted pines, flat overcast light.
 
-const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 export default {
   id: 'winter',
@@ -50,12 +50,12 @@ export default {
 
   splat: {
     // lighting_post r5: saturation 0.05 -> 0.03 — shadowed snow read as blue paint
-    grassTone: (h, s, l) => [0.575, 0.03, clamp01(0.62 + l * 0.38)], // snowpack
-    dirtTone: (h, s, l) => [0.075, 0.11, clamp01(l * 0.85 + 0.10)], // frozen mud
+    grassTone: (h: number, s: number, l: number) => [0.575, 0.03, clamp01(0.62 + l * 0.38)], // snowpack
+    dirtTone: (h: number, s: number, l: number) => [0.075, 0.11, clamp01(l * 0.85 + 0.10)], // frozen mud
     // pale snow-dusted rock: keeps steep lake banks / cut slopes from reading
     // as dark holes punched into the snowfield
-    rockTone: (h, s, l) => [0.585, 0.05, clamp01(l * 1.0 + 0.22)],
-    mudTone: (h, s, l) => [0.565, 0.24, clamp01(0.60 + l * 0.34)], // (fallback if iceLake off)
+    rockTone: (h: number, s: number, l: number) => [0.585, 0.05, clamp01(l * 1.0 + 0.22)],
+    mudTone: (h: number, s: number, l: number) => [0.565, 0.24, clamp01(0.60 + l * 0.34)], // (fallback if iceLake off)
     mudRough: 0.18,
     marshGloss: 1.0, // r6: full ice response — the sheet needs a real sheen
     // dedicated ice-sheet layer: blue-grey albedo, bright refrozen pressure
@@ -113,8 +113,8 @@ export default {
     // speckle, and the surviving tufts ride even lighter/waxier rime tones
     // so they read as frost-bound straw, not debris.
     grassDensity: 0.07,
-    grassTexTone: (h, s, l) => [0.105, 0.10, clamp01(l * 1.0 + 0.36)], // rimed straw
-    tuftTone: (h, s, l) => [0.11, 0.07, clamp01(l * 0.9 + 0.40)],
+    grassTexTone: (h: number, s: number, l: number) => [0.105, 0.10, clamp01(l * 1.0 + 0.36)], // rimed straw
+    tuftTone: (h: number, s: number, l: number) => [0.11, 0.07, clamp01(l * 0.9 + 0.40)],
     bushCount: 0.15,
     // pine scrub, not birch twig-balls: the dark leafless bush scatter read
     // as speckle noise against the snow in establishing shots
@@ -137,14 +137,14 @@ export default {
         cardHue: 0.58, cardSat: 0.03, cardL0: 0.46,
         // rime-grey twig haze: cool hue, near-zero sat, high floor — the
         // twig texture's dark strokes read as frost-bound brush, not brown
-        texTone: (h, s, l) => [0.58, clamp01(s * 0.14), clamp01(l * 0.62 + 0.34)],
+        texTone: (h: number, s: number, l: number) => [0.58, clamp01(s * 0.14), clamp01(l * 0.62 + 0.34)],
         canopy: { hue: 0.575, sat: 0.045, l0: 0.42, l1: 0.60 },
         snow: 0.75, jitterHue: 0.22,
       },
       pine: { // winter spruce under snow load: frosted blue-green underlayer,
         // the `snow` knob whitens the upward tier surfaces (near cards) and
         // the lifted canopy l1 carries the same read in the far LOD
-        texTone: (h, s, l) => [clamp01(h * 0.98), clamp01(s * 0.32), clamp01(l * 1.02 + 0.18)],
+        texTone: (h: number, s: number, l: number) => [clamp01(h * 0.98), clamp01(s * 0.32), clamp01(l * 1.02 + 0.18)],
         cardHue: 0.40, cardSat: 0.07, cardL0: 0.42,
         canopy: { hue: 0.46, sat: 0.05, l0: 0.42, l1: 0.66 },
         // r6 terrain_environment: 0.55 -> 0.90 — "conifers carry zero snow
@@ -173,15 +173,15 @@ export default {
         structure: 'fieldhospital', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
     ],
     tones: {
-      plaster: (h, s, l) => [0.085, clamp01(s * 0.7), clamp01(l * 1.02 + 0.03)],
-      roof: (h, s, l) => [0.58, clamp01(s * 0.25), clamp01(l * 1.35 + 0.18)], // snow-capped
-      stone: (h, s, l) => [0.60, clamp01(s * 0.35), clamp01(l * 1.05 + 0.05)],
-      wood: (h, s, l) => [h, clamp01(s * 0.7), clamp01(l * 0.95 + 0.02)],
+      plaster: (h: number, s: number, l: number) => [0.085, clamp01(s * 0.7), clamp01(l * 1.02 + 0.03)],
+      roof: (h: number, s: number, l: number) => [0.58, clamp01(s * 0.25), clamp01(l * 1.35 + 0.18)], // snow-capped
+      stone: (h: number, s: number, l: number) => [0.60, clamp01(s * 0.35), clamp01(l * 1.05 + 0.05)],
+      wood: (h: number, s: number, l: number) => [h, clamp01(s * 0.7), clamp01(l * 0.95 + 0.02)],
       // terrain_environment r3: the all-white "snowed-over" tone erased the
       // thatch texture entirely — foreground stacks read as raw untextured
       // white primitives (the critique's "unsubdivided icosphere rock").
       // Frosted warm straw keeps the haystack identity under a pale rime.
-      straw: (h, s, l) => [0.105, clamp01(s * 0.42 + 0.06), clamp01(l * 1.02 + 0.10)],
+      straw: (h: number, s: number, l: number) => [0.105, clamp01(s * 0.42 + 0.06), clamp01(l * 1.02 + 0.10)],
     },
     // terrain_environment r3: l*1.25+0.12 -> l*0.70+0.02 — the near-white
     // boulders read as featureless dough lumps on the snow (probed: the
@@ -189,7 +189,7 @@ export default {
     // at [67,-226]). Under the BRIGHT overcast fill (hemi 0.92, env 0.60)
     // even mid-grey albedo renders pale, so the sides must go properly dark;
     // the geometry's up-facing gradient (props.js) keeps snow-dusted caps.
-    rockTone: (h, s, l) => [0.60, 0.05, clamp01(l * 0.70 + 0.02)],
+    rockTone: (h: number, s: number, l: number) => [0.60, 0.05, clamp01(l * 0.70 + 0.02)],
     wallStoneChance: 0.25,
     wallRuns: [
       [-56, 8, -56, 64, 2], [74, 30, 74, 96, 4], [-8, 110, 52, 110, 2],

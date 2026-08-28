@@ -1,7 +1,7 @@
 // badlands.js — large red-rock tablelands surrounding a modern logistics
 // town; long fire lanes are broken by dry washes, compounds and escarpments.
 
-const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 export default {
   id: 'badlands',
@@ -37,9 +37,9 @@ export default {
     ],
   },
   splat: {
-    grassTone: (h, s, l) => [0.075, 0.39, clamp01(0.19 + l * 0.78)],
-    dirtTone: (h, s, l) => [0.055, 0.43, clamp01(0.24 + l * 0.48)],
-    sandstone: true, rockTone: (h, s, l) => [0.045, clamp01(s * 0.62), clamp01(0.47 + (l - 0.5) * 0.72)],
+    grassTone: (h: number, s: number, l: number) => [0.075, 0.39, clamp01(0.19 + l * 0.78)],
+    dirtTone: (h: number, s: number, l: number) => [0.055, 0.43, clamp01(0.24 + l * 0.48)],
+    sandstone: true, rockTone: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.62), clamp01(0.47 + (l - 0.5) * 0.72)],
     tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],
     roadTint: [0.78, 0.61, 0.51], strata: 0.14, sandMacro: 0.9,
     rippleAmp: 0.28, midRelief: 0.65, midReliefFar: 780,

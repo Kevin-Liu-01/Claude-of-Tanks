@@ -11,7 +11,7 @@ import { PrivateRoomClientSession, PrivateRoomHostSession } from './privateRoomS
 import { MatchClientRuntime } from './matchRuntime.ts';
 import { MATCH_CONTROL_CHANNEL_LABEL, MATCH_STATE_CHANNEL_LABEL } from './webrtcPeer.ts';
 import { addLobbyPlayer, applyLobbyCommand, createLobby, serializeLobby } from './lobby.ts';
-import { MAP_IDS } from '../world/maps/index.js';
+import { MAP_IDS } from '../world/maps/index.ts';
 
 class FakeRtcChannel {
   constructor(label) {

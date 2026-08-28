@@ -1,7 +1,7 @@
-// src/world/maps/desert.js — El Halluf vibes: ridged dunes, flat-topped mesas,
+// src/world/maps/desert.ts — El Halluf vibes: ridged dunes, flat-topped mesas,
 // an adobe village on the crossroads, palm clusters, warm sand haze.
 
-const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 export default {
   id: 'desert',
@@ -61,7 +61,7 @@ export default {
     // hottest sun in the game tonemapped the whole midfield to one blown
     // cream void). 0.20+0.86l tops out ~0.82: still clearly sun-hammered,
     // but dune-face shading and the macro tints below survive to screen.
-    grassTone: (h, s, l) => [0.096, 0.40, clamp01(0.20 + l * 0.86)],
+    grassTone: (h: number, s: number, l: number) => [0.096, 0.40, clamp01(0.20 + l * 0.86)],
     // r4 (content_breadth): the `worn` dirt-patch bands were the critique's
     // "smeared dirt/grime streaks" across the midfield dune faces — the dirt
     // layer's clod/crack texture (painted L 0.08-0.31) rode l*1.12+0.04, so
@@ -73,7 +73,7 @@ export default {
     // sand instead of ~50%) and desaturate a step: the same worn fields now
     // read as compacted gravel-lag flats. Pairs with grassDensity below so
     // the surviving darkening carries actual vegetation clusters.
-    dirtTone: (h, s, l) => [0.088, 0.30, clamp01(0.31 + l * 0.38)],
+    dirtTone: (h: number, s: number, l: number) => [0.088, 0.30, clamp01(0.31 + l * 0.38)],
     // r7: R layer is the dedicated stratified-sandstone painter — authored
     // already-red, so no retint hook (the old s*3.2 hook targeted the grey
     // generic rock and would push the beds to neon)
@@ -88,8 +88,8 @@ export default {
     // finally reads as one weathered rock mass
     // r4: sat 0.55 -> 0.42 — pairs with the makeSandstoneLayer desaturation
     // (terrain.js) to kill the residual PINK cast on the cliff beds
-    rockTone: (h, s, l) => [h, clamp01(s * 0.42), clamp01(0.53 + (l - 0.5) * 0.70)],
-    mudTone: (h, s, l) => [0.078, 0.30, clamp01(l * 1.5 + 0.04)], // cracked dry clay
+    rockTone: (h: number, s: number, l: number) => [h, clamp01(s * 0.42), clamp01(0.53 + (l - 0.5) * 0.70)],
+    mudTone: (h: number, s: number, l: number) => [0.078, 0.30, clamp01(l * 1.5 + 0.04)], // cracked dry clay
     mudRough: 1.15,
     // r3 (content_breadth): tintB pushed to a REAL darkener (0.94 -> 0.84
     // peak) — the three macro tints were all within ~8% of unity, so at
@@ -167,11 +167,11 @@ export default {
     grassDensity: 0.60,
     // pale sun-bleached straw: the old darker olive tufts/scrub read as
     // black pepper speckle against the bright sand in establishing shots
-    grassTexTone: (h, s, l) => [0.112, clamp01(s * 0.55), clamp01(l * 1.05 + 0.14)],
+    grassTexTone: (h: number, s: number, l: number) => [0.112, clamp01(s * 0.55), clamp01(l * 1.05 + 0.14)],
     // r7: lum capped (0.95+0.18 -> 0.72+0.16, max ~0.58) — the brightest dry
     // tufts on sunlit dune crests tonemapped to pure WHITE blades that read
     // as untextured geometry slivers in the establishing shot
-    tuftTone: (h, s, l) => [0.115, 0.20, clamp01(l * 0.72 + 0.16)],
+    tuftTone: (h: number, s: number, l: number) => [0.115, 0.20, clamp01(l * 0.72 + 0.16)],
     // r7: 0.9 -> 0.78 — thins the isolated mid-field scrub dots (each casts a
     // hard shadow speck at establishing distance) while the clump-gated wadi
     // thickets keep their density
@@ -184,7 +184,7 @@ export default {
         // establishing-shot noise critique). Lift + desaturate hard toward
         // the sand palette: dusty khaki-sage that keeps ~2:1 contrast near
         // the camera but melts toward the dune tone at range.
-        texTone: (h, s, l) => [0.145, clamp01(s * 0.42), clamp01(l * 0.95 + 0.17)],
+        texTone: (h: number, s: number, l: number) => [0.145, clamp01(s * 0.42), clamp01(l * 0.95 + 0.17)],
         cardHue: 0.14, cardSat: 0.16,
         canopy: { hue: 0.15, sat: 0.15, l0: 0.36, l1: 0.50 },
       },
@@ -195,7 +195,7 @@ export default {
         // against ~0.85-luminance sand the r6 crowns collapsed to near-black
         // spiky silhouettes at range ("glitched scaffolding" critique); dusty
         // olive with real value keeps the crown a readable green mass
-        texTone: (h, s, l) => [clamp01(h * 0.99), clamp01(s * 0.74), clamp01(l * 0.90)],
+        texTone: (h: number, s: number, l: number) => [clamp01(h * 0.99), clamp01(s * 0.74), clamp01(l * 0.90)],
         cardHue: 0.235, cardSat: 0.20,
         // near-LOD blade vertex tint (buildPalmGeometry pal.frond): khaki-olive
         frond: { hue: 0.19, sat: 0.19, l: 0.41 },
@@ -245,15 +245,15 @@ export default {
     // (flatten 0.9 keeps the actual spread well under this inside the core)
     buildingLat: [11.5, 4.5], maxSpread: 2.2,
     tones: {
-      plaster: (h, s, l) => [0.068, 0.52, clamp01(l * 0.98 + 0.02)], // warm sand-plaster adobe
-      roof: (h, s, l) => [0.065, clamp01(s * 0.8), clamp01(l * 1.1)],
-      stone: (h, s, l) => [0.07, clamp01(s * 2 + 0.1), clamp01(l * 1.18 + 0.03)], // sandstone
-      wood: (h, s, l) => [0.08, clamp01(s * 0.9), clamp01(l * 1.15)],
+      plaster: (h: number, s: number, l: number) => [0.068, 0.52, clamp01(l * 0.98 + 0.02)], // warm sand-plaster adobe
+      roof: (h: number, s: number, l: number) => [0.065, clamp01(s * 0.8), clamp01(l * 1.1)],
+      stone: (h: number, s: number, l: number) => [0.07, clamp01(s * 2 + 0.1), clamp01(l * 1.18 + 0.03)], // sandstone
+      wood: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.9), clamp01(l * 1.15)],
       straw: null,
     },
     // r4: sat 0.34 -> 0.20, lift trimmed — the saturated red-rock boulders
     // read as fleshy-pink blobs on the open sand (establishing shot)
-    rockTone: (h, s, l) => [0.055, 0.20, clamp01(l * 1.06 + 0.03)], // dusty red-rock boulders
+    rockTone: (h: number, s: number, l: number) => [0.055, 0.20, clamp01(l * 1.06 + 0.03)], // dusty red-rock boulders
     wallStoneChance: 1.0,
     wallRuns: [
       [-58, 4, -58, 58, 2], [70, 26, 70, 92, 3], [-6, 104, 48, 104, 1],

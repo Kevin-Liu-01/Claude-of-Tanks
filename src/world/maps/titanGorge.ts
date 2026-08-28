@@ -2,7 +2,7 @@
 // and authored road cuts carry navigation; the horizon ring supplies the
 // truly gigantic stacked escarpments without adding collision or draw calls.
 
-const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 export default {
   id: 'titan_gorge',
@@ -37,10 +37,10 @@ export default {
     ],
   },
   splat: {
-    grassTone: (h, s, l) => [0.075, 0.39, clamp01(0.19 + l * 0.78)],
-    dirtTone: (h, s, l) => [0.055, 0.43, clamp01(0.24 + l * 0.48)],
+    grassTone: (h: number, s: number, l: number) => [0.075, 0.39, clamp01(0.19 + l * 0.78)],
+    dirtTone: (h: number, s: number, l: number) => [0.055, 0.43, clamp01(0.24 + l * 0.48)],
     sandstone: true,
-    rockTone: (h, s, l) => [0.035, clamp01(s * 0.68), clamp01(0.45 + (l - 0.5) * 0.76)],
+    rockTone: (h: number, s: number, l: number) => [0.035, clamp01(s * 0.68), clamp01(0.45 + (l - 0.5) * 0.76)],
     tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],
     roadTint: [0.78, 0.61, 0.51], strata: 0.22, sandMacro: 0.82,
     rippleAmp: 0.20, midRelief: 0.92, midReliefFar: 840,

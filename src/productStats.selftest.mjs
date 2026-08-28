@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PRODUCT_STATS, PRODUCT_STAT_TOKENS, renderProductStats } from './productStats.ts';
-import { MAP_IDS } from './world/maps/index.js';
+import { MAP_IDS } from './world/maps/index.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 

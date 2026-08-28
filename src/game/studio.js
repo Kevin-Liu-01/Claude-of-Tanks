@@ -40,7 +40,7 @@ import {
   CAMO_PATTERN_IDS, setCamoOverride, clearCamoOverrides, applyCamoPatterns,
   setCamoBiome,
 } from '../vehicles/materials.js';
-import { MAP_IDS, getMapConfig, resolveMapId } from '../world/maps/index.js';
+import { MAP_IDS, getMapConfig, resolveMapId } from '../world/maps/index.ts';
 import { createStudioPanel } from '../ui/studioPanel.js';
 import {
   STUDIO_MAX_DURATION_MS,

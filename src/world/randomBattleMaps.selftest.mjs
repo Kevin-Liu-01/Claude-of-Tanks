@@ -3,7 +3,7 @@ import {
   MAP_IDS,
   RANDOM_BATTLE_MAP_IDS,
   resolveMapId,
-} from './maps/index.js';
+} from './maps/index.ts';
 
 assert.ok(Object.isFrozen(MAP_IDS), 'the canonical battlefield registry is immutable');
 assert.strictEqual(RANDOM_BATTLE_MAP_IDS, MAP_IDS,

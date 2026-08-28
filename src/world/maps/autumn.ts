@@ -1,10 +1,10 @@
-// src/world/maps/autumn.js — maps r1: fall-palette river valley (Redshire in
+// src/world/maps/autumn.ts — maps r1: fall-palette river valley (Redshire in
 // October). A fordable river crosses the southern third as a chain of
 // shallow-dip marsh links rendered by the uSea open-water splat mode; the
 // broadleaf forest runs the vegetation hue system in orange/gold; farmland
 // patchwork, hay, and a ruined stone bridge dress the valley floor.
 
-const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The river: a W-E chain of shallow channel links routed along LOW ground
 // (DP over the riverless seed-1337 heightfield — the meanders are the
@@ -68,11 +68,11 @@ export default {
   splat: {
     // hay-gold meadow (procedural fallback; the sourced grass set carries an
     // olive-gold multiply tint — sourcedTextures TERRAIN_PLAN.autumn)
-    grassTone: (h, s, l) => [0.135, clamp01(s * 0.9), clamp01(l * 1.02 + 0.02)],
-    dirtTone: (h, s, l) => [0.082, clamp01(s * 0.9), clamp01(l * 0.98 + 0.02)],
-    rockTone: (h, s, l) => [0.09, clamp01(s * 0.5), clamp01(l * 1.02 + 0.02)],
+    grassTone: (h: number, s: number, l: number) => [0.135, clamp01(s * 0.9), clamp01(l * 1.02 + 0.02)],
+    dirtTone: (h: number, s: number, l: number) => [0.082, clamp01(s * 0.9), clamp01(l * 0.98 + 0.02)],
+    rockTone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.5), clamp01(l * 1.02 + 0.02)],
     // r3: dark olive-teal river water (raw layer + sky sheen read pale-grey)
-    mudTone: (h, s, l) => [0.52, clamp01(s * 0.95), clamp01(l * 0.78)],
+    mudTone: (h: number, s: number, l: number) => [0.52, clamp01(s * 0.95), clamp01(l * 0.78)],
     // open-water mode tuned RIVER: gentler foam (bank riffles), mud shoals
     seaLake: true,
     seaFoam: 0.12, // r4: bank riffles only — even 0.22 read as rapids sparkle at range
@@ -101,14 +101,14 @@ export default {
     grassDensity: 0.95,
     bushCount: 1.0,
     bushSpecies: 'oak',
-    grassTexTone: (h, s, l) => [clamp01(h * 0.72), clamp01(s * 0.85), clamp01(l * 1.0 + 0.03)],
-    tuftTone: (h, s, l) => [0.125, 0.30, clamp01(l * 0.95 + 0.05)],
+    grassTexTone: (h: number, s: number, l: number) => [clamp01(h * 0.72), clamp01(s * 0.85), clamp01(l * 1.0 + 0.03)],
+    tuftTone: (h: number, s: number, l: number) => [0.125, 0.30, clamp01(l * 0.95 + 0.05)],
     palettes: {
       // the fall canopy: oak remapped to the orange-red band; the WIDE
       // default hue jitter (kept near full) swings individuals between
       // scarlet, pumpkin and residual olive — the mixed-stand fall read
       oak: {
-        texTone: (h, s, l) => [clamp01(0.055 + (h - 0.22) * 0.25), clamp01(s * 1.02 + 0.10), clamp01(l * 1.02)],
+        texTone: (h: number, s: number, l: number) => [clamp01(0.055 + (h - 0.22) * 0.25), clamp01(s * 1.02 + 0.10), clamp01(l * 1.02)],
         cardHue: 0.058, cardSat: 0.52, cardL0: 0.30,
         // r2: far-canopy sat 0.50 -> 0.42, l1 0.42 -> 0.39 — the 300 m+
         // stands read salmon-pink candy against the hazed rim
@@ -117,7 +117,7 @@ export default {
       },
       // birches go clear gold (twig texture warmed hard + gold cards)
       birch: {
-        texTone: (h, s, l) => [0.105, clamp01(s * 0.55 + 0.22), clamp01(l * 0.92 + 0.10)],
+        texTone: (h: number, s: number, l: number) => [0.105, clamp01(s * 0.55 + 0.22), clamp01(l * 0.92 + 0.10)],
         cardHue: 0.105, cardSat: 0.55, cardL0: 0.42,
         canopy: { hue: 0.11, sat: 0.50, l0: 0.36, l1: 0.52 },
         jitterHue: 0.6,
@@ -141,13 +141,13 @@ export default {
         structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
     ],
     tones: {
-      plaster: (h, s, l) => [0.085, clamp01(s * 0.75 + 0.05), clamp01(l * 1.02 + 0.02)],
-      roof: (h, s, l) => [0.045, clamp01(s * 0.85), clamp01(l * 0.92)], // weathered red-brown tile
-      stone: (h, s, l) => [0.09, clamp01(s * 0.6), clamp01(l * 0.98)],
-      wood: (h, s, l) => [0.075, clamp01(s * 0.85), clamp01(l * 0.92)],
-      straw: (h, s, l) => [0.105, clamp01(s * 0.9 + 0.05), clamp01(l * 1.05 + 0.05)], // bright hay
+      plaster: (h: number, s: number, l: number) => [0.085, clamp01(s * 0.75 + 0.05), clamp01(l * 1.02 + 0.02)],
+      roof: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.85), clamp01(l * 0.92)], // weathered red-brown tile
+      stone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.6), clamp01(l * 0.98)],
+      wood: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.85), clamp01(l * 0.92)],
+      straw: (h: number, s: number, l: number) => [0.105, clamp01(s * 0.9 + 0.05), clamp01(l * 1.05 + 0.05)], // bright hay
     },
-    rockTone: (h, s, l) => [0.10, 0.10, clamp01(l * 0.95 + 0.02)], // mossy grey field stones
+    rockTone: (h: number, s: number, l: number) => [0.10, 0.10, clamp01(l * 0.95 + 0.02)], // mossy grey field stones
     wallStoneChance: 0.4,
     wallRuns: [
       [-56, 8, -56, 64, 2], [-56, 8, -20, 8, 3], [74, 30, 74, 96, 4],

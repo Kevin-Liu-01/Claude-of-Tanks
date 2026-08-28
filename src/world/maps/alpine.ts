@@ -1,7 +1,7 @@
 // alpine.js — high winter pass around a frozen lake and dense mountain
 // village. Uses the shared winter-lake dressing without duplicating geometry.
 
-const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 export default {
   id: 'alpine',
@@ -38,10 +38,10 @@ export default {
     ],
   },
   splat: {
-    grassTone: (h, s, l) => [0.575, 0.025, clamp01(0.64 + l * 0.36)],
-    dirtTone: (h, s, l) => [0.075, 0.09, clamp01(l * 0.78 + 0.12)],
-    rockTone: (h, s, l) => [0.59, 0.045, clamp01(l * 0.95 + 0.24)],
-    mudTone: (h, s, l) => [0.55, 0.17, clamp01(0.54 + l * 0.32)],
+    grassTone: (h: number, s: number, l: number) => [0.575, 0.025, clamp01(0.64 + l * 0.36)],
+    dirtTone: (h: number, s: number, l: number) => [0.075, 0.09, clamp01(l * 0.78 + 0.12)],
+    rockTone: (h: number, s: number, l: number) => [0.59, 0.045, clamp01(l * 0.95 + 0.24)],
+    mudTone: (h: number, s: number, l: number) => [0.55, 0.17, clamp01(0.54 + l * 0.32)],
     iceLake: true, iceDrift: 0.16, marshGloss: 1.0, mudRough: 0.18,
     iceSky: [0.72, 0.82, 0.94],
     tintA: [1.02, 1.08, 1.16], tintB: [0.74, 0.84, 0.96], tintC: [1.12, 1.14, 1.18],

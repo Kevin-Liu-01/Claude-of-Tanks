@@ -1,7 +1,7 @@
 // fjord.js — cold-water harbor approaches with a clipped coastal road grid,
 // fishing yards, stone settlement, steep conifer shoulders and a deep bay.
 
-const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 export default {
   id: 'fjord',
@@ -41,10 +41,10 @@ export default {
     ],
   },
   splat: {
-    grassTone: (h, s, l) => [0.39, clamp01(s * 0.34), clamp01(l * 0.82 + 0.03)],
-    dirtTone: (h, s, l) => [0.09, clamp01(s * 0.28), clamp01(l * 0.88)],
-    rockTone: (h, s, l) => [0.58, clamp01(s * 0.18), clamp01(l * 0.92 + 0.04)],
-    mudTone: (h, s, l) => [0.54, clamp01(s * 0.85), clamp01(l * 0.68)],
+    grassTone: (h: number, s: number, l: number) => [0.39, clamp01(s * 0.34), clamp01(l * 0.82 + 0.03)],
+    dirtTone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.28), clamp01(l * 0.88)],
+    rockTone: (h: number, s: number, l: number) => [0.58, clamp01(s * 0.18), clamp01(l * 0.92 + 0.04)],
+    mudTone: (h: number, s: number, l: number) => [0.54, clamp01(s * 0.85), clamp01(l * 0.68)],
     seaLake: true, seaFoam: 0.54, seaRamp: [0.22, 0.58], iceDrift: 0.08,
     marshGloss: 0.94, iceSky: [0.24, 0.39, 0.50],
     tintA: [0.86, 0.94, 0.92], tintB: [0.63, 0.72, 0.70], tintC: [0.98, 1.04, 1.02],

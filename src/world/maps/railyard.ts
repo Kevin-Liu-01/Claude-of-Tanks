@@ -1,10 +1,10 @@
-// src/world/maps/railyard.js — maps r1: flat brownfield rail depot under an
+// src/world/maps/railyard.ts — maps r1: flat brownfield rail depot under an
 // overcast sky (Ensk's industrial quarter, minus the town). Warehouse rows,
 // container ranks and gantry cranes along a fan of sidings (maps/mapKits.js
 // lays the physical track geometry), smokestack verticals, concrete/gravel
 // splats, lamppost-lined paved roads and heavy battle scarring.
 
-const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // Yard plan: industry-heavy with a couple of worker rowhouses and ruins so
 // the depot reads lived-in and fought-over. 'warehouse'/'containerRow'/
@@ -60,10 +60,10 @@ export default {
   },
 
   splat: {
-    grassTone: (h, s, l) => [0.16, clamp01(s * 0.42), clamp01(l * 0.88)], // trodden verge scrub
-    dirtTone: (h, s, l) => [0.08, clamp01(s * 0.30), clamp01(l * 0.98 + 0.02)], // ash/cinder
-    rockTone: (h, s, l) => [0.08, clamp01(s * 0.25), clamp01(l * 0.95)], // concrete grey
-    mudTone: (h, s, l) => [0.085, clamp01(s * 0.5), clamp01(l * 0.9)],
+    grassTone: (h: number, s: number, l: number) => [0.16, clamp01(s * 0.42), clamp01(l * 0.88)], // trodden verge scrub
+    dirtTone: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.30), clamp01(l * 0.98 + 0.02)], // ash/cinder
+    rockTone: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.25), clamp01(l * 0.95)], // concrete grey
+    mudTone: (h: number, s: number, l: number) => [0.085, clamp01(s * 0.5), clamp01(l * 0.9)],
     tintA: [1.02, 1.0, 0.92], tintB: [0.82, 0.84, 0.80], tintC: [1.04, 1.02, 0.96],
     // concrete-grey carriageway, fully paved (R layer = warm-neutral sett)
     roadTint: [0.60, 0.60, 0.58],
@@ -83,16 +83,16 @@ export default {
     grassDensity: 0.45,
     bushCount: 0.7,
     bushSpecies: 'oak',
-    grassTexTone: (h, s, l) => [0.14, clamp01(s * 0.55), clamp01(l * 0.95)],
-    tuftTone: (h, s, l) => [0.135, clamp01(s * 0.6), clamp01(l * 0.88)],
+    grassTexTone: (h: number, s: number, l: number) => [0.14, clamp01(s * 0.55), clamp01(l * 0.95)],
+    tuftTone: (h: number, s: number, l: number) => [0.135, clamp01(s * 0.6), clamp01(l * 0.88)],
     palettes: {
       oak: { // soot-dulled wasteland scrub
-        texTone: (h, s, l) => [clamp01(h * 0.85), clamp01(s * 0.6), clamp01(l * 0.94)],
+        texTone: (h: number, s: number, l: number) => [clamp01(h * 0.85), clamp01(s * 0.6), clamp01(l * 0.94)],
         cardHue: 0.17, cardSat: 0.22,
         canopy: { hue: 0.18, sat: 0.22, l0: 0.24, l1: 0.36 },
       },
       birch: {
-        texTone: (h, s, l) => [0.12, clamp01(s * 0.5), clamp01(l * 0.9 + 0.04)],
+        texTone: (h: number, s: number, l: number) => [0.12, clamp01(s * 0.5), clamp01(l * 0.9 + 0.04)],
         cardHue: 0.14, cardSat: 0.26, cardL0: 0.36,
         canopy: { hue: 0.15, sat: 0.26, l0: 0.32, l1: 0.46 },
         jitterHue: 0.5,
@@ -115,15 +115,15 @@ export default {
     sideSkip: 0.08, spacingPad: 6,
     buildingLat: [12, 5], maxSpread: 2.4,
     tones: {
-      plaster: (h, s, l) => [0.09, clamp01(s * 0.30), clamp01(l * 0.88)], // sooty render
-      plaster2: (h, s, l) => [0.075, clamp01(s * 0.35 + 0.06), clamp01(l * 0.80)],
-      plaster3: (h, s, l) => [0.55, clamp01(s * 0.15 + 0.03), clamp01(l * 0.78)],
-      roof: (h, s, l) => [0.58, clamp01(s * 0.18), clamp01(l * 0.80 + 0.04)], // weathered sheet grey (r2: lifted — read near-black under the deck)
-      stone: (h, s, l) => [0.05, clamp01(s * 0.55 + 0.08), clamp01(l * 0.98 + 0.03)], // smoke-stained brick (r2: lifted)
-      wood: (h, s, l) => [0.08, clamp01(s * 0.55), clamp01(l * 0.85)], // creosoted timber
+      plaster: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.30), clamp01(l * 0.88)], // sooty render
+      plaster2: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.35 + 0.06), clamp01(l * 0.80)],
+      plaster3: (h: number, s: number, l: number) => [0.55, clamp01(s * 0.15 + 0.03), clamp01(l * 0.78)],
+      roof: (h: number, s: number, l: number) => [0.58, clamp01(s * 0.18), clamp01(l * 0.80 + 0.04)], // weathered sheet grey (r2: lifted — read near-black under the deck)
+      stone: (h: number, s: number, l: number) => [0.05, clamp01(s * 0.55 + 0.08), clamp01(l * 0.98 + 0.03)], // smoke-stained brick (r2: lifted)
+      wood: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.55), clamp01(l * 0.85)], // creosoted timber
       straw: null,
     },
-    rockTone: (h, s, l) => [0.085, 0.07, clamp01(l * 0.82)], // concrete rubble
+    rockTone: (h: number, s: number, l: number) => [0.085, 0.07, clamp01(l * 0.82)], // concrete rubble
     wallStoneChance: 0.75,
     wallRuns: [
       // yard perimeter + interior dividing walls

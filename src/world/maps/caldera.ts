@@ -1,7 +1,7 @@
 // caldera.js — volcanic mining basin: black lava shelves, sulphur grass,
 // extraction works, ash haze and a ruined settlement around the central road.
 
-const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 export default {
   id: 'caldera',
@@ -39,9 +39,9 @@ export default {
     ],
   },
   splat: {
-    grassTone: (h, s, l) => [0.14, clamp01(s * 0.55), clamp01(l * 0.48 + 0.08)],
-    dirtTone: (h, s, l) => [0.06, clamp01(s * 0.38), clamp01(l * 0.44 + 0.055)],
-    rockTone: (h, s, l) => [0.02, clamp01(s * 0.25), clamp01(l * 0.36 + 0.045)],
+    grassTone: (h: number, s: number, l: number) => [0.14, clamp01(s * 0.55), clamp01(l * 0.48 + 0.08)],
+    dirtTone: (h: number, s: number, l: number) => [0.06, clamp01(s * 0.38), clamp01(l * 0.44 + 0.055)],
+    rockTone: (h: number, s: number, l: number) => [0.02, clamp01(s * 0.25), clamp01(l * 0.36 + 0.045)],
     tintA: [0.72, 0.67, 0.55], tintB: [0.42, 0.39, 0.36], tintC: [0.83, 0.76, 0.56],
     roadTint: [0.49, 0.46, 0.43], strata: 0.05, midRelief: 1.15,
   },

@@ -1,10 +1,10 @@
-// src/world/maps/steppe.js — maps r1: Prokhorovka's older, drier cousin. A
+// src/world/maps/steppe.ts — maps r1: Prokhorovka's older, drier cousin. A
 // golden feather-grass plain with LONG sightlines, hull-down micro-folds
 // (microScale pushed hard), planted windbreak tree LINES (the additive
 // vegetation `belts` feature), granite outcrop spurs, a whitewashed khutor
 // hamlet at the crossroads and a dusty heat-haze horizon.
 
-const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 export default {
   id: 'steppe',
@@ -46,12 +46,12 @@ export default {
   splat: {
     // cured feather-grass gold (fallback; sourced withered_grass set is the
     // real albedo — sourcedTextures TERRAIN_PLAN.steppe)
-    grassTone: (h, s, l) => [0.118, clamp01(s * 0.8), clamp01(l * 1.04 + 0.05)],
-    dirtTone: (h, s, l) => [0.085, clamp01(s * 0.8), clamp01(l * 1.0 + 0.04)],
+    grassTone: (h: number, s: number, l: number) => [0.118, clamp01(s * 0.8), clamp01(l * 1.04 + 0.05)],
+    dirtTone: (h: number, s: number, l: number) => [0.085, clamp01(s * 0.8), clamp01(l * 1.0 + 0.04)],
     // r2: warm sun-bleached outcrop stone — the neutral grey read as cold
     // blue slag wherever a fold crest picked up partial rock
-    rockTone: (h, s, l) => [0.082, clamp01(s * 0.30 + 0.10), clamp01(l * 1.05 + 0.05)],
-    mudTone: (h, s, l) => [0.08, 0.28, clamp01(l * 1.2 + 0.02)],
+    rockTone: (h: number, s: number, l: number) => [0.082, clamp01(s * 0.30 + 0.10), clamp01(l * 1.05 + 0.05)],
+    mudTone: (h: number, s: number, l: number) => [0.08, 0.28, clamp01(l * 1.2 + 0.02)],
     // straw lift / olive-brown DARKENER / pale hay — the macro range that
     // keeps 300-800 m readable on an open plain (the desert r3 lesson)
     // r3: darkener pulled off red toward olive — the brown fields read as
@@ -90,17 +90,17 @@ export default {
       { x0: 205, z0: -35, x1: 430, z1: -15, species: 'oak', gap: 8 },
       { x0: -430, z0: -300, x1: -180, z1: -312, species: 'oak', gap: 8 },
     ],
-    grassTexTone: (h, s, l) => [0.118, clamp01(s * 0.75 + 0.05), clamp01(l * 1.05 + 0.07)],
-    tuftTone: (h, s, l) => [0.122, 0.30, clamp01(l * 0.85 + 0.14)],
+    grassTexTone: (h: number, s: number, l: number) => [0.118, clamp01(s * 0.75 + 0.05), clamp01(l * 1.05 + 0.07)],
+    tuftTone: (h: number, s: number, l: number) => [0.122, 0.30, clamp01(l * 0.85 + 0.14)],
     palettes: {
       oak: { // late-summer shelterbelt green-gold: full crowns, dusty olive
-        texTone: (h, s, l) => [clamp01(0.10 + (h - 0.22) * 0.35), clamp01(s * 0.72 + 0.06), clamp01(l * 1.0 + 0.04)],
+        texTone: (h: number, s: number, l: number) => [clamp01(0.10 + (h - 0.22) * 0.35), clamp01(s * 0.72 + 0.06), clamp01(l * 1.0 + 0.04)],
         cardHue: 0.115, cardSat: 0.32,
         canopy: { hue: 0.12, sat: 0.32, l0: 0.28, l1: 0.42 },
         jitterHue: 0.6,
       },
       pine: { // r3: dust the rare pines — full verdant green read terrarium
-        texTone: (h, s, l) => [clamp01(h * 0.96), clamp01(s * 0.55), clamp01(l * 1.0 + 0.05)],
+        texTone: (h: number, s: number, l: number) => [clamp01(h * 0.96), clamp01(s * 0.55), clamp01(l * 1.0 + 0.05)],
         canopy: { hue: 0.28, sat: 0.16, l0: 0.18, l1: 0.32 },
       },
     },
@@ -120,13 +120,13 @@ export default {
         structure: 'longhouse', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
     ],
     tones: {
-      plaster: (h, s, l) => [0.10, clamp01(s * 0.4), clamp01(l * 1.08 + 0.06)], // sun-baked lime wash
-      roof: (h, s, l) => [0.075, clamp01(s * 0.7), clamp01(l * 0.95)],
-      stone: (h, s, l) => [0.09, clamp01(s * 0.45), clamp01(l * 1.0)],
-      wood: (h, s, l) => [0.08, clamp01(s * 0.85), clamp01(l * 1.0)],
-      straw: (h, s, l) => [0.11, clamp01(s * 0.9), clamp01(l * 1.05 + 0.05)],
+      plaster: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.4), clamp01(l * 1.08 + 0.06)], // sun-baked lime wash
+      roof: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.7), clamp01(l * 0.95)],
+      stone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.45), clamp01(l * 1.0)],
+      wood: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.85), clamp01(l * 1.0)],
+      straw: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.9), clamp01(l * 1.05 + 0.05)],
     },
-    rockTone: (h, s, l) => [0.085, 0.09, clamp01(l * 0.95)], // granite spur boulders
+    rockTone: (h: number, s: number, l: number) => [0.085, 0.09, clamp01(l * 0.95)], // granite spur boulders
     wallStoneChance: 0.3,
     wallRuns: [
       [-58, 4, -58, 56, 2], [70, 24, 70, 88, 3], [-6, 102, 46, 102, 1],

@@ -1,11 +1,11 @@
-// src/world/maps/coastal.js — maps r1: Fisherman's Bay / Overlord vibes. A
+// src/world/maps/coastal.ts — maps r1: Fisherman's Bay / Overlord vibes. A
 // turquoise bay fills the east edge (uSea open-water splat mode), fronted by
 // a strand of beach apron + surf line, a dune band, headland bluffs, and a
 // whitewashed fishing village on the coast road. Sea sheets are terrain
 // `lakes` (flattened to sea level, softLakes = wading is bogged-slow) paired
 // with wide `marshes` rings that give the splat mask its beach ramp.
 
-const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 export default {
   id: 'coastal',
@@ -69,14 +69,14 @@ export default {
   splat: {
     // wind-cured maritime sward (procedural fallback; sourced grass carries
     // the real albedo — see sourcedTextures TERRAIN_PLAN.coastal)
-    grassTone: (h, s, l) => [0.185, clamp01(s * 0.85), clamp01(l * 1.0 + 0.02)],
+    grassTone: (h: number, s: number, l: number) => [0.185, clamp01(s * 0.85), clamp01(l * 1.0 + 0.02)],
     // D layer doubles as the BEACH: pale dry strand sand
-    dirtTone: (h, s, l) => [0.105, 0.30, clamp01(0.30 + l * 0.62)],
+    dirtTone: (h: number, s: number, l: number) => [0.105, 0.30, clamp01(0.30 + l * 0.62)],
     // pale grey headland rock (chalk-adjacent, never desert-red)
-    rockTone: (h, s, l) => [0.10, clamp01(s * 0.35), clamp01(l * 1.06 + 0.05)],
+    rockTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.35), clamp01(l * 1.06 + 0.05)],
     // r3: deepen + green the authored water — the raw layer under fresnel +
     // sun spec read as pale sparkle, not a teal bay
-    mudTone: (h, s, l) => [clamp01(h * 0.98), clamp01(s * 1.1), clamp01(l * 0.82)],
+    mudTone: (h: number, s: number, l: number) => [clamp01(h * 0.98), clamp01(s * 1.1), clamp01(l * 0.82)],
     // open-water mode: surf line + whitecaps + sand shoals in the shallows
     seaLake: true,
     seaFoam: 0.62,
@@ -102,24 +102,24 @@ export default {
     grassDensity: 0.85,
     bushCount: 0.9,
     bushSpecies: 'oak',
-    grassTexTone: (h, s, l) => [0.155, clamp01(s * 0.8), clamp01(l * 1.02 + 0.04)],
-    tuftTone: (h, s, l) => [0.145, 0.26, clamp01(l * 0.92 + 0.08)],
+    grassTexTone: (h: number, s: number, l: number) => [0.155, clamp01(s * 0.8), clamp01(l * 1.02 + 0.04)],
+    tuftTone: (h: number, s: number, l: number) => [0.145, 0.26, clamp01(l * 0.92 + 0.08)],
     palettes: {
       // maritime pines: a touch bluer/darker than the verdant stand
       pine: {
-        texTone: (h, s, l) => [clamp01(h * 1.04), clamp01(s * 0.9), clamp01(l * 0.98)],
+        texTone: (h: number, s: number, l: number) => [clamp01(h * 1.04), clamp01(s * 0.9), clamp01(l * 0.98)],
         canopy: { hue: 0.34, sat: 0.22, l0: 0.16, l1: 0.30 },
       },
       // shore palms: real green (the desert palette's dusty olive would read
       // dead against the bay), still desaturated enough to sit in the grade
       palm: {
-        texTone: (h, s, l) => [clamp01(h), clamp01(s * 0.85), clamp01(l * 0.95)],
+        texTone: (h: number, s: number, l: number) => [clamp01(h), clamp01(s * 0.85), clamp01(l * 0.95)],
         cardHue: 0.25, cardSat: 0.30,
         frond: { hue: 0.25, sat: 0.30, l: 0.36 },
         canopy: { hue: 0.26, sat: 0.28, l0: 0.28, l1: 0.44 },
       },
       oak: { // salt-pruned coastal scrub
-        texTone: (h, s, l) => [clamp01(h * 0.92), clamp01(s * 0.72), clamp01(l * 1.0 + 0.05)],
+        texTone: (h: number, s: number, l: number) => [clamp01(h * 0.92), clamp01(s * 0.72), clamp01(l * 1.0 + 0.05)],
         cardHue: 0.20, cardSat: 0.24,
         canopy: { hue: 0.21, sat: 0.24, l0: 0.30, l1: 0.44 },
       },
@@ -143,13 +143,13 @@ export default {
     sideSkip: 0.12, spacingPad: 7,
     buildingLat: [11, 4.5], maxSpread: 2.2,
     tones: {
-      plaster: (h, s, l) => [0.095, clamp01(s * 0.35), clamp01(l * 1.10 + 0.08)], // whitewash
-      roof: (h, s, l) => [0.575, clamp01(s * 0.30 + 0.04), clamp01(l * 0.80)],    // slate blue-grey
-      stone: (h, s, l) => [0.10, clamp01(s * 0.5), clamp01(l * 1.0 + 0.02)],
-      wood: (h, s, l) => [0.09, clamp01(s * 0.38), clamp01(l * 1.10 + 0.05)],     // salt-silvered timber (r3: lifted — read as tar)
+      plaster: (h: number, s: number, l: number) => [0.095, clamp01(s * 0.35), clamp01(l * 1.10 + 0.08)], // whitewash
+      roof: (h: number, s: number, l: number) => [0.575, clamp01(s * 0.30 + 0.04), clamp01(l * 0.80)],    // slate blue-grey
+      stone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 1.0 + 0.02)],
+      wood: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.38), clamp01(l * 1.10 + 0.05)],     // salt-silvered timber (r3: lifted — read as tar)
       straw: null,
     },
-    rockTone: (h, s, l) => [0.10, 0.08, clamp01(l * 1.02 + 0.04)], // grey shore boulders
+    rockTone: (h: number, s: number, l: number) => [0.10, 0.08, clamp01(l * 1.02 + 0.04)], // grey shore boulders
     wallStoneChance: 0.85,
     wallRuns: [
       // village crofts

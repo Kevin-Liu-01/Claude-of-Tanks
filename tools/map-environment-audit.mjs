@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { MAP_IDS } from '../src/world/maps/index.js';
+import { MAP_IDS } from '../src/world/maps/index.ts';
 
 const args = process.argv.slice(2);
 const valueArg = (name, fallback) => {

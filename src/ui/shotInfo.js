@@ -28,7 +28,7 @@ import {
   presentationAnchorFor,
   presentationProjectionFor,
 } from '../vehicles/presentationAnchors.generated.js';
-import { getMapConfig } from '../world/maps/index.js';
+import { getMapConfig } from '../world/maps/index.ts';
 // END SCREEN (killcam_endscreen r1): the full-screen battle report is now the
 // cinematic end screen in src/ui/endScreen.js — this module keeps ALL the
 // bookkeeping (resolved-event sums, REPORT GATE) and hands a summary over.

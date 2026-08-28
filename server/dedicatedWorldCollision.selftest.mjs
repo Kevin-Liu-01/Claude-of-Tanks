@@ -4,7 +4,7 @@ import {
   createDedicatedWorldCollision,
   dedicatedCollisionManifestStats,
 } from './dedicatedWorldCollision.js';
-import { MAP_IDS } from '../src/world/maps/index.js';
+import { MAP_IDS } from '../src/world/maps/index.ts';
 
 const expected = {
   verdant: [3816, 490, 4091],

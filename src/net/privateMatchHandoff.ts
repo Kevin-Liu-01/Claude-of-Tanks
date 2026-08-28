@@ -1,4 +1,4 @@
-import { resolveMapId } from '../world/maps/index.js';
+import { resolveMapId } from '../world/maps/index.ts';
 import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.ts';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';

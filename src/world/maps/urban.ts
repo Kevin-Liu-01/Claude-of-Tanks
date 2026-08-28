@@ -1,9 +1,9 @@
-// src/world/maps/urban.js — Himmelsdorf/Ensk vibes: a DENSE town core on
+// src/world/maps/urban.ts — Himmelsdorf/Ensk vibes: a DENSE town core on
 // flattened ground — a tight street grid walled with rowhouses, a central
 // plaza, ruined shells and rubble at the intersections, park hills outside
 // the blocks.
 
-const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // Street-wall plan: mostly rowhouses so every block frontage reads built-up,
 // ruins interleaved (1 in 5) for shelled-town texture, plus real vertical
@@ -69,10 +69,10 @@ export default {
   },
 
   splat: {
-    grassTone: (h, s, l) => [0.19, clamp01(s * 0.5), clamp01(l * 0.86)], // worn town green
-    dirtTone: (h, s, l) => [0.09, clamp01(s * 0.35), clamp01(l * 1.02 + 0.03)], // ash-grey rubble dust
-    rockTone: (h, s, l) => [0.08, clamp01(s * 0.5), clamp01(l * 1.0)],
-    mudTone: (h, s, l) => [0.085, clamp01(s * 0.6), clamp01(l * 0.9)],
+    grassTone: (h: number, s: number, l: number) => [0.19, clamp01(s * 0.5), clamp01(l * 0.86)], // worn town green
+    dirtTone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.35), clamp01(l * 1.02 + 0.03)], // ash-grey rubble dust
+    rockTone: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.5), clamp01(l * 1.0)],
+    mudTone: (h: number, s: number, l: number) => [0.085, clamp01(s * 0.6), clamp01(l * 0.9)],
     tintA: [1.04, 1.02, 0.92], tintB: [0.86, 0.90, 0.84], tintC: [1.05, 1.03, 0.95],
     // r6: [0.62,0.63,0.72] (B > R) over the pale sourced sett sheet + blue sky
     // fill rendered every street as a bluish-white water channel in the
@@ -100,7 +100,7 @@ export default {
     loneCount: 40,
     rimCount: 72, // r7: fuller rim forest under the serrated backdrop tree line
     grassDensity: 0.5,
-    tuftTone: (h, s, l) => [0.185, clamp01(s * 0.7), clamp01(l * 0.92)],
+    tuftTone: (h: number, s: number, l: number) => [0.185, clamp01(s * 0.7), clamp01(l * 0.92)],
     bushCount: 0.85, // r6: garden hedges/shrubs in the yards and block edges
     bushSpecies: 'oak',
     parks: [ // the hill-park belts where town trees are allowed
@@ -127,24 +127,24 @@ export default {
     monument: true,
     blockFill: true,
     tones: {
-      plaster: (h, s, l) => [0.10, clamp01(s * 0.5), clamp01(l * 0.92)], // sooty render
+      plaster: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.92)], // sooty render
       // r3 (content_breadth): two more render families for the street walls —
       // the whole town recycled ONE white-plaster box ("kit-bash at mid
       // distance" critique). plaster2 = warm ochre-cream (Central European
       // lime render), plaster3 = muted grey-green (weathered distemper).
       // Consumed by the props.js facade-variety patch (handoff r3); inert
       // until that lands.
-      plaster2: (h, s, l) => [0.075, clamp01(s * 0.45 + 0.14), clamp01(l * 0.84)],
-      plaster3: (h, s, l) => [0.21, clamp01(s * 0.28 + 0.05), clamp01(l * 0.80)],
+      plaster2: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.45 + 0.14), clamp01(l * 0.84)],
+      plaster3: (h: number, s: number, l: number) => [0.21, clamp01(s * 0.28 + 0.05), clamp01(l * 0.80)],
       // aged clay roofscape. r5: the old two-class split (red tiles vs hue-0.60
       // slate rows) striped every roof red/blue in wide shots — and even
       // neutral grey rows go blue under the sky fill. Keep the whole sheet in
       // one warm clay family: bright tile faces dusty red, dark rows deep
       // warm brown (row shadow), so roofs read tiled, not striped.
-      roof: (h, s, l) => (l > 0.35
+      roof: (h: number, s: number, l: number) => (l > 0.35
         ? [0.032, 0.30, clamp01(l * 0.72)]
         : [0.038, 0.24, clamp01(l * 0.55)]),
-      stone: (h, s, l) => [0.09, clamp01(s * 0.6), clamp01(l * 0.95)],
+      stone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.6), clamp01(l * 0.95)],
       wood: null,
       straw: null,
     },
@@ -153,7 +153,7 @@ export default {
     // r1 (content_breadth): darker, slightly warm-grey rubble — the old pale
     // near-white smooth boulders read as "grey tent blobs" in the foreground
     // fields (critique); dropping the value keeps them below the grass tone
-    rockTone: (h, s, l) => [0.085, 0.09, clamp01(l * 0.80)], // concrete rubble chunks
+    rockTone: (h: number, s: number, l: number) => [0.085, 0.09, clamp01(l * 0.80)], // concrete rubble chunks
     wallStoneChance: 0.55,
     buildingLat: [9.5, 1.5], // tight, near-constant setback => street walls
     sideSkip: 0.04,

@@ -2,7 +2,7 @@
 // rolling transit cuts. The skyline is deliberately different from Steinburg:
 // fewer buildings, far larger masses, and long diagonal firing corridors.
 
-const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 export default {
   id: 'blackglass',
@@ -39,9 +39,9 @@ export default {
     ],
   },
   splat: {
-    grassTone: (h, s, l) => [0.37, clamp01(s * 0.18), clamp01(l * 0.44 + 0.03)],
-    dirtTone: (h, s, l) => [0.08, clamp01(s * 0.22), clamp01(l * 0.52 + 0.025)],
-    rockTone: (h, s, l) => [0.62, clamp01(s * 0.18), clamp01(l * 0.52)],
+    grassTone: (h: number, s: number, l: number) => [0.37, clamp01(s * 0.18), clamp01(l * 0.44 + 0.03)],
+    dirtTone: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.22), clamp01(l * 0.52 + 0.025)],
+    rockTone: (h: number, s: number, l: number) => [0.62, clamp01(s * 0.18), clamp01(l * 0.52)],
     tintA: [0.65, 0.72, 0.76], tintB: [0.38, 0.43, 0.46], tintC: [0.82, 0.72, 0.61],
     roadTint: [0.32, 0.35, 0.37], roadTexMix: 0.88, townWear: 2.0, midRelief: 0.95,
   },
@@ -75,11 +75,11 @@ export default {
     blockFill: true, streetRows: true, streetRowsAfterLandmarks: true,
     streetRowRoadStride: 2, ruinChance: 0.54, curbs: true, lampposts: true,
     tones: {
-      plaster: (h, s, l) => [0.61, clamp01(s * 0.18), clamp01(l * 0.56)],
-      plaster2: (h, s, l) => [0.075, clamp01(s * 0.25), clamp01(l * 0.52)],
-      plaster3: (h, s, l) => [0.56, clamp01(s * 0.22), clamp01(l * 0.48)],
-      stone: (h, s, l) => [0.60, clamp01(s * 0.16), clamp01(l * 0.59)],
-      roof: (h, s, l) => [0.03, clamp01(s * 0.23), clamp01(l * 0.42)],
+      plaster: (h: number, s: number, l: number) => [0.61, clamp01(s * 0.18), clamp01(l * 0.56)],
+      plaster2: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.25), clamp01(l * 0.52)],
+      plaster3: (h: number, s: number, l: number) => [0.56, clamp01(s * 0.22), clamp01(l * 0.48)],
+      stone: (h: number, s: number, l: number) => [0.60, clamp01(s * 0.16), clamp01(l * 0.59)],
+      roof: (h: number, s: number, l: number) => [0.03, clamp01(s * 0.23), clamp01(l * 0.42)],
       wood: null, straw: null,
     },
     wallStyle: 'brick', wallStoneChance: 0.82, buildingLat: [15, 7],

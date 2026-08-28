@@ -11,7 +11,7 @@ import {
 } from './featuredShots.ts';
 import { BOOT_HERO_SHOTS } from './bootScreen.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
-import { MAP_IDS } from '../world/maps/index.js';
+import { MAP_IDS } from '../world/maps/index.ts';
 
 function webpDimensions(buffer) {
   assert.equal(buffer.subarray(0, 4).toString(), 'RIFF', 'map image must be RIFF WebP');

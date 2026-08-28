@@ -40,7 +40,7 @@ export default {
     ],
   },
   splat: {
-    mudTone: (h, s, l) => [0.51, Math.min(1, s * 0.92), Math.min(1, l * 0.70)],
+    mudTone: (h: number, s: number, l: number) => [0.51, Math.min(1, s * 0.92), Math.min(1, l * 0.70)],
     seaLake: true, seaFoam: 0.08, seaRamp: [0.08, 0.42], iceDrift: 0.03,
     marshGloss: 0.86, iceSky: [0.22, 0.38, 0.36],
     fieldPatch: 1, tintA: [0.78, 1.02, 0.68], tintB: [0.52, 0.72, 0.48],

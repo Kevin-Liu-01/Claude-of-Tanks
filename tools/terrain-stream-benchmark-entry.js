@@ -1,4 +1,4 @@
-import { getMapConfig } from '../src/world/maps/index.js';
+import { getMapConfig } from '../src/world/maps/index.ts';
 import { buildTerrainMeshesAsync, createHeightField } from '../src/world/terrain.js';
 
 const config = getMapConfig('verdant');

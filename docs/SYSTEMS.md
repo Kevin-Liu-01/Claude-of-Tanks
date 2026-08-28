@@ -552,7 +552,7 @@ entire behavior model.
 
 ## World system
 
-src/world/maps/index.js is the ordered map registry. Each map configuration
+src/world/maps/index.ts is the ordered map registry. Each map configuration
 defines identity, terrain, dressing, lighting, vegetation, and gameplay
 parameters. src/world/map.js composes the world.
 

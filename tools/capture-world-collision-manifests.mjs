@@ -12,7 +12,7 @@
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { MAP_IDS } from '../src/world/maps/index.js';
+import { MAP_IDS } from '../src/world/maps/index.ts';
 
 const session = process.argv[2] || 'cot-manifest';
 const outputUrl = new URL('../server/world-collision-manifests.json', import.meta.url);

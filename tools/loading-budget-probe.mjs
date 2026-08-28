@@ -33,7 +33,7 @@ import os, { tmpdir } from 'node:os';
 import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import puppeteer from 'puppeteer';
-import { MAP_IDS } from '../src/world/maps/index.js';
+import { MAP_IDS } from '../src/world/maps/index.ts';
 
 const argv = process.argv.slice(2);
 function option(name, fallback) {

@@ -2,7 +2,7 @@
 // towers are bucket-merged by props.js, preserving the ordinary map draw-call
 // shape while the six-lane street plan creates true urban canyons.
 
-const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 const PLAN = [
   'megatower', 'parkingdeck', 'ruin', 'needletower', 'factory', 'broadcasttower',
@@ -42,9 +42,9 @@ export default {
     ],
   },
   splat: {
-    grassTone: (h, s, l) => [0.11, clamp01(s * 0.32), clamp01(l * 0.62)],
-    dirtTone: (h, s, l) => [0.075, clamp01(s * 0.25), clamp01(l * 0.60 + 0.04)],
-    rockTone: (h, s, l) => [0.08, clamp01(s * 0.20), clamp01(l * 0.68)],
+    grassTone: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.32), clamp01(l * 0.62)],
+    dirtTone: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.25), clamp01(l * 0.60 + 0.04)],
+    rockTone: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.20), clamp01(l * 0.68)],
     tintA: [0.82, 0.82, 0.78], tintB: [0.48, 0.51, 0.53], tintC: [0.90, 0.84, 0.73],
     roadTint: [0.39, 0.40, 0.41], roadTexMix: 0.92, townWear: 2.2, midRelief: 0.72,
   },
@@ -72,11 +72,11 @@ export default {
     blockFill: true, streetRows: true, streetRowsAfterLandmarks: true,
     streetRowRoadStride: 2, ruinChance: 0.48, curbs: true, lampposts: true,
     tones: {
-      plaster: (h, s, l) => [0.075, clamp01(s * 0.34 + 0.06), clamp01(l * 0.64)],
-      plaster2: (h, s, l) => [0.095, clamp01(s * 0.30 + 0.05), clamp01(l * 0.58)],
-      plaster3: (h, s, l) => [0.58, clamp01(s * 0.22), clamp01(l * 0.55)],
-      stone: (h, s, l) => [0.08, clamp01(s * 0.20), clamp01(l * 0.67)],
-      roof: (h, s, l) => [0.035, clamp01(s * 0.28), clamp01(l * 0.52)],
+      plaster: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.34 + 0.06), clamp01(l * 0.64)],
+      plaster2: (h: number, s: number, l: number) => [0.095, clamp01(s * 0.30 + 0.05), clamp01(l * 0.58)],
+      plaster3: (h: number, s: number, l: number) => [0.58, clamp01(s * 0.22), clamp01(l * 0.55)],
+      stone: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.20), clamp01(l * 0.67)],
+      roof: (h: number, s: number, l: number) => [0.035, clamp01(s * 0.28), clamp01(l * 0.52)],
       wood: null, straw: null,
     },
     wallStyle: 'brick', wallStoneChance: 0.74, buildingLat: [14, 5],
