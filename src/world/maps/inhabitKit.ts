@@ -1,4 +1,4 @@
-// src/world/maps/inhabitKit.js — world-dressing r1: the INHABITING-OBJECT kit.
+// src/world/maps/inhabitKit.ts — world-dressing r1: the INHABITING-OBJECT kit.
 // Small themed props (carts, barrels, crates, bales, stooks, troughs, market
 // stalls, benches, churns, laundry lines, pottery, oil drums, sleds, firewood,
 // street lamps) plus the wooden FENCE segment kit — every type built twice:
@@ -15,29 +15,67 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
+type Rng = () => number;
+type Palette = readonly [number, number, number];
+type PropBuilder = (rng: Rng) => THREE.BufferGeometry;
+
+export interface DestructiblePropType {
+  cls: 'break' | 'topple' | 'physics';
+  mat: 'wood' | 'straw' | 'stone' | 'plaster' | 'baked';
+  contact: 'ob' | 'loop' | 'none';
+  r: number;
+  h: number;
+  build: PropBuilder;
+  broken: PropBuilder | null;
+  hw?: number;
+  hl?: number;
+  shape?: 'circle';
+  collisionR?: number;
+  groundR?: number;
+  bodyR?: number;
+  mass?: number;
+  bounce?: number;
+  friction?: number;
+  angularDrag?: number;
+  groundConstrained?: boolean;
+  fence?: boolean;
+  wall?: boolean;
+  collider?: boolean;
+  keep?: number;
+  crushMin?: number;
+  explosive?: boolean;
+}
+
 export const FENCE_SEG = 2.4; // fence-kit module pitch, meters
 
 const _c = new THREE.Color();
 const _detailRng = () => 0.5;
 
-function scaleUV(geo, su, sv) {
+function scaleUV<T extends THREE.BufferGeometry>(geo: T, su: number, sv: number): T {
   const uv = geo.attributes.uv;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
   return geo;
 }
 
-function box(w, h, d, uvScale = 0.7) {
+function box(w: number, h: number, d: number, uvScale = 0.7): THREE.BoxGeometry {
   const g = new THREE.BoxGeometry(w, h, d);
   return scaleUV(g, Math.max(w, d) * uvScale, h * uvScale);
 }
 
-function cyl(r0, r1, h, seg = 7) {
+function cyl(r0: number, r1: number, h: number, seg = 7): THREE.CylinderGeometry {
   const g = new THREE.CylinderGeometry(r0, r1, h, seg, 1);
   return scaleUV(g, 1, 1);
 }
 
 /** Author in HSL (sRGB) like the rest of the world code; store linear. */
-function paint(geo, h, s, l, jit, rng) {
+function paint<T extends THREE.BufferGeometry>(
+  geo: T,
+  h: number,
+  s: number,
+  l: number,
+  jit: number,
+  rng: Rng,
+): T {
   const n = geo.attributes.position.count;
   const col = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
@@ -49,25 +87,32 @@ function paint(geo, h, s, l, jit, rng) {
 }
 
 // palette shorthands (h, s, l) — sRGB HSL
-const WOOD = [0.075, 0.38, 0.30];
-const WOOD_PALE = [0.085, 0.30, 0.42];
-const WHITEWASH = [0.10, 0.10, 0.68];
+const WOOD: Palette = [0.075, 0.38, 0.30];
+const WOOD_PALE: Palette = [0.085, 0.30, 0.42];
+const WHITEWASH: Palette = [0.10, 0.10, 0.68];
 // sun-bleached working canvas — saturated fabric read as toy plastic in the
 // first closeup pass, so awnings/rugs sit in a weathered dyed-cloth band
-const CANVAS = [0.096, 0.26, 0.55];
-const CANVAS2 = [0.025, 0.34, 0.38];
-const HAY = [0.105, 0.55, 0.46];
-const TERRA = [0.045, 0.52, 0.38];
-const STEEL = [0.58, 0.04, 0.24];
-const GALV = [0.56, 0.03, 0.46];
-const RUST = [0.05, 0.55, 0.22];
-const LINEN = [0.11, 0.12, 0.64];
-const IRON = [0.60, 0.05, 0.13];
+const CANVAS: Palette = [0.096, 0.26, 0.55];
+const CANVAS2: Palette = [0.025, 0.34, 0.38];
+const HAY: Palette = [0.105, 0.55, 0.46];
+const TERRA: Palette = [0.045, 0.52, 0.38];
+const STEEL: Palette = [0.58, 0.04, 0.24];
+const GALV: Palette = [0.56, 0.03, 0.46];
+const RUST: Palette = [0.05, 0.55, 0.22];
+const LINEN: Palette = [0.11, 0.12, 0.64];
+const IRON: Palette = [0.60, 0.05, 0.13];
 
-function P(geo, pal, jit, rng) { return paint(geo, pal[0], pal[1], pal[2], jit, rng); }
+function P<T extends THREE.BufferGeometry>(geo: T, pal: Palette, jit: number, rng: Rng): T {
+  return paint(geo, pal[0], pal[1], pal[2], jit, rng);
+}
 
-function merge(parts) {
-  return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
+  const geometry = mergeGeometries(
+    parts.map((part) => (part.index ? part.toNonIndexed() : part)),
+    false,
+  );
+  if (!geometry) throw new Error('inhabiting prop geometry merge produced no result');
+  return geometry;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,8 +120,8 @@ function merge(parts) {
 // ---------------------------------------------------------------------------
 
 /** spoked cart wheel (baked): rim ring + hub + 4 spoke boxes, axis +z */
-function cartWheel(r, rng) {
-  const parts = [];
+function cartWheel(r: number, rng: Rng): THREE.BufferGeometry[] {
+  const parts: THREE.BufferGeometry[] = [];
   const rim = new THREE.CylinderGeometry(r, r, 0.09, 12, 1);
   rim.rotateX(Math.PI / 2);
   parts.push(P(rim, WOOD, 0.10, rng));
@@ -92,8 +137,15 @@ function cartWheel(r, rng) {
 }
 
 /** scatter of flat planks (broken-state filler), painted or UV'd */
-function plankScatter(n, len, wid, rad, rng, pal = null) {
-  const parts = [];
+function plankScatter(
+  n: number,
+  len: number,
+  wid: number,
+  rad: number,
+  rng: Rng,
+  pal: Palette | null = null,
+): THREE.BufferGeometry[] {
+  const parts: THREE.BufferGeometry[] = [];
   for (let k = 0; k < n; k++) {
     const a = rng() * Math.PI * 2, rr = Math.sqrt(rng()) * rad;
     const p = box(len * (0.5 + rng() * 0.6), 0.045, wid * (0.7 + rng() * 0.5));
@@ -109,7 +161,7 @@ function plankScatter(n, len, wid, rad, rng, pal = null) {
 // object builders — intact + broken pairs
 // ---------------------------------------------------------------------------
 
-function bBarrel(rng) {
+function bBarrel(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const body = cyl(0.30, 0.33, 0.92, 10);
   // subtle stave banding via per-vertex tone
@@ -122,7 +174,7 @@ function bBarrel(rng) {
   parts.push(P(lid.translate(0, 0.93, 0), WOOD_PALE, 0.12, rng));
   return merge(parts);
 }
-function bBarrelBroken(rng) {
+function bBarrelBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   for (let k = 0; k < 6; k++) { // sprung staves fanned flat
     const a = (k / 6) * Math.PI * 2 + rng() * 0.5;
@@ -140,7 +192,7 @@ function bBarrelBroken(rng) {
   return merge(parts);
 }
 
-function bCrate(rng) { // wood-textured
+function bCrate(rng: Rng): THREE.BufferGeometry { // wood-textured
   const s = 0.92;
   const parts = [box(s, s, s).translate(0, s / 2, 0)];
   for (const e of [[0, s - 0.03, 0.03], [0, 0.05, 0.03]]) { // edge battens
@@ -151,7 +203,7 @@ function bCrate(rng) { // wood-textured
   }
   return merge(parts);
 }
-function bCrateBroken(rng) {
+function bCrateBroken(rng: Rng): THREE.BufferGeometry {
   const parts = plankScatter(7, 0.95, 0.20, 0.7, rng);
   const panel = box(0.9, 0.05, 0.9); // one side panel resting on the pile
   panel.rotateY(rng());
@@ -160,13 +212,13 @@ function bCrateBroken(rng) {
   return merge(parts);
 }
 
-function bPallet(rng) { // wood-textured
+function bPallet(rng: Rng): THREE.BufferGeometry { // wood-textured
   const parts = [];
   for (const bz of [-0.44, 0, 0.44]) parts.push(box(1.15, 0.09, 0.10).translate(0, 0.07, bz));
   for (let k = 0; k < 5; k++) parts.push(box(0.16, 0.035, 1.05).translate(-0.46 + k * 0.23, 0.14, 0));
   return merge(parts);
 }
-function bPalletBroken(rng) {
+function bPalletBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const half = box(0.55, 0.08, 1.0);
   half.rotateY(0.3); half.rotateZ(0.14);
@@ -175,13 +227,13 @@ function bPalletBroken(rng) {
   return merge(parts);
 }
 
-function bBale(rng) { // straw-textured round bale
+function bBale(rng: Rng): THREE.BufferGeometry { // straw-textured round bale
   const b = new THREE.CylinderGeometry(0.72, 0.72, 1.45, 12, 1);
   scaleUV(b, 2, 1);
   b.rotateZ(Math.PI / 2);
   return merge([b.translate(0, 0.70, 0)]);
 }
-function bBaleBroken(rng) { // burst low hay heap
+function bBaleBroken(rng: Rng): THREE.BufferGeometry { // burst low hay heap
   const heap = new THREE.CylinderGeometry(1.0, 1.25, 0.42, 10, 1);
   scaleUV(heap, 2.5, 0.5);
   const p = heap.attributes.position;
@@ -200,7 +252,7 @@ function bBaleBroken(rng) { // burst low hay heap
   return merge(parts);
 }
 
-function bStook(rng) { // straw-textured harvest sheaf teepee
+function bStook(rng: Rng): THREE.BufferGeometry { // straw-textured harvest sheaf teepee
   const parts = [];
   const n = 6;
   for (let k = 0; k < n; k++) {
@@ -217,7 +269,7 @@ function bStook(rng) { // straw-textured harvest sheaf teepee
   parts.push(band.translate(0, 0.86, 0));
   return merge(parts);
 }
-function bStookBroken(rng) {
+function bStookBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   for (let k = 0; k < 5; k++) { // sheaves knocked flat, radial
     const a = rng() * Math.PI * 2;
@@ -231,7 +283,7 @@ function bStookBroken(rng) {
   return merge(parts);
 }
 
-function bFirewood(rng) { // wood-textured stacked split logs
+function bFirewood(rng: Rng): THREE.BufferGeometry { // wood-textured stacked split logs
   const parts = [];
   const rows = [[5, 0.13], [4, 0.38], [3, 0.60], [1, 0.80]];
   for (const [nLog, ly] of rows) {
@@ -246,7 +298,7 @@ function bFirewood(rng) { // wood-textured stacked split logs
   }
   return merge(parts);
 }
-function bFirewoodBroken(rng) {
+function bFirewoodBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   for (let k = 0; k < 8; k++) {
     const a = rng() * Math.PI * 2, rr = Math.sqrt(rng()) * 1.0;
@@ -260,7 +312,7 @@ function bFirewoodBroken(rng) {
   return merge(parts);
 }
 
-function bTrough(rng) { // wood-textured water trough on cross legs
+function bTrough(rng: Rng): THREE.BufferGeometry { // wood-textured water trough on cross legs
   const parts = [];
   parts.push(box(0.55, 0.09, 1.9).translate(0, 0.28, 0));            // floor
   for (const s of [-1, 1]) {
@@ -273,7 +325,7 @@ function bTrough(rng) { // wood-textured water trough on cross legs
   }
   return merge(parts);
 }
-function bTroughBroken(rng) {
+function bTroughBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const bed = box(0.55, 0.08, 1.8);
   bed.rotateY(0.2); bed.rotateZ(0.08);
@@ -282,7 +334,7 @@ function bTroughBroken(rng) {
   return merge(parts);
 }
 
-function bStall(rng) { // baked: market stall — counter, posts, striped awning
+function bStall(rng: Rng): THREE.BufferGeometry { // baked: market stall — counter, posts, striped awning
   const parts = [];
   parts.push(P(box(2.6, 0.10, 1.3).translate(0, 0.88, 0), WOOD_PALE, 0.10, rng)); // counter
   parts.push(P(box(2.6, 0.5, 0.06).translate(0, 0.62, 0.62), WOOD, 0.12, rng));   // skirt
@@ -308,7 +360,7 @@ function bStall(rng) { // baked: market stall — counter, posts, striped awning
   parts.push(P(box(0.4, 0.24, 0.3).translate(0.45, 1.05, -0.15), WOOD, 0.10, rng));
   return merge(parts);
 }
-function bStallBroken(rng) {
+function bStallBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const counter = box(2.4, 0.09, 1.2);
   counter.rotateY(0.16); counter.rotateZ(0.10);
@@ -325,7 +377,7 @@ function bStallBroken(rng) {
   return merge(parts);
 }
 
-function bBench(rng) { // wood-textured
+function bBench(rng: Rng): THREE.BufferGeometry { // wood-textured
   const parts = [];
   parts.push(box(1.7, 0.07, 0.42).translate(0, 0.48, 0));
   parts.push(box(1.7, 0.34, 0.06).translate(0, 0.82, -0.20));
@@ -334,7 +386,7 @@ function bBench(rng) { // wood-textured
   }
   return merge(parts);
 }
-function bBenchBroken(rng) {
+function bBenchBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const seat = box(1.6, 0.06, 0.4);
   seat.rotateZ(0.15); seat.rotateY(0.2);
@@ -343,7 +395,7 @@ function bBenchBroken(rng) {
   return merge(parts);
 }
 
-function bChurn(rng) { // baked: galvanized milk churn
+function bChurn(rng: Rng): THREE.BufferGeometry { // baked: galvanized milk churn
   const parts = [];
   const body = cyl(0.20, 0.24, 0.62, 9);
   parts.push(P(body.translate(0, 0.31, 0), GALV, 0.10, rng));
@@ -357,7 +409,7 @@ function bChurn(rng) { // baked: galvanized milk churn
 // Lightweight metal dressing below shares the deterministic loose-body path
 // in props.js. Each mesh is still authored base-at-y=0 and centered on XZ so
 // its visual tumble can rotate around the real mid-height.
-function bTrashcan(rng) {
+function bTrashcan(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   parts.push(P(cyl(0.27, 0.31, 0.72, 11).translate(0, 0.36, 0), GALV, 0.10, rng));
   parts.push(P(cyl(0.34, 0.34, 0.055, 11).translate(0, 0.755, 0), STEEL, 0.07, rng));
@@ -368,9 +420,9 @@ function bTrashcan(rng) {
   return merge(parts);
 }
 
-function bGasBottle(rng) {
+function bGasBottle(rng: Rng): THREE.BufferGeometry {
   const parts = [];
-  const BLUEGREY = [0.56, 0.16, 0.34];
+  const BLUEGREY: Palette = [0.56, 0.16, 0.34];
   parts.push(P(cyl(0.17, 0.18, 0.62, 10).translate(0, 0.34, 0), BLUEGREY, 0.10, rng));
   parts.push(P(cyl(0.105, 0.17, 0.16, 10).translate(0, 0.73, 0), BLUEGREY, 0.08, rng));
   parts.push(P(cyl(0.075, 0.09, 0.12, 8).translate(0, 0.87, 0), STEEL, 0.06, rng));
@@ -379,7 +431,7 @@ function bGasBottle(rng) {
   return merge(parts);
 }
 
-function bBucket(rng) {
+function bBucket(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   parts.push(P(cyl(0.23, 0.17, 0.36, 10).translate(0, 0.18, 0), GALV, 0.11, rng));
   parts.push(P(new THREE.TorusGeometry(0.23, 0.018, 5, 12)
@@ -390,7 +442,7 @@ function bBucket(rng) {
   return merge(parts);
 }
 
-function bJerryCan(rng) {
+function bJerryCan(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   parts.push(P(box(0.38, 0.48, 0.21).translate(0, 0.24, 0), OLIVE, 0.10, rng));
   // pressed X ribs on both broad faces
@@ -408,7 +460,7 @@ function bJerryCan(rng) {
   return merge(parts);
 }
 
-function bLooseWheel(rng) {
+function bLooseWheel(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const tire = new THREE.TorusGeometry(0.26, 0.085, 7, 14);
   parts.push(P(tire.translate(0, 0.345, 0), TIRE, 0.045, rng));
@@ -423,7 +475,7 @@ function bLooseWheel(rng) {
   return merge(parts);
 }
 
-function bLamp(rng) { // baked: cast-iron street lamp (topple class)
+function bLamp(rng: Rng): THREE.BufferGeometry { // baked: cast-iron street lamp (topple class)
   const parts = [];
   const H = 4.5;
   const pole = new THREE.CylinderGeometry(0.05, 0.09, H, 6, 1);
@@ -440,7 +492,7 @@ function bLamp(rng) { // baked: cast-iron street lamp (topple class)
   return merge(parts);
 }
 
-function bDrum(rng) { // baked: 200 L oil drum, rust-blotched (topple class)
+function bDrum(rng: Rng): THREE.BufferGeometry { // baked: 200 L oil drum, rust-blotched (topple class)
   const parts = [];
   const body = cyl(0.30, 0.30, 0.90, 11);
   const painted = P(body.translate(0, 0.45, 0), STEEL, 0.10, rng);
@@ -460,7 +512,7 @@ function bDrum(rng) { // baked: 200 L oil drum, rust-blotched (topple class)
   return merge(parts);
 }
 
-function bSled(rng) { // wood-textured winter sled
+function bSled(rng: Rng): THREE.BufferGeometry { // wood-textured winter sled
   const parts = [];
   for (const s of [-1, 1]) { // runners with curled nose
     const run = box(0.07, 0.10, 1.9);
@@ -473,7 +525,7 @@ function bSled(rng) { // wood-textured winter sled
   for (let k = 0; k < 5; k++) parts.push(box(0.86, 0.045, 0.16).translate(0, 0.33, -0.75 + k * 0.33));
   return merge(parts);
 }
-function bSledBroken(rng) {
+function bSledBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const half = box(0.5, 0.06, 1.6);
   half.rotateY(0.4); half.rotateZ(0.12);
@@ -482,7 +534,7 @@ function bSledBroken(rng) {
   return merge(parts);
 }
 
-function bPot(rng) { // baked: terracotta jar cluster (2 big + 1 small)
+function bPot(rng: Rng): THREE.BufferGeometry { // baked: terracotta jar cluster (2 big + 1 small)
   const parts = [];
   const spots = [[0, 0, 0.30], [0.42, 0.12, 0.24], [-0.30, 0.28, 0.18]];
   for (const [px, pz, r] of spots) {
@@ -495,7 +547,7 @@ function bPot(rng) { // baked: terracotta jar cluster (2 big + 1 small)
   }
   return merge(parts);
 }
-function bPotBroken(rng) {
+function bPotBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   for (let k = 0; k < 8; k++) { // shard ring
     const a = rng() * Math.PI * 2, rr = 0.15 + Math.sqrt(rng()) * 0.55;
@@ -509,7 +561,7 @@ function bPotBroken(rng) {
   return merge(parts);
 }
 
-function bRugFrame(rng) { // baked: souk rug display frame with two hung rugs
+function bRugFrame(rng: Rng): THREE.BufferGeometry { // baked: souk rug display frame with two hung rugs
   const parts = [];
   for (const s of [-1, 1]) {
     parts.push(P(box(0.09, 2.1, 0.09).translate(s * 1.1, 1.05, 0), WOOD, 0.10, rng));
@@ -517,7 +569,10 @@ function bRugFrame(rng) { // baked: souk rug display frame with two hung rugs
   parts.push(P(box(2.35, 0.08, 0.08).translate(0, 2.05, 0), WOOD, 0.10, rng));
   // vegetable-dye tones with heavy per-vertex variegation — pure saturated
   // panels read as painted plastic sheets in the first closeup pass
-  const rugPals = [[[0.03, 0.36, 0.26], [0.075, 0.30, 0.42]], [[0.60, 0.18, 0.24], [0.09, 0.28, 0.46]]];
+  const rugPals: ReadonlyArray<readonly [Palette, Palette]> = [
+    [[0.03, 0.36, 0.26], [0.075, 0.30, 0.42]],
+    [[0.60, 0.18, 0.24], [0.09, 0.28, 0.46]],
+  ];
   for (const s of [-1, 1]) {
     const [pa, pb] = rugPals[s < 0 ? 0 : 1];
     const rug = box(0.92, 1.55, 0.045);
@@ -529,7 +584,7 @@ function bRugFrame(rng) { // baked: souk rug display frame with two hung rugs
   }
   return merge(parts);
 }
-function bRugFrameBroken(rng) {
+function bRugFrameBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const bar = box(2.2, 0.08, 0.08);
   bar.rotateY(0.3);
@@ -544,13 +599,13 @@ function bRugFrameBroken(rng) {
   return merge(parts);
 }
 
-function bLaundry(rng) { // baked: two posts, line, three hung sheets
+function bLaundry(rng: Rng): THREE.BufferGeometry { // baked: two posts, line, three hung sheets
   const parts = [];
   for (const s of [-1, 1]) {
     parts.push(P(box(0.08, 1.85, 0.08).translate(s * 1.7, 0.92, 0), WOOD, 0.10, rng));
   }
   parts.push(P(box(3.4, 0.025, 0.025).translate(0, 1.80, 0), IRON, 0.04, rng));
-  const tones = [LINEN, [0.55, 0.12, 0.52], [0.09, 0.18, 0.56]];
+  const tones: Palette[] = [LINEN, [0.55, 0.12, 0.52], [0.09, 0.18, 0.56]];
   for (let k = 0; k < 3; k++) {
     const sheet = box(0.78, 0.9 + rng() * 0.25, 0.035);
     sheet.rotateY((rng() - 0.5) * 0.14);
@@ -558,7 +613,7 @@ function bLaundry(rng) { // baked: two posts, line, three hung sheets
   }
   return merge(parts);
 }
-function bLaundryBroken(rng) {
+function bLaundryBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const post = box(0.08, 0.08, 1.7);
   post.rotateY(0.5);
@@ -571,7 +626,7 @@ function bLaundryBroken(rng) {
   return merge(parts);
 }
 
-function bHaycart(rng) { // baked: intact hay cart — bed, rails, 2 wheels, shafts, hay load
+function bHaycart(rng: Rng): THREE.BufferGeometry { // baked: intact hay cart — bed, rails, 2 wheels, shafts, hay load
   const parts = [];
   parts.push(P(box(1.6, 0.12, 2.6).translate(0, 0.72, 0), WOOD, 0.12, rng));
   for (const s of [-1, 1]) {
@@ -589,7 +644,7 @@ function bHaycart(rng) { // baked: intact hay cart — bed, rails, 2 wheels, sha
   parts.push(P(prop.translate(0, 0.30, -2.0), WOOD, 0.10, rng));
   return merge(parts);
 }
-function bHaycartBroken(rng) {
+function bHaycartBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const bed = box(1.55, 0.10, 2.5); // bed dropped and skewed
   bed.rotateY(0.24); bed.rotateZ(0.16);
@@ -607,7 +662,7 @@ function bHaycartBroken(rng) {
   return merge(parts);
 }
 
-function bHandcart(rng) { // wood-textured: small two-wheel hand cart, tipped back
+function bHandcart(rng: Rng): THREE.BufferGeometry { // wood-textured: small two-wheel hand cart, tipped back
   const parts = [];
   const bed = box(0.95, 0.09, 1.5);
   bed.rotateX(-0.18);
@@ -628,7 +683,7 @@ function bHandcart(rng) { // wood-textured: small two-wheel hand cart, tipped ba
   parts.push(leg.translate(0, 0.17, -0.62));
   return merge(parts);
 }
-function bHandcartBroken(rng) {
+function bHandcartBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const bed = box(0.9, 0.08, 1.4);
   bed.rotateY(0.5); bed.rotateZ(2.6); // flipped
@@ -641,7 +696,7 @@ function bHandcartBroken(rng) {
   return merge(parts);
 }
 
-function bHaystack(rng) { // straw-textured slouched field stack (was merged geometry)
+function bHaystack(rng: Rng): THREE.BufferGeometry { // straw-textured slouched field stack (was merged geometry)
   const hr = 1.9, hh = 2.5;
   const stack = new THREE.ConeGeometry(hr, hh, 9, 2);
   const sp = stack.attributes.position;
@@ -656,7 +711,7 @@ function bHaystack(rng) { // straw-textured slouched field stack (was merged geo
   scaleUV(stack, 3, 1.5);
   return merge([stack.translate(0, hh / 2 - 0.12, 0)]);
 }
-function bHaystackBroken(rng) { // driven-through stack: low split mound
+function bHaystackBroken(rng: Rng): THREE.BufferGeometry { // driven-through stack: low split mound
   const parts = [];
   for (const [ox, oz, r] of [[-0.8, 0.2, 1.3], [0.9, -0.3, 1.1], [0.1, 0.9, 0.8]]) {
     const mound = new THREE.CylinderGeometry(r * 0.55, r, 0.62, 8, 1);
@@ -676,7 +731,7 @@ function bHaystackBroken(rng) { // driven-through stack: low split mound
 // fence segment kit (FENCE_SEG pitch, run along local Z, post at -Z end)
 // ---------------------------------------------------------------------------
 
-function bFencePlank(rng) { // wood-textured: post + 3 rough horizontal planks
+function bFencePlank(rng: Rng): THREE.BufferGeometry { // wood-textured: post + 3 rough horizontal planks
   const parts = [];
   const post = box(0.12, 1.15, 0.12);
   post.rotateY((rng() - 0.5) * 0.1);
@@ -688,7 +743,7 @@ function bFencePlank(rng) { // wood-textured: post + 3 rough horizontal planks
   }
   return merge(parts);
 }
-function bFencePlankBroken(rng) {
+function bFencePlankBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const stub = box(0.12, 0.35, 0.12);
   stub.rotateX(0.14);
@@ -703,7 +758,7 @@ function bFencePlankBroken(rng) {
   return merge(parts);
 }
 
-function bFencePicket(rng) { // baked: whitewashed picket module
+function bFencePicket(rng: Rng): THREE.BufferGeometry { // baked: whitewashed picket module
   const parts = [];
   const post = box(0.10, 1.0, 0.10);
   parts.push(P(post.translate(0, 0.45, -FENCE_SEG / 2), WHITEWASH, 0.10, rng));
@@ -718,7 +773,7 @@ function bFencePicket(rng) { // baked: whitewashed picket module
   }
   return merge(parts);
 }
-function bFencePicketBroken(rng) {
+function bFencePicketBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const stub = box(0.10, 0.3, 0.10);
   parts.push(P(stub.translate(0, 0.13, -FENCE_SEG / 2), WHITEWASH, 0.10, rng));
@@ -734,7 +789,7 @@ function bFencePicketBroken(rng) {
   return merge(parts);
 }
 
-function bFenceWattle(rng) { // wood-textured woven hurdle fence
+function bFenceWattle(rng: Rng): THREE.BufferGeometry { // wood-textured woven hurdle fence
   const parts = [];
   for (const pz of [-FENCE_SEG / 2, 0]) {
     const post = box(0.09, 1.0, 0.09);
@@ -749,7 +804,7 @@ function bFenceWattle(rng) { // wood-textured woven hurdle fence
   }
   return merge(parts);
 }
-function bFenceWattleBroken(rng) {
+function bFenceWattleBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const mat = box(0.06, 0.8, FENCE_SEG * 0.85); // collapsed woven mat
   mat.rotateZ(Math.PI / 2 - 0.1);
@@ -759,7 +814,7 @@ function bFenceWattleBroken(rng) {
   return merge(parts);
 }
 
-function bFenceRail(rng) { // baked: stone posts + twin timber rails
+function bFenceRail(rng: Rng): THREE.BufferGeometry { // baked: stone posts + twin timber rails
   const parts = [];
   const post = box(0.16, 1.05, 0.16);
   parts.push(P(post.translate(0, 0.44, -FENCE_SEG / 2), [0.09, 0.10, 0.34], 0.10, rng));
@@ -768,7 +823,7 @@ function bFenceRail(rng) { // baked: stone posts + twin timber rails
   }
   return merge(parts);
 }
-function bFenceRailBroken(rng) {
+function bFenceRailBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const post = box(0.16, 1.0, 0.16); // stone post survives, tipped
   post.rotateX(0.5);
@@ -781,7 +836,7 @@ function bFenceRailBroken(rng) {
   return merge(parts);
 }
 
-function bGate(rng) { // wood-textured farm gate (hangs open ~30°)
+function bGate(rng: Rng): THREE.BufferGeometry { // wood-textured farm gate (hangs open ~30°)
   const parts = [];
   const frame = [];
   frame.push(box(0.07, 0.95, 1.5).translate(0, 0.62, 0.75)); // gate leaf about hinge at z=0
@@ -795,7 +850,7 @@ function bGate(rng) { // wood-textured farm gate (hangs open ~30°)
   }
   return merge(parts);
 }
-function bGateBroken(rng) {
+function bGateBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const leaf = box(0.07, 1.4, 0.9);
   leaf.rotateZ(Math.PI / 2 - 0.12);
@@ -818,19 +873,19 @@ export const WALL_SEG = 3.0; // wall-kit module pitch, meters
 // dark faded olive-drab / field-grey band — the first cut sat at l 0.22-0.30
 // with s 0.24+ and the truck cabs tonemapped to toy lego-green in the frame
 // review; military paint under this sun needs to start near-charcoal
-const OLIVE = [0.19, 0.20, 0.185];
-const OLIVE_D = [0.20, 0.22, 0.145];
-const FIELDGREY = [0.58, 0.07, 0.28];
-const TENTCANVAS = [0.10, 0.16, 0.295];
-const TENTCANVAS_D = [0.095, 0.14, 0.225];
-const CHAR = [0.07, 0.10, 0.055];
-const CHAR_RUST = [0.05, 0.42, 0.16];
-const REDDRUM = [0.015, 0.62, 0.34];
-const GLASS_D = [0.58, 0.10, 0.16];
-const TIRE = [0.60, 0.03, 0.075];
+const OLIVE: Palette = [0.19, 0.20, 0.185];
+const OLIVE_D: Palette = [0.20, 0.22, 0.145];
+const FIELDGREY: Palette = [0.58, 0.07, 0.28];
+const TENTCANVAS: Palette = [0.10, 0.16, 0.295];
+const TENTCANVAS_D: Palette = [0.095, 0.14, 0.225];
+const CHAR: Palette = [0.07, 0.10, 0.055];
+const CHAR_RUST: Palette = [0.05, 0.42, 0.16];
+const REDDRUM: Palette = [0.015, 0.62, 0.34];
+const GLASS_D: Palette = [0.58, 0.10, 0.16];
+const TIRE: Palette = [0.60, 0.03, 0.075];
 
 /** char-paint with rust bloom — burnt-hulk vertex palette (truck/jeep wrecks) */
-function charPaint(geo, rng, rustBias = 0.2) {
+function charPaint<T extends THREE.BufferGeometry>(geo: T, rng: Rng, rustBias = 0.2): T {
   const n = geo.attributes.position.count;
   const col = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
@@ -851,8 +906,12 @@ function charPaint(geo, rng, rustBias = 0.2) {
 // merged runs had; the broken state is a low crumbled remnant + tumbled
 // blocks — drive-over rubble that persists for the battle.
 
-function wallCourses(rng, thick, courses) {
-  const parts = [];
+function wallCourses(
+  rng: Rng,
+  thick: number,
+  courses: readonly number[],
+): { parts: THREE.BufferGeometry[]; top: number } {
+  const parts: THREE.BufferGeometry[] = [];
   let y = 0;
   for (let c = 0; c < courses.length; c++) {
     const ch = courses[c];
@@ -864,7 +923,7 @@ function wallCourses(rng, thick, courses) {
   return { parts, top: y };
 }
 
-function bWallStone(rng) {
+function bWallStone(rng: Rng): THREE.BufferGeometry {
   const { parts, top } = wallCourses(rng, 0.46, [0.42, 0.38, 0.30]);
   // uneven capstone course: 4 slabs with per-slab pitch
   for (let k = 0; k < 4; k++) {
@@ -875,7 +934,7 @@ function bWallStone(rng) {
   }
   return merge(parts);
 }
-function bWallStoneBroken(rng) {
+function bWallStoneBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   // crumbled remnant courses: two low stubs with a bite between them
   for (const [z0, len] of [[-WALL_SEG / 2, WALL_SEG * 0.30], [WALL_SEG * 0.14, WALL_SEG * 0.34]]) {
@@ -895,13 +954,13 @@ function bWallStoneBroken(rng) {
   return merge(parts);
 }
 
-function bWallAdobe(rng) {
+function bWallAdobe(rng: Rng): THREE.BufferGeometry {
   const { parts, top } = wallCourses(rng, 0.52, [0.56, 0.46]);
   const cap = box(0.40, 0.15, WALL_SEG * 1.0, 0.9); // rounded mud cap read
   parts.push(cap.translate(0, top + 0.05, 0));
   return merge(parts);
 }
-function bWallAdobeBroken(rng) {
+function bWallAdobeBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const h = 0.24 + rng() * 0.2;
   const stub = box(0.52, h, WALL_SEG * 0.44, 0.7);
@@ -920,9 +979,9 @@ function bWallAdobeBroken(rng) {
 // The intact geometry is the licensed baked model (props.js LOCAL kinds need
 // bakedGeometry, so the kind entries live there); this is the shared
 // driven-through state: bags burst, split and spilled.
-export function bSandbagBroken(rng) {
+export function bSandbagBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
-  const HESS = [0.105, 0.22, 0.46];
+  const HESS: Palette = [0.105, 0.22, 0.46];
   for (let k = 0; k < 11; k++) { // spilled single bags
     const a = rng() * Math.PI * 2, rr = Math.sqrt(rng()) * 1.9;
     const bag = new THREE.SphereGeometry(0.26 + rng() * 0.08, 6, 5);
@@ -942,12 +1001,12 @@ export function bSandbagBroken(rng) {
 }
 
 // --- supply truck (era-neutral bonneted cargo truck) + burnt hulk -----------
-function truckWheel(rng, r = 0.44, w = 0.26) {
+function truckWheel(rng: Rng, r = 0.44, w = 0.26): THREE.BufferGeometry {
   const t = new THREE.CylinderGeometry(r, r, w, 10, 1);
   t.rotateZ(Math.PI / 2);
   return P(t, TIRE, 0.05, rng);
 }
-function bTruck(rng) {
+function bTruck(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const body = rng() < 0.5 ? OLIVE : OLIVE_D;
   // chassis + bonnet + cab
@@ -980,7 +1039,7 @@ function bTruck(rng) {
   parts.push(truckWheel(rng, 0.44, 0.4).translate(0.95, 0.44, -2.1));
   return merge(parts);
 }
-function bTruckBroken(rng) {
+function bTruckBroken(rng: Rng): THREE.BufferGeometry {
   // burnt hulk: settled chassis, torched cab shell, bed ribs bare, tires gone
   const parts = [];
   parts.push(charPaint(box(1.9, 0.26, 5.7).translate(0, 0.34, 0), rng, 0.3));
@@ -993,7 +1052,7 @@ function bTruckBroken(rng) {
   for (const bz of [-0.5, -1.35, -2.2]) { // bare bed ribs
     parts.push(charPaint(box(1.9, 0.3, 0.09).translate(0, 0.62, bz), rng, 0.25));
   }
-  const rim = (x, z, tip) => {
+  const rim = (x: number, z: number, tip: number): THREE.BufferGeometry => {
     const w = new THREE.CylinderGeometry(0.30, 0.30, 0.2, 8, 1);
     w.rotateZ(Math.PI / 2 + tip);
     return charPaint(w.translate(x, 0.30, z), rng, 0.5);
@@ -1007,7 +1066,7 @@ function bTruckBroken(rng) {
 }
 
 // --- light utility 4x4 (open-top field car) ---------------------------------
-function bJeep(rng) {
+function bJeep(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const body = rng() < 0.5 ? OLIVE : FIELDGREY;
   parts.push(P(box(1.5, 0.5, 3.3).translate(0, 0.72, 0), body, 0.16, rng));        // tub
@@ -1027,7 +1086,7 @@ function bJeep(rng) {
   parts.push(truckWheel(rng, 0.38, 0.22).translate(0.78, 0.38, -1.05));
   return merge(parts);
 }
-function bJeepBroken(rng) {
+function bJeepBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const tub = box(1.5, 0.42, 3.2); // burnt tub settled on rims, nose skewed
   tub.rotateY(0.12);
@@ -1037,7 +1096,7 @@ function bJeepBroken(rng) {
   const frame = box(1.3, 0.05, 0.07); // windshield frame folded flat
   frame.rotateY(0.12);
   parts.push(charPaint(frame.translate(0, 0.68, 0.68), rng, 0.2));
-  const rim = (x, z) => {
+  const rim = (x: number, z: number): THREE.BufferGeometry => {
     const w = new THREE.CylinderGeometry(0.26, 0.26, 0.18, 8, 1);
     w.rotateZ(Math.PI / 2);
     return charPaint(w.translate(x, 0.26, z), rng, 0.5);
@@ -1047,7 +1106,7 @@ function bJeepBroken(rng) {
 }
 
 // --- ammunition boxes (stacked pair + strewn broken state) ------------------
-function bAmmobox(rng) {
+function bAmmobox(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const spots = [[0, 0, 0, 0.14], [0.14, 0.36, -0.08, -0.3], [-0.5, 0, 0.32, 0.5]];
   for (const [px, py, pz, ry] of spots) {
@@ -1060,7 +1119,7 @@ function bAmmobox(rng) {
   }
   return merge(parts);
 }
-function bAmmoboxBroken(rng) {
+function bAmmoboxBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   for (let k = 0; k < 3; k++) { // burst boxes, lids blown
     const bx = box(0.8, 0.14, 0.4);
@@ -1073,7 +1132,7 @@ function bAmmoboxBroken(rng) {
 }
 
 // --- field tent (canvas ridge tent) ------------------------------------------
-function bTent(rng) {
+function bTent(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const W = 2.4, H = 1.5, L = 3.2;
   for (const s of [-1, 1]) { // canvas slopes — weathered field canvas, not paper
@@ -1103,7 +1162,7 @@ function bTent(rng) {
   parts.push(P(box(0.06, 0.06, L + 0.2).translate(0, H + 0.30, 0), WOOD, 0.08, rng)); // ridge beam
   return merge(parts);
 }
-function bTentBroken(rng) {
+function bTentBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   // collapsed canvas: two crumpled sheets over a snapped ridge pole
   for (let k = 0; k < 2; k++) {
@@ -1122,9 +1181,9 @@ function bTentBroken(rng) {
 // These five silhouettes extend the map language beyond farm and WWII props.
 // They remain one instanced pool per kind and use the same break/topple seam,
 // so denser modern maps do not add per-object draw calls or idle updates.
-function bBarrier(rng) {
+function bBarrier(rng: Rng): THREE.BufferGeometry {
   const parts = [];
-  const CONC = [0.08, 0.06, 0.43];
+  const CONC: Palette = [0.08, 0.06, 0.43];
   const base = box(0.72, 0.42, 2.7);
   parts.push(P(base.translate(0, 0.21, 0), CONC, 0.10, rng));
   const top = box(0.34, 0.58, 2.52);
@@ -1141,9 +1200,9 @@ function bBarrier(rng) {
   }
   return merge(parts);
 }
-function bBarrierBroken(rng) {
+function bBarrierBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
-  const CONC = [0.08, 0.05, 0.38];
+  const CONC: Palette = [0.08, 0.05, 0.38];
   for (let i = 0; i < 7; i++) {
     const s = 0.24 + rng() * 0.34;
     const chunk = box(s * (0.8 + rng()), s, s * (0.7 + rng() * 0.7));
@@ -1155,7 +1214,7 @@ function bBarrierBroken(rng) {
   return merge(parts);
 }
 
-function bRoadsign(rng) {
+function bRoadsign(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const post = box(0.11, 2.8, 0.11);
   parts.push(P(post.translate(0, 1.4, 0), STEEL, 0.08, rng));
@@ -1180,9 +1239,9 @@ function bRoadsign(rng) {
   return merge(parts);
 }
 
-function bCone(rng) {
+function bCone(rng: Rng): THREE.BufferGeometry {
   const parts = [];
-  const ORANGE = [0.055, 0.84, 0.48];
+  const ORANGE: Palette = [0.055, 0.84, 0.48];
   parts.push(P(box(0.5, 0.08, 0.5).translate(0, 0.04, 0), [0.03, 0.06, 0.18], 0.06, rng));
   const cone = new THREE.ConeGeometry(0.21, 0.68, 10, 1);
   parts.push(P(cone.translate(0, 0.42, 0), ORANGE, 0.08, rng));
@@ -1191,9 +1250,9 @@ function bCone(rng) {
   return merge(parts);
 }
 
-function bTransformer(rng) {
+function bTransformer(rng: Rng): THREE.BufferGeometry {
   const parts = [];
-  const CAB = [0.31, 0.12, 0.29];
+  const CAB: Palette = [0.31, 0.12, 0.29];
   parts.push(P(box(1.2, 1.5, 0.78).translate(0, 0.75, 0), CAB, 0.12, rng));
   parts.push(P(box(1.08, 0.06, 0.03).translate(0, 0.92, 0.405), STEEL, 0.05, rng));
   for (const x of [-0.36, 0, 0.36]) {
@@ -1210,7 +1269,7 @@ function bTransformer(rng) {
   parts.push(P(box(1.45, 0.12, 0.95).translate(0, 0.06, 0), [0.08, 0.05, 0.4], 0.08, rng));
   return merge(parts);
 }
-function bTransformerBroken(rng) {
+function bTransformerBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const shell = box(1.15, 0.42, 0.75);
   shell.rotateZ(0.18 + rng() * 0.25);
@@ -1225,7 +1284,7 @@ function bTransformerBroken(rng) {
   return merge(parts);
 }
 
-function bCableSpool(rng) {
+function bCableSpool(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const axis = new THREE.CylinderGeometry(0.18, 0.18, 1.0, 10, 1);
   axis.rotateZ(Math.PI / 2);
@@ -1245,7 +1304,7 @@ function bCableSpool(rng) {
   parts.push(P(cable.translate(0, 0.68, 0), [0.02, 0.05, 0.13], 0.06, rng));
   return merge(parts);
 }
-function bCableSpoolBroken(rng) {
+function bCableSpoolBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   for (let i = 0; i < 2; i++) {
     const cheek = new THREE.CylinderGeometry(0.68, 0.68, 0.1, 12, 1);
@@ -1259,7 +1318,7 @@ function bCableSpoolBroken(rng) {
 }
 
 // --- EXPLOSIVE fuel drum (rare red variant — fx blast + chain damage) --------
-function bDrumRed(rng) {
+function bDrumRed(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const body = cyl(0.30, 0.30, 0.90, 11);
   parts.push(P(body.translate(0, 0.45, 0), REDDRUM, 0.08, rng));
@@ -1271,7 +1330,7 @@ function bDrumRed(rng) {
   parts.push(P(band.translate(0, 0.45, 0), [0.11, 0.30, 0.62], 0.06, rng));
   return merge(parts);
 }
-function bDrumRedBroken(rng) {
+function bDrumRedBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   // torn-open shell: split half-cylinders peeled flat + charred base ring
   for (const s of [-1, 1]) {
@@ -1357,4 +1416,4 @@ export const DESTRUCTIBLE_TYPES = {
   cone:        { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.32, h: 0.8,  build: bCone,       broken: null, bodyR: 0.27, mass: 0.34, bounce: 0.20, friction: 3.8, angularDrag: 2.4, groundConstrained: true },
   transformer: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.85, hw: 0.76, hl: 0.51, build: bTransformer, broken: bTransformerBroken, collider: true, keep: 0.86, crushMin: 2.2 },
   cablespool:  { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.5,  hw: 0.66, hl: 0.76, build: bCableSpool, broken: bCableSpoolBroken, keep: 0.9 },
-};
+} satisfies Record<string, DestructiblePropType>;

@@ -4,7 +4,7 @@ import {
   resetLoosePropBody, resolveLoosePropObstacle, resolveLoosePropPair,
   stepLoosePropBody,
 } from './loosePropPhysics.ts';
-import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.js';
+import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
 
 const flat = () => 0;
 const up = () => ({ x: 0, y: 1, z: 0 });
