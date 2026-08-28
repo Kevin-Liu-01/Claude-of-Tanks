@@ -22,7 +22,7 @@ import { SWEDEN_PROFILES } from './profiles/sweden.js';
 import { POLAND_PROFILES } from './profiles/poland.js';
 import { KOREA_PROFILES } from './profiles/korea.js';
 import { JAPAN_PROFILES } from './profiles/japan.js';
-import { GERMANY_PROFILES } from './profiles/germany.js';
+import { GERMANY_PROFILES } from './profiles/germany.ts';
 import { AFV_FAMILY_PROFILES } from './profiles/afvFamily.js';
 import { SHERIDAN_PROFILES } from './profiles/sheridan.js';
 import {
