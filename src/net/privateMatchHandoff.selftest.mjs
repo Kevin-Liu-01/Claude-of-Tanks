@@ -343,6 +343,11 @@ const twoByTwo = buildPrivateMatchPlayers({
 assert.equal(twoByTwo.length, 4, '2v2 creates exactly two authority-owned teams of two');
 assert.deepEqual(twoByTwo.map((player) => player.team).sort(),
   ['alpha', 'alpha', 'bravo', 'bravo']);
+const liveReloadLobby = { ...lobbyState, phase: 'playing' };
+assert.equal(resolvePrivateMatchMap(liveReloadLobby), resolvePrivateMatchMap(lobbyState),
+  'a refreshed guest resolves the live authority battlefield from the retained match receipt');
+assert.deepEqual(buildPrivateMatchPlayers(liveReloadLobby), buildPrivateMatchPlayers(lobbyState),
+  'a refreshed guest rebuilds the same presentation roster after the room begins playing');
 const hordeRoster = buildPrivateMatchPlayers({
   ...lobbyState,
   gameMode: 'endless_horde',
@@ -385,7 +390,10 @@ assert.equal(hosted.host.maxBacklogTicks, 300,
   'browser authority preserves up to five seconds of stalled match time');
 assert.equal(hosted.host.longStallCatchUpTicks, 2,
   'long stalls recover at one extra simulation tick per presented frame');
-const joined = await beginPrivateClientMatch({ session: clientSession });
+const joined = await beginPrivateClientMatch({
+  session: clientSession,
+  lobbyState: liveReloadLobby,
+});
 await Promise.resolve();
 hosted.ready();
 joined.ready();
@@ -398,6 +406,8 @@ assert.equal(joined.client.connected, true, 'client listener catches post-handof
 assert.equal(hosted.client.connected, true, 'host local player uses the same handshake');
 assert.equal(hosted.host.peers.size, 2);
 assert.ok(MAP_IDS.includes(hosted.mapId), 'random map resolves from the shared match seed');
+assert.equal(joined.mapId, hosted.mapId,
+  'a client rejoining the playing room restores the authority battlefield');
 
 joined.submitInput({
   throttle: 1, steer: 0, brake: false, fire: false,

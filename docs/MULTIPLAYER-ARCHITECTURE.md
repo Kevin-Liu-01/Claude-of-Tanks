@@ -221,6 +221,15 @@ revision that arrives on the final combat edge updates room truth and the garage
 reminder immediately, but defers rebuilding the hidden lobby DOM until results,
 garage, or an explicit room-open action can actually display it.
 
+A browser reload during `playing` is also a battle-entry intent. Durable
+signaling reclaims the stable player seat with a fresh page-session/RTC
+generation; the playing-room receipt reconstructs the same map and visual
+roster, and the covered loader remains mounted until a viewer-bearing authority
+snapshot arrives. If the new channel has already received match authority's
+WELCOME, the client preserves that protocol epoch instead of issuing a second
+HELLO. The ordinary lobby-to-match path is still unwelcomed and performs its
+explicit phase handshake, so the two races cannot impersonate one another.
+
 The browser host does not synchronously fan a completed-round `ROOM_STATE` to
 all fourteen transports inside the final authority tick. It sends a small
 reliable batch, yields, and continues in bounded batches. Any newer room
@@ -448,6 +457,13 @@ sub-0.3 m backwards steps, sub-0.25 m correction release, sub-0.15 m vertical
 correction release, 30+ rendered fps with no freezes, healthy shadow
 cascades/WebGL, and clean
 first-volley/live screenshots under `.qa-dev/multiplayer-live-7v7/`.
+
+`npm run test:net:entry` exercises the actual game application with a pristine
+guest profile. It joins by invite, verifies the lobby-to-loader compositor
+handoff, finishes the first battlefield load, reloads during the live round,
+requires the same player ID and room code to return to a connected battle, then
+closes authority during another covered reload to prove stale async work cannot
+remount the match.
 
 Together the soaks prove room policy, identity separation, dual-channel WebRTC
 handoff, rematches, authoritative movement and combat, adaptive delivery, and

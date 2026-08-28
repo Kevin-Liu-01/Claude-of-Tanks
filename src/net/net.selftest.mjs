@@ -1736,6 +1736,38 @@ function createTestSimulation() {
   client.close('test_done');
 }
 
+// A returning browser can receive match authority's WELCOME before the menu
+// starts its covered world handoff. Do not reset that valid protocol epoch or
+// send a second HELLO that the already-welcomed peer will ignore.
+{
+  const channel = new FakeChannel();
+  const transport = createWebRTCDataChannelTransport(channel);
+  const client = new MatchClientRuntime({
+    transport,
+    playerId: 'live-rejoin',
+    interpolationDelayMs: 0,
+    clock: () => 0,
+  });
+  client.connect({ phase: 'match', resumed: true });
+  channel.emit('message', { data: JSON.stringify(createEnvelope(MESSAGE_TYPES.WELCOME, {
+    protocolVersion: PROTOCOL_VERSION,
+    peerId: 'live-rejoin',
+    tickHz: 60,
+    snapshotHz: 20,
+    serverTick: 0,
+    serverTimeMs: 0,
+  }, { seq: 7, tick: 0 })) });
+  assert.equal(client.connected, true, 'live authority WELCOME establishes the resumed epoch');
+  const before = channel.sent.length;
+  assert.equal(client.beginMatchHandshake({ mode: 'private' }), true,
+    'a welcomed live authority is already ready for the presentation handoff');
+  assert.equal(client.connected, true,
+    'the valid resumed protocol epoch remains connected');
+  assert.equal(channel.sent.length, before,
+    'live rejoin does not send an unacknowledged duplicate HELLO');
+  client.close('test_done');
+}
+
 // Rebinding the same persistent transport restores explicit runtime ownership
 // at a lobby -> match boundary.
 {

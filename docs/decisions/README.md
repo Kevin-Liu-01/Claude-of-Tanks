@@ -201,3 +201,4 @@ runtime documents remain authoritative for behavior.
 - [0189 — Private-room entry and lobby presentation are strict TypeScript](0189-typed-private-room-menu.md)
 - [0190 — Multiplayer menu handoffs share canonical wire contracts](0190-typed-multiplayer-ui-handoff.md)
 - [0191 — The after-action and rematch report is strict TypeScript](0191-typed-after-action-report.md)
+- [0192 — Live private-room rejoin preserves the match protocol epoch](0192-live-room-rejoin.md)

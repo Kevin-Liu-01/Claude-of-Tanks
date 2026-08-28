@@ -1372,7 +1372,12 @@ export class MatchClientRuntime {
 
   /** Send the match HELLO after the lobby host has entered handoff mode. */
   beginMatchHandshake(metadata: Record<string, unknown> | null = null): boolean {
-    if (this.closed || this.connected) return this.connected;
+    if (this.closed) return false;
+    // A browser rejoining an already-playing room connects directly to match
+    // authority before the menu begins its covered world handoff. Its WELCOME
+    // is already the correct protocol epoch; sending a second HELLO would be
+    // ignored by the welcomed peer and would falsely mark this client offline.
+    if (this.connected) return true;
     // The unreliable state lane can beat WELCOME/ROOM_STATE across the RTC
     // handoff. Adopt the canonical starting round from the lobby now, before
     // any snapshot can be assembled, so the later ROOM_STATE cannot clear a
@@ -1390,7 +1395,8 @@ export class MatchClientRuntime {
     // not describe the health of the new match protocol phase.
     this.errors.length = 0;
     this.handshakeSent = false;
-    return this.connect(metadata);
+    this.readySent = false;
+    return this.connect({ ...metadata, phase: 'match' });
   }
 
   resetForRound(round: number): boolean {

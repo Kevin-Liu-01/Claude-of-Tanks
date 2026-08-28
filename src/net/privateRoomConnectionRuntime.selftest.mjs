@@ -222,4 +222,7 @@ assert.doesNotMatch(playMenuSource, /new RoomSignalingClient|new PrivateRoom(?:H
   'the UI cannot reconstruct the signaling/session lifecycle in parallel');
 assert.match(playMenuSource, /privateRoomConnection\.forget\(\);[\s\S]{0,80}activeRoom = adapter/,
   'battle handoff relinquishes menu ownership without closing the live transport');
+assert.match(playMenuSource,
+  /next\.phase === 'starting' \|\| next\.phase === 'playing'[\s\S]{0,180}beginNetworkHandoff\(next, 'client'\)/,
+  'the real invite UI resumes a refreshed guest into an already-playing room');
 console.log('privateRoomConnectionRuntime.selftest: host resume, cold join, cancellation and teardown passed');

@@ -41,6 +41,7 @@ try {
 
   browser = await puppeteer.launch({
     headless: true,
+    protocolTimeout: 360_000,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -63,6 +64,10 @@ try {
     const [{ RoomSignalingClient }, { PrivateRoomHostSession }] = await Promise.all([
       import('/src/net/signalingClient.ts'),
       import('/src/net/privateRoomSession.ts'),
+      // The production entry imports the fleet facade before opening rooms;
+      // mirror that registration boundary so the authority recognizes the
+      // pristine client's default Abrams spec without warming its visual.
+      import('/src/vehicles/fleetFactory.js'),
     ]);
     const signalingClient = new RoomSignalingClient({ url });
     const roomInfo = await signalingClient.createRoom({
@@ -238,6 +243,132 @@ try {
   assert.deepEqual(report.exposed, [], 'guest exposed the garage before entering battle');
   assert.equal(report.entryFailure, null, 'guest handoff must not enter recovery');
 
+  // Let the pristine invite finish its first real battlefield load, then
+  // reload the actual application while authority is already playing. The
+  // stable browser identity and canonical room URL must reclaim the same
+  // seat and enter the live match without requiring the user to reopen the
+  // lobby or paste the code again.
+  await guestPage.waitForFunction(() =>
+    (window.__DEBUG?.game?.phase === 'battle' && window.__DEBUG?.network?.connected === true) ||
+      window.__NETWORK_ENTRY_FAILURE,
+  { timeout: 240_000, polling: 50 });
+  const initialEntryFailure = await guestPage.evaluate(() =>
+    window.__NETWORK_ENTRY_FAILURE || null);
+  if (initialEntryFailure) {
+    const diagnostics = await Promise.all([
+      hostPage.evaluate(() => {
+        const state = globalThis.__COT_GUEST_ENTRY_HOST;
+        return {
+          startError: state?.startError,
+          lobby: state?.lobby,
+          signalingState: state?.signaling?.state,
+          rtcPeers: [...(state?.session?.peers?.entries?.() || [])].map(([id, peer]) => ({
+            id,
+            connectionState: peer.connectionState,
+            sessionId: peer.sessionId,
+          })),
+          matchPeers: [...(state?.match?.host?.peers?.values?.() || [])].map((peer) => ({
+            id: peer.id,
+            welcomed: peer.welcomed,
+            ready: peer.ready,
+            lastRecvSeq: peer.lastRecvSeq,
+            transportReadyState: peer.transport?.readyState,
+          })),
+          matchStarted: state?.match?.host?.matchStarted,
+          matchStats: state?.match?.host?.stats,
+        };
+      }),
+      guestPage.evaluate(() => ({
+        failure: window.__NETWORK_ENTRY_FAILURE || null,
+        phase: window.__DEBUG?.game?.phase,
+        network: window.__DEBUG?.network,
+        roomVisible: document.querySelector('.cot-play')?.classList.contains('show'),
+        loaderOn: document.querySelector('.cot-bl')?.classList.contains('on'),
+      })),
+    ]);
+    console.error('initial guest entry diagnostics', JSON.stringify(diagnostics, null, 2));
+  }
+  assert.equal(initialEntryFailure, null,
+    `the pristine invite failed its first authoritative snapshot: ${JSON.stringify(initialEntryFailure)}`);
+  const beforeReload = await guestPage.evaluate(() => ({
+    playerId: localStorage.getItem('cot.player.id.v1'),
+    roomCode: new URL(location.href).searchParams.get('room'),
+  }));
+  const liveReloadStartedAt = performance.now();
+  await guestPage.reload({ waitUntil: 'domcontentloaded', timeout: 180_000 });
+  let liveReloadWaitError = null;
+  try {
+    await guestPage.waitForFunction(() =>
+      (window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'battle' &&
+        window.__DEBUG?.network?.connected === true) || window.__NETWORK_ENTRY_FAILURE,
+    { timeout: 90_000, polling: 50 });
+  } catch (error) {
+    liveReloadWaitError = error;
+  }
+  const liveReload = await guestPage.evaluate(() => ({
+    playerId: localStorage.getItem('cot.player.id.v1'),
+    roomCode: new URL(location.href).searchParams.get('room'),
+    gameReady: window.__GAME_READY === true,
+    phase: window.__DEBUG?.game?.phase,
+    connected: window.__DEBUG?.network?.connected,
+    entryFailure: window.__NETWORK_ENTRY_FAILURE || null,
+    roomVisible: document.querySelector('.cot-play')?.classList.contains('show') || false,
+    roomPhase: document.querySelector('.cot-play')?.dataset?.phase || '',
+    roomStatus: document.querySelector('.cot-play .status')?.textContent || '',
+    loaderOn: document.querySelector('.cot-bl')?.classList.contains('on') || false,
+  }));
+  const liveReloadRecoveryMs = performance.now() - liveReloadStartedAt;
+  if (liveReloadWaitError) {
+    const hostReloadState = await hostPage.evaluate(() => {
+      const state = globalThis.__COT_GUEST_ENTRY_HOST;
+      return {
+        startError: state?.startError,
+        lobby: state?.match?.client?.roomState || state?.lobby,
+        rtcPeers: [...(state?.session?.peers?.entries?.() || [])].map(([id, peer]) => ({
+          id,
+          connectionState: peer.connectionState,
+          sessionId: peer.sessionId,
+        })),
+        matchPeers: [...(state?.match?.host?.peers?.values?.() || [])].map((peer) => ({
+          id: peer.id,
+          welcomed: peer.welcomed,
+          ready: peer.ready,
+          lastRecvSeq: peer.lastRecvSeq,
+          transportReadyState: peer.transport?.readyState,
+        })),
+      };
+    });
+    console.error('live reload diagnostics', JSON.stringify({
+      error: liveReloadWaitError.message,
+      host: hostReloadState,
+      guest: liveReload,
+    }, null, 2));
+    throw liveReloadWaitError;
+  }
+  assert.equal(liveReload.playerId, beforeReload.playerId,
+    'a full application reload retains the stable room player identity');
+  assert.equal(liveReload.roomCode, room.roomCode,
+    'the canonical room URL survives a live-match reload');
+  assert.equal(liveReload.phase, 'battle');
+  assert.equal(liveReload.connected, true);
+  assert.equal(liveReload.entryFailure, null,
+    'a live room resume does not enter network recovery presentation');
+  await hostPage.waitForFunction((playerId) => {
+    const host = globalThis.__COT_GUEST_ENTRY_HOST;
+    return host?.match?.client?.roomState?.players?.find(
+      (player) => player.id === playerId,
+    )?.connected === true;
+  }, { timeout: 15_000, polling: 25 }, liveReload.playerId);
+
+  // Reload once more and close authority during the covered handoff. This
+  // retains the original cancellation regression after the successful live
+  // resume above, and proves a late async world cannot remount itself.
+  await guestPage.reload({ waitUntil: 'domcontentloaded', timeout: 180_000 });
+  await guestPage.waitForFunction(() =>
+    window.__GAME_READY === true && document.querySelector('.cot-bl')?.classList.contains('on') &&
+      !document.querySelector('.cot-play')?.classList.contains('show'),
+  { timeout: 60_000, polling: 25 });
+
   // Close the host while the pristine guest is still behind its cold loader.
   // The obsolete async entry must unwind to Garage and remain there; it may
   // not publish its late transport/bridge or remount the battle surface.
@@ -266,7 +397,15 @@ try {
   assert.equal(cancellation.network, null,
     'a late cold-entry transport must not regain browser session ownership');
   assert.deepEqual(errors, [], `browser errors:\n${errors.join('\n')}`);
-  console.log(JSON.stringify({ ok: true, report, cancellation }, null, 2));
+  console.log(JSON.stringify({
+    ok: true,
+    report,
+    liveReload: {
+      ...liveReload,
+      recoveryMs: Number(liveReloadRecoveryMs.toFixed(1)),
+    },
+    cancellation,
+  }, null, 2));
 
   await Promise.all([closeState(hostPage), closeState(guestPage)]);
 } finally {

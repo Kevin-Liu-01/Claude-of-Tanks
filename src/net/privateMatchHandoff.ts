@@ -40,8 +40,8 @@ export interface PrivateMatchPlayer {
   isHost?: boolean;
 }
 
-export interface StartingPrivateLobby {
-  phase: 'starting';
+export interface PrivateMatchLobby {
+  phase: 'starting' | 'playing';
   mapId: string;
   matchSeed: number;
   players: PrivateMatchPlayer[];
@@ -156,27 +156,36 @@ function seededUnit(seed: number): () => number {
   };
 }
 
-function validateStartingLobby(lobbyState: unknown): StartingPrivateLobby {
+function validateMatchLobby(lobbyState: unknown): PrivateMatchLobby {
   if (!lobbyState || typeof lobbyState !== 'object') {
-    throw new TypeError('a canonical starting lobby state is required');
+    throw new TypeError('a canonical match lobby state is required');
   }
-  const lobby = lobbyState as Partial<StartingPrivateLobby>;
-  if (lobby.phase !== 'starting' || !Number.isSafeInteger(lobby.matchSeed) ||
+  const lobby = lobbyState as Partial<PrivateMatchLobby>;
+  if (!['starting', 'playing'].includes(String(lobby.phase)) ||
+      !Number.isSafeInteger(lobby.matchSeed) ||
       !Array.isArray(lobby.players) || typeof lobby.mapId !== 'string') {
+    throw new TypeError('a canonical match lobby state is required');
+  }
+  return lobby as PrivateMatchLobby;
+}
+
+function validateStartingLobby(lobbyState: unknown): PrivateMatchLobby & { phase: 'starting' } {
+  const lobby = validateMatchLobby(lobbyState);
+  if (lobby.phase !== 'starting') {
     throw new TypeError('a canonical starting lobby state is required');
   }
-  return lobby as StartingPrivateLobby;
+  return lobby as PrivateMatchLobby & { phase: 'starting' };
 }
 
 /** Resolve a random lobby map identically on every peer before match handoff. */
 export function resolvePrivateMatchMap(lobbyState: unknown): string {
-  const lobby = validateStartingLobby(lobbyState);
+  const lobby = validateMatchLobby(lobbyState);
   return resolveMapId(lobby.mapId, seededUnit(lobby.matchSeed));
 }
 
 /** Deterministically fill empty lobby slots with authority-owned bots. */
 export function buildPrivateMatchPlayers(lobbyState: unknown): PrivateMatchPlayer[] {
-  const lobby = validateStartingLobby(lobbyState);
+  const lobby = validateMatchLobby(lobbyState);
   const horde = lobby.gameMode === 'endless_horde';
   const humans = lobby.players
     .filter((player) => player.team !== 'spectator')

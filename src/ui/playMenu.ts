@@ -1088,7 +1088,12 @@ export function createPlayMenu({
     // A client learns that the host started through this state callback. Cover
     // immediately; rebuilding the now-obsolete lobby first creates a guest-
     // only window in which a constrained renderer can present the garage.
-    if (next.phase === 'starting' && role === 'client' && !handedOff && !activeRoom) {
+    // A refreshed guest rejoins the durable room after authority has already
+    // crossed the starting barrier. Treat the live `playing` receipt as the
+    // same battle-entry intent; the match runtime reclaims this stable player
+    // id and streams the current authority snapshot into the rebuilt world.
+    if ((next.phase === 'starting' || next.phase === 'playing') &&
+        role === 'client' && !handedOff && !activeRoom) {
       beginNetworkHandoff(next, 'client');
       return;
     }
