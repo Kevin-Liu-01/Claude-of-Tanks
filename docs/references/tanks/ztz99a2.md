@@ -17,7 +17,7 @@ true-up per the round brief: the inherited AW-datum row (7.76/11.66/3.82/
   width 3.7 over skirts / turret roof 2.37.
 - Measure artifacts: docs/references/vertex/ztz99a2.json (post-yaw-fix).
 
-## Spec true-up (src/vehicles/china.js)
+## Spec true-up (src/vehicles/china.ts)
 dims: 7.6 / 11.0 / 3.7 / 2.45 (was 7.76 / 11.66 / 3.82 / 3.24)
 - heightM 2.45 = §5.73-1 P95 envelope (flat authored roof plane).
 - silhouetteHullLengthM 8.18 / silhouetteOverallLengthM 11.55 /

@@ -35,7 +35,7 @@ import './userdrops5.js';
 import './userdrops6.js';
 import './franceSpecs.ts';
 import './ukraine.ts';
-import './china.js';
+import './china.ts';
 import './sweden.js';
 import './poland.js';
 import './korea.ts';

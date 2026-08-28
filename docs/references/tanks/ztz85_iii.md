@@ -15,7 +15,7 @@ Janes bracket).
   height 2.30 / 41.0 t.
 - Measure artifacts: docs/references/vertex/ztz85_iii.json (post-yaw-fix).
 
-## Spec true-up (src/vehicles/china.js)
+## Spec true-up (src/vehicles/china.ts)
 dims: 6.40 / 10.28 / 3.45 / 2.30 (was 6.40 / 9.82 / 3.45 / 2.45)
 - silhouetteOverallLengthM 8.43: MUZZLE LAW (type59 precedent) — the tube is
   built to the print's extracted +4.43 muzzle; published 10.28 stays the
