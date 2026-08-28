@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createIceConfigHandler } from './ice.ts';
+import { createIceConfigHandler } from '../api/ice.ts';
 
 async function invoke(handler, { method = 'GET', origin = 'https://cot.kevinliu.studio' } = {}) {
   const headers = new Map();

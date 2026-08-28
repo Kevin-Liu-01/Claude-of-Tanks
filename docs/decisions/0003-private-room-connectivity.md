@@ -46,7 +46,7 @@ connection-state-driven ICE recovery.
 
     npm run typecheck
     node src/net/iceConfig.selftest.mjs
-    node api/ice.selftest.mjs
+    node server/ice.selftest.mjs
     npm run test:net:browser
     npm run test:net:render -- --room-mode=private
     npm run build

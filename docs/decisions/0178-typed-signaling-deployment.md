@@ -30,6 +30,8 @@ possible even when local browser code was typed.
   boundaries are narrowed before use.
 - TURN credentials remain short-lived, origin-gated, no-store responses; static
   and Cloudflare-issued server lists share one validated schema.
+- API regression tests live outside `api/`, so Vercel emits only the two real
+  production functions instead of exposing a test harness as an endpoint.
 - Dead peer-ID factories were removed because stable browser player IDs have
   owned signaling identity since reconnect support landed.
 - ADR 0125's JavaScript-only packaging constraint is superseded now that the

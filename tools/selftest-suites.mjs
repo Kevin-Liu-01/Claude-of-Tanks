@@ -218,7 +218,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/net/privateRoomConnectionRuntime.selftest.mjs',
     'src/net/rankedServiceClient.selftest.mjs',
     'server/signaling.selftest.mjs',
-    'api/ice.selftest.mjs',
+    'server/ice.selftest.mjs',
     'server/distributedRoomStore.selftest.mjs',
     'server/dedicatedWorldCollision.selftest.mjs',
     'server/dedicatedMatch.selftest.mjs',
