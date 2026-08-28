@@ -103,3 +103,4 @@ runtime documents remain authoritative for behavior.
 - [0091 — Lobby transport ownership is strict TypeScript](0091-typed-lobby-runtime.md)
 - [0092 — The multiplayer wire protocol is strict TypeScript](0092-typed-wire-protocol.md)
 - [0093 — Room entry and commander identity are strict TypeScript](0093-typed-room-entry-identity.md)
+- [0094 — Durable browser signaling has one strict typed owner](0094-typed-durable-signaling-client.md)

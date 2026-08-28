@@ -54,7 +54,7 @@ import {
   MATCH_STATE_CHANNEL_LABEL,
   createWebRTCPeer,
 } from './webrtcPeer.ts';
-import { RoomSignalingClient } from './signalingClient.js';
+import { RoomSignalingClient } from './signalingClient.ts';
 import { resolveSignalUrl } from './signalEndpoint.ts';
 import { LobbyClientRuntime, LobbyHostRuntime } from './lobbyRuntime.ts';
 
@@ -710,9 +710,9 @@ assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan
     false,
     'a browser socket already entering CLOSING queues signaling without a native send error',
   );
-  assert.equal(signaling._signalQueue.length, 1);
+  assert.equal(signaling.queuedSignalCount, 1);
   const restart = signaling.restartRoomSession('test_generation_rotation');
-  assert.equal(signaling._signalQueue.length, 0,
+  assert.equal(signaling.queuedSignalCount, 0,
     'rotating the page session discards negotiation queued by the dead RTC generation');
   const replacementSocket = FakeWebSocket.instances.at(-1);
   replacementSocket.open();
@@ -726,6 +726,31 @@ assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan
     },
   });
   assert.equal(await restart, true);
+  signaling.close();
+}
+
+// A correlated response still cannot install malformed room identity.
+{
+  const signaling = new RoomSignalingClient({
+    url: 'ws://localhost:7777', WebSocketImpl: FakeWebSocket, requestTimeoutMs: 100,
+  });
+  const connecting = signaling.connect();
+  const socket = FakeWebSocket.instances.at(-1);
+  socket.open();
+  await connecting;
+  const roomPromise = signaling.createRoom({
+    player: { id: 'invalid-response', name: 'Invalid Response' },
+  });
+  await Promise.resolve();
+  const request = JSON.parse(socket.sent.at(-1));
+  socket.receive({
+    type: 'room_created', requestId: request.requestId,
+    payload: { roomCode: 'BAD234', hostId: 'invalid-response' },
+  });
+  await assert.rejects(roomPromise,
+    (error) => error.code === 'invalid_room_response',
+    'a room response without canonical peer identity fails closed');
+  assert.equal(signaling.roomCode, null);
   signaling.close();
 }
 

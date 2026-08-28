@@ -133,7 +133,7 @@ try {
 
   const room = await hostPage.evaluate(async ({ url, requestedTeamSize }) => {
     const [{ RoomSignalingClient }, { PrivateRoomHostSession }] = await Promise.all([
-      import('/src/net/signalingClient.js'),
+      import('/src/net/signalingClient.ts'),
       import('/src/net/privateRoomSession.ts'),
     ]);
     const signalingClient = new RoomSignalingClient({ url });
@@ -175,7 +175,7 @@ try {
           stage: 'loading_modules',
         };
         const [{ RoomSignalingClient }, { PrivateRoomClientSession }] = await Promise.all([
-          import('/src/net/signalingClient.js'),
+          import('/src/net/signalingClient.ts'),
           import('/src/net/privateRoomSession.ts'),
         ]);
         state.stage = 'joining_signaling_room';

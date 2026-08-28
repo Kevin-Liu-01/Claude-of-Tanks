@@ -141,7 +141,7 @@ async function closeState(page) {
 async function createStartingRoom(hostPage, guestPage, signalUrl) {
   const room = await hostPage.evaluate(async ({ url, roomMode: mode }) => {
     const [{ RoomSignalingClient }, { PrivateRoomHostSession }] = await Promise.all([
-      import('/src/net/signalingClient.js'),
+      import('/src/net/signalingClient.ts'),
       import('/src/net/privateRoomSession.ts'),
     ]);
     const signalingClient = new RoomSignalingClient({ url });
@@ -173,7 +173,7 @@ async function createStartingRoom(hostPage, guestPage, signalUrl) {
 
   await guestPage.evaluate(async ({ url, roomCode }) => {
     const [{ RoomSignalingClient }, { PrivateRoomClientSession }] = await Promise.all([
-      import('/src/net/signalingClient.js'),
+      import('/src/net/signalingClient.ts'),
       import('/src/net/privateRoomSession.ts'),
     ]);
     const signalingClient = new RoomSignalingClient({ url });

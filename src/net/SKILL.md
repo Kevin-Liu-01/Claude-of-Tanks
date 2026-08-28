@@ -20,6 +20,8 @@ play without importing Three.js rendering or DOM state.
   broadcast, and the lossless lobby-to-match channel handoff.
 - `playerNames.ts`, `roomInvite.ts`, and `signalEndpoint.ts` own strict commander
   identity, share-link parsing, and deployment-aware signaling URL policy.
+- `signalingClient.ts` owns strict request correlation, durable event polling,
+  reconnect backoff, room-seat resume, and RTC-session epoch rotation.
 - `matchRuntime.js` owns fixed ticks, input ordering, snapshots, and client time.
 - `inputCadence.ts` bounds replaceable input uploads independently from display
   refresh while preserving immediate control edges.

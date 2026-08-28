@@ -3,7 +3,7 @@ import {
   type LobbyState as LobbyModel,
   type SerializedLobby,
 } from './lobby.ts';
-import { RoomSignalingClient } from './signalingClient.js';
+import { RoomSignalingClient } from './signalingClient.ts';
 import {
   PrivateRoomClientSession,
   PrivateRoomHostSession,
@@ -119,12 +119,7 @@ export interface PrivateRoomConnectionRuntime {
 }
 
 const DEFAULT_ADAPTERS: ConnectionAdapters = {
-  createSignaling: (url) => {
-    const SignalingConstructor = RoomSignalingClient as unknown as new (
-      options: { url: string },
-    ) => SignalingLike;
-    return new SignalingConstructor({ url });
-  },
+  createSignaling: (url) => new RoomSignalingClient({ url }),
   createHostSession: (options) =>
     new PrivateRoomHostSession(options) as unknown as HostSessionLike,
   createClientSession: (options) =>

@@ -4,7 +4,7 @@ import { WebSocket } from 'ws';
 import { DistributedSignalingRoomStore } from './distributedRoomStore.js';
 import { SignalingRoomStore } from './roomStore.js';
 import { createSignalingServer } from './signalingServer.js';
-import { RoomSignalingClient } from '../src/net/signalingClient.js';
+import { RoomSignalingClient } from '../src/net/signalingClient.ts';
 
 class FlakySubscriber extends EventEmitter {
   static failuresRemaining = 0;

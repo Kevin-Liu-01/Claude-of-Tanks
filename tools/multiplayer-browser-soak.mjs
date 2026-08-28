@@ -85,7 +85,7 @@ try {
 
   const room = await hostPage.evaluate(async (url) => {
     const [{ RoomSignalingClient }, { PrivateRoomHostSession }] = await Promise.all([
-      import('/src/net/signalingClient.js'),
+      import('/src/net/signalingClient.ts'),
       import('/src/net/privateRoomSession.ts'),
     ]);
     const signalingClient = new RoomSignalingClient({ url });
@@ -116,7 +116,7 @@ try {
 
   const guest = await guestPage.evaluate(async ({ url, roomCode }) => {
     const [{ RoomSignalingClient }, { PrivateRoomClientSession }] = await Promise.all([
-      import('/src/net/signalingClient.js'),
+      import('/src/net/signalingClient.ts'),
       import('/src/net/privateRoomSession.ts'),
     ]);
     const signalingClient = new RoomSignalingClient({ url });
@@ -441,7 +441,7 @@ try {
       { PrivateRoomClientSession },
       { beginPrivateClientMatch },
     ] = await Promise.all([
-      import('/src/net/signalingClient.js'),
+      import('/src/net/signalingClient.ts'),
       import('/src/net/privateRoomSession.ts'),
       import('/src/net/privateMatchHandoff.ts'),
     ]);

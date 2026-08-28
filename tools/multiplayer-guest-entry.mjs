@@ -61,7 +61,7 @@ try {
 
   const room = await hostPage.evaluate(async ({ signalUrl: url }) => {
     const [{ RoomSignalingClient }, { PrivateRoomHostSession }] = await Promise.all([
-      import('/src/net/signalingClient.js'),
+      import('/src/net/signalingClient.ts'),
       import('/src/net/privateRoomSession.ts'),
     ]);
     const signalingClient = new RoomSignalingClient({ url });

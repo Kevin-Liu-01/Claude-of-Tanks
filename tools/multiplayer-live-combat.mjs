@@ -147,7 +147,7 @@ async function createLobby(pages, signalUrl) {
   const room = await hostPage.evaluate(async ({ url, mapId, specId }) => {
     const state = globalThis.__COT_LIVE_7V7;
     const [{ RoomSignalingClient }, { PrivateRoomHostSession }] = await Promise.all([
-      import('/src/net/signalingClient.js'),
+      import('/src/net/signalingClient.ts'),
       import('/src/net/privateRoomSession.ts'),
     ]);
     state.signaling = new RoomSignalingClient({ url });
@@ -175,7 +175,7 @@ async function createLobby(pages, signalUrl) {
     async ({ url, roomCode, index, specId, camo }) => {
       const state = globalThis.__COT_LIVE_7V7;
       const [{ RoomSignalingClient }, { PrivateRoomClientSession }] = await Promise.all([
-        import('/src/net/signalingClient.js'),
+        import('/src/net/signalingClient.ts'),
         import('/src/net/privateRoomSession.ts'),
       ]);
       state.signaling = new RoomSignalingClient({ url });
