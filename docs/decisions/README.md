@@ -227,3 +227,4 @@ runtime documents remain authoritative for behavior.
 - [0215 — Sheridan armor and missile registration is strict TypeScript](0215-typed-sheridan-registration.md)
 - [0216 — Type 99 combat envelopes are strict TypeScript](0216-typed-type99-armor.md)
 - [0217 — The application composition root has a dedicated contract surface](0217-main-composition-contracts.md)
+- [0218 — Soviet-family chevron ERA construction is strict TypeScript](0218-typed-soviet-chevron-era.md)

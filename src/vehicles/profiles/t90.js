@@ -1,7 +1,7 @@
 // Pure family extraction from russia.js (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.js';
-import { addSovietChevronEra } from './sovietChevronEra.js';
+import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.js';
 import {
   loftHull,

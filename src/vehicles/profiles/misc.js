@@ -25,7 +25,7 @@
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT, FITTINGS, buildProfile } from './kit.js';
-import { addSovietChevronEra } from './sovietChevronEra.js';
+import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { buildT80CastTurret, domeBoxPlanSeat } from './russia.js';
 
 // ---------------------------------------------------------------------------
