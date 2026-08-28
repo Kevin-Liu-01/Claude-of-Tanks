@@ -44,9 +44,9 @@ import {
   createSnapshotDelta,
   decodeEntitySnapshot,
 } from './snapshot.ts';
-import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
+import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.ts';
 import { snapshotWireCodec } from './snapshotWireCodec.ts';
-import { createLocalMatchSession } from './localSession.js';
+import { createLocalMatchSession } from './localSession.ts';
 import { decodeAimIntent, encodeAimIntent } from './aimIntent.ts';
 import {
   MATCH_CHANNEL_LABEL,

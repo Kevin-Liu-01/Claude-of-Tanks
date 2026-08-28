@@ -3,7 +3,10 @@ import {
   maybeCreateAdverseNetworkTransport,
   type AdverseNetworkTransport,
 } from './adverseNetworkTransport.ts';
-import { MatchClientRuntime } from './matchRuntime.js';
+import {
+  MatchClientRuntime,
+  type MatchClientOptions,
+} from './matchRuntime.ts';
 
 type Unsubscribe = () => void;
 type SocketListener = (event: SocketEvent) => void;
@@ -26,29 +29,6 @@ interface SocketConstructor {
   new(url: string | URL): SocketLike;
 }
 
-interface MatchClientOptions {
-  interpolationDelayMs?: number;
-  maxExtrapolationMs?: number;
-  pingIntervalMs?: number;
-  clock?: () => number;
-}
-
-interface MatchClientPort {
-  readonly playerId: string;
-  readonly connected: boolean;
-  readyForMatch(): boolean;
-  connect(metadata?: Record<string, unknown>): boolean;
-  onConnection(listener: (connected: boolean) => void): Unsubscribe;
-  submitInput(input: Record<string, unknown>, clientTick?: number): boolean;
-  update(nowMs: number): unknown;
-  close(reason?: string): void;
-}
-
-const ClientRuntime = MatchClientRuntime as unknown as new (options: MatchClientOptions & {
-  transport: ChannelTransport | AdverseNetworkTransport;
-  playerId: string;
-}) => MatchClientPort;
-
 export interface DedicatedMatchTicket extends Record<string, unknown> {
   matchId: string;
   playerId: string;
@@ -70,8 +50,8 @@ export interface DedicatedConnectionOptions extends Partial<MatchClientOptions> 
 export interface DedicatedConnection {
   socket: SocketLike;
   transport: ChannelTransport | AdverseNetworkTransport;
-  client: MatchClientPort;
-  ready: Promise<MatchClientPort>;
+  client: MatchClientRuntime;
+  ready: Promise<MatchClientRuntime>;
 }
 
 export interface DedicatedStatus extends Record<string, unknown> {
@@ -92,7 +72,7 @@ export interface DedicatedClientMatch {
   readonly playerId: string;
   readonly mapId: string;
   readonly roster: unknown[];
-  readonly client: MatchClientPort | null;
+  readonly client: MatchClientRuntime | null;
   readonly socket: SocketLike | null;
   readonly reconnecting: boolean;
   ready(): boolean;
@@ -152,9 +132,13 @@ export function connectDedicatedMatch({
     maxMessageBytes: 64 * 1024,
     maxBufferedBytes: 512 * 1024,
   }));
-  const client = new ClientRuntime({ transport, playerId: String(playerId || ''), ...clientOptions });
+  const client = new MatchClientRuntime({
+    transport,
+    playerId: String(playerId || ''),
+    ...clientOptions,
+  });
 
-  const ready = new Promise<MatchClientPort>((resolve, reject) => {
+  const ready = new Promise<MatchClientRuntime>((resolve, reject) => {
     let settled = false;
     let unsubscribeConnection: Unsubscribe = () => {};
     let removeOpen: Unsubscribe = () => {};

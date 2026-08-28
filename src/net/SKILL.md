@@ -22,7 +22,7 @@ play without importing Three.js rendering or DOM state.
   identity, share-link parsing, and deployment-aware signaling URL policy.
 - `signalingClient.ts` owns strict request correlation, durable event polling,
   reconnect backoff, room-seat resume, and RTC-session epoch rotation.
-- `matchRuntime.js` owns fixed ticks, input ordering, snapshots, and client time.
+- `matchRuntime.ts` owns fixed ticks, input ordering, snapshots, and client time.
 - `inputCadence.ts` bounds replaceable input uploads independently from display
   refresh while preserving immediate control edges.
 - `browserInputRuntime.ts` composes finite-point aim, action edges, and cadence
@@ -32,7 +32,7 @@ play without importing Three.js rendering or DOM state.
   explicit snapshot acknowledgements, per-peer deltas, and periodic keyframes.
 - `loopbackTransport.ts`, `channelTransport.ts`, and `webrtcPeer.ts` implement
   the same bounded transport contract.
-- `localSession.js` proves solo play traverses the real host/client path.
+- `localSession.ts` proves solo play traverses the real host/client path.
 - `localTankPrediction.ts` owns typed local input replay and presentation-only
   correction; it never owns combat or match results.
 - `networkFramePump.ts` owns browser host/client frame order, snapshot/event

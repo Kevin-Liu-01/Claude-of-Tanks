@@ -3,7 +3,12 @@ import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
 import { createLoopbackTransportPair } from './loopbackTransport.ts';
-import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
+import {
+  AuthoritativeMatchRuntime,
+  MatchClientRuntime,
+  type MatchRoomState,
+  type RoomChatMessage,
+} from './matchRuntime.ts';
 import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.ts';
 import {
   applyLobbyCommand,
@@ -61,10 +66,10 @@ interface MatchTransport {
 interface MatchClientPort {
   connect(metadata?: Record<string, unknown>): void;
   readyForMatch(): boolean;
-  onRoomState(listener: (state: Record<string, unknown>) => void): Unsubscribe;
+  onRoomState(listener: (state: MatchRoomState) => void): Unsubscribe;
   submitRoomCommand(command: Record<string, unknown>): unknown;
-  onRoomChat(listener: (message: Record<string, unknown>) => void): Unsubscribe;
-  getRoomChatHistory(): Record<string, unknown>[];
+  onRoomChat(listener: (message: RoomChatMessage) => void): Unsubscribe;
+  getRoomChatHistory(): RoomChatMessage[];
   sendRoomChat(text: string): unknown;
   submitInput(input: Record<string, unknown>, clientTick?: number): unknown;
   update(nowMs: number): unknown;
@@ -126,26 +131,6 @@ interface ClientRoomSession {
   close?(reason?: string): void;
 }
 
-interface AuthoritativeMatchConstructor {
-  new(options: {
-    simulation: MatchSimulation;
-    roomController: PersistentRoomController | null;
-    maxCatchUpTicks: number;
-    maxBacklogTicks: number;
-    longStallCatchUpTicks: number;
-    scheduleRoomStateFanout: ((callback: () => void) => unknown) | null;
-    roomStateFanoutBatchSize: number;
-  }): MatchAuthorityPort;
-}
-
-interface MatchClientConstructor {
-  new(options: {
-    transport: MatchTransport;
-    playerId: string;
-    clock?: () => number;
-  }): MatchClientPort;
-}
-
 interface PrivateSimulationOptions {
   players: PrivateMatchPlayer[];
   mapId: string;
@@ -157,8 +142,6 @@ interface PrivateSimulationOptions {
 
 type PrivateSimulationFactory = (options: PrivateSimulationOptions) => MatchSimulation;
 
-const MatchAuthority = AuthoritativeMatchRuntime as unknown as AuthoritativeMatchConstructor;
-const MatchClient = MatchClientRuntime as unknown as MatchClientConstructor;
 const makeAuthoritativeSimulation = createAuthoritativeMatch as unknown as PrivateSimulationFactory;
 const readVehicleSpec = getSpec as unknown as (id: string) => VehicleSpecView;
 
@@ -299,10 +282,10 @@ export interface PrivateHostMatch {
   readonly host: MatchAuthorityPort;
   readonly client: MatchClientPort;
   ready(): boolean;
-  onRoomState(listener: (state: Record<string, unknown>) => void): Unsubscribe;
+  onRoomState(listener: (state: MatchRoomState) => void): Unsubscribe;
   roomCommand(command: Record<string, unknown>): unknown;
-  onRoomChat(listener: (message: Record<string, unknown>) => void): Unsubscribe;
-  getRoomChatHistory(): Record<string, unknown>[];
+  onRoomChat(listener: (message: RoomChatMessage) => void): Unsubscribe;
+  getRoomChatHistory(): RoomChatMessage[];
   sendRoomChat(text: string): unknown;
   prepareRound(options: {
     lobbyState: unknown;
@@ -319,10 +302,10 @@ export interface PrivateClientMatch {
   readonly mapId: string | null;
   readonly client: MatchClientPort;
   ready(): boolean;
-  onRoomState(listener: (state: Record<string, unknown>) => void): Unsubscribe;
+  onRoomState(listener: (state: MatchRoomState) => void): Unsubscribe;
   roomCommand(command: Record<string, unknown>): unknown;
-  onRoomChat(listener: (message: Record<string, unknown>) => void): Unsubscribe;
-  getRoomChatHistory(): Record<string, unknown>[];
+  onRoomChat(listener: (message: RoomChatMessage) => void): Unsubscribe;
+  getRoomChatHistory(): RoomChatMessage[];
   sendRoomChat(text: string): unknown;
   update(nowMs: number): unknown;
   submitInput(input: Record<string, unknown>, clientTick: number): unknown;
@@ -372,7 +355,7 @@ export function beginPrivateHostMatch({
   // A browser/OS freeze can be longer: retain at most five seconds, then drain
   // it at one extra fixed tick per presented frame. That preserves match time
   // without a six-step fast-forward burst that snaps every remote tank.
-  const host = new MatchAuthority({
+  const host = new AuthoritativeMatchRuntime({
     simulation,
     roomController,
     maxCatchUpTicks: 6,
@@ -392,7 +375,7 @@ export function beginPrivateHostMatch({
   // synchronously and zero-copy so host rendering never waits on microtasks.
   const localLink = createLoopbackTransportPair({ direct: true });
   let wallTimeMs = 0;
-  const client = new MatchClient({
+  const client = new MatchClientRuntime({
     transport: localLink.client,
     playerId: hostId,
     clock: () => wallTimeMs,
@@ -425,11 +408,11 @@ export function beginPrivateHostMatch({
     host,
     client,
     ready() { return client.readyForMatch(); },
-    onRoomState(listener: (state: Record<string, unknown>) => void) {
+    onRoomState(listener: (state: MatchRoomState) => void) {
       return client.onRoomState(listener);
     },
     roomCommand(command: Record<string, unknown>) { return client.submitRoomCommand(command); },
-    onRoomChat(listener: (message: Record<string, unknown>) => void) {
+    onRoomChat(listener: (message: RoomChatMessage) => void) {
       return client.onRoomChat(listener);
     },
     getRoomChatHistory() { return client.getRoomChatHistory(); },
@@ -489,7 +472,7 @@ export async function beginPrivateClientMatch({
     const transport = maybeCreateAdverseNetworkTransport(
       await takeMatchTransport.call(session),
     );
-    client = new MatchClient({ transport, playerId: id });
+    client = new MatchClientRuntime({ transport, playerId: id });
     client.connect({ mode: session.roomInfo && session.roomInfo.mode || 'private' });
   }
   return {
@@ -499,11 +482,11 @@ export async function beginPrivateClientMatch({
     mapId: lobbyState ? resolvePrivateMatchMap(lobbyState) : null,
     client,
     ready() { return client.readyForMatch(); },
-    onRoomState(listener: (state: Record<string, unknown>) => void) {
+    onRoomState(listener: (state: MatchRoomState) => void) {
       return client.onRoomState(listener);
     },
     roomCommand(command: Record<string, unknown>) { return client.submitRoomCommand(command); },
-    onRoomChat(listener: (message: Record<string, unknown>) => void) {
+    onRoomChat(listener: (message: RoomChatMessage) => void) {
       return client.onRoomChat(listener);
     },
     getRoomChatHistory() { return client.getRoomChatHistory(); },

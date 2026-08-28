@@ -13,10 +13,13 @@ import {
   type RtcSignal,
   type WebRtcPeerSession,
 } from './webrtcPeer.ts';
-import { MatchClientRuntime } from './matchRuntime.js';
+import {
+  MatchClientRuntime,
+  type MatchRoomState,
+  type MatchTransport as RuntimeMatchTransport,
+} from './matchRuntime.ts';
 import {
   maybeCreateAdverseNetworkTransport,
-  type AdverseNetworkTransport,
 } from './adverseNetworkTransport.ts';
 import {
   RtcIceLease,
@@ -72,9 +75,7 @@ interface SignalingPort {
   close(reason: string): void;
 }
 
-interface RoomState {
-  players?: RoomPlayer[];
-}
+type RoomState = MatchRoomState;
 
 interface MatchHostPort {
   detachPeer?(peerId: string, reason: string): void;
@@ -86,10 +87,10 @@ interface MatchHostPort {
   }): void;
 }
 
-type MatchRuntimeTransport = MatchTransport | AdverseNetworkTransport;
+type MatchRuntimeTransport = RuntimeMatchTransport;
 
 interface MatchClientPort {
-  roomState?: RoomState;
+  roomState?: RoomState | null;
   errors: unknown[];
   closed: boolean;
   connected: boolean;
@@ -156,11 +157,6 @@ export interface PrivateRoomClientOptions {
   connectTimeoutMs?: number;
   initialRebuildDelaysMs?: number[];
 }
-
-const TypedMatchClientRuntime = MatchClientRuntime as unknown as new (options: {
-  transport: MatchRuntimeTransport;
-  playerId: string;
-}) => MatchClientPort;
 
 function errorCode(error: unknown, fallback: string): string {
   if (typeof error !== 'object' || error === null || !('code' in error)) return fallback;
@@ -538,7 +534,7 @@ export class PrivateRoomClientSession {
     if (typeof this.signaling.setEventPollInterval === 'function') {
       this.signaling.setEventPollInterval(2_000);
     }
-    const client = new TypedMatchClientRuntime({
+    const client = new MatchClientRuntime({
       transport,
       playerId: this.roomInfo.peerId,
     });

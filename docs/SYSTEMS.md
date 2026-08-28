@@ -648,7 +648,7 @@ so ammo-rack and ordinary destruction can produce the correct first effect.
 
 `src/net/protocol.ts` defines strict protocol-version-7 envelopes, sequence
 arithmetic, and untrusted player-input validation.
-src/net/matchRuntime.js owns authority ticking, input ordering, readiness,
+src/net/matchRuntime.ts owns authority ticking, input ordering, readiness,
 viewer snapshots, acknowledgements, and catch-up bounds.
 
 LAN/private WebRTC uses:

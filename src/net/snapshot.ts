@@ -135,7 +135,7 @@ export interface QuantizedShellSnapshot {
 export interface WorldSnapshot {
   tick: number;
   serverTimeMs: number;
-  ackInputSeq: number;
+  ackInputSeq: number | null;
   entities: QuantizedEntitySnapshot[];
   shells: QuantizedShellSnapshot[];
   events: unknown[];
@@ -187,14 +187,14 @@ interface RestPose {
 export interface ImmediateAuthoritySnapshot {
   tick: number;
   serverTimeMs: number;
-  ackInputSeq: number;
+  ackInputSeq: number | null;
   entity: DecodedEntitySnapshot;
 }
 
 export interface SampledSnapshotFrame {
   tick: number;
   serverTimeMs: number;
-  ackInputSeq: number;
+  ackInputSeq: number | null;
   entities: DecodedEntitySnapshot[];
   shells: QuantizedShellSnapshot[];
   events: unknown[];
@@ -209,7 +209,7 @@ export interface CaptureWorldSnapshotOptions {
   shells?: Iterable<SnapshotShellSource> | null;
   events?: unknown[] | null;
   viewerId?: unknown;
-  ackInputSeq?: number;
+  ackInputSeq?: number | null;
   canObserve?: (viewerId: string, entity: SnapshotEntitySource) => boolean;
   canObserveShell?: (viewerId: string, shell: SnapshotShellSource) => boolean;
   canObserveEvent?: (viewerId: string, event: unknown) => boolean;
@@ -445,10 +445,18 @@ export class SnapshotAssembler {
     this.capacity = capacity;
   }
 
-  accept(packet: SnapshotPacket): WorldSnapshot | null {
-    if (!packet || !Number.isSafeInteger(packet.tick) || !Array.isArray(packet.entities)) {
+  accept(packetValue: unknown): WorldSnapshot | null {
+    if (!packetValue || typeof packetValue !== 'object' || Array.isArray(packetValue)) {
       throw new TypeError('invalid snapshot packet');
     }
+    const candidate = packetValue as Record<string, unknown>;
+    if (!Number.isSafeInteger(candidate.tick) || !Array.isArray(candidate.entities)) {
+      throw new TypeError('invalid snapshot packet');
+    }
+    // The packet is an untrusted transport boundary. The assembler validates
+    // the framing fields it consumes before adopting the typed wire shape;
+    // entity decoding performs the remaining finite/range normalization.
+    const packet = packetValue as SnapshotPacket;
     const baseTick = packet.baseTick == null ? -1 : packet.baseTick;
     let entities: QuantizedEntitySnapshot[];
     if (baseTick === -1) {

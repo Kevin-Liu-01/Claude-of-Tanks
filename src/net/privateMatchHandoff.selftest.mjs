@@ -8,7 +8,7 @@ import {
 } from './privateMatchHandoff.ts';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
 import { PrivateRoomClientSession, PrivateRoomHostSession } from './privateRoomSession.ts';
-import { MatchClientRuntime } from './matchRuntime.js';
+import { MatchClientRuntime } from './matchRuntime.ts';
 import { MATCH_CONTROL_CHANNEL_LABEL, MATCH_STATE_CHANNEL_LABEL } from './webrtcPeer.ts';
 import { addLobbyPlayer, applyLobbyCommand, createLobby, serializeLobby } from './lobby.ts';
 import { MAP_IDS } from '../world/maps/index.js';

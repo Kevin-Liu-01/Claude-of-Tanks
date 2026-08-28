@@ -32,7 +32,7 @@ its dedicated service explicitly negotiates another ruleset.
 ## Runtime boundaries
 
 - `src/sim/authoritativeMatch.js` is the renderer-free battle authority.
-- `src/net/matchRuntime.js` owns fixed ticks, input ordering, readiness,
+- `src/net/matchRuntime.ts` owns fixed ticks, input ordering, readiness,
   viewer-specific snapshots, catch-up limits, and connection state.
 - `src/net/browserBattleBridge.js` turns authority snapshots and events into
   first-party Three.js visuals without resolving gameplay locally.
@@ -54,7 +54,7 @@ its dedicated service explicitly negotiates another ruleset.
   guest selection replay, state observation, cancellation generations, and
   the exact handoff/teardown order. The play menu renders and commands the
   resulting connection but cannot construct a second transport lifecycle.
-- `src/net/localSession.js` provides loopback authority for protocol tests and
+- `src/net/localSession.ts` provides loopback authority for protocol tests and
   tooling; normal solo play does not load it.
 - `src/net/privateRoomSession.ts` and `privateMatchHandoff.ts` own WebRTC lobby
   composition, seeded bot fill, and channel handoff.

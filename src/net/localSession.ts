@@ -1,5 +1,18 @@
 import { createLoopbackTransportPair } from './loopbackTransport.ts';
-import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
+import {
+  AuthoritativeMatchRuntime,
+  MatchClientRuntime,
+  type MatchSimulation,
+} from './matchRuntime.ts';
+
+export interface LocalMatchSessionOptions {
+  playerId?: string;
+  simulation: MatchSimulation;
+  tickHz?: number;
+  snapshotHz?: number;
+  interpolationDelayMs?: number;
+  maxExtrapolationMs?: number;
+}
 
 /**
  * Compose the real host/client modules over an in-process transport.
@@ -13,7 +26,7 @@ export function createLocalMatchSession({
   snapshotHz,
   interpolationDelayMs = 0,
   maxExtrapolationMs = 0,
-} = {}) {
+}: LocalMatchSessionOptions) {
   const transports = createLoopbackTransportPair();
   const host = new AuthoritativeMatchRuntime({ simulation, tickHz, snapshotHz });
   let wallTimeMs = 0;
@@ -35,7 +48,7 @@ export function createLocalMatchSession({
     host,
     client,
     ready() { return client.readyForMatch(); },
-    async advance(elapsedMs, input = null) {
+    async advance(elapsedMs: number, input: Record<string, unknown> | null = null) {
       if (input) client.submitInput(input, host.tick);
       // Respect the same asynchronous delivery ordering as network adapters.
       await Promise.resolve();
@@ -44,7 +57,7 @@ export function createLocalMatchSession({
       wallTimeMs += elapsedMs;
       return client.update(wallTimeMs);
     },
-    close(reason = 'local_session_closed') {
+    close(reason = 'local_session_closed'): void {
       client.close(reason);
       host.close(reason);
     },

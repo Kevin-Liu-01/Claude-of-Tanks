@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { MESSAGE_TYPES, createEnvelope } from './protocol.ts';
 import { TransportClosedError } from './loopbackTransport.ts';
 import { captureWorldSnapshot } from './snapshot.ts';
-import { AuthoritativeMatchRuntime } from './matchRuntime.js';
+import { AuthoritativeMatchRuntime } from './matchRuntime.ts';
 
 function simulation() {
   const entities = new Map();

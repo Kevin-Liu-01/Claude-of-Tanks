@@ -10,11 +10,195 @@ import {
   normalizePlayerInput,
   normalizeRoomChatText,
   validateEnvelope,
+  type MessageType,
+  type NormalizedPlayerInput,
 } from './protocol.ts';
 import { TransportClosedError } from './loopbackTransport.ts';
-import { SnapshotAssembler, SnapshotBuffer, createSnapshotDelta } from './snapshot.ts';
+import {
+  SnapshotAssembler,
+  SnapshotBuffer,
+  createSnapshotDelta,
+  type SampledSnapshotFrame,
+  type SnapshotPacket,
+  type WorldSnapshot,
+} from './snapshot.ts';
 
-function validateRate(tickHz, snapshotHz) {
+type Unsubscribe = () => void;
+type MatchEvent = Record<string, unknown>;
+
+export interface MatchTransport {
+  readonly kind?: string;
+  readonly readyState?: string;
+  readonly bufferedAmount?: number;
+  readonly stats?: unknown;
+  send(message: unknown): boolean;
+  sendInput?(message: unknown): boolean;
+  sendState?(message: unknown): boolean;
+  onMessage(listener: (message: unknown) => void): Unsubscribe;
+  onClose?(listener: (reason: string) => void): Unsubscribe;
+  close?(reason?: string): void;
+}
+
+export interface MatchRoomPlayer {
+  id?: string;
+  name?: string;
+  team?: string;
+  specId?: string | null;
+  equipment?: string[];
+  camo?: string;
+}
+
+export interface MatchRoomState {
+  phase?: string;
+  round?: number;
+  revision?: number;
+  players?: MatchRoomPlayer[];
+}
+
+export interface RoomController {
+  state(): MatchRoomState;
+  command(peerId: string, command: Record<string, unknown>): MatchRoomState | null | undefined;
+  rejoin?(peerId: string, player: Record<string, unknown>): unknown;
+  disconnect?(peerId: string, reason?: string): unknown;
+  remove?(peerId: string, reason?: string): unknown;
+  metadataFor?(peerId: string): Record<string, unknown>;
+  markPlaying?(): unknown;
+  finish?(outcome: { result: unknown; reason: unknown }): unknown;
+}
+
+export interface SimulationStepContext {
+  dt: number;
+  tick: number;
+  timeMs: number;
+  inputs: Map<string, NormalizedPlayerInput | null>;
+}
+
+export interface MatchSimulation {
+  requiredPeerIds?: unknown[];
+  result?: unknown;
+  resultReason?: unknown;
+  step(context: SimulationStepContext): unknown;
+  snapshot(options: {
+    tick: number;
+    serverTimeMs: number;
+    viewerId: string;
+    ackInputSeq: number | null;
+  }): WorldSnapshot;
+  onPeerJoin?(options: { peerId: string; metadata: Record<string, unknown> | null }): unknown;
+  onPeerLeave?(options: { peerId: string; reason: string }): unknown;
+  onPeerReady?(options: { peerId: string; metadata: Record<string, unknown> | null }): unknown;
+  onMatchReady?(options: { tick: number; timeMs: number }): unknown;
+  afterSnapshotBroadcast?(): unknown;
+}
+
+export interface AuthoritativeMatchStats {
+  steps: number;
+  snapshots: number;
+  droppedCatchUpMs: number;
+  backlogHighWaterMs: number;
+  longStallCatchUpFrames: number;
+  invalidMessages: number;
+  staleInputs: number;
+  futureInputs: number;
+  snapshotKeyframes: number;
+  snapshotDeltas: number;
+  snapshotEntityRows: number;
+  reliableEventBatches: number;
+  reliableEvents: number;
+  roomStateFanoutBatches: number;
+  roomStateFanoutPeers: number;
+}
+
+interface MatchPeer {
+  id: string;
+  transport: MatchTransport;
+  metadata: Record<string, unknown> | null;
+  input: NormalizedPlayerInput | null;
+  lastInputSeq: number | null;
+  lastInputEnvelopeSeq: number | null;
+  lastRecvSeq: number | null;
+  sendSeq: number;
+  welcomed: boolean;
+  ready: boolean;
+  pendingRoundReady: boolean;
+  fireQueued: boolean;
+  actionBitsQueued: number;
+  actionBitsHeld: number;
+  lastSnapshotAckTick: number | null;
+  lastKeyframeTick: number;
+  chatLastAtMs: number;
+  chatWindowStartMs: number;
+  chatWindowCount: number;
+  snapshotHistory: Map<number, WorldSnapshot>;
+  unsubscribeMessage: Unsubscribe | null;
+  unsubscribeClose: Unsubscribe | null;
+}
+
+interface EventBatch {
+  tick: number;
+  events: MatchEvent[];
+}
+
+export interface RoomChatMessage extends Record<string, unknown> {
+  id: string;
+  sequence: number;
+  round: number;
+  senderId: string;
+  senderName: string;
+  team: 'alpha' | 'bravo' | 'spectator';
+  text: string;
+  serverTimeMs: number;
+}
+
+export interface AuthoritativeMatchOptions {
+  simulation?: unknown;
+  tickHz?: number;
+  snapshotHz?: number;
+  maxCatchUpTicks?: number;
+  maxBacklogTicks?: number;
+  longStallCatchUpTicks?: number;
+  maxInputLeadTicks?: number;
+  roomController?: RoomController | null;
+  chatClock?: () => number;
+  scheduleRoomStateFanout?: ((callback: () => void) => unknown) | null;
+  roomStateFanoutBatchSize?: number;
+  keyframeIntervalTicks?: number;
+  snapshotHistoryCapacity?: number;
+}
+
+export interface MatchClientOptions {
+  transport?: MatchTransport;
+  playerId?: string;
+  interpolationDelayMs?: number;
+  maxExtrapolationMs?: number;
+  pingIntervalMs?: number;
+  clock?: () => number;
+}
+
+export interface MatchClientStats extends Record<string, unknown> {
+  connected: boolean;
+  rttMs: number | null;
+  rttJitterMs: number;
+  serverOffsetMs: number;
+  snapshotPacketsReceived: number;
+  estimatedMissingSnapshots: number;
+  estimatedSnapshotLoss: number;
+  missingSnapshotBaselines: number;
+  transportBufferedBytes: number;
+  pendingEventBatches: number;
+  inputPacketsSubmitted: number;
+  lastAckedInputSeq: number | null;
+  inputAckLag: number | null;
+  pendingInputEdges: number;
+  buffer: ReturnType<SnapshotBuffer['getStats']>;
+  transport: unknown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validateRate(tickHz: number, snapshotHz: number): void {
   if (!Number.isInteger(tickHz) || tickHz < 10 || tickHz > 120) {
     throw new TypeError('tickHz must be an integer between 10 and 120');
   }
@@ -24,22 +208,22 @@ function validateRate(tickHz, snapshotHz) {
   }
 }
 
-function validateSimulation(simulation) {
-  if (!simulation || typeof simulation.step !== 'function' ||
+function validateSimulation(simulation: unknown): MatchSimulation {
+  if (!isRecord(simulation) || typeof simulation.step !== 'function' ||
       typeof simulation.snapshot !== 'function') {
     throw new TypeError('simulation must implement step() and snapshot()');
   }
-  return simulation;
+  return simulation as unknown as MatchSimulation;
 }
 
-function safeErrorPayload(error) {
+function safeErrorPayload(error: unknown): { code: string; message: string } {
   return {
-    code: typeof error.code === 'string' ? error.code : 'invalid_message',
+    code: isRecord(error) && typeof error.code === 'string' ? error.code : 'invalid_message',
     message: error instanceof Error ? error.message : 'invalid message',
   };
 }
 
-function defaultClock() {
+function defaultClock(): number {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now()
     : 0;
@@ -53,17 +237,31 @@ const ROOM_CHAT_BURST_WINDOW_MS = 10_000;
 const ROOM_CHAT_BURST_LIMIT = 8;
 const SEQUENCE_RANGE = 0x80000000;
 
-function sequenceDistance(latest, previous) {
+function sequenceDistance(latest: unknown, previous: unknown): number | null {
   if (!Number.isSafeInteger(latest) || !Number.isSafeInteger(previous)) return null;
-  return (latest - previous + SEQUENCE_RANGE) % SEQUENCE_RANGE;
+  return (Number(latest) - Number(previous) + SEQUENCE_RANGE) % SEQUENCE_RANGE;
 }
 
-function validateEventBatch(payload) {
-  if (!payload || !Number.isSafeInteger(payload.tick) || payload.tick < 0 ||
-      !Array.isArray(payload.events) || payload.events.length > MAX_EVENTS_PER_BATCH) {
+function validateEventBatch(payload: unknown): EventBatch {
+  if (!isRecord(payload) || !Number.isSafeInteger(payload.tick) || Number(payload.tick) < 0 ||
+      !Array.isArray(payload.events) || payload.events.length > MAX_EVENTS_PER_BATCH ||
+      payload.events.some((event) => !isRecord(event))) {
     throw new ProtocolError('invalid_event_batch', 'event batch must include a valid tick and events');
   }
-  return payload;
+  return { tick: Number(payload.tick), events: payload.events as MatchEvent[] };
+}
+
+function validateRoomState(payload: unknown, { requireRound = true } = {}): MatchRoomState {
+  if (!isRecord(payload) || !Array.isArray(payload.players) ||
+      payload.players.some((player) => !isRecord(player)) ||
+      !Number.isSafeInteger(Number(payload.revision)) ||
+      (requireRound && !Number.isSafeInteger(Number(payload.round)))) {
+    throw new ProtocolError(
+      requireRound ? 'invalid_room_state' : 'invalid_lobby_state',
+      `${requireRound ? 'room' : 'lobby'} state is malformed`,
+    );
+  }
+  return payload as MatchRoomState;
 }
 
 /**
@@ -71,6 +269,34 @@ function validateEventBatch(payload) {
  * process, and solo loopback session all call this exact interface.
  */
 export class AuthoritativeMatchRuntime {
+  simulation: MatchSimulation;
+  readonly roomController: RoomController | null;
+  readonly chatClock: () => number;
+  readonly scheduleRoomStateFanout: ((callback: () => void) => unknown) | null;
+  readonly roomStateFanoutBatchSize: number;
+  private roomStateFanoutGeneration = 0;
+  private chatSequence = 0;
+  readonly tickHz: number;
+  readonly snapshotHz: number;
+  readonly tickMs: number;
+  readonly snapshotEveryTicks: number;
+  readonly maxCatchUpTicks: number;
+  readonly maxBacklogTicks: number;
+  readonly longStallCatchUpTicks: number;
+  readonly maxInputLeadTicks: number;
+  readonly keyframeIntervalTicks: number;
+  readonly snapshotHistoryCapacity: number;
+  tick = 0;
+  timeMs = 0;
+  accumulatorMs = 0;
+  readonly peers = new Map<string, MatchPeer>();
+  closed = false;
+  matchStarted = false;
+  roomRound: number;
+  roundPending = false;
+  roundFinished = false;
+  readonly stats: AuthoritativeMatchStats;
+
   constructor({
     simulation,
     tickHz = MATCH_TICK_HZ,
@@ -86,7 +312,7 @@ export class AuthoritativeMatchRuntime {
     keyframeIntervalTicks = tickHz * 2,
     snapshotHistoryCapacity = Math.max(64,
       Math.ceil(keyframeIntervalTicks * snapshotHz / tickHz) * 2),
-  } = {}) {
+  }: AuthoritativeMatchOptions = {}) {
     validateRate(tickHz, snapshotHz);
     if (!Number.isInteger(maxCatchUpTicks) || maxCatchUpTicks < 1 || maxCatchUpTicks > 12) {
       throw new TypeError('maxCatchUpTicks must be between 1 and 12');
@@ -122,8 +348,6 @@ export class AuthoritativeMatchRuntime {
     this.chatClock = chatClock;
     this.scheduleRoomStateFanout = scheduleRoomStateFanout;
     this.roomStateFanoutBatchSize = roomStateFanoutBatchSize;
-    this.roomStateFanoutGeneration = 0;
-    this.chatSequence = 0;
     this.tickHz = tickHz;
     this.snapshotHz = snapshotHz;
     this.tickMs = 1000 / tickHz;
@@ -134,15 +358,7 @@ export class AuthoritativeMatchRuntime {
     this.maxInputLeadTicks = maxInputLeadTicks;
     this.keyframeIntervalTicks = keyframeIntervalTicks;
     this.snapshotHistoryCapacity = snapshotHistoryCapacity;
-    this.tick = 0;
-    this.timeMs = 0;
-    this.accumulatorMs = 0;
-    this.peers = new Map();
-    this.closed = false;
-    this.matchStarted = false;
     this.roomRound = Number(roomController?.state()?.round) || 0;
-    this.roundPending = false;
-    this.roundFinished = false;
     this.stats = {
       steps: 0,
       snapshots: 0,
@@ -162,7 +378,15 @@ export class AuthoritativeMatchRuntime {
     };
   }
 
-  attachPeer({ peerId, transport, metadata = null } = {}) {
+  attachPeer({
+    peerId,
+    transport,
+    metadata = null,
+  }: {
+    peerId?: string;
+    transport?: MatchTransport;
+    metadata?: Record<string, unknown> | null;
+  } = {}): Unsubscribe {
     if (this.closed) throw new Error('match runtime is closed');
     const id = String(peerId || '').trim();
     if (!id) throw new TypeError('peerId is required');
@@ -171,7 +395,7 @@ export class AuthoritativeMatchRuntime {
         typeof transport.onMessage !== 'function') {
       throw new TypeError('transport must implement send() and onMessage()');
     }
-    const peer = {
+    const peer: MatchPeer = {
       id,
       transport,
       metadata,
@@ -191,7 +415,7 @@ export class AuthoritativeMatchRuntime {
       chatLastAtMs: -Infinity,
       chatWindowStartMs: -Infinity,
       chatWindowCount: 0,
-      snapshotHistory: new Map(),
+      snapshotHistory: new Map<number, WorldSnapshot>(),
       unsubscribeMessage: null,
       unsubscribeClose: null,
     };
@@ -209,7 +433,17 @@ export class AuthoritativeMatchRuntime {
   }
 
   /** Reattach a browser that refreshed while a persistent room is waiting. */
-  rejoinPeer({ peerId, transport, player = null, metadata = null } = {}) {
+  rejoinPeer({
+    peerId,
+    transport,
+    player = null,
+    metadata = null,
+  }: {
+    peerId?: string;
+    transport?: MatchTransport;
+    player?: Record<string, unknown> | null;
+    metadata?: Record<string, unknown> | null;
+  } = {}): Unsubscribe {
     const id = String(peerId || '').trim();
     if (!id) throw new TypeError('peerId is required');
     if (!this.roomController?.rejoin) {
@@ -223,14 +457,18 @@ export class AuthoritativeMatchRuntime {
   }
 
   /** Replay packets that arrived during an ordered lobby-to-match handoff. */
-  acceptPeerMessage(peerId, raw) {
+  acceptPeerMessage(peerId: string, raw: unknown): boolean {
     const peer = this.peers.get(String(peerId));
     if (!peer || this.closed) return false;
     this.#receive(peer, raw);
     return true;
   }
 
-  detachPeer(peerId, reason = 'left', { retainRoomSeat = false } = {}) {
+  detachPeer(
+    peerId: string,
+    reason = 'left',
+    { retainRoomSeat = false }: { retainRoomSeat?: boolean } = {},
+  ): boolean {
     const id = String(peerId);
     const peer = this.peers.get(id);
     if (!peer) return false;
@@ -250,7 +488,7 @@ export class AuthoritativeMatchRuntime {
     return true;
   }
 
-  #send(peer, type, payload) {
+  #send(peer: MatchPeer, type: MessageType, payload: unknown): boolean {
     if (!peer || peer.transport.readyState === 'closed') return false;
     const envelope = createEnvelope(type, payload, {
       seq: peer.sendSeq,
@@ -258,7 +496,7 @@ export class AuthoritativeMatchRuntime {
       tick: this.tick,
     });
     peer.sendSeq = nextSequence(peer.sendSeq);
-    let accepted;
+    let accepted: boolean;
     try {
       accepted = type === MESSAGE_TYPES.SNAPSHOT &&
         typeof peer.transport.sendState === 'function'
@@ -278,7 +516,7 @@ export class AuthoritativeMatchRuntime {
     return accepted;
   }
 
-  #receive(peer, raw) {
+  #receive(peer: MatchPeer, raw: unknown): void {
     try {
       const message = validateEnvelope(raw);
       // A malformed or unexpectedly reordered pre-handshake packet must not
@@ -297,12 +535,16 @@ export class AuthoritativeMatchRuntime {
         peer.lastRecvSeq = message.seq;
       }
       switch (message.type) {
-        case MESSAGE_TYPES.HELLO:
+        case MESSAGE_TYPES.HELLO: {
           if (peer.welcomed) break;
-          if (!message.payload || String(message.payload.playerId || '') !== peer.id) {
+          const payload = message.payload;
+          if (!isRecord(payload) || String(payload.playerId || '') !== peer.id) {
             throw new ProtocolError('identity_mismatch', 'hello player id does not match transport identity');
           }
-          peer.metadata = { ...(peer.metadata || {}), ...(message.payload.metadata || {}) };
+          if (payload.metadata != null && !isRecord(payload.metadata)) {
+            throw new ProtocolError('invalid_metadata', 'hello metadata must be an object');
+          }
+          peer.metadata = { ...(peer.metadata || {}), ...(payload.metadata || {}) };
           peer.welcomed = true;
           this.#send(peer, MESSAGE_TYPES.WELCOME, {
             protocolVersion: PROTOCOL_VERSION,
@@ -316,6 +558,7 @@ export class AuthoritativeMatchRuntime {
             this.#send(peer, MESSAGE_TYPES.ROOM_STATE, this.roomController.state());
           }
           break;
+        }
         case MESSAGE_TYPES.ROOM_COMMAND:
           if (!peer.welcomed) {
             throw new ProtocolError('hello_required', 'hello must precede room commands');
@@ -344,16 +587,18 @@ export class AuthoritativeMatchRuntime {
             }
           }
           break;
-        case MESSAGE_TYPES.PING:
+        case MESSAGE_TYPES.PING: {
           if (!peer.welcomed) {
             throw new ProtocolError('hello_required', 'hello must precede match ping');
           }
-          this.#recordSnapshotAck(peer, message.payload && message.payload.snapshotAckTick);
+          const payload = isRecord(message.payload) ? message.payload : null;
+          this.#recordSnapshotAck(peer, payload?.snapshotAckTick);
           this.#send(peer, MESSAGE_TYPES.PONG, {
-            clientTimeMs: Number(message.payload && message.payload.clientTimeMs) || 0,
+            clientTimeMs: Number(payload?.clientTimeMs) || 0,
             serverTimeMs: this.timeMs,
           });
           break;
+        }
         case MESSAGE_TYPES.LEAVE:
           this.detachPeer(peer.id, 'client_leave');
           break;
@@ -367,11 +612,14 @@ export class AuthoritativeMatchRuntime {
     }
   }
 
-  #receiveRoomCommand(peer, command) {
+  #receiveRoomCommand(peer: MatchPeer, command: unknown): void {
     if (!this.roomController) {
       throw new ProtocolError('room_unavailable', 'this match has no persistent room');
     }
     const beforeRound = Number(this.roomController.state()?.round) || 0;
+    if (!isRecord(command)) {
+      throw new ProtocolError('invalid_room_command', 'room command must be an object');
+    }
     const state = this.roomController.command(peer.id, command);
     const next = state || this.roomController.state();
     const nextRound = Number(next?.round) || 0;
@@ -389,11 +637,11 @@ export class AuthoritativeMatchRuntime {
     this.#broadcastRoomState(next);
   }
 
-  #receiveRoomChat(peer, payload) {
+  #receiveRoomChat(peer: MatchPeer, payload: unknown): void {
     if (!this.roomController) {
       throw new ProtocolError('room_unavailable', 'chat is only available in a room');
     }
-    const text = normalizeRoomChatText(payload?.text);
+    const text = normalizeRoomChatText(isRecord(payload) ? payload.text : undefined);
     const nowMs = Number(this.chatClock());
     if (!Number.isFinite(nowMs)) {
       throw new ProtocolError('invalid_clock', 'room chat clock is unavailable');
@@ -429,7 +677,7 @@ export class AuthoritativeMatchRuntime {
     }
   }
 
-  #resetPeerForRound(peer) {
+  #resetPeerForRound(peer: MatchPeer): void {
     peer.ready = false;
     peer.input = null;
     peer.lastInputSeq = null;
@@ -445,7 +693,7 @@ export class AuthoritativeMatchRuntime {
     }
   }
 
-  #broadcastRoomState(state = null) {
+  #broadcastRoomState(state: MatchRoomState | null = null): MatchRoomState | null {
     if (!this.roomController) return null;
     this.roomStateFanoutGeneration++;
     const next = state || this.roomController.state();
@@ -463,12 +711,13 @@ export class AuthoritativeMatchRuntime {
    * small reliable batches. A newer room revision cancels the remaining old
    * fanout so a fast rematch can never be overwritten by stale waiting state.
    */
-  #broadcastRoomStateDeferred(state = null) {
+  #broadcastRoomStateDeferred(state: MatchRoomState | null = null): MatchRoomState | null {
     if (!this.roomController || !this.scheduleRoomStateFanout) {
       return this.#broadcastRoomState(state);
     }
     const next = state || this.roomController.state();
     const peers = [...this.peers.values()].filter((peer) => peer.welcomed);
+    const schedule = this.scheduleRoomStateFanout;
     const generation = ++this.roomStateFanoutGeneration;
     let cursor = 0;
     const pump = () => {
@@ -479,14 +728,17 @@ export class AuthoritativeMatchRuntime {
         this.stats.roomStateFanoutPeers++;
       }
       this.stats.roomStateFanoutBatches++;
-      if (cursor < peers.length) this.scheduleRoomStateFanout(pump);
+      if (cursor < peers.length) schedule(pump);
     };
     pump();
     return next;
   }
 
   /** Install the next authority simulation after the host loads its battlefield. */
-  replaceSimulation(simulation, { round = this.roomRound } = {}) {
+  replaceSimulation(
+    simulation: unknown,
+    { round = this.roomRound }: { round?: number } = {},
+  ): MatchSimulation {
     if (this.closed) throw new Error('match runtime is closed');
     if (!Number.isSafeInteger(round) || round < 1) throw new TypeError('round must be positive');
     const roomState = this.roomController?.state?.();
@@ -513,7 +765,7 @@ export class AuthoritativeMatchRuntime {
     return this.simulation;
   }
 
-  #receiveInput(peer, payload) {
+  #receiveInput(peer: MatchPeer, payload: unknown): void {
     const input = normalizePlayerInput(payload);
     if (peer.lastInputSeq != null && !isSequenceNewer(input.inputSeq, peer.lastInputSeq)) {
       this.stats.staleInputs++;
@@ -534,7 +786,7 @@ export class AuthoritativeMatchRuntime {
     peer.input = input.actionBits ? { ...input, actionBits: 0 } : input;
   }
 
-  #recordSnapshotAck(peer, rawTick) {
+  #recordSnapshotAck(peer: MatchPeer, rawTick: unknown): void {
     const tick = Number(rawTick ?? 0);
     if (!Number.isSafeInteger(tick) || tick < 0 || tick > this.tick) {
       throw new ProtocolError('invalid_snapshot_ack', 'snapshot acknowledgement is invalid');
@@ -554,7 +806,7 @@ export class AuthoritativeMatchRuntime {
    * and drained gradually so one blocked render neither deletes match time nor
    * fast-forwards the complete simulation in one rubber-banding burst.
    */
-  advance(elapsedMs) {
+  advance(elapsedMs: number): number {
     if (this.closed) return 0;
     if (!Number.isFinite(elapsedMs) || elapsedMs < 0) {
       throw new TypeError('elapsedMs must be non-negative');
@@ -587,7 +839,9 @@ export class AuthoritativeMatchRuntime {
       }
       if (!this.matchStarted) {
         const requiredIds = Array.isArray(this.simulation.requiredPeerIds)
-          ? this.simulation.requiredPeerIds.filter((id) => this.peers.has(String(id)))
+          ? this.simulation.requiredPeerIds
+            .map((id) => String(id))
+            .filter((id) => this.peers.has(id))
           : [...this.peers.values()]
             .filter((peer) => !peer.metadata?.spectator)
             .map((peer) => peer.id);
@@ -606,19 +860,20 @@ export class AuthoritativeMatchRuntime {
         }
       }
       if (this.matchStarted) {
-        const inputs = new Map();
+        const inputs = new Map<string, NormalizedPlayerInput | null>();
         for (const peer of this.peers.values()) {
-          const needsEdgeMerge = peer.input && (
-            (peer.fireQueued && !peer.input.fire) ||
-            (peer.actionBitsQueued & ~peer.input.actionBits) !== 0
+          const currentInput = peer.input;
+          const needsEdgeMerge = currentInput !== null && (
+            (peer.fireQueued && !currentInput.fire) ||
+            (peer.actionBitsQueued & ~currentInput.actionBits) !== 0
           );
-          const input = needsEdgeMerge
+          const input: NormalizedPlayerInput | null = needsEdgeMerge && currentInput
             ? {
-              ...peer.input,
-              fire: peer.fireQueued || peer.input.fire,
-              actionBits: peer.actionBitsQueued | peer.input.actionBits,
+              ...currentInput,
+              fire: peer.fireQueued || currentInput.fire,
+              actionBits: peer.actionBitsQueued | currentInput.actionBits,
             }
-            : peer.input;
+            : currentInput;
           inputs.set(peer.id, input);
           peer.fireQueued = false;
           peer.actionBitsQueued = 0;
@@ -649,7 +904,7 @@ export class AuthoritativeMatchRuntime {
     return steps;
   }
 
-  #broadcastSnapshots() {
+  #broadcastSnapshots(): void {
     for (const peer of this.peers.values()) {
       if (!peer.welcomed) continue;
       const snapshot = this.simulation.snapshot({
@@ -676,7 +931,9 @@ export class AuthoritativeMatchRuntime {
       const packet = createSnapshotDelta(snapshot, needsKeyframe ? null : acknowledged);
       peer.snapshotHistory.set(snapshot.tick, snapshot);
       while (peer.snapshotHistory.size > this.snapshotHistoryCapacity) {
-        peer.snapshotHistory.delete(peer.snapshotHistory.keys().next().value);
+        const oldestTick = peer.snapshotHistory.keys().next().value;
+        if (oldestTick == null) break;
+        peer.snapshotHistory.delete(oldestTick);
       }
       if (needsKeyframe) {
         peer.lastKeyframeTick = this.tick;
@@ -699,7 +956,7 @@ export class AuthoritativeMatchRuntime {
     }
   }
 
-  close(reason = 'host_closed') {
+  close(reason = 'host_closed'): void {
     if (this.closed) return;
     this.closed = true;
     this.roomStateFanoutGeneration++;
@@ -712,6 +969,51 @@ export class AuthoritativeMatchRuntime {
 
 /** Client-side match module: input upload, clock sync, and snapshot sampling. */
 export class MatchClientRuntime {
+  transport: MatchTransport;
+  readonly playerId: string;
+  readonly buffer: SnapshotBuffer;
+  readonly assembler: SnapshotAssembler;
+  readonly pingIntervalMs: number;
+  readonly clock: () => number;
+  sendSeq = 0;
+  inputSendSeq = 0;
+  inputSeq = 0;
+  lastSubmittedInputSeq: number | null = null;
+  lastAckedInputSeq: number | null = null;
+  pendingFireAckSeq: number | null = null;
+  lastRequestedFire = false;
+  readonly pendingActionAckSeqs = new Map<number, number>();
+  inputPacketsSubmitted = 0;
+  lastRecvSeq: number | null = null;
+  clientTick = 0;
+  lastSnapshotTick = 0;
+  missingSnapshotBaselines = 0;
+  snapshotPacketsReceived = 0;
+  estimatedMissingSnapshots = 0;
+  lastSnapshotPacketTick: number | null = null;
+  snapshotEveryTicks = 3;
+  serverOffsetMs = 0;
+  rttMs: number | null = null;
+  rttJitterMs = 0;
+  lastRttSampleMs: number | null = null;
+  lastPingAtMs = -Infinity;
+  connected = false;
+  closed = false;
+  readonly errors: unknown[] = [];
+  private readonly eventListeners = new Set<(event: MatchEvent) => void>();
+  private readonly pendingEventBatches: EventBatch[] = [];
+  private readonly connectionListeners = new Set<(connected: boolean) => void>();
+  private readonly roomListeners = new Set<(state: MatchRoomState) => void>();
+  private readonly roomChatListeners = new Set<(message: RoomChatMessage) => void>();
+  private readonly roomChatHistory: RoomChatMessage[] = [];
+  roomState: MatchRoomState | null = null;
+  roomRound = 0;
+  handshakeSent = false;
+  readySent = false;
+  private unsubscribeMessage: Unsubscribe | null;
+  private unsubscribeClose: Unsubscribe | null;
+  private _lastUpdateNowMs: number | undefined;
+
   constructor({
     transport,
     playerId,
@@ -719,7 +1021,7 @@ export class MatchClientRuntime {
     maxExtrapolationMs = 250,
     pingIntervalMs = 1000,
     clock = defaultClock,
-  } = {}) {
+  }: MatchClientOptions = {}) {
     if (!transport || typeof transport.send !== 'function' ||
         typeof transport.onMessage !== 'function') {
       throw new TypeError('transport must implement send() and onMessage()');
@@ -734,41 +1036,6 @@ export class MatchClientRuntime {
     this.assembler = new SnapshotAssembler();
     this.pingIntervalMs = pingIntervalMs;
     this.clock = clock;
-    this.sendSeq = 0;
-    this.inputSendSeq = 0;
-    this.inputSeq = 0;
-    this.lastSubmittedInputSeq = null;
-    this.lastAckedInputSeq = null;
-    this.pendingFireAckSeq = null;
-    this.lastRequestedFire = false;
-    this.pendingActionAckSeqs = new Map();
-    this.inputPacketsSubmitted = 0;
-    this.lastRecvSeq = null;
-    this.clientTick = 0;
-    this.lastSnapshotTick = 0;
-    this.missingSnapshotBaselines = 0;
-    this.snapshotPacketsReceived = 0;
-    this.estimatedMissingSnapshots = 0;
-    this.lastSnapshotPacketTick = null;
-    this.snapshotEveryTicks = 3;
-    this.serverOffsetMs = 0;
-    this.rttMs = null;
-    this.rttJitterMs = 0;
-    this.lastRttSampleMs = null;
-    this.lastPingAtMs = -Infinity;
-    this.connected = false;
-    this.closed = false;
-    this.errors = [];
-    this.eventListeners = new Set();
-    this.pendingEventBatches = [];
-    this.connectionListeners = new Set();
-    this.roomListeners = new Set();
-    this.roomChatListeners = new Set();
-    this.roomChatHistory = [];
-    this.roomState = null;
-    this.roomRound = 0;
-    this.handshakeSent = false;
-    this.readySent = false;
     this.unsubscribeMessage = transport.onMessage((message) => this.#receive(message));
     this.unsubscribeClose = typeof transport.onClose === 'function'
       ? transport.onClose(() => {
@@ -780,7 +1047,7 @@ export class MatchClientRuntime {
   }
 
   /** Begin the protocol handshake after both transport sides are listening. */
-  connect(metadata = null) {
+  connect(metadata: Record<string, unknown> | null = null): boolean {
     if (this.closed || this.handshakeSent) return false;
     const sent = this.#send(MESSAGE_TYPES.HELLO, {
       playerId: this.playerId,
@@ -791,7 +1058,7 @@ export class MatchClientRuntime {
   }
 
   /** Swap wrappers around the same open channel during lobby→match handoff. */
-  replaceTransport(transport) {
+  replaceTransport(transport: MatchTransport): boolean {
     if (this.closed || this.connected) return false;
     if (!transport || typeof transport.send !== 'function' ||
         typeof transport.onMessage !== 'function') {
@@ -812,7 +1079,10 @@ export class MatchClientRuntime {
   }
 
   /** Rebind a replacement peer connection after signaling/ICE recovery. */
-  reconnectTransport(transport, metadata = null) {
+  reconnectTransport(
+    transport: MatchTransport,
+    metadata: Record<string, unknown> | null = null,
+  ): boolean {
     if (!transport || typeof transport.send !== 'function' ||
         typeof transport.onMessage !== 'function') {
       throw new TypeError('transport must implement send() and onMessage()');
@@ -839,7 +1109,7 @@ export class MatchClientRuntime {
     return this.connect({ ...metadata, resumed: true });
   }
 
-  #send(type, payload) {
+  #send(type: MessageType, payload: unknown): boolean {
     if (this.closed) return false;
     const inputLane = type === MESSAGE_TYPES.INPUT;
     const sequence = inputLane ? this.inputSendSeq : this.sendSeq;
@@ -855,14 +1125,14 @@ export class MatchClientRuntime {
       : this.transport.send(envelope);
   }
 
-  #acknowledgeInput(rawSequence) {
+  #acknowledgeInput(rawSequence: unknown): void {
     const acknowledged = Number(rawSequence);
     if (!Number.isSafeInteger(acknowledged) || acknowledged < 0) return;
     if (this.lastAckedInputSeq == null ||
         isSequenceNewer(acknowledged, this.lastAckedInputSeq)) {
       this.lastAckedInputSeq = acknowledged;
     }
-    const covers = (sequence) => sequence === acknowledged ||
+    const covers = (sequence: number) => sequence === acknowledged ||
       isSequenceNewer(acknowledged, sequence);
     if (this.pendingFireAckSeq != null && covers(this.pendingFireAckSeq)) {
       this.pendingFireAckSeq = null;
@@ -872,14 +1142,15 @@ export class MatchClientRuntime {
     }
   }
 
-  #receive(raw) {
+  #receive(raw: unknown): void {
     try {
       const message = validateEnvelope(raw);
       // Snapshot delivery may use an unordered/no-retransmit lane. Its tick is
       // the ordering authority; reliable control messages retain sequence
       // ordering independently so either lane can arrive first safely.
       if (message.type === MESSAGE_TYPES.SNAPSHOT) {
-        if (!message.payload || message.payload.tick !== message.tick) {
+        const payload = message.payload;
+        if (!isRecord(payload) || payload.tick !== message.tick) {
           throw new ProtocolError('snapshot_tick_mismatch', 'snapshot envelope tick does not match payload');
         }
         this.clientTick = Math.max(this.clientTick, message.tick);
@@ -893,8 +1164,8 @@ export class MatchClientRuntime {
           this.lastSnapshotPacketTick = message.tick;
           this.snapshotPacketsReceived++;
         }
-        this.#acknowledgeInput(message.payload.ackInputSeq);
-        const snapshot = this.assembler.accept(message.payload);
+        this.#acknowledgeInput(payload.ackInputSeq);
+        const snapshot = this.assembler.accept(payload);
         if (!snapshot) {
           this.lastSnapshotTick = 0;
           this.missingSnapshotBaselines++;
@@ -920,21 +1191,35 @@ export class MatchClientRuntime {
       this.lastRecvSeq = message.seq;
       this.clientTick = Math.max(this.clientTick, message.tick);
       switch (message.type) {
-        case MESSAGE_TYPES.WELCOME:
-          this.connected = true;
-          this.clientTick = message.payload.serverTick;
-          if (Number.isFinite(message.payload.tickHz) && Number.isFinite(message.payload.snapshotHz) &&
-              message.payload.tickHz > 0 && message.payload.snapshotHz > 0) {
-            this.snapshotEveryTicks = Math.max(1,
-              Math.round(message.payload.tickHz / message.payload.snapshotHz));
+        case MESSAGE_TYPES.WELCOME: {
+          const payload = message.payload;
+          if (!isRecord(payload)) {
+            throw new ProtocolError('invalid_welcome', 'welcome payload is malformed');
           }
-          this.serverOffsetMs = message.payload.serverTimeMs - this.clock();
+          const serverTick = Number(payload.serverTick);
+          const tickHz = Number(payload.tickHz);
+          const snapshotHz = Number(payload.snapshotHz);
+          const serverTimeMs = Number(payload.serverTimeMs);
+          if (!Number.isSafeInteger(serverTick) || serverTick < 0 ||
+              !Number.isFinite(serverTimeMs)) {
+            throw new ProtocolError('invalid_welcome', 'welcome timing is malformed');
+          }
+          this.connected = true;
+          this.clientTick = serverTick;
+          if (Number.isFinite(tickHz) && Number.isFinite(snapshotHz) &&
+              tickHz > 0 && snapshotHz > 0) {
+            this.snapshotEveryTicks = Math.max(1,
+              Math.round(tickHz / snapshotHz));
+          }
+          this.serverOffsetMs = serverTimeMs - this.clock();
           for (const listener of [...this.connectionListeners]) listener(true);
           break;
+        }
         case MESSAGE_TYPES.PONG: {
           const now = this.clock();
-          const sent = Number(message.payload && message.payload.clientTimeMs);
-          const server = Number(message.payload && message.payload.serverTimeMs);
+          const payload = isRecord(message.payload) ? message.payload : null;
+          const sent = Number(payload?.clientTimeMs);
+          const server = Number(payload?.serverTimeMs);
           if (Number.isFinite(now) && Number.isFinite(sent) && Number.isFinite(server) && now >= sent) {
             const rtt = now - sent;
             if (this.lastRttSampleMs != null) {
@@ -960,36 +1245,36 @@ export class MatchClientRuntime {
             }
           }
           break;
-        case MESSAGE_TYPES.ROOM_STATE:
-          if (!message.payload || !Array.isArray(message.payload.players) ||
-              !Number.isSafeInteger(Number(message.payload.round)) ||
-              !Number.isSafeInteger(Number(message.payload.revision))) {
-            throw new ProtocolError('invalid_room_state', 'room state is malformed');
-          }
-          if (!this.roomState || Number(message.payload.revision) >= Number(this.roomState.revision)) {
-            const nextRound = Number(message.payload.round) || 0;
-            if (message.payload.phase === 'starting' && nextRound > this.roomRound) {
+        case MESSAGE_TYPES.ROOM_STATE: {
+          const state = validateRoomState(message.payload);
+          if (!this.roomState || Number(state.revision) >= Number(this.roomState.revision)) {
+            const nextRound = Number(state.round) || 0;
+            if (state.phase === 'starting' && nextRound > this.roomRound) {
               this.resetForRound(nextRound);
             }
-            this.roomState = message.payload;
-            for (const listener of [...this.roomListeners]) listener(this.roomState);
+            this.roomState = state;
+            for (const listener of [...this.roomListeners]) listener(state);
           }
           break;
+        }
         case MESSAGE_TYPES.ROOM_CHAT: {
           const payload = message.payload;
-          const text = normalizeRoomChatText(payload?.text);
-          const senderId = String(payload?.senderId || '');
-          const senderName = String(payload?.senderName || '').trim().slice(0, 32);
-          const sequence = Number(payload?.sequence);
-          const round = Number(payload?.round);
-          const serverTimeMs = Number(payload?.serverTimeMs);
+          if (!isRecord(payload)) {
+            throw new ProtocolError('invalid_room_chat', 'room chat payload is malformed');
+          }
+          const text = normalizeRoomChatText(payload.text);
+          const senderId = String(payload.senderId || '');
+          const senderName = String(payload.senderName || '').trim().slice(0, 32);
+          const sequence = Number(payload.sequence);
+          const round = Number(payload.round);
+          const serverTimeMs = Number(payload.serverTimeMs);
           if (!/^[a-zA-Z0-9_-]{1,48}$/.test(senderId) || !senderName ||
               !Number.isSafeInteger(sequence) || sequence < 0 ||
               !Number.isSafeInteger(round) || round < 0 ||
               !Number.isFinite(serverTimeMs) || serverTimeMs < 0) {
             throw new ProtocolError('invalid_room_chat', 'room chat payload is malformed');
           }
-          const chat = {
+          const chat: RoomChatMessage = {
             id: String(payload.id || `${round}:${sequence}`).slice(0, 64),
             sequence,
             round,
@@ -1005,20 +1290,18 @@ export class MatchClientRuntime {
           for (const listener of [...this.roomChatListeners]) listener(chat);
           break;
         }
-        case MESSAGE_TYPES.LOBBY_STATE:
+        case MESSAGE_TYPES.LOBBY_STATE: {
           // Before the first match, browser-hosted rooms use the lightweight
           // lobby runtime on this same reliable channel. Accept its state so
           // the client object can survive the lobby→match handoff (and later
           // be reused by a refreshed player rejoining the persistent room).
-          if (!message.payload || !Array.isArray(message.payload.players) ||
-              !Number.isSafeInteger(Number(message.payload.revision))) {
-            throw new ProtocolError('invalid_lobby_state', 'lobby state is malformed');
-          }
-          if (!this.roomState || Number(message.payload.revision) >= Number(this.roomState.revision)) {
-            this.roomState = message.payload;
-            for (const listener of [...this.roomListeners]) listener(this.roomState);
+          const state = validateRoomState(message.payload, { requireRound: false });
+          if (!this.roomState || Number(state.revision) >= Number(this.roomState.revision)) {
+            this.roomState = state;
+            for (const listener of [...this.roomListeners]) listener(state);
           }
           break;
+        }
         case MESSAGE_TYPES.ERROR:
           this.errors.push(message.payload);
           break;
@@ -1030,7 +1313,7 @@ export class MatchClientRuntime {
     }
   }
 
-  submitInput(input, clientTick = this.clientTick) {
+  submitInput(input: Record<string, unknown>, clientTick = this.clientTick): boolean {
     const submittedInputSeq = this.inputSeq;
     const normalized = normalizePlayerInput({
       ...input,
@@ -1059,7 +1342,7 @@ export class MatchClientRuntime {
     return sent;
   }
 
-  readyForMatch() {
+  readyForMatch(): boolean {
     if (this.closed) return false;
     // READY is idempotent at authority. Permit a caller to retransmit it
     // until a countdown/playing snapshot confirms the barrier released.
@@ -1070,12 +1353,12 @@ export class MatchClientRuntime {
     return sent;
   }
 
-  submitRoomCommand(command) {
-    if (this.closed || !command || typeof command !== 'object') return false;
+  submitRoomCommand(command: Record<string, unknown>): boolean {
+    if (this.closed || !isRecord(command)) return false;
     return this.#send(this.connected ? MESSAGE_TYPES.ROOM_COMMAND : MESSAGE_TYPES.LOBBY_COMMAND, command);
   }
 
-  sendRoomChat(text) {
+  sendRoomChat(text: unknown): boolean {
     if (this.closed || !this.connected) return false;
     try {
       return this.#send(MESSAGE_TYPES.ROOM_CHAT_COMMAND, {
@@ -1088,7 +1371,7 @@ export class MatchClientRuntime {
   }
 
   /** Send the match HELLO after the lobby host has entered handoff mode. */
-  beginMatchHandshake(metadata = null) {
+  beginMatchHandshake(metadata: Record<string, unknown> | null = null): boolean {
     if (this.closed || this.connected) return this.connected;
     // The unreliable state lane can beat WELCOME/ROOM_STATE across the RTC
     // handoff. Adopt the canonical starting round from the lobby now, before
@@ -1110,7 +1393,7 @@ export class MatchClientRuntime {
     return this.connect(metadata);
   }
 
-  resetForRound(round) {
+  resetForRound(round: number): boolean {
     if (!Number.isSafeInteger(round) || round < 1) return false;
     this.roomRound = round;
     this.buffer.clear();
@@ -1126,7 +1409,7 @@ export class MatchClientRuntime {
     return true;
   }
 
-  update(nowMs) {
+  update(nowMs: number): SampledSnapshotFrame | null {
     if (!Number.isFinite(nowMs)) throw new TypeError('nowMs must be finite');
     this._lastUpdateNowMs = nowMs;
     if (this.connected && nowMs - this.lastPingAtMs >= this.pingIntervalMs) {
@@ -1139,13 +1422,13 @@ export class MatchClientRuntime {
     return this.buffer.sample(nowMs + this.serverOffsetMs);
   }
 
-  onEvent(listener) {
+  onEvent(listener: (event: MatchEvent) => void): Unsubscribe {
     this.eventListeners.add(listener);
     return () => this.eventListeners.delete(listener);
   }
 
   /** Drain reliable event batches only after presentation has reached them. */
-  drainEventsThrough(tick, target = []) {
+  drainEventsThrough(tick: number, target: MatchEvent[] = []): MatchEvent[] {
     if (!Number.isSafeInteger(tick) || tick < 0) return target;
     target.length = 0;
     let consumed = 0;
@@ -1159,28 +1442,29 @@ export class MatchClientRuntime {
     return target;
   }
 
-  onConnection(listener) {
+  onConnection(listener: (connected: boolean) => void): Unsubscribe {
     this.connectionListeners.add(listener);
     if (this.connected) queueMicrotask(() => listener(true));
     return () => this.connectionListeners.delete(listener);
   }
 
-  onRoomState(listener) {
+  onRoomState(listener: (state: MatchRoomState) => void): Unsubscribe {
     this.roomListeners.add(listener);
-    if (this.roomState) queueMicrotask(() => listener(this.roomState));
+    const current = this.roomState;
+    if (current) queueMicrotask(() => listener(current));
     return () => this.roomListeners.delete(listener);
   }
 
-  onRoomChat(listener) {
+  onRoomChat(listener: (message: RoomChatMessage) => void): Unsubscribe {
     this.roomChatListeners.add(listener);
     return () => this.roomChatListeners.delete(listener);
   }
 
-  getRoomChatHistory() {
+  getRoomChatHistory(): RoomChatMessage[] {
     return this.roomChatHistory.slice();
   }
 
-  getStats() {
+  getStats(): MatchClientStats {
     const snapshotTotal = this.snapshotPacketsReceived + this.estimatedMissingSnapshots;
     return {
       connected: this.connected,
@@ -1207,7 +1491,7 @@ export class MatchClientRuntime {
     };
   }
 
-  close(reason = 'client_closed') {
+  close(reason = 'client_closed'): void {
     if (this.closed) return;
     this.#send(MESSAGE_TYPES.LEAVE, { reason });
     this.closed = true;
