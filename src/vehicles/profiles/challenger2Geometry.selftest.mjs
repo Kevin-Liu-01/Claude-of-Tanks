@@ -28,6 +28,24 @@ const turret = vertices('turret');
 const turretDark = vertices('turretDark');
 const turretEquipment = vertices('turretEquipment');
 
+const fenderReceipt = tank.root.getObjectByName('rig_hull')?.userData.challenger2FenderReceipt;
+assert.equal(fenderReceipt?.legacyHydrogasGapAssembliesRemoved, true,
+  'obsolete inter-wheel proxy assemblies must stay removed');
+assert.equal(fenderReceipt?.maximumRailGapM, 0,
+  'longitudinal rails must remain seated on their fender carriers');
+assert.ok(fenderReceipt?.carrierPitchRad > 0,
+  'fender rails must follow the falling front deck rather than pitch away from it');
+
+for (const bucket of ['hullRunningGearDark', 'hullRunningGearDetail']) {
+  for (const [x, y, z] of vertices(bucket)) {
+    const inLegacyLane = Math.abs(x) > 1.585 && Math.abs(x) < 1.67
+      && y > 0.38 && y < 0.80
+      && [2.05, 1.15, 0.25, -0.65, -1.55].some(station => Math.abs(z - station) < 0.20);
+    assert.equal(inLegacyLane, false,
+      `${bucket} must not rebuild the retired gap-station assembly`);
+  }
+}
+
 assert.equal(tank.root.getObjectByName('hullRubber'), undefined,
   'former vertical fender bars must not remain as rubber track intrusions');
 

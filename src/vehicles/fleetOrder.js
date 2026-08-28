@@ -35,7 +35,8 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'leo2_revolution', 'leo2a7v',
   ]),
   challenger: Object.freeze([
-    'chieftain5', 'chieftain_mk10', 'challenger1', 'challenger2', 'challenger_3',
+    'chieftain5', 'chieftain_mk10', 'challenger1', 'fv4034', 'challenger2',
+    'challenger2e', 'ua_challenger2', 'challenger_3',
   ]),
   japan_mbt: Object.freeze([
     'stb1', 'type74', 'type90', 'type90a', 'type10', 'type10b',

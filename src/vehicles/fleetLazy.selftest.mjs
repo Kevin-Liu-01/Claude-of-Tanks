@@ -7,7 +7,8 @@ import { PROCEDURAL_PROFILES } from './profiledProcedurals.js';
 import { MISC_PROFILES } from './profiles/misc.js';
 import { FLEET_GROUP_IDS } from './fleetManifest.js';
 const canonicalOnlyIds = new Set([
-  'amx40', 'challenger2', 'challenger_3', 'mbt70', 't14',
+  'amx40', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2',
+  'challenger_3', 'mbt70', 't14',
   'k2', 'k1a1', 'type10', 'm2a2_bradley', 'bmp2', 'type89',
 ]);
 const owners = new Map();

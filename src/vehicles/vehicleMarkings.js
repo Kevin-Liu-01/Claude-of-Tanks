@@ -108,7 +108,10 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   // builder-authored V1 designation.
   vickers_mk1: anchor('hull', 'right', 0.58, 0.58, 0.23, -1),
   challenger1: anchor('turret', 'left', 0.39, 0.45, 0.26, 1),
+  fv4034: anchor('turret', 'left', 0.39, 0.45, 0.25, 1),
   challenger2: anchor('turret', 'right', 0.37, 0.44, 0.26, -1),
+  challenger2e: anchor('turret', 'right', 0.35, 0.44, 0.24, -1),
+  ua_challenger2: anchor('hull', 'left', 0.40, 0.60, 0.24, 1),
   challenger_3: anchor('turret', 'left', 0.35, 0.46, 0.26, 1),
   k2: anchor('turret', 'right', 0.39, 0.44, 0.24, -1),
   k1a1: anchor('turret', 'left', 0.42, 0.46, 0.24, 1),

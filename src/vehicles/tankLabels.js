@@ -57,6 +57,12 @@ const LABEL_OVERRIDES = Object.freeze({
   },
   chieftain5: { displayName: 'Chieftain Mk 5' },
   challenger1: { displayName: 'Challenger 1 Mk 3' },
+  fv4034: { displayName: 'FV4034', searchAliases: ['Challenger predecessor', 'FV 4034'] },
+  challenger2e: { displayName: 'Challenger 2E', searchAliases: ['Enhanced Challenger 2', 'CR2E'] },
+  ua_challenger2: {
+    displayName: 'Challenger 2 (Ukraine)', shortName: 'Challenger 2 UA',
+    searchAliases: ['Ukrainian Challenger 2', 'Ukraine Challenger 2'],
+  },
   fv510_milan: {
     displayName: 'FV510 Warrior MILAN', shortName: 'Warrior MILAN',
     searchAliases: ['FV510 MILAN', 'Warrior ATGM'],

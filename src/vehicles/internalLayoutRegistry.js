@@ -281,7 +281,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   pershingFive: ['m26_pershing', 'm45_patton', 'm46_patton', 'm47_patton'],
   westernManualHullAmmo: ['strv81', 'chieftain5', 'chieftain_mk10', 'k1a1', 'stb1', 'type74', 'amx40', 'type59', 'ztz85_iii', 'm60a1', 'amx30', 'amx30b2', 'm48', 'm60a2', 'vickers_mk1', 'centurion3', 'centurion5', 'm60a3'],
   arieteManual: ['ariete', 'ariete_c1', 'ariete_c2'],
-  westernTwoPart: ['challenger1', 'challenger2', 'challenger_3'],
+  westernTwoPart: ['challenger1', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger_3'],
   leopard: ['leo1a5', 'leopard2_proto', 'leo2a4', 'leo2a4_otco', 'leo2a4m', 'leo2a5', 'leo2a6', 'leo2a6m', 'leo2_revolution', 'leo2a7v', 'strv122', 'leo2a6_ua'],
   abrams: ['m1a1', 'm1a2', 'm1a2_tusk', 'm1a2_legacy', 'm1a1ha', 'm1a2_sepv2', 'm1a2_sepv3', 'ua_m1a1'],
   merkava: ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b'],

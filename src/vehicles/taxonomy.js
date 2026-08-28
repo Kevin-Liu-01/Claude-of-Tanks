@@ -42,7 +42,7 @@ const ERA_VEHICLE_IDS = Object.freeze({
   [VEHICLE_ERAS.COLD_WAR]: Object.freeze([
     't62mv1', 't64bv1', 't72b_1987', 't72bu', 't80', 't80b', 't80bv',
     't80u', 'strv81', 'udes03', 'strv103a', 'strv103', 'is7', 'object279',
-    'chieftain5', 'chieftain_mk10', 'challenger1', 'stb1', 'type74', 'type90',
+    'chieftain5', 'chieftain_mk10', 'challenger1', 'fv4034', 'stb1', 'type74', 'type90',
     'type90a', 'm2a2_bradley', 'bmp1', 'bmp2', 'bmp3', 'type89', 'carro45t',
     'amx40', 'leo1a5', 'leopard2_proto', 'leo2a4', 'mbt70', 'm1a1', 'fv510',
     'm1a1ha', 'm60a1', 'merkava1b', 'merkava2b', 'merkava2d', 'fv510_milan',
@@ -53,7 +53,7 @@ const ERA_VEHICLE_IDS = Object.freeze({
   [VEHICLE_ERAS.MODERN]: Object.freeze([
     'm1a2_legacy', 'm1a2', 't72b3m', 'pt91m', 't84', 't90', 't90a',
     't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv', 't72b3',
-    'leo2a7', 'strv122', 'challenger2', 'k2', 'k1a1', 'type10', 'recon_tank',
+    'leo2a7', 'strv122', 'challenger2', 'challenger2e', 'ua_challenger2', 'k2', 'k1a1', 'type10', 'recon_tank',
     'spz_puma', 'ariete', 'ariete_c1', 'leo2a4_otco', 'leo2a4m', 'leo2a5',
     'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2_revolution', 'leo2a7v', 'leclerc', 'leclerc_xlr',
     'amx56', 'type99a', 'ztz99a2', 'merkava4', 'm1a2_tusk', 'm1a2_sepv2',

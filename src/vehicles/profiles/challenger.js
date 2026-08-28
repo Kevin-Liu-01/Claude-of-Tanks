@@ -2235,9 +2235,193 @@ function cr2Course(P, bucket, footprint, lowerY, upperY) {
   P.add(bucket, cr2CourseGeo(footprint, lowerY, upperY));
 }
 
+function cr2MountedMg(P, { x, y, z, cls = 'mag', seed = 1, rotationY = 0,
+  scale = 1, shield = false }) {
+  const mg = FITTINGS.pintleMG({
+    mats: P.mats, cls, tone: 'two-tone', seed, elev: 0.025, scale,
+    ammo: true, shield, ring: { r: cls === 'm2' ? 0.23 : 0.18, stubs: 4 },
+    rotation: [0, rotationY, 0],
+  });
+  mg.position.set(x, y, z);
+  P.turretG.add(mg);
+  return mg;
+}
+
+/** Variant-only roof and protection packages. The sovereign CR2 hull/turret
+ * remains shared, while every fitting below has an explicit seat or carrier. */
+function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
+  const { cylY, cylZ, cupola } = KIT;
+  const pivotY = P.spec.armor.turretPivot[1];
+  const pivotZ = P.spec.armor.turretPivot[2];
+  const enhanced = variant === 'challenger2e' || variant === 'ua_challenger2';
+  const ukrainian = variant === 'ua_challenger2';
+  const receipt = {
+    variant,
+    baseCheekPanelsRemoved: true,
+    baseSightWellsRemoved: true,
+    legacyHydrogasGapAssembliesRemoved: true,
+    mannedMachineGuns: 0,
+    enhancedSkirtPanels: 0,
+    glacisEraCassettes: 0,
+    turretEraCassettes: 0,
+    fuelBarrels: 0,
+    cageRails: 0,
+    cagePosts: 0,
+  };
+
+  if (variant === 'fv4034') {
+    // A deliberately sparse predecessor-style fighting compartment: two low
+    // manual cupolas, independent episcope clusters and no CR2 RWS/GPS tower.
+    cupola(P, 'turret', -0.56, 0.54, -0.72, 0.24, 0.12, 7);
+    cupola(P, 'turret', 0.54, 0.54, -0.62, 0.25, 0.14, 8);
+    roofSeats.push(
+      { label: 'fv4034-loader-cupola', carrierY: 0.54, bottomY: 0.53 },
+      { label: 'fv4034-commander-cupola', carrierY: 0.54, bottomY: 0.53 },
+    );
+    for (const [x, z, a] of [[-0.86, -0.36, -0.35], [-0.30, -0.25, 0.15],
+      [0.28, -0.22, -0.12], [0.86, -0.38, 0.35]]) {
+      periscope(P, 'turretDetail', x, 0.58, z, a);
+    }
+    P.add('turretDetail', box(0.10, 0.16, 0.10), 0.05, 0.58, -1.34);
+    P.add('turretDetail', cylY(0.014, 0.018, 0.36, 8), 0.05, 0.80, -1.34);
+    cr2MountedMg(P, { x: -0.56, y: 0.78, z: -0.72, cls: 'mag', seed: 41, rotationY: -0.12 });
+    cr2MountedMg(P, { x: 0.54, y: 0.80, z: -0.62, cls: 'm2', seed: 42, rotationY: 0.16, scale: 0.92 });
+    receipt.mannedMachineGuns = 2;
+    for (const side of [-1, 1]) for (let k = 0; k < 4; k++) {
+      const angle = side * (0.64 + k * 0.09);
+      const tubeX = side * 1.02 + Math.cos(angle) * (k - 1.5) * 0.06;
+      const tubeZ = 1.16 - Math.sin(angle) * (k - 1.5) * 0.06;
+      P.addEquipment('turret', cylZ(0.040, 0.22, 8), tubeX, 0.34, tubeZ, -0.48, angle, 0);
+      P.add('turretDark', xform(cylZ(0.032, 0.012, 10), 0, 0, 0.114),
+        tubeX, 0.34, tubeZ, -0.48, angle, 0);
+      smokeMouths.push({ side, tubeCenter: [tubeX, 0.34, tubeZ], rotation: [-0.48, angle, 0], mouthOffsetZ: 0.114 });
+    }
+  }
+
+  if (enhanced) {
+    // Enlarged segmented skirt package with a continuous carrier behind it.
+    for (const side of [-1, 1]) {
+      P.add('hull', box(0.09, 0.76, 6.82), side * 1.81, 0.98, -0.08);
+      P.add('hullDark', box(0.025, 0.10, 6.88), side * 1.862, 1.34, -0.08);
+      for (let k = 0; k < 8; k++) {
+        const z = 2.92 - k * 0.84;
+        P.add('hullDetail', box(0.035, 0.70, 0.025), side * 1.865, 0.98, z - 0.42);
+        receipt.enhancedSkirtPanels++;
+      }
+    }
+    P.eraCluster('cr2e_skirt_era_R', (put) => {
+      for (let c = 0; c < 6; c++) for (let row = 0; row < 3; row++) {
+        put(1.905, 0.82 + row * 0.22, 3.00 - c * 0.55, 0, Math.PI / 2, 0, 1.18, 1.32, 0.72);
+      }
+    });
+    P.eraCluster('cr2e_skirt_era_L', (put) => {
+      for (let c = 0; c < 6; c++) for (let row = 0; row < 3; row++)
+        put(-1.905, 0.82 + row * 0.22, 3.00 - c * 0.55, 0, -Math.PI / 2, 0, 1.18, 1.32, 0.72);
+    });
+    const glacisY = (z) => 1.19 + (3.58 - z) * (0.31 / 1.28);
+    for (const [name, side] of [['cr2e_glacis_era_R', 1], ['cr2e_glacis_era_L', -1]]) {
+      P.eraCluster(name, (put) => {
+        for (let row = 0; row < 3; row++) for (let c = 0; c < 5; c++) {
+          const z = 3.40 - row * 0.34;
+          put(side * (0.17 + c * 0.31), glacisY(z) + 0.035, z, -1.333, 0, 0, 1.04, 1.05, 0.76);
+          receipt.glacisEraCassettes++;
+        }
+      });
+    }
+    for (const [name, side] of [['cr2e_turret_era_R', 1], ['cr2e_turret_era_L', -1]]) {
+      P.eraCluster(name, (put) => {
+        for (let row = 0; row < 3; row++) for (let c = 0; c < 4; c++) {
+          const x = side * (0.38 + c * 0.27);
+          const y = pivotY + 0.18 + row * 0.145;
+          const z = pivotZ + 1.58 - c * 0.17 - row * 0.11;
+          put(x, y, z, -0.94, side * 0.48, 0, 1.02, 1.05, 0.82);
+          receipt.turretEraCassettes++;
+        }
+      }, true);
+    }
+    cupola(P, 'turret', -0.58, 0.55, -0.74, 0.25, 0.13, 8);
+    cupola(P, 'turret', 0.56, 0.55, -0.60, 0.27, 0.15, 9);
+    cr2MountedMg(P, { x: -0.58, y: 0.80, z: -0.74, cls: 'mag', seed: 51, rotationY: -0.18 });
+    cr2MountedMg(P, { x: 0.56, y: 0.82, z: -0.60, cls: 'm2', seed: 52, rotationY: 0.16, shield: true });
+    cr2MountedMg(P, { x: 0.05, y: 0.64, z: -1.55, cls: 'mag', seed: 53, rotationY: Math.PI });
+    receipt.mannedMachineGuns = 3;
+    for (const side of [-1, 1]) for (let k = 0; k < 4; k++) {
+      const yaw = side * (0.68 + k * 0.10);
+      const tubeX = side * (1.02 + k * 0.025);
+      const tubeY = 0.31 + k * 0.025;
+      const tubeZ = 1.17 - k * 0.075;
+      P.addEquipment('turret', cylZ(0.040, 0.23, 8), tubeX, tubeY, tubeZ, -0.50, yaw, 0);
+      P.add('turretDark', xform(cylZ(0.032, 0.012, 10), 0, 0, 0.119),
+        tubeX, tubeY, tubeZ, -0.50, yaw, 0);
+      smokeMouths.push({ side, tubeCenter: [tubeX, tubeY, tubeZ],
+        rotation: [-0.50, yaw, 0], mouthOffsetZ: 0.119 });
+    }
+    for (const [x, z] of [[-0.95, -0.25], [0.92, -0.18], [0.00, -1.18]]) {
+      P.addEquipment('turret', box(0.18, 0.24, 0.20), x, 0.58, z);
+      P.add('turretGlass', box(0.12, 0.09, 0.012), x, 0.64, z + 0.108);
+    }
+    for (const side of [-1, 1]) {
+      P.add('hullDetail', cylZ(0.25, 1.02, P.q ? 20 : 14), side * 0.62, 1.80, -3.30);
+      for (const z of [-3.63, -2.97]) {
+        P.add('hullDark', torus(0.255, 0.018, P.q ? 18 : 12), side * 0.62, 1.80, z,
+          Math.PI / 2, 0, 0);
+        P.add('hullDetail', box(0.42, 0.055, 0.10), side * 0.62, 1.56, z);
+      }
+      receipt.fuelBarrels++;
+    }
+  }
+
+  if (ukrainian) {
+    for (const side of [-1, 1]) {
+      for (const y of [1.12, 1.38, 1.64]) {
+        P.add('hullDetail', cylZ(0.018, 3.70, 8), side * 1.94, y, -1.95);
+        receipt.cageRails++;
+      }
+      for (let k = 0; k < 8; k++) {
+        const z = -0.18 - k * 0.50;
+        P.add('hullDetail', box(0.028, 0.55, 0.028), side * 1.94, 1.38, z);
+        P.add('hullDetail', box(0.44, 0.035, 0.035), side * 1.82, 1.48, z);
+        receipt.cagePosts++;
+      }
+      for (const y of [0.18, 0.42, 0.66]) {
+        P.add('turretDetail', cylZ(0.017, 2.85, 8), side * 1.73, y, -1.40);
+        receipt.cageRails++;
+      }
+      for (let k = 0; k < 6; k++) {
+        const z = -0.18 - k * 0.52;
+        P.add('turretDetail', box(0.026, 0.52, 0.026), side * 1.73, 0.42, z);
+        P.add('turretDetail', box(0.38, 0.030, 0.030), side * 1.56, 0.46, z);
+        receipt.cagePosts++;
+      }
+    }
+    for (const y of [0.16, 0.43, 0.70]) {
+      P.add('turretDetail', box(3.44, 0.024, 0.024), 0, y, -3.42);
+      receipt.cageRails++;
+    }
+    for (let k = 0; k < 8; k++) {
+      P.add('turretDetail', box(0.026, 0.56, 0.026), -1.50 + k * 0.43, 0.43, -3.42);
+      receipt.cagePosts++;
+    }
+    for (const [x, z, w, d] of [[0, -1.0, 2.8, 0.024], [0, 0.60, 2.8, 0.024],
+      [-1.39, -0.20, 0.024, 1.60], [1.39, -0.20, 0.024, 1.60]]) {
+      P.add('turretDetail', box(w, 0.024, d), x, 1.32, z);
+      receipt.cageRails++;
+    }
+    for (const [x, z] of [[-1.28, -0.90], [1.28, -0.90], [-1.28, 0.48], [1.28, 0.48]]) {
+      P.add('turretDetail', box(0.035, 0.72, 0.035), x, 0.97, z, 0, 0, x * 0.04);
+      receipt.cagePosts++;
+    }
+  }
+
+  P.turretG.userData.challenger2VariantReceipt = receipt;
+  P.hullG.userData.challenger2VariantReceipt = receipt;
+}
+
 function buildChallenger2(P) {
   const { cylX, cupola, tarpRoll, jerryCan, ammoCan } = KIT;
   const { rng } = P;
+  const variant = P.spec.id;
+  const isBaseChallenger2 = variant === 'challenger2';
 
   // Six Hydrogas wheels, with the real high-tucked end runs. The end centers
   // also enforce the plan footprint: rear outer course stops at -3.34 while
@@ -2304,23 +2488,8 @@ function buildChallenger2(P) {
       P.add('hullRunningGearDetail', cylX(0.052, 0.030, P.q ? 16 : 10),
         side * 1.477, 0.66, z + 0.22);
     }
-    // Inter-wheel Hydrogas stations occupy the real daylight gaps below the
-    // segmented skirt.  Keeping them between y=.40..76 adds visible ram,
-    // pivot and guard depth while remaining inside the certified track/body
-    // side contour.
-    const gapStations = [2.05, 1.15, 0.25, -0.65, -1.55];
-    for (let gi = 0; gi < gapStations.length; gi++) {
-      const z = gapStations[gi];
-      const stationX = side * 1.61;
-      P.add('hull', box(0.040, 0.30, 0.080), stationX, 0.59, z,
-        -0.22 - gi * 0.055, 0, 0);
-      P.add('hullRunningGearDetail', cylX(0.062, 0.024, P.q ? 16 : 10),
-        stationX + side * 0.004, 0.46 + (gi % 2) * 0.035, z - 0.045);
-      P.add('hullRunningGearDark', cylX(0.042, 0.028, P.q ? 14 : 10),
-        stationX + side * 0.006, 0.70 + (gi % 3) * 0.025, z + 0.055);
-      P.add(gi % 2 ? 'hullRunningGearDetail' : 'hullRunningGearDark', box(0.040, 0.24, 0.090),
-        stationX + side * 0.008, 0.56, z + 0.11, -0.62 + gi * 0.08, 0, 0);
-    }
+    // Obsolete inter-wheel proxy assemblies removed: the articulated wheel
+    // layers and swing arms above are the actual programmatic suspension.
     // Articulated end faces reuse the already-certified idler/final-drive
     // radii.  They are planar and seated beyond the shoe face, adding real
     // hub, web and bolt depth without changing the side silhouette.
@@ -2400,7 +2569,11 @@ function buildChallenger2(P) {
   const midBottom = [[-2.90, cr2At(hullBottom, -2.90)],
     ...hullBottom.filter(([z]) => z > -2.90 && z < 2.80),
     [2.80, cr2At(hullBottom, 2.80)]];
-  cr2ProfileStrip(P, 0.23, 1.10, midTop, midBottom);
+  // The live linked shoes carry transverse pin caps inboard of the nominal
+  // 1.12 m band edge.  Terminate the hidden lower shoulder at 0.96 m so its
+  // ruled side cannot enter that moving pin sweep; the visible 1.60..1.755 m
+  // upper hull and skirt courses below retain the published CR2 silhouette.
+  cr2ProfileStrip(P, 0.23, 0.96, midTop, midBottom);
   // Narrow engine-deck hinge/vent spine: the source side trace carries this
   // short crest, while its front trace proves it is not a broad deck slab.
   cr2ProfileStrip(P, 0, 0.006,
@@ -2410,13 +2583,13 @@ function buildChallenger2(P) {
     { z: -4.06, bw: 0.46, tw: 1.00, bot: 1.21, top: 1.38 },
     { z: -3.70, bw: 0.58, tw: 1.06, bot: 1.05, top: 1.54 },
     { z: -3.45, bw: 0.72, tw: 1.08, bot: 1.02, top: 1.55 },
-    { z: -3.20, bw: 0.94, tw: 1.10, bot: 0.58, top: 1.58 },
-    { z: -2.90, bw: 1.10, tw: 1.10, bot: 0.52, top: 1.57 },
+    { z: -3.20, bw: 0.94, tw: 0.96, bot: 0.58, top: 1.58 },
+    { z: -2.90, bw: 0.96, tw: 0.96, bot: 0.52, top: 1.57 },
   ]);
   cr2HullCrossLoft(P, [
-    { z: 2.80, bw: 1.10, tw: 1.10, bot: 0.49, top: cr2At(hullTop, 2.80) },
-    { z: 3.10, bw: 0.84, tw: 1.10, bot: 0.56, top: 1.40 },
-    { z: 3.40, bw: 0.70, tw: 1.10, bot: 0.72, top: 1.37 },
+    { z: 2.80, bw: 0.96, tw: 0.96, bot: 0.49, top: cr2At(hullTop, 2.80) },
+    { z: 3.10, bw: 0.84, tw: 0.96, bot: 0.56, top: 1.40 },
+    { z: 3.40, bw: 0.70, tw: 0.96, bot: 0.72, top: 1.37 },
     { z: 3.70, bw: 0.56, tw: 1.08, bot: 0.92, top: 1.36 },
     { z: 3.80, bw: 0.50, tw: 1.05, bot: 1.02, top: 1.31 },
   ]);
@@ -2516,8 +2689,14 @@ function buildChallenger2(P) {
     // Lay the same rails longitudinally on the fender shoulder instead.
     // The slight fore/aft rake follows the live deck course at z +/-0.77.
     P.add('hullDetail', box(side < 0 ? 0.08 : 0.14, 0.045, 1.54),
-      sx(side < 0 ? 1.62 : 1.65), 1.405, 0, -0.035, 0, 0);
+      sx(side < 0 ? 1.62 : 1.65), 1.365, 0, 0.027, 0, 0);
   }
+  P.hullG.userData.challenger2FenderReceipt = {
+    rails: 2,
+    carrierPitchRad: 0.027,
+    maximumRailGapM: 0,
+    legacyHydrogasGapAssembliesRemoved: true,
+  };
   // Continuous ring landing beneath the articulated assembly. This is the
   // actual load surface (centered on armorChallenger2.turretPivot.z), not a
   // second turret silhouette; it closes the former visual/physical seam.
@@ -2946,32 +3125,34 @@ function buildChallenger2(P) {
       return center.addScaledVector(cheekNormal, clearance);
     };
 
-    const gasketCenter = seat(side * 0.62, 0.18, 1.56, 0.020);
-    const faceCenter = seat(side * 0.624, 0.18, 1.575, 0.043);
-    const upperWeldCenter = seat(side * 0.624, 0.29, 1.43, 0.058);
-    const lowerWeldCenter = seat(side * 0.624, 0.09, 1.72, 0.058);
-    P.add('turretDark', box(0.72, 0.58, 0.030), ...gasketCenter,
-      cheekRotation.x, cheekRotation.y, cheekRotation.z);
-    P.add('turret', box(0.58, 0.45, 0.014), ...faceCenter,
-      cheekRotation.x, cheekRotation.y, cheekRotation.z);
-    P.add('turretDark', xform(box(0.49, 0.020, 0.014), 0, 0, 0, 0, 0, side * 0.28),
-      ...upperWeldCenter, cheekRotation.x, cheekRotation.y, cheekRotation.z);
-    P.add('turretDark', xform(box(0.43, 0.020, 0.014), 0, 0, 0, 0, 0, -side * 0.22),
-      ...lowerWeldCenter, cheekRotation.x, cheekRotation.y, cheekRotation.z);
-    P.add('turretDark', box(0.035, 0.28, 0.050), side * 1.34, 0.15, 1.12,
-      0, side * 0.08, side * 0.10);
-    cheekPanelReceipt.push({
-      side,
-      normal: cheekNormal.toArray(),
-      rotation: [cheekRotation.x, cheekRotation.y, cheekRotation.z],
-      gasketCenter: gasketCenter.toArray(),
-      faceCenter: faceCenter.toArray(),
-      gasketInnerClearanceM: 0.005,
-      gasketOuterClearanceM: 0.035,
-      faceInnerClearanceM: 0.036,
-      faceOuterClearanceM: 0.050,
-      weldInnerClearanceM: 0.051,
-    });
+    if (isBaseChallenger2) {
+      const gasketCenter = seat(side * 0.62, 0.18, 1.56, 0.020);
+      const faceCenter = seat(side * 0.624, 0.18, 1.575, 0.043);
+      const upperWeldCenter = seat(side * 0.624, 0.29, 1.43, 0.058);
+      const lowerWeldCenter = seat(side * 0.624, 0.09, 1.72, 0.058);
+      P.add('turretDark', box(0.72, 0.58, 0.030), ...gasketCenter,
+        cheekRotation.x, cheekRotation.y, cheekRotation.z);
+      P.add('turret', box(0.58, 0.45, 0.014), ...faceCenter,
+        cheekRotation.x, cheekRotation.y, cheekRotation.z);
+      P.add('turretDark', xform(box(0.49, 0.020, 0.014), 0, 0, 0, 0, 0, side * 0.28),
+        ...upperWeldCenter, cheekRotation.x, cheekRotation.y, cheekRotation.z);
+      P.add('turretDark', xform(box(0.43, 0.020, 0.014), 0, 0, 0, 0, 0, -side * 0.22),
+        ...lowerWeldCenter, cheekRotation.x, cheekRotation.y, cheekRotation.z);
+      P.add('turretDark', box(0.035, 0.28, 0.050), side * 1.34, 0.15, 1.12,
+        0, side * 0.08, side * 0.10);
+      cheekPanelReceipt.push({
+        side,
+        normal: cheekNormal.toArray(),
+        rotation: [cheekRotation.x, cheekRotation.y, cheekRotation.z],
+        gasketCenter: gasketCenter.toArray(),
+        faceCenter: faceCenter.toArray(),
+        gasketInnerClearanceM: 0.005,
+        gasketOuterClearanceM: 0.035,
+        faceInnerClearanceM: 0.036,
+        faceOuterClearanceM: 0.050,
+        weldInnerClearanceM: 0.051,
+      });
+    }
   }
   P.turretG.userData.challenger2CheekPanelReceipt = {
     cheekRiseM: 0.375,
@@ -2985,15 +3166,17 @@ function buildChallenger2(P) {
   // The sovereign loft owns the silhouette; these shallow, inset courses
   // carry the layered Dorchester face grammar visible in the source.
   for (const side of [-1, 1]) {
-    P.add('turretDark', box(0.52, 0.12, 0.024), side * 0.72, 0.20, 1.675, 0, side * 0.08, 0);
-    P.add('turretDetail', box(0.45, 0.025, 0.028), side * 0.72, 0.28, 1.682, 0, side * 0.08, 0);
-    const sightWell = cylZ(0.115, 0.025, P.q ? 20 : 14);
-    sightWell.scale(1.45, 0.72, 1);
-    P.add('turretDark', sightWell, side * 0.91, 0.23, 1.700);
-    const sightRim = torus(0.115, 0.014, P.q ? 20 : 14);
-    sightRim.scale(1.45, 1, 0.72);
-    P.add('turretDetail', sightRim, side * 0.91, 0.23, 1.715, Math.PI / 2, 0, 0);
-    P.add('turretGlass', box(0.15, 0.055, 0.014), side * 0.91, 0.23, 1.724);
+    if (isBaseChallenger2) {
+      P.add('turretDark', box(0.52, 0.12, 0.024), side * 0.72, 0.20, 1.675, 0, side * 0.08, 0);
+      P.add('turretDetail', box(0.45, 0.025, 0.028), side * 0.72, 0.28, 1.682, 0, side * 0.08, 0);
+      const sightWell = cylZ(0.115, 0.025, P.q ? 20 : 14);
+      sightWell.scale(1.45, 0.72, 1);
+      P.add('turretDark', sightWell, side * 0.91, 0.23, 1.700);
+      const sightRim = torus(0.115, 0.014, P.q ? 20 : 14);
+      sightRim.scale(1.45, 1, 0.72);
+      P.add('turretDetail', sightRim, side * 0.91, 0.23, 1.715, Math.PI / 2, 0, 0);
+      P.add('turretGlass', box(0.15, 0.055, 0.014), side * 0.91, 0.23, 1.724);
+    }
     // Seven genuinely recessed bustle-side louvres.  No proud perimeter
     // frames: the source reads as one closed side course cut by apertures.
     P.add('turretDark', box(0.010, 0.080, 0.82), side * 1.454, 0.17, -1.02);
@@ -3174,6 +3357,8 @@ function buildChallenger2(P) {
 
   const roofEmbed = 0.010;
   const roofSeats = [];
+  const smokeMouths = [];
+  if (isBaseChallenger2) {
   // Roof hierarchy from connected components, following the Leclerc
   // method.  The source has ONE flattened loader lid at
   // x=-.819..-.233/z=-1.203..-.871 and a thin right-hand plate at
@@ -3488,7 +3673,6 @@ function buildChallenger2(P) {
   // Smoke-launcher mouths inherit the exact transform of their canisters.
   // The former upright dark discs were only approximated in world space and
   // visibly hovered beside the pitched tube ends.
-  const smokeMouths = [];
   for (const side of [-1, 1]) {
     const x = side * 1.08;
     const y = 0.38;
@@ -3507,6 +3691,9 @@ function buildChallenger2(P) {
       smokeMouths.push({ side, tubeCenter: [tubeX, y, tubeZ], rotation: [-0.5, angle, 0],
         mouthOffsetZ: 0.124 });
     }
+  }
+  } else {
+    buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths);
   }
 
   P.turretG.userData.challenger2RoofSeatingReceipt = {
@@ -4269,6 +4456,9 @@ function buildChallenger3(P) {
 }
 /** Builder table merged into tankFactory.BUILDERS by the extension hook. */
 export const CHALLENGER_BUILDERS = {
+  fv4034: buildChallenger2,
   challenger2: buildChallenger2,
+  challenger2e: buildChallenger2,
+  ua_challenger2: buildChallenger2,
   challenger_3: buildChallenger3,
 };

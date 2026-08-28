@@ -80,6 +80,30 @@ function armorChallenger2() {
     ],
   };
 }
+
+const CR2E_ERA = Object.freeze({ keReduction: 0.24, ceFlatMm: 410 });
+
+function armorChallenger2Enhanced() {
+  const armor = armorChallenger2();
+  armor.hullPlates.push(
+    fr('cr2e_glacis_era_R', 18, 0.82, 1.19, 3.58, 1.50, 2.30,
+      { kind: 'era', era: CR2E_ERA, keMm: 190, ceMm: 560 }),
+    fr('cr2e_glacis_era_L', 18, 0.82, 1.19, 3.58, 1.50, 2.30,
+      { kind: 'era', era: CR2E_ERA, keMm: 190, ceMm: 560 }),
+    sR('cr2e_skirt_era_R', 18, 1.91, 0.72, 1.91, 1.36, -0.10, 3.30,
+      { kind: 'era', era: CR2E_ERA, keMm: 160, ceMm: 500 }),
+    sL('cr2e_skirt_era_L', 18, 1.91, 0.72, 1.91, 1.36, -0.10, 3.30,
+      { kind: 'era', era: CR2E_ERA, keMm: 160, ceMm: 500 }),
+  );
+  armor.turretPlates.push(
+    chR('cr2e_turret_era_R', 18, 0.30, 1.76, 1.30, 0.98, 0.10, 0.70, 0.16, 0,
+      { kind: 'era', era: CR2E_ERA, keMm: 210, ceMm: 620 }),
+    chL('cr2e_turret_era_L', 18, 0.30, 1.76, 1.30, 0.98, 0.10, 0.70, 0.16, 0,
+      { kind: 'era', era: CR2E_ERA, keMm: 210, ceMm: 620 }),
+  );
+  armor.boundingRadiusM = 6.15;
+  return armor;
+}
 // Challenger 3 — NEW VEHICLE (owner greenlight 2026-08-06). CR2 hull family
 // (EPSOM modular appliqué) under the NEW Rheinmetall turret: big flat cheek
 // plates, Trophy APS side modules, RWS. 120 mm L55A1 SMOOTHBORE — the key
@@ -149,6 +173,30 @@ function armorChallenger3() {
 // Specs (stats per roster §18.3-4; CR3 per its packet)
 // ---------------------------------------------------------------------------
 export const CHALLENGER_SPECS = {
+  fv4034: {
+    id: 'fv4034', name: 'FV4034', nation: 'UK', era: 'cold-war', role: 'mbt',
+    hp: 2250,
+    enginePowerHp: 1200, weightTons: 59.5, topSpeedKmh: 56, reverseSpeedKmh: 18,
+    hullTraverseDegS: 34,
+    terrainResistance: { hard: 0.72, medium: 0.84, soft: 1.55 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 32, gunPitchDegS: 28, gunElevationDeg: 20, gunDepressionDeg: 10,
+    gun: {
+      caliberMm: 120, reloadS: 7.2, baseAccuracy: 0.29, aimTimeS: 1.9,
+      bloom: { move: 0.05, hullRot: 0.07, turret: 0.07, afterShot: 2.3 },
+      shells: [
+        shell('L23A1 APFSDS', 'APFSDS', 120, apfsdsPens(480)[0], apfsdsPens(480)[1], 500, 1535, { pen2000Mm: apfsdsPens(480)[2] }),
+        shell('L31A7 HESH', 'HE', 120, 150, 150, 620, 670),
+        shell('L34 WP Smoke', 'HE', 120, 10, 10, 100, 650),
+      ],
+    },
+    dims: { hullLengthM: 8.33, overallLengthM: 11.50, widthM: 3.52, heightM: 2.50 },
+    armor: armorChallenger2(),
+    visual: {
+      scheme: 'solid', base: '#46523a', weather: '#566146', patches: ['#30372a'],
+      marking: 'number', number: '14', trackWidthM: 0.65, camoScale: 0.46,
+    },
+  },
   challenger2: {
     id: 'challenger2', name: 'Challenger 2', nation: 'UK', era: 'modern', role: 'mbt',
     hp: 2450,
@@ -176,6 +224,55 @@ export const CHALLENGER_SPECS = {
       // British 2-tone: black stripe geometry over NATO green (§18.5)
       scheme: 'stripes', base: '#3f4a36', weather: '#48533e', patches: ['#1d1f1c'],
       marking: 'number', number: '22', trackWidthM: 0.65, camoScale: 0.45,
+    },
+  },
+  challenger2e: {
+    id: 'challenger2e', name: 'Challenger 2E', nation: 'UK', era: 'modern', role: 'mbt',
+    hp: 2550,
+    enginePowerHp: 1500, weightTons: 65.0, topSpeedKmh: 62, reverseSpeedKmh: 22,
+    hullTraverseDegS: 38,
+    terrainResistance: { hard: 0.68, medium: 0.78, soft: 1.42 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 38, gunPitchDegS: 31, gunElevationDeg: 20, gunDepressionDeg: 10,
+    gun: {
+      caliberMm: 120, reloadS: 6.4, baseAccuracy: 0.25, aimTimeS: 1.6,
+      bloom: { move: 0.035, hullRot: 0.055, turret: 0.055, afterShot: 2.1 },
+      shells: [
+        shell('L28A1 APFSDS', 'APFSDS', 120, apfsdsPens(635)[0], apfsdsPens(635)[1], 525, 1680, { pen2000Mm: apfsdsPens(635)[2] }),
+        shell('L31A7 HESH', 'HE', 120, 150, 150, 620, 670),
+        shell('L34 WP Smoke', 'HE', 120, 10, 10, 100, 650),
+      ],
+    },
+    dims: { hullLengthM: 8.33, overallLengthM: 11.50, widthM: 3.82, heightM: 2.78 },
+    armor: armorChallenger2Enhanced(),
+    visual: {
+      scheme: 'stripes', base: '#4b513d', weather: '#5c6049', patches: ['#22251f', '#615642'],
+      marking: 'number', number: '2E', trackWidthM: 0.65, camoScale: 0.48,
+    },
+  },
+  ua_challenger2: {
+    id: 'ua_challenger2', name: 'Challenger 2 (Ukraine)', nation: 'Ukraine', era: 'modern', role: 'mbt',
+    hp: 2580,
+    enginePowerHp: 1500, weightTons: 67.0, topSpeedKmh: 58, reverseSpeedKmh: 20,
+    hullTraverseDegS: 36,
+    terrainResistance: { hard: 0.7, medium: 0.82, soft: 1.48 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 36, gunPitchDegS: 30, gunElevationDeg: 20, gunDepressionDeg: 10,
+    gun: {
+      caliberMm: 120, reloadS: 6.5, baseAccuracy: 0.25, aimTimeS: 1.7,
+      bloom: { move: 0.04, hullRot: 0.06, turret: 0.06, afterShot: 2.1 },
+      shells: [
+        shell('L28A1 APFSDS', 'APFSDS', 120, apfsdsPens(635)[0], apfsdsPens(635)[1], 525, 1680, { pen2000Mm: apfsdsPens(635)[2] }),
+        shell('L31A7 HESH', 'HE', 120, 150, 150, 620, 670),
+        shell('L34 WP Smoke', 'HE', 120, 10, 10, 100, 650),
+      ],
+    },
+    dims: { hullLengthM: 8.33, overallLengthM: 11.50, widthM: 4.06, heightM: 2.95 },
+    armor: armorChallenger2Enhanced(),
+    visual: {
+      scheme: 'digital', base: '#4a523d', weather: '#65684d',
+      patches: ['#2e352b', '#77715a', '#91866d'], marking: 'cross', number: 'UA',
+      trackWidthM: 0.65, camoScale: 0.42,
     },
   },
   challenger_3: {

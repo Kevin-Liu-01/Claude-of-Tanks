@@ -8,12 +8,12 @@
  * `productStats.selftest.mjs` verifies every value against those registries.
  */
 export const PRODUCT_STATS = Object.freeze({
-  productionVehicles: 113,
-  developmentVehicles: 150,
-  savedVehicleRecords: 152,
+  productionVehicles: 116,
+  developmentVehicles: 153,
+  savedVehicleRecords: 155,
   developmentOnlyVehicles: 37,
   referenceVehicleRecords: 2,
-  battlePlayableVehicles: 123,
+  battlePlayableVehicles: 126,
   comparisonCandidates: 7,
   battlefields: 20,
 });

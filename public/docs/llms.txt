@@ -1,6 +1,6 @@
 # Claude of Tanks technical field manual
 
-> Detailed public documentation for the current Claude of Tanks simulation, 113 production-visible procedural vehicles, 20 battlefields, Three.js renderer, multiplayer authority, interface, mobile support, Tank Gallery, and Scene Studio.
+> Detailed public documentation for the current Claude of Tanks simulation, 116 production-visible procedural vehicles, 20 battlefields, Three.js renderer, multiplayer authority, interface, mobile support, Tank Gallery, and Scene Studio.
 
 ## Manual
 
