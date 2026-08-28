@@ -45,6 +45,9 @@ residency, switch convergence, and battle visual handoff; it composes
 `garageShowroomRuntime.ts` owns the Garage camera phase latch, pointer capture,
 drag/wheel bindings, and disposal while the engine orbit remains the only pose
 solver.
+`garageReturnRuntime.ts` owns battle/Studio return teardown, retained-room
+policy, world/hero handoff, coalesced leave transitions, and Battle Again
+sequencing.
 `garageDressingOptimization.ts` finalizes the fully streamed static workshop,
 bakes descendant transforms, instances exact repeats, merges only compatible
 semantic-free opaque surfaces, and removes only sub-resolution fitting shadows
@@ -110,6 +113,9 @@ inside `main.js`.
 Route rendered gameplay advancement through `battleFrameRuntime.ts`; do not
 retain pause transitions, fixed-step debt, countdown release, or parallel
 solo/network authority policy in `main.js`.
+Route every battle/Studio return through `garageReturnRuntime.ts`; do not
+recreate replay/tank/network/world teardown order or a leave-transition latch
+in `main.js`.
 Route covered solo warm changes through `soloBattleDeploymentRuntime.ts`; do
 not put shader, effect, shadow, or reveal ordering back into `main.js`.
 Route covered solo entry changes through `soloBattleLoadingRuntime.ts`; do not

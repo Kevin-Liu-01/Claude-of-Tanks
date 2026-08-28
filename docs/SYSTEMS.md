@@ -97,6 +97,9 @@ strict TypeScript owners:
 - `src/game/garageShowroomRuntime.ts` owns the Garage camera phase latch,
   pointer capture, drag/wheel routing, and listener disposal while the engine
   orbit remains the sole camera-pose solver;
+- `src/game/garageReturnRuntime.ts` owns replay/tank teardown, retained-room
+  preservation or match closure, warm cancellation, world dormancy, hero
+  adoption, Garage exposure, leave-transition coalescing, and rematch order;
 - `src/game/battleIntentRuntime.ts` owns explicit Battle preloading, concrete
   Random-map reservation, intent-only world scheduling, exact-roster texture
   coalescing, and the camouflage-safe handoff into covered entry;
@@ -318,6 +321,14 @@ preserving exact state and immediate remounts for returns and rematches.
 composition root. It owns primary-pointer capture, drag cancellation, wheel
 consumption, and listener lifetime. The existing engine orbit still computes
 every camera pose from the unchanged canonical hero frame.
+
+`garageReturnRuntime.ts` owns the opposite transition through three operations:
+immediate covered entry, player-facing leave, and Battle Again. It clears
+replay DOM and tank effects before network/visual ownership changes, preserves
+an active room without preserving its battle presentation, sleeps the world
+before exposing the hero, and coalesces repeated transition requests. Its
+ports are local browser/rendering adapters; the lifecycle itself is strict
+TypeScript and Node-runnable.
 
 `battleIntentRuntime.ts` owns the next operation rather than any rendered
 object. A Battle hover or focus transfers battle-only modules, plans the exact

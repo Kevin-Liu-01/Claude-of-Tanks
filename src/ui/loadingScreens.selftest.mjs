@@ -185,6 +185,9 @@ const playerFrameInputSource = await readFile(
 const battleFrameRuntimeSource = await readFile(
   new URL('../game/battleFrameRuntime.ts', import.meta.url), 'utf8',
 );
+const garageReturnRuntimeSource = await readFile(
+  new URL('../game/garageReturnRuntime.ts', import.meta.url), 'utf8',
+);
 const battleEntryLifecycleSource = await readFile(
   new URL('../game/battleEntryLifecycle.ts', import.meta.url), 'utf8',
 );
@@ -203,13 +206,14 @@ assert.match(studioSource,
 assert.match(studioSource, /hud\?\.setMode\?\.\('hidden'\)/,
   'a pristine direct Studio visit must not require the battle-only HUD runtime');
 assert.match(mainSource,
-  /function clearBattlePresentationForExit\([\s\S]{0,900}hud\?\.setMode\?\.\('hidden'\)/,
+  /clearBattle: \(\) => \{[\s\S]{0,500}hud\?\.setMode\?\.\('hidden'\)/,
   'direct Studio exit cleanup must not require the battle-only HUD runtime');
 assert.match(mainSource,
   /function veilHud\(on\)[\s\S]{0,400}hud\?\.root[\s\S]{0,300}damagePanel\?\.root/,
   'shared presentation cleanup must tolerate an unloaded battle HUD and damage panel');
-assert.match(mainSource,
-  /function enterGarage\([\s\S]{0,4500}hud\?\.setMode\?\.\('hidden'\)/,
+assert.match(garageReturnRuntimeSource, /ui\.hideHud\(\)/,
+  'the Garage return owner must hide the optional battle HUD');
+assert.match(mainSource, /hideHud: \(\) => hud\?\.setMode\?\.\('hidden'\)/,
   'returning from pristine Studio must reach the garage without a battle HUD');
 assert.match(studioSource,
   /actors\.push\(a\);[\s\S]{0,260}if \(!loading\) bindStoryboardTracks\(\)/,
@@ -220,8 +224,10 @@ assert.match(mainSource,
 assert.match(mainSource,
   /function setGarageSpots\(on\)[\s\S]{0,180}if \(!on\) lighting\.setFarCascadeDormant\(false\);/,
   'battle lighting must wake full-range shadows inside the covered entry');
+assert.match(garageReturnRuntimeSource, /world\.setFarCascadeDormant\(true\)/,
+  'the Garage return owner must request long-range shadow dormancy');
 assert.match(mainSource,
-  /function enterGarage[\s\S]{0,3600}setFarCascadeDormant\(true\)/,
+  /setFarCascadeDormant: \(dormant\) => lighting\.setFarCascadeDormant\(dormant\)/,
   'returning to the enclosed garage must suspend long-range shadow redraws');
 const pedestalWarmBody = pedestalRuntimeSource.slice(
   pedestalRuntimeSource.indexOf('const warmPrograms = async'),

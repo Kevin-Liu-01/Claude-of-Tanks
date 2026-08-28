@@ -82,6 +82,7 @@ import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
+import { createGarageReturnRuntime } from './game/garageReturnRuntime.ts';
 import { createBattleIntentRuntime } from './game/battleIntentRuntime.ts';
 import { createKillcamAccess } from './game/killcamAccess.ts';
 import { createPlayerBattleActions } from './game/playerBattleActions.ts';
@@ -1945,7 +1946,7 @@ const networkBattleLauncher = createNetworkBattleLaunchRuntime({
   disposePresentation: disposeNetworkPresentation,
   clearNetworkRound: () => networkSession.clearRound(),
   closeMatch: closeNetworkMatch,
-  enterGarage,
+  enterGarage: () => garageReturn.enter(),
   setNetworkStatus: (status) => networkSession.status?.set(status),
   recordEntryFailure: (failure) => {
     if (typeof window !== 'undefined') window.__NETWORK_ENTRY_FAILURE = failure;
@@ -2115,167 +2116,94 @@ function openBattle(preBattleSeconds = PRE_BATTLE_HOLD_S) {
   // edge after the AudioContext exists. Player entries emit at countdown zero.
   if (game.preBattleS <= 0) bus.emit('battle:rollout', {});
 }
-function clearBattlePresentationForExit() {
-  armorAimOverlay.clear();
-  battleResultPresentation.clearPending();
-  killcam.cancel();
-  if (killcam.spectate?.active) killcam.spectate.stop(true);
-  veilHud(false);
-  // cancel() emits killcam:done, which may flush a buffered report. Hide the
-  // whole battle presentation after that event so no replay text, report,
-  // spectate bar, or damage-panel veil can survive the leave click.
-  // Direct Studio sessions have not acquired the battle-only HUD yet.
-  hud?.setMode?.('hidden');
-  endOverlay.style.display = 'none';
-}
-
-function enterGarage({ preserveRoom = networkRoomCoordinator.shouldPreserveAfterResult() } = {}) {
-  const fx = fxRuntimeAccess.current;
-  const garageTrace = { stages: {} };
-  const garageStartedAt = performance.now();
-  let garageMarkedAt = garageStartedAt;
-  const markGarageStage = (name) => {
-    const now = performance.now();
-    garageTrace.stages[name] = Math.round(now - garageMarkedAt);
-    garageMarkedAt = now;
-  };
-  if (typeof window !== 'undefined') window.__GARAGE_ENTRY = garageTrace;
-  // Entry failures and interrupted network handoffs also land here. Always
-  // release a loading-screen suspension before the garage becomes visible.
-  post.setAdaptiveSuspended(false);
-  // A garage exit may interrupt any replay phase (including the pre-replay
-  // death hold). Tear the kill-cam down before network presentation entities
-  // are disposed, revoke the pending launch, and release main.js's separate
-  // HUD veil. Without this ordering, the next battle inherited letterbox/
-  // label DOM plus display:none HUD roots from the interrupted replay.
-  clearBattlePresentationForExit();
-  // The selected battle actor is reused as the showroom hero. End both sides
-  // of its presentation lifetime before network disposal or pedestal adoption:
-  // FX owns tank-parented impact decals plus world particles/lights/timers;
-  // the visual owns wreck, recoil, track, ERA, suspension and LOD state.
-  resetBattleTankForGarage({ fx, visual: game.player?.visual });
-  markGarageStage('presentationReset');
-  if (preserveRoom) disposeNetworkPresentation();
-  else closeNetworkMatch('returned_to_garage');
-  markGarageStage('networkRelease');
-  // battle_countdown r1: leaving mid-countdown (Esc -> garage) clears the hold.
-  game.preBattleS = 0;
-  battleWarmGeneration++;
-  cancelDeferredCombatWarm();
-  battleWarmPending = false;
-  // SHOT-MODE RESET: see startBattle — the garage is a live-mode entry too.
-  shotMode = false;
-  perfHud.setCaptureHidden(false);
-  fx?.setFrozen(false);
-  game.phase = 'garage';
-  // Establish a new activity epoch for this garage visit. Optional workshop
-  // exhibits must not inherit a stale timestamp from before the battle and
-  // contend with the transition reveal or the first interactive frames.
-  garageDressingScheduler.noteActivity();
-  garageFramePacer.reset(performance.now());
-  scheduleGarageDressingBuild();
-  // Direct Studio activation deliberately skips battle-only collision and
-  // minimap capture. The garage needs only its placement; building the
-  // collider plus an offscreen top-down render here was a repeatable ~330 ms
-  // exit freeze. ensureWorld prepares those services behind the next battle
-  // loader, where they are actually consumed.
-  const activeWorld = currentWorld();
-  if (activeWorld && worldRuntime.servicesMapId !== activeWorld.mapId) placeGarage();
-  markGarageStage('worldServices');
-  // PAUSE: leaving battle clears any paused overlay (Leave Battle closes the
-  // panel itself before calling here — this covers every other exit path).
-  // After the phase flip above, isBattleActive() is already false, but pass
-  // noRelock anyway so no exit path can ever fire a gesture-less lock request.
-  if (settings.isOpen()) settings.close({ noRelock: true });
-  setWorldDormant(true); // GARAGE PERF: the battlefield stops costing anything
-  lighting.setFarCascadeDormant(true);
-  // camo_spotting r5: bot biome-camo overrides are battle-scoped — drop
-  // them so the pedestal/picker show the player's own persisted selection.
-  clearCamoOverrides();
-  const adoptedBattleVisual = pedestal.adoptBattlePlayer(selectedSpecId)
-    ? pedestal.current
-    : null;
-  clearBattleAfterExit({
-    game,
-    preservedVisual: adoptedBattleVisual,
-    visualPool: battleVisualPool,
-  });
-  battleHudFrame.reset();
-  markGarageStage('worldAndHero');
-  // perf-r2f: chunked — the hero repaints in the first slice (inside the
-  // transition veil); parked roster entries follow one frame apart instead
-  // of freezing the garage reveal for the whole cache.
-  applyCamoPatternsChunked({
-    priorityIds: [selectedSpecId], onlySpecIds: [selectedSpecId],
-  });
-  setGarageSpots(true);
-  setGarageSunTrim(true);
-  markGarageStage('lighting');
-  bus.emit('phase:change', { phase: 'garage' });
-  endOverlay.style.display = 'none';
-  if (document.exitPointerLock) document.exitPointerLock();
-  hud?.setMode?.('hidden');
-  markGarageStage('eventAndHud');
-  garage.show(selectedSpecId);
-  markGarageStage('garageUi');
-  garageCameraPose();
-  showroom.start(); // SHOWROOM CAMERA: hero framing + drag-orbit takes over
-  markGarageStage('camera');
-  audio.ambientOn(false);
-  audio.playGarageSting();
-  markGarageStage('audio');
-  garageTrace.totalMs = Math.round(performance.now() - garageStartedAt);
-  return garageGpuResidency.resume();
-}
-
-// STATE TRANSITIONS: every player-facing exit from a battle passes through
-// the branded veil instead of hard-popping the garage mid-frame. Error paths
-// (battle-entry failure) and probe-driven exits keep calling enterGarage()
-// directly. The battle keeps rendering under the fade-in, so the swap itself
-// happens fully covered.
-let leavingBattle = false;
-function leaveBattleToGarage() {
-  if (leavingBattle) return;
-  leavingBattle = true;
-  // The transition intentionally delays the scene swap, but kill-cam DOM is
-  // input state and must release synchronously on the actual leave action.
-  clearBattlePresentationForExit();
-  transition.run(() => { enterGarage(); }, {
-    kicker: 'Leaving battle', title: 'Garage',
-    mapId: currentWorld()?.mapId || game.mapId,
-    progress: false, minShowMs: 760,
-  }).finally(() => { leavingBattle = false; });
-}
-
-// End-screen BATTLE AGAIN (battle_again fix): the garage return and the new
-// battle entry must be SEQUENCED, not raced — transition.run defers its
-// enterGarage() callback past the fade-in, so firing the garage BATTLE button
-// on a timer let a warm-cache startBattle() land first and then get clobbered
-// back to the garage. Await the full garage re-entry transition, then drive
-// the garage's own BATTLE button so the standard loading path runs with the
-// player's current tank/map selection.
-bus.on('ui:battleAgain', async () => {
-  if (leavingBattle) return;
-  leavingBattle = true;
-  try {
-    // a verdict can land while the previous entry pipeline is still in its
-    // drain/countdown tail (entry lifecycle pending) — wait it out, bounded,
-    // instead of silently dropping the click
-    const t0 = performance.now();
-    while (battleEntryLifecycle.pending && performance.now() - t0 < 15000) {
-      await new Promise((r) => setTimeout(r, 150));
-    }
-    await transition.run(() => { enterGarage(); }, {
-      kicker: 'Regrouping', title: 'Next battle',
-      mapId: currentWorld()?.mapId || game.mapId,
-      progress: false, minShowMs: 420,
-    });
-  } finally {
-    leavingBattle = false;
-  }
-  const b = document.querySelector('.cot-battle');
-  if (b) b.click();
+// Returning from battle or Studio is one typed transaction. It owns the
+// teardown order, retained-room policy, transition coalescing, and rematch
+// sequencing while main supplies concrete browser/rendering adapters.
+const garageReturn = createGarageReturnRuntime({
+  game,
+  getSelectedSpecId: () => selectedSpecId,
+  presentation: {
+    setAdaptiveSuspended: (suspended) => post.setAdaptiveSuspended(suspended),
+    clearBattle: () => {
+      armorAimOverlay.clear();
+      battleResultPresentation.clearPending();
+      killcam.cancel();
+      if (killcam.spectate?.active) killcam.spectate.stop(true);
+      veilHud(false);
+      // cancel() can flush a buffered report, so hide battle UI afterward.
+      hud?.setMode?.('hidden');
+      endOverlay.style.display = 'none';
+    },
+    resetBattleTank: () => resetBattleTankForGarage({
+      fx: fxRuntimeAccess.current,
+      visual: game.player?.visual,
+    }),
+    setShotMode: (enabled) => { shotMode = enabled; },
+    setCaptureHidden: (hidden) => perfHud.setCaptureHidden(hidden),
+    unfreezeEffects: () => fxRuntimeAccess.current?.setFrozen(false),
+    resetHudFrame: () => battleHudFrame.reset(),
+  },
+  network: {
+    shouldPreserveRoom: () => networkRoomCoordinator.shouldPreserveAfterResult(),
+    disposePresentation: disposeNetworkPresentation,
+    closeMatch: closeNetworkMatch,
+  },
+  warm: {
+    invalidate: () => { battleWarmGeneration += 1; },
+    cancel: cancelDeferredCombatWarm,
+    setPending: (pending) => { battleWarmPending = pending; },
+  },
+  work: {
+    noteActivity: () => garageDressingScheduler.noteActivity(),
+    resetFramePacer: (nowMs) => garageFramePacer.reset(nowMs),
+    scheduleDressing: scheduleGarageDressingBuild,
+  },
+  world: {
+    currentMapId: () => currentWorld()?.mapId || null,
+    ensureGaragePlacement: () => {
+      const activeWorld = currentWorld();
+      if (activeWorld && worldRuntime.servicesMapId !== activeWorld.mapId) placeGarage();
+    },
+    setDormant: setWorldDormant,
+    setFarCascadeDormant: (dormant) => lighting.setFarCascadeDormant(dormant),
+    clearCamoOverrides,
+  },
+  roster: {
+    adoptBattlePlayer: (specId) => pedestal.adoptBattlePlayer(specId)
+      ? pedestal.current
+      : null,
+    clearBattle: (preservedVisual) => clearBattleAfterExit({
+      game,
+      preservedVisual,
+      visualPool: battleVisualPool,
+    }),
+    repaintHero: (specId) => applyCamoPatternsChunked({
+      priorityIds: [specId], onlySpecIds: [specId],
+    }),
+  },
+  settings,
+  ui: {
+    setGarageSpots,
+    setGarageSunTrim,
+    emitGaragePhase: () => bus.emit('phase:change', { phase: 'garage' }),
+    hideEndOverlay: () => { endOverlay.style.display = 'none'; },
+    exitPointerLock: () => { if (document.exitPointerLock) document.exitPointerLock(); },
+    hideHud: () => hud?.setMode?.('hidden'),
+    showGarage: (specId) => garage.show(specId),
+    poseGarageCamera: garageCameraPose,
+    startShowroom: () => showroom.start(),
+    triggerBattle: () => document.querySelector('.cot-battle')?.click(),
+  },
+  audio,
+  transition,
+  resumeGarageGpu: () => garageGpuResidency.resume(),
+  isBattleEntryPending: () => battleEntryLifecycle.pending,
+  publishTrace: (trace) => { window.__GARAGE_ENTRY = trace; },
 });
+const enterGarage = garageReturn.enter;
+const leaveBattleToGarage = garageReturn.leave;
+
+bus.on('ui:battleAgain', garageReturn.battleAgain);
 
 bus.on('ui:roomOpen', async () => {
   await playSurface.showCurrentRoom();

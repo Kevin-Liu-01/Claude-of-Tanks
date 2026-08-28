@@ -142,6 +142,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleVisualStreamer.selftest.mjs',
     'src/game/battleVisualStreamerAccess.selftest.mjs',
     'src/game/garageTankLifecycle.selftest.mjs',
+    'src/game/garageReturnRuntime.selftest.mjs',
     'src/game/battleClientAccess.selftest.mjs',
     'src/game/garageIdleWorkCoordinator.selftest.mjs',
     'src/vehicles/garagePresentation.selftest.mjs',

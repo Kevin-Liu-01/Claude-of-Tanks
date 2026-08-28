@@ -6,6 +6,7 @@ import { createGarageDressingScheduler } from './garageDressingScheduler.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const main = fs.readFileSync(path.join(here, '..', 'main.js'), 'utf8');
+const garageReturn = fs.readFileSync(path.join(here, 'garageReturnRuntime.ts'), 'utf8');
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 let now = 0;
@@ -118,10 +119,11 @@ assert(readyAt >= 0);
 assert.match(main.slice(readyAt, readyAt + 500), /scheduleGarageDressingBuild\(\)/,
   'the post-ready garage path must arm the dressing scheduler');
 
-const enterGarageAt = main.indexOf('function enterGarage(');
-assert(enterGarageAt >= 0);
-assert.match(main.slice(enterGarageAt, enterGarageAt + 5000),
-  /garageDressingScheduler\.noteActivity\(\)[\s\S]*scheduleGarageDressingBuild\(\)/,
+assert.match(garageReturn,
+  /work\.noteActivity\(\);[\s\S]{0,180}work\.scheduleDressing\(\);/,
+  'the Garage return owner must establish a new activity epoch before scheduling work');
+assert.match(main,
+  /noteActivity: \(\) => garageDressingScheduler\.noteActivity\(\)[\s\S]{0,180}scheduleDressing: scheduleGarageDressingBuild/,
   'Studio/battle returns must establish a fresh lull and resume the stream');
 
 console.log('garageDressingLifecycle.selftest: typed quiet-window ordering and integration pass');

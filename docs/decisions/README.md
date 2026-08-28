@@ -90,3 +90,4 @@ runtime documents remain authoritative for behavior.
 - [0078 — Private-room acquisition has one typed lifecycle owner](0078-typed-private-room-acquisition.md)
 - [0079 — The live battle HUD has one typed frame owner](0079-typed-battle-hud-frame.md)
 - [0080 — Rendered gameplay advances through one typed state machine](0080-typed-battle-frame-advance.md)
+- [0081 — Garage return is one typed lifecycle](0081-typed-garage-return-lifecycle.md)

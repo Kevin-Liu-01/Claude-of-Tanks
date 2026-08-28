@@ -92,6 +92,11 @@ retained strict-TypeScript frame interface.
 sampling, network cadence, countdown release, bounded fixed-step debt, result
 progression, and interpolation. `main.js` retains render composition but no
 longer owns gameplay-advance state.
+`src/game/garageReturnRuntime.ts` owns the inverse phase transition: replay and
+tank cleanup, persistent-room preservation, warm cancellation, world dormancy,
+hero adoption, Garage exposure, coalesced leave transitions, and bounded
+Battle Again sequencing. `main.js` supplies adapters but retains no return
+transaction or transition latch.
 
 ## Consequences
 

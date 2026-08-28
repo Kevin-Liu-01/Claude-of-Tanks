@@ -123,13 +123,15 @@ for (const entity of game.allTanks) {
 }
 
 const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
-const adoptAt = main.indexOf('const adoptedBattleVisual = pedestal.adoptBattlePlayer');
-const clearAt = main.indexOf('clearBattleAfterExit({', adoptAt);
-const preserveAt = main.indexOf('preservedVisual: adoptedBattleVisual', clearAt);
-const poolAt = main.indexOf('visualPool: battleVisualPool', preserveAt);
+const garageReturn = await readFile(new URL('./garageReturnRuntime.ts', import.meta.url), 'utf8');
+const adoptAt = garageReturn.indexOf('const adoptedVisual = roster.adoptBattlePlayer');
+const clearAt = garageReturn.indexOf('roster.clearBattle(adoptedVisual)', adoptAt);
 assert.ok(adoptAt >= 0 && clearAt > adoptAt,
   'garage entry transfers its hero before clearing the completed battle');
-assert.ok(preserveAt > clearAt && poolAt > preserveAt,
+const adapterAt = main.indexOf('clearBattle: (preservedVisual) => clearBattleAfterExit({');
+const preserveAt = main.indexOf('preservedVisual,', adapterAt);
+const poolAt = main.indexOf('visualPool: battleVisualPool', preserveAt);
+assert.ok(adapterAt >= 0 && preserveAt > adapterAt && poolAt > preserveAt,
   'battle teardown preserves only the adopted hero and hands bot visuals to the bounded pool');
 
 console.log('garageTankLifecycle.selftest: FX and tank state end at the garage boundary');
