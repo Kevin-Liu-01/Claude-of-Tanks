@@ -121,6 +121,49 @@ export function lowerT64BellyProfile(points, dropM = T64_LOWER_HULL_DROP_M) {
   return points.map(([z, y]) => [z, y - dropM]);
 }
 
+// Canonical T-80 cast-turret shell, shared by every T-80 family builder.
+// This is the accepted T-80/T-80B/T-80U Kursk nine-ring silhouette. Variant
+// identity belongs in armor and equipment, never in another base casting.
+export const T80_CAST_TURRET_RINGS = Object.freeze([
+  Object.freeze([1.44, 0.06]), Object.freeze([1.465, 0.40]),
+  Object.freeze([1.435, 0.44]), Object.freeze([1.30, 0.545]),
+  Object.freeze([1.19, 0.585]), Object.freeze([1.05, 0.615]),
+  Object.freeze([0.86, 0.68]), Object.freeze([0.60, 0.72]),
+  Object.freeze([0.02, 0.735]),
+]);
+
+export function buildT80CastTurret(P, {
+  scaleY = 0.90, sz = 0.88, cx = 0, cz = 0.22,
+  curved = false, capR = 1.60, roofTiltScale = 0.62,
+  reference = 't80/t80b/ua_t80u_kursk',
+  equipmentSeatRevision = 'reference-original',
+} = {}) {
+  const rawRings = T80_CAST_TURRET_RINGS;
+  const baseY = rawRings[0][1];
+  const rings = rawRings.map(([r, y]) => [r, baseY + (y - baseY) * scaleY]);
+  if (curved) {
+    meshDomeCurved(P, rings, sz, cx, cz, { capR, roofTiltScale });
+  } else {
+    meshDome(P, rings, sz, cx, cz);
+  }
+  const roofDrop = (rawRings.at(-1)[1] - baseY) * (1 - scaleY);
+  P.turretG.userData.t80CastTurretReceipt = Object.freeze({
+    architecture: 'shared-t80-cast-dome-r1',
+    profile: 'standard',
+    reference,
+    ringCount: rawRings.length,
+    ringBaseY: baseY,
+    crownY: rings.at(-1)[1],
+    maximumRadiusM: Math.max(...rawRings.map(([r]) => r)),
+    planScaleZ: sz,
+    planCenterZ: cz,
+    scaleY,
+    curvedNormals: curved,
+    equipmentSeatRevision,
+  });
+  return { rawRings, rings, roofDrop, roofTopY: rings.at(-1)[1] };
+}
+
 // Measured cast dome: lathe rings [[r, y]] (y=0 at the ring base, in the
 // turret frame), plan-stretched by sz = depth/width, centered (cx, cz).
 export function meshDome(P, rings, sz, cx = 0, cz = 0) {

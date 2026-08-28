@@ -100,6 +100,23 @@ try {
     'paired armored lights flank the main-gun mask');
   assert.equal(modernizedTurret.rearSoftStowageBundles, 2);
   assert.equal(modernizedTurret.rearAmmoBoxes, 1);
+  assert.equal(modernizedTurret.canonicalCastProfile, 'standard');
+  assert.equal(modernizedTurret.canonicalCastReference, 't80/t80b/ua_t80u_kursk');
+  assert.ok(modernizedTurret.frontChevronRaisedToUpperCheekM >= 0.07,
+    'complete T-80U frontal chevron occupies the upper cheek band');
+  assert.equal(modernizedTurret.frontChevronForwardM, 0.14,
+    'complete T-80U frontal chevron carrier clears the cast nose');
+  assert.equal(modernizedTurret.frontEquipmentForwardM, 0.30,
+    'paired front equipment assemblies are reseated ahead of the chevron');
+  assert.ok(modernizedTurret.frontEquipmentFaceClearanceM >= 0.04,
+    'front equipment faces remain visibly clear of the ERA tile faces');
+  assert.equal(modernizedTurret.baseShellEquipmentRelativeTransformPreserved, true,
+    'T-80U turret lowering retains every equipment seat relative to the shell');
+  assert.equal(modernizedTurret.turretAssemblyLoweringM, 0.04,
+    'T-80U complete rotating package sits 40 mm lower on the hull');
+  assert.ok(Math.abs((modernizedTurret.previousCrownWorldY
+    - modernizedTurret.canonicalCrownWorldY) - modernizedTurret.turretAssemblyLoweringM) <= 0.005,
+  'standardized shell crown follows the complete 40 mm turret lowering');
 
   const machineGuns = [];
   tank.root.traverse((object) => {
@@ -129,12 +146,12 @@ try {
 
   tank.root.updateMatrixWorld(true);
   const gunAxisWorld = gunRig.getWorldPosition(new THREE.Vector3());
-  assert.ok(Math.abs(gunRig.position.y - 0.24) < 1e-6,
-    'complete T-80U gun package uses the raised local trunnion seat');
-  assert.ok(Math.abs(turretRig.position.y - 1.60) < 1e-6,
-    'turret package rises with the hull roof and stays seated on its ring');
-  assert.ok(Math.abs(gunAxisWorld.y - 1.84) < 1e-6,
-    'T-80U gun axis inherits the complete 180 mm hull/turret lift');
+  assert.ok(Math.abs(gunRig.position.y - 0.30) < 1e-6,
+    'complete T-80U gun package compensates for the standardized ring origin');
+  assert.ok(Math.abs(turretRig.position.y - 1.50) < 1e-6,
+    'turret rig lowers the complete rotating package onto the hull shoulder');
+  assert.ok(Math.abs(gunAxisWorld.y - 1.80) < 1e-6,
+    'T-80U gun axis follows the complete 40 mm turret lowering');
 
   const runningGear = hullRig.userData.runningGearReceipts?.[0];
   assert.ok(runningGear, 'T-80U exposes its native running-gear receipt');

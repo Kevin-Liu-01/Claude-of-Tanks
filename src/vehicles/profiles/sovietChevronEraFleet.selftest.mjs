@@ -6,9 +6,9 @@ import { tankTier } from '../tier.ts';
 const cases = Object.freeze({
   t64bv1: Object.freeze({ receiptKey: 't64BV1ChevronEraReceipt', forwardM: 0 }),
   t72bu: Object.freeze({ receiptKey: 't72BUChevronEraReceipt', forwardM: 0 }),
-  t80u: Object.freeze({ receiptKey: 't80UChevronEraReceipt', forwardM: 0 }),
-  t80bv: Object.freeze({ receiptKey: 't80BVChevronEraReceipt', forwardM: 0.18 }),
-  ua_t80bv: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14 }),
+  t80u: Object.freeze({ receiptKey: 't80UChevronEraReceipt', forwardM: 0.14, minimumRidgeY: 0.375 }),
+  t80bv: Object.freeze({ receiptKey: 't80BVChevronEraReceipt', forwardM: 0.18, minimumRidgeY: 0.38 }),
+  ua_t80bv: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14, minimumRidgeY: 0.38 }),
   ua_t80u_kursk: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14 }),
   t90a: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0.14 }),
   t90a_burlak: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0 }),
@@ -34,6 +34,10 @@ for (const [id, expected] of Object.entries(cases)) {
     assert.equal(receipt.exactSurfaceOffsets, true, `${id}: derives tile faces from carrier planes`);
     assert.equal(receipt.forwardM, expected.forwardM,
       `${id}: seats its chevrons on the variant's installed front datum`);
+    if (expected.minimumRidgeY != null) {
+      assert.ok(receipt.ridgeY >= expected.minimumRidgeY,
+        `${id}: keeps both front chevron rows high on the turret cheek`);
+    }
     assert.equal(receipt.carrierSurfacesTotal,
       receipt.rowsPerCheek * receipt.carriersPerRow * 2,
       `${id}: mirrors the complete carrier topology`);

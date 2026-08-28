@@ -26,6 +26,7 @@ import { vehicleAmbientFloorHook } from '../materials.js';
 import { addVehicleGhillieSuit } from '../ghillieSuit.js';
 import {
   loftHull,
+  buildT80CastTurret,
   meshDomeCurved,
   ringSkin,
   domeBoxPlanSeat,
@@ -213,6 +214,9 @@ function modernT80CheekCarrier(s) {
 function addFacetedT80FrontERA(P, variant) {
   const kursk = variant === 'kursk';
   const chevronForwardM = 0.14;
+  // The Kursk control already occupies the upper cheek. Raise the BV's
+  // complete carriers, tiles, gaskets and center closure to the same band.
+  const chevronLiftY = kursk ? 0 : 0.06;
   const plans = kursk ? [
     [[0.12, 1.46], [0.24, 1.59], [0.78, 1.21], [0.66, 1.08]],
     [[0.67, 1.12], [0.80, 1.24], [1.33, 0.69], [1.20, 0.57]],
@@ -220,13 +224,13 @@ function addFacetedT80FrontERA(P, variant) {
     [[0.12, 1.45], [0.23, 1.57], [0.74, 1.20], [0.63, 1.08]],
     [[0.64, 1.11], [0.76, 1.22], [1.27, 0.72], [1.15, 0.60]],
   ];
-  const rows = kursk ? [
+  const rows = (kursk ? [
     { y0: 0.11, y1: 0.34, z0: -0.09, z1: 0.075 },
     { y0: 0.34, y1: 0.58, z0: 0.075, z1: -0.085 },
   ] : [
     { y0: 0.10, y1: 0.32, z0: -0.08, z1: 0.065 },
     { y0: 0.32, y1: 0.55, z0: 0.065, z1: -0.075 },
-  ];
+  ]).map((row) => ({ ...row, y0: row.y0 + chevronLiftY, y1: row.y1 + chevronLiftY }));
   const chevron = addSovietChevronEra(P, {
     sector: `ua-t80-${variant}-front-era`,
     receiptKey: 'uaT80ChevronEraReceipt',
@@ -246,7 +250,7 @@ function addFacetedT80FrontERA(P, variant) {
       width: kursk ? 0.43 : 0.39,
       height: kursk ? 0.23 : 0.21,
       depth: 0.060,
-      y: kursk ? 0.235 : 0.215,
+      y: (kursk ? 0.235 : 0.215) + chevronLiftY,
       z: 1.59,
       rx: -0.22,
     },
@@ -261,6 +265,7 @@ function addFacetedT80FrontERA(P, variant) {
     forwardM: chevron.forwardM,
     frontmostTileZM: chevron.frontmostTileZM,
     exactSurfaceOffsets: chevron.exactSurfaceOffsets,
+    raisedToUpperCheekM: chevronLiftY,
   };
   P.turretG.userData.uaT80FrontERAReceipt = Object.freeze(receipt);
 }
@@ -1013,25 +1018,16 @@ function buildUAT80BV(P) {
   }
   widthAnchor(P, 1.76, 0.82, -2.48);
 
-  // Cast turret — §5.341 T-80 DOME REBASE (owner: "the same base t80
-  // turret shapes again used with russian tanks instead of the new odd
-  // base shape"): the sz-1.10 ellipse is replaced by the RESIDENT
-  // t80-line cast profile (t80.js buildT80Line BV ring list — the broad
-  // low 1.465-radius casting with the fat 0.42 wall band), squashed 0.88
-  // above the 0.06 ring base so the crown holds this frame's 2.09-2.16
-  // world class, plan bias cz +0.17 per the resident. The casting sits IN
-  // the deck ring recess like the resident (turretG drops 1.50 -> 1.42;
-  // gun axis keeps its certified 1.69 world height below).
-  // (squash 0.94 + the 1.44 seat: heightM p95 receipt — 0.88@1.42 read
-  // 2.14 vs the 2.18 baseline datum; this frame carries the published
-  // 2.20 at the crown 2.15 + cupola band 2.19-2.21.)
+  // Canonical family casting: the Ukrainian BV now shares the accepted
+  // T-80/T-80B/T-80U Kursk nine-ring shell. Its 0.94 vertical installation
+  // preserves this vehicle's roof datum while armor and fittings remain
+  // variant-owned and surface-seated around the common cz +0.22 plan.
   P.turretG.position.set(0, 1.44, -0.05);
-  const rawRings = [
-    [1.44, 0.06], [1.465, 0.42], [1.435, 0.47], [1.28, 0.655],
-    [1.19, 0.69], [0.80, 0.74], [0.02, 0.75],
-  ];
-  const rings = rawRings.map(([r, y]) => [r, 0.06 + (y - 0.06) * 0.94]);
-  meshDomeCurved(P, rings, 0.88, 0, 0.17, { capR: 1.60, roofTiltScale: 0.62 });
+  const { rings } = buildT80CastTurret(P, {
+    scaleY: 0.94, sz: 0.88, cz: 0.22, curved: true,
+    reference: 't80/t80b/ua_t80u_kursk',
+    equipmentSeatRevision: 'ua-t80bv-family-reseat-r2',
+  });
   P.add('turret', cylY(0.82, 0.86, 0.10, 24), 0, 0.0, 0);
   P.add('turretDark', cylY(0.88, 0.88, 0.035, 24), 0, 0.02, 0);
   P.add('turretDark', box(1.00, 0.40, 1.20), 0, -0.18, 0.20);
@@ -1107,7 +1103,7 @@ function buildUAT80BV(P) {
       s * 0.86, 0.33, -0.88);
   }
 
-  addModernizedT80TurretSuite(P, 'bv', { rings, sz: 0.88, cz: 0.17 });
+  addModernizedT80TurretSuite(P, 'bv', { rings, sz: 0.88, cz: 0.22 });
 
   // 2A46M-1 at the 1.69 axis: saddle, boot, sleeve, muzzle +6.27, bore
   // (gun local +0.06 compensates the 1.50 -> 1.44 ring drop — the world
@@ -1286,11 +1282,10 @@ function buildUAT80UKursk(P) {
   // cz +0.22 per the resident. turretG drops 1.50 -> 1.44 (ring recess);
   // the gun axis keeps its certified 1.70 world height below.
   P.turretG.position.set(0, 1.44, 0.0);
-  const rings = [
-    [1.44, 0.06], [1.465, 0.40], [1.435, 0.44], [1.30, 0.545],
-    [1.19, 0.585], [1.05, 0.615], [0.86, 0.68], [0.60, 0.72], [0.02, 0.735],
-  ].map(([r, y]) => [r, 0.06 + (y - 0.06) * 0.88]);
-  meshDomeCurved(P, rings, 0.88, 0, 0.22, { capR: 1.60, roofTiltScale: 0.62 });
+  const { rings } = buildT80CastTurret(P, {
+    scaleY: 0.88, sz: 0.88, cz: 0.22, curved: true,
+    reference: 't80/t80b/ua_t80u_kursk', equipmentSeatRevision: 'reference-original',
+  });
   P.add('turret', cylY(0.82, 0.86, 0.10, 24), 0, 0.0, 0);
   P.add('turretDark', cylY(0.88, 0.88, 0.035, 24), 0, 0.02, 0);
   P.add('turretDark', box(1.00, 0.40, 1.20), 0, -0.18, 0.24);

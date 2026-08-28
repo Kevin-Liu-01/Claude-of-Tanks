@@ -26,7 +26,7 @@ import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT, FITTINGS, buildProfile } from './kit.js';
 import { addSovietChevronEra } from './sovietChevronEra.js';
-import { domeBoxPlanSeat } from './russia.js';
+import { buildT80CastTurret, domeBoxPlanSeat } from './russia.js';
 
 // ---------------------------------------------------------------------------
 // Family machinery
@@ -2116,7 +2116,7 @@ function buildT80UNative2026(P) {
   // First-party runtime geometry only. The local javanilga GLB is a visual
   // and measurement oracle; no source vertices, indices, meshes, materials,
   // rig data or converted payload enter this authored KIT/loft builder.
-  const { box, cylY, cylX, cylZ, frustum, lathe, torus, polyLoft, buildGun, buildRunningGear,
+  const { box, cylY, cylX, cylZ, frustum, torus, polyLoft, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, spareTrackStrip, cupola } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
@@ -2383,26 +2383,31 @@ function buildT80UNative2026(P) {
   });
 
   // ---- turret: wide full-shouldered dome under the K-5 CLAMSHELL ----
-  // Raise the complete rotating package onto the source roof datum.  A
-  // buried collar below the casting keeps the four-centimetre correction
-  // physically seated on the 1.38 m deck instead of opening a yaw-visible
-  // gap at the ring.
-  P.turretG.position.set(0, 1.42 + hullBodyLiftM, 0.11);
-  P.add('turretDark', cylY(0.82, 0.88, 0.09, 24), 0, -0.045, 0.02);
+  // The first family-standardized pass preserved the old T-80U crown height,
+  // but that left the complete rotating package visibly perched above the
+  // hull shoulder. Drop the turret as one rigid assembly: gun, ERA carriers,
+  // optics, smoke banks and bustle all retain their authored local seating.
+  const turretAssemblyDropM = 0.04;
+  P.turretG.position.set(0, 1.36 + hullBodyLiftM - turretAssemblyDropM, 0.0);
+  P.add('turretDark', cylY(0.82, 0.88, 0.09, 24), 0, 0.015, 0.22);
   const turretBodyScaleY = 0.90;
-  const rawT80URings = [
-    [1.00, 0.0], [1.15, 0.05], [1.16, 0.16], [1.12, 0.36], [1.00, 0.52],
-    [0.78, 0.60], [0.46, 0.645], [0.04, 0.67],
-  ];
-  const t80uRings = rawT80URings.map(([r, y]) => [r, y * turretBodyScaleY]);
-  const turretRoofDrop = rawT80URings.at(-1)[1] * (1 - turretBodyScaleY);
-  const roofY = (y) => y - turretRoofDrop;
-  const bodyY = (y) => y * turretBodyScaleY;
-  P.add('turret', lathe(t80uRings, P.q ? 30 : 16, 1.26), 0, 0, 0.02);
+  const { rings: t80uRings, roofTopY: t80uRoofTopY } = buildT80CastTurret(P, {
+    scaleY: turretBodyScaleY, sz: 0.88, cz: 0.22,
+    curved: true, reference: 't80/t80b/ua_t80u_kursk',
+    equipmentSeatRevision: 't80u-family-reseat-r2',
+  });
+  // The canonical casting starts 60 mm above its rig origin. Lower the rig
+  // by the same amount and add that datum to every turret-local seat. This
+  // replaces the shell without moving armor, optics, bustle, or roof
+  // equipment in world space.
+  const turretLocalDatumY = 0.06;
+  const previousT80URoofY = 0.67 * turretBodyScaleY;
+  const roofY = (y) => y - (0.67 * (1 - turretBodyScaleY)) + turretLocalDatumY;
+  const bodyY = (y) => y * turretBodyScaleY + turretLocalDatumY;
   const eraSurfaceSeats = [];
   const seatEra = (x, y, z, w, h, d, rx, ry, overlap = 0.01) => {
-    const seat = domeBoxPlanSeat(t80uRings, 1.26, {
-      x, y, z, w, h, d, rx, ry, overlap, cz: 0.02,
+    const seat = domeBoxPlanSeat(t80uRings, 0.88, {
+      x, y, z, w, h, d, rx, ry, overlap, cz: 0.22,
     });
     eraSurfaceSeats.push(seat);
     return seat;
@@ -2426,7 +2431,9 @@ function buildT80UNative2026(P) {
   // r3g cliff form: the ref side plateau (2.18w) runs to z_w 1.51 then
   // CLIFFS to 1.62 — rails extend to z_w 1.49 and the prongs beyond the
   // cliff drop to 1.69w.
-  addSovietChevronEra(P, {
+  const frontChevronLiftY = 0.07;
+  const frontChevronForwardM = 0.14;
+  const frontChevronReceipt = addSovietChevronEra(P, {
     sector: 't80u-k5-turret-front-era',
     receiptKey: 't80UChevronEraReceipt',
     family: 't80u-kontakt5-cast-chevron-r1',
@@ -2435,13 +2442,14 @@ function buildT80UNative2026(P) {
       [[0.70, 1.02], [0.82, 1.14], [1.34, 0.62], [1.22, 0.50]],
     ],
     rows: [
-      { y0: bodyY(0.12), y1: bodyY(0.34), z0: -0.09, z1: 0.075 },
-      { y0: bodyY(0.34), y1: bodyY(0.57), z0: 0.075, z1: -0.085 },
+      { y0: bodyY(0.12) + frontChevronLiftY, y1: bodyY(0.34) + frontChevronLiftY, z0: -0.09, z1: 0.075 },
+      { y0: bodyY(0.34) + frontChevronLiftY, y1: bodyY(0.57) + frontChevronLiftY, z0: 0.075, z1: -0.085 },
     ],
     tileRanges: [[0.06, 0.30], [0.34, 0.66], [0.70, 0.94]],
     tileDepthM: 0.080,
     gasketDepthM: 0.030,
-    centerClosure: { width: 0.42, height: 0.22, depth: 0.060, y: bodyY(0.24), z: 1.50, rx: -0.23 },
+    forwardM: frontChevronForwardM,
+    centerClosure: { width: 0.42, height: 0.22, depth: 0.060, y: bodyY(0.24) + frontChevronLiftY, z: 1.50, rx: -0.23 },
   });
   // Preserve the falling flank returns and crown field, now joined to one
   // coherent two-row frontal carrier rather than a second nested box fan.
@@ -2549,16 +2557,17 @@ function buildT80UNative2026(P) {
   P.add('turretGlass', box(0.075, 0.095, 0.020), -0.36, roofY(0.735), 0.45, 0, 0.04, 0);
   P.add('turretDetail', box(0.26, 0.22, 0.24), 0.55, bodyY(0.40), 0.96);
   P.add('turretGlass', box(0.18, 0.15, 0.02), 0.55, bodyY(0.40), 1.09);
-  // Paired armored service/search lamps flank the gun mask.  Their support
-  // knees overlap the cast nose, while proud glass faces clear the K-5
-  // carrier line and remain readable head-on.
+  // Paired armored service/search lamps flank the gun mask. Their support
+  // knees overlap the cast nose, while the housings and proud glass faces
+  // are explicitly reseated ahead of the forward-shifted K-5 carrier.
+  const frontEquipmentForwardM = 0.30;
   for (const s of [-1, 1]) {
-    P.add('turret', box(0.075, 0.22, 0.11), s * 0.47, bodyY(0.39), 1.29, -0.10, 0, 0);
-    P.addEquipment('turret', box(0.20, 0.17, 0.18), s * 0.47, bodyY(0.52), 1.38, -0.10, 0, 0);
-    P.add('turretDark', box(0.18, 0.14, 0.022), s * 0.47, bodyY(0.52), 1.475, -0.10, 0, 0);
-    P.add('turretGlass', cylZ(0.060, 0.025, 14), s * 0.47, bodyY(0.52), 1.492, -0.10, 0, 0);
+    P.add('turret', box(0.075, 0.22, 0.11), s * 0.47, bodyY(0.39), 1.29 + frontEquipmentForwardM, -0.10, 0, 0);
+    P.addEquipment('turret', box(0.20, 0.17, 0.18), s * 0.47, bodyY(0.52), 1.38 + frontEquipmentForwardM, -0.10, 0, 0);
+    P.add('turretDark', box(0.18, 0.14, 0.022), s * 0.47, bodyY(0.52), 1.475 + frontEquipmentForwardM, -0.10, 0, 0);
+    P.add('turretGlass', cylZ(0.060, 0.025, 14), s * 0.47, bodyY(0.52), 1.492 + frontEquipmentForwardM, -0.10, 0, 0);
     for (const xOff of [-0.075, 0.075]) {
-      P.add('turretDark', box(0.018, 0.19, 0.018), s * 0.47 + xOff, bodyY(0.52), 1.505, -0.10, 0, 0);
+      P.add('turretDark', box(0.018, 0.19, 0.018), s * 0.47 + xOff, bodyY(0.52), 1.505 + frontEquipmentForwardM, -0.10, 0, 0);
     }
   }
   // Cupola/periscope cadence remains low and asymmetric, but is large
@@ -2607,7 +2616,7 @@ function buildT80UNative2026(P) {
   ]);
   P.addEquipment('turret', box(0.16, 0.20, 0.30), -0.88, roofY(0.60), -1.08, 0, -0.12, 0);
   P.add('turretDark', box(0.14, 0.014, 0.28), -0.88, roofY(0.707), -1.08, 0, -0.12, 0);
-  basket(P, 1.15, -1.96, -2.24, 0.25, 0.46, 0.5);
+  basket(P, 1.15, -1.96, -2.24, 0.31, 0.52, 0.5);
   P.add('turretDetail', box(0.05, 0.05, 0.72), 0.78, roofY(0.50), -0.95, 0, 0.5, 0);
   P.add('turretDetail', box(0.05, 0.05, 0.72), -0.78, roofY(0.50), -0.95, 0, -0.5, 0);
   P.add('turretDetail', box(0.08, 0.07, 0.08), -0.62, roofY(0.575), -0.85);
@@ -2639,6 +2648,17 @@ function buildT80UNative2026(P) {
     gunFlankLightCount: 2,
     rearSoftStowageBundles: 2,
     rearAmmoBoxes: 1,
+    canonicalCastProfile: 'standard',
+    canonicalCastReference: 't80/t80b/ua_t80u_kursk',
+    frontChevronRaisedToUpperCheekM: frontChevronLiftY,
+    frontChevronForwardM,
+    frontEquipmentForwardM,
+    frontEquipmentFaceClearanceM:
+      1.505 + frontEquipmentForwardM + 0.009 - frontChevronReceipt.frontmostTileZM,
+    baseShellEquipmentRelativeTransformPreserved: true,
+    turretAssemblyLoweringM: turretAssemblyDropM,
+    canonicalCrownWorldY: 1.36 + hullBodyLiftM - turretAssemblyDropM + t80uRoofTopY,
+    previousCrownWorldY: 1.42 + hullBodyLiftM + previousT80URoofY,
   });
   P.turretG.userData.turretEraSurfaceSeatReceipt = Object.freeze({
     profile: 't80u',
@@ -2646,13 +2666,13 @@ function buildT80UNative2026(P) {
     maximumSurfaceGapM: Math.max(...eraSurfaceSeats.map((seat) => seat.surfaceGapM)),
     minimumSurfaceGapM: Math.min(...eraSurfaceSeats.map((seat) => seat.surfaceGapM)),
   });
-  P.decal('turret', 'number', '518', 0.28, [1.05, 0.28, -0.15], Math.PI / 2, 0, 0.1);
-  P.decal('turret', 'number', '518', 0.28, [-1.05, 0.28, -0.15], -Math.PI / 2, 0, -0.1);
-  // 2A46M-1 follows the lifted hull/turret package at its 1.84 m visual axis:
+  P.decal('turret', 'number', '518', 0.28, [1.05, 0.34, -0.15], Math.PI / 2, 0, 0.1);
+  P.decal('turret', 'number', '518', 0.28, [-1.05, 0.34, -0.15], -Math.PI / 2, 0, -0.1);
+  // 2A46M-1 follows the lowered rotating package at its 1.80 m visual axis:
   // sealed embrasure roll, sleeve
   // pair, fat evacuator in the sleeve gap, no muzzle brake/MRS.  The former
   // 0.10 m local seat put the complete rocking package 140 mm too low.
-  P.gunG.position.set(0, 0.24, 0.55);
+  P.gunG.position.set(0, 0.30, 0.55);
   trunnionRoll(P, 0.17, 0.55, { ballR: 0.145, ballZ: 0.20 });
   // Compact 2A46 rocking mask. The former square embrasure left the tube
   // emerging from a narrow vertical block. This gun-owned package uses a
