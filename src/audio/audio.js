@@ -2795,6 +2795,13 @@ export function createAudio({ context: initialContext = null } = {}) {
       applyChannelVolumes(true);
     });
     bus.on('killcam:impact', (e) => { if (ctx) killcamImpact(e); });
+    bus.on('killcam:shot', (e) => {
+      if (!ctx || !e || !e.muzzlePos) return;
+      gunshot(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2], e.caliberMm,
+        !!e.isPlayer, e.weaponSound, e.muzzleIndex);
+      logSound('killcam:shot', { shooterId: e.shooterId, caliberMm: e.caliberMm });
+    });
+    bus.on('killcam:collision', (e) => { if (ctx) onTankRam(e); });
     // PAUSE (Esc overlay over a live battle — main.ts tick edge): duck the
     // battle beds to near-silence, restore on resume. pauseK is tracked even
     // before the context exists so a later resume() builds the graph with

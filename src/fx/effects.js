@@ -3270,6 +3270,51 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * lightK, 0);
     },
 
+    /** Tank-on-tank metal contact: lateral sparks, track debris and a low
+     * pressure-dust shove. Deliberately omits every shell/penetration cue. */
+    vehicleCollision(pos, normal, closingMps = 0) {
+      const k = THREE.MathUtils.clamp((Number(closingMps) || 0) / 12, 0.35, 1.4);
+      _v1.copy(normal);
+      if (_v1.lengthSq() < 1e-6) _v1.set(0, 0, 1); else _v1.normalize();
+      _v1.y = Math.max(0.12, _v1.y);
+      _v1.normalize();
+      sparkFan(pos, _v1, Math.round(20 + 18 * k), 12 + 8 * k,
+        1.2, 0xffd09a, 0.55 + 0.2 * k, 0.045, 0.04, 0, 0.22);
+      sparkFan(pos, _v2.copy(_v1).multiplyScalar(-1), Math.round(12 + 12 * k),
+        8 + 6 * k, 1.5, 0xff9f55, 0.45, 0.035, 0.032, 0, 0.16);
+      for (let i = 0; i < 10 + Math.round(8 * k); i++) {
+        const a = rng() * Math.PI * 2;
+        _debO.pos[0] = pos.x; _debO.pos[1] = pos.y + 0.28; _debO.pos[2] = pos.z;
+        _debO.vel[0] = Math.cos(a) * (2.5 + rng() * 5.5) * k;
+        _debO.vel[1] = 2.2 + rng() * 4.8;
+        _debO.vel[2] = Math.sin(a) * (2.5 + rng() * 5.5) * k;
+        _debO.life = 1.2 + rng() * 0.8;
+        _debO.scale = 0.08 + rng() * 0.11;
+        _debO.spin = 10 + rng() * 18;
+        _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+        _debO.groundY = groundY(pos.x, pos.z);
+        _debO.hot = false; _debO.seed = rng(); _debO.birthOffset = 0;
+        particles.emit('debris', _debO);
+      }
+      for (let i = 0; i < 12; i++) {
+        const a = rng() * Math.PI * 2;
+        _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.6;
+        _puffO.pos[1] = pos.y + 0.12 + rng() * 0.35;
+        _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.6;
+        _puffO.vel[0] = Math.cos(a) * (1.2 + rng() * 2.8) * k;
+        _puffO.vel[1] = 0.8 + rng() * 1.5;
+        _puffO.vel[2] = Math.sin(a) * (1.2 + rng() * 2.8) * k;
+        _puffO.life = 0.8 + rng() * 0.8;
+        _puffO.size0 = 0.45; _puffO.size1 = 2.0 + rng() * 1.4;
+        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
+        col3(0x71695c, _puffO.col0); col3(0x4d4942, _puffO.col1);
+        _puffO.alpha = 0.42; _puffO.grav = -0.25; _puffO.birthOffset = 0;
+        particles.emit('dust', _puffO);
+      }
+      _sv.copy(pos); _sv.y += 0.45;
+      flashLight(lightStates[1], _sv, EXPLOSION_LIGHT_PEAK * 0.08 * k, 0);
+    },
+
     /**
      * Armor / terrain impact effect selected by HitEvent.kind.
      * @param {string} kind HitEvent.kind (§2.6)

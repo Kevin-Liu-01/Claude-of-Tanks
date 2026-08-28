@@ -23,9 +23,11 @@ function createRuntime(log) {
     cancel: () => { log.push('cancel'); },
     update: (dt) => { log.push(`update:${dt}`); },
     playForResult: (result) => { log.push(`play:${result}`); return true; },
+    stageReplayShot: (shot, phase) => { log.push(`replay:${shot}:${phase}`); return phase; },
     stageXrayShot: (shot) => { log.push(`stage:${shot}`); return shot; },
     recordSimStep: (game) => { log.push(`step:${game}`); },
     onShellHit: (hit) => { log.push(`hit:${hit}`); },
+    onRam: (ram) => { log.push(`ram:${ram}`); },
   };
 }
 
@@ -74,12 +76,15 @@ function createRuntime(log) {
   assert.equal(stable.spectate.targetId, 'ally-2');
   stable.update(0.25);
   assert.equal(stable.playForResult('victory'), true);
+  assert.equal(stable.stageReplayShot('shot-6', 'collision'), 'collision');
   assert.equal(stable.stageXrayShot('shot-7'), 'shot-7');
   stable.recordSimStep('battle');
   stable.onShellHit('armor');
+  stable.onRam('impact');
   stable.cancel();
   assert.deepEqual(log, [
-    'update:0.25', 'play:victory', 'stage:shot-7', 'step:battle', 'hit:armor', 'cancel',
+    'update:0.25', 'play:victory', 'replay:shot-6:collision', 'stage:shot-7',
+    'step:battle', 'hit:armor', 'ram:impact', 'cancel',
   ]);
   assert.equal(await access.ensureRuntime(), live);
   assert.equal(loads, 1);

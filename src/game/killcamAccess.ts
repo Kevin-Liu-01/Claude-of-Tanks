@@ -19,9 +19,11 @@ export interface KillcamRuntime {
   cancel(): void;
   update(deltaSeconds: number): void;
   playForResult(...args: unknown[]): boolean;
+  stageReplayShot(...args: unknown[]): unknown;
   stageXrayShot(...args: unknown[]): unknown;
   recordSimStep(...args: unknown[]): void;
   onShellHit(...args: unknown[]): void;
+  onRam(...args: unknown[]): void;
 }
 
 interface KillcamModule {
@@ -106,9 +108,11 @@ export function createKillcamAccess<TModule extends KillcamModule>({
     cancel: () => { runtime?.cancel(); },
     update: (deltaSeconds) => { runtime?.update(deltaSeconds); },
     playForResult: (...args) => runtime?.playForResult(...args) ?? false,
+    stageReplayShot: (...args) => runtime?.stageReplayShot(...args),
     stageXrayShot: (...args) => runtime?.stageXrayShot(...args),
     recordSimStep: (...args) => { runtime?.recordSimStep(...args); },
     onShellHit: (...args) => { runtime?.onShellHit(...args); },
+    onRam: (...args) => { runtime?.onRam(...args); },
   };
 
   return {

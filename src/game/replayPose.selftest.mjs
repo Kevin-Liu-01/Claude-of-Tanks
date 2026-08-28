@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
 import {
   alignReplayPoseToShot, captureReplayPose, createReplayFlightTimeline,
-  replayDistanceAtTime, replayStateFromPose,
+  interpolateReplayPose, replayDistanceAtTime, replayStateFromPose,
 } from './replayPose.ts';
 
 const state = {
@@ -23,6 +23,20 @@ alignReplayPoseToShot(casemate, [1, 0, 0], {
 });
 if (Math.abs(casemate.yaw - Math.PI / 2) > 1e-9 || casemate.turretYaw !== 0) {
   throw new Error('casemate hull was not turned into an out-of-arc shot');
+}
+
+// Collision replays rewind both tanks to the prior fixed-step pose and ease
+// into contact. Rotation must take the short path across the +/-pi seam.
+{
+  const a = { pos: [0, 0, 0], yaw: Math.PI - 0.1, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0 };
+  const b = { pos: [4, 0.2, -2], yaw: -Math.PI + 0.1, pitch: 0.2, roll: -0.1, turretYaw: 0.4, gunPitch: -0.2 };
+  const mid = interpolateReplayPose(a, b, 0.5);
+  if (mid.pos.some((v, i) => Math.abs(v - [2, 0.1, -1][i]) > 1e-9)) {
+    throw new Error('collision replay pose does not interpolate position');
+  }
+  if (Math.abs(Math.abs(mid.yaw) - Math.PI) > 1e-9 || Math.abs(mid.turretYaw - 0.2) > 1e-9) {
+    throw new Error('collision replay pose does not take the short rotation arc');
+  }
 }
 
 // The full slow-motion ramp must fit INSIDE the advertised flight duration.

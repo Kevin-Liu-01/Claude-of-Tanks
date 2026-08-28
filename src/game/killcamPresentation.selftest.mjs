@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('./killcam.js', import.meta.url), 'utf8');
+const state = readFileSync(new URL('./state.ts', import.meta.url), 'utf8');
+const effects = readFileSync(new URL('../fx/effects.js', import.meta.url), 'utf8');
 const responsive = readFileSync(new URL('../ui/responsiveSurfaces.css', import.meta.url), 'utf8');
 
 assert.match(source, /import \{ uiIconSVG \} from '\.\.\/ui\/uiIcons\.ts';/,
@@ -50,5 +52,19 @@ assert.match(source, /const moduleLabels = new Map\(\)/,
   'multiple physical hits on one module collapse into one final-state callout');
 assert.match(source, /final bounded label-only[\s\S]*const placed = \[\][\s\S]*const fits/,
   'label separation is repeated after geometry and fixed-panel repulsion');
+assert.match(source, /const poseHistory = new Map\(\)/,
+  'killcam retains the preceding simulation frame instead of reconstructing it after death');
+assert.match(source, /replayKind: 'collision'[\s\S]*trajPts: null/,
+  'collision deaths use an explicit replay type with no projectile trajectory');
+assert.match(source, /if \(pb\.replayKind === 'collision'\)[\s\S]*beginCollision\(\);[\s\S]*return;[\s\S]*const raw = snap\.trajPts/,
+  'collision playback exits before any tracer geometry can be allocated');
+assert.match(source, /function beginFiring\(\)[\s\S]*restageAttacker\(\)[\s\S]*recoilKick\([\s\S]*muzzleFlash\(/,
+  'projectile playback visibly fires the restored attacker from its rendered muzzle');
+assert.match(source, /function updateCollision\(dt\)[\s\S]*applyReplaySurfaceState\(tvis, pb\.snap\.moduleStates[\s\S]*vehicleCollision/,
+  'collision contact applies resolved module failures and dedicated impact effects');
+assert.match(state, /applyLethalRamModuleDamage[\s\S]*game\.killcam\.onRam\(ramEvent, a, b\)/,
+  'authoritative ram resolution records module failures before live wreck presentation');
+assert.match(effects, /vehicleCollision\(pos, normal, closingMps = 0\)[\s\S]*sparkFan[\s\S]*debris/,
+  'vehicle collision effects use metal contact sparks and debris rather than shell penetration FX');
 
 console.log('killcam presentation selftest passed');

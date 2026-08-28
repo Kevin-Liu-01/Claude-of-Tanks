@@ -12,6 +12,7 @@ export function createShotViews({
   mapEstablishingShot, tankPoseFromState, traceTank, createShell,
   resolveShellHit, createCombatState, mulberry32, VIEW_TIME, killcam,
 }) {
+  let projectileReplayStage = 'xray';
   const SHOT_VIEWS = {
   battlefield() {
     hud.setMode('hidden');
@@ -410,6 +411,83 @@ export function createShotViews({
   battlefield_blackglass() { mapEstablishingShot(); },
   battlefield_titan_gorge() { mapEstablishingShot(); },
   battlefield_skybridge() { mapEstablishingShot(); },
+  // The projectile recipe below is shared so the firing and x-ray captures
+  // resolve the exact same seeded shot. Only the staged playback beat differs.
+  killcam_firing() {
+    projectileReplayStage = 'firing';
+    try { SHOT_VIEWS.killcam_xray(); } finally { projectileReplayStage = 'xray'; }
+  },
+  // Front-to-front ram staged at contact. Neither the recipe nor the replay
+  // snapshot contains a shell trajectory, making phantom tracers observable
+  // as a deterministic visual-regression failure.
+  killcam_collision() {
+    hud.setMode('hidden');
+    const target = game.player;
+    const attacker = game.tankById.get('t90m');
+    const terrainOffset = target.state.pos.y
+      - world.heightField.getHeightAt(target.state.pos.x, target.state.pos.z);
+    const x = target.state.pos.x;
+    const z = target.state.pos.z;
+    const atY = (pz) => world.heightField.getHeightAt(x, pz) + terrainOffset;
+    const makePose = (ent, px, py, pz, yaw) => ({
+      pos: [px, py, pz], yaw,
+      pitch: ent.state.visualPitch || 0,
+      roll: ent.state.visualRoll || 0,
+      turretYaw: 0, gunPitch: 0,
+    });
+    const moduleStates = (ent) => Object.fromEntries(
+      Object.entries(ent.combat?.modules || {}).map(([id, module]) => [id, module.state]),
+    );
+    const targetImpact = makePose(target, x, atY(z), z, 0);
+    const targetBefore = makePose(target, x, atY(z - 2.8), z - 2.8, 0);
+    const attackerImpact = makePose(attacker, x, atY(z + 7.1), z + 7.1, Math.PI);
+    const attackerBefore = makePose(attacker, x, atY(z + 10.3), z + 10.3, Math.PI);
+    const preTargetModules = moduleStates(target);
+    const postTargetModules = { ...preTargetModules, trackR: 'red', transmission: 'red' };
+    const preAttackerModules = moduleStates(attacker);
+    const modulesHit = [
+      { module: 'trackR', newState: 'red', dmg: 100 },
+      { module: 'transmission', newState: 'red', dmg: 140 },
+    ];
+    const contact = [x, Math.max(targetImpact.pos[1], attackerImpact.pos[1]) + 0.7, z + 3.55];
+    killcam.stageReplayShot({
+      replayKind: 'collision',
+      ev: {
+        kind: 'collision', cause: 'ram', shellId: null,
+        attackerId: attacker.id, attackerName: attacker.spec.name,
+        attackerSpecId: attacker.specId,
+        targetId: target.id, targetName: target.spec.name, targetSpecId: target.specId,
+        targetMaxHp: target.combat.maxHp, pos: contact, normal: [0, 0, -1],
+        localPos: null, localDir: null, crewHit: [], modulesHit,
+        damage: 620, destroyed: true, ammoRacked: false, flightDistM: 0,
+        closingMps: 15.5,
+      },
+      timeS: VIEW_TIME.killcam_collision,
+      trajPts: null,
+      crewAlive: { ...target.combat.crew },
+      moduleStates: postTargetModules,
+      eraSpent: [...(target.combat.eraSpent || [])],
+      preCrewAlive: { ...target.combat.crew },
+      preModuleStates: preTargetModules,
+      preEraSpent: [...(target.combat.eraSpent || [])],
+      pose: targetImpact,
+      prePose: targetBefore,
+      attackerEnt: attacker,
+      attackerPose: attackerBefore,
+      attackerImpactPose: attackerImpact,
+      attackerPreModuleStates: preAttackerModules,
+      attackerPreEraSpent: [...(attacker.combat.eraSpent || [])],
+      attackerPreDestroyed: false,
+      attackerModuleStates: preAttackerModules,
+      attackerEraSpent: [...(attacker.combat.eraSpent || [])],
+      attackerModulesHit: [],
+      muzzle: null, shotDir: null, muzzleVelocityMps: 0, firedTimeS: 0,
+      targetEnt: target,
+      armor: target.spec.armor,
+      heightM: target.spec.dims.heightM,
+      boundingRadiusM: target.spec.armor.boundingRadiusM,
+    }, 'collision');
+  },
   // KILL-CAM: deterministic staged x-ray replay frame. A synthetic T-90M
   // flank shot into the player's M1A2 SEPv3 is resolved through the
   // REAL sim pipeline (traceTank + resolveShellHit, seeded rng, throwaway
@@ -482,23 +560,68 @@ export function createShotViews({
         _v1.z + (ev.pos[2] - _v1.z) * (i / 24),
       );
     }
-    killcam.stageXrayShot({
+    const shotDir = _v3.clone().set(
+      ev.pos[0] - _v1.x, ev.pos[1] - _v1.y, ev.pos[2] - _v1.z,
+    ).normalize();
+    const shooterGroundOffset = shooter.state.pos.y
+      - world.heightField.getHeightAt(shooter.state.pos.x, shooter.state.pos.z);
+    const shooterX = _v1.x - shotDir.x * 4.2;
+    const shooterZ = _v1.z - shotDir.z * 4.2;
+    const attackerPose = {
+      pos: [
+        shooterX,
+        world.heightField.getHeightAt(shooterX, shooterZ) + shooterGroundOffset,
+        shooterZ,
+      ],
+      yaw: Math.atan2(shotDir.x, shotDir.z), pitch: 0, roll: 0,
+      turretYaw: 0,
+      gunPitch: Math.atan2(shotDir.y, Math.hypot(shotDir.x, shotDir.z)),
+    };
+    const targetPose = {
+      pos: [target.state.pos.x, target.state.pos.y, target.state.pos.z],
+      yaw: target.state.yaw,
+      pitch: target.state.visualPitch,
+      roll: target.state.visualRoll,
+      turretYaw: target.state.turretYaw,
+      gunPitch: target.state.gunPitch,
+    };
+    const targetModules = Object.fromEntries(
+      Object.entries(target.combat.modules || {}).map(([id, module]) => [id, module.state]),
+    );
+    const attackerModules = Object.fromEntries(
+      Object.entries(shooter.combat.modules || {}).map(([id, module]) => [id, module.state]),
+    );
+    killcam.stageReplayShot({
+      replayKind: 'projectile',
       ev,
       timeS: ev.timeS,
       trajPts: traj,
-      pose: {
-        pos: [target.state.pos.x, target.state.pos.y, target.state.pos.z],
-        yaw: target.state.yaw,
-        pitch: target.state.visualPitch,
-        roll: target.state.visualRoll,
-        turretYaw: target.state.turretYaw,
-        gunPitch: target.state.gunPitch,
-      },
+      pose: targetPose,
+      impactPose: { ...targetPose, pos: targetPose.pos.slice() },
+      preCrewAlive: { ...target.combat.crew },
+      crewAlive: { ...target.combat.crew },
+      preModuleStates: targetModules,
+      moduleStates: targetModules,
+      preEraSpent: [...(target.combat.eraSpent || [])],
+      eraSpent: [...(target.combat.eraSpent || [])],
+      attackerEnt: shooter,
+      attackerPose,
+      muzzle: [_v1.x, _v1.y, _v1.z],
+      shotDir: shotDir.toArray(),
+      muzzleVelocityMps: shellSpec.velocityMps || 1500,
+      firedTimeS: ev.timeS - 0.4,
+      caliberMm: shellSpec.caliberMm || shooter.spec.gun.caliberMm || 125,
+      weaponSound: shooter.spec.gun.weaponSound || null,
+      muzzleIndex: 0,
+      recoilScale: 1,
+      attackerPreModuleStates: attackerModules,
+      attackerPreEraSpent: [...(shooter.combat.eraSpent || [])],
+      attackerPreDestroyed: false,
       targetEnt: target,
       armor: target.spec.armor,
       heightM: target.spec.dims.heightM,
       boundingRadiusM: target.spec.armor.boundingRadiusM,
-    });
+    }, projectileReplayStage);
   },
   };
   return SHOT_VIEWS;

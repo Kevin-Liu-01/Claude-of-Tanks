@@ -32,6 +32,8 @@ const VIEW_TIME: Readonly<Partial<Record<ShotViewName, number>>> = {
   battlefield_blackglass: 2.0,
   battlefield_titan_gorge: 2.0,
   battlefield_skybridge: 2.0,
+  killcam_firing: 1.0,
+  killcam_collision: 1.0,
   killcam_xray: 1.0,
 };
 
@@ -319,7 +321,7 @@ export async function setShotView(
   await ensureShotWorld(
     context,
     VIEW_MAP[name] || 'verdant',
-    name === 'killcam_xray' ? 'm1a2_sepv3' : 'm1a2',
+    name.startsWith('killcam_') ? 'm1a2_sepv3' : 'm1a2',
   );
   const helpers = createRecipeHelpers(context);
   const world = context.getWorld();

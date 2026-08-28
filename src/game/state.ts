@@ -36,6 +36,7 @@ import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spottin
 import type { CollisionRecord } from '../world/collision.ts';
 import type { EventBus, RandomSource } from './stateCore.ts';
 import type { RosterEntity, RosterGameState } from './rosterState.ts';
+import type { ModuleId } from '../sim/moduleCatalog.ts';
 import { getSpec } from '../vehicles/specs.js';
 import { tankTier } from '../vehicles/tier.ts';
 import {
@@ -201,6 +202,7 @@ interface SoloHitEvent extends HitEvent {
 
 interface KillcamRecorder {
   onShellHit(event: SoloHitEvent, target: SoloPooledEntity | null): void;
+  onRam(event: SoloRamEvent, a: SoloEntity, b: SoloEntity): void;
   recordSimStep(game: SoloGameState): void;
 }
 
@@ -305,6 +307,56 @@ interface RamContact {
   nz: number;
 }
 
+interface RamModuleHit {
+  module: ModuleId;
+  newState: 'red';
+  dmg: number;
+}
+
+interface SoloRamEvent {
+  aId: string;
+  bId: string;
+  aSpecId: string;
+  bSpecId: string;
+  dmgA: number;
+  dmgB: number;
+  closingMps: number;
+  aIsPlayer: boolean;
+  bIsPlayer: boolean;
+  pos: Vec3Tuple;
+  normal: Vec3Tuple;
+  timeS: number;
+  aModulesHit: RamModuleHit[];
+  bModulesHit: RamModuleHit[];
+}
+
+/** A lethal hull collision physically disables the struck running gear and
+ * nearest drivetrain module. This is authoritative damage state, not a
+ * kill-cam-only decoration; the replay consumes the same receipts the HUD and
+ * tank visual receive. */
+function applyLethalRamModuleDamage(
+  ent: SoloEntity,
+  normalX: number,
+  normalZ: number,
+): RamModuleHit[] {
+  if (!ent.combat?.destroyed || !ent.combat.modules || !ent.state) return [];
+  const rightDot = normalX * Math.cos(ent.state.yaw) - normalZ * Math.sin(ent.state.yaw);
+  const nearTrack: ModuleId = rightDot >= 0 ? 'trackR' : 'trackL';
+  const drivetrain: ModuleId = ent.combat.modules.transmission ? 'transmission' : 'engine';
+  const names: ModuleId[] = [nearTrack, drivetrain];
+  const hits: RamModuleHit[] = [];
+  for (const name of names) {
+    const module = ent.combat.modules[name];
+    if (!module || module.state === 'red') continue;
+    const hpBefore = Math.max(0, module.hp || 0);
+    module.hp = 0;
+    module.state = 'red';
+    module.repairT = 0;
+    hits.push({ module: name, newState: 'red', dmg: Math.round(hpBefore) });
+  }
+  return hits;
+}
+
 interface CrushContact {
   ob: SoloObstacle;
   ent: SoloEntity;
@@ -331,6 +383,7 @@ interface ShellFiredEvent {
   dir: Vec3Tuple;
   weaponSound: string | null;
   muzzleIndex: number;
+  recoilScale: number;
 }
 
 function asModeEntity(entity: SoloEntity): MatchModeEntity {
@@ -417,6 +470,7 @@ const _firedEv: ShellFiredEvent = {
   caliberMm: 0, velocityMps: 0, timeS: 0,
   muzzlePos: [0, 0, 0], dir: [0, 0, 0],
   weaponSound: null, muzzleIndex: -1,
+  recoilScale: 1,
 };
 
 
@@ -1582,6 +1636,7 @@ function tryFire(
   // §5.362 (additive): which barrel fired on twin-plant ids, -1 single-bore.
   // The payload object is REUSED — always write so no stale index leaks.
   _firedEv.muzzleIndex = muzzleIndex != null ? muzzleIndex : -1;
+  _firedEv.recoilScale = recoilScale;
   _firedEv.caliberMm = shellSpec.caliberMm;
   _firedEv.velocityMps = shellSpec.velocityMps;
   _firedEv.timeS = game.timeS;
@@ -1917,6 +1972,44 @@ export function simStep(
       if (!bWreck) b.combat.hp = Math.max(0, b.combat.hp - dmgB);
       if (a.combat.hp <= 0) a.combat.destroyed = true;
       if (!bWreck && b.combat.hp <= 0) b.combat.destroyed = true;
+      let nx = q.nx;
+      let nz = q.nz;
+      if (nx * nx + nz * nz < 1e-6) {
+        nx = b.state.pos.x - a.state.pos.x;
+        nz = b.state.pos.z - a.state.pos.z;
+        const inv = 1 / Math.max(1e-6, Math.hypot(nx, nz));
+        nx *= inv; nz *= inv;
+      }
+      const aModulesHit = a.combat.destroyed
+        ? applyLethalRamModuleDamage(a, nx, nz) : [];
+      const bModulesHit = b.combat.destroyed && !bWreck
+        ? applyLethalRamModuleDamage(b, -nx, -nz) : [];
+      const ramEvent: SoloRamEvent = {
+        aId: a.id, bId: b.id,
+        aSpecId: a.specId, bSpecId: b.specId,
+        dmgA, dmgB,
+        closingMps: q.closing,
+        aIsPlayer: !!a.isPlayer, bIsPlayer: !!b.isPlayer,
+        pos: [
+          (a.state.pos.x + b.state.pos.x) * 0.5,
+          (a.state.pos.y + b.state.pos.y) * 0.5,
+          (a.state.pos.z + b.state.pos.z) * 0.5,
+        ],
+        normal: [nx, 0, nz],
+        timeS: game.timeS,
+        aModulesHit,
+        bModulesHit,
+      };
+      // Capture before announceDestroyed swaps either visual to its wreck.
+      if (game.killcam && (a.combat.destroyed || b.combat.destroyed)) {
+        game.killcam.onRam(ramEvent, a, b);
+      }
+      for (const hit of aModulesHit) {
+        bus.emit('module:state', { id: a.id, module: hit.module, state: 'red', source: 'ram' });
+      }
+      for (const hit of bModulesHit) {
+        bus.emit('module:state', { id: b.id, module: hit.module, state: 'red', source: 'ram' });
+      }
       if (b.combat.destroyed && !bWreck && !b._destroyedAnnounced) {
         announceDestroyed(game, bus, b, a.id, 'ram');
       }
@@ -1929,18 +2022,7 @@ export function simStep(
         const playerDmg = a.isPlayer ? dmgA : (b.isPlayer ? dmgB : 0);
         if (playerDmg > 0) rig.addTrauma(Math.min(0.55, 0.12 + playerDmg * 0.0009));
       }
-      bus.emit('tank:ram', {
-        aId: a.id, bId: b.id,
-        aSpecId: a.specId, bSpecId: b.specId,
-        dmgA, dmgB,
-        closingMps: q.closing,
-        aIsPlayer: !!a.isPlayer, bIsPlayer: !!b.isPlayer,
-        pos: [
-          (a.state.pos.x + b.state.pos.x) * 0.5,
-          (a.state.pos.y + b.state.pos.y) * 0.5,
-          (a.state.pos.z + b.state.pos.z) * 0.5,
-        ],
-      });
+      bus.emit('tank:ram', ramEvent);
     }
     rams.length = 0;
   }

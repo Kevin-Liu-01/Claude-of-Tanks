@@ -100,6 +100,28 @@ export function replayStateFromPose(pose: ReplayPose) {
   };
 }
 
+/** Interpolate captured presentation poses without crossing the long yaw arc. */
+export function interpolateReplayPose(
+  from: ReplayPose,
+  to: ReplayPose,
+  t: number,
+): ReplayPose {
+  const k = Math.max(0, Math.min(1, Number(t) || 0));
+  const angle = (a: number, b: number) => a + wrapPi(b - a) * k;
+  return {
+    pos: [
+      from.pos[0] + (to.pos[0] - from.pos[0]) * k,
+      from.pos[1] + (to.pos[1] - from.pos[1]) * k,
+      from.pos[2] + (to.pos[2] - from.pos[2]) * k,
+    ],
+    yaw: angle(from.yaw, to.yaw),
+    pitch: angle(from.pitch, to.pitch),
+    roll: angle(from.roll, to.roll),
+    turretYaw: angle(from.turretYaw, to.turretYaw),
+    gunPitch: angle(from.gunPitch, to.gunPitch),
+  };
+}
+
 function smoothstep(x: number, min: number, max: number): number {
   if (max <= min) return x >= max ? 1 : 0;
   const t = Math.max(0, Math.min(1, (x - min) / (max - min)));

@@ -8,7 +8,8 @@ export const SHOT_VIEWS = [
   'battlefield_delta', 'battlefield_badlands', 'battlefield_monsoon',
   'battlefield_alpine', 'battlefield_caldera', 'battlefield_foundry',
   'battlefield_ruinspires', 'battlefield_blackglass',
-  'battlefield_titan_gorge', 'battlefield_skybridge', 'killcam_xray',
+  'battlefield_titan_gorge', 'battlefield_skybridge', 'killcam_firing',
+  'killcam_collision', 'killcam_xray',
 ] as const;
 
 export type ShotViewName = typeof SHOT_VIEWS[number];
