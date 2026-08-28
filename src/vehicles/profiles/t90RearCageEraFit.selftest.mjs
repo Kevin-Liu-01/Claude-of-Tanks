@@ -62,6 +62,10 @@ for (const [id, expected] of Object.entries(CASES)) {
       't90: Shtora retains visible inner clearance from the mantlet');
     assert.ok(fit.shtoraEyeX >= 0.78,
       't90: Shtora pair is moved outward to the cheek shoulders');
+    assert.equal(fit.shtoraClearsChevronDepth, true,
+      't90: both Shtora lenses sit ahead of the chevron tile faces');
+    assert.ok(fit.shtoraChevronDepthClearanceM >= 0.04,
+      't90: Shtora retains at least 40 mm of depth clearance from the ERA');
   } finally {
     tank.dispose();
   }

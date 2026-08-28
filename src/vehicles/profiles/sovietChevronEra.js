@@ -48,6 +48,30 @@ function carrierFaceTile(side, plan, row, t0, t1, depth, padT = 0, padY = 0) {
   return orientedSlab(...back, ...face);
 }
 
+function frontmostTileZ(plans, rows, tileRanges, depth, padY) {
+  let frontmost = -Infinity;
+  for (const plan of plans) {
+    const a = plan[1];
+    const b = plan[2];
+    const dx = b[0] - a[0];
+    const dz = b[1] - a[1];
+    const edgeLength = Math.hypot(dx, dz) || 1;
+    const normalZ = dx / edgeLength;
+    for (const row of rows) {
+      const height = Math.max(1e-6, row.y1 - row.y0);
+      for (const [t0, t1] of tileRanges) {
+        for (const t of [t0, t1]) {
+          for (const y of [row.y0 + padY, row.y1 - padY]) {
+            const rowZ = row.z0 + (row.z1 - row.z0) * ((y - row.y0) / height);
+            frontmost = Math.max(frontmost, a[1] + dz * t + rowZ + normalZ * depth);
+          }
+        }
+      }
+    }
+  }
+  return frontmost;
+}
+
 export function addSovietChevronEra(P, {
   sector,
   receiptKey,
@@ -63,6 +87,7 @@ export function addSovietChevronEra(P, {
   gasketPadT = 0.015,
   gasketPadY = -0.006,
   tilePadY = 0.012,
+  forwardM = 0,
   centerClosure = null,
 }) {
   if (!sector || !receiptKey || !family) throw new Error('Chevron ERA requires sector, receiptKey and family');
@@ -70,11 +95,13 @@ export function addSovietChevronEra(P, {
   if (!Array.isArray(rows) || rows.length !== 2) throw new Error(`${family}: chevron ERA requires exactly two rows`);
   const ridgeY = rows[0].y1;
   if (Math.abs(ridgeY - rows[1].y0) > 1e-6) throw new Error(`${family}: chevron rows do not share a ridge`);
+  const seatedPlans = plans.map((plan) => plan.map(([x, z]) => [x, z + forwardM]));
+  const frontmostTileZM = frontmostTileZ(seatedPlans, rows, tileRanges, tileDepthM, tilePadY);
 
   P.visualEraCluster(sector, 'turret', () => {
     for (const side of [-1, 1]) {
       for (const row of rows) {
-        for (const plan of plans) {
+        for (const plan of seatedPlans) {
           P.add(carrierBucket, mirroredCarrier(side, plan, row));
           for (const [t0, t1] of tileRanges) {
             P.add(gasketBucket, carrierFaceTile(
@@ -89,7 +116,7 @@ export function addSovietChevronEra(P, {
     }
     if (centerClosure) {
       const { width, height, depth, x = 0, y, z, rx = 0, ry = 0, rz = 0 } = centerClosure;
-      P.add(gasketBucket, KIT.box(width, height, depth), x, y, z, rx, ry, rz);
+      P.add(gasketBucket, KIT.box(width, height, depth), x, y, z + forwardM, rx, ry, rz);
     }
   });
 
@@ -104,6 +131,8 @@ export function addSovietChevronEra(P, {
     lowerRearZOffset: rows[0].z0,
     ridgeZOffset: rows[0].z1,
     upperRearZOffset: rows[1].z1,
+    forwardM,
+    frontmostTileZM,
     exactSurfaceOffsets: true,
   });
   P.turretG.userData[receiptKey] = receipt;

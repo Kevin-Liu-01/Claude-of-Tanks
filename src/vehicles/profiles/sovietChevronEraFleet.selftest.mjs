@@ -30,6 +30,8 @@ for (const [id, receiptKey] of Object.entries(cases)) {
     assert.ok(receipt.carriersPerRow >= 2, `${id}: has multiple plan carriers per row`);
     assert.ok(receipt.tilesPerCarrierSurface >= 2, `${id}: has distinct ERA tiles on every carrier`);
     assert.equal(receipt.exactSurfaceOffsets, true, `${id}: derives tile faces from carrier planes`);
+    assert.equal(receipt.forwardM, id === 't90' ? 0.27 : 0,
+      `${id}: seats its chevrons on the variant's installed front datum`);
     assert.equal(receipt.carrierSurfacesTotal,
       receipt.rowsPerCheek * receipt.carriersPerRow * 2,
       `${id}: mirrors the complete carrier topology`);

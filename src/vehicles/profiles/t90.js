@@ -4932,6 +4932,11 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
   // while moving only the faces exposes unsupported carrier roots.
   const frontPackageLift = burlakBase ? 0.12 : 0;
   const frontPackageForward = burlakBase ? 0.07 : 0;
+  const chevronForwardM = frontPackageForward + (burlakBase ? 0.20 : 0);
+  // Keep the enlarged optical faces proud of the ERA rather than letting the
+  // two meshes intersect. The support shoes use this same datum below, so the
+  // eyes gain clearance without becoming detached turret ornaments.
+  const shtoraPackageForward = burlakBase ? chevronForwardM + 0.08 : frontPackageForward;
   if (burlakBase) {
     // Direct reuse of the live Burlak foundation.  The old branch copied an
     // obsolete twelve-point outline and drifted from the model the owner
@@ -5018,6 +5023,11 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
     tileRanges: [[0.06, 0.30], [0.34, 0.66], [0.70, 0.94]],
     tileDepthM: 0.080,
     gasketDepthM: 0.030,
+    // RU-417's Burlak-derived shoulder package is installed 7 cm farther
+    // forward than the base T-90 casting. Carry the complete two-row ERA
+    // assembly to that datum plus its 20 cm carrier stand-off so both courses
+    // remain visible instead of disappearing inside the shoulder armor.
+    forwardM: chevronForwardM,
     centerClosure: { width: 0.42, height: 0.23, depth: 0.060, y: 0.22, z: 1.36, rx: -0.24 },
   });
   P.add('turretDark', box(0.54, 0.30, 0.055), 0, 0.39 + frontPackageLift, 1.29 + frontPackageForward, -0.40, 0, 0);
@@ -5034,7 +5044,7 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
     // already-approved proportions.
     eyeScale: shtoraEyeScale,
     eyeX: shtoraEyeX,
-    eyeZ: 1.24 + frontPackageForward,
+    eyeZ: 1.24 + shtoraPackageForward,
   }, shtoraCenterY);
   if (!vladimir) {
     if (P._shtoraRed) {
@@ -5048,15 +5058,17 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
       P.add('turret', orientedSlab(
         [-0.17, -0.15, -0.11], [0.17, -0.15, -0.11], [0.17, -0.15, 0.11], [-0.17, -0.15, 0.11],
         [-0.13, 0.15, -0.09], [0.13, 0.15, -0.09], [0.13, 0.15, 0.09], [-0.13, 0.15, 0.09],
-      ), s * (shtoraEyeX - 0.06), 0.47 - shtoraDrop, 1.13 + frontPackageForward, -0.30, -s * 0.15, 0);
-      P.add('turret', KIT.xform(box(0.34, 0.23, 0.42), 0, 0, -0.09), s * 0.30, 0.34 - shtoraDrop, 1.20 + frontPackageForward, -0.38, -s * 0.23, 0);
-      P.add('turret', KIT.xform(box(0.21, 0.20, 0.34), 0, -0.015, -0.06), s * (shtoraEyeX + 0.10), 0.38 - shtoraDrop, 1.05 + frontPackageForward, -0.28, -s * 0.34, 0);
-      P.add('turretDark', box(0.034, 0.22, 0.19), s * (shtoraEyeX + 0.09), 0.45 - shtoraDrop, 1.16 + frontPackageForward, -0.20, -s * 0.30, 0);
+      ), s * (shtoraEyeX - 0.06), 0.47 - shtoraDrop, 1.13 + shtoraPackageForward, -0.30, -s * 0.15, 0);
+      P.add('turret', KIT.xform(box(0.34, 0.23, 0.42), 0, 0, -0.09), s * 0.30, 0.34 - shtoraDrop, 1.20 + shtoraPackageForward, -0.38, -s * 0.23, 0);
+      P.add('turret', KIT.xform(box(0.21, 0.20, 0.34), 0, -0.015, -0.06), s * (shtoraEyeX + 0.10), 0.38 - shtoraDrop, 1.05 + shtoraPackageForward, -0.28, -s * 0.34, 0);
+      P.add('turretDark', box(0.034, 0.22, 0.19), s * (shtoraEyeX + 0.09), 0.45 - shtoraDrop, 1.16 + shtoraPackageForward, -0.20, -s * 0.30, 0);
     }
   }
   if (burlakBase) {
     const shtoraInnerEdgeX = shtoraEyeX - 0.12 * shtoraEyeScale;
     const mantletHalfWidthM = 0.54;
+    const shtoraFaceZM = 1.24 + shtoraPackageForward + 0.130 * shtoraEyeScale;
+    const shtoraChevronDepthClearanceM = shtoraFaceZM - t90ChevronReceipt.frontmostTileZM;
     P.turretG.userData.t90TurretProtectionFitReceipt = Object.freeze({
       supersededExternalEraCleared: true,
       canonicalEraSector: 't90-k5-turret-era',
@@ -5066,10 +5078,14 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
       shtoraEyeX,
       shtoraEyeScale,
       shtoraCenterY,
+      shtoraPackageForward,
+      shtoraFaceZM,
+      shtoraChevronDepthClearanceM,
       shtoraInnerEdgeX,
       mantletHalfWidthM,
       mantletClearanceM: shtoraInnerEdgeX - mantletHalfWidthM,
       shtoraClearsMantlet: shtoraInnerEdgeX > mantletHalfWidthM,
+      shtoraClearsChevronDepth: shtoraChevronDepthClearanceM > 0,
     });
   }
 
