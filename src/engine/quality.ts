@@ -14,7 +14,7 @@
  * Fix = an explicit quality ladder, auto-selected by devicePixelRatio and
  * user-overridable (persisted in localStorage; the settings UI writes through
  * `setPresetName`). GPU-cost levers live here as DATA; the engine modules
- * (post.js, lighting.ts) read them and subscribe to live changes:
+ * (post.ts, lighting.ts) read them and subscribe to live changes:
  *
  * - `maxPixelRatio` — cap on the EffectComposer's internal pixel ratio
  *   (AAA "render scale"): the 3D scene + post chain render at the capped
@@ -88,7 +88,7 @@ let _mobileResetHandled = false;
 // roster + hero-grade canvas bakes) + 4096² shadow cascades on devices whose
 // browsers OOM-kill a tab well below that. The mobile tier is a real preset
 // on the same ladder (data, not scattered if-statements): every engine module
-// that already reads the preset (post.js, lighting.ts) picks it up, and the
+// that already reads the preset (post.ts, lighting.ts) picks it up, and the
 // texture levers below (textureScale/textureCap) are consumed by the texture
 // creation sites (materials.js and world bakers).
 //
@@ -340,7 +340,7 @@ const listeners = new Set<PresetListener>();
 //  - boot heuristics: the unmasked GL renderer string (software rasterizers,
 //    non-Arc Intel integrated, mobile-class parts under a desktop UA) plus
 //    low deviceMemory seed a conservative starting tier;
-//  - the live frame governor (post.js) calls reportSustainedOverload() when
+//  - the live frame governor (post.ts) calls reportSustainedOverload() when
 //    the frame budget has been missed for several consecutive decision
 //    windows with no resolution lever left — the auto tier steps down one
 //    notch and persists, so the next session starts where this one settled.
@@ -522,7 +522,7 @@ export function getPreset(): QualityPreset {
 
 /**
  * Store a new choice ('auto' or a preset name) and notify subscribers
- * (post.js resizes the composer chain, lighting.ts reallocates shadow maps).
+ * (post.ts resizes the composer chain, lighting.ts reallocates shadow maps).
  * The settings UI is the intended caller.
  * @param {string} name - 'auto' | 'low' | 'medium' | 'high' | 'ultra'
  * @returns {void}

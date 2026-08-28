@@ -34,7 +34,7 @@ served locally from `public/`, no CDN or network fetches in game code.
 
 | Software | Author | Source | License | Files |
 |---|---|---|---|---|
-| FidelityFX Super Resolution 1 spatial upscaler (EASU + RCAS), adapted to Three.js `ShaderMaterial`/`EffectComposer` conventions. | Advanced Micro Devices, Inc. | https://github.com/GPUOpen-Effects/FidelityFX-FSR | MIT | `src/engine/post.js` (copyright and MIT notice retained inline) |
+| FidelityFX Super Resolution 1 spatial upscaler (EASU + RCAS), adapted to Three.js `ShaderMaterial`/`EffectComposer` conventions. | Advanced Micro Devices, Inc. | https://github.com/GPUOpen-Effects/FidelityFX-FSR | MIT | `src/engine/post.ts` (copyright and MIT notice retained inline) |
 
 ## Open-source UI assets
 

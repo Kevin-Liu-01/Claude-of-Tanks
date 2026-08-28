@@ -52,7 +52,7 @@ import {
 } from './engine/quality.ts';
 import { createSky } from './engine/sky.ts';
 import { createLighting } from './engine/lighting.ts';
-import { createPost } from './engine/post.js';
+import { createPost } from './engine/post.ts';
 import { createCameraRig } from './engine/cameraRig.js';
 import {
   createFrameBudgetYielder,
@@ -190,21 +190,6 @@ interface MainLightingRuntime {
   getShadowTelemetry(): unknown;
   primeShadowMaps(...args: unknown[]): unknown;
   preservePrimedCascadesForNextFrame(): void;
-}
-
-interface MainPostRuntime {
-  composer?: { renderTarget1?: THREE.WebGLRenderTarget };
-  readonly dynScale: number;
-  readonly perfTrim: unknown;
-  readonly upscaler: unknown;
-  attachLateFxState(state: unknown): void;
-  prepareSoftParticles(): void;
-  render(dt: number): void;
-  resetAdaptiveResolution(): void;
-  resetPerfTrims(): void;
-  setAdaptiveSuspended(suspended: boolean): void;
-  setSize(width: number, height: number): void;
-  warmFirstFrame(yieldBeforePass?: unknown): Promise<Array<{ label: string; ms: number }>>;
 }
 
 interface MainGarageRuntime {
@@ -1304,7 +1289,7 @@ sky.applyFog(scene);
 // High-zoom de-fog (WoT sniper behavior): remember the base density so the
 // render loop can scale it by FOV without mutating the sky's baseline.
 let baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
-const post = legacyPort<MainPostRuntime>(createPost(renderer, scene, camera));
+const post = createPost(renderer, scene, camera);
 const viewport = createViewportRuntime({
   container,
   renderer,

@@ -17,7 +17,7 @@ import { LATE_FX_LAYER } from './layers.js';
 
 // Transparent combat FX render after the opaque/world post passes so their
 // shaders can sample resolved scene depth without a framebuffer feedback loop.
-// Layer 30 is reserved for this late pass by engine/post.js.
+// Layer 30 is reserved for this late pass by engine/post.ts.
 export { LATE_FX_LAYER };
 
 /** Canonical PRNG (ARCHITECTURE §1.4). @param {number} a seed @returns {() => number} */
@@ -95,7 +95,7 @@ float nearFade( vec3 wpos ) {
 }
 `;
 
-// Depth-aware soft-particle intersection. post.js first renders the world,
+// Depth-aware soft-particle intersection. post.ts first renders the world,
 // resolves its DepthTexture, then draws the late-FX layer into a target whose
 // hardware depth attachment is a copy. The shader samples the resolved SOURCE
 // (never its attached destination) for exact terrain/vehicle occlusion and a
@@ -1226,7 +1226,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   let lateFxUntil = -Infinity;
   let frozen = false;
 
-  // post.js owns the copied depth texture and updates these shared uniforms
+  // post.ts owns the copied depth texture and updates these shared uniforms
   // before drawing layer 30. Keeping one uniform object across every puff
   // material avoids per-pool state churn and gives the post pass a tiny,
   // explicit integration seam instead of reaching into materials by name.

@@ -20,7 +20,7 @@ cadence; `lighting.ts` reuses proven static Garage depth maps until explicit
 presentation invalidation, then forces a complete refresh before motion;
 `shadowStability.ts` owns texel snapping and cascade-scaled receiver bias;
 `simplexFast.ts` owns allocation-free, reference-identical terrain noise;
-`post.js` and `sky.ts` build the frame, while `temporalAoPolicy.ts` owns the
+`post.ts` and `sky.ts` build the frame, while `temporalAoPolicy.ts` owns the
 asymmetric stale-dark release used by temporal GTAO; `renderLayers.ts` owns
 presentation/shadow-only routing for authored proxy casters;
 `phaseSceneResidency.ts` detaches mutually exclusive Garage and battlefield

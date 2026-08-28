@@ -22,7 +22,7 @@ sampled with a pose that did not create it.
 `src/engine/temporalAoPolicy.ts` owns the temporal GTAO current-frame weight and
 an asymmetric release invariant. Bright history may soften a transient dark
 sample; dark history may never make a newly exposed current sample darker.
-`post.js` applies that policy inside the existing reprojection shader, with no
+`post.ts` applies that policy inside the existing reprojection shader, with no
 new pass or target.
 
 `src/engine/shadowStability.ts` owns texel snapping and a bounded normal-bias

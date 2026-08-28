@@ -238,7 +238,7 @@ const SHADOW_RADII = [1.6, 2.3, 2.6, 2.8];
 // (Measured after the first r5 pass: at [0.60,0.70,0.92] the road shadow
 // still displayed at ~11% of lit — the display chain (ACES toe + sub-pivot
 // grade contrast) was the real crusher, fixed by the grade's new low-end
-// taper in post.js. The dim itself now only needs to carry the COOL TINT and
+// taper in post.ts. The dim itself now only needs to carry the COOL TINT and
 // a gentle density step; the linear ratio lands ~26% and displays ~35%.)
 const SHADOW_AMBIENT_DIM = [0.80, 0.88, 1.0];
 // Indirect SPECULAR (env reflections) dims harder: a sky probe reflecting at
@@ -281,7 +281,7 @@ const HEMI_GROUND_COLOR = 0x94815f; // r5: +6% ground-bounce (foliage shadow flo
 // instead of just dimmer. Sun 4.2 → 4.5 keeps the key:fill ratio ~3:1+ and
 // lifts the amorphous near-black canopy-shadow masses out of the crushed
 // range (they read as artifacts, not shade, at hemi 0.2).
-// r6: 0.32 → 0.36 — with the punchier grade S-curve (post.js GRADE_CONTRAST
+// r6: 0.32 → 0.36 — with the punchier grade S-curve (post.ts GRADE_CONTRAST
 // 1.34) canopy-shadow interiors were crushing to structureless near-black
 // masses ("blotchy dark patch" read); a small hemisphere lift keeps color and
 // grass detail alive inside shade while the key:fill ratio stays ~2:1 on
@@ -643,7 +643,7 @@ function shadowCullBefore(object: THREE.Object3D, shadowCamera: THREE.Camera): v
   // (shadow-flash forensics 2026-08-08: an earlier suspicion pinned driving
   // flicker on this compaction and inflated the cull box 20% — same-corridor
   // freezeMask/noCull A/Bs then showed the compaction contributes ZERO
-  // measurable flicker (the flash was GTAO boil, see post.js ao-boil r1/r2),
+  // measurable flicker (the flash was GTAO boil, see post.ts ao-boil r1/r2),
   // so the box is exact again. SHADOW_CULL_MARGIN already absorbs sway and
   // round-robin staleness.)
   if (_cullFrusCam !== shadowCamera || _cullFrusStamp !== _cullTick) {
@@ -763,7 +763,7 @@ let shadowChunksPatched = false;
  *    by SHADOW_AMBIENT_DIM inside the sun's cast shadow.
  * Guards compile away on non-CSM materials (no USE_CSM define). Throws on a
  * missed anchor so a three.js upgrade fails loudly, per the bloom/GTAO
- * precedent in post.js.
+ * precedent in post.ts.
  * @returns {void}
  */
 function patchShadowAmbientChunks() {

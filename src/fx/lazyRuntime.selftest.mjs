@@ -4,7 +4,7 @@ const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const battleVisualStreamer = await readFile(
   new URL('../game/battleVisualStreamer.ts', import.meta.url), 'utf8',
 );
-const post = await readFile(new URL('../engine/post.js', import.meta.url), 'utf8');
+const post = await readFile(new URL('../engine/post.ts', import.meta.url), 'utf8');
 const state = await readFile(new URL('../game/state.ts', import.meta.url), 'utf8');
 const particles = await readFile(new URL('./particles.js', import.meta.url), 'utf8');
 const battleWarm = await readFile(new URL('../game/battleWarmRuntime.ts', import.meta.url), 'utf8');
@@ -68,8 +68,8 @@ if (!/scene\.add\(live\.group\)[\s\S]{0,480}post\.attachLateFxState\(live\.group
 if (post.includes("../fx/particles.js") || !post.includes("../fx/layers.js")) {
   throw new Error('the post stack must not pull the particle engine into the garage graph');
 }
-if (!/attachLateFxState\(softState\)[\s\S]{0,100}lateFx\.setSoftState\(softState\)/.test(post)
-  || !/setSoftState\(softState\)[\s\S]{0,260}this\.prepared = false/.test(post)) {
+if (!/attachLateFxState\(softState(?:\s*:\s*[^)]+)?\)[\s\S]{0,140}lateFx\.setSoftState\(/.test(post)
+  || !/setSoftState\(softState(?:\s*:\s*[^)]+)?\)[\s\S]{0,300}this\.prepared = false/.test(post)) {
   throw new Error('late composite must support explicit post-boot FX registration and re-prepare depth state');
 }
 

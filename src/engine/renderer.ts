@@ -2,14 +2,14 @@
  * renderer.ts — WebGLRenderer construction per docs/research/graphics-aaa.md §1.
  *
  * Context AA is intentionally OFF because the EffectComposer never presents
- * the default framebuffer directly. post.js instead gives the actual 3D scene
+ * the default framebuffer directly. post.ts instead gives the actual 3D scene
  * a quality-aware MSAA target, resolves it once, then runs the single-sampled
  * post chain and final display-space SMAA. Tone mapping and sRGB output are
  * configured here but actually applied by OutputPass (r185 behavior).
  *
  * The renderer pixel ratio here sizes only the canvas/default framebuffer;
  * the composer's INTERNAL resolution is capped separately by the quality
- * preset (quality.ts maxPixelRatio) and scaled live by the post.js dynamic
+ * preset (quality.ts maxPixelRatio) and scaled live by the post.ts dynamic
  * resolution governor.
  */
 import * as THREE from 'three';
@@ -126,15 +126,15 @@ export function createRenderer(container: HTMLElement): GameRenderer {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   // 1.05 compensates the deeper key:fill rebalance (lighting.ts/sky.ts r2) so
   // midtones sit where they did while shadow cores drop. r6: 1.05 → 1.08 —
-  // the stronger grade S-curve (post.js GRADE_CONTRAST 1.34) pulled midtone
+  // the stronger grade S-curve (post.ts GRADE_CONTRAST 1.34) pulled midtone
   // foliage below the WoT reference band; a slight exposure lift restores
   // midtones while the contrast + black anchor keep shadow cores dense.
   // r7: 1.08 → 1.16 — pixel-measured lit playfield luma sat at 0.20-0.30
   // display (WoT reference ~0.35): the whole foreground read underexposed
-  // against the hazy far field. Paired with the post.js grade-pivot fix
+  // against the hazy far field. Paired with the post.ts grade-pivot fix
   // (0.5 → 0.33) so the lift lands in the midtones instead of being crushed
   // back down by the old above-pivot-only contrast.
-  // r6: A/B'd 1.20 alongside the deeper grade S-curve (post.js 1.36) — the
+  // r6: A/B'd 1.20 alongside the deeper grade S-curve (post.ts 1.36) — the
   // lift blew the high-albedo maps out (desert sand + winter snowfield went
   // textureless near-white) while buying almost nothing on verdant. Stays
   // 1.16; the grade pivot (0.33) keeps the lit playfield stable under the

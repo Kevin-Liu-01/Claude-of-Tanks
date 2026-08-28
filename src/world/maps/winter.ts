@@ -288,7 +288,7 @@ export default {
     // lighter fog keeps per-row aerial separation legible
     // r8: 0.00088 -> 0.00064. Debug-painting the ring rows proved the wall's
     // baked snow/rock texture is ~70-90% buried under the white wash stack
-    // (scene fog + post.js aerial scatter-in + desat) — no amount of baked
+    // (scene fog + post.ts aerial scatter-in + desat) — no amount of baked
     // contrast survives it. Halving the scene-fog share (0.47 -> 0.27 at
     // 900 m) lets the rebuilt sastrugi/rib/crag structure and the darker
     // alpine recenter finally read; the aerial pass still owns depth grading.

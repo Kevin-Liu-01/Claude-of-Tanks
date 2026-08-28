@@ -195,3 +195,4 @@ runtime documents remain authoritative for behavior.
 - [0183 — Device diagnostics and renderer rescue are strict TypeScript](0183-typed-device-diagnostics.md)
 - [0184 — Cascaded lighting and shadow scheduling are strict TypeScript](0184-typed-cascaded-lighting.md)
 - [0185 — Procedural atmosphere ownership is strict TypeScript](0185-typed-procedural-atmosphere.md)
+- [0186 — The post-processing pipeline is strict TypeScript](0186-typed-post-processing.md)

@@ -107,7 +107,7 @@ const SKY_RADIANCE_SCALE = 0.38;
 // r8 ("horizon haze blows out to clipped white: milky white-out quarter around
 // the sun azimuth, winter sky a flat white disc — haze + bloom stack with no
 // rolloff"): knee 1.2 → 1.0 and range 0.5 → 0.45 put the dome's ASYMPTOTE at
-// 1.45, safely under post.js's 1.55 bloom threshold — atmospheric scattering
+// 1.45, safely under post.ts's 1.55 bloom threshold — atmospheric scattering
 // can no longer feed the bloom pass at all (the "haze band + bloom" white-out
 // mechanism). Falloff 0.125 → 0.06 compresses the wide Mie halo (lum 2-6)
 // much harder — it lands at 1.03-1.12 instead of 1.25-1.35 — while the true
@@ -156,7 +156,7 @@ const SKY_KNEE_FALLOFF = 0.11; // 1/e width of the shoulder in luminance units
 // of frame height"): 0.56 → 0.50 — the band still averaged ~230 display
 // with 18% of texels over 235. 0.50 lands it ~205-215 with the directional
 // warm/cool hue unmistakably legible. Paired with HORIZON_LUM_CAP 0.55 →
-// 0.48 (fog + scatter-in + cloud haze pole inherit that sample) and post.js
+// 0.48 (fog + scatter-in + cloud haze pole inherit that sample) and post.ts
 // AERIAL_HAZE_LUM_CAP 0.50 → 0.44.
 const HAZE_MAX_LUM = 0.50; // linear pre-ACES luminance ceiling in the band
 const HAZE_COMPRESS = 0.18; // slope retained above the ceiling
@@ -175,7 +175,7 @@ const HAZE_TINT_MIX = 0.63;
 // gradient banding" on desert): 0.004 → 0.008 — the steep clear-sky rayleigh
 // ramp needs ~2 linear LSBs of decorrelation to stay under the banding
 // threshold after the grade's contrast re-spread; pairs with the new
-// display-space IGN dither at the end of post.js's grade pass.
+// display-space IGN dither at the end of post.ts's grade pass.
 const SKY_DITHER = 0.008; // linear-space dither amplitude ~2 display LSB
 const SKY_FRAG_ANCHOR = 'gl_FragColor = vec4( texColor, 1.0 );';
 const SKY_DOME_SCALE = 10000; // must stay inside camera.far
@@ -215,13 +215,13 @@ const ENV_INTENSITY_FLOOR = 0.21;
 // Exponential fog replaces the old linear Fog(150, 1200) that whited out the
 // midground by ~300 m. r3: density dropped 0.00088 → 0.00074 — the milky wash
 // was flattening the battlefield shot; the distance cue is now shared with
-// the depth-driven aerial-perspective pass in post.js (uniform desaturation),
+// the depth-driven aerial-perspective pass in post.ts (uniform desaturation),
 // so the fog itself can stay thinner and keep midground color alive.
 const FOG_DENSITY = 0.00074;
 // r5 ("neutral gray fog ramp monochromes everything past 400m — cut density
 // roughly in half"): the engine now interprets a preset's fogDensity as the
 // map's TOTAL atmosphere thickness and splits it between the material-level
-// FogExp2 (this share) and post.js's directional aerial scatter-in, which
+// FogExp2 (this share) and post.ts's directional aerial scatter-in, which
 // owns hue. Maps keep their relative art direction (winter stays the
 // foggiest) while every map's ramp thins enough that saturation survives to
 // ~800 m and horizon ridges keep silhouette detail.
@@ -414,11 +414,11 @@ const DEFAULT_PRESET: Readonly<SkyPreset> = Object.freeze({
   cloudAltM: null,
   cloudHazeK: null,
   cloudUvM: null,
-  // r3 per-map display exposure trim, applied by post.js's grade (uExposure):
+  // r3 per-map display exposure trim, applied by post.ts's grade (uExposure):
   // 1.0 = neutral. Desert should ship ~0.88 (the "sand midtones at RGB 245"
   // blowout is an exposure problem the global grade must not pay for).
   postExposure: 1,
-  // r5 cloud-shadow / light-patchiness depth, applied by post.js's aerial
+  // r5 cloud-shadow / light-patchiness depth, applied by post.ts's aerial
   // pass (uCloudShade): null = AUTO — fair-weather maps get 0.22 (soft
   // world-anchored cloud shadows breaking up the uniform field luminance),
   // OVERCAST presets (winter) drop to 0.10: a diffuse-lit deck casts no
@@ -610,7 +610,7 @@ function sampleHorizonColor(
   // the hand-tuned preset rather than fogging the world to black.
   if (r + g + b < 0.01) return new THREE.Color(FALLBACK_HORIZON_HEX);
   // r8 highlight-rolloff: everything downstream of this sample (FogExp2
-  // color, the aerial scatter-in targets in post.js, the cloud decks' haze
+  // color, the aerial scatter-in targets in post.ts, the cloud decks' haze
   // pole) inherits its luminance — cap it below diffuse-white so no amount
   // of fog/scatter stacking can pull large screen regions to a clipped
   // white-out (the desert/winter far-field wash). Hue is preserved.
@@ -621,7 +621,7 @@ function sampleHorizonColor(
 // Linear-luminance ceiling for the horizon sample (see sampleHorizonColor).
 // 0.55 linear lands at ~215/255 display after ACES + grade — a bright haze
 // that still reads as atmosphere, never as blown white.
-// r3: 0.48 → 0.45 — paired with post.js AERIAL_HAZE_LUM_CAP 0.44 → 0.41 so
+// r3: 0.48 → 0.45 — paired with post.ts AERIAL_HAZE_LUM_CAP 0.44 → 0.41 so
 // the desert mesa band and urban far field keep silhouette value against the
 // haze (the "mesas ~90% swallowed by a pink haze band" read).
 const HORIZON_LUM_CAP = 0.45;
@@ -658,11 +658,11 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   sky.scale.setScalar(SKY_DOME_SCALE);
   configureSkyUniforms(sky, sunDir, preset);
   scene.add(sky);
-  // Publish the live sun direction for post.js's directional aerial scatter
+  // Publish the live sun direction for post.ts's directional aerial scatter
   // (same Vector3 instance — applyPreset mutates it in place, so the post
   // chain always sees the current map's sun without an explicit re-wire).
   scene.userData.sunDirWorld = sunDir;
-  // r3: publish the per-map display exposure trim for post.js's grade.
+  // r3: publish the per-map display exposure trim for post.ts's grade.
   scene.userData.postExposure = preset.postExposure;
 
   // Cloud decks: two horizon-flattened dome shells (low cumulus + high cirrus
@@ -913,7 +913,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       u.uAlt.value = preset.cloudAltM ?? (overcast ? 340 : CLOUD_ALT);
       u.uHazeK.value = preset.cloudHazeK ?? (overcast ? 0.00015 : CLOUD_HAZE_K);
       u.uScale.value = preset.cloudUvM ?? (overcast ? 2400 : CLOUD_UV_METERS);
-      // r5: publish the cloud-shadow depth for post.js's aerial pass (see
+      // r5: publish the cloud-shadow depth for post.ts's aerial pass (see
       // DEFAULT_PRESET.cloudShadowAmp) — overcast maps get patchiness, not
       // crisp cloud shadows.
       scene.userData.cloudShadeAmp = preset.cloudShadowAmp ?? (overcast ? 0.10 : 0.22);
@@ -1040,7 +1040,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         fogColor.lerp(new THREE.Color(lum * 0.92, lum * 0.99, lum * 1.12), 0.6);
       }
       // preset.fogDensity is total atmosphere; the exp2 fog takes only its
-      // extinction share — post.js's aerial pass carries the scatter-in hue
+      // extinction share — post.ts's aerial pass carries the scatter-in hue
       // (see FOG_EXTINCTION_SHARE).
       targetScene.fog = new THREE.FogExp2(fogColor, preset.fogDensity * FOG_EXTINCTION_SHARE);
     },
@@ -1065,7 +1065,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       configureSkyUniforms(sky, sunDir, preset);
       horizonColor.copy(sampleHorizonColor(renderer, sunDir, preset));
       updateCloudDecks(); // tint/opacity/sun-rotation/haze follow the preset
-      scene.userData.postExposure = preset.postExposure; // post.js grade trim
+      scene.userData.postExposure = preset.postExposure; // post.ts grade trim
       rig.bakeEnvironment();
       rig.applyFog(targetScene);
     },

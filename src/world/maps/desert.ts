@@ -342,7 +342,7 @@ export default {
     // sand sits ~0.9-1.1 linear (texture survives ACES) while dune shadow
     // sides keep a full stop of separation.
     sunIntensity: 4.15, sunColorHex: 0xffe9c2, hemiIntensity: 0.20, // lighting_post r4: sun 3.30 -> 4.15, hemi 0.30 -> 0.20 (lee faces ~30% darker)
-    // lighting_post r3 (round 3): per-map display exposure trim (post.js
+    // lighting_post r3 (round 3): per-map display exposure trim (post.ts
     // uExposure). 0.93 (not the 0.88 the LP probe used) because the r3
     // content_breadth sun/fog/albedo retune above already pulls sand
     // midtones down — together they land dune relief in the readable band.

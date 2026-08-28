@@ -20,7 +20,7 @@ export interface TemporalAoSample {
   historyValid?: boolean;
 }
 
-/** Scalar reference for the GLSL temporal-AO resolver in post.js. */
+/** Scalar reference for the GLSL temporal-AO resolver in post.ts. */
 export function resolveTemporalAoSample(sample: TemporalAoSample): number {
   const current = Number.isFinite(sample.current) ? sample.current : 1;
   const low = Number.isFinite(sample.neighborhoodMin)

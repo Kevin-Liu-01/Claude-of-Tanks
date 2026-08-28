@@ -1,5 +1,5 @@
 /**
- * post.js — the full post-processing chain.
+ * post.ts — the full post-processing chain.
  *
  * Chain (extends ARCHITECTURE.md §3.1.4 / graphics-aaa.md §4 with a grade):
  *   SceneAAPass (MSAA render + resolve) → AerialPass (+ specular-AA firefly
@@ -48,7 +48,12 @@ import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
-import { getPreset, onPresetChange, reportSustainedOverload } from './quality.ts';
+import {
+  getPreset,
+  onPresetChange,
+  reportSustainedOverload,
+  type QualityPreset,
+} from './quality.ts';
 import {
   baseDynamicScale,
   dynamicScaleFloor,
@@ -56,8 +61,91 @@ import {
   overloadReliefLever,
   reconstructionMode,
   reconstructionSharpness,
+  type ReconstructionMode,
 } from './renderScalePolicy.ts';
 import { LATE_FX_LAYER } from '../fx/layers.js';
+
+interface ReconstructionTelemetry {
+  mode: ReconstructionMode;
+  input: [number, number];
+  output: [number, number];
+  inputScale: number;
+  sharpness: number;
+}
+
+interface LateFxSoftState {
+  uSceneDepth: THREE.IUniform<THREE.DepthTexture | null>;
+  uSoftViewport: THREE.IUniform<THREE.Vector2>;
+  uCameraNear: THREE.IUniform<number>;
+  uCameraFar: THREE.IUniform<number>;
+  isActive(): boolean;
+}
+
+interface ExtendedGtaoPass extends GTAOPass {
+  _renderPass(
+    renderer: THREE.WebGLRenderer,
+    material: THREE.ShaderMaterial,
+    target: THREE.WebGLRenderTarget | null,
+    clearColor?: THREE.ColorRepresentation,
+    clearAlpha?: number,
+  ): void;
+}
+
+interface ExtendedSmaaPass extends SMAAPass {
+  _materialEdges?: THREE.ShaderMaterial;
+  _materialWeights?: THREE.ShaderMaterial;
+}
+
+interface OutputGradePass extends OutputPass {
+  isOutputGradePass: boolean;
+}
+
+export interface PostWarmTiming {
+  label: string;
+  ms: number;
+}
+
+export interface PostRuntime {
+  composer: EffectComposer;
+  bloom: UnrealBloomPass;
+  gtao: GTAOPass;
+  upscaler: FsrUpscalePass;
+  sceneAA: SceneAAPass;
+  lateFx: LateFxPass;
+  aerial: ShaderPass;
+  readonly msaaSamples: number;
+  readonly dynScale: number;
+  readonly perfTrim: number;
+  warmFirstFrame(yieldBeforePass?: ((label: string) => Promise<void>) | null): Promise<PostWarmTiming[]>;
+  render(dt: number): void;
+  setSize(width: number, height: number): void;
+  prepareSoftParticles(): void;
+  attachLateFxState(state: unknown): void;
+  pinDynScale(value: number | null): void;
+  setQuality(level: 'high' | 'low'): void;
+  resetPerfTrims(): void;
+  setAdaptiveSuspended(suspended: boolean): void;
+  resetAdaptiveResolution(): void;
+  forcePerfTrim(level: number): void;
+}
+
+declare global {
+  interface Window {
+    __AO_EMA_OFF?: boolean;
+  }
+}
+
+function asLateFxSoftState(value: unknown): LateFxSoftState | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<LateFxSoftState>;
+  return candidate.uSceneDepth
+    && candidate.uSoftViewport
+    && candidate.uCameraNear
+    && candidate.uCameraFar
+    && typeof candidate.isActive === 'function'
+    ? candidate as LateFxSoftState
+    : null;
+}
 
 // r5 bloom retune ("muzzle flash is three enormous structureless gaussian
 // bloom blobs"): strength 0.34 → 0.20 and radius 0.4 → 0.28 so bloom is a
@@ -535,6 +623,16 @@ const FSR_RCAS_FRAG = /* glsl */ `
 // invented high-frequency speckle. Only modes with RCAS allocate the full-
 // native intermediate.
 class FsrUpscalePass extends Pass {
+  readonly outputSize: THREE.Vector2;
+  readonly inputSize: THREE.Vector2;
+  mode: ReconstructionMode;
+  inputScale: number;
+  readonly intermediate: THREE.WebGLRenderTarget;
+  readonly easuMaterial: THREE.ShaderMaterial;
+  readonly rcasMaterial: THREE.ShaderMaterial;
+  readonly copyMaterial: THREE.ShaderMaterial;
+  readonly quad: FullScreenQuad;
+
   constructor() {
     super();
     this.needsSwap = false;
@@ -574,12 +672,16 @@ class FsrUpscalePass extends Pass {
     });
     this.quad = new FullScreenQuad(this.easuMaterial);
   }
-  setOutputSize(width, height) {
+  setOutputSize(width: number, height: number): void {
     const w = Math.max(1, Math.round(width)), h = Math.max(1, Math.round(height));
     if (this.outputSize.x === w && this.outputSize.y === h) return;
     this.outputSize.set(w, h);
   }
-  render(renderer, writeBuffer, readBuffer) {
+  render(
+    renderer: THREE.WebGLRenderer,
+    writeBuffer: THREE.WebGLRenderTarget,
+    readBuffer: THREE.WebGLRenderTarget,
+  ): void {
     const inW = readBuffer.width, inH = readBuffer.height;
     const outW = this.outputSize.x, outH = this.outputSize.y;
     const upscale = inW !== outW || inH !== outH;
@@ -628,7 +730,7 @@ class FsrUpscalePass extends Pass {
     if (this.clear) renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
     this.quad.render(renderer);
   }
-  telemetry() {
+  telemetry(): ReconstructionTelemetry {
     return {
       mode: this.mode,
       input: [this.inputSize.x, this.inputSize.y],
@@ -638,7 +740,7 @@ class FsrUpscalePass extends Pass {
         ? +this.rcasMaterial.uniforms.uSharpness.value.toFixed(3) : 0,
     };
   }
-  dispose() {
+  dispose(): void {
     this.intermediate.dispose();
     this.easuMaterial.dispose();
     this.rcasMaterial.dispose();
@@ -1247,7 +1349,7 @@ const GradeShader = {
 // the grade touches it. The latter matters for scope blur/unsharp taps — only
 // transforming the center texel would make scoped frames differ from the old
 // two-pass result.
-function createOutputGradePass() {
+function createOutputGradePass(): OutputGradePass {
   const sampleAnchor = 'texture2D( tDiffuse,';
   let fragmentShader = GradeShader.fragmentShader.split(sampleAnchor).join('sampleDisplay(');
   const parsAnchor = 'uniform sampler2D tDiffuse;';
@@ -1280,11 +1382,11 @@ function createOutputGradePass() {
     }`;
   const patched = fragmentShader.replace(parsAnchor, outputPars);
   if (patched === fragmentShader || !patched.includes('sampleDisplay( vUv )')) {
-    throw new Error('post.js: output-grade shader anchors not found');
+    throw new Error('post.ts: output-grade shader anchors not found');
   }
   fragmentShader = patched;
 
-  const pass = new OutputPass();
+  const pass = new OutputPass() as OutputGradePass;
   Object.assign(pass.uniforms, THREE.UniformsUtils.clone(GradeShader.uniforms));
   pass.material.name = 'OutputGradePass';
   pass.material.uniforms = pass.uniforms;
@@ -1296,24 +1398,19 @@ function createOutputGradePass() {
 
 /** Scale a linear color down so its Rec709 luminance is <= maxLum (hue kept).
  * @param {THREE.Color} c @param {number} maxLum @returns {void} */
-function capLuminance(c, maxLum) {
+function capLuminance(c: THREE.Color, maxLum: number): void {
   const lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
   if (lum > maxLum) c.multiplyScalar(maxLum / lum);
 }
 
-/**
- * @typedef {object} Post
- * @property {EffectComposer} composer
- * @property {(dt: number) => void} render - THE only render call per frame
- * @property {(yieldBeforePass?: (label: string) => Promise<void>) => Promise<Array<{label: string, ms: number}>>} warmFirstFrame
- * @property {(w: number, h: number) => void} setSize
- * @property {UnrealBloomPass} bloom
- * @property {GTAOPass} gtao
- * @property {number} msaaSamples - active scene-only MSAA sample count
- * @property {(level: 'high'|'low') => void} setQuality
- * @property {(suspended: boolean) => void} setAdaptiveSuspended
- * @property {() => void} resetAdaptiveResolution
- */
+function requireDepthTexture(
+  target: THREE.WebGLRenderTarget,
+  owner: string,
+): THREE.DepthTexture {
+  const texture = target.depthTexture;
+  if (!texture) throw new Error(`post.ts: ${owner} requires an attached depth texture`);
+  return texture;
+}
 
 /**
  * Render the world into a dedicated multisampled HDR target, resolve it, then
@@ -1322,7 +1419,15 @@ function capLuminance(c, maxLum) {
  * bloom/grade/SMAA fullscreen draw would pay MSAA bandwidth for no visual gain.
  */
 class SceneAAPass extends RenderPass {
-  constructor(scene, camera, target) {
+  readonly sceneTarget: THREE.WebGLRenderTarget;
+  readonly copyMaterial: THREE.ShaderMaterial;
+  readonly copyQuad: FullScreenQuad;
+
+  constructor(
+    scene: THREE.Scene,
+    camera: THREE.PerspectiveCamera,
+    target: THREE.WebGLRenderTarget,
+  ) {
     super(scene, camera);
     this.sceneTarget = target;
     this.copyMaterial = new THREE.ShaderMaterial({
@@ -1339,11 +1444,11 @@ class SceneAAPass extends RenderPass {
     this.copyQuad = new FullScreenQuad(this.copyMaterial);
   }
 
-  setSize(width, height) {
+  setSize(width: number, height: number): void {
     this.sceneTarget.setSize(width, height);
   }
 
-  setSamples(samples) {
+  setSamples(samples: number): void {
     if (this.sceneTarget.samples === samples) return;
     this.sceneTarget.samples = samples;
     // Sample count is part of the framebuffer allocation. Dispose only the
@@ -1351,7 +1456,11 @@ class SceneAAPass extends RenderPass {
     this.sceneTarget.dispose();
   }
 
-  render(renderer, writeBuffer, readBuffer) {
+  render(
+    renderer: THREE.WebGLRenderer,
+    _writeBuffer: THREE.WebGLRenderTarget,
+    readBuffer: THREE.WebGLRenderTarget,
+  ): void {
     const oldAutoClear = renderer.autoClear;
     const oldLayerMask = this.camera.layers.mask;
     renderer.autoClear = false;
@@ -1384,12 +1493,32 @@ class SceneAAPass extends RenderPass {
  * resolved scene-depth source for soft intersections.
  */
 class LateFxPass extends Pass {
-  constructor(scene, camera, sceneTarget, target, softState) {
+  readonly scene: THREE.Scene;
+  readonly camera: THREE.PerspectiveCamera;
+  readonly sceneTarget: THREE.WebGLRenderTarget;
+  readonly target: THREE.WebGLRenderTarget;
+  readonly sceneDepth: THREE.DepthTexture;
+  readonly targetDepth: THREE.DepthTexture;
+  softState: LateFxSoftState | null;
+  softDepthCopies: number;
+  prepared: boolean;
+  readonly copyMaterial: THREE.ShaderMaterial;
+  readonly copyQuad: FullScreenQuad;
+
+  constructor(
+    scene: THREE.Scene,
+    camera: THREE.PerspectiveCamera,
+    sceneTarget: THREE.WebGLRenderTarget,
+    target: THREE.WebGLRenderTarget,
+    softState: LateFxSoftState | null,
+  ) {
     super();
     this.scene = scene;
     this.camera = camera;
     this.sceneTarget = sceneTarget;
     this.target = target;
+    this.sceneDepth = requireDepthTexture(sceneTarget, 'LateFxPass scene target');
+    this.targetDepth = requireDepthTexture(target, 'LateFxPass composite target');
     this.softState = softState;
     this.needsSwap = false;
     this.softDepthCopies = 0;
@@ -1412,7 +1541,7 @@ class LateFxPass extends Pass {
    * effects.js, so constructor-time scene discovery alone cannot be the
    * ownership seam.
    */
-  setSoftState(softState) {
+  setSoftState(softState: LateFxSoftState | null): void {
     if (this.softState === softState) return;
     this.softState = softState || null;
     this.prepared = false;
@@ -1422,27 +1551,34 @@ class LateFxPass extends Pass {
       this.softState.uCameraFar.value = this.camera.far;
     }
   }
-  setSize(width, height) {
+  setSize(width: number, height: number): void {
     this.target.setSize(width, height);
     if (this.softState) this.softState.uSoftViewport.value.set(width, height);
     this.prepared = false;
   }
-  prepare(renderer) {
+  prepare(renderer: THREE.WebGLRenderer): void {
     if (this.prepared) return;
     renderer.initRenderTarget(this.sceneTarget);
     renderer.initRenderTarget(this.target);
     if (this.softState) {
-      this.softState.uSceneDepth.value = this.sceneTarget.depthTexture;
+      this.softState.uSceneDepth.value = this.sceneDepth;
       this.softState.uSoftViewport.value.set(this.target.width, this.target.height);
       this.softState.uCameraNear.value = this.camera.near;
       this.softState.uCameraFar.value = this.camera.far;
     }
     this.prepared = true;
   }
-  render(renderer, writeBuffer, readBuffer) {
-    const active = !!(this.softState && this.softState.isActive());
-    this.needsSwap = active;
-    if (!active) return;
+  render(
+    renderer: THREE.WebGLRenderer,
+    writeBuffer: THREE.WebGLRenderTarget,
+    readBuffer: THREE.WebGLRenderTarget,
+  ): void {
+    const softState = this.softState;
+    if (!softState || !softState.isActive()) {
+      this.needsSwap = false;
+      return;
+    }
+    this.needsSwap = true;
     this.prepare(renderer);
     const oldAutoClear = renderer.autoClear;
     const oldLayerMask = this.camera.layers.mask;
@@ -1456,11 +1592,11 @@ class LateFxPass extends Pass {
       renderer.clear(true, true, true);
       this.copyMaterial.uniforms.tDiffuse.value = readBuffer.texture;
       this.copyQuad.render(renderer);
-      renderer.copyTextureToTexture(this.sceneTarget.depthTexture, this.target.depthTexture);
+      renderer.copyTextureToTexture(this.sceneDepth, this.targetDepth);
       this.softDepthCopies++;
-      this.softState.uSceneDepth.value = this.sceneTarget.depthTexture;
-      this.softState.uCameraNear.value = this.camera.near;
-      this.softState.uCameraFar.value = this.camera.far;
+      softState.uSceneDepth.value = this.sceneDepth;
+      softState.uCameraNear.value = this.camera.near;
+      softState.uCameraFar.value = this.camera.far;
 
       const oldBackground = this.scene.background;
       this.scene.background = null;
@@ -1491,7 +1627,11 @@ class LateFxPass extends Pass {
  * @param {THREE.PerspectiveCamera} camera - the gameplay camera
  * @returns {Post}
  */
-export function createPost(renderer, scene, camera) {
+export function createPost(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  camera: THREE.PerspectiveCamera,
+): PostRuntime {
   // Quality preset (src/engine/quality.ts): caps the composer's internal
   // pixel ratio (render scale — the final pass upscales to the native canvas)
   // and scales the AO/bloom buffers. At devicePixelRatio 1 the renderer ratio
@@ -1502,7 +1642,7 @@ export function createPost(renderer, scene, camera) {
   const size = renderer.getDrawingBufferSize(new THREE.Vector2());
 
   const maxSamples = renderer.capabilities.maxSamples || 0;
-  const samplesForPreset = (p) => maxSamples >= 2
+  const samplesForPreset = (p: QualityPreset): number => maxSamples >= 2
     ? Math.min(Math.max(0, p.msaaSamples || 0), maxSamples)
     : 0;
   let msaaSamples = samplesForPreset(preset);
@@ -1514,31 +1654,34 @@ export function createPost(renderer, scene, camera) {
     depthBuffer: false,
     stencilBuffer: false,
   });
+  const sceneDepth = new THREE.DepthTexture(size.x, size.y);
   const sceneTarget = new THREE.WebGLRenderTarget(size.x, size.y, {
     type: THREE.HalfFloatType,
-    depthTexture: new THREE.DepthTexture(size.x, size.y),
+    depthTexture: sceneDepth,
     stencilBuffer: false,
     samples: msaaSamples,
   });
   sceneTarget.texture.name = 'SceneAAPass.color';
-  sceneTarget.depthTexture.name = 'SceneAAPass.depth';
+  sceneDepth.name = 'SceneAAPass.depth';
   // Single-sample composite used only while transparent combat FX is alive.
   // It receives the resolved world color and a depth copy; late cards render
   // into it with normal hardware depth testing while sampling the SOURCE
   // scene depth for their soft contact fade.
+  const lateDepth = new THREE.DepthTexture(size.x, size.y);
   const lateTarget = new THREE.WebGLRenderTarget(size.x, size.y, {
     type: THREE.HalfFloatType,
-    depthTexture: new THREE.DepthTexture(size.x, size.y),
+    depthTexture: lateDepth,
     stencilBuffer: false,
   });
   lateTarget.texture.name = 'SceneAAPass.lateColor';
-  lateTarget.depthTexture.name = 'SceneAAPass.lateDepth';
+  lateDepth.name = 'SceneAAPass.lateDepth';
   const composer = new EffectComposer(renderer, target);
-  const sceneDepth = sceneTarget.depthTexture;
-  const softState = scene.getObjectByName('fx')?.userData?.softParticles || null;
+  const softState = asLateFxSoftState(
+    scene.getObjectByName('fx')?.userData?.softParticles,
+  );
   const sceneAA = new SceneAAPass(scene, camera, sceneTarget);
   const lateFx = new LateFxPass(scene, camera, sceneTarget, lateTarget, softState);
-  const publishAAState = () => {
+  const publishAAState = (): void => {
     renderer.domElement.dataset.sceneMsaaSamples = String(msaaSamples);
     renderer.domElement.dataset.postAa = 'smaa-high+fsr1';
   };
@@ -1553,7 +1696,7 @@ export function createPost(renderer, scene, camera) {
   aerial.uniforms.tDepth.value = sceneDepth;
   composer.addPass(aerial);
 
-  const gtao = new GTAOPass(scene, camera, size.x, size.y); // 3. AO multiply
+  const gtao = new GTAOPass(scene, camera, size.x, size.y) as ExtendedGtaoPass; // 3. AO multiply
   gtao.output = GTAOPass.OUTPUT.Default;
   // PERF (draw-call/triangle budget): feed GTAO the scene depth the RenderPass
   // already rasterized (renderTarget2's private DepthTexture) instead of
@@ -1578,7 +1721,7 @@ export function createPost(renderer, scene, camera) {
   // sixteen nearly redundant taps every 8.33 ms; Ultra keeps the full 16-tap
   // inspection profile. This makes contact grounding cheap enough to remain
   // enabled on more 120 Hz frames instead of the governor dropping it whole.
-  const applyAoSampling = (p) => {
+  const applyAoSampling = (p: QualityPreset): void => {
     const samples = p.aoScale >= 0.99 ? 16 : 8;
     gtao.updateGtaoMaterial({ ...GTAO_PARAMS, samples });
     gtao.updatePdMaterial({ ...GTAO_PD_PARAMS, samples });
@@ -1636,7 +1779,7 @@ export function createPost(renderer, scene, camera) {
     const src = gtao.gtaoMaterial.fragmentShader;
     const patched = src.replace(AO_ANCHOR, `${AO_FADE}\n\t\t\t${AO_ANCHOR}`);
     if (patched === src) {
-      throw new Error('post.js: GTAO distance-fade anchor not found in GTAOShader');
+      throw new Error('post.ts: GTAO distance-fade anchor not found in GTAOShader');
     }
     gtao.gtaoMaterial.fragmentShader = patched;
     gtao.gtaoMaterial.needsUpdate = true;
@@ -1684,7 +1827,7 @@ export function createPost(renderer, scene, camera) {
   // two-step Default composition (copy + multiply-blend) fed by the history.
   {
     if (GTAOPass.OUTPUT.Off !== -1 || GTAOPass.OUTPUT.Default !== 0) {
-      throw new Error('post.js: GTAOPass.OUTPUT enum changed — re-verify the ao-boil r3 render wrapper');
+      throw new Error('post.ts: GTAOPass.OUTPUT enum changed — re-verify the ao-boil r3 render wrapper');
     }
     const emaMat = new THREE.ShaderMaterial({
       uniforms: {
@@ -1741,7 +1884,7 @@ export function createPost(renderer, scene, camera) {
     const emaLastCameraWorld = new THREE.Matrix4();
     const emaLastProjection = new THREE.Matrix4();
     let emaPoseValid = false;
-    const cameraMatrixMoved = (current, previous) => {
+    const cameraMatrixMoved = (current: THREE.Matrix4, previous: THREE.Matrix4): boolean => {
       const a = current.elements;
       const b = previous.elements;
       for (let i = 0; i < 16; i++) {
@@ -1835,7 +1978,7 @@ export function createPost(renderer, scene, camera) {
       `gl_FragColor = mix( outputColor, vec4( min( texel.rgb, vec3( ${BLOOM_INPUT_CLAMP.toFixed(2)} ) ), texel.a ), alpha );`,
     );
     if (patched === hp.fragmentShader) {
-      throw new Error('post.js: bloom high-pass clamp anchor not found in LuminosityHighPassShader');
+      throw new Error('post.ts: bloom high-pass clamp anchor not found in LuminosityHighPassShader');
     }
     hp.fragmentShader = patched;
     hp.needsUpdate = true;
@@ -1864,7 +2007,7 @@ export function createPost(renderer, scene, camera) {
   // while removing one full-frame read/write from every battle frame.
   const grade = createOutputGradePass();
   composer.addPass(grade); // 4. ACES + sRGB + display grade/scope treatment
-  const smaa = new SMAAPass();
+  const smaa = new SMAAPass() as ExtendedSmaaPass;
   // Three's stock pass uses its medium preset (0.10 edge threshold / 8 search
   // steps). The HUD-scale gun tubes, wires, fences and vehicle silhouettes
   // routinely land below that threshold after tone mapping. High-preset SMAA
@@ -1996,7 +2139,7 @@ export function createPost(renderer, scene, camera) {
   let dynUpBackoffS = DYN_INTERVAL_S;
   let dynLastUpAt = -Infinity;
   let dynLastDownAt = -Infinity;
-  let dynPin = null; // QA capture pin (see pinDynScale below); null = live
+  let dynPin: number | null = null; // QA capture pin (see pinDynScale below); null = live
   // Battlefield/roster construction intentionally monopolizes frames behind
   // an opaque loading screen. Those deltas are not playable GPU performance
   // and must never demote the quality used after the reveal.
@@ -2046,18 +2189,18 @@ export function createPost(renderer, scene, camera) {
   let trimUpBackoffS = TRIM_UP_BACKOFF_S;
   let trimLastUpAt = -Infinity;
   let trimLastDownAt = -Infinity;
-  let quality = 'high'; // mirrors setQuality — AO recomputes from one place
-  function applyAoEnabled() {
+  let quality: 'high' | 'low' = 'high'; // mirrors setQuality — AO recomputes from one place
+  function applyAoEnabled(): void {
     gtao.enabled = quality !== 'low' && preset.aoScale > 0 && perfTrim < 1;
   }
-  function setPerfTrim(next) {
+  function setPerfTrim(next: number): void {
     const lv = Math.max(0, Math.min(trimMax(), next));
     if (lv === perfTrim) return;
     perfTrim = lv;
     applyAoEnabled();
     renderer.domElement.dataset.perfTrim = String(perfTrim);
   }
-  function applySize(w, h) {
+  function applySize(w: number, h: number): void {
     cssW = w;
     cssH = h;
     const renderScale = internalPixelRatio(renderer.getPixelRatio(), preset, dynScale);
@@ -2076,7 +2219,7 @@ export function createPost(renderer, scene, camera) {
     upscaler.setOutputSize(native.x, native.y);
   }
   /** Advance the governor one frame; resizes the chain when a step fires. */
-  function dynGovern(dt) {
+  function dynGovern(dt: number): void {
     if (adaptiveSuspended) return;
     if (!(dt > 0) || dt > 0.25) return; // hitches/tab-switch: not a trend
     // rAF-starvation fallback frames (main.ts ticks hidden documents at
@@ -2416,8 +2559,8 @@ export function createPost(renderer, scene, camera) {
      * This is explicit instead of a per-frame scene traversal, preserving the
      * garage boot win and the render loop's allocation/work budget.
      */
-    attachLateFxState(softState) {
-      lateFx.setSoftState(softState);
+    attachLateFxState(softState: unknown): void {
+      lateFx.setSoftState(asLateFxSoftState(softState));
     },
 
     bloom,
