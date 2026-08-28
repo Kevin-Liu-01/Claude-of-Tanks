@@ -71,7 +71,7 @@ import {
 } from './vehicles/materials.js';
 import { createBattleHudAccess } from './ui/battleHudAccess.ts';
 import { createGarage } from './ui/garage.js';
-import { getLastBattleRecord, installBattleRecords } from './game/profile.ts';
+import { installBattleRecords } from './game/profile.ts';
 import {
   createGarageStage, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
 } from './ui/garageStage.js';
@@ -140,6 +140,7 @@ import { createFxRuntimeAccess } from './fx/fxRuntimeAccess.ts';
 // paint never waits on this module graph) and the pre-battle roster screen.
 import { createBootScreen } from './ui/bootScreen.ts';
 import { createBattleLoadScreen } from './ui/battleLoad.ts';
+import { createEndOverlayRuntime } from './ui/endOverlayRuntime.ts';
 import { tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
@@ -1208,29 +1209,10 @@ bus.on('ui:battleStart', () => post.setAdaptiveSuspended(true));
 // ---------------------------------------------------------------------------
 // End-of-battle overlay (integration-owned DOM)
 // ---------------------------------------------------------------------------
-const endOverlay = document.createElement('div');
-endOverlay.style.cssText =
-  'position:fixed;inset:0;display:none;z-index:70;align-items:center;justify-content:center;' +
-  'flex-direction:column;gap:22px;background:rgba(4,7,10,0.55);' +
-  "font-family:'ABC Monument Grotesk','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#eef4f9;";
-endOverlay.className = 'cot-end';
-const endTitle = document.createElement('div');
-endTitle.style.cssText = 'font-size:52px;font-weight:800;letter-spacing:0.3em;text-shadow:0 2px 18px rgba(0,0,0,0.8);';
-// Results show real battle performance. There is intentionally no fake wallet:
-// every vehicle is available and the game has no research tree.
-const endRecord = document.createElement('div');
-endRecord.style.cssText =
-  'font-size:15px;font-weight:700;letter-spacing:0.14em;color:#cfd9e2;' +
-  'text-shadow:0 1px 8px rgba(0,0,0,0.8);';
-const endBtn = document.createElement('button');
-endBtn.textContent = 'RETURN TO GARAGE';
-endBtn.style.cssText =
-  'font-size:16px;font-weight:700;letter-spacing:0.2em;padding:14px 44px;cursor:pointer;' +
-  'color:#fff7ea;border:1px solid #ffc169;background:linear-gradient(180deg,#ffa02e,#d95f00);' +
-  "font-family:'ABC Monument Grotesk','Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
-endOverlay.append(endTitle, endRecord, endBtn);
-document.body.appendChild(endOverlay);
-endBtn.addEventListener('click', () => { bus.emit('ui:click', {}); leaveBattleToGarage(); });
+const endOverlay = createEndOverlayRuntime({
+  bus,
+  onReturnToGarage: () => leaveBattleToGarage(),
+});
 
 // battle_hud r1 (owner): the always-visible LEAVE BATTLE button is GONE — a
 // persistent exit control is not WoT battle chrome and it shadowed the
@@ -1238,25 +1220,6 @@ endBtn.addEventListener('click', () => { bus.emit('ui:click', {}); leaveBattleTo
 // the touch HUD's menu button) carries its red 'Leave Battle' row in every
 // battle/spectator/end state (settings.js canLeaveBattle/onLeaveBattle,
 // wired below), and the end-of-battle overlay keeps RETURN TO GARAGE.
-
-function showEndOverlay(result) {
-  endTitle.textContent = result === 'victory' ? 'VICTORY' : result === 'draw' ? 'DRAW' : 'DEFEAT';
-  endTitle.style.color = result === 'victory' ? '#7ee87e' : result === 'draw' ? '#cfd9e2' : '#f05a5a';
-  const record = getLastBattleRecord();
-  endRecord.innerHTML = record
-    ? `<span style="color:#ffd27a">${record.kills} kill${record.kills === 1 ? '' : 's'}</span>` +
-      `<span style="margin-left:14px;color:#cfd9e2">${record.damage.toLocaleString('en-US')} damage</span>`
-    : '';
-  // killcam_shotinfo r2: the shot-info battle report renders its own
-  // full-screen VICTORY/DEFEAT banner + backdrop (z 71) and reserves the
-  // bottom 15vh — hide the duplicate center title/dim and anchor the button
-  // in the reserved band.
-  endTitle.style.display = 'none';               // report banner owns the verdict
-  endOverlay.style.background = 'none';          // report backdrop owns the dim
-  endOverlay.style.justifyContent = 'flex-end';  // button in the reserved band
-  endOverlay.style.paddingBottom = '5vh';
-  endOverlay.style.display = 'flex';
-}
 
 // ---------------------------------------------------------------------------
 // Input — routed through the rebindable action layer (src/game/input.js) and
@@ -1268,7 +1231,7 @@ const battleResultPresentation = createBattleResultPresentationRuntime({
   killcam,
   rig,
   veilHud,
-  showEndOverlay,
+  showEndOverlay: endOverlay.show,
   emitPresented: (result) => bus.emit('battle:presented', { result }),
   exitPointerLock: () => { document.exitPointerLock?.(); },
   recordFlow: (receipt) => { debugFlags.lastEndFlow = receipt; },
@@ -1632,7 +1595,7 @@ const soloBattleStart = createSoloBattleStartAccess({
         setEquipment: (equipment) => damagePanel.setEquipment(equipment),
       },
       hideGarage: () => garage.hide(),
-      hideEndOverlay: () => { endOverlay.style.display = 'none'; },
+      hideEndOverlay: endOverlay.hide,
       resetBattleResult: () => battleResultPresentation.reset(),
       setGarageLighting: (active) => {
         setGarageSpots(active);
@@ -1991,7 +1954,7 @@ const networkBattleActivation = createNetworkBattleActivationRuntime({
     getWorld: currentWorld,
     setCamoBiome,
     hideGarage: () => garage.hide(),
-    hideEndOverlay: () => { endOverlay.style.display = 'none'; },
+    hideEndOverlay: endOverlay.hide,
     resetBattleResult: () => battleResultPresentation.reset(),
     setGarageSpots,
     setGarageSunTrim,
@@ -2077,7 +2040,7 @@ const garageReturn = createGarageReturnRuntime({
       veilHud(false);
       // cancel() can flush a buffered report, so hide battle UI afterward.
       hud?.setMode?.('hidden');
-      endOverlay.style.display = 'none';
+      endOverlay.hide();
     },
     resetBattleTank: () => resetBattleTankForGarage({
       fx: fxRuntimeAccess.current,
@@ -2131,7 +2094,7 @@ const garageReturn = createGarageReturnRuntime({
     setGarageSpots,
     setGarageSunTrim,
     emitGaragePhase: () => bus.emit('phase:change', { phase: 'garage' }),
-    hideEndOverlay: () => { endOverlay.style.display = 'none'; },
+    hideEndOverlay: endOverlay.hide,
     exitPointerLock: () => { if (document.exitPointerLock) document.exitPointerLock(); },
     hideHud: () => hud?.setMode?.('hidden'),
     showGarage: (specId) => garage.show(specId),
@@ -2503,7 +2466,7 @@ window.__SHOTS = {
       setGarageSpots,
       setGarageSunTrim,
       hideGarage: () => garage.hide(),
-      hideEndOverlay: () => { endOverlay.style.display = 'none'; },
+      hideEndOverlay: endOverlay.hide,
       setLastFov: (value) => { lastFov = value; },
       refreshSpotFrame,
       getWorld: currentWorld,

@@ -12,10 +12,10 @@
  * fade-through-black sits at full black: the staggered entrance below plays
  * as the fade lifts.
  *
- * ADOPTED integration DOM (zero main.js edits):
- *  - `.cot-end` — main.js's end overlay. Its verdict/summary lines are
+ * ADOPTED integration DOM:
+ *  - `.cot-end` — endOverlayRuntime.ts's integration overlay. Its verdict/summary lines are
  *    superseded by this screen; the overlay itself is display:none'd on show.
- *  - the overlay's RETURN TO GARAGE button (main.js endBtn) — reparented
+ *  - the overlay's RETURN TO GARAGE button — reparented
  *    into the actions row, restyled via class, its existing click handler
  *    (bus 'ui:click' + enterGarage) kept verbatim.
  *  - BATTLE AGAIN drives the existing garage flow: the adopted button's
@@ -143,9 +143,9 @@ const ES_CSS = `
 .cot-es .es-kill-block{display:flex;flex:1;min-height:0;flex-direction:column;padding:0 12px 10px;}
 .cot-es .es-kill-list{min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(240,160,48,.45) transparent;}
 /* the legacy integration overlay may flash its old button/earnings line in
-   the frames between showEndOverlay() and the report flush — armed on
+   the frames between endOverlayRuntime.show() and the report flush — armed on
    battle:ended, this suppresses it outright (the end screen owns the frame;
-   !important beats the inline display:flex showEndOverlay writes) */
+   !important beats the integration overlay's inline display:flex) */
 body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-ph{font-size:11px;font-weight:800;letter-spacing:.1em;color:#aebbc6;
   text-transform:uppercase;font-family:${FONT_COND};padding:9px 2px 7px;
@@ -301,13 +301,13 @@ export function createEndScreen(bus, host) {
   host.setAttribute('aria-hidden', 'true');
 
   let visible = false;
-  let garageBtn = null;   // adopted main.js endBtn (survives re-renders by ref)
+  let garageBtn = null;   // adopted integration button (survives re-renders by ref)
   let roomContext = null;
   let rematchPanel = null;
   const counters = [];    // live count-up rAF handles
 
   // arm the legacy-overlay suppressor the moment the battle is decided —
-  // showEndOverlay() runs later in the same tick and must never flash the
+    // endOverlayRuntime.show() runs later in the same tick and must never flash the
   // old button/earnings line before the end screen takes the frame
   bus.on('battle:ended', () => document.body.classList.add('cot-es-armed'));
   // any path into a fresh battle retires the screen — including the debug

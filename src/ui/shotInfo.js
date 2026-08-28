@@ -221,7 +221,7 @@ const SI_CSS = `
 .cot-si-stats.show{display:flex;}
 .cot-si-stats *{box-sizing:border-box;margin:0;padding:0;}
 /* While the battle report is up, the integration end-overlay underneath
-   (main.js .cot-end, z-index 70) must not stack a second verdict banner
+   (endOverlayRuntime.ts .cot-end, z-index 70) must not stack a second verdict banner
    mid-screen — the report renders its own. Its RETURN TO GARAGE button is
    kept and pinned as the report footer, directly under the last panel
    (--cot-si-endpad is measured in pinFooter(); the r6 report left the button
@@ -1310,7 +1310,7 @@ export function createShotInfo(bus) {
 
   // --- REPORT GATE: battle-report rendering deferred past the kill-cam ------
   // state.js emits battle:ended in the very sim step the player dies, but
-  // main.js starts the kill-cam replay LATER in the same JS task — rendering
+  // the composition root starts the kill-cam replay LATER in the same task — rendering
   // the report synchronously buried the still-playing slow-mo flight and the
   // whole 7 s x-ray hold under the full-screen DEFEAT panel (z 71 over the
   // replay's z 60; r6 critical). Stat ACCUMULATION stays on battle:ended;

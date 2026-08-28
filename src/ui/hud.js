@@ -1215,7 +1215,7 @@ export function initHud(bus) {
   specBar.querySelector('.gar').addEventListener('click', () => {
     const btn = document.querySelector('.cot-end button')
       || document.querySelector('.cot-es-btn.ghost');
-    if (btn) btn.click(); // existing enterGarage handler (main.js endBtn)
+    if (btn) btn.click(); // existing endOverlayRuntime Garage handler
   });
   function specPopulate(p, first) {
     const ent = (lastTanksRef || []).find((t) => t && t.id === p.id) || null;
