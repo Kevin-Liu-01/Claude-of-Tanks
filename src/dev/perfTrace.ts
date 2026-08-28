@@ -6,6 +6,107 @@
 // not manufacture the GC stalls it is meant to find. Normal production never
 // imports this module and therefore installs no observers/listeners.
 
+interface TraceRenderer {
+  getContext?(): WebGLRenderingContext | WebGL2RenderingContext;
+  info?: {
+    programs?: unknown[];
+    memory?: { geometries?: number; textures?: number };
+    render?: { frame?: number; calls?: number; triangles?: number };
+  };
+  domElement?: HTMLCanvasElement;
+}
+
+interface TraceGame {
+  phase?: string;
+  timeS?: number;
+  preBattleS?: number;
+  result?: unknown;
+  player?: { input?: { throttle?: number; steer?: number; fire?: boolean } };
+}
+
+interface TraceInput {
+  actionDefs?: Array<{ id: string }>;
+  onAction?(id: string, listener: (code: unknown) => void): void;
+}
+
+interface TraceContext {
+  paused?: boolean;
+  killcam?: boolean;
+  shotMode?: boolean;
+  studio?: boolean;
+  renderScale?: number;
+  [key: string]: unknown;
+}
+
+interface TraceRefs {
+  renderer?: TraceRenderer;
+  game?: TraceGame;
+  input?: TraceInput;
+  getContext?: () => TraceContext;
+  getTelemetry?: () => unknown;
+  [key: string]: unknown;
+}
+
+export interface DevTraceOptions {
+  enabled?: boolean;
+  now?: () => number;
+  eventCapacity?: number;
+  frameCapacity?: number;
+  traceMode?: string;
+  renderer?: TraceRenderer;
+}
+
+interface TraceEventRow {
+  seq: number;
+  tMs: number;
+  kind: string;
+  name: string;
+  phase: string;
+  simS: number | null;
+  data: unknown;
+}
+
+interface RingBuffer<T> {
+  push(value: T): void;
+  ordered(): T[];
+  clear(): void;
+  readonly size: number;
+  readonly dropped: number;
+}
+
+interface TraceSnapshotOptions {
+  gpu?: boolean;
+  frames?: boolean;
+  events?: boolean;
+}
+
+interface TraceGpuInfo {
+  vendor: unknown;
+  renderer: unknown;
+  version: unknown;
+  maxTextureSize: unknown;
+}
+
+interface LongTaskAttribution {
+  name?: string;
+  containerType?: string;
+  containerName?: string;
+  containerSrc?: string;
+}
+
+interface LongTaskEntry extends PerformanceEntry {
+  attribution?: LongTaskAttribution[];
+}
+
+declare global {
+  interface Window {
+    __DEV_TRACE?: unknown;
+    __QA_TRACE?: unknown;
+  }
+  interface Navigator { deviceMemory?: number }
+  interface Performance { memory?: { usedJSHeapSize: number } }
+}
+
 const VITE_DEV = !!import.meta.env?.DEV;
 export const DEV_TRACE_ACTIVE = typeof window !== 'undefined' && VITE_DEV;
 
@@ -23,19 +124,27 @@ const FLAGS = {
 
 const defaultNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-function ring(capacity) {
-  const values = new Array(capacity);
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function finiteNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function ring<T>(capacity: number): RingBuffer<T> {
+  const values: Array<T | undefined> = new Array(capacity);
   let next = 0, size = 0, dropped = 0;
   return {
-    push(value) {
+    push(value: T): void {
       if (size === capacity) dropped++; else size++;
       values[next] = value;
       next = (next + 1) % capacity;
     },
-    ordered() {
-      const out = new Array(size);
+    ordered(): T[] {
+      const out: T[] = new Array(size);
       const start = size === capacity ? next : 0;
-      for (let i = 0; i < size; i++) out[i] = values[(start + i) % capacity];
+      for (let i = 0; i < size; i++) out[i] = values[(start + i) % capacity] as T;
       return out;
     },
     clear() { values.fill(undefined); next = size = dropped = 0; },
@@ -45,7 +154,11 @@ function ring(capacity) {
 }
 
 // Bus hot paths reuse payload objects, so snapshot immediately at emit time.
-function cloneSafe(value, depth = 0, seen = new WeakSet()) {
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function cloneSafe(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
   if (value == null || ['string', 'boolean'].includes(typeof value)) return value;
   if (typeof value === 'number') return Number.isFinite(value) ? value : String(value);
   if (typeof value === 'bigint') return `${value}n`;
@@ -55,17 +168,23 @@ function cloneSafe(value, depth = 0, seen = new WeakSet()) {
   if (depth >= 4) return `[${value.constructor?.name || 'Object'}]`;
   seen.add(value);
   if (Array.isArray(value) || ArrayBuffer.isView(value)) {
-    const n = Math.min(value.length ?? 0, 64);
-    const out = Array.from({ length: n }, (_, i) => cloneSafe(value[i], depth + 1, seen));
-    if ((value.length ?? 0) > n) out.push(`[+${value.length - n} items]`);
+    const arrayLike = value as ArrayLike<unknown>;
+    const length = Number(arrayLike.length) || 0;
+    const n = Math.min(length, 64);
+    const out: unknown[] = Array.from(
+      { length: n },
+      (_, i) => cloneSafe(arrayLike[i], depth + 1, seen),
+    );
+    if (length > n) out.push(`[+${length - n} items]`);
     return out;
   }
   if (value instanceof Error) return { name: value.name, message: value.message, stack: value.stack || '' };
-  const out = {};
-  const keys = Object.keys(value);
+  const out: Record<string, unknown> = {};
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record);
   for (const key of keys.slice(0, 40)) {
-    try { out[key] = cloneSafe(value[key], depth + 1, seen); }
-    catch (e) { out[key] = `[unreadable: ${e?.message || e}]`; }
+    try { out[key] = cloneSafe(record[key], depth + 1, seen); }
+    catch (error) { out[key] = `[unreadable: ${errorMessage(error)}]`; }
   }
   if (keys.length > 40) out.__truncatedKeys = keys.length - 40;
   return out;
@@ -74,31 +193,33 @@ function cloneSafe(value, depth = 0, seen = new WeakSet()) {
 // Room snapshots contain full equipment/camouflage/player records. The live
 // 7v7 probe only needs lifecycle evidence, and deep-cloning fourteen complete
 // records inside the event hook can itself become the stall being measured.
-function traceEventPayload(name, data) {
-  if (name !== 'network:roomState' || !data?.state) return data;
+function traceEventPayload(name: string, data: unknown): unknown {
+  if (name !== 'network:roomState' || !isRecord(data) || !isRecord(data.state)) return data;
   const state = data.state;
   const players = Array.isArray(state.players) ? state.players : [];
   return {
-    playerId: data.playerId || '',
-    role: data.role || '',
+    playerId: typeof data.playerId === 'string' ? data.playerId : '',
+    role: typeof data.role === 'string' ? data.role : '',
     state: {
-      roomCode: state.roomCode || '',
-      mode: state.mode || '',
-      phase: state.phase || '',
-      revision: Number(state.revision) || 0,
-      round: Number(state.round) || 0,
+      roomCode: typeof state.roomCode === 'string' ? state.roomCode : '',
+      mode: typeof state.mode === 'string' ? state.mode : '',
+      phase: typeof state.phase === 'string' ? state.phase : '',
+      revision: finiteNumber(state.revision, 0),
+      round: finiteNumber(state.round, 0),
       lastResult: state.lastResult || null,
       playerCount: players.length,
-      readyCount: players.reduce((count, player) => count + (player?.ready ? 1 : 0), 0),
+      readyCount: players.reduce<number>(
+        (count, player) => count + (isRecord(player) && player.ready ? 1 : 0), 0,
+      ),
       connectedCount: players.reduce(
-        (count, player) => count + (player?.connected !== false ? 1 : 0), 0,
+        (count, player) => count + (!isRecord(player) || player.connected !== false ? 1 : 0), 0,
       ),
     },
   };
 }
 
 function inert() {
-  const noop = () => {};
+  const noop = (..._args: unknown[]) => {};
   return {
     enabled: false, active: false, event: noop, action: noop, frame: noop,
     mark: noop, configure: noop, clear: noop, start: noop, stop: noop,
@@ -107,7 +228,7 @@ function inert() {
   };
 }
 
-function gpuInfo(renderer) {
+function gpuInfo(renderer: TraceRenderer | undefined): TraceGpuInfo | null {
   try {
     const gl = renderer?.getContext?.();
     if (!gl) return null;
@@ -121,15 +242,17 @@ function gpuInfo(renderer) {
   } catch (_) { return null; }
 }
 
-const pct = (a, q) => a.length ? a[Math.min(a.length - 1, Math.floor(a.length * q))] : 0;
+const pct = (a: ArrayLike<number>, q: number): number => (
+  a.length ? a[Math.min(a.length - 1, Math.floor(a.length * q))] : 0
+);
 
 /** Injectable core is exported for the node selftest. */
-export function createDevTraceCore(options = {}) {
+export function createDevTraceCore(options: DevTraceOptions = {}) {
   if (!(options.enabled ?? DEV_TRACE_ACTIVE)) return inert();
   const now = options.now || defaultNow;
   const eventCap = options.eventCapacity || 20000;
   const frameCap = options.frameCapacity || 72000; // 20 min at 60 fps
-  const events = ring(eventCap);
+  const events = ring<TraceEventRow>(eventCap);
   const f = {
     t: new Float64Array(frameCap), gap: new Float32Array(frameCap), dt: new Float32Array(frameCap),
     sim: new Float32Array(frameCap), pre: new Float32Array(frameCap), phase: new Uint8Array(frameCap),
@@ -143,11 +266,11 @@ export function createDevTraceCore(options = {}) {
   const traceMode = options.traceMode || (VITE_DEV ? 'development' : 'qa');
   let traceZero = startedPerf;
   const sessionId = `${startedWall.toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
-  const counts = Object.create(null);
-  let refs = options.renderer ? { renderer: options.renderer } : {};
+  const counts: Record<string, number> = Object.create(null);
+  let refs: TraceRefs = options.renderer ? { renderer: options.renderer } : {};
   let active = true, consoleAll = false, inputBound = false;
   let seq = 0, eventNext = 0, lastEventName = '';
-  let gpuCaptured = false, cachedGpu = null;
+  let gpuCaptured = false, cachedGpu: TraceGpuInfo | null = null;
   let frameNext = 0, frameSize = 0, frameDropped = 0, lastFrameAt = 0;
   let maxGap = 0, spikes = 0, freezes = 0, liveSpikes = 0, liveFreezes = 0;
   let longTasks = 0, longTaskMs = 0;
@@ -155,12 +278,13 @@ export function createDevTraceCore(options = {}) {
   let lastRender = -1, lastRenderAt = 0, renderFrozenAt = 0;
 
   const rel = (t = now()) => +(t - traceZero).toFixed(3);
-  function push(kind, name, data, at = now()) {
+  function push(kind: string, name: string, data: unknown, at = now()): TraceEventRow | null {
     if (!active) return null;
     const row = {
       seq: ++seq, tMs: rel(at), kind, name,
       phase: refs.game?.phase || lastPhase,
-      simS: Number.isFinite(refs.game?.timeS) ? +refs.game.timeS.toFixed(4) : null,
+      simS: typeof refs.game?.timeS === 'number' && Number.isFinite(refs.game.timeS)
+        ? +refs.game.timeS.toFixed(4) : null,
       data: cloneSafe(data),
     };
     events.push(row);
@@ -170,19 +294,20 @@ export function createDevTraceCore(options = {}) {
     if (consoleAll) console.info(`[COT trace ${row.tMs}ms] ${kind}:${name}`, row.data);
     return row;
   }
-  function anomaly(name, data, at = now()) {
+  function anomaly(name: string, data: Record<string, unknown>, at = now()): TraceEventRow | null {
     return push('anomaly', name, { ...data, lastEventSeq: eventNext, lastEventName }, at);
   }
-  function context() {
+  function context(): TraceContext {
     try { return refs.getContext?.() || {}; }
-    catch (e) { return { contextError: e?.message || String(e) }; }
+    catch (error) { return { contextError: errorMessage(error) }; }
   }
-  function flagBits(game, ctx) {
+  function flagBits(game: TraceGame | undefined, ctx: TraceContext): number {
     let bits = 0;
     if (typeof document !== 'undefined' && document.hidden) bits |= FLAGS.hidden;
     if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) bits |= FLAGS.unfocused;
     if (ctx.paused) bits |= FLAGS.paused;
-    if (Number.isFinite(game?.preBattleS) && game.preBattleS > 0) bits |= FLAGS.countdown;
+    if (typeof game?.preBattleS === 'number' && Number.isFinite(game.preBattleS)
+      && game.preBattleS > 0) bits |= FLAGS.countdown;
     if (game?.result) bits |= FLAGS.result;
     if (ctx.killcam) bits |= FLAGS.killcam;
     if (ctx.shotMode) bits |= FLAGS.shot;
@@ -196,8 +321,8 @@ export function createDevTraceCore(options = {}) {
     lastFrameAt = at; maxGap = Math.max(maxGap, gap);
     const game = refs.game, info = refs.renderer?.info, ctx = context();
     const phase = ctx.studio ? 'studio' : (game?.phase || 'unknown');
-    const sim = Number.isFinite(game?.timeS) ? game.timeS : 0;
-    const pre = Number.isFinite(game?.preBattleS) ? game.preBattleS : -1;
+    const sim = finiteNumber(game?.timeS, 0);
+    const pre = finiteNumber(game?.preBattleS, -1);
     const bits = flagBits(game, ctx);
     const live = phase === 'battle' && pre <= 0 && !(bits &
       (FLAGS.hidden | FLAGS.unfocused | FLAGS.paused | FLAGS.result | FLAGS.killcam));
@@ -212,7 +337,7 @@ export function createDevTraceCore(options = {}) {
     f.textures[i] = Math.min(info?.memory?.textures || 0, 65535);
     f.heap[i] = typeof performance !== 'undefined' && performance.memory
       ? performance.memory.usedJSHeapSize / 1048576 : -1;
-    f.renderScale[i] = Number.isFinite(ctx.renderScale) ? ctx.renderScale : -1;
+    f.renderScale[i] = finiteNumber(ctx.renderScale, -1);
     f.throttle[i] = Number(inp?.throttle) || 0; f.steer[i] = Number(inp?.steer) || 0; f.fire[i] = inp?.fire ? 1 : 0;
     if (frameSize === frameCap) frameDropped++; else frameSize++;
     frameNext = (frameNext + 1) % frameCap;
@@ -278,28 +403,28 @@ export function createDevTraceCore(options = {}) {
     };
   }
   function environment(includeGpu = true) {
-    const nav = typeof navigator !== 'undefined' ? navigator : {};
+    const nav: Navigator | null = typeof navigator !== 'undefined' ? navigator : null;
     if (includeGpu && !gpuCaptured) {
       cachedGpu = gpuInfo(refs.renderer);
       gpuCaptured = true;
     }
     return {
-      url: typeof location !== 'undefined' ? location.href : '', userAgent: nav.userAgent || '',
-      platform: nav.platform || '', hardwareConcurrency: nav.hardwareConcurrency ?? null,
-      deviceMemoryGB: nav.deviceMemory ?? null,
+      url: typeof location !== 'undefined' ? location.href : '', userAgent: nav?.userAgent || '',
+      platform: nav?.platform || '', hardwareConcurrency: nav?.hardwareConcurrency ?? null,
+      deviceMemoryGB: nav?.deviceMemory ?? null,
       dpr: typeof devicePixelRatio !== 'undefined' ? devicePixelRatio : null,
       viewport: typeof innerWidth !== 'undefined' ? [innerWidth, innerHeight] : null,
       gpu: includeGpu ? cachedGpu : null, mode: import.meta.env?.MODE || 'unknown', traceMode,
     };
   }
-  function snapshot(options = {}) {
+  function snapshot(options: TraceSnapshotOptions = {}) {
     return {
       version: 1, sessionId, startedAt: new Date(startedWall).toISOString(),
       timeOrigin: typeof performance !== 'undefined' ? performance.timeOrigin : null,
       environment: environment(options.gpu !== false),
       telemetry: (() => {
         try { return cloneSafe(refs.getTelemetry?.() || null); }
-        catch (error) { return { error: String(error?.message || error) }; }
+        catch (error) { return { error: errorMessage(error) }; }
       })(),
       stats: stats(), frameSchema: FRAME_SCHEMA,
       frames: options.frames === false ? [] : rows(),
@@ -319,14 +444,17 @@ export function createDevTraceCore(options = {}) {
 
   const api = {
     enabled: true, get active() { return active; },
-    event: (name, data) => push('bus', name, traceEventPayload(name, data)),
-    action: (name, data) => push('action', name, data), frame,
-    mark: (name, data = {}) => push('mark', name, data),
-    configure(next = {}) {
+    event: (name: string, data: unknown = {}) => push('bus', name, traceEventPayload(name, data)),
+    action: (name: string, data: unknown = {}) => push('action', name, data), frame,
+    mark: (name: string, data: unknown = {}) => push('mark', name, data),
+    configure(next: TraceRefs = {}) {
       refs = { ...refs, ...next };
-      if (refs.input && !inputBound) {
+      if (refs.input?.onAction && !inputBound) {
         inputBound = true;
-        for (const def of refs.input.actionDefs || []) refs.input.onAction(def.id, (code) => api.action(def.id, { code }));
+        const input = refs.input;
+        for (const def of input.actionDefs || []) {
+          input.onAction?.(def.id, (code: unknown) => api.action(def.id, { code }));
+        }
       }
       // GPU driver queries can serialize with software rasterizers. Keep them
       // out of startup and sample once, lazily, when a snapshot is exported.
@@ -336,7 +464,7 @@ export function createDevTraceCore(options = {}) {
     clear, start() { active = true; push('trace', 'started', {}); },
     stop() { push('trace', 'stopped', {}); active = false; },
     console(on = true) { consoleAll = !!on; return consoleAll; }, stats, snapshot,
-    exportJson(pretty = false, snapshotOptions = {}) {
+    exportJson(pretty = false, snapshotOptions: TraceSnapshotOptions = {}) {
       return JSON.stringify(snapshot(snapshotOptions), null, pretty ? 2 : 0);
     },
     download(filename = `cot-${traceMode === 'production-qa' ? 'qa' : 'dev'}-trace-${sessionId}.json`) {
@@ -345,7 +473,7 @@ export function createDevTraceCore(options = {}) {
       const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000); return filename;
     },
-    tail(n = 100, kind = null) {
+    tail(n = 100, kind: string | null = null) {
       const a = events.ordered().filter((row) => !kind || row.kind === kind);
       return a.slice(Math.max(0, a.length - Math.max(0, n | 0)));
     },
@@ -357,9 +485,10 @@ export function createDevTraceCore(options = {}) {
         for (const e of list.getEntries()) {
           if (!active) continue;
           longTasks++; longTaskMs += e.duration;
+          const entry = e as LongTaskEntry;
           anomaly('longtask', {
             startTime: +e.startTime.toFixed(3), duration: +e.duration.toFixed(3),
-            attribution: (e.attribution || []).map((a) => ({
+            attribution: (entry.attribution || []).map((a: LongTaskAttribution) => ({
               name: a.name, containerType: a.containerType,
               containerName: a.containerName, containerSrc: a.containerSrc,
             })),
@@ -369,8 +498,9 @@ export function createDevTraceCore(options = {}) {
     } catch (_) { /* unsupported */ }
   }
   if (typeof window !== 'undefined') {
-    const life = (name) => (e) => push('lifecycle', name, {
-      persisted: e?.persisted, hidden: document.hidden, visibilityState: document.visibilityState,
+    const life = (name: string) => (event: Event) => push('lifecycle', name, {
+      persisted: event instanceof PageTransitionEvent ? event.persisted : undefined,
+      hidden: document.hidden, visibilityState: document.visibilityState,
       focused: document.hasFocus(), viewport: [innerWidth, innerHeight],
     });
     for (const name of ['freeze', 'resume', 'pagehide', 'pageshow', 'resize', 'orientationchange']) {
@@ -378,12 +508,17 @@ export function createDevTraceCore(options = {}) {
     }
     document.addEventListener('visibilitychange', life('visibilitychange'), { passive: true });
     document.addEventListener('pointerlockchange', life('pointerlockchange'), { passive: true });
-    window.addEventListener('error', (e) => push('error', 'window:error', {
+    window.addEventListener('error', (e: ErrorEvent) => push('error', 'window:error', {
       message: e.message, filename: e.filename, lineno: e.lineno, colno: e.colno, error: e.error,
     }));
-    window.addEventListener('unhandledrejection', (e) => push('error', 'unhandledrejection', { reason: e.reason }));
+    window.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => (
+      push('error', 'unhandledrejection', { reason: e.reason })
+    ));
     const canvas = refs.renderer?.domElement;
-    canvas?.addEventListener('webglcontextlost', (e) => anomaly('webgl:context-lost', { statusMessage: e.statusMessage || '' }));
+    canvas?.addEventListener('webglcontextlost', (event: Event) => {
+      const message = event instanceof WebGLContextEvent ? event.statusMessage : '';
+      anomaly('webgl:context-lost', { statusMessage: message || '' });
+    });
     canvas?.addEventListener('webglcontextrestored', () => push('lifecycle', 'webglcontextrestored', {}));
     window.__DEV_TRACE = api; // backwards-compatible probe name
     window.__QA_TRACE = api;
@@ -392,6 +527,6 @@ export function createDevTraceCore(options = {}) {
   return api;
 }
 
-export function createDevTrace(options = {}) {
+export function createDevTrace(options: DevTraceOptions = {}) {
   return createDevTraceCore({ ...options, enabled: options.enabled ?? DEV_TRACE_ACTIVE });
 }

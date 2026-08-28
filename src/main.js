@@ -380,7 +380,7 @@ function worldRaycast(o, d, m) { return worldRuntime.raycast(o, d, m); }
 const diagnosticsRequested = import.meta.env.DEV || debugModeRequested() || navigator.webdriver;
 const traceRequested = import.meta.env.DEV || debugModeRequested();
 const devTrace = traceRequested
-  ? (await import('./dev/perfTrace.js')).createDevTrace({
+  ? (await import('./dev/perfTrace.ts')).createDevTrace({
     renderer,
     enabled: true,
     traceMode: import.meta.env.DEV ? 'development' : 'production-qa',

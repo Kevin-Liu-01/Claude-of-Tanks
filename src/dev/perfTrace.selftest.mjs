@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createDevTraceCore } from './perfTrace.js';
+import { createDevTraceCore } from './perfTrace.ts';
 import { buildQaSummary } from '../ui/perfHud.ts';
 import { debugModeRequested } from './debugIntent.ts';
 
