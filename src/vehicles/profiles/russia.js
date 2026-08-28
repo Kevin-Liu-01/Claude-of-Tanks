@@ -2049,6 +2049,55 @@ export function eraRuCheeks(P, p, kind) {
           x - e * bx * (L / 2 + capIn), yc + e * Math.sin(rz) * (L / 2), z - e * bz * (L / 2 + capIn), px5, ry, rz);
       }
       } // end !k5LeafOff (TIP §5.29)
+      // A faceted casting cannot be fitted from the rounded ring proxy above.
+      // Variant-owned surface seats provide one point and outward normal on
+      // each real carrier face. Build a frame whose local +Z is the carrier
+      // normal and whose local +Y is vehicle-up projected onto that face;
+      // row offsets then run along the armor instead of vertically through it.
+      const surfaceSeats = p.k5FlankSurfaceSeats;
+      if (surfaceSeats) {
+        const rows = p.k5FlankSurfaceRowOffsets ?? [0];
+        const tileWidth = p.k5TileWidth ?? 0.34;
+        const tileHeight = p.k5TileHeight ?? 0.30;
+        const tileDepth = p.k5TileDepth ?? 0.11;
+        const embed = p.k5TileEmbed ?? 0.015;
+        const backerDepth = p.k5TileBackerDepth ?? 0.06;
+        const backerOverlap = p.k5TileBackerOverlap ?? 0.015;
+        const normal = new THREE.Vector3();
+        const upTangent = new THREE.Vector3();
+        const acrossTangent = new THREE.Vector3();
+        const point = new THREE.Vector3();
+        const rotation = new THREE.Matrix4();
+        const euler = new THREE.Euler();
+        for (const seat of surfaceSeats) {
+          normal.set(s * seat.normal[0], seat.normal[1], seat.normal[2]).normalize();
+          upTangent.set(0, 1, 0).addScaledVector(normal, -normal.y).normalize();
+          acrossTangent.crossVectors(upTangent, normal).normalize();
+          rotation.makeBasis(acrossTangent, upTangent, normal);
+          euler.setFromRotationMatrix(rotation, 'XYZ');
+          point.set(s * seat.point[0], seat.point[1], seat.point[2]);
+          for (const rowOffset of rows) {
+            const carrierPoint = point.clone().addScaledVector(upTangent, rowOffset);
+            const bodyCenter = carrierPoint.clone().addScaledVector(
+              normal, tileDepth / 2 - embed,
+            );
+            if (p.k5LayeredFlankTiles) {
+              const backerCenter = carrierPoint.clone().addScaledVector(
+                normal, -(backerDepth / 2 + embed - backerOverlap),
+              );
+              P.add('turretDark', box(tileWidth * 0.88, tileHeight * 0.88, backerDepth),
+                backerCenter.x, backerCenter.y, backerCenter.z,
+                euler.x, euler.y, euler.z);
+            }
+            P.add(k5B, box(tileWidth, tileHeight, tileDepth),
+              bodyCenter.x, bodyCenter.y, bodyCenter.z,
+              euler.x, euler.y, euler.z);
+            addCover(bodyCenter.x, bodyCenter.y, bodyCenter.z,
+              tileWidth, tileHeight, tileDepth, euler.x, euler.y, euler.z);
+          }
+        }
+        continue;
+      }
       for (let i = 0; i < 3; i++) {
         const tileAngle = 0.12 + i * 0.17;
         // Some recovered T-90 prints encoded the second flank bank by
@@ -2082,14 +2131,14 @@ export function eraRuCheeks(P, p, kind) {
                 Math.cos(tf) * tileDist, tY, Math.sin(tf) * tileDist + (p.rCz ?? 0),
                 tilePitch, tileYaw, 0);
             }
-            P.add('turretTrack', box(0.34, 0.30, tileDepth),
+            P.add(k5B, box(0.34, 0.30, tileDepth),
               Math.cos(tf) * tileDist, tY, Math.sin(tf) * tileDist + (p.rCz ?? 0),
               tilePitch, tileYaw, 0);
             addCover(Math.cos(tf) * tileDist, tY,
               Math.sin(tf) * tileDist + (p.rCz ?? 0),
               0.34, 0.30, tileDepth, tilePitch, tileYaw, 0);
           } else {
-            put(tf, tY, 0.34, 0.30, 0.07, -0.08, 'turretTrack', tileDist);
+            put(tf, tY, 0.34, 0.30, 0.07, -0.08, k5B, tileDist);
           }
         }
       }

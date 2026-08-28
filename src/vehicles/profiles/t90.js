@@ -1458,28 +1458,68 @@ function buildT90AVladimirLegacy(P) {
   // Narrow source-right shoulder connector; it is buried through the crown
   // and carries the measured x=1.00 frontal step without recreating a slab.
   P.add('turret', box(0.025, 0.26, 0.10), 1.0075, 0.285, -0.2175);
-  // r13b wedge re-fit: ref K-5 side band is 1.529..1.663 (thin, HIGH) over
-  // z_w 0.4..1.0 — k5Y +0.05, slimmer/shorter leaf, pitch relaxed -0.40 ->
-  // -0.26 (the tilt was throwing the inner ends to 1.81)
+  // The rounded ring profile remains valid for the front clamshell leaves,
+  // but Vladimir's flank cassettes bolt to the straight cheek facets authored
+  // above. Each right-side point lies on the actual carrier and is mirrored
+  // by eraRuCheeks. The outward normal defines the cassette face; its second
+  // course advances along the plane's projected-up tangent, so neither course
+  // slices vertically through the casting or overlaps the other.
+  const k5FlankCarrierSeats = Object.freeze([
+    Object.freeze({
+      station: 'rear-return',
+      point: Object.freeze([1.42, 0.26613, 0.40]),
+      normal: Object.freeze([0.47120, 0.88203, 0]),
+    }),
+    Object.freeze({
+      station: 'mid-cheek',
+      point: Object.freeze([1.30, 0.29154, 0.64]),
+      normal: Object.freeze([0.37351, 0.86325, 0.33955]),
+    }),
+    Object.freeze({
+      station: 'front-cheek',
+      point: Object.freeze([1.20, 0.25462, 0.85]),
+      normal: Object.freeze([0.38930, 0.86686, 0.31144]),
+    }),
+  ]);
+  const k5FlankSurfaceRowOffsets = Object.freeze([0, 0.305]);
+  // Every visible module explicitly requests the turret paint channel;
+  // visualEraCluster publishes it as vehicle-scale camouflaged external armor
+  // rather than the former spare-track steel finish.
   const p5 = {
     rings, sz: 0.73, rCz: 0.23,
     eyeKit: true, eyeRound: true, eyeScale: 1.50, eyeX: 0.60, eyeZ: 1.24,
     k5Len: 0.85, k5T: 0.50, k5Y: 0.05 + cheekRiseM,
     k5H: 0.10, k5Pitch: -0.18, k5TileY: 0.07 + cheekRiseM,
+    k5Bucket: 'turret',
     k5MirrorFlankTiles: true,
-    k5FlushFlankTiles: true,
-    k5TileOut: -0.03,
     k5TileDepth: 0.11,
-    k5TilePitch: -1.05,
-    k5TileYaw0: 0.36,
-    k5TileYawStep: 0.12,
-    // Two conformal rows form a real cheek grid. Every visible cassette has
-    // a buried backer on the same pitch/yaw plane, preserving the accepted
-    // front leaf while making the marked side fields visibly continuous.
-    k5FlankRowOffsets: [-0.17, 0],
+    k5TileEmbed: 0.015,
+    k5FlankSurfaceSeats: k5FlankCarrierSeats,
+    k5FlankSurfaceRowOffsets,
     k5LayeredFlankTiles: true,
   };
   eraRuCheeks(P, p5, 'k5');
+  P.turretG.userData.t90aVladimirEraSeatReceipt = Object.freeze({
+    revision: 'faceted-carrier-k5-r1',
+    owner: 'rig_turret',
+    carrier: 'faceted-turret-cheeks',
+    seatMode: 'carrier-point-normal',
+    visibleMaterial: 'cot:armor-paint',
+    semanticBucket: 'turretExternalArmor',
+    sides: 2,
+    columnsPerSide: k5FlankCarrierSeats.length,
+    rows: k5FlankSurfaceRowOffsets.length,
+    cassetteCount: 2 * k5FlankCarrierSeats.length * k5FlankSurfaceRowOffsets.length,
+    cassetteSizeM: Object.freeze([0.34, 0.30, p5.k5TileDepth]),
+    contactEmbedM: p5.k5TileEmbed,
+    rowPitchM: k5FlankSurfaceRowOffsets[1] - k5FlankSurfaceRowOffsets[0],
+    rowGapM: k5FlankSurfaceRowOffsets[1] - k5FlankSurfaceRowOffsets[0] - 0.30,
+    carrierNormalAlignmentDeg: 0,
+    mirrored: true,
+    layeredBackers: true,
+    stations: Object.freeze(k5FlankCarrierSeats.map(({ station }) => station)),
+    carrierSeats: k5FlankCarrierSeats,
+  });
   // Vladimir's OTShU-1-7 pair belongs beside the gun, not in the former roof
   // seam. Keep its optical centre close to the 2A46M axis instead of inheriting
   // the taller cheek course: the cheeks and K-5 rise, while the complete eye
@@ -1517,12 +1557,12 @@ function buildT90AVladimirLegacy(P) {
     cheekRiseM,
     eraRaisedM: cheekRiseM,
     eraFlankBanksMirrored: true,
-    eraFlankTileInsetM: 0.03,
+    eraFlankTileInsetM: p5.k5TileEmbed,
     eraFlankTileDepthM: 0.11,
-    eraFlankTilePitchRad: -1.05,
-    eraFlankRows: 2,
-    eraFlankColumnsPerSide: 3,
-    eraFlankRowOffsetM: 0.17,
+    eraFlankTilePitchRad: null,
+    eraFlankRows: k5FlankSurfaceRowOffsets.length,
+    eraFlankColumnsPerSide: k5FlankCarrierSeats.length,
+    eraFlankRowOffsetM: k5FlankSurfaceRowOffsets[1] - k5FlankSurfaceRowOffsets[0],
     eraFlankLayered: true,
     sideHeads: sideHeadSeats,
     sideHeadsFlush: true,

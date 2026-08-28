@@ -82,20 +82,76 @@ try {
   assert.ok(near(proportion.eraRaisedM, 0.208), 'Kontakt-5 package follows the structural rise');
   assert.equal(proportion.eraFlankBanksMirrored, true,
     'Kontakt-5 flank cassettes occupy both turret cheeks instead of two right-side quadrants');
-  assert.ok(near(proportion.eraFlankTileInsetM, 0.03),
-    'flank cassettes are inset 30 mm through the cheek skin');
+  assert.ok(near(proportion.eraFlankTileInsetM, 0.015),
+    'flank cassette backs penetrate 15 mm through the cheek skin');
   assert.ok(near(proportion.eraFlankTileDepthM, 0.11),
     'flank cassettes carry enough depth to remain buried through the armor plane');
-  assert.ok(near(proportion.eraFlankTilePitchRad, -1.05),
-    'flank cassettes follow the sloped cheek plane');
+  assert.equal(proportion.eraFlankTilePitchRad, null,
+    'flank cassette rotations come from carrier normals, not one generic pitch');
   assert.equal(proportion.eraFlankRows, 2,
     'Vladimir carries two conformal ERA rows on each cheek');
   assert.equal(proportion.eraFlankColumnsPerSide, 3,
     'each cheek ERA row contains three aligned cassettes');
-  assert.ok(near(proportion.eraFlankRowOffsetM, 0.17),
-    'cheek ERA rows use a compact 170-mm vertical cadence');
+  assert.ok(near(proportion.eraFlankRowOffsetM, 0.305),
+    'cheek ERA rows use a non-overlapping 305-mm on-surface cadence');
   assert.equal(proportion.eraFlankLayered, true,
     'every visible ERA cassette includes a buried attachment layer');
+  const eraSeat = turretRig.userData.t90aVladimirEraSeatReceipt;
+  assert.ok(eraSeat, 'Vladimir exposes its faceted Kontakt-5 seating receipt');
+  assert.equal(eraSeat.revision, 'faceted-carrier-k5-r1');
+  assert.equal(eraSeat.owner, 'rig_turret');
+  assert.equal(eraSeat.carrier, 'faceted-turret-cheeks');
+  assert.equal(eraSeat.seatMode, 'carrier-point-normal');
+  assert.equal(eraSeat.visibleMaterial, 'cot:armor-paint',
+    'Kontakt-5 inherits the turret camouflage instead of spare-track gray');
+  assert.equal(eraSeat.semanticBucket, 'turretExternalArmor');
+  assert.equal(eraSeat.cassetteCount, 12,
+    'three columns and two rows remain complete on both cheeks');
+  assert.ok(near(eraSeat.contactEmbedM, 0.015));
+  assert.ok(near(eraSeat.rowPitchM, 0.305));
+  assert.ok(near(eraSeat.rowGapM, 0.005),
+    'adjacent courses retain a 5-mm seam instead of coplanar overlap');
+  assert.equal(eraSeat.carrierNormalAlignmentDeg, 0,
+    'cassette backs share the marked carrier-face normals');
+  assert.deepEqual(eraSeat.stations, ['rear-return', 'mid-cheek', 'front-cheek']);
+  const structuralPositions = turret.geometry.attributes.position;
+  const triangle = new THREE.Triangle();
+  const ta = new THREE.Vector3();
+  const tb = new THREE.Vector3();
+  const tc = new THREE.Vector3();
+  const closest = new THREE.Vector3();
+  const targetPoint = new THREE.Vector3();
+  const carrierNormal = new THREE.Vector3();
+  const triangleNormal = new THREE.Vector3();
+  for (const seat of eraSeat.carrierSeats) {
+    targetPoint.fromArray(seat.point);
+    carrierNormal.fromArray(seat.normal).normalize();
+    let closestDistanceM = Infinity;
+    let normalAlignment = -1;
+    for (let index = 0; index < structuralPositions.count; index += 3) {
+      ta.fromBufferAttribute(structuralPositions, index);
+      tb.fromBufferAttribute(structuralPositions, index + 1);
+      tc.fromBufferAttribute(structuralPositions, index + 2);
+      triangle.set(ta, tb, tc).closestPointToPoint(targetPoint, closest);
+      const distanceM = closest.distanceTo(targetPoint);
+      if (distanceM >= closestDistanceM) continue;
+      closestDistanceM = distanceM;
+      triangle.getNormal(triangleNormal);
+      normalAlignment = triangleNormal.dot(carrierNormal);
+    }
+    assert.ok(closestDistanceM < 0.001,
+      `${seat.station} carrier point lies on the structural turret (${closestDistanceM.toFixed(6)} m)`);
+    assert.ok(normalAlignment > 0.9999,
+      `${seat.station} ERA normal matches its structural carrier (${normalAlignment.toFixed(6)})`);
+  }
+  assert.equal(turretRig.getObjectByName('turretTrack'), undefined,
+    'no Vladimir ERA remains in the spare-track material bucket');
+  const eraMesh = turretRig.getObjectByName('turretExternalArmor');
+  assert.ok(eraMesh?.isMesh, 'faceted Kontakt-5 cassettes remain turret-owned external armor');
+  assert.equal(eraMesh.material, turret.material,
+    'merged Vladimir ERA mesh shares the vehicle armor-paint material');
+  assert.equal(tank.root.userData.eraFinishReceipt?.bodyAndCoverUseVehiclePaint, true,
+    'cassette bodies and covers both retain vehicle-scale camouflage');
   assert.equal(proportion.sideHeadsFlush, true,
     'unequal side blocks are explicitly seated through the turret cheek');
   assert.ok(near(proportion.sideHeadOriginalAbsX, 1.44),
@@ -209,21 +265,30 @@ try {
 
   const flankEra = parts.filter((part) => {
     if (part.bucket !== 'turretExternalArmor' || part.parent !== 'turretG') return false;
+    const width = part.max[0] - part.min[0];
     const height = part.max[1] - part.min[1];
+    const depth = part.max[2] - part.min[2];
     const centerX = (part.min[0] + part.max[0]) * 0.5;
     const centerZ = (part.min[2] + part.max[2]) * 0.5;
-    return height > 0.30 && Math.abs(centerX) > 0.8 && centerZ > 0.30;
+    return width > 0.29 && height > 0.20 && depth > 0.33
+      && Math.abs(centerX) > 0.9 && centerZ > 0.30;
   });
   assert.equal(flankEra.length, 12, 'twelve sloped flank ERA cassettes form the two-row grid');
   assert.equal(flankEra.filter((part) => (part.min[0] + part.max[0]) * 0.5 < 0).length, 6,
     'six ERA cassettes seat on the left cheek');
   assert.equal(flankEra.filter((part) => (part.min[0] + part.max[0]) * 0.5 > 0).length, 6,
     'six ERA cassettes seat on the right cheek');
-  const flankEraRows = flankEra.map((part) => (part.min[1] + part.max[1]) * 0.5);
-  assert.equal(flankEraRows.filter((y) => near(y, 0.108, 1e-5)).length, 6,
-    'lower cheek ERA row is complete and mirrored');
-  assert.equal(flankEraRows.filter((y) => near(y, 0.278, 1e-5)).length, 6,
-    'upper cheek ERA row is complete and mirrored');
+  assert.ok(flankEra.every((part) => part.min[1] >= 0.17),
+    'every flank cassette clears the former below-carrier placement');
+  for (const right of flankEra.filter((part) => (part.min[0] + part.max[0]) * 0.5 > 0)) {
+    const cx = (right.min[0] + right.max[0]) * 0.5;
+    const cy = (right.min[1] + right.max[1]) * 0.5;
+    const cz = (right.min[2] + right.max[2]) * 0.5;
+    assert.ok(flankEra.some((left) => near((left.min[0] + left.max[0]) * 0.5, -cx, 1e-5)
+      && near((left.min[1] + left.max[1]) * 0.5, cy, 1e-5)
+      && near((left.min[2] + left.max[2]) * 0.5, cz, 1e-5)),
+    'each right-cheek cassette has one exact mirrored left-cheek seat');
+  }
 
   const flankEraBackers = parts.filter((part) => {
     if (part.bucket !== 'turretExternalArmor' || part.parent !== 'turretG') return false;
@@ -234,10 +299,10 @@ try {
     const centerY = (part.min[1] + part.max[1]) * 0.5;
     const centerZ = (part.min[2] + part.max[2]) * 0.5;
     return Math.abs(centerX) > 0.9 && centerZ > 0.30
-      && centerY > 0.04 && centerY < 0.24
-      && width > 0.26 && width < 0.30
-      && height > 0.24 && height < 0.31
-      && depth > 0.28 && depth < 0.32;
+      && centerY > 0.20 && centerY < 0.50
+      && width > 0.24 && width < 0.38
+      && height > 0.15 && height < 0.19
+      && depth > 0.29 && depth < 0.38;
   });
   assert.equal(flankEraBackers.length, 12,
     'all twelve flank ERA cassettes have conformal buried backers');
