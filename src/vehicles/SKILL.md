@@ -90,6 +90,9 @@ suspension-count, clearance, or material-role rules.
 Keep shared armor, shell, module, and crew constructors in the pure
 `specHelpers.ts` boundary. It must not import fleet registries, builders,
 Three.js, or browser APIs.
+Keep the Type 10 / Type 10B trunnion, muzzle, throat, and mantlet-fit receipts
+in the pure `profiles/type10GunSeat.ts` boundary; geometry builders consume the
+datums but do not redefine them.
 Do not add regional fleet bundle modules. Browser acquisition maps exact IDs to
 typed family loaders through `fleetManifest.ts` and `fleetFactory.ts`; full
 fleet tools use `tankFactory.ts`.

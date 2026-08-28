@@ -8,7 +8,7 @@ import { KIT, FITTINGS, orientedSlab } from './kit.js';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildType10BBase } from '../modern3.js';
 import { buildType90 } from './misc.js';
-import { TYPE10_MANTLET_FIT } from './type10GunSeat.js';
+import { TYPE10_MANTLET_FIT } from './type10GunSeat.ts';
 
 function mount(P, fitting, x, y, z, rotation = null, owner = 'turret') {
   fitting.position.set(x, y, z);

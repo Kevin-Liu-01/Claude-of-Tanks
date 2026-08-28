@@ -193,7 +193,7 @@ export const MODERN3_SPECS = {
     // pivots — the type90 hit frame must stay byte-invariant, guard law
     // §5.336) and japan.js clones it for type10b. The LIVE rig/sim pivots
     // for type10 + type10b are re-seated post-clone in japan.js. Their gun
-    // pivot comes from profiles/type10GunSeat.js so the mantlet meets the
+    // pivot comes from profiles/type10GunSeat.ts so the mantlet meets the
     // marked turret throat without moving the certified muzzle station.
     // rig_turret itself stays builder-pinned at [0, 1.672, 0.2354] (see
     // P.turretG.position.set in the builder).

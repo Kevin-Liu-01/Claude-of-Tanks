@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createTank } from '../tankFactory.ts';
-import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './type10GunSeat.js';
+import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './type10GunSeat.ts';
 
 const closeTo = (actual, expected, tolerance, label) => {
   assert.ok(Math.abs(actual - expected) <= tolerance,

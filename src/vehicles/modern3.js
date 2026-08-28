@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { KIT } from './tankFactoryCore.js';
 import { FITTINGS } from './profiles/kit.js';
-import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.js';
+import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.ts';
 import './modern3Specs.js';
 
 // ---------------------------------------------------------------------------
