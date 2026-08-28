@@ -59,7 +59,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
     residentLimit,
     anisotropy: 4,
     createVisual: makeVisual,
-    getSpec: (specId) => ({ id: specId, visual: { garageYawDeg: 2 } }),
+    getSpec: (specId) => ({ id: specId }),
     ensureTankBuilder: (specId) => {
       ensured.push(specId);
       return delayedBuilders.get(specId)?.promise || Promise.resolve();
@@ -125,6 +125,11 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   assert.equal(h.runtime.current?.specId, 'alpha');
   assert.equal(h.runtime.isOnStage(), true);
   assert.equal(h.runtime.current?.root.position.y, 5.36);
+  assert.deepEqual(h.runtime.current?.root.rotation.toArray().slice(0, 3), [
+    0,
+    Math.PI / 3,
+    0,
+  ], 'fresh garage visuals use the canonical stage heading');
   assert.equal(h.prebakes[0], 'preview', 'initial hero must preserve preview-quality paint');
   assert.equal(h.visuals.length, 1);
   assert.equal(h.presentationInvalidations, 1,
@@ -161,9 +166,16 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
     specId: 'delta',
     root: new THREE.Object3D(),
   };
+  fielded.root.rotation.set(0.38, -1.74, -0.21, 'ZXY');
   h.setPlayer({ visual: fielded });
   assert.equal(h.runtime.adoptBattlePlayer('delta'), true);
   assert.equal(h.runtime.current, fielded);
+  assert.deepEqual(fielded.root.rotation.toArray(), [
+    0,
+    Math.PI / 3,
+    0,
+    'YXZ',
+  ], 'battle pitch, yaw, and roll must not leak into the garage pose');
   assert.equal(h.presentationInvalidations, 5,
     'LRU reveal and adopted battle hero each invalidate the presentation');
   h.entities.set('delta', {});
@@ -171,6 +183,15 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   assert.equal(h.entities.get('delta').visual, fielded);
   assert.equal(fielded.prepared, true);
   assert.equal(fielded.groundSampler, 'terrain-sampler');
+
+  fielded.root.rotation.set(-0.52, 2.3, 0.17, 'XYZ');
+  h.runtime.poseCurrent();
+  assert.deepEqual(fielded.root.rotation.toArray(), [
+    0,
+    Math.PI / 3,
+    0,
+    'YXZ',
+  ], 'pedestal resync restores the canonical pose after later drift');
 
   h.runtime.dispose();
   assert.equal(h.cancelledWatchdog, 'watchdog');

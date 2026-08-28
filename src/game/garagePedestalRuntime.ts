@@ -8,9 +8,6 @@ import { createGaragePedestalPreloader } from './garagePedestalPreloader.ts';
 type BudgetYield = () => Promise<void> | undefined;
 
 interface GaragePedestalSpec {
-  visual?: {
-    garageYawDeg?: number;
-  };
   [key: string]: unknown;
 }
 
@@ -109,7 +106,6 @@ export interface GaragePedestalRuntime {
 const PARK_OFFSET_Y = -200;
 const PENDING_GRACE_MS = 8000;
 const TRACE_LIMIT = 500;
-const DEG = Math.PI / 180;
 
 /**
  * Own the complete garage-hero lifecycle: async construction, shader
@@ -206,6 +202,11 @@ export function createGaragePedestalRuntime({
     && now() - pendingSince < PENDING_GRACE_MS;
 
   const pose = (visual: GaragePedestalVisual) => {
+    // The pedestal owns the complete showroom pose. Battle visuals can arrive
+    // with arbitrary hull yaw, pitch, and roll, while older adoption code used
+    // a separate 162-degree heading. Reapply one canonical transform here so
+    // fresh, cached, and post-battle vehicles frame identically.
+    visual.root.rotation.set(0, trackAxisYawRad, 0, 'YXZ');
     if (visual.centerOnPresentationPoint) {
       visual.centerOnPresentationPoint(garagePosition.x, garagePosition.z);
     } else {
@@ -311,7 +312,6 @@ export function createGaragePedestalRuntime({
       staticPreview: true,
     });
     visual.spec = getSpec(specId);
-    visual.root.rotation.y = trackAxisYawRad;
     pose(visual);
     if (parked) visual.root.position.y = garagePosition.y + PARK_OFFSET_Y;
     scene.add(visual.root);
@@ -444,9 +444,6 @@ export function createGaragePedestalRuntime({
     if (cached?.root?.parent && cached !== incoming) return false;
     const outgoing = current;
     incoming.spec = getSpec(specId);
-    incoming.root.rotation.y = (
-      162 + (incoming.spec.visual?.garageYawDeg || 0)
-    ) * DEG;
     if (!incoming.root.parent) scene.add(incoming.root);
     current = incoming;
     pose(incoming);
