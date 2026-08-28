@@ -17,7 +17,7 @@ import { resolve } from 'node:path';
 import process from 'node:process';
 import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
-import { createSignalingServer } from '../server/signalingServer.js';
+import { createSignalingServer } from '../server/signalingServer.ts';
 
 function numericArg(name, fallback) {
   const prefix = `--${name}=`;

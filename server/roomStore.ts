@@ -5,20 +5,115 @@
  * identity for invitation presentation, and relays only WebRTC rendezvous
  * messages. Gameplay state never enters this store.
  */
-import { createRoomCode } from './roomCode.js';
+import { createRoomCode } from './roomCode.ts';
 
 const DEFAULT_ROOM_TTL_MS = 24 * 60 * 60 * 1000;
 
-function cleanPlayer(player) {
-  const id = String(player && player.id || '').trim();
-  const name = String(player && player.name || '').trim().replace(/\s+/g, ' ').slice(0, 24);
+export type SignalingConnection = object;
+
+export interface SignalingPlayer {
+  id: string;
+  name: string;
+}
+
+export interface SignalingMessage {
+  type: string;
+  requestId?: string;
+  payload: Record<string, unknown>;
+}
+
+export interface SignalingNotification {
+  connection: SignalingConnection | null;
+  message: SignalingMessage;
+}
+
+export interface SignalingPeerSummary {
+  peerId: string;
+  player: SignalingPlayer;
+  sessionId: string;
+  isHost: boolean;
+}
+
+export interface SignalingJoinResult {
+  roomCode: string;
+  peerId: string;
+  sessionId: string;
+  hostId: string;
+  hostName: string;
+  mode: string;
+  maxPlayers: number;
+  peers: SignalingPeerSummary[];
+}
+
+export interface SignalingJoinResponse {
+  result: SignalingJoinResult;
+  notify: SignalingNotification[];
+}
+
+export interface SignalingRoomStoreOptions {
+  now?: () => number;
+  roomCodeFactory?: () => string;
+  roomTtlMs?: number;
+}
+
+export interface CreateRoomOptions {
+  player?: unknown;
+  sessionId?: unknown;
+  maxPlayers?: number;
+  mode?: unknown;
+}
+
+export interface JoinRoomOptions {
+  roomCode?: unknown;
+  player?: unknown;
+  sessionId?: unknown;
+}
+
+export interface RelaySignalOptions {
+  roomCode?: unknown;
+  toPeerId?: unknown;
+  toSessionId?: unknown;
+  signal?: unknown;
+}
+
+interface SignalingMember {
+  peerId: string;
+  connection: SignalingConnection | null;
+  player: SignalingPlayer;
+  sessionId: string;
+  disconnectedAt?: number;
+}
+
+interface SignalingRoom {
+  roomCode: string;
+  mode: string;
+  maxPlayers: number;
+  hostId: string;
+  createdAt: number;
+  touchedAt: number;
+  peers: Map<string, SignalingMember>;
+}
+
+interface SignalingMembership {
+  roomCode: string;
+  peerId: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function cleanPlayer(player: unknown): SignalingPlayer {
+  const source = isRecord(player) ? player : {};
+  const id = String(source.id || '').trim();
+  const name = String(source.name || '').trim().replace(/\s+/g, ' ').slice(0, 24);
   if (!/^[a-zA-Z0-9_-]{1,48}$/.test(id) || !name) {
     throw Object.assign(new Error('invalid player'), { code: 'invalid_player' });
   }
   return { id, name };
 }
 
-function cleanSessionId(value, playerId) {
+function cleanSessionId(value: unknown, playerId: string): string {
   const id = String(value || '').trim();
   // Cached pre-session clients can overlap a server deploy. Give those older
   // chunks a stable compatibility epoch instead of rejecting the room join;
@@ -30,32 +125,30 @@ function cleanSessionId(value, playerId) {
   return id;
 }
 
-function randomUnit() {
+function randomUnit(): number {
   const word = new Uint32Array(1);
   globalThis.crypto.getRandomValues(word);
   return word[0] / 0x100000000;
 }
 
-function randomPeerId() {
-  return globalThis.crypto.randomUUID().replace(/-/g, '').slice(0, 16);
-}
-
 export class SignalingRoomStore {
+  readonly now: () => number;
+  readonly roomCodeFactory: () => string;
+  readonly roomTtlMs: number;
+  readonly rooms = new Map<string, SignalingRoom>();
+  readonly membership = new Map<SignalingConnection, SignalingMembership>();
+
   constructor({
     now = () => Date.now(),
     roomCodeFactory = () => createRoomCode(randomUnit),
-    peerIdFactory = randomPeerId,
     roomTtlMs = DEFAULT_ROOM_TTL_MS,
-  } = {}) {
+  }: SignalingRoomStoreOptions = {}) {
     this.now = now;
     this.roomCodeFactory = roomCodeFactory;
-    this.peerIdFactory = peerIdFactory;
     this.roomTtlMs = roomTtlMs;
-    this.rooms = new Map();
-    this.membership = new Map();
   }
 
-  #uniqueRoomCode() {
+  #uniqueRoomCode(): string {
     for (let i = 0; i < 16; i++) {
       const code = this.roomCodeFactory();
       if (!this.rooms.has(code)) return code;
@@ -63,35 +156,29 @@ export class SignalingRoomStore {
     throw Object.assign(new Error('room code space is busy'), { code: 'room_code_exhausted' });
   }
 
-  #uniquePeerId(room) {
-    for (let i = 0; i < 16; i++) {
-      const id = String(this.peerIdFactory());
-      if (/^[a-zA-Z0-9_-]{8,48}$/.test(id) && !room.peers.has(id)) return id;
-    }
-    throw Object.assign(new Error('peer id collision'), { code: 'peer_id_exhausted' });
-  }
-
-  create(connection, { player, sessionId, maxPlayers = 14, mode = 'private' } = {}) {
+  create(
+    connection: SignalingConnection,
+    { player, sessionId, maxPlayers = 14, mode = 'private' }: CreateRoomOptions = {},
+  ): SignalingJoinResult {
     if (this.membership.has(connection)) {
       throw Object.assign(new Error('connection already joined'), { code: 'already_joined' });
     }
     if (!Number.isInteger(maxPlayers) || maxPlayers < 2 || maxPlayers > 14) {
       throw Object.assign(new Error('invalid room capacity'), { code: 'invalid_capacity' });
     }
-    const roomCode = this.#uniqueRoomCode();
-    const room = {
-      roomCode,
-      mode: String(mode || 'private').slice(0, 24),
-      maxPlayers,
-      hostId: null,
-      createdAt: this.now(),
-      touchedAt: this.now(),
-      peers: new Map(),
-    };
     const memberPlayer = cleanPlayer(player);
     const memberSessionId = cleanSessionId(sessionId, memberPlayer.id);
     const peerId = memberPlayer.id;
-    room.hostId = peerId;
+    const roomCode = this.#uniqueRoomCode();
+    const room: SignalingRoom = {
+      roomCode,
+      mode: String(mode || 'private').slice(0, 24),
+      maxPlayers,
+      hostId: peerId,
+      createdAt: this.now(),
+      touchedAt: this.now(),
+      peers: new Map<string, SignalingMember>(),
+    };
     room.peers.set(peerId, {
       peerId, connection, player: memberPlayer, sessionId: memberSessionId,
     });
@@ -109,7 +196,10 @@ export class SignalingRoomStore {
     };
   }
 
-  join(connection, { roomCode, player, sessionId } = {}) {
+  join(
+    connection: SignalingConnection,
+    { roomCode, player, sessionId }: JoinRoomOptions = {},
+  ): SignalingJoinResponse {
     if (this.membership.has(connection)) {
       throw Object.assign(new Error('connection already joined'), { code: 'already_joined' });
     }
@@ -123,7 +213,7 @@ export class SignalingRoomStore {
       throw Object.assign(new Error('room is full'), { code: 'room_full' });
     }
     if (previous?.connection) this.membership.delete(previous.connection);
-    const member = {
+    const member: SignalingMember = {
       peerId, connection, player: memberPlayer, sessionId: memberSessionId,
     };
     const peers = [...room.peers.values()].filter((peer) => peer.peerId !== peerId).map((peer) => ({
@@ -161,12 +251,16 @@ export class SignalingRoomStore {
     };
   }
 
-  relay(connection, { roomCode, toPeerId, toSessionId, signal } = {}) {
+  relay(
+    connection: SignalingConnection,
+    { roomCode, toPeerId, toSessionId, signal }: RelaySignalOptions = {},
+  ): SignalingNotification {
+    const requestedRoomCode = String(roomCode || '');
     const membership = this.membership.get(connection);
-    if (!membership || membership.roomCode !== roomCode) {
+    if (!membership || membership.roomCode !== requestedRoomCode) {
       throw Object.assign(new Error('not a room member'), { code: 'not_in_room' });
     }
-    const room = this.rooms.get(roomCode);
+    const room = this.rooms.get(requestedRoomCode);
     const sender = room && room.peers.get(membership.peerId);
     const target = room && room.peers.get(String(toPeerId || ''));
     if (!sender || sender.connection !== connection) {
@@ -184,7 +278,7 @@ export class SignalingRoomStore {
       message: {
         type: 'room_signal',
         payload: {
-          roomCode,
+          roomCode: requestedRoomCode,
           fromPeerId: membership.peerId,
           fromSessionId: sender.sessionId,
           toSessionId: target.sessionId,
@@ -194,7 +288,7 @@ export class SignalingRoomStore {
     };
   }
 
-  leave(connection, reason = 'peer_left') {
+  leave(connection: SignalingConnection, reason = 'peer_left'): SignalingNotification[] {
     const membership = this.membership.get(connection);
     if (!membership) return [];
     this.membership.delete(connection);
@@ -211,7 +305,9 @@ export class SignalingRoomStore {
           reason: 'host_left',
         } },
       }));
-      for (const peer of room.peers.values()) this.membership.delete(peer.connection);
+      for (const peer of room.peers.values()) {
+        if (peer.connection) this.membership.delete(peer.connection);
+      }
       return notifications;
     }
     room.touchedAt = this.now();
@@ -226,7 +322,7 @@ export class SignalingRoomStore {
   }
 
   /** Preserve room membership across an unclean signaling transport loss. */
-  detach(connection) {
+  detach(connection: SignalingConnection): SignalingNotification[] {
     const membership = this.membership.get(connection);
     if (!membership) return [];
     this.membership.delete(connection);
@@ -240,7 +336,7 @@ export class SignalingRoomStore {
   }
 
   /** Keep an actively polling room alive without changing membership. */
-  poll(connection) {
+  poll(connection: SignalingConnection): SignalingNotification[] {
     const membership = this.membership.get(connection);
     const room = membership && this.rooms.get(membership.roomCode);
     if (room && room.peers.get(membership.peerId)?.connection === connection) {
@@ -249,14 +345,14 @@ export class SignalingRoomStore {
     return [];
   }
 
-  sweepExpired() {
+  sweepExpired(): SignalingNotification[] {
     const cutoff = this.now() - this.roomTtlMs;
-    const notifications = [];
+    const notifications: SignalingNotification[] = [];
     for (const room of [...this.rooms.values()]) {
       if (room.touchedAt > cutoff) continue;
       this.rooms.delete(room.roomCode);
       for (const peer of room.peers.values()) {
-        this.membership.delete(peer.connection);
+        if (peer.connection) this.membership.delete(peer.connection);
         notifications.push({
           connection: peer.connection,
           message: { type: 'room_closed', payload: {

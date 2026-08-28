@@ -24,7 +24,7 @@
     "pretest": "node tools/run-selftests.mjs pre",
     "test": "node tools/run-selftests.mjs core",
     "posttest": "node tools/run-selftests.mjs post",
-    "server:signal": "node server/signalingServer.js",
+    "server:signal": "node server/signalingServer.ts",
     "build": "VITE_PUBLIC_BUILD=1 vite build && node tools/strip-nc-assets.mjs",
     "build:private": "vite build",
     "build:public": "VITE_PUBLIC_BUILD=1 vite build && node tools/strip-nc-assets.mjs",

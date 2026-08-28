@@ -1,5 +1,5 @@
-import { createSignalingServer } from '../server/signalingServer.js';
-import { DistributedSignalingRoomStore } from '../server/distributedRoomStore.js';
+import { createSignalingServer } from '../server/signalingServer.ts';
+import { DistributedSignalingRoomStore } from '../server/distributedRoomStore.ts';
 
 const OFFICIAL_ORIGINS = [
   'https://cot.kevinliu.studio',
@@ -19,7 +19,7 @@ const restUrl = process.env.COT_SIGNAL_REDIS_KV_REST_API_URL ||
   process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || '';
 const restToken = process.env.COT_SIGNAL_REDIS_KV_REST_API_TOKEN ||
   process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || '';
-const redisConfigured = redisUrl || restUrl || restToken;
+const redisConfigured = Boolean(redisUrl || restUrl || restToken);
 if (process.env.VERCEL && !redisConfigured) {
   throw new Error('Production signaling requires the distributed Redis room store');
 }

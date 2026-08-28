@@ -7,7 +7,7 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
-import { createSignalingServer } from '../../server/signalingServer.js';
+import { createSignalingServer } from '../../server/signalingServer.ts';
 
 const root = new URL('../..', import.meta.url).pathname;
 const outputPath = resolve(root, 'public/media/multiplayer-r1/dual-perspective.webp');

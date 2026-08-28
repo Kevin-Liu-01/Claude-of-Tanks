@@ -740,14 +740,14 @@ The room controller outlives the match runtime. At result:
 
 ## Signaling and dedicated services
 
-server/signalingServer.js relays membership, Session Description Protocol
+server/signalingServer.ts relays membership, Session Description Protocol
 offers and answers, and Interactive Connectivity Establishment candidates. It
 does not carry gameplay. Correlated mailbox-poll acknowledgements provide the
 browser-visible liveness signal that native WebSocket ping/pong cannot expose;
 the client replaces a half-open signaling socket and resumes the same durable
 room seat after a bounded missed acknowledgement.
 
-Production signaling can use server/distributedRoomStore.js for Redis-backed
+Production signaling can use server/distributedRoomStore.ts for Redis-backed
 membership and publish/subscribe notifications across function instances.
 Redis connectivity is deployment-critical for distributed room lookup and
 must be monitored separately from WebRTC gameplay.

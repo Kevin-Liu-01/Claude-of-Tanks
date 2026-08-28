@@ -6,13 +6,27 @@ const OFFICIAL_ORIGINS = new Set([
 ]);
 const DEFAULT_TTL_SECONDS = 8 * 60 * 60;
 
-function configuredOrigins(env) {
+export interface IceConfigHandlerOptions {
+  env?: NodeJS.ProcessEnv;
+  fetchImpl?: typeof fetch;
+}
+
+export type IceConfigHandler = (
+  request: IncomingMessage,
+  response: ServerResponse,
+) => Promise<void>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function configuredOrigins(env: NodeJS.ProcessEnv): Set<string> {
   const extra = String(env.COT_ALLOWED_ORIGINS || '')
     .split(',').map((value) => value.trim()).filter(Boolean);
   return new Set([...OFFICIAL_ORIGINS, ...extra]);
 }
 
-function send(response, status, body) {
+function send(response: ServerResponse, status: number, body: unknown): void {
   response.statusCode = status;
   response.setHeader('content-type', 'application/json; charset=utf-8');
   response.setHeader('cache-control', 'private, no-store, max-age=0');
@@ -20,11 +34,12 @@ function send(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-function validIceServers(value) {
-  return Array.isArray(value) && value.length > 0 && value.every((server) => {
-    const urls = Array.isArray(server?.urls) ? server.urls : [server?.urls];
+function validIceServers(value: unknown): value is RTCIceServer[] {
+  return Array.isArray(value) && value.length > 0 && value.every((server: unknown) => {
+    if (!isRecord(server)) return false;
+    const urls: unknown[] = Array.isArray(server.urls) ? server.urls : [server.urls];
     return urls.length > 0 && urls.every(
-      (url) => typeof url === 'string' && /^(?:stun|turns?):/i.test(url),
+      (url: unknown) => typeof url === 'string' && /^(?:stun|turns?):/i.test(url),
     );
   });
 }
@@ -32,8 +47,8 @@ function validIceServers(value) {
 export function createIceConfigHandler({
   env = process.env,
   fetchImpl = globalThis.fetch,
-} = {}) {
-  return async function iceConfig(request, response) {
+}: IceConfigHandlerOptions = {}): IceConfigHandler {
+  return async function iceConfig(request: IncomingMessage, response: ServerResponse): Promise<void> {
     if (request.method !== 'GET') {
       response.setHeader('allow', 'GET');
       send(response, 405, { error: 'method_not_allowed' });
@@ -48,7 +63,7 @@ export function createIceConfigHandler({
     const staticJson = String(env.COT_TURN_ICE_SERVERS_JSON || '').trim();
     if (staticJson) {
       try {
-        const iceServers = JSON.parse(staticJson);
+        const iceServers: unknown = JSON.parse(staticJson);
         if (!validIceServers(iceServers)) throw new Error('invalid ICE server list');
         send(response, 200, { iceServers, relayOnly: false });
       } catch (_) {
@@ -84,13 +99,14 @@ export function createIceConfigHandler({
         send(response, 503, { error: 'turn_service_unavailable' });
         return;
       }
-      const body = await upstream.json();
-      if (!validIceServers(body?.iceServers)) {
+      const body: unknown = await upstream.json();
+      const iceServers = isRecord(body) ? body.iceServers : null;
+      if (!validIceServers(iceServers)) {
         send(response, 503, { error: 'turn_service_invalid' });
         return;
       }
       send(response, 200, {
-        iceServers: body.iceServers,
+        iceServers,
         relayOnly: false,
         expiresInSeconds: ttl,
       });
@@ -101,3 +117,4 @@ export function createIceConfigHandler({
 }
 
 export default createIceConfigHandler();
+import type { IncomingMessage, ServerResponse } from 'node:http';

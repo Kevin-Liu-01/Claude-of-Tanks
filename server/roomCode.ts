@@ -1,20 +1,23 @@
 /**
  * Node-compatible room-code generation for serverless signaling.
  *
- * Keep this production closure in JavaScript while `api/signal.js` is a
- * JavaScript Vercel function. Importing a browser-side `.ts` source from that
- * closure works in local Node loaders but is not packaged by Vercel.
+ * This leaf stays Node-only so the Vercel signaling closure never imports the
+ * browser protocol or its rendering-adjacent graph.
  */
 
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_CODE_LENGTH = 6;
 
-function codedError(code, message) {
+export interface CodedError extends Error {
+  code: string;
+}
+
+function codedError(code: string, message: string): CodedError {
   return Object.assign(new Error(message), { code });
 }
 
 /** Generate the same readable six-character alphabet used by room invites. */
-export function createRoomCode(rng) {
+export function createRoomCode(rng: () => unknown): string {
   if (typeof rng !== 'function') throw new TypeError('room code RNG is required');
   let out = '';
   for (let index = 0; index < ROOM_CODE_LENGTH; index++) {

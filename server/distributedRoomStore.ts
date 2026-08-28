@@ -5,10 +5,19 @@
  * WebRTC rendezvous to the function instance holding each connection. Host
  * identity is returned as room metadata; gameplay still travels peer to peer.
  */
-import { randomUUID } from 'node:crypto';
 import { Redis as RestRedis } from '@upstash/redis';
 import IORedis from 'ioredis';
-import { createRoomCode } from './roomCode.js';
+import { createRoomCode } from './roomCode.ts';
+import type {
+  CreateRoomOptions,
+  JoinRoomOptions,
+  RelaySignalOptions,
+  SignalingConnection,
+  SignalingJoinResult,
+  SignalingMessage,
+  SignalingNotification,
+  SignalingPlayer,
+} from './roomStore.ts';
 
 const DEFAULT_ROOM_TTL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_DELIVERY_TTL_MS = 10 * 60 * 1000;
@@ -80,20 +89,108 @@ redis.call('SET', KEYS[1], cjson.encode(room), 'PX', ARGV[3])
 return cjson.encode({ closed = false, peers = kept })
 `;
 
-function codedError(code, message) {
+type RedisCommandClient = Record<string, (...args: unknown[]) => Promise<unknown>>;
+type DeliveryHandler = (connection: SignalingConnection, message: SignalingMessage) => boolean;
+
+interface RedisSubscriber {
+  status: string;
+  connect(): Promise<unknown>;
+  subscribe(channel: string): Promise<unknown>;
+  unsubscribe(channel: string): Promise<unknown>;
+  disconnect(): void;
+  on(event: string, listener: (...args: string[]) => void): this;
+  once(event: string, listener: () => void): this;
+  off(event: string, listener: () => void): this;
+}
+
+interface RedisSubscriberConstructor {
+  new(url: string, options: Record<string, unknown>): RedisSubscriber;
+}
+
+interface RestRedisConstructor {
+  new(options: Record<string, unknown>): RedisCommandClient;
+}
+
+const DefaultRestRedis = RestRedis as unknown as RestRedisConstructor;
+const DefaultSubscriber = IORedis as unknown as RedisSubscriberConstructor;
+
+interface DistributedStoreOptions {
+  redisUrl?: string;
+  restUrl?: string;
+  restToken?: string;
+  namespace?: string;
+  roomTtlMs?: number;
+  deliveryTtlMs?: number;
+  now?: () => number;
+  roomCodeFactory?: () => string;
+  RestRedisImpl?: RestRedisConstructor;
+  SubscriberImpl?: RedisSubscriberConstructor;
+  commandClient?: RedisCommandClient | null;
+}
+
+interface StoredPeer {
+  peerId: string;
+  player: SignalingPlayer;
+  sessionId: string;
+}
+
+interface StoredRoom {
+  roomCode: string;
+  mode: string;
+  maxPlayers: number;
+  hostId: string;
+  createdAt: number;
+  touchedAt: number;
+  peers: StoredPeer[];
+}
+
+interface LocalMembership {
+  roomCode: string;
+  peerId: string;
+}
+
+export interface DistributedNotification {
+  peerId?: string;
+  connection?: SignalingConnection | null;
+  message: SignalingMessage;
+}
+
+export interface DistributedJoinResponse {
+  result: SignalingJoinResult;
+  notify: DistributedNotification[];
+}
+
+export interface DistributedStoreHealth {
+  ok: boolean;
+  command: 'ready' | 'unavailable';
+  subscriber: 'ready' | 'polling_fallback';
+  degraded?: boolean;
+  code?: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function errorCode(value: unknown): string | null {
+  return isRecord(value) && typeof value.code === 'string' ? value.code : null;
+}
+
+function codedError(code: string, message: string): Error & { code: string } {
   return Object.assign(new Error(message), { code });
 }
 
-function cleanPlayer(player) {
-  const id = String(player && player.id || '').trim();
-  const name = String(player && player.name || '').trim().replace(/\s+/g, ' ').slice(0, 24);
+function cleanPlayer(player: unknown): SignalingPlayer {
+  const source = isRecord(player) ? player : {};
+  const id = String(source.id || '').trim();
+  const name = String(source.name || '').trim().replace(/\s+/g, ' ').slice(0, 24);
   if (!/^[a-zA-Z0-9_-]{1,48}$/.test(id) || !name) {
     throw codedError('invalid_player', 'invalid player');
   }
   return { id, name };
 }
 
-function cleanSessionId(value, playerId) {
+function cleanSessionId(value: unknown, playerId: string): string {
   const id = String(value || '').trim();
   if (!id && /^[a-zA-Z0-9_-]{1,48}$/.test(playerId)) return `legacy_${playerId}`;
   if (!/^[a-zA-Z0-9_-]{8,64}$/.test(id)) {
@@ -102,32 +199,62 @@ function cleanSessionId(value, playerId) {
   return id;
 }
 
-function randomUnit() {
+function randomUnit(): number {
   const word = new Uint32Array(1);
   globalThis.crypto.getRandomValues(word);
   return word[0] / 0x100000000;
 }
 
-function randomPeerId() {
-  return randomUUID().replace(/-/g, '').slice(0, 16);
-}
-
-function parseResult(raw) {
-  const value = typeof raw === 'string' ? JSON.parse(raw) : raw;
-  if (!value || typeof value !== 'object') throw codedError('store_invalid', 'invalid room store response');
+function parseResult(raw: unknown): Record<string, unknown> {
+  const value: unknown = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  if (!isRecord(value)) throw codedError('store_invalid', 'invalid room store response');
   return value;
 }
 
-function waitForRedisReady(client, timeoutMs = REDIS_READY_TIMEOUT_MS) {
+function readStoredPeer(value: unknown): StoredPeer {
+  if (!isRecord(value) || !isRecord(value.player)) {
+    throw codedError('store_invalid', 'invalid peer in room store response');
+  }
+  const peerId = String(value.peerId || '');
+  const player = cleanPlayer(value.player);
+  const sessionId = cleanSessionId(value.sessionId, player.id);
+  if (!peerId) throw codedError('store_invalid', 'invalid peer in room store response');
+  return { peerId, player, sessionId };
+}
+
+function readStoredRoom(value: unknown): StoredRoom {
+  if (!isRecord(value) || !Array.isArray(value.peers)) {
+    throw codedError('store_invalid', 'invalid room in store response');
+  }
+  return {
+    roomCode: String(value.roomCode || ''),
+    mode: String(value.mode || 'private'),
+    maxPlayers: Number(value.maxPlayers) || 14,
+    hostId: String(value.hostId || ''),
+    createdAt: Number(value.createdAt) || 0,
+    touchedAt: Number(value.touchedAt) || 0,
+    peers: value.peers.map(readStoredPeer),
+  };
+}
+
+function readSignalingMessage(value: unknown): SignalingMessage | null {
+  if (!isRecord(value) || typeof value.type !== 'string' || !isRecord(value.payload)) return null;
+  return value as unknown as SignalingMessage;
+}
+
+function waitForRedisReady(
+  client: RedisSubscriber,
+  timeoutMs = REDIS_READY_TIMEOUT_MS,
+): Promise<void> {
   if (client.status === 'ready') return Promise.resolve();
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     let settled = false;
     const cleanup = () => {
       clearTimeout(timer);
       client.off('ready', onReady);
       client.off('end', onEnd);
     };
-    const finish = (error = null) => {
+    const finish = (error: unknown = null): void => {
       if (settled) return;
       settled = true;
       cleanup();
@@ -166,6 +293,23 @@ function waitForRedisReady(client, timeoutMs = REDIS_READY_TIMEOUT_MS) {
  * notifications and RTC signals to the instance currently holding each peer.
  */
 export class DistributedSignalingRoomStore {
+  readonly namespace: string;
+  readonly channel: string;
+  readonly roomTtlMs: number;
+  readonly deliveryTtlMs: number;
+  readonly now: () => number;
+  readonly roomCodeFactory: () => string;
+  readonly membership = new Map<SignalingConnection, LocalMembership>();
+  readonly connections = new Map<string, SignalingConnection>();
+  deliveryHandler: DeliveryHandler | null = null;
+  readonly command: RedisCommandClient;
+  readonly subscriber: RedisSubscriber;
+  private _startPromise: Promise<void> | null = null;
+  private _subscribed = false;
+  private _closed = false;
+  private readonly _drains = new Map<string, Promise<SignalingMessage[]>>();
+  private _lastErrorLogAt = 0;
+
   constructor({
     redisUrl,
     restUrl,
@@ -175,11 +319,10 @@ export class DistributedSignalingRoomStore {
     deliveryTtlMs = DEFAULT_DELIVERY_TTL_MS,
     now = () => Date.now(),
     roomCodeFactory = () => createRoomCode(randomUnit),
-    peerIdFactory = randomPeerId,
-    RestRedisImpl = RestRedis,
-    SubscriberImpl = IORedis,
+    RestRedisImpl = DefaultRestRedis,
+    SubscriberImpl = DefaultSubscriber,
     commandClient = null,
-  } = {}) {
+  }: DistributedStoreOptions = {}) {
     if (!redisUrl) throw new TypeError('distributed signaling requires redisUrl');
     if (!commandClient && (!restUrl || !restToken)) {
       throw new TypeError('distributed signaling requires Upstash REST credentials');
@@ -190,10 +333,6 @@ export class DistributedSignalingRoomStore {
     this.deliveryTtlMs = deliveryTtlMs;
     this.now = now;
     this.roomCodeFactory = roomCodeFactory;
-    this.peerIdFactory = peerIdFactory;
-    this.membership = new Map();
-    this.connections = new Map();
-    this.deliveryHandler = null;
     // Room CRUD is stateless HTTP. Only pub/sub retains a TCP connection,
     // avoiding one command socket plus one subscriber socket per Fluid
     // function instance.
@@ -204,7 +343,7 @@ export class DistributedSignalingRoomStore {
       readYourWrites: true,
       retry: {
         retries: 2,
-        backoff: (attempt) => Math.min(800, 100 * (2 ** attempt)),
+        backoff: (attempt: number) => Math.min(800, 100 * (2 ** attempt)),
       },
       signal: () => AbortSignal.timeout(REDIS_READY_TIMEOUT_MS),
     });
@@ -214,14 +353,9 @@ export class DistributedSignalingRoomStore {
       connectTimeout: 4_000,
       enableReadyCheck: true,
       keepAlive: 10_000,
-      retryStrategy: (attempt) => Math.min(2_000, 100 * (2 ** Math.min(attempt - 1, 5))),
+      retryStrategy: (attempt: number) => Math.min(2_000, 100 * (2 ** Math.min(attempt - 1, 5))),
     });
-    this._startPromise = null;
-    this._subscribed = false;
-    this._closed = false;
-    this._drains = new Map();
-    this._lastErrorLogAt = 0;
-    const noteError = (role, error) => {
+    const noteError = (role: string, error: unknown): void => {
       const now = Date.now();
       if (now - this._lastErrorLogAt < 5_000) return;
       this._lastErrorLogAt = now;
@@ -229,11 +363,11 @@ export class DistributedSignalingRoomStore {
     };
     this.subscriber.on('error', (error) => noteError('subscriber', error));
     this.subscriber.on('end', () => { this._subscribed = false; });
-    this.subscriber.on('message', (channel, raw) => {
+    this.subscriber.on('message', (channel: string, raw: string) => {
       if (channel !== this.channel) return;
       try {
-        const delivery = JSON.parse(raw);
-        const peerId = String(delivery.peerId || '');
+        const delivery: unknown = JSON.parse(raw);
+        const peerId = String(isRecord(delivery) ? delivery.peerId || '' : '');
         if (peerId && this.connections.has(peerId)) {
           this.#flushMailbox(peerId).catch((error) => {
             console.error('[signal] Failed to drain Redis delivery mailbox', error);
@@ -245,19 +379,19 @@ export class DistributedSignalingRoomStore {
     });
   }
 
-  roomKey(roomCode) {
+  roomKey(roomCode: unknown): string {
     return `${this.namespace}:room:${roomCode}`;
   }
 
-  mailboxKey(peerId) {
+  mailboxKey(peerId: unknown): string {
     return `${this.namespace}:mailbox:${peerId}`;
   }
 
-  setDeliveryHandler(handler) {
+  setDeliveryHandler(handler: DeliveryHandler): void {
     this.deliveryHandler = handler;
   }
 
-  start(timeoutMs = REDIS_READY_TIMEOUT_MS) {
+  start(timeoutMs = REDIS_READY_TIMEOUT_MS): Promise<void> {
     if (this._closed) return Promise.reject(codedError('store_closed', 'signaling room store is closed'));
     if (this.subscriber.status === 'ready' && this._subscribed) {
       return Promise.resolve();
@@ -279,7 +413,7 @@ export class DistributedSignalingRoomStore {
     return this._startPromise;
   }
 
-  #warmSubscriber() {
+  #warmSubscriber(): void {
     // Pub/sub only shortens mailbox latency. Room state and every delivery are
     // durable REST commands, so a blocked TCP subscription must never block a
     // first-time create/join/offer. Polling drains the same mailbox until the
@@ -288,7 +422,7 @@ export class DistributedSignalingRoomStore {
   }
 
   /** REST is required; pub/sub may degrade to the durable polling mailbox. */
-  async health(timeoutMs = REDIS_READY_TIMEOUT_MS) {
+  async health(timeoutMs = REDIS_READY_TIMEOUT_MS): Promise<DistributedStoreHealth> {
     const [subscription, command] = await Promise.allSettled([
       this.start(timeoutMs),
       this.command.ping(),
@@ -304,17 +438,19 @@ export class DistributedSignalingRoomStore {
       command: commandReady ? 'ready' : 'unavailable',
       subscriber: subscriberReady ? 'ready' : 'polling_fallback',
       ...(!commandReady ? {
-        code: typeof error?.code === 'string' ? error.code : 'redis_unavailable',
+        code: errorCode(error) || 'redis_unavailable',
       } : !subscriberReady ? {
         degraded: true,
-        code: typeof error?.code === 'string' ? error.code : 'redis_subscriber_unavailable',
+        code: errorCode(error) || 'redis_subscriber_unavailable',
       } : {}),
     };
   }
 
-  async #runCommand(method, ...args) {
+  async #runCommand(method: string, ...args: unknown[]): Promise<unknown> {
     try {
-      return await this.command[method](...args);
+      const command = this.command[method];
+      if (typeof command !== 'function') throw new Error(`unsupported Redis command: ${method}`);
+      return await command.apply(this.command, args);
     } catch (cause) {
       throw Object.assign(new Error('signaling room store is unavailable'), {
         code: 'signaling_store_unavailable',
@@ -323,7 +459,7 @@ export class DistributedSignalingRoomStore {
     }
   }
 
-  async #drainMailbox(peerId) {
+  async #drainMailbox(peerId: unknown): Promise<SignalingMessage[]> {
     const id = String(peerId || '');
     if (!id) return [];
     // Chain drains instead of sharing one result: a pub/sub wake and a client
@@ -334,11 +470,12 @@ export class DistributedSignalingRoomStore {
       const raw = await this.#runCommand('eval', DRAIN_DELIVERY_SCRIPT,
         [this.mailboxKey(id)], [MAX_DRAIN_MESSAGES]);
       if (!Array.isArray(raw)) return [];
-      const messages = [];
+      const messages: SignalingMessage[] = [];
       for (const item of raw) {
         try {
-          const message = typeof item === 'string' ? JSON.parse(item) : item;
-          if (message && typeof message.type === 'string') messages.push(message);
+          const parsed: unknown = typeof item === 'string' ? JSON.parse(item) : item;
+          const message = readSignalingMessage(parsed);
+          if (message) messages.push(message);
         } catch (_) { /* discard malformed mailbox entries */ }
       }
       return messages;
@@ -351,7 +488,7 @@ export class DistributedSignalingRoomStore {
     }
   }
 
-  async #flushMailbox(peerId) {
+  async #flushMailbox(peerId: unknown): Promise<number> {
     const id = String(peerId || '');
     const connection = this.connections.get(id);
     if (!connection || !this.deliveryHandler) return 0;
@@ -364,14 +501,17 @@ export class DistributedSignalingRoomStore {
     return delivered;
   }
 
-  #remember(connection, roomCode, peerId) {
+  #remember(connection: SignalingConnection, roomCode: string, peerId: string): void {
     const previous = this.connections.get(peerId);
     if (previous && previous !== connection) this.membership.delete(previous);
     this.membership.set(connection, { roomCode, peerId });
     this.connections.set(peerId, connection);
   }
 
-  async create(connection, { player, sessionId, maxPlayers = 14, mode = 'private' } = {}) {
+  async create(
+    connection: SignalingConnection,
+    { player, sessionId, maxPlayers = 14, mode = 'private' }: CreateRoomOptions = {},
+  ): Promise<SignalingJoinResult> {
     this.#warmSubscriber();
     if (this.membership.has(connection)) throw codedError('already_joined', 'connection already joined');
     if (!Number.isInteger(maxPlayers) || maxPlayers < 2 || maxPlayers > 14) {
@@ -383,7 +523,7 @@ export class DistributedSignalingRoomStore {
       const roomCode = this.roomCodeFactory();
       const peerId = memberPlayer.id;
       const now = this.now();
-      const room = {
+      const room: StoredRoom = {
         roomCode,
         mode: String(mode || 'private').slice(0, 24),
         maxPlayers,
@@ -411,7 +551,10 @@ export class DistributedSignalingRoomStore {
     throw codedError('room_code_exhausted', 'room code space is busy');
   }
 
-  async join(connection, { roomCode, player, sessionId } = {}) {
+  async join(
+    connection: SignalingConnection,
+    { roomCode, player, sessionId }: JoinRoomOptions = {},
+  ): Promise<DistributedJoinResponse> {
     this.#warmSubscriber();
     if (this.membership.has(connection)) throw codedError('already_joined', 'connection already joined');
     const code = String(roomCode || '');
@@ -424,10 +567,10 @@ export class DistributedSignalingRoomStore {
       [this.roomKey(code)],
       [JSON.stringify(member), this.now(), this.roomTtlMs],
     ));
-    if (result.error === 'room_not_found') throw codedError(result.error, 'room not found');
-    if (result.error === 'room_full') throw codedError(result.error, 'room is full');
-    if (result.error) throw codedError(result.error, 'could not join room');
-    const room = result.room;
+    if (result.error === 'room_not_found') throw codedError('room_not_found', 'room not found');
+    if (result.error === 'room_full') throw codedError('room_full', 'room is full');
+    if (result.error) throw codedError(String(result.error), 'could not join room');
+    const room = readStoredRoom(result.room);
     const existing = room.peers.filter((peer) => peer.peerId !== peerId);
     const hostName = room.peers.find((peer) => peer.peerId === room.hostId)?.player?.name || '';
     this.#remember(connection, code, peerId);
@@ -459,15 +602,19 @@ export class DistributedSignalingRoomStore {
     };
   }
 
-  async relay(connection, { roomCode, toPeerId, toSessionId, signal } = {}) {
+  async relay(
+    connection: SignalingConnection,
+    { roomCode, toPeerId, toSessionId, signal }: RelaySignalOptions = {},
+  ): Promise<DistributedNotification> {
     this.#warmSubscriber();
+    const code = String(roomCode || '');
     const membership = this.membership.get(connection);
-    if (!membership || membership.roomCode !== roomCode) {
+    if (!membership || membership.roomCode !== code) {
       throw codedError('not_in_room', 'not a room member');
     }
-    const raw = await this.#runCommand('get', this.roomKey(roomCode));
+    const raw = await this.#runCommand('get', this.roomKey(code));
     if (!raw) throw codedError('room_not_found', 'room not found');
-    const room = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const room = readStoredRoom(typeof raw === 'string' ? JSON.parse(raw) as unknown : raw);
     const sender = room.peers.find((peer) => peer.peerId === membership.peerId);
     if (!sender) {
       throw codedError('not_in_room', 'not a room member');
@@ -480,13 +627,13 @@ export class DistributedSignalingRoomStore {
     if (toSessionId && targetMember.sessionId !== toSessionId) {
       throw codedError('stale_target_session', 'target page session was replaced');
     }
-    await this.#runCommand('pexpire', this.roomKey(roomCode), this.roomTtlMs);
+    await this.#runCommand('pexpire', this.roomKey(code), this.roomTtlMs);
     return {
       peerId: target,
       message: {
         type: 'room_signal',
         payload: {
-          roomCode,
+          roomCode: code,
           fromPeerId: membership.peerId,
           fromSessionId: sender.sessionId,
           toSessionId: targetMember.sessionId,
@@ -496,7 +643,11 @@ export class DistributedSignalingRoomStore {
     };
   }
 
-  async deliver({ peerId, connection, message }) {
+  async deliver({
+    peerId,
+    connection,
+    message,
+  }: DistributedNotification): Promise<boolean> {
     if (connection && this.deliveryHandler && this.deliveryHandler(connection, message)) return true;
     const target = this.connections.get(String(peerId || ''));
     if (target && this.deliveryHandler && this.deliveryHandler(target, message)) return true;
@@ -513,7 +664,7 @@ export class DistributedSignalingRoomStore {
   }
 
   /** Recover durable notifications when Redis pub/sub missed a wake-up. */
-  async poll(connection) {
+  async poll(connection: SignalingConnection): Promise<SignalingNotification[]> {
     const membership = this.membership.get(connection);
     if (!membership || this.connections.get(membership.peerId) !== connection) return [];
     await this.#runCommand('pexpire', this.roomKey(membership.roomCode), this.roomTtlMs);
@@ -522,7 +673,7 @@ export class DistributedSignalingRoomStore {
   }
 
   /** Preserve Redis membership across an unclean WebSocket transport loss. */
-  detach(connection) {
+  detach(connection: SignalingConnection): SignalingNotification[] {
     const membership = this.membership.get(connection);
     if (!membership) return [];
     this.membership.delete(connection);
@@ -532,7 +683,10 @@ export class DistributedSignalingRoomStore {
     return [];
   }
 
-  async leave(connection, reason = 'peer_left') {
+  async leave(
+    connection: SignalingConnection,
+    reason = 'peer_left',
+  ): Promise<DistributedNotification[]> {
     const membership = this.membership.get(connection);
     if (!membership) return [];
     if (this.connections.get(membership.peerId) !== connection) {
@@ -550,7 +704,8 @@ export class DistributedSignalingRoomStore {
     ));
     if (result.missing) return [];
     if (result.closed) {
-      return result.peers.map((peer) => ({
+      const peers = Array.isArray(result.peers) ? result.peers.map(readStoredPeer) : [];
+      return peers.map((peer) => ({
         peerId: peer.peerId,
         message: { type: 'room_closed', payload: {
           roomCode: membership.roomCode,
@@ -558,7 +713,8 @@ export class DistributedSignalingRoomStore {
         } },
       }));
     }
-    return result.peers.map((peer) => ({
+    const peers = Array.isArray(result.peers) ? result.peers.map(readStoredPeer) : [];
+    return peers.map((peer) => ({
       peerId: peer.peerId,
       message: { type: 'peer_left', payload: {
         roomCode: membership.roomCode,
@@ -568,11 +724,11 @@ export class DistributedSignalingRoomStore {
     }));
   }
 
-  sweepExpired() {
+  sweepExpired(): SignalingNotification[] {
     return [];
   }
 
-  async close() {
+  async close(): Promise<void> {
     this._closed = true;
     this.membership.clear();
     this.connections.clear();

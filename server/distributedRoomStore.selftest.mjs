@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { DistributedSignalingRoomStore } from './distributedRoomStore.js';
+import { DistributedSignalingRoomStore } from './distributedRoomStore.ts';
 
 class QuietSubscriber extends EventEmitter {
   constructor() {

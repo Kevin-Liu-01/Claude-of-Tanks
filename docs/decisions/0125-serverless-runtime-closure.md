@@ -1,9 +1,11 @@
 # ADR 0125: JavaScript serverless closures remain runtime-complete
 
+Status: superseded by ADR 0178
+
 ## Context
 
 The browser multiplayer protocol moved to TypeScript, but the Vercel signaling
-entry remains `api/signal.js`. Both signaling room stores imported the browser
+entry remained `api/signal.js`. Both signaling room stores imported the browser
 `protocol.ts` module solely for six-character room-code generation. Local Node
 tests can load that mixed extension graph; Vercel packaged the JavaScript
 function without `src/net/protocol.ts`, so production `/api/signal` failed at
@@ -11,10 +13,9 @@ module evaluation before it could report Redis health or accept a room.
 
 ## Decision
 
-`server/roomCode.js` owns server-side room-code generation until the entire
-signaling deployment entry is compiled as TypeScript. Both in-memory and Redis
-room stores import that runtime-complete JavaScript leaf. Signaling regression
-coverage rejects raw `.ts` imports from either production room-store closure.
+`server/roomCode.js` owned server-side room-code generation while both in-memory
+and Redis room stores were JavaScript deployment closures. Signaling regression
+coverage rejected raw `.ts` imports from those production room-store closures.
 
 The alphabet, length, finite-range validation, and deterministic test vectors
 remain identical to the browser protocol implementation. This is a deployment

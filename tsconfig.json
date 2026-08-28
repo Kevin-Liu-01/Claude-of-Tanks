@@ -14,5 +14,5 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "server/**/*.ts", "middleware.js"]
+  "include": ["src/**/*.ts", "server/**/*.ts", "api/**/*.ts", "middleware.js"]
 }

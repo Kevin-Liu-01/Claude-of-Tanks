@@ -2,22 +2,22 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { readFile } from 'node:fs/promises';
 import { WebSocket } from 'ws';
-import { DistributedSignalingRoomStore } from './distributedRoomStore.js';
-import { SignalingRoomStore } from './roomStore.js';
-import { createRoomCode } from './roomCode.js';
-import { createSignalingServer } from './signalingServer.js';
+import { DistributedSignalingRoomStore } from './distributedRoomStore.ts';
+import { SignalingRoomStore } from './roomStore.ts';
+import { createRoomCode } from './roomCode.ts';
+import { createSignalingServer } from './signalingServer.ts';
 import { RoomSignalingClient } from '../src/net/signalingClient.ts';
 
 assert.equal(createRoomCode(() => 0), 'AAAAAA');
 assert.equal(createRoomCode(() => 0.999999), '999999');
 assert.throws(() => createRoomCode(() => Number.NaN), (error) => error.code === 'invalid_rng');
 const productionStoreSources = await Promise.all([
-  readFile(new URL('./roomStore.js', import.meta.url), 'utf8'),
-  readFile(new URL('./distributedRoomStore.js', import.meta.url), 'utf8'),
+  readFile(new URL('./roomStore.ts', import.meta.url), 'utf8'),
+  readFile(new URL('./distributedRoomStore.ts', import.meta.url), 'utf8'),
 ]);
 for (const source of productionStoreSources) {
-  assert.doesNotMatch(source, /from\s+['"][^'"]+\.ts['"]/,
-    'the JavaScript Vercel signaling closure must not import unpackaged TypeScript sources');
+  assert.doesNotMatch(source, /from\s+['"][^'"]+\.js['"]/,
+    'the typed Vercel signaling closure must not fall back into uncompiled JavaScript leaves');
 }
 
 class FlakySubscriber extends EventEmitter {

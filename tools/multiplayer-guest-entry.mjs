@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
-import { createSignalingServer } from '../server/signalingServer.js';
+import { createSignalingServer } from '../server/signalingServer.ts';
 
 const root = new URL('..', import.meta.url).pathname;
 const errors = [];
