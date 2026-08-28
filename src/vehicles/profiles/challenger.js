@@ -3682,6 +3682,14 @@ function buildChallenger3(P) {
     P.add('hull', mslab1(s,
       [0.95, 1.24, 3.60], [1.62, 1.24, 3.60], [1.62, 1.19, 3.58], [0.95, 1.19, 3.58],
       [0.95, 1.55, 2.32], [1.62, 1.55, 2.32], [1.62, 1.50, 2.30], [0.95, 1.50, 2.30]));
+    // The glacis wing used to stop at x=1.62 while the raised fender/skirt
+    // bridge began at x=1.60 but only rose to y=1.34.  That left a widening
+    // open slot under the sloped wing from z=3.58 back to the deck knee at
+    // z=2.30.  Continue the same upper/lower planes to the physical fender
+    // edge so the bow is a closed shell from every oblique view.
+    P.add('hull', mslab1(s,
+      [1.60, 1.19, 3.58], [1.70, 1.19, 3.58], [1.70, 1.50, 2.30], [1.60, 1.50, 2.30],
+      [1.60, 1.24, 3.60], [1.70, 1.24, 3.60], [1.70, 1.55, 2.32], [1.60, 1.55, 2.32]));
   }
   P.add('hull', slab(                                                          // recessed center nose: print 3.71 at x=0, outer wings own 4.11
     [-0.95, 0.85, 3.75], [0.95, 0.85, 3.75], [0.95, 0.85, 3.62], [-0.95, 0.85, 3.62],
@@ -3825,13 +3833,29 @@ function buildChallenger3(P) {
     P.add('hull', box(0.06, 0.14, 1.11), s * 1.725, 1.25, -0.40);             // rear bay
     P.add('hullDark', box(0.012, 0.05, 0.28), s * 1.7555, 1.10, -0.40);
     for (const z of [1.30, 0.15, -0.97]) P.add('hullDark', box(0.065, 0.10, 0.018), s * 1.67, 1.23, z);
+    // Hull-owned carrier plates sit behind (never in front of) the existing
+    // visible skirt faces.  Their inboard edges overlap the x=1.63 outer
+    // hull wall and their outboard edges overlap each bay, turning the three
+    // formerly floating panels and dark divider strips into one mounted
+    // side-skirt assembly without changing the exterior silhouette.
+    for (const [x, z, depth] of [
+      [1.635, 1.80, 1.00],
+      [1.6475, 0.6375, 0.885],
+      [1.6475, -0.40, 1.11],
+    ]) {
+      const width = x === 1.635 ? 0.10 : 0.145;
+      P.add('hull', box(width, 0.24, depth), s * x, 1.22, z);
+    }
+    // Short hangers tie each carrier into the sponson wall/deck.  Keeping
+    // these discrete avoids recreating the conspicuous full-length line
+    // that the old render-only shadow proxy produced beside each track.
+    for (const z of [2.75, 2.28, 1.80, 1.30, 0.88, 0.40, -0.10, -0.68]) {
+      P.add('hullDetail', box(0.12, 0.22, 0.08), s * 1.63, 1.38, z);
+    }
     for (const zg of [2.10, 1.19, 0.28]) {                                     // scallop tabs between wheels (tops weld into the 0.95 bay hem, outer
       P.add('hull', box(0.06, 0.27, 0.30), s * 1.67, 0.835, zg);               // face 1.70 overlaps the 1.695 bay inner plane — §B2 attached)
+      P.add('hull', box(0.08, 0.26, 0.18), s * 1.67, 1.07, zg);                // welded neck: scallop tab -> carrier/backplate
     }
-    // AO belongs below the skirt lip, not inside the animated shoe lane.
-    // The former 30 cm strip spanned x 1.30..1.60 directly through the
-    // course. Keep only a thin outboard seam behind the skirt face.
-    P.add('hullShadow', new THREE.BoxGeometry(0.03, 0.03, 7.0), s * 1.69, 1.05, -0.15);
   }
 
   // ---- turret: the NEW Rheinmetall wedge (§B8 print form: face ~2.45w,
@@ -4215,6 +4239,25 @@ function buildChallenger3(P) {
     [0.46, 0.42, 0.02, 1.23, 0.49, 1.185],
     [0.46, 0.42, 0.02, 1.23, 0.49, 0.275],
   ]);
+  P.hullG.userData.challenger3HullClosureReceipt = {
+    upperGlacisSeam: {
+      innerX: 1.60,
+      outerX: 1.70,
+      frontZ: 3.60,
+      rearZ: 2.30,
+      mirrors: 2,
+    },
+    skirtCarriers: [
+      { x: 1.635, z: 1.80, depth: 1.00, width: 0.10 },
+      { x: 1.6475, z: 0.6375, depth: 0.885, width: 0.145 },
+      { x: 1.6475, z: -0.40, depth: 1.11, width: 0.145 },
+    ],
+    hangerStations: [2.75, 2.28, 1.80, 1.30, 0.88, 0.40, -0.10, -0.68],
+    scallopNeckStations: [2.10, 1.19, 0.28],
+    previousShadowProxyLengthM: 7.0,
+    longShadowProxyRemoved: true,
+    visibleSkirtFacesMoved: false,
+  };
   // decals: squadron number + ZAP plate
   P.decal('turret', 'number', P.spec.visual.number || '30', 0.34, [1.42, 0.40, -1.4], Math.PI / 2, 0, 0.06);
   P.decal('turret', 'number', P.spec.visual.number || '30', 0.34, [-1.42, 0.40, -1.4], -Math.PI / 2, 0, -0.06);

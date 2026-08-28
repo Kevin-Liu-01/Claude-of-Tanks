@@ -20775,17 +20775,17 @@
           }
         ]
       },
-      "geometryHash": "9f0cc235",
+      "geometryHash": "64969d05",
       "metadataHash": "15e2a1d3",
       "presentationAnchor": {
         "xM": 0,
-        "zM": -0.0058
+        "zM": 0.0095
       },
-      "presentationHash": "075bb6f5",
+      "presentationHash": "76d86769",
       "presentationProjection": {
         "centerYM": 2.5108,
-        "topHalfM": 7.8787,
-        "sideHalfM": 3.9394
+        "topHalfM": 7.8624,
+        "sideHalfM": 3.9312
       },
       "appearance": {
         "version": 1,
@@ -20803,7 +20803,7 @@
           "fittingPaint": 7,
           "opticGlass": 4,
           "gunmetal": 13,
-          "gearShadow": 11,
+          "gearShadow": 10,
           "armorPaint": 5,
           "tireRubber": 1,
           "unclassified": 15
@@ -20873,24 +20873,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 60776,
-          "sha256": "fe1fde5c6fc34b946aaba5b986c9f4abfe275272647af7dc3c9b7045b4c45fb9"
+          "bytes": 60533,
+          "sha256": "57d1decd288951b768a1426420a645571bef4d7d71743efa5e93faafbe7d95d3"
         },
         "armorSide": {
           "file": "challenger_3_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 62697,
-          "sha256": "5cb3e6133764e08300a90f2ce9638b19268b20a7cdd87c5048a01e8b3ebfc05c"
+          "bytes": 63608,
+          "sha256": "82e0bdc087f66ddb5c6448e5ad8fe67a477f90b8655260376285b35afd495010"
         },
         "modulesSide": {
           "file": "challenger_3_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70489,
-          "sha256": "bddd19a0eb1529e5f32f4ee8bca87e084fba1900c1934cba4677e34d1e3ad15a"
+          "bytes": 70571,
+          "sha256": "40b0ebbe59d560958f8d7d651ed83988f9eb30d30e76ecedf849411af516752d"
         },
         "markings": {
           "file": "challenger_3_markings.png",
