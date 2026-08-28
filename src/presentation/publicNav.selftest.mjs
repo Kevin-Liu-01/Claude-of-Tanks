@@ -31,7 +31,7 @@ const expectedLinks = [
   ['/', 'Play Now'],
 ];
 const navCss = readFileSync(join(ROOT, 'src/presentation/publicNav.css'), 'utf8');
-const navSource = readFileSync(join(ROOT, 'src/presentation/publicNav.js'), 'utf8');
+const navSource = readFileSync(join(ROOT, 'src/presentation/publicNav.ts'), 'utf8');
 assert.equal(formatGitHubStarCount(999), '999');
 assert.equal(formatGitHubStarCount(1200), '1.2K');
 
@@ -75,7 +75,7 @@ assert.match(navSource, /event\.code !== 'Escape'/,
 for (const [file, activeHref] of pages) {
   const html = readFileSync(join(ROOT, file), 'utf8');
   assert.match(html, /<link rel="stylesheet" href="\/src\/presentation\/publicNav\.css">/);
-  assert.match(html, /<script type="module" src="\/src\/presentation\/publicNav\.js"><\/script>/);
+  assert.match(html, /<script type="module" src="\/src\/presentation\/publicNav\.ts"><\/script>/);
   const nav = /<nav class="public-nav"[\s\S]*?<\/nav>/.exec(html)?.[0];
   assert.ok(nav, `${file} must contain the shared public nav`);
   const linksBlock = /<div class="public-nav__links">([\s\S]*?)<\/div>/.exec(nav)?.[1];

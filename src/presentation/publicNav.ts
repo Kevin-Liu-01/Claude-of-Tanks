@@ -2,11 +2,11 @@ import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 
 installResponsiveLayout();
 
-const mountStars = () => import('../ui/githubStars.ts')
+const mountStars = (): Promise<unknown> => import('../ui/githubStars.ts')
   .then(({ mountGitHubStars }) => mountGitHubStars(document));
 
-function mountMobileNavigation() {
-  const links = document.querySelector('.public-nav__links');
+function mountMobileNavigation(): void {
+  const links = document.querySelector<HTMLElement>('.public-nav__links');
   if (!links || links.querySelector('.public-nav__menu-trigger')) return;
 
   const directLinks = [...links.children].filter((node) => node.matches?.('a'));
@@ -29,9 +29,9 @@ function mountMobileNavigation() {
   menu.setAttribute('aria-label', 'Site pages');
   menu.hidden = true;
 
-  const addPageLink = (source) => {
+  const addPageLink = (source: Element | undefined): void => {
     if (!source) return;
-    const item = source.cloneNode(true);
+    const item = source.cloneNode(true) as HTMLElement;
     item.classList.add('public-nav__menu-item');
     menu.append(item);
   };
@@ -47,14 +47,14 @@ function mountMobileNavigation() {
     if (page !== home) addPageLink(page);
   }
 
-  const close = ({ restoreFocus = false } = {}) => {
+  const close = ({ restoreFocus = false }: { restoreFocus?: boolean } = {}): void => {
     if (menu.hidden) return;
     menu.hidden = true;
     trigger.setAttribute('aria-expanded', 'false');
     trigger.setAttribute('aria-label', 'Open navigation menu');
     if (restoreFocus) trigger.focus();
   };
-  const open = () => {
+  const open = (): void => {
     menu.hidden = false;
     trigger.setAttribute('aria-expanded', 'true');
     trigger.setAttribute('aria-label', 'Close navigation menu');
@@ -65,10 +65,10 @@ function mountMobileNavigation() {
     else close();
   });
   menu.addEventListener('click', (event) => {
-    if (event.target.closest('a')) close();
+    if (event.target instanceof Element && event.target.closest('a')) close();
   });
   document.addEventListener('pointerdown', (event) => {
-    if (menu.hidden || links.contains(event.target)) return;
+    if (menu.hidden || (event.target instanceof Node && links.contains(event.target))) return;
     close();
   });
   window.addEventListener('keydown', (event) => {
@@ -77,7 +77,8 @@ function mountMobileNavigation() {
     close({ restoreFocus: true });
   });
   window.addEventListener('cot:layoutchange', (event) => {
-    if (!event.detail?.overlayPanels) close();
+    const layoutEvent = event as CustomEvent<{ overlayPanels?: boolean }>;
+    if (!layoutEvent.detail?.overlayPanels) close();
   });
 
   links.append(trigger, menu);

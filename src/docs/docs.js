@@ -64,7 +64,7 @@ function stopArchiveMotion() {
 
 function mountArchiveMotionInfo() {
   archiveMotionPromise ??= Promise.all([
-    import('../presentation/captureRecipes.js'),
+    import('../presentation/captureRecipes.ts'),
     import('../ui/contextInfo.ts'),
   ]).then(async ([{ loadCaptureRecipes, recipeForMedia }, { createInfoButton }]) => {
     const catalog = await loadCaptureRecipes();

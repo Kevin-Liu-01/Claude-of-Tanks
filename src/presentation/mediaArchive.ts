@@ -1,6 +1,6 @@
 import { createInfoButton } from '../ui/contextInfo.ts';
 import type { InfoButton } from '../ui/contextInfo.ts';
-import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.js';
+import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.ts';
 
 const MANIFEST_URL = '/media/showcase-r1/manifest.json';
 interface PresentationShot {
@@ -23,11 +23,6 @@ interface MediaArchiveOptions {
   pageSize?: number;
   feature?: string;
   filters?: boolean;
-}
-
-interface CaptureRecipeCatalog {
-  media?: Record<string, string>;
-  recipes?: Record<string, unknown>;
 }
 
 let manifestPromise: Promise<PresentationManifest> | undefined;
@@ -157,7 +152,7 @@ export async function mountMediaArchive(
     const filtered = source.filter((shot) => active === 'all' || normalize(shot.feature) === active).slice(0, limit);
     const visible = filtered.slice(0, visibleLimit);
     grid.replaceChildren(...visible.map((shot, index) =>
-      shotCard(shot, index, recipeForMedia(recipes as CaptureRecipeCatalog, shot.src))));
+      shotCard(shot, index, recipeForMedia(recipes, shot.src))));
     count.value = `${String(visible.length).padStart(2, '0')} / ${String(filtered.length).padStart(2, '0')} frames`;
     const remaining = filtered.length - visible.length;
     loadMore.hidden = remaining <= 0;

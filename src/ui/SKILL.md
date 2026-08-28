@@ -35,6 +35,9 @@ The public and Studio capture gallery shares `presentation/mediaArchive.ts`;
 keep manifest transfer lazy, pagination bounded, and lightbox cleanup explicit.
 `presentation/publicPages.ts` owns typed, save-data-aware hero, screenshot-rail,
 deferred-image, and viewport-video lifecycles outside the game runtime.
+`presentation/publicNav.ts` owns the responsive public navigation lifecycle;
+`presentation/captureRecipes.ts` owns typed lazy recipe lookup for docs and
+capture galleries. The top-level public presentation runtime contains no JS.
 The reusable accessible dialog lifecycle, focus trap, dismissal guard, and body
 scroll ownership live in `modal.ts`; feature panels only own dialog content.
 Rich contextual dossiers, live image resolution, and JSON-copy controls live in
