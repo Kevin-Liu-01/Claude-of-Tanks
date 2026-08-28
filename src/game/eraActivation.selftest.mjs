@@ -23,12 +23,15 @@ assert.equal(stripActivatedEra({ kind: 'pen' }, { stripEra() {} }), false,
 // event.kind silently loses the explosion/audio/removal path.
 const fxSource = readFileSync(new URL('../fx/effects.js', import.meta.url), 'utf8');
 const audioSource = readFileSync(new URL('../audio/audio.js', import.meta.url), 'utf8');
+const feedbackSource = readFileSync(new URL('./combatFeedbackRuntime.ts', import.meta.url), 'utf8');
 const mainSource = readFileSync(new URL('../main.js', import.meta.url), 'utf8');
 assert.match(fxSource, /isEraActivation\(e\)[\s\S]{0,180}fx\.impact\('era'/,
   'FX emits an additive ERA blast for pass-through hits');
 assert.match(audioSource, /isEraActivation\(e\)[\s\S]{0,180}eraPop\(/,
   'audio emits an additive ERA detonation for pass-through hits');
-assert.match(mainSource, /stripActivatedEra\(ev, target\.visual\)/,
+assert.match(feedbackSource, /stripActivatedEra\(event, target\.visual\)/,
   'live tank visual consumes the activated cassette');
+assert.match(mainSource, /createCombatFeedbackRuntime\(\{/,
+  'composition root installs the typed combat-feedback owner');
 
 console.log('eraActivation.selftest: simulation events drive blast, audio, and visual depletion');
