@@ -2,21 +2,47 @@
 // and the material bake. It intentionally performs no DOM work and creates no
 // runtime game objects; painting happens only while authoring or baking.
 
-export const CUSTOM_CAMO_BRUSHES = Object.freeze(['round', 'flat', 'spray', 'pixel', 'eraser', 'stamp']);
-export const CUSTOM_CAMO_ASSETS = Object.freeze(['star', 'chevron', 'leaf', 'hex', 'cross']);
+import { CUSTOM_CAMO_ASSETS, CUSTOM_CAMO_BRUSHES } from './camoPolicy.ts';
+import type { CustomCamoAsset, CustomCamoBrush } from './camoPolicy.ts';
 
-function seededUnit(seed) {
+export { CUSTOM_CAMO_ASSETS, CUSTOM_CAMO_BRUSHES } from './camoPolicy.ts';
+
+interface CamoStrokeInput {
+  color?: unknown;
+  size?: unknown;
+  brush?: unknown;
+  asset?: unknown;
+  rotation?: unknown;
+  points?: ReadonlyArray<ReadonlyArray<number>>;
+}
+
+export interface CustomCamoPaintOptions {
+  width: number;
+  height: number;
+  colorA: string;
+  colorB: string;
+  eraseColor: string;
+}
+
+function seededUnit(seed: number): number {
   let value = (seed | 0) ^ 0x9e3779b9;
   value = Math.imul(value ^ (value >>> 16), 0x21f0aaad);
   value = Math.imul(value ^ (value >>> 15), 0x735a2d97);
   return ((value ^ (value >>> 15)) >>> 0) / 4294967296;
 }
 
-function pointXY(point, width, height) {
+function pointXY(point: ReadonlyArray<number>, width: number, height: number): [number, number] {
   return [(point[0] / 100) * width, (point[1] / 100) * height];
 }
 
-function drawAsset(ctx, asset, x, y, size, rotation = 0) {
+function drawAsset(
+  ctx: CanvasRenderingContext2D,
+  asset: CustomCamoAsset,
+  x: number,
+  y: number,
+  size: number,
+  rotation = 0,
+): void {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(rotation * Math.PI / 180);
@@ -51,17 +77,24 @@ function drawAsset(ctx, asset, x, y, size, rotation = 0) {
 }
 
 /** Paint normalized vector strokes into one tile-sized canvas region. */
-export function paintCustomCamoStrokes(ctx, strokes, {
+export function paintCustomCamoStrokes(
+  ctx: CanvasRenderingContext2D,
+  strokes: readonly CamoStrokeInput[] | null | undefined,
+  {
   width, height, colorA, colorB, eraseColor,
-} = {}) {
+  }: CustomCamoPaintOptions,
+): void {
   const minSide = Math.min(width, height);
-  for (let strokeIndex = 0; strokeIndex < (strokes || []).length; strokeIndex++) {
-    const stroke = strokes[strokeIndex];
+  const sourceStrokes = strokes || [];
+  for (let strokeIndex = 0; strokeIndex < sourceStrokes.length; strokeIndex++) {
+    const stroke = sourceStrokes[strokeIndex];
     const points = stroke.points || [];
     if (!points.length) continue;
-    const brush = CUSTOM_CAMO_BRUSHES.includes(stroke.brush) ? stroke.brush : 'round';
+    const brush: CustomCamoBrush = CUSTOM_CAMO_BRUSHES.includes(stroke.brush as CustomCamoBrush)
+      ? stroke.brush as CustomCamoBrush
+      : 'round';
     const color = brush === 'eraser' ? eraseColor : stroke.color === 1 ? colorB : colorA;
-    const lineWidth = Math.max(1, (stroke.size || 8) / 100 * minSide);
+    const lineWidth = Math.max(1, (Number(stroke.size) || 8) / 100 * minSide);
     ctx.save();
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
@@ -71,7 +104,10 @@ export function paintCustomCamoStrokes(ctx, strokes, {
     if (brush === 'stamp') {
       for (const point of points) {
         const [x, y] = pointXY(point, width, height);
-        drawAsset(ctx, CUSTOM_CAMO_ASSETS.includes(stroke.asset) ? stroke.asset : 'star', x, y, lineWidth, stroke.rotation || 0);
+        const asset: CustomCamoAsset = CUSTOM_CAMO_ASSETS.includes(stroke.asset as CustomCamoAsset)
+          ? stroke.asset as CustomCamoAsset
+          : 'star';
+        drawAsset(ctx, asset, x, y, lineWidth, Number(stroke.rotation) || 0);
       }
     } else if (brush === 'spray') {
       for (let pointIndex = 0; pointIndex < points.length; pointIndex++) {

@@ -78,6 +78,7 @@ import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.js';
 import {
   createTank, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
 } from './vehicles/fleetFactory.ts';
+import { isBuiltInCamoId } from './vehicles/camoPolicy.ts';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
   CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,
@@ -1015,7 +1016,7 @@ const playSurface = createPlaySurfaceRuntime({
         camo: getMultiplayerCamoSelection(garage.getSelected()),
       }),
       isVehicleAllowed: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
-      isCamoAllowed: (camo: string) => CAMO_PATTERN_IDS.includes(camo),
+      isCamoAllowed: (camo: string) => isBuiltInCamoId(camo),
       getCamoName: (camo: string) => CAMO_PATTERN_LABEL[
         legacyPort<keyof typeof CAMO_PATTERN_LABEL>(camo)
       ] || 'Factory',

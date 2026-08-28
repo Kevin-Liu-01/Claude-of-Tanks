@@ -7,7 +7,7 @@ import { isGarageVisibleTankId } from '../src/game/matchmaking.ts';
 import { getSpec } from '../src/vehicles/specs.js';
 import { RANDOM_BATTLE_MAP_IDS } from '../src/world/maps/index.ts';
 import { uniquePlayerName } from '../src/net/playerNames.ts';
-import { networkCamoId } from '../src/vehicles/camoPolicy.js';
+import { networkCamoId } from '../src/vehicles/camoPolicy.ts';
 import { DedicatedMatchRegistry } from './dedicatedMatchRegistry.ts';
 import {
   RatingStore,

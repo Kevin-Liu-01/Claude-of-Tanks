@@ -14,7 +14,7 @@ import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import {
   CUSTOM_CAMO_ID, customCamoPatternId,
-} from '../vehicles/camoPolicy.js';
+} from '../vehicles/camoPolicy.ts';
 import { createInfoButton } from './contextInfo.ts';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
 // white-silhouette icon set (equipIcons.ts), and the spotting-side math the

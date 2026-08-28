@@ -9,7 +9,7 @@ import {
   networkCamoId,
   normalizeCustomCamo,
   parseCustomCamoPatternId,
-} from './camoPolicy.js';
+} from './camoPolicy.ts';
 
 assert.equal(isBuiltInCamoId('summer'), true);
 assert.equal(isBuiltInCamoId(CUSTOM_CAMO_ID), false,

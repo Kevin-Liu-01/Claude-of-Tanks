@@ -204,3 +204,4 @@ runtime documents remain authoritative for behavior.
 - [0192 — Live private-room rejoin preserves the match protocol epoch](0192-live-room-rejoin.md)
 - [0193 — Fleet demand loading has a strict TypeScript boundary](0193-typed-fleet-demand-loader.md)
 - [0194 — Fleet presentation contracts are strict TypeScript](0194-typed-fleet-presentation-contracts.md)
+- [0195 — Camouflage policy is independent from its typed painter](0195-typed-camouflage-policy-and-painter.md)

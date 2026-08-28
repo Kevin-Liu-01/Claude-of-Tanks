@@ -1,30 +1,19 @@
 import { createModal } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { customCamoPatternId, normalizeCustomCamo } from '../vehicles/camoPolicy.js';
-import { CUSTOM_CAMO_ASSETS, paintCustomCamoStrokes } from '../vehicles/customCamoCanvas.js';
+import {
+  CUSTOM_CAMO_ASSETS,
+  customCamoPatternId,
+  normalizeCustomCamo,
+} from '../vehicles/camoPolicy.ts';
+import type {
+  CustomCamo,
+  CustomCamoAsset,
+  CustomCamoBrush,
+} from '../vehicles/camoPolicy.ts';
+import { paintCustomCamoStrokes } from '../vehicles/customCamoCanvas.ts';
 import type { CustomCamoStudioController } from './customCamoStudioAccess.ts';
 
-interface CamoStroke {
-  color: 0 | 1;
-  size: number;
-  brush: string;
-  asset: string;
-  rotation: number;
-  points: number[][];
-}
-
-interface CustomCamoDraft {
-  style: string;
-  base: string;
-  colorA: string;
-  colorB: string;
-  repeat: number;
-  repeatX: number;
-  repeatY: number;
-  rotation: number;
-  mirror: boolean;
-  strokes: CamoStroke[];
-}
+type CustomCamoDraft = CustomCamo;
 
 interface CustomCamoOptions {
   getCustom(specId: string): unknown;
@@ -42,8 +31,7 @@ export interface CustomCamoStudioOptions {
   requeueThumb: (specId: string) => void;
 }
 
-const normalizeDraft = normalizeCustomCamo as unknown as (value?: unknown) => CustomCamoDraft;
-const normalized = (value?: unknown): CustomCamoDraft => normalizeDraft(value);
+const normalized = (value?: unknown): CustomCamoDraft => normalizeCustomCamo(value);
 
 /**
  * Full custom-paint authoring surface. This module is intentionally reachable
@@ -54,8 +42,8 @@ export function createCustomCamoStudio({
   button, camo, selectedId, selectedSpec, paintPreview, emitClick, refreshSelection, requeueThumb,
 }: CustomCamoStudioOptions): CustomCamoStudioController {
   let customTone = 0;
-  let customBrush = 'round';
-  let customAsset = 'star';
+  let customBrush: CustomCamoBrush = 'round';
+  let customAsset: CustomCamoAsset = 'star';
   let drawingStroke = -1;
   let draft = normalized();
 
@@ -142,7 +130,7 @@ export function createCustomCamoStudio({
     repaintPreview();
   };
 
-  const brushDefs = [
+  const brushDefs: ReadonlyArray<readonly [CustomCamoBrush, string, string]> = [
     ['round', 'brush', 'Round'], ['flat', 'stamp', 'Flat'], ['spray', 'spray', 'Spray'],
     ['pixel', 'pixels', 'Pixel'], ['eraser', 'eraser', 'Eraser'],
   ];
@@ -363,7 +351,7 @@ export function createCustomCamoStudio({
   });
   modal.footer.append(cancel, apply);
 
-  const pointFromEvent = (event: PointerEvent): number[] => {
+  const pointFromEvent = (event: PointerEvent): [number, number] => {
     const rect = drawCanvas.getBoundingClientRect();
     return [
       Math.max(0, Math.min(100, Math.round(((event.clientX - rect.left) / rect.width) * 100))),

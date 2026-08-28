@@ -5,7 +5,7 @@
  */
 import { resolveCamoVisual, CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK }
   from '../vehicles/materials.js';
-import { paintCustomCamoStrokes } from '../vehicles/customCamoCanvas.js';
+import { paintCustomCamoStrokes } from '../vehicles/customCamoCanvas.ts';
 
 // --- CAMO PICKER SECTION: swatch painter ------------------------------------
 // Paints a 64px-class preview tile of the ACTUAL resolved pattern — palette

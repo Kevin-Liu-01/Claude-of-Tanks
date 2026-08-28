@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import './tankFactory.js';
 import { ALL_TANK_IDS, getSpec } from './specs.js';
-import { CAMO_PATTERN_IDS, factoryThemePatternId, isPlainGreenFactoryVisual } from './camoPolicy.js';
+import { CAMO_PATTERN_IDS, factoryThemePatternId, isPlainGreenFactoryVisual } from './camoPolicy.ts';
 import { resolveCamoVisual } from './materials.js';
 
 const themed = [];

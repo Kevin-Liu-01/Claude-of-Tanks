@@ -1,6 +1,6 @@
 import { MAX_PLAYERS, MAX_SPECTATORS, normalizeRoomCode } from './protocol.ts';
 import { normalizePlayerName, uniquePlayerName } from './playerNames.ts';
-import { networkCamoId } from '../vehicles/camoPolicy.js';
+import { networkCamoId } from '../vehicles/camoPolicy.ts';
 import { normalizeGameMode, type GameModeId } from '../sim/matchModes.ts';
 
 export const LOBBY_PHASES = {

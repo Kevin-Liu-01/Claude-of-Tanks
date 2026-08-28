@@ -17,10 +17,10 @@ import {
   networkCamoId,
   normalizeCustomCamo,
   parseCustomCamoPatternId,
-} from './camoPolicy.js';
-import { paintCustomCamoStrokes } from './customCamoCanvas.js';
+} from './camoPolicy.ts';
+import { paintCustomCamoStrokes } from './customCamoCanvas.ts';
 
-export { CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID } from './camoPolicy.js';
+export { CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID } from './camoPolicy.ts';
 import { tagVehicleMaterial } from './appearanceAudit.js';
 import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from './vehicleMarkings.js';
 import { isPostwarVehicleEra } from './taxonomy.ts';
