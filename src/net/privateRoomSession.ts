@@ -14,7 +14,10 @@ import {
   type WebRtcPeerSession,
 } from './webrtcPeer.ts';
 import { MatchClientRuntime } from './matchRuntime.js';
-import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.js';
+import {
+  maybeCreateAdverseNetworkTransport,
+  type AdverseNetworkTransport,
+} from './adverseNetworkTransport.ts';
 import {
   RtcIceLease,
   type RtcIceLeaseConfiguration,
@@ -83,21 +86,23 @@ interface MatchHostPort {
   }): void;
 }
 
+type MatchRuntimeTransport = MatchTransport | AdverseNetworkTransport;
+
 interface MatchClientPort {
   roomState?: RoomState;
   errors: unknown[];
   closed: boolean;
   connected: boolean;
-  transport: MatchTransport;
+  transport: MatchRuntimeTransport;
   onConnection(listener: (connected: boolean) => void): Unsubscribe;
   onRoomState(listener: (state: RoomState) => void): Unsubscribe;
   connect(metadata: { mode: string; phase: string }): void;
   submitRoomCommand(command: RoomCommand): unknown;
   reconnectTransport(
-    transport: MatchTransport,
+    transport: MatchRuntimeTransport,
     metadata: { mode: string; phase: string },
   ): void;
-  replaceTransport(transport: MatchTransport): void;
+  replaceTransport(transport: MatchRuntimeTransport): void;
   beginMatchHandshake(metadata: { mode: string }): void;
   close(reason: string): void;
 }
@@ -153,13 +158,9 @@ export interface PrivateRoomClientOptions {
 }
 
 const TypedMatchClientRuntime = MatchClientRuntime as unknown as new (options: {
-  transport: MatchTransport;
+  transport: MatchRuntimeTransport;
   playerId: string;
 }) => MatchClientPort;
-
-const wrapAdverseTransport = maybeCreateAdverseNetworkTransport as unknown as (
-  transport: MatchTransport,
-) => MatchTransport;
 
 function errorCode(error: unknown, fallback: string): string {
   if (typeof error !== 'object' || error === null || !('code' in error)) return fallback;
@@ -646,7 +647,7 @@ export class PrivateRoomClientSession {
     return this.runtime.submitRoomCommand(command);
   }
 
-  async takeMatchTransport(): Promise<MatchTransport> {
+  async takeMatchTransport(): Promise<MatchRuntimeTransport> {
     await this.ready;
     if (!this.runtime) throw new Error('room runtime is unavailable');
     return this.runtime.transport;
@@ -656,7 +657,7 @@ export class PrivateRoomClientSession {
     await this.ready;
     if (!this.runtime) throw new Error('room runtime is unavailable');
     if (!this.runtime.connected) {
-      const wrapped = wrapAdverseTransport(this.runtime.transport);
+      const wrapped = maybeCreateAdverseNetworkTransport(this.runtime.transport);
       // Re-establish message ownership at the protocol phase boundary even
       // when QA does not wrap the transport. The lobby UI may have released
       // its final subscription while this long-lived MatchClientRuntime keeps

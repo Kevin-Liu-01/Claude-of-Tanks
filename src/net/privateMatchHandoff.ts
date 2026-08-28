@@ -4,7 +4,7 @@ import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
 import { createLoopbackTransportPair } from './loopbackTransport.ts';
 import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
-import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.js';
+import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.ts';
 import {
   applyLobbyCommand,
   addLobbyPlayer,
@@ -488,7 +488,7 @@ export async function beginPrivateClientMatch({
     if (!takeMatchTransport) throw new TypeError('private client transport is required');
     const transport = maybeCreateAdverseNetworkTransport(
       await takeMatchTransport.call(session),
-    ) as MatchTransport;
+    );
     client = new MatchClient({ transport, playerId: id });
     client.connect({ mode: session.roomInfo && session.roomInfo.mode || 'private' });
   }

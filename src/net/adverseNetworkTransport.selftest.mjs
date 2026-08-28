@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {
   createAdverseNetworkTransport,
   networkSimulationOptions,
-} from './adverseNetworkTransport.js';
+} from './adverseNetworkTransport.ts';
 
 function createScheduler() {
   let now = 0;

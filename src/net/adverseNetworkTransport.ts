@@ -1,4 +1,66 @@
-function clamp(value, min, max) {
+type Unsubscribe = () => void;
+type Lane = 'control' | 'input' | 'state';
+type Direction = 'send' | 'receive';
+type TimerHandle = ReturnType<typeof setTimeout>;
+
+export interface NetworkSimulationOptions {
+  latencyMs: number;
+  jitterMs: number;
+  stateLossRate: number;
+  inputLossRate: number;
+}
+
+export interface AdverseNetworkOptions extends Partial<NetworkSimulationOptions> {
+  rng?: () => number;
+  clock?: () => number;
+  schedule?: (callback: () => void, delayMs: number) => TimerHandle;
+  cancel?: (handle: TimerHandle) => void;
+}
+
+export interface SimulatableTransport {
+  readonly kind?: string;
+  readonly readyState?: string;
+  readonly bufferedAmount?: number;
+  readonly stats?: unknown;
+  send(message: unknown): boolean;
+  sendInput?(message: unknown): boolean;
+  sendState?(message: unknown): boolean;
+  onMessage(listener: (message: unknown) => void): Unsubscribe;
+  onClose?(listener: (reason: string) => void): Unsubscribe;
+  onError?(listener: (error: unknown) => void): Unsubscribe;
+  close?(reason?: string): void;
+}
+
+export interface AdverseNetworkStats {
+  delayedOutgoing: number;
+  delayedIncoming: number;
+  droppedState: number;
+  droppedInput: number;
+  pending: number;
+  base: unknown;
+}
+
+export interface AdverseNetworkTransport {
+  readonly kind: string;
+  readonly readyState: string;
+  readonly bufferedAmount: number;
+  readonly stats: AdverseNetworkStats;
+  readonly rawTransport: SimulatableTransport;
+  send(message: unknown): boolean;
+  sendInput(message: unknown): boolean;
+  sendState(message: unknown): boolean;
+  onMessage(listener: (message: unknown) => void): Unsubscribe;
+  onClose(listener: (reason: string) => void): Unsubscribe;
+  onError(listener: (error: unknown) => void): Unsubscribe;
+  close(reason?: string): void;
+  dispose(): void;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object';
+}
+
+function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
@@ -7,14 +69,16 @@ function clamp(value, min, max) {
 // ordering guarantee even when the logical queue is reliable.
 const RELIABLE_TIMER_GAP_MS = 1;
 
-function numberParam(query, name, fallback = 0) {
+function numberParam(query: URLSearchParams, name: string, fallback = 0): number {
   if (!query.has(name)) return fallback;
   const value = Number(query.get(name));
   return Number.isFinite(value) ? value : fallback;
 }
 
 /** Parse the browser QA query surface (`netLatency`, `netJitter`, `netLoss`). */
-export function networkSimulationOptions(search = globalThis.location?.search || '') {
+export function networkSimulationOptions(
+  search = globalThis.location?.search || '',
+): NetworkSimulationOptions | null {
   const query = new URLSearchParams(search);
   const enabled = query.get('netSim') === '1' ||
     ['netLatency', 'netJitter', 'netLoss', 'netInputLoss'].some((key) => query.has(key));
@@ -32,16 +96,19 @@ export function networkSimulationOptions(search = globalThis.location?.search ||
  * headless soaks. Reliable control stays ordered; replaceable snapshots may
  * be delayed, reordered, or dropped like the production WebRTC state lane.
  */
-export function createAdverseNetworkTransport(transport, {
-  latencyMs = 0,
-  jitterMs = 0,
-  stateLossRate = 0,
-  inputLossRate = 0,
-  rng = Math.random,
-  clock = () => performance.now(),
-  schedule = (callback, delayMs) => setTimeout(callback, delayMs),
-  cancel = (handle) => clearTimeout(handle),
-} = {}) {
+export function createAdverseNetworkTransport(
+  transport: SimulatableTransport,
+  {
+    latencyMs = 0,
+    jitterMs = 0,
+    stateLossRate = 0,
+    inputLossRate = 0,
+    rng = Math.random,
+    clock = () => performance.now(),
+    schedule = (callback, delayMs) => setTimeout(callback, delayMs),
+    cancel = (handle) => clearTimeout(handle),
+  }: AdverseNetworkOptions = {},
+): AdverseNetworkTransport {
   if (!transport || typeof transport.send !== 'function' ||
       typeof transport.onMessage !== 'function') {
     throw new TypeError('transport is required');
@@ -51,10 +118,10 @@ export function createAdverseNetworkTransport(transport, {
       throw new TypeError(`${label} must be in [0, 1]`);
     }
   }
-  const messages = new Set();
-  const closes = new Set();
-  const errors = new Set();
-  const timers = new Set();
+  const messages = new Set<(message: unknown) => void>();
+  const closes = new Set<(reason: string) => void>();
+  const errors = new Set<(error: unknown) => void>();
+  const timers = new Set<TimerHandle>();
   let closed = false;
   let reliableSendDueMs = -Infinity;
   let reliableReceiveDueMs = -Infinity;
@@ -65,14 +132,14 @@ export function createAdverseNetworkTransport(transport, {
     droppedInput: 0,
   };
 
-  function delayFor() {
+  function delayFor(): number {
     const unit = Number(rng());
     const centered = (Number.isFinite(unit) ? clamp(unit, 0, 1) : 0.5) * 2 - 1;
     return Math.max(0, latencyMs + centered * jitterMs);
   }
 
-  function later(callback, delayMs) {
-    let handle = null;
+  function later(callback: () => void, delayMs: number): TimerHandle {
+    let handle: TimerHandle;
     handle = schedule(() => {
       timers.delete(handle);
       if (!closed) callback();
@@ -81,7 +148,7 @@ export function createAdverseNetworkTransport(transport, {
     return handle;
   }
 
-  function orderedDelay(direction) {
+  function orderedDelay(direction: Direction): number {
     const now = clock();
     let due = now + delayFor();
     if (direction === 'send') {
@@ -94,7 +161,11 @@ export function createAdverseNetworkTransport(transport, {
     return Math.max(0, due - now);
   }
 
-  function scheduleSend(message, lane = 'control') {
+  function reportError(error: unknown): void {
+    for (const listener of [...errors]) listener(error);
+  }
+
+  function scheduleSend(message: unknown, lane: Lane = 'control'): boolean {
     if (closed || transport.readyState === 'closed') return false;
     const state = lane === 'state';
     const input = lane === 'input';
@@ -112,14 +183,14 @@ export function createAdverseNetworkTransport(transport, {
         else if (input && typeof transport.sendInput === 'function') transport.sendInput(message);
         else transport.send(message);
       } catch (error) {
-        for (const listener of [...errors]) listener(error);
+        reportError(error);
       }
     }, delay);
     return true;
   }
 
   const removeMessage = transport.onMessage((message) => {
-    const state = message?.type === 'snapshot';
+    const state = isRecord(message) && message.type === 'snapshot';
     if (state && stateLossRate > 0 && rng() < stateLossRate) {
       stats.droppedState++;
       return;
@@ -139,27 +210,34 @@ export function createAdverseNetworkTransport(transport, {
     })
     : () => {};
   const removeError = typeof transport.onError === 'function'
-    ? transport.onError((error) => {
-      for (const listener of [...errors]) listener(error);
-    })
+    ? transport.onError(reportError)
     : () => {};
 
   return {
     kind: `${transport.kind || 'transport'}-simulated`,
-    send(message) { return scheduleSend(message, 'control'); },
-    sendInput(message) { return scheduleSend(message, 'input'); },
-    sendState(message) { return scheduleSend(message, 'state'); },
-    onMessage(listener) { messages.add(listener); return () => messages.delete(listener); },
-    onClose(listener) { closes.add(listener); return () => closes.delete(listener); },
-    onError(listener) { errors.add(listener); return () => errors.delete(listener); },
-    close(reason = 'closed') {
+    send(message: unknown): boolean { return scheduleSend(message, 'control'); },
+    sendInput(message: unknown): boolean { return scheduleSend(message, 'input'); },
+    sendState(message: unknown): boolean { return scheduleSend(message, 'state'); },
+    onMessage(listener: (message: unknown) => void): Unsubscribe {
+      messages.add(listener);
+      return () => messages.delete(listener);
+    },
+    onClose(listener: (reason: string) => void): Unsubscribe {
+      closes.add(listener);
+      return () => closes.delete(listener);
+    },
+    onError(listener: (error: unknown) => void): Unsubscribe {
+      errors.add(listener);
+      return () => errors.delete(listener);
+    },
+    close(reason = 'closed'): void {
       if (closed) return;
       closed = true;
       for (const handle of timers) cancel(handle);
       timers.clear();
-      transport.close(reason);
+      transport.close?.(reason);
     },
-    dispose() {
+    dispose(): void {
       removeMessage();
       removeClose();
       removeError();
@@ -169,14 +247,19 @@ export function createAdverseNetworkTransport(transport, {
       closes.clear();
       errors.clear();
     },
-    get readyState() { return closed ? 'closed' : transport.readyState; },
+    get readyState() { return closed ? 'closed' : transport.readyState || 'open'; },
     get bufferedAmount() { return Number(transport.bufferedAmount) || 0; },
-    get stats() { return { ...stats, pending: timers.size, base: transport.stats || null }; },
+    get stats(): AdverseNetworkStats {
+      return { ...stats, pending: timers.size, base: transport.stats || null };
+    },
     rawTransport: transport,
   };
 }
 
-export function maybeCreateAdverseNetworkTransport(transport, search) {
+export function maybeCreateAdverseNetworkTransport<T extends SimulatableTransport>(
+  transport: T,
+  search?: string,
+): T | AdverseNetworkTransport {
   const options = networkSimulationOptions(search);
   return options ? createAdverseNetworkTransport(transport, options) : transport;
 }

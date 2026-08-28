@@ -1,5 +1,5 @@
 import { createWebSocketTransport } from './channelTransport.ts';
-import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.js';
+import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.ts';
 import { MatchClientRuntime } from './matchRuntime.js';
 
 function addListener(target, type, listener, options) {
