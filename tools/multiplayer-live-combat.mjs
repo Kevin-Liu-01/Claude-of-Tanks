@@ -66,7 +66,14 @@ const wait = (ms) => new Promise((resolveWait) => setTimeout(resolveWait, ms));
 function observePage(page, label) {
   page.on('pageerror', (error) => browserErrors.push(`${label}: ${error.stack || error.message}`));
   page.on('console', (message) => {
-    if (message.type() === 'error') browserErrors.push(`${label}: ${message.text()}`);
+    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) {
+      browserErrors.push(`${label}: ${message.text()}`);
+    }
+  });
+  page.on('requestfailed', (request) => {
+    browserErrors.push(
+      `${label}: request failed ${request.url()} (${request.failure()?.errorText || 'unknown error'})`,
+    );
   });
 }
 
