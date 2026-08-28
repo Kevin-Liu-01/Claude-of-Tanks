@@ -141,28 +141,22 @@ import { createFxRuntimeAccess } from './fx/fxRuntimeAccess.ts';
 import { createBootScreen } from './ui/bootScreen.ts';
 import { createBattleLoadScreen } from './ui/battleLoad.ts';
 import { createEndOverlayRuntime } from './ui/endOverlayRuntime.ts';
+import { createStartupIntent } from './game/startupIntent.ts';
+import { createSelectedVehicleSelection } from './game/selectedVehicleSelection.ts';
 import { tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
 // reveal it, then start a second load".  The intent is captured before any
 // staged work so the inline boot screen can report Studio-specific progress
 // and main.js can hand the already-visible veil to createStudio().
-const INITIAL_PARAMS = new URLSearchParams(globalThis.location?.search || '');
-const STUDIO_BOOT_INTENT = /^\/studio\/?$/.test(globalThis.location?.pathname || '')
-  || INITIAL_PARAMS.has('studio');
-const STUDIO_BOOT_MAP = INITIAL_PARAMS.get('map') || 'verdant';
+const startupIntent = createStartupIntent(globalThis.location);
+const STUDIO_BOOT_INTENT = startupIntent.studioRequested;
+const STUDIO_BOOT_MAP = startupIntent.studioMapId;
 
 const DEG = Math.PI / 180;
 const SIM_DT = 1 / 60;
 const GARAGE_POS = new THREE.Vector3(-1500, 0, -1500);
-const DEFAULT_SPEC_ID = 'm1a1';
-const LAST_SPEC_KEY = 'cot.lastTank.v1';
-// Keep invite parsing off the normal garage boot graph. Only an actual room
-// link loads the tiny URL adapter; the play menu already owns it lazily.
-const pendingRoomInvitePromise = new URLSearchParams(globalThis.location?.search || '').has('room')
-  ? import('./net/roomInvite.ts').then(({ parseRoomInvite }) =>
-    parseRoomInvite(globalThis.location?.href))
-  : null;
+const pendingRoomInvitePromise = startupIntent.pendingRoomInvite;
 
 const {
   preload: preloadSoloBattleRuntime,
@@ -175,26 +169,16 @@ const {
 const battleWarm = createBattleWarmAccess();
 const battleEntryAcquisition = createBattleEntryAcquisition();
 
-function loadLastSpecId() {
-  try {
-    const id = localStorage.getItem(LAST_SPEC_KEY);
-    if (id && VISIBLE_TANK_IDS.includes(id)) return id;
-  } catch (_) { /* storage unavailable/private mode */ }
-  return DEFAULT_SPEC_ID;
-}
-
-function rememberSpecId(id) {
-  if (!VISIBLE_TANK_IDS.includes(id)) return;
-  try { localStorage.setItem(LAST_SPEC_KEY, id); } catch (_) { /* storage unavailable */ }
-}
-
 // Resolve the remembered hero and begin its exact family transfers before
 // renderer/garage construction. This overlaps network work with the staged
 // boot without constructing a tank or touching WebGL ahead of startup order.
-let selectedSpecId = loadLastSpecId();
+const selectedVehicle = createSelectedVehicleSelection({
+  visibleIds: VISIBLE_TANK_IDS,
+  defaultId: 'm1a1',
+});
 const bootSelectedBuilderP = STUDIO_BOOT_INTENT
   ? Promise.resolve()
-  : ensureTankBuilder(selectedSpecId);
+  : ensureTankBuilder(selectedVehicle.id);
 
 // scratch
 const _v1 = new THREE.Vector3();
@@ -647,7 +631,7 @@ const pedestal = createGaragePedestalRuntime({
   getDeviceTier,
   getPhase: () => game.phase,
   isBootComplete: () => bootComplete,
-  getSelectedId: () => selectedSpecId,
+  getSelectedId: () => selectedVehicle.id,
   getNeighborIds: () => garage?.getNeighborIds?.(2) || [],
   getBattlePlayer: () => game.player,
   getBattleEntity: (specId) => game.tankById.get(specId),
@@ -681,7 +665,7 @@ await bootStage('vehicle', async () => {
   // bounded cadence, but do not charge one entire display frame for every
   // procedural texture checkpoint in the selected hero's cold bake.
   const bootVehicleYield = createOpaqueLoadingYielder(12, 80);
-  await pedestal.prepareInitial(selectedSpecId, {
+  await pedestal.prepareInitial(selectedVehicle.id, {
     builderReady: bootSelectedBuilderP,
     yieldForBudget: bootVehicleYield,
   });
@@ -746,7 +730,7 @@ function ensureBattleStaged() {
   const world = currentWorld();
   if (battleStaged || !world) return;
   battleStaged = true;
-  setupBattle(game, selectedSpecId, world, { deferVisuals: true });
+  setupBattle(game, selectedVehicle.id, world, { deferVisuals: true });
   playerBattleActions.setTank(game.player.spec);
   damagePanel.setTank(game.player.spec, game.player.visual);
   damagePanel.setEquipment(game.player.equip); // EQUIPMENT SYSTEM: loadout readout
@@ -862,8 +846,7 @@ const garage = await bootStage('ui', () => createGarage({
   bus,
   onSelect: (specId) => {
     battleIntent.invalidateMapPlan();
-    selectedSpecId = specId;
-    rememberSpecId(specId);
+    selectedVehicle.select(specId);
     pedestal.set(specId);
     applyCamoPatternsChunked({ priorityIds: [specId], onlySpecIds: [specId] });
     networkRoomCoordinator?.syncVehicle(specId);
@@ -919,7 +902,7 @@ const garage = await bootStage('ui', () => createGarage({
     // cached tank on a map-card click. The visible hero repaints in the
     // first slice; parked/roster entries follow one frame apart.
     applyCamoPatternsChunked({
-      priorityIds: [selectedSpecId], onlySpecIds: [selectedSpecId],
+      priorityIds: [selectedVehicle.id], onlySpecIds: [selectedVehicle.id],
     });
     networkRoomCoordinator?.syncPendingLobbySelection();
   },
@@ -1547,8 +1530,8 @@ const soloBattleStart = createSoloBattleStartAccess({
     state: {
       game,
       getPendingMapId: () => worldRuntime.pendingMapId,
-      setSelectedSpecId: (value) => { selectedSpecId = value; },
-      rememberSpecId,
+      setSelectedSpecId: selectedVehicle.set,
+      rememberSpecId: selectedVehicle.remember,
       setShotMode: (value) => { shotMode = value; },
       setCaptureHidden: (value) => perfHud.setCaptureHidden(value),
       setSimulationAccumulator: () => { battleFrame.resetSimulationAccumulator(); },
@@ -1948,8 +1931,8 @@ const networkBattleActivation = createNetworkBattleActivationRuntime({
     setShotMode: (value) => { shotMode = value; },
     setCaptureHidden: (value) => perfHud.setCaptureHidden(value),
     setNetworkSpectator: (value) => networkSession.setSpectator(value),
-    setSelectedSpecId: (value) => { selectedSpecId = value; },
-    rememberSpecId,
+    setSelectedSpecId: selectedVehicle.set,
+    rememberSpecId: selectedVehicle.remember,
     setWorldDormant,
     getWorld: currentWorld,
     setCamoBiome,
@@ -2029,7 +2012,7 @@ function openBattle(preBattleSeconds = PRE_BATTLE_HOLD_S) {
 // sequencing while main supplies concrete browser/rendering adapters.
 const garageReturn = createGarageReturnRuntime({
   game,
-  getSelectedSpecId: () => selectedSpecId,
+  getSelectedSpecId: () => selectedVehicle.id,
   presentation: {
     setAdaptiveSuspended: (suspended) => post.setAdaptiveSuspended(suspended),
     clearBattle: () => {
@@ -2504,8 +2487,8 @@ window.__SHOTS = {
 // first world activation (ensureBattleStaged), not at boot — so prime the HUD
 // cards from the SELECTED SPEC here. ensureBattleStaged re-primes from the
 // real player entity when a battle actually stages.
-playerBattleActions.setTank(getSpec(selectedSpecId));
-garage.show(selectedSpecId);
+playerBattleActions.setTank(getSpec(selectedVehicle.id));
+garage.show(selectedVehicle.id);
 garageCameraPose(); // fallback pose until the orbit measures the hero
 showroom.start();
 garageFramePacer.reset(performance.now());
@@ -2769,7 +2752,7 @@ window.__DEBUG = {
   get pedestalOnStage() { return pedestal.isOnStage(); },
   // switch-desync r1: the id the garage UI (stats card / card highlight)
   // believes is selected — probes assert pedestalVisual.specId === this.
-  get selectedSpecId() { return selectedSpecId; },
+  get selectedSpecId() { return selectedVehicle.id; },
   get pedestalCacheIds() { return [...pedestal.cacheIds]; },
   get worldCacheIds() { return [...worldCache.keys()]; },
   get residentLimits() { return { ...residentLimits }; },
@@ -2787,7 +2770,7 @@ window.__DEBUG = {
   // not own a visible carousel card. Bypass the UI filter while preserving
   // the exact pedestal construction/pose used by the garage.
   stagePedestalTank: (id) => {
-    selectedSpecId = id;
+    selectedVehicle.set(id);
     return pedestal.set(id, true);
   },
   get world() { return currentWorld(); },
@@ -2896,7 +2879,7 @@ window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
 if (STUDIO_BOOT_INTENT) {
   requestQuietIdle(async () => {
     await garageDressing.pump();
-    if (!pedestal.current) await pedestal.set(selectedSpecId, true);
+    if (!pedestal.current) await pedestal.set(selectedVehicle.id, true);
   });
 }
 // MOBILE r3: black-scene watchdog — the owner's iPhone passes every synthetic

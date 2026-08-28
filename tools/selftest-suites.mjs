@@ -135,6 +135,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/deferredCombatWarmRuntime.selftest.mjs',
     'src/game/studioAccess.selftest.mjs',
     'src/game/stateCore.selftest.mjs',
+    'src/game/startupIntent.selftest.mjs',
+    'src/game/selectedVehicleSelection.selftest.mjs',
     'src/game/soloBattleAccess.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
