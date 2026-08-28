@@ -56,7 +56,7 @@ import {
 } from './webrtcPeer.ts';
 import { RoomSignalingClient } from './signalingClient.js';
 import { resolveSignalUrl } from './signalEndpoint.js';
-import { LobbyClientRuntime, LobbyHostRuntime } from './lobbyRuntime.js';
+import { LobbyClientRuntime, LobbyHostRuntime } from './lobbyRuntime.ts';
 
 function input(overrides = {}) {
   return {
@@ -895,6 +895,21 @@ assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan
     'replayed READY releases the authoritative readiness barrier');
   earlyMatchClient.close('test_done');
   handoffAuthority.close('test_done');
+}
+
+// Untrusted room state must be structurally valid before reaching UI listeners.
+{
+  const pair = createLoopbackTransportPair();
+  const client = new LobbyClientRuntime({ transport: pair.client });
+  const malformed = serializeLobby(createLobby({
+    roomCode: 'BAD234', hostId: 'host', hostName: 'Host', hostSpecId: 'm1a2',
+  }));
+  malformed.players[0] = { ...malformed.players[0], team: 'forged-team' };
+  pair.host.send(createEnvelope(MESSAGE_TYPES.LOBBY_STATE, malformed, { seq: 1 }));
+  await Promise.resolve();
+  assert.equal(client.state, null, 'malformed lobby state never reaches client presentation');
+  assert.equal(client.errors.at(-1)?.code, 'invalid_lobby_state');
+  client.close('test_done');
 }
 
 // Viewer-specific snapshot filtering and vehicle interpolation.

@@ -1,5 +1,12 @@
-import { createLobby } from './lobby.ts';
-import { LobbyHostRuntime } from './lobbyRuntime.js';
+import {
+  createLobby,
+  type LobbyState,
+  type SerializedLobby,
+} from './lobby.ts';
+import {
+  LobbyHostRuntime,
+  type ReleasedLobbyTransport,
+} from './lobbyRuntime.ts';
 import {
   createWebRTCPeer,
   type MatchTransport,
@@ -62,25 +69,8 @@ interface SignalingPort {
   close(reason: string): void;
 }
 
-interface LobbyState {
-  [key: string]: unknown;
-}
-
 interface RoomState {
   players?: RoomPlayer[];
-}
-
-interface LobbyHostPort {
-  onState(listener: (state: LobbyState) => void): Unsubscribe;
-  attachPeer(options: {
-    peerId: string;
-    transport: MatchTransport;
-    player: { name: string };
-  }): void;
-  detachPeer(peerId: string, reason: string): void;
-  command(peerId: string, command: RoomCommand): unknown;
-  releaseTransports(): unknown;
-  close(reason: string): void;
 }
 
 interface MatchHostPort {
@@ -141,7 +131,7 @@ export interface PrivateRoomHostOptions {
   isVehicleAllowed?: (specId: string) => boolean;
   isCamoAllowed?: (camo: string) => boolean;
   isMapAllowed?: (mapId: string) => boolean;
-  onStart?: ((state: LobbyState) => void) | null;
+  onStart?: ((state: SerializedLobby) => void) | null;
   onError?: ((error: unknown) => void) | null;
 }
 
@@ -161,28 +151,6 @@ export interface PrivateRoomClientOptions {
   connectTimeoutMs?: number;
   initialRebuildDelaysMs?: number[];
 }
-
-const createTypedLobby = createLobby as unknown as (options: {
-  roomCode: string;
-  hostId: string;
-  hostName?: string;
-  hostSpecId: string | null;
-  hostEquipment: string[];
-  hostCamo: string;
-  maxPlayers: number;
-  mode: string;
-  mapId: string;
-  gameMode: string;
-  teamSize: number;
-}) => LobbyState;
-
-const TypedLobbyHostRuntime = LobbyHostRuntime as unknown as new (options: {
-  lobby: LobbyState;
-  isVehicleAllowed: (specId: string) => boolean;
-  isCamoAllowed: (camo: string) => boolean;
-  isMapAllowed: (mapId: string) => boolean;
-  onStart: ((state: LobbyState) => void) | null;
-}) => LobbyHostPort;
 
 const TypedMatchClientRuntime = MatchClientRuntime as unknown as new (options: {
   transport: MatchTransport;
@@ -214,7 +182,7 @@ export class PrivateRoomHostSession {
   readonly onError: ((error: unknown) => void) | null;
   readonly peers = new Map<string, SessionPeer>();
   readonly lobby: LobbyState;
-  readonly runtime: LobbyHostPort;
+  readonly runtime: LobbyHostRuntime;
   matchRuntime: MatchHostPort | null = null;
   private readonly unsubscribeSignal: Unsubscribe;
 
@@ -254,7 +222,7 @@ export class PrivateRoomHostSession {
     this.isCamoAllowed = isCamoAllowed;
     this.isMapAllowed = isMapAllowed;
     this.onError = onError;
-    this.lobby = createTypedLobby({
+    this.lobby = createLobby({
       roomCode: roomInfo.roomCode,
       hostId: roomInfo.peerId,
       hostName,
@@ -267,7 +235,7 @@ export class PrivateRoomHostSession {
       mapId,
       teamSize,
     });
-    this.runtime = new TypedLobbyHostRuntime({
+    this.runtime = new LobbyHostRuntime({
       lobby: this.lobby,
       isVehicleAllowed,
       isCamoAllowed,
@@ -370,7 +338,7 @@ export class PrivateRoomHostSession {
   }
 
   /** Release open remote channels for AuthoritativeMatchRuntime attachment. */
-  takeMatchChannels(): unknown {
+  takeMatchChannels(): ReleasedLobbyTransport[] {
     // Keep rendezvous listening after handoff. Gameplay never traverses this
     // socket, but a browser that reloads after a round needs it to establish
     // a fresh WebRTC channel into the still-live room.

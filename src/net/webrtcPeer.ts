@@ -7,6 +7,9 @@ export type RtcSignal =
 
 export interface MatchTransport {
   readonly readyState: string;
+  send(message: unknown): boolean;
+  onMessage(listener: (message: unknown) => void): () => void;
+  onClose?(listener: (reason: string) => void): () => void;
   close(reason?: string): void;
 }
 

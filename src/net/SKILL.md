@@ -15,6 +15,8 @@ play without importing Three.js rendering or DOM state.
 - `protocol.js` owns wire vocabulary and untrusted input validation.
 - `lobby.ts` owns the strict canonical room model: teams, capacity, readiness,
   permissions, host migration, round state, and start policy.
+- `lobbyRuntime.ts` owns typed lobby transport sequencing, payload admission,
+  broadcast, and the lossless lobby-to-match channel handoff.
 - `matchRuntime.js` owns fixed ticks, input ordering, snapshots, and client time.
 - `inputCadence.ts` bounds replaceable input uploads independently from display
   refresh while preserving immediate control edges.

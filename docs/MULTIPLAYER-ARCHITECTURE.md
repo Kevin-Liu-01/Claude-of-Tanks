@@ -182,6 +182,11 @@ filled deterministically by authority-owned bots. Bots use seeded diverse
 openings, traversability planning on every map, local obstacle recovery, and
 the same spotting limits as human players.
 
+`src/net/lobbyRuntime.ts` is the strict transport owner around that policy. It
+validates serialized room state before client admission, rejects stale sequence
+numbers, bounds the temporary match-handoff inbox, and transfers each live
+channel exactly once without a packet-ownership gap.
+
 The canonical room authority also owns display-name uniqueness. Automatic
 callsigns are stable per browser identity, while case-insensitive collisions
 are deterministically suffixed in both private lobbies and ranked rosters.

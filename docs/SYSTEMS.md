@@ -704,6 +704,11 @@ readiness, selections, map, format, host permissions, lock policy, and start
 policy. UI submits commands and renders room state; it does not mutate the
 canonical roster locally.
 
+`src/net/lobbyRuntime.ts` validates lobby envelopes and serialized state,
+orders revisions, bounds lobby-to-match handoff traffic, and exposes typed
+host/client transport lifecycles. Untrusted room packets never enter UI state
+until their player identities, phase, mode, and revision fields are valid.
+
 `src/net/networkRoomCoordinator.ts` owns the browser lifetime around that
 canonical state: lobby intent, room subscriptions, garage reminder state,
 ready/start commands, selection locks, bounded chat buffering, menu attachment,

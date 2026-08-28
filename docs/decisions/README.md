@@ -100,3 +100,4 @@ runtime documents remain authoritative for behavior.
 - [0088 — Garage phase presentation has one typed owner](0088-typed-garage-phase-presentation.md)
 - [0089 — Private match handoff is strict TypeScript](0089-typed-private-match-handoff.md)
 - [0090 — Canonical lobby policy is strict TypeScript](0090-typed-lobby-state-machine.md)
+- [0091 — Lobby transport ownership is strict TypeScript](0091-typed-lobby-runtime.md)
