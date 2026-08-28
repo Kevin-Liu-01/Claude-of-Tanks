@@ -31,6 +31,7 @@
 
 import { FONT_STACK, ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { SETTINGS_ACTION_ICONS, SETTINGS_OPTION_ICONS } from './settingsIcons.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
@@ -133,7 +134,21 @@ const SETTINGS_CSS = `
 .cot-set-row:hover{background:rgba(146,164,180,.06);}
 .cot-set-row.alt{background:rgba(146,164,180,.03);}
 .cot-set-row.alt:hover{background:rgba(146,164,180,.06);}
-.cot-set-row .lb{font-size:12.5px;color:#c6d2dc;letter-spacing:.04em;}
+.cot-set-row .lb{min-width:0;flex:1;display:flex;align-items:center;gap:9px;
+  font-size:12.5px;color:#c6d2dc;letter-spacing:.04em;line-height:1.3;}
+.cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;
+  color:#91a3b2;background:linear-gradient(180deg,rgba(37,46,54,.72),rgba(16,21,26,.78));
+  border:1px solid rgba(146,164,180,.24);box-shadow:inset 0 1px 0 rgba(235,243,250,.05);}
+.cot-setting-icon svg{display:block;width:16px;height:16px;overflow:visible;}
+.cot-setting-icon.tone-amber{color:#e2a64d;border-color:rgba(226,166,77,.28);}
+.cot-setting-icon.tone-red{color:#d9685f;border-color:rgba(217,104,95,.28);}
+.cot-setting-icon.tone-green{color:#67bd7d;border-color:rgba(103,189,125,.28);}
+.cot-setting-icon.tone-cyan{color:#67b8d8;border-color:rgba(103,184,216,.28);}
+.cot-setting-icon.tone-violet{color:#aa8bd3;border-color:rgba(170,139,211,.28);}
+.cot-setting-icon[data-badge]::after{content:attr(data-badge);position:absolute;right:-4px;bottom:-4px;
+  min-width:11px;height:11px;padding:0 2px;display:grid;place-items:center;font-size:7px;font-weight:900;
+  line-height:1;color:#161009;background:#e2a64d;border:1px solid #6d4717;box-shadow:0 1px 3px #000;}
+.cot-setting-label-text{min-width:0;}
 .cot-set-row.conflict,.cot-set-row.conflict.alt{background:rgba(190,60,50,.12);
   box-shadow:inset 2px 0 0 #c8503c,inset 0 0 0 1px rgba(240,90,90,.35);}
 .cot-set-row.conflict .cot-chip{border-color:rgba(240,110,95,.6);
@@ -415,6 +430,19 @@ export function createSettings(opts) {
     }
   }
 
+  /** A compact, decorative vector plate that keeps the setting text as the
+   *  accessible label. Icon maps are exhaustive over ActionId/InputSettings,
+   *  so adding a new setting fails typecheck until it receives a glyph. */
+  function settingLabel(parent, label, spec) {
+    const lb = el('span', 'lb', parent);
+    const icon = el('span', `cot-setting-icon tone-${spec.tone || 'steel'}`, lb);
+    icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML = uiIconSVG(spec.id, 16);
+    if (spec.badge) icon.dataset.badge = spec.badge;
+    el('span', 'cot-setting-label-text', lb).textContent = label;
+    return lb;
+  }
+
   const gear = opts.gear || el('button', 'cot-gear');
   gear.type = 'button';
   gear.setAttribute('aria-label', 'Settings');
@@ -558,8 +586,7 @@ export function createSettings(opts) {
       }
       const row = el('div', 'cot-set-row', body);
       row.dataset.action = def.id;
-      const lb = el('span', 'lb', row);
-      lb.textContent = def.label;
+      settingLabel(row, def.label, SETTINGS_ACTION_ICONS[def.id]);
       const chipsWrap = el('div', 'chips', row);
       const chips = {
         0: makeChip(def, 0, chipsWrap),
@@ -598,7 +625,7 @@ export function createSettings(opts) {
     const fromD = o.fromDisp || ((v) => v);
     const digits = o.digits != null ? o.digits : 2;
     const row = el('div', 'cot-set-row', parent);
-    el('span', 'lb', row).textContent = label;
+    settingLabel(row, label, SETTINGS_OPTION_ICONS[key]);
     const wrap = el('div', 'cot-set-slider', row);
     const range = el('input', '', wrap);
     range.type = 'range';
@@ -654,7 +681,7 @@ export function createSettings(opts) {
    *  knob switch). Same persistence path: input.setSetting(key, bool). */
   function onOffRow(parent, label, key, onChange) {
     const row = el('div', 'cot-set-row', parent);
-    el('span', 'lb', row).textContent = label;
+    settingLabel(row, label, SETTINGS_OPTION_ICONS[key]);
     const seg = el('div', 'cot-set-seg onoff', row);
     const btns = [];
     const sync = () => {
@@ -705,7 +732,7 @@ export function createSettings(opts) {
     ];
     if (!touchLayout) {
       const rmbRow = el('div', 'cot-set-row', aim);
-      el('span', 'lb', rmbRow).textContent = 'Right click (RMB)';
+      settingLabel(rmbRow, 'Right click (RMB)', SETTINGS_OPTION_ICONS.rmbMode);
       const rmbSeg = el('div', 'cot-set-seg', rmbRow);
       const rmbBtns = [];
       for (const [value, label] of RMB_MODE_DEFS) {
@@ -731,7 +758,7 @@ export function createSettings(opts) {
 
     const battle = groupCard(body, 'Battle');
     const diffRow = el('div', 'cot-set-row', battle);
-    el('span', 'lb', diffRow).textContent = 'AI difficulty (next battle)';
+    settingLabel(diffRow, 'AI difficulty (next battle)', SETTINGS_OPTION_ICONS.aiDifficulty);
     const seg = el('div', 'cot-set-seg', diffRow);
     const diffBtns = [];
     for (const tier of ['easy', 'normal', 'hard']) {
@@ -847,7 +874,7 @@ export function createSettings(opts) {
     body.textContent = '';
     const card = groupCard(body, 'Quality');
     const row = el('div', 'cot-set-row', card);
-    el('span', 'lb', row).textContent = 'Graphics quality';
+    settingLabel(row, 'Graphics quality', SETTINGS_OPTION_ICONS.graphicsQuality);
     const seg = el('div', 'cot-set-seg', row);
     const btns = [];
     const mobile = getDeviceTier() === 'mobile';

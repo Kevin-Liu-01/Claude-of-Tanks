@@ -38,6 +38,15 @@ for (const id of ['sound', 'soundOff', 'graphics', 'settings', 'lightbulb']) {
   if (!uiIconIds().includes(id)) throw new Error(`missing mobile HUD icon: ${id}`);
 }
 
+for (const id of [
+  'moveForward', 'moveBack', 'steerLeft', 'steerRight', 'handbrake',
+  'fireGun', 'reload', 'freeLook', 'zoomIn', 'zoomOut', 'mouse',
+  'aimSmoothing', 'invertAim', 'controller', 'performance', 'telemetry',
+  'armorFlashlight', 'ambience', 'music', 'heartbeat',
+]) {
+  if (!uiIconIds().includes(id)) throw new Error(`missing settings icon: ${id}`);
+}
+
 if (!uiIconIds().includes('github')) throw new Error('missing garage GitHub icon');
 
 for (const [id, asset] of [
