@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BATTLE_REELS } from './battleReels.js';
+import { BATTLE_REELS } from './battleReels.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const docs = readFileSync(join(ROOT, 'docs.html'), 'utf8');

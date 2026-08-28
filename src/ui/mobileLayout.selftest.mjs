@@ -284,7 +284,7 @@ const semanticSurfaceFiles = [
   '../presentation/publicNav.css',
   '../presentation/publicPages.ts',
   '../docs/docs.css',
-  '../docs/battleReels.js',
+  '../docs/battleReels.ts',
   '../../public/home.css',
   '../../index.html',
   './battleLoad.ts',

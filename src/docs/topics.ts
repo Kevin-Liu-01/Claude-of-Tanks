@@ -1,6 +1,18 @@
-const TOPIC_ORDER = ['simulation', 'vehicles', 'rendering', 'worlds', 'multiplayer', 'interface', 'studio'];
+type TopicSection = readonly [string, ...string[]];
+type TopicMedia = readonly [string, string];
 
-const topics = {
+interface TopicDefinition {
+  label: string;
+  title: string;
+  lede: string;
+  hero: string;
+  sections: readonly TopicSection[];
+  media: readonly TopicMedia[];
+}
+
+const TOPIC_ORDER: readonly string[] = ['simulation', 'vehicles', 'rendering', 'worlds', 'multiplayer', 'interface', 'studio'];
+
+const topics: Record<string, TopicDefinition> = {
   simulation: {
     label: 'Simulation and combat', title: 'Every hit has a path',
     lede: 'The battle simulation advances at 60 Hz. Movement, aim, ballistics, armor, damage, reloads, spotting, and match results are resolved from authoritative state—not from the rendered frame.',
@@ -116,15 +128,15 @@ const topics = {
   },
 };
 
-function mediaFigure([src, caption]) {
+function mediaFigure([src, caption]: TopicMedia): string {
   return `<figure class="topic-figure"><img src="${src}" alt="${caption}" loading="lazy"><figcaption>${caption}</figcaption></figure>`;
 }
 
-function formatText(text) {
+function formatText(text: string): string {
   return text.replace(/`([^`]+)`/g, '<code>$1</code>');
 }
 
-function sectionMarkup(section, index, media) {
+function sectionMarkup(section: TopicSection, index: number, media?: TopicMedia): string {
   const [title, ...paragraphs] = section;
   return `<section class="topic-section"><p class="section-index">${String(index + 1).padStart(2, '0')} // ${title}</p><h2>${title}</h2>${paragraphs.map((text) => `<p>${formatText(text)}</p>`).join('')}${media ? mediaFigure(media) : ''}</section>`;
 }
@@ -134,7 +146,8 @@ const topic = topics[slug] || topics.simulation;
 document.title = `${topic.label} — Claude of Tanks Technical Manual`;
 
 const topicNav = TOPIC_ORDER.map((id) => `<a href="/docs/${id}"${id === slug ? ' aria-current="page"' : ''}>${topics[id].label}</a>`).join('');
-const root = document.querySelector('#topicRoot');
+const root = document.querySelector<HTMLElement>('#topicRoot');
+if (!root) throw new Error('technical manual topic root is unavailable');
 const heroMarkup = topic.hero.endsWith('.webm')
   ? `<video autoplay muted loop playsinline preload="metadata" poster="${topic.hero.replace(/\.webm$/, '.jpg')}" aria-label="${topic.label} shown in the current game renderer"><source src="${topic.hero}" type="video/webm"></video>`
   : `<img src="${topic.hero}" alt="${topic.label} shown in the current game renderer">`;

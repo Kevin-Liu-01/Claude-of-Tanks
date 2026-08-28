@@ -38,6 +38,8 @@ deferred-image, and viewport-video lifecycles outside the game runtime.
 `presentation/publicNav.ts` owns the responsive public navigation lifecycle;
 `presentation/captureRecipes.ts` owns typed lazy recipe lookup for docs and
 capture galleries. The top-level public presentation runtime contains no JS.
+The technical manual runtime in `src/docs/` is also strict TypeScript: topics,
+archive motion, copy controls, and battle reels remain public-entry-only code.
 The reusable accessible dialog lifecycle, focus trap, dismissal guard, and body
 scroll ownership live in `modal.ts`; feature panels only own dialog content.
 Rich contextual dossiers, live image resolution, and JSON-copy controls live in

@@ -115,7 +115,7 @@ assert.doesNotMatch(currentPublicCopy, /111 (?:production|first-party procedural
   `public fleet facts must track the canonical ${PRODUCT_STATS.productionVehicles} / ${PRODUCT_STATS.developmentVehicles} / ${PRODUCT_STATS.savedVehicleRecords} roster projections`);
 assert.doesNotMatch(renderProductStats(readFileSync(join(ROOT, 'docs.html'), 'utf8')),
   /16 (?:maps|authored battlefields)/);
-assert.doesNotMatch(readFileSync(join(ROOT, 'src/docs/topics.js'), 'utf8'), /Sixteen battlefields/);
+assert.doesNotMatch(readFileSync(join(ROOT, 'src/docs/topics.ts'), 'utf8'), /Sixteen battlefields/);
 
 const vercel = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8'));
 for (const [file, canonical] of [...indexedPages].filter(([file]) => file.startsWith('docs-'))) {

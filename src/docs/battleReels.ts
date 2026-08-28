@@ -1,6 +1,14 @@
 const MEDIA_ROOT = '/media/battle-reels-v3';
 
-export const BATTLE_REELS = Object.freeze([
+export interface BattleReel {
+  id: string;
+  title: string;
+  map: string;
+  video: string;
+  poster: string;
+}
+
+const REEL_SOURCES: ReadonlyArray<readonly [string, string, string]> = [
   ['01_m1a2_sepv3_vs_t90m_verdant', 'M1A2 Abrams SEPv3 vs T-90M', 'Verdant Fields'],
   ['02_strv122_vs_k2_desert', 'Strv 122 vs K2 Black Panther', 'Sirocco Wadi'],
   ['03_challenger_3_vs_leo2a7v_winter', 'Challenger 3 vs Leopard 2A7V', 'Frosthollow'],
@@ -21,7 +29,9 @@ export const BATTLE_REELS = Object.freeze([
   ['18_merkava3d_vs_amx40_winter', 'Merkava Mk.3D vs AMX-40', 'Winter engagement'],
   ['19_type90a_vs_pt91m_verdant', 'Type 90A vs PT-91M', 'Verdant engagement'],
   ['20_m1a2_vs_ua_t80u_kursk_coastal', 'M1A2 Abrams vs T-80U Kursk', 'Coastal engagement'],
-].map(([id, title, map]) => Object.freeze({
+];
+
+export const BATTLE_REELS: readonly BattleReel[] = Object.freeze(REEL_SOURCES.map(([id, title, map]) => Object.freeze({
   id,
   title,
   map,
@@ -29,20 +39,20 @@ export const BATTLE_REELS = Object.freeze([
   poster: `${MEDIA_ROOT}/${id}.webp`,
 })));
 
-function reelNumber(index) {
+function reelNumber(index: number): string {
   return String(index + 1).padStart(2, '0');
 }
 
-export function mountBattleReels(scope = document) {
-  const root = scope.querySelector('[data-battle-reels]');
+export function mountBattleReels(scope: Document = document): void {
+  const root = scope.querySelector<HTMLElement>('[data-battle-reels]');
   if (!root) return;
 
-  const video = root.querySelector('[data-battle-reel-video]');
-  const source = video?.querySelector('source');
-  const grid = root.querySelector('[data-battle-reel-grid]');
-  const title = root.querySelector('[data-battle-reel-title]');
-  const map = root.querySelector('[data-battle-reel-map]');
-  const count = root.querySelector('[data-battle-reel-count]');
+  const video = root.querySelector<HTMLVideoElement>('[data-battle-reel-video]');
+  const source = video?.querySelector<HTMLSourceElement>('source');
+  const grid = root.querySelector<HTMLElement>('[data-battle-reel-grid]');
+  const title = root.querySelector<HTMLElement>('[data-battle-reel-title]');
+  const map = root.querySelector<HTMLElement>('[data-battle-reel-map]');
+  const count = root.querySelector<HTMLElement>('[data-battle-reel-count]');
   if (!video || !source || !grid || !title || !map || !count) return;
 
   grid.innerHTML = BATTLE_REELS.map((reel, index) => `
@@ -52,10 +62,10 @@ export function mountBattleReels(scope = document) {
     </button>
   `).join('');
 
-  const buttons = [...grid.querySelectorAll('[data-battle-reel-index]')];
+  const buttons = [...grid.querySelectorAll<HTMLButtonElement>('[data-battle-reel-index]')];
   let activeIndex = 0;
 
-  const selectReel = (index, play = true) => {
+  const selectReel = (index: number, play = true): void => {
     const reel = BATTLE_REELS[index];
     if (!reel) return;
 
@@ -78,17 +88,20 @@ export function mountBattleReels(scope = document) {
   };
 
   grid.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-battle-reel-index]');
+    const button = event.target instanceof Element
+      ? event.target.closest<HTMLButtonElement>('[data-battle-reel-index]') : null;
     if (!button) return;
     selectReel(Number(button.dataset.battleReelIndex));
   });
 
   grid.addEventListener('keydown', (event) => {
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
-    const current = buttons.indexOf(scope.activeElement);
+    const focused = scope.activeElement;
+    const current = focused instanceof HTMLButtonElement ? buttons.indexOf(focused) : -1;
     if (current < 0) return;
     event.preventDefault();
-    const columns = ['phone', 'compact'].includes(scope.body?.dataset?.cotWidth) ? 2 : 4;
+    const widthBand = scope.body?.dataset.cotWidth;
+    const columns = widthBand === 'phone' || widthBand === 'compact' ? 2 : 4;
     const offset = event.key === 'ArrowLeft' ? -1
       : event.key === 'ArrowRight' ? 1
         : event.key === 'ArrowUp' ? -columns : columns;

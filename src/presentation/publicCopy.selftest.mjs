@@ -45,7 +45,7 @@ for (const file of pageFiles) {
 }
 
 const gallerySource = readFileSync(join(ROOT, 'src/gallery/gallery.js'), 'utf8');
-const docsScriptSource = readFileSync(join(ROOT, 'src/docs/docs.js'), 'utf8');
+const docsScriptSource = readFileSync(join(ROOT, 'src/docs/docs.ts'), 'utf8');
 assert.doesNotMatch(gallerySource, /mountMediaArchive|galleryArchiveOpen/);
 assert.match(docsScriptSource, /mountMediaArchive\([\s\S]*?\{ mode: 'wall', limit: 88, filters: false \}/);
 

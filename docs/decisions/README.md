@@ -158,3 +158,4 @@ runtime documents remain authoritative for behavior.
 - [0146 — Public capture archives share a typed lazy owner](0146-typed-media-archive.md)
 - [0147 — Public media lifecycles are typed and viewport-scoped](0147-typed-public-media-lifecycles.md)
 - [0148 — Public presentation runtime is strict TypeScript](0148-typed-public-presentation-runtime.md)
+- [0149 — Technical manual runtime is strict TypeScript](0149-typed-docs-runtime.md)
