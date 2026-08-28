@@ -29,13 +29,13 @@ import {
 import { attachTankDecorations } from './decorations.js';
 // effects_combat r5 ANIMATION CLOCK: the self-timed visual timelines (gun
 // recuperator, turret-pop arc, wreck char/ember cooldown) now age against
-// the shared fx clock — see src/fx/clock.js. Live play is identical (the
+// the shared fx clock — see src/fx/clock.ts. Live play is identical (the
 // clock advances by render dt each frame); frozen/stepped screenshot
 // captures hold and step these timelines exactly like every particle, so
 // the destruction beat is finally capturable frame-by-frame (the r4 critic
 // saw a fully-charred, already-settled wreck at "0.1 s" because rAF frames
 // between captures aged the old dt-accumulators in wall-clock time).
-import { fxNow, emitPopTrail } from '../fx/clock.js';
+import { fxNow, emitPopTrail } from '../fx/clock.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
@@ -7086,7 +7086,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   // effects_combat r5 FX-CLOCK ADVANCEMENT: recoil/pop/wreck timelines no
   // longer trust the caller's dt directly — each syncFromState advances them
   // by the SHARED FX CLOCK's forward motion since the previous call (see
-  // clock.js import note). Live play: the clock moves by render dt, so the
+  // clock.ts import note). Live play: the clock moves by render dt, so the
   // timelines play at wall speed exactly as before. Frozen captures ('shot'
   // phase rAF frames, stepped critic pins): the clock holds/steps, so the
   // destruction/firing beats hold/step WITH every particle instead of

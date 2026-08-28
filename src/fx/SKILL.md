@@ -12,7 +12,7 @@ Render combat feedback from authoritative events without modifying simulation.
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
 `fxRuntimeAccess.ts` owns retryable battle-only module/runtime acquisition,
-`effects.js` composes event reactions, `particles.js` owns pools, `clock.js`
+`effects.js` composes event reactions, `particles.js` owns pools, `clock.ts`
 owns presentation time, and `impactDecals.js` owns bounded surface marks.
 
 ## Patterns to follow / invariants

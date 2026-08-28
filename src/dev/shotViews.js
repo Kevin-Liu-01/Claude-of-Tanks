@@ -336,7 +336,7 @@ export function createShotViews({
     // road so the dark tube no longer vanishes against the shadowed bank.
     orbitPose(p, 13, 55, 18, 45); // lighting_post r4: elev 14 -> 18 (left-side shadow readable)
     // effects_combat r4: recoil timelines now advance on the SHARED FX CLOCK
-    // (src/fx/clock.js), which is pinned during __SHOTS.set — repeated
+    // (src/fx/clock.ts), which is pinned during __SHOTS.set — repeated
     // syncFromState calls advance 0 s. recoilKick(ageS) takes the composed
     // age directly: backdate the stroke 50 ms so the barrel sits visibly
     // out of battery in the staged still.

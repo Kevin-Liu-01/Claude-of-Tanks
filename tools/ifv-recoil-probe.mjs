@@ -107,7 +107,7 @@ try {
       if (!target) return { ok: false, reason: 'no target' };
       // §5.362: fire and PIN in the same synchronous block, then step the
       // shared clock to exact stroke ages — deterministic stroke receipts.
-      const { fxNow } = await import('/src/fx/clock.js');
+      const { fxNow } = await import('/src/fx/clock.ts');
       D.flags.forceFire = true;
       for (let i = 0; i < 20 && !R.log.some((x) => x.tag === 'fired'); i++) {
         D.fastForward(0.05);

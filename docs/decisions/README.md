@@ -135,3 +135,4 @@ runtime documents remain authoritative for behavior.
 - [0123 — Gesture-time audio handoff is strict TypeScript](0123-typed-lazy-audio-handoff.md)
 - [0124 — World frame presentation has one typed owner](0124-typed-world-frame-presentation.md)
 - [0125 — JavaScript serverless closures remain runtime-complete](0125-serverless-runtime-closure.md)
+- [0126 — Shared FX time has one strict typed contract](0126-typed-fx-clock.md)

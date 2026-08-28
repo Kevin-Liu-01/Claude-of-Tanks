@@ -1,5 +1,5 @@
 /**
- * clock.js — shared CONTINUOUS fx clock for visual animation timelines.
+ * clock.ts — shared CONTINUOUS fx clock for visual animation timelines.
  *
  * effects_combat r5: the tank visuals' self-timed animation layers (gun
  * recuperator recoil, turret-pop arc, wreck ember cooldown, staged char)
@@ -24,17 +24,26 @@
  * continuous monotonic timeline and visual birth anchors keep their age.
  */
 
-let clockFn = null;
+type FxClockSource = () => number;
+type PopTrailEmitter = (
+  x: number,
+  y: number,
+  z: number,
+  heat: number,
+  birthOffset: number,
+) => void;
+
+let clockFn: FxClockSource | null = null;
 let shiftS = 0;
 
-/** Install the shared clock source. @param {() => number} fn seconds */
-export function registerFxClock(fn) {
+/** Install the shared clock source, measured in seconds. */
+export function registerFxClock(fn: FxClockSource): void {
   clockFn = fn;
   shiftS = 0;
 }
 
 /** Report an age-preserving clock rebase of `delta` seconds. */
-export function noteFxClockShift(delta) {
+export function noteFxClockShift(delta: number): void {
   shiftS += delta;
 }
 
@@ -42,9 +51,8 @@ export function noteFxClockShift(delta) {
  * Continuous shared fx time in seconds, or null when no fx system has
  * registered (garage-only boots, unit probes) — callers fall back to
  * self-timed dt accumulation.
- * @returns {number|null}
  */
-export function fxNow() {
+export function fxNow(): number | null {
   return clockFn ? clockFn() - shiftS : null;
 }
 
@@ -58,10 +66,10 @@ export function fxNow() {
 // turret drags a readable smoke + ember wake for its whole flight (works for
 // live kills, GLB swaps and backdated composed captures alike).
 
-let popTrailFn = null;
+let popTrailFn: PopTrailEmitter | null = null;
 
-/** Install the trail emitter. @param {(x:number,y:number,z:number,heat:number,birthOffset:number)=>void} fn */
-export function registerPopTrail(fn) {
+/** Install the trail emitter. */
+export function registerPopTrail(fn: PopTrailEmitter): void {
   popTrailFn = fn;
 }
 
@@ -71,6 +79,12 @@ export function registerPopTrail(fn) {
  * @param {number} heat 0..1 ember intensity for this sample
  * @param {number} birthOffset seconds (<= 0 backdates the puff)
  */
-export function emitPopTrail(x, y, z, heat, birthOffset = 0) {
+export function emitPopTrail(
+  x: number,
+  y: number,
+  z: number,
+  heat: number,
+  birthOffset = 0,
+): void {
   if (popTrailFn) popTrailFn(x, y, z, heat, birthOffset);
 }

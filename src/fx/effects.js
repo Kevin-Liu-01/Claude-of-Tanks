@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.js';
 import { LATE_FX_LAYER } from './layers.js';
-import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.js';
+import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.ts';
 import { createImpactDecals } from './impactDecals.js';
 import { syncSubjectEmitterAnchor } from './effectAttachments.js';
 import { isEraActivation } from '../game/eraActivation.ts';
@@ -416,7 +416,7 @@ const _jetO = { pos: [0, 0, 0], axis: [0, 0, 1], life: 0.1, width: 0.4, len0: 0.
 export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   const particles = createParticleSystem(engineCtx, { seed });
   // r5: tank-visual animation timelines (recoil, turret pop, char, embers)
-  // age against THIS clock — see src/fx/clock.js. Live play is unchanged
+  // age against THIS clock — see src/fx/clock.ts. Live play is unchanged
   // (the clock advances by render dt); frozen/stepped captures now hold and
   // step the destruction/fire beats exactly like every particle.
   registerFxClock(() => particles.getTime());
