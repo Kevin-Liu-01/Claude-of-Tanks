@@ -14,7 +14,7 @@
  * Fix = an explicit quality ladder, auto-selected by devicePixelRatio and
  * user-overridable (persisted in localStorage; the settings UI writes through
  * `setPresetName`). GPU-cost levers live here as DATA; the engine modules
- * (post.js, lighting.js) read them and subscribe to live changes:
+ * (post.js, lighting.ts) read them and subscribe to live changes:
  *
  * - `maxPixelRatio` — cap on the EffectComposer's internal pixel ratio
  *   (AAA "render scale"): the 3D scene + post chain render at the capped
@@ -32,7 +32,7 @@
  *   resolve happens before post processing, so fullscreen AO/bloom/grade/SMAA
  *   passes stay single-sampled. SMAA then cleans shader/specular edges after
  *   tone mapping without making every post pass pay the MSAA bandwidth cost.
- * - `shadowMapSizes` — per-cascade CSM shadow map resolutions (lighting.js).
+ * - `shadowMapSizes` — per-cascade CSM shadow map resolutions (lighting.ts).
  *
  * Preset semantics (resolution numbers are the EFFECTIVE internal 3D/post
  * pixel ratio, independent of the final display canvas density):
@@ -88,7 +88,7 @@ let _mobileResetHandled = false;
 // roster + hero-grade canvas bakes) + 4096² shadow cascades on devices whose
 // browsers OOM-kill a tab well below that. The mobile tier is a real preset
 // on the same ladder (data, not scattered if-statements): every engine module
-// that already reads the preset (post.js, lighting.js) picks it up, and the
+// that already reads the preset (post.js, lighting.ts) picks it up, and the
 // texture levers below (textureScale/textureCap) are consumed by the texture
 // creation sites (materials.js and world bakers).
 //
@@ -170,11 +170,11 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   // ultra/high — at 2048 its ~0.15 m texels x the PCF disk radius produced
   // the "wide over-blurred dark stripes" shadow critique; 4096 halves the
   // physical penumbra. Cascade 3 (230-520 m) stays 2048: genuinely subpixel.
-  // Far cascades still re-render round-robin (lighting.js), so the fill-rate
+  // Far cascades still re-render round-robin (lighting.ts), so the fill-rate
   // cost is amortized; the extra RT memory is ultra-only.
   // r7 (perf recert): the 4096 cascade 2 is now ULTRA-ONLY. 'high' — the
   // retina DEFAULT — returns to 2048 with a physical-penumbra-preserving PCF
-  // radius compensation in lighting.js (radius scales with mapSize/reference,
+  // radius compensation in lighting.ts (radius scales with mapSize/reference,
   // so the r5 stripe fix is kept: penumbra WIDTH is identical, only shadow
   // texel resolution in the 130-230 m band drops). Measured on the reference
   // machine at dpr2/60 s: scaled AO, bloom and cascade 2 leave enough
@@ -186,7 +186,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   // out to ~500 m, and CSM's fade=true starts dissolving the last cascade
   // well before maxFar — at 520 the far half of the town rendered shadowless.
   // 700 keeps the whole town inside solid shadow range; the far cascades
-  // still re-render round-robin (lighting.js), so the per-frame fill cost is
+  // still re-render round-robin (lighting.ts), so the per-frame fill cost is
   // amortized, and the r7 penumbra compensation keeps edge softness constant.
   ultra: {
     label: 'Ultra',
@@ -225,7 +225,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // immune to the adaptive AO trim, turning ordinary Verdant motion into
     // frame spikes. High keeps both near cascades continuous (no cadence
     // flashing) on the stable 2K grid and preserves physical penumbra width
-    // in lighting.js. The shadow RT footprint falls from ~100 MB to ~52 MB.
+    // in lighting.ts. The shadow RT footprint falls from ~100 MB to ~52 MB.
     shadowMapSizes: [2048, 2048, 2048, 1024],
     shadowMaxFar: 700,
   },
@@ -285,7 +285,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   //   cap) in either dimension.
   // - 1024/512 shadow cascades + 300 m range — the desktop 'high' cascades
   //   (2x 4096² + 2x 2048² ≈ 170 MB of RTs) were a third of the whole mobile
-  //   budget; lighting.js' penumbra compensation keeps softness constant.
+  //   budget; lighting.ts' penumbra compensation keeps softness constant.
   // - composer starts at 1.25x CSS pixels and may earn 1.4x, scene MSAA off,
   //   AO off, half bloom chain, and a >1 CSS-pixel governor floor. The final
   //   display-space SMAA still owns edge cleanup; avoiding the multisampled
@@ -522,7 +522,7 @@ export function getPreset(): QualityPreset {
 
 /**
  * Store a new choice ('auto' or a preset name) and notify subscribers
- * (post.js resizes the composer chain, lighting.js reallocates shadow maps).
+ * (post.js resizes the composer chain, lighting.ts reallocates shadow maps).
  * The settings UI is the intended caller.
  * @param {string} name - 'auto' | 'low' | 'medium' | 'high' | 'ultra'
  * @returns {void}

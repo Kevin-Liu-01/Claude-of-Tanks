@@ -128,7 +128,7 @@ const ENV_SKY_SCALE = 50; // PMREMGenerator.fromScene far plane = 100
 // wash, and even 0.45 diluted open-ground shadows to a ~1.3:1 luma ratio.
 // r3: 0.28 → 0.20 — omnidirectional IBL fill is the flattest of the three
 // ambient layers (it lights shadowed and lit faces identically), so the fill
-// budget moved to the directional HemisphereLight (lighting.js hemi 0.32),
+// budget moved to the directional HemisphereLight (lighting.ts hemi 0.32),
 // which keeps shadowed faces cooler AND darker. Total fill is unchanged-ish;
 // form readability at midrange is not.
 const ENV_INTENSITY = 0.2;
@@ -139,7 +139,7 @@ const ENV_INTENSITY = 0.2;
 // (metalness 0.85 / roughness 0.12) and gunmetal fittings returned nothing
 // readable. Floor the per-map preset at 0.32 (max, not add: winter already
 // runs 0.52 for the ice sheet and must not climb). The extra omni fill is
-// offset form-wise by the hemisphere bounce floor in lighting.js carrying
+// offset form-wise by the hemisphere bounce floor in lighting.ts carrying
 // the directional share.
 // r4 LP2 ("desert dunes show a measured 3% sun/lee difference — albedo-only
 // terrain"): 0.32 → 0.26. On 0.85-0.9-albedo sand the floored omni IBL was

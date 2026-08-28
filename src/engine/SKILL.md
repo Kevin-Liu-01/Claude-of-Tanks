@@ -16,7 +16,7 @@ simulation.
 first-layout recovery; `frameLoopScheduler.ts` owns rAF delivery, bounded
 hidden-pane recovery, and visible Garage clock sleep; `garageFramePacer.ts`
 suppresses redundant settled Garage frames while keeping interaction at display
-cadence; `lighting.js` reuses proven static Garage depth maps until explicit
+cadence; `lighting.ts` reuses proven static Garage depth maps until explicit
 presentation invalidation, then forces a complete refresh before motion;
 `shadowStability.ts` owns texel snapping and cascade-scaled receiver bias;
 `simplexFast.ts` owns allocation-free, reference-identical terrain noise;

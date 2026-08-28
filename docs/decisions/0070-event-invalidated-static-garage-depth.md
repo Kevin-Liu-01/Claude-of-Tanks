@@ -18,7 +18,7 @@ workshop chunks, pointer/keyboard/touch activity, camera motion, phase changes,
 WebGL recovery, and viewport resize wake the frame scheduler immediately. A
 five-second watchdog remains only for browser-owned asynchronous changes.
 
-Once the Garage camera and scene settle, `lighting.js` retains the last valid
+Once the Garage camera and scene settle, `lighting.ts` retains the last valid
 CSM depth textures and disables both automatic and requested updates for every
 cascade. Releasing the dormant latch forces all cascades before the next
 moving frame. The selected hero, color pass, materials, lighting, and completed

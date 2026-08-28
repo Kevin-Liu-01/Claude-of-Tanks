@@ -258,7 +258,7 @@ tools/tmp-uk-tone-measure.py, banked at shots/uk-tone-combined/):
   shared canvas with NO up-face term = parity by construction), set
   from the c3 build fn; (ii) a map-domain DARK-TEXEL LIFT chained
   after the material's existing hook stack (CSM path composes via
-  onBeforeCompile per engine/lighting.js — the wrapper is the
+  onBeforeCompile per engine/lighting.ts — the wrapper is the
   documented chain; cache keys 'veh-ambient-floor-v2+c3ink[-b]') —
   lifts only linear albedo < ~0.04 (the ink stamps) toward the print's
   soft dark-olive; parity side tables untouched by construction.

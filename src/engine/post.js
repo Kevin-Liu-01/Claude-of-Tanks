@@ -908,7 +908,7 @@ const AerialShader = {
 // field" split the critic flagged. The pivot now sits at 0.33, inside the
 // scene's actual midtone band: contrast separates lit-vs-shadow around the
 // playfield instead of crushing all of it, and the light-rig lift
-// (lighting.js hemi bounce floor + renderer exposure 1.08 → 1.16) moves the
+// (lighting.ts hemi bounce floor + renderer exposure 1.08 → 1.16) moves the
 // lit field up toward the WoT ~0.35 reference. Black anchor eases 0.021 →
 // 0.012 (the anchor no longer needs to fake density the pivot now provides).
 // Greens: measured lit grass rgb was (0.25,0.21,0.04) — blue channel ~zero,

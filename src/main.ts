@@ -50,7 +50,7 @@ import {
   noteGpuRenderer, getDeviceTier,
 } from './engine/quality.ts';
 import { createSky } from './engine/sky.js';
-import { createLighting } from './engine/lighting.js';
+import { createLighting } from './engine/lighting.ts';
 import { createPost } from './engine/post.js';
 import { createCameraRig } from './engine/cameraRig.js';
 import {

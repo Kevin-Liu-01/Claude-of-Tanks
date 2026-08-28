@@ -16,7 +16,7 @@ Module ownership (file paths are FIXED):
 
 | Builder | Files |
 |---|---|
-| engine   | `src/engine/renderer.ts`, `src/engine/lighting.js`, `src/engine/post.js`, `src/engine/sky.js`, `src/engine/cameraRig.js` |
+| engine   | `src/engine/renderer.ts`, `src/engine/lighting.ts`, `src/engine/post.js`, `src/engine/sky.js`, `src/engine/cameraRig.js` |
 | world    | `src/world/terrain.ts`, `src/world/vegetation.ts`, `src/world/props.ts`, `src/world/map.ts` |
 | vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.js`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
 | movement | `src/sim/movement.ts` |
@@ -382,7 +382,7 @@ Created by integration from engine's exports and passed to world / vehicles / fx
 ```js
 EngineCtx = {
   renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera,
-  setupShadowMaterial(mat, extraOnBeforeCompile = null) => mat,  // lighting.js §3.1.2
+  setupShadowMaterial(mat, extraOnBeforeCompile = null) => mat,  // lighting.ts §3.1.2
   anisotropy: number,                    // min(8, renderer max)
   quality: 'high'|'low',
 }
@@ -412,7 +412,7 @@ latch, context-restoration restart, and bounded hidden-pane recovery. Every
 delivery path enters the same frame callback; hidden input or timer rescue can
 never stack a second render loop when animation frames resume.
 
-#### 3.1.2 `lighting.js`
+#### 3.1.2 `lighting.ts`
 ```js
 export function createLighting(scene, camera, sunDir /* Vector3, unit, FROM origin TOWARD sun */)
   => Lighting

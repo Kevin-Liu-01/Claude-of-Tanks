@@ -1,5 +1,5 @@
 /**
- * lighting.js — sun (cascaded shadow maps) + hemisphere bounce light.
+ * lighting.ts — sun (cascaded shadow maps) + hemisphere bounce light.
  *
  * Implements docs/research/graphics-aaa.md §2–§3 and ARCHITECTURE.md §3.1.2.
  * The CSM module owns the sun DirectionalLights — nothing else in the game may
@@ -21,6 +21,36 @@ import {
   shadowNormalBiasForTexel,
   snapShadowCoordinate,
 } from './shadowStability.ts';
+
+interface ShadowDebugOptions {
+  noCull?: boolean;
+  forceAll?: boolean;
+  freezeMask?: number;
+}
+
+declare global {
+  interface Window {
+    __SHADOW_DEBUG?: ShadowDebugOptions;
+  }
+}
+
+type NumericAttributeArray = THREE.InstancedBufferAttribute['array'];
+type MaterialCompileHook = THREE.Material['onBeforeCompile'];
+
+interface CsmShaderOwner {
+  shaders?: Map<unknown, unknown>;
+}
+
+interface CsmRegisteredMaterial {
+  onBeforeCompile?: MaterialCompileHook;
+  defines?: Record<string, unknown>;
+  needsUpdate: boolean;
+}
+
+type ExtendedCsm = CSM & {
+  _initCascades(): void;
+  _updateShadowBounds(): void;
+};
 
 const CASCADES = 4;
 // Battlefield establishing shots read objects out to ~500 m; with the clearer
@@ -49,7 +79,7 @@ const _stableBounds = new THREE.Box3();
 const _stableCenter = new THREE.Vector3();
 const _stableOrigin = new THREE.Vector3();
 const _stableUp = new THREE.Vector3(0, 1, 0);
-const _stableDesiredCenters = [];
+const _stableDesiredCenters: THREE.Vector3[] = [];
 
 /**
  * Allocation-free CSM refit with per-cascade texel snapping.
@@ -59,7 +89,7 @@ const _stableDesiredCenters = [];
  * in half-texel increments and makes its shadows shimmer as the camera moves.
  * @returns {number} bit mask of cascades whose desired snapped pose changed
  */
-function prepareStableCascades(csm) {
+function prepareStableCascades(csm: CSM): number {
   const camera = csm.camera;
   _stableLightOrientation.lookAt(_stableOrigin, csm.lightDirection, _stableUp);
   _stableLightOrientationInverse.copy(_stableLightOrientation).invert();
@@ -100,7 +130,7 @@ function prepareStableCascades(csm) {
 }
 
 /** Apply prepared light poses only to cascades whose depth map renders now. */
-function applyStableCascadePoses(csm, mask) {
+function applyStableCascadePoses(csm: CSM, mask: number): void {
   for (let i = 0; i < csm.lights.length; i++) {
     if (!(mask & (1 << i))) continue;
     const desired = _stableDesiredCenters[i];
@@ -112,7 +142,7 @@ function applyStableCascadePoses(csm, mask) {
 }
 
 /** Prepare and apply every cascade for teleports, sun changes and captures. */
-function updateStableCascades(csm) {
+function updateStableCascades(csm: CSM): number {
   const changedMask = prepareStableCascades(csm);
   applyStableCascadePoses(csm, (2 ** csm.lights.length) - 1);
   return changedMask;
@@ -284,7 +314,7 @@ const HEMI_BOUNCE_FLOOR = 0.15;
 // ambient-dominated overcast maps (winter 0.92 → clamped ×1.0) are
 // untouched. The floor's r7 purpose (hull flanks inside cast shadow never
 // silhouette) survives — desert hulls sit on bright bounce-lit sand.
-function hemiFloorFor(presetHemi) {
+function hemiFloorFor(presetHemi: number): number {
   const k = Math.min(1, Math.max(0.5, presetHemi / HEMI_INTENSITY));
   return HEMI_BOUNCE_FLOOR * k;
 }
@@ -340,8 +370,8 @@ const FILL_HORIZ_M = 230;
  * @param {number} cutoff - the material's alphaTest reference (0..1)
  * @returns {void}
  */
-function buildCoverageMipmaps(tex, cutoff) {
-  const img = tex.image;
+function buildCoverageMipmaps(tex: THREE.Texture, cutoff: number): void {
+  const img = tex.image as { width?: number; height?: number } | undefined;
   if (!img || !img.width || (tex.mipmaps && tex.mipmaps.length > 0)) return;
   const size = img.width;
   if (size !== img.height || (size & (size - 1)) !== 0) return; // square POT only
@@ -350,7 +380,8 @@ function buildCoverageMipmaps(tex, cutoff) {
   cnv.width = size;
   cnv.height = size;
   const ctx = cnv.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(img, 0, 0);
+  if (!ctx) return;
+  ctx.drawImage(img as unknown as CanvasImageSource, 0, 0);
   const level0 = ctx.getImageData(0, 0, size, size);
 
   const cutByte = Math.round(cutoff * 255);
@@ -450,32 +481,63 @@ function buildCoverageMipmaps(tex, cutoff) {
 // after snapshot build (module-scope scratch only) per the hot-loop rule.
 const SHADOW_CULL_MIN_TRIS = 24000; // instances*trisPerInstance below this: not worth the hook
 const SHADOW_CULL_MARGIN = 4.0; // meters: wind sway + far-cascade rr staleness
-const _cullState = new WeakMap(); // InstancedMesh -> rec | {pending} | null(never)
-const _geomClaims = new WeakMap(); // geometry -> first claiming mesh (shared-geom guard)
+interface PendingCullRecord {
+  pending: true;
+  version: number;
+  stable: number;
+  count: number;
+}
+
+interface CullAttributeRecord {
+  attr: THREE.InstancedBufferAttribute;
+  size: number;
+  snap: NumericAttributeArray;
+  version: number;
+}
+
+interface ActiveCullRecord {
+  pending: false;
+  n: number;
+  attrs: CullAttributeRecord[];
+  centers: Float32Array;
+  radii: Float32Array;
+  k: number;
+  compacted: boolean;
+}
+
+type CullRecord = PendingCullRecord | ActiveCullRecord;
+
+const _cullState = new WeakMap<THREE.InstancedMesh, CullRecord | null>();
+const _geomClaims = new WeakMap<THREE.BufferGeometry, THREE.InstancedMesh>();
 const _cullFrustum = new THREE.Frustum();
 const _cullProj = new THREE.Matrix4();
 const _cullSphere = new THREE.Sphere();
 const _cullVec = new THREE.Vector3();
 const _cullMat = new THREE.Matrix4();
-let _cullFrusCam = null;
+let _cullFrusCam: THREE.Camera | null = null;
 let _cullFrusStamp = -1;
 let _cullTick = 0; // bumped once per lighting.update() — invalidates the frustum memo
 
-function geometryTris(geo) {
+function geometryTris(geo: THREE.BufferGeometry): number {
   const idx = geo.index;
   const pos = geo.attributes && geo.attributes.position;
   return (((idx ? idx.count : (pos ? pos.count : 0)) / 3) | 0);
 }
 
 /** Fresh stability-gate record (also used to invalidate after foreign writes). */
-function cullPending(mesh) {
-  const rec = { pending: true, version: mesh.instanceMatrix.version, stable: 0, count: mesh.count };
+function cullPending(mesh: THREE.InstancedMesh): PendingCullRecord {
+  const rec: PendingCullRecord = {
+    pending: true,
+    version: mesh.instanceMatrix.version,
+    stable: 0,
+    count: mesh.count,
+  };
   _cullState.set(mesh, rec);
   return rec;
 }
 
 /** Snapshot a stability-proven static instanced caster for per-cascade culling. */
-function buildCullRec(mesh) {
+function buildCullRec(mesh: THREE.InstancedMesh): ActiveCullRecord | null {
   const geo = mesh.geometry;
   const claimed = _geomClaims.get(geo);
   if (claimed && claimed !== mesh) {
@@ -491,17 +553,31 @@ function buildCullRec(mesh) {
   if (!bs || !isFinite(bs.radius) || bs.radius <= 0) { _cullState.set(mesh, null); return null; }
   const n = mesh.count;
   // every attribute indexed per instance in the depth draw
-  const attrs = [{ attr: mesh.instanceMatrix, size: 16, snap: null, version: 0 }];
-  if (mesh.instanceColor) attrs.push({ attr: mesh.instanceColor, size: mesh.instanceColor.itemSize, snap: null, version: 0 });
+  const attributeInputs: Array<{ attr: THREE.InstancedBufferAttribute; size: number }> = [
+    { attr: mesh.instanceMatrix, size: 16 },
+  ];
+  if (mesh.instanceColor) {
+    attributeInputs.push({ attr: mesh.instanceColor, size: mesh.instanceColor.itemSize });
+  }
   const ga = geo.attributes;
   for (const key of Object.keys(ga)) {
     const a = ga[key];
-    if (a && a.isInstancedBufferAttribute) attrs.push({ attr: a, size: a.itemSize, snap: null, version: 0 });
+    if (a instanceof THREE.InstancedBufferAttribute) {
+      attributeInputs.push({ attr: a, size: a.itemSize });
+    }
   }
-  for (const e of attrs) {
-    if (!e.attr.array || e.attr.array.length < n * e.size) { _cullState.set(mesh, null); return null; }
-    e.snap = e.attr.array.slice(0, n * e.size);
-    e.version = e.attr.version;
+  const attrs: CullAttributeRecord[] = [];
+  for (const entry of attributeInputs) {
+    if (!entry.attr.array || entry.attr.array.length < n * entry.size) {
+      _cullState.set(mesh, null);
+      return null;
+    }
+    attrs.push({
+      attr: entry.attr,
+      size: entry.size,
+      snap: entry.attr.array.slice(0, n * entry.size) as NumericAttributeArray,
+      version: entry.attr.version,
+    });
   }
   // per-instance world bounding spheres (static — guaranteed by the gate)
   const centers = new Float32Array(n * 3);
@@ -515,17 +591,25 @@ function buildCullRec(mesh) {
     centers[i * 3 + 2] = _cullVec.z;
     radii[i] = bs.radius * _cullMat.getMaxScaleOnAxis() + SHADOW_CULL_MARGIN;
   }
-  const rec = { pending: false, n, attrs, centers, radii, k: 0, compacted: false };
+  const rec: ActiveCullRecord = {
+    pending: false,
+    n,
+    attrs,
+    centers,
+    radii,
+    k: 0,
+    compacted: false,
+  };
   _cullState.set(mesh, rec);
   return rec;
 }
 
 /** onBeforeShadow half: compact the instance prefix to this cascade's frustum. */
-function shadowCullBefore(object, shadowCamera) {
+function shadowCullBefore(object: THREE.Object3D, shadowCamera: THREE.Camera): void {
   // shadow-flicker bisect hook (probes): __SHADOW_DEBUG.noCull skips the
   // instance compaction entirely; harmless in production (never set).
   if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.noCull) return;
-  if (!object.isInstancedMesh || object.count === 0) return;
+  if (!(object instanceof THREE.InstancedMesh) || object.count === 0) return;
   let rec = _cullState.get(object);
   if (rec === null) return; // permanently skipped
   if (rec === undefined) {
@@ -602,8 +686,8 @@ function shadowCullBefore(object, shadowCamera) {
 }
 
 /** onAfterShadow half: restore owner bytes + full count before anyone reads. */
-function shadowCullAfter(object) {
-  if (!object.isInstancedMesh) return;
+function shadowCullAfter(object: THREE.Object3D): void {
+  if (!(object instanceof THREE.InstancedMesh)) return;
   const rec = _cullState.get(object);
   if (!rec || rec.pending || !rec.compacted) return;
   rec.compacted = false;
@@ -643,9 +727,16 @@ function shadowCullAfter(object) {
 // receives the SELECTED depth material (shared singleton, variant clone, or
 // custom), so the flip covers all three paths and is a one-time recompile per
 // depth-material variant.
-function patchShadowDepthPacking() {
-  const hook = function (renderer, object, camera, shadowCamera, geometry, depthMaterial) {
-    if (depthMaterial && depthMaterial.isMeshDepthMaterial &&
+function patchShadowDepthPacking(): void {
+  const hook: THREE.Mesh['onBeforeShadow'] = function (
+    _renderer,
+    object,
+    _camera,
+    shadowCamera,
+    _geometry,
+    depthMaterial,
+  ) {
+    if (depthMaterial instanceof THREE.MeshDepthMaterial &&
         depthMaterial.depthPacking !== THREE.RGBADepthPacking) {
       depthMaterial.depthPacking = THREE.RGBADepthPacking;
       depthMaterial.needsUpdate = true;
@@ -653,7 +744,7 @@ function patchShadowDepthPacking() {
     // r7 cascade shadow instance culling (see the _cullState block above)
     shadowCullBefore(object, shadowCamera);
   };
-  const afterHook = function (renderer, object) {
+  const afterHook: THREE.Mesh['onAfterShadow'] = function (_renderer, object) {
     shadowCullAfter(object);
   };
   THREE.Mesh.prototype.onBeforeShadow = hook;
@@ -687,7 +778,7 @@ function patchShadowAmbientChunks() {
 
   let frag = THREE.ShaderChunk.lights_fragment_begin;
   if (!frag.includes(declAnchor) || !frag.includes(fadeAnchor) || !frag.includes(noFadeAnchor)) {
-    throw new Error('lighting.js: shadow-density anchors not found in lights_fragment_begin');
+    throw new Error('lighting.ts: shadow-density anchors not found in lights_fragment_begin');
   }
   frag = frag.replace(declAnchor, `${declAnchor}
 float cotSunVis = 1.0;
@@ -702,7 +793,7 @@ vec3 cotPrev;`);
   const endHead = '#if defined( RE_IndirectDiffuse )';
   const end = THREE.ShaderChunk.lights_fragment_end;
   if (!end.includes(endHead)) {
-    throw new Error('lighting.js: shadow-density anchor not found in lights_fragment_end');
+    throw new Error('lighting.ts: shadow-density anchor not found in lights_fragment_end');
   }
   const dimVec = `vec3( ${SHADOW_AMBIENT_DIM.map((v) => v.toFixed(3)).join(', ')} )`;
   THREE.ShaderChunk.lights_fragment_end = end.replace(endHead, `#if defined( USE_CSM ) && defined( CSM_CASCADES )
@@ -737,7 +828,7 @@ ${endHead}`);
     'float phi = interleavedGradientNoise( gl_FragCoord.xy ) * PI2;';
   const sm = THREE.ShaderChunk.shadowmap_pars_fragment;
   if (!sm.includes(penAnchor)) {
-    throw new Error('lighting.js: penumbra anchor not found in shadowmap_pars_fragment');
+    throw new Error('lighting.ts: penumbra anchor not found in shadowmap_pars_fragment');
   }
   THREE.ShaderChunk.shadowmap_pars_fragment = sm.replace(penAnchor,
     'float phi = fract( shadowRadius * 0.754877666 ) * PI2;');
@@ -764,7 +855,10 @@ ${endHead}`);
  * @param {THREE.Material|null} material
  * @returns {boolean} whether a live registration was removed
  */
-export function releaseCsmShaderMaterial(csm, material) {
+export function releaseCsmShaderMaterial(
+  csm: CsmShaderOwner | null | undefined,
+  material: CsmRegisteredMaterial | null | undefined,
+): boolean {
   if (!csm?.shaders || !material || typeof material !== 'object') return false;
   if (!csm.shaders.has(material)) return false;
   csm.shaders.delete(material);
@@ -791,7 +885,11 @@ export function releaseCsmShaderMaterial(csm, material) {
  * @param {THREE.Vector3} sunDir - unit vector FROM the origin TOWARD the sun
  * @returns {Lighting}
  */
-export function createLighting(scene, camera, sunDir) {
+export function createLighting(
+  scene: THREE.Scene,
+  camera: THREE.PerspectiveCamera,
+  sunDir: THREE.Vector3,
+) {
   const preset = getPreset();
   // Phones use three stable splits over their shorter 260-340 m shadow
   // range. Desktop keeps four out to 700 m. The single mobile far split is
@@ -809,7 +907,7 @@ export function createLighting(scene, camera, sunDir) {
     shadowBias: SHADOW_BIAS,
     lightDirection: sunDir.clone().negate().normalize(), // CSM wants FROM-sun direction
     lightIntensity: SUN_INTENSITY,
-  });
+  }) as ExtendedCsm;
   csm.fade = true;
   csm.updateFrustums(); // required after changing fade
 
@@ -825,19 +923,19 @@ export function createLighting(scene, camera, sunDir) {
   patchShadowDepthPacking();
 
   /** Keep receiver separation proportional to each physical shadow texel. */
-  function applyShadowNormalBias(i) {
+  function applyShadowNormalBias(i: number): void {
     const shadow = csm.lights[i].shadow;
     const span = shadow.camera.right - shadow.camera.left;
     const worldUnitsPerTexel = span / Math.max(1, shadow.mapSize.x);
     shadow.normalBias = shadowNormalBiasForTexel(worldUnitsPerTexel);
   }
 
-  function applyShadowNormalBiases() {
+  function applyShadowNormalBiases(): void {
     for (let i = 0; i < csm.lights.length; i++) applyShadowNormalBias(i);
   }
 
   /** Resize one cascade, retaining every other live map until its own turn. */
-  function applyShadowSize(i, size) {
+  function applyShadowSize(i: number, size: number): void {
     const shadow = csm.lights[i].shadow;
     // physical-penumbra-preserving PCF radius (see SHADOW_RADII_REF_SIZES)
     const ref = SHADOW_RADII_REF_SIZES[Math.min(i, SHADOW_RADII_REF_SIZES.length - 1)];
@@ -857,7 +955,7 @@ export function createLighting(scene, camera, sunDir) {
   }
 
   /** Apply all sizes before first render; live switches use the queue below. */
-  function applyShadowSizes(sizes) {
+  function applyShadowSizes(sizes: readonly number[]): void {
     for (let i = 0; i < csm.lights.length; i++) {
       applyShadowSize(i, sizes[Math.min(i, sizes.length - 1)]);
     }
@@ -879,7 +977,7 @@ export function createLighting(scene, camera, sunDir) {
   }
   // PERF: per-cascade map size (before the first render allocates the RTs)
   applyShadowSizes(preset.shadowMapSizes);
-  let pendingShadowSizes = null;
+  let pendingShadowSizes: number[] | null = null;
   let pendingShadowMask = 0;
   let pendingShadowCursor = 0;
   // Live quality switching (settings UI → quality.setPresetName)
@@ -930,7 +1028,7 @@ export function createLighting(scene, camera, sunDir) {
   let preservePrimedFrame = false;
 
   /** Mark every rate-capped cascade for re-render on the next frame. */
-  function forceRateCappedCascades() {
+  function forceRateCappedCascades(): void {
     forceFrames = 2;
     shadowScheduler.reset();
     for (let i = FAR_CASCADE_START; i < csm.lights.length; i++) {
@@ -938,7 +1036,7 @@ export function createLighting(scene, camera, sunDir) {
     }
   }
 
-  function applyFarCascadeDormancy() {
+  function applyFarCascadeDormancy(): void {
     if (!farCascadeDormant) return;
     // Fail open for rendering: `lighting.update(true)` at boot leaves all
     // cascades scheduled, the first post render creates valid DepthTextures,
@@ -952,7 +1050,7 @@ export function createLighting(scene, camera, sunDir) {
     }
   }
 
-  function applyStaticPresentationDormancy() {
+  function applyStaticPresentationDormancy(): void {
     if (!staticPresentationDormant) return;
     lastScheduledMask = 0;
     for (const light of csm.lights) {
@@ -994,7 +1092,7 @@ export function createLighting(scene, camera, sunDir) {
      * covered transition; map resolution and rendered battle quality remain
      * exactly the active graphics preset.
      */
-    setFarCascadeDormant(on) {
+    setFarCascadeDormant(on: boolean): void {
       const next = !!on;
       if (farCascadeDormant === next) return;
       farCascadeDormant = next;
@@ -1007,7 +1105,7 @@ export function createLighting(scene, camera, sunDir) {
      * static. Existing depth maps remain bound, so the color result is exact;
      * releasing the latch forces a complete refresh before motion resumes.
      */
-    setStaticPresentationDormant(on) {
+    setStaticPresentationDormant(on: boolean): void {
       const next = !!on;
       if (staticPresentationDormant === next) {
         if (next) applyStaticPresentationDormancy();
@@ -1024,14 +1122,19 @@ export function createLighting(scene, camera, sunDir) {
      * every caster program inside the first full scene render. The maps are
      * identical; only their covered submission schedule changes.
      */
-    async primeShadowMaps(renderer2, scene2, camera2, yieldBeforeCascade = null) {
+    async primeShadowMaps(
+      renderer2: THREE.WebGLRenderer,
+      scene2: THREE.Scene,
+      camera2: THREE.Camera,
+      yieldBeforeCascade: ((index: number) => void | Promise<void>) | null = null,
+    ): Promise<number[]> {
       if (!renderer2?.shadowMap || !scene2 || !camera2) return [];
       const prior = csm.lights.map((light) => ({
         shadow: light.shadow,
         autoUpdate: light.shadow.autoUpdate,
         needsUpdate: light.shadow.needsUpdate,
       }));
-      const timings = [];
+      const timings: number[] = [];
       let complete = false;
       try {
         scene2.updateMatrixWorld(true);
@@ -1075,7 +1178,7 @@ export function createLighting(scene, camera, sunDir) {
      * caller must have rendered every cascade from the same camera/scene pose
      * while its transition remained opaque.
      */
-    preservePrimedCascadesForNextFrame() {
+    preservePrimedCascadesForNextFrame(): void {
       preservePrimedFrame = true;
       forceFrames = 0;
       shadowScheduler.reset();
@@ -1097,7 +1200,10 @@ export function createLighting(scene, camera, sunDir) {
      *   custom shader patch (terrain splat, grass wind, …), run after CSM's hook
      * @returns {THREE.Material} the same material, for chaining
      */
-    setupShadowMaterial(mat, extraHook = null) {
+    setupShadowMaterial<T extends THREE.Material>(
+      mat: T,
+      extraHook: MaterialCompileHook | null = null,
+    ): T {
       csm.setupMaterial(mat);
       if (extraHook) {
         const csmHook = mat.onBeforeCompile;
@@ -1110,13 +1216,14 @@ export function createLighting(scene, camera, sunDir) {
       // coverage-preserving one so distant cards keep their cutout silhouette
       // instead of resolving to solid alpha-flood rectangles (see
       // buildCoverageMipmaps). Idempotent — skips textures already fixed.
-      if (mat.alphaTest > 0 && mat.map && mat.map.image) {
-        buildCoverageMipmaps(mat.map, mat.alphaTest);
+      const surface = mat as T & { alphaTest?: number; map?: THREE.Texture | null };
+      if ((surface.alphaTest ?? 0) > 0 && surface.map?.image) {
+        buildCoverageMipmaps(surface.map, surface.alphaTest ?? 0);
       }
       return mat;
     },
 
-    releaseShadowMaterial(material) {
+    releaseShadowMaterial(material: THREE.Material | null | undefined): boolean {
       return releaseCsmShaderMaterial(csm, material);
     },
 
@@ -1128,7 +1235,7 @@ export function createLighting(scene, camera, sunDir) {
      * @param {number} [dt=1/60] render delta used by the refresh-rate caps.
      * @returns {void}
      */
-    update(force = false, dt = 1 / 60) {
+    update(force = false, dt = 1 / 60): void {
       lastFitChangedMask = 0;
       if (staticPresentationDormant && !force && !pendingShadowMask) {
         applyStaticPresentationDormancy();
@@ -1157,7 +1264,7 @@ export function createLighting(scene, camera, sunDir) {
           pendingShadowMask &= ~(1 << i);
           pendingShadowCursor = (i + 1) % csm.lights.length;
           applyShadowSize(i,
-            pendingShadowSizes[Math.min(i, pendingShadowSizes.length - 1)]);
+            pendingShadowSizes![Math.min(i, pendingShadowSizes!.length - 1)]);
           if (!pendingShadowMask) pendingShadowSizes = null;
           break;
         }
@@ -1241,13 +1348,13 @@ export function createLighting(scene, camera, sunDir) {
      * changes only the frustum slice geometry and shadow bounds, so refresh
      * exactly those. Full updateFrustums stays for resize/near/far changes.
      */
-    updateFov() {
+    updateFov(): void {
       csm._initCascades();
       csm._updateShadowBounds();
       applyShadowNormalBiases();
     },
 
-    updateFrustums() {
+    updateFrustums(): void {
       csm.updateFrustums();
       applyShadowNormalBiases();
       forceRateCappedCascades(); // cascade boxes jumped — stale maps would smear
@@ -1259,7 +1366,7 @@ export function createLighting(scene, camera, sunDir) {
      * @param {number} i - DirectionalLight intensity, physically-based scale
      * @returns {void}
      */
-    setSunIntensity(i) {
+    setSunIntensity(i: number): void {
       csm.lightIntensity = i;
       for (let k = 0; k < csm.lights.length; k++) csm.lights[k].intensity = i;
     },
@@ -1272,7 +1379,10 @@ export function createLighting(scene, camera, sunDir) {
      * @param {{sunIntensity?:number, sunColorHex?:number, hemiIntensity?:number}} [opts]
      * @returns {void}
      */
-    setSun(dir, opts = {}) {
+    setSun(
+      dir: THREE.Vector3,
+      opts: { sunIntensity?: number; sunColorHex?: number; hemiIntensity?: number } = {},
+    ): void {
       csm.lightDirection.copy(dir).negate().normalize();
       const intensity = opts.sunIntensity ?? SUN_INTENSITY;
       const colorHex = opts.sunColorHex ?? SUN_COLOR;

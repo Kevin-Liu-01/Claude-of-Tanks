@@ -29,7 +29,7 @@ new pass or target.
 law. Bias remains at least 4.5 cm for near contact, scales to 0.35 of a physical
 shadow texel, and caps at 28 cm for the horizon cascade.
 
-`lighting.js` prepares every snapped light fit but applies a rate-capped far fit
+`lighting.ts` prepares every snapped light fit but applies a rate-capped far fit
 only on the frame that renders that cascade's depth map. Near fits remain
 continuous. Teleports, sun changes, captures, and covered transitions still
 apply and render every cascade together.

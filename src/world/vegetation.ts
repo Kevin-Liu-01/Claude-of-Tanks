@@ -3208,7 +3208,7 @@ function* vegetationBuildSteps(
       farTrunk.userData.treeTrunk = true;
       const pair = [farTrunk, farCanopy];
       // PERF (perf-budget r3): far-partition trees (beyond ~260 m) do NOT cast
-      // shadows — a tree shadow out there is subpixel at 1080p (see lighting.js
+      // shadows — a tree shadow out there is subpixel at 1080p (see lighting.ts
       // far-cascade rationale) yet every lobe/trunk was re-rasterized by the
       // CSM cascade passes; with the density boost this alone was millions of
       // tris/frame of invisible shadow work.

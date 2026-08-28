@@ -2475,7 +2475,7 @@ export function centurionBuild(P, mk) {
     // MAP's own near-black ink stamps; the shared canvas also paints the
     // ref, so canvas edits are off the table): a map-domain DARK-TEXEL
     // LIFT chained AFTER whatever hook stack the material carries (CSM
-    // path composes via onBeforeCompile per engine/lighting.js
+    // path composes via onBeforeCompile per engine/lighting.ts
     // setupShadowMaterial — wrapping is the documented chain). Lifts only
     // linear-albedo below ~0.04 (the ink class) toward the print's soft
     // dark-olive; mid camo and the parity side tables are untouched.

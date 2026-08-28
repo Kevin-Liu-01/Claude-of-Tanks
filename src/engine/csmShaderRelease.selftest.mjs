@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 globalThis.window = globalThis.window || {};
 
-const { releaseCsmShaderMaterial } = await import('./lighting.js');
+const { releaseCsmShaderMaterial } = await import('./lighting.ts');
 
 function registeredMaterial() {
   const material = {

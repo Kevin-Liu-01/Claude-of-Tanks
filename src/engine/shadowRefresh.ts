@@ -27,7 +27,7 @@ export function isContinuousShadowCascade(cascadeIndex: number, nearCount = 2): 
  * @returns {boolean}
  */
 interface ShadowLightLike {
-  shadow?: { map?: { depthTexture?: { isDepthTexture?: boolean } } | null };
+  shadow?: { map?: { depthTexture?: { isDepthTexture?: boolean } | null } | null };
 }
 
 export function canDormantShadowCascades(

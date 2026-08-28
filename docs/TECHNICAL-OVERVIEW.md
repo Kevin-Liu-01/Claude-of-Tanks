@@ -149,6 +149,11 @@ Boot-time GPU diagnostics and compatibility rescue are strict as well: tiny
 offscreen probes validate lit, shadowed, and environment-backed rendering, and
 the measured shadow/environment/fog ladder restores rejected stages without
 leaking render targets or leaving unchecked global state.
+Cascaded lighting and shadow scheduling are also strict: per-cascade snapped
+fits, depth-target readiness, live quality resizing, covered priming, static
+Garage dormancy, and conservative instanced-caster compaction are explicit
+renderer contracts. Far-map transforms and their depth textures advance as one
+scheduled unit, preventing stale-map flashes without reducing near-field motion.
 Pure keyboard, flag, glyph, minimap, drive-readout, spectator, map-preview, and
 Garage-order policy is also typed and remains directly Node-testable.
 The browser input layer now exports strict action, binding, settings, gamepad,
