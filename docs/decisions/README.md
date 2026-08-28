@@ -212,3 +212,4 @@ runtime documents remain authoritative for behavior.
 - [0200 — Running-gear quality receipts are strict TypeScript](0200-typed-running-gear-quality-receipts.md)
 - [0201 — The eager fleet facade is strict TypeScript](0201-typed-eager-fleet-facade.md)
 - [0202 — Fleet spec constructors are strict TypeScript](0202-typed-fleet-spec-constructors.md)
+- [0203 — Exact family loading retires coarse fleet bundles](0203-retire-coarse-fleet-bundles.md)
