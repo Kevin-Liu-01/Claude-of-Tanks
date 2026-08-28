@@ -1,4 +1,10 @@
-function isLocalNetworkHost(hostname) {
+export interface SignalEndpointOptions {
+  configured?: unknown;
+  protocol?: unknown;
+  hostname?: unknown;
+}
+
+function isLocalNetworkHost(hostname: unknown): boolean {
   const host = String(hostname || '').trim().replace(/^\[|\]$/g, '').toLowerCase();
   if (host === 'localhost' || host === '::1' || host.endsWith('.local')) return true;
   if (/^127(?:\.\d{1,3}){3}$/.test(host)) return true;
@@ -17,13 +23,14 @@ export function resolveSignalUrl({
   configured = '',
   protocol = 'http:',
   hostname = 'localhost',
-} = {}) {
+}: SignalEndpointOptions = {}): string {
   const explicit = String(configured || '').trim();
   if (explicit) return explicit;
   const scheme = protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = String(hostname).includes(':') && !String(hostname).startsWith('[')
-    ? `[${hostname}]`
-    : hostname;
+  const hostnameText = String(hostname);
+  const host = hostnameText.includes(':') && !hostnameText.startsWith('[')
+    ? `[${hostnameText}]`
+    : hostnameText;
   if (!isLocalNetworkHost(hostname)) return `${scheme}//${host}/api/signal`;
   return `${scheme}//${host}:7777/signal`;
 }

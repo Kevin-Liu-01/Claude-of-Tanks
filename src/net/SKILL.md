@@ -18,6 +18,8 @@ play without importing Three.js rendering or DOM state.
   permissions, host migration, round state, and start policy.
 - `lobbyRuntime.ts` owns typed lobby transport sequencing, payload admission,
   broadcast, and the lossless lobby-to-match channel handoff.
+- `playerNames.ts`, `roomInvite.ts`, and `signalEndpoint.ts` own strict commander
+  identity, share-link parsing, and deployment-aware signaling URL policy.
 - `matchRuntime.js` owns fixed ticks, input ordering, snapshots, and client time.
 - `inputCadence.ts` bounds replaceable input uploads independently from display
   refresh while preserving immediate control edges.

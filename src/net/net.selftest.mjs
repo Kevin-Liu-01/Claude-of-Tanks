@@ -29,7 +29,7 @@ import {
   automaticPlayerName,
   normalizePlayerName,
   uniquePlayerName,
-} from './playerNames.js';
+} from './playerNames.ts';
 import {
   createWebRTCDataChannelTransport,
   createWebRTCSplitTransport,
@@ -55,7 +55,7 @@ import {
   createWebRTCPeer,
 } from './webrtcPeer.ts';
 import { RoomSignalingClient } from './signalingClient.js';
-import { resolveSignalUrl } from './signalEndpoint.js';
+import { resolveSignalUrl } from './signalEndpoint.ts';
 import { LobbyClientRuntime, LobbyHostRuntime } from './lobbyRuntime.ts';
 
 function input(overrides = {}) {

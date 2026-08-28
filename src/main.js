@@ -159,7 +159,7 @@ const LAST_SPEC_KEY = 'cot.lastTank.v1';
 // Keep invite parsing off the normal garage boot graph. Only an actual room
 // link loads the tiny URL adapter; the play menu already owns it lazily.
 const pendingRoomInvitePromise = new URLSearchParams(globalThis.location?.search || '').has('room')
-  ? import('./net/roomInvite.js').then(({ parseRoomInvite }) =>
+  ? import('./net/roomInvite.ts').then(({ parseRoomInvite }) =>
     parseRoomInvite(globalThis.location?.href))
   : null;
 

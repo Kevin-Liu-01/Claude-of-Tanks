@@ -6,10 +6,10 @@
  * the menu renders that state and hands established sessions to main.js.
  */
 import { createPrivateRoomConnectionRuntime } from '../net/privateRoomConnectionRuntime.ts';
-import { resolveSignalUrl } from '../net/signalEndpoint.js';
-import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.js';
+import { resolveSignalUrl } from '../net/signalEndpoint.ts';
+import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.ts';
 import { normalizeRoomCode } from '../net/protocol.ts';
-import { createRoomInviteUrl, roomInviteTitle } from '../net/roomInvite.js';
+import { createRoomInviteUrl, roomInviteTitle } from '../net/roomInvite.ts';
 import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';

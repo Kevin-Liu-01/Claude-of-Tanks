@@ -3,7 +3,7 @@ import { sanitizeLoadout } from '../src/game/equipment.js';
 import { isGarageVisibleTankId } from '../src/game/matchmaking.js';
 import { getSpec } from '../src/vehicles/specs.js';
 import { RANDOM_BATTLE_MAP_IDS } from '../src/world/maps/index.js';
-import { uniquePlayerName } from '../src/net/playerNames.js';
+import { uniquePlayerName } from '../src/net/playerNames.ts';
 import { networkCamoId } from '../src/vehicles/camoPolicy.js';
 import { RatingStore } from './ratingStore.js';
 

@@ -6,29 +6,52 @@
  * identity after join. main.js parses these links and playMenu.js creates them.
  */
 import { normalizeRoomCode } from './protocol.ts';
-import { normalizePlayerName } from './playerNames.js';
+import { normalizePlayerName } from './playerNames.ts';
+
+export type RoomInviteMode = 'private' | 'lan';
+
+export interface RoomInvite {
+  roomCode: string;
+  mode: RoomInviteMode;
+  hostName: string | null;
+}
+
+export interface CreateRoomInviteOptions {
+  roomCode?: unknown;
+  mode?: unknown;
+  hostName?: unknown;
+  baseUrl?: unknown;
+}
 
 const INVITE_ROOM_PARAM = 'room';
 const INVITE_MODE_PARAM = 'mode';
 const INVITE_HOST_PARAM = 'host';
-const INVITE_MODES = new Set(['private', 'lan']);
+const INVITE_MODES = new Set<RoomInviteMode>(['private', 'lan']);
 
-function asUrl(value) {
+function isInviteMode(value: unknown): value is RoomInviteMode {
+  return typeof value === 'string' && INVITE_MODES.has(value as RoomInviteMode);
+}
+
+function asUrl(value: unknown): URL {
   if (value instanceof URL) return new URL(value.href);
   return new URL(String(value || ''), 'https://invalid.local/');
 }
 
 /** Parse a private/LAN room invite without trusting raw URL input. */
-export function parseRoomInvite(value) {
-  let url;
-  try { url = asUrl(value); } catch (_) { return null; }
+export function parseRoomInvite(value: unknown): RoomInvite | null {
+  let url: URL;
+  try {
+    url = asUrl(value);
+  } catch {
+    return null;
+  }
   const roomCode = normalizeRoomCode(url.searchParams.get(INVITE_ROOM_PARAM));
   if (roomCode.length !== 6) return null;
   const requestedMode = String(url.searchParams.get(INVITE_MODE_PARAM) || '').toLowerCase();
   const hostName = normalizePlayerName(url.searchParams.get(INVITE_HOST_PARAM)) || null;
   return {
     roomCode,
-    mode: INVITE_MODES.has(requestedMode) ? requestedMode : 'private',
+    mode: isInviteMode(requestedMode) ? requestedMode : 'private',
     hostName,
   };
 }
@@ -39,10 +62,10 @@ export function createRoomInviteUrl({
   mode = 'private',
   hostName = null,
   baseUrl,
-} = {}) {
+}: CreateRoomInviteOptions = {}): string {
   const code = normalizeRoomCode(roomCode);
   if (code.length !== 6) throw new TypeError('room invite requires a six-character room code');
-  const inviteMode = INVITE_MODES.has(mode) ? mode : 'private';
+  const inviteMode: RoomInviteMode = isInviteMode(mode) ? mode : 'private';
   const inviteHost = normalizePlayerName(hostName);
   const url = asUrl(baseUrl);
   url.search = '';
@@ -54,7 +77,7 @@ export function createRoomInviteUrl({
 }
 
 /** Human invitation heading. Unnamed legacy links retain a useful fallback. */
-export function roomInviteTitle(hostName) {
+export function roomInviteTitle(hostName: unknown): string {
   const inviteHost = normalizePlayerName(hostName);
-  return inviteHost ? 'Join ' + inviteHost + '’s Game' : 'Join a Private Game';
+  return inviteHost ? `Join ${inviteHost}’s Game` : 'Join a Private Game';
 }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createRoomInviteUrl, parseRoomInvite, roomInviteTitle } from './roomInvite.js';
+import { createRoomInviteUrl, parseRoomInvite, roomInviteTitle } from './roomInvite.ts';
 
 assert.deepEqual(
   parseRoomInvite('https://cot.example/?room=ab-cd2e'),
