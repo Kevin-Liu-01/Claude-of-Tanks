@@ -98,7 +98,8 @@ in the pure `profiles/type10GunSeat.ts` boundary; geometry builders consume the
 datums but do not redefine them.
 Do not add regional fleet bundle modules. Browser acquisition maps exact IDs to
 typed family loaders through `fleetManifest.ts` and `fleetFactory.ts`; full
-fleet tools use `tankFactory.ts`.
+fleet tools use `tankFactory.ts`. Both paths must convert family profiles with
+`profileBuilderAdapter.ts`; do not duplicate custom/donor/generic dispatch.
 After this sequence passes, commit each tank edit atomically, integrate it from
 an isolated clean worktree onto the current `origin/main`, push `HEAD:main`,
 and report the resulting main hash. Never push a failing or partially verified

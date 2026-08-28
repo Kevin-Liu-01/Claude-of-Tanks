@@ -1,13 +1,5 @@
-// Assembly point for the dedicated procedural silhouettes of sourced and
-// recovered variants. The actual profile DATA lives in per-family modules
-// under ./profiles/ (one owner per family — see docs/BUILD-STANDARD.md),
-// and the shared geometry machinery lives in ./profiles/kit.js. This module
-// only merges the family maps and exposes the same PROCEDURAL_PROFILES /
-// PROFILED_BUILDERS interface tankFactory.ts has always consumed.
-//
-// All profiles are original primitive reconstructions informed by normalized
-// local reference renders and real vehicle dimensions. They intentionally do
-// not contain, decode, or reproduce source mesh topology.
+// Eager assembly point for release tools and headless fleet audits. Browser
+// boot demand-loads the same family maps through fleetFactory.ts.
 import { buildProfile, buildDonorVariant } from './profiles/kit.js';
 import { WW2_PROFILES } from './profiles/ww2.js';
 import { CASEMATE_PROFILES } from './profiles/casemate.js';
@@ -18,8 +10,6 @@ import { T90_PROFILES } from './profiles/t90.js';
 import { T72_PROFILES } from './profiles/t72.js';
 import { T80_PROFILES } from './profiles/t80.js';
 import { UK_PROFILES } from './profiles/uk.js';
-// §5.75 family-module split: challenger1 moved out of uk.js (the module also
-// carries the modern-class challenger2/_3 — those merge via tankFactory).
 import { CHALLENGER_PROFILES } from './profiles/challenger.js';
 import { LEOPARD_PROFILES } from './profiles/leopard.js';
 import { MERKAVA_PROFILES } from './profiles/merkava.js';
@@ -35,10 +25,14 @@ import { JAPAN_PROFILES } from './profiles/japan.js';
 import { GERMANY_PROFILES } from './profiles/germany.js';
 import { AFV_FAMILY_PROFILES } from './profiles/afvFamily.js';
 import { SHERIDAN_PROFILES } from './profiles/sheridan.js';
+import {
+  createProfileBuilders,
+  type VehicleProfileRecord,
+} from './profileBuilderAdapter.ts';
 
 // Preserve the historical Russia key order exactly while the builders live
 // in family modules. Carousel/roster order is part of the pure-refactor law.
-const RUSSIA_PROFILES = {
+const RUSSIA_PROFILES: VehicleProfileRecord = {
   t90a: T90_PROFILES.t90a,
   t90: T90_PROFILES.t90,
   t90ms: T90_PROFILES.t90ms,
@@ -58,15 +52,13 @@ const RUSSIA_PROFILES = {
   t90m_proryv: T90_PROFILES.t90m_proryv,
   t54: RUSSIA_RESIDUE_PROFILES.t54,
   t44: RUSSIA_RESIDUE_PROFILES.t44,
-  // §5.304: type59 renders the china.js redesign (WZ-120 dome on the widened
-  // obr-1975 chassis). Keyed HERE to preserve the historical carousel
-  // position (pure-refactor law); the CHINA_PROFILES spread below re-assigns
-  // the same object without moving the key.
+  // China owns the redesigned Type 59 object, but its historical key position
+  // remains in this Russia-order bridge.
   type59: CHINA_PROFILES.type59,
   t84: T80_PROFILES.t84,
 };
 
-export const PROCEDURAL_PROFILES = {
+export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...WW2_PROFILES,
   ...CASEMATE_PROFILES,
   ...SOVIET_HEAVY_PROFILES,
@@ -90,12 +82,7 @@ export const PROCEDURAL_PROFILES = {
   ...SHERIDAN_PROFILES,
 };
 
-// A profile may carry `build(P, profile)` for a fully custom construction
-// (Abrams family), `base` + optional `kit(P, profile)` for a canonical-donor
-// variant, or neither for the generic parametric buildProfile path.
-export const PROFILED_BUILDERS = Object.fromEntries(Object.entries(PROCEDURAL_PROFILES)
-  .map(([id, profile]) => [id, (P) => profile.build
-    ? profile.build(P, profile)
-    : profile.base
-    ? buildDonorVariant(P, profile)
-    : buildProfile(P, profile)]));
+export const PROFILED_BUILDERS = createProfileBuilders(PROCEDURAL_PROFILES, {
+  buildProfile,
+  buildDonorVariant,
+});

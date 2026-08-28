@@ -357,6 +357,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leopardHullClosure.selftest.mjs',
     'src/vehicles/mudguardFenderSeating.selftest.mjs',
     'src/vehicles/tankFactoryCore.selftest.mjs',
+    'src/vehicles/profileBuilderAdapter.selftest.mjs',
     'src/ui/spectatorSwitcher.selftest.mjs',
     'tools/marketing-shots/feature-loops.selftest.mjs',
     'tools/marketing-shots/hero-rails.selftest.mjs',

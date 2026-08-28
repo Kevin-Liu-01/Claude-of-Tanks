@@ -2562,6 +2562,6 @@ export const RUSSIA_PROFILES = {
   t54: { build: buildT54 },
   t44: { build: buildT44 },
   // type59 §5.304: builder moved to profiles/china.js (buildType59 on the
-  // widened obr-1975 chassis) — profiledProcedurals.js keys it from
+  // widened obr-1975 chassis) — profiledProcedurals.ts keys it from
   // CHINA_PROFILES at the same carousel position.
 };

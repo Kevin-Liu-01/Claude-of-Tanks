@@ -50,7 +50,7 @@ Flow:
    gate measures bare silhouettes).
 2. **The builder runs** (`tankFactoryCore.js`): `resolveBuilder(specId)` picks the
    profile function; extension tables merge in from modern1/2/3.js and
-   `PROFILED_BUILDERS` (profiledProcedurals.js → src/vehicles/profiles/*.js, the
+   `PROFILED_BUILDERS` (profiledProcedurals.ts → src/vehicles/profiles/*.js, the
    program's family files; PROFILED_BUILDERS wins over legacy tankFactory builders —
    the leo2a4/ww2.js override mechanism).
 3. **Bucket grammar**: builders never touch meshes — they call

@@ -55,23 +55,14 @@ import {
   finalizeFirstPartyRoster,
 } from './specs.js';
 import { applyNativeFamilyOrder } from './fleetOrder.ts';
+import {
+  createProfileBuilders,
+  type ProfileBuildFunctions,
+  type VehicleProfileRecord,
+} from './profileBuilderAdapter.ts';
 
-type ProfileBuilderPort = unknown;
-
-interface VehicleProfile {
-  build?: unknown;
-  base?: unknown;
-  [key: string]: unknown;
-}
-
-type VehicleProfileRecord = Record<string, VehicleProfile>;
-type ProfileBuilder = (builder: ProfileBuilderPort) => unknown;
-type AuthoredProfileBuilder = (builder: ProfileBuilderPort, options?: unknown) => unknown;
-
-interface ProfileKit {
+interface ProfileKit extends ProfileBuildFunctions {
   readonly FITTINGS: unknown;
-  buildDonorVariant(builder: ProfileBuilderPort, profile: VehicleProfile): unknown;
-  buildProfile(builder: ProfileBuilderPort, profile: VehicleProfile): unknown;
 }
 
 type GroupLoader = () => Promise<unknown>;
@@ -83,21 +74,6 @@ export interface CreateTankOptions {
   proceduralOnly?: boolean;
   quality?: string;
   [key: string]: unknown;
-}
-
-function toBuilders(profiles: VehicleProfileRecord): Record<string, ProfileBuilder> {
-  if (!profileKit) throw new Error('Profile kit is not loaded');
-  const { buildDonorVariant, buildProfile } = profileKit;
-  return Object.fromEntries(Object.entries(profiles).map(([id, profile]) => {
-    const authored = typeof profile.build === 'function'
-      ? profile.build as AuthoredProfileBuilder
-      : null;
-    return [id, (builder: ProfileBuilderPort) => (
-      authored ? authored(builder, profile)
-        : profile.base ? buildDonorVariant(builder, profile)
-          : buildProfile(builder, profile)
-    )];
-  }));
 }
 
 finalizeFirstPartyRoster();
@@ -134,7 +110,8 @@ function ensureFactoryReady(): Promise<void> {
 }
 
 function registerProfiles(profiles: VehicleProfileRecord): void {
-  registerProfiledBuilders(toBuilders(profiles));
+  if (!profileKit) throw new Error('Profile kit is not loaded');
+  registerProfiledBuilders(createProfileBuilders(profiles, profileKit));
 }
 
 const GROUP_LOADERS = Object.freeze({

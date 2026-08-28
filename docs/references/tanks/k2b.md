@@ -66,7 +66,7 @@ k2's oracle onto it). Bar for future fidelity rounds = photo class.
    registration.
 3. `src/vehicles/tankFactory.ts` — `import './korea.js';` (after poland.js,
    before finalizeFirstPartyRoster, so the K2 donor rig exists first).
-4. `src/vehicles/profiledProcedurals.js` — KOREA_PROFILES import + spread
+4. `src/vehicles/profiledProcedurals.ts` — KOREA_PROFILES import + spread
    into PROCEDURAL_PROFILES (builder reaches BUILDERS via the standard
    profile merge).
 5. `src/vehicles/tier.ts` — `k2b: 9` (k2's tier).

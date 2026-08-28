@@ -10,7 +10,7 @@ import { MODERN2_BUILDERS } from './modern2.js';
 import { MODERN1_BUILDERS } from './modern1.js';
 import { CHALLENGER_BUILDERS } from './profiles/challenger.js';
 import { FITTINGS } from './profiles/kit.js';
-import { PROFILED_BUILDERS } from './profiledProcedurals.js';
+import { PROFILED_BUILDERS } from './profiledProcedurals.ts';
 import { VEHICLE_MARKING_SEATS } from './vehicleMarkingSeats.generated.js';
 import { registerVehicleMarkingSeatRecords } from './vehicleMarkingSeatRegistry.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.js';

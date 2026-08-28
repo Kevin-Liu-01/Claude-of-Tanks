@@ -3,7 +3,7 @@
 // REFACTOR — every moved id hash-proven byte-identical across the split).
 // Residents:
 //   challenger1 — profiles-class build (CHALLENGER_PROFILES, merged by
-//     profiledProcedurals.js like every ./profiles family map); moved from
+//     profiledProcedurals.ts like every ./profiles family map); moved from
 //     uk.js. Its spec row still derives from challenger2's TANK_SPECS row
 //     via the userdrops5 make() donor copy — unchanged mechanism.
 //   challenger2 / challenger_3 — canonical builders demand-registered from
@@ -1612,7 +1612,7 @@ function challenger1Native2026(P) {
   P.topY = 1.32;
 }
 
-// Profiles-class family map (merged by profiledProcedurals.js — the same
+// Profiles-class family map (merged by profiledProcedurals.ts — the same
 // interface every ./profiles family module exports).
 export const CHALLENGER_PROFILES = {
   // OWNERSHIP RESTORATION (2026-08-12): runtime Challenger 1 is the stronger
