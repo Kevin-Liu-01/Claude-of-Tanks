@@ -24,7 +24,7 @@ import {
   TERRAIN_MARGIN_EPS,
   trackGripMargin,
   uphillDriveMargin,
-} from './terrainMobility.js';
+} from './terrainMobility.ts';
 
 /** Fixed simulation step in seconds (ARCHITECTURE §1.1). */
 export const SIM_DT = 1 / 60;

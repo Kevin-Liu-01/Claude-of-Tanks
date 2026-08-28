@@ -3,7 +3,7 @@ import {
   groundResistanceFor,
   terrainSlopeMargin,
   terrainTravelCostFactor,
-} from './terrainMobility.js';
+} from './terrainMobility.ts';
 
 const WORLD_MIN = -500;
 const WORLD_MAX = 500;

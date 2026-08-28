@@ -21,12 +21,22 @@ const TRACK_GRIP_MIN = 0.08;
 // ground resistance); it is not a universal map-angle gate.
 const TRACK_GRIP_MAX = 0.27;
 
-function clamp(value, min, max) {
+export interface TerrainMobilitySpec {
+  terrainResistance?: Readonly<Record<string, number>>;
+  enginePowerHp?: unknown;
+  weightTons?: unknown;
+  trackTraction?: unknown;
+}
+
+function clamp(value: number, min: number, max: number): number {
   return value < min ? min : value > max ? max : value;
 }
 
 /** Resistance multiplier authored per vehicle and ground material. */
-export function groundResistanceFor(spec, groundType = 'medium') {
+export function groundResistanceFor(
+  spec: TerrainMobilitySpec | null | undefined,
+  groundType = 'medium',
+): number {
   const resistance = spec?.terrainResistance;
   if (!resistance) return 1;
   const value = resistance[groundType] ?? resistance.medium ?? resistance.hard ?? 1;
@@ -35,11 +45,11 @@ export function groundResistanceFor(spec, groundType = 'medium') {
 
 /** Rated engine acceleration available at the tracks on this ground. */
 export function engineDriveAcceleration(
-  spec,
+  spec: TerrainMobilitySpec | null | undefined,
   groundType = 'medium',
   powerMult = 1,
   accelMult = 1,
-) {
+): number {
   const hp = Math.max(0, Number(spec?.enginePowerHp) || 0);
   const tons = Math.max(0.1, Number(spec?.weightTons) || 0.1);
   const resistance = groundResistanceFor(spec, groundType);
@@ -53,7 +63,10 @@ export function engineDriveAcceleration(
  * optional explicit multiplier for vehicles with unusually capable or poor
  * running gear without forcing every existing specification to duplicate it.
  */
-export function trackGripCoefficient(spec, groundType = 'medium') {
+export function trackGripCoefficient(
+  spec: TerrainMobilitySpec | null | undefined,
+  groundType = 'medium',
+): number {
   const resistance = groundResistanceFor(spec, groundType);
   const requestedTraction = Number(spec?.trackTraction ?? 1);
   const authoredTraction = clamp(
@@ -68,13 +81,17 @@ export function trackGripCoefficient(spec, groundType = 'medium') {
   );
 }
 
-function forceMargin(available, required) {
+function forceMargin(available: number, required: number): number {
   if (!(available > 0)) return 0;
   return clamp((available - required) / available, 0, 1);
 }
 
 /** Grip-only margin for retaining controlled contact on an uphill face. */
-export function trackGripMargin(spec, groundType, uphillPitchRad) {
+export function trackGripMargin(
+  spec: TerrainMobilitySpec | null | undefined,
+  groundType: string,
+  uphillPitchRad: number,
+): number {
   if (!(uphillPitchRad > 0)) return 1;
   const pitch = Math.min(uphillPitchRad, Math.PI * 0.5);
   const grip = trackGripCoefficient(spec, groundType) *
@@ -88,12 +105,12 @@ export function trackGripMargin(spec, groundType, uphillPitchRad) {
  * applied. Zero means open throttle cannot sustain forward progress.
  */
 export function uphillDriveMargin(
-  spec,
-  groundType,
-  uphillPitchRad,
+  spec: TerrainMobilitySpec | null | undefined,
+  groundType: string,
+  uphillPitchRad: number,
   powerMult = 1,
   accelMult = 1,
-) {
+): number {
   if (!(uphillPitchRad > 0)) return 1;
   const pitch = Math.min(uphillPitchRad, Math.PI * 0.5);
   const engine = engineDriveAcceleration(spec, groundType, powerMult, accelMult);
@@ -106,12 +123,12 @@ export function uphillDriveMargin(
 
 /** Signed grade (rise/run) margin used by terrain-aware route planning. */
 export function terrainSlopeMargin(
-  spec,
-  groundType,
-  signedGrade,
+  spec: TerrainMobilitySpec | null | undefined,
+  groundType: string,
+  signedGrade: number,
   powerMult = 1,
   accelMult = 1,
-) {
+): number {
   if (!Number.isFinite(signedGrade) || signedGrade === 0) return signedGrade === 0 ? 1 : 0;
   const pitch = Math.atan(Math.abs(signedGrade));
   return signedGrade > 0
@@ -125,12 +142,12 @@ export function terrainSlopeMargin(
  * the same lane.
  */
 export function terrainTravelCostFactor(
-  spec,
-  groundType,
-  signedGrade,
+  spec: TerrainMobilitySpec | null | undefined,
+  groundType: string,
+  signedGrade: number,
   powerMult = 1,
   accelMult = 1,
-) {
+): number {
   const margin = terrainSlopeMargin(
     spec, groundType, signedGrade, powerMult, accelMult,
   );

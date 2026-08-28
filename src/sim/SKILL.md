@@ -17,6 +17,8 @@ Own authoritative armored-combat math at a fixed 60 Hz step.
 those rules with match-local world collision for every network authority;
 `specialActionPolicy.ts` and `specialActions.ts` own the strict shared state
 machine for guided missiles, suspension aim, and manual magazine reloads;
+`terrainMobility.ts` owns the allocation-free drivetrain/grip capability math
+shared by movement and bot navigation;
 `botRoutePlanner.js` builds one seeded traversability grid per match and feeds
 renderer-free openings into the game AI controller.
 

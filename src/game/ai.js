@@ -20,7 +20,7 @@ import { computeDispersionRadM } from '../sim/movement.js';
 import { solveBallisticGunLay } from '../sim/ballistics.js';
 import { tankPoseFromState, queryAimArmor } from '../sim/armor.js';
 import { blastRadiusM, estimatePenRatio, isHeClass } from '../sim/damage.js';
-import { terrainTravelCostFactor } from '../sim/terrainMobility.js';
+import { terrainTravelCostFactor } from '../sim/terrainMobility.ts';
 
 /**
  * Canonical deterministic PRNG (ARCHITECTURE.md §1.4, copied verbatim).
