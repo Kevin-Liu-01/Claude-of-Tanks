@@ -1228,20 +1228,63 @@ function wedgeTurretV3(P, T) {
   // as the turret mask bottom in side view — the refs bottom at the deck)
   P.add('turretDark', box(1.30, 0.11, 1.30), 0, -0.035, -0.30);
   P.add('turretDark', box(1.40, 0.06, 0.6), 0, 0.03, 0.75);
-  // wedge shells per side: apex tier (thin near-horizontal arrow plates
-  // carrying the plan nose line + the low tips), then the big upper plate
-  // whose crest falls outboard along the measured front-view line.
+  // Wedge shells per side.  A5-and-later Leopard cheeks are chevrons in two
+  // independent sections: the familiar plan-view arrowhead AND a side-view
+  // `>` where upper and lower armor faces converge on the forward ridge.
+  // The original helper modeled the upper face accurately but treated the
+  // lower half as a broad horizontal ledge.  `T.chevron` replaces that ledge
+  // with a closed lower return while retaining the measured plan stations.
   const N = T.nose;              // [[x, z] ...] apex ridge -> tip nose corner
   const aB = T.apexY;
+  const chevron = T.chevron;
+  const stationValue = (value, index, fallback) => {
+    if (Array.isArray(value)) return value[Math.min(index, value.length - 1)] ?? fallback;
+    return value ?? fallback;
+  };
+  const chevronStations = chevron ? N.map(([x, z], index) => {
+    const ridgeLiftM = stationValue(chevron.ridgeLiftM, index, 0.13);
+    const rootDepthM = stationValue(chevron.rootDepthM, index, 0.75);
+    const rootY = stationValue(chevron.rootY, index, 0.05);
+    return Object.freeze({
+      x,
+      ridgeY: aB + ridgeLiftM,
+      ridgeZ: z - (chevron.ridgeInsetM ?? 0.055),
+      rootY,
+      rootZ: z - rootDepthM,
+      lowerSweepDeg: THREE.MathUtils.radToDeg(Math.atan2(
+        aB + ridgeLiftM - rootY,
+        Math.max(0.001, rootDepthM - (chevron.ridgeInsetM ?? 0.055)),
+      )),
+    });
+  }) : null;
   for (const s of [-1, 1]) {
     // per-side crest tables (T.crestL): the a6 print's LEFT cheek crests
     // ~0.3 taller than the right — a mirrored table cannot match both
     const C = (s < 0 && T.crestL) ? T.crestL : T.crest;
     for (let i = 0; i < N.length - 1; i++) {
       const [x0, z0] = N[i], [x1, z1] = N[i + 1];
+      const ridgeDepth = chevron?.ridgeDepthM ?? 0.55;
       P.add('turret', slab(
-        [s * x0, aB, z0], [s * x1, aB, z1], [s * x1, aB, z1 - 0.55], [s * x0, aB, z0 - 0.55],
-        [s * x0, aB + 0.15, z0 - 0.06], [s * x1, aB + 0.15, z1 - 0.06], [s * x1, aB + 0.15, z1 - 0.58], [s * x0, aB + 0.15, z0 - 0.58]));
+        [s * x0, aB, z0], [s * x1, aB, z1], [s * x1, aB, z1 - ridgeDepth], [s * x0, aB, z0 - ridgeDepth],
+        [s * x0, aB + 0.15, z0 - 0.06], [s * x1, aB + 0.15, z1 - 0.06], [s * x1, aB + 0.15, z1 - ridgeDepth - 0.03], [s * x0, aB + 0.15, z0 - ridgeDepth - 0.03]));
+    }
+    if (chevronStations) {
+      // Closed lower return. Its inner skin is displaced into the armor, not
+      // away from it, so the ridge and rear root overlap the adjoining upper
+      // cheek/body instead of becoming floating plates. The explicit station
+      // depths preserve the reference-specific side silhouette at every
+      // point of the plan-view arrowhead.
+      const thickness = chevron.plateThicknessM ?? 0.045;
+      const innerSetback = chevron.innerSetbackM ?? 0.024;
+      for (let index = 0; index < chevronStations.length - 1; index++) {
+        const a = chevronStations[index];
+        const b = chevronStations[index + 1];
+        P.add('turret', slab(
+          [s * a.x, a.ridgeY, a.ridgeZ], [s * b.x, b.ridgeY, b.ridgeZ],
+          [s * b.x, b.rootY, b.rootZ], [s * a.x, a.rootY, a.rootZ],
+          [s * a.x, a.ridgeY + thickness, a.ridgeZ - innerSetback], [s * b.x, b.ridgeY + thickness, b.ridgeZ - innerSetback],
+          [s * b.x, b.rootY + thickness, b.rootZ - innerSetback], [s * a.x, a.rootY + thickness, a.rootZ - innerSetback]));
+      }
     }
     // tip pads: the wedge-tip plan pads (widest turret-plan points). The
     // fresh probes read them BELOW the hull deck line in front view (ref
@@ -1306,6 +1349,19 @@ function wedgeTurretV3(P, T) {
         [s * wx0, aB + 0.2, nz(cx0) - 0.44], [s * wx1, aB + 0.2, nz(cx1) - 0.44], [s * wx1, aB + 0.2, nz(cx1) - 0.52], [s * wx0, aB + 0.2, nz(cx0) - 0.52],
         [s * wx0, cy0 - wD, cz0 - 0.36], [s * wx1, cy1 - wD, cz1 - 0.36], [s * wx1, cy1 - wD - 0.04, cz1 - 0.44], [s * wx0, cy0 - wD - 0.04, cz0 - 0.44]));
     }
+  }
+  if (chevronStations && P.geometryReceipt) {
+    P.turretG.userData.leopardChevronFrontReceipt = Object.freeze({
+      profile: chevron.profile,
+      architecture: 'closed-upper-and-lower-arrowhead',
+      planStationCount: N.length,
+      lowerReturnSolids: (N.length - 1) * 2,
+      ridgeDepthM: chevron.ridgeDepthM,
+      plateThicknessM: chevron.plateThicknessM ?? 0.045,
+      sourceComparisonOnly: true,
+      runtimeGeometry: 'first-party-procedural',
+      stations: Object.freeze(chevronStations),
+    });
   }
   // mantlet slot back wall + cheeks
   // §5.345 opt-in slotCheekD (default 0.65 — siblings byte-identical): the
@@ -2172,6 +2228,16 @@ function buildLeo2A6(P) {
     // RAKES hard: 2.02w at the 1.42 col (the old [1.44,1.56] tip put the
     // apex tier at 2.14-2.17w on the 1.36-1.48 columns)
     nose: [[0.26, 2.74], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96], [1.36, 1.60], [1.435, 1.42]],
+    // Owner-supplied 2A6 source: the front is a closed side-view chevron,
+    // not one roof slope ending on a shelf.  The measured ridge sits near
+    // the gun axis; its lower face returns 0.48-0.92 m into the body and
+    // lands on the deck/root course.  Width-varying depth retains the plan
+    // arrow while preventing the outboard tips from becoming bulky prisms.
+    chevron: {
+      profile: 'leopard-2a6', ridgeDepthM: 0.20, ridgeLiftM: 0.13,
+      rootDepthM: [0.82, 0.80, 0.73, 0.65, 0.55, 0.46],
+      rootY: [-0.06, -0.05, -0.03, 0.00, 0.04, 0.06], plateThicknessM: 0.045,
+    },
     // tip pads (fresh registered frame): BOTH pads are short fore pads
     // (0.66..1.89w); the LEFT one rides tall (front cols -1.47..-1.53 read
     // 1.98-2.05, the right side reads bare deck). yaw 0: the default 0.04
@@ -3360,6 +3426,15 @@ export function buildLeo2A5(P) {
     // reads them closer than the full-width rail did); centre bin owns -2.90
     rack: { x: 1.26, z0: -3.01, z1: -3.075, top: 0.62, bot: 0.15 },
     nose: [[0.30, 2.89], [1.29, 2.10], [1.44, 1.75]],
+    // The A5 reference's separate left/right cheek modules form the same
+    // vertical chevron, but with a slightly lower ridge and shorter return
+    // than the later A6.  At the measured side silhouette, both upper and
+    // lower envelopes recede roughly 0.8 m from the mid-height point.
+    chevron: {
+      profile: 'leopard-2a5', ridgeDepthM: 0.19, ridgeLiftM: 0.09,
+      rootDepthM: [0.88, 0.69, 0.50], rootY: [-0.02, 0.02, 0.07],
+      plateThicknessM: 0.045,
+    },
     // measured per-side armor bands: the LEFT widest run is a short pad
     // (w 0.69..1.36 at x 1.50); the RIGHT is a long module −1.19..+1.22 at
     // x 1.53. Pads ride BELOW the deck line (the plan mask sees them; the
@@ -5385,6 +5460,18 @@ export function buildLeo2A4(P) {
     { height: 0.40, inset: 0.995 },
     { height: 0.68, inset: 0.91 },
   ]));
+  if (P.geometryReceipt) {
+    // The supplied OTCO model is useful precisely because it prevents a
+    // family-wide over-correction: its A4 turret is the earlier welded box
+    // with clipped front corners, not the A5 spaced-armor arrowhead.
+    P.turretG.userData.leopard2A4FrontReceipt = Object.freeze({
+      architecture: 'welded-box-with-clipped-front-corners',
+      planStationCount: A4_PLAN.length,
+      arrowheadApplique: false,
+      sourceComparisonOnly: true,
+      runtimeGeometry: 'first-party-procedural',
+    });
+  }
   // Buried lower cheek apron: closes the rising hull-roof junction without
   // reintroducing a full-height rectangular belt.
   P.add('turret', polyMultiLoft([
@@ -5945,6 +6032,14 @@ function buildLeo2A7V(P) {
     ],
     rack: { x: 1.22, z0: -2.30, z1: -3.30, top: 0.60, bot: 0.15, wall: true },
     nose: [[0.30, 2.00], [1.42, 1.98], [1.62, 1.03]],
+    // The 2A7V print carries the same closed wedge section beneath its
+    // frontal package. Its shorter central projection and heavier outboard
+    // module call for a compact return rather than copying the A5/A6 depth.
+    chevron: {
+      profile: 'leopard-2a7v', ridgeDepthM: 0.18, ridgeLiftM: 0.09,
+      rootDepthM: [0.82, 0.64, 0.46], rootY: [0.04, 0.07, 0.11],
+      plateThicknessM: 0.050,
+    },
     noseUpper: [[0.30, 1.90], [1.38, 1.86], [1.57, 0.98]],
     crest: [[0.20, 0.80, 0.44], [1.03, 0.775, 0.40], [1.08, 0.67, -0.55], [1.40, 0.66, -0.95], [1.53, 0.32, -1.10]],
     tipPads: [
@@ -12062,6 +12157,14 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
     // Exact Leopard 2A6 base-front plan.  M-specific fittings are layered
     // below after the helper closes this wedge and its hollow cavity.
     nose: [[0.26, 2.74], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96], [1.36, 1.60], [1.435, 1.42]],
+    // The supplied 2A6M mesh confirms that Barracuda/applique overlays the
+    // canonical A6 chevron rather than replacing it with a flat ramp. Keep
+    // that base section visible and closed beneath the M-specific skins.
+    chevron: {
+      profile: 'leopard-2a6m', ridgeDepthM: 0.20, ridgeLiftM: 0.13,
+      rootDepthM: [0.84, 0.82, 0.75, 0.67, 0.57, 0.48],
+      rootY: [-0.06, -0.05, -0.03, 0.00, 0.04, 0.06], plateThicknessM: 0.048,
+    },
     tipPads: [
       { s: 1, x: 1.462, x0: 1.32, z0: 0.31, z1: 1.70, y0: -0.04, y1: 0.06, yaw: 0 },
       { s: -1, x: 1.53, x0: 1.44, z0: 0.29, z1: 1.51, y0: 0.02, y1: 0.26, yaw: 0 },

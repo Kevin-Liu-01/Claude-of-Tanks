@@ -38,6 +38,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/kf51FrontFinish.selftest.mjs',
     'src/vehicles/profiles/leopardRevolutionTurretCenter.selftest.mjs',
     'src/vehicles/profiles/leopardA6MTurretSeat.selftest.mjs',
+    'src/vehicles/profiles/leopardChevronTurretFront.selftest.mjs',
     'src/vehicles/profiles/t90SMTurretClearance.selftest.mjs',
     'src/vehicles/profiles/turretSeatClosure.selftest.mjs',
     'src/vehicles/profiles/chieftainFidelity.selftest.mjs',
