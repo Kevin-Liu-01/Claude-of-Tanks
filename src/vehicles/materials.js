@@ -3055,9 +3055,9 @@ const QUALITY_SIZES = {
   ai: { albedo: ALBEDO_SIZE / 4, map: MAP_SIZE / 4 },
   // World dressing bakes a live tank only long enough to collapse its posed
   // geometry into vertex-coloured static wreck meshes; none of these maps
-  // ever render. wrecks.js has requested `low` since its introduction, but
+  // ever render. wrecks.ts has requested `low` since its introduction, but
   // the missing tier silently fell through to hero 2048/1024. Keep the
-  // painter contract with a tiny transient set; wrecks.js discards every
+  // painter contract with a tiny transient set; wrecks.ts discards every
   // texture after collapsing the posed model to vertex-coloured geometry.
   low: { albedo: 256, map: 128 },
 };

@@ -100,7 +100,7 @@ export default {
     haystacks: 26, rocks: 195, outcrops: 24, craters: 58, rubblePiles: 0,
     // Legacy-map quality backport: a deliberate modern wreck cast staged as
     // roadside kills +
-    // paired duels (baked static via src/world/wrecks.js), soft-vehicle and
+    // paired duels (baked static via src/world/wrecks.ts), soft-vehicle and
     // military-clutter dressing, and more sandbag lines along the roads —
     // all destructible (drive-through, shell-breakable)
     tankWrecks: {

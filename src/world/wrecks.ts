@@ -1,4 +1,4 @@
-// src/world/wrecks.js — DESTRUCTIBLES r1: REAL-ROSTER TANK WRECKS as static
+// src/world/wrecks.ts — DESTRUCTIBLES r1: REAL-ROSTER TANK WRECKS as static
 // battlefield dressing.
 //
 // The old props.js hulks were generic box sketches; the owner asked for the
@@ -30,8 +30,30 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { createTank } from '../vehicles/fleetFactory.js';
 import { VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
 
-function mulberry32(a) {
-  return function () {
+interface WreckOptions {
+  seed?: number;
+  pop?: boolean;
+}
+
+interface WreckBake {
+  geo: THREE.BufferGeometry;
+  shadowGeo: THREE.BufferGeometry | null;
+  hx: number;
+  hz: number;
+  h: number;
+  tris: number;
+}
+
+interface TankWreckVisual {
+  root: THREE.Object3D;
+  setDestroyed(state: { pop: boolean; ageS: number }): void;
+  dispose(): void;
+}
+
+type DebrisFamily = 'char' | 'rust' | 'rubber';
+
+function mulberry32(a: number): () => number {
+  return function (): number {
     a |= 0; a = a + 0x6D2B79F5 | 0;
     let t = Math.imul(a ^ a >>> 15, 1 | a);
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
@@ -40,8 +62,8 @@ function mulberry32(a) {
 }
 
 // cheap deterministic 3D value hash for the char/rust paint (no noise dep —
-// wrecks.js must stay import-light to avoid world<->vehicles cycles)
-function hash3(x, y, z) {
+// wrecks.ts must stay import-light to avoid world<->vehicles cycles)
+function hash3(x: number, y: number, z: number): number {
   const s = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453;
   return s - Math.floor(s);
 }
@@ -62,8 +84,8 @@ const WRECK_FINE_GEAR = /^(?:gearRoadWheel.*(?:Inset|Ring|Rim|Bowl|Hub|Dish|Rece
 const WRECK_MIN_PART_DIAGONAL_M = 0.45;
 
 /** true when o and every ancestor up to (incl.) root renders */
-function chainVisible(o, root) {
-  for (let n = o; n; n = n.parent) {
+function chainVisible(o: THREE.Object3D, root: THREE.Object3D): boolean {
+  for (let n: THREE.Object3D | null = o; n; n = n.parent) {
     if (n.visible === false) return false;
     if (n === root) return true;
   }
@@ -82,10 +104,14 @@ function chainVisible(o, root) {
  * @returns {?{geo: THREE.BufferGeometry, hx: number, hz: number, h: number,
  *   tris: number}} null on any build failure
  */
-export function bakeTankWreck(engineCtx, specId, opts = {}) {
+export function bakeTankWreck(
+  engineCtx: object,
+  specId: string,
+  opts: WreckOptions = {},
+): WreckBake | null {
   const seed = (opts.seed ?? 1) | 0;
   const rng = mulberry32(seed ^ 0x5eed);
-  let visual = null;
+  let visual: TankWreckVisual | null = null;
   try {
     visual = createTank(specId, engineCtx, {
       camoSeed: 4000 + (seed % 997),
@@ -97,17 +123,18 @@ export function bakeTankWreck(engineCtx, specId, opts = {}) {
       // permanent hero-mesh tax on every frame of the match.
       geometryQuality: 'low',
       proceduralOnly: true,    // synchronous, no GLB, decor hard-skips
-    });
+    }) as unknown as TankWreckVisual;
     // settled wreck pose through the factory's own machinery: ageS far past
     // every timeline => turret settled (popped beside the ring or unseated
     // askew), gun drooped, burn timeline fully aged.
     visual.setDestroyed({ pop: !!opts.pop, ageS: 1000 });
-    visual.root.updateMatrixWorld(true);
-    const rootInv = _m.copy(visual.root.matrixWorld).invert().clone();
+    const root = visual.root;
+    root.updateMatrixWorld(true);
+    const rootInv = _m.copy(root.matrixWorld).invert().clone();
 
-    const geos = [];
-    const proxyGeos = []; // the tank's own low-poly SHADOW PROXIES, same pose
-    const expandInstanced = (o) => {
+    const geos: THREE.BufferGeometry[] = [];
+    const proxyGeos: THREE.BufferGeometry[] = []; // the tank's own low-poly SHADOW PROXIES, same pose
+    const expandInstanced = (o: THREE.InstancedMesh) => {
       const src = o.geometry;
       const rel = new THREE.Matrix4().multiplyMatrices(rootInv, o.matrixWorld);
       const inst = new THREE.Matrix4();
@@ -119,9 +146,9 @@ export function bakeTankWreck(engineCtx, specId, opts = {}) {
       }
     };
     const _sz = new THREE.Vector3();
-    visual.root.traverse((o) => {
-      if (!o.isMesh && !o.isInstancedMesh) return;
-      if (!o.geometry || !o.geometry.attributes || !o.geometry.attributes.position) return;
+    root.traverse((o: THREE.Object3D) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      if (!o.geometry?.attributes?.position) return;
       const simplifiedTrackPads = o.name === 'gearTrackPadsSimplified';
       const hasSimplifiedTrackSibling = o.name === 'gearTrackPads'
         && o.parent?.children.some((child) => child.name === 'gearTrackPadsSimplified');
@@ -130,7 +157,7 @@ export function bakeTankWreck(engineCtx, specId, opts = {}) {
       // Both LOD levels share the exact instance matrices, width and grouser
       // peak, so this changes neither the course nor the visible silhouette.
       if (hasSimplifiedTrackSibling) return;
-      if (!simplifiedTrackPads && !chainVisible(o, visual.root)) return;
+      if (!simplifiedTrackPads && !chainVisible(o, root)) return;
       if (WRECK_FINE_GEAR.test(o.name || '')) return;
       const m0 = Array.isArray(o.material) ? o.material[0] : o.material;
       if (m0 && m0.colorWrite === false) {
@@ -143,8 +170,8 @@ export function bakeTankWreck(engineCtx, specId, opts = {}) {
         proxyGeos.push(g);
         return;
       }
-      if (m0 && m0.transparent && m0.map) return; // decal planes etc.
-      if (o.isInstancedMesh) { expandInstanced(o); return; }
+      if (m0 && m0.transparent && 'map' in m0 && m0.map) return; // decal planes etc.
+      if (o instanceof THREE.InstancedMesh) { expandInstanced(o); return; }
       // PERF: wrecks are DRESSING — sub-fitting greebles (periscopes, hooks,
       // lamps, sub-35 cm fittings) never read on a charred hulk at gameplay
       // distance but dominate the triangle bill. Skip small parts by size.
@@ -159,7 +186,7 @@ export function bakeTankWreck(engineCtx, specId, opts = {}) {
     if (!geos.length) throw new Error('no bakeable geometry');
 
     // normalize attribute sets for the merge: position + normal only
-    const normd = [];
+    const normd: THREE.BufferGeometry[] = [];
     for (const g of geos) {
       let gg = g.index ? g.toNonIndexed() : g;
       if (!gg.attributes.normal) gg.computeVertexNormals();
@@ -204,9 +231,9 @@ export function bakeTankWreck(engineCtx, specId, opts = {}) {
     merged.setAttribute('color', new THREE.BufferAttribute(col, 3));
 
     // shadow-caster geometry from the factory proxies (position only)
-    let shadowGeo = null;
+    let shadowGeo: THREE.BufferGeometry | null = null;
     if (proxyGeos.length) {
-      const pn = [];
+      const pn: THREE.BufferGeometry[] = [];
       for (const g of proxyGeos) {
         let gg = g.index ? g.toNonIndexed() : g;
         for (const key of Object.keys(gg.attributes)) {
@@ -223,6 +250,7 @@ export function bakeTankWreck(engineCtx, specId, opts = {}) {
     // base to y=0 (dead suspension settle happens at placement time)
     merged.computeBoundingBox();
     const bb = merged.boundingBox;
+    if (!bb) throw new Error('wreck bounds unavailable');
     merged.translate(0, -bb.min.y, 0);
     if (shadowGeo) shadowGeo.translate(0, -bb.min.y, 0);
     const out = {
@@ -235,8 +263,9 @@ export function bakeTankWreck(engineCtx, specId, opts = {}) {
     };
     for (const g of normd) g.dispose();
     return out;
-  } catch (e) {
-    console.warn(`[wrecks] bake failed for ${specId}:`, e && e.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[wrecks] bake failed for ${specId}:`, message);
     return null;
   } finally {
     if (visual) {
@@ -251,7 +280,7 @@ export function bakeTankWreck(engineCtx, specId, opts = {}) {
  * @param {string} era canonical vehicle era
  * @returns {string[]}
  */
-export function wreckPool(era) {
+export function wreckPool(era: string): string[] {
   if (era === VEHICLE_ERAS.INTERWAR || era === VEHICLE_ERAS.WORLD_WAR_II) {
     return ['tiger1', 'panther_g', 't34_85', 'm4a3e8', 'is2', 'kv2'];
   }
@@ -274,12 +303,15 @@ export function wreckPool(era) {
  * @param {{modern?:boolean}} [opts]
  * @returns {{geo:THREE.BufferGeometry,tris:number}}
  */
-export function bakeWreckDebris(seed, opts = {}) {
+export function bakeWreckDebris(
+  seed: number,
+  opts: { modern?: boolean } = {},
+): { geo: THREE.BufferGeometry; tris: number } {
   const rng = mulberry32((seed ^ 0x71ac5eed) >>> 0);
   const modern = opts.modern !== false;
-  const parts = [];
+  const parts: THREE.BufferGeometry[] = [];
 
-  function colored(geo, family = 'char') {
+  function colored(geo: THREE.BufferGeometry, family: DebrisFamily = 'char'): void {
     let g = geo.index ? geo.toNonIndexed() : geo;
     if (!g.attributes.normal) g.computeVertexNormals();
     for (const key of Object.keys(g.attributes)) {

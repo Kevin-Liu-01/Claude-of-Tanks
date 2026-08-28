@@ -37,7 +37,7 @@ import {
   box, gablePrism, jitterUV, makeTelephonePoleDistanceGeometry, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
-import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.js';
+import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.ts';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.js';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
 import { preloadPropModels, requirePropModels } from './propsModelStore.ts';
@@ -3168,7 +3168,7 @@ ${snowCap ? `
   // tank models: era-appropriate roster vehicles built through tankFactory,
   // posed by the factory's settled-wreck machinery (turret tossed or unseated,
   // gun drooped), charred/rust-painted and BAKED into ONE static merged mesh
-  // per map (src/world/wrecks.js — no live tank cost, no articulation).
+  // per map (src/world/wrecks.ts — no live tank cost, no articulation).
   // They are pure DRESSING: solid obstacles + shell colliders, never in
   // game.tanks, invisible to spotting and the minimap. Placement stays the
   // storytelling read: roadside kills along the advance routes, plus paired

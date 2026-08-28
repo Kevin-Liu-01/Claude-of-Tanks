@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { bakeWreckDebris, wreckPool } from './wrecks.js';
+import { bakeWreckDebris, wreckPool } from './wrecks.ts';
 
 assert.ok(wreckPool('modern').length >= 14, 'modern wreck pool spans the first-party fleet');
 assert.ok(wreckPool('ww2').length >= 6, 'WWII wreck pool remains populated');
