@@ -19,6 +19,7 @@ readiness, covered GPU warm, dormancy, and activation telemetry. `map.js` compos
 `worldFramePresentationRuntime.ts` owns scoped foliage suppression and the
 allocation-free chase-camera occlusion focus passed to an active world,
 `terrain.js` provides the height field and world-local shared LOD index pools,
+`terrainLodPolicy.ts` owns typed allocation-free visible/prefetch scheduling,
 `liveHeightFieldProxy.ts` selects cached live versus exact authoring queries,
 `collision.js` owns broad phase/shapes, `maps/` owns layouts, and vegetation,
 props, destructibles, toppling, and wrecks own their visual/runtime layers.

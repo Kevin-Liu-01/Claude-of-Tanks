@@ -1,9 +1,31 @@
 // Pure terrain-LOD policy. Kept free of Three.js/DOM so the opening-region
 // streaming contract can be verified in Node without constructing WebGL.
 
-export const TERRAIN_LOD_DIST = Object.freeze([200, 430]);
+export type TerrainLodLevel = 0 | 1 | 2;
 
-export function terrainLodForDistance(distanceM, currentLevel = 2) {
+export interface TerrainLodChunk {
+  cx: number;
+  cz: number;
+  level: TerrainLodLevel;
+  present?: ArrayLike<boolean>;
+  lods?: ArrayLike<boolean>;
+}
+
+export interface TerrainLodBuild {
+  index: number;
+  level: TerrainLodLevel;
+  distanceM: number;
+  urgent: boolean;
+}
+
+export type TerrainLodBuilder = (job: TerrainLodBuild) => void;
+
+export const TERRAIN_LOD_DIST = Object.freeze([200, 430] as const);
+
+export function terrainLodForDistance(
+  distanceM: number,
+  currentLevel: TerrainLodLevel = 2,
+): TerrainLodLevel {
   const t0 = TERRAIN_LOD_DIST[0] * (currentLevel === 0 ? 1.1 : 0.9);
   const t1 = TERRAIN_LOD_DIST[1] * (currentLevel <= 1 ? 1.1 : 0.9);
   return distanceM < t0 ? 0 : distanceM < t1 ? 1 : 2;
@@ -16,7 +38,7 @@ export function terrainLodForDistance(distanceM, currentLevel = 2) {
  * chunk and briefly put mid-distance chunks on level 0 before the first live
  * update corrected them. Missing levels use the bounded look-ahead seam below.
  */
-export function initialTerrainLods(distanceM) {
+export function initialTerrainLods(distanceM: number): TerrainLodLevel[] {
   if (distanceM < TERRAIN_LOD_DIST[0]) return [0];
   if (distanceM < TERRAIN_LOD_DIST[1]) return [1];
   return [2];
@@ -31,9 +53,14 @@ export function initialTerrainLods(distanceM) {
  * @param {?{index:number,level:number,distanceM:number,urgent:boolean}} [out]
  * @returns {null|{index:number,level:number,distanceM:number,urgent:boolean}}
  */
-export function chooseTerrainLodBuild(chunks, camX, camZ, out = null) {
+export function chooseTerrainLodBuild(
+  chunks: readonly TerrainLodChunk[],
+  camX: number,
+  camZ: number,
+  out: TerrainLodBuild | null = null,
+): TerrainLodBuild | null {
   let bestIndex = -1;
-  let bestLevel = -1;
+  let bestLevel: TerrainLodLevel = 2;
   let bestDistance = Infinity;
   let bestUrgent = false;
   for (let index = 0; index < chunks.length; index++) {
@@ -41,6 +68,7 @@ export function chooseTerrainLodBuild(chunks, camX, camZ, out = null) {
     const distanceM = Math.hypot(camX - chunk.cx, camZ - chunk.cz);
     const want = terrainLodForDistance(distanceM, chunk.level);
     const present = chunk.present || chunk.lods;
+    if (!present) continue;
     if (!present[want]) {
       if (bestIndex < 0 || !bestUrgent || distanceM < bestDistance) {
         bestIndex = index;
@@ -53,7 +81,7 @@ export function chooseTerrainLodBuild(chunks, camX, camZ, out = null) {
     if (bestUrgent) continue;
 
     // Prepare one finer band roughly one chunk before its visible threshold.
-    let prefetch = -1;
+    let prefetch: TerrainLodLevel | null = null;
     if (want === 2 && distanceM < TERRAIN_LOD_DIST[1] + 125) prefetch = 1;
     else if (want === 1 && distanceM < TERRAIN_LOD_DIST[0] + 125) prefetch = 0;
     // Opening construction now creates exactly the visible level. Restore the
@@ -62,7 +90,7 @@ export function chooseTerrainLodBuild(chunks, camX, camZ, out = null) {
     // Until it exists the currently visible level remains in place, so no
     // lower-quality frame or geometry pop can occur.
     else if (want < 2 && !present[2]) prefetch = 2;
-    if (prefetch >= 0 && !present[prefetch]) {
+    if (prefetch !== null && !present[prefetch]) {
       if (bestIndex < 0 || distanceM < bestDistance) {
         bestIndex = index;
         bestLevel = prefetch;
@@ -72,7 +100,7 @@ export function chooseTerrainLodBuild(chunks, camX, camZ, out = null) {
     }
   }
   if (bestIndex < 0) return null;
-  const result = out || {};
+  const result = out || {} as TerrainLodBuild;
   result.index = bestIndex;
   result.level = bestLevel;
   result.distanceM = bestDistance;
@@ -94,10 +122,16 @@ export function chooseTerrainLodBuild(chunks, camX, camZ, out = null) {
  * @param {function(object):void} build
  * @returns {number} number of completed jobs
  */
-export function warmTerrainLodBuilds(chunks, camX, camZ, maxJobs, build) {
+export function warmTerrainLodBuilds(
+  chunks: readonly TerrainLodChunk[],
+  camX: number,
+  camZ: number,
+  maxJobs: number,
+  build: TerrainLodBuilder,
+): number {
   const limit = Math.max(0, Math.floor(Number(maxJobs) || 0));
   if (!limit || typeof build !== 'function') return 0;
-  const job = { index: -1, level: -1, distanceM: 0, urgent: false };
+  const job: TerrainLodBuild = { index: -1, level: 2, distanceM: 0, urgent: false };
   let completed = 0;
   while (completed < limit) {
     const next = chooseTerrainLodBuild(chunks, camX, camZ, job);

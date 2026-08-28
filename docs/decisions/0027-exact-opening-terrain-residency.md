@@ -13,11 +13,12 @@ front-loaded CPU and allocation work into the opaque battle loader.
 
 ## Decision
 
-Near chunks create their exact visible fine geometry plus a coarse fallback.
-Mid chunks create their exact visible medium geometry plus the same fallback.
-Far chunks remain coarse-only. The existing deterministic look-ahead builder
-creates missing levels one at a time during the frozen deployment countdown
-and, if still needed later, before camera approach.
+Every chunk creates only its exact visible geometry during opening construction.
+The deterministic look-ahead builder restores the coarse outward-travel
+fallback for near and mid chunks one job at a time during the frozen deployment
+countdown and, if still needed later, prepares transition bands before camera
+approach. The scheduler is a strict TypeScript policy boundary; it has no
+Three.js or DOM dependency and reuses a caller-owned job record while draining.
 
 ## Consequences
 

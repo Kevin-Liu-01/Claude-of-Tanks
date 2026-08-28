@@ -7,7 +7,7 @@ import {
   initialTerrainLods,
   terrainLodForDistance,
   warmTerrainLodBuilds,
-} from './terrainLodPolicy.js';
+} from './terrainLodPolicy.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { applySourcedTerrain } from './sourcedTextures.js';
 import { buildHorizonRing } from './maps/horizon.js';

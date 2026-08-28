@@ -4,7 +4,7 @@ import {
   initialTerrainLods,
   terrainLodForDistance,
   warmTerrainLodBuilds,
-} from './terrainLodPolicy.js';
+} from './terrainLodPolicy.ts';
 
 assert.deepEqual(initialTerrainLods(50), [0],
   'opening near chunk creates only its exact visible level');
