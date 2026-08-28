@@ -140,7 +140,7 @@ export default {
     // thin (left third of battlefield.png) the conifer comb resolved as a
     // repeating vertical-stroke carpet; a higher haze floor at ring distance
     // plus the comb's new stand-scale variation breaks the print
-    baseHex: 0x4d6540, amp: 1.0, style: 'rolling', treeline: 0.94,
+    baseHex: 0x4d6540, amp: 1.0, style: 'rolling', treeline: 0.94, treelineLayers: 2,
     // r6: grain 0.7 — the residual granular speckle above the treeline still
     // smeared under tangential grazing on the highest bald summits
     forestHex: 0x33502e, rockHex: 0x77725f, haze: 0.95, grain: 0.7,

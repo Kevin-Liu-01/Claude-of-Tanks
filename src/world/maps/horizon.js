@@ -17,6 +17,7 @@
 //   style,                           — 'rolling'|'alpine'|'mesa'|'escarpment'
 //   snowline,                        — 0..1 fraction of peak height where snow starts (alpine)
 //   treeline,                        — 0..1 fraction below which forest tint is applied
+//   treelineLayers,                  — 1..3 skyline impostor depth ranks (default 1)
 //   banding,                         — sandstone strata amplitude on steep faces (mesa)
 //   rockHex, snowHex, forestHex,     — detail palette overrides
 //   haze,                            — aerial-perspective multiplier (default 1)
@@ -50,6 +51,13 @@ function idHash(s) {
 }
 
 export const HORIZON_TREELINE_ATLAS_VARIANTS = 4;
+export const HORIZON_TREELINE_MAX_LAYERS = 3;
+
+export function resolveHorizonTreelineLayers(horizon = null) {
+  const requested = Number.isFinite(horizon?.treelineLayers)
+    ? Math.round(horizon.treelineLayers) : 1;
+  return clamp(requested, 1, HORIZON_TREELINE_MAX_LAYERS);
+}
 
 /**
  * Periodic, low-frequency crown line used by the distant forest impostor.
@@ -612,6 +620,7 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   // the critic's "artificial terrace band" + "bald gradient slopes". At
   // these view distances real hill country reads forested to the summit.
   const treeline = H.treeline ?? (style === 'rolling' ? 0.90 : style === 'escarpment' ? 0.88 : 0);
+  const treelineLayers = resolveHorizonTreelineLayers(H);
   const banding = H.banding ?? (style === 'mesa' ? 0.16 : 0);
   // soft vegetated hills carry far less exposed rock / flank contrast than
   // cliff-forming styles — full strength there reads as curtain striping
@@ -1230,26 +1239,41 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   mesh.userData.aoExclude = true;
 
   // --- distant skyline impostor (vegetated styles only) ---------------------
-  // One alpha-tested canopy ribbon follows the outer authored crest. It adds
-  // a soft forest-scale irregularity against the sky without layering cards
-  // over visible ridge faces, and inherits the same baked color/haze grading.
+  // One alpha-tested canopy ribbon follows whichever authored ridge actually
+  // forms the skyline at each azimuth. It adds a soft forest-scale irregularity
+  // against the sky without layering cards over visible ridge faces, and
+  // inherits the same baked color/haze grading.
   // Values below 0.14 fade every crown to zero; skip the texture, geometry,
   // and draw call entirely on the intentionally bare desert/canyon maps.
   if (treeline >= 0.14) {
     const profileSeed = ((seed ^ 0xA771) ^ idHash(mapId)) >>> 0;
     const combTex = makeTreeLineTexture(profileSeed);
     // Alpine walls contain interpolated geometry rows for smooth shading.
-    // Planting on row indices 2..5 stacked four silhouettes into the first
-    // 65 m radial gap. Select from authored ridges and keep the outer skyline.
+    // Planting a ribbon on every row stacked visible contour stripes. Instead,
+    // resolve the actual angular skyline once and follow that one envelope.
     const authoredRows = [];
     for (let ri = 0; ri < rows.length; ri++) {
       if (!rows[ri].skirt && !rows[ri].interpolated) authoredRows.push(ri);
     }
-    // Only the outer skyline receives an alpha silhouette. On any nearer
-    // ridge the same card is seen against another hill and reads as a broad
-    // contour stripe rather than vegetation.
-    const combRows = authoredRows.length
-      ? [authoredRows[authoredRows.length - 1]] : [];
+    const skylineRows = new Int16Array(N);
+    let skylineRadius = 0;
+    const observerY = 24;
+    for (let k = 0; k < N; k++) {
+      let bestRow = authoredRows[0] ?? 0;
+      let bestRise = -Infinity;
+      for (const ri of authoredRows) {
+        const i = ri * N + k;
+        const radius = Math.hypot(pos[i * 3], pos[i * 3 + 2]);
+        const rise = (pos[i * 3 + 1] - observerY) / Math.max(1, radius);
+        if (rise > bestRise) {
+          bestRise = rise;
+          bestRow = ri;
+        }
+      }
+      skylineRows[k] = bestRow;
+      skylineRadius += rows[bestRow].r;
+    }
+    skylineRadius /= N;
     const tlH = treeline * maxH;
     const cPos = [], cCol = [], cUv = [], cIdx = [];
     let vBase = 0;
@@ -1259,44 +1283,53 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
       const v1 = (variant + 1) / HORIZON_TREELINE_ATLAS_VARIANTS - atlasPad;
       return [v0, Math.max(v0, v1)];
     };
-    // A single range is enough to soften the sky edge. Repeated front/back
-    // ranks made the inexpensive backdrop obvious under scope magnification.
-    for (const ri of combRows) {
-      const row = rows[ri];
-      const repeats = Math.max(8, Math.round((Math.PI * 2 * row.r) / 96));
-      const variant = profileSeed % HORIZON_TREELINE_ATLAS_VARIANTS;
+    // Forest-heavy maps can carry two or three skyline-depth ranks. The rear
+    // ranks are farther beyond the resolved skyline and more fog-washed. They
+    // are still folded into one BufferGeometry and one draw call.
+    const baseRepeats = Math.max(8, Math.round((Math.PI * 2 * skylineRadius) / 96));
+    for (let layer = treelineLayers - 1; layer >= 0; layer--) {
+      const variant = (profileSeed + layer * 3) % HORIZON_TREELINE_ATLAS_VARIANTS;
+      const repeats = baseRepeats + layer;
       const [v0, v1] = atlasRange(variant);
       for (let k = 0; k <= N; k++) {  // N+1 columns: seam-free u wrap
         const kk = k % N;
+        const ri = skylineRows[kk];
+        const row = rows[ri];
         const i = ri * N + kk;
         const x = pos[i * 3], hh = pos[i * 3 + 1], z = pos[i * 3 + 2];
-        // trees thin toward the treeline, vanish above it; strip degenerates
-        // to a hidden zero-height line where faded out
-        const fade = 1 - smoothstep(tlH * 0.8, tlH * 1.12, hh);
+        // Trees thin toward the treeline and vanish above it. Rear ranks use
+        // independent crown walks, not scaled duplicates of the front row.
+        const height01 = hh / Math.max(1, maxH);
+        const snowFade = snowline <= 1
+          ? 1 - smoothstep(snowline - 0.05, snowline + 0.02, height01) : 1;
+        const fade = (1 - smoothstep(tlH * 0.8, tlH * 1.12, hh)) * snowFade;
         const a = (kk / N) * Math.PI * 2;
-        const hn = gnoi.noise(Math.cos(a) * 5.3 + ri * 9,
-          Math.sin(a) * 5.3 - ri * 5) * 0.5 + 0.5;
-        // A second, faster stand-height walk keeps the low-frequency crown
-        // from holding one constant angular weight for hundreds of metres.
-        const hn2 = gnoi.noise(Math.cos(a) * 19.7 + ri * 3.1,
-          Math.sin(a) * 19.7 + ri * 11.9) * 0.5 + 0.5;
+        const hn = gnoi.noise(Math.cos(a) * 5.3 + ri * 9 + layer * 7.7,
+          Math.sin(a) * 5.3 - ri * 5 - layer * 4.1) * 0.5 + 0.5;
+        const hn2 = gnoi.noise(Math.cos(a) * 19.7 + ri * 3.1 - layer * 5.3,
+          Math.sin(a) * 19.7 + ri * 11.9 + layer * 8.9) * 0.5 + 0.5;
         const span = (9 + hn * 7) * (0.94 + Math.min(row.r, 1400) / 7000) * fade *
-          (0.88 + hn2 * 0.24);
-        const inw = 0.995;
-        const drop = 3.2;
-        cPos.push(x * inw, hh - drop, z * inw, x * inw, hh - drop + span, z * inw);
-        // The unlit impostor inherits the baked sun product and extra aerial
-        // haze so it sits inside its ridge tint rather than popping as a dark
-        // serrated layer in front of it.
-        const hz = Math.min(0.92, row.aer * 0.66 + 0.16);
-        let cr = Math.min(1.9, col[i * 3] * 1.7);
-        let cg = Math.min(1.9, col[i * 3 + 1] * 1.7);
-        let cb = Math.min(1.9, col[i * 3 + 2] * 1.7);
+          (0.88 + hn2 * 0.24) * (1 - layer * 0.045);
+        // All ranks sit just behind the resolved crest. Putting the ribbon on
+        // its inner slope lets the ridge's own triangles depth-occlude the
+        // canopy completely; the small outward offset keeps the base hidden
+        // by the crest while allowing the crowns to break the sky edge.
+        const radialScale = 1.001 + layer * 0.006;
+        const drop = 3.2 + layer * 0.72;
+        cPos.push(x * radialScale, hh - drop, z * radialScale,
+          x * radialScale, hh - drop + span, z * radialScale);
+        // Additional aerial perspective is the main depth cue at these
+        // distances and prevents dark, high-contrast cardboard silhouettes.
+        const hz = Math.min(0.94, row.aer * 0.66 + 0.16 + layer * 0.11);
+        const light = 1.7 - layer * 0.08;
+        let cr = Math.min(1.9, col[i * 3] * light);
+        let cg = Math.min(1.9, col[i * 3 + 1] * light);
+        let cb = Math.min(1.9, col[i * 3 + 2] * light);
         cr += (fogC.r - cr) * hz;
         cg += (fogC.g - cg) * hz;
         cb += (fogC.b - cb) * hz;
         cCol.push(cr, cg, cb, cr, cg, cb);
-        const u = (k / N) * repeats + variant * 0.23;
+        const u = (k / N) * repeats + variant * 0.23 + layer * 0.41;
         cUv.push(u, v0, u, v1);
       }
       for (let k = 0; k < N; k++) {
@@ -1323,6 +1356,11 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
     comb.receiveShadow = false;
     comb.matrixAutoUpdate = false;
     comb.userData.aoExclude = true;
+    comb.userData.horizonTreeline = {
+      layers: treelineLayers,
+      role: 'outer-skyline',
+      vertices: cPos.length / 3,
+    };
     mesh.add(comb);
   }
   return mesh;

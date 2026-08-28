@@ -185,7 +185,7 @@ export default {
 
   horizon: {
     // fall uplands: rust-brown forest to near the crests, hazed warm
-    baseHex: 0x6d6440, amp: 1.0, style: 'rolling', treeline: 0.94,
+    baseHex: 0x6d6440, amp: 1.0, style: 'rolling', treeline: 0.94, treelineLayers: 2,
     forestHex: 0x6a4d28, rockHex: 0x7a7260, haze: 0.95, grain: 0.7,
   },
 

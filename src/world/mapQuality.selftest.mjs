@@ -3,6 +3,8 @@ import { getMapConfig, MAP_IDS } from './maps/index.js';
 import { createHeightField } from './terrain.js';
 import {
   HORIZON_TREELINE_ATLAS_VARIANTS,
+  HORIZON_TREELINE_MAX_LAYERS,
+  resolveHorizonTreelineLayers,
   sampleHorizonSilhouette,
   sampleTreelineCrownProfile,
 } from './maps/horizon.js';
@@ -21,12 +23,20 @@ const MODERN_FAMILIES = [
   'leclerc', 'merkava3d', 'k2', 'type99a', 'type10', 'kf51', 'ariete',
 ];
 const CLUTTER_FAMILIES = ['barrier', 'roadsign', 'cone', 'transformer', 'cablespool'];
+const LAYERED_TREELINES = new Map([
+  ['verdant', 2], ['coastal', 2], ['autumn', 2],
+  ['frontier', 3], ['delta', 3], ['monsoon', 3],
+]);
 const polePolicyByMap = new Map();
 
 assert.equal(MAP_IDS.length, 20, 'the battlefield roster contains twenty maps');
 assert.equal(new Set(MAP_IDS).size, MAP_IDS.length, 'map ids are unique');
 assert.deepEqual(MAP_IDS.slice(8, 16), EXPANSION, 'the eight-map expansion stays registered');
 assert.deepEqual(MAP_IDS.slice(-4), EXTREME, 'the extreme-environment expansion stays registered');
+assert.equal(resolveHorizonTreelineLayers({ treelineLayers: 99 }), 3,
+  'skyline depth clamps to the shared performance ceiling');
+assert.equal(resolveHorizonTreelineLayers({ treelineLayers: -4 }), 1,
+  'skyline depth always retains one canonical rank');
 
 for (const mapId of MAP_IDS) {
   const config = getMapConfig(mapId);
@@ -35,6 +45,12 @@ for (const mapId of MAP_IDS) {
   assert.ok(config.name && config.blurb, `${mapId}: player-facing copy exists`);
   assert.ok(config.terrain && config.vegetation && config.props && config.sky,
     `${mapId}: complete biome configuration`);
+  const treelineLayers = resolveHorizonTreelineLayers(config.horizon);
+  assert.ok(Number.isInteger(treelineLayers)
+    && treelineLayers >= 1 && treelineLayers <= HORIZON_TREELINE_MAX_LAYERS,
+    `${mapId}: skyline impostor depth stays within the one-draw-call budget`);
+  assert.equal(treelineLayers, LAYERED_TREELINES.get(mapId) ?? 1,
+    `${mapId}: map-specific skyline depth remains deliberate`);
   assert.equal(config.spawns.enemies.length, 7, `${mapId}: seven enemy spawn pads`);
   for (const spawn of [config.spawns.player, ...config.spawns.enemies]) {
     assert.ok(Number.isFinite(spawn.x) && Number.isFinite(spawn.z), `${mapId}: finite spawn`);

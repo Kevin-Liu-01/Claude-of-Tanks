@@ -86,7 +86,7 @@ export default {
     },
   },
   horizon: {
-    baseHex: 0x436645, amp: 0.9, style: 'rolling', treeline: 0.96,
+    baseHex: 0x436645, amp: 0.9, style: 'rolling', treeline: 0.96, treelineLayers: 3,
     forestHex: 0x244b2b, rockHex: 0x69705d, haze: 0.96, grain: 0.72,
   },
   sky: {
