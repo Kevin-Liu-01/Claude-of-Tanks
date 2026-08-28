@@ -19,7 +19,7 @@ import {
 import {
   createCombatState, startReload, tickFire, resolveShellHit,
 } from '../sim/damage.js';
-import { createShell } from '../sim/ballistics.js';
+import { createShell } from '../sim/ballistics.ts';
 import {
   EQUIPMENT as SPOT_EQUIP, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.js';

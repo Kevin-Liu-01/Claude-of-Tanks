@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { penAtDistanceMm } from '../sim/ballistics.js';
+import { penAtDistanceMm } from '../sim/ballistics.ts';
 import { getSpec } from '../vehicles/specs.js';
 import { nominalPenFor, shellDisplayName, zoneLabel } from './hitEventFormat.ts';
 

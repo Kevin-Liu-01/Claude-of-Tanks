@@ -8,7 +8,7 @@ import {
   GUIDED_MISSILE_TURN_RATE_RAD_S,
   createShell,
   guideShellToward,
-} from './ballistics.js';
+} from './ballistics.ts';
 import { createAuthoritativeMatch } from './authoritativeMatch.js';
 import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
 import { captureEntitySnapshot, SNAPSHOT_FLAGS } from '../net/snapshot.ts';

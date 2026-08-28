@@ -1,5 +1,5 @@
 /**
- * ballistics.js — shell flight integration, penetration-vs-distance, aim
+ * ballistics.ts — shell flight integration, penetration-vs-distance, aim
  * solutions and gun dispersion sampling.
  *
  * Pure-logic module (ARCHITECTURE.md §3.5.1): imports three for math classes
@@ -11,6 +11,49 @@
  */
 
 import { Vector3 } from 'three';
+
+export interface BallisticShellSpec {
+  velocityMps: number;
+  guided?: boolean;
+  gravityScale?: number;
+  guidanceTurnRateRadS?: number;
+  name?: string;
+  type?: string;
+  caliberMm?: number;
+  pen100Mm?: number;
+  pen1000Mm?: number;
+  pen2000Mm?: number;
+  dmg?: number;
+  moduleDmg?: number;
+  tracer?: unknown;
+}
+
+export interface PenetrationSpec {
+  pen100Mm: number;
+  pen1000Mm: number;
+  pen2000Mm?: number;
+}
+
+export interface ShellEntity<TSpec extends BallisticShellSpec = BallisticShellSpec> {
+  id: number;
+  shooterId: string;
+  isPlayer: boolean;
+  spec: TSpec;
+  pos: Vector3;
+  prevPos: Vector3;
+  vel: Vector3;
+  ageS: number;
+  distM: number;
+  dead: boolean;
+  penRollDone: boolean;
+  remainingPenMm: number;
+  dmgRoll: number;
+  bounces: number;
+  carriedThrough: boolean;
+  gravityMps2: number;
+}
+
+type Rng = () => number;
 
 /** Physical gravity scale for unguided direct-fire shells. */
 export const GRAVITY_SCALE = 1;
@@ -39,9 +82,9 @@ export const GUIDED_MISSILE_TURN_RATE_RAD_S = 2.4;
  * @param {?object} shellSpec
  * @returns {number} downward acceleration in m/s²
  */
-export function shellGravityMps2(shellSpec) {
+export function shellGravityMps2(shellSpec?: BallisticShellSpec | null) {
   if (shellSpec?.guided) return 0;
-  const scale = Number.isFinite(shellSpec?.gravityScale)
+  const scale = typeof shellSpec?.gravityScale === 'number' && Number.isFinite(shellSpec.gravityScale)
     ? Math.max(0, shellSpec.gravityScale)
     : GRAVITY_SCALE;
   return 9.81 * scale;
@@ -60,7 +103,12 @@ export function shellGravityMps2(shellSpec) {
  * @param {?object} shellSpec selected ShellSpec
  * @returns {boolean} true when a direction could be resolved
  */
-export function solveBallisticGunLay(out, muzzlePos, aimPoint, shellSpec) {
+export function solveBallisticGunLay(
+  out: Vector3,
+  muzzlePos: Vector3,
+  aimPoint: Vector3 | null | undefined,
+  shellSpec?: BallisticShellSpec | null,
+) {
   if (!aimPoint) return false;
   out.copy(aimPoint).sub(muzzlePos);
   if (out.lengthSq() <= 1e-9) return false;
@@ -107,7 +155,14 @@ export function solveBallisticGunLay(out, muzzlePos, aimPoint, shellSpec) {
  * @param {number} id unique numeric shell id
  * @returns {object} ShellEntity
  */
-export function createShell(shellSpec, shooterId, isPlayer, muzzlePos, dir, id) {
+export function createShell<TSpec extends BallisticShellSpec>(
+  shellSpec: TSpec,
+  shooterId: string,
+  isPlayer: boolean,
+  muzzlePos: Vector3,
+  dir: Vector3,
+  id: number,
+): ShellEntity<TSpec> {
   return {
     id,
     shooterId,
@@ -138,7 +193,7 @@ export function createShell(shellSpec, shooterId, isPlayer, muzzlePos, dir, id) 
  * @param {number} dt step in seconds
  * @returns {void}
  */
-export function stepShell(shell, dt) {
+export function stepShell(shell: ShellEntity, dt: number) {
   shell.prevPos.copy(shell.pos);
   const gravity = Number.isFinite(shell.gravityMps2) ? shell.gravityMps2 : G_SHELL;
   shell.pos.addScaledVector(shell.vel, dt);
@@ -156,10 +211,14 @@ export function stepShell(shell, dt) {
  *
  * @returns {boolean} true when a valid guided velocity was applied
  */
-export function guideShellToward(shell, aimPoint, dt) {
-  if (!shell?.spec?.guided || !aimPoint || !(dt > 0)) return false;
-  const speed = shell.vel?.length?.() || 0;
-  if (!(speed > 1e-6) || !shell.pos) return false;
+export function guideShellToward(
+  shell: ShellEntity | null | undefined,
+  aimPoint: Vector3 | null | undefined,
+  dt: number,
+) {
+  if (!shell?.spec.guided || !aimPoint || !(dt > 0)) return false;
+  const speed = shell.vel.length();
+  if (!(speed > 1e-6)) return false;
   _guideDesired.copy(aimPoint).sub(shell.pos);
   if (_guideDesired.lengthSq() <= 1e-8) return false;
   _guideDesired.normalize();
@@ -167,7 +226,8 @@ export function guideShellToward(shell, aimPoint, dt) {
   const dot = Math.max(-1, Math.min(1, _guideCurrent.dot(_guideDesired)));
   const angle = Math.acos(dot);
   if (angle <= 1e-7) return true;
-  const rate = Number.isFinite(shell.spec.guidanceTurnRateRadS)
+  const rate = typeof shell.spec.guidanceTurnRateRadS === 'number' &&
+    Number.isFinite(shell.spec.guidanceTurnRateRadS)
     ? Math.max(0, shell.spec.guidanceTurnRateRadS)
     : GUIDED_MISSILE_TURN_RATE_RAD_S;
   const turn = Math.min(angle, rate * dt);
@@ -196,10 +256,10 @@ export function guideShellToward(shell, aimPoint, dt) {
  * @param {number} distM flight distance in meters
  * @returns {number} average penetration in mm RHAe at that distance
  */
-export function penAtDistanceMm(shellSpec, distM) {
-  if (distM > 1000 && shellSpec.pen2000Mm > 0) {
+export function penAtDistanceMm(shellSpec: PenetrationSpec, distM: number) {
+  if (distM > 1000 && (shellSpec.pen2000Mm || 0) > 0) {
     const f2 = Math.min(1, (distM - 1000) / 1000);
-    return shellSpec.pen1000Mm + (shellSpec.pen2000Mm - shellSpec.pen1000Mm) * f2;
+    return shellSpec.pen1000Mm + ((shellSpec.pen2000Mm || 0) - shellSpec.pen1000Mm) * f2;
   }
   const f = Math.min(1, Math.max(0, (distM - 100) / 900));
   return shellSpec.pen100Mm + (shellSpec.pen1000Mm - shellSpec.pen100Mm) * f;
@@ -214,7 +274,7 @@ export function penAtDistanceMm(shellSpec, distM) {
  * @param {number} velocityMps shell muzzle velocity in m/s
  * @returns {number} elevation angle in radians
  */
-export function aimElevationRad(distM, velocityMps) {
+export function aimElevationRad(distM: number, velocityMps: number) {
   const s = Math.min(1, Math.max(-1, (G_SHELL * distM) / (velocityMps * velocityMps)));
   return 0.5 * Math.asin(s);
 }
@@ -238,9 +298,13 @@ export function aimElevationRad(distM, velocityMps) {
  * @param {function} [c] rng (4-arg form)
  * @returns {void}
  */
-export function applyDispersion(dir, a, b, c) {
-  const rng = typeof c === 'function' ? c : b;
-  const sigmaRad = typeof c === 'function' ? b : a;
+export function applyDispersion(dir: Vector3, sigmaRad: number, rng: Rng): void;
+export function applyDispersion(
+  dir: Vector3, dispersionRadM: number, sigmaRad: number, rng: Rng,
+): void;
+export function applyDispersion(dir: Vector3, a: number, b: number | Rng, c?: Rng) {
+  const rng = typeof c === 'function' ? c : b as Rng;
+  const sigmaRad = typeof c === 'function' ? b as number : a;
   if (!(sigmaRad > 0)) return;
 
   // Box-Muller pair in units of sigma. Post-8.6 WoT rule (shells doc §8,

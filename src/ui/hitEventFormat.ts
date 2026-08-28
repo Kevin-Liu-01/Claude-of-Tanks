@@ -1,7 +1,7 @@
 // Shared presentation rules for resolved shell-hit events. Keep these rules
 // out of individual panels so the kill-cam and shot report cannot drift.
 
-import { penAtDistanceMm } from '../sim/ballistics.js';
+import { penAtDistanceMm } from '../sim/ballistics.ts';
 import { RUNTIME_TANK_IDS, getSpec } from '../vehicles/specs.js';
 
 export interface HitEventPresentation {
@@ -15,6 +15,9 @@ export interface HitEventPresentation {
 interface PresentationShell {
   readonly name?: string;
   readonly type?: string;
+  readonly pen100Mm: number;
+  readonly pen1000Mm: number;
+  readonly pen2000Mm?: number;
   readonly penetrationMm?: number;
   readonly pen0m?: number;
   readonly pen500m?: number;

@@ -20,7 +20,7 @@ Module ownership (file paths are FIXED):
 | world    | `src/world/terrain.js`, `src/world/vegetation.js`, `src/world/props.js`, `src/world/map.js` |
 | vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.js`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
 | movement | `src/sim/movement.js` |
-| combat   | `src/sim/ballistics.js`, `src/sim/armor.js`, `src/sim/damage.js`, `src/sim/combat.selftest.mjs` |
+| combat   | `src/sim/ballistics.ts`, `src/sim/armor.js`, `src/sim/damage.js`, `src/sim/combat.selftest.mjs` |
 | ai       | `src/game/ai.js` |
 | hud      | `src/ui/hud.js`, `src/ui/garage.js`, `src/ui/damagePanel.js` |
 | fx       | `src/fx/effects.js`, `src/fx/particles.js` |
@@ -320,7 +320,7 @@ turret traverse ×0.5, red ⇒ ×0.2; `loader` dead ⇒ reload ×1.5; `gunner` d
 ×1.5; `driver` dead ⇒ accel & traverse ×0.7; ammoRack red ⇒ instant destruction.
 Red modules auto-repair to yellow (hp=50%) after `repairT = 10 s`.
 
-### 2.5 `ShellEntity` (owned by ballistics.js)
+### 2.5 `ShellEntity` (owned by ballistics.ts)
 ```js
 ShellEntity = {
   id: number, shooterId: string, isPlayer: boolean,
@@ -652,7 +652,7 @@ contact constraints and cannot be crossed by residual uphill speed.
 
 ### 3.5 combat — `src/sim/` (pure logic)
 
-#### 3.5.1 `ballistics.js`
+#### 3.5.1 `ballistics.ts`
 ```js
 export const GRAVITY_SCALE = 1;                         // g_shell = 9.81 × this
 export function createShell(shellSpec, shooterId, isPlayer,

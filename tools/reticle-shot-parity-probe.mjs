@@ -9,7 +9,7 @@
 // Usage: node tools/reticle-shot-parity-probe.mjs [--screenshot /tmp/reticle.png]
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { GRAVITY_SCALE } from '../src/sim/ballistics.js';
+import { GRAVITY_SCALE } from '../src/sim/ballistics.ts';
 
 const args = process.argv.slice(2);
 const screenshotAt = args.indexOf('--screenshot');

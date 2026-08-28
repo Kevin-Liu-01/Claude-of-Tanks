@@ -15,7 +15,7 @@ export {
   repairAllModules,
   startMagazineReload,
 } from '../sim/damage.js';
-export { createShell } from '../sim/ballistics.js';
+export { createShell } from '../sim/ballistics.ts';
 export {
   activateSpecialAction,
   specialActionLocksShell,

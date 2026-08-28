@@ -16,7 +16,7 @@ import {
   applyDispersion,
   solveBallisticGunLay,
   shellGravityMps2,
-} from './ballistics.js';
+} from './ballistics.ts';
 import { tankPoseFromState, traceTank, queryAimArmor } from './armor.js';
 import {
   createCombatState,

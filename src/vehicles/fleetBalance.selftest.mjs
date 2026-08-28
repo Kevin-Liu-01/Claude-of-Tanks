@@ -6,7 +6,7 @@ import {
 } from './specs.js';
 import { tankTier } from './tier.ts';
 import { createCombatState, startReload } from '../sim/damage.js';
-import { penAtDistanceMm } from '../sim/ballistics.js';
+import { penAtDistanceMm } from '../sim/ballistics.ts';
 import { traceTank } from '../sim/armor.js';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
 import { garageStatGroup } from '../ui/garageDossier.ts';

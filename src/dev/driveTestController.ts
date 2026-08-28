@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createShell } from '../sim/ballistics.js';
+import { createShell } from '../sim/ballistics.ts';
 import { computeDispersionRadM, SIM_DT } from '../sim/movement.js';
 
 interface DriveTestShellSpec {

@@ -26,7 +26,7 @@ import { tankContactRect } from './tankContactShape.ts';
 import { stepRolloverLifecycle } from './rollover.ts';
 import {
   applyDispersion, createShell, guideShellToward, stepShell,
-} from './ballistics.js';
+} from './ballistics.ts';
 import { tankPoseFromState, traceTank } from './armor.js';
 import {
   createCombatState,

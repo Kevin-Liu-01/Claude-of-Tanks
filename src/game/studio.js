@@ -34,7 +34,7 @@ import { createTank, ensureFullFleet } from '../vehicles/fleetFactory.js';
 import {
   createTankState, resetTankVerticalState, updateTank, SIM_DT,
 } from '../sim/movement.js';
-import { createShell, stepShell } from '../sim/ballistics.js';
+import { createShell, stepShell } from '../sim/ballistics.ts';
 import { createBus } from './stateCore.ts';
 import {
   CAMO_PATTERN_IDS, setCamoOverride, clearCamoOverrides, applyCamoPatterns,

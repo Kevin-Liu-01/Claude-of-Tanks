@@ -355,7 +355,7 @@ export const SHELL_TYPES = {
   },
 };
 
-// ---- ballistics.js ---------------------------------------------------------
+// ---- ballistics.ts ---------------------------------------------------------
 export const BALLISTICS = {
   GRAVITY_SCALE: 2.2,               // × 9.81; exaggerated for readable arcs
   RNG_PEN_SPREAD: 0.25,             // ±25% pen roll

@@ -67,7 +67,7 @@ its traverse.
 
 Relevant implementation:
 
-- src/sim/ballistics.js
+- src/sim/ballistics.ts
 - src/net/aimIntent.ts
 - src/game/state.js
 - docs/GUNNERY-CAMERA-SPEC.md
@@ -92,7 +92,7 @@ authority's completed calculation; they do not run a second approximation.
 Relevant implementation:
 
 - src/sim/armor.js
-- src/sim/ballistics.js
+- src/sim/ballistics.ts
 - src/ui/shotInfo.js
 - src/game/killcam.js
 

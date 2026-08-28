@@ -18,7 +18,7 @@ import { tankContactRect } from '../sim/tankContactShape.ts';
 import { stepRolloverLifecycle } from '../sim/rollover.ts';
 import {
   createShell, stepShell, applyDispersion, guideShellToward, shellGravityMps2,
-} from '../sim/ballistics.js';
+} from '../sim/ballistics.ts';
 import { tankPoseFromState, traceTank } from '../sim/armor.js';
 import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,

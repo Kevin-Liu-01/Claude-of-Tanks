@@ -504,7 +504,7 @@ authority while keeping close-range aim consistent with solo play.
 
 ## Ballistics, armor, and damage
 
-src/sim/ballistics.js advances shells and resolves candidate impacts.
+src/sim/ballistics.ts advances shells and resolves candidate impacts.
 src/sim/armor.js evaluates the struck plate. src/sim/damage.js applies vehicle,
 module, crew, fire, and destruction state.
 
