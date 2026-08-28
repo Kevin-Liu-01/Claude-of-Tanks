@@ -637,7 +637,7 @@ async function measureStudioSceneLoad() {
 
 async function measureTransitionsAndRematch() {
   const studioPage = await openPage(
-    `?studio=1&map=urban&nosplash=1&tier=${deviceTier}&gfxreset=1`,
+    `?studio=1&map=urban&nosplash=1&tier=${deviceTier}&gfxreset=1&debug=1`,
     { transitions: true },
   );
   try {
@@ -676,7 +676,7 @@ async function measureTransitionsAndRematch() {
   }
 
   const battlePage = await openPage(
-    `?nosplash=1&tier=${deviceTier}&gfxreset=1`,
+    `?nosplash=1&tier=${deviceTier}&gfxreset=1&debug=1`,
     { transitions: true },
   );
   try {
