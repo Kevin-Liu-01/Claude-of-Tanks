@@ -413,6 +413,35 @@ function buildAMX40(P) {
     [-0.86, -1.94], [-1.21, -1.66], [-1.36, -1.18], [-1.41, -0.44],
     [-1.39, 0.44], [-1.34, 1.08], [-1.08, 1.60],
   ];
+  const shellSideStations = {
+    '-1': amx40ShellPlan
+      .filter(([x]) => x < 0)
+      .map(([x, z]) => [z, Math.abs(x)])
+      .sort((a, b) => a[0] - b[0]),
+    1: amx40ShellPlan
+      .filter(([x]) => x > 0)
+      .map(([x, z]) => [z, x])
+      .sort((a, b) => a[0] - b[0]),
+  };
+  const shellWallXAt = (side, z) => {
+    const stations = shellSideStations[side];
+    if (z <= stations[0][0]) return stations[0][1];
+    if (z >= stations[stations.length - 1][0]) return stations[stations.length - 1][1];
+    for (let i = 0; i < stations.length - 1; i++) {
+      const [z0, x0] = stations[i], [z1, x1] = stations[i + 1];
+      if (z < z0 || z > z1) continue;
+      const t = (z - z0) / (z1 - z0);
+      return x0 + (x1 - x0) * t;
+    }
+    return 1.34;
+  };
+  const shellCrownXAt = (side, z) => {
+    const wallX = shellWallXAt(side, z);
+    const cheek = Math.max(0, Math.min(1, (z + 0.10) / 1.55));
+    const flank = Math.min(1, wallX / 1.35);
+    return wallX * (0.84 - cheek * 0.035 + flank * 0.010);
+  };
+  const attachmentEmbedM = 0.025;
   const shellBottom = amx40ShellPlan.map(([, z]) => {
     const aft = Math.max(0, Math.min(1, (1.30 - z) / 2.90));
     return 0.02 + aft * 0.15;
@@ -463,12 +492,18 @@ function buildAMX40(P) {
   for (const s of [-1, 1]) {
     const innerTop = s > 0 ? 0.70 : 0.64;
     const flankModule = (zc, d, topF = innerTop, topR = innerTop, bottomF = 0.20, bottomR = 0.20) => {
+      const zFront = zc + d / 2;
+      const zRear = zc - d / 2;
+      const bottomFrontX = s * (shellWallXAt(s, zFront) - attachmentEmbedM);
+      const bottomRearX = s * (shellWallXAt(s, zRear) - attachmentEmbedM);
+      const topFrontX = s * (shellCrownXAt(s, zFront) - attachmentEmbedM);
+      const topRearX = s * (shellCrownXAt(s, zRear) - attachmentEmbedM);
       P.add('turret', slab(
-      [s * 1.345, bottomF, zc + d / 2], [s * 1.49, bottomF, zc + d / 2], [s * 1.49, bottomR, zc - d / 2], [s * 1.345, bottomR, zc - d / 2],
-      [s * 1.345, topF, zc + d / 2], [s * 1.49, 0.16, zc + d / 2], [s * 1.49, 0.16, zc - d / 2], [s * 1.345, topR, zc - d / 2]));
+      [bottomFrontX, bottomF, zFront], [s * 1.49, bottomF, zFront], [s * 1.49, bottomR, zRear], [bottomRearX, bottomR, zRear],
+      [topFrontX, topF, zFront], [s * 1.49, 0.16, zFront], [s * 1.49, 0.16, zRear], [topRearX, topR, zRear]));
       P.add('turretDetail', slab(                                               // individually raised, slope-following compartment lid
-        [s * 1.35, topF - 0.010, zc + d / 2 - 0.025], [s * 1.475, 0.155, zc + d / 2 - 0.025], [s * 1.475, 0.155, zc - d / 2 + 0.025], [s * 1.35, topR - 0.010, zc - d / 2 + 0.025],
-        [s * 1.35, topF + 0.012, zc + d / 2 - 0.025], [s * 1.475, 0.177, zc + d / 2 - 0.025], [s * 1.475, 0.177, zc - d / 2 + 0.025], [s * 1.35, topR + 0.012, zc - d / 2 + 0.025]));
+        [topFrontX, topF - 0.010, zFront - 0.025], [s * 1.475, 0.155, zFront - 0.025], [s * 1.475, 0.155, zRear + 0.025], [topRearX, topR - 0.010, zRear + 0.025],
+        [topFrontX, topF + 0.012, zFront - 0.025], [s * 1.475, 0.177, zFront - 0.025], [s * 1.475, 0.177, zRear + 0.025], [topRearX, topR + 0.012, zRear + 0.025]));
       // Individual lid lips and latch pairs preserve three visibly separate
       // Object_8 compartments instead of one two-metre black rectangle.
       P.add('turretDark', box(0.035, 0.020, d - 0.05), s * 1.465, 0.168, zc);
@@ -483,7 +518,11 @@ function buildAMX40(P) {
     // cheek-flank rail panels (print Object_6: x ±1.26-1.29, y 1.93..2.32,
     // z_w 1.07..1.38) — thin applique standing off the cheeks on brackets
     P.add('turret', box(s < 0 ? 0.16 : 0.032, 0.36, 0.40), s * 1.272, s < 0 ? 0.62 : 0.52, 1.64);
-    P.add('turret', box(0.20, 0.10, s < 0 ? 0.46 : 0.36), s * 1.16, s < 0 ? 0.66 : 0.48, s < 0 ? 1.70 : 1.65); // asymmetric source cheek ties
+    const cheekTieZ = s < 0 ? 1.70 : 1.65;
+    const cheekTieOuterX = 1.26;
+    const cheekTieInnerX = shellCrownXAt(s, cheekTieZ) - attachmentEmbedM;
+    P.add('turret', box(cheekTieOuterX - cheekTieInnerX, 0.10, s < 0 ? 0.46 : 0.36),
+      s * ((cheekTieOuterX + cheekTieInnerX) / 2), s < 0 ? 0.66 : 0.48, cheekTieZ); // asymmetric source cheek ties now bury into the crown instead of ending in air
     if (s < 0) P.add('turret', box(0.18, 0.30, 0.14), -1.27, 0.73, 0.54);     // raised left cheek shoulder, rooted into the source's sloped crown course
     P.add('turretDetail', box(0.08, 0.30, 0.16), s * 1.49, 0.30, -1.44);        // low seated flank latch at the source outer silhouette
     if (s > 0) P.add('turretDetail', box(0.06, 0.06, 0.57), 1.39, 0.58, 0.335); // asymmetric inner flank rail, below the outer cassette lip
@@ -511,7 +550,7 @@ function buildAMX40(P) {
     [s * 1.14, 0.00, -0.39], [s * 1.26, 0.00, -0.39], [s * 1.26, 0.12, -0.55], [s * 1.14, 0.12, -0.55],
     [s * 1.14, 0.18, -0.39], [s * 1.26, 0.18, -0.39], [s * 1.26, 0.28, -0.55], [s * 1.14, 0.28, -0.55]));
   P.add('turretDetail', box(0.12, 0.14, 0.12), -0.32, 0.75, -1.35);            // low seated service pot; the adjacent narrow mast owns the height peak
-  P.add('turretDetail', box(0.10, 0.11, 0.12), 0.18, 0.84, -0.48);             // source mid-aft hatch handle closes station 5 without broadening the crown
+  P.add('turretDetail', box(0.10, 0.30, 0.12), 0.18, 0.745, -0.48);            // source mid-aft hatch/periscope now runs down into the crown instead of hovering over it
   P.add('turret', xform(cylY(0.48, 0.50, 0.060, 24), 0, 0, 0, 0, 0, 0, [1, 1, 0.68]), -0.80, 0.620, -0.162); // broad, flat collar physically bridges the crown to the dominant annulus
   P.add('turretDetail', xform(cylY(0.49, 0.50, 0.014, 24), 0, 0, 0, 0, 0, 0, [1, 1, 0.68]), -0.80, 0.657, -0.162); // low-contrast outer well lip
   P.add('turretDark', xform(torus(0.39, 0.010, 24), 0, 0, 0, 0, 0, 0, [1, 1, 0.68]), -0.80, 0.667, -0.162); // thin inner drainage seam, not a raised black rim
@@ -528,8 +567,8 @@ function buildAMX40(P) {
     const a = (k / 7) * Math.PI * 2 - 0.45;
     P.add('turretDark', box(0.070, 0.038, 0.045), -0.80 + Math.cos(a) * 0.315, 0.696, -0.162 + Math.sin(a) * 0.185, 0, -a, 0);
   }
-  P.add('turretDark', cylY(0.17, 0.19, 0.055, 14), -0.15, 0.625, 0.24);       // panoramic sight turntable seated on crown at the measured side-profile peak
-  P.addEquipment('turret', box(0.24, 0.14, 0.32), -0.15, 0.690, 0.24);                  // pano plinth overlaps the welded roof
+  P.add('turretDark', cylY(0.17, 0.19, 0.075, 14), -0.15, 0.615, 0.24);       // panoramic sight turntable embeds into the crown
+  P.addEquipment('turret', box(0.24, 0.17, 0.32), -0.15, 0.680, 0.24);        // pano plinth overlaps both the roof socket and faceted head
   P.add('turret', slab(
     [-0.25, 0.74, 0.08], [-0.08, 0.74, 0.08], [-0.08, 0.74, 0.40], [-0.25, 0.74, 0.40],
     [-0.23, 1.00, 0.10], [-0.10, 1.00, 0.10], [-0.10, 0.98, 0.38], [-0.23, 0.98, 0.38])); // compact faceted panoramic head
@@ -537,16 +576,16 @@ function buildAMX40(P) {
   P.add('turretGlass', box(0.10, 0.10, 0.014), -0.16, 0.80, 0.327);            // pano window
   P.add('turretDetail', box(0.10, 0.08, 0.06), -0.17, 0.97, 0.21);             // asymmetric left optic brow, continuously seated on the head
   P.add('turretDetail', box(0.32, 0.09, 0.10), -0.24, 0.955, 0.24);            // source optic bridge, leaving the center drainage notch open
-  P.add('turretDetail', box(0.095, 0.09, 0.10), 0.0125, 0.955, 0.24);
-  P.add('turretDetail', box(0.32, 0.12, 0.36), -0.16, 0.82, 0.20);             // seated longitudinal optic carrier under the faceted panoramic head
+  P.add('turretDetail', box(0.095, 0.12, 0.10), 0.0125, 0.940, 0.24);
+  P.add('turretDetail', box(0.44, 0.34, 0.36), -0.10, 0.74, 0.20);             // longitudinal optic carrier reaches the roof and supports both offset bridge pieces
   P.add('turretDetail', slab(                                                   // low right crown course under the receiver heads
-    [0.08, 0.76, 0.08], [0.40, 0.76, 0.08], [0.40, 0.76, 0.18], [0.08, 0.76, 0.18],
+    [0.08, 0.58, 0.08], [0.40, 0.58, 0.08], [0.40, 0.58, 0.18], [0.08, 0.58, 0.18],
     [0.08, 0.87, 0.08], [0.40, 0.85, 0.08], [0.40, 0.85, 0.18], [0.08, 0.87, 0.18]));
   P.add('turretDetail', slab(
-    [0.40, 0.76, 0.08], [0.70, 0.76, 0.08], [0.70, 0.76, 0.18], [0.40, 0.76, 0.18],
+    [0.40, 0.58, 0.08], [0.70, 0.58, 0.08], [0.70, 0.58, 0.18], [0.40, 0.58, 0.18],
     [0.40, 0.85, 0.08], [0.70, 0.87, 0.08], [0.70, 0.87, 0.18], [0.40, 0.85, 0.18]));
   P.add('turretDetail', slab(
-    [0.70, 0.76, 0.08], [0.92, 0.76, 0.08], [0.92, 0.76, 0.18], [0.70, 0.76, 0.18],
+    [0.70, 0.58, 0.08], [0.92, 0.58, 0.08], [0.92, 0.58, 0.18], [0.70, 0.58, 0.18],
     [0.70, 0.87, 0.08], [0.92, 0.84, 0.08], [0.92, 0.84, 0.18], [0.70, 0.87, 0.18]));
   P.add('turretDetail', slab(                                                   // raised left welded shoulder break at the source front contour
     [-1.20, 0.76, 0.08], [-1.05, 0.76, 0.08], [-1.05, 0.76, 0.18], [-1.20, 0.76, 0.18],
@@ -581,6 +620,9 @@ function buildAMX40(P) {
     // masts live in the filed normalize plan — seats documented in the
     // packet). base:false + hand pots so the whole stack stays ≤ 2.398
     // world and heightM p95 keeps the roof plateau.
+    for (const [x, z] of [[-1.00, -1.41], [0.72, 0.97], [1.00, 0.97]]) {
+      P.addEquipment('turret', cylY(0.040, 0.045, 0.17, 10), x, 0.66, z);      // roof socket bridges each antenna pot to the welded crown
+    }
     P.add('turretDetail', cylY(0.006, 0.006, 0.52, 6), -1.00, 0.850, -1.38);   // source Object_24 aft mast peak, centered on the print's single side-profile station
     P.add('turretDetail', cylY(0.007, 0.007, 0.43, 6), 0.72, 0.987, 0.97);
     P.add('turretDetail', cylY(0.007, 0.007, 0.34, 6), 1.00, 0.942, 0.97);      // spike-exempt paired receiver masts
@@ -697,6 +739,28 @@ function buildAMX40(P) {
   P.add('gun', cylZ(0.100, 0.24, P.q ? 18 : 12), 0, 0, 5.20);                   // muzzle collar run
   muzzleBore(P, 5.34, 0.100, 0.060, 14);                                        // §B3.1 bore; face world 6.64 = overall 10.04
   P.muzzleZ = 5.34;
+  P.turretG.userData.amx40AttachmentSeatReceipt = Object.freeze({
+    revision: 'flush-r1',
+    sidePanels: Object.freeze({
+      count: 6,
+      sides: 2,
+      contouredAttachmentEdges: 12,
+      shellEmbedM: attachmentEmbedM,
+      outerSilhouetteXM: 1.49,
+      maxSupportGapM: 0,
+    }),
+    roof: Object.freeze({
+      supportedParts: 10,
+      antennaSockets: 3,
+      minimumContactEmbedM: 0.01,
+      maxSupportGapM: 0,
+    }),
+    cheekTies: Object.freeze({
+      count: 2,
+      shellEmbedM: attachmentEmbedM,
+      maxSupportGapM: 0,
+    }),
+  });
   // Owner silhouette correction (2026-08-12): the lengthened first-party
   // shell remained visibly too shallow in the elevated side/profile view.
   // Raise the COMPLETE connected fighting-compartment section by exactly
