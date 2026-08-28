@@ -12,6 +12,13 @@ const SHERIDAN_Y_SCALE = 0.965;
 const SHERIDAN_TURRET_X_SCALE = 1.028;
 const SHERIDAN_HULL_CREASE_DEG = 16;
 const SHERIDAN_TURRET_CREASE_DEG = 13;
+const SHERIDAN_END_WHEEL_SCALE = 1.25;
+const SHERIDAN_REAR_FUEL_Z = -3.12;
+const SHERIDAN_TURRET_ROOF_PLAN = Object.freeze([
+  [0.0619, -0.9573], [0.4054, -0.7439], [0.5562, -0.3040], [0.7030, 0.1371],
+  [0.6089, 0.5674], [0.1998, 0.7885], [-0.2139, 0.7928], [-0.5984, 0.5314],
+  [-0.8565, 0.1602], [-1.0148, -0.2725], [-0.8026, -0.6722], [-0.3950, -0.8889],
+]);
 
 // Connected procedural shell through independently measured horizontal
 // sections. Unlike polyMultiLoft, this does not assume every higher section is
@@ -281,6 +288,7 @@ function measuredCommanderM2(P) {
   const group = new THREE.Group();
   const darkParts = [];
   const detailParts = [];
+  const ammoBoxParts = [];
   const turretPivotY = 1.466;
   const ly = (worldY) => worldY - turretPivotY;
 
@@ -324,12 +332,10 @@ function measuredCommanderM2(P) {
   detailParts.push(KIT.xform(KIT.box(0.066, 0.036, 0.066),
     -0.501, ly(2.623), 0.468));
 
-  // Object_9 continues inboard as an open feed-tray cage; it is not part of
-  // the receiver and must not be approximated by another solid ammunition
-  // box. Measured bounds are X=-0.401..-0.015 m, Y=2.652..2.900 m and
-  // Z=0.310..0.480 m. Four thin longitudinal rails, an end frame and two
-  // diagonal crown braces reconstruct that connected envelope while leaving
-  // the tray visibly open.
+  // Object_9 continues inboard as the ammunition-can rack. The earlier pass
+  // reconstructed only its cage, leaving a conspicuous empty hole beside the
+  // receiver. Seat a closed M2 ammunition can inside the measured rack and
+  // retain the thin rails as its load-bearing frame.
   for (const y of [2.660, 2.832]) {
     for (const z of [0.310, 0.480]) {
       darkParts.push(KIT.xform(KIT.box(0.366, 0.012, 0.012),
@@ -345,6 +351,18 @@ function measuredCommanderM2(P) {
   for (const x of [-0.188, -0.092]) {
     darkParts.push(KIT.xform(KIT.box(0.166, 0.012, 0.012),
       x, ly(2.861), 0.395, 0, 0, -0.57));
+  }
+  ammoBoxParts.push(KIT.xform(KIT.box(0.342, 0.164, 0.154),
+    -0.220, ly(2.746), 0.395));
+  // Proud folded lid, receiver-side feed bridge and two small latches make
+  // the can read as a serviceable enclosure rather than another solid greeble.
+  ammoBoxParts.push(KIT.xform(KIT.box(0.354, 0.018, 0.166),
+    -0.220, ly(2.837), 0.395));
+  ammoBoxParts.push(KIT.xform(KIT.box(0.074, 0.058, 0.090),
+    -0.428, ly(2.790), 0.430));
+  for (const z of [0.350, 0.440]) {
+    darkParts.push(KIT.xform(KIT.box(0.020, 0.030, 0.018),
+      -0.046, ly(2.795), z));
   }
 
   // Receiver, cooling sleeve, barrel and muzzle follow the measured
@@ -390,6 +408,7 @@ function measuredCommanderM2(P) {
   };
   addMesh('sheridanCommanderM2Body', darkParts, P.mats.dark, 'machineGun');
   addMesh('sheridanCommanderM2AmmoCradle', detailParts, P.mats.detail, 'ammoBox');
+  addMesh('sheridanCommanderM2AmmoBox', ammoBoxParts, P.mats.detail, 'ammoBox');
   FITTINGS.markExact(group, 'pintleMG');
   return group;
 }
@@ -401,67 +420,79 @@ const hullSection = (bottomHalf, bottomY, beltHalf, beltY, sideHalf, sideY, roof
 
 function buildSheridan(P) {
   const {
-    xform, box, cylX, cylY, cylZ, sph, torus,
+    xform, box, cylX, cylY, cylZ, sph, torus, frustum, polyMultiLoft,
     buildRunningGear, fenders, headlight, liftEye, periscope,
   } = KIT;
 
-  // Amphibious aluminum hull rebuilt from eleven exact convex transverse
-  // sections of the source shell union. This preserves the true lower-hull
-  // narrowing and shoulder breaks instead of extending a full-width wall
-  // vertically from the track line to the roof.
+  // Amphibious aluminum hull rebuilt from eleven source-derived convex
+  // transverse sections. The lower courses form a deliberate recessed track
+  // pocket: the belly stays inboard of the visible shoe lane, then steps
+  // horizontally out to the upper sponson above the complete return run.
+  // This preserves the pointed shoulder breaks without hiding the tracks
+  // behind a full-width wall or letting the 25%-larger end-wheel wraps pass
+  // through the armor shell.
   P.add('hull', toCreasedNormals(measuredStationLoft([
     { z: -3.140, points: [
       [-0.805, 0.950], [-0.774, 0.925], [0.774, 0.925], [0.805, 0.950],
       [0.805, 0.960], [0.774, 0.988], [-0.774, 0.988], [-0.805, 0.960],
     ] },
     { z: -3.000, points: [
-      [-1.390, 1.062], [-0.888, 0.937], [-0.776, 0.920], [0.776, 0.920],
-      [0.888, 0.937], [1.390, 1.061], [1.390, 1.241], [1.379, 1.294],
+      [-1.390, 1.180], [-0.780, 1.180], [-0.780, 0.937], [-0.776, 0.920],
+      [0.776, 0.920], [0.780, 0.937], [0.780, 1.180], [1.390, 1.180],
+      [1.390, 1.241], [1.379, 1.294],
       [1.298, 1.325], [-1.298, 1.325], [-1.379, 1.294], [-1.390, 1.241],
     ] },
     { z: -2.700, points: [
-      [-1.390, 1.062], [-1.386, 0.903], [-0.888, 0.562], [0.888, 0.562],
-      [1.386, 0.903], [1.390, 1.061], [1.390, 1.412], [1.372, 1.451],
+      [-1.390, 1.180], [-0.780, 1.180], [-0.780, 0.903], [-0.770, 0.562],
+      [0.770, 0.562], [0.780, 0.903], [0.780, 1.180], [1.390, 1.180],
+      [1.390, 1.412], [1.372, 1.451],
       [1.324, 1.477], [0.785, 1.530], [-0.292, 1.543], [-0.785, 1.530],
       [-1.324, 1.477], [-1.372, 1.451], [-1.390, 1.412],
     ] },
     { z: -2.400, points: [
-      [-1.401, 1.407], [-1.388, 1.075], [-1.085, 0.672], [-0.888, 0.474],
-      [0.888, 0.474], [1.085, 0.672], [1.390, 1.061], [1.401, 1.407],
+      [-1.401, 1.407], [-1.390, 1.180], [-0.780, 1.180], [-0.780, 0.672],
+      [-0.770, 0.474], [0.770, 0.474], [0.780, 0.672], [0.780, 1.180],
+      [1.390, 1.180], [1.401, 1.407],
       [1.397, 1.546], [1.376, 1.597], [1.346, 1.624], [1.292, 1.647],
       [0.439, 1.707], [0.196, 1.707], [-1.292, 1.647], [-1.346, 1.624],
       [-1.376, 1.597], [-1.397, 1.546], [-1.401, 1.422],
     ] },
     { z: -1.500, points: [
-      [-1.390, 1.062], [-0.952, 0.474], [0.860, 0.474], [1.382, 1.063],
-      [1.390, 1.158], [1.390, 1.461], [1.382, 1.565], [1.365, 1.588],
+      [-1.390, 1.180], [-0.780, 1.180], [-0.780, 0.474], [0.780, 0.474],
+      [0.780, 1.180], [1.390, 1.180],
+      [1.390, 1.220], [1.390, 1.461], [1.382, 1.565], [1.365, 1.588],
       [1.309, 1.619], [1.236, 1.628], [-1.236, 1.628], [-1.309, 1.619],
       [-1.365, 1.588], [-1.382, 1.565], [-1.390, 1.461],
     ] },
     { z: 0.000, points: [
-      [-1.395, 1.475], [-1.390, 1.062], [-0.952, 0.474], [0.952, 0.474],
-      [1.386, 1.061], [1.395, 1.475], [1.395, 1.491], [1.382, 1.565],
+      [-1.395, 1.475], [-1.390, 1.180], [-0.780, 1.180], [-0.780, 0.474],
+      [0.780, 0.474], [0.780, 1.180], [1.390, 1.180], [1.395, 1.475],
+      [1.395, 1.491], [1.382, 1.565],
       [1.365, 1.588], [1.309, 1.619], [1.293, 1.624], [-1.293, 1.624],
       [-1.309, 1.619], [-1.365, 1.588], [-1.382, 1.565], [-1.395, 1.491],
     ] },
     { z: 1.500, points: [
-      [-1.398, 1.432], [-1.390, 1.062], [-0.901, 0.474], [0.952, 0.474],
-      [1.390, 1.061], [1.398, 1.432], [1.393, 1.472], [1.373, 1.495],
+      [-1.398, 1.432], [-1.390, 1.180], [-0.780, 1.180], [-0.780, 0.474],
+      [0.780, 0.474], [0.780, 1.180], [1.390, 1.180], [1.398, 1.432],
+      [1.393, 1.472], [1.373, 1.495],
       [1.313, 1.517], [0.345, 1.627], [0.000, 1.635], [-0.345, 1.627],
       [-1.313, 1.517], [-1.373, 1.495], [-1.393, 1.472],
     ] },
     { z: 2.400, points: [
-      [-1.390, 1.062], [-0.936, 0.474], [0.936, 0.474], [1.390, 1.061],
-      [1.390, 1.176], [1.378, 1.220], [-1.378, 1.220], [-1.390, 1.176],
+      [-1.390, 1.180], [-0.780, 1.180], [-0.780, 0.474], [0.780, 0.474],
+      [0.780, 1.180], [1.390, 1.180],
+      [1.390, 1.210], [1.378, 1.220], [-1.378, 1.220], [-1.390, 1.210],
     ] },
     { z: 2.700, points: [
-      [-1.390, 1.062], [-0.936, 0.605], [0.936, 0.605], [1.390, 1.061],
-      [1.390, 1.175], [1.083, 1.175], [-1.083, 1.175], [-1.390, 1.175],
+      [-1.390, 1.180], [-0.780, 1.180], [-0.780, 0.605], [0.780, 0.605],
+      [0.780, 1.180], [1.390, 1.180],
+      [1.390, 1.210], [1.083, 1.210], [-1.083, 1.210], [-1.390, 1.210],
     ] },
     { z: 3.000, points: [
-      [-1.390, 1.062], [-1.386, 1.030], [-0.774, 0.927], [0.774, 0.927],
-      [1.386, 1.030], [1.390, 1.061], [1.390, 1.147], [1.289, 1.191],
-      [-1.289, 1.191], [-1.390, 1.147],
+      [-1.390, 1.190], [-0.720, 1.190], [-0.720, 1.030], [-0.700, 0.927],
+      [0.700, 0.927], [0.720, 1.030], [0.720, 1.190], [1.390, 1.190],
+      [1.390, 1.210], [1.289, 1.220],
+      [-1.289, 1.220], [-1.390, 1.210],
     ] },
     { z: 3.080, points: [
       [-0.804, 0.960], [-0.796, 0.939], [-0.774, 0.930], [0.774, 0.930],
@@ -529,10 +560,12 @@ function buildSheridan(P) {
     wheelZs: [1.991, 1.102, 0.182, -0.675, -1.565],
     // 1.257 * (2.82 / 3.04) = 1.166 m, the measured wheel/track lane axis.
     xc: 1.257,
-    // Rear terminal: Z=-2.440, Y=0.740, R=0.228 m in the source print.
-    sprocket: { z: -2.440, y: 0.767, r: 0.244, trackR: 0.110 },
-    // Front terminal: Z=+2.886, Y=0.737, R=0.183 m in the source print.
-    idler: { z: 2.886, y: 0.764, r: 0.190, trackR: 0.110 },
+    // The production end wheels are intentionally 25% larger than the first
+    // source-envelope pass. Their physical radii also drive the shared band
+    // course, so the track wraps the actual wheels rather than an invisible
+    // 110 mm proxy circle.
+    sprocket: { z: -2.440, y: 0.767, r: 0.244 * SHERIDAN_END_WHEEL_SCALE },
+    idler: { z: 2.886, y: 0.764, r: 0.190 * SHERIDAN_END_WHEEL_SCALE },
     rollers: [],
     trackW: 0.48,
     trackTh: 0.085,
@@ -545,65 +578,30 @@ function buildSheridan(P) {
     coveredTop: false,
     arms: true,
     linkPitchM: 0.145,
-    // One continuous centerline reconstructed by a 64 mm inward polygon
-    // offset from the measured source T130 outer envelope (42.5 mm band half
-    // thickness + 2 mm gap + 19.5 mm authored shoe reach). The two source
-    // courses differ by one staggered link at the loaded-run shoulders, so the
-    // four asymmetric stations below are their left/right mean. This replaces
-    // the old generic loop + static end-wrap overlay, which doubled the tread
-    // at each terminal wheel.
-    loopPoints: [
-      [-2.61084, 0.73543 / SHERIDAN_Y_SCALE],
-      [-2.60502, 0.69130 / SHERIDAN_Y_SCALE],
-      [-2.58868, 0.65143 / SHERIDAN_Y_SCALE],
-      [-2.56214, 0.61755 / SHERIDAN_Y_SCALE],
-      [-2.52286, 0.58762 / SHERIDAN_Y_SCALE],
-      [-1.69977, 0.10162 / SHERIDAN_Y_SCALE],
-      [-1.62814, 0.07492 / SHERIDAN_Y_SCALE],
-      [-1.55087, 0.06592 / SHERIDAN_Y_SCALE],
-      [ 1.10657, 0.06601 / SHERIDAN_Y_SCALE],
-      [ 1.97582, 0.06610 / SHERIDAN_Y_SCALE],
-      [ 2.06517, 0.07294 / SHERIDAN_Y_SCALE],
-      [ 2.15721, 0.10649 / SHERIDAN_Y_SCALE],
-      [ 2.96607, 0.58786 / SHERIDAN_Y_SCALE],
-      [ 3.00449, 0.61804 / SHERIDAN_Y_SCALE],
-      [ 3.03170, 0.65391 / SHERIDAN_Y_SCALE],
-      [ 3.04943, 0.69334 / SHERIDAN_Y_SCALE],
-      [ 3.05406, 0.73601 / SHERIDAN_Y_SCALE],
-      [ 3.04842, 0.77996 / SHERIDAN_Y_SCALE],
-      [ 3.03166, 0.82037 / SHERIDAN_Y_SCALE],
-      [ 3.00494, 0.85529 / SHERIDAN_Y_SCALE],
-      [ 2.96991, 0.88209 / SHERIDAN_Y_SCALE],
-      [ 2.92964, 0.89852 / SHERIDAN_Y_SCALE],
-      [ 2.88312, 0.90468 / SHERIDAN_Y_SCALE],
-      [-2.43963, 0.90304 / SHERIDAN_Y_SCALE],
-      [-2.48621, 0.89722 / SHERIDAN_Y_SCALE],
-      [-2.52656, 0.88000 / SHERIDAN_Y_SCALE],
-      [-2.56193, 0.85278 / SHERIDAN_Y_SCALE],
-      [-2.58885, 0.81810 / SHERIDAN_Y_SCALE],
-      [-2.60553, 0.77818 / SHERIDAN_Y_SCALE],
-    ],
+    // Generate the closed course from the enlarged terminal wheels. Dense
+    // tangent arcs replace the old hand-authored polygon whose rear join met
+    // at a visible point instead of flowing around the sprocket.
+    frontArcSteps: 14,
+    rearArcSteps: 14,
+    smoothRearTopTangent: true,
+    tautFrontSpan: true,
+    tautRearSpan: true,
+    deadSag: 0.018,
     dedupeLoopPoints: true,
     wheelFaceLayers: [
-      { geometry: cylX(0.320, 0.012, P.q ? 28 : 18), material: P.mats.wheels,
-        outset: 0.1405, name: 'gearRoadWheelPressedFaces', appearanceRole: 'wheelDish' },
-      { geometry: cylX(0.226, 0.014, P.q ? 24 : 16), material: P.mats.dark,
-        outset: 0.1395, name: 'gearRoadWheelDishWells', appearanceRole: 'wheelInset' },
-      { geometry: cylX(0.132, 0.016, P.q ? 20 : 14), material: P.mats.wheels,
-        outset: 0.1385, name: 'gearRoadWheelHubDrums', appearanceRole: 'wheelDish' },
-      { geometry: cylX(0.054, 0.018, P.q ? 14 : 10), material: P.mats.dark,
-        outset: 0.1375, name: 'gearRoadWheelHubCaps', appearanceRole: 'wheelInset' },
+      // KIT.torus is already rotated into the XZ plane; a Z quarter-turn
+      // puts its axis on X, exactly matching cylX and the road-wheel axle.
+      { geometry: xform(torus(0.284, 0.026, P.q ? 28 : 18, P.q ? 8 : 6),
+          0, 0, 0, 0, 0, Math.PI / 2), material: P.mats.wheels,
+        outset: 0.125, name: 'gearRoadWheelPressedRims', appearanceRole: 'wheelDish' },
+      { geometry: cylX(0.236, 0.014, P.q ? 24 : 16), material: P.mats.dark,
+        outset: 0.130, name: 'gearRoadWheelDishWells', appearanceRole: 'wheelInset' },
+      { geometry: cylX(0.126, 0.022, P.q ? 20 : 14), material: P.mats.wheels,
+        outset: 0.141, name: 'gearRoadWheelHubDrums', appearanceRole: 'wheelDish' },
+      { geometry: cylX(0.050, 0.026, P.q ? 14 : 10), material: P.mats.dark,
+        outset: 0.143, name: 'gearRoadWheelHubCaps', appearanceRole: 'wheelInset' },
     ],
   });
-
-  // The comparison print has a continuous lower sidewall behind each wheel
-  // row. Without it, the orthographic masks see through every wheel gap and
-  // under-fill both end-on silhouettes by roughly ten percent. Keep this
-  // recessed behind the measured 1.166 m wheel plane; it is the suspension
-  // cavity wall, not an exterior skirt or extra armor plate.
-  for (const side of [-1, 1]) {
-    P.add('hullDark', box(0.055, 0.68, 5.30), side * 1.070, 0.46, 0.12);
-  }
 
   // Layered, damageable hull ERA. Every cassette has a continuous
   // vehicle-space camouflage projection and a shallow top cover. These are
@@ -624,7 +622,7 @@ function buildSheridan(P) {
     P.eraCluster(`sheridan_skirt_era_${side > 0 ? 'R' : 'L'}`, (put) => {
       for (let i = 0; i < 10; i++) {
         const z = 1.34 - i * 0.40;
-        put(side * 1.425, 1.20, z, 0, side * Math.PI / 2, 0, 1.28, 1.54, 0.52);
+        put(side * 1.425, 1.28, z, 0, side * Math.PI / 2, 0, 1.28, 1.54, 0.52);
       }
     });
       P.add('hullDetail', box(0.045, 0.09, 4.72), side * 1.405, 1.49, -0.02);
@@ -639,17 +637,24 @@ function buildSheridan(P) {
     P.add('hullDetail', torus(0.10, 0.022, 12), side * 0.76, 0.73, 2.91, Math.PI / 2, 0, 0);
   }
 
-  // Twin giant rear fuel drums: each drum is seated on a two-rail cradle and
-  // retained by two straps. They are hull equipment, never collision armor.
-  P.add('hullDetail', box(2.25, 0.06, 0.10), 0, 1.42, -2.55);
+  // Twin giant rear fuel drums: move the cylinders aft of the sloped rear
+  // plate and bridge them back to it with a real cradle. The old Z=-2.59 m
+  // centers buried most of each drum inside the hull shell.
+  P.add('hullDetail', box(2.25, 0.06, 0.16), 0, 1.42, -2.91);
   for (const x of [-0.58, 0.58]) {
-    P.addEquipment('hull', cylX(0.29, 0.96, P.q ? 22 : 14), x, 1.58, -2.59);
-    P.add('hullDark', cylX(0.298, 0.055, P.q ? 22 : 14), x - 0.28, 1.58, -2.59);
-    P.add('hullDark', cylX(0.298, 0.055, P.q ? 22 : 14), x + 0.28, 1.58, -2.59);
-    P.add('hullDetail', box(0.08, 0.34, 0.08), x, 1.48, -2.53, -0.30, 0, 0);
+    P.addEquipment('hull', cylX(0.29, 0.96, P.q ? 22 : 14),
+      x, 1.58, SHERIDAN_REAR_FUEL_Z);
+    P.add('hullDark', cylX(0.298, 0.055, P.q ? 22 : 14),
+      x - 0.28, 1.58, SHERIDAN_REAR_FUEL_Z);
+    P.add('hullDark', cylX(0.298, 0.055, P.q ? 22 : 14),
+      x + 0.28, 1.58, SHERIDAN_REAR_FUEL_Z);
+    // Lower saddle and upper tie meet the cylinder skin and terminate in the
+    // rear armor instead of merely sharing its volume.
+    P.add('hullDetail', box(0.08, 0.34, 0.34), x, 1.45, -2.98, -0.26, 0, 0);
+    P.add('hullDark', box(0.07, 0.13, 0.30), x, 1.72, -2.96, 0.42, 0, 0);
   }
   for (const x of [-1.08, 0, 1.08]) {
-    P.add('hullDark', box(0.055, 0.42, 0.08), x, 1.54, -2.53, -0.20, 0, 0);
+    P.add('hullDark', box(0.055, 0.42, 0.30), x, 1.54, -2.96, -0.20, 0, 0);
   }
 
   // Low asymmetric cast turret. These are 24 equal-perimeter samples from
@@ -727,6 +732,15 @@ function buildSheridan(P) {
   // 24-sided cheek/crown facets and let their straight runs meet at visible
   // vertices. Small within-facet triangles still share normals.
   ]), SHERIDAN_TURRET_CREASE_DEG * D2R));
+  // Close the crown with a shallow, twelve-sided structural roof plate. Its
+  // lower course is buried in the measured shell cap while the slightly
+  // inset upper course leaves a crisp perimeter seam and a genuinely closed
+  // roof. Straight facets deliberately meet at points; this is not a rounded
+  // dome or a decorative coplanar patch.
+  P.add('turret', toCreasedNormals(measuredRingLoft([
+    { y: 0.758, points: SHERIDAN_TURRET_ROOF_PLAN },
+    { y: 0.804, points: SHERIDAN_TURRET_ROOF_PLAN, xScale: 0.985 },
+  ]), 8 * D2R));
   // Object_12 components 3/7/17 are two concentric turret-race rings. Their
   // measured world-space centers are only about 11 mm apart vertically; they
   // are not a deep hanging basket. Preserve the source radii and separation
@@ -827,15 +841,24 @@ function buildSheridan(P) {
     P.addEquipment('turret', box(w, h, d), x, y, z, 0, yaw, 0);
   }
 
-  // Exact connected-component reconstruction of the M81 gun assembly. The
-  // former 0.74 m box was only 69% of the source casting's width and began
-  // the tube inside its front face, producing the toy-like collar visible in
-  // end-on comparisons. The main source component spans 1.068 x 0.534 x
-  // 0.584 m at X=0.004, Y=1.925, Z=1.635. A low-resolution ellipsoid is a
-  // sparse original cast approximation of that envelope; all tube sections
-  // below use the independently measured connected-component endpoints.
-  P.addGunExtra(xform(sph(0.5, P.q ? 28 : 16), 0, 0, 0, 0, 0, 0,
-    [1.0682, 0.5342, 0.5841]), 0.0038, 0.0186, 0.5346);
+  // Exact connected-component reconstruction of the M81 gun assembly. A
+  // turret-fixed receiver plate gives the mantlet a broad flat attachment
+  // face, while the gun-owned outer casting uses straight chamfered planes.
+  // The two solids overlap inside the turret nose so elevation can never
+  // reveal a floating collar or a daylight gap.
+  P.add('turret', frustum(
+    0.49, 1.58, 1.39,
+    0.45, 1.58, 1.40,
+    0.20, 0.68,
+  ));
+  P.add('turretDark', box(0.70, 0.32, 0.026), 0, 0.44, 1.585);
+  P.addGunExtra(polyMultiLoft([
+    [-0.515, 0.18], [-0.515, 0.75], [0, 0.86],
+    [0.515, 0.75], [0.515, 0.18],
+  ], [
+    { height: -0.255, inset: 1 },
+    { height: 0.275, inset: 1 },
+  ]), 0.0038, 0.0186, 0);
   // The M81's articulated geometry continues through the turret to the
   // breech. Object_16 separates this hidden run into three nearly circular
   // connected islands and one rear trunnion plate. Omitting them made the
@@ -1155,6 +1178,13 @@ function buildSheridan(P) {
       roofMachineGuns: 2,
       rearFuelDrums: 2,
       fuelDrumSupportRails: 3,
+      rearFuelCenterZ: SHERIDAN_REAR_FUEL_Z,
+      backgroundTrackPanels: 0,
+      endWheelScale: SHERIDAN_END_WHEEL_SCALE,
+      roadWheelFaceProfile: 'stepped-noncoplanar-v2',
+      commanderAmmoBoxClosed: true,
+      turretRoofClosed: true,
+      mantletProfile: 'faceted-chevron-flat-backed-m81',
       hullCreaseDeg: SHERIDAN_HULL_CREASE_DEG,
       turretCreaseDeg: SHERIDAN_TURRET_CREASE_DEG,
     };

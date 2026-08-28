@@ -45,15 +45,49 @@ try {
     roofMachineGuns: 2,
     rearFuelDrums: 2,
     fuelDrumSupportRails: 3,
+    rearFuelCenterZ: -3.12,
+    backgroundTrackPanels: 0,
+    endWheelScale: 1.25,
+    roadWheelFaceProfile: 'stepped-noncoplanar-v2',
+    commanderAmmoBoxClosed: true,
+    turretRoofClosed: true,
+    mantletProfile: 'faceted-chevron-flat-backed-m81',
     hullCreaseDeg: 16,
     turretCreaseDeg: 13,
   });
 
   const gear = hull.userData.runningGearReceipts?.at(-1);
   assert.equal(gear?.wheelZs.length, 5, 'five road wheels are authored per side');
-  assert.equal(gear?.shoeCountPerSide, 83, 'track links fully close the measured course');
+  assert.equal(gear?.shoeCountPerSide, 89, 'track links fully close the enlarged end-wheel course');
+  assert.equal(gear?.sprocket.r, 0.305, 'rear sprocket is exactly 25% larger');
+  assert.equal(gear?.idler.r, 0.2375, 'front idler is exactly 25% larger');
   assert.ok(gear?.shoePadCoverageRatio >= 0.90, 'track shoes retain full-width pad coverage');
   assert.equal(gear?.suspensionDynamic, true, 'road wheels retain dynamic swing arms');
+  assert.ok(gear?.loopPoints.length >= 60, 'dense terminal arcs reseat the track around both end wheels');
+  const turnDeg = (before, at, after) => {
+    const incoming = [at[0] - before[0], at[1] - before[1]];
+    const outgoing = [after[0] - at[0], after[1] - at[1]];
+    const cosine = (incoming[0] * outgoing[0] + incoming[1] * outgoing[1])
+      / (Math.hypot(...incoming) * Math.hypot(...outgoing));
+    return Math.acos(Math.max(-1, Math.min(1, cosine))) * 180 / Math.PI;
+  };
+  assert.ok(turnDeg(gear.loopPoints.at(-1), gear.loopPoints[0], gear.loopPoints[1]) < 10,
+    'rear wrap closes through a smooth tangent instead of a pointed vertex');
+
+  assert.ok(tank.root.getObjectByName('sheridanCommanderM2AmmoBox'),
+    'the commander M2 rack contains a closed ammunition box');
+  for (const name of [
+    'gearRoadWheelPressedRims', 'gearRoadWheelDishWells',
+    'gearRoadWheelHubDrums', 'gearRoadWheelHubCaps',
+  ]) {
+    assert.ok(tank.root.getObjectByName(name), `${name} is suspension-bound wheel geometry`);
+  }
+  const rim = tank.root.getObjectByName('gearRoadWheelPressedRims');
+  rim.geometry.computeBoundingBox();
+  const rimSize = new THREE.Vector3();
+  rim.geometry.boundingBox.getSize(rimSize);
+  assert.ok(rimSize.x < rimSize.y * 0.12 && rimSize.x < rimSize.z * 0.12,
+    'road-wheel rings lie in the YZ wheel-face plane, not perpendicular to the discs');
 
   const era = tank.root.userData.eraFinishReceipt;
   assert.equal(era?.camoProjection, 'vehicle-scale-box-uv');
