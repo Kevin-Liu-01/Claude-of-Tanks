@@ -34,7 +34,7 @@ for (const id of ['globe', 'eraInterwar', 'eraWorldWarII', 'eraColdWar', 'eraMod
   if (!uiIconIds().includes(id)) throw new Error(`missing gallery filter icon: ${id}`);
 }
 
-for (const id of ['sound', 'soundOff', 'graphics', 'settings']) {
+for (const id of ['sound', 'soundOff', 'graphics', 'settings', 'lightbulb']) {
   if (!uiIconIds().includes(id)) throw new Error(`missing mobile HUD icon: ${id}`);
 }
 

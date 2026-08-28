@@ -924,16 +924,16 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-sixth{position:absolute;z-index:var(--hud-layer-controls);top:12%;left:50%;
   width:min(248px,calc(100vw - 28px));min-height:48px;transform:translate(-50%,-6px);
   display:grid;grid-template-columns:42px minmax(0,1fr);align-items:center;
-  color:#ffd27a;background:linear-gradient(105deg,rgba(24,13,8,.96),rgba(9,13,17,.94));
-  border:1px solid rgba(240,113,75,.48);border-bottom:2px solid #ed704b;
+  color:#ffd46f;background:linear-gradient(105deg,rgba(29,22,8,.96),rgba(9,13,17,.94));
+  border:1px solid rgba(240,184,72,.5);border-bottom:2px solid #e9ad3e;
   box-shadow:0 10px 28px rgba(0,0,0,.45),inset 0 1px rgba(255,226,181,.06);
   opacity:0;transition:opacity .16s ease,transform .2s cubic-bezier(.2,.7,.3,1);pointer-events:none;}
 .cot-sixth.on{opacity:1;transform:translate(-50%,0);animation:cotDetectedIn .28s ease-out 1;}
-.cot-sixth .sig{height:100%;display:grid;place-items:center;color:#ff8767;
-  border-right:1px solid rgba(240,113,75,.3);background:rgba(240,88,58,.08);}
-.cot-sixth .sig svg{width:24px;height:24px;display:block;filter:drop-shadow(0 0 7px rgba(255,99,66,.45));}
+.cot-sixth .sig{height:100%;display:grid;place-items:center;color:#ffd05c;
+  border-right:1px solid rgba(240,184,72,.32);background:rgba(240,184,72,.09);}
+.cot-sixth .sig svg{width:24px;height:24px;display:block;filter:drop-shadow(0 0 7px rgba(255,202,72,.46));}
 .cot-sixth .copy{min-width:0;padding:7px 12px 8px;display:flex;flex-direction:column;gap:3px;}
-.cot-sixth .lb{font:850 12px/1 ${FONT_COND};letter-spacing:.23em;text-transform:uppercase;color:#ff9b73;}
+.cot-sixth .lb{font:850 12px/1 ${FONT_COND};letter-spacing:.23em;text-transform:uppercase;color:#ffd46f;}
 .cot-sixth .sub{font:700 8px/1 ${FONT_COND};letter-spacing:.16em;text-transform:uppercase;color:#aebbc5;}
 @keyframes cotDetectedIn{0%{clip-path:inset(0 50% 0 50%)}100%{clip-path:inset(0)}}
 /* Concealment is a quiet positive-state chip on the damage panel. Detection
@@ -1265,7 +1265,7 @@ export function initHud(bus) {
   // synthesized two-tone sting. Battle restarts reset the lamp (sim clock
   // restarts at 0).
   const sixthEl = el('div', 'cot-sixth', root);
-  sixthEl.innerHTML = `<span class="sig">${uiIconSVG('optics', 24)}</span>` +
+  sixthEl.innerHTML = `<span class="sig">${uiIconSVG('lightbulb', 24)}</span>` +
     `<span class="copy"><span class="lb">Detected</span>` +
     `<span class="sub">Enemy has visual contact</span></span>`;
   let sixthPendingS = -1; // sim time the lamp should light (spot time + 3 s)

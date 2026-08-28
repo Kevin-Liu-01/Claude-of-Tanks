@@ -119,6 +119,8 @@ assert.match(hud, /--hud-layer-world:6;--hud-layer-sight:8;--hud-layer-status:18
   'battle UI must declare one ordered layer contract with world indicators below fixed controls');
 assert.match(hud, /Detected[\s\S]*Enemy has visual contact/,
   'sixth sense must present one explicit detection state with supporting copy');
+assert.match(hud, /uiIconSVG\('lightbulb', 24\)/,
+  'the detected state must use the shared lightbulb warning glyph');
 assert.match(hud,
   /cot-net-unit fps[\s\S]*cot-net-unit ping[\s\S]*netLastPaintMs[\s\S]*now - netLastPaintMs < 250/,
   'player FPS and latency telemetry must use structured 4 Hz instruments instead of per-frame text churn');
