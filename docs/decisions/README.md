@@ -177,3 +177,4 @@ runtime documents remain authoritative for behavior.
 - [0165 — The terrain runtime is strict TypeScript](0165-typed-terrain-runtime.md)
 - [0166 — The vegetation runtime is strict TypeScript](0166-typed-vegetation-runtime.md)
 - [0167 — The props runtime is strict TypeScript](0167-typed-props-runtime.md)
+- [0168 — Movement and rigid-body simulation are strict TypeScript](0168-typed-movement-runtime.md)

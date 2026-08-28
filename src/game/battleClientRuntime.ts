@@ -2,7 +2,7 @@ export { createAimController } from './aimController.ts';
 export {
   computeDispersionRadM,
   shotRecoilScale,
-} from '../sim/movement.js';
+} from '../sim/movement.ts';
 export {
   tankPoseFromState,
   traceTank,

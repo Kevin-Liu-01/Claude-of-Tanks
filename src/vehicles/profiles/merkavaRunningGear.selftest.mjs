@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.js';
 import { getSpec } from '../specs.js';
-import { createTankState } from '../../sim/movement.js';
+import { createTankState } from '../../sim/movement.ts';
 
 const MERKAVA_IDS = [
   'merkava1b', 'merkava2b', 'merkava2d',

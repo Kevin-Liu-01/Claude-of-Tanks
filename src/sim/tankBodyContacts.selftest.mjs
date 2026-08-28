@@ -1,5 +1,5 @@
 import { Vector3 } from 'three';
-import { createTankState, SIM_DT } from './movement.js';
+import { createTankState, SIM_DT } from './movement.ts';
 import {
   prefersVerticalTankContact,
   resolveTankBodyContacts,

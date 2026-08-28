@@ -3,7 +3,7 @@ import { Vector3 } from 'three';
 import '../vehicles/tankFactory.js'; // register the full authored fleet
 import { getSpec } from '../vehicles/specs.js';
 import { createCombatState, startPostShotReload } from './damage.js';
-import { createTankState, SIM_DT, updateTank } from './movement.js';
+import { createTankState, SIM_DT, updateTank } from './movement.ts';
 import {
   GUIDED_MISSILE_TURN_RATE_RAD_S,
   createShell,

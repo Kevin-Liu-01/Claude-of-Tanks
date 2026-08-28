@@ -34,7 +34,7 @@ import path from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
-const SIM_DT = 1 / 60; // mirror of src/sim/movement.js (dt-clamp assertion)
+const SIM_DT = 1 / 60; // mirror of src/sim/movement.ts (dt-clamp assertion)
 const SHOT_DIR = path.join(process.cwd(), 'shots', 'pause-r1');
 
 const failures = [];

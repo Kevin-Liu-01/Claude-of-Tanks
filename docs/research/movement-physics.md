@@ -299,7 +299,7 @@ currentBloom += (targetBloom - currentBloom) * (1 - exp(-dt / tau))
 ```
 
 > IMPLEMENTATION NOTE (locked by controls_gunnery r2, do not re-tune against
-> the ln 3 text above): src/sim/movement.js uses `tau = aimTimeS / ln 6` for
+> the ln 3 text above): src/sim/movement.ts uses `tau = aimTimeS / ln 6` for
 > the SHRINK path, deliberately paired with reduced `bloom.afterShot`
 > multipliers in specs.js so the post-shot re-settle under the fire gate
 > lands ≈ 2.3 s on modern MBTs. The stat-card `aimTimeS` therefore reads as

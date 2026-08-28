@@ -8,7 +8,7 @@
  * and the LIVE sim hooks it can reach headlessly: reload (damage.js
  * startReload), fire self-extinguish (damage.js tickFire), HE surface-burst
  * splash reduction (damage.js resolveShellHit), aim/traverse debuff folding
- * (movement.js via updateTank is exercised in the battle probe instead), and
+ * (movement.ts via updateTank is exercised in the battle probe instead), and
  * the spotting view/camo tables (sim/spotting.js).
  */
 import {

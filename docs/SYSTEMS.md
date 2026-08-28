@@ -410,7 +410,7 @@ and metadata fingerprints.
 
 ## Movement system
 
-src/sim/movement.js owns tank motion. Its inputs are normalized controls,
+src/sim/movement.ts owns tank motion. Its inputs are normalized controls,
 vehicle parameters, terrain support, collision context, and fixed time step.
 Its outputs include authoritative position, yaw, velocity, hull attitude,
 support information, contact phase, vertical velocity, landing impulse, and

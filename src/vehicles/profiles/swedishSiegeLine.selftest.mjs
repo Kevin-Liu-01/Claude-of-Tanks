@@ -4,7 +4,7 @@ import { createTank } from '../tankFactory.js';
 import { getSpec } from '../specs.js';
 import { tankTier } from '../tier.ts';
 import { NATIVE_FAMILY_ORDER } from '../fleetOrder.js';
-import { createTankState, SIM_DT, updateTank } from '../../sim/movement.js';
+import { createTankState, SIM_DT, updateTank } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, specialActionKind } from '../../sim/specialActions.ts';
 
 const LINE = ['udes03', 'strv103a', 'strv103'];

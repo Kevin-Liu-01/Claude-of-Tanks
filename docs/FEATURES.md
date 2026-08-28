@@ -136,7 +136,7 @@ This separation is important:
 
 Relevant implementation:
 
-- src/sim/movement.js
+- src/sim/movement.ts
 - src/world/terrain.ts
 - src/world/collision.js
 - src/vehicles/tankFactory.js

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createShell } from '../sim/ballistics.ts';
-import { computeDispersionRadM, SIM_DT } from '../sim/movement.js';
+import { computeDispersionRadM, SIM_DT } from '../sim/movement.ts';
 
 interface DriveTestShellSpec {
   type: string;
@@ -12,7 +12,7 @@ interface DriveTestShellSpec {
 interface DriveTestSpec {
   dims: { heightM: number };
   armor: { boundingRadiusM: number };
-  gun: { shells: DriveTestShellSpec[] };
+  gun: { baseAccuracy: number; shells: DriveTestShellSpec[] };
 }
 
 interface DriveTestState {
@@ -22,7 +22,7 @@ interface DriveTestState {
   turretYaw: number;
   gunPitch: number;
   visualPitch?: number;
-  bloomF?: number;
+  bloomF: number;
   atGunLimit?: boolean;
   gunLimitSpec?: boolean;
 }

@@ -39,7 +39,7 @@ import {
 export const TANK_IDS = ['m4a3e8', 'tiger1', 't34_85', 'is2', 'panther_g', 'm1a2', 't90m', 't90m_proryv'];
 
 
-// controls_gunnery r2: afterShot 4/3 → 2.8/2.2 with the movement.js LN6
+// controls_gunnery r2: afterShot 4/3 → 2.8/2.2 with the movement.ts LN6
 // shrink tau so a second aimed shot is possible ~2.3 s (modern) / ~3.5 s
 // (WW2) after firing — the old pair needed ~4.6 s on an M1A2.
 const BLOOM_WW2 = { move: 0.20, hullRot: 0.20, turret: 0.12, afterShot: 2.8 };

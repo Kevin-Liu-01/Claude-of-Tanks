@@ -11,7 +11,7 @@ Own authoritative armored-combat math at a fixed 60 Hz step.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`movement.js` owns tank state and terrain contact; `armor.js` owns hit geometry;
+`movement.ts` owns tank state and terrain contact; `armor.js` owns hit geometry;
 `ballistics.ts` owns typed shells, gravity, guidance, penetration falloff, gun
 lay, and dispersion; `damage.js` owns penetration/modules/crew/fire;
 `spotting.js` owns visibility and team intel; `authoritativeMatch.js` composes

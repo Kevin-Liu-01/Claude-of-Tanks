@@ -19,7 +19,7 @@ Module ownership (file paths are FIXED):
 | engine   | `src/engine/renderer.ts`, `src/engine/lighting.js`, `src/engine/post.js`, `src/engine/sky.js`, `src/engine/cameraRig.js` |
 | world    | `src/world/terrain.ts`, `src/world/vegetation.ts`, `src/world/props.ts`, `src/world/map.ts` |
 | vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.js`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
-| movement | `src/sim/movement.js` |
+| movement | `src/sim/movement.ts` |
 | combat   | `src/sim/ballistics.ts`, `src/sim/armor.js`, `src/sim/damage.js`, `src/sim/combat.selftest.mjs` |
 | ai       | `src/game/ai.js` |
 | hud      | `src/ui/hud.js`, `src/ui/garage.js`, `src/ui/damagePanel.js` |
@@ -273,7 +273,7 @@ Integration composes entities; each sub-object has exactly one owner module.
 TankEntity = {
   id: string, specId: TankId, spec: TankSpec,
   team: 'player'|'enemy', isPlayer: boolean,
-  state: TankState,        // owned by movement.js
+  state: TankState,        // owned by movement.ts
   combat: CombatState,     // owned by damage.js
   input: TankInput,        // written by integration (player) or ai.js
   visual: TankVisual|null, // owned by tankFactory (null in headless tests)
@@ -621,7 +621,7 @@ export function createTankMaterials(spec, engineCtx, camoSeed) => { hull, tracks
 Procedural camo per roster paint notes (canvas textures, sRGB albedo, subtle normal/
 roughness). MeshStandardMaterial only.
 
-### 3.4 movement — `src/sim/movement.js` (pure logic)
+### 3.4 movement — `src/sim/movement.ts` (pure logic)
 ```js
 export function createTankState(spec, pos /* Vector3 */, yaw) => TankState        // §2.4
 export function resetTankVerticalState(state, y, verticalSpeed = 0, grounded = true) => void

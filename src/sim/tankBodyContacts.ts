@@ -127,7 +127,7 @@ function verticalBounds(entity: TankBodyEntity, out: Float64Array): Float64Array
     let maxY = -Infinity;
     for (let index = 0; index < hull.length; index += 3) {
       // Euler YXZ: yaw does not affect world Y. Roll is applied before the
-      // pitch rotation, matching movement.js pointCloudSupportY.
+      // pitch rotation, matching movement.ts pointCloudSupportY.
       const rolledY = hull[index] * sinRoll + hull[index + 1] * cosRoll;
       const worldY = state.pos.y + rolledY * cosPitch - hull[index + 2] * sinPitch;
       if (worldY < minY) minY = worldY;

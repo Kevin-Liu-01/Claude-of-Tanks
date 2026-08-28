@@ -1,6 +1,14 @@
 import { Vector3 } from 'three';
 import { createCombatState } from '../sim/damage.js';
-import { createTankState, shotRecoilScale } from '../sim/movement.js';
+import { createTankState, shotRecoilScale } from '../sim/movement.ts';
+import type {
+  MovementArmorSpec,
+  MovementCombatState,
+  MovementContactGeometry,
+  MovementGunSpec,
+  MovementHeightField,
+  MovementSpec,
+} from '../sim/movement.ts';
 import { getSpec } from '../vehicles/specs.js';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.js';
 import { prebakeSharedTextures } from '../vehicles/materials.js';
@@ -34,24 +42,22 @@ interface ShellSpec extends Record<string, unknown> {
   type?: string;
   soundProfile?: string;
   guided?: boolean;
+  reloadS?: number;
 }
 
-interface TankSpec extends Record<string, unknown> {
+interface TankSpec extends MovementSpec, Record<string, unknown> {
   id: string;
   name?: string;
-  dims: { widthM: number; hullLengthM: number; heightM: number };
-  armor?: { bodyContactPoints?: { hull?: number[] } };
-  gun?: {
+  armor?: MovementArmorSpec;
+  gun: MovementGunSpec & {
     shells?: ShellSpec[];
     soundProfile?: string;
   };
 }
 
-interface BridgeTankState extends PredictionTankState {
-  suspensionAim?: boolean;
-}
+type BridgeTankState = PredictionTankState;
 
-interface BridgeCombatState {
+interface BridgeCombatState extends MovementCombatState {
   hp: number;
   maxHp: number;
   destroyed: boolean;
@@ -69,7 +75,7 @@ interface BridgeSpecialActionState {
 
 interface TankVisual {
   root: unknown;
-  contactGeom?: unknown;
+  contactGeom?: MovementContactGeometry | null;
   setVisible(visible: boolean): void;
   syncFromState(state: BridgeTankState, dt: number): void;
   dispose(): void;
@@ -138,9 +144,7 @@ interface CollisionObstacle {
   crushMin?: number;
 }
 
-interface HeightField {
-  getHeightAt(x: number, z: number): number;
-}
+interface HeightField extends MovementHeightField {}
 
 interface WorldCollision {
   heightField?: HeightField;
@@ -302,11 +306,7 @@ export interface BrowserBattleBridge {
 }
 
 const readSpec = getSpec as unknown as (id: string) => TankSpec;
-const makeTankState = createTankState as unknown as (
-  spec: TankSpec,
-  position: Vector3,
-  yaw: number,
-) => BridgeTankState;
+const makeTankState = createTankState;
 const makeCombatState = createCombatState as unknown as (spec: TankSpec) => BridgeCombatState;
 const makeSpecialActionState = createSpecialActionState;
 const defaultCreateTankVisual = createTank as unknown as CreateTankVisual;

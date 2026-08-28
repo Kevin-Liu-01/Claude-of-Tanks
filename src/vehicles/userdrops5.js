@@ -337,7 +337,7 @@ const SPECS = [
 // face trunnion (profiles/misc.js buildType90 — world y 1.686, z 1.30). The
 // inherited type10-scaled armor row kept its donor pivot at world (1.722,
 // 1.634) with a 4.978 m barrel: sim/armor.js pitches the mantlet plates
-// about THAT point, sim/movement.js solves the lay from it, and the
+// about THAT point, sim/movement.ts solves the lay from it, and the
 // authoritative muzzle estimate overshot the rendered tip by 0.65 m — the
 // hit-model arc diverged from the rendered gun. Re-anchor the armor
 // trunnion on the rendered line (armor frame: turretPivot [0, 1.4463,

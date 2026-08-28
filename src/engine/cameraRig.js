@@ -29,7 +29,7 @@ const PITCH_MIN = THREE.MathUtils.degToRad(-65); // looking down
 // class table in movement-physics.md §7) or full elevation is uncommandable —
 // close targets uphill were unaimable at the old +15°. WoT lets the camera
 // look well above the horizon; the gun clamps itself at spec.gunElevationDeg
-// with the atGunLimit reticle pin (movement.js).
+// with the atGunLimit reticle pin (movement.ts).
 const PITCH_MAX = THREE.MathUtils.degToRad(30);
 const MAX_AIM_DIST_M = 720;
 const PIVOT_ABOVE_TURRET_M = 2.5;

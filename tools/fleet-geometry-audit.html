@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.js';
 import { getSpec } from '/src/vehicles/specs.js';
-import { createTankState } from '/src/sim/movement.js';
+import { createTankState } from '/src/sim/movement.ts';
 
 const params = new URLSearchParams(location.search);
 const id = params.get('id') || 'm1a2';

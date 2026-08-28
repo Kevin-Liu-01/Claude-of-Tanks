@@ -13,7 +13,7 @@ import {
   createTankState, fireRecoil, shotRecoilScale,
   IFV_AUTOCANNON_AFTER_SHOT_BLOOM, IFV_AUTOCANNON_RECOIL_SCALE,
   updateTank, SIM_DT,
-} from './movement.js';
+} from './movement.ts';
 
 // ---------------------------------------------------------------- harness --
 let failures = 0;
@@ -120,7 +120,7 @@ function makeEntity(field, x = 0, z = 0, yaw = 0, spec = SPEC) {
 // procedural/GLB wheels and track belts deform by the matching amount.
 const SUSP_VIS_P = 2.6;
 const SUSP_VIS_R = 2.1;
-// MOVEMENT r1: 2.3 was a stale mirror — movement.js/tankFactory lock SWAY_VIS
+// MOVEMENT r1: 2.3 was a stale mirror — movement.ts/tankFactory lock SWAY_VIS
 // at 3.2 (effects_combat r1), so floats during hard turns were under-measured.
 const SWAY_VIS = 3.2;
 function contactStats(state, field) {

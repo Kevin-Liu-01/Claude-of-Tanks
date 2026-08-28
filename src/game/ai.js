@@ -16,7 +16,7 @@
  */
 
 import { Euler, Quaternion, Vector3 } from 'three';
-import { computeDispersionRadM } from '../sim/movement.js';
+import { computeDispersionRadM } from '../sim/movement.ts';
 import { solveBallisticGunLay } from '../sim/ballistics.ts';
 import { tankPoseFromState, queryAimArmor } from '../sim/armor.js';
 import { blastRadiusM, estimatePenRatio, isHeClass } from '../sim/damage.js';
@@ -412,7 +412,7 @@ export function createAI(entity, opts = {}) {
   // BATTLE-AI r7 doctrine wiring (see roleOf/ROLE_TUNE above).
   const role = roleOf(spec);
   const tune = ROLE_TUNE[role];
-  // Casemate: the gun aims with the HULL (movement.js §7 auto hull-traverse)
+  // Casemate: the gun aims with the HULL (movement.ts §7 auto hull-traverse)
   // — angling would swing the gun off target, so casemates always face in.
   const casemate = spec.gunArcDeg != null && spec.gunArcDeg <= 30;
   // r7: the spec's REAL HE-class slot (not a blind index 2 — the sturmtiger
@@ -441,7 +441,7 @@ export function createAI(entity, opts = {}) {
     : role === 'flanker' ? 95
       : role === 'brawler' ? 90 : 85;
   // Gun trunnion height above ground contact — the movement sim aims the
-  // barrel from here (movement.js gunPivotHeight), so the alignment gate must
+  // barrel from here (movement.ts gunPivotHeight), so the alignment gate must
   // measure the wanted pitch from the same origin, not from the eye point.
   const selfGunM = spec.armor && spec.armor.turretPivot && spec.armor.gunPivot
     ? spec.armor.turretPivot[1] + spec.armor.gunPivot[1]
@@ -1776,7 +1776,7 @@ export function createAI(entity, opts = {}) {
   }
 
   /**
-   * BATTLE-AI r7: back up while keeping the BOW on a bearing. movement.js
+   * BATTLE-AI r7: back up while keeping the BOW on a bearing. movement.ts
    * flips the steering sign while reversing (reversing-car semantics, §
    * "Reverse-steer flip") — plain faceYaw+negative throttle therefore spun
    * hulls AWAY from the target (probe: 800-2700 mrad yaw errors mid-pullback,
@@ -1786,7 +1786,7 @@ export function createAI(entity, opts = {}) {
   function reverseFacing(input, wantYaw, throttle) {
     const st = entity.state;
     const err = wrapAngle(wantYaw - st.yaw);
-    const sign = st.speed < -0.15 ? -1 : 1; // movement.js reverse-steer flip
+    const sign = st.speed < -0.15 ? -1 : 1; // movement.ts reverse-steer flip
     input.steer = Math.abs(err) > 0.06 ? clamp(err * 2.5, -1, 1) * sign : 0;
     input.throttle = throttle;
     input.brake = false;
@@ -2030,7 +2030,7 @@ export function createAI(entity, opts = {}) {
     // non-brawlers pull straight back while the gun cycles (bow on the
     // threat, turret still tracking); brawlers stand their ground and ANGLE
     // the hull off the contact bearing instead (casemates keep the bow on —
-    // movement.js aims their gun with the hull).
+    // movement.ts aims their gun with the hull).
     const bearing = Math.atan2(navX - st.pos.x, navZ - st.pos.z);
     const rl2 = entity.combat && entity.combat.reload;
     const mods = entity.combat && entity.combat.modules;
@@ -2546,7 +2546,7 @@ export function createAI(entity, opts = {}) {
     }
 
     // Gun pinned at a limit while wanting to shoot → schedule a reverse nudge.
-    // Casemate YAW pins are excluded: movement.js's §7 auto hull-traverse is
+    // Casemate YAW pins are excluded: movement.ts's §7 auto hull-traverse is
     // already swinging the hull onto the target, and a reverse pulse during
     // that rotation would just wander the bot. The nudge answers PITCH pins
     // (gun depression over a crest), so it requires the aim azimuth to be
@@ -2881,7 +2881,7 @@ export function createAI(entity, opts = {}) {
       const inst = Math.hypot(dx, dz) / Math.max(dt, 1e-4);
       progressRate += (inst - progressRate) * Math.min(1, dt * 2.5);
     }
-    // movement.js reports an engine/traction capability rejection explicitly. Waiting
+    // movement.ts reports an engine/traction capability rejection explicitly. Waiting
     // for the generic two-second low-speed heuristic made bots repeatedly
     // grind into short cliffs that the coarse 25 m route grid cannot see.
     // A sustained slope block is definitive terrain feedback: reverse and

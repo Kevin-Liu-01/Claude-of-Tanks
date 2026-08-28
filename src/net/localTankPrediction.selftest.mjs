@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import { createTankState } from '../sim/movement.js';
+import { createTankState } from '../sim/movement.ts';
 import { LocalTankPredictor } from './localTankPrediction.ts';
 import { SNAPSHOT_FLAGS } from './snapshot.ts';
 

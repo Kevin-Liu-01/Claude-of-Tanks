@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.js';
 import { getSpec } from '../specs.js';
-import { createTankState, SIM_DT, updateTank } from '../../sim/movement.js';
+import { createTankState, SIM_DT, updateTank } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, specialActionKind } from '../../sim/specialActions.ts';
 
 const IDS = ['type74', 'stb1'];

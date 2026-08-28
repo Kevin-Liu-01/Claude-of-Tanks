@@ -17,7 +17,7 @@ import {
   createTankState,
   fireRecoil,
   updateTank,
-} from './movement.js';
+} from './movement.ts';
 import {
   prefersVerticalTankContact,
   resolveTankBodyContacts,

@@ -3,7 +3,7 @@
 // the depression stop (r6 repro). Flat-ground control included.
 import { Vector3 } from 'three';
 import { getSpec } from '../vehicles/specs.js';
-import { createTankState, updateTank, SIM_DT } from './movement.js';
+import { createTankState, updateTank, SIM_DT } from './movement.ts';
 import { createAI, mulberry32 } from '../game/ai.js';
 
 function mkEntity(id, specId, x, z, yaw, hf) {

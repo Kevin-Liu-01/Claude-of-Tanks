@@ -33,7 +33,7 @@ import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.js';
 import { createTank, ensureFullFleet } from '../vehicles/fleetFactory.js';
 import {
   createTankState, resetTankVerticalState, updateTank, SIM_DT,
-} from '../sim/movement.js';
+} from '../sim/movement.ts';
 import { createShell, stepShell } from '../sim/ballistics.ts';
 import { createBus } from './stateCore.ts';
 import {

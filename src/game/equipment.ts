@@ -10,11 +10,11 @@
 //
 // EFFECT WIRING MAP — which effects are REAL (wired into the live sim):
 //   reload      × on reload time        sim/damage.js startReload
-//   aimTime     × on aim-settle tau     sim/movement.js readDebuffs
-//   bloom       × on movement-bloom     sim/movement.js (dispersion excess
+//   aimTime     × on aim-settle tau     sim/movement.ts readDebuffs
+//   bloom       × on movement-bloom     sim/movement.ts (dispersion excess
 //                 excess                 while moving/rotating)
-//   traverse    × on hull traverse      sim/movement.js readDebuffs
-//   turret      × on turret traverse    sim/movement.js readDebuffs
+//   traverse    × on hull traverse      sim/movement.ts readDebuffs
+//   turret      × on turret traverse    sim/movement.ts readDebuffs
 //   repair      × on auto-repair RATE   sim/damage.js tickModuleRepairs
 //   heSplash    × on HE splash dmg IN   sim/damage.js (non-pen HE burst +
 //                                        blast-sphere splash; full HE pens

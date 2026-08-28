@@ -6,7 +6,7 @@ import { tankTier } from '../tier.ts';
 import { wheelPatternFor } from '../wheelPatterns.js';
 import { resolveCamoVisual } from '../materials.js';
 import { vehicleMarkingAnchor } from '../vehicleMarkings.js';
-import { createTankState, SIM_DT } from '../../sim/movement.js';
+import { createTankState, SIM_DT } from '../../sim/movement.ts';
 
 const spec = getSpec('mbt70');
 assert(spec, 'MBT-70 is registered');

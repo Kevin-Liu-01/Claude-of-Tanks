@@ -72,7 +72,7 @@ State machine: hp > 50% `ok`; ≤ 50% `yellow`; 0 `red`. Red modules auto-repair
 to yellow (50% HP) after `REPAIR_S = 10 s` — count-up accumulator, toolbox
 equipment ×1.25 rate. Debuffs: yellow gun σ×2, red gun cannot fire, yellow/red
 ammo rack ×1.5 reload, dead loader ×1.5 reload (multiplicative), red tracks
-immobilize (movement.js), red engine caps drive power, optics/radio degrade
+immobilize (movement.ts), red engine caps drive power, optics/radio degrade
 spotting (spotting.js).
 
 ## Combat anatomy — where collision and internal volumes come from

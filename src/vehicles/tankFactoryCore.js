@@ -2668,7 +2668,7 @@ function buildRunningGear(P, cfg) {
   const tlY0 = tl.position.y, trY0 = tr.position.y;
 
   // ---- movement-solve contact metadata (RUNTIME DATA ONLY — no geometry) ----
-  // gameplay_feel MOVEMENT r1 (fidelity-rebuild fallout): the movement.js
+  // gameplay_feel MOVEMENT r1 (fidelity-rebuild fallout): the movement.ts
   // support solve assumed every procedural visual's contact run spans
   // ±0.45 × hullLengthM at hull-local y = 0. The measured-curve rebuilds moved
   // wheelZs/wheelY/botY per tank (russia botY up to 0.15, patton/leopard
@@ -3026,7 +3026,7 @@ function buildRunningGear(P, cfg) {
           // droop opens to −0.22 m and up-travel to +0.30 m so a bump
           // the rigid hull plane straddles lifts the wheel over the crest
           // instead of burying the rim (r5 evidence: settled wheel rim
-          // −18.3 cm below the heightfield). The movement.js lateral-fan
+          // −18.3 cm below the heightfield). The movement.ts lateral-fan
           // support solve now caps how far terrain can rise above the plane,
           // and the wheel rides the residual.
           // The old 1.35 visual gain deliberately overshot the ground: a
@@ -6983,7 +6983,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   // 0/0 — exactly what the first syncFromState composes; instanced wheels and
   // link pads otherwise still carry identity matrices at this point), then
   // scan the whole visual for the lowest rendered surface and the contact
-  // footprint. state.js stamps this onto the entity for movement.js; the
+  // footprint. state.js stamps this onto the entity for movement.ts; the
   // gear's analytic flat-run span wins over the scan's low band (the band
   // includes approach/departure ramps), while the scan owns the bottom (a
   // rebuilt hull keel can undercut the gear floor).
@@ -7160,7 +7160,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   let flinchP = 0, flinchR = 0;      // hit-reaction damped oscillator
   let flinchPV = 0, flinchRV = 0;
   // Hit/recoil impulses accumulate here and are routed into the SIM's flinch
-  // mirror (state._flinch, integrated by movement.js) on the next
+  // mirror (state._flinch, integrated by movement.ts) on the next
   // syncFromState — the terrain-contact support solve then clears the ground
   // at the flinched pose too (a 1-2° large-caliber rock over a 3.5 m
   // half-length used to dip a track end ~10 cm past the 1.5 cm margin).
@@ -7175,7 +7175,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   let suspP = 0, suspR = 0, suspPV = 0, suspRV = 0;
   let prevSpeed = 0;
   const SUSP_W = 7.2, SUSP_Z = 0.65;
-  // r6 VISIBLE hull dynamics: the sim spring (movement.js state._susp) is
+  // r6 VISIBLE hull dynamics: the sim spring (movement.ts state._susp) is
   // tuned for terrain-contact correctness, but its rock is sub-pixel at
   // gameplay camera distance — no readable squat/dive/roll (r5 critique).
   // Amplify the TRANSIENT deviation for the RENDERED attitude only (steady
@@ -7183,7 +7183,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   // worst extra corner deficit so the exaggerated lean neither buries nor
   // levitates the tracks visibly.
   // r1 smoothing: keep turn lean readable without amplifying it into camera
-  // shake. MUST stay in lockstep with movement.js
+  // shake. MUST stay in lockstep with movement.ts
   // SWAY_VIS (support solve clears terrain at the amplified pose) — pairing
   // ownership contract in docs/SYSTEMS.md.
   const SUSP_VIS_P = 2.2, SUSP_VIS_R = 1.9, SWAY_VIS = 2.4;
@@ -7462,7 +7462,7 @@ export function createTank(specId, engineCtx, opts = {}) {
       }
       // Hit-flinch: caliber-scaled damped rock layered onto pitch/roll.
       // Sim-mirrored path (terrain-contact guard): route pending impulses
-      // into state._flinch and RENDER the sim's values — movement.js
+      // into state._flinch and RENDER the sim's values — movement.ts
       // integrates the oscillator once per fixed tick and support-solves
       // pos.y against this exact pose, so a hit can never rock a track end
       // below the heightfield. Fallback path self-integrates as before.
@@ -7491,7 +7491,7 @@ export function createTank(specId, engineCtx, opts = {}) {
         }
       }
       // r5 terrain-contact gate: the rock/settle suspension spring is now
-      // integrated by the SIM (movement.js state._susp — the same spring,
+      // integrated by the SIM (movement.ts state._susp — the same spring,
       // same constants, stepped once per fixed sim tick) so the terrain
       // SUPPORT SOLVE can raise pos.y against the EXACT rendered attitude.
       // A second self-timed copy here desynced from the sim at any render
@@ -7505,7 +7505,7 @@ export function createTank(specId, engineCtx, opts = {}) {
         suspP = renderState._susp ? renderState._susp.p * SUSP_VIS_P : suspP;
         suspR = renderState._susp ? renderState._susp.r * SUSP_VIS_R : suspR;
         if (renderState._swayEst !== undefined) sway = renderState._swayEst * SWAY_VIS;
-        // NO height compensation here: movement.js support-solves state.pos.y
+        // NO height compensation here: movement.ts support-solves state.pos.y
         // at the SAME amplified pose (SUSP_VIS_*/SWAY_VIS mirrored there) so
         // the terrain-contact guarantee holds exactly at the rendered
         // attitude — the old half-lift hack floated the whole contact patch
@@ -7539,7 +7539,7 @@ export function createTank(specId, engineCtx, opts = {}) {
             (0.55 + 0.45 * Math.sin(wreckAge * 2.4 + emberPhase));
         }
       } else {
-        // TWO-PLANE GUN STABILIZATION. movement.js solves turretYaw/gunPitch
+        // TWO-PLANE GUN STABILIZATION. movement.ts solves turretYaw/gunPitch
         // in the canonical authority hull (visualPitch/visualRoll), while the
         // rendered chassis deliberately adds amplified suspension rock, turn
         // lean and hit/recoil flinch for weight. Applying the canonical angles

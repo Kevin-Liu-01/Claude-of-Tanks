@@ -1,5 +1,5 @@
 /**
- * movement.js — pure-logic tank movement, attitude, turret/gun kinematics and
+ * movement.ts — pure-logic tank movement, attitude, turret/gun kinematics and
  * dispersion bloom. Implements docs/research/movement-physics.md §2–§8 and §10
  * under the interface locked in docs/ARCHITECTURE.md §3.4.
  *
@@ -25,6 +25,228 @@ import {
   trackGripMargin,
   uphillDriveMargin,
 } from './terrainMobility.ts';
+import type { TerrainMobilitySpec } from './terrainMobility.ts';
+
+type Vec3Tuple = readonly [number, number, number];
+type HeightSampler = (x: number, z: number) => number;
+
+export interface MovementGunSpec {
+  aimTimeS: number;
+  baseAccuracy: number;
+  caliberMm: number;
+  reloadS: number;
+  bloom: {
+    move: number;
+    hullRot: number;
+    turret: number;
+    afterShot: number;
+  };
+}
+
+export interface MovementArmorSpec {
+  turretless?: boolean;
+  boundingRadiusM?: number;
+  turretPivot?: Vec3Tuple | number[];
+  gunPivot?: Vec3Tuple | number[];
+  gunBarrel?: { lengthM: number };
+  bodyContactPoints?: {
+    hull?: number[];
+    turret?: number[];
+  };
+}
+
+export interface MovementSpec extends TerrainMobilitySpec {
+  dims: {
+    hullLengthM: number;
+    widthM: number;
+    heightM: number;
+  };
+  gun: MovementGunSpec;
+  armor?: MovementArmorSpec;
+  enginePowerHp: number;
+  weightTons: number;
+  terrainResistance: Readonly<Record<string, number>> & {
+    hard: number;
+    medium: number;
+  };
+  topSpeedKmh: number;
+  reverseSpeedKmh: number;
+  hullTraverseDegS: number;
+  turretTraverseDegS: number;
+  gunPitchDegS: number;
+  gunDepressionDeg: number;
+  gunElevationDeg: number;
+  gunArcDeg?: number;
+  pivotStyle?: 'neutral' | 'pivot' | string;
+  role?: string;
+  hydropneumaticAim?: {
+    noseDownDeg?: number;
+    noseUpDeg?: number;
+    rateDegS?: number;
+    compressionM?: number;
+  };
+}
+
+interface MovementModuleState {
+  state?: string;
+}
+
+export interface MovementCombatState {
+  destroyed?: boolean;
+  modules?: Record<string, MovementModuleState | undefined>;
+  crew?: Record<string, boolean | undefined>;
+  equipMults?: {
+    traverse?: number;
+    turret?: number;
+    aimTime?: number;
+    bloom?: number;
+  };
+}
+
+interface MovementDebuffs {
+  immobile: boolean;
+  powerMult: number;
+  accelMult: number;
+  traverseMult: number;
+  turretMult: number;
+  aimTimeMult: number;
+  gunYellow: boolean;
+  bloomMult: number;
+}
+
+interface AttitudeSpringState {
+  pitch: number;
+  roll: number;
+  pitchV: number;
+  rollV: number;
+  recoilVX: number;
+  recoilVZ: number;
+}
+
+interface RockState {
+  p: number;
+  r: number;
+  pv: number;
+  rv: number;
+}
+
+interface RideState {
+  y: number;
+  v: number;
+  supportY: number;
+  groundV: number;
+  grounded: boolean;
+  airTime: number;
+}
+
+interface RigidBodyState {
+  tumbling: boolean;
+  landingBlendS: number;
+  dynamicSupport: boolean;
+  autoRighting: boolean;
+}
+
+export interface MovementContactGeometry {
+  halfLenM: number;
+  halfWidM: number;
+  zCenterM: number;
+  bottomYM?: number | null;
+  panYM?: number | null;
+  gearBottomYM?: number | null;
+  endRise?: {
+    dzM: number;
+    frontM: number;
+    rearM: number;
+  } | null;
+}
+
+interface SupportCache {
+  x: number;
+  z: number;
+  yaw: number;
+  pitch: number;
+  roll: number;
+  y: number;
+  floorY: number;
+  rigid: boolean;
+  cg: MovementContactGeometry | null | undefined;
+}
+
+export interface TankState {
+  pos: Vector3;
+  yaw: number;
+  speed: number;
+  verticalSpeed: number;
+  grounded: boolean;
+  landingImpactMps: number;
+  slopeBlocked: boolean;
+  yawRate: number;
+  visualPitch: number;
+  visualRoll: number;
+  overturned: boolean;
+  rolloverCountdownS: number;
+  turretYaw: number;
+  gunPitch: number;
+  turretYawRate: number;
+  aimPoint: Vector3;
+  bloomF: number;
+  trackScroll: { l: number; r: number };
+  atGunLimit: boolean;
+  gunLimitSpec: boolean;
+  suspensionAim: boolean;
+  suspensionAimPitch: number;
+  impactMps: number;
+  _spring: AttitudeSpringState;
+  _prevSpeed: number;
+  _spool: number;
+  _terr: { pitch: number; roll: number };
+  _fanYield: number;
+  _perch: number;
+  _gunLimitHoldS: number;
+  _swayEst: number;
+  _susp: RockState;
+  _flinch: RockState;
+  _ride: RideState;
+  _body: RigidBodyState;
+  _rollover: { elapsedS: number; expired: boolean };
+  _groundType: string;
+  _debuff: MovementDebuffs;
+  _sup: SupportCache;
+}
+
+export interface MovementInput {
+  throttle?: number;
+  steer?: number;
+  brake?: boolean;
+  aimPoint?: Vector3 | null;
+  [name: string]: unknown;
+}
+
+export interface MovementEntity {
+  spec: MovementSpec;
+  state: TankState;
+  input: MovementInput;
+  combat?: MovementCombatState | null;
+  contactGeom?: MovementContactGeometry | null;
+  modeSpeedMultiplier?: number;
+  rigidGear?: boolean;
+}
+
+export interface MovementHeightField {
+  getHeightAt: HeightSampler;
+  getHeightAtFast?: HeightSampler;
+  getGroundType(x: number, z: number): string;
+}
+
+export type MovementCollisionResolver = (
+  position: Vector3,
+  radiusM: number,
+  outPush: Vector3,
+) => unknown;
+
+export interface MovementShellSpec {
+  reloadS?: number;
+}
 
 /** Fixed simulation step in seconds (ARCHITECTURE §1.1). */
 export const SIM_DT = 1 / 60;
@@ -421,12 +643,12 @@ const CASEMATE_ARC_DEG = 11;
 const AUTO_TRAVERSE_RAMP_RAD = 8 * DEG2RAD;
 
 /** True when the rendered barrel is rigidly attached to a hydraulic hull. */
-function hasFixedHydraulicGun(spec) {
+function hasFixedHydraulicGun(spec: MovementSpec): boolean {
   return !!(spec.hydropneumaticAim && spec.armor && spec.armor.turretless);
 }
 
 /** Gun-yaw half-arc in radians for a spec (Infinity = full turret). */
-function gunArcRadFor(spec) {
+function gunArcRadFor(spec: MovementSpec): number {
   // Swedish siege vehicles have no invisible fine-lay joint: the hull must
   // rotate all the way onto the sight line because the rendered gun is fixed.
   if (hasFixedHydraulicGun(spec)) return 0;
@@ -450,10 +672,12 @@ const _hullQuat = new Quaternion();
 // ---------------------------------------------------------------------------
 // Small math helpers
 // ---------------------------------------------------------------------------
-function clamp(x, lo, hi) { return x < lo ? lo : (x > hi ? hi : x); }
+function clamp(x: number, lo: number, hi: number): number {
+  return x < lo ? lo : (x > hi ? hi : x);
+}
 
 /** Wrap an angle to (-π, π]. */
-function wrapAngle(a) {
+function wrapAngle(a: number): number {
   a = a % (2 * Math.PI);
   if (a > Math.PI) a -= 2 * Math.PI;
   else if (a <= -Math.PI) a += 2 * Math.PI;
@@ -461,7 +685,7 @@ function wrapAngle(a) {
 }
 
 /** Move `cur` toward `target` by at most `maxDelta` (no overshoot). */
-function approach(cur, target, maxDelta) {
+function approach(cur: number, target: number, maxDelta: number): number {
   const d = target - cur;
   if (d > maxDelta) return cur + maxDelta;
   if (d < -maxDelta) return cur - maxDelta;
@@ -469,7 +693,7 @@ function approach(cur, target, maxDelta) {
 }
 
 /** Move angle `cur` toward angle `target` along the shortest arc by ≤ `maxDelta`. */
-function chaseAngle(cur, target, maxDelta) {
+function chaseAngle(cur: number, target: number, maxDelta: number): number {
   const d = wrapAngle(target - cur);
   if (d > maxDelta) return wrapAngle(cur + maxDelta);
   if (d < -maxDelta) return wrapAngle(cur - maxDelta);
@@ -477,7 +701,13 @@ function chaseAngle(cur, target, maxDelta) {
 }
 
 /** Capability-derived climb penalty / downhill bonus for v_target. */
-function slopeSpeedFactor(spec, groundType, pitchAlongRad, powerMult, accelMult) {
+function slopeSpeedFactor(
+  spec: MovementSpec,
+  groundType: string,
+  pitchAlongRad: number,
+  powerMult: number,
+  accelMult: number,
+): number {
   const pitchDeg = pitchAlongRad * RAD2DEG;
   if (pitchDeg > 0) {
     return uphillDriveMargin(
@@ -491,7 +721,10 @@ function slopeSpeedFactor(spec, groundType, pitchAlongRad, powerMult, accelMult)
  * Extract movement-relevant debuffs from a CombatState per the locked table in
  * ARCHITECTURE §2.4. `combat == null` ⇒ fully healthy.
  */
-function readDebuffs(combat, out) {
+function readDebuffs(
+  combat: MovementCombatState | null | undefined,
+  out: MovementDebuffs,
+): MovementDebuffs {
   let immobile = false;
   let powerMult = 1;
   let accelMult = 1;
@@ -562,7 +795,7 @@ function readDebuffs(combat, out) {
 }
 
 /** Hull-local height of the gun trunnion above ground contact (for aim angles). */
-function gunPivotHeight(spec) {
+function gunPivotHeight(spec: MovementSpec): number {
   const a = spec.armor;
   if (a && a.turretPivot && a.gunPivot) return a.turretPivot[1] + a.gunPivot[1];
   return spec.dims.heightM * 0.85;
@@ -574,9 +807,23 @@ function gunPivotHeight(spec) {
  * yaw; hull-local clouds use the defaults. Arrays are flat xyz triples so the
  * rollover-only fixed-step path performs no allocation.
  */
-function pointCloudSupportY(points, hAt, px, pz, hullCosYaw, hullSinYaw,
-  hullCosPitch, hullSinPitch, hullCosRoll, hullSinRoll,
-  frameCosYaw = 1, frameSinYaw = 0, pivotX = 0, pivotY = 0, pivotZ = 0) {
+function pointCloudSupportY(
+  points: readonly number[] | null | undefined,
+  hAt: HeightSampler,
+  px: number,
+  pz: number,
+  hullCosYaw: number,
+  hullSinYaw: number,
+  hullCosPitch: number,
+  hullSinPitch: number,
+  hullCosRoll: number,
+  hullSinRoll: number,
+  frameCosYaw = 1,
+  frameSinYaw = 0,
+  pivotX = 0,
+  pivotY = 0,
+  pivotZ = 0,
+): number {
   if (!Array.isArray(points) || points.length < 3) return -Infinity;
   let supportY = -Infinity;
   for (let i = 0; i + 2 < points.length; i += 3) {
@@ -607,7 +854,7 @@ function pointCloudSupportY(points, hAt, px, pz, hullCosYaw, hullSinYaw,
  * @param {number} yaw - Hull yaw in radians (0 faces world +Z).
  * @returns {object} TankState owned by this module.
  */
-export function createTankState(spec, pos, yaw) {
+export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): TankState {
   if (!spec || !spec.dims || !spec.gun || !spec.terrainResistance) {
     throw new Error('movement.createTankState: malformed TankSpec');
   }
@@ -686,8 +933,12 @@ export function createTankState(spec, pos, yaw) {
  * pose change. This keeps tools and respawn code from leaving the ballistic
  * phase at the pre-teleport position.
  */
-export function resetTankVerticalState(state, y = state?.pos?.y, verticalSpeed = 0,
-  grounded = true) {
+export function resetTankVerticalState(
+  state: TankState | null | undefined,
+  y: number = state?.pos?.y ?? Number.NaN,
+  verticalSpeed = 0,
+  grounded = true,
+): void {
   if (!state || !state.pos || !Number.isFinite(y)) {
     throw new TypeError('movement.resetTankVerticalState: valid state and y are required');
   }
@@ -729,7 +980,12 @@ export function resetTankVerticalState(state, y = state?.pos?.y, verticalSpeed =
  *   pushback provided by integration; when it returns true, `outPush` is added to `pos`.
  * @returns {void}
  */
-export function updateTank(entity, heightField, dt, collide = null) {
+export function updateTank(
+  entity: MovementEntity,
+  heightField: MovementHeightField,
+  dt: number,
+  collide: MovementCollisionResolver | null = null,
+): void {
   // perf-r3b: terrain probes below run dozens of times per tank per frame
   // (pose corners, per-wheel gear lines, muzzle clearance). Real battles
   // provide the baked 1 m grid (≤ ~1 cm from the analytic surface); selftest
@@ -743,7 +999,10 @@ export function updateTank(entity, heightField, dt, collide = null) {
   const spec = entity.spec;
   const state = entity.state;
   const input = entity.input;
-  const debuff = readDebuffs(entity.combat, state._debuff || (state._debuff = {}));
+  const debuff = readDebuffs(
+    entity.combat,
+    state._debuff || (state._debuff = {} as MovementDebuffs),
+  );
   const groundedAtStart = state.grounded !== false;
   const body = state._body || (state._body = {
     tumbling: false, landingBlendS: 0, dynamicSupport: false, autoRighting: false,
@@ -806,7 +1065,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // multiplier on the authoritative entity so local and network simulations
   // apply the same transmission limits.
   const modeSpeedMult = clamp(
-    Number.isFinite(entity.modeSpeedMultiplier) ? entity.modeSpeedMultiplier : 1,
+    Number.isFinite(entity.modeSpeedMultiplier) ? entity.modeSpeedMultiplier! : 1,
     0.25, 3,
   );
   const topMps = spec.topSpeedKmh / 3.6 * modeSpeedMult;
@@ -1579,7 +1838,8 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // intentional hydraulic rise, bounded by the authored compression
     // travel. The hard belly/undercut guards below remain unyielding.
     const rigidUndercut = cg && Number.isFinite(cg.gearBottomYM) &&
-      Number.isFinite(cg.bottomYM) && cg.bottomYM < cg.gearBottomYM - 0.01;
+      Number.isFinite(cg.bottomYM) &&
+      (cg.bottomYM as number) < (cg.gearBottomYM as number) - 0.01;
     const hydraulicTrackYield = state.suspensionAim && hydraulicAim && !rigidUndercut
       ? Math.min(hydraulicAim.compressionM ?? RIDE_COMPRESSION_M,
         Math.abs(Math.sin(suspensionAimPitch)) * sl)
@@ -1607,14 +1867,15 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // visibly levitated roof-down tanks by up to nearly a metre.
     let rigidBodySupportY = -Infinity;
     if (body.tumbling || upYAfterAttitude < TUMBLE_ENTER_UP_Y) {
-      const contact = spec.armor && spec.armor.bodyContactPoints;
+      const armor = spec.armor;
+      const contact = armor?.bodyContactPoints;
       if (contact && contact.hull && contact.hull.length >= 3) {
         rigidBodySupportY = pointCloudSupportY(
           contact.hull, hAt, px1, pz1, cb, sb, ca0, sa0, cr0, sr0,
         );
         const turret = contact.turret;
         if (turret && turret.length >= 3) {
-          const tp = spec.armor.turretPivot || [0, 0, 0];
+          const tp = armor.turretPivot || [0, 0, 0];
           const turretCosYaw = Math.cos(state.turretYaw || 0);
           const turretSinYaw = Math.sin(state.turretYaw || 0);
           const turretSupportY = pointCloudSupportY(
@@ -1978,7 +2239,10 @@ export function updateTank(entity, heightField, dt, collide = null) {
 }
 
 /** Shared selector for sim, tank visual and camera presentation recoil. */
-export function shotRecoilScale(spec, shellSpec = null) {
+export function shotRecoilScale(
+  spec: MovementSpec,
+  shellSpec: MovementShellSpec | null = null,
+): number {
   const cycleS = (shellSpec && shellSpec.reloadS) || spec.gun.reloadS;
   return spec.role === 'ifv' && cycleS <= IFV_AUTOCANNON_MAX_CYCLE_S
     ? IFV_AUTOCANNON_RECOIL_SCALE : 1;
@@ -1996,7 +2260,11 @@ export function shotRecoilScale(spec, shellSpec = null) {
  *   from the slower missile rail carried by the same IFV.
  * @returns {void}
  */
-export function fireRecoil(state, spec, shellSpec = null) {
+export function fireRecoil(
+  state: TankState,
+  spec: MovementSpec,
+  shellSpec: MovementShellSpec | null = null,
+): void {
   const cal = spec.gun.caliberMm;
   const heavy = clamp((cal - 75) / 85, 0, 1); // 75 mm → light kick, 160 mm+ → max
   const kick = (RECOIL_KICK_MIN_DEGS + (RECOIL_KICK_MAX_DEGS - RECOIL_KICK_MIN_DEGS) * heavy)
@@ -2031,6 +2299,10 @@ export function fireRecoil(state, spec, shellSpec = null) {
  * @param {number} distM - Range to the aim point in meters.
  * @returns {number} Dispersion radius (2σ) in meters at that range.
  */
-export function computeDispersionRadM(spec, state, distM) {
+export function computeDispersionRadM(
+  spec: { gun: Pick<MovementGunSpec, 'baseAccuracy'> },
+  state: { bloomF: number },
+  distM: number,
+): number {
   return spec.gun.baseAccuracy * (distM / 100) * state.bloomF;
 }

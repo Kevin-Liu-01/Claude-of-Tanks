@@ -1,5 +1,12 @@
 import { Vector3 } from 'three';
-import { SIM_DT, createTankState, updateTank } from '../sim/movement.js';
+import { SIM_DT, createTankState, updateTank } from '../sim/movement.ts';
+import type {
+  MovementCombatState,
+  MovementContactGeometry,
+  MovementHeightField,
+  MovementSpec,
+  TankState,
+} from '../sim/movement.ts';
 import { isSequenceNewer } from './protocol.ts';
 import { decodeAimIntent } from './aimIntent.ts';
 import { SNAPSHOT_FLAGS } from './snapshot.ts';
@@ -52,41 +59,13 @@ export interface PredictionSnapshot {
   destroyed?: boolean;
 }
 
-export interface PredictionTankState {
-  pos: Vector3;
-  aimPoint: Vector3;
-  yaw: number;
-  speed: number;
-  visualPitch: number;
-  visualRoll: number;
-  turretYaw: number;
-  gunPitch: number;
-  verticalSpeed: number;
-  grounded: boolean;
-  landingImpactMps: number;
-  slopeBlocked: boolean;
-  yawRate: number;
-  turretYawRate: number;
-  bloomF: number;
-  atGunLimit: boolean;
-  gunLimitSpec: boolean;
-  trackScroll: { l: number; r: number };
-  _prevSpeed: number;
-  _spring: { pitch: number; roll: number };
-  _ride: {
-    y: number;
-    v: number;
-    grounded: boolean;
-    airTime: number;
-    supportY: number;
-  };
-}
+export type PredictionTankState = TankState;
 
 export interface PredictionEntity {
-  spec: Record<string, unknown>;
+  spec: MovementSpec;
   state: PredictionTankState;
-  combat?: unknown;
-  contactGeom?: unknown;
+  combat?: MovementCombatState | null;
+  contactGeom?: MovementContactGeometry | null;
   rigidGear?: boolean;
 }
 
@@ -99,9 +78,7 @@ export interface PredictionSimEntity extends PredictionEntity {
   _predictionDynamicContacts?: number;
 }
 
-export interface PredictionHeightField {
-  getHeightAt(x: number, z: number): number;
-}
+export interface PredictionHeightField extends MovementHeightField {}
 
 export type PredictionCollision = (
   entity: PredictionSimEntity,
@@ -345,7 +322,7 @@ export class LocalTankPredictor {
       entity.spec,
       source.pos,
       source.yaw,
-    ) as PredictionTankState;
+    );
     this.simEntity = {
       spec: entity.spec,
       state,

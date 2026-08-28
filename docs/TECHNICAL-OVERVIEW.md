@@ -264,7 +264,7 @@ makes stale presentation assets detectable.
 
 ### 7.1 Movement
 
-`src/sim/movement.js` consumes normalized controls, vehicle parameters,
+`src/sim/movement.ts` consumes normalized controls, vehicle parameters,
 terrain support, collision context, and the fixed time step. It returns
 authoritative pose, velocity, hull attitude, support state, and track travel.
 
