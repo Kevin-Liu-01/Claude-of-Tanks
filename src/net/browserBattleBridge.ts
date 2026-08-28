@@ -93,6 +93,7 @@ interface BridgeInput {
   steer: number;
   brake: boolean;
   fire: boolean;
+  aimLocked: boolean;
   shellSlot: number;
   aimPoint: Vector3;
 }
@@ -489,6 +490,7 @@ export function createBrowserBattleBridge({
         steer: 0,
         brake: false,
         fire: false,
+        aimLocked: false,
         shellSlot: 0,
         aimPoint: state.aimPoint.clone(),
       },
