@@ -1,4 +1,4 @@
-// src/ui/equipIcons.js — EQUIPMENT SYSTEM icon set.
+// src/ui/equipIcons.ts — EQUIPMENT SYSTEM icon set.
 // One recognizable glyph per catalog item, refreshed into the shared armored
 // UI language: a flat white silhouette inside a quiet clipped-corner equipment
 // plate. All paths live on a 24x24 grid and are built from >=1.5px strokes /
@@ -13,7 +13,9 @@
 const EQUIP_INK = 'rgba(238,244,250,0.86)';
 
 // Each entry is the inner markup of a 24x24 viewBox, as a function of ink.
-const GLYPHS = {
+type EquipmentGlyph = (ink: string) => string;
+
+const GLYPHS: Readonly<Record<string, EquipmentGlyph>> = {
   // Gun Rammer — shell being driven forward by a double chevron.
   rammer: (I) =>
     `<path fill="${I}" d="M11 8.5h5.2q4.4.5 6.2 3.5-1.8 3-6.2 3.5H11Z"/>` +
@@ -55,7 +57,7 @@ const GLYPHS = {
 
   // Camouflage Net — drape line with a hanging swag of diamond mesh cells.
   camo_net: (I) => {
-    const d = (cx, cy, rx, ry) =>
+    const d = (cx: number, cy: number, rx: number, ry: number): string =>
       `M${cx} ${cy - ry}L${cx + rx} ${cy}L${cx} ${cy + ry}L${cx - rx} ${cy}Z`;
     return `<path d="M1.8 5q5.1-2.6 10.2 0t10.2 0" fill="none" stroke="${I}" stroke-width="1.9" stroke-linecap="round"/>` +
       `<g stroke="${I}" stroke-width="1.35" fill="none" stroke-linejoin="round">` +
@@ -129,7 +131,7 @@ const GLYPHS = {
  * @param {string} [ink] fill/stroke color
  * @returns {string} '<svg …>…</svg>' or '' for unknown ids
  */
-export function equipIconSVG(id, size = 24, ink = EQUIP_INK) {
+export function equipIconSVG(id: string, size = 24, ink = EQUIP_INK): string {
   const g = GLYPHS[id];
   if (!g) return '';
   if (size < 20) {
@@ -145,6 +147,6 @@ export function equipIconSVG(id, size = 24, ink = EQUIP_INK) {
 }
 
 /** All catalog ids this set covers (icon-sheet tooling + selftest). */
-export function equipIconIds() {
+export function equipIconIds(): string[] {
   return Object.keys(GLYPHS);
 }

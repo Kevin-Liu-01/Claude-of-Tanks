@@ -19,17 +19,19 @@ Move the existing shared primitives to strict TypeScript in place:
 - `src/ui/dom.ts`
 - `src/ui/fonts.ts`
 - `src/ui/icons.ts`
+- `src/ui/equipIcons.ts`
 - `src/ui/imagePreload.ts`
 - `src/ui/githubStars.ts`
 - `src/ui/featuredShots.ts`
 - `src/ui/mapThumbs.ts`
 - `src/vehicles/tier.ts`
 
-The migration defines concrete DOM, image-priority, featured-shot, cache, and
-metadata contracts. It preserves URLs, CSS, animation inputs, cache ownership,
-fallback values, gallery order, and tier data. Headless compatibility is part
-of the contract: helpers use structural browser capability checks rather than
-assuming every Node test shim exposes DOM constructors.
+The migration defines concrete DOM, image-priority, featured-shot, cache,
+equipment-glyph, and metadata contracts. It preserves URLs, SVG paths, CSS,
+animation inputs, cache ownership, fallback values, gallery order, and tier
+data. Headless compatibility is part of the contract: helpers use structural
+browser capability checks rather than assuming every Node test shim exposes
+DOM constructors.
 
 The map-thumbnail generator now writes the typed canonical module so a future
 regeneration cannot silently recreate the deleted JavaScript owner. No `any`,
@@ -40,7 +42,7 @@ regeneration cannot silently recreate the deleted JavaScript owner. No `any`,
 - Typed UI-flow owners now depend on checked primitives end to end.
 - Gallery, Garage, HUD, Studio, killcam, and tooling share the same checked
   asset and metadata contracts during the incremental migration.
-- The runtime JavaScript inventory falls by eight modules and about 560 lines.
+- The runtime JavaScript inventory falls by nine modules and about 710 lines.
 - Remaining UI owners can migrate without redeclaring these cross-screen
   shapes.
 
@@ -49,6 +51,7 @@ regeneration cannot silently recreate the deleted JavaScript owner. No `any`,
     npm run typecheck
     node src/ui/dom.selftest.mjs
     node src/ui/imagePreload.selftest.mjs
+    node src/ui/icons.selftest.mjs
     node src/ui/loadingScreens.selftest.mjs
     node src/presentation/publicNav.selftest.mjs
     node src/vehicles/tier.selftest.mjs

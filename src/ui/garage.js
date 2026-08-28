@@ -17,14 +17,14 @@ import {
 } from '../vehicles/camoPolicy.js';
 import { createInfoButton } from './contextInfo.js';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
-// white-silhouette icon set (equipIcons.js), and the spotting-side math the
+// white-silhouette icon set (equipIcons.ts), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
 // with the battle sim.
 import {
   EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS, EQUIP_CATEGORIES,
   loadEquipment, saveEquipment, equipEligible, computeEquipMults,
 } from '../game/equipment.ts';
-import { equipIconSVG } from './equipIcons.js';
+import { equipIconSVG } from './equipIcons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { shellIconSVG } from './shellIcons.ts';
 import {
