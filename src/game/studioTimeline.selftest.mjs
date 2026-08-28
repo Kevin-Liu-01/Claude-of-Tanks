@@ -10,7 +10,7 @@ import {
   clearActorTrack,
   sampleCameraRail,
   sampleActorTrack,
-} from './studioTimeline.js';
+} from './studioTimeline.ts';
 
 assert.equal(clampStudioDuration(-4), STUDIO_MIN_DURATION_MS);
 assert.equal(clampStudioDuration(99_000), STUDIO_MAX_DURATION_MS);

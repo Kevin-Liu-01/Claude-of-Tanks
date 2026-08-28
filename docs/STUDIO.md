@@ -9,7 +9,7 @@ game effects, operate a free camera, define camera and vehicle tracks, edit a
 
 Implementation: `src/game/studioAccess.ts` (retryable chunk/FX acquisition,
 stable frame proxy, and temporary F8 ownership), `src/game/studio.js` (runtime
-and `window.__STUDIO`), `src/game/studioTimeline.js` (pure storyboard
+and `window.__STUDIO`), `src/game/studioTimeline.ts` (pure storyboard
 normalization and sampling), and `src/ui/studioPanel.js` (panel interface).
 `main.js` supplies integration ports and retains only the Studio `tick()`
 composition branch.

@@ -13,15 +13,105 @@ const STUDIO_DEFAULT_DURATION_MS = 12000;
 const STUDIO_MAX_CAMERA_SHOTS = 32;
 const STUDIO_MAX_ACTOR_KEYS = 64;
 
-const CAMERA_TRANSITIONS = new Set(['smooth', 'linear', 'cut']);
-const ACTOR_TRANSITIONS = new Set(['smooth', 'linear', 'cut']);
+export type StudioTransition = 'smooth' | 'linear' | 'cut';
+export type StudioVec2 = [number, number];
+export type StudioVec3 = [number, number, number];
 
-const finite = (value, fallback = 0) => Number.isFinite(Number(value))
+export interface CameraShotInput {
+  id?: unknown;
+  label?: unknown;
+  tMs?: unknown;
+  pos?: unknown;
+  lookAt?: unknown;
+  fov?: unknown;
+  rollDeg?: unknown;
+  transition?: unknown;
+}
+
+export interface CameraShot {
+  id: string;
+  label: string;
+  tMs: number;
+  pos: StudioVec3;
+  lookAt: StudioVec3;
+  fov: number;
+  rollDeg: number;
+  transition: StudioTransition;
+}
+
+export interface ActorKeyInput {
+  id?: unknown;
+  tMs?: unknown;
+  pos?: unknown;
+  facingDeg?: unknown;
+  turretDeg?: unknown;
+  gunDeg?: unknown;
+  transition?: unknown;
+}
+
+export interface ActorKey {
+  id: string;
+  tMs: number;
+  pos: StudioVec2;
+  facingDeg: number;
+  turretDeg: number;
+  gunDeg: number;
+  transition: StudioTransition;
+}
+
+export interface ActorTrackInput {
+  actor?: unknown;
+  keys?: readonly ActorKeyInput[] | unknown;
+}
+
+export interface ActorTrack {
+  actor: string;
+  keys: ActorKey[];
+}
+
+export interface StoryboardInput {
+  durationMs?: unknown;
+  shots?: readonly CameraShotInput[] | unknown;
+  actorTracks?: readonly ActorTrackInput[] | unknown;
+}
+
+export interface Storyboard {
+  version: 1;
+  durationMs: number;
+  shots: CameraShot[];
+  actorTracks: ActorTrack[];
+}
+
+export interface CameraRailSample {
+  x?: number;
+  y?: number;
+  z?: number;
+  lookX?: number;
+  lookY?: number;
+  lookZ?: number;
+  fov?: number;
+  rollDeg?: number;
+  shotId?: string;
+}
+
+export interface ActorTrackSample {
+  x?: number;
+  z?: number;
+  facingDeg?: number;
+  turretDeg?: number;
+  gunDeg?: number;
+  keyId?: string;
+}
+
+const CAMERA_TRANSITIONS = new Set<StudioTransition>(['smooth', 'linear', 'cut']);
+const ACTOR_TRANSITIONS = new Set<StudioTransition>(['smooth', 'linear', 'cut']);
+
+const finite = (value: unknown, fallback = 0): number => Number.isFinite(Number(value))
   ? Number(value)
   : fallback;
-const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
+const clamp = (value: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, value));
 
-export function clampStudioDuration(value) {
+export function clampStudioDuration(value: unknown): number {
   return Math.round(clamp(
     finite(value, STUDIO_DEFAULT_DURATION_MS),
     STUDIO_MIN_DURATION_MS,
@@ -29,11 +119,11 @@ export function clampStudioDuration(value) {
   ));
 }
 
-export function clampStudioTime(value, durationMs = STUDIO_DEFAULT_DURATION_MS) {
+export function clampStudioTime(value: unknown, durationMs: unknown = STUDIO_DEFAULT_DURATION_MS): number {
   return Math.round(clamp(finite(value, 0), 0, clampStudioDuration(durationMs)));
 }
 
-function vec3(value, fallback) {
+function vec3(value: unknown, fallback: StudioVec3): StudioVec3 {
   if (!Array.isArray(value) || value.length < 3) return [...fallback];
   return [
     finite(value[0], fallback[0]),
@@ -42,27 +132,30 @@ function vec3(value, fallback) {
   ];
 }
 
-function actorPos(value, fallback = [0, 0]) {
+function actorPos(value: unknown, fallback: StudioVec2 = [0, 0]): StudioVec2 {
   if (!Array.isArray(value) || value.length < 2) return [...fallback];
   return value.length >= 3
     ? [finite(value[0], fallback[0]), finite(value[2], fallback[1])]
     : [finite(value[0], fallback[0]), finite(value[1], fallback[1])];
 }
 
-function stableId(value, prefix, index) {
+function stableId(value: unknown, prefix: string, index: number): string {
   const id = String(value || '').trim();
   return id || `${prefix}-${index + 1}`;
 }
 
-function dedupeAtTime(records) {
-  const byTime = new Map();
+function dedupeAtTime<T extends { tMs: number }>(records: readonly T[]): T[] {
+  const byTime = new Map<number, T>();
   for (const record of records) byTime.set(record.tMs, record);
   return [...byTime.values()].sort((a, b) => a.tMs - b.tMs);
 }
 
-function normalizeShot(raw, index, durationMs) {
-  const transition = CAMERA_TRANSITIONS.has(raw?.transition)
-    ? raw.transition
+function normalizeShot(raw: CameraShotInput | undefined, index: number, durationMs: number): CameraShot {
+  const candidate = typeof raw?.transition === 'string'
+    ? raw.transition as StudioTransition
+    : 'smooth';
+  const transition = CAMERA_TRANSITIONS.has(candidate)
+    ? candidate
     : 'smooth';
   return {
     id: stableId(raw?.id, 'shot', index),
@@ -76,9 +169,12 @@ function normalizeShot(raw, index, durationMs) {
   };
 }
 
-function normalizeActorKey(raw, index, durationMs) {
-  const transition = ACTOR_TRANSITIONS.has(raw?.transition)
-    ? raw.transition
+function normalizeActorKey(raw: ActorKeyInput | undefined, index: number, durationMs: number): ActorKey {
+  const candidate = typeof raw?.transition === 'string'
+    ? raw.transition as StudioTransition
+    : 'smooth';
+  const transition = ACTOR_TRANSITIONS.has(candidate)
+    ? candidate
     : 'smooth';
   return {
     id: stableId(raw?.id, 'key', index),
@@ -92,31 +188,31 @@ function normalizeActorKey(raw, index, durationMs) {
 }
 
 /** Return a canonical, bounded, JSON-safe storyboard. */
-export function normalizeStoryboard(input = {}) {
+export function normalizeStoryboard(input: StoryboardInput = {}): Storyboard {
   const durationMs = clampStudioDuration(input.durationMs);
   const sourceShots = Array.isArray(input.shots) ? input.shots : [];
-  const normalizedShots = [];
+  const normalizedShots: CameraShot[] = [];
   const shotCount = Math.min(sourceShots.length, STUDIO_MAX_CAMERA_SHOTS);
   for (let index = 0; index < shotCount; index++) {
     normalizedShots.push(normalizeShot(sourceShots[index], index, durationMs));
   }
   const shots = dedupeAtTime(normalizedShots);
 
-  const tracksByActor = new Map();
+  const tracksByActor = new Map<string, ActorKey[]>();
   for (const rawTrack of Array.isArray(input.actorTracks) ? input.actorTracks : []) {
     const actor = String(rawTrack?.actor ?? '').trim();
     if (!actor) continue;
     const prior = tracksByActor.get(actor) || [];
     const room = Math.max(0, STUDIO_MAX_ACTOR_KEYS - prior.length);
     const sourceKeys = Array.isArray(rawTrack.keys) ? rawTrack.keys : [];
-    const keys = [];
+    const keys: ActorKey[] = [];
     const keyCount = Math.min(sourceKeys.length, room);
     for (let index = 0; index < keyCount; index++) {
       keys.push(normalizeActorKey(sourceKeys[index], prior.length + index, durationMs));
     }
     tracksByActor.set(actor, prior.concat(keys));
   }
-  const actorTracks = [];
+  const actorTracks: ActorTrack[] = [];
   for (const [actor, keys] of tracksByActor) {
     const normalizedKeys = dedupeAtTime(keys);
     if (normalizedKeys.length) actorTracks.push({ actor, keys: normalizedKeys });
@@ -125,23 +221,28 @@ export function normalizeStoryboard(input = {}) {
   return { version: 1, durationMs, shots, actorTracks };
 }
 
-export function upsertCameraShot(storyboard, shot) {
+export function upsertCameraShot(storyboard: StoryboardInput, shot: CameraShotInput): Storyboard {
   const board = normalizeStoryboard(storyboard);
   const id = String(shot?.id || '').trim();
   const index = id ? board.shots.findIndex((item) => item.id === id) : -1;
-  if (index >= 0) board.shots[index] = { ...board.shots[index], ...shot, id };
-  else board.shots.push(shot);
-  return normalizeStoryboard(board);
+  const shots: CameraShotInput[] = index >= 0
+    ? board.shots.map((item, itemIndex) => itemIndex === index ? { ...item, ...shot, id } : item)
+    : [...board.shots, shot];
+  return normalizeStoryboard({ ...board, shots });
 }
 
-export function removeCameraShot(storyboard, ref) {
+export function removeCameraShot(storyboard: StoryboardInput, ref: unknown): Storyboard {
   const board = normalizeStoryboard(storyboard);
   const id = String(ref || '');
   board.shots = board.shots.filter((shot) => shot.id !== id);
   return normalizeStoryboard(board);
 }
 
-export function upsertActorKey(storyboard, actorRef, key) {
+export function upsertActorKey(
+  storyboard: StoryboardInput,
+  actorRef: unknown,
+  key: ActorKeyInput,
+): Storyboard {
   const board = normalizeStoryboard(storyboard);
   const actor = String(actorRef ?? '').trim();
   if (!actor) return board;
@@ -154,19 +255,25 @@ export function upsertActorKey(storyboard, actorRef, key) {
   const sameId = id ? track.keys.findIndex((item) => item.id === id) : -1;
   const sameTime = track.keys.findIndex((item) => item.tMs === clampStudioTime(key?.tMs, board.durationMs));
   const index = sameId >= 0 ? sameId : sameTime;
-  if (index >= 0) track.keys[index] = { ...track.keys[index], ...key, ...(id ? { id } : {}) };
-  else track.keys.push(key);
-  return normalizeStoryboard(board);
+  const keys: ActorKeyInput[] = index >= 0
+    ? track.keys.map((item, itemIndex) => itemIndex === index
+      ? { ...item, ...key, ...(id ? { id } : {}) }
+      : item)
+    : [...track.keys, key];
+  const actorTracks: ActorTrackInput[] = board.actorTracks.map((item) => (
+    item.actor === actor ? { actor, keys } : item
+  ));
+  return normalizeStoryboard({ ...board, actorTracks });
 }
 
-export function clearActorTrack(storyboard, actorRef) {
+export function clearActorTrack(storyboard: StoryboardInput, actorRef: unknown): Storyboard {
   const board = normalizeStoryboard(storyboard);
   const actor = String(actorRef ?? '').trim();
   board.actorTracks = board.actorTracks.filter((track) => track.actor !== actor);
   return normalizeStoryboard(board);
 }
 
-function segmentIndex(records, timeMs) {
+function segmentIndex<T extends { tMs: number }>(records: readonly T[], timeMs: number): number {
   if (records.length < 2 || timeMs <= records[0].tMs) return 0;
   const last = records.length - 1;
   if (timeMs >= records[last].tMs) return last;
@@ -180,16 +287,16 @@ function segmentIndex(records, timeMs) {
   return lo;
 }
 
-const lerp = (a, b, t) => a + (b - a) * t;
-const smoothstep = (t) => t * t * (3 - 2 * t);
-const wrapDeg = (value) => {
+const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
+const smoothstep = (t: number): number => t * t * (3 - 2 * t);
+const wrapDeg = (value: number): number => {
   let result = value % 360;
   if (result > 180) result -= 360;
   if (result < -180) result += 360;
   return result;
 };
-const lerpAngleDeg = (a, b, t) => a + wrapDeg(b - a) * t;
-const catmull = (p0, p1, p2, p3, t) => {
+const lerpAngleDeg = (a: number, b: number, t: number): number => a + wrapDeg(b - a) * t;
+const catmull = (p0: number, p1: number, p2: number, p3: number, t: number): number => {
   const t2 = t * t;
   const t3 = t2 * t;
   return 0.5 * (
@@ -199,7 +306,7 @@ const catmull = (p0, p1, p2, p3, t) => {
   );
 };
 
-function writeShot(out, shot) {
+function writeShot(out: CameraRailSample, shot: CameraShot): true {
   out.x = shot.pos[0]; out.y = shot.pos[1]; out.z = shot.pos[2];
   out.lookX = shot.lookAt[0]; out.lookY = shot.lookAt[1]; out.lookZ = shot.lookAt[2];
   out.fov = shot.fov; out.rollDeg = shot.rollDeg;
@@ -212,7 +319,11 @@ function writeShot(out, shot) {
  * Catmull-Rom spatial rail; linear/cut arrivals remain available for precise
  * blocking. Returns false when no shots exist.
  */
-export function sampleCameraRail(shots, timeMs, out) {
+export function sampleCameraRail(
+  shots: readonly CameraShot[],
+  timeMs: number,
+  out: CameraRailSample,
+): boolean {
   if (!Array.isArray(shots) || !shots.length || !out) return false;
   const index = segmentIndex(shots, timeMs);
   if (index >= shots.length - 1 || timeMs <= shots[0].tMs) return writeShot(out, shots[index]);
@@ -242,7 +353,7 @@ export function sampleCameraRail(shots, timeMs, out) {
   return true;
 }
 
-function writeActor(out, key) {
+function writeActor(out: ActorTrackSample, key: ActorKey): true {
   out.x = key.pos[0]; out.z = key.pos[1];
   out.facingDeg = key.facingDeg;
   out.turretDeg = key.turretDeg;
@@ -252,7 +363,11 @@ function writeActor(out, key) {
 }
 
 /** Sample one tank motion track into a caller-owned object. */
-export function sampleActorTrack(keys, timeMs, out) {
+export function sampleActorTrack(
+  keys: readonly ActorKey[],
+  timeMs: number,
+  out: ActorTrackSample,
+): boolean {
   if (!Array.isArray(keys) || !keys.length || !out) return false;
   const index = segmentIndex(keys, timeMs);
   if (index >= keys.length - 1 || timeMs <= keys[0].tMs) return writeActor(out, keys[index]);

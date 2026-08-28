@@ -52,7 +52,7 @@ import {
   clearActorTrack as clearStoryboardActorTrack,
   sampleCameraRail,
   sampleActorTrack,
-} from './studioTimeline.js';
+} from './studioTimeline.ts';
 import { createFrameBudgetYielder } from '../engine/frameScheduler.ts';
 
 const DEG = Math.PI / 180;
