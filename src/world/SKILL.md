@@ -31,6 +31,8 @@ conductor instance slots, and caller-buffer catenary sampling.
 bounded root decals without bringing Three.js into either policy.
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
+`propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,
+segment, and compound-obstacle placement during world construction.
 `structureConnectivity.ts` rejects unsupported authored parts before batching;
 `structureInstanceAppearance.ts` supplies stable intact/wreck instance tint
 without creating per-building materials.

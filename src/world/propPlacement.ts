@@ -4,16 +4,84 @@
 
 const TAU = Math.PI * 2;
 
+interface HeightField {
+  getHeightAt(x: number, z: number): number;
+}
+
+export interface GroundSupport {
+  y: number;
+  min: number;
+  max: number;
+  spread: number;
+}
+
+export interface UtilityPoleStationOptions {
+  spacing?: number;
+  radius?: number;
+  sink?: number;
+  maxPairRelief?: number;
+  maxLocalRelief?: number;
+  allowPair?: boolean;
+}
+
+export interface UtilityPolePlacement {
+  x: number;
+  y: number;
+  z: number;
+  support: GroundSupport;
+}
+
+export interface UtilityPoleStation {
+  yaw: number;
+  paired: boolean;
+  pairRelief: number;
+  primary: UtilityPolePlacement;
+  partner: UtilityPolePlacement | null;
+}
+
+export interface GroundedSegmentEndpoint {
+  x: number;
+  z: number;
+  support: GroundSupport;
+}
+
+export interface GroundedObbSample {
+  ix: number;
+  iz: number;
+  lx: number;
+  lz: number;
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface HedgehogBeamSpec {
+  x: number;
+  z: number;
+  yaw: number;
+  tilt: number;
+  halfWidth: number;
+  halfLength: number;
+  minY: number;
+  maxY: number;
+}
+
 export const UTILITY_POLE_PAIR_SPACING = 6.5;
 export const UTILITY_POLE_PAIR_MAX_RELIEF = 0.4;
 export const UTILITY_POLE_LOCAL_MAX_RELIEF = 0.18;
 
-function heightAt(heightField, x, z) {
+function heightAt(heightField: HeightField, x: number, z: number): number {
   return heightField.getHeightAt(x, z);
 }
 
 /** Lowest terrain support under a circular footprint, including its center. */
-export function sampleDiscGround(heightField, x, z, radius, sink = 0) {
+export function sampleDiscGround(
+  heightField: HeightField,
+  x: number,
+  z: number,
+  radius: number,
+  sink = 0,
+): GroundSupport {
   let min = heightAt(heightField, x, z);
   let max = min;
   const r = Math.max(0, radius);
@@ -27,7 +95,15 @@ export function sampleDiscGround(heightField, x, z, radius, sink = 0) {
 }
 
 /** Lowest terrain support under a rotated box footprint, corners and edges. */
-export function sampleObbGround(heightField, x, z, halfWidth, halfLength, yaw = 0, sink = 0) {
+export function sampleObbGround(
+  heightField: HeightField,
+  x: number,
+  z: number,
+  halfWidth: number,
+  halfLength: number,
+  yaw = 0,
+  sink = 0,
+): GroundSupport {
   const hw = Math.max(0, halfWidth);
   const hl = Math.max(0, halfLength);
   const s = Math.sin(yaw);
@@ -54,7 +130,14 @@ export function sampleObbGround(heightField, x, z, halfWidth, halfLength, yaw = 
  * not merely the two post centers, so a ridge between them also rejects the
  * second post.
  */
-export function planUtilityPoleStation(heightField, x, z, tangentX, tangentZ, opts = {}) {
+export function planUtilityPoleStation(
+  heightField: HeightField,
+  x: number,
+  z: number,
+  tangentX: number,
+  tangentZ: number,
+  opts: UtilityPoleStationOptions = {},
+): UtilityPoleStation {
   const length = Math.hypot(tangentX, tangentZ) || 1;
   const tx = tangentX / length;
   const tz = tangentZ / length;
@@ -96,22 +179,30 @@ export function planUtilityPoleStation(heightField, x, z, tangentX, tangentZ, op
 }
 
 /** Terrain-aligned pose for a rigid cylindrical decoration such as a log. */
-export function planGroundedSegment(heightField, x, z, directionX, directionZ, length,
-  radius = 0, sink = 0) {
+export function planGroundedSegment(
+  heightField: HeightField,
+  x: number,
+  z: number,
+  directionX: number,
+  directionZ: number,
+  length: number,
+  radius = 0,
+  sink = 0,
+) {
   const horizontalLength = Math.hypot(directionX, directionZ) || 1;
   const dx = directionX / horizontalLength;
   const dz = directionZ / horizontalLength;
   const half = Math.max(0, length) * 0.5;
-  const start = {
+  const start: GroundedSegmentEndpoint = {
     x: x - dx * half,
     z: z - dz * half,
+    support: sampleDiscGround(heightField, x - dx * half, z - dz * half, radius, 0),
   };
-  const end = {
+  const end: GroundedSegmentEndpoint = {
     x: x + dx * half,
     z: z + dz * half,
+    support: sampleDiscGround(heightField, x + dx * half, z + dz * half, radius, 0),
   };
-  start.support = sampleDiscGround(heightField, start.x, start.z, radius, 0);
-  end.support = sampleDiscGround(heightField, end.x, end.z, radius, 0);
   const rise = end.support.min - start.support.min;
   const axisLength = Math.hypot(length, rise) || 1;
   return {
@@ -134,13 +225,20 @@ export function planGroundedSegment(heightField, x, z, directionX, directionZ, l
  * floating corners; `maxEmbed` lets callers reject terrain too irregular for
  * a rigid object instead of burying it to hide the mismatch.
  */
-export function planGroundedObbPose(heightField, x, z, halfWidth, halfLength, yaw = 0,
-  sink = 0) {
+export function planGroundedObbPose(
+  heightField: HeightField,
+  x: number,
+  z: number,
+  halfWidth: number,
+  halfLength: number,
+  yaw = 0,
+  sink = 0,
+) {
   const hw = Math.max(0.001, halfWidth);
   const hl = Math.max(0.001, halfLength);
   const c = Math.cos(yaw);
   const s = Math.sin(yaw);
-  const samples = [];
+  const samples: GroundedObbSample[] = [];
   let min = Infinity;
   let max = -Infinity;
   for (let ix = -1; ix <= 1; ix++) {
@@ -155,10 +253,9 @@ export function planGroundedObbPose(heightField, x, z, halfWidth, halfLength, ya
       if (y > max) max = y;
     }
   }
-  const at = (ix, iz) => samples[(ix + 1) * 3 + (iz + 1)].y;
-  const centerY = at(0, 0);
-  const slopeX = (at(1, 0) - at(-1, 0)) / (2 * hw);
-  const slopeZ = (at(0, 1) - at(0, -1)) / (2 * hl);
+  const centerY = samples[4].y;
+  const slopeX = (samples[7].y - samples[1].y) / (2 * hw);
+  const slopeZ = (samples[5].y - samples[3].y) / (2 * hl);
   let lowerBy = 0;
   for (const sample of samples) {
     const planeY = centerY + slopeX * sample.lx + slopeZ * sample.lz;
@@ -200,7 +297,14 @@ export function planGroundedObbPose(heightField, x, z, halfWidth, halfLength, ya
  * anti-tank hedgehog. Each pitched beam gets its own narrow OBB and vertical
  * range instead of one oversized cylinder around all of the empty space.
  */
-export function hedgehogBeamSpecs(x, baseY, z, yaw, scale, yawOffsets = [0, 0, 0]) {
+export function hedgehogBeamSpecs(
+  x: number,
+  baseY: number,
+  z: number,
+  yaw: number,
+  scale: number,
+  yawOffsets: readonly number[] = [0, 0, 0],
+): HedgehogBeamSpec[] {
   const halfWidth = 0.08 * scale;
   const halfLength = 1.05 * scale;
   const halfThickness = 0.08 * scale;

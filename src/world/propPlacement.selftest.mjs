@@ -10,7 +10,7 @@ import {
   planUtilityPoleStation,
   sampleDiscGround,
   sampleObbGround,
-} from './propPlacement.js';
+} from './propPlacement.ts';
 
 const heightField = {
   getHeightAt(x, z) { return x * 0.21 - z * 0.13 + 2; },

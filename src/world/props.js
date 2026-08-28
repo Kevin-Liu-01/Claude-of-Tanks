@@ -32,7 +32,7 @@ import {
 import {
   hedgehogBeamSpecs, planGroundedObbPose, planGroundedSegment, planUtilityPoleStation,
   sampleDiscGround, sampleObbGround,
-} from './propPlacement.js';
+} from './propPlacement.ts';
 import {
   box, gablePrism, jitterUV, makeTelephonePoleDistanceGeometry, scaleUV, slabBox,
 } from './propGeometry.ts';

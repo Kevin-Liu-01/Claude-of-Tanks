@@ -8,7 +8,7 @@ import {
   sampleHorizonSilhouette,
   sampleTreelineCrownProfile,
 } from './maps/horizon.js';
-import { UTILITY_POLE_PAIR_MAX_RELIEF, planUtilityPoleStation } from './propPlacement.js';
+import { UTILITY_POLE_PAIR_MAX_RELIEF, planUtilityPoleStation } from './propPlacement.ts';
 import './treeGrounding.selftest.mjs';
 
 const EXPANSION = [

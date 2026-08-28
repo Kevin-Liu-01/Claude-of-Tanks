@@ -20,7 +20,7 @@
 
 import * as THREE from 'three';
 import { box, jitterUV, scaleUV } from '../propGeometry.ts';
-import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.js';
+import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.ts';
 
 const _groundUp = new THREE.Vector3(0, 1, 0);
 const _groundRight = new THREE.Vector3(1, 0, 0);
