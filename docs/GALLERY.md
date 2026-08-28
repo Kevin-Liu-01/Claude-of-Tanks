@@ -44,7 +44,7 @@ the canonical `src/vehicles/` sources.
 ```mermaid
 flowchart LR
     Registry[src/vehicles/specs.js] --> Catalog[src/gallery/catalog.js]
-    Labels[tankLabels.js and tier.js] --> Catalog
+    Labels[tankLabels.ts and tier.ts] --> Catalog
     Registry --> Factory[src/vehicles/tankFactory.js]
     Factory --> Viewer[Three.js inspection viewer]
     Registry --> Overlays[src/gallery/overlays.js]

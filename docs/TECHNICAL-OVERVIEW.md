@@ -273,7 +273,7 @@ A playable vehicle has four coordinated representations.
 - procedural appearance metadata.
 
 The display label is not derived ad hoc from the ID. UI and generated assets
-consume `src/vehicles/tankLabels.js`.
+consume `src/vehicles/tankLabels.ts`.
 
 ### 6.2 Authority state
 

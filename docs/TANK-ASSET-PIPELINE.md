@@ -91,6 +91,6 @@ every registered tank, or `--ids=id_a,id_b` while iterating on specific models.
 - `src/ui/flagCodes.ts` is the nation-to-official-flag-code table.
 - `src/vehicles/specs.js` and registration modules own armor, penetration,
   module, crew, and dimension data.
-- `src/vehicles/tankAssets.js` owns the required output contract.
+- `src/vehicles/tankAssets.ts` owns the required output contract.
 - `tools/icons-page.html` renders; `tools/genIcons.mjs` writes; the checker
   verifies. Generated files never become independent gameplay truth.

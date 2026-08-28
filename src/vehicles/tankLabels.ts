@@ -5,7 +5,25 @@
 // consume this one label record instead of inventing their own punctuation or
 // abbreviations.
 
-const LABEL_OVERRIDES = Object.freeze({
+export interface TankLabelSpec {
+  id?: unknown;
+  name?: unknown;
+}
+
+export interface TankLabelRecord {
+  readonly id: string;
+  readonly displayName: string;
+  readonly shortName: string;
+  readonly searchAliases: readonly string[];
+}
+
+interface TankLabelOverride {
+  displayName: string;
+  shortName?: string;
+  searchAliases?: readonly string[];
+}
+
+const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.freeze({
   m551_sheridan: {
     displayName: 'M551 Sheridan', shortName: 'M551',
     searchAliases: ['Sheridan', 'M551 Shillelagh', 'US airborne light tank'],
@@ -163,20 +181,20 @@ const LABEL_OVERRIDES = Object.freeze({
   ua_m1a1: { displayName: 'M1A1 Abrams UA', shortName: 'M1A1 UA' },
 });
 
-function cleanDisplayName(value) {
+function cleanDisplayName(value: unknown): string {
   return String(value || '')
     .replace(/\bMk\.(?=\s*\d)/g, 'Mk')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-function humanizeId(id) {
+function humanizeId(id: unknown): string {
   return String(id || '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function uniqueStrings(values) {
-  const out = [];
-  const seen = new Set();
+function uniqueStrings(values: readonly unknown[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
   for (const value of values) {
     const text = String(value || '').trim();
     const key = text.toLocaleLowerCase('en-US');
@@ -187,10 +205,10 @@ function uniqueStrings(values) {
   return out;
 }
 
-export function tankLabelRecord(spec) {
-  const id = String(spec && spec.id || '');
+export function tankLabelRecord(spec: TankLabelSpec | null | undefined): TankLabelRecord {
+  const id = String(spec?.id || '');
   const override = LABEL_OVERRIDES[id] || {};
-  const originalName = cleanDisplayName(spec && spec.name || humanizeId(id));
+  const originalName = cleanDisplayName(spec?.name || humanizeId(id));
   const displayName = cleanDisplayName(override.displayName || originalName);
   const shortName = cleanDisplayName(override.shortName || displayName);
   const searchAliases = uniqueStrings([
@@ -209,6 +227,6 @@ export function tankLabelRecord(spec) {
   });
 }
 
-export function tankDisplayName(spec) {
+export function tankDisplayName(spec: TankLabelSpec | null | undefined): string {
   return tankLabelRecord(spec).displayName;
 }

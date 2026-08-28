@@ -4,8 +4,86 @@
 
 import { flagIconCode } from '../ui/flagCodes.ts';
 import { tankTier, tierNumeral } from './tier.ts';
-import { tankLabelRecord } from './tankLabels.js';
+import { tankLabelRecord } from './tankLabels.ts';
 import { vehicleMarkingRecord } from './vehicleMarkings.js';
+
+type NumericPoint = Array<number | null>;
+
+interface AssetShellSpec {
+  name?: unknown;
+  type?: unknown;
+  pen100Mm?: unknown;
+  pen1000Mm?: unknown;
+  pen2000Mm?: unknown;
+}
+
+interface AssetPlateSpec {
+  name?: unknown;
+  physicalMm?: unknown;
+  keMm?: unknown;
+  ceMm?: unknown;
+  kind?: unknown;
+  verts?: readonly unknown[];
+}
+
+interface AssetVolumePart {
+  min?: unknown;
+  max?: unknown;
+}
+
+interface AssetVolumeSpec {
+  module?: unknown;
+  crew?: unknown;
+  min?: unknown;
+  max?: unknown;
+  parts?: readonly AssetVolumePart[];
+  turretLocal?: unknown;
+}
+
+export interface TankAssetSpec {
+  id: string;
+  name?: unknown;
+  nation: string;
+  era?: unknown;
+  dims?: {
+    hullLengthM?: unknown;
+    overallLengthM?: unknown;
+    widthM?: unknown;
+    heightM?: unknown;
+  };
+  gun?: {
+    caliberMm?: unknown;
+    muzzles?: readonly unknown[];
+    shells?: readonly AssetShellSpec[];
+  };
+  armor?: {
+    turretPivot?: unknown;
+    hullPlates?: readonly AssetPlateSpec[];
+    turretPlates?: readonly AssetPlateSpec[];
+    modules?: readonly AssetVolumeSpec[];
+    crew?: readonly AssetVolumeSpec[];
+  };
+}
+
+interface GeometryAttributeLike {
+  array: ArrayBufferView;
+}
+
+interface GeometryObjectLike {
+  isMesh?: boolean;
+  isInstancedMesh?: boolean;
+  geometry?: {
+    getAttribute?: (name: string) => GeometryAttributeLike | undefined;
+  };
+  matrixWorld: { elements: ArrayLike<number> };
+  instanceMatrix?: { array: ArrayLike<number> };
+  count?: number;
+}
+
+export interface GeometryRootLike {
+  updateMatrixWorld(force: boolean): void;
+  traverse(visitor: (object: GeometryObjectLike) => void): void;
+}
 
 // v4 retires the public vehicle-class field and expands era metadata to the
 // canonical five-era taxonomy. Image formats and dimensions are unchanged.
@@ -23,33 +101,37 @@ export const TANK_ASSET_VIEWS = Object.freeze({
   markings: Object.freeze({ suffix: 'markings', ext: 'png', width: 256, height: 128, role: 'national insignia and tactical designation' }),
 });
 
-export function tankAssetFile(id, view) {
+export type TankAssetView = keyof typeof TANK_ASSET_VIEWS;
+
+export function tankAssetFile(id: string, view: TankAssetView): string {
   const def = TANK_ASSET_VIEWS[view];
   if (!def) throw new Error(`Unknown tank asset view: ${view}`);
   return `${id}_${def.suffix}.${def.ext}`;
 }
 
-export function requiredTankAssetFiles(id) {
-  return Object.fromEntries(Object.keys(TANK_ASSET_VIEWS).map((view) => [view, tankAssetFile(id, view)]));
+export function requiredTankAssetFiles(id: string): Record<TankAssetView, string> {
+  return Object.fromEntries(
+    (Object.keys(TANK_ASSET_VIEWS) as TankAssetView[]).map((view) => [view, tankAssetFile(id, view)]),
+  ) as Record<TankAssetView, string>;
 }
 
 /** Number of independently visible muzzle bore/rim pairs required by a
  * vehicle's declared gun plant. Most tanks have one; twin autocannon profiles
  * publish one local muzzle axis per barrel. */
-export function expectedMuzzleBoreCount(spec) {
+export function expectedMuzzleBoreCount(spec: TankAssetSpec): number {
   const muzzles = spec?.gun?.muzzles;
   return Array.isArray(muzzles) && muzzles.length ? muzzles.length : 1;
 }
 
-function rounded(value, digits = 4) {
+function rounded(value: number, digits = 4): number | null {
   return Number.isFinite(value) ? Number(value.toFixed(digits)) : null;
 }
 
-function point3(value) {
+function point3(value: unknown): NumericPoint | null {
   return Array.isArray(value) ? value.slice(0, 3).map((v) => rounded(Number(v))) : null;
 }
 
-function plateMetadata(plate, turretLocal, index) {
+function plateMetadata(plate: AssetPlateSpec, turretLocal: boolean, index: number) {
   return {
     hitboxId: `${turretLocal ? 'T' : 'H'}${String(index + 1).padStart(2, '0')}`,
     name: String(plate.name || 'plate'),
@@ -62,7 +144,12 @@ function plateMetadata(plate, turretLocal, index) {
   };
 }
 
-function boxMetadata(box, key, index, prefix) {
+function boxMetadata(
+  box: AssetVolumeSpec,
+  key: 'module' | 'crew',
+  index: number,
+  prefix: 'M' | 'C',
+) {
   return {
     volumeId: `${prefix}${String(index + 1).padStart(2, '0')}`,
     name: String(box[key] || key),
@@ -77,7 +164,7 @@ function boxMetadata(box, key, index, prefix) {
 
 /** Stable gameplay/diagram metadata. A changed armor box, plate or tier makes
  * the generated manifest stale even when the visible mesh did not change. */
-export function tankAssetMetadata(spec) {
+export function tankAssetMetadata(spec: TankAssetSpec) {
   const armor = spec.armor || {};
   const label = tankLabelRecord(spec);
   return {
@@ -119,37 +206,37 @@ export function tankAssetMetadata(spec) {
   };
 }
 
-function fnvByte(hash, byte) {
+function fnvByte(hash: number, byte: number): number {
   hash ^= byte;
   return Math.imul(hash, 0x01000193) >>> 0;
 }
 
-function fnvBytes(hash, bytes) {
+function fnvBytes(hash: number, bytes: Uint8Array): number {
   for (let i = 0; i < bytes.length; i++) hash = fnvByte(hash, bytes[i]);
   return hash >>> 0;
 }
 
-function textFingerprint(text) {
+function textFingerprint(text: unknown): string {
   return fnvBytes(0x811c9dc5, new TextEncoder().encode(String(text))).toString(16).padStart(8, '0');
 }
 
-export function metadataFingerprint(metadata) {
+export function metadataFingerprint(metadata: unknown): string {
   return textFingerprint(JSON.stringify(metadata));
 }
 
 /** Geometry fingerprint used by both generator and release gate. Mesh order is
  * normalized so harmless scene traversal order changes do not stale assets. */
-export function geometryFingerprint(root) {
+export function geometryFingerprint(root: GeometryRootLike): string {
   root.updateMatrixWorld(true);
-  const digests = [];
+  const digests: number[] = [];
   const instance = new Float32Array(16);
   root.traverse((object) => {
-    if (!(object.isMesh || object.isInstancedMesh) || !object.geometry) return;
+    if (!(object.isMesh || object.isInstancedMesh) || !object.geometry || !object.geometry.getAttribute) return;
     const position = object.geometry.getAttribute && object.geometry.getAttribute('position');
     if (!position || !position.array) return;
     let hash = fnvBytes(0x811c9dc5, new Uint8Array(position.array.buffer, position.array.byteOffset, position.array.byteLength));
     hash = fnvBytes(hash, new Uint8Array(new Float32Array(object.matrixWorld.elements).buffer));
-    if (object.isInstancedMesh && object.instanceMatrix && object.instanceMatrix.array) {
+    if (object.isInstancedMesh && object.instanceMatrix && object.count != null) {
       const values = object.instanceMatrix.array;
       for (let i = 0; i < object.count; i++) {
         for (let j = 0; j < 16; j++) instance[j] = values[i * 16 + j];

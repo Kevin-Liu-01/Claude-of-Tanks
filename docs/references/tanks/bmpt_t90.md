@@ -92,7 +92,7 @@
 | src/vehicles/afvFamily.js | AFV_FAMILY_IDS + spec (variant of t90a) |
 | src/vehicles/profiles/afvFamily.js | `addTerminatorT90Station` + `buildBMPTT90` + registry row + T90_PROFILES import |
 | src/vehicles/tier.ts | `bmpt_t90: 10` |
-| src/vehicles/tankLabels.js | displayName/shortName/aliases |
+| src/vehicles/tankLabels.ts | displayName/shortName/aliases |
 | src/vehicles/vehicleMarkings.js | `anchor('hull','left',0.44,0.60,0.22,1)` — the skirt-ERA panel field (station walls sit behind the Ataka columns) |
 | src/vehicles/combatAnatomyCalibrations.js | bmpt_t90 row spliced (+56 append; see cross-lane note) |
 | public/icons/ | 9 asset views + manifest rows (genIcons --ids=bmpt_t90) |

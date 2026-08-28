@@ -10,7 +10,7 @@ import puppeteer from 'puppeteer';
 import '../src/vehicles/tankFactory.js';
 import {
   TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, expectedMuzzleBoreCount,
-} from '../src/vehicles/tankAssets.js';
+} from '../src/vehicles/tankAssets.ts';
 import { DEVELOPMENT_TANK_IDS, getSpec } from '../src/vehicles/specs.js';
 
 const args = process.argv.slice(2);

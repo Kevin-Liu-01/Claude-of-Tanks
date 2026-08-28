@@ -1,4 +1,4 @@
-import { tankDisplayName, tankLabelRecord } from '../vehicles/tankLabels.js';
+import { tankDisplayName, tankLabelRecord } from '../vehicles/tankLabels.ts';
 import { tankTier, tierNumeral } from '../vehicles/tier.ts';
 import { vehicleEraLabel } from '../vehicles/taxonomy.ts';
 

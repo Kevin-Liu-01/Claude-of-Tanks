@@ -8,7 +8,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import '../src/vehicles/tankFactory.js';
 import { getSpec } from '../src/vehicles/specs.js';
-import { expectedMuzzleBoreCount } from '../src/vehicles/tankAssets.js';
+import { expectedMuzzleBoreCount } from '../src/vehicles/tankAssets.ts';
 
 const idsArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const outArg = process.argv.find((arg) => arg.startsWith('--out='));

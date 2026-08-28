@@ -3,7 +3,7 @@
 // Sources: docs/research/tank-roster.md (+ locked overrides in docs/ARCHITECTURE.md §3.3.1).
 // Units per ARCHITECTURE §1.2 — suffixed fields keep human units; consumers convert.
 
-import { tankLabelRecord } from './tankLabels.js';
+import { tankLabelRecord } from './tankLabels.ts';
 import { vehicleMarkingRecord } from './vehicleMarkings.js';
 import {
   DEV_FLEET_ACTIVE,

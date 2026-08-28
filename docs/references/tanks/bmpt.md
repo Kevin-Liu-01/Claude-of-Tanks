@@ -136,7 +136,7 @@ REMOVAL CHECKLIST (§5.287 wiring law in reverse — every registration):
 - src/vehicles/tier.ts: `bmpt: 9` removed (tier.selftest green without
   the id — registered-but-tierless and tiered-but-unregistered both
   covered; 114 tanks).
-- src/vehicles/tankLabels.js: label block removed.
+- src/vehicles/tankLabels.ts: label block removed.
 - src/vehicles/vehicleMarkings.js: anchor row removed, comment updated.
 - tools/procedural-fidelity.html + tools/visual-evaluator-page.html +
   tools/tmp-tank-critic.html: REG rows removed.

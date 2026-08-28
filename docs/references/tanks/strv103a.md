@@ -128,7 +128,7 @@ published 2.14 p95-sovereign — resident-class cap).
   (profiledProcedurals.js spreads SWEDEN_PROFILES — no edit needed there)
 - `src/vehicles/tier.ts` — strv103a: 8 (one below the B per the
   earlier-mark convention: centurion3/5, ariete/c1, t80/t80b)
-- `src/vehicles/tankLabels.js` — "Strv 103A" + aliases
+- `src/vehicles/tankLabels.ts` — "Strv 103A" + aliases
 - `src/vehicles/vehicleMarkings.js` — hull/left anchor (B is hull/right)
 - `src/vehicles/fleetOrder.js` — sweden family order strv81 → strv103a →
   strv103 → strv122
