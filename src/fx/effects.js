@@ -20,8 +20,8 @@ import { isEraActivation } from '../game/eraActivation.ts';
 // world-dressing r1: destructible small-prop seam — fx registers the
 // kind-flavored break bursts and forwards shell flight/impact data so light
 // props (fences, carts, barrels, bales...) break under fire without the sim
-// layer knowing about them (see src/world/destructibles.js).
-import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../world/destructibles.js';
+// layer knowing about them (see src/world/destructibles.ts).
+import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../world/destructibles.ts';
 
 // ---------------------------------------------------------------------------
 // Tracer presets (shells-ballistics §10 — colors/widths verbatim)
@@ -3852,7 +3852,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * carts, crates and stalls; sprung staves for barrels; a slow straw puff
      * for hay; terracotta shards for pottery; a spark clang for metal. Rides
      * the same debris/dust particle language as propCrush/module hits.
-     * Called through the src/world/destructibles.js seam (props.js caps the
+     * Called through the src/world/destructibles.ts seam (props.js caps the
      * rate — max ~6 flavored bursts per frame).
      * @param {string} kind destructible kind ('barrel', 'fenceplank', ...)
      * @param {THREE.Vector3} pos break point (world)

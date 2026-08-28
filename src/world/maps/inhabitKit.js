@@ -5,7 +5,7 @@
 // an INTACT geometry and a flattened BROKEN debris variant, both centered on
 // XZ with base at y=0, so props.js can run them as per-type InstancedMesh
 // pools with per-instance swap-out on destruction (see props.js destructible
-// layer + src/world/destructibles.js seam).
+// layer + src/world/destructibles.ts seam).
 //
 // Material contract (props.js): mat 'wood'/'straw' types carry UVs and ride
 // the map-toned textured materials; mat 'baked' types carry vertex colors and

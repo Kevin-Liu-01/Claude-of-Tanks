@@ -19,7 +19,7 @@ import {
   DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS,
 } from './maps/structureKit.js';
 import { addCatalogExterior, addConnectedExterior } from './maps/exteriorDetailKit.js';
-import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.js';
+import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.js';
 import { createUtilityNetwork } from './utilityNetwork.js';
 import {
@@ -1214,14 +1214,14 @@ ${snowCap ? `
   //  2. hull-radius contact via the main.js crushables loop ('loop' class —
   //     sapling-grade clutter with NO obstacle at all);
   //  3. shells — src/fx/effects.js forwards per-frame flight segments and
-  //     world-impact points through src/world/destructibles.js; light props
+  //     world-impact points through src/world/destructibles.ts; light props
   //     are shoot-through (no colliders — a hay bale never eats a shell) and
   //     break cosmetically, HE clears a radius.
   // Break classes: 'break' zero-scales the intact instance and activates a
   // pre-built flattened debris instance in the type's broken pool (no
   // per-frame cost once settled, no respawn); 'topple' runs the pole-style
   // eased hinge fall and persists tipped. Kind-flavored particle bursts ride
-  // the destructibles.js seam into fx.propBreak (splinters/staves/hay puff).
+  // the destructibles.ts seam into fx.propBreak (splinters/staves/hay puff).
   // -------------------------------------------------------------------------
   const drng = mulberry32(seed + 9001); // own stream — never shifts placements
   const destructibles = []; // records: {kind,cls,x,y,z,yaw,sc,r,h,slot,state,ob}
@@ -4408,7 +4408,7 @@ ${snowCap ? `
     return breakRecord(propIdx, dx, dz, speed, cause);
   }
 
-  // shell paths (registered through src/world/destructibles.js; effects.js
+  // shell paths (registered through src/world/destructibles.ts; effects.js
   // forwards flight segments + world impact points)
   const _dCells = [];
   function cellsAround(x0, z0, x1, z1, pad) {

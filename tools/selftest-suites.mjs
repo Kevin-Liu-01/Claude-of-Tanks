@@ -303,6 +303,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/structureInstanceAppearance.selftest.mjs',
     'src/world/exteriorDetailKit.selftest.mjs',
     'src/world/destructibleRenderPolicy.selftest.mjs',
+    'src/world/destructibles.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',
     'src/world/wrecks.selftest.mjs',
     'src/world/topple.selftest.mjs',

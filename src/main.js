@@ -52,7 +52,7 @@ import { warmGarageGpuPipeline } from './engine/garageGpuWarmRuntime.ts';
 import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
 import { createDeploymentShadowWarmOwner } from './engine/deploymentShadowWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
-import { setDestroyedEventSink } from './world/destructibles.js';
+import { setDestroyedEventSink } from './world/destructibles.ts';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
 import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';

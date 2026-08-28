@@ -22,7 +22,9 @@ allocation-free chase-camera occlusion focus passed to an active world,
 `terrainLodPolicy.ts` owns typed allocation-free visible/prefetch scheduling,
 `liveHeightFieldProxy.ts` selects cached live versus exact authoring queries,
 `collision.js` owns broad phase/shapes, `maps/` owns layouts, and vegetation,
-props, destructibles, toppling, and wrecks own their visual/runtime layers.
+props, toppling, and wrecks own their visual/runtime layers.
+`destructibles.ts` is the typed, allocation-free active-world seam between
+shell traffic, break FX, prop destruction events, and cached map handlers.
 `structureConnectivity.ts` rejects unsupported authored parts before batching;
 `structureInstanceAppearance.ts` supplies stable intact/wreck instance tint
 without creating per-building materials.

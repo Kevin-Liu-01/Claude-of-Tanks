@@ -5,10 +5,15 @@ import { dirname, resolve } from 'node:path';
 import { parseAst } from 'rolldown/parseAst';
 
 const repoRoot = resolve(import.meta.dirname, '..');
-const tracked = execFileSync('git', ['ls-files', 'api', 'server', 'src', 'tools'], {
+const tracked = execFileSync(
+  'git',
+  ['ls-files', '--cached', '--others', '--exclude-standard', 'api', 'server', 'src', 'tools'],
+  {
   cwd: repoRoot,
   encoding: 'utf8',
-}).trim().split('\n').filter((file) => /\.(?:html|js|mjs|ts)$/.test(file));
+  },
+).trim().split('\n').filter((file) =>
+  /\.(?:html|js|mjs|ts)$/.test(file) && existsSync(resolve(repoRoot, file)));
 
 const missing = [];
 
@@ -54,4 +59,4 @@ for (const file of tracked) {
 }
 
 assert.deepEqual(missing, [], `tracked local imports must resolve:\n${missing.join('\n')}`);
-console.log(`local-import-integrity.selftest: ${tracked.length} tracked modules have resolvable imports`);
+console.log(`local-import-integrity.selftest: ${tracked.length} repository modules have resolvable imports`);
