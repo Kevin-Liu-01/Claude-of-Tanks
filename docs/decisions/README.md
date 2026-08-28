@@ -220,3 +220,4 @@ runtime documents remain authoritative for behavior.
 - [0208 — Fleet spec registration has one validated mutation boundary](0208-centralize-fleet-spec-registration.md)
 - [0209 — Ukrainian variant registration is strict TypeScript](0209-typed-ukrainian-variant-registration.md)
 - [0210 — Chinese variant registration is strict TypeScript](0210-typed-chinese-variant-registration.md)
+- [0211 — Polish variant registration is strict TypeScript](0211-typed-polish-variant-registration.md)

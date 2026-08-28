@@ -37,7 +37,7 @@ import './franceSpecs.ts';
 import './ukraine.ts';
 import './china.ts';
 import './sweden.js';
-import './poland.js';
+import './poland.ts';
 import './korea.ts';
 import './japan.js';
 import './germany.js';
