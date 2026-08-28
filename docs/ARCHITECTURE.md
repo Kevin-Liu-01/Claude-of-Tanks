@@ -16,7 +16,7 @@ Module ownership (file paths are FIXED):
 
 | Builder | Files |
 |---|---|
-| engine   | `src/engine/renderer.ts`, `src/engine/lighting.ts`, `src/engine/post.ts`, `src/engine/sky.ts`, `src/engine/cameraRig.js` |
+| engine   | `src/engine/renderer.ts`, `src/engine/lighting.ts`, `src/engine/post.ts`, `src/engine/sky.ts`, `src/engine/cameraRig.ts` |
 | world    | `src/world/terrain.ts`, `src/world/vegetation.ts`, `src/world/props.ts`, `src/world/map.ts` |
 | vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.js`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
 | movement | `src/sim/movement.ts` |
@@ -463,7 +463,7 @@ Post = {
 // → SMAAPass → OutputPass. HalfFloat target with DepthTexture.
 ```
 
-#### 3.1.5 `cameraRig.js`
+#### 3.1.5 `cameraRig.ts`
 ```js
 export function createCameraRig(camera, deps) => Rig
 // deps = { heightField, raycast /* World.raycast */, getPlayer: () => TankEntity }

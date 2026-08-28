@@ -15,7 +15,7 @@ of simulation and presentation work.
 `src/game/playerFrameInput.ts` owns one rendered frame of player control
 sampling. It receives the input layer, ammunition check, and explicit debug
 fire port, mutates the existing player input record, and publishes one stable
-camera-input record for `cameraRig.js`.
+camera-input record for `cameraRig.ts`.
 
 The owner reuses mouse, virtual-stick, cursor, and camera records. It imports no
 DOM, Three.js, simulation, or network implementation and allocates nothing in

@@ -196,3 +196,4 @@ runtime documents remain authoritative for behavior.
 - [0184 — Cascaded lighting and shadow scheduling are strict TypeScript](0184-typed-cascaded-lighting.md)
 - [0185 — Procedural atmosphere ownership is strict TypeScript](0185-typed-procedural-atmosphere.md)
 - [0186 — The post-processing pipeline is strict TypeScript](0186-typed-post-processing.md)
+- [0187 — Battle and showroom camera ownership is strict TypeScript](0187-typed-camera-and-showroom-ownership.md)

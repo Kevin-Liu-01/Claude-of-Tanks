@@ -53,7 +53,7 @@ import {
 import { createSky } from './engine/sky.ts';
 import { createLighting } from './engine/lighting.ts';
 import { createPost } from './engine/post.ts';
-import { createCameraRig } from './engine/cameraRig.js';
+import { createCameraRig, type CameraRigDeps } from './engine/cameraRig.ts';
 import {
   createFrameBudgetYielder,
   createOpaqueLoadingYielder,
@@ -282,22 +282,6 @@ interface MainDamagePanelRuntime extends DamagePanelRuntime {
   root: HTMLElement;
   setTank(spec: unknown, visual: unknown): void;
   setEquipment(equipment: unknown): void;
-}
-
-interface MainCameraRigRuntime {
-  mode: string;
-  cinematicActive: boolean;
-  spectateTargetEnt: MainEntity | null;
-  externalActive: boolean;
-  aimPoint: THREE.Vector3;
-  aimDist: number;
-  zoom: number;
-  addTrauma(amount: number): void;
-  release(): void;
-  setExternalPose(position: THREE.Vector3, target: THREE.Vector3, fov?: number): void;
-  snapArcade(distance: number, yaw: number, pitch: number): void;
-  snapSniper(...args: unknown[]): void;
-  update(dt: number, input: unknown): void;
 }
 
 interface SoloBattleRequest {
@@ -1187,21 +1171,21 @@ const {
 } = battleClientAccess;
 const preloadBattleClientRuntime = battleClientAccess.preload;
 
-const rig = legacyPort<MainCameraRigRuntime>(createCameraRig(camera, legacyPort({
+const rig = createCameraRig(camera, legacyPort<CameraRigDeps>({
   heightField: hfProxy,
   raycast: worldRaycast,
   aimRaycast: aimController.raycast,
   getPlayer: () => game.player,
-})));
+}));
 
 // GARAGE SHOWROOM CAMERA: auto-framed hero pose + damped drag orbit
-// (engine/cameraRig.js createShowroomOrbit). This adapter owns the on/off
+// (engine/cameraRig.ts createShowroomOrbit). This adapter owns the on/off
 // latch, the canvas pointer wiring, and the per-frame pump — tick() runs it
 // in the garage phase only, so shot staging ('shot') and battle keep their
 // own camera owners. startBattle()/enterGarage() call stop()/start().
 const showroom = createGarageShowroomRuntime({
   camera,
-  rig: legacyPort(rig),
+  rig,
   element: renderer.domElement,
   getSubject: () => pedestal.current?.root || null,
   getStageRect: () => (garage.getStageRect ? garage.getStageRect() : null),
@@ -1224,7 +1208,7 @@ const showroom = createGarageShowroomRuntime({
 // when the server-aim hit is CLOSE, keeps the obstacle readable exactly like
 // WoT's scope does. Range-limited (18 m, quadratic decay) so it can never
 // relight the midfield; intensity eases in below ~20 m aim distance.
-const sniperFill = createSniperFillRuntime(scene, camera, legacyPort(rig));
+const sniperFill = createSniperFillRuntime(scene, camera, rig);
 
 // --- KILL-CAM (src/game/killcam.js) -----------------------------------------
 // End-of-battle cinematic: slow-mo tracer replay of the killing shell + x-ray

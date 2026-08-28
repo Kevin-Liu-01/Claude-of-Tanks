@@ -163,6 +163,10 @@ reconstruction, GTAO, aerial perspective, bloom, grading, late transparent FX,
 and final anti-aliasing share explicit render-target, depth-texture, telemetry,
 and quality-state contracts. Lazy combat FX is narrowed once when attached, so
 the Garage render loop stays both demand-loaded and free of unchecked state.
+Battle and Garage camera ownership is strict as well. Arcade, sniper, aim-ray,
+cinematic, death, spectate, capture, recoil, collision, and showroom framing
+states share one typed owner, while the composition root consumes that owner
+directly instead of maintaining a partial duplicate interface.
 Pure keyboard, flag, glyph, minimap, drive-readout, spectator, map-preview, and
 Garage-order policy is also typed and remains directly Node-testable.
 The browser input layer now exports strict action, binding, settings, gamepad,

@@ -12,7 +12,7 @@ Deployment fingerprint: bundle `assets/index-C70t46o1.js` contains the
 battle-load screen (`cot-bl`, commit c33c60f) and the mobile battle flow's
 touch-layout gate (`innerWidth<=900`, commit 39e43c0), and none of the
 uncommitted 2026-07-31 work — i.e. a recent committed `main` state whose
-camera/aim source equals HEAD's `src/engine/cameraRig.js` / `src/game/input.ts`.
+camera/aim source equals HEAD's `src/engine/cameraRig.ts` / `src/game/input.ts`.
 
 ## Derived coupling rules (the spec)
 
@@ -71,7 +71,7 @@ summaries above are reproducible with the commands in the probe header).
    2 deg steps (to PITCH_MAX +30 deg against rising ground), and `exitSniper`
    KEEPS the scope-mutated pitch. Each close-aim scope cycle ratchets the view
    up (+8.5 deg on flat ground, sky-bound on slopes) with nothing restoring
-   it. Local fix (`cameraRig.js`): once the player has aimed (`aimTouched`),
+   it. Local fix (`cameraRig.ts`): once the player has aimed (`aimTouched`),
    scope entry preserves the reticle's world point exactly (yaw+pitch
    re-solved from the gun trunnion), and every exit re-solves the arcade PITCH
    from the current reticle point (yaw stays the classic behind-the-cannon

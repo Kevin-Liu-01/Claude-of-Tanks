@@ -17,7 +17,7 @@ Keep `src/main.js` as the composition root, but move a lifecycle when it has a
 coherent owner and a realistic public-interface test.
 
 - `garageShowroomRuntime.ts` owns the Garage-only phase latch, pointer capture,
-  drag/wheel routing, and listener disposal. `cameraRig.js` remains the only
+  drag/wheel routing, and listener disposal. `cameraRig.ts` remains the only
   camera-pose solver and receives the same framing constants.
 - `networkBattleLaunchRuntime.ts` owns private/LAN, retained-room rematch, and
   ranked launch policy. Cold-load UI, identity validation, terminal cleanup,

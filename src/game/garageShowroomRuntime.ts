@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import { createShowroomOrbit } from '../engine/cameraRig.js';
+import { createShowroomOrbit } from '../engine/cameraRig.ts';
 
 export interface GarageStageRect {
   x: number;
