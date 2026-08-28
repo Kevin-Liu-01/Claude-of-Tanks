@@ -20,7 +20,7 @@ const [
   readFile(new URL('./networkStatus.ts', import.meta.url), 'utf8'),
   readFile(new URL('./transition.ts', import.meta.url), 'utf8'),
   readFile(new URL('./perfHud.ts', import.meta.url), 'utf8'),
-  readFile(new URL('../engine/deviceDiag.js', import.meta.url), 'utf8'),
+  readFile(new URL('../engine/deviceDiag.ts', import.meta.url), 'utf8'),
   readFile(new URL('../engine/renderer.ts', import.meta.url), 'utf8'),
   readFile(new URL('../main.ts', import.meta.url), 'utf8'),
   readFile(new URL('../game/pointerLockFeedbackRuntime.ts', import.meta.url), 'utf8'),
@@ -303,7 +303,7 @@ const semanticSurfaceFiles = [
   './touchControls.js',
   './transition.ts',
   './responsiveSurfaces.css',
-  '../engine/deviceDiag.js',
+  '../engine/deviceDiag.ts',
   '../engine/renderer.ts',
   '../main.ts',
 ];

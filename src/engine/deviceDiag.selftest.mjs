@@ -8,7 +8,7 @@ globalThis.window = { __GL_DIAG: { errors: [] } };
 
 const {
   diagUiRequested, reclaimShadows, runDeviceDiag, runSceneBlackWatchdog,
-} = await import('./deviceDiag.js');
+} = await import('./deviceDiag.ts');
 const { debugModeRequested } = await import('../dev/debugIntent.ts');
 
 assert.equal(diagUiRequested('?diag'), true);

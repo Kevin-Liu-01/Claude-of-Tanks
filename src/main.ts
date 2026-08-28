@@ -43,7 +43,7 @@ import { createOffscreenSceneWarmer } from './engine/offscreenWarm.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
   mountDiagOverlay, runSceneBlackWatchdog, reclaimShadows,
-} from './engine/deviceDiag.js';
+} from './engine/deviceDiag.ts';
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
   reportSustainedOverload, setPresetName, setMobilePresetName,
@@ -2927,12 +2927,12 @@ if (STUDIO_BOOT_INTENT) {
 // MOBILE r3: black-scene watchdog — the owner's iPhone passes every synthetic
 // probe yet renders the REAL scene's lit meshes black. Sample the actual
 // garage frame shortly after ready; if the lit band reads black, shadows-off
-// rescue + recompile (deviceDiag.js). Skipped under webdriver so harness
+// rescue + recompile (deviceDiag.ts). Skipped under webdriver so harness
 // captures stay deterministic; a second check runs at battle start.
 if (!navigator.webdriver || new URLSearchParams(location.search).has('diagforce')) {
   setTimeout(() => runSceneBlackWatchdog(renderer, scene, camera), 1200);
   // MOBILE r5: if the boot probe turned shadows off (one-boot false-negatives
   // happen — the owner's phone), try them back on once the live scene proves
-  // healthy; keep only if the measured frame stays healthy (deviceDiag.js).
+  // healthy; keep only if the measured frame stays healthy (deviceDiag.ts).
   setTimeout(() => reclaimShadows(renderer, scene, camera), 3400);
 }

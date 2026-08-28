@@ -145,6 +145,10 @@ a temporary migration mechanism, not a permanent module tier.
 Boot and transition screens now depend on strict shared DOM, font, icon,
 image-preload, featured-media, map-art, and tier-metadata contracts rather than
 crossing back into unchecked presentation helpers.
+Boot-time GPU diagnostics and compatibility rescue are strict as well: tiny
+offscreen probes validate lit, shadowed, and environment-backed rendering, and
+the measured shadow/environment/fog ladder restores rejected stages without
+leaking render targets or leaving unchecked global state.
 Pure keyboard, flag, glyph, minimap, drive-readout, spectator, map-preview, and
 Garage-order policy is also typed and remains directly Node-testable.
 The browser input layer now exports strict action, binding, settings, gamepad,

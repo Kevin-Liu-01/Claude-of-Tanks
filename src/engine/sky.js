@@ -18,7 +18,7 @@ import { Sky } from 'three/examples/jsm/objects/Sky.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged);
 // read inside the bake functions (post-renderer), never at module eval.
 import { texSize } from './quality.ts';
-import { enforceEnvValidity } from './deviceDiag.js';
+import { enforceEnvValidity } from './deviceDiag.ts';
 import { bakeCirrusPixels, bakeCumulusPixels } from './skyCloudBake.ts';
 
 const SUN_ELEVATION_DEG = 32; // slightly lower sun → longer, more readable shadows
@@ -937,7 +937,7 @@ export function createSky(scene, renderer) {
       // IBL term blackens every lit material (proven on-device by the r3
       // watchdog: rescue 'environment-off'). Validate after EVERY bake — the
       // sky re-bakes per map and would reinstall the bad texture — and swap
-      // to compensated ambient when invalid (deviceDiag.js).
+      // to compensated ambient when invalid (deviceDiag.ts).
       enforceEnvValidity(renderer, scene);
     },
 

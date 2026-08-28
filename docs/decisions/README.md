@@ -192,3 +192,4 @@ runtime documents remain authoritative for behavior.
 - [0180 — Browser action input is strict TypeScript](0180-typed-browser-action-input.md)
 - [0181 — Solo battle authority is strict TypeScript](0181-typed-solo-battle-authority.md)
 - [0182 — Shared bot control is strict TypeScript](0182-typed-shared-bot-controller.md)
+- [0183 — Device diagnostics and renderer rescue are strict TypeScript](0183-typed-device-diagnostics.md)

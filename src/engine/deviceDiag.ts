@@ -1,4 +1,4 @@
-// deviceDiag.js — boot-time GPU self-test + rescue ladder + on-screen
+// deviceDiag.ts — boot-time GPU self-test + rescue ladder + on-screen
 // diagnostic overlay.
 //
 // WHY (mobile r2): the owner's iPhone renders every LIT mesh black (terrain,
@@ -26,6 +26,42 @@
 // active and observable through window.__GL_DIAG without covering the game.
 import * as THREE from 'three';
 
+interface DeviceDiagResult {
+  basic: boolean;
+  lit: boolean;
+  litShadow: boolean;
+  errors: string[];
+}
+
+interface GlDiagnosticBag {
+  errors: string[];
+  rescue?: string;
+  _refresh?: () => void;
+  _showOverlay?: () => void;
+}
+
+interface SceneBandProbe {
+  measure(scene: THREE.Scene, camera: THREE.Camera): number;
+  dispose(): void;
+}
+
+export interface SceneWatchdogResult {
+  before: number;
+  after: number | null;
+  rescued: boolean;
+  stage: string | null;
+}
+
+interface SceneWatchdogOptions {
+  onRescue?: (result: SceneWatchdogResult) => void;
+}
+
+declare global {
+  interface Window {
+    __GL_DIAG?: GlDiagnosticBag;
+  }
+}
+
 const qs = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
 const DIAG_PARAM = qs ? qs.get('diag') : null;
 const FORCE = qs ? qs.get('diagforce') : null; // 'noshadow' | 'nolit' (test rig)
@@ -51,16 +87,21 @@ const DIAG_UI = diagUiRequested();
  * the checks for a diagnosis run. onShaderError stays installed either way —
  * it only fires from the check path, so a diag run still collects.
  */
-export function relaxShaderChecks(renderer) {
+export function relaxShaderChecks(renderer: THREE.WebGLRenderer): void {
   if (DIAG_PARAM != null || FORCE != null) return; // diagnosis run: keep checks
   renderer.debug.checkShaderErrors = false;
 }
 
 /** Global shader-error collector — installed once, survives the whole run. */
-export function installShaderErrorCollector(renderer) {
+export function installShaderErrorCollector(renderer: THREE.WebGLRenderer): GlDiagnosticBag {
   const bag = (window.__GL_DIAG = window.__GL_DIAG || { errors: [] });
   renderer.debug.checkShaderErrors = true;
-  renderer.debug.onShaderError = (gl, program, vs, fs) => {
+  renderer.debug.onShaderError = (
+    gl: WebGLRenderingContext,
+    program: WebGLProgram,
+    vs: WebGLShader,
+    fs: WebGLShader,
+  ) => {
     try {
       const pl = String(gl.getProgramInfoLog(program) || '').trim();
       const fl = String(gl.getShaderInfoLog(fs) || '').trim();
@@ -74,7 +115,7 @@ export function installShaderErrorCollector(renderer) {
   return bag;
 }
 
-function probeScene(withBox) {
+function probeScene(withBox: boolean) {
   const scene = new THREE.Scene();
   const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 50);
   cam.position.set(0, 4, 6);
@@ -101,13 +142,18 @@ function probeScene(withBox) {
   return { scene, cam, sun, ground, box };
 }
 
-function readCenter(renderer, rt, buf) {
+function readCenter(
+  renderer: THREE.WebGLRenderer,
+  rt: THREE.WebGLRenderTarget,
+  buf: Uint8Array,
+): number {
   renderer.readRenderTargetPixels(rt, 8, 8, 1, 1, buf);
   return buf[0] + buf[1] + buf[2];
 }
 
-function disposeSceneResources(scene) {
+function disposeSceneResources(scene: THREE.Scene): void {
   scene.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
     object.geometry?.dispose();
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     for (const material of materials) material?.dispose();
@@ -118,7 +164,7 @@ function disposeSceneResources(scene) {
  * Render the three probes. Restores every renderer state it touches.
  * @returns {{basic:boolean, lit:boolean, litShadow:boolean, errors:string[]}}
  */
-export function runDeviceDiag(renderer) {
+export function runDeviceDiag(renderer: THREE.WebGLRenderer): DeviceDiagResult {
   const bag = window.__GL_DIAG || { errors: [] };
   const out = { basic: false, lit: false, litShadow: false, errors: bag.errors };
   const prevShadow = renderer.shadowMap.enabled;
@@ -182,8 +228,9 @@ export function runDeviceDiag(renderer) {
         p.sun.shadow.map?.dispose();
       }
     }
-  } catch (e) {
-    if (bag.errors.length < 8) bag.errors.push('diag threw: ' + String(e && e.message ? e.message : e).slice(0, 200));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (bag.errors.length < 8) bag.errors.push(`diag threw: ${message.slice(0, 200)}`);
   } finally {
     renderer.shadowMap.enabled = prevShadow;
     renderer.setRenderTarget(prevTarget);
@@ -196,7 +243,10 @@ export function runDeviceDiag(renderer) {
  * Degrade the renderer so the device renders SOMETHING correct.
  * @returns {?string} rescue applied ('shadows-off') or null
  */
-export function applyDiagRescue(renderer, diag) {
+export function applyDiagRescue(
+  renderer: THREE.WebGLRenderer,
+  diag: DeviceDiagResult,
+): 'shadows-off' | null {
   if (diag.lit && !diag.litShadow) {
     // flat-lit beats black: the shadow depth-compare path is the only stage
     // this device fails — run the session without shadow maps.
@@ -220,8 +270,8 @@ export function applyDiagRescue(renderer, diag) {
  * re-bakes per map (sun tracking), which would otherwise reinstall the
  * poisoned texture mid-session.
  */
-let _envCompLight = null;
-export function enforceEnvValidity(renderer, scene) {
+let _envCompLight: THREE.AmbientLight | null = null;
+export function enforceEnvValidity(renderer: THREE.WebGLRenderer, scene: THREE.Scene): boolean {
   if (!scene.environment) return true;
   let lum = -1;
   let probe = null;
@@ -288,12 +338,12 @@ const ENV_COMP_INTENSITY = 3.1;
  * Every measurement restores the caller's render target; dispose ends the
  * transaction and makes accidental reuse fail loudly.
  */
-function createSceneBandProbe(renderer) {
+function createSceneBandProbe(renderer: THREE.WebGLRenderer): SceneBandProbe {
   const rt = new THREE.WebGLRenderTarget(64, 36, { depthBuffer: true });
   const buf = new Uint8Array(64 * 22 * 4);
   let disposed = false;
   return {
-    measure(scene, camera) {
+    measure(scene: THREE.Scene, camera: THREE.Camera): number {
       if (disposed) throw new Error('scene-band probe already disposed');
       const prev = renderer.getRenderTarget();
       try {
@@ -316,15 +366,15 @@ function createSceneBandProbe(renderer) {
   };
 }
 
-function recompileScene(scene) {
+function recompileScene(scene: THREE.Scene): void {
   scene.traverse((o) => {
-    if (!o.material) return;
+    if (!(o instanceof THREE.Mesh)) return;
     const mm = Array.isArray(o.material) ? o.material : [o.material];
     for (const m of mm) m.needsUpdate = true;
   });
 }
 
-function appendRescue(label) {
+function appendRescue(label: string): void {
   const bag = window.__GL_DIAG;
   if (!bag) return;
   bag.rescue = bag.rescue ? `${bag.rescue} + ${label}` : label;
@@ -342,9 +392,15 @@ function appendRescue(label) {
  * ?diagforce=noshadow explicitly wants shadows held off.
  * @returns {{reclaimed:boolean, reason:string}}
  */
-export function reclaimShadows(renderer, scene, camera) {
+export function reclaimShadows(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+): { reclaimed: boolean; reason: string } {
   const bag = window.__GL_DIAG;
-  const note = (m) => { if (bag && bag.errors.length < 8) bag.errors.push(m); };
+  const note = (message: string) => {
+    if (bag && bag.errors.length < 8) bag.errors.push(message);
+  };
   if (renderer.shadowMap.enabled) return { reclaimed: false, reason: 'already-on' };
   if (FORCE === 'noshadow') return { reclaimed: false, reason: 'forced-off' };
   const probe = createSceneBandProbe(renderer);
@@ -365,8 +421,9 @@ export function reclaimShadows(renderer, scene, camera) {
     recompileScene(scene);
     note(`shadow reclaim failed (band ${after.toFixed(1)}) — staying off`);
     return { reclaimed: false, reason: 'still-black' };
-  } catch (e) {
-    note('reclaim threw: ' + String(e && e.message ? e.message : e).slice(0, 160));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    note(`reclaim threw: ${message.slice(0, 160)}`);
     renderer.shadowMap.enabled = false;
     return { reclaimed: false, reason: 'threw' };
   } finally {
@@ -374,7 +431,12 @@ export function reclaimShadows(renderer, scene, camera) {
   }
 }
 
-export function runSceneBlackWatchdog(renderer, scene, camera, { onRescue } = {}) {
+export function runSceneBlackWatchdog(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+  { onRescue }: SceneWatchdogOptions = {},
+): SceneWatchdogResult {
   // FORCE==='blackscene' test rig: simulated band readings — black baseline,
   // stage 1 (shadows) does NOT cure, stage 2 (environment) does, and the
   // confirm re-measure after reverting stage 1 stays cured. Exercises the
@@ -385,7 +447,7 @@ export function runSceneBlackWatchdog(renderer, scene, camera, { onRescue } = {}
   const measure = () => {
     if (sim) return sim[Math.min(simI++, sim.length - 1)];
     // lower 60% of the frame — terrain/vehicle band; sky stays out of it
-    return probe.measure(scene, camera);
+    return probe!.measure(scene, camera);
   };
   // Rescue ladder, cheapest-degradation first. Each stage: {apply, revert,
   // label}. The owner's device proved shadows-off alone does NOT cure the
@@ -393,29 +455,65 @@ export function runSceneBlackWatchdog(renderer, scene, camera, { onRescue } = {}
   // the scene ENVIRONMENT (PMREM bake NaN/black poisons every lit material's
   // IBL sum while env-free probe scenes pass — the current prime suspect)
   // and then fog. The first curing stage stays; non-curing stages revert.
-  const stages = [
+  let previousShadowEnabled = false;
+  let previousEnvironment: THREE.Texture | null = null;
+  let previousFog: THREE.Fog | THREE.FogExp2 | null = null;
+  const stages: Array<{
+    label: string;
+    can: () => boolean;
+    apply: () => void;
+    revert: () => void;
+  }> = [
     {
       label: 'shadows-off',
       can: () => renderer.shadowMap.enabled,
-      apply() { this._v = renderer.shadowMap.enabled; renderer.shadowMap.enabled = false; recompileScene(scene); },
-      revert() { renderer.shadowMap.enabled = this._v; recompileScene(scene); },
+      apply() {
+        previousShadowEnabled = renderer.shadowMap.enabled;
+        renderer.shadowMap.enabled = false;
+        recompileScene(scene);
+      },
+      revert() {
+        renderer.shadowMap.enabled = previousShadowEnabled;
+        recompileScene(scene);
+      },
     },
     {
       label: 'environment-off',
       can: () => !!scene.environment,
-      apply() { this._v = scene.environment; scene.environment = null; recompileScene(scene); },
-      revert() { scene.environment = this._v; recompileScene(scene); },
+      apply() {
+        previousEnvironment = scene.environment;
+        scene.environment = null;
+        recompileScene(scene);
+      },
+      revert() {
+        scene.environment = previousEnvironment;
+        recompileScene(scene);
+      },
     },
     {
       label: 'fog-off',
       can: () => !!scene.fog,
-      apply() { this._v = scene.fog; scene.fog = null; recompileScene(scene); },
-      revert() { scene.fog = this._v; recompileScene(scene); },
+      apply() {
+        previousFog = scene.fog;
+        scene.fog = null;
+        recompileScene(scene);
+      },
+      revert() {
+        scene.fog = previousFog;
+        recompileScene(scene);
+      },
     },
   ];
-  const out = { before: 0, after: null, rescued: false, stage: null };
+  const out: SceneWatchdogResult = {
+    before: 0,
+    after: null,
+    rescued: false,
+    stage: null,
+  };
   const bag = window.__GL_DIAG;
-  const note = (m) => { if (bag && bag.errors.length < 8) bag.errors.push(m); };
+  const note = (message: string) => {
+    if (bag && bag.errors.length < 8) bag.errors.push(message);
+  };
   try {
     out.before = measure();
     // darkest legitimate biome band measures far above this; a failed lit
@@ -450,8 +548,9 @@ export function runSceneBlackWatchdog(renderer, scene, camera, { onRescue } = {}
     for (const st of applied.reverse()) st.revert();
     note(`watchdog: black scene (band ${out.before.toFixed(1)}) — no ladder stage cured it`);
     if (bag && bag._showOverlay) bag._showOverlay();
-  } catch (e) {
-    note('watchdog threw: ' + String(e && e.message ? e.message : e).slice(0, 160));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    note(`watchdog threw: ${message.slice(0, 160)}`);
   } finally {
     probe?.dispose();
   }
@@ -459,9 +558,26 @@ export function runSceneBlackWatchdog(renderer, scene, camera, { onRescue } = {}
 }
 
 /** Explicit, fixed Shadow Saver panel. Rescue itself always runs silently. */
-export function mountDiagOverlay({ tier, diag, rescue, renderer }) {
+export function mountDiagOverlay({
+  tier,
+  diag,
+  rescue,
+  renderer,
+}: {
+  tier: string;
+  diag: DeviceDiagResult;
+  rescue: string | null;
+  renderer: THREE.WebGLRenderer;
+}): void {
   const gl = renderer.getContext();
-  const cap = (k) => { try { return gl.getParameter(gl[k]); } catch (_) { return '?'; } };
+  const cap = (key: keyof WebGLRenderingContext): unknown => {
+    try {
+      const constant = gl[key as keyof typeof gl];
+      return typeof constant === 'number' ? gl.getParameter(constant) : '?';
+    } catch (_) {
+      return '?';
+    }
+  };
   const el = document.createElement('aside');
   el.id = 'cot-diag';
   el.setAttribute('aria-label', 'COT Shadow Saver diagnostics');
@@ -488,13 +604,13 @@ export function mountDiagOverlay({ tier, diag, rescue, renderer }) {
       <div data-rescue style="display:none;margin-top:9px;padding:8px;border-left:2px solid #f0b95e;background:rgba(240,185,94,.08);color:#f4cf8c"></div>
       <div data-notes style="display:none;margin-top:8px;max-height:120px;overflow:auto;color:#dcae93;white-space:pre-wrap"></div>
     </div>`;
-  const summaryEl = el.querySelector('[data-summary]');
-  const probesEl = el.querySelector('[data-probes]');
-  const capsEl = el.querySelector('[data-caps]');
-  const rescueEl = el.querySelector('[data-rescue]');
-  const notesEl = el.querySelector('[data-notes]');
-  const bodyEl = el.querySelector('[data-body]');
-  const collapseEl = el.querySelector('[data-collapse]');
+  const summaryEl = el.querySelector<HTMLElement>('[data-summary]')!;
+  const probesEl = el.querySelector<HTMLElement>('[data-probes]')!;
+  const capsEl = el.querySelector<HTMLElement>('[data-caps]')!;
+  const rescueEl = el.querySelector<HTMLElement>('[data-rescue]')!;
+  const notesEl = el.querySelector<HTMLElement>('[data-notes]')!;
+  const bodyEl = el.querySelector<HTMLElement>('[data-body]')!;
+  const collapseEl = el.querySelector<HTMLButtonElement>('[data-collapse]')!;
   const bag = window.__GL_DIAG || (window.__GL_DIAG = { errors: [] });
   // seed the boot-probe rescue so later rescues APPEND instead of hiding it
   // (the owner's phone ran shadows-off + environment-fallback simultaneously
@@ -523,7 +639,7 @@ export function mountDiagOverlay({ tier, diag, rescue, renderer }) {
       : '';
     notesEl.style.display = bag.errors.length ? 'block' : 'none';
     notesEl.textContent = bag.errors.length
-      ? `NOTES (${bag.errors.length})\n${bag.errors.map((error) => `• ${String(error).slice(0, 220)}`).join('\n')}`
+      ? `NOTES (${bag.errors.length})\n${bag.errors.map((error: string) => `• ${String(error).slice(0, 220)}`).join('\n')}`
       : '';
   };
   bag._refresh = render;

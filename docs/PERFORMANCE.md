@@ -90,7 +90,7 @@ damage, and authority do not change by visual tier.
 
 ## Render health and recovery
 
-src/engine/deviceDiag.js probes scene output and optional render targets.
+src/engine/deviceDiag.ts probes scene output and optional render targets.
 Temporary target operations always restore the previous renderer target in a
 finally path before disposal. A readback or render failure may disable an
 optional feature, but it must not leave future frames bound to an off-screen
