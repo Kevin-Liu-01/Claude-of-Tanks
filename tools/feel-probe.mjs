@@ -113,7 +113,7 @@ try {
       await page.mouse.click(640, 620);
       await sleep(400);
     }
-    // The splash is the sibling agent's in-flight work (src/ui/bootScreen.js is
+    // The splash is the sibling agent's in-flight work (src/ui/bootScreen.ts is
     // not wired into main.js yet, so nothing removes the inline markup). Force
     // it out of the way HERE, in the harness only — never by editing their
     // files — so the probe's screenshots show the actual game.

@@ -22,10 +22,45 @@ export const VIEWPORT_HEIGHT_BANDS = Object.freeze({
   tall: Object.freeze({ min: 900, max: Infinity }),
 });
 
-const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+export type ViewportWidthBand = keyof typeof VIEWPORT_WIDTH_BANDS;
+export type ViewportHeightBand = keyof typeof VIEWPORT_HEIGHT_BANDS;
+export type ViewportOrientation = 'landscape' | 'portrait';
+export type ViewportInputMode = 'coarse' | 'fine';
+
+export interface ViewportMeasurements {
+  width?: number;
+  height?: number;
+  coarsePointer?: boolean;
+  hover?: boolean;
+}
+
+export interface ViewportSnapshot {
+  readonly width: number;
+  readonly height: number;
+  readonly widthBand: ViewportWidthBand;
+  readonly heightBand: ViewportHeightBand;
+  readonly widthDensity: 'narrow' | 'roomy';
+  readonly heightDensity: 'tight' | 'roomy';
+  readonly orientation: ViewportOrientation;
+  readonly input: ViewportInputMode;
+  readonly overlayPanels: boolean;
+  readonly compactHeader: boolean;
+  readonly scale: number;
+}
+
+export interface ResponsiveLayoutHandle {
+  snapshot(): ViewportSnapshot | null;
+  refresh(): void;
+  destroy(): void;
+}
+
+type ResponsiveWindow = Window & { [key: symbol]: unknown };
+
+const clamp = (value: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, value));
 const RESPONSIVE_LAYOUT_HANDLE = Symbol.for('claude-of-tanks.responsive-layout');
 
-export function viewportWidthBand(width) {
+export function viewportWidthBand(width: number): ViewportWidthBand {
   const value = Number.isFinite(width) ? Math.max(0, width) : 0;
   if (value <= VIEWPORT_WIDTH_BANDS.phone.max) return 'phone';
   if (value <= VIEWPORT_WIDTH_BANDS.compact.max) return 'compact';
@@ -34,7 +69,7 @@ export function viewportWidthBand(width) {
   return 'desktop';
 }
 
-export function viewportHeightBand(height) {
+export function viewportHeightBand(height: number): ViewportHeightBand {
   const value = Number.isFinite(height) ? Math.max(0, height) : 0;
   if (value <= VIEWPORT_HEIGHT_BANDS.short.max) return 'short';
   if (value <= VIEWPORT_HEIGHT_BANDS.compact.max) return 'compact';
@@ -42,9 +77,14 @@ export function viewportHeightBand(height) {
   return 'tall';
 }
 
-export function classifyViewport({ width, height, coarsePointer = false, hover = true } = {}) {
-  const safeWidth = Number.isFinite(width) ? Math.max(1, width) : 1;
-  const safeHeight = Number.isFinite(height) ? Math.max(1, height) : 1;
+export function classifyViewport({
+  width,
+  height,
+  coarsePointer = false,
+  hover = true,
+}: ViewportMeasurements = {}): Readonly<ViewportSnapshot> {
+  const safeWidth = typeof width === 'number' && Number.isFinite(width) ? Math.max(1, width) : 1;
+  const safeHeight = typeof height === 'number' && Number.isFinite(height) ? Math.max(1, height) : 1;
   const widthBand = viewportWidthBand(safeWidth);
   const heightBand = viewportHeightBand(safeHeight);
   const widthDensity = safeWidth <= 380 ? 'narrow' : 'roomy';
@@ -59,7 +99,7 @@ export function classifyViewport({ width, height, coarsePointer = false, hover =
   const overlayPanels = heightBand === 'short'
     || widthBand === 'phone' || widthBand === 'compact' || widthBand === 'tablet'
     || pressuredLaptop;
-  const compactHeader = overlayPanels || heightBand === 'short';
+  const compactHeader = overlayPanels;
   const scale = clamp(Math.min(safeWidth / 1440, safeHeight / 900), 0.78, 1.08);
 
   return Object.freeze({
@@ -77,7 +117,7 @@ export function classifyViewport({ width, height, coarsePointer = false, hover =
   });
 }
 
-function measureViewport(win) {
+function measureViewport(win: Window): Required<ViewportMeasurements> {
   const viewport = win.visualViewport;
   return {
     width: Math.round(viewport?.width || win.innerWidth || 1),
@@ -88,25 +128,31 @@ function measureViewport(win) {
 }
 
 /** Install the canonical responsive attributes and keep them synchronized. */
-export function installResponsiveLayout(win = globalThis.window, doc = globalThis.document) {
+export function installResponsiveLayout(
+  win: Window | undefined = globalThis.window,
+  doc: Document | undefined = globalThis.document,
+): ResponsiveLayoutHandle {
   if (!win || !doc?.documentElement || !doc?.body) {
     return { snapshot: () => classifyViewport(), refresh() {}, destroy() {} };
   }
-  if (win[RESPONSIVE_LAYOUT_HANDLE]) return win[RESPONSIVE_LAYOUT_HANDLE];
+  const responsiveWindow = win as ResponsiveWindow;
+  const existing = responsiveWindow[RESPONSIVE_LAYOUT_HANDLE];
+  if (existing) return existing as ResponsiveLayoutHandle;
 
   const root = doc.documentElement;
   const body = doc.body;
   const pointerQuery = win.matchMedia?.('(pointer: coarse)');
   const hoverQuery = win.matchMedia?.('(hover: hover)');
-  let current = null;
+  let current: ViewportSnapshot | null = null;
   let frame = 0;
+  const layoutKeys = [
+    'widthBand', 'heightBand', 'widthDensity', 'heightDensity', 'orientation', 'input', 'overlayPanels',
+  ] as const satisfies readonly (keyof ViewportSnapshot)[];
 
   const apply = () => {
     frame = 0;
     const next = classifyViewport(measureViewport(win));
-    const changed = !current || [
-      'widthBand', 'heightBand', 'widthDensity', 'heightDensity', 'orientation', 'input', 'overlayPanels',
-    ].some((key) => current[key] !== next[key]);
+    const changed = !current || layoutKeys.some((key) => current?.[key] !== next[key]);
     current = next;
 
     body.dataset.cotWidth = next.widthBand;
@@ -147,9 +193,9 @@ export function installResponsiveLayout(win = globalThis.window, doc = globalThi
       win.visualViewport?.removeEventListener('resize', refresh);
       pointerQuery?.removeEventListener?.('change', refresh);
       hoverQuery?.removeEventListener?.('change', refresh);
-      delete win[RESPONSIVE_LAYOUT_HANDLE];
+      delete responsiveWindow[RESPONSIVE_LAYOUT_HANDLE];
     },
   };
-  win[RESPONSIVE_LAYOUT_HANDLE] = handle;
+  responsiveWindow[RESPONSIVE_LAYOUT_HANDLE] = handle;
   return handle;
 }

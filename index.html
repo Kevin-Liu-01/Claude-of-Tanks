@@ -132,12 +132,12 @@
     svg { shape-rendering: geometricPrecision; text-rendering: geometricPrecision; }
 
     /* ---------------------------------------------------------------------
-       ENTRY / LOADING SCREEN (src/ui/bootScreen.js drives the live parts).
+       ENTRY / LOADING SCREEN (src/ui/bootScreen.ts drives the live parts).
        Everything needed for the FIRST PAINT is inline here: the game used to
        show a black screen for ~7.5 s while the vehicle textures and the 1 km
        world baked. Now the branded splash paints from the HTML itself, before
        a single module is fetched, and the bar below is driven by real load
-       stages (see bootScreen.js / main.js BOOT STAGES).
+       stages (see bootScreen.ts / main.js BOOT STAGES).
        --------------------------------------------------------------------- */
     /* ABC Monument Grotesk (Dinamo Typefaces — owner-provided cut, fonts r4
        owner-directed swap replacing Inter; see docs/ATTRIBUTION.md). Three
@@ -166,7 +166,7 @@
     }
     #cot-boot.cot-boot-out { opacity: 0; pointer-events: none; }
     /* MARKETING BACKDROP (in-engine action stills, lazy-loaded by
-       bootScreen.js AFTER first paint — never on the boot critical path).
+       bootScreen.ts AFTER first paint — never on the boot critical path).
        Two stacked layers crossfade for the gate-idle slideshow; the scrim
        gradient keeps the splash chrome/wordmark contrast on any frame. */
     #cot-boot-hero { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
@@ -602,7 +602,7 @@
   <div id="app"></div>
 
   <div id="cot-boot">
-    <!-- marketing backdrop (two crossfade layers; bootScreen.js lazy-loads
+    <!-- marketing backdrop (two crossfade layers; bootScreen.ts lazy-loads
          the images after first paint — see #cot-boot-hero styles above) -->
     <div id="cot-boot-hero" aria-hidden="true"><div class="hly"></div><div class="hly"></div></div>
     <div class="cot-boot-inner">

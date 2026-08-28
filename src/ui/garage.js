@@ -901,7 +901,7 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 }
 
 /* RESPONSIVE COMPOSITION r1 -------------------------------------------------
-   Width/height/input semantics come from responsiveLayout.js. These rules are
+   Width/height/input semantics come from responsiveLayout.ts. These rules are
    are the canonical garage composition. The Battle dropdown behavior remains
    untouched; only its containing control is fitted to the available top lane. */
 body[data-cot-width='laptop'] .cot-garage{

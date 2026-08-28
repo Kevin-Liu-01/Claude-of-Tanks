@@ -369,7 +369,7 @@ tasks, rAF percentiles, renderer resource counts, retained heap, and cache
 limits. A result is valid only when the machine-contention stamp accepts it;
 software-renderer FPS must never be presented as physical-device performance.
 
-Responsive composition is owned by `src/ui/responsiveLayout.js`. Components
+Responsive composition is owned by `src/ui/responsiveLayout.ts`. Components
 consume its width, height, input, and panel-mode semantics rather than growing
 their own device-label breakpoints. Native display density and internal scene
 resolution remain independent: phones retain native DOM/canvas presentation,

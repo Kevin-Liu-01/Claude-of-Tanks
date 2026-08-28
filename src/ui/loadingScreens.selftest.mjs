@@ -9,7 +9,7 @@ import {
   featuredShotForMap,
   nextFeaturedShot,
 } from './featuredShots.js';
-import { BOOT_HERO_SHOTS } from './bootScreen.js';
+import { BOOT_HERO_SHOTS } from './bootScreen.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.js';
 import { MAP_IDS } from '../world/maps/index.js';
 

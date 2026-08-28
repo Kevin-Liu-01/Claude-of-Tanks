@@ -92,3 +92,4 @@ runtime documents remain authoritative for behavior.
 - [0080 — Rendered gameplay advances through one typed state machine](0080-typed-battle-frame-advance.md)
 - [0081 — Garage return is one typed lifecycle](0081-typed-garage-return-lifecycle.md)
 - [0082 — Shadow projection, depth, and temporal darkness stay coherent](0082-temporally-stable-shadow-composition.md)
+- [0083 — Boot and transition UI have strict typed contracts](0083-typed-ui-flow-surfaces.md)

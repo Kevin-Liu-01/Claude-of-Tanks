@@ -1,5 +1,5 @@
 /**
- * bootScreen.js — the branded entry + loading screen (WoT-style).
+ * bootScreen.ts — the branded entry + loading screen (WoT-style).
  *
  * WHY: the game used to boot into a black canvas for ~7.5 s while ~48 vehicle
  * texture sets and a 1 km battlefield baked, then pop straight into the garage.
@@ -28,6 +28,31 @@ import { TRANSITION_SHOTS } from './featuredShots.js';
 import { mountGitHubStars } from './githubStars.js';
 import { preloadImage } from './imagePreload.js';
 
+declare global {
+  interface Window {
+    __COT_NO_BOOT_HERO?: boolean;
+    __COT_FORCE_SPLASH?: boolean;
+    __COT_BOOT_RECOVERY?: { progress?(stage: string): void };
+  }
+}
+
+type BootTip = readonly [heading: string, body: string];
+type BootStage = readonly [key: string, label: string, weight: number];
+
+export interface BootScreenOptions {
+  readonly mode?: 'garage' | 'studio';
+}
+
+export interface BootScreen {
+  begin(key: string): void;
+  end(key: string): void;
+  sub(fraction: number): void;
+  note(text: string): void;
+  ready(): Promise<void>;
+  dismiss(): void;
+  readonly gated: boolean;
+}
+
 const TIPS = [
   ['Angling', 'Turn your hull 20-30° away from the shooter. Side plates presented at an angle gain effective thickness — flat-on armour is the easiest armour to punch through.'],
   ['Weak spots', 'Aim for the lower front plate, the turret ring and the cupola. A tier-X glacis will bounce almost anything; the hatches next to it will not.'],
@@ -42,7 +67,7 @@ const TIPS = [
   ['Terrain', 'Soft ground and steep climbs bleed speed. Read the ground before you commit — the fastest route across a map is rarely the straightest.'],
   ['Ammo rack', 'Modules and crew take damage separately from your hit points. A "healthy" tank with a damaged gun and a dead gunner has already lost the trade.'],
   ['Flanking', 'Rear armour is the thinnest plate on every vehicle in the game. Getting behind a heavy is worth more than out-shooting it from the front.'],
-];
+] as const satisfies readonly BootTip[];
 
 // Weighted load stages. Weight = measured share of boot wall-clock, so the bar
 // moves at a roughly constant rate instead of parking at 40% for three seconds.
@@ -58,7 +83,7 @@ const GARAGE_STAGES = [
   ['audio', 'Priming audio engine', 4],
   ['post', 'Compiling post-processing chain', 12],
   ['ready', 'Standing by', 3],
-];
+] as const satisfies readonly BootStage[];
 
 // Direct Studio navigation keeps the first, already-painted boot surface in
 // charge until the battlefield and focused FX warm are ready.  The previous
@@ -76,9 +101,10 @@ const STUDIO_STAGES = [
   ['post', 'Compiling post-processing chain', 14],
   ['studio', 'Building Scene Studio', 52],
   ['ready', 'Standing by', 3],
-];
+] as const satisfies readonly BootStage[];
 
-const $ = (id) => document.getElementById(id);
+const $ = <ElementType extends HTMLElement = HTMLElement>(id: string): ElementType | null =>
+  document.getElementById(id) as ElementType | null;
 
 // Marketing backdrop set (in-engine action stills — tools/marketing-shots).
 // All are lazy-loaded AFTER the splash has painted, so the boot critical
@@ -91,6 +117,7 @@ const $ = (id) => document.getElementById(id);
 // accidentally returning to this first paint surface.
 export const BOOT_HERO_SHOTS = TRANSITION_SHOTS;
 const HERO_SHOTS = BOOT_HERO_SHOTS;
+type BootHeroShot = (typeof HERO_SHOTS)[number];
 const HERO_ROTATE_MS = 9000;
 
 /**
@@ -100,19 +127,19 @@ const HERO_ROTATE_MS = 9000;
  * @returns {() => void}
  */
 function startBootHero() {
-  const wrap = $('cot-boot-hero');
+  const wrap = $<HTMLDivElement>('cot-boot-hero');
   if (!wrap || !HERO_SHOTS.length || window.__COT_NO_BOOT_HERO) return () => {};
   let q = '';
   try { q = window.location.search || ''; } catch (_) { q = ''; }
   if (/[?&]nohero\b/.test(q)) return () => {}; // A/B timing escape hatch
-  const layers = wrap.querySelectorAll('.hly');
+  const layers = wrap.querySelectorAll<HTMLElement>('.hly');
   if (layers.length < 2) return () => {};
   let idx = -1;
   let front = 0;
-  let timer = 0;
+  let timer: ReturnType<typeof setInterval> | null = null;
   let stopped = false;
-  const urlFor = (shot) => shot.bootImg || shot.img;
-  const show = (i) => {
+  const urlFor = (shot: BootHeroShot): string => shot.bootImg || shot.img;
+  const show = (i: number): void => {
     const shot = HERO_SHOTS[i];
     front ^= 1;
     layers[front].style.backgroundImage = `url("${urlFor(shot)}")`;
@@ -121,12 +148,12 @@ function startBootHero() {
     layers[front ^ 1].classList.remove('on');
     idx = i;
   };
-  const preload = (i, cb) => {
+  const preload = (i: number, callback: () => void): void => {
     // This is presentation, not a boot dependency. Low fetch priority keeps
     // the selected tank's exact builder and paint assets ahead of the splash
     // image on a first visit while still decoding the small hero during boot.
     preloadImage(urlFor(HERO_SHOTS[i]), { priority: 'low' }).then((url) => {
-      if (url && !stopped) cb();
+      if (url && !stopped) callback();
     });
   };
   const advance = () => {
@@ -135,7 +162,7 @@ function startBootHero() {
   };
   const stopRotation = () => {
     if (timer) clearInterval(timer);
-    timer = 0;
+    timer = null;
   };
   const startRotation = () => {
     if (!stopped && !document.hidden && !timer && HERO_SHOTS.length > 1) {
@@ -184,7 +211,7 @@ function bootGateSkipped() {
  *   note:(s:string)=>void, ready:()=>Promise<void>, dismiss:()=>void,
  *   readonly gated:boolean}}
  */
-export function createBootScreen({ mode = 'garage' } = {}) {
+export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): BootScreen {
   const stages = mode === 'studio' ? STUDIO_STAGES : GARAGE_STAGES;
   const root = $('cot-boot');
   const elStage = $('cot-boot-stage');
@@ -195,14 +222,14 @@ export function createBootScreen({ mode = 'garage' } = {}) {
   const elGate = $('cot-boot-gate');
   mountGitHubStars(document);
 
-  const heartbeat = (stage) => {
+  const heartbeat = (stage: string): void => {
     try { window.__COT_BOOT_RECOVERY?.progress?.(stage); } catch (_) { /* recovery is optional */ }
   };
   heartbeat('boot-screen');
 
   const total = stages.reduce((a, s) => a + s[2], 0);
   // cumulative [start, end] fraction per stage key
-  const span = new Map();
+  const span = new Map<string, readonly [start: number, end: number]>();
   {
     let acc = 0;
     for (const [key, , w] of stages) {
@@ -211,7 +238,7 @@ export function createBootScreen({ mode = 'garage' } = {}) {
     }
   }
 
-  const tickEls = [];
+  const tickEls: HTMLSpanElement[] = [];
   if (elTicks) {
     for (let i = 0; i < stages.length; i++) {
       const s = document.createElement('span');
@@ -222,11 +249,11 @@ export function createBootScreen({ mode = 'garage' } = {}) {
 
   let target = 0;      // where the real load says we are
   let shown = 0;       // eased value actually rendered
-  let curKey = null;
+  let curKey: string | null = null;
   let dismissed = false;
   let finished = false;
   let raf = 0;
-  let tipTimer = 0;
+  let tipTimer: ReturnType<typeof setInterval> | null = null;
   let tipIdx = Math.floor(Math.random() * TIPS.length);
 
   function paint() {
@@ -244,7 +271,7 @@ export function createBootScreen({ mode = 'garage' } = {}) {
     raf = requestAnimationFrame(paint);
   }
 
-  function showTip(i) {
+  function showTip(i: number): void {
     if (!elTip) return;
     const [head, body] = TIPS[i % TIPS.length];
     elTip.innerHTML = `<b>${head}</b>${body}`;
@@ -263,14 +290,14 @@ export function createBootScreen({ mode = 'garage' } = {}) {
   if (root) tipTimer = setInterval(rotateTip, 5200);
   const stopHero = root ? startBootHero() : () => {};
 
-  function stageLabel(key) {
+  function stageLabel(key: string): string {
     const s = stages.find((x) => x[0] === key);
     return s ? s[1] : key;
   }
 
-  const api = {
+  const api: BootScreen = {
     /** Enter a stage: bar jumps to its start, label + tick update. */
-    begin(key) {
+    begin(key: string) {
       heartbeat(key);
       curKey = key;
       const sp = span.get(key);
@@ -279,25 +306,26 @@ export function createBootScreen({ mode = 'garage' } = {}) {
       schedule();
     },
     /** Leave a stage: bar advances to its end and its tick lights up. */
-    end(key) {
+    end(key: string) {
       heartbeat(`${key || curKey}:complete`);
-      const sp = span.get(key || curKey);
+      const effectiveKey = key || curKey;
+      const sp = effectiveKey ? span.get(effectiveKey) : undefined;
       if (sp && sp[1] > target) target = sp[1];
-      const i = stages.findIndex((x) => x[0] === (key || curKey));
+      const i = stages.findIndex((x) => x[0] === effectiveKey);
       if (i >= 0 && tickEls[i]) tickEls[i].classList.add('on');
       schedule();
     },
     /** Sub-progress inside the current stage (0..1) — used by the world build. */
-    sub(f) {
+    sub(f: number) {
       heartbeat(curKey || 'sub-progress');
-      const sp = span.get(curKey);
+      const sp = curKey ? span.get(curKey) : undefined;
       if (!sp) return;
       const v = sp[0] + (sp[1] - sp[0]) * Math.max(0, Math.min(1, f));
       if (v > target) target = v;
       schedule();
     },
     /** Override the visible stage label without touching the bar. */
-    note(text) {
+    note(text: string) {
       heartbeat(curKey || 'note');
       if (elStage) elStage.textContent = text;
     },
@@ -316,15 +344,15 @@ export function createBootScreen({ mode = 'garage' } = {}) {
       if (elStage) elStage.textContent = mode === 'studio' ? 'Studio ready' : 'Ready for battle';
       if (!root || bootGateSkipped()) { api.dismiss(); return Promise.resolve(); }
       if (elGate) elGate.classList.add('on');
-      return new Promise((resolve) => {
-        const go = (ev) => {
+      return new Promise<void>((resolve) => {
+        const go = (ev: Event) => {
           // Credits and GitHub are deliberate splash controls, not entry
           // gestures. Let them remain interactive without dismissing the
           // game gate underneath the modal/link click.
           if (ev?.target instanceof Element && ev.target.closest('[data-cot-boot-control]')) return;
           // ignore pure modifier taps so Cmd-Tab back into the tab does not
           // consume the gate
-          if (ev && ev.type === 'keydown' &&
+          if (ev.type === 'keydown' && ev instanceof KeyboardEvent &&
               ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(ev.key)) return;
           window.removeEventListener('keydown', go, true);
           window.removeEventListener('pointerdown', go, true);

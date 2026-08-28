@@ -5,8 +5,8 @@ import {
   classifyViewport,
   viewportHeightBand,
   viewportWidthBand,
-} from './responsiveLayout.js';
-import { RESPONSIVE_SURFACES_CSS } from './responsiveSurfaces.js';
+} from './responsiveLayout.ts';
+import { RESPONSIVE_SURFACES_CSS } from './responsiveSurfaces.ts';
 
 assert.deepEqual(VIEWPORT_WIDTH_BANDS.phone, { min: 0, max: 519 });
 assert.deepEqual(VIEWPORT_WIDTH_BANDS.desktop, { min: 1440, max: Infinity });

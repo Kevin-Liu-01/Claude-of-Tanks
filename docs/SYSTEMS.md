@@ -112,7 +112,7 @@ strict TypeScript owners:
 - `src/game/battleClientAccess.ts` owns the retryable client combat boundary;
 - `src/ui/minimapAssetRuntime.ts` owns baked minimap request coalescing,
   stale-world rejection, load traces, and the procedural fallback edge;
-- `src/ui/battleLoad.js` is intentionally boot-critical: its small roster veil
+- `src/ui/battleLoad.ts` is intentionally boot-critical: its small roster veil
   is ready before Battle can be pressed and covers the first asynchronous
   world, vehicle, or network transfer on a pristine connection;
 - `src/game/battleVisualStreamer.ts` owns bounded vehicle texture upload,

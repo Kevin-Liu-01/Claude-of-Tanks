@@ -250,7 +250,7 @@ button{cursor:pointer}
 .viewer-help{position:static;grid-column:2;display:flex;align-items:center;gap:11px;transform:none;margin:0;white-space:nowrap;color:#657176;font-size:5.5px;letter-spacing:.1em}.viewer-help>span{display:flex;align-items:center;gap:4px}.viewer-help i{display:grid;place-items:center;color:#8a989d}.viewer-help i svg{display:block;width:11px;height:11px}.viewer-help b{display:none}
 .viewer-bay{grid-column:3;justify-self:end;color:#657176;font-size:5.5px;font-weight:900;letter-spacing:.2em;text-transform:uppercase}
 
-/* Semantic viewport composition. responsiveLayout.js owns the only device
+/* Semantic viewport composition. responsiveLayout.ts owns the only device
    thresholds; this workspace consumes width, height and input pressure. */
 :where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .gallery-shell{grid-template-columns:270px minmax(390px,1fr) 330px}
 :where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .panel-heading{padding:18px 16px 14px}

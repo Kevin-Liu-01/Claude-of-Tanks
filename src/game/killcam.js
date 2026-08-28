@@ -78,7 +78,7 @@ import { nominalPenFor, shellDisplayName, zoneLabel } from '../ui/hitEventFormat
 import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.js';
 import { getSpec } from '../vehicles/specs.js';
 import { iconUrl } from '../ui/icons.js';
-import { tierNumeral } from '../ui/battleLoad.js';
+import { tierNumeral } from '../ui/battleLoad.ts';
 import { isKillcamGhostSurface } from './killcamGhostPolicy.js';
 import {
   addInternalCrewModel,

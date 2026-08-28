@@ -137,6 +137,8 @@ The runtime is undergoing an incremental strict-TypeScript migration. Stable
 boundaries are extracted into `.ts` owner modules with focused tests, while
 legacy `.js` integration remains operational. This avoids a risky big-bang
 rewrite and lets each migrated boundary ship with behavioral parity evidence.
+The target state is a fully typed runtime; JavaScript interoperability is a
+temporary migration mechanism, not a permanent module tier.
 
 ## 5. Runtime lifecycle
 

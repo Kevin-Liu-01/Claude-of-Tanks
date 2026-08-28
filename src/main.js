@@ -9,7 +9,7 @@
  * BOOT SCREENS (boot r8): the module body is now a STAGED, frame-yielding boot
  * sequence (top-level await between stages) behind the branded entry/loading
  * screen whose markup lives inline in index.html. Every stage reports real
- * progress to src/ui/bootScreen.js, so the bar tracks work instead of a timer,
+ * progress to src/ui/bootScreen.ts, so the bar tracks work instead of a timer,
  * and the browser gets a frame between stages so it can actually paint it.
  *
  * The 1 km battlefield is NOT part of boot any more — nothing on the garage
@@ -120,8 +120,8 @@ import { createNetworkBattlePresentationAccess } from './net/networkBattlePresen
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createTouchControlsAccess } from './ui/touchControlsAccess.ts';
-import { installResponsiveLayout } from './ui/responsiveLayout.js';
-import { installResponsiveSurfaceStyles } from './ui/responsiveSurfaces.js';
+import { installResponsiveLayout } from './ui/responsiveLayout.ts';
+import { installResponsiveSurfaceStyles } from './ui/responsiveSurfaces.ts';
 import {
   spawnTanks, ensureStagedVisuals, nextStagedBake, planBattleParticipantIds,
   planBattleCamoOverrides,
@@ -138,10 +138,10 @@ import { stripActivatedEra } from './game/eraActivation.ts';
 import { createFxRuntimeAccess } from './fx/fxRuntimeAccess.ts';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
-import { createBootScreen } from './ui/bootScreen.js';
-import { createBattleLoadScreen } from './ui/battleLoad.js';
+import { createBootScreen } from './ui/bootScreen.ts';
+import { createBattleLoadScreen } from './ui/battleLoad.ts';
 import { tierNumeral } from './vehicles/tier.js';
-import { createTransition } from './ui/transition.js';
+import { createTransition } from './ui/transition.ts';
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
 // reveal it, then start a second load".  The intent is captured before any
 // staged work so the inline boot screen can report Studio-specific progress
@@ -210,12 +210,12 @@ const _audioPos = new THREE.Vector3();
 const _occlFocus = new THREE.Vector3();
 
 // ---------------------------------------------------------------------------
-// BOOT STAGES (src/ui/bootScreen.js)
+// BOOT STAGES (src/ui/bootScreen.ts)
 //
 // The module body below is a staged boot sequence: each heavy step runs inside
 // bootStage(), which names the stage on the loading screen, yields a frame so
 // the bar paints, runs the work, then advances the bar. Stage keys and their
-// weights (measured shares of boot wall-clock) live in bootScreen.js STAGES.
+// weights (measured shares of boot wall-clock) live in bootScreen.ts STAGES.
 //
 // `bootComplete` gates the render loop: the rAF-starvation fallback below
 // registers its listeners mid-module and must never fire tick() while later
@@ -974,12 +974,12 @@ const garage = await bootStage('ui', () => createGarage({
   },
 }));
 
-// PRE-BATTLE LOADING SCREEN (src/ui/battleLoad.js): map art + both rosters +
+// PRE-BATTLE LOADING SCREEN (src/ui/battleLoad.ts): map art + both rosters +
 // real build progress + countdown. Created here so its stylesheet/DOM is warm
 // before the first BATTLE press.
 const battleLoad = createBattleLoadScreen();
 
-// STATE TRANSITIONS (src/ui/transition.js): the shared branded veil/loading
+// STATE TRANSITIONS (src/ui/transition.ts): the shared branded veil/loading
 // screen every non-battle state swap passes through — garage↔studio (wired
 // through the studio ctx below) and battle→garage. Headless probes never see
 // it (navigator.webdriver ⇒ synchronous no-op, per the screenshot contract).

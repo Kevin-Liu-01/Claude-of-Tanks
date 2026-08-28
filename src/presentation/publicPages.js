@@ -1,4 +1,4 @@
-import { installResponsiveLayout } from '../ui/responsiveLayout.js';
+import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 
 const responsiveLayout = installResponsiveLayout();
 const isCompactSurface = () => ['phone', 'compact'].includes(responsiveLayout.snapshot()?.widthBand);

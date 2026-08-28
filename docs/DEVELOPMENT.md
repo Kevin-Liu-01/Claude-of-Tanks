@@ -92,7 +92,9 @@ TypeScript migration is incremental and ownership-based. Extract one coherent
 runtime owner, define its strict public contract, add a focused self-test, and
 preserve behavior before widening the boundary. Do not rename a large legacy
 file and suppress checking. The durable policy and completed owner sequence are
-recorded in `docs/decisions/0001-incremental-typescript.md`.
+recorded in `docs/decisions/0001-incremental-typescript.md`. The completed
+migration removes `allowJs`; until then, every slice must reduce the runtime
+JavaScript inventory without adding unchecked replacement modules.
 
 This covers performance instrumentation, renderer recovery helpers, audio,
 protocol validation, browser bridge behavior, reliable presentation events,

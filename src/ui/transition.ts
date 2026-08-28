@@ -1,5 +1,5 @@
 /**
- * transition.js — branded full-screen transitions between game states.
+ * transition.ts — branded full-screen transitions between game states.
  *
  * WHY: state swaps used to hard-pop — garage→studio flashed a half-built
  * frame behind a tiny busy label, and leaving a battle (or the studio)
@@ -31,6 +31,28 @@ import { isImagePreloaded, preloadImage } from './imagePreload.js';
 
 const FADE_IN_MS = 240;
 const FADE_OUT_MS = 340;
+
+export interface TransitionOptions {
+  readonly kicker?: string;
+  readonly title?: string;
+  readonly sub?: string;
+  readonly progress?: boolean;
+  readonly hero?: string;
+  readonly mapId?: string;
+  readonly minShowMs?: number;
+}
+
+export type TransitionProgress = (fraction: number, label?: string) => void;
+export type TransitionWork<Result> = (progress: TransitionProgress) => Result | Promise<Result>;
+
+export interface TransitionScreen {
+  readonly visible: boolean;
+  readonly active: boolean;
+  show(options?: TransitionOptions): void;
+  progress(fraction: number, label?: string): void;
+  hide(): Promise<void>;
+  run<Result>(work: TransitionWork<Result>, options?: TransitionOptions): Promise<Result>;
+}
 
 const CSS = `
 .cot-trans{position:fixed;inset:0;z-index:170;display:none;align-items:center;
@@ -83,22 +105,27 @@ function skipTransitions() {
   let q = '';
   try { q = window.location.search || ''; } catch (_) { q = ''; }
   if (/[?&]notrans\b/.test(q)) return true;
-  return !!(navigator && navigator.webdriver);
+  return typeof navigator !== 'undefined' && !!navigator.webdriver;
 }
 
 // Timers, never requestAnimationFrame: rAF does not fire in a hidden tab,
 // and a transition that gates the actual state swap must keep sequencing
 // even when the document is backgrounded mid-swap (the game loop has its
 // own hidden-document fallback; this must be at least as robust).
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+function requiredElement<T extends Element>(root: ParentNode, selector: string): T {
+  const element = root.querySelector<T>(selector);
+  if (!element) throw new Error(`Transition screen is missing ${selector}`);
+  return element;
+}
 
 /**
  * Create the shared state-transition screen.
- * @returns {{show:(o?:object)=>void, progress:(f:number,label?:string)=>void,
- *   hide:()=>Promise<void>, run:(work:(p:(f:number,l?:string)=>void)=>any,
- *   o?:object)=>Promise<any>, readonly visible:boolean, readonly active:boolean}}
+ * @returns {TransitionScreen}
  */
-export function createTransition() {
+export function createTransition(): TransitionScreen {
   if (!document.getElementById('cot-trans-style')) {
     const s = document.createElement('style');
     s.id = 'cot-trans-style';
@@ -118,20 +145,20 @@ export function createTransition() {
     `</div>`;
   document.body.appendChild(root);
 
-  const bgEl = root.querySelector('.bg');
-  const kickEl = root.querySelector('.kick');
-  const titleEl = root.querySelector('.title');
-  const subEl = root.querySelector('.sub');
-  const meterEl = root.querySelector('.meter');
-  const stageEl = root.querySelector('.mstage');
-  const pctEl = root.querySelector('.mpct');
-  const fillEl = root.querySelector('.mfill');
+  const bgEl = requiredElement<HTMLDivElement>(root, '.bg');
+  const kickEl = requiredElement<HTMLDivElement>(root, '.kick');
+  const titleEl = requiredElement<HTMLDivElement>(root, '.title');
+  const subEl = requiredElement<HTMLDivElement>(root, '.sub');
+  const meterEl = requiredElement<HTMLDivElement>(root, '.meter');
+  const stageEl = requiredElement<HTMLDivElement>(root, '.mstage');
+  const pctEl = requiredElement<HTMLDivElement>(root, '.mpct');
+  const fillEl = requiredElement<HTMLDivElement>(root, '.mfill');
 
   let visible = false;
   let shownAt = 0;
   let hideToken = 0; // cancels a pending hide when show() re-enters first
-  let warmAfterWork = null;
-  const api = {
+  let warmAfterWork: string | null = null;
+  const api: TransitionScreen = {
     get visible() { return visible; },
     // `visible` flips false when fade-out begins. `active` remains true until
     // the veil has actually left layout, so background builders cannot resume
@@ -143,7 +170,7 @@ export function createTransition() {
      * @param {{kicker?:string, title?:string, sub?:string, progress?:boolean,
      *   hero?:string, mapId?:string}} [o] progress:false hides the meter (pure veil).
      */
-    show(o = {}) {
+    show(o: TransitionOptions = {}) {
       if (skipTransitions()) return;
       hideToken++;
       const token = hideToken;
@@ -188,7 +215,7 @@ export function createTransition() {
     },
 
     /** Real progress. @param {number} f 0..1 @param {string} [label] */
-    progress(f, label) {
+    progress(f: number, label?: string) {
       const v = Math.max(0, Math.min(1, f));
       fillEl.style.width = `${(v * 100).toFixed(1)}%`;
       pctEl.textContent = `${Math.round(v * 100)}%`;
@@ -214,13 +241,13 @@ export function createTransition() {
      * @param {(p:(f:number,l?:string)=>void)=>any} work
      * @param {{kicker?:string,title?:string,sub?:string,progress?:boolean,
      *   hero?:string,mapId?:string,minShowMs?:number}} [o]
-     * @returns {Promise<any>} work's result
+     * @returns {Promise<Result>} work's result
      */
-    async run(work, o = {}) {
+    async run<Result>(work: TransitionWork<Result>, o: TransitionOptions = {}): Promise<Result> {
       if (skipTransitions()) return work(() => {});
       api.show(o);
       await sleep(FADE_IN_MS + 60); // land fully lit before heavy work stalls paint
-      let result;
+      let result!: Result;
       try {
         result = await work(api.progress);
         api.progress(1, 'Ready');

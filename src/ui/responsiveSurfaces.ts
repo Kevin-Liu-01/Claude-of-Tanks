@@ -3,7 +3,7 @@ import { ensureStyle } from './dom.js';
 /*
  * Shared responsive composition for runtime UI surfaces. Component files own
  * their visual language; this sheet owns only placement, flow, density and
- * touch geometry. Every selector consumes responsiveLayout.js semantics.
+ * touch geometry. Every selector consumes responsiveLayout.ts semantics.
  */
 const RESPONSIVE_SURFACES_CSS = `
 :root{

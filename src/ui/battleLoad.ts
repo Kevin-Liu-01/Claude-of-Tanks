@@ -1,5 +1,5 @@
 /**
- * battleLoad.js — pre-battle loading screen (World of Tanks battle-load
+ * battleLoad.ts — pre-battle loading screen (World of Tanks battle-load
  * identity): map name + biome art, the two team rosters with vehicle names /
  * tiers / icons, a real progress bar, and a countdown into the battle.
  *
@@ -131,6 +131,42 @@ const BATTLE_TIPS = [
   ['Minimap', 'Half of every battle is on the minimap. Check it at every reload.'],
 ];
 
+export interface BattleLoadRosterRow {
+  readonly id: string;
+  readonly tier?: string;
+  readonly name?: string;
+  readonly isPlayer?: boolean;
+}
+
+export interface BattleLoadInfo {
+  readonly mapName: string;
+  readonly thumb?: string;
+  readonly biome?: string;
+  readonly mode?: string;
+  readonly allies: readonly BattleLoadRosterRow[];
+  readonly enemies: readonly BattleLoadRosterRow[];
+}
+
+export interface BattleLoadScreen {
+  readonly root: HTMLElement;
+  readonly visible: boolean;
+  readonly covering: boolean;
+  show(info: BattleLoadInfo): void;
+  rosters(
+    allies: readonly BattleLoadRosterRow[],
+    enemies: readonly BattleLoadRosterRow[],
+  ): void;
+  progress(fraction: number, label?: string): void;
+  countdown(seconds: number): void;
+  hide(): Promise<void>;
+}
+
+function requiredElement<T extends Element>(root: ParentNode, selector: string): T {
+  const element = root.querySelector<T>(selector);
+  if (!element) throw new Error(`Battle loading screen is missing ${selector}`);
+  return element;
+}
+
 /**
  * Create the pre-battle loading screen.
  * @returns {{show:(info:object)=>void, rosters:(allies:Array,enemies:Array)=>void,
@@ -139,7 +175,7 @@ const BATTLE_TIPS = [
  *   readonly covering:boolean,
  *   root:HTMLElement}}
  */
-export function createBattleLoadScreen() {
+export function createBattleLoadScreen(): BattleLoadScreen {
   if (!document.getElementById('cot-bl-style')) {
     const s = document.createElement('style');
     s.id = 'cot-bl-style';
@@ -167,19 +203,19 @@ export function createBattleLoadScreen() {
     `<div class="count"></div><div class="tip"></div></div></main>`;
   document.body.appendChild(root);
 
-  const artEl = root.querySelector('.art');
-  const nameEl = root.querySelector('.mapname');
-  const kickEl = root.querySelector('.kicker');
-  const allyRows = root.querySelector('.team.ally .rows');
-  const foeRows = root.querySelector('.team.foe .rows');
-  const allyN = root.querySelector('.team.ally .n');
-  const foeN = root.querySelector('.team.foe .n');
-  const stageEl = root.querySelector('.fstage');
-  const pctEl = root.querySelector('.fpct');
-  const fillEl = root.querySelector('.ffill');
-  const progressEl = root.querySelector('.fbar');
-  const countEl = root.querySelector('.count');
-  const tipEl = root.querySelector('.tip');
+  const artEl = requiredElement<HTMLDivElement>(root, '.art');
+  const nameEl = requiredElement<HTMLDivElement>(root, '.mapname');
+  const kickEl = requiredElement<HTMLDivElement>(root, '.kicker');
+  const allyRows = requiredElement<HTMLDivElement>(root, '.team.ally .rows');
+  const foeRows = requiredElement<HTMLDivElement>(root, '.team.foe .rows');
+  const allyN = requiredElement<HTMLSpanElement>(root, '.team.ally .n');
+  const foeN = requiredElement<HTMLSpanElement>(root, '.team.foe .n');
+  const stageEl = requiredElement<HTMLDivElement>(root, '.fstage');
+  const pctEl = requiredElement<HTMLDivElement>(root, '.fpct');
+  const fillEl = requiredElement<HTMLDivElement>(root, '.ffill');
+  const progressEl = requiredElement<HTMLDivElement>(root, '.fbar');
+  const countEl = requiredElement<HTMLDivElement>(root, '.count');
+  const tipEl = requiredElement<HTMLDivElement>(root, '.tip');
 
   let visible = false;
   // `visible` is the requested open state and flips false when hide() starts.
@@ -187,9 +223,13 @@ export function createBattleLoadScreen() {
   // battle input cannot steer a camera that is only partly exposed yet.
   let covering = false;
 
-  function fillTeam(host, countEl2, rows) {
+  function fillTeam(
+    host: HTMLElement,
+    countEl2: HTMLElement,
+    rows: readonly BattleLoadRosterRow[] = [],
+  ): void {
     host.textContent = '';
-    for (const r of rows || []) {
+    for (const r of rows) {
       const el = document.createElement('div');
       el.className = 'row' + (r.isPlayer ? ' me' : '');
       const tier = document.createElement('div');
@@ -204,10 +244,10 @@ export function createBattleLoadScreen() {
       el.append(tier, sil, nm);
       host.appendChild(el);
     }
-    countEl2.textContent = String((rows || []).length);
+    countEl2.textContent = String(rows.length);
   }
 
-  const api = {
+  const api: BattleLoadScreen = {
     root,
     get visible() { return visible; },
     get covering() { return covering; },
@@ -217,7 +257,7 @@ export function createBattleLoadScreen() {
      * @param {{mapName:string, thumb?:string, biome?:string,
      *   mode?:string, allies:Array, enemies:Array}} info
      */
-    show(info) {
+    show(info: BattleLoadInfo) {
       nameEl.textContent = info.mapName || 'Battlefield';
       if (info.mode) kickEl.textContent = info.mode;
       artEl.className = 'art' + (info.thumb ? '' : ` ${info.biome || 'none'}`);
@@ -238,7 +278,10 @@ export function createBattleLoadScreen() {
     },
 
     /** Update the team sheets without resetting the progress bar or tip. */
-    rosters(allies, enemies) {
+    rosters(
+      allies: readonly BattleLoadRosterRow[],
+      enemies: readonly BattleLoadRosterRow[],
+    ) {
       fillTeam(allyRows, allyN, allies);
       fillTeam(foeRows, foeN, enemies);
     },
@@ -248,7 +291,7 @@ export function createBattleLoadScreen() {
      * @param {number} f 0..1
      * @param {string} [label] stage name
      */
-    progress(f, label) {
+    progress(f: number, label?: string) {
       const v = Math.max(0, Math.min(1, f));
       fillEl.style.width = `${(v * 100).toFixed(1)}%`;
       pctEl.textContent = `${Math.round(v * 100)}%`;
@@ -257,7 +300,7 @@ export function createBattleLoadScreen() {
     },
 
     /** Countdown line. @param {number} n seconds left (0 clears to "GO") */
-    countdown(n) {
+    countdown(n: number) {
       countEl.innerHTML = n > 0
         ? `Battle begins in <b>${n}</b>`
         : `<b>Battle!</b>`;
@@ -271,7 +314,7 @@ export function createBattleLoadScreen() {
       // so removing it alone would cut the fade to a hard pop)
       root.classList.add('leaving');
       root.classList.remove('on');
-      return new Promise((resolve) => setTimeout(() => {
+      return new Promise<void>((resolve) => setTimeout(() => {
         if (!visible) {
           root.classList.remove('leaving');
           covering = false;

@@ -97,6 +97,11 @@ tank cleanup, persistent-room preservation, warm cancellation, world dormancy,
 hero adoption, Garage exposure, coalesced leave transitions, and bounded
 Battle Again sequencing. `main.js` supplies adapters but retains no return
 transaction or transition latch.
+The UI migration then converts the existing responsive-layout, shared
+responsive stylesheet, boot-screen, battle-loading, and state-transition
+modules in place. Their public DOM and lifecycle contracts are now strict
+TypeScript while their rendered markup, CSS, timing, and loading behavior stay
+unchanged.
 
 ## Consequences
 
@@ -108,6 +113,9 @@ transaction or transition latch.
   is enabled because Vite and the Node self-tests both consume source modules
   directly and the project does not emit JavaScript through TypeScript.
 - A migration commit must not also redesign visuals or gameplay.
+- The terminal target is zero runtime JavaScript. Incremental commits describe
+  how that target is reached safely; they do not make mixed-language runtime
+  ownership a permanent architecture.
 
 ## Verification
 

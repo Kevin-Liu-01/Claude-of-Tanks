@@ -15,8 +15,8 @@ Present game and session state with fast, legible desktop/mobile interactions.
 Private, LAN, and Ranked deployment; `networkStatus.js` owns reconnect feedback;
 `hud.js` owns live battle chrome; `minimapAssetRuntime.ts` owns baked-map load
 coalescing, stale-world rejection, and the procedural cartography fallback;
-`settings.js` and `touchControls.js` own input-facing UI; `transition.js`,
-`battleLoad.js`, and `endScreen.js` own flow beats.
+`settings.js` and `touchControls.js` own input-facing UI; `transition.ts`,
+`battleLoad.ts`, and `endScreen.js` own flow beats.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
