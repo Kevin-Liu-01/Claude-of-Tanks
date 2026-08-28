@@ -49,7 +49,7 @@ flowchart LR
     Factory --> Viewer[Three.js inspection viewer]
     Registry --> Overlays[src/gallery/overlays.js]
     Overlays --> Viewer
-    Factory --> Markup[src/gallery/surfaceMarkup.js]
+    Factory --> Markup[src/gallery/surfaceMarkup.ts]
     Markup --> Viewer
     Catalog --> Dossier[Search, statistics, brief, and export]
 ```
@@ -121,7 +121,7 @@ references are recorded in `docs/research/internal-anatomy-evidence.md`.
 
 ### Surface markup
 
-`surfaceMarkup.js` owns the geometry-review layer that previously lived in a
+`surfaceMarkup.ts` owns the geometry-review layer that previously lived in a
 separate tool. It raycasts the currently visible first-party procedural rig,
 groups connected triangles by an adjustable coplanarity threshold, parents
 colored highlights to the selected mesh, and records the exact selection as a

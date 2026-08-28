@@ -16,7 +16,7 @@ specimen without duplicating the canonical fleet registry or combat metadata.
 copy-data record from vehicle specs. `overlays.ts` turns canonical armor plates,
 module boxes, and crew boxes into disposable diagnostic geometry;
 `viewGlyphs.ts` owns the exhaustive camera-view icon vocabulary.
-`surfaceMarkup.js` owns live triangle/patch selection, articulation ownership,
+`surfaceMarkup.ts` owns live triangle/patch selection, articulation ownership,
 review annotations, JSON, and PNG capture. `gallery.js` owns the separate-page
 renderer, vehicle state, camera, articulation, URL, DOM, and browser automation
 contract. `gallery.html` and `gallery.css` own the public surface;

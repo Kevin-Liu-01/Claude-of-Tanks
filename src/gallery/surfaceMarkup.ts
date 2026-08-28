@@ -1,30 +1,129 @@
 import * as THREE from 'three';
 
-export const MARKUP_OPERATIONS = Object.freeze(['inspect', 'remove', 'reshape', 'add']);
+export const MARKUP_OPERATIONS = Object.freeze(['inspect', 'remove', 'reshape', 'add'] as const);
+export type MarkupOperation = (typeof MARKUP_OPERATIONS)[number];
 
-const OPERATION_COLORS = Object.freeze({
+const OPERATION_COLORS: Readonly<Record<MarkupOperation, number>> = Object.freeze({
   inspect: 0x65a9ff,
   remove: 0xff5a5f,
   reshape: 0xffb347,
   add: 0x43d6b5,
 });
 
-const OPERATION_CSS = Object.freeze({
+const OPERATION_CSS: Readonly<Record<MarkupOperation, string>> = Object.freeze({
   inspect: '#65a9ff',
   remove: '#ff5a5f',
   reshape: '#ffb347',
   add: '#43d6b5',
 });
 
-const adjacencyCache = new WeakMap();
+interface GeometryAdjacency {
+  neighbors: number[][];
+  normals: THREE.Vector3[];
+}
 
-export function effectiveVisible(object) {
-  for (let node = object; node; node = node.parent) if (!node.visible) return false;
+type PositionAttribute = THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
+type PickTarget = THREE.Mesh | THREE.InstancedMesh;
+type SurfaceHit = THREE.Intersection<PickTarget> & {
+  face: THREE.Face;
+  faceIndex: number;
+};
+
+interface SurfaceControls {
+  target: THREE.Vector3;
+  update(): void;
+}
+
+interface SurfaceSpec {
+  name?: string;
+  authorship?: {
+    creator?: string;
+    creatorUrl?: string;
+    copyright?: string;
+    license?: string;
+  };
+}
+
+interface ReshapeRequest {
+  offsetM: number[];
+}
+
+interface AddRequest {
+  primitive: string;
+  dimensionsM: number[];
+}
+
+type OperationRequest = ReshapeRequest | AddRequest | null;
+
+interface RuntimeAnnotation {
+  object: PickTarget;
+  overlay: THREE.Mesh;
+}
+
+interface SurfaceAnnotation {
+  id: string;
+  operation: MarkupOperation;
+  scope: string;
+  note: string;
+  ownership: string;
+  rigPath: Array<{ name: string; uuid: string }>;
+  poseAtSelection: unknown;
+  mesh: {
+    name: string;
+    type: string;
+    uuid: string;
+    geometryUuid: string;
+    materialNames: string[];
+    instanceId: number | null;
+    indexed: boolean;
+    positionCount: number;
+    triangleCount: number;
+    geometryBoundsLocal: BoxRecord;
+  };
+  surface: {
+    seedFaceIndex: number;
+    faceIndices: number[];
+    localBounds: BoxRecord;
+    worldBounds: BoxRecord;
+    centroidLocal: number[];
+    anchorWorld: number[];
+    anchorMeshLocal: number[];
+    normalWorld: number[];
+    representativeTriangleLocal: number[][];
+    representativeTriangleWorld: number[][];
+  };
+  request: OperationRequest;
+  _runtime: RuntimeAnnotation;
+}
+
+interface BoxRecord {
+  min: number[];
+  max: number[];
+}
+
+export interface SurfaceMarkupOptions {
+  renderer: THREE.WebGLRenderer;
+  camera: THREE.PerspectiveCamera;
+  controls: SurfaceControls;
+  getSpec(id: string): SurfaceSpec | null | undefined;
+  getPose(): unknown;
+  renderFrame(): void;
+  showToast?(message: string): void;
+  onHover?(info: Record<string, unknown> | null): void;
+  root?: ParentNode;
+}
+
+const adjacencyCache = new WeakMap<THREE.BufferGeometry, GeometryAdjacency>();
+
+export function effectiveVisible(object: THREE.Object3D): boolean {
+  for (let node: THREE.Object3D | null = object; node; node = node.parent) {
+    if (!node.visible) return false;
+  }
   return true;
 }
 
-export function ownershipOf(object) {
-  for (let node = object; node; node = node.parent) {
+export function ownershipOf(object: THREE.Object3D): string {
+  for (let node: THREE.Object3D | null = object; node; node = node.parent) {
     if (node.name === 'rig_recoil') return 'recoil';
     if (node.name === 'rig_gun') return 'gun';
     if (node.name === 'rig_turret') return 'turret';
@@ -33,13 +132,19 @@ export function ownershipOf(object) {
   return 'root';
 }
 
-export function faceCount(geometry) {
+export function faceCount(geometry: THREE.BufferGeometry): number {
   return geometry.index
     ? Math.floor(geometry.index.count / 3)
     : Math.floor(geometry.attributes.position.count / 3);
 }
 
-function faceVertexIndices(geometry, faceIndex) {
+function positionAttribute(geometry: THREE.BufferGeometry): PositionAttribute {
+  const position = geometry.attributes.position;
+  if (!position) throw new TypeError('Surface geometry requires a position attribute');
+  return position;
+}
+
+function faceVertexIndices(geometry: THREE.BufferGeometry, faceIndex: number): number[] {
   const base = faceIndex * 3;
   if (geometry.index) {
     return [geometry.index.getX(base), geometry.index.getX(base + 1), geometry.index.getX(base + 2)];
@@ -47,25 +152,25 @@ function faceVertexIndices(geometry, faceIndex) {
   return [base, base + 1, base + 2];
 }
 
-function baseFaceVertices(geometry, faceIndex) {
-  const position = geometry.attributes.position;
+function baseFaceVertices(geometry: THREE.BufferGeometry, faceIndex: number): THREE.Vector3[] {
+  const position = positionAttribute(geometry);
   return faceVertexIndices(geometry, faceIndex).map((index) =>
     new THREE.Vector3(position.getX(index), position.getY(index), position.getZ(index)));
 }
 
-function quantizedVertexKey(position, index) {
+function quantizedVertexKey(position: PositionAttribute, index: number): string {
   const scale = 100000;
   return `${Math.round(position.getX(index) * scale)},${Math.round(position.getY(index) * scale)},${Math.round(position.getZ(index) * scale)}`;
 }
 
-function geometryAdjacency(geometry) {
-  if (adjacencyCache.has(geometry)) return adjacencyCache.get(geometry);
+function geometryAdjacency(geometry: THREE.BufferGeometry): GeometryAdjacency | null {
+  if (adjacencyCache.has(geometry)) return adjacencyCache.get(geometry) ?? null;
   const count = faceCount(geometry);
   if (count > 180000) return null;
-  const position = geometry.attributes.position;
-  const neighbors = Array.from({ length: count }, () => []);
-  const normals = Array.from({ length: count });
-  const edges = new Map();
+  const position = positionAttribute(geometry);
+  const neighbors: number[][] = Array.from({ length: count }, () => []);
+  const normals: THREE.Vector3[] = Array.from({ length: count }, () => new THREE.Vector3());
+  const edges = new Map<string, number[]>();
   const a = new THREE.Vector3();
   const b = new THREE.Vector3();
   const c = new THREE.Vector3();
@@ -99,16 +204,21 @@ function geometryAdjacency(geometry) {
   return result;
 }
 
-export function coplanarPatch(geometry, seedFace, angleDeg = 14) {
+export function coplanarPatch(
+  geometry: THREE.BufferGeometry,
+  seedFace: number,
+  angleDeg = 14,
+): number[] {
   const adjacency = geometryAdjacency(geometry);
   if (!adjacency) return [seedFace];
   const threshold = Math.cos(THREE.MathUtils.degToRad(THREE.MathUtils.clamp(angleDeg, 1, 45)));
   const seedNormal = adjacency.normals[seedFace];
   const seen = new Set([seedFace]);
-  const queue = [seedFace];
+  const queue: number[] = [seedFace];
 
   while (queue.length && seen.size < 3000) {
     const face = queue.shift();
+    if (face === undefined) break;
     const currentNormal = adjacency.normals[face];
     for (const next of adjacency.neighbors[face]) {
       if (seen.has(next)) continue;
@@ -122,19 +232,30 @@ export function coplanarPatch(geometry, seedFace, angleDeg = 14) {
   return [...seen].sort((a, b) => a - b);
 }
 
-function instanceMatrixFor(object, instanceId) {
+function instanceMatrixFor(object: PickTarget, instanceId: number | null | undefined): THREE.Matrix4 {
   const matrix = new THREE.Matrix4();
-  if (object.isInstancedMesh && Number.isInteger(instanceId)) object.getMatrixAt(instanceId, matrix);
+  if (object instanceof THREE.InstancedMesh && instanceId != null && Number.isInteger(instanceId)) {
+    object.getMatrixAt(instanceId, matrix);
+  }
   return matrix;
 }
 
-function objectLocalFaceVertices(object, faceIndex, instanceId) {
+function objectLocalFaceVertices(
+  object: PickTarget,
+  faceIndex: number,
+  instanceId: number | null | undefined,
+): THREE.Vector3[] {
   const matrix = instanceMatrixFor(object, instanceId);
   return baseFaceVertices(object.geometry, faceIndex).map((vertex) => vertex.applyMatrix4(matrix));
 }
 
-function highlightGeometry(object, faceIndices, instanceId, lift = 0.006) {
-  const positions = [];
+function highlightGeometry(
+  object: PickTarget,
+  faceIndices: number[],
+  instanceId: number | null | undefined,
+  lift = 0.006,
+): THREE.BufferGeometry {
+  const positions: number[] = [];
   for (const faceIndex of faceIndices) {
     const vertices = objectLocalFaceVertices(object, faceIndex, instanceId);
     const normal = new THREE.Vector3().crossVectors(
@@ -152,23 +273,23 @@ function highlightGeometry(object, faceIndices, instanceId, lift = 0.006) {
   return geometry;
 }
 
-function roundNumber(value) {
+function roundNumber(value: number): number {
   return Number(value.toFixed(5));
 }
 
-function vectorArray(vector) {
+function vectorArray(vector: THREE.Vector3): number[] {
   return [roundNumber(vector.x), roundNumber(vector.y), roundNumber(vector.z)];
 }
 
-function boxRecord(box) {
+function boxRecord(box: THREE.Box3): BoxRecord {
   return { min: vectorArray(box.min), max: vectorArray(box.max) };
 }
 
-function timestampSlug() {
+function timestampSlug(): string {
   return new Date().toISOString().replace(/[:.]/g, '-');
 }
 
-function downloadBlob(blob, filename) {
+function downloadBlob(blob: Blob, filename: string): void {
   const anchor = document.createElement('a');
   anchor.href = URL.createObjectURL(blob);
   anchor.download = filename;
@@ -186,25 +307,35 @@ export function createSurfaceMarkup({
   showToast = () => {},
   onHover = () => {},
   root = document,
-}) {
-  const $ = (selector) => root.querySelector(selector);
-  const operationButtons = [...root.querySelectorAll('[data-markup-operation]')];
+}: SurfaceMarkupOptions) {
+  const $ = <T extends HTMLElement = HTMLInputElement>(selector: string): T => {
+    const element = root.querySelector<T>(selector);
+    if (!element) throw new Error(`Missing Surface Markup control: ${selector}`);
+    return element;
+  };
+  const operationButtons = [
+    ...root.querySelectorAll<HTMLButtonElement>('[data-markup-operation]'),
+  ];
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
-  const materials = new Map();
-  let tankRoot = null;
-  let tankId = null;
-  let pickTargets = [];
-  let annotations = [];
-  let selectedAnnotationId = null;
+  const materials = new Map<string, THREE.MeshBasicMaterial>();
+  let tankRoot: THREE.Object3D | null = null;
+  let tankId: string | null = null;
+  let pickTargets: PickTarget[] = [];
+  let annotations: SurfaceAnnotation[] = [];
+  let selectedAnnotationId: string | null = null;
   let annotationSequence = 1;
-  let operation = 'remove';
-  let hoverOverlay = null;
+  let operation: MarkupOperation = 'remove';
+  let hoverOverlay: THREE.Mesh | null = null;
   let active = false;
 
-  function operationMaterial(nextOperation, hover = false) {
+  function operationMaterial(
+    nextOperation: MarkupOperation,
+    hover = false,
+  ): THREE.MeshBasicMaterial {
     const key = `${nextOperation}:${hover}`;
-    if (materials.has(key)) return materials.get(key);
+    const cached = materials.get(key);
+    if (cached) return cached;
     const material = new THREE.MeshBasicMaterial({
       color: OPERATION_COLORS[nextOperation] || OPERATION_COLORS.inspect,
       transparent: true,
@@ -218,7 +349,13 @@ export function createSurfaceMarkup({
     return material;
   }
 
-  function addOverlay(object, faceIndices, instanceId, nextOperation, hover = false) {
+  function addOverlay(
+    object: PickTarget,
+    faceIndices: number[],
+    instanceId: number | null | undefined,
+    nextOperation: MarkupOperation,
+    hover = false,
+  ): THREE.Mesh {
     const mesh = new THREE.Mesh(
       highlightGeometry(object, faceIndices, instanceId, hover ? 0.009 : 0.007),
       operationMaterial(nextOperation, hover),
@@ -230,45 +367,46 @@ export function createSurfaceMarkup({
     return mesh;
   }
 
-  function removeOverlay(mesh) {
+  function removeOverlay(mesh: THREE.Mesh | null | undefined): void {
     if (!mesh) return;
     mesh.removeFromParent();
     mesh.geometry?.dispose();
   }
 
-  function clearHover() {
+  function clearHover(): void {
     removeOverlay(hoverOverlay);
     hoverOverlay = null;
     onHover(null);
   }
 
-  function rigPath(object) {
-    const path = [];
-    for (let node = object; node; node = node.parent) {
+  function rigPath(object: THREE.Object3D): Array<{ name: string; uuid: string }> {
+    const path: Array<{ name: string; uuid: string }> = [];
+    for (let node: THREE.Object3D | null = object; node; node = node.parent) {
       path.unshift({ name: node.name || node.type, uuid: node.uuid });
       if (node === tankRoot) break;
     }
     return path;
   }
 
-  function materialNames(object) {
+  function materialNames(object: PickTarget): string[] {
     const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
-    return objectMaterials.filter(Boolean).map((material) => material.name || `material-${material.id}`);
+    return objectMaterials.filter(Boolean).map((material) =>
+      material.name || `material-${material.uuid}`);
   }
 
-  function makePickTargets() {
+  function makePickTargets(): void {
     pickTargets = [];
     if (!tankRoot) return;
     tankRoot.updateMatrixWorld(true);
     tankRoot.traverse((object) => {
-      if (!(object.isMesh || object.isInstancedMesh) || !object.geometry) return;
+      if (!(object instanceof THREE.Mesh) || !object.geometry) return;
       if (!effectiveVisible(object) || object.userData.gallerySurfaceMarkup) return;
       if (object.name.startsWith('gallery_') || /shadow/i.test(object.name || '')) return;
-      pickTargets.push(object);
+      pickTargets.push(object as PickTarget);
     });
   }
 
-  function rayHit(clientX, clientY) {
+  function rayHit(clientX: number, clientY: number): SurfaceHit | null {
     if (!active || !pickTargets.length) return null;
     const rect = renderer.domElement.getBoundingClientRect();
     ndc.set(
@@ -276,11 +414,12 @@ export function createSurfaceMarkup({
       -(((clientY - rect.top) / rect.height) * 2 - 1),
     );
     raycaster.setFromCamera(ndc, camera);
-    return raycaster.intersectObjects(pickTargets, false).find((hit) =>
-      hit.faceIndex !== undefined && hit.object.geometry && effectiveVisible(hit.object)) || null;
+    return raycaster.intersectObjects<PickTarget>(pickTargets, false).find((hit): hit is SurfaceHit =>
+      hit.faceIndex !== undefined && hit.face !== null
+      && !!hit.object.geometry && effectiveVisible(hit.object)) || null;
   }
 
-  function operationRequest() {
+  function operationRequest(): OperationRequest {
     if (operation === 'reshape') {
       return {
         offsetM: ['#markupOffsetX', '#markupOffsetY', '#markupOffsetZ'].map((selector) => Number($(selector).value)),
@@ -295,7 +434,7 @@ export function createSurfaceMarkup({
     return null;
   }
 
-  function recordFromHit(hit, faceIndices) {
+  function recordFromHit(hit: SurfaceHit, faceIndices: number[]): SurfaceAnnotation {
     const object = hit.object;
     const instanceId = Number.isInteger(hit.instanceId) ? hit.instanceId : null;
     const instanceMatrix = instanceMatrixFor(object, instanceId);
@@ -325,6 +464,9 @@ export function createSurfaceMarkup({
       .normalize();
     const geometry = object.geometry;
     if (!geometry.boundingBox) geometry.computeBoundingBox();
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    const geometryBounds = geometry.boundingBox;
+    if (!geometryBounds) throw new Error('Surface geometry has no computable bounding box');
     const annotation = {
       id: `surface-${annotationSequence++}`,
       operation,
@@ -343,7 +485,7 @@ export function createSurfaceMarkup({
         indexed: !!geometry.index,
         positionCount: geometry.attributes.position.count,
         triangleCount: faceCount(geometry),
-        geometryBoundsLocal: boxRecord(geometry.boundingBox),
+        geometryBoundsLocal: boxRecord(geometryBounds),
       },
       surface: {
         seedFaceIndex: hit.faceIndex,
@@ -358,7 +500,7 @@ export function createSurfaceMarkup({
         representativeTriangleWorld: representativeWorld.map(vectorArray),
       },
       request: operationRequest(),
-    };
+    } as SurfaceAnnotation;
     const selectionOverlay = addOverlay(object, faceIndices, instanceId, operation);
     Object.defineProperty(annotation, '_runtime', {
       value: { object, overlay: selectionOverlay },
@@ -399,16 +541,16 @@ export function createSurfaceMarkup({
     };
   }
 
-  function updateExport() {
+  function updateExport(): void {
     const output = $('#markupJson');
     if (output) output.value = JSON.stringify(exportRecord(), null, 2);
   }
 
-  function selectionSummary(annotation) {
+  function selectionSummary(annotation: SurfaceAnnotation): string {
     return `${annotation.ownership} / ${annotation.mesh.name} · ${annotation.surface.faceIndices.length} tri`;
   }
 
-  function renderAnnotationList() {
+  function renderAnnotationList(): void {
     const list = $('#markupSelectionList');
     $('#markupSelectionCount').textContent = String(annotations.length);
     list.replaceChildren();
@@ -438,7 +580,7 @@ export function createSurfaceMarkup({
       remove.title = 'Delete selection';
       row.append(marker, copy, remove);
       row.addEventListener('click', (event) => {
-        if (event.target.closest('.markup-remove')) {
+        if (event.target instanceof Element && event.target.closest('.markup-remove')) {
           deleteAnnotation(annotation.id);
           return;
         }
@@ -450,7 +592,7 @@ export function createSurfaceMarkup({
     }
   }
 
-  function deleteAnnotation(id) {
+  function deleteAnnotation(id: string): void {
     const index = annotations.findIndex((annotation) => annotation.id === id);
     if (index < 0) return;
     removeOverlay(annotations[index]._runtime.overlay);
@@ -460,7 +602,7 @@ export function createSurfaceMarkup({
     updateExport();
   }
 
-  function clearAnnotations() {
+  function clearAnnotations(): void {
     annotations.forEach((annotation) => removeOverlay(annotation._runtime.overlay));
     annotations = [];
     selectedAnnotationId = null;
@@ -468,8 +610,9 @@ export function createSurfaceMarkup({
     updateExport();
   }
 
-  function setOperation(nextOperation, announce = false) {
-    operation = MARKUP_OPERATIONS.includes(nextOperation) ? nextOperation : 'inspect';
+  function setOperation(nextOperation: string | undefined, announce = false): void {
+    operation = MARKUP_OPERATIONS.includes(nextOperation as MarkupOperation)
+      ? nextOperation as MarkupOperation : 'inspect';
     operationButtons.forEach((button) => {
       const isActive = button.dataset.markupOperation === operation;
       button.classList.toggle('active', isActive);
@@ -481,7 +624,7 @@ export function createSurfaceMarkup({
     if (announce) showToast(`Markup operation: ${operation}`);
   }
 
-  function selectScreen(clientX, clientY, additive = false) {
+  function selectScreen(clientX: number, clientY: number, additive = false) {
     const hit = rayHit(clientX, clientY);
     if (!hit) return null;
     if (operation === 'inspect') {
@@ -502,7 +645,7 @@ export function createSurfaceMarkup({
     return annotation;
   }
 
-  function hoverScreen(clientX, clientY) {
+  function hoverScreen(clientX: number, clientY: number) {
     if (!active) return null;
     const hit = rayHit(clientX, clientY);
     clearHover();
@@ -519,7 +662,7 @@ export function createSurfaceMarkup({
     return info;
   }
 
-  function focusSelected() {
+  function focusSelected(): void {
     const annotation = annotations.find((item) => item.id === selectedAnnotationId);
     if (!annotation) {
       showToast('Select a marked surface first');
@@ -536,7 +679,7 @@ export function createSurfaceMarkup({
     updateExport();
   }
 
-  function attachTank(nextTankRoot, nextTankId) {
+  function attachTank(nextTankRoot: THREE.Object3D, nextTankId: string): void {
     clearHover();
     clearAnnotations();
     tankRoot = nextTankRoot;
@@ -546,7 +689,7 @@ export function createSurfaceMarkup({
     updateExport();
   }
 
-  function detachTank() {
+  function detachTank(): void {
     clearHover();
     clearAnnotations();
     tankRoot = null;
@@ -555,7 +698,7 @@ export function createSurfaceMarkup({
     updateExport();
   }
 
-  function setActive(nextActive) {
+  function setActive(nextActive: boolean): void {
     active = !!nextActive;
     annotations.forEach((annotation) => {
       annotation._runtime.overlay.visible = active;
@@ -565,7 +708,7 @@ export function createSurfaceMarkup({
     $('#markupWorkbench').hidden = !active;
   }
 
-  function updatePose() {
+  function updatePose(): void {
     updateExport();
   }
 
@@ -589,7 +732,8 @@ export function createSurfaceMarkup({
     });
   }
   $('#markupUndo').addEventListener('click', () => {
-    if (annotations.length) deleteAnnotation(annotations.at(-1).id);
+    const latest = annotations.at(-1);
+    if (latest) deleteAnnotation(latest.id);
   });
   $('#markupClear').addEventListener('click', clearAnnotations);
   $('#markupFocus').addEventListener('click', focusSelected);
@@ -634,7 +778,8 @@ export function createSurfaceMarkup({
       if (selectedAnnotationId) deleteAnnotation(selectedAnnotationId);
     },
     undo() {
-      if (annotations.length) deleteAnnotation(annotations.at(-1).id);
+      const latest = annotations.at(-1);
+      if (latest) deleteAnnotation(latest.id);
     },
     updatePose,
     exportRecord,

@@ -10,7 +10,7 @@ import {
 } from './catalog.ts';
 import { compareVehicleEras, VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
 import { createInspectionOverlay, inspectionLegend } from './overlays.ts';
-import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.js';
+import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
 import { iconUrl } from '../ui/icons.ts';
 import { flagIconUrl } from '../ui/flags.ts';

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { coplanarPatch, faceCount, ownershipOf } from './surfaceMarkup.js';
+import { coplanarPatch, faceCount, ownershipOf } from './surfaceMarkup.ts';
 
 const geometry = new THREE.BufferGeometry();
 geometry.setAttribute('position', new THREE.Float32BufferAttribute([
