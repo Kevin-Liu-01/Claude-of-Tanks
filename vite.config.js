@@ -21,7 +21,7 @@
 // and every headless tool that calls createServer() inherits this config.
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve, relative } from 'node:path';
-import { renderProductStats } from './src/productStats.js';
+import { renderProductStats } from './src/productStats.ts';
 
 /**
  * Transitive relative-import closure starting at src/main.js.

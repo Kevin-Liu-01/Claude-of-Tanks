@@ -7,7 +7,18 @@
  * pulling the vehicle or battlefield registries into the initial graph.
  * `productStats.selftest.mjs` verifies every value against those registries.
  */
-export const PRODUCT_STATS = Object.freeze({
+export interface ProductStats {
+  productionVehicles: number;
+  developmentVehicles: number;
+  savedVehicleRecords: number;
+  developmentOnlyVehicles: number;
+  referenceVehicleRecords: number;
+  battlePlayableVehicles: number;
+  comparisonCandidates: number;
+  battlefields: number;
+}
+
+export const PRODUCT_STATS: Readonly<ProductStats> = Object.freeze({
   productionVehicles: 117,
   developmentVehicles: 154,
   savedVehicleRecords: 156,
@@ -18,7 +29,7 @@ export const PRODUCT_STATS = Object.freeze({
   battlefields: 20,
 });
 
-export const PRODUCT_STAT_TOKENS = Object.freeze({
+export const PRODUCT_STAT_TOKENS: Readonly<Record<string, number>> = Object.freeze({
   '{{COT_PRODUCTION_VEHICLES}}': PRODUCT_STATS.productionVehicles,
   '{{COT_DEVELOPMENT_VEHICLES}}': PRODUCT_STATS.developmentVehicles,
   '{{COT_SAVED_VEHICLE_RECORDS}}': PRODUCT_STATS.savedVehicleRecords,
@@ -29,12 +40,8 @@ export const PRODUCT_STAT_TOKENS = Object.freeze({
   '{{COT_BATTLEFIELDS}}': PRODUCT_STATS.battlefields,
 });
 
-/**
- * Resolve product-stat tokens in an HTML or text template.
- * @param {string} source
- * @returns {string}
- */
-export function renderProductStats(source) {
+/** Resolve product-stat tokens in an HTML or text template. */
+export function renderProductStats(source: string): string {
   let rendered = String(source);
   for (const [token, value] of Object.entries(PRODUCT_STAT_TOKENS)) {
     rendered = rendered.replaceAll(token, String(value));

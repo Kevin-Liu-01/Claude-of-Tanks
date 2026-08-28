@@ -90,7 +90,7 @@ worktree and never stage generated tank work wholesale.
   are comparison/authoring inputs, never a playable loading path.
 - Every first-party file and asset is attributed to Kevin B. Liu by
   `NOTICE.md`; every playable spec inherits the named authorship record from
-  `src/authorship.js`. Record third-party exceptions in `docs/ATTRIBUTION.md`
+  `src/authorship.ts`. Record third-party exceptions in `docs/ATTRIBUTION.md`
   and run `npm run attribution:check`.
 - Add focused `*.selftest.mjs` coverage and include it in `npm test`.
 - Any playable tank addition or geometry/profile change must run the complete

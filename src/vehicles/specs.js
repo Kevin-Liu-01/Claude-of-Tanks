@@ -13,7 +13,7 @@ import {
   isProductionHiddenTankId,
   isRetiredHistoricalTank,
 } from './rosterPolicy.js';
-import { FIRST_PARTY_VEHICLE_AUTHORSHIP } from '../authorship.js';
+import { FIRST_PARTY_VEHICLE_AUTHORSHIP } from '../authorship.ts';
 import { applyVehicleTaxonomy } from './taxonomy.ts';
 import {
   plate as par,

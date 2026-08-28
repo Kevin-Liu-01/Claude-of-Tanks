@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { PRODUCT_STATS } from '../productStats.js';
+import { PRODUCT_STATS } from '../productStats.ts';
 import {
   DEV_FLEET_KEY,
   HISTORICAL_COLD_WAR_CANDIDATE_IDS,

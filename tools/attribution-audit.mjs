@@ -10,7 +10,7 @@ import {
   PROJECT_PACKAGE_LICENSE,
   PROJECT_COPYRIGHT,
   PROJECT_CREATOR,
-} from '../src/authorship.js';
+} from '../src/authorship.ts';
 import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');

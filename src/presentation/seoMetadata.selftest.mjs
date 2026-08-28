@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PRODUCT_STATS, renderProductStats } from '../productStats.js';
+import { PRODUCT_STATS, renderProductStats } from '../productStats.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SITE = 'https://cot.kevinliu.studio';

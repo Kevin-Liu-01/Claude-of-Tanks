@@ -15,7 +15,7 @@ import { iconUrl } from './icons.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 import { FEATURED_SHOTS } from './featuredShots.ts';
 import { mountMediaArchive } from '../presentation/mediaArchive.ts';
-import { PRODUCT_STATS } from '../productStats.js';
+import { PRODUCT_STATS } from '../productStats.ts';
 import { vehicleEraLabel } from '../vehicles/taxonomy.ts';
 import { createInfoButton } from './contextInfo.ts';
 

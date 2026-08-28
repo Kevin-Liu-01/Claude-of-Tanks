@@ -9,7 +9,7 @@ import {
   filterGalleryRecords,
   serializeGallerySpec,
 } from './catalog.ts';
-import { FIRST_PARTY_LICENSE } from '../authorship.js';
+import { FIRST_PARTY_LICENSE } from '../authorship.ts';
 
 const records = buildGalleryRecords(VISIBLE_TANK_IDS.map(getSpec));
 assert.equal(records.length, VISIBLE_TANK_IDS.length, 'every visible vehicle must appear in the gallery');

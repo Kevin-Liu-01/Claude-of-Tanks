@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PRODUCT_STATS, PRODUCT_STAT_TOKENS, renderProductStats } from './productStats.js';
+import { PRODUCT_STATS, PRODUCT_STAT_TOKENS, renderProductStats } from './productStats.ts';
 import { MAP_IDS } from './world/maps/index.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,7 +30,7 @@ const actual = {
   battlefields: MAP_IDS.length,
 };
 assert.deepEqual(PRODUCT_STATS, actual,
-  'src/productStats.js must match the canonical vehicle and battlefield registries');
+  'src/productStats.ts must match the canonical vehicle and battlefield registries');
 
 assert.equal(Object.keys(PRODUCT_STAT_TOKENS).length, Object.keys(PRODUCT_STATS).length,
   'every shared stat needs one template token');
