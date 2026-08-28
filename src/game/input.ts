@@ -1,4 +1,4 @@
-// src/game/input.js — rebindable action-map input layer.
+// src/game/input.ts — rebindable action-map input layer.
 //
 // Raw KeyboardEvent.code / mouse-button / mouse-wheel / gamepad events are
 // translated into named game actions ("forward", "fire", ...). Every action
@@ -69,7 +69,100 @@ const ACTION_DEFS = [
   { id: 'shotLog', label: 'Shot Info Log', group: 'Interface' }, // SHOT-INFO (shotInfo.js)
   { id: 'perfHud', label: 'Performance Overlay', group: 'Interface' }, // FEEL r12 (perfHud.ts)
   { id: 'settingsMenu', label: 'Settings Menu', group: 'Interface' },
-];
+] as const;
+
+export type ActionId = (typeof ACTION_DEFS)[number]['id'];
+export type BindingSlot = 0 | 1;
+export type AiDifficulty = 'easy' | 'normal' | 'hard';
+export type RmbMode = 'hold' | 'toggle' | 'freelook';
+
+export interface InputVector {
+  x: number;
+  y: number;
+}
+
+export interface InputSettings {
+  sensitivity: number;
+  invertY: boolean;
+  sniperSensScale: number;
+  aimSmoothing: number;
+  padSensitivity: number;
+  rmbMode: RmbMode;
+  aiDifficulty: AiDifficulty;
+  showPerfMeter: boolean;
+  showDebugHud: boolean;
+  armorAimOverlay: boolean;
+  volMaster: number;
+  volEngine: number;
+  volCombat: number;
+  volAmbience: number;
+  volUi: number;
+  volVoice: number;
+  alarmHeartbeat: boolean;
+}
+
+type BindingMap = Record<ActionId, string | null>;
+type PadBindingMap = Record<ActionId, number | null>;
+type InputState = Record<ActionId, boolean>;
+type ActionHandler = (code: string) => void;
+type VolumeSettingKey =
+  | 'volMaster'
+  | 'volEngine'
+  | 'volCombat'
+  | 'volAmbience'
+  | 'volUi'
+  | 'volVoice';
+
+export interface InputLayer {
+  readonly actionDefs: typeof ACTION_DEFS;
+  labelFor(code: string | null): string;
+  padLabelFor(index: number | null): string;
+  getState(): InputState;
+  isDown(actionId: ActionId): boolean;
+  onAction(actionId: ActionId, callback: ActionHandler): () => void;
+  getBindings(slot?: BindingSlot): BindingMap;
+  getBinding(actionId: ActionId, slot?: BindingSlot): string | null;
+  findConflict(
+    code: string,
+    excludeId: ActionId | null,
+    excludeSlot?: BindingSlot,
+  ): { actionId: ActionId; slot: BindingSlot } | null;
+  setBinding(actionId: ActionId, code: string | null, slot?: BindingSlot): void;
+  swapBindings(
+    actionId: ActionId,
+    slot: BindingSlot,
+    otherId: ActionId,
+    otherSlot: BindingSlot,
+    code: string,
+  ): void;
+  getPadBinding(actionId: ActionId): number | null;
+  findPadConflict(index: number | null, excludeId: ActionId): { actionId: ActionId } | null;
+  setPadBinding(actionId: ActionId, index: number | null): void;
+  swapPadBindings(actionId: ActionId, otherId: ActionId, index: number | null): void;
+  resetBindings(): void;
+  isPadConnected(): boolean;
+  padActive(): boolean;
+  getPadMove(out: InputVector): InputVector;
+  setVirtualMove(x: number, y: number): void;
+  getVirtualMove(out: InputVector): boolean;
+  addVirtualAim(dx: number, dy: number): void;
+  pressVirtual(actionId: ActionId): void;
+  releaseVirtual(actionId: ActionId): void;
+  tapVirtual(actionId: ActionId): void;
+  virtualActive(): boolean;
+  isTouchLayout(): boolean;
+  getSettings(): InputSettings;
+  setSetting(key: keyof InputSettings, value: unknown): void;
+  consumeMouseDelta(out: InputVector, dt: number, sniper?: boolean): InputVector;
+  setEnabled(enabled: boolean): void;
+  isLocked(): boolean;
+  requestLock(): void;
+  isCursorAim(): boolean;
+  onLockDenied(callback: () => void): () => void;
+  onLockRestored(callback: () => void): () => void;
+  getCursorNdc(out: InputVector): InputVector;
+  releaseLock(): void;
+}
 
 /** Default primary bindings: WASD move, LMB fire, Shift sniper, Caps free look, RMB aim,
  *  1/2/3 shells, E special action, 4/5/6 consumables, wheel zoom,
@@ -81,7 +174,7 @@ const ACTION_DEFS = [
  *  (`hold`, `toggle`, or `freelook` via settings.rmbMode).
  *  Mouse buttons are encoded as synthetic codes "Mouse0".."Mouse4"; the wheel
  *  as "WheelUp"/"WheelDown". `null` means unbound. */
-export const DEFAULT_BINDINGS = {
+export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
   forward: 'KeyW',
   back: 'KeyS',
   left: 'KeyA',
@@ -108,7 +201,7 @@ export const DEFAULT_BINDINGS = {
 };
 
 /** Default secondary bindings: arrow keys as alternate movement (WoT staple). */
-const DEFAULT_BINDINGS2 = {
+const DEFAULT_BINDINGS2: Partial<Record<ActionId, string>> = {
   forward: 'ArrowUp',
   back: 'ArrowDown',
   left: 'ArrowLeft',
@@ -119,7 +212,7 @@ const DEFAULT_BINDINGS2 = {
 /** Default gamepad buttons (standard mapping): RT fire, LT sniper, A handbrake,
  *  LB special action, RB dedicated free-look, d-pad shells, BACK minimap, START menu. Sticks are fixed:
  *  left = drive, right = aim. */
-const DEFAULT_PAD_BINDINGS = {
+const DEFAULT_PAD_BINDINGS: Partial<Record<ActionId, number>> = {
   fire: 7, // RT
   sniperToggle: 6, // LT
   handbrake: 0, // A
@@ -141,7 +234,7 @@ const PAD_BUTTON_LABELS = [
   'LS', 'RS', 'D-UP', 'D-DOWN', 'D-LEFT', 'D-RIGHT', 'GUIDE',
 ];
 
-const DEFAULT_SETTINGS = {
+const DEFAULT_SETTINGS: InputSettings = {
   sensitivity: 1, // 0.2x .. 3x multiplier on mouse aim
   invertY: false,
   sniperSensScale: 1, // extra multiplier while in sniper mode (0.2x .. 3x)
@@ -180,7 +273,9 @@ const DEFAULT_SETTINGS = {
   alarmHeartbeat: true,
 };
 
-const VOLUME_KEYS = ['volMaster', 'volEngine', 'volCombat', 'volAmbience', 'volUi', 'volVoice'];
+const VOLUME_KEYS: readonly VolumeSettingKey[] = [
+  'volMaster', 'volEngine', 'volCombat', 'volAmbience', 'volUi', 'volVoice',
+];
 
 // Fire semantics (full-auto rework — owner order): a CLICK is a press edge
 // good for one shot; a HELD control is full-auto — getState() keeps
@@ -207,8 +302,8 @@ const VOLUME_KEYS = ['volMaster', 'volEngine', 'volCombat', 'volAmbience', 'volU
 // tryFire refuses while reload.t > 0.
 const FIRE_PRESS_BUFFER_MS = 250;
 
-const AI_DIFFICULTIES = ['easy', 'normal', 'hard'];
-const RMB_MODES = ['hold', 'toggle', 'freelook']; // gunnery r1: see rmbMode
+const AI_DIFFICULTIES: readonly AiDifficulty[] = ['easy', 'normal', 'hard'];
+const RMB_MODES: readonly RmbMode[] = ['hold', 'toggle', 'freelook']; // gunnery r1: see rmbMode
 
 /**
  * AI difficulty persisted with the other gameplay settings (cot.settings.v1,
@@ -218,11 +313,11 @@ const RMB_MODES = ['hold', 'toggle', 'freelook']; // gunnery r1: see rmbMode
  */
 export function getStoredDifficulty() {
   const s = loadJson(SETTINGS_KEY);
-  const d = s && s.aiDifficulty;
-  return AI_DIFFICULTIES.includes(d) ? d : 'normal';
+  const d = isRecord(s) ? s.aiDifficulty : null;
+  return typeof d === 'string' && isAiDifficulty(d) ? d : 'normal';
 }
 
-const LABEL_SPECIAL = {
+const LABEL_SPECIAL: Record<string, string> = {
   Space: 'SPACE', Escape: 'ESC', Tab: 'TAB', CapsLock: 'CAPS',
   Enter: 'ENTER', NumpadEnter: 'NUM ENTER', Backspace: 'BKSP',
   ShiftLeft: 'L-SHIFT', ShiftRight: 'R-SHIFT',
@@ -241,7 +336,7 @@ const LABEL_SPECIAL = {
  * @param {?string} code
  * @returns {string}
  */
-function labelForCode(code) {
+function labelForCode(code: string | null) {
   if (!code) return '—';
   if (LABEL_SPECIAL[code]) return LABEL_SPECIAL[code];
   if (code.startsWith('Key')) return code.slice(3);
@@ -255,26 +350,41 @@ function labelForCode(code) {
  * @param {?number} index
  * @returns {string}
  */
-function labelForPadButton(index) {
+function labelForPadButton(index: number | null) {
   if (index == null || index < 0) return '—';
   return PAD_BUTTON_LABELS[index] || `PAD ${index}`;
 }
 
-function loadJson(key) {
+function loadJson(key: string): unknown {
   try {
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    return parsed;
   } catch (_) { return null; }
 }
 
-function saveJson(key, value) {
+function saveJson(key: string, value: unknown) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) { /* private mode */ }
 }
 
-const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const clamp = (value: number, low: number, high: number) => (
+  Math.max(low, Math.min(high, value))
+);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isAiDifficulty(value: string): value is AiDifficulty {
+  return (AI_DIFFICULTIES as readonly string[]).includes(value);
+}
+
+function isRmbMode(value: string): value is RmbMode {
+  return (RMB_MODES as readonly string[]).includes(value);
+}
 
 /** Squared response curve past the deadzone — fine aim near center. */
-function stickCurve(v) {
+function stickCurve(v: number) {
   const m = Math.abs(v);
   if (m <= PAD_DEADZONE) return 0;
   const n = (m - PAD_DEADZONE) / (1 - PAD_DEADZONE);
@@ -291,16 +401,21 @@ function stickCurve(v) {
  * @param {Record<string, string|null>} secondary
  * @returns {boolean} whether either map changed
  */
-export function migrateShiftAimCapsFreeLookBindings(primary, secondary) {
+export function migrateShiftAimCapsFreeLookBindings(
+  primary: Record<string, unknown>,
+  secondary: Record<string, unknown>,
+) {
   if (!primary || typeof primary !== 'object' ||
       !secondary || typeof secondary !== 'object') return false;
 
   let changed = false;
-  const has = (map, actionId) => Object.prototype.hasOwnProperty.call(map, actionId);
-  const ownsOutsideCameraLayout = (code) => [primary, secondary].some((map) =>
+  const has = (map: Record<string, unknown>, actionId: string) => (
+    Object.prototype.hasOwnProperty.call(map, actionId)
+  );
+  const ownsOutsideCameraLayout = (code: string) => [primary, secondary].some((map) =>
     Object.entries(map).some(([actionId, binding]) =>
       actionId !== 'sniperToggle' && actionId !== 'freeLook' && binding === code));
-  const ownsOutsideFreeLook = (code) => [primary, secondary].some((map) =>
+  const ownsOutsideFreeLook = (code: string) => [primary, secondary].some((map) =>
     Object.entries(map).some(([actionId, binding]) => actionId !== 'freeLook' && binding === code));
   const shiftFreeLookDefaults = primary.freeLook === 'ShiftLeft' &&
     (!has(primary, 'sniperToggle') || primary.sniperToggle == null);
@@ -326,32 +441,36 @@ export function migrateShiftAimCapsFreeLookBindings(primary, secondary) {
  * @param {{lockElement?: HTMLElement}} [opts] - lockElement: canvas that owns pointer lock.
  * @returns {InputLayer}
  */
-export function createInput(opts = {}) {
-  const lockElement = opts.lockElement || null;
+export function createInput(opts: { lockElement?: HTMLElement | null } = {}): InputLayer {
+  const lockElement = opts.lockElement ?? null;
 
   // --- bindings (primary + secondary + pad) ----------------------------------
   // maps[0] = primary (BINDINGS_KEY, v1-compatible), maps[1] = secondary.
-  const maps = [{}, {}];
+  const maps: [BindingMap, BindingMap] = [
+    {} as BindingMap,
+    {} as BindingMap,
+  ];
   for (const def of ACTION_DEFS) {
-    maps[0][def.id] = DEFAULT_BINDINGS[def.id] != null ? DEFAULT_BINDINGS[def.id] : null;
-    maps[1][def.id] = DEFAULT_BINDINGS2[def.id] != null ? DEFAULT_BINDINGS2[def.id] : null;
+    maps[0][def.id] = DEFAULT_BINDINGS[def.id] ?? null;
+    maps[1][def.id] = DEFAULT_BINDINGS2[def.id] ?? null;
   }
-  const storedMaps = [loadJson(BINDINGS_KEY), loadJson(BINDINGS2_KEY)];
+  const storedMaps: unknown[] = [loadJson(BINDINGS_KEY), loadJson(BINDINGS2_KEY)];
   // Existing players commonly have a full copy of the previous defaults in
   // localStorage, so changing DEFAULT_BINDINGS alone would leave Shift on free
   // look. Migrate only recognized default shapes and preserve custom layouts.
-  if (loadJson(BINDINGS_LAYOUT_KEY) !== 3 && storedMaps[0] &&
-      typeof storedMaps[0] === 'object') {
-    if (!storedMaps[1] || typeof storedMaps[1] !== 'object') storedMaps[1] = {};
-    if (migrateShiftAimCapsFreeLookBindings(storedMaps[0], storedMaps[1])) {
-      saveJson(BINDINGS_KEY, storedMaps[0]);
-      saveJson(BINDINGS2_KEY, storedMaps[1]);
+  if (loadJson(BINDINGS_LAYOUT_KEY) !== 3 && isRecord(storedMaps[0])) {
+    if (!isRecord(storedMaps[1])) storedMaps[1] = {};
+    const primary = storedMaps[0];
+    const secondary = storedMaps[1];
+    if (isRecord(secondary) && migrateShiftAimCapsFreeLookBindings(primary, secondary)) {
+      saveJson(BINDINGS_KEY, primary);
+      saveJson(BINDINGS2_KEY, secondary);
     }
   }
   saveJson(BINDINGS_LAYOUT_KEY, 3);
   for (let s = 0; s < 2; s++) {
     const stored = storedMaps[s];
-    if (stored && typeof stored === 'object') {
+    if (isRecord(stored)) {
       for (const def of ACTION_DEFS) {
         const v = stored[def.id];
         if (typeof v === 'string' && v) maps[s][def.id] = v;
@@ -374,12 +493,12 @@ export function createInput(opts = {}) {
     }
   }
 
-  const padBindings = {};
+  const padBindings = {} as PadBindingMap;
   for (const def of ACTION_DEFS) {
-    padBindings[def.id] = DEFAULT_PAD_BINDINGS[def.id] != null ? DEFAULT_PAD_BINDINGS[def.id] : null;
+    padBindings[def.id] = DEFAULT_PAD_BINDINGS[def.id] ?? null;
   }
   const storedPad = loadJson(PAD_KEY);
-  if (storedPad && typeof storedPad === 'object') {
+  if (isRecord(storedPad)) {
     for (const def of ACTION_DEFS) {
       const v = storedPad[def.id];
       if (typeof v === 'number' && v >= 0 && v < PAD_MAX_BUTTONS) padBindings[def.id] = v;
@@ -400,17 +519,17 @@ export function createInput(opts = {}) {
     }
   }
 
-  let codeToAction = new Map(); // code -> actionId (both keyboard slots)
-  let padButtonToAction = new Map(); // button index -> actionId
+  let codeToAction = new Map<string, ActionId>(); // code -> actionId (both keyboard slots)
+  let padButtonToAction = new Map<number, ActionId>(); // button index -> actionId
   function rebuildLookup() {
-    codeToAction = new Map();
+    codeToAction = new Map<string, ActionId>();
     for (let s = 0; s < 2; s++) {
       for (const def of ACTION_DEFS) {
         const code = maps[s][def.id];
         if (code && !codeToAction.has(code)) codeToAction.set(code, def.id);
       }
     }
-    padButtonToAction = new Map();
+    padButtonToAction = new Map<number, ActionId>();
     for (const def of ACTION_DEFS) {
       const b = padBindings[def.id];
       if (b != null && !padButtonToAction.has(b)) padButtonToAction.set(b, def.id);
@@ -418,21 +537,25 @@ export function createInput(opts = {}) {
   }
   rebuildLookup();
 
-  function persistMaps(slot) {
+  function persistMaps(slot: BindingSlot) {
     saveJson(slot === 0 ? BINDINGS_KEY : BINDINGS2_KEY, maps[slot]);
   }
 
   // --- gameplay settings -------------------------------------------------------
-  const settings = { ...DEFAULT_SETTINGS };
+  const settings: InputSettings = { ...DEFAULT_SETTINGS };
   const storedSettings = loadJson(SETTINGS_KEY);
-  if (storedSettings && typeof storedSettings === 'object') {
+  if (isRecord(storedSettings)) {
     if (typeof storedSettings.sensitivity === 'number') settings.sensitivity = clamp(storedSettings.sensitivity, 0.2, 3);
     if (typeof storedSettings.invertY === 'boolean') settings.invertY = storedSettings.invertY;
     if (typeof storedSettings.sniperSensScale === 'number') settings.sniperSensScale = clamp(storedSettings.sniperSensScale, 0.2, 3);
     if (typeof storedSettings.aimSmoothing === 'number') settings.aimSmoothing = clamp(storedSettings.aimSmoothing, 0, 1);
     if (typeof storedSettings.padSensitivity === 'number') settings.padSensitivity = clamp(storedSettings.padSensitivity, 0.2, 3);
-    if (AI_DIFFICULTIES.includes(storedSettings.aiDifficulty)) settings.aiDifficulty = storedSettings.aiDifficulty;
-    if (RMB_MODES.includes(storedSettings.rmbMode)) settings.rmbMode = storedSettings.rmbMode;
+    if (typeof storedSettings.aiDifficulty === 'string' && isAiDifficulty(storedSettings.aiDifficulty)) {
+      settings.aiDifficulty = storedSettings.aiDifficulty;
+    }
+    if (typeof storedSettings.rmbMode === 'string' && isRmbMode(storedSettings.rmbMode)) {
+      settings.rmbMode = storedSettings.rmbMode;
+    }
     if (typeof storedSettings.showPerfMeter === 'boolean') settings.showPerfMeter = storedSettings.showPerfMeter;
     if (typeof storedSettings.showDebugHud === 'boolean') settings.showDebugHud = storedSettings.showDebugHud;
     if (typeof storedSettings.armorAimOverlay === 'boolean') settings.armorAimOverlay = storedSettings.armorAimOverlay;
@@ -443,8 +566,8 @@ export function createInput(opts = {}) {
   }
 
   // --- live state ----------------------------------------------------------------
-  const down = new Set(); // active codes — Set semantics kill key-ghosting
-  const actionHandlers = new Map(); // actionId -> Set<cb(code)>
+  const down = new Set<string>(); // active codes — Set semantics kill key-ghosting
+  const actionHandlers = new Map<ActionId, Set<ActionHandler>>(); // actionId -> Set<cb(code)>
   // Sub-frame tap latch (gameplay_feel r1): isDown() samples a LEVEL once per
   // render frame, so a physical press+release that both land between two
   // frames (fast keyboard tap at low fps; puppeteer keyboard.press) used to
@@ -452,12 +575,12 @@ export function createInput(opts = {}) {
   // latches its actionId here; isDown() consumes the latch and reports the
   // action down for that one query even though the key is already up. Held
   // keys behave exactly as before (the latch is just cleared on first read).
-  const pressLatch = new Set();
-  const virtualHeld = new Set(); // touch HUD buttons held this frame
+  const pressLatch = new Set<ActionId>();
+  const virtualHeld = new Set<ActionId>(); // touch HUD buttons held this frame
   const virtualMove = { x: 0, y: 0 }; // x right, y forward, both -1..1
   let virtualMoveActive = false;
   let virtualLastActiveMs = -Infinity;
-  const state = {};
+  const state = {} as InputState;
   for (const def of ACTION_DEFS) state[def.id] = false;
   let enabled = true;
   let rawDX = 0;
@@ -501,10 +624,10 @@ export function createInput(opts = {}) {
   let lockHardDenied = false; // sync SecurityError seen — stop re-attempting
   let lockAttemptSeq = 0;     // bumped by every requestLock() call
   let lockDeniedAttempt = 0;  // attempt id already counted into the streak
-  let cursorClientX = null; // last real cursor position (null = never moved)
-  let cursorClientY = null;
-  const lockDeniedHandlers = new Set();
-  const lockRestoredHandlers = new Set();
+  let cursorClientX: number | null = null; // last real cursor position (null = never moved)
+  let cursorClientY: number | null = null;
+  const lockDeniedHandlers = new Set<() => void>();
+  const lockRestoredHandlers = new Set<() => void>();
   // content_breadth r6 (minor: first aggressive click swallowed in no-lock
   // environments): the FIRST canvas click is what TRIGGERS the
   // pointerlockerror -> cursor-aim latch, so at press time lockDenied is
@@ -517,7 +640,7 @@ export function createInput(opts = {}) {
   // re-arm runs on EVERY denial (soft ones included) — a battle click whose
   // lock attempt got cooldown-denied still fires.
   let lastCanvasFirePressMs = -Infinity;
-  function noteLockDenied(hard) {
+  function noteLockDenied(hard: boolean) {
     if (hard) lockHardDenied = true;
     if (lockDeniedAttempt !== lockAttemptSeq) {
       lockDeniedAttempt = lockAttemptSeq; // count each attempt exactly once
@@ -544,7 +667,7 @@ export function createInput(opts = {}) {
   const nowMillis = () =>
     (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-  function firePress(actionId, code, evt) {
+  function firePress(actionId: ActionId, code: string, evt?: Event) {
     // Latch the single-shot fire edge. Presses that could never fire anyway —
     // mouse clicks without pointer lock (menus, the lock-acquiring click
     // itself) — are ignored, so re-locking after a pause can't pop a shot.
@@ -574,7 +697,7 @@ export function createInput(opts = {}) {
     for (const cb of set) cb(code);
   }
 
-  function press(code, evt) {
+  function press(code: string, evt?: Event) {
     if (!enabled) return;
     const actionId = codeToAction.get(code);
     if (actionId && evt && evt.cancelable &&
@@ -587,15 +710,15 @@ export function createInput(opts = {}) {
     if (actionId && !wasDown) firePress(actionId, code, evt);
   }
 
-  function release(code) {
+  function release(code: string) {
     down.delete(code);
   }
 
   // --- gamepad polling -------------------------------------------------------------
   // Polled at most once per few ms from getState()/isDown()/consumeMouseDelta()
   // so the pad behaves exactly like held keys without its own rAF loop.
-  const padHeld = new Set(); // actionIds held via pad buttons or move stick
-  const padPrevPressed = new Array(PAD_MAX_BUTTONS).fill(false);
+  const padHeld = new Set<ActionId>(); // actionIds held via pad buttons or move stick
+  const padPrevPressed: boolean[] = new Array(PAD_MAX_BUTTONS).fill(false);
   const padAim = { x: 0, y: 0 }; // curved right-stick deflection (-1..1)
   const padMove = { x: 0, y: 0 }; // curved left-stick deflection (-1..1)
   let padConnected = false;
@@ -675,17 +798,20 @@ export function createInput(opts = {}) {
   }
 
   // --- DOM listeners ----------------------------------------------------------------
-  const onKeyDown = (e) => { if (!e.repeat) press(e.code, e); else if (enabled) down.add(e.code); };
-  const onKeyUp = (e) => release(e.code);
-  const onMouseDown = (e) => press(`Mouse${e.button}`, e);
-  const onMouseUp = (e) => release(`Mouse${e.button}`);
-  const onMouseMove = (e) => {
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (!event.repeat) press(event.code, event);
+    else if (enabled) down.add(event.code);
+  };
+  const onKeyUp = (event: KeyboardEvent) => release(event.code);
+  const onMouseDown = (event: MouseEvent) => press(`Mouse${event.button}`, event);
+  const onMouseUp = (event: MouseEvent) => release(`Mouse${event.button}`);
+  const onMouseMove = (event: MouseEvent) => {
     // real cursor position is tracked always — cursor-aim raycasts through it
-    cursorClientX = e.clientX;
-    cursorClientY = e.clientY;
+    cursorClientX = event.clientX;
+    cursorClientY = event.clientY;
     if (lockElement && document.pointerLockElement === lockElement) {
-      rawDX += e.movementX;
-      rawDY += e.movementY;
+      rawDX += event.movementX;
+      rawDY += event.movementY;
     }
   };
   // Wheel notches fire press edges for whatever action WheelUp/WheelDown maps
@@ -694,16 +820,16 @@ export function createInput(opts = {}) {
   // sits under the cursor, so scrolling a menu must never step the gun zoom.
   // CURSOR-AIM FALLBACK: with the lock unavailable, notches over the game
   // canvas itself do step the zoom (menus still own their own scroll).
-  const onWheel = (e) => {
-    if (!enabled || e.deltaY === 0) return;
+  const onWheel = (event: WheelEvent) => {
+    if (!enabled || event.deltaY === 0) return;
     if (lockElement && document.pointerLockElement !== lockElement &&
-        !(lockDenied && e.target === lockElement)) return;
-    const code = e.deltaY < 0 ? 'WheelUp' : 'WheelDown';
+        !(lockDenied && event.target === lockElement)) return;
+    const code = event.deltaY < 0 ? 'WheelUp' : 'WheelDown';
     const actionId = codeToAction.get(code);
-    if (actionId) firePress(actionId, code, e);
+    if (actionId) firePress(actionId, code, event);
   };
   const onBlurClear = () => down.clear();
-  const onContextMenu = (e) => e.preventDefault();
+  const onContextMenu = (event: MouseEvent) => event.preventDefault();
 
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
@@ -722,11 +848,12 @@ export function createInput(opts = {}) {
     if (lockElement && document.pointerLockElement === lockElement) noteLockEngaged();
   });
 
-  const isHeld = (actionId) =>
-    down.has(maps[0][actionId]) || down.has(maps[1][actionId]) ||
+  const isHeld = (actionId: ActionId) =>
+    (maps[0][actionId] !== null && down.has(maps[0][actionId])) ||
+    (maps[1][actionId] !== null && down.has(maps[1][actionId])) ||
     padHeld.has(actionId) || virtualHeld.has(actionId);
 
-  const api = {
+  const api: InputLayer = {
     /** Ordered action metadata for UI listings. */
     actionDefs: ACTION_DEFS,
 
@@ -805,7 +932,7 @@ export function createInput(opts = {}) {
      */
     findConflict(code, excludeId, excludeSlot = 0) {
       if (!code) return null;
-      for (let s = 0; s < 2; s++) {
+      for (const s of [0, 1] as const) {
         for (const def of ACTION_DEFS) {
           if (def.id === excludeId && s === excludeSlot) continue;
           if (maps[s][def.id] === code) return { actionId: def.id, slot: s };
@@ -868,9 +995,9 @@ export function createInput(opts = {}) {
     /** Restore all default bindings (primary, secondary, pad) and persist. */
     resetBindings() {
       for (const def of ACTION_DEFS) {
-        maps[0][def.id] = DEFAULT_BINDINGS[def.id] != null ? DEFAULT_BINDINGS[def.id] : null;
-        maps[1][def.id] = DEFAULT_BINDINGS2[def.id] != null ? DEFAULT_BINDINGS2[def.id] : null;
-        padBindings[def.id] = DEFAULT_PAD_BINDINGS[def.id] != null ? DEFAULT_PAD_BINDINGS[def.id] : null;
+        maps[0][def.id] = DEFAULT_BINDINGS[def.id] ?? null;
+        maps[1][def.id] = DEFAULT_BINDINGS2[def.id] ?? null;
+        padBindings[def.id] = DEFAULT_PAD_BINDINGS[def.id] ?? null;
       }
       rebuildLookup();
       persistMaps(0);
@@ -976,7 +1103,7 @@ export function createInput(opts = {}) {
      *  treated 0 as falsy and quietly reset the field to 1.0×). The default
      *  is reserved for genuinely non-numeric input (NaN). */
     setSetting(key, value) {
-      const num = (fallback, lo, hi) => {
+      const num = (fallback: number, lo: number, hi: number) => {
         const n = Number(value);
         return clamp(Number.isFinite(n) ? n : fallback, lo, hi);
       };
@@ -989,8 +1116,11 @@ export function createInput(opts = {}) {
       else if (key === 'sniperSensScale') settings.sniperSensScale = num(1, 0.2, 3);
       else if (key === 'aimSmoothing') settings.aimSmoothing = num(0.5, 0, 1);
       else if (key === 'padSensitivity') settings.padSensitivity = num(1, 0.2, 3);
-      else if (key === 'aiDifficulty') settings.aiDifficulty = AI_DIFFICULTIES.includes(value) ? value : settings.aiDifficulty;
-      else if (key === 'rmbMode') settings.rmbMode = RMB_MODES.includes(value) ? value : settings.rmbMode;
+      else if (key === 'aiDifficulty') {
+        if (typeof value === 'string' && isAiDifficulty(value)) settings.aiDifficulty = value;
+      } else if (key === 'rmbMode') {
+        if (typeof value === 'string' && isRmbMode(value)) settings.rmbMode = value;
+      }
       else if (VOLUME_KEYS.includes(key)) settings[key] = num(0, 0, 1);
       saveJson(SETTINGS_KEY, settings);
     },
@@ -1142,7 +1272,7 @@ export function createInput(opts = {}) {
     getCursorNdc(out) {
       out.x = 0;
       out.y = 0;
-      if (!lockElement || cursorClientX === null) return out;
+      if (!lockElement || cursorClientX === null || cursorClientY === null) return out;
       const r = lockElement.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) return out;
       out.x = clamp(((cursorClientX - r.left) / r.width) * 2 - 1, -1, 1);

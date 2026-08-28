@@ -175,7 +175,7 @@ async function runMode(mode, { stubNoLock, width, height }) {
 
   // --- default binds sanity ---------------------------------------------------
   // Desktop defaults are WoT-classic (Shift sniper, RMB free-look — see
-  // input.js DEFAULT_BINDINGS). Sniper stays mouse-reachable in no-lock
+  // input.ts DEFAULT_BINDINGS). Sniper stays mouse-reachable in no-lock
   // environments through the main.js cursor-aim routing: RMB toggles sniper
   // whenever input.isCursorAim() — asserted behaviorally per mode below.
   const binds = await page.evaluate(() => window.__DEBUG.input.getBindings(0));

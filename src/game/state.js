@@ -33,7 +33,7 @@ import {
 import { createAI, roleOf } from './ai.js';
 import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
-import { getStoredDifficulty } from './input.js';
+import { getStoredDifficulty } from './input.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.ts';
 import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.js';

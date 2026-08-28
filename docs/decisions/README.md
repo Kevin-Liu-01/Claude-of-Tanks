@@ -189,3 +189,4 @@ runtime documents remain authoritative for behavior.
 - [0177 — Dedicated collision-manifest inflation is strict TypeScript](0177-typed-dedicated-world-collision.md)
 - [0178 — The complete signaling deployment closure is strict TypeScript](0178-typed-signaling-deployment.md)
 - [0179 — The application composition root is strict TypeScript](0179-typed-application-composition-root.md)
+- [0180 — Browser action input is strict TypeScript](0180-typed-browser-action-input.md)

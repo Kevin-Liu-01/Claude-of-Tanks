@@ -3912,7 +3912,7 @@ export function initHud(bus) {
 
   let playerRef = null;
   bus.on('tank:destroyed', (p) => { pushKill(p); });
-  // Shell hotkeys route through input.js actions only (main.ts emits this) —
+  // Shell hotkeys route through input.ts actions only (main.ts emits this) —
   // the HUD renders selection state from the bus instead of its own listener.
   bus.on('ui:shellSelect', ({ slot }) => selectSlot(slot));
   bus.on('ui:perfMeter', (p) => {

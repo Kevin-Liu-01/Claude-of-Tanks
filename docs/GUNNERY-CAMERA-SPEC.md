@@ -12,7 +12,7 @@ Deployment fingerprint: bundle `assets/index-C70t46o1.js` contains the
 battle-load screen (`cot-bl`, commit c33c60f) and the mobile battle flow's
 touch-layout gate (`innerWidth<=900`, commit 39e43c0), and none of the
 uncommitted 2026-07-31 work — i.e. a recent committed `main` state whose
-camera/aim source equals HEAD's `src/engine/cameraRig.js` / `src/game/input.js`.
+camera/aim source equals HEAD's `src/engine/cameraRig.js` / `src/game/input.ts`.
 
 ## Derived coupling rules (the spec)
 

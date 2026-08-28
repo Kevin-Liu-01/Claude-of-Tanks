@@ -1,6 +1,6 @@
 // src/ui/settings.js — in-game settings panel (Esc in battle, gear in garage).
 //
-// CONTROLS tab: every action from src/game/input.js with three binding chips —
+// CONTROLS tab: every action from src/game/input.ts with three binding chips —
 // primary key, secondary key (arrow-key movement ships as default alt), and a
 // gamepad button. Click a chip then press any key / mouse button / wheel notch
 // (or pad button for the pad column) to rebind; tap Esc to cancel, HOLD Esc to
@@ -332,7 +332,7 @@ export function battleControlHintGroups(rmbMode = 'hold') {
  * Create the settings panel + garage gear button + battle controls-hint strip.
  *
  * @param {{
- *   input: import('../game/input.js').InputLayer,
+ *   input: import('../game/input.ts').InputLayer,
  *   bus?: {emit:Function,on:Function},
  *   isBattleActive?: () => boolean,   // battle running (phase battle, no result)
  *   canLeaveBattle?: () => boolean,   // any battle/spectator state

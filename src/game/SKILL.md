@@ -24,7 +24,7 @@ dependency order and timing; `battleWarmRuntime.ts` owns battle-only terrain,
 wreck, Studio/shared FX, and covered deployment-program residency behind a
 retryable typed access facade; `ai.js`
 owns bot decisions and is injected into the headless multiplayer authority;
-`input.js` normalizes devices; `profile.ts` persists real local match history;
+`input.ts` normalizes devices; `profile.ts` persists real local match history;
 `playerBattleActions.ts` owns ammunition, consumable, special-action, and
 local-versus-network command policy without importing the combat runtime;
 `equipment.ts` owns the strict catalog, persistence, legal-loadout, multiplier,

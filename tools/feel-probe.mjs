@@ -178,7 +178,7 @@ try {
     wrap(D.fx, 'composeFiringMoment', 'fx:composeFiring');
 
     // AIM PATH ISOLATION: tap the input layer's own per-frame yaw delta. This
-    // separates the input smoothing (input.js EMA) from the turret traverse
+    // separates the input smoothing (input.ts EMA) from the turret traverse
     // rate (sim) and the camera rig's own easing (not ours) — a single mouse
     // burst that leaves this function spread over N frames is N frames of
     // input mush no amount of camera tuning can recover.

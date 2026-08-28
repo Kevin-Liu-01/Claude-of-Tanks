@@ -125,7 +125,7 @@ import { debugModeRequested } from './dev/debugIntent.ts';
 import { createPerfDiagnosticsAccess } from './dev/perfDiagnosticsAccess.ts';
 import { createLazyAudio } from './audio/lazyAudio.ts';
 import { createListenerPoseRuntime } from './audio/listenerPoseRuntime.ts';
-import { createInput } from './game/input.js';
+import { createInput } from './game/input.ts';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { createBattleClientAccess } from './game/battleClientAccess.ts';
 import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
@@ -1400,7 +1400,7 @@ const endOverlay = createEndOverlayRuntime({
 // wired below), and the end-of-battle overlay keeps RETURN TO GARAGE.
 
 // ---------------------------------------------------------------------------
-// Input — routed through the rebindable action layer (src/game/input.js) and
+// Input — routed through the rebindable action layer (src/game/input.ts) and
 // the settings panel (src/ui/settings.js). Zoom is the zoomIn/zoomOut actions (wheel by default).
 // ---------------------------------------------------------------------------
 const debugFlags: { forceFire: boolean; lastEndFlow?: unknown } = { forceFire: false };

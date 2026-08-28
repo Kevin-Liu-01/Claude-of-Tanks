@@ -16,7 +16,7 @@ const [
   readFile(new URL('./settings.js', import.meta.url), 'utf8'),
   readFile(new URL('../presentation/publicNav.css', import.meta.url), 'utf8'),
   readFile(new URL('./responsiveSurfaces.css', import.meta.url), 'utf8'),
-  readFile(new URL('../game/input.js', import.meta.url), 'utf8'),
+  readFile(new URL('../game/input.ts', import.meta.url), 'utf8'),
   readFile(new URL('./networkStatus.ts', import.meta.url), 'utf8'),
   readFile(new URL('./transition.ts', import.meta.url), 'utf8'),
   readFile(new URL('./perfHud.ts', import.meta.url), 'utf8'),

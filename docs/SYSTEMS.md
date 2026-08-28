@@ -87,6 +87,9 @@ strict TypeScript owners:
 - `src/game/playerFrameInput.ts` owns allocation-free per-frame keyboard,
   mouse, gamepad, touch, cursor-fallback, zoom, and RMB-mode sampling and
   publishes the stable movement/fire and camera input records;
+- `src/game/input.ts` owns the strict device-to-action map, two-slot keyboard
+  bindings, gamepad bindings, touch injection, persisted settings, buffered
+  fire edges, and pointer-lock recovery behind one exported `InputLayer`;
 - `src/game/battleFrameRuntime.ts` owns pause/resume edges, retained input
   sampling, non-Garage network cadence, pre-battle hold, bounded fixed-step
   debt, result progression, and tank-presentation interpolation;

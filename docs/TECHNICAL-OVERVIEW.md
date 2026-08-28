@@ -147,6 +147,9 @@ image-preload, featured-media, map-art, and tier-metadata contracts rather than
 crossing back into unchecked presentation helpers.
 Pure keyboard, flag, glyph, minimap, drive-readout, spectator, map-preview, and
 Garage-order policy is also typed and remains directly Node-testable.
+The browser input layer now exports strict action, binding, settings, gamepad,
+touch-vector, and pointer-lock contracts; persisted JSON is narrowed before it
+can affect a live control state.
 Module/crew vocabulary, technical dossiers, hit formatting, shot-diagram
 projection, and reconnect diagnostics now expose strict contracts to their
 legacy renderers as the migration boundary advances inward.

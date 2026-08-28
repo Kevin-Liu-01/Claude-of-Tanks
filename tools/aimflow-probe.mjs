@@ -8,7 +8,7 @@
 //     but never rotates with it. In CURSOR-AIM mode (pointer lock denied —
 //     embedded panes) the turret chases the cursor ray while the camera stays
 //     parked (classic). The actual dead-mouse regression in narrow panes was
-//     input.js isTouchLayout() reclassifying <=900 px windows as touch.
+//     input.ts isTouchLayout() reclassifying <=900 px windows as touch.
 //  2. Scroll-zoom sky fling — the aim pitch is PRESERVED bidirectionally
 //     across every zoom step and the arcade<->sniper boundary once the player
 //     has aimed: enter battle, set a mid pitch, scroll to max sniper and back —
