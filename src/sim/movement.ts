@@ -1087,10 +1087,10 @@ export function updateTank(
   //     side per tankFactory's `e.x < 0 ? l : r`) gets +yawRate × arm, i.e.
   //     the outer track in a screen-left turn runs faster.
   // The AI is the main producer and matches: `steer = wrapAngle(bearing −
-  // yaw) × k` (ai.js driveToXZ/faceYaw) needs +steer to raise yaw. Therefore
+  // yaw) × k` (ai.ts driveToXZ/faceYaw) needs +steer to raise yaw. Therefore
   // the PLAYER's key map is where "right" is turned into a sign: main.ts sends
   // `steer = left − right` (a D press is negative). Never invert the mapping
-  // here or in ai.js — that silently breaks bot navigation; and never fix a
+  // here or in ai.ts — that silently breaks bot navigation; and never fix a
   // perceived inversion downstream in the renderer (it would desync the sim,
   // the reticle, spotting and hit resolution from the visuals).
   const trMaxHealthy = spec.hullTraverseDegS * DEG2RAD * (Rh / R) *

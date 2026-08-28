@@ -21,7 +21,7 @@ Module ownership (file paths are FIXED):
 | vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.js`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
 | movement | `src/sim/movement.ts` |
 | combat   | `src/sim/ballistics.ts`, `src/sim/armor.ts`, `src/sim/damage.ts`, `src/sim/combat.selftest.mjs` |
-| ai       | `src/game/ai.js` |
+| ai       | `src/game/ai.ts` |
 | hud      | `src/ui/hud.js`, `src/ui/garage.js`, `src/ui/damagePanel.js` |
 | fx       | `src/fx/effects.js`, `src/fx/particles.js` |
 | audio    | `src/audio/audio.js` |
@@ -72,7 +72,7 @@ No suffix ⇒ SI/radians. Never store radians in specs; never pass degrees at ru
 - **ES modules everywhere.** `package.json` has `"type": "module"` (already set — do not
   change it). Imports: `three` and `three/examples/jsm/...` only. No other packages, no
   CDN, no fetch of any asset.
-- `src/sim/*`, `src/vehicles/specs.js`, and `src/game/ai.js` are **pure-logic modules**:
+- `src/sim/*`, `src/vehicles/specs.js`, and `src/game/ai.ts` are **pure-logic modules**:
   they may import `three` **for math classes only** (Vector3/Matrix4/Quaternion/Ray/Box3)
   — never anything that touches WebGL or DOM — so they run under plain node.
 - **Import rules**: any module may import the pure-logic modules above. Nothing else may
@@ -275,9 +275,9 @@ TankEntity = {
   team: 'player'|'enemy', isPlayer: boolean,
   state: TankState,        // owned by movement.ts
   combat: CombatState,     // owned by damage.ts
-  input: TankInput,        // written by integration (player) or ai.js
+  input: TankInput,        // written by integration (player) or ai.ts
   visual: TankVisual|null, // owned by tankFactory (null in headless tests)
-  ai: object|null,         // opaque, owned by ai.js
+  ai: object|null,         // opaque, owned by ai.ts
 }
 
 TankState = {              // movement.createTankState(spec, pos:Vector3, yaw) builds this
@@ -744,7 +744,7 @@ angles from plate normal):
    −moduleDmg and fire roll consumed. RNG consumption order fixed: pen, dmg, then
    per-intersection (save, moduleDmg, fire).
 
-### 3.6 ai — `src/game/ai.js` (pure logic; may import sim modules + specs)
+### 3.6 ai — `src/game/ai.ts` (pure logic; may import sim modules + specs)
 ```js
 export function createAI(entity, opts) => AIController
 // opts = { difficulty: 'easy'|'normal'|'hard', rng, deps }

@@ -159,7 +159,7 @@ Relevant implementation:
 
 - src/sim/spotting.ts
 - src/sim/botRoutePlanner.ts
-- src/game/ai.js
+- src/game/ai.ts
 - server/authoritativeBots.selftest.mjs
 
 ## Twenty generated battlefields

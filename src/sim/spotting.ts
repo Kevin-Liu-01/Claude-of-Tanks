@@ -15,7 +15,7 @@
  *    muzzle flash past the camo-formula range (r5: never past the SPOTTER'S
  *    effective view range — WoT parity, firing only strips camo — nor past
  *    445 m, and hard LOS still gates). The old AI-side spotting-gate bypass
- *    is gone (ai.js).
+ *    is gone (ai.ts).
  *  - Equipment (EQUIPMENT table): camo net (+still camo), binoculars
  *    (+still view range), vents — injected via deps.getEquipment.
  *  - Bush/foliage concealment: vegetation discs intersecting the 2D line

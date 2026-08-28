@@ -302,7 +302,7 @@ console.log('[17] muzzle-flash reveal resolves fire intel THROUGH the formula');
   // m4a3e8 (still camo 0.24) at 435 m from an m1a2 spotter (vr 445):
   // cold: spotRange 350.2 < 435 -> hidden. Firing bloom-strips own camo to
   // 0.0432 -> spotRange 427.9, STILL < 435 — the formula alone never reveals
-  // this shooter, which is exactly where the old ai.js hard bypass lived.
+  // this shooter, which is exactly where the old ai.ts hard bypass lived.
   // The flash branch reveals it (open ground, bloom hot, inside the
   // spotter's view range, LOS clear).
   const spotter = tank('e1', 'enemy', 0, 0, { specId: 'm1a2', cls: 'mbt' });

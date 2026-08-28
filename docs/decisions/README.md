@@ -191,3 +191,4 @@ runtime documents remain authoritative for behavior.
 - [0179 — The application composition root is strict TypeScript](0179-typed-application-composition-root.md)
 - [0180 — Browser action input is strict TypeScript](0180-typed-browser-action-input.md)
 - [0181 — Solo battle authority is strict TypeScript](0181-typed-solo-battle-authority.md)
+- [0182 — Shared bot control is strict TypeScript](0182-typed-shared-bot-controller.md)

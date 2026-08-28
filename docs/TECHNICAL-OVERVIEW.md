@@ -155,6 +155,11 @@ roster records and active simulation entities are separate types, while world,
 collision, AI, shell, match-mode, event, and camera seams are explicit. This
 keeps combat out of first-paint evaluation without leaving the fixed-step owner
 unchecked.
+The shared bot controller is strict TypeScript and renderer-free. Solo,
+browser-hosted, and dedicated matches inject the same typed entity, terrain,
+obstacle, spotting, and random-source ports, so target selection, routing,
+articulated gun laying, friendly-fire discipline, and stuck recovery remain one
+deterministic policy instead of drifting across authority modes.
 Module/crew vocabulary, technical dossiers, hit formatting, shot-diagram
 projection, and reconnect diagnostics now expose strict contracts to their
 legacy renderers as the migration boundary advances inward.

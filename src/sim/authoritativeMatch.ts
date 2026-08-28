@@ -80,7 +80,7 @@ import type {
   EquipmentCombatState,
   EquipmentSpecLike,
 } from '../game/equipment.ts';
-import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.js';
+import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.ts';
 import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.ts';
 import type { BotRoutePoint } from './botRoutePlanner.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from '../game/consumables.ts';

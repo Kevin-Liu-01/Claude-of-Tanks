@@ -22,7 +22,7 @@ boundary for legacy solo authority in `state.ts`, which owns battle setup and
 the fixed battle step; `battleEntryAcquisition.ts` owns covered solo/network
 dependency order and timing; `battleWarmRuntime.ts` owns battle-only terrain,
 wreck, Studio/shared FX, and covered deployment-program residency behind a
-retryable typed access facade; `ai.js`
+retryable typed access facade; `ai.ts`
 owns bot decisions and is injected into the headless multiplayer authority;
 `input.ts` normalizes devices; `profile.ts` persists real local match history;
 `playerBattleActions.ts` owns ammunition, consumable, special-action, and

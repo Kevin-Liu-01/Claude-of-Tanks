@@ -1,5 +1,5 @@
 /**
- * ai.js — Shared allied/enemy tank AI controller (pure logic, node-runnable).
+ * ai.ts — Shared allied/enemy tank AI controller (pure logic, node-runnable).
  *
  * Implements ARCHITECTURE.md §3.6: waypoint navigation on the terrain heightfield,
  * line-of-sight target acquisition, hull-down / cover seeking, shell-travel-time
@@ -21,13 +21,137 @@ import { solveBallisticGunLay } from '../sim/ballistics.ts';
 import { tankPoseFromState, queryAimArmor } from '../sim/armor.ts';
 import { blastRadiusM, estimatePenRatio, isHeClass } from '../sim/damage.ts';
 import { terrainTravelCostFactor } from '../sim/terrainMobility.ts';
+import type { ArmorModel } from '../sim/armor.ts';
+import type { DamageShellSpec, CombatState, HitEvent } from '../sim/damage.ts';
+import type {
+  MovementGunSpec,
+  MovementInput,
+  MovementSpec,
+  TankState,
+} from '../sim/movement.ts';
+
+export type AiDifficulty = 'easy' | 'normal' | 'hard';
+export type AiRole = 'scout' | 'sniper' | 'brawler' | 'flanker';
+type AiMode = 'patrol' | 'engage' | 'seekCover' | 'flank';
+type RandomSource = () => number;
+
+interface Position2 {
+  x: number;
+  z: number;
+}
+
+interface AiInput extends MovementInput {
+  throttle: number;
+  steer: number;
+  brake: boolean;
+  fire: boolean;
+  aimPoint: Vector3;
+  shellSlot: number;
+}
+
+interface AiGunSpec extends MovementGunSpec {
+  shells: DamageShellSpec[];
+}
+
+type AiSpec = Omit<MovementSpec, 'gun' | 'armor' | 'dims'> & {
+  id: string;
+  gun: AiGunSpec;
+  armor?: ArmorModel;
+  dims: MovementSpec['dims'] & { lengthM?: number };
+};
+
+interface AiControllerDebugInfo extends Record<string, unknown> {
+  mode: string;
+  targetId: string | null;
+}
+
+interface AiTargetController {
+  readonly targetId?: string | null;
+}
+
+export interface FriendlyFireRisk {
+  allyId: string;
+  kind: 'corridor' | 'blast';
+  clearanceM: number;
+}
+
+export interface AiController {
+  update(dt: number, timeS: number): void;
+  setWaypoints(points: Array<[number, number]>, options?: { loop?: boolean }): void;
+  notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'>): void;
+  notifyUnderFire(shooter: AiEntity): void;
+  notifyPlayerFired(shooter: AiEntity, rank?: number): void;
+  notifyFriendlyBlocked(risk: FriendlyFireRisk): void;
+  readonly targetId: string | null;
+  debugInfo(): AiControllerDebugInfo;
+  state: string;
+}
+
+export interface AiEntity {
+  id: string;
+  team: string;
+  isPlayer?: boolean;
+  spec: AiSpec;
+  state: TankState;
+  combat?: CombatState;
+  input: AiInput;
+  ai?: unknown;
+  aiCtl?: unknown;
+}
+
+interface AiObstacle {
+  min: [number, number, number];
+  max: [number, number, number];
+  crushed?: boolean;
+  crushable?: boolean;
+}
+
+interface AiHeightField {
+  getHeightAt(x: number, z: number): number;
+  getHeightAtFast?(x: number, z: number): number;
+  getNormalAt?(x: number, z: number): { y: number };
+  getGroundType?(x: number, z: number): string;
+}
+
+interface AiDependencies {
+  heightField: AiHeightField;
+  raycast(
+    origin: { x: number; y: number; z: number },
+    direction: { x: number; y: number; z: number },
+    maxDistance: number,
+  ): { dist: number } | null | undefined;
+  getEnemies(): AiEntity[];
+  getAllies?(): AiEntity[];
+  getObstacles(): AiObstacle[];
+  queryObstacles?: ((
+    minX: number,
+    minZ: number,
+    maxX: number,
+    maxZ: number,
+    out: AiObstacle[],
+  ) => AiObstacle[]) | null;
+  spotting?: { isSpotted(id: string, receiver: AiEntity): boolean };
+}
+
+interface CreateAiOptions {
+  difficulty?: AiDifficulty;
+  rng?: RandomSource;
+  deps: AiDependencies;
+}
+
+interface RoleSpec {
+  role?: string;
+  topSpeedKmh?: number;
+  enginePowerHp?: number;
+  weightTons?: number;
+}
 
 /**
  * Canonical deterministic PRNG (ARCHITECTURE.md §1.4, copied verbatim).
  * @param {number} a seed
  * @returns {() => number} generator of floats in [0,1)
  */
-export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+export function mulberry32(a: number): RandomSource {return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
 // ---------------------------------------------------------------------------
@@ -86,14 +210,14 @@ const PROBE_SETS = [
  * @param {object} spec TankSpec-like ({ role, topSpeedKmh, enginePowerHp, weightTons })
  * @returns {'scout'|'sniper'|'brawler'|'flanker'}
  */
-export function roleOf(spec) {
-  const c = spec && spec.role;
+export function roleOf(spec: RoleSpec | null | undefined): AiRole {
+  const c = spec?.role;
   if (c === 'light' || c === 'ifv') return 'scout';
   if (c === 'td' || c === 'spg') return 'sniper';
   if (c === 'heavy') return 'brawler';
   if (c === 'mbt') {
-    const pw = (spec.enginePowerHp || 0) / Math.max(1, spec.weightTons || 1);
-    return (spec.topSpeedKmh >= 66 && pw >= 21) ? 'flanker' : 'brawler';
+    const pw = (spec?.enginePowerHp || 0) / Math.max(1, spec?.weightTons || 1);
+    return ((spec?.topSpeedKmh || 0) >= 66 && pw >= 21) ? 'flanker' : 'brawler';
   }
   return 'flanker'; // medium + unknown roles
 }
@@ -253,22 +377,22 @@ const _hullQuat = new Quaternion();
 // Small math helpers
 // ---------------------------------------------------------------------------
 
-function clamp(x, lo, hi) { return x < lo ? lo : x > hi ? hi : x; }
+function clamp(x: number, lo: number, hi: number): number { return x < lo ? lo : x > hi ? hi : x; }
 
-function wrapAngle(a) {
+function wrapAngle(a: number): number {
   a = (a + Math.PI) % TAU;
   if (a < 0) a += TAU;
   return a - Math.PI;
 }
 
 /** Standard-normal sample via Box–Muller from the injected rng. */
-function gauss(rng) {
+function gauss(rng: RandomSource): number {
   let u = rng();
   while (u <= 1e-9) u = rng();
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * rng());
 }
 
-function tankSafetyRadius(ent) {
+function tankSafetyRadius(ent: AiEntity | null | undefined): number {
   if (!ent || !ent.spec) return 2.5;
   const dims = ent.spec.dims || {};
   const hullR = Math.hypot(dims.widthM || 3, dims.lengthM || 6) * 0.38;
@@ -287,7 +411,12 @@ function tankSafetyRadius(ent) {
  * @param {object[]} candidates tanks to inspect (all tanks or teammates)
  * @returns {null|{allyId:string,kind:'corridor'|'blast',clearanceM:number}}
  */
-export function botFriendlyFireRisk(shooter, aimPoint, shellSpec, candidates) {
+export function botFriendlyFireRisk(
+  shooter: AiEntity | null | undefined,
+  aimPoint: { x: number; y: number; z: number } | null | undefined,
+  shellSpec: DamageShellSpec | null | undefined,
+  candidates: AiEntity[] | null | undefined,
+): FriendlyFireRisk | null {
   if (!shooter || !shooter.state || !aimPoint || !shellSpec) return null;
   const sp = shooter.state.pos;
   const sx = sp.x, sz = sp.z;
@@ -365,7 +494,7 @@ export function botFriendlyFireRisk(shooter, aimPoint, shellSpec, candidates) {
  *             notifyShellResult(hitEvent: object): void,
  *             state: string }} AIController (§3.6)
  */
-export function createAI(entity, opts = {}) {
+export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController {
   if (!entity || !entity.spec || !entity.state) {
     throw new Error('createAI: entity must carry spec and state');
   }
@@ -383,8 +512,12 @@ export function createAI(entity, opts = {}) {
   // grid when the heightfield provides one (headless fixtures don't).
   // Prototype delegation (NOT a spread): the live proxy's getters must keep
   // resolving against the active world.
-  const hf = typeof hfRaw.getHeightAtFast === 'function'
-    ? Object.create(hfRaw, { getHeightAt: { value: (x, z) => hfRaw.getHeightAtFast(x, z) } })
+  const hf: AiHeightField = typeof hfRaw.getHeightAtFast === 'function'
+    ? Object.create(hfRaw, {
+        getHeightAt: {
+          value: (x: number, z: number) => hfRaw.getHeightAtFast!(x, z),
+        },
+      }) as AiHeightField
     : hfRaw;
   // SPOTTING WIRING: optional concealment gate (absent in headless fixtures)
   const spotting = deps.spotting && typeof deps.spotting.isSpotted === 'function'
@@ -399,7 +532,8 @@ export function createAI(entity, opts = {}) {
   // bush-sniper play). The underFire/playerAggro slots keep only their
   // POSITIONAL roles: lastSeen chase intel, target priority, and the
   // engage-envelope extension.
-  const isVisibleToTeam = (e) => !spotting || spotting.isSpotted(e.id, entity);
+  const isVisibleToTeam = (e: AiEntity): boolean =>
+    !spotting || spotting.isSpotted(e.id, entity);
 
   // Ensure the shared input record exists (integration normally creates it).
   if (!entity.input) {
@@ -448,14 +582,14 @@ export function createAI(entity, opts = {}) {
     : spec.dims.heightM * 0.85;
 
   // ---- persistent controller state ----------------------------------------
-  let mode = 'patrol';                       // 'patrol'|'engage'|'seekCover'|'flank'
-  let target = null;                         // TankEntity or null
+  let mode: AiMode = 'patrol';               // 'patrol'|'engage'|'seekCover'|'flank'
+  let target: AiEntity | null = null;         // TankEntity or null
   let losClear = false;
   let acquiredAtS = -Infinity;               // when current target was first seen
   let lastSeenAtS = -Infinity;
   const lastSeen = { x: 0, z: 0 };
 
-  const waypoints = [];                      // [{x,z}] patrol route
+  const waypoints: Position2[] = [];          // [{x,z}] patrol route
   let wpIndex = 0;
   let autoPatrolBuilt = false;
   let loopWaypoints = true;
@@ -485,7 +619,7 @@ export function createAI(entity, opts = {}) {
     v.untilS = nowS + 20;
     vantageVetoIdx = (vantageVetoIdx + 1) % vantageVeto.length;
   }
-  function vantageVetoed(cx, cz) {
+  function vantageVetoed(cx: number, cz: number): boolean {
     for (let i = 0; i < vantageVeto.length; i++) {
       const v = vantageVeto[i];
       if (nowS < v.untilS && Math.hypot(v.x - cx, v.z - cz) < 15) return true;
@@ -554,10 +688,10 @@ export function createAI(entity, opts = {}) {
   let friendlyBlockT = 0;
   let friendlyBlockCount = 0;
   let friendlyLaneMoves = 0;
-  let lastFriendlyRisk = null;
-  let underFire = null;            // shooter entity revealed by hitting us/a teammate
+  let lastFriendlyRisk: FriendlyFireRisk | null = null;
+  let underFire: AiEntity | null = null; // shooter revealed by hitting us/a teammate
   let underFireUntilS = -Infinity; // reaction window end (sim seconds)
-  let playerAggro = null;          // sticky PLAYER attacker-of-record (r4)
+  let playerAggro: AiEntity | null = null; // sticky PLAYER attacker-of-record (r4)
   let playerAggroUntilS = -Infinity;
   let playerShotsInWindow = 0;     // player shots inside the live intel window (r2)
   let playerLockUntilS = -Infinity; // RETURN-FIRE LOCK window (r4, see tuning)
@@ -598,7 +732,7 @@ export function createAI(entity, opts = {}) {
   // Formation deconfliction is a movement authority, not a cosmetic steer
   // nudge. It survives route/unstick logic and is exposed to headless soaks.
   let allyYielding = false;
-  let allyAvoidingId = null;
+  let allyAvoidingId: string | null = null;
   let allyClosestM = Infinity;
   let allyYieldT = 0;
   let allyDeadlockT = 0;
@@ -652,7 +786,7 @@ export function createAI(entity, opts = {}) {
   // wedge against each other at full throttle (probe: thr=1.0, spd=0.1).
   const vantageBias = (rng() - 0.5) * 0.9;
   let obstacles = deps.getObstacles();
-  const nearbyObstacles = [];
+  const nearbyObstacles: AiObstacle[] = [];
   let nowS = 0;                              // last timeS seen by update()
 
   resampleAimError();
@@ -684,22 +818,22 @@ export function createAI(entity, opts = {}) {
     errTimer = 1.8 + rng() * 1.25;
   }
 
-  function aliveEnemies() {
+  function aliveEnemies(): AiEntity[] {
     const list = deps.getEnemies();
     return list; // filtered inline at use sites to avoid allocation
   }
 
-  function enemyAlive(e) {
-    return e && e !== entity && (!e.combat || !e.combat.destroyed);
+  function enemyAlive(e: AiEntity | null | undefined): e is AiEntity {
+    return !!e && e !== entity && (!e.combat || !e.combat.destroyed);
   }
 
-  const focusCounts = new Map();
+  const focusCounts = new Map<string, number>();
   function refreshFocusCounts() {
     focusCounts.clear();
     if (!getAllies) return;
     const friends = getAllies();
     for (let i = 0; i < friends.length; i++) {
-      const ctl = friends[i] && friends[i].aiCtl;
+      const ctl = friends[i]?.aiCtl as AiTargetController | null | undefined;
       const id = ctl && ctl.targetId;
       if (id) focusCounts.set(id, (focusCounts.get(id) || 0) + 1);
     }
@@ -709,7 +843,7 @@ export function createAI(entity, opts = {}) {
   // cover the other lane, not to dog-pile the same hull. This removes the
   // two-volley snowball that ended small-team matches in under two minutes.
   // A bot still returns fire immediately and can finish its own target.
-  function focusWeight(e) {
+  function focusWeight(e: AiEntity | null | undefined): number {
     if (!e) return 1;
     const focus = focusCounts.get(e.id) || 0;
     // The player remains a high-priority threat, but ordinary visibility may
@@ -725,7 +859,14 @@ export function createAI(entity, opts = {}) {
   }
 
   /** Line of sight between two eye points via the world raycast. */
-  function hasLos(ax, ay, az, bx, by, bz) {
+  function hasLos(
+    ax: number,
+    ay: number,
+    az: number,
+    bx: number,
+    by: number,
+    bz: number,
+  ): boolean {
     _vA.set(ax, ay, az);
     _vB.set(bx - ax, by - ay, bz - az);
     const dist = _vB.length();
@@ -735,9 +876,11 @@ export function createAI(entity, opts = {}) {
     return !hit || hit.dist > dist - 2.0;
   }
 
-  function eyeY(e) { return e.state.pos.y + e.spec.dims.heightM * EYE_FRAC; }
+  function eyeY(e: AiEntity): number {
+    return e.state.pos.y + e.spec.dims.heightM * EYE_FRAC;
+  }
 
-  function acquireTarget(timeS) {
+  function acquireTarget(timeS: number): void {
     const st = entity.state;
     const list = aliveEnemies();
     refreshFocusCounts();
@@ -1092,7 +1235,7 @@ export function createAI(entity, opts = {}) {
    * `full=true`  → complete cover for reloading.
    * @returns {boolean} true if `out` was filled
    */
-  function findCrest(out, full) {
+  function findCrest(out: Position2, full: boolean): boolean {
     if (!target) return false;
     const st = entity.state;
     const tp = target.state.pos;
@@ -1169,7 +1312,7 @@ export function createAI(entity, opts = {}) {
     return found;
   }
 
-  function startFlank(timeS) {
+  function startFlank(timeS: number): void {
     if (!target) return;
     const st = entity.state;
     const tp = target.state.pos;
@@ -1189,7 +1332,7 @@ export function createAI(entity, opts = {}) {
   }
 
   /** Aspect angle between the target's nose and the bearing target→self. */
-  function aspectAngle() {
+  function aspectAngle(): number {
     if (!target) return 0;
     const st = entity.state;
     const tp = target.state.pos;
@@ -1200,7 +1343,7 @@ export function createAI(entity, opts = {}) {
   // ---- driving -------------------------------------------------------------
 
   /** Steer toward the first blocking obstacle's clear side; damp throttle. */
-  function avoidObstacles(input) {
+  function avoidObstacles(input: AiInput): void {
     const st = entity.state;
     const look = 6 + Math.abs(st.speed) * 1.5;
     const fx = Math.sin(st.yaw), fz = Math.cos(st.yaw);
@@ -1240,7 +1383,7 @@ export function createAI(entity, opts = {}) {
    * reverse escape only after both hulls have settled. The final guard runs
    * after stuck recovery so an unstick burst can never drive through an ally.
    */
-  function avoidAllies(input, dt) {
+  function avoidAllies(input: AiInput, dt: number): void {
     if (!getAllies || Math.abs(input.throttle) <= 0.05) {
       allyYieldT = Math.max(0, allyYieldT - dt * 2);
       allyDeadlockT = Math.max(0, allyDeadlockT - dt * 2);
@@ -1258,7 +1401,7 @@ export function createAI(entity, opts = {}) {
     const ownR = tankSafetyRadius(entity) * 0.74;
     const ownHalfL = (spec.dims.hullLengthM || spec.dims.lengthM || 6) * 0.5;
     const ownHalfW = (spec.dims.widthM || 3) * 0.5;
-    let best = null;
+    let best: AiEntity | null = null;
     let bestScore = Infinity;
     let bestAlong = 0;
     let bestCross = 0;
@@ -1420,7 +1563,13 @@ export function createAI(entity, opts = {}) {
   // corner along the box instead of re-offering the same cell (the crawl
   // loop the autumn rock-cluster trace measured)
   const lastCorner = { x: 1e9, z: 1e9, untilS: -1 };
-  function terrainLineCost(sx, sz, startH, ux, uz) {
+  function terrainLineCost(
+    sx: number,
+    sz: number,
+    startH: number,
+    ux: number,
+    uz: number,
+  ): number {
     let previousH = startH;
     let worstCost = 1;
     const debuff = entity.state._debuff;
@@ -1445,7 +1594,14 @@ export function createAI(entity, opts = {}) {
     return worstCost;
   }
 
-  function planTerrainRoute(sx, sz, dirx, dirz, goalX, goalZ) {
+  function planTerrainRoute(
+    sx: number,
+    sz: number,
+    dirx: number,
+    dirz: number,
+    goalX: number,
+    goalZ: number,
+  ): boolean {
     const startH = hf.getHeightAt(sx, sz);
     if (Number.isFinite(terrainLineCost(sx, sz, startH, dirx, dirz))) {
       return false;
@@ -1481,7 +1637,7 @@ export function createAI(entity, opts = {}) {
     return true;
   }
 
-  function planRoute(gx, gz) {
+  function planRoute(gx: number, gz: number): void {
     routeActive = false;
     const st = entity.state;
     const sx = st.pos.x, sz = st.pos.z;
@@ -1492,7 +1648,7 @@ export function createAI(entity, opts = {}) {
     dx /= dist; dz /= dist;
     const margin = spec.dims.widthM * 0.5 + 1.4;
     let bestT = Infinity;
-    let box = null;
+    let box: AiObstacle | null = null;
     for (let i = 0; i < obstacles.length; i++) {
       const o = obstacles[i];
       if (o.crushed || o.crushable) continue;
@@ -1534,7 +1690,7 @@ export function createAI(entity, opts = {}) {
     // wedged exactly like that, throttle 0.4 into a rock face for 30 s)
     const inMinX = box.min[0] - margin * 0.85, inMaxX = box.max[0] + margin * 0.85;
     const inMinZ = box.min[2] - margin * 0.85, inMaxZ = box.max[2] + margin * 0.85;
-    const segHitsBox = (ex, ez) => {
+    const segHitsBox = (ex: number, ez: number): boolean => {
       let ddx = ex - sx, ddz = ez - sz;
       const len = Math.hypot(ddx, ddz) || 1e-9;
       ddx /= len; ddz /= len;
@@ -1578,7 +1734,14 @@ export function createAI(entity, opts = {}) {
   // r7: corner preference bias — repeated strikes flip detourSide, and the
   // replan then prefers corners on the OTHER flank of the advance line, so
   // consecutive plans try genuinely different ways around a stubborn block.
-  function cornerBias(sx, sz, dirx, dirz, cx, cz) {
+  function cornerBias(
+    sx: number,
+    sz: number,
+    dirx: number,
+    dirz: number,
+    cx: number,
+    cz: number,
+  ): number {
     const side = Math.sign(dirz * (cx - sx) - dirx * (cz - sz)) || 1;
     return side === detourSide ? 0 : 25;
   }
@@ -1659,7 +1822,7 @@ export function createAI(entity, opts = {}) {
   let navBestD = Infinity;
   let navNoProgressT = 0;
   let driveIntent = false;
-  function trackNavProgress(x, z, dist) {
+  function trackNavProgress(x: number, z: number, dist: number): void {
     driveIntent = true;
     if (Math.abs(x - navGoalX) > 15 || Math.abs(z - navGoalZ) > 15) {
       navGoalX = x; navGoalZ = z;   // new leg — fresh baseline
@@ -1675,7 +1838,7 @@ export function createAI(entity, opts = {}) {
    * Drive toward (x,z). Returns true when within ARRIVE_DIST_M.
    * Steering = signed angle to the point; throttle eases off in tight turns.
    */
-  function driveToXZ(input, x, z, speedScale) {
+  function driveToXZ(input: AiInput, x: number, z: number, speedScale: number): boolean {
     const st = entity.state;
     let dx = x - st.pos.x, dz = z - st.pos.z;
     let dist = Math.hypot(dx, dz);
@@ -1754,7 +1917,7 @@ export function createAI(entity, opts = {}) {
   // frozen for the commit window so the hull holds a near-constant velocity.
   const chasePoint = { x: 0, z: 0 };
   let chaseUntilS = -1;
-  function chaseToXZ(input, x, z, speedScale) {
+  function chaseToXZ(input: AiInput, x: number, z: number, speedScale: number): boolean {
     if (nowS >= chaseUntilS ||
         Math.hypot(x - chasePoint.x, z - chasePoint.z) > CHASE_REPICK_DIST_M) {
       chasePoint.x = x;
@@ -1767,7 +1930,7 @@ export function createAI(entity, opts = {}) {
   }
 
   /** Pivot in place to face a world yaw. */
-  function faceYaw(input, wantYaw) {
+  function faceYaw(input: AiInput, wantYaw: number): void {
     const st = entity.state;
     const err = wrapAngle(wantYaw - st.yaw);
     input.steer = Math.abs(err) > 0.06 ? clamp(err * 2.5, -1, 1) : 0;
@@ -1783,7 +1946,7 @@ export function createAI(entity, opts = {}) {
    * bots reversing in circles). Compensate the flip once the hull actually
    * rolls backwards.
    */
-  function reverseFacing(input, wantYaw, throttle) {
+  function reverseFacing(input: AiInput, wantYaw: number, throttle: number): void {
     const st = entity.state;
     const err = wrapAngle(wantYaw - st.yaw);
     const sign = st.speed < -0.15 ? -1 : 1; // movement.ts reverse-steer flip
@@ -1808,7 +1971,7 @@ export function createAI(entity, opts = {}) {
     loopWaypoints = true;
   }
 
-  function drivePatrol(input) {
+  function drivePatrol(input: AiInput): void {
     if (waypoints.length === 0) {
       if (!autoPatrolBuilt) buildAutoPatrol();
       if (waypoints.length === 0) { input.throttle = 0; input.steer = 0; return; }
@@ -1824,7 +1987,7 @@ export function createAI(entity, opts = {}) {
     }
   }
 
-  function driveEngage(input, timeS, distToTarget) {
+  function driveEngage(input: AiInput, timeS: number, distToTarget: number): void {
     const st = entity.state;
     if (!target) {
       // Chase the last known position, then fall back to patrol.
@@ -2063,7 +2226,7 @@ export function createAI(entity, opts = {}) {
    * Headless fixtures without getAllies never trigger the guard.
    * @returns {boolean}
    */
-  function outnumberedSolo() {
+  function outnumberedSolo(): boolean {
     if (!target || !target.state || !getAllies) return false;
     if (nowS < guardReleaseUntilS) return false;
     const list = deps.getEnemies();
@@ -2108,11 +2271,17 @@ export function createAI(entity, opts = {}) {
    * 9-15 s and spiraling out when too close / in when too far. The scout
    * stays lit-up-proof and keeps feeding the team's spotting net.
    */
-  function scoutMove(input, timeS, dist, navX, navZ) {
+  function scoutMove(
+    input: AiInput,
+    timeS: number,
+    dist: number,
+    navX: number,
+    navZ: number,
+  ): void {
     const st = entity.state;
     if (timeS >= kiteUntilS) {
       let nd2 = Infinity;
-      let nearest = null;
+      let nearest: AiEntity | null = null;
       const list = deps.getEnemies();
       for (let i = 0; i < list.length; i++) {
         const e = list[i];
@@ -2157,7 +2326,7 @@ export function createAI(entity, opts = {}) {
    * the gun work — core "good ideas of their tank".
    * @returns {boolean} true when scootPoint was filled
    */
-  function pickFlatCell() {
+  function pickFlatCell(): boolean {
     if (!target || !target.state) return false;
     const st = entity.state;
     const tp = target.state.pos;
@@ -2169,7 +2338,7 @@ export function createAI(entity, opts = {}) {
         const cx = st.pos.x + Math.sin(a) * r;
         const cz = st.pos.z + Math.cos(a) * r;
         if (Math.max(Math.abs(cx), Math.abs(cz)) > 470) continue;
-        const ny = hf.getNormalAt(cx, cz).y; // shared scratch — read .y now
+        const ny = hf.getNormalAt ? hf.getNormalAt(cx, cz).y : 1;
         if (ny < 0.94) continue;
         const cy = hf.getHeightAt(cx, cz) + selfEyeM;
         const sight = hasLos(cx, cy, cz, tp.x, ty, tp.z) ? 1 : 0;
@@ -2188,7 +2357,7 @@ export function createAI(entity, opts = {}) {
    * last known contact so the next shot is already set up.
    * @returns {boolean} true when scootPoint was filled
    */
-  function pickScoot() {
+  function pickScoot(): boolean {
     const st = entity.state;
     const tb = target && target.state
       ? Math.atan2(target.state.pos.x - st.pos.x, target.state.pos.z - st.pos.z)
@@ -2214,7 +2383,7 @@ export function createAI(entity, opts = {}) {
   /** Move sideways out of a teammate-blocked gun lane. Short, flat, LOS-safe
    * candidates beat the normal 45-85 m shoot-and-scoot because this is a
    * formation adjustment, not a full relocation. */
-  function pickFriendlyFireLane() {
+  function pickFriendlyFireLane(): boolean {
     if (!target || !target.state) return false;
     const st = entity.state;
     const tx = target.state.pos.x, tz = target.state.pos.z;
@@ -2252,7 +2421,7 @@ export function createAI(entity, opts = {}) {
 
   // ---- aiming & firing -----------------------------------------------------
 
-  function aimAndFire(input, dt, timeS) {
+  function aimAndFire(input: AiInput, dt: number, timeS: number): void {
     const st = entity.state;
     const cb = entity.combat;
 
@@ -2306,7 +2475,7 @@ export function createAI(entity, opts = {}) {
     // pressure for the whole battle (r4 unstaged probe, seed 2). Rate is
     // naturally capped by the reload; the aim point is the INTEL position
     // (lastSeen ground line), never the live unspotted target.
-    const blindFire = !losClear && target.isPlayer &&
+    const blindFire = !losClear && target.isPlayer === true &&
       playerShotsInWindow >= 2 && timeS < playerAggroUntilS &&
       losBlockedT > 15 && dist <= MAX_FIRE_RANGE_M;
     // BLIND LOCK (camo_spotting r5): the return-fire lock can hold a player
@@ -2319,7 +2488,7 @@ export function createAI(entity, opts = {}) {
     // live-tracked while hidden) with the blind-fire spread on top: the bot
     // shells the known bush like a WoT player would, and a target that
     // crawled away inside concealment is safe.
-    const blindLock = losClear && target.isPlayer && spotting &&
+    const blindLock = losClear && target.isPlayer === true && !!spotting &&
       !isVisibleToTeam(target) &&
       (timeS < playerLockUntilS ||
         (playerShotsInWindow >= 2 && timeS < playerAggroUntilS));
@@ -2365,8 +2534,8 @@ export function createAI(entity, opts = {}) {
     const reactionOk = timeS - acquiredAtS >= tier.reactionS;
     // r7: a RED gun cannot fire (tryFire hard-blocks it) — the AI must know,
     // or it stands "ready" in the open for the whole 10 s repair.
-    const gunRed = cb && cb.modules && cb.modules.gun && cb.modules.gun.state === 'red';
-    const reloadReady = !cb || (cb.reload && cb.reload.t <= 1e-3 && !cb.destroyed && !gunRed);
+    const gunRed = !!(cb && cb.modules && cb.modules.gun && cb.modules.gun.state === 'red');
+    const reloadReady = !cb || (!!cb.reload && cb.reload.t <= 1e-3 && !cb.destroyed && !gunRed);
     const rangeOk = dist <= MAX_FIRE_RANGE_M;
 
     // Dispersion gate: reticle smaller than half the target width × difficulty factor.
@@ -2478,11 +2647,11 @@ export function createAI(entity, opts = {}) {
     _dbg.pitchErrMrad = +(pitchErr * 1000).toFixed(1);
     _dbg.distM = Math.round(dist);
   }
-  const _dbg = {};
+  const _dbg: Record<string, unknown> = {};
 
   // ---- state machine -------------------------------------------------------
 
-  function stepStateMachine(dt, timeS, distToTarget) {
+  function stepStateMachine(dt: number, timeS: number, distToTarget: number): void {
     const cb = entity.combat;
 
     switch (mode) {
@@ -2571,7 +2740,7 @@ export function createAI(entity, opts = {}) {
   // Both the low-speed detector and orbit watchdog escalate through this
   // same recovery policy. Low-speed wedges wait for a repeated strike;
   // orbiting proves a bad route immediately and skips that first-strike hold.
-  function escalateStuckRecovery(timeS, requireRepeatedStrike) {
+  function escalateStuckRecovery(timeS: number, requireRepeatedStrike: boolean): void {
     stuckStrikes++;
     if (requireRepeatedStrike && stuckStrikes < 2) return;
 
@@ -2603,7 +2772,7 @@ export function createAI(entity, opts = {}) {
 
   // ---- main update ----------------------------------------------------------
 
-  function update(dt, timeS) {
+  function update(dt: number, timeS: number): void {
     nowS = timeS;
     const input = entity.input;
     const st = entity.state;
@@ -2977,7 +3146,10 @@ export function createAI(entity, opts = {}) {
    * @param {Array<[number, number]>} points [x,z] pairs in world meters
    * @param {{loop?: boolean}} options route behavior; patrol routes loop by default
    */
-  function setWaypoints(points, { loop = true } = {}) {
+  function setWaypoints(
+    points: Array<[number, number]>,
+    { loop = true }: { loop?: boolean } = {},
+  ): void {
     waypoints.length = 0;
     for (let i = 0; i < points.length; i++) {
       waypoints.push({ x: points[i][0], z: points[i][1] });
@@ -2993,7 +3165,7 @@ export function createAI(entity, opts = {}) {
    * every result also resamples the aim error and forces a fresh weak-spot probe.
    * @param {object} hitEvent HitEvent (§2.6)
    */
-  function notifyShellResult(hitEvent) {
+  function notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'>): void {
     if (!hitEvent) return;
     if (target && hitEvent.targetId === target.id) {
       const k = hitEvent.kind;
@@ -3015,7 +3187,7 @@ export function createAI(entity, opts = {}) {
    * steals the target slot — return fire at the protagonist is the point.
    * @param {object} shooterEnt TankEntity that fired the shell
    */
-  function notifyUnderFire(shooterEnt) {
+  function notifyUnderFire(shooterEnt: AiEntity): void {
     if (!shooterEnt || !shooterEnt.state || !shooterEnt.combat ||
         shooterEnt.combat.destroyed || shooterEnt.team === entity.team) return;
     if (shooterEnt.isPlayer) {
@@ -3066,7 +3238,7 @@ export function createAI(entity, opts = {}) {
    * @param {number} [rank=99] distance rank among this shot's earshot
    *   receivers (0 = nearest enemy to the player; state.ts sorts the fan-out)
    */
-  function notifyPlayerFired(shooterEnt, rank = 99) {
+  function notifyPlayerFired(shooterEnt: AiEntity, rank = 99): void {
     if (!shooterEnt || !shooterEnt.state || !shooterEnt.combat ||
         shooterEnt.combat.destroyed || shooterEnt.team === entity.team) return;
     // REPEAT-OFFENDER COUNT (controls_gunnery r2): shots inside one intel
@@ -3155,14 +3327,14 @@ export function createAI(entity, opts = {}) {
 
   /** Authoritative fire path callback when a same-tick friendly crossing was
    * caught after the controller update. It feeds the same relocation timer. */
-  function notifyFriendlyBlocked(risk) {
+  function notifyFriendlyBlocked(risk: FriendlyFireRisk | null | undefined): void {
     if (!risk) return;
     if (friendlyBlockT <= 0) friendlyBlockCount++;
     friendlyBlockT = Math.max(friendlyBlockT, 0.25);
     lastFriendlyRisk = risk;
   }
 
-  const controller = {
+  const controller: AiController = {
     update,
     setWaypoints,
     notifyShellResult,

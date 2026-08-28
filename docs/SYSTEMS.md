@@ -554,7 +554,7 @@ Bots output the same control vocabulary as human players. Route planning and
 local steering are separate:
 
 - src/sim/botRoutePlanner.ts chooses traversable strategic routes;
-- src/game/ai.js and server authority logic turn those routes into immediate
+- src/game/ai.ts and server authority logic turn those routes into immediate
   movement, aim, fire, and recovery controls.
 
 Seeded openings permit reproducible tests. Local traffic avoidance, reverse

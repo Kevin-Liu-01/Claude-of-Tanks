@@ -61,7 +61,7 @@ import {
   finishSpecialActionFire,
   specialActionGuidesShell,
 } from '../sim/specialActions.ts';
-import { createAI, roleOf } from './ai.js';
+import { createAI, roleOf } from './ai.ts';
 import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
 import { getStoredDifficulty } from './input.ts';
@@ -560,7 +560,7 @@ export function setupBattle(
     getObstacles: () => world.getObstacles(),
     queryObstacles: world.queryObstacles || null,
     // BATTLE-AI r7: vegetation concealment discs — scouts pick spotting legs
-    // through real bushes (state.ts nudges their waypoints; ai.js may sample
+    // through real bushes (state.ts nudges their waypoints; ai.ts may sample
     // them for repositioning). Absent in headless fixtures.
     getConcealment: () => (world.getConcealment ? world.getConcealment() : []),
   };
@@ -656,7 +656,7 @@ export function setupBattle(
   _ecx /= sp.enemies.length || 1;
   _ecz /= sp.enemies.length || 1;
 
-  // BATTLE-AI r7 OPENING PLANS: per-team role counters (ai.js roleOf) so each
+  // BATTLE-AI r7 OPENING PLANS: per-team role counters (ai.ts roleOf) so each
   // role opens on its own doctrine lane — see the waypoint block below.
   const _roleCounts: Record<TeamId, Record<string, number | boolean>> = {
     player: {}, enemy: {},
@@ -701,7 +701,7 @@ export function setupBattle(
   // pushed out past the nearest rect edge, so the two fronts meet on the
   // outskirts/streets instead of 14 hulls wedging into the block maze on
   // minute one (r7 flow probe: whole-team 0-shell stalls, 81 s first spot).
-  // Engagement-time navigation (vantage + ai.js corner-hop router) owns the
+  // Engagement-time navigation (vantage + ai.ts corner-hop router) owns the
   // street fighting AFTER contact.
   const _village = world.heightField && world.heightField._layout
     ? world.heightField._layout.village : null;
@@ -830,7 +830,7 @@ export function setupBattle(
           getEnemies: () => game.tanks.filter(
             (t) => t.team !== ent.team && t.combat && !t.combat.destroyed),
           // BATTLE-AI r7: living teammates — low-HP/tracked bots retreat
-          // toward support instead of dying in the open (ai.js doctrine).
+          // toward support instead of dying in the open (ai.ts doctrine).
           getAllies: () => game.tanks.filter(
             (t) => t !== ent && t.team === ent.team && t.combat && !t.combat.destroyed),
           // AI target acquisition goes THROUGH the spotting sim (§camo
@@ -844,7 +844,7 @@ export function setupBattle(
       }) as SoloAiController;
       ent.aiCtl = aiController;
       // BATTLE-AI r7 OPENING PLANS: each bot opens on its CLASS doctrine lane
-      // (ai.js roleOf — driven by the bot's own spec) instead of the old
+      // (ai.ts roleOf — driven by the bot's own spec) instead of the old
       // one-size standoff push. Both teams advance from their own spawn zones
       // toward the opposing spawn, so the battle opens with two fronts:
       //  - brawlers (heavies + slow MBTs) take the vanguard lanes straight up
@@ -852,13 +852,13 @@ export function setupBattle(
       //  - flankers (mediums + fast MBTs) swing 95-170 m wide before turning
       //    onto the opposing spawn — support fire from the sides;
       //  - snipers (TDs) drive to a sightline post on their OWN half and hold
-      //    it (ai.js shoot-and-scoot relocates them after 1-2 shots);
+      //    it (ai.ts shoot-and-scoot relocates them after 1-2 shots);
       //  - scouts (lights/IFVs) run wide spotting legs along real bushes
       //    (_bushNudge) — they light targets up for the team intel net.
       // Every mobile plan still ends ON the opposing spawn: a push that meets
       // nobody keeps hunting toward where the opposition was guaranteed to
       // be, so proximity spotting (50 m floor) eventually forces contact.
-      // (Bots stuck on obstacles skip waypoints — ai.js progress unstick —
+      // (Bots stuck on obstacles skip waypoints — ai.ts progress unstick —
       // so lanes survive walls and rocks; the lane-starvation fixes stand.)
       const pp = ent.team === 'enemy' ? sp.player.pos : [_ecx, 0, _ecz];
       const dx = pp[0] - spawn.pos[0];
@@ -1261,7 +1261,7 @@ function measureContactGeom(ent: SoloEntity): MovementContactGeometry | null {
  * is already moving faster than CRUSH_MIN_MPS: the overlap is queued on
  * `pendingCrush` and simStep fells the prop (world.crushObstacle topple
  * anim), bleeds a little momentum and emits `prop:crushed` for fx/audio.
- * A `crushed` record stops colliding for everyone (ai.js avoidance skips it
+ * A `crushed` record stops colliding for everyone (ai.ts avoidance skips it
  * too). Below the threshold the trunk still resists a parked nudge; boulders,
  * buildings and every untagged prop stay permanently solid.
  */
@@ -1598,10 +1598,10 @@ function tryFire(
   // even while camo keeps them formally unspotted. WW2 bots (350-380 m view
   // range) could otherwise never acquire a 400 m sniping player: the r5
   // probe measured 29+ enemy shells across two 60 s runs with ZERO aimed at
-  // the player. ai.js notifyPlayerFired re-reveals the player for
+  // the player. ai.ts notifyPlayerFired re-reveals the player for
   // MUZZLE_INTEL_WINDOW_S and hard-commits idle bots onto the shooter.
   if (ent.isPlayer) {
-    // controls_gunnery r4: DISTANCE-RANKED fan-out — ai.js's RETURN-FIRE
+    // controls_gunnery r4: DISTANCE-RANKED fan-out — ai.ts's RETURN-FIRE
     // LOCK lets the nearest ranked receivers with a clear personal ray pin
     // the player as their target outright (rank 0 = closest). Runs once per
     // player shot, so the sort allocation is negligible.
