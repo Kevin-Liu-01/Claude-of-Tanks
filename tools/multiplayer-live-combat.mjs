@@ -1108,12 +1108,21 @@ async function waitForNaturalMatchEnd(pages, renderedRole) {
         const state = globalThis.__COT_LIVE_7V7;
         const room = state.session?.lobby || state.match?.client?.roomState ||
           state.session?.runtime?.roomState || null;
+        const client = state.match?.client || state.session?.runtime || null;
         return room ? {
+          playerId: state.roomInfo?.peerId || null,
           phase: room.phase,
           round: Number(room.round) || 0,
+          revision: Number(room.revision) || 0,
+          lastResult: room.lastResult || null,
           ready: room.players instanceof Map
             ? [...room.players.values()].map((player) => !!player.ready)
             : (room.players || []).map((player) => !!player.ready),
+          connected: client?.connected ?? null,
+          closed: client?.closed ?? null,
+          lastRecvSeq: client?.lastRecvSeq ?? null,
+          errors: [...(state.errors || []), ...(client?.errors || [])],
+          transport: client?.getStats?.().transport || null,
         } : null;
       })));
     if (rooms.every((room) => room?.phase === 'waiting')) break;
