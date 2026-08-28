@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.js';
+import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.js';
 import {
   buildGalleryRecords,

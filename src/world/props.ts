@@ -38,7 +38,7 @@ import {
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.ts';
-import { ensureTankBuilder } from '../vehicles/fleetFactory.js';
+import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
 import { preloadPropModels, requirePropModels } from './propsModelStore.ts';
 import { writeStructureInstanceTint } from './structureInstanceAppearance.ts';

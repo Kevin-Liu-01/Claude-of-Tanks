@@ -27,7 +27,7 @@ spotting, bot, destructible, and outcome rules.
 
 `src/main.ts` owns application composition. The first visible garage frame is
 kept deliberately narrow: renderer, garage, selected vehicle, and essential UI
-arrive first. `fleetFactory.js` maps each tank id to an import-free ownership
+arrive first. `fleetFactory.ts` maps each tank id to an import-free ownership
 manifest and downloads only that profile family before its first real build.
 The battlefield constructor is a separate dynamic module; terrain, vegetation,
 structures, and wreck code do not enter the startup graph. During a map build,
@@ -110,7 +110,7 @@ reference placeholders remain report-only. The generated inventory is
 maintained in `VEHICLE-ROSTER.md`.
 Playable geometry is assembled at runtime from authored profile stations,
 armor forms, fittings, and procedural running gear in
-`src/vehicles/tankFactoryCore.js`, `src/vehicles/fleetFactory.js`, and
+`src/vehicles/tankFactoryCore.js`, `src/vehicles/fleetFactory.ts`, and
 `src/vehicles/profiles/`. Node audits retain the eager `tankFactory.js` facade;
 the browser runtime uses the demand-loaded facade. The public runtime
 does not swap those vehicles for community GLBs. Historical source assets are

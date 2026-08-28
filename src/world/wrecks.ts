@@ -27,7 +27,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { createTank } from '../vehicles/fleetFactory.js';
+import { createTank } from '../vehicles/fleetFactory.ts';
 import { VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
 
 interface WreckOptions {

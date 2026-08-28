@@ -18,7 +18,7 @@ Module ownership (file paths are FIXED):
 |---|---|
 | engine   | `src/engine/renderer.ts`, `src/engine/lighting.ts`, `src/engine/post.ts`, `src/engine/sky.ts`, `src/engine/cameraRig.ts` |
 | world    | `src/world/terrain.ts`, `src/world/vegetation.ts`, `src/world/props.ts`, `src/world/map.ts` |
-| vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.js`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
+| vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.ts`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
 | movement | `src/sim/movement.ts` |
 | combat   | `src/sim/ballistics.ts`, `src/sim/armor.ts`, `src/sim/damage.ts`, `src/sim/combat.selftest.mjs` |
 | ai       | `src/game/ai.ts` |
@@ -568,11 +568,11 @@ engine hp, speeds, shell pens/dmg: from the roster tables verbatim. Shell veloci
 is2 795/800/770 (slot1 = BR-471B AP); panther_g 935/1120/700; m1a2 1670/1400/1000;
 t90m 1750/905/850; leo2a7 1750/1400/1000. (slots: standard/special/HE.)
 
-#### 3.3.2 `fleetFactory.js` / `tankFactoryCore.js`
-```js
-export function ensureTankBuilder(specId) => Promise<void>
-export function ensureTankBuilders(specIds) => Promise<void>
-export function createTank(specId, engineCtx, opts = {}) => TankVisual
+#### 3.3.2 `fleetFactory.ts` / `tankFactoryCore.js`
+```ts
+export function ensureTankBuilder(specId: string): Promise<void>
+export function ensureTankBuilders(specIds: readonly string[]): Promise<void>
+export function createTank(specId: string, engineCtx, opts = {}): TankVisual
 // opts = { camoSeed = 4000, quality = 'high' }
 TankVisual = {
   root: THREE.Group,                     // NOT added to scene — integration adds it
@@ -594,10 +594,12 @@ TankVisual = {
 }
 ```
 Browser consumers must await the builder gate before the first synchronous
-`createTank` for an id. The import-free fleet manifest owns the id-to-family
-mapping, and a missing gate throws instead of silently constructing a legacy
-fallback. `tankFactory.js` remains the eager facade for Node audits and release
-tools that intentionally sweep the whole roster.
+`createTank` for an id. The strict import-free `fleetManifest.ts` owns the
+id-to-family mapping; the loader table must cover every family at compile time,
+and concurrent requests share one retryable promise. A missing gate throws
+instead of silently constructing a legacy fallback. `tankFactory.js` remains
+the eager facade for Node audits and release tools that intentionally sweep the
+whole roster.
 Geometry bar: per tank-roster.md §*.5 visual specs — composed BufferGeometries
 (mergeGeometries), correct silhouettes, road wheels + sprocket/idler + track band,
 signature details per Appendix B. ~8–15k tris full LOD; build a `THREE.LOD` with a

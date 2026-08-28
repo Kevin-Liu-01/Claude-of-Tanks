@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTank } from '../src/vehicles/tankFactory.js';
 import { ALL_TANK_IDS } from '../src/vehicles/specs.js';
-import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.js';
+import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outputPath = path.join(root, 'src/vehicles/vehicleMarkingSeats.generated.js');

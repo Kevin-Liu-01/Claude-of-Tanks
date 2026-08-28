@@ -32,7 +32,7 @@ import * as THREE from 'three';
 import {
   mulberry32, canvasTexture, dither, makeSignTexture, makeHazardTexture, SIGN_FONT,
 } from '../ui/garageStage.js';
-import { createTank } from '../vehicles/fleetFactory.js';
+import { createTank } from '../vehicles/fleetFactory.ts';
 import { DECOR_KITS } from '../vehicles/decorations.js';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 

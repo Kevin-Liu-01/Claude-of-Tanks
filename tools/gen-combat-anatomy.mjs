@@ -15,7 +15,7 @@ import { ConvexHull } from 'three/addons/math/ConvexHull.js';
 import { createTank } from '../src/vehicles/tankFactory.js';
 import { ALL_TANK_IDS, TANK_SPECS } from '../src/vehicles/specs.js';
 import { COMBAT_ANATOMY_CALIBRATIONS } from '../src/vehicles/combatAnatomyCalibrations.js';
-import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.js';
+import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 
 const outPath = resolve('src/vehicles/combatAnatomyCalibrations.js');
 const groupOutputDir = resolve('src/vehicles/combatAnatomyGroups');

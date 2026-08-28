@@ -6,7 +6,7 @@
  */
 import { Vector3, type Object3D, type Scene } from 'three';
 import { getSpec, TANK_IDS, RUNTIME_TANK_IDS } from '../vehicles/specs.js';
-import { createTank } from '../vehicles/fleetFactory.js';
+import { createTank } from '../vehicles/fleetFactory.ts';
 import { tankTier } from '../vehicles/tier.ts';
 import { isGarageVisibleTankId, rankMatchCandidates } from './matchmaking.ts';
 import { getDeviceTier } from '../engine/quality.ts';

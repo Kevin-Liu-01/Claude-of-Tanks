@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PROCEDURAL_PROFILES } from './profiledProcedurals.js';
 import { MISC_PROFILES } from './profiles/misc.js';
-import { FLEET_GROUP_IDS } from './fleetManifest.js';
+import { FLEET_GROUP_IDS } from './fleetManifest.ts';
 const canonicalOnlyIds = new Set([
   'amx40', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2',
   'challenger_3', 'mbt70', 't14',
@@ -33,11 +33,11 @@ execFileSync(process.execPath, [join(here, '../../tools/gen-legacy-fleet-specs.m
   stdio: 'inherit',
   timeout: 30_000,
 });
-const facadeUrl = pathToFileURL(join(here, 'fleetFactory.js')).href;
+const facadeUrl = pathToFileURL(join(here, 'fleetFactory.ts')).href;
 const specsUrl = pathToFileURL(join(here, 'specs.js')).href;
 const markingRegistryUrl = pathToFileURL(join(here, 'vehicleMarkingSeatRegistry.js')).href;
 const anatomyRegistryUrl = pathToFileURL(join(here, 'combatAnatomyCalibrationRegistry.js')).href;
-const facadeSource = await readFile(join(here, 'fleetFactory.js'), 'utf8');
+const facadeSource = await readFile(join(here, 'fleetFactory.ts'), 'utf8');
 assert.doesNotMatch(facadeSource, /from ['"]\.\/modern[12]\.js['"]/,
   'browser fleet facade must not statically import combined legacy builders');
 execFileSync(process.execPath, ['--input-type=module', '-e', `

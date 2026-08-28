@@ -77,7 +77,7 @@ import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.js';
 import {
   createTank, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
-} from './vehicles/fleetFactory.js';
+} from './vehicles/fleetFactory.ts';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
   CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,

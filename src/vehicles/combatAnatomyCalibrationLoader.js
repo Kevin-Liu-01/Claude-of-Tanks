@@ -1,4 +1,4 @@
-import { FLEET_GROUP_BY_ID } from './fleetManifest.js';
+import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { COMBAT_ANATOMY_GROUP_LOADERS } from './combatAnatomyLoaders.generated.js';
 import {
   hasCombatAnatomyCalibration,

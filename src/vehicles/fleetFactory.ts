@@ -7,7 +7,7 @@ import {
   registerCanonicalBuilders,
   registerProfiledBuilders,
 } from './tankFactoryCore.js';
-import { FLEET_GROUP_BY_ID } from './fleetManifest.js';
+import { FLEET_GROUP_BY_ID, type FleetGroup } from './fleetManifest.ts';
 import {
   ensureAllVehicleMarkingSeatGroups,
   ensureVehicleMarkingSeats,
@@ -56,14 +56,48 @@ import {
 } from './specs.js';
 import { applyNativeFamilyOrder } from './fleetOrder.js';
 
-function toBuilders(profiles) {
+type ProfileBuilderPort = unknown;
+
+interface VehicleProfile {
+  build?: unknown;
+  base?: unknown;
+  [key: string]: unknown;
+}
+
+type VehicleProfileRecord = Record<string, VehicleProfile>;
+type ProfileBuilder = (builder: ProfileBuilderPort) => unknown;
+type AuthoredProfileBuilder = (builder: ProfileBuilderPort, options?: unknown) => unknown;
+
+interface ProfileKit {
+  readonly FITTINGS: unknown;
+  buildDonorVariant(builder: ProfileBuilderPort, profile: VehicleProfile): unknown;
+  buildProfile(builder: ProfileBuilderPort, profile: VehicleProfile): unknown;
+}
+
+type GroupLoader = () => Promise<unknown>;
+type TankVisual = ReturnType<typeof createTankCore>;
+
+export interface CreateTankOptions {
+  camo?: string;
+  geometryReceipt?: boolean;
+  proceduralOnly?: boolean;
+  quality?: string;
+  [key: string]: unknown;
+}
+
+function toBuilders(profiles: VehicleProfileRecord): Record<string, ProfileBuilder> {
   if (!profileKit) throw new Error('Profile kit is not loaded');
   const { buildDonorVariant, buildProfile } = profileKit;
-  return Object.fromEntries(Object.entries(profiles).map(([id, profile]) => [id, (P) => (
-    profile.build ? profile.build(P, profile)
-      : profile.base ? buildDonorVariant(P, profile)
-        : buildProfile(P, profile)
-  )]));
+  return Object.fromEntries(Object.entries(profiles).map(([id, profile]) => {
+    const authored = typeof profile.build === 'function'
+      ? profile.build as AuthoredProfileBuilder
+      : null;
+    return [id, (builder: ProfileBuilderPort) => (
+      authored ? authored(builder, profile)
+        : profile.base ? buildDonorVariant(builder, profile)
+          : buildProfile(builder, profile)
+    )];
+  }));
 }
 
 finalizeFirstPartyRoster();
@@ -76,16 +110,20 @@ for (const ids of [
   RUNTIME_TANK_IDS,
 ]) applyNativeFamilyOrder(ids);
 
-let profileKit = null;
+let profileKit: ProfileKit | null = null;
 let factoryReady = false;
-let factoryReadyPromise = null;
+let factoryReadyPromise: Promise<void> | null = null;
 
-function ensureFactoryReady() {
+function ensureFactoryReady(): Promise<void> {
   if (factoryReady) return Promise.resolve();
   if (!factoryReadyPromise) {
     factoryReadyPromise = import('./profiles/kit.js').then((kit) => {
-      configureTankFactory({ canonicalBuilderPacks: [], fittings: kit.FITTINGS });
-      profileKit = kit;
+      configureTankFactory({
+        canonicalBuilderPacks: [],
+        profiledBuilders: {},
+        fittings: kit.FITTINGS,
+      });
+      profileKit = kit as unknown as ProfileKit;
       factoryReady = true;
     }).catch((error) => {
       factoryReadyPromise = null;
@@ -95,7 +133,7 @@ function ensureFactoryReady() {
   return factoryReadyPromise;
 }
 
-function registerProfiles(profiles) {
+function registerProfiles(profiles: VehicleProfileRecord): void {
   registerProfiledBuilders(toBuilders(profiles));
 }
 
@@ -138,11 +176,12 @@ const GROUP_LOADERS = Object.freeze({
   japan: () => import('./profiles/japan.js').then((mod) => registerProfiles(mod.JAPAN_PROFILES)),
   germany: () => import('./profiles/germany.js').then((mod) => registerProfiles(mod.GERMANY_PROFILES)),
   sheridan: () => import('./profiles/sheridan.js').then((mod) => registerProfiles(mod.SHERIDAN_PROFILES)),
-});
-const groupPromises = new Map();
-const readyGroups = new Set();
+} satisfies Record<FleetGroup, GroupLoader>);
+const groupPromises = new Map<FleetGroup, Promise<void>>();
+const readyGroups = new Set<FleetGroup>();
+const tankSpecs = TANK_SPECS as unknown as Record<string, unknown>;
 
-function ensureGroup(group) {
+function ensureGroup(group: FleetGroup | undefined): Promise<void> {
   if (!group || readyGroups.has(group)) return ensureFactoryReady();
   let pending = groupPromises.get(group);
   if (!pending) {
@@ -157,18 +196,18 @@ function ensureGroup(group) {
   return pending;
 }
 
-export function ensureTankBuilder(specId) {
+export function ensureTankBuilder(specId: string): Promise<void> {
   return Promise.all([
     ensureGroup(FLEET_GROUP_BY_ID[specId]),
     ensureVehicleMarkingSeats(specId),
     ensureCombatAnatomyCalibration(specId),
   ]).then(() => {
-    finalizeCombatAnatomy(TANK_SPECS[specId]);
+    finalizeCombatAnatomy(tankSpecs[specId]);
   });
 }
 
-export function ensureTankBuilders(specIds) {
-  const groups = new Set();
+export function ensureTankBuilders(specIds: readonly string[]): Promise<void> {
+  const groups = new Set<FleetGroup>();
   for (const id of specIds || []) {
     const group = FLEET_GROUP_BY_ID[id];
     if (group) groups.add(group);
@@ -178,21 +217,21 @@ export function ensureTankBuilders(specIds) {
     ensureVehicleMarkingSeatsForIds(specIds),
     ensureCombatAnatomyCalibrations(specIds),
   ]).then(() => {
-    for (const id of specIds || []) finalizeCombatAnatomy(TANK_SPECS[id]);
+    for (const id of specIds || []) finalizeCombatAnatomy(tankSpecs[id]);
   });
 }
 
-export function ensureFullFleet() {
+export function ensureFullFleet(): Promise<void> {
   return Promise.all([
-    ...Object.keys(GROUP_LOADERS).map(ensureGroup),
+    ...(Object.keys(GROUP_LOADERS) as FleetGroup[]).map(ensureGroup),
     ensureAllVehicleMarkingSeatGroups(),
     ensureAllCombatAnatomyGroups(),
   ]).then(() => {
-    for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(TANK_SPECS[id]);
+    for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(tankSpecs[id]);
   });
 }
 
-export function isTankBuilderReady(specId) {
+export function isTankBuilderReady(specId: string): boolean {
   const group = FLEET_GROUP_BY_ID[specId];
   return factoryReady
     && (!group || readyGroups.has(group))
@@ -200,7 +239,11 @@ export function isTankBuilderReady(specId) {
     && isCombatAnatomyCalibrationReady(specId);
 }
 
-export function createTank(specId, engineCtx, opts) {
+export function createTank(
+  specId: string,
+  engineCtx: unknown,
+  opts: CreateTankOptions = {},
+): TankVisual {
   if (!isTankBuilderReady(specId)) {
     throw new Error(`Tank builder '${specId}' is not loaded; await ensureTankBuilder('${specId}')`);
   }

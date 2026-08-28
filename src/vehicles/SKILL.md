@@ -12,7 +12,8 @@ materials, and garage ordering.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`specs.js` is the registry, `tankFactory.js` builds/synchronizes visuals,
+`specs.js` is the registry, `fleetManifest.ts` and `fleetFactory.ts` own the
+typed browser demand graph, `tankFactory.js` builds/synchronizes eager audit visuals,
 `profiles/` owns authored families, `taxonomy.ts` owns the strict era/role
 vocabulary and complete saved-fleet assignment, `tier.js` and `fleetOrder.js`
 own remaining metadata, and `tankAssets.js` owns UI asset mappings.

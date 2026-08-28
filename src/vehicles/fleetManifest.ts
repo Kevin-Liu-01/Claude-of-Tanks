@@ -65,8 +65,13 @@ export const FLEET_GROUP_IDS = Object.freeze({
   japan: Object.freeze(['stb1', 'type90a', 'type10b']),
   germany: Object.freeze(['leo2a4_otco']),
   sheridan: Object.freeze(['m551_sheridan']),
-});
+} as const);
 
-export const FLEET_GROUP_BY_ID = Object.freeze(Object.fromEntries(
-  Object.entries(FLEET_GROUP_IDS).flatMap(([group, ids]) => ids.map((id) => [id, group])),
-));
+export type FleetGroup = keyof typeof FLEET_GROUP_IDS;
+
+export const FLEET_GROUP_BY_ID: Readonly<Record<string, FleetGroup>> = Object.freeze(
+  Object.fromEntries(
+    (Object.entries(FLEET_GROUP_IDS) as [FleetGroup, readonly string[]][])
+      .flatMap(([group, ids]) => ids.map((id) => [id, group])),
+  ),
+);

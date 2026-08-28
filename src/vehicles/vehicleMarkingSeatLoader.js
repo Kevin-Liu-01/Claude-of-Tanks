@@ -1,4 +1,4 @@
-import { FLEET_GROUP_BY_ID } from './fleetManifest.js';
+import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { VEHICLE_MARKING_SEAT_GROUP_LOADERS } from './vehicleMarkingSeatLoaders.generated.js';
 import {
   hasVehicleMarkingSeats,

@@ -10,7 +10,7 @@ import type {
   MovementSpec,
 } from '../sim/movement.ts';
 import { getSpec } from '../vehicles/specs.js';
-import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.js';
+import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { prebakeSharedTextures } from '../vehicles/materials.js';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';

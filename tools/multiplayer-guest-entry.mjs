@@ -67,7 +67,7 @@ try {
       // The production entry imports the fleet facade before opening rooms;
       // mirror that registration boundary so the authority recognizes the
       // pristine client's default Abrams spec without warming its visual.
-      import('/src/vehicles/fleetFactory.js'),
+      import('/src/vehicles/fleetFactory.ts'),
     ]);
     const signalingClient = new RoomSignalingClient({ url });
     const roomInfo = await signalingClient.createRoom({
