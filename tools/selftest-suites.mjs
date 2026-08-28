@@ -87,6 +87,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/armorAimOverlay.selftest.mjs',
     'src/game/loadingIntent.selftest.mjs',
     'src/game/battleIntentRuntime.selftest.mjs',
+    'src/game/combatFeedbackRuntime.selftest.mjs',
     'src/game/garagePedestalRuntime.selftest.mjs',
     'src/game/garageShowroomRuntime.selftest.mjs',
     'src/game/pointerLockFeedbackRuntime.selftest.mjs',

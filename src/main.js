@@ -137,7 +137,6 @@ import { createBattleEntryLifecycle } from './game/battleEntryLifecycle.ts';
 import { createCombatWarmCoordinator } from './game/combatWarmCoordinator.ts';
 import { createDeferredCombatWarmRuntime } from './game/deferredCombatWarmRuntime.ts';
 import { createStudioAccess } from './game/studioAccess.ts';
-import { stripActivatedEra } from './game/eraActivation.ts';
 import { createFxRuntimeAccess } from './fx/fxRuntimeAccess.ts';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
@@ -148,6 +147,7 @@ import { createStartupIntent } from './game/startupIntent.ts';
 import { createSelectedVehicleSelection } from './game/selectedVehicleSelection.ts';
 import { createPointerLockFeedbackRuntime } from './game/pointerLockFeedbackRuntime.ts';
 import { createSniperFillRuntime } from './game/sniperFillRuntime.ts';
+import { createCombatFeedbackRuntime } from './game/combatFeedbackRuntime.ts';
 import { tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
@@ -1036,77 +1036,20 @@ function veilHud(on) {
   if (damagePanel?.root) damagePanel.root.style.visibility = on ? 'hidden' : '';
 }
 
-// Player combat feedback: non-spatial hit-confirm blip for own shells that
-// connect (bright = damage, dull = bounce), camera flinch when taking a hit.
-bus.on('shell:hit', (ev) => {
-  // Receiving-end reaction on ANY struck tank: caliber-scaled hull flinch.
-  // Persistent armor scars are owned exclusively by effects.js's shell:hit
-  // listener so one authoritative hit can never be stamped twice.
-  const target = ev.targetId ? game.tankById.get(ev.targetId) : null;
-  if (target?.visual) stripActivatedEra(ev, target.visual);
-  if (target && target.visual && ev.normal) {
-    const pen = ev.kind === 'pen' || ev.kind === 'he_pen';
-    if (target.visual.hitFlinch) {
-      target.visual.hitFlinch(
-        ev.normal[0], ev.normal[2],
-        ((ev.caliberMm || 90) / 100) * (pen ? 1 : 0.55),
-        target.state ? target.state.yaw : undefined,
-      );
-    }
-  }
-  if (!game.player) return;
-  if (ev.attackerId === game.player.id && ev.targetId && ev.targetId !== game.player.id) {
-    // Preserve the actual armor result: a ricochet's singing deflection and
-    // a blunt non-penetration should never collapse into the same UI knock.
-    audio.hitConfirm(ev.kind, ev.damage || 0);
-  }
-  if (ev.targetId === game.player.id && (ev.damage || 0) > 0) {
-    const shock = Math.min(0.62, 0.24 + (ev.damage || 0) / 2400 + (ev.caliberMm || 90) / 1200);
-    rig.addTrauma(shock);
-  }
-});
-
-bus.on('shell:fired', (ev) => {
-  if (!ev.isPlayer) return;
-  // Network authority owns firing, so the bridge supplies the barrel stroke
-  // and this client-side layer restores the same camera/FOV recoil used by
-  // local battles. Local simulation already applies it in state.js.
-  if (networkSession.match && game.player && rig) {
-    const shells = game.player.spec.gun.shells || [];
-    const shellSpec = shells.find((shell) => shell.name === ev.shellName)
-      || shells.find((shell) => shell.type === ev.shellType) || null;
-    const recoilScale = shotRecoilScale(game.player.spec, shellSpec);
-    const caliberMm = (shellSpec && shellSpec.caliberMm) || ev.caliberMm || game.player.spec.gun.caliberMm;
-    const caliberK = Math.max(0, Math.min(1, (caliberMm - 30) / 122));
-    rig.addTrauma((0.10 + caliberK * 0.20) * recoilScale);
-    if (rig.recoilKick) {
-      rig.recoilKick((0.006 + caliberK * 0.011) * recoilScale, recoilScale);
-    }
-  }
-});
-// gameplay_feel r6 (crushable vegetation): state.js emits prop:crushed when a
-// moving hull overruns a tagged trunk — splinter burst at the break point
-// (the same fx the pole hinge-topple uses; the fall anim itself runs in
-// vegetation.js via world.crushObstacle).
-bus.on('prop:crushed', (ev) => {
-  const liveFx = fxRuntimeAccess.current;
-  if (!liveFx) return;
-  _v1.set(ev.pos[0], ev.pos[1], ev.pos[2]);
-  _fwd.set(ev.dir[0], 0, ev.dir[2]);
-  liveFx.propCrush(_v1, _fwd, ev.h);
-});
-// DESTRUCTIBLES r1: every destructible break (ram, shell hit, HE splash or
-// chained drum blast) reports through the destructibles.js sink — forwarded
-// onto the bus as the AUDIO seam ('prop:destroyed' {kind, pos, cause}).
-setDestroyedEventSink((ev) => bus.emit('prop:destroyed', ev));
-bus.on('phase:change', (ev) => {
-  if (ev.phase === 'battle') {
-    // Showroom convenience copies must not compete with the complete combat
-    // roster. Keep only the selected hero on mobile and the three most-recent
-    // desktop heroes; the player visual shares paint with the fielded actor
-    // and still gives the garage an immediate return.
-    pedestal.trim(getDeviceTier() === 'mobile' ? 1 : 3);
-  }
+// Discrete shell, ERA, camera-recoil, prop and Garage-residency reactions have
+// one typed owner. Its callbacks resolve the late network session lazily, so
+// the pristine composition root keeps the existing startup order.
+createCombatFeedbackRuntime({
+  bus,
+  game,
+  rig,
+  audio,
+  getFx: () => fxRuntimeAccess.current,
+  hasNetworkMatch: () => !!networkSession.match,
+  shotRecoilScale,
+  setDestroyedEventSink,
+  trimGarageTanks: (capacity) => pedestal.trim(capacity),
+  getDeviceTier,
 });
 
 sky.applyFog(scene);

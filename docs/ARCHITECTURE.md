@@ -125,8 +125,12 @@ function createBus(){ const m=new Map(); return {
 | `ui:battleStart` | `{ specId }` | garage |
 | `ui:click` | `{}` | hud/garage (any button press) |
 
-fx and audio each expose `bindBus(bus)` which subscribes to the relevant events. hud
-receives the bus in `initHud`. Nothing else touches the bus.
+FX and audio each expose `bindBus(bus)` for subsystem reactions. The typed
+`combatFeedbackRuntime.ts` owner bridges discrete hit/ERA/camera-recoil,
+destructible-prop, and Garage-residency presentation reactions without placing
+them in the simulation or composition root. HUD and other presentation owners
+receive the bus through their constructors; authoritative state never imports a
+browser presentation consumer.
 
 ---
 
