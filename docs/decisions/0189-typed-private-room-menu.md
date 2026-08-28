@@ -14,6 +14,10 @@ Every required DOM node is resolved once during construction. The menu keeps
 one typed acquisition session until it hands transport ownership to the active
 network-room coordinator.
 
+The garage play-surface loader consumes these exported contracts directly.
+It does not maintain a second permissive copy of the menu API or cast room,
+ranked, and lobby callbacks through the application composition root.
+
 ## Why
 
 This boundary receives untrusted URL state, persisted browser identity,
@@ -32,6 +36,8 @@ service field could fail only after a player had already begun joining.
   handoff session cannot open a battle with partial state.
 - Invite, room mode, game mode, team, map, player, ICE, queue, and retained-room
   states no longer collapse into implicit nullable values.
+- The lazy menu loader and the menu implementation share one compile-time API,
+  so either side fails typecheck when their handoff changes.
 - Ranked response fields are converted to presentation text at one boundary.
 - Strict typecheck, battle-module retry, play-surface, cold host/join,
   invitation, responsive-layout, production-build, and import-integrity gates

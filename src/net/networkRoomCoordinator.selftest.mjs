@@ -30,10 +30,15 @@ const chat = {
 const scheduled = [];
 let result = false;
 const room = (round = 1, phase = 'waiting') => ({
-  roomCode: 'ABC123', mode: 'private', phase, round, mapId: 'verdant',
+  roomCode: 'ABC123', mode: 'private', gameMode: 'standard', phase,
+  hostId: 'p1', maxPlayers: 2, maxSpectators: 2, allowTeamSwitch: true,
+  locked: false, round, mapId: 'verdant', teamSize: 1, revision: round,
+  matchSeed: phase === 'starting' ? 99 : null, lastResult: null,
   players: [
-    { id: 'p1', team: 'alpha', ready: false, specId: 'm1a2', camo: 'factory' },
-    { id: 'p2', team: 'bravo', ready: true, specId: 't90m' },
+    { id: 'p1', name: 'Atlas', team: 'alpha', ready: false, specId: 'm1a2',
+      equipment: [], camo: 'factory', connected: true, isHost: true, rating: null },
+    { id: 'p2', name: 'Bishop', team: 'bravo', ready: true, specId: 't90m',
+      equipment: [], camo: 'factory', connected: true, isHost: false, rating: null },
   ],
 });
 
@@ -84,14 +89,21 @@ assert.ok(calls.some(([name, id]) => name === 'chat' && id === 'new'));
 assert.equal(await coordinator.showActiveRoom(), true);
 assert.equal(calls.filter(([name]) => name === 'attach-menu').length, 1,
   'explicit room presentation catches the menu up to the latest state');
+stateListener({ phase: 'waiting', round: 1, revision: 2, players: [{ id: 'p1' }] });
+assert.equal(await coordinator.showActiveRoom(), false,
+  'a partial or malformed room packet cannot enter the complete lobby UI contract');
+stateListener(room());
+assert.equal(await coordinator.showActiveRoom(), true,
+  'a later complete canonical room state restores lobby presentation');
 assert.equal(coordinator.setReady(true), true);
 assert.equal(coordinator.startRound(), true);
 assert.ok(calls.some(([name, command]) =>
   name === 'command' && command.type === 'start' && command.matchSeed === 99));
 
+const visibleMenuUpdates = calls.filter(([name]) => name === 'update-menu').length;
 stateListener(room(2, 'starting'));
 await Promise.resolve();
-assert.equal(calls.filter(([name]) => name === 'update-menu').length, 0,
+assert.equal(calls.filter(([name]) => name === 'update-menu').length, visibleMenuUpdates,
   'battle room revisions do not rebuild an invisible lobby');
 assert.equal(scheduled.length, 1, 'one new round schedules one rematch');
 scheduled.shift()();

@@ -22,8 +22,26 @@ export interface RankedJoinOptions {
   teamSize?: number;
 }
 
+export interface RankedRosterPlayer extends JsonObject {
+  id: string;
+  name: string;
+  specId: string;
+  camo: string;
+  team: 'alpha' | 'bravo';
+  rating: number;
+}
+
+export interface RankedMatchAssignment extends JsonObject {
+  matchId: string;
+  playerId: string;
+  token: string;
+  mapId: string;
+  roster: RankedRosterPlayer[];
+}
+
 export interface RankedQueueState extends JsonObject {
   status: string;
+  match?: RankedMatchAssignment | null;
 }
 
 export interface RankedWaitOptions {

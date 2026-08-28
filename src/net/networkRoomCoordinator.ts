@@ -1,22 +1,40 @@
 import type { RoomChatInput, RoomChatOptions, RoomChatRuntime } from '../ui/roomChat.ts';
+import type {
+  ActiveRoomAdapter,
+  PlayMenuRuntime,
+} from '../ui/playMenu.ts';
+import type { SerializedLobby } from './lobby.ts';
 
 export interface NetworkRoomPlayer {
   id: string;
+  name?: string;
   team?: string;
   ready?: boolean;
-  specId?: string;
+  specId?: string | null;
+  equipment?: string[];
   camo?: string;
-  [key: string]: unknown;
+  connected?: boolean;
+  isHost?: boolean;
+  rating?: number | null;
 }
 
 export interface NetworkRoomState {
   roomCode?: string;
   mode?: string;
+  gameMode?: string;
   phase?: string;
+  hostId?: string;
+  maxPlayers?: number;
+  maxSpectators?: number;
+  allowTeamSwitch?: boolean;
+  locked?: boolean;
   round?: number;
   mapId?: string;
+  teamSize?: number;
+  revision?: number;
+  matchSeed?: number | null;
+  lastResult?: unknown;
   players: NetworkRoomPlayer[];
-  [key: string]: unknown;
 }
 
 export interface NetworkLobbyContext {
@@ -38,14 +56,6 @@ interface NetworkRoomMatch {
 
 interface RoomChatModule {
   createRoomChat(options: RoomChatOptions): RoomChatRuntime;
-}
-
-interface PlayMenuRuntime {
-  attachActiveRoom(adapter: Record<string, unknown>): void;
-  updateActiveRoom(state: NetworkRoomState): void;
-  detachActiveRoom(): void;
-  showActiveRoom(): boolean;
-  syncGarageSelection(): unknown;
 }
 
 interface GarageRoomStatus {
@@ -101,6 +111,69 @@ function defaultRandomUint32(): number {
   if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(words);
   else words[0] = (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0;
   return words[0];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isLobbyPhase(value: unknown): value is SerializedLobby['phase'] {
+  return value === 'waiting' || value === 'starting' ||
+    value === 'playing' || value === 'finished';
+}
+
+function isGameMode(value: unknown): value is SerializedLobby['gameMode'] {
+  return value === 'standard' || value === 'capture_the_flag' ||
+    value === 'zone_control' || value === 'turbo_ball' ||
+    value === 'endless_horde';
+}
+
+/**
+ * Match transport deliberately exposes a small room-state view. The lobby UI
+ * needs the complete canonical state, so validate that stronger contract at
+ * the presentation boundary instead of casting a partial packet into it.
+ */
+function isSerializedLobbyState(
+  state: NetworkRoomState,
+): state is NetworkRoomState & SerializedLobby {
+  const result = state.lastResult;
+  const validResult = result === null || (
+    isRecord(result) &&
+    Number.isSafeInteger(result.round) && Number(result.round) >= 0 &&
+    (result.result === null || typeof result.result === 'string') &&
+    (result.reason === null || typeof result.reason === 'string')
+  );
+  const validPlayers = state.players.every((player) =>
+    typeof player.id === 'string' && /^[a-zA-Z0-9_-]{1,48}$/.test(player.id) &&
+    typeof player.name === 'string' && player.name.length > 0 &&
+    (player.team === 'alpha' || player.team === 'bravo' || player.team === 'spectator') &&
+    (player.specId === null || typeof player.specId === 'string') &&
+    Array.isArray(player.equipment) &&
+    player.equipment.every((entry) => typeof entry === 'string') &&
+    typeof player.camo === 'string' &&
+    typeof player.ready === 'boolean' &&
+    typeof player.connected === 'boolean' &&
+    typeof player.isHost === 'boolean' &&
+    (player.rating === null || (typeof player.rating === 'number' &&
+      Number.isFinite(player.rating))));
+  const playerIds = validPlayers ? state.players.map((player) => player.id) : [];
+  return typeof state.roomCode === 'string' && /^[A-Z0-9]{6}$/.test(state.roomCode) &&
+    typeof state.mode === 'string' &&
+    isGameMode(state.gameMode) &&
+    isLobbyPhase(state.phase) &&
+    typeof state.hostId === 'string' && playerIds.includes(state.hostId) &&
+    Number.isSafeInteger(state.maxPlayers) && Number(state.maxPlayers) >= 0 &&
+    Number.isSafeInteger(state.maxSpectators) && Number(state.maxSpectators) >= 0 &&
+    typeof state.allowTeamSwitch === 'boolean' &&
+    typeof state.locked === 'boolean' &&
+    typeof state.mapId === 'string' &&
+    Number.isSafeInteger(state.teamSize) && Number(state.teamSize) > 0 &&
+    Number.isSafeInteger(state.revision) && Number(state.revision) >= 0 &&
+    (state.matchSeed === null || (Number.isSafeInteger(state.matchSeed) &&
+      Number(state.matchSeed) >= 0)) &&
+    Number.isSafeInteger(state.round) && Number(state.round) >= 0 &&
+    validResult &&
+    validPlayers && new Set(playerIds).size === playerIds.length;
 }
 
 /** Own the browser room lifecycle from lobby handoff through repeated rounds. */
@@ -204,11 +277,12 @@ export function createNetworkRoomCoordinator({
   const syncMenuPresentation = (
     menu: PlayMenuRuntime,
     state: NetworkRoomState,
-  ): void => {
-    const adapter = {
+  ): boolean => {
+    if (!isSerializedLobbyState(state)) return false;
+    const adapter: ActiveRoomAdapter = {
       state,
       playerId: getMatch()?.playerId || '',
-      role: getMatch()?.role || 'client',
+      role: getMatch()?.role === 'host' ? 'host' : 'client',
       command: (command: Record<string, unknown>) => getMatch()?.roomCommand?.(command),
       leave: (reason?: string) => onClose(reason || 'left_room'),
     };
@@ -216,6 +290,7 @@ export function createNetworkRoomCoordinator({
       menu.attachActiveRoom(adapter);
       menuAttached = true;
     } else menu.updateActiveRoom(state);
+    return true;
   };
 
   const present = (state: NetworkRoomState) => {
@@ -325,7 +400,7 @@ export function createNetworkRoomCoordinator({
       const menuPromise = getPlayMenu();
       if (!activeRoom || !match || match.client?.closed || !menuPromise) return false;
       const menu = await menuPromise;
-      syncMenuPresentation(menu, activeRoom);
+      if (!syncMenuPresentation(menu, activeRoom)) return false;
       return !!menu.showActiveRoom();
     },
 

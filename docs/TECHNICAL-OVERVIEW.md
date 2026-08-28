@@ -173,7 +173,9 @@ downsampling, layer metadata, and bounded cache states have one explicit owner.
 The private-room operation surface is strict TypeScript end to end: mode and
 map selection, signaling acquisition, ICE, named invites, lobby snapshots,
 readiness, retained-room reattachment, and ranked queues cross explicit ports
-before any session can hand off into battle.
+before any session can hand off into battle. The loader, room coordinator, and
+ranked client share those canonical contracts; incomplete match-room packets
+cannot enter the complete lobby presentation surface.
 Pure keyboard, flag, glyph, minimap, drive-readout, spectator, map-preview, and
 Garage-order policy is also typed and remains directly Node-testable.
 The browser input layer now exports strict action, binding, settings, gamepad,

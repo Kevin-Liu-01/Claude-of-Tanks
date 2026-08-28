@@ -46,6 +46,8 @@ its dedicated service explicitly negotiates another ruleset.
   cadence, reliable-event draining, snapshot waits, and diagnostics.
 - `src/net/networkRoomCoordinator.ts` owns lobby-to-room presentation,
   selection locks, chat buffering, ready/start commands, and rematch claims.
+  It admits only complete canonical lobby packets to the retained-room menu;
+  a partial match-room packet cannot mutate that UI contract.
 - `src/net/networkBattlePresentationRuntime.ts` owns the complete covered
   cold-client transition for private/LAN and dedicated adapters. Module, world,
   and transport acquisition overlap; a bridge is published only after exact
@@ -59,7 +61,9 @@ its dedicated service explicitly negotiates another ruleset.
   parallel signaling and ICE discovery, stable-host reload detection, cold
   guest selection replay, state observation, cancellation generations, and
   the exact handoff/teardown order. The play menu renders and commands the
-  resulting connection but cannot construct a second transport lifecycle.
+  resulting connection but cannot construct a second transport lifecycle. Its
+  lazy play-surface loader imports the menu's public types rather than
+  maintaining a permissive parallel interface.
 - `src/net/localSession.ts` provides loopback authority for protocol tests and
   tooling; normal solo play does not load it.
 - `src/net/privateRoomSession.ts` and `privateMatchHandoff.ts` own WebRTC lobby

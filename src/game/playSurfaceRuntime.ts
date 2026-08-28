@@ -1,36 +1,38 @@
+import type { GameModeId } from '../sim/matchModes.ts';
+import type {
+  PlayMenuInvite,
+  PlayMenuOptions,
+  PlayMenuRuntime,
+  PlayMode,
+} from '../ui/playMenu.ts';
+
 type MaybePromise<T> = T | PromiseLike<T>;
+type MenuCreationOptions = Omit<PlayMenuOptions, 'onSolo'>;
 
 export interface PlaySurfaceRequest {
-  mode?: string;
-  invite?: unknown;
+  mode?: PlayMode;
+  invite?: PlayMenuInvite;
   specId?: string;
   mapId?: string;
-  gameMode?: string;
+  gameMode?: GameModeId;
   startSolo?: () => MaybePromise<unknown>;
 }
 
-export interface PlayMenuRuntime {
-  show(mode?: string, invite?: unknown): void;
-  hide(closeSession?: boolean): void;
-  showCurrentRoom(): boolean;
-  attachActiveRoom(adapter: Record<string, unknown>): void;
-  updateActiveRoom(state: Record<string, unknown>): boolean | void;
-  detachActiveRoom(): void;
-  showActiveRoom(): boolean;
-  syncGarageSelection(): unknown;
-}
-
 interface PlayMenuModule {
-  createPlayMenu(options: Record<string, unknown>): PlayMenuRuntime;
-  preloadPlayMode(mode: string): MaybePromise<unknown>;
+  createPlayMenu(options: PlayMenuOptions): PlayMenuRuntime;
+  preloadPlayMode(mode: PlayMode): MaybePromise<unknown>;
 }
 
 interface PlaySurfaceRuntimeOptions {
   loadMenuModule(): Promise<PlayMenuModule>;
-  createMenuOptions(): Record<string, unknown>;
+  createMenuOptions(): MenuCreationOptions;
   getSelectedSpecId(): string;
   getSelectedMapId(): string;
-  startSolo(request: { specId: string; mapId: string; gameMode?: string }): MaybePromise<unknown>;
+  startSolo(request: {
+    specId: string;
+    mapId: string;
+    gameMode?: GameModeId;
+  }): MaybePromise<unknown>;
   showActiveRoom(): MaybePromise<boolean>;
   preloadCommon: Array<() => MaybePromise<unknown>>;
   preloadNetworkPresentation(): MaybePromise<unknown>;
@@ -40,7 +42,7 @@ interface PlaySurfaceRuntimeOptions {
 }
 
 export interface PlaySurfaceRuntime {
-  preload(mode?: string): void;
+  preload(mode?: PlayMode): void;
   open(request?: PlaySurfaceRequest): Promise<void>;
   hideForBattle(): void;
   showCurrentRoom(): Promise<boolean>;
@@ -102,7 +104,7 @@ export function createPlaySurfaceRuntime({
       }
       const menu = module.createPlayMenu({
         ...createMenuOptions(),
-        onSolo: (request: { gameMode?: string } = {}) => {
+        onSolo: (request: { gameMode?: GameModeId } = {}) => {
           const requested = pendingSoloStart;
           pendingSoloStart = null;
           if (requested) runSolo(requested);
@@ -127,7 +129,7 @@ export function createPlaySurfaceRuntime({
     return request;
   };
 
-  const preload = (mode = 'solo'): void => {
+  const preload = (mode: PlayMode = 'solo'): void => {
     for (const task of preloadCommon) observe(task, 'play preload failed', reportError);
     if (mode !== 'solo') {
       observe(preloadNetworkPresentation, 'network presentation preload failed', reportError);

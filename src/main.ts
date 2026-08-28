@@ -1004,7 +1004,7 @@ const {
 } = createBattleModuleAccess();
 
 const playSurface = createPlaySurfaceRuntime({
-  loadMenuModule: legacyPort(loadPlayMenuModule),
+  loadMenuModule: loadPlayMenuModule,
   createMenuOptions: () => ({
       maps: garageMaps,
       getSelection: () => ({
@@ -1019,10 +1019,10 @@ const playSurface = createPlaySurfaceRuntime({
         legacyPort<keyof typeof CAMO_PATTERN_LABEL>(camo)
       ] || 'Factory',
       getVehicleName: (specId: string) => legacyPort<MainEntity['spec']>(getSpec(specId)).name,
-      onNetworkStart: (request: unknown) => networkBattleLauncher.beginPrivate(legacyPort(request)),
+      onNetworkStart: (request) => networkBattleLauncher.beginPrivate(request),
       onNetworkClose: (reason: string) => closeNetworkMatch(reason || 'room_closed'),
-      onRankedStart: (request: unknown) => networkBattleLauncher.beginRanked(legacyPort(request)),
-      onLobbyChange: (context: unknown) => networkRoomCoordinator?.handleLobbyChange(legacyPort(context)),
+      onRankedStart: (request) => networkBattleLauncher.beginRanked(request),
+      onLobbyChange: (context) => networkRoomCoordinator?.handleLobbyChange(context),
   }),
   getSelectedSpecId: () => garage.getSelected(),
   getSelectedMapId: () => garage.getSelectedMap(),

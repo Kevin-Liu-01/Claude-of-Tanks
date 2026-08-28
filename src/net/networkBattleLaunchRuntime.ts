@@ -3,6 +3,7 @@ import type {
   NetworkRoomPlayer,
   NetworkRoomState,
 } from './networkRoomCoordinator.ts';
+import type { RankedQueueState } from './rankedServiceClient.ts';
 import { isNetworkBattleEntryAbortError } from './networkBattleEntryAbort.ts';
 
 interface BattleEntryLifecyclePort {
@@ -116,14 +117,7 @@ export interface PrivateBattleLaunchRequest {
 
 export interface RankedBattleLaunchRequest {
   serviceUrl?: string;
-  state?: {
-    match?: {
-      playerId?: string;
-      mapId?: string;
-      roster?: NetworkRoomPlayer[];
-      [key: string]: unknown;
-    };
-  };
+  state?: RankedQueueState;
 }
 
 export interface NetworkBattleLaunchRuntime {
@@ -199,6 +193,7 @@ export function createNetworkBattleLaunchRuntime({
     state: NetworkRoomState,
     viewerId: string,
     own: NetworkRoomPlayer,
+    specId: string,
     modeLabel: string,
     fallback: string,
   ) => {
@@ -206,7 +201,7 @@ export function createNetworkBattleLaunchRuntime({
     const fixedMapId = requestedMapId === 'random' ? null : requestedMapId;
     const map = getMapPresentation(fixedMapId, fallback);
     const displayTeam = displayTeamFor(own);
-    emitBattleStart({ playerId: viewerId, specId: own.specId, mapId: requestedMapId });
+    emitBattleStart({ playerId: viewerId, specId, mapId: requestedMapId });
     battleLoad.show({
       mapName: map.name,
       thumb: map.thumb,
@@ -258,13 +253,13 @@ export function createNetworkBattleLaunchRuntime({
         const viewerId = String(session?.roomInfo?.peerId || '');
         const own = lobbyState?.players?.find((player) => player.id === viewerId);
         try {
-          if (!viewerId || !own || !lobbyState) {
+          if (!viewerId || !own?.specId || !lobbyState) {
             throw new Error('The lobby identity is unavailable.');
           }
           resetBattleState();
           const modeLabel = lobbyState.mode === 'lan'
             ? 'LAN Battle · Direct Wi-Fi' : 'Private Battle · Room Code';
-          showRoomLoad(lobbyState, viewerId, own, modeLabel, 'Battle');
+          showRoomLoad(lobbyState, viewerId, own, own.specId, modeLabel, 'Battle');
           audio.resume();
           audio.loadingOn(true);
           battleLoad.progress(0.01, 'Opening battle channel');
@@ -316,7 +311,8 @@ export function createNetworkBattleLaunchRuntime({
           if (!viewerId || !own) throw new Error('Your player is no longer in this room.');
           const modeLabel = lobbyState.mode === 'lan'
             ? `LAN Battle · Round ${round}` : `Private Battle · Round ${round}`;
-          showRoomLoad(lobbyState, viewerId, own, modeLabel, 'Next battle');
+          if (!own.specId) throw new Error('Your selected vehicle is unavailable.');
+          showRoomLoad(lobbyState, viewerId, own, own.specId, modeLabel, 'Next battle');
           audio.resume();
           audio.loadingOn(true);
           battleLoad.progress(0.01, 'Preparing the next round');
@@ -364,7 +360,7 @@ export function createNetworkBattleLaunchRuntime({
         const viewerId = String(ticket?.playerId || '');
         const own = ticket?.roster?.find((player) => player.id === viewerId);
         try {
-          if (!ticket || !ticket.mapId || !viewerId || !own || !ticket.roster) {
+          if (!ticket || !ticket.mapId || !viewerId || !own?.specId || !ticket.roster) {
             throw new Error('Ranked match ticket is incomplete.');
           }
           resetBattleState();

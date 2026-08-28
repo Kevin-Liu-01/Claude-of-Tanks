@@ -41,7 +41,7 @@ const PLAYER_NAME_KEY = 'cot.player.name.v1';
 const ROOM_SIZE_KEY = 'cot.room.size.v1';
 const GAME_MODE_KEY = 'cot.game.mode.v1';
 type RankedServiceModule = typeof import('../net/rankedServiceClient.ts');
-type PlayMode = 'solo' | RoomInviteMode | 'ranked';
+export type PlayMode = 'solo' | RoomInviteMode | 'ranked';
 type RoomSession = PrivateRoomConnection['session'];
 type RoomRole = PrivateRoomConnection['role'];
 type MaybePromise<T> = T | PromiseLike<T>;
@@ -77,7 +77,7 @@ export interface ActiveRoomAdapter {
 export interface PlayMenuOptions {
   maps?: PlayMenuMap[];
   getSelection(): PlayMenuSelection;
-  onSolo?(request: { gameMode: GameModeId }): unknown;
+  onSolo?(request?: { gameMode?: GameModeId }): unknown;
   onNetworkStart?(request: {
     role: RoomRole;
     session: RoomSession;
