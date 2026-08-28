@@ -19,6 +19,9 @@ const playSurface = fs.readFileSync(path.join(here, 'playSurfaceRuntime.ts'), 'u
 const networkLaunch = fs.readFileSync(
   path.join(here, '..', 'net', 'networkBattleLaunchRuntime.ts'), 'utf8',
 );
+const networkLobbyPreloader = fs.readFileSync(
+  path.join(here, '..', 'net', 'networkLobbyPreloader.ts'), 'utf8',
+);
 const networkPresentationAccess = fs.readFileSync(
   path.join(here, '..', 'net', 'networkBattlePresentationAccess.ts'), 'utf8',
 );
@@ -68,11 +71,11 @@ assert.match(soloLoading,
   /\(\) => preloadBattleStart\(\)[\s\S]{0,900}startBattle\(specId, resolved/,
   'covered loading must acquire the activation owner before its synchronous handoff');
 
-assert.match(main, /function preloadNetworkLobbyIntent\(state\)/,
-  'joined rooms need an exact lobby-intent warm boundary');
-assert.match(main, /for \(const player of state\.players \|\| \[\]\)[\s\S]{0,100}rosterIds\.push\(player\.specId\)[\s\S]{0,100}ensureTankBuilders\(rosterIds\)/,
-  'joined rooms should transfer the actual roster families');
-assert.match(main, /prefetchWorld\(mapId\);/,
+assert.match(main, /createNetworkLobbyPreloader\(\{/,
+  'joined rooms need one typed lobby-intent owner');
+assert.match(networkLobbyPreloader, /for \(const player of state\.players \|\| \[\]\)[\s\S]{0,260}missingBuilders\.push\(specId\)[\s\S]{0,280}ensureTankBuilders\(missingBuilders\)/,
+  'joined rooms should transfer only missing roster builders');
+assert.match(networkLobbyPreloader, /if \(nextMapId\) prefetchWorld\(nextMapId\);/,
   'fixed host maps should use the quiet background world path');
 assert.match(main, /createNetworkBattlePresentationAccess\(\{/,
   'main should compose one intent-loaded network presentation owner');
@@ -96,7 +99,7 @@ assert.doesNotMatch(main, /function preloadPlayMode\(/,
 assert.match(playSurface, /export interface PlaySurfaceRuntime/,
   'play intent should cross a stable typed interface');
 assert.match(main,
-  /function preloadNetworkLobbyIntent\(state\)[\s\S]{0,180}networkBattlePresentation\.preload\(\)/,
+  /preloadPresentation: \(\) => networkBattlePresentation\.preload\(\)/,
   'a joined waiting room should keep the presentation runtime warm');
 assert.match(networkPresentation,
   /entry\.acquire\(\{[\s\S]{0,180}loadModules: entry\.loadModules/,

@@ -152,3 +152,4 @@ runtime documents remain authoritative for behavior.
 - [0140 — Radio voice scheduling has a strict timing contract](0140-typed-voice-radio.md)
 - [0141 — Ballistics has one strict headless contract](0141-typed-ballistics.md)
 - [0142 — Bot routes share a typed terrain-capability grid](0142-typed-bot-route-planner.md)
+- [0143 — Roster presentation has one typed policy](0143-typed-roster-presentation.md)

@@ -14,7 +14,9 @@ and persisted player choices.
 <!-- agent-docs:fill:model -->
 `stateCore.ts` owns the dependency-free typed session shell and event bus;
 `rosterState.ts` owns typed roster entities, battle-visual construction policy,
-and deterministic participant/camouflage planning; `soloBattleAccess.ts` owns
+and deterministic participant/camouflage planning; `rosterPresentation.ts`
+owns consistent lobby and pre-battle display rows without importing rendering
+or authority code; `soloBattleAccess.ts` owns
 retryable lazy acquisition while `soloBattleRuntime.ts` is the typed import
 boundary for legacy solo authority in `state.js`, which owns battle setup and
 the fixed battle step; `battleEntryAcquisition.ts` owns covered solo/network
@@ -100,7 +102,8 @@ boot do not evaluate or allocate multiplayer-only presentation policy.
 Keep authoritative rules deterministic and Node-runnable. Inject world, bus,
 RNG, and presentation dependencies. Keep garage-safe session data in
 `stateCore.ts`, visual/roster policy in `rosterState.ts`, and combat integration
-in `state.js`. Garage boot must not statically import `state.js`; acquire it
+in `state.js`. Keep roster naming, filtering, and local-player ordering in
+`rosterPresentation.ts`. Garage boot must not statically import `state.js`; acquire it
 through `soloBattleAccess.ts` on Battle or capture intent. Multiplayer work
 must move visual creation out of authority rather than importing more UI into
 `state.js`.

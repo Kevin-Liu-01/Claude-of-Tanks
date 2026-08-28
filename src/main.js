@@ -149,6 +149,7 @@ import { createSelectedVehicleSelection } from './game/selectedVehicleSelection.
 import { createPointerLockFeedbackRuntime } from './game/pointerLockFeedbackRuntime.ts';
 import { createSniperFillRuntime } from './game/sniperFillRuntime.ts';
 import { createCombatFeedbackRuntime } from './game/combatFeedbackRuntime.ts';
+import { createRosterPresentation } from './game/rosterPresentation.ts';
 import { tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
@@ -388,6 +389,10 @@ const devTrace = traceRequested
 const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
 installBattleRecords(bus);
 const game = createGameState();
+const rosterPresentation = createRosterPresentation({
+  getVehicleName: (specId) => getSpec(specId)?.name,
+  getTier: tierNumeral,
+});
 const playerShellLog = [];
 const botPressure = { enemyShells: 0, aimedAtPlayer: 0, hitsOnPlayer: 0, dmgOnPlayer: 0 };
 // Randomized rosters made the two-entry detached bot cache a poor hit-rate
@@ -1503,7 +1508,7 @@ const soloBattleLoading = createSoloBattleLoadingRuntime({
   getPedestalVisual: () => pedestal.current,
   prebakeSharedTextures,
   anisotropy: engineCtx.anisotropy ?? 4,
-  rosterRows,
+  rosterRows: (team) => rosterPresentation.battleRows(game.tanks, team),
   warmShotCards: (specIds) => hud.warmShotCards(specIds),
   getCamoSweep: () => camoSweepP,
   prepareRevealCamera: prepareBattleRevealCamera,
@@ -1559,7 +1564,7 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
         const cfg = getMapConfig(mapId);
         return { name: cfg.name || mapId, thumb: MAP_HEROES[mapId] || MAP_THUMBS[mapId] || '', biome: mapId };
       },
-      rows: (players, team, viewerId) => lobbyRosterRows({ players }, team, viewerId),
+      rows: (players, team, viewerId) => rosterPresentation.lobbyRows({ players }, team, viewerId),
       vehicleName: (specId) => getSpec(specId)?.name || specId,
       emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
       setCamoBiome,
@@ -1665,7 +1670,7 @@ const networkBattleLauncher = createNetworkBattleLaunchRuntime({
     const cfg = getMapConfig(mapId);
     return { name: cfg.name || fallback, thumb: MAP_HEROES[mapId] || MAP_THUMBS[mapId] || '', biome: mapId };
   },
-  rosterRows: lobbyRosterRows,
+  rosterRows: rosterPresentation.lobbyRows,
   emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
   resetBattleState: resetNetworkBattleState,
   presentBattle: networkBattlePresentation.present,
@@ -1747,17 +1752,6 @@ async function beginBattleEntry(specId, mapId = null, options = undefined) {
   }, undefined);
 }
 
-function lobbyRosterRows(lobbyState, team, viewerId) {
-  return lobbyState.players
-    .filter((player) => player.team === team)
-    .map((player) => ({
-      id: player.specId,
-      name: getSpec(player.specId)?.name || player.name || player.specId,
-      tier: tierNumeral(player.specId),
-      isPlayer: player.id === viewerId,
-    }));
-}
-
 function resetNetworkBattleState() {
   // The bridge overlays a reusable global game object. Clear the old verdict
   // synchronously at handoff so a rematch cannot paint or process one frame
@@ -1808,19 +1802,6 @@ const networkBattleActivation = createNetworkBattleActivationRuntime({
 async function beginSoloBattle({ specId, mapId, randomRoster = true, gameMode = 'standard' } = {}) {
   const selected = VISIBLE_TANK_IDS.includes(specId) ? specId : garage.getSelected();
   return beginBattleEntry(selected, mapId || garage.getSelectedMap(), { randomRoster, gameMode });
-}
-
-/** Rows for the pre-battle roster panels. @param {string} team @returns {Array} */
-function rosterRows(team) {
-  return game.tanks
-    .filter((e) => e.team === team)
-    .map((e) => ({
-      id: e.specId,
-      name: (e.spec && e.spec.name) || e.specId,
-      tier: tierNumeral(e.specId),
-      isPlayer: !!e.isPlayer,
-    }))
-    .sort((a, b) => (b.isPlayer ? 1 : 0) - (a.isPlayer ? 1 : 0));
 }
 
 /** QA-only cold entry. Production paths already own a loading veil and call

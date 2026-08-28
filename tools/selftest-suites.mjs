@@ -95,6 +95,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garagePhasePresentationRuntime.selftest.mjs',
     'src/game/garageDressingOptimization.selftest.mjs',
     'src/game/rosterPlanning.selftest.mjs',
+    'src/game/rosterPresentation.selftest.mjs',
     'src/presentation/publicCopy.selftest.mjs',
     'src/presentation/publicLoading.selftest.mjs',
     'src/presentation/publicNav.selftest.mjs',
