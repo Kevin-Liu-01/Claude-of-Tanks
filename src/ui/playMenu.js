@@ -26,7 +26,7 @@ const GAME_MODE_KEY = 'cot.game.mode.v1';
 let rankedServiceModulePromise = null;
 function loadRankedServiceModule() {
   if (!rankedServiceModulePromise) {
-    const request = import('../net/rankedServiceClient.js');
+    const request = import('../net/rankedServiceClient.ts');
     rankedServiceModulePromise = request;
     request.catch(() => {
       if (rankedServiceModulePromise === request) rankedServiceModulePromise = null;

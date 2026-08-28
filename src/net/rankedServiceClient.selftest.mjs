@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createDedicatedMatchServer } from '../../server/dedicatedMatchServer.js';
-import { createRankedServiceClient, rankedMatchWebSocketUrl } from './rankedServiceClient.js';
+import { createRankedServiceClient, rankedMatchWebSocketUrl } from './rankedServiceClient.ts';
 
 const service = await createDedicatedMatchServer({ autoTick: false });
 const url = `http://127.0.0.1:${service.address.port}`;

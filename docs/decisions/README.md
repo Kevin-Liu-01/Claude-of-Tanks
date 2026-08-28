@@ -107,3 +107,4 @@ runtime documents remain authoritative for behavior.
 - [0095 — Every match transport has one strict bounded contract](0095-typed-bounded-transports.md)
 - [0096 — Replaceable snapshot packets have a strict binary codec](0096-typed-snapshot-wire-codec.md)
 - [0097 — Aim projection and event pacing are strict TypeScript](0097-typed-network-presentation-utilities.md)
+- [0098 — Ranked browser service access is strict TypeScript](0098-typed-ranked-service-client.md)

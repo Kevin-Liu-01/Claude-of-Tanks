@@ -54,7 +54,7 @@ play without importing Three.js rendering or DOM state.
   publication, camera ownership, and Garage shutdown.
 - `connectionRecovery.ts` owns reconnect status and the single bounded failure
   edge; transport replacement remains below it.
-- `rankedServiceClient.js` owns service-scoped ladder identity and queue polling;
+- `rankedServiceClient.ts` owns service-scoped ladder identity and queue polling;
   `dedicatedClient.js` owns authenticated WebSocket handoff and reconnect.
 - `privateRoomSession.ts` owns typed lobby WebRTC composition and
   `rtcIceLease.ts` owns expiring TURN generations;
