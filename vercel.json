@@ -2,7 +2,8 @@
   "regions": ["sfo1"],
   "functions": {
     "api/signal.ts": { "maxDuration": 300 },
-    "api/ice.ts": { "maxDuration": 10 }
+    "api/ice.ts": { "maxDuration": 10 },
+    "api/github-stars.ts": { "maxDuration": 10 }
   },
   "redirects": [
     { "source": "/surface-studio", "destination": "/gallery?layer=markup", "permanent": true }

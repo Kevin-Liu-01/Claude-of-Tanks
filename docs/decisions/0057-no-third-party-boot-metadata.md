@@ -1,4 +1,4 @@
-# ADR 0057: Decorative repository metadata is network-silent
+# ADR 0057: Decorative repository metadata has a same-origin cache boundary
 
 - Status: accepted
 - Date: 2026-08-27
@@ -17,20 +17,25 @@ third-party rate limit.
 
 ## Decision
 
-All product surfaces render the release-verified packaged count. Mounting or
-refreshing the badge performs no network request. The release/docs workflow
-owns future count updates.
+All product surfaces render the release-verified packaged count immediately.
+They then refresh through the bounded same-origin `/api/github-stars` endpoint.
+That endpoint, rather than each player's browser, calls GitHub and publishes a
+shared edge-cached result. A failed refresh keeps the packaged or last verified
+count and does not affect startup.
 
 ## Consequences
 
-- Fresh players never contact GitHub merely by loading the game.
+- Fresh players never contact GitHub directly merely by loading the game.
 - Boot and multiplayer certification are independent from GitHub availability
   and shared-IP rate limits.
-- The displayed count may lag between releases, which is acceptable for
-  decorative metadata.
+- The displayed count updates automatically while edge caching bounds upstream
+  traffic; it may lag by the cache interval.
+- Local storage retains the last verified count for six hours and collapses
+  repeated mounts into one request.
 
 ## Verification
 
     node src/presentation/publicNav.selftest.mjs
+    node server/githubStars.selftest.mjs
     npm run perf:cold -- --sessions 3
     npm run test:net:seven:full
