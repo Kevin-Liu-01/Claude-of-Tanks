@@ -205,8 +205,6 @@ const CSS = `
 @media(prefers-reduced-motion:reduce){.cot-play button.action.needs-ready,.cot-play button.action.can-start{animation:none;
   box-shadow:0 0 0 3px rgba(230,154,54,.16),0 0 18px rgba(230,154,54,.34)}.cot-play .menu-select-trigger,
   .cot-play .menu-select-trigger::after,.cot-play .menu-select-option{transition:none}}
-@media(max-width:760px){.cot-play .rules{grid-template-columns:repeat(2,1fr)}.cot-play .rule:last-child{grid-column:span 2}
-  .cot-play .rule-heading span{display:none}}
 `;
 
 function stored(key, fallback) {
