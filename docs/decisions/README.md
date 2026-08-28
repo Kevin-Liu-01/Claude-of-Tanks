@@ -209,3 +209,4 @@ runtime documents remain authoritative for behavior.
 - [0197 — Fleet projections and family order are strict TypeScript](0197-typed-roster-projections-and-order.md)
 - [0198 — Lazy fleet receipts have typed runtime owners](0198-typed-lazy-fleet-receipts.md)
 - [0199 — Vehicle appearance roles are strict TypeScript](0199-typed-vehicle-appearance-roles.md)
+- [0200 — Running-gear quality receipts are strict TypeScript](0200-typed-running-gear-quality-receipts.md)

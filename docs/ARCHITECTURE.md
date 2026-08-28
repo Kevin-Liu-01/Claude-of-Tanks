@@ -611,6 +611,10 @@ Geometry bar: per tank-roster.md §*.5 visual specs — composed BufferGeometrie
 signature details per Appendix B. ~8–15k tris full LOD; build a `THREE.LOD` with a
 ~3k mid LOD if time allows (optional). Track scroll: scroll a texture offset or slide
 instanced links — builder's choice, must respond to `state.trackScroll`.
+`wheelQuality.ts` is the release-facing receipt boundary for wheel families,
+suspension linkage, inboard clearance, end-wheel construction, and working-gear
+paint roles. Keep this audit out of player-frame work and run its fleet sweep
+after shared running-gear changes.
 All materials through `materials.js`; every lit material passes through
 `engineCtx.setupShadowMaterial`.
 
