@@ -105,3 +105,4 @@ runtime documents remain authoritative for behavior.
 - [0093 — Room entry and commander identity are strict TypeScript](0093-typed-room-entry-identity.md)
 - [0094 — Durable browser signaling has one strict typed owner](0094-typed-durable-signaling-client.md)
 - [0095 — Every match transport has one strict bounded contract](0095-typed-bounded-transports.md)
+- [0096 — Replaceable snapshot packets have a strict binary codec](0096-typed-snapshot-wire-codec.md)

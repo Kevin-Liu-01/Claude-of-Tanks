@@ -1,0 +1,237 @@
+import {
+  MESSAGE_TYPES,
+  normalizePlayerInput,
+  validateEnvelope,
+  type NormalizedPlayerInput,
+  type ProtocolEnvelope,
+} from './protocol.ts';
+import type { WireCodec } from './channelTransport.ts';
+
+type WireRow = Record<string, unknown>;
+
+export interface SnapshotWirePayload {
+  tick: number;
+  serverTimeMs: number;
+  ackInputSeq: number;
+  baseTick: number;
+  entities: WireRow[];
+  removedEntityIds: unknown[];
+  shells: WireRow[];
+  events: unknown[];
+  meta: Record<string, unknown> | null;
+}
+
+export type ReplaceableWireEnvelope =
+  | ProtocolEnvelope<NormalizedPlayerInput>
+  | ProtocolEnvelope<SnapshotWirePayload>;
+
+const SNAPSHOT_WIRE_TAG = 2;
+const INPUT_WIRE_TAG = 3;
+const ENTITY_FIELDS = Object.freeze([
+  'id', 'specId', 'team',
+  'x', 'y', 'z', 'vx', 'vy', 'vz',
+  'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
+  'hp', 'maxHp', 'reloadMs', 'reloadTotalMs', 'reloadKind',
+  'magazineRounds', 'magazineCapacity', 'shellSlot', 'flags', 'eraSpent',
+] as const);
+const SHELL_FIELDS = Object.freeze([
+  'id', 'shooterId', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'type',
+] as const);
+const MAX_ENTITIES = 32;
+const MAX_SHELLS = 256;
+
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function toBytes(value: unknown): Uint8Array {
+  if (value instanceof Uint8Array) return value;
+  if (value instanceof ArrayBuffer) return new Uint8Array(value);
+  if (ArrayBuffer.isView(value)) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  }
+  throw new TypeError('replaceable wire payload must be binary');
+}
+
+function packRows(
+  rows: unknown,
+  fields: readonly string[],
+  limit: number,
+  label: string,
+): unknown[][] {
+  if (!Array.isArray(rows) || rows.length > limit) {
+    throw new TypeError(`${label} rows exceed the wire limit`);
+  }
+  return rows.map((row) => {
+    if (!isRecord(row)) throw new TypeError(`invalid ${label} row`);
+    return fields.map((field) => row[field]);
+  });
+}
+
+function unpackRows(
+  rows: unknown,
+  fields: readonly string[],
+  limit: number,
+  label: string,
+): WireRow[] {
+  if (!Array.isArray(rows) || rows.length > limit) {
+    throw new TypeError(`${label} rows exceed the wire limit`);
+  }
+  return rows.map((values) => {
+    if (!Array.isArray(values) || values.length !== fields.length) {
+      throw new TypeError(`invalid ${label} row`);
+    }
+    const row: WireRow = {};
+    for (let index = 0; index < fields.length; index++) {
+      // JSON arrays encode an omitted optional column as null. Preserve the
+      // sparse object shape so optional state (currently ERA depletion) does
+      // not churn every unchanged entity delta after decode.
+      if (values[index] != null) row[fields[index]] = values[index];
+    }
+    return row;
+  });
+}
+
+function encodeInputEnvelope(envelope: ProtocolEnvelope): unknown[] {
+  const input = normalizePlayerInput(envelope.payload);
+  return [
+    INPUT_WIRE_TAG,
+    envelope.v,
+    envelope.seq,
+    envelope.ack,
+    envelope.tick,
+    input.inputSeq,
+    input.clientTick,
+    input.snapshotAckTick,
+    input.throttle,
+    input.steer,
+    input.brake ? 1 : 0,
+    input.fire ? 1 : 0,
+    input.aimYaw,
+    input.aimPitch,
+    input.aimDistance,
+    input.shellSlot,
+    input.actionBits,
+  ];
+}
+
+function decodeInputEnvelope(wire: unknown[]): ProtocolEnvelope<NormalizedPlayerInput> {
+  if (wire.length !== 17) throw new TypeError('invalid input wire packet');
+  const envelope = validateEnvelope({
+    v: wire[1],
+    type: MESSAGE_TYPES.INPUT,
+    seq: wire[2],
+    ack: wire[3],
+    tick: wire[4],
+    payload: {
+      inputSeq: wire[5],
+      clientTick: wire[6],
+      snapshotAckTick: wire[7],
+      throttle: wire[8],
+      steer: wire[9],
+      brake: wire[10] === 1,
+      fire: wire[11] === 1,
+      aimYaw: wire[12],
+      aimPitch: wire[13],
+      aimDistance: wire[14],
+      shellSlot: wire[15],
+      actionBits: wire[16],
+    },
+  });
+  return {
+    ...envelope,
+    type: MESSAGE_TYPES.INPUT,
+    payload: normalizePlayerInput(envelope.payload),
+  };
+}
+
+function encodeSnapshotEnvelope(envelope: ProtocolEnvelope): unknown[] {
+  if (!isRecord(envelope.payload)) throw new TypeError('snapshot payload is required');
+  const packet = envelope.payload;
+  return [
+    SNAPSHOT_WIRE_TAG,
+    envelope.v,
+    envelope.seq,
+    envelope.ack,
+    envelope.tick,
+    packet.serverTimeMs,
+    packet.ackInputSeq,
+    packet.baseTick == null ? -1 : packet.baseTick,
+    packRows(packet.entities, ENTITY_FIELDS, MAX_ENTITIES, 'entity'),
+    Array.isArray(packet.removedEntityIds) ? packet.removedEntityIds : [],
+    packRows(packet.shells || [], SHELL_FIELDS, MAX_SHELLS, 'shell'),
+    Array.isArray(packet.events) ? packet.events : [],
+    isRecord(packet.meta) ? packet.meta : null,
+  ];
+}
+
+function readSnapshotEnvelope(wire: unknown[]): ProtocolEnvelope<SnapshotWirePayload> {
+  if (wire.length !== 13 || wire[0] !== SNAPSHOT_WIRE_TAG) {
+    throw new TypeError('invalid snapshot wire packet');
+  }
+  const envelope = validateEnvelope({
+    v: wire[1],
+    type: MESSAGE_TYPES.SNAPSHOT,
+    seq: wire[2],
+    ack: wire[3],
+    tick: wire[4],
+    payload: null,
+  });
+  const serverTimeMs = Number(wire[5]);
+  const ackInputSeq = Number(wire[6]);
+  const baseTick = Number(wire[7]);
+  if (!Number.isFinite(serverTimeMs) || serverTimeMs < 0 ||
+      !Number.isSafeInteger(ackInputSeq) || ackInputSeq < 0 ||
+      !Number.isSafeInteger(baseTick) || baseTick < -1) {
+    throw new TypeError('invalid snapshot wire metadata');
+  }
+  const meta = isRecord(wire[12]) ? wire[12] : null;
+  return {
+    ...envelope,
+    type: MESSAGE_TYPES.SNAPSHOT,
+    payload: {
+      tick: envelope.tick,
+      serverTimeMs,
+      ackInputSeq,
+      baseTick,
+      entities: unpackRows(wire[8], ENTITY_FIELDS, MAX_ENTITIES, 'entity'),
+      removedEntityIds: Array.isArray(wire[9]) ? wire[9] : [],
+      shells: unpackRows(wire[10], SHELL_FIELDS, MAX_SHELLS, 'shell'),
+      events: Array.isArray(wire[11]) ? wire[11] : [],
+      meta,
+    },
+  };
+}
+
+/** Compact binary JSON-array codec for replaceable snapshot and input envelopes. */
+export const snapshotWireCodec: WireCodec & {
+  encode(value: unknown): Uint8Array;
+  decode(value: unknown): ReplaceableWireEnvelope;
+} = Object.freeze({
+  encode(value: unknown): Uint8Array {
+    const envelope = validateEnvelope(value);
+    if (!envelope.payload) throw new TypeError('replaceable envelope is required');
+    const wire = envelope.type === MESSAGE_TYPES.INPUT
+      ? encodeInputEnvelope(envelope)
+      : envelope.type === MESSAGE_TYPES.SNAPSHOT
+        ? encodeSnapshotEnvelope(envelope)
+        : null;
+    if (!wire) throw new TypeError('replaceable envelope is required');
+    return encoder.encode(JSON.stringify(wire));
+  },
+
+  decode(value: unknown): ReplaceableWireEnvelope {
+    const wire = JSON.parse(decoder.decode(toBytes(value))) as unknown;
+    if (!Array.isArray(wire)) throw new TypeError('invalid replaceable wire packet');
+    if (wire[0] === INPUT_WIRE_TAG) return decodeInputEnvelope(wire);
+    return readSnapshotEnvelope(wire);
+  },
+
+  size(value: unknown): number {
+    if (typeof value === 'string') return encoder.encode(value).byteLength;
+    return toBytes(value).byteLength;
+  },
+});

@@ -45,7 +45,7 @@ import {
   decodeEntitySnapshot,
 } from './snapshot.js';
 import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
-import { snapshotWireCodec } from './snapshotWireCodec.js';
+import { snapshotWireCodec } from './snapshotWireCodec.ts';
 import { createLocalMatchSession } from './localSession.js';
 import { decodeAimIntent, encodeAimIntent } from './aimIntent.js';
 import {
@@ -1032,6 +1032,17 @@ assert.ok(airborne.flags & SNAPSHOT_FLAGS.AIRBORNE,
     'binary RTC snapshots preserve persistent ERA depletion');
   assert.ok(binary.byteLength < new TextEncoder().encode(JSON.stringify(envelopeValue)).byteLength * 0.7,
     'binary array rows remove at least 30% of full-snapshot JSON bytes');
+  const malformedVersion = new TextEncoder().encode(JSON.stringify([
+    2, 999, 9, 7, 30, 500, 0, -1, [], [], [], [], null,
+  ]));
+  expectCode(() => snapshotWireCodec.decode(malformedVersion),
+    ProtocolError, 'protocol_mismatch');
+  assert.throws(() => snapshotWireCodec.encode(createEnvelope(
+    MESSAGE_TYPES.SNAPSHOT,
+    { ...full, entities: [null] },
+    { seq: 10, tick: 31 },
+  )), /invalid entity row/,
+  'malformed snapshot rows fail before binary transport admission');
 }
 
 const before = entity('moving', 't90m', 'alpha', 0, {

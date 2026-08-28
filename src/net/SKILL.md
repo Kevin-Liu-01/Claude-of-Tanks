@@ -28,7 +28,7 @@ play without importing Three.js rendering or DOM state.
 - `browserInputRuntime.ts` composes finite-point aim, action edges, and cadence
   behind explicit multiplayer intent; solo boot must not import it.
 - `snapshot.js` owns quantization, visibility filtering, and interpolation.
-- `snapshotWireCodec.js` owns compact binary snapshot rows; protocol v2 uses
+- `snapshotWireCodec.ts` owns strict compact binary snapshot rows; protocol v2 uses
   explicit snapshot acknowledgements, per-peer deltas, and periodic keyframes.
 - `loopbackTransport.ts`, `channelTransport.ts`, and `webrtcPeer.ts` implement
   the same bounded transport contract.

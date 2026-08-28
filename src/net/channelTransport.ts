@@ -2,7 +2,7 @@ import {
   TransportClosedError,
   type MessageTransport,
 } from './loopbackTransport.ts';
-import { snapshotWireCodec } from './snapshotWireCodec.js';
+import { snapshotWireCodec } from './snapshotWireCodec.ts';
 
 type Unsubscribe = () => void;
 type ChannelReadyState = 'connecting' | 'open' | 'closing' | 'closed';
@@ -85,7 +85,7 @@ const DEFAULT_MAX_BUFFERED_BYTES = 512 * 1024;
 const DEFAULT_MAX_MESSAGE_BYTES = 256 * 1024;
 const DEFAULT_MAX_STATE_BUFFERED_BYTES = 64 * 1024;
 const DEFAULT_MAX_INPUT_BUFFERED_BYTES = 1024;
-const binarySnapshotCodec = snapshotWireCodec as unknown as WireCodec;
+const binarySnapshotCodec: WireCodec = snapshotWireCodec;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
