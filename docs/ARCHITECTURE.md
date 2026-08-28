@@ -929,7 +929,7 @@ the menu import and construction retryable, bypasses it for solo entry,
 prioritizes an already-active room, selects mode-specific preload ports, and
 hides the menu for battle without terminating the retained session.
 
-### 3.9 audio — `src/audio/audio.js` (+ `src/audio/voices.js`)
+### 3.9 audio — `src/audio/audio.js` (+ `src/audio/voices.ts`)
 ```js
 export function createAudio() => Audio
 Audio = {
@@ -1000,7 +1000,7 @@ live synthesis fallbacks until the complete set decodes. Engines, traverse,
 ambience, UI, alarms, and fanfares remain live Web Audio synthesis. Crew radio
 uses locally synthesized/processed Opus under `public/audio/voice/`
 (`tools/make-voices.mjs`, docs/ATTRIBUTION.md).
-Radio discipline lives in `src/audio/voices.js`: one line at a time, priority
+Radio discipline lives in `src/audio/voices.ts`: one line at a time, priority
 ladder (survival calls interrupt flavor), per-line cooldowns, ±3% rate jitter.
 Leaving battle stops all engine, burning, traverse, landing, and alarm loops so
 no world sound can leak into the garage. Debug: `window.__COT_AUDIO` (after

@@ -13,7 +13,7 @@ audio without owning gameplay decisions.
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
 `audio.js` owns Web Audio routing and synthesized/decoded effects;
-`voices.js` owns crew-line scheduling and priority;
+`voices.ts` owns typed crew-line scheduling, priority, cooldown, and staleness;
 `lazyAudio.ts` owns gesture-time context creation, retryable mixer transfer,
 and the oscillator-only loading handoff;
 `listenerPoseRuntime.ts` owns the allocation-free hybrid camera/vehicle

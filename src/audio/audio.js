@@ -6,7 +6,7 @@
  * offline by tools/make-sfx.mjs (100% procedural — CC0 by construction, no
  * recordings), mastered through ffmpeg (saturation/EQ/limiting for weight)
  * into ~30 small Opus files under public/audio/sfx/. They load lazily at
- * resume() exactly like the crew radio (src/audio/voices.js — the other
+ * resume() exactly like the crew radio (src/audio/voices.ts — the other
  * sampled category, tools/make-voices.mjs); until/unless the whole set
  * decodes, the pre-r2 live-synthesis paths below remain active as a complete
  * fallback (all-or-nothing — never a mixed old/new combat mix). Everything
@@ -53,7 +53,7 @@
  *     critical-HP heartbeat)                                      → voiceBus
  */
 
-import { createVoiceRadio } from './voices.js';
+import { createVoiceRadio } from './voices.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
 
 /**

@@ -149,3 +149,4 @@ runtime documents remain authoritative for behavior.
 - [0137 — Context dossiers have one typed resolver](0137-typed-context-dossiers.md)
 - [0138 — Lobby intent preparation is retryable and delta-based](0138-network-lobby-preload-owner.md)
 - [0139 — Room chat has one typed input and DOM owner](0139-typed-room-chat.md)
+- [0140 — Radio voice scheduling has a strict timing contract](0140-typed-voice-radio.md)

@@ -4,11 +4,11 @@
 // Boots the game headless on its OWN vite (7xxx port — never 5001/5002),
 // resumes audio, and verifies the shipped voice payload end-to-end in the
 // real engine path:
-//   1. every file in src/audio/voices.js decodes in WebAudio (radio.load
+//   1. every file in src/audio/voices.ts decodes in WebAudio (radio.load
 //      warns + mutes on any failure — that warning fails this probe),
 //   2. the battle ENVELOPE plays through the game BUS: a re-driven
 //      garage→battle phase edge must announce battle_start (the r2
-//      listen-only wiring in voices.js), and 'battle:ended' {victory} must
+//      listen-only wiring in voices.ts), and 'battle:ended' {victory} must
 //      announce victory over the fanfare,
 //   3. five combat event lines driven through the BUS actually reach the
 //      radio and play (voiceLog) — spotting, track damage, reload-done,
@@ -180,7 +180,7 @@ try {
   // 2) battle START through the real game bus. The live boot entered battle
   //    via __DEBUG.startBattle before the voice payload finished decoding, so
   //    re-drive the garage→battle phase edge (all real bus events — audio.js
-  //    replays the horn, the r2 voices.js wiring announces battle_start).
+  //    replays the horn, the r2 voices.ts wiring announces battle_start).
   await page.evaluate(() => {
     const D = window.__DEBUG;
     const playerId = D.game.player ? D.game.player.id : null;

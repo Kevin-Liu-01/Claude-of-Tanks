@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { createVoiceRadio } from './voices.js';
+import { createVoiceRadio } from './voices.ts';
 
 class FakeAudioContext {
   constructor() {

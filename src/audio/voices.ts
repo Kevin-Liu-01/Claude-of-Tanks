@@ -1,5 +1,5 @@
 /**
- * src/audio/voices.js — battle announcer voice lines (VOICE r3: one voice).
+ * src/audio/voices.ts — battle announcer voice lines (VOICE r3: one voice).
  *
  * Plays the pre-synthesized radio calls under public/audio/voice/ — local
  * Piper neural TTS (en_US-joe-medium, CC0 — bake-off notes in
@@ -32,8 +32,55 @@
  * and logs one warning — the game never breaks on audio assets.
  */
 
+interface VoiceLine {
+  files: readonly string[];
+  pri: number;
+  cdS: number;
+  group: string;
+  groupCdS?: number;
+  staleS?: number;
+}
+
+interface VoiceRequest {
+  id: string;
+  pri: number;
+  group: string;
+  atReq: number;
+  readyAt: number;
+  expiresAt: number;
+}
+
+interface VoiceLogEntry {
+  id: string;
+  file: string;
+  t: number;
+}
+
+export interface VoiceSayOptions {
+  prob?: number;
+  force?: boolean;
+  delayS?: number;
+  staleS?: number;
+}
+
+export interface VoiceRadio {
+  load(audioContext: AudioContext, voiceBus: GainNode): void;
+  say(id: string, options?: VoiceSayOptions): boolean;
+  update(): void;
+  silence(): void;
+  cancelPending(keepGroups?: readonly string[], stopObsoleteActive?: boolean): void;
+  readonly log: VoiceLogEntry[];
+  readonly loaded: boolean;
+  debugState(): {
+    currentPri: number;
+    currentGroup: string | null;
+    currentEnd: number;
+    pending: VoiceRequest[];
+  };
+}
+
 /** Line table: id → { files, pri 0..4, cdS, group, groupCdS?, staleS? }. */
-export const VOICE_LINES = {
+export const VOICE_LINES: Readonly<Record<string, VoiceLine>> = {
   // battle envelope
   battle_start:     { files: ['battle_start.ogg', 'battle_start_b.ogg', 'battle_start_c.ogg'], pri: 2, cdS: 8, group: 'flow', staleS: 1.2 },
   victory:          { files: ['victory.ogg', 'victory_b.ogg'],                 pri: 4, cdS: 10, group: 'result', staleS: 8 },
@@ -87,38 +134,38 @@ const QUEUE_STALE_S = 1.2;
  * Create the radio. Pure factory — call load() once the AudioContext exists.
  * @param {() => number} rng seeded 0..1 generator (shared with audio.js)
  */
-export function createVoiceRadio(rng) {
-  let ctx = null;
-  let dest = null;          // voice bus GainNode
+export function createVoiceRadio(rng: () => number): VoiceRadio {
+  let ctx: AudioContext | null = null;
+  let dest: GainNode | null = null;          // voice bus GainNode
   let loaded = false;
   let loading = false;
   /** file name → AudioBuffer|null */
-  const buffers = new Map();
+  const buffers = new Map<string, AudioBuffer | null>();
   /** line id → last play time (ctx clock) */
-  const lastPlay = new Map();
+  const lastPlay = new Map<string, number>();
   /** group → {t,pri}; prevents alternating line ids from becoming chatter. */
-  const lastGroupPlay = new Map();
-  const lastFile = new Map();
-  const queue = [];         // [{id,pri,group,atReq,readyAt,expiresAt}]
+  const lastGroupPlay = new Map<string, { t: number; pri: number }>();
+  const lastFile = new Map<string, string>();
+  const queue: VoiceRequest[] = [];
   let currentEnd = -1;      // ctx time the playing line ends
   let currentPri = -1;
-  let currentGroup = null;
-  let currentSrc = null;
+  let currentGroup: string | null = null;
+  let currentSrc: AudioBufferSourceNode | null = null;
   /** Probe/debug trail: every line actually PLAYED. */
-  const log = [];
+  const log: VoiceLogEntry[] = [];
 
   /**
    * Fetch + decode every line. Failures mute individual lines only.
    * @param {AudioContext} audioCtx
    * @param {GainNode} voiceBus
    */
-  function load(audioCtx, voiceBus) {
+  function load(audioCtx: AudioContext, voiceBus: GainNode) {
     if (loading || loaded) { dest = voiceBus; return; }
     loading = true;
     ctx = audioCtx;
     dest = voiceBus;
     const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || '/';
-    const names = new Set();
+    const names = new Set<string>();
     for (const id of Object.keys(VOICE_LINES)) {
       for (const f of VOICE_LINES[id].files) names.add(f);
     }
@@ -126,7 +173,7 @@ export function createVoiceRadio(rng) {
     const jobs = [...names].map((name) =>
       fetch(`${base}audio/voice/${name}`)
         .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); })
-        .then((ab) => ctx.decodeAudioData(ab))
+        .then((ab) => audioCtx.decodeAudioData(ab))
         .then((buf) => { buffers.set(name, buf); })
         .catch(() => { buffers.set(name, null); failures++; }));
     Promise.all(jobs).then(() => {
@@ -135,8 +182,9 @@ export function createVoiceRadio(rng) {
     });
   }
 
-  function playNow(id) {
+  function playNow(id: string) {
     const line = VOICE_LINES[id];
+    if (!line || !ctx || !dest) return false;
     const files = line.files;
     let fileI = (rng() * files.length) | 0;
     if (files.length > 1 && files[fileI] === lastFile.get(id)) fileI = (fileI + 1) % files.length;
@@ -153,7 +201,7 @@ export function createVoiceRadio(rng) {
     g.connect(dest);
     src.start(now);
     src.onended = () => {
-      try { g.disconnect(); } catch (_) { /* detached */ }
+      try { g.disconnect(); } catch { /* detached */ }
       if (currentSrc === src) {
         currentSrc = null;
         currentPri = -1;
@@ -175,13 +223,13 @@ export function createVoiceRadio(rng) {
   function stopCurrent() {
     const src = currentSrc;
     currentSrc = null;
-    if (src) { try { src.stop(); } catch (_) { /* stopped */ } }
+    if (src) { try { src.stop(); } catch { /* stopped */ } }
     currentEnd = ctx ? ctx.currentTime : -1;
     currentPri = -1;
     currentGroup = null;
   }
 
-  function cooldownActive(id, line, now) {
+  function cooldownActive(id: string, line: VoiceLine, now: number) {
     const last = lastPlay.get(id);
     if (last != null && now - last < line.cdS) return true;
     const group = line.group || id;
@@ -190,7 +238,13 @@ export function createVoiceRadio(rng) {
       now - groupLast.t < line.groupCdS);
   }
 
-  function enqueue(id, line, now, delayS, staleS) {
+  function enqueue(
+    id: string,
+    line: VoiceLine,
+    now: number,
+    delayS: number,
+    staleS: number | undefined,
+  ) {
     const group = line.group || id;
     for (let i = queue.length - 1; i >= 0; i--) {
       if (queue[i].group !== group) continue;
@@ -217,8 +271,8 @@ export function createVoiceRadio(rng) {
     return true;
   }
 
-  function canInterrupt(pri, now) {
-    return currentSrc && currentEnd - now > 0.12 &&
+  function canInterrupt(pri: number, now: number): boolean {
+    return !!currentSrc && currentEnd - now > 0.12 &&
       ((pri >= 4 && currentPri < 4) || (pri >= 3 && currentPri <= 1));
   }
 
@@ -229,7 +283,7 @@ export function createVoiceRadio(rng) {
    *   chance gate, presentation delay and optional queue patience override;
    *   force bypasses cooldown/busy discipline (probe/debug only)
    */
-  function say(id, opts) {
+  function say(id: string, opts?: VoiceSayOptions) {
     if (!loaded || !ctx || !dest) return false;
     const line = VOICE_LINES[id];
     if (!line) return false;
@@ -250,7 +304,7 @@ export function createVoiceRadio(rng) {
       return playNow(id);
     }
     if (line.pri === 0 && now < busyUntil) return false; // flavor never backlogs
-    return enqueue(id, line, now, delayS, opts && opts.staleS);
+    return enqueue(id, line, now, delayS, opts?.staleS);
   }
 
   /** Drain the queue — call per frame (cheap). */
@@ -285,12 +339,12 @@ export function createVoiceRadio(rng) {
   /** Drop calls whose moment has passed while optionally preserving groups
    *  such as the final shot confirmation; battle end may also cut an active
    *  obsolete awareness/flavor call. */
-  function cancelPending(keepGroups = [], stopObsoleteActive = false) {
+  function cancelPending(keepGroups: readonly string[] = [], stopObsoleteActive = false) {
     const keep = new Set(keepGroups);
     for (let i = queue.length - 1; i >= 0; i--) {
       if (!keep.has(queue[i].group)) queue.splice(i, 1);
     }
-    if (stopObsoleteActive && currentSrc && !keep.has(currentGroup)) stopCurrent();
+    if (stopObsoleteActive && currentSrc && (!currentGroup || !keep.has(currentGroup))) stopCurrent();
   }
 
   return {
