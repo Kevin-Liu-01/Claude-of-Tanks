@@ -94,6 +94,8 @@ if (images.length < 1 || images.length > 4) {
 
 // --- helpers ---------------------------------------------------------------
 const headers = { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
+// Never let the raw key reach logs/error output (CI logs, stack traces, etc.).
+const redact = (s) => (KEY ? s.split(KEY).join('***REDACTED***') : s);
 
 async function api(method, p, body) {
   const res = await fetch(`${API}${p}`, {
@@ -103,7 +105,7 @@ async function api(method, p, body) {
   let json = null;
   try { json = JSON.parse(text); } catch { /* keep raw */ }
   if (!res.ok) {
-    throw new Error(`${method} ${p} -> HTTP ${res.status}: ${json?.message || text.slice(0, 300)}`);
+    throw new Error(redact(`${method} ${p} -> HTTP ${res.status}: ${json?.message || text.slice(0, 300)}`));
   }
   return json;
 }
