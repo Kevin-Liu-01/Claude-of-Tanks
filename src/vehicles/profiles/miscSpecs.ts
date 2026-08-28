@@ -8,15 +8,10 @@ import type {
   CommunityArmorInput,
   CommunityArmorOptions,
 } from '../specHelpers.ts';
-import type {
-  FleetTankSpec,
-  ModelSourceRegistry,
-  TankSpecRegistry,
-} from '../specContracts.ts';
+import type { FleetTankSpec } from '../specContracts.ts';
+import { bindFleetRegistries, registerFleetSpecs } from '../fleetSpecRegistry.ts';
 
-const tankSpecs = TANK_SPECS as unknown as TankSpecRegistry;
-const modelSources = MODEL_SOURCE as unknown as ModelSourceRegistry;
-const allTankIds = ALL_TANK_IDS as unknown as string[];
+const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
 const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
 const communityArmor = (
@@ -64,8 +59,6 @@ const TYPE74_SPEC = {
   },
 } satisfies FleetTankSpec;
 
-tankSpecs.type74 ||= TYPE74_SPEC;
-if (!allTankIds.includes('type74')) allTankIds.push('type74');
-modelSources.type74 ||= { source: 'procedural' };
+registerFleetSpecs(registries, ['type74'], { type74: TYPE74_SPEC });
 
 export { TYPE74_SPEC };

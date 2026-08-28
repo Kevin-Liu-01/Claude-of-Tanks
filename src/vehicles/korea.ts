@@ -3,16 +3,15 @@
 // all playable geometry remains first-party procedural work in profiles/korea.js.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
-import type {
-  FleetDimensions,
-  FleetTankSpec,
-  ModelSourceRegistry,
-  TankSpecRegistry,
-} from './specContracts.ts';
+import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
+import {
+  bindFleetRegistries,
+  cloneFleetVariant,
+  registerFleetSpecs,
+  scaleNonExternalArmor,
+} from './fleetSpecRegistry.ts';
 
-const tankSpecs = TANK_SPECS as unknown as TankSpecRegistry;
-const modelSources = MODEL_SOURCE as unknown as ModelSourceRegistry;
-const allTankIds = ALL_TANK_IDS as unknown as string[];
+const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 const KOREA_IDS = Object.freeze(['k2b'] as const);
 
 type KoreanStatOverrides = Partial<Pick<FleetTankSpec,
@@ -45,16 +44,10 @@ function variant(
   donorId: string,
   options: KoreanVariantOptions,
 ): FleetTankSpec {
-  const donor = tankSpecs[donorId];
-  if (!donor) throw new Error(`Korean family donor missing: ${donorId}`);
-  const spec = structuredClone(donor);
-  spec.id = id;
-  spec.name = options.name;
-  spec.nation = 'South Korea';
-  spec.era = 'modern';
-  spec.role = 'mbt';
-  spec.variantOf = donorId;
-  delete spec.community;
+  const spec = cloneFleetVariant(registries.tankSpecs, id, donorId, {
+    name: options.name,
+    nation: 'South Korea',
+  });
   Object.assign(spec, options.stats || {});
   if (options.reloadS !== undefined && Number.isFinite(options.reloadS)) {
     spec.gun.reloadS = options.reloadS;
@@ -71,13 +64,7 @@ function variant(
     number: options.number,
     camoScale: options.camoScale,
   };
-  if (options.armorFactor) {
-    for (const plate of [...spec.armor.hullPlates, ...spec.armor.turretPlates]) {
-      if (plate.kind === 'external') continue;
-      plate.keMm = Math.round(plate.keMm * options.armorFactor);
-      plate.ceMm = Math.round(plate.ceMm * options.armorFactor);
-    }
-  }
+  if (options.armorFactor) scaleNonExternalArmor(spec, options.armorFactor);
   return spec;
 }
 
@@ -93,8 +80,4 @@ const KOREA_SPECS = {
   }),
 } satisfies Record<string, FleetTankSpec>;
 
-for (const id of KOREA_IDS) {
-  tankSpecs[id] ||= KOREA_SPECS[id];
-  modelSources[id] ||= { source: 'procedural' };
-  if (!allTankIds.includes(id)) allTankIds.push(id);
-}
+registerFleetSpecs(registries, KOREA_IDS, KOREA_SPECS);

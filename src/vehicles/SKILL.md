@@ -95,6 +95,9 @@ identity-specific metadata, but must satisfy the shared mobility, gun, armor,
 dimensions, and visual contract before mutating the legacy registry. Variant
 registration may clone and mutate a donor only through a bounded delta type;
 do not replace that with an unchecked options bag.
+Bind legacy spec/source/ID dictionaries and perform donor cloning, inherited
+silhouette cleanup, armor scaling, and idempotent registration through
+`fleetSpecRegistry.ts`; nation modules own only their explicit deltas.
 Keep the Type 10 / Type 10B trunnion, muzzle, throat, and mantlet-fit receipts
 in the pure `profiles/type10GunSeat.ts` boundary; geometry builders consume the
 datums but do not redefine them.
