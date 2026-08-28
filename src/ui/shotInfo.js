@@ -15,14 +15,14 @@
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
-import { nominalPenFor, shellDisplayName, zoneLabel } from './hitEventFormat.js';
+import { nominalPenFor, shellDisplayName, zoneLabel } from './hitEventFormat.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { maskIcon, iconUrl } from './icons.ts';
-import { MODULE_LABEL, CREW_LABEL, STATE_COLOR } from './moduleRegistry.js';
+import { MODULE_LABEL, CREW_LABEL, STATE_COLOR } from './moduleRegistry.ts';
 import {
   createShotDiagramProjection,
   impactForShotDiagram,
-} from './shotDiagramProjection.js';
+} from './shotDiagramProjection.ts';
 import { getSpec } from '../vehicles/specs.js';
 import {
   presentationAnchorFor,
@@ -55,7 +55,7 @@ const SHELL_TYPE_COLOR = {
 const BOUNCE_KINDS = new Set(['ricochet', 'nonpen', 'spaced_absorb', 'era']);
 const PEN_KINDS = new Set(['pen', 'he_pen']);
 
-// MODULE_LABEL / CREW_LABEL come from ui/moduleRegistry.js (single source —
+// MODULE_LABEL / CREW_LABEL come from ui/moduleRegistry.ts (single source —
 // this file's local copy had already drifted to 'Fuel' vs the killcam's
 // 'Fuel Tank').
 

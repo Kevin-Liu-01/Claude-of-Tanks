@@ -1,6 +1,6 @@
 type PlayMenuModule = typeof import('../ui/playMenu.js');
 type BrowserBattleBridgeModule = typeof import('../net/browserBattleBridge.js');
-type NetworkStatusModule = typeof import('../ui/networkStatus.js');
+type NetworkStatusModule = typeof import('../ui/networkStatus.ts');
 type BrowserInputRuntimeModule = typeof import('../net/browserInputRuntime.ts');
 type PrivateMatchHandoffModule = typeof import('../net/privateMatchHandoff.js');
 type DedicatedClientModule = typeof import('../net/dedicatedClient.js');
@@ -32,7 +32,7 @@ const DEFAULT_LOADERS: BattleModuleLoaders = {
   playMenu: async () => await import('../ui/playMenu.js'),
   networkBattle: async () => await Promise.all([
     import('../net/browserBattleBridge.js'),
-    import('../ui/networkStatus.js'),
+    import('../ui/networkStatus.ts'),
     import('../net/browserInputRuntime.ts'),
   ]),
   privateMatchHandoff: async () => await import('../net/privateMatchHandoff.js'),

@@ -30,7 +30,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import { shellIconSVG } from './shellIcons.ts';
 import {
   garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageStatGroup,
-} from './garageDossier.js';
+} from './garageDossier.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import {
   compareCountryThenTierThenName, countryFilterGroups, defaultGarageMapId,

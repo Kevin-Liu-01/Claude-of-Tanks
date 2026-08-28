@@ -211,7 +211,7 @@ import {
 // vector vehicle-silhouette/arrow language instead (WoT reads shape + heading, not
 // per-vehicle profiles, at those sizes).
 import { maskIcon, tintedIcon } from './icons.ts';
-import { moduleAlertLabel } from './moduleRegistry.js';
+import { moduleAlertLabel } from './moduleRegistry.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
 // SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,
 // incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.js.

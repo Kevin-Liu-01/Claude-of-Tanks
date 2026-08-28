@@ -12,7 +12,7 @@ Present game and session state with fast, legible desktop/mobile interactions.
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
 `garage.js` owns roster/loadout presentation; `playMenu.js` owns direct Solo,
-Private, LAN, and Ranked deployment; `networkStatus.js` owns reconnect feedback;
+Private, LAN, and Ranked deployment; `networkStatus.ts` owns reconnect feedback;
 `hud.js` owns live battle chrome; `minimapAssetRuntime.ts` owns baked-map load
 coalescing, stale-world rejection, and the procedural cartography fallback;
 `settings.js` and `touchControls.js` own input-facing UI; `transition.ts`,

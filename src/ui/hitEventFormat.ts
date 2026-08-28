@@ -4,8 +4,29 @@
 import { penAtDistanceMm } from '../sim/ballistics.js';
 import { RUNTIME_TANK_IDS, getSpec } from '../vehicles/specs.js';
 
+export interface HitEventPresentation {
+  readonly zone?: string;
+  readonly shellType?: string;
+  readonly shellName?: string;
+  readonly attackerSpecId?: string;
+  readonly flightDistM?: number;
+}
+
+interface PresentationShell {
+  readonly name?: string;
+  readonly type?: string;
+  readonly penetrationMm?: number;
+  readonly pen0m?: number;
+  readonly pen500m?: number;
+}
+
+function shellsForSpec(id: string): readonly PresentationShell[] | undefined {
+  const spec = getSpec(id) as { readonly gun?: { readonly shells?: readonly PresentationShell[] } };
+  return spec.gun?.shells;
+}
+
 /** Convert a simulation zone id into its player-facing label. */
-export function zoneLabel(zone) {
+export function zoneLabel(zone: string | null | undefined): string {
   if (!zone) return '—';
   return zone
     .replace(/_(R|L)$/, ' $1')
@@ -16,7 +37,7 @@ export function zoneLabel(zone) {
 }
 
 /** Remove a shell-type token already displayed by the surrounding panel. */
-export function shellDisplayName(ev) {
+export function shellDisplayName(ev: HitEventPresentation): string {
   const type = (ev.shellType || '').trim();
   let name = (ev.shellName || '').trim();
   if (!type) return name;
@@ -31,10 +52,9 @@ export function shellDisplayName(ev) {
  * without an attacker spec are accepted only when their shell identity maps
  * to one penetration value across the entire roster.
  */
-export function nominalPenFor(ev) {
+export function nominalPenFor(ev: HitEventPresentation): number {
   try {
-    const spec = ev.attackerSpecId ? getSpec(ev.attackerSpecId) : null;
-    const shells = spec?.gun?.shells;
+    const shells = ev.attackerSpecId ? shellsForSpec(ev.attackerSpecId) : undefined;
     let shell = shells
       ? (shells.find((candidate) => (
         candidate.name === ev.shellName && candidate.type === ev.shellType
@@ -44,7 +64,7 @@ export function nominalPenFor(ev) {
     if (!shell && ev.shellName) {
       let resolvedPen = -1;
       for (const id of RUNTIME_TANK_IDS) {
-        const candidates = getSpec(id).gun?.shells;
+        const candidates = shellsForSpec(id);
         if (!candidates) continue;
         for (const candidate of candidates) {
           if (candidate.name !== ev.shellName || candidate.type !== ev.shellType) continue;

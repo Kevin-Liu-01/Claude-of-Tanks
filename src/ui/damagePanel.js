@@ -27,7 +27,7 @@ import { EQUIPMENT_BY_ID } from '../game/equipment.js';
 // WoT module-state ramp (ORANGE damaged, RED knocked out) + crew order come
 // from the shared module registry — one presentation truth across the damage
 // panel, shot cards, killcam and HUD alerts (module_hitbox r1).
-import { STATE_COLOR, CREW_ORDER } from './moduleRegistry.js';
+import { STATE_COLOR, CREW_ORDER } from './moduleRegistry.ts';
 
 // distinct micro-icon per crew role (WoT reads roles at a glance):
 // commander = binoculars, gunner = crosshair, driver = steering wheel,

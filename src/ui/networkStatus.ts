@@ -1,6 +1,54 @@
 const STYLE_ID = 'cot-network-status-style';
 
-function ensureStyle() {
+export type NetworkConnectionState = 'reconnecting' | 'reconnected' | 'failed' | 'closed' | 'connected';
+
+export interface NetworkStatusState {
+  readonly state?: NetworkConnectionState;
+  readonly attempt?: number;
+}
+
+interface NetworkTransportCounters {
+  readonly stateCoalesced?: number;
+  readonly inputCoalesced?: number;
+}
+
+interface NetworkTransportStats extends NetworkTransportCounters {
+  readonly base?: NetworkTransportStats;
+  readonly state?: NetworkTransportCounters;
+}
+
+export interface NetworkDiagnosticsStats {
+  readonly rttMs?: number | null;
+  readonly rttJitterMs?: number;
+  readonly estimatedSnapshotLoss?: number;
+  readonly transportBufferedBytes?: number;
+  readonly inputAckLag?: number | null;
+  readonly pendingInputEdges?: number;
+  readonly missingSnapshotBaselines?: number;
+  readonly buffer?: {
+    readonly interpolationDelayMs?: number;
+    readonly arrivalJitterMs?: number;
+    readonly extrapolatedSamples?: number;
+  };
+  readonly prediction?: {
+    readonly pendingInputs?: number;
+    readonly lastPositionErrorM?: number;
+    readonly correctionM?: number;
+  };
+  readonly transport?: NetworkTransportStats;
+}
+
+export interface NetworkStatusController {
+  readonly root: HTMLDivElement;
+  readonly diagnostics: HTMLDivElement;
+  set(status?: NetworkStatusState): void;
+  update(stats?: NetworkDiagnosticsStats | null): void;
+  toggleDiagnostics(): void;
+  readonly diagnosticsVisible: boolean;
+  dispose(): void;
+}
+
+function ensureStyle(): void {
   if (document.getElementById(STYLE_ID)) return;
   const style = document.createElement('style');
   style.id = STYLE_ID;
@@ -19,7 +67,7 @@ function ensureStyle() {
 }
 
 /** Small fail-visible reconnect banner for dedicated network battles. */
-export function createNetworkStatus() {
+export function createNetworkStatus(): NetworkStatusController {
   ensureStyle();
   const root = document.createElement('div');
   root.className = 'cot-network-status';
@@ -30,30 +78,30 @@ export function createNetworkStatus() {
   diagnostics.className = 'cot-network-diagnostics';
   diagnostics.setAttribute('aria-label', 'Network diagnostics');
   document.body.appendChild(diagnostics);
-  let hideTimer = null;
+  let hideTimer: ReturnType<typeof setTimeout> | null = null;
   let lastDiagnosticsAt = -Infinity;
   let diagnosticsVisible = (() => {
     try {
       const query = new URLSearchParams(location.search);
       return query.get('netdiag') === '1' || localStorage.getItem('cot.netdiag.v1') === '1';
-    } catch (_) { return false; }
+    } catch { return false; }
   })();
   diagnostics.classList.toggle('show', diagnosticsVisible);
 
-  function toggleDiagnostics() {
+  function toggleDiagnostics(): void {
     diagnosticsVisible = !diagnosticsVisible;
     diagnostics.classList.toggle('show', diagnosticsVisible);
-    try { localStorage.setItem('cot.netdiag.v1', diagnosticsVisible ? '1' : '0'); } catch (_) { /* fine */ }
+    try { localStorage.setItem('cot.netdiag.v1', diagnosticsVisible ? '1' : '0'); } catch { /* fine */ }
   }
 
-  const onKeyDown = (event) => {
+  const onKeyDown = (event: KeyboardEvent): void => {
     if (event.code !== 'F3' || event.repeat) return;
     event.preventDefault();
     toggleDiagnostics();
   };
   window.addEventListener('keydown', onKeyDown);
 
-  function show(message, failed = false, hideAfterMs = 0) {
+  function show(message: string, failed = false, hideAfterMs = 0): void {
     if (hideTimer) clearTimeout(hideTimer);
     root.textContent = message;
     root.classList.toggle('failed', failed);
@@ -61,14 +109,14 @@ export function createNetworkStatus() {
     if (hideAfterMs) hideTimer = setTimeout(() => root.classList.remove('show'), hideAfterMs);
   }
 
-  function set({ state, attempt = 0 } = {}) {
+  function set({ state, attempt = 0 }: NetworkStatusState = {}): void {
     if (state === 'reconnecting') show(`Connection interrupted · reconnecting ${attempt || 1}`);
     else if (state === 'reconnected') show('Connection restored', false, 1800);
     else if (state === 'failed') show('Connection lost · return to garage', true);
     else if (state === 'closed' || state === 'connected') root.classList.remove('show');
   }
 
-  function update(stats) {
+  function update(stats?: NetworkDiagnosticsStats | null): void {
     if (!diagnosticsVisible || !stats) return;
     const now = performance.now();
     if (now - lastDiagnosticsAt < 250) return;

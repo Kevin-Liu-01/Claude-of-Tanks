@@ -3,7 +3,7 @@
 // only the extra internal systems that have real simulation behavior.
 // Pure array math: no DOM, WebGL or Three dependency.
 
-import { MODULE_IDS } from '../sim/moduleCatalog.js';
+import { MODULE_IDS } from '../sim/moduleCatalog.ts';
 import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.js';
 import { internalLayoutFor } from './internalLayoutRegistry.js';
 

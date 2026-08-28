@@ -13,7 +13,7 @@ pass (2026-07-31); sources of record are listed per section.
 | Hit resolution (saves, damage, fire, detonation) | `src/sim/damage.js` | `game/state.js` stepShells |
 | Module state machine (`ok`/`yellow`/`red`, repairs) | `src/sim/damage.js` (`refreshModuleState`, `tickModuleRepairs`, `repairAllModules`) | state.js game loop, main.js repair-kit consumable |
 | State broadcasts | `module:state` bus event `{ id, module, state, repaired? }` emitted by `game/state.js` only | audio.js, hud.js alerts, (killcam/damage panel read CombatState directly) |
-| Presentation (labels, colors, order) | `src/ui/moduleRegistry.js` | hud.js, damagePanel.js, shotInfo.js, killcam.js |
+| Presentation (labels, colors, order) | `src/ui/moduleRegistry.ts` | hud.js, damagePanel.js, shotInfo.js, killcam.js |
 
 The `repaired: true` payload flag marks a red→yellow RECOVERY so the HUD
 toasts `<MODULE> REPAIRED` instead of `DAMAGED`; audio infers direction from
@@ -142,7 +142,7 @@ spotting (spotting.js).
 - Damage panel (`ui/damagePanel.js`): reads CombatState directly per frame;
   canvas schematic repaints only when the dirty signature (non-ok module
   states + quantized turret bearing) changes. Colors/order from
-  `ui/moduleRegistry.js`.
+  `ui/moduleRegistry.ts`.
 - Kill cam x-ray and shot cards label modules via the same registry
   (`MODULE_LABEL`, `CREW_LABEL` — killcam/shotInfo copies had drifted:
   'Fuel' vs 'Fuel Tank').

@@ -74,8 +74,8 @@ import * as THREE from 'three';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.ts';
 import { createElement as el, ensureStyle } from '../ui/dom.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
-import { nominalPenFor, shellDisplayName, zoneLabel } from '../ui/hitEventFormat.js';
-import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.js';
+import { nominalPenFor, shellDisplayName, zoneLabel } from '../ui/hitEventFormat.ts';
+import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.ts';
 import { getSpec } from '../vehicles/specs.js';
 import { iconUrl } from '../ui/icons.ts';
 import { tierNumeral } from '../ui/battleLoad.ts';
@@ -174,7 +174,7 @@ const _Y = new THREE.Vector3(0, 1, 0);
 // scratch camera for the x-ray framing solve (fov/aspect set per solve)
 const _fitCam = new THREE.PerspectiveCamera(42, 16 / 9, 0.5, 4000);
 
-// MODULE_LABEL / CREW_LABEL come from ui/moduleRegistry.js (single source).
+// MODULE_LABEL / CREW_LABEL come from ui/moduleRegistry.ts (single source).
 
 // ---------------------------------------------------------------------------
 // Shared x-ray material set (lazy singleton; depth-tested)

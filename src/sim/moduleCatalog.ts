@@ -2,6 +2,12 @@
 // Keep this pure data: authoritative simulation imports it under Node and the
 // browser-side technical-card renderer imports the same labels/order.
 
+export interface ModuleDefinition {
+  readonly label: string;
+  readonly hp: number;
+  readonly saveChance: number;
+}
+
 export const MODULE_DEFS = Object.freeze({
   gun: Object.freeze({ label: 'Gun', hp: 150, saveChance: 0.33 }),
   turretRing: Object.freeze({ label: 'Turret Ring', hp: 120, saveChance: 0.45 }),
@@ -17,15 +23,17 @@ export const MODULE_DEFS = Object.freeze({
   optics: Object.freeze({ label: 'Optics', hp: 80, saveChance: 0.45 }),
   trackL: Object.freeze({ label: 'Track L', hp: 100, saveChance: 1.0 }),
   trackR: Object.freeze({ label: 'Track R', hp: 100, saveChance: 1.0 }),
-});
+} as const satisfies Readonly<Record<string, ModuleDefinition>>);
 
-export const MODULE_IDS = Object.freeze(Object.keys(MODULE_DEFS));
+export type ModuleId = keyof typeof MODULE_DEFS;
+
+export const MODULE_IDS = Object.freeze(Object.keys(MODULE_DEFS) as ModuleId[]);
 
 export const CORE_MODULE_IDS = Object.freeze([
   'gun', 'engine', 'transmission', 'fuelTank', 'ammoRack',
   'radio', 'optics', 'trackL', 'trackR',
-]);
+] as const satisfies readonly ModuleId[]);
 
-export const MODULE_LABEL = Object.freeze(Object.fromEntries(
+export const MODULE_LABEL: Readonly<Record<ModuleId, string>> = Object.freeze(Object.fromEntries(
   MODULE_IDS.map((id) => [id, MODULE_DEFS[id].label]),
-));
+) as Record<ModuleId, string>);

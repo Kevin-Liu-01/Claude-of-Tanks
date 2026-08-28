@@ -95,3 +95,5 @@ runtime documents remain authoritative for behavior.
 - [0083 — Boot and transition UI have strict typed contracts](0083-typed-ui-flow-surfaces.md)
 - [0084 — Shared presentation primitives are strict TypeScript](0084-typed-presentation-primitives.md)
 - [0085 — Pure UI presentation policy is strict TypeScript](0085-typed-ui-presentation-policy.md)
+- [0086 — Combat presentation metadata is strict TypeScript](0086-typed-combat-presentation-metadata.md)
+- [0087 — Reconnect status has one strict typed surface](0087-typed-network-status-surface.md)

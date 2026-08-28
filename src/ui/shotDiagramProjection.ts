@@ -4,8 +4,67 @@
 
 export const SHOT_DIAGRAM_ICON_MARGIN = 1.07;
 
-function finite(value, fallback) {
-  return Number.isFinite(value) ? value : fallback;
+type Vector3 = readonly number[];
+
+interface ArmorPlate {
+  readonly verts?: readonly Vector3[];
+}
+
+interface TrackShape {
+  readonly x0: number;
+  readonly x1: number;
+  readonly poly?: readonly (readonly number[])[];
+}
+
+interface DiagramArmor {
+  readonly turretPivot?: Vector3;
+  readonly gunPivot?: Vector3;
+  readonly hullPlates?: readonly ArmorPlate[];
+  readonly turretPlates?: readonly ArmorPlate[];
+  readonly trackShapes?: readonly TrackShape[];
+  readonly gunBarrel?: { readonly lengthM?: number };
+}
+
+export interface ShotDiagramSpec {
+  readonly dims: {
+    readonly widthM?: number;
+    readonly hullLengthM?: number;
+    readonly overallLengthM?: number;
+    readonly heightM?: number;
+  };
+  readonly armor?: DiagramArmor;
+}
+
+export interface ShotDiagramEvent {
+  readonly impactLocalPos?: Vector3;
+  readonly localPos?: Vector3;
+  readonly impactLocalDir?: Vector3;
+  readonly localDir?: Vector3;
+  readonly impactFrame?: string;
+}
+
+export interface ShotDiagramProjectionOptions {
+  readonly topSize?: number;
+  readonly sideWidth?: number;
+  readonly sideHeight?: number;
+  readonly margin?: number;
+  readonly presentationAnchor?: { readonly xM: number; readonly zM: number };
+  readonly presentationProjection?: {
+    readonly centerYM?: number;
+    readonly topHalfM?: number;
+    readonly sideHalfM?: number;
+  };
+}
+
+export interface ShotDiagramProjection {
+  readonly topScale: number;
+  readonly sideScale: number;
+  topPoint(x: number, z: number): number[];
+  sidePoint(y: number, z: number): number[];
+}
+
+function finite(value: number | null | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
 /**
@@ -13,7 +72,10 @@ function finite(value, fallback) {
  * hull pose used by the static top/side schematics. Legacy events already
  * carry hull-local coordinates and remain bit-for-bit compatible.
  */
-export function impactForShotDiagram(event, armor = {}) {
+export function impactForShotDiagram(
+  event: ShotDiagramEvent | null | undefined,
+  armor: DiagramArmor = {},
+): { point: number[]; direction: number[] | null } | null {
   const exact = Array.isArray(event?.impactLocalPos) ? event.impactLocalPos : null;
   const position = exact || event?.localPos || null;
   if (!position) return null;
@@ -22,7 +84,7 @@ export function impactForShotDiagram(event, armor = {}) {
     ? event.impactLocalDir : event?.localDir;
   const direction = directionSource
     ? [directionSource[0], directionSource[1], directionSource[2]] : null;
-  const frame = exact ? event.impactFrame : 'hull';
+  const frame = exact ? event?.impactFrame : 'hull';
   if (frame === 'turret' || frame === 'gun' || frame === 'barrel') {
     const turretPivot = armor.turretPivot || [0, 0, 0];
     point[0] += turretPivot[0];
@@ -40,14 +102,17 @@ export function impactForShotDiagram(event, armor = {}) {
   return { point, direction };
 }
 
-function anatomyEnvelope(spec, anchor) {
+function anatomyEnvelope(
+  spec: ShotDiagramSpec,
+  anchor: { readonly xM: number; readonly zM: number },
+): { minX: number; maxX: number; minZ: number; maxZ: number } {
   const dims = spec.dims || {};
   const armor = spec.armor || {};
   let minX = Infinity;
   let maxX = -Infinity;
   let minZ = Infinity;
   let maxZ = -Infinity;
-  const add = (x, z) => {
+  const add = (x: number, z: number): void => {
     if (!Number.isFinite(x) || !Number.isFinite(z)) return;
     minX = Math.min(minX, x);
     maxX = Math.max(maxX, x);
@@ -106,7 +171,10 @@ function anatomyEnvelope(spec, anchor) {
  *   presentationAnchor?:{xM:number,zM:number},
  *   presentationProjection?:{centerYM:number,topHalfM:number,sideHalfM:number}}} [options]
  */
-export function createShotDiagramProjection(spec, options = {}) {
+export function createShotDiagramProjection(
+  spec: ShotDiagramSpec,
+  options: ShotDiagramProjectionOptions = {},
+): ShotDiagramProjection {
   const dims = spec.dims;
   const topSize = options.topSize || 96;
   const sideWidth = options.sideWidth || 184;

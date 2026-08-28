@@ -9,7 +9,7 @@ import { createCombatState, startReload } from '../sim/damage.js';
 import { penAtDistanceMm } from '../sim/ballistics.js';
 import { traceTank } from '../sim/armor.js';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
-import { garageStatGroup } from '../ui/garageDossier.js';
+import { garageStatGroup } from '../ui/garageDossier.ts';
 
 const REQUIRED_NUMBERS = [
   'hp', 'enginePowerHp', 'weightTons', 'topSpeedKmh', 'reverseSpeedKmh',

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {
   createShotDiagramProjection,
   impactForShotDiagram,
-} from './shotDiagramProjection.js';
+} from './shotDiagramProjection.ts';
 import {
   presentationAnchorFor,
   presentationProjectionFor,

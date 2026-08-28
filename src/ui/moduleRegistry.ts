@@ -1,4 +1,4 @@
-// src/ui/moduleRegistry.js — ONE source of truth for internal-module and crew
+// src/ui/moduleRegistry.ts — ONE source of truth for internal-module and crew
 // PRESENTATION (module_hitbox r1 consolidation). Display labels, state colors
 // and roster order used to be re-declared per consumer (killcam.js,
 // shotInfo.js, hud.js, damagePanel.js) and had already drifted
@@ -10,13 +10,13 @@
 //     ({ id, module, state }) emitted by game/state.js — audio, HUD and
 //     killcam all subscribe to that one channel.
 
-import { MODULE_LABEL as CATALOG_MODULE_LABEL } from '../sim/moduleCatalog.js';
+import { MODULE_LABEL as CATALOG_MODULE_LABEL } from '../sim/moduleCatalog.ts';
 
 /** Full display names (cards, killcam labels, log rows). */
 export const MODULE_LABEL = CATALOG_MODULE_LABEL;
 
 /** Crew display names. */
-export const CREW_LABEL = {
+export const CREW_LABEL = Object.freeze({
   commander: 'Commander',
   gunner: 'Gunner',
   driver: 'Driver',
@@ -26,20 +26,26 @@ export const CREW_LABEL = {
   assistantLoader: 'Assistant Loader',
   weaponOperatorLeft: 'Left Weapon Operator',
   weaponOperatorRight: 'Right Weapon Operator',
-};
+} as const);
+
+export type CrewId = keyof typeof CREW_LABEL;
 
 /** Crew presentation order (damage panel chips, killcam rows). */
-export const CREW_ORDER = [
+export const CREW_ORDER = Object.freeze([
   'commander', 'gunner', 'driver', 'loader',
   'radioOperator', 'assistantDriver', 'assistantLoader',
   'weaponOperatorLeft', 'weaponOperatorRight',
-];
+] as const satisfies readonly CrewId[]);
 
 /**
  * Module state → color. The WoT ramp: damaged ORANGE, knocked-out RED;
  * 'ok' is the neutral panel ink.
  */
-export const STATE_COLOR = { ok: '#eef4f9', yellow: '#f0952e', red: '#f05a5a' };
+export const STATE_COLOR: Readonly<Record<string, string>> = Object.freeze({
+  ok: '#eef4f9', yellow: '#f0952e', red: '#f05a5a',
+});
+
+const LABEL_BY_MODULE: Readonly<Record<string, string>> = MODULE_LABEL;
 
 /**
  * Uppercase alert-style label ('AMMO RACK DAMAGED' toasts). Tracks collapse
@@ -47,7 +53,7 @@ export const STATE_COLOR = { ok: '#eef4f9', yellow: '#f0952e', red: '#f05a5a' };
  * @param {string} module ModuleName
  * @returns {string}
  */
-export function moduleAlertLabel(module) {
+export function moduleAlertLabel(module: string): string {
   if (module === 'trackL' || module === 'trackR') return 'TRACK';
-  return (MODULE_LABEL[module] || module).toUpperCase();
+  return (LABEL_BY_MODULE[module] || module).toUpperCase();
 }

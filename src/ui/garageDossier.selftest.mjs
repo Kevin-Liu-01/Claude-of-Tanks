@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem,
-} from './garageDossier.js';
+} from './garageDossier.ts';
 import { shellIconSVG, shellIconTypes } from './shellIcons.ts';
 
 const anatomy = {

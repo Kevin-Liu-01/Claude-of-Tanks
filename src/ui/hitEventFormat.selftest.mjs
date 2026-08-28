@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 import { penAtDistanceMm } from '../sim/ballistics.js';
 import { getSpec } from '../vehicles/specs.js';
-import { nominalPenFor, shellDisplayName, zoneLabel } from './hitEventFormat.js';
+import { nominalPenFor, shellDisplayName, zoneLabel } from './hitEventFormat.ts';
 
 assert.equal(zoneLabel('turret_cheek_R'), 'turret cheek R');
 assert.equal(zoneLabel('turretRing'), 'turret ring');

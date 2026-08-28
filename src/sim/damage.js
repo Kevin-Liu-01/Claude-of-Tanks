@@ -19,7 +19,7 @@
 import { Vector3, Matrix4, Quaternion, Euler } from 'three';
 import { penAtDistanceMm } from './ballistics.js';
 import { tankPoseFromState, traceTank, blastTargets } from './armor.js';
-import { CORE_MODULE_IDS, MODULE_DEFS, MODULE_IDS } from './moduleCatalog.js';
+import { CORE_MODULE_IDS, MODULE_DEFS, MODULE_IDS } from './moduleCatalog.ts';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.js';
 
 const DEG_TO_RAD = Math.PI / 180;

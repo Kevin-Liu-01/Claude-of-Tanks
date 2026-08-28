@@ -29,7 +29,7 @@ interface SpecialActionSpec {
   gun?: {
     primaryGuided?: boolean;
     autoloader?: unknown;
-    shells?: Array<{ guided?: boolean }>;
+    shells?: readonly { guided?: boolean }[];
   };
 }
 
