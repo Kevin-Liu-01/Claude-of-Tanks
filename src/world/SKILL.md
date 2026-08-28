@@ -29,6 +29,8 @@ shell traffic, break FX, prop destruction events, and cached map handlers.
 conductor instance slots, and caller-buffer catenary sampling.
 `topple.ts` and `treeGrounding.ts` own typed terrain-contact fall math and
 bounded root decals without bringing Three.js into either policy.
+`propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
+pole distance representation; callers dispose or transfer every returned mesh.
 `structureConnectivity.ts` rejects unsupported authored parts before batching;
 `structureInstanceAppearance.ts` supplies stable intact/wreck instance tint
 without creating per-building materials.

@@ -12,7 +12,7 @@
 import * as THREE from 'three';
 import { MARKET_BUILDERS } from './mapKits.js';
 import { RAIL_BUILDERS } from './railKit.js'; // maps r1: railyard + coastal kits
-import { gablePrism as createGablePrism } from '../propGeometry.js';
+import { gablePrism as createGablePrism } from '../propGeometry.ts';
 import { addConnectedExterior } from './exteriorDetailKit.js';
 
 // --- tiny local twins of the props.js geometry helpers (not exported there) --

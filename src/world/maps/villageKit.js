@@ -9,7 +9,7 @@
 // foundation course (the props.js grounding precedent).
 
 import * as THREE from 'three';
-import { box, gablePrism, scaleUV, slabBox } from '../propGeometry.js';
+import { box, gablePrism, scaleUV, slabBox } from '../propGeometry.ts';
 function pushParts(buckets, parts) {
   for (const key of Object.keys(parts)) {
     if (!buckets[key]) continue;

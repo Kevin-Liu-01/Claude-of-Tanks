@@ -1,7 +1,14 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-export function scaleUV(geometry, scaleU, scaleV) {
+type RandomSource = () => number;
+type Rgb = readonly [number, number, number];
+
+export function scaleUV<T extends THREE.BufferGeometry>(
+  geometry: T,
+  scaleU: number,
+  scaleV: number,
+): T {
   const uv = geometry.attributes.uv;
   for (let i = 0; i < uv.count; i++) {
     uv.setXY(i, uv.getX(i) * scaleU, uv.getY(i) * scaleV);
@@ -9,7 +16,7 @@ export function scaleUV(geometry, scaleU, scaleV) {
   return geometry;
 }
 
-export function box(width, height, depth, uvScale = 0.5) {
+export function box(width: number, height: number, depth: number, uvScale = 0.5): THREE.BoxGeometry {
   return scaleUV(
     new THREE.BoxGeometry(width, height, depth),
     Math.max(width, depth) * uvScale,
@@ -19,7 +26,12 @@ export function box(width, height, depth, uvScale = 0.5) {
 
 // Thin slabs need per-face world dimensions; scaling every V axis by the box
 // height stretches roof and sidewalk textures across their broad faces.
-export function slabBox(width, height, depth, uvScale = 0.5) {
+export function slabBox(
+  width: number,
+  height: number,
+  depth: number,
+  uvScale = 0.5,
+): THREE.BoxGeometry {
   const geometry = new THREE.BoxGeometry(width, height, depth);
   const uv = geometry.attributes.uv;
   const scaleU = [depth, depth, width, width, width, width];
@@ -33,7 +45,12 @@ export function slabBox(width, height, depth, uvScale = 0.5) {
   return geometry;
 }
 
-export function gablePrism(width, height, depth, uvScale = 0.4) {
+export function gablePrism(
+  width: number,
+  height: number,
+  depth: number,
+  uvScale = 0.4,
+): THREE.ExtrudeGeometry {
   const shape = new THREE.Shape();
   shape.moveTo(-width / 2, 0);
   shape.lineTo(width / 2, 0);
@@ -44,7 +61,7 @@ export function gablePrism(width, height, depth, uvScale = 0.4) {
   return scaleUV(geometry, uvScale, uvScale);
 }
 
-export function jitterUV(geometry, rng) {
+export function jitterUV<T extends THREE.BufferGeometry>(geometry: T, rng: RandomSource): T {
   const uv = geometry.attributes.uv;
   if (!uv) return geometry;
   const offsetU = rng() * 7.31;
@@ -57,7 +74,7 @@ export function jitterUV(geometry, rng) {
   return geometry;
 }
 
-function paintVertices(geometry, color) {
+function paintVertices<T extends THREE.BufferGeometry>(geometry: T, color: Rgb): T {
   const position = geometry.getAttribute('position');
   const values = new Float32Array(position.count * 3);
   for (let i = 0; i < position.count; i++) {
@@ -74,18 +91,21 @@ function paintVertices(geometry, color) {
  * remains authoritative at readable range; beyond that, its 6,528 triangles
  * collapse to the same trunk/crossarm/insulator silhouette in 340 triangles.
  */
-export function makeTelephonePoleDistanceGeometry() {
-  const wood = [0.43, 0.34, 0.23];
-  const darkWood = [0.29, 0.23, 0.17];
-  const ceramic = [0.14, 0.21, 0.16];
-  const parts = [];
-  const add = (geometry, color) => parts.push(paintVertices(geometry, color));
+export function makeTelephonePoleDistanceGeometry(): THREE.BufferGeometry {
+  const wood: Rgb = [0.43, 0.34, 0.23];
+  const darkWood: Rgb = [0.29, 0.23, 0.17];
+  const ceramic: Rgb = [0.14, 0.21, 0.16];
+  const parts: THREE.BufferGeometry[] = [];
+  const add = (geometry: THREE.BufferGeometry, color: Rgb): void => {
+    parts.push(paintVertices(geometry, color));
+  };
 
   const trunk = new THREE.CylinderGeometry(0.11, 0.18, 7.15, 7, 1, false);
   trunk.translate(0, 3.43, 0);
   add(trunk, wood);
 
-  for (const [armY, armLength] of [[6.18, 3.15], [5.56, 2.72]]) {
+  const crossarms = [[6.18, 3.15], [5.56, 2.72]] as const;
+  for (const [armY, armLength] of crossarms) {
     add(box(armLength, 0.14, 0.12).translate(0, armY, 0), darkWood);
     for (const x of [-armLength * 0.39, 0, armLength * 0.39]) {
       const peg = new THREE.CylinderGeometry(0.035, 0.035, 0.23, 5, 1, false);

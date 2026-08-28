@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import {
   box, gablePrism as createGablePrism, jitterUV, scaleUV,
-} from '../propGeometry.js';
+} from '../propGeometry.ts';
 
 const gablePrism = (width, height, depth) => createGablePrism(width, height, depth, 0.5);
 

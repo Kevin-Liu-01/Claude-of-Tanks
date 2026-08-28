@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
   box, gablePrism, jitterUV, makeTelephonePoleDistanceGeometry, scaleUV, slabBox,
-} from './propGeometry.js';
+} from './propGeometry.ts';
 
 const scaled = new THREE.PlaneGeometry(2, 2);
 const scaledBefore = Array.from(scaled.attributes.uv.array);

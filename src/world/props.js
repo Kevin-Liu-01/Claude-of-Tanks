@@ -35,7 +35,7 @@ import {
 } from './propPlacement.js';
 import {
   box, gablePrism, jitterUV, makeTelephonePoleDistanceGeometry, scaleUV, slabBox,
-} from './propGeometry.js';
+} from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.js';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.js';

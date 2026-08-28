@@ -19,7 +19,7 @@
 // road-side fence runs), tanks drive through reeds, not into invisible walls.
 
 import * as THREE from 'three';
-import { box, jitterUV, scaleUV } from '../propGeometry.js';
+import { box, jitterUV, scaleUV } from '../propGeometry.ts';
 import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.js';
 
 const _groundUp = new THREE.Vector3(0, 1, 0);

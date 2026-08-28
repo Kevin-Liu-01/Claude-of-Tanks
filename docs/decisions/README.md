@@ -140,3 +140,4 @@ runtime documents remain authoritative for behavior.
 - [0128 — Destructible worlds share one typed event seam](0128-typed-destructible-seam.md)
 - [0129 — Utility conductors use typed deterministic topology](0129-typed-utility-network.md)
 - [0130 — World contact policies are typed and allocation-light](0130-typed-world-contact-policies.md)
+- [0131 — Shared prop geometry has a typed ownership boundary](0131-typed-prop-geometry.md)
