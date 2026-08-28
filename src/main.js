@@ -2732,121 +2732,82 @@ if (diagnosticsRequested) {
   });
 }
 if (debugModeRequested() || input.getSettings().showDebugHud) perfHud.setVisible(true);
-const collectDebugTelemetry = () => perfHud.collectTelemetry();
-const sampleShadowContribution = () => perfHud.sampleShadowContribution();
-
-window.__DEBUG = {
-  scene, camera, renderer, post, lighting, game, rig, bus,
-  get fx() { return fxRuntimeAccess.current; },
-  input, // controls probe: isLocked/isCursorAim/binding introspection
-  settings, // PAUSE probe: isOpen/open/close introspection
-  pauseInfo, // PAUSE probe: { paused, resumes, lastDtR, lastResumeDtR }
-  garage,
-  // perf-r2e ADAPTIVE AUTO TIER introspection (probes assert the resolved
-  // tier, drive the overload escalation, and reset the stored choice)
-  quality: {
-    resolvePresetName, resolveAutoTier, reportSustainedOverload,
-    setPresetName, setMobilePresetName, noteGpuRenderer,
-  },
-  get pedestalVisual() { return pedestal.current; },
-  get pedestalOnStage() { return pedestal.isOnStage(); },
-  // switch-desync r1: the id the garage UI (stats card / card highlight)
-  // believes is selected — probes assert pedestalVisual.specId === this.
-  get selectedSpecId() { return selectedVehicle.id; },
-  get pedestalCacheIds() { return [...pedestal.cacheIds]; },
-  get worldCacheIds() { return [...worldCache.keys()]; },
-  get residentLimits() { return { ...residentLimits }; },
-  get battleVisualPool() { return battleVisualPool.stats(); },
-  get garageFramePacer() { return { ...garageFramePacer.stats }; },
-  get frameLoopScheduler() { return { ...frameLoop.stats }; },
-  get phaseSceneResidency() { return garagePhasePresentation.diagnostics().scene; },
-  get garageGpuResidency() { return garagePhasePresentation.diagnostics().gpu; },
-  get lastWorldRelease() {
-    return worldRuntime.lastRelease ? { ...worldRuntime.lastRelease } : null;
-  },
-  get graphicsContextLost() { return graphicsContextLost; },
-  selectGarageTank: (id) => garage.setSelected(id),
-  // Geometry probes must also inspect registered procedural variants that do
-  // not own a visible carousel card. Bypass the UI filter while preserving
-  // the exact pedestal construction/pose used by the garage.
-  stagePedestalTank: (id) => {
-    selectedVehicle.set(id);
-    return pedestal.set(id, true);
-  },
-  get world() { return currentWorld(); },
-  switchMap,
-  flags: debugFlags,
-  frameInfo,
-  aimAtNearest: driveTestController.aimAtNearest,
-  gunAimError: driveTestController.gunAimError,
-  // controls_gunnery r6: attributable terminal event per player shell
-  // (tank/terrain/air + miss distance to the intended target's hull center)
-  playerShellLog,
-  // controls_gunnery r6: per-battle bot-vs-player pressure counters
-  botPressure,
-  aimState: driveTestController.aimState, // {errMrad,bloomF,reticleRadM,aimDistM,reloadT}
-  fastForward: driveTestController.fastForward,
-  slayEnemies: driveTestController.slayEnemies,
-  startBattle: debugStartBattle,
-  bakeMinimapForMap: async (mapId) => {
-    await ensureBattleHud();
-    const next = await ensureWorld(mapId, null, { precompile: false, services: false });
-    buildWorldMinimap(next, true);
-    return hud.exportMinimapBackground('image/webp', 0.92);
-  },
-  // perf-smooth r1: the legacy player battle-entry path (loading screen ->
-  // chunked world build -> roster bake -> countdown), so probes can
-  // measure the real pre-battle timeline instead of only the synchronous
-  // startBattle shortcut. Resolves when the battle opens.
-  beginBattleEntry,
-  // User-facing bot entry: original local simulation, with no network stack.
-  beginSoloBattle,
-  // Full-render QA seam: browser probes create real room sessions, then hand
-  // them to the same private/LAN entry path used by the play menu.
-  beginNetworkBattle: (request) => networkBattleLauncher.beginPrivate(request),
-  enterGarage,
-  leaveBattleToGarage,
-  // SPOTTING WIRING: live SpottingSystem for headless concealment checks
-  get spotting() { return game.spotting; },
-  get killcam() { return killcam; },   // KILL-CAM introspection (phase, cancel)
-  showroom,                            // garage orbit introspection (debugState)
-  garageDressing,                      // garage-scene r1: workshop dressing rig
-  spawnKillShell: driveTestController.spawnKillShell, // KILL-CAM: die on purpose
-  // effects_combat r2: shot-mode latch exposed for headless drive tests
-  get shotMode() { return shotMode; },
-  set shotMode(v) { shotMode = !!v; },
-  // controls_gunnery r3: stage the reticle hit-confirm marker on demand so
-  // captures can verify its weight without landing a live 400 m shot.
-  forceHitMark: async (bounced) => {
-    await ensureBattleHud();
-    hud.forceHitMark(!!bounced);
-  },
-  // damage panel r9: pose/state hooks for probes + deterministic captures
-  get damagePanel() { return damagePanel; },
-  // Development flight recorder, or production QA recorder with `?debug=1`.
-  // Ordinary production sessions keep this null and never load its chunk.
-  devTrace,
-  get network() { return networkSession.diagnostics(); },
-  get networkPresentation() {
-    return networkSession.bridge?.getPresentationEventStats?.() || null;
-  },
-  telemetry: collectDebugTelemetry,
-  sampleShadowContribution,
-  // Development-only rendered lifecycle probe: feed authoritative-format
-  // presentation events through the real bridge/queue without exposing the
-  // authority runtime or mutating production networking APIs.
-  injectNetworkEvents(events) {
-    const latestNetworkSnapshot = networkSession.latestSnapshot;
-    if (!import.meta.env.DEV || !networkSession.bridge || !latestNetworkSnapshot) return false;
-    const batch = Array.isArray(events) ? events : [];
-    const matchEnded = batch.find((event) => event?.type === 'match_ended');
-    const snapshot = matchEnded
-      ? { ...latestNetworkSnapshot,
-        meta: { ...latestNetworkSnapshot.meta, result: matchEnded.result } }
-      : latestNetworkSnapshot;
-    return networkSession.bridge.apply(snapshot, 1 / 60, batch);
-  },
-};
+if (diagnosticsRequested) {
+  const { installDebugSurface } = await import('./dev/debugSurface.ts');
+  installDebugSurface({
+    scene, camera, renderer, post, lighting, game, rig, bus, input, settings,
+    pauseInfo, garage, flags: debugFlags, frameInfo, playerShellLog, botPressure,
+    killcam, showroom, garageDressing, devTrace,
+    quality: {
+      resolvePresetName, resolveAutoTier, reportSustainedOverload,
+      setPresetName, setMobilePresetName, noteGpuRenderer,
+    },
+    getFx: () => fxRuntimeAccess.current,
+    getPedestalVisual: () => pedestal.current,
+    isPedestalOnStage: () => pedestal.isOnStage(),
+    getSelectedSpecId: () => selectedVehicle.id,
+    getPedestalCacheIds: () => [...pedestal.cacheIds],
+    getWorldCacheIds: () => [...worldCache.keys()],
+    getResidentLimits: () => ({ ...residentLimits }),
+    getBattleVisualPoolStats: () => battleVisualPool.stats(),
+    getGarageFramePacerStats: () => ({ ...garageFramePacer.stats }),
+    getFrameLoopSchedulerStats: () => ({ ...frameLoop.stats }),
+    getPhaseSceneResidency: () => garagePhasePresentation.diagnostics().scene,
+    getGarageGpuResidency: () => garagePhasePresentation.diagnostics().gpu,
+    getLastWorldRelease: () => (worldRuntime.lastRelease
+      ? { ...worldRuntime.lastRelease } : null),
+    isGraphicsContextLost: () => graphicsContextLost,
+    selectGarageTank: (id) => garage.setSelected(id),
+    stagePedestalTank: (id) => {
+      selectedVehicle.set(id);
+      return pedestal.set(id, true);
+    },
+    getWorld: currentWorld,
+    switchMap,
+    aimAtNearest: driveTestController.aimAtNearest,
+    gunAimError: driveTestController.gunAimError,
+    aimState: driveTestController.aimState,
+    fastForward: driveTestController.fastForward,
+    slayEnemies: driveTestController.slayEnemies,
+    startBattle: debugStartBattle,
+    bakeMinimapForMap: async (mapId) => {
+      await ensureBattleHud();
+      const next = await ensureWorld(mapId, null, { precompile: false, services: false });
+      buildWorldMinimap(next, true);
+      return hud.exportMinimapBackground('image/webp', 0.92);
+    },
+    beginBattleEntry,
+    beginSoloBattle,
+    beginNetworkBattle: (request) => networkBattleLauncher.beginPrivate(request),
+    enterGarage,
+    leaveBattleToGarage,
+    spawnKillShell: driveTestController.spawnKillShell,
+    getShotMode: () => shotMode,
+    setShotMode: (value) => { shotMode = !!value; },
+    forceHitMark: async (bounced) => {
+      await ensureBattleHud();
+      hud.forceHitMark(!!bounced);
+    },
+    getDamagePanel: () => damagePanel,
+    getNetworkDiagnostics: () => networkSession.diagnostics(),
+    getNetworkPresentationStats: () => (
+      networkSession.bridge?.getPresentationEventStats?.() || null
+    ),
+    collectTelemetry: () => perfHud.collectTelemetry(),
+    sampleShadowContribution: () => perfHud.sampleShadowContribution(),
+    injectNetworkEvents: (events) => {
+      const latestNetworkSnapshot = networkSession.latestSnapshot;
+      if (!import.meta.env.DEV || !networkSession.bridge || !latestNetworkSnapshot) return false;
+      const batch = Array.isArray(events) ? events : [];
+      const matchEnded = batch.find((event) => event?.type === 'match_ended');
+      const snapshot = matchEnded
+        ? { ...latestNetworkSnapshot,
+          meta: { ...latestNetworkSnapshot.meta, result: matchEnded.result } }
+        : latestNetworkSnapshot;
+      return networkSession.bridge.apply(snapshot, 1 / 60, batch);
+    },
+  });
+}
 await bootStage('ready', null);
 // perf-r2: the boot pipeline is compiled and error-checked; battle-time
 // program links (lazy fx/wreck/killcam materials) drop the synchronous

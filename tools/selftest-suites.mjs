@@ -65,6 +65,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/production-multiplayer-check.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',
+    'src/dev/debugSurface.selftest.mjs',
     'src/dev/debugTelemetry.selftest.mjs',
     'src/dev/driveTestController.selftest.mjs',
     'src/dev/combatTelemetry.selftest.mjs',
