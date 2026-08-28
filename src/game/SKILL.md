@@ -34,6 +34,7 @@ touch, cursor fallback, zoom, free-look, and sniper-mode sampling;
 the delayed cursor-aim notice, canvas recapture, and battle-start touch refresh;
 `mobileAutoAimRuntime.ts` owns touch target acquisition, loss, UI state and the
 allocation-free center-mass sample consumed by the camera input;
+`sniperFillRuntime.ts` owns the retained shadow-free close-cover scope light;
 `battleFrameRuntime.ts` owns pause edges, retained input sampling, network
 cadence, pre-battle hold, fixed-step debt, result progression, and rendered
 pose interpolation;

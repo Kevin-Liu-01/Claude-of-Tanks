@@ -12,7 +12,9 @@ that no longer owned a valid scene root.
 ## Decision
 
 `replayPose.ts`, `presentationPose.ts`, `battleVisualPool.ts`, and
-`garageTankLifecycle.ts` are strict TypeScript owners. Presentation samples use
+`garageTankLifecycle.ts` are strict TypeScript owners. `sniperFillRuntime.ts`
+owns the retained, shadow-free close-cover scope light and its frame update.
+Presentation samples use
 reused `Vector3` instances and mutable scalar fields; no frame-time allocation
 was introduced. The visual pool is capacity bounded and generic over its
 minimum lifecycle contract. Garage cleanup explicitly clears every battle-owned
@@ -35,4 +37,5 @@ field after decals and effects release their visual children.
 - `node src/game/battlePresentationRuntime.selftest.mjs`
 - `node src/game/battleVisualPool.selftest.mjs`
 - `node src/game/garageTankLifecycle.selftest.mjs`
+- `node src/game/sniperFillRuntime.selftest.mjs`
 - `npm run build`

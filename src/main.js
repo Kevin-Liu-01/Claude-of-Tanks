@@ -147,6 +147,7 @@ import { createEndOverlayRuntime } from './ui/endOverlayRuntime.ts';
 import { createStartupIntent } from './game/startupIntent.ts';
 import { createSelectedVehicleSelection } from './game/selectedVehicleSelection.ts';
 import { createPointerLockFeedbackRuntime } from './game/pointerLockFeedbackRuntime.ts';
+import { createSniperFillRuntime } from './game/sniperFillRuntime.ts';
 import { tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
@@ -992,18 +993,7 @@ const showroom = createGarageShowroomRuntime({
 // when the server-aim hit is CLOSE, keeps the obstacle readable exactly like
 // WoT's scope does. Range-limited (18 m, quadratic decay) so it can never
 // relight the midfield; intensity eases in below ~20 m aim distance.
-const sniperFill = new THREE.PointLight(0xfff0dc, 0, 18, 2);
-sniperFill.castShadow = false;
-scene.add(sniperFill);
-function updateSniperFill() {
-  if (rig.mode === 'SNIPER' && camera.userData.scoped) {
-    const near = THREE.MathUtils.clamp((20 - rig.aimDist) / 16, 0, 1);
-    sniperFill.intensity = 40 * near * near;
-    if (sniperFill.intensity > 0.01) sniperFill.position.copy(camera.position);
-  } else {
-    sniperFill.intensity = 0;
-  }
-}
+const sniperFill = createSniperFillRuntime(scene, camera, rig);
 
 // --- KILL-CAM (src/game/killcam.js) -----------------------------------------
 // End-of-battle cinematic: slow-mo tracer replay of the killing shell + x-ray
@@ -2181,7 +2171,7 @@ function tick(nowMs) {
     // (dt = 0 also snaps the foliage occlusion fade to zero — see vegetation.)
     camera.getWorldDirection(_fwd);
     if (world) world.update(0, camera.position, _fwd, null);
-    updateSniperFill(); // same close-scope fill state as live play
+    sniperFill.update(); // same close-scope fill state as live play
     fx?.update(dtR, game.shells, camera, resolveFxSubject);
     // controls_gunnery r5: staged HUD views redraw the reticle canvas every
     // frame from the FROZEN frameInfo — the old early-return skipped
@@ -2241,7 +2231,7 @@ function tick(nowMs) {
     lastCineActive = rig.cinematicActive;
     veilHud(lastCineActive);
   }
-  updateSniperFill(); // close-quarters scope readability (see definition)
+  sniperFill.update(); // close-quarters scope readability (see definition)
 
   // 4. retained terrain/vegetation presentation; dormant Garage does no work.
   worldFramePresentation.update(dtR, inBattle, kcActive);
