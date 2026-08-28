@@ -567,14 +567,6 @@ const garageDressingScheduler = createGarageDressingScheduler({
 });
 const scheduleGarageDressingBuild = garageDressingScheduler.schedule;
 
-function frameBudgetTick(budgetMs = 6) {
-  let sliceAt = performance.now();
-  return () => {
-    if (performance.now() - sliceAt < budgetMs) return undefined;
-    return nextFrame().then(() => { sliceAt = performance.now(); });
-  };
-}
-
 // Explicit Battle hover/focus and the covered roster handoff share one
 // lifecycle owner. Passive Garage dwell is deliberately not Battle intent.
 // Keeping the policy here used to expose
@@ -590,7 +582,7 @@ const battleIntent = createBattleIntentRuntime({
   planRoster: (specId) => planBattleParticipantIds(game, specId, true),
   getSpec,
   prebakeSharedTextures,
-  createBudgetYield: frameBudgetTick,
+  createBudgetYield: createFrameBudgetYielder,
   anisotropy: engineCtx.anisotropy ?? 4,
   setCamoBiome,
   clearCamoOverrides,
@@ -626,7 +618,7 @@ const pedestal = createGaragePedestalRuntime({
   ensureTankBuilders,
   prebakeSharedTextures,
   discardSharedTextures: discardPrebakedSharedTextures,
-  createBudgetYield: frameBudgetTick,
+  createBudgetYield: createFrameBudgetYielder,
   // forwardProgramWarm is initialized before the first pedestal warm is
   // invoked; the closure keeps this early lifecycle declaration independent
   // of the later renderer-target owner.
