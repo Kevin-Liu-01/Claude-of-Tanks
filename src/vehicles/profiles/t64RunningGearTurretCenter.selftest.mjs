@@ -9,7 +9,7 @@ const CASES = {
     wheelY: 0.49,
     topY: 1.01,
     botY: 0.13,
-    idlerY: 0.745,
+    idlerY: 0.785,
     sprocketY: 0.868,
     rollerY: 0.98,
     authoredEnvelopeHeightM: 0.80,
@@ -24,7 +24,7 @@ const CASES = {
     wheelY: 0.49,
     topY: 1.01,
     botY: 0.14,
-    idlerY: 0.755,
+    idlerY: 0.795,
     sprocketY: 0.84,
     rollerY: 0.98,
     authoredEnvelopeHeightM: 0.79,
@@ -84,6 +84,8 @@ for (const [id, expected] of Object.entries(CASES)) {
       `${id}: tall-track receipt records the installed road-wheel radius`);
     near(tallTrack.roadWheelCenterY, expected.wheelY,
       `${id}: tall-track receipt records the raised road-wheel axle`);
+    near(tallTrack.frontIdlerLiftM, 0.04,
+      `${id}: shared BV-family receipt records the 40 mm front-idler lift`);
     assert.ok(receipt.wheelY - receipt.wheelR >= 0.205 - EPSILON,
       `${id}: wheel bottoms stay above the lower track-shoe crest datum`);
     near(receipt.shoeRadialScale, 0.46,

@@ -117,6 +117,11 @@ export function loftHull(P, o) {
 // profile; the forward belly segment is the lower-glacis underside, so it
 // grows down to the same datum without moving the upper glacis or bow crest.
 export const T64_LOWER_HULL_DROP_M = 0.08;
+// The BV-family bow sits slightly higher than the original print-derived
+// course. Keep this as one shared correction so the BV1 and Donbas running
+// gear retain the same front-idler stance without lifting either sprocket or
+// the loaded lower run.
+export const T64_FRONT_IDLER_LIFT_M = 0.04;
 export function lowerT64BellyProfile(points, dropM = T64_LOWER_HULL_DROP_M) {
   return points.map(([z, y]) => [z, y - dropM]);
 }
@@ -1505,7 +1510,8 @@ function buildT64BV1(P) {
 
   // One suspension-driven T-64 course at the six MEASURED wheel stations:
   // 0.285 steel wheels (hub y 0.490), four return rollers, the raised
-  // 0.665 idler and the 0.788 rear drive. Track band x 0.996..1.565 exact.
+  // 0.665 authored idler plus the shared 40 mm BV bow correction, and the
+  // 0.788 rear drive. Track band x 0.996..1.565 exact.
   buildRunningGear(P, {
     style: 'holes',
     wheelR: roadWheelRadiusM,
@@ -1514,7 +1520,11 @@ function buildT64BV1(P) {
     xc: 1.28,
     dishR: 0.82,
     wheelZs: [1.875, 1.125, 0.40, -0.325, -1.075, -1.775],
-    idler: { z: 2.55, y: 0.665 + trackHeightIncreaseM, r: 0.262 },
+    idler: {
+      z: 2.55,
+      y: 0.665 + trackHeightIncreaseM + T64_FRONT_IDLER_LIFT_M,
+      r: 0.262,
+    },
     sprocket: { z: -2.555, y: 0.788 + trackHeightIncreaseM, r: 0.315 },
     rollers: [-1.85, -0.60, 0.70, 1.95]
       .map((z) => ({ z, y: 0.90 + trackHeightIncreaseM, r: 0.078 })),
@@ -1749,6 +1759,7 @@ function buildT64BV1(P) {
     authoredEnvelopeHeightM: 0.80,
     roadWheelRadiusM,
     roadWheelCenterY,
+    frontIdlerLiftM: T64_FRONT_IDLER_LIFT_M,
   });
   P.topY = 1.30;
 }
@@ -1778,6 +1789,7 @@ export function liftT64HullAboveTallTrack(P, {
   authoredEnvelopeHeightM,
   roadWheelRadiusM,
   roadWheelCenterY,
+  frontIdlerLiftM = 0,
 }) {
   P.offsetBuckets([
     'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
@@ -1805,6 +1817,7 @@ export function liftT64HullAboveTallTrack(P, {
     trackTopY,
     roadWheelRadiusM,
     roadWheelCenterY,
+    frontIdlerLiftM,
     hullRideHeightIncreaseM,
     lowerHullDropM,
     upperHullShiftM: 0,

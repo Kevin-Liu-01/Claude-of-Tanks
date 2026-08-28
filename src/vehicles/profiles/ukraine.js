@@ -40,6 +40,7 @@ import {
   liftT64HullAboveTallTrack,
   lowerT64BellyProfile,
   T64_LOWER_HULL_DROP_M,
+  T64_FRONT_IDLER_LIFT_M,
 } from './russia.js';
 import { ABRAMS_PROFILES } from './abrams.js';
 
@@ -620,7 +621,8 @@ function buildUAT64BV(P) {
 
   // T-64 running gear at the print's mapped stations: six 0.285 steel
   // wheels (print pairs c 1.92/1.17/0.29/-0.45/-1.25/-2.06), raised front
-  // idler (2.75, 0.675), rear drive (-2.63, 0.76), four return rollers.
+  // idler (2.75, 0.675) plus the shared 40 mm BV bow correction, rear drive
+  // (-2.63, 0.76), and four return rollers.
   buildRunningGear(P, {
     style: 'holes',
     wheelR: roadWheelRadiusM,
@@ -629,7 +631,11 @@ function buildUAT64BV(P) {
     xc: 1.28,
     dishR: 0.82,
     wheelZs: [1.92, 1.17, 0.29, -0.45, -1.25, -2.06],
-    idler: { z: 2.75, y: 0.675 + trackHeightIncreaseM, r: 0.262 },
+    idler: {
+      z: 2.75,
+      y: 0.675 + trackHeightIncreaseM + T64_FRONT_IDLER_LIFT_M,
+      r: 0.262,
+    },
     sprocket: { z: -2.63, y: 0.76 + trackHeightIncreaseM, r: 0.30 },
     rollers: [-1.95, -0.65, 0.62, 1.85]
       .map((z) => ({ z, y: 0.90 + trackHeightIncreaseM, r: 0.078 })),
@@ -852,6 +858,7 @@ function buildUAT64BV(P) {
     authoredEnvelopeHeightM: 0.79,
     roadWheelRadiusM,
     roadWheelCenterY,
+    frontIdlerLiftM: T64_FRONT_IDLER_LIFT_M,
   });
   P.topY = 1.30;
 }
