@@ -683,10 +683,19 @@ async function startLightCombat(page, isHost, formation) {
           const dy = own.y - motion.last.y;
           const dz = own.z - motion.last.z;
           motion.maxStepM = Math.max(motion.maxStepM, Math.hypot(dx, dy, dz));
-          const forward = dx * Math.sin(pair.yaw) + dz * Math.cos(pair.yaw);
+          // Measure reconciliation against the tank's live heading, not its
+          // opening formation heading. Pursuit deliberately turns survivors
+          // after a stalemate; a fast tank driving forward after a 180-degree
+          // turn is not a backwards network correction.
+          const previousYaw = Number.isFinite(motion.last.yaw) ? motion.last.yaw : own.yaw;
+          const headingYaw = Math.atan2(
+            Math.sin(previousYaw) + Math.sin(own.yaw),
+            Math.cos(previousYaw) + Math.cos(own.yaw),
+          );
+          const forward = dx * Math.sin(headingYaw) + dz * Math.cos(headingYaw);
           motion.maxBackstepM = Math.max(motion.maxBackstepM, -forward);
         }
-        motion.last = { x: own.x, y: own.y, z: own.z };
+        motion.last = { x: own.x, y: own.y, z: own.z, yaw: own.yaw };
         motion.samples++;
       }
       if (!state.combatEnabled || !own || own.destroyed || !target) return null;
@@ -793,10 +802,16 @@ async function startFullCombat(page, formation) {
           const dy = own.y - motion.last.y;
           const dz = own.z - motion.last.z;
           motion.maxStepM = Math.max(motion.maxStepM, Math.hypot(dx, dy, dz));
-          const forward = dx * Math.sin(pair.yaw) + dz * Math.cos(pair.yaw);
+          const previousYaw = Number.isFinite(motion.last.yaw)
+            ? motion.last.yaw : player.state.yaw;
+          const headingYaw = Math.atan2(
+            Math.sin(previousYaw) + Math.sin(player.state.yaw),
+            Math.cos(previousYaw) + Math.cos(player.state.yaw),
+          );
+          const forward = dx * Math.sin(headingYaw) + dz * Math.cos(headingYaw);
           motion.maxBackstepM = Math.max(motion.maxBackstepM, -forward);
         }
-        motion.last = { x: own.x, y: own.y, z: own.z };
+        motion.last = { x: own.x, y: own.y, z: own.z, yaw: player.state.yaw };
         motion.samples++;
       } else {
         setPursuitKey('KeyW', 'w', false);
