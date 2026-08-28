@@ -4,7 +4,7 @@ import './profiles/t14RoofFidelity.selftest.mjs';
 import {
   auditTankAppearance, normalizeTankAppearance, tagVehicleMaterial,
   VEHICLE_APPEARANCE_PALETTE,
-} from './appearanceAudit.js';
+} from './appearanceAudit.ts';
 
 const root = new THREE.Group();
 const badTrack = tagVehicleMaterial(new THREE.MeshStandardMaterial({ color: 0x6e603c }), 'trackSteel');

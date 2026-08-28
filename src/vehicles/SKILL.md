@@ -80,6 +80,10 @@ The authored receipt boundaries are `combatAnatomyCalibrationRegistry.ts`,
 their generators; browser consumers must acquire receipts through the typed
 loaders, while fleet-wide release tools may use the eager `tankFactory.js`
 facade.
+Keep semantic finish policy in `appearanceAudit.ts`: builders tag materials,
+while that module alone normalizes working-gear colors and audits armor/gear
+role separation. Do not repair a palette issue by stripping geometry or by
+repainting untagged armor.
 After this sequence passes, commit each tank edit atomically, integrate it from
 an isolated clean worktree onto the current `origin/main`, push `HEAD:main`,
 and report the resulting main hash. Never push a failing or partially verified

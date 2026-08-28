@@ -47,7 +47,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
-import { tagVehicleMaterial } from '../appearanceAudit.js';
+import { tagVehicleMaterial } from '../appearanceAudit.ts';
 
 // The M60 family uses exposed manganese-steel tracks. Keep the continuous
 // band neutral and matte so woodland camouflage and the garage environment

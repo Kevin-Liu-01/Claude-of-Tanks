@@ -629,6 +629,11 @@ export function createTankMaterials(spec, engineCtx, camoSeed) => { hull, tracks
 Procedural camo per roster paint notes (canvas textures, sRGB albedo, subtle normal/
 roughness). MeshStandardMaterial only.
 
+`appearanceAudit.ts` owns semantic material roles and the fixed neutral
+running-gear palette. Builders may tag roles, but must not duplicate or bypass
+its normalization and release-audit rules; painted armor and working gear are
+separate even when they share a visual hierarchy.
+
 ### 3.4 movement — `src/sim/movement.ts` (pure logic)
 ```js
 export function createTankState(spec, pos /* Vector3 */, yaw) => TankState        // §2.4
