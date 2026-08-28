@@ -56,22 +56,22 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.1805589,
-          0.3746352,
-          0.365576
+          -1.1718013,
+          0.3741,
+          0.3375282
         ],
         "quaternion": [
-          -0.0273823,
-          -0.5784294,
-          -0.038551,
-          0.8143608
+          0,
+          -0.5529319,
+          0,
+          0.8332264
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "leo1a5",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0098551
       }
     ]
   },

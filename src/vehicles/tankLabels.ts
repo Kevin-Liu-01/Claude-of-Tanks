@@ -28,6 +28,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'M551 Sheridan', shortName: 'M551',
     searchAliases: ['Sheridan', 'M551 Shillelagh', 'US airborne light tank'],
   },
+  m551a1_tts: {
+    displayName: 'M551A1 TTS', shortName: 'M551A1 TTS',
+    searchAliases: ['Sheridan TTS', 'M551A1', 'TTS Sheridan', 'advanced Sheridan'],
+  },
   t95: { displayName: 'T95', searchAliases: ['T95 Doomturtle'] },
   strv81: {
     displayName: 'Stridsvagn 81', shortName: 'Strv 81',

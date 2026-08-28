@@ -248,6 +248,9 @@ assert.deepEqual(turretRig.userData.leopard1A5TurretFinishReceipt, {
   bustleFloorY: 0.31,
   sideRackZ: -1.68,
   shieldedRoofMachineGun: true,
+  frontCheekPanelsSeated: true,
+  frontCheekMirrorSymmetric: true,
+  frontCheekRootInsetM: 0.08,
 }, 'turret finish receipt retains the compact tail-aligned bustle and shielded MG station');
 assert.deepEqual(gunRig.userData.leopard1A5MantletReceipt, {
   seated: true,
@@ -256,6 +259,8 @@ assert.deepEqual(gunRig.userData.leopard1A5MantletReceipt, {
   flatRearContactFace: true,
   sideChevron: true,
   straightRidge: true,
+  integratedFrontWedge: true,
+  integratedFrontWedgeOwner: 'gun',
   ridgeWidth: 1.00,
   ridgeZ: 0.38,
   turretReceiver: true,
@@ -309,6 +314,28 @@ assert.equal(hasMountVertex(0, 0.24, 0.38), false,
 assert.ok(hasMountVertex(0.64, 0.29, -0.30)
   && hasMountVertex(-0.64, -0.29, -0.30),
   'Leopard 1A5 chevron casting tapers back into its broad planar seat');
+assert.ok(hasMountVertex(-0.55, -0.35, 0.19)
+  && hasMountVertex(0.55, -0.35, 0.19)
+  && hasMountVertex(-0.43, 0.15, 0.15)
+  && hasMountVertex(0.43, 0.15, 0.15),
+  'the former fixed center wedge is merged into the moving mantlet mesh');
+
+const turretPosition = mesh('turret').geometry.attributes.position;
+const hasTurretVertex = (x, y, z, tolerance = 1e-5) => {
+  for (let index = 0; index < turretPosition.count; index++) {
+    if (Math.abs(turretPosition.getX(index) - x) <= tolerance
+      && Math.abs(turretPosition.getY(index) - y) <= tolerance
+      && Math.abs(turretPosition.getZ(index) - z) <= tolerance) return true;
+  }
+  return false;
+};
+assert.equal(hasTurretVertex(-0.55, 0.12, 1.34), false,
+  'the incorporated wedge no longer leaves a fixed duplicate on the turret');
+for (const xSign of [-1, 1]) {
+  assert.ok(hasTurretVertex(xSign * 0.98, 0.44, 0.68)
+    && hasTurretVertex(xSign * 0.90, 0.62, 0.44),
+  `the ${xSign < 0 ? 'left' : 'right'} cheek shoulder is tucked into the cast shell`);
+}
 
 const receiver = new THREE.Box3(
   new THREE.Vector3(-0.58, 0.22, 0.70),
@@ -319,6 +346,10 @@ for (const pitchDeg of [-9, 0, 20]) {
   const contactCenter = new THREE.Vector3(0, 0, -0.42).applyEuler(gunRig.rotation).add(gunRig.position);
   assert.ok(receiver.containsPoint(contactCenter),
     `mantlet rear pad remains inside the turret receiver at ${pitchDeg} degrees`);
+  const integratedWedgePoint = new THREE.Vector3(0.55, -0.35, 0.19)
+    .applyEuler(gunRig.rotation).add(gunRig.position);
+  assert.ok(Number.isFinite(integratedWedgePoint.y) && integratedWedgePoint.z > 1,
+    `incorporated center wedge follows the gun assembly at ${pitchDeg} degrees`);
 }
 gunRig.rotation.x = 0;
 visual.root.updateMatrixWorld(true);

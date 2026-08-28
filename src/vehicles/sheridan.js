@@ -19,6 +19,19 @@ import {
 
 const ERA = Object.freeze({ keReduction: 0.18, ceFlatMm: 360 });
 const eraOptions = { kind: 'era', era: ERA, keMm: 15, ceMm: 15 };
+const TTS_ERA = Object.freeze({ keReduction: 0.24, ceFlatMm: 520 });
+const ttsEraOptions = { kind: 'era', era: TTS_ERA, keMm: 22, ceMm: 22 };
+
+const clonePlate = (source) => ({
+  ...source,
+  verts: source.verts.map((point) => [...point]),
+});
+
+const cloneVolume = (source) => ({
+  ...source,
+  min: [...source.min],
+  max: [...source.max],
+});
 
 const armor = {
   boundingRadiusM: 4.75,
@@ -62,12 +75,15 @@ const armor = {
     roofPlate('turret_roof', 20, 0.92, 0.80, -0.88, 0.44, { keMm: 24, ceMm: 28 }),
   ],
   modules: [
-    moduleBox('engine', [-1.00, 0.30, -2.90], [1.00, 1.16, -1.35]),
-    moduleBox('fuelTank', [-0.95, 0.28, -1.30], [0.95, 0.85, -0.56]),
-    moduleBox('ammoRack', [-0.90, 0.30, -0.45], [0.90, 0.92, 0.38]),
-    moduleBox('missileRack', [-0.92, 0.22, -1.05], [0.92, 0.72, -0.20], true),
-    moduleBox('turretRing', [-1.03, 1.08, -0.78], [1.03, 1.29, 1.12]),
-    moduleBox('radio', [-0.88, 0.12, -1.08], [-0.18, 0.62, -0.42], true),
+    moduleBox('engine', [-0.52, 0.35, -2.67], [0.52, 0.64, -2.43]),
+    moduleBox('fuelTank', [-0.72, 0.35, -1.25], [0.72, 0.75, -0.75]),
+    moduleBox('ammoRack', [-0.60, 0.40, -0.70], [0.60, 0.70, -0.10]),
+    moduleBox('missileRack', [-0.65, 0.40, -1.45], [0.65, 0.68, -0.85]),
+    // The race sits inside the Sheridan's narrow upper hull shoulders. Keep
+    // its damage volume on the actual bearing footprint instead of spanning
+    // the full turret basket, which protrudes beyond the faceted closed shell.
+    moduleBox('turretRing', [-0.82, 1.135, -0.46], [0.82, 1.235, -0.02]),
+    moduleBox('radio', [-0.65, 0.42, -0.68], [-0.35, 0.62, -0.48], true),
     moduleBox('optics', [0.20, 0.40, 0.25], [0.92, 0.84, 0.94], true),
     moduleBox('gun', [-0.30, 0.10, -0.20], [0.30, 0.67, 1.30], true),
     moduleBox('trackL', [-1.48, 0.02, -3.02], [-1.02, 1.02, 3.02]),
@@ -87,31 +103,31 @@ const spec = {
   nation: 'USA',
   era: 'cold-war',
   role: 'light',
-  hp: 1750,
-  enginePowerHp: 300,
+  hp: 2050,
+  enginePowerHp: 400,
   weightTons: 18.6,
   topSpeedKmh: 70,
-  reverseSpeedKmh: 18,
-  hullTraverseDegS: 50,
-  terrainResistance: { hard: 0.62, medium: 0.78, soft: 1.32 },
+  reverseSpeedKmh: 24,
+  hullTraverseDegS: 54,
+  terrainResistance: { hard: 0.58, medium: 0.72, soft: 1.12 },
   pivotStyle: 'neutral',
-  turretTraverseDegS: 40,
-  gunPitchDegS: 31,
+  turretTraverseDegS: 46,
+  gunPitchDegS: 36,
   gunElevationDeg: 19,
   gunDepressionDeg: 8,
   gun: {
     caliberMm: 152,
-    reloadS: 9.4,
-    baseAccuracy: 0.33,
-    aimTimeS: 1.75,
-    bloom: { move: 0.075, hullRot: 0.085, turret: 0.065, afterShot: 2.05 },
+    reloadS: 8.6,
+    baseAccuracy: 0.28,
+    aimTimeS: 1.45,
+    bloom: { move: 0.06, hullRot: 0.07, turret: 0.05, afterShot: 1.8 },
     primaryGuided: true,
     shells: [
-      shell('MGM-51C Shillelagh ATGM', 'HEAT', 152, 800, 800, 730, 208, {
+      shell('MGM-51C Shillelagh ATGM', 'HEAT', 152, 900, 900, 800, 208, {
         guided: true,
-        guidanceTurnRateRadS: 0.76,
-        reloadS: 9.4,
-        count: 10,
+        guidanceTurnRateRadS: 0.84,
+        reloadS: 8.6,
+        count: 14,
         soundProfile: 'shillelagh-launch',
       }),
     ],
@@ -141,6 +157,112 @@ const spec = {
   },
 };
 
-TANK_SPECS[spec.id] = spec;
-MODEL_SOURCE[spec.id] ||= { source: 'procedural' };
-if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
+// A first-party, near-future Sheridan technology demonstrator. It deliberately
+// retains the M551 track lanes and five-wheel suspension while extending the
+// protected engine deck and replacing the exposed commander's weapon with an
+// armored remote autocannon. The extra applique represented here is the same
+// ERA authored by the procedural builder, so the visual upgrade is also a
+// real damage-model upgrade rather than cosmetic geometry.
+const ttsArmor = {
+  ...armor,
+  turretPivot: [...armor.turretPivot],
+  gunPivot: [...armor.gunPivot],
+  gunBarrel: { ...armor.gunBarrel },
+  boundingRadiusM: 5.15,
+  hullPlates: [
+    ...armor.hullPlates.map(clonePlate),
+    frontPlate('m551a1_tts_glacis_era', 22, 1.16, 0.88, 2.94, 1.41, 1.34, ttsEraOptions),
+    rightSidePlate('m551a1_tts_hull_era_R', 22, 1.45, 0.76, 1.45, 1.38, -3.34, 2.48, ttsEraOptions),
+    leftSidePlate('m551a1_tts_hull_era_L', 22, 1.45, 0.76, 1.45, 1.38, -3.34, 2.48, ttsEraOptions),
+    rearPlate('m551a1_tts_engine_deck_rear', 42, 1.30, 0.70, -3.52, 1.52, -3.58,
+      { keMm: 70, ceMm: 94 }),
+    roofPlate('m551a1_tts_engine_deck_roof', 32, 1.30, 1.50, -3.52, -2.45,
+      { keMm: 48, ceMm: 64 }),
+  ],
+  turretPlates: [
+    ...armor.turretPlates.map(clonePlate),
+    rightCheekPlate('m551a1_tts_turret_era_R', 25, 0.20, 1.34, 1.42, 0.50,
+      -0.02, 0.90, 0.12, 0.18, ttsEraOptions),
+    leftCheekPlate('m551a1_tts_turret_era_L', 25, 0.20, 1.34, 1.42, 0.50,
+      -0.02, 0.90, 0.12, 0.18, ttsEraOptions),
+    roofPlate('m551a1_tts_turret_roof_era', 22, 1.02, 0.81, -0.88, 0.62, ttsEraOptions),
+    rightSidePlate('m551a1_tts_bustle_R', 48, 1.30, 0.12, 1.30, 0.86, -1.78, -0.54,
+      { keMm: 82, ceMm: 108 }),
+    leftSidePlate('m551a1_tts_bustle_L', 48, 1.30, 0.12, 1.30, 0.86, -1.78, -0.54,
+      { keMm: 82, ceMm: 108 }),
+  ],
+  modules: armor.modules.map((module) => {
+    if (module.module === 'engine') {
+      return moduleBox('engine', [-1.08, 0.72, -3.50], [1.08, 1.42, -2.52]);
+    }
+    if (module.module === 'radio') {
+      return moduleBox('radio', [-1.05, 0.24, -1.70], [-0.18, 0.82, -0.92], true);
+    }
+    if (module.module === 'optics') {
+      return moduleBox('optics', [0.42, 0.34, 0.72], [1.02, 1.05, 1.44], true);
+    }
+    return cloneVolume(module);
+  }),
+  crew: armor.crew.map(cloneVolume),
+};
+
+const ttsSpec = {
+  id: 'm551a1_tts',
+  name: 'M551A1 TTS',
+  nation: 'USA',
+  era: 'next-generation',
+  role: 'light',
+  variantOf: 'm551_sheridan',
+  hp: 2450,
+  enginePowerHp: 520,
+  weightTons: 24.8,
+  topSpeedKmh: 68,
+  reverseSpeedKmh: 28,
+  hullTraverseDegS: 52,
+  terrainResistance: { hard: 0.55, medium: 0.68, soft: 1.02 },
+  pivotStyle: 'neutral',
+  turretTraverseDegS: 50,
+  gunPitchDegS: 40,
+  gunElevationDeg: 22,
+  gunDepressionDeg: 10,
+  gun: {
+    caliberMm: 152,
+    reloadS: 7.4,
+    baseAccuracy: 0.24,
+    aimTimeS: 1.25,
+    bloom: { move: 0.045, hullRot: 0.055, turret: 0.04, afterShot: 1.55 },
+    primaryGuided: true,
+    shells: [
+      shell('MGM-51E TTS Shillelagh ATGM', 'HEAT', 152, 1050, 1050, 880, 240.5, {
+        guided: true,
+        guidanceTurnRateRadS: 0.98,
+        reloadS: 7.4,
+        count: 18,
+        soundProfile: 'shillelagh-launch',
+      }),
+    ],
+  },
+  dims: {
+    hullLengthM: 7.16,
+    overallLengthM: 7.16,
+    widthM: 3.02,
+    heightM: 3.45,
+  },
+  armor: ttsArmor,
+  visual: {
+    scheme: 'nato',
+    base: '#4b5740',
+    weather: '#687054',
+    patches: ['#252d22', '#6b5940'],
+    marking: 'star',
+    number: '551A1',
+    trackWidthM: 0.48,
+    camoScale: 0.88,
+  },
+};
+
+for (const vehicle of [spec, ttsSpec]) {
+  TANK_SPECS[vehicle.id] = vehicle;
+  MODEL_SOURCE[vehicle.id] ||= { source: 'procedural' };
+  if (!ALL_TANK_IDS.includes(vehicle.id)) ALL_TANK_IDS.push(vehicle.id);
+}

@@ -11309,9 +11309,12 @@ function buildLeo1A5ArticulatedProfile(P) {
     : slab(mirror(s, b), mirror(s, a), mirror(s, d), mirror(s, c),
       mirror(s, f), mirror(s, e), mirror(s, h), mirror(s, g));
   for (const s of [-1, 1]) {
+    // Bury the inner course and the high outer shoulder in the cast shell.
+    // The former high corners (x ~= 1.03) sat outside the narrowing turret
+    // ellipse and made these cheeks read as detached plates.
     P.add('turret', sideSlab(s,
-      [0.36, 0.10, 0.82], [1.20, 0.16, 0.35], [1.24, 0.44, 0.16], [0.38, 0.40, 0.64],
-      [0.34, 0.45, 1.38], [1.04, 0.48, 0.72], [1.02, 0.73, 0.49], [0.35, 0.72, 1.08]));
+      [0.28, 0.10, 0.80], [1.18, 0.16, 0.35], [1.20, 0.44, 0.17], [0.30, 0.40, 0.62],
+      [0.26, 0.42, 1.28], [0.98, 0.44, 0.68], [0.90, 0.62, 0.44], [0.27, 0.67, 1.04]));
     P.add('turret', sideSlab(s,
       [1.02, 0.16, 0.24], [1.31, 0.20, -0.72], [1.22, 0.56, -0.86], [0.96, 0.45, 0.12],
       [0.91, 0.46, 0.45], [1.16, 0.49, -0.63], [1.05, 0.73, -0.72], [0.85, 0.70, 0.27]));
@@ -11319,9 +11322,6 @@ function buildLeo1A5ArticulatedProfile(P) {
     liftEye(P, 'turretDetail', s * 0.72, 0.79, 0.20, s * 0.45);
     liftEye(P, 'turretDetail', s * 0.76, 0.78, -1.10, s * 2.65);
   }
-  P.add('turret', slab(
-    [-0.56, 0.12, 0.82], [0.56, 0.12, 0.82], [0.55, 0.12, 1.34], [-0.55, 0.12, 1.34],
-    [-0.46, 0.66, 0.78], [0.46, 0.66, 0.78], [0.43, 0.62, 1.30], [-0.43, 0.62, 1.30]));
   P.add('turret', box(0.94, 0.20, 0.32), 0, 0.69, 0.92, -0.12, 0, 0);
 
   // EMES-18: compact two-window armored sight rooted in the right roof.
@@ -11420,6 +11420,9 @@ function buildLeo1A5ArticulatedProfile(P) {
     bustleFloorY: 0.31,
     sideRackZ: -1.68,
     shieldedRoofMachineGun: true,
+    frontCheekPanelsSeated: true,
+    frontCheekMirrorSymmetric: true,
+    frontCheekRootInsetM: 0.08,
   };
 
   P.decal('turret', 'crossgrey', null, 0.28, [1.225, 0.48, -0.52], Math.PI / 2, 0, 0.18);
@@ -11453,6 +11456,12 @@ function buildLeo1A5ArticulatedProfile(P) {
     rearZ: -0.30,
     ridgeZ: 0.38,
   }));
+  // The central front wedge used to be turret-owned, leaving it behind when
+  // the gun elevated. Express the same authored envelope about the gun pivot
+  // (turret-local y=.47, z=1.15) and merge it into gunMount with the mantlet.
+  P.addGunExtra(slab(
+    [-0.56, -0.35, -0.33], [0.56, -0.35, -0.33], [0.55, -0.35, 0.19], [-0.55, -0.35, 0.19],
+    [-0.46, 0.19, -0.37], [0.46, 0.19, -0.37], [0.43, 0.15, 0.15], [-0.43, 0.15, 0.15]));
   // The former ellipsoid shoulder ears projected ahead of the angular mask
   // in exact side view and visually replaced its new ridge with a round
   // blob. The connected mask already tapers from its 1.28 m rear butterfly
@@ -11470,6 +11479,8 @@ function buildLeo1A5ArticulatedProfile(P) {
     flatRearContactFace: true,
     sideChevron: true,
     straightRidge: true,
+    integratedFrontWedge: true,
+    integratedFrontWedgeOwner: 'gun',
     ridgeWidth: 1.00,
     ridgeZ: 0.38,
     turretReceiver: true,

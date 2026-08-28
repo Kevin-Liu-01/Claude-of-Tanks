@@ -291,7 +291,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   bustleAuto: ['k2', 'k2b', 'type90', 'type90a', 'type10', 'type10b', 'leclerc', 'leclerc_xlr', 'amx56'],
   fixedAuto: ['udes03', 'strv103a', 'strv103'],
   mbt70: ['mbt70'],
-  sheridan: ['m551_sheridan'],
+  sheridan: ['m551_sheridan', 'm551a1_tts'],
   armata: ['t14'],
   kf51: ['kf51', 'kf51b'],
   abramsX: ['abramsx'],

@@ -65,6 +65,7 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   // star uses the forward turret casting while the authored 551 numerals
   // remain on their mirrored aft-cheek stations.
   m551_sheridan: anchor('turret', 'right', 0.62, 0.46, 0.24, 1),
+  m551a1_tts: anchor('turret', 'right', 0.28, 0.44, 0.22, 1),
   // T-62 keeps its own left-rear casting seat; the adjacent T-64 uses the
   // opposite cheek so the Soviet family does not repeat one decal template.
   t62mv1: anchor('turret', 'left', 0.48, 0.46, 0.23, 1),

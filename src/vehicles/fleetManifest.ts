@@ -64,7 +64,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   korea: Object.freeze(['k2b']),
   japan: Object.freeze(['stb1', 'type90a', 'type10b']),
   germany: Object.freeze(['leo2a4_otco']),
-  sheridan: Object.freeze(['m551_sheridan']),
+  sheridan: Object.freeze(['m551_sheridan', 'm551a1_tts']),
 } as const);
 
 export type FleetGroup = keyof typeof FLEET_GROUP_IDS;

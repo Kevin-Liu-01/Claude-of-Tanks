@@ -14,7 +14,7 @@ stack, authoring tools, test rigs, and public presentation.
 
 | Area | Current implementation |
 | --- | --- |
-| Playable fleet | 117 production-visible and 154 keyed local-development first-party procedural vehicles |
+| Playable fleet | 118 production-visible and 155 keyed local-development first-party procedural vehicles |
 | Runtime vehicle provenance | 0 playable vehicles sourced from GLB geometry |
 | Battlefields | 20 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
