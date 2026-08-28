@@ -10,7 +10,7 @@ import {
 } from './terrainLodPolicy.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { applySourcedTerrain } from './sourcedTextures.ts';
-import { buildHorizonRing } from './maps/horizon.js';
+import { buildHorizonRing } from './maps/horizon.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
@@ -2746,7 +2746,7 @@ function buildChunkGeometry(hf, cx0, cz0, segs, fine, indexPool) {
 // ---------------------------------------------------------------------------
 // Horizon mountain ring — per-map styled skylines with baked sun shading,
 // altitude-banded rock detail texture, snow caps and aerial perspective.
-// Lives in ./maps/horizon.js (imported above); do NOT reintroduce the old
+// Lives in ./maps/horizon.ts (imported above); do NOT reintroduce the old
 // inline low-poly ring here — the map configs (cfg.horizon.style/snowline/
 // banding/treeline) target the styled builder.
 // ---------------------------------------------------------------------------

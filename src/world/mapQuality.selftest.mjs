@@ -7,7 +7,7 @@ import {
   resolveHorizonTreelineLayers,
   sampleHorizonSilhouette,
   sampleTreelineCrownProfile,
-} from './maps/horizon.js';
+} from './maps/horizon.ts';
 import { UTILITY_POLE_PAIR_MAX_RELIEF, planUtilityPoleStation } from './propPlacement.ts';
 import './treeGrounding.selftest.mjs';
 

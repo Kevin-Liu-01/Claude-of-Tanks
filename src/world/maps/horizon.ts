@@ -1,4 +1,4 @@
-// src/world/maps/horizon.js — per-map horizon mountain ring.
+// src/world/maps/horizon.ts — per-map horizon mountain ring.
 //
 // Replaces the old shared low-poly backdrop (one silhouette recolored per
 // biome) with map-authored skylines: each map gets its own ridge GEOMETRY
@@ -29,7 +29,87 @@ import { SimplexNoise } from '../../engine/simplexFast.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../../engine/quality.ts';
 
-function mulberry32(a) {
+export type HorizonStyle = 'rolling' | 'alpine' | 'mesa' | 'escarpment';
+
+export interface HorizonConfig {
+  baseHex?: number;
+  amp?: number;
+  style?: HorizonStyle;
+  snowline?: number;
+  treeline?: number;
+  treelineLayers?: number;
+  banding?: number;
+  rockHex?: number;
+  snowHex?: number;
+  forestHex?: number;
+  haze?: number;
+  grain?: number;
+}
+
+export interface HorizonMapConfig {
+  id?: string;
+  horizon?: HorizonConfig;
+  sky?: {
+    fogTintHex?: number;
+    sunAzimuthDeg?: number;
+    sunElevationDeg?: number;
+  };
+}
+
+interface HorizonProfileRow {
+  base: number;
+  amp: number;
+  f0: number;
+  f1: number;
+}
+
+interface HorizonRingRow extends HorizonProfileRow {
+  r: number;
+  aer: number;
+  skirt?: boolean;
+  interpolated?: boolean;
+}
+
+interface HorizonSilhouetteOptions {
+  style?: HorizonStyle;
+  mapId?: string;
+  seed?: number;
+  row?: HorizonProfileRow;
+  amp?: number;
+  count?: number;
+}
+
+interface TreelineCrownOptions {
+  seed?: number;
+  variant?: number;
+  samples?: number;
+}
+
+interface HorizonTextureOptions {
+  banding: number;
+  snowline: number;
+  treeline: number;
+  grainAmp: number;
+  gullyAmp?: number;
+  coolRock?: boolean;
+}
+
+type HorizonProfile = (
+  angle: number,
+  noise: SimplexNoise,
+  row: HorizonProfileRow,
+) => number;
+
+function require2DContext(
+  canvas: HTMLCanvasElement,
+  options?: CanvasRenderingContext2DSettings,
+): CanvasRenderingContext2D {
+  const context = canvas.getContext('2d', options);
+  if (!context) throw new Error('Horizon texture canvas requires a 2D context');
+  return context;
+}
+
+function mulberry32(a: number): () => number {
   return function () {
     a |= 0; a = a + 0x6D2B79F5 | 0;
     let t = Math.imul(a ^ a >>> 15, 1 | a);
@@ -37,14 +117,14 @@ function mulberry32(a) {
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 }
-function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
-function smoothstep(a, b, x) {
+function clamp(x: number, a: number, b: number): number { return x < a ? a : x > b ? b : x; }
+function smoothstep(a: number, b: number, x: number): number {
   const t = clamp((x - a) / (b - a), 0, 1);
   return t * t * (3 - 2 * t);
 }
 // tiny string hash so every map id lands on its own silhouette seed even
 // when the config omits horizon.seed
-function idHash(s) {
+function idHash(s: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
   return h >>> 0;
@@ -53,9 +133,10 @@ function idHash(s) {
 export const HORIZON_TREELINE_ATLAS_VARIANTS = 4;
 export const HORIZON_TREELINE_MAX_LAYERS = 3;
 
-export function resolveHorizonTreelineLayers(horizon = null) {
-  const requested = Number.isFinite(horizon?.treelineLayers)
-    ? Math.round(horizon.treelineLayers) : 1;
+export function resolveHorizonTreelineLayers(horizon: HorizonConfig | null = null): number {
+  const configuredLayers = horizon?.treelineLayers;
+  const requested = typeof configuredLayers === 'number' && Number.isFinite(configuredLayers)
+    ? Math.round(configuredLayers) : 1;
   return clamp(requested, 1, HORIZON_TREELINE_MAX_LAYERS);
 }
 
@@ -67,7 +148,7 @@ export function resolveHorizonTreelineLayers(horizon = null) {
  */
 export function sampleTreelineCrownProfile({
   seed = 0x5EED, variant = 0, samples = 192,
-} = {}) {
+}: TreelineCrownOptions = {}): Float32Array {
   const count = Math.max(24, samples | 0);
   const rng = mulberry32((seed ^ Math.imul((variant | 0) + 1, 0x9E3779B1)) >>> 0);
   const phase0 = rng() * Math.PI * 2;
@@ -97,7 +178,7 @@ export function sampleTreelineCrownProfile({
   return heights;
 }
 
-const STYLE_BY_MAP = {
+const STYLE_BY_MAP: Record<string, HorizonStyle> = {
   verdant: 'rolling', desert: 'mesa', winter: 'alpine', urban: 'escarpment',
 };
 
@@ -107,7 +188,7 @@ const STYLE_BY_MAP = {
 // Each style owns its silhouette language; the same style on two maps still
 // differs because the noise instance is seeded from the map id.
 // ---------------------------------------------------------------------------
-const PROFILES = {
+const PROFILES: Record<HorizonStyle, HorizonProfile> = {
   // soft overlapping billows — wide wavelengths, no sharp peaks
   rolling(a, noi, row) {
     const n1 = noi.noise(Math.cos(a) * row.f0 + 11, Math.sin(a) * row.f0 - 7) * 0.5 + 0.5;
@@ -173,7 +254,13 @@ const PROFILES = {
   },
 };
 
-function softenAlpineRing(heights, offset, count, row, amp) {
+function softenAlpineRing(
+  heights: Float32Array,
+  offset: number,
+  count: number,
+  row: HorizonProfileRow,
+  amp: number,
+): void {
   const scratch = new Float32Array(count);
   for (let pass = 0; pass < 8; pass++) {
     for (let k = 0; k < count; k++) {
@@ -202,8 +289,8 @@ function softenAlpineRing(heights, offset, count, row, amp) {
 export function sampleHorizonSilhouette({
   style = 'alpine', mapId = 'winter', seed = 1337,
   row = { base: 50, amp: 76, f0: 2.6, f1: 5.2 }, amp = 1, count = 520,
-} = {}) {
-  const profile = PROFILES[style] || PROFILES.rolling;
+}: HorizonSilhouetteOptions = {}): Float32Array {
+  const profile = PROFILES[style];
   const noi = new SimplexNoise({ random: mulberry32(((seed ^ 0x7A11) ^ idHash(mapId)) >>> 0) });
   const heights = new Float32Array(count);
   for (let k = 0; k < count; k++) {
@@ -224,7 +311,10 @@ export function sampleHorizonSilhouette({
 // centred on 0.62 (recentred by the material color) — hue stays in the
 // vertex colors, so one texture serves rock, forest, sand and snow zones.
 // ---------------------------------------------------------------------------
-function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyAmp = 1, coolRock = false }) {
+function makeHorizonTexture(
+  noi: SimplexNoise,
+  { banding, snowline, treeline, grainAmp, gullyAmp = 1, coolRock = false }: HorizonTextureOptions,
+): THREE.CanvasTexture {
   // Loading-speed r1: this texture is repeated around a backdrop hundreds of
   // metres away. 1536x512 oversampled the projected ridge by ~4x and spent
   // ~0.6 s in deterministic simplex work per map; 512x192 retains more than
@@ -232,12 +322,12 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
   const su = texSize(512), sv = texSize(192);
   const c = document.createElement('canvas');
   c.width = su; c.height = sv;
-  const ctx = c.getContext('2d');
+  const ctx = require2DContext(c);
   const img = ctx.createImageData(su, sv);
   const d = img.data;
   const TAU = Math.PI * 2;
   // u-wrapping noise: angular loop on a circle, altitude along the 3rd axis
-  const wn = (u, v, fu, fv, off) => noi.noise3d(
+  const wn = (u: number, v: number, fu: number, fv: number, off: number): number => noi.noise3d(
     Math.cos(u * TAU) * fu * 0.5 + off,
     Math.sin(u * TAU) * fu * 0.5 - off * 0.7,
     v * fv + off * 1.31,
@@ -477,21 +567,21 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
 // it tiles with no seam. Isotropic features + low anisotropy keep it from
 // combing into down-slope fiber at grazing angles (the r3/r6 curtain bug).
 // ---------------------------------------------------------------------------
-function makeDetailNoiseTexture(rng) {
+function makeDetailNoiseTexture(rng: () => number): THREE.CanvasTexture {
   const S = 256;
   const c = document.createElement('canvas');
   c.width = S; c.height = S;
-  const ctx = c.getContext('2d');
+  const ctx = require2DContext(c);
   const img = ctx.createImageData(S, S);
   const d = img.data;
   // wrapped-lattice value noise, three octaves (cells wrap → texture tiles)
-  const octaves = [[8, 0.5], [24, 0.32], [64, 0.18]];
+  const octaves: Array<readonly [number, number]> = [[8, 0.5], [24, 0.32], [64, 0.18]];
   const lattices = octaves.map(([cells]) => {
     const g = new Float32Array(cells * cells);
     for (let i = 0; i < g.length; i++) g[i] = rng();
     return g;
   });
-  const smooth = (t) => t * t * (3 - 2 * t);
+  const smooth = (t: number): number => t * t * (3 - 2 * t);
   for (let y = 0; y < S; y++) {
     for (let x = 0; x < S; x++) {
       let v = 0;
@@ -525,7 +615,7 @@ function makeDetailNoiseTexture(rng) {
 // neutral green-grey and multiplied by the crest colors so haze/sun grading
 // stays continuous with the distant terrain proxy.
 // ---------------------------------------------------------------------------
-function makeTreeLineTexture(profileSeed) {
+function makeTreeLineTexture(profileSeed: number): THREE.CanvasTexture {
   // Four crown variants share one atlas and one material. Earlier revisions
   // repeated one strip every 56 m on every ridge and flank; scopes exposed the
   // same conifer triangles as giant fins. A connected, low-frequency canopy
@@ -533,7 +623,7 @@ function makeTreeLineTexture(profileSeed) {
   const w = texSize(768), h = texSize(128);
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
-  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const ctx = require2DContext(c, { willReadFrequently: true });
   ctx.clearRect(0, 0, w, h);
   const variants = HORIZON_TREELINE_ATLAS_VARIANTS;
   const bandH = Math.floor(h / variants);
@@ -594,11 +684,15 @@ function makeTreeLineTexture(profileSeed) {
  * @param {number} seed base seed (mixed with the map id hash)
  * @returns {THREE.Mesh} unlit vertex-colored ring mesh named 'horizon-ring'
  */
-export function buildHorizonRing(engineCtx, cfg, seed) {
+export function buildHorizonRing(
+  _engineCtx: unknown,
+  cfg: HorizonMapConfig | null | undefined,
+  seed: number,
+): THREE.Mesh {
   const H = (cfg && cfg.horizon) || {};
   const mapId = (cfg && cfg.id) || 'verdant';
   const style = H.style || STYLE_BY_MAP[mapId] || 'rolling';
-  const profile = PROFILES[style] || PROFILES.rolling;
+  const profile = PROFILES[style];
   const amp = H.amp ?? 1;
   const haze = H.haze ?? 1;
   const grainAmp = H.grain ?? 1;
@@ -649,7 +743,9 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   // through progressively taller, much hazier shells, so the ring reads as
   // 3-4 distinct forested ridgelines instead of one continuous slope. Cliff
   // styles (alpine/mesa) keep the imposing wall — it suits them.
-  const ROWS_BY_STYLE = {
+  const ROWS_BY_STYLE: Partial<Record<HorizonStyle, HorizonRingRow[]>> & {
+    default: HorizonRingRow[];
+  } = {
     default: [
       { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
       { r: 470, base: 26, amp: 14, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
@@ -784,10 +880,10 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   let rows = rows0, pos = pos0, hs = hs0;
   if (style === 'alpine') {
     const SUB = 2;
-    const rowsX = [];
-    const posX = [];
-    const hsX = [];
-    const pushRow = (rowObj, srcBase) => {
+    const rowsX: HorizonRingRow[] = [];
+    const posX: number[] = [];
+    const hsX: number[] = [];
+    const pushRow = (rowObj: HorizonRingRow, srcBase: number): void => {
       rowsX.push(rowObj);
       for (let k = 0; k < N; k++) {
         const i = srcBase + k;
@@ -1017,7 +1113,9 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   }
 
   // DEBUG: paint each row a flat color to identify geometry in screenshots
-  if (globalThis.__HORIZON_DEBUG) {
+  const horizonDebug = (globalThis as typeof globalThis & { __HORIZON_DEBUG?: boolean })
+    .__HORIZON_DEBUG;
+  if (horizonDebug) {
     const dbg = [[1, 0.4, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 1]];
     for (let ri = 0; ri < rows.length; ri++) {
       const dc = dbg[ri % dbg.length];
@@ -1278,7 +1376,7 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
     const cPos = [], cCol = [], cUv = [], cIdx = [];
     let vBase = 0;
     const atlasPad = 1.5 / Math.max(1, combTex.image.height);
-    const atlasRange = (variant) => {
+    const atlasRange = (variant: number): readonly [number, number] => {
       const v0 = variant / HORIZON_TREELINE_ATLAS_VARIANTS + atlasPad;
       const v1 = (variant + 1) / HORIZON_TREELINE_ATLAS_VARIANTS - atlasPad;
       return [v0, Math.max(v0, v1)];
