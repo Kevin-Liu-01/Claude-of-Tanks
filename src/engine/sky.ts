@@ -1,5 +1,5 @@
 /**
- * sky.js — procedural atmosphere: visible sky dome, PMREM environment bake
+ * sky.ts — procedural atmosphere: visible sky dome, PMREM environment bake
  * (the IBL ambient layer), and horizon-matched fog.
  *
  * Implements docs/research/graphics-aaa.md §2.3 and §5, ARCHITECTURE.md §3.1.3.
@@ -19,7 +19,63 @@ import { Sky } from 'three/examples/jsm/objects/Sky.js';
 // read inside the bake functions (post-renderer), never at module eval.
 import { texSize } from './quality.ts';
 import { enforceEnvValidity } from './deviceDiag.ts';
-import { bakeCirrusPixels, bakeCumulusPixels } from './skyCloudBake.ts';
+import {
+  bakeCirrusPixels,
+  bakeCumulusPixels,
+  type CumulusBakeConfig,
+} from './skyCloudBake.ts';
+
+type ColorTriple = readonly [number, number, number];
+type VectorPair = readonly [number, number];
+
+export interface SkyPreset {
+  sunElevationDeg: number;
+  sunAzimuthDeg: number;
+  turbidity: number;
+  rayleigh: number;
+  mieCoefficient: number;
+  mieDirectionalG: number;
+  fogDensity: number;
+  fogTintHex: number;
+  fogMix: number;
+  envIntensity: number;
+  cloudOpacity: number;
+  cloudOpacity2: number;
+  cloudTintHex: number;
+  cloudAltM: number | null;
+  cloudHazeK: number | null;
+  cloudUvM: number | null;
+  postExposure: number;
+  cloudShadowAmp: number | null;
+}
+
+interface CloudBakePixels {
+  size: number;
+  pixels: Uint8ClampedArray;
+}
+
+type CloudKind = 'cirrus' | 'cumulus';
+type CloudWorkerResults = Partial<Record<CloudKind, CloudBakePixels>>;
+
+interface CloudWorkerMessage extends CloudBakePixels {
+  kind: CloudKind;
+}
+
+type CloudDeck = THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>;
+
+export interface SkyRig {
+  sunDir: THREE.Vector3;
+  horizonColor: THREE.Color;
+  ensureCloudTextures(): void;
+  ensureCloudTexturesChunked(tick?: () => Promise<void>): Promise<void>;
+  bakeEnvironment(): void;
+  applyFog(targetScene: THREE.Scene): void;
+  applyPreset(preset: Partial<SkyPreset> | null | undefined, targetScene: THREE.Scene): void;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 const SUN_ELEVATION_DEG = 32; // slightly lower sun → longer, more readable shadows
 // 140° put the sun almost directly BEHIND the standard chase/establishing
@@ -105,12 +161,12 @@ const SKY_KNEE_FALLOFF = 0.11; // 1/e width of the shoulder in luminance units
 const HAZE_MAX_LUM = 0.50; // linear pre-ACES luminance ceiling in the band
 const HAZE_COMPRESS = 0.18; // slope retained above the ceiling
 const HAZE_BAND_TOP = 0.24; // direction.y where the haze treatment fades out
-const HAZE_TINT_COOL = [0.74, 0.88, 1.13]; // blue hue floor away from the sun
+const HAZE_TINT_COOL: ColorTriple = [0.74, 0.88, 1.13]; // blue hue floor away from the sun
 // r6 ("no sun disc or scattering glow anywhere"): the warm lobe was a barely
 // warm near-white — golden it up and widen it (pow 3.0 → 2.4) so the sunward
 // frame edge carries an unmistakable low-sun scattering glow in every shot
 // that looks within ~70 deg of the sun azimuth.
-const HAZE_TINT_WARM = [1.24, 1.02, 0.70]; // warm scatter toward the sun azimuth
+const HAZE_TINT_WARM: ColorTriple = [1.24, 1.02, 0.70]; // warm scatter toward the sun azimuth
 // 2.4 washed a quarter of the sky milky on the bright maps; 2.9 keeps the
 // golden glow readable ~50 deg around the sun azimuth without the white wash.
 const HAZE_WARM_POW = 2.9; // azimuthal width of the warm lobe
@@ -247,8 +303,8 @@ const CLOUD_MARCH_STEP_PX = 3;
 // down-sun of denser cloud at ~150 m scale — a whole-mass lit/shadow axis,
 // not just per-texel rim shading.
 const CLOUD_SHADE_K = 0.80; // optical-depth scale: bright rims, dark cores
-const CLOUD_LIT = [1.0, 0.98, 0.94]; // warm-white sunlit faces
-const CLOUD_SHADE = [0.40, 0.48, 0.67]; // cool grey-blue shaded bellies
+const CLOUD_LIT: ColorTriple = [1.0, 0.98, 0.94]; // warm-white sunlit faces
+const CLOUD_SHADE: ColorTriple = [0.40, 0.48, 0.67]; // cool grey-blue shaded bellies
 const CLOUD_SILVER = 0.38; // extra silver-lining gain on thin sun-facing rims
 // r2 ("smeared 2D noise blobs ... visible directional streaking like a
 // stretched low-res texture"): interior alpha detail 0.42 → 0.56 — the high-
@@ -299,9 +355,9 @@ const CIRRUS_HAZE_K = 0.00010;
 // the skyline, leaving the bleached band with zero texture; hazed cloud
 // bases now grade all the way into the horizon wash (they inherit the haze
 // color, so no hard silhouettes against the terrain edge).
-const CLOUD_Y_FADE = [0.007, 0.034];
+const CLOUD_Y_FADE: VectorPair = [0.007, 0.034];
 const CLOUD_MAX_ALPHA = 0.94;
-const CLOUD_BAKE_CONFIG = Object.freeze({
+const CLOUD_BAKE_CONFIG: Readonly<CumulusBakeConfig> = Object.freeze({
   seed: CLOUD_SEED,
   warp: CLOUD_WARP,
   macroAniso: CLOUD_MACRO_ANISO,
@@ -327,17 +383,9 @@ const CLOUD_BAKE_CONFIG = Object.freeze({
 // banding" contributor on verdant; map presets still override.
 const CLOUD_LAYER2_OPACITY = 0.42; // default for preset field cloudOpacity2 (cirrus)
 
-/**
- * @typedef {object} SkyRig
- * @property {THREE.Vector3} sunDir - unit vector FROM origin TOWARD the sun (fixed)
- * @property {() => void} bakeEnvironment - PMREM bake; sets `scene.environment`
- * @property {THREE.Color} horizonColor - linear-space sky color at the horizon
- * @property {(scene: THREE.Scene) => void} applyFog - installs horizon-matched linear fog
- */
-
 // Per-map sky preset defaults — map configs (src/world/maps/*) override any
 // subset via createSky(...).applyPreset(preset, scene).
-const DEFAULT_PRESET = Object.freeze({
+const DEFAULT_PRESET: Readonly<SkyPreset> = Object.freeze({
   sunElevationDeg: SUN_ELEVATION_DEG,
   sunAzimuthDeg: SUN_AZIMUTH_DEG,
   turbidity: TURBIDITY,
@@ -379,7 +427,11 @@ const DEFAULT_PRESET = Object.freeze({
 });
 
 /** Apply the shared atmosphere parameters to a Sky instance. @param {Sky} sky @param {THREE.Vector3} sunDir @param {object} [preset] */
-function configureSkyUniforms(sky, sunDir, preset = DEFAULT_PRESET) {
+function configureSkyUniforms(
+  sky: Sky,
+  sunDir: THREE.Vector3,
+  preset: Readonly<SkyPreset> = DEFAULT_PRESET,
+): void {
   const u = sky.material.uniforms;
   u.turbidity.value = preset.turbidity;
   u.rayleigh.value = preset.rayleigh;
@@ -398,7 +450,7 @@ function configureSkyUniforms(sky, sunDir, preset = DEFAULT_PRESET) {
   // shading, the exact "airbrush smear" the critic flagged. Kill it; the
   // shaped cumulus dome below owns clouds.
   if (u.cloudCoverage) u.cloudCoverage.value = 0;
-  sky.material.onBeforeCompile = (shader) => {
+  sky.material.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
     const patched = shader.fragmentShader.replace(
       SKY_FRAG_ANCHOR,
       `vec3 skyCol = texColor * ${SKY_RADIANCE_SCALE.toFixed(4)};
@@ -444,7 +496,7 @@ function configureSkyUniforms(sky, sunDir, preset = DEFAULT_PRESET) {
 	gl_FragColor = vec4( max( skyCol, vec3( 0.0 ) ), 1.0 );`,
     );
     if (patched === shader.fragmentShader) {
-      throw new Error('sky.js: radiance-scale injection anchor not found in Sky shader');
+      throw new Error('sky.ts: radiance-scale injection anchor not found in Sky shader');
     }
     shader.fragmentShader = patched;
   };
@@ -456,11 +508,16 @@ function configureSkyUniforms(sky, sunDir, preset = DEFAULT_PRESET) {
  * shaders. Pixel generation may happen on this thread as a compatibility
  * fallback or arrive from skyCloudWorker.
  */
-function cloudTextureFromPixels(pixels, width, height) {
+function cloudTextureFromPixels(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('sky.ts: 2D canvas context unavailable for cloud texture');
   const image = ctx.createImageData(width, height);
   image.data.set(pixels);
   ctx.putImageData(image, 0, 0);
@@ -476,7 +533,7 @@ function cloudTextureFromPixels(pixels, width, height) {
  * Bake or install the low cumulus deck. Worker results retain the exact
  * authored bytes; the synchronous path is the compatibility fallback.
  */
-function makeCloudTexture(prebaked = null) {
+function makeCloudTexture(prebaked: CloudBakePixels | null = null): THREE.CanvasTexture {
   const width = prebaked?.size || texSize(CLOUD_TEX);
   const pixels = prebaked?.pixels
     || bakeCumulusPixels(width, width, CLOUD_BAKE_CONFIG);
@@ -484,7 +541,7 @@ function makeCloudTexture(prebaked = null) {
 }
 
 /** Bake or install the high cirrus deck with the same byte-exact contract. */
-function makeCirrusTexture(prebaked = null) {
+function makeCirrusTexture(prebaked: CloudBakePixels | null = null): THREE.CanvasTexture {
   const width = prebaked?.size || texSize(CIRRUS_TEX);
   const pixels = prebaked?.pixels
     || bakeCirrusPixels(width, width, CLOUD_BAKE_CONFIG);
@@ -499,7 +556,11 @@ function makeCirrusTexture(prebaked = null) {
  * @param {THREE.Vector3} sunDir - unit toward-sun vector
  * @returns {THREE.Color} linear-space horizon color
  */
-function sampleHorizonColor(renderer, sunDir, preset = DEFAULT_PRESET) {
+function sampleHorizonColor(
+  renderer: THREE.WebGLRenderer,
+  sunDir: THREE.Vector3,
+  preset: Readonly<SkyPreset> = DEFAULT_PRESET,
+): THREE.Color {
   const rt = new THREE.WebGLRenderTarget(HORIZON_RT_SIZE, HORIZON_RT_SIZE, {
     depthBuffer: false,
     stencilBuffer: false,
@@ -567,7 +628,7 @@ const HORIZON_LUM_CAP = 0.45;
 
 /** Scale a linear color down so its Rec709 luminance is <= maxLum (hue kept).
  * @param {THREE.Color} c @param {number} maxLum @returns {THREE.Color} c */
-function capColorLuminance(c, maxLum) {
+function capColorLuminance(c: THREE.Color, maxLum: number): THREE.Color {
   const lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
   if (lum > maxLum) c.multiplyScalar(maxLum / lum);
   return c;
@@ -585,7 +646,7 @@ function capColorLuminance(c, maxLum) {
  * @param {THREE.WebGLRenderer} renderer - used for the PMREM bake + horizon sample
  * @returns {SkyRig}
  */
-export function createSky(scene, renderer) {
+export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): SkyRig {
   let preset = { ...DEFAULT_PRESET };
   const sunDir = new THREE.Vector3().setFromSphericalCoords(
     1,
@@ -662,11 +723,21 @@ export function createSky(scene, renderer) {
       gl_FragColor = vec4( col, a );
     }`;
   /** (cos,sin) rotation mapping the toward-sun XZ direction onto texture -v. */
-  const cloudSunRot = (dir) => {
+  const cloudSunRot = (dir: THREE.Vector3): VectorPair => {
     const l = Math.hypot(dir.x, dir.z) || 1;
     return [-dir.z / l, -dir.x / l];
   };
-  const mkCloudDeck = (tex, alt, uvMeters, opacity, radius, hazeK, off, name, shadeW = 0.3) => {
+  const mkCloudDeck = (
+    tex: THREE.Texture,
+    alt: number,
+    uvMeters: number,
+    opacity: number,
+    radius: number,
+    hazeK: number,
+    off: VectorPair,
+    name: string,
+    shadeW = 0.3,
+  ): CloudDeck => {
     const rot = cloudSunRot(sunDir);
     const mat = new THREE.ShaderMaterial({
       vertexShader: CLOUD_VERT,
@@ -702,7 +773,7 @@ export function createSky(scene, renderer) {
   // deterministic FBM bakes in a worker while the main thread finishes boot,
   // then install the transferred RGBA buffers before a world becomes visible.
   // Browsers without Worker keep the synchronous compatibility path below.
-  const lazyCloudTex = () => {
+  const lazyCloudTex = (): THREE.CanvasTexture => {
     const cv = document.createElement('canvas');
     cv.width = cv.height = 4;
     const tex = new THREE.CanvasTexture(cv);
@@ -712,48 +783,50 @@ export function createSky(scene, renderer) {
     tex.anisotropy = CLOUD_ANISOTROPY;
     return tex;
   };
-  let cloudWorkerResults = null;
+  let cloudWorkerResults: CloudWorkerResults | null = null;
   let cloudWorkerSettled = false;
-  const cloudWorkerPromise = typeof Worker === 'undefined' ? null : new Promise((resolve) => {
-    let worker;
-    try {
-      worker = new Worker(new URL('./skyCloudWorker.ts', import.meta.url), { type: 'module' });
-    } catch (error) {
-      cloudWorkerSettled = true;
-      console.warn('[sky] cloud worker unavailable; using synchronous fallback:', error.message);
-      resolve(null);
-      return;
-    }
-    const result = {};
-    let finished = false;
-    const finish = (value) => {
-      if (finished) return;
-      finished = true;
-      worker.terminate();
-      cloudWorkerResults = cirrusBaked && cumulusBaked ? null : value;
-      cloudWorkerSettled = true;
-      resolve(value);
-    };
-    worker.onmessage = ({ data }) => {
-      result[data.kind] = { size: data.size, pixels: data.pixels };
-      if (result.cirrus && result.cumulus) finish(result);
-    };
-    worker.onerror = (error) => {
-      console.warn('[sky] cloud worker failed; using synchronous fallback:', error.message);
-      finish(Object.keys(result).length ? result : null);
-    };
-    worker.postMessage({
-      cumulusSize: texSize(CLOUD_TEX),
-      cirrusSize: texSize(CIRRUS_TEX),
-      config: CLOUD_BAKE_CONFIG,
+  const cloudWorkerPromise: Promise<CloudWorkerResults | null> | null = typeof Worker === 'undefined'
+    ? null
+    : new Promise((resolve) => {
+      let worker: Worker;
+      try {
+        worker = new Worker(new URL('./skyCloudWorker.ts', import.meta.url), { type: 'module' });
+      } catch (error) {
+        cloudWorkerSettled = true;
+        console.warn('[sky] cloud worker unavailable; using synchronous fallback:', errorMessage(error));
+        resolve(null);
+        return;
+      }
+      const result: CloudWorkerResults = {};
+      let finished = false;
+      const finish = (value: CloudWorkerResults | null): void => {
+        if (finished) return;
+        finished = true;
+        worker.terminate();
+        cloudWorkerResults = cirrusBaked && cumulusBaked ? null : value;
+        cloudWorkerSettled = true;
+        resolve(value);
+      };
+      worker.onmessage = ({ data }: MessageEvent<CloudWorkerMessage>) => {
+        result[data.kind] = { size: data.size, pixels: data.pixels };
+        if (result.cirrus && result.cumulus) finish(result);
+      };
+      worker.onerror = (error) => {
+        console.warn('[sky] cloud worker failed; using synchronous fallback:', error.message);
+        finish(Object.keys(result).length ? result : null);
+      };
+      worker.postMessage({
+        cumulusSize: texSize(CLOUD_TEX),
+        cirrusSize: texSize(CIRRUS_TEX),
+        config: CLOUD_BAKE_CONFIG,
+      });
     });
-  });
 
   // Per-deck flags keep a mid-flight synchronous activation idempotent.
   let cirrusBaked = false;
   let cumulusBaked = false;
-  const swapCloudTexture = (deck, baked) => {
-    const tex = deck.material.uniforms.uMap.value;
+  const swapCloudTexture = (deck: CloudDeck, baked: THREE.CanvasTexture): void => {
+    const tex = deck.material.uniforms.uMap!.value as THREE.Texture;
     // dispose BEFORE the image swap (same fix as particles.js sprite
     // sheets): the placeholder has usually been uploaded by now, and
     // swapping `image` to a different-sized canvas with only needsUpdate
@@ -765,28 +838,28 @@ export function createSky(scene, renderer) {
     tex.needsUpdate = true;
     baked.dispose(); // wrapper never uploaded — frees only CPU-side state
   };
-  const ensureCloudTextures = () => {
+  const ensureCloudTextures = (): void => {
     if (!cirrusBaked) {
       cirrusBaked = true;
-      swapCloudTexture(cloudsFar, makeCirrusTexture(cloudWorkerResults?.cirrus));
+      swapCloudTexture(cloudsFar, makeCirrusTexture(cloudWorkerResults?.cirrus ?? null));
     }
     if (!cumulusBaked) {
       cumulusBaked = true;
-      swapCloudTexture(clouds, makeCloudTexture(cloudWorkerResults?.cumulus));
+      swapCloudTexture(clouds, makeCloudTexture(cloudWorkerResults?.cumulus ?? null));
     }
     if (cirrusBaked && cumulusBaked) cloudWorkerResults = null;
   };
   /** Await off-main FBM, then install at most one canvas texture per tick. */
-  const ensureCloudTexturesChunked = async (tick) => {
+  const ensureCloudTexturesChunked = async (tick?: () => Promise<void>): Promise<void> => {
     if (cloudWorkerPromise && !cloudWorkerSettled) await cloudWorkerPromise;
     if (!cirrusBaked) {
       cirrusBaked = true;
-      swapCloudTexture(cloudsFar, makeCirrusTexture(cloudWorkerResults?.cirrus));
+      swapCloudTexture(cloudsFar, makeCirrusTexture(cloudWorkerResults?.cirrus ?? null));
       if (tick) await tick();
     }
     if (!cumulusBaked) {
       cumulusBaked = true;
-      swapCloudTexture(clouds, makeCloudTexture(cloudWorkerResults?.cumulus));
+      swapCloudTexture(clouds, makeCloudTexture(cloudWorkerResults?.cumulus ?? null));
       if (tick) await tick();
     }
     if (cirrusBaked && cumulusBaked) cloudWorkerResults = null;
@@ -814,7 +887,7 @@ export function createSky(scene, renderer) {
   const horizonColor = sampleHorizonColor(renderer, sunDir, preset);
 
   /** Sync deck uniforms to the current preset + horizon sample. */
-  const updateCloudDecks = () => {
+  const updateCloudDecks = (): void => {
     const cloudTint = new THREE.Color(preset.cloudTintHex);
     const rot = cloudSunRot(sunDir);
     const haze = horizonColor.clone().lerp(new THREE.Color(preset.fogTintHex), preset.fogMix);
@@ -863,29 +936,32 @@ export function createSky(scene, renderer) {
   };
   updateCloudDecks();
 
-  let pmrem = null;
-  let envTarget = null;
+  let pmrem: THREE.PMREMGenerator | null = null;
+  let envTarget: THREE.WebGLRenderTarget | null = null;
 
   // Sourced-HDRI environment override (experiment flag; null = procedural
   // bake, the shipping configuration). Set to an equirect .hdr URL to test.
-  const HDRI_ENV_URL = null;
-  let hdriPromise = null;
-  const loadHdriEnvironment = (url) => {
+  const HDRI_ENV_URL: string | null = null;
+  let hdriPromise: Promise<THREE.DataTexture> | null = null;
+  const loadHdriEnvironment = (url: string): void => {
     if (!hdriPromise) {
       hdriPromise = import('three/examples/jsm/loaders/RGBELoader.js')
         .then(({ RGBELoader }) => new RGBELoader().loadAsync(url));
     }
     hdriPromise.then((tex) => {
-      const nextTarget = pmrem.fromEquirectangular(tex);
+      const generator = pmrem ?? (pmrem = new THREE.PMREMGenerator(renderer));
+      const nextTarget = generator.fromEquirectangular(tex);
       if (envTarget !== null) envTarget.dispose();
       envTarget = nextTarget;
       scene.environment = envTarget.texture;
       scene.environmentIntensity = Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR);
       enforceEnvValidity(renderer, scene); // MOBILE r4: see bakeEnvironment
-    }).catch((e) => console.warn('[sky] HDRI env failed, procedural bake kept —', e.message));
+    }).catch((error: unknown) => console.warn(
+      '[sky] HDRI env failed, procedural bake kept —', errorMessage(error),
+    ));
   };
 
-  const rig = {
+  const rig: SkyRig = {
     sunDir,
 
     /**
@@ -904,7 +980,7 @@ export function createSky(scene, renderer) {
      * (re-bake); the previous target is disposed.
      * @returns {void}
      */
-    bakeEnvironment() {
+    bakeEnvironment(): void {
       if (pmrem === null) pmrem = new THREE.PMREMGenerator(renderer);
 
       // Deep-hunt IBL experiment (2026-07): sourced Poly Haven HDRI as
@@ -951,7 +1027,7 @@ export function createSky(scene, renderer) {
      * @param {THREE.Scene} targetScene - scene to receive the fog
      * @returns {void}
      */
-    applyFog(targetScene) {
+    applyFog(targetScene: THREE.Scene): void {
       const fogColor = horizonColor.clone()
         .lerp(new THREE.Color(preset.fogTintHex), preset.fogMix);
       // r4 LP2 hue guard: atmospheric extinction color must NEVER be
@@ -978,7 +1054,7 @@ export function createSky(scene, renderer) {
      * @param {THREE.Scene} targetScene scene whose fog is replaced
      * @returns {void}
      */
-    applyPreset(p, targetScene) {
+    applyPreset(p: Partial<SkyPreset> | null | undefined, targetScene: THREE.Scene): void {
       ensureCloudTextures(); // deferred boot bake — decks must be real now
       preset = { ...DEFAULT_PRESET, ...(p || {}) };
       sunDir.setFromSphericalCoords(

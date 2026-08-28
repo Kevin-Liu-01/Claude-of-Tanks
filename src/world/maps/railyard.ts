@@ -169,7 +169,7 @@ export default {
   },
 
   sky: {
-    // FLAT OVERCAST (trips the sky.js overcast deck auto-detect: opacity 1.0
+    // FLAT OVERCAST (trips the sky.ts overcast deck auto-detect: opacity 1.0
     // + layer2 0.95 + turbidity 9): weak high sun, dirty stratus, lifted fill
     sunElevationDeg: 42, sunAzimuthDeg: 115,
     turbidity: 9, rayleigh: 2.4, mieCoefficient: 0.0025, mieDirectionalG: 0.72,

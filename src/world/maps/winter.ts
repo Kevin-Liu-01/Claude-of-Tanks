@@ -296,7 +296,7 @@ export default {
     // sky-reflection term needs the headroom (roughness floor now 0.13)
     fogDensity: 0.00058, fogTintHex: 0xaebdce, fogMix: 0.82, envIntensity: 0.30,
     // lighting_post r3 (round 3): per-map overcast deck tuning (overrides the
-    // sky.js overcast auto-detect values) — a lower/darker broken stratus
+    // sky.ts overcast auto-detect values) — a lower/darker broken stratus
     // deck (tint 0xaab2bc -> 0x9aa3ae) reads against the bright snow bounce
     // in the 2-12° establishing band.
     cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0x9aa3ae,

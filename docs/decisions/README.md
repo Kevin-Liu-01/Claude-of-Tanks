@@ -194,3 +194,4 @@ runtime documents remain authoritative for behavior.
 - [0182 — Shared bot control is strict TypeScript](0182-typed-shared-bot-controller.md)
 - [0183 — Device diagnostics and renderer rescue are strict TypeScript](0183-typed-device-diagnostics.md)
 - [0184 — Cascaded lighting and shadow scheduling are strict TypeScript](0184-typed-cascaded-lighting.md)
+- [0185 — Procedural atmosphere ownership is strict TypeScript](0185-typed-procedural-atmosphere.md)

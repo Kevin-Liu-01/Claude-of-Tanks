@@ -54,7 +54,7 @@ type ExtendedCsm = CSM & {
 
 const CASCADES = 4;
 // Battlefield establishing shots read objects out to ~500 m; with the clearer
-// exp2 fog (sky.js) shadows must hold that far or buildings/trees float.
+// exp2 fog (sky.ts) shadows must hold that far or buildings/trees float.
 // PERF: shadow range and per-cascade map sizes now come from the graphics
 // quality preset (src/engine/quality.ts — ultra [4096,4096,4096,2048], high
 // [4096,2048,2048,1024]; medium/low trade range+resolution for fill rate,
@@ -269,12 +269,12 @@ const SHADOW_RADII_REF_SIZES = [4096, 4096, 4096, 2048];
 // after ACES. Pixel-measured on the battlefield shot: at 3.2/0.26/0.45 the
 // lit:shadow luma ratio on open grass was only ~1.3:1 (shadows read as faint
 // smudges); at 4.2/0.14/0.22 it lands ~2.3:1 — the WoT footage ballpark.
-// Ambient fill lives in hemi (below) + sky.js ENV_INTENSITY.
+// Ambient fill lives in hemi (below) + sky.ts ENV_INTENSITY.
 const SUN_INTENSITY = 4.5;
 const SUN_COLOR = 0xfff1dc; // warm noon-afternoon key
 const HEMI_SKY_COLOR = 0xaac8f5; // cool sky fill against the warm key
 const HEMI_GROUND_COLOR = 0x94815f; // r5: +6% ground-bounce (foliage shadow floor)
-// r3 rebalance: fill shifted FROM the omnidirectional IBL (sky.js
+// r3 rebalance: fill shifted FROM the omnidirectional IBL (sky.ts
 // ENV_INTENSITY 0.28 → 0.20 — omni fill is what flattened building/hull form
 // at midrange) TO the hemisphere (0.20 → 0.32), whose sky-above/ground-below
 // split keeps form shading directional: shadowed faces go cooler AND darker
@@ -874,7 +874,7 @@ export function releaseCsmShaderMaterial(
 
 /**
  * Build the full light rig: CSM sun cascades + hemisphere sky/ground bounce.
- * (IBL ambient comes from sky.js's PMREM environment bake — third layer.)
+ * (IBL ambient comes from sky.ts's PMREM environment bake — third layer.)
  *
  * Must be called before any lit material is compiled: CSM globally patches
  * `ShaderChunk.lights_fragment_begin/lights_pars_begin` at construction and

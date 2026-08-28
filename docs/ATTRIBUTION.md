@@ -301,7 +301,7 @@ Judged with before/after harness renders (`battlefield`, `player_view`,
   elsewhere (the coursing painter reads better on the low village walls).
 - **HDRI environment — REJECTED, procedural PMREM bake stays.** Kloofendal
   43D Clear tested live as `scene.environment` (flag machinery kept in
-  `src/engine/sky.js`): its baked-in sun cannot track the per-map sun
+  `src/engine/sky.ts`): its baked-in sun cannot track the per-map sun
   azimuth/elevation that drives the CSM shadows — wrong-azimuth specular
   sheen on verdant, warm tint fighting the winter overcast preset. All three
   .hdr files deleted; the download records above stand for provenance.

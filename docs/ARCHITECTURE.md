@@ -16,7 +16,7 @@ Module ownership (file paths are FIXED):
 
 | Builder | Files |
 |---|---|
-| engine   | `src/engine/renderer.ts`, `src/engine/lighting.ts`, `src/engine/post.js`, `src/engine/sky.js`, `src/engine/cameraRig.js` |
+| engine   | `src/engine/renderer.ts`, `src/engine/lighting.ts`, `src/engine/post.js`, `src/engine/sky.ts`, `src/engine/cameraRig.js` |
 | world    | `src/world/terrain.ts`, `src/world/vegetation.ts`, `src/world/props.ts`, `src/world/map.ts` |
 | vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.js`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
 | movement | `src/sim/movement.ts` |
@@ -438,7 +438,7 @@ support hulls derived from the authored hull, turret, and gun meshes. Terrain,
 buildings, poles, near vegetation, and dedicated wreck proxies remain regular
 casters; distant decorative foliage stays intentionally non-casting.
 
-#### 3.1.3 `sky.js`
+#### 3.1.3 `sky.ts`
 ```js
 export function createSky(scene, renderer) => SkyRig
 SkyRig = {

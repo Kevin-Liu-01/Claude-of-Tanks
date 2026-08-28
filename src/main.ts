@@ -32,6 +32,7 @@ import type {
 } from './world/worldActivationRuntime.ts';
 import type { BattleHudRuntime, DamagePanelRuntime } from './ui/battleHudAccess.ts';
 import type { HeightField } from './world/terrain.ts';
+import type { SkyPreset } from './engine/sky.ts';
 import type { NetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
 import type { PlayerBattleActions } from './game/playerBattleActions.ts';
 import type { LazyAudio } from './audio/lazyAudio.ts';
@@ -49,7 +50,7 @@ import {
   reportSustainedOverload, setPresetName, setMobilePresetName,
   noteGpuRenderer, getDeviceTier,
 } from './engine/quality.ts';
-import { createSky } from './engine/sky.js';
+import { createSky } from './engine/sky.ts';
 import { createLighting } from './engine/lighting.ts';
 import { createPost } from './engine/post.js';
 import { createCameraRig } from './engine/cameraRig.js';
@@ -177,15 +178,6 @@ function legacyPort<T>(value: unknown): T {
   return value as T;
 }
 
-interface MainSkyRuntime {
-  sunDir: THREE.Vector3;
-  bakeEnvironment(): void;
-  ensureCloudTextures(): void;
-  ensureCloudTexturesChunked?(yieldFrame: () => Promise<void>): Promise<void>;
-  applyPreset(config: unknown, scene: THREE.Scene): void;
-  applyFog(scene: THREE.Scene): void;
-}
-
 interface MainLightingRuntime {
   setupShadowMaterial(material: THREE.Material, extraHook?: unknown): void;
   releaseShadowMaterial(material: THREE.Material): unknown;
@@ -278,9 +270,9 @@ type MainGameState = Omit<
   killcam?: unknown;
 };
 
-interface MainWorld extends ActiveWorld {
+interface MainWorld extends ActiveWorld<Partial<SkyPreset>> {
   heightField: HeightField;
-  config: ActiveWorld['config'] & { minimap?: unknown };
+  config: ActiveWorld<Partial<SkyPreset>>['config'] & { minimap?: unknown };
   getMinimapFeatures(): unknown;
   update(dt: number, cameraPosition: THREE.Vector3, forward?: THREE.Vector3, extra?: unknown): void;
 }
@@ -480,11 +472,11 @@ const camera = new THREE.PerspectiveCamera(
 );
 bootLifecycle.completeManualStage('renderer', BOOT_T0);
 
-const sky = legacyPort<MainSkyRuntime>(await bootStage('sky', () => {
+const sky = await bootStage('sky', () => {
   const s = createSky(scene, renderer);
   s.bakeEnvironment();
   return s;
-}));
+});
 // Loading-budget r1: the garage cannot see the outdoor cloud decks, but a
 // battle or direct Studio entry can need them immediately. Start their two
 // deterministic canvas bakes now and let the remaining boot stages overlap
@@ -545,7 +537,7 @@ const garageFramePacer = createGarageFramePacer();
 let garagePresentationDirty = true;
 let invalidateGaragePresentation = () => { garagePresentationDirty = true; };
 if (typeof window !== 'undefined') window.__GARAGE_IDLE_WORK = garageIdleWorkCoordinator.stats;
-worldRuntime = createWorldActivationRuntime<MainWorld, unknown>({
+worldRuntime = createWorldActivationRuntime<MainWorld, unknown, Partial<SkyPreset>>({
   initialMapId: 'verdant',
   coordinatorDependencies: {
     engineContext: engineCtx,

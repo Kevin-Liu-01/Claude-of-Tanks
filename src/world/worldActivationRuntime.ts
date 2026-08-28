@@ -13,10 +13,10 @@ import {
 type MaybePromise<T> = T | PromiseLike<T>;
 type ProgressListener = (fraction: number, label: string) => void;
 
-export interface ActiveWorld {
+export interface ActiveWorld<SkyConfig = unknown> {
   mapId: string;
   group: THREE.Object3D;
-  config: { sky?: unknown };
+  config: { sky?: SkyConfig };
   raycast(origin: unknown, direction: unknown, maxDistance: unknown): unknown;
 }
 
@@ -42,8 +42,9 @@ export interface WorldActivationOptions {
 type CoordinatorDependencies = Omit<WorldBuildCoordinatorDependencies, 'getCurrentWorld'>;
 
 export interface WorldActivationRuntimeOptions<
-  World extends ActiveWorld,
+  World extends ActiveWorld<SkyConfig>,
   Collider,
+  SkyConfig = unknown,
 > {
   initialMapId: string;
   coordinator?: WorldBuildCoordinator;
@@ -53,8 +54,8 @@ export interface WorldActivationRuntimeOptions<
   ensureCloudTextures(): void;
   ensureCloudTexturesChunked?(yieldFrame: () => Promise<void>): Promise<void>;
   awaitInitialCloudWarm(): Promise<void>;
-  applySkyPreset(skyConfig: unknown): void;
-  setSun(skyConfig: unknown): void;
+  applySkyPreset(skyConfig: SkyConfig): void;
+  setSun(skyConfig: SkyConfig): void;
   getFogDensity(): number;
   onFogDensityChanged(density: number): void;
   canCreateCollider(): boolean;
@@ -117,9 +118,10 @@ export interface WorldActivationRuntime<
  * partial map state or reproduce activation order.
  */
 export function createWorldActivationRuntime<
-  World extends ActiveWorld,
+  World extends ActiveWorld<SkyConfig>,
   Collider,
->(options: WorldActivationRuntimeOptions<World, Collider>): WorldActivationRuntime<World, Collider> {
+  SkyConfig = unknown,
+>(options: WorldActivationRuntimeOptions<World, Collider, SkyConfig>): WorldActivationRuntime<World, Collider> {
   if (!options.initialMapId) throw new TypeError('world activation requires an initial map id');
   const now = options.now ?? (() => performance.now());
   let current: World | null = null;
@@ -179,7 +181,7 @@ export function createWorldActivationRuntime<
     dormant = false;
     options.ensureCloudTextures();
     pendingMapId = world.mapId;
-    const skyConfig = world.config.sky ?? {};
+    const skyConfig = world.config.sky ?? {} as SkyConfig;
     if (skyMapId !== world.mapId) {
       skyMapId = world.mapId;
       options.applySkyPreset(skyConfig);

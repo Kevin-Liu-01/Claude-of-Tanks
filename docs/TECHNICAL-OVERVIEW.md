@@ -154,6 +154,10 @@ fits, depth-target readiness, live quality resizing, covered priming, static
 Garage dormancy, and conservative instanced-caster compaction are explicit
 renderer contracts. Far-map transforms and their depth textures advance as one
 scheduled unit, preventing stale-map flashes without reducing near-field motion.
+The atmosphere owner is strict too: map presets, cloud-worker transfers,
+horizon sampling, fog, shader injection, Canvas textures, and PMREM replacement
+share one typed lifecycle. World activation carries that preset type directly
+to the renderer instead of erasing it through the composition root.
 Pure keyboard, flag, glyph, minimap, drive-readout, spectator, map-preview, and
 Garage-order policy is also typed and remains directly Node-testable.
 The browser input layer now exports strict action, binding, settings, gamepad,

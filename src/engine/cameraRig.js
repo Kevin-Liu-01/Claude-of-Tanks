@@ -393,7 +393,7 @@ export function createCameraRig(camera, deps) {
     }
   }
 
-  // Sun azimuth of the fixed lighting rig (sky.js: elevation 35°, azimuth
+  // Sun azimuth of the fixed lighting rig (sky.ts: elevation 35°, azimuth
   // 140° — world sun dir ≈ (0.527, 0.574, -0.627)). The flyby keeps the
   // camera on the sun side of the hero tank: the r6 flyby opened on an unlit
   // black silhouette in its own terrain shadow.

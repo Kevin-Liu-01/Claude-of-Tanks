@@ -72,7 +72,7 @@ import { LATE_FX_LAYER } from '../fx/layers.js';
 // hot cores — the halo hugs the fire instead of swallowing the frame.
 const BLOOM_STRENGTH = 0.30;
 const BLOOM_RADIUS = 0.34;
-// With the rebalanced ambient (sky.js ENV_INTENSITY 0.45, hemi 0.26) diffuse
+// With the rebalanced ambient (sky.ts ENV_INTENSITY 0.45, hemi 0.26) diffuse
 // surfaces top out well under 1.0 in the linear HDR buffer, so the threshold
 // keeps bloom off walls/terrain AND off the near-sun horizon band, while the
 // sun disc, muzzle flash core, tracers and fire glow naturally. r4: 1.35 →
@@ -221,10 +221,10 @@ const AERIAL_SUN_POW = 5.0; // width of the warm forward-scatter lobe
 // frame height"): 0.50 still landed the far-field convergence color at ~215
 // display once the haze band + fog + scatter stacked. 0.44 puts the wash at
 // ~200-205 with its hue clearly legible — atmosphere, not blowout. Paired
-// with sky.js HAZE_MAX_LUM 0.56 -> 0.50 and HORIZON_LUM_CAP 0.55 -> 0.48 so
+// with sky.ts HAZE_MAX_LUM 0.56 -> 0.50 and HORIZON_LUM_CAP 0.55 -> 0.48 so
 // all three haze sources agree on the same sub-white ceiling.
 // r3 ("mesa backdrop ~90% swallowed by a pink haze band"): 0.44 → 0.41,
-// paired with sky.js HORIZON_LUM_CAP 0.48 → 0.45 — the scatter-in target
+// paired with sky.ts HORIZON_LUM_CAP 0.48 → 0.45 — the scatter-in target
 // drops another step below white so far mesas/ridges keep silhouette value
 // against the band instead of dissolving into it.
 // lighting_post r6 (minor: "the horizon band left of center blows to
@@ -286,7 +286,7 @@ const AERIAL_DETAIL_ARCADE_FAR = 950; // m
 // the aerial pass where the per-pixel WORLD position is already
 // reconstructed, so the patches are anchored to the terrain (no screen-space
 // swim) and deterministic for captures. Amplitude ships per map via
-// scene.userData.cloudShadeAmp (sky.js: fair-weather 0.22, overcast 0.10 —
+// scene.userData.cloudShadeAmp (sky.ts: fair-weather 0.22, overcast 0.10 —
 // a diffuse-lit deck cannot cast crisp cloud shadows, but soft fog
 // patchiness still breaks the wash).
 const CLOUD_SHADE_DEFAULT = 0.22;
@@ -340,7 +340,7 @@ const AERIAL_HUE_GREY = [0.92, 0.99, 1.12]; // blue-grey pole (per-channel luma 
 // channels scale together, so the fire keeps its orange chroma instead of
 // ACES' per-channel bleach-to-white) re-spreads the 2-20 range across
 // 1.55-4.4, restoring interior gradient before ACES ever sees it. The sky
-// dome self-caps at ~1.45 (sky.js SKY_KNEE) and diffuse surfaces top out
+// dome self-caps at ~1.45 (sky.ts SKY_KNEE) and diffuse surfaces top out
 // ~1.6, so the start only catches true emissives; asymptote 4.55 still
 // tonemaps to ~0.92 so hot cores stay hot, and still crosses the 1.78 bloom
 // threshold so fire/flash keep their halo.
@@ -1050,7 +1050,7 @@ const GradeShader = {
     uHighTint: { value: new THREE.Vector3(...GRADE_HIGH_TINT) },
     uGreenWarm: { value: new THREE.Vector3(...GRADE_GREEN_WARM) },
     // r3 per-map display exposure trim: driven per frame from
-    // scene.userData.postExposure (written by sky.js applyPreset from the
+    // scene.userData.postExposure (written by sky.ts applyPreset from the
     // map preset's `postExposure`, default 1.0). Multiplies BEFORE the
     // grade's contrast/knee so a -0.2 EV desert trim re-seats sand midtones
     // into the readable band instead of just dimming the final image.
@@ -2328,10 +2328,10 @@ export function createPost(renderer, scene, camera) {
         aerial.uniforms.uDetailW.value = THREE.MathUtils.clamp(
           (AERIAL_DETAIL_FOV - camera.fov) / (AERIAL_DETAIL_FOV - 8), 0, 1);
       }
-      // per-map display exposure trim (sky.js applyPreset publishes the
+      // per-map display exposure trim (sky.ts applyPreset publishes the
       // active preset's postExposure on scene.userData; default 1.0)
       grade.uniforms.uExposure.value = scene.userData.postExposure || 1;
-      // per-map cloud-shadow depth (sky.js publishes cloudShadeAmp: 0.22
+      // per-map cloud-shadow depth (sky.ts publishes cloudShadeAmp: 0.22
       // fair-weather, 0.10 overcast; see CLOUD_SHADE_DEFAULT block)
       aerial.uniforms.uCloudShade.value =
         scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT;

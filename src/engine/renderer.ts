@@ -124,7 +124,7 @@ export function createRenderer(container: HTMLElement): GameRenderer {
   renderer.setSize(width, height);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  // 1.05 compensates the deeper key:fill rebalance (lighting.ts/sky.js r2) so
+  // 1.05 compensates the deeper key:fill rebalance (lighting.ts/sky.ts r2) so
   // midtones sit where they did while shadow cores drop. r6: 1.05 → 1.08 —
   // the stronger grade S-curve (post.js GRADE_CONTRAST 1.34) pulled midtone
   // foliage below the WoT reference band; a slight exposure lift restores
