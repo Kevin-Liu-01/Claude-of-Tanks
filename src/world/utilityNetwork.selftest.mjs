@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createUtilityNetwork } from './utilityNetwork.js';
+import { createUtilityNetwork } from './utilityNetwork.ts';
 
 const poles = [
   { x: 0, y: 0, z: 0, yaw: 0, attachH: 6.5 },

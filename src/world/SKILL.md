@@ -25,6 +25,8 @@ allocation-free chase-camera occlusion focus passed to an active world,
 props, toppling, and wrecks own their visual/runtime layers.
 `destructibles.ts` is the typed, allocation-free active-world seam between
 shell traffic, break FX, prop destruction events, and cached map handlers.
+`utilityNetwork.ts` owns renderer-free pole adjacency, hinge poses, stable
+conductor instance slots, and caller-buffer catenary sampling.
 `structureConnectivity.ts` rejects unsupported authored parts before batching;
 `structureInstanceAppearance.ts` supplies stable intact/wreck instance tint
 without creating per-building materials.

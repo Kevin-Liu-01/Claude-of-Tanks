@@ -138,3 +138,4 @@ runtime documents remain authoritative for behavior.
 - [0126 — Shared FX time has one strict typed contract](0126-typed-fx-clock.md)
 - [0127 — Continuous FX attachments have typed ownership](0127-typed-fx-attachments.md)
 - [0128 — Destructible worlds share one typed event seam](0128-typed-destructible-seam.md)
+- [0129 — Utility conductors use typed deterministic topology](0129-typed-utility-network.md)
