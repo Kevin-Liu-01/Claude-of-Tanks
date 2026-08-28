@@ -284,6 +284,13 @@ body[data-cot-width='phone'] .cot-bl .briefing{
   width:calc(100vw - (var(--bl-edge) * 2));height:calc(100dvh - max(14px,env(safe-area-inset-top)) - max(14px,env(safe-area-inset-bottom)));
   min-height:0;padding:clamp(14px,2.4vh,24px) clamp(10px,2.4vw,22px) max(12px,env(safe-area-inset-bottom));
 }
+/* On the smallest stages the briefing already fills the viewport, so its
+   desktop card chrome reads as one large gray box around both rosters. */
+body[data-cot-width='compact'] .cot-bl .briefing,
+body[data-cot-width='phone'] .cot-bl .briefing,
+body[data-cot-height='short'] .cot-bl .briefing{
+  background:transparent;border-color:transparent;box-shadow:none;
+}
 body[data-cot-width='compact'] .cot-bl .teams,
 body[data-cot-width='phone'] .cot-bl .teams,
 body[data-cot-width='tablet'] .cot-bl .teams{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}

@@ -131,6 +131,9 @@ assert.match(responsiveSurfaces,
   /data-cot-width='phone'\] \.cot-bl \.briefing\{[\s\S]*height:calc\(100dvh/,
   'phone loading briefings must consume safe dynamic viewport height instead of a fixed hero split');
 assert.match(responsiveSurfaces,
+  /data-cot-width='compact'\] \.cot-bl \.briefing,[\s\S]*data-cot-width='phone'\] \.cot-bl \.briefing,[\s\S]*data-cot-height='short'\] \.cot-bl \.briefing\{[\s\S]*background:transparent;border-color:transparent;box-shadow:none/,
+  'compact, phone, and short battle loading must drop the viewport-sized briefing card shell');
+assert.match(responsiveSurfaces,
   /body\[data-cot-height='short'\] \.cot-bl \.team\{justify-content:center/,
   'short battle rosters need a height-aware vertical composition');
 assert.match(responsiveSurfaces, /\.cot-bl \.count:empty\{display:none/,
