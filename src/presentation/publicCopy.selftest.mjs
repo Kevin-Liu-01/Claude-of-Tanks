@@ -7,7 +7,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const pageFiles = ['home.html', 'gallery.html', 'docs.html'];
 const supportingFiles = [
   'README.md',
-  'src/gallery/catalog.js',
+  'src/gallery/catalog.ts',
   'src/presentation/mediaArchive.ts',
 ];
 const retiredPhrases = [

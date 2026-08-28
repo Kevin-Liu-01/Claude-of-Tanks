@@ -12,7 +12,7 @@ specimen without duplicating the canonical fleet registry or combat metadata.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`catalog.js` derives read-only search, ratings, technical copy, and the versioned
+`catalog.ts` derives read-only search, ratings, technical copy, and the versioned
 copy-data record from vehicle specs. `overlays.js` turns canonical armor plates,
 module boxes, and crew boxes into disposable diagnostic geometry.
 `surfaceMarkup.js` owns live triangle/patch selection, articulation ownership,
@@ -38,7 +38,7 @@ contract. `gallery.html` and `gallery.css` own the public surface;
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
-- Dossier/search work: change `catalog.js`, then run
+- Dossier/search work: change `catalog.ts`, then run
   `node src/gallery/catalog.selftest.mjs`.
 - Overlay work: inspect the source volume shape in `src/vehicles/specs.js`,
   verify hull- versus turret-local ownership, then select the live volume in a

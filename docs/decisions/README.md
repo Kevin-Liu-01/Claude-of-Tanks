@@ -159,3 +159,4 @@ runtime documents remain authoritative for behavior.
 - [0147 — Public media lifecycles are typed and viewport-scoped](0147-typed-public-media-lifecycles.md)
 - [0148 — Public presentation runtime is strict TypeScript](0148-typed-public-presentation-runtime.md)
 - [0149 — Technical manual runtime is strict TypeScript](0149-typed-docs-runtime.md)
+- [0150 — Gallery dossiers derive from one typed vehicle contract](0150-typed-gallery-catalog.md)

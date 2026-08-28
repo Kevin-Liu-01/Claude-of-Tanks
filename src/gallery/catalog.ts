@@ -2,27 +2,91 @@ import { tankDisplayName, tankLabelRecord } from '../vehicles/tankLabels.js';
 import { tankTier, tierNumeral } from '../vehicles/tier.ts';
 import { vehicleEraLabel } from '../vehicles/taxonomy.ts';
 
-function clamp(value, min = 0, max = 100) {
+interface GalleryShellSpec {
+  name?: string;
+  type?: string;
+  pen1000Mm?: number;
+  pen100Mm?: number;
+  dmg?: number;
+  velocityMps?: number;
+}
+
+interface GalleryArmorPlate {
+  kind?: string;
+  era?: unknown;
+  physicalMm?: number;
+  keMm?: number;
+  ceMm?: number;
+}
+
+interface GalleryAutoloaderSpec {
+  magazineSize?: number;
+  intraClipS?: number;
+  fullReloadS?: number;
+}
+
+interface GalleryVehicleSpec {
+  id: string;
+  name?: string;
+  authorship?: unknown;
+  nation?: string;
+  era?: string;
+  hp?: number;
+  enginePowerHp?: number;
+  weightTons?: number;
+  topSpeedKmh?: number;
+  reverseSpeedKmh?: number;
+  hullTraverseDegS?: number;
+  turretTraverseDegS?: number;
+  roster?: { developmentOnly?: boolean; tag?: string; reason?: string };
+  dims?: {
+    hullLengthM?: number;
+    overallLengthM?: number;
+    widthM?: number;
+    heightM?: number;
+  };
+  gun?: {
+    shells?: GalleryShellSpec[];
+    reloadS?: number;
+    aimTimeS?: number;
+    caliberMm?: number;
+    autoloader?: GalleryAutoloaderSpec;
+  };
+  armor?: {
+    hullPlates?: GalleryArmorPlate[];
+    turretPlates?: GalleryArmorPlate[];
+    modules?: unknown[];
+    crew?: unknown[];
+  };
+}
+
+interface GalleryFilters {
+  query?: string;
+  nation?: string;
+  era?: string;
+}
+
+function clamp(value: number, min = 0, max = 100): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function rounded(value, digits = 1) {
+function rounded(value: number, digits = 1): number {
   return Number.isFinite(value) ? Number(value.toFixed(digits)) : 0;
 }
 
-function normalized(value, low, high) {
+function normalized(value: number, low: number, high: number): number {
   if (!Number.isFinite(value) || high <= low) return 0;
   return clamp(((value - low) / (high - low)) * 100);
 }
 
-function titleCase(value) {
+function titleCase(value: unknown): string {
   return String(value || '')
     .replace(/[_-]+/g, ' ')
     .replace(/\b\w/g, (letter) => letter.toUpperCase())
     .trim();
 }
 
-function plateValues(spec, key) {
+function plateValues(spec: GalleryVehicleSpec, key: 'keMm' | 'ceMm'): number[] {
   const armor = spec.armor || {};
   return [...(armor.hullPlates || []), ...(armor.turretPlates || [])]
     .filter((plate) => plate.kind !== 'external')
@@ -30,52 +94,52 @@ function plateValues(spec, key) {
     .filter((value) => Number.isFinite(value) && value > 0);
 }
 
-function bestShell(spec) {
+function bestShell(spec: GalleryVehicleSpec): { shell: GalleryShellSpec; penetration: number } | null {
   const shells = spec.gun?.shells || [];
-  return shells.reduce((best, shell) => {
+  return shells.reduce<{ shell: GalleryShellSpec; penetration: number } | null>((best, shell) => {
     const penetration = Number(shell.pen1000Mm ?? shell.pen100Mm ?? 0);
     return !best || penetration > best.penetration ? { shell, penetration } : best;
   }, null);
 }
 
-function primaryShell(spec) {
+function primaryShell(spec: GalleryVehicleSpec): GalleryShellSpec | null {
   return spec.gun?.shells?.[0] || null;
 }
 
-function protectionFeatures(spec) {
+function protectionFeatures(spec: GalleryVehicleSpec): string[] {
   const plates = [...(spec.armor?.hullPlates || []), ...(spec.armor?.turretPlates || [])];
-  const features = [];
+  const features: string[] = [];
   if (plates.some((plate) => plate.kind === 'era' || plate.era)) features.push('explosive reactive armor');
   if (plates.some((plate) => plate.kind === 'spaced')) features.push('spaced armor');
   if (plates.some((plate) => plate.kind === 'composite')) features.push('composite arrays');
   return features;
 }
 
-function joinTechnicalList(items) {
+function joinTechnicalList(items: readonly string[]): string {
   if (items.length < 2) return items[0] || '';
   if (items.length === 2) return `${items[0]} and ${items[1]}`;
   return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
 }
 
-function mobilityAssessment(powerToWeight, topSpeed) {
+function mobilityAssessment(powerToWeight: number, topSpeed: number): string {
   if (powerToWeight >= 25 && topSpeed >= 60) return 'a high power-to-weight ratio and high maximum road speed';
   if (powerToWeight >= 18 || topSpeed >= 55) return 'mobility appropriate to its weight class';
   if (powerToWeight >= 13) return 'moderate mobility that favors deliberate positioning';
   return 'low maximum speed and high inertia that require careful route planning';
 }
 
-function protectionAssessment(bestKe) {
+function protectionAssessment(bestKe: number): string {
   if (bestKe >= 700) return 'very high maximum kinetic protection';
   if (bestKe >= 400) return 'high maximum kinetic protection';
   if (bestKe >= 180) return 'moderate local kinetic protection';
   return 'limited kinetic protection, which increases the importance of positioning';
 }
 
-export function technicalLabel(value) {
+export function technicalLabel(value: unknown): string {
   return titleCase(value || 'unspecified');
 }
 
-export function createGalleryRecord(spec) {
+export function createGalleryRecord(spec: GalleryVehicleSpec) {
   const label = tankLabelRecord(spec);
   const shell = primaryShell(spec);
   const best = bestShell(spec);
@@ -106,7 +170,8 @@ export function createGalleryRecord(spec) {
   const bestKeMm = Math.max(0, ...keValues);
   const bestCeMm = Math.max(0, ...ceValues);
   const features = protectionFeatures(spec);
-  const shellTypes = [...new Set((spec.gun?.shells || []).map((item) => item.type).filter(Boolean))];
+  const shellTypes = [...new Set((spec.gun?.shells || []).map((item) => item.type)
+    .filter((value): value is string => Boolean(value)))];
   const modules = spec.armor?.modules || [];
   const crew = spec.armor?.crew || [];
   const tier = tankTier(spec.id);
@@ -217,12 +282,17 @@ export function createGalleryRecord(spec) {
   });
 }
 
-export function buildGalleryRecords(specs) {
+export type GalleryRecord = ReturnType<typeof createGalleryRecord>;
+
+export function buildGalleryRecords(specs: readonly GalleryVehicleSpec[]): GalleryRecord[] {
   return specs.map(createGalleryRecord).sort((a, b) =>
     b.tier - a.tier || a.nation.localeCompare(b.nation) || a.displayName.localeCompare(b.displayName));
 }
 
-export function filterGalleryRecords(records, filters = {}) {
+export function filterGalleryRecords(
+  records: readonly GalleryRecord[],
+  filters: GalleryFilters = {},
+): GalleryRecord[] {
   const query = String(filters.query || '').trim().toLocaleLowerCase('en-US');
   return records.filter((record) => {
     if (filters.nation && filters.nation !== 'all' && record.nation !== filters.nation) return false;
@@ -232,7 +302,7 @@ export function filterGalleryRecords(records, filters = {}) {
   });
 }
 
-export function serializeGallerySpec(spec) {
+export function serializeGallerySpec(spec: GalleryVehicleSpec) {
   const record = createGalleryRecord(spec);
   return {
     schema: 'claude-of-tanks/gallery-spec@2',

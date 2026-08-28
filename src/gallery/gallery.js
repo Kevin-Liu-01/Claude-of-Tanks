@@ -7,7 +7,7 @@ import {
   filterGalleryRecords,
   serializeGallerySpec,
   technicalLabel,
-} from './catalog.js';
+} from './catalog.ts';
 import { compareVehicleEras, VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
 import { createInspectionOverlay, inspectionLegend } from './overlays.js';
 import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.js';

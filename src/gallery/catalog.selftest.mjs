@@ -8,7 +8,7 @@ import {
   createGalleryRecord,
   filterGalleryRecords,
   serializeGallerySpec,
-} from './catalog.js';
+} from './catalog.ts';
 import { FIRST_PARTY_LICENSE } from '../authorship.js';
 
 const records = buildGalleryRecords(VISIBLE_TANK_IDS.map(getSpec));
