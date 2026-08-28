@@ -22,12 +22,15 @@ pure policy module.
 - Module durability factors are constrained to the supported module keys.
 - Garage, solo authority, and dedicated authority consume the same checked
   loadout and mutation contract.
+- The ranked Node authority and browser tooling import the TypeScript owner
+  directly; a repository-wide local-import gate rejects stale migration paths.
 - Existing local-storage keys and malformed-save recovery remain unchanged.
 
 ## Verification
 
 - `npm run typecheck`
 - `node src/game/equipment.selftest.mjs`
+- `node tools/local-import-integrity.selftest.mjs`
 - `node src/net/matchRuntime.deadPeer.selftest.mjs`
 - `node src/ui/icons.selftest.mjs`
 - `npm run build`

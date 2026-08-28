@@ -23,8 +23,8 @@
 <h1>Equipment icon sheet &middot; 20 / 34 / 48 px</h1>
 <div class="grid" id="grid"></div>
 <script type="module">
-  import { equipIconSVG } from '/src/ui/equipIcons.js';
-  import { EQUIPMENT_CATALOG } from '/src/game/equipment.js';
+  import { equipIconSVG } from '/src/ui/equipIcons.ts';
+  import { EQUIPMENT_CATALOG } from '/src/game/equipment.ts';
   const grid = document.getElementById('grid');
   for (const it of EQUIPMENT_CATALOG) {
     const cell = document.createElement('div');

@@ -17,7 +17,8 @@ external model files.
 <!-- agent-docs:fill:model -->
 Performance probes drive the browser and record JSON; fleet/geometry tools audit
 authored tanks; screenshot/visual tools stage canonical views; strip/release
-tools enforce public asset boundaries.
+tools enforce public asset boundaries. `local-import-integrity.selftest.mjs`
+rejects stale static source/server/tool import paths after file migrations.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
