@@ -123,3 +123,4 @@ runtime documents remain authoritative for behavior.
 - [0111 — Renderer and context recovery have strict contracts](0111-typed-renderer-context-lifecycle.md)
 - [0112 — The graphics quality ladder is strict TypeScript](0112-typed-quality-ladder.md)
 - [0113 — Terrain simplex noise is typed and reference identical](0113-typed-reference-identical-simplex.md)
+- [0114 — Large static interface styles ship as CSS](0114-static-runtime-interface-styles.md)

@@ -5,7 +5,9 @@ import {
   horizontalRailState, horizontalRailWheelDelta,
 } from './garageOrder.ts';
 
-const garageSource = await readFile(new URL('./garage.js', import.meta.url), 'utf8');
+const garageSource = `${await readFile(new URL('./garage.js', import.meta.url), 'utf8')}\n${
+  await readFile(new URL('./garage.css', import.meta.url), 'utf8')
+}`;
 
 assert.match(garageSource,
   /\.cot-card \.ti\{[^}]*transform:translateY\(-3px\) scale\(1\.14\);[^}]*\}/,

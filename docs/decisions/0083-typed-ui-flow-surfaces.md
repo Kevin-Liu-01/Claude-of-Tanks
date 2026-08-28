@@ -17,7 +17,7 @@ and sequencing failures the migration is intended to prevent.
 Move the five existing owners to strict TypeScript in place:
 
 - `src/ui/responsiveLayout.ts`
-- `src/ui/responsiveSurfaces.ts`
+- `src/ui/responsiveSurfaces.css`
 - `src/ui/bootScreen.ts`
 - `src/ui/battleLoad.ts`
 - `src/ui/transition.ts`
@@ -29,8 +29,9 @@ work remains generic, roster rows are readonly data, and viewport state uses a
 closed semantic union rather than stringly typed device guesses.
 
 The markup, CSS, animation timings, loading weights, image policy, and runtime
-call order are unchanged. No `any`, `@ts-ignore`, or `@ts-nocheck` escape hatch
-is introduced.
+call order are unchanged. The responsive rules later moved unchanged to a
+Vite-managed stylesheet under ADR 0114. No `any`, `@ts-ignore`, or
+`@ts-nocheck` escape hatch is introduced.
 
 ## Consequences
 

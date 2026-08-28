@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import {
   VIEWPORT_HEIGHT_BANDS,
   VIEWPORT_WIDTH_BANDS,
@@ -6,7 +7,10 @@ import {
   viewportHeightBand,
   viewportWidthBand,
 } from './responsiveLayout.ts';
-import { RESPONSIVE_SURFACES_CSS } from './responsiveSurfaces.ts';
+const RESPONSIVE_SURFACES_CSS = await readFile(
+  new URL('./responsiveSurfaces.css', import.meta.url),
+  'utf8',
+);
 
 assert.deepEqual(VIEWPORT_WIDTH_BANDS.phone, { min: 0, max: 519 });
 assert.deepEqual(VIEWPORT_WIDTH_BANDS.desktop, { min: 1440, max: Infinity });

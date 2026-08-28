@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('./killcam.js', import.meta.url), 'utf8');
-const responsive = readFileSync(new URL('../ui/responsiveSurfaces.ts', import.meta.url), 'utf8');
+const responsive = readFileSync(new URL('../ui/responsiveSurfaces.css', import.meta.url), 'utf8');
 
 assert.match(source, /import \{ uiIconSVG \} from '\.\.\/ui\/uiIcons\.ts';/,
   'killcam presentation uses the shared SVG icon registry');

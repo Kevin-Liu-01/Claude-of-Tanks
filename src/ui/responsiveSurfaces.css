@@ -1,11 +1,3 @@
-import { ensureStyle } from './dom.ts';
-
-/*
- * Shared responsive composition for runtime UI surfaces. Component files own
- * their visual language; this sheet owns only placement, flow, density and
- * touch geometry. Every selector consumes responsiveLayout.ts semantics.
- */
-const RESPONSIVE_SURFACES_CSS = `
 :root{
   --cot-edge:clamp(10px,1.7vw,28px);
   --cot-control-floor:36px;
@@ -843,10 +835,3 @@ body[data-cot-input='coarse'] .cot-es .cot-es-btn{min-height:48px}
     scroll-behavior:auto!important;
   }
 }
-`;
-
-export function installResponsiveSurfaceStyles() {
-  return ensureStyle('cot-responsive-surfaces', RESPONSIVE_SURFACES_CSS);
-}
-
-export { RESPONSIVE_SURFACES_CSS };

@@ -70,6 +70,8 @@ import {
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.js';
 import { createBattleHudAccess } from './ui/battleHudAccess.ts';
+import './ui/responsiveSurfaces.css';
+import './ui/garage.css';
 import { createGarage } from './ui/garage.js';
 import { installBattleRecords } from './game/profile.ts';
 import {
@@ -121,7 +123,6 @@ import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createTouchControlsAccess } from './ui/touchControlsAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
-import { installResponsiveSurfaceStyles } from './ui/responsiveSurfaces.ts';
 import {
   spawnTanks, ensureStagedVisuals, nextStagedBake, planBattleParticipantIds,
   planBattleCamoOverrides,
@@ -211,7 +212,6 @@ const boot = createBootScreen({ mode: STUDIO_BOOT_INTENT ? 'studio' : 'garage' }
 // before HUD/garage construction so their first visible frame already has the
 // correct width, height, orientation and interaction-mode attributes.
 installResponsiveLayout();
-installResponsiveSurfaceStyles();
 let bootComplete = false;
 const bootLifecycle = createBootLifecycle({ screen: boot, yieldFrame: nextFrame });
 const BOOT_TIMINGS = bootLifecycle.timings;

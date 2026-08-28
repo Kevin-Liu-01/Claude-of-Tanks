@@ -123,6 +123,7 @@ for (const [, contents] of gameRepositoryLinks) {
 }
 
 const garageSource = readFileSync(join(ROOT, 'src/ui/garage.js'), 'utf8');
+const garageCss = readFileSync(join(ROOT, 'src/ui/garage.css'), 'utf8');
 const brandUtilities = garageSource.indexOf('class="cot-brand-utilities cot-header-nav"');
 const homeControl = garageSource.indexOf('data-nav="home"');
 const recordControl = garageSource.indexOf('class="nv cot-record-trigger"');
@@ -143,7 +144,7 @@ for (const destination of ['home', 'garage', 'studio', 'gallery', 'docs', 'recor
   assert.ok(garageSource.includes(`data-mobile-nav="${destination}"`),
     `garage mobile menu must expose ${destination}`);
 }
-assert.match(garageSource,
+assert.match(garageCss,
   /body\[data-cot-panels='overlay'\] \.cot-brand-utilities,\s*body\[data-cot-panels='overlay'\] \.cot-nav \.cot-nav-desktop\{display:none\}/,
   'overlay panel layouts must collapse left utilities and desktop workspace links');
 assert.match(garageSource, new RegExp(`class="github-stars" data-github-stars>${FALLBACK_GITHUB_STAR_COUNT}<\\/span>`),

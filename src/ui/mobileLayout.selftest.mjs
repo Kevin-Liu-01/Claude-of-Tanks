@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 await import('./responsiveLayout.selftest.mjs');
 
 const [
-  garage, touch, battleLoad, hud, shotInfo, playMenu, settings, publicNav, responsiveSurfaces, input,
+  garageSource, touch, battleLoad, hud, shotInfo, playMenu, settings, publicNav, responsiveSurfaces, input,
   networkStatus, transition, perfHud, deviceDiag, renderer, main, gallery, docs,
 ] = await Promise.all([
   readFile(new URL('./garage.js', import.meta.url), 'utf8'),
@@ -15,7 +15,7 @@ const [
   readFile(new URL('./playMenu.js', import.meta.url), 'utf8'),
   readFile(new URL('./settings.js', import.meta.url), 'utf8'),
   readFile(new URL('../presentation/publicNav.css', import.meta.url), 'utf8'),
-  readFile(new URL('./responsiveSurfaces.ts', import.meta.url), 'utf8'),
+  readFile(new URL('./responsiveSurfaces.css', import.meta.url), 'utf8'),
   readFile(new URL('../game/input.js', import.meta.url), 'utf8'),
   readFile(new URL('./networkStatus.ts', import.meta.url), 'utf8'),
   readFile(new URL('./transition.ts', import.meta.url), 'utf8'),
@@ -26,6 +26,7 @@ const [
   readFile(new URL('../gallery/gallery.css', import.meta.url), 'utf8'),
   readFile(new URL('../docs/docs.css', import.meta.url), 'utf8'),
 ]);
+const garage = `${garageSource}\n${await readFile(new URL('./garage.css', import.meta.url), 'utf8')}`;
 
 assert.doesNotMatch(garage, /@media \((?:min|max)-width:\d+px\)/,
   'Garage composition must not retain independent device-width breakpoint logic');
@@ -289,6 +290,7 @@ const semanticSurfaceFiles = [
   './contextInfo.js',
   './endScreen.js',
   './garage.js',
+  './garage.css',
   './hud.js',
   './playMenu.js',
   './roomChat.js',
@@ -299,6 +301,7 @@ const semanticSurfaceFiles = [
   './studioPanel.js',
   './touchControls.js',
   './transition.ts',
+  './responsiveSurfaces.css',
   '../engine/deviceDiag.js',
   '../engine/renderer.ts',
   '../main.js',

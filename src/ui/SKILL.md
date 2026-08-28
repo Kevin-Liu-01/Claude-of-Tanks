@@ -40,5 +40,7 @@ smallest screen module, then run its selftest and browser verification.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
-Several modules inject substantial CSS/DOM from JavaScript. Avoid boot-critical
-imports and do not leave XP/currency labels after progression removal.
+Garage and shared responsive styles are static Vite-managed CSS imported in
+responsive-before-Garage cascade order by `src/main.js`. Do not move them back
+into JavaScript or reverse that order. Avoid boot-critical imports and do not
+leave XP/currency labels after progression removal.

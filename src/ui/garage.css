@@ -1,0 +1,1008 @@
+.cot-garage{--cot-garage-sidebar-width:280px;position:fixed;inset:0;z-index:60;display:none;font-family:'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  color:#e6edf3;-webkit-user-select:none;user-select:none;overflow:hidden;pointer-events:none;}
+.cot-garage *{box-sizing:border-box;margin:0;padding:0;}
+.cot-garage .band-top{position:absolute;left:0;right:0;top:0;height:26%;
+  background:linear-gradient(180deg,rgba(5,8,11,.94) 0%,rgba(5,8,11,.78) 55%,rgba(5,8,11,0) 100%);}
+.cot-garage .band-bot{position:absolute;left:0;right:0;bottom:0;height:36%;
+  background:linear-gradient(0deg,rgba(5,8,11,.96) 0%,rgba(5,8,11,.82) 55%,rgba(5,8,11,0) 100%);}
+.cot-garage .band-l{position:absolute;left:0;top:0;bottom:0;width:14%;
+  background:linear-gradient(90deg,rgba(5,8,11,.8),rgba(5,8,11,0));}
+.cot-garage .band-r{position:absolute;right:0;top:0;bottom:0;width:30%;
+  background:linear-gradient(270deg,rgba(5,8,11,.85) 0%,rgba(5,8,11,.35) 60%,rgba(5,8,11,0) 100%);}
+.cot-brand-rail{position:absolute;top:20px;left:34px;height:36px;display:flex;align-items:center;
+  gap:14px;pointer-events:auto;}
+.cot-garage .title{position:static;font-size:17px;font-weight:800;
+  letter-spacing:.20em;color:#9fb0bf;text-transform:uppercase;
+  display:flex;align-items:center;gap:10px;}
+.cot-garage .title > span{word-spacing:-.36em;}
+.cot-garage .title b{color:#f0a030;}
+/* garage_ui: compact brand badge (v3 colored crest, tank + Claude Code
+   commander, same art as the boot splash; public/brand/logo-mark.svg)
+   instead of bare text */
+.cot-garage .title .mark{display:block;width:36px;height:36px;flex:0 0 auto;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.55));}
+/* Vehicle identity remains solely on the stats card; the brand rail is
+   reserved for product identity and quiet player-level destinations. */
+/* Header hierarchy: personal destinations sit with the brand at left, while
+   workspace navigation stays at right and BATTLE owns the center. This keeps
+   the primary action legible without compressing every destination together. */
+.cot-brand-utilities{height:32px;display:flex;align-items:stretch;gap:3px;padding-left:14px;
+  border-left:1px solid rgba(146,164,180,.24);}
+.cot-nav{position:absolute;top:20px;right:26px;display:flex;align-items:stretch;gap:4px;
+  height:34px;pointer-events:auto;z-index:8;}
+.cot-header-nav .nv{font-family:'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:8.5px;font-weight:800;
+  letter-spacing:.18em;text-transform:uppercase;color:#8a97a3;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;
+  padding:0 6px;background:rgba(11,15,20,.72);
+  border:1px solid rgba(146,164,180,.28);border-bottom-width:2px;
+  text-decoration:none;transition:color .15s,border-color .15s,background .15s,transform .15s ease-out;}
+.cot-header-nav .nv:active{transform:scale(.97);}
+@media (hover:hover) and (pointer:fine){
+  .cot-header-nav .nv:hover{color:#ffd27a;border-color:rgba(240,176,74,.6);}
+}
+.cot-header-nav .nv.on{color:#f0b04a;border-color:rgba(240,176,74,.55);
+  background:rgba(24,19,11,.82);cursor:default;}
+.cot-brand-utilities .nv{background:rgba(8,12,16,.58);border-color:rgba(146,164,180,.22);}
+/* Product destinations use the same authored marks as the public navigation. */
+.cot-header-nav .nv .nvi{width:13px;height:13px;display:block;object-fit:contain;}
+.cot-header-nav .nv .nvi-product{width:18px;height:16px;}
+.cot-header-nav .nv .nav-label{display:inline;}
+.cot-header-nav .cot-record-trigger{position:relative;}
+.cot-header-nav .cot-record-trigger[aria-expanded='true']{color:#ffd27a;border-color:#f0a030;
+  background:rgba(35,24,10,.94);}
+.cot-header-nav .record-badge{min-width:17px;height:16px;padding:0 4px;display:inline-grid;place-items:center;
+  color:#1a1105;background:#f0a030;border:1px solid #ffc46b;font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  line-height:1;letter-spacing:0;box-shadow:0 0 12px rgba(240,160,48,.2);}
+.cot-nav .cot-github{position:relative;padding-inline:8px;}
+.cot-nav .github-stars{padding-left:6px;border-left:1px solid rgba(146,164,180,.28);
+  color:#f0b04a;font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.04em;font-variant-numeric:tabular-nums;}
+.cot-nav .cot-settings-slot{width:34px;height:34px;flex:0 0 auto;}
+.cot-nav .cot-gear{position:static;width:34px;height:34px;min-height:34px;z-index:auto;
+  right:auto;top:auto;}
+.cot-header-nav .nv:focus-visible,.cot-mobile-nav-menu button:focus-visible{
+  outline:2px solid #ffd27a;outline-offset:2px;}
+.cot-nav .cot-mobile-nav-trigger,.cot-mobile-nav-menu{display:none;}
+.cot-mobile-nav-menu[hidden]{display:none !important;}
+.cot-mobile-nav-menu{position:absolute;top:calc(100% + 8px);right:0;width:238px;padding:7px;
+  max-height:calc(100vh - 118px);overflow-y:auto;overscroll-behavior:contain;
+  background:linear-gradient(155deg,rgba(17,23,29,.99),rgba(6,10,14,.99));
+  border:1px solid rgba(166,184,199,.38);
+  box-shadow:0 22px 60px rgba(0,0,0,.72),0 0 0 1px rgba(0,0,0,.55) inset;}
+.cot-mobile-nav-menu::before{content:'Navigate';padding:6px 8px 7px;color:#f0b04a;
+  font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.22em;text-transform:uppercase;}
+.cot-mobile-nav-menu button{width:100%;min-height:44px;padding:7px 9px;display:grid;
+  grid-template-columns:24px 1fr;align-items:center;gap:9px;text-align:left;cursor:pointer;
+  color:#aebac4;background:rgba(255,255,255,.015);border:1px solid rgba(146,164,180,.16);
+  font-family:'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
+.cot-mobile-nav-menu button + button{margin-top:3px;}
+.cot-mobile-nav-menu button[aria-current='page']{color:#ffd27a;border-color:rgba(240,176,74,.38);
+  background:rgba(38,27,12,.72);}
+.cot-mobile-nav-menu button img,.cot-mobile-nav-menu button svg{width:20px;height:20px;
+  object-fit:contain;justify-self:center;}
+.cot-mobile-nav-copy{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.cot-mobile-nav-copy strong{font-size:8px;letter-spacing:.15em;text-transform:uppercase;}
+.cot-mobile-nav-copy small{color:#71808c;font:700 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.08em;
+  text-transform:uppercase;}
+@media (hover:hover) and (pointer:fine){
+  .cot-mobile-nav-menu button:hover{color:#fff0cf;border-color:rgba(240,176,74,.5);
+    background:rgba(240,160,48,.08);}
+}
+/* LOCAL SERVICE RECORD: the old top-left micro-card now lives behind a real
+   top-bar control. The modal reports only durable local match history. */
+.cot-record-modal{position:absolute;inset:0;z-index:90;display:none;place-items:center;
+  padding:24px;pointer-events:auto;background:rgba(3,6,9,.76);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
+.cot-record-modal.open{display:grid;}
+.cot-record-dialog{position:relative;width:min(720px,calc(100vw - 48px));max-height:calc(100vh - 48px);
+  overflow-y:auto;overscroll-behavior:contain;color:#dce6ee;
+  background:linear-gradient(155deg,rgba(18,24,30,.99),rgba(7,11,15,.99) 70%);
+  border:1px solid rgba(166,184,199,.38);
+  box-shadow:0 28px 90px rgba(0,0,0,.78),0 0 0 1px rgba(0,0,0,.6) inset;
+  scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
+.cot-record-dialog::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle at 12% 0,rgba(240,160,48,.12),transparent 38%),
+    linear-gradient(115deg,transparent 0 63%,rgba(255,255,255,.022) 63% 64%,transparent 64%);}
+.cot-record-dialog::-webkit-scrollbar{width:5px;}
+.cot-record-dialog::-webkit-scrollbar-track{background:rgba(8,11,14,.6);}
+.cot-record-dialog::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
+.cot-record-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;
+  padding:22px 24px 18px;border-bottom:1px solid rgba(146,164,180,.18);}
+.cot-record-head .eyebrow,.cot-stat-title{font:900 8px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.24em;text-transform:uppercase;color:#f0b04a;}
+.cot-record-head h2{margin-top:5px;font-size:24px;letter-spacing:.025em;color:#f3f7fa;}
+.cot-record-head p{margin-top:5px;font:700 9px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.12em;
+  text-transform:uppercase;color:#8293a1;}
+.cot-record-close{width:34px;height:34px;display:grid;place-items:center;cursor:pointer;
+  color:#9fb0bf;background:rgba(8,12,16,.72);border:1px solid rgba(146,164,180,.28);
+  font:400 22px/1 'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;transition:color .12s,border-color .12s,background .12s;}
+.cot-record-close:hover{color:#ffd27a;border-color:rgba(240,176,74,.65);background:rgba(35,24,10,.8);}
+.cot-record-body{position:relative;padding:22px 24px 24px;}
+.cot-record-overview{display:grid;grid-template-columns:180px 1fr;gap:22px;align-items:center;}
+.cot-record-ring{--record-pct:0;position:relative;width:164px;aspect-ratio:1;border-radius:50%;
+  display:grid;place-items:center;margin:auto;
+  background:conic-gradient(#f0a030 calc(var(--record-pct) * 1%),rgba(255,255,255,.075) 0);
+  box-shadow:0 0 34px rgba(240,160,48,.1);}
+.cot-record-ring::before{content:'';position:absolute;inset:10px;border-radius:50%;
+  background:radial-gradient(circle at 50% 35%,#141b22,#090d11 70%);
+  border:1px solid rgba(146,164,180,.22);}
+.cot-record-ring-copy{position:relative;text-align:center;}
+.cot-record-ring-copy strong{display:block;color:#f4f7fa;font-size:37px;line-height:1;
+  font-variant-numeric:tabular-nums;letter-spacing:-.04em;}
+.cot-record-ring-copy span{display:block;margin-top:7px;color:#8fa0ad;font:900 8px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.22em;text-transform:uppercase;}
+.cot-record-outcomes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.cot-record-outcome,.cot-record-metric{padding:12px 13px;
+  background:linear-gradient(180deg,rgba(23,30,37,.72),rgba(10,14,18,.82));
+  border:1px solid rgba(146,164,180,.18);}
+.cot-record-outcome span,.cot-record-metric span{display:block;color:#7f909e;font:900 7.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.17em;text-transform:uppercase;}
+.cot-record-outcome strong{display:block;margin-top:6px;font-size:20px;color:#eef4f9;
+  font-variant-numeric:tabular-nums;}
+.cot-record-outcome.win strong{color:#ffc66c;}
+.cot-record-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;}
+.cot-record-metric{min-height:77px;}
+.cot-record-metric strong{display:block;margin-top:8px;color:#eef4f9;font-size:18px;
+  line-height:1;font-variant-numeric:tabular-nums;}
+.cot-record-metric small{display:block;margin-top:5px;color:#6f808d;font:700 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.08em;text-transform:uppercase;}
+.cot-last-battle{margin-top:18px;padding:15px 16px;
+  background:linear-gradient(90deg,rgba(240,160,48,.075),rgba(13,18,23,.72));
+  border:1px solid rgba(146,164,180,.18);border-left:2px solid #f0a030;}
+.cot-last-battle-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline;
+  margin-bottom:11px;color:#8a9aa7;font:900 7.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.18em;text-transform:uppercase;}
+.cot-last-battle-head strong{color:#f0b04a;font-size:9px;}.cot-last-battle-head time{letter-spacing:.08em;}
+.cot-last-battle-grid{display:grid;grid-template-columns:minmax(130px,1.4fr) repeat(3,1fr);gap:12px;}
+.cot-last-battle-grid div{min-width:0;}.cot-last-battle-grid span{display:block;color:#758592;
+  font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;}
+.cot-last-battle-grid b{display:block;margin-top:5px;color:#dfe8ef;font-size:11px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.cot-record-empty{padding:28px;text-align:center;color:#8293a1;font:800 10px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.12em;text-transform:uppercase;border:1px dashed rgba(146,164,180,.24);}
+/* r7: ONE flat orange plate, no gloss, no bevel highlight, no text shadow —
+   the r5 two-stop gradient + inset bevels + letterform shadow still read as
+   2012 Flash-game chrome, and the clip-path chamfer aliased at 1080p. The
+   chamfered plate is now an SVG background (rasterized with proper edge
+   anti-aliasing) carrying only a 1px outline and a darker bottom edge. */
+.cot-battle-control{position:absolute;top:26px;left:50%;transform:translateX(-50%);
+  pointer-events:auto;width:252px;height:46px;display:flex;z-index:20;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 252 46'%3E%3Cpath d='M11.2 .5H240.8L251.5 23 240.8 45.5H11.2L.5 23Z' fill='%23ee8912' stroke='%238a4a06' stroke-width='1'/%3E%3Cpath d='M1.4 24.8 11.8 45.1h228.4l10.4-20.3' fill='none' stroke='%23a85a05' stroke-width='2' opacity='.9'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat;
+  transition:filter .12s,transform .06s;}
+.cot-battle-control:hover{filter:brightness(1.07);}
+.cot-battle,.cot-battle-mode{height:100%;cursor:pointer;border:0;outline:0;color:#fff8ee;
+  background:transparent;font-family:'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-weight:800;text-shadow:none;}
+.cot-battle{flex:0 0 75%;min-width:0;padding:0 0 1px 10px;font-size:19px;letter-spacing:.24em;
+  display:flex;align-items:center;justify-content:center;gap:9px;}
+.cot-battle .battle-active-icon{width:21px;height:21px;display:grid;place-items:center;
+  color:#fff3dc;filter:drop-shadow(0 1px 0 rgba(92,45,0,.35));}
+.cot-battle .battle-active-icon svg{display:block;width:20px;height:20px;}
+.cot-battle .battle-word{text-indent:.24em;}
+.cot-battle-mode{position:relative;flex:0 0 25%;min-width:0;padding:1px 9px 0 2px;border-left:1px solid rgba(108,55,2,.62);
+  font-size:8px;letter-spacing:.09em;text-align:center;}
+.cot-battle-mode::after{content:'';position:absolute;right:9px;top:50%;margin-top:-2px;
+  border-left:3px solid transparent;border-right:3px solid transparent;border-top:4px solid currentColor;
+  opacity:.82;transition:transform .12s;}
+.cot-battle-mode[aria-expanded='true']::after{transform:rotate(180deg);}
+.cot-battle:active,.cot-battle-mode:active{transform:translateY(1px);}
+.cot-battle-menu{position:absolute;top:calc(100% + 7px);right:0;width:206px;display:none;
+  max-height:min(620px,calc(100vh - 120px));overflow-y:auto;overscroll-behavior:contain;
+  padding:5px;background:rgba(8,11,15,.98);border:1px solid rgba(177,194,208,.32);
+  box-shadow:0 12px 34px rgba(0,0,0,.68);}
+.cot-battle-menu.open{display:grid;gap:3px;}
+.cot-room-reminder{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  display:none;width:max-content;max-width:360px;min-height:32px;padding:0 12px;border:1px solid rgba(230,154,54,.5);
+  background:linear-gradient(90deg,rgba(12,18,24,.96),rgba(39,27,14,.96));color:#dbe5ec;
+  box-shadow:0 10px 30px rgba(0,0,0,.46);font:800 8px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.12em;
+  text-transform:uppercase;cursor:pointer;white-space:nowrap}.cot-room-reminder.show{display:flex;align-items:center;gap:9px}
+.cot-room-reminder .rr-dot{width:7px;height:7px;border-radius:50%;background:#e5a347;box-shadow:0 0 12px #e5a347}
+.cot-room-reminder.ready .rr-dot{background:#73d58a;box-shadow:0 0 12px #73d58a}.cot-room-reminder b{color:#ffca78}
+.cot-garage-tools,.cot-garage-panel-scrim{display:none}
+.cot-garage-tools{position:absolute;z-index:12;pointer-events:auto;align-items:stretch;gap:4px}
+.cot-garage-tool{min-width:0;height:44px;padding:0 12px;display:flex;align-items:center;justify-content:center;gap:8px;
+  border:1px solid rgba(156,177,193,.3);border-bottom:2px solid rgba(156,177,193,.36);
+  background:linear-gradient(180deg,rgba(17,23,29,.96),rgba(7,11,15,.97));color:#a8b7c2;
+  font:900 7.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.13em;text-transform:uppercase;cursor:pointer;
+  box-shadow:0 6px 18px rgba(0,0,0,.32);transition:color .14s,border-color .14s,background .14s,transform .12s}
+.cot-garage-tool svg{width:17px;height:17px;flex:0 0 auto;color:#d89531}
+.cot-garage-tool:active{transform:scale(.97)}
+.cot-garage-tool[aria-expanded='true']{color:#ffe0aa;border-color:#f0a030;border-bottom-color:#f0a030;
+  background:linear-gradient(180deg,rgba(49,34,15,.98),rgba(20,14,8,.98));box-shadow:0 0 18px rgba(240,160,48,.16)}
+@media (hover:hover) and (pointer:fine){
+  .cot-garage-tool:hover{color:#ffe0aa;border-color:rgba(240,176,74,.7)}
+}
+.cot-garage-panel-scrim{position:absolute;z-index:9;inset:0;border:0;background:rgba(3,6,9,.46);
+  pointer-events:auto;cursor:default;backdrop-filter:blur(2px)}
+.cot-garage.vehicle-locked .cot-card:not(.sel),.cot-garage.vehicle-locked .cot-car-arrow,
+.cot-garage.vehicle-locked .cot-camo-card,.cot-garage.vehicle-locked .eqrow{pointer-events:none;opacity:.42}
+.cot-garage.vehicle-locked .cot-card.sel{cursor:not-allowed}.cot-garage.vehicle-locked .stats::after{content:'VEHICLE LOCKED · UNREADY TO CHANGE';
+  display:block;margin-top:8px;color:#79d890;font:800 8px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.13em}
+.cot-battle-choice{min-height:48px;display:grid;grid-template-columns:28px 1fr auto;align-items:center;
+  gap:8px;padding:0 10px 0 8px;border:1px solid transparent;background:rgba(25,32,39,.9);
+  color:#dce6ed;cursor:pointer;text-align:left;font-family:'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:11px;font-weight:800;}
+.cot-battle-choice .choice-icon{width:28px;height:28px;display:grid;place-items:center;color:#899aa8;
+  border:1px solid rgba(146,164,180,.16);background:rgba(7,11,15,.46);}
+.cot-battle-choice .choice-icon svg{display:block;width:17px;height:17px;}
+.cot-battle-choice .choice-name{letter-spacing:.045em;}
+.cot-battle-choice small{font:800 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.13em;color:#82929f;
+  text-transform:uppercase;}
+.cot-battle-choice:hover,.cot-battle-choice[aria-checked='true']{border-color:rgba(240,176,74,.62);
+  background:rgba(230,139,26,.13);color:#ffd28e;}
+.cot-battle-choice:hover .choice-icon,.cot-battle-choice[aria-checked='true'] .choice-icon{
+  color:#ffc66c;border-color:rgba(240,176,74,.42);background:rgba(230,139,26,.12);}
+.cot-battle-menu-label{padding:8px 9px 5px;color:#6f818f;font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.18em;
+  text-transform:uppercase;border-top:1px solid rgba(146,164,180,.14)}
+.cot-garage .stats{position:absolute;right:22px;top:86px;width:var(--cot-garage-sidebar-width);padding:0;pointer-events:auto;
+  background:transparent;border:0;box-shadow:none;}
+.cot-garage .stats::before{display:none;}
+.cot-dossier-head{position:relative;padding:14px 16px 13px;min-height:104px;margin-bottom:8px;
+  background:linear-gradient(150deg,rgba(22,28,34,.97),rgba(8,11,14,.97) 72%);
+  border:1px solid rgba(166,184,199,.3);
+  box-shadow:0 14px 36px rgba(0,0,0,.48),inset 0 0 0 1px rgba(255,255,255,.015);}
+.cot-dossier-head::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle at 86% 0,rgba(240,160,48,.105),transparent 30%);}
+.cot-dossier-title{display:flex;align-items:center;gap:9px;padding-right:78px;}
+.cot-tier-plate{height:25px;min-width:31px;padding:0 6px;display:grid;place-items:center;
+  color:#161007;background:linear-gradient(180deg,#ffc466,#d88b24);border:1px solid #ffd18a;
+  font:900 10px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.06em;box-shadow:0 4px 12px rgba(0,0,0,.32);}
+.cot-garage .stats h3{font-size:17px;font-weight:750;letter-spacing:.015em;color:#f3f7fa;
+  min-width:0;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cot-garage .stats .sub{font-size:8px;font-weight:800;letter-spacing:.17em;color:#94a5b2;
+  text-transform:uppercase;margin:7px 0 0 40px;display:flex;align-items:center;gap:7px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cot-garage .stats .sub .cot-flag{display:block;object-fit:cover;
+  box-shadow:0 1px 3px rgba(0,0,0,.5);}
+.cot-garage .stats .stats-ti{position:absolute;right:47px;top:17px;width:34px;height:22px;
+  object-fit:contain;pointer-events:none;opacity:.82;
+  filter:drop-shadow(0 4px 6px rgba(0,0,0,.78));}
+.cot-gallery-link{width:100%;height:30px;margin-top:11px;padding:0 9px;display:flex;align-items:center;gap:8px;
+  color:#b6c5d0;background:linear-gradient(90deg,rgba(240,160,48,.1),rgba(20,27,34,.7));
+  border:1px solid rgba(240,176,74,.3);cursor:pointer;text-align:left;font:900 7.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.14em;text-transform:uppercase;transition:color .14s,border-color .14s,background .14s;}
+.cot-gallery-link svg{width:15px;height:15px;color:#f0a030;flex:0 0 auto;}
+.cot-gallery-link .go{margin-left:auto;color:#f0a030;font-size:13px;line-height:1;}
+.cot-gallery-link:hover,.cot-gallery-link:focus-visible{color:#fff0d7;border-color:#f0a030;
+  background:linear-gradient(90deg,rgba(240,160,48,.2),rgba(32,24,12,.86));outline:none;}
+.cot-stat-section{position:relative;padding:13px 15px 15px;margin-bottom:8px;
+  background:linear-gradient(155deg,rgba(16,22,28,.96),rgba(7,10,13,.96) 76%);
+  border:1px solid rgba(146,164,180,.2);box-shadow:0 10px 28px rgba(0,0,0,.36);}
+.cot-stat-section:last-child{margin-bottom:0;}
+.cot-stat-title{margin-bottom:10px;color:#8fa0ad;display:flex;align-items:center;gap:7px;}
+.cot-stat-title svg{width:13px;height:13px;color:#f0a030;flex:0 0 auto;}
+.cot-stat-title span{min-width:0;}
+.cot-stat-title small{margin-left:auto;color:#596975;font:800 6.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.1em;text-transform:uppercase;}
+.cot-performance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+.cot-garage .srow{position:relative;min-width:0;min-height:50px;padding:8px 8px 8px 36px;
+  background:linear-gradient(145deg,rgba(23,30,37,.72),rgba(10,14,18,.82));
+  border:1px solid rgba(146,164,180,.13);overflow:hidden;}
+.cot-garage .srow .sicon{position:absolute;left:8px;top:10px;width:20px;height:20px;display:grid;
+  place-items:center;color:#d99531;background:rgba(240,160,48,.07);border:1px solid rgba(240,176,74,.12);}
+.cot-garage .srow .sicon svg{width:15px;height:15px;}
+.cot-garage .srow .lr{display:flex;flex-direction:column;gap:2px;font-size:7px;
+  letter-spacing:.11em;color:#7f909d;text-transform:uppercase;white-space:nowrap;}
+/* r4: VALUE cells escape the row's uppercase transform — SI units are
+   case-sensitive ("6.0 s", "67 km/h", not "6.0 S" / "67 KM/H") */
+.cot-garage .srow .lr b{min-width:0;color:#edf3f7;font-size:11px;font-weight:750;
+  font-variant-numeric:tabular-nums;letter-spacing:.01em;text-transform:none;overflow:hidden;text-overflow:ellipsis;}
+.cot-garage .srow .track{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.06);overflow:hidden;}
+.cot-garage .srow .fill{height:100%;background:linear-gradient(90deg,#b87425,#f0b04a);
+  box-shadow:0 0 8px rgba(240,160,48,.18);}
+.cot-garage .shellhead{display:grid;grid-template-columns:46px minmax(0,1fr) 62px 48px;
+  gap:7px;padding:0 7px 5px;color:#637481;font:900 6.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.12em;text-transform:uppercase;}
+.cot-garage .shellhead span:nth-last-child(-n+2){text-align:right;}
+.cot-garage .magazine-spec{display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin:0 0 9px;padding:7px 8px;border-left:2px solid #e79c34;
+  background:rgba(231,156,52,.08);color:#8798a5;font:800 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.09em;text-transform:uppercase;}
+.cot-garage .magazine-spec b{color:#edf3f6;font:750 9px 'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  letter-spacing:.01em;text-transform:none;font-variant-numeric:tabular-nums;}
+.cot-garage .shellrow{display:grid;grid-template-columns:46px minmax(0,1fr) 62px 48px;
+  gap:7px;align-items:center;min-height:46px;margin-top:5px;padding:6px 7px;
+  color:#c6d2dc;background:linear-gradient(90deg,rgba(19,25,31,.78),rgba(11,15,19,.7));
+  border:1px solid rgba(146,164,180,.13);border-left:2px solid color-mix(in srgb,var(--shell-color) 78%,#252c31);}
+.cot-garage .shellkind{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  color:var(--shell-color);}
+.cot-garage .shellkind svg{width:15px;height:22px;flex:0 0 auto;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55));}
+.cot-garage .shellrow .ty{font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.05em;}
+.cot-garage .shellrow .nm{min-width:0;color:#e6edf3;font-size:9px;font-weight:650;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
+.cot-garage .shellrow .nm small{display:block;margin-top:2px;color:#71818e;font:700 6px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.04em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;}
+.cot-garage .shellmetric{text-align:right;color:#7f909d;font:700 6px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;}
+.cot-garage .shellmetric b{display:block;margin-bottom:1px;color:#e6edf3;font:700 9px 'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums;}
+.cot-garage .armor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+.cot-garage .armorline{position:relative;min-width:0;min-height:54px;padding:9px 8px 8px 38px;color:#7f909d;
+  text-transform:uppercase;background:rgba(19,25,31,.62);border:1px solid rgba(146,164,180,.12);}
+.cot-garage .armorline svg{position:absolute;left:9px;top:11px;width:19px;height:19px;color:#c88b35;}
+.cot-garage .armorline span{display:block;font:900 6.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.13em;}
+.cot-garage .armorline b{display:block;margin-top:5px;color:#e6edf3;font-size:11px;font-weight:700;
+  font-variant-numeric:tabular-nums;text-transform:none;}
+.cot-layer-link{width:100%;height:28px;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:7px;
+  color:#8fa0ad;background:rgba(15,20,25,.72);border:1px solid rgba(146,164,180,.18);cursor:pointer;
+  font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;}
+.cot-layer-link svg{width:13px;height:13px;color:#c88b35;}
+.cot-layer-link:hover,.cot-layer-link:focus-visible{color:#ffd79a;border-color:rgba(240,176,74,.55);outline:none;}
+.cot-special-card{position:relative;display:grid;grid-template-columns:40px minmax(0,1fr) 25px;gap:9px;
+  align-items:start;padding:10px;background:linear-gradient(120deg,rgba(240,160,48,.13),rgba(15,20,26,.86) 55%);
+  border:1px solid rgba(240,176,74,.25);border-left:2px solid #f0a030;}
+.cot-special-icon{width:40px;height:40px;display:grid;place-items:center;color:#ffc66c;
+  background:rgba(240,160,48,.1);border:1px solid rgba(240,176,74,.22);}
+.cot-special-icon svg{width:23px;height:23px;}
+.cot-special-copy{min-width:0;}.cot-special-copy b{display:block;color:#f6ead7;font-size:10px;letter-spacing:.02em;}
+.cot-special-copy p{margin-top:4px;color:#9babb7;font-size:7.5px;line-height:1.45;}
+.cot-special-copy small{display:block;margin-top:6px;color:#dba453;font:800 6.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.07em;text-transform:uppercase;white-space:normal;}
+.cot-special-card kbd{width:25px;height:25px;display:grid;place-items:center;color:#171008;background:#efab4a;
+  border:1px solid #ffd18b;box-shadow:0 2px 0 #8b5117;font:900 10px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;}
+.cot-module-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;}
+.cot-module-chip{min-width:0;height:30px;display:flex;align-items:center;gap:7px;padding:0 7px;
+  color:#a8b7c2;background:rgba(19,25,31,.62);border:1px solid rgba(146,164,180,.12);
+  font:800 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;}
+.cot-module-chip .mi{width:17px;height:17px;display:grid;place-items:center;color:#c88b35;flex:0 0 auto;}
+.cot-module-chip svg{width:15px;height:15px;}.cot-module-chip span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cot-crew-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;}
+.cot-crew-chip{min-width:0;padding:6px 3px 5px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  color:#8798a5;background:rgba(13,18,23,.7);border:1px solid rgba(146,164,180,.1);
+  font:800 6px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.04em;text-transform:uppercase;}
+.cot-crew-chip svg{width:16px;height:16px;color:#b8c5cf;}
+.cot-crew-chip span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* One combined historical fleet, filtered by national flag. Compact arrow
+   gutters balance the rail without reading as extra nation tiles. The chips
+   are deliberately dense enough for the complete selector to center at a
+   desktop viewport; narrower widths retain honest horizontal overflow. */
+.cot-country-rail{--country-edge:34px;position:absolute;z-index:5;
+  left:50%;bottom:186px;transform:translateX(-50%);
+  width:min(1100px,calc(100vw - 640px));height:52px;display:grid;
+  grid-template-columns:var(--country-edge) minmax(0,1fr) var(--country-edge);
+  align-items:center;pointer-events:auto;isolation:isolate;}
+.cot-country-rail::before,.cot-country-rail::after{content:'';position:absolute;z-index:2;
+  top:0;bottom:4px;width:54px;opacity:0;pointer-events:none;
+  transition:opacity .16s,width .16s;}
+.cot-country-rail::before{left:var(--country-edge);
+  background:linear-gradient(90deg,rgba(7,11,15,.98),rgba(7,11,15,.70) 32%,transparent);}
+.cot-country-rail::after{right:var(--country-edge);
+  background:linear-gradient(270deg,rgba(7,11,15,.98),rgba(7,11,15,.70) 32%,transparent);}
+.cot-country-rail.has-more-left::before,.cot-country-rail.has-more-right::after{opacity:.78;}
+.cot-country-rail:hover::before,.cot-country-rail:hover::after,
+.cot-country-rail:focus-within::before,.cot-country-rail:focus-within::after{width:62px;}
+.cot-country-rail.has-more-left:hover::before,.cot-country-rail.has-more-right:hover::after,
+.cot-country-rail.has-more-left:focus-within::before,
+.cot-country-rail.has-more-right:focus-within::after{opacity:1;}
+.cot-country-chips{grid-column:2;display:flex;justify-content:safe center;gap:3px;width:100%;min-width:0;
+  height:52px;padding:2px 3px 4px;
+  overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
+  scroll-snap-type:x proximity;scroll-padding-inline:18px;touch-action:pan-x;
+  scrollbar-width:none;-ms-overflow-style:none;}
+.cot-country-chips::-webkit-scrollbar{display:none;}
+.cot-country-edge{position:relative;z-index:3;display:grid;place-items:center;justify-self:center;
+  width:26px;height:36px;
+  color:#91a2af;background:linear-gradient(180deg,rgba(16,22,28,.96),rgba(7,10,14,.98));
+  border:1px solid rgba(146,164,180,.28);cursor:pointer;opacity:.68;outline:none;
+  box-shadow:0 5px 14px rgba(0,0,0,.34);
+  transition:color .14s,border-color .14s,background .14s,opacity .14s,
+    box-shadow .14s,transform .12s ease-out;}
+.cot-country-edge.prev{grid-column:1;}
+.cot-country-edge.next{grid-column:3;}
+.cot-country-edge:hover,.cot-country-edge:focus-visible{color:#ffd27a;border-color:rgba(240,176,74,.72);
+  background:linear-gradient(180deg,rgba(42,30,14,.98),rgba(13,10,7,.98));opacity:1;
+  box-shadow:0 0 18px rgba(240,160,48,.12);}
+.cot-country-edge:active{transform:scale(.96);}
+.cot-country-edge.is-unavailable{visibility:hidden;opacity:0;pointer-events:none;}
+.cot-country-chip{cursor:pointer;border:1px solid rgba(146,164,180,.3);
+  border-bottom:2px solid rgba(146,164,180,.4);background:rgba(11,15,20,.82);
+  color:#9fb0bf;font-family:'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:10px;font-weight:800;
+  letter-spacing:.12em;text-transform:uppercase;padding:6px 7px 5px;
+  display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:0 0 auto;
+  scroll-snap-align:center;
+  transition:color .15s,border-color .15s,background .15s,transform .15s;outline:none;}
+.cot-country-chip .cot-flag{width:22px;height:auto;display:block;box-shadow:0 0 0 1px rgba(255,255,255,.12);}
+.cot-country-chip:hover{color:#c6d2dc;border-color:rgba(210,225,240,.5);
+  transform:translateY(-1px);}
+.cot-country-chip.sel{color:#ffd27a;border-color:rgba(240,176,74,.65);
+  border-bottom-color:#f0a030;
+  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
+.cot-country-chip .ct{font-weight:600;color:#6d7a86;letter-spacing:.04em;}
+.cot-country-chip.sel .ct{color:#d8a04c;}
+.cot-carousel{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);
+  display:flex;align-items:stretch;gap:8px;pointer-events:auto;max-width:96vw;}
+.cot-car-arrow{width:34px;border:1px solid rgba(146,164,180,.3);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(11,15,20,.8);color:#9fb0bf;
+  transition:color .15s,border-color .15s,background .15s,opacity .15s;outline:none;}
+.cot-car-arrow.is-unavailable{visibility:hidden;opacity:0;pointer-events:none;}
+.cot-car-arrow svg{display:block;}
+.cot-car-arrow:hover{color:#f0b04a;border-color:rgba(240,176,74,.6);
+  background:rgba(20,17,11,.88);}
+.cot-car-arrow:active{color:#ffd27a;}
+/* The strip advertises overflow only where more cards actually exist. Edge
+   classes are synchronized from scrollLeft/scrollWidth in JS, so a fleet that
+   fits gets no arrows or shadows, the first page has no false left shadow,
+   and the final page has no false right shadow. */
+.cot-cards{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;
+  /* Horizontal scrolling computes overflow-y:auto too; reserve real headroom
+     so the selected card's upward lift keeps its entire top border visible. */
+  padding-top:8px;margin-top:-8px;
+  cursor:grab;touch-action:pan-x;}
+.cot-cards.has-more-left:not(.has-more-right){
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 64px,#000 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 64px,#000 100%);}
+.cot-cards.has-more-right:not(.has-more-left){
+  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 64px),transparent 100%);
+  mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 64px),transparent 100%);}
+.cot-cards.has-more-left.has-more-right{
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 64px,
+    #000 calc(100% - 64px),transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 64px,
+    #000 calc(100% - 64px),transparent 100%);}
+.cot-cards::-webkit-scrollbar{display:none;}
+/* DRAG-SCROLL CAROUSEL: grabbing cursor while the strip is being panned */
+.cot-cards.dragging{cursor:grabbing;}
+.cot-cards.dragging .cot-card{cursor:grabbing;}
+.cot-card{width:156px;min-height:150px;flex:0 0 auto;cursor:pointer;position:relative;
+  isolation:isolate;overflow:hidden;
+  background:linear-gradient(180deg,rgba(13,18,23,.90),rgba(8,11,14,.96));
+  border:1px solid rgba(146,164,180,.26);
+  padding:9px 10px 8px;transition:border-color .15s,transform .15s,box-shadow .15s;}
+.cot-card::before{content:"";position:absolute;z-index:-2;inset:-10%;pointer-events:none;
+  background-image:var(--nation-flag);background-size:cover;background-position:center;
+  opacity:.24;filter:saturate(.84) contrast(1.04);transform:scale(1.03);
+  transition:opacity .18s,filter .18s;}
+.cot-card::after{content:"";position:absolute;z-index:-1;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(7,11,15,.08) 0%,rgba(7,11,15,.36) 46%,
+    rgba(7,11,15,.94) 82%,rgba(7,11,15,.98) 100%);}
+.cot-card:hover{border-color:rgba(210,225,240,.5);transform:translateY(-2px);}
+.cot-card:hover::before{opacity:.32;filter:saturate(.96) contrast(1.08);}
+.cot-card.sel:hover{transform:translateY(-6px);}
+.cot-card.sel{border-color:#f0a030;transform:translateY(-6px);
+  box-shadow:0 8px 26px rgba(240,140,20,.28);
+  background:linear-gradient(180deg,rgba(32,24,12,.92),rgba(14,10,6,.94));}
+.cot-card.sel::before{opacity:.38;filter:saturate(1.02) contrast(1.08);}
+.cot-card .flag{display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;
+  font-size:8.5px;font-weight:800;letter-spacing:.14em;color:#9fb0bf;}
+.cot-card .flag .cot-flag{display:block;object-fit:cover;
+  box-shadow:0 1px 3px rgba(0,0,0,.55);}
+.cot-card .flag i{font-style:normal;}
+.cot-card.sel .flag{color:#d8c39a;}
+.cot-card .designation{float:right;font-size:7.5px;font-weight:700;letter-spacing:.10em;
+  color:#8a97a3;padding:2px 0;}
+.cot-card.sel .designation{color:#d8a04c;}
+.cot-card .dev-tag{position:absolute;right:8px;top:31px;z-index:2;padding:2px 5px;
+  border:1px solid rgba(103,191,255,.62);background:rgba(7,24,38,.86);color:#8fd0ff;
+  font-size:7px;font-weight:900;letter-spacing:.14em;line-height:1;text-transform:uppercase;
+  box-shadow:0 2px 8px rgba(0,0,0,.45);}
+.cot-card.dev-only{border-color:rgba(103,191,255,.38);}
+.cot-card.dev-only.sel{border-color:#79c8ff;
+  box-shadow:0 8px 26px rgba(64,154,219,.23);}
+.cot-card .ti{display:block;margin:-2px auto -1px;width:136px;height:84px;
+  object-fit:contain;filter:drop-shadow(0 5px 7px rgba(0,0,0,.72));
+  transform:translateY(-3px) scale(1.14);}
+.cot-card .nm{font-size:11px;font-weight:650;color:#f3f7fa;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 -3px;text-align:left;
+  text-shadow:0 1px 3px rgba(0,0,0,.85);}
+.cot-card .nm .tiern{font-weight:900;color:#d8a04c;margin-right:5px;letter-spacing:.04em;}
+.cot-card.sel .nm .tiern{color:#f0b04a;}
+.cot-card .era{font-size:8.5px;font-weight:800;letter-spacing:.20em;color:#9aa8b5;
+  text-transform:uppercase;margin-top:3px;}
+.cot-garage .hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
+  font-size:9.5px;letter-spacing:.14em;color:rgba(138,151,163,.7);text-transform:uppercase;}
+/* MAP-CONFIG WIRING: complete registered battlefield picker + random. */
+/* camo_spotting r1: maps + camo picker stack in ONE flex column so they can
+   never overlap at short viewports (the old absolute anchors collided at
+   1600x900 — the RANDOM card's conic-gradient thumb showed through the camo
+   grid's 5px gaps as a phantom "white national cross"). */
+/* The column runs down to just above the country chips. The battlefield
+   plate is content-height on roomy screens, but may shrink and scroll when
+   the viewport is short so it never collides with the sections below. */
+.cot-leftcol{position:absolute;left:34px;top:86px;bottom:210px;
+  width:var(--cot-garage-sidebar-width);display:flex;flex-direction:column;gap:8px;overflow:hidden;pointer-events:auto;}
+/* garage_polish r9: the battlefield + camo sections share ONE industrial
+   plate treatment (translucent backdrop + hairline + amber title tick) so
+   they read as a composed panel instead of loose elements on the floor.
+   (r9.1: the gallery is deliberately PLATELESS — owner call — but keeps
+   the amber title tick so the column rhythm holds.) */
+.cot-maps,.cot-camos{box-sizing:border-box;width:100%;height:var(--cot-sidebar-panel-height,280px);
+  flex:0 1 var(--cot-sidebar-panel-height,280px);min-height:108px;
+  background:linear-gradient(180deg,rgba(9,13,17,.66),rgba(6,9,12,.58));
+  border:1px solid rgba(146,164,180,.16);padding:9px 9px 8px;}
+.cot-maps .mtitle,.cot-camos .ctitle,.cot-featured .ftitle > span:first-child{
+  display:flex;align-items:center;gap:7px;}
+.cot-maps .mtitle svg,.cot-camos .ctitle svg,.cot-featured .ftitle > span:first-child svg{
+  width:13px;height:13px;flex:0 0 auto;color:#f0a030;}
+.cot-maps{position:static;overflow:hidden;display:flex;flex-direction:column;pointer-events:auto;}
+/* half-cut last row + fade = "more below" affordance instead of a broken
+   clip; .can-scroll is toggled by JS only when the list truly overflows */
+.cot-map-scroll{min-height:0;flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-width:none;}
+.cot-map-scroll::-webkit-scrollbar{display:none;}
+.cot-map-scroll.can-scroll{
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 22px),transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 22px),transparent 100%);}
+.cot-maps .mtitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
+  text-transform:uppercase;margin-bottom:7px;}
+.cot-maps .mtitle .cot-info-trigger{margin-left:auto;letter-spacing:0}
+/* Two-column map tiles keep the full battlefield roster scannable while
+   matching the camouflage cards' preview-over-caption layout. */
+.cot-map-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;}
+.cot-map-card{display:block;min-width:0;cursor:pointer;text-align:center;
+  background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
+  border:1px solid rgba(146,164,180,.24);border-bottom:2px solid rgba(146,164,180,.24);
+  padding:5px 4px 4px;transition:border-color .12s,background .12s;}
+.cot-map-card:hover{border-color:rgba(210,225,240,.5);}
+.cot-map-card.sel{border-color:#f0a030;border-bottom-color:#f0a030;
+  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
+.cot-map-card .mthumb{width:100%;height:auto;aspect-ratio:2.55;background-size:112% auto;
+  background-position:center;border:1px solid rgba(0,0,0,.55);position:relative;
+  box-shadow:inset 0 0 0 1px rgba(235,243,250,.14);
+  transition:background-size .18s ease;}
+.cot-map-card:hover .mthumb{background-size:128% auto;}
+.cot-map-card.sel .mthumb{box-shadow:inset 0 0 0 1px rgba(240,176,74,.45);}
+.cot-map-card .mthumb.verdant{background-color:#3d5a2e;background-image:linear-gradient(135deg,#4c6b38,#2c421f);}
+.cot-map-card .mthumb.desert{background-color:#b3925c;background-image:linear-gradient(135deg,#c9a86e,#8f6f42);}
+.cot-map-card .mthumb.winter{background-color:#aeb9c4;background-image:linear-gradient(135deg,#cdd6de,#7f8d9b);}
+.cot-map-card .mthumb.urban{background-color:#5c6066;background-image:linear-gradient(135deg,#75797e,#3e4247);}
+/* Map art overrides these biome fallbacks once the public asset resolves. */
+.cot-map-card .mthumb.coastal{background-color:#4a7a86;background-image:linear-gradient(135deg,#5f93a0,#2f5560);}
+.cot-map-card .mthumb.autumn{background-color:#9a5a28;background-image:linear-gradient(135deg,#c07030,#6b3d1a);}
+.cot-map-card .mthumb.steppe{background-color:#b09a50;background-image:linear-gradient(135deg,#c9b264,#8a763c);}
+.cot-map-card .mthumb.railyard{background-color:#565049;background-image:linear-gradient(135deg,#6e6860,#3a352f);}
+.cot-map-card .mthumb.frontier{background-color:#536940;background-image:linear-gradient(135deg,#718553,#35442a);}
+.cot-map-card .mthumb.fjord{background-color:#4c6974;background-image:linear-gradient(135deg,#78919a,#263d49);}
+.cot-map-card .mthumb.delta{background-color:#456c4b;background-image:linear-gradient(135deg,#71945c,#21483f);}
+.cot-map-card .mthumb.badlands{background-color:#8a4f32;background-image:linear-gradient(135deg,#ba7549,#482a22);}
+.cot-map-card .mthumb.monsoon{background-color:#315b46;background-image:linear-gradient(135deg,#54785c,#172f2c);}
+.cot-map-card .mthumb.alpine{background-color:#91a5b1;background-image:linear-gradient(135deg,#d2dce1,#4e6678);}
+.cot-map-card .mthumb.caldera{background-color:#544742;background-image:linear-gradient(135deg,#796255,#221d1e);}
+.cot-map-card .mthumb.foundry{background-color:#55585a;background-image:linear-gradient(135deg,#7b756b,#282b2e);}
+.cot-map-card .mthumb.random{display:grid;overflow:hidden;background:#11171c;isolation:isolate;}
+.cot-map-card .mthumb.random .random-map-mosaic{position:absolute;inset:0;display:grid;
+  grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:1px;background:#070a0d;}
+.cot-map-card .mthumb.random .random-map-tile{display:block;min-width:0;min-height:0;background-position:center;
+  background-size:cover;filter:saturate(.92) contrast(1.06);transition:transform .18s ease,filter .18s ease;}
+.cot-map-card .mthumb.random::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
+  border:1px solid rgba(255,255,255,.12);box-shadow:inset 0 0 9px rgba(3,6,8,.3);}
+.cot-map-card:hover .mthumb.random .random-map-tile{transform:scale(1.08);filter:saturate(1.08) contrast(1.08);}
+.cot-map-card .mname{margin-top:4px;min-width:0;font-size:8px;font-weight:700;line-height:1.18;
+  color:#e6edf3;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* CAMO PICKER SECTION: per-tank paint pattern (persisted, +concealment) */
+.cot-camos{position:static;overflow:hidden;display:flex;flex-direction:column;pointer-events:auto;}
+.cot-camos .ctitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
+  text-transform:uppercase;margin-bottom:7px;}
+.cot-camos .ctitle .cot-camo-title-actions{margin-left:auto;display:flex;align-items:center;gap:5px;letter-spacing:0}
+.cot-camos .ctitle .cot-info-trigger,.cot-maps .mtitle .cot-info-trigger{width:24px;height:24px;min-width:24px;min-height:24px}
+.cot-custom-open{min-height:24px;height:24px;display:inline-flex;align-items:center;gap:5px;padding:0 8px;border:1px solid rgba(240,176,74,.36);
+  background:rgba(240,160,48,.08);color:#ffd27a;cursor:pointer;font:900 6.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+.cot-custom-open:hover,.cot-custom-open:focus-visible,.cot-custom-open[aria-expanded='true']{
+  border-color:#f0a030;background:rgba(240,160,48,.18);outline:none}
+/* garage_polish r9: minmax(0,1fr) + min-width:0 — grid items default to
+   min-width:auto, so the widest nowrap label (DESERT PINK ~80px) silently
+   inflated every track past the panel and CLIPPED the third column. */
+.cot-camos .cgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;}
+/* camo r8: the paint roster grew 6 -> 16 — the CAMO grid scrolls (equipment
+   grid below stays static). The bottom fade signals overflow without a
+   scrollbar gutter narrowing and misaligning the swatch columns. */
+.cot-camos .cgrid.camo{grid-template-columns:repeat(2,minmax(0,1fr));min-height:0;flex:1 1 auto;
+  overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;}
+.cot-camos .cgrid.camo.can-scroll{
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 16px),transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 16px),transparent 100%);}
+.cot-camos .cgrid.camo::-webkit-scrollbar{display:none;}
+.cot-camo-card{cursor:pointer;text-align:center;padding:5px 4px 4px;min-width:0;
+  background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
+  border:1px solid rgba(146,164,180,.24);border-bottom:2px solid rgba(146,164,180,.24);
+  transition:border-color .12s,background .12s,box-shadow .12s;}
+.cot-camo-card:hover{border-color:rgba(210,225,240,.5);}
+.cot-camo-card.sel{border-color:#f0a030;border-bottom-color:#f0a030;
+  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));
+  box-shadow:0 0 10px rgba(240,160,48,.18);}
+.cot-camo-card .sw{width:100%;height:auto;aspect-ratio:2.55;margin:0 auto 4px;border:1px solid rgba(0,0,0,.55);
+  position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(235,243,250,.10);}
+.cot-camo-card .sw canvas{position:absolute;inset:0;width:100%;height:100%;display:block;
+  object-fit:cover;object-position:center;}
+.cot-camo-card .sw.auto{background:#11171c;}
+/* equipment tiles: distinct procedural icons on a dark plate (r3: identical
+   stripe bars read as placeholders) */
+.cot-camo-card .sw.eq{display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#232a31,#12161b);}
+.cot-camo-card .sw.eq svg{display:block;}
+.cot-camo-card .cl{display:block;min-width:0;font-size:8px;font-weight:700;line-height:1.18;
+  letter-spacing:.08em;color:#9fb0bf;text-transform:uppercase;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+.cot-camo-card.sel .cl{color:#d8a04c;}
+/* r4: caption WRAPS instead of clipping — the old nowrap line overflowed the
+   196px column and cut off mid-sentence, leaving a dangling em-dash */
+.cot-camos .cnote{display:none}
+.cot-camo-lab{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.75fr);gap:18px;min-height:460px}
+.cot-camo-lab__canvas,.cot-camo-lab__controls{min-width:0;display:flex;flex-direction:column;gap:12px}
+.cot-camo-lab__panel{padding:13px;border:1px solid rgba(146,164,180,.2);background:rgba(7,11,14,.58)}
+.cot-camo-lab__heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 9px;color:#d5e0e8;
+  font:900 10px/1.2 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.16em;text-transform:uppercase}.cot-camo-lab__heading small{color:#6f818e;font-size:8px}
+.cot-custom-preview{position:relative;height:124px;overflow:hidden;border:1px solid rgba(0,0,0,.55);
+  background:#242a26;box-shadow:inset 0 0 0 1px rgba(235,243,250,.1);}
+.cot-custom-preview canvas{width:100%;height:100%;display:block;object-fit:cover;object-position:center;}
+.cot-custom-local{position:absolute;left:10px;bottom:9px;padding:5px 7px;color:#ffd17f;
+  background:rgba(7,10,13,.86);font:900 8px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;}
+.cot-custom-draw-wrap{position:relative;min-height:250px;flex:1;border:1px solid rgba(146,164,180,.28);overflow:hidden;
+  background-color:#202722;background-image:linear-gradient(rgba(255,255,255,.055) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(255,255,255,.055) 1px,transparent 1px);background-size:24px 24px}
+.cot-custom-draw{display:block;width:100%;height:100%;min-height:250px;touch-action:none;cursor:crosshair}
+.cot-custom-draw-label{position:absolute;left:10px;top:9px;padding:5px 7px;background:rgba(4,7,9,.8);color:#aebcc6;
+  pointer-events:none;font:900 8px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.13em;text-transform:uppercase}
+.cot-custom-tools{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.cot-custom-tool{min-height:40px;display:flex;align-items:center;justify-content:center;gap:7px;padding:0 8px;border:1px solid rgba(146,164,180,.22);
+  background:rgba(9,13,17,.82);color:#8d9da9;cursor:pointer;font:900 8.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;
+  transition:color .12s,border-color .12s,background .12s,transform .12s}.cot-custom-tool:active{transform:scale(.97)}
+.cot-custom-tool:hover,.cot-custom-tool:focus-visible{border-color:rgba(230,154,45,.7);color:#dce6ed;outline:none}
+.cot-custom-tool.on{border-color:#f0a030;color:#ffd27a;background:rgba(240,160,48,.1)}
+.cot-custom-assets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.cot-custom-assets .cot-custom-tool{min-height:46px;flex-direction:column;gap:3px}
+.cot-custom-colors{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.cot-custom-color{display:grid;grid-template-columns:34px 1fr;align-items:center;gap:8px;color:#8d9eaa;
+  font:900 8.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;}
+.cot-custom-color input{width:34px;height:34px;padding:2px;background:#090d11;border:1px solid rgba(146,164,180,.3);}
+.cot-custom-repeat{display:grid;grid-template-columns:auto 1fr 38px;gap:8px;align-items:center;color:#91a2ae;
+  font:900 8.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;}
+.cot-custom-repeat input{width:100%;accent-color:#f0a030;}.cot-custom-repeat output{text-align:right;color:#f0b04a;}
+.cot-custom-repeat-grid{display:grid;grid-template-columns:1fr;gap:9px}
+.cot-custom-check{display:flex;align-items:center;gap:8px;color:#9aabb7;font:900 8.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.09em;text-transform:uppercase}
+.cot-custom-check input{accent-color:#f0a030}
+.cot-custom-transfer{display:grid;grid-template-columns:1fr 1fr;gap:6px}.cot-custom-status{min-height:18px;color:#7f919e;
+  font:750 9px/1.45 'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif}.cot-custom-status.ok{color:#98cda0}.cot-custom-status.error{color:#ef8b7e}
+.cot-custom-help{color:#7f919e;font:650 11px 'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.55}.cot-custom-help strong{color:#d9a44e}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-camo-lab{grid-template-columns:1fr;min-height:0}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) :is(.cot-custom-draw-wrap,.cot-custom-draw){min-height:220px}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-camo-lab__controls{display:grid;grid-template-columns:1fr}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-custom-preview{height:100px}
+body[data-cot-width='phone'] .cot-custom-tools{grid-template-columns:repeat(2,minmax(0,1fr))}
+body[data-cot-width='phone'] .cot-custom-assets{grid-template-columns:repeat(3,minmax(0,1fr))}
+body[data-cot-width='phone'] .cot-custom-colors{grid-template-columns:1fr}
+body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-height:190px}
+
+/* EQUIPMENT SYSTEM: 3 loadout slots at the foot of the stats card. Same
+   plate/border language as the camo cards; equipped slots carry the item's
+   white-silhouette glyph (equipIcons.js), empty ones a quiet dashed +.
+   garage polish (spacing): the card now also stops ABOVE the carousel band —
+   the old 100vh-148px cap let its equipment tail run underneath the last
+   carousel cards at ≤850px-tall viewports (peeking through the card gaps);
+   content past the cap scrolls inside the card as designed. */
+.cot-garage .stats{max-height:max(320px,calc(100vh - 316px));overflow-y:auto;overflow-x:hidden;
+  scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
+.cot-garage .stats::-webkit-scrollbar{width:5px;}
+.cot-garage .stats::-webkit-scrollbar-track{background:rgba(8,11,14,.6);}
+.cot-garage .stats::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
+/* stat values boosted by equipment tint green (base value in the tooltip) */
+.cot-garage .srow .lr b.eqmod{color:#9fd8a0;}
+.cot-garage .eqhead{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
+  text-transform:uppercase;margin-bottom:7px;}
+.cot-garage .eqhead span{display:flex;align-items:center;gap:7px;}
+.cot-garage .eqhead svg{width:13px;height:13px;color:#f0a030;}
+.cot-garage .eqhead i{font-style:normal;color:#6d7a86;letter-spacing:.08em;}
+.cot-garage .cot-stat-title .cot-info-trigger{order:3;margin-left:auto;letter-spacing:0}
+.cot-garage .cot-stat-title small{order:4;margin-left:0}
+.cot-garage .eqhead .cot-info-trigger{margin-left:6px;letter-spacing:0}
+.cot-garage .eqhead i{margin-left:auto}
+.cot-garage .cot-dossier-head > .cot-info-trigger{position:absolute;z-index:3;right:11px;top:11px}
+.cot-garage .eqrow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.cot-garage .eqslot{cursor:pointer;height:58px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;
+  background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
+  border:1px solid rgba(146,164,180,.24);border-bottom:2px solid rgba(146,164,180,.24);
+  transition:border-color .12s,background .12s;}
+.cot-garage .eqslot:hover{border-color:rgba(210,225,240,.5);}
+.cot-garage .eqslot.open{border-color:#f0a030;border-bottom-color:#f0a030;
+  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
+.cot-garage .eqslot svg{display:block;}
+.cot-garage .eqslot .sl{font-size:7.5px;font-weight:700;letter-spacing:.08em;
+  color:#9fb0bf;text-transform:uppercase;max-width:92%;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+.cot-garage .eqslot.empty .plus{font-size:19px;line-height:1;color:#5b6873;
+  font-weight:400;}
+.cot-garage .eqslot.empty .sl{color:#5b6873;}
+.cot-garage .eqslot.empty:hover .plus{color:#9fb0bf;}
+/* EQUIPMENT PICKER: side panel opened by a slot click — icon+name+effect
+   tiles, category filter chips, era-locked tiles stay visible but inert. */
+.cot-eqpick{position:absolute;right:calc(var(--cot-garage-sidebar-width) + 38px);top:86px;width:372px;display:none;
+  pointer-events:auto;z-index:70;font-family:'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  background:linear-gradient(180deg,rgba(11,15,20,.94),rgba(7,10,13,.96));
+  border:1px solid rgba(146,164,180,.32);box-shadow:0 10px 36px rgba(0,0,0,.65);
+  padding:13px 14px 12px;}
+.cot-eqpick.open{display:block;}
+.cot-eqpick .ph{display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:9px;}
+.cot-eqpick .ph .t{font-size:11px;font-weight:800;letter-spacing:.22em;
+  color:#c6d2dc;text-transform:uppercase;}
+.cot-eqpick .ph .t i{font-style:normal;color:#f0b04a;}
+.cot-eqpick .ph .x{cursor:pointer;border:none;background:none;color:#8a97a3;
+  font-size:15px;line-height:1;padding:2px 4px;font-family:inherit;}
+.cot-eqpick .ph .x:hover{color:#ffd27a;}
+.cot-eqpick .chips{display:flex;gap:4px;margin-bottom:9px;flex-wrap:wrap;}
+.cot-eqpick .chip{cursor:pointer;border:1px solid rgba(146,164,180,.28);
+  background:rgba(11,15,20,.8);color:#8a97a3;font-family:inherit;
+  font-size:8.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  padding:4px 9px 3px;transition:color .12s,border-color .12s;}
+.cot-eqpick .chip:hover{color:#c6d2dc;}
+.cot-eqpick .chip.sel{color:#ffd27a;border-color:rgba(240,176,74,.65);
+  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
+.cot-eqpick .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+  max-height:min(46vh,430px);overflow-y:auto;overscroll-behavior:contain;
+  padding-right:3px;scrollbar-width:thin;
+  scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
+.cot-eqpick .pgrid::-webkit-scrollbar{width:5px;}
+.cot-eqpick .pgrid::-webkit-scrollbar-track{background:rgba(8,11,14,.6);}
+.cot-eqpick .pgrid::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
+.cot-eqtile{cursor:pointer;position:relative;text-align:center;padding:9px 5px 7px;
+  background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
+  border:1px solid rgba(146,164,180,.24);border-bottom:2px solid rgba(146,164,180,.24);
+  transition:border-color .12s,background .12s;}
+.cot-eqtile:hover{border-color:rgba(210,225,240,.5);}
+.cot-eqtile.sel{border-color:#f0a030;border-bottom-color:#f0a030;
+  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
+.cot-eqtile svg{display:block;margin:0 auto 5px;}
+.cot-eqtile .n{font-size:8.5px;font-weight:700;letter-spacing:.06em;color:#e6edf3;
+  text-transform:uppercase;line-height:1.25;min-height:20px;
+  display:flex;align-items:center;justify-content:center;}
+.cot-eqtile .e{font-size:7.5px;font-weight:600;letter-spacing:.02em;color:#8a97a3;
+  line-height:1.35;margin-top:3px;min-height:29px;}
+.cot-eqtile.sel .n{color:#ffd27a;}
+.cot-eqtile .tag{position:absolute;top:3px;right:3px;font-size:6.5px;font-weight:800;
+  letter-spacing:.1em;color:#d8a04c;background:rgba(20,14,6,.85);
+  border:1px solid rgba(240,176,74,.4);padding:1px 4px;text-transform:uppercase;}
+.cot-eqtile.inother .tag{color:#9fb0bf;border-color:rgba(146,164,180,.4);
+  background:rgba(10,14,18,.85);}
+.cot-eqtile.locked{cursor:default;opacity:.38;}
+.cot-eqtile.locked:hover{border-color:rgba(146,164,180,.24);}
+.cot-eqtile.remove .n{color:#9fb0bf;}
+.cot-eqtile.remove svg{opacity:.55;}
+
+/* garage polish (spacing/focus only): keyboard-visible focus affordance on
+   the interactive chrome — one quiet amber ring, outline-based so nothing
+   shifts layout. Mouse clicks stay ring-free via :focus-visible. */
+.cot-battle:focus-visible,.cot-battle-mode:focus-visible,.cot-battle-choice:focus-visible,
+.cot-country-chip:focus-visible,.cot-country-edge:focus-visible,.cot-car-arrow:focus-visible,.cot-record-trigger:focus-visible,
+.cot-github:focus-visible,.cot-record-close:focus-visible{
+  outline:2px solid rgba(240,176,74,.8);outline-offset:2px;}
+.cot-eqpick .chip:focus-visible,.cot-eqpick .ph .x:focus-visible{
+  outline:1px solid rgba(240,176,74,.8);outline-offset:1px;}
+
+/* garage_ui: entrance transition — the garage used to hard-cut in (boot and
+   battle-exit both flipped display:none→block in one frame). show() re-arms
+   the .enter class; the UI chrome fades/rises in around the live 3D stage.
+   Centered elements keep their translateX(-50%) inside the keyframes. */
+.cot-garage.enter .band-top,.cot-garage.enter .band-bot,
+.cot-garage.enter .band-l,.cot-garage.enter .band-r{
+  animation:cot-g-fade .30s ease-out backwards;}
+.cot-garage.enter .title,.cot-garage.enter .cot-nav,
+.cot-garage.enter .cot-leftcol,
+.cot-garage.enter .hint{animation:cot-g-fade .34s ease-out .05s backwards;}
+.cot-garage.enter .stats{animation:cot-g-rise .36s ease-out .08s backwards;}
+.cot-garage.enter .cot-battle-control{animation:cot-g-drop-c .36s ease-out .05s backwards;}
+.cot-garage.enter .cot-country-rail{animation:cot-g-rise-c .32s ease-out .10s backwards;}
+.cot-garage.enter .cot-carousel{animation:cot-g-rise-c .36s ease-out .14s backwards;}
+/* MARKETING FEATURED PANEL: rotating in-engine action stills (see
+   tools/marketing-shots). Bottom-anchored under the camo grid in the left
+   column; purely decorative, so on short viewports it is the element that
+   clips first (leftcol overflow:hidden), never the functional pickers. */
+.cot-featured{width:100%;flex:0 0 auto;pointer-events:auto;}
+/* r9.1: browse arrows — visible on hover, click = prev/next still */
+.cot-featured .fnav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;
+  width:20px;height:32px;display:flex;align-items:center;justify-content:center;
+  background:rgba(5,8,11,.6);border:1px solid rgba(146,164,180,.35);color:#d9e3ec;
+  font-size:14px;line-height:1;cursor:pointer;opacity:0;padding:0 0 2px;
+  transition:opacity .15s,border-color .15s,color .15s;}
+.cot-featured .fshot:hover .fnav{opacity:.92;}
+.cot-featured .fnav:hover{border-color:rgba(240,176,74,.7);color:#ffd27a;}
+.cot-featured .fnav.prev{left:0;}
+.cot-featured .fnav.next{right:0;}
+.cot-featured .ftitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
+  text-transform:uppercase;margin-bottom:7px;display:flex;justify-content:space-between;
+  align-items:baseline;}
+.cot-featured .ftitle > span:first-child{flex:0 0 auto;white-space:nowrap;}
+.cot-featured .fdots{display:flex;gap:2px;flex:0 0 auto;}
+.cot-featured .fdots span{width:3px;height:6px;flex:0 0 3px;background:rgba(146,164,180,.35);
+  transition:background .2s;cursor:pointer;}
+.cot-featured .fdots span:hover{background:rgba(210,225,240,.7);}
+.cot-featured .fdots span.on{background:#f0a030;}
+.cot-featured .fshot{position:relative;width:100%;height:104px;overflow:hidden;
+  border:1px solid rgba(146,164,180,.28);cursor:pointer;background:#0a0e12;
+  box-shadow:0 6px 20px rgba(0,0,0,.45);transition:border-color .15s;}
+.cot-featured .fshot:hover{border-color:rgba(240,176,74,.6);}
+.cot-featured .fly{position:absolute;inset:0;background-size:cover;background-position:center 40%;
+  opacity:0;transform:scale(1.05);transition:opacity .8s ease;}
+.cot-featured .fly.on{opacity:1;transform:scale(1);
+  transition:opacity .8s ease,transform 8.5s linear;}
+.cot-featured .fcap{position:absolute;left:0;right:0;bottom:0;padding:14px 8px 5px;
+  font-size:8px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#d9e3ec;
+  background:linear-gradient(0deg,rgba(5,8,11,.9),rgba(5,8,11,0));white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+@keyframes cot-g-fade{from{opacity:0;}}
+@keyframes cot-g-rise{from{opacity:0;transform:translateY(12px);}}
+@keyframes cot-g-rise-c{from{opacity:0;transform:translateX(-50%) translateY(12px);}
+  to{opacity:1;transform:translateX(-50%);}}
+@keyframes cot-g-drop-c{from{opacity:0;transform:translateX(-50%) translateY(-10px);}
+  to{opacity:1;transform:translateX(-50%);}}
+@media (prefers-reduced-motion:reduce){
+  .cot-garage.enter,.cot-garage.enter *{animation:none !important;}
+}
+
+/* RESPONSIVE COMPOSITION r1 -------------------------------------------------
+   Width/height/input semantics come from responsiveLayout.ts. These rules are
+   are the canonical garage composition. The Battle dropdown behavior remains
+   untouched; only its containing control is fitted to the available top lane. */
+body[data-cot-width='laptop'] .cot-garage{
+  --cot-garage-sidebar-width:clamp(232px,20vw,272px);
+}
+body[data-cot-width='laptop'] .cot-header-nav .nv{width:34px;padding:0;justify-content:center;gap:0}
+body[data-cot-width='laptop'] .cot-header-nav .nav-label{display:none}
+body[data-cot-width='laptop'] .cot-header-nav .record-badge{
+  position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;font-size:6px;
+}
+body[data-cot-width='laptop'] .cot-nav .github-stars{
+  position:absolute;right:-7px;top:-6px;min-width:18px;height:14px;padding:0 3px;display:grid;place-items:center;
+  border:1px solid #ffc46b;background:#f0a030;color:#1a1105;font-size:5.5px;line-height:1;letter-spacing:0;
+}
+body[data-cot-width='laptop'] .cot-leftcol{left:clamp(18px,2vw,30px)}
+body[data-cot-width='laptop'] .cot-garage .stats{right:clamp(18px,2vw,30px)}
+body[data-cot-width='laptop'] .cot-country-rail{
+  width:min(920px,calc(100vw - (var(--cot-garage-sidebar-width) * 2) - 92px));
+}
+
+body[data-cot-panels='overlay'] .cot-garage{
+  --cot-overlay-edge:clamp(10px,2vw,18px);
+  --cot-roster-height:86px;
+  --cot-country-bottom:100px;
+  --cot-tools-bottom:152px;
+}
+body[data-cot-panels='overlay'] .cot-garage .band-top{height:22%}
+body[data-cot-panels='overlay'] .cot-garage .band-bot{height:29%}
+body[data-cot-panels='overlay'] .cot-garage .band-r{display:none}
+body[data-cot-panels='overlay'] .cot-brand-rail{
+  top:max(12px,env(safe-area-inset-top));left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
+  height:44px;gap:9px;z-index:13;
+}
+body[data-cot-panels='overlay'] .cot-garage .title{font-size:12px;letter-spacing:.2em;gap:8px}
+body[data-cot-panels='overlay'] .cot-garage .title .mark{width:28px;height:28px}
+body[data-cot-panels='overlay'] .cot-brand-utilities,
+body[data-cot-panels='overlay'] .cot-nav .cot-nav-desktop{display:none}
+body[data-cot-panels='overlay'] .cot-nav{
+  top:max(12px,env(safe-area-inset-top));right:max(var(--cot-overlay-edge),env(safe-area-inset-right));
+  height:44px;gap:4px;z-index:15;
+}
+body[data-cot-panels='overlay'] .cot-nav .cot-mobile-nav-trigger{display:inline-flex}
+body[data-cot-panels='overlay'] .cot-mobile-nav-menu:not([hidden]){display:grid}
+body[data-cot-panels='overlay'] .cot-header-nav .nv{
+  width:44px;height:44px;min-height:44px;padding:0;justify-content:center;gap:0;
+}
+body[data-cot-panels='overlay'] .cot-header-nav .nv .nav-label{display:none}
+body[data-cot-panels='overlay'] .cot-header-nav .nv .nvi{width:16px;height:16px}
+body[data-cot-panels='overlay'] .cot-nav .cot-settings-slot,
+body[data-cot-panels='overlay'] .cot-nav .cot-gear{width:44px;height:44px;min-height:44px}
+body[data-cot-panels='overlay'] .cot-battle-control{
+  top:max(12px,env(safe-area-inset-top));width:clamp(196px,28vw,238px);height:44px;z-index:20;
+}
+body[data-cot-panels='overlay'] .cot-battle{font-size:clamp(14px,1.8vw,17px)}
+body[data-cot-panels='overlay'] .cot-battle-mode{font-size:7.5px}
+body[data-cot-panels='overlay'] .cot-garage-tools{
+  display:flex;left:50%;bottom:var(--cot-tools-bottom);transform:translateX(-50%);
+  width:min(430px,calc(100vw - (var(--cot-overlay-edge) * 2)));
+}
+body[data-cot-panels='overlay'] .cot-garage-tool{flex:1 1 0}
+body[data-cot-panels='overlay'] .cot-leftcol,
+body[data-cot-panels='overlay'] .cot-garage .stats{display:none}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-garage-panel-scrim{display:block}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='maps'] .cot-leftcol,
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{
+  display:flex;z-index:11;left:max(var(--cot-overlay-edge),env(safe-area-inset-left));right:auto;
+  top:76px;bottom:206px;width:min(360px,calc(100vw - (var(--cot-overlay-edge) * 2)));
+  max-height:none;padding:8px;gap:0;overflow:hidden;
+  background:linear-gradient(160deg,rgba(11,16,21,.99),rgba(5,8,11,.99));
+  border:1px solid rgba(174,194,209,.32);box-shadow:0 20px 54px rgba(0,0,0,.66);
+}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='maps'] .cot-maps,
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-camos{
+  display:flex;width:100%;height:100%;min-height:0;max-height:none;flex:1 1 auto;padding:10px;
+}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='maps'] .cot-camos,
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-maps,
+body[data-cot-panels='overlay'] .cot-leftcol .cot-featured{display:none}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='dossier'] .stats{
+  display:block;z-index:11;right:max(var(--cot-overlay-edge),env(safe-area-inset-right));left:auto;
+  top:76px;bottom:206px;width:min(380px,calc(100vw - (var(--cot-overlay-edge) * 2)));
+  max-height:none;padding:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+  background:transparent;box-shadow:0 20px 54px rgba(0,0,0,.66);
+}
+body[data-cot-panels='overlay'] .cot-country-rail{
+  --country-edge:32px;left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
+  right:max(var(--cot-overlay-edge),env(safe-area-inset-right));bottom:var(--cot-country-bottom);
+  width:auto;height:44px;transform:none;
+}
+body[data-cot-panels='overlay'] .cot-garage.enter .cot-country-rail{animation-name:cot-g-rise}
+body[data-cot-panels='overlay'] .cot-country-chips{height:44px;gap:4px;padding:2px 3px}
+body[data-cot-panels='overlay'] .cot-country-edge{width:30px;height:42px}
+body[data-cot-panels='overlay'] .cot-country-chip{
+  min-height:42px;padding:4px 9px 3px;font-size:7.5px;letter-spacing:.1em;gap:5px;
+}
+body[data-cot-panels='overlay'] .cot-country-chip .cot-flag{width:18px}
+body[data-cot-panels='overlay'] .cot-carousel{
+  left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
+  right:max(var(--cot-overlay-edge),env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));
+  width:auto;height:var(--cot-roster-height);max-width:none;transform:none;gap:5px;
+}
+body[data-cot-panels='overlay'] .cot-garage.enter .cot-carousel{animation-name:cot-g-rise}
+body[data-cot-panels='overlay'] .cot-car-arrow{width:36px;flex:0 0 36px}
+body[data-cot-panels='overlay'] .cot-cards{min-width:0;flex:1 1 auto;gap:5px}
+body[data-cot-panels='overlay'] .cot-card{
+  width:112px;min-height:var(--cot-roster-height);height:var(--cot-roster-height);padding:5px 6px 4px;
+}
+body[data-cot-panels='overlay'] .cot-card.sel{transform:translateY(-3px)}
+body[data-cot-panels='overlay'] .cot-card .flag{margin-bottom:1px;font-size:6px;gap:3px}
+body[data-cot-panels='overlay'] .cot-card .flag .cot-flag{width:16px}
+body[data-cot-panels='overlay'] .cot-card .designation{font-size:5.5px;padding:1px 0}
+body[data-cot-panels='overlay'] .cot-card .dev-tag{right:4px;top:22px;padding:1px 3px;font-size:5px}
+body[data-cot-panels='overlay'] .cot-card .ti{width:92px;height:48px;margin:-4px auto -2px;
+  transform:translateY(-2px) scale(1.12)}
+body[data-cot-panels='overlay'] .cot-card .nm{font-size:8px;margin:0 -2px}
+body[data-cot-panels='overlay'] .cot-card .era{font-size:6px;margin-top:1px;letter-spacing:.12em}
+body[data-cot-panels='overlay'] .cot-garage .hint{display:none}
+
+body[data-cot-width='phone'] .cot-garage .title span,
+body[data-cot-width='compact'] .cot-garage .title span{display:none}
+body[data-cot-width='phone'] .cot-garage{
+  --cot-roster-height:82px;--cot-country-bottom:94px;--cot-tools-bottom:144px;
+}
+body[data-cot-width='phone'] .cot-battle-control{width:152px}
+body[data-cot-width='phone'] .cot-battle{font-size:13px;padding-left:5px;gap:5px}
+body[data-cot-width='phone'] .cot-battle .battle-active-icon{width:18px;height:18px}
+body[data-cot-width='phone'] .cot-battle-mode{font-size:7px;padding-right:7px}
+body[data-cot-width='phone'] .cot-battle-mode::after{right:5px}
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-battle-control{
+  top:max(64px,calc(env(safe-area-inset-top) + 58px));
+}
+body[data-cot-width='phone'] .cot-garage-tools{width:calc(100vw - (var(--cot-overlay-edge) * 2))}
+body[data-cot-width='phone'] .cot-garage-tool{padding:0 7px;gap:5px;font-size:6.5px;letter-spacing:.08em}
+body[data-cot-width='phone'] .cot-garage-tool svg{width:15px;height:15px}
+body[data-cot-width='phone'] .cot-card{width:102px}
+body[data-cot-width='phone'] .cot-car-arrow{width:32px;flex-basis:32px}
+body[data-cot-width='phone'] .cot-record-overview{grid-template-columns:1fr}
+body[data-cot-width='phone'] .cot-record-dialog{width:calc(100vw - 20px);max-height:calc(100dvh - 20px)}
+body[data-cot-width='phone'] .cot-record-head{padding:15px 14px 12px}
+body[data-cot-width='phone'] .cot-record-body{padding:14px}
+body[data-cot-width='phone'] .cot-record-ring{width:116px}
+body[data-cot-width='phone'] .cot-record-metrics,
+body[data-cot-width='phone'] .cot-last-battle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+/* Short viewports use vertical panel tabs, keeping the center sightline and
+   both horizontal roster rails usable down to 360 CSS px of height. */
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage{
+  --cot-roster-height:62px;--cot-country-bottom:70px;
+}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage-tools{
+  left:max(8px,env(safe-area-inset-left));right:auto;top:72px;bottom:auto;transform:none;
+  width:44px;flex-direction:column;
+}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage-tool{
+  width:44px;height:44px;flex:0 0 44px;padding:0;
+}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage-tool span{display:none}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage[data-garage-panel='maps'] .cot-leftcol,
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{
+  left:max(60px,calc(env(safe-area-inset-left) + 60px));top:72px;bottom:118px;
+  width:min(310px,calc(100vw - 128px));
+}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage[data-garage-panel='dossier'] .stats{
+  top:72px;bottom:118px;width:min(340px,calc(100vw - 72px));
+}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-rail{height:38px}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-chips{height:38px}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-chip{min-height:36px;padding-block:2px}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-edge{height:36px}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card{
+  min-height:var(--cot-roster-height);height:var(--cot-roster-height);width:96px;padding-block:3px;
+}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card .ti{width:76px;height:34px;margin:-4px auto -2px}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card .era{display:none}
+
+body[data-cot-input='coarse'] .cot-garage button,
+body[data-cot-input='coarse'] .cot-garage a{touch-action:manipulation}
+body[data-cot-input='coarse'] .cot-country-chip{min-width:44px}
