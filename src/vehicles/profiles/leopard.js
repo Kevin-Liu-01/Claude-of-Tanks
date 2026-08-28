@@ -12856,7 +12856,7 @@ function wrapRearSlat(P, width, y0, y1, z, seatZ) {
 // (wrap* helpers above). Hull keeps the §5.248 rebuild: hull-flank armor
 // slabs, mine-belly, the big rear stowage rack; gun keeps the §5.248 L44
 // package re-seated at the old turret's trunnion face (muzzle world 6.24,
-// overall 9.96 — bore-mouth law receipts in src/vehicles/germany.js).
+// overall 9.96 — bore-mouth law receipts in src/vehicles/germany.ts).
 function buildLeo2A4M(P) {
   const { box, cylX, cylY, cylZ, torus, xform, sph, periscope, liftEye, smokeCluster, shovelTool, towCable, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
   leoHullV3(P, {

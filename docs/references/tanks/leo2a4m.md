@@ -51,7 +51,7 @@ figure is not carried by the print (divergence reported).
 - Gun: L44 tube center ~1.93 world (LOW — print stylization), muzzle world
   6.10 glb-decoded ≈ rear + 9.96 within 0.2%.
 
-## Spec decisions (src/vehicles/germany.js — silhouette* strip law applied)
+## Spec decisions (src/vehicles/germany.ts — silhouette* strip law applied)
 dims 7.72 / 9.96 / **3.77** (over-skirt/armor, print-verified) / **2.62**
 (the p95 hatch-drum hardware line — the family §5.73-1 datum class; 2.75
 is an over-PERI figure the recipe cannot see, and the print's own 3.556

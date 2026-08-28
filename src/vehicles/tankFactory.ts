@@ -32,7 +32,7 @@ import './sweden.js';
 import './poland.ts';
 import './korea.ts';
 import './japan.js';
-import './germany.js';
+import './germany.ts';
 import './afvFamily.js';
 import './sheridan.js';
 

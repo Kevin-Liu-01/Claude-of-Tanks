@@ -221,3 +221,4 @@ runtime documents remain authoritative for behavior.
 - [0209 — Ukrainian variant registration is strict TypeScript](0209-typed-ukrainian-variant-registration.md)
 - [0210 — Chinese variant registration is strict TypeScript](0210-typed-chinese-variant-registration.md)
 - [0211 — Polish variant registration is strict TypeScript](0211-typed-polish-variant-registration.md)
+- [0212 — German variant and fitted ERA registration is strict TypeScript](0212-typed-german-variant-registration.md)
