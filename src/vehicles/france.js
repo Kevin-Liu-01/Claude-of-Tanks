@@ -12,7 +12,7 @@
 
 import { KIT } from './tankFactoryCore.js';
 import { FITTINGS } from './profiles/kit.js';
-import './franceSpecs.js';
+import './franceSpecs.ts';
 
 // ---------------------------------------------------------------------------
 // §C missing-side winding guard — face-outwardness census; re-orders reversed

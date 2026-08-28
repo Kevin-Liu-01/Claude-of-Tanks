@@ -214,3 +214,4 @@ runtime documents remain authoritative for behavior.
 - [0202 — Fleet spec constructors are strict TypeScript](0202-typed-fleet-spec-constructors.md)
 - [0203 — Exact family loading retires coarse fleet bundles](0203-retire-coarse-fleet-bundles.md)
 - [0204 — Type 10 gun-seat receipts are strict TypeScript](0204-typed-type10-gun-seat.md)
+- [0205 — Fleet combat rows share a strict TypeScript contract](0205-typed-fleet-spec-contracts.md)

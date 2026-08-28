@@ -4,12 +4,27 @@
 // the exact same donor row during the eager roster pass.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from '../specs.js';
 import { shell, communityArmor as buildCommunityArmor } from '../specHelpers.ts';
+import type {
+  CommunityArmorInput,
+  CommunityArmorOptions,
+} from '../specHelpers.ts';
+import type {
+  FleetTankSpec,
+  ModelSourceRegistry,
+  TankSpecRegistry,
+} from '../specContracts.ts';
+
+const tankSpecs = TANK_SPECS as unknown as TankSpecRegistry;
+const modelSources = MODEL_SOURCE as unknown as ModelSourceRegistry;
+const allTankIds = ALL_TANK_IDS as unknown as string[];
 
 const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
-const communityArmor = (options) => buildCommunityArmor(options, {
+const communityArmor = (
+  options: CommunityArmorInput,
+) => buildCommunityArmor(options, {
   exposeTurretless: false,
   allowTurretless: false,
-});
+} satisfies CommunityArmorOptions);
 
 // Same authored combat row as the quarantined user-drop fallback. No external
 // model or visual builder participates in this module.
@@ -47,10 +62,10 @@ const TYPE74_SPEC = {
     patches: ['#4d4133', '#37432f'],
     marking: 'number', number: '74', trackWidthM: 0.55, camoScale: 0.6,
   },
-};
+} satisfies FleetTankSpec;
 
-TANK_SPECS.type74 = TANK_SPECS.type74 || TYPE74_SPEC;
-if (!ALL_TANK_IDS.includes('type74')) ALL_TANK_IDS.push('type74');
-MODEL_SOURCE.type74 = MODEL_SOURCE.type74 || { source: 'procedural' };
+tankSpecs.type74 ||= TYPE74_SPEC;
+if (!allTankIds.includes('type74')) allTankIds.push('type74');
+modelSources.type74 ||= { source: 'procedural' };
 
 export { TYPE74_SPEC };

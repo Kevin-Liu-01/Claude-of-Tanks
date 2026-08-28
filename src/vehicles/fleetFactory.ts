@@ -33,7 +33,7 @@ import './challengerSpecs.js';
 import './modern3Specs.js';
 import './userdrops5.js';
 import './userdrops6.js';
-import './franceSpecs.js';
+import './franceSpecs.ts';
 import './ukraine.js';
 import './china.js';
 import './sweden.js';

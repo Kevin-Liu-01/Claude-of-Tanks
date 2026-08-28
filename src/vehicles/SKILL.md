@@ -90,6 +90,9 @@ suspension-count, clearance, or material-role rules.
 Keep shared armor, shell, module, and crew constructors in the pure
 `specHelpers.ts` boundary. It must not import fleet registries, builders,
 Three.js, or browser APIs.
+Use `specContracts.ts` for boot-light fleet combat rows. Family packs may add
+identity-specific metadata, but must satisfy the shared mobility, gun, armor,
+dimensions, and visual contract before mutating the legacy registry.
 Keep the Type 10 / Type 10B trunnion, muzzle, throat, and mantlet-fit receipts
 in the pure `profiles/type10GunSeat.ts` boundary; geometry builders consume the
 datums but do not redefine them.

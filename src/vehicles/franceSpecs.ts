@@ -2,6 +2,15 @@
 // geometry implementation is demand-loaded from france.js when selected.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import { shell, apfsdsPenetration as apfsdsPens, modernArmor } from './specHelpers.ts';
+import type {
+  FleetTankSpec,
+  ModelSourceRegistry,
+  TankSpecRegistry,
+} from './specContracts.ts';
+
+const tankSpecs = TANK_SPECS as unknown as TankSpecRegistry;
+const modelSources = MODEL_SOURCE as unknown as ModelSourceRegistry;
+const allTankIds = ALL_TANK_IDS as unknown as string[];
 
 const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
 
@@ -40,10 +49,10 @@ export const FRANCE_SPECS = {
       marking: 'number', number: '02', trackWidthM: 0.57, camoScale: 0.5,
     },
   },
-};
+} satisfies Record<string, FleetTankSpec>;
 
 for (const [id, spec] of Object.entries(FRANCE_SPECS)) {
-  TANK_SPECS[id] = TANK_SPECS[id] || spec;
-  MODEL_SOURCE[id] = MODEL_SOURCE[id] || { source: 'procedural' };
-  if (!ALL_TANK_IDS.includes(id)) ALL_TANK_IDS.push(id);
+  tankSpecs[id] ||= spec;
+  modelSources[id] ||= { source: 'procedural' };
+  if (!allTankIds.includes(id)) allTankIds.push(id);
 }
