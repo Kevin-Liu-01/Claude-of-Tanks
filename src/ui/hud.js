@@ -216,6 +216,7 @@ import { tierNumeral } from '../vehicles/tier.ts';
 // SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,
 // incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.js.
 import { createShotInfo } from './shotInfo.js';
+import { hitOutcomeFor } from './hitEventFormat.ts';
 import {
   SPECIAL_ACTION_KINDS,
   specialActionDescriptor,
@@ -1606,6 +1607,20 @@ export function initHud(bus) {
   let lastTimer = '';
   let spawnFlags = null; // [{x,z,color}] — team spawn markers, set per battle
 
+  /** Clear every transient combat-feedback owner at a round/phase boundary. */
+  function resetCombatPresentation() {
+    hitDirs.length = 0;
+    hitMark = null;
+    liveNums.length = 0;
+    dmgLayer.replaceChildren();
+    killfeed.replaceChildren();
+    if (alertTimer) {
+      clearTimeout(alertTimer);
+      alertTimer = null;
+    }
+    alertEl.classList.remove('show', 'danger', 'warning', 'success', 'info');
+  }
+
   function resize() {
     w = root.clientWidth || window.innerWidth;
     h = root.clientHeight || window.innerHeight;
@@ -2193,56 +2208,9 @@ export function initHud(bus) {
         ctx.stroke();
         ctx.globalCompositeOperation = 'source-over';
       }
-      // ------- POOLED FIGURE ON THE WEDGE (MOBILE-UX r1, owner: "add damage
-      // numbers to our deflections and so on like it was before, but i do
-      // like the new look of the indicators"). The number rides just outside
-      // the wedge's outer arc at its angular center, on the wedge's OWN
-      // envelopes: it scales in with the attack (`grow`, so a re-pulsed merge
-      // flashes the new POOLED total — e.dmg accumulates in pushHitDirection)
-      // and fades on the same aEnv as the crescent. Marker ink: damage-red
-      // family on pen wedges, HE amber, steel for deflects — which carry the
-      // RICOCHET/BLOCKED word instead of a number. The wedge geometry itself
-      // is untouched; the damage log / shot log keep their entries (the
-      // figures live in both places, matching the pre-rebuild behavior).
-      {
-        const isB = e.kind === 'bounce';
-        const label = isB ? (e.bk || 'BLOCKED')
-          : e.dmg > 0 ? `-${Math.round(e.dmg)}`
-            : e.crit ? 'CRIT' : null;
-        if (label) {
-          const ink = isB ? '216,226,236' : e.kind === 'he' ? '255,198,100' : '255,138,116';
-          const tR = R0 + thick + (isB ? 13 : 15);
-          let tx = cx + Math.cos(c) * tR;
-          let ty = cy + Math.sin(c) * tR;
-          // keep the widest figure (and its CRIT tag) inside the frame on
-          // top/bottom wedges over small mobile viewports
-          tx = Math.min(Math.max(tx, 44), w - 44);
-          ty = Math.min(Math.max(ty, 26), h - 26);
-          const s = Math.min(grow, 1.02); // attack scale-in, no lingering overshoot
-          ctx.save();
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.shadowColor = 'rgba(0,0,0,0.9)';
-          ctx.shadowBlur = 4;
-          ctx.font = isB
-            ? `800 ${(11.5 * s).toFixed(2)}px ${FONT_COND}`
-            : `800 ${(18 * s).toFixed(2)}px ${FONT_COND}`;
-          // dark under-pass first (HUD convention — sunlit sand cannot erase
-          // the figure), then the class ink
-          ctx.lineWidth = 3;
-          ctx.strokeStyle = `rgba(8,11,14,${(0.75 * aEnv).toFixed(3)})`;
-          ctx.strokeText(label, tx, ty);
-          ctx.fillStyle = `rgba(${ink},${(0.96 * aEnv).toFixed(3)})`;
-          ctx.fillText(label, tx, ty);
-          // crit tag rides above the number (old damage-number grammar)
-          if (e.crit && !isB && e.dmg > 0) {
-            ctx.font = `800 ${(9 * s).toFixed(2)}px ${FONT_COND}`;
-            ctx.fillStyle = `rgba(255,216,164,${(0.92 * aEnv).toFixed(3)})`;
-            ctx.fillText('CRIT', tx, ty - 15 * s);
-          }
-          ctx.restore();
-        }
-      }
+      // Direction is this surface's only job. Damage/result copy lives in the
+      // canonical incoming-fire card, preventing one event from painting the
+      // same RICOCHET or damage value twice in different visual grammars.
     }
     ctx.lineCap = 'butt';
   }
@@ -3822,16 +3790,20 @@ export function initHud(bus) {
     project(lastCamera, hit.pos[0], hit.pos[1] + 1.5, hit.pos[2]);
     if (!_sVisible) return;
     const d = el('div', 'cot-dmgnum', dmgLayer);
-    if (hit.kind === 'ricochet') { d.classList.add('miss'); d.textContent = 'RICOCHET'; }
-    else if (hit.kind === 'nonpen') { d.classList.add('miss'); d.textContent = 'NO PENETRATION'; }
-    else if (hit.kind === 'spaced_absorb' || hit.kind === 'era' ||
-      (hit.kind === 'screen_pierce' && !(hit.damage > 0))) { d.classList.add('miss'); d.textContent = 'ABSORBED'; }
-    else if (hit.damage > 0) {
+    const outcome = hitOutcomeFor(hit);
+    if (hit.damage > 0) {
       d.textContent = `-${Math.round(hit.damage)}`;
       if (hit.modulesHit && hit.modulesHit.length) {
         const c = el('span', 'crit', d);
         c.textContent = 'CRIT';
       }
+    } else if (document.body.classList.contains('cot-touch-layout')) {
+      // Touch hides the detailed ballistic card, so retain one compact result
+      // at the impact point. Desktop gets the card only, never a duplicate.
+      d.classList.add('miss');
+      d.dataset.outcome = outcome.id;
+      d.style.color = outcome.color;
+      d.textContent = outcome.label;
     } else { d.remove(); return; }
     // WoT-style stacking: new labels step upward off any live label near the
     // same projected point (slight x-jitter) instead of overlapping.
@@ -3907,12 +3879,8 @@ export function initHud(bus) {
       || (hit.crewHit || []).length > 0;
     // a 0-damage PENETRATION that cost a module/crewman is still damage-in —
     // it keeps the red wedge (+ crit flash), never the deflect read
-    const pen = hit.kind === 'pen' || hit.kind === 'he_pen';
-    const kind = hit.kind === 'he_splash' ? 'he' : (pen || dmg > 0) ? 'pen' : 'bounce';
-    // MOBILE-UX r1: which word the steel deflect wedge carries (drawn by
-    // drawHitIndicators) — a true ricochet says RICOCHET, every other
-    // 0-damage eat (nonpen / spaced / ERA / 0-dmg screen pierce) says BLOCKED.
-    const bk = hit.kind === 'ricochet' ? 'RICOCHET' : 'BLOCKED';
+    const outcome = hitOutcomeFor(hit);
+    const kind = hit.kind === 'he_splash' ? 'he' : (outcome.penetrated || dmg > 0) ? 'pen' : 'bounce';
     // repeat fire from (nearly) the same bearing RE-PULSES the existing wedge
     // — refresh its timer, pool the damage weight — instead of stacking a
     // second copy on top (WoT read; ~20° merge window per class)
@@ -3927,13 +3895,12 @@ export function initHud(bus) {
         e.wz = wz;
         e.dmg = (e.dmg || 0) + dmg; // pooled total — the wedge number re-pulses with it
         e.crit = e.crit || crit;
-        e.bk = bk;
         e.t0 = lastTimeS; // decay timer restarts
         e.re = true;      // attack re-runs as a flash, not a full re-grow
         return;
       }
     }
-    hitDirs.push({ wx, wz, kind, crit, dmg, bk, t0: lastTimeS, re: false, _screenAng: null });
+    hitDirs.push({ wx, wz, kind, crit, dmg, t0: lastTimeS, re: false, _screenAng: null });
     // hard cap: 5 simultaneous wedges — drop the oldest, never visual soup
     while (hitDirs.length > 5) hitDirs.shift();
   }
@@ -4081,13 +4048,10 @@ export function initHud(bus) {
   bus.on('shell:hit', (hit) => {
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
-      // r4: a screen_pierce that dealt 0 damage (skirt ate the shell) used to
-      // flash the AMBER damage confirm with no number and no message —
-      // contradictory feedback. Zero-damage hits are bounces: steel shards +
-      // ABSORBED label + bounce message.
-      const bounced = hit.kind === 'ricochet' || hit.kind === 'nonpen' ||
-        hit.kind === 'spaced_absorb' || hit.kind === 'era' ||
-        (hit.kind === 'screen_pierce' && !(hit.damage > 0));
+      // Zero-damage and pass-through outcomes use the steel confirmation;
+      // damaging/module outcomes use amber. Copy belongs to the canonical
+      // ballistic card (or the compact touch impact label), never this shard.
+      const bounced = hitOutcomeFor(hit).confirmTone === 'deflect';
       hitMark = { t0: lastTimeS, bounced };
     }
     if (playerId != null && hit.targetId === playerId) {
@@ -4223,7 +4187,6 @@ export function initHud(bus) {
         kind: d.kind,
         crit: !!d.crit,
         dmg: d.dmg || 0,
-        word: d.bk || null, // MOBILE-UX r1: deflect word (RICOCHET/BLOCKED)
         screenAngRad: d._screenAng,
         ageS: Math.round((lastTimeS - d.t0) * 1000) / 1000,
       }));
@@ -4316,13 +4279,14 @@ export function initHud(bus) {
         // spectate bar never survives leaving the battlefield
         specBar.classList.remove('in', 'show');
         document.body.classList.remove('cot-spectating');
-        hitDirs.length = 0;
+        resetCombatPresentation();
       }
       // SHOT-INFO SECTION: lifecycle forwarding (reset per battle, hide the
       // end-of-battle stats card when the HUD leaves the battlefield).
       if (m === 'hidden') shotInfo.hideStats();
       if (m === 'battle' && wasHidden) shotInfo.reset();
       if (m === 'battle' && wasHidden) {
+        resetCombatPresentation();
         // fresh battle: drop spotting memory, nicknames and team rosters
         spotById.clear();
         nickById.clear();

@@ -113,6 +113,22 @@ assert.doesNotMatch(hud, /cot-dlog|pushDamageLog/,
   'incoming hits must have one canonical combat-intelligence feed, not a duplicate HUD log');
 assert.doesNotMatch(hud, /cot-bounce|showBounceMessage|BOUNCE_TEXT/,
   'ricochets must not create a second generic toast beside the hit marker and combat record');
+assert.match(hud,
+  /if \(hit\.damage > 0\)[\s\S]*document\.body\.classList\.contains\('cot-touch-layout'\)[\s\S]*outcome\.label[\s\S]*else \{ d\.remove\(\); return; \}/,
+  'desktop zero-damage results must use the ballistic card only while touch retains one compact impact label');
+assert.doesNotMatch(hud, /d\.textContent = '(?:RICOCHET|NO PENETRATION|ABSORBED)'/,
+  'HUD result copy must come from the shared hit-outcome registry');
+assert.doesNotMatch(hud, /ctx\.(?:stroke|fill)Text\(label, tx, ty\)/,
+  'incoming direction wedges must not duplicate result text already owned by the incoming-fire card');
+assert.match(shotInfo, /const cls = hitOutcomeFor\(ev\)/,
+  'shot cards and incoming cards must classify through the shared hit-outcome registry');
+assert.match(shotInfo, /uiIconSVG\(cls\.icon, 11\)[\s\S]*cls\.label/,
+  'combat-result surfaces must use the shared result label and icon vocabulary');
+assert.match(shotInfo, /if \(!\(ev\.damage > 0\)\) t\.classList\.add\('deflected'\)/,
+  'zero-damage incoming results must use the neutral deflection treatment instead of damage red');
+assert.match(hud,
+  /function resetCombatPresentation\(\)[\s\S]*hitDirs\.length = 0[\s\S]*hitMark = null[\s\S]*liveNums\.length = 0[\s\S]*dmgLayer\.replaceChildren\(\)[\s\S]*killfeed\.replaceChildren\(\)/,
+  'phase changes must clear every transient combat-feedback surface together');
 assert.match(hud, /MUZZLE BLOCKED · \$\{Math\.round\(view\.blockedDistM\)\} M[\s\S]*GUN TRAVEL LIMIT/,
   'aim warnings must distinguish a physical bore obstruction from a gun travel limit');
 assert.match(hud, /state\.visible = !!view\.blockedLabel/,

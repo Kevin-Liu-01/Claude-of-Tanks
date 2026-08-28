@@ -74,7 +74,9 @@ import * as THREE from 'three';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.ts';
 import { createElement as el, ensureStyle } from '../ui/dom.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
-import { nominalPenFor, shellDisplayName, zoneLabel } from '../ui/hitEventFormat.ts';
+import {
+  hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
+} from '../ui/hitEventFormat.ts';
 import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.ts';
 import { getSpec } from '../vehicles/specs.js';
 import { iconUrl } from '../ui/icons.ts';
@@ -3954,16 +3956,11 @@ export function createKillCam(deps) {
     // hold 7 s with nothing but the −HP tag. Zone / plate thickness / outcome
     // word all come straight off the payload (zone, physicalMm, kind).
     if (ev.zone && ev.localPos) {
-      const KIND_WORD = {
-        pen: 'PENETRATED', he_pen: 'PENETRATED', ricochet: 'RICOCHET',
-        nonpen: 'NO PENETRATION', era: 'STOPPED BY ERA',
-        spaced_absorb: 'ABSORBED', screen_pierce: 'PASSED THROUGH',
-        he_splash: 'SPLASH',
-      };
+      const outcome = hitOutcomeFor(ev);
       const mm = (ev.physicalMm || 0) > 0 ? ` · ${Math.round(ev.physicalMm)} mm` : '';
       _p.set(ev.pos[0], ev.pos[1], ev.pos[2]);
-      addLabel(_p, '#ffb04a', zoneLabel(ev.zone),
-        `${KIND_WORD[ev.kind] || 'HIT'}${mm}`, false, false, null);
+      addLabel(_p, outcome.color, zoneLabel(ev.zone),
+        `${outcome.label}${mm}`, false, false, null);
     }
     // near-miss chips (r6 minor, collected in step 4): internals the spall
     // cone brushed but the sim left untouched — demoted gray tier, so they

@@ -15,7 +15,9 @@
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
-import { nominalPenFor, shellDisplayName, zoneLabel } from './hitEventFormat.ts';
+import {
+  hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
+} from './hitEventFormat.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { maskIcon, iconUrl } from './icons.ts';
 import { MODULE_LABEL, CREW_LABEL, STATE_COLOR } from './moduleRegistry.ts';
@@ -35,11 +37,6 @@ import { getMapConfig } from '../world/maps/index.ts';
 import { createEndScreen } from './endScreen.ts';
 
 const COL = {
-  pen: '#f0a030',
-  non: '#8fa3b4',
-  ric: '#bcc8d2',
-  splash: '#ffb02e',
-  mod: '#f0b04a',
   green: '#7ee87e',
   red: '#f05a5a',
   yellow: '#f0b04a',
@@ -51,9 +48,6 @@ const SHELL_TYPE_COLOR = {
   AP: '#ffd27a', APCR: '#e8f4ff', HEAT: '#ff8a5c', HE: '#ffb02e',
   APFSDS: '#ffc46b', HESH: '#ffb02e',
 };
-
-const BOUNCE_KINDS = new Set(['ricochet', 'nonpen', 'spaced_absorb', 'era']);
-const PEN_KINDS = new Set(['pen', 'he_pen']);
 
 // MODULE_LABEL / CREW_LABEL come from ui/moduleRegistry.ts (single source —
 // this file's local copy had already drifted to 'Fuel' vs the killcam's
@@ -108,7 +102,9 @@ const SI_CSS = `
   letter-spacing:.2em;color:#778692;text-transform:uppercase;display:flex;align-items:center;gap:4px;}
 .cot-si-kicker svg{width:9px;height:9px;flex:0 0 auto;}
 .cot-si-badge{font-family:${FONT_COND};font-weight:800;
-  font-size:12px;line-height:1;letter-spacing:.13em;white-space:nowrap;}
+  font-size:12px;line-height:1;letter-spacing:.13em;white-space:nowrap;
+  display:flex;align-items:center;gap:5px;}
+.cot-si-badge svg{width:11px;height:11px;flex:0 0 auto;}
 .cot-si-dmg{min-width:62px;text-align:right;font-family:${FONT_COND};letter-spacing:-.02em;font-weight:800;font-size:20px;
   font-variant-numeric:tabular-nums;color:#ffd166;display:flex;justify-content:flex-end;align-items:center;gap:4px;}
 .cot-si-dmg svg{width:12px;height:12px;flex:0 0 auto;}
@@ -188,7 +184,7 @@ const SI_CSS = `
 .cot-si-lrow{display:flex;align-items:baseline;gap:6px;padding:3px 9px;font-size:10px;
   color:#c6d2dc;font-variant-numeric:tabular-nums;border-bottom:1px solid rgba(146,164,180,.08);}
 .cot-si-lrow .b{font-family:${FONT_COND};font-weight:800;
-  font-size:9px;letter-spacing:.08em;width:58px;flex:0 0 auto;}
+  font-size:8.5px;letter-spacing:.06em;width:92px;flex:0 0 auto;white-space:nowrap;}
 .cot-si-lrow .d{font-weight:800;color:#ffd166;width:36px;flex:0 0 auto;text-align:right;
   font-family:${FONT_COND};letter-spacing:-.01em;}
 .cot-si-lrow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -202,12 +198,17 @@ const SI_CSS = `
   background:linear-gradient(100deg,rgba(38,12,12,.94),rgba(11,10,12,.84) 78%,rgba(8,10,13,.3));
   border:1px solid rgba(240,90,90,.2);border-left:3px solid ${COL.red};padding:6px 10px 6px;
   box-shadow:0 6px 18px rgba(0,0,0,.3);transition:opacity .7s ease;text-shadow:0 1px 2px rgba(0,0,0,.85);}
+.cot-si-toast.deflected{
+  background:linear-gradient(100deg,rgba(22,31,39,.94),rgba(10,14,18,.84) 78%,rgba(8,10,13,.3));
+  border-color:rgba(159,176,191,.22);box-shadow:0 6px 18px rgba(0,0,0,.25);}
 .cot-si-toast.out{opacity:0;}
 .cot-si-toast .l1{height:18px;display:flex;justify-content:space-between;align-items:baseline;gap:6px;
   font-size:11px;font-weight:750;color:#f2c6bf;}
 .cot-si-toast .l1 span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-toast .l1 b{color:#ff8f80;font-family:${FONT_COND};letter-spacing:-.01em;
-  font-variant-numeric:tabular-nums;font-size:13px;}
+  font-variant-numeric:tabular-nums;font-size:13px;display:flex;align-items:center;gap:4px;
+  white-space:nowrap;}
+.cot-si-toast .l1 b svg{width:11px;height:11px;flex:0 0 auto;}
 .cot-si-toast .l2{height:16px;font-size:9px;color:#c9a9a2;letter-spacing:.04em;display:flex;
   justify-content:space-between;gap:6px;font-variant-numeric:tabular-nums;}
 .cot-si-toast .l2>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -399,26 +400,6 @@ body.cot-touch-layout .cot-si-toast .l2{height:14px;font-size:7.5px;}
   .cot-si-card,.cot-si-toast,.cot-si-diag svg.ov .wdg{animation:none;transition:none;}
 }
 `;
-
-/** Classify a HitEvent into the WoT-mod result badge. */
-function classify(ev) {
-  if (PEN_KINDS.has(ev.kind)) return { badge: 'PENETRATION', col: COL.pen };
-  if (ev.kind === 'ricochet') return { badge: 'RICOCHET', col: COL.ric };
-  if (ev.kind === 'he_splash') {
-    return (ev.damage || 0) > 0
-      ? { badge: 'SPLASH', col: COL.splash }
-      : { badge: 'NO DAMAGE', col: COL.non };
-  }
-  const crits = (ev.modulesHit && ev.modulesHit.length) || (ev.crewHit && ev.crewHit.length);
-  if ((ev.damage || 0) <= 0 && crits) return { badge: 'MODULE ONLY', col: COL.mod };
-  // WoT distinguishes "hit without damage" (screen/track eater, shell flew
-  // on) from a true armor non-pen — showing NON-PEN with em-dash armor rows
-  // read as a bug (r2 critique).
-  if (ev.kind === 'screen_pierce') return { badge: 'SCREEN — NO DAMAGE', col: COL.non };
-  if (ev.kind === 'era') return { badge: 'NON-PEN · ERA', col: COL.non };
-  if (ev.kind === 'spaced_absorb') return { badge: 'NON-PEN · SPACED', col: COL.non };
-  return { badge: 'NON-PEN', col: COL.non };
-}
 
 const fmtTime = (s) => {
   const t = Math.max(0, Math.floor(s || 0));
@@ -706,7 +687,7 @@ export function createShotInfo(bus) {
       presentationAnchor: presentationAnchorFor(specId),
       presentationProjection: presentationProjectionFor(specId),
     });
-    const badgeCol = (cls && cls.col) || '#ff8a5c';
+    const badgeCol = (cls && cls.color) || '#ff8a5c';
     // silhouette contrast (r4: the 0.34-alpha mask read as a gray pill):
     // brighter fill + a drop-shadow outline pass that traces the mask edge
     const SIL_FILL = 'rgba(206,222,236,0.55)';
@@ -880,15 +861,16 @@ export function createShotInfo(bus) {
     card.dataset.dist = String(Math.round(ev.flightDistM || 0));
     card.dataset.angle = String(Math.round(ev.impactAngleDeg || 0));
     card.dataset.zone = ev.zone || '';
-    card.style.borderRightColor = cls.col;
+    card.dataset.outcome = cls.id;
+    card.style.borderRightColor = cls.color;
 
     const hd = el('div', 'cot-si-hd', card);
     const state = el('div', 'cot-si-state', hd);
     const kicker = el('span', 'cot-si-kicker', state);
     kicker.innerHTML = `${GLYPH.ballistic}<span>Ballistic readout</span>`;
     const badge = el('span', 'cot-si-badge', state);
-    badge.textContent = cls.badge;
-    badge.style.color = cls.col;
+    badge.innerHTML = `${uiIconSVG(cls.icon, 11)}<span>${cls.label}</span>`;
+    badge.style.color = cls.color;
     const dmg = el('span', 'cot-si-dmg', hd);
     dmg.innerHTML = `${GLYPH.damage}<span>${(ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : '0'}</span>`;
     if (!(ev.damage > 0)) dmg.style.color = COL.dim;
@@ -1017,7 +999,7 @@ export function createShotInfo(bus) {
     for (const it of shotLog) {
       const r = el('div', 'cot-si-lrow', logPanel);
       r.innerHTML =
-        `<span class="b" style="color:${it.cls.col}">${it.cls.badge.split(' ')[0].split('·')[0]}</span>` +
+        `<span class="b" style="color:${it.cls.color}">${it.cls.label}</span>` +
         `<span class="d">${(it.ev.damage || 0) > 0 ? `−${Math.round(it.ev.damage)}` : '·'}</span>` +
         `<span class="n">${it.ev.targetName || it.ev.targetId || ''}</span>` +
         `<span class="z">${zoneLabel(it.ev.zone)} · ${Math.round(it.ev.flightDistM || 0)}m</span>`;
@@ -1030,7 +1012,8 @@ export function createShotInfo(bus) {
       const e = receivedLog[i];
       const r = el('div', 'cot-si-lrow', logPanel);
       r.innerHTML =
-        `<span class="b" style="color:${e.dmg > 0 ? COL.red : COL.green}">${e.dmg > 0 ? fmtTime(e.t) : 'BLOCKED'}</span>` +
+        `<span class="b" style="color:${e.dmg > 0 ? COL.red : e.outcome.color}">` +
+        `${e.dmg > 0 ? fmtTime(e.t) : e.outcome.label}</span>` +
         `<span class="d">${e.dmg > 0 ? `−${Math.round(e.dmg)}` : '·'}</span>` +
         `<span class="n">${e.attacker}</span>` +
         `<span class="z">${e.shellType}${e.mods ? ' · ' + e.mods : ''}</span>`;
@@ -1070,13 +1053,14 @@ export function createShotInfo(bus) {
       .join(', ');
     t.innerHTML =
       `<div class="l1"><span>${ev.attackerName || 'Enemy'}</span>` +
-      `<b>${(ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : cls.badge}</b></div>` +
+      `<b>${uiIconSVG((ev.damage || 0) > 0 ? 'damage' : cls.icon, 11)}` +
+      `${(ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : cls.label}</b></div>` +
       `<div class="l2"><span>${ev.shellType || ''} ${shellDisplayName(ev)} · ${zoneLabel(ev.zone)}</span>` +
       `${modsLost ? `<span class="m">${modsLost}</span>` : ''}</div>`;
-    if (!(ev.damage > 0)) {
-      t.style.borderLeftColor = COL.green;
-      t.querySelector('.l1 b').style.color = COL.green;
-    }
+    t.dataset.outcome = cls.id;
+    if (!(ev.damage > 0)) t.classList.add('deflected');
+    t.style.borderLeftColor = (ev.damage || 0) > 0 ? COL.red : cls.color;
+    t.querySelector('.l1 b').style.color = (ev.damage || 0) > 0 ? COL.red : cls.color;
     while (toastHost.children.length > 3) toastHost.firstChild.remove();
     setTimeout(() => t.classList.add('out'), 4600);
     setTimeout(() => { if (t.parentNode) t.remove(); }, 5500);
@@ -1246,20 +1230,20 @@ export function createShotInfo(bus) {
       stats.assist += ev.damage || 0;
     }
     if (ev.attackerId === playerId && ev.targetId && ev.targetId !== playerId) {
-      const cls = classify(ev);
+      const cls = hitOutcomeFor(ev);
       stats.hits += 1;
-      if (PEN_KINDS.has(ev.kind)) stats.pens += 1;
+      if (cls.penetrated) stats.pens += 1;
       stats.dealt += ev.damage || 0;
       const sh = perShell(ev.shellType || '—');
       sh.hits += 1;
-      if (PEN_KINDS.has(ev.kind)) sh.pens += 1;
+      if (cls.penetrated) sh.pens += 1;
       sh.dmg += ev.damage || 0;
       if ((ev.damage || 0) > 0) stats.timeline.push({ t: ev.timeS || 0, d: ev.damage });
       stats.modulesDestroyed += (ev.modulesHit || []).filter((m) => m.newState === 'red').length;
       const t = perTarget(ev);
       t.dmg += ev.damage || 0;
       t.hits += 1;
-      if (PEN_KINDS.has(ev.kind)) t.pens += 1;
+      if (cls.penetrated) t.pens += 1;
       if (ev.zone) t.lastZone = ev.zone;
       // remaining HP straight from the sim payload (report roster shows it)
       if (Number.isFinite(ev.targetHpAfter)) t.hpLeft = Math.max(0, Math.round(ev.targetHpAfter));
@@ -1271,14 +1255,15 @@ export function createShotInfo(bus) {
       if (logOpen) renderLog();
     }
     if (ev.targetId === playerId) {
-      const cls = classify(ev);
+      const cls = hitOutcomeFor(ev);
       stats.received += ev.damage || 0;
-      if ((ev.damage || 0) <= 0 && BOUNCE_KINDS.has(ev.kind)) stats.blocked += ev.dmgRoll || 0;
+      if ((ev.damage || 0) <= 0 && cls.blocked) stats.blocked += ev.dmgRoll || 0;
       const mods = (ev.modulesHit || []).filter((m) => m.newState === 'red')
         .map((m) => MODULE_LABEL[m.module] || m.module).join(', ');
       receivedLog.push({
         t: ev.timeS || 0, dmg: ev.damage || 0, kind: ev.kind, aid: ev.attackerId,
         attacker: ev.attackerName || 'Enemy', shellType: ev.shellType || '', mods,
+        outcome: cls,
         zone: ev.zone || '', // r4: expandable roster ledger prints the zone
       });
       showToast(ev, cls);
