@@ -33,6 +33,8 @@ The reusable accessible dialog lifecycle, focus trap, dismissal guard, and body
 scroll ownership live in `modal.ts`; feature panels only own dialog content.
 Rich contextual dossiers, live image resolution, and JSON-copy controls live in
 `contextInfo.ts` and compose the shared modal instead of inventing popovers.
+Private/LAN battle chat parsing, keyboard capture, pointer-lock restoration,
+bounded history, and DOM lifetime live in `roomChat.ts`.
 Keep browser-independent presentation policy in the typed keyboard, glyph,
 flag, minimap, telemetry, spectator, preview, and ordering modules so the large
 screen renderers do not redeclare those rules.

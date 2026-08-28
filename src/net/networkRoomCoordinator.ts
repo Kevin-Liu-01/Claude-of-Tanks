@@ -1,3 +1,5 @@
+import type { RoomChatInput, RoomChatOptions, RoomChatRuntime } from '../ui/roomChat.ts';
+
 export interface NetworkRoomPlayer {
   id: string;
   team?: string;
@@ -34,16 +36,8 @@ interface NetworkRoomMatch {
   sendRoomChat?(text: string): boolean;
 }
 
-interface RoomChatRuntime {
-  append(message: unknown): unknown;
-  setPlayer(playerId: string): void;
-  setActive(active: boolean): void;
-  clear(): void;
-  dispose?(): void;
-}
-
 interface RoomChatModule {
-  createRoomChat(options: Record<string, unknown>): RoomChatRuntime;
+  createRoomChat(options: RoomChatOptions): RoomChatRuntime;
 }
 
 interface PlayMenuRuntime {
@@ -71,7 +65,7 @@ interface NetworkRoomCoordinatorOptions {
   hasResult: () => boolean;
   isKillcamActive: () => boolean;
   isSpectator: () => boolean;
-  input: unknown;
+  input: RoomChatInput;
   setGarageStatus: (status: GarageRoomStatus | null) => void;
   emitRoomState: (payload: unknown) => void;
   preloadLobbyIntent: (state: NetworkRoomState) => void;

@@ -3,6 +3,38 @@ import { FONT_COND, FONT_STACK } from './fonts.ts';
 
 const STYLE_ID = 'cot-room-chat-style';
 
+export interface RoomChatInput {
+  setEnabled?(enabled: boolean): void;
+  requestLock?(): void;
+}
+
+export interface RoomChatOptions {
+  input?: RoomChatInput;
+  onSend?: (text: string) => boolean;
+  isAvailable?: () => boolean;
+  shouldRelock?: () => boolean;
+}
+
+interface RoomChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  team: 'alpha' | 'bravo' | 'spectator';
+  text: string;
+}
+
+export interface RoomChatRuntime {
+  root: HTMLElement;
+  append(message: unknown): boolean;
+  open(): boolean;
+  close(options?: { relock?: boolean }): void;
+  setPlayer(playerId: string): void;
+  setActive(active: boolean): void;
+  clear(): void;
+  readonly isOpen: boolean;
+  dispose(): void;
+}
+
 function ensureStyle() {
   if (document.getElementById(STYLE_ID)) return;
   const style = document.createElement('style');
@@ -56,9 +88,25 @@ body.cot-touch-layout .cot-room-chat-toggle{min-width:82px;height:38px;backgroun
   document.head.appendChild(style);
 }
 
-function isEditingTarget(target) {
-  return !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' ||
+function isEditingTarget(target: EventTarget | null) {
+  return target instanceof HTMLElement && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' ||
     target.tagName === 'SELECT' || target.isContentEditable);
+}
+
+export function normalizeRoomChatMessage(value: unknown): RoomChatMessage | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const id = String(record.id || '');
+  if (!id) return null;
+  const rawTeam = String(record.team || 'spectator');
+  const team = rawTeam === 'alpha' || rawTeam === 'bravo' ? rawTeam : 'spectator';
+  return {
+    id,
+    senderId: String(record.senderId || ''),
+    senderName: String(record.senderName || 'Player'),
+    team,
+    text: String(record.text || ''),
+  };
 }
 
 /** Battle chat for browser-hosted private/LAN rooms. */
@@ -67,7 +115,7 @@ export function createRoomChat({
   onSend = () => false,
   isAvailable = () => true,
   shouldRelock = () => false,
-} = {}) {
+}: RoomChatOptions = {}): RoomChatRuntime {
   ensureStyle();
   const root = document.createElement('section');
   root.className = 'cot-room-chat quiet';
@@ -119,8 +167,8 @@ export function createRoomChat({
   let active = false;
   let open = false;
   let playerId = '';
-  let quietTimer = null;
-  const seenIds = new Set();
+  let quietTimer: ReturnType<typeof setTimeout> | null = null;
+  const seenIds = new Set<string>();
 
   function characterCount() { return [...field.value].length; }
 
@@ -131,7 +179,7 @@ export function createRoomChat({
     send.disabled = length === 0 || length > MAX_ROOM_CHAT_LENGTH;
   }
 
-  function close({ relock = true } = {}) {
+  function close({ relock = true }: { relock?: boolean } = {}) {
     if (!open) return;
     open = false;
     root.classList.remove('open');
@@ -163,7 +211,7 @@ export function createRoomChat({
     return true;
   }
 
-  function onKeyDown(event) {
+  function onKeyDown(event: KeyboardEvent) {
     if (!active || !isAvailable() || event.isComposing) return;
     if (event.code === 'Enter') {
       if (!open && isEditingTarget(event.target)) return;
@@ -184,7 +232,8 @@ export function createRoomChat({
     quietTimer = setTimeout(() => root.classList.add('quiet'), 9_000);
   }
 
-  function append(message) {
+  function append(value: unknown) {
+    const message = normalizeRoomChatMessage(value);
     if (!message || seenIds.has(message.id)) return false;
     seenIds.add(message.id);
     const row = document.createElement('div');
@@ -202,7 +251,9 @@ export function createRoomChat({
     log.appendChild(row);
     while (log.childElementCount > 48) {
       const first = log.firstElementChild;
-      if (first?.dataset.messageId) seenIds.delete(first.dataset.messageId);
+      if (first instanceof HTMLElement && first.dataset.messageId) {
+        seenIds.delete(first.dataset.messageId);
+      }
       first?.remove();
     }
     log.scrollTop = log.scrollHeight;
@@ -224,13 +275,14 @@ export function createRoomChat({
     append,
     open: showComposer,
     close,
-    setPlayer(nextPlayerId) {
+    setPlayer(nextPlayerId: string) {
       playerId = String(nextPlayerId || '');
       for (const row of log.children) {
+        if (!(row instanceof HTMLElement)) continue;
         row.classList.toggle('self', row.dataset.senderId === playerId);
       }
     },
-    setActive(next) {
+    setActive(next: boolean) {
       active = !!next;
       root.hidden = !active;
       if (!active) close({ relock: false });

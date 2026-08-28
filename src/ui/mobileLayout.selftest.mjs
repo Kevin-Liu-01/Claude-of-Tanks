@@ -294,7 +294,7 @@ const semanticSurfaceFiles = [
   './garage.css',
   './hud.js',
   './playMenu.js',
-  './roomChat.js',
+  './roomChat.ts',
   './networkStatus.ts',
   './perfHud.js',
   './settings.js',

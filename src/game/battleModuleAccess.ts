@@ -4,7 +4,7 @@ type NetworkStatusModule = typeof import('../ui/networkStatus.ts');
 type BrowserInputRuntimeModule = typeof import('../net/browserInputRuntime.ts');
 type PrivateMatchHandoffModule = typeof import('../net/privateMatchHandoff.ts');
 type DedicatedClientModule = typeof import('../net/dedicatedClient.ts');
-type RoomChatModule = typeof import('../ui/roomChat.js');
+type RoomChatModule = typeof import('../ui/roomChat.ts');
 
 export type NetworkBattleModules = [
   BrowserBattleBridgeModule,
@@ -37,7 +37,7 @@ const DEFAULT_LOADERS: BattleModuleLoaders = {
   ]),
   privateMatchHandoff: async () => await import('../net/privateMatchHandoff.ts'),
   dedicatedClient: async () => await import('../net/dedicatedClient.ts'),
-  roomChat: async () => await import('../ui/roomChat.js'),
+  roomChat: async () => await import('../ui/roomChat.ts'),
 };
 
 function retryable<T>(load: () => Promise<T>): () => Promise<T> {

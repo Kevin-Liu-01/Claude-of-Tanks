@@ -312,6 +312,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/collision.selftest.mjs',
     'src/world/propPlacement.selftest.mjs',
     'src/ui/contextInfo.selftest.mjs',
+    'src/ui/roomChat.selftest.mjs',
     'src/ui/endOverlayRuntime.selftest.mjs',
     'src/ui/endScreen.selftest.mjs',
     'src/ui/battleHudAccess.selftest.mjs',
