@@ -84,6 +84,10 @@ retaining parallel world, service, sky, and dormancy state.
 retryable menu construction, solo bypass, active-room precedence, exact
 mode-intent preloads, and non-destructive battle dismissal. This removes the
 remaining picker promise and pending-solo state from `main.js`.
+`src/game/battleHudFrameRuntime.ts` owns the live HUD transaction: spectator
+perspective, spotting disclosure, aim publication, scoped plate-inspection
+targets, and damage presentation now leave `tick()` together behind one
+retained strict-TypeScript frame interface.
 
 ## Consequences
 

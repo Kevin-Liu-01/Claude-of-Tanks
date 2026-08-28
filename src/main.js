@@ -87,6 +87,7 @@ import { createKillcamAccess } from './game/killcamAccess.ts';
 import { createPlayerBattleActions } from './game/playerBattleActions.ts';
 import { createPlayerFrameInput } from './game/playerFrameInput.ts';
 import { createBattlePresentationRuntime } from './game/battlePresentationRuntime.ts';
+import { createBattleHudFrameRuntime } from './game/battleHudFrameRuntime.ts';
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
 import { createSoloBattleDeploymentRuntime } from './game/soloBattleDeploymentRuntime.ts';
 import { createSoloBattleLoadingRuntime } from './game/soloBattleLoadingRuntime.ts';
@@ -1353,9 +1354,6 @@ async function ensureBattleVisualStreamer() {
   battleVisuals = await battleVisualStreamerAccess.preload();
   return battleVisuals;
 }
-// Reused every HUD frame: scoped armor inspection follows every legally
-// visible opponent, not only the vehicle directly under the gun marker.
-const armorScopeTargets = [];
 const settings = createSettingsAccess({
   input,
   bus,
@@ -2202,9 +2200,7 @@ function enterGarage({ preserveRoom = networkRoomCoordinator.shouldPreserveAfter
     preservedVisual: adoptedBattleVisual,
     visualPool: battleVisualPool,
   });
-  frameInfo.player = null;
-  frameInfo.tanks = game.tanks;
-  frameInfo.shells = game.shells;
+  battleHudFrame.reset();
   markGarageStage('worldAndHero');
   // perf-r2f: chunked — the hero repaints in the first slice (inside the
   // transition veil); parked roster entries follow one frame apart instead
@@ -2294,58 +2290,24 @@ bus.on('ui:roomStart', () => networkRoomCoordinator.startRound());
 // ---------------------------------------------------------------------------
 // HUD frame assembly (§4 step 7)
 // ---------------------------------------------------------------------------
-const frameInfo = {
-  timeS: 0,
-  pingMs: 0,
-  mode: 'battle',
+// Spectator perspective, spotting disclosure, aiming, armor inspection, and
+// damage presentation share one allocation-free typed transaction. Capture
+// tooling receives the same retained frame instead of building a second HUD.
+const battleHudFrame = createBattleHudFrameRuntime({
+  game,
   camera,
-  player: null,
-  tanks: game.tanks,
-  shells: game.shells,
-  aim: {
-    point: new THREE.Vector3(),
-    distM: 0,
-    dispersionRadM: 1,
-    penRatio: null,
-    blockedDistM: null,
-    blockedLabel: false, // r7: dwell-gated PATH BLOCKED text (tint stays instant)
-    gunMarker: new THREE.Vector3(),
-    gunDistM: 0,
-    gunTargetId: null,
-    singleReticle: false,
-    atGunLimit: false,
-    gunLimitSpec: false, // GUN LIMIT label (movement.js r3: spec pins only)
-    reload: { t: 0, totalS: 1, kind: 'ready' },
-    magazine: { rounds: 0, capacity: 0 },
-    shellSlot: 0,
-    shells: [],
-    zoom: 1,
-  },
-  killfeedHandledByBus: true,
-  spotting: null, // SPOTTING WIRING: filled per frame by refreshSpotFrame()
-};
-
-// SPOTTING WIRING: HUD-facing view of the spotting sim — enemy visibility
-// gate (minimap/diamonds/nameplates) + the player's own concealment snapshot
-// for the camo/eye indicator. Reused object, refreshed per HUD frame.
-const spotFrame = {
-  // player-team intel with the PLAYER as receiver: an allied spot from a
-  // damaged-radio tank shares over the correct range (simulation_correctness r1)
-  receiver: null,
-  isSpotted: (id) => (game.spotting
-    ? game.spotting.isSpotted(id, 'player', spotFrame.receiver || game.player)
-    : true),
-  player: null,
-};
-function refreshSpotFrame(focus = game.player) {
-  spotFrame.receiver = focus || null;
-  if (game.spotting && focus && focus.state) {
-    spotFrame.player = game.spotting.getConcealment(focus, game.timeS);
-  } else {
-    spotFrame.player = null;
-  }
-  frameInfo.spotting = spotFrame;
-}
+  rig,
+  input,
+  aimController,
+  armorAimOverlay,
+  networkSession,
+  killcam,
+  muzzleScratch: _rayO,
+  getHud: () => hud,
+  getDamagePanel: () => damagePanel,
+});
+const frameInfo = battleHudFrame.frameInfo;
+const refreshSpotFrame = battleHudFrame.refreshSpotting;
 
 // ---------------------------------------------------------------------------
 // Render loop
@@ -2449,7 +2411,7 @@ function tick(nowMs) {
     // could under-report the live sight picture. Only views that staged a
     // HUD frame (forcedHudFrame sets the latch) redraw; establishing shots
     // stay hidden.
-    if (shotHudFrame) hud.update(frameInfo);
+    if (shotHudFrame) battleHudFrame.redrawFrozen();
     lighting.update(true); // force ALL shadow cascades — deterministic capture
     post.render(dtR);
     return;
@@ -2642,50 +2604,7 @@ function tick(nowMs) {
   }
 
   // 7. HUD (hidden + frozen while the kill-cam letterbox owns the screen).
-  // NOTE: live isActive() check — the replay may have STARTED in step 2 of
-  // this very tick, and hud.update would re-show the HUD over the letterbox.
-  const observerFocus = networkSession.spectator && killcam.spectate.active
-    ? networkSession.bridge?.entities.get(killcam.spectate.targetId) || null
-    : null;
-  const hudFocus = game.player || observerFocus;
-  if (observerFocus) networkSession.bridge?.setPerspective(observerFocus.id);
-  if (inBattle && hudFocus && !kcActive && !killcam.isActive()) {
-    frameInfo.timeS = game.timeS;
-    frameInfo.pingMs = networkSession.match ? (networkSession.match.client?.rttMs ?? 0) : 0;
-    frameInfo.mode = rig.mode === 'SNIPER' ? 'sniper' : 'battle';
-    frameInfo.player = hudFocus;
-    frameInfo.tanks = game.tanks; // COMMUNITY TANKS: roster varies per battle
-    frameInfo.rosterTanks = networkSession.bridge ? networkSession.bridge.roster : game.tanks;
-    frameInfo.shells = game.shells;
-    refreshSpotFrame(hudFocus); // SPOTTING WIRING
-    if (game.player) aimController.update(frameInfo.aim);
-    hud.update(frameInfo);
-    if (game.player) {
-      const armorEnabled = input.getSettings().armorAimOverlay;
-      const armorScoped = rig.mode === 'SNIPER' && !!camera.userData.scoped;
-      armorScopeTargets.length = 0;
-      if (armorEnabled && armorScoped) {
-        for (const ent of game.tanks) {
-          if (ent === game.player || ent.team === game.player.team || ent.combat?.destroyed) continue;
-          if (!ent.visual?.root?.visible) continue;
-          armorScopeTargets.push(ent);
-        }
-      }
-      armorAimOverlay.update({
-        enabled: armorEnabled,
-        scoped: armorScoped,
-        targets: armorScopeTargets,
-        shellSpec: game.player.spec.gun.shells[game.player.combat.shellSlot],
-        muzzle: _rayO,
-        nowMs: performance.now(),
-      });
-    } else {
-      armorAimOverlay.hide();
-    }
-    damagePanel.update(hudFocus.combat);
-  } else {
-    armorAimOverlay.hide();
-  }
+  battleHudFrame.update(inBattle, kcActive);
 
   // 8. audio
   camera.getWorldDirection(_fwd);

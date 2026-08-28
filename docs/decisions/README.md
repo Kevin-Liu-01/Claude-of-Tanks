@@ -86,3 +86,6 @@ runtime documents remain authoritative for behavior.
 - [0074 — Network wreck swaps clear decals first](0074-clear-decals-before-network-wreck-swap.md)
 - [0075 — Active battlefield presentation has one typed owner](0075-typed-world-activation.md)
 - [0076 — The Garage play surface has one typed lifecycle owner](0076-typed-play-surface-lifecycle.md)
+- [0077 — Invisible display work is culled without lowering visible quality](0077-cull-invisible-display-work.md)
+- [0078 — Private-room acquisition has one typed lifecycle owner](0078-typed-private-room-acquisition.md)
+- [0079 — The live battle HUD has one typed frame owner](0079-typed-battle-hud-frame.md)

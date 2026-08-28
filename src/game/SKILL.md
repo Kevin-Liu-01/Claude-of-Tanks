@@ -29,6 +29,9 @@ local-versus-network command policy without importing the combat runtime;
 touch, cursor fallback, zoom, free-look, and sniper-mode sampling;
 `battlePresentationRuntime.ts` owns solo/network pose selection, spotting
 residency, running-gear detail cadence, vehicle FX, and light prop contact;
+`battleHudFrameRuntime.ts` owns the retained HUD frame, spectator perspective,
+spotting disclosure, aim publication, scoped armor targeting, and damage-panel
+transaction;
 `battleResultPresentationRuntime.ts` owns live player-death holds, result
 replay handoff, final verdict presentation, and round/exit reset state;
 `killcamAccess.ts` owns retryable replay acquisition and its stable inactive
@@ -98,6 +101,9 @@ bindings and device modes. Route rendered tank updates through
 `battlePresentationRuntime.ts`; never apply the solo interpolation buffer to
 already-smoothed network poses. Bot changes require both focused AI tests and
 battle probes.
+Route live HUD assembly through `battleHudFrameRuntime.ts`; do not rebuild
+spectator focus, spotting, aim, armor-target filtering, or damage presentation
+inside `main.js`.
 Route covered solo warm changes through `soloBattleDeploymentRuntime.ts`; do
 not put shader, effect, shadow, or reveal ordering back into `main.js`.
 Route covered solo entry changes through `soloBattleLoadingRuntime.ts`; do not

@@ -80,6 +80,9 @@ strict TypeScript owners:
 - `src/game/playerFrameInput.ts` owns allocation-free per-frame keyboard,
   mouse, gamepad, touch, cursor-fallback, zoom, and RMB-mode sampling and
   publishes the stable movement/fire and camera input records;
+- `src/game/battleHudFrameRuntime.ts` owns the retained HUD frame, spectator
+  perspective, spotting disclosure, gun-aim publication, scoped armor-target
+  filtering, and damage-panel update as one allocation-free transaction;
 - `src/game/battleResultPresentationRuntime.ts` owns player-death holds,
   result replay selection, kill-cam completion, verdict presentation, and
   round/exit cancellation independently from the fixed-step render loop;
@@ -175,6 +178,12 @@ commits preserve rendering and gameplay; behavior changes land separately.
 separates fixed-step solo interpolation from already-smoothed network poses and
 concentrates spotting residency, track-detail cadence, vehicle FX, and light
 prop contacts behind one allocation-bounded interface.
+
+`src/game/battleHudFrameRuntime.ts` is the corresponding rendered-information
+owner. The frame loop supplies only the battle and replay latches; the runtime
+selects the legal local or spectator focus and publishes spotting, aim, armor
+inspection, damage, roster, and latency state through one retained frame. The
+same interface supplies deterministic capture redraws and Garage reset.
 
 `src/game/soloBattleDeploymentRuntime.ts` is the covered entry owner. The
 composition root supplies concrete capabilities and receives only a generation
