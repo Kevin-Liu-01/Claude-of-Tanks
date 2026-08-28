@@ -23,7 +23,7 @@ untouched and remains Poland's; this id coexists beside it.
   2026-08-17), so the resurrection reproduces the certified geometry exactly.
 - New home: `src/vehicles/profiles/korea.js` (`buildK2B` = verbatim old
   package; helpers `addPolishWhips`/`addPolishRWS` carried verbatim, renamed
-  `addRoofWhips`/`addRoofRWS`) + `src/vehicles/korea.js` (verbatim old
+  `addRoofWhips`/`addRoofRWS`) + `src/vehicles/korea.ts` (typed old
   variant machinery, nation `'South Korea'` — the donor's own nation string,
   one garage tab with k2/k1a1).
 - Intentional deltas vs the old pl01 (identity only, zero geometry):
@@ -61,10 +61,10 @@ k2's oracle onto it). Bar for future fidelity rounds = photo class.
 
 1. `src/vehicles/profiles/korea.js` — NEW: buildK2B (resurrected geometry),
    KOREA_PROFILES export.
-2. `src/vehicles/korea.js` — NEW: KOREA_IDS/KOREA_SPECS (old variant
+2. `src/vehicles/korea.ts` — KOREA_IDS/KOREA_SPECS (typed variant
    machinery, South Korea), TANK_SPECS/MODEL_SOURCE/ALL_TANK_IDS
    registration.
-3. `src/vehicles/tankFactory.ts` — `import './korea.js';` (after poland.js,
+3. `src/vehicles/tankFactory.ts` — `import './korea.ts';` (after poland.js,
    before finalizeFirstPartyRoster, so the K2 donor rig exists first).
 4. `src/vehicles/profiledProcedurals.ts` — KOREA_PROFILES import + spread
    into PROCEDURAL_PROFILES (builder reaches BUILDERS via the standard

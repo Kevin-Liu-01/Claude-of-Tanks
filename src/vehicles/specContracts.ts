@@ -1,78 +1,78 @@
 import type { ArmorEnvelope, ShellSpec } from './specHelpers.ts';
 
 export interface AimBloom {
-  readonly move: number;
-  readonly hullRot: number;
-  readonly turret: number;
-  readonly afterShot: number;
+  move: number;
+  hullRot: number;
+  turret: number;
+  afterShot: number;
 }
 
 export interface TerrainResistance {
-  readonly hard: number;
-  readonly medium: number;
-  readonly soft: number;
+  hard: number;
+  medium: number;
+  soft: number;
 }
 
 export interface HydropneumaticAim {
-  readonly noseDownDeg: number;
-  readonly noseUpDeg: number;
-  readonly rateDegS: number;
-  readonly compressionM: number;
-  readonly droopM: number;
+  noseDownDeg: number;
+  noseUpDeg: number;
+  rateDegS: number;
+  compressionM: number;
+  droopM: number;
 }
 
 export interface FleetGunSpec extends Record<string, unknown> {
-  readonly caliberMm: number;
-  readonly reloadS: number;
-  readonly baseAccuracy: number;
-  readonly aimTimeS: number;
-  readonly bloom: AimBloom;
-  readonly shells: ShellSpec[];
+  caliberMm: number;
+  reloadS: number;
+  baseAccuracy: number;
+  aimTimeS: number;
+  bloom: AimBloom;
+  shells: ShellSpec[];
 }
 
 export interface FleetDimensions extends Record<string, unknown> {
-  readonly hullLengthM: number;
-  readonly overallLengthM: number;
-  readonly widthM: number;
-  readonly heightM: number;
+  hullLengthM: number;
+  overallLengthM: number;
+  widthM: number;
+  heightM: number;
 }
 
 export interface FleetVisualSpec extends Record<string, unknown> {
-  readonly scheme: string;
-  readonly base: string;
-  readonly weather: string;
-  readonly patches: string[];
-  readonly marking: string;
-  readonly number: string;
-  readonly trackWidthM: number;
-  readonly camoScale: number;
+  scheme: string;
+  base: string;
+  weather: string;
+  patches: string[];
+  marking: string;
+  number: string;
+  trackWidthM: number;
+  camoScale: number;
 }
 
 /** Combat-authoritative fields shared by every registered fleet row. Family
  * packs may append identity-specific metadata through the extension record. */
 export interface FleetTankSpec extends Record<string, unknown> {
-  readonly id: string;
-  readonly name: string;
-  readonly nation: string;
-  readonly era: string;
-  readonly role: string;
-  readonly hp: number;
-  readonly enginePowerHp: number;
-  readonly weightTons: number;
-  readonly topSpeedKmh: number;
-  readonly reverseSpeedKmh: number;
-  readonly hullTraverseDegS: number;
-  readonly terrainResistance: TerrainResistance;
-  readonly pivotStyle: string;
-  readonly turretTraverseDegS: number;
-  readonly gunPitchDegS: number;
-  readonly gunElevationDeg: number;
-  readonly gunDepressionDeg: number;
-  readonly hydropneumaticAim?: HydropneumaticAim;
-  readonly gun: FleetGunSpec;
-  readonly dims: FleetDimensions;
-  readonly armor: ArmorEnvelope;
-  readonly visual: FleetVisualSpec;
+  id: string;
+  name: string;
+  nation: string;
+  era: string;
+  role: string;
+  hp: number;
+  enginePowerHp: number;
+  weightTons: number;
+  topSpeedKmh: number;
+  reverseSpeedKmh: number;
+  hullTraverseDegS: number;
+  terrainResistance: TerrainResistance;
+  pivotStyle: string;
+  turretTraverseDegS: number;
+  gunPitchDegS: number;
+  gunElevationDeg: number;
+  gunDepressionDeg: number;
+  hydropneumaticAim?: HydropneumaticAim;
+  gun: FleetGunSpec;
+  dims: FleetDimensions;
+  armor: ArmorEnvelope;
+  visual: FleetVisualSpec;
 }
 
 export interface ModelSourceRecord extends Record<string, unknown> {

@@ -30,7 +30,7 @@ import './ukraine.js';
 import './china.js';
 import './sweden.js';
 import './poland.js';
-import './korea.js';
+import './korea.ts';
 import './japan.js';
 import './germany.js';
 import './afvFamily.js';

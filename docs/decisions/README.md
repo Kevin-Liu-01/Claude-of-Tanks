@@ -216,3 +216,4 @@ runtime documents remain authoritative for behavior.
 - [0204 — Type 10 gun-seat receipts are strict TypeScript](0204-typed-type10-gun-seat.md)
 - [0205 — Fleet combat rows share a strict TypeScript contract](0205-typed-fleet-spec-contracts.md)
 - [0206 — Eager and demand-loaded profiles share one typed adapter](0206-typed-profile-builder-adapter.md)
+- [0207 — Korean variant registration is strict TypeScript](0207-typed-korean-variant-registration.md)
