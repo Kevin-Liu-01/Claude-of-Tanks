@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.js';
 import { getSpec } from '../specs.js';
 import { createTankState, SIM_DT, updateTank } from '../../sim/movement.js';
-import { SPECIAL_ACTION_KINDS, specialActionKind } from '../../sim/specialActions.js';
+import { SPECIAL_ACTION_KINDS, specialActionKind } from '../../sim/specialActions.ts';
 
 const IDS = ['type74', 'stb1'];
 const flatTerrain = { getHeightAt: () => 0, getGroundType: () => 'hard' };

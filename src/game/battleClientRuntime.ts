@@ -19,7 +19,7 @@ export { createShell } from '../sim/ballistics.js';
 export {
   activateSpecialAction,
   specialActionLocksShell,
-} from '../sim/specialActions.js';
+} from '../sim/specialActions.ts';
 export { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
 export {
   cooldownRemaining,

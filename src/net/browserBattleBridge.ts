@@ -24,7 +24,7 @@ import type {
   PredictionSimEntity,
   PredictionTankState,
 } from './localTankPrediction.ts';
-import { createSpecialActionState } from '../sim/specialActions.js';
+import { createSpecialActionState } from '../sim/specialActions.ts';
 
 type Unsubscribe = () => void;
 type Team = string | null;
@@ -33,6 +33,7 @@ interface ShellSpec extends Record<string, unknown> {
   name?: string;
   type?: string;
   soundProfile?: string;
+  guided?: boolean;
 }
 
 interface TankSpec extends Record<string, unknown> {
@@ -307,9 +308,7 @@ const makeTankState = createTankState as unknown as (
   yaw: number,
 ) => BridgeTankState;
 const makeCombatState = createCombatState as unknown as (spec: TankSpec) => BridgeCombatState;
-const makeSpecialActionState = createSpecialActionState as unknown as (
-  spec: TankSpec,
-) => BridgeSpecialActionState;
+const makeSpecialActionState = createSpecialActionState;
 const defaultCreateTankVisual = createTank as unknown as CreateTankVisual;
 const defaultPrepareVisualTextures = prebakeSharedTextures as unknown as PrepareVisualTextures;
 const recoilScale = shotRecoilScale as unknown as (

@@ -29,7 +29,7 @@ import {
   createSpecialActionState,
   finishSpecialActionFire,
   specialActionGuidesShell,
-} from '../sim/specialActions.js';
+} from '../sim/specialActions.ts';
 import { createAI, roleOf } from './ai.js';
 import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.js';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.js';

@@ -5,6 +5,26 @@ export const SPECIAL_ACTION_KINDS = Object.freeze({
   MAGAZINE_RELOAD: 'magazine_reload',
 } as const);
 
+export type SpecialActionKind = typeof SPECIAL_ACTION_KINDS[keyof typeof SPECIAL_ACTION_KINDS];
+
+export interface SpecialActionDescriptor {
+  kind: SpecialActionKind;
+  label: string;
+  shortLabel: string;
+}
+
+export interface SpecialActionState {
+  kind: SpecialActionKind;
+  missileSlot: number;
+  active: boolean;
+  pendingFire: boolean;
+  inFlightShellId: string | number | null;
+  returnShellSlot: number;
+  returnReloadT: number;
+  returnReloadTotalS: number;
+  returnReloadKind: string;
+}
+
 const DESCRIPTOR_NONE = Object.freeze({
   kind: SPECIAL_ACTION_KINDS.NONE, label: '', shortLabel: '',
 });
@@ -24,7 +44,7 @@ const DESCRIPTOR_RELOAD = Object.freeze({
   shortLabel: 'Reload',
 });
 
-interface SpecialActionSpec {
+export interface SpecialActionSpec {
   hydropneumaticAim?: unknown;
   gun?: {
     primaryGuided?: boolean;
@@ -44,7 +64,7 @@ export function guidedMissileSlot(spec: SpecialActionSpec | null | undefined): n
 }
 
 /** Resolve the single primary action presented by garage and battle UI. */
-export function specialActionKind(spec: SpecialActionSpec | null | undefined): string {
+export function specialActionKind(spec: SpecialActionSpec | null | undefined): SpecialActionKind {
   if (!spec) return SPECIAL_ACTION_KINDS.NONE;
   if (spec.hydropneumaticAim) return SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM;
   if (spec.gun?.primaryGuided === true) return SPECIAL_ACTION_KINDS.NONE;
@@ -54,7 +74,9 @@ export function specialActionKind(spec: SpecialActionSpec | null | undefined): s
 }
 
 /** Immutable presentation copy for a spec; safe to cache for a whole round. */
-export function specialActionDescriptor(spec: SpecialActionSpec | null | undefined) {
+export function specialActionDescriptor(
+  spec: SpecialActionSpec | null | undefined,
+): Readonly<SpecialActionDescriptor> {
   const kind = specialActionKind(spec);
   if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) return DESCRIPTOR_MISSILE;
   if (kind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM) return DESCRIPTOR_SUSPENSION;
@@ -63,7 +85,9 @@ export function specialActionDescriptor(spec: SpecialActionSpec | null | undefin
 }
 
 /** Small deterministic state record shared by local and network entities. */
-export function createSpecialActionState(spec: SpecialActionSpec | null | undefined) {
+export function createSpecialActionState(
+  spec: SpecialActionSpec | null | undefined,
+): SpecialActionState {
   return {
     kind: specialActionKind(spec),
     missileSlot: guidedMissileSlot(spec),

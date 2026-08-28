@@ -12,6 +12,11 @@ import {
 import {
   SPECIAL_ACTION_KINDS,
 } from './specialActionPolicy.ts';
+import type {
+  SpecialActionKind,
+  SpecialActionSpec,
+  SpecialActionState,
+} from './specialActionPolicy.ts';
 export {
   SPECIAL_ACTION_KINDS,
   createSpecialActionState,
@@ -20,7 +25,39 @@ export {
   specialActionLocksShell,
 } from './specialActionPolicy.ts';
 
-const RESULT_NONE = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.NONE, reason: 'UNAVAILABLE' });
+export interface SpecialActionResult {
+  ok: boolean;
+  kind: SpecialActionKind;
+  reason?: string;
+  active?: boolean;
+}
+
+interface SpecialActionCombatState {
+  destroyed?: boolean;
+  shellSlot: number;
+  reload: {
+    t: number;
+    totalS: number;
+    kind: string;
+  };
+}
+
+interface SpecialActionEntity {
+  spec?: SpecialActionSpec;
+  state?: { suspensionAim?: boolean };
+  combat?: SpecialActionCombatState;
+  input?: { shellSlot?: number };
+  specialAction?: SpecialActionState;
+}
+
+interface GuidedShellLike {
+  id?: string | number;
+  spec?: { guided?: unknown };
+}
+
+const RESULT_NONE: Readonly<SpecialActionResult> = Object.freeze({
+  ok: false, kind: SPECIAL_ACTION_KINDS.NONE, reason: 'UNAVAILABLE',
+});
 const RESULT_BUSY = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE, reason: 'BUSY' });
 const RESULT_RELOAD_FULL = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD, reason: 'MAGAZINE_FULL' });
 const RESULT_RELOAD_ACTIVE = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD, reason: 'MAGAZINE_RELOADING' });
@@ -31,7 +68,7 @@ const RESULT_RELOAD = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.MAGAZ
 const RESULT_SUSPENSION_ON = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM, active: true });
 const RESULT_SUSPENSION_OFF = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM, active: false });
 
-function restoreMissileSelection(entity) {
+function restoreMissileSelection(entity: SpecialActionEntity | null | undefined): boolean {
   const action = entity?.specialAction;
   const combat = entity?.combat;
   if (!action || !combat) return false;
@@ -53,7 +90,9 @@ function restoreMissileSelection(entity) {
  * Missile requests arm the guided launcher immediately. The normal fire input
  * launches it; E never starts a hidden ammunition-switch reload.
  */
-export function activateSpecialAction(entity) {
+export function activateSpecialAction(
+  entity: SpecialActionEntity | null | undefined,
+): Readonly<SpecialActionResult> {
   const action = entity?.specialAction;
   const combat = entity?.combat;
   if (!action || !combat || combat.destroyed) return RESULT_NONE;
@@ -98,7 +137,10 @@ export function activateSpecialAction(entity) {
 }
 
 /** Mark the click-fired missile as the one currently guided by the cursor. */
-export function finishSpecialActionFire(entity, shellId) {
+export function finishSpecialActionFire(
+  entity: SpecialActionEntity | null | undefined,
+  shellId: string | number,
+): boolean {
   const action = entity?.specialAction;
   if (!action?.active || !action.pendingFire || action.inFlightShellId != null) return false;
   action.pendingFire = false;
@@ -110,14 +152,20 @@ export function finishSpecialActionFire(entity, shellId) {
  * True only for the live missile owned by this entity's engaged guidance
  * channel. Authorities use this gate before applying cursor steering.
  */
-export function specialActionGuidesShell(entity, shell) {
+export function specialActionGuidesShell(
+  entity: SpecialActionEntity | null | undefined,
+  shell: GuidedShellLike | null | undefined,
+): boolean {
   if (entity?.spec?.gun?.primaryGuided === true && shell?.spec?.guided === true) return true;
   const action = entity?.specialAction;
   return !!(action?.active && action.inFlightShellId === shell?.id && shell?.spec?.guided);
 }
 
 /** Disengage guidance on impact/expiry and restore the pre-E weapon. */
-export function completeGuidedMissileFlight(entity, shellId) {
+export function completeGuidedMissileFlight(
+  entity: SpecialActionEntity | null | undefined,
+  shellId: string | number,
+): boolean {
   const action = entity?.specialAction;
   if (!action?.active || action.inFlightShellId !== shellId) return false;
   return restoreMissileSelection(entity);

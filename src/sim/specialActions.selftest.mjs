@@ -21,7 +21,7 @@ import {
   specialActionGuidesShell,
   specialActionKind,
   specialActionLocksShell,
-} from './specialActions.js';
+} from './specialActions.ts';
 
 function entityFor(id) {
   const spec = getSpec(id);

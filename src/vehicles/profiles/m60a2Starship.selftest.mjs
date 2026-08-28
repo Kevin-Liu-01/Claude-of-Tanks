@@ -6,7 +6,7 @@ import {
   SPECIAL_ACTION_KINDS,
   createSpecialActionState,
   specialActionKind,
-} from '../../sim/specialActions.js';
+} from '../../sim/specialActions.ts';
 import { createTank } from '../tankFactory.js';
 import { getSpec } from '../specs.js';
 

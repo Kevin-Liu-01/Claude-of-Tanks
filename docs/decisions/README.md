@@ -127,3 +127,4 @@ runtime documents remain authoritative for behavior.
 - [0115 — Studio storyboards have a strict serializable contract](0115-typed-studio-storyboard.md)
 - [0116 — Equipment state has one strict cross-runtime contract](0116-typed-equipment-contract.md)
 - [0117 — Vehicle era and role taxonomy is strict TypeScript](0117-typed-vehicle-taxonomy.md)
+- [0118 — Context-sensitive vehicle actions share one strict state machine](0118-typed-special-actions.md)

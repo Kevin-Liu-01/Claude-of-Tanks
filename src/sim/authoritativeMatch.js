@@ -59,7 +59,7 @@ import {
   finishSpecialActionFire,
   specialActionGuidesShell,
   specialActionLocksShell,
-} from './specialActions.js';
+} from './specialActions.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 
 const BATTLE_LIMIT_S = 15 * 60;

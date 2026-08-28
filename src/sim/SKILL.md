@@ -15,6 +15,8 @@ Own authoritative armored-combat math at a fixed 60 Hz step.
 `ballistics.js` owns shells; `damage.js` owns penetration/modules/crew/fire;
 `spotting.js` owns visibility and team intel; `authoritativeMatch.js` composes
 those rules with match-local world collision for every network authority;
+`specialActionPolicy.ts` and `specialActions.ts` own the strict shared state
+machine for guided missiles, suspension aim, and manual magazine reloads;
 `botRoutePlanner.js` builds one seeded traversability grid per match and feeds
 renderer-free openings into the game AI controller.
 

@@ -20,7 +20,7 @@ network, debug, and screenshot battle barriers. A rejected chunk request is not
 cached, so the next intent can recover without a page refresh.
 
 Garage dossier metadata lives in `src/sim/specialActionPolicy.ts`; battle-only
-special-action mutation continues in `specialActions.js`. Consumable cooldowns,
+special-action mutation continues in `specialActions.ts`. Consumable cooldowns,
 countdown policy, tank pose interpolation, and mobile auto-aim also cross this
 boundary. Rendered drive-test controls are acquired only for development,
 debug, or automation sessions.

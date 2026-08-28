@@ -219,7 +219,7 @@ import { createShotInfo } from './shotInfo.js';
 import {
   SPECIAL_ACTION_KINDS,
   specialActionDescriptor,
-} from '../sim/specialActions.js';
+} from '../sim/specialActions.ts';
 
 // module-scope scratch (no per-frame allocation)
 const _mInv = new THREE.Matrix4();
