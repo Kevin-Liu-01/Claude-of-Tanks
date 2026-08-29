@@ -878,6 +878,18 @@ export function createPlayMenu({
     status.classList.toggle('err', !!error);
   }
 
+  function roomConnectionStatus(action: 'created' | 'joined'): string {
+    if (mode === 'private' && roomIce && !roomIce.relayAvailable) {
+      const reason = roomIce.degradedReason === 'turn_service_unconfigured'
+        ? 'the production TURN service is not configured'
+        : 'the TURN relay is temporarily unavailable';
+      return `Direct-only room ${action}; ${reason}, so some external networks cannot connect.`;
+    }
+    return action === 'created'
+      ? 'Room ready. Copy the invite link.'
+      : 'Connected. Choose a team and ready up.';
+  }
+
   function notifyLobbyChange(next: SerializedLobby | null = state): void {
     if (typeof onLobbyChange !== 'function' || activeRoom) return;
     try {
@@ -1214,8 +1226,8 @@ export function createPlayMenu({
       fillNote + relayNote;
   }
 
-  async function connectRoom(kind: 'create' | 'join'): Promise<void> {
-    if (connecting || session || privateRoomConnection.connecting || privateRoomConnection.current) return;
+  async function connectRoom(kind: 'create' | 'join'): Promise<boolean> {
+    if (connecting || session || privateRoomConnection.connecting || privateRoomConnection.current) return false;
     const selection = { ...getSelection(), gameMode: selectedGameMode };
     const name = normalizePlayerName(nameInput.value) || automaticPlayerName(ownPlayerId);
     if (!name) throw new Error('Enter a player name');
@@ -1244,9 +1256,9 @@ export function createPlayMenu({
         teamSize,
         maxPlayers: 14,
       });
-      if (!connection) return;
+      if (!connection) return false;
       adoptRoomConnection(connection);
-      if (handedOff) return;
+      if (handedOff) return true;
       if (kind === 'join' && role === 'host') resetInvitation();
       else if (role === 'client') {
         presentInvitation(
@@ -1256,6 +1268,7 @@ export function createPlayMenu({
         );
       }
       unsubscribeState = privateRoomConnection.observe(renderLobby);
+      return true;
     } catch (error) {
       closeCurrentSession('connection_failed');
       throw error;
@@ -1313,12 +1326,16 @@ export function createPlayMenu({
   }
   createBtn.addEventListener('click', async () => {
     setStatus('Creating room…');
-    try { await connectRoom('create'); setStatus('Room ready. Copy the invite link.'); }
+    try {
+      if (await connectRoom('create')) setStatus(roomConnectionStatus('created'));
+    }
     catch (error: unknown) { setStatus(errorMessage(error), true); }
   });
   joinBtn.addEventListener('click', async () => {
     setStatus('Joining room…');
-    try { await connectRoom('join'); setStatus('Connected. Choose a team and ready up.'); }
+    try {
+      if (await connectRoom('join')) setStatus(roomConnectionStatus('joined'));
+    }
     catch (error: unknown) { setStatus(errorMessage(error), true); }
   });
   rankedQueueBtn.addEventListener('click', async () => {
@@ -1425,7 +1442,9 @@ export function createPlayMenu({
       ? 'Joining ' + invitedHostName + '’s game…'
       : 'Joining invited game…');
     connectRoom('join')
-      .then(() => setStatus('Connected. Choose a team and ready up.'))
+      .then((connected) => {
+        if (connected) setStatus(roomConnectionStatus('joined'));
+      })
       .catch((error: unknown) => setStatus(errorMessage(error), true));
   }
   function hide(closeSession = true): void {

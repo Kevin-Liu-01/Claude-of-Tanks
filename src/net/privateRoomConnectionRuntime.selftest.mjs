@@ -225,4 +225,10 @@ assert.match(playMenuSource, /privateRoomConnection\.forget\(\);[\s\S]{0,80}acti
 assert.match(playMenuSource,
   /next\.phase === 'starting' \|\| next\.phase === 'playing'[\s\S]{0,180}beginNetworkHandoff\(next, 'client'\)/,
   'the real invite UI resumes a refreshed guest into an already-playing room');
+assert.match(playMenuSource,
+  /roomIce && !roomIce\.relayAvailable[\s\S]{0,300}production TURN service is not configured/,
+  'the real room UI cannot label an uncertified direct-only deployment universally ready');
+assert.match(playMenuSource,
+  /if \(await connectRoom\('create'\)\) setStatus\(roomConnectionStatus\('created'\)\)/,
+  'a superseded room acquisition cannot publish a stale success status');
 console.log('privateRoomConnectionRuntime.selftest: host resume, cold join, cancellation and teardown passed');

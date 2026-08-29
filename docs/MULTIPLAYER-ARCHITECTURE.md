@@ -384,6 +384,12 @@ short-lived TURN credentials from same-origin `/api/ice`; the deployment keeps
 the long-lived provider token server-side. `VITE_ICE_CONFIG_URL` only overrides
 that endpoint for a separate credential service. LAN remains direct.
 
+Credential acquisition classifies provider failures. Bounded retries cover a
+transient provider 429/5xx within the original five-second acquisition budget;
+permanent `turn_service_unconfigured` and invalid-configuration responses do
+not waste time retrying. If acquisition still degrades to STUN, the room UI
+labels the result direct-only instead of claiming universal readiness.
+
 The typed room-session owner treats those credentials as an expiring lease.
 Late host joins and replacement peer generations refresh near expiry, concurrent
 refreshes share one request, and a temporary STUN-only response cannot evict a

@@ -21,6 +21,9 @@ TURN generation when the credential endpoint temporarily degrades to STUN.
 
 Production certification is executable: `npm run net:prod:check` requires both
 distributed Redis signaling readiness and at least one `turn:` or `turns:` URL.
+Transient credential-provider HTTP failures receive bounded classified retries
+inside the original request budget. Permanent missing or invalid configuration
+does not retry, and the browser describes the resulting room as direct-only.
 
 ## Consequences
 
