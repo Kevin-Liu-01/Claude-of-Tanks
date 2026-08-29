@@ -18,7 +18,7 @@ Module ownership (file paths are FIXED):
 |---|---|
 | engine   | `src/engine/renderer.ts`, `src/engine/lighting.ts`, `src/engine/post.ts`, `src/engine/sky.ts`, `src/engine/cameraRig.ts` |
 | world    | `src/world/terrain.ts`, `src/world/vegetation.ts`, `src/world/props.ts`, `src/world/map.ts` |
-| vehicles | `src/vehicles/specs.ts`, `src/vehicles/fleetFactory.ts`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
+| vehicles | `src/vehicles/specs.ts`, `src/vehicles/fleetFactory.ts`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.ts` |
 | movement | `src/sim/movement.ts` |
 | combat   | `src/sim/ballistics.ts`, `src/sim/armor.ts`, `src/sim/damage.ts`, `src/sim/combat.selftest.mjs` |
 | ai       | `src/game/ai.ts` |
@@ -619,7 +619,7 @@ instanced links — builder's choice, must respond to `state.trackScroll`.
 suspension linkage, inboard clearance, end-wheel construction, and working-gear
 paint roles. Keep this audit out of player-frame work and run its fleet sweep
 after shared running-gear changes.
-All materials through `materials.js`; every lit material passes through
+All materials through `materials.ts`; every lit material passes through
 `engineCtx.setupShadowMaterial`.
 
 Final color-pass meshes receive deterministic semantic coplanar depth layers
@@ -630,9 +630,11 @@ Incorrect broad overlays must still be fixed geometrically. The fleet-wide
 invariant is `npm run tank:surface-overlap:check`, which must report zero
 unresolved positive-area, same-facing exterior overlaps.
 
-#### 3.3.3 `materials.js` (vehicles-internal; exact API is the builder's choice, but:)
-```js
-export function createTankMaterials(spec, engineCtx, camoSeed) => { hull, tracks, wheels, detail, ... }
+#### 3.3.3 `materials.ts` (vehicles-internal; exact API is the builder's choice, but:)
+```ts
+export function createTankMaterials(spec, engineCtx, camoSeed) {
+  return { hull, tracks, wheels, detail /* ... */ };
+}
 ```
 Procedural camo per roster paint notes (canvas textures, sRGB albedo, subtle normal/
 roughness). MeshStandardMaterial only.

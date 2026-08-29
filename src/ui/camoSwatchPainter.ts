@@ -4,7 +4,7 @@
  * immediate deterministic placeholder until this module is resident.
  */
 import { resolveCamoVisual, CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK }
-  from '../vehicles/materials.js';
+  from '../vehicles/materials.ts';
 import { paintCustomCamoStrokes } from '../vehicles/customCamoCanvas.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 

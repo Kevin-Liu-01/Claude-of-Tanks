@@ -57,7 +57,7 @@ import type * as THREE from 'three';
 // The kv2 build re-attaches the exported hook to its own per-build clones
 // (plain assignment, exactly the materials.js stub path — never the chained
 // CSM closure, which registers shaders under the SOURCE material key).
-import { vehicleAmbientFloorHook } from '../materials.js';
+import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec3Tuple = [number, number, number];

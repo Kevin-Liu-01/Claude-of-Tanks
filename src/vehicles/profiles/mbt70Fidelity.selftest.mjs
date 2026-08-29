@@ -4,7 +4,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec, MODEL_SOURCE } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 import { wheelPatternFor } from '../wheelPatterns.ts';
-import { resolveCamoVisual } from '../materials.js';
+import { resolveCamoVisual } from '../materials.ts';
 import { vehicleMarkingAnchor } from '../vehicleMarkings.ts';
 import { createTankState, SIM_DT } from '../../sim/movement.ts';
 

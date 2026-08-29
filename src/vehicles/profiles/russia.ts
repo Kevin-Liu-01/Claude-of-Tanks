@@ -20,7 +20,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
-import { vehicleAmbientFloorHook } from '../materials.js';
+import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec2Tuple = readonly [number, number];

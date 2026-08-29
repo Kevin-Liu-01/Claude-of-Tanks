@@ -28,7 +28,7 @@
 //    dims stays sovereign here and the curve ceilings are documented.
 import { BufferAttribute, BufferGeometry, Float32BufferAttribute, Mesh } from 'three';
 import { FITTINGS, KIT, muzzleBore, orientedSlab } from './kit.ts';
-import { vehicleAmbientFloorHook } from '../materials.js';
+import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 const box = (...a) => KIT.box(...a);

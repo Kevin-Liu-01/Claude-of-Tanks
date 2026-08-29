@@ -17,7 +17,7 @@ import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import '../challengerSpecs.ts';
 // ch1-base tone port (uk round 2026-08-07): materials.js is cycle-free — the
 // ambient-floor hook re-attach is the same import uk.ts carries.
-import { vehicleAmbientFloorHook } from '../materials.js';
+import { vehicleAmbientFloorHook } from '../materials.ts';
 // UK family kit stays owned by uk.ts (chieftains/centurions/vickers use it);
 // challenger1Build consumes the exact bindings it always did, including the
 // §C.1 winding-guarded `slab` (orientedSlab via the uk.ts KIT proxy).

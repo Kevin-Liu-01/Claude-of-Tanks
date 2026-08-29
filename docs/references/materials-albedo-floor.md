@@ -1,7 +1,7 @@
 # materials albedo-floor round (fleet camo B3 class) — 2026-08-04
 
-Lane: materials (src/vehicles/materials.js ONLY). Baseline: HEAD 1925e9dd,
-materials.js blob 9d0bde8e (verified clean — no pre-existing working-tree
+Lane: materials (now `src/vehicles/materials.ts` ONLY). Baseline: HEAD 1925e9dd,
+then-`materials.js` blob 9d0bde8e (verified clean — no pre-existing working-tree
 diff; the coordinator's collision warning did not materialize). Escalation
 inputs: the archived visual-review receipt (B3: top census 2334 vs
 ref 1160), t84 packet r32 2b (pale>=95 1/0 vs targets 60/150, "family camo

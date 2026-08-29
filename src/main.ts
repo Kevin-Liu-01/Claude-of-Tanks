@@ -95,7 +95,7 @@ import {
   setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked,
   clearCamoOverrides, warmWreckTextures,
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
-} from './vehicles/materials.js';
+} from './vehicles/materials.ts';
 import { createBattleHudAccess } from './ui/battleHudAccess.ts';
 import './ui/motion.css';
 import './ui/responsiveSurfaces.css';

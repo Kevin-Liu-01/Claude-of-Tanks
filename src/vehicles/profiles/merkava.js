@@ -17,7 +17,7 @@
 // fender line; every later mark hangs deep scalloped skirts.
 import * as THREE from 'three';
 import { KIT, muzzleBore, orientedSlab } from './kit.ts';
-import { vehicleAmbientFloorHook } from '../materials.js';
+import { vehicleAmbientFloorHook } from '../materials.ts';
 
 // ---------------------------------------------------------------------------
 // Loft machinery: bands of 8-corner slabs that follow measured polylines.

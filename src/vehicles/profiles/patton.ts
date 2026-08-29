@@ -46,7 +46,7 @@
 // lands ONLY in wholeCurves/turretCurves and is certified per packet.
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
-import { vehicleAmbientFloorHook } from '../materials.js';
+import { vehicleAmbientFloorHook } from '../materials.ts';
 import { tagVehicleMaterial } from '../appearanceAudit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 

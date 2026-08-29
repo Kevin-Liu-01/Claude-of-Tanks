@@ -12,7 +12,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
-import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.js';
+import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { wheelPatternFor } from './wheelPatterns.ts';
 import { trackPatternFor } from './trackPatterns.ts';

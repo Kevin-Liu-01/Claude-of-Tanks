@@ -85,7 +85,7 @@ const thirdPartyCoverage = [
   'public/models/',
   'public/brand/',
   'src/engine/post.ts',
-  'src/vehicles/materials.js',
+  'src/vehicles/materials.ts',
 ];
 const exceptedFiles = trackedFiles.filter((path) =>
   thirdPartyCoverage.some((entry) => entry.endsWith('/') ? path.startsWith(entry) : path === entry));

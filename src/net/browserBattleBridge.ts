@@ -11,7 +11,7 @@ import type {
 } from '../sim/movement.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
-import { prebakeSharedTextures } from '../vehicles/materials.js';
+import { prebakeSharedTextures } from '../vehicles/materials.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
 import { LocalTankPredictor } from './localTankPrediction.ts';

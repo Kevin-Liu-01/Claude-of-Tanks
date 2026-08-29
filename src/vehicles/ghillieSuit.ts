@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { KIT } from './profiles/kit.ts';
-import { vehicleAmbientFloorHook } from './materials.js';
+import { vehicleAmbientFloorHook } from './materials.ts';
 
 type Point2 = readonly [number, number];
 type Point3 = readonly [number, number, number];

@@ -52,6 +52,12 @@ Oplot-M, and field-caged M1A1 builds. Keep its surface-seated ERA, cast-dome
 profiles, welded-face probes, cage stations, and mutable donor-id handoff behind
 the narrow Ukrainian builder port; do not move these vehicles back through an
 eager or untyped fleet path.
+`materials.ts` is the strict shared owner for camouflage painting, shared
+texture residency and promotion, semantic vehicle materials, decals, ambient
+shadow-floor hooks, and destroyed-vehicle burn resources. Preserve its painter
+constants, deterministic RNG order, shader strings, and demand-owned wreck
+atlases; extend its local cache and repaint-role contracts instead of casting
+through an untyped material bag.
 `profiles/ww2.ts` owns the strict original and recovered WWII/inter-war profile
 pack. Preserve its mirror-safe slab winding, family-local builder port, seeded
 fittings, and exact demand-loaded `ww2` registration boundary.

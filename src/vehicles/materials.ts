@@ -1,4 +1,4 @@
-// src/vehicles/materials.js — HD procedural camo + surface materials for tankFactory.
+// src/vehicles/materials.ts — HD procedural camo + surface materials for tankFactory.
 // Vehicles-internal (ARCHITECTURE §3.3.3). All albedo canvases are sRGB; every lit
 // material passes through engineCtx.setupShadowMaterial.
 // 2048px albedo with panel lines / weld seams / bolt rows / chips / rust streaks,
@@ -18,11 +18,13 @@ import {
   normalizeCustomCamo,
   parseCustomCamoPatternId,
 } from './camoPolicy.ts';
+import type { CamoPatternId, CustomCamo, CustomCamoStroke } from './camoPolicy.ts';
 import { paintCustomCamoStrokes } from './customCamoCanvas.ts';
 
 export { CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID } from './camoPolicy.ts';
 import { tagVehicleMaterial } from './appearanceAudit.ts';
 import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from './vehicleMarkings.ts';
+import type { VehicleMarkingRecord } from './vehicleMarkings.ts';
 import { isPostwarVehicleEra } from './taxonomy.ts';
 // MOBILE r1: central texture-resolution lever (quality.ts). Every canvas bake
 // below allocates through texSize(): desktop tiers get the authored size
@@ -31,28 +33,168 @@ import { isPostwarVehicleEra } from './taxonomy.ts';
 // change — identical feature plan, quarter the pixels at scale 0.5.
 import { texSize } from '../engine/quality.ts';
 
-function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+type Rng = () => number;
+type Rgb = [number, number, number];
+export type MaterialTextureQuality = 'low' | 'ai' | 'preview' | 'high';
+type MaterialPatternId = CamoPatternId | 'urban' | typeof CUSTOM_CAMO_ID | string;
+type BakeYield = () => Promise<void> | void;
+
+interface MaterialVisual {
+  scheme?: string;
+  base: string;
+  weather?: string;
+  patches?: string[];
+  camoScale?: number;
+  plateLines?: boolean;
+  zimmerit?: boolean;
+  modernWelds?: boolean;
+  solidWeatheringIntensity?: number;
+  bandAngle?: number;
+  digitalCellK?: number;
+  blackK?: number;
+  patchK?: number;
+  rainK?: number;
+  patternRepeat?: number;
+  drawStrokes?: CustomCamoStroke[];
+  drawRepeatX?: number;
+  drawRepeatY?: number;
+  drawRotation?: number;
+  drawMirror?: boolean;
+  number?: string;
+  [key: string]: unknown;
+}
+
+export interface MaterialTankSpec {
+  id: string;
+  nation?: string;
+  era?: string;
+  visual: MaterialVisual;
+  [key: string]: unknown;
+}
+
+interface PlateLine {
+  p: number;
+  weld: boolean;
+  bolts: boolean;
+  gaps: Array<[number, number]>;
+}
+
+interface PlateRing { x: number; y: number; r: number; n: number }
+interface PlateChip { x: number; y: number; r: number; metal: boolean }
+interface PlateStreak { x: number; y: number; len: number; w: number }
+
+interface PlateFeatures {
+  hLines: PlateLine[];
+  vLines: PlateLine[];
+  rings: PlateRing[];
+  chips: PlateChip[];
+  streaks: PlateStreak[];
+}
+
+type PaintableKind = 'wheels' | 'wheelsDark' | 'detail' | 'canvas';
+interface PaintableRecord { m: THREE.MeshStandardMaterial; kind: PaintableKind }
+
+interface PatchRaster {
+  path: Path2D;
+  mnx: number;
+  mny: number;
+  mxx: number;
+  mxy: number;
+}
+
+interface FlameLick {
+  x: number;
+  y: number;
+  ang: number;
+  len: number;
+  w: number;
+  j: number;
+}
+
+interface SharedTextureEntry {
+  refs: number;
+  cacheKey: string;
+  fixedPattern: boolean;
+  spec: MaterialTankSpec;
+  seed: number;
+  feats: PlateFeatures | null;
+  patternId: MaterialPatternId;
+  paintable: Set<PaintableRecord>;
+  quality: MaterialTextureQuality;
+  camoCanvas: HTMLCanvasElement;
+  normalCanvas: HTMLCanvasElement;
+  roughCanvas: HTMLCanvasElement;
+  trackCanvas: HTMLCanvasElement;
+  camoTex?: THREE.CanvasTexture;
+  normalTex?: THREE.CanvasTexture;
+  roughTex?: THREE.CanvasTexture;
+  burntTex?: THREE.CanvasTexture | null;
+  emberTex?: THREE.CanvasTexture | null;
+  kitCanvas?: HTMLCanvasElement;
+  kitTex?: THREE.CanvasTexture | null;
+}
+
+interface SharedTextureIdentity {
+  key: string;
+  patternId: MaterialPatternId;
+  fixed: boolean;
+}
+
+interface CanvasTextureOptions {
+  srgb?: boolean;
+  aniso?: number;
+  repeat?: boolean;
+}
+
+interface CamoApplyOptions {
+  priorityIds?: string[];
+  onlySpecIds?: string[];
+}
+
+interface ShadowEngineContext {
+  anisotropy?: number;
+  setupShadowMaterial?: <T extends THREE.Material>(
+    material: T,
+    extraHook?: typeof vehicleAmbientFloorHook,
+  ) => T;
+  releaseShadowMaterial?: (material: THREE.Material) => boolean;
+}
+
+type MaterialShader = Parameters<THREE.Material['onBeforeCompile']>[0];
+
+type BurnUniforms = ReturnType<typeof makeBurnUniforms>;
+
+function canvas2d(
+  canvas: HTMLCanvasElement,
+  options?: CanvasRenderingContext2DSettings,
+): CanvasRenderingContext2D {
+  const context = canvas.getContext('2d', options);
+  if (!context) throw new Error('2D canvas context is unavailable');
+  return context;
+}
+
+function mulberry32(a: number): Rng {return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
 const ALBEDO_SIZE = 2048;
 const MAP_SIZE = 1024;
 
-function makeCanvas(w, h) {
+function makeCanvas(w: number, h: number): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   return c;
 }
 
-function hexToRgb(hex) {
+function hexToRgb(hex: string): Rgb {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
-const rgb = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
-const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-const scale3 = (c, s) => [c[0] * s, c[1] * s, c[2] * s];
-const luma = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+const rgb = (c: Rgb, a = 1): string => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+const mix = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const scale3 = (c: Rgb, s: number): Rgb => [c[0] * s, c[1] * s, c[2] * s];
+const luma = (c: Rgb): number => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 
-function capCanvasLuma(ctx, size, maxLuma) {
+function capCanvasLuma(ctx: CanvasRenderingContext2D, size: number, maxLuma: number): void {
   const image = ctx.getImageData(0, 0, size, size);
   const data = image.data;
   for (let i = 0; i < data.length; i += 4) {
@@ -68,7 +210,7 @@ function capCanvasLuma(ctx, size, maxLuma) {
 }
 
 // Irregular blob path around (x,y) with radius r.
-function blobPath(ctx, rng, x, y, r, lobes = 7, jitter = 0.45) {
+function blobPath(ctx: CanvasRenderingContext2D, rng: Rng, x: number, y: number, r: number, lobes = 7, jitter = 0.45): void {
   ctx.beginPath();
   const offs = [];
   for (let i = 0; i < lobes; i++) offs.push(1 - jitter / 2 + rng() * jitter);
@@ -83,16 +225,16 @@ function blobPath(ctx, rng, x, y, r, lobes = 7, jitter = 0.45) {
 
 // Smooth rounded organic blob as a reusable Path2D (quadratic midpoint spline),
 // horizontally stretched like real NATO splotches.
-function blobPath2D(rng, x, y, r, lobes = 9, jitter = 0.55) {
+function blobPath2D(rng: Rng, x: number, y: number, r: number, lobes = 9, jitter = 0.55): Path2D {
   const sx = 1.25 + rng() * 0.6;
-  const pts = [];
+  const pts: Array<[number, number]> = [];
   for (let i = 0; i < lobes; i++) {
     const a = (i / lobes) * Math.PI * 2;
     const rr = r * (1 - jitter / 2 + rng() * jitter);
     pts.push([x + Math.cos(a) * rr * sx, y + Math.sin(a) * rr * 0.78]);
   }
   const p = new Path2D();
-  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const mid = (a: [number, number], b: [number, number]): [number, number] => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
   let m = mid(pts[lobes - 1], pts[0]);
   p.moveTo(m[0], m[1]);
   for (let i = 0; i < lobes; i++) {
@@ -113,10 +255,10 @@ function blobPath2D(rng, x, y, r, lobes = 9, jitter = 0.55) {
 // hard-edge schemes (splinter, caunter, blocks, dazzle) keep the default 0:
 // their ruler edges are the authentic language, and the rng draw order of
 // every existing caller is untouched at 0.
-function polyPath2D(rng, x, y, r, lobes = 6, jitter = 0.6, edgeNoise = 0) {
+function polyPath2D(rng: Rng, x: number, y: number, r: number, lobes = 6, jitter = 0.6, edgeNoise = 0): Path2D {
   const sx = 1.2 + rng() * 0.9;
   const p = new Path2D();
-  const pts = [];
+  const pts: Array<[number, number]> = [];
   for (let i = 0; i < lobes; i++) {
     const a = (i / lobes) * Math.PI * 2 + (rng() - 0.5) * (Math.PI / lobes);
     const rr = r * (1 - jitter / 2 + rng() * jitter);
@@ -154,7 +296,7 @@ function polyPath2D(rng, x, y, r, lobes = 6, jitter = 0.6, edgeNoise = 0) {
 // Replaces the single rounded blob stamps that read as leopard/cow spots at
 // garage distance (r7 factory/summer morphology critique). Overlapping
 // same-winding subpaths union under the default nonzero fill rule.
-function camoPatchPath2D(rng, x, y, r, ang, lobeNIn) {
+function camoPatchPath2D(rng: Rng, x: number, y: number, r: number, ang: number, lobeNIn?: number): Path2D {
   const p = new Path2D();
   // camo_spotting r3: callers may force the lobe count — the NATO scheme
   // chains 4-6 lobes into one long flowing band (island-blob critique).
@@ -169,7 +311,7 @@ function camoPatchPath2D(rng, x, y, r, ang, lobeNIn) {
     const stretch = 1.5 + rng() * 0.9;           // per-lobe elongation
     const sides = 5 + ((rng() * 3) | 0);
     const cosA = Math.cos(a), sinA = Math.sin(a);
-    const pts = [];
+    const pts: Array<[number, number]> = [];
     for (let i = 0; i < sides; i++) {
       const t = (i / sides) * Math.PI * 2 + (rng() - 0.5) * (Math.PI / sides);
       let rr = lr * (0.6 + rng() * 0.6);
@@ -206,7 +348,7 @@ function camoPatchPath2D(rng, x, y, r, ang, lobeNIn) {
 }
 
 // Fill a Path2D 9 times (3x3 tile offsets) so the pattern wraps seamlessly.
-function fillWrapped(ctx, S, path, style, fillRule) {
+function fillWrapped(ctx: CanvasRenderingContext2D, S: number, path: Path2D, style: string, fillRule?: CanvasFillRule): void {
   ctx.fillStyle = style;
   for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) {
     ctx.save(); ctx.translate(dx, dy);
@@ -216,7 +358,7 @@ function fillWrapped(ctx, S, path, style, fillRule) {
     ctx.restore();
   }
 }
-function strokeWrapped(ctx, S, path, style, width) {
+function strokeWrapped(ctx: CanvasRenderingContext2D, S: number, path: Path2D, style: string, width: number): void {
   ctx.strokeStyle = style;
   ctx.lineWidth = width;
   ctx.lineCap = 'round';
@@ -273,14 +415,14 @@ export const CLAUDE_SPARK_MARK =
 // mid-tones hard-light adds exactly the same +-128*amp jitter; shadows and
 // highlights grain proportionally less, which reads slightly cleaner) and
 // runs ~10x faster on the GPU drawImage path.
-const _grainTiles = new Map(); // "S:amp" -> canvas
-function grainTile(S, amp) {
+const _grainTiles = new Map<string, HTMLCanvasElement>(); // "S:amp" -> canvas
+function grainTile(S: number, amp: number): HTMLCanvasElement {
   const key = S + ':' + amp;
   let cnv = _grainTiles.get(key);
   if (cnv) return cnv;
   cnv = document.createElement('canvas');
   cnv.width = cnv.height = S;
-  const c = cnv.getContext('2d');
+  const c = canvas2d(cnv);
   const img = c.createImageData(S, S);
   const d = img.data;
   let s0 = 0x9e3779b9;
@@ -294,7 +436,7 @@ function grainTile(S, amp) {
   _grainTiles.set(key, cnv);
   return cnv;
 }
-function applyGrain(ctx, S, seed, amp) {
+function applyGrain(ctx: CanvasRenderingContext2D, S: number, seed: number, amp: number): void {
   // `seed` is intentionally unused now — see grainTile note above.
   const prevOp = ctx.globalCompositeOperation;
   ctx.globalCompositeOperation = 'hard-light';
@@ -307,12 +449,12 @@ function applyGrain(ctx, S, seed, amp) {
 // height, and roughness painters so panel lines / welds / bolts line up
 // across all three maps. Coordinates are 0..1 of the repeat tile.
 // ---------------------------------------------------------------------------
-function genPlateFeatures(rng) {
-  const f = { hLines: [], vLines: [], rings: [], chips: [], streaks: [] };
+function genPlateFeatures(rng: Rng): PlateFeatures {
+  const f: PlateFeatures = { hLines: [], vLines: [], rings: [], chips: [], streaks: [] };
   // Panel joins are sparse and broken (1-2 gaps per run) so plates don't read
   // as a uniform tile grid across big hull sides.
-  const mkGaps = () => {
-    const gaps = [];
+  const mkGaps = (): Array<[number, number]> => {
+    const gaps: Array<[number, number]> = [];
     const n = 1 + ((rng() * 2) | 0);
     for (let k = 0; k < n; k++) {
       const s = 0.12 + rng() * 0.66;
@@ -355,8 +497,8 @@ function genPlateFeatures(rng) {
 }
 
 // Un-gapped spans of a panel line, as [start, end] fractions.
-function lineSegs(line) {
-  const segs = [];
+function lineSegs(line: PlateLine): Array<[number, number]> {
+  const segs: Array<[number, number]> = [];
   let cur = 0;
   for (const [g0, g1] of line.gaps || []) {
     if (g0 > cur) segs.push([cur, g0]);
@@ -365,15 +507,21 @@ function lineSegs(line) {
   if (cur < 1) segs.push([cur, 1]);
   return segs;
 }
-const inGap = (line, t) => (line.gaps || []).some(([g0, g1]) => t >= g0 && t <= g1);
+const inGap = (line: PlateLine, t: number): boolean => line.gaps.some(([g0, g1]) => t >= g0 && t <= g1);
 
 // ---------------------------------------------------------------------------
 // Albedo (2048) — camo scheme base + feature overlay + weathering.
 // ---------------------------------------------------------------------------
 
 
-function paintCamo(canvas, visual, rng, feats, seed) {
-  const ctx = canvas.getContext('2d');
+function paintCamo(
+  canvas: HTMLCanvasElement,
+  visual: MaterialVisual,
+  rng: Rng,
+  feats: PlateFeatures,
+  seed: number,
+): HTMLCanvasElement {
+  const ctx = canvas2d(canvas);
   const S = canvas.width;
   const base = hexToRgb(visual.base);
   const weather = hexToRgb(visual.weather || visual.base);
@@ -450,7 +598,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
   // camo_spotting r3: `specks` optional — the 2px droplet dash blew up into
   // confetti-scale chips on GLB skirt UV islands (NATO topology critique);
   // the NATO/masked schemes now skip it while WW2 sprayed schemes keep it.
-  const sprayEdge = (p, col, coreA, specks = true) => {
+  const sprayEdge = (p: Path2D, col: Rgb, coreA: number, specks = true): void => {
     ctx.filter = `blur(${(S * 0.0028).toFixed(1)}px)`;
     strokeWrapped(ctx, S, p, rgb(col, 0.18), S * 0.007);       // overspray halo
     ctx.filter = `blur(${Math.max(1, S * 0.0006).toFixed(1)}px)`;
@@ -499,7 +647,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     const bandAng = visual.bandAngle != null
       ? visual.bandAngle + (rng() - 0.5) * 0.24          // pinned (naval waves)
       : 0.85 + rng() * 0.55;                             // one direction per tank
-    const band = (col, w, len, alpha) => {
+    const band = (col: Rgb, w: number, len: number, alpha: number) => {
       const x0 = rng() * S, y0 = rng() * S;
       const ang = bandAng + (rng() - 0.5) * 0.30;
       const bend = (rng() - 0.5) * w * 2.2;
@@ -556,7 +704,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // language. (r7: uniform rounded blobs + random confetti dots everywhere
     // read as orange/green cow spots.)
     const dirA = rng() * Math.PI;
-    const drawn = [];
+    const drawn: Array<{ p: Path2D; x: number; y: number; r: number }> = [];
     const nP = Math.round(14 * nK);
     for (let i = 0; i < nP; i++) {
       const col = mix(patches[i % patches.length], base, 0.06);
@@ -569,7 +717,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       ctx.filter = 'none';
       drawn.push({ p, x, y, r });
     }
-    const dotWrap = (x, y, r2) => {
+    const dotWrap = (x: number, y: number, r2: number): void => {
       for (const ox of [-S, 0, S]) {
         for (const oy of [-S, 0, S]) {
           ctx.beginPath(); ctx.arc(x + ox, y + oy, r2, 0, Math.PI * 2); ctx.fill();
@@ -755,7 +903,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // Winter wash: streaky hand-brushed whitewash over the factory paint.
     // patches[0] carries the underlying factory color that shows through
     // worn edges; broad translucent vertical strokes read as brush work.
-    const under = patches.length ? patches[0] : [70, 80, 55];
+    const under: Rgb = patches.length ? patches[0] : [70, 80, 55];
     // r8 rework (winter blowout critique): the wash is ~70% cover over the
     // base coat — brighter brushed streaks sit BETWEEN visible grey-green
     // gaps, worn edges show real paint, and the shadow washes went neutral
@@ -938,7 +1086,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // camoPatchPath2D, but with the vertices tracked so the rasterizer gets
     // an EXACT bbox (the shared helper's lobes can wander ~5r from the
     // anchor — a guessed box either clips lobes or scans half the tile).
-    const mkPatch = () => {
+    const mkPatch = (): PatchRaster => {
       const lobeN = 2 + ((rng() * 3) | 0);
       const r0 = S * wk * (0.10 + rng() * 0.09);
       const step = r0 * (0.85 + rng() * 0.5);
@@ -1124,7 +1272,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // half-size blocks; edges stay unblurred (masked hard-line paint), the
     // only hard-vector scheme by design.
     const pk = visual.patchK || 1;
-    const rect = (x, y, w2, h2, col, a) => {
+    const rect = (x: number, y: number, w2: number, h2: number, col: Rgb, a: number): void => {
       const p = new Path2D();
       p.rect(x - w2 / 2, y - h2 / 2, w2, h2);
       fillWrapped(ctx, S, p, rgb(col, a));
@@ -1147,7 +1295,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // CONNECTED bands of the factory paint exposed (~25-30%), wear gathers
     // along one abrasion diagonal, and the winter luma ceiling caps the
     // brightest texels so the wash stays in the matte chalk band.
-    const under = patches.length ? patches[0] : [70, 80, 55];
+    const under: Rgb = patches.length ? patches[0] : [70, 80, 55];
     for (let i = 0; i < Math.round(9 * nK); i++) {   // crew mop-work swathes
       const r = S * wk * (0.09 + rng() * 0.07);
       const p = camoPatchPath2D(rng, rng() * S, rng() * S, r, rng() * Math.PI, 3 + ((rng() * 3) | 0));
@@ -1167,7 +1315,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // scrub streaks + cold slush grime (winter's steel-wear language, heavier)
     for (let i = 0; i < 60; i++) {
       const x0 = rng() * S, y0 = rng() * S, len = S * (0.05 + rng() * 0.14);
-      const tone = rng() < 0.5 ? mix(under, [96, 104, 108], 0.5) : [88, 96, 102];
+      const tone: Rgb = rng() < 0.5 ? mix(under, [96, 104, 108], 0.5) : [88, 96, 102];
       const path = new Path2D();
       path.moveTo(x0, y0);
       path.lineTo(x0 + (rng() - 0.5) * 6, y0 + len);
@@ -1299,7 +1447,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     const mid2 = patches[2] || null;
     // one near-horizontal flow per vehicle (bandAngle knob can repose it)
     const flow = (visual.bandAngle != null ? visual.bandAngle : 0.14) + (rng() - 0.5) * 0.18;
-    const stripe = (col, w0, len, alpha) => {
+    const stripe = (col: Rgb, w0: number, len: number, alpha: number): void => {
       const segs = 7;
       const dirA = flow + (rng() - 0.5) * 0.28;
       const x0 = rng() * S, y0 = rng() * S;
@@ -1315,7 +1463,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       }
       const nx = -Math.sin(dirA), ny = Math.cos(dirA);
       const p = new Path2D();
-      const half = (i) => {                        // sharp taper + jagged width
+      const half = (i: number): number => {        // sharp taper + jagged width
         const t = i / segs;
         const taper = Math.pow(Math.sin(Math.PI * t), 0.55);
         return (w0 / 2) * taper * (0.6 + rng() * 0.8);
@@ -1416,7 +1564,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // Strokes stack green -> brown -> black so the black always reads as the
     // top drawing layer, the DPM signature. patches = [green, brown, black].
     const flow = rng() * Math.PI;
-    const strokeOne = (col, w, len, alpha) => {
+    const strokeOne = (col: Rgb, w: number, len: number, alpha: number): void => {
       const x0 = rng() * S, y0 = rng() * S;
       const a = flow + (rng() - 0.5) * 0.6 + (rng() < 0.18 ? Math.PI / 2 : 0);
       const bend = (rng() - 0.5) * w * 3;
@@ -1466,7 +1614,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       ctx.filter = 'none';
     }
     const codeSrc = new Path2D(CLAUDE_CODE_MARK);
-    const guy = (x, y, s, rot, ink, a) => {
+    const guy = (x: number, y: number, s: number, rot: number, ink: Rgb, a: number): void => {
       const p = new Path2D();
       // 24x24 source box, visual mass centered near (12, 12.5); s/24 spans
       // s units. evenodd keeps the punched eyes open. Rotations stay small —
@@ -1510,7 +1658,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       ctx.filter = 'none';
     }
     const sparkSrc = new Path2D(CLAUDE_SPARK_MARK);
-    const spark = (x, y, s, rot, ink, a) => {
+    const spark = (x: number, y: number, s: number, rot: number, ink: Rgb, a: number): void => {
       const p = new Path2D();
       const m = new DOMMatrix().translate(x, y).rotate((rot * 180) / Math.PI)
         .scale(s / 24, s / 24).translate(-12, -12);
@@ -1549,7 +1697,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       strokeWrapped(ctx, S, path, rgb(mix(base, [255, 255, 255], 0.2), 0.45),
         Math.max(2, S * 0.005));
     }
-    const duck = (x, y, s, flip, a) => {
+    const duck = (x: number, y: number, s: number, flip: boolean, a: number): void => {
       const m = new DOMMatrix().translate(x, y).scale(flip ? -s : s, s);
       const body = new Path2D();
       const q = new Path2D();
@@ -1584,7 +1732,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // patches = [red, black].
     const red = patches[0];
     const blk = patches[1] || '#2b2b2e';
-    const suit = (kind, x, y, s, rot, a) => {
+    const suit = (kind: 0 | 1 | 2 | 3, x: number, y: number, s: number, rot: number, a: number): void => {
       const q = new Path2D();
       if (kind === 0) {          // heart (24x24 box)
         q.moveTo(12, 21);
@@ -1620,20 +1768,20 @@ function paintCamo(canvas, visual, rng, feats, seed) {
         .rotate((rot * 180) / Math.PI).scale(s / 24, s / 24).translate(-12, -12));
       fillWrapped(ctx, S, p, rgb(kind < 2 ? red : blk, a));
     };
-    suit((rng() * 4) | 0, S * (0.3 + rng() * 0.4), S * (0.3 + rng() * 0.4),
+    suit(((rng() * 4) | 0) as 0 | 1 | 2 | 3, S * (0.3 + rng() * 0.4), S * (0.3 + rng() * 0.4),
       S * (0.42 + rng() * 0.12), (rng() - 0.5) * 0.5, 0.94);     // hero suit
     const cell = S / 2;
     let k6 = (rng() * 4) | 0;
     for (let gy = 0; gy < 2; gy++) {
       for (let gx = 0; gx < 2; gx++) {
         k6++;
-        suit(k6 % 4, (gx + 0.5 + (rng() - 0.5) * 0.6) * cell,
+        suit((k6 % 4) as 0 | 1 | 2 | 3, (gx + 0.5 + (rng() - 0.5) * 0.6) * cell,
           (gy + 0.5 + (rng() - 0.5) * 0.6) * cell,
           cell * (0.34 + rng() * 0.12), (rng() - 0.5) * 0.5, 0.9);
       }
     }
     for (let i = 0; i < Math.round(8 * nK); i++) {
-      suit((rng() * 4) | 0, rng() * S, rng() * S,
+      suit(((rng() * 4) | 0) as 0 | 1 | 2 | 3, rng() * S, rng() * S,
         S * (0.05 + rng() * 0.04), (rng() - 0.5) * 0.7, 0.65);
     }
     // ===================== END CAMO PATTERN SECTION =================
@@ -1646,12 +1794,12 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     const fo = patches[1] || patches[0];
     const fg = patches[2] || fo;
     const flow = -0.5 + rng() * 0.25;
-    const licks = [];
+    const licks: FlameLick[] = [];
     for (let i = 0; i < Math.round(7 * nK); i++) {
       licks.push({ x: rng() * S, y: rng() * S, ang: flow + (rng() - 0.5) * 0.4,
         len: S * (0.22 + rng() * 0.2), w: S * (0.045 + rng() * 0.035), j: rng() * 9 });
     }
-    const drawLayer = (col, kScale, alpha) => {
+    const drawLayer = (col: Rgb, kScale: number, alpha: number): void => {
       for (const L of licks) {
         const p = new Path2D();
         const steps = 4;
@@ -1722,7 +1870,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       rgb(mix(base, [255, 255, 255], 0.14), 0.5));
       ctx.filter = 'none';
     }
-    const bolt = (x, y, s, rot, col, a) => {
+    const bolt = (x: number, y: number, s: number, rot: number, col: Rgb, a: number): void => {
       const q = new Path2D();
       q.moveTo(0.06, -0.5); q.lineTo(0.26, -0.5); q.lineTo(0.03, -0.09);
       q.lineTo(0.2, -0.09); q.lineTo(-0.14, 0.5); q.lineTo(-0.02, 0.05);
@@ -1754,7 +1902,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // cream heroes with gold satellites. patches = [cream, gold].
     const cream = patches[0];
     const gold = patches[1] || patches[0];
-    const star = (x, y, s, rot, col, a) => {
+    const star = (x: number, y: number, s: number, rot: number, col: Rgb, a: number): void => {
       const q = new Path2D();
       for (let k2 = 0; k2 < 10; k2++) {
         const rr = k2 % 2 ? 0.21 : 0.5;
@@ -1791,7 +1939,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // patches = [cream, center].
     const cream = patches[0];
     const button = patches[1] || '#c96a3a';
-    const daisy = (x, y, s, rot, a) => {
+    const daisy = (x: number, y: number, s: number, rot: number, a: number): void => {
       for (let k2 = 0; k2 < 6; k2++) {
         const aa = rot + (k2 * Math.PI) / 3;
         const q = new Path2D();
@@ -1825,7 +1973,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // patches = [pad gold, trace mint].
     const pad = patches[0];
     const trace = patches[1] || patches[0];
-    const via = (x, y, r) => {
+    const via = (x: number, y: number, r: number): void => {
       const q = new Path2D();
       q.arc(x, y, r, 0, Math.PI * 2);
       fillWrapped(ctx, S, q, rgb(pad, 0.92));
@@ -1866,7 +2014,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     const red = patches[0];
     const blk = patches[1] || '#26282c';
     const ang = -0.35 + (rng() - 0.5) * 0.2;
-    const band = (offX, offY, w, col, alpha) => {
+    const band = (offX: number, offY: number, w: number, col: Rgb, alpha: number): void => {
       const path = new Path2D();
       const len = S * 1.6;
       path.moveTo(offX - Math.cos(ang) * len * 0.5, offY - Math.sin(ang) * len * 0.5);
@@ -1879,7 +2027,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     band(cx + nx * S * 0.095, cy + ny * S * 0.095, S * 0.035, red, 0.94);
     band(cx - nx * S * 0.075, cy - ny * S * 0.075, S * 0.012, blk, 0.9);
     const num = String(1 + ((rng() * 98) | 0));
-    const roundel = (x, y, r) => {
+    const roundel = (x: number, y: number, r: number): void => {
       const disc = new Path2D();
       disc.arc(x, y, r, 0, Math.PI * 2);
       fillWrapped(ctx, S, disc, rgb(mix(base, [255, 255, 255], 0.55), 0.96));
@@ -1942,7 +2090,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // white star + a plain satellite star + registration stencils — the
     // Normandy air-recognition language. patches = [white].
     const white = patches[0];
-    const star = (x, y, s, rot, a, ring) => {
+    const star = (x: number, y: number, s: number, rot: number, a: number, ring: boolean): void => {
       const q = new Path2D();
       for (let k2 = 0; k2 < 10; k2++) {
         const rr = k2 % 2 ? 0.19 : 0.5;
@@ -2059,7 +2207,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     const od = patches[0];
     const grime = patches[1] || patches[0];
     const flow = (rng() - 0.5) * 0.3;                // near-horizontal brush
-    const strokeAt = (col, w, alpha, len) => {
+    const strokeAt = (col: Rgb, w: number, alpha: number, len: number): void => {
       const x0 = rng() * S, y0b = rng() * S;
       const a = flow + (rng() - 0.5) * 0.18;
       const bend = (rng() - 0.5) * w * 2;
@@ -2144,7 +2292,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     const dk = patches[0];
     const br = patches[1] || patches[0];
     const bk = patches[2] || '#262a24';
-    const leafIsland = (x, y, r, lobes) => {
+    const leafIsland = (x: number, y: number, r: number, lobes: number): Path2D => {
       const p = blobPath2D(rng, x, y, r, 11, 0.62);
       for (let k2 = 0; k2 < lobes; k2++) {
         const aa = rng() * Math.PI * 2;
@@ -2404,7 +2552,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
   applyGrain(ctx, S, seed ^ 0x51ab, 0.034);
 
   // ---- plate feature overlay (matches height/roughness maps) --------------
-  const px = (v) => v * S;
+  const px = (v: number): number => v * S;
   // panel lines: dark recess + light catch-edge below
   ctx.lineCap = 'butt';
   const lw = Math.max(2, S / 800);
@@ -2425,7 +2573,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     }
   }
   // weld beads: dashed light/dark stitch straddling the line
-  const weldDash = (horiz, l) => {
+  const weldDash = (horiz: boolean, l: PlateLine): void => {
     const p = l.p;
     const step = S / 160;
     for (let t = 0; t < S; t += step) {
@@ -2445,7 +2593,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
   for (const l of feats.hLines) if (l.weld) weldDash(true, l);
   for (const l of feats.vLines) if (l.weld) weldDash(false, l);
   // bolts along lines: dome highlight + drop shadow
-  const bolt = (x, y, r) => {
+  const bolt = (x: number, y: number, r: number): void => {
     ctx.fillStyle = 'rgba(8,8,6,0.5)';
     ctx.beginPath(); ctx.arc(x + r * 0.25, y + r * 0.4, r, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = 'rgba(216,208,186,0.20)';   // r10: dome glint dimmed (speckle)
@@ -2506,7 +2654,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     }
   }
   // rust weeps from plan sources + below some bolts.
-  const weep = (x, y, len, w) => {
+  const weep = (x: number, y: number, len: number, w: number): void => {
     const g = ctx.createLinearGradient(x, y, x, y + len);
     g.addColorStop(0, 'rgba(122,64,28,0.42)');
     g.addColorStop(1, 'rgba(122,64,28,0)');
@@ -2525,8 +2673,14 @@ function paintCamo(canvas, visual, rng, feats, seed) {
 // casting noise, plate offsets, panel-line grooves, weld beads, bolt domes,
 // chips, optional zimmerit ridging.
 // ---------------------------------------------------------------------------
-function paintHeight(canvas, visual, rng, feats, seed) {
-  const ctx = canvas.getContext('2d');
+function paintHeight(
+  canvas: HTMLCanvasElement,
+  visual: MaterialVisual,
+  rng: Rng,
+  feats: PlateFeatures,
+  seed: number,
+): HTMLCanvasElement {
+  const ctx = canvas2d(canvas);
   const S = canvas.width;
   ctx.fillStyle = 'rgb(128,128,128)';
   ctx.fillRect(0, 0, S, S);
@@ -2545,7 +2699,7 @@ function paintHeight(canvas, visual, rng, feats, seed) {
   }
 
   // subtle per-panel height offsets so plates read as separate facets
-  const px = (v) => v * S;
+  const px = (v: number): number => v * S;
   const hs = [0, ...feats.hLines.map((l) => l.p), 1].sort((a, b) => a - b);
   const vs = [0, ...feats.vLines.map((l) => l.p), 1].sort((a, b) => a - b);
   for (let i = 0; i < hs.length - 1; i++) {
@@ -2589,7 +2743,7 @@ function paintHeight(canvas, visual, rng, feats, seed) {
   }
 
   // grooves (dark) with soft shoulders, honoring the gap plan
-  const groove = (horiz, l) => {
+  const groove = (horiz: boolean, l: PlateLine): void => {
     const w = Math.max(2, S / 480);
     for (const [a, b] of lineSegs(l)) {
       ctx.fillStyle = 'rgba(0,0,0,0.36)';
@@ -2603,7 +2757,7 @@ function paintHeight(canvas, visual, rng, feats, seed) {
   for (const l of feats.vLines) groove(false, l);
 
   // weld beads: bright stitch bumps
-  const weld = (horiz, l) => {
+  const weld = (horiz: boolean, l: PlateLine): void => {
     const step = S / 160, r = Math.max(1.6, S / 620);
     for (let t = 0; t < S; t += step) {
       if (inGap(l, t / S)) continue;
@@ -2619,7 +2773,7 @@ function paintHeight(canvas, visual, rng, feats, seed) {
 
   // bolt domes: bright circles with dark rim
   const boltR = Math.max(2, S / 340);
-  const bolt = (x, y) => {
+  const bolt = (x: number, y: number): void => {
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath(); ctx.arc(x, y, boltR * 1.25, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
@@ -2651,7 +2805,14 @@ function paintHeight(canvas, visual, rng, feats, seed) {
 
 /** Fill an exact wrapped Sobel row range without per-pixel helper calls or
  * modulo. Exported for byte-parity regression coverage. */
-export function fillHeightNormalRows(src, d, S, strength, yStart = 0, yEnd = S) {
+export function fillHeightNormalRows(
+  src: Uint8ClampedArray,
+  d: Uint8ClampedArray,
+  S: number,
+  strength: number,
+  yStart = 0,
+  yEnd = S,
+): Uint8ClampedArray {
   for (let y = yStart; y < yEnd; y++) {
     const ym = y === 0 ? S - 1 : y - 1;
     const yp = y + 1 === S ? 0 : y + 1;
@@ -2677,11 +2838,11 @@ export function fillHeightNormalRows(src, d, S, strength, yStart = 0, yEnd = S) 
 }
 
 // Sobel the heightfield into a tangent-space normal map (wrapping edges).
-function* heightToNormalSteps(hCanvas, strength = 1.6) {
+function* heightToNormalSteps(hCanvas: HTMLCanvasElement, strength = 1.6): Generator<void, HTMLCanvasElement, void> {
   const S = hCanvas.width;
-  const src = hCanvas.getContext('2d').getImageData(0, 0, S, S).data;
+  const src = canvas2d(hCanvas).getImageData(0, 0, S, S).data;
   const out = makeCanvas(S, S);
-  const octx = out.getContext('2d');
+  const octx = canvas2d(out);
   const img = octx.createImageData(S, S);
   const d = img.data;
   // A 1024-row Sobel pass was one several-hundred-millisecond task during
@@ -2701,8 +2862,8 @@ function* heightToNormalSteps(hCanvas, strength = 1.6) {
 // hull GGX at ~0.61 mean, and up-tilted plates at the sun↔camera mirror
 // angle rendered a pale specular film that washed the camo (t34 glacis /
 // m1a2 chamfer cream). Field paint over dust is duller than 0.78.
-function paintRoughness(canvas, rng, feats, base = 0.84) {
-  const ctx = canvas.getContext('2d');
+function paintRoughness(canvas: HTMLCanvasElement, rng: Rng, feats: PlateFeatures, base = 0.84): HTMLCanvasElement {
+  const ctx = canvas2d(canvas);
   const S = canvas.width;
   const v = (base * 255) | 0;
   ctx.fillStyle = `rgb(${v},${v},${v})`;
@@ -2722,7 +2883,7 @@ function paintRoughness(canvas, rng, feats, base = 0.84) {
     ctx.fillStyle = g;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
-  const px = (u) => u * S;
+  const px = (u: number): number => u * S;
   // recess lines slightly rougher (dust settles)
   ctx.fillStyle = 'rgba(235,235,235,0.5)';
   for (const l of feats.hLines) ctx.fillRect(0, px(l.p) - 1, S, Math.max(2, S / 480) + 2);
@@ -2750,7 +2911,13 @@ function paintRoughness(canvas, rng, feats, base = 0.84) {
  * and boundary decision. Process that pair together while retaining the
  * original row-major LCG sequence and arithmetic; output stays byte-exact.
  */
-export function applyPatchRoughnessPixels(pixels, size, classes, classSize, offsets) {
+export function applyPatchRoughnessPixels(
+  pixels: Uint8ClampedArray,
+  size: number,
+  classes: Uint8Array,
+  classSize: number,
+  offsets: number[],
+): Uint8ClampedArray {
   let state = 0x51ab7 ^ size;
   for (let y = 0; y < size; y++) {
     const cy = y >> 1;
@@ -2793,9 +2960,13 @@ export function applyPatchRoughnessPixels(pixels, size, classes, classSize, offs
 // rougher overspray rim (+0.035 — the edge-response hint), plus fine speckle.
 // Patch classification runs at half res and is index-sampled by the full-res
 // add so the whole pass stays ~10-20 ms (boot-path budget).
-function paintPatchRoughness(roughCanvas, camoCanvas, visual) {
+function paintPatchRoughness(
+  roughCanvas: HTMLCanvasElement,
+  camoCanvas: HTMLCanvasElement,
+  visual: MaterialVisual,
+): void {
   const S = roughCanvas.width;
-  const tones = [];
+  const tones: Rgb[] = [];
   for (const hx of [visual.base, visual.weather, ...(visual.patches || [])]) {
     if (!hx) continue;
     const c = hexToRgb(hx);
@@ -2807,7 +2978,7 @@ function paintPatchRoughness(roughCanvas, camoCanvas, visual) {
   const offs = tones.map((c) => ((((c[0] * 3 + c[1] * 5 + c[2] * 7) % 97) / 96) * 2 - 1) * 0.045);
   const Sd = S >> 1;                       // half-res classification grid
   const down = makeCanvas(Sd, Sd);
-  const dctx = down.getContext('2d', { willReadFrequently: true });
+  const dctx = canvas2d(down, { willReadFrequently: true });
   dctx.drawImage(camoCanvas, 0, 0, Sd, Sd);
   const cd = dctx.getImageData(0, 0, Sd, Sd).data;
   const cls = new Uint8Array(Sd * Sd);
@@ -2821,7 +2992,7 @@ function paintPatchRoughness(roughCanvas, camoCanvas, visual) {
     }
     cls[p] = best;
   }
-  const rctx = roughCanvas.getContext('2d', { willReadFrequently: true });
+  const rctx = canvas2d(roughCanvas, { willReadFrequently: true });
   const rimg = rctx.getImageData(0, 0, S, S);
   const rd = rimg.data;
   applyPatchRoughnessPixels(rd, S, cls, Sd, offs);
@@ -2830,10 +3001,10 @@ function paintPatchRoughness(roughCanvas, camoCanvas, visual) {
 // ===================== END CAMO PATTERN SECTION =================
 
 // One track texture: 4 link rows per repeat, chevron/waffle grousers.
-function paintTrack(rng) {
+function paintTrack(rng: Rng): HTMLCanvasElement {
   const S = texSize(512); // shared/repeating track tile keeps the world-scale budget
   const c = makeCanvas(S, S);
-  const ctx = c.getContext('2d');
+  const ctx = canvas2d(c);
   // r3 (critic: Tiger "track links are bright sparkly silver-gray instead of
   // dark manganese steel", T-90M idler "navy-blue sparkle"): the old cool
   // blue-grey ramp read as polished silver under the field sun. Warm dark
@@ -2889,9 +3060,9 @@ function paintTrack(rng) {
 }
 
 // Transparent marking decal canvases.
-function paintDecal(kind, text, marking) {
+function paintDecal(kind: string, text: string | null | undefined, marking: VehicleMarkingRecord): HTMLCanvasElement {
   const c = makeCanvas(256, 256);
-  const ctx = c.getContext('2d');
+  const ctx = canvas2d(c);
   ctx.clearRect(0, 0, 256, 256);
   if (kind === 'insignia') {
     drawNationalInsignia(ctx, marking.insignia, 128, 128, 210);
@@ -2996,7 +3167,7 @@ function paintDecal(kind, text, marking) {
   return c;
 }
 
-function canvasTex(canvas, { srgb = true, aniso = 4, repeat = false } = {}) {
+function canvasTex(canvas: HTMLCanvasElement, { srgb = true, aniso = 4, repeat = false }: CanvasTextureOptions = {}): THREE.CanvasTexture {
   const t = new THREE.CanvasTexture(canvas);
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = repeat ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
@@ -3015,8 +3186,8 @@ function canvasTex(canvas, { srgb = true, aniso = 4, repeat = false } = {}) {
 // tiles — composeGlbShare applies its own 0.84 multiply): full-brightness
 // procedural paint rendered a milky pastel next to the trimmed Abrams GLB
 // under the garage spots — the core of the roster-cohesion critique.
-function exposureTrim(canvas, k = 0.86) {
-  const ctx = canvas.getContext('2d');
+function exposureTrim(canvas: HTMLCanvasElement, k = 0.86): void {
+  const ctx = canvas2d(canvas);
   ctx.globalCompositeOperation = 'multiply';
   const v = Math.round(k * 255);
   ctx.fillStyle = `rgb(${v},${v},${v})`;
@@ -3024,9 +3195,9 @@ function exposureTrim(canvas, k = 0.86) {
   ctx.globalCompositeOperation = 'source-over';
 }
 
-const TEX_CACHE = new Map();
+const TEX_CACHE = new Map<string, SharedTextureEntry>();
 
-function sharedTextureIdentity(specId, selection = null) {
+function sharedTextureIdentity(specId: string, selection: unknown = null): SharedTextureIdentity {
   if (selection == null) return { key: specId, patternId: resolveCamoPattern(specId), fixed: false };
   const patternId = resolveMultiplayerCamoPattern(specId, selection);
   return { key: `${specId}::${patternId}`, patternId, fixed: true };
@@ -3045,7 +3216,7 @@ function sharedTextureIdentity(specId, selection = null) {
 // cached spec, bakeSharedCanvases repaints the SAME canvases in place at full
 // size — live materials update through texture.needsUpdate, exactly like
 // the camo repaint path below.
-const QUALITY_SIZES = {
+const QUALITY_SIZES: Readonly<Record<MaterialTextureQuality, { albedo: number; map: number }>> = {
   high: { albedo: ALBEDO_SIZE, map: MAP_SIZE },
   // Garage previews and authored close-up contracts retain the former AI
   // tier. Ordinary battle bots rarely exceed ~150 screen pixels, so their
@@ -3062,16 +3233,18 @@ const QUALITY_SIZES = {
   low: { albedo: 256, map: 128 },
 };
 
-export function normalizeMaterialTextureQuality(quality) {
-  return Object.prototype.hasOwnProperty.call(QUALITY_SIZES, quality) ? quality : 'high';
+export function normalizeMaterialTextureQuality(quality: unknown): MaterialTextureQuality {
+  return typeof quality === 'string' && Object.prototype.hasOwnProperty.call(QUALITY_SIZES, quality)
+    ? quality as MaterialTextureQuality
+    : 'high';
 }
 
-export function materialTextureDimensions(quality) {
+export function materialTextureDimensions(quality: unknown): { albedo: number; map: number } {
   const sizes = QUALITY_SIZES[normalizeMaterialTextureQuality(quality)];
   return { albedo: sizes.albedo, map: sizes.map };
 }
 
-function bakeSharedCanvases(entry, quality) {
+function bakeSharedCanvases(entry: SharedTextureEntry, quality: MaterialTextureQuality): void {
   const g = bakeSharedCanvasesSteps(entry, quality);
   let r = g.next();
   while (!r.done) r = g.next();
@@ -3082,7 +3255,10 @@ function bakeSharedCanvases(entry, quality) {
 // between painter stages so the pre-battle prebake path can breathe; the sync
 // wrapper above drains it whole — every existing caller (acquire, hero
 // upgrade) is byte-identical, same rng draw order.
-function* bakeSharedCanvasesSteps(entry, quality) {
+function* bakeSharedCanvasesSteps(
+  entry: SharedTextureEntry,
+  quality: MaterialTextureQuality,
+): Generator<void, void, void> {
   // Tier scale is applied at the one place every shared vehicle bake sizes
   // itself; burnt/ember/camo repaints all derive from these canvases.
   const szq = QUALITY_SIZES[normalizeMaterialTextureQuality(quality)];
@@ -3118,7 +3294,7 @@ function* bakeSharedCanvasesSteps(entry, quality) {
   const normalSrc = yield* heightToNormalSteps(heightCanvas, vis.zimmerit ? 2.6 : 2.6);
   yield;
   entry.normalCanvas.width = entry.normalCanvas.height = sz.map;
-  entry.normalCanvas.getContext('2d').drawImage(normalSrc, 0, 0, sz.map, sz.map);
+  canvas2d(entry.normalCanvas).drawImage(normalSrc, 0, 0, sz.map, sz.map);
   entry.roughCanvas.width = entry.roughCanvas.height = sz.map;
   paintRoughness(entry.roughCanvas, rng, entry.feats);
   yield;
@@ -3128,7 +3304,12 @@ function* bakeSharedCanvasesSteps(entry, quality) {
   entry.quality = quality;
 }
 
-function acquireSharedTextures(spec, aniso, quality = 'high', selection = null) {
+function acquireSharedTextures(
+  spec: MaterialTankSpec,
+  aniso: number,
+  quality: MaterialTextureQuality = 'high',
+  selection: unknown = null,
+): SharedTextureEntry {
   const identity = sharedTextureIdentity(spec.id, selection);
   const { key } = identity;
   let entry = TEX_CACHE.get(key);
@@ -3142,7 +3323,8 @@ function acquireSharedTextures(spec, aniso, quality = 'high', selection = null) 
       // paintable: per-instance solid-color materials (road-wheel dishes,
       // fittings) that must follow the scheme on repaint (r1: lime-green
       // wheels under winter whitewash).
-      cacheKey: key, fixedPattern: identity.fixed, spec, seed, feats: null, patternId, paintable: new Set(),
+      cacheKey: key, fixedPattern: identity.fixed, spec, seed, feats: null,
+      patternId, paintable: new Set<PaintableRecord>(),
       quality,
       camoCanvas: makeCanvas(4, 4),
       normalCanvas: makeCanvas(4, 4),
@@ -3173,8 +3355,8 @@ function acquireSharedTextures(spec, aniso, quality = 'high', selection = null) 
 // dispose() drops the GL object so the next bind re-allocates at the new
 // size; the THREE.Texture object identity is untouched, so every live
 // material keeps working.
-const QUALITY_RANK = { low: -1, ai: 0, preview: 1, high: 2 };
-export function isMaterialTextureQualityUpgrade(current, requested) {
+const QUALITY_RANK: Readonly<Record<MaterialTextureQuality, number>> = { low: -1, ai: 0, preview: 1, high: 2 };
+export function isMaterialTextureQualityUpgrade(current: unknown, requested: unknown): boolean {
   return QUALITY_RANK[normalizeMaterialTextureQuality(requested)]
     > QUALITY_RANK[normalizeMaterialTextureQuality(current)];
 }
@@ -3185,21 +3367,21 @@ export function isMaterialTextureQualityUpgrade(current, requested) {
 // racing duplicate 512/1024 px bakes on the main thread. A later higher-tier
 // request re-enters after the first job settles and performs only the required
 // in-place promotion.
-const PREBAKE_PENDING = new Map();
-function upgradeEntry(entry, quality = 'high') {
+const PREBAKE_PENDING = new Map<string, Promise<void>>();
+function upgradeEntry(entry: SharedTextureEntry, quality: MaterialTextureQuality = 'high'): void {
   bakeSharedCanvases(entry, quality);
   finalizeEntryResize(entry);
 }
 
 /** Post-resize texture ritual shared by synchronous acquisition and chunked
  * prebake promotion (see the camo r8 immutable-storage note above). */
-function finalizeEntryResize(entry) {
-  entry.camoTex.dispose();
-  entry.normalTex.dispose();
-  entry.roughTex.dispose();
-  entry.camoTex.needsUpdate = true;
-  entry.normalTex.needsUpdate = true;
-  entry.roughTex.needsUpdate = true;
+function finalizeEntryResize(entry: SharedTextureEntry): void {
+  entry.camoTex?.dispose();
+  entry.normalTex?.dispose();
+  entry.roughTex?.dispose();
+  if (entry.camoTex) entry.camoTex.needsUpdate = true;
+  if (entry.normalTex) entry.normalTex.needsUpdate = true;
+  if (entry.roughTex) entry.roughTex.needsUpdate = true;
   // burnt/ember derive from the albedo — rebuild lazily at next wreck
   if (entry.burntTex) { entry.burntTex.dispose(); entry.burntTex = null; }
   if (entry.emberTex) { entry.emberTex.dispose(); entry.emberTex = null; }
@@ -3217,7 +3399,14 @@ function finalizeEntryResize(entry) {
  * @param {string} quality 'ai' | 'preview' | 'high' — must match what the build will ask
  * @param {?function(): (Promise<void>|void)} tick awaited between stages
  */
-export function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = null, selection = null) {
+export function prebakeSharedTextures(
+  spec: MaterialTankSpec,
+  aniso: number,
+  requestedQuality: unknown = 'ai',
+  tick: BakeYield | null = null,
+  selection: unknown = null,
+): Promise<void> {
+  const quality = normalizeMaterialTextureQuality(requestedQuality);
   const identity = sharedTextureIdentity(spec.id, selection);
   const { key } = identity;
   const active = PREBAKE_PENDING.get(key);
@@ -3227,7 +3416,7 @@ export function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = null, 
     ));
   }
   const pending = (async () => {
-    const run = async (g) => {
+    const run = async (g: Generator<void, void, void>): Promise<void> => {
       let r = g.next();
       while (!r.done) {
         if (tick) await tick();
@@ -3247,7 +3436,8 @@ export function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = null, 
     const seed = 0x5eed ^ (key.split('').reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) | 0, 7));
     entry = {
       refs: 0,
-      cacheKey: key, fixedPattern: identity.fixed, spec, seed, feats: null, patternId, paintable: new Set(),
+      cacheKey: key, fixedPattern: identity.fixed, spec, seed, feats: null,
+      patternId, paintable: new Set<PaintableRecord>(),
       quality,
       camoCanvas: makeCanvas(4, 4),
       normalCanvas: makeCanvas(4, 4),
@@ -3287,14 +3477,14 @@ export function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = null, 
  * boot after all tanks are built; ~100 MB of uploads amortized off-battle.
  * @param {THREE.WebGLRenderer} renderer
  */
-export function warmWreckTextures(renderer) {
+export function warmWreckTextures(renderer: THREE.WebGLRenderer): void {
   for (const entry of TEX_CACHE.values()) {
     if (entry.burntTex) renderer.initTexture(entry.burntTex);
     if (entry.emberTex) renderer.initTexture(entry.emberTex);
   }
 }
 
-function disposeSharedTextureEntry(entry) {
+function disposeSharedTextureEntry(entry: SharedTextureEntry): void {
   entry.camoTex?.dispose();
   entry.normalTex?.dispose();
   entry.roughTex?.dispose();
@@ -3304,7 +3494,7 @@ function disposeSharedTextureEntry(entry) {
   TEX_CACHE.delete(entry.cacheKey);
 }
 
-function releaseSharedTextures(shared) {
+function releaseSharedTextures(shared: SharedTextureEntry | null | undefined): void {
   const entry = shared && TEX_CACHE.get(shared.cacheKey);
   if (!entry) return;
   if (--entry.refs <= 0) disposeSharedTextureEntry(entry);
@@ -3314,7 +3504,7 @@ function releaseSharedTextures(shared) {
  * Drop a texture-only speculative bake when it is no longer adjacent to the
  * garage selection. Live visuals own positive refs and are never affected.
  */
-export function discardPrebakedSharedTextures(specId) {
+export function discardPrebakedSharedTextures(specId: string): boolean {
   const entry = TEX_CACHE.get(specId);
   if (!entry || entry.refs > 0) return false;
   disposeSharedTextureEntry(entry);
@@ -3328,7 +3518,7 @@ export function discardPrebakedSharedTextures(specId) {
  * streaks — never a flat clay color swap.
  * @param {object} entry TEX_CACHE entry @param {number} aniso
  */
-function ensureBurntTextures(entry, aniso) {
+function ensureBurntTextures(entry: SharedTextureEntry, aniso: number): void {
   const g = burntBakeSteps(entry, aniso);
   let r = g.next();
   while (!r.done) r = g.next();
@@ -3342,17 +3532,21 @@ function ensureBurntTextures(entry, aniso) {
  * kill-time ensureBurntTextures path then always hits the cache.
  * @param {string} specId @param {number} aniso
  */
-export function* prebakeBurntSteps(specId, aniso, selection = null) {
+export function* prebakeBurntSteps(
+  specId: string,
+  aniso: number,
+  selection: unknown = null,
+): Generator<void, void, void> {
   const entry = TEX_CACHE.get(sharedTextureIdentity(specId, selection).key);
   if (!entry || entry.burntTex) return;
   yield* burntBakeSteps(entry, aniso);
 }
 
-function* burntBakeSteps(entry, aniso) {
+function* burntBakeSteps(entry: SharedTextureEntry, aniso: number): Generator<void, void, void> {
   if (entry.burntTex) return;
   const S = texSize(1024); // transient wreck treatment keeps the world-scale budget
   const cv = makeCanvas(S, S);
-  const ctx = cv.getContext('2d');
+  const ctx = canvas2d(cv);
   ctx.drawImage(entry.camoCanvas, 0, 0, S, S);
   // char the paint toward scorched near-black, camo faintly readable under it
   // char levels lifted (multiply #5a5049 + 0.42 near-black overlay -> #7d7268
@@ -3438,7 +3632,7 @@ function* burntBakeSteps(entry, aniso) {
   // reads as embers smoldering in seams, never a uniform lava dip
   const E = 256;
   const ec = makeCanvas(E, E);
-  const ectx = ec.getContext('2d');
+  const ectx = canvas2d(ec);
   ectx.fillStyle = '#000';
   ectx.fillRect(0, 0, E, E);
   // 11 pockets (was 6) at varied radii/heat so the smolder reads as scattered
@@ -3503,7 +3697,7 @@ const CUSTOM_CAMO_LS_PREFIX = 'cot.camoCustom.v1.';
 // bot-biome-camo intent, extended). Element 0 stays the r8 canonical scheme.
 // EVERY pool member must belong on its biome field — the coastal pool stays
 // green-family for exactly the r8 reason above.
-const BIOME_PATTERN = {
+const BIOME_PATTERN: Readonly<Record<string, readonly MaterialPatternId[]>> = {
   verdant: ['summer', 'flecktarn', 'amoeba', 'dpm', 'tigerstripe', 'merdc'],
   desert: ['desert', 'chocchip', 'digitaldesert', 'pinkdesert'],
   winter: ['winter', 'washworn', 'winterbands', 'merdcwinter'],
@@ -3513,10 +3707,10 @@ const BIOME_PATTERN = {
   steppe: ['desert', 'digitaldesert', 'chocchip'],
   railyard: ['urban', 'urbanblock', 'berlin'],
 };
-let activeBiome = 'verdant';
+let activeBiome: string = 'verdant';
 
 /** Persisted camo pattern selection for a tank ('factory' when unset). */
-export function getCamoSelection(specId) {
+export function getCamoSelection(specId: string): MaterialPatternId {
   try {
     const v = localStorage.getItem(CAMO_LS_PREFIX + specId);
     if (isBuiltInCamoId(v)) return v;
@@ -3528,13 +3722,13 @@ export function getCamoSelection(specId) {
 }
 
 /** Persist a camo pattern selection for a tank. */
-export function setCamoSelection(specId, patternId) {
+export function setCamoSelection(specId: string, patternId: unknown): void {
   if (!isBuiltInCamoId(patternId)) return;
   try { localStorage.setItem(CAMO_LS_PREFIX + specId, patternId); } catch (e) { /* private mode */ }
 }
 
 /** Device-local custom painter settings for one vehicle. */
-export function getCustomCamoSelection(specId) {
+export function getCustomCamoSelection(specId: string): CustomCamo {
   try {
     const value = JSON.parse(localStorage.getItem(CUSTOM_CAMO_LS_PREFIX + specId) || 'null');
     return normalizeCustomCamo(value);
@@ -3542,7 +3736,7 @@ export function getCustomCamoSelection(specId) {
 }
 
 /** Save and activate a custom pattern. It is intentionally never match-safe. */
-export function setCustomCamoSelection(specId, value) {
+export function setCustomCamoSelection(specId: string, value: unknown): CustomCamo {
   const next = normalizeCustomCamo(value);
   try {
     localStorage.setItem(CUSTOM_CAMO_LS_PREFIX + specId, JSON.stringify(next));
@@ -3552,7 +3746,7 @@ export function setCustomCamoSelection(specId, value) {
 }
 
 /** Public lobby/ranked selection; custom local paint degrades to Factory. */
-export function getMultiplayerCamoSelection(specId) {
+export function getMultiplayerCamoSelection(specId: string): CamoPatternId {
   return networkCamoId(getCamoSelection(specId));
 }
 
@@ -3565,8 +3759,8 @@ export function getMultiplayerCamoSelection(specId) {
 // untouched, so the player's own selections never see these. The player's
 // spec is never overridden — setupBattle only rolls for bots, and a spec id
 // appears at most once per battle (entities are keyed by spec id).
-const CAMO_OVERRIDE = new Map(); // specId -> patternId ('auto' allowed)
-export function setCamoOverride(specId, patternId) {
+const CAMO_OVERRIDE = new Map<string, MaterialPatternId>(); // specId -> patternId ('auto' allowed)
+export function setCamoOverride(specId: string, patternId: unknown): void {
   if (patternId == null) { CAMO_OVERRIDE.delete(specId); return; }
   if (isBuiltInCamoId(patternId) || patternId === 'urban') {
     CAMO_OVERRIDE.set(specId, patternId);
@@ -3575,12 +3769,12 @@ export function setCamoOverride(specId, patternId) {
 export function clearCamoOverrides() { CAMO_OVERRIDE.clear(); }
 
 /** Point 'auto' selections at a battlefield biome (call before a battle). */
-export function setCamoBiome(mapId) {
+export function setCamoBiome(mapId: string): void {
   activeBiome = BIOME_PATTERN[mapId] ? mapId : 'verdant';
 }
 
 /** Concrete pattern id for a tank right now ('auto' resolved per biome). */
-function resolveCamoPattern(specId) {
+function resolveCamoPattern(specId: string): MaterialPatternId {
   const sel = CAMO_OVERRIDE.get(specId) || getCamoSelection(specId);
   if (sel === CUSTOM_CAMO_ID) return customCamoPatternId(getCustomCamoSelection(specId));
   if (sel !== 'auto') return sel;
@@ -3596,7 +3790,7 @@ function resolveCamoPattern(specId) {
 }
 
 /** Resolve a match-owned built-in choice without consulting local storage. */
-function resolveMultiplayerCamoPattern(specId, selection) {
+function resolveMultiplayerCamoPattern(specId: string, selection: unknown): MaterialPatternId {
   const safe = networkCamoId(selection);
   if (safe !== 'auto') return safe;
   const pool = BIOME_PATTERN[activeBiome];
@@ -3617,7 +3811,7 @@ function resolveMultiplayerCamoPattern(specId, selection) {
 // railyard, and 'naval' has its niche on the coastal map. Style-only schemes
 // (digital, dazzle, splinter, ambushdot — dun/grey paints with no clear
 // biome) never qualify, like 'digital' always behaved.
-const PATTERN_SEASON = {
+const PATTERN_SEASON: Readonly<Record<string, readonly string[]>> = {
   summer: ['verdant', 'coastal'], merdc: ['verdant', 'coastal'], tropic: ['verdant'],
   desert: ['desert', 'steppe'], pinkdesert: ['desert', 'steppe'],
   winter: ['winter'], washworn: ['winter'],
@@ -3646,7 +3840,7 @@ const PATTERN_SEASON = {
  * A mismatched manual pick (winter paint on the desert map) still repaints
  * the tank but earns no concealment bonus; 'factory' never qualifies.
  */
-export function hasCamoPaint(specId) {
+export function hasCamoPaint(specId: string): boolean {
   const pat = resolveCamoPattern(specId);
   if (pat === 'factory') return false;
   // second clause: pool membership (camo r2 — BIOME_PATTERN rows are pools
@@ -3662,7 +3856,7 @@ export function hasCamoPaint(specId) {
 // Per-model corrections for already-distinct authored factory schemes. Plain
 // green factory visuals are handled by factoryThemePatternId(), so they never
 // need one-off palette exceptions here.
-const FACTORY_OVERRIDE = {
+const FACTORY_OVERRIDE: Readonly<Record<string, Partial<MaterialVisual>>> = {
   // Hinterhalt tones: the authored '#7a4a35' Rotbraun reads bright orange
   // under the warm garage key light (r7 "orange/green cow spots"); drop both
   // patch tones toward RAL 6003/8017 so the scheme reads olive + chocolate.
@@ -3689,7 +3883,7 @@ const FACTORY_OVERRIDE = {
   // '#6b6b47' khaki stripe tone is pulled down with it.
   strv103: { base: '#42503d', weather: '#4a5844', patches: ['#2c3629', '#565440'] },
 };
-function patternVisual(spec, patternId) {
+function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): MaterialVisual {
   const v = spec.visual || { base: '#5a6b46', weather: '#6f7d55', scheme: 'solid', patches: [] };
   const custom = parseCustomCamoPatternId(patternId);
   if (custom) {
@@ -3720,7 +3914,7 @@ function patternVisual(spec, patternId) {
       ? patternVisual({ ...spec, visual: authored }, themedPattern)
       : authored;
   }
-  let o = null;
+  let o: Partial<MaterialVisual> | null = null;
   if (patternId === 'summer') {
     // brown dropped toward NATO chocolate — '#54402e' flared orange under
     // the warm garage key (r7); r8 pulls it further off red ('#4c3a2a' still
@@ -4065,14 +4259,17 @@ function patternVisual(spec, patternId) {
 }
 
 /** Resolved visual (spec.visual with the active pattern applied). */
-export function resolveCamoVisual(spec, patternId = resolveCamoPattern(spec.id)) {
+export function resolveCamoVisual(
+  spec: MaterialTankSpec,
+  patternId: MaterialPatternId = resolveCamoPattern(spec.id),
+): MaterialVisual {
   return patternVisual(spec, patternId);
 }
 
 // Scheme-painted running gear + fittings: real crews paint wheels and hull
 // hardware in the vehicle scheme, so these solid colors derive from the
 // ACTIVE pattern base, not the authored factory palette.
-const cssRGB = (c) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
+const cssRGB = (c: Rgb): string => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
 // camo_spotting r2: winter running-gear whitewash is clamped ~15% darker than
 // the hull wash — crews slop thinner coats on wheels and they shed to grime
 // fast; at full hull luma the T-34-85's solid wheel discs rendered as
@@ -4087,7 +4284,7 @@ const cssRGB = (c) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
 // land inside the scheme's rendered tonal family. Winter keeps base (its
 // patches[0] is the show-through UNDER color, not a top coat); solid has no
 // patches.
-const wheelToneOf = (v) => {
+const wheelToneOf = (v: MaterialVisual): Rgb => {
   const base = hexToRgb(v.base);
   const pats = (v.patches || []).map(hexToRgb);
   // camo r8: 'washworn' shares winter's contract — patches[0] is the
@@ -4100,14 +4297,14 @@ const wheelToneOf = (v) => {
   const k = (v.scheme === 'digital' || v.scheme === 'fleck') ? 0.6 : 0.3;
   return mix(base, mean, k);
 };
-const wheelRgbOf = (v) => {
+const wheelRgbOf = (v: MaterialVisual): Rgb => {
   // r3: dust-mix cut 0.22 -> 0.12 and darkened — painted gear leaned BEIGE
   // under a warm key (the T-90M idler "beige rim" read); wheels now stay in
   // the scheme's tonal family with only a hint of dust.
   // camo_spotting r5: winter gear mixes toward cold slush-grey instead of
   // warm road dust — whitewashed wheels rode the same tan drift as the hull.
   const wash = v.scheme === 'winter' || v.scheme === 'washworn'; // camo r8
-  const dust = wash ? [102, 107, 110] : [118, 110, 86];
+  const dust: Rgb = wash ? [102, 107, 110] : [118, 110, 86];
   const c = scale3(mix(scale3(wheelToneOf(v), 0.92), dust, 0.12), 0.84);
   return wash ? scale3(c, 0.85) : c;
 };
@@ -4115,27 +4312,31 @@ const wheelRgbOf = (v) => {
 // dropped toward shadow so the Schachtellaufwerk rows separate (r5). Kept at
 // 0.66 — the old 0.5 rendered near-black in the wheel bay and the recessed
 // rows read as GAPS between sparse floating wheels (r6 Tiger closeup).
-const wheelDarkRgbOf = (v) => scale3(wheelRgbOf(v), 0.66);
-const detailRgbOf = (v) => scale3(mix([65, 70, 58], wheelToneOf(v), 0.5), 0.9);
-const canvasRgbOf = (v) => scale3(detailRgbOf(v), 0.68);
+const wheelDarkRgbOf = (v: MaterialVisual): Rgb => scale3(wheelRgbOf(v), 0.66);
+const detailRgbOf = (v: MaterialVisual): Rgb => scale3(mix([65, 70, 58], wheelToneOf(v), 0.5), 0.9);
+const canvasRgbOf = (v: MaterialVisual): Rgb => scale3(detailRgbOf(v), 0.68);
 
-function repaintEntry(entry, patternId) {
+function repaintEntry(entry: SharedTextureEntry, patternId: MaterialPatternId): void {
+  const { feats, camoTex, roughTex } = entry;
+  if (!feats || !camoTex || !roughTex) {
+    throw new Error(`vehicle material cache entry ${entry.cacheKey} is incomplete`);
+  }
   const vis = { ...patternVisual(entry.spec, patternId), modernWelds: isPostwarVehicleEra(entry.spec.era) };
   // pattern-specific rng stream; the shared `feats` plan keeps panel lines,
   // welds and bolts aligned with the (unchanged) normal map.
   let ph = 0;
   for (const ch of patternId) ph = (ph * 31 + ch.charCodeAt(0)) | 0;
-  paintCamo(entry.camoCanvas, vis, mulberry32(entry.seed ^ ph), entry.feats, entry.seed);
+  paintCamo(entry.camoCanvas, vis, mulberry32(entry.seed ^ ph), feats, entry.seed);
   exposureTrim(entry.camoCanvas);
-  entry.camoTex.needsUpdate = true;
+  camoTex.needsUpdate = true;
   // camo_spotting r4: the roughness map follows the repaint so each pattern's
   // per-patch paint response lands with it (albedo-only repaints read as
   // printed vinyl — critic r4). Same `feats` plan keeps chips/lines aligned
   // with the normal map; the stochastic dust layer redraws from a
   // pattern-keyed stream, which is invisible at paint scale.
-  paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ ph ^ 0x9e37), entry.feats);
+  paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ ph ^ 0x9e37), feats);
   paintPatchRoughness(entry.roughCanvas, entry.camoCanvas, vis);
-  entry.roughTex.needsUpdate = true;
+  roughTex.needsUpdate = true;
   entry.patternId = patternId;
   retintEntryFittings(entry, vis);
   // camo r4: memoize the finished bake — the next visit to this
@@ -4145,14 +4346,14 @@ function repaintEntry(entry, patternId) {
 
 // Wheels, sprockets, fittings and the solid kit canvas follow every repaint
 // and memoized restore through this one tint gate.
-function retintEntryFittings(entry, vis) {
+function retintEntryFittings(entry: SharedTextureEntry, vis: MaterialVisual): void {
   for (const rec of entry.paintable) {
     const c = rec.kind === 'wheels' ? wheelRgbOf(vis)
       : rec.kind === 'wheelsDark' ? wheelDarkRgbOf(vis)
         : rec.kind === 'canvas' ? canvasRgbOf(vis) : detailRgbOf(vis);
     rec.m.color.set(cssRGB(c));
   }
-  if (entry.kitCanvas) {
+  if (entry.kitCanvas && entry.kitTex) {
     paintKitCanvas(entry.kitCanvas, vis);
     entry.kitTex.needsUpdate = true;
   }
@@ -4168,17 +4369,25 @@ function retintEntryFittings(entry, vis) {
 // picker restores a cached pattern with two drawImage blits + GPU re-upload.
 // Blobs, not live canvases: a spec's 30-pattern roster held as RGBA canvases
 // would be ~0.5 GB at hero size; as webp it sits near ~15 MB.
-const BAKE_CACHE = new Map(); // `${specId}|${patternId}` -> {camo,rough:Blob,w}
+interface CachedBake {
+  camo: Blob;
+  rough: Blob;
+  w: number;
+}
+
+const BAKE_CACHE = new Map<string, CachedBake>(); // `${specId}|${patternId}` -> {camo,rough:Blob,w}
 const BAKE_CACHE_MAX = 64;    // ~2 specs' full pattern rosters
-const bakeKey = (specId, pid) => `${specId}|${pid}`;
-function bakeStore(key, camo, rough, w) {
+const bakeKey = (specId: string, pid: MaterialPatternId): string => `${specId}|${pid}`;
+function bakeStore(key: string, camo: Blob | null, rough: Blob | null, w: number): void {
   if (!camo || !rough || BAKE_CACHE.has(key)) return;
   while (BAKE_CACHE.size >= BAKE_CACHE_MAX) {
-    BAKE_CACHE.delete(BAKE_CACHE.keys().next().value); // insertion-order LRU
+    const oldest = BAKE_CACHE.keys().next().value;
+    if (oldest === undefined) break;
+    BAKE_CACHE.delete(oldest); // insertion-order LRU
   }
   BAKE_CACHE.set(key, { camo, rough, w });
 }
-function canvasToBlob(canvas, cb) {
+function canvasToBlob(canvas: HTMLCanvasElement, cb: (blob: Blob | null) => void): void {
   // lossy webp at q0.92 is invisible under the weathering/grain stack and
   // ~8x smaller than png; a null blob (no webp encoder) falls back to png.
   try {
@@ -4188,11 +4397,13 @@ function canvasToBlob(canvas, cb) {
     }, 'image/webp', 0.92);
   } catch (_) { cb(null); }
 }
-function snapshotBake(entry, patternId) {
+function snapshotBake(entry: SharedTextureEntry, patternId: MaterialPatternId): void {
   const key = bakeKey(entry.spec.id, patternId);
   if (BAKE_CACHE.has(key)) return;
   const w = entry.camoCanvas.width;
-  let camo = null, rough = null, n = 0;
+  let camo: Blob | null = null;
+  let rough: Blob | null = null;
+  let n = 0;
   const done = () => { if (++n === 2) bakeStore(key, camo, rough, w); };
   canvasToBlob(entry.camoCanvas, (b) => { camo = b; done(); });
   canvasToBlob(entry.roughCanvas, (b) => { rough = b; done(); });
@@ -4204,7 +4415,7 @@ function snapshotBake(entry, patternId) {
  * (spec, pattern) pair was never baked at the current canvas size (caller
  * falls back to repaintEntry).
  */
-async function restoreBake(entry, patternId) {
+async function restoreBake(entry: SharedTextureEntry, patternId: MaterialPatternId): Promise<boolean> {
   const key = bakeKey(entry.spec.id, patternId);
   const bake = BAKE_CACHE.get(key);
   if (!bake) return false;
@@ -4213,7 +4424,8 @@ async function restoreBake(entry, patternId) {
     return false;
   }
   BAKE_CACHE.delete(key); BAKE_CACHE.set(key, bake); // LRU touch
-  let cb, rb;
+  let cb: ImageBitmap;
+  let rb: ImageBitmap;
   try {
     [cb, rb] = await Promise.all([
       createImageBitmap(bake.camo), createImageBitmap(bake.rough)]);
@@ -4228,8 +4440,8 @@ async function restoreBake(entry, patternId) {
     cb.close(); rb.close();
     return true;
   }
-  const blit = (canvas, bmp) => {
-    const c2 = canvas.getContext('2d');
+  const blit = (canvas: HTMLCanvasElement, bmp: ImageBitmap): void => {
+    const c2 = canvas2d(canvas);
     c2.save();
     c2.setTransform(1, 0, 0, 1, 0, 0);
     c2.globalAlpha = 1;
@@ -4240,8 +4452,8 @@ async function restoreBake(entry, patternId) {
   };
   blit(entry.camoCanvas, cb); cb.close();
   blit(entry.roughCanvas, rb); rb.close();
-  entry.camoTex.needsUpdate = true;
-  entry.roughTex.needsUpdate = true;
+  if (entry.camoTex) entry.camoTex.needsUpdate = true;
+  if (entry.roughTex) entry.roughTex.needsUpdate = true;
   entry.patternId = patternId;
   retintEntryFittings(entry, patternVisual(entry.spec, patternId));
   return true;
@@ -4252,7 +4464,7 @@ async function restoreBake(entry, patternId) {
  * selection change or a biome switch). Cheap when nothing changed.
  * @param {?string} onlySpecId limit to one tank
  */
-export function applyCamoPatterns(onlySpecId = null) {
+export function applyCamoPatterns(onlySpecId: string | null = null): void {
   for (const entry of TEX_CACHE.values()) {
     if (entry.fixedPattern || (onlySpecId && entry.spec.id !== onlySpecId)) continue;
     const pid = resolveCamoPattern(entry.spec.id);
@@ -4278,15 +4490,20 @@ let _camoSweepGen = 0;
  * @returns {Promise<void>} resolves when every stale entry is repainted (or
  *   a newer sweep took over the remainder)
  */
-export async function applyCamoPatternsChunked(opts = null) {
+export async function applyCamoPatternsChunked(opts: CamoApplyOptions | null = null): Promise<void> {
   const gen = ++_camoSweepGen;
   const prio = (opts && opts.priorityIds) || [];
   const only = opts?.onlySpecIds?.length ? new Set(opts.onlySpecIds) : null;
   const keys = [...TEX_CACHE.keys()]
-    .filter((key) => !only || only.has(TEX_CACHE.get(key)?.spec.id))
+    .filter((key) => {
+      const specId = TEX_CACHE.get(key)?.spec.id;
+      return !only || (specId !== undefined && only.has(specId));
+    })
     .sort((a, b) => {
       const ae = TEX_CACHE.get(a), be = TEX_CACHE.get(b);
-      return (prio.indexOf(ae?.spec.id) < 0 ? 1 : 0) - (prio.indexOf(be?.spec.id) < 0 ? 1 : 0);
+      const aId = ae?.spec.id;
+      const bId = be?.spec.id;
+      return (!aId || prio.indexOf(aId) < 0 ? 1 : 0) - (!bId || prio.indexOf(bId) < 0 ? 1 : 0);
     });
   for (const key of keys) {
     if (gen !== _camoSweepGen) return; // superseded — the newer drain finishes
@@ -4325,18 +4542,22 @@ export async function applyCamoPatternsChunked(opts = null) {
         // split the independent passes into paintable tasks. A superseding
         // sweep aborts between passes; its fresh albedo pass then owns the
         // same canvases from that point onward.
-        paintCamo(c2.camoCanvas, vis, mulberry32(c2.seed ^ ph), c2.feats, c2.seed);
+        const { feats, camoTex, roughTex } = c2;
+        if (!feats || !camoTex || !roughTex) {
+          throw new Error(`vehicle material cache entry ${c2.cacheKey} is incomplete`);
+        }
+        paintCamo(c2.camoCanvas, vis, mulberry32(c2.seed ^ ph), feats, c2.seed);
         await new Promise((r) => setTimeout(r, 16));
         if (gen !== _camoSweepGen) return;
         exposureTrim(c2.camoCanvas);
-        c2.camoTex.needsUpdate = true;
+        camoTex.needsUpdate = true;
         await new Promise((r) => setTimeout(r, 16));
         if (gen !== _camoSweepGen) return;
-        paintRoughness(c2.roughCanvas, mulberry32(c2.seed ^ ph ^ 0x9e37), c2.feats);
+        paintRoughness(c2.roughCanvas, mulberry32(c2.seed ^ ph ^ 0x9e37), feats);
         await new Promise((r) => setTimeout(r, 16));
         if (gen !== _camoSweepGen) return;
         paintPatchRoughness(c2.roughCanvas, c2.camoCanvas, vis);
-        c2.roughTex.needsUpdate = true;
+        roughTex.needsUpdate = true;
         c2.patternId = p2;
         retintEntryFittings(c2, vis);
         snapshotBake(c2, p2);
@@ -4353,8 +4574,9 @@ export async function applyCamoPatternsChunked(opts = null) {
  * @param {object} spec TankSpec
  * @returns {THREE.Texture}
  */
-export function getSharedRoughnessTexture(spec) {
+export function getSharedRoughnessTexture(spec: MaterialTankSpec): THREE.Texture {
   const entry = TEX_CACHE.get(spec.id) || acquireSharedTextures(spec, 4);
+  if (!entry.roughTex) throw new Error(`vehicle material cache entry ${entry.cacheKey} has no roughness texture`);
   return entry.roughTex;
 }
 
@@ -4362,8 +4584,8 @@ export function getSharedRoughnessTexture(spec) {
 // stowage boxes) — monotone like real CARC'd add-on armor, in the ACTIVE
 // pattern's tonal family, with a hint of mottle so plates don't read as one
 // dead constant. Canvas-backed so pattern switches repaint every live clone.
-function paintKitCanvas(canvas, vis) {
-  const ctx = canvas.getContext('2d');
+function paintKitCanvas(canvas: HTMLCanvasElement, vis: MaterialVisual): void {
+  const ctx = canvas2d(canvas);
   const S = canvas.width;
   const base = wheelRgbOf(vis);
   ctx.fillStyle = cssRGB(base);
@@ -4387,7 +4609,7 @@ function paintKitCanvas(canvas, vis) {
  * @param {object} spec TankSpec
  * @returns {THREE.Texture}
  */
-export function getKitPaintTexture(spec) {
+export function getKitPaintTexture(spec: MaterialTankSpec): THREE.Texture {
   const entry = TEX_CACHE.get(spec.id) || acquireSharedTextures(spec, 4);
   if (!entry.kitTex) {
     entry.kitCanvas = makeCanvas(64, 64);
@@ -4441,7 +4663,7 @@ const VEHICLE_VIEW_WRAP = 0.40; // fraction kept at grazing angles (wrap term)
  * `onBeforeCompile` in renderer stubs used by thumbnails and headless tools.
  * @param {object} shader onBeforeCompile shader arg
  */
-export function vehicleAmbientFloorHook(shader) {
+export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   shader.fragmentShader = shader.fragmentShader.replace(
     '#include <lights_fragment_end>',
     `#include <lights_fragment_end>
@@ -4542,11 +4764,11 @@ export function vehicleAmbientFloorHook(shader) {
 // Renderer stubs expose setupShadowMaterial but ignore its hook argument.
 // Probe each context once so every material takes the correct registration
 // path without duplicating capability checks at material creation sites.
-const SHADOW_CONTEXT_SUPPORT = new WeakMap();
-function supportsShadowHook(engineCtx) {
-  if (!engineCtx || (typeof engineCtx !== 'object' && typeof engineCtx !== 'function')
-      || typeof engineCtx.setupShadowMaterial !== 'function') return false;
-  if (SHADOW_CONTEXT_SUPPORT.has(engineCtx)) return SHADOW_CONTEXT_SUPPORT.get(engineCtx);
+const SHADOW_CONTEXT_SUPPORT = new WeakMap<object, boolean>();
+function supportsShadowHook(engineCtx: ShadowEngineContext | null | undefined): boolean {
+  if (!engineCtx || typeof engineCtx.setupShadowMaterial !== 'function') return false;
+  const cached = SHADOW_CONTEXT_SUPPORT.get(engineCtx);
+  if (cached !== undefined) return cached;
 
   const probe = new THREE.MeshStandardMaterial();
   let supported = false;
@@ -4570,22 +4792,28 @@ function supportsShadowHook(engineCtx) {
  * @returns {object} { hull, wheels, rubber, detail, dark, glass, barrel, canvasCloth,
  *   wood, trackL, trackR, trackTexL, trackTexR, trackLinkM, decal(kind), burnt, dispose() }
  */
-export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high', camoPattern = null) {
-  const setup = supportsShadowHook(engineCtx)
-    ? (m) => {
-      engineCtx.setupShadowMaterial(m, vehicleAmbientFloorHook);
-      m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-      return m;
-    }
-    : (m) => {
-      m.onBeforeCompile = vehicleAmbientFloorHook;
-      m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-      return m;
-    };
-  const aniso = (engineCtx && engineCtx.anisotropy) || 8;
+export function createTankMaterials(
+  spec: MaterialTankSpec,
+  engineCtx: ShadowEngineContext | null | undefined,
+  camoSeed: number,
+  quality: unknown = 'high',
+  camoPattern: unknown = null,
+) {
+  const shadowSetup = engineCtx?.setupShadowMaterial;
+  const shadowHookSupported = supportsShadowHook(engineCtx);
+  const setup = <T extends THREE.Material>(material: T): T => {
+    if (shadowHookSupported && shadowSetup) shadowSetup(material, vehicleAmbientFloorHook);
+    else material.onBeforeCompile = vehicleAmbientFloorHook;
+    material.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    return material;
+  };
+  const aniso = engineCtx?.anisotropy || 8;
 
-  const disposables = [];
-  const track = (r) => { disposables.push(r); return r; };
+  const disposables: Array<THREE.Material | THREE.Texture> = [];
+  const track = <T extends THREE.Material | THREE.Texture>(resource: T): T => {
+    disposables.push(resource);
+    return resource;
+  };
 
   // PERF r3: static wreck, battle AI, player, and garage-preview tiers are
   // resolution-bounded in QUALITY_SIZES; authored inspection callers retain
@@ -4599,6 +4827,9 @@ export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high',
     camoPattern,
   );
   const { camoTex, normalTex, roughTex } = shared;
+  if (!camoTex || !normalTex || !roughTex) {
+    throw new Error(`vehicle material cache entry ${shared.cacheKey} is incomplete`);
+  }
 
   // Matte military paint over rolled steel: normal map carries panel lines /
   // welds / bolts / casting; a whisper of clearcoat lets sky light streak
@@ -4686,7 +4917,7 @@ export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high',
   const shadow = track(setup(new THREE.MeshStandardMaterial({
     color: 0x0b0c0a, roughness: 0.98, metalness: 0.0,
   })));
-  const paintableRecs = [
+  const paintableRecs: PaintableRecord[] = [
     { m: wheels, kind: 'wheels' },
     { m: wheelsRecessed, kind: 'wheelsDark' },
     { m: detail, kind: 'detail' },
@@ -4803,6 +5034,9 @@ export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high',
   })));
   const prepareBurnt = () => {
     ensureBurntTextures(shared, aniso);
+    if (!shared.burntTex || !shared.emberTex) {
+      throw new Error(`vehicle material cache entry ${shared.cacheKey} has no burnt textures`);
+    }
     if (burnt.map === shared.burntTex && burnt.emissiveMap === shared.emberTex) return;
     burnt.map = shared.burntTex;
     burnt.emissiveMap = shared.emberTex;
@@ -4880,8 +5114,8 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
     map: trackTexR, bumpMap: trackTexR, bumpScale: 0.5, ...trackMatOpts })));
 
   const marking = vehicleMarkingRecord(spec);
-  const decalCache = new Map();
-  const decal = (kind, text) => {
+  const decalCache = new Map<string, THREE.MeshStandardMaterial>();
+  const decal = (kind: string, text?: string | null): THREE.MeshStandardMaterial => {
     const key = `${marking.markingCode}:${kind}:${text || ''}`;
     if (!decalCache.has(key)) {
       const t = track(canvasTex(paintDecal(kind, text, marking), { aniso }));
@@ -4897,7 +5131,9 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
       })));
       decalCache.set(key, m);
     }
-    return decalCache.get(key);
+    const material = decalCache.get(key);
+    if (!material) throw new Error(`vehicle decal ${key} was not created`);
+    return material;
   };
 
   // One semantic material vocabulary for builders, live audits and asset
@@ -4931,7 +5167,9 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
     dispose() {
       for (const rec of paintableRecs) shared.paintable.delete(rec);
       for (const resource of disposables) {
-        if (resource?.isMaterial) engineCtx?.releaseShadowMaterial?.(resource);
+        if ('isMaterial' in resource && resource.isMaterial) {
+          engineCtx?.releaseShadowMaterial?.(resource);
+        }
         resource.dispose();
       }
       releaseSharedTextures(shared);
@@ -5074,7 +5312,7 @@ if ( uBurnT >= 0.0 ) {
  * @param {number} seed
  * @returns {object} uniform refs shared by every burn clone of the tank
  */
-export function makeBurnUniforms(seed) {
+export function makeBurnUniforms(seed: number) {
   return {
     uBurnT: { value: -1 },
     uBurnSeed: { value: (seed % 1000) * 0.37 + 3.1 },
@@ -5104,8 +5342,11 @@ export function makeBurnUniforms(seed) {
  *   driver; false when not patchable (or owned by another visual's driver —
  *   caller falls back to the shared burnt material)
  */
-export function applyBurnHook(mat, burnU) {
-  if (!mat || !mat.isMeshStandardMaterial) return false;
+export function applyBurnHook(
+  mat: THREE.Material | null | undefined,
+  burnU: BurnUniforms,
+): boolean {
+  if (!mat || !('isMeshStandardMaterial' in mat) || mat.isMeshStandardMaterial !== true) return false;
   // shared-material guard: if some cache path ever hands two visuals the
   // same material instance, only the first owns the burn driver — the
   // second visual must not hijack it (its wreck falls back to mats.burnt).

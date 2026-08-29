@@ -296,3 +296,4 @@ runtime documents remain authoritative for behavior.
 - [0284 — Challenger profile geometry has a strict TypeScript owner](0284-type-challenger-profile-geometry.md)
 - [0285 — Euro-Asian profile geometry has a strict TypeScript owner](0285-type-euro-asia-profile-geometry.md)
 - [0286 — Patton profile geometry has a strict TypeScript owner](0286-type-patton-profile-geometry.md)
+- [0287 — The vehicle material pipeline has a strict TypeScript owner](0287-type-vehicle-material-pipeline.md)

@@ -39,7 +39,7 @@ import { createBus } from './stateCore.ts';
 import {
   CAMO_PATTERN_IDS, setCamoOverride, clearCamoOverrides, applyCamoPatterns,
   setCamoBiome,
-} from '../vehicles/materials.js';
+} from '../vehicles/materials.ts';
 import { MAP_IDS, getMapConfig, resolveMapId } from '../world/maps/index.ts';
 import { createStudioPanel } from '../ui/studioPanel.ts';
 import type {

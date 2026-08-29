@@ -50,7 +50,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   vehicleAmbientFloorHook, getKitPaintTexture, getSharedRoughnessTexture,
-} from './materials.js';
+} from './materials.ts';
 import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 

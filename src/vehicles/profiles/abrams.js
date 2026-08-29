@@ -16,7 +16,7 @@
 // *Detail = unpainted fittings. Camo lives on hull/turret/gun/gunMount only.
 import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
-import { vehicleAmbientFloorHook } from '../materials.js';
+import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 // KIT is populated by tankFactory.ts, which sits on the other side of an

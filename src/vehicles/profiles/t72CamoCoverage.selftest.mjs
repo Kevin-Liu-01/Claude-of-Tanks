@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createTank } from '../tankFactory.ts';
 
-const materialsSource = readFileSync(new URL('../materials.js', import.meta.url), 'utf8');
+const materialsSource = readFileSync(new URL('../materials.ts', import.meta.url), 'utf8');
 assert.match(materialsSource,
   /spec\.id === 't72b3m'[\s\S]*paintableRecs\.push\(\{ m: canvasCloth, kind: 'canvas' \}\)/,
   'T-72B3M canvas participates in live scheme tinting without sharing the camo map');
