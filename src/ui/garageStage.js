@@ -10,6 +10,7 @@
 // This replaces the bare pad + apron discs. The two integration-owned
 // showcase spotlights can stay — the stage's own fixtures complement them.
 import * as THREE from 'three';
+import { getGarageVariant } from '../game/garageVariants.ts';
 
 // The floor texture's approach scuffs run along world Z. Face showroom tanks
 // toward -Z (the nearest exact floor-track heading to the old 162-degree pose)
@@ -98,7 +99,9 @@ function drawTrackScuffLane(g, {
 
 // --- concrete floor texture: grime, expansion joints, painted bay, treads ---
 function makeFloorTexture(rng) {
-  const S = 1024;
+  // 512² keeps the same authored grime/marking language while cutting the
+  // synchronous boot canvas work and upload footprint to one quarter.
+  const S = 512;
   const c = document.createElement('canvas');
   c.width = S; c.height = S;
   const g = c.getContext('2d', { willReadFrequently: true });
@@ -184,7 +187,7 @@ function makeFloorTexture(rng) {
 
 // --- corrugated steel wall texture (vertical ribs + girders + grime) --------
 function makeWallTexture(rng) {
-  const W = 1024, H = 512;
+  const W = 512, H = 256;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const g = c.getContext('2d', { willReadFrequently: true });
@@ -315,6 +318,7 @@ export function makeSignTexture(rng, text) {
 // hazard-stripe band for the podium rim
 export function makeHazardTexture() {
   const W = 512, H = 64;
+  const wearRng = mulberry32(60211);
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const g = c.getContext('2d');
@@ -329,7 +333,7 @@ export function makeHazardTexture() {
   // wear
   for (let i = 0; i < 240; i++) {
     g.fillStyle = 'rgba(70,72,74,0.35)';
-    g.fillRect(Math.random() * W, Math.random() * H, 2, 2);
+    g.fillRect(wearRng() * W, wearRng() * H, 2, 2);
   }
   return c;
 }
@@ -338,9 +342,10 @@ export function makeHazardTexture() {
  * Build the hangar environment group centered on the garage pedestal.
  * @param {{setupShadowMaterial:Function,anisotropy:number}} engineCtx
  * @param {THREE.Vector3} pos - garage stage center (ground level)
- * @returns {{group:THREE.Group, dispose:Function}}
+ * @param {string} [initialVariantId] persisted workshop environment id
+ * @returns {{group:THREE.Group, setVariant:(variantId:string)=>string, dispose:Function}}
  */
-export function createGarageStage(engineCtx, pos) {
+export function createGarageStage(engineCtx, pos, initialVariantId = '') {
   const rng = mulberry32(90210);
   const group = new THREE.Group();
   group.position.copy(pos);
@@ -404,15 +409,18 @@ export function createGarageStage(engineCtx, pos) {
   // alignment ring with radial ticks, a center datum cross, twin tread wear
   // bands where the tanks drive on, and grime speckle.
   const podTopC = document.createElement('canvas');
-  podTopC.width = podTopC.height = 1024;
+  const podiumTextureSize = 512;
+  podTopC.width = podTopC.height = podiumTextureSize;
   {
     const g = podTopC.getContext('2d', { willReadFrequently: true });
-    const C = 512;
+    const C = podiumTextureSize / 2;
+    const px = podiumTextureSize / 1024;
     g.fillStyle = '#45484c';
-    g.fillRect(0, 0, 1024, 1024);
+    g.fillRect(0, 0, podiumTextureSize, podiumTextureSize);
     // broad tonal drift so the disc never reads as one flat fill
     for (let i = 0; i < 40; i++) {
-      const x = rng() * 1024, y = rng() * 1024, r = 60 + rng() * 200;
+      const x = rng() * podiumTextureSize, y = rng() * podiumTextureSize;
+      const r = 30 + rng() * 100;
       const grad = g.createRadialGradient(x, y, 0, x, y, r);
       grad.addColorStop(0, rng() < 0.5 ? 'rgba(30,32,34,0.10)' : 'rgba(120,124,128,0.07)');
       grad.addColorStop(1, 'rgba(0,0,0,0)');
@@ -421,13 +429,13 @@ export function createGarageStage(engineCtx, pos) {
     }
     // Twin podium lanes use the exact same physical dimensions and cleat
     // phase as the surrounding floor scuffs.
-    const podiumPxPerM = 1024 / (GARAGE_PODIUM_RADIUS_M * 2);
+    const podiumPxPerM = podiumTextureSize / (GARAGE_PODIUM_RADIUS_M * 2);
     const podiumTrackOffsetPx = GARAGE_TRACK_CENTER_OFFSET_M * podiumPxPerM;
     for (const side of [-1, 1]) {
       drawTrackScuffLane(g, {
         centerX: C + side * podiumTrackOffsetPx,
         y0: 0,
-        y1: 1024,
+        y1: podiumTextureSize,
         pixelsPerMeter: podiumPxPerM,
         bodyAlpha: 0.34,
         edgeAlpha: 0.34,
@@ -437,35 +445,37 @@ export function createGarageStage(engineCtx, pos) {
     }
     // worn painted alignment ring + radial ticks
     g.strokeStyle = 'rgba(188,192,198,0.34)';
-    g.lineWidth = 7;
-    g.beginPath(); g.arc(C, C, 430, 0, Math.PI * 2); g.stroke();
-    g.lineWidth = 4;
-    g.beginPath(); g.arc(C, C, 300, 0, Math.PI * 2); g.stroke();
-    g.lineWidth = 6;
+    g.lineWidth = 7 * px;
+    g.beginPath(); g.arc(C, C, 430 * px, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 4 * px;
+    g.beginPath(); g.arc(C, C, 300 * px, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 6 * px;
     g.beginPath();
     for (let k = 0; k < 12; k++) {
       const a = (k / 12) * Math.PI * 2;
-      g.moveTo(C + Math.cos(a) * 402, C + Math.sin(a) * 402);
-      g.lineTo(C + Math.cos(a) * 438, C + Math.sin(a) * 438);
+      g.moveTo(C + Math.cos(a) * 402 * px, C + Math.sin(a) * 402 * px);
+      g.lineTo(C + Math.cos(a) * 438 * px, C + Math.sin(a) * 438 * px);
     }
     g.stroke();
     // center datum cross
-    g.lineWidth = 7;
+    g.lineWidth = 7 * px;
     g.strokeStyle = 'rgba(188,192,198,0.28)';
     g.beginPath();
-    g.moveTo(C - 60, C); g.lineTo(C + 60, C);
-    g.moveTo(C, C - 60); g.lineTo(C, C + 60);
+    g.moveTo(C - 60 * px, C); g.lineTo(C + 60 * px, C);
+    g.moveTo(C, C - 60 * px); g.lineTo(C, C + 60 * px);
     g.stroke();
     // paint wear: chip the markings back to deck color
     for (let i = 0; i < 900; i++) {
       g.fillStyle = 'rgba(69,72,76,0.9)';
-      const a = rng() * Math.PI * 2, rr = rng() < 0.5 ? 430 : 300;
-      g.fillRect(C + Math.cos(a) * (rr + (rng() - 0.5) * 8) - 2,
-        C + Math.sin(a) * (rr + (rng() - 0.5) * 8) - 2, 1 + rng() * 4, 1 + rng() * 3);
+      const a = rng() * Math.PI * 2, rr = (rng() < 0.5 ? 430 : 300) * px;
+      g.fillRect(C + Math.cos(a) * (rr + (rng() - 0.5) * 8 * px) - 1,
+        C + Math.sin(a) * (rr + (rng() - 0.5) * 8 * px) - 1, 1 + rng() * 2, 1 + rng() * 2);
     }
     // oil spotting + speckle
     for (let i = 0; i < 6; i++) {
-      const x = C + (rng() - 0.5) * 500, y = C + (rng() - 0.5) * 500, r = 14 + rng() * 40;
+      const x = C + (rng() - 0.5) * 500 * px;
+      const y = C + (rng() - 0.5) * 500 * px;
+      const r = 7 + rng() * 20;
       const grad = g.createRadialGradient(x, y, 0, x, y, r);
       grad.addColorStop(0, 'rgba(16,16,18,0.30)');
       grad.addColorStop(1, 'rgba(0,0,0,0)');
@@ -474,9 +484,9 @@ export function createGarageStage(engineCtx, pos) {
     }
     for (let i = 0; i < 1400; i++) {
       g.fillStyle = rng() < 0.5 ? 'rgba(28,30,32,0.18)' : 'rgba(140,145,150,0.10)';
-      g.fillRect(rng() * 1024, rng() * 1024, 1 + rng() * 2, 1 + rng() * 2);
+      g.fillRect(rng() * podiumTextureSize, rng() * podiumTextureSize, 1 + rng() * 2, 1 + rng() * 2);
     }
-    dither(g, 1024, 1024, rng, 0.05);
+    dither(g, podiumTextureSize, podiumTextureSize, rng, 0.05);
   }
   const podTopMat = shadowMat(new THREE.MeshStandardMaterial({
     map: track(canvasTexture(podTopC, { aniso })),
@@ -879,8 +889,8 @@ export function createGarageStage(engineCtx, pos) {
     g.moveTo(4, 4); g.lineTo(124, 124); g.moveTo(124, 4); g.lineTo(4, 124);
     g.stroke();
     for (let i = 0; i < 250; i++) {
-      g.fillStyle = Math.random() < 0.5 ? 'rgba(24,22,14,0.25)' : 'rgba(96,92,74,0.2)';
-      g.fillRect(Math.random() * 128, Math.random() * 128, 2, 6);
+      g.fillStyle = rng() < 0.5 ? 'rgba(24,22,14,0.25)' : 'rgba(96,92,74,0.2)';
+      g.fillRect(rng() * 128, rng() * 128, 2, 6);
     }
   }
   const crateMat = shadowMat(new THREE.MeshStandardMaterial({
@@ -1108,8 +1118,26 @@ export function createGarageStage(engineCtx, pos) {
     }
   }
 
+  const setVariant = (variantId) => {
+    const variant = getGarageVariant(variantId);
+    const neutral = new THREE.Color(0xffffff);
+    group.userData.garageVariantId = variant.id;
+    group.userData.garageMapId = variant.mapId;
+    // Canvas albedo already carries the grime and corrugation. Blend the
+    // location hue toward neutral before multiplication so climate identity
+    // reads without crushing wall detail into black.
+    floorMat.color.setHex(variant.floorTint).lerp(neutral, 0.42);
+    wallMat.color.setHex(variant.wallTint).lerp(neutral, 0.34);
+    rimRingMat.emissive.setHex(variant.lightTint);
+    lampMat.color.setHex(variant.lightTint);
+    lensMat.emissive.setHex(variant.lightTint);
+    return variant.id;
+  };
+  setVariant(initialVariantId);
+
   return {
     group,
+    setVariant,
     dispose() {
       for (const o of disposables) if (o && o.dispose) o.dispose();
     },

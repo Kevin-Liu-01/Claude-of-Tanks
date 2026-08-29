@@ -53,6 +53,45 @@
 .cot-header-nav .record-badge{min-width:17px;height:16px;padding:0 4px;display:inline-grid;place-items:center;
   color:#1a1105;background:#f0a030;border:1px solid #ffc46b;font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
   line-height:1;letter-spacing:0;box-shadow:0 0 12px rgba(240,160,48,.2);}
+.cot-garage-variant-control{position:relative;display:flex;min-width:0;}
+.cot-header-nav .cot-garage-variant-trigger{max-width:190px;min-width:126px;justify-content:flex-start;}
+.cot-garage-variant-trigger[aria-expanded='true']{color:#ffd27a;border-color:#f0a030;
+  background:rgba(35,24,10,.94);}
+.cot-garage-variant-label{max-width:132px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cot-garage-variant-chevron{width:10px!important;height:10px!important;margin-left:auto;
+  transform:rotate(90deg);transition:transform .15s;}
+.cot-garage-variant-trigger[aria-expanded='true'] .cot-garage-variant-chevron{transform:rotate(-90deg);}
+.cot-garage-variant-menu[hidden]{display:none!important;}
+.cot-garage-variant-menu{position:absolute;z-index:85;left:230px;top:62px;width:570px;
+  max-width:calc(100vw - 72px);max-height:calc(100vh - 92px);padding:8px;display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;overflow-y:auto;overscroll-behavior:contain;
+  background:linear-gradient(150deg,rgba(18,24,30,.99),rgba(6,10,14,.995));
+  border:1px solid rgba(166,184,199,.42);box-shadow:0 24px 70px rgba(0,0,0,.8),0 0 0 1px rgba(0,0,0,.5) inset;
+  scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.5) rgba(8,11,14,.8);}
+.cot-garage-variant-menu::before{content:'Workshop environments';grid-column:1/-1;padding:4px 4px 2px;
+  color:#e5a74a;font:900 7px 'ABC Monument Grotesk','Arial Narrow',Arial,sans-serif;
+  letter-spacing:.22em;text-transform:uppercase;}
+.cot-garage-variant-card{position:relative;min-width:0;min-height:82px;padding:5px;display:grid;
+  grid-template-columns:112px minmax(0,1fr) 16px;gap:8px;align-items:center;text-align:left;cursor:pointer;
+  color:#aebac4;background:rgba(255,255,255,.02);border:1px solid rgba(146,164,180,.2);
+  font-family:'ABC Monument Grotesk','Inter','Segoe UI',sans-serif;transition:border-color .14s,background .14s,transform .14s;}
+.cot-garage-variant-card>img{width:112px;height:68px;display:block;object-fit:cover;background:#151a1e;
+  filter:saturate(.82) brightness(.72);border:1px solid rgba(255,255,255,.1);}
+.cot-garage-variant-copy{display:flex;min-width:0;flex-direction:column;gap:3px;}
+.cot-garage-variant-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e5edf3;
+  font-size:9px;letter-spacing:.08em;text-transform:uppercase;}
+.cot-garage-variant-copy small{color:#d99e47;font:800 7px 'ABC Monument Grotesk','Arial Narrow',Arial,sans-serif;
+  letter-spacing:.13em;text-transform:uppercase;}
+.cot-garage-variant-copy em{color:#748491;font:700 6.5px/1.35 'ABC Monument Grotesk','Arial Narrow',Arial,sans-serif;
+  font-style:normal;letter-spacing:.045em;}
+.cot-garage-variant-check{visibility:hidden;color:#f0b04a;}
+.cot-garage-variant-card.sel{border-color:rgba(240,176,74,.68);background:rgba(240,160,48,.1);}
+.cot-garage-variant-card.sel>img{filter:saturate(1) brightness(.9);}
+.cot-garage-variant-card.sel .cot-garage-variant-check{visibility:visible;}
+.cot-garage-variant-card:focus-visible{outline:2px solid #ffd27a;outline-offset:1px;}
+@media (hover:hover) and (pointer:fine){
+  .cot-garage-variant-card:hover{border-color:rgba(240,176,74,.56);background:rgba(240,160,48,.07);transform:translateY(-1px);}
+}
 .cot-nav .cot-github{position:relative;padding-inline:8px;}
 .cot-nav .github-stars{padding-left:6px;border-left:1px solid rgba(146,164,180,.28);
   color:#f0b04a;font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.04em;font-variant-numeric:tabular-nums;}
@@ -977,6 +1016,16 @@ body[data-cot-panels='overlay'] .cot-garage .hint{display:none}
 
 body[data-cot-width='phone'] .cot-garage .title span,
 body[data-cot-width='compact'] .cot-garage .title span{display:none}
+body[data-cot-width='compact'] .cot-garage-variant-trigger,
+body[data-cot-width='phone'] .cot-garage-variant-trigger{display:none;}
+body[data-cot-width='compact'] .cot-garage-variant-menu,
+body[data-cot-width='phone'] .cot-garage-variant-menu{position:fixed;left:max(10px,env(safe-area-inset-left));
+  right:max(10px,env(safe-area-inset-right));top:max(62px,calc(env(safe-area-inset-top) + 54px));
+  width:auto;max-width:none;max-height:calc(100dvh - 76px);grid-template-columns:1fr;}
+body[data-cot-width='compact'] .cot-garage-variant-card,
+body[data-cot-width='phone'] .cot-garage-variant-card{min-height:72px;grid-template-columns:98px minmax(0,1fr) 16px;}
+body[data-cot-width='compact'] .cot-garage-variant-card>img,
+body[data-cot-width='phone'] .cot-garage-variant-card>img{width:98px;height:60px;}
 body[data-cot-width='phone'] .cot-garage{
   --cot-roster-height:82px;--cot-country-bottom:94px;--cot-tools-bottom:144px;
 }
@@ -1003,6 +1052,7 @@ body[data-cot-width='phone'] .cot-record-body{padding:14px}
 body[data-cot-width='phone'] .cot-record-ring{width:116px}
 body[data-cot-width='phone'] .cot-record-metrics,
 body[data-cot-width='phone'] .cot-last-battle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+body[data-cot-width='laptop'] .cot-garage-variant-trigger .cot-garage-variant-label{display:inline;}
 
 /* Short viewports keep one setup control in the side lane. The old vertical
    stack of three tabs permanently consumed the tank silhouette and collided

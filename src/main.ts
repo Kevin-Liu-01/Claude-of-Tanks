@@ -106,6 +106,9 @@ import {
 } from './ui/garageStage.js';
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
+import {
+  GARAGE_VARIANTS, loadGarageVariantId, saveGarageVariantId,
+} from './game/garageVariants.ts';
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
@@ -538,10 +541,11 @@ bus.on('module:state', (payload) => {
 // pose) is positioned RELATIVE to GARAGE_POS, so the bay looks identical either
 // way — and the bay is sealed, so no battlefield is visible from it regardless.
 GARAGE_POS.y = hfProxy.getHeightAt(GARAGE_POS.x, GARAGE_POS.z);
+let selectedGarageVariantId = loadGarageVariantId();
 const { stage: garageStage, dressing: garageDressing } = await bootStage('garage', async () => {
-  const gs = createGarageStage(engineCtx, GARAGE_POS);
+  const gs = createGarageStage(engineCtx, GARAGE_POS, selectedGarageVariantId);
   scene.add(gs.group);
-  const gd = createGarageDressingAccess(engineCtx, GARAGE_POS);
+  const gd = createGarageDressingAccess(engineCtx, GARAGE_POS, selectedGarageVariantId);
   scene.add(gd.group);
   // The access owner contributes only the final fill light at boot, preserving
   // the compiled light signature. Its authored workshop module and geometry
@@ -612,7 +616,6 @@ const garageDressingScheduler = createGarageDressingScheduler({
   dressing: garageDressing,
   getPhase: () => game.phase,
   isTransitionActive: () => transition.active,
-  ensureTankBuilders,
   requestIdle: (callback) => requestQuietIdle(callback),
   scheduleDelay: (callback, delayMs) => setTimeout(callback, delayMs),
   acquireBackgroundWork: (kind, stillValid) =>
@@ -924,6 +927,19 @@ const garage = legacyPort<MainGarageRuntime>(await bootStage('ui', () => createG
   onStudioIntent: preloadStudioIntent,
   // MAP-CONFIG WIRING: every registered battlefield plus Random.
   maps: garageMaps,
+  garageVariants: GARAGE_VARIANTS.map((variant) => ({
+    ...variant,
+    thumb: MAP_THUMBS[variant.mapId as keyof typeof MAP_THUMBS] || '',
+    hero: MAP_HEROES[variant.mapId as keyof typeof MAP_HEROES] || '',
+  })),
+  selectedGarageVariantId,
+  onGarageVariantSelect: (variantId: string) => {
+    selectedGarageVariantId = saveGarageVariantId(variantId);
+    garageStage.setVariant(selectedGarageVariantId);
+    garageDressing.setVariant(selectedGarageVariantId);
+    garageDressingScheduler.noteActivity();
+    invalidateGaragePresentation();
+  },
   // CAMO WIRING: per-tank paint picker — persists the choice and repaints the
   // shared albedo in place, so the pedestal tank updates immediately.
   camo: {
@@ -969,6 +985,28 @@ const garage = legacyPort<MainGarageRuntime>(await bootStage('ui', () => createG
     networkRoomCoordinator?.syncPendingLobbySelection();
   },
 }))));
+
+// Stable read-only diagnostics plus an explicit QA switch hook. Workshop
+// verification can enumerate all ten environments and measure their one
+// retained low-poly catalog without reaching into scene internals.
+legacyPort<Record<string, unknown>>(window).__GARAGE_WORKSHOP = {
+  variants: GARAGE_VARIANTS.map(({ id, mapId, name }) => ({ id, mapId, name })),
+  async ensureBuilt() {
+    await garageDressing.ensureBuilt();
+    invalidateGaragePresentation();
+  },
+  set(variantId: string) { return garage.setSelectedGarageVariant(variantId); },
+  stats() {
+    return {
+      selected: garage.getSelectedGarageVariant(),
+      built: garageDressing.isBuilt(),
+      triangles: garageDressing.group.userData.workshopTriangleCount || 0,
+      buildTimings: [...(garageDressing.group.userData.buildTimings || [])],
+      mapId: garageDressing.group.userData.garageMapId || '',
+      renderer: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles },
+    };
+  },
+};
 
 // PRE-BATTLE LOADING SCREEN (src/ui/battleLoad.ts): map art + both rosters +
 // real build progress + countdown. Created here so its stylesheet/DOM is warm

@@ -15,12 +15,11 @@ let transitionActive = false;
 let built = false;
 let preloadCount = 0;
 let pumpCount = 0;
-let sourceLoadCount = 0;
 let visualChanges = 0;
 const idle = [];
 const delayed = [];
 const dressing = {
-  group: { userData: { buildTimings: [], modernComponentSources: ['t90m'] } },
+  group: { userData: { buildTimings: [] } },
   async preload() { preloadCount += 1; return dressing; },
   async pump() {
     pumpCount += 1;
@@ -35,10 +34,6 @@ const scheduler = createGarageDressingScheduler({
   dressing,
   getPhase: () => phase,
   isTransitionActive: () => transitionActive,
-  ensureTankBuilders: async (ids) => {
-    assert.deepEqual(ids, ['t90m']);
-    sourceLoadCount += 1;
-  },
   requestIdle: (callback) => idle.push(callback),
   scheduleDelay: (callback, delayMs) => delayed.push({ callback, delayMs }),
   onVisualChange: () => { visualChanges += 1; },
@@ -54,16 +49,16 @@ idle.shift()();
 await flush();
 assert.equal(preloadCount, 1);
 assert.equal(pumpCount, 1, 'the ordinary workshop core must build first');
-assert.equal(sourceLoadCount, 0, 'vehicle families must stay deferred until after the core');
+assert.equal(Object.hasOwn(dressing.group.userData, 'modernComponentSources'), false,
+  'workshop dressing must not declare fleet-family dependencies');
 assert.equal(visualChanges, 1, 'each completed streamed chunk invalidates the presentation');
 const firstResume = delayed.shift();
-assert.equal(firstResume.delayMs, 350, 'unfinished chunks resume after a short lull');
+assert.equal(firstResume.delayMs, 140, 'lightweight unfinished chunks resume after a short lull');
 
 firstResume.callback();
 assert.equal(idle.length, 1);
 idle.shift()();
 await flush();
-assert.equal(sourceLoadCount, 1, 'the exact exhibit families load before vehicle chunks');
 assert.equal(pumpCount, 2);
 assert.equal(built, true);
 assert.equal(visualChanges, 2, 'the final vehicle chunk also requests an immediate paint');
@@ -82,7 +77,6 @@ const waiting = createGarageDressingScheduler({
   dressing: waitingDressing,
   getPhase: () => phase,
   isTransitionActive: () => transitionActive,
-  ensureTankBuilders: async () => {},
   requestIdle: (callback) => waitIdle.push(callback),
   scheduleDelay: (callback, delayMs) => waitDelayed.push({ callback, delayMs }),
   now: () => now,
@@ -98,7 +92,7 @@ waitDelayed.shift().callback();
 waiting.noteActivity();
 waitIdle.shift()();
 await flush();
-assert.equal(waitDelayed[0].delayMs, 600, 'fresh input must restart the full quiet window');
+assert.equal(waitDelayed[0].delayMs, 300, 'fresh input must restart the quiet window');
 assert.equal(waiting.getLastActivityAt(), now);
 
 assert.match(main, /createGarageDressingScheduler\(\{/,
@@ -111,6 +105,9 @@ assert.match(main, /const scheduleGarageDressingBuild = garageDressingScheduler\
   'all garage entry points must share the scheduler owner');
 assert.doesNotMatch(main, /function scheduleGarageDressingBuild\(/,
   'the workshop state machine must not be duplicated in main');
+assert.doesNotMatch(main.slice(main.indexOf('createGarageDressingScheduler({'),
+  main.indexOf('const scheduleGarageDressingBuild')), /ensureTankBuilders/,
+  'the workshop scheduler must not wait for playable vehicle builders');
 assert.match(main, /lastActivityAt: garageDressingScheduler\.getLastActivityAt\(\)/,
   'background world building must observe the same garage activity epoch');
 

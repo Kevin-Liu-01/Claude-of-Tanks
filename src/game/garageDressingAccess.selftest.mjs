@@ -6,6 +6,7 @@ let attempts = 0;
 let constructions = 0;
 let pumps = 0;
 let built = false;
+let variantId = '';
 const engineCtx = { id: 'engine' };
 const pos = new THREE.Vector3(4, 5, 6);
 const access = createGarageDressingAccess(engineCtx, pos, {
@@ -24,6 +25,7 @@ const access = createGarageDressingAccess(engineCtx, pos, {
           pump() { pumps++; built = true; return false; },
           ensureBuilt() { built = true; },
           isBuilt() { return built; },
+          setVariant(id) { variantId = id; return id; },
           dispose() { existing.group.removeFromParent(); },
         };
       },
@@ -46,6 +48,8 @@ assert.equal(access.isBuilt(), false);
 assert.equal(await access.pump(), false);
 assert.equal(pumps, 1);
 assert.equal(access.isBuilt(), true);
+assert.equal(access.setVariant('winter_repair_bunker'), 'winter_repair_bunker');
+assert.equal(variantId, 'winter_repair_bunker');
 await access.ensureBuilt();
 
 console.log('garageDressingAccess.selftest: light-stable retryable workshop owner passed');

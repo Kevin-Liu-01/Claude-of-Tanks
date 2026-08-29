@@ -860,10 +860,13 @@ projected to top-down) + crew row icons + HP bar + fire icon when burning.
 #### 3.7.3 `garage.js`
 ```js
 export function createGarage(opts) => Garage
-// opts = { specs: TankSpec[], bus, onSelect(specId), onBattle(specId) }
+// opts = { specs, bus, onSelect, onBattle, garageVariants,
+//          selectedGarageVariantId, onGarageVariantSelect }
 Garage = {
   show(selectedId = 'm1a2'), hide(), isOpen: boolean,
   setSelected(specId),                   // drives carousel highlight; calls onSelect
+  getSelectedGarageVariant(),
+  setSelectedGarageVariant(variantId),   // persisted workshop; never changes battle map
   root: HTMLElement,
 }
 ```
@@ -872,6 +875,14 @@ pedestal render shows through), bottom carousel of 8 tank cards (name, nation fl
 colored badge, tier, era), right-side stats card (HP, top speed, hp/t, pen/dmg of
 3 shells, reload, armor highlights — from TankSpec), big orange BATTLE button top-center.
 Emits `ui:battleStart` and `ui:click` on the bus. Keyboard: ←/→ select, Enter battle.
+
+`src/game/garageVariants.ts` owns the immutable ten-location registry and
+persistence key. `garageStage.js` owns the first-paint shell and location
+palette. `garageDressingAccess.ts` keeps a stable light/root while lazily
+importing `garageDressing.js`; `garageDressingScheduler.ts` adds one optional
+slice per quiet lease. `workshopParts.js` is the only source for background
+vehicle components. It is intentionally independent from `fleetFactory.ts`,
+so repair bays cannot pull tank profile families into garage idle time.
 
 ### 3.8 fx — `src/fx/`
 

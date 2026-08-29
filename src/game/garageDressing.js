@@ -1,23 +1,19 @@
 // src/game/garageDressing.js — WORKSHOP SET DRESSING for the garage hangar
 // (garage-scene r1). The bay read as a clean showroom: podium + a handful of
 // crates. This module turns it into a WORKING tank workshop — benches with
-// tools, pegboards, shell racks, first-party modern gun/road-wheel/track
-// assemblies, a T-90M turret on blocks, a K2 hull on its side, Relikt ERA,
-// serviced M2/DShK mounts, oil drums, jerrycans, welding cart with a faint
+// tools, pegboards, shell racks, low-poly gun/road-wheel/track assemblies,
+// turret and hull teardown states, armor racks, oil drums, jerrycans, welding cart with a faint
 // arc glow, cable reels, an engine hoist with a hanging engine block, a big
-// wall fan, extra hanging work lamps — and the hero feature: TWO roster tanks
-// visibly under repair in the corner bays (one on jack stands with its turret
-// craned off a gantry, one with side skirts pulled and leaning on the hull).
+// wall fan, extra hanging work lamps, two partial tanks and a recovered wreck.
 //
 // Contract with the rest of the game:
-//  - 100% procedural (canvas textures + primitives + tankFactory procedural
-//    builds) — no downloads, no GLB jobs, shares the stage's texture language
+//  - 100% procedural (canvas textures + a dedicated low-poly workshop kit) —
+//    no downloads, GLB jobs, fleet builders or playable tank scene graphs
 //    via the helpers exported from ui/garageStage.js.
-//  - BUILDS IN CHUNKS: first paint pumps only the static workshop shell. Main
-//    then resolves the exact source families and streams repair bays + modern
-//    component displays one at a time during genuine garage-idle windows.
+//  - BUILDS IN CHUNKS: first paint pumps only the static workshop shell, then
+//    streams low-poly assembly/component displays during garage-idle windows.
 //    Deterministic captures still call ensureBuilt(). This keeps the complete
-//    authored workshop without putting four full tank builds on boot/switch.
+//    authored workshop without putting any background tank build on boot/switch.
 //  - PEDESTAL READABILITY IS SACRED: everything sits outside the painted
 //    KEEP-CLEAR ring, in the r≥14 m wall/corner band, dim (low-albedo mats,
 //    one whisper-level fill light, emissive-faked lamp pools) — the hero on
@@ -32,30 +28,9 @@ import * as THREE from 'three';
 import {
   mulberry32, canvasTexture, dither, makeSignTexture, makeHazardTexture, SIGN_FONT,
 } from '../ui/garageStage.js';
-import { createTank } from '../vehicles/fleetFactory.ts';
-import { DECOR_KITS } from '../vehicles/decorations.js';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
-
-// Repair-bay residents use the same first-party builders as playable tanks;
-// the lighter proceduralOnly option skips cosmetic decoration for background
-// dressing while retaining the authored silhouette and materials.
-const BAY_A_SPEC = 't90a_burlak';
-const BAY_B_SPEC = 'm1a2';
-const SALVAGE_TURRET_SPEC = 't90m';
-const SALVAGE_HULL_SPEC = 'k2';
-// Repair-bay residents are immobile for the lifetime of the Garage. Preserve
-// their full authored geometry, but collapse same-material fittings inside
-// each parked vehicle. Salvage exhibits override batching because their named
-// component subtrees remain independently staged and rearranged below.
-const BAY_TANK_OPTS = {
-  quality: 'ai', geometryQuality: 'low', batchStatic: true, proceduralOnly: true,
-};
-const SALVAGE_TANK_OPTS = {
-  quality: 'ai', geometryQuality: 'low', batchStatic: false, proceduralOnly: true,
-};
-const MODERN_COMPONENT_SOURCES = Object.freeze([
-  BAY_A_SPEC, BAY_B_SPEC, SALVAGE_TURRET_SPEC, SALVAGE_HULL_SPEC,
-]);
+import { getGarageVariant } from './garageVariants.ts';
+import { countWorkshopTriangles, createWorkshopPartLibrary } from './workshopParts.js';
 
 /**
  * Build the (initially empty) workshop dressing rig.
@@ -70,7 +45,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   group.name = 'garage_dressing';
   group.userData.perfOwner = 'garage/workshop';
   group.position.copy(pos);
-  group.userData.modernComponentSources = MODERN_COMPONENT_SOURCES;
+  group.userData.workshopPartSource = 'garage-low-poly-library';
 
   // Establish the dressing's final light set before the boot warm renders the
   // hero. Adding this light from a later build chunk changes Three's lighting
@@ -90,8 +65,12 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   };
   const disposables = [];
   const track = (o) => { disposables.push(o); return o; };
-  const tankVisuals = [];
   const signTextures = [];
+  const partLibrary = createWorkshopPartLibrary(engineCtx);
+  const variantAssemblies = [];
+  let currentVariant = getGarageVariant(existing.variantId);
+  group.userData.garageVariantId = currentVariant.id;
+  group.userData.garageMapId = currentVariant.mapId;
 
   // --- shared palette (kept LOW-ALBEDO so nothing competes with the hero) ---
   const mat = {
@@ -386,80 +365,69 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     put(track(new THREE.TorusGeometry(0.07, 0.014, 6, 12, Math.PI * 1.3)), mat.rubber, 0.06, 0.16, 0, 0, Math.PI / 2, 0.6, 1, e, false);
   }
 
-  /** Bounds only meshes that are actually visible through their parent chain. */
-  function visibleWorldBounds(root) {
-    const bounds = new THREE.Box3();
-    const local = new THREE.Box3();
-    root.updateMatrixWorld(true);
-    root.traverse((o) => {
-      if (!o.isMesh || !o.geometry) return;
-      if (o.userData?.authoredShadowProxy || o.material?.colorWrite === false) return;
-      for (let p = o; p && p !== root.parent; p = p.parent) if (!p.visible) return;
-      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
-      local.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
-      bounds.union(local);
-    });
-    return bounds;
+  // Assembly positions all stay outside the showroom orbit envelope. Each of
+  // the ten workshop layouts rotates and mirrors this list, producing a real
+  // scene-composition change without retaining ten copies of the geometry.
+  const assemblySlots = [
+    [-16.8, 14.8, 2.62], [-20.2, 2.5, 1.25], [16.8, 14.8, -2.62],
+    [20.2, 2.5, -1.25], [-20.2, -8.0, 1.82], [20.2, -8.0, -1.82],
+    [-14.2, -16.0, 2.55], [14.2, -16.0, -2.55], [0, 20.4, Math.PI],
+  ];
+  let mapBackdropMaterial = null;
+  let mapBackdropTexture = null;
+  let backdropGeneration = 0;
+
+  function poseAssembly(root, logicalSlot) {
+    const layout = currentVariant.layout;
+    const [x0, z0, yaw0] = assemblySlots[logicalSlot % assemblySlots.length];
+    const mirrored = layout % 2 === 1;
+    const driftX = Math.sin((layout + logicalSlot) * 1.7) * 0.8;
+    const driftZ = Math.cos((layout * 1.3) + logicalSlot) * 0.7;
+    root.position.set((mirrored ? -x0 : x0) + driftX, 0, z0 + driftZ);
+    root.rotation.y = (mirrored ? -yaw0 : yaw0) + (layout % 3 - 1) * 0.08;
+    root.userData.garageVariantId = currentVariant.id;
+    root.userData.logicalSlot = logicalSlot;
   }
 
-  /** Seat the visible portion of a real vehicle build onto a shop support. */
-  function seatVisibleRoot(root, supportY) {
-    const bounds = visibleWorldBounds(root);
-    if (!bounds.isEmpty()) {
-      root.position.y += supportY - bounds.min.y;
-      root.updateMatrixWorld(true);
-    }
+  function addAssembly(kind, logicalSlot, scale = 1) {
+    const root = partLibrary.createAssembly(kind, { name: `dressing_${kind}` });
+    root.scale.setScalar(scale);
+    poseAssembly(root, logicalSlot);
+    group.add(root);
+    variantAssemblies.push(root);
+    return root;
   }
 
-  /** Mark a sourced component for browser QA and future garage audits. */
-  function markModernPart(object, sourceVehicleId, component) {
-    object.userData.sourceVehicleId = sourceVehicleId;
-    object.userData.sourceEra = 'modern';
-    object.userData.component = component;
-    object.name = `dressing_${sourceVehicleId}_${component}`;
-    return object;
+  function updateMapBackdrop() {
+    if (!mapBackdropMaterial) return;
+    const generation = ++backdropGeneration;
+    mapBackdropMaterial.color.setHex(currentVariant.wallTint).multiplyScalar(1.35);
+    new THREE.TextureLoader().load(
+      `/maps/thumbs/${currentVariant.mapId}.webp`,
+      (texture) => {
+        if (generation !== backdropGeneration) { texture.dispose(); return; }
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = Math.min(4, aniso);
+        mapBackdropTexture?.dispose();
+        mapBackdropTexture = texture;
+        mapBackdropMaterial.map = texture;
+        mapBackdropMaterial.color.setHex(0xffffff);
+        mapBackdropMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {},
+    );
   }
 
-  /** Copy an articulated gun rig while retaining its first-party geometry. */
-  function placeGunRig(source, sourceVehicleId, x, y, z, scale = 1) {
-    if (!source) return null;
-    const holder = markModernPart(new THREE.Group(), sourceVehicleId, 'gun_assembly');
-    holder.position.set(x, y, z);
-    holder.rotation.y = Math.PI / 2;
-    holder.scale.setScalar(scale);
-    const gun = source.clone(true);
-    gun.position.set(0, 0, 0);
-    gun.rotation.set(0, 0, 0);
-    gun.traverse((o) => {
-      if (!o.isMesh) return;
-      o.castShadow = true;
-      o.receiveShadow = true;
-    });
-    holder.add(gun);
-    group.add(holder);
-    return holder;
-  }
-
-  /** Build one complete service MG from the fleet decoration kit. */
-  function serviceMachineGun(parent, variant, shield, x, seed) {
-    const mg = markModernPart(new THREE.Group(),
-      variant === 'dshk' ? SALVAGE_TURRET_SPEC : BAY_B_SPEC,
-      variant === 'dshk' ? 'dshk_service_mount' : 'm2_service_mount');
-    mg.position.set(x, 1.02, 0);
-    // Side-on against the north wall: the full receiver, feed box and barrel
-    // read as weapons instead of three short end-on posts.
-    mg.rotation.y = Math.PI / 2;
-    mg.scale.setScalar(1.18);
-    const parts = DECOR_KITS.aamg({ rng: mulberry32(seed), v: variant, shield, ring: false });
-    for (const part of parts) {
-      const material = part.mat === 'kit' ? mat.olive : mat.oily;
-      const mesh = new THREE.Mesh(track(part.geo), material);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      mg.add(mesh);
-    }
-    parent.add(mg);
-    return mg;
+  function setVariant(variantId) {
+    currentVariant = getGarageVariant(variantId);
+    group.userData.garageVariantId = currentVariant.id;
+    group.userData.garageMapId = currentVariant.mapId;
+    mat.safety.color.setHex(currentVariant.accent);
+    bayFill.color.setHex(currentVariant.lightTint);
+    for (const root of variantAssemblies) poseAssembly(root, root.userData.logicalSlot || 0);
+    updateMapBackdrop();
+    return currentVariant.id;
   }
 
   const chunks = [];
@@ -468,6 +436,19 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   // CHUNK 1 — static workshop clutter on every wall + floor decals
   // ==========================================================================
   chunks.push(function buildCore() {
+    // A framed exterior monitor/door panel uses the selected workshop's real
+    // battlefield thumbnail. It is the only per-variant texture and streams
+    // after readiness; the fallback tint paints immediately.
+    mapBackdropMaterial = track(new THREE.MeshBasicMaterial({
+      color: currentVariant.wallTint, side: THREE.DoubleSide,
+    }));
+    put(track(new THREE.BoxGeometry(12.6, 3.75, 0.16)), mat.steelDark,
+      8.0, 7.05, 22.76, Math.PI, 0, 0, 1, group, false);
+    const backdrop = put(track(new THREE.PlaneGeometry(12.0, 3.25)), mapBackdropMaterial,
+      8.0, 7.05, 22.66, Math.PI, 0, 0, 1, group, false);
+    backdrop.name = 'garage_map_location_preview';
+    backdrop.userData.mapId = currentVariant.mapId;
+    updateMapBackdrop();
     // --- EAST WALL (left of frame from the hero cam) ------------------------
     workbench(21.95, -7, -Math.PI / 2);
     pegboard(22.86, 2.62, -7, -Math.PI / 2);
@@ -536,8 +517,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
       }
       workLamp(5.9, 20.7, 5);
     }
-    // All spare armor assemblies are first-party modern-fleet geometry and
-    // are added together in buildModernComponents after the repair bays.
+    // Spare armor assemblies arrive in the later low-poly component slice.
     // big workshop wall fan (static) + guard
     {
       const f = new THREE.Group();
@@ -729,425 +709,45 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   });
 
   // ==========================================================================
-  // CHUNK 2 — BAY A (NE corner): T-90A Burlak on jack stands, turret craned off a
-  // gantry. The tank is a real roster build (procedural-of-record), dimmed so
-  // the pedestal hero keeps the light.
+  // CHUNK 2 — western final assembly + detached power pack. Both are tiny
+  // workshop duplicates, not playable vehicle builds.
   // ==========================================================================
   chunks.push(function buildBayA() {
-    const vis = createTank(BAY_A_SPEC, engineCtx, { camoSeed: 777, ...BAY_TANK_OPTS });
-    tankVisuals.push(vis);
-    vis.root.name = 'dressing_tank_a'; // never 'tank_*': scene scans skip it
-    vis.root.rotation.y = -0.55;
-    vis.root.position.set(17.8, 0.42, -15.5); // hull raised on stands
-    group.add(vis.root);
-    dimVisual(vis, 0.6);
-    // lifted turret: up off the ring, slightly slewed + swaying on the chains
-    const tur = vis.root.getObjectByName('rig_turret');
-    if (tur) {
-      tur.position.y += 0.55;
-      tur.rotation.y += 0.14;
-      tur.rotation.z += 0.025;
-    }
-    // jack stands under the four hull corners (tank-local offsets so the
-    // stands track the hull placement)
-    const standCone = track(new THREE.CylinderGeometry(0.14, 0.3, 0.42, 4));
-    const standPost = track(new THREE.CylinderGeometry(0.05, 0.05, 0.22, 8));
-    const holder = new THREE.Group();
-    holder.rotation.y = -0.55;
-    holder.position.set(17.8, 0, -15.5);
-    group.add(holder);
-    for (const [ox, oz] of [[-1.15, -2.2], [1.15, -2.2], [-1.15, 2.2], [1.15, 2.2]]) {
-      const s = new THREE.Group();
-      s.position.set(ox, 0, oz);
-      s.rotation.y = 0.4;
-      holder.add(s);
-      put(standCone, mat.safety, 0, 0.21, 0, 0, 0, 0, 1, s);
-      put(standPost, mat.steelBright, 0, 0.5, 0, 0, 0, 0, 1, s);
-      put(track(new THREE.BoxGeometry(0.22, 0.06, 0.14)), mat.steelDark, 0, 0.62, 0, 0, 0, 0, 1, s);
-    }
-    // gantry crane straddling the bay (worn safety-yellow, hazard tape on the
-    // beam) — legs verified outside the orbit camera's reach envelope
-    const gan = new THREE.Group();
-    gan.position.set(17.8, 0, -15.5);
-    gan.rotation.y = -0.55;
-    group.add(gan);
-    const hazTex = track(canvasTexture(makeHazardTexture(), { aniso, repeat: [4, 1] }));
-    const beamMat = track(shadowMat(new THREE.MeshStandardMaterial({
-      map: hazTex, roughness: 0.6, metalness: 0.3,
-    })));
-    const legG = track(new THREE.BoxGeometry(0.14, 4.9, 0.14));
-    for (const [lx, lz] of [[-2.4, -3.2], [2.4, -3.2], [-2.4, 3.2], [2.4, 3.2]]) {
-      put(legG, mat.safety, lx, 2.45, lz, 0, 0, lx > 0 ? -0.06 : 0.06, 1, gan);
-    }
-    // A-frame cross braces
-    const braceG = track(new THREE.BoxGeometry(0.09, 2.6, 0.09));
-    for (const lz of [-3.2, 3.2]) {
-      put(braceG, mat.steelMid, -1.2, 1.3, lz, 0, 0, 1.08, 1, gan);
-      put(braceG, mat.steelMid, 1.2, 1.3, lz, 0, 0, -1.08, 1, gan);
-    }
-    put(track(new THREE.BoxGeometry(0.26, 0.3, 7.1)), beamMat, 0, 4.92, 0, 0, 0, 0, 1, gan); // main beam
-    put(track(new THREE.BoxGeometry(0.4, 0.06, 7.1)), mat.steelDark, 0, 4.74, 0, 0, 0, 0, 1, gan); // lower flange
-    // trolley + chain fall down to the lifted turret roof (~y 3.9 raised)
-    put(track(new THREE.BoxGeometry(0.42, 0.3, 0.5)), mat.steelDark, 0, 4.6, 0.4, 0, 0, 0, 1, gan);
-    const chainG = track(new THREE.CylinderGeometry(0.02, 0.02, 0.85, 6));
-    put(chainG, mat.steelBright, -0.16, 4.1, 0.4, 0, 0, 0.12, 1, gan, false);
-    put(chainG, mat.steelBright, 0.16, 4.1, 0.4, 0, 0, -0.12, 1, gan, false);
-    put(track(new THREE.BoxGeometry(0.3, 0.16, 0.16)), mat.steelDark, 0, 3.72, 0.4, 0, 0, 0, 1, gan); // hook block
-    // drop light on a cable from the beam + work pool under the hull
-    put(track(new THREE.CylinderGeometry(0.012, 0.012, 2.1, 6)), mat.rubber, 0.05, 3.8, -1.4, 0, 0, 0, 1, gan, false);
-    const bulb = put(track(new THREE.SphereGeometry(0.06, 8, 6)), mat.lamp, 0.05, 2.72, -1.4, 0, 0, 0, 1, gan, false);
-    bulb.castShadow = false;
-    put(track(new THREE.CylinderGeometry(0.09, 0.07, 0.16, 10)), mat.steelDark, 0.05, 2.82, -1.4, 0, 0, 0, 1, gan, false);
-    const pool = new THREE.Mesh(track(new THREE.PlaneGeometry(7.5, 7.5)), poolMat);
-    pool.rotation.x = -Math.PI / 2;
-    pool.position.set(17.4, 0.03, -14.9);
-    group.add(pool);
-    // shop clutter around the bay: floor jack + toolbox + loose wrench board
-    toolChest(14.2, -18.6, -0.4, mat.blueSteel, mat.steelDark, 0.9);
-    const jack = new THREE.Group();
-    jack.position.set(15.2, 0, -12.4);
-    jack.rotation.y = 0.7;
-    group.add(jack);
-    put(track(new THREE.BoxGeometry(0.7, 0.12, 0.3)), mat.redCab, 0, 0.09, 0, 0, 0, 0, 1, jack);
-    put(track(new THREE.BoxGeometry(0.5, 0.08, 0.22)), mat.redCab, -0.05, 0.2, 0, 0, 0, 0.22, 1, jack);
-    put(track(new THREE.CylinderGeometry(0.055, 0.055, 0.6, 8)), mat.steelDark, 0.35, 0.32, 0, 0, 0, -0.9, 1, jack);
-    for (const [wx2, wz2] of [[-0.28, 0.12], [-0.28, -0.12], [0.3, 0.12], [0.3, -0.12]]) {
-      put(G.caster, mat.steelDark, wx2, 0.06, wz2, 0, 0, Math.PI / 2, 1, jack, false);
-    }
+    addAssembly('western_assembly', 0, 0.84);
+    addAssembly('powerpack', 1, 1.0);
+    wallSign('FINAL ASSEMBLY', 17.3, 3.3, -22.86, 0, 3.0, 0.9);
   });
 
   // ==========================================================================
-  // CHUNK 3 — BAY B (SE corner): M1A2 with its side skirts pulled off and
-  // leaning on the hull, toolboxes + creeper + oil pan around, weld glow.
+  // CHUNK 3 — eastern suspension-install state + serviced weapon bench.
   // ==========================================================================
   chunks.push(function buildBayB() {
-    const vis = createTank(BAY_B_SPEC, engineCtx, { camoSeed: 4242, ...BAY_TANK_OPTS });
-    tankVisuals.push(vis);
-    vis.root.name = 'dressing_tank_b';
-    vis.root.rotation.y = -2.03;
-    vis.root.position.set(16.9, 0, 17.7);
-    group.add(vis.root);
-    dimVisual(vis, 0.55);
-    const tur = vis.root.getObjectByName('rig_turret');
-    if (tur) tur.rotation.y -= 0.38;            // turret slewed for gun work
-    const gun = vis.root.getObjectByName('rig_gun');
-    if (gun) gun.rotation.x -= 0.05;            // barrel nudged up
-    // side skirts pulled: three plates leaning on the room-facing flank + one
-    // against the wall (tank-local frame so they hug the hull line)
-    const skirt = new THREE.Group();
-    skirt.position.set(16.9, 0, 17.7);
-    skirt.rotation.y = -2.03;
-    group.add(skirt);
-    const plateG = track(new THREE.BoxGeometry(1.7, 0.85, 0.045));
-    const plateMat2 = track(shadowMat(new THREE.MeshStandardMaterial({
-      color: 0x3a3d33, roughness: 0.6, metalness: 0.45,
-    })));
-    // room-facing flank is tank-local -x at this parking yaw (+x faces the
-    // south wall): lean the pulled plates where the orbit camera can see them
-    for (const [pz, lean] of [[-1.5, 0.34], [0.1, 0.3], [1.6, 0.38]]) {
-      const p = put(plateG, plateMat2, -2.05, 0.42, pz, 0, 0, 0, 1, skirt);
-      // face the hull flank, then lean the TOP onto the fender: the lean must
-      // be OUTERMOST (about the tank-frame Z), so order ZYX — plain XYZ would
-      // spin the plate around its own normal instead.
-      p.rotation.order = 'ZYX';
-      p.rotation.set(0, Math.PI / 2, -lean);
-    }
-    // one plate flat on the floor beside the tank
-    const flat = put(plateG, plateMat2, -3.1, 0.03, 0.6, 0, 0, 0, 1, skirt);
-    flat.rotation.set(-Math.PI / 2, 0, 0.4);
-    // toolboxes + tool tray on the engine deck + creeper + oil pan
-    toolChest(12.6, 15.4, 2.6, mat.redCab, mat.redCabDark);
-    toolChest(14.0, 20.6, -2.0, mat.olive, mat.steelDark, 0.72);
-    const tray = put(track(new THREE.BoxGeometry(0.5, 0.07, 0.32)), mat.steelBright, 0.2, 1.72, -2.2, 0.3, 0, 0, 1, skirt);
-    tray.castShadow = false;
-    put(track(new THREE.CylinderGeometry(0.28, 0.32, 0.09, 14)), mat.oily, 14.9, 0.05, 15.9, 0);
-    const creeper = new THREE.Group();
-    creeper.position.set(14.35, 0, 17.1);
-    creeper.rotation.y = 1.1;
-    group.add(creeper);
-    put(track(new THREE.BoxGeometry(0.55, 0.05, 1.35)), mat.redCabDark, 0, 0.09, 0, 0, 0, 0, 1, creeper);
-    for (const [cx2, cz2] of [[-0.2, -0.55], [0.2, -0.55], [-0.2, 0.55], [0.2, 0.55]]) {
-      put(G.caster, mat.steelDark, cx2, 0.045, cz2, 0, 0, Math.PI / 2, 0.7, creeper, false);
-    }
-    // weld cable from the south-wall cart to a clamp on the leaning skirt,
-    // with the faint arc-afterglow at the clamp (emissive + sprite, no light)
-    const cableMat2 = track(shadowMat(new THREE.MeshStandardMaterial({
-      color: 0x141618, roughness: 0.88, metalness: 0.05,
-    })));
-    const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(11.6, 0.22, 19.6),
-      new THREE.Vector3(13.2, 0.05, 18.6),
-      new THREE.Vector3(15.4, 0.05, 17.0),
-      new THREE.Vector3(17.35, 0.4, 15.95),
-    ]);
-    const tube = new THREE.Mesh(track(new THREE.TubeGeometry(curve, 24, 0.035, 7)), cableMat2);
-    tube.castShadow = true;
-    group.add(tube);
-    const weldTip = put(track(new THREE.SphereGeometry(0.028, 8, 6)),
-      track(new THREE.MeshBasicMaterial({ color: 0xffe0b0 })), 17.4, 0.45, 15.92, 0, 0, 0, 1, group, false);
-    weldTip.castShadow = false;
-    const glowMat2 = track(new THREE.SpriteMaterial({
-      map: track(canvasTexture(makePoolTexture('rgba(255,208,140,0.5)', 'rgba(255,160,70,0.14)'))),
-      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
-    }));
-    const spark2 = new THREE.Sprite(glowMat2);
-    spark2.scale.setScalar(0.7);
-    spark2.position.set(17.4, 0.47, 15.92);
-    group.add(spark2);
-    // dim work pool under the bay
-    const pool = new THREE.Mesh(track(new THREE.PlaneGeometry(7, 7)), poolMat);
-    pool.rotation.x = -Math.PI / 2;
-    pool.position.set(15.9, 0.03, 16.6);
-    group.add(pool);
-    workLamp(15.9, 16.6, 0, 7.4); // fixture only — the pool above is its throw
+    addAssembly('eastern_assembly', 2, 0.9);
+    addAssembly('weapon_rack', 3, 0.95);
+    wallSign('SUSPENSION LINE', 17.0, 3.2, 22.86, Math.PI, 3.0, 0.9);
   });
 
   // ==========================================================================
-  // CHUNK 4 — T-90M COMPONENT BAY (south wall): the complete authored turret,
-  // its gun assembly on the existing trestles, and real Relikt tile geometry
-  // arranged for inspection. These are extracted from a real fleet build;
-  // there is no generic "tank-looking" substitute in this display.
+  // CHUNK 4 — separately seated T-90M-inspired turret and reactive-armor rack.
   // ==========================================================================
   chunks.push(function buildT90mComponents() {
-    const vis = createTank(SALVAGE_TURRET_SPEC, engineCtx, {
-      camoSeed: 906, ...SALVAGE_TANK_OPTS,
-    });
-    tankVisuals.push(vis);
-    const hull = vis.root.getObjectByName('rig_hull');
-    const turret = vis.root.getObjectByName('rig_turret');
-    const gun = vis.root.getObjectByName('rig_gun');
-    if (hull) hull.visible = false;
-    vis.root.traverse((o) => {
-      if (o.userData?.authoredShadowProxy) o.visible = false;
-    });
-    markModernPart(vis.root, SALVAGE_TURRET_SPEC, 'turret_cradle');
-    vis.root.position.set(-6.6, 0, 20.5);
-    vis.root.rotation.y = 2.4;
-    group.add(vis.root);
-    dimVisual(vis, 0.50);
-    seatVisibleRoot(vis.root, 0.50);
-
-    // Four broad timber crib blocks and cross-bearers visibly carry the
-    // turret ring; the tank root above contains only the real turret subtree.
-    const cradle = markModernPart(new THREE.Group(), SALVAGE_TURRET_SPEC, 'turret_support');
-    cradle.position.set(-6.6, 0, 20.5);
-    cradle.rotation.y = 2.4;
-    group.add(cradle);
-    const blockG = track(new THREE.BoxGeometry(0.68, 0.46, 0.68));
-    for (const [bx, bz] of [[-1.05, -0.84], [1.05, -0.84], [-1.05, 0.84], [1.05, 0.84]]) {
-      put(blockG, mat.timber, bx, 0.23, bz, 0, 0, 0, 1, cradle);
-    }
-    const bearerG = track(new THREE.BoxGeometry(2.85, 0.16, 0.28));
-    put(bearerG, mat.timberDark, 0, 0.49, -0.70, 0, 0, 0, 1, cradle);
-    put(bearerG, mat.timberDark, 0, 0.49, 0.70, 0, 0, 0, 1, cradle);
-
-    // Reuse the exact fleet gun hierarchy (mantlet, recoil housing, barrel,
-    // bore and muzzle), laid crosswise over the timber stands built in core.
-    placeGunRig(gun, SALVAGE_TURRET_SPEC, 2.75, 1.08, 21.39, 0.92);
-
-    // The native T-90M profile merges its seven unequal Relikt cassettes into
-    // the turretCloth draw bucket. Recreate those exact authored dimensions
-    // here (profiles/t90.js, "Proryv Relikt fan") and reuse that bucket's
-    // actual material; this preserves the real cadence instead of reverting
-    // to the old one-size-fits-all generic tile.
-    const reliktMaterial = turret?.getObjectByName('turretCloth')?.material || mat.olive;
-    const reliktDimensions = [
-      [0.32, 0.27, 0.39], [0.38, 0.31, 0.43], [0.43, 0.34, 0.46],
-      [0.47, 0.35, 0.45], [0.48, 0.34, 0.43], [0.40, 0.31, 0.40],
-      [0.28, 0.27, 0.34],
-    ];
-    const rack = markModernPart(new THREE.Group(), SALVAGE_TURRET_SPEC, 'relikt_service_rack');
-    rack.position.set(-11.2, 0, 21.15);
-    group.add(rack);
-    put(track(new THREE.BoxGeometry(2.7, 0.12, 0.90)), mat.timberDark, 0, 0.06, 0, 0, 0, 0, 1, rack);
-    const uprightG = track(new THREE.BoxGeometry(0.06, 1.52, 0.06));
-    const railG = track(new THREE.BoxGeometry(2.35, 0.06, 0.06));
-    for (const x of [-1.15, 1.15]) put(uprightG, mat.steelMid, x, 0.82, -0.30, 0, 0, 0, 1, rack);
-    for (const y of [0.25, 0.76, 1.28, 1.56]) put(railG, mat.steelMid, 0, y, -0.30, 0, 0, 0, 1, rack);
-    const cassetteG = track(new THREE.BoxGeometry(1, 1, 1));
-    const cassettes = markModernPart(
-      new THREE.InstancedMesh(cassetteG, reliktMaterial, 21),
-      SALVAGE_TURRET_SPEC, 'relikt_cassettes',
-    );
-    cassettes.userData.sourceGeometry = 'profiles/t90.js:Proryv Relikt fan';
-    const M4 = new THREE.Matrix4();
-    const Q = new THREE.Quaternion();
-    const P = new THREE.Vector3();
-    const S = new THREE.Vector3();
-    let index = 0;
-    for (let row = 0; row < 3; row++) {
-      for (let col = 0; col < 7; col++) {
-        const [w, h, d] = reliktDimensions[col];
-        P.set(-1.02 + col * 0.34, 0.39 + row * 0.43, -0.34);
-        S.set(w, h, d);
-        M4.compose(P, Q, S);
-        cassettes.setMatrixAt(index++, M4);
-      }
-    }
-    cassettes.instanceMatrix.needsUpdate = true;
-    cassettes.castShadow = cassettes.receiveShadow = true;
-    rack.add(cassettes);
-    track(cassettes);
-    wallSign('T-90M / RELIKT', -8.7, 3.25, 22.86, Math.PI, 2.8, 0.9);
+    addAssembly('turret_cradle', 4, 0.94);
+    addAssembly('armor_rack', 5, 0.92);
+    wallSign('TURRET / ARMOR', -8.7, 3.25, 22.86, Math.PI, 2.8, 0.9);
   });
 
   // ==========================================================================
-  // CHUNK 5 — K2 TEARDOWN + MODERN WEAPON RACK (north/west walls): an actual
-  // K2 hull rolled onto a service cradle, its own wheels and track shoes in
-  // orderly stacks, plus fleet M2/DShK fittings on a dedicated service table.
+  // CHUNK 5 — bare K2-inspired hull, sorted running gear and recovery wreck.
   // ==========================================================================
   chunks.push(function buildK2Components() {
-    const vis = createTank(SALVAGE_HULL_SPEC, engineCtx, {
-      camoSeed: 172, ...SALVAGE_TANK_OPTS,
-    });
-    tankVisuals.push(vis);
-    const hull = vis.root.getObjectByName('rig_hull');
-    const turret = vis.root.getObjectByName('rig_turret');
-    const tires = vis.root.getObjectByName('gearRoadWheelTires');
-    const discs = vis.root.getObjectByName('gearRoadWheelDiscs')
-      || vis.root.getObjectByName('gearRoadWheelDiscsRecessed');
-    const pads = vis.root.getObjectByName('gearTrackPads');
-    if (turret) turret.visible = false;
-    if (hull) {
-      const removedGear = [];
-      hull.traverse((o) => {
-        if (o.userData?.runningGear
-            || /^(gear|hullRunningGear|k2_track_rubber)/.test(o.name || '')) {
-          removedGear.push(o);
-        }
-      });
-      // Several running-gear layers live below THREE.LOD nodes whose update()
-      // rewrites child.visible every frame. Detach them from this stripped
-      // display hull so they cannot reappear; the source visual still owns
-      // and disposes the shared wheel/shoe geometries used by the loose parts.
-      for (const o of removedGear) o.removeFromParent();
-    }
-    vis.root.traverse((o) => {
-      if (o.userData?.authoredShadowProxy) o.visible = false;
-    });
-    markModernPart(vis.root, SALVAGE_HULL_SPEC, 'side_hull');
-    vis.root.position.set(-16.25, 0, -16.85);
-    vis.root.rotation.set(0, 0.35, THREE.MathUtils.degToRad(68));
-    group.add(vis.root);
-    dimVisual(vis, 0.48);
-    seatVisibleRoot(vis.root, 0.20);
-
-    const cradle = markModernPart(new THREE.Group(), SALVAGE_HULL_SPEC, 'hull_support');
-    cradle.position.set(-16.25, 0, -16.85);
-    cradle.rotation.y = 0.35;
-    group.add(cradle);
-    const beamG = track(new THREE.BoxGeometry(2.55, 0.24, 0.58));
-    put(beamG, mat.timber, 0, 0.12, -2.05, 0, 0, 0, 1, cradle);
-    put(beamG, mat.timber, 0, 0.12, 2.05, 0, 0, 0, 1, cradle);
-    const chockG = track(new THREE.BoxGeometry(0.36, 0.42, 0.52));
-    for (const z of [-2.05, 2.05]) {
-      put(chockG, mat.timberDark, -1.1, 0.32, z, 0, 0, -0.28, 1, cradle);
-      put(chockG, mat.timberDark, 1.1, 0.32, z, 0, 0, 0.28, 1, cradle);
-    }
-
-    // Stack the K2's actual tire and dish geometries flat, like removed road
-    // wheels in a service bay. The hidden source running gear remains the
-    // single disposal owner for these shared geometries and materials.
-    if (tires && discs) {
-      if (!tires.geometry.boundingBox) tires.geometry.computeBoundingBox();
-      const size = new THREE.Vector3();
-      tires.geometry.boundingBox.getSize(size);
-      const rise = Math.max(0.14, size.x * 0.92);
-      const wheelPositions = [];
-      for (const [x, z, count] of [[-21.25, -8.65, 4], [-20.20, -9.75, 4]]) {
-        for (let i = 0; i < count; i++) {
-          wheelPositions.push([x, 0.10 + rise * (i + 0.5), z]);
-        }
-      }
-      const wheelTires = markModernPart(
-        new THREE.InstancedMesh(tires.geometry, tires.material, wheelPositions.length),
-        SALVAGE_HULL_SPEC, 'road_wheel_tires',
-      );
-      const wheelDiscs = markModernPart(
-        new THREE.InstancedMesh(discs.geometry, discs.material, wheelPositions.length),
-        SALVAGE_HULL_SPEC, 'road_wheel_discs',
-      );
-      const E = new THREE.Euler(0, 0, Math.PI / 2);
-      const M4 = new THREE.Matrix4();
-      wheelPositions.forEach(([x, y, z], i) => {
-        M4.makeRotationFromEuler(E).setPosition(x, y, z);
-        wheelTires.setMatrixAt(i, M4);
-        wheelDiscs.setMatrixAt(i, M4);
-      });
-      wheelTires.instanceMatrix.needsUpdate = true;
-      wheelDiscs.instanceMatrix.needsUpdate = true;
-      wheelTires.castShadow = wheelTires.receiveShadow = true;
-      wheelDiscs.castShadow = wheelDiscs.receiveShadow = true;
-      group.add(wheelTires, wheelDiscs);
-      track(wheelTires); track(wheelDiscs);
-    }
-
-    // K2 shoe geometry is retained whole (pad, web, connector and guide horn)
-    // and arranged horn-up on a service pallet instead of primitive boxes.
-    if (pads) {
-      const pallet = markModernPart(new THREE.Group(), SALVAGE_HULL_SPEC, 'track_shoe_pallet');
-      pallet.position.set(-21.15, 0, -13.45);
-      pallet.rotation.y = -0.12;
-      group.add(pallet);
-      put(track(new THREE.BoxGeometry(1.75, 0.11, 1.15)), mat.timberDark, 0, 0.06, 0, 0, 0, 0, 1, pallet);
-      const shoes = markModernPart(
-        new THREE.InstancedMesh(pads.geometry, pads.material, 8),
-        SALVAGE_HULL_SPEC, 'track_shoes',
-      );
-      const E = new THREE.Euler();
-      const M4 = new THREE.Matrix4();
-      let index = 0;
-      for (let row = 0; row < 4; row++) {
-        for (let col = 0; col < 2; col++) {
-          // The canonical source shoe has its guide horn on local -Y for the
-          // animated lower run. Flip it horn-up for a loose shop-floor part.
-          E.set(Math.PI, (col % 2 ? 0.035 : -0.035), 0);
-          M4.makeRotationFromEuler(E).setPosition(
-            -0.38 + col * 0.76,
-            0.19,
-            -0.35 + row * 0.23,
-          );
-          shoes.setMatrixAt(index++, M4);
-        }
-      }
-      shoes.instanceMatrix.needsUpdate = true;
-      shoes.castShadow = shoes.receiveShadow = true;
-      pallet.add(shoes);
-      track(shoes);
-    }
-
-    // A clean service table presents three real fleet decoration fittings:
-    // unshielded M2, DShK, and shielded M2, all aligned muzzle-forward.
-    const mgRack = new THREE.Group();
-    mgRack.name = 'dressing_modern_machine_gun_service_rack';
-    mgRack.userData.sourceVehicleIds = [BAY_B_SPEC, SALVAGE_TURRET_SPEC];
-    mgRack.userData.sourceEra = 'modern';
-    mgRack.userData.component = 'machine_gun_service_rack';
-    mgRack.position.set(-6.4, 0, -21.35);
-    group.add(mgRack);
-    put(track(new THREE.BoxGeometry(3.9, 0.12, 0.95)), mat.steelMid, 0, 0.84, 0, 0, 0, 0, 1, mgRack);
-    const legG = track(new THREE.BoxGeometry(0.08, 0.84, 0.08));
-    for (const [x, z] of [[-1.72, -0.36], [1.72, -0.36], [-1.72, 0.36], [1.72, 0.36]]) {
-      put(legG, mat.steelDark, x, 0.42, z, 0, 0, 0, 1, mgRack);
-    }
-    serviceMachineGun(mgRack, 'm2', false, -1.20, 1901);
-    serviceMachineGun(mgRack, 'dshk', false, 0, 1902);
-    serviceMachineGun(mgRack, 'm2', true, 1.20, 1903);
-    wallSign('K2 TEARDOWN', -16.35, 3.20, -22.86, 0, 2.5, 0.9);
-    wallSign('WEAPON SERVICE', -6.4, 2.75, -22.86, 0, 2.7, 0.8);
+    addAssembly('bare_hull', 6, 0.88);
+    addAssembly('running_gear', 7, 0.95);
+    addAssembly('recovery_wreck', 8, 0.76);
+    group.userData.workshopTriangleCount = variantAssemblies.reduce(
+      (sum, root) => sum + countWorkshopTriangles(root), 0,
+    );
+    wallSign('TEARDOWN / RECOVERY', -16.3, 3.2, -22.86, 0, 3.2, 0.9);
   });
-
-  /** Darken a repair tank so it never competes with the pedestal hero. */
-  function dimVisual(vis, k) {
-    vis.root.traverse((o) => {
-      if (!o.isMesh || !o.material) return;
-      const ms = Array.isArray(o.material) ? o.material : [o.material];
-      for (const m of ms) {
-        if (m.color) m.color.multiplyScalar(k);
-        if (m.emissive) m.emissiveIntensity = (m.emissiveIntensity || 1) * 0.4;
-      }
-    });
-  }
 
   // sign plates bake before the webfont settles — refresh them once it lands
   // (same contract as garageStage's own signs)
@@ -1186,14 +786,17 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
       while (this.pump()) { /* drain */ }
     },
     isBuilt() { return next >= chunks.length; },
+    setVariant,
     dispose() {
       if (group.parent) group.parent.remove(group);
-      for (const v of tankVisuals) { try { v.dispose(); } catch (_) { /* shared refs */ } }
-      tankVisuals.length = 0;
+      backdropGeneration++;
+      mapBackdropTexture?.dispose();
+      mapBackdropTexture = null;
       for (const o of group.userData.optimizationDisposables || []) o.dispose?.();
       group.userData.optimizationDisposables = [];
       for (const o of disposables) if (o && o.dispose) o.dispose();
       disposables.length = 0;
+      partLibrary.dispose();
     },
   };
 }

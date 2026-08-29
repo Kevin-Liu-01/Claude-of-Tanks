@@ -37,6 +37,19 @@ authoring are the only explicit full-fleet gates. Garage and battle transitions
 remain painted while this asynchronous work proceeds, so low-end hardware sees
 progress instead of a blocked black canvas.
 
+The workshop around the selected vehicle is a separate, demand-loaded scene.
+Ten garage identities are bound to ten real battlefield locations and selected
+from the Workshop control beside Home and Record. The environment choice is
+persisted independently from the next-battle map. A selected location retints
+the hangar, changes the service-bay layout, and streams that battlefield's
+existing thumbnail into the wall location display; it never constructs the
+battlefield itself. Repair scenery uses a dedicated 7.5K-triangle catalog of
+workshop-only hull shells, turret cradles, guns, road wheels, track shoes,
+armor racks, power packs, wrecks and gantries. These meshes record which fleet
+vehicle inspired them, but never import or construct a playable tank. Common
+geometry and materials are shared, repeated parts are instanced, and one small
+chunk is added per genuine idle lease after the garage is already interactive.
+
 Viewport synchronization also has one typed engine owner. Renderer output,
 camera projection, post targets, and shadow frustums resize together. If an
 embedded or mobile browser initially reports a 0x0 layout, a bounded temporary

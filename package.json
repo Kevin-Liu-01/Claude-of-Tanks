@@ -13,6 +13,7 @@
     "minimap:assets": "node tools/bake-minimap-assets.mjs",
     "perf:terrain-stream": "node tools/terrain-stream-benchmark.mjs",
     "qa:maps": "node tools/map-environment-audit.mjs",
+    "qa:garage": "node tools/garage-variants-probe.mjs",
     "test:public-copy": "node src/presentation/publicCopy.selftest.mjs",
     "test:analytics": "node src/presentation/analytics.selftest.mjs",
     "test:stats": "node src/productStats.selftest.mjs",

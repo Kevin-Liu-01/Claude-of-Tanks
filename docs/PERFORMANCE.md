@@ -64,6 +64,14 @@ profile-family chunks. Studio transfers its route chunk on nav hover/focus/
 touch but does not construct the authoring runtime until entry. These boundaries
 keep demand loading without making a card or route click pay the cold parse.
 
+Garage workshop scenery must not import `fleetFactory.ts` or request profile
+families. It uses the standalone workshop part catalog, currently 7,462
+triangles for every assembly state combined. The wall location image and ten
+selector previews reuse existing map thumbnails and decode only when the
+workshop/selector is demanded. `npm run qa:garage` enumerates all ten locations,
+checks unique map bindings, persistence, preview decode, the 35K hard triangle
+ceiling, desktop switch frame gaps, console health, and the 390×844 selector.
+
 An opaque transition must be visible before asynchronous battle imports or
 world loading. Hiding the menu before painting the transition can expose one
 garage frame during a cold network handoff.
@@ -120,10 +128,10 @@ tank shadow proxies are exempt. Exact repeated meshes become instances; the
 remaining compatible, opaque, semantic-free workshop surfaces merge by material
 and render state in root-local space. The finalizer publishes exact batching,
 released-geometry, and before/after caster receipts to the phase-resource probe.
-The distant repair and salvage exhibits use the fleet's existing low-
-tessellation presentation while preserving authored dimensions and materials;
-the selectable tank remains full quality. The separately posed salvage
-exhibits remain unbatched so their named component ownership is intact. A
+The distant repair and salvage exhibits use a standalone low-tessellation
+primitive catalog patterned after named fleet components; the selectable tank
+remains full quality. Assemblies retain their semantic roots while repeated
+wheels, track shoes and armor cassettes are instanced. A
 settled Garage is event-invalidated and paints only once per five-second safety
 window. It also reuses completed CSM depth maps with zero shadow submissions.
 Input, resize, streamed visual work, spring motion, and vehicle switching wake

@@ -198,7 +198,15 @@ export function createGarage(opts) {
     `title="Local service record" aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
     `${uiIconSVG('battleRecord', 15, 'currentColor', 'nvi')}` +
     `<span class="nav-label">Record</span><span class="record-badge" aria-hidden="true">0</span></button>` +
+    `<div class="cot-garage-variant-control">` +
+    `<button class="nv cot-garage-variant-trigger" type="button" aria-label="Choose garage environment" ` +
+    `title="Garage environment" aria-haspopup="listbox" aria-expanded="false" ` +
+    `aria-controls="cot-garage-variant-menu">${uiIconSVG('garage', 15, 'currentColor', 'nvi')}` +
+    `<span class="nav-label cot-garage-variant-label">Workshop</span>` +
+    `${uiIconSVG('chevronRight', 10, 'currentColor', 'cot-garage-variant-chevron')}</button></div>` +
     `</div></div>` +
+    `<div class="cot-garage-variant-menu" id="cot-garage-variant-menu" role="listbox" ` +
+    `aria-label="Garage environments" hidden></div>` +
     `<nav class="cot-nav cot-header-nav" aria-label="Garage navigation">` +
     `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-label="Garage" title="Garage">` +
     `<img class="nvi nvi-product" src="/brand/nav/garage.svg" alt="" draggable="false">` +
@@ -238,7 +246,10 @@ export function createGarage(opts) {
     `<strong>Docs</strong><small>Game handbook</small></span></button>` +
     `<button type="button" data-mobile-nav="record">` +
     `${uiIconSVG('battleRecord', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
-    `<strong>Record</strong><small>Local career stats</small></span></button></div></nav>` +
+    `<strong>Record</strong><small>Local career stats</small></span></button>` +
+    `<button type="button" data-mobile-nav="environment">` +
+    `${uiIconSVG('garage', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
+    `<strong>Workshop</strong><small>Choose garage environment</small></span></button></div></nav>` +
     `<div class="cot-record-modal" id="cot-record-modal" role="dialog" aria-modal="true" ` +
     `aria-labelledby="cot-record-title" aria-describedby="cot-record-description" hidden>` +
     `<section class="cot-record-dialog">` +
@@ -484,6 +495,9 @@ export function createGarage(opts) {
   const roomReminder = root.querySelector('.cot-room-reminder');
   const mapsEl = root.querySelector('.cot-maps');
   const recordTrigger = root.querySelector('.cot-record-trigger');
+  const garageVariantTrigger = root.querySelector('.cot-garage-variant-trigger');
+  const garageVariantMenu = root.querySelector('.cot-garage-variant-menu');
+  const garageVariantLabel = root.querySelector('.cot-garage-variant-label');
   const recordModal = root.querySelector('.cot-record-modal');
   const recordClose = root.querySelector('.cot-record-close');
   const mobileNavTrigger = root.querySelector('.cot-mobile-nav-trigger');
@@ -497,6 +511,11 @@ export function createGarage(opts) {
   let battleMode = 'solo';
   let battleGameMode = 'standard';
   let vehicleLocked = false;
+  const garageVariants = Array.isArray(opts.garageVariants) ? opts.garageVariants : [];
+  let selectedGarageVariantId = garageVariants.some((variant) =>
+    variant.id === opts.selectedGarageVariantId)
+    ? opts.selectedGarageVariantId : garageVariants[0]?.id || '';
+  const garageVariantButtons = new Map();
   const cardById = new Map();
   const specById = new Map();
   // specById covers the FULL roster so direct tooling can still inspect a
@@ -504,6 +523,81 @@ export function createGarage(opts) {
   for (const s of allSpecs) specById.set(s.id, s);
 
   const emit = (ev, payload) => { if (bus && bus.emit) bus.emit(ev, payload); };
+  const selectedGarageVariant = () => garageVariants.find((variant) =>
+    variant.id === selectedGarageVariantId) || garageVariants[0] || null;
+  const isGarageVariantMenuOpen = () => !garageVariantMenu.hidden;
+  const closeGarageVariantMenu = ({ restoreFocus = false } = {}) => {
+    if (!isGarageVariantMenuOpen()) return;
+    garageVariantMenu.hidden = true;
+    garageVariantTrigger.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) garageVariantTrigger.focus();
+  };
+  const openGarageVariantMenu = () => {
+    if (!garageVariants.length) return;
+    closeGarageTools();
+    closeBattleMenu();
+    closeMobileNavigation();
+    garageVariantMenu.hidden = false;
+    garageVariantTrigger.setAttribute('aria-expanded', 'true');
+    garageVariantButtons.get(selectedGarageVariantId)?.focus();
+  };
+  const refreshGarageVariantUi = () => {
+    const selected = selectedGarageVariant();
+    if (!selected) {
+      garageVariantTrigger.hidden = true;
+      return;
+    }
+    garageVariantLabel.textContent = selected.name;
+    garageVariantTrigger.title = `${selected.name} · ${selected.location}`;
+    garageVariantTrigger.setAttribute('aria-label',
+      `Garage environment: ${selected.name}. Choose another environment`);
+    root.dataset.garageVariant = selected.id;
+    for (const [id, button] of garageVariantButtons) {
+      const active = id === selected.id;
+      button.classList.toggle('sel', active);
+      button.setAttribute('aria-selected', String(active));
+    }
+  };
+  const selectGarageVariant = (variantId, { notify = true } = {}) => {
+    if (!garageVariantButtons.has(variantId)) return false;
+    selectedGarageVariantId = variantId;
+    refreshGarageVariantUi();
+    closeGarageVariantMenu({ restoreFocus: true });
+    if (notify) opts.onGarageVariantSelect?.(variantId);
+    return true;
+  };
+  for (const variant of garageVariants) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'cot-garage-variant-card';
+    button.setAttribute('role', 'option');
+    button.dataset.variantId = variant.id;
+    const image = document.createElement('img');
+    image.src = variant.thumb || variant.hero || '';
+    image.alt = '';
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    const copy = document.createElement('span');
+    copy.className = 'cot-garage-variant-copy';
+    const name = document.createElement('strong');
+    name.textContent = variant.name;
+    const location = document.createElement('small');
+    location.textContent = variant.location;
+    const description = document.createElement('em');
+    description.textContent = variant.description;
+    copy.append(name, location, description);
+    const check = document.createElement('span');
+    check.className = 'cot-garage-variant-check';
+    check.innerHTML = uiIconSVG('check', 12);
+    button.append(image, copy, check);
+    button.addEventListener('click', () => {
+      emit('ui:click', {});
+      selectGarageVariant(variant.id);
+    });
+    garageVariantMenu.appendChild(button);
+    garageVariantButtons.set(variant.id, button);
+  }
+  refreshGarageVariantUi();
   const openSelectedInGallery = (layer = 'appearance') => {
     emit('ui:click', {});
     window.location.href = garageGalleryHref(selectedId, layer);
@@ -512,6 +606,7 @@ export function createGarage(opts) {
   const isRecordOpen = () => recordModal.classList.contains('open');
   const openServiceRecord = () => {
     closeGarageTools();
+    closeGarageVariantMenu();
     setGaragePanel('');
     refreshServiceRecord();
     recordRestoreFocus = document.activeElement;
@@ -606,6 +701,10 @@ export function createGarage(opts) {
     else openMobileNavigation();
   });
   document.addEventListener('pointerdown', (event) => {
+    if (isGarageVariantMenuOpen() && event.target !== garageVariantTrigger &&
+      !garageVariantTrigger.contains(event.target) && !garageVariantMenu.contains(event.target)) {
+      closeGarageVariantMenu();
+    }
     if (isMobileNavigationOpen() && event.target !== mobileNavTrigger &&
       !mobileNavTrigger.contains(event.target) && !mobileNavMenu.contains(event.target)) {
       closeMobileNavigation();
@@ -617,6 +716,12 @@ export function createGarage(opts) {
   });
   // Escape belongs to the open disclosure. Capture it before the game's
   // rebindable input layer so closing navigation cannot also open Settings.
+  window.addEventListener('keydown', (event) => {
+    if (!isGarageVariantMenuOpen() || event.code !== 'Escape') return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closeGarageVariantMenu({ restoreFocus: true });
+  }, true);
   window.addEventListener('keydown', (event) => {
     if (!isMobileNavigationOpen() || event.code !== 'Escape') return;
     event.preventDefault();
@@ -1806,6 +1911,11 @@ export function createGarage(opts) {
   // r9.1 header nav — Studio rides the exact F8 production path (studio.js
   // listens on window keydown and gates on game.phase === 'garage'); Home and
   // Docs use their public pretty routes. Garage is the current screen.
+  garageVariantTrigger.addEventListener('click', () => {
+    emit('ui:click', {});
+    if (isGarageVariantMenuOpen()) closeGarageVariantMenu({ restoreFocus: true });
+    else openGarageVariantMenu();
+  });
   recordTrigger.addEventListener('click', () => {
     emit('ui:click', {});
     if (isRecordOpen()) closeServiceRecord();
@@ -1859,6 +1969,9 @@ export function createGarage(opts) {
       else if (destination === 'record') {
         emit('ui:click', {});
         openServiceRecord();
+      } else if (destination === 'environment') {
+        emit('ui:click', {});
+        openGarageVariantMenu();
       }
     });
   }
@@ -1908,6 +2021,7 @@ export function createGarage(opts) {
      */
     show(selected = 'm1a1') {
       refreshServiceRecord();
+      closeGarageVariantMenu();
       closeGarageTools();
       setGaragePanel('');
       root.style.display = 'block';
@@ -1938,6 +2052,7 @@ export function createGarage(opts) {
       closeServiceRecord({ restoreFocus: false });
       closeMobileNavigation();
       closeGarageTools();
+      closeGarageVariantMenu();
       closeBattleMenu();
       setGaragePanel('');
       root.style.display = 'none';
@@ -1976,6 +2091,12 @@ export function createGarage(opts) {
 
     /** Currently highlighted vehicle id (probe/tooling hook). @returns {?string} */
     getSelected() { return selectedId; },
+
+    /** Current persisted workshop environment id. */
+    getSelectedGarageVariant() { return selectedGarageVariantId; },
+
+    /** Select a workshop without conflating it with the next battle map. */
+    setSelectedGarageVariant(variantId) { return selectGarageVariant(variantId); },
 
     /** Adjacent cards in the active national carousel, forward then back. */
     getNeighborIds(radius = 2) {

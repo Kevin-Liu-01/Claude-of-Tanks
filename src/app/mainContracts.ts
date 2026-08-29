@@ -30,11 +30,13 @@ export interface MainGarageRuntime {
   hide(): void;
   getSelected(): string;
   getSelectedMap(): string;
+  getSelectedGarageVariant(): string;
   getNeighborIds(radius?: number): string[];
   getStageRect(): { x: number; y: number; w: number; h: number };
   setRoomStatus(status?: unknown): void;
   attachSettingsControl(control: HTMLElement): void;
   setSelected(specId: string): void;
+  setSelectedGarageVariant(variantId: string): boolean;
 }
 
 export interface MainVisual extends NonNullable<RosterEntity['visual']> {

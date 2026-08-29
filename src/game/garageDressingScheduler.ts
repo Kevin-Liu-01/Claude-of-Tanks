@@ -4,7 +4,6 @@ interface GarageDressingSchedulerOptions {
   dressing: GarageDressingAccess;
   getPhase(): string;
   isTransitionActive(): boolean;
-  ensureTankBuilders(specIds: readonly string[] | undefined): Promise<unknown>;
   requestIdle(callback: () => void): unknown;
   scheduleDelay(callback: () => void, delayMs: number): unknown;
   acquireBackgroundWork?: (
@@ -39,16 +38,15 @@ export function createGarageDressingScheduler({
   dressing,
   getPhase,
   isTransitionActive,
-  ensureTankBuilders,
   requestIdle,
   scheduleDelay,
   acquireBackgroundWork = async () => ({ release() {} }),
   now = () => performance.now(),
   warn = (message, error) => console.warn(message, messageOf(error)),
   onVisualChange = () => {},
-  quietMs = 1600,
+  quietMs = 900,
 }: GarageDressingSchedulerOptions): GarageDressingScheduler {
-  const required = [getPhase, isTransitionActive, ensureTankBuilders,
+  const required = [getPhase, isTransitionActive,
     requestIdle, scheduleDelay, acquireBackgroundWork, now, warn, onVisualChange];
   if (!dressing || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('garage dressing scheduler requires every runtime port');
@@ -56,7 +54,6 @@ export function createGarageDressingScheduler({
 
   let lastActivityAt = now();
   let buildScheduled = false;
-  let sourcesPromise: Promise<unknown> | null = null;
 
   const defer = (delayMs: number) => {
     scheduleDelay(schedule, delayMs);
@@ -75,7 +72,7 @@ export function createGarageDressingScheduler({
       return;
     }
     if (!quiet()) {
-      defer(600);
+      defer(300);
       return;
     }
 
@@ -83,7 +80,7 @@ export function createGarageDressingScheduler({
       && !isTransitionActive() && quiet() && !dressing.isBuilt();
     const lease = await acquireBackgroundWork('dressing', stillValid);
     if (!lease) {
-      if (!dressing.isBuilt() && getPhase() === 'garage') defer(350);
+      if (!dressing.isBuilt() && getPhase() === 'garage') defer(200);
       return;
     }
 
@@ -92,35 +89,13 @@ export function createGarageDressingScheduler({
       // Import/evaluation can overlap new input or a phase transition.
       if (getPhase() !== 'garage' || isTransitionActive()) return;
       if (!quiet()) {
-        defer(600);
+        defer(300);
         return;
       }
 
-      // Preserve the authored order: ordinary architecture and clutter first,
-      // then the procedural vehicle exhibits after their exact families load.
-      const hasBuiltCore = (dressing.group.userData.buildTimings?.length || 0) > 0;
-      if (!hasBuiltCore) {
-        await dressing.pump();
-        onVisualChange();
-        if (!dressing.isBuilt() && getPhase() === 'garage') defer(350);
-        return;
-      }
-
-      if (!sourcesPromise) {
-        const request = ensureTankBuilders(
-          dressing.group.userData.modernComponentSources as readonly string[] | undefined,
-        );
-        sourcesPromise = request;
-        request.catch(() => {
-          if (sourcesPromise === request) sourcesPromise = null;
-        });
-      }
-      await sourcesPromise;
-      if (getPhase() !== 'garage') return;
-      if (!quiet()) {
-        defer(600);
-        return;
-      }
+      // Every optional slice now comes from the tiny workshop-only part kit.
+      // No fleet-family transfer/build gate is needed between architecture and
+      // vehicle assembly props, so each quiet lease performs exactly one slice.
       await dressing.pump();
       onVisualChange();
     } catch (error: unknown) {
@@ -129,7 +104,7 @@ export function createGarageDressingScheduler({
       lease.release();
     }
 
-    if (!dressing.isBuilt() && getPhase() === 'garage') defer(350);
+    if (!dressing.isBuilt() && getPhase() === 'garage') defer(140);
   };
 
   const schedule = () => {
