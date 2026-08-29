@@ -7,9 +7,11 @@
 // wall fan, extra hanging work lamps, two partial tanks and a recovered wreck.
 //
 // Contract with the rest of the game:
-//  - FLEET-EXACT EXHIBITS: Abrams, T-90M and Leclerc displays use the same
-//    first-party createTank builders as the playable fleet. The module remains
-//    lazy and only ensures those three families after the garage becomes quiet.
+//  - FLEET-EXACT EXHIBITS: Verdant preserves its original T-90A Burlak, Abrams,
+//    T-90M and K2 repair choreography. The nine newer environments retain the
+//    Abrams, T-90M and Leclerc layout. Every vehicle comes from the same
+//    first-party createTank builders as the playable fleet, loaded only after
+//    the garage becomes quiet.
 //  - BUILDS IN CHUNKS: first paint pumps only the static workshop shell, then
 //    streams one real vehicle/component display per garage-idle window.
 //    Deterministic captures still call ensureBuilt(). This keeps the complete
@@ -28,6 +30,7 @@ import * as THREE from 'three';
 import {
   mulberry32, canvasTexture, dither, makeSignTexture, makeHazardTexture, SIGN_FONT,
 } from '../ui/garageStage.ts';
+import { DECOR_KITS } from '../vehicles/decorations.js';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant } from './garageVariants.ts';
 import {
@@ -52,7 +55,10 @@ export interface GarageWorkshopVisual {
 }
 
 export interface GarageWorkshopFleet {
-  createVisual(specId: string): GarageWorkshopVisual;
+  createVisual(
+    specId: string,
+    options?: Readonly<Record<string, unknown>>,
+  ): GarageWorkshopVisual;
 }
 
 export interface GarageDressingExisting {
@@ -74,21 +80,24 @@ export interface GarageDressingRuntime {
 type Scale3 = number | [number, number, number];
 type TrackedResource = { dispose(): void };
 
-const WORKSHOP_FLEET_IDS = Object.freeze(['m1a2', 't90m', 'leclerc'] as const);
+const WORKSHOP_FLEET_IDS = Object.freeze([
+  't90a_burlak', 'm1a2', 't90m', 'k2', 'leclerc',
+] as const);
 
-/** Load only the three real fleet families used by the optional workshop. */
+/** Load only the real fleet families used by the optional workshop. */
 export async function prepareGarageDressing(
   engineCtx: GarageDressingEngineContext,
 ): Promise<GarageWorkshopFleet> {
   const { createTank, ensureTankBuilders } = await import('../vehicles/fleetFactory.ts');
   await ensureTankBuilders(WORKSHOP_FLEET_IDS);
   return {
-    createVisual(specId: string) {
+    createVisual(specId: string, options: Readonly<Record<string, unknown>> = {}) {
       return createTank(specId, engineCtx, {
         camoSeed: 4200,
         quality: 'ai',
         geometryQuality: 'high',
         staticPreview: true,
+        ...options,
       });
     },
   };
@@ -139,12 +148,20 @@ export function createGarageDressing(
   const signTextures: THREE.Texture[] = [];
   const partLibrary = createWorkshopPartLibrary(engineCtx);
   const variantAssemblies: THREE.Group[] = [];
+  const variantOnlyRoots: THREE.Group[] = [];
   const workshopVisuals: GarageWorkshopVisual[] = [];
   const workshopVisualById = new Map<string, GarageWorkshopVisual>();
   const workshopFleet = existing.workshopFleet;
   let currentVariant = getGarageVariant(existing.variantId);
+  const legacyVerdantRoot = new THREE.Group();
+  legacyVerdantRoot.name = 'garage_verdant_original_workshop';
+  legacyVerdantRoot.userData.variantSwitchOwner = true;
+  legacyVerdantRoot.userData.layoutReceipt = 'pre-6c7b07533-original';
+  legacyVerdantRoot.visible = currentVariant.id === 'verdant_motor_pool';
+  group.add(legacyVerdantRoot);
   group.userData.garageVariantId = currentVariant.id;
   group.userData.garageMapId = currentVariant.mapId;
+  group.userData.verdantOriginalLayoutReceipt = legacyVerdantRoot.userData.layoutReceipt;
 
   // --- shared palette (kept LOW-ALBEDO so nothing competes with the hero) ---
   const mat = {
@@ -345,17 +362,24 @@ export function createGarageDressing(
   };
 
   /** hanging work lamp (dressing only — the pool quad fakes its throw). */
-  function workLamp(x: number, z: number, poolScale = 5.5, y = 7.4): void {
-    put(G.lampShade, mat.steelDark, x, y, z);
-    const glow = put(G.lampGlow, mat.lamp, x, y - 0.26, z, 0, 0, 0, 1, group, false);
+  function workLamp(
+    x: number,
+    z: number,
+    poolScale = 5.5,
+    y = 7.4,
+    parent: THREE.Object3D = group,
+  ): void {
+    put(G.lampShade, mat.steelDark, x, y, z, 0, 0, 0, 1, parent);
+    const glow = put(G.lampGlow, mat.lamp, x, y - 0.26, z, 0, 0, 0, 1, parent, false);
     glow.castShadow = false;
-    put(G.lampCable, mat.steelDark, x, y + 0.26 + (10 - y - 0.26) / 2, z, 0, 0, 0, [1, (10 - y - 0.26), 1], group, false);
+    put(G.lampCable, mat.steelDark, x, y + 0.26 + (10 - y - 0.26) / 2, z,
+      0, 0, 0, [1, (10 - y - 0.26), 1], parent, false);
     if (poolScale > 0.01) {
       const pool = new THREE.Mesh(track(new THREE.PlaneGeometry(1, 1)), poolMat);
       pool.rotation.x = -Math.PI / 2;
       pool.position.set(x, 0.032, z);
       pool.scale.setScalar(poolScale);
-      group.add(pool);
+      parent.add(pool);
     }
   }
 
@@ -427,12 +451,13 @@ export function createGarageDressing(
     bodyMat: THREE.Material,
     trimMat: THREE.Material,
     s = 1,
+    parent: THREE.Object3D = group,
   ): THREE.Group {
     const t = new THREE.Group();
     t.position.set(x, 0, z);
     t.rotation.y = ry;
     t.scale.setScalar(s);
-    group.add(t);
+    parent.add(t);
     put(track(new THREE.BoxGeometry(1.15, 1.1, 0.62)), bodyMat, 0, 0.72, 0, 0, 0, 0, 1, t);
     put(track(new THREE.BoxGeometry(1.22, 0.06, 0.68)), trimMat, 0, 1.3, 0, 0, 0, 0, 1, t);
     put(track(new THREE.BoxGeometry(1.18, 0.08, 0.64)), trimMat, 0, 0.2, 0, 0, 0, 0, 1, t);
@@ -458,6 +483,7 @@ export function createGarageDressing(
     w = 2.0,
     h = 1.0,
     wallBayId = '',
+    parent: THREE.Object3D = group,
   ): void {
     const tex = track(canvasTexture(makeSignTexture(rng, text), { aniso }));
     signTextures.push(tex);
@@ -465,20 +491,33 @@ export function createGarageDressing(
       map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.13,
       roughness: 0.6, metalness: 0.2,
     })));
-    const back = put(track(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.05)), mat.steelDark, x, y, z, ry, 0, 0, 1, group, false);
+    const back = put(track(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.05)), mat.steelDark,
+      x, y, z, ry, 0, 0, 1, parent, false);
     back.userData.wallBayId = wallBayId;
     const board = new THREE.Mesh(track(new THREE.PlaneGeometry(w, h)), m);
     board.position.set(x, y, z);
     board.rotation.y = ry;
     board.translateZ(0.032);
     board.userData.wallBayId = wallBayId;
-    group.add(board);
+    parent.add(board);
   }
 
   function wallSignAt(text: string, wallBayId: string): void {
     const bay = garageWallTransform(wallBayId);
     wallSign(text, bay.x, bay.y, bay.z, bay.yaw,
       bay.width - 0.12, bay.height - 0.12, wallBayId);
+  }
+
+  function wallSignAtForVariants(text: string, wallBayId: string): void {
+    const bay = garageWallTransform(wallBayId);
+    const root = new THREE.Group();
+    root.name = `garage_variant_sign_${wallBayId}`;
+    root.userData.variantSwitchOwner = true;
+    root.visible = currentVariant.id !== 'verdant_motor_pool';
+    group.add(root);
+    variantOnlyRoots.push(root);
+    wallSign(text, bay.x, bay.y, bay.z, bay.yaw,
+      bay.width - 0.12, bay.height - 0.12, wallBayId, root);
   }
 
   /** fire extinguisher on a wall bracket. */
@@ -505,6 +544,127 @@ export function createGarageDressing(
     extinguisher(bay.x, bay.y, bay.z, bay.yaw, wallBayId);
   }
 
+  /** Bounds only meshes that are actually visible through their parent chain. */
+  function visibleWorldBounds(root: THREE.Object3D): THREE.Box3 {
+    const bounds = new THREE.Box3();
+    const local = new THREE.Box3();
+    root.updateMatrixWorld(true);
+    root.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (!mesh.isMesh || !mesh.geometry) return;
+      const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+      if (mesh.userData.authoredShadowProxy || material?.colorWrite === false) return;
+      for (let owner: THREE.Object3D | null = mesh;
+        owner && owner !== root.parent; owner = owner.parent) {
+        if (!owner.visible) return;
+      }
+      if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+      if (!mesh.geometry.boundingBox) return;
+      local.copy(mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld);
+      bounds.union(local);
+    });
+    return bounds;
+  }
+
+  function seatVisibleRoot(root: THREE.Object3D, supportY: number): void {
+    const bounds = visibleWorldBounds(root);
+    if (bounds.isEmpty()) return;
+    root.position.y += supportY - bounds.min.y;
+    root.updateMatrixWorld(true);
+  }
+
+  function markModernPart<T extends THREE.Object3D>(
+    object: T,
+    sourceVehicleId: string,
+    component: string,
+  ): T {
+    object.userData.sourceVehicleId = sourceVehicleId;
+    object.userData.sourceEra = 'modern';
+    object.userData.component = component;
+    object.name = `dressing_${sourceVehicleId}_${component}`;
+    return object;
+  }
+
+  function createLegacyVisual(
+    specId: 't90a_burlak' | 'k2',
+    camoSeed: number,
+  ): GarageWorkshopVisual {
+    if (!workshopFleet) throw new Error('garage workshop fleet was not prepared');
+    const visual = workshopFleet.createVisual(specId, {
+      camoSeed,
+      quality: 'ai',
+      geometryQuality: 'high',
+      staticPreview: true,
+    });
+    visual.resetForGaragePresentation?.();
+    workshopVisuals.push(visual);
+    workshopVisualById.set(specId, visual);
+    return visual;
+  }
+
+  /** Clone an already-built exact fleet visual without duplicating GPU assets. */
+  function clonePreparedVisualRoot(specId: 'm1a2' | 't90m'): THREE.Group {
+    const source = workshopVisualById.get(specId);
+    if (!source) throw new Error(`${specId} is missing its prepared workshop visual`);
+    const clone = source.root.clone(true);
+    clone.position.set(0, 0, 0);
+    clone.rotation.set(0, 0, 0);
+    clone.scale.setScalar(1);
+    return clone;
+  }
+
+  function placeGunRig(
+    source: THREE.Object3D | undefined,
+    sourceVehicleId: string,
+    x: number,
+    y: number,
+    z: number,
+    scale = 1,
+  ): THREE.Group | null {
+    if (!source) return null;
+    const holder = markModernPart(new THREE.Group(), sourceVehicleId, 'gun_assembly');
+    holder.position.set(x, y, z);
+    holder.rotation.y = Math.PI / 2;
+    holder.scale.setScalar(scale);
+    const gun = source.clone(true);
+    gun.position.set(0, 0, 0);
+    gun.rotation.set(0, 0, 0);
+    gun.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+    });
+    holder.add(gun);
+    legacyVerdantRoot.add(holder);
+    return holder;
+  }
+
+  function serviceMachineGun(
+    parent: THREE.Object3D,
+    variant: 'm2' | 'dshk',
+    shield: boolean,
+    x: number,
+    seed: number,
+  ): THREE.Group {
+    const sourceId = variant === 'dshk' ? 't90m' : 'm1a2';
+    const component = variant === 'dshk' ? 'dshk_service_mount' : 'm2_service_mount';
+    const mg = markModernPart(new THREE.Group(), sourceId, component);
+    mg.position.set(x, 1.02, 0);
+    mg.rotation.y = Math.PI / 2;
+    mg.scale.setScalar(1.18);
+    const parts = DECOR_KITS.aamg({ rng: mulberry32(seed), v: variant, shield, ring: false });
+    for (const part of parts) {
+      const material = part.mat === 'kit' ? mat.olive : mat.oily;
+      const mesh = new THREE.Mesh(track(part.geo), material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mg.add(mesh);
+    }
+    parent.add(mg);
+    return mg;
+  }
+
   // Assembly positions all stay outside the showroom orbit envelope. Each of
   // the ten workshop layouts rotates and mirrors this list, producing a real
   // scene-composition change without retaining ten copies of the geometry.
@@ -529,8 +689,11 @@ export function createGarageDressing(
     // Preserve the painted-bay axis and turn complete vehicles toward the
     // service end; turret cradles and support racks retain their authored yaw.
     root.rotation.y = bayYaw + (root.userData.completeFleetTank ? Math.PI : 0);
+    root.visible = currentVariant.id !== 'verdant_motor_pool';
     root.userData.garageVariantId = currentVariant.id;
     root.userData.logicalSlot = logicalSlot;
+    root.updateMatrix();
+    root.updateMatrixWorld(true);
   }
 
   function addSupportAssembly(
@@ -539,6 +702,7 @@ export function createGarageDressing(
     scale = 1,
   ): THREE.Group {
     const root = partLibrary.createAssembly(kind, { name: `dressing_${kind}` });
+    root.userData.variantSwitchOwner = true;
     root.scale.setScalar(scale);
     poseAssembly(root, logicalSlot);
     group.add(root);
@@ -593,11 +757,23 @@ export function createGarageDressing(
     poseAssembly(exhibit, logicalSlot);
     group.add(exhibit);
     exhibit.updateMatrixWorld(true);
-    if (engineCtx.renderer && engineCtx.camera && engineCtx.scene) {
-      engineCtx.renderer.compile(exhibit, engineCtx.camera, engineCtx.scene);
-    }
+    compileWorkshopObject(exhibit);
     variantAssemblies.push(exhibit);
     return exhibit;
+  }
+
+  function compileWorkshopObject(root: THREE.Object3D): void {
+    if (engineCtx.renderer && engineCtx.camera && engineCtx.scene) {
+      // WebGLRenderer.compile respects Object3D.visible. Both the fixed
+      // Verdant set and the additive set can be hidden while the other layout
+      // is selected, so make this one root force-visible only for submission.
+      // Otherwise the first garage switch pays all of its shader births.
+      const wasVisible = root.visible;
+      root.visible = true;
+      root.updateMatrixWorld(true);
+      engineCtx.renderer.compile(root, engineCtx.camera, engineCtx.scene);
+      root.visible = wasVisible;
+    }
   }
 
   function updateMapBackdrop(): void {
@@ -627,7 +803,15 @@ export function createGarageDressing(
     group.userData.garageMapId = currentVariant.mapId;
     mat.safety.color.setHex(currentVariant.accent);
     bayFill.color.setHex(currentVariant.lightTint);
+    const isVerdant = currentVariant.id === 'verdant_motor_pool';
+    legacyVerdantRoot.visible = isVerdant;
+    for (const root of variantOnlyRoots) root.visible = !isVerdant;
     for (const root of variantAssemblies) poseAssembly(root, root.userData.logicalSlot || 0);
+    group.userData.verdantOriginalVisible = isVerdant && legacyVerdantRoot.children.length > 0;
+    group.userData.workshopTriangleCount = isVerdant
+      ? (group.userData.verdantOriginalTriangleCount || 0)
+      : (group.userData.variantWorkshopTriangleCount || 0);
+    group.userData.workshopExhibitCount = isVerdant ? 4 : 6;
     updateMapBackdrop();
     return currentVariant.id;
   }
@@ -920,34 +1104,445 @@ export function createGarageDressing(
   });
 
   // ==========================================================================
-  // CHUNK 2 — real playable-fleet Abrams final assembly + power pack.
+  // CHUNK 2 — ORIGINAL VERDANT BAY A: T-90A Burlak on jack stands with its
+  // turret lifted under the gantry. Positions are the pre-overhaul coordinates.
   // ==========================================================================
-  chunks.push(function buildBayA() {
+  chunks.push(function buildOriginalVerdantBurlakBay() {
+    const visual = createLegacyVisual('t90a_burlak', 777);
+    const tank = markModernPart(visual.root, 't90a_burlak', 'gantry_repair_vehicle');
+    tank.name = 'dressing_tank_a';
+    tank.rotation.y = -0.55;
+    tank.position.set(17.8, 0.42, -15.5);
+    legacyVerdantRoot.add(tank);
+    const turret = tank.getObjectByName('rig_turret');
+    if (turret) {
+      turret.position.y += 0.55;
+      turret.rotation.y += 0.14;
+      turret.rotation.z += 0.025;
+    }
+
+    const standCone = track(new THREE.CylinderGeometry(0.14, 0.3, 0.42, 4));
+    const standPost = track(new THREE.CylinderGeometry(0.05, 0.05, 0.22, 8));
+    const holder = new THREE.Group();
+    holder.name = 'verdant_original_jack_stands';
+    holder.rotation.y = -0.55;
+    holder.position.set(17.8, 0, -15.5);
+    legacyVerdantRoot.add(holder);
+    for (const [ox, oz] of [[-1.15, -2.2], [1.15, -2.2], [-1.15, 2.2], [1.15, 2.2]]) {
+      const stand = new THREE.Group();
+      stand.position.set(ox, 0, oz);
+      stand.rotation.y = 0.4;
+      holder.add(stand);
+      put(standCone, mat.safety, 0, 0.21, 0, 0, 0, 0, 1, stand);
+      put(standPost, mat.steelBright, 0, 0.5, 0, 0, 0, 0, 1, stand);
+      put(track(new THREE.BoxGeometry(0.22, 0.06, 0.14)), mat.steelDark,
+        0, 0.62, 0, 0, 0, 0, 1, stand);
+    }
+
+    const gantry = new THREE.Group();
+    gantry.name = 'verdant_original_turret_gantry';
+    gantry.position.set(17.8, 0, -15.5);
+    gantry.rotation.y = -0.55;
+    legacyVerdantRoot.add(gantry);
+    const hazardTexture = track(canvasTexture(makeHazardTexture(), { aniso, repeat: [4, 1] }));
+    const beamMaterial = track(shadowMat(new THREE.MeshStandardMaterial({
+      map: hazardTexture, roughness: 0.6, metalness: 0.3,
+    })));
+    const legGeometry = track(new THREE.BoxGeometry(0.14, 4.9, 0.14));
+    for (const [lx, lz] of [[-2.4, -3.2], [2.4, -3.2], [-2.4, 3.2], [2.4, 3.2]]) {
+      put(legGeometry, mat.safety, lx, 2.45, lz,
+        0, 0, lx > 0 ? -0.06 : 0.06, 1, gantry);
+    }
+    const braceGeometry = track(new THREE.BoxGeometry(0.09, 2.6, 0.09));
+    for (const lz of [-3.2, 3.2]) {
+      put(braceGeometry, mat.steelMid, -1.2, 1.3, lz, 0, 0, 1.08, 1, gantry);
+      put(braceGeometry, mat.steelMid, 1.2, 1.3, lz, 0, 0, -1.08, 1, gantry);
+    }
+    put(track(new THREE.BoxGeometry(0.26, 0.3, 7.1)), beamMaterial,
+      0, 4.92, 0, 0, 0, 0, 1, gantry);
+    put(track(new THREE.BoxGeometry(0.4, 0.06, 7.1)), mat.steelDark,
+      0, 4.74, 0, 0, 0, 0, 1, gantry);
+    put(track(new THREE.BoxGeometry(0.42, 0.3, 0.5)), mat.steelDark,
+      0, 4.6, 0.4, 0, 0, 0, 1, gantry);
+    const chainGeometry = track(new THREE.CylinderGeometry(0.02, 0.02, 0.85, 6));
+    put(chainGeometry, mat.steelBright, -0.16, 4.1, 0.4, 0, 0, 0.12, 1, gantry, false);
+    put(chainGeometry, mat.steelBright, 0.16, 4.1, 0.4, 0, 0, -0.12, 1, gantry, false);
+    put(track(new THREE.BoxGeometry(0.3, 0.16, 0.16)), mat.steelDark,
+      0, 3.72, 0.4, 0, 0, 0, 1, gantry);
+    put(track(new THREE.CylinderGeometry(0.012, 0.012, 2.1, 6)), mat.rubber,
+      0.05, 3.8, -1.4, 0, 0, 0, 1, gantry, false);
+    const bulb = put(track(new THREE.SphereGeometry(0.06, 8, 6)), mat.lamp,
+      0.05, 2.72, -1.4, 0, 0, 0, 1, gantry, false);
+    bulb.castShadow = false;
+    put(track(new THREE.CylinderGeometry(0.09, 0.07, 0.16, 10)), mat.steelDark,
+      0.05, 2.82, -1.4, 0, 0, 0, 1, gantry, false);
+    const pool = new THREE.Mesh(track(new THREE.PlaneGeometry(7.5, 7.5)), poolMat);
+    pool.rotation.x = -Math.PI / 2;
+    pool.position.set(17.4, 0.03, -14.9);
+    legacyVerdantRoot.add(pool);
+    toolChest(14.2, -18.6, -0.4, mat.blueSteel, mat.steelDark, 0.9, legacyVerdantRoot);
+    const jack = new THREE.Group();
+    jack.name = 'verdant_original_floor_jack';
+    jack.position.set(15.2, 0, -12.4);
+    jack.rotation.y = 0.7;
+    legacyVerdantRoot.add(jack);
+    put(track(new THREE.BoxGeometry(0.7, 0.12, 0.3)), mat.redCab,
+      0, 0.09, 0, 0, 0, 0, 1, jack);
+    put(track(new THREE.BoxGeometry(0.5, 0.08, 0.22)), mat.redCab,
+      -0.05, 0.2, 0, 0, 0, 0.22, 1, jack);
+    put(track(new THREE.CylinderGeometry(0.055, 0.055, 0.6, 8)), mat.steelDark,
+      0.35, 0.32, 0, 0, 0, -0.9, 1, jack);
+    for (const [wheelX, wheelZ] of [[-0.28, 0.12], [-0.28, -0.12], [0.3, 0.12], [0.3, -0.12]]) {
+      put(G.caster, mat.steelDark, wheelX, 0.06, wheelZ,
+        0, 0, Math.PI / 2, 1, jack, false);
+    }
+    compileWorkshopObject(tank);
+  });
+
+  // ==========================================================================
+  // CHUNK 3 — current alternate-garage Abrams exhibit plus ORIGINAL VERDANT
+  // BAY B: M1A2 with its side skirts pulled, tools, creeper and welding cable.
+  // ==========================================================================
+  chunks.push(function buildAbramsAndOriginalVerdantBay() {
     addFleetExhibit('m1a2', 'abrams', 'complete_vehicle', 0, 0.82);
     addSupportAssembly('powerpack', 1, 1.0);
-    wallSignAt('ABRAMS LINE', 'north_final');
+    wallSignAtForVariants('ABRAMS LINE', 'north_final');
+
+    const tank = markModernPart(clonePreparedVisualRoot('m1a2'), 'm1a2', 'skirt_repair_vehicle');
+    tank.name = 'dressing_tank_b';
+    tank.rotation.y = -2.03;
+    tank.position.set(16.9, 0, 17.7);
+    legacyVerdantRoot.add(tank);
+    const turret = tank.getObjectByName('rig_turret');
+    if (turret) turret.rotation.y -= 0.38;
+    const gun = tank.getObjectByName('rig_gun');
+    if (gun) gun.rotation.x -= 0.05;
+
+    const skirts = new THREE.Group();
+    skirts.name = 'verdant_original_removed_side_skirts';
+    skirts.position.set(16.9, 0, 17.7);
+    skirts.rotation.y = -2.03;
+    legacyVerdantRoot.add(skirts);
+    const plateGeometry = track(new THREE.BoxGeometry(1.7, 0.85, 0.045));
+    const plateMaterial = track(shadowMat(new THREE.MeshStandardMaterial({
+      color: 0x3a3d33, roughness: 0.6, metalness: 0.45,
+    })));
+    for (const [plateZ, lean] of [[-1.5, 0.34], [0.1, 0.3], [1.6, 0.38]]) {
+      const plate = put(plateGeometry, plateMaterial,
+        -2.05, 0.42, plateZ, 0, 0, 0, 1, skirts);
+      plate.rotation.order = 'ZYX';
+      plate.rotation.set(0, Math.PI / 2, -lean);
+    }
+    const flatPlate = put(plateGeometry, plateMaterial,
+      -3.1, 0.03, 0.6, 0, 0, 0, 1, skirts);
+    flatPlate.rotation.set(-Math.PI / 2, 0, 0.4);
+    toolChest(12.6, 15.4, 2.6, mat.redCab, mat.redCabDark, 1, legacyVerdantRoot);
+    toolChest(14.0, 20.6, -2.0, mat.olive, mat.steelDark, 0.72, legacyVerdantRoot);
+    const tray = put(track(new THREE.BoxGeometry(0.5, 0.07, 0.32)), mat.steelBright,
+      0.2, 1.72, -2.2, 0.3, 0, 0, 1, skirts);
+    tray.castShadow = false;
+    put(track(new THREE.CylinderGeometry(0.28, 0.32, 0.09, 14)), mat.oily,
+      14.9, 0.05, 15.9, 0, 0, 0, 1, legacyVerdantRoot);
+    const creeper = new THREE.Group();
+    creeper.name = 'verdant_original_creeper';
+    creeper.position.set(14.35, 0, 17.1);
+    creeper.rotation.y = 1.1;
+    legacyVerdantRoot.add(creeper);
+    put(track(new THREE.BoxGeometry(0.55, 0.05, 1.35)), mat.redCabDark,
+      0, 0.09, 0, 0, 0, 0, 1, creeper);
+    for (const [wheelX, wheelZ] of [[-0.2, -0.55], [0.2, -0.55], [-0.2, 0.55], [0.2, 0.55]]) {
+      put(G.caster, mat.steelDark, wheelX, 0.045, wheelZ,
+        0, 0, Math.PI / 2, 0.7, creeper, false);
+    }
+    const cableMaterial = track(shadowMat(new THREE.MeshStandardMaterial({
+      color: 0x141618, roughness: 0.88, metalness: 0.05,
+    })));
+    const cable = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(11.6, 0.22, 19.6),
+      new THREE.Vector3(13.2, 0.05, 18.6),
+      new THREE.Vector3(15.4, 0.05, 17.0),
+      new THREE.Vector3(17.35, 0.4, 15.95),
+    ]);
+    const cableMesh = new THREE.Mesh(
+      track(new THREE.TubeGeometry(cable, 24, 0.035, 7)), cableMaterial,
+    );
+    cableMesh.name = 'verdant_original_welding_cable';
+    cableMesh.castShadow = true;
+    legacyVerdantRoot.add(cableMesh);
+    const weldTip = put(track(new THREE.SphereGeometry(0.028, 8, 6)),
+      track(new THREE.MeshBasicMaterial({ color: 0xffe0b0 })),
+      17.4, 0.45, 15.92, 0, 0, 0, 1, legacyVerdantRoot, false);
+    weldTip.castShadow = false;
+    const glowMaterial = track(new THREE.SpriteMaterial({
+      map: track(canvasTexture(makePoolTexture(
+        'rgba(255,208,140,0.5)', 'rgba(255,160,70,0.14)',
+      ))),
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }));
+    const spark = new THREE.Sprite(glowMaterial);
+    spark.name = 'verdant_original_weld_glow';
+    spark.scale.setScalar(0.7);
+    spark.position.set(17.4, 0.47, 15.92);
+    legacyVerdantRoot.add(spark);
+    const pool = new THREE.Mesh(track(new THREE.PlaneGeometry(7, 7)), poolMat);
+    pool.rotation.x = -Math.PI / 2;
+    pool.position.set(15.9, 0.03, 16.6);
+    legacyVerdantRoot.add(pool);
+    workLamp(15.9, 16.6, 0, 7.4, legacyVerdantRoot);
+    compileWorkshopObject(tank);
   });
 
   // ==========================================================================
-  // CHUNK 3 — real playable-fleet T-90M assembly + gun bench.
+  // CHUNK 4 — alternate-garage T-90M plus ORIGINAL VERDANT T-90M turret,
+  // exact gun rig, timber cradle and Relikt service rack.
   // ==========================================================================
-  chunks.push(function buildBayB() {
+  chunks.push(function buildT90AndOriginalVerdantComponents() {
     addFleetExhibit('t90m', 't90', 'complete_vehicle', 2, 0.86);
     addSupportAssembly('weapon_rack', 3, 0.95);
-    wallSignAt('T-90M LINE', 'south_suspension');
+    wallSignAtForVariants('T-90M LINE', 'south_suspension');
+
+    const tank = markModernPart(clonePreparedVisualRoot('t90m'), 't90m', 'turret_cradle');
+    const hull = tank.getObjectByName('rig_hull');
+    const turret = tank.getObjectByName('rig_turret');
+    const gun = tank.getObjectByName('rig_gun');
+    if (hull) hull.visible = false;
+    tank.traverse((object) => {
+      if (object.userData.authoredShadowProxy) object.visible = false;
+    });
+    tank.position.set(-6.6, 0, 20.5);
+    tank.rotation.y = 2.4;
+    legacyVerdantRoot.add(tank);
+    seatVisibleRoot(tank, 0.50);
+
+    const cradle = markModernPart(new THREE.Group(), 't90m', 'turret_support');
+    cradle.position.set(-6.6, 0, 20.5);
+    cradle.rotation.y = 2.4;
+    legacyVerdantRoot.add(cradle);
+    const blockGeometry = track(new THREE.BoxGeometry(0.68, 0.46, 0.68));
+    for (const [blockX, blockZ] of [[-1.05, -0.84], [1.05, -0.84], [-1.05, 0.84], [1.05, 0.84]]) {
+      put(blockGeometry, mat.timber, blockX, 0.23, blockZ,
+        0, 0, 0, 1, cradle);
+    }
+    const bearerGeometry = track(new THREE.BoxGeometry(2.85, 0.16, 0.28));
+    put(bearerGeometry, mat.timberDark, 0, 0.49, -0.70,
+      0, 0, 0, 1, cradle);
+    put(bearerGeometry, mat.timberDark, 0, 0.49, 0.70,
+      0, 0, 0, 1, cradle);
+    placeGunRig(gun, 't90m', 2.75, 1.08, 21.39, 0.92);
+
+    const turretMesh = turret?.getObjectByName('turretCloth') as THREE.Mesh | undefined;
+    const reliktMaterial = turretMesh?.material || mat.olive;
+    const reliktDimensions = [
+      [0.32, 0.27, 0.39], [0.38, 0.31, 0.43], [0.43, 0.34, 0.46],
+      [0.47, 0.35, 0.45], [0.48, 0.34, 0.43], [0.40, 0.31, 0.40],
+      [0.28, 0.27, 0.34],
+    ] as const;
+    const rack = markModernPart(new THREE.Group(), 't90m', 'relikt_service_rack');
+    rack.position.set(-11.2, 0, 21.15);
+    legacyVerdantRoot.add(rack);
+    put(track(new THREE.BoxGeometry(2.7, 0.12, 0.90)), mat.timberDark,
+      0, 0.06, 0, 0, 0, 0, 1, rack);
+    const uprightGeometry = track(new THREE.BoxGeometry(0.06, 1.52, 0.06));
+    const railGeometry = track(new THREE.BoxGeometry(2.35, 0.06, 0.06));
+    for (const x of [-1.15, 1.15]) {
+      put(uprightGeometry, mat.steelMid, x, 0.82, -0.30,
+        0, 0, 0, 1, rack);
+    }
+    for (const y of [0.25, 0.76, 1.28, 1.56]) {
+      put(railGeometry, mat.steelMid, 0, y, -0.30,
+        0, 0, 0, 1, rack);
+    }
+    const cassetteGeometry = track(new THREE.BoxGeometry(1, 1, 1));
+    const cassettes = markModernPart(
+      new THREE.InstancedMesh(cassetteGeometry, reliktMaterial, 21),
+      't90m',
+      'relikt_cassettes',
+    );
+    cassettes.userData.sourceGeometry = 'profiles/t90.js:Proryv Relikt fan';
+    const matrix = new THREE.Matrix4();
+    const rotation = new THREE.Quaternion();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    let cassetteIndex = 0;
+    for (let row = 0; row < 3; row++) {
+      for (let column = 0; column < 7; column++) {
+        const [width, height, depth] = reliktDimensions[column];
+        position.set(-1.02 + column * 0.34, 0.39 + row * 0.43, -0.34);
+        scale.set(width, height, depth);
+        matrix.compose(position, rotation, scale);
+        cassettes.setMatrixAt(cassetteIndex++, matrix);
+      }
+    }
+    cassettes.instanceMatrix.needsUpdate = true;
+    cassettes.castShadow = true;
+    cassettes.receiveShadow = true;
+    rack.add(cassettes);
+    track(cassettes);
+    wallSign('T-90M / RELIKT', -8.7, 3.25, 22.86,
+      Math.PI, 2.8, 0.9, '', legacyVerdantRoot);
+    compileWorkshopObject(tank);
   });
 
   // ==========================================================================
-  // CHUNK 4 — real playable-fleet Leclerc assembly + reactive-armor rack.
+  // CHUNK 5 — ORIGINAL VERDANT K2 teardown: rolled source hull, its exact
+  // road wheels and shoes, timber cradle, and the M2/DShK service table.
+  // ==========================================================================
+  chunks.push(function buildOriginalVerdantK2Teardown() {
+    const visual = createLegacyVisual('k2', 172);
+    const tank = markModernPart(visual.root, 'k2', 'side_hull');
+    const hull = tank.getObjectByName('rig_hull');
+    const turret = tank.getObjectByName('rig_turret');
+    const tires = tank.getObjectByName('gearRoadWheelTires') as THREE.Mesh | undefined;
+    const discs = (tank.getObjectByName('gearRoadWheelDiscs')
+      || tank.getObjectByName('gearRoadWheelDiscsRecessed')) as THREE.Mesh | undefined;
+    const pads = tank.getObjectByName('gearTrackPads') as THREE.Mesh | undefined;
+    if (turret) turret.visible = false;
+    if (hull) {
+      const removedGear: THREE.Object3D[] = [];
+      hull.traverse((object) => {
+        if (object.userData.runningGear
+            || /^(gear|hullRunningGear|k2_track_rubber)/.test(object.name || '')) {
+          removedGear.push(object);
+        }
+      });
+      const hiddenGearOwner = new THREE.Group();
+      hiddenGearOwner.name = 'verdant_original_removed_k2_running_gear';
+      hiddenGearOwner.visible = false;
+      tank.add(hiddenGearOwner);
+      for (const object of removedGear) hiddenGearOwner.attach(object);
+    }
+    tank.traverse((object) => {
+      if (object.userData.authoredShadowProxy) object.visible = false;
+    });
+    tank.position.set(-16.25, 0, -16.85);
+    tank.rotation.set(0, 0.35, THREE.MathUtils.degToRad(68));
+    legacyVerdantRoot.add(tank);
+    seatVisibleRoot(tank, 0.20);
+
+    const cradle = markModernPart(new THREE.Group(), 'k2', 'hull_support');
+    cradle.position.set(-16.25, 0, -16.85);
+    cradle.rotation.y = 0.35;
+    legacyVerdantRoot.add(cradle);
+    const beamGeometry = track(new THREE.BoxGeometry(2.55, 0.24, 0.58));
+    put(beamGeometry, mat.timber, 0, 0.12, -2.05,
+      0, 0, 0, 1, cradle);
+    put(beamGeometry, mat.timber, 0, 0.12, 2.05,
+      0, 0, 0, 1, cradle);
+    const chockGeometry = track(new THREE.BoxGeometry(0.36, 0.42, 0.52));
+    for (const z of [-2.05, 2.05]) {
+      put(chockGeometry, mat.timberDark, -1.1, 0.32, z,
+        0, 0, -0.28, 1, cradle);
+      put(chockGeometry, mat.timberDark, 1.1, 0.32, z,
+        0, 0, 0.28, 1, cradle);
+    }
+
+    if (tires?.geometry && discs?.geometry) {
+      if (!tires.geometry.boundingBox) tires.geometry.computeBoundingBox();
+      const size = new THREE.Vector3();
+      tires.geometry.boundingBox?.getSize(size);
+      const rise = Math.max(0.14, size.x * 0.92);
+      const wheelPositions: Array<readonly [number, number, number]> = [];
+      for (const [x, z, count] of [[-21.25, -8.65, 4], [-20.20, -9.75, 4]] as const) {
+        for (let index = 0; index < count; index++) {
+          wheelPositions.push([x, 0.10 + rise * (index + 0.5), z]);
+        }
+      }
+      const wheelTires = markModernPart(
+        new THREE.InstancedMesh(tires.geometry, tires.material, wheelPositions.length),
+        'k2',
+        'road_wheel_tires',
+      );
+      const wheelDiscs = markModernPart(
+        new THREE.InstancedMesh(discs.geometry, discs.material, wheelPositions.length),
+        'k2',
+        'road_wheel_discs',
+      );
+      const wheelRotation = new THREE.Euler(0, 0, Math.PI / 2);
+      const wheelMatrix = new THREE.Matrix4();
+      wheelPositions.forEach(([x, y, z], index) => {
+        wheelMatrix.makeRotationFromEuler(wheelRotation).setPosition(x, y, z);
+        wheelTires.setMatrixAt(index, wheelMatrix);
+        wheelDiscs.setMatrixAt(index, wheelMatrix);
+      });
+      wheelTires.instanceMatrix.needsUpdate = true;
+      wheelDiscs.instanceMatrix.needsUpdate = true;
+      wheelTires.castShadow = wheelTires.receiveShadow = true;
+      wheelDiscs.castShadow = wheelDiscs.receiveShadow = true;
+      legacyVerdantRoot.add(wheelTires, wheelDiscs);
+      track(wheelTires);
+      track(wheelDiscs);
+    }
+
+    if (pads?.geometry) {
+      const pallet = markModernPart(new THREE.Group(), 'k2', 'track_shoe_pallet');
+      pallet.position.set(-21.15, 0, -13.45);
+      pallet.rotation.y = -0.12;
+      legacyVerdantRoot.add(pallet);
+      put(track(new THREE.BoxGeometry(1.75, 0.11, 1.15)), mat.timberDark,
+        0, 0.06, 0, 0, 0, 0, 1, pallet);
+      const shoes = markModernPart(
+        new THREE.InstancedMesh(pads.geometry, pads.material, 8),
+        'k2',
+        'track_shoes',
+      );
+      const shoeRotation = new THREE.Euler();
+      const shoeMatrix = new THREE.Matrix4();
+      let shoeIndex = 0;
+      for (let row = 0; row < 4; row++) {
+        for (let column = 0; column < 2; column++) {
+          shoeRotation.set(Math.PI, column % 2 ? 0.035 : -0.035, 0);
+          shoeMatrix.makeRotationFromEuler(shoeRotation).setPosition(
+            -0.38 + column * 0.76,
+            0.19,
+            -0.35 + row * 0.23,
+          );
+          shoes.setMatrixAt(shoeIndex++, shoeMatrix);
+        }
+      }
+      shoes.instanceMatrix.needsUpdate = true;
+      shoes.castShadow = shoes.receiveShadow = true;
+      pallet.add(shoes);
+      track(shoes);
+    }
+
+    const weaponRack = new THREE.Group();
+    weaponRack.name = 'dressing_modern_machine_gun_service_rack';
+    weaponRack.userData.sourceVehicleIds = ['m1a2', 't90m'];
+    weaponRack.userData.sourceEra = 'modern';
+    weaponRack.userData.component = 'machine_gun_service_rack';
+    weaponRack.position.set(-6.4, 0, -21.35);
+    legacyVerdantRoot.add(weaponRack);
+    put(track(new THREE.BoxGeometry(3.9, 0.12, 0.95)), mat.steelMid,
+      0, 0.84, 0, 0, 0, 0, 1, weaponRack);
+    const legGeometry = track(new THREE.BoxGeometry(0.08, 0.84, 0.08));
+    for (const [x, z] of [[-1.72, -0.36], [1.72, -0.36], [-1.72, 0.36], [1.72, 0.36]]) {
+      put(legGeometry, mat.steelDark, x, 0.42, z,
+        0, 0, 0, 1, weaponRack);
+    }
+    serviceMachineGun(weaponRack, 'm2', false, -1.20, 1901);
+    serviceMachineGun(weaponRack, 'dshk', false, 0, 1902);
+    serviceMachineGun(weaponRack, 'm2', true, 1.20, 1903);
+    wallSign('K2 TEARDOWN', -16.35, 3.20, -22.86,
+      0, 2.5, 0.9, '', legacyVerdantRoot);
+    wallSign('WEAPON SERVICE', -6.4, 2.75, -22.86,
+      0, 2.7, 0.8, '', legacyVerdantRoot);
+    compileWorkshopObject(tank);
+  });
+
+  // ==========================================================================
+  // CHUNK 6 — real playable-fleet Leclerc assembly + reactive-armor rack for
+  // the nine additive garage environments.
   // ==========================================================================
   chunks.push(function buildLeclercBay() {
     addFleetExhibit('leclerc', 'leclerc', 'complete_vehicle', 4, 0.84);
     addSupportAssembly('armor_rack', 5, 0.92);
-    wallSignAt('LECLERC / ARMOR', 'south_turret_armor');
+    wallSignAtForVariants('LECLERC / ARMOR', 'south_turret_armor');
   });
 
   // ==========================================================================
-  // CHUNKS 5-7 — real turret/gun rigs, one build + compile per quiet slice.
+  // CHUNKS 7-9 — real turret/gun rigs, one build + compile per quiet slice.
   // ==========================================================================
   chunks.push(function buildAbramsTurretService() {
     addFleetExhibit('m1a2', 'abrams', 'turret_and_gun', 6, 0.82);
@@ -957,9 +1552,10 @@ export function createGarageDressing(
   });
   chunks.push(function buildLeclercTurretService() {
     addFleetExhibit('leclerc', 'leclerc', 'turret_and_gun', 8, 0.84);
-    group.userData.workshopTriangleCount = variantAssemblies.reduce(
+    group.userData.variantWorkshopTriangleCount = variantAssemblies.reduce(
       (sum, root) => sum + countWorkshopTriangles(root), 0,
     );
+    group.userData.verdantOriginalTriangleCount = countWorkshopTriangles(legacyVerdantRoot);
     let exhibitCount = 0;
     const families = new Set<string>();
     const sourceVehicleIds = new Set<string>();
@@ -972,11 +1568,21 @@ export function createGarageDressing(
       const sourceVehicleId = root.userData.sourceVehicleId;
       if (typeof sourceVehicleId === 'string') sourceVehicleIds.add(sourceVehicleId);
     }
-    group.userData.workshopExhibitCount = exhibitCount;
+    group.userData.variantWorkshopExhibitCount = exhibitCount;
+    group.userData.verdantOriginalExhibitCount = 4;
+    group.userData.verdantOriginalExhibitIds = ['t90a_burlak', 'm1a2', 't90m', 'k2'];
+    group.userData.verdantOriginalSetPieces = [
+      'turret_gantry', 'jack_stands', 'removed_side_skirts', 'welding_cable',
+      'turret_cradle', 'relikt_service_rack', 'rolled_k2_hull',
+      'road_wheel_stacks', 'track_shoe_pallet', 'weapon_service_rack',
+    ];
     group.userData.workshopForwardCorrectionRad = Math.PI;
     group.userData.workshopFamilies = [...families];
-    group.userData.workshopSourceVehicleIds = [...sourceVehicleIds];
-    wallSignAt('TURRET SERVICE', 'north_teardown');
+    group.userData.workshopSourceVehicleIds = [
+      ...new Set([...sourceVehicleIds, 't90a_burlak', 'k2']),
+    ];
+    wallSignAtForVariants('TURRET SERVICE', 'north_teardown');
+    setVariant(currentVariant.id);
   });
 
   // sign plates bake before the webfont settles — refresh them once it lands

@@ -1010,6 +1010,19 @@ legacyPort<Record<string, unknown>>(window).__GARAGE_WORKSHOP = {
       wallLayout: garageDressing.group.userData.wallLayout || { bays: 0, overlaps: [] },
       modelMode: garageDressing.group.userData.workshopModelMode || '',
       exhibitCount: garageDressing.group.userData.workshopExhibitCount || 0,
+      verdantOriginalVisible: garageDressing.group.userData.verdantOriginalVisible === true,
+      verdantOriginalLayoutReceipt:
+        garageDressing.group.userData.verdantOriginalLayoutReceipt || '',
+      verdantOriginalTriangleCount:
+        garageDressing.group.userData.verdantOriginalTriangleCount || 0,
+      verdantOriginalExhibitCount:
+        garageDressing.group.userData.verdantOriginalExhibitCount || 0,
+      verdantOriginalExhibitIds: [
+        ...(garageDressing.group.userData.verdantOriginalExhibitIds || []),
+      ],
+      verdantOriginalSetPieces: [
+        ...(garageDressing.group.userData.verdantOriginalSetPieces || []),
+      ],
       forwardCorrectionRad: garageDressing.group.userData.workshopForwardCorrectionRad || 0,
       families: [...(garageDressing.group.userData.workshopFamilies || [])],
       sourceVehicleIds: [...(garageDressing.group.userData.workshopSourceVehicleIds || [])],

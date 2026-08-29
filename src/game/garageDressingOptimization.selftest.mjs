@@ -42,6 +42,13 @@ const fleetB = new THREE.Mesh(repeatedGeometry, material);
 fleetRoot.add(fleetA, fleetB);
 nested.add(fleetRoot);
 
+const variantRoot = new THREE.Group();
+variantRoot.userData.variantSwitchOwner = true;
+const variantA = new THREE.Mesh(repeatedGeometry, material);
+const variantB = new THREE.Mesh(repeatedGeometry, material);
+variantRoot.add(variantA, variantB);
+nested.add(variantRoot);
+
 const proxyMaterial = new THREE.MeshBasicMaterial({ colorWrite: false });
 const proxy = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.05), proxyMaterial);
 proxy.castShadow = true;
@@ -55,7 +62,7 @@ assert.equal(proxy.castShadow, true, 'authored shadow proxies are never pruned')
 assert.equal(receipt.shadowCastersBefore, 5);
 assert.equal(receipt.shadowCastersAfter, 4);
 assert.equal(receipt.shadowCastersPruned, 1);
-assert.equal(receipt.objectsFrozen, 11);
+assert.equal(receipt.objectsFrozen, 14);
 assert.equal(receipt.meshesInstanced, 2, 'exact repeated static props become instances');
 assert.equal(receipt.instanceBatches, 1);
 assert.equal(receipt.meshesMerged, 2, 'different static geometries sharing state become one draw');
@@ -73,6 +80,8 @@ assert.ok(root.getObjectByName('workshop_static_merge_1'),
   'the optimized scene owns one transformed static merge');
 assert.equal(fleetA.parent, fleetRoot, 'fleet exhibit ownership remains intact');
 assert.equal(fleetB.parent, fleetRoot, 'fleet exhibit meshes are not flattened');
+assert.equal(variantA.parent, variantRoot, 'variant-controlled set pieces retain local ownership');
+assert.equal(variantB.parent, variantRoot, 'variant-controlled set pieces remain visibility-switchable');
 assert.equal(nested.matrixAutoUpdate, false);
 assert.equal(small.matrixAutoUpdate, false);
 assert.equal(root.matrixAutoUpdate, true, 'integration may still re-seat the workshop root');

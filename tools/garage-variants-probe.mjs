@@ -146,19 +146,38 @@ try {
     if (result.stats.wallLayout?.overlaps?.length) {
       failures.push(`${result.id}: overlapping wall bays ${result.stats.wallLayout.overlaps.join(', ')}`);
     }
-    if (result.stats.modelMode !== 'actual-fleet' || result.stats.exhibitCount !== 6) {
-      failures.push(`${result.id}: workshop is not using all six actual fleet exhibits`);
+    const isVerdant = result.id === 'verdant_motor_pool';
+    const expectedExhibits = isVerdant ? 4 : 6;
+    if (result.stats.modelMode !== 'actual-fleet'
+        || result.stats.exhibitCount !== expectedExhibits) {
+      failures.push(`${result.id}: expected ${expectedExhibits} visible actual-fleet exhibits`);
     }
-    if (Math.abs(result.stats.forwardCorrectionRad - Math.PI) > 0.001) {
+    if (!isVerdant && Math.abs(result.stats.forwardCorrectionRad - Math.PI) > 0.001) {
       failures.push(`${result.id}: complete tanks are not corrected 180 degrees in their bays`);
     }
-    if (result.id === 'verdant_motor_pool' && result.stats.roofMode !== 'enclosed-original') {
-      failures.push('verdant_motor_pool: original enclosed roof/trusses were not restored');
+    if (isVerdant) {
+      if (result.stats.roofMode !== 'enclosed-original') {
+        failures.push('verdant_motor_pool: original enclosed roof/trusses were not restored');
+      }
+      if (!result.stats.verdantOriginalVisible
+          || result.stats.verdantOriginalLayoutReceipt !== 'pre-6c7b07533-original'
+          || result.stats.verdantOriginalExhibitCount !== 4
+          || result.stats.verdantOriginalSetPieces?.length !== 10) {
+        failures.push('verdant_motor_pool: original workshop arrangement receipt failed');
+      }
+      for (const id of ['t90a_burlak', 'm1a2', 't90m', 'k2']) {
+        if (!result.stats.verdantOriginalExhibitIds?.includes(id)) {
+          failures.push(`verdant_motor_pool: missing original ${id} set piece`);
+        }
+      }
+    } else if (result.stats.verdantOriginalVisible) {
+      failures.push(`${result.id}: fixed Verdant set leaked into an additive garage`);
     }
     if (!['abrams', 't90', 'leclerc'].every((family) => result.stats.families?.includes(family))) {
       failures.push(`${result.id}: missing family-specific actual fleet exhibit`);
     }
-    if (!['m1a2', 't90m', 'leclerc'].every((id) => result.stats.sourceVehicleIds?.includes(id))) {
+    if (!['t90a_burlak', 'm1a2', 't90m', 'k2', 'leclerc']
+      .every((id) => result.stats.sourceVehicleIds?.includes(id))) {
       failures.push(`${result.id}: missing expected workshop source vehicle id`);
     }
     if (result.gapMaxMs > maxGapMs) {

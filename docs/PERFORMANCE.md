@@ -64,20 +64,25 @@ profile-family chunks. Studio transfers its route chunk on nav hover/focus/
 touch but does not construct the authoring runtime until entry. These boundaries
 keep demand loading without making a card or route click pay the cold parse.
 
-Garage workshop scenery uses the real first-party `m1a2`, `t90m`, and `leclerc`
-fleet builders only behind `garageDressingAccess` and the shared garage-lull
-gate. It builds three complete high-geometry static previews, then derives the
-three service turret/gun exhibits as resource-sharing clones from those builds.
-The six exact displays currently total 352,762 rendered triangles; their load,
-construction, and explicit shader compile never run in the initial visible
-garage path or while battle owns the renderer. Ten architecture roots are built
+Garage workshop scenery uses the real first-party `t90a_burlak`, `m1a2`,
+`t90m`, `k2`, and `leclerc` fleet builders only behind
+`garageDressingAccess` and the shared garage-lull gate. Verdant Motor Pool
+preserves the pre-multi-garage repair floor exactly: Burlak under the turret
+gantry, skirt-off Abrams beside the welder, T-90M turret/Relikt service line,
+and rolled K2 teardown with its wheel, shoe, and weapon racks. Its four visible
+exhibits total 369,886 rendered triangles. The other nine environments use the
+additive three-tank/three-turret layout at 352,762 triangles. Shared Abrams and
+T-90M geometry is cloned rather than built twice; all loading, construction,
+and explicit shader compile remain outside the initial visible garage path and
+never run while battle owns the renderer. Ten architecture roots are built
 only on first selection, cached, and hidden as complete subtrees; the largest
 individual structural kit stays below 2.5K triangles. The wall location image
 and ten selector previews reuse existing map thumbnails and decode only when
 demanded. `npm run qa:garage` enumerates all ten locations and checks unique map
 and architecture signatures, persistence, preview decode, zero wall-bay
-overlaps, exact-fleet mode, all six exhibits, the 180-degree bay-facing
-correction, Verdant's enclosed original roof, the 450K workshop and 10K
+overlaps, exact-fleet mode, the four-piece original Verdant receipt, all six
+additive exhibits, the 180-degree bay-facing correction, Verdant's enclosed
+original roof, the 450K workshop and 10K
 per-architecture ceilings, desktop switch frame gaps, console health, and the
 390×844 selector.
 

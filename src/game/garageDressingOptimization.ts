@@ -49,7 +49,9 @@ interface StaticMergeBatch {
 
 function belongsToFleetExhibit(object: THREE.Object3D, root: THREE.Object3D): boolean {
   for (let owner: THREE.Object3D | null = object; owner && owner !== root; owner = owner.parent) {
-    if (owner.name.startsWith('dressing_tank_') || owner.userData.sourceVehicleId) return true;
+    if (owner.name.startsWith('dressing_tank_')
+        || owner.userData.sourceVehicleId
+        || owner.userData.variantSwitchOwner === true) return true;
   }
   return false;
 }
