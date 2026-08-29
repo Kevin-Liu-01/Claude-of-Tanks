@@ -28,7 +28,7 @@ import './modern2Specs.generated.js';
 import './kf51Specs.ts';
 import './abramsConceptSpecs.ts';
 import './challengerSpecs.ts';
-import './modern3Specs.js';
+import './modern3Specs.ts';
 import './additionalFleetSpecs.ts';
 import './classicFleetSpecs.ts';
 import './franceSpecs.ts';

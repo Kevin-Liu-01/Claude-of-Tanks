@@ -8,9 +8,24 @@ import {
   shell,
   apfsdsPenetration as apfsdsPens,
   modernArmor,
+  type ArmorEnvelope,
 } from './specHelpers.ts';
+import type { AimBloom, FleetTankSpec } from './specContracts.ts';
+import { bindFleetRegistries, registerFleetSpecs } from './fleetSpecRegistry.ts';
 
-const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
+const BLOOM_MODERN: Readonly<AimBloom> = {
+  move: 0.06,
+  hullRot: 0.08,
+  turret: 0.06,
+  afterShot: 2.2,
+};
+
+function offsetTurretRing(armor: ArmorEnvelope, offsetX: number): void {
+  const ring = armor.modules.find((module) => module.module === 'turretRing');
+  if (!ring) throw new Error('Modern armor envelope is missing its turret ring');
+  ring.min = [ring.min[0] + offsetX, ring.min[1], ring.min[2]];
+  ring.max = [ring.max[0] + offsetX, ring.max[1], ring.max[2]];
+}
 
 // ---------------------------------------------------------------------------
 // The spec table (values per modern-roster.md sections cited above)
@@ -388,8 +403,7 @@ export const MODERN3_SPECS = {
         cbox('commander', [-0.95, 0.62, -0.55], [-0.15, 1.90, 0.55]),
       ];
       // Hit-box truth for the offset ring (modernArmor centers it on x 0).
-      const ring = a.modules.find((m) => m.module === 'turretRing');
-      ring.min[0] += 0.15; ring.max[0] += 0.15;
+      offsetTurretRing(a, 0.15);
       return a;
     })(),
     visual: {
@@ -438,8 +452,7 @@ export const MODERN3_SPECS = {
         cheek: [35, 55, 55], tSide: [25, 30, 30], tRear: 20, tRoof: 15,
         mantlet: [40, 60, 60], loader: false,
       });
-      const ring = a.modules.find((m) => m.module === 'turretRing');
-      ring.min[0] += 0.25; ring.max[0] += 0.25;
+      offsetTurretRing(a, 0.25);
       return a;
     })(),
     visual: {
@@ -615,12 +628,7 @@ export const MODERN3_SPECS = {
       trackWidthM: 0.56, camoScale: 0.72,
     },
   },
-};
+} satisfies Readonly<Record<string, FleetTankSpec>>;
 
-// Register specs + model-source rows + garage roster ids (idempotent —
-// vite HMR can re-evaluate this module).
-for (const [id, spec] of Object.entries(MODERN3_SPECS)) {
-  TANK_SPECS[id] = TANK_SPECS[id] || spec;
-  MODEL_SOURCE[id] = MODEL_SOURCE[id] || { source: 'procedural' };
-  if (!ALL_TANK_IDS.includes(id)) ALL_TANK_IDS.push(id);
-}
+const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
+registerFleetSpecs(registries, Object.keys(MODERN3_SPECS), MODERN3_SPECS);

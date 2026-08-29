@@ -5,13 +5,13 @@
 //
 // The browser facade demand-registers MODERN3_BUILDERS; the legacy factory
 // can still register the same table eagerly. Boot-light combat rows live in
-// modern3Specs.js so unrelated garages never transfer this geometry pack.
+// modern3Specs.ts so unrelated garages never transfer this geometry pack.
 
 import * as THREE from 'three';
 import { KIT } from './tankFactoryCore.js';
 import { FITTINGS } from './profiles/kit.js';
 import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.ts';
-import './modern3Specs.js';
+import './modern3Specs.ts';
 
 // ---------------------------------------------------------------------------
 // Builders
