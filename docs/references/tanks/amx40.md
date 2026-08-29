@@ -22,7 +22,7 @@ Builder `buildAMX40` + spec row live in **src/vehicles/france.ts** (NEW
 module, orchestrator-stubbed and wired into tankFactory at the marked
 extension hook; single owner = the france lane). Registered in
 FRANCE_BUILDERS; specs merge at import (modern3 pattern);
-MODEL_SOURCE procedural. leclerc/amx30/amx30b2 stay in profiles/misc.js
+MODEL_SOURCE procedural. leclerc/amx30/amx30b2 stay in profiles/misc.ts
 (family migration = separate owner-approvable move).
 
 ## ORACLE STATE — REGISTERED (LOCAL-ONLY QUARANTINE)

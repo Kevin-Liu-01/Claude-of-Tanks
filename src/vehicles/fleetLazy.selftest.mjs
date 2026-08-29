@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PROCEDURAL_PROFILES } from './profiledProcedurals.ts';
-import { MISC_PROFILES } from './profiles/misc.js';
+import { MISC_PROFILES } from './profiles/misc.ts';
 import { FLEET_GROUP_IDS } from './fleetManifest.ts';
 const canonicalOnlyIds = new Set([
   'amx40', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2',

@@ -553,7 +553,7 @@ score is no defense.
   headline (curve score = 100 - 12*mean - 0.6*p95 - 1.5*cover: the 12x
   mean term floors short/shape-divergent prints at 0 regardless).
 - Mirrored-slab winding guards are now per-profile devices: orientedSlab
-  (misc.js) / sslab (uk.ts) — every profile that mirrors slabs binds
+  (misc.ts) / sslab (uk.ts) — every profile that mirrors slabs binds
   through one (§C missing-side law).
 - INSCRIBED-DRUM CONVERSION CLASS (§B3.1, russia sweep): box->cylinder
   (r = w/2, axis-extreme) and box->elliptical-frustum swaps keep side AND
@@ -744,7 +744,7 @@ family views change).
 - MUZZLE-BORE MECHANISM (§B3.1, leclerc round — MANDATORY for the fleet
   sweep): bucket-based bore rims grow the gun AABB ~3cm and re-frame the
   turret-row cameras (-6.2 measured) — implement bores as SHADOW-NAMED
-  gun-group furniture (the misc.js muzzleBore() helper pattern: dark rim
+  gun-group furniture (the misc.ts muzzleBore() helper pattern: dark rim
   torus + mats.shadow recessed disc parented to P.gunG) — renders in
   game/critic, excluded from every mask AND framing recipe; gates
   byte-identical by construction. Corollaries: HARNESS-HIDES-SHADOW-NAMED

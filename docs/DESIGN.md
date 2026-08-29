@@ -89,7 +89,7 @@ generic lives in kit.js "so two family agents never have to edit the same file" 
 mechanical basis of the one-agent-one-file law. Families: abrams, leopard, merkava,
 patton, russia, uk, misc, casemate, soviet-heavy, ww2 (+ modern1/2/3.js homes for
 base-21 rebuilds). §H FAMILY RIG: a variant is a <150-line param delta on its family
-rig, never a re-author; per-profile winding guards (orientedSlab in misc.js, sslab in
+rig, never a re-author; per-profile winding guards (orientedSlab in misc.ts, sslab in
 uk.ts) wrap every mirrored slab (§C missing-side law).
 
 ### 1.4 KIT / FITTINGS — src/vehicles/profiles/kit.ts (§I)

@@ -1,5 +1,5 @@
 // Boot-light combat-data registration for the Type 74 family. The authored
-// visual implementation remains in misc.js and is loaded only when a matching
+// visual implementation remains in misc.ts and is loaded only when a matching
 // vehicle is requested; Japan's derivative spec registration still receives
 // the exact same donor row during the eager roster pass.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from '../specs.ts';

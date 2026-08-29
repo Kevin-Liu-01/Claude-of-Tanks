@@ -171,7 +171,7 @@ const SPECS: FleetTankSpec[] = [
     { hp: 1600, enginePowerHp: 720, weightTons: 36, reverseSpeedKmh: 11,
       gun: { reloadS: 7.0 },
       // §5.309 REBUILD (owner order 2026-08-17: stripped-down amx40 base):
-      // dims RE-DERIVE from the rebuilt misc.js build, authored to the
+      // dims RE-DERIVE from the rebuilt misc.ts build, authored to the
       // PUBLISHED figures (hull 6.59 / overall 9.48 / width 3.10 over
       // tracks / 2.29 turret-roof datum) — the prior 6.85/9.55/2.87 rows
       // were the retired 08-15 donor-GLB envelope. silhouetteHeightM is

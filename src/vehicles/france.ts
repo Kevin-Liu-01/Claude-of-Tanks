@@ -3,7 +3,7 @@
 // First resident: amx40 (AMX-40 export prototype — the KojfDiscord AW print
 // at public/models/community-candidates/amx-40_armored_warfare.glb is a
 // LOCAL-ONLY visual reference; the playable is our authored construction.
-// NOTE: leclerc/amx30/amx30b2 stay in profiles/misc.js (family migration
+// NOTE: leclerc/amx30/amx30b2 stay in profiles/misc.ts (family migration
 // is a separate, owner-approvable move).
 //
 // Registration pattern (modern3.ts): tankFactory.ts passes FRANCE_BUILDERS

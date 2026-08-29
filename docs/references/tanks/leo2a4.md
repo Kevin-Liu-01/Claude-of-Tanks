@@ -174,7 +174,7 @@ reference" + §5.09-5 "huge automated turret crows system" + §5.16 "the
 2a4 is also similar to the type 90, so make all of them similar to each
 other with the type 90 giving the most basis."
 
-### §5.16 family rebase (type90 = read-only donor, misc.js buildType90)
+### §5.16 family rebase (type90 = read-only donor, misc.ts buildType90)
 - TURRET SHELL re-laid as the donor's CLOSED-POLYGON construction
   (KIT.polyTurret, flare=inset=1 vertical walls) on the SAME certified
   §B8 footprint — flat center front ±0.40 @ z 1.10, swept cheeks to the

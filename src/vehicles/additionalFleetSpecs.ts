@@ -376,7 +376,7 @@ const SPECS: FleetTankSpec[] = [
 
 // §5.364 type90 gun-trunnion true-up (owner order: "properly attached ...
 // arc up and down porperly"). The visual rig now pitches about the turret-
-// face trunnion (profiles/misc.js buildType90 — world y 1.686, z 1.30). The
+// face trunnion (profiles/misc.ts buildType90 — world y 1.686, z 1.30). The
 // inherited type10-scaled armor row kept its donor pivot at world (1.722,
 // 1.634) with a 4.978 m barrel: sim/armor.ts pitches the mantlet plates
 // about THAT point, sim/movement.ts solves the lay from it, and the

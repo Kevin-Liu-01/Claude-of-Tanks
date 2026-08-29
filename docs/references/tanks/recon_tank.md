@@ -17,7 +17,7 @@ the print reads: body length 5.43 m (**−12.4 % vs the spec's 6.2**), overall
 
 The spec dims (game-authored fiction, sovereign per the contract) disagree
 with the print's own proportions by −12 % hull length / +10 % roof. The
-build (profiles/misc.js parametric) carries the SPEC envelope: hull 6.2,
+build (profiles/misc.ts parametric) carries the SPEC envelope: hull 6.2,
 overall 7.2, height 2.5, width 3.0. Curve rows against the shorter, taller
 print therefore carry a structural ~0.4 m body-span mismatch:
 hullCurves/wholeCurves/turretCurves/stations are capped at their measured

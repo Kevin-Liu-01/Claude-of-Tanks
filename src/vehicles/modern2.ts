@@ -1290,7 +1290,7 @@ function galix(
 // ---------------------------------------------------------------------------
 // §C missing-side winding guard (BUILD-STANDARD: every profile that mirrors
 // slabs binds through one) — face-outwardness census, re-orders reversed
-// rings. Same device as modern3.ts/misc.js. KIT deref at call time only.
+// rings. Same device as modern3.ts/misc.ts. KIT deref at call time only.
 // ---------------------------------------------------------------------------
 function orientedSlab99(
   b0: MutableVec3Tuple,

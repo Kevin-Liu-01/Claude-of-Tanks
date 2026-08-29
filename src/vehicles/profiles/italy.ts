@@ -25,12 +25,12 @@
 // carro45t is print-true at K=1 (spec row anchors: 6.98/10.60/3.43 all match
 // the print within 0.3%; heightM 2.95 stays the gameplay anchor while the
 // gate compares the print's own p95 body envelope via silhouetteHeightM).
-// The base `ariete` (Preserie) stays its own graduated tank in misc.js —
+// The base `ariete` (Preserie) stays its own graduated tank in misc.ts —
 // UNTOUCHED donor, byte-held.
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
-import { buildAriete } from './misc.js';
+import { buildAriete } from './misc.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec3Tuple = [number, number, number];

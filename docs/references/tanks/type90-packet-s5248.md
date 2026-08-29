@@ -21,7 +21,7 @@ Scope: type90 + type10 (stb1 OUT — owner's own 5a9c28ef rebuild).
   procedural-fidelity / visual-evaluator / tmp-tank-critic (recovered path,
   ^Turret$, autoPivot, yaw -PI/2). No drift.
 
-## What the rebuild is (src/vehicles/profiles/misc.js buildType90)
+## What the rebuild is (src/vehicles/profiles/misc.ts buildType90)
 The 2026-08-12 owner height order (0.80 local-Y turret compression +
 compressed-frame roof re-kit + cupola M2) is RETIRED this round — §5.248's
 later "exact geometric comparison" order selects the certified print lines,

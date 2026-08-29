@@ -4316,7 +4316,7 @@ export function buildBMP2(P: Modern3BuilderPort) {
 // §C missing-side winding guard (BUILD-STANDARD: "every profile that mirrors
 // slabs binds through one") — face-outwardness census; re-orders reversed
 // rings so mirrored slabs never ship inward-facing (FrontSide-culled) walls.
-// Same device as misc.js orientedSlab / uk.ts sslab. KIT dereferenced at
+// Same device as misc.ts orientedSlab / uk.ts sslab. KIT dereferenced at
 // call time only.
 // ---------------------------------------------------------------------------
 function orientedSlab(

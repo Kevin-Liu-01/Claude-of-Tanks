@@ -8,7 +8,7 @@ Delete `src/vehicles/userdrops.js` and remove it from both fleet facades and
 the public-build registry probe. The module's two registration branches were
 permanently disabled, while its replacement Type 74 combat row is already
 owned by `src/vehicles/profiles/miscSpecs.ts` and its procedural visual by
-`src/vehicles/profiles/misc.js`.
+`src/vehicles/profiles/misc.ts`.
 
 Keep historical source-license information in attribution/reference documents,
 not in an eagerly evaluated runtime module.

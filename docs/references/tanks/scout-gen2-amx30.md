@@ -38,7 +38,7 @@ Vertex-extract receipts (docs/references/vertex/amx30.json + amx30b2):
 `orientation { glacisSign: -1, gunSign: +1, agree: false }` both files.
 A MODEL_SOURCE yawOffset CANNOT fix an internal disagreement (a scene
 yaw rotates hull and turret together), so per the §5.14 decision tree
-the playables flip to procedural builders in misc.js (buildAMX30) and
+the playables flip to procedural builders in misc.ts (buildAMX30) and
 the ahab registrations retire (userdrops7.js MODEL_SOURCE_RETIRED +
 USERDROP7_SOURCED_IDS). §E ESCALATION (orchestrator lane): the re-bake
 is a one-line manifest fix — hull `RZ(-90)` -> `RZ(90)` for both amx30
@@ -46,7 +46,7 @@ and amx30b2 — after which the re-baked GLBs can re-onboard as
 measurement oracles (gate ledger rows for amx30/amx30b2 stay their
 historical all-zero until then; the broken bake never registered).
 
-BUILD (§B8 identity, both variants; buildAMX30 in misc.js): long LOW
+BUILD (§B8 identity, both variants; buildAMX30 in misc.ts): long LOW
 hull with full-width sponson band; ONE-PIECE rounded raked glacis
 (25 deg single plane + casting side blends, §B4-split around the idler
 wraps — receipts in builder comments: 137 front voxels -> 0); raked

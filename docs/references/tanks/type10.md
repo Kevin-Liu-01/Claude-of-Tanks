@@ -497,7 +497,7 @@ profiles/japan.ts addType10BPackage, re-seated at scale).
 - GUARDS: clean-room A/B at HEAD 7b85fe43 — type90 **518e88f0** /
   type90a **71208238** byte-held at HEAD-pure AND at HEAD+this-lane's
   files (the live tree's type90 drift = the §5.364 type90-guns lane's own
-  WIP in profiles/misc.js, attributed).
+  WIP in profiles/misc.ts, attributed).
 - combatAnatomyCalibrations regenerated (116 rows; the pair's hull/track
   receipts moved with the geometry). NOTE: the shared live tree carried
   co-resident lanes' WIP (leo2a4m/leo2a6m/kf51b/bmp3_rok/upior_ifv/

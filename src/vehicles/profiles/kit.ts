@@ -684,7 +684,7 @@ function buildTurretAndGun(P: ProfileBuilderPort, p: ProfileConfig): void {
 // MECHANISM per the leclerc landing, banked 3fca39b): no gun ends in a solid
 // capped tip — every muzzle face carries an annular rim + a near-black bore
 // disc recessed inside the rim mouth. MECHANISM = SHADOW-NAMED RENDER
-// FURNITURE (§C), the misc.js muzzleBore() reference pattern: bucket-based
+// FURNITURE (§C), the misc.ts muzzleBore() reference pattern: bucket-based
 // rims grow the gun AABB ~3cm and RE-FRAME the turret-row cameras (-6.2
 // measured on leclerc; also re-binned gate z-columns here — m46/m47 hull
 // -0.5/-0.3 measured before the rework). /shadow/i-named meshes render in
@@ -733,7 +733,7 @@ export function muzzleBore(builder: unknown, o: MuzzleBoreOptions = {}): void {
   }
 }
 
-// §C.1 winding guard (orientedSlab class — the misc.js device, hoisted here
+// §C.1 winding guard (orientedSlab class — the misc.ts device, hoisted here
 // for the fleet sweep so every family file can bind it): KIT.slab builds its
 // six faces for ONE ring handedness — corners in plan order (-x,+z),(+x,+z),
 // (+x,-z),(-x,-z), bottom then top. A mirrored call (x *= -1 without

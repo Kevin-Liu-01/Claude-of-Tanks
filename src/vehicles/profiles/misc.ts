@@ -24,9 +24,142 @@
 // the whole tank rescales and every mask shifts.
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { KIT, FITTINGS, buildProfile } from './kit.ts';
+import { KIT, FITTINGS } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { buildT80CastTurret, domeBoxPlanSeat } from './russia.ts';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+
+type Vec2Tuple = readonly [number, number];
+type Vec3Tuple = readonly [number, number, number];
+type GeometryScale = number | readonly number[];
+type VehicleAssemblyOwner = 'hull' | 'turret';
+type ProfileSlot = string;
+
+interface RoadWheelLayerOptions {
+  readonly outset?: number;
+  readonly yOffset?: number;
+  readonly name?: string;
+  readonly appearanceRole?: string;
+}
+
+interface EraPlacement {
+  (
+    x: number,
+    y: number,
+    z: number,
+    rotationX?: number,
+    rotationY?: number,
+    rotationZ?: number,
+    scaleX?: number,
+    scaleY?: number,
+    scaleZ?: number,
+  ): void;
+}
+
+interface MiscBuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly mats: Record<string, THREE.Material> & {
+    readonly dark: THREE.Material;
+    readonly detail: THREE.Material;
+    readonly shadow: THREE.Material;
+  };
+  readonly disposables: THREE.BufferGeometry[];
+  readonly rng: unknown;
+  readonly q?: boolean;
+  readonly gear: {
+    readonly roadWheelLayout?: {
+      readonly wheelZs: readonly number[];
+      readonly xc: number;
+      readonly wheelY: number;
+    };
+    addRoadWheelLayer(
+      geometry: THREE.BufferGeometry,
+      material: THREE.Material,
+      options?: RoadWheelLayerOptions,
+    ): void;
+  };
+  readonly spec: {
+    readonly armor: { readonly turretPivot: Vec3Tuple };
+    readonly visual: { readonly number?: string };
+  };
+  muzzleZ: number;
+  topY: number;
+  postAssemble?: (assembly: { turretG: THREE.Group; gunG: THREE.Group }) => void;
+  add(
+    slot: ProfileSlot,
+    geometry: THREE.BufferGeometry,
+    x?: number,
+    y?: number,
+    z?: number,
+    rotationX?: number,
+    rotationY?: number,
+    rotationZ?: number,
+    scale?: GeometryScale,
+  ): unknown;
+  addCupola(
+    owner: VehicleAssemblyOwner,
+    geometry: THREE.BufferGeometry,
+    ...transform: number[]
+  ): unknown;
+  addEquipment(
+    owner: VehicleAssemblyOwner,
+    geometry: THREE.BufferGeometry,
+    ...transform: number[]
+  ): unknown;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
+  addMudguard(
+    label: string,
+    slot: ProfileSlot,
+    geometry: THREE.BufferGeometry,
+    ...transform: number[]
+  ): unknown;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    value: string | null,
+    scale: number,
+    position: Vec3Tuple,
+    ...rotation: number[]
+  ): unknown;
+  eraCluster(key: string, build: (place: EraPlacement) => void, turretOwned?: boolean): void;
+  visualEraCluster(key: string, owner: VehicleAssemblyOwner, build: () => void): void;
+  offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+}
+
+interface TrunnionRollOptions {
+  readonly ballR?: number;
+  readonly ballZ?: number;
+}
+
+interface ArcSegment {
+  mx: number;
+  mz: number;
+  nx: number;
+  nz: number;
+}
+
+interface CheekSeat {
+  x: number;
+  z: number;
+  rx: number;
+  ry: number;
+  wx: number;
+  wz: number;
+}
+
+const geometryXform = KIT.xform as (
+  geometry: THREE.BufferGeometry,
+  x?: number,
+  y?: number,
+  z?: number,
+  rotationX?: number,
+  rotationY?: number,
+  rotationZ?: number,
+  scale?: GeometryScale,
+) => THREE.BufferGeometry;
 
 // ---------------------------------------------------------------------------
 // Family machinery
@@ -34,14 +167,28 @@ import { buildT80CastTurret, domeBoxPlanSeat } from './russia.ts';
 
 // Dark recess field behind every road wheel so hubs/rims read out of the
 // wheel-bay shadow (soviet-heavy r2 lesson — merged, zero extra draws).
-function wheelRecess(P, wheelZs, xc, r, w) {
+function wheelRecess(
+  P: MiscBuilderPort,
+  wheelZs: readonly number[],
+  xc: number,
+  r: number,
+  w: number,
+): void {
   const { cylX } = KIT;
   for (const z of wheelZs) for (const s of [-1, 1]) {
     P.add('hullDark', cylX(r * 0.72, w * 1.06, 12), s * xc, 0, z, 0, 0, 0);
   }
 }
 // (positioned variant — recess at wheel height y)
-function wheelRecessAt(P, wheelZs, xc, y, r, w, bucket = 'hullDark') {
+function wheelRecessAt(
+  P: MiscBuilderPort,
+  wheelZs: readonly number[],
+  xc: number,
+  y: number,
+  r: number,
+  w: number,
+  bucket = 'hullDark',
+): void {
   const { cylX } = KIT;
   const layout = P.gear?.roadWheelLayout;
   if (layout && P.gear?.addRoadWheelLayer
@@ -62,7 +209,7 @@ function wheelRecessAt(P, wheelZs, xc, y, r, w, bucket = 'hullDark') {
 }
 
 // Fender/hull stowage bin with tarp lid + dark latch straps.
-function bin(P, x, y, z, w, h, d) {
+function bin(P: MiscBuilderPort, x: number, y: number, z: number, w: number, h: number, d: number): void {
   const { box } = KIT;
   P.addEquipment('hull', box(w, h, d), x, y, z);
   P.add('hullDark', box(w * 1.03, h * 0.72, 0.024), x, y + h * 0.06, z - d * 0.28);
@@ -71,7 +218,17 @@ function bin(P, x, y, z, w, h, d) {
 
 // Armored optics housing: body + dark split doors/aperture + glass slit.
 // frame: 'turret' | 'hull'. face: +z aperture.
-function sightBox(P, frame, x, y, z, w, h, d, ry = 0) {
+function sightBox(
+  P: MiscBuilderPort,
+  frame: VehicleAssemblyOwner,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  ry = 0,
+): void {
   const { box } = KIT;
   const dark = `${frame}Dark`, glass = `${frame}Glass`;
   P.addEquipment(frame, box(w, h, d), x, y, z, 0, ry, 0);
@@ -81,7 +238,15 @@ function sightBox(P, frame, x, y, z, w, h, d, ry = 0) {
 }
 
 // Pipe-frame stowage basket with mesh face + cloth cargo (turret frame).
-function basket(P, halfW, z0, z1, yBot, yTop, load = 0.6) {
+function basket(
+  P: MiscBuilderPort,
+  halfW: number,
+  z0: number,
+  z1: number,
+  yBot: number,
+  yTop: number,
+  load = 0.6,
+): void {
   const { box } = KIT;
   const d = Math.abs(z1 - z0), zm = (z0 + z1) / 2;
   for (const y of [yBot, yTop]) {
@@ -98,14 +263,30 @@ function basket(P, halfW, z0, z1, yBot, yTop, load = 0.6) {
 }
 
 // Whip antenna on a base block, raked (turret frame).
-function whip(P, x, y, z, len, rzOut = 0, rxAft = 0) {
+function whip(
+  P: MiscBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  len: number,
+  rzOut = 0,
+  rxAft = 0,
+): void {
   const { box } = KIT;
   P.add('turretDetail', box(0.06, 0.07, 0.06), x, y + 0.03, z);
   P.add('turretDetail', box(0.022, len, 0.022), x + Math.sin(rzOut) * len * -0.5, y + Math.cos(Math.max(Math.abs(rzOut), Math.abs(rxAft))) * len * 0.5, z + Math.sin(rxAft) * len * 0.5, rxAft, 0, rzOut);
 }
 
 // GALIX-style discharger bank: n dark tubes splayed on a mount wedge.
-function galixBank(P, x, y, z, side, n = 4, rows = 1) {
+function galixBank(
+  P: MiscBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  side: number,
+  n = 4,
+  rows = 1,
+): void {
   const { box, cylZ } = KIT;
   P.add('turret', box(0.09, 0.26, 0.16 * n * 0.72), x - side * 0.02, y - 0.04, z, 0, side * 0.55, 0);
   for (let r = 0; r < rows; r++) for (let k = 0; k < n - (r ? 1 : 0); k++) {
@@ -115,7 +296,7 @@ function galixBank(P, x, y, z, side, n = 4, rows = 1) {
 }
 
 // Rubber corner mud flap over a track run.
-function mudflap(P, x, y, z, w = 0.56, h = 0.36) {
+function mudflap(P: MiscBuilderPort, x: number, y: number, z: number, w = 0.56, h = 0.36): void {
   const { box } = KIT;
   P.addMudguard(`misc-mudflap-${x < 0 ? 'left' : 'right'}-${z < 0 ? 'rear' : 'front'}`,
     'hullRubber', box(w, h, 0.035), x, y, z);
@@ -131,7 +312,12 @@ function mudflap(P, x, y, z, w = 0.56, h = 0.36) {
 // pitch axis through the gun pivot (shaded-parity family critical #4-5 —
 // silhouette invariant under elevation, no void can open). Turret-side brow
 // and cheek plates are added by each caller.
-function trunnionRoll(P, rollR, rollW, o = {}) {
+function trunnionRoll(
+  P: MiscBuilderPort,
+  rollR: number,
+  rollW: number,
+  o: TrunnionRollOptions = {},
+): void {
   const { cylX, sph } = KIT;
   P.addGunExtra(cylX(rollR, rollW, 16), 0, 0, 0);
   if (o.ballR) P.addGunExtra(sph(o.ballR, 12), 0, 0, o.ballZ ?? rollR * 0.9);
@@ -160,17 +346,40 @@ function trunnionRoll(P, rollR, rollW, o = {}) {
 // slabs). buildAriete/buildLeclerc bind `slab` to this wrapper so the
 // class cannot recur in those builders; audit rig = tmp-misc-leftprobe.mjs
 // (REVERSED must read 0).
-function orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
+function orientedSlab(
+  b0: Vec3Tuple,
+  b1: Vec3Tuple,
+  b2: Vec3Tuple,
+  b3: Vec3Tuple,
+  t0: Vec3Tuple,
+  t1: Vec3Tuple,
+  t2: Vec3Tuple,
+  t3: Vec3Tuple,
+): THREE.BufferGeometry {
   const c8 = [b0, b1, b2, b3, t0, t1, t2, t3];
-  const cen = [0, 1, 2].map((k) => c8.reduce((s, p) => s + p[k], 0) / 8);
-  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cen: Vec3Tuple = [
+    c8.reduce((sum, point) => sum + point[0], 0) / 8,
+    c8.reduce((sum, point) => sum + point[1], 0) / 8,
+    c8.reduce((sum, point) => sum + point[2], 0) / 8,
+  ];
+  const sub = (a: Vec3Tuple, b: Vec3Tuple): [number, number, number] => (
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+  );
+  const cross = (a: Vec3Tuple, b: Vec3Tuple): [number, number, number] => (
+    [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+  );
+  const dot = (a: Vec3Tuple, b: Vec3Tuple): number => (
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+  );
   let outward = 0;
   for (const f of [[b0, b1, t1, t0], [b1, b2, t2, t1], [b2, b3, t3, t2],
     [b3, b0, t0, t3], [t0, t1, t2, t3], [b3, b2, b1, b0]]) {
     const n = cross(sub(f[1], f[0]), sub(f[2], f[0]));
-    const fc = [0, 1, 2].map((k) => (f[0][k] + f[1][k] + f[2][k] + f[3][k]) / 4);
+    const fc: Vec3Tuple = [
+      (f[0][0] + f[1][0] + f[2][0] + f[3][0]) / 4,
+      (f[0][1] + f[1][1] + f[2][1] + f[3][1]) / 4,
+      (f[0][2] + f[1][2] + f[2][2] + f[3][2]) / 4,
+    ];
     if (dot(n, sub(fc, cen)) > 0) outward++;
   }
   return outward >= 3
@@ -189,9 +398,9 @@ function orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
 // framing recipes — mask/frame-neutral BY CONSTRUCTION, and the rim may sit
 // honestly proud of the old solid cap (which would otherwise occlude a
 // recessed disc). Elevation/recoil correct: parented to P.gunG.
-function muzzleBore(P, r, zTip) {
+function muzzleBore(P: MiscBuilderPort, r: number, zTip: number): void {
   const ring = new THREE.Mesh(
-    KIT.xform(KIT.torus(r * 0.82, r * 0.18, 16), 0, 0, 0, Math.PI / 2, 0, 0), P.mats.dark);
+    geometryXform(KIT.torus(r * 0.82, r * 0.18, 16), 0, 0, 0, Math.PI / 2, 0, 0), P.mats.dark);
   ring.name = 'muzzleBoreShadowRim';
   ring.position.set(0, 0, zTip + 0.016);
   const disc = new THREE.Mesh(KIT.cylZ(r * 0.62, 0.012, 14), P.mats.shadow);
@@ -239,7 +448,7 @@ function muzzleBore(P, r, zTip) {
 // swell, muzzle +5.88 (published; the print's tube ends 5.73 — certified
 // short-tube class, ~1 col).
 // ---------------------------------------------------------------------------
-export function buildAriete(P) {
+export function buildAriete(P: MiscBuilderPort): void {
   const { box, cylX, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
@@ -595,15 +804,15 @@ export function buildAriete(P) {
   // all inside the priced mantlet band (y 1.51-1.83, x +-0.41 < the 0.42
   // wedge roots, z within each cover's own footprint): identifiable dust
   // covers, not bare rectangles. Envelope-neutral: no mask row changes.
-  P.addGunExtra(KIT.xform(KIT.sph(0.25, 18), 0, 0, 0, 0, 0, 0,
+  P.addGunExtra(geometryXform(KIT.sph(0.25, 18), 0, 0, 0, 0, 0, 0,
     [1.58, 0.50, 0.92]), 0, -0.011, 1.33);                                    // rounded armored mantlet surround
-  P.addGunExtraDark(KIT.xform(KIT.sph(0.25, 18), 0, 0, 0, 0, 0, 0,
+  P.addGunExtraDark(geometryXform(KIT.sph(0.25, 18), 0, 0, 0, 0, 0, 0,
     [1.18, 0.42, 0.76]), 0, -0.008, 1.365);                                   // seated canvas core
   for (const sx of [-0.27, 0, 0.27]) P.addGunExtraDark(box(0.014, 0.256, 0.464), sx, -0.011, 1.33); // snout cinch straps (3 mm proud on the cover faces)
   P.addGunExtraDark(cylX(0.028, 0.72, 10), 0, 0.096, 1.44);                    // rolled canvas hem across the snout top edge (kills the razor box corner; crown 1.81 <= the 1.83 band)
-  P.addGunExtra(KIT.xform(KIT.sph(0.23, 18), 0, 0, 0, 0, 0, 0,
+  P.addGunExtra(geometryXform(KIT.sph(0.23, 18), 0, 0, 0, 0, 0, 0,
     [1.52, 0.70, 0.65]), 0, -0.01, 0.55);                                     // rounded armored root surround
-  P.addGunExtraDark(KIT.xform(KIT.sph(0.23, 18), 0, 0, 0, 0, 0, 0,
+  P.addGunExtraDark(geometryXform(KIT.sph(0.23, 18), 0, 0, 0, 0, 0, 0,
     [1.08, 0.54, 0.52]), 0, -0.006, 0.575);                                   // inner canvas boot
   for (const sx of [-0.18, 0.18]) P.addGunExtraDark(box(0.014, 0.30, 0.31), sx, -0.015, 0.55); // root-cover straps
   P.addGunExtraDark(cylZ(0.026, 0.10, 8), 0.27, 0.06, 0.42);                   // coax port
@@ -665,7 +874,7 @@ export function buildAriete(P) {
 // visual-reference material only. This original construction uses our
 // primitives, seven-station native track system and explicit physical seats;
 // no reference mesh data is imported, sampled, converted or shipped.
-function buildArieteNative2026(P) {
+function buildArieteNative2026(P: MiscBuilderPort): void {
   const {
     box, cylX, cylY, cylZ, sph, torus, polyLoft, polyMultiLoft, xform,
     buildGun, buildRunningGear, fenders, headlight, liftEye, periscope, cupola,
@@ -791,7 +1000,7 @@ function buildArieteNative2026(P) {
 
   // ---- low, broad connected Ariete turret ----
   P.turretG.position.set(0, 1.38, -0.18);
-  P.add('turret', xform(cylY(0.88, 0.94, 0.10, 22), 0, 0, 0, 0, 0, 0, [1.12, 1, 0.80]), 0, 0.02, 0.02);
+  P.add('turret', geometryXform(cylY(0.88, 0.94, 0.10, 22), 0, 0, 0, 0, 0, 0, [1.12, 1, 0.80]), 0, 0.02, 0.02);
   P.add('turret', box(1.78, 0.13, 1.06), 0, 0.08, -0.02);                    // buried ring/collar seat
   const turretPlan = [
     [-0.34, 1.54], [0.34, 1.54], [0.92, 1.18], [1.28, 0.60],
@@ -889,7 +1098,7 @@ function buildArieteNative2026(P) {
   P.topY = 0.98;
 }
 
-function buildLeclerc(P, variant = 's2') {
+function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'): void {
   const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan, ammoCan,
     spareTrackStrip, shovelTool } = KIT;
@@ -1271,13 +1480,25 @@ function buildLeclerc(P, variant = 's2') {
   // the neutral silhouette byte-for-byte equivalent while guaranteeing that
   // every registered housing surface follows elevation/depression.
   P.gunG.position.set(0, 0.27, 0.50);
-  const gunHousing = (bucket, geo, x, y, z, rx = 0, ry = 0, rz = 0, scale = 1) => {
+  const gunHousing = (
+    bucket: string,
+    geo: THREE.BufferGeometry,
+    x: number,
+    y: number,
+    z: number,
+    rx = 0,
+    ry = 0,
+    rz = 0,
+    scale: GeometryScale = 1,
+  ): void => {
     const movingBucket = bucket === 'turretDark' ? 'gunMountDark' : 'gunMount';
     P.add(movingBucket, geo, x, y - P.gunG.position.y, z - P.gunG.position.z,
       rx, ry, rz, scale);
   };
   const LH = 0.752;                                                            // roof plateau 2.352
-  const roofAt = (z) => (z >= -1.32 ? LH : Math.max(0.575, LH + (z + 1.32) * 0.201));
+  const roofAt = (z: number): number => (
+    z >= -1.32 ? LH : Math.max(0.575, LH + (z + 1.32) * 0.201)
+  );
   P.add('turret', slab(                                                        // rear/autoloader box — right-rear roof corner CLIPPED (print); photo
     [-1.30, 0, -0.12], [1.30, 0, -0.12], [1.30, 0, -1.55], [-1.30, 0, -1.70],
     [-1.02, 0.60, -0.15], [1.02, 0.60, -0.15], [0.95, 0.60, -1.72], [-1.02, 0.60, -1.92])); // round: right-rear BOTTOM corner tapered -1.70 -> -1.55 to the ref's swept right rear (plan cols 1.066..1.288 read the ring at z_w -1.80 vs ref -1.786..-1.703; side bottoms keep the left corner)
@@ -1443,8 +1664,8 @@ function buildLeclerc(P, variant = 's2') {
   // (window = +-half-pitch), and the bulge flooded the neighboring priced
   // windows. The gate-verified LINEAR sweep stands; the 1.288/1.398 col
   // residuals are certified print-corner reads.
-  const CSW = [[0.98, 2.16], [1.47, 1.731]];
-  const czAt = (x) => {
+  const CSW: readonly Vec2Tuple[] = [[0.98, 2.16], [1.47, 1.731]];
+  const czAt = (x: number): number => {
     for (let i = 1; i < CSW.length; i++) {
       if (x <= CSW[i][0] + 1e-9) {
         const [xa, za] = CSW[i - 1], [xb, zb] = CSW[i];
@@ -1454,10 +1675,10 @@ function buildLeclerc(P, variant = 's2') {
     return CSW[CSW.length - 1][1];
   };
   for (const s of [-1, 1]) {
-    const m = (x) => s * x;
+    const m = (x: number): number => s * x;
     // the near-vertical STRIP (15 mm lean, swept corner) — plan lines
     // unchanged: priced cols 0.845/0.955/1.066/1.509 keep their owners
-    const stripSeg = (x0, x1, moving = false) => {
+    const stripSeg = (x0: number, x1: number, moving = false): void => {
       const geometry = slab(
         [m(x0), FR.sB, FR.inZb], [m(x1), FR.sB, FR.inZb], [m(x1), FR.sB, FR.rear], [m(x0), FR.sB, FR.rear],
         [m(x0), FR.sT, FR.inZ], [m(x1), FR.sT, FR.inZ], [m(x1), FR.sT, FR.rear], [m(x0), FR.sT, FR.rear]);
@@ -1475,7 +1696,7 @@ function buildLeclerc(P, variant = 's2') {
       [m(FR.kink), FR.sT, czAt(FR.kink)], [m(FR.outX), FR.sT, czAt(FR.outX)], [m(FR.outX), FR.sT, FR.rear], [m(FR.kink), FR.sT, FR.rear]));
     // CHEEK RAKE 30.5 deg (print inboard fit 29-31 over both cheeks):
     // strip top -> field edge, swept parallel to the strip (planar quads)
-    const rake = (x0, x1, z0, z1, moving = false) => {
+    const rake = (x0: number, x1: number, z0: number, z1: number, moving = false): void => {
       const geometry = slab(
         [m(x0), FR.sT, z0], [m(x1), FR.sT, z1], [m(x1), FR.sT, FR.rear], [m(x0), FR.sT, FR.rear],
         [m(x0), FR.rkT, z0 - FR.rkD], [m(x1), FR.rkT, z1 - FR.rkD], [m(x1), FR.rkT, FR.rear], [m(x0), FR.rkT, FR.rear]);
@@ -1491,7 +1712,7 @@ function buildLeclerc(P, variant = 's2') {
     // LOW FIELDS: inboard flat (0.36 -> 0.44 over z 1.837..1.10); the right
     // field splits around the sight-well opening and carries the bay
     // ceiling strip (the well stays cut through strip + rake)
-    const field = (x0, x1, zF, yF = FR.rkT) => P.add('turret', slab(
+    const field = (x0: number, x1: number, zF: number, yF = FR.rkT): unknown => P.add('turret', slab(
       [m(x0), yF, zF], [m(x1), yF, zF], [m(x1), yF, FR.fZ], [m(x0), yF, FR.fZ],
       [m(x0), FR.fT, FR.fZ + 0.02], [m(x1), FR.fT, FR.fZ + 0.02], [m(x1), FR.fT, FR.fZ], [m(x0), FR.fT, FR.fZ]));
     const fZin = FR.inZ - FR.rkD;                                              // 1.837
@@ -1910,7 +2131,7 @@ function buildLeclerc(P, variant = 's2') {
 // playable below is assembled only from repository primitives and fittings.
 // The accepted S2 hull/running gear/turret stay intact; every new protection
 // module has a broad parent return and stays clear of the single live course.
-function buildLeclercXLR(P) {
+function buildLeclercXLR(P: MiscBuilderPort): void {
   buildLeclerc(P, 'xlr');
   const { box, cylY, cylZ, torus, periscope } = KIT;
   const slab = orientedSlab;
@@ -2013,7 +2234,7 @@ function buildLeclercXLR(P) {
 // `char_leclerc.glb` oracle.  The ERA field is visually explicit and is
 // mirrored by armor faces in modern2.ts; its new gun plant remains a single
 // pitchable gun-owned package.
-function buildAMX56(P) {
+function buildAMX56(P: MiscBuilderPort): void {
   buildLeclerc(P, 'amx56');
   const { box, cylY, cylZ, torus, periscope } = KIT;
   const slab = orientedSlab;
@@ -2108,7 +2329,7 @@ function buildAMX56(P) {
 // reading ~2.9 wide, roof furniture to ~2.7; gun axis 1.66, muzzle
 // bow+2.7; 6 small dished wheels, rear sprocket; turbine exhaust box rear.
 // ---------------------------------------------------------------------------
-function buildT80UNative2026(P) {
+function buildT80UNative2026(P: MiscBuilderPort): void {
   // First-party runtime geometry only. The local javanilga GLB is a visual
   // and measurement oracle; no source vertices, indices, meshes, materials,
   // rig data or converted payload enter this authored KIT/loft builder.
@@ -2221,7 +2442,7 @@ function buildT80UNative2026(P) {
   // K-5 glacis wedge raft: 3 courses FLUSH on the plate (r3 workorder: ref
   // cols 2.36..3.02 read plate+0.02 — the proud raft owned ~6 side cols).
   // Row 2 narrows to x ±1.12: outboard of that at z ~2.9 is the idler wrap.
-  const plateY = (z) => 1.353 - (z - 1.20) * 0.1145;
+  const plateY = (z: number): number => 1.353 - (z - 1.20) * 0.1145;
   P.visualEraCluster('t80u-k5-glacis-era', 'hull', () => {
   for (let row = 0; row < 3; row++) for (let c = 0; c < (row === 2 ? 4 : 5); c++) {
     const z = 2.40 + row * 0.26;
@@ -2435,10 +2656,20 @@ function buildT80UNative2026(P) {
   const turretLocalDatumY = 0.06;
   const turretArmorSeatDropM = 0.025;
   const previousT80URoofY = 0.67 * turretBodyScaleY;
-  const roofY = (y) => y - (0.67 * (1 - turretBodyScaleY)) + turretLocalDatumY;
-  const bodyY = (y) => y * turretBodyScaleY + turretLocalDatumY - turretArmorSeatDropM;
-  const eraSurfaceSeats = [];
-  const seatEra = (x, y, z, w, h, d, rx, ry, overlap = 0.01) => {
+  const roofY = (y: number): number => y - (0.67 * (1 - turretBodyScaleY)) + turretLocalDatumY;
+  const bodyY = (y: number): number => y * turretBodyScaleY + turretLocalDatumY - turretArmorSeatDropM;
+  const eraSurfaceSeats: ReturnType<typeof domeBoxPlanSeat>[] = [];
+  const seatEra = (
+    x: number,
+    y: number,
+    z: number,
+    w: number,
+    h: number,
+    d: number,
+    rx: number,
+    ry: number,
+    overlap = 0.01,
+  ): ReturnType<typeof domeBoxPlanSeat> => {
     const seat = domeBoxPlanSeat(t80uRings, 0.88, {
       x, y, z, w, h, d, rx, ry, overlap, cz: 0.22,
     });
@@ -2729,7 +2960,7 @@ function buildT80UNative2026(P) {
   // the turret nose so pitch cannot reveal daylight around the gun root.
   P.addGunExtra(box(0.64, 0.36, 0.16), 0, 0.01, 0.06);                         // buried aperture seal
   P.addGunExtra(
-    KIT.xform(cylX(0.24, 0.70, P.q ? 20 : 14), 0, 0, 0, 0, 0, 0, [1, 0.92, 1.08]),
+    geometryXform(cylX(0.24, 0.70, P.q ? 20 : 14), 0, 0, 0, 0, 0, 0, [1, 0.92, 1.08]),
     0, 0.01, 0.22);                                                            // rounded rocking shield
   P.addGunExtra(box(0.68, 0.055, 0.30), 0, 0.235, 0.23, -0.10, 0, 0);         // cast rain brow
   P.addGunExtra(box(0.62, 0.065, 0.27), 0, -0.215, 0.22, 0.10, 0, 0);         // supported lower lip
@@ -2793,7 +3024,7 @@ function buildT80UNative2026(P) {
 // plan nose 1.90; tube axis 1.562, slim r 0.065 (12%-cut LANDMINE: sleeve
 // band 0.159 + evac 0.246 both under the ~0.28 side body cut).
 // ---------------------------------------------------------------------------
-export function buildType90(P) {
+export function buildType90(P: MiscBuilderPort): void {
   const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
@@ -3455,7 +3686,7 @@ export function buildType90(P) {
 // 2.28 (real 2.0-2.13 + cupola 2.25; print 2.40-2.47 reads tall), cupola
 // RIGHT of center per photos (print reads it near center x 0..0.15).
 // ---------------------------------------------------------------------------
-function buildType74(P) {
+function buildType74(P: MiscBuilderPort): void {
   const { box, cylY, cylZ, frustum, polyMultiLoft, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, stowage, shovelTool, cupola } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
@@ -3723,7 +3954,7 @@ function buildType74(P) {
 // running gear, and every load path below are authored from repository
 // primitives. Comparison assets may be used only to review proportions and
 // equipment semantics after the geometry is built.
-function buildType74Native2026(P) {
+function buildType74Native2026(P: MiscBuilderPort): void {
   const {
     box, cylY, cylZ, sph, torus, frustum, lathe, buildGun, buildRunningGear,
     fenders, liftEye, periscope, cupola, xform,
@@ -3856,7 +4087,7 @@ function buildType74Native2026(P) {
 
   // ---- low compact asymmetric cast turret, one continuous primary loft ----
   P.turretG.position.set(0, 1.35, 0.34);
-  P.add('turret', xform(cylY(0.88, 0.92, 0.10, P.q ? 28 : 16), 0, 0, 0, 0, 0, 0, [1.0, 1.0, 0.72]), 0, 0.02, -0.02);
+  P.add('turret', geometryXform(cylY(0.88, 0.92, 0.10, P.q ? 28 : 16), 0, 0, 0, 0, 0, 0, [1.0, 1.0, 0.72]), 0, 0.02, -0.02);
   P.add('turret', box(1.58, 0.13, 0.96), 0, 0.08, -0.02);                    // buried ring throat
   // A single low, broad faceted casting is closer to the owner's rounded
   // source shell than the first reset's non-planar roof fan.  The deliberate
@@ -3884,7 +4115,7 @@ function buildType74Native2026(P) {
   // External shield/mantlet and cast cheek continuation form one supported
   // gun-root package rather than a barrel piercing a smooth dome.
   P.add('turret', frustum(0.44, 1.38, 0.92, 0.34, 1.42, 0.98, 0.14, 0.57));
-  P.add('turret', xform(sph(0.40, 18), 0, 0, 0, 0, 0, 0, [1.15, 0.82, 0.78]), 0, 0.34, 1.17);
+  P.add('turret', geometryXform(sph(0.40, 18), 0, 0, 0, 0, 0, 0, [1.15, 0.82, 0.78]), 0, 0.34, 1.17);
   P.add('turretDark', torus(0.25, 0.024, 18), 0, 0.34, 1.48);
   // Prominent source-side square IR searchlight, buried rear face and a
   // two-member bracket to the cheek/mantlet.
@@ -4004,7 +4235,7 @@ function buildType74Native2026(P) {
 // topology, material or vertex payload is imported; the parked ahab prints
 // remain measurement oracles only (their gate rows now measure an
 // owner-decreed divergence — the §5.304 type59 class).
-function buildAMX30(P, b2) {
+function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
   const {
     box, cylX, cylY, cylZ, frustum, torus, xform, polyMultiLoft,
     buildGun, buildRunningGear, headlight, liftEye, periscope,
@@ -4015,7 +4246,15 @@ function buildAMX30(P, b2) {
   // STATION-SLICE SEGMENTATION (amx40 segZ mirror — edge-on prism law,
   // GEOMETRY-GATE): long boxes butt at <=0.48 pitch so every 0.52 m station
   // slab holds a real cross-section face; 4 mm laps kill z-fights.
-  const segZ = (bucket, w, h, xc2, yc2, zLo, zHi) => {
+  const segZ = (
+    bucket: string,
+    w: number,
+    h: number,
+    xc2: number,
+    yc2: number,
+    zLo: number,
+    zHi: number,
+  ): void => {
     const n = Math.max(1, Math.ceil((zHi - zLo) / 0.48));
     const pitch = (zHi - zLo) / n;
     for (let k = 0; k < n; k++) {
@@ -4104,7 +4343,9 @@ function buildAMX30(P, b2) {
     const G2S = [0.30 / 0.28, 0.16 / 0.13, 0.09 / 0.07];
     const GN = [0.9484, 0.3174];                                               // glacis normal (y, z)
     const GRX = -(Math.PI / 2 - 0.3229);
-    const gS = (t) => ({ y: 1.585 - 0.395 * t, z: 1.48 + 1.18 * t });
+    const gS = (t: number): { y: number; z: number } => (
+      { y: 1.585 - 0.395 * t, z: 1.48 + 1.18 * t }
+    );
     const courses = [
       { t: 0.100, n: 8, off: 0 }, { t: 0.256, n: 7, off: 0.1675 },
       { t: 0.412, n: 7, off: 0 }, { t: 0.568, n: 7, off: -0.1675 },
@@ -4126,7 +4367,9 @@ function buildAMX30(P, b2) {
     // NOSE plate field: two courses on the center-tongue plane (normal
     // (0, 0.9496, 0.3137)) between the glacis foot and the prow cap
     const NRX = -(Math.PI / 2 - 0.3190);
-    const nS = (t) => ({ y: 1.208 - 0.228 * t, z: 2.60 + 0.69 * t });
+    const nS = (t: number): { y: number; z: number } => (
+      { y: 1.208 - 0.228 * t, z: 2.60 + 0.69 * t }
+    );
     P.eraCluster('amx30b2_nose_era', (put) => {
       for (const t of [0.30, 0.62]) {
         const s0 = nS(t);
@@ -4281,26 +4524,28 @@ function buildAMX30(P, b2) {
   // five rings + domed cap replace the welded 3-ring prism. NO flank
   // cassettes / appliqué (the "as much side turret armor" strip). ---------
   P.turretG.position.set(0, 1.60, -0.05);
-  const AMX30_PLAN_BASE = [
+  const AMX30_PLAN_BASE: readonly Vec2Tuple[] = [
     [-0.75, 1.54], [-0.17, 1.62], [0.33, 1.62], [0.70, 1.54], [0.96, 1.26],
     [1.17, 0.87], [1.21, 0.39], [1.21, -0.41], [1.17, -0.99], [1.09, -1.50],
     [0.77, -1.81], [0.31, -1.96], [-0.31, -1.98], [-0.75, -1.88],
     [-1.05, -1.61], [-1.18, -1.14], [-1.23, -0.43], [-1.21, 0.34],
     [-1.17, 0.84], [-0.94, 1.25],
   ];
-  const PLAN = [];                                                             // Chaikin corner cut: the cast-round smoothing pass
+  const PLAN: Vec2Tuple[] = [];                                                 // Chaikin corner cut: the cast-round smoothing pass
   for (let i = 0; i < AMX30_PLAN_BASE.length; i++) {
     const a = AMX30_PLAN_BASE[i], c = AMX30_PLAN_BASE[(i + 1) % AMX30_PLAN_BASE.length];
     PLAN.push([a[0] * 0.75 + c[0] * 0.25, a[1] * 0.75 + c[1] * 0.25]);
     PLAN.push([a[0] * 0.25 + c[0] * 0.75, a[1] * 0.25 + c[1] * 0.75]);
   }
-  const aftF = ([, z]) => Math.max(0, Math.min(1, (0.20 - z) / 2.10));         // 0 at the nose -> 1 at the bustle tail
-  const castBottom = (p) => 0.045 + aftF(p) * 0.105;                             // underside rises aft (bustle clears the deck)
-  const castWaist = (p) => castBottom(p) + 0.15;
-  const castShoulder = (p) => 0.455 + aftF(p) * 0.02 - Math.abs(p[0]) * 0.02;
-  const castUpper = (p) => 0.60 - aftF(p) * 0.085;
-  const castCrown = (p) => 0.655 - aftF(p) * 0.115;                           // long falling bustle taper (roof world 2.24 -> 2.13)
-  P.add('turret', xform(cylY(0.94, 0.98, 0.11, P.q ? 24 : 14), 0, 0, 0, 0, 0, 0, [1, 1, 0.62]), 0, 0.005, 0.10); // oval ring riser
+  const aftF = ([, z]: Vec2Tuple): number => Math.max(0, Math.min(1, (0.20 - z) / 2.10)); // 0 at the nose -> 1 at the bustle tail
+  const castBottom = (point: Vec2Tuple): number => 0.045 + aftF(point) * 0.105; // underside rises aft (bustle clears the deck)
+  const castWaist = (point: Vec2Tuple): number => castBottom(point) + 0.15;
+  const castShoulder = (point: Vec2Tuple): number => (
+    0.455 + aftF(point) * 0.02 - Math.abs(point[0]) * 0.02
+  );
+  const castUpper = (point: Vec2Tuple): number => 0.60 - aftF(point) * 0.085;
+  const castCrown = (point: Vec2Tuple): number => 0.655 - aftF(point) * 0.115; // long falling bustle taper (roof world 2.24 -> 2.13)
+  P.add('turret', geometryXform(cylY(0.94, 0.98, 0.11, P.q ? 24 : 14), 0, 0, 0, 0, 0, 0, [1, 1, 0.62]), 0, 0.005, 0.10); // oval ring riser
   P.add('turret', box(1.80, 0.14, 1.24), 0, 0.07, 0.10);                       // ring-zone throat bridging into the cast shell
   P.add('turret', polyMultiLoft(PLAN, [
     { height: castBottom, inset: 1.00 },
@@ -4309,7 +4554,7 @@ function buildAMX30(P, b2) {
     { height: castUpper, inset: 0.84 },                                        // continuous inward roll
     { height: castCrown, inset: 0.60, centerHeight: 0.685 },                   // domed cap: crown fan rises to 0.685 (world 2.285 = pub roof 2.29)
   ]));
-  P.add('turretDark', xform(cylY(0.92, 0.92, 0.02, P.q ? 24 : 14), 0, 0, 0, 0, 0, 0, [1.05, 1, 0.72]), 0, 0.045, 0.02); // ring shadow seam
+  P.add('turretDark', geometryXform(cylY(0.92, 0.92, 0.02, P.q ? 24 : 14), 0, 0, 0, 0, 0, 0, [1.05, 1, 0.72]), 0, 0.045, 0.02); // ring shadow seam
   // plan centroid of the loft (polyMultiLoft inset origin) — shared by the
   // crown plate and the b2 cheek-ERA seat math below
   const planCx = PLAN.reduce((s2, q) => s2 + q[0], 0) / PLAN.length;
@@ -4328,11 +4573,13 @@ function buildAMX30(P, b2) {
     // courses per side (y 0.17 / 0.34) spanning |x| 0.44..1.16: the inner
     // stations ARE the mantlet-flank bricks; the rotor throat stays clear.
     const TP = P.spec.armor.turretPivot;
-    const insetAt = (y) => y <= 0.195
+    const insetAt = (y: number): number => y <= 0.195
       ? 1.00 + ((y - 0.045) / 0.15) * 0.045
       : 1.045 - ((y - 0.195) / 0.24) * 0.08;
-    const leanAt = (y, rlen) => (y <= 0.195 ? 0.30 : -0.3333) * rlen;
-    const arcSegs = [];
+    const leanAt = (y: number, radius: number): number => (
+      (y <= 0.195 ? 0.30 : -0.3333) * radius
+    );
+    const arcSegs: ArcSegment[] = [];
     for (let i = 0; i < PLAN.length; i++) {
       const a = PLAN[i], b3 = PLAN[(i + 1) % PLAN.length];
       const mx = (a[0] + b3[0]) / 2, mz = (a[1] + b3[1]) / 2;
@@ -4345,14 +4592,14 @@ function buildAMX30(P, b2) {
     }
     arcSegs.sort((q, r) => q.mx - r.mx);
     const G2T = [0.30 / 0.28, 0.16 / 0.13, 0.09 / 0.07];
-    const cheekSeat = (seg, y) => {
+    const cheekSeat = (seg: ArcSegment, y: number): CheekSeat => {
       const s = insetAt(y);
       const wx = planCx + (seg.mx - planCx) * s, wz = planCz + (seg.mz - planCz) * s;
       const rlen = Math.hypot(seg.mx - planCx, seg.mz - planCz);
       const rx = Math.atan(leanAt(y, rlen)) * 0.45;
       return { x: wx + seg.nx * 0.058, z: wz + seg.nz * 0.058, rx, ry: Math.atan2(seg.nx, seg.nz), wx, wz };
     };
-    const brickSeats = [];                                                     // [seat, yLocal]
+    const brickSeats: Array<readonly [CheekSeat, number]> = [];                // [seat, yLocal]
     for (const seg of arcSegs) brickSeats.push([cheekSeat(seg, 0.17), 0.17]);  // course A: every station
     for (let i = 0; i + 1 < arcSegs.length; i++) {                             // course B: staggered mids
       const a = arcSegs[i], b3 = arcSegs[i + 1];
@@ -4419,14 +4666,14 @@ function buildAMX30(P, b2) {
   P.add('turret', cylY(0.372, 0.428, 0.21, 16), cupX, 0.665, cupZ);            // raised cast collar base
   for (let k = 0; k < 8; k++) {                                                // gusset skirt (print tell)
     const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
-    P.add('turret', xform(box(0.055, 0.13, 0.075), 0, 0, 0.362, -0.40, 0, 0), cupX, 0.72, cupZ, 0, a, 0);
+    P.add('turret', geometryXform(box(0.055, 0.13, 0.075), 0, 0, 0.362, -0.40, 0, 0), cupX, 0.72, cupZ, 0, a, 0);
   }
   P.add('turretDark', torus(0.345, 0.013, 16), cupX, 0.782, cupZ);             // collar/drum seam ring
   P.add('turret', cylY(0.318, 0.348, 0.20, 16), cupX, 0.875, cupZ);            // episcope drum wall
   for (let k = 0; k < 10; k++) {                                               // TEN-episcope belt (order)
     const a = ((k + 0.5) / 10) * Math.PI * 2;
-    P.add('turretDark', xform(box(0.104, 0.085, 0.048), 0, 0, 0.318, 0, 0, 0), cupX, 0.935, cupZ, 0, a, 0);
-    P.add('turretGlass', xform(box(0.078, 0.048, 0.05), 0, 0, 0.322, 0, 0, 0), cupX, 0.94, cupZ, 0, a, 0);
+    P.add('turretDark', geometryXform(box(0.104, 0.085, 0.048), 0, 0, 0.318, 0, 0, 0), cupX, 0.935, cupZ, 0, a, 0);
+    P.add('turretGlass', geometryXform(box(0.078, 0.048, 0.05), 0, 0, 0.322, 0, 0, 0), cupX, 0.94, cupZ, 0, a, 0);
   }
   P.add('turret', cylY(0.30, 0.325, 0.052, 16), cupX, 1.0, cupZ);              // crown ring over the belt
   P.add('turret', KIT.lathe([[0.295, 0], [0.27, 0.028], [0.185, 0.06], [0.02, 0.076]], 16), cupX, 1.024, cupZ); // domed lid
@@ -4448,18 +4695,18 @@ function buildAMX30(P, b2) {
     const railR = 0.415, railY = 1.006, a0 = 0.62, arc = Math.PI * 1.30;
     for (let k = 0; k < 7; k++) {
       const a = a0 + (k + 0.5) * (arc / 7);
-      P.add('turretDark', xform(box(0.225, 0.02, 0.024), 0, 0, railR, 0, 0, 0), cupX, railY, cupZ, 0, a, 0);
+      P.add('turretDark', geometryXform(box(0.225, 0.02, 0.024), 0, 0, railR, 0, 0, 0), cupX, railY, cupZ, 0, a, 0);
     }
     for (const a of [1.15, 2.55, 3.95]) {                                      // stanchions: rail -> drum wall
-      P.add('turretDark', xform(box(0.022, 0.13, 0.022), 0, -0.055, 0.376, 0.55, 0, 0), cupX, railY, cupZ, 0, a, 0);
+      P.add('turretDark', geometryXform(box(0.022, 0.13, 0.022), 0, -0.055, 0.376, 0.55, 0, 0), cupX, railY, cupZ, 0, a, 0);
     }
     // remote 7.62 AANF1 (CLAMS read): carriage saddle on the rail RIGHT —
     // FORWARD rest (CROWS-FORWARD law) — receiver/barrel from the census
     // fitting; the distinctive curved belt-feed chute + drum added around it.
     const mgA = 1.35;
     const mgX = cupX + Math.sin(mgA) * railR, mgZ = cupZ + Math.cos(mgA) * railR;
-    P.add('turretDark', xform(box(0.09, 0.055, 0.17), 0, 0.012, railR, 0, 0, 0), cupX, railY, cupZ, 0, mgA, 0); // carriage saddle
-    P.add('turretDark', xform(box(0.05, 0.05, 0.15), 0, -0.02, 0.36, 0.9, 0, 0), cupX, 0.97, cupZ, 0, mgA, 0);  // mount arm into the drum
+    P.add('turretDark', geometryXform(box(0.09, 0.055, 0.17), 0, 0.012, railR, 0, 0, 0), cupX, railY, cupZ, 0, mgA, 0); // carriage saddle
+    P.add('turretDark', geometryXform(box(0.05, 0.05, 0.15), 0, -0.02, 0.36, 0.9, 0, 0), cupX, 0.97, cupZ, 0, mgA, 0);  // mount arm into the drum
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.04, seed: b2 ? 302 : 301, scale: 1.0, ammo: false });
     mg.position.set(mgX, 1.036, mgZ + 0.04);
     P.turretG.add(mg);
@@ -4469,8 +4716,8 @@ function buildAMX30(P, b2) {
     const mgS = 0.78;
     const recY = 1.036 + 0.014 + 0.16 * mgS + 0.05 * mgS + (0.045 * mgS) / 2 - 0.01;
     const recZ = mgZ + 0.04 + 0.06 * mgS;
-    P.add('turretDark', xform(cylY(0.075, 0.075, 0.095, 12), 0, 0, 0, 0, 0, Math.PI / 2), mgX - 0.165, recY - 0.055, recZ - 0.02);
-    P.add('turretDetail', xform(cylY(0.077, 0.077, 0.018, 12), 0, 0, 0, 0, 0, Math.PI / 2), mgX - 0.218, recY - 0.055, recZ - 0.02); // drum lid
+    P.add('turretDark', geometryXform(cylY(0.075, 0.075, 0.095, 12), 0, 0, 0, 0, 0, Math.PI / 2), mgX - 0.165, recY - 0.055, recZ - 0.02);
+    P.add('turretDetail', geometryXform(cylY(0.077, 0.077, 0.018, 12), 0, 0, 0, 0, 0, Math.PI / 2), mgX - 0.218, recY - 0.055, recZ - 0.02); // drum lid
     for (let k = 0; k < 6; k++) {                                              // banana chute (6 links, drum -> feed)
       const t = (k + 0.5) / 6;
       P.add('turretDark', box(0.030, 0.052, 0.088),
@@ -4529,7 +4776,7 @@ function buildAMX30(P, b2) {
   // a sky seam between the mask and turret.
   P.addGunExtra(box(0.86, 0.56, 0.12), 0, 0.02, 0.04);                         // buried sealing plate
   P.addGunExtra(
-    xform(cylX(0.29, 0.82, P.q ? 24 : 16), 0, 0, 0, 0, 0, 0, [1, 0.92, 1.10]),
+    geometryXform(cylX(0.29, 0.82, P.q ? 24 : 16), 0, 0, 0, 0, 0, 0, [1, 0.92, 1.10]),
     0, 0.02, 0.22);                                                            // rounded rocking shield
   P.addGunExtra(box(0.70, 0.055, 0.30), 0, 0.285, 0.15, -0.08, 0, 0);         // cast rain brow
   P.addGunExtra(box(0.66, 0.070, 0.28), 0, -0.265, 0.17, 0.10, 0, 0);         // supported lower lip
@@ -4541,7 +4788,7 @@ function buildAMX30(P, b2) {
   P.addGunExtraDark(torus(0.118, 0.020, 14), 0, 0, 0.62);                      // canvas boot ring
   // 20 mm M693 in the BULGED rotor cheek LEFT of the 105 (order: "coax
   // 20mm M693 port beside the 105mm F1 (bulged mantlet cheek)")
-  P.addGunExtra(xform(cylZ(0.115, 0.34, 12, 0.10), 0, 0, 0, 0, 0, 0, [1.25, 0.95, 1]), -0.315, 0.045, 0.34); // cast cheek bulge
+  P.addGunExtra(geometryXform(cylZ(0.115, 0.34, 12, 0.10), 0, 0, 0, 0, 0, 0, [1.25, 0.95, 1]), -0.315, 0.045, 0.34); // cast cheek bulge
   P.addGunExtra(box(0.15, 0.19, 0.30), -0.315, 0.03, 0.42);                    // housing slot
   P.addGunExtra(cylZ(0.030, 1.30, 10), -0.315, 0.075, 1.22);                   // 20 mm barrel to world z 3.12
   P.addGunExtraDark(cylZ(0.041, 0.055, 10), -0.315, 0.075, 0.98);              // barrel support collar (§5.328 coax-read verify)
@@ -4553,9 +4800,9 @@ function buildAMX30(P, b2) {
   // dark lens well + inner iris disc so the face reads concentric.
   P.addGunExtra(box(0.46, 0.40, 0.26), -0.76, 0.16, 0.42);
   P.addGunExtraDark(box(0.40, 0.34, 0.028), -0.76, 0.16, 0.555);               // lens frame
-  P.addGunExtra(xform(torus(0.155, 0.020, 18), 0, 0, 0, Math.PI / 2, 0, 0), -0.76, 0.18, 0.578); // pale bezel ring
+  P.addGunExtra(geometryXform(torus(0.155, 0.020, 18), 0, 0, 0, Math.PI / 2, 0, 0), -0.76, 0.18, 0.578); // pale bezel ring
   P.addGunExtraDark(cylZ(0.138, 0.042, 16), -0.76, 0.18, 0.578);               // recessed lens well
-  P.addGunExtra(xform(cylY(0.055, 0.055, 0.016, 12), 0, 0, 0, Math.PI / 2, 0, 0), -0.76, 0.18, 0.602); // iris hub disc
+  P.addGunExtra(geometryXform(cylY(0.055, 0.055, 0.016, 12), 0, 0, 0, Math.PI / 2, 0, 0), -0.76, 0.18, 0.602); // iris hub disc
   P.addGunExtra(box(0.05, 0.40, 0.05), -0.545, 0.16, 0.40);                    // inboard carrier arm into the rotor
   P.addGunExtraDark(box(0.015, 0.34, 0.02), -0.90, 0.16, 0.565);               // guard bars
   P.addGunExtraDark(box(0.015, 0.34, 0.02), -0.62, 0.16, 0.565);
@@ -4574,8 +4821,8 @@ function buildAMX30(P, b2) {
   muzzleBore(P, gunRadius, gunLen - 0.02);                                     // §B3.1 muzzle bore
   P.topY = 1.12;
 }
-function buildAMX30B(P) { buildAMX30(P, false); }
-function buildAMX30B2(P) { buildAMX30(P, true); }
+function buildAMX30B(P: MiscBuilderPort): void { buildAMX30(P, false); }
+function buildAMX30B2(P: MiscBuilderPort): void { buildAMX30(P, true); }
 
 // Profiles. ariete/leclerc/t80u/type74 override their canonical builders
 // (family-map entries win per id); type90 keeps the parametric kit path with
@@ -4601,4 +4848,4 @@ export const MISC_PROFILES = {
   // baked-in hull/turret 180 — see the buildAMX30 header note)
   amx30: { build: buildAMX30B },
   amx30b2: { build: buildAMX30B2 },
-};
+} satisfies VehicleProfileRecord;

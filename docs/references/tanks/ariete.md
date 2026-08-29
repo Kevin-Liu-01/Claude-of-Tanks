@@ -58,7 +58,7 @@ the bow ≈ 1.7–1.9 m, wheels visible below the skirt line.
 | Date | total | minView | hull | turret | gun | tracks | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 77.3 | 80.0 | 89.8 | 68.7 | 40.2 | 78.3 | baseline (modern3 canonical builder) |
-| 2026-07-30 | 79.0 | — | 89 | 76 | 46 | 76 | bespoke misc.js build: taller welded turret (roof 2.38) + angular mantlet cheek wedges, sealed trunnion roll, TURMS box + pano, bustle + basket, GALIX, 7-wheel gear w/ dark recesses, L/44 re-seated |
+| 2026-07-30 | 79.0 | — | 89 | 76 | 46 | 76 | bespoke misc.ts build: taller welded turret (roof 2.38) + angular mantlet cheek wedges, sealed trunnion roll, TURMS box + pano, bustle + basket, GALIX, 7-wheel gear w/ dark recesses, L/44 re-seated |
 | 2026-07-30 | 80.0 | — | 89 | 76 | 50 | 77 | r2: gun len to the oracle overhang (4.90) + fatter sleeve, skirt bottom raised (wheels exposed), side shelves + GALIX outboard, sight cluster forward, whips raked aft |
 | 2026-07-30 | 79.8 | 82.1 | 88.9 | 75.8 | 50.2 | 76.9 | r3 final: glacis headlight pods + fender rib, evac at 0.44. CAPS: the oracle tube DROOPS (fused ~1.5° decl.) — a level tube tops out near G≈50; oracle hull is ~8% stubbier than the published 7.59 m (kept real), costing edge overlap in side views |
 
@@ -669,7 +669,7 @@ per slab about its corner centroid — REVERSED = 0/6 faces outward):
 The reversed set was NOT left-only: winding errors land wherever the
 authored ring handedness flips, and no mask row can see any of them.
 
-FIX: `orientedSlab` wrapper in misc.js (measures outwardness, re-orients
+FIX: `orientedSlab` wrapper in misc.ts (measures outwardness, re-orients
 reversed rings b0,b3,b2,b1 / t0,t3,t2,t1 before building — identical
 solids, outward faces). buildAriete/buildLeclerc bind `slab` to it, so
 the class cannot recur in these builders. Mask-neutral BY CONSTRUCTION
@@ -726,7 +726,7 @@ LAWS BANKED (missing-side round):
    (55 rows -> 14 authored) without renders.
 
 INCIDENT (banked for the orchestrator): mid-round an external sweep
-reverted src/vehicles/profiles/misc.js to HEAD bytes between two of this
+reverted src/vehicles/profiles/misc.ts to HEAD bytes between two of this
 agent's edits (single-owner file; only the in-flight edit survived on the
 reverted base). Recovered from the scratchpad WIP snapshot; all
 measurements re-run on final bytes. LIVE-TREE FROZEN-SIB HAZARD family —

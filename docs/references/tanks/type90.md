@@ -58,7 +58,7 @@ rack overhang, long raked whip antennas, gun overhang ≈ 2.26 m real
 
 | Date | total | minView | hull | turret | gun | tracks | change |
 |---|---|---|---|---|---|---|---|
-| 2026-07-30 | 78.9 | 76.2 | 87.8 | 61.6 | 73.4 | 84.0 | baseline (generic kit profile in misc.js; muzzle 0.8 m SHORT of the real L/44 station) |
+| 2026-07-30 | 78.9 | 76.2 | 87.8 | 61.6 | 73.4 | 84.0 | baseline (generic kit profile in misc.ts; muzzle 0.8 m SHORT of the real L/44 station) |
 | 2026-07-30 | 79.0 | 80.4 | 87.3 | 73.0 | 49.7 | 81.0 | wave-2 final: turret raised to the real 2.33 roof (+0.22), commander sight tower + center M2 + rear rack overhang + vertical whips, evacR 1.9 gun rebuild, L/44 muzzle at the TRUE bow+2.26 station (gunZ stays 0 — a forward gun origin detached the kit mantlet, r1 floater fixed). GUN CAP ACCEPTED: the oracle is width-under-normalized (~20% tall/long), so its hull swallows most of the true overhang window — the honest muzzle costs G 73→50 while every view score RISES (minView 76.2→80.4); HANDOFF §4 says published dims win |
 | 2026-08-05 | 81.6 | — | 95 | 83 | 8 | 93 | r5 ladder final (legacy board; the G 8 is the certified published-vs-print tube class). GEOMETRY GATE (the measure of record): 63.7 -> 79.0 x2 — hull 80.4 / whole 79.5 / turret 79.1 / stations 79.0 / dims 100 / floaters 100 |
 
@@ -955,7 +955,7 @@ polish touch. DELIVERED UNCOMMITTED-UNSTAGED.
 ## OWNER HEIGHT + STRICT TRACK RE-CERT (2026-08-12, RE-FROZEN)
 
 The active vehicle is the repository-authored Type 90 in
-`src/vehicles/profiles/misc.js`. The recovered GLB remains a private
+`src/vehicles/profiles/misc.ts`. The recovered GLB remains a private
 measurement/render oracle only; no source mesh, converted vertex/index
 payload, material, texture, rig, animation or runtime GLB node enters the
 playable or public build.
@@ -1123,7 +1123,7 @@ byte-identical. The shell regroup is a mathematical no-op for turret armor.
   lane's four files): **PASS — 116 receipts current**, no other row moved.
 - `npm test` **exit 0** (includes the landed §5.371 recoil selftest).
 - muzzle-bore probe type90/type90a **PASS** (inner 16.9 / contrast 112.3).
-- hashgeo guard, 36 ids resident in misc.js / profiles/japan.ts /
+- hashgeo guard, 36 ids resident in misc.ts / profiles/japan.ts /
   userdrops5.js, clean-room A/B at 3a37ec93: **34 byte-held, 2 moved by
   design** (type90 518e88f0 -> **e10fb640**, type90a 71208238 ->
   **61cd559a**). type10 **6e25b62e** / type10b **5e6f7700** hold the §5.369

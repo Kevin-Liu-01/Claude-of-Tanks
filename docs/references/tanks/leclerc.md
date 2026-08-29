@@ -54,7 +54,7 @@ skirt blocks stand slightly narrower at the bottom than the track guards.
 | Date | total | minView | hull | turret | gun | tracks | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 81.5 | 82.1 | 89.6 | 71.2 | 65.4 | 82.0 | baseline (modern2 canonical builder) |
-| 2026-07-30 | 83.0 | — | 90 | 76 | 65 | 81 | bespoke misc.js build: turret widened via cheek armor boxes + side baskets (3.02 m), roof 2.40, HL-70 armored head forward-right, THIN pano mast, raised engine run, rear hull rack, low-seated gun w/ trunnion roll |
+| 2026-07-30 | 83.0 | — | 90 | 76 | 65 | 81 | bespoke misc.ts build: turret widened via cheek armor boxes + side baskets (3.02 m), roof 2.40, HL-70 armored head forward-right, THIN pano mast, raised engine run, rear hull rack, low-seated gun w/ trunnion roll |
 | 2026-07-30 | 83.0 | 84.8 | 89.6 | 76.4 | 66.1 | 79.8 | r2/r3 final: gun len 6.17 (muzzle tips now register), taller/deeper mantlet plate, rack deepened. CAP: the oracle's hull rig node under-covers its glacis, so part of the procedural bow is scored inside the gun-overhang window — G plateaus mid-60s with the correct L/52 |
 
 ## GATE-V10 round-2 notes (2026-07-31)
@@ -467,7 +467,7 @@ channel + aft panel + rib cross the print's notch) — channel split into 4
 z-stepped segments (-2.13/-1.99/-1.71/-2.07 z_l rears), panel + rib k3
 split around x 0.01..0.135.
 
-### PHOTO ROUND CLOSE-OUT (final bytes; scratchpad misc.js.final-bores mirror)
+### PHOTO ROUND CLOSE-OUT (final bytes; scratchpad misc.ts.final-bores mirror)
 Every gap-table fix landed; three were re-derived in-loop against measured
 reads (the loop numbers below are the receipts):
 - **#1 tower final**: pedestal ring + shaft + head + window apron + big dark
@@ -866,9 +866,9 @@ through the shared builder per order. GUARDS: type90 d4a9410 EXACT through
 every batch; amx40 1a74c63c and amx30 33b5048 / amx30b2 88801828 EXACT
 through the batch-1 window (only §5.329 edits in tree); their later movement
 (amx40 ed5d23b2 at identical verts; amx30/amx30b2 twice) is the LIVE §5.328
-amx lane's own uncommitted WIP arriving in profiles/misc.js (buildAMX30
+amx lane's own uncommitted WIP arriving in profiles/misc.ts (buildAMX30
 region, disjoint hunks 3995+ vs this round's 1063-1954) plus a fleet-wide
 specs.ts finalizeCombatAnatomy WIP from another lane — attribution receipts
-in the round snapshots (misc.js.baseline/.wip1/.wip2-dualstate/.wip3).
+in the round snapshots (misc.ts.baseline/.wip1/.wip2-dualstate/.wip3).
 Delivered UNCOMMITTED-UNSTAGED per the graduate-change order; §3 freeze row
 update (733d24fd -> e6523de8) belongs to the landing authority.

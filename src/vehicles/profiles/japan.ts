@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildType10BBase } from '../modern3.ts';
-import { buildType90 } from './misc.js';
+import { buildType90 } from './misc.ts';
 import { TYPE10_MANTLET_FIT } from './type10GunSeat.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
@@ -21,22 +21,63 @@ interface JapaneseBuilderPort {
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
   readonly recoilG: THREE.Group;
-  readonly mats: Record<string, THREE.Material> & { readonly rubber: THREE.Material };
+  readonly mats: Record<string, THREE.Material> & {
+    readonly rubber: THREE.Material;
+    readonly dark: THREE.Material;
+    readonly detail: THREE.Material;
+    readonly shadow: THREE.Material;
+  };
   readonly q?: boolean;
   readonly rng: unknown;
   readonly disposables: THREE.BufferGeometry[];
+  readonly gear: {
+    readonly roadWheelLayout?: {
+      readonly wheelZs: readonly number[];
+      readonly xc: number;
+      readonly wheelY: number;
+    };
+    addRoadWheelLayer(
+      geometry: THREE.BufferGeometry,
+      material: THREE.Material,
+      options?: {
+        readonly outset?: number;
+        readonly yOffset?: number;
+        readonly name?: string;
+        readonly appearanceRole?: string;
+      },
+    ): void;
+  };
   readonly spec: {
-    readonly armor: { readonly gunPivot: readonly [number, number, number] };
+    readonly armor: {
+      readonly gunPivot: readonly [number, number, number];
+      readonly turretPivot: readonly [number, number, number];
+    };
     readonly visual: { readonly number?: string };
   };
   readonly geometryReceipt?: boolean;
-  topY?: number;
+  topY: number;
   muzzleZ: number;
   add(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addCupola(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
   addGunExtra(geometry: unknown, ...transform: number[]): unknown;
   addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
   addEquipment(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
   addMudguard(id: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
+  eraCluster(
+    key: string,
+    build: (place: (
+      x: number,
+      y: number,
+      z: number,
+      rotationX?: number,
+      rotationY?: number,
+      rotationZ?: number,
+      scaleX?: number,
+      scaleY?: number,
+      scaleZ?: number,
+    ) => void) => void,
+    turretOwned?: boolean,
+  ): void;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,
@@ -46,6 +87,7 @@ interface JapaneseBuilderPort {
     yaw: number,
   ): unknown;
   scaleBuckets(names: readonly string[], x: number, y: number, z: number): unknown;
+  offsetBuckets(names: readonly string[], x?: number, y?: number, z?: number): void;
   visualEraCluster(
     key: string,
     owner: VehicleAssemblyOwner,

@@ -14,7 +14,7 @@ import { CHALLENGER_PROFILES } from './profiles/challenger.ts';
 import { LEOPARD_PROFILES } from './profiles/leopard.js';
 import { MERKAVA_PROFILES } from './profiles/merkava.js';
 import { PATTON_PROFILES } from './profiles/patton.js';
-import { MISC_PROFILES } from './profiles/misc.js';
+import { MISC_PROFILES } from './profiles/misc.ts';
 import { ITALY_PROFILES } from './profiles/italy.ts';
 import { UKRAINE_PROFILES } from './profiles/ukraine.ts';
 import { CHINA_PROFILES } from './profiles/china.ts';

@@ -50,7 +50,7 @@ Skinned armature (Tower_9 yaw bone, Gun_7 pitch bone, wheels as bones);
 loader uses scaleToOverall because the barrel verts live in the skinned hull
 mesh. ROSTER NOTE: the type74 SPEC was delisted with the quarantined GLB
 (the retired quarantine registry never shipped it) because it had "no procedural
-fallback"; the misc.js profile now registers the spec with an original
+fallback"; the misc.ts profile now registers the spec with an original
 procedural build (clean license), which is the substitution that delist
 comment asked for. Width-normalized (3.18) station readings: overall 9.09,
 height 3.06 over the M2/antenna stack (the fused skinned mesh exposes no
@@ -66,7 +66,7 @@ its own mirrors INSIDE the ±1.59 width guard so normalization stays stable.
 | Date | total | minView | hull | turret | gun | tracks | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | — | — | — | — | — | — | no baseline possible: spec unregistered (quarantine delist), lab had no oracle row |
-| 2026-07-30 | 82.1 | 76.6 | N/A | N/A | N/A | 90.7 | first scoreable build: spec registered from misc.js + lab oracle override; bespoke low hull, cast dome, 5-wheel dead-track gear, cupola M2, searchlight |
+| 2026-07-30 | 82.1 | 76.6 | N/A | N/A | N/A | 90.7 | first scoreable build: spec registered from misc.ts + lab oracle override; bespoke low hull, cast dome, 5-wheel dead-track gear, cupola M2, searchlight |
 | 2026-07-30 | 83.8 | 79.8 | N/A | N/A | N/A | 89.3 | r2 final: deck band to 1.32 + dome to 2.13 (published 2.25 w/ cupola), wheels R0.42, fender mirrors, hull-rear whip antennas, taller M2 stack, gun 5.72 (muzzle registers with the oracle). Component masks stay N/A (fused oracle) — identity judged on the shaded board per the packet |
 
 ## RETIRED CAP — single-mesh rig (repaired 2026-07-31, batch 6)

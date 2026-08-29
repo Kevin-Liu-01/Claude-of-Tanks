@@ -1,7 +1,7 @@
 # C1 Ariete (`ariete_c1`) — §5.248 ground-up rebuild (italy wave)
 
 **Exact variant modeled:** production C1 Ariete (Esercito Italiano series) —
-distinct from the resident `ariete` (Preserie, misc.js, UNTOUCHED donor,
+distinct from the resident `ariete` (Preserie, misc.ts, UNTOUCHED donor,
 byte-held 43e126e8 through this round). OTO Melara welded arrow turret,
 TURMS sight arrangement, 120 mm/44 with the Italian thermal-sleeve profile,
 seven roadwheels, the C1 skirt/fender line.
