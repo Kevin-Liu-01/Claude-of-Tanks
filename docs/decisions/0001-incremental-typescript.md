@@ -176,6 +176,10 @@ The Chinese authored family pack now uses strict
 `src/vehicles/profiles/china.ts` contracts for ZTZ-85-III, Type 99A,
 ZTZ-99A2, and Type 59 geometry, equipment, ERA clusters, running-gear
 receipts, and nonuniform mantlet transforms while remaining demand loaded.
+The T-80 authored family pack now uses strict
+`src/vehicles/profiles/t80.ts` contracts for the T-80, T-80B, T-80BV, and
+T-84 Oplot geometry, equipment, ERA seating, running-gear receipts, and
+tracked resource ownership while preserving its exact-family demand boundary.
 
 ## Consequences
 

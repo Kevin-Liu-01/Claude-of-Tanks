@@ -1299,7 +1299,7 @@ function buildUAT80UKursk(P) {
 
   // T-80U turret — §5.341 T-80 DOME REBASE (owner order, same law as
   // ua_t80bv): the odd sz-1.12 ellipse is replaced by the RESIDENT
-  // t80-line cast profile (t80.js buildT80Line v1 ring list — the 9-ring
+  // t80-line cast profile (t80.ts buildT80Line v1 ring list — the 9-ring
   // low broad casting), squashed 0.88 above the ring base, plan bias
   // cz +0.22 per the resident. turretG drops 1.50 -> 1.44 (ring recess);
   // the gun axis keeps its certified 1.70 world height below.

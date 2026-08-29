@@ -18,8 +18,64 @@ import {
   widthAnchor,
   eraRuCheeks,
 } from './russia.js';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
-function buildT80Line(P, v) {
+type Vec3Tuple = [number, number, number];
+type VehicleAssemblyOwner = 'hull' | 'turret';
+type T80Variant = 0 | 1 | 2;
+
+interface DisposableResource {
+  dispose(): void;
+}
+
+interface T80BuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly mats: {
+    canvasCloth: THREE.MeshStandardMaterial;
+    [role: string]: unknown;
+  };
+  readonly spec: { id: string; visual: { number?: string } };
+  readonly disposables: DisposableResource[];
+  topY?: number;
+  add(slot: string, geometry: unknown, ...transform: number[]): void;
+  addEquipment(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    label: string,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): unknown;
+  visualEraCluster(
+    key: string,
+    owner: VehicleAssemblyOwner,
+    build: () => void,
+  ): void;
+}
+
+interface EraSurfaceSeat {
+  readonly x: number;
+  readonly z: number;
+  readonly surfaceGapM: number;
+}
+
+const nonUniformXform = KIT.xform as (
+  geometry: unknown,
+  x: number,
+  y: number,
+  z: number,
+  rotationX: number,
+  rotationY: number,
+  rotationZ: number,
+  scale: number | readonly number[],
+) => unknown;
+
+function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
   // v: 0 = T-80 (no ERA), 1 = T-80B (brow applique + 902 smokes),
   //    2 = T-80BV (Kontakt-1 field: cheeks via the k1 arc + glacis raft)
   const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
@@ -231,11 +287,11 @@ function buildT80Line(P, v) {
   // Fixed-height armor/equipment follows the crown delta from the rejected
   // seven-ring shell; roof-relative seats inherit it through roofDrop.
   const bvSeatLiftY = v === 2 ? roofTopY - previousBVRoofY : 0;
-  const turretSeatY = (y) => y + bvSeatLiftY;
+  const turretSeatY = (y: number): number => y + bvSeatLiftY;
   // Keep the BV chevrons on the lower cast cheek so their two-row V reads
   // cleanly beneath the roof stations instead of riding above the brow.
-  const frontChevronY = (y) => turretSeatY(y) + 0.04;
-  const roofY = (y) => y - roofDrop;
+  const frontChevronY = (y: number): number => turretSeatY(y) + 0.04;
+  const roofY = (y: number): number => y - roofDrop;
   // crown plate: the ref roof is FLAT 2.20-2.25 with a falloff beyond — the
   // compressed ref's front profile now falls continuously from ±0.60
   // (2.19@0.54 -> 2.05@1.02 -> 1.96@1.05), which the lathe already tracks;
@@ -266,8 +322,8 @@ function buildT80Line(P, v) {
     // §B3.1 (prism sweep 2026-08-06): the mantlet block is the cast collar
     // under the boot — elliptical frustum, same plan/side extremes at the
     // center axes (masks read identical rectangles); fold ring inside.
-    P.addGunExtra(KIT.xform(cylZ(0.5, 0.34, 16, 0.465), 0, 0, 0, 0, 0, 0, [0.46, 0.32, 1]), 0, 0.02, 0.72);
-    P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.43, 0.295, 1]), 0, 0.015, 0.80);
+    P.addGunExtra(nonUniformXform(cylZ(0.5, 0.34, 16, 0.465), 0, 0, 0, 0, 0, 0, [0.46, 0.32, 1]), 0, 0.02, 0.72);
+    P.addGunExtraDark(nonUniformXform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.43, 0.295, 1]), 0, 0.015, 0.80);
     // §B3: V-nose dust cover keeps its certified masses + fold-crease
     // strips flush on the faces (canvas grammar, zero growth).
     P.add('turret', box(0.30, 0.20, 0.14), 0, turretSeatY(0.24), 1.70);
@@ -287,8 +343,8 @@ function buildT80Line(P, v) {
     // §B3.1 (prism sweep 2026-08-06): boot mass hanging under the hood —
     // elliptical frustum (same extremes), fold ring, clamp hidden under
     // the hood line.
-    P.addGunExtra(KIT.xform(cylZ(0.5, 0.40, 16, 0.465), 0, 0, 0, 0, 0, 0, [0.46, 0.50, 1]), 0, -0.10, 0.75);
-    P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.43, 0.47, 1]), 0, -0.105, 0.84);
+    P.addGunExtra(nonUniformXform(cylZ(0.5, 0.40, 16, 0.465), 0, 0, 0, 0, 0, 0, [0.46, 0.50, 1]), 0, -0.10, 0.75);
+    P.addGunExtraDark(nonUniformXform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.43, 0.47, 1]), 0, -0.105, 0.84);
     // r27: hood/step dropped to the compressed ref's side band (hood zone
     // tops read 1.905-2.015 where the old 2.00/2.16 pair sat +0.10)
     P.add('turret', box(1.30, 0.32, 0.50), 0, 0.34, 1.44);
@@ -480,9 +536,19 @@ function buildT80Line(P, v) {
     // obsolete shared continuous bars are gone; every visible module below
     // has a painted carrier shoe buried into the cast turret.
     eraRuCheeks(P, { rings: ringsT, sz: 0.88, rCz: 0.22, k1Y: turretSeatY(0.18), k1Pitch: 0.21, k1T0: 0.24, k1Step: 0.22, k1H: 0.21, k1Out: 0.072, k1Bucket: 'turret', k1Chevron: { yaw: 0.78, arcFrom: 3, pitch: 0.30, bw: 0.28, bd: 0.17, d0: 0.05, out: 0.07, banksOff: true } }, 'k1');
-    const eraSurfaceSeats = [];
-    const seatEra = (x, y, z, w, h, d, rx, ry, overlap = 0.01) => {
-      const seat = domeBoxPlanSeat(ringsT, 0.88, {
+    const eraSurfaceSeats: EraSurfaceSeat[] = [];
+    const seatEra = (
+      x: number,
+      y: number,
+      z: number,
+      w: number,
+      h: number,
+      d: number,
+      rx: number,
+      ry: number,
+      overlap = 0.01,
+    ): EraSurfaceSeat => {
+      const seat: EraSurfaceSeat = domeBoxPlanSeat(ringsT, 0.88, {
         x, y, z, w, h, d, rx, ry, overlap, cz: 0.22,
       });
       eraSurfaceSeats.push(seat);
@@ -677,14 +743,14 @@ function buildT80Line(P, v) {
   P.topY = 1.20;
 }
 
-function buildT80(P) { buildT80Line(P, 0); }
+function buildT80(P: T80BuilderPort): void { buildT80Line(P, 0); }
 
-function buildT80B(P) { buildT80Line(P, 1); }
+function buildT80B(P: T80BuilderPort): void { buildT80Line(P, 1); }
 
-function buildT80BV(P) { buildT80Line(P, 2); }
+function buildT80BV(P: T80BuilderPort): void { buildT80Line(P, 2); }
 
 
-function buildT84(P) {
+function buildT84(P: T80BuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
   // ---- hull loft: ends at the V-bow face 1.99 (plan center truth); the
   // stern boxes own −4.30..−4.86 because the overhang is NOT full width
@@ -1306,4 +1372,4 @@ export const T80_PROFILES = {
   t80b: { build: buildT80B },
   t80bv: { build: buildT80BV },
   t84: { build: buildT84 },
-};
+} satisfies VehicleProfileRecord;
