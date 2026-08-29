@@ -108,7 +108,7 @@ idler, raked twin whips.
 
 ## Build (src/vehicles/profiles/sweden.ts `buildStrv103A`)
 
-Self-contained measured loft (NOT a casemate.js donor clone): two closed
+Self-contained measured loft (NOT a casemate.ts donor clone): two closed
 §C.1-guarded lofts split at the 1.38 shoe seam + beak core wedge; fixed
 gun run in HULL buckets with §B3.1 `muzzleBore` at published +5.47 (bore
 y 1.59 measured, parent `hullG`); `P.fixedMount = true` (strv103/§5.313

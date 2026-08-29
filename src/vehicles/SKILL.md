@@ -156,6 +156,11 @@ Keep the Pershing, Patton, M48, M60, and M60A2 family in
 `profiles/patton.ts`. Preserve its asymmetric cast-loft sections, roof fitting
 inventories, low-profile transformation contract, M60 surface-aligned ERA,
 and explicit invalid-geometry guards behind the narrow Patton builder port.
+Keep Strv 103B and the Jagdtiger, JPz E 100, Sturmtiger, T95, ISU-152, and
+ISU-122S fixed-mount geometry in `profiles/casemate.ts`. Its strict builder,
+loft, corridor, material, and running-gear contracts must preserve the authored
+station order and fixed-hull ownership; Swedish callers depend only on the
+narrow Strv-compatible subset.
 Use `specContracts.ts` for boot-light fleet combat rows. Family packs may add
 identity-specific metadata, but must satisfy the shared mobility, gun, armor,
 dimensions, and visual contract before mutating the legacy registry. Variant

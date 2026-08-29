@@ -99,7 +99,7 @@ stature cap (published heightM 2.14 pins the build at 2.18) still costs
 The batch-B print `strv103b_lamonekeli.glb` ("strv 103b" by lamonekeli,
 CC-BY-4.0, LOCAL-ONLY quarantine) became THE gate reference; the committed
 wesiora candidateGlb stays in specs as a second reference. The old
-casemate.js donor-clone registration (`buildStrv103 + oracle package`) is
+casemate.ts donor-clone registration (`buildStrv103 + oracle package`) is
 retired: strv103 is now a self-contained §K measured-loft build in
 `src/vehicles/profiles/sweden.ts`.
 

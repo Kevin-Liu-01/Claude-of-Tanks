@@ -502,7 +502,7 @@ isu152 (shared isuCommon) holds **72.4 exactly** every run of the round
 (all isuCommon changes flag-gated: noGlacisTracks, shortBowDeck —
 isu122s-only). npm test exit 0 (166 checks + track-geometry). Evidence:
 shots/critic-isu122s/ (fresh 14 pairs) + refreshed board. All work in
-src/vehicles/profiles/casemate.js (buildISU122S + two isuCommon flags).
+src/vehicles/profiles/casemate.ts (buildISU122S + two isuCommon flags).
 
 ### Work item 1 — MANTLET TO THE MEASURED TABLE: BUILT, AND IT DOMINATES
 
@@ -635,7 +635,7 @@ geometry** (hull 90.2 / whole 90.2 / turret 100 / stations 94.5 / dims
 all 6 gate runs of the round (every isuCommon change flag-gated via
 o.channel / o.dimTail / o.rollerYs — isu152 passes none of them). Board
 94.4 overall, every view 90+. npm test exit 0 (166 checks +
-track-geometry). All work in src/vehicles/profiles/casemate.js
+track-geometry). All work in src/vehicles/profiles/casemate.ts
 (buildISU122S + three isuCommon flags); tone evidence sampled with the
 throwaway tools/tmp-px-sample.mjs (PNG rect -> mean RGB / L / warm%).
 
@@ -781,7 +781,7 @@ exact** both final runs (the batch-17 true-scale baseline, untouched —
 every isuCommon change is opt-gated: bracketGap, noDecal, dimTail:2, the
 channel-branch rail thinning + rear-lip skip; isu152 passes none). npm
 test exit 0 (166 checks + track-geometry). All work in
-src/vehicles/profiles/casemate.js. All rects below are ON-ELEMENT with
+src/vehicles/profiles/casemate.ts. All rects below are ON-ELEMENT with
 coordinates pasted (the r5 fleet law).
 
 ### Item 1 — MANTLET: one cast pot, measured roll-off (was flat IQR 0.0)
@@ -944,7 +944,7 @@ file** (hull 90.3 / whole 90.3 / turret 100 / stations 95.5 / dims 98.2 /
 floaters 100); isu152 **14.4 exact** every run of the round (all isuCommon
 changes opt-gated: noPeriGlass, roundStalk, plus the r5/r6 flags — isu152
 passes none). npm test exit 0 (166 checks + track-geometry). All work in
-src/vehicles/profiles/casemate.js. **Every rect below is ITU-601,
+src/vehicles/profiles/casemate.ts. **Every rect below is ITU-601,
 ON-ELEMENT, with coordinates** (the r6 measurement law).
 
 ### Item 1+2 — ONE CAST POT (the r6 ring-stack / pipe-mouth / patch)

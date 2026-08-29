@@ -7162,7 +7162,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   const RAPID_AMP = Math.min(0.085, Math.max(0.055, REC_CAL * 0.0022));
   // §5.362 tube census: only a REAL tube (>= 0.5 m of merged gun-bucket
   // geometry riding rig_recoil) may slide. Casemates print their cannon into
-  // the certified hull buckets (gate silhouette law — see casemate.js
+  // the certified hull buckets (gate silhouette law — see casemate.ts
   // isuCommon: the virtual rig carries only small hidden ball-mount collars),
   // so their recoilG is empty or a stub; sliding a stub walks a loose collar
   // along a static tube. Their recoil budget is re-routed into the hull rock

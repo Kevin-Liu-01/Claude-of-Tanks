@@ -26,13 +26,251 @@
 //  - Oracle-defect caps (quantified in docs/references/tanks/<id>.md): the
 //    ISU pair and T95/Strv103 oracles are proportionally off published dims;
 //    dims stays sovereign here and the curve ceilings are documented.
-import { BufferAttribute, BufferGeometry, Float32BufferAttribute, Mesh } from 'three';
+import {
+  BufferAttribute,
+  BufferGeometry,
+  Float32BufferAttribute,
+  Group,
+  InstancedMesh,
+  Mesh,
+  MeshStandardMaterial,
+} from 'three';
 import { FITTINGS, KIT, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
-const box = (...a) => KIT.box(...a);
-const stations = (count, span, zc = 0) => Array.from({ length: count }, (_, i) =>
+type Vec3Tuple = readonly [number, number, number];
+type VertexPainter = (
+  x: number,
+  y: number,
+  z: number,
+  nx: number,
+  ny: number,
+  nz: number,
+) => number;
+
+interface LoftStation {
+  readonly z: number;
+  readonly b: number;
+  readonly t: number;
+  readonly w: number;
+  readonly wt?: number;
+  readonly x?: number;
+}
+
+interface LoftCorridorZone {
+  readonly z0?: number;
+  readonly z1?: number;
+  readonly floor: number;
+}
+
+interface LoftCorridorCut {
+  readonly x: number;
+  readonly front?: LoftCorridorZone & { readonly z0: number };
+  readonly rear?: LoftCorridorZone & { readonly z1: number };
+}
+
+interface GunSection {
+  readonly z0: number;
+  readonly z1: number;
+  readonly r: number;
+  readonly r2?: number;
+  readonly x?: number;
+  readonly dy?: number;
+  readonly dark?: boolean;
+}
+
+interface TrackWheel {
+  readonly z: number;
+  readonly y: number;
+  readonly r: number;
+}
+
+interface SteelGearConfig {
+  readonly style?: string;
+  readonly wheelR: number;
+  readonly wheelW?: number;
+  readonly wheelY: number;
+  readonly wheels?: number;
+  readonly span?: number;
+  readonly zc?: number;
+  readonly xc: number;
+  readonly wheelZs?: readonly number[];
+  readonly sprocket: TrackWheel;
+  readonly idler: TrackWheel;
+  readonly rollers?: readonly TrackWheel[];
+  readonly trackW: number;
+  readonly topY: number;
+  readonly botY?: number;
+  readonly arms?: boolean;
+  readonly coveredTop?: boolean | number;
+  readonly deadSag?: number;
+  readonly layers?: readonly (readonly number[])[];
+  readonly trackTh?: number;
+  readonly bayShadowTop?: number;
+  readonly dishR?: number;
+  readonly armBucket?: string;
+  readonly shadows?: boolean;
+}
+
+interface CasemateMaterialSet {
+  readonly barrel: MeshStandardMaterial;
+  readonly canvasCloth: MeshStandardMaterial;
+  readonly dark: MeshStandardMaterial;
+  readonly detail: MeshStandardMaterial;
+  readonly glass: MeshStandardMaterial;
+  readonly hull: MeshStandardMaterial;
+  readonly rubber: MeshStandardMaterial;
+  readonly shadow: MeshStandardMaterial;
+  readonly spareTrack: MeshStandardMaterial;
+  readonly trackL: MeshStandardMaterial;
+  readonly trackR: MeshStandardMaterial;
+  readonly wheels: MeshStandardMaterial;
+  readonly wood?: MeshStandardMaterial;
+}
+
+interface CasemateBuilderPort {
+  readonly hullG: Group;
+  readonly turretG: Group;
+  readonly gunG: Group;
+  readonly mats: CasemateMaterialSet;
+  readonly disposables: Array<{ dispose(): void }>;
+  readonly q?: boolean;
+  readonly spec: {
+    readonly id: string;
+    readonly visual: { readonly number?: string };
+  };
+  gear?: { update(delta: number, speed: number): void };
+  fixedMount?: boolean;
+  muzzleZ?: number;
+  topY?: number;
+  add(slot: string, geometry: BufferGeometry, ...transform: Array<number | readonly number[]>): unknown;
+  addEquipment(slot: string, geometry: BufferGeometry, ...transform: Array<number | readonly number[]>): unknown;
+  addModuleVisual?(module: string, slot: string, geometry: BufferGeometry, ...transform: number[]): unknown;
+  decal(
+    owner: 'hull' | 'turret',
+    kind: string,
+    value: string | null,
+    scale: number,
+    position: readonly number[],
+    ...rotation: number[]
+  ): unknown;
+}
+
+interface IsuCommonOptions {
+  readonly roofY: number;
+  readonly trackW: number;
+  readonly xc: number;
+  readonly sponsonW: number;
+  readonly sponsonTop: number;
+  readonly sponsonBot: number;
+  readonly lipTop: number;
+  readonly lipBot: number;
+  readonly lipEdgeY: number;
+  readonly lipEdgeH: number;
+  readonly stripSegs: readonly (readonly [number, number, number])[];
+  readonly pedZ0: number;
+  readonly pedZ1: number;
+  readonly pedestalTop: number;
+  readonly stalkX: number;
+  readonly stalkZ0: number;
+  readonly stalkZ1: number;
+  readonly stalkTop: number;
+  readonly podTop: number;
+  readonly podZ: number;
+  readonly domeX: number;
+  readonly domeTop: number;
+  readonly ventX: number;
+  readonly ventZ: number;
+  readonly ventTop: number;
+  readonly eyeYL: number;
+  readonly eyeYR: number;
+  readonly flapY0: number;
+  readonly flapY1: number;
+  readonly flapXo: number;
+  readonly tailBarZ: number;
+  readonly tailTabZ: number;
+  readonly strakes: readonly (readonly [number, number, number, number, number, number])[];
+  readonly bellyKeel: number;
+  readonly armY: number;
+  readonly keelLen: number;
+  readonly keelZc: number;
+  readonly keelSegs: readonly (readonly [number, number])[];
+  readonly boxX: number;
+  readonly boxY: number;
+  readonly boxH: number;
+  readonly boxZ: number;
+  readonly clusterZ: number;
+  readonly hatchZ: number;
+  readonly hatchZ2: number;
+  readonly faceZ: number;
+  readonly noGlacisTracks: boolean;
+  readonly noCable: boolean;
+  readonly gearShadows: boolean;
+  readonly bowZ: number;
+  readonly tailZ: number;
+  readonly fenderFront: number;
+  readonly fenderRear: number;
+  readonly flapRear: number;
+  readonly number: string;
+  readonly laneCut: LoftCorridorCut;
+  readonly wheelZs: readonly number[];
+  readonly sprocket: TrackWheel;
+  readonly idler: TrackWheel;
+  readonly rollerZs: readonly number[];
+  readonly decalPos: Vec3Tuple;
+  readonly decalSize: number;
+  readonly loftRows: readonly LoftStation[];
+  readonly aoZ?: readonly [number, number];
+  readonly armW?: number;
+  readonly armX?: number;
+  readonly bigHooks?: boolean;
+  readonly bracketGap?: readonly [number, number];
+  readonly bracketH?: number;
+  readonly bracketX?: number;
+  readonly bracketYc?: number;
+  readonly channel?: boolean;
+  readonly coveredTop?: boolean;
+  readonly cupLight?: boolean;
+  readonly dashZs?: readonly [readonly number[], readonly number[]];
+  readonly dimTail?: number;
+  readonly domeLen?: number;
+  readonly drumCupolas?: boolean;
+  readonly flapFallDz?: number;
+  readonly gearStyle?: string;
+  readonly hatch1X?: number;
+  readonly hatch1Y?: number;
+  readonly hatch2R?: number;
+  readonly hatch2X?: number;
+  readonly hatch2Y?: number;
+  readonly keelAW?: number;
+  readonly keelBW?: number;
+  readonly keelBX?: number;
+  readonly lightZOff?: number;
+  readonly lipZ?: readonly [number, number];
+  readonly noDecal?: boolean;
+  readonly noPeriGlass?: boolean;
+  readonly periYOff?: number;
+  readonly railBucket?: string;
+  readonly rollerYs?: readonly number[];
+  readonly roundStalk?: boolean;
+  readonly seamH?: number;
+  readonly shortBowDeck?: boolean;
+  readonly shovelPos?: readonly [number, number];
+  readonly stalkW?: number;
+  readonly sunkLids?: boolean;
+  readonly tabD?: number;
+  readonly tabH?: number;
+  readonly tabX?: number;
+  readonly tabY?: number;
+  readonly tailBarH?: number;
+  readonly tailBarY?: number;
+}
+
+const box = (width: number, height: number, depth: number): BufferGeometry =>
+  KIT.box(width, height, depth);
+const stations = (count: number, span: number, zc = 0): number[] => Array.from({ length: count }, (_, i) =>
   zc + span / 2 - i * (span / (count - 1)));
 
 // ---------------------------------------------------------------------------
@@ -46,8 +284,8 @@ const stations = (count, span, zc = 0) => Array.from({ length: count }, (_, i) =
 // (q_v 0.629 -> display 0.706; 0.68 -> 0.755). Invert it so the SUM lands
 // on the target: lin = D^2.2*(1+S) - S.
 // ---------------------------------------------------------------------------
-const sm01 = (t) => { const c = Math.min(1, Math.max(0, t)); return c * c * (3 - 2 * c); };
-const paintVerts = (g, fn) => {
+const sm01 = (t: number): number => { const c = Math.min(1, Math.max(0, t)); return c * c * (3 - 2 * c); };
+const paintVerts = (g: BufferGeometry, fn: VertexPainter): BufferGeometry => {
   const p = g.attributes.position, nrm = g.attributes.normal;
   const col = new Float32Array(p.count * 3);
   const S = 0.196;
@@ -64,7 +302,7 @@ const paintVerts = (g, fn) => {
 };
 // flat-tone painter for kit fittings on the painted bucket (MG, lids):
 // hash jitter keeps the crisp cast/steel micro-life the flat fill lacks.
-const paintFlat = (g, q, jit = 0) => paintVerts(g, (x, y, z) => {
+const paintFlat = (g: BufferGeometry, q: number, jit = 0): BufferGeometry => paintVerts(g, (x, y, z) => {
   if (!jit) return q;
   const h = Math.sin(x * 63.73 + y * 187.19 + z * 41.7) * 30269.3;
   return q + ((h - Math.floor(h)) - 0.5) * jit;
@@ -76,9 +314,16 @@ const paintFlat = (g, q, jit = 0) => paintVerts(g, (x, y, z) => {
 // interpolates its hash across the whole face. This grid gives a flat the
 // pot's lattice: a bilinear quad over 4 world-space corners, painted
 // per-vertex. Non-indexed; duplicated verts hash identically (no seams).
-const gridQuad = (c00, c10, c11, c01, nu, nv) => {
-  const pos = [];
-  const at = (u, v) => [0, 1, 2].map((k) =>
+const gridQuad = (
+  c00: Vec3Tuple,
+  c10: Vec3Tuple,
+  c11: Vec3Tuple,
+  c01: Vec3Tuple,
+  nu: number,
+  nv: number,
+): BufferGeometry => {
+  const pos: number[] = [];
+  const at = (u: number, v: number): number[] => [0, 1, 2].map((k) =>
     (1 - v) * ((1 - u) * c00[k] + u * c10[k]) + v * ((1 - u) * c01[k] + u * c11[k]));
   for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
     const a = at(i / nu, j / nv), b = at((i + 1) / nu, j / nv);
@@ -96,8 +341,8 @@ const gridQuad = (c00, c10, c11, c01, nu, nv) => {
 // (soft 8-15 cm patches + 3 cm grain), NOT the speckle-dot class: the
 // field is continuous, amplitudes stay inside the p05 lift table, and
 // dark% stays 0 (nothing within 25 L of the dark threshold).
-const vn2 = (x, y) => {
-  const h2 = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
+const vn2 = (x: number, y: number): number => {
+  const h2 = (a: number, b: number): number => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
   const xi = Math.floor(x), yi = Math.floor(y);
   const su = sm01(x - xi), sv = sm01(y - yi);
   return (h2(xi, yi) * (1 - su) + h2(xi + 1, yi) * su) * (1 - sv)
@@ -106,7 +351,7 @@ const vn2 = (x, y) => {
 // cast/plate mottle field: u/v in meters on the surface, per-surface phase
 // (ph) decorrelates plates. aC = coarse amplitude (13 cm patches), aF =
 // fine grain amplitude (per-vertex hash at the ~3 cm lattice pitch).
-const mottle = (u, v, ph, aC, aF) => {
+const mottle = (u: number, v: number, ph: number, aC: number, aF: number): number => {
   const c = (vn2(u / 0.13 + ph, v / 0.13 - ph * 0.7) - 0.5) * 2;
   const h = Math.sin(u * 141.27 + v * 89.93 + ph * 197.1) * 43758.5453;
   return aC * c + aF * ((h - Math.floor(h)) - 0.5) * 2;
@@ -118,7 +363,7 @@ const mottle = (u, v, ph, aC, aF) => {
 // half-width for leaned sides). Emits one slab per span. This is how each
 // casemate tracks its measured reference polyline to gate tolerance.
 // ---------------------------------------------------------------------------
-function loft(P, sts, bucket = 'hull') {
+function loft(P: CasemateBuilderPort, sts: readonly LoftStation[], bucket = 'hull'): void {
   const slab = orientedSlab;                                // §C.1 winding guard
   for (let i = 0; i < sts.length - 1; i++) {
     const a = sts[i], c = sts[i + 1];
@@ -148,15 +393,20 @@ function loft(P, sts, bucket = 'hull') {
 // so no span straddles a window edge. loft() itself is untouched — the other
 // casemate builders stay byte-identical.
 // cut = { x, front?: {z0, z1?, floor}, rear?: {z0?, z1, floor} }
-function loftCorridor(P, sts, cut, bucket = 'hull') {
+function loftCorridor(
+  P: CasemateBuilderPort,
+  sts: readonly LoftStation[],
+  cut: LoftCorridorCut,
+  bucket = 'hull',
+): void {
   const slab = orientedSlab;                                // §C.1 winding guard
-  const lerpRow = (a, c, z) => {
+  const lerpRow = (a: LoftStation, c: LoftStation, z: number): LoftStation => {
     const t = (z - a.z) / (c.z - a.z);
     const awt = a.wt ?? a.w, cwt = c.wt ?? c.w;
     return { z, b: a.b + (c.b - a.b) * t, t: a.t + (c.t - a.t) * t,
       w: a.w + (c.w - a.w) * t, wt: awt + (cwt - awt) * t };
   };
-  const rows = [];
+  const rows: LoftStation[] = [];
   for (let i = 0; i < sts.length; i++) {
     rows.push(sts[i]);
     const a = sts[i], c = sts[i + 1];
@@ -167,7 +417,7 @@ function loftCorridor(P, sts, cut, bucket = 'hull') {
     }
     for (const zb of cuts.sort((p, q) => q - p)) rows.push(lerpRow(a, c, zb));
   }
-  const zoneOf = (z) => {
+  const zoneOf = (z: number): LoftCorridorZone | null => {
     const F = cut.front, R = cut.rear;
     if (F && z >= F.z0 - 1e-6 && z <= (F.z1 ?? Infinity) + 1e-6) return F;
     if (R && z <= R.z1 + 1e-6 && z >= (R.z0 ?? -Infinity) - 1e-6) return R;
@@ -194,7 +444,7 @@ function loftCorridor(P, sts, cut, bucket = 'hull') {
     // over-track wings: original outer surface kept above the floor only.
     // Per-end: outer width at the floor height (lerp along the leaned side);
     // ends whose top sits at/under the floor pinch to a line at (X, floor).
-    const end = (r, rwt) => {
+    const end = (r: LoftStation, rwt: number) => {
       if (r.t <= F + 0.012) return { top: F, wTop: X, wBot: X };
       const k = Math.min(1, Math.max(0, (F - r.b) / (r.t - r.b)));
       return { top: r.t, wTop: Math.max(rwt, X), wBot: Math.max(r.w + (rwt - r.w) * k, X) };
@@ -221,7 +471,7 @@ function loftCorridor(P, sts, cut, bucket = 'hull') {
 // Round crew hatch: low drum + lid + dark seam ring. `sunk` (isu122s r10)
 // drops the lid/seam/hinge so a build's own painted lid dressing can own
 // the top read — the drum (the mask carrier at the full radius) is EXACT.
-function hatchDome(P, x, y, z, r = 0.22, sunk = 0) {
+function hatchDome(P: CasemateBuilderPort, x: number, y: number, z: number, r = 0.22, sunk = 0): void {
   const { cylY } = KIT;
   P.add('hull', cylY(r, r * 1.06, 0.055, 14), x, y + 0.028, z);
   P.add('hull', cylY(r * 0.9, r * 0.9, 0.03, 14), x, y + 0.07 - sunk, z);
@@ -230,7 +480,7 @@ function hatchDome(P, x, y, z, r = 0.22, sunk = 0) {
 }
 
 // German Bosch blackout light: hooded drum, dark slit, stalk.
-function boschLight(P, x, y, z) {
+function boschLight(P: CasemateBuilderPort, x: number, y: number, z: number): void {
   const { cylY } = KIT;
   P.add('hullDetail', cylY(0.05, 0.06, 0.085, 10), x, y, z);
   P.add('hullDetail', box(0.12, 0.03, 0.095), x, y + 0.05, z);
@@ -239,7 +489,7 @@ function boschLight(P, x, y, z) {
 }
 
 // Hull MG ball (Kugelblende): painted collar, dark steel ball + barrel stub.
-function mgBall(P, x, y, z, rx = 0, r = 0.13) {
+function mgBall(P: CasemateBuilderPort, x: number, y: number, z: number, rx = 0, r = 0.13): void {
   const { sph, cylZ } = KIT;
   P.add('hull', xform2(cylZ(r * 1.5, 0.07, 14), 0, 0, -0.01, rx), x, y, z);
   P.add('hullDark', sph(r, 12), x, y, z);
@@ -247,12 +497,12 @@ function mgBall(P, x, y, z, rx = 0, r = 0.13) {
   P.add('hullDark', xform2(cylZ(0.022, 0.30, 6), 0, 0, r * 1.5, rx), x, y, z);
 }
 // Small helper: bake a pitch into a geo before P.add (keeps call sites flat).
-function xform2(geo, x, y, z, rx) {
+function xform2(geo: BufferGeometry, x: number, y: number, z: number, rx: number): BufferGeometry {
   return KIT.xform(geo, x, y, z, rx, 0, 0);
 }
 
 // Bow tow hook / shackle bracket.
-function towHook(P, x, y, z) {
+function towHook(P: CasemateBuilderPort, x: number, y: number, z: number): void {
   const { cylX } = KIT;
   P.add('hullDetail', box(0.09, 0.13, 0.09), x, y, z);
   P.add('hullDark', cylX(0.02, 0.12, 6), x, y + 0.015, z + 0.03);
@@ -262,14 +512,14 @@ function towHook(P, x, y, z) {
 // p95 of side-column tops, so a single whip (1-2 mask columns) never defines
 // the roof — but it DOES set the curve's rough height, which the reference
 // masts also set. Antennas are replicated where the oracle carries them.
-function antenna(P, x, y, z, h = 0.85, rake = 0) {
+function antenna(P: CasemateBuilderPort, x: number, y: number, z: number, h = 0.85, rake = 0): void {
   P.add('hullDetail', KIT.cylY(0.028, 0.045, 0.07, 8), x, y + 0.035, z);
   P.add('hullDetail', KIT.xform(box(0.016, h, 0.016), 0, h / 2 + 0.07, 0, rake, 0, 0.03), x, y, z);
 }
 
 // Fixed gun tube in HULL buckets. Sections front->rear from the muzzle.
 // axisY/axisZ locate the bore in world; secs = [{z0, z1, r, dark?}] in world z.
-function hullGun(P, axisY, secs) {
+function hullGun(P: CasemateBuilderPort, axisY: number, secs: readonly GunSection[]): void {
   const { cylZ } = KIT;
   for (const s of secs) {
     const len = s.z0 - s.z1;
@@ -279,9 +529,9 @@ function hullGun(P, axisY, secs) {
 
 // Deep steel-wheel run in the soviet-heavy style: painted steel wheels with a
 // dark recess drum behind each so hubs/rims read out of the bay shadow.
-function steelGear(P, g) {
+function steelGear(P: CasemateBuilderPort, g: SteelGearConfig): void {
   const { buildRunningGear, cylX } = KIT;
-  const zs = g.wheelZs || stations(g.wheels, g.span, g.zc ?? 0);
+  const zs = g.wheelZs || stations(g.wheels!, g.span!, g.zc ?? 0);
   const wheelW = g.wheelW ?? Math.min(0.24, g.trackW * 0.42);
   buildRunningGear(P, {
     style: g.style || 'steel', wheelR: g.wheelR, wheelW, wheelY: g.wheelY, xc: g.xc, wheelZs: zs,
@@ -306,7 +556,7 @@ function steelGear(P, g) {
 // width.  Gun axis 1.56; source-registered muzzle +5.19; dozer tip +3.30;
 // compact roof cluster held to the published-height envelope.
 // ---------------------------------------------------------------------------
-export function buildStrv103(P) {
+export function buildStrv103(P: CasemateBuilderPort): void {
   const { cylY, cylZ, frustum, liftEye, periscope } = KIT;
   P.fixedMount = true;
 
@@ -354,7 +604,7 @@ export function buildStrv103(P) {
     P.add('hullDetail', box(0.055, 0.055, 0.92), s * 0.72, 0.82, 2.77, -0.42, 0, 0);
   }
   // glacis louvre banks (radiators live ON the glacis): dark wells + ribs
-  const glY = (z) => 1.76 - (z - 0.85) * (0.66 / 1.76);                        // glacis surface line
+  const glY = (z: number): number => 1.76 - (z - 0.85) * (0.66 / 1.76);        // glacis surface line
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.82, 0.025, 1.18), s * 0.45, 1.46, 1.69, -0.36, 0, 0);
   }
@@ -546,7 +796,7 @@ export function buildStrv103(P) {
 // published 10.65 — wholeCurves carries the symmetric-coverage cost (docs
 // cap note); hull/stations/dims fully satisfiable.
 // ---------------------------------------------------------------------------
-function buildJagdtiger(P) {
+function buildJagdtiger(P: CasemateBuilderPort): void {
   const { cylY, cylZ, liftEye, towCable, shovelTool, periscope } = KIT;
 
   // LOWER hull tub (belt top 1.35) + nose/tail wedges
@@ -684,7 +934,7 @@ function buildJagdtiger(P) {
 // rising 2.76 @ z 0.76 to 3.29 @ z -3.0 (8 deg), tail chamfer down to
 // (-4.23, 1.77/1.38). Hull span stretched +-0.2 to land published 8.7.
 // ---------------------------------------------------------------------------
-function buildJPzE100(P) {
+function buildJPzE100(P: CasemateBuilderPort): void {
   const { cylY, cylZ, liftEye, towCable } = KIT;
 
   // LOWER hull: tub + nose/tail wedges (side-bot silhouette forward/aft of
@@ -815,7 +1065,7 @@ function buildJPzE100(P) {
     P.add('hullDark', KIT.cylX(0.015, 0.10, 8), s * 1.05, 0.86, 4.22);
   }
   // roof furniture ON the slope (fittings pitch with the two-segment roof)
-  const roofY = (z) => (z >= -1.2 ? 2.76 + (0.76 - z) * 0.204 : 3.16 + (-1.2 - z) * 0.072);
+  const roofY = (z: number): number => (z >= -1.2 ? 2.76 + (0.76 - z) * 0.204 : 3.16 + (-1.2 - z) * 0.072);
   hatchDome(P, 0.62, roofY(-1.1) - 0.10, -1.10, 0.26);
   hatchDome(P, -0.62, roofY(-1.9) - 0.10, -1.90, 0.24);
   P.add('hullDark', KIT.torus(0.225, 0.012, 18), 0.62, roofY(-1.1) + 0.005, -1.10); // hatch seam rings
@@ -956,7 +1206,7 @@ function buildJPzE100(P) {
 // deck 1.79-1.81 z -1.28..-2.05, exhaust shrouds 1.85 z -2.3..-3.0, raised
 // rear idler bottom 0.44-0.75, tail foot (-3.09, 1.64/1.85).
 // ---------------------------------------------------------------------------
-function buildSturmtiger(P) {
+function buildSturmtiger(P: CasemateBuilderPort): void {
   const { cylY, cylZ, liftEye, towCable, shovelTool, periscope } = KIT;
 
   // LOWER hull (belt 1.30) + nose/tail; raised rear idler tail line
@@ -1295,7 +1545,7 @@ function buildSturmtiger(P) {
 // raised platform 2.17, cupola 2.50, quad runs xc ±1.091/±1.598 (band top
 // ~0.96, exposed upper runs), width datum on the ±1.932 fender lips.
 // ---------------------------------------------------------------------------
-function buildT95(P) {
+function buildT95(P: CasemateBuilderPort): void {
   const { cylY, cylZ, liftEye, towCable } = KIT;
   // §5.313 (task_3d06d29a): the fleet fallback bore seats on the muzzle
   // anchor, which stays inside rig_turret without this flag — its rim torus
@@ -1656,7 +1906,7 @@ function buildT95(P) {
 //  - the 152's ML-20S print gun is ~0.5 m short of published overall: the
 //    published-length tube costs ~4 muzzle cover columns (side rows).
 // ---------------------------------------------------------------------------
-function isuCommon(P, o) {
+function isuCommon(P: CasemateBuilderPort, o: IsuCommonOptions): void {
   const { cylY, cylZ, liftEye, towCable } = KIT;
   // public-build rig contract: the virtual turret/cannon groups carry small
   // visible collars INSIDE the hull-side ball-mount silhouette (yaw/pitch
@@ -1762,8 +2012,8 @@ function isuCommon(P, o) {
   // two boxes + slits, slits on the dark bucket instead. Geometry EXACT.
   if (o.noPeriGlass) {
     for (const [pxp, pzp] of [[-0.35, o.clusterZ + 0.35], [0.15, o.clusterZ + 0.45]]) {
-      P.addModuleVisual('optics', 'hullDetail', box(0.14, 0.07, 0.1), pxp, o.roofY - 0.055, pzp);
-      P.addModuleVisual('optics', 'hullDark', box(0.11, 0.028, 0.102), pxp, o.roofY - 0.043, pzp);
+      P.addModuleVisual!('optics', 'hullDetail', box(0.14, 0.07, 0.1), pxp, o.roofY - 0.055, pzp);
+      P.addModuleVisual!('optics', 'hullDark', box(0.11, 0.028, 0.102), pxp, o.roofY - 0.043, pzp);
     }
   } else {
     // (o.periYOff, isu152 realign: with roofY = the true roof PLATE the pods
@@ -1925,7 +2175,7 @@ function isuCommon(P, o) {
   // PLAN footprint (1.50 x 0.09 at o.tailBarZ) — x/z stay EXACT and only the
   // height thins; the side-trace extremes at that column are carried by the
   // tail wall (0.55..1.02), so the thinner band changes no curve row.
-  if (o.tailBarZ) P.add(tbB, box(1.50, o.tailBarH ?? 0.10, 0.09), 0, o.tailBarY, o.tailBarZ);
+  if (o.tailBarZ) P.add(tbB, box(1.50, o.tailBarH ?? 0.10, 0.09), 0, o.tailBarY!, o.tailBarZ);
   if (o.tailTabZ) {
     // rear hullLengthM carrier: one narrow body-band tab pair a full trace
     // column behind the tail (inside the ref's cover margin, so it costs
@@ -2031,25 +2281,25 @@ function isuCommon(P, o) {
     const pocketVoid = P.mats.rubber.clone();
     pocketVoid.color.setHex(0x191715);                     // AO-dark pocket floors ('holes')
     P.disposables.push(wornDrum, pocketVoid);
-    const rehook = (m) => {
+    const rehook = (m: MeshStandardMaterial): MeshStandardMaterial => {
       m.onBeforeCompile = vehicleAmbientFloorHook;
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       return m;
     };
     rehook(wornDrum);
     P.hullG.traverse((ob) => {
-      if (!ob.isMesh && !ob.isInstancedMesh) return;
+      if (!(ob instanceof Mesh)) return;
       const m = ob.material;
-      if (!m || !m.color) return;
-      if (ob.isInstancedMesh && m.color.getHex() === 0x171614) {
+      if (!(m instanceof MeshStandardMaterial)) return;
+      if (ob instanceof InstancedMesh && m.color.getHex() === 0x171614) {
         rehook(m).color.setHex(0x41453a);                  // link pads: worn grey-olive steel
-      } else if (ob.isInstancedMesh && m.color.getHex() === 0x27251f) {
+      } else if (ob instanceof InstancedMesh && m.color.getHex() === 0x27251f) {
         rehook(m).color.setHex(0x34332a);                  // inner chain/pin layer: darker two-tone
-      } else if (ob.isMesh && m === P.mats.wheels && Math.abs(ob.position.x) > 0.9) {
+      } else if (m === P.mats.wheels && Math.abs(ob.position.x) > 0.9) {
         ob.material = wornDrum;                            // end-wheel body drums
-      } else if (ob.isInstancedMesh && m === P.mats.rubber) {
+      } else if (ob instanceof InstancedMesh && m === P.mats.rubber) {
         if (!ob.geometry.boundingBox) ob.geometry.computeBoundingBox();
-        const bw = ob.geometry.boundingBox.max.x - ob.geometry.boundingBox.min.x;
+        const bw = ob.geometry.boundingBox!.max.x - ob.geometry.boundingBox!.min.x;
         if (bw > 0.26) ob.material = pocketVoid;           // pocket inserts (w*1.16) vs tire (w)
       }
     });
@@ -2062,7 +2312,7 @@ function isuCommon(P, o) {
   P.topY = 1.20;
 }
 
-function buildISU152(P) {
+function buildISU152(P: CasemateBuilderPort): void {
   const { cylZ, cylY } = KIT;
   // REALIGN REBUILD (2026-08-03, post oracle batch-17 / commit 3344a58):
   // the print was re-normalized to TRUE SCALE (uniform y x1.1252 from
@@ -2228,10 +2478,10 @@ function buildISU152(P) {
   // ground-run nub scale. The geometry is THIS build's own (per-call
   // buildRunningGear geometries) — the graduate cannot move.
   P.hullG.traverse((ob) => {
-    if (!ob.isInstancedMesh || !ob.geometry?.attributes?.position) return;
+    if (!(ob instanceof InstancedMesh) || !ob.geometry.attributes.position) return;
     const g = ob.geometry;
     if (!g.boundingBox) g.computeBoundingBox();
-    if (g.boundingBox.min.y >= -0.30) return;                          // inner chain layer only
+    if (g.boundingBox!.min.y >= -0.30) return;                         // inner chain layer only
     const pos = g.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       if (Math.abs(pos.getX(i)) <= 0.25 && pos.getY(i) < -0.085) pos.setY(i, -0.085);
@@ -2252,10 +2502,10 @@ function buildISU152(P) {
   // pad band is identical. Per-call template geometry — the graduate and
   // the other casemate tanks are untouched.
   P.hullG.traverse((ob) => {
-    if (!ob.isInstancedMesh || !ob.geometry?.attributes?.position) return;
+    if (!(ob instanceof InstancedMesh) || !ob.geometry.attributes.position) return;
     const g = ob.geometry;
     if (!g.boundingBox) g.computeBoundingBox();
-    const bb = g.boundingBox;
+    const bb = g.boundingBox!;
     if (bb.min.y < -0.06 || bb.max.y < 0.06 || (bb.max.z - bb.min.z) > 0.16) return; // pad template only
     const pos = g.attributes.position;
     let zSum = 0, zN = 0;
@@ -2527,7 +2777,7 @@ function buildISU152(P) {
   // and open shadow gaps in hero-toptilt); relief rails only on the tall
   // 1.705 board.
   for (const gs of [-1, 1]) {
-    const cellRow = (z0, z1, yq, rows, ph) => {
+    const cellRow = (z0: number, z1: number, yq: number, rows: number, ph: number): void => {
       const xL = Math.min(gs * 0.965, gs * 0.695), xR = Math.max(gs * 0.965, gs * 0.695);
       P.add('hullCloth', paintVerts(gridQuad(
         [xL, yq, z1], [xR, yq, z1],
@@ -2696,8 +2946,8 @@ function buildISU152(P) {
   // the isuCommon drumCupolas flag) + roof density (the r6 sibling recipe:
   // rings, pots, studs — every top under its local carrier).
   {
-    const eR = (g) => { g.scale(1, 1, 1.4667); return g; };                    // R cupola footprint ellipse
-    const eL = (g) => { g.scale(1, 1, 0.912); return g; };                     // L cupola footprint ellipse
+    const eR = (g: BufferGeometry): BufferGeometry => { g.scale(1, 1, 1.4667); return g; }; // R cupola footprint ellipse
+    const eL = (g: BufferGeometry): BufferGeometry => { g.scale(1, 1, 0.912); return g; };   // L cupola footprint ellipse
     P.add('hullDark', eR(KIT.torus(0.0715, 0.0035, 22)), 0.45, 2.435, 1.53);   // R collar seam groove
     P.add('hullCloth', paintFlat(eR(cylY(0.030, 0.042, 0.010, 18)), 0.78, 0.03), 0.45, 2.4875, 1.53); // R lid crown roll
     P.add('hullDetail', box(0.026, 0.018, 0.05), 0.45, 2.478, 1.612);          // R hinge lug (z-side)
@@ -2713,7 +2963,7 @@ function buildISU152(P) {
     // converted to raised round studs with real normals and top-lit paint
     // (pale crowns, darker flanks); same stations, same bin-noise heights.
     if (P.q) {
-      const stud = (X, Y, Z) => P.add('hullCloth', paintVerts(cylY(0.0115, 0.0135, 0.011, 10),
+      const stud = (X: number, Y: number, Z: number) => P.add('hullCloth', paintVerts(cylY(0.0115, 0.0135, 0.011, 10),
         (x, y, z, nx, ny) => 0.84 + 0.17 * ny + 0.02 * nx), X, Y, Z);
       for (let k = 0; k < 9; k++) {
         stud(-0.88 + k * 0.22, 2.2605, 0.52);
@@ -2763,7 +3013,15 @@ function buildISU152(P) {
       // hullDark hex could not give) and thicker, and the top plate carries
       // a directional pale CROWN ellipse instead of a flat 0.90 fill — the
       // raised-drum read at tilt is rim-shadow + crown highlight.
-      const mound = (cx, cz, zScale, stepR, stepZScale, stepTop, ph) => {
+      const mound = (
+        cx: number,
+        cz: number,
+        zScale: number,
+        stepR: number,
+        stepZScale: number,
+        stepTop: number,
+        ph: number,
+      ): void => {
         const wall = KIT.cylY(0.262, 0.262, 0.104, 36); wall.scale(1, 1, zScale);
         P.add('hullCloth', paintVerts(wall, (x, y, z, nx, ny, nz) =>
           0.80 + 0.09 * nx + 0.05 * nz + 0.04 * ny + mottle(x * 3, z * 3, ph, 0.014, 0.010)),
@@ -3148,7 +3406,7 @@ function buildISU152(P) {
       // against the floor's flat-94 wall; micro-ladder-calibrated: q0.675 ->
       // 85.4, q0.695 -> 90.5 on the official rig. RIGHT q 0.84 -> 81 under
       // the key against its 85-87 wall — the same ~5L split in its light.)
-      const skirtQ = (z) => sd > 0 ? 0.84 : 0.69;
+      const skirtQ = (z: number): number => sd > 0 ? 0.84 : 0.69;
       P.add('hullCloth', paintVerts(gridQuad(
         [sd * 1.5085, 0.586, zC], [sd * 1.5085, 0.586, zD],
         [sd * 1.5085, 1.166, zD], [sd * 1.5085, 1.166, zC], 72, 6),
@@ -3224,7 +3482,7 @@ function buildISU152(P) {
       // ordered panel lift already put there — no new side content); the
       // z 2.40..3.00 strip tucks its band under the idler-disc cover
       // (y 0.47..0.52) so no open side-view (z,y) cell gains mask.
-      const wq = (g) => paintVerts(g, (x, y, z) =>
+      const wq = (g: BufferGeometry): BufferGeometry => paintVerts(g, (x, y, z) =>
         1.03 - 0.13 * sm01((y - 0.10) / 0.42)
         + mottle(y * 2.9, z * 2.4, sd * 3.1 + 2.2, 0.05, 0.026));
       for (const [wz0, wz1, wy0, wy1] of [[2.05, 2.40, 0.16, 0.52], [2.40, 3.00, 0.47, 0.52]]) {
@@ -3372,7 +3630,7 @@ function buildISU152(P) {
   // ---- ML-20S mount: bolted face ring + ball + recuperator stack graded
   // down the ref's own 2.22->2.00 mantlet fall (all pieces x-clamped to the
   // tube band [-0.36,-0.12] so the plan never widens past the tube cols)
-  const ell = (g) => { g.scale(1, 1.1252, 1); return g; };                     // the print's y-warp ellipse
+  const ell = (g: BufferGeometry): BufferGeometry => { g.scale(1, 1.1252, 1); return g; }; // the print's y-warp ellipse
   // r2 item 5 — ONE-CAST DRESSING IN PLACE (mask-exact; the r1 stack read as
   // the r6-sibling "wedding-cake ring stack"). Every certified carrier stays
   // EXACT: the whole group re-buckets to the claimed PAINTED casting bucket
@@ -3386,7 +3644,7 @@ function buildISU152(P) {
     // first flat cut read iqr 4.5). Crown +0.15, belly -0.12 over base.
     // (r3 item 9: every base takes the r2-offered +0.06 step — the casting
     // p50 sat -7.8 under the ref's 103.1 with spread/percentiles matched.)
-    const stackPaint = (g, base) => paintVerts(g, (x, y, z, nx, ny) =>
+    const stackPaint = (g: BufferGeometry, base: number): BufferGeometry => paintVerts(g, (x, y, z, nx, ny) =>
       base + 0.17 * ny - 0.10 * nx + mottle(z * 3.1, x * 3.4, 7.7, 0.014, 0.012));
     const ringG = cylZ(0.28, 0.22, 16); ringG.scale(0.42, 1, 1);
     P.add('hullCloth', stackPaint(xform2(ringG, 0, 0, 0, -0.42), 0.95), -0.24, 1.94, 2.71); // bolted ring -> 2.22
@@ -3400,7 +3658,7 @@ function buildISU152(P) {
     // bottoms stay interior over the buffer; x compressed per segment so
     // the plan never leaves the certified tube band [-0.36,-0.12].
     {
-      const horn = (rF, len, rR, sx, zc, base) => {
+      const horn = (rF: number, len: number, rR: number, sx: number, zc: number, base: number): void => {
         const g = cylZ(rF, len, 18, rR); g.scale(sx, 1, 1);
         P.add('hullCloth', stackPaint(g, base), -0.24, 1.90, zc);
       };
@@ -3453,9 +3711,9 @@ function buildISU152(P) {
     // z(y) = 2.99 - (y - 1.66) * 0.5619 (the 29.3-deg crest loft), pieces
     // ride 11 mm along the face normal (0, 0.49, 0.87).
     {
-      const fz = (y) => 2.99 - (y - 1.66) * 0.5619;
-      const FN = [0, 0.4897, 0.8719];
-      const put = (g, x, y, out = 0.011) =>
+      const fz = (y: number): number => 2.99 - (y - 1.66) * 0.5619;
+      const FN: Vec3Tuple = [0, 0.4897, 0.8719];
+      const put = (g: BufferGeometry, x: number, y: number, out = 0.011) =>
         P.add('hullDetail', g, x, y + FN[1] * out, fz(y) + FN[2] * out);
       put(KIT.xform(box(0.60, 0.030, 0.016), 0, 0, 0, -0.512, 0, 0), -0.24, 2.235);   // top bar
       put(KIT.xform(box(0.90, 0.032, 0.016), 0, 0, 0, -0.512, 0, 0), -0.24, 1.575);   // bottom bar
@@ -3577,7 +3835,7 @@ function buildISU152(P) {
       // per-piece top-lit shading (MG physics): pale >= 2px top edge on
       // every barrel member, darker underside — the flat first cut read as
       // a low-contrast rod against the pale roof
-      const seg = (g, zc, q) => {
+      const seg = (g: BufferGeometry, zc: number, q: number): void => {
         P.add('hullCloth', paintVerts(KIT.xform(g, 0, 0, 0, tilt, 0, 0),
           (x, y, z, nx, ny) => q + 0.13 * ny - 0.04 * Math.abs(nx)),
         MGX, 2.4427 + (1.44 - zc) * 0.2126, zc);
@@ -3687,11 +3945,11 @@ function buildISU152(P) {
     // hullWood == the DRUM bucket (claimed): matte painted steel in the
     // ref's own warm cast band (caps measured at ref p50 94.3 — hold value,
     // fix hue; bump gives the cap faces the ref's 3.1 iqr).
-    P.mats.wood.color.setHex(0x827046);
-    P.mats.wood.roughness = 0.92;
-    P.mats.wood.metalness = 0.06;
-    P.mats.wood.envMapIntensity = 0.10;
-    P.mats.wood.bumpScale = 0.9;
+    P.mats.wood!.color.setHex(0x827046);
+    P.mats.wood!.roughness = 0.92;
+    P.mats.wood!.metalness = 0.06;
+    P.mats.wood!.envMapIntensity = 0.10;
+    P.mats.wood!.bumpScale = 0.9;
     // hullShadow == the window backdrop shelf + the r5 gap panels. r5 order
     // 3a: the critic's window-interior order (near-bg <= 45L) supersedes the
     // r2 gap-law tone for the shelf — the WHEELS keep the lit family (the r9
@@ -3733,9 +3991,9 @@ function buildISU152(P) {
     P.mats.hull.color.setRGB(1.15, 1.13, 1.06);
     P.mats.barrel.color.setRGB(1.15, 1.13, 1.06);
     P.hullG.traverse((ob) => {
-      if (!ob.isMesh && !ob.isInstancedMesh) return;
+      if (!(ob instanceof Mesh)) return;
       const m = ob.material;
-      if (!m || !m.color) return;
+      if (!(m instanceof MeshStandardMaterial)) return;
       const hx = m.color.getHex();
       if (hx === 0x41453a) m.color.setHex(0x6e613c);        // link pads: warm worn steel
       else if (hx === 0x34332a) m.color.setHex(0x55492d);   // inner chain layer
@@ -3747,7 +4005,7 @@ function buildISU152(P) {
   P.muzzleZ = 2.81;
 }
 
-function buildISU122S(P) {
+function buildISU122S(P: CasemateBuilderPort): void {
   const { cylZ, cylY, cylX } = KIT;
   isuCommon(P, {
     roofY: 2.155, trackW: 0.61, xc: 1.162,
@@ -4043,7 +4301,7 @@ function buildISU122S(P) {
           // fuller face view, not less.)
           const a = (e > 0 ? -1 : 1) * (dz === -0.95 ? 0.16 : 0.30);
           const zc = dz + e * (dl / 2 + 0.014);
-          const capAdd = (bucket, geo, ry, t) => P.add(bucket, xform2(geo, 0, 0, 0, a),
+          const capAdd = (bucket: string, geo: BufferGeometry, ry: number, t: number) => P.add(bucket, xform2(geo, 0, 0, 0, a),
             s * 1.287,
             1.4795 + ry * Math.cos(a) - e * t * Math.sin(a),
             zc + ry * Math.sin(a) + e * t * Math.cos(a));
@@ -4256,7 +4514,7 @@ function buildISU122S(P) {
   // and its top corners printed +0.15 over the ref's deck line whenever the
   // bin phase caught them; at 17 mm total standoff the poke is <= 7 mm.)
   {
-    const linkRow = (yc, s) => {
+    const linkRow = (yc: number, s: number): void => {
       const zf = -0.44 - (1.86 - yc) * 0.4737;                 // slope face point for this row height
       const y0 = yc + 0.008 * 0.426, z0 = zf - 0.008 * 0.90;   // near-flush along the slope normal
       for (let lk = 0; lk < 4; lk++) {
@@ -4298,8 +4556,8 @@ function buildISU122S(P) {
     // face (max x 1.4609 at the foot) stays far inside the ±1.535 width
     // anchor and under the drums' plan cover.
     {
-      const fxT = (yy) => 1.46 - 0.2128 * (yy - 0.72) + 0.002;
-      const cT = (yy, zz) => [s * fxT(yy), yy, zz];
+      const fxT = (yy: number): number => 1.46 - 0.2128 * (yy - 0.72) + 0.002;
+      const cT = (yy: number, zz: number): Vec3Tuple => [s * fxT(yy), yy, zz];
       const zA = s > 0 ? -0.545 : -2.435, zB = s > 0 ? -2.435 : -0.545;
       P.add('hullCloth', paintVerts(gridQuad(
         cT(0.725, zA), cT(0.725, zB), cT(1.41, zB), cT(1.41, zA), 63, 23),
@@ -4703,8 +4961,8 @@ function buildISU122S(P) {
     // (950,280)-(1050,288) this round). 5 mm edge margins keep every mottle
     // vertex inside the slab's own silhouette.
     {
-      const fx = (yy) => (1.1354 - 0.0693 * (yy - 1.70) + 0.0012);
-      const c = (yy, zz) => [s * fx(yy), yy, zz];
+      const fx = (yy: number): number => (1.1354 - 0.0693 * (yy - 1.70) + 0.0012);
+      const c = (yy: number, zz: number): Vec3Tuple => [s * fx(yy), yy, zz];
       const zA = s > 0 ? 1.975 : -0.355, zB = s > 0 ? -0.355 : 1.975;
       P.add('hullCloth', paintVerts(gridQuad(
         c(1.703, zA), c(1.703, zB), c(2.127, zB), c(2.127, zA), 78, 14),
@@ -4842,7 +5100,7 @@ function buildISU122S(P) {
   // 73.3 plate — the un-inversion holder stays dead). Slabs -> gridQuads so
   // the mottle tier finally renders (the slab hash never did — see gridQuad).
   {
-    const crestQ = (x, y) => {
+    const crestQ = (x: number, y: number): number => {
       // (r11 round 2: the first x-ramp lifted the whole left HALF to ~98
       // where the ref concentrates its 113 peak in the left-top corner over
       // an otherwise plate-toned band — peak term now gated at x < -0.35
@@ -4898,7 +5156,7 @@ function buildISU122S(P) {
   // 1.120 bottom row crossed the band top run at the lane — the 28-voxel
   // front hit); q field unchanged, so the kept area renders byte-alike.
   {
-    const tierQ = (x, y) => 0.664 + mottle(x, y * 1.04, 11.7, 0.018, 0.010);
+    const tierQ = (x: number, y: number): number => 0.664 + mottle(x, y * 1.04, 11.7, 0.018, 0.010);
     P.add('hullCloth', paintVerts(gridQuad(
       [-0.80, 1.120, 2.5675], [0.80, 1.120, 2.5675],
       [0.80, 1.860, 2.5075], [-0.80, 1.860, 2.5075], 54, 25), tierQ));
@@ -5013,7 +5271,7 @@ function buildISU122S(P) {
   //      lit tail was a flat +0.045; replaced by a graded tail that peaks
   //      mid-radius and rolls off toward the rim (except at the bottom rim,
   //      which the ref keeps bright to the edge).
-  const potQ = (x, y, z = 0) => {
+  const potQ = (x: number, y: number, z = 0): number => {
     const rho = Math.min(1, Math.hypot(x, y) / POT_R);
     const ang = Math.atan2(y, x);
     const lobe = sm01((Math.cos(ang - 0.742) - 0.24) / 0.46);  // arc: pole 42.5deg (r9: soft crease)
@@ -5485,9 +5743,9 @@ function buildISU122S(P) {
     // r9 round 2: -6% — with the quiet band landed (idler 81.0/ref 79.8,
     // sprocket 81.8/82.4, gap 81.8/80.1) the road-wheel faces still sat
     // +7.7 over ref (86.5 vs 78.8); one family step centres the whole band.
-    P.mats.wood.color.setHex(0x62665a);          // hullWood == wheel faces + end covers + r9 bay backdrop/tub
-    P.mats.wood.bumpScale = 1.0;                 // r9 item 7: wheel-face micro-structure (iqr 0.0 -> ref 3-5)
-    P.mats.wood.envMapIntensity = 0.1;
+    P.mats.wood!.color.setHex(0x62665a);         // hullWood == wheel faces + end covers + r9 bay backdrop/tub
+    P.mats.wood!.bumpScale = 1.0;                // r9 item 7: wheel-face micro-structure (iqr 0.0 -> ref 3-5)
+    P.mats.wood!.envMapIntensity = 0.1;
     P.mats.detail.color.setHex(0x515549);        // fittings + the casemate flank skins: 82.0 -> ~76
     P.mats.detail.normalScale.set(0.60, 0.60);   // r9 item 7: flank-skin micro-structure (iqr 0 -> ref 4-6)
     // r9 item 1: the dark bucket rides +15% — the r8 gunmetal floor sat the
@@ -5529,9 +5787,9 @@ function buildISU122S(P) {
     tireDark.color.setHex(0x3b3a34);             // r9 round 5: tire rings out of the p05 tail
     P.disposables.push(tireDark);
     P.hullG.traverse((ob) => {
-      if (ob.isInstancedMesh && ob.material === P.mats.rubber) {
+      if (ob instanceof InstancedMesh && ob.material === P.mats.rubber) {
         if (!ob.geometry.boundingBox) ob.geometry.computeBoundingBox();
-        const bw = ob.geometry.boundingBox.max.x - ob.geometry.boundingBox.min.x;
+        const bw = ob.geometry.boundingBox!.max.x - ob.geometry.boundingBox!.min.x;
         if (bw <= 0.26) ob.material = tireDark;            // tire bands stay rubber-dark
       }
     });
@@ -5560,10 +5818,10 @@ function buildISU122S(P) {
     P.disposables.push(toothSteel);
     // the isuCommon clone family kept warm hexes — flip by hex match
     P.hullG.traverse((ob) => {
-      if (!ob.isMesh && !ob.isInstancedMesh) return;
+      if (!(ob instanceof Mesh)) return;
       const m = ob.material;
-      if (!m || !m.color) return;
-      if (ob.isInstancedMesh && m === P.mats.spareTrack) { ob.material = toothSteel; return; }
+      if (!(m instanceof MeshStandardMaterial)) return;
+      if (ob instanceof InstancedMesh && m === P.mats.spareTrack) { ob.material = toothSteel; return; }
       const hx = m.color.getHex();
       if (hx === 0x3c3b2f) m.color.setHex(0x4b4e42);       // worn end-wheel drums (r9: +8%, quiet band)
       else if (hx === 0x34332a) m.color.setHex(0x4a5040);  // inner chain layer (r9 +12%, p05 floor —
@@ -5592,4 +5850,4 @@ export const CASEMATE_PROFILES = {
   t95: { build: buildT95 },
   isu152: { build: buildISU152 },
   isu122s: { build: buildISU122S },
-};
+} satisfies VehicleProfileRecord;

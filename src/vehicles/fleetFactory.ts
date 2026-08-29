@@ -129,7 +129,7 @@ const GROUP_LOADERS = Object.freeze({
   abrams: () => import('./profiles/abrams.js').then((mod) => registerProfiles(mod.ABRAMS_PROFILES)),
   patton: () => import('./profiles/patton.ts').then((mod) => registerProfiles(mod.PATTON_PROFILES)),
   ww2: () => import('./profiles/ww2.ts').then((mod) => registerProfiles(mod.WW2_PROFILES)),
-  casemate: () => import('./profiles/casemate.js').then((mod) => {
+  casemate: () => import('./profiles/casemate.ts').then((mod) => {
     const { strv103: _swedenOwnsStrv103, ...profiles } = mod.CASEMATE_PROFILES;
     registerProfiles(profiles);
   }),
