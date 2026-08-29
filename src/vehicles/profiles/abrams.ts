@@ -1,4 +1,4 @@
-// Abrams family procedural profiles — gate-v6 rebuild (2026-07-31).
+// Strict TypeScript Abrams family procedural profiles — gate-v6 rebuild (2026-07-31).
 // Authored against TRUE-AXIS ortho mask traces (docs/references/profiles/*
 // re-extracted after the v6 camera fix, plus scratch probe curves decoded to
 // world meters). All v4/v5 tilt compensations (published−0.20 roofs, inflated
@@ -18,20 +18,360 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+
+type Vec2Tuple = readonly [number, number];
+type Vec3Tuple = readonly [number, number, number];
+type GeometryScale = number | readonly number[];
+type ArmorOwner = 'hull' | 'turret';
+
+interface AbramsMaterials extends Record<string, THREE.MeshStandardMaterial> {
+  readonly dark: THREE.MeshStandardMaterial;
+  readonly shadow: THREE.MeshStandardMaterial;
+  readonly hull: THREE.MeshStandardMaterial;
+  readonly spareTrack: THREE.MeshStandardMaterial;
+  readonly canvasCloth: THREE.MeshStandardMaterial;
+}
+
+interface AbramsGear {
+  update(trackL: number, trackR: number): void;
+}
+
+interface AbramsBuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly recoilG: THREE.Group;
+  readonly mats: AbramsMaterials;
+  readonly disposables: Array<{ dispose(): void }>;
+  readonly q: boolean;
+  readonly geometryReceipt: boolean;
+  readonly spec: {
+    readonly id: string;
+    readonly visual: { readonly number?: string };
+    readonly armor: { readonly gunBarrel: { lengthM: number } };
+  };
+  gear: AbramsGear | null;
+  muzzleZ: number;
+  topY: number;
+  _m1a2Bright?: THREE.MeshStandardMaterial;
+  __aimBowSliver?: THREE.BufferGeometry;
+  add(
+    slot: string,
+    geometry: THREE.BufferGeometry,
+    x?: number,
+    y?: number,
+    z?: number,
+    rotationX?: number,
+    rotationY?: number,
+    rotationZ?: number,
+    scale?: GeometryScale,
+  ): void;
+  addEquipment(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addExternalArmor(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addHatch(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addModuleVisual(module: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  decal(
+    owner: ArmorOwner,
+    kind: string,
+    label: string | null,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): void;
+  offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+  visualEraCluster(label: string, owner: ArmorOwner, build: () => void): void;
+}
+
+interface AbramsHullConfig {
+  readonly s?: number;
+  readonly bodyHalfW: number;
+  readonly nose: number;
+  readonly deck: readonly Vec2Tuple[];
+  readonly beltTop: number;
+  readonly belly: number;
+  readonly noseRake: readonly Vec2Tuple[];
+  readonly tailRake: readonly Vec2Tuple[];
+  readonly tailShelf: { readonly z0: number; readonly z1: number; readonly yBot: number };
+  readonly skirt: {
+    readonly x: number; readonly top: number; readonly bot: number;
+    readonly z0: number; readonly z1: number;
+  };
+  readonly rubberLipZ0?: number;
+  readonly lipYRaise?: number;
+  readonly skirtClampToDeck?: boolean;
+  readonly rearFlapZ?: number;
+  readonly rearFlapInset?: number;
+  readonly frontFlapZ?: number;
+  readonly tipYOff?: number;
+  readonly rearFlapCamo?: boolean;
+  readonly cleanBow?: boolean;
+  readonly noCable?: boolean;
+  readonly noRearFace?: boolean;
+  readonly sootZ?: number;
+  readonly softSeams?: boolean;
+  readonly noNumber?: boolean;
+  readonly liftEyeX?: number;
+  readonly liftEyeZOff?: number;
+  readonly planTaper?: {
+    readonly bowHalfW: number; readonly bowPull: number;
+    readonly tailHalfW: number; readonly tailPull: number;
+    readonly bowStations?: readonly Vec2Tuple[];
+  };
+  readonly engineZ: number;
+  readonly glacisTopZ: number;
+  readonly periZ?: number;
+  readonly periX?: number;
+  readonly periH?: number;
+  readonly periHump?: number;
+  readonly periHumpH?: number;
+  readonly deckInset?: number;
+  readonly trackXc: number;
+  readonly trackW: number;
+  readonly trackTh?: number;
+  readonly wheelR: number;
+  readonly wheelY: number;
+  readonly wheelZs: readonly number[];
+  readonly wheelHex?: number;
+  readonly tireHex?: number;
+  readonly contactZF?: number;
+  readonly contactZR?: number;
+  readonly trackBotY?: number;
+  readonly idlerZ: number;
+  readonly idlerY: number;
+  readonly idlerR: number;
+  readonly sprocketZ: number;
+  readonly sprocketY: number;
+  readonly sprocketR: number;
+  readonly returnRollerZs?: readonly number[];
+  readonly returnTrackTopY?: number;
+  readonly returnRollerR?: number;
+  readonly deadSag?: number;
+  readonly dishR?: number;
+  readonly arms?: boolean;
+  readonly pinCapOuter?: boolean | number;
+  readonly laneCarve?: {
+    readonly x: number; readonly bowZ: readonly [number, number];
+    readonly sternZ: readonly [number, number];
+  };
+  readonly bowLightX?: number;
+  readonly towCableX?: number;
+  readonly noSkirt?: boolean;
+  readonly noFlaps?: boolean;
+  readonly noFrontFlaps?: boolean;
+  readonly noRearFlap?: boolean;
+  readonly noSoot?: boolean;
+  readonly noTip?: boolean;
+  readonly skirtPanels?: number;
+  readonly armBucket?: string;
+  readonly bellyCoreHalfW?: number;
+  readonly beltCoreTop?: number;
+  readonly endRingSpan?: number;
+}
+
+interface AbramsTurretConfig {
+  readonly tw: number;
+  readonly throat: number;
+  readonly throatDepth?: number;
+  readonly zTip: number;
+  readonly zWide: number;
+  readonly zWideR?: number;
+  readonly zMain: number;
+  readonly zRear: number;
+  readonly zFaceOff?: number;
+  readonly wedgePull?: number;
+  readonly zTipR?: number;
+  readonly twTipR?: number;
+  readonly zFaceSkew?: number;
+  readonly yBotTip?: number;
+  readonly yBotFace?: number;
+  readonly yBot: number;
+  readonly yBotRear: number;
+  readonly roofTip: number;
+  readonly roofWide: number;
+  readonly roofMain: number;
+  readonly roofRear: number;
+  readonly faceRake?: number;
+  readonly yBotKnees?: readonly Vec2Tuple[];
+  readonly inset: number;
+  readonly rackTop?: number;
+  readonly rackBot?: number;
+  readonly rackDepth?: number;
+  readonly rackHalfW?: number;
+  readonly rackRearDrop?: number;
+  readonly rackDropDz?: number;
+  readonly railTopFlush?: boolean;
+  readonly railGapW?: number;
+  readonly roofCapW?: number;
+  readonly duf2X?: number;
+  readonly clothZOff?: number;
+  readonly rackDress?: boolean;
+  readonly rackDarkBucket?: string;
+  readonly rackBotRailZOff?: number;
+  readonly rackDufMul?: readonly number[];
+  readonly ring: Vec3Tuple;
+  readonly gun: Vec3Tuple;
+  readonly gunLen: number;
+  readonly gunR: number;
+  readonly slotW?: number;
+  readonly slotX?: number;
+  readonly noRoofCap?: boolean;
+}
+
+type AbramsShellConfig = Omit<
+  AbramsTurretConfig,
+  'ring' | 'gun' | 'gunLen' | 'gunR'
+>;
+
+interface AbramsProfileOptions {
+  readonly station?: string;
+  readonly abramsKit?: string | null;
+  readonly worksHull?: boolean;
+  readonly sepv2?: boolean;
+  readonly sepv3?: boolean;
+  readonly noCable?: boolean;
+}
+
+interface LoaderGunOptions {
+  readonly x: number; readonly y: number; readonly z: number;
+  readonly barrelLength: number; readonly outDeg: number; readonly upDeg: number;
+  readonly barrelRadius?: number; readonly hiderRadius?: number; readonly hiderLength?: number;
+}
+
+interface BareHullOptions {
+  readonly returnRollerZs?: readonly number[];
+  readonly returnTrackTopY?: number;
+  readonly returnRollerR?: number;
+}
+
+interface BrowningOptions {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly scale?: number;
+  readonly shield?: boolean | string;
+  readonly ammoSide?: number;
+  readonly installationVariant: string;
+  readonly yaw?: number;
+  readonly elevation?: number;
+  readonly barrelLength?: number;
+  readonly ring?: boolean;
+}
+
+interface OpenYokeRwsOptions {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly variant: string;
+  readonly ammoSide: number;
+  readonly sensorSide: number;
+  readonly yaw?: number;
+  readonly weaponRole?: string;
+}
+
+interface ArmorFace {
+  readonly p00: Vec3Tuple;
+  readonly p10: Vec3Tuple;
+  readonly p11: Vec3Tuple;
+  readonly p01: Vec3Tuple;
+}
+
+interface ArmorCheekFrame extends ArmorFace {
+  readonly normal: THREE.Vector3;
+}
+
+interface RoofPlateReceipt {
+  readonly geometry: THREE.BufferGeometry;
+  readonly x0: number;
+  readonly x1: number;
+  readonly zRear: number;
+  readonly zFront: number;
+  readonly rearBottom: number;
+  readonly frontBottom: number;
+  readonly thickness: number;
+  readonly seat: number;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object';
+}
+
+function isAbramsBuilder(value: unknown): value is AbramsBuilderPort {
+  return isRecord(value)
+    && value.hullG instanceof THREE.Group
+    && value.turretG instanceof THREE.Group
+    && value.gunG instanceof THREE.Group
+    && value.recoilG instanceof THREE.Group
+    && isRecord(value.mats)
+    && isRecord(value.spec)
+    && Array.isArray(value.disposables)
+    && typeof value.add === 'function'
+    && typeof value.addEquipment === 'function'
+    && typeof value.addExternalArmor === 'function'
+    && typeof value.addGunExtra === 'function'
+    && typeof value.addGunExtraDark === 'function'
+    && typeof value.addHatch === 'function'
+    && typeof value.addModuleVisual === 'function'
+    && typeof value.addMudguard === 'function'
+    && typeof value.decal === 'function'
+    && typeof value.offsetBuckets === 'function'
+    && typeof value.visualEraCluster === 'function';
+}
+
+function requireAbramsBuilder(value: unknown): AbramsBuilderPort {
+  if (!isAbramsBuilder(value)) {
+    throw new TypeError('Abrams profile requires the complete procedural builder contract');
+  }
+  return value;
+}
+
+function isRenderableMesh(object: THREE.Object3D): object is THREE.Mesh | THREE.InstancedMesh {
+  return object instanceof THREE.Mesh || object instanceof THREE.InstancedMesh;
+}
+
+function abramsProfile(build: (builder: AbramsBuilderPort) => void) {
+  return { build: (builder: unknown): void => build(requireAbramsBuilder(builder)) };
+}
+
+function configuredAbramsProfile(
+  build: (builder: AbramsBuilderPort, options: AbramsProfileOptions) => void,
+  options: AbramsProfileOptions,
+) {
+  return {
+    ...options,
+    build: (builder: unknown): void => build(requireAbramsBuilder(builder), options),
+  };
+}
 
 // KIT is populated by tankFactory.ts, which sits on the other side of an
 // import cycle with the profile modules — resolve members lazily.
-const {
-  box, cylX, cylY, cylZ, sph, torus, slab, frustum, polyTurret, buildRunningGear, buildGun,
-  liftEye, periscope, towCable, headlight, xform, mergeAll,
-} = new Proxy({}, { get: (_, name) => (...args) => KIT[name](...args) });
+const box: typeof KIT.box = (...args) => KIT.box(...args);
+const cylX: typeof KIT.cylX = (...args) => KIT.cylX(...args);
+const cylY: typeof KIT.cylY = (...args) => KIT.cylY(...args);
+const cylZ: typeof KIT.cylZ = (...args) => KIT.cylZ(...args);
+const sph: typeof KIT.sph = (...args) => KIT.sph(...args);
+const torus: typeof KIT.torus = (...args) => KIT.torus(...args);
+const slab: typeof KIT.slab = (...args) => KIT.slab(...args);
+const frustum: typeof KIT.frustum = (...args) => KIT.frustum(...args);
+const polyTurret: typeof KIT.polyTurret = (...args) => KIT.polyTurret(...args);
+const buildRunningGear: typeof KIT.buildRunningGear = (...args) => KIT.buildRunningGear(...args);
+const buildGun: typeof KIT.buildGun = (...args) => KIT.buildGun(...args);
+const liftEye: typeof KIT.liftEye = (...args) => KIT.liftEye(...args);
+const periscope: typeof KIT.periscope = (...args) => KIT.periscope(...args);
+const towCable: typeof KIT.towCable = (...args) => KIT.towCable(...args);
+const headlight: typeof KIT.headlight = (...args) => KIT.headlight(...args);
+const xform: typeof KIT.xform = (...args) => KIT.xform(...args);
+const mergeAll: typeof KIT.mergeAll = (...args) => KIT.mergeAll(...args);
 
 // ---------------------------------------------------------------------------
 // Curve helpers
 // ---------------------------------------------------------------------------
 
 // Piecewise-linear lookup along a [[z, y], ...] polyline (any z order).
-function lineAt(pts, z) {
+function lineAt(pts: readonly Vec2Tuple[], z: number): number {
   for (let i = 0; i < pts.length - 1; i++) {
     const [z0, y0] = pts[i], [z1, y1] = pts[i + 1];
     if ((z <= z0 && z >= z1) || (z >= z0 && z <= z1)) {
@@ -46,16 +386,16 @@ function lineAt(pts, z) {
 // coaxial when a variant gives the right-side weapon its own traverse/elevation
 // pose.  Positive outDeg aims away from the turret centre on the +x side;
 // positive upDeg raises the muzzle.
-function angledLoaderGunRun(P, {
+function angledLoaderGunRun(P: AbramsBuilderPort, {
   x, y, z, barrelLength, outDeg, upDeg,
   barrelRadius = 0.019, hiderRadius = 0.028, hiderLength = 0.15,
-}) {
+}: LoaderGunOptions): void {
   const rx = -THREE.MathUtils.degToRad(upDeg);
   const ry = THREE.MathUtils.degToRad(outDeg);
   const aim = new THREE.Vector3(0, 0, 1)
     .applyEuler(new THREE.Euler(rx, ry, 0, 'XYZ')).normalize();
   const base = new THREE.Vector3(x, y, z);
-  const addSegment = (bucket, radius, length, start) => {
+  const addSegment = (bucket: string, radius: number, length: number, start: number): void => {
     const center = base.clone().addScaledVector(aim, start + length / 2);
     P.add(bucket, cylZ(radius, length, 10), center.x, center.y, center.z, rx, ry, 0);
   };
@@ -72,7 +412,17 @@ function angledLoaderGunRun(P, {
 // `top` [[z,y]...], bottom edge follows bottomAt(z). Stations are the merged
 // z-set of the top polyline plus `extraZ` (e.g. the belly-rake breakpoints),
 // clipped to [zA, zB].
-function loftBand(P, bucket, halfW, inset, top, bottomAt, zA, zB, extraZ = []) {
+function loftBand(
+  P: AbramsBuilderPort,
+  bucket: string,
+  halfW: number,
+  inset: number,
+  top: readonly Vec2Tuple[],
+  bottomAt: (z: number) => number,
+  zA: number,
+  zB: number,
+  extraZ: readonly number[] = [],
+): void {
   const zs = [...new Set([zA, zB, ...top.map((p) => p[0]), ...extraZ]
     .filter((z) => z >= Math.min(zA, zB) - 1e-6 && z <= Math.max(zA, zB) + 1e-6)
     .map((z) => Number(z.toFixed(4))))].sort((a, b) => b - a); // front->rear
@@ -91,7 +441,17 @@ function loftBand(P, bucket, halfW, inset, top, bottomAt, zA, zB, extraZ = []) {
 // Plan-tapered variant of loftBand.  Used when a prow's half-width changes
 // through several measured shoulder stations; a single constant-width tip
 // turns a real pointed bow into a rectangular center block.
-function loftPlanBand(P, bucket, widths, inset, top, bottomAt, zA, zB, extraZ = []) {
+function loftPlanBand(
+  P: AbramsBuilderPort,
+  bucket: string,
+  widths: readonly Vec2Tuple[],
+  inset: number,
+  top: readonly Vec2Tuple[],
+  bottomAt: (z: number) => number,
+  zA: number,
+  zB: number,
+  extraZ: readonly number[] = [],
+): void {
   const zs = [...new Set([zA, zB, ...top.map((p) => p[0]), ...widths.map((p) => p[0]), ...extraZ]
     .filter((z) => z >= Math.min(zA, zB) - 1e-6 && z <= Math.max(zA, zB) + 1e-6)
     .map((z) => Number(z.toFixed(4))))].sort((a, b) => b - a);
@@ -110,20 +470,32 @@ function loftPlanBand(P, bucket, widths, inset, top, bottomAt, zA, zB, extraZ = 
 
 // Mirrored 8-corner slab: author corners for the +x side; side=-1 mirrors x
 // AND swaps the corner order so the winding stays outward.
-function sideSlab(P, bucket, side, b0, b1, b2, b3, t0, t1, t2, t3) {
-  const M = ([x, y, z]) => [side * x, y, z];
+function sideSlab(
+  P: AbramsBuilderPort,
+  bucket: string,
+  side: number,
+  b0: Vec3Tuple,
+  b1: Vec3Tuple,
+  b2: Vec3Tuple,
+  b3: Vec3Tuple,
+  t0: Vec3Tuple,
+  t1: Vec3Tuple,
+  t2: Vec3Tuple,
+  t3: Vec3Tuple,
+): void {
+  const M = ([x, y, z]: Vec3Tuple): Vec3Tuple => [side * x, y, z];
   P.add(bucket, side > 0
     ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
     : slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2)));
 }
 
-function abramsEraOwner(bucket) {
+function abramsEraOwner(bucket: string): ArmorOwner {
   return bucket.startsWith('hull') ? 'hull' : 'turret';
 }
 
 const ABRAMS_REACTIVE_VARIANTS = new Set(['m1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3']);
 
-function addAbramsEraLayer(P, bucket, fill) {
+function addAbramsEraLayer(P: AbramsBuilderPort, bucket: string, fill: () => void): void {
   // The same surface helpers also author passive applique, sensor housings,
   // and bustle hardware on the base M1A1/M1A2 families. Only the reactive
   // packages get ERA finish semantics; otherwise those passive parts would
@@ -145,9 +517,20 @@ function addAbramsEraLayer(P, bucket, fill) {
 // buried 85 mm into the turret and only its 10 mm face remained visible.
 // Every offset is measured along the carrier's real surface normal rather
 // than a world axis, so swept cheeks and tumbled bustle walls stay flush.
-function surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
-  thickness = 0.055, baseOffset = -0.006, outwardHint = [1, 0, 0],
-  smoothOuter = false, normalOverride = null) {
+function surfaceNormalPatch(
+  P: AbramsBuilderPort,
+  bucket: string,
+  side: number,
+  p00: Vec3Tuple,
+  p10: Vec3Tuple,
+  p11: Vec3Tuple,
+  p01: Vec3Tuple,
+  thickness = 0.055,
+  baseOffset = -0.006,
+  outwardHint: Vec3Tuple = [1, 0, 0],
+  smoothOuter = false,
+  normalOverride: THREE.Vector3 | null = null,
+): void {
   const a = new THREE.Vector3(...p00);
   const u = new THREE.Vector3(...p10).sub(a);
   const v = new THREE.Vector3(...p01).sub(a);
@@ -155,7 +538,7 @@ function surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
     ? normalOverride.clone().normalize()
     : new THREE.Vector3().crossVectors(u, v).normalize();
   if (normal.dot(new THREE.Vector3(...outwardHint)) < 0) normal.negate();
-  const offset = (point, distance) => {
+  const offset = (point: Vec3Tuple, distance: number): Vec3Tuple => {
     const q = new THREE.Vector3(...point).addScaledVector(normal, distance);
     return [q.x, q.y, q.z];
   };
@@ -165,7 +548,7 @@ function surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
   const t1 = offset(p10, baseOffset + thickness);
   const t2 = offset(p11, baseOffset + thickness);
   const t3 = offset(p01, baseOffset + thickness);
-  const M = ([x, y, z]) => [side * x, y, z];
+  const M = ([x, y, z]: Vec3Tuple): Vec3Tuple => [side * x, y, z];
   const geometry = side > 0
     ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
     : slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2));
@@ -182,13 +565,23 @@ function surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
 }
 
 const ERA_CONTACT_OFFSET = -0.006;
-const eraFaceBase = (thickness, gap = 0.002) => ERA_CONTACT_OFFSET + thickness + gap;
+const eraFaceBase = (thickness: number, gap = 0.002): number => ERA_CONTACT_OFFSET + thickness + gap;
 
 // Hull skirts are vertical carriers, so their ERA must not be rolled like a
 // freestanding sign.  Seat the inner face on the skirt and return the outer
 // face so a smaller cap can be layered onto the same cassette without air.
-function skirtArmorBox(P, bucket, side, carrierX, thickness, height, depth, y, z,
-  embed = 0.006) {
+function skirtArmorBox(
+  P: AbramsBuilderPort,
+  bucket: string,
+  side: number,
+  carrierX: number,
+  thickness: number,
+  height: number,
+  depth: number,
+  y: number,
+  z: number,
+  embed = 0.006,
+): number {
   const inner = carrierX - embed;
   const center = inner + thickness / 2;
   addAbramsEraLayer(P, bucket, () => {
@@ -201,8 +594,19 @@ function skirtArmorBox(P, bucket, side, carrierX, thickness, height, depth, y, z
 // backs stay buried in the vertical skirt carrier while the exposed face
 // leans out from bottom to top.  Returning the face quad lets callers layer
 // caps and texture on the same plane instead of drawing black grid lines.
-function skirtArmorWedge(P, bucket, side, carrierX, bottomProjection,
-  topProjection, y0, y1, z0, z1, embed = 0.006) {
+function skirtArmorWedge(
+  P: AbramsBuilderPort,
+  bucket: string,
+  side: number,
+  carrierX: number,
+  bottomProjection: number,
+  topProjection: number,
+  y0: number,
+  y1: number,
+  z0: number,
+  z1: number,
+  embed = 0.006,
+): ArmorFace {
   const inner = carrierX - embed;
   const outerBottom = inner + bottomProjection;
   const outerTop = inner + topProjection;
@@ -221,7 +625,7 @@ function skirtArmorWedge(P, bucket, side, carrierX, bottomProjection,
   };
 }
 
-function skirtArmorFacePoint(face, y, z) {
+function skirtArmorFacePoint(face: ArmorFace, y: number, z: number): Vec3Tuple {
   const span = face.p01[1] - face.p00[1];
   const v = span > 0 ? (y - face.p00[1]) / span : 0;
   return [
@@ -236,12 +640,22 @@ function skirtArmorFacePoint(face, y, z) {
 // grows the cassette along the real normal.  This keeps the new bow arrays
 // flush on both the shallow Tejas-family glacis and the steeper M1A2 bow;
 // horizontal boxes would bridge air at their forward edges.
-function glacisArmorPatch(P, bucket, side, deck, x0, x1, zRear, zFront,
-  thickness = 0.080, baseOffset = ERA_CONTACT_OFFSET) {
-  const p00 = [x0, lineAt(deck, zFront), zFront];
-  const p10 = [x1, lineAt(deck, zFront), zFront];
-  const p11 = [x1, lineAt(deck, zRear), zRear];
-  const p01 = [x0, lineAt(deck, zRear), zRear];
+function glacisArmorPatch(
+  P: AbramsBuilderPort,
+  bucket: string,
+  side: number,
+  deck: readonly Vec2Tuple[],
+  x0: number,
+  x1: number,
+  zRear: number,
+  zFront: number,
+  thickness = 0.080,
+  baseOffset = ERA_CONTACT_OFFSET,
+): void {
+  const p00: Vec3Tuple = [x0, lineAt(deck, zFront), zFront];
+  const p10: Vec3Tuple = [x1, lineAt(deck, zFront), zFront];
+  const p11: Vec3Tuple = [x1, lineAt(deck, zRear), zRear];
+  const p01: Vec3Tuple = [x0, lineAt(deck, zRear), zRear];
   surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
     thickness, baseOffset, [0, 1, 0]);
 }
@@ -261,13 +675,25 @@ function glacisArmorPatch(P, bucket, side, deck, x0, x1, zRear, zFront,
 // rows and the bottom-edge plan columns hold by construction. depth 'wall'
 // buries the inner face 2 cm into the loft (bin fills to the wall); a
 // number keeps a parallel inner face at that thickness.
-const wallSlope = (t) => (t.inset ?? 0.14) / (t.roofMain - t.yBot);
-const flankFaceX = (t, y) => t.tw - wallSlope(t) * (y - t.yBot);
-const flushFlankX = (t, y, proud = 0.012) => flankFaceX(t, y) + proud;
-function flankSlab(P, bucket, t, side, xFaceA, yA, y0, y1, z0, z1, depth) {
+const wallSlope = (t: AbramsTurretConfig): number => (t.inset ?? 0.14) / (t.roofMain - t.yBot);
+const flankFaceX = (t: AbramsTurretConfig, y: number): number => t.tw - wallSlope(t) * (y - t.yBot);
+const flushFlankX = (t: AbramsTurretConfig, y: number, proud = 0.012): number => flankFaceX(t, y) + proud;
+function flankSlab(
+  P: AbramsBuilderPort,
+  bucket: string,
+  t: AbramsTurretConfig,
+  side: number,
+  xFaceA: number,
+  yA: number,
+  y0: number,
+  y1: number,
+  z0: number,
+  z1: number,
+  depth: number | 'wall',
+): void {
   const S = wallSlope(t);
-  const face = (y) => xFaceA - S * (y - yA);
-  const inner = (y) => depth === 'wall'
+  const face = (y: number): number => xFaceA - S * (y - yA);
+  const inner = (y: number): number => depth === 'wall'
     ? (t.tw - S * (y - t.yBot)) - 0.02
     : face(y) - depth;
   sideSlab(P, bucket, side,
@@ -280,12 +706,22 @@ function flankSlab(P, bucket, t, side, xFaceA, yA, y0, y1, z0, z1, depth) {
 // along the wall normal.  ERA, IFF, CIP, and radar panels use this path so a
 // caller cannot accidentally give a different anchor height to a face plate
 // and leave it standing vertically or bridging air.
-function armorFlankPatch(P, bucket, t, side, y0, y1, z0, z1,
-  thickness = 0.055, baseOffset = -0.006) {
-  const p00 = [flankFaceX(t, y0), y0, z1];
-  const p10 = [flankFaceX(t, y0), y0, z0];
-  const p11 = [flankFaceX(t, y1), y1, z0];
-  const p01 = [flankFaceX(t, y1), y1, z1];
+function armorFlankPatch(
+  P: AbramsBuilderPort,
+  bucket: string,
+  t: AbramsTurretConfig,
+  side: number,
+  y0: number,
+  y1: number,
+  z0: number,
+  z1: number,
+  thickness = 0.055,
+  baseOffset = -0.006,
+): void {
+  const p00: Vec3Tuple = [flankFaceX(t, y0), y0, z1];
+  const p10: Vec3Tuple = [flankFaceX(t, y0), y0, z0];
+  const p11: Vec3Tuple = [flankFaceX(t, y1), y1, z0];
+  const p01: Vec3Tuple = [flankFaceX(t, y1), y1, z1];
   surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
     thickness, baseOffset, [1, wallSlope(t), 0]);
 }
@@ -297,17 +733,24 @@ function armorFlankPatch(P, bucket, t, side, y0, y1, z0, z1,
 // patch uses the same four certified corners as abramsShell, then buries the
 // cassette back into that plane.  Natural panel gaps provide separation;
 // no ink-black grid geometry is required.
-function cheekEraFrame(t, side, u0, u1, v0, v1) {
+function cheekEraFrame(
+  t: AbramsTurretConfig,
+  side: number,
+  u0: number,
+  u1: number,
+  v0: number,
+  v1: number,
+): ArmorCheekFrame {
   const zT = side > 0 ? (t.zTipR ?? t.zTip) : t.zTip;
   const zW = side > 0 ? (t.zWideR ?? t.zWide) : t.zWide;
   const bx = side > 0 ? (t.twTipR ?? t.tw) : t.tw;
   const outerTopX = Math.min(bx, t.tw - (t.inset ?? 0.14));
   const faceRake = t.faceRake ?? 0.34;
-  const innerBottom = [t.throat, t.yBotTip ?? t.yBot, zT];
-  const outerBottom = [bx, t.yBot, zW + 0.12];
-  const innerTop = [t.throat, t.roofTip, zT - faceRake];
-  const outerTop = [outerTopX, t.roofWide, zW];
-  const point = (u, v, zOffset) => {
+  const innerBottom: Vec3Tuple = [t.throat, t.yBotTip ?? t.yBot, zT];
+  const outerBottom: Vec3Tuple = [bx, t.yBot, zW + 0.12];
+  const innerTop: Vec3Tuple = [t.throat, t.roofTip, zT - faceRake];
+  const outerTop: Vec3Tuple = [outerTopX, t.roofWide, zW];
+  const point = (u: number, v: number, zOffset: number): Vec3Tuple => {
     const lower = innerBottom.map((n, i) => n + (outerBottom[i] - n) * u);
     const upper = innerTop.map((n, i) => n + (outerTop[i] - n) * u);
     return [
@@ -326,8 +769,19 @@ function cheekEraFrame(t, side, u0, u1, v0, v1) {
   return { p00, p10, p11, p01, normal };
 }
 
-function cheekEraPatch(P, bucket, t, side, u0, u1, v0, v1,
-  thickness = 0.075, baseOffset = -0.006, smoothOuter = false) {
+function cheekEraPatch(
+  P: AbramsBuilderPort,
+  bucket: string,
+  t: AbramsTurretConfig,
+  side: number,
+  u0: number,
+  u1: number,
+  v0: number,
+  v1: number,
+  thickness = 0.075,
+  baseOffset = -0.006,
+  smoothOuter = false,
+): void {
   const { p00, p10, p11, p01, normal } = cheekEraFrame(
     t, side, u0, u1, v0, v1);
   surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
@@ -340,15 +794,28 @@ function cheekEraPatch(P, bucket, t, side, u0, u1, v0, v1,
 // Interpolate the smaller face from the full carrier, but force its original
 // normal so a visible armor-paint rim is restored without split seams or
 // triangular tongues.
-function cheekEraInsetPatch(P, bucket, t, side, u0, u1, v0, v1,
-  insetU, insetV, thickness, baseOffset, smoothOuter = false) {
+function cheekEraInsetPatch(
+  P: AbramsBuilderPort,
+  bucket: string,
+  t: AbramsTurretConfig,
+  side: number,
+  u0: number,
+  u1: number,
+  v0: number,
+  v1: number,
+  insetU: number,
+  insetV: number,
+  thickness: number,
+  baseOffset: number,
+  smoothOuter = false,
+): void {
   const frame = cheekEraFrame(t, side, u0, u1, v0, v1);
-  const bilerp = (u, v) => frame.p00.map((n, i) => (
-    n * (1 - u) * (1 - v)
+  const bilerp = (u: number, v: number): Vec3Tuple => [0, 1, 2].map((i) => (
+    frame.p00[i] * (1 - u) * (1 - v)
       + frame.p10[i] * u * (1 - v)
       + frame.p11[i] * u * v
       + frame.p01[i] * (1 - u) * v
-  ));
+  )) as [number, number, number];
   const p00 = bilerp(insetU, insetV);
   const p10 = bilerp(1 - insetU, insetV);
   const p11 = bilerp(1 - insetU, 1 - insetV);
@@ -357,7 +824,15 @@ function cheekEraInsetPatch(P, bucket, t, side, u0, u1, v0, v1,
     thickness, baseOffset, [1, 0, 1], smoothOuter, frame.normal);
 }
 
-function cheekEraOutwardOffset(t, side, u0, u1, v0, v1, distance) {
+function cheekEraOutwardOffset(
+  t: AbramsTurretConfig,
+  side: number,
+  u0: number,
+  u1: number,
+  v0: number,
+  v1: number,
+  distance: number,
+): Vec3Tuple {
   const normal = cheekEraFrame(t, side, u0, u1, v0, v1).normal;
   return [side * normal.x * distance, normal.y * distance, normal.z * distance];
 }
@@ -369,16 +844,26 @@ function cheekEraOutwardOffset(t, side, u0, u1, v0, v1, distance) {
 // This is deliberately separate from cheekEraPatch: that helper covers the
 // forward-facing cheek plane, whereas this one removes the upright side
 // panels that used to bridge open air over the narrowing turret nose.
-function cheekSideEraPatch(P, bucket, t, side, u0, u1, v0, v1,
-  thickness = 0.055, baseOffset = -0.006) {
+function cheekSideEraPatch(
+  P: AbramsBuilderPort,
+  bucket: string,
+  t: AbramsTurretConfig,
+  side: number,
+  u0: number,
+  u1: number,
+  v0: number,
+  v1: number,
+  thickness = 0.055,
+  baseOffset = -0.006,
+): void {
   const zW = side > 0 ? (t.zWideR ?? t.zWide) : t.zWide;
   const bx = side > 0 ? (t.twTipR ?? t.tw) : t.tw;
   const inset = t.inset ?? 0.14;
-  const frontBottom = [bx, t.yBot, zW + 0.12];
-  const rearBottom = [t.tw, t.yBot, t.zWide - 0.70];
-  const frontTop = [Math.min(bx, t.tw - inset), t.roofWide, zW];
-  const rearTop = [t.tw - inset, t.roofWide, t.zWide - 0.70];
-  const point = (u, v, xOffset) => {
+  const frontBottom: Vec3Tuple = [bx, t.yBot, zW + 0.12];
+  const rearBottom: Vec3Tuple = [t.tw, t.yBot, t.zWide - 0.70];
+  const frontTop: Vec3Tuple = [Math.min(bx, t.tw - inset), t.roofWide, zW];
+  const rearTop: Vec3Tuple = [t.tw - inset, t.roofWide, t.zWide - 0.70];
+  const point = (u: number, v: number, xOffset: number): Vec3Tuple => {
     const lower = frontBottom.map((n, i) => n + (rearBottom[i] - n) * u);
     const upper = frontTop.map((n, i) => n + (rearTop[i] - n) * u);
     return [
@@ -393,7 +878,7 @@ function cheekSideEraPatch(P, bucket, t, side, u0, u1, v0, v1,
     thickness, baseOffset, [1, 0, 0]);
 }
 
-const deckAt = (g, z) => lineAt(g.deck, z);
+const deckAt = (g: { readonly deck: readonly Vec2Tuple[] }, z: number): number => lineAt(g.deck, z);
 
 // §B3.1 MUZZLE BORE hole disc (kf51 r6 #3a boreDark class, banked in
 // BUILD-STANDARD §C: mats.dark's ambient floor + a dead-frontal key render
@@ -402,7 +887,7 @@ const deckAt = (g, z) => lineAt(g.deck, z);
 // from every angle; the gate's white-mask override replaces it in the mask
 // pass like any other material). Parented to P.recoilG so it follows the
 // tube exactly (recoil included).
-function boreDisc(P, r, z, x = 0, y = 0) {
+function boreDisc(P: AbramsBuilderPort, r: number, z: number, x = 0, y = 0): void {
   const geo = KIT.cylZ(r, 0.010, P.q ? 18 : 12);
   const holeMat = new THREE.MeshBasicMaterial({ color: 0x0b0b0c });
   const m = new THREE.Mesh(KIT.xform(geo, x, y, z), holeMat);
@@ -419,7 +904,15 @@ function boreDisc(P, r, z, x = 0, y = 0) {
 // ringBucket (visual r5, opt-in): the ref renders hatch rings as FAINT
 // recessed rings — tejas passes the mid-shade turretTrack channel; every
 // other family keeps the stock dark ring byte-identical.
-function turretHatch(P, x, y, z, r, fence = 0, ringBucket = 'turretDark') {
+function turretHatch(
+  P: AbramsBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  r: number,
+  fence = 0,
+  ringBucket = 'turretDark',
+): void {
   P.addHatch('turret', cylY(r, r * 1.08, 0.06, 14), x, y + 0.03, z);
   P.add(ringBucket, torus(r * 0.97, 0.016, 18), x, y + 0.066, z);
   P.addHatch('turret', cylY(r * 0.86, r * 0.86, 0.032, 14), x, y + 0.085, z);
@@ -435,7 +928,7 @@ function turretHatch(P, x, y, z, r, fence = 0, ringBucket = 'turretDark') {
 
 // M2 HB on a cradle. Carried TRANSVERSE (travel position) so its long axis
 // spans 1-2 mask columns. Top ≈ y + 0.06*s.
-function m2hb(P, x, y, z, s = 1) {
+function m2hb(P: AbramsBuilderPort, x: number, y: number, z: number, s = 1): void {
   P.add('turretDark', box(0.6 * s, 0.12 * s, 0.09 * s), x, y, z);
   P.add('turretDark', cylX(0.022 * s, 0.42 * s, 8), x + 0.48 * s, y + 0.012 * s, z);
   P.add('turretDark', cylX(0.038 * s, 0.22 * s, 8), x + 0.35 * s, y + 0.012 * s, z);
@@ -446,7 +939,7 @@ function m2hb(P, x, y, z, s = 1) {
 
 // Loader's M240 on the skate rail around his hatch + low shield (all under
 // the published-height plateau).
-function m240Skate(P, x, y, z, s = 1) {
+function m240Skate(P: AbramsBuilderPort, x: number, y: number, z: number, s = 1): void {
   P.add('turretDark', torus(0.27 * s, 0.016, 18), x, y + 0.05 * s, z);
   P.add('turretDark', box(0.05 * s, 0.06 * s, 0.08 * s), x + 0.1 * s, y + 0.07 * s, z + 0.22 * s);
   P.addEquipment('turret', box(0.5 * s, 0.14 * s, 0.04),
@@ -459,9 +952,19 @@ function m240Skate(P, x, y, z, s = 1) {
 }
 
 // M250 six-tube smoke bank (2x3) on a bracket, seated on the cheek plate.
-function smokeBank(P, x, y, z, side, s = 1) {
+function smokeBank(
+  P: AbramsBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  side: number,
+  s = 1,
+): void {
   const a = side * 0.55;
-  const rot = (ox, oz) => [x + Math.cos(a) * ox + Math.sin(a) * oz, z - Math.sin(a) * ox + Math.cos(a) * oz];
+  const rot = (ox: number, oz: number): readonly [number, number] => [
+    x + Math.cos(a) * ox + Math.sin(a) * oz,
+    z - Math.sin(a) * ox + Math.cos(a) * oz,
+  ];
   const [bx, bz] = rot(0, -0.1 * s);
   P.add('turretDetail', box(0.06 * s, 0.2 * s, 0.26 * s), bx, y - 0.02 * s, bz, 0, a, 0);
   P.add('turret', box(0.42 * s, 0.15 * s, 0.14 * s), x, y, z, 0, a, 0);
@@ -481,7 +984,13 @@ function smokeBank(P, x, y, z, side, s = 1) {
 // cluster raised so the top row clears the stair line from the front.
 // Tops <= local 0.60 (2.17 world) — under the ref's 2.16-2.19 cheek
 // roofline in every side/front column; tube tips inside the cheek plan edge.
-function tejasSmokeCluster(P, x, y, z, side) {
+function tejasSmokeCluster(
+  P: AbramsBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  side: number,
+): void {
   // Visual r5 carryover 6: from STRAIGHT FRONT the a=0.55 / 0.23-long tubes
   // showed only foreshortened pale end discs — the "white cross-sparkle
   // cluster" (pale muzzle faces checkered by thin rims) and a stub read.
@@ -495,7 +1004,10 @@ function tejasSmokeCluster(P, x, y, z, side) {
   // (ref clusters read near-black from the front) kill the pale-disc
   // sparkle; bores/rims are the ref-black discharger class (turretDark).
   const a = side * 0.85;
-  const rot = (ox, oz) => [x + Math.cos(a) * ox + Math.sin(a) * oz, z - Math.sin(a) * ox + Math.cos(a) * oz];
+  const rot = (ox: number, oz: number): readonly [number, number] => [
+    x + Math.cos(a) * ox + Math.sin(a) * oz,
+    z - Math.sin(a) * ox + Math.cos(a) * oz,
+  ];
   const [bx, bz] = rot(0, -0.075);
   // Tubes in the scheme-detail tone: the ref clusters sample OLIVE
   // (64,71,55 H86 — scheme-painted M250s), and every dark-warm material
@@ -527,7 +1039,14 @@ function tejasSmokeCluster(P, x, y, z, side) {
 // w2 = width fraction of the forward cover block (vertex r1: the tejas
 // oracle's plan corridor past the cheek line is only ±0.20 wide — a 0.84w
 // forward block lit plan columns the reference never reaches).
-function abramsMantlet(P, s = 1, w = 0.68, h = 0.5, zOff = 0, w2 = 0.84) {
+function abramsMantlet(
+  P: AbramsBuilderPort,
+  s = 1,
+  w = 0.68,
+  h = 0.5,
+  zOff = 0,
+  w2 = 0.84,
+): void {
   P.addGunExtra(box(w * s, h * s, 0.42 * s), 0, 0.01 * s, zOff + 0.12 * s);
   P.addGunExtra(box(w * w2 * s, h * 0.78 * s, 0.24 * s), 0, 0.03 * s, zOff + 0.4 * s);
   const ws = Math.min(0.86, w2 + 0.02);
@@ -541,7 +1060,7 @@ function abramsMantlet(P, s = 1, w = 0.68, h = 0.5, zOff = 0, w2 = 0.84) {
 
 // Stowed antenna base pot (kept under the plateau — pots must never join
 // the p95 spend; post-W1b the tejas budget belongs to the whip pair).
-function antennaPot(P, x, y, z) {
+function antennaPot(P: AbramsBuilderPort, x: number, y: number, z: number): void {
   P.add('turretDetail', box(0.07, 0.10, 0.07), x, y + 0.04, z);
   P.add('turretDark', cylY(0.022, 0.03, 0.06, 8), x, y + 0.11, z);
 }
@@ -561,7 +1080,11 @@ function antennaPot(P, x, y, z) {
 // barrel run forward of the window ships on this layer. Segments are
 // [r, len, x, y, zCenter] cylZ rods in the target group's local frame;
 // P.mats.dark is the family's shared (tone-kit-hooked) weapon steel.
-function shadowBarrel(P, group, segs) {
+function shadowBarrel(
+  P: AbramsBuilderPort,
+  group: THREE.Group,
+  segs: readonly (readonly [number, number, number, number, number])[],
+): void {
   for (const [r, len, x, y, z] of segs) {
     const m = new THREE.Mesh(cylZ(r, len, 10), P.mats.dark);
     m.name = 'crowsBarrelShadowRun';
@@ -576,7 +1099,7 @@ function shadowBarrel(P, group, segs) {
 // Lift the complete Abrams turret rig just clear of the hull deck while
 // retaining enough bearing overlap to avoid a visible ring gap.
 const ABRAMS_TURRET_LIFT_M = 0.012;
-function seatAbramsTurret(turretG, x, y, z) {
+function seatAbramsTurret(turretG: THREE.Group, x: number, y: number, z: number): void {
   turretG.position.set(x, y + ABRAMS_TURRET_LIFT_M, z);
   turretG.userData.abramsTurretLiftM = ABRAMS_TURRET_LIFT_M;
 }
@@ -587,7 +1110,7 @@ function seatAbramsTurret(turretG, x, y, z) {
 // optional rear overhang shelf — then skirts, running gear and deck kit.
 // Geometry tables are in world meters, straight off the v6 curves.
 // ---------------------------------------------------------------------------
-function abramsHull(P, g) {
+function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
   const bw = g.bodyHalfW;
   const s = g.s ?? 1;
   const trackTh = g.trackTh ?? 0.09;
@@ -789,7 +1312,7 @@ function abramsHull(P, g) {
   // rises above the local deck line — a flat 1.41 skirt run (plus its top
   // trim) rode 0.10 PROUD of the 1.35 glacis band over z 2.5..3.5 and owned
   // 9 side-hull columns. Panels dip under the deck where the deck is lower.
-  const topAt = (z0, z1) => (g.skirtClampToDeck
+  const topAt = (z0: number, z1: number): number => (g.skirtClampToDeck
     ? Math.min(sk.top, Math.min(deckAt(g, z0), deckAt(g, z1), deckAt(g, (z0 + z1) / 2)) - 0.015)
     : sk.top);
   for (const side of [-1, 1]) {
@@ -990,7 +1513,7 @@ function abramsHull(P, g) {
 // recessed embrasure between them, a full-width body with roof tumblehome,
 // and a bustle with an optional undercut bottom (t.yBotRear). Local to ring.
 // ---------------------------------------------------------------------------
-function abramsShell(P, t) {
+function abramsShell(P: AbramsBuilderPort, t: AbramsShellConfig): void {
   const tw = t.tw, thr = t.throat;
   const inset = t.inset ?? 0.14;                 // roof tumblehome
   const zMain = t.zMain ?? (t.zWide - 1.2);
@@ -1053,7 +1576,8 @@ function abramsShell(P, t) {
   {
     const zA = zMain + 0.02;
     const segsB = [[zA, t.yBot], ...(t.yBotKnees ?? []), [t.zRear, yBotRear]];
-    const roofAt = (z) => t.roofMain + (t.roofRear - t.roofMain) * ((z - zA) / (t.zRear - zA));
+  const roofAt = (z: number): number => t.roofMain
+    + (t.roofRear - t.roofMain) * ((z - zA) / (t.zRear - zA));
     for (let k = 0; k < segsB.length - 1; k++) {
       const [zf, yf] = segsB[k], [zr, yr] = segsB[k + 1];
       const last = k === segsB.length - 2;
@@ -1081,7 +1605,11 @@ function abramsShell(P, t) {
 // narrower than the shell (vertex r1: the tejas rack spans only x ±1.07 —
 // full-width proc rails put 0.4 m of rear-extent error on every wide plan
 // column). Default reproduces the historical tw-proportional rack.
-function abramsBustleRack(P, t, s = 1) {
+function abramsBustleRack(
+  P: AbramsBuilderPort,
+  t: AbramsTurretConfig & { readonly rackTop: number },
+  s = 1,
+): void {
   const tw = t.tw;
   const rw = t.rackHalfW ?? tw * 0.86;         // rail half-width
   const zr = t.zRear;
@@ -1261,7 +1789,14 @@ function abramsBustleRack(P, t, s = 1) {
 
 // Shell-side sponson boxes + rails + tarp roll. xOut must stay inside the
 // committed width plane.
-function shellSponsons(P, t, s = 1, xOut = null, yBot = null, yTop = null) {
+function shellSponsons(
+  P: AbramsBuilderPort,
+  t: AbramsTurretConfig,
+  s = 1,
+  xOut: number | null = null,
+  yBot: number | null = null,
+  yTop: number | null = null,
+): void {
   const xo = xOut ?? (t.tw + 0.095 * s);
   const b = yBot ?? (t.yBot + 0.17);
   const tp = yTop ?? (t.roofMain - 0.15);
@@ -1282,7 +1817,7 @@ function shellSponsons(P, t, s = 1, xOut = null, yBot = null, yTop = null) {
 // scale now; the v5 0.727 tusk clamp-matching is retired, the tusk oracle is
 // a certified chimera). Curves: v6 re-extraction + probe decode.
 // ---------------------------------------------------------------------------
-const TEJAS_HULL = {
+const TEJAS_HULL: AbramsHullConfig = {
   // bodyHalfW 1.74 (was 1.78): the ref's DECK edge ends at ~1.72-1.74 —
   // x 1.74..1.83 is skirt zone (front-view tops 1.37-1.48, not 1.71 deck).
   // nose 3.905: the ref's center bow plate runs to 3.906 at |x| <= 0.73
@@ -1464,15 +1999,16 @@ const TEJAS_TURRET = {
   // (measured on view-front at the block1 edges) — 0.60 tucks the halo
   // fully behind the 0.64-wide cover block; the recess now shadows itself.
   slotW: 0.60, slotX: -0.05,
-};
+} satisfies AbramsTurretConfig;
 
 // Hull-only donor for the owner-directed MBT-70 composition. The new vehicle
 // shares the certified M1A1 loft and suspension instead of maintaining a
 // second approximate Abrams hull, while deliberately omitting the deep skirt
 // wall so its wheels and track return remain exposed.
-export function buildM1A1BareHull(P, {
+export function buildM1A1BareHull(builder: unknown, {
   returnRollerZs, returnTrackTopY, returnRollerR,
-} = {}) {
+}: BareHullOptions = {}): void {
+  const P = requireAbramsBuilder(builder);
   abramsHull(P, {
     ...TEJAS_HULL,
     returnRollerZs,
@@ -1508,11 +2044,11 @@ export function buildM1A1BareHull(P, {
   }
 }
 
-function addAbramsBrowning(P, {
+function addAbramsBrowning(P: AbramsBuilderPort, {
   x, y, z, scale = 0.66, shield = false, ammoSide = 1,
   installationVariant, yaw = 0, elevation = 0.035, barrelLength = 0.68,
   ring = false,
-}) {
+}: BrowningOptions): THREE.Group {
   const gun = FITTINGS.americanM2({
     mats: P.mats,
     scale,
@@ -1548,10 +2084,10 @@ function addAbramsBrowning(P, {
   return gun;
 }
 
-function addAbramsXStyleRws(P, {
+function addAbramsXStyleRws(P: AbramsBuilderPort, {
   x, y, z, variant, ammoSide, sensorSide, yaw = 0,
   weaponRole = 'auxiliary',
-}) {
+}: OpenYokeRwsOptions): THREE.Group {
   const station = FITTINGS.openYokeRws({
     mats: P.mats,
     bodySlot: 'hull',
@@ -1610,7 +2146,12 @@ function addAbramsXStyleRws(P, {
 // A box EDGE within ~6 mm of a column boundary AA-bleeds a spike into the
 // neighbor column at the mask's 40-threshold — that bleed cost dims 97.2
 // twice in this round (head front edge at 0.477; keep 7 mm+ margins).
-function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
+function tejasRoofKit(
+  P: AbramsBuilderPort,
+  t: AbramsTurretConfig,
+  station = 'crows',
+  abramsKit: string | null = null,
+): void {
   const roof = t.roofMain;                    // 0.79 local = 2.36 world
   const reactiveLeftWeapons = ['m1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3'].includes(P.spec.id);
   const ttsDerivedVariant = ({
@@ -1631,13 +2172,19 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
   // abramsShell and build every carrier piece parallel to it. The former
   // horizontal boxes touched at one edge but hovered 6-10 cm above the roof
   // at the other (the exact surface-markup failure on M1A2, TUSK and SEPv2).
-  const transitionRoofAt = (z) => t.roofMain
+  const transitionRoofAt = (z: number): number => t.roofMain
     + (t.roofWide - t.roofMain) * ((z - t.zMain) / (t.zWide - t.zMain));
   const platformThickness = 0.11;
   const platformSeat = -0.010;
-  const platformTopAt = (z) => transitionRoofAt(z) + platformSeat + platformThickness;
-  const makeRoofConformingPlate = (x0, x1, zRear, zFront,
-    thickness = platformThickness, seat = platformSeat) => {
+  const platformTopAt = (z: number): number => transitionRoofAt(z) + platformSeat + platformThickness;
+  const makeRoofConformingPlate = (
+    x0: number,
+    x1: number,
+    zRear: number,
+    zFront: number,
+    thickness = platformThickness,
+    seat = platformSeat,
+  ): RoofPlateReceipt => {
     const rearBottom = transitionRoofAt(zRear) + seat;
     const frontBottom = transitionRoofAt(zFront) + seat;
     const geometry = orientedSlab(
@@ -1648,14 +2195,29 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
     );
     return { geometry, x0, x1, zRear, zFront, rearBottom, frontBottom, thickness, seat };
   };
-  const addRoofConformingPlate = (bucket, x0, x1, zRear, zFront,
-    thickness = platformThickness, seat = platformSeat) => {
+  const addRoofConformingPlate = (
+    bucket: string,
+    x0: number,
+    x1: number,
+    zRear: number,
+    zFront: number,
+    thickness = platformThickness,
+    seat = platformSeat,
+  ): RoofPlateReceipt => {
     const plate = makeRoofConformingPlate(x0, x1, zRear, zFront, thickness, seat);
     P.addEquipment(bucket, plate.geometry);
     return plate;
   };
-  const addRoofConformingModulePlate = (module, bucket, x0, x1, zRear, zFront,
-    thickness = platformThickness, seat = platformSeat) => {
+  const addRoofConformingModulePlate = (
+    module: string,
+    bucket: string,
+    x0: number,
+    x1: number,
+    zRear: number,
+    zFront: number,
+    thickness = platformThickness,
+    seat = platformSeat,
+  ): RoofPlateReceipt => {
     const plate = makeRoofConformingPlate(x0, x1, zRear, zFront, thickness, seat);
     P.addModuleVisual(module, bucket, plate.geometry);
     return plate;
@@ -1663,8 +2225,8 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
   let crowsBaseY = null;
   let crowsRiserH = null;
   let sepv3LoaderReceiverY = null;
-  let roofCarrierReceipt = null;
-  let forwardRoofPanelReceipt = null;
+  let roofCarrierReceipt: RoofPlateReceipt | null = null;
+  let forwardRoofPanelReceipt: RoofPlateReceipt | null = null;
   let cwsStationReceipt = null;
   let loaderMountReceipt = null;
   let loaderWeaponReceipt = null;
@@ -1679,7 +2241,7 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
   forwardRoofPanelReceipt = addRoofConformingPlate(
     'turret', -1.05, -0.35, 0.715, 0.835,
     lowProfileStation ? 0.105 : 0.14, -0.012);
-  const carrierTopAt = (z) => roofCarrierReceipt
+  const carrierTopAt = (z: number): number => roofCarrierReceipt
     ? transitionRoofAt(z) + roofCarrierReceipt.seat + roofCarrierReceipt.thickness
     : platformTopAt(z);
   P.addEquipment('turret', box(0.60, 0.10, 0.40), -0.70, 0.60, 1.05);
@@ -1937,16 +2499,19 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
     // grids as-is (z [0.135..0.370]).
     const tvk = tusk ? -0.022 : 0;
     const cA = Math.cos(A), sA = Math.sin(A);
-    const at = (u, v) => [-0.70 - u * cA + v * sA, 0.2565 + u * sA + v * cA];
-    const part = (bk, geo, u, v, y) => {
+    const at = (u: number, v: number): readonly [number, number] => [
+      -0.70 - u * cA + v * sA,
+      0.2565 + u * sA + v * cA,
+    ];
+    const part = (bk: string, geo: THREE.BufferGeometry, u: number, v: number, y: number): void => {
       const [px, pz] = at(u, v);
       P.addEquipment(bk, geo, px, y, pz, 0, A, 0);
     };
-    const opticPart = (bk, geo, u, v, y) => {
+    const opticPart = (bk: string, geo: THREE.BufferGeometry, u: number, v: number, y: number): void => {
       const [px, pz] = at(u, v);
       P.addModuleVisual('optics', bk, geo, px, y, pz, 0, A, 0);
     };
-    const equipmentPart = (bk, geo, u, v, y) => {
+    const equipmentPart = (bk: string, geo: THREE.BufferGeometry, u: number, v: number, y: number): void => {
       const [px, pz] = at(u, v);
       P.addEquipment(bk, geo, px, y, pz, 0, A, 0);
     };
@@ -2099,7 +2664,7 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
     // Keep the byte-established M1A1/CWS furniture out of this M1A2 repair.
     P.add('turretDark', box(0.045, 0.054, 0.072), 0.95, plat2 - 0.06, -0.10);
   }
-  const loaderMountTopAt = (z) => loaderMountReceipt
+  const loaderMountTopAt = (z: number): number => loaderMountReceipt
     ? transitionRoofAt(z) + loaderMountReceipt.seat + loaderMountReceipt.thickness
     : loaderMountTopAtCenter;
   // Shield in the i6 station slab / -0.351 side bin (world z -0.33..-0.37;
@@ -2381,10 +2946,10 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
   {
     const y0 = 0.03, y1 = 0.62, z0 = 0.08, z1 = 1.09;
     const S = wallSlope(t);
-    const shell = (y) => t.tw - S * (y - t.yBot);
-    const inner = (y) => shell(y) - 0.02;
-    const rearFace = (y) => 1.695 - S * (y - y0);
-    const frontFace = (y) => shell(y) + 0.012;
+    const shell = (y: number): number => t.tw - S * (y - t.yBot);
+    const inner = (y: number): number => shell(y) - 0.02;
+    const rearFace = (y: number): number => 1.695 - S * (y - y0);
+    const frontFace = (y: number): number => shell(y) + 0.012;
     sideSlab(P, 'turret', -1,
       [inner(y0), y0, z1], [frontFace(y0), y0, z1],
       [rearFace(y0), y0, z0], [inner(y0), y0, z0],
@@ -2520,7 +3085,7 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
   // (certified 2.395 riser-line read) byte-identical.
   P.add('turretDark', box(0.10, 0.30, 0.06), -1.603, 0.36, -2.78);
   P.add('turretDark', box(0.10, 0.30, 0.06), -1.603, 0.36, -2.92);
-  const freezeRoofPlateReceipt = (plate) => plate ? Object.freeze({
+  const freezeRoofPlateReceipt = (plate: RoofPlateReceipt | null) => plate ? Object.freeze({
     x0: plate.x0,
     x1: plate.x1,
     zRear: plate.zRear,
@@ -2540,7 +3105,8 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
       cws: Object.freeze(cwsStationReceipt),
     });
   }
-  if (station !== 'cws' && roofCarrierReceipt) {
+  if (station !== 'cws' && roofCarrierReceipt
+      && crowsBaseY !== null && crowsRiserH !== null) {
     const crowsCarrierTopY = carrierTopAt(0.2565);
     const mountTopY = loaderMountTopAt(loaderMountZ);
     P.turretG.userData.abramsRoofSeatingReceipt = Object.freeze({
@@ -2619,7 +3185,11 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
 // retention straps and buried fasteners. M1A1HA and clean M1A2 receive only
 // passive-armor seams (their protection is not mislabeled as external ERA),
 // while Tejas/TUSK/SEPv2/SEPv3 keep their variant-specific reactive arrays.
-function abramsArmorHardware(P, variant, t) {
+function abramsArmorHardware(
+  P: AbramsBuilderPort,
+  variant: string,
+  t: AbramsTurretConfig,
+): void {
   const reactive = ['m1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3'].includes(variant);
   // The base M1A1 is the bare family anchor. Do not leave the former dark
   // skirt-grid or turret-retainer pass behind after moving its add-on armor
@@ -2899,13 +3469,14 @@ function abramsArmorHardware(P, variant, t) {
 // The final owner scope is deliberately narrow: heavy cover belongs only to
 // M1A1HA. The TUSK/SEP variants remain vegetation-free so their ARAT, Trophy,
 // CROWS and urban-kit silhouettes stay readable as hard-surface technology.
-function abramsGhillie(P, variant, t) {
-  const configs = {
-    m1a1ha: { density: 1.18, light: 0x647348, dark: 0x35442d, mgY: 1.075 },
-  };
-  const cfg = configs[variant];
-  if (!cfg) return;
-  const makeMat = (hex) => {
+function abramsGhillie(
+  P: AbramsBuilderPort,
+  variant: string,
+  t: AbramsTurretConfig,
+): void {
+  if (variant !== 'm1a1ha') return;
+  const cfg = { density: 1.18, light: 0x647348, dark: 0x35442d, mgY: 1.075 };
+  const makeMat = (hex: number): THREE.MeshStandardMaterial => {
     const m = P.mats.canvasCloth.clone();
     m.color.setHex(hex);
     m.roughness = 1;
@@ -2914,7 +3485,12 @@ function abramsGhillie(P, variant, t) {
     m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     return m;
   };
-  const addMesh = (parent, geos, hex, name) => {
+  const addMesh = (
+    parent: THREE.Group,
+    geos: readonly THREE.BufferGeometry[],
+    hex: number,
+    name: string,
+  ): void => {
     if (!geos.length) return;
     const geo = mergeAll(geos);
     const mat = makeMat(hex);
@@ -2924,11 +3500,16 @@ function abramsGhillie(P, variant, t) {
     parent.add(mesh);
     P.disposables.push(geo, mat);
   };
-  const addNetMesh = (parent, geos, name) => {
+  const addNetMesh = (
+    parent: THREE.Group,
+    geos: readonly THREE.BufferGeometry[],
+    name: string,
+  ): void => {
     if (!geos.length) return;
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 128;
     const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Abrams ghillie texture requires a 2D canvas context');
     ctx.clearRect(0, 0, 128, 128);
     // Original deterministic cut-net texture: two diagonal cord courses and
     // irregular leaf/rag diamonds. Transparent holes keep armor, ERA and
@@ -2967,24 +3548,41 @@ function abramsGhillie(P, variant, t) {
     parent.add(mesh);
     P.disposables.push(geo, mat, texture);
   };
-  const turretA = [], turretB = [], hullA = [], hullB = [];
-  const turretNet = [], hullNet = [];
-  const leafDiamond = (w, d, h = 0.024) => slab(
+  const turretA: THREE.BufferGeometry[] = [], turretB: THREE.BufferGeometry[] = [];
+  const hullA: THREE.BufferGeometry[] = [], hullB: THREE.BufferGeometry[] = [];
+  const turretNet: THREE.BufferGeometry[] = [], hullNet: THREE.BufferGeometry[] = [];
+  const leafDiamond = (w: number, d: number, h = 0.024): THREE.BufferGeometry => slab(
     [0, 0, -d], [w, 0, 0], [0, 0, d], [-w, 0, 0],
     [0, h, -d], [w, h, 0], [0, h, d], [-w, h, 0]);
-  const flankSheet = (side, xFaceA, yA, y0, y1, z0, z1) => {
+  const flankSheet = (
+    side: number,
+    xFaceA: number,
+    yA: number,
+    y0: number,
+    y1: number,
+    z0: number,
+    z1: number,
+  ): THREE.BufferGeometry => {
     const slope = wallSlope(t);
-    const face = (y) => xFaceA - slope * (y - yA);
-    const inner = (y) => face(y) - 0.018;
-    const b0 = [inner(y0), y0, z1], b1 = [face(y0), y0, z1];
-    const b2 = [face(y0), y0, z0], b3 = [inner(y0), y0, z0];
-    const t0 = [inner(y1), y1, z1], t1 = [face(y1), y1, z1];
-    const t2 = [face(y1), y1, z0], t3 = [inner(y1), y1, z0];
-    const M = ([x, y, z]) => [side * x, y, z];
+    const face = (y: number): number => xFaceA - slope * (y - yA);
+    const inner = (y: number): number => face(y) - 0.018;
+    const b0: Vec3Tuple = [inner(y0), y0, z1], b1: Vec3Tuple = [face(y0), y0, z1];
+    const b2: Vec3Tuple = [face(y0), y0, z0], b3: Vec3Tuple = [inner(y0), y0, z0];
+    const t0: Vec3Tuple = [inner(y1), y1, z1], t1: Vec3Tuple = [face(y1), y1, z1];
+    const t2: Vec3Tuple = [face(y1), y1, z0], t3: Vec3Tuple = [inner(y1), y1, z0];
+    const M = ([x, y, z]: Vec3Tuple): Vec3Tuple => [side * x, y, z];
     return side > 0 ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
       : slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2));
   };
-  const topCluster = (outA, outB, x, y, z, s, seed) => {
+  const topCluster = (
+    outA: THREE.BufferGeometry[],
+    outB: THREE.BufferGeometry[],
+    x: number,
+    y: number,
+    z: number,
+    s: number,
+    seed: number,
+  ): void => {
     // Net pad is the explicit physical seat. Flat rotated leaf strips overlap
     // it by 25-50 mm, avoiding the old isolated green-sphere/"pea" read.
     outB.push(xform(box(0.42 * s, 0.022, 0.34 * s), x, y + 0.011, z,
@@ -3146,7 +3744,7 @@ function abramsGhillie(P, variant, t) {
   addNetMesh(P.hullG, hullNet, `${variant}_ghillie_hull_cut_net`);
 }
 
-function tejasEndWheelAndBayKit(P, g) {
+function tejasEndWheelAndBayKit(P: AbramsBuilderPort, g: AbramsHullConfig): void {
   // The native running-gear builder already owns the complete road-wheel
   // tire/dish/hub set and moves it with suspension travel + wheel rotation.
   // Do not add fixed road-wheel faces here: the former seven-station overlay
@@ -3154,8 +3752,19 @@ function tejasEndWheelAndBayKit(P, g) {
   // owner's visible doubled wheel train. Keep only the independently seated
   // idler/sprocket faces; the broad wheel-bay AO walls were visible as flat
   // side panels behind the open wheels and are intentionally omitted.
-  const gearGeos = { dark: [], detail: [], hull: [] };
-  const addGear = (bucket, geo, x, y, z, rx = 0, ry = 0, rz = 0) => {
+  const gearGeos: Record<'dark' | 'detail' | 'hull', THREE.BufferGeometry[]> = {
+    dark: [], detail: [], hull: [],
+  };
+  const addGear = (
+    bucket: 'dark' | 'detail' | 'hull',
+    geo: THREE.BufferGeometry,
+    x: number,
+    y: number,
+    z: number,
+    rx = 0,
+    ry = 0,
+    rz = 0,
+  ): void => {
     gearGeos[bucket].push(xform(geo, x, y, z, rx, ry, rz));
   };
   for (const side of [-1, 1]) {
@@ -3196,7 +3805,7 @@ function tejasEndWheelAndBayKit(P, g) {
 // duplicated the animated shoe course with a static gray layer, producing
 // visible intersections at both end-wheel wraps. The canonical smart track
 // now owns the complete ground run and both arcs.
-function tejasSuspensionDress(P, g) {
+function tejasSuspensionDress(P: AbramsBuilderPort, g: AbramsHullConfig): void {
   const skx = g.skirt.x;                        // 1.812 — skirt face plane
   const bayGeos = [];
   for (const side of [-1, 1]) {
@@ -3249,7 +3858,7 @@ function tejasSuspensionDress(P, g) {
 // ref tail is also -3.937), so hullLengthM and the -3.99 side bin read are
 // unchanged. Tilted slats catch the hemi on their top faces = the ref's
 // light-catching fine-pitch grille.
-function tejasRearKit(P, opts) {
+function tejasRearKit(P: AbramsBuilderPort, opts: { readonly softDark?: boolean } | null): void {
   // opts.softDark (§B2-read m1a1ha graduate round, 2026-08-05 — owner
   // "gaps between stuff": the remaining hullDark rear-wall fittings fire
   // pitch-black under the dark-bucket outgoing scale and read as VOID SLOTS
@@ -3342,10 +3951,10 @@ function tejasRearKit(P, opts) {
 // Ref reads (critic pairs, board light): pads (55,51,43) H40 S12 L19 /
 // rear wrap (69,64,54) H40 — proc was (14,14,11) L5 pure-black cog slab.
 // Wheel DISH albedo already matched (ref (58,65,48) vs proc (57,63,50)).
-function tejasToneKit(P) {
+function tejasToneKit(P: AbramsBuilderPort): void {
   const reactiveArmor = ['m1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3']
     .includes(P.spec.id);
-  const rehook = (m) => {
+  const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
     m.onBeforeCompile = vehicleAmbientFloorHook;
     m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     return m;
@@ -3429,7 +4038,11 @@ function tejasToneKit(P) {
   // scale outgoing light by (1 - k*saturate(normal.y)) chained after the
   // fleet floor hook; vertical faces (the certified front/side pad reads)
   // render byte-identical. Own cache keys; per-build materials only.
-  const grime = (m, key, k = '0.30') => {
+  const grime = (
+    m: THREE.MeshStandardMaterial,
+    key: string,
+    k = '0.30',
+  ): THREE.MeshStandardMaterial => {
     m.onBeforeCompile = (shader) => {
       vehicleAmbientFloorHook(shader);
       shader.fragmentShader = shader.fragmentShader.replace(
@@ -3459,10 +4072,10 @@ function tejasToneKit(P) {
   wornDrum.envMapIntensity = 0.22;
   P.disposables.push(wornDrum);
   P.hullG.traverse((ob) => {
-    if (!ob.isMesh && !ob.isInstancedMesh) return;
+    if (!isRenderableMesh(ob)) return;
     const m = ob.material;
-    if (!m || !m.color || !m.color.getHex) return;
-    if (ob.isInstancedMesh && m.color.getHex() === 0x171614) {
+    if (!(m instanceof THREE.MeshStandardMaterial)) return;
+    if (ob instanceof THREE.InstancedMesh && m.color.getHex() === 0x171614) {
       // r5: grime 0.45 — the wrap-crest shoe blocks peek over the glacis
       // edge (front, y to 1.40) and the rear fender strip (rear, y to
       // 1.61) at all four corners and read as warm "pink" micro-clumps
@@ -3471,10 +4084,10 @@ function tejasToneKit(P) {
       // byte-identical at normal.y ~ 0.
       grime(m, 'abrams-linkgrime-v1', '0.45').color.setHex(0x38342b); // link pads -> ref warm brown-gray
       m.envMapIntensity = 0.10;                     // (r4 rust dial: x0.92, less red)
-    } else if (ob.isInstancedMesh && m.color.getHex() === 0x27251f) {
+    } else if (ob instanceof THREE.InstancedMesh && m.color.getHex() === 0x27251f) {
       grime(m, 'abrams-chaingrime-v1', '0.45').color.setHex(0x2f2b23); // inner chain / pin caps (r4 dial)
       m.envMapIntensity = 0.11;
-    } else if (m === P.mats.wheels && !ob.isInstancedMesh) {
+    } else if (m === P.mats.wheels && !(ob instanceof THREE.InstancedMesh)) {
       ob.material = wornDrum;                       // end-wheel body drums only
     }
   });
@@ -3508,29 +4121,31 @@ function tejasToneKit(P) {
   midShade.onBeforeCompile = vehicleAmbientFloorHook;
   midShade.customProgramCacheKey = () => 'veh-ambient-floor-v2';
   P.disposables.push(midShade);
-  const gearUpdate0 = P.gear.update;
-  P.gear.update = (trackL, trackR) => {
-    P.gear.update = gearUpdate0;
+  if (!P.gear) throw new Error('Abrams tone kit requires running gear');
+  const gear = P.gear;
+  const gearUpdate0 = gear.update;
+  gear.update = (trackL, trackR) => {
+    gear.update = gearUpdate0;
     P.turretG.traverse((ob) => {
-      if (!ob.isMesh && !ob.isInstancedMesh) return;
+      if (!isRenderableMesh(ob)) return;
       if (ob.material === P.mats.spareTrack) ob.material = midShade;
     });
     P.gunG.traverse((ob) => {
-      if ((ob.isMesh || ob.isInstancedMesh) && ob.material === P.mats.dark) ob.material = midShade;
+      if (isRenderableMesh(ob) && ob.material === P.mats.dark) ob.material = midShade;
     });
     // The hullShadow mesh carries the r5 mid-tier hull set (skirt seams/
     // clips/trim, hem bands, grille beds) merged with the wheel-bay AO
     // wall — the whole mesh rides the same mid tone; the near-black
     // inter-wheel READ is owned by the hullDark void blocks in front.
     P.hullG.traverse((ob) => {
-      if (!ob.isMesh && !ob.isInstancedMesh) return;
+      if (!isRenderableMesh(ob)) return;
       if (ob.material === P.mats.shadow) ob.material = midShade;
     });
     return gearUpdate0(trackL, trackR);
   };
 }
 
-function buildTejasFamily(P, p) {
+function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
   let g = TEJAS_HULL;
   // FAMILY VARIETY (owner directive 2026-08-03): per-variant rack-fill
   // layout — a dropped/shrunk duffel frees certified floor space for the
@@ -3543,8 +4158,19 @@ function buildTejasFamily(P, p) {
     : vid === 'm1a2_sepv3' ? [0.7, 1, 0]      // right freed for the stowed-loadout slot
     : null;
   const t = dufMul ? { ...TEJAS_TURRET, rackDufMul: dufMul } : TEJAS_TURRET;
-  const familySideSlab = (bucket, side, b0, b1, b2, b3, t0, t1, t2, t3) => {
-    const M = ([x, y, z]) => [side * x, y, z];
+  const familySideSlab = (
+    bucket: string,
+    side: number,
+    b0: Vec3Tuple,
+    b1: Vec3Tuple,
+    b2: Vec3Tuple,
+    b3: Vec3Tuple,
+    t0: Vec3Tuple,
+    t1: Vec3Tuple,
+    t2: Vec3Tuple,
+    t3: Vec3Tuple,
+  ): void => {
+    const M = ([x, y, z]: Vec3Tuple): Vec3Tuple => [side * x, y, z];
     P.add(bucket, side > 0
       ? orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3)
       : orientedSlab(M(b1), M(b0), M(b3), M(b2),
@@ -4273,7 +4899,7 @@ function buildTejasFamily(P, p) {
     // constraint. The platform now reads pure tejas; the genuine SEPv2
     // hull kit below (wind sensor, cable, CIPs, APU read, rear panel,
     // stowage) stays at its certified lines.
-    const hb2 = (bk, x0, x1, y0, y1, z0, z1) =>   // world-corner box helper
+    const hb2 = (bk: string, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): void =>   // world-corner box helper
       P.add(bk, box(x1 - x0, y1 - y0, z1 - z0), (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
     // §5.74 SEPv2 passive-armor flavor: ONE broad course of rectangular
     // hull cassettes and four large bustle-side slabs per flank.  This is
@@ -4708,7 +5334,10 @@ function buildTejasFamily(P, p) {
   // MGs are REAL stowed guns in the rackDufMul-freed floor slots.
   if (dufMul) {
     const rkY = 0.31;                       // rack floor seat (1.88 world)
-    const seat = (fit, x, y, z) => { fit.position.set(x, y, z); P.turretG.add(fit); };
+    const seat = (fit: THREE.Group, x: number, y: number, z: number): void => {
+      fit.position.set(x, y, z);
+      P.turretG.add(fit);
+    };
     if (vid === 'm1a1') {
       // M1A1: stowed M2 across the rack (muzzle to x 0.878, grazing the
       // 0.60 crate top) + a tow-cable run mounted along the left wall band.
@@ -4894,7 +5523,7 @@ function buildTejasFamily(P, p) {
 // (Visual r2 curve retune, refcurves proof: ref fwd deck rides the 1.411
 // side bin with a 1.386 dip at z 1.775..1.985 — the flat 1.398/1.40 run
 // read one bin low on 12 columns; 7 mm bin-edge margins per the r5 law.)
-const M1A2_DECK = [[3.97, 1.175], [3.90, 1.183], [3.85, 1.178], [3.62, 1.195],
+const M1A2_DECK: readonly Vec2Tuple[] = [[3.97, 1.175], [3.90, 1.183], [3.85, 1.178], [3.62, 1.195],
   [3.50, 1.222], [3.40, 1.253], [2.88, 1.256], [2.76, 1.278], [2.58, 1.30], [2.44, 1.328],
   [2.31, 1.352], [2.24, 1.362], [2.185, 1.405], [2.005, 1.405], [1.985, 1.386],
   [1.775, 1.386], [1.755, 1.404], [0.45, 1.404],
@@ -4909,16 +5538,16 @@ const M1A2_DECK = [[3.97, 1.175], [3.90, 1.183], [3.85, 1.178], [3.62, 1.195],
   [-2.06, 1.572], [-3.28, 1.578], [-3.88, 1.578], [-3.955, 1.565]];
 // Bow blade underside (side_hull bow bottoms 0.69@3.63 -> 1.00@3.96; tip
 // knots lifted to the ref's 1.026 bin — col 20 read 0.998).
-const M1A2_BOWB = [[3.55, 0.95], [3.555, 0.67], [3.60, 0.73], [3.685, 0.888],
+const M1A2_BOWB: readonly Vec2Tuple[] = [[3.55, 0.95], [3.555, 0.67], [3.60, 0.73], [3.685, 0.888],
   [3.735, 0.865], [3.836, 0.858], [3.862, 1.022], [3.90, 1.032], [3.97, 1.045]];
 // Tail shelf underside (0.645@-3.43 -> 0.73@-3.92, pinching at the tip).
-const M1A2_TAILB = [[-3.43, 0.65], [-3.50, 0.685], [-3.66, 0.685],
+const M1A2_TAILB: readonly Vec2Tuple[] = [[-3.43, 0.65], [-3.50, 0.685], [-3.66, 0.685],
   [-3.72, 0.67], [-3.78, 0.695], [-3.90, 0.72], [-3.955, 0.97]];
-const M1A2_FLATB = [[-4, 0.95], [4, 0.95]];
-const M1A2_RING = [0, 1.72, -0.13];   // ref turretPivot (extract registration)
-const M1A2_GUNP = [0, 1.67, 0.60];    // trunnion: axis 1.67, muzzle z 5.79
+const M1A2_FLATB: readonly Vec2Tuple[] = [[-4, 0.95], [4, 0.95]];
+const M1A2_RING: Vec3Tuple = [0, 1.72, -0.13];   // ref turretPivot (extract registration)
+const M1A2_GUNP: Vec3Tuple = [0, 1.67, 0.60];    // trunnion: axis 1.67, muzzle z 5.79
 
-function buildM1a2(P, V) {
+function buildM1a2(P: AbramsBuilderPort, V: AbramsProfileOptions = {}): void {
   // §H FAMILY-RIG VARIANT SURFACE (profile-entry params — the factory passes
   // the ABRAMS_PROFILES entry as V; tejas-family precedent): m1a2_sepv2 rides
   // THIS recipe against the SAME print under its own userdrops5 registration.
@@ -4947,20 +5576,28 @@ function buildM1a2(P, V) {
   // World-coordinate helpers. hb: hull box by extents; sb: mirrored hull box
   // (x0/x1 positive, s = side); tb/tsb: TURRET bucket family (local to the
   // ring at M1A2_RING); gb: gun-bucket box local to the trunnion.
-  const hb = (bk, x0, x1, y0, y1, z0, z1) =>
+  const hb = (bk: string, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): void =>
     P.add(bk, box(x1 - x0, y1 - y0, z1 - z0), (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-  const sb = (bk, s, x0, x1, y0, y1, z0, z1) =>
+  const sb = (bk: string, s: number, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): void =>
     P.add(bk, box(x1 - x0, y1 - y0, z1 - z0), s * (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-  const tb = (bk, x0, x1, y0, y1, z0, z1) =>
+  const tb = (bk: string, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): void =>
     P.add(bk, box(x1 - x0, y1 - y0, z1 - z0), (x0 + x1) / 2,
       (y0 + y1) / 2 - M1A2_RING[1], (z0 + z1) / 2 - M1A2_RING[2]);
-  const gb = (bk, x0, x1, y0, y1, z0, z1) =>
+  const gb = (bk: string, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): void =>
     P.add(bk, box(x1 - x0, y1 - y0, z1 - z0), (x0 + x1) / 2,
       (y0 + y1) / 2 - M1A2_GUNP[1], (z0 + z1) / 2 - M1A2_GUNP[2]);
   // Lofted x-band between polylines: top/bot are [[z,y]...] tables sampled at
   // their merged knee set (same slab recipe as loftBand, but for off-center
   // x-bands — the bow pods/wings and the track ramps need it).
-  const band = (bk, x0, x1, top, bot, z0, z1) => {
+  const band = (
+    bk: string,
+    x0: number,
+    x1: number,
+    top: readonly Vec2Tuple[],
+    bot: readonly Vec2Tuple[],
+    z0: number,
+    z1: number,
+  ): void => {
     // §C.1 winding fix (audit 4c9f03b, rear round 2026-08-06): the mirrored
     // call sites pass (s*xInner, s*xOuter) — on the left side x0 > x1 and
     // every slab ring flipped handedness (2 REVERSED left bow-pod/fender
@@ -5367,7 +6004,9 @@ function buildM1a2(P, V) {
   // the old -0.94..-1.92 span was authored blind behind the plan-interior
   // hem and overpainted the outer bins 1.1 m aft (err 0.59/0.55). The
   // panels sit at the ref band, abutting the wall lips at z 0.41/0.42.
-  const RL = ([x, y, z]) => [x, y - M1A2_RING[1], z - M1A2_RING[2]];
+  const RL = ([x, y, z]: Vec3Tuple): Vec3Tuple => [
+    x, y - M1A2_RING[1], z - M1A2_RING[2],
+  ];
   for (const s of [-1, 1]) {
     const xo = s > 0 ? 1.512 : 1.63;                       // right band ends 1.53
     const ti = s > 0 ? 2.00 : 2.09, to = s > 0 ? 1.96 : 1.955;
@@ -5445,11 +6084,11 @@ function buildM1a2(P, V) {
     // pale hinge points] at the EXACT certified outer planes — abutting
     // tiles only, zero proud, zero overlap: every side/plan/front trace
     // is byte-identical by construction.
-    const binTile = (x0, x1, yb, yt, z0, z1) => {
+    const binTile = (x0: number, x1: number, yb: number, yt: number, z0: number, z1: number): void => {
       const seam0 = yt - 0.063, seam1 = yt - 0.057;          // 6 mm seam line
       tb('turret', x0, x1, yb, seam0, z0, z1);               // bin body
       tb('turretDark', x0, x1, seam0, seam1, z0, z1);        // lid seam
-      const segs = [];
+      const segs: Array<[number, number, string]> = [];
       for (const zc of [-1.80, -1.47, -1.14]) segs.push([zc - 0.02, zc + 0.02, 'turretDark']);
       for (const zh of [-1.965, -0.975]) segs.push([zh - 0.014, zh + 0.014, 'turretDetail']);
       segs.sort((a, b) => a[0] - b[0]);
@@ -5493,7 +6132,9 @@ function buildM1a2(P, V) {
   // (wf: the whole field reverts to the graduation-state HULL arrangement —
   // hull bucket, 1.36 deck-embedded bottoms throughout: hull pieces never
   // yaw, so the deep seat is the floater-proof pose at every articulation.)
-  const wtb = wf ? (bk, x0, x1, y0, y1, z0, z1) => hb('hull', x0, x1, y0, y1, z0, z1) : tb;
+  const wtb: typeof tb = wf
+    ? (_bk, x0, x1, y0, y1, z0, z1) => hb('hull', x0, x1, y0, y1, z0, z1)
+    : tb;
   const wB = wf ? 1.36 : 1.58;                             // B-field bottoms
   const wC = wf ? 1.36 : 1.71;                             // crates-C bottoms
   wtb('turret', -0.28, -0.045, 1.36, 2.398, -0.492, 0.112);
@@ -5549,11 +6190,11 @@ function buildM1a2(P, V) {
     // ring-local P.add, so the world-pose authoring below is unchanged).
     // (wf: dressing follows the field back to the HULL buckets, same world
     // pose — the same material slots on the hull side of the split.)
-    const ta = wf
-      ? (bk, geo, x, y, z, rx = 0, ry = 0, rz = 0) =>
+    const ta: AbramsBuilderPort['add'] = wf
+      ? (bk, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) =>
         P.add(bk === 'turretCloth' ? 'hullCloth' : bk === 'turretDark' ? 'hullDark' : 'hullDetail',
           geo, x, y, z, rx, ry, rz)
-      : (bk, geo, x, y, z, rx = 0, ry = 0, rz = 0) =>
+      : (bk, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) =>
         P.add(bk, geo, x, y - M1A2_RING[1], z - M1A2_RING[2], rx, ry, rz);
     // Block B: canvas tarp bed. (Visual r3 orders 2/3 — the SADDLE PIT:
     // the critique's tarp+pad rectangle (p05 42, hard-edged dark pit from
@@ -5564,7 +6205,7 @@ function buildM1a2(P, V) {
     // + the cloth up-face term give the ref's top-lit sausage read, and
     // the straps re-route over the bundles.)
     ta('turretCloth', box(1.21, 0.014, 1.13), -0.135, 2.183, -1.4525);
-    const sad = (x, z, r, l) => {
+  const sad = (x: number, z: number, r: number, l: number): void => {
       ta('turretCloth', cylX(r, l, 14), x, 2.105, z);
       ta('turretCloth', cylX(r * 0.60, 0.05, 10), x - l / 2 - 0.018, 2.105, z);
       ta('turretCloth', cylX(r * 0.60, 0.05, 10), x + l / 2 + 0.018, 2.105, z);
@@ -6021,7 +6662,7 @@ function buildM1a2(P, V) {
     }
     // Fill: three strapped duffels + crate + jerry cans + rear tarp roll —
     // the SEPv2 stowage row that reads between the rails from top/rear.
-    const duf = (x, y, z, r, l) => {
+  const duf = (x: number, y: number, z: number, r: number, l: number): void => {
       P.add('turretCloth', cylX(r, l, 14), x, y - M1A2_RING[1], z - M1A2_RING[2]);
       P.add('turretCloth', cylX(r * 0.55, 0.06, 8), x - l / 2 - 0.02, y - M1A2_RING[1], z - M1A2_RING[2]);
       P.add('turretCloth', cylX(r * 0.55, 0.06, 8), x + l / 2 + 0.02, y - M1A2_RING[1], z - M1A2_RING[2]);
@@ -6336,7 +6977,8 @@ function buildM1a2(P, V) {
   // carrier band's own side/front bins (R1 2.428-bin: y <= 2.4425; M1
   // 2.373-bin front: y <= 2.386) so no gate row moves.
   {
-    const ty = (y) => y - M1A2_RING[1], tz = (z) => z - M1A2_RING[2];
+    const ty = (y: number): number => y - M1A2_RING[1];
+    const tz = (z: number): number => z - M1A2_RING[2];
     // CROWS station on R1 — visual r3 order 3 (MG-read law): the r2 station
     // never read as a weapon (black slot + frame in all 14 views). Rebuilt
     // CRESTED + SLEWED: receiver mass rides the hatch ring with its pale
@@ -6405,8 +7047,14 @@ function buildM1a2(P, V) {
       // A = 0) on bracket + chute, IR pod proud on the right rail.
       // Receiver/lick heights byte-identical (frame + body-filter anchors).
       const Acf = 0;
-      const atCf = (u, v) => [-0.615 - u * Math.cos(Acf) + v * Math.sin(Acf), 0.6285 + u * Math.sin(Acf) + v * Math.cos(Acf)];
-      const pcf = (bk, geo, u, v, y) => { const [px, pz] = atCf(u, v); P.add(bk, geo, px, ty(y), tz(pz), 0, Acf, 0); };
+      const atCf = (u: number, v: number): readonly [number, number] => [
+        -0.615 - u * Math.cos(Acf) + v * Math.sin(Acf),
+        0.6285 + u * Math.sin(Acf) + v * Math.cos(Acf),
+      ];
+      const pcf = (bk: string, geo: THREE.BufferGeometry, u: number, v: number, y: number): void => {
+        const [px, pz] = atCf(u, v);
+        P.add(bk, geo, px, ty(y), tz(pz), 0, Acf, 0);
+      };
       pcf('turretDark', box(0.06, 0.0775 + sepTall, 0.06), 0, 0, 2.761 + sepTall / 2); // CRADLE YOKE drum top 2.725 -> receiver bottom (vertical bridge on the drum axis)
       pcf('turretDark', box(0.16, 0.030, 0.10), 0, -0.075, 2.710);   // head/drum contact collar (under the 2.725 drum-top plane)
       pcf('turretDark', box(0.180, 0.10, 0.26), 0, 0.015, 2.845 + sepTall);    // M2 receiver (long axis ALONG aim, z pinned [0.5135..0.7735])
@@ -6452,8 +7100,15 @@ function buildM1a2(P, V) {
     // the documented M1 caps (front bin 2.386): hider top 2.386 exact.
     {
       const a = -0.14, dx = Math.sin(a), dz = Math.cos(a);
-      const at = (t) => [0.675 + dx * t, 0.278 + dz * t];
-      const part = (bk, geo, [x, z], y) => P.add(bk, geo, x, ty(y), tz(z), 0, a, 0);
+      const at = (progress: number): readonly [number, number] => [
+        0.675 + dx * progress, 0.278 + dz * progress,
+      ];
+      const part = (
+        bk: string,
+        geo: THREE.BufferGeometry,
+        [x, z]: readonly [number, number],
+        y: number,
+      ): void => P.add(bk, geo, x, ty(y), tz(z), 0, a, 0);
       P.add('turretDark', box(0.035, 0.09, 0.035), 0.70, ty(2.34), tz(0.02)); // pintle post
       // §H.4 SEPv2 tell (front/top): the loader's mount carries a SECOND M2
       // (twin fifties — the SEPv2 crew-served look) instead of the m1a2's
@@ -6584,7 +7239,9 @@ function buildM1a2(P, V) {
   // via A/B curves (m1a1 §B1.1 method).
   {
     const seg = P.q ? 26 : 14;
-    const ell = (b, len, sx) => xform(cylZ(b, len, seg), 0, 0, 0, 0, 0, 0, [sx, 1, 1]);
+        const ell = (b: number, len: number, sx: number): THREE.BufferGeometry => (
+          xform(cylZ(b, len, seg), 0, 0, 0, 0, 0, 0, [sx, 1, 1])
+        );
     for (const [b, cy, z0, z1] of [
       [0.2915, 1.8565, 2.265, 2.375],                      // D1 housing
       [0.3050, 1.8700, 2.375, 2.440],                      // clamp collar (step top 2.175)
@@ -6603,7 +7260,9 @@ function buildM1a2(P, V) {
   // Confirm bin ownership on the gate's own worst list before moving edges.)
   {
     const seg = P.q ? 26 : 14;
-    const ell = (b, len, sx) => xform(cylZ(b, len, seg), 0, 0, 0, 0, 0, 0, [sx, 1, 1]);
+        const ell = (b: number, len: number, sx: number): THREE.BufferGeometry => (
+          xform(cylZ(b, len, seg), 0, 0, 0, 0, 0, 0, [sx, 1, 1])
+        );
     // D2 center tail -> housing taper collar (same envelope, round):
     // x -0.20..0.12 (a 0.1635 guarded), y 1.575..2.172 (b 0.2985).
     P.add('gunMount', ell(0.2985, 0.05, 0.1635 / 0.2985), -0.04,
@@ -6790,7 +7449,7 @@ function buildM1a2(P, V) {
       const cheek = side < 0
         ? { innerZ: 2.405, outerX: 1.425, outerZ: 1.802, rake: 0.24 }
         : { innerZ: 2.360, outerX: 1.315, outerZ: 1.505, rake: 0.26 };
-      const cheekPoint = (u, v) => {
+      const cheekPoint = (u: number, v: number): Vec3Tuple => {
         const x = 0.315 + (cheek.outerX - 0.315) * u;
         const zBottom = cheek.innerZ + (cheek.outerZ - cheek.innerZ) * u;
         return [x, 1.60 + 0.34 * v - M1A2_RING[1],
@@ -6918,8 +7577,13 @@ function buildM1a2(P, V) {
 // - camo undersides fired BEIGE from low heroes (tan-plinth read) — the
 //   ref belly/tail band is gear-dark: down-normal grime per the leopard
 //   r6 top-grime precedent (angular term, albedo can't do it).
-function m1a2ToneKit(P) {
-  const grime = (m, key, k = '0.30', comp = 'saturate( normal.y )') => {
+function m1a2ToneKit(P: AbramsBuilderPort): void {
+  const grime = (
+    m: THREE.MeshStandardMaterial,
+    key: string,
+    k = '0.30',
+    comp = 'saturate( normal.y )',
+  ): THREE.MeshStandardMaterial => {
     m.onBeforeCompile = (shader) => {
       vehicleAmbientFloorHook(shader);
       shader.fragmentShader = shader.fragmentShader.replace(
@@ -6939,7 +7603,11 @@ function m1a2ToneKit(P) {
   // ring space, gunMount in trunnion space), and the y/z bands below are
   // chosen so each frame only catches its intended plates — the shared
   // mats.hull serves hull + turret + gunMount, gated per packet r3 table.
-  const worldTone = (m, key, frag) => {
+  const worldTone = (
+    m: THREE.MeshStandardMaterial,
+    key: string,
+    frag: string,
+  ): THREE.MeshStandardMaterial => {
     m.onBeforeCompile = (shader) => {
       vehicleAmbientFloorHook(shader);
       shader.vertexShader = shader.vertexShader
@@ -7087,7 +7755,7 @@ function m1a2ToneKit(P) {
 // axis 2.08 with the published 9.77 overall (print muzzle 4.57 is short —
 // bounded wholeCurves cover cap; hull/turret/stations stay satisfiable).
 // ---------------------------------------------------------------------------
-const AIM_HULL = {
+const AIM_HULL: AbramsHullConfig = {
   bodyHalfW: 1.78, nose: 3.44,
   // MID-BAND deck line (the print's deck is CROWNED: outboard band 1.72-1.77,
   // center spine to 1.83-1.89 — the spine boxes in buildAim carry the side
@@ -7126,7 +7794,7 @@ const AIM_HULL = {
   laneCarve: { x: 1.055, bowZ: [2.35, 3.10], sternZ: [-3.55, -2.90] },  // x 1.055: 3.5 cm clear of the 1.09 band inner face AND closes the corridor-to-band plan annulus (a 1.00 corridor left a 4.5 cm sky slit at (-1.02, 2.97))
 };
 
-function buildAim(P) {
+function buildAim(P: AbramsBuilderPort): void {
   const g = AIM_HULL;
   abramsHull(P, g);
   // Bow tip sliver (aim family round): the print's body runs to z 3.52 —
@@ -7434,7 +8102,7 @@ function buildAim(P) {
 // hull pylons down to the deck. XM360 muzzle at the published 9.77 overall
 // (oracle tube runs long to 6.22 — bounded whole-row cover).
 // ---------------------------------------------------------------------------
-const AX_HULL = {
+const AX_HULL: AbramsHullConfig = {
   bodyHalfW: 1.72, nose: 3.97,
   planTaper: {
     bowHalfW: 0.50, bowPull: 0.30, tailHalfW: 0.85, tailPull: 0.11,
@@ -7541,7 +8209,7 @@ const AX_HULL = {
 // complete articulated assembly onto the physical turret center.  The
 // 0.35 m counter-shift preserves the rest pose exactly while eliminating the
 // visible fore/aft orbit during yaw.
-const AX_TURRET_PIVOT = Object.freeze([0, 1.95, -0.04]);
+const AX_TURRET_PIVOT: Vec3Tuple = Object.freeze([0, 1.95, -0.04]);
 const AX_TURRET_AUTHORED_PIVOT_Z = -0.39;
 const AX_TURRET_CONTENT_SHIFT_Z = -0.35;
 const AX_TURRET_BUCKETS = Object.freeze([
@@ -7550,13 +8218,24 @@ const AX_TURRET_BUCKETS = Object.freeze([
   'turretGlass', 'turretTrack',
 ]);
 
-function buildAbramsX(P) {
+function buildAbramsX(P: AbramsBuilderPort): void {
   const g = AX_HULL;
   // AbramsX-local mirrored slab guard. The family helper preserves legacy
   // hashes for every other Abrams, while these authored bow/tunnel wedges
   // need the fleet §C.1 outward-order check on both mirrored sides.
-  const axSideSlab = (bucket, side, b0, b1, b2, b3, t0, t1, t2, t3) => {
-    const M = ([x, y, z]) => [side * x, y, z];
+  const axSideSlab = (
+    bucket: string,
+    side: number,
+    b0: Vec3Tuple,
+    b1: Vec3Tuple,
+    b2: Vec3Tuple,
+    b3: Vec3Tuple,
+    t0: Vec3Tuple,
+    t1: Vec3Tuple,
+    t2: Vec3Tuple,
+    t3: Vec3Tuple,
+  ): void => {
+    const M = ([x, y, z]: Vec3Tuple): Vec3Tuple => [side * x, y, z];
     P.add(bucket, side > 0
       ? orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3)
       : orientedSlab(M(b1), M(b0), M(b3), M(b2),
@@ -7801,8 +8480,8 @@ function buildAbramsX(P) {
   // the local 1.438 mirror-column tops (side-interior), x well inside the
   // plan taper. Lens dots detail-slot on the recess plates.
   {
-    const yA = (z) => 1.40 - 0.12 * (z - 3.30) + 0.0075;   // segment A plane
-    const yB = (z) => 1.37 + 0.0526 * (z - 3.55) + 0.0075; // segment B plane
+    const yA = (z: number): number => 1.40 - 0.12 * (z - 3.30) + 0.0075;   // segment A plane
+    const yB = (z: number): number => 1.37 + 0.0526 * (z - 3.55) + 0.0075; // segment B plane
     for (const sx of [-1, 1]) {
       // access panel outline (0.56 x 0.20) on segment A
       for (const pz of [3.325, 3.525]) {
@@ -7978,7 +8657,7 @@ function buildAbramsX(P) {
   // rear shell, canted cheeks and roof brow around a genuinely recessed
   // sensor block. This is the same negative-space lesson as Leclerc's
   // sight heads: the cavity shape matters more than an approximate pot.
-  const axRoofSight = (x, z, y0, y1) => {
+  const axRoofSight = (x: number, z: number, y0: number, y1: number): void => {
     const h = y1 - y0;
     const ly0 = y0 - 1.95;
     const ly1 = y1 - 1.95;
@@ -8018,11 +8697,11 @@ function buildAbramsX(P) {
     // face plane, while the glass and dark back wall remain recessed.
     for (const side of [-1, 1]) {
       const cy0 = opticY - h * 0.31, cy1 = opticY + h * 0.31;
-      const b0 = [0.132, cy0, 0.090], b1 = [0.266, cy0, 0.090];
-      const b2 = [0.266, cy0, 0.185], b3 = [0.150, cy0, 0.266];
-      const t0 = [b0[0], cy1, b0[2]], t1 = [b1[0], cy1, b1[2]];
-      const t2 = [b2[0], cy1, b2[2]], t3 = [b3[0], cy1, b3[2]];
-      const M = ([px, py, pz]) => [side * px, py, pz];
+      const b0: Vec3Tuple = [0.132, cy0, 0.090], b1: Vec3Tuple = [0.266, cy0, 0.090];
+      const b2: Vec3Tuple = [0.266, cy0, 0.185], b3: Vec3Tuple = [0.150, cy0, 0.266];
+      const t0: Vec3Tuple = [b0[0], cy1, b0[2]], t1: Vec3Tuple = [b1[0], cy1, b1[2]];
+      const t2: Vec3Tuple = [b2[0], cy1, b2[2]], t3: Vec3Tuple = [b3[0], cy1, b3[2]];
+      const M = ([px, py, pz]: Vec3Tuple): Vec3Tuple => [side * px, py, pz];
       const geo = side > 0
         ? orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3)
         : orientedSlab(M(b1), M(b0), M(b3), M(b2),
@@ -8117,8 +8796,20 @@ function buildAbramsX(P) {
   // + pale cover licks — all inside deck x[-0.45,0.55] y[..2.435].
   {
     const Ax = 0, sAx = Math.sin(Ax), cAx = Math.cos(Ax);
-    const at = (u, v) => [0.05 - u * cAx + v * sAx, 0.05 + u * sAx + v * cAx];
-    const part = (bk, geo, u, v, y) => { const [px, pz] = at(u, v); P.add(bk, geo, px, y, pz, 0, Ax, 0); };
+    const at = (u: number, v: number): readonly [number, number] => [
+      0.05 - u * cAx + v * sAx,
+      0.05 + u * sAx + v * cAx,
+    ];
+    const part = (
+      bk: string,
+      geo: THREE.BufferGeometry,
+      u: number,
+      v: number,
+      y: number,
+    ): void => {
+      const [px, pz] = at(u, v);
+      P.add(bk, geo, px, y, pz, 0, Ax, 0);
+    };
     // AXDED-R2 station bulk (new-ref look order): the new print's RWS is a
     // PEDESTAL-mounted mass — bolted riser under the slew drum, wider
     // receiver, fatter barrel (top plane 2.4315 HELD; every solid stays
@@ -8164,7 +8855,15 @@ function buildAbramsX(P) {
   // asymmetric measured masses separate is essential: the real station
   // peaks on gun-right, while the older single bridge made a 3.47 m wall
   // across its entire 1.1 m front span.
-  const axRwsBox = (bucket, x0, x1, y0, y1, z0, z1) => {
+  const axRwsBox = (
+    bucket: string,
+    x0: number,
+    x1: number,
+    y0: number,
+    y1: number,
+    z0: number,
+    z1: number,
+  ): void => {
     P.add(bucket, box(x1 - x0, y1 - y0, z1 - z0),
       (x0 + x1) / 2, (y0 + y1) / 2 - 1.95, (z0 + z1) / 2 + 0.39);
   };
@@ -8298,7 +8997,7 @@ function buildAbramsX(P) {
     // return while arching over the feed wheel—the distinctive AbramsX
     // belt path that neither a solid drum nor a two-dimensional fan can
     // reproduce.  Cylinders are oriented to the analytic path tangent.
-    const beltAt = (u) => {
+    const beltAt = (u: number): Vec3Tuple => {
       const q = Math.max(0, Math.min(1, u));
       const x = 0.085 + 0.515 * Math.pow(Math.sin(q * Math.PI / 2), 0.70);
       const z = -0.509 + 0.317 * Math.pow(1 - Math.cos(q * Math.PI / 2), 0.80);
@@ -8308,7 +9007,12 @@ function buildAbramsX(P) {
       const y = 3.230 + 0.140 * q + 0.200 * Math.sin(q * Math.PI);
       return [x, y, z];
     };
-    const addBeltLink = (index, at, before, after) => {
+    const addBeltLink = (
+      index: number,
+      at: Vec3Tuple,
+      before: Vec3Tuple,
+      after: Vec3Tuple,
+    ): void => {
       const [x, y, z] = at;
       const dx = after[0] - before[0];
       const dy = after[1] - before[1];
@@ -8329,11 +9033,15 @@ function buildAbramsX(P) {
     // characteristic high crown while giving the ammunition a physical load
     // path into the enclosure instead of a hovering terminal cartridge.
     const returnStart = beltAt(1);
-    const returnEnd = [0.570, 3.130, -0.300];
-    const returnAt = (u) => {
+    const returnEnd: Vec3Tuple = [0.570, 3.130, -0.300];
+    const returnAt = (u: number): Vec3Tuple => {
       const q = Math.max(0, Math.min(1, u));
       const s = q * q * (3 - 2 * q);
-      return returnStart.map((value, axis) => value + (returnEnd[axis] - value) * s);
+      return [
+        returnStart[0] + (returnEnd[0] - returnStart[0]) * s,
+        returnStart[1] + (returnEnd[1] - returnStart[1]) * s,
+        returnStart[2] + (returnEnd[2] - returnStart[2]) * s,
+      ];
     };
     const returnLinkCount = 8;
     for (let ri = 1; ri <= returnLinkCount; ri++) {
@@ -8566,8 +9274,8 @@ function buildAbramsX(P) {
   // (4) rub rail trimmed to the hem run (a 0.79-line rail under the
   //     risen fender would float in air): z -3.49..3.37.
   {
-    const skTop = (z) => Math.min(1.745, deckAt(AX_HULL, z) - 0.015);
-    const skBot = (z) => lineAt([[3.78, 1.06], [3.48, 0.887], [3.34, 0.60], [3.20, 0.52],
+    const skTop = (z: number): number => Math.min(1.745, deckAt(AX_HULL, z) - 0.015);
+    const skBot = (z: number): number => lineAt([[3.78, 1.06], [3.48, 0.887], [3.34, 0.60], [3.20, 0.52],
       [2.30, 0.52], [1.80, 0.66], [-2.95, 0.66], [-3.30, 0.62], [-3.505, 0.62]], z);
     const edges = [3.78, 3.48, 3.34, 2.62, 2.30, 1.80, 0.62, -0.62, -1.85, -2.95, -3.505];
     for (const side of [-1, 1]) {
@@ -8683,7 +9391,7 @@ function buildAbramsX(P) {
       // the local skTop silhouette line; §B4-clear by construction (same
       // plane as the panel face, no inboard reach).
       {
-        const capT = (z) => skTop(z) - 0.012;
+        const capT = (z: number): number => skTop(z) - 0.012;
         for (const [cz0, cz1] of [[3.44, 3.76]]) {
           const zm = (cz0 + cz1) / 2;
           const h = capT(zm) - (skBot(zm) + 0.02);
@@ -8882,7 +9590,45 @@ function buildAbramsX(P) {
   // wide while the armor shoulders retain the measured 3.4 m plan span.
   // The oracle's isolated 2.491 m samples are a narrow center ridge below;
   // they are not incorrectly spread over the whole roof.
-  const axShellStations = [
+  type AxShellStation = readonly [
+    worldZ: number,
+    width: number,
+    floorY: number,
+    armorTopY: number,
+    roofWidth: number,
+    broadShellFloorY?: number,
+    lowerEdgeWidth?: number,
+  ];
+  type AxRearTerrace = readonly [
+    channelY: number,
+    outerY: number,
+    outerInnerWidth: number,
+    cassetteWidth: number,
+    shoulderOuterWidth?: number,
+  ];
+  interface AxShellLocal {
+    worldZ: number;
+    z: number;
+    w: number;
+    y0: number;
+    y1: number;
+    shellY: number;
+    baseW: number;
+    kneeW: number;
+    shoulderW: number;
+    roofW: number;
+    kneeY: number;
+    shoulderY: number;
+    roofShoulderY: number;
+    terrace: {
+      channelY: number;
+      outerY: number;
+      outerInnerW: number;
+      cassetteW: number;
+      shoulderOuterW: number;
+    } | null;
+  }
+  const axShellStations: readonly AxShellStation[] = [
     // world z, max half-width, global floor, OUTER armor top, top half-width,
     // broad-shell floor, lower-edge half-width. The global extrema belong
     // to different height bands; spreading max width down to the floor was
@@ -8924,7 +9670,7 @@ function buildAbramsX(P) {
   // envelope loft fills that channel and is exactly why the top/hero views
   // read as one broad rounded mass. Values: [channel top, outer-shoulder
   // top, outer-shoulder inner edge, central-cassette half-width].
-  const axRearTerraces = new Map([
+  const axRearTerraces = new Map<number, AxRearTerrace>([
     [-0.649, [2.176, 2.337, 1.480, 1.100]],
     [-1.260, [2.176, 2.337, 1.480, 1.100]],
     [-1.500, [2.088, 2.291, 1.100, 1.100, 1.469]],
@@ -8932,7 +9678,11 @@ function buildAbramsX(P) {
     [-1.871, [2.250, 2.250, 0.800, 0.750]],
     [-2.481, [2.130, 2.130, 0.540, 0.540]],
   ]);
-  const axShellLocal = ([z, w, y0, y1, roofW, broadY = y0, baseW = w]) => ({
+  const axShellLocal = (
+    [z, w, y0, y1, roofW, broadY = y0, baseW = w]: AxShellStation,
+  ): AxShellLocal => {
+    const terraceReceipt = axRearTerraces.get(z);
+    return ({
     // The final visual reduction is deliberately sub-voxel at the outer
     // envelope: enough to tighten the broad read, but not enough to move the
     // registered armor out of its measured source cells.
@@ -8957,8 +9707,8 @@ function buildAbramsX(P) {
     kneeY: y1 - 1.95 - 0.045 - Math.min(0.16, Math.max(0.010, (y1 - y0) * 0.28)),
     shoulderY: y1 - 1.95 - 0.080 - Math.min(0.067, Math.max(0.008, (y1 - y0) * 0.14)),
     roofShoulderY: y1 - 1.95 - 0.080 - Math.min(0.047, Math.max(0.006, (y1 - y0) * 0.095)),
-    terrace: axRearTerraces.has(z) ? (() => {
-      const [channelY, outerY, outerInnerW, cassetteW, shoulderOuterW] = axRearTerraces.get(z);
+    terrace: terraceReceipt ? (() => {
+      const [channelY, outerY, outerInnerW, cassetteW, shoulderOuterW] = terraceReceipt;
       return {
         channelY: channelY - 1.95 - 0.065,
         outerY: outerY - 1.95 - 0.080,
@@ -8968,11 +9718,23 @@ function buildAbramsX(P) {
       };
     })() : null,
   });
+  };
   // Emit one armor layer between adjacent longitudinal stations.  Forward
   // of z=1.549 the oracle's cross-width trace is EMPTY across |x|<0.38:
   // this is the AbramsX's unmistakable deep XM360 tunnel.  The earlier
   // silhouette loft filled that void and made the turret a generic block.
-  const axArmorLayer = (a, b, loWA, loWB, loYA, loYB, hiWA, hiWB, hiYA, hiYB) => {
+  const axArmorLayer = (
+    a: AxShellLocal,
+    b: AxShellLocal,
+    loWA: number,
+    loWB: number,
+    loYA: number,
+    loYB: number,
+    hiWA: number,
+    hiWB: number,
+    hiYA: number,
+    hiYB: number,
+  ): void => {
     if (b.worldZ < 1.549 - 1e-4) {
       P.add('turret', slab(
         [-loWA, loYA, a.z], [loWA, loYA, a.z], [loWB, loYB, b.z], [-loWB, loYB, b.z],
@@ -8982,7 +9744,7 @@ function buildAbramsX(P) {
     // The opening is trapezoidal in plan: the shell ends at z=1.549 for
     // |x|<0.217, while the cheek tips at |x|=0.435 continue to z=2.404.
     // A constant 0.38 m slot made the throat shallow and rectangular.
-    const tunnelAt = (z) => 0.217 + Math.max(0, Math.min(1,
+    const tunnelAt = (z: number): number => 0.217 + Math.max(0, Math.min(1,
       (z - 1.549) / (2.404 - 1.549))) * (0.435 - 0.217);
     const tunnelA = tunnelAt(a.worldZ), tunnelB = tunnelAt(b.worldZ);
     for (const side of [-1, 1]) {
@@ -9028,15 +9790,15 @@ function buildAbramsX(P) {
       // yawing shell and named Shadow so the certification/frame recipes
       // ignore this interior surface exactly as they ignore wheel-bay AO.
       for (const side of [-1, 1]) {
-        const b0 = [a.terrace.cassetteW, a.terrace.channelY + 0.002, a.z];
-        const b1 = [a.terrace.outerInnerW, a.terrace.channelY + 0.002, a.z];
-        const b2 = [b.terrace.outerInnerW, b.terrace.channelY + 0.002, b.z];
-        const b3 = [b.terrace.cassetteW, b.terrace.channelY + 0.002, b.z];
-        const t0 = [b0[0], b0[1] + 0.006, b0[2]];
-        const t1 = [b1[0], b1[1] + 0.006, b1[2]];
-        const t2 = [b2[0], b2[1] + 0.006, b2[2]];
-        const t3 = [b3[0], b3[1] + 0.006, b3[2]];
-        const M = ([px, py, pz]) => [side * px, py, pz];
+        const b0: Vec3Tuple = [a.terrace.cassetteW, a.terrace.channelY + 0.002, a.z];
+        const b1: Vec3Tuple = [a.terrace.outerInnerW, a.terrace.channelY + 0.002, a.z];
+        const b2: Vec3Tuple = [b.terrace.outerInnerW, b.terrace.channelY + 0.002, b.z];
+        const b3: Vec3Tuple = [b.terrace.cassetteW, b.terrace.channelY + 0.002, b.z];
+        const t0: Vec3Tuple = [b0[0], b0[1] + 0.006, b0[2]];
+        const t1: Vec3Tuple = [b1[0], b1[1] + 0.006, b1[2]];
+        const t2: Vec3Tuple = [b2[0], b2[1] + 0.006, b2[2]];
+        const t3: Vec3Tuple = [b3[0], b3[1] + 0.006, b3[2]];
+        const M = ([px, py, pz]: Vec3Tuple): Vec3Tuple => [side * px, py, pz];
         const geo = side > 0
           ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
           : slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2));
@@ -9053,14 +9815,14 @@ function buildAbramsX(P) {
         // precise aft-rounding error exposed by the -1.50 m section.
         if (Math.max(a.baseW - a.terrace.shoulderOuterW,
           b.baseW - b.terrace.shoulderOuterW) > 0.004) {
-          const ob0 = [a.terrace.shoulderOuterW, a.terrace.channelY + 0.002, a.z];
-          const ob1 = [a.baseW, a.terrace.channelY + 0.002, a.z];
-          const ob2 = [b.baseW, b.terrace.channelY + 0.002, b.z];
-          const ob3 = [b.terrace.shoulderOuterW, b.terrace.channelY + 0.002, b.z];
-          const ot0 = [ob0[0], ob0[1] + 0.006, ob0[2]];
-          const ot1 = [ob1[0], ob1[1] + 0.006, ob1[2]];
-          const ot2 = [ob2[0], ob2[1] + 0.006, ob2[2]];
-          const ot3 = [ob3[0], ob3[1] + 0.006, ob3[2]];
+          const ob0: Vec3Tuple = [a.terrace.shoulderOuterW, a.terrace.channelY + 0.002, a.z];
+          const ob1: Vec3Tuple = [a.baseW, a.terrace.channelY + 0.002, a.z];
+          const ob2: Vec3Tuple = [b.baseW, b.terrace.channelY + 0.002, b.z];
+          const ob3: Vec3Tuple = [b.terrace.shoulderOuterW, b.terrace.channelY + 0.002, b.z];
+          const ot0: Vec3Tuple = [ob0[0], ob0[1] + 0.006, ob0[2]];
+          const ot1: Vec3Tuple = [ob1[0], ob1[1] + 0.006, ob1[2]];
+          const ot2: Vec3Tuple = [ob2[0], ob2[1] + 0.006, ob2[2]];
+          const ot3: Vec3Tuple = [ob3[0], ob3[1] + 0.006, ob3[2]];
           const outerGeo = side > 0
             ? slab(ob0, ob1, ob2, ob3, ot0, ot1, ot2, ot3)
             : slab(M(ob1), M(ob0), M(ob3), M(ob2),
@@ -9391,8 +10153,8 @@ function buildAbramsX(P) {
 // authored here as a separate configuration. Semantic add* calls keep roof
 // equipment and external protection out of the broad structural hit volumes.
 // ---------------------------------------------------------------------------
-function buildM1A3(P) {
-  const g = {
+function buildM1A3(P: AbramsBuilderPort): void {
+  const g: AbramsHullConfig = {
     ...TEJAS_HULL,
     bodyHalfW: 1.78,
     nose: 4.00,
@@ -9474,7 +10236,7 @@ function buildM1A3(P) {
     gun: [0, 0.28, 0.78],
     gunLen: 5.65,
     gunR: 0.115,
-  };
+  } satisfies AbramsTurretConfig;
 
   abramsHull(P, g);
 
@@ -9721,15 +10483,17 @@ function buildM1A3(P) {
 // Profile table
 // ---------------------------------------------------------------------------
 export const ABRAMS_PROFILES = {
-  m1a2_legacy: { build: buildM1a2 },
-  m1a2: { build: buildTejasFamily, station: 'ttsStandard' },
-  m1a1: { build: buildTejasFamily, station: 'cws' },
-  m1a1ha: { build: buildTejasFamily, station: 'cws' },
+  m1a2_legacy: configuredAbramsProfile(buildM1a2, {}),
+  m1a2: configuredAbramsProfile(buildTejasFamily, { station: 'ttsStandard' }),
+  m1a1: configuredAbramsProfile(buildTejasFamily, { station: 'cws' }),
+  m1a1ha: configuredAbramsProfile(buildTejasFamily, { station: 'cws' }),
   // TUSK: published-true full-scale body + real-scale ARAT/slat/TIP kit.
   // The tusk oracle is the tejas GLB height-clamped small PLUS a real-scale
   // runtime kit (certified chimera — see the packet); dims/floaters are the
   // achievable components and the build no longer chases the 0.727 body.
-  m1a2_tusk: { build: buildTejasFamily, abramsKit: 'tusk', station: 'ttsCompact' },
+  m1a2_tusk: configuredAbramsProfile(buildTejasFamily, {
+    abramsKit: 'tusk', station: 'ttsCompact',
+  }),
   // SEP REBUILD-ON-BASE (§5.19 + §5.19a owner orders 2026-08-07: "rebuild
   // them to use the M1A2 abrams base model ... i meant the m1a2 abrams
   // (ex tejas) is the correct base, the base m1a2 platform is WRONG"):
@@ -9741,14 +10505,18 @@ export const ABRAMS_PROFILES = {
   // recovered-print registration is retired for this id, and the
   // works-field parity echo that served its REF-HULL mask is DELETED
   // (§5.34 echo-deletion round 2026-08-08; see the packet).
-  m1a2_sepv2: { build: buildTejasFamily, station: 'ttsArmored', abramsKit: 'sepv2' },
+  m1a2_sepv2: configuredAbramsProfile(buildTejasFamily, {
+    station: 'ttsArmored', abramsKit: 'sepv2',
+  }),
   // SEPv3/M1A2C: low TTS-derived tower + retained CROWS-LP optics + Trophy
   // APS, 4 radar panels, ARAT 9x2 skirt grid, left-rear UAAPU housing,
   // IFLIR-scale CITV/sight, ADL boxes, split IFF panels and low-shield M2. NO oracle
   // registration (FALSE-0 law — never gate this id); measures are the
   // §B8.1 four-box + self-shots.
-  m1a2_sepv3: { build: buildTejasFamily, station: 'ttsLowProfile', abramsKit: 'sepv3' },
-  m1a1_aim: { build: buildAim },
-  m1a3: { build: buildM1A3 },
-  abramsx: { build: buildAbramsX },
-};
+  m1a2_sepv3: configuredAbramsProfile(buildTejasFamily, {
+    station: 'ttsLowProfile', abramsKit: 'sepv3',
+  }),
+  m1a1_aim: abramsProfile(buildAim),
+  m1a3: abramsProfile(buildM1A3),
+  abramsx: abramsProfile(buildAbramsX),
+} satisfies VehicleProfileRecord;

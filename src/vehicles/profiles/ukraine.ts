@@ -42,7 +42,7 @@ import {
   T64_LOWER_HULL_DROP_M,
   T64_FRONT_IDLER_LIFT_M,
 } from './russia.ts';
-import { ABRAMS_PROFILES } from './abrams.js';
+import { ABRAMS_PROFILES } from './abrams.ts';
 import type { ProfileBuilderPort, VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec3Tuple = [number, number, number];
@@ -2391,7 +2391,7 @@ function buildUAM1A1(P: UkraineBuilderPort): void {
   const id = P.spec.id;
   P.spec.id = 'm1a1ha';
   try {
-    ABRAMS_PROFILES.m1a1ha.build(P, ABRAMS_PROFILES.m1a1ha);
+    ABRAMS_PROFILES.m1a1ha.build(P);
   } finally {
     P.spec.id = id;
   }

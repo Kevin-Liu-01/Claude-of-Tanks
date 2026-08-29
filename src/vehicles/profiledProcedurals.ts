@@ -4,7 +4,7 @@ import { buildProfile, buildDonorVariant } from './profiles/kit.ts';
 import { WW2_PROFILES } from './profiles/ww2.ts';
 import { CASEMATE_PROFILES } from './profiles/casemate.ts';
 import { SOVIET_HEAVY_PROFILES } from './profiles/soviet-heavy.ts';
-import { ABRAMS_PROFILES } from './profiles/abrams.js';
+import { ABRAMS_PROFILES } from './profiles/abrams.ts';
 import { RUSSIA_PROFILES as RUSSIA_RESIDUE_PROFILES } from './profiles/russia.ts';
 import { T90_PROFILES } from './profiles/t90.ts';
 import { T72_PROFILES } from './profiles/t72.ts';
