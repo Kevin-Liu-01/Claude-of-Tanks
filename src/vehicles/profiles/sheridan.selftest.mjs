@@ -297,7 +297,15 @@ try {
     runningGearReused: true,
     remoteAutocannonCaliberMm: 30,
     largeGunRightSearchlight: true,
-    additionalEraCassettes: 56,
+    additionalEraCassettes: 80,
+    skirtArmorPanelsPerSide: 6,
+    skirtEraRows: 2,
+    skirtEraCassettesPerSide: 24,
+    skirtCageStations: 8,
+    turretCheekEraCassettesPerSide: 6,
+    turretCheekContactEmbedM: 0.012,
+    bustleConstruction: 'armored-core-open-cage',
+    bustleCageRearZ: -2.26,
     rearFuelDrums: 0,
   });
 
@@ -339,7 +347,12 @@ try {
   const era = ttsTank.root.userData.eraFinishReceipt;
   assert.equal(era?.camoProjection, 'vehicle-scale-box-uv');
   assert.equal(era?.bodyAndCoverUseVehiclePaint, true);
-  assert.equal(era?.layeredCassettes, 94);
+  assert.equal(era?.layeredCassettes, 118,
+    'TTS adds two full-length skirt courses without changing the donor running gear');
+  assert.equal(era?.partsBySector?.m551a1_tts_hull_era_L, 48);
+  assert.equal(era?.partsBySector?.m551a1_tts_hull_era_R, 48);
+  assert.equal(era?.partsBySector?.m551a1_tts_turret_era_L, 12);
+  assert.equal(era?.partsBySector?.m551a1_tts_turret_era_R, 12);
   assert.deepEqual(new Set(era?.gameplaySectors), new Set([
     'sheridan_glacis_era', 'sheridan_skirt_era_L', 'sheridan_skirt_era_R',
     'sheridan_turret_era_L', 'sheridan_turret_era_R',

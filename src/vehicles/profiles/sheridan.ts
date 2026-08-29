@@ -423,6 +423,28 @@ function boxOnBasis(size: Vec3Tuple, axisX: Vec3Tuple, axisY: Vec3Tuple): THREE.
   return geometry;
 }
 
+// Construct a stable local frame on a surveyed armor plane. Local +Z is the
+// surface normal, local +X follows the projected fore/aft course, and local
+// +Y completes the right-handed frame. This lets bolt-on protection share the
+// cast cheek's actual pitch and roll instead of hovering on a guessed yaw.
+function armorSurfaceFrame(normal, alongHint = [0, 0, 1]) {
+  const normalAxis = new THREE.Vector3(...normal).normalize();
+  const alongAxis = new THREE.Vector3(...alongHint)
+    .addScaledVector(normalAxis, -new THREE.Vector3(...alongHint).dot(normalAxis))
+    .normalize();
+  const acrossAxis = new THREE.Vector3().crossVectors(normalAxis, alongAxis).normalize();
+  const matrix = new THREE.Matrix4().makeBasis(alongAxis, acrossAxis, normalAxis);
+  const euler = new THREE.Euler().setFromRotationMatrix(matrix, 'XYZ');
+  return { normalAxis, alongAxis, acrossAxis, euler };
+}
+
+function pointOnArmorFrame(point, frame, along, across, normal) {
+  return new THREE.Vector3(...point)
+    .addScaledVector(frame.alongAxis, along)
+    .addScaledVector(frame.acrossAxis, across)
+    .addScaledVector(frame.normalAxis, normal);
+}
+
 // Source-measured commander's M2 installation. The comparison mesh stores
 // the weapon and its open ammunition cradle as separate islands. Treating
 // their combined bounds as one solid box produced a 570 mm-wide block where
@@ -695,9 +717,12 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
     P.add('hullDark', box(0.055, 0.22, 0.82), x, 1.54, -3.16, 0.05, 0, 0);
   }
 
-  // Full-width upper-side applique and a second glacis course. These are
-  // damageable ERA sectors with the fleet-standard two-layer camouflaged
-  // cassette construction supplied by eraCluster.
+  // A second glacis course plus deep, full-length modular skirts. Six backing
+  // panels per side overlap at their vertical seams and drop over the upper
+  // wheel run. Two ERA courses span the complete track length, while a thin
+  // stand-off cage ties back through every panel seam without becoming a
+  // second solid wall. ERA keeps the fleet-standard continuous vehicle-scale
+  // camouflage and two-layer cassette construction supplied by eraCluster.
   P.eraCluster('m551a1_tts_glacis_era', (put) => {
     for (let row = 0; row < 2; row++) {
       for (let col = 0; col < 6; col++) {
@@ -706,30 +731,106 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
       }
     }
   });
+  const skirtPanelZ = [2.35, 1.39, 0.43, -0.53, -1.49, -2.45];
+  const skirtPanelHeights = [0.66, 0.76, 0.82, 0.82, 0.76, 0.68];
+  const skirtCageStations = [2.75, 1.86, 0.97, 0.08, -0.81, -1.70, -2.59, -3.03];
   for (const side of [-1, 1]) {
-    P.addExternalArmor('hull', box(0.075, 0.24, 5.72), side * 1.435, 1.38, -0.28);
+    for (let index = 0; index < skirtPanelZ.length; index++) {
+      const height = skirtPanelHeights[index];
+      const top = 1.46;
+      P.addExternalArmor('hull', box(0.11, height, 0.91), side * 1.58,
+        top - height * 0.5, skirtPanelZ[index]);
+      P.add('hullDetail', box(0.020, height * 0.82, 0.055), side * 1.646,
+        top - height * 0.5, skirtPanelZ[index] + 0.43);
+    }
     P.eraCluster(`m551a1_tts_hull_era_${side > 0 ? 'R' : 'L'}`, (put) => {
-      for (let index = 0; index < 12; index++) {
-        put(side * 1.475, 1.41, 2.24 - index * 0.48,
-          0, side * Math.PI / 2, 0, 1.32, 1.35, 0.62);
+      for (let row = 0; row < 2; row++) {
+        for (let index = 0; index < 12; index++) {
+          put(side * 1.65, 0.86 + row * 0.33, 2.40 - index * 0.48,
+            0, side * Math.PI / 2, 0, 1.44, 1.90, 0.90);
+        }
       }
     });
+
+    // Outer cage rails, alternating diagonal braces, and short transverse
+    // stand-offs visibly close the load path into the armored skirt.
+    for (const y of [0.64, 1.47]) {
+      P.add('hullDark', box(0.045, 0.045, 5.80), side * 1.75, y, -0.14);
+    }
+    // A narrow upper grating bridges the panel lip to the outer rail. It is
+    // edge-on in side elevation, but prevents the stand-offs from outlining
+    // unsupported enclosed cells when the protection is inspected overhead.
+    P.add('hullDetail', box(0.17, 0.022, 5.80), side * 1.665, 1.455, -0.14);
+    for (let index = 0; index < skirtCageStations.length; index++) {
+      const z = skirtCageStations[index];
+      P.add('hullDark', box(0.045, 0.85, 0.045), side * 1.75, 1.055, z);
+      for (const y of [0.73, 1.38]) {
+        P.add('hullDark', box(0.26, 0.040, 0.040), side * 1.66, y, z);
+      }
+      if (index < skirtCageStations.length - 1) {
+        const nextZ = skirtCageStations[index + 1];
+        P.add('hullDark', box(0.038, 0.038, 1.18), side * 1.75, 1.055,
+          (z + nextZ) * 0.5, (index % 2 ? -1 : 1) * 0.72, 0, 0);
+      }
+    }
   }
 
-  // Angular armored bustle and cheek shoulders establish the variant's new
-  // turret mass while overlapping the original cast shell on every seam.
-  P.add('turret', box(2.30, 0.58, 0.96), 0, 0.48, -1.31);
-  P.add('turret', box(1.86, 0.22, 0.82), 0, 0.83, -1.26, -0.05, 0, 0);
+  // Replace the monolithic rear box with a compact armored core and an open
+  // tubular basket. The front of the basket penetrates the cast rear shell;
+  // top/floor rails and side diagonals converge on the five rear uprights.
+  P.add('turret', toCreasedNormals(measuredTransverseCourse([
+    [-0.91, 0.22], [0.91, 0.22], [1.04, 0.40], [0.93, 0.72],
+    [0.68, 0.80], [-0.68, 0.80], [-0.93, 0.72], [-1.04, 0.40],
+  ], 0.62), 14 * D2R), 0, 0, -1.30);
+  P.addEquipment('turret', box(0.62, 0.33, 0.46), -0.48, 0.43, -1.66);
+  P.addEquipment('turret', box(0.48, 0.27, 0.42), 0.42, 0.40, -1.68);
   for (const side of [-1, 1]) {
-    P.add('turret', box(0.26, 0.58, 1.22), side * 1.13, 0.45, 0.58,
-      0, -side * 0.28, 0);
-    P.addExternalArmor('turret', box(0.13, 0.50, 1.18), side * 1.27, 0.48, 0.52,
-      0, -side * 0.28, 0);
-    P.eraCluster(`m551a1_tts_turret_era_${side > 0 ? 'R' : 'L'}`, (put) => {
-      for (let index = 0; index < 6; index++) {
-        put(side * (1.29 - index * 0.075), 1.92 + index * 0.018,
-          0.18 + index * 0.22, 0, side * (1.22 - index * 0.11), 0,
-          1.10, 1.40, 0.72);
+    for (const y of [0.23, 0.79]) {
+      P.add('turretDark', box(0.050, 0.050, 0.92), side * 1.19, y, -1.84);
+    }
+    P.add('turretDark', box(0.045, 0.045, 1.03), side * 1.19, 0.51, -1.84,
+      side * 0.59, 0, 0);
+    P.add('turretDark', box(0.045, 0.56, 0.045), side * 1.19, 0.51, -1.43);
+  }
+  for (const y of [0.23, 0.79]) {
+    P.add('turretDark', box(2.42, 0.050, 0.050), 0, y, -2.26);
+  }
+  for (const x of [-1.19, -0.595, 0, 0.595, 1.19]) {
+    P.add('turretDark', box(0.045, 0.56, 0.045), x, 0.51, -2.26);
+    P.add('turretDetail', box(0.045, 0.045, 0.84), x, 0.23, -1.84);
+  }
+  for (const z of [-1.55, -1.90, -2.25]) {
+    P.add('turretDetail', box(2.38, 0.040, 0.040), 0, 0.79, z);
+  }
+
+  // The cheek carriers are seated from the selected armor planes themselves.
+  // Their inner faces penetrate those planes by 12 mm; every ERA body then
+  // overlaps its carrier by the same amount. This preserves the asymmetric
+  // cast-turret normals instead of mirroring a floating rectangular slab.
+  const turretPivot = P.spec.armor.turretPivot;
+  const cheekSeats = [
+    { side: -1, point: [-0.82, 0.61, 0.70], normal: [-0.36548, 0.91326, 0.17995] },
+    { side: 1, point: [0.84, 0.58, 0.72], normal: [0.60851, 0.78428, 0.12096] },
+  ];
+  const carrierDepthM = 0.10;
+  const contactEmbedM = 0.012;
+  const eraBodyDepthM = 0.07 * 0.90;
+  for (const seat of cheekSeats) {
+    const frame = armorSurfaceFrame(seat.normal);
+    const carrierCenter = pointOnArmorFrame(seat.point, frame, 0, 0,
+      carrierDepthM * 0.5 - contactEmbedM);
+    P.addExternalArmor('turret', boxOnBasis([1.10, 0.43, carrierDepthM],
+      frame.alongAxis.toArray(), frame.acrossAxis.toArray()), ...carrierCenter.toArray());
+
+    const carrierOuterM = carrierDepthM - contactEmbedM;
+    P.eraCluster(`m551a1_tts_turret_era_${seat.side > 0 ? 'R' : 'L'}`, (put) => {
+      for (const along of [-0.34, 0, 0.34]) {
+        for (const across of [-0.105, 0.105]) {
+          const center = pointOnArmorFrame(seat.point, frame, along, across,
+            carrierOuterM + eraBodyDepthM * 0.5 - contactEmbedM);
+          put(center.x, center.y + turretPivot[1], center.z + turretPivot[2],
+            frame.euler.x, frame.euler.y, frame.euler.z, 1.20, 1.35, 0.90);
+        }
       }
     }, true);
   }
@@ -781,7 +882,15 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
     runningGearReused: true,
     remoteAutocannonCaliberMm: 30,
     largeGunRightSearchlight: true,
-    additionalEraCassettes: 56,
+    additionalEraCassettes: 80,
+    skirtArmorPanelsPerSide: skirtPanelZ.length,
+    skirtEraRows: 2,
+    skirtEraCassettesPerSide: 24,
+    skirtCageStations: skirtCageStations.length,
+    turretCheekEraCassettesPerSide: 6,
+    turretCheekContactEmbedM: contactEmbedM,
+    bustleConstruction: 'armored-core-open-cage',
+    bustleCageRearZ: -2.26,
     rearFuelDrums: 0,
   };
 }
