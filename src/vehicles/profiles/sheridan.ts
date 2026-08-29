@@ -10,6 +10,7 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 type Vec2Tuple = [number, number];
 type ReadonlyVec2Tuple = readonly [number, number];
 type Vec3Tuple = [number, number, number];
+type ReadonlyVec3Tuple = readonly [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
 type EraPut = (...transform: number[]) => void;
 
@@ -44,7 +45,10 @@ interface SheridanBuilderPort {
   readonly turretG: THREE.Group;
   readonly mats: SheridanMaterials;
   readonly q?: boolean;
-  readonly spec: { id: string };
+  readonly spec: {
+    id: string;
+    armor: { turretPivot: ReadonlyVec3Tuple };
+  };
   readonly geometryReceipt?: boolean;
   topY?: number;
   add(slot: string, geometry: unknown, ...transform: number[]): unknown;
@@ -70,6 +74,13 @@ interface AntennaStage {
   x: number;
   z: number;
   stages: Array<[number, number, number, 'dark' | 'detail']>;
+}
+
+interface ArmorSurfaceFrame {
+  readonly normalAxis: THREE.Vector3;
+  readonly alongAxis: THREE.Vector3;
+  readonly acrossAxis: THREE.Vector3;
+  readonly euler: THREE.Euler;
 }
 
 const nonUniformXform = KIT.xform as (
@@ -427,7 +438,10 @@ function boxOnBasis(size: Vec3Tuple, axisX: Vec3Tuple, axisY: Vec3Tuple): THREE.
 // surface normal, local +X follows the projected fore/aft course, and local
 // +Y completes the right-handed frame. This lets bolt-on protection share the
 // cast cheek's actual pitch and roll instead of hovering on a guessed yaw.
-function armorSurfaceFrame(normal, alongHint = [0, 0, 1]) {
+function armorSurfaceFrame(
+  normal: ReadonlyVec3Tuple,
+  alongHint: ReadonlyVec3Tuple = [0, 0, 1],
+): ArmorSurfaceFrame {
   const normalAxis = new THREE.Vector3(...normal).normalize();
   const alongAxis = new THREE.Vector3(...alongHint)
     .addScaledVector(normalAxis, -new THREE.Vector3(...alongHint).dot(normalAxis))
@@ -438,7 +452,13 @@ function armorSurfaceFrame(normal, alongHint = [0, 0, 1]) {
   return { normalAxis, alongAxis, acrossAxis, euler };
 }
 
-function pointOnArmorFrame(point, frame, along, across, normal) {
+function pointOnArmorFrame(
+  point: ReadonlyVec3Tuple,
+  frame: ArmorSurfaceFrame,
+  along: number,
+  across: number,
+  normal: number,
+): THREE.Vector3 {
   return new THREE.Vector3(...point)
     .addScaledVector(frame.alongAxis, along)
     .addScaledVector(frame.acrossAxis, across)
@@ -808,7 +828,11 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   // overlaps its carrier by the same amount. This preserves the asymmetric
   // cast-turret normals instead of mirroring a floating rectangular slab.
   const turretPivot = P.spec.armor.turretPivot;
-  const cheekSeats = [
+  const cheekSeats: ReadonlyArray<{
+    side: -1 | 1;
+    point: ReadonlyVec3Tuple;
+    normal: ReadonlyVec3Tuple;
+  }> = [
     { side: -1, point: [-0.82, 0.61, 0.70], normal: [-0.36548, 0.91326, 0.17995] },
     { side: 1, point: [0.84, 0.58, 0.72], normal: [0.60851, 0.78428, 0.12096] },
   ];
