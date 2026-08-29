@@ -20,7 +20,7 @@ import {
   loftHull, meshDomeCurved, ringSkin, tubeGun, ruBoot, ruSaddle, nsvt, mast,
   ruGlacisKit, ruDeck, ruSkirtBand, ruFlaps, rehookClone, domeBoxPlanSeat,
 } from './russia.js';
-import { buildT72B87Native, t72TrackFinishFor } from './t72.js';
+import { buildT72B87Native, t72TrackFinishFor } from './t72.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';

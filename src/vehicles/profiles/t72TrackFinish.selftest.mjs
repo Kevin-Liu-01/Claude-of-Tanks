@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
-import { T72_TRACK_FINISH } from './t72.js';
+import { T72_TRACK_FINISH } from './t72.ts';
 
 const t72RunningGearIds = ['t72b3m', 't72bu', 't72m1_jaguar', 'bmpt_terminator2'];
 

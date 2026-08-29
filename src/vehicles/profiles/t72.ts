@@ -24,6 +24,90 @@ import {
   eraRuCheeks,
   ruShtora,
 } from './russia.js';
+import type { ProfileBuilderPort, VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+
+type Vec3Tuple = [number, number, number];
+type VehicleAssemblyOwner = 'hull' | 'turret';
+type T72Variant = 'b87' | 'b3' | 'jaguar';
+type T72Bucket = 'hull' | 'dark' | 'detail';
+type T72TurretPackBucket = keyof typeof T72_TURRET_PACK_BUCKETS;
+
+interface DisposableResource {
+  dispose(): void;
+}
+
+type T72Material = THREE.MeshPhysicalMaterial;
+
+interface T72MeshObject extends THREE.Object3D {
+  readonly isMesh?: boolean;
+  readonly isInstancedMesh?: boolean;
+  material?: T72Material;
+  readonly geometry: THREE.BufferGeometry;
+}
+
+function isT72MeshObject(object: THREE.Object3D): object is T72MeshObject {
+  return 'geometry' in object && 'material' in object;
+}
+
+interface T72BuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly mats: Record<string, T72Material>;
+  readonly spec: { readonly id: string; readonly visual: { readonly number?: string } };
+  readonly disposables: DisposableResource[];
+  readonly rng: () => number;
+  readonly q: boolean;
+  readonly gear: {
+    addRoadWheelLayer(
+      geometry: THREE.BufferGeometry,
+      material: T72Material,
+      options: { readonly outset: number; readonly name: string },
+    ): void;
+  };
+  topY?: number;
+  postAssemble?: (() => void) | null;
+  add(slot: string, geometry: unknown, ...transform: number[]): void;
+  addEquipment(slot: string, geometry: unknown, ...transform: number[]): void;
+  addGunExtra(geometry: unknown, ...transform: number[]): void;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): void;
+  addModuleVisual(module: string, slot: string, geometry: unknown, ...transform: number[]): void;
+  addMudguard(label: string, slot: string, geometry: unknown, ...transform: number[]): void;
+  clear(...slots: string[]): void;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    label: string,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): void;
+  offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+  visualEraCluster(key: string, owner: VehicleAssemblyOwner, build: () => void): void;
+}
+
+interface T72TrackProfilePort {
+  readonly spec?: { readonly id?: string };
+}
+
+const T72_TURRET_PACK_BUCKETS = {
+  hull: 'turret',
+  hullDetail: 'turretDetail',
+  hullDark: 'turretDark',
+  hullCloth: 'turretCloth',
+  hullShadow: 'turretDark',
+} as const;
+
+const nonUniformXform = KIT.xform as (
+  geometry: THREE.BufferGeometry,
+  x: number,
+  y: number,
+  z: number,
+  rotationX: number,
+  rotationY: number,
+  rotationZ: number,
+  scale: number | readonly number[],
+) => THREE.BufferGeometry;
 
 // The T-72 family wears dark, warm oxidized manganese steel rather than
 // scheme-painted track bands. A warm-neutral multiplier plus a near-diffuse
@@ -34,13 +118,13 @@ export const T72_TRACK_FINISH = Object.freeze({
   trackBandRoughness: 0.96,
   trackBandEnvMapIntensity: 0.03,
 });
-export function t72TrackFinishFor(P) {
+export function t72TrackFinishFor(P: T72TrackProfilePort) {
   const id = String(P.spec?.id || '');
   const usesT72RunningGear = id.startsWith('t72') || id === 'bmpt_terminator2';
   return usesT72RunningGear ? T72_TRACK_FINISH : {};
 }
 
-function buildT72B87(P) {
+function buildT72B87(P: T72BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
   // VERTEX ROUND r3 (batch-13 tube split): the gunNode registration re-keys
   // the loader on the HULL box, re-centering the frame +1.417 (mask now
@@ -370,10 +454,10 @@ function buildT72B87(P) {
   // pad fills the strap frame so it no longer floats, and fold rings ride
   // strictly inside the block∪tube envelope. No clamp on this tank (the
   // cone would need a proud ring — not mask-neutral).
-  P.addGunExtra(KIT.xform(cylZ(0.5, 0.42, 16, 0.47), 0, 0, 0, 0, 0, 0, [0.50, 0.26, 1]), 0, -0.13, 0.18);
+  P.addGunExtra(nonUniformXform(cylZ(0.5, 0.42, 16, 0.47), 0, 0, 0, 0, 0, 0, [0.50, 0.26, 1]), 0, -0.13, 0.18);
   P.addGunExtra(box(0.44, 0.20, 0.016), 0, -0.10, 0.395);
-  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.47, 0.235, 1]), 0, -0.128, 0.10);
-  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.46, 0.23, 1]), 0, -0.128, 0.27);
+  P.addGunExtraDark(nonUniformXform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.47, 0.235, 1]), 0, -0.128, 0.10);
+  P.addGunExtraDark(nonUniformXform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.46, 0.23, 1]), 0, -0.128, 0.27);
   // §B3 mantlet tells: dust-cover strap relief on the block's front face
   // (10-20mm proud, inside the block's own silhouette in every view)
   P.addGunExtra(box(0.44, 0.024, 0.022), 0, -0.04, 0.40);
@@ -405,7 +489,7 @@ function buildT72B87(P) {
 // This builder is repository-authored from visual measurements and retains
 // the fleet-native linked track, articulated gun and explicit turret/hull
 // ownership rules. No reference vertices or runtime asset are used.
-export function buildT72B87Native(P, variant = 'b87') {
+function buildT72B87NativeTyped(P: T72BuilderPort, variant: T72Variant = 'b87'): void {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
   const b3 = variant === 'b3';
   const jaguar = variant === 'jaguar';
@@ -511,8 +595,17 @@ export function buildT72B87Native(P, variant = 'b87') {
     // Keep them in explicit running-gear meshes instead of the generic hull
     // buckets: merging suspension faces into `hull` made the strict course
     // audit report the intended wheel/track contact as 2,578 hull voxels.
-    const gearParts = { hull: [], dark: [], detail: [] };
-    const gearAdd = (slot, geo, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    const gearParts: Record<T72Bucket, THREE.BufferGeometry[]> = { hull: [], dark: [], detail: [] };
+    const gearAdd = (
+      slot: T72Bucket,
+      geo: THREE.BufferGeometry,
+      x: number,
+      y: number,
+      z: number,
+      rx = 0,
+      ry = 0,
+      rz = 0,
+    ) => {
       gearParts[slot].push(KIT.xform(geo, x, y, z, rx, ry, rz));
     };
     for (const s of [-1, 1]) for (const z of wheelZs) {
@@ -1072,7 +1165,7 @@ export function buildT72B87Native(P, variant = 'b87') {
   // 2A46M: retain the proven run, cast collar, articulation and bore.
   P.gunG.position.set(0, 0.05, 1.23);
   ruSaddle(P, { rollR: 0.19, rollW: 0.56, tubeR: 0.105, rootL: 0.58 });
-  P.addGunExtra(KIT.xform(cylZ(0.5, 0.36, 16, 0.45), 0, 0, 0, 0, 0, 0,
+  P.addGunExtra(nonUniformXform(cylZ(0.5, 0.36, 16, 0.45), 0, 0, 0, 0, 0, 0,
     b3 ? [0.48, 0.28, 1] : jaguar ? [0.57, 0.33, 1] : [0.62, 0.36, 1]),
   0, b3 ? -0.05 : -0.035, b3 ? 0.16 : jaguar ? 0.15 : 0.13);
   P.addGunExtra(box(b3 ? 0.40 : jaguar ? 0.44 : 0.48, b3 ? 0.24 : jaguar ? 0.25 : 0.27, 0.48), 0, -0.02, -0.20);
@@ -1084,12 +1177,16 @@ export function buildT72B87Native(P, variant = 'b87') {
   P.topY = 1.16;
 }
 
-function buildT72B3Native(P) {
-  buildT72B87Native(P, 'b3');
+export function buildT72B87Native(P: ProfileBuilderPort, variant: T72Variant = 'b87'): void {
+  buildT72B87NativeTyped(P as T72BuilderPort, variant);
+}
+
+function buildT72B3Native(P: T72BuilderPort): void {
+  buildT72B87NativeTyped(P, 'b3');
 }
 
 
-function buildT72B3M(P) {
+function buildT72B3M(P: T72BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
   // VERTEX ROUND r2 (batch-12 normalized oracle): corner-driven re-anchor to
   // docs/references/vertex/t72b3m.json. Mask -4.618..+2.06 (6.678 = pub).
@@ -1191,12 +1288,17 @@ function buildT72B3M(P) {
   // bug only becomes undeniable at yaw 90, where the entire pack stayed on
   // the engine deck.  Keep the authored world-space recipe and material
   // grammar, but convert it to turret-local coordinates and turret buckets.
-  const turretPackBucket = {
-    hull: 'turret', hullDetail: 'turretDetail', hullDark: 'turretDark',
-    hullCloth: 'turretCloth', hullShadow: 'turretDark',
-  };
-  const addTurretPackWorld = (bucket, geo, x, y, z, rx = 0, ry = 0, rz = 0) => {
-    P.add(turretPackBucket[bucket], geo, x, y - 1.42, z + 0.65, rx, ry, rz);
+  const addTurretPackWorld = (
+    bucket: T72TurretPackBucket,
+    geo: THREE.BufferGeometry,
+    x: number,
+    y: number,
+    z: number,
+    rx = 0,
+    ry = 0,
+    rz = 0,
+  ) => {
+    P.add(T72_TURRET_PACK_BUCKETS[bucket], geo, x, y - 1.42, z + 0.65, rx, ry, rz);
   };
   // r9: 5 segments so the seams miss the station-i4 window (topPct 8.6).
   // r9c: the band is WIDE after all — ref front cols read 1.727-1.757 out
@@ -2607,7 +2709,7 @@ function buildT72B3M(P) {
   // cap clears the 1.82 crown, so the caps ARE the local silhouette: the
   // fan serrates the crown edge exactly where the ref's does.
   {
-    const skinDT = (t, y) => {
+    const skinDT = (t: number, y: number) => {
       const r = ringSkin(rings, y);
       return 1 / Math.sqrt((Math.cos(t) / r) ** 2 + (Math.sin(t) / (r * 0.733)) ** 2);
     };
@@ -2635,7 +2737,7 @@ function buildT72B3M(P) {
     // the face cols), so plan/side/front traces are byte-identical. Pale
     // detail lids + dark gap plates carry the same seam grammar as the ring.
     {
-      const fillD = (t) => 1 / Math.sqrt((Math.cos(t) / 1.4995) ** 2 + (Math.sin(t) / 1.0996) ** 2);
+      const fillD = (t: number) => 1 / Math.sqrt((Math.cos(t) / 1.4995) ** 2 + (Math.sin(t) / 1.0996) ** 2);
       // per-piece radial budget: reach = d + (depth/2)cos(tilt) + (h/2)|sin(tilt)|
       // must stay <= fillD - 0.012 (the swing goes to whichever corner the
       // local frame rocks outward — budget the full |sin| either way).
@@ -2705,7 +2807,7 @@ function buildT72B3M(P) {
   // wedges, so they gain only the DARK SIDE strip (alternating flank) —
   // the petal ring reads ridged, not flush-decaled.
   {
-    const skinD3 = (t, y) => {
+    const skinD3 = (t: number, y: number) => {
       const r2 = ringSkin(rings, y);
       return 1 / Math.sqrt((Math.cos(t) / r2) ** 2 + (Math.sin(t) / (r2 * 0.733)) ** 2);
     };
@@ -2781,7 +2883,7 @@ function buildT72B3M(P) {
   // <=3 mm, radius <=0.85 (plateau interior), so no printed row, col or
   // plan byte moves (crown rows: 1.821+0.003 stays in the 1.82 band).
   {
-    const plateauY = (px2, pz2) => {
+    const plateauY = (px2: number, pz2: number) => {
       // overlay-shell height at plan point (lathe rings, sz 0.733)
       const rr = Math.hypot(px2, (pz2 + 0.20) / 0.733);
       if (rr < 0.02) return 0.401;
@@ -2817,7 +2919,7 @@ function buildT72B3M(P) {
     // 0.462): seam lines as SHORT SEGMENTS, each seated on the local
     // sphere height (a long flat chord would float 30 mm at its ends) —
     // three transverse seams + two longitudinal, the ref's panel grid
-    const capY = (cx2, cz2) => {
+    const capY = (cx2: number, cz2: number) => {
       const d2 = (cx2 - 0.03) ** 2 + (cz2 + 0.20) ** 2;
       return d2 >= 0.20 ? 0.40 : 0.462 - (0.69 - Math.sqrt(0.69 * 0.69 - d2));
     };
@@ -3007,7 +3109,7 @@ function buildT72B3M(P) {
   // (asymmetric, print-verified). The roof-cluster tower above stands on
   // the left stack (contiguity); rears bed into the dome skirt.
   {
-    const cheek = (xc, w, zFront, d) => {
+    const cheek = (xc: number, w: number, zFront: number, d: number) => {
       P.add('turret', box(w, 0.2215, d), xc, 0.13225, zFront - d / 2);
       P.add('turretDetail', box(w - 0.012, 0.010, d - 0.012), xc, 0.2405, zFront - d / 2);
       P.add('turretDark', box(w - 0.02, 0.16, 0.006), xc, 0.125, zFront + 0.002);
@@ -3380,7 +3482,15 @@ function buildT72B3M(P) {
     const ghostFlat = new THREE.MeshBasicMaterial({ color: 0x22251a });
     const rodFlat = new THREE.MeshBasicMaterial({ color: 0x1a1e0c });
     P.disposables.push(ghostFlat, rodFlat);
-    const rodMesh = (mat, w, h, d, x, y, z) => {
+    const rodMesh = (
+      mat: THREE.Material,
+      w: number,
+      h: number,
+      d: number,
+      x: number,
+      y: number,
+      z: number,
+    ) => {
       const mesh = new THREE.Mesh(KIT.xform(box(w, h, d), x, y, z), mat);
       P.turretG.add(mesh);
       P.disposables.push(mesh.geometry);
@@ -4365,7 +4475,8 @@ function buildT72B3M(P) {
     }
   }
   P.hullG.traverse((ob) => {
-    if (!(ob.isMesh || ob.isInstancedMesh) || !ob.material || !ob.material.color || !ob.material.emissive) return;
+    if (!isT72MeshObject(ob) || !(ob.isMesh || ob.isInstancedMesh)
+        || !ob.material?.color || !ob.material.emissive) return;
     const hx = ob.material.color.getHex();
     // r17 item 7: link-pad clone emissives lifted (CLONE-MATERIAL LAW —
     // these never see the mats.* retints). The inner-chain layer rendered a
@@ -4393,7 +4504,7 @@ function buildT72B3M(P) {
   //    ("-2 vs tube, invisible at 1x") without touching shared mats.dark.
   P.postAssemble = () => {
     P.turretG.traverse((ob) => {
-      if (ob.isMesh && ob.material === P.mats.spareTrack) {
+      if (isT72MeshObject(ob) && ob.isMesh && ob.material === P.mats.spareTrack) {
         // This profile intentionally uses turretTrack for painted Relikt,
         // not for a working tread course. Object ownership overrides the
         // shared fitting material's diagnostic role for appearance audits.
@@ -4406,14 +4517,14 @@ function buildT72B3M(P) {
     // lids and engine-deck overlays. Route those pieces to the same live,
     // solid scheme tint rather than cloning the hull atlas onto local UVs.
     P.hullG.traverse((ob) => {
-      if (ob.isMesh && ob.material === P.mats.wood) {
+      if (isT72MeshObject(ob) && ob.isMesh && ob.material === P.mats.wood) {
         ob.material = P.mats.detail;
         ob.userData.appearanceRole = 'armorPaint';
         ob.userData.appearanceSubtype = 'painted-deck-panel';
       }
     });
     P.gunG.traverse((ob) => {
-      if (ob.isMesh && ob.material === P.mats.dark) {
+      if (isT72MeshObject(ob) && ob.isMesh && ob.material === P.mats.dark) {
         ob.material = ob.material.clone();
         ob.material.color.setHex(0x262a20);
         if (ob.material.emissive) ob.material.emissive.setHex(0x11140b);
@@ -4438,7 +4549,7 @@ function buildT72B3M(P) {
 }
 
 
-function buildT72BU(P) {
+function buildT72BU(P: T72BuilderPort): void {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
   // VERTEX ROUND r3 (mask-dump verdict, shots/russia-vertex/probe/): the ref
   // plan+side TURRET masks agree — dome front +1.44, widest ±1.67 over
@@ -4714,8 +4825,8 @@ function buildT72BU(P) {
   ruSaddle(P, { rollR: 0.20, rollW: 0.58, tubeR: 0.15, rootL: 0.64 });
   // §B3.1 turret-lane: cast collar via the inscribed elliptical frustum —
   // identical ±0.26/±0.18 mask extremes, only the corner read rounds.
-  P.addGunExtra(KIT.xform(cylZ(0.5, 0.28, 16, 0.46), 0, 0, 0, 0, 0, 0, [0.52, 0.36, 1]), 0, 0.02, 0.13);
-  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0, [0.48, 0.33, 1]), 0, 0.02, 0.25);
+  P.addGunExtra(nonUniformXform(cylZ(0.5, 0.28, 16, 0.46), 0, 0, 0, 0, 0, 0, [0.52, 0.36, 1]), 0, 0.02, 0.13);
+  P.addGunExtraDark(nonUniformXform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0, [0.48, 0.33, 1]), 0, 0.02, 0.25);
   P.addGunExtra(box(0.42, 0.18, 0.95), 0, 0.22, 0.60);
   // evac r capped 0.132: at r>=0.134 its band crosses the dims 12% body
   // filter beyond the hull nose and hullLengthM reads 7.97 (r3 lesson)
@@ -4743,7 +4854,10 @@ function buildT72BU(P) {
 // smooth dome and chimney-like roof station do not preserve the T-72BU form.
 // This builder starts from compact T-72 physical datums and authors every
 // obr. 1992 fitting on a visible hull or rotating-turret seat.
-function buildT72BUNative(P, { turretOnly = false } = {}) {
+function buildT72BUNative(
+  P: T72BuilderPort,
+  { turretOnly = false }: { readonly turretOnly?: boolean } = {},
+): void {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
 
   if (!turretOnly) {
@@ -5003,7 +5117,7 @@ function buildT72BUNative(P, { turretOnly = false } = {}) {
   if (!turretOnly) {
   P.gunG.position.set(0, 0.06, 1.23);
   ruSaddle(P, { rollR: 0.19, rollW: 0.56, tubeR: 0.108, rootL: 0.60 });
-  P.addGunExtra(KIT.xform(cylZ(0.5, 0.36, 16, 0.45), 0, 0, 0, 0, 0, 0, [0.49, 0.29, 1]), 0, -0.04, 0.16);
+  P.addGunExtra(nonUniformXform(cylZ(0.5, 0.36, 16, 0.45), 0, 0, 0, 0, 0, 0, [0.49, 0.29, 1]), 0, -0.04, 0.16);
   P.addGunExtra(box(0.40, 0.24, 0.48), 0, -0.02, -0.20);
   tubeGun(P, [[0.50, 2.04, 0.114], [2.04, 2.84, 0.123], [2.84, 4.86, 0.117]], {
     rings: [[2.04, 0.123], [2.84, 0.122], [3.55, 0.120], [4.28, 0.118]], muzzle: 4.86,
@@ -5013,7 +5127,7 @@ function buildT72BUNative(P, { turretOnly = false } = {}) {
   }
 }
 
-function buildT72BUHybridNative2026(P) {
+function buildT72BUHybridNative2026(P: T72BuilderPort): void {
   buildT72BU(P);
   // The native rotating package uses a slightly different ring datum from
   // the graduated BU hull. Preserve the already-calibrated gun in world
@@ -5059,7 +5173,13 @@ export const T72_PROFILES = {
   // Keep buildT72B87 above as the historical print-tuned receipt only; its
   // undersized turret and unrelated hull proportions no longer belong in
   // the current first-party family lineup.
-  t72b_1987: { build: (P) => buildT72B87Native(P, 'b87') },
-  t72b3m: { build: buildT72B3M },
-  t72bu: { build: buildT72BUHybridNative2026 },
-};
+  t72b_1987: {
+    build: (P: ProfileBuilderPort) => buildT72B87NativeTyped(P as T72BuilderPort, 'b87'),
+  },
+  t72b3m: {
+    build: (P: ProfileBuilderPort) => buildT72B3M(P as T72BuilderPort),
+  },
+  t72bu: {
+    build: (P: ProfileBuilderPort) => buildT72BUHybridNative2026(P as T72BuilderPort),
+  },
+} satisfies VehicleProfileRecord;

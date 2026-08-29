@@ -277,3 +277,4 @@ runtime documents remain authoritative for behavior.
 - [0265 — Polish profile geometry has a strict TypeScript owner](0265-type-polish-profile-geometry.md)
 - [0266 — The fleet specification registry has a strict TypeScript owner](0266-type-fleet-spec-registry.md)
 - [0267 — Ambient shadow density follows the CSM overlap blend](0267-blend-csm-ambient-shadow-overlaps.md)
+- [0268 — T-72 profile geometry has a strict TypeScript owner](0268-type-t72-profile-geometry.md)

@@ -26,9 +26,9 @@ The Japanese, Swedish, Italian, Chinese, T-80-family, Sheridan, Soviet
 heavy-family, shared AFV, and Polish visual deltas live in strict
 `profiles/japan.ts`, `profiles/sweden.ts`, `profiles/italy.ts`, and
 `profiles/china.ts` packs plus `profiles/t80.ts` and `profiles/sheridan.ts`,
-plus `profiles/soviet-heavy.ts`, `profiles/afvFamily.ts`, and
-`profiles/poland.ts`, while the AMX-40 visual build lives in strict
-`france.ts`; all ten use narrow
+plus `profiles/soviet-heavy.ts`, `profiles/afvFamily.ts`, `profiles/poland.ts`,
+and `profiles/t72.ts`, while the AMX-40 visual build lives in strict
+`france.ts`; all eleven use narrow
 procedural-builder ports. Preserve their
 demand-loaded family boundaries and complete donor geometry.
 

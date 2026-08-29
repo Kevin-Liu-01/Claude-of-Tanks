@@ -7,7 +7,7 @@ import { SOVIET_HEAVY_PROFILES } from './profiles/soviet-heavy.ts';
 import { ABRAMS_PROFILES } from './profiles/abrams.js';
 import { RUSSIA_PROFILES as RUSSIA_RESIDUE_PROFILES } from './profiles/russia.js';
 import { T90_PROFILES } from './profiles/t90.js';
-import { T72_PROFILES } from './profiles/t72.js';
+import { T72_PROFILES } from './profiles/t72.ts';
 import { T80_PROFILES } from './profiles/t80.ts';
 import { UK_PROFILES } from './profiles/uk.js';
 import { CHALLENGER_PROFILES } from './profiles/challenger.js';
