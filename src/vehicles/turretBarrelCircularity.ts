@@ -14,7 +14,67 @@ const _b = new THREE.Vector3();
 const _c = new THREE.Vector3();
 const _muzzleWorld = new THREE.Vector3();
 
-function edgePlaneIntersections(a, b, planeZ) {
+type SlicePoint = [number, number];
+type SliceSegment = [SlicePoint, SlicePoint];
+
+interface BarrelLane {
+  name: string;
+  meshes: THREE.Mesh[];
+  minZ: number;
+  maxZ: number;
+  allowOffset: boolean;
+}
+
+export interface BarrelCircularitySample {
+  zM: number;
+  widthM: number;
+  heightM: number;
+  centerXM: number;
+  centerYM: number;
+  aspectRatio: number;
+  ellipseErrorP80: number;
+  pointCount: number;
+  fraction?: number;
+  lane?: string;
+  source?: string;
+  pass?: boolean;
+}
+
+export interface TurretBarrelCircularityOptions {
+  sampleFractions?: readonly number[];
+  maxAspectRatio?: number;
+  maxRadiusM?: number;
+  maxCenterOffsetM?: number;
+  minimumSpanM?: number;
+  requireMeasurement?: boolean;
+  meshNamePattern?: RegExp;
+  fallbackMeshNamePattern?: RegExp | null;
+}
+
+export interface TurretBarrelVisual {
+  root?: THREE.Object3D | null;
+}
+
+export interface TurretBarrelCircularityResult {
+  pass: boolean;
+  error?: string;
+  skipped?: boolean;
+  reason?: string;
+  muzzleZ?: number;
+  maxAspectRatio?: number;
+  worst?: BarrelCircularitySample | null;
+  samples: BarrelCircularitySample[];
+}
+
+function isMeshObject(object: THREE.Object3D): object is THREE.Mesh {
+  return (object as THREE.Mesh).isMesh === true;
+}
+
+function edgePlaneIntersections(
+  a: THREE.Vector3,
+  b: THREE.Vector3,
+  planeZ: number,
+): SlicePoint[] {
   const da = a.z - planeZ;
   const db = b.z - planeZ;
   if (Math.abs(da) <= EPSILON && Math.abs(db) <= EPSILON) {
@@ -32,14 +92,20 @@ function edgePlaneIntersections(a, b, planeZ) {
   ]];
 }
 
-function appendGeometrySlice(segments, mesh, gunWorldInverse, planeZ, maxRadiusM) {
+function appendGeometrySlice(
+  segments: SliceSegment[],
+  mesh: THREE.Mesh,
+  gunWorldInverse: THREE.Matrix4,
+  planeZ: number,
+  maxRadiusM: number,
+): void {
   const geometry = mesh.geometry;
   const position = geometry?.attributes?.position;
   if (!position) return;
   _meshToGun.multiplyMatrices(gunWorldInverse, mesh.matrixWorld);
   const index = geometry.index;
   const triangleCount = index ? index.count / 3 : position.count / 3;
-  const readVertex = (target, vertexIndex) => target
+  const readVertex = (target: THREE.Vector3, vertexIndex: number): THREE.Vector3 => target
     .fromBufferAttribute(position, vertexIndex)
     .applyMatrix4(_meshToGun);
   for (let triangle = 0; triangle < triangleCount; triangle++) {
@@ -58,14 +124,14 @@ function appendGeometrySlice(segments, mesh, gunWorldInverse, planeZ, maxRadiusM
       ...edgePlaneIntersections(_b, _c, planeZ),
       ...edgePlaneIntersections(_c, _a, planeZ),
     ];
-    const unique = [];
+    const unique: SlicePoint[] = [];
     for (const point of intersections) {
       if (!unique.some(([x, y]) => Math.hypot(point[0] - x, point[1] - y) <= EPSILON)) {
         unique.push(point);
       }
     }
     if (unique.length < 2) continue;
-    let pair = [unique[0], unique[1]];
+    let pair: SliceSegment = [unique[0], unique[1]];
     let pairDistance = 0;
     for (let i = 0; i < unique.length; i++) {
       for (let j = i + 1; j < unique.length; j++) {
@@ -82,15 +148,15 @@ function appendGeometrySlice(segments, mesh, gunWorldInverse, planeZ, maxRadiusM
   }
 }
 
-function barrelLanes(meshes, gunWorldInverse) {
-  const laneMeshes = new Map([['main', []]]);
+function barrelLanes(meshes: THREE.Mesh[], gunWorldInverse: THREE.Matrix4): BarrelLane[] {
+  const laneMeshes = new Map<string, THREE.Mesh[]>([['main', []]]);
   for (const mesh of meshes) {
     const numbered = mesh.name.match(NUMBERED_BARREL_NAME);
     const lane = numbered ? `barrel-${numbered[1]}` : 'main';
     if (!laneMeshes.has(lane)) laneMeshes.set(lane, []);
-    laneMeshes.get(lane).push(mesh);
+    laneMeshes.get(lane)!.push(mesh);
   }
-  const lanes = [];
+  const lanes: BarrelLane[] = [];
   for (const [name, meshesForLane] of laneMeshes) {
     if (!meshesForLane.length) continue;
     let minZ = Infinity;
@@ -118,14 +184,14 @@ function barrelLanes(meshes, gunWorldInverse) {
   return lanes;
 }
 
-function pointKey([x, y]) {
+function pointKey([x, y]: SlicePoint): string {
   return `${Math.round(x / NODE_EPSILON)},${Math.round(y / NODE_EPSILON)}`;
 }
 
-function sliceComponents(segments) {
-  const nodes = new Map();
-  const parent = new Map();
-  const ensureNode = (point) => {
+function sliceComponents(segments: SliceSegment[]): SlicePoint[][] {
+  const nodes = new Map<string, SlicePoint>();
+  const parent = new Map<string, string>();
+  const ensureNode = (point: SlicePoint): string => {
     const key = pointKey(point);
     if (!nodes.has(key)) {
       nodes.set(key, point);
@@ -133,33 +199,36 @@ function sliceComponents(segments) {
     }
     return key;
   };
-  const find = (key) => {
+  const find = (key: string): string => {
     let root = key;
-    while (parent.get(root) !== root) root = parent.get(root);
+    while (parent.get(root) !== root) root = parent.get(root)!;
     let current = key;
     while (parent.get(current) !== root) {
-      const next = parent.get(current);
+      const next = parent.get(current)!;
       parent.set(current, root);
       current = next;
     }
     return root;
   };
-  const union = (a, b) => {
+  const union = (a: string, b: string): void => {
     const rootA = find(a);
     const rootB = find(b);
     if (rootA !== rootB) parent.set(rootB, rootA);
   };
   for (const [a, b] of segments) union(ensureNode(a), ensureNode(b));
-  const components = new Map();
+  const components = new Map<string, SlicePoint[]>();
   for (const [key, point] of nodes) {
     const root = find(key);
     if (!components.has(root)) components.set(root, []);
-    components.get(root).push(point);
+    components.get(root)!.push(point);
   }
   return [...components.values()];
 }
 
-function componentReceipt(points, planeZ) {
+function componentReceipt(
+  points: SlicePoint[],
+  planeZ: number,
+): BarrelCircularitySample | null {
   // A rectangular mantlet or sight housing generally contributes four to
   // eight section vertices. Require a genuine polygonal tube contour so the
   // aspect gate evaluates barrels, not nearby gun-mounted furniture.
@@ -203,7 +272,10 @@ function componentReceipt(points, planeZ) {
  * both baked vertex distortion and inherited scene transforms, unlike checks
  * that only inspect CylinderGeometry constructor parameters.
  */
-export function measureTurretBarrelCircularity(visual, options = {}) {
+export function measureTurretBarrelCircularity(
+  visual: TurretBarrelVisual | null | undefined,
+  options: TurretBarrelCircularityOptions = {},
+): TurretBarrelCircularityResult {
   const {
     sampleFractions = DEFAULT_SAMPLE_FRACTIONS,
     maxAspectRatio = 1.08,
@@ -229,11 +301,13 @@ export function measureTurretBarrelCircularity(visual, options = {}) {
   }
 
   _gunWorldInverse.copy(gunRig.matrixWorld).invert();
-  const samples = [];
-  const samplePattern = (pattern, source) => {
-    const meshes = [];
+  const samples: BarrelCircularitySample[] = [];
+  const samplePattern = (pattern: RegExp, source: string): void => {
+    const meshes: THREE.Mesh[] = [];
     gunRig.traverse((object) => {
-      if (object.isMesh && object.visible !== false && pattern.test(object.name)) meshes.push(object);
+      if (isMeshObject(object) && object.visible !== false && pattern.test(object.name)) {
+        meshes.push(object);
+      }
     });
     for (const lane of barrelLanes(meshes, _gunWorldInverse)) {
       const startZ = Math.max(0, lane.minZ);
@@ -241,7 +315,7 @@ export function measureTurretBarrelCircularity(visual, options = {}) {
       if (endZ - startZ <= minimumSpanM) continue;
       for (const fraction of sampleFractions) {
         const zM = startZ + (endZ - startZ) * fraction;
-        const segments = [];
+        const segments: SliceSegment[] = [];
         for (const mesh of lane.meshes) {
           appendGeometrySlice(segments, mesh, _gunWorldInverse, zM, maxRadiusM);
         }
@@ -278,7 +352,7 @@ export function measureTurretBarrelCircularity(visual, options = {}) {
       samples,
     };
   }
-  const worst = samples.reduce((current, sample) => (
+  const worst = samples.reduce<BarrelCircularitySample | null>((current, sample) => (
     !current || sample.aspectRatio > current.aspectRatio ? sample : current
   ), null);
   return {

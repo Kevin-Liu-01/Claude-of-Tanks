@@ -105,6 +105,8 @@ unchanged.
 Mobile battle input and the demand-loaded camouflage-card painter now follow
 the same rule: browser gestures, Canvas2D inputs, fleet specs, and custom-stroke
 recipes are checked without moving either module into pristine Garage boot.
+Fleet geometry gates follow it too: turret-barrel section measurement now has
+typed mesh, lane, contour, receipt, and result boundaries.
 
 ## Consequences
 

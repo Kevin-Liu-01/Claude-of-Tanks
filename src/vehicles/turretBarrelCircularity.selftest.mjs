@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
-import { measureTurretBarrelCircularity } from './turretBarrelCircularity.js';
+import { measureTurretBarrelCircularity } from './turretBarrelCircularity.ts';
 
 function createBarrelFixture(scaleX = 1) {
   const root = new THREE.Group();

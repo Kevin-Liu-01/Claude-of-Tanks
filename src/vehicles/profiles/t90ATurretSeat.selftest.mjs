@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { TANK_SPECS } from '../specs.js';
 import { createTank } from '../tankFactory.ts';
-import { measureTurretBarrelCircularity } from '../turretBarrelCircularity.js';
+import { measureTurretBarrelCircularity } from '../turretBarrelCircularity.ts';
 
 const EPSILON = 1e-6;
 const near = (actual, expected, message, epsilon = EPSILON) => {

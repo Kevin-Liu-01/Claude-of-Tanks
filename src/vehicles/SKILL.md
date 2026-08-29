@@ -16,7 +16,9 @@ materials, and garage ordering.
 typed browser demand graph, `tankFactory.ts` builds/synchronizes eager audit visuals,
 `profiles/` owns authored families, `taxonomy.ts` owns the strict era/role
 vocabulary and complete saved-fleet assignment, `tier.ts` and `fleetOrder.ts`
-own remaining metadata, and `tankAssets.ts` owns UI asset mappings.
+own remaining metadata, `tankAssets.ts` owns UI asset mappings, and
+`turretBarrelCircularity.ts` measures actual rig-local gun sections for the
+fleet release gate.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

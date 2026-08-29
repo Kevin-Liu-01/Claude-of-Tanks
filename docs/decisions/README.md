@@ -246,3 +246,4 @@ runtime documents remain authoritative for behavior.
 - [0234 — Comparison sources are isolated from runtime](0234-isolate-comparison-sources-from-runtime.md)
 - [0235 — Mobile battle controls are strict TypeScript](0235-type-mobile-battle-controls.md)
 - [0236 — Camouflage swatch painting is strict TypeScript](0236-type-camouflage-swatches.md)
+- [0237 — Turret-barrel circularity measurement is strict TypeScript](0237-type-turret-barrel-circularity.md)

@@ -2,7 +2,7 @@
 
 import { createTank } from '../src/vehicles/tankFactory.ts';
 import { DEVELOPMENT_TANK_IDS, getSpec } from '../src/vehicles/specs.js';
-import { measureTurretBarrelCircularity } from '../src/vehicles/turretBarrelCircularity.js';
+import { measureTurretBarrelCircularity } from '../src/vehicles/turretBarrelCircularity.ts';
 
 const idsArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const ids = idsArg
