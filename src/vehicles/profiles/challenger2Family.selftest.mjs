@@ -85,8 +85,12 @@ for (const id of ['fv4034', 'challenger2e', 'ua_challenger2']) {
       `${id} must inherit the exact Challenger 2 remote weapon tower`);
     assert.equal(towerReceipt.centeredOnRoof, true,
       `${id} weapon tower must be centered on the roof`);
-    assert.deepEqual(towerReceipt.localSeat, [0, 0.690, 0.20],
+    assert.deepEqual(towerReceipt.localSeat, [0, 0.500, 0.20],
       `${id} weapon tower must use the centered roof seat`);
+    close(towerReceipt.roofCarrierY, 0.4731,
+      `${id} centered weapon-tower roof carrier`);
+    assert.ok(towerReceipt.roofContactEmbedM >= 0.008,
+      `${id} weapon tower pedestal must overlap the roof instead of floating`);
     assert.equal(receipt.enhancedSkirtPanels, 16,
       `${id} enhanced skirts remain segmented on both sides`);
     assert.equal(receipt.fuelBarrels, 2,
@@ -109,6 +113,9 @@ for (const id of ['fv4034', 'challenger2e', 'ua_challenger2']) {
       `${id} cheek ERA needs a visible vertical gap between cassettes`);
     close(receipt.cheekEraSurfaceLoweringM, 0.075,
       `${id} cheek ERA must follow the cheek surface slightly downward`);
+    assert.deepEqual(receipt.cheekEraVerticalBoundsBySide.left,
+      receipt.cheekEraVerticalBoundsBySide.right,
+      `${id} left and right cheek ERA courses must share the same vertical bounds`);
     assert.equal(receipt.cheekEraHorizontallyMirrored, true,
       `${id} cheek ERA courses must mirror horizontally across the turret`);
     close(receipt.cheekEraNormalAlignmentDot, 1,
@@ -117,6 +124,8 @@ for (const id of ['fv4034', 'challenger2e', 'ua_challenger2']) {
       `${id} glacis ERA face-normal alignment`);
     assert.equal(receipt.roofAttachmentCount, 9,
       `${id} cupolas, machine guns, tower, and roof equipment must all publish seats`);
+    assert.equal(turret.userData.challenger2RoofSeatingReceipt.roofSeats.length, 9,
+      `${id} roof-seat receipt must include the centered weapon tower`);
     assert.equal(receipt.bridgedMachineGunBarrels, 2,
       `${id} MAG barrels must bridge directly into their receivers`);
     assert.equal(receipt.smokeBanks, 2,
