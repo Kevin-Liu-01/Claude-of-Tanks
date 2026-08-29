@@ -1,3 +1,218 @@
+import type { InstancedMesh, Object3D, Scene, Vector3 } from 'three';
+import type {
+  ArmorIntersection,
+  ArmorModel,
+  ArmorPoseState,
+  TankArmorPose,
+} from '../sim/armor.ts';
+import type {
+  CombatState,
+  DamageShell,
+  DamageShellSpec,
+  DamageTankSpec,
+  DamageTarget,
+  HitEvent,
+} from '../sim/damage.ts';
+import type { ShotViewName } from './shotContract.ts';
+
+type ShotRecipe = () => void | Promise<void>;
+type Vec3Tuple = [number, number, number];
+
+interface ForcedHudFrame {
+  distM: number;
+  penRatio: number | null;
+  reload: { t: number; totalS: number };
+  shellSlot: number;
+  dispersionRadM: number;
+  zoom?: number;
+  shells?: readonly unknown[];
+}
+
+export interface ShotTankSpec extends DamageTankSpec {
+  name: string;
+  hydropneumaticAim?: unknown;
+  dims: { heightM: number; widthM: number };
+  armor: ArmorModel & { boundingRadiusM: number };
+  gun: DamageTankSpec['gun'] & {
+    caliberMm: number;
+    shells: DamageShellSpec[];
+    weaponSound?: string | null;
+  };
+}
+
+export interface ShotVisual {
+  root: Object3D;
+  syncFromState(state: ArmorPoseState): void;
+  setTrackState(module: 'trackL' | 'trackR', destroyed: boolean): void;
+  recoilKick(ageS: number): number | null;
+  gunMuzzleWorld(target: Vector3, muzzleIndex?: number): Vector3;
+  gunDirWorld(target: Vector3): Vector3;
+  setDestroyed(options: { pop: boolean; ageS: number }): void;
+}
+
+export interface ShotEntity {
+  id: string;
+  specId: string;
+  team: string;
+  isPlayer?: boolean;
+  displayName?: string;
+  state: ArmorPoseState;
+  spec: ShotTankSpec;
+  combat: CombatState;
+  visual: ShotVisual;
+}
+
+export interface RequiredShotTankRegistry {
+  /** Engineering shots stage these guaranteed members before recipes run. */
+  get(specId: string): ShotEntity;
+}
+
+export interface ShotGame {
+  player: ShotEntity;
+  tanks: ShotEntity[];
+  tankById: RequiredShotTankRegistry;
+}
+
+interface HeightField {
+  getHeightAt(x: number, z: number): number;
+}
+
+interface RaycastHit {
+  dist: number;
+}
+
+interface ConcealmentCircle {
+  x: number;
+  z: number;
+  r: number;
+}
+
+interface WorldObstacle {
+  min: readonly [number, number, number];
+  max: readonly [number, number, number];
+}
+
+export interface ShotWorld {
+  heightField: HeightField;
+  raycast(origin: Vector3, direction: Vector3, maxDistance: number): RaycastHit | null;
+  getConcealment?(): ConcealmentCircle[];
+  getObstacles?(): WorldObstacle[];
+}
+
+export interface ShotHud {
+  setMode(mode: string): void;
+  stageSpectateBar(options: {
+    id: string;
+    name: string;
+    vehicle: string;
+    specId: string;
+    count: number;
+    index: number;
+  }): void;
+}
+
+export interface ShotRig {
+  setExternalPose(position: Vector3, target: Vector3, fovDeg: number): void;
+  snapArcade(zoom: number, yaw: number, pitch: number): void;
+  snapSniper(zoom: number, yaw: number, pitch: number): void;
+}
+
+export interface ShotBus {
+  emit(event: string, payload: unknown): void;
+}
+
+export interface ShotFx {
+  composeFiringMoment(options: {
+    muzzlePos: Vector3;
+    dir: Vector3;
+    caliberMm: number;
+    tracerType: string;
+    ageS: number;
+  }): void;
+  composeExplosionMoment(options: { pos: Vector3; ageS: number }): void;
+}
+
+export interface ShotGarage {
+  show(specId: string): void;
+  drainThumbs?(): void;
+}
+
+export interface ShotGarageDressing {
+  ensureBuilt(): Promise<unknown>;
+}
+
+export interface ShotShowroom {
+  reset(): void;
+}
+
+export interface ShotKillcam {
+  stageReplayShot(payload: unknown, stage: string): void;
+}
+
+interface StagedHitEvent extends HitEvent {
+  attackerName?: string;
+  attackerSpecId?: string;
+  targetName?: string;
+  targetSpecId?: string;
+  timeS?: number;
+}
+
+export interface ShotViewDependencies {
+  hud: ShotHud;
+  world: ShotWorld;
+  _v1: Vector3;
+  _v2: Vector3;
+  _v3: Vector3;
+  rig: ShotRig;
+  DEG: number;
+  forcedHudFrame(mode: string, frame: ForcedHudFrame): void;
+  computeDispersionRadM(spec: ShotTankSpec, state: ArmorPoseState, distanceM: number): number;
+  game: ShotGame;
+  shellCards: readonly unknown[];
+  scene: Scene;
+  closeupStage(entity: ShotEntity): void;
+  orbitPose(
+    entity: ShotEntity,
+    distanceM: number,
+    azimuthDeg: number,
+    elevationDeg: number,
+    fovDeg: number,
+  ): void;
+  bus: ShotBus;
+  fx: ShotFx;
+  setPedestalTank(specId: string): Promise<unknown>;
+  garage: ShotGarage;
+  garageDressing: ShotGarageDressing;
+  showroom: ShotShowroom;
+  mapEstablishingShot(): void;
+  tankPoseFromState(state: ArmorPoseState): TankArmorPose;
+  traceTank(
+    from: Vector3,
+    to: Vector3,
+    pose: TankArmorPose,
+    armor: ArmorModel,
+    eraSpent?: ReadonlySet<string>,
+  ): ArmorIntersection[];
+  createShell(
+    spec: DamageShellSpec,
+    shooterId: string,
+    isPlayer: boolean,
+    muzzlePosition: Vector3,
+    direction: Vector3,
+    id: number,
+  ): DamageShell;
+  resolveShellHit(
+    shell: DamageShell,
+    target: DamageTarget,
+    hits: ArmorIntersection[],
+    rng: () => number,
+  ): HitEvent;
+  createCombatState(spec: DamageTankSpec): CombatState;
+  mulberry32(seed: number): () => number;
+  VIEW_TIME: Readonly<Partial<Record<ShotViewName, number>>>;
+  killcam: ShotKillcam;
+}
+
 /**
  * Deterministic screenshot recipes. Player boot never transfers this module;
  * the stable __SHOTS facade acquires it on the first explicit capture.
@@ -11,7 +226,7 @@ export function createShotViews({
   bus, fx, setPedestalTank, garage, garageDressing, showroom,
   mapEstablishingShot, tankPoseFromState, traceTank, createShell,
   resolveShellHit, createCombatState, mulberry32, VIEW_TIME, killcam,
-}) {
+}: ShotViewDependencies): Record<ShotViewName, ShotRecipe> {
   let projectileReplayStage = 'xray';
   const SHOT_VIEWS = {
   battlefield() {
@@ -72,7 +287,7 @@ export function createShotViews({
     // that). Sweep the concealer circles along the sight line too — anything
     // past the scope-corridor fade (~60 m) and short of the tank blocks.
     const conceal = world.getConcealment ? world.getConcealment() : [];
-    const clearTo = (ent) => {
+    const clearTo = (ent: ShotEntity): boolean => {
       const tp = ent.state.pos;
       const h = ent.spec.dims.heightM;
       const w = (ent.spec.dims.widthM || ent.spec.armor.boundingRadiusM) * 0.42;
@@ -115,27 +330,30 @@ export function createShotViews({
     // bearing that keeps one inside the near view cone. Foliage/grass is
     // excluded (the scope corridor fade already clears it); tank visuals are
     // excluded via their roots. Colliders get a dense ray fan on top.
-    const nearProps = [];
+    const nearProps: Array<[number, number, number]> = [];
     {
       const tankRoots = new Set();
       for (const t of game.tanks) if (t.visual && t.visual.root) tankRoots.add(t.visual.root);
-      scene.traverse((o) => {
-        if (!o.isInstancedMesh) return;
-        for (let anc = o; anc; anc = anc.parent) if (tankRoots.has(anc)) return;
-        const mat = Array.isArray(o.material) ? o.material[0] : o.material;
+      scene.traverse((object) => {
+        if (!('isInstancedMesh' in object) || object.isInstancedMesh !== true) return;
+        const mesh = object as InstancedMesh;
+        for (let ancestor: Object3D | null = mesh; ancestor; ancestor = ancestor.parent) {
+          if (tankRoots.has(ancestor)) return;
+        }
+        const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
         const key = mat && mat.customProgramCacheKey ? mat.customProgramCacheKey() : '';
         if (/^world-(tree|grass)/.test(key)) return; // corridor fade covers foliage
-        o.updateMatrixWorld();
-        const arr = o.instanceMatrix.array;
-        for (let i = 0; i < o.count; i++) {
+        mesh.updateMatrixWorld();
+        const arr = mesh.instanceMatrix.array;
+        for (let i = 0; i < mesh.count; i++) {
           _v2.set(arr[i * 16 + 12], arr[i * 16 + 13], arr[i * 16 + 14])
-            .applyMatrix4(o.matrixWorld);
+            .applyMatrix4(mesh.matrixWorld);
           const d = Math.hypot(_v2.x - _v1.x, _v2.z - _v1.z);
           if (d > 1 && d < 60) nearProps.push([_v2.x, _v2.z, d]);
         }
       });
     }
-    const nearClear = (yaw, pitch) => {
+    const nearClear = (yaw: number, pitch: number): boolean => {
       const hv = (55 / 8) * DEG * 0.55; // half vertical FOV at x8 + pad
       const hh = hv * (16 / 9);         // half horizontal
       for (const [pxp, pzp, d] of nearProps) {
@@ -153,7 +371,7 @@ export function createShotViews({
       }
       return true;
     };
-    const aimTo = (ent) => {
+    const aimTo = (ent: ShotEntity): [number, number] => {
       const adx = ent.state.pos.x - p.state.pos.x;
       const adz = ent.state.pos.z - p.state.pos.z;
       const ady = (ent.state.pos.y + ent.spec.dims.heightM * 0.55) - (p.state.pos.y + 2.2);
@@ -179,7 +397,7 @@ export function createShotViews({
         if (d < nearD) { nearD = d; near = ent; }
       }
       const obstacles = world.getObstacles ? world.getObstacles() : [];
-      const groundFree = (x, z) => {
+      const groundFree = (x: number, z: number): boolean => {
         for (const c of conceal) {
           const dx = c.x - x, dz = c.z - z;
           if (dx * dx + dz * dz < (c.r + 4) * (c.r + 4)) return false;
@@ -212,7 +430,7 @@ export function createShotViews({
         // hud_ui r2 relaxed sweep: terrain LOS only (turret top + hull
         // center) — map dressing density can over-reject the strict pass
         // wholesale (concealer circles + near-prop cone).
-        const terrainClear = (ent) => {
+        const terrainClear = (ent: ShotEntity): boolean => {
           const tp = ent.state.pos;
           const hh2 = ent.spec.dims.heightM;
           for (const oy of [hh2 * 0.92, hh2 * 0.5]) {
@@ -428,16 +646,26 @@ export function createShotViews({
       - world.heightField.getHeightAt(target.state.pos.x, target.state.pos.z);
     const x = target.state.pos.x;
     const z = target.state.pos.z;
-    const atY = (pz) => world.heightField.getHeightAt(x, pz) + terrainOffset;
-    const makePose = (ent, px, py, pz, yaw) => ({
+    const atY = (pz: number): number => world.heightField.getHeightAt(x, pz) + terrainOffset;
+    const makePose = (
+      ent: ShotEntity,
+      px: number,
+      py: number,
+      pz: number,
+      yaw: number,
+    ) => ({
       pos: [px, py, pz], yaw,
       pitch: ent.state.visualPitch || 0,
       roll: ent.state.visualRoll || 0,
       turretYaw: 0, gunPitch: 0,
     });
-    const moduleStates = (ent) => Object.fromEntries(
-      Object.entries(ent.combat?.modules || {}).map(([id, module]) => [id, module.state]),
-    );
+    const moduleStates = (ent: ShotEntity): Record<string, string> => {
+      const states: Record<string, string> = {};
+      for (const [id, module] of Object.entries(ent.combat.modules)) {
+        if (module) states[id] = module.state;
+      }
+      return states;
+    };
     const targetImpact = makePose(target, x, atY(z), z, 0);
     const targetBefore = makePose(target, x, atY(z - 2.8), z - 2.8, 0);
     const attackerImpact = makePose(attacker, x, atY(z + 7.1), z + 7.1, Math.PI);
@@ -445,7 +673,7 @@ export function createShotViews({
     const preTargetModules = moduleStates(target);
     const postTargetModules = { ...preTargetModules, trackR: 'red', transmission: 'red' };
     const preAttackerModules = moduleStates(attacker);
-    const modulesHit = [
+    const modulesHit: HitEvent['modulesHit'] = [
       { module: 'trackR', newState: 'red', dmg: 100 },
       { module: 'transmission', newState: 'red', dmg: 140 },
     ];
@@ -512,8 +740,8 @@ export function createShotViews({
     // state; first candidate that pens with ≥2 module/crew casualties wins.
     const rightX = Math.cos(target.state.yaw);
     const rightZ = -Math.sin(target.state.yaw);
-    let ev = null;
-    const tryOne = (h, side, seed) => {
+    let ev: StagedHitEvent | null = null;
+    const tryOne = (h: number, side: number, seed: number): StagedHitEvent | null => {
       _v2.copy(target.state.pos);
       _v2.y += h;
       _v2.x += rightX * side;
@@ -544,14 +772,16 @@ export function createShotViews({
         }
       }
     }
-    if (!ev) ev = tryOne(1.05, 0, 4242); // unreachable fallback, keeps recipe total
+    if (!ev) ev = tryOne(1.05, 0, 4242);
+    if (!ev) throw new Error('Killcam x-ray recipe could not resolve a staged penetration');
     ev.attackerName = shooter.spec.name;
     // killcam_shotinfo r3: match live events (state.ts enriches every hit
     // with attackerSpecId) so pen-roll annotations can resolve the shell.
     ev.attackerSpecId = shooter.specId;
     ev.targetName = target.spec.name;
     ev.targetSpecId = target.specId;
-    ev.timeS = VIEW_TIME.killcam_xray;
+    const replayTimeS = VIEW_TIME.killcam_xray ?? 1;
+    ev.timeS = replayTimeS;
     const traj = [];
     for (let i = 0; i <= 24; i++) {
       traj.push(
@@ -594,7 +824,7 @@ export function createShotViews({
     killcam.stageReplayShot({
       replayKind: 'projectile',
       ev,
-      timeS: ev.timeS,
+      timeS: replayTimeS,
       trajPts: traj,
       pose: targetPose,
       impactPose: { ...targetPose, pos: targetPose.pos.slice() },
@@ -609,7 +839,7 @@ export function createShotViews({
       muzzle: [_v1.x, _v1.y, _v1.z],
       shotDir: shotDir.toArray(),
       muzzleVelocityMps: shellSpec.velocityMps || 1500,
-      firedTimeS: ev.timeS - 0.4,
+      firedTimeS: replayTimeS - 0.4,
       caliberMm: shellSpec.caliberMm || shooter.spec.gun.caliberMm || 125,
       weaponSound: shooter.spec.gun.weaponSound || null,
       muzzleIndex: 0,

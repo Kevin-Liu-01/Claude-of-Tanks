@@ -126,6 +126,10 @@ order or allocating a Garage request on every frame.
 Ballistic surface marks now use the strict `src/fx/impactDecals.ts` owner. Its
 seeded atlas, articulation-local skin clamp, bounded node batches, vehicle ring,
 and reset lifecycle retain the exact established presentation behavior.
+Deterministic engineering captures now use the strict
+`src/dev/shotViews.ts` recipe owner. The 34-view table retains the established
+camera, HUD, vehicle, FX, and replay staging while explicit dependency ports
+preserve its demand-loaded separation from ordinary player boot.
 
 ## Consequences
 

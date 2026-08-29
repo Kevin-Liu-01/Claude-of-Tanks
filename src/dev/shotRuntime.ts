@@ -1,6 +1,21 @@
 import { MathUtils, type Scene, type Vector3 } from 'three';
 import { mulberry32 } from '../game/stateCore.ts';
 import type { ShotViewName } from './shotContract.ts';
+import type {
+  ShotBus,
+  ShotEntity,
+  ShotFx,
+  ShotGame,
+  ShotGarage,
+  ShotGarageDressing,
+  ShotHud,
+  ShotKillcam,
+  ShotRig,
+  ShotShowroom,
+  ShotViewDependencies,
+  ShotVisual,
+  ShotWorld,
+} from './shotViews.ts';
 
 const VIEW_TIME: Readonly<Partial<Record<ShotViewName, number>>> = {
   battlefield: 2.0,
@@ -59,32 +74,19 @@ const VIEW_MAP: Partial<Record<ShotViewName, string>> = {
   battlefield_skybridge: 'skybridge',
 };
 
-interface ShotState {
-  pos: Vector3;
-  yaw: number;
-}
-
-interface ShotEntity {
+interface ShotRuntimeEntity extends ShotEntity {
   input: { throttle: number; steer: number; brake: boolean; fire: boolean };
-  state: ShotState;
-  spec: {
-    dims: { heightM: number };
-    hydropneumaticAim?: boolean;
-    armor?: { turretless?: boolean };
-  };
   equip?: unknown;
-  visual: {
-    syncFromState(state: ShotState): void;
-    gunMuzzleWorld(target: Vector3): void;
+  visual: ShotVisual & {
     setGroundSampler?(sampler: unknown): void;
   };
 }
 
-interface ShotGame {
+interface ShotRuntimeGame extends Omit<ShotGame, 'player' | 'tanks'> {
   phase: string;
-  tanks: ShotEntity[];
-  allTanks: ShotEntity[];
-  player: ShotEntity;
+  tanks: ShotRuntimeEntity[];
+  allTanks: ShotRuntimeEntity[];
+  player: ShotRuntimeEntity;
   shells: unknown[];
 }
 
@@ -101,6 +103,61 @@ interface ForcedAim {
   [key: string]: unknown;
 }
 
+interface RuntimeShotWorld extends ShotWorld {
+  mapId: string;
+  config: {
+    shot: {
+      pos: readonly [number, number, number];
+      look: readonly [number, number, number];
+    };
+  };
+  setSniperFade(value: number, immediate: boolean, fovDeg: number, aimDistM: number): void;
+  setWindTime(timeS?: number): void;
+}
+
+interface RuntimeShotHud extends ShotHud {
+  update(frame: ShotFrameInfo): void;
+  forceAimDisplay(frame: unknown): void;
+}
+
+interface RuntimeShotFx extends ShotFx {
+  resetAll(): void;
+  resetSeed(seed: number): void;
+  setFrozen(frozen: boolean, timeS?: number | null): void;
+}
+
+interface RuntimeShotKillcam extends ShotKillcam {
+  cancel(): void;
+}
+
+interface ShotFrameAim {
+  point: Vector3;
+  distM: number;
+  dispersionRadM: number;
+  penRatio: number | null;
+  gunDistM: number;
+  gunTargetId: string | null;
+  singleReticle: boolean;
+  blockedDistM: number | null;
+  blockedLabel: boolean;
+  atGunLimit: boolean;
+  gunLimitSpec: boolean;
+  reload: { t: number; totalS: number; kind: string };
+  magazine: { rounds: number; capacity: number };
+  shellSlot: number;
+  shells: readonly unknown[];
+  zoom: number;
+  gunMarker: Vector3;
+}
+
+interface ShotFrameInfo {
+  timeS: number;
+  mode: string;
+  player: ShotRuntimeEntity;
+  shells: unknown[];
+  aim: ShotFrameAim;
+}
+
 interface ShotRuntimeContext {
   preloadSoloBattleRuntime(): Promise<unknown>;
   preloadBattleClientRuntime(): Promise<unknown>;
@@ -115,17 +172,17 @@ interface ShotRuntimeContext {
   setWorldDormant(dormant: boolean): void;
   setCamoBiome(mapId: string): void;
   applyCamoPatterns(): void;
-  setupBattle(game: ShotGame, playerSpecId: string, world: unknown): void;
+  setupBattle(game: ShotRuntimeGame, playerSpecId: string, world: RuntimeShotWorld): void;
   resetCombatWarm(): void;
   drainCombatWarm(): void;
   setBattleStaged(staged: boolean): void;
   buildShellCards(spec: ShotEntity['spec']): void;
-  setDamagePanelTank(spec: ShotEntity['spec'], visual: ShotEntity['visual']): void;
+  setDamagePanelTank(spec: ShotEntity['spec'], visual: ShotVisual): void;
   setDamagePanelEquipment(equipment: unknown): void;
   groundSampler: unknown;
   input: { setEnabled(enabled: boolean): void };
   settings: { isOpen(): boolean; close(): void };
-  showroom: { stop(): void };
+  showroom: ShotShowroom & { stop(): void };
   setShotMode(enabled: boolean): void;
   setCaptureHidden(hidden: boolean): void;
   resetPostPerfTrims(): void;
@@ -136,30 +193,38 @@ interface ShotRuntimeContext {
   hideEndOverlay(): void;
   setLastFov(fov: number): void;
   refreshSpotFrame(): void;
-  getWorld(): any;
-  getHud(): any;
-  getFx(): any;
-  getKillcam(): any;
-  getShellCards(): unknown[];
-  game: ShotGame;
-  frameInfo: any;
-  rig: any;
-  camera: any;
-  lighting: any;
+  getWorld(): RuntimeShotWorld;
+  getHud(): RuntimeShotHud;
+  getFx(): RuntimeShotFx;
+  getKillcam(): RuntimeShotKillcam;
+  getShellCards(): readonly unknown[];
+  game: ShotRuntimeGame;
+  frameInfo: ShotFrameInfo;
+  rig: ShotRig & { aimPoint: Vector3; mode: string; aimDist: number };
+  camera: {
+    fov: number;
+    updateProjectionMatrix(): void;
+    updateMatrixWorld(force?: boolean): void;
+  };
+  lighting: {
+    setFarCascadeDormant(dormant: boolean): void;
+    updateFrustums(): void;
+    update(force?: boolean): void;
+  };
   scene: Scene;
   scratch1: Vector3;
   scratch2: Vector3;
   scratch3: Vector3;
-  computeDispersionRadM: (...args: any[]) => number;
-  bus: unknown;
-  setPedestalTank: (...args: any[]) => unknown;
-  garage: unknown;
-  garageDressing: unknown;
-  tankPoseFromState: (...args: any[]) => unknown;
-  traceTank: (...args: any[]) => unknown;
-  createShell: (...args: any[]) => unknown;
-  resolveShellHit: (...args: any[]) => unknown;
-  createCombatState: (...args: any[]) => unknown;
+  computeDispersionRadM: ShotViewDependencies['computeDispersionRadM'];
+  bus: ShotBus;
+  setPedestalTank: ShotViewDependencies['setPedestalTank'];
+  garage: ShotGarage;
+  garageDressing: ShotGarageDressing;
+  tankPoseFromState: ShotViewDependencies['tankPoseFromState'];
+  traceTank: ShotViewDependencies['traceTank'];
+  createShell: ShotViewDependencies['createShell'];
+  resolveShellHit: ShotViewDependencies['resolveShellHit'];
+  createCombatState: ShotViewDependencies['createCombatState'];
 }
 
 async function ensureShotWorld(
@@ -291,7 +356,7 @@ export async function setShotView(
   name: ShotViewName,
   context: ShotRuntimeContext,
 ): Promise<void> {
-  const shotViewsPromise = import('./shotViews.js');
+  const shotViewsPromise = import('./shotViews.ts');
   await Promise.all([
     shotViewsPromise,
     context.ensureFullFleet(),
@@ -358,8 +423,7 @@ export async function setShotView(
     mulberry32,
     VIEW_TIME,
     killcam,
-  })[name] as (() => void | Promise<void>) | undefined;
-  if (!recipe) throw new Error(`Screenshot recipe is missing: ${name}`);
+  })[name];
 
   context.drainCombatWarm();
   context.setGarageSunTrim(name === 'garage');

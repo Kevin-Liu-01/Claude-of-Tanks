@@ -155,8 +155,10 @@ strict TypeScript owners:
 - `src/dev/combatTelemetry.ts` owns debug-only attributable shell and bot
   pressure receipts; ordinary production installs no telemetry listeners.
 - `src/dev/shotContract.ts` exposes only the stable capture view names at boot;
-  `src/dev/shotRuntime.ts` demand-loads all deterministic staging only after
-  an engineering tool explicitly calls `window.__SHOTS.set()`.
+  `src/dev/shotRuntime.ts` demand-loads the strict `src/dev/shotViews.ts`
+  recipe table only after an engineering tool explicitly calls
+  `window.__SHOTS.set()`. Its typed world, tank, combat, visual, FX, and replay
+  ports keep capture-only dependencies out of player boot.
 
 `src/main.ts` still declares dependency order and connects these ports, but it
 does not reimplement their state machines.
