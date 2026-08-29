@@ -41,5 +41,5 @@ permanently poison the workshop owner.
 - `src/game/garageDressingLifecycle.selftest.mjs` verifies idle scheduling,
   coalescing, transition/input deferral, source-family ordering, shared world
   activity, and return-to-garage continuation.
-- The production build must place `garageDressing.js` outside the initial main
+- The production build must place `garageDressing.ts` outside the initial main
   chunk, and deterministic garage capture must complete the full set piece.

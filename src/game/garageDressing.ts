@@ -1,4 +1,4 @@
-// src/game/garageDressing.js — WORKSHOP SET DRESSING for the garage hangar
+// src/game/garageDressing.ts — WORKSHOP SET DRESSING for the garage hangar
 // (garage-scene r1). The bay read as a clean showroom: podium + a handful of
 // crates. This module turns it into a WORKING tank workshop — benches with
 // tools, pegboards, shell racks, low-poly gun/road-wheel/track assemblies,
@@ -30,8 +30,35 @@ import {
 } from '../ui/garageStage.js';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant } from './garageVariants.ts';
-import { countWorkshopTriangles, createWorkshopPartLibrary } from './workshopParts.ts';
+import {
+  countWorkshopTriangles,
+  createWorkshopPartLibrary,
+  type WorkshopPartKind,
+} from './workshopParts.ts';
 import { auditGarageWallBays, garageWallTransform } from './garageWallLayout.ts';
+
+export interface GarageDressingEngineContext {
+  readonly anisotropy?: number;
+  setupShadowMaterial?(material: THREE.Material): void;
+}
+
+export interface GarageDressingExisting {
+  readonly group?: THREE.Group;
+  readonly bayFill?: THREE.PointLight;
+  readonly variantId?: string;
+}
+
+export interface GarageDressingRuntime {
+  readonly group: THREE.Group;
+  pump(): boolean;
+  ensureBuilt(): void;
+  isBuilt(): boolean;
+  setVariant(variantId: string): string;
+  dispose(): void;
+}
+
+type Scale3 = number | [number, number, number];
+type TrackedResource = { dispose(): void };
 
 /**
  * Build the (initially empty) workshop dressing rig.
@@ -41,7 +68,11 @@ import { auditGarageWallBays, garageWallTransform } from './garageWallLayout.ts'
  * @returns {{group:THREE.Group, pump:()=>boolean, ensureBuilt:()=>void,
  *            isBuilt:()=>boolean, dispose:()=>void}}
  */
-export function createGarageDressing(engineCtx, pos, existing = {}) {
+export function createGarageDressing(
+  engineCtx: GarageDressingEngineContext,
+  pos: THREE.Vector3,
+  existing: GarageDressingExisting = {},
+): GarageDressingRuntime {
   const group = existing.group || new THREE.Group();
   group.name = 'garage_dressing';
   group.userData.perfOwner = 'garage/workshop';
@@ -61,15 +92,18 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
 
   const rng = mulberry32(48151);
   const aniso = (engineCtx && engineCtx.anisotropy) || 4;
-  const shadowMat = (m) => {
+  const shadowMat = <T extends THREE.Material>(m: T): T => {
     if (engineCtx && engineCtx.setupShadowMaterial) engineCtx.setupShadowMaterial(m);
     return m;
   };
-  const disposables = [];
-  const track = (o) => { disposables.push(o); return o; };
-  const signTextures = [];
+  const disposables: TrackedResource[] = [];
+  const track = <T extends TrackedResource>(o: T): T => {
+    disposables.push(o);
+    return o;
+  };
+  const signTextures: THREE.Texture[] = [];
   const partLibrary = createWorkshopPartLibrary(engineCtx);
-  const variantAssemblies = [];
+  const variantAssemblies: THREE.Group[] = [];
   let currentVariant = getGarageVariant(existing.variantId);
   group.userData.garageVariantId = currentVariant.id;
   group.userData.garageMapId = currentVariant.mapId;
@@ -96,7 +130,19 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   };
 
   // one-liner mesh placer: shared geometry, tracked once by the caller
-  function put(geo, m, x, y, z, ry = 0, rx = 0, rz = 0, s = 1, parent = group, shadows = true) {
+  function put(
+    geo: THREE.BufferGeometry,
+    m: THREE.Material,
+    x: number,
+    y: number,
+    z: number,
+    ry = 0,
+    rx = 0,
+    rz = 0,
+    s: Scale3 = 1,
+    parent: THREE.Object3D = group,
+    shadows = true,
+  ): THREE.Mesh {
     const mesh = new THREE.Mesh(geo, m);
     mesh.position.set(x, y, z);
     mesh.rotation.set(rx, ry, rz);
@@ -110,11 +156,11 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   // --- tiny canvas textures ---------------------------------------------------
   // pegboard: dark board, peg-hole grid, painted hanging-tool silhouettes —
   // one textured quad reads as a whole wall of wrenches/hammers/pliers.
-  function makePegboardTexture() {
+  function makePegboardTexture(): HTMLCanvasElement {
     const W = 256, H = 160;
     const c = document.createElement('canvas');
     c.width = W; c.height = H;
-    const g = c.getContext('2d');
+    const g = c.getContext('2d')!;
     g.fillStyle = '#2e3236';
     g.fillRect(0, 0, W, H);
     g.strokeStyle = '#1a1d20';
@@ -125,7 +171,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
       for (let x = 12; x < W - 8; x += 12) g.fillRect(x, y, 2.4, 2.4);
     }
     // painted tool shadows first (slight offset), then the tools
-    const tool = (draw) => {
+    const tool = (draw: () => void): void => {
       g.save(); g.translate(2, 3); g.strokeStyle = 'rgba(0,0,0,0.45)'; g.fillStyle = 'rgba(0,0,0,0.45)'; draw(); g.restore();
       g.strokeStyle = '#83898f'; g.fillStyle = '#83898f'; draw();
     };
@@ -180,10 +226,13 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   }
 
   // soft radial pool for faked lamp light / under-bay work light
-  function makePoolTexture(r0 = 'rgba(255,236,200,0.26)', r1 = 'rgba(255,236,200,0.08)') {
+  function makePoolTexture(
+    r0 = 'rgba(255,236,200,0.26)',
+    r1 = 'rgba(255,236,200,0.08)',
+  ): HTMLCanvasElement {
     const c = document.createElement('canvas');
     c.width = c.height = 128;
-    const g = c.getContext('2d');
+    const g = c.getContext('2d')!;
     const grad = g.createRadialGradient(64, 64, 6, 64, 64, 63);
     grad.addColorStop(0, r0);
     grad.addColorStop(0.55, r1);
@@ -194,11 +243,11 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   }
 
   // worn dashed white paint box — the side-bay floor outline decal
-  function makeBayOutlineTexture() {
+  function makeBayOutlineTexture(): HTMLCanvasElement {
     const S = 256;
     const c = document.createElement('canvas');
     c.width = c.height = S;
-    const g = c.getContext('2d');
+    const g = c.getContext('2d')!;
     g.strokeStyle = 'rgba(206,210,214,0.5)';
     g.lineWidth = 7;
     g.setLineDash([26, 18]);
@@ -218,10 +267,10 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   }
 
   // rubber tread skid arc
-  function makeSkidTexture() {
+  function makeSkidTexture(): HTMLCanvasElement {
     const c = document.createElement('canvas');
     c.width = 256; c.height = 128;
-    const g = c.getContext('2d');
+    const g = c.getContext('2d')!;
     for (const off of [-14, 14]) {
       g.strokeStyle = 'rgba(18,20,22,0.4)';
       g.lineWidth = 17;
@@ -258,7 +307,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   };
 
   /** hanging work lamp (dressing only — the pool quad fakes its throw). */
-  function workLamp(x, z, poolScale = 5.5, y = 7.4) {
+  function workLamp(x: number, z: number, poolScale = 5.5, y = 7.4): void {
     put(G.lampShade, mat.steelDark, x, y, z);
     const glow = put(G.lampGlow, mat.lamp, x, y - 0.26, z, 0, 0, 0, 1, group, false);
     glow.castShadow = false;
@@ -273,7 +322,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   }
 
   /** worn steel workbench with clutter (vice, welder box, grinder, cans). */
-  function workbench(x, z, ry) {
+  function workbench(x: number, z: number, ry: number): THREE.Group {
     const b = new THREE.Group();
     b.position.set(x, 0, z);
     b.rotation.y = ry;
@@ -301,7 +350,15 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   }
 
   /** pegboard quad + backing plate flush against a wall. */
-  function pegboard(x, y, z, ry, w = 2.5, h = 1.55, wallBayId = '') {
+  function pegboard(
+    x: number,
+    y: number,
+    z: number,
+    ry: number,
+    w = 2.5,
+    h = 1.55,
+    wallBayId = '',
+  ): void {
     const tex = track(canvasTexture(makePegboardTexture(), { aniso }));
     const m = track(shadowMat(new THREE.MeshStandardMaterial({
       map: tex, roughness: 0.7, metalness: 0.15,
@@ -319,13 +376,20 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     group.add(board);
   }
 
-  function pegboardAt(wallBayId) {
+  function pegboardAt(wallBayId: string): void {
     const bay = garageWallTransform(wallBayId);
     pegboard(bay.x, bay.y, bay.z, bay.yaw, bay.width - 0.12, bay.height - 0.12, wallBayId);
   }
 
   /** rolling drawer toolbox (colorway via mats). */
-  function toolChest(x, z, ry, bodyMat, trimMat, s = 1) {
+  function toolChest(
+    x: number,
+    z: number,
+    ry: number,
+    bodyMat: THREE.Material,
+    trimMat: THREE.Material,
+    s = 1,
+  ): THREE.Group {
     const t = new THREE.Group();
     t.position.set(x, 0, z);
     t.rotation.y = ry;
@@ -347,7 +411,16 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   }
 
   /** wall sign: steel plate + stencil board (garageStage language). */
-  function wallSign(text, x, y, z, ry, w = 2.0, h = 1.0, wallBayId = '') {
+  function wallSign(
+    text: string,
+    x: number,
+    y: number,
+    z: number,
+    ry: number,
+    w = 2.0,
+    h = 1.0,
+    wallBayId = '',
+  ): void {
     const tex = track(canvasTexture(makeSignTexture(rng, text), { aniso }));
     signTextures.push(tex);
     const m = track(shadowMat(new THREE.MeshStandardMaterial({
@@ -364,14 +437,20 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     group.add(board);
   }
 
-  function wallSignAt(text, wallBayId) {
+  function wallSignAt(text: string, wallBayId: string): void {
     const bay = garageWallTransform(wallBayId);
     wallSign(text, bay.x, bay.y, bay.z, bay.yaw,
       bay.width - 0.12, bay.height - 0.12, wallBayId);
   }
 
   /** fire extinguisher on a wall bracket. */
-  function extinguisher(x, y, z, ry, wallBayId = '') {
+  function extinguisher(
+    x: number,
+    y: number,
+    z: number,
+    ry: number,
+    wallBayId = '',
+  ): void {
     const e = new THREE.Group();
     e.position.set(x, y, z);
     e.rotation.y = ry;
@@ -383,7 +462,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     put(track(new THREE.TorusGeometry(0.07, 0.014, 6, 12, Math.PI * 1.3)), mat.rubber, 0.06, 0.16, 0, 0, Math.PI / 2, 0.6, 1, e, false);
   }
 
-  function extinguisherAt(wallBayId) {
+  function extinguisherAt(wallBayId: string): void {
     const bay = garageWallTransform(wallBayId);
     extinguisher(bay.x, bay.y, bay.z, bay.yaw, wallBayId);
   }
@@ -391,16 +470,16 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   // Assembly positions all stay outside the showroom orbit envelope. Each of
   // the ten workshop layouts rotates and mirrors this list, producing a real
   // scene-composition change without retaining ten copies of the geometry.
-  const assemblySlots = [
+  const assemblySlots: readonly (readonly [number, number, number])[] = [
     [-16.8, 14.8, 2.62], [-20.2, 2.5, 1.25], [16.8, 14.8, -2.62],
     [20.2, 2.5, -1.25], [-20.2, -8.0, 1.82], [20.2, -8.0, -1.82],
     [-14.2, -16.0, 2.55], [14.2, -16.0, -2.55], [0, 20.4, Math.PI],
   ];
-  let mapBackdropMaterial = null;
-  let mapBackdropTexture = null;
+  let mapBackdropMaterial: THREE.MeshBasicMaterial | null = null;
+  let mapBackdropTexture: THREE.Texture | null = null;
   let backdropGeneration = 0;
 
-  function poseAssembly(root, logicalSlot) {
+  function poseAssembly(root: THREE.Group, logicalSlot: number): void {
     const layout = currentVariant.layout;
     const [x0, z0, yaw0] = assemblySlots[logicalSlot % assemblySlots.length];
     const mirrored = layout % 2 === 1;
@@ -412,7 +491,11 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     root.userData.logicalSlot = logicalSlot;
   }
 
-  function addAssembly(kind, logicalSlot, scale = 1) {
+  function addAssembly(
+    kind: WorkshopPartKind,
+    logicalSlot: number,
+    scale = 1,
+  ): THREE.Group {
     const root = partLibrary.createAssembly(kind, { name: `dressing_${kind}` });
     root.scale.setScalar(scale);
     poseAssembly(root, logicalSlot);
@@ -421,7 +504,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     return root;
   }
 
-  function updateMapBackdrop() {
+  function updateMapBackdrop(): void {
     if (!mapBackdropMaterial) return;
     const generation = ++backdropGeneration;
     mapBackdropMaterial.color.setHex(currentVariant.wallTint).multiplyScalar(1.35);
@@ -433,16 +516,16 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
         texture.anisotropy = Math.min(4, aniso);
         mapBackdropTexture?.dispose();
         mapBackdropTexture = texture;
-        mapBackdropMaterial.map = texture;
-        mapBackdropMaterial.color.setHex(0xffffff);
-        mapBackdropMaterial.needsUpdate = true;
+        mapBackdropMaterial!.map = texture;
+        mapBackdropMaterial!.color.setHex(0xffffff);
+        mapBackdropMaterial!.needsUpdate = true;
       },
       undefined,
       () => {},
     );
   }
 
-  function setVariant(variantId) {
+  function setVariant(variantId: string): string {
     currentVariant = getGarageVariant(variantId);
     group.userData.garageVariantId = currentVariant.id;
     group.userData.garageMapId = currentVariant.mapId;
@@ -453,7 +536,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     return currentVariant.id;
   }
 
-  const chunks = [];
+  const chunks: Array<() => void> = [];
 
   // ==========================================================================
   // CHUNK 1 — static workshop clutter on every wall + floor decals
@@ -522,7 +605,9 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     wallSignAt('BAY 02', 'east_bay_02');
     extinguisherAt('east_extinguisher');
     // oil drum cluster (one with a hand pump), plus a tipped drum
-    for (const [dx, dz, c] of [[21.3, 7.6, mat.redCabDark], [20.5, 8.2, mat.blueSteel], [21.4, 8.7, mat.olive]]) {
+    for (const [dx, dz, c] of [
+      [21.3, 7.6, mat.redCabDark], [20.5, 8.2, mat.blueSteel], [21.4, 8.7, mat.olive],
+    ] as readonly [number, number, THREE.Material][]) {
       put(G.drum, c, dx, 0.58, dz, rng() * Math.PI);
     }
     put(track(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 8)), mat.steelBright, 21.3, 1.35, 7.6, 0, 0, 0, 1, group, false);
@@ -638,7 +723,9 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     }
     // stacked drums in the SW corner (2-tier on a board)
     {
-      for (const [dx, dz, c] of [[-19.4, 19.3, mat.redCabDark], [-18.5, 19.7, mat.olive], [-19.9, 20.2, mat.blueSteel]]) {
+      for (const [dx, dz, c] of [
+        [-19.4, 19.3, mat.redCabDark], [-18.5, 19.7, mat.olive], [-19.9, 20.2, mat.blueSteel],
+      ] as readonly [number, number, THREE.Material][]) {
         put(G.drum, c, dx, 0.58, dz, rng() * 2);
       }
       put(track(new THREE.BoxGeometry(1.9, 0.06, 1.1)), mat.timberDark, -19.2, 1.19, 19.7, 0.3);
@@ -719,7 +806,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     {
       const laneC = document.createElement('canvas');
       laneC.width = 256; laneC.height = 32;
-      const lg2 = laneC.getContext('2d');
+      const lg2 = laneC.getContext('2d')!;
       lg2.strokeStyle = 'rgba(196,164,44,0.42)';
       lg2.lineWidth = 12;
       lg2.setLineDash([30, 20]);
@@ -806,10 +893,11 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
           ms: Math.round(performance.now() - startedAt),
         });
         if (next >= chunks.length) optimizeGarageDressing(group);
-      } catch (e) {
-        group.userData.lastBuildError = { chunk: fn.name, message: e.message };
-        console.warn(`[garageDressing] chunk '${fn.name}' failed —`, e.message);
-        throw e;
+      } catch (error: unknown) {
+        const message = (error as { message: string }).message;
+        group.userData.lastBuildError = { chunk: fn.name, message };
+        console.warn(`[garageDressing] chunk '${fn.name}' failed —`, message);
+        throw error;
       }
       return next < chunks.length;
     },

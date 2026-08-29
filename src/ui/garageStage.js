@@ -27,7 +27,7 @@ const GARAGE_TRACK_CLEAT_PITCH_M = 0.32;
 const GARAGE_TRACK_CLEAT_THICKNESS_M = 0.065;
 
 // deterministic PRNG (mulberry32) so the hangar is identical every boot
-// (exported: garageDressing.js shares the stage's texture/prop language)
+// (exported: garageDressing.ts shares the stage's texture/prop language)
 export function mulberry32(a) {
   return function () {
     a |= 0; a = (a + 0x6D2B79F5) | 0;

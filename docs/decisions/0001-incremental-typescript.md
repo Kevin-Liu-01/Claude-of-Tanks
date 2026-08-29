@@ -158,6 +158,11 @@ contracts for its three armor envelopes, fleet registry rows, ERA placement
 callbacks, and procedural geometry builders. The T-72B3, dormant Merkava IVm
 donor, and Leopard 2A6 remain byte-for-byte recipe owners in the same lazy
 family pack.
+The optional workshop set-piece now uses the strict
+`src/game/garageDressing.ts` owner. Its engine/light seam, tracked resources,
+canvas layers, low-poly assembly placement, chunk pump, variant backdrop, and
+disposal lifecycle are checked while `garageDressingAccess.ts` retains the
+retryable demand-import boundary.
 
 ## Consequences
 

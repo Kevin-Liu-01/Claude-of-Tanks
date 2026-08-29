@@ -880,7 +880,7 @@ Emits `ui:battleStart` and `ui:click` on the bus. Keyboard: ←/→ select, Ente
 architecture key, and persistence key. `garageStage.js` owns the first-paint
 shell and palette; `garageArchitecture.ts` lazily builds and caches the ten
 distinct macro structures. `garageDressingAccess.ts` keeps a stable light/root
-while lazily importing `garageDressing.js`; `garageDressingScheduler.ts` adds
+while lazily importing `garageDressing.ts`; `garageDressingScheduler.ts` adds
 one optional slice per quiet lease. `garageWallLayout.ts` is the authoritative
 non-overlapping wall-bay contract. `workshopParts.ts` is the only source for
 background vehicle components: separately authored low-poly Abrams, T-90M and

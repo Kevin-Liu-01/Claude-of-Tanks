@@ -1,20 +1,15 @@
 import * as THREE from 'three';
-
-/** The public runtime contract owned by the optional workshop set-piece. */
-export interface GarageDressingRuntime {
-  readonly group: THREE.Group;
-  pump(): boolean;
-  ensureBuilt(): void;
-  isBuilt(): boolean;
-  setVariant(variantId: string): string;
-  dispose(): void;
-}
+import type {
+  GarageDressingEngineContext,
+  GarageDressingExisting,
+  GarageDressingRuntime,
+} from './garageDressing.ts';
 
 interface GarageDressingModule {
   createGarageDressing(
-    engineCtx: unknown,
+    engineCtx: GarageDressingEngineContext,
     pos: THREE.Vector3,
-    existing: { group: THREE.Group; bayFill: THREE.PointLight; variantId: string },
+    existing: GarageDressingExisting,
   ): GarageDressingRuntime;
 }
 
@@ -34,7 +29,7 @@ export interface GarageDressingAccess {
 }
 
 const DEFAULT_LOADERS: GarageDressingLoaders = {
-  dressing: async () => await import('./garageDressing.js') as unknown as GarageDressingModule,
+  dressing: async () => await import('./garageDressing.ts'),
 };
 
 /**
@@ -43,7 +38,7 @@ const DEFAULT_LOADERS: GarageDressingLoaders = {
  * window. This avoids both boot transfer and a later light-count recompile.
  */
 export function createGarageDressingAccess(
-  engineCtx: unknown,
+  engineCtx: GarageDressingEngineContext,
   pos: THREE.Vector3,
   initialVariantOrLoaders: string | GarageDressingLoaders = '',
   explicitLoaders: GarageDressingLoaders = DEFAULT_LOADERS,
