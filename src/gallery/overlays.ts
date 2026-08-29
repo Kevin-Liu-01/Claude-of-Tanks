@@ -3,20 +3,23 @@ import {
   addInternalCrewModel,
   addInternalDrivetrainModel,
   addInternalModuleModel,
-} from '../vehicles/internalAnatomyVisuals.js';
+  type AnatomyResource,
+  type AnatomyVolumePort,
+  type ArmorPlatePort,
+  type InternalArmorModelPort,
+  type InternalCrewVolumePort,
+  type InternalModuleVolumePort,
+} from '../vehicles/internalAnatomyVisuals.ts';
 
 type Vec3Tuple = readonly [number, number, number];
 export type InspectionMode = 'appearance' | 'armor' | 'modules' | 'crew';
-type OverlayResource = THREE.BufferGeometry | THREE.Material;
+type OverlayResource = AnatomyResource;
 
-interface ArmorPlate {
-  name?: string;
-  kind?: string;
+interface ArmorPlate extends ArmorPlatePort {
   era?: unknown;
   physicalMm?: number;
   keMm?: number;
   ceMm?: number;
-  verts?: unknown[];
 }
 
 interface CollisionFace {
@@ -26,62 +29,40 @@ interface CollisionFace {
 }
 
 interface CollisionCell {
+  min: Vec3Tuple;
   faces?: CollisionFace[];
   vertices?: Vec3Tuple[];
 }
 
-interface AnatomyVolume {
-  min: Vec3Tuple;
-  max: Vec3Tuple;
-  module?: string;
-  crew?: string;
-  turretLocal?: boolean;
-  visualForm?: string;
-  station?: string;
+interface AnatomyModuleVolume extends InternalModuleVolumePort {
   layoutPlacement?: string;
   layoutConfidence?: string;
   layoutSources?: string[];
-  parts?: Array<{ min: Vec3Tuple; max: Vec3Tuple }>;
+  parts?: AnatomyVolumePort[];
+}
+
+interface AnatomyCrewVolume extends InternalCrewVolumePort {
+  layoutPlacement?: string;
+  layoutConfidence?: string;
+  layoutSources?: string[];
+}
+
+interface InspectionArmor extends InternalArmorModelPort {
+  hullPlates?: ArmorPlate[];
+  turretPlates?: ArmorPlate[];
+  modules?: AnatomyModuleVolume[];
+  crew?: AnatomyCrewVolume[];
+  collisionShells?: { hull?: CollisionCell[]; turret?: CollisionCell[] };
+  [key: string]: unknown;
 }
 
 interface InspectionSpec {
   era?: string;
   gun?: { caliberMm?: number; shells?: Array<{ caliberMm?: number }> };
-  armor?: {
-    hullPlates?: ArmorPlate[];
-    turretPlates?: ArmorPlate[];
-    modules?: AnatomyVolume[];
-    crew?: AnatomyVolume[];
-    collisionShells?: { hull?: CollisionCell[]; turret?: CollisionCell[] };
-    [key: string]: unknown;
-  };
+  armor?: InspectionArmor;
 }
 
 interface InspectionVisual { root: THREE.Object3D }
-
-type ModuleModelFactory = (
-  volume: AnatomyVolume,
-  material: THREE.Material,
-  hull: THREE.Object3D,
-  turret: THREE.Object3D,
-  resources: OverlayResource[],
-  era: string | undefined,
-  caliberMm: number,
-  steelMaterial: THREE.Material,
-  armor: InspectionSpec['armor'],
-) => THREE.Object3D | null;
-
-type CrewModelFactory = (
-  volume: AnatomyVolume,
-  material: THREE.Material,
-  hull: THREE.Object3D,
-  turret: THREE.Object3D,
-  resources: OverlayResource[],
-  armor: InspectionSpec['armor'],
-) => THREE.Object3D;
-
-const createModuleModel = addInternalModuleModel as unknown as ModuleModelFactory;
-const createCrewModel = addInternalCrewModel as unknown as CrewModelFactory;
 
 export interface InspectionOverlay {
   mode: InspectionMode;
@@ -117,7 +98,7 @@ function armorColor(plate: ArmorPlate): number {
 }
 
 function plateGeometry(plate: ArmorPlate): THREE.BufferGeometry | null {
-  const vertices = (plate.verts || []).filter((point): point is number[] =>
+  const vertices = (plate.verts || []).filter((point): point is Vec3Tuple =>
     Array.isArray(point) && point.length >= 3 && point.every(Number.isFinite));
   if (vertices.length < 3) return null;
   const geometry = new THREE.BufferGeometry();
@@ -282,7 +263,7 @@ function addDashedLines(
   model.userData.galleryDashedAnatomy = true;
 }
 
-function volumeSize(volume: AnatomyVolume): THREE.Vector3 {
+function volumeSize(volume: AnatomyVolumePort): THREE.Vector3 {
   return new THREE.Vector3(
     volume.max[0] - volume.min[0],
     volume.max[1] - volume.min[1],
@@ -292,7 +273,7 @@ function volumeSize(volume: AnatomyVolume): THREE.Vector3 {
 
 function addVolumePicker(
   model: THREE.Object3D,
-  volume: AnatomyVolume,
+  volume: AnatomyVolumePort,
   index: number,
   mode: 'modules' | 'crew',
   resources: OverlayResource[],
@@ -348,13 +329,13 @@ function addModuleModels(
       const color = MODULE_COLORS[volume.module || 'module'] || 0x78a9ff;
       const fill = anatomyFillMaterial(color);
       resources.push(fill);
-      const model = createModuleModel(
+      const model = addInternalModuleModel(
         resolved, fill, hullContainer, turretContainer, resources,
         spec.era, caliberMm, fill, spec.armor,
       );
       if (!model) return;
       addDashedLines(model, color, resources);
-      const visualBounds = model.userData.internalAnatomy.visualBounds as Partial<AnatomyVolume>;
+      const visualBounds = model.userData.internalAnatomy.visualBounds as Partial<AnatomyVolumePort>;
       addVolumePicker(model, { ...resolved, ...visualBounds }, index, 'modules', resources, pickables,
         partIndex, parts.length);
     });
@@ -364,7 +345,7 @@ function addModuleModels(
   resources.push(drivetrainFill);
   const drivetrain = addInternalDrivetrainModel(
     spec.armor || {}, hullContainer, resources, drivetrainFill,
-  ) as unknown as THREE.Object3D | null;
+  );
   if (drivetrain) addDashedLines(drivetrain, drivetrainColor, resources);
 }
 
@@ -380,7 +361,7 @@ function addCrewModels(
     const color = CREW_COLORS[volume.crew || 'crew'] || 0x68c7ff;
     const fill = anatomyFillMaterial(color);
     resources.push(fill);
-    const model = createCrewModel(
+    const model = addInternalCrewModel(
       volume, fill, hullContainer, turretContainer, resources, spec.armor,
     );
     addDashedLines(model, color, resources);

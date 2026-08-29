@@ -86,7 +86,7 @@ import {
   addInternalCrewModel,
   addInternalDrivetrainModel,
   addInternalModuleModel,
-} from '../vehicles/internalAnatomyVisuals.js';
+} from '../vehicles/internalAnatomyVisuals.ts';
 import {
   alignReplayPoseToShot, captureReplayPose, createReplayFlightTimeline,
   replayDistanceAtTime, replayStateFromPose,

@@ -6,7 +6,7 @@ import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.js';
 import {
   CREW_ARMOR_CLEARANCE_M,
   CREW_STANDING_HEIGHT_M,
-} from '../vehicles/internalAnatomyVisuals.js';
+} from '../vehicles/internalAnatomyVisuals.ts';
 import { createInspectionOverlay } from './overlays.ts';
 
 function visualRoot() {

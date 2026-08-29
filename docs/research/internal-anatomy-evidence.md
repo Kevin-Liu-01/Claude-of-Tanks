@@ -58,7 +58,7 @@ by runtime records, lives next to the exact fleet mapping in
 
 ## Visual-form contract
 
-The shared `internalAnatomyVisuals.js` builder distinguishes bustle racks,
+The shared `internalAnatomyVisuals.ts` builder distinguishes bustle racks,
 individual canisters, hull bins, AZ/MZ carousels, bustle and fixed-gun loaders,
 dual weapon feeds, missile tubes, diesel/twin/gas-turbine powerpacks, and
 transmissions. Crew are articulated seated figures with head, helmet, torso,

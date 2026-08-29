@@ -141,6 +141,10 @@ The standalone `src/vehicles/france.ts` AMX-40 builder is also strict. Its
 builder port covers geometry buckets, running-gear layers, fitted equipment,
 decals, receipts, and nonuniform transforms while retaining one-vehicle demand
 loading.
+Shared killcam and Gallery internals now use the strict
+`src/vehicles/internalAnatomyVisuals.ts` owner. Its armor, volume, material,
+resource-lifetime, crew-seating, and drivetrain contracts replace the former
+Gallery double-assertion bridge.
 
 ## Consequences
 

@@ -1,6 +1,102 @@
 import * as THREE from 'three';
 import { isPostwarVehicleEra } from './taxonomy.ts';
 
+type Vec3Tuple = readonly [number, number, number];
+type MaterialPort = THREE.Material | THREE.Material[];
+
+export interface AnatomyResource {
+  dispose?: () => void;
+}
+
+export interface ArmorPlatePort {
+  name?: string;
+  kind?: string;
+  verts?: readonly Vec3Tuple[];
+}
+
+interface ArmorCollisionCellPort {
+  min: Vec3Tuple;
+}
+
+interface EllipsoidShape {
+  kind: 'ellipsoid';
+  center: Vec3Tuple;
+  radii: Vec3Tuple;
+}
+
+interface CapsuleShape {
+  kind: 'capsule';
+  a: Vec3Tuple;
+  b: Vec3Tuple;
+  radius: number;
+}
+
+interface EllipticCylinderShape {
+  kind: 'ellipticCylinder';
+  center: Vec3Tuple;
+  radii: readonly [number, number];
+  axis: 0 | 1 | 2;
+  halfLength: number;
+}
+
+type AnatomyShape = EllipsoidShape | CapsuleShape | EllipticCylinderShape;
+
+export interface AnatomyVolumePort {
+  min: Vec3Tuple;
+  max: Vec3Tuple;
+  module?: string;
+  crew?: string;
+  turretLocal?: boolean;
+  external?: boolean;
+  visualForm?: string;
+  station?: string;
+  layoutPlacement?: string;
+  layoutConfidence?: string;
+  layoutSources?: readonly string[];
+  shapes?: readonly AnatomyShape[];
+  parts?: readonly AnatomyVolumePort[];
+}
+
+export interface InternalModuleVolumePort extends AnatomyVolumePort {
+  module: string;
+}
+
+export interface InternalCrewVolumePort extends AnatomyVolumePort {
+  crew: string;
+  station?: string;
+}
+
+export interface InternalArmorModelPort {
+  hullPlates?: readonly ArmorPlatePort[];
+  turretPlates?: readonly ArmorPlatePort[];
+  collisionShells?: { hull?: readonly ArmorCollisionCellPort[] };
+  turretPivot?: readonly number[];
+  modules?: readonly InternalModuleVolumePort[];
+  crew?: readonly InternalCrewVolumePort[];
+}
+
+interface BoundsPort {
+  min: number[];
+  max: number[];
+}
+
+interface CrewSeatReceipt {
+  envelope: BoundsPort;
+  roofY: number;
+  floorY: number;
+  original: number[];
+  resolved: number[];
+  adjustment: number[];
+}
+
+interface RoundPlacement {
+  x: number;
+  y: number;
+  z: number;
+  rx?: number;
+  ry?: number;
+}
+
 export const CREW_STANDING_HEIGHT_M = 5 * 0.3048;
 export const CREW_ARMOR_CLEARANCE_M = 0.035;
 
@@ -33,10 +129,13 @@ const CANONICAL_CREW = Object.freeze({
  * fighting-compartment roof and make a seated figure appear through the
  * turret crown.
  */
-export function crewArmorEnvelope(armor, turretLocal) {
+export function crewArmorEnvelope(
+  armor: InternalArmorModelPort | null | undefined,
+  turretLocal: boolean,
+): BoundsPort | null {
   const plates = turretLocal ? armor?.turretPlates : armor?.hullPlates;
-  const min = [Infinity, Infinity, Infinity];
-  const max = [-Infinity, -Infinity, -Infinity];
+  const min: [number, number, number] = [Infinity, Infinity, Infinity];
+  const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
   for (const plate of plates || []) {
     if ((plate.kind || 'main') !== 'main'
         || /_(?:cupola|hatch)_/i.test(plate.name || '')) continue;
@@ -51,13 +150,22 @@ export function crewArmorEnvelope(armor, turretLocal) {
   return Number.isFinite(min[0]) ? { min, max } : null;
 }
 
-function structuralCrewPlates(armor, turretLocal) {
+function structuralCrewPlates(
+  armor: InternalArmorModelPort | null | undefined,
+  turretLocal: boolean,
+): readonly ArmorPlatePort[] {
   const plates = turretLocal ? armor?.turretPlates : armor?.hullPlates;
   return (plates || []).filter((plate) => (plate.kind || 'main') === 'main'
     && !/_(?:cupola|hatch)_/i.test(plate.name || ''));
 }
 
-function triangleHeightAtXZ(a, b, c, x, z) {
+function triangleHeightAtXZ(
+  a: Vec3Tuple,
+  b: Vec3Tuple,
+  c: Vec3Tuple,
+  x: number,
+  z: number,
+): number | null {
   const denominator = (b[2] - c[2]) * (a[0] - c[0])
     + (c[0] - b[0]) * (a[2] - c[2]);
   if (Math.abs(denominator) < 1e-9) return null;
@@ -70,7 +178,11 @@ function triangleHeightAtXZ(a, b, c, x, z) {
   return wa * a[1] + wb * b[1] + wc * c[1];
 }
 
-function armorRoofHeightAt(plates, x, z) {
+function armorRoofHeightAt(
+  plates: readonly ArmorPlatePort[],
+  x: number,
+  z: number,
+): number | null {
   let roof = -Infinity;
   for (const plate of plates) {
     const vertices = plate.verts || [];
@@ -82,7 +194,13 @@ function armorRoofHeightAt(plates, x, z) {
   return Number.isFinite(roof) ? roof : null;
 }
 
-function localCrewRoofY(armor, turretLocal, anchor, crownBounds, fallback) {
+function localCrewRoofY(
+  armor: InternalArmorModelPort | null | undefined,
+  turretLocal: boolean,
+  anchor: THREE.Vector3,
+  crownBounds: THREE.Box3,
+  fallback: number,
+): number {
   const plates = structuralCrewPlates(armor, turretLocal);
   const xs = [crownBounds.min.x, (crownBounds.min.x + crownBounds.max.x) / 2, crownBounds.max.x];
   const zs = [crownBounds.min.z, (crownBounds.min.z + crownBounds.max.z) / 2, crownBounds.max.z];
@@ -100,7 +218,10 @@ function localCrewRoofY(armor, turretLocal, anchor, crownBounds, fallback) {
 }
 
 /** Lowest exact hull-shell point, expressed in the requested owner frame. */
-export function internalTankFloorY(armor, turretLocal = false) {
+export function internalTankFloorY(
+  armor: InternalArmorModelPort | null | undefined,
+  turretLocal = false,
+): number {
   let floor = Infinity;
   for (const cell of armor?.collisionShells?.hull || []) {
     if (Array.isArray(cell?.min) && Number.isFinite(cell.min[1])) {
@@ -113,7 +234,13 @@ export function internalTankFloorY(armor, turretLocal = false) {
   return floor - (turretLocal ? Number(armor?.turretPivot?.[1] || 0) : 0);
 }
 
-function reseatCrewInsideArmor(group, poseBounds, crownBounds, armor, turretLocal) {
+function reseatCrewInsideArmor(
+  group: THREE.Group,
+  poseBounds: THREE.Box3,
+  crownBounds: THREE.Box3,
+  armor: InternalArmorModelPort | null | undefined,
+  turretLocal: boolean,
+): CrewSeatReceipt | null {
   const envelope = crewArmorEnvelope(armor, turretLocal);
   if (!envelope) return null;
   const original = group.position.clone();
@@ -159,7 +286,7 @@ function reseatCrewInsideArmor(group, poseBounds, crownBounds, armor, turretLoca
 }
 
 
-function shapeBounds(shape) {
+function shapeBounds(shape: AnatomyShape): BoundsPort | null {
   if (shape?.kind === 'ellipsoid') {
     return {
       min: shape.center.map((value, axis) => value - shape.radii[axis]),
@@ -188,12 +315,12 @@ function shapeBounds(shape) {
   return null;
 }
 
-function preciseModuleVisualVolume(volume) {
+function preciseModuleVisualVolume(volume: InternalModuleVolumePort): InternalModuleVolumePort {
   const internal = volume?.external !== true
     && !['trackL', 'trackR', 'gun', 'optics', 'turretRing', 'gunMount'].includes(volume?.module);
   if (!internal || !Array.isArray(volume?.shapes) || !volume.shapes.length) return volume;
-  const min = [Infinity, Infinity, Infinity];
-  const max = [-Infinity, -Infinity, -Infinity];
+  const min: [number, number, number] = [Infinity, Infinity, Infinity];
+  const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
   for (const shape of volume.shapes) {
     const bounds = shapeBounds(shape);
     if (!bounds) continue;
@@ -205,16 +332,18 @@ function preciseModuleVisualVolume(volume) {
   return Number.isFinite(min[0]) ? { ...volume, min, max } : volume;
 }
 
-function localGeometryBounds(group) {
+function localGeometryBounds(group: THREE.Object3D): THREE.Box3 {
   group.updateMatrixWorld(true);
   const inverse = group.matrixWorld.clone().invert();
   const relative = new THREE.Matrix4();
   const bounds = new THREE.Box3();
   group.traverse((object) => {
-    if (!object.isMesh || !object.geometry) return;
-    if (object.isInstancedMesh) object.computeBoundingBox();
+    if (!(object instanceof THREE.Mesh) || !object.geometry) return;
+    if (object instanceof THREE.InstancedMesh) object.computeBoundingBox();
     else object.geometry.computeBoundingBox();
-    const objectBounds = object.isInstancedMesh ? object.boundingBox : object.geometry.boundingBox;
+    const objectBounds = object instanceof THREE.InstancedMesh
+      ? object.boundingBox
+      : object.geometry.boundingBox;
     if (!objectBounds) return;
     relative.multiplyMatrices(inverse, object.matrixWorld);
     bounds.union(objectBounds.clone().applyMatrix4(relative));
@@ -223,7 +352,12 @@ function localGeometryBounds(group) {
 }
 
 /** Center an internal model on its canonical combat volume and owner rig. */
-function proxyGroup(volume, hullGroup, turretGroup, kind) {
+function proxyGroup(
+  volume: AnatomyVolumePort,
+  hullGroup: THREE.Object3D,
+  turretGroup: THREE.Object3D,
+  kind: string,
+): THREE.Group {
   const group = new THREE.Group();
   group.name = `internal_${kind}`;
   group.renderOrder = 12;
@@ -242,16 +376,16 @@ function proxyGroup(volume, hullGroup, turretGroup, kind) {
  * same ammo/fuel treatment in every presentation context.
  */
 export function addInternalModuleModel(
-  volume,
-  material,
-  hullGroup,
-  turretGroup,
-  disposables,
-  era,
-  caliberMm,
-  steelMaterial = material,
-  armor = null,
-) {
+  volume: InternalModuleVolumePort,
+  material: MaterialPort,
+  hullGroup: THREE.Object3D,
+  turretGroup: THREE.Object3D,
+  disposables: AnatomyResource[],
+  era: unknown,
+  caliberMm: number,
+  steelMaterial: MaterialPort = material,
+  armor: InternalArmorModelPort | null = null,
+): THREE.Group | null {
   const kind = volume.module;
   const form = volume.visualForm || '';
   if (kind === 'trackL' || kind === 'trackR') return null;
@@ -269,7 +403,16 @@ export function addInternalModuleModel(
     visualBounds: { min: [...volume.min], max: [...volume.max] },
   };
 
-  const put = (geometry, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, nextMaterial = material) => {
+  const put = (
+    geometry: THREE.BufferGeometry,
+    x = 0,
+    y = 0,
+    z = 0,
+    rx = 0,
+    ry = 0,
+    rz = 0,
+    nextMaterial: MaterialPort = material,
+  ): THREE.Mesh => {
     disposables.push(geometry);
     const mesh = new THREE.Mesh(geometry, nextMaterial);
     mesh.position.set(x, y, z);
@@ -278,7 +421,13 @@ export function addInternalModuleModel(
     return mesh;
   };
 
-  const rounds = (radius, caseHeight, tipHeight, placements, tilt = 0) => {
+  const rounds = (
+    radius: number,
+    caseHeight: number,
+    tipHeight: number,
+    placements: readonly RoundPlacement[],
+    tilt = 0,
+  ): void => {
     const caseGeometry = new THREE.CylinderGeometry(radius, radius, caseHeight, 8);
     const tipGeometry = new THREE.CylinderGeometry(radius * 0.18, radius * 0.94, tipHeight, 8);
     disposables.push(caseGeometry, tipGeometry);
@@ -584,13 +733,13 @@ export function addInternalModuleModel(
 
 /** Canonical seated human silhouette used by both kill cam and Gallery. */
 export function addInternalCrewModel(
-  volume,
-  material,
-  hullGroup,
-  turretGroup,
-  disposables,
-  armor = null,
-) {
+  volume: InternalCrewVolumePort,
+  material: MaterialPort,
+  hullGroup: THREE.Object3D,
+  turretGroup: THREE.Object3D,
+  disposables: AnatomyResource[],
+  armor: InternalArmorModelPort | null = null,
+): THREE.Group {
   const group = proxyGroup(volume, hullGroup, turretGroup, `crew_${volume.crew}`);
   group.userData.internalAnatomy = {
     type: 'crew',
@@ -642,7 +791,7 @@ export function addInternalCrewModel(
   upperBody.position.y = torsoRadius * 0.45;
   upperBody.rotation.x = volume.turretLocal ? 0 : -HULL_CREW_RECLINE_RAD;
   poseGroup.add(upperBody);
-  const upperBodyMesh = (mesh) => {
+  const upperBodyMesh = (mesh: THREE.Mesh): void => {
     mesh.position.y -= upperBody.position.y;
     upperBody.add(mesh);
   };
@@ -744,7 +893,12 @@ export function addInternalCrewModel(
 }
 
 /** Neutral drivetrain dressing shared with the kill-cam anatomy view. */
-export function addInternalDrivetrainModel(armor, hullGroup, disposables, material) {
+export function addInternalDrivetrainModel(
+  armor: InternalArmorModelPort,
+  hullGroup: THREE.Object3D,
+  disposables: AnatomyResource[],
+  material: MaterialPort,
+): THREE.Group | null {
   const modules = armor.modules || [];
   const engine = modules.find((entry) => entry.module === 'engine' && !entry.turretLocal);
   const track = modules.find((entry) => entry.module === 'trackL')
@@ -755,7 +909,15 @@ export function addInternalDrivetrainModel(armor, hullGroup, disposables, materi
   group.renderOrder = 12;
   group.userData.internalAnatomy = { type: 'drivetrain', key: 'drivetrain' };
   hullGroup.add(group);
-  const put = (geometry, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => {
+  const put = (
+    geometry: THREE.BufferGeometry,
+    x = 0,
+    y = 0,
+    z = 0,
+    rx = 0,
+    ry = 0,
+    rz = 0,
+  ): void => {
     disposables.push(geometry);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(x, y, z);

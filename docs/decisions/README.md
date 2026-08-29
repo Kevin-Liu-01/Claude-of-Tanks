@@ -257,3 +257,4 @@ runtime documents remain authoritative for behavior.
 - [0245 — Japanese profile geometry has a strict TypeScript owner](0245-type-japanese-profile-geometry.md)
 - [0246 — Swedish profile geometry has a strict TypeScript owner](0246-type-swedish-profile-geometry.md)
 - [0247 — AMX-40 geometry has a strict TypeScript owner](0247-type-amx40-geometry.md)
+- [0248 — Internal anatomy visuals have one strict TypeScript owner](0248-type-internal-anatomy-visuals.md)
