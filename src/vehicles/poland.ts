@@ -1,6 +1,6 @@
 // Polish armored-family gameplay/spec registration. The owner-supplied GLBs
 // remain external visual and metric oracles; all playable geometry is the
-// first-party procedural work in profiles/poland.js.
+// first-party procedural work in profiles/poland.ts.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import type { ArmorEnvelope, ShellSpec, Vec3Tuple } from './specHelpers.ts';

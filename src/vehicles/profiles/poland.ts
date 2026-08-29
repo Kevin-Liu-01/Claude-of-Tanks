@@ -14,18 +14,124 @@
 
 import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.js';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import type * as THREE from 'three';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import {
   loftHull, meshDomeCurved, ringSkin, tubeGun, ruBoot, ruSaddle, nsvt, mast,
   ruGlacisKit, ruDeck, ruSkirtBand, ruFlaps, rehookClone, domeBoxPlanSeat,
 } from './russia.js';
 import { buildT72B87Native, t72TrackFinishFor } from './t72.js';
 
+type Vec3Tuple = [number, number, number];
+type VehicleAssemblyOwner = 'hull' | 'turret';
+type PolishWhip = [number, number, number, number, number];
+type StripRow = number[];
+
+interface DomeSurfaceSeat {
+  readonly x: number;
+  readonly z: number;
+  readonly nx: number;
+  readonly nz: number;
+  readonly surfaceGapM: number;
+}
+
+interface DisposableResource {
+  dispose(): void;
+}
+
+interface PolishBuilderMaterials extends Record<string, THREE.MeshStandardMaterial> {
+  canvasCloth: THREE.MeshStandardMaterial;
+  wood: THREE.MeshStandardMaterial;
+}
+
+interface PolishBuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly mats: PolishBuilderMaterials;
+  readonly disposables: DisposableResource[];
+  readonly spec: {
+    readonly id: string;
+    readonly armor: { readonly gunPivot: Vec3Tuple };
+    readonly visual: { readonly number?: string };
+  };
+  topY?: number;
+  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addCupola(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addEquipment(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    label: string,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): unknown;
+  visualEraCluster(
+    key: string,
+    owner: VehicleAssemblyOwner,
+    build: () => void,
+  ): unknown;
+}
+
+interface EraCourseOptions {
+  readonly bucket?: string;
+  readonly dark?: string;
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly right: Vec3Tuple;
+  readonly up: Vec3Tuple;
+  readonly out: Vec3Tuple;
+  readonly cols: number;
+  readonly rows: number;
+  readonly pitchU: number;
+  readonly pitchV: number;
+  readonly tileW: number;
+  readonly tileH: number;
+  readonly tileD: number;
+  readonly rx?: number;
+  readonly ry?: number;
+  readonly rz?: number;
+  readonly seams?: boolean;
+  readonly skip?: (row: number, column: number) => boolean;
+  readonly planSeat?: (position: {
+    readonly x: number;
+    readonly y: number;
+    readonly z: number;
+    readonly row: number;
+    readonly col: number;
+  }) => Pick<DomeSurfaceSeat, 'x' | 'z'>;
+}
+
+interface PolishCupolaOptions {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly r: number;
+  readonly ringH?: number;
+  readonly lidTop?: number;
+  readonly periscopes?: number;
+  readonly arc0: number;
+  readonly arc1: number;
+}
+
 // ---------------------------------------------------------------------------
 // Shared Polish fittings (fresh authorship — the old clone-package helpers
 // are retired with the clones)
 // ---------------------------------------------------------------------------
 
-function mount(P, owner, fitting, x, y, z, rotation = null) {
+function mount(
+  P: PolishBuilderPort,
+  owner: VehicleAssemblyOwner,
+  fitting: THREE.Object3D,
+  x: number,
+  y: number,
+  z: number,
+  rotation: Vec3Tuple | null = null,
+): void {
   fitting.position.set(x, y, z);
   if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
   (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
@@ -34,7 +140,7 @@ function mount(P, owner, fitting, x, y, z, rotation = null) {
 // ERAWA cassette course — the Polish ERA grammar (square shallow cassettes
 // with visible rim + bolt, on a real carrier plate; never floating bricks).
 // Face-proud <=55 mm; rows follow the carrier plane's own rake.
-function erawaCourse(P, o) {
+function erawaCourse(P: PolishBuilderPort, o: EraCourseOptions): void {
   const { box } = KIT;
   const bucket = o.bucket ?? 'hull';
   const owner = bucket.startsWith('hull') ? 'hull' : 'turret';
@@ -72,7 +178,14 @@ function erawaCourse(P, o) {
 // Edge-on prism law (GEOMETRY-GATE station-slice visibility): long slab
 // strips are subdivided so every ~0.52 m station slab contains real
 // cross-section faces. lerp the two profile rows and emit <=maxLen pieces.
-function segmentedStrip(P, bucket, row0, row1, emit, maxLen = 0.38) {
+function segmentedStrip(
+  P: PolishBuilderPort,
+  bucket: string,
+  row0: StripRow,
+  row1: StripRow,
+  emit: (row0: StripRow, row1: StripRow) => void,
+  maxLen = 0.38,
+): void {
   const [z0] = row0, [z1] = row1;
   const n = Math.max(1, Math.ceil(Math.abs(z1 - z0) / maxLen));
   for (let k = 0; k < n; k++) {
@@ -86,7 +199,7 @@ function segmentedStrip(P, bucket, row0, row1, emit, maxLen = 0.38) {
 // ring, domed lid with hinge lug + grab rail, and a RADIAL periscope
 // wreath around the ring wall (lateral pokes, not crown spikes — the
 // heightM p95 budget stays untouched). lidTop caps the crown absolutely.
-function polishCupola(P, o) {
+function polishCupola(P: PolishBuilderPort, o: PolishCupolaOptions): void {
   const { box, cylY, torus } = KIT;
   const r = o.r;
   P.add('turret', cylY(r, r + 0.02, o.ringH ?? 0.05, 16), o.x, o.y, o.z);
@@ -110,7 +223,7 @@ function polishCupola(P, o) {
   }
 }
 
-function polishWhips(P, list, seedBase) {
+function polishWhips(P: PolishBuilderPort, list: PolishWhip[], seedBase: number): void {
   list.forEach(([x, y, z, h, rake], i) => {
     P.add('turretDetail', KIT.cylY(0.030, 0.040, 0.055, 10), x, y, z);
     mount(P, 'turret', FITTINGS.antennaWhip({
@@ -137,7 +250,7 @@ function polishWhips(P, list, seedBase) {
 // 2.25 + <=4 spike columns).
 // ===========================================================================
 
-function buildT72M1JaguarLegacy(P) {
+function buildT72M1JaguarLegacy(P: PolishBuilderPort): void {
   const { box, cylY, cylZ, torus, buildRunningGear } = KIT;
 
   // ---- hull loft to the measured whole-silhouette lines -------------------
@@ -203,7 +316,7 @@ function buildT72M1JaguarLegacy(P) {
     frontIdlerZ: frontIdler.z,
     frontContactZ,
     lastRoadWheelZ: wheelZs.at(-1),
-    idlerRoadWheelCenterGapM: frontIdler.z - wheelZs.at(-1),
+    idlerRoadWheelCenterGapM: frontIdler.z - wheelZs[5],
     bowSlotClearedForWrap: true,
   });
   // The smart running-gear builder above owns the complete dished wheel
@@ -302,9 +415,19 @@ function buildT72M1JaguarLegacy(P) {
   // device — silhouette bytes identical) so the dome stops reading as an
   // oversized smooth ball
   meshDomeCurved(P, rings, 0.96, 0, -0.06, { capR: 1.9, roofTiltScale: 0.55 });
-  const eraSurfaceSeats = [];
-  const seatEra = (x, y, z, w, h, d, rx, ry, overlap = 0.01) => {
-    const seat = domeBoxPlanSeat(rings, 0.96, {
+  const eraSurfaceSeats: DomeSurfaceSeat[] = [];
+  const seatEra = (
+    x: number,
+    y: number,
+    z: number,
+    w: number,
+    h: number,
+    d: number,
+    rx: number,
+    ry: number,
+    overlap = 0.01,
+  ): DomeSurfaceSeat => {
+    const seat: DomeSurfaceSeat = domeBoxPlanSeat(rings, 0.96, {
       x, y, z, w, h, d, rx, ry, overlap, cz: -0.06,
     });
     eraSurfaceSeats.push(seat);
@@ -492,7 +615,7 @@ function buildT72M1JaguarLegacy(P) {
 // smoke banks, WKM-B, bustle services and external stowage.  The legacy
 // measured build above remains only as an authoring receipt while the fleet
 // migrates; it is deliberately not registered as playable geometry.
-function buildT72M1JaguarCurrentPrototype(P) {
+function buildT72M1JaguarCurrentPrototype(P: PolishBuilderPort): void {
   const { box, cylY, cylZ, torus } = KIT;
   buildT72B87Native(P, 'jaguar');
 
@@ -628,12 +751,22 @@ function buildT72M1JaguarCurrentPrototype(P) {
 // seated ERAWA returns, backed fender armor and a connected service field.
 // This avoids the short-chassis regression of the donor prototype while still
 // making the playable Jaguar visibly part of the live T-72 family.
-function buildT72M1Jaguar(P) {
+function buildT72M1Jaguar(P: PolishBuilderPort): void {
   const { box, cylY, cylZ, torus } = KIT;
   buildT72M1JaguarLegacy(P);
-  const eraSurfaceSeats = [];
-  const seatEra = (x, y, z, w, h, d, rx, ry, overlap = 0.01) => {
-    const seat = domeBoxPlanSeat([
+  const eraSurfaceSeats: DomeSurfaceSeat[] = [];
+  const seatEra = (
+    x: number,
+    y: number,
+    z: number,
+    w: number,
+    h: number,
+    d: number,
+    rx: number,
+    ry: number,
+    overlap = 0.01,
+  ): DomeSurfaceSeat => {
+    const seat: DomeSurfaceSeat = domeBoxPlanSeat([
       [1.24, 0.045], [1.28, 0.16], [1.22, 0.42], [1.06, 0.60],
       [0.80, 0.74], [0.44, 0.83], [0.03, 0.85],
     ], 0.96, { x, y, z, w, h, d, rx, ry, overlap, cz: -0.06 });
@@ -855,7 +988,7 @@ function buildT72M1Jaguar(P) {
 // crown 2.19; mast+cupola spikes <=4 columns at the ref's own zones).
 // ===========================================================================
 
-function buildPT91Twardy(P) {
+function buildPT91Twardy(P: PolishBuilderPort): void {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
 
   // ---- hull loft (published envelope, ref engine-stack cadence) ----------
@@ -1166,7 +1299,7 @@ function buildPT91Twardy(P) {
 // sprocket (-2.80, 0.732); track band x 1.00..1.56, top 1.286).
 // ===========================================================================
 
-function buildPL01(P) {
+function buildPL01(P: PolishBuilderPort): void {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
   const slab = orientedSlab;
   const is105 = P.spec.id === 'pl01_105';
@@ -1178,16 +1311,16 @@ function buildPL01(P) {
   const turretRoofLocalY = originalRoofLocalY * turretHeightScale;
   const roofLiftLocalY = originalRoofLocalY
     * (turretHeightScale - equipmentHeightScale);
-  const shellY = (y) => y * turretHeightScale;
+  const shellY = (y: number): number => y * turretHeightScale;
   // Turret fittings keep their approved physical proportions and translate
   // upward with the new roof instead of stretching with the armor shell.
-  const roofEquipmentY = (y) => y * equipmentHeightScale + roofLiftLocalY;
+  const roofEquipmentY = (y: number): number => y * equipmentHeightScale + roofLiftLocalY;
   // The complete gun plant is reseated by its rig pivot. Its local sleeve,
   // coax, and thermal-cover offsets remain unchanged so the weapon itself is
   // not distorted by the structural height increase.
-  const gunAssemblyY = (y) => y * equipmentHeightScale;
-  const upperGlacisY = (z) => 1.975 + (z - 1.30) * ((1.46 - 1.975) / (3.425 - 1.30));
-  const driverDeckY = (z) => z <= 1.30
+  const gunAssemblyY = (y: number): number => y * equipmentHeightScale;
+  const upperGlacisY = (z: number): number => 1.975 + (z - 1.30) * ((1.46 - 1.975) / (3.425 - 1.30));
+  const driverDeckY = (z: number): number => z <= 1.30
     ? 2.02 + (z - 0.50) * ((1.975 - 2.02) / (1.30 - 0.50))
     : upperGlacisY(z);
   const glacisPitch = Math.atan((1.975 - 1.46) / (3.425 - 1.30));
@@ -1778,4 +1911,4 @@ export const POLAND_PROFILES = {
   pt91_twardy: { build: buildPT91Twardy },
   pl01: { build: buildPL01 },
   pl01_105: { build: buildPL01 },
-};
+} satisfies VehicleProfileRecord;

@@ -23,11 +23,12 @@ fleet release gate.
 killcam module, crew, and drivetrain presentation; keep both consumers on its
 volume and resource-lifetime contracts.
 The Japanese, Swedish, Italian, Chinese, T-80-family, Sheridan, Soviet
-heavy-family, and shared AFV visual deltas live in strict
+heavy-family, shared AFV, and Polish visual deltas live in strict
 `profiles/japan.ts`, `profiles/sweden.ts`, `profiles/italy.ts`, and
 `profiles/china.ts` packs plus `profiles/t80.ts` and `profiles/sheridan.ts`,
-plus `profiles/soviet-heavy.ts` and `profiles/afvFamily.ts`, while the AMX-40
-visual build lives in strict `france.ts`; all nine use narrow
+plus `profiles/soviet-heavy.ts`, `profiles/afvFamily.ts`, and
+`profiles/poland.ts`, while the AMX-40 visual build lives in strict
+`france.ts`; all ten use narrow
 procedural-builder ports. Preserve their
 demand-loaded family boundaries and complete donor geometry.
 

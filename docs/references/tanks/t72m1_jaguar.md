@@ -59,7 +59,7 @@ it hides /shadow/ meshes — per-harness law receipt; both plates cleared by
 the strict sweep), census mg1+6d.
 
 ## Build notes (ground-up §5.248 rebuild)
-buildT72M1Jaguar in src/vehicles/profiles/poland.js — fresh loftHull to
+buildT72M1Jaguar in src/vehicles/profiles/poland.ts — fresh loftHull to
 the measured whole lines (NOT buildT72B87Native; russia-lane grammar
 reused: loftHull/ruSkirtBand/ruGlacisKit/ruDeck/ruBoot/tubeGun/
 meshDomeCurved), T-72 six-pair running gear with dished faces

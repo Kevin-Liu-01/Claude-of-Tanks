@@ -74,7 +74,7 @@ bake cannot touch — dims and floaters — are both 100. Audits: track-clip
 holes (fender-slot floor plates, strict-sweep-proven), census mg1+6d.
 
 ## Build notes (ground-up §5.248 rebuild)
-buildPT91Twardy in src/vehicles/profiles/poland.js — fresh loftHull to
+buildPT91Twardy in src/vehicles/profiles/poland.ts — fresh loftHull to
 the published envelope with the print's engine-stack cadence (NOT
 buildPT91M; russia grammar reused), ERAWA-1 glacis field + armored
 forward skirt third + ERAWA-2 turret cheek wedges at the measured 1.72

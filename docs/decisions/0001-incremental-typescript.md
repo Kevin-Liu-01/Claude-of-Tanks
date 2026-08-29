@@ -217,6 +217,10 @@ The shared AFV family pack now uses strict
 equipment, ERA courses, nonuniform geometry transforms, material retuning,
 and every BMP, Bradley, Marder, Puma, Upior, and Terminator recipe behind the
 same exact-family demand boundary.
+The Polish vehicle pack now uses strict `src/vehicles/profiles/poland.ts`
+contracts for its connected hull and turret groups, ERAWA courses, measured
+dome seats, running gear, gun followers, ghillie resources, and PL-01,
+Jaguar, and Twardy recipes behind the existing Poland demand boundary.
 
 ## Consequences
 

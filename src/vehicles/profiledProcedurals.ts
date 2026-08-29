@@ -19,7 +19,7 @@ import { ITALY_PROFILES } from './profiles/italy.ts';
 import { UKRAINE_PROFILES } from './profiles/ukraine.js';
 import { CHINA_PROFILES } from './profiles/china.ts';
 import { SWEDEN_PROFILES } from './profiles/sweden.ts';
-import { POLAND_PROFILES } from './profiles/poland.js';
+import { POLAND_PROFILES } from './profiles/poland.ts';
 import { KOREA_PROFILES } from './profiles/korea.ts';
 import { JAPAN_PROFILES } from './profiles/japan.ts';
 import { GERMANY_PROFILES } from './profiles/germany.ts';
