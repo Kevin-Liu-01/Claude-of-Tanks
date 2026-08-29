@@ -7,6 +7,7 @@ const modernProfiles = new Map([
   ['leo2a6m', 'leopard-2a6m'],
   ['leo2a6_ua', 'leopard-2a6m'],
   ['leo2a7v', 'leopard-2a7v'],
+  ['strv122', 'leopard-2a5'],
 ]);
 
 const findMergedMesh = (root, name) => {
@@ -27,6 +28,16 @@ const hasVertex = (position, expected, epsilon = 1e-6) => {
   return false;
 };
 
+const vertexOccurrences = (position, expected, epsilon = 1e-5) => {
+  let count = 0;
+  for (let index = 0; index < position.count; index++) {
+    if (Math.abs(position.getX(index) - expected[0]) <= epsilon
+        && Math.abs(position.getY(index) - expected[1]) <= epsilon
+        && Math.abs(position.getZ(index) - expected[2]) <= epsilon) count++;
+  }
+  return count;
+};
+
 for (const [id, expectedProfile] of modernProfiles) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
@@ -40,31 +51,113 @@ for (const [id, expectedProfile] of modernProfiles) {
   const receipt = turretRig.userData.leopardChevronFrontReceipt;
   assert.ok(receipt, `${id} publishes a turret-front geometry receipt`);
   assert.equal(receipt.profile, expectedProfile, `${id} uses its measured family profile`);
-  assert.equal(receipt.architecture, 'closed-upper-and-lower-arrowhead',
-    `${id} is a closed vertical and plan-view chevron`);
+  assert.equal(receipt.architecture, 'single-watertight-upper-and-lower-arrowhead',
+    `${id} uses one closed volume for both faces of each chevron course`);
   assert.equal(receipt.runtimeGeometry, 'first-party-procedural',
     `${id} does not load the comparison model at runtime`);
   assert.equal(receipt.sourceComparisonOnly, true,
     `${id} records the owner model as measurement input only`);
-  assert.equal(receipt.lowerReturnSolids, (receipt.planStationCount - 1) * 2,
-    `${id} has one lower-return solid per cheek contour segment`);
-  assert.equal(receipt.stations.length, receipt.planStationCount,
-    `${id} publishes every plan station used by the physical lower face`);
+  assert.equal(receipt.sharedRidge, true, `${id} declares one physical ridge for both armor faces`);
+  assert.equal(receipt.closedCheekVolumes, true, `${id} closes each complete cheek at both ends and the rear`);
+  assert.equal(receipt.cheekVolumes, 2, `${id} uses exactly one continuous armor volume per cheek`);
+  assert.equal(receipt.internalCourseCaps, false,
+    `${id} has no coincident internal caps that can render as stacked layers`);
+  assert.equal(receipt.faceLayersPerSide, 1, `${id} exposes one upper/lower assembly per side`);
+  assert.equal(receipt.surfacePanelLayerCount, 1,
+    `${id} uses one shallow cassette layer instead of stacked cheek courses`);
+  assert.equal(receipt.surfacePanelCount, 8, `${id} carries four broad surface panels on each cheek`);
+  assert.equal(receipt.surfacePanelsStructuralReplacement, false,
+    `${id} keeps its continuous armor cheek underneath the surface cassettes`);
+  assert.equal(receipt.exposedPanelSeams, true, `${id} leaves intentional seams between cheek panels`);
+  assert.equal(receipt.roofSightlineClosed, true,
+    `${id} closes the daylight channel between the cheek roots and core turret roof`);
+  assert.equal(receipt.roofBridgeVolumes, 2, `${id} uses one continuous roof bridge per cheek`);
+  assert.equal(receipt.roofBridgeStructural, true,
+    `${id} owns its roof closures in the rotating armor bucket`);
+  assert.equal(receipt.upperFaceSolids, receipt.cheekCourseCount,
+    `${id} spans every plan course with its continuous upper face`);
+  assert.equal(receipt.lowerReturnSolids, receipt.cheekCourseCount,
+    `${id} spans every plan course with its continuous lower return`);
+  assert.equal(receipt.sides.length, 2, `${id} publishes both cheek sides`);
+  if (id === 'leo2a7v') {
+    assert.ok(receipt.ridgeControlLine.length >= 6,
+      'leo2a7v distributes its arrowhead sweep across the complete turret front');
+    for (let index = 1; index < receipt.ridgeControlLine.length; index++) {
+      const previous = receipt.ridgeControlLine[index - 1];
+      const current = receipt.ridgeControlLine[index];
+      assert.ok(current[0] > previous[0], `leo2a7v ridge station ${index} advances outboard`);
+      assert.ok(current[1] < previous[1] - 0.075,
+        `leo2a7v ridge station ${index} sweeps rearward instead of forming a square brow`);
+    }
+    assert.ok(receipt.ridgeControlLine[0][1] - receipt.ridgeControlLine.at(-1)[1] >= 0.95,
+      'leo2a7v carries a deep gun-root-to-outboard plan chevron');
+    assert.equal(receipt.lowerArmorPanArchitecture, 'arrowhead-plan-loft',
+      'leo2a7v replaces the full-width rectangular underride with a pointed armor pan');
+  }
 
   const turret = findMergedMesh(turretRig, 'turret');
   const position = turret.geometry.getAttribute('position');
-  for (const [index, station] of receipt.stations.entries()) {
-    assert.ok(station.ridgeZ > station.rootZ,
-      `${id} station ${index} returns behind the forward ridge`);
-    assert.ok(station.ridgeY > station.rootY,
-      `${id} station ${index} returns downward from the forward ridge`);
-    assert.ok(station.lowerSweepDeg >= 18 && station.lowerSweepDeg <= 28,
-      `${id} station ${index} lower face has a reference-plausible chevron angle (${station.lowerSweepDeg} deg)`);
-    for (const side of [-1, 1]) {
-      assert.ok(hasVertex(position, [side * station.x, station.ridgeY, station.ridgeZ]),
-        `${id} station ${index} ${side < 0 ? 'left' : 'right'} ridge is authored in the merged armor`);
-      assert.ok(hasVertex(position, [side * station.x, station.rootY, station.rootZ]),
-        `${id} station ${index} ${side < 0 ? 'left' : 'right'} lower root is authored in the merged armor`);
+  for (const sideReceipt of receipt.sides) {
+    const side = sideReceipt.side === 'left' ? -1 : 1;
+    assert.equal(sideReceipt.courseCount, sideReceipt.stations.length - 1,
+      `${id} ${sideReceipt.side} spans every adjacent plan station`);
+    assert.equal(sideReceipt.triangleCount, sideReceipt.courseCount * 6 + 2,
+      `${id} ${sideReceipt.side} has only two end caps around one continuous cheek volume`);
+    assert.equal(sideReceipt.roofBridge.triangleCount, sideReceipt.courseCount * 8 + 4,
+      `${id} ${sideReceipt.side} roof bridge has only two end caps around one continuous volume`);
+    assert.equal(sideReceipt.roofBridge.stations.length, sideReceipt.stations.length,
+      `${id} ${sideReceipt.side} roof bridge follows every cheek plan station`);
+    assert.ok(sideReceipt.roofBridge.thicknessM >= 0.08,
+      `${id} ${sideReceipt.side} roof bridge is structural rather than a zero-thickness cover`);
+    assert.equal(sideReceipt.surfacePanels.length, 4,
+      `${id} ${sideReceipt.side} divides the broad cheek into four readable cassettes`);
+    let previousPanelEnd = 0;
+    for (const [panelIndex, panel] of sideReceipt.surfacePanels.entries()) {
+      assert.ok(panel.from > previousPanelEnd,
+        `${id} ${sideReceipt.side} panel ${panelIndex} leaves a real exposed seam`);
+      assert.ok(panel.to > panel.from && panel.to < 1,
+        `${id} ${sideReceipt.side} panel ${panelIndex} stays within the parent cheek`);
+      assert.ok(panel.thicknessM >= 0.015 && panel.thicknessM <= 0.03,
+        `${id} ${sideReceipt.side} panel ${panelIndex} remains a shallow armor cassette`);
+      assert.equal(panel.triangleCount, 12,
+        `${id} ${sideReceipt.side} panel ${panelIndex} is a closed shallow solid`);
+      assert.ok(panel.normal[1] > 0.65 && panel.normal[2] > 0,
+        `${id} ${sideReceipt.side} panel ${panelIndex} follows the upper forward slope`);
+      previousPanelEnd = panel.to;
+    }
+    for (const [index, station] of sideReceipt.stations.entries()) {
+      const bridgeStation = sideReceipt.roofBridge.stations[index];
+      assert.deepEqual(bridgeStation.frontTop,
+        [side * station.x, station.upperY, station.upperZ],
+        `${id} ${sideReceipt.side} bridge station ${index} shares the exact visible cheek-root edge`);
+      assert.ok(bridgeStation.rearTop[2] <= sideReceipt.roofBridge.bodyFrontZ
+          - sideReceipt.roofBridge.rearOverlapM + 1e-9,
+      `${id} ${sideReceipt.side} bridge station ${index} is buried into the core roof`);
+      assert.ok(hasVertex(position, bridgeStation.rearTop),
+        `${id} ${sideReceipt.side} bridge station ${index} is authored in the merged armor`);
+      assert.ok(station.ridgeZ > station.upperZ,
+        `${id} ${sideReceipt.side} station ${index} upper face returns behind the ridge`);
+      assert.ok(station.ridgeZ > station.lowerZ,
+        `${id} ${sideReceipt.side} station ${index} lower face returns behind the ridge`);
+      assert.ok(station.upperY > station.ridgeY,
+        `${id} ${sideReceipt.side} station ${index} keeps the upper armor above the ridge`);
+      assert.ok(station.ridgeY > station.lowerY,
+        `${id} ${sideReceipt.side} station ${index} lower root drops from the ridge`);
+      assert.ok(Math.abs(station.upperSweepDeg - receipt.upperSlopeDeg) <= 1e-6,
+        `${id} ${sideReceipt.side} station ${index} stays on the one continuous upper slope`);
+      assert.ok(station.lowerSweepDeg >= 15 && station.lowerSweepDeg <= 30,
+        `${id} ${sideReceipt.side} station ${index} lower return has a plausible arrowhead angle (${station.lowerSweepDeg} deg)`);
+      assert.ok(station.upperDominanceRatio >= 2,
+        `${id} ${sideReceipt.side} station ${index} keeps the upper armor at least twice the lower return (${station.upperDominanceRatio})`);
+      const ridge = [side * station.x, station.ridgeY, station.ridgeZ];
+      assert.ok(hasVertex(position, ridge),
+        `${id} ${sideReceipt.side} station ${index} ridge is authored in the merged armor`);
+      assert.ok(vertexOccurrences(position, ridge) >= 4,
+        `${id} ${sideReceipt.side} station ${index} ridge is shared by upper, lower and closure triangles`);
+      assert.ok(hasVertex(position, [side * station.x, station.upperY, station.upperZ]),
+        `${id} ${sideReceipt.side} station ${index} upper root is authored in the merged armor`);
+      assert.ok(hasVertex(position, [side * station.x, station.lowerY, station.lowerZ]),
+        `${id} ${sideReceipt.side} station ${index} lower root is authored in the merged armor`);
     }
   }
 
