@@ -5,7 +5,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 await import('../src/vehicles/modern1.ts');
-await import('../src/vehicles/modern2.js');
+await import('../src/vehicles/modern2.ts');
 const { TANK_SPECS } = await import('../src/vehicles/specs.ts');
 
 const check = process.argv.includes('--check');

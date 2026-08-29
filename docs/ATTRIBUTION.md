@@ -569,7 +569,7 @@ new quarantine entries.
 
 | Vehicle (spec id) | Author | Source | License | Shipped file | Role |
 |---|---|---|---|---|---|
-| Tank T-80U (`t80u`) | javanilga | https://sketchfab.com/3d-models/tank-t-80u-ebf4b55eeabb421cbf2758a2ec948439 (user-supplied download) | CC-BY 4.0 (also stamped in the GLB's asset.extras) | `public/models/tanks/t80u_javanilga.glb` | REPLACES the procedural T-80U model (modern2.js gameplay stats unchanged). Authored turret + gun nodes; 10 roof-accessory root siblings reparented into the turret offline, whip antenna removed (height-clamp rule). 28,141 tris, 1024/512 PNG textures. |
+| Tank T-80U (`t80u`) | javanilga | https://sketchfab.com/3d-models/tank-t-80u-ebf4b55eeabb421cbf2758a2ec948439 (user-supplied download) | CC-BY 4.0 (also stamped in the GLB's asset.extras) | `public/models/tanks/t80u_javanilga.glb` | REPLACES the procedural T-80U model (modern2.ts gameplay stats unchanged). Authored turret + gun nodes; 10 roof-accessory root siblings reparented into the turret offline, whip antenna removed (height-clamp rule). 28,141 tris, 1024/512 PNG textures. |
 | KF51 Panther - Woodland (`kf51`) | GRIP420 (model + textures by David Falke) | https://sketchfab.com/3d-models/kf51-panther-woodland-4764a740867c4ea697df8011e7d5bf63 (user-supplied download) | CC-BY 4.0 | `public/models/tanks/kf51_grip420.glb` | Local comparison oracle for the native KF51 family registered by `kf51Specs.ts`; never loaded as playable geometry. Fully articulated authored turret > gun > MG chain, 63,016 tris. |
 
 The remaining batch contents (t-90m / char-leclerc / bergman-p1 shipped-source

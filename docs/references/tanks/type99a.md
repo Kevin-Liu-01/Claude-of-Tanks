@@ -23,8 +23,8 @@ woodland digital splinter, '215' side numbers.
 absorbed by the AFV/modern3 lane. This packet is the **build-ready
 design spec** — every station below was computed against the current
 spec/pivots this round; the ancient builder still stands at
-`src/vehicles/modern2.js buildType99A` (:898, its roster profile home —
-lane resolution between modern2.js ownership and the absorbing agent is
+`src/vehicles/modern2.ts buildType99A` (:898, its roster profile home —
+lane resolution between modern2.ts ownership and the absorbing agent is
 the orchestrator's call). Baseline battery for the ancient build was
 measured this round (see §Battery).
 
@@ -46,7 +46,7 @@ round: before-shots at shots/base21-modern-s3/type99a-before).
 | Gun | 125 mm ZPT-98, thermal sleeve, mid-tube evacuator, boot at root | Wikipedia, NORINCO materials |
 | Running gear | 6 large dished wheels, rear drive, front idler | photos, Wikipedia |
 
-Spec dims (modern2.js) 7.6 / 11.0 / 3.5 / 2.35 — **dims sovereign; build
+Spec dims (modern2.ts) 7.6 / 11.0 / 3.5 / 2.35 — **dims sovereign; build
 to the spec** (t14 width-note precedent: flag the 3.5-vs-3.7 divergence
 for an owner ruling, never true the spec unilaterally). Spec
 `turretPivot [0,1.42,0.1]` / `gunPivot [0,0.34,0.55]` RETAINED —
@@ -237,7 +237,7 @@ arms true (visible below skirts), paintedEnds true, coveredTop true.
   round section = the §F.3 round close.
 - Shots: shots/base21-modern-s3/type99a-before (ancient build, 14
   views) for the before/after strip.
-- Resident invariance: modern2.js residents t14 + leo1a5 hashed this
+- Resident invariance: modern2.ts residents t14 + leo1a5 hashed this
   round (fd8126f4 / 3adc2bdc at MY tree — live-tree drift applies;
   re-pair at the builder's tree).
 
@@ -354,7 +354,7 @@ continuity and no front-corner sky pocket. **KEEP `cf97a01b`; the §5.52
 
 ## r1 BUILD EXECUTED (2026-08-06, AFV/modern2 owner — authored from the
 ## §r1 DESIGN SPEC above; deviations + battery below)
-Builder REPLACED at src/vehicles/modern2.js buildType99A (the ancient
+Builder REPLACED at src/vehicles/modern2.ts buildType99A (the ancient
 builder retired); orientedSlab99 §C winding guard + muzzleBore99 §B3.1
 device added module-level. ERA-DEF/GEOMETRY COUPLING executed in the
 same edit: spec hullEra true-ups landed (glacis_era fr → 0.8, 0.95,

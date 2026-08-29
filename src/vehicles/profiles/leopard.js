@@ -5172,7 +5172,7 @@ function leo2A4FullGhillie(P) {
 // over the heavy front skirt blocks (±1.85 EXACT — the §D width guard),
 // turret roof 2.48, PERI 2.79 as the spike budget. Real overall length
 // (gun forward) is 9.67 m -> L/44 muzzle +5.82 over the -3.86 tail; the
-// spec's overallLengthM 9.97 is an L/55-class carry-over (modern2.js is
+// spec's overallLengthM 9.97 is an L/55-class carry-over (modern2.ts is
 // outside this file's ownership) — flagged in the packet for a spec
 // true-up, the BUILD carries the real 9.67 configuration.
 // Identity vs the wedge sisters (§H.4): pre-wedge BOXY WELDED turret with
@@ -13434,7 +13434,7 @@ function mountFit(P, fitting, x, y, z) {
 
 export const LEOPARD_PROFILES = {
   // Restore the detailed first-party 2A4 profile.  Leaving this id out of the
-  // family map silently selected modern2.js's early box prototype after the
+  // family map silently selected modern2.ts's early box prototype after the
   // source-backed wrapper was retired, erasing the authored hull, seven-wheel
   // course, pre-wedge turret and service geometry preserved above.
   leo2a4: { build: buildLeo2A4 },

@@ -25,7 +25,7 @@ silhouette and station comparison while preserving authored geometry.
 | Gun | 120 mm Rh L/44, tube 5.28 m | Rheinmetall L/44 data, Wikipedia |
 | Running gear | 7 dual road wheels, rear sprocket, raised idler+sprocket | photos, Wikipedia |
 
-SPEC NOTE (residual, needs a modern2.js true-up — outside this file's
+SPEC NOTE (residual, needs a modern2.ts true-up — outside this file's
 ownership): TANK_SPECS.leo2a4.dims.overallLengthM is 9.97 (an L/55-class
 carry-over). The real 2A4 with L/44 is 9.67; the BUILD carries the real
 configuration (muzzle +5.82 over the −3.86 tail = 9.68).
@@ -33,7 +33,7 @@ configuration (muzzle +5.82 over the −3.86 tail = 9.68).
 ## r1 REBUILD (2026-08-06) — owner directive: base-game customs are
 ## "wholly ancient"; leopard-lane starter round
 
-Old build (modern2.js buildLeo2A4): slab-pile hull, parallelogram track
+Old build (modern2.ts buildLeo2A4): slab-pile hull, parallelogram track
 run (§B6 fail), to-the-ground skirt curtain, hand-rolled pintle (census
 0), clip 83/436 + shoe 51/14. The new build lives in
 src/vehicles/profiles/leopard.js (LEOPARD_PROFILES.leo2a4 — the profile
@@ -113,7 +113,7 @@ kf51 = Panther hull/turret + big RWS + coil dressing. Any pair
 separable at a glance.
 
 ### Residuals / next-round candidates
-- Spec overallLengthM 9.97 -> 9.67 true-up (modern2.js, orchestrator
+- Spec overallLengthM 9.97 -> 9.67 true-up (modern2.ts, orchestrator
   lane; icons/garage cards read spec dims).
 - close-front mantlet-zone dressing (coax collar tell, lug pair).
 - p95 spike census: PERI 2.79 + MG cap ~2.70 + mast 2.74 + whips ~2.76
@@ -362,7 +362,7 @@ REMOVED verdict is superseded by the newer order).
   arcs countable, slatted bustle rack, Wegmann banks.
 
 ### §5.73-1 P95-ENVELOPE heightM DATUM NOTE (for the landing)
-The RCWS is MANDATORY roof kit now; spec heightM 2.48 (modern2.js —
+The RCWS is MANDATORY roof kit now; spec heightM 2.48 (modern2.ts —
 OUTSIDE this file's ownership) is no longer the honest envelope.
 Law-verbatim derivation (tmp-leorcws-p95: 1024-column side silhouette,
 12%-of-rough band filter, p95 of body-column tops minus min bottom —

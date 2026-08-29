@@ -2011,7 +2011,7 @@ function buildLeclercXLR(P) {
 
 // AMX 56 — heavier Leclerc-family demonstrator requested from the
 // `char_leclerc.glb` oracle.  The ERA field is visually explicit and is
-// mirrored by armor faces in modern2.js; its new gun plant remains a single
+// mirrored by armor faces in modern2.ts; its new gun plant remains a single
 // pitchable gun-owned package.
 function buildAMX56(P) {
   buildLeclerc(P, 'amx56');

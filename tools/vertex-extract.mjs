@@ -269,7 +269,7 @@ const REG = {
   // retired T-80U oracle, type90 userdrops5.js source(), ariete + type74 from the
   // fidelity harness LOCAL_REFERENCE_OVERRIDES (quarantine oracles),
   // recon_tank specs.ts MODEL_SOURCE. pubDims from the spec dims rows
-  // (modern2.js t80u/leclerc, modern3.ts ariete, userdrops5 type90 make(),
+  // (modern2.ts t80u/leclerc, modern3.ts ariete, userdrops5 type90 make(),
   // profiles/miscSpecs.ts TYPE74_SPEC, specs.ts recon_tank).
   leclerc: {
     path: 'public/models/tanks/char_leclerc_andertan.glb',
@@ -920,7 +920,7 @@ const REG = {
     // leo1a5 FAMILY-INFLUENCE report only (no leo1a4 id in the roster; the
     // leo1a5 build takes its grammar from this + photos). Single fused
     // photogrammetry mesh, no turret node -> fixedMount-style whole-box
-    // measure against the leo1a5 spec dims (modern2.js).
+    // measure against the leo1a5 spec dims (modern2.ts).
     path: 'public/models/tanks/community/leopard_1a4_photogrammetry_scan.glb',
     fixedMount: true,
     pubDims: { hullLengthM: 7.09, overallLengthM: 9.54, widthM: 3.37, heightM: 2.62 },

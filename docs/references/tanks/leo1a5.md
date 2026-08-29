@@ -51,7 +51,7 @@ ownership (maximum yaw-proxy delta 1.9 degrees, centroid delta 0.14 m).
 The historical packets below are retained as an audit trail. Their old
 `FALSE-0` and welded-turret assumptions are superseded by this section.
 
-Spec home: src/vehicles/modern2.js (dims 7.09 / 9.54 / 3.37 / 2.62).
+Spec home: src/vehicles/modern2.ts (dims 7.09 / 9.54 / 3.37 / 2.62).
 Old build: buildLeo1A5 (modern2), pre-oracle era ("wholly ancient"
 owner class). NEW build (2026-08-07 scaffold round): profile builder in
 src/vehicles/profiles/leopard.js (LEOPARD_PROFILES.leo1a5 — overrides
@@ -100,7 +100,7 @@ graduates (leo2a5/leo2a4 grammar) are the influence sources.
 7. **Stowage baskets across the turret rear** — the mesh basket frames
    wrapping the bustle, loaded.
 
-## Corroborated dimensions (photo-class targets; spec row = modern2.js)
+## Corroborated dimensions (photo-class targets; spec row = modern2.ts)
 
 | Measure | Value | Sources (2+ independent) |
 |---|---|---|
@@ -112,7 +112,7 @@ graduates (leo2a5/leo2a4 grammar) are the influence sources.
 | Gun | 105 mm L7A3 (L/52 ≈ 5.46 m tube), thermal sleeve, fume extractor, MRS | Wikipedia Royal Ordnance L7, KMW heritage |
 | Running gear | 7 dual road wheels (~0.63 m), 4 return rollers, rear drive sprocket, front idler | photos, Wikipedia Leopard 1 |
 
-Spec dims row (modern2.js TANK_SPECS.leo1a5):
+Spec dims row (modern2.ts TANK_SPECS.leo1a5):
 `{ hullLengthM: 7.09, overallLengthM: 9.54, widthM: 3.37, heightM: 2.62 }`
 — sovereign four-box anchors. Width anchor = the FENDER/APRON plane at
 ±1.685 EXACT (§D width-guard; tracks at ±1.625 = the published 3.25).
@@ -269,7 +269,7 @@ final,final-yaw90}/.
 
 ### SOURCES verified first (the §5.247 first step)
 - Registration RESOLVES: `LEOPARD_PROFILES.leo1a5` → PROFILED_BUILDERS →
-  BUILDERS override (tankFactory). Spec row modern2.js dims 7.09/9.54/
+  BUILDERS override (tankFactory). Spec row modern2.ts dims 7.09/9.54/
   3.37/2.62 loads.
 - Gate print: NONE exists (no docs/geometry-gate/leo1a5.json, no ledger
   row) — the CORRECT state per this packet's FALSE-0 law; not a broken

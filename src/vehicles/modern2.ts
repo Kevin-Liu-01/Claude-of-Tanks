@@ -1,4 +1,4 @@
-// src/vehicles/modern2.js — HD procedural builders + specs for the modern
+// src/vehicles/modern2.ts — HD procedural builders + specs for the modern
 // roster expansion, wave 2 (docs/research/modern-roster.md):
 //   leo2a4  Leopard 2A4        (§9,  priority 3)
 //   t80u    T-80U              (§15, priority 3)
@@ -36,6 +36,150 @@ import {
   shell,
   apfsdsPenetration as apfsdsPens,
 } from './specHelpers.ts';
+import type {
+  ArmorEnvelope,
+  ArmorPlate,
+  MutableVec3Tuple,
+  ShellSpec,
+  Vec3Tuple,
+} from './specHelpers.ts';
+import type { FleetTankSpec, TankSpecRegistry } from './specContracts.ts';
+
+type VehicleAssemblyOwner = 'hull' | 'turret';
+type GeometryScale = number | readonly [number, number, number];
+type EraPlacement = (...transform: number[]) => void;
+
+interface PocketSlabOptions {
+  u0?: number;
+  u1?: number;
+  v0?: number;
+  v1?: number;
+  depth?: number;
+}
+
+interface PocketSlab {
+  geometry: THREE.BufferGeometry;
+  normal: MutableVec3Tuple;
+  point: (u: number, v: number, inset?: number) => MutableVec3Tuple;
+  u0: number;
+  u1: number;
+  v0: number;
+  v1: number;
+  depth: number;
+}
+
+interface T14CheekPocket extends PocketSlab {
+  side: -1 | 1;
+}
+
+interface Modern2BuilderPort {
+  readonly q?: boolean;
+  readonly rng: () => number;
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly mats: Record<string, THREE.Material> & { readonly dark: THREE.Material };
+  readonly spec: FleetTankSpec;
+  readonly __type99HullOnly?: boolean;
+  postAssemble: (() => unknown) | null;
+  muzzleZ: number;
+  topY?: number;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
+  addCupola(
+    bucket: string,
+    geometry: THREE.BufferGeometry,
+    ...transform: number[]
+  ): unknown;
+  addEquipment(
+    bucket: string,
+    geometry: THREE.BufferGeometry,
+    ...transform: number[]
+  ): unknown;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
+  addMudguard(
+    id: string,
+    slot: string,
+    geometry: THREE.BufferGeometry,
+    ...transform: number[]
+  ): unknown;
+  clear(...slots: string[]): void;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    label: string | null,
+    scale: number,
+    position: MutableVec3Tuple,
+    ...orientation: number[]
+  ): unknown;
+  eraCluster(
+    key: string,
+    build: (put: EraPlacement) => void,
+    turretLocal?: boolean,
+  ): unknown;
+}
+
+interface ArmorResistance {
+  ke: number;
+  ce: number;
+  phys?: number;
+}
+
+interface MbtArmorOptions {
+  hl: number;
+  hw: number;
+  roofY: number;
+  trkTop?: number;
+  floor?: number;
+  turretPivot: MutableVec3Tuple;
+  gunPivot: MutableVec3Tuple;
+  barrelLenM: number;
+  barrelRadM: number;
+  glacis: ArmorResistance;
+  lower: ArmorResistance;
+  side: ArmorResistance;
+  skirtMm?: number;
+  rear: number;
+  roof: number;
+  cheek: ArmorResistance;
+  tSide: ArmorResistance;
+  tRear: number;
+  tRoof: number;
+  mantlet: ArmorResistance;
+  tHalfW: number;
+  tFrontZ: number;
+  tRearZ: number;
+  tH: number;
+  glacisNoseZ: number;
+  glacisTopZ: number;
+  hullEra?: ArmorPlate[];
+  turretEra?: ArmorPlate[];
+  crew4?: boolean;
+  bustleAmmo?: boolean;
+  capsule?: boolean;
+}
+
+const scaledGeometryTransform = KIT.xform as (
+  geometry: THREE.BufferGeometry,
+  x?: number,
+  y?: number,
+  z?: number,
+  rotationX?: number,
+  rotationY?: number,
+  rotationZ?: number,
+  scale?: GeometryScale,
+) => THREE.BufferGeometry;
+
+type LoftCoordinate = number | readonly number[] | (
+  (point: readonly [number, number], index: number) => number
+);
+
+const variablePolyLoft = KIT.polyLoft as (
+  plan: readonly (readonly [number, number])[],
+  bottom: LoftCoordinate,
+  top: LoftCoordinate,
+  inset?: LoftCoordinate,
+) => THREE.BufferGeometry;
 
 // type99a RE-LISTED 2026-08-08 (§5.38 owner priority wave: "fully model a
 // custom type99a based on this model" — the Type 99A2 print drop VOIDS the
@@ -47,7 +191,13 @@ const MODERN2_IDS = [
   'type99a', 'leo1a5', 'mbt70', 't14',
 ];
 
-const apfsds = (name, cal, quoted2km, dmg, vel) => {
+const apfsds = (
+  name: string,
+  cal: number,
+  quoted2km: number,
+  dmg: number,
+  vel: number,
+): ShellSpec => {
   const p = apfsdsPens(quoted2km);
   return shell(name, 'APFSDS', cal, p[0], p[1], dmg, vel, { pen2000Mm: p[2] });
 };
@@ -59,7 +209,7 @@ const D2R = Math.PI / 180;
 // Parametric modern-MBT armor layout (t90m template, tunable per vehicle).
 // Geometry follows the visual builders below; values are roster RHAe.
 // ---------------------------------------------------------------------------
-function mbtArmor(o) {
+function mbtArmor(o: MbtArmorOptions): ArmorEnvelope {
   const {
     hl, hw, roofY, trkTop = 1.0, floor = 0.43,
     turretPivot, gunPivot, barrelLenM, barrelRadM,
@@ -141,21 +291,27 @@ function mbtArmor(o) {
 // authored track volumes.  T-80U's procedural running gear is already seated
 // correctly on the ground; the owner-requested stance correction applies to
 // the hull shell, hull-local systems/crew and rotating package only.
-function liftHullAssemblyAboveTracks(armor, liftM) {
+function liftHullAssemblyAboveTracks(armor: ArmorEnvelope, liftM: number): ArmorEnvelope {
   const fixedTrackModules = new Set(['trackL', 'trackR']);
   for (const plate of armor.hullPlates) {
-    if (fixedTrackModules.has(plate.moduleLink) || /^track_[LR]$/.test(plate.name)) continue;
-    plate.verts = plate.verts.map(([x, y, z]) => [x, y + liftM, z]);
+    if ((plate.moduleLink !== null && fixedTrackModules.has(plate.moduleLink)) || /^track_[LR]$/.test(plate.name)) continue;
+    const [v0, v1, v2, v3] = plate.verts;
+    plate.verts = [
+      [v0[0], v0[1] + liftM, v0[2]],
+      [v1[0], v1[1] + liftM, v1[2]],
+      [v2[0], v2[1] + liftM, v2[2]],
+      [v3[0], v3[1] + liftM, v3[2]],
+    ];
   }
   for (const module of armor.modules) {
     if (module.turretLocal || fixedTrackModules.has(module.module)) continue;
-    module.min[1] += liftM;
-    module.max[1] += liftM;
+    (module.min as MutableVec3Tuple)[1] += liftM;
+    (module.max as MutableVec3Tuple)[1] += liftM;
   }
   for (const crew of armor.crew) {
     if (crew.turretLocal) continue;
-    crew.min[1] += liftM;
-    crew.max[1] += liftM;
+    (crew.min as MutableVec3Tuple)[1] += liftM;
+    (crew.max as MutableVec3Tuple)[1] += liftM;
   }
   armor.turretPivot[1] += liftM;
   return armor;
@@ -206,7 +362,7 @@ function mbt70Armor() {
 // ---------------------------------------------------------------------------
 // Specs
 // ---------------------------------------------------------------------------
-const MODERN2_SPECS = {
+const MODERN2_SPECS: TankSpecRegistry = {
   leo2a4: {
     id: 'leo2a4', name: 'Leopard 2A4', nation: 'Germany', era: 'modern', role: 'mbt',
     hp: 2200,
@@ -545,22 +701,25 @@ const MODERN2_SPECS = {
 // Leclerc oracle.
 {
   const base = MODERN2_SPECS.leclerc;
-  const cloneArmor = (armor) => ({
+  const cloneVec3 = (point: Vec3Tuple): MutableVec3Tuple => [point[0], point[1], point[2]];
+  const cloneArmor = (armor: ArmorEnvelope): ArmorEnvelope => ({
     ...armor,
-    turretPivot: armor.turretPivot.slice(),
-    gunPivot: armor.gunPivot.slice(),
+    turretPivot: cloneVec3(armor.turretPivot),
+    gunPivot: cloneVec3(armor.gunPivot),
     gunBarrel: { ...armor.gunBarrel },
     hullPlates: armor.hullPlates.map((plate) => ({
-      ...plate, verts: plate.verts.map((point) => point.slice()),
+      ...plate,
+      verts: plate.verts.map(cloneVec3) as [MutableVec3Tuple, MutableVec3Tuple, MutableVec3Tuple, MutableVec3Tuple],
     })),
     turretPlates: armor.turretPlates.map((plate) => ({
-      ...plate, verts: plate.verts.map((point) => point.slice()),
+      ...plate,
+      verts: plate.verts.map(cloneVec3) as [MutableVec3Tuple, MutableVec3Tuple, MutableVec3Tuple, MutableVec3Tuple],
     })),
     modules: armor.modules.map((box) => ({
-      ...box, min: box.min.slice(), max: box.max.slice(),
+      ...box, min: cloneVec3(box.min), max: cloneVec3(box.max),
     })),
     crew: armor.crew.map((box) => ({
-      ...box, min: box.min.slice(), max: box.max.slice(),
+      ...box, min: cloneVec3(box.min), max: cloneVec3(box.max),
     })),
   });
   const passive = { keReduction: 0.08, ceFlatMm: 180 };
@@ -643,7 +802,7 @@ for (const id of MODERN2_IDS) {
 // plates meeting the mantlet slot, EMES-15 cutout in the right cheek top,
 // flat roof, round hatches, baskets across the whole turret rear, L/44.
 // ---------------------------------------------------------------------------
-function buildLeo2A4(P) {
+function buildLeo2A4(P: Modern2BuilderPort) {
   const { box, frustum, cylY, cylX, cylZ, torus, slab,
     buildGun, buildRunningGear, fenders, headlight, liftEye, periscope,
     towCable, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan,
@@ -803,7 +962,13 @@ function buildLeo2A4(P) {
 }
 
 // small helper: loader-hatch pintle MG (thin, unboxed)
-function pintle(P, kit, x, y, z) {
+function pintle(
+  P: Modern2BuilderPort,
+  kit: typeof KIT,
+  x: number,
+  y: number,
+  z: number,
+) {
   const { cylY, box, cylZ } = kit;
   P.add('turretDark', cylY(0.018, 0.018, 0.18), x, y + 0.09, z);
   P.add('turretDark', box(0.07, 0.07, 0.38), x, y + 0.22, z + 0.05);
@@ -815,7 +980,7 @@ function pintle(P, kit, x, y, z) {
 // rounded cast dome turret in a Kontakt-5 clamshell V, turbine exhaust box
 // centered on the rear plate, 6 smaller wheels + 5 return rollers.
 // ---------------------------------------------------------------------------
-function buildT80U(P) {
+function buildT80U(P: Modern2BuilderPort) {
   const { box, frustum, cylY, cylX, cylZ, torus, lathe,
     buildGun, buildRunningGear, fenders, headlight, liftEye, periscope,
     towCable, smokeCluster, cupola, spareTrackStrip, stowage } = KIT;
@@ -913,20 +1078,20 @@ function buildT80U(P) {
     trackW: 0.60, topY: 0.86, arms: true, paintedEnds: true, coveredTop: true,
   });
   // ---- Kontakt-5 brick clusters (strippable) --------------------------------
-  const t80GlacisZ = (y) => 1.86 + (1.38 - y) * 2.75 + 0.05;
-  P.eraCluster('glacis_era_R', (put) => {
+  const t80GlacisZ = (y: number) => 1.86 + (1.38 - y) * 2.75 + 0.05;
+  P.eraCluster('glacis_era_R', (put: EraPlacement) => {
     for (let row = 0; row < 3; row++) for (let c = 0; c < 5; c++) {
       const y = 0.94 + row * 0.13;
       put(0.16 + c * 0.30, y, t80GlacisZ(y), -68 * D2R, 0, 0);
     }
   });
-  P.eraCluster('glacis_era_L', (put) => {
+  P.eraCluster('glacis_era_L', (put: EraPlacement) => {
     for (let row = 0; row < 3; row++) for (let c = 0; c < 5; c++) {
       const y = 0.94 + row * 0.13;
       put(-0.16 - c * 0.30, y, t80GlacisZ(y), -68 * D2R, 0, 0);
     }
   });
-  const t80Cheek = (put, s) => {
+  const t80Cheek = (put: EraPlacement, s: number) => {
     const dx = Math.cos(0.48), dz = -Math.sin(0.48);
     const nx = Math.sin(0.48), nz = Math.cos(0.48);
     for (let row = 0; row < 2; row++) for (let c = 0; c < 4; c++) {
@@ -935,8 +1100,8 @@ function buildT80U(P) {
         0.82 + dz * t + nz * 0.13, -0.22, s * 0.48, 0);
     }
   };
-  P.eraCluster('turret_era_R', (put) => t80Cheek(put, 1), true);
-  P.eraCluster('turret_era_L', (put) => t80Cheek(put, -1), true);
+  P.eraCluster('turret_era_R', (put: EraPlacement) => t80Cheek(put, 1), true);
+  P.eraCluster('turret_era_L', (put: EraPlacement) => t80Cheek(put, -1), true);
   P.decal('turret', 'number', '518', 0.28, [1.02, 0.30, -0.15], Math.PI / 2, 0, 0.1);
   P.decal('turret', 'number', '518', 0.28, [-1.02, 0.30, -0.15], -Math.PI / 2, 0, -0.1);
   P.decal('hull', 'soot', null, 1.0, [0.0, 0.9, -3.56], Math.PI);               // turbine heat stain
@@ -944,7 +1109,13 @@ function buildT80U(P) {
 }
 
 // NSVT "Utyos" 12.7 AA gun on the T-80U cupola rail
-function utyos(P, kit, x, y, z) {
+function utyos(
+  P: Modern2BuilderPort,
+  kit: typeof KIT,
+  x: number,
+  y: number,
+  z: number,
+) {
   const { box, cylZ } = kit;
   P.add('turretDark', box(0.09, 0.11, 0.46), x, y + 0.06, z);
   P.add('turretDark', cylZ(0.024, 0.62, 8), x, y + 0.07, z + 0.5, -0.05, 0, 0);
@@ -957,7 +1128,7 @@ function utyos(P, kit, x, y, z) {
 // with angled plan cheeks, tall HL-70 pano sight, GALIX tubes, autoloader
 // bustle, front-third armored skirt blocks. Fastest 120 reload in game.
 // ---------------------------------------------------------------------------
-function buildLeclerc(P) {
+function buildLeclerc(P: Modern2BuilderPort) {
   const { box, frustum, slab, cylY, cylZ, torus,
     buildGun, buildRunningGear, fenders, headlight, liftEye, periscope,
     towCable, stowage, jerryCan, ammoCan, spareTrackStrip } = KIT;
@@ -1093,7 +1264,14 @@ function buildLeclerc(P) {
 }
 
 // GALIX bank: 9 stubby tubes splayed in two rows on a rear turret corner
-function galix(P, kit, x, y, z, s) {
+function galix(
+  P: Modern2BuilderPort,
+  kit: typeof KIT,
+  x: number,
+  y: number,
+  z: number,
+  s: number,
+) {
   const { cylZ, box } = kit;
   // r1: tubes enlarged + darkened on a visible mount wedge — the old
   // scheme-painted stubs vanished into the wall ("GALIX splays missing").
@@ -1114,17 +1292,30 @@ function galix(P, kit, x, y, z, s) {
 // slabs binds through one) — face-outwardness census, re-orders reversed
 // rings. Same device as modern3.ts/misc.js. KIT deref at call time only.
 // ---------------------------------------------------------------------------
-function orientedSlab99(b0, b1, b2, b3, t0, t1, t2, t3) {
+function orientedSlab99(
+  b0: MutableVec3Tuple,
+  b1: MutableVec3Tuple,
+  b2: MutableVec3Tuple,
+  b3: MutableVec3Tuple,
+  t0: MutableVec3Tuple,
+  t1: MutableVec3Tuple,
+  t2: MutableVec3Tuple,
+  t3: MutableVec3Tuple,
+): THREE.BufferGeometry {
   const c8 = [b0, b1, b2, b3, t0, t1, t2, t3];
-  const cen = [0, 1, 2].map((k) => c8.reduce((s, p) => s + p[k], 0) / 8);
-  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cen: MutableVec3Tuple = [0, 1, 2].map(
+    (k) => c8.reduce((sum, point) => sum + point[k], 0) / 8,
+  ) as MutableVec3Tuple;
+  const sub = (a: Vec3Tuple, b: Vec3Tuple): MutableVec3Tuple => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const cross = (a: Vec3Tuple, b: Vec3Tuple): MutableVec3Tuple => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const dot = (a: Vec3Tuple, b: Vec3Tuple) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   let outward = 0;
   for (const f of [[b0, b1, t1, t0], [b1, b2, t2, t1], [b2, b3, t3, t2],
     [b3, b0, t0, t3], [t0, t1, t2, t3], [b3, b2, b1, b0]]) {
     const n = cross(sub(f[1], f[0]), sub(f[2], f[0]));
-    const fc = [0, 1, 2].map((k) => (f[0][k] + f[1][k] + f[2][k] + f[3][k]) / 4);
+    const fc = [0, 1, 2].map(
+      (k) => (f[0][k] + f[1][k] + f[2][k] + f[3][k]) / 4,
+    ) as MutableVec3Tuple;
     if (dot(n, sub(fc, cen)) > 0) outward++;
   }
   return outward >= 3
@@ -1137,31 +1328,45 @@ function orientedSlab99(b0, b1, b2, b3, t0, t1, t2, t3) {
 // cheek leaves it depth-occluded.  This T-14-specific cutter subdivides the
 // selected exterior quad around an aperture, omits its center, and carries
 // four armor returns inward to a separately rendered optical backplane.
-function pocketedSlab99(corners, faceIndex, {
+function pocketedSlab99(
+  corners: readonly Vec3Tuple[],
+  faceIndex: number,
+  {
   u0 = 0.16, u1 = 0.54, v0 = 0.22, v1 = 0.76, depth = 0.085,
-} = {}) {
-  const faces = [
+  }: PocketSlabOptions = {},
+): PocketSlab {
+  const faces: readonly (readonly number[])[] = [
     [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6],
     [3, 0, 4, 7], [4, 5, 6, 7], [3, 2, 1, 0],
   ];
   if (!faces[faceIndex]) throw new RangeError('pocketedSlab99 faceIndex must be 0..5');
-  const add = (a, b) => a.map((value, index) => value + b[index]);
-  const sub = (a, b) => a.map((value, index) => value - b[index]);
-  const scale = (a, value) => a.map((component) => component * value);
-  const cross = (a, b) => [
+  const add = (a: Vec3Tuple, b: Vec3Tuple): MutableVec3Tuple => [
+    a[0] + b[0], a[1] + b[1], a[2] + b[2],
+  ];
+  const sub = (a: Vec3Tuple, b: Vec3Tuple): MutableVec3Tuple => [
+    a[0] - b[0], a[1] - b[1], a[2] - b[2],
+  ];
+  const scale = (a: Vec3Tuple, value: number): MutableVec3Tuple => [
+    a[0] * value, a[1] * value, a[2] * value,
+  ];
+  const cross = (a: Vec3Tuple, b: Vec3Tuple): MutableVec3Tuple => [
     a[1] * b[2] - a[2] * b[1],
     a[2] * b[0] - a[0] * b[2],
     a[0] * b[1] - a[1] * b[0],
   ];
-  const dot = (a, b) => a.reduce((sum, value, index) => sum + value * b[index], 0);
-  const unit = (a) => {
-    const length = Math.hypot(...a);
+  const dot = (a: Vec3Tuple, b: Vec3Tuple): number =>
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const unit = (a: Vec3Tuple): MutableVec3Tuple => {
+    const length = Math.hypot(a[0], a[1], a[2]);
     return length > 1e-9 ? scale(a, 1 / length) : [0, 0, 1];
   };
-  const average = (points) => points[0].map((_, axis) =>
-    points.reduce((sum, point) => sum + point[axis], 0) / points.length);
-  const positions = [];
-  const pushQuad = (points, toward) => {
+  const average = (points: readonly Vec3Tuple[]): MutableVec3Tuple => [
+    points.reduce((sum, point) => sum + point[0], 0) / points.length,
+    points.reduce((sum, point) => sum + point[1], 0) / points.length,
+    points.reduce((sum, point) => sum + point[2], 0) / points.length,
+  ];
+  const positions: number[] = [];
+  const pushQuad = (points: readonly Vec3Tuple[], toward: Vec3Tuple): void => {
     let [a, b, c, d] = points;
     if (dot(cross(sub(b, a), sub(c, a)), toward) < 0) [a, b, c, d] = [d, c, b, a];
     positions.push(...a, ...b, ...c, ...a, ...c, ...d);
@@ -1173,11 +1378,11 @@ function pocketedSlab99(corners, faceIndex, {
     sub(faceCorners[2], faceCorners[0]),
   ));
   if (dot(normal, sub(average(faceCorners), solidCenter)) < 0) normal = scale(normal, -1);
-  const point = (u, v, inset = 0) => {
+  const point = (u: number, v: number, inset = 0): MutableVec3Tuple => {
     const [q0, q1, q2, q3] = faceCorners;
-    const outer = [0, 1, 2].map((axis) =>
+    const outer: MutableVec3Tuple = [0, 1, 2].map((axis) =>
       q0[axis] * (1 - u) * (1 - v) + q1[axis] * u * (1 - v)
-      + q2[axis] * u * v + q3[axis] * (1 - u) * v);
+      + q2[axis] * u * v + q3[axis] * (1 - u) * v) as MutableVec3Tuple;
     return add(outer, scale(normal, -inset));
   };
 
@@ -1211,22 +1416,32 @@ function pocketedSlab99(corners, faceIndex, {
   return { geometry, normal, point, u0, u1, v0, v1, depth };
 }
 
-function pocketPatch99(pocket, u0, u1, v0, v1, inset) {
-  const mapU = (value) => pocket.u0 + (pocket.u1 - pocket.u0) * value;
-  const mapV = (value) => pocket.v0 + (pocket.v1 - pocket.v0) * value;
+function pocketPatch99(
+  pocket: PocketSlab,
+  u0: number,
+  u1: number,
+  v0: number,
+  v1: number,
+  inset: number,
+): THREE.BufferGeometry {
+  const mapU = (value: number) => pocket.u0 + (pocket.u1 - pocket.u0) * value;
+  const mapV = (value: number) => pocket.v0 + (pocket.v1 - pocket.v0) * value;
   const points = [
     pocket.point(mapU(u0), mapV(v0), inset),
     pocket.point(mapU(u1), mapV(v0), inset),
     pocket.point(mapU(u1), mapV(v1), inset),
     pocket.point(mapU(u0), mapV(v1), inset),
   ];
-  const sub = (a, b) => a.map((value, index) => value - b[index]);
-  const cross = (a, b) => [
+  const sub = (a: Vec3Tuple, b: Vec3Tuple): MutableVec3Tuple => [
+    a[0] - b[0], a[1] - b[1], a[2] - b[2],
+  ];
+  const cross = (a: Vec3Tuple, b: Vec3Tuple): MutableVec3Tuple => [
     a[1] * b[2] - a[2] * b[1],
     a[2] * b[0] - a[0] * b[2],
     a[0] * b[1] - a[1] * b[0],
   ];
-  const dot = (a, b) => a.reduce((sum, value, index) => sum + value * b[index], 0);
+  const dot = (a: Vec3Tuple, b: Vec3Tuple): number =>
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   let [a, b, c, d] = points;
   if (dot(cross(sub(b, a), sub(c, a)), pocket.normal) < 0) [a, b, c, d] = [d, c, b, a];
   const positions = [...a, ...b, ...c, ...a, ...c, ...d];
@@ -1241,10 +1456,17 @@ function pocketPatch99(pocket, u0, u1, v0, v1, inset) {
 // modern3.ts muzzleBore: open outer wall to the face + inward-facing
 // recess funnel + near-black bore disc ~3cm inside; mask-neutral, no
 // see-through. Caller ends its capped tube ~4.2cm short of faceZ.
-function muzzleBore99(P, faceZ, R, boreR, seg = 14, rearR) {
+function muzzleBore99(
+  P: Modern2BuilderPort,
+  faceZ: number,
+  R: number,
+  boreR: number,
+  seg = 14,
+  rearR?: number,
+) {
   const { cylY, cylZ, torus, xform } = KIT;
   P.add('gun', xform(cylY(R, rearR ?? R, 0.042, seg, true), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0, faceZ - 0.021);
-  P.add('gunDark', xform(cylY(R - 0.003, boreR, 0.040, seg, true), 0, 0, 0, Math.PI / 2, 0, 0, [-1, 1, 1]), 0, 0, faceZ - 0.0215);
+  P.add('gunDark', scaledGeometryTransform(cylY(R - 0.003, boreR, 0.040, seg, true), 0, 0, 0, Math.PI / 2, 0, 0, [-1, 1, 1]), 0, 0, faceZ - 0.0215);
   P.add('gun', torus(R - 0.002, 0.0045, seg), 0, 0, faceZ - 0.001, -Math.PI / 2, 0, 0);
   P.add('gunDark', cylZ(boreR, 0.008, seg), 0, 0, faceZ - 0.034);
 }
@@ -1276,7 +1498,7 @@ function muzzleBore99(P, faceZ, R, boreR, seg = 14, rearR) {
 // QJC-88 12.7 at the commander station FORWARD. Print carries SIX wheel
 // stations (pitch 0.90, r 0.40) — the real ZTZ-99A count.
 // ---------------------------------------------------------------------------
-function buildType99A(P) {
+function buildType99A(P: Modern2BuilderPort) {
   const { box, frustum, polyMultiLoft, cylY, cylX, cylZ, torus,
     buildGun, buildRunningGear, fenders, liftEye, periscope,
     smokeCluster, stowage, tarpRoll, ammoCan } = KIT;
@@ -1513,11 +1735,11 @@ function buildType99A(P) {
     [0.55, 0.62, 0.59], [-0.08, 0.61, 0.62], [-0.71, 0.60, 0.57],
     [-1.33, 0.59, 0.60], [-1.94, 0.56, 0.55],
   ];
-  P.eraCluster('skirt_era_R', (put) => {
+  P.eraCluster('skirt_era_R', (put: EraPlacement) => {
     for (const [z, depth, height] of skirtPanels)
       put(1.835, 0.91, z, 0, Math.PI / 2, 0, depth / 0.28, height / 0.13, 0.35);
   });
-  P.eraCluster('skirt_era_L', (put) => {
+  P.eraCluster('skirt_era_L', (put: EraPlacement) => {
     for (const [z, depth, height] of skirtPanels)
       put(-1.835, 0.91, z, 0, -Math.PI / 2, 0, depth / 0.28, height / 0.13, 0.35);
   });
@@ -1525,11 +1747,11 @@ function buildType99A(P) {
   // plane (owner identity headline; §5.29 chevron-tip kinship: the two
   // half-fields angle toward a forward center tip). Dark mounting bed
   // first (t14 r5 lesson — tile gaps read as recessed seams). -------------
-  const zOf = (y) => 2.02 + (1.50 - y) / 0.284 + 0.045;                        // plane + 4.5 cm proud
+  const zOf = (y: number) => 2.02 + (1.50 - y) / 0.284 + 0.045;                // plane + 4.5 cm proud
   for (const s of [-1, 1]) {
     P.add('hullDark', box(1.42, 0.64, 0.02), s * 0.76, 1.33, zOf(1.33) - 0.035, -73.7 * D2R, 0, 0);
   }
-  const chevron = (put, s) => {
+  const chevron = (put: EraPlacement, s: number) => {
     // 4 rows x 4 cols per half-field; each column steps FORWARD toward the
     // center line (arrow point) and every tile carries the ±12-deg plan
     // skew — two panels meeting at a tip, not a flat course (§5.29 law)
@@ -1539,8 +1761,8 @@ function buildType99A(P) {
       put(s * (0.22 + c * 0.315), y, zRow + (3 - c) * 0.052, -73.7 * D2R, s * 12 * D2R, 0);
     }
   };
-  P.eraCluster('glacis_era_R', (put) => chevron(put, 1));
-  P.eraCluster('glacis_era_L', (put) => chevron(put, -1));
+  P.eraCluster('glacis_era_R', (put: EraPlacement) => chevron(put, 1));
+  P.eraCluster('glacis_era_L', (put: EraPlacement) => chevron(put, -1));
   // number plates on the skirt TOP BAND (face 1.84 + 5 mm = 1.845, INSIDE
   // the ±1.85 tile anchor — §D decal-float law: the tile faces own the
   // width; a proud decal would set the harness scale factor)
@@ -1635,15 +1857,15 @@ function buildType99A(P) {
   // turretLocal put() coords are WORLD rest-pose (t90Cheek convention —
   // seatEraBricks subtracts the pivot itself; the r1/candidate-r1 bricks
   // passed turret-local and hung 1.42 BELOW the cheeks, gate-measured).
-  const cheekEra = (put, s) => {
+  const cheekEra = (put: EraPlacement, s: number) => {
     for (const v of [0.30, 0.68]) for (let c = 0; c < 4; c++) {
       const u = 0.10 + c * 0.185;
       put(s * (0.42 + 0.94 * u + 0.72 * 0.04), 1.47 + 0.87 * v + 0.10 * 0.04,
         1.66 - 1.01 * u - 0.26 * v + 0.69 * 0.04, -0.10, s * 0.78, 0);
     }
   };
-  P.eraCluster('turret_era_R', (put) => cheekEra(put, 1), true);
-  P.eraCluster('turret_era_L', (put) => cheekEra(put, -1), true);
+  P.eraCluster('turret_era_R', (put: EraPlacement) => cheekEra(put, 1), true);
+  P.eraCluster('turret_era_L', (put: EraPlacement) => cheekEra(put, -1), true);
   // SMOKE BANKS on the cheek outer thirds (print Object_4: the full-width
   // band at z_w 0.33..0.48, y 1.81..2.28 — two 5-tube rows per side)
   for (const s of [-1, 1]) {
@@ -1840,13 +2062,13 @@ function buildType99A(P) {
 // assembly replaces the old tall print-block stack with the source's low
 // arrowhead turret, broad segmented skirts and supported open bustle while
 // retaining the fleet-native six-wheel linked-track system.
-function buildType99AOwnerRedesign2026(P) {
+function buildType99AOwnerRedesign2026(P: Modern2BuilderPort) {
   const {
     box, slab, polyLoft, cylY, cylZ, torus, buildGun, buildRunningGear,
     fenders, headlight, periscope, smokeCluster, liftEye,
   } = KIT;
   const seg = P.q ? 20 : 14;
-  const outward = (geometry) => {
+  const outward = (geometry: THREE.BufferGeometry) => {
     // KIT.slab is non-indexed. Swap each triangle's second/third vertices
     // (and matching UVs) when a measured ring was authored in reverse plan
     // order; geometry stays byte-for-position identical while FrontSide
@@ -1983,7 +2205,7 @@ function buildType99AOwnerRedesign2026(P) {
 
   // One connected low welded shell. Long swept cheeks and clipped aft
   // shoulders establish the source's arrowhead plan without stacked tiers.
-  const plan = [
+  const plan: ReadonlyArray<readonly [number, number]> = [
     [0.00, 1.14], [0.38, 1.08], [1.05, 0.60], [1.52, 0.18],
     [1.64, -0.20], [1.62, -0.82], [1.58, -1.34], [1.42, -1.66],
     [1.05, -1.80], [-1.05, -1.80], [-1.42, -1.66], [-1.58, -1.34],
@@ -1994,7 +2216,7 @@ function buildType99AOwnerRedesign2026(P) {
     0.58, 0.62, 0.66, 0.69, 0.70, 0.69, 0.66, 0.62];
   const inset = [0.76, 0.79, 0.84, 0.89, 0.91, 0.92, 0.92, 0.90, 0.88,
     0.88, 0.90, 0.92, 0.92, 0.91, 0.89, 0.84, 0.79];
-  P.add('turret', polyLoft(plan, 0.035, crown, inset));
+  P.add('turret', variablePolyLoft(plan, 0.035, crown, inset));
 
   // Broad cheek armor is integral to the primary mass, not a floating ERA
   // curtain. Upper lips land back into the crown and frame a compact gun well.
@@ -2103,7 +2325,7 @@ function buildType99AOwnerRedesign2026(P) {
 // construction: one tapered lower pan between the native tracks, shallow
 // sponsons over six large wheels, a two-plane prow and a stepped powerpack
 // deck.  It deliberately does not reuse either legacy Type 99 hull.
-function buildType99AHullNative2026(P) {
+function buildType99AHullNative2026(P: Modern2BuilderPort) {
   const {
     box, polyLoft, buildRunningGear, fenders, cylY, torus,
     periscope, liftEye,
@@ -2215,20 +2437,20 @@ function buildType99AHullNative2026(P) {
   // Coarse armor groups retain gameplay coupling without recreating the old
   // 3x11 decorative tile wall.  Each logical ERA cell coincides with one of
   // the authored broad side or glacis panels.
-  P.eraCluster('skirt_era_R', (put) => {
+  P.eraCluster('skirt_era_R', (put: EraPlacement) => {
     for (const z of skirtZs.slice(0, 4)) put(1.825, 1.10, z, 0, Math.PI / 2, 0, 3.0, 3.7, 1);
   });
-  P.eraCluster('skirt_era_L', (put) => {
+  P.eraCluster('skirt_era_L', (put: EraPlacement) => {
     for (const z of skirtZs.slice(0, 4)) put(-1.825, 1.10, z, 0, -Math.PI / 2, 0, 3.0, 3.7, 1);
   });
-  const glacisCells = (put, side) => {
+  const glacisCells = (put: EraPlacement, side: number) => {
     for (let c = 0; c < 4; c++) {
       put(side * (0.23 + c * 0.34), 1.30 - c * 0.018, 2.49 + (3 - c) * 0.055,
         -0.28, side * 0.20, 0, 1.15, 1.4, 1);
     }
   };
-  P.eraCluster('glacis_era_R', (put) => glacisCells(put, 1));
-  P.eraCluster('glacis_era_L', (put) => glacisCells(put, -1));
+  P.eraCluster('glacis_era_R', (put: EraPlacement) => glacisCells(put, 1));
+  P.eraCluster('glacis_era_L', (put: EraPlacement) => glacisCells(put, -1));
 
   // Driver and bow service cadence, all seated directly on the upper plane.
   P.add('hull', box(0.50, 0.055, 0.42), 0, 1.44, 1.73, -0.20, 0, 0);
@@ -2300,7 +2522,7 @@ function buildType99AHullNative2026(P) {
 // tall welded rear body. This builder deliberately keeps only that authored
 // hull/running gear, clears every old turret/gun bucket and rebuilds the
 // fighting compartment from measured section envelopes using our primitives.
-function buildType99AFullNativeRebuild2026(P) {
+function buildType99AFullNativeRebuild2026(P: Modern2BuilderPort) {
   // Preserve the earlier authored two-plane hull and measured six-wheel
   // course.  The later OwnerRedesign hull enlarged the wheels and stacked a
   // tall engine cassette/side wall, which produced an IFV-like stance even
@@ -2320,7 +2542,11 @@ function buildType99AFullNativeRebuild2026(P) {
   for (const child of [...P.turretG.children]) {
     if (child === P.gunG) continue;
     P.turretG.remove(child);
-    child.traverse((object) => object.geometry?.dispose?.());
+    child.traverse((object: THREE.Object3D) => {
+      if ('geometry' in object && object.geometry instanceof THREE.BufferGeometry) {
+        object.geometry.dispose();
+      }
+    });
   }
 
   // One broad, low welded body.  The reference measurements put the main
@@ -2328,7 +2554,7 @@ function buildType99AFullNativeRebuild2026(P) {
   // identity comes from plan width and cheek undercut, not from a tall box.
   // The connected loft below is authored topology; the comparison GLB is
   // never imported or converted into runtime geometry.
-  const shellPlan = [
+  const shellPlan: ReadonlyArray<readonly [number, number]> = [
     [0.00, 1.54], [0.42, 1.44], [1.02, 1.12], [1.58, 0.42],
     [1.46, -1.22], [1.25, -2.06], [-1.25, -2.06],
     [-1.46, -1.22], [-1.58, 0.42], [-1.02, 1.12], [-0.42, 1.44],
@@ -2336,7 +2562,7 @@ function buildType99AFullNativeRebuild2026(P) {
   const shellBottom = [0.00, 0.00, 0.00, 0.08, 0.20, 0.32, 0.32, 0.20, 0.08, 0.00, 0.00];
   const shellTop = [1.02, 1.05, 1.08, 1.12, 1.11, 1.10, 1.10, 1.11, 1.12, 1.08, 1.05];
   const shellInset = [0.80, 0.80, 0.81, 0.83, 0.86, 0.87, 0.87, 0.86, 0.83, 0.81, 0.80];
-  P.add('turret', polyLoft(shellPlan, shellBottom, shellTop, shellInset));
+  P.add('turret', variablePolyLoft(shellPlan, shellBottom, shellTop, shellInset));
 
   // Buried cheek laminates strengthen the mantlet transition without
   // becoming a second disconnected shell.  The tips thin and sweep aft into
@@ -2477,7 +2703,7 @@ function buildType99AFullNativeRebuild2026(P) {
 // glacis, welded angular A5 turret with the boxy EMES-18 on the right roof
 // and a big rear bin; 7 dished wheels, sprocket rear. Speed IS the armor.
 // ---------------------------------------------------------------------------
-function buildLeo1A5(P) {
+function buildLeo1A5(P: Modern2BuilderPort) {
   const { box, frustum, slab, cylY, cylX, cylZ, torus,
     buildGun, buildRunningGear, fenders, headlight, liftEye, periscope,
     towCable, smokeCluster, stowage, jerryCan, tarpRoll, shovelTool } = KIT;
@@ -2586,7 +2812,7 @@ function buildLeo1A5(P) {
 // launcher, bustle and raised commander station. No source vertices or
 // materials enter runtime.
 // ---------------------------------------------------------------------------
-function buildMBT70(P) {
+function buildMBT70(P: Modern2BuilderPort) {
   const {
     xform, box, polyMultiLoft, cylY, cylZ, sph, torus,
     buildGun, liftEye, periscope,
@@ -2647,7 +2873,10 @@ function buildMBT70(P) {
     [1.24, 0.88], [1.37, 0.56], [1.42, 0.19], [1.42, -0.20],
     [1.45, -0.62], [1.45, -1.48], [1.34, -2.92],
   ].map(([x, z]) => [x * TURRET_WIDTH_SCALE, z]);
-  const rearBiasedInset = (front, shoulder, rear) => (_point, i) => {
+  const rearBiasedInset = (front: number, shoulder: number, rear: number) => (
+    _point: readonly [number, number],
+    i: number,
+  ) => {
     const z = turretPlan[i][1];
     if (z < -1.30) return rear;
     if (z < -0.25) return shoulder;
@@ -2657,7 +2886,7 @@ function buildMBT70(P) {
   // long bustle.  Keep the nose floor at the turret ring, then rake the
   // underside upward from the shoulder to the basket so it clears that deck
   // after the whole turret is lowered onto its real front seat.
-  const turretFloorHeight = ([, z]) => {
+  const turretFloorHeight = ([, z]: readonly [number, number]) => {
     if (z >= -0.55) return 0;
     const t = Math.min(1, (-z - 0.55) / (2.92 - 0.55));
     return BUSTLE_FLOOR_RISE_M * t;
@@ -2863,7 +3092,7 @@ function buildMBT70(P) {
   // around the launcher axis so the rounded arrow stands vertically, as on
   // the MBT-70, then clamp its vertical extent to the turret shell without
   // changing its fore-aft trunnion penetration or compact launcher width.
-  P.addGunExtra(xform(polyMultiLoft(mantletPlan, [
+  P.addGunExtra(scaledGeometryTransform(polyMultiLoft(mantletPlan, [
     { height: -0.33, inset: 0.70 },
     { height: -0.19, inset: 0.90 },
     { height: 0.00, inset: 1.00 },
@@ -2874,11 +3103,11 @@ function buildMBT70(P) {
   // A shallow cast brow melts the shield into the turret roof. The oval
   // recess follows the parabolic shield, while the only truly circular part
   // is the compact 152 mm launcher throat itself.
-  P.addGunExtra(xform(sph(0.28, seg, Math.PI * 0.62), 0, 0, 0, 0, 0, 0,
+  P.addGunExtra(scaledGeometryTransform(sph(0.28, seg, Math.PI * 0.62), 0, 0, 0, 0, 0, 0,
     [0.68, 1.10, 1.10]), 0, 0.11, 0.43);
   const GUN_ROOT_RECESS_RADIUS_M = 0.19;
-  const GUN_ROOT_RECESS_SCALE = [0.82, 1.14, 1];
-  P.addGunExtraDark(xform(cylZ(GUN_ROOT_RECESS_RADIUS_M, 0.045, seg), 0, 0, 0, 0, 0, 0,
+  const GUN_ROOT_RECESS_SCALE: GeometryScale = [0.82, 1.14, 1];
+  P.addGunExtraDark(scaledGeometryTransform(cylZ(GUN_ROOT_RECESS_RADIUS_M, 0.045, seg), 0, 0, 0, 0, 0, 0,
     GUN_ROOT_RECESS_SCALE), 0, 0, 0.94);
   P.addGunExtra(cylZ(0.22, 0.25, seg, 0.17), 0, 0, 1.19);
   P.addGunExtraDark(cylZ(0.225, 0.035, seg), 0, 0, 1.085);
@@ -2956,7 +3185,7 @@ function buildMBT70(P) {
 // sawtooth skirts, crew-capsule bow, and the sci-fi faceted unmanned turret
 // shroud with sensor mast, AESA corner panels, APS tubes and a clean gun.
 // ---------------------------------------------------------------------------
-function buildT14(P) {
+function buildT14(P: Modern2BuilderPort) {
   const { box, frustum, slab, polyMultiLoft, cylY, cylX, cylZ, torus,
     xform, mergeAll,
     buildGun, buildRunningGear, fenders, headlight, liftEye, periscope,
@@ -3228,9 +3457,9 @@ function buildT14(P) {
   // The two upper cheeks carry recessed multi-channel optical apertures.
   // Cutting their outward quads here matters: a dark rectangle pushed behind
   // an intact slab is still occluded and reads as a sticker, not a window.
-  const t14CheekPockets = [];
+  const t14CheekPockets: T14CheekPocket[] = [];
   {
-    const corners = [
+    const corners: readonly Vec3Tuple[] = [
       [0.06, BK, 1.958], [0.80, BK, 1.608], [1.44, BK, 1.04], [0.06, BK, 1.476],
       [0.05, 0.545, 1.911], [0.66, AH, 1.242], [0.95, AH, 0.86], [0.05, AH, 1.413],
     ];
@@ -3241,7 +3470,7 @@ function buildT14(P) {
     t14CheekPockets.push({ side: 1, ...pocket });
   }
   {
-    const corners = [
+    const corners: readonly Vec3Tuple[] = [
       [-0.80, BK, 1.608], [-0.06, BK, 1.958], [-0.06, BK, 1.476], [-1.44, BK, 1.04],
       [-0.66, AH, 1.242], [-0.05, 0.545, 1.911], [-0.05, AH, 1.413], [-0.95, AH, 0.86],
     ];
@@ -3599,7 +3828,7 @@ function buildT14(P) {
   });
   // Malachit ERA: tile field flat on the 8.8-deg upper glacis (dark
   // mounting bed under the rows so the seams read recessed)
-  const t14GlacisZ = (y) => 2.15 + (1.665 - y) * 6.43;
+  const t14GlacisZ = (y: number) => 2.15 + (1.665 - y) * 6.43;
   for (const s of [-1, 1]) {
     // The backing sheet had the opposite pitch from the glacis, so its rear
     // edge dove through the hull while its forward edge floated. Match the
@@ -3607,13 +3836,13 @@ function buildT14(P) {
     // face-normal rotation below.
     P.add('hullDark', box(1.44, 0.025, 1.55), s * 0.80, 1.50, 3.03, 8.8 * D2R, 0, 0);
   }
-  P.eraCluster('glacis_era_R', (put) => {
+  P.eraCluster('glacis_era_R', (put: EraPlacement) => {
     for (let row = 0; row < 4; row++) for (let c = 0; c < 5; c++) {
       const y = 1.625 - row * 0.055;
       put(0.17 + c * 0.33, y + 0.02, t14GlacisZ(y), -81.2 * D2R, 0, 0);
     }
   });
-  P.eraCluster('glacis_era_L', (put) => {
+  P.eraCluster('glacis_era_L', (put: EraPlacement) => {
     for (let row = 0; row < 4; row++) for (let c = 0; c < 5; c++) {
       const y = 1.625 - row * 0.055;
       put(-0.17 - c * 0.33, y + 0.02, t14GlacisZ(y), -81.2 * D2R, 0, 0);
@@ -3621,11 +3850,11 @@ function buildT14(P) {
   });
   // tile field on the three front armor panels (faces 1.86 + thin tiles —
   // inside the rear-screen ±1.945 width anchor)
-  P.eraCluster('skirt_era_R', (put) => {
+  P.eraCluster('skirt_era_R', (put: EraPlacement) => {
     for (let c = 0; c < 7; c++) for (let row = 0; row < 3; row++)
       put(1.865, 0.95 + row * 0.23, 3.75 - c * 0.44, 0, Math.PI / 2, 0);
   });
-  P.eraCluster('skirt_era_L', (put) => {
+  P.eraCluster('skirt_era_L', (put: EraPlacement) => {
     for (let c = 0; c < 7; c++) for (let row = 0; row < 3; row++)
       put(-1.865, 0.95 + row * 0.23, 3.75 - c * 0.44, 0, -Math.PI / 2, 0);
   });
