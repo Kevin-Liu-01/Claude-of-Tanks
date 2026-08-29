@@ -266,3 +266,4 @@ runtime documents remain authoritative for behavior.
 - [0254 — Italian profile geometry has a strict TypeScript owner](0254-type-italian-profile-geometry.md)
 - [0255 — Chinese profile geometry has a strict TypeScript owner](0255-type-chinese-profile-geometry.md)
 - [0256 — T-80 profile geometry has a strict TypeScript owner](0256-type-t80-profile-geometry.md)
+- [0257 — Sheridan profile geometry has a strict TypeScript owner](0257-type-sheridan-profile-geometry.md)

@@ -180,6 +180,10 @@ The T-80 authored family pack now uses strict
 `src/vehicles/profiles/t80.ts` contracts for the T-80, T-80B, T-80BV, and
 T-84 Oplot geometry, equipment, ERA seating, running-gear receipts, and
 tracked resource ownership while preserving its exact-family demand boundary.
+The Sheridan family pack now uses strict
+`src/vehicles/profiles/sheridan.ts` contracts for measured hull and turret
+lofts, the M81 gun assembly, running gear, fittings, ERA, and the M551A1 TTS
+upgrade while preserving its exact-family demand boundary.
 
 ## Consequences
 

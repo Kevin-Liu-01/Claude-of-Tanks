@@ -1,5 +1,5 @@
 // M551 Sheridan registration. The owner-supplied GLB is a local comparison
-// oracle only; playable vehicles use first-party profiles/sheridan.js geometry.
+// oracle only; playable vehicles use first-party profiles/sheridan.ts geometry.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import {

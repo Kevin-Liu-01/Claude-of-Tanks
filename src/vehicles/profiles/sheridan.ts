@@ -5,6 +5,83 @@
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT, FITTINGS, muzzleBore } from './kit.js';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+
+type Vec2Tuple = [number, number];
+type ReadonlyVec2Tuple = readonly [number, number];
+type Vec3Tuple = [number, number, number];
+type VehicleAssemblyOwner = 'hull' | 'turret';
+type EraPut = (...transform: number[]) => void;
+
+interface MeasuredRing {
+  readonly points: readonly ReadonlyVec2Tuple[];
+  readonly y: number;
+  readonly xScale?: number;
+}
+
+interface MeasuredStation {
+  readonly z: number;
+  readonly points: readonly ReadonlyVec2Tuple[];
+}
+
+interface ForwardTrapezoidOptions {
+  rearHalfWidth: number;
+  rearHalfHeight: number;
+  frontHalfWidth: number;
+  frontHalfHeight: number;
+  rearZ: number;
+  frontZ: number;
+}
+
+interface SheridanMaterials extends Record<string, THREE.Material> {
+  dark: THREE.Material;
+  detail: THREE.Material;
+  wheels: THREE.Material;
+}
+
+interface SheridanBuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly mats: SheridanMaterials;
+  readonly q?: boolean;
+  readonly spec: { id: string };
+  readonly geometryReceipt?: boolean;
+  topY?: number;
+  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addCupola(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
+  addEquipment(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
+  addExternalArmor(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  addHatch(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
+  addModuleVisual(module: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    label: string | null,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): unknown;
+  eraCluster(key: string, build: (put: EraPut) => void, turret?: boolean): unknown;
+}
+
+interface AntennaStage {
+  x: number;
+  z: number;
+  stages: Array<[number, number, number, 'dark' | 'detail']>;
+}
+
+const nonUniformXform = KIT.xform as (
+  geometry: unknown,
+  x: number,
+  y: number,
+  z: number,
+  rotationX: number,
+  rotationY: number,
+  rotationZ: number,
+  scale: number | readonly number[],
+) => THREE.BufferGeometry;
 
 const D2R = Math.PI / 180;
 const SHERIDAN_X_SCALE = 2.82 / 3.04;
@@ -23,23 +100,23 @@ const SHERIDAN_TURRET_ROOF_PLAN = Object.freeze([
   [0.0619, -0.9573], [0.4054, -0.7439], [0.5562, -0.3040], [0.7030, 0.1371],
   [0.6089, 0.5674], [0.1998, 0.7885], [-0.2139, 0.7928], [-0.5984, 0.5314],
   [-0.8565, 0.1602], [-1.0148, -0.2725], [-0.8026, -0.6722], [-0.3950, -0.8889],
-]);
+]) satisfies readonly ReadonlyVec2Tuple[];
 
 // Connected procedural shell through independently measured horizontal
 // sections. Unlike polyMultiLoft, this does not assume every higher section is
 // a uniform scale of the widest ring—an assumption that turns Sheridan's
 // offset cast turret into a generic dome. The points remain a deliberately
 // sparse first-party reconstruction; no source triangles or indices are used.
-function measuredRingLoft(rings) {
+function measuredRingLoft(rings: readonly MeasuredRing[]): THREE.BufferGeometry {
   const count = rings[0].points.length;
   if (rings.length < 2 || rings.some((ring) => ring.points.length !== count)) {
     throw new Error('measuredRingLoft requires equally sampled rings');
   }
-  const loops = rings.map((ring) => ring.points.map(([x, z]) => [
+  const loops: Vec3Tuple[][] = rings.map((ring) => ring.points.map(([x, z]) => [
     x * (ring.xScale ?? 1) * SHERIDAN_TURRET_X_SCALE, ring.y, z,
   ]));
-  const positions = [];
-  const tri = (a, b, c) => positions.push(...a, ...b, ...c);
+  const positions: number[] = [];
+  const tri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): number => positions.push(...a, ...b, ...c);
   for (let ring = 0; ring < loops.length - 1; ring++) {
     const lower = loops[ring];
     const upper = loops[ring + 1];
@@ -60,8 +137,8 @@ function measuredRingLoft(rings) {
       }
     }
   }
-  const cap = (loop, top) => {
-    const center = [
+  const cap = (loop: Vec3Tuple[], top: boolean): void => {
+    const center: Vec3Tuple = [
       loop.reduce((sum, point) => sum + point[0], 0) / count,
       loop[0][1],
       loop.reduce((sum, point) => sum + point[2], 0) / count,
@@ -73,7 +150,7 @@ function measuredRingLoft(rings) {
     }
   };
   cap(loops[0], false);
-  cap(loops.at(-1), true);
+  cap(loops[loops.length - 1], true);
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((positions.length / 3) * 2).fill(0), 2));
@@ -85,12 +162,12 @@ function measuredRingLoft(rings) {
 // points are supplied in final world metres and inversely pre-scaled here so
 // the production hull articulation root can retain the fleet-wide Sheridan
 // width/height correction used by its wheels, fittings and decals.
-function measuredStationLoft(stations) {
+function measuredStationLoft(stations: readonly MeasuredStation[]): THREE.BufferGeometry {
   if (stations.length < 2 || stations.some((station) => station.points.length < 3)) {
     throw new Error('measuredStationLoft requires at least two closed station outlines');
   }
   const count = 24;
-  const resample = (source) => {
+  const resample = (source: readonly ReadonlyVec2Tuple[]): Vec2Tuple[] => {
     let points = source.slice();
     const area = points.reduce((sum, point, index) => {
       const next = points[(index + 1) % points.length];
@@ -105,7 +182,7 @@ function measuredStationLoft(stations) {
       item.point[0] < best.point[0] ? item : best
     )).index;
     points = points.slice(start).concat(points.slice(0, start));
-    const lengths = [];
+    const lengths: number[] = [];
     let perimeter = 0;
     for (let index = 0; index < points.length; index++) {
       const next = points[(index + 1) % points.length];
@@ -113,7 +190,7 @@ function measuredStationLoft(stations) {
       lengths.push(length);
       perimeter += length;
     }
-    const result = [];
+    const result: Vec2Tuple[] = [];
     let edge = 0;
     let edgeStart = 0;
     for (let sample = 0; sample < count; sample++) {
@@ -131,13 +208,13 @@ function measuredStationLoft(stations) {
     }
     return result;
   };
-  const loops = stations.map((station) => resample(station.points).map(([x, y]) => [
+  const loops: Vec3Tuple[][] = stations.map((station) => resample(station.points).map(([x, y]) => [
     x / SHERIDAN_X_SCALE,
     y / SHERIDAN_Y_SCALE,
     station.z,
   ]));
-  const positions = [];
-  const tri = (a, b, c) => positions.push(...a, ...b, ...c);
+  const positions: number[] = [];
+  const tri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): number => positions.push(...a, ...b, ...c);
   for (let station = 0; station < loops.length - 1; station++) {
     const rear = loops[station];
     const front = loops[station + 1];
@@ -147,8 +224,8 @@ function measuredStationLoft(stations) {
       tri(rear[i], front[j], front[i]);
     }
   }
-  const cap = (loop, front) => {
-    const center = [
+  const cap = (loop: Vec3Tuple[], front: boolean): void => {
+    const center: Vec3Tuple = [
       loop.reduce((sum, point) => sum + point[0], 0) / count,
       loop.reduce((sum, point) => sum + point[1], 0) / count,
       loop[0][2],
@@ -160,7 +237,7 @@ function measuredStationLoft(stations) {
     }
   };
   cap(loops[0], false);
-  cap(loops.at(-1), true);
+  cap(loops[loops.length - 1], true);
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((positions.length / 3) * 2).fill(0), 2));
@@ -173,13 +250,18 @@ function measuredStationLoft(stations) {
 // comparison print; those objects reach the track faces even though the main
 // center hull casting does not. A single wide hull scale cannot reproduce
 // that relationship without also moving the wheels and track lanes.
-function measuredSideCourse(side, innerX, outerX, profile) {
+function measuredSideCourse(
+  side: number,
+  innerX: number,
+  outerX: number,
+  profile: readonly ReadonlyVec2Tuple[],
+): THREE.BufferGeometry {
   const shape = profile.map(([z, y]) => new THREE.Vector2(z, y));
   const faces = THREE.ShapeUtils.triangulateShape(shape, []);
   const xs = [side * innerX / SHERIDAN_X_SCALE, side * outerX / SHERIDAN_X_SCALE];
-  const loops = xs.map((x) => profile.map(([z, y]) => [x, y / SHERIDAN_Y_SCALE, z]));
-  const positions = [];
-  const tri = (a, b, c) => positions.push(...a, ...b, ...c);
+  const loops: Vec3Tuple[][] = xs.map((x) => profile.map(([z, y]) => [x, y / SHERIDAN_Y_SCALE, z]));
+  const positions: number[] = [];
+  const tri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): number => positions.push(...a, ...b, ...c);
   for (const [a, b, c] of faces) {
     if (side > 0) {
       tri(loops[1][a], loops[1][b], loops[1][c]);
@@ -205,7 +287,10 @@ function measuredSideCourse(side, innerX, outerX, profile) {
 // source Sheridan turret is the visible union of several overlapping cast
 // sections; reconstructing only the largest horizontal loft leaves holes in
 // the canonical front/rear silhouettes even when every ring extent matches.
-function measuredTransverseCourse(profile, depth) {
+function measuredTransverseCourse(
+  profile: readonly ReadonlyVec2Tuple[],
+  depth: number,
+): THREE.ExtrudeGeometry {
   const shape = new THREE.Shape();
   shape.moveTo(profile[0][0], profile[0][1]);
   for (let index = 1; index < profile.length; index++) {
@@ -229,12 +314,16 @@ function measuredTransverseCourse(profile, depth) {
 // wrong voids around the breech. Coordinates stay in the authored gun-pivot
 // frame and deliberately describe only the exterior course, not source
 // triangles or indices.
-function measuredGunSidePlate(profile, minX, maxX) {
+function measuredGunSidePlate(
+  profile: readonly ReadonlyVec2Tuple[],
+  minX: number,
+  maxX: number,
+): THREE.BufferGeometry {
   const shape = profile.map(([z, y]) => new THREE.Vector2(z, y));
   const faces = THREE.ShapeUtils.triangulateShape(shape, []);
-  const loops = [minX, maxX].map((x) => profile.map(([z, y]) => [x, y, z]));
-  const positions = [];
-  const tri = (a, b, c) => positions.push(...a, ...b, ...c);
+  const loops: Vec3Tuple[][] = [minX, maxX].map((x) => profile.map(([z, y]) => [x, y, z]));
+  const positions: number[] = [];
+  const tri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): number => positions.push(...a, ...b, ...c);
   for (const [a, b, c] of faces) {
     tri(loops[1][a], loops[1][b], loops[1][c]);
     tri(loops[0][c], loops[0][b], loops[0][a]);
@@ -258,26 +347,26 @@ function measuredGunSidePlate(profile, minX, maxX) {
 // while retaining the Sheridan's straight, faceted casting language.
 function forwardTrapezoidGunMask({
   rearHalfWidth, rearHalfHeight, frontHalfWidth, frontHalfHeight, rearZ, frontZ,
-}) {
+}: ForwardTrapezoidOptions): THREE.BufferGeometry {
   if (rearHalfWidth <= 0 || rearHalfHeight <= 0
     || frontHalfWidth <= 0 || frontHalfHeight <= 0 || frontZ <= rearZ) {
     throw new RangeError('forwardTrapezoidGunMask expects positive dimensions and a forward face');
   }
-  const rear = [
+  const rear: Vec3Tuple[] = [
     [-rearHalfWidth, -rearHalfHeight, rearZ],
     [rearHalfWidth, -rearHalfHeight, rearZ],
     [rearHalfWidth, rearHalfHeight, rearZ],
     [-rearHalfWidth, rearHalfHeight, rearZ],
   ];
-  const front = [
+  const front: Vec3Tuple[] = [
     [-frontHalfWidth, -frontHalfHeight, frontZ],
     [frontHalfWidth, -frontHalfHeight, frontZ],
     [frontHalfWidth, frontHalfHeight, frontZ],
     [-frontHalfWidth, frontHalfHeight, frontZ],
   ];
-  const positions = [];
-  const tri = (a, b, c) => positions.push(...a, ...b, ...c);
-  const quad = (a, b, c, d) => {
+  const positions: number[] = [];
+  const tri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): number => positions.push(...a, ...b, ...c);
+  const quad = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple, d: Vec3Tuple): void => {
     tri(a, b, c);
     tri(a, c, d);
   };
@@ -301,7 +390,14 @@ function forwardTrapezoidGunMask({
 // pitched and splayed, so two Euler guesses cannot preserve their surveyed
 // endpoints. Keeping the centerline explicit also lets collars and bores share
 // exactly the same axis without visible kinks.
-function cylinderOnAxis(center, axis, length, radius, segments, radiusTop = radius) {
+function cylinderOnAxis(
+  center: Vec3Tuple,
+  axis: Vec3Tuple,
+  length: number,
+  radius: number,
+  segments: number,
+  radiusTop = radius,
+): THREE.BufferGeometry {
   const geometry = KIT.cylY(radiusTop, radius, length, segments);
   const direction = new THREE.Vector3(...axis).normalize();
   geometry.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(
@@ -316,7 +412,7 @@ function cylinderOnAxis(center, axis, length, radius, segments, radiusTop = radi
 // preserves their plan footprint but still overfills the direct side mask.
 // Reconstructing only the PCA frame and envelope keeps this first-party and
 // sparse while retaining all three surveyed axes.
-function boxOnBasis(size, axisX, axisY) {
+function boxOnBasis(size: Vec3Tuple, axisX: Vec3Tuple, axisY: Vec3Tuple): THREE.BufferGeometry {
   const x = new THREE.Vector3(...axisX).normalize();
   const y = new THREE.Vector3(...axisY).normalize();
   const z = new THREE.Vector3().crossVectors(x, y).normalize();
@@ -333,13 +429,13 @@ function boxOnBasis(size, axisX, axisY) {
 // the real installation is only 162 mm across. Rebuild the connected members
 // from their individual envelopes and retain one fitting marker for the
 // equipment census.
-function measuredCommanderM2(P) {
+function measuredCommanderM2(P: SheridanBuilderPort): THREE.Group {
   const group = new THREE.Group();
-  const darkParts = [];
-  const detailParts = [];
-  const ammoBoxParts = [];
+  const darkParts: THREE.BufferGeometry[] = [];
+  const detailParts: THREE.BufferGeometry[] = [];
+  const ammoBoxParts: THREE.BufferGeometry[] = [];
   const turretPivotY = 1.466;
-  const ly = (worldY) => worldY - turretPivotY;
+  const ly = (worldY: number): number => worldY - turretPivotY;
 
   // Twin rear cradle rails: source Object_8, X=-0.533/-0.466 m,
   // Y=2.737..2.876 m, Z=-0.096..0.491 m.
@@ -444,7 +540,12 @@ function measuredCommanderM2(P) {
   darkParts.push(KIT.xform(KIT.cylY(0.055, 0.060, 0.022, P.q ? 16 : 10),
     -0.498, 0.968, 0.290));
 
-  const addMesh = (name, parts, material, appearanceRole) => {
+  const addMesh = (
+    name: string,
+    parts: THREE.BufferGeometry[],
+    material: THREE.Material,
+    appearanceRole: string,
+  ): void => {
     const geometry = KIT.mergeAll(parts);
     geometry.setAttribute('color', new THREE.BufferAttribute(
       new Float32Array(geometry.attributes.position.count * 3).fill(1), 3));
@@ -467,7 +568,7 @@ function measuredCommanderM2(P) {
 // split asymmetric shield, side ammunition coffin and separate sight head
 // give the Sheridan demonstrator its own compact airborne-vehicle solution.
 // The group remains one exact fitting for equipment census purposes.
-function sheridanTtsAutocannon(P) {
+function sheridanTtsAutocannon(P: SheridanBuilderPort): THREE.Group {
   const group = new THREE.Group();
   group.name = 'm551a1TtsRemoteAutocannon';
   group.userData.remoteControlled = true;
@@ -475,10 +576,10 @@ function sheridanTtsAutocannon(P) {
   group.userData.americanRwsFamily = 'm551a1-tts-derived-v1';
   group.userData.stationVariant = 'tts30-demonstrator';
 
-  const body = [];
-  const dark = [];
-  const detail = [];
-  const glass = [];
+  const body: THREE.BufferGeometry[] = [];
+  const dark: THREE.BufferGeometry[] = [];
+  const detail: THREE.BufferGeometry[] = [];
+  const glass: THREE.BufferGeometry[] = [];
   const { box, cylX, cylY, cylZ, frustum, torus, xform, mergeAll } = KIT;
 
   // Foundation is buried through the commander's roof ring so the station
@@ -534,7 +635,12 @@ function sheridanTtsAutocannon(P) {
   P.add('turretDetail', mergeAll(detail));
   P.add('turretGlass', mergeAll(glass));
 
-  const addMesh = (name, parts, material, appearanceRole) => {
+  const addMesh = (
+    name: string,
+    parts: THREE.BufferGeometry[],
+    material: THREE.Material,
+    appearanceRole: string,
+  ): void => {
     const geometry = mergeAll(parts);
     geometry.setAttribute('color', new THREE.BufferAttribute(
       new Float32Array(geometry.attributes.position.count * 3).fill(1), 3));
@@ -550,7 +656,7 @@ function sheridanTtsAutocannon(P) {
   return group;
 }
 
-function buildSheridanTtsUpgrade(P) {
+function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   const { box, cylY, cylZ, torus, xform } = KIT;
 
   // The rear deck extension overlaps the original stern by 0.59 m and stays
@@ -680,12 +786,21 @@ function buildSheridanTtsUpgrade(P) {
   };
 }
 
-const hullSection = (bottomHalf, bottomY, beltHalf, beltY, sideHalf, sideY, roofHalf, roofY) => [
+const hullSection = (
+  bottomHalf: number,
+  bottomY: number,
+  beltHalf: number,
+  beltY: number,
+  sideHalf: number,
+  sideY: number,
+  roofHalf: number,
+  roofY: number,
+): Vec2Tuple[] => [
   [-roofHalf, roofY], [-sideHalf, sideY], [-beltHalf, beltY], [-bottomHalf, bottomY],
   [bottomHalf, bottomY], [beltHalf, beltY], [sideHalf, sideY], [roofHalf, roofY],
 ];
 
-function buildSheridan(P) {
+function buildSheridan(P: SheridanBuilderPort): void {
   const {
     xform, box, cylX, cylY, cylZ, sph, torus, frustum,
     buildRunningGear, fenders, headlight, liftEye, periscope,
@@ -796,9 +911,9 @@ function buildSheridan(P) {
   // 0.58 m flat disk was visibly the wrong component even though it occupied
   // little silhouette area. Sink the lower half of an original low-poly dome
   // through the glacis and retain the source's elliptical bearing footprint.
-  P.addHatch('hull', xform(sph(0.5, P.q ? 24 : 16), 0, 0, 0,
+  P.addHatch('hull', nonUniformXform(sph(0.5, P.q ? 24 : 16), 0, 0, 0,
     0, 0, 0, [0.821, 0.394, 0.421]), 0, 1.4205, 1.9527);
-  P.add('hullDark', xform(torus(0.410, 0.018, P.q ? 28 : 18),
+  P.add('hullDark', nonUniformXform(torus(0.410, 0.018, P.q ? 28 : 18),
     0, 0, 0, 0, 0, 0, [1, 1, 0.513]), 0, 1.394, 1.9527);
   for (const x of [-0.19, 0, 0.19]) {
     periscope(P, 'hullDetail', x, 1.585, 1.750, 0);
@@ -1051,7 +1166,7 @@ function buildSheridan(P) {
     [ 0.195, 1.823, 2.184, -1.521, -1.099],
     [ 0.355, 1.797, 2.189, -1.486, -1.064],
   ]) {
-    P.add('turretCloth', xform(sph(0.5, P.q ? 18 : 12), 0, 0, 0,
+    P.add('turretCloth', nonUniformXform(sph(0.5, P.q ? 18 : 12), 0, 0, 0,
       0, 0, 0, [0.174, maxY - minY, maxZ - minZ]),
     x, (minY + maxY) * 0.5 - 1.466, (minZ + maxZ) * 0.5);
   }
@@ -1063,7 +1178,7 @@ function buildSheridan(P) {
     [-0.51341, 0.48845, -1.21920, 0.68153, 0.40050, 0.34665, -0.43003],
     [ 0.10144, 0.52368, -1.34468, 0.65813, 0.37303, 0.32435, -0.08357],
   ]) {
-    P.add('turretCloth', xform(sph(0.5, P.q ? 18 : 12), 0, 0, 0,
+    P.add('turretCloth', nonUniformXform(sph(0.5, P.q ? 18 : 12), 0, 0, 0,
       0, yaw, 0, [w, h, d]), x, y, z);
   }
   // Exact 3D PCA envelopes for connected components 0, 1, 2, 4 and 5.
@@ -1080,7 +1195,7 @@ function buildSheridan(P) {
       [-0.726688, -0.151457, -0.670064], [0.679923, -0.297898, -0.670046]],
     [-0.286688, 0.742240, -1.334852, [0.266792, 0.226982, 0.158259],
       [-0.522162, 0.367820, 0.769451], [0.852712, 0.209174, 0.478673]],
-  ]) {
+  ] satisfies Array<[number, number, number, Vec3Tuple, Vec3Tuple, Vec3Tuple]>) {
     P.add('turretCloth', boxOnBasis(size, axisX, axisY), x, y, z);
   }
   // Five surveyed retaining bands cross those packs. Several source
@@ -1097,7 +1212,7 @@ function buildSheridan(P) {
       [0.047150, -0.323593, -0.945021], [-0.306591, -0.905096, 0.294625]],
     [-0.686175, 0.709045, -1.048354, [0.515932, 0.093265, 0.023033],
       [-0.586069, -0.308844, -0.749092], [0.192812, -0.951108, 0.241283]],
-  ]) {
+  ] satisfies Array<[number, number, number, Vec3Tuple, Vec3Tuple, Vec3Tuple]>) {
     P.add('turretDark', boxOnBasis(size, axisX, axisY), x, y, z);
   }
 
@@ -1143,7 +1258,7 @@ function buildSheridan(P) {
   // translated into the production gun pivot frame (Y=1.90655, Z=1.10032).
   // The overlaps are intentional: they preserve one mechanically continuous
   // elevation assembly without copying any source topology.
-  P.addGunExtra(xform(cylZ(0.5, 0.0660, P.q ? 24 : 14), 0, 0, 0,
+  P.addGunExtra(nonUniformXform(cylZ(0.5, 0.0660, P.q ? 24 : 14), 0, 0, 0,
     0, 0, 0, [0.320, 0.434, 1]), 0.005, -0.0556, -0.5283);
   P.addGunExtra(cylZ(0.1530, 0.4577, P.q ? 24 : 14),
     0, 0.0065, -0.2468);
@@ -1268,11 +1383,11 @@ function buildSheridan(P) {
       // The lower 816 mm collar (Object_11 component 8) starts below the
       // crown and supports the wider upper bearing. Keeping the two measured
       // courses separate avoids the swollen single-frustum look.
-      P.addCupola('turret', xform(
+      P.addCupola('turret', nonUniformXform(
         cylY(0.408, 0.408, 0.15605, P.q ? 26 : 18),
         0, 0, 0, 0, 0, 0, [1, 1, 0.9985]),
         station.x, 0.79752, station.z);
-      P.addCupola('turret', xform(
+      P.addCupola('turret', nonUniformXform(
         cylY(0.43, 0.556, 0.09530, P.q ? 26 : 18),
         0, 0, 0, 0, 0, 0, [1, 1, 0.9604]),
         station.x, 0.85347, station.z);
@@ -1298,11 +1413,11 @@ function buildSheridan(P) {
       // -23.5° plane, then add the central stay from component 58.
       P.add('turretDark', torus(0.405, 0.018, P.q ? 24 : 16),
         station.x, 0.944, station.z);
-      P.addHatch('turret', xform(
+      P.addHatch('turret', nonUniformXform(
         torus(0.270, 0.040, P.q ? 30 : 20),
         0, 0, 0, -0.410, 0, 0, [1, 1, 0.755]),
         -0.5002, 1.0114, 0.2745);
-      P.add('turretDark', xform(
+      P.add('turretDark', nonUniformXform(
         torus(0.238, 0.014, P.q ? 28 : 18),
         0, 0, 0, -0.410, 0, 0, [1, 1, 0.755]),
         -0.5002, 1.025, 0.2685);
@@ -1318,11 +1433,11 @@ function buildSheridan(P) {
           x, 0.980, 0.072, -0.30, 0, 0);
       }
     } else {
-      P.addHatch('turret', xform(
+      P.addHatch('turret', nonUniformXform(
         cylY(0.225, 0.225, 0.02475, P.q ? 24 : 16),
         0, 0, 0, 0, 0, 0, [1, 1, 1.271]),
         station.x, 0.75926, station.z);
-      P.add('turretDark', xform(
+      P.add('turretDark', nonUniformXform(
         torus(0.205, 0.010, P.q ? 24 : 16),
         0, 0, 0, 0, 0, 0, [1, 1, 1.271]),
         station.x, 0.7720, station.z);
@@ -1379,7 +1494,9 @@ function buildSheridan(P) {
   // Exact Object_10 smoke-bank centerlines. Each body, collar and dark bore
   // uses the same surveyed 3D axis, eliminating the generic fitting's fan
   // angle errors and making all eight tubes terminate on one coherent arc.
-  const smokeTubes = [
+  const smokeTubes: Array<[
+    number, number, number, number, number, number, number,
+  ]> = [
     [-0.849710, 1.808775, 1.261650, -0.032641, 0.635442, 0.771458, 0.339435],
     [-0.963521, 1.804380, 1.141501, -0.260660, 0.667405, 0.697586, 0.338749],
     [-1.061774, 1.801967, 1.010892, -0.459412, 0.686395, 0.563740, 0.338962],
@@ -1390,18 +1507,18 @@ function buildSheridan(P) {
     [1.144184, 1.801301, 0.870843, 0.613621, 0.692013, 0.380246, 0.339135],
   ];
   for (const [x, worldY, z, ax, ay, az, length] of smokeTubes) {
-    const axis = [ax, ay, az];
-    const center = [x, worldY - 1.466, z];
+    const axis: Vec3Tuple = [ax, ay, az];
+    const center: Vec3Tuple = [x, worldY - 1.466, z];
     P.add('turretDetail', cylinderOnAxis(center, axis, length, 0.036,
       P.q ? 18 : 12), 0, 0, 0);
-    const muzzle = [
+    const muzzle: Vec3Tuple = [
       center[0] + ax * (length * 0.5 + 0.006),
       center[1] + ay * (length * 0.5 + 0.006),
       center[2] + az * (length * 0.5 + 0.006),
     ];
     P.add('turretDetail', cylinderOnAxis(muzzle, axis, 0.030, 0.045,
       P.q ? 18 : 12), 0, 0, 0);
-    const bore = [
+    const bore: Vec3Tuple = [
       muzzle[0] + ax * 0.018,
       muzzle[1] + ay * 0.018,
       muzzle[2] + az * 0.018,
@@ -1410,7 +1527,7 @@ function buildSheridan(P) {
       P.q ? 16 : 10), 0, 0, 0);
     // A short foot from each lower endpoint into the diagonal carrier makes
     // the complete array mechanically continuous with the turret cheek.
-    const foot = [
+    const foot: Vec3Tuple = [
       center[0] - ax * (length * 0.5 - 0.010),
       center[1] - ay * (length * 0.5 - 0.010),
       center[2] - az * (length * 0.5 - 0.010),
@@ -1423,8 +1540,8 @@ function buildSheridan(P) {
   // by 12–14 cm. Rebuild the two asymmetric multi-stage mounts at their
   // measured diameters/heights and bridge each pedestal into the cast roof,
   // which also keeps the articulation-island gate honest at 90° traverse.
-  const turretY = (worldY) => worldY - 1.466;
-  const antennaStages = [
+  const turretY = (worldY: number): number => worldY - 1.466;
+  const antennaStages: AntennaStage[] = [
     { x: 0.29174, z: -0.59165, stages: [
       [2.2260, 2.3327, 0.0400, 'dark'],
       [2.3327, 2.4409, 0.0306, 'dark'],
@@ -1494,4 +1611,4 @@ function buildSheridan(P) {
 export const SHERIDAN_PROFILES = Object.freeze({
   m551_sheridan: Object.freeze({ build: buildSheridan }),
   m551a1_tts: Object.freeze({ build: buildSheridan }),
-});
+}) satisfies VehicleProfileRecord;
