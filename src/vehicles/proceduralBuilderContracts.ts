@@ -7,6 +7,7 @@ export interface TransformObjectPort {
 }
 
 export interface AssemblyGroupPort {
+  readonly userData: Record<string, unknown>;
   add(object: TransformObjectPort): unknown;
 }
 
