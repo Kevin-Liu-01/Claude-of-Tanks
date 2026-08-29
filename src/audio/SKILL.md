@@ -12,7 +12,9 @@ audio without owning gameplay decisions.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`audio.js` owns Web Audio routing and synthesized/decoded effects;
+`audioPolicy.ts` owns deterministic catalogs, distance/perspective curves, and
+reload timing without DOM or WebAudio access; `audio.js` owns Web Audio routing
+and synthesized/decoded effects;
 `voices.ts` owns typed crew-line scheduling, priority, cooldown, and staleness;
 `lazyAudio.ts` owns gesture-time context creation, retryable mixer transfer,
 and the oscillator-only loading handoff;

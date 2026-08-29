@@ -287,3 +287,4 @@ runtime documents remain authoritative for behavior.
 - [0275 — Ukrainian profile geometry has a strict TypeScript owner](0275-type-ukrainian-profile-geometry.md)
 - [0276 — Garage presentation has a strict TypeScript boundary](0276-type-garage-presentation.md)
 - [0277 — Scene Studio runtime has a strict TypeScript boundary](0277-type-scene-studio-runtime.md)
+- [0278 — Audio policy is independent from the WebAudio runtime](0278-extract-audio-policy.md)

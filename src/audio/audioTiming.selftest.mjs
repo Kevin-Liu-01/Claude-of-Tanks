@@ -13,7 +13,7 @@ import {
   resolveWeaponReportProfile,
   safeAudioStart,
   worldDistanceGain,
-} from './audio.js';
+} from './audioPolicy.ts';
 
 assert.equal(safeAudioStart(0, -0.107), 0.001,
   'startup whizz clamps ahead of AudioContext time zero');

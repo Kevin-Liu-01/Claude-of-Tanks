@@ -28,7 +28,7 @@
 //     presence (2–6.5 kHz), and air (>6.5 kHz) are all bounded per event.
 //     These gates explicitly reject both tin-can resonance and sub-only mud.
 //   - payload: sum of public/audio/sfx/*.ogg <= 900 KiB
-//   - manifest sync: SFX_FILES in src/audio/audio.js maps exactly this set
+//   - manifest sync: SFX_FILES in src/audio/audioPolicy.ts maps exactly this set
 //     (imported live, like make-voices.mjs imports VOICE_LINES); orphans in
 //     the output dir are deleted on full runs and fail --verify.
 //
@@ -843,15 +843,15 @@ async function verify() {
   // Runtime mapping is the source of truth — import it (make-voices pattern).
   let SFX_FILES = null;
   try {
-    ({ SFX_FILES } = await import(path.join(ROOT, 'src', 'audio', 'audio.js')));
+    ({ SFX_FILES } = await import(path.join(ROOT, 'src', 'audio', 'audioPolicy.ts')));
   } catch (err) {
-    problems.push(`could not import SFX_FILES from src/audio/audio.js: ${err.message}`);
+    problems.push(`could not import SFX_FILES from src/audio/audioPolicy.ts: ${err.message}`);
   }
   const tableIds = new Set(MANIFEST.map((r) => `${r.name}.ogg`));
   if (SFX_FILES) {
     const mapped = new Set(Object.values(SFX_FILES));
-    for (const f of mapped) if (!tableIds.has(f)) problems.push(`audio.js maps ${f} but generator table lacks it`);
-    for (const f of tableIds) if (!mapped.has(f)) problems.push(`generator produces ${f} but audio.js never plays it`);
+    for (const f of mapped) if (!tableIds.has(f)) problems.push(`audioPolicy.ts maps ${f} but generator table lacks it`);
+    for (const f of tableIds) if (!mapped.has(f)) problems.push(`generator produces ${f} but audioPolicy.ts never plays it`);
   }
   for (const f of readdirSync(OUT_DIR)) {
     if (f.endsWith('.ogg') && !tableIds.has(f)) problems.push(`${f}: orphan in ${OUT_DIR}`);
