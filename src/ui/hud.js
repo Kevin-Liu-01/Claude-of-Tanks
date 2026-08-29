@@ -840,7 +840,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
    ammo/equipment grouping without shrinking the buttons themselves. */
 .cot-consep{width:1px;align-self:stretch;background:rgba(146,164,180,.3);margin:2px 6px;}
 /* MOBILE-UX r1: the consumables live in their own container so the mobile
-   tier can re-park them as a right-edge thumb column (touchControls.js).
+   tier can re-park them as a right-edge thumb column (touchControls.ts).
    display:contents = the wrapper generates NO box on desktop — the slots
    stay direct flex items of the tray, pixel-identical to the old markup. */
 .cot-cons{display:contents;}

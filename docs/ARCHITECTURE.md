@@ -880,7 +880,7 @@ Emits `ui:battleStart` and `ui:click` on the bus. Keyboard: ←/→ select, Ente
 persistence key. `garageStage.js` owns the first-paint shell and location
 palette. `garageDressingAccess.ts` keeps a stable light/root while lazily
 importing `garageDressing.js`; `garageDressingScheduler.ts` adds one optional
-slice per quiet lease. `workshopParts.js` is the only source for background
+slice per quiet lease. `workshopParts.ts` is the only source for background
 vehicle components. It is intentionally independent from `fleetFactory.ts`,
 so repair bays cannot pull tank profile families into garage idle time.
 

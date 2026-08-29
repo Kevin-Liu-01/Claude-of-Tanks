@@ -8,7 +8,9 @@ import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
   MOBILE_PRESET_ORDER, PRESET_ORDER, PRESETS, resolvePresetName,
   setMobilePresetName, setPresetName,
+  type PresetName,
 } from '../engine/quality.ts';
+import type { TouchControlsOptions, TouchControlsRuntime } from './touchControlsAccess.ts';
 
 const CSS = `
 .cot-touch{position:fixed;inset:0;z-index:60;display:none;pointer-events:none;
@@ -232,9 +234,39 @@ const SOUND_OFF = uiIconSVG('soundOff', 20);
 const GRAPHICS = uiIconSVG('graphics', 20);
 const SETTINGS = uiIconSVG('settings', 20);
 
-export function nextQuickGraphicsPreset(current, mobile = false) {
-  const order = mobile ? MOBILE_PRESET_ORDER : PRESET_ORDER;
-  const i = order.indexOf(current);
+export interface MobileFireGestureState {
+  readonly active: boolean;
+  readonly pointerId: number | null;
+  readonly dragging: boolean;
+  readonly cancelHot: boolean;
+  readonly autoFiring: boolean;
+}
+
+export interface MobileFireGestureOptions {
+  onAim?(dx: number, dy: number): void;
+  onFire?(): void;
+  onHoldStart?(): void;
+  onHoldEnd?(): void;
+  onCancel?(): void;
+  isCancelPoint?(x: number, y: number): boolean;
+  deadzonePx?: number;
+  aimScale?: number;
+  holdDelayMs?: number;
+  scheduleHold?(callback: () => void, delayMs: number): ReturnType<typeof setTimeout>;
+  cancelHold?(timer: ReturnType<typeof setTimeout>): void;
+}
+
+export interface MobileFireGesture {
+  begin(id: number | null | undefined, x: number, y: number): boolean;
+  move(id: number, x: number, y: number): MobileFireGestureState;
+  end(id: number | null, x: number, y: number): boolean;
+  cancel(id?: number | null): boolean;
+  getState(): MobileFireGestureState;
+}
+
+export function nextQuickGraphicsPreset(current: string, mobile = false): PresetName {
+  const order: readonly PresetName[] = mobile ? MOBILE_PRESET_ORDER : PRESET_ORDER;
+  const i = order.indexOf(current as PresetName);
   return order[(i < 0 ? 0 : i + 1) % order.length];
 }
 
@@ -255,12 +287,12 @@ export function createMobileFireGesture({
   holdDelayMs = 320,
   scheduleHold = (cb, ms) => setTimeout(cb, ms),
   cancelHold = (id) => clearTimeout(id),
-} = {}) {
-  let pointerId = null;
+}: MobileFireGestureOptions = {}): MobileFireGesture {
+  let pointerId: number | null = null;
   let startX = 0, startY = 0, lastX = 0, lastY = 0;
   let dragging = false;
   let cancelHot = false;
-  let holdTimer = null;
+  let holdTimer: ReturnType<typeof setTimeout> | null = null;
   let holdElapsed = false;
   let holdStarted = false;
   let autoFiring = false;
@@ -284,7 +316,7 @@ export function createMobileFireGesture({
     pointerId = null; dragging = false; cancelHot = false;
     holdElapsed = false; holdStarted = false; autoFiring = false;
   };
-  const move = (id, x, y) => {
+  const move = (id: number, x: number, y: number): MobileFireGestureState => {
     if (pointerId === null || id !== pointerId) return snapshot();
     const nx = Number(x) || 0, ny = Number(y) || 0;
     const dx = nx - lastX, dy = ny - lastY;
@@ -338,7 +370,7 @@ export function createMobileFireGesture({
 export function createTouchControls({
   input, bus, isBattleActive, isSniper = () => false,
   onOpenSettings = () => {}, onToggleSound = () => false,
-}) {
+}: TouchControlsOptions): TouchControlsRuntime {
   if (!document.getElementById('cot-touch-style')) {
     const style = document.createElement('style');
     style.id = 'cot-touch-style'; style.textContent = CSS; document.head.appendChild(style);
@@ -371,30 +403,30 @@ export function createTouchControls({
   document.body.appendChild(aimLayer);
   document.body.appendChild(root);
 
-  const joy = root.querySelector('.joy');
-  const knob = root.querySelector('.knob');
-  const aimPad = aimLayer.querySelector('.aimpad');
+  const joy = root.querySelector<HTMLElement>('.joy')!;
+  const knob = root.querySelector<HTMLElement>('.knob')!;
+  const aimPad = aimLayer.querySelector<HTMLElement>('.aimpad')!;
   let battle = !!isBattleActive();
   let layout = false;
-  let joyPointer = null;
-  let aimPointer = null;
+  let joyPointer: number | null = null;
+  let aimPointer: number | null = null;
   let aimX = 0, aimY = 0;
-  let cancelFireGesture = () => {};
+  let cancelFireGesture = (): void => {};
   // MOBILE-UX r1 PINCH = SCOPE: live touches on the aim surface. Two or more
   // fingers switch the pad from swipe-aim to a zoom gesture (aimPointer is
   // parked, so the joystick and one-finger aim are never disturbed).
-  const aimPts = new Map(); // pointerId -> {x,y}
+  const aimPts = new Map<number, { x: number; y: number }>();
   let pinchRef = -1;        // reference finger spread (px); -1 = not pinching
   const PINCH_STEP_PX = 44; // one zoom step per this much spread/close
 
-  function wantsTouchLayout() {
+  function wantsTouchLayout(): boolean {
     return input.isTouchLayout();
   }
-  function resetMove() {
+  function resetMove(): void {
     joyPointer = null; input.setVirtualMove(0, 0); knob.style.transform = 'translate(0px,0px)';
     aimPointer = null; aimPts.clear(); pinchRef = -1;
   }
-  function syncLayout() {
+  function syncLayout(): void {
     layout = wantsTouchLayout();
     document.body.classList.toggle('cot-touch-layout', layout);
     root.classList.toggle('on', layout && battle);
@@ -411,13 +443,13 @@ export function createTouchControls({
   // without touching one-finger scrolling anywhere. The touchmove and
   // ctrl+wheel (desktop trackpad pinch) guards are scoped to gameplay
   // surfaces so menus/garage DOM keeps every native scroll it has.
-  function onGameplaySurface(t) {
+  function onGameplaySurface(t: EventTarget | null): boolean {
     if (battle && layout) return true; // live touch battle: the frame is HUD
-    if (!t || !t.closest) return false;
+    if (!(t instanceof Element)) return false;
     return !!(t.closest('#app') || t.closest('.cot-touch') ||
       t.closest('.cot-touch-aim') || t.closest('.cot-hud'));
   }
-  const killGesture = (e) => e.preventDefault();
+  const killGesture = (event: Event): void => event.preventDefault();
   for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
     document.addEventListener(type, killGesture, { passive: false });
   }
@@ -428,7 +460,7 @@ export function createTouchControls({
     if (e.ctrlKey && onGameplaySurface(e.target)) e.preventDefault();
   }, { passive: false });
 
-  function updateJoy(e) {
+  function updateJoy(e: PointerEvent): void {
     const r = joy.getBoundingClientRect();
     const max = r.width * 0.34;
     let dx = e.clientX - (r.left + r.width / 2);
@@ -444,7 +476,7 @@ export function createTouchControls({
     updateJoy(e);
   });
   joy.addEventListener('pointermove', (e) => { if (e.pointerId === joyPointer) updateJoy(e); });
-  const endJoy = (e) => { if (e.pointerId === joyPointer) resetMove(); };
+  const endJoy = (e: PointerEvent): void => { if (e.pointerId === joyPointer) resetMove(); };
   joy.addEventListener('pointerup', endJoy); joy.addEventListener('pointercancel', endJoy);
   joy.addEventListener('lostpointercapture', endJoy);
 
@@ -457,7 +489,7 @@ export function createTouchControls({
   //   pinch in scope      -> zoomOut (stepZoom exits scope below the lowest
   //                          step — cameraRig's own wheel-out behavior)
   //   pinch in arcade     -> nothing (never yanks the orbit mid-fight)
-  function pinchDist() {
+  function pinchDist(): number {
     const it = aimPts.values();
     const a = it.next().value;
     const b = it.next().value;
@@ -470,7 +502,7 @@ export function createTouchControls({
   // toggle and the wheel notches are consumed in the same rig.update (shift
   // edge first, wheel after), so enter+zoom in one frame lands correctly.
   let scopePending = false;
-  function stepScope(dir) {
+  function stepScope(dir: number): void {
     const scoped = isSniper() || scopePending;
     if (dir > 0) {
       if (scoped) input.tapVirtual('zoomIn');
@@ -509,14 +541,14 @@ export function createTouchControls({
     aimX = e.clientX; aimY = e.clientY;
     input.addVirtualAim(dx * 1.18, dy * 1.18);
   });
-  const endAim = (e) => {
+  const endAim = (e: PointerEvent): void => {
     aimPts.delete(e.pointerId);
     if (aimPts.size < 2) pinchRef = -1;
     if (e.pointerId === aimPointer) aimPointer = null;
     // one finger survives the pinch: hand swipe-aim back to it seamlessly
     if (aimPointer === null && aimPts.size === 1) {
-      const [id, p] = aimPts.entries().next().value;
-      aimPointer = id; aimX = p.x; aimY = p.y;
+      const [id, point] = aimPts.entries().next().value!;
+      aimPointer = id; aimX = point.x; aimY = point.y;
     }
   };
   aimPad.addEventListener('pointerup', endAim); aimPad.addEventListener('pointercancel', endAim);
@@ -528,9 +560,9 @@ export function createTouchControls({
   // an IFV streams and an MBT fires again whenever reload completes. Release,
   // pointercancel, lost capture and phase exit all drop the held state. The
   // 8 px deadzone prevents the thumb's landing wobble from jerking the gun.
-  const fireCancel = root.querySelector('.fire-cancel');
-  let activeFireButton = null;
-  const isFireCancelPoint = (x, y) => {
+  const fireCancel = root.querySelector<HTMLElement>('.fire-cancel')!;
+  let activeFireButton: HTMLButtonElement | null = null;
+  const isFireCancelPoint = (x: number, y: number): boolean => {
     const r = fireCancel.getBoundingClientRect();
     return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   };
@@ -541,7 +573,7 @@ export function createTouchControls({
     onHoldEnd: () => input.releaseVirtual('fire'),
     isCancelPoint: isFireCancelPoint,
   });
-  function renderFireGesture() {
+  function renderFireGesture(): void {
     const st = fireGesture.getState();
     root.classList.toggle('fire-armed', st.active);
     aimLayer.classList.toggle('fire-armed', st.active);
@@ -559,7 +591,7 @@ export function createTouchControls({
         : 'Drag to aim; release to fire; hold for auto fire'))
       : (activeFireButton.classList.contains('alt') ? 'Fire gun left' : 'Fire gun'));
   }
-  function parkFireCancel(button) {
+  function parkFireCancel(button: HTMLButtonElement): void {
     const r = button.getBoundingClientRect();
     const side = r.left + r.width / 2 > innerWidth / 2 ? -1 : 1;
     const x = r.left + r.width / 2 + side * Math.max(112, r.width * 1.25);
@@ -567,7 +599,7 @@ export function createTouchControls({
     fireCancel.style.left = `${Math.max(32, Math.min(innerWidth - 32, x)).toFixed(1)}px`;
     fireCancel.style.top = `${Math.max(32, Math.min(innerHeight - 32, y)).toFixed(1)}px`;
   }
-  function finishFire(e, shouldFire) {
+  function finishFire(e: PointerEvent, shouldFire: boolean): void {
     if (!activeFireButton || e.pointerId !== fireGesture.getState().pointerId) return;
     e.preventDefault(); e.stopPropagation();
     if (shouldFire) fireGesture.end(e.pointerId, e.clientX, e.clientY);
@@ -575,7 +607,7 @@ export function createTouchControls({
     renderFireGesture();
     activeFireButton = null;
   }
-  for (const fire of root.querySelectorAll('.fire')) {
+  for (const fire of root.querySelectorAll<HTMLButtonElement>('.fire')) {
     fire.addEventListener('pointerdown', (e) => {
       e.preventDefault(); e.stopPropagation();
       if (!fireGesture.begin(e.pointerId, e.clientX, e.clientY)) return;
@@ -599,22 +631,23 @@ export function createTouchControls({
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) cancelFireGesture();
   });
-  root.querySelector('.scope').addEventListener('pointerdown', (e) => {
+  root.querySelector<HTMLButtonElement>('.scope')!.addEventListener('pointerdown', (e) => {
     e.preventDefault(); e.stopPropagation(); input.tapVirtual('sniperToggle'); bus.emit('ui:click', {});
   });
-  const autoAim = root.querySelector('.autoaim');
+  const autoAim = root.querySelector<HTMLButtonElement>('.autoaim')!;
   autoAim.addEventListener('pointerdown', (e) => {
     e.preventDefault(); e.stopPropagation();
     bus.emit('ui:autoAimToggle', {});
     bus.emit('ui:click', {});
   });
-  bus.on('ui:autoAimState', ({ on }) => {
+  bus.on('ui:autoAimState', (payload) => {
+    const { on } = payload as { on?: boolean };
     autoAim.classList.toggle('on', !!on);
     autoAim.setAttribute('aria-pressed', on ? 'true' : 'false');
     const label = autoAim.querySelector('.lb');
     if (label) label.textContent = on ? 'Locked' : 'Auto Aim';
   });
-  const soundButton = root.querySelector('.quick.sound');
+  const soundButton = root.querySelector<HTMLButtonElement>('.quick.sound')!;
   soundButton.addEventListener('click', (e) => {
     e.stopPropagation();
     const muted = !!onToggleSound();
@@ -623,18 +656,18 @@ export function createTouchControls({
     soundButton.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
     soundButton.setAttribute('aria-pressed', muted ? 'true' : 'false');
   });
-  const graphicsButton = root.querySelector('.quick.graphics');
-  function graphicsChoice() {
+  const graphicsButton = root.querySelector<HTMLButtonElement>('.quick.graphics')!;
+  function graphicsChoice(): PresetName {
     if (getDeviceTier() === 'mobile') return getMobilePresetChoice();
     const stored = getStoredChoice();
     return stored === 'auto' ? resolvePresetName(stored) : stored;
   }
-  function renderGraphicsButton() {
+  function renderGraphicsButton(): void {
     const name = graphicsChoice();
     const label = PRESETS[name]?.label || name;
     const short = label === 'Performance' ? 'Perf' : label === 'Balanced' ? 'Bal' :
       label === 'Quality' ? 'Qual' : label;
-    graphicsButton.querySelector('.ql').textContent = `GFX ${short}`;
+    graphicsButton.querySelector<HTMLElement>('.ql')!.textContent = `GFX ${short}`;
     graphicsButton.setAttribute('aria-label', `Graphics quality: ${label}. Tap to change level`);
     graphicsButton.title = `Graphics: ${label}`;
   }
@@ -647,11 +680,14 @@ export function createTouchControls({
     bus.emit('ui:click', {});
   });
   renderGraphicsButton();
-  root.querySelector('.quick.settings').addEventListener('click', (e) => {
+  root.querySelector<HTMLButtonElement>('.quick.settings')!.addEventListener('click', (e) => {
     e.stopPropagation(); bus.emit('ui:click', {}); onOpenSettings();
   });
 
-  bus.on('phase:change', ({ phase }) => { battle = phase === 'battle'; syncLayout(); });
+  bus.on('phase:change', (payload) => {
+    const { phase } = payload as { phase?: string };
+    battle = phase === 'battle'; syncLayout();
+  });
   window.addEventListener('resize', syncLayout, { passive: true });
   window.addEventListener('orientationchange', syncLayout, { passive: true });
   syncLayout();

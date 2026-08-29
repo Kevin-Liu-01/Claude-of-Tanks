@@ -8,7 +8,7 @@ const [
   networkStatus, transition, perfHud, deviceDiag, renderer, main, pointerLockFeedback, gallery, docs,
 ] = await Promise.all([
   readFile(new URL('./garage.js', import.meta.url), 'utf8'),
-  readFile(new URL('./touchControls.js', import.meta.url), 'utf8'),
+  readFile(new URL('./touchControls.ts', import.meta.url), 'utf8'),
   readFile(new URL('./battleLoad.ts', import.meta.url), 'utf8'),
   readFile(new URL('./hud.js', import.meta.url), 'utf8'),
   readFile(new URL('./shotInfo.js', import.meta.url), 'utf8'),
@@ -346,7 +346,7 @@ const semanticSurfaceFiles = [
   './settings.js',
   './shotInfo.js',
   './studioPanel.js',
-  './touchControls.js',
+  './touchControls.ts',
   './transition.ts',
   './responsiveSurfaces.css',
   '../engine/deviceDiag.ts',

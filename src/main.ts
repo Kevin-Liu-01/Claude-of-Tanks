@@ -1312,7 +1312,7 @@ let touchControls: TouchControlsRuntime | null = null;
 let mobileAutoAim: MainMobileAutoAimRuntime | null = null;
 let mobileAutoAimPromise: Promise<MainMobileAutoAimRuntime> | null = null;
 const touchControlsAccess = createTouchControlsAccess({
-  input, bus,
+  input: legacyPort(input), bus,
   isBattleActive: () => game.phase === 'battle',
   onOpenSettings: () => settings.open(),
   onToggleSound: () => {

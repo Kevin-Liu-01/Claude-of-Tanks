@@ -1,4 +1,14 @@
 /** Retryable owner for the battle-only mobile control surface. */
+import type { EventBus } from '../game/stateCore.ts';
+
+export interface TouchControlsInput {
+  isTouchLayout(): boolean;
+  setVirtualMove(x: number, y: number): void;
+  addVirtualAim(dx: number, dy: number): void;
+  pressVirtual(action: string): void;
+  releaseVirtual(action: string): void;
+  tapVirtual(action: string): void;
+}
 
 export interface TouchControlsRuntime {
   readonly root: HTMLElement;
@@ -7,8 +17,8 @@ export interface TouchControlsRuntime {
 }
 
 export interface TouchControlsOptions {
-  input: unknown;
-  bus: unknown;
+  input: TouchControlsInput;
+  bus: EventBus;
   isBattleActive(): boolean;
   onOpenSettings(): void;
   onToggleSound(): boolean;
@@ -29,7 +39,7 @@ export interface TouchControlsAccess {
 }
 
 const DEFAULT_LOADERS: TouchControlsLoaders = {
-  controls: async () => await import('./touchControls.js') as unknown as TouchControlsModule,
+  controls: async () => await import('./touchControls.ts'),
 };
 
 export function createTouchControlsAccess(
