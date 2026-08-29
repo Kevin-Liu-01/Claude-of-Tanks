@@ -5,18 +5,110 @@
 // from its closest native family, then authors the vehicle-specific hull
 // armor, turret, gun plant and supported equipment in project primitives.
 
+import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleBore, muzzleTipDot } from './kit.js';
 import { buildBradley, buildBMP2, buildPuma, bradleyFlankDressing } from '../modern3.js';
 import { T72_PROFILES } from './t72.js';
 import { T90_PROFILES } from './t90.js';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
-function mount(P, owner, fitting, x, y, z, rotation = null) {
+type Vec3Tuple = [number, number, number];
+type VehicleAssemblyOwner = 'hull' | 'turret';
+type EraPut = (...transform: number[]) => void;
+
+interface SideArmorOptions {
+  count?: number;
+  front?: number;
+  step?: number;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+  d?: number;
+  rz?: number;
+  cap?: boolean;
+}
+
+interface AfvMaterials extends Record<string, THREE.MeshStandardMaterial> {
+  dark: THREE.MeshStandardMaterial;
+  wheels: THREE.MeshStandardMaterial;
+  wheelsRecessed: THREE.MeshStandardMaterial;
+}
+
+interface AfvBuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly recoilG: THREE.Group;
+  readonly mats: AfvMaterials;
+  readonly rng: () => number;
+  topY?: number;
+  muzzleZ?: number;
+  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addCupola(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
+  addEquipment(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  clear(...slots: string[]): void;
+  clearDecals(owner: VehicleAssemblyOwner): void;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    label: string | null,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): unknown;
+  eraCluster(key: string, build: (put: EraPut) => void, turret?: boolean): unknown;
+  forEachBucketPart(
+    slots: readonly string[],
+    visit: (geometry: THREE.BufferGeometry, bounds: THREE.Box3) => void,
+  ): void;
+  scaleBuckets(slots: readonly string[], x: number, y: number, z: number): void;
+  visualEraCluster(
+    key: string,
+    owner: VehicleAssemblyOwner,
+    build: () => void,
+  ): unknown;
+}
+
+const nonUniformXform = KIT.xform as (
+  geometry: unknown,
+  x: number,
+  y: number,
+  z: number,
+  rotationX: number,
+  rotationY: number,
+  rotationZ: number,
+  scale: number | readonly number[],
+) => unknown;
+
+function mount(
+  P: AfvBuilderPort,
+  owner: VehicleAssemblyOwner,
+  fitting: THREE.Object3D,
+  x: number,
+  y: number,
+  z: number,
+  rotation: Vec3Tuple | null = null,
+): void {
   fitting.position.set(x, y, z);
   if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
   (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
 }
 
-function armorTile(P, owner, x, y, z, w, h, d, rotation = null, cap = true) {
+function armorTile(
+  P: AfvBuilderPort,
+  owner: VehicleAssemblyOwner,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  rotation: Vec3Tuple | null = null,
+  cap = true,
+): void {
   const r = rotation || [0, 0, 0];
   const body = owner === 'hull' ? 'hull' : 'turret';
   const dark = owner === 'hull' ? 'hullDark' : 'turretDark';
@@ -25,7 +117,7 @@ function armorTile(P, owner, x, y, z, w, h, d, rotation = null, cap = true) {
     x, y + h * 0.50 + 0.010, z + d * 0.22, r[0], r[1], r[2]);
 }
 
-function clearUpperStructure(P) {
+function clearUpperStructure(P: AfvBuilderPort): void {
   P.clear('turret', 'turretDark', 'turretDetail', 'turretGlass', 'turretCloth',
     'turretExternalArmor', 'gun', 'gunDark', 'gunMount', 'gunMountDark');
   P.clearDecals('turret');
@@ -41,7 +133,16 @@ function clearUpperStructure(P) {
   delete P.turretG.userData.bradleyA2TurretClosureReceipt;
 }
 
-function roofMG(P, x, y, z, seed, cls = 'mag', yaw = 0, scale = 0.82) {
+function roofMG(
+  P: AfvBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  seed: number,
+  cls = 'mag',
+  yaw = 0,
+  scale = 0.82,
+): void {
   P.add('turret', KIT.cylY(0.18, 0.20, 0.075, 16), x, y, z);
   P.add('turretDark', KIT.cylY(0.15, 0.17, 0.020, 16), x, y + 0.047, z);
   mount(P, 'turret', FITTINGS.pintleMG({
@@ -50,7 +151,7 @@ function roofMG(P, x, y, z, seed, cls = 'mag', yaw = 0, scale = 0.82) {
   }), x, y + 0.07, z, [0, yaw, 0]);
 }
 
-function radioPair(P, y, z, seed, spread = 0.92) {
+function radioPair(P: AfvBuilderPort, y: number, z: number, seed: number, spread = 0.92): void {
   for (const side of [-1, 1]) {
     P.add('turretDetail', KIT.cylY(0.032, 0.042, 0.060, 10), side * spread, y, z);
     mount(P, 'turret', FITTINGS.antennaWhip({
@@ -62,7 +163,15 @@ function radioPair(P, y, z, seed, spread = 0.92) {
   }
 }
 
-function smokePair(P, x, y, z, count, seed, pitch = -0.42) {
+function smokePair(
+  P: AfvBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  count: number,
+  seed: number,
+  pitch = -0.42,
+): void {
   for (const side of [-1, 1]) {
     mount(P, 'turret', FITTINGS.smokeBank({
       mats: P.mats, count, r: 0.040, len: 0.27, spacing: 0.095,
@@ -72,7 +181,7 @@ function smokePair(P, x, y, z, count, seed, pitch = -0.42) {
   }
 }
 
-function sideArmorCourse(P, o = {}) {
+function sideArmorCourse(P: AfvBuilderPort, o: SideArmorOptions = {}): void {
   const count = o.count || 7;
   for (const side of [-1, 1]) for (let i = 0; i < count; i++) {
     const z = (o.front ?? 2.35) - i * (o.step ?? 0.78);
@@ -82,7 +191,7 @@ function sideArmorCourse(P, o = {}) {
   }
 }
 
-function bowLightPair(P, x, y, z, seed) {
+function bowLightPair(P: AfvBuilderPort, x: number, y: number, z: number, seed: number): void {
   for (const side of [-1, 1]) {
     mount(P, 'hull', FITTINGS.lightCluster({
       mats: P.mats, pods: 2, spacing: 0.13, r: 0.045,
@@ -91,7 +200,7 @@ function bowLightPair(P, x, y, z, seed) {
   }
 }
 
-function addBMP3Turret(P) {
+function addBMP3Turret(P: AfvBuilderPort): void {
   const { box, cylY, cylZ, torus, buildGun } = KIT;
   clearUpperStructure(P);
   P.gunG.position.set(0, 0.34, 0.62);
@@ -174,7 +283,7 @@ function addBMP3Turret(P) {
   P.topY = Math.max(P.topY || 0, 1.24);
 }
 
-function buildBMP3ROK(P) {
+function buildBMP3ROK(P: AfvBuilderPort): void {
   buildBMP2(P);
   addBMP3Turret(P);
   // Oracle identity: uninterrupted buoyant sponsons, six wheels and a clean
@@ -197,7 +306,7 @@ function buildBMP3ROK(P) {
   }
 }
 
-function addUkrainianBradleyPackage(P) {
+function addUkrainianBradleyPackage(P: AfvBuilderPort): void {
   const { box } = KIT;
   sideArmorCourse(P, { x: 1.73, y: 1.43, h: 0.58, d: 0.62, count: 8,
     front: 2.42, step: 0.71, rz: 0.012 });
@@ -228,7 +337,7 @@ function addUkrainianBradleyPackage(P) {
   P.topY = Math.max(P.topY || 0, 1.43);
 }
 
-function buildUAM2A3(P) {
+function buildUAM2A3(P: AfvBuilderPort): void {
   buildBradley(P);
   addUkrainianBradleyPackage(P);
   // OWNER BRADLEY ORDER (2026-08-17): shared internal-fill + attached-skirt
@@ -265,7 +374,7 @@ function buildUAM2A3(P) {
   });
 }
 
-function addTerminatorStation(P) {
+function addTerminatorStation(P: AfvBuilderPort): void {
   const { box, cylY, cylZ } = KIT;
   clearUpperStructure(P);
   // The B3M donor has a complete crown/track layer in this bucket. The BMPT
@@ -377,7 +486,7 @@ function addTerminatorStation(P) {
   P.topY = Math.max(P.topY || 0, 1.35);
 }
 
-function buildBMPT2(P) {
+function buildBMPT2(P: AfvBuilderPort): void {
   T72_PROFILES.t72b3m.build(P);
   addTerminatorStation(P);
   // Terminator-specific material ownership pass. The station inherits the
@@ -409,7 +518,7 @@ function buildBMPT2(P) {
   }
 }
 
-function addBWP1Station(P) {
+function addBWP1Station(P: AfvBuilderPort): void {
   const { box, cylY, cylZ, torus, buildGun } = KIT;
   clearUpperStructure(P);
   P.gunG.position.set(0, 0.40, 0.60);
@@ -471,7 +580,7 @@ function addBWP1Station(P) {
   P.topY = Math.max(P.topY || 0, 1.49);
 }
 
-function buildBWP1Variant(P) {
+function buildBWP1Variant(P: AfvBuilderPort): void {
   buildBMP2(P);
   addBWP1Station(P);
   sideArmorCourse(P, { x: 1.69, y: 1.14, h: 0.70, d: 0.68, count: 8,
@@ -503,14 +612,14 @@ function buildBWP1Variant(P) {
 // (0.18, -0.05) — the pre-wave turret station — at y 1.895 (donor roof plate
 // top 1.905: the collar's local -0.02..0.08 band buries 0.03 into the roof,
 // §B2 no-air at the ring seam). Seat rides the spec armor turretPivot.
-function addMarderCastTurret(P) {
+function addMarderCastTurret(P: AfvBuilderPort): void {
   const { box, cylY, cylZ, lathe, xform, buildGun } = KIT;
   clearUpperStructure(P);
   // ---- LOW CAST ROUND-FRONTED turret (§5.269 rebuild: the tall two-tier
   // box is dead — one smooth casting, longer than wide, rounded front,
   // with the EXTERNAL MK20 carriage riding above it) ------------------------
   P.add('turret', cylY(0.70, 0.78, 0.10, 22), 0, 0.03, 0.0);                   // seating collar
-  P.add('turret', xform(lathe([                                                 // cast body: rounded shoulder,
+  P.add('turret', nonUniformXform(lathe([                                       // cast body: rounded shoulder,
     [0.70, 0.02], [0.72, 0.10], [0.70, 0.22], [0.64, 0.34],                     //   crown 2.585
     [0.52, 0.44], [0.34, 0.52], [0.12, 0.56], [0.0, 0.565],
   ], 22), 0, 0, 0, 0, 0, 0, [1.02, 1, 1.22]), 0, 0, 0.03);
@@ -585,7 +694,7 @@ function addMarderCastTurret(P) {
   P.topY = Math.max(P.topY || 0, 2.02);
 }
 
-function buildMarder1A3(P) {
+function buildMarder1A3(P: AfvBuilderPort): void {
   // §5.302 reverted hull: the Bradley donor supplies the Marder's defining
   // six-station, tall troop-compartment hull and rear ramp more faithfully
   // than the shallower BMP family. Only the native running gear and hull are
@@ -609,7 +718,7 @@ function buildMarder1A3(P) {
   // slabs), authored marder-locally so the hard-gated splice takes none of
   // the dressing's other content.
   for (const s of [-1, 1]) {
-    const m = (x) => s * x;
+    const m = (x: number): number => s * x;
     P.add('hull', KIT.slab(
       [m(1.40), 0.55, 2.80], [m(1.44), 0.55, 2.80], [m(1.44), 0.55, 3.14], [m(1.40), 0.55, 3.14],
       [m(1.40), 1.17, 2.80], [m(1.44), 1.17, 2.80], [m(1.44), 1.02, 3.14], [m(1.40), 1.02, 3.14]));
@@ -635,7 +744,7 @@ function buildMarder1A3(P) {
 // inherited from buildBradley and NOT duplicated; the wave's skirt-bin course
 // stays out — the base's spaced side armor owns the flank (packet documents
 // every disposition).
-function addM3A3Turret(P) {
+function addM3A3Turret(P: AfvBuilderPort): void {
   const { box, cylX, cylY, cylZ, torus, xform, buildGun } = KIT;
   const TURRET_HEIGHT_SCALE = 0.80;
   clearUpperStructure(P);
@@ -780,14 +889,14 @@ function addM3A3Turret(P) {
   // Destructible BRAT-style turret cassettes. The cheek rows follow the
   // frontal rake; the side rows stand on the dark beds authored above.
   for (const side of [-1, 1]) {
-    P.eraCluster(`m3a3_turret_cheek_${side > 0 ? 'R' : 'L'}`, (put) => {
+    P.eraCluster(`m3a3_turret_cheek_${side > 0 ? 'R' : 'L'}`, (put: EraPut) => {
       for (let row = 0; row < 2; row++) for (let c = 0; c < 3; c++) {
         put(side * (0.24 + c * 0.22), (0.34 + row * 0.17) * TURRET_HEIGHT_SCALE,
           0.92 - c * 0.035, -0.16, side * 0.08, 0,
           0.72, 0.92 * TURRET_HEIGHT_SCALE, 1.05);
       }
     }, true);
-    P.eraCluster(`m3a3_turret_side_${side > 0 ? 'R' : 'L'}`, (put) => {
+    P.eraCluster(`m3a3_turret_side_${side > 0 ? 'R' : 'L'}`, (put: EraPut) => {
       for (let row = 0; row < 2; row++) for (let c = 0; c < 4; c++) {
         put(side * 0.875, (0.27 + row * 0.18) * TURRET_HEIGHT_SCALE, 0.32 - c * 0.31,
           0, side * Math.PI / 2, side * 0.025,
@@ -806,7 +915,7 @@ function addM3A3Turret(P) {
   P.scaleBuckets([
     'turret', 'turretDark', 'turretDetail', 'turretGlass', 'turretCupola',
   ], 1, TURRET_HEIGHT_SCALE, 1);
-  P.forEachBucketPart(['turretEquipment'], (geo, bounds) => {
+  P.forEachBucketPart(['turretEquipment'], (geo: THREE.BufferGeometry, bounds: THREE.Box3) => {
     geo.translate(0, bounds.min.y * (TURRET_HEIGHT_SCALE - 1), 0);
   });
   for (const child of P.turretG.children) child.position.y *= TURRET_HEIGHT_SCALE;
@@ -817,14 +926,14 @@ function addM3A3Turret(P) {
   P.topY = Math.max(P.topY || 0, 1.28);
 }
 
-function buildM3A3(P) {
+function buildM3A3(P: AfvBuilderPort): void {
   buildBradley(P);
   addM3A3Turret(P);
   // Backed upper-glacis ERA field.  Three courses follow the donor glacis
   // plane and remain clear of the driver station and bow lights.
   P.add('hullDark', KIT.box(2.14, 0.055, 0.96), 0, 1.72, 2.02, -0.464, 0, 0);
   for (const side of [-1, 1]) {
-    P.eraCluster(`m3a3_glacis_${side > 0 ? 'R' : 'L'}`, (put) => {
+    P.eraCluster(`m3a3_glacis_${side > 0 ? 'R' : 'L'}`, (put: EraPut) => {
       for (let row = 0; row < 3; row++) for (let c = 0; c < 2; c++) {
         const along = -0.28 + row * 0.28;
         put(side * (0.25 + c * 0.50), 1.72 + along * 0.447,
@@ -838,7 +947,7 @@ function buildM3A3(P) {
   // panels. They are the only new flank layer: the smart track, road wheels,
   // skirt hangers and underlying armor remain unchanged.
   for (const side of [-1, 1]) {
-    P.eraCluster(`m3a3_side_${side > 0 ? 'R' : 'L'}`, (put) => {
+    P.eraCluster(`m3a3_side_${side > 0 ? 'R' : 'L'}`, (put: EraPut) => {
       for (let row = 0; row < 2; row++) for (let c = 0; c < 8; c++) {
         put(side * 1.77, 1.30 + row * 0.22, 2.39 - c * 0.70,
           0, side * Math.PI / 2, 0, 2.10, 1.42, 1.12);
@@ -876,7 +985,7 @@ function buildM3A3(P) {
 // sprocket (rear transmission), full-length sponson band, low two-man
 // turret with the 100 mm 2A70 + 30 mm 2A72 + PKT triple plant, commander
 // sight tower on the roof rear-left.
-function buildBMP3(P) {
+function buildBMP3(P: AfvBuilderPort): void {
   const { box, cylX, cylY, cylZ, frustum, slab, lathe, sph, xform, torus,
     buildGun, buildRunningGear, periscope, shovelTool, stowage } = KIT;
   const { rng } = P;
@@ -903,7 +1012,7 @@ function buildBMP3(P) {
                                                                                 //   still anchors hullLengthM 7.14)
   P.add('hull', box(1.96, 0.06, 0.52), 0, 0.44, 2.02);                         // bow belly pan (§B2 closure)
   for (const s of [-1, 1]) {                                                   // §B2 bow flank closure plates
-    const m = (x) => (s < 0 ? -x : x);
+    const m = (x: number): number => (s < 0 ? -x : x);
     P.add('hull', orientedSlab(
       [m(0.94), 0.40, 2.10], [m(1.00), 0.40, 2.10], [m(1.00), 0.92, 3.06], [m(0.94), 0.92, 3.06],
       [m(0.94), 1.58, 2.36], [m(1.00), 1.58, 2.36], [m(1.00), 1.30, 3.06], [m(0.94), 1.30, 3.06]));
@@ -932,7 +1041,7 @@ function buildBMP3(P) {
     // §5.303 bow armament: TWO 7.62 PKT bow MGs — ball mounts buried in the
     // upper-glacis corners beside the flank hatches, tubes proud (the real
     // BMP-3's signature corner MGs).
-    P.add('hull', KIT.xform(KIT.sph(0.085, 12), 0, 0, 0, 0, 0, 0, [1, 0.85, 1]), m(0.88), 1.735, 2.52);
+    P.add('hull', nonUniformXform(KIT.sph(0.085, 12), 0, 0, 0, 0, 0, 0, [1, 0.85, 1]), m(0.88), 1.735, 2.52);
     P.add('hullDark', KIT.cylZ(0.020, 0.34, 8), m(0.88), 1.760, 2.70);         // PKT tube
     P.add('hullDark', KIT.cylZ(0.026, 0.06, 8), m(0.88), 1.760, 2.885);        // muzzle boss
     muzzleTipDot(P, m(0.88), 1.760, 2.918, 0.008, { parent: 'hullG' });
@@ -982,14 +1091,14 @@ function buildBMP3(P) {
     P.add('hullDetail', box(0.035, 0.56, 0.04), s * 0.70, 1.32, -3.570);       // hinge lines (§5.269 relief)
     P.add('hullDetail', box(0.035, 0.56, 0.04), s * 0.12, 1.32, -3.570);
     P.add('hullDetail', box(0.10, 0.05, 0.04), s * 0.40, 1.10, -3.578);        // steps
-    P.add('hull', xform(cylX(0.10, 0.30, 12), 0, 0, 0, 0, 0, 0, [1, 0.62, 1]), s * 0.62, 0.82, -3.545); // waterjet
+    P.add('hull', nonUniformXform(cylX(0.10, 0.30, 12), 0, 0, 0, 0, 0, 0, [1, 0.62, 1]), s * 0.62, 0.82, -3.545); // waterjet
     P.add('hullDark', cylX(0.07, 0.045, 12), s * 0.62, 0.82, -3.568);          //   outlet covers (§5.269)
     // §5.303 waterjet depth: proud cover rim ring + recessed dark bore — the
     // flat disc read paper-thin at garage angles. (z-axis rings: the first
     // cut used cylX discs whose radius bled 5 cm past the -3.645 stern plane
     // and pushed measured overallLengthM 7.14 -> 7.25 — gate receipt.)
-    P.add('hullDetail', xform(cylZ(0.115, 0.022, 14, 0.098), 0, 0, 0, 0, 0, 0, [1, 0.62, 1]), s * 0.62, 0.82, -3.575);
-    P.add('hullDark', xform(cylZ(0.050, 0.03, 10), 0, 0, 0, 0, 0, 0, [1, 0.62, 1]), s * 0.62, 0.82, -3.582);
+    P.add('hullDetail', nonUniformXform(cylZ(0.115, 0.022, 14, 0.098), 0, 0, 0, 0, 0, 0, [1, 0.62, 1]), s * 0.62, 0.82, -3.575);
+    P.add('hullDark', nonUniformXform(cylZ(0.050, 0.03, 10), 0, 0, 0, 0, 0, 0, [1, 0.62, 1]), s * 0.62, 0.82, -3.582);
     P.add('hullDark', box(0.14, 0.07, 0.03), s * 0.98, 1.52, -3.568);          // taillight boxes
     P.add('hullDetail', box(0.17, 0.022, 0.06), s * 0.98, 1.572, -3.575);      // §5.303 taillight guard lips
   }
@@ -1079,7 +1188,7 @@ function buildBMP3(P) {
   P.add('turret', cylY(1.00, 1.06, 0.09, 26), 0, -0.015, 0.02);                // ring collar on the deck
   P.add('turret', cylY(0.66, 0.70, 1.08, 20), 0, -0.60, 0.02);                 // crew basket (print interior.001 —
                                                                                 //   a registered turret follower)
-  P.add('turret', xform(lathe([                                                 // low faceted dome: wall to the
+  P.add('turret', nonUniformXform(lathe([                                       // low faceted dome: wall to the
     [1.04, 0.0], [1.06, 0.10], [1.02, 0.22], [0.92, 0.32],                      //   0.42 shoulder, flat crown band
     [0.72, 0.42], [0.48, 0.49], [0.22, 0.525], [0.0, 0.53],                     //   (crown <=2.41 world: the p95
   ], 26), 0, 0, 0, 0, 0, 0, [1.02, 1, 1.06]), 0, 0, 0.06);                     //   dims roof rides the 2.40 datum)
@@ -1092,7 +1201,7 @@ function buildBMP3(P) {
   // the ONLY >2.42 z-band together with the co-located MG — the p95 dims
   // roof stays on the 2.40 crown datum)
   P.addEquipment('turret', cylY(0.13, 0.15, 0.14, 16), -0.30, 0.45, -0.85);             // commander sight: LOW ROUNDED POT
-  P.add('turret', xform(sph(0.14, 14), 0, 0, 0, 0, 0, 0, [1, 0.35, 1]), -0.30, 0.50, -0.85); // domed cap, crown 2.399
+  P.add('turret', nonUniformXform(sph(0.14, 14), 0, 0, 0, 0, 0, 0, [1, 0.35, 1]), -0.30, 0.50, -0.85); // domed cap, crown 2.399
   P.add('turretDark', box(0.16, 0.045, 0.03), -0.30, 0.51, -0.755);            //   world (§5.269: not a chimney —
   P.add('turretGlass', box(0.12, 0.028, 0.014), -0.30, 0.505, -0.742);         //   and the whole pot ducks the
   P.add('turret', cylY(0.155, 0.165, 0.06, 16), -0.30, 0.375, -0.85);          //   2.42 p95 line; only the thin
@@ -1151,7 +1260,7 @@ function buildBMP3(P) {
 // mid-height nose edge, cut plan corners), full-width skirt flanks over
 // narrow-gauge tracks, BMP-2-class faceted turret rear-of-mid with a thin
 // 30 mm, and the tall LEFT sensor tower behind the ring (crown 2.55).
-function buildUpior(P) {
+function buildUpior(P: AfvBuilderPort): void {
   const { box, cylX, cylY, cylZ, frustum, slab, xform, torus,
     buildGun, buildRunningGear, periscope, stowage } = KIT;
   const { rng } = P;
@@ -1217,7 +1326,7 @@ function buildUpior(P) {
     P.add('hullDetail', box(0.035, 0.60, 0.03), s * 0.055, 1.06, -2.567);      // center jamb pair
     P.add('hullDetail', box(0.05, 0.09, 0.045), s * 0.60, 1.02, -2.568);       // hinge blocks
     P.add('hullDark', box(0.12, 0.07, 0.04), s * 0.66, 0.56, -2.56);           // taillight boxes low
-    P.add('hull', xform(cylX(0.09, 0.26, 12), 0, 0, 0, 0, 0, 0, [1, 0.6, 1]), s * 0.50, 0.30, -2.44); // waterjet covers
+    P.add('hull', nonUniformXform(cylX(0.09, 0.26, 12), 0, 0, 0, 0, 0, 0, [1, 0.6, 1]), s * 0.50, 0.30, -2.44); // waterjet covers
     P.add('hullDark', cylX(0.065, 0.045, 12), s * 0.50, 0.30, -2.485);
   }
   P.add('hull', orientedSlab(                                                   // stern top chamfer roof->plate
@@ -1358,7 +1467,7 @@ function buildUpior(P) {
   P.topY = Math.max(P.topY || 0, 1.62);
 }
 
-function addPumaOraclePackage(P) {
+function addPumaOraclePackage(P: AfvBuilderPort): void {
   // Level-C reactive side modules and the high RCT30 observation cadence.
   sideArmorCourse(P, { x: 1.82, y: 1.52, h: 0.66, d: 0.70, count: 8,
     front: 2.55, step: 0.77, rz: 0.010 });
@@ -1381,7 +1490,7 @@ function addPumaOraclePackage(P) {
   P.topY = Math.max(P.topY || 0, 1.52);
 }
 
-function buildPumaOracle(P) {
+function buildPumaOracle(P: AfvBuilderPort): void {
   buildPuma(P);
   // The native hull whip was authored exactly tangent to the deck. Bury its
   // collar into the supporting shoe so mask-based attachment audits see the
@@ -1414,7 +1523,7 @@ function buildPumaOracle(P) {
 // post+head, gunner hood, LWR pair, met mast), doubled smoke banks, bustle
 // stowage + cans + spare links, grab rails, cable runs — and K-5 class
 // wedge/brick ERA on the station face + cheeks ("even some era").
-function addTerminatorT90Station(P) {
+function addTerminatorT90Station(P: AfvBuilderPort): void {
   const { box, cylY, cylZ } = KIT;
   clearUpperStructure(P);
   // The T-90A donor also dresses its dome through the turretTrack /
@@ -1604,7 +1713,7 @@ function addTerminatorT90Station(P) {
   P.topY = Math.max(P.topY || 0, 1.56);
 }
 
-function buildBMPTT90(P) {
+function buildBMPTT90(P: AfvBuilderPort): void {
   T90_PROFILES.t90a.build(P);
   addTerminatorT90Station(P);
   // §5.350-class flank program over the donor's certified thin skirt band:
@@ -1650,4 +1759,4 @@ export const AFV_FAMILY_PROFILES = {
   upior: { build: buildUpior },
   // §5.363 owner order — Terminator on the T-90 hull (photo-class new id)
   bmpt_t90: { build: buildBMPTT90 },
-};
+} satisfies VehicleProfileRecord;

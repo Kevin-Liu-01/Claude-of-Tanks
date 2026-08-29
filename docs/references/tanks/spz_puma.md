@@ -377,7 +377,7 @@ the raked roof; (2) moved the ref-dependent rows a few points (the known
 -4% print, normalize plan still FILED for the orchestrator §E lane —
 whole/stations remain print-capped until the warp lands).
 
-RUNG (this round, profiles/afvFamily.js addPumaOraclePackage): whips
+RUNG (this round, profiles/afvFamily.ts addPumaOraclePackage): whips
 re-seated onto the bustle roof plate (z -1.56 -> -1.20, pot buried), MG
 pot seated into the wedge roof (y 0.92 -> 0.735). floaters 0 -> 100.
 Geometry hash 479ce768 -> 73ee54e0 (same 73 meshes / 82858 verts —

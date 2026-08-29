@@ -15,8 +15,8 @@ NATO 3-tone, 'Y-224'.
 ## OWNERSHIP / ROUND STATE (2026-08-17, §5.248 IFV wave)
 GROUND-UP REBUILD — replaces the buildBradley-donor variant composition
 under the same id (owner §5.248 order). Spec is a full row in
-src/vehicles/afvFamily.js; builder `buildMarder1A3` in
-src/vehicles/profiles/afvFamily.js.
+src/vehicles/afvFamily.ts; builder `buildMarder1A3` in
+src/vehicles/profiles/afvFamily.ts.
 
 ## ORACLE STATE — `marder1a3` (FUSED / SUSPECT — PHOTOS GOVERN)
 `public/models/community-candidates/marder1a3_arrafi.glb` (rip-poster

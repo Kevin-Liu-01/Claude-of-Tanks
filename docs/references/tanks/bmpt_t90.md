@@ -67,7 +67,7 @@
   pods** (hull-fixed equipment: buried seat, armored pod, stub tube with
   explicit dark mouth, drum feed lapped into the pod wall).
 
-## Spec (src/vehicles/afvFamily.js)
+## Spec (src/vehicles/afvFamily.ts)
 
 - `variant('bmpt_t90', 't90a')` — the clone convention (armor rides the
   donor layout, turretPivot [0, 1.40, 0.15]); station re-seats the rig at
@@ -89,8 +89,8 @@
 
 | File | Row |
 | --- | --- |
-| src/vehicles/afvFamily.js | AFV_FAMILY_IDS + spec (variant of t90a) |
-| src/vehicles/profiles/afvFamily.js | `addTerminatorT90Station` + `buildBMPTT90` + registry row + T90_PROFILES import |
+| src/vehicles/afvFamily.ts | AFV_FAMILY_IDS + spec (variant of t90a) |
+| src/vehicles/profiles/afvFamily.ts | `addTerminatorT90Station` + `buildBMPTT90` + registry row + T90_PROFILES import |
 | src/vehicles/tier.ts | `bmpt_t90: 10` |
 | src/vehicles/tankLabels.ts | displayName/shortName/aliases |
 | src/vehicles/vehicleMarkings.ts | `anchor('hull','left',0.44,0.60,0.22,1)` — the skirt-ERA panel field (station walls sit behind the Ataka columns) |

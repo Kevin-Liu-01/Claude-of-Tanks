@@ -14,8 +14,8 @@ rack, twin whips, M242 + coax M240, 'C-30'.
 GROUND-UP REBUILD — replaces the buildBradley(P)-donor composition under
 the same id. The m2a2_bradley GRADUATE lineage is the family GRAMMAR
 donor only (construction vocabulary + measured family envelope); every
-solid is authored fresh. Spec: full row in src/vehicles/afvFamily.js;
-builder `buildM3A3` in src/vehicles/profiles/afvFamily.js. m2a2_bradley
+solid is authored fresh. Spec: full row in src/vehicles/afvFamily.ts;
+builder `buildM3A3` in src/vehicles/profiles/afvFamily.ts. m2a2_bradley
 resident hash byte-held (a41410ac).
 
 ## ORACLE STATE — `m3a3_bradley` (INSTRUMENT DEFECT — rest pose scattered)

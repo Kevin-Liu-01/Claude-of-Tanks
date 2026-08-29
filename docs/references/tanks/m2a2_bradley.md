@@ -760,7 +760,7 @@ ORDER (verbatim, 2026-08-17): "the bradleys are still not filled
 internally (see througable) and their side skirts/side armors are not
 attached to the hulls properly or with attachments". Scope: ALL THREE
 Bradley playables — m2a2_bradley directly, m3a3_bradley + ua_m2a3_bradley
-via their family wrappers (profiles/afvFamily.js). marder1a3 rides the
+via their family wrappers (profiles/afvFamily.ts). marder1a3 rides the
 same donor hull but is HARD-GATED (59cb105c) and takes NONE of this
 dressing. LANDED at **3635217c** inside the owner's absorb commit
 (§5.354 shared-checkout rebase incident — the partition's finished work
@@ -799,7 +799,7 @@ buildM2A2Bradley, m3a3/ua call it inside their wrappers):
   owner's eye outranks the cert; closed by the SHARED donor-bow closure
   (no other m2a2-local fill; buildBradley itself is BYTE-UNTOUCHED this
   round — proven by pre/post function extraction, 1144 lines identical).
-- **m3a3 ring-slit cap** (m3a3(a), profiles/afvFamily.js): the 3.4 cm x
+- **m3a3 ring-slit cap** (m3a3(a), profiles/afvFamily.ts): the 3.4 cm x
   0.60 m deck-to-cradle slit over the engine raise ([y 2.041,
   z 0.77..1.37] world, opens at yaw) — hull-owned raise cap filling
   1.98..2.035 in the slit zone, yaw-independent, 2 cm under the swept

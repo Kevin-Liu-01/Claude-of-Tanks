@@ -1,14 +1,14 @@
 // Owner-supplied AFV/IFV oracle registrations.
 //
 // The GLBs remain local comparison material only. Runtime vehicles are
-// first-party procedural constructions in profiles/afvFamily.js, inheriting
+// first-party procedural constructions in profiles/afvFamily.ts, inheriting
 // complete certified hull/suspension rigs and publishing their own gameplay
 // identity here.
 //
 // §5.248 IFV WAVE (2026-08-17): GROUND-UP print-measured ids joined the
 // lane — bmp3, upior (new), marder1a3, m3a3_bradley. Their full spec rows
 // live below with the modern3-pattern local armor mirror; the builders are
-// original constructions in profiles/afvFamily.js authored from
+// original constructions in profiles/afvFamily.ts authored from
 // docs/references/vertex/<id>.json. §5.304 OWNER ORDER (verbatim): "keep our
 // BMPT terminator 2, but remove the BMPT-72 Terminator 2" — the ground-up
 // `bmpt` id is REMOVED (spec row, builder, tier, labels, markings, tool REG
@@ -465,7 +465,7 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
   // even crazier beefier two autocannon turret with even more equipment and
   // decorations and even some era on a t90 hull". NEW id on the certified
   // T-90A donor (spec clone t90a; geometry T90_PROFILES.t90a + the beefed
-  // station in profiles/afvFamily.js). FALSE-0/photo-class — never gated.
+  // station in profiles/afvFamily.ts). FALSE-0/photo-class — never gated.
   // Tier 10 (one over bmpt_terminator2's 9 — the beefier variant).
   // -------------------------------------------------------------------------
 };

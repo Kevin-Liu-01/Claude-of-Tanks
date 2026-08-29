@@ -9,8 +9,8 @@ barbettes on the glacis corners, sight mast to the published 3.17 crown,
 rear transmission deck with stowage drum, '527'.
 
 ## OWNERSHIP / ROUND STATE (2026-08-17, §5.248 IFV wave)
-GROUND-UP NEW ID (spec in src/vehicles/afvFamily.js, builder `buildBMPT`
-in src/vehicles/profiles/afvFamily.js). NO donor geometry — the T-72
+GROUND-UP NEW ID (spec in src/vehicles/afvFamily.ts, builder `buildBMPT`
+in src/vehicles/profiles/afvFamily.ts). NO donor geometry — the T-72
 character is authored from the print's mapped lines. The t72b3m-donor
 `bmpt_terminator2` variant remains a separate playable.
 
@@ -128,9 +128,9 @@ roster-reversal ASK-OWNER by owner ruling.
 FINAL STATE AT REMOVAL: hash cd427718 (61 meshes / 70962 verts), gate row
 min 5.7 blockout-print cap class (dims 100 / floaters 100), landed §5.286.
 REMOVAL CHECKLIST (§5.287 wiring law in reverse — every registration):
-- src/vehicles/afvFamily.js: AFV_FAMILY_IDS entry + full spec row (53
+- src/vehicles/afvFamily.ts: AFV_FAMILY_IDS entry + full spec row (53
   lines) removed; header comment updated with the order.
-- src/vehicles/profiles/afvFamily.js: buildBMPT + its section header (185
+- src/vehicles/profiles/afvFamily.ts: buildBMPT + its section header (185
   lines) + AFV_FAMILY_PROFILES registry row removed (grep-verified: the
   only references were the definition and the registry row).
 - src/vehicles/tier.ts: `bmpt: 9` removed (tier.selftest green without

@@ -2,9 +2,9 @@
 
 Roster id: **ua_m2a3_bradley** — Ukrainian-package M2A2 ODS-SA-style
 Bradley. FAMILY CLONE: `variant('ua_m2a3_bradley', 'm2a2_bradley', ...)`
-(src/vehicles/afvFamily.js) + `buildUAM2A3 = buildBradley +
+(src/vehicles/afvFamily.ts) + `buildUAM2A3 = buildBradley +
 addUkrainianBradleyPackage + bradleyFlankDressing`
-(src/vehicles/profiles/afvFamily.js). The Ukrainian package: BRAT-style
+(src/vehicles/profiles/afvFamily.ts). The Ukrainian package: BRAT-style
 reactive tile courses on hull bow + turret cheeks, tall side-armor
 course, rear turret stowage wing + rack, roof MG, UA number decal.
 

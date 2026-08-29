@@ -11,9 +11,9 @@ commander sight tower rear-left, 902V smoke banks, '331'.
 ## OWNERSHIP / ROUND STATE (2026-08-17, §5.248 IFV wave)
 GROUND-UP NEW ID (owner order §5.248: ground-up print-measured builds for
 the drop set — supersedes the donor-clone variantOf approach for these
-subjects). Spec row lives in **src/vehicles/afvFamily.js** (full spec, the
+subjects). Spec row lives in **src/vehicles/afvFamily.ts** (full spec, the
 local `ifvArmor` pack mirror); builder `buildBMP3` in
-**src/vehicles/profiles/afvFamily.js** (AFV family module, joins the IFV
+**src/vehicles/profiles/afvFamily.ts** (AFV family module, joins the IFV
 lane). The ROK-liveried donor-clone `bmp3_rok` remains a separate playable.
 NATION: Russia (§5.249 ASK-OWNER default; the print's ROK livery noted).
 

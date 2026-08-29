@@ -212,6 +212,11 @@ for seeded noise, texture warming, ring-buffer attributes, pool-specific
 emission recipes, soft-particle integration, and the shared FX clock. Its GPU
 pool sizes, shader sources, update ranges, deferred atlas cadence, and visual
 output remain unchanged.
+The shared AFV family pack now uses strict
+`src/vehicles/profiles/afvFamily.ts` contracts for builder rigs, fitted
+equipment, ERA courses, nonuniform geometry transforms, material retuning,
+and every BMP, Bradley, Marder, Puma, Upior, and Terminator recipe behind the
+same exact-family demand boundary.
 
 ## Consequences
 

@@ -273,3 +273,4 @@ runtime documents remain authoritative for behavior.
 - [0261 — The Scene Studio panel has a strict TypeScript owner](0261-type-studio-panel.md)
 - [0262 — Combat intelligence has a strict TypeScript owner](0262-type-combat-intelligence.md)
 - [0263 — The instanced particle engine has a strict TypeScript owner](0263-type-particle-engine.md)
+- [0264 — Shared AFV profile geometry has a strict TypeScript owner](0264-type-afv-profile-geometry.md)

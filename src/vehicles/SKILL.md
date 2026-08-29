@@ -22,12 +22,13 @@ fleet release gate.
 `internalAnatomyVisuals.ts` is the strict shared geometry owner for Gallery and
 killcam module, crew, and drivetrain presentation; keep both consumers on its
 volume and resource-lifetime contracts.
-The Japanese, Swedish, Italian, Chinese, T-80-family, Sheridan, and Soviet
-heavy-family visual deltas live in strict
+The Japanese, Swedish, Italian, Chinese, T-80-family, Sheridan, Soviet
+heavy-family, and shared AFV visual deltas live in strict
 `profiles/japan.ts`, `profiles/sweden.ts`, `profiles/italy.ts`, and
 `profiles/china.ts` packs plus `profiles/t80.ts` and `profiles/sheridan.ts`,
-plus `profiles/soviet-heavy.ts`, while the AMX-40 visual build lives in strict
-`france.ts`; all eight use narrow procedural-builder ports. Preserve their
+plus `profiles/soviet-heavy.ts` and `profiles/afvFamily.ts`, while the AMX-40
+visual build lives in strict `france.ts`; all nine use narrow
+procedural-builder ports. Preserve their
 demand-loaded family boundaries and complete donor geometry.
 
 ## Patterns to follow / invariants

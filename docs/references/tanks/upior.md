@@ -10,8 +10,8 @@ tube, and the tall LEFT sensor mast behind the ring (crown ~2.55, whip
 spike above), 'W-01'.
 
 ## OWNERSHIP / ROUND STATE (2026-08-17, §5.248 IFV wave)
-GROUND-UP NEW ID (spec src/vehicles/afvFamily.js, builder `buildUpior` in
-src/vehicles/profiles/afvFamily.js). The former bmp2-donor `upior_ifv`
+GROUND-UP NEW ID (spec src/vehicles/afvFamily.ts, builder `buildUpior` in
+src/vehicles/profiles/afvFamily.ts). The former bmp2-donor `upior_ifv`
 variant is now the separate playable `bwp1` (BWP-1; owner turret
 enrichment c425f495 re-applied after the §5.258 merge).
 
