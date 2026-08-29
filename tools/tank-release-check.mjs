@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // One pre-landing command for tank work: generated-asset freshness + muzzle
-// bore, existing geometry/track/contiguity/fittings standard, tests and build.
+// bore/barrel circularity, existing geometry/track/contiguity/fittings
+// standard, tests and build.
 
 import { execFileSync } from 'node:child_process';
 
@@ -25,6 +26,7 @@ try {
   run(process.execPath, ['tools/tank-assets-check.mjs', `--ids=${ids}`]);
   run(process.execPath, ['tools/track-duplicate-audit.mjs', `--ids=${ids}`]);
   run(process.execPath, ['tools/muzzle-bore-probe.mjs', `--ids=${ids}`]);
+  run(process.execPath, ['tools/turret-barrel-circularity.mjs', `--ids=${ids}`]);
   run(process.execPath, ['tools/tank-standard-check.mjs', `--ids=${ids}`, ...(gate ? ['--gate'] : [])]);
   run('npm', ['test']);
   run('npm', ['run', 'build:private']);

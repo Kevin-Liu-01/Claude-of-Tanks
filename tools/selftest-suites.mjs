@@ -7,6 +7,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/autoloader.selftest.mjs',
     'src/game/studioTimeline.selftest.mjs',
     'src/vehicles/wheelQuality.selftest.mjs',
+    'src/vehicles/turretBarrelCircularity.selftest.mjs',
     'src/vehicles/profiles/bradleyHullClosure.selftest.mjs',
     'src/vehicles/profiles/t90RoadWheelSpacing.selftest.mjs',
     'src/vehicles/profiles/t90RearCageEraFit.selftest.mjs',

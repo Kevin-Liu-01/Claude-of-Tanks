@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { TANK_SPECS } from '../specs.js';
 import { createTank } from '../tankFactory.ts';
+import { measureTurretBarrelCircularity } from '../turretBarrelCircularity.js';
 
 const EPSILON = 1e-6;
 const near = (actual, expected, message, epsilon = EPSILON) => {
@@ -53,9 +54,15 @@ try {
 
   barrel.geometry.computeBoundingBox();
   barrelDark.geometry.computeBoundingBox();
-  near(barrel.geometry.boundingBox.max.x, 0.117 * 1.08, 'visible cannon sleeve uses the enlarged radius', 2e-6);
-  near(barrelDark.geometry.boundingBox.max.x, 0.120 * 1.08, 'cannon collars grow with the tube', 2e-6);
+  near(barrel.geometry.boundingBox.max.y, 0.098 * 1.08,
+    'visible cannon sleeve keeps its enlarged circular radius', 2e-6);
+  near(barrelDark.geometry.boundingBox.max.y, 0.100 * 1.08,
+    'cannon collars grow with the circular tube', 2e-6);
   near(barrel.geometry.boundingBox.max.z, 4.816, 'cannon length remains unchanged while its diameter grows', 2e-6);
+  const barrelCircularity = measureTurretBarrelCircularity(tank);
+  assert.equal(barrelCircularity.pass, true, 'T-90A cannon cross-sections remain circular');
+  assert.ok(barrelCircularity.worst?.aspectRatio <= 1.03,
+    `T-90A faceting stays round (${barrelCircularity.worst?.aspectRatio})`);
 
   const parts = tank.root.userData.combatGeometryParts;
   const cupolaParts = parts.filter((part) => part.bucket === 'turretCupola');
@@ -152,4 +159,4 @@ try {
   terminator.dispose();
 }
 
-console.log('t90ATurretSeat.selftest: RU-112 turret, Shtora eyes, and enlarged cannon verified');
+console.log('t90ATurretSeat.selftest: RU-112 turret, Shtora eyes, and round enlarged cannon verified');

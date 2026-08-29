@@ -58,6 +58,7 @@
     "tank:freeze": "node tools/fleet-freeze-snapshot.mjs",
     "tank:freeze:check": "node tools/fleet-freeze-snapshot.mjs --check",
     "tank:bore:probe": "node tools/muzzle-bore-probe.mjs",
+    "tank:barrel:check": "node tools/turret-barrel-circularity.mjs",
     "tank:gallery": "vite --host 127.0.0.1 --open /gallery?layer=markup",
     "shots": "node tools/screenshot.mjs",
     "shots:battle:generate": "node tools/marketing-shots/gen-battle-campaign.mjs",

@@ -1218,15 +1218,14 @@ function buildT90ALegacy(P, {
   P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0, [0.60, 0.21, 1]), 0, -0.008, 0.52);
   P.addGunExtraDark(KIT.xform(cylZ(0.150 * gunRadiusScale, 0.04, 14), 0, 0, 0), 0, 0, 0.645);
   tubeGun(P, [
-    // §K.2 independent tube section: longitudinal breaks/axis remain exact;
-    // only radii contract to the source's 162 mm root band and 108 mm
-    // forward band.  The former tube repeated a +27/-27 mm silhouette error
-    // over more than thirty side columns.
-    [0.65, 1.47, 0.085 * gunRadiusScale, undefined, undefined, undefined, 0.112 * gunRadiusScale],
-    [1.47, 3.17, 0.090 * gunRadiusScale, undefined, undefined, undefined, 0.117 * gunRadiusScale],
-    [3.17, 4.72, 0.045 * gunRadiusScale, 0.045 * gunRadiusScale, 0, 0.005, 0.072 * gunRadiusScale],
-    [4.72, 4.816, 0.045 * gunRadiusScale, 0.045 * gunRadiusScale, 0, 0.005, 0.064 * gunRadiusScale],
-  ], { rings: [[1.47, 0.092 * gunRadiusScale, undefined, undefined, 0.119 * gunRadiusScale], [2.12, 0.093 * gunRadiusScale, undefined, undefined, 0.120 * gunRadiusScale], [3.17, 0.072 * gunRadiusScale, undefined, undefined, 0.099 * gunRadiusScale], [3.87, 0.050 * gunRadiusScale, undefined, undefined, 0.074 * gunRadiusScale], [4.30, 0.050 * gunRadiusScale, undefined, undefined, 0.074 * gunRadiusScale]], muzzle: 4.816 });  // T3A-b4: 4.90 trial broke overallLengthM grace (dims 95.5) — the end cover col is cheaper (dims sovereign)
+  // The longitudinal breaks and gun axis remain exact while every course
+  // uses one radial dimension. The former independent plan radii made the
+  // cannon read as a horizontally stretched oval from the muzzle.
+    [0.65, 1.47, 0.085 * gunRadiusScale],
+    [1.47, 3.17, 0.090 * gunRadiusScale],
+    [3.17, 4.72, 0.045 * gunRadiusScale, 0.045 * gunRadiusScale, 0, 0.005],
+    [4.72, 4.816, 0.045 * gunRadiusScale, 0.045 * gunRadiusScale, 0, 0.005],
+  ], { rings: [[1.47, 0.092 * gunRadiusScale], [2.12, 0.093 * gunRadiusScale], [3.17, 0.072 * gunRadiusScale], [3.87, 0.050 * gunRadiusScale], [4.30, 0.050 * gunRadiusScale]], muzzle: 4.816 });  // T3A-b4: 4.90 trial broke overallLengthM grace (dims 95.5) — the end cover col is cheaper (dims sovereign)
   muzzleBore(P, { r: 0.045 * gunRadiusScale, y: 0.005 });  // §B3.1 (shadow-named, mask/frame-neutral)
   P.add('gun', cylZ(0.098 * gunRadiusScale, 0.42, 14, 0.090 * gunRadiusScale), 0, 0, 2.88);   // bore-evacuator swell
   P.add('gunDark', cylZ(0.100 * gunRadiusScale, 0.04, 14), 0, 0, 3.09);
@@ -1996,7 +1995,7 @@ function buildT90AVladimirLegacy(P) {
     creaseD: 0.032,
   });
   tubeGun(P, [
-    [0.52, 2.30, 0.078, 0.078, 0, 0, 0.20], [2.30, 2.87, 0.078, 0.076, 0, 0, 0.20],
+    [0.52, 2.30, 0.078, 0.078], [2.30, 2.87, 0.078, 0.076],
     [2.87, 3.90, 0.064], [3.90, 4.475, 0.060],
   ], { rings: [[0.90, 0.083], [1.50, 0.083], [2.30, 0.082], [2.95, 0.068], [3.60, 0.066], [4.20, 0.064]], muzzle: 4.475 });
   P.add('gun', cylZ(0.105, 0.48, 14, 0.098), 0, 0, 2.06);
@@ -4424,9 +4423,9 @@ function buildT90SMLegacy(P) {
   ], { rings: [[1.20, 0.086], [1.90, 0.086], [2.40, 0.082], [3.20, 0.082], [3.80, 0.082], [4.45, 0.082]], muzzle: 4.97 });
   // §B3.1 muzzle bore (shadow-named, mask/frame-neutral by construction)
   muzzleBore(P, { r: 0.089, y: -0.012 });
-  P.add('gun', KIT.xform(cylZ(0.180, 1.85, 16, 0.165), 0, 0, 0, 0, 0, 0, [1, 0.46, 1]), 0, 0, 2.625);  // M-5 evacuator / thermal-jacket swell
-  P.add('gunDark', KIT.xform(cylZ(0.182, 0.035, 16), 0, 0, 0, 0, 0, 0, [1, 0.46, 1]), 0, 0, 1.70);
-  P.add('gunDark', KIT.xform(cylZ(0.182, 0.035, 16), 0, 0, 0, 0, 0, 0, [1, 0.46, 1]), 0, 0, 3.55);
+  P.add('gun', cylZ(0.180, 1.85, 16, 0.165), 0, 0, 2.625);  // M-5 evacuator / thermal-jacket swell
+  P.add('gunDark', cylZ(0.182, 0.035, 16), 0, 0, 1.70);
+  P.add('gunDark', cylZ(0.182, 0.035, 16), 0, 0, 3.55);
   // §5.331: numeral seats moved forward z -0.32 -> -0.05 (§5.266 clip law —
   // the auto-reseat pinned them 10 cm deeper on the pitched transition
   // wedge, and the cage's front post/rails eclipsed the rear digit from
@@ -5409,9 +5408,9 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
     [3.05, 4.38, 0.102], [4.38, 5.08, 0.087],
   ], { rings: [[1.05, 0.130], [1.45, 0.145], [2.35, 0.130], [3.05, 0.104], [3.75, 0.095], [4.30, 0.087]], muzzle });
   muzzleBore(P, { r: vladimir ? 0.070 : 0.087 });
-  P.add('gun', KIT.xform(cylZ(0.158, 0.78, 16, 0.137), 0, 0, 0, 0, 0, 0, [1, 0.72, 1]), 0, 0, 2.25);
-  P.add('gunDark', KIT.xform(cylZ(0.161, 0.035, 16), 0, 0, 0, 0, 0, 0, [1, 0.72, 1]), 0, 0, 1.86);
-  P.add('gunDark', KIT.xform(cylZ(0.161, 0.035, 16), 0, 0, 0, 0, 0, 0, [1, 0.72, 1]), 0, 0, 2.64);
+  P.add('gun', cylZ(0.158, 0.78, 16, 0.137), 0, 0, 2.25);
+  P.add('gunDark', cylZ(0.161, 0.035, 16), 0, 0, 1.86);
+  P.add('gunDark', cylZ(0.161, 0.035, 16), 0, 0, 2.64);
 
   addT90AFamilyFinish(P, { vladimir, base: !vladimir });
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [1.47, 0.27, -0.18], Math.PI / 2);

@@ -728,14 +728,14 @@ function buildAMX40(P) {
   // measured sleeve radius in side elevation.
   P.add('gun', box(0.14, 0.035, 1.70), 0.14, 0, 2.48);
   P.add('gun', box(0.14, 0.035, 0.82), -0.14, 0, 2.04);
-  // Source-measured sleeve courses. The first thermal shroud has the
-  // source's subtly oval 0.102 × 0.128 m section.
-  P.add('gun', xform(cylZ(0.128, 1.69, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [0.80, 1, 1]), 0, 0, 2.475); // sleeve A
-  P.add('gunDark', xform(cylZ(0.130, 0.05, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [0.80, 1, 1]), 0, 0, 1.66);
-  P.add('gunDark', xform(cylZ(0.130, 0.05, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [0.80, 1, 1]), 0, 0, 3.29);
-  P.add('gun', xform(cylZ(0.110, 0.86, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [0.90, 1, 1]), 0, 0, 4.63); // sleeve B
-  P.add('gunDark', xform(cylZ(0.112, 0.045, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [0.90, 1, 1]), 0, 0, 4.225);
-  P.add('gunDark', xform(cylZ(0.112, 0.045, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [0.90, 1, 1]), 0, 0, 5.035);
+  // Thermal shrouds and their cinch rings share one radial dimension, so
+  // their front silhouette cannot turn oval under the gallery camera.
+  P.add('gun', cylZ(0.128, 1.69, P.q ? 20 : 12), 0, 0, 2.475); // sleeve A
+  P.add('gunDark', cylZ(0.130, 0.05, P.q ? 20 : 12), 0, 0, 1.66);
+  P.add('gunDark', cylZ(0.130, 0.05, P.q ? 20 : 12), 0, 0, 3.29);
+  P.add('gun', cylZ(0.110, 0.86, P.q ? 20 : 12), 0, 0, 4.63); // sleeve B
+  P.add('gunDark', cylZ(0.112, 0.045, P.q ? 20 : 12), 0, 0, 4.225);
+  P.add('gunDark', cylZ(0.112, 0.045, P.q ? 20 : 12), 0, 0, 5.035);
   P.add('gun', cylZ(0.100, 0.24, P.q ? 18 : 12), 0, 0, 5.20);                   // muzzle collar run
   muzzleBore(P, 5.34, 0.100, 0.060, 14);                                        // §B3.1 bore; face world 6.64 = overall 10.04
   P.muzzleZ = 5.34;

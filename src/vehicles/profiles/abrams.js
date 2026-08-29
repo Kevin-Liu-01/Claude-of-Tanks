@@ -3747,31 +3747,20 @@ function buildTejasFamily(P, p) {
   P.add('gun', cylZ(0.138, 0.06, 18), 0, 0, 1.824);
   P.add('gunDark', cylZ(0.152, 0.012, 18), 0, 0, 1.4595);
   P.add('gunDark', cylZ(0.152, 0.012, 18), 0, 0, 1.8085);
-  // §B3.1 (owner directive 2026-08-06: gun runs must never read as
-  // rectangular prisms): the two dust-cover BOXES on the ±0.20 corridor are
-  // now ELLIPTICAL SLEEVE SECTIONS at the exact box envelope — the M256's
-  // segmented thermal jacket. Mask math: a z-axis elliptical cylinder with
-  // semi-axes (0.2035, 0.125) projects along x to the same [len x 0.25]
-  // side rectangle and along y to the same plan rectangle as the old boxes
-  // (tops/bots/extents byte-equal per column; the ±0.178 plan corridor
-  // columns stay painted by the a=0.2035 tangent, 3.5 mm proud for the
-  // partial-pixel guarantee). Front view is interior (mantlet cover +
-  // throat behind). Cinch grooves are sub-column (3 cm), so the flanking
-  // segments keep every side/plan column lit at the envelope line; rings,
-  // joint and mouth washers ride RECESSED (dark) — the jacket reads
-  // segmented with zero new silhouette pixels.
+  // The M256 thermal jacket is assembled from round sleeve sections. Keep a
+  // single radial dimension here: one-axis scaling makes the muzzle read as
+  // a visibly oval barrel from the front.
   {
     const seg = P.q ? 24 : 14;
-    const ell = (b, len, sx) => xform(cylZ(b, len, seg), 0, 0, 0, 0, 0, 0, [sx, 1, 1]);
     for (const [z0, z1] of [[0.54, 0.705], [0.735, 1.115], [1.145, 1.56]]) {
-      P.add('gun', ell(0.125, z1 - z0, 1.628), 0.05, 0.007, (z0 + z1) / 2);
+      P.add('gun', cylZ(0.125, z1 - z0, seg), 0.05, 0.007, (z0 + z1) / 2);
     }
     for (const zc of [0.72, 1.13]) {                                 // cinch bands in the grooves
-      P.add('gunDark', ell(0.1235, 0.036, 1.60), 0.05, 0.007, zc);
+      P.add('gunDark', cylZ(0.1235, 0.036, seg), 0.05, 0.007, zc);
     }
-    P.add('gunDark', ell(0.120, 0.06, 1.625), 0.05, 0.007, 1.60);    // recessed joint ring
-    P.add('gun', ell(0.125, 0.27, 1.628), 0.05, 0.007, 1.775);       // sleeve B
-    P.add('gunDark', ell(0.118, 0.014, 1.58), 0.05, 0.007, 1.899);   // sleeve mouth washer
+    P.add('gunDark', cylZ(0.120, 0.06, seg), 0.05, 0.007, 1.60);    // recessed joint ring
+    P.add('gun', cylZ(0.125, 0.27, seg), 0.05, 0.007, 1.775);       // sleeve B
+    P.add('gunDark', cylZ(0.118, 0.014, seg), 0.05, 0.007, 1.899);  // sleeve mouth washer
   }
   P.add('gun', cylZ(t.gunR * 1.12, 0.09, 12), 0, 0, t.gunLen - 0.55);
   // MRS collar step at the muzzle (visual r2 item 11): stepped sleeve +

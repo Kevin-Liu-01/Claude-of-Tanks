@@ -324,7 +324,7 @@ export function chamferBox(P, bucket, w, h, d, x, y, z, c = 0.04) {
 }
 
 // Gun tube as measured contour segments.
-// segs: [[zStart, zEnd, sideR, sideR2?, cx?, cy?, planR?]]
+// segs: [[zStart, zEnd, radius, radius2?, cx?, cy?, legacyPlanR?]]
 // in gun-local z (0 at the gun pivot). Dark seam rings close each diameter
 // break so sleeve/tube stages read as separate fittings (r3 language).
 // cx (r9): tiny lateral seat for warp-biased reference tubes (t72b3m ref
@@ -337,18 +337,17 @@ export function tubeGun(P, segs, opts = {}) {
   // cy (r10f): tiny per-segment vertical seat — the t72b3m ref's printed
   // band RISES toward the muzzle (mid/tip centers 1.577/1.583 vs axis
   // 1.5695); the segments stay true cylinders, only their centers step.
-  // planR is the §K.2 anisotropic-section opt-in: some baked jackets are
-  // measurably wider in plan than tall in side.  Undefined keeps the exact
-  // historical circular geometry for every existing caller.
-  for (const [z0, z1, r, r2, cx, cy, planR] of segs) {
-    let geo = cylZ(r, z1 - z0, seg, r2 ?? r);
-    if (planR != null) geo = KIT.xform(geo, 0, 0, 0, 0, 0, 0, [planR / r, 1, 1]);
+  // The legacy seventh value widened only the horizontal radius and baked
+  // oval cannon tubes into several profiles. Keep accepting those tuples so
+  // old profile data remains source-compatible, but barrel geometry now has
+  // one radial dimension by construction.
+  for (const [z0, z1, r, r2, cx, cy] of segs) {
+    const geo = cylZ(r, z1 - z0, seg, r2 ?? r);
     P.add('gun', geo, cx ?? 0, cy ?? 0, (z0 + z1) / 2);
   }
   for (const ring of opts.rings || []) {
-    const [z, r, cx, cy, planR] = ring;
-    let geo = cylZ(r, 0.045, seg);
-    if (planR != null) geo = KIT.xform(geo, 0, 0, 0, 0, 0, 0, [planR / r, 1, 1]);
+    const [z, r, cx, cy] = ring;
+    const geo = cylZ(r, 0.045, seg);
     P.add('gunDark', geo, cx ?? 0, cy ?? 0, z);
   }
   P.muzzleZ = opts.muzzle ?? segs[segs.length - 1][1];

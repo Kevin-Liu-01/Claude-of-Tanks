@@ -1151,26 +1151,21 @@ export function buildK2(P) {
   for (const z of [0.39, 0.48, 0.57]) P.addGunExtraDark(cylZ(0.198, 0.022, P.q ? 20 : 12), 0, 0, z);
   P.addGunExtra(cylZ(0.135, 0.24, P.q ? 20 : 12, 0.17), 0, 0, 0.75);            // barrel throat collar
   // Batch-56 CN08 section census. The tube is 15 mm left of center and its
-  // thermal jacket occupies two measured intervals; explicit elliptical
-  // sections preserve the real top/plan read without the generic shared
-  // sleeve flooding adjacent silhouette columns.
+  // round thermal jacket occupies two measured intervals without the generic
+  // shared sleeve flooding adjacent silhouette columns.
   const k2GunLen = 5.528;
   buildGun(P, { len: k2GunLen, r: 0.09, sleeve: false, evac: null, collar: false, baseR: 0.17 });
   for (const x of [-0.21, 0.21]) P.addGunExtra(cylZ(0.035, 1.00, P.q ? 16 : 10), x, 0, 1.60);
   for (const [f0, f1] of [[0.16, 0.38], [0.38, 0.43], [0.52, 0.82]]) {
     const length = (f1 - f0) * k2GunLen;
     const root = f0 < 0.2;
-    const sy = root ? 1.85 : 1.08;
     const y = root ? 0.02 : -0.025;
-    P.add('gun', xform(cylZ(0.09, length, P.q ? 16 : 10), 0, 0, 0, 0, 0, 0, [1, sy, 1]),
-      0, y, f0 * k2GunLen + length / 2);
-    P.add('gunDark', xform(cylZ(0.095, 0.045, P.q ? 16 : 10), 0, 0, 0, 0, 0, 0, [1, root ? 1.78 : 1.06, 1]),
+    P.add('gun', cylZ(0.09, length, P.q ? 16 : 10), 0, y, f0 * k2GunLen + length / 2);
+    P.add('gunDark', cylZ(0.095, 0.045, P.q ? 16 : 10),
       0, y, f0 * k2GunLen + 0.0225);
   }
-  P.add('gun', xform(cylZ(0.11, 0.72, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [1, 1.08, 1]),
-    0, -0.025, 0.51 * k2GunLen);
-  P.add('gunDark', xform(cylZ(0.115, 0.07, P.q ? 16 : 10), 0, 0, 0, 0, 0, 0, [1, 1.06, 1]),
-    0, -0.025, 0.51 * k2GunLen);
+  P.add('gun', cylZ(0.11, 0.72, P.q ? 20 : 12), 0, -0.025, 0.51 * k2GunLen);
+  P.add('gunDark', cylZ(0.115, 0.07, P.q ? 16 : 10), 0, -0.025, 0.51 * k2GunLen);
   P.recoilG.position.x = -0.015;
   P.addGunExtraDark(cylZ(0.02, 0.09, P.q ? 20 : 12), -0.015, 0, 4.978);
   // §B3.1 MUZZLE BORE: capped tube ends 5.528; the bored face holds the

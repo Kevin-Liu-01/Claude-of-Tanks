@@ -3919,14 +3919,14 @@ function buildM60A2(P, cfg) {
   }
   P.addGunExtra(xform(cylX(0.145, 0.62, P.q ? 16 : 10), 0, 0, 0), 0, 0.02, 0.88);
   const seg = P.q ? 20 : 12;
-  // tube: the fresh ref plan seats the launcher at x +0.045 with plan
-  // half-width 0.165 (near-round, not the old 1.35 ellipse); muzzle carried
+  // tube: the fresh ref plan seats the circular launcher at x +0.045;
+  // muzzle carried
   // to the ref's own 3.712 end column (overallLengthM 7.37, +1.37% — the
   // documented dims trade for the side cover columns)
   const glen = cfg.muzzle - 1.55;
-  P.add('gun', xform(cylZ(0.148, glen - 0.08, seg), 0, 0, 0, 0, 0, 0, [1.115, 1, 1]), 0.045, 0, (glen - 0.08) / 2 + 0.02);
-  P.add('gun', xform(cylZ(0.156, 0.22, seg), 0, 0, 0, 0, 0, 0, [1.115, 1, 1]), 0.045, 0, glen - 0.55);
-  P.add('gun', xform(cylZ(0.158, 0.06, seg), 0, 0, 0, 0, 0, 0, [1.115, 1, 1]), 0.045, 0, glen - 0.03);
+  P.add('gun', cylZ(0.148, glen - 0.08, seg), 0.045, 0, (glen - 0.08) / 2 + 0.02);
+  P.add('gun', cylZ(0.156, 0.22, seg), 0.045, 0, glen - 0.55);
+  P.add('gun', cylZ(0.158, 0.06, seg), 0.045, 0, glen - 0.03);
   P.add('gunDark', cylZ(0.076, 0.014, seg), 0.045, 0, glen - 0.006);
   // §B3.1 MUZZLE BORE (shadow-named mechanism, 3fca39b): the launcher's
   // 152 mm bore ring+disc on the collar face (x +0.045 with the tube). The
