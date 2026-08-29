@@ -1,5 +1,5 @@
 // tools/gen2-verify-probe.mjs — USER DROPS wave 8 (scout-gen2) integration
-// verification. For each of the 12 wave-8 vehicles (src/vehicles/userdrops7.js):
+// verification. For each of the 12 wave-8 vehicles (src/vehicles/supplementalFleetSpecs.ts):
 //
 //   garage  — activates the vehicle's national flag chip, asserts its card is
 //             visible under that chip, real-clicks the card, waits for pedestal

@@ -115,11 +115,12 @@ function encodeInputEnvelope(envelope: ProtocolEnvelope): unknown[] {
     input.aimDistance,
     input.shellSlot,
     input.actionBits,
+    input.aimLocked ? 1 : 0,
   ];
 }
 
 function decodeInputEnvelope(wire: unknown[]): ProtocolEnvelope<NormalizedPlayerInput> {
-  if (wire.length !== 17) throw new TypeError('invalid input wire packet');
+  if (wire.length !== 18) throw new TypeError('invalid input wire packet');
   const envelope = validateEnvelope({
     v: wire[1],
     type: MESSAGE_TYPES.INPUT,
@@ -139,6 +140,7 @@ function decodeInputEnvelope(wire: unknown[]): ProtocolEnvelope<NormalizedPlayer
       aimDistance: wire[14],
       shellSlot: wire[15],
       actionBits: wire[16],
+      aimLocked: wire[17] === 1,
     },
   });
   return {

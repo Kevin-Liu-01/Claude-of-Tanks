@@ -27,9 +27,9 @@
 //   node tools/vertex-extract.mjs --ids=all           (the nine russia ids)
 //   [--out=docs/references/vertex] [--res=2560]
 //
-// The registration table below MIRRORS src/vehicles/userdrops5.js +
-// src/vehicles/variants.js (those modules are vite-env-gated and cannot be
-// imported under plain node). Keep in sync when registrations change.
+// The registration table below mirrors local comparison candidates associated
+// with recovered-family and core-variant specs. Keep it in sync when authoring
+// oracle configurations change.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -38,7 +38,7 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 
 // ---------------------------------------------------------------- registry --
 // pubDims from userdrops5.js make() rows (t72b_1987/t72b3m inherit t72b3 in
-// modern1.js; t72bu/t90a_vladimir inherit t90a in variants.js).
+// modern1.js; t72bu/t90a_vladimir inherit typed t90a combat data).
 const REG = {
   // Owner MBT-70 print is fused by material (no honest articulated masks).
   // Raw nose +X; fixedMount scales the whole source envelope to the authored
@@ -265,12 +265,12 @@ const REG = {
     pubDims: { hullLengthM: 6.33, overallLengthM: 8.51, widthM: 3.51, heightM: 3.35 },
   },
   // ---- misc/Euro-Asia moderns family (append-only, 2026-08-03) -------------
-  // Lab registrations mirrored verbatim: leclerc userdrops2.js, t80u
-  // userdrops3.js, type90 userdrops5.js source(), ariete + type74 from the
+  // Local comparison registrations: Leclerc wave-2 oracle, t80u
+  // retired T-80U oracle, type90 userdrops5.js source(), ariete + type74 from the
   // fidelity harness LOCAL_REFERENCE_OVERRIDES (quarantine oracles),
   // recon_tank specs.js MODEL_SOURCE. pubDims from the spec dims rows
   // (modern2.js t80u/leclerc, modern3.js ariete, userdrops5 type90 make(),
-  // misc.js TYPE74_SPEC, specs.js recon_tank).
+  // profiles/miscSpecs.ts TYPE74_SPEC, specs.js recon_tank).
   leclerc: {
     path: 'public/models/tanks/char_leclerc_andertan.glb',
     // raw GLB name is 'Cylinder.086' — GLTFLoader sanitizes the dot out;
@@ -397,7 +397,7 @@ const REG = {
   // ---- zero-row instrument batch (triage 2026-08-03): 13 no-profile tanks.
   // Registrations mirror userdrops7 glb() (turret '^Turret$', autoPivot, gun
   // via the loader's default gun|barrel|cannon regex — same default as this
-  // tool) and userdrops2's t90m override. recovered/* rows are the NC-SA
+  // tool) and the retired wave-2 T-90M oracle. recovered/* rows are the NC-SA
   // LOCAL-ONLY quarantine class; these REG rows are local instruments, and
   // the tanks' public builds stay procedural. pubDims from the scout-gen2
   // packet stubs (docs/references/tanks/scout-gen2-*.md).
@@ -466,7 +466,7 @@ const REG = {
     pubDims: { hullLengthM: 7.08, overallLengthM: 9.72, widthM: 3.56, heightM: 2.22 },
   },
   t90m: {
-    // userdrops2 override (minehffd print): no clean hull-only box, so the
+    // Wave-2 minehffd oracle: no clean hull-only box, so the
     // loader uses scaleToOverall; nose raw -X -> yaw +90.
     path: 'public/models/tanks/t90m_minehffd.glb',
     turretNode: '^Turret$', gunNode: '^Main_barrel$', autoPivot: true,
@@ -729,8 +729,8 @@ const REG = {
   t72m1_jaguar: {
     // FUSED two-mesh conversion (CC-BY-NC) — whole-view instrument only.
     // §5.248 poland measure-lane orientation TBD resolved (round 1): nose =
-    // raw +x (az-0 render shows a full side profile, gun +x — userdrops3
-    // convention receipt) -> yawOffset -90°, same as bmp3/leo2a6m.
+    // raw +x (az-0 render shows a full side profile, gun +x — retired
+    // wave-four oracle convention) -> yawOffset -90°, same as bmp3/leo2a6m.
     path: 'public/models/community-candidates/t72m1_jaguar_manako.glb',
     yawOffset: -Math.PI / 2,
     fixedMount: true, scaleToOverall: true,
@@ -830,8 +830,8 @@ const REG = {
     // Viewer-rip re-upload suspect; fused 3-mesh, far off-origin.
     // §5.248 ukraine round INSTRUMENT FIX: the diorama parks the tank
     // axis-aligned along raw X (PCA 0.05°, spans 39.86×14.97×19.97u,
-    // 0.242 m/u vs pub), nose = raw -X -> yawOffset +90 (the userdrops2
-    // FLIP-RETIRED convention). Without it the width normalizer reads the
+    // 0.242 m/u vs pub), nose = raw -X -> yawOffset +90 (the retired wave-2
+    // oracle convention). Without it the width normalizer reads the
     // 9.65 m length as width (extract read -86%).
     path: 'public/models/community-candidates/t80u_kursk_manako.glb',
     fixedMount: true, scaleToOverall: true, yawOffset: Math.PI / 2,

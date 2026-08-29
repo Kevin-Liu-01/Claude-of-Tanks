@@ -19,6 +19,7 @@ interface LifecycleInput {
   steer: number;
   brake: boolean;
   fire: boolean;
+  aimLocked: boolean;
   shellSlot: number;
   aimPoint?: { set?(x: number, y: number, z: number): unknown };
 }
@@ -143,6 +144,7 @@ export function clearBattleAfterExit({
       entity.input.steer = 0;
       entity.input.brake = false;
       entity.input.fire = false;
+      entity.input.aimLocked = false;
       entity.input.shellSlot = 0;
       entity.input.aimPoint?.set?.(0, 0, 0);
     }

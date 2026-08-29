@@ -196,8 +196,8 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // EO head (Cameras.001), RWS ring (Cylinder.003), RWS shields
   // (TurretShields) and the gun thermal cover (TowerBarrelCover) — the
   // batch-B row left them in the HULL mask (ref side_hull topped 2.79-3.15
-  // over the works band). Jaguar nose = raw +x -> yawOffset -90 (userdrops3
-  // convention; az-0 render showed a full side profile).
+  // over the works band). Jaguar nose = raw +x -> yawOffset -90 (retired
+  // wave-four oracle convention; az-0 render showed a full side profile).
   pl01: { source:'glb', glb:{ path:'/models/community-candidates/pl01_501st.glb', turretNode:'^Tower$', gunNode:'^Cannon$', autoPivot:true, paintUntextured:true, turretFollowers:'^(?:TurretBarrel|TurretBase|TurretBody|TurretShields|ExplosionTubes|Cylinder\\.?00[2-5]|Cameras(?:\\.?001)?|CamHolder|CamCovers|TowerBarrelCover)$' } },
   pl01_105: { source:'glb', glb:{ path:'/models/community-candidates/pl01_501st.glb', turretNode:'^Tower$', gunNode:'^Cannon$', autoPivot:true, paintUntextured:true, turretFollowers:'^(?:TurretBarrel|TurretBase|TurretBody|TurretShields|ExplosionTubes|Cylinder\\.?00[2-5]|Cameras(?:\\.?001)?|CamHolder|CamCovers|TowerBarrelCover)$' } },
   t72m1_jaguar: { source:'glb', glb:{ path:'/models/community-candidates/t72m1_jaguar_manako.glb', yawOffset:-Math.PI/2, fixedMount:true, componentMasks:false } },
@@ -302,8 +302,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // AFV program (owner directive 2026-08-04, packet docs/references/tanks/
   // bmp2.md): the m_bergman BMP-2 print is QUARANTINE class — gate/measure
   // local-only through this override; the in-game MODEL_SOURCE registration
-  // stays delisted (userdrops2 SHIP_USERDROP2_NEW). Same wiring as the
-  // delisted registration it mirrors.
+  // stays an isolated authoring oracle. The playable is always procedural.
   bmp2: {
     source:'glb',
     glb:{
@@ -338,8 +337,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   },
   // BASE-21 ORACLE WAVE (owner drop 2026-08-06; ATTRIBUTION.md "Base-21
   // oracle wave") — measurement oracles only, the playables stay
-  // procedural (SHIP_USERDROP2_NEW=false keeps runtime MODEL_SOURCE
-  // procedural). Configs derived from raw-GLB node inspection; the
+  // procedural. Configs derived from raw-GLB node inspection; the
   // vertex-extract REG rows mirror them (docs/references/vertex/*.json).
   // NOT REGISTERED from the same drop: leo2a4 <- leopard_2a4_otco.glb
   // (live Sketchfab description "Leopard 2A4 OTCO from War Thunder" —
@@ -462,7 +460,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
     glb:{ path:'/models/tanks/community/recovered/isu152.glb',
       fixedMount:true, paintUntextured:true },
   },
-  // kf51 (graduated 2026-08-03): retired userdrops3.js registration —
+  // kf51 (graduated 2026-08-03): retired source-model registration —
   // measurement-only.
   kf51: {
     source:'glb',

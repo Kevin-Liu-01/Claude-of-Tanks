@@ -6,7 +6,7 @@
  * authoritative host validates all client-authored fields here.
  */
 
-export const PROTOCOL_VERSION = 7;
+export const PROTOCOL_VERSION = 8;
 export const MATCH_TICK_HZ = 60;
 export const SNAPSHOT_HZ = 20;
 export const MAX_PLAYERS = 14;
@@ -69,6 +69,7 @@ export interface NormalizedPlayerInput {
   steer: number;
   brake: boolean;
   fire: boolean;
+  aimLocked: boolean;
   aimYaw: number;
   aimPitch: number;
   aimDistance: number;
@@ -257,6 +258,7 @@ export function normalizePlayerInput(value: unknown): NormalizedPlayerInput {
     steer,
     brake: !!value.brake,
     fire: !!value.fire,
+    aimLocked: !!value.aimLocked,
     aimYaw,
     aimPitch,
     aimDistance,

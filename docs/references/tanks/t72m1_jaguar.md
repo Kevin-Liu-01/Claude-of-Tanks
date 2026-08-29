@@ -11,7 +11,7 @@ BUILD FRESH)."
 
 ## Registration (orientation TBD resolved this round)
 Nose = raw +x (the az-0 render shows a full side profile with the gun on
-+x) -> `yawOffset: -Math.PI/2` per the userdrops3 convention receipt
++x) -> `yawOffset: -Math.PI/2` per the retired wave-four oracle convention
 ("Nose = raw +X -> yawOffset -90°"), mirrored into all four maps
 (procedural-fidelity, tmp-tank-critic, visual-evaluator-page,
 vertex-extract). Pre-fix whole rows measured the print sideways

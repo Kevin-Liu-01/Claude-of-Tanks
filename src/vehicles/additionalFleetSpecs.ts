@@ -1,28 +1,69 @@
-// Recovered-drop wave 6: distinct Cold-War/modern vehicles from the owner's
-// source archives. Geometry was normalized by tools/build_recovered_fleet.sh;
-// class stats inherit the nearest researched vehicle and are then adjusted to
-// keep each variant identifiable and matchmaking-safe.
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
-import { shell } from './specHelpers.ts';
+// Additional first-party Cold-War and modern combat rows. Each variant clones
+// the nearest researched donor and applies explicit identity/balance changes;
+// visual geometry remains in the demand-loaded procedural family builders.
+import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
+import { shell, type ArmorEnvelope } from './specHelpers.ts';
+import type {
+  FleetDimensions,
+  FleetGunSpec,
+  FleetTankSpec,
+  FleetVisualSpec,
+} from './specContracts.ts';
 
-const copy = (v) => JSON.parse(JSON.stringify(v));
-// Reference assets never become playables, including in local development.
-const ALLOW_LOCAL_RECOVERED_MODELS = false;
-const make = (baseId, id, name, nation, patch = {}) => {
-  const spec = copy(TANK_SPECS[baseId]);
+type VariantPatch = Omit<Partial<FleetTankSpec>, 'armor' | 'dims' | 'gun' | 'visual'> & {
+  armor?: ArmorEnvelope;
+  dims?: Partial<FleetDimensions>;
+  gun?: Partial<FleetGunSpec>;
+  visual?: Partial<FleetVisualSpec>;
+};
+
+interface MerkavaGunOptions {
+  readonly reloadS: number;
+  readonly accuracy: number;
+  readonly aimTimeS: number;
+  readonly kinetic: readonly [number, number, number, number, number];
+  readonly heat: readonly [number, number];
+  readonly heDamage: number;
+  readonly moduleDmg: number;
+  readonly bloom: Partial<FleetGunSpec['bloom']>;
+}
+
+interface MerkavaArmorOptions {
+  readonly glacis: readonly [number, number];
+  readonly lower: readonly [number, number];
+  readonly wedge: readonly [number, number];
+  readonly notch: readonly [number, number];
+  readonly side: readonly [number, number];
+}
+
+const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+const tankSpecs: typeof TANK_SPECS & Record<string, unknown> = TANK_SPECS;
+
+function isFleetSpecRecord(value: unknown): value is FleetTankSpec {
+  return value !== null && typeof value === 'object';
+}
+
+function requireFleetSpec(id: string): FleetTankSpec {
+  const spec = tankSpecs[id];
+  if (!isFleetSpecRecord(spec)) throw new Error(`Fleet donor missing or incomplete: ${id}`);
+  return spec;
+}
+
+function make(
+  baseId: string,
+  id: string,
+  name: string,
+  nation: string,
+  patch: VariantPatch = {},
+): FleetTankSpec {
+  const donor = requireFleetSpec(baseId);
+  const spec = copy(donor);
   spec.id = id;
   spec.name = name;
-  spec.nation = nation || spec.nation;
+  spec.nation = nation;
   spec.variantOf = baseId;
   spec.publicVisualFallback = baseId;
-  if (ALLOW_LOCAL_RECOVERED_MODELS) {
-    spec.community = {
-      author: 'Recovered owner drop', source: `user-drops-recovered/${id}`,
-      license: 'Redistribution not cleared — LOCAL-ONLY QUARANTINE',
-    };
-  } else {
-    delete spec.community;
-  }
+  delete spec.community;
   const baseGun = spec.gun;
   const baseDims = spec.dims;
   const baseVisual = spec.visual;
@@ -36,12 +77,12 @@ const make = (baseId, id, name, nation, patch = {}) => {
   // so shots at the rendered turret resolved as air. Refit the copy.
   if (patch.dims) fitArmorToDims(spec.armor, baseDims, spec.dims);
   return spec;
-};
+}
 
-const merkavaGun = ({
+function merkavaGun({
   reloadS, accuracy, aimTimeS, kinetic, heat, heDamage, moduleDmg, bloom,
-}) => {
-  const gun = copy(TANK_SPECS.merkava4.gun);
+}: MerkavaGunOptions): FleetGunSpec {
+  const gun = copy(requireFleetSpec('merkava4').gun);
   gun.reloadS = reloadS;
   gun.baseAccuracy = accuracy;
   gun.aimTimeS = aimTimeS;
@@ -55,11 +96,11 @@ const merkavaGun = ({
   });
   Object.assign(gun.shells[2], { dmg: heDamage, moduleDmg });
   return gun;
-};
+}
 
-const merkavaArmor = ({ glacis, lower, wedge, notch, side }) => {
-  const armor = copy(TANK_SPECS.merkava4.armor);
-  const ratings = {
+function merkavaArmor({ glacis, lower, wedge, notch, side }: MerkavaArmorOptions): ArmorEnvelope {
+  const armor = copy(requireFleetSpec('merkava4').armor);
+  const ratings: Partial<Record<string, readonly [number, number]>> = {
     upper_glacis: glacis,
     lower_front: lower,
     turret_wedge_R: wedge,
@@ -74,9 +115,9 @@ const merkavaArmor = ({ glacis, lower, wedge, notch, side }) => {
     [plate.keMm, plate.ceMm] = rating;
   }
   return armor;
-};
+}
 
-const SPECS = [
+const SPECS: FleetTankSpec[] = [
   make('challenger2', 'challenger1', 'Challenger 1 Mk.3', 'UK',
     { hp: 2100, weightTons: 62, topSpeedKmh: 56, gun: { reloadS: 7.2 },
       dims: { hullLengthM: 8.32, overallLengthM: 11.5, widthM: 3.52, heightM: 2.95 } }),
@@ -155,7 +196,7 @@ const SPECS = [
     { hp: 2050, weightTons: 49.7, topSpeedKmh: 50, reverseSpeedKmh: 16,
       gun: {
         reloadS: 6.8, baseAccuracy: 0.30, aimTimeS: 1.8,
-        shells: TANK_SPECS.leo1a5.gun.shells.map((round, index) => ({
+        shells: requireFleetSpec('leo1a5').gun.shells.map((round, index) => ({
           ...round,
           ...(index === 0
             ? { pen100Mm: 570, pen1000Mm: 530, pen2000Mm: 480, dmg: 440 }
@@ -328,6 +369,7 @@ const SPECS = [
 // base). Ammunition Data Link handling is the row's reloadS edge.
 {
   const sepv3 = SPECS.find((s) => s.id === 'm1a2_sepv3');
+  if (!sepv3) throw new Error('Additional fleet spec missing: m1a2_sepv3');
   const amp = sepv3.gun.shells.find((sh) => /AMP/.test(sh.name));
   if (amp) amp.name = 'XM1147 AMP';
 }
@@ -348,6 +390,7 @@ const SPECS = [
 // calibration remap.
 {
   const t90 = SPECS.find((s) => s.id === 'type90');
+  if (!t90) throw new Error('Additional fleet spec missing: type90');
   t90.armor.gunPivot = [0, 0.2397, 1.0713];
   t90.armor.gunBarrel.lengthM = 4.66;
 }
@@ -359,6 +402,7 @@ const SPECS = [
 // ammunition plant.
 {
   const base = SPECS.find((s) => s.id === 'fv510');
+  if (!base) throw new Error('Additional fleet spec missing: fv510');
   const milan = copy(base);
   milan.id = 'fv510_milan';
   milan.name = 'FV510 Warrior MILAN';
@@ -404,165 +448,11 @@ const SPECS = [
   SPECS.push(milan);
 }
 
-const ROOT = '/models/tanks/community/recovered/';
-const source = (id, cfg = {}) => {
-  MODEL_SOURCE[id] = { source: 'glb', glb: { path: `${ROOT}${id}.glb`, paintUntextured: true, ...cfg } };
-};
-const articulated = (id, cfg = {}) => source(id, {
-  turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true, ...cfg,
-});
-const CHALLENGER_TURRET_FOLLOWERS =
-  'vehicle#(?:ammo_|antenna_|bone_mg_aa_|ex_decor_(?:0[1-3]|0[5-9]|1[0-2])_|hatch_0[2-5]_)';
-const CHALLENGER_GUN_FOLLOWERS = 'vehicle#(?:gun_mask_|bone_mg_gun_twin_)';
-// ex_armor_[lr]_NN are the HULL SKIRT runs (26 nodes on the 2B print) — the
-// old (?!body) lookahead swept them into rig_turret and capped the family's
-// reference turret masks at 26-58 no matter what the procedural built
-// (round-3 finding, quantified in docs/references/tanks/merkava2b.md).
-const MERKAVA_TURRET_FOLLOWERS =
-  'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))';
-const MERKAVA_GUN_FOLLOWERS = 'vehicle#gun_barrel_';
-
-// Specs/gameplay ship everywhere. Public builds deliberately omit the
-// recovered GLBs and resolve each row through its procedural family model;
-// private/local builds install the exact recovered source below.
+// Register only first-party procedural gameplay rows. Historical source assets
+// are offline comparison inputs and have no runtime registration path.
 for (const spec of SPECS) {
-  TANK_SPECS[spec.id] = TANK_SPECS[spec.id] || spec;
+  tankSpecs[spec.id] ||= spec;
   if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
 }
 
-if (ALLOW_LOCAL_RECOVERED_MODELS) {
-    // FLIP-RETIRED: articulated('challenger1', {
-  // FLIP-RETIRED: turretFollowers: CHALLENGER_TURRET_FOLLOWERS,
-  // FLIP-RETIRED: gunFollowers: CHALLENGER_GUN_FOLLOWERS,
-  // FLIP-RETIRED: });
-  // This OBJ retains its authored Z-up frame after import; rotate Z-up to the
-  // runtime's Y-up convention before modelLoader measures and normalizes it.
-  // Oracle repair (tools/repair_oracles.py): the GLB's original `Turret` node
-  // was the CHASSIS; the repaired file seats the real casting under `Turret`
-  // (ring pivot at the authored y=0 station) and the L11 under `Gun`.
-  // chieftain5: DUAL-GATE GRADUATE (2026-08-04) — the program's 18th, the
-  // UK family's FIRST. Geometry min 91.2 gatePassed x2 (turret 94.1) +
-  // graduation critic 9.0 on ALL FOURTEEN views (floor 5.0 -> 7.0 -> 9.0
-  // across r4-r6; right view 9.5). NO MODEL_SOURCE — freeze hash e8919e36
-  // via tmp-hashgeo; the recovered Z-up print stays as the measurement
-  // oracle (all three override maps carry the registration incl.
-  // pitchOffset -PI/2).
-  // fv510: SOURCE REGISTRATION RETIRED (2026-08-10). The repaired CC-BY
-  // print remains a comparison oracle only; the playable is authored by the
-  // repository's native procedural builder.
-    // FLIP-RETIRED: articulated('leo2_revolution', { yawOffset: Math.PI });
-  // leo2a5: DUAL-GATE GRADUATE (2026-08-04, the 21st — geometry 90.8 x2 +
-  // critic 9.0 every view at r10; ladder 7.7 -> 9.0 over five rounds;
-  // 04c3e11). Registration retired per §10; freeze hash bc9bad30; the
-  // recovered print stays a measurement oracle via the three maps.
-  // leo2a7v: runtime source registration retired. The local print remains a
-  // comparison oracle only; buildLeo2A7V owns every playable vertex.
-  // m1a1ha: DUAL-GATE GRADUATE (2026-08-02, freeze hash 88a4a978) — no
-  // MODEL_SOURCE; procedural ships everywhere (tejas GLB stays as oracle).
-    // FLIP-RETIRED: source('m1a2_sepv2', {
-  // FLIP-RETIRED: turretNode: '^Turret$', gunNode: '^misc_b$', autoPivot: true,
-  // FLIP-RETIRED: yawOffset: Math.PI,
-  // FLIP-RETIRED: turretFollowers: '^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?!_body)|ex_era_turret|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$',
-  // FLIP-RETIRED: });
-  // m60a1: NO source() call — dual-gate graduate, procedural build ships in
-  // every flavor. The recovered m60a1.glb FILE stays on disk: userdrops6's
-  // m60a3 still aliases it directly (and has NOT passed the gate).
-  // pt91m: DUAL-GATE GRADUATE (2026-08-03) — the program's 14th. Geometry
-  // min 91.3 gatePassed x2 + graduation critic 9.0 on ALL FOURTEEN views
-  // (floor 8.2 -> 8.6 -> 9.0 across r25-r28; crown-air column cert audited
-  // and binding). NO MODEL_SOURCE — freeze hash via tmp-hashgeo; the
-  // recovered GLB stays as the measurement oracle (all three override
-  // maps; NOTE the print is authored -z-forward: the critic + evaluator
-  // harnesses need yawOffset PI in their entries, the fidelity page does
-  // not — probe-proven both ways).
-  // merkava3b + merkava3c: DUAL-GATE GRADUATES (2026-08-02) — no
-  // MODEL_SOURCE; procedural ships everywhere (hashes 5296950a/5287233e;
-  // critic 9.0 all nine views, r8). GLBs stay as measurement oracles.
-  // merkava3d: DUAL-GATE GRADUATE (2026-08-03) — the program's 13th.
-  // Geometry min 90.4 gatePassed x2 + graduation critic 9.0 on ALL
-  // FOURTEEN views (floor climbed 8.6 -> 8.9 -> 9.0 across r11-r13; five
-  // arbitration certs transfer with the graduation record). NO
-  // MODEL_SOURCE — freeze hash 954a9650 via tmp-hashgeo; the recovered
-  // GLB stays as the measurement oracle (all three override maps).
-  // merkava1b: DUAL-GATE GRADUATE (2026-08-04) — the program's 16th, the
-  // merkava family's FOURTH. Geometry min 90.0 gatePassed x2 at the exact
-  // razor + graduation critic 9.0 on ALL FOURTEEN views (floor 8.4 -> 9.0
-  // across r12-r13; three arbitration certs decisive). NO MODEL_SOURCE —
-  // freeze hash 106b0074 via tmp-hashgeo; the recovered GLB stays as the
-  // measurement oracle (all three override maps carry the registration).
-  for (const id of []) { // FLEET FLIP 2026-08-04: merkava2b/2d/4b -> procedural+CUSTOM
-    articulated(id, {
-      turretFollowers: MERKAVA_TURRET_FOLLOWERS,
-      gunFollowers: MERKAVA_GUN_FOLLOWERS,
-    });
-  }
-  for (const id of []) { // FLEET FLIP 2026-08-04: t64bv1/type90 -> procedural+CUSTOM
-    source(id, {
-      turretNode: '^Turret$', autoPivot: true, yawOffset: -Math.PI / 2,
-    });
-  }
-  // TYPE 90 SOURCE-VIEW ARTICULATION (owner screenshot 2026-08-10): the
-  // recovered print has only three render meshes. Its complete upper vehicle
-  // — welded shell, the two circular roof stations, bustle cage, boxes and
-  // gun — is the single TurretMesh child of the authored Turret node. Keep
-  // gameplay on the procedural build, but register that print with the same
-  // explicit Turret contract so the Sources card cannot leave the cage/roof
-  // furniture fused to the hull when the turret is slewed.
-  MODEL_SOURCE.type90 = {
-    source: 'procedural',
-    candidateGlb: {
-      path: `${ROOT}type90.glb`,
-      turretNode: '^Turret$',
-      autoPivot: true,
-      yawOffset: -Math.PI / 2,
-      paintUntextured: true,
-    },
-  };
-  // batch-13b RULING (no surgery): t72bu's batch-9 split already created a
-  // Gun node under Turret, but this registration never DECLARED it — the
-  // turret mask swallowed the whole tube subtree (plan_turret read the ref
-  // turret to z 5.89) and turret rows capped at 11. gunNode resolves it.
-    // FLIP-RETIRED: source('t72bu', {
-  // FLIP-RETIRED: turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
-  // FLIP-RETIRED: yawOffset: -Math.PI / 2,
-  // FLIP-RETIRED: });
-  // batch-13 (tools/repair_oracles.py 't72b_1987'): the fused 2A46M — 7
-  // loose tube components inside TurretMesh — is component-split into
-  // GunMesh under a new Gun node (no trim; the warped tube already ends at
-  // published overall -0.3%). gunNode resolves it so turret masks compare
-  // tube-less turret to tube-less turret at every yaw pose.
-    // FLIP-RETIRED: source('t72b_1987', {
-  // FLIP-RETIRED: turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
-  // FLIP-RETIRED: yawOffset: -Math.PI / 2,
-  // FLIP-RETIRED: });
-  // t62mv1 is intentionally source-free at runtime.  Its retired Bergman/MV
-  // oracle is not registered: the first-party obr. 1975 build was rebuilt
-  // and certified against the owner's external GLB, which remains an offline
-  // measurement/visual reference only.
-  // t72b3m: DUAL-GATE GRADUATE (2026-08-04) — the program's 15th. Geometry
-  // min 91.8 gatePassed x2 + graduation critic 9.0 on ALL FOURTEEN views
-  // (floor 8.0 -> 8.5 -> 9.0 across thirteen builder rounds; three views
-  // banked early and held; five-for-five order reproduction, zero flips).
-  // NO MODEL_SOURCE — freeze hash c19ec9f0 via tmp-hashgeo; the recovered
-  // GLB stays as the measurement oracle (all three override maps carry the
-  // registration incl. yawOffset PI).
-    // FLIP-RETIRED: source('t90sm', {
-  // FLIP-RETIRED: turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true,
-  // FLIP-RETIRED: yawOffset: Math.PI,
-  // FLIP-RETIRED: });
-    // FLIP-RETIRED: source('t90a_vladimir', {
-  // FLIP-RETIRED: // Highest-detail turret assembly; the remaining desirefx meshes are hull,
-  // FLIP-RETIRED: // running gear, side skirts and LOD layers and must stay with the chassis.
-  // FLIP-RETIRED: turretNode: '^desirefx[._]?me_001$', autoPivot: true,
-  // FLIP-RETIRED: });
-}
-
-export const USERDROP5_TANK_IDS = SPECS.map((s) => s.id);
-
-// PROVENANCE-INTENT (era bucketing): the wave-5 rows whose visual is sourced
-// from an online/recovered model in the full local build. Public builds skip
-// the quarantined registrations above, so MODEL_SOURCE is NOT a public-safe
-// signal — the garage catalog keys era buckets off this list instead, keeping
-// local and public grouping identical. m60a1 is excluded: it graduated the
-// dual gate and its procedural build ships everywhere (a true original now).
-export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3c', 'merkava3d', 'merkava4b', 'pt91m', 't72b3m', 'merkava1b', 'chieftain5', 'leo2a5', 'challenger1', 'leo2_revolution', 'm1a2_sepv2', 'm1a2_sepv3', 't62mv1', 't72bu', 't72b_1987', 't90sm', 't90a_vladimir', 'merkava2b', 'merkava2d', 'fv510', 'fv510_milan', 't64bv1', 'type90'].includes(id));
+export const ADDITIONAL_FLEET_TANK_IDS = SPECS.map((spec) => spec.id);

@@ -472,11 +472,12 @@ deleted after judging along with the rest of
 
 ## Variant vehicles (public/models/tanks/community/variants/) — CC-BY 4.0 derivatives
 
-Modified versions of on-disk CC-BY 4.0 base models ("variant" sourcing route,
-docs/research/modern-roster.md Part 0). Each file is an offline Blender
-re-export of the base with the modifications listed below — recorded here per
-CC-BY 4.0 §3(a)(1)(B) ("indicate if You modified the Licensed Material").
-Specs + registration: `src/vehicles/variants.js`.
+Historical modified versions of on-disk CC-BY 4.0 base models ("variant"
+sourcing route, docs/research/modern-roster.md Part 0). Each file is an offline
+Blender re-export of the base with the modifications listed below — recorded
+here per CC-BY 4.0 §3(a)(1)(B). The files are comparison candidates only;
+playable combat data is registered by `src/vehicles/combatVariantSpecs.ts` and
+all three live visuals are first-party procedural builds.
 
 | In-game vehicle (spec id) | Base asset | Author | Source | License | File + modifications |
 |---|---|---|---|---|---|
@@ -486,13 +487,10 @@ Specs + registration: `src/vehicles/variants.js`.
 
 Derivative renders (icons `public/icons/m1a1_*`, `t90a_*`, `m1a2_tusk_*`,
 generated 2026-07-28 by tools/genIcons.mjs) are covered by the rows above.
-All three variants are registered playables (src/vehicles/variants.js,
-imported by tankFactory.ts) and carry their credit line on the garage stats
-card (spec.community), satisfying the
-CC-BY 4.0 attribution + "modified" indication requirements in-product as well
-as in this file. The remaining 16 modern-expansion vehicles (modern1/2/3.js
-builder packs) are procedural first-party models — no third-party assets, no
-attribution required.
+All three ids remain registered playables, but none loads these files or
+exposes source-credit metadata as part of its runtime spec. Attribution and
+the required modification indication live in this document; authoring tools
+may use the files for isolated visual comparison.
 
 ### Evaluation record — Type 74 variant (2026-07-28): built, NOT shipped
 
@@ -540,29 +538,23 @@ face-count-matched to a Sketchfab source honestly. It was referenced nowhere
 in src/, tools/ or index.html (pure shelf-ware). It can return if the user
 re-supplies the original download with provenance verified at download time.
 
-### User drops wave 2 (batch `user-drops-recovered`, integrated 2026-07-28) — 7 winners
+### User drops wave 2 (batch `user-drops-recovered`, evaluated 2026-07-28) — comparison references
 
 Source archives are the user's own downloads recovered after a permissions
-issue (`public/models/community-candidates/user-drops-recovered/` —
-gitignored working area; only the normalized GLBs below ship). Provenance +
-license records for the shipped assets live in
-`docs/licenses/user-drops-recovered/`. The m_bergman 1:100 pack
-(Thingiverse thing:4718232) is an original Solidworks-drawn wargame print
-collection — 12 modern vehicles were converted for judging and the 5 below
-won (untextured print masters: they ship through the paintUntextured camo
-pipeline; guns are fused into the turret shells, so gun pitch stays virtual
-— kv2 rule; the Stryker/BMP wheels are modeled into the hulls and do not
-spin).
+issue (`public/models/community-candidates/user-drops-recovered/`). Provenance
+and license records live in `docs/licenses/user-drops-recovered/`. These files
+are authoring comparisons only. None is registered by the playable runtime;
+the live fleet uses repository-authored procedural geometry.
 
 | Vehicle (spec id) | Author | Source | License | Shipped file | Role |
 |---|---|---|---|---|---|
-| T-90M (`t90m`) | minehffd | https://sketchfab.com/3d-models/t-90m-2e31a3cf16b04f0180b9387df5198c9a (user-supplied download) | CC-BY 4.0 (stamped in asset.copyright + scene extras) | `public/models/tanks/t90m_minehffd.glb` | REPLACES the procedural T-90M Proryv model (specs.js gameplay stats unchanged). Turret yaw node + `Main barrel` pitch node; mantlet is a turret sibling (stays put on elevation — known minor). 122,516 tris, WEBP textures. |
-| Char Leclerc (`leclerc`) | andertan | https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03 (user-supplied download) | CC-BY 4.0 | `public/models/tanks/char_leclerc_andertan.glb` | REPLACES the procedural Leclerc S2 model (modern2.js gameplay stats unchanged). Authored `turret` node + child gun mesh; authored Fire/traverse animations retained (unused). |
-| Leopard 2A4 (`leo2a4`) | m_bergman | https://www.thingiverse.com/thing:4718232 (user-supplied download) | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/leo2a4_bergman.glb` | REPLACES the procedural Leopard 2A4 model (modern2.js gameplay stats unchanged). Ring-center turret pivot authored offline. |
-| BMP-2 (`bmp2`) | m_bergman | same pack | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/bmp2_bergman.glb` | REPLACES the procedural BMP-2 model (modern3.js gameplay stats unchanged). |
-| BMP-1 (`bmp1`) | m_bergman | same pack | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/bmp1_bergman.glb` | NEW playable: USSR tier-VI IFV (class-template spec, userdrops2.js). |
-| M1128 Stryker MGS (`m1128`) | m_bergman | same pack | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/m1128_mgs_bergman.glb` | NEW playable: USA tier-VIII TD (slat-armor configuration; class-template spec). |
-| M1296 Stryker Dragoon (`m1296`) | m_bergman | same pack | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/m1296_dragoon_bergman.glb` | NEW playable: USA tier-VII IFV (class-template spec). |
+| T-90M (`t90m`) | minehffd | https://sketchfab.com/3d-models/t-90m-2e31a3cf16b04f0180b9387df5198c9a (user-supplied download) | CC-BY 4.0 (stamped in asset.copyright + scene extras) | `public/models/tanks/t90m_minehffd.glb` | Local silhouette and articulation comparison for the native T-90M family; never loaded as playable geometry. |
+| Char Leclerc (`leclerc`) | andertan | https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03 (user-supplied download) | CC-BY 4.0 | `public/models/tanks/char_leclerc_andertan.glb` | Local silhouette and articulation comparison for the native Leclerc family; never loaded as playable geometry. |
+| Leopard 2A4 (`leo2a4`) | m_bergman | https://www.thingiverse.com/thing:4718232 (user-supplied download) | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/leo2a4_bergman.glb` | Local-only comparison for the native Leopard 2A4; never registered or shipped in the public artifact. |
+| BMP-2 (`bmp2`) | m_bergman | same pack | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/bmp2_bergman.glb` | Local-only comparison for the native BMP-2; never registered or shipped in the public artifact. |
+| BMP-1 (`bmp1`) | m_bergman | same pack | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/bmp1_bergman.glb` | Rejected runtime candidate; no playable spec is registered. |
+| M1128 Stryker MGS (`m1128`) | m_bergman | same pack | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/m1128_mgs_bergman.glb` | Rejected runtime candidate; no playable spec is registered. |
+| M1296 Stryker Dragoon (`m1296`) | m_bergman | same pack | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/m1296_dragoon_bergman.glb` | Rejected runtime candidate; no playable spec is registered. |
 
 Losing wave-2 candidates (m_bergman leo2a5/leo2a6/m1a1_aim — redundant with
 better shipped models — and brdm2/btr70/cougar_6x6/lav25, judged below the
@@ -578,7 +570,7 @@ new quarantine entries.
 | Vehicle (spec id) | Author | Source | License | Shipped file | Role |
 |---|---|---|---|---|---|
 | Tank T-80U (`t80u`) | javanilga | https://sketchfab.com/3d-models/tank-t-80u-ebf4b55eeabb421cbf2758a2ec948439 (user-supplied download) | CC-BY 4.0 (also stamped in the GLB's asset.extras) | `public/models/tanks/t80u_javanilga.glb` | REPLACES the procedural T-80U model (modern2.js gameplay stats unchanged). Authored turret + gun nodes; 10 roof-accessory root siblings reparented into the turret offline, whip antenna removed (height-clamp rule). 28,141 tris, 1024/512 PNG textures. |
-| KF51 Panther - Woodland (`kf51`) | GRIP420 (model + textures by David Falke) | https://sketchfab.com/3d-models/kf51-panther-woodland-4764a740867c4ea697df8011e7d5bf63 (user-supplied download) | CC-BY 4.0 | `public/models/tanks/kf51_grip420.glb` | NEW playable: Germany tier-X MBT (class-template spec, userdrops3.js). Fully articulated authored turret > gun > MG chain. 63,016 tris; textures 2k (alpha sheets + body diffuse) / 1k (rest); rear whip antennas compressed offline. |
+| KF51 Panther - Woodland (`kf51`) | GRIP420 (model + textures by David Falke) | https://sketchfab.com/3d-models/kf51-panther-woodland-4764a740867c4ea697df8011e7d5bf63 (user-supplied download) | CC-BY 4.0 | `public/models/tanks/kf51_grip420.glb` | Local comparison oracle for the native KF51 family registered by `kf51Specs.ts`; never loaded as playable geometry. Fully articulated authored turret > gun > MG chain, 63,016 tris. |
 
 The remaining batch contents (t-90m / char-leclerc / bergman-p1 shipped-source
 folders from wave 2, this wave's three source archives, and the stray original
@@ -626,14 +618,15 @@ Twelve cold-war/gen-2 MBT-generation vehicles from the scout-gen2 candidate
 round. Reference packets: `docs/references/tanks/scout-gen2-*.md`; per-folder
 provenance records: `public/models/tanks/candidates-gen2/*/PROVENANCE.md`
 (anonymous downloads, no accounts; per-candidate game-rip checks recorded
-there). STLs are baked to playable GLBs by `tools/build_gen2_tanks.sh` /
+there). STLs were baked to comparison GLBs by `tools/build_gen2_tanks.sh` /
 `build_gen2_tanks.py`; gameplay specs are redistribution-safe code
-(`src/vehicles/userdrops7.js`, nearest-researched-donor pattern). Two license
-classes:
+(`src/vehicles/supplementalFleetSpecs.ts`, nearest-researched-donor pattern)
+and every playable now uses first-party procedural geometry. The historical
+inputs fall into two license classes:
 
-**Shippable class (CC BY / CC BY-SA)** — the GLB and its on-card credit
-register in EVERY build (the garage stats card renders the credit; these
-rows satisfy attribution together with this table):
+**Redistributable comparison class (CC BY / CC BY-SA)** — retained for offline
+measurement and authorship evidence; no GLB or source credit is a playable
+runtime path:
 
 | Vehicle / spec id | Author | Source | License | Files |
 |---|---|---|---|---|
@@ -645,11 +638,9 @@ rows satisfy attribution together with this table):
 | Vickers MBT Mk.1 (Vijayanta) (`vickers_mk1`) | JackTheTinkerer | https://www.thingiverse.com/thing:5523615 | CC BY 4.0 | `public/models/tanks/community/vickers_mk1_jack.glb`, `public/icons/vickers_mk1_*.png` |
 
 **Quarantine class (NC-SA — LOCAL-ONLY, see the PERSONAL-USE / NC QUARANTINE
-section below)** — model sources register only behind
-`ALLOW_LOCAL_RECOVERED_MODELS`; `VITE_PUBLIC_BUILD=1` keeps the gameplay rows
-playable on procedural family fallbacks and `tools/strip-nc-assets.mjs`
-deletes the GLBs, the derivative icons, and the whole `candidates-gen2/`
-source tree from public artifacts:
+section below)** — never registered as runtime sources. Public builds keep the
+first-party procedural gameplay rows and `tools/strip-nc-assets.mjs` deletes
+the GLBs, derivative icons, and whole `candidates-gen2/` source tree:
 
 | Vehicle / spec id | Author | Source | License | Files |
 |---|---|---|---|---|
@@ -765,10 +756,10 @@ fails the build if any registered playable still references a stripped path.
 | M1A2 Abrams (user drop, batch abrams-suspects 2026-07-28) | Tejas V. (@tejasv_) | https://sketchfab.com/3d-models/m1a2-abrams-c85846177bfc4018b6a8f3b40754655c | CC BY-NC-ND 4.0 | `public/models/community-candidates/user-drops/m1a2-abrams/{m1a2-abrams.glb,RENDER.png,LICENSE-RECORD.txt}` | Original artist work (Blender + Substance, ArtStation-linked; identity confirmed by exact 1,253,928 face-count match vs Sketchfab API). ND: the decimated GLB is an adaptation — never redistribute. Candidate to replace the shipped CC-BY dannzjs `m1a2` GLB in-game; if adopted, the CC-BY model remains the only one shippable publicly. |
 | Type 74 (local comparison drop) | NullOps | https://sketchfab.com/nullops (user-supplied download) | Sketchfab Standard (free download; author states 'feel free to use however you like' but the license is not CC) | quarantined comparison copies only | **NOT PLAYABLE GEOMETRY.** The active Type 74 is repository-authored procedural construction; no mesh, converted vertex data or source-backed wrapper enters runtime. |
 | C1 Ariete (local comparison drop; model swap retired 2026-08-11) | DustyMojito | https://sketchfab.com/DustyMojito (user-supplied download) | Sketchfab Standard (free download; use-in-project OK, no raw redistribution — not CC) | local comparison only | The playable uses our earlier authored procedural `buildAriete`; `MODEL_SOURCE.ariete` is disabled. The comparison was never copied into the builder. No mesh, vertex, texture, material, rig or derived conversion enters the playable. |
-| 1:100 Modern Tanks and Vehicles pack — 5 vehicles (user drops wave 2, integrated 2026-07-28 as specs `leo2a4`, `bmp2`, `bmp1`, `m1128`, `m1296`) | m_bergman (Thingiverse) | https://www.thingiverse.com/thing:4718232 (user-supplied download; original Solidworks-drawn wargame print masters — author's own custom license note ONLY narrows "commercial" to selling the prints, the CC-BY-NC-SA grant itself stands) | CC-BY-NC-SA | `public/models/tanks/community/quarantine/{leo2a4_bergman,bmp2_bergman,bmp1_bergman,m1128_mgs_bergman,m1296_dragoon_bergman}.glb`, `public/icons/{leo2a4,bmp2,bmp1,m1128,m1296}_*.png` (derivative renders) | SHIPPED in this private build: 2 model swaps (leo2a4/bmp2 — revert their `MODEL_SOURCE` rows) + 3 new playables (bmp1/m1128/m1296 — remove the specs and roster/tier-table rows in src/vehicles/userdrops2.js, src/game/state.ts, src/ui/{garage,hud}.js). Remove GLBs + icons before any public distribution or commercialization; NC-SA also bars selling the game while these ship. |
+| 1:100 Modern Tanks and Vehicles pack — 5 evaluated vehicles (`leo2a4`, `bmp2`, `bmp1`, `m1128`, `m1296`) | m_bergman (Thingiverse) | https://www.thingiverse.com/thing:4718232 (user-supplied download; original Solidworks-drawn wargame print masters — author's own custom license note ONLY narrows "commercial" to selling the prints, the CC-BY-NC-SA grant itself stands) | CC-BY-NC-SA | `public/models/tanks/community/quarantine/{leo2a4_bergman,bmp2_bergman,bmp1_bergman,m1128_mgs_bergman,m1296_dragoon_bergman}.glb`, `public/icons/{leo2a4,bmp2,bmp1,m1128,m1296}_*.png` (derivative renders) | Local comparison inputs only. No model source or combat row from this pack is registered at runtime; the public build strips the quarantined files and derivative icons. |
 | 1:100 Modern Tanks and Vehicles pack, part 1 (user drop, batch bergman 2026-07-28) | m_bergman (Thingiverse) | https://www.thingiverse.com/thing:4718232 (user-supplied download; LICENSE.txt + README.txt in archive) | CC BY-NC-SA (Thingiverse license marker in archive) | 12 converted candidate GLBs + renders in `public/models/community-candidates/user-drops-recovered/bergman-p1/{glb,renders}/` (leo2a4, leo2a5, leo2a6, m1a1_aim, bmp1, bmp2, m1128_mgs, m1296_dragoon, lav25, cougar_6x6, btr70, brdm2 — `*_bergman.glb`) | Original Solidworks-drawn wargame print minis (author ships Parasolid `.x_t` sources alongside every STL — not a game rip). Untextured single-material CAD; hull + yaw-articulated `Turret` pivot authored at ring center, gun fused (virtual pitch). NC-SA: candidates for this private build only — delete all GLBs/renders (and any icons if integrated) before public distribution or commercialization. |
 | Recovered fleet waves 5–7 (42 local-only model sets) | Tejas V.; Mortavex; m_bergman; authors not preserved in the remaining direct archives | See “User drops waves 5–7” above | CC BY-NC-ND / CC BY-NC-SA / unverified; all treated as local-only | Retained Mortavex/recovered quarantine trees and their matching five-view icon sets; the retired Tejas adaptation and its icons were deleted. | Model trees and derivative icons are removed by `tools/strip-nc-assets.mjs`; public gameplay rows use distributable procedural family visuals/icons. |
-| Scout-gen2 wave 8 NC set (user drops wave 8, integrated 2026-08-01 as specs `t54`, `t80`, `t80b`, `t80bv`, `t84`) | m_bergman (Marco Bergman); LastTriarius (t84 remix of ThudOne thing:4885197 + m_bergman parts) | https://www.thingiverse.com/thing:4718232; https://www.thingiverse.com/thing:6178654 | CC BY-NC-SA 4.0; the t84's CC BY label is governed by its NC-SA remix parents (effective CC BY-NC-SA — see the wave-8 license-chain note) | `public/models/tanks/community/recovered/{t54,t80,t80b,t80bv,t84}.glb`, `public/icons/{t54,t80,t80b,t80bv,t84}_*.png` (derivative renders), raw candidate STLs + source zips in `public/models/tanks/candidates-gen2/` | SHIPPED PLAYABLES in this private build (USSR/Russia and Ukraine garage roster). `tools/strip-nc-assets.mjs` deletes the recovered GLBs, these five icon sets, and the whole `candidates-gen2/` tree from public artifacts; the specs stay playable on procedural family fallbacks (`publicVisualFallback`, src/vehicles/userdrops7.js). NC-SA also bars selling the game while these ship locally. The wave's CC BY / CC BY-SA ids (`t44`, `type59`, `amx30`, `amx30b2`, `m48`, `m60a2`, `vickers_mk1`) are NOT quarantined — they ship publicly with on-card credits (see the wave-8 shippable table). |
+| Scout-gen2 wave 8 NC set (user drops wave 8, integrated 2026-08-01 as specs `t54`, `t80`, `t80b`, `t80bv`, `t84`) | m_bergman (Marco Bergman); LastTriarius (t84 remix of ThudOne thing:4885197 + m_bergman parts) | https://www.thingiverse.com/thing:4718232; https://www.thingiverse.com/thing:6178654 | CC BY-NC-SA 4.0; the t84's CC BY label is governed by its NC-SA remix parents (effective CC BY-NC-SA — see the wave-8 license-chain note) | `public/models/tanks/community/recovered/{t54,t80,t80b,t80bv,t84}.glb`, `public/icons/{t54,t80,t80b,t80bv,t84}_*.png` (derivative renders), raw candidate STLs + source zips in `public/models/tanks/candidates-gen2/` | Offline comparison inputs only. Runtime specs in `src/vehicles/supplementalFleetSpecs.ts` use first-party procedural geometry; `tools/strip-nc-assets.mjs` removes the recovered files, derivative icons, and candidate tree from public artifacts. |
 
 ## FV510 Warrior oracle drop (2026-08-06, owner-downloaded)
 - public/models/tanks/community/fv510_warrior.glb — "FV510 Warrior" by

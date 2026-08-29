@@ -5,16 +5,16 @@
 //   challenger1 — profiles-class build (CHALLENGER_PROFILES, merged by
 //     profiledProcedurals.ts like every ./profiles family map); moved from
 //     uk.js. Its spec row still derives from challenger2's TANK_SPECS row
-//     via the userdrops5 make() donor copy — unchanged mechanism.
+//     via the additional fleet donor copy — unchanged mechanism.
 //   challenger2 / challenger_3 — canonical builders demand-registered from
 //     CHALLENGER_BUILDERS. Their boot-light combat rows live separately in
-//     challengerSpecs.js so an Abrams garage does not load this geometry.
+//     challengerSpecs.ts so an Abrams garage does not load this geometry.
 // Shared family and spec construction policy is imported, never duplicated.
 import * as THREE from 'three';
 // Shared geometry and exact-equipment fittings come from the cycle-free
 // profile kit; builders destructure the geometry they use at call time.
 import { KIT, FITTINGS, muzzleBore } from './kit.js';
-import '../challengerSpecs.js';
+import '../challengerSpecs.ts';
 // ch1-base tone port (uk round 2026-08-07): materials.js is cycle-free — the
 // ambient-floor hook re-attach is the same import uk.js carries.
 import { vehicleAmbientFloorHook } from '../materials.js';

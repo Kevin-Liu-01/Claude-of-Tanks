@@ -314,7 +314,7 @@ the §10 re-cert flow. userdrops7 recovered registration RETIRED (t84
 removed from the ALLOW_LOCAL_RECOVERED_MODELS loop + USERDROP7_SOURCED_IDS);
 reference mirrored into the three measurement override maps
 (procedural-fidelity / tmp-tank-critic [gitignored] / visual-evaluator-page)
-with no harness offsets. variants.js backfill: clean (no t84 row). Icons
+with no harness offsets. Core variant backfill: clean (no t84 row). Icons
 regenerated from the procedural build (5 by exact name, rest restored).
 
 ## BATCH-40 TURRET-SEAT PLAN (r33 MEASURE+PLAN, 2026-08-04, russia agent)

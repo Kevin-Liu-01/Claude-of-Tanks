@@ -86,7 +86,10 @@ summaries above are reproducible with the commands in the probe header).
    through the existing `freeCamera` binding + settings GAMEPLAY chips.
    A separate rebindable `freeLook` action (default `Caps Lock`, secondary
    `Left Alt`, controller
-   `RB`) always holds the camera free while freezing the aim point and turret;
+   `RB`) holds the current turret rotation and gun elevation while the camera
+   continues updating the one live sight point. Release lets the articulated
+   gun catch up without snapping the view; guided missiles receive the live
+   sight throughout the hold;
    `Left Shift` toggles sniper mode, and the selected RMB mode is
    unchanged.
 3. **Interaction-mode regression fix.** `input.isTouchLayout()` once treated a

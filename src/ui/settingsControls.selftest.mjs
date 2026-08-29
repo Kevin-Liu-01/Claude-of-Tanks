@@ -4,16 +4,16 @@ import { SETTINGS_ACTION_ICONS, SETTINGS_OPTION_ICONS } from './settingsIcons.ts
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
 
 const holdGroups = battleControlHintGroups('hold');
-assert.deepEqual(holdGroups.find(([label]) => label === 'Free Look'),
-  ['Free Look', ['freeLook']],
-  'compact controls reference includes the dedicated remappable free-look action');
+assert.deepEqual(holdGroups.find(([label]) => label === 'Gun Hold'),
+  ['Gun Hold', ['freeLook']],
+  'compact controls reference includes the dedicated remappable gun-hold action');
 assert.deepEqual(holdGroups.find(([, actionIds]) => actionIds[0] === 'freeCamera'),
   ['Aim', ['freeCamera']],
-  'default RMB role stays distinct from dedicated free look');
+  'default RMB role stays distinct from dedicated gun hold');
 
 const classicGroups = battleControlHintGroups('freelook');
 assert.deepEqual(classicGroups.find(([, actionIds]) => actionIds[0] === 'freeCamera'),
-  ['Free Look', ['freeCamera']],
+  ['Gun Hold', ['freeCamera']],
   'controls reference follows the selected RMB behavior');
 
 const iconIds = new Set(uiIconIds());

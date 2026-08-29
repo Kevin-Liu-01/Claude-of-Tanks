@@ -59,7 +59,7 @@ const ACTION_DEFS = [
   { id: 'consumable1', label: 'Repair Kit', group: 'Consumables' },
   { id: 'consumable2', label: 'First Aid Kit', group: 'Consumables' },
   { id: 'consumable3', label: 'Fire Extinguisher', group: 'Consumables' },
-  { id: 'freeLook', label: 'Free Look (Hold)', group: 'Camera' },
+  { id: 'freeLook', label: 'Gun Hold (Free Aim)', group: 'Camera' },
   // gunnery r1: RMB's FUNCTION is picked by settings.rmbMode (hold-to-aim /
   // toggle-aim / free-look classic); this action owns the physical binding.
   { id: 'freeCamera', label: 'Aim / Free Look (RMB)', group: 'Camera' },
@@ -164,11 +164,11 @@ export interface InputLayer {
   releaseLock(): void;
 }
 
-/** Default primary bindings: WASD move, LMB fire, Shift sniper, Caps free look, RMB aim,
+/** Default primary bindings: WASD move, LMB fire, Shift sniper, Caps gun hold, RMB aim,
  *  1/2/3 shells, E special action, 4/5/6 consumables, wheel zoom,
  *  Space handbrake, Esc menu.
- *  Shift toggles sniper mode. Caps Lock is the always-available gun-lock /
- *  free-look hold: it moves the camera without rotating the turret or hull.
+ *  Shift toggles sniper mode. Caps Lock holds the current physical turret
+ *  rotation and gun elevation while the camera and live sight remain free.
  *  Default RMB hold, wheel-in, controller LT, and the mobile scope control
  *  also enter sniper. RMB keeps the context-sensitive `freeCamera` binding slot
  *  (`hold`, `toggle`, or `freelook` via settings.rmbMode).
@@ -1132,8 +1132,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
      *
      * SIGN CONTRACT (controls-sign fix — do not "simplify" this away):
      *   out.x is a WORLD-YAW delta, not a screen-pixel delta. Its consumer is
-     *   cameraRig, which integrates it as `aimYaw += mouseDX * sens` (and
-     *   `freeYaw += ...` for held free-look), and this project's yaw convention
+     *   cameraRig, which integrates it as `aimYaw += mouseDX * sens` for both
+     *   normal aim and held gun/free aim, and this project's yaw convention
      *   is forwardAxis(yaw) = [sin yaw, 0, cos yaw] (ARCHITECTURE §1.1). In a
      *   Y-up right-handed world, a camera looking along +Z has screen-right =
      *   world -X (three.js Matrix4.lookAt: x_axis = up × (eye-target)), so

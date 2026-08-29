@@ -1,25 +1,44 @@
-// USER DROPS wave 8 (scout-gen2 integration, 2026-07-31): the MBT-generations
-// candidates from public/models/tanks/candidates-gen2/ (per-folder
-// PROVENANCE.md; reference packets docs/references/tanks/scout-gen2-*.md).
-// GLBs are baked by tools/build_gen2_tanks.sh; stats inherit the nearest
-// researched vehicle (make(donor) pattern, userdrops5/6) and are adjusted to
-// published figures so each variant stays identifiable and matchmaking-safe.
-//
-// LICENSE CLASSES (ATTRIBUTION-DRAFT -> docs/ATTRIBUTION.md gen2 section):
-//   * shippable  — CC BY / CC BY-SA sources: model + credit register in
-//     EVERY build (the on-card credit satisfies attribution, same rule as
-//     the specs.js community roster); GLBs live in community/.
-//   * quarantine — CC BY-NC-SA (m_bergman) + the t84 remix whose CC BY label
-//     is governed by its NC-SA parents: sources register only behind
-//     ALLOW_LOCAL_RECOVERED_MODELS, exactly like userdrops5/6; public builds
-//     resolve the rows through their procedural family donors
-//     (publicVisualFallback) and tools/strip-nc-assets.mjs deletes the GLBs.
+// Supplemental first-party combat rows. Stats inherit the nearest researched
+// donor and apply explicit published/balance deltas. Historical third-party
+// inputs are attribution and offline comparison evidence, never playable
+// geometry; retained candidate metadata is procedural-only.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
-import { shell } from './specHelpers.ts';
+import { shell, type ArmorEnvelope } from './specHelpers.ts';
+import type {
+  FleetDimensions,
+  FleetGunSpec,
+  ModelSourceRecord,
+  FleetTankSpec,
+  FleetVisualSpec,
+} from './specContracts.ts';
 
-const copy = (v) => JSON.parse(JSON.stringify(v));
-// Reference assets never become playables, including in local development.
-const ALLOW_LOCAL_RECOVERED_MODELS = false;
+type VariantPatch = Omit<Partial<FleetTankSpec>, 'armor' | 'dims' | 'gun' | 'visual'> & {
+  armor?: ArmorEnvelope;
+  dims?: Partial<FleetDimensions>;
+  gun?: Partial<FleetGunSpec>;
+  visual?: Partial<FleetVisualSpec>;
+};
+
+interface SourceCredit {
+  readonly author: string;
+  readonly source: string;
+  readonly license: string;
+  readonly quarantine?: boolean;
+}
+
+const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+const tankSpecs: typeof TANK_SPECS & Record<string, unknown> = TANK_SPECS;
+const modelSources: typeof MODEL_SOURCE & Record<string, unknown> = MODEL_SOURCE;
+
+function isFleetSpecRecord(value: unknown): value is FleetTankSpec {
+  return value !== null && typeof value === 'object';
+}
+
+function requireFleetSpec(id: string): FleetTankSpec {
+  const spec = tankSpecs[id];
+  if (!isFleetSpecRecord(spec)) throw new Error(`Supplemental fleet donor missing or incomplete: ${id}`);
+  return spec;
+}
 
 // credit rows (author/source/license verified in candidates-gen2 PROVENANCE)
 const BERGMAN = {
@@ -58,9 +77,16 @@ const JACK = {
   license: 'CC BY 4.0',
 };
 
-const make = (baseId, id, name, nation, patch = {}, credit = null) => {
-  const s = copy(TANK_SPECS[baseId]);
-  s.id = id; s.name = name; s.nation = nation || s.nation; s.variantOf = baseId;
+function make(
+  baseId: string,
+  id: string,
+  name: string,
+  nation: string,
+  patch: VariantPatch = {},
+  credit: SourceCredit | null = null,
+): FleetTankSpec {
+  const s = copy(requireFleetSpec(baseId));
+  s.id = id; s.name = name; s.nation = nation; s.variantOf = baseId;
   if (credit && !credit.quarantine) {
     // shippable class: the credit line renders on the nation-tab/garage card
     // in every build (CC BY attribution) and the GLB itself is distributed,
@@ -69,11 +95,7 @@ const make = (baseId, id, name, nation, patch = {}, credit = null) => {
     s.publicVisualFallback = null;
   } else {
     s.publicVisualFallback = baseId;
-    if (ALLOW_LOCAL_RECOVERED_MODELS && credit) {
-      s.community = { author: credit.author, source: credit.source, license: credit.license };
-    } else {
-      delete s.community;
-    }
+    delete s.community;
   }
   const gun = s.gun, dims = s.dims, visual = s.visual;
   Object.assign(s, patch);
@@ -87,13 +109,13 @@ const make = (baseId, id, name, nation, patch = {}, credit = null) => {
   // stayed donor-sized — refit so hits resolve against the rendered vehicle.
   if (patch.dims) fitArmorToDims(s.armor, dims, s.dims);
   return s;
-};
+}
 
 // Published dims from the scout packets (docs/references/tanks/scout-gen2-*).
 // heightM uses the over-mounted-MG convention ONLY where the mesh actually
 // mounts one (t54/t44 carry a printed DShK — m26/m45 precedent, userdrops6);
 // every other row keeps the published roof datum.
-const SPECS = [
+const SPECS: FleetTankSpec[] = [
   // -- Soviet mediums: T-34-85 -> T-44 -> T-54 lineage ----------------------
   make('t34_85', 't44', 'T-44', 'USSR',
     { hp: 900, weightTons: 31.8, topSpeedKmh: 60, gun: { reloadS: 6.8 },
@@ -167,7 +189,7 @@ const SPECS = [
     { hp: 1950, enginePowerHp: 750, weightTons: 37, reverseSpeedKmh: 15,
       gun: {
         reloadS: 6.0, baseAccuracy: 0.29, aimTimeS: 1.7,
-        shells: TANK_SPECS.leo1a5.gun.shells.map((round, index) => ({
+        shells: requireFleetSpec('leo1a5').gun.shells.map((round, index) => ({
           ...round,
           ...(index === 0 ? { pen100Mm: 550, pen1000Mm: 510, pen2000Mm: 460, dmg: 430 }
             : index === 1 ? { pen100Mm: 520, pen1000Mm: 520, dmg: 430 }
@@ -192,7 +214,7 @@ const SPECS = [
     { hp: 1950, enginePowerHp: 750, weightTons: 49.6, topSpeedKmh: 48,
       gun: {
         reloadS: 7.2, baseAccuracy: 0.31, aimTimeS: 1.9,
-        shells: TANK_SPECS.m60a1.gun.shells.map((round, index) => ({
+        shells: requireFleetSpec('m60a1').gun.shells.map((round, index) => ({
           ...round,
           ...(index === 0
             ? { pen100Mm: 540, pen1000Mm: 500, pen2000Mm: 450, dmg: 430 }
@@ -240,7 +262,7 @@ const SPECS = [
       dims: { hullLengthM: 7.08, overallLengthM: 9.72, widthM: 3.56, heightM: 2.22 },
       visual: { number: '240' } }, T84_REMIX),
   // -- §5.38 T-90 family (owner priority wave 2026-08-08) ---------------------
-  // Three new marks off the t90a base (variants.js donor — legal here, the
+  // Three new marks off the typed t90a combat-spec donor — legal here, the
   // userdrops5 t72bu precedent). The KojfDiscord AW-series prints are
   // LOCAL-ONLY QUARANTINE measurement references (docs/ATTRIBUTION.md series
   // entry): NO MODEL_SOURCE rows and no credit cards — every playable renders
@@ -270,7 +292,7 @@ const SPECS = [
 ];
 
 for (const spec of SPECS) {
-  TANK_SPECS[spec.id] = TANK_SPECS[spec.id] || spec;
+  tankSpecs[spec.id] ||= spec;
   if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
 }
 
@@ -278,31 +300,25 @@ for (const spec of SPECS) {
 // model sources — every gen2 bake exports the same node contract
 // (Root > HullMesh + Turret > TurretMesh, fused gun rides the turret)
 // ---------------------------------------------------------------------------
-const COMMUNITY = '/models/tanks/community/';
-const glb = (file) => ({
-  source: 'glb',
-  glb: { path: `${COMMUNITY}${file}`, turretNode: '^Turret$', autoPivot: true, paintUntextured: true },
-});
-
 // shippable class (CC BY / CC BY-SA) — registered in every build
 // t44 §5.45 BUILD LANDED (russia lane 2026-08-08): the id renders OUR
 // procedural build everywhere (profiles/russia.js buildT44); the Foxygamer
 // CC BY-SA print is retained only as offline comparison provenance.
 // Measurement registration moved to
 // the three override maps (§10-pattern mirror, helper-expanded config).
-MODEL_SOURCE.t44 = {
+modelSources.t44 = {
   source: 'procedural',
   candidateGlb: { path: '/models/tanks/community/t44_foxygamer.glb', turretNode: '^Turret$', autoPivot: true, paintUntextured: true },
-};
+} satisfies ModelSourceRecord;
 // m48 §5.45 BUILD LANDED (patton lane 2026-08-08): the id renders OUR
 // procedural build everywhere (profiles/patton.js buildM48); the ATModeler
 // print remains offline comparison provenance for repeatable A/B audits.
 // Measurement registration moved to the three
 // override maps (§10-pattern mirror, helper-expanded config).
-MODEL_SOURCE.m48 = {
+modelSources.m48 = {
   source: 'procedural',
   candidateGlb: { path: '/models/tanks/community/m48a5_atmodeler.glb', turretNode: '^Turret$', autoPivot: true, paintUntextured: true },
-};
+} satisfies ModelSourceRecord;
 // FLEET FLIP 2026-08-04: MODEL_SOURCE_RETIRED.m60a2 = glb('m60a2_ahab.glb');
 // FRANCE ROUND 2026-08-07 (owner: "the amx 30bs' hulls are backwards"):
 // the ahab bakes carry an INTERNAL hull/turret 180 — build_gen2_tanks.py
@@ -323,10 +339,10 @@ MODEL_SOURCE.m48 = {
 // unchanged: source stays 'procedural', the Type 69 print stays on disk as
 // the registered measurement oracle (three override maps) and comparison
 // provenance — its rows now measure an owner-decreed divergence.
-MODEL_SOURCE.type59 = {
+modelSources.type59 = {
   source: 'procedural',
   candidateGlb: { path: '/models/tanks/community/type69_lasttriarius.glb', turretNode: '^Turret$', autoPivot: true, paintUntextured: true },
-};
+} satisfies ModelSourceRecord;
 // FLEET FLIP 2026-08-04: MODEL_SOURCE_RETIRED.vickers_mk1 = glb('vickers_mk1_jack.glb');
 
 // quarantine class (NC-SA) — local builds only; public builds keep these ids
@@ -335,18 +351,4 @@ MODEL_SOURCE.type59 = {
 // floor 9.0, 346c758; hash frozen 531fe4f0) — registration retired per
 // GEOMETRY-GATE §10; the reference lives on only in the three local
 // measurement override maps.
-if (ALLOW_LOCAL_RECOVERED_MODELS) {
-  // FLEET FLIP (owner directive 2026-08-04, "every single mbt" under CUSTOM):
-  // t80/t80b/t80bv render procedural; recovered prints stay measurement
-  // oracles via the three override maps. t54 keeps its GLB (winding parked).
-  for (const id of ['t54']) {
-    MODEL_SOURCE[id] = glb(`recovered/${id}.glb`);
-  }
-}
-
-export const USERDROP7_TANK_IDS = SPECS.map((s) => s.id);
-// every wave-8 row is sourced-from-online (era bucketing intent, cf.
-// USERDROP5_SOURCED_IDS) — t84 graduated out (dual gate, §10); the §5.38
-// t90 family rows were born procedural (never sourced); t44/type59 flipped
-// procedural at their §5.45 builds (m48/m60a2/vickers precedent).
-export const USERDROP7_SOURCED_IDS = USERDROP7_TANK_IDS.filter((id) => !['t84', 't80', 't80b', 't80bv', 'm60a2', 'vickers_mk1', 'amx30', 'amx30b2', 't90', 't90ms', 't90a_burlak', 'm48', 't44', 'type59'].includes(id));
+export const SUPPLEMENTAL_FLEET_TANK_IDS = SPECS.map((spec) => spec.id);

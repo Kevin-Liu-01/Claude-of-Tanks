@@ -64,6 +64,7 @@ function input(overrides = {}) {
     steer: 0,
     brake: false,
     fire: false,
+    aimLocked: false,
     aimYaw: 0,
     aimPitch: 0,
     shellSlot: 0,
@@ -191,10 +192,15 @@ class FakeChannel extends FakeEventTarget {
   });
   assert.equal(transport.send({ type: 'event', payload: 1 }), true);
   assert.equal(JSON.parse(control.sent[0]).type, 'event');
-  assert.equal(transport.sendInput(inputEnvelope(1, { throttle: 0.75 })), true);
+  assert.equal(transport.sendInput(inputEnvelope(1, {
+    throttle: 0.75,
+    aimLocked: true,
+  })), true);
   const decodedInput = snapshotWireCodec.decode(state.sent[0]);
   assert.equal(decodedInput.type, 'input');
   assert.equal(decodedInput.payload.throttle, 0.75);
+  assert.equal(decodedInput.payload.aimLocked, true,
+    'compact input packets preserve the physical-gun hold state');
   assert.equal(control.sent.length, 1, 'replaceable input never blocks reliable control');
   assert.equal(transport.sendState(snapshotEnvelope(1)), true);
   assert.equal(snapshotWireCodec.decode(state.sent[1]).tick, 1);
@@ -275,6 +281,7 @@ const normalizedInput = normalizePlayerInput({
   steer: -4,
   brake: 1,
   fire: 1,
+  aimLocked: true,
   aimYaw: 7,
   aimPitch: 7,
   shellSlot: 2,
@@ -286,6 +293,8 @@ assert.equal(normalizedInput.steer, -1);
 assert.equal(normalizedInput.aimPitch, Math.PI / 2);
 assert.equal(normalizedInput.aimDistance, 1000,
   'legacy input frames retain the former ray distance');
+assert.equal(normalizedInput.aimLocked, true,
+  'gun hold is normalized as an explicit authoritative held state');
 assert.equal(normalizedInput.snapshotAckTick, 0);
 assert.equal(Object.hasOwn(normalizedInput, 'ignored'), false);
 const aimOrigin = { x: 18, y: 2.4, z: -37 };

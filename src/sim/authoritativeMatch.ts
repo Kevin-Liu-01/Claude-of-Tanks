@@ -133,6 +133,7 @@ export interface AuthoritativePlayerInput extends AimIntentInput {
   steer: number;
   brake: boolean;
   fire: boolean;
+  aimLocked?: boolean;
   shellSlot: number;
   actionBits: number;
 }
@@ -142,6 +143,7 @@ interface AuthoritativeInput {
   steer: number;
   brake: boolean;
   fire: boolean;
+  aimLocked: boolean;
   shellSlot: number;
   actionBits: number;
   aimPoint: Vector3;
@@ -446,6 +448,7 @@ function makeInput(): AuthoritativeInput {
     steer: 0,
     brake: false,
     fire: false,
+    aimLocked: false,
     shellSlot: 0,
     actionBits: 0,
     aimPoint: new Vector3(),
@@ -865,6 +868,7 @@ export function createAuthoritativeMatch({
       entity.input.steer = 0;
       entity.input.brake = true;
       entity.input.fire = false;
+      entity.input.aimLocked = false;
       entity.input.actionBits = 0;
       return;
     }
@@ -872,6 +876,7 @@ export function createAuthoritativeMatch({
     entity.input.steer = input.steer;
     entity.input.brake = input.brake;
     entity.input.fire = input.fire;
+    entity.input.aimLocked = !!input.aimLocked;
     entity.input.actionBits = input.actionBits | 0;
     if (!specialActionLocksShell(entity)) {
       const shellSlot = Math.min(entity.spec.gun.shells.length - 1, input.shellSlot);
@@ -1393,6 +1398,7 @@ export function createAuthoritativeMatch({
         entity.input.steer = 0;
         entity.input.brake = true;
         entity.input.fire = false;
+        entity.input.aimLocked = false;
       }
     },
 

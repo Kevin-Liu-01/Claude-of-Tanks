@@ -239,10 +239,10 @@ export function createCameraRig(
   // Shared aim angles (both modes; switching modes never snaps the view).
   let aimYaw = 0;
   let aimPitch = THREE.MathUtils.degToRad(-10);
-  // Free-look offsets (arcade): camera moves, turret/aim stay frozen. The
-  // caller routes the dedicated hold action and optional RMB mode here.
-  let freeYaw = 0;
-  let freePitch = 0;
+  // The sight ray always follows the camera. Gun-hold/free-look is a single
+  // simulation flag sampled by playerFrameInput: it freezes the articulated
+  // turret/gun lay without creating a second camera angle or stale world aim
+  // point. Guided rounds can therefore follow the live sight immediately.
   // gunnery r1: has the player actively mouse-aimed since the last battle
   // snap? Gates enterSniper's dirt-guard scan-lift — once the player owns the
   // pitch, scoping preserves it exactly (see enterSniper).
@@ -359,8 +359,8 @@ export function createCameraRig(
       dist += (ORBIT_STEPS[step] - dist) * (1 - Math.exp(-dt / DIST_LERP_TAU_S));
     }
 
-    const viewYaw = aimYaw + freeYaw;
-    const viewPitch = THREE.MathUtils.clamp(aimPitch + freePitch, PITCH_MIN, PITCH_MAX);
+    const viewYaw = aimYaw;
+    const viewPitch = THREE.MathUtils.clamp(aimPitch, PITCH_MIN, PITCH_MAX);
     dirFromAngles(viewYaw, viewPitch, _viewDir);
     _desired.copy(pivot).addScaledVector(_viewDir, -dist);
 
@@ -663,8 +663,6 @@ export function createCameraRig(
     aimPitch = THREE.MathUtils.degToRad(-10);
     cine = null;
     setLetterbox(false);
-    freeYaw = 0;
-    freePitch = 0;
     rig.mode = 'ARCADE';
     step = 2;
     if (player) { solveArcade(player, 0, true); updateAim(player); }
@@ -810,29 +808,12 @@ export function createCameraRig(
       }
 
       const sens = rig.mode === 'SNIPER' ? BASE_SENS / rig.zoom : BASE_SENS;
-      if (camInput.rmb) {
-        // Gun lock: camera orbits freely, aim (and turret) frozen.
-        if (rig.mode === 'ARCADE') {
-          freeYaw += camInput.mouseDX * sens;
-          freePitch = THREE.MathUtils.clamp(
-            freePitch - camInput.mouseDY * sens,
-            PITCH_MIN - aimPitch,
-            PITCH_MAX - aimPitch,
-          );
-        } else {
-          // SNIPER gun lock: the view still follows the mouse (WoT mantlet
-          // wiggle); the aim raycast below stays skipped, so the gun holds.
-          aimYaw += camInput.mouseDX * sens;
-          aimPitch = THREE.MathUtils.clamp(
-            aimPitch - camInput.mouseDY * sens, PITCH_MIN, PITCH_MAX);
-        }
-      } else {
-        freeYaw = 0;
-        freePitch = 0;
-        if (camInput.mouseDX !== 0 || camInput.mouseDY !== 0) aimTouched = true;
-        aimYaw += camInput.mouseDX * sens;
-        aimPitch = THREE.MathUtils.clamp(aimPitch - camInput.mouseDY * sens, PITCH_MIN, PITCH_MAX);
-      }
+      // One camera/aim path in every mode. Caps/RB and optional RMB free-look
+      // only hold the physical gun through player.input.aimLocked; they never
+      // freeze this ray or maintain a second set of orbit offsets.
+      if (camInput.mouseDX !== 0 || camInput.mouseDY !== 0) aimTouched = true;
+      aimYaw += camInput.mouseDX * sens;
+      aimPitch = THREE.MathUtils.clamp(aimPitch - camInput.mouseDY * sens, PITCH_MIN, PITCH_MAX);
 
       // MOBILE AUTO-AIM: drive the same shared yaw/pitch pair used by manual
       // aim, so arcade camera, sniper view, server reticle and turret all
@@ -852,7 +833,6 @@ export function createCameraRig(
           const follow = 1 - Math.exp(-Math.max(dt, 0) / AUTO_AIM_FOLLOW_TAU_S);
           aimYaw += wrapPi(wantYaw - aimYaw) * follow;
           aimPitch += (wantPitch - aimPitch) * follow;
-          freeYaw = freePitch = 0;
           aimTouched = true;
         }
       }
@@ -861,8 +841,7 @@ export function createCameraRig(
       if (rig.mode === 'ARCADE') solveArcade(player, dt, false);
       else solveSniper(player);
 
-      if (!camInput.rmb) updateAim(player); // free look: aim raycast frozen (gun lock)
-      else writePlayerAim(player); // …but the (frozen) aim point is still published
+      updateAim(player);
 
       // Trauma shake — additive rotational only, after the solve.
       trauma = Math.max(0, trauma - TRAUMA_DECAY_PER_S * dt);
@@ -1113,8 +1092,6 @@ export function createCameraRig(
       if (rig.mode === 'SNIPER') return;
       rig.mode = 'SNIPER';
       preSniperStep = step; // gameplay_feel r6: restored on Shift-exit
-      freeYaw = 0;
-      freePitch = 0;
       // AIM PRESERVATION (gunnery r1, owner bug 2 — bidirectional with
       // exitSniper): scoping in keeps the reticle's WORLD POINT — yaw/pitch
       // are re-solved from the gun trunnion, because the camera is about to
@@ -1282,8 +1259,6 @@ export function createCameraRig(
       step = THREE.MathUtils.clamp(step_ | 0, 0, ORBIT_STEPS.length - 1);
       aimYaw = orbitYaw;
       aimPitch = THREE.MathUtils.clamp(orbitPitch, PITCH_MIN, PITCH_MAX);
-      freeYaw = 0;
-      freePitch = 0;
       aimTouched = false; // gunnery r1: fresh battle/staged pose — dirt-guard re-arms
       prevAimHold = false;
       aimHoldLatched = false;
@@ -1317,8 +1292,6 @@ export function createCameraRig(
       rig.zoom = zoom;
       aimYaw = aimYaw_;
       aimPitch = THREE.MathUtils.clamp(aimPitch_, PITCH_MIN, PITCH_MAX);
-      freeYaw = 0;
-      freePitch = 0;
       aimTouched = false; // gunnery r1: staged pose — see snapArcade
       prevAimHold = false;
       aimHoldLatched = false;

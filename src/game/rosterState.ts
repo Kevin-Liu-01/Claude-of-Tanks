@@ -42,6 +42,7 @@ export interface RosterEntity {
     steer: number;
     brake: boolean;
     fire: boolean;
+    aimLocked: boolean;
     aimPoint: Vector3;
     shellSlot: number;
   };
@@ -116,6 +117,7 @@ export function spawnTanks(game: RosterGameState, engineCtx: EngineContext) {
       specialAction: null,
       input: {
         throttle: 0, steer: 0, brake: false, fire: false,
+        aimLocked: false,
         aimPoint: new Vector3(), shellSlot: 0,
       },
       visual: null,

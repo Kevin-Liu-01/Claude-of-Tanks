@@ -989,7 +989,7 @@ classes stand.
 Geometric min 91.0 gatePassed (hull 91.2/whole 91.0/turret 91.2/
 stations 93.4/dims 91.0/floaters 100) + independent critic 9.0 ON ALL
 NINE VIEWS (r8; the archived visual-review receipt). MODEL_SOURCE
-retired in userdrops.js (procedural ships everywhere); buh GLB stays as
+retired with the deleted quarantine registry (procedural ships everywhere); buh GLB stays as
 measurement oracle (CC-BY 4.0, ATTRIBUTION.md). FREEZE HASH 37cc0789
 (44 meshes, 151604 verts) — any intentional change re-runs BOTH gates
 and re-freezes. Icons regenerated (5, staged per the icon trap rule).

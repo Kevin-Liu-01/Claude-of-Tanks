@@ -13,7 +13,7 @@ held through the round).
 - INSTRUMENT REPAIR (this round): the print is parked in a diorama —
   axis-aligned along raw X (PCA 0.05°), nose raw -X, centroid ~(-1118, -2163)
   raw units, 0.242 m/u. The registration measured GARBAGE (-86% overall,
-  width clamped): fixed with `yawOffset: +Math.PI/2` (userdrops2
+  width clamped): fixed with `yawOffset: +Math.PI/2` (retired wave-two oracle
   FLIP-RETIRED convention) in all three maps + vertex REG, PLUS the
   reference-glb-loader off-origin recenter (below). Post-fix instrument:
   overall -2.6%, width -1.8%, body -6.3% — usable near-true print.

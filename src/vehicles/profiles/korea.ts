@@ -17,14 +17,40 @@
 
 import { KIT, FITTINGS, orientedSlab } from './kit.js';
 import { buildK2 } from '../modern3.js';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type {
+  ProceduralBuilderPort,
+  TransformObjectPort,
+  Vec3Tuple,
+  VehicleAssemblyOwner,
+} from '../proceduralBuilderContracts.ts';
 
-function mount(P, owner, fitting, x, y, z, rotation = null) {
+function mount(
+  P: ProceduralBuilderPort,
+  owner: VehicleAssemblyOwner,
+  fitting: TransformObjectPort,
+  x: number,
+  y: number,
+  z: number,
+  rotation: Vec3Tuple | null = null,
+): void {
   fitting.position.set(x, y, z);
   if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
   (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
 }
 
-function cassette(P, owner, x, y, z, w, h, d, rotation = null, cap = true) {
+function cassette(
+  P: ProceduralBuilderPort,
+  owner: VehicleAssemblyOwner,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  rotation: Vec3Tuple | null = null,
+  cap = true,
+): void {
   const r = rotation || [0, 0, 0];
   const armor = owner === 'hull' ? 'hull' : 'turret';
   const detail = owner === 'hull' ? 'hullDark' : 'turretDark';
@@ -33,7 +59,13 @@ function cassette(P, owner, x, y, z, w, h, d, rotation = null, cap = true) {
     x, y + h * 0.5 + 0.010, z + d * 0.27, r[0], r[1], r[2]);
 }
 
-function addRoofWhips(P, y, z, seed, spread = 1.02) {
+function addRoofWhips(
+  P: ProceduralBuilderPort,
+  y: number,
+  z: number,
+  seed: number,
+  spread = 1.02,
+): void {
   for (const side of [-1, 1]) {
     P.add('turretDetail', KIT.cylY(0.034, 0.045, 0.060, 10), side * spread, y, z);
     mount(P, 'turret', FITTINGS.antennaWhip({
@@ -43,7 +75,15 @@ function addRoofWhips(P, y, z, seed, spread = 1.02) {
   }
 }
 
-function addRoofRWS(P, x, y, z, seed, scale = 0.82, yaw = 0.04) {
+function addRoofRWS(
+  P: ProceduralBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  seed: number,
+  scale = 0.82,
+  yaw = 0.04,
+): void {
   const { box, cylY } = KIT;
   P.add('turret', box(0.48, 0.075, 0.46), x, y, z);
   P.add('turretDark', box(0.38, 0.020, 0.36), x, y + 0.048, z);
@@ -54,7 +94,7 @@ function addRoofRWS(P, x, y, z, seed, scale = 0.82, yaw = 0.04) {
   }), x, y + 0.11, z, [0, yaw, 0]);
 }
 
-function addK2BPackage(P) {
+function addK2BPackage(P: ProceduralBuilderPort): void {
   const { box, cylY, cylZ } = KIT;
   const slab = orientedSlab;
 
@@ -122,11 +162,11 @@ function addK2BPackage(P) {
   P.topY = Math.max(P.topY || 0, 1.48);
 }
 
-function buildK2B(P) {
+function buildK2B(P: ProceduralBuilderPort): void {
   buildK2(P);
   addK2BPackage(P);
 }
 
 export const KOREA_PROFILES = {
   k2b: { build: buildK2B },
-};
+} satisfies VehicleProfileRecord;

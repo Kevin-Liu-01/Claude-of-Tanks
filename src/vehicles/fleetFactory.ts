@@ -22,17 +22,15 @@ import {
 } from './combatAnatomyCalibrationLoader.ts';
 import { finalizeCombatAnatomy } from './combatAnatomy.js';
 
-import './variants.js';
+import './combatVariantSpecs.ts';
 import './modern1Specs.generated.js';
 import './modern2Specs.generated.js';
-import './userdrops.js';
-import './userdrops2.js';
-import './userdrops3.js';
-import './userdrops4.js';
-import './challengerSpecs.js';
+import './kf51Specs.ts';
+import './abramsConceptSpecs.ts';
+import './challengerSpecs.ts';
 import './modern3Specs.js';
-import './userdrops5.js';
-import './userdrops6.js';
+import './additionalFleetSpecs.ts';
+import './classicFleetSpecs.ts';
 import './franceSpecs.ts';
 import './ukraine.ts';
 import './china.ts';
@@ -149,9 +147,9 @@ const GROUP_LOADERS = Object.freeze({
   }),
   merkava: () => import('./profiles/merkava.js').then((mod) => registerProfiles(mod.MERKAVA_PROFILES)),
   afv: () => import('./profiles/afvFamily.js').then((mod) => registerProfiles(mod.AFV_FAMILY_PROFILES)),
-  korea: () => import('./profiles/korea.js').then((mod) => registerProfiles(mod.KOREA_PROFILES)),
+  korea: () => import('./profiles/korea.ts').then((mod) => registerProfiles(mod.KOREA_PROFILES)),
   japan: () => import('./profiles/japan.js').then((mod) => registerProfiles(mod.JAPAN_PROFILES)),
-  germany: () => import('./profiles/germany.js').then((mod) => registerProfiles(mod.GERMANY_PROFILES)),
+  germany: () => import('./profiles/germany.ts').then((mod) => registerProfiles(mod.GERMANY_PROFILES)),
   sheridan: () => import('./profiles/sheridan.js').then((mod) => registerProfiles(mod.SHERIDAN_PROFILES)),
 } satisfies Record<FleetGroup, GroupLoader>);
 const groupPromises = new Map<FleetGroup, Promise<void>>();

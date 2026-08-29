@@ -6,7 +6,7 @@
 //      dist/models/community-candidates/**
 //      dist/models/tanks/community/{quarantine,recovered}/**
 //      historical raw-source trees
-// 2. FAILS (exit 1) if any MODEL_SOURCE path in src/vehicles/*.js that is
+// 2. FAILS (exit 1) if any live MODEL_SOURCE path that is
 //    still REGISTERED as a playable references a deleted path. Recovered
 //    gameplay rows remain registered in public builds, but their model-source
 //    gates must leave them on legal procedural family fallbacks.
@@ -51,14 +51,12 @@ async function main() {
     }
   }
   // 2. cross-check: registered playables must not point at deleted paths.
-  // The spec registry is imported in a SUBPROCESS (tools/
-  // strip-nc-registry-probe.mjs): profile modules carry dev-server-tolerant
-  // circular-import fallbacks that surface as unhandled microtask exceptions
-  // under a bare-node import, and an in-process import let those kill the
-  // whole build. The probe tolerates them; this guard still fails CLOSED if
-  // no registry comes back. Recovered rows remain in ALL_TANK_IDS; their
-  // restricted MODEL_SOURCE overrides resolve the public way in the probe
-  // (no import.meta.env under node).
+  // The browser's boot-light fleet facade is imported in a subprocess. This
+  // exercises the exact registry order without loading every visual builder,
+  // and isolates its module cache from the postbuild guard. The guard fails
+  // closed if the complete registry cannot be produced. Recovered rows remain
+  // in ALL_TANK_IDS; restricted source overrides resolve the public way in the
+  // probe because import.meta.env is absent under Node.
   const MARKER = '__STRIP_NC_REGISTRY__';
   const probe = await new Promise((resolveP) => {
     execFile(process.execPath, [path.join(ROOT, 'tools', 'strip-nc-registry-probe.mjs')],

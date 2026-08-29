@@ -16,8 +16,9 @@
 //     repeated close-aim scope cycles never ratchet the pitch upward (the old
 //     entry scan-lift + keep-pitch exit climbed to PITCH_MAX = sky).
 //     The never-aimed battle opening keeps the gameplay_feel r4 dirt-guard.
-//  3. Dedicated Caps Lock free-look moves the camera while the aim/turret stay put,
-//     independent of the selected RMB mode. RMB aiming (settings rmbMode):
+//  3. Dedicated Caps Lock gun hold preserves the current turret/gun lay while
+//     the camera and live sight keep moving, independent of the RMB mode.
+//     Release keeps the new camera aim and lets the gun catch up. RMB aiming:
 //     'hold' (default) enters sniper while held
 //     and restores the prior arcade orbit + pitch on release; 'toggle' taps
 //     like Shift; 'freelook' keeps the classic gun-lock free look.
@@ -324,58 +325,71 @@ const view = (page) => page.evaluate(() => {
   check(mode, "rmbMode 'toggle': tap again exits", t2.mode === 'ARCADE',
     `mode=${t2.mode} fov=${t2.fov.toFixed(1)}`);
 
-  // Dedicated free-look: remains available while RMB is still the default
+  // Dedicated gun hold: remains available while RMB is still the default
   // hold-to-aim control. Shift is deliberately not involved (sniper toggle).
   await page.evaluate(() => window.__DEBUG.input.setSetting('rmbMode', 'hold'));
   const caps0 = await view(page);
   await page.keyboard.down('CapsLock');
   await sleep(120);
+  const capsHeld0 = await view(page);
   for (let i = 0; i < 6; i++) {
     await page.mouse.move(800 - (i + 1) * 40, 450, { steps: 1 });
     await sleep(20);
   }
   await sleep(300);
   const caps1 = await view(page);
-  check(mode, 'Caps Lock hold free-looks independently of RMB mode',
+  check(mode, 'Caps Lock hold freely moves the live sight independently of RMB mode',
     Math.abs(deg(wrap(caps1.camYaw - caps0.camYaw))) > 8,
     `dYaw=${deg(wrap(caps1.camYaw - caps0.camYaw)).toFixed(1)} deg`);
-  const capsAimFrozen = Math.hypot(
-    caps1.aimPoint[0] - caps0.aimPoint[0], caps1.aimPoint[2] - caps0.aimPoint[2]);
-  check(mode, 'Caps Lock hold keeps the aim point and turret frozen', capsAimFrozen < 1,
-    `aim point moved ${capsAimFrozen.toFixed(2)} m`);
+  const capsAimTravel = Math.hypot(
+    caps1.aimPoint[0] - capsHeld0.aimPoint[0],
+    caps1.aimPoint[2] - capsHeld0.aimPoint[2]);
+  check(mode, 'Caps Lock hold publishes the moved sight point', capsAimTravel > 2,
+    `aim point moved ${capsAimTravel.toFixed(2)} m`);
+  check(mode, 'Caps Lock hold preserves the physical turret and gun lay',
+    Math.abs(deg(wrap(caps1.turretYaw - capsHeld0.turretYaw))) < 0.1 &&
+      Math.abs(deg(caps1.gunPitch - capsHeld0.gunPitch)) < 0.1,
+    `turret=${deg(wrap(caps1.turretYaw - capsHeld0.turretYaw)).toFixed(2)} deg ` +
+      `gun=${deg(caps1.gunPitch - capsHeld0.gunPitch).toFixed(2)} deg`);
   await page.screenshot({ path: `${SHOT_DIR}${mode}-04-caps-freelook.png` });
   await page.keyboard.up('CapsLock');
   await sleep(400);
   const caps2 = await view(page);
-  check(mode, 'Caps Lock release snaps the camera back to the aim',
-    Math.abs(deg(wrap(caps2.camYaw - caps0.camYaw))) < 2,
-    `dYaw after release ${deg(wrap(caps2.camYaw - caps0.camYaw)).toFixed(2)} deg`);
+  check(mode, 'Caps Lock release keeps the current camera aim without a snap',
+    Math.abs(deg(wrap(caps2.camYaw - caps1.camYaw))) < 2,
+    `dYaw after release ${deg(wrap(caps2.camYaw - caps1.camYaw)).toFixed(2)} deg`);
 
-  // freelook (classic): camera moves, aim/turret frozen, snap back on release
+  // Optional RMB gun hold uses the same live-sight, snap-free behavior.
   await page.evaluate(() => window.__DEBUG.input.setSetting('rmbMode', 'freelook'));
   await sleep(100);
   const fl0 = await view(page);
   await page.mouse.down({ button: 'right' });
   await sleep(120);
+  const flHeld0 = await view(page);
   for (let i = 0; i < 6; i++) {
     await page.mouse.move(800 + (i + 1) * 40, 450, { steps: 1 });
     await sleep(20);
   }
   await sleep(300);
   const fl1 = await view(page);
-  check(mode, "rmbMode 'freelook': RMB drag free-looks the camera",
+  check(mode, "rmbMode 'freelook': RMB drag freely moves the sight",
     Math.abs(deg(wrap(fl1.camYaw - fl0.camYaw))) > 8,
     `dYaw=${deg(wrap(fl1.camYaw - fl0.camYaw)).toFixed(1)} deg`);
-  const aimFrozen = Math.hypot(
-    fl1.aimPoint[0] - fl0.aimPoint[0], fl1.aimPoint[2] - fl0.aimPoint[2]);
-  check(mode, "rmbMode 'freelook': aim point stays frozen while held", aimFrozen < 1,
-    `aim point moved ${aimFrozen.toFixed(2)} m`);
+  const aimTravel = Math.hypot(
+    fl1.aimPoint[0] - flHeld0.aimPoint[0], fl1.aimPoint[2] - flHeld0.aimPoint[2]);
+  check(mode, "rmbMode 'freelook': live aim point moves while the gun stays held",
+    aimTravel > 10 &&
+      Math.abs(deg(wrap(fl1.turretYaw - flHeld0.turretYaw))) < 0.1 &&
+      Math.abs(deg(fl1.gunPitch - flHeld0.gunPitch)) < 0.1,
+    `aim=${aimTravel.toFixed(2)} m turret=` +
+      `${deg(wrap(fl1.turretYaw - flHeld0.turretYaw)).toFixed(2)} deg gun=` +
+      `${deg(fl1.gunPitch - flHeld0.gunPitch).toFixed(2)} deg`);
   await page.mouse.up({ button: 'right' });
   await sleep(400);
   const fl2 = await view(page);
-  check(mode, "rmbMode 'freelook': release snaps back to the aim",
-    Math.abs(deg(wrap(fl2.camYaw - fl0.camYaw))) < 2,
-    `dYaw after release ${deg(wrap(fl2.camYaw - fl0.camYaw)).toFixed(2)} deg`);
+  check(mode, "rmbMode 'freelook': release keeps the current camera aim",
+    Math.abs(deg(wrap(fl2.camYaw - fl1.camYaw))) < 2,
+    `dYaw after release ${deg(wrap(fl2.camYaw - fl1.camYaw)).toFixed(2)} deg`);
   await page.evaluate(() => window.__DEBUG.input.setSetting('rmbMode', 'hold'));
 
   check(mode, 'no page errors', pageErrors.length === 0,

@@ -31,8 +31,9 @@ The program has four interlocking systems:
   GLB, with registration config (turretNode/gunNode regexes, autoPivot, yawOffset,
   flip). Procedural-only ids simply have no row. The userdrops*.js modules override rows
   in the eager facade's declared import order—later waves land on top.
-- `getSpec` (specs.js:2013), `ALL_TANK_IDS` (specs.js:1678). variants.js registers CC-BY
-  derivative vehicles by side effect before roster finalization.
+- `getSpec` (specs.js:2013), `ALL_TANK_IDS` (specs.js:1678).
+  `combatVariantSpecs.ts` registers the core Abrams/T-90 combat variants by
+  side effect before roster finalization.
 
 ### 1.2 Build pipeline — typed facades and `tankFactoryCore.js`
 `tankFactory.ts` eagerly registers the complete fleet for release tools and

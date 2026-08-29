@@ -330,7 +330,8 @@ See docs/PERFORMANCE.md and src/engine/SKILL.md.
 ## Desktop, mobile, and accessibility
 
 Desktop controls are remappable. Hold `Caps Lock` (or secondary `Left Alt`,
-controller `RB`) for free look without moving the turret, hull, or gun. `Shift`
+controller `RB`) to preserve the current turret rotation and gun elevation
+while freely moving the live sight; release lets the gun catch up. `Shift`
 toggles sniper mode; configurable `RMB` behavior provides
 hold-to-aim, toggle-aim, or a second free-look binding, and wheel-in can enter
 the scope. Mobile receives a dedicated touch layout with movement

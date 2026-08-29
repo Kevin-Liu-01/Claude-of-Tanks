@@ -19,13 +19,11 @@ import { finalizeCombatAnatomy } from './combatAnatomy.js';
 
 // These modules register specs at evaluation time. Keep donor waves ahead of
 // their derivatives so every clone observes a complete source record.
-import './variants.js';
-import './userdrops.js';
-import './userdrops2.js';
-import './userdrops3.js';
-import './userdrops4.js';
-import './userdrops5.js';
-import './userdrops6.js';
+import './combatVariantSpecs.ts';
+import './kf51Specs.ts';
+import './abramsConceptSpecs.ts';
+import './additionalFleetSpecs.ts';
+import './classicFleetSpecs.ts';
 import './ukraine.ts';
 import './china.ts';
 import './sweden.ts';

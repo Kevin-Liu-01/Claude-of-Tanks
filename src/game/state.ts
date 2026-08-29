@@ -120,6 +120,7 @@ interface SoloInput extends MovementInput {
   steer: number;
   brake: boolean;
   fire: boolean;
+  aimLocked: boolean;
   shellSlot: number;
   aimPoint: THREE.Vector3;
 }

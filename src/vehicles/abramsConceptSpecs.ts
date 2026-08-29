@@ -1,15 +1,24 @@
 // Recovered-drop wave 5: the former M1A2 is retained as m1a2_legacy while
 // Tejas is now the canonical m1a2. Mortavex's AbramsX remains the concept
 // demonstrator.
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, ALL_TANK_IDS } from './specs.js';
 
-const clone = (value) => JSON.parse(JSON.stringify(value));
+type AbramsDonorSpec = typeof TANK_SPECS.m1a2_legacy;
+type AbramsConceptSpec = Omit<AbramsDonorSpec, 'visual'> & {
+  community?: Record<string, string>;
+  publicVisualFallback?: string;
+  variantOf?: string;
+  visual: AbramsDonorSpec['visual'] & { patchK?: number };
+};
+
+const tankSpecs = TANK_SPECS as typeof TANK_SPECS & Record<string, AbramsConceptSpec>;
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 // External recovered models are reference-only. Dev and public playables use
 // the same authored procedural path so local testing cannot silently swap in
 // a third-party mesh.
 const ALLOW_LOCAL_RECOVERED_MODELS = false;
 
-const abramsx = clone(TANK_SPECS.m1a2);
+const abramsx = clone(tankSpecs.m1a2) as AbramsConceptSpec;
 abramsx.id = 'abramsx';
 abramsx.name = 'AbramsX';
 // §5.73-1 / §5.82 P95 datum: the mandatory XM914/RWS is a broad roof-kit
@@ -57,8 +66,8 @@ abramsx.visual = {
 // procedural M1A2 family fallback + its packaged icons; only private/local
 // builds attach the recovered model credits and restricted GLB sources.
 if (!ALLOW_LOCAL_RECOVERED_MODELS) delete abramsx.community;
-for (const spec of [TANK_SPECS.m1a2_legacy, abramsx]) {
-  TANK_SPECS[spec.id] = TANK_SPECS[spec.id] || spec;
+for (const spec of [tankSpecs.m1a2_legacy, abramsx] satisfies AbramsConceptSpec[]) {
+  tankSpecs[spec.id] = tankSpecs[spec.id] || spec;
   if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
 }
 
@@ -84,6 +93,6 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // MODEL_SOURCE; the procedural build ships everywhere.
   // m1a2_tusk: §5.31b ERA-GROUP FLIP 2026-08-08 — the dev-only tejas alias
   // is retired so dev renders the same abrams.js tusk profile deploys now
-  // show (variants.js carries the flip + the dannzjs candidateGlb). The
+  // show (combatVariantSpecs.ts carries the flip + candidateGlb). The
   // The retired local comparison print is no longer registered or retained.
 }

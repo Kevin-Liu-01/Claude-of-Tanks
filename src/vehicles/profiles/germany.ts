@@ -10,14 +10,42 @@
 
 import { KIT, FITTINGS, orientedSlab } from './kit.js';
 import { buildLeo2A4 } from './leopard.js';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type {
+  ProceduralBuilderPort,
+  TransformObjectPort,
+  Vec3Tuple,
+  VehicleAssemblyOwner,
+} from '../proceduralBuilderContracts.ts';
 
-function mount(P, owner, fitting, x, y, z, rotation = null) {
+type Quad = [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
+
+function mount(
+  P: ProceduralBuilderPort,
+  owner: VehicleAssemblyOwner,
+  fitting: TransformObjectPort,
+  x: number,
+  y: number,
+  z: number,
+  rotation: Vec3Tuple | null = null,
+): void {
   fitting.position.set(x, y, z);
   if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
   (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
 }
 
-function plate(P, owner, x, y, z, w, h, d, rotation = null, cap = true) {
+function plate(
+  P: ProceduralBuilderPort,
+  owner: VehicleAssemblyOwner,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  rotation: Vec3Tuple | null = null,
+  cap = true,
+): void {
   const r = rotation || [0, 0, 0];
   const body = owner === 'hull' ? 'hull' : 'turret';
   const detail = owner === 'hull' ? 'hullDark' : 'turretDark';
@@ -26,15 +54,20 @@ function plate(P, owner, x, y, z, w, h, d, rotation = null, cap = true) {
     x, y + h * 0.5 + 0.008, z + d * 0.20, r[0], r[1], r[2]);
 }
 
-function mirroredSlab(side, lower, upper) {
-  const row = (points) => {
-    const mapped = points.map(([x, y, z]) => [side * x, y, z]);
+function mirroredSlab(side: number, lower: Quad, upper: Quad): unknown {
+  const row = (points: Quad): Quad => {
+    const mapped: Quad = [
+      [side * points[0][0], points[0][1], points[0][2]],
+      [side * points[1][0], points[1][1], points[1][2]],
+      [side * points[2][0], points[2][1], points[2][2]],
+      [side * points[3][0], points[3][1], points[3][2]],
+    ];
     return side < 0 ? [mapped[1], mapped[0], mapped[3], mapped[2]] : mapped;
   };
   return orientedSlab(...row(lower), ...row(upper));
 }
 
-function radioPair(P, y, z, seed, spread = 1.03) {
+function radioPair(P: ProceduralBuilderPort, y: number, z: number, seed: number, spread = 1.03): void {
   for (const side of [-1, 1]) {
     P.add('turretDetail', KIT.cylY(0.035, 0.045, 0.06, 10), side * spread, y, z);
     mount(P, 'turret', FITTINGS.antennaWhip({
@@ -44,7 +77,15 @@ function radioPair(P, y, z, seed, spread = 1.03) {
   }
 }
 
-function roofWeapon(P, x, y, z, seed, scale = 0.82, yaw = 0) {
+function roofWeapon(
+  P: ProceduralBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  seed: number,
+  scale = 0.82,
+  yaw = 0,
+): void {
   P.add('turret', KIT.box(0.50, 0.075, 0.46), x, y, z);
   P.add('turretDark', KIT.box(0.39, 0.020, 0.35), x, y + 0.048, z);
   P.add('turret', KIT.cylY(0.20, 0.22, 0.075, 18), x, y + 0.09, z);
@@ -54,7 +95,7 @@ function roofWeapon(P, x, y, z, seed, scale = 0.82, yaw = 0) {
   }), x, y + 0.11, z, [0, yaw, 0]);
 }
 
-function gunPlant(P, width, depth, coaxX = 0.31) {
+function gunPlant(P: ProceduralBuilderPort, width: number, depth: number, coaxX = 0.31): void {
   P.addGunExtra(KIT.box(width, 0.52, 0.26), 0, -0.015, 0.39);
   P.addGunExtra(KIT.cylZ(0.21, depth, 20, 0.17), 0, 0, 0.70);
   P.addGunExtraDark(KIT.cylZ(0.038, 0.095, 10), coaxX, 0.075, 0.60);
@@ -62,7 +103,7 @@ function gunPlant(P, width, depth, coaxX = 0.31) {
     side * width * 0.34, -0.12, 0.48);
 }
 
-function addOTCOPackage(P) {
+function addOTCOPackage(P: ProceduralBuilderPort): void {
   // Retain the boxy A4 turret but give this field-modernized variant a dense
   // net/stowage silhouette and a supported roof weapon. The quarantined game
   // extraction supplies only broad visual cues, never topology.
@@ -91,11 +132,11 @@ function addOTCOPackage(P) {
   P.topY = Math.max(P.topY || 0, 1.42);
 }
 
-function buildLeo2A4OTCO(P) {
+function buildLeo2A4OTCO(P: ProceduralBuilderPort): void {
   buildLeo2A4(P);
   addOTCOPackage(P);
 }
 
 export const GERMANY_PROFILES = {
   leo2a4_otco: { build: buildLeo2A4OTCO },
-};
+} satisfies VehicleProfileRecord;

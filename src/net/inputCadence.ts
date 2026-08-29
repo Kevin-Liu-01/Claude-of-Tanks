@@ -3,6 +3,7 @@ export interface NetworkInputSample {
   steer?: number;
   brake?: boolean;
   fire?: boolean;
+  aimLocked?: boolean;
   shellSlot?: number;
   actionBits?: number;
 }
@@ -57,6 +58,7 @@ export class NetworkInputCadence {
     const previous = this.#lastSent;
     if (!previous || this.#accumulatedS + Number.EPSILON >= this.intervalS) return true;
     if (!!input.fire !== !!previous.fire || !!input.brake !== !!previous.brake ||
+        !!input.aimLocked !== !!previous.aimLocked ||
         (finite(input.shellSlot) | 0) !== (finite(previous.shellSlot) | 0) ||
         (finite(input.actionBits) | 0) !== 0) {
       return true;
@@ -75,6 +77,7 @@ export class NetworkInputCadence {
       steer: finite(input.steer),
       brake: !!input.brake,
       fire: !!input.fire,
+      aimLocked: !!input.aimLocked,
       shellSlot: finite(input.shellSlot) | 0,
       actionBits: finite(input.actionBits) | 0,
     };

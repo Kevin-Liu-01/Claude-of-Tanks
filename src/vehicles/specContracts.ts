@@ -45,7 +45,9 @@ export interface FleetVisualSpec extends Record<string, unknown> {
   marking: string;
   number: string;
   trackWidthM: number;
-  camoScale: number;
+  /** Optional authoring override; painters retain their established family
+   * default when omitted. */
+  camoScale?: number;
 }
 
 /** Combat-authoritative fields shared by every registered fleet row. Family
