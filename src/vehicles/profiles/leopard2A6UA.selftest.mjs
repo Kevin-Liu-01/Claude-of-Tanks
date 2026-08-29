@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
-import { GHILLIE_SUIT_CONFIGS } from '../ghillieSuit.js';
+import { GHILLIE_SUIT_CONFIGS } from '../ghillieSuit.ts';
 import { getSpec } from '../specs.js';
 import { tankTier } from '../tier.ts';
 

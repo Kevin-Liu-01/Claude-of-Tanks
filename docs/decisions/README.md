@@ -259,3 +259,4 @@ runtime documents remain authoritative for behavior.
 - [0247 — AMX-40 geometry has a strict TypeScript owner](0247-type-amx40-geometry.md)
 - [0248 — Internal anatomy visuals have one strict TypeScript owner](0248-type-internal-anatomy-visuals.md)
 - [0249 — The damage schematic has a strict TypeScript owner](0249-type-damage-panel.md)
+- [0250 — Fitted ghillie geometry has a strict TypeScript owner](0250-type-ghillie-suit.md)

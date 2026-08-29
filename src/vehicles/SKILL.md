@@ -60,7 +60,7 @@ remain neutral. Run the three focused pattern checks plus
 `wheelQuality.selftest.mjs` after any wheel or running-gear change.
 
 Physical camouflage suits use `addVehicleGhillieSuit(P)` from
-`ghillieSuit.js`. Add a vehicle-specific registry entry with fitted top, side,
+`ghillieSuit.ts`. Add a vehicle-specific registry entry with fitted top, side,
 and end panels; preserve explicit gun, sight, hatch, exhaust, and service
 openings; keep the hem above the smart-track corridor; and attach hull/turret
 meshes to their canonical owner rigs. A suit must be a detailed suspended

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
-import { GHILLIE_SUIT_CONFIGS } from './ghillieSuit.js';
+import { GHILLIE_SUIT_CONFIGS } from './ghillieSuit.ts';
 
 const ids = [
   'jpz_e100', 'ua_t64bv', 'pt91_twardy', 'm1a2_sepv3',

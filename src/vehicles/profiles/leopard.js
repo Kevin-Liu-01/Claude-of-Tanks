@@ -34,7 +34,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
-import { addVehicleGhillieSuit } from '../ghillieSuit.js';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 // ---------------------------------------------------------------------------
 // Family machinery

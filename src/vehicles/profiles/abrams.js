@@ -17,7 +17,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
-import { addVehicleGhillieSuit } from '../ghillieSuit.js';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 // KIT is populated by tankFactory.ts, which sits on the other side of an
 // import cycle with the profile modules — resolve members lazily.

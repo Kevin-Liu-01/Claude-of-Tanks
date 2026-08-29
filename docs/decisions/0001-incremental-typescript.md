@@ -149,6 +149,10 @@ The battle-only schematic now uses strict `src/ui/damagePanel.ts` contracts for
 tank masks, modules, crew, combat state, screenshot samples, and Canvas2D
 resources. `battleHudAccess.ts` imports that runtime directly instead of
 asserting a dynamically loaded JavaScript module.
+Fitted vehicle camouflage now uses the strict `src/vehicles/ghillieSuit.ts`
+owner. Its top, side, and face panel recipes, deterministic foliage styles,
+material lifecycle, and procedural-builder port are checked without changing
+the merged geometry or exact-family demand-loading boundary.
 
 ## Consequences
 

@@ -13,7 +13,7 @@
 // playables stay first-party procedural.
 
 import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.js';
-import { addVehicleGhillieSuit } from '../ghillieSuit.js';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import {
   loftHull, meshDomeCurved, ringSkin, tubeGun, ruBoot, ruSaddle, nsvt, mast,
   ruGlacisKit, ruDeck, ruSkirtBand, ruFlaps, rehookClone, domeBoxPlanSeat,

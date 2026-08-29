@@ -29,7 +29,7 @@
 import { BufferAttribute, BufferGeometry, Float32BufferAttribute, Mesh } from 'three';
 import { FITTINGS, KIT, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
-import { addVehicleGhillieSuit } from '../ghillieSuit.js';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 const box = (...a) => KIT.box(...a);
 const stations = (count, span, zc = 0) => Array.from({ length: count }, (_, i) =>

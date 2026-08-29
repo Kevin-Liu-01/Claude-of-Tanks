@@ -10,7 +10,7 @@ import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.js';
 import { buildStrv103 } from './casemate.js';
 import { centurionBuild } from './uk.js';
 import { buildLeo2A5 } from './leopard.js';
-import { addVehicleGhillieSuit } from '../ghillieSuit.js';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec3Tuple = [number, number, number];
@@ -37,9 +37,14 @@ interface SwedishBuilderPort {
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
-  readonly mats: { dark: THREE.Material; [role: string]: unknown };
+  readonly mats: {
+    dark: THREE.Material;
+    canvasCloth: THREE.MeshStandardMaterial;
+    [role: string]: unknown;
+  };
   readonly q?: boolean;
-  readonly spec: { visual: { number?: string } };
+  readonly spec: { id: string; visual: { number?: string } };
+  readonly disposables: Array<{ dispose(): void }>;
   fixedMount?: boolean;
   muzzleZ?: number;
   topY?: number;

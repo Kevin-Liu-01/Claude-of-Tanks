@@ -23,7 +23,7 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.js';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.js';
-import { addVehicleGhillieSuit } from '../ghillieSuit.js';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import {
   loftHull,
   buildT80CastTurret,

@@ -2,6 +2,86 @@ import * as THREE from 'three';
 import { KIT } from './profiles/kit.js';
 import { vehicleAmbientFloorHook } from './materials.js';
 
+type Point2 = readonly [number, number];
+type Point3 = readonly [number, number, number];
+type GhillieStyle = 'leafy' | 'ulcans' | 'nakidka';
+type GhillieOwner = 'hull' | 'turret' | 'gun';
+type DisposableResource = { dispose(): void };
+
+interface TopPanel {
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+  nx?: number;
+  nz?: number;
+  yAt(x: number, z: number): number;
+  outline?: readonly Point2[];
+  holes?: readonly (readonly Point2[])[];
+  seatGapM?: number;
+  seat?: string;
+  seed?: number;
+}
+
+interface SidePanel {
+  side: number;
+  z0: number;
+  z1: number;
+  nz?: number;
+  ny?: number;
+  topAt(z: number): number;
+  bottomAt(z: number): number;
+  outAt(z: number, t: number): number;
+  seed?: number;
+}
+
+interface FacePanel {
+  z: number;
+  zAt?(x: number, y: number): number;
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+  nx?: number;
+  ny?: number;
+  outline?: readonly Point2[];
+  holes?: readonly (readonly Point2[])[];
+  seatGapM?: number;
+  seat?: string;
+  seed?: number;
+}
+
+interface GhilliePanels {
+  top?: readonly TopPanel[];
+  side?: readonly SidePanel[];
+  face?: readonly FacePanel[];
+}
+
+interface GhillieConfig {
+  id: string;
+  seed: number;
+  style: GhillieStyle;
+  density: number;
+  leafScale: number;
+  light: number;
+  dark: number;
+  netColor: string;
+  disabled?: boolean;
+  foliage?: boolean;
+  hull?: GhilliePanels;
+  turret?: GhilliePanels;
+  gun?: GhilliePanels;
+}
+
+interface GhillieBuilderPort {
+  spec: { id: string };
+  hullG: THREE.Group;
+  turretG: THREE.Group;
+  gunG: THREE.Group;
+  mats: { canvasCloth: THREE.MeshStandardMaterial };
+  disposables: DisposableResource[];
+}
+
 // Shared physical-ghillie authoring process.
 //
 // A suit is a separately suspended equipment mesh, never a paint alias and
@@ -10,14 +90,16 @@ import { vehicleAmbientFloorHook } from './materials.js';
 // builder owns deterministic ripples, ragged cell edges, connected cut-net
 // texture, overlapping foliage and merged draw-call-safe output.
 
-const noise01 = (n, salt = 0) => {
+const noise01 = (n: number, salt = 0): number => {
   const v = Math.sin((n + 1) * 12.9898 + (salt + 1) * 78.233) * 43758.5453;
   return v - Math.floor(v);
 };
 
-const rect = (x0, x1, z0, z1) => [[x0, z0], [x1, z0], [x1, z1], [x0, z1]];
+const rect = (x0: number, x1: number, z0: number, z1: number): Point2[] => (
+  [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]
+);
 
-function insidePoly(x, z, poly) {
+function insidePoly(x: number, z: number, poly: readonly Point2[]): boolean {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const [xi, zi] = poly[i];
@@ -28,7 +110,7 @@ function insidePoly(x, z, poly) {
   return inside;
 }
 
-function makeGeometry(positions, uvs) {
+function makeGeometry(positions: number[], uvs: number[]): THREE.BufferGeometry {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
@@ -36,18 +118,18 @@ function makeGeometry(positions, uvs) {
   return geo;
 }
 
-function clothTop(panel, suitSeed) {
+function clothTop(panel: TopPanel, suitSeed: number): THREE.BufferGeometry {
   const {
     x0, x1, z0, z1, nx = 18, nz = 30, yAt, outline = null, holes = [], seed = 0,
   } = panel;
-  const positions = [];
-  const uvs = [];
-  const vertex = (x, z) => {
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const vertex = (x: number, z: number): Point3 => {
     const ripple = Math.sin(x * 7.7 + z * 5.9 + seed) * 0.010
       + Math.cos(x * 3.7 - z * 7.3 + suitSeed * 0.31) * 0.006;
     return [x, yAt(x, z) + ripple, z];
   };
-  const tri = (a, b, c) => {
+  const tri = (a: Point3, b: Point3, c: Point3): void => {
     for (const p of [a, b, c]) {
       positions.push(...p);
       uvs.push(p[0] * 0.72, p[2] * 0.72);
@@ -75,13 +157,13 @@ function clothTop(panel, suitSeed) {
   return makeGeometry(positions, uvs);
 }
 
-function clothSide(panel, suitSeed) {
+function clothSide(panel: SidePanel, suitSeed: number): THREE.BufferGeometry {
   const {
     side, z0, z1, nz = 30, ny = 9, topAt, bottomAt, outAt, seed = 0,
   } = panel;
-  const positions = [];
-  const uvs = [];
-  const vertex = (z, t) => {
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const vertex = (z: number, t: number): Point3 => {
     const top = topAt(z);
     const bottom = bottomAt(z);
     return [
@@ -91,7 +173,7 @@ function clothSide(panel, suitSeed) {
       z,
     ];
   };
-  const tri = (a, b, c) => {
+  const tri = (a: Point3, b: Point3, c: Point3): void => {
     for (const p of [a, b, c]) {
       positions.push(...p);
       uvs.push(p[2] * 0.72, p[1] * 0.72);
@@ -112,16 +194,16 @@ function clothSide(panel, suitSeed) {
   return makeGeometry(positions, uvs);
 }
 
-function clothFace(panel, suitSeed) {
+function clothFace(panel: FacePanel, suitSeed: number): THREE.BufferGeometry {
   const {
     z, zAt = null, x0, x1, y0, y1, nx = 16, ny = 9, outline = null, holes = [], seed = 0,
   } = panel;
-  const positions = [];
-  const uvs = [];
-  const vertex = (x, y) => [x, y,
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const vertex = (x: number, y: number): Point3 => [x, y,
     (zAt ? zAt(x, y) : z) + Math.sin(x * 7.3 + y * 6.1 + seed) * 0.010
       + Math.cos(x * 4.1 - y * 8.3 + suitSeed * 0.27) * 0.006];
-  const tri = (a, b, c) => {
+  const tri = (a: Point3, b: Point3, c: Point3): void => {
     for (const p of [a, b, c]) {
       positions.push(...p);
       uvs.push(p[0] * 0.72, p[1] * 0.72);
@@ -146,7 +228,7 @@ function clothFace(panel, suitSeed) {
   return makeGeometry(positions, uvs);
 }
 
-function leafGeometry(scale, seed, style) {
+function leafGeometry(scale: number, seed: number, style: GhillieStyle): THREE.BufferGeometry {
   const { slab } = KIT;
   const wide = style === 'ulcans' ? 0.090 : style === 'nakidka' ? 0.075 : 0.064;
   const long = style === 'ulcans' ? 0.130 : style === 'nakidka' ? 0.145 : 0.165;
@@ -162,7 +244,13 @@ function leafGeometry(scale, seed, style) {
   );
 }
 
-function addTopFoliage(outA, outB, panel, cfg, seedBase) {
+function addTopFoliage(
+  outA: THREE.BufferGeometry[],
+  outB: THREE.BufferGeometry[],
+  panel: TopPanel,
+  cfg: GhillieConfig,
+  seedBase: number,
+): void {
   const { xform } = KIT;
   const stepX = cfg.style === 'nakidka' ? 0.38 : cfg.style === 'ulcans' ? 0.34 : 0.30;
   const stepZ = cfg.style === 'nakidka' ? 0.42 : 0.34;
@@ -191,7 +279,13 @@ function addTopFoliage(outA, outB, panel, cfg, seedBase) {
   }
 }
 
-function addSideFoliage(outA, outB, panel, cfg, seedBase) {
+function addSideFoliage(
+  outA: THREE.BufferGeometry[],
+  outB: THREE.BufferGeometry[],
+  panel: SidePanel,
+  cfg: GhillieConfig,
+  seedBase: number,
+): void {
   const { xform } = KIT;
   const stepZ = cfg.style === 'nakidka' ? 0.40 : 0.32;
   let n = 0;
@@ -217,7 +311,13 @@ function addSideFoliage(outA, outB, panel, cfg, seedBase) {
   }
 }
 
-function addFaceFoliage(outA, outB, panel, cfg, seedBase) {
+function addFaceFoliage(
+  outA: THREE.BufferGeometry[],
+  outB: THREE.BufferGeometry[],
+  panel: FacePanel,
+  cfg: GhillieConfig,
+  seedBase: number,
+): void {
   const { xform } = KIT;
   const sx = 0.31; const sy = 0.26;
   let n = 0;
@@ -239,7 +339,12 @@ function addFaceFoliage(outA, outB, panel, cfg, seedBase) {
   }
 }
 
-function makeCloth(P, cfg, hex, key) {
+function makeCloth(
+  P: GhillieBuilderPort,
+  _cfg: GhillieConfig,
+  hex: number,
+  _key: string,
+): THREE.MeshStandardMaterial {
   const mat = P.mats.canvasCloth.clone();
   mat.color.setHex(hex);
   mat.roughness = 1;
@@ -250,13 +355,17 @@ function makeCloth(P, cfg, hex, key) {
   return mat;
 }
 
-function makeNet(P, cfg, owner) {
+function makeNet(
+  P: GhillieBuilderPort,
+  cfg: GhillieConfig,
+  owner: GhillieOwner,
+): { mat: THREE.MeshStandardMaterial; texture: THREE.CanvasTexture | null } {
   const mat = makeCloth(P, cfg, 0xffffff, `${owner}-net`);
   let texture = null;
   if (typeof document !== 'undefined') {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 128;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, 128, 128);
     ctx.strokeStyle = cfg.netColor;
     ctx.lineWidth = cfg.style === 'ulcans' ? 1.8 : 1.25;
@@ -292,7 +401,14 @@ function makeNet(P, cfg, owner) {
   return { mat, texture };
 }
 
-function addMerged(P, parent, geos, mat, name, extras = []) {
+function addMerged(
+  P: GhillieBuilderPort,
+  parent: THREE.Group,
+  geos: THREE.BufferGeometry[],
+  mat: THREE.MeshStandardMaterial,
+  name: string,
+  extras: readonly (DisposableResource | null)[] = [],
+): void {
   if (!geos.length) {
     mat.dispose();
     for (const extra of extras) extra?.dispose?.();
@@ -303,16 +419,19 @@ function addMerged(P, parent, geos, mat, name, extras = []) {
   mesh.name = name;
   mesh.castShadow = mesh.receiveShadow = true;
   parent.add(mesh);
-  P.disposables.push(geo, mat, ...extras.filter(Boolean));
+  P.disposables.push(geo, mat);
+  for (const extra of extras) {
+    if (extra) P.disposables.push(extra);
+  }
 }
 
-const t64HullY = (_x, z) => {
+const t64HullY = (_x: number, z: number): number => {
   if (z < -2.6) return 1.43;
   if (z < 1.55) return 1.39;
   if (z < 2.55) return 1.40 - (z - 1.55) * 0.20;
   return 1.20 - (z - 2.55) * 0.22;
 };
-const ptHullY = (_x, z) => {
+const ptHullY = (_x: number, z: number): number => {
   if (z < -2.0) return 1.61;
   if (z < 1.2) return 1.54;
   if (z < 2.4) return 1.54 - (z - 1.2) * 0.14;
@@ -322,11 +441,11 @@ const ptHullY = (_x, z) => {
 // leaving up to 0.6 m of daylight over the cast shoulders and front wedge.
 // This profile mirrors buildPT91Twardy's authored dome, ERAWA cheeks, flank
 // bins and bustle while preserving the ghillie's small suspended air layer.
-const pt91DomeProfile = Object.freeze([
+const pt91DomeProfile: readonly Point2[] = Object.freeze([
   [0.03, 0.81], [0.38, 0.80], [0.72, 0.755], [1.00, 0.64],
   [1.18, 0.46], [1.26, 0.24],
 ]);
-const pt91DomeY = (x, z) => {
+const pt91DomeY = (x: number, z: number): number => {
   const r = Math.hypot(x, (z + 0.08) / 0.98);
   if (r <= pt91DomeProfile[0][0]) return pt91DomeProfile[0][1];
   for (let i = 1; i < pt91DomeProfile.length; i++) {
@@ -338,7 +457,7 @@ const pt91DomeY = (x, z) => {
   }
   return 0.20;
 };
-const pt91TurretCoverY = (x, z) => {
+const pt91TurretCoverY = (x: number, z: number): number => {
   const ax = Math.abs(x);
   let support = pt91DomeY(x, z);
   if (z < -1.04 && ax < 0.86) support = Math.max(support, 0.64); // bustle roof
@@ -348,13 +467,13 @@ const pt91TurretCoverY = (x, z) => {
   }
   return support + 0.030;
 };
-const pt91TurretSideTopY = (z) => {
+const pt91TurretSideTopY = (z: number): number => {
   if (z < -1.05) return 0.67;
   if (z < -0.18) return 0.64;
   if (z < 0.58) return 0.66;
   return 0.66 - (z - 0.58) * 0.34;
 };
-const pt91TurretSideX = (z, t) => {
+const pt91TurretSideX = (z: number, t: number): number => {
   let armorX;
   if (z < -1.05) armorX = 0.83;
   else if (z < 0.55) armorX = 1.31;
@@ -362,10 +481,10 @@ const pt91TurretSideX = (z, t) => {
     THREE.MathUtils.clamp((z - 0.55) / 0.45, 0, 1));
   return armorX + (1 - t) * 0.032;
 };
-const pt91TurretFrontZ = (x, y) => 1.58
+const pt91TurretFrontZ = (x: number, y: number): number => 1.58
   - Math.max(0, Math.abs(x) - 0.20) * 0.61
   - Math.max(0, 0.40 - y) * 0.08;
-const profileY = (stations, z) => {
+const profileY = (stations: readonly Point2[], z: number): number => {
   if (z <= stations[0][0]) return stations[0][1];
   for (let i = 1; i < stations.length; i++) {
     const [z1, y1] = stations[i];
@@ -374,30 +493,32 @@ const profileY = (stations, z) => {
       return THREE.MathUtils.lerp(y0, y1, (z - z0) / (z1 - z0));
     }
   }
-  return stations.at(-1)[1];
+  return stations.at(-1)?.[1] ?? 0;
 };
-const strv103aHullY = (_x, z) => profileY([
+const strv103aHullY = (_x: number, z: number): number => profileY([
   [-3.20, 1.89], [-2.00, 1.93], [0.62, 1.90], [1.55, 1.75],
   [2.36, 1.62], [2.98, 1.52], [3.45, 1.54],
 ], z);
-const strv103bHullY = (_x, z) => profileY([
+const strv103bHullY = (_x: number, z: number): number => profileY([
   [-3.72, 1.57], [-2.75, 1.79], [0.75, 1.85], [1.60, 1.63],
   [2.61, 1.53], [3.22, 1.55],
 ], z);
-const strv122HullY = (_x, z) => {
+const strv122HullY = (_x: number, z: number): number => {
   const armorY = z < 1.45 ? 1.76 : 1.76 - (z - 1.45) * 0.12;
   // The Swedish cover is tied to a shallow support frame above the bow.
   // This clearance keeps the front drape outside the live 2A5-family shoe
   // wrap while still following the glacis angle.
   return armorY + 0.15;
 };
-const t84HullY = (_x, z) => {
+const t84HullY = (_x: number, z: number): number => {
   if (z < -4.25) return 1.40;
   if (z < 0.55) return 1.45;
   return 1.45 - (z - 0.55) * 0.15;
 };
-const oplotHullY = (_x, z) => (z < 1.45 ? 1.51 : 1.51 - (z - 1.45) * 0.15);
-const abramsHullY = (x, z) => {
+const oplotHullY = (_x: number, z: number): number => (
+  z < 1.45 ? 1.51 : 1.51 - (z - 1.45) * 0.15
+);
+const abramsHullY = (x: number, z: number): number => {
   const armorY = z < 2.0 ? 1.49 : 1.49 - (z - 2.0) * 0.17;
   // ULCANS is a supported multispectral screen, not a skin-tight paint
   // layer.  Its battens keep the deck span clear of the 1.51 m return run;
@@ -408,32 +529,32 @@ const abramsHullY = (x, z) => {
 // single y=.98 roof and z=2.72 face, leaving visible daylight over the 2A6M
 // wedge. These profiles follow the authored roof tiers and the ruled cheek
 // surface used by the UA ERA package. Values are turret-local metres.
-const leo2A6UAFrontLowerZ = (x) => profileY([
+const leo2A6UAFrontLowerZ = (x: number): number => profileY([
   [0.32, 2.70], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96],
 ], Math.abs(x));
-const leo2A6UAFrontUpperZ = (x) => profileY([
+const leo2A6UAFrontUpperZ = (x: number): number => profileY([
   [0.32, 2.02], [0.55, 1.87], [0.90, 1.62], [1.08, 1.40], [1.30, 1.16],
 ], Math.abs(x));
-const leo2A6UAFrontArmorZ = (x, y) => THREE.MathUtils.lerp(
+const leo2A6UAFrontArmorZ = (x: number, y: number): number => THREE.MathUtils.lerp(
   leo2A6UAFrontLowerZ(x),
   leo2A6UAFrontUpperZ(x),
   THREE.MathUtils.clamp((y - 0.16) / 0.46, 0, 1),
 );
-const leo2A6UAFrontNetZ = (x, y) => leo2A6UAFrontArmorZ(x, y) + 0.065;
-const leo2A6UAFrontRoofY = (x, z) => {
+const leo2A6UAFrontNetZ = (x: number, y: number): number => leo2A6UAFrontArmorZ(x, y) + 0.065;
+const leo2A6UAFrontRoofY = (x: number, z: number): number => {
   const armorY = profileY([
     [0.46, 0.655], [0.72, 0.620], [1.20, 0.535], [1.68, 0.425], [2.18, 0.430],
   ], z);
   return armorY - Math.max(0, Math.abs(x) - 0.92) * 0.035 + 0.026;
 };
-const leo2A6UAMidRoofY = (x, z) => {
+const leo2A6UAMidRoofY = (x: number, z: number): number => {
   const armorY = z < -0.96 ? 0.78 : 0.75;
   return armorY - Math.max(0, Math.abs(x) - 0.72) * 0.055 + 0.026;
 };
-const leo2A6UARearRoofY = (_x, z) => profileY([
+const leo2A6UARearRoofY = (_x: number, z: number): number => profileY([
   [-3.34, 0.62], [-3.02, 0.64], [-2.30, 0.66], [-1.58, 0.78],
 ], z) + 0.026;
-const jpzE100HullY = (_x, z) => {
+const jpzE100HullY = (_x: number, z: number): number => {
   if (z > 0.76) return 1.94;
   if (z > -0.50) return 2.76 + (0.76 - z) * 0.15;
   if (z > -1.20) return 2.95 + (-0.50 - z) * 0.30;
@@ -730,7 +851,7 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
           holes: [rect(-0.94, -0.34, -0.92, -0.22), rect(0.30, 0.94, -0.98, -0.08),
             rect(0.32, 0.96, 0.02, 0.52)],
           seatGapM: 0.026, seat: 'main-roof', seed: 303 },
-        ...[-1, 1].map((side) => ({
+        ...[-1, 1].map<TopPanel>((side) => ({
           x0: side < 0 ? -1.30 : 0.22, x1: side < 0 ? -0.22 : 1.30,
           z0: 0.46, z1: 2.18, nx: 13, nz: 20,
           yAt: leo2A6UAFrontRoofY,
@@ -745,7 +866,7 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         topAt: (z) => 0.96 - Math.max(0, z - 1.15) * 0.11,
         bottomAt: (z) => 0.02 + Math.sin(z * 3.4) * 0.030,
         outAt: (_z, t) => 1.89 + (1 - t) * 0.045, seed: 307 + side })),
-      face: [-1, 1].map((side) => ({
+      face: [-1, 1].map<FacePanel>((side) => ({
         z: 0, zAt: leo2A6UAFrontNetZ,
         x0: side < 0 ? -1.32 : 0.34, x1: side < 0 ? -0.34 : 1.32,
         y0: 0.16, y1: 0.62, nx: 14, ny: 8,
@@ -765,18 +886,25 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         seed: 337 + side })),
     },
   },
-});
+} satisfies Readonly<Record<string, GhillieConfig>>);
 
-export function addVehicleGhillieSuit(P) {
-  const cfg = GHILLIE_SUIT_CONFIGS[P.spec.id];
+const GHILLIE_CONFIG_INDEX: Readonly<Record<string, GhillieConfig>> = GHILLIE_SUIT_CONFIGS;
+
+export function addVehicleGhillieSuit(P: GhillieBuilderPort): boolean {
+  const cfg = GHILLIE_CONFIG_INDEX[P.spec.id];
   if (!cfg || cfg.disabled) return false;
 
-  for (const [owner, parent] of [['hull', P.hullG], ['turret', P.turretG], ['gun', P.gunG]]) {
+  const owners: readonly [GhillieOwner, THREE.Group][] = [
+    ['hull', P.hullG],
+    ['turret', P.turretG],
+    ['gun', P.gunG],
+  ];
+  for (const [owner, parent] of owners) {
     const panels = cfg[owner];
     if (!panels) continue;
-    const net = [];
-    const light = [];
-    const dark = [];
+    const net: THREE.BufferGeometry[] = [];
+    const light: THREE.BufferGeometry[] = [];
+    const dark: THREE.BufferGeometry[] = [];
     let panelIndex = 0;
     for (const panel of panels.top || []) {
       net.push(clothTop(panel, cfg.seed));
