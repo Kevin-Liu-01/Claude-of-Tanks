@@ -104,7 +104,7 @@ import { createGarage } from './ui/garage.js';
 import { installBattleRecords } from './game/profile.ts';
 import {
   createGarageStage, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
-} from './ui/garageStage.js';
+} from './ui/garageStage.ts';
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
 import {

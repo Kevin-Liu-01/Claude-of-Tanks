@@ -268,3 +268,4 @@ runtime documents remain authoritative for behavior.
 - [0256 — T-80 profile geometry has a strict TypeScript owner](0256-type-t80-profile-geometry.md)
 - [0257 — Sheridan profile geometry has a strict TypeScript owner](0257-type-sheridan-profile-geometry.md)
 - [0258 — Soviet heavy profile geometry has a strict TypeScript owner](0258-type-soviet-heavy-profile-geometry.md)
+- [0259 — The procedural Garage stage has a strict TypeScript owner](0259-type-garage-stage.md)

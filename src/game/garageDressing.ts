@@ -9,7 +9,7 @@
 // Contract with the rest of the game:
 //  - 100% procedural (canvas textures + a dedicated low-poly workshop kit) —
 //    no downloads, GLB jobs, fleet builders or playable tank scene graphs
-//    via the helpers exported from ui/garageStage.js.
+//    via the helpers exported from ui/garageStage.ts.
 //  - BUILDS IN CHUNKS: first paint pumps only the static workshop shell, then
 //    streams low-poly assembly/component displays during garage-idle windows.
 //    Deterministic captures still call ensureBuilt(). This keeps the complete
@@ -27,7 +27,7 @@
 import * as THREE from 'three';
 import {
   mulberry32, canvasTexture, dither, makeSignTexture, makeHazardTexture, SIGN_FONT,
-} from '../ui/garageStage.js';
+} from '../ui/garageStage.ts';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant } from './garageVariants.ts';
 import {

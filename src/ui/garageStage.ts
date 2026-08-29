@@ -1,4 +1,4 @@
-// src/ui/garageStage.js — procedural garage hangar environment for the
+// src/ui/garageStage.ts — procedural garage hangar environment for the
 // tank-select screen: concrete floor with painted bay markings and grime,
 // corrugated-steel walls, ceiling with trusses, wall-mounted flood fixtures
 // with real lights, a hazard-striped display podium and workshop props.
@@ -11,7 +11,51 @@
 // showcase spotlights can stay — the stage's own fixtures complement them.
 import * as THREE from 'three';
 import { getGarageVariant } from '../game/garageVariants.ts';
-import { createGarageArchitectureController } from './garageArchitecture.ts';
+import {
+  createGarageArchitectureController,
+  type GarageArchitectureStats,
+} from './garageArchitecture.ts';
+
+type RandomSource = () => number;
+type SignWear = [boolean, number, number, number, number];
+
+interface CanvasTextureOptions {
+  srgb?: boolean;
+  aniso?: number;
+  repeat?: readonly [number, number] | null;
+}
+
+interface TrackScuffLaneOptions {
+  centerX: number;
+  y0: number;
+  y1: number;
+  pixelsPerMeter: number;
+  bodyAlpha: number;
+  edgeAlpha: number;
+  cleatAlpha: number;
+  phaseY: number;
+}
+
+interface GarageStageEngineContext {
+  anisotropy?: number;
+  setupShadowMaterial?(material: THREE.Material): void;
+}
+
+export interface GarageStageRuntime {
+  group: THREE.Group;
+  setVariant(variantId: string): string;
+  stats(): GarageArchitectureStats;
+  dispose(): void;
+}
+
+function get2dContext(
+  canvas: HTMLCanvasElement,
+  settings?: CanvasRenderingContext2DSettings,
+): CanvasRenderingContext2D {
+  const context = canvas.getContext('2d', settings);
+  if (!context) throw new Error('Canvas 2D context is unavailable');
+  return context;
+}
 
 // The floor texture's approach scuffs run along world Z. Face showroom tanks
 // toward -Z (the nearest exact floor-track heading to the old 162-degree pose)
@@ -28,8 +72,8 @@ const GARAGE_TRACK_CLEAT_THICKNESS_M = 0.065;
 
 // deterministic PRNG (mulberry32) so the hangar is identical every boot
 // (exported: garageDressing.ts shares the stage's texture/prop language)
-export function mulberry32(a) {
-  return function () {
+export function mulberry32(a: number): RandomSource {
+  return function (): number {
     a |= 0; a = (a + 0x6D2B79F5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
@@ -37,7 +81,10 @@ export function mulberry32(a) {
   };
 }
 
-export function canvasTexture(c, { srgb = true, aniso = 4, repeat = null } = {}) {
+export function canvasTexture(
+  c: HTMLCanvasElement,
+  { srgb = true, aniso = 4, repeat = null }: CanvasTextureOptions = {},
+): THREE.CanvasTexture {
   const t = new THREE.CanvasTexture(c);
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = aniso;
@@ -50,7 +97,13 @@ export function canvasTexture(c, { srgb = true, aniso = 4, repeat = null } = {})
 }
 
 // fine noise dither pass — kills flat-fill banding under light falloff
-export function dither(c2d, w, h, rng, alpha = 0.05) {
+export function dither(
+  c2d: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  rng: RandomSource,
+  alpha = 0.05,
+): void {
   const img = c2d.getImageData(0, 0, w, h);
   const d = img.data;
   for (let i = 0; i < d.length; i += 4) {
@@ -61,9 +114,9 @@ export function dither(c2d, w, h, rng, alpha = 0.05) {
 }
 
 /** Draw one straight, dimensioned tread lane in texture space. */
-function drawTrackScuffLane(g, {
+function drawTrackScuffLane(g: CanvasRenderingContext2D, {
   centerX, y0, y1, pixelsPerMeter, bodyAlpha, edgeAlpha, cleatAlpha, phaseY,
-}) {
+}: TrackScuffLaneOptions): void {
   const top = Math.min(y0, y1);
   const bottom = Math.max(y0, y1);
   const width = GARAGE_TRACK_SCUFF_WIDTH_M * pixelsPerMeter;
@@ -99,13 +152,13 @@ function drawTrackScuffLane(g, {
 }
 
 // --- concrete floor texture: grime, expansion joints, painted bay, treads ---
-function makeFloorTexture(rng) {
+function makeFloorTexture(rng: RandomSource): HTMLCanvasElement {
   // 512² keeps the same authored grime/marking language while cutting the
   // synchronous boot canvas work and upload footprint to one quarter.
   const S = 512;
   const c = document.createElement('canvas');
   c.width = S; c.height = S;
-  const g = c.getContext('2d', { willReadFrequently: true });
+  const g = get2dContext(c, { willReadFrequently: true });
   g.fillStyle = '#4e5154'; // r5: a step darker — keeps the key-spot pool below clip
   g.fillRect(0, 0, S, S);
   // large tonal blotches
@@ -187,11 +240,11 @@ function makeFloorTexture(rng) {
 }
 
 // --- corrugated steel wall texture (vertical ribs + girders + grime) --------
-function makeWallTexture(rng) {
+function makeWallTexture(rng: RandomSource): HTMLCanvasElement {
   const W = 512, H = 256;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
-  const g = c.getContext('2d', { willReadFrequently: true });
+  const g = get2dContext(c, { willReadFrequently: true });
   // base panel color
   g.fillStyle = '#3d4349';
   g.fillRect(0, 0, W, H);
@@ -263,14 +316,14 @@ function makeWallTexture(rng) {
 // Inter has no condensed cut: bake at 44px but shrink-to-fit against the
 // plate's inner width (the old 79%-width face fit 'NO SMOKING' at 44px flat).
 export const SIGN_FONT = "700 44px 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif";
-export function makeSignTexture(rng, text) {
+export function makeSignTexture(rng: RandomSource, text: string): HTMLCanvasElement {
   const W = 256, H = 128;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
-  const g = c.getContext('2d');
+  const g = get2dContext(c);
   // wear specks precomputed so the rng stream stays deterministic even when
   // the plate re-bakes after the webfont resolves (draw() below is re-run).
-  const wear = [];
+  const wear: SignWear[] = [];
   for (let i = 0; i < 260; i++) {
     wear.push([rng() < 0.6, rng() * W, rng() * H, 1 + rng() * 3, 1 + rng() * 2]);
   }
@@ -317,12 +370,12 @@ export function makeSignTexture(rng, text) {
 }
 
 // hazard-stripe band for the podium rim
-export function makeHazardTexture() {
+export function makeHazardTexture(): HTMLCanvasElement {
   const W = 512, H = 64;
   const wearRng = mulberry32(60211);
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
-  const g = c.getContext('2d');
+  const g = get2dContext(c);
   g.fillStyle = '#c9a22c';
   g.fillRect(0, 0, W, H);
   g.fillStyle = '#1c1e20';
@@ -348,17 +401,21 @@ export function makeHazardTexture() {
  *            stats:()=>import('./garageArchitecture.ts').GarageArchitectureStats,
  *            dispose:Function}}
  */
-export function createGarageStage(engineCtx, pos, initialVariantId = '') {
+export function createGarageStage(
+  engineCtx: GarageStageEngineContext,
+  pos: THREE.Vector3,
+  initialVariantId = '',
+): GarageStageRuntime {
   const rng = mulberry32(90210);
   const group = new THREE.Group();
   group.position.copy(pos);
   const aniso = (engineCtx && engineCtx.anisotropy) || 4;
-  const shadowMat = (m) => {
+  const shadowMat = <T extends THREE.Material>(m: T): T => {
     if (engineCtx && engineCtx.setupShadowMaterial) engineCtx.setupShadowMaterial(m);
     return m;
   };
-  const disposables = [];
-  const track = (o) => { disposables.push(o); return o; };
+  const disposables: Array<{ dispose(): void }> = [];
+  const track = <T extends { dispose(): void }>(o: T): T => { disposables.push(o); return o; };
 
   const HW = GARAGE_FLOOR_SIZE_M / 2; // camera at +8.2/+8.8 stays well inside
   const WALL_H = 10;
@@ -384,7 +441,7 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
   // subtle contact-glow pool under the podium (fake bounce light)
   const poolC = document.createElement('canvas');
   poolC.width = poolC.height = 256;
-  const pg = poolC.getContext('2d');
+  const pg = get2dContext(poolC);
   const pgrad = pg.createRadialGradient(128, 128, 10, 128, 128, 128);
   pgrad.addColorStop(0, 'rgba(255,238,205,0.30)');
   pgrad.addColorStop(0.55, 'rgba(255,238,205,0.10)');
@@ -415,7 +472,7 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
   const podiumTextureSize = 512;
   podTopC.width = podTopC.height = podiumTextureSize;
   {
-    const g = podTopC.getContext('2d', { willReadFrequently: true });
+    const g = get2dContext(podTopC, { willReadFrequently: true });
     const C = podiumTextureSize / 2;
     const px = podiumTextureSize / 1024;
     g.fillStyle = '#45484c';
@@ -539,7 +596,7 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
   }));
   track(wallMat);
   const wallGeo = track(new THREE.PlaneGeometry(HW * 2, WALL_H));
-  const baseWalls = [];
+  const baseWalls: THREE.Mesh[] = [];
   for (const [rx, ry, x, z] of [
     [0, 0, 0, -HW],            // north (faces +z, behind the tank in frame)
     [0, Math.PI, 0, HW],       // south
@@ -569,7 +626,7 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
   }));
   track(trussMat);
   const trussGeo = track(new THREE.BoxGeometry(HW * 2, 0.5, 0.22));
-  const roofTrusses = [];
+  const roofTrusses: THREE.Mesh[] = [];
   for (let i = -1; i <= 1; i++) {
     const truss = new THREE.Mesh(trussGeo, trussMat);
     truss.position.set(0, WALL_H - 0.35, i * 12);
@@ -682,7 +739,7 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
   const lampHaloC = document.createElement('canvas');
   lampHaloC.width = 128; lampHaloC.height = 128;
   {
-    const hg = lampHaloC.getContext('2d');
+    const hg = get2dContext(lampHaloC);
     const hgrad = hg.createRadialGradient(64, 64, 2, 64, 64, 62);
     hgrad.addColorStop(0, 'rgba(255,232,190,0.85)');
     hgrad.addColorStop(0.22, 'rgba(255,226,176,0.40)');
@@ -790,7 +847,7 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
   const haloC = document.createElement('canvas');
   haloC.width = haloC.height = 128;
   {
-    const hg = haloC.getContext('2d');
+    const hg = get2dContext(haloC);
     const hgrad = hg.createRadialGradient(64, 64, 18, 64, 64, 64);
     hgrad.addColorStop(0, 'rgba(0,0,0,0.5)');
     hgrad.addColorStop(0.7, 'rgba(0,0,0,0.22)');
@@ -882,7 +939,7 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
   const crateTexC = document.createElement('canvas');
   crateTexC.width = crateTexC.height = 128;
   {
-    const g = crateTexC.getContext('2d');
+    const g = get2dContext(crateTexC);
     // tank_models r5 (minor #8): from the locked garage camera the crate
     // stack sits exactly on the rear-deck line of every carousel vehicle —
     // bright raw pine read as a copy-pasted deck prop on the tanks. Repaint
@@ -946,7 +1003,7 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
   const cabTexC = document.createElement('canvas');
   cabTexC.width = 256; cabTexC.height = 256;
   {
-    const g = cabTexC.getContext('2d');
+    const g = get2dContext(cabTexC);
     g.fillStyle = '#7e2a24'; // worn signal red
     g.fillRect(0, 0, 256, 256);
     // panel shading top->bottom
@@ -1005,7 +1062,12 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
     wheel.position.set(wx, 0.08, wz);
     chest.add(wheel);
   }
-  chest.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  chest.traverse((o) => {
+    if (o instanceof THREE.Mesh) {
+      o.castShadow = true;
+      o.receiveShadow = true;
+    }
+  });
   group.add(chest);
   const benchTopMat = shadowMat(new THREE.MeshStandardMaterial({ color: 0x6d5a38, roughness: 0.8 }));
   const benchLegMat = shadowMat(new THREE.MeshStandardMaterial({ color: 0x2c2f32, roughness: 0.55, metalness: 0.5 }));
@@ -1033,7 +1095,7 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
     // 1. painted ring decal (dashed, worn)
     const ringC = document.createElement('canvas');
     ringC.width = ringC.height = 512;
-    const rg = ringC.getContext('2d');
+    const rg = get2dContext(ringC);
     rg.translate(256, 256);
     rg.strokeStyle = 'rgba(202,170,52,0.6)';
     rg.lineWidth = 9;
@@ -1080,7 +1142,7 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
     // 3. foreground oil stains
     const stainC = document.createElement('canvas');
     stainC.width = stainC.height = 128;
-    const sg = stainC.getContext('2d');
+    const sg = get2dContext(stainC);
     const sgrad = sg.createRadialGradient(64, 64, 4, 64, 64, 62);
     sgrad.addColorStop(0, 'rgba(14,14,16,0.5)');
     sgrad.addColorStop(0.6, 'rgba(14,14,16,0.22)');
@@ -1126,7 +1188,7 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
     }
   }
 
-  const setVariant = (variantId) => {
+  const setVariant = (variantId: string): string => {
     const variant = getGarageVariant(variantId);
     const neutral = new THREE.Color(0xffffff);
     group.userData.garageVariantId = variant.id;

@@ -877,7 +877,7 @@ colored badge, tier, era), right-side stats card (HP, top speed, hp/t, pen/dmg o
 Emits `ui:battleStart` and `ui:click` on the bus. Keyboard: ←/→ select, Enter battle.
 
 `src/game/garageVariants.ts` owns the immutable ten-location registry,
-architecture key, and persistence key. `garageStage.js` owns the first-paint
+architecture key, and persistence key. `garageStage.ts` owns the first-paint
 shell and palette; `garageArchitecture.ts` lazily builds and caches the ten
 distinct macro structures. `garageDressingAccess.ts` keeps a stable light/root
 while lazily importing `garageDressing.ts`; `garageDressingScheduler.ts` adds
