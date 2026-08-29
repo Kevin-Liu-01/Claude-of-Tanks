@@ -9,8 +9,10 @@
 import * as THREE from 'three';
 import {
   CAMO_PATTERN_IDS,
+  CAMO_CATALOG_PATTERN_IDS,
   CAMO_PATTERN_LABEL,
   CUSTOM_CAMO_ID,
+  FACTORY_CAMO_PATTERN_BY_NATION,
   customCamoPatternId,
   defaultCamoPatternId,
   hasSignatureCamo,
@@ -18,11 +20,15 @@ import {
   networkCamoId,
   normalizeCustomCamo,
   parseCustomCamoPatternId,
+  sharedCamoPreset,
+  signatureCamoPatternId,
 } from './camoPolicy.ts';
 import type { CamoPatternId, CustomCamo, CustomCamoStroke } from './camoPolicy.ts';
 import { paintCustomCamoStrokes } from './customCamoCanvas.ts';
 
-export { CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID } from './camoPolicy.ts';
+export {
+  CAMO_CATALOG_PATTERN_IDS, CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID,
+} from './camoPolicy.ts';
 import { tagVehicleMaterial } from './appearanceAudit.ts';
 import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from './vehicleMarkings.ts';
 import type { VehicleMarkingRecord } from './vehicleMarkings.ts';
@@ -3715,6 +3721,10 @@ export function getCamoSelection(specId: string): MaterialPatternId {
   try {
     const v = localStorage.getItem(CAMO_LS_PREFIX + specId);
     if (v == null) return defaultCamoPatternId(specId);
+    // The first Signature rollout persisted one tank-relative id. Migrate it
+    // on read to the named reusable preset so returning players see the new
+    // catalog selection without losing the colorway they chose.
+    if (v === 'signature') return signatureCamoPatternId(specId) || 'factory';
     if (isBuiltInCamoId(v)) return v;
     if (v === CUSTOM_CAMO_ID && localStorage.getItem(CUSTOM_CAMO_LS_PREFIX + specId)) {
       return CUSTOM_CAMO_ID;
@@ -3852,94 +3862,40 @@ export function hasCamoPaint(specId: string): boolean {
     || (BIOME_PATTERN[activeBiome] || []).includes(pat);
 }
 
-// Factory is a NATIONAL delivery coat, not whichever palette happened to be
-// authored inside a builder. Each recipe retains the exemplar's pattern
-// language while keeping the requested service color family. The painter's
-// grain, panel, weld, chip, mottle, roughness and weather passes remain active,
-// so a solid national coat is still materially textured rather than flat.
-const NATIONAL_FACTORY_VISUAL: Readonly<Record<string, Partial<MaterialVisual>>> = Object.freeze({
-  USA: {
-    scheme: 'desert', base: '#a88e63', weather: '#b9a175',
-    patches: ['#755c42', '#91784f', '#c3ad82'], camoScale: 0.52,
-  },
-  Germany: {
-    scheme: 'stripes', base: '#45494b', weather: '#565b5e',
-    patches: ['#292d2f', '#62676a', '#353a3c'], camoScale: 0.44,
-  },
-  Russia: {
-    scheme: 'solid', base: '#44553b', weather: '#5a6448', patches: [],
-    camoScale: 0.46, solidWeatheringIntensity: 0.72,
-  },
-  UK: {
-    scheme: 'stripes', base: '#414c38', weather: '#4a5540',
-    patches: ['#1e201d'], camoScale: 0.48,
-  },
-  France: {
-    scheme: 'nato', base: '#344651', weather: '#425663',
-    patches: ['#26343c', '#586b75'], camoScale: 0.45,
-  },
-  China: {
-    scheme: 'digital', base: '#4b573e', weather: '#59654a',
-    patches: ['#68704f', '#35422f', '#252b22'], camoScale: 0.42, digitalCellK: 1.45,
-  },
-  Italy: {
-    scheme: 'stripes', base: '#474b4c', weather: '#585d5f',
-    patches: ['#34393a', '#272b2c'], camoScale: 0.56,
-  },
-  Japan: {
-    scheme: 'stripes', base: '#39463a', weather: '#445144',
-    patches: ['#63523c', '#2e392f'], camoScale: 0.5,
-  },
-  Poland: {
-    scheme: 'digital', base: '#313b38', weather: '#47504a',
-    patches: ['#202725', '#4e5750', '#67685e'], camoScale: 0.36,
-  },
-  'South Korea': {
-    scheme: 'digital', base: '#465341', weather: '#5e6753',
-    patches: ['#2d352c', '#69604b', '#81765b'], camoScale: 0.5,
-  },
-  Sweden: {
-    scheme: 'splinter', base: '#34493c', weather: '#4b5b4c',
-    patches: ['#202b26', '#5c644c', '#81745a'], camoScale: 0.42,
-  },
-  Israel: {
-    scheme: 'solid', base: '#6f7566', weather: '#7b8172', patches: [],
-    camoScale: 0.46, solidWeatheringIntensity: 0.68,
-  },
-  Ukraine: {
-    scheme: 'digital', base: '#4c5142', weather: '#666956',
-    patches: ['#30352d', '#625b46', '#77705a'], camoScale: 0.5,
-  },
-});
-
-const SIGNATURE_VISUAL_OVERRIDE: Readonly<Record<string, Partial<MaterialVisual>>> = Object.freeze({
-  // Keep the T-90M's authored forest coat but preserve the calibrated dusty
-  // modulation that made its solid finish read through the garage key light.
-  t90m: { weather: '#5d6549', solidWeatheringIntensity: 0.82 },
-  t90m_proryv: { weather: '#5d6549', solidWeatheringIntensity: 0.82 },
-  // Type 90 previously duplicated Type 10 byte-for-byte. This warmer JGSDF
-  // two-tone makes the requested Type 90 personality an actual selection.
-  type90: {
-    scheme: 'stripes', base: '#46503d', weather: '#555d49',
-    patches: ['#70563e', '#303a30'], camoScale: 0.48,
-  },
-  // The 105 mm PL-01 shared the national reference verbatim. Give the gun
-  // variant a tighter, cooler stealth-digital field while keeping PL-01's
-  // palette lineage recognizable.
-  pl01_105: {
-    scheme: 'digital', base: '#3b4641', weather: '#525c55',
-    patches: ['#252d2a', '#56615a', '#73746a'], camoScale: 0.3,
-  },
-});
-
 function factoryNationKey(nation: unknown): string {
   const key = String(nation || '');
   return key === 'USSR' || key === 'USSR/Russia' || key === 'Russia' ? 'Russia' : key;
 }
 
+function applySharedCamoVisual(
+  authored: MaterialVisual,
+  patternId: MaterialPatternId,
+): MaterialVisual | null {
+  const preset = sharedCamoPreset(patternId);
+  if (!preset) return null;
+  const recipe = preset.visual;
+  // Reset every pattern-morphology knob as well as the visible palette. A
+  // reusable preset must look the same on an Abrams and a T-90 instead of
+  // accidentally inheriting either builder's authored patch density.
+  return {
+    ...authored,
+    scheme: recipe.scheme,
+    base: recipe.base,
+    weather: recipe.weather,
+    patches: [...recipe.patches],
+    camoScale: recipe.camoScale,
+    patchK: recipe.patchK,
+    digitalCellK: recipe.digitalCellK,
+    solidWeatheringIntensity: recipe.solidWeatheringIntensity,
+    bandAngle: undefined,
+    blackK: undefined,
+    rainK: undefined,
+  };
+}
+
 function factoryVisual(spec: MaterialTankSpec, authored: MaterialVisual): MaterialVisual {
-  const standard = NATIONAL_FACTORY_VISUAL[factoryNationKey(spec.nation)];
-  return standard ? { ...authored, ...standard } : authored;
+  const patternId = FACTORY_CAMO_PATTERN_BY_NATION[factoryNationKey(spec.nation)];
+  return patternId ? applySharedCamoVisual(authored, patternId) || authored : authored;
 }
 
 function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): MaterialVisual {
@@ -3965,10 +3921,12 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
       drawMirror: custom.mirror,
     };
   }
+  const shared = applySharedCamoVisual(v, patternId);
+  if (shared) return shared;
   if (patternId === 'signature') {
     if (!hasSignatureCamo(spec.id)) return factoryVisual(spec, v);
-    const override = SIGNATURE_VISUAL_OVERRIDE[spec.id];
-    return override ? { ...v, ...override } : v;
+    const signatureId = signatureCamoPatternId(spec.id);
+    return signatureId ? applySharedCamoVisual(v, signatureId) || v : v;
   }
   if (patternId === 'factory') {
     return factoryVisual(spec, v);

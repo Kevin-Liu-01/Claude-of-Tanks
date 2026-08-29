@@ -37,7 +37,7 @@ import {
 import { createShell, stepShell } from '../sim/ballistics.ts';
 import { createBus } from './stateCore.ts';
 import {
-  CAMO_PATTERN_IDS, setCamoOverride, clearCamoOverrides, applyCamoPatterns,
+  CAMO_CATALOG_PATTERN_IDS, setCamoOverride, clearCamoOverrides, applyCamoPatterns,
   setCamoBiome,
 } from '../vehicles/materials.ts';
 import { MAP_IDS, getMapConfig, resolveMapId } from '../world/maps/index.ts';
@@ -2954,7 +2954,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     MAP_IDS,
     ACTOR_STATES,
     EFFECT_TYPES,
-    CAMO_PATTERN_IDS,
+    CAMO_PATTERN_IDS: CAMO_CATALOG_PATTERN_IDS,
     getMapInfo: (id: string) => {
       const config = getMapConfig(id);
       return { id, name: config.name || id };

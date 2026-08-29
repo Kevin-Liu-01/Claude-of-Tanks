@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
 import {
+  CAMO_CATALOG_PATTERN_IDS,
   CAMO_PATTERN_IDS,
+  CAMO_PATTERN_LABEL,
   CAMO_TAG_IDS,
   CAMO_TAG_LABEL,
   CUSTOM_CAMO_ID,
+  FACTORY_CAMO_PATTERN_BY_NATION,
+  SHARED_CAMO_PRESETS,
   SIGNATURE_CAMO_TANK_IDS,
   camoMatchesTag,
   camoPatternTags,
@@ -13,6 +17,8 @@ import {
   networkCamoId,
   normalizeCustomCamo,
   parseCustomCamoPatternId,
+  sharedCamoPreset,
+  signatureCamoPatternId,
 } from './camoPolicy.ts';
 
 assert.equal(isBuiltInCamoId('summer'), true);
@@ -23,10 +29,33 @@ assert.equal(networkCamoId('unknown'), 'factory');
 assert.equal(networkCamoId(CAMO_PATTERN_IDS.at(-1)), CAMO_PATTERN_IDS.at(-1));
 assert.equal(isBuiltInCamoId('signature'), true,
   'first-party vehicle Signature finishes are match-safe built-ins');
-assert.equal(defaultCamoPatternId('abramsx'), 'signature');
+assert.equal(CAMO_CATALOG_PATTERN_IDS.includes('signature'), false,
+  'the legacy generic Signature id stays out of the named player catalog');
+assert.equal(CAMO_CATALOG_PATTERN_IDS.length, CAMO_PATTERN_IDS.length - 1);
+assert.equal(defaultCamoPatternId('abramsx'), 'sig_abramsx');
 assert.equal(defaultCamoPatternId('m1a2'), 'factory');
 assert.ok(SIGNATURE_CAMO_TANK_IDS.length >= 45,
   'the requested personality fleet must remain explicit and substantial');
+assert.ok(SHARED_CAMO_PRESETS.length >= 60,
+  'service references and every requested personality colorway remain reusable');
+assert.equal(new Set(SHARED_CAMO_PRESETS.map(({ id }) => id)).size, SHARED_CAMO_PRESETS.length,
+  'reusable camouflage preset ids stay unique');
+for (const preset of SHARED_CAMO_PRESETS) {
+  assert.ok(CAMO_PATTERN_IDS.includes(preset.id), `${preset.id} is a selectable built-in pattern`);
+  assert.equal(sharedCamoPreset(preset.id), preset, `${preset.id} resolves to its canonical recipe`);
+  assert.ok(CAMO_PATTERN_LABEL[preset.id], `${preset.id} has a garage label`);
+  assert.ok(preset.visual.base && preset.visual.weather, `${preset.id} owns a complete palette`);
+}
+for (const tankId of SIGNATURE_CAMO_TANK_IDS) {
+  const patternId = signatureCamoPatternId(tankId);
+  assert.ok(patternId, `${tankId} owns a named Signature preset`);
+  assert.equal(sharedCamoPreset(patternId)?.sourceTankId, tankId,
+    `${tankId} selects its own reusable colorway`);
+}
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.USA, 'service_usa_desert');
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Germany, 'service_leo2a6m');
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Russia, 'service_t90m');
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.France, 'service_leclerc_xlr');
 
 const camoTagIds = new Set(CAMO_TAG_IDS);
 assert.equal(camoTagIds.size, CAMO_TAG_IDS.length, 'camouflage tag ids stay unique');
@@ -41,6 +70,8 @@ for (const patternId of CAMO_PATTERN_IDS) {
 }
 assert.deepEqual(camoPatternTags('factory', 'Germany'), ['de', 'factory']);
 assert.deepEqual(camoPatternTags('signature', 'Ukraine'), ['ua', 'signature', 'special']);
+assert.deepEqual(camoPatternTags('service_leo2a6m'), ['de', 'woodland', 'stripes', 'factory']);
+assert.deepEqual(camoPatternTags('sig_ua_t80bv'), ['ua', 'woodland', 'digital', 'signature', 'special']);
 assert.equal(camoMatchesTag('merdc', 'France', 'usa'), true,
   'historical national association remains independent of selected tank');
 assert.equal(camoMatchesTag('digitaldesert', 'USA', 'desert'), true);

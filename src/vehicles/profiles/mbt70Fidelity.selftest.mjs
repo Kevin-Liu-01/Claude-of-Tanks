@@ -16,9 +16,9 @@ assert.equal(spec.authorship?.runtimeExternalGeometry, false, 'runtime external 
 assert.equal(spec.nation, 'Germany', 'garage nation is Germany');
 const factoryVisual = resolveCamoVisual(spec, 'factory');
 assert.equal(factoryVisual.scheme, 'stripes',
-  'national Factory paint uses the standardized German band language');
-assert.equal(factoryVisual.base, '#45494b',
-  'national Factory paint uses the standardized gunmetal-gray delivery coat');
+  'national Factory paint uses the Leopard 2A6M donor band language');
+assert.equal(factoryVisual.base, '#48503f',
+  'national Factory paint uses the Leopard 2A6M donor delivery coat');
 const signatureVisual = resolveCamoVisual(spec, 'signature');
 assert.equal(signatureVisual.scheme, 'fleck',
   'MBT-70 retains its authored modernized Bundeswehr flecktarn as Signature paint');

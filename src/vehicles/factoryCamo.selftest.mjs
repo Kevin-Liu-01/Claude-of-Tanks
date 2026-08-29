@@ -2,20 +2,23 @@ import assert from 'node:assert/strict';
 import './tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
 import {
+  FACTORY_CAMO_PATTERN_BY_NATION,
+  SHARED_CAMO_PRESETS,
   SIGNATURE_CAMO_TANK_IDS,
   defaultCamoPatternId,
   hasSignatureCamo,
+  signatureCamoPatternId,
 } from './camoPolicy.ts';
 import { getCamoSelection, resolveCamoVisual } from './materials.ts';
 
 const standards = {
-  USA: ['desert', '#a88e63', '#b9a175', ['#755c42', '#91784f', '#c3ad82']],
-  Germany: ['stripes', '#45494b', '#565b5e', ['#292d2f', '#62676a', '#353a3c']],
-  Russia: ['solid', '#44553b', '#5a6448', []],
+  USA: ['desert', '#b09466', '#c4ad7d', ['#7a5f43', '#947c52', '#cbb489']],
+  Germany: ['stripes', '#48503f', '#626956', ['#293128', '#605640', '#746d58']],
+  Russia: ['solid', '#3f5138', '#4a5c42', []],
   UK: ['stripes', '#414c38', '#4a5540', ['#1e201d']],
-  France: ['nato', '#344651', '#425663', ['#26343c', '#586b75']],
-  China: ['digital', '#4b573e', '#59654a', ['#68704f', '#35422f', '#252b22']],
-  Italy: ['stripes', '#474b4c', '#585d5f', ['#34393a', '#272b2c']],
+  France: ['nato', '#3e4d3a', '#48573f', ['#5b4a38', '#1d1f1c']],
+  China: ['digital', '#4d573f', '#57614a', ['#6f684c', '#39412f', '#23261e']],
+  Italy: ['stripes', '#48533e', '#53604a', ['#384431', '#2c3529']],
   Japan: ['stripes', '#39463a', '#445144', ['#63523c', '#2e392f']],
   Poland: ['digital', '#313b38', '#47504a', ['#202725', '#4e5750', '#67685e']],
   'South Korea': ['digital', '#465341', '#5e6753', ['#2d352c', '#69604b', '#81765b']],
@@ -50,31 +53,50 @@ assert.ok(standardized >= 120, 'nearly the whole playable fleet must have a nati
 for (const id of SIGNATURE_CAMO_TANK_IDS) {
   assert.ok(ALL_TANK_IDS.includes(id), `${id} Signature entry must name a playable tank`);
   assert.equal(hasSignatureCamo(id), true);
-  assert.equal(defaultCamoPatternId(id), 'signature', `${id} must initially wear its Signature finish`);
+  const signaturePatternId = signatureCamoPatternId(id);
+  assert.ok(signaturePatternId, `${id} must own a named reusable Signature finish`);
+  assert.equal(defaultCamoPatternId(id), signaturePatternId,
+    `${id} must initially wear its named Signature finish`);
   assert.notEqual(
-    paletteKey(resolveCamoVisual(getSpec(id), 'signature')),
+    paletteKey(resolveCamoVisual(getSpec(id), signaturePatternId)),
     paletteKey(resolveCamoVisual(getSpec(id), 'factory')),
     `${id} Signature must remain visibly differentiated from national Factory`,
   );
 }
 
+for (const [nation, patternId] of Object.entries(FACTORY_CAMO_PATTERN_BY_NATION)) {
+  assert.ok(SHARED_CAMO_PRESETS.some((preset) => preset.id === patternId),
+    `${nation} Factory owns a reusable named service preset`);
+}
+
+const abramsXOnAbrams = resolveCamoVisual(getSpec('m1a2'), 'sig_abramsx');
+const abramsXOnT90 = resolveCamoVisual(getSpec('t90m'), 'sig_abramsx');
+assert.equal(paletteKey(abramsXOnAbrams), paletteKey(abramsXOnT90),
+  'a named vehicle colorway renders identically on tanks from different nations');
+
 assert.equal(defaultCamoPatternId('m1a2'), 'factory');
-assert.equal(getCamoSelection('abramsx'), 'signature',
-  'an unset personality vehicle must select Signature even without browser storage');
+assert.equal(getCamoSelection('abramsx'), 'sig_abramsx',
+  'an unset personality vehicle must select its named Signature preset without browser storage');
 assert.equal(getCamoSelection('m1a2'), 'factory',
   'an unset standard vehicle must select national Factory');
 
 const previousLocalStorage = globalThis.localStorage;
 globalThis.localStorage = {
-  getItem: (key) => key === 'cot.camo.abramsx' ? 'factory' : null,
+  getItem: (key) => {
+    if (key === 'cot.camo.abramsx') return 'factory';
+    if (key === 'cot.camo.m551_sheridan') return 'signature';
+    return null;
+  },
   setItem: () => {},
 };
 try {
   assert.equal(getCamoSelection('abramsx'), 'factory',
     'an explicit player Factory selection must override the Signature default');
+  assert.equal(getCamoSelection('m551_sheridan'), 'sig_m551_sheridan',
+    'the legacy tank-relative Signature id migrates to its named reusable preset');
 } finally {
   if (previousLocalStorage === undefined) delete globalThis.localStorage;
   else globalThis.localStorage = previousLocalStorage;
 }
 
-console.log(`factoryCamo.selftest: ${standardized} national Factory coats and ${SIGNATURE_CAMO_TANK_IDS.length} Signature defaults passed`);
+console.log(`factoryCamo.selftest: ${standardized} donor-owned Factory coats and ${SIGNATURE_CAMO_TANK_IDS.length} reusable Signature defaults passed`);

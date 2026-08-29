@@ -90,7 +90,7 @@ import {
 import { isBuiltInCamoId } from './vehicles/camoPolicy.ts';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
-  CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,
+  CAMO_CATALOG_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,
   getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
   setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked,
   clearCamoOverrides, warmWreckTextures,
@@ -948,7 +948,7 @@ const garage = legacyPort<MainGarageRuntime>(await bootStage('ui', () => createG
   // CAMO WIRING: per-tank paint picker — persists the choice and repaints the
   // shared albedo in place, so the pedestal tank updates immediately.
   camo: {
-    patterns: CAMO_PATTERN_IDS,
+    patterns: CAMO_CATALOG_PATTERN_IDS,
     label: CAMO_PATTERN_LABEL,
     get: (specId: string) => getCamoSelection(specId),
     getCustom: (specId: string) => getCustomCamoSelection(specId),
