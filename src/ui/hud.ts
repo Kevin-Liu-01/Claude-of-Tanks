@@ -249,6 +249,7 @@ interface HudHitEvent extends HitEventPresentation {
   pos: Vec3Tuple;
   localDir?: Vec3Tuple | null;
   damage: number;
+  dmgRoll?: number;
   modulesHit?: ReadonlyArray<{ newState?: string }>;
   crewHit?: readonly unknown[];
 }
@@ -285,6 +286,8 @@ interface HitDirection {
   kind: 'pen' | 'bounce' | 'he';
   crit: boolean;
   dmg: number;
+  amount: number;
+  amountLabel: string;
   t0: number;
   re: boolean;
   _screenAng: number | null;
@@ -376,7 +379,14 @@ export interface HudRuntime {
   root: HTMLDivElement;
   shotInfo: ShotInfoRuntime;
   forceHitMark(bounced?: boolean): void;
-  getHitArcs(): Array<{ kind: string; crit: boolean; dmg: number; screenAngRad: number | null; ageS: number }>;
+  getHitArcs(): Array<{
+    kind: string;
+    crit: boolean;
+    dmg: number;
+    amount: number;
+    screenAngRad: number | null;
+    ageS: number;
+  }>;
   getSpectateBar(): { shown: boolean; nick: string | null; vehicle: string | null };
   stageSpectateBar(payload?: HudEventPayload): void;
   warmShotCards(specIds: readonly string[]): void;
@@ -455,6 +465,15 @@ const AUTOLOADER_HUD_ARC_DEPTH = 2.25;
 const AUTOLOADER_HUD_OUTER_ROTATION = 0.14;
 const AUTOLOADER_SHELL_RELOADING = 'rgba(174,184,192,0.9)';
 export const HIT_CONFIRM_LIFETIME_S = 1.4;
+
+/** Exact value printed on an incoming direction arc. */
+export function directionalHitAmount(
+  hit: Pick<HudHitEvent, 'damage' | 'dmgRoll'>,
+  blocked = false,
+): number {
+  const raw = blocked ? hit.dmgRoll : hit.damage;
+  return Number.isFinite(raw) ? Math.max(0, Math.round(raw || 0)) : 0;
+}
 
 /**
  * Convert physical aim constraints into one stable, player-facing warning.
@@ -2726,9 +2745,27 @@ export function initHud(bus: EventBus): HudRuntime {
         ctx.stroke();
         ctx.globalCompositeOperation = 'source-over';
       }
-      // Direction is this surface's only job. Damage/result copy lives in the
-      // canonical incoming-fire card, preventing one event from painting the
-      // same RICOCHET or damage value twice in different visual grammars.
+      // Exact impact value rides the direction arc: red is applied damage,
+      // steel is authoritative pre-mitigation damage blocked. Result words
+      // remain exclusive to the canonical incoming-fire card.
+      if (e.amount > 0 && e.kind !== 'he') {
+        const valueR = R0 + thick * 0.56;
+        const tx = cx + Math.cos(c) * valueR;
+        const ty = cy + Math.sin(c) * valueR;
+        const fontPx = Math.round(Math.min(Math.max(minWH * 0.022, 13), 18));
+        const valueRgb = e.kind === 'bounce' ? '241,247,252' : '255,226,218';
+        ctx.save();
+        ctx.font = `900 ${fontPx}px ${FONT_COND}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 4.2;
+        ctx.strokeStyle = `rgba(5,8,11,${(0.9 * aEnv).toFixed(3)})`;
+        ctx.strokeText(e.amountLabel, tx, ty);
+        ctx.fillStyle = `rgba(${valueRgb},${(0.98 * aEnv).toFixed(3)})`;
+        ctx.fillText(e.amountLabel, tx, ty);
+        ctx.restore();
+      }
     }
     ctx.lineCap = 'butt';
   }
@@ -4462,6 +4499,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const outcome = hitOutcomeFor(hit);
     const kind: HitDirection['kind'] = hit.kind === 'he_splash'
       ? 'he' : (outcome.penetrated || dmg > 0) ? 'pen' : 'bounce';
+    const amount = directionalHitAmount(hit, kind === 'bounce' && outcome.blocked);
     // repeat fire from (nearly) the same bearing RE-PULSES the existing wedge
     // — refresh its timer, pool the damage weight — instead of stacking a
     // second copy on top (WoT read; ~20° merge window per class)
@@ -4475,13 +4513,18 @@ export function initHud(bus: EventBus): HudRuntime {
         e.wx = wx;
         e.wz = wz;
         e.dmg = (e.dmg || 0) + dmg; // pooled total — the wedge number re-pulses with it
+        e.amount += amount;
+        e.amountLabel = String(e.amount);
         e.crit = e.crit || crit;
         e.t0 = lastTimeS; // decay timer restarts
         e.re = true;      // attack re-runs as a flash, not a full re-grow
         return;
       }
     }
-    hitDirs.push({ wx, wz, kind, crit, dmg, t0: lastTimeS, re: false, _screenAng: null });
+    hitDirs.push({
+      wx, wz, kind, crit, dmg, amount, amountLabel: String(amount),
+      t0: lastTimeS, re: false, _screenAng: null,
+    });
     // hard cap: 5 simultaneous wedges — drop the oldest, never visual soup
     while (hitDirs.length > 5) hitDirs.shift();
   }
@@ -4770,13 +4813,14 @@ export function initHud(bus: EventBus): HudRuntime {
      * screenAngRad is the camera-relative bearing the LAST rendered frame
      * used (0 = camera forward, + = screen right) — the known-bearing probe
      * asserts it against an independently computed expectation.
-     * @returns {Array<{kind:string,crit:boolean,dmg:number,screenAngRad:?number,ageS:number}>}
+     * @returns {Array<{kind:string,crit:boolean,dmg:number,amount:number,screenAngRad:?number,ageS:number}>}
      */
     getHitArcs() {
       return hitDirs.map((d) => ({
         kind: d.kind,
         crit: !!d.crit,
         dmg: d.dmg || 0,
+        amount: d.amount || 0,
         screenAngRad: d._screenAng,
         ageS: Math.round((lastTimeS - d.t0) * 1000) / 1000,
       }));

@@ -5,10 +5,32 @@ import {
   autoloaderHudShellPose,
   autoloaderHudState,
   aimWarningState,
+  directionalHitAmount,
   hitConfirmVisualState,
   reloadHudFraction,
   resolveReticleAnchor,
 } from './hud.ts';
+
+assert.equal(
+  directionalHitAmount({ damage: 417, dmgRoll: 522 }),
+  417,
+  'red incoming arcs show exact applied damage',
+);
+assert.equal(
+  directionalHitAmount({ damage: 0, dmgRoll: 522 }, true),
+  522,
+  'steel incoming arcs show authoritative blocked damage',
+);
+assert.equal(
+  directionalHitAmount({ damage: 417.6, dmgRoll: 522.4 }),
+  418,
+  'fractional simulation damage is rounded for the compact readout',
+);
+assert.equal(
+  directionalHitAmount({ damage: Number.NaN, dmgRoll: -1 }, true),
+  0,
+  'invalid or negative values never leak into the HUD',
+);
 
 assert.deepEqual(
   aimWarningState({ blockedDistM: 18.4, blockedLabel: false }),
@@ -146,4 +168,4 @@ assert.equal(
 );
 assert.equal(reducedEntry.flash, 0, 'reduced-motion hit confirmation suppresses the center spark');
 
-console.log('hudMagazine.selftest: magazine and hit-confirm HUD states passed');
+console.log('hudMagazine.selftest: magazine, hit-confirm, and directional-value HUD states passed');
