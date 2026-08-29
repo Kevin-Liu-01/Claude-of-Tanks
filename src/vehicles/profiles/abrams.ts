@@ -10156,6 +10156,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
 // equipment and external protection out of the broad structural hit volumes.
 // ---------------------------------------------------------------------------
 function buildM1A3(P: AbramsBuilderPort): void {
+  const turretForwardShiftM = 0.30;
   const g: AbramsHullConfig = {
     ...TEJAS_HULL,
     bodyHalfW: 1.78,
@@ -10234,7 +10235,10 @@ function buildM1A3(P: AbramsBuilderPort): void {
     roofCapW: 1.72,
     slotW: 0.58,
     slotX: 0,
-    ring: [0, 1.67, -0.15],
+    // Move the complete turret group forward as one articulated assembly.
+    // The gun, autoloader bustle, cages, optics and RWS retain their authored
+    // local relationships because they all remain owned by rig_turret.
+    ring: [0, 1.67, -0.15 + turretForwardShiftM],
     gun: [0, 0.28, 0.78],
     gunLen: 5.65,
     gunR: 0.115,
@@ -10476,6 +10480,8 @@ function buildM1A3(P: AbramsBuilderPort): void {
     networkMasts: 4,
     rws: true,
     rwsTowerStyle: 'abramsx-inspired-open-yoke',
+    turretForwardShiftM,
+    turretRingZ: t.ring[2],
   });
   P.hullG.userData.m1a3DesignReceipt = receipt;
   P.turretG.userData.m1a3DesignReceipt = receipt;

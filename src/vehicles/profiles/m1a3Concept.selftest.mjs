@@ -78,6 +78,8 @@ const turretRig = tank.root.getObjectByName('rig_turret');
 const gunRig = tank.root.getObjectByName('rig_gun');
 assert.ok(hullRig && turretRig && gunRig, 'M1A3 retains articulated hull/turret/gun ownership');
 assert.equal(gunRig.parent, turretRig, '130 mm gun articulates with the turret');
+assert.equal(turretRig.position.z, 0.15,
+  'the complete M1A3 turret assembly is seated 300 mm farther forward');
 assert.ok(tank.root.getObjectByName('m1a3RemoteWeaponTower'),
   'AbramsX-inspired roof weapon tower is independently identifiable');
 
@@ -99,6 +101,8 @@ assert.deepEqual(receipt, {
   networkMasts: 4,
   rws: true,
   rwsTowerStyle: 'abramsx-inspired-open-yoke',
+  turretForwardShiftM: 0.30,
+  turretRingZ: 0.15,
 }, 'the visible M1A3 feature receipt remains complete');
 
 function geometryStats(root) {
