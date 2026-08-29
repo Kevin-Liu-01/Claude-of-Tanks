@@ -4738,9 +4738,9 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
   ], { rings: [[1.20, 0.086], [1.90, 0.086], [2.40, 0.082], [3.20, 0.082], [3.80, 0.082], [4.45, 0.082]], muzzle: 4.97 });
   // §B3.1 muzzle bore (shadow-named, mask/frame-neutral by construction)
   muzzleBore(P, { r: 0.089, y: -0.012 });
-  P.add('gun', cylZ(0.180, 1.85, 16, 0.165), 0, 0, 2.625);  // M-5 evacuator / thermal-jacket swell
-  P.add('gunDark', cylZ(0.182, 0.035, 16), 0, 0, 1.70);
-  P.add('gunDark', cylZ(0.182, 0.035, 16), 0, 0, 3.55);
+  P.add('gun', cylZ(0.126, 1.85, 16, 0.118), 0, 0, 2.625);  // M-5 evacuator / thermal-jacket swell
+  P.add('gunDark', cylZ(0.128, 0.035, 16), 0, 0, 1.70);
+  P.add('gunDark', cylZ(0.128, 0.035, 16), 0, 0, 3.55);
   // §5.331: numeral seats moved forward z -0.32 -> -0.05 (§5.266 clip law —
   // the auto-reseat pinned them 10 cm deeper on the pitched transition
   // wedge, and the cage's front post/rails eclipsed the rear digit from

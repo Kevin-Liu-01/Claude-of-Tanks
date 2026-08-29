@@ -4464,7 +4464,9 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
   P.addGunExtraDark(box(0.28, 0.16, 0.035), 0, 0.16, 0.565);
   P.addGunExtra(box(0.30, 0.39, 0.42), 0, 0.03, 1.09);                         // source 2.58..3.00 mantlet/TOGS band
   P.addGunExtra(box(0.25, 0.38, 0.15), 0, 0.11, 1.375);
-  const cr2Sleeve = cylZ(0.19, 3.80, P.q ? 24 : 14, 0.18);
+  // L30 thermal jacket: keep the sleeve visibly proud of the 68 mm tube,
+  // without turning the entire barrel into the former 380 mm-wide cylinder.
+  const cr2Sleeve = cylZ(0.11, 3.80, P.q ? 24 : 14, 0.10);
   P.addGunExtra(cr2Sleeve, 0, 0, 3.00);
   buildGun(P, { len: 5.72, r: 0.068, sleeve: false, evac: 0.56, collar: true, baseR: 0.15 });
   muzzleBore(P, { len: 5.72, r: 0.068 });

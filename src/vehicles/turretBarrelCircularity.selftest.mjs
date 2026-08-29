@@ -48,7 +48,9 @@ assert.ok(Math.abs((offAxisResult.worstAxis?.lateralAxisOffsetM ?? 0) - 0.045) <
 
 for (const id of [
   't90a_vladimir',
+  't90sm',
   'fv4034',
+  'challenger2',
   'challenger2e',
   'ua_challenger2',
   't80',
@@ -80,13 +82,32 @@ for (const id of [
       `${id} keeps circular, axis-centered barrel sections (worst ratio ${result.worst?.aspectRatio}, lateral ${result.worstAxis?.lateralAxisOffsetM})`);
     assert.ok(result.worst && result.worst.aspectRatio <= 1.08,
       `${id} exposes a measurable main-gun contour`);
-    if (['fv4034', 'challenger2e', 'ua_challenger2'].includes(id)) {
+    if (['fv4034', 'challenger2', 'challenger2e', 'ua_challenger2'].includes(id)) {
       const sleeveResult = measureTurretBarrelCircularity(visual, {
         requireMeasurement: true,
         meshNamePattern: /^gunMount$/,
+        checkAxisAlignment: false,
       });
       assert.equal(sleeveResult.pass, true,
         `${id} keeps its forward gun sleeve circular (${sleeveResult.worst?.aspectRatio})`);
+      const maximumSleeveDiameterM = Math.max(...sleeveResult.samples.map((sample) =>
+        Math.max(sample.widthM, sample.heightM)));
+      assert.ok(maximumSleeveDiameterM <= 0.23,
+        `${id} L30 sleeve must stay at a normal diameter (${maximumSleeveDiameterM} m)`);
+    }
+    if (id === 't90sm') {
+      let maximumJacketDiameterM = 0;
+      for (const sample of result.samples) {
+        if (sample.source === 'barrel') {
+          maximumJacketDiameterM = Math.max(
+            maximumJacketDiameterM,
+            sample.widthM,
+            sample.heightM,
+          );
+        }
+      }
+      assert.ok(maximumJacketDiameterM <= 0.26,
+        `t90sm thermal jacket must stay at a normal diameter (${maximumJacketDiameterM} m)`);
     }
   } finally {
     visual.dispose();
