@@ -216,7 +216,7 @@ EVIDENCE: §5.254 pairs shots/m3a3-skirts/before/ + after/ (9 views each).
 
 ### §5.349 LANDING ADDENDUM (2026-08-17, §5.355 closeout)
 The skirt-symmetry course above was PROMOTED into the SHARED family
-grammar (`bradleyFlankDressing`, modern3.js — all three Bradley
+grammar (`bradleyFlankDressing`, modern3.ts — all three Bradley
 playables) by the follow-up §5.349 owner order, gaining the §B2
 donor-bow closure + hanger/bolt hardware at every joint, and LANDED at
 **3635217c** (§5.354 absorb). m3a3-local §B2 fill landed with it: the

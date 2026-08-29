@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { buildType10BBase } from '../modern3.js';
+import { buildType10BBase } from '../modern3.ts';
 import { buildType90 } from './misc.js';
 import { TYPE10_MANTLET_FIT } from './type10GunSeat.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -20,12 +20,23 @@ interface JapaneseBuilderPort {
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
-  readonly mats: unknown;
+  readonly recoilG: THREE.Group;
+  readonly mats: Record<string, THREE.Material> & { readonly rubber: THREE.Material };
   readonly q?: boolean;
+  readonly rng: unknown;
+  readonly disposables: THREE.BufferGeometry[];
+  readonly spec: {
+    readonly armor: { readonly gunPivot: readonly [number, number, number] };
+    readonly visual: { readonly number?: string };
+  };
+  readonly geometryReceipt?: boolean;
   topY?: number;
+  muzzleZ: number;
   add(slot: string, geometry: unknown, ...transform: number[]): unknown;
   addGunExtra(geometry: unknown, ...transform: number[]): unknown;
   addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  addEquipment(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
+  addMudguard(id: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,

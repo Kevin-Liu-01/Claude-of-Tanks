@@ -16,7 +16,8 @@
 // 'PL-01' -> 'K2B'.
 
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
-import { buildK2 } from '../modern3.js';
+import { buildK2 } from '../modern3.ts';
+import type { Modern3BuilderPort } from '../modern3.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type {
   ProceduralBuilderPort,
@@ -202,7 +203,7 @@ function addK2BPackage(P: ProceduralBuilderPort): void {
   P.topY = Math.max(P.topY || 0, 1.48);
 }
 
-function buildK2B(P: ProceduralBuilderPort): void {
+function buildK2B(P: ProceduralBuilderPort & Modern3BuilderPort): void {
   buildK2(P);
   addK2BPackage(P);
 }

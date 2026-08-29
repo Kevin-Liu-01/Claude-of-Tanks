@@ -41,7 +41,7 @@ assume nothing until measured. bmp1_bergman.glb also local (future
 BMP-1 coverage).
 
 ## Gate wiring
-bmp2 rides its procedural modern3.js builder in-game. For gate coverage
+bmp2 rides its procedural modern3.ts builder in-game. For gate coverage
 register the Bergman print through the fidelity harness override map
 (LOCAL_REFERENCE_OVERRIDES, tools/procedural-fidelity.html) — the same
 mechanism graduates use — NOT by re-enabling the quarantined
@@ -90,7 +90,7 @@ idler z -2.52 y 0.50 r 0.24, contact patch z -2.13..1.77 — the
 bottom-line delta up to ~0.3 m over z 2.4..2.9 (~6-8 side columns),
 carried by hullCurves/wholeCurves bottoms.
 
-### Rebuild summary (modern3.js buildBMP2, full re-author)
+### Rebuild summary (modern3.ts buildBMP2, full re-author)
 Tub +-1.0 / sponsons to +-1.37 / roof 1.63 / troop band 1.685; boat prow
 two planes at the print's slopes (glacis 0.226, lower 0.81) with a blunt
 nose beam (stowed trim vane) keeping the converging lip a >=0.30 m body

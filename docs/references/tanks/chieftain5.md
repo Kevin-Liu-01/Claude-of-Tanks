@@ -761,7 +761,7 @@ the §10 re-freeze in the landing commit.
 
 **§B6 family sweep (authored-geometry audit, uk.js + the modern3 mk10):**
 - chieftain5 — FIXED this round (above).
-- chieftain_mk10 (modern3.js, NOT a graduate, no gate ref) — SHARED the
+- chieftain_mk10 (modern3.ts, NOT a graduate, no gate ref) — SHARED the
   defect: idler y 0.50 ≈ wheelY 0.46, front ramp ~14° curling at the bow
   vs the raised rear (y 0.70). Fixed in the same round: idler y → 0.60
   (~24° front ramp, top wrap 0.935 meeting the stepped roller line, rear

@@ -1,6 +1,6 @@
 # Type 10 (`type10`) — oracle packet
 
-Spec home: src/vehicles/modern3.js (P95 datums 6.84 / 9.49 / 3.24 / 2.68).
+Spec home: src/vehicles/modern3.ts (P95 datums 6.84 / 9.49 / 3.24 / 2.68).
 Build: buildType10 (modern3). Family guidance (owner 2026-08-06):
 type10 takes inspiration from type90 recipes.
 
@@ -65,7 +65,7 @@ populated ref+proc pairs (side_hull mean 11.17% cover 4.88, reg dAlong
 0.87 dy 0.416). The zero is the ANCIENT base-21 build vs the real
 print — the §B8 rebuild round starts from this ladder.
 
-## ROUND r1 — §B8 PRIORITY REBUILD (2026-08-07, type10 lane, modern3.js)
+## ROUND r1 — §B8 PRIORITY REBUILD (2026-08-07, type10 lane, modern3.ts)
 
 Full §B8 rebuild of the ancient base-21 custom against the a06f00c oracle.
 Real-proportion re-lay (dims sovereign): hull z -3.415..+3.415, width
@@ -261,7 +261,7 @@ Owner order §5.299 lane C, verbatim: **"keep the type 10b and revert the
 plain type 10 to the model before"**. Delivered uncommitted-unstaged.
 - **type10b PINNED FIRST (the keep)**: the japan-wave base it builds on was
   frozen as a verbatim private copy `buildType10BBase` in
-  src/vehicles/modern3.js (the buildType10Native2026 text exactly as it read
+  src/vehicles/modern3.ts (the buildType10Native2026 text exactly as it read
   at 9555f7fe), and profiles/japan.ts buildType10B re-pointed at it — the
   ONLY consumer. Byte-identity receipt: hashgeo **77870ef0** (76 meshes /
   77,246 verts) before and after the pin, and again after the revert.
@@ -285,7 +285,7 @@ plain type 10 to the model before"**. Delivered uncommitted-unstaged.
   byte-identical** (real change in every view), **type10b 14/14
   byte-identical** (the pixel hold proof of the keep, isu152 precedent).
   Capture determinism proven 28/28 across independent before runs.
-- npm test exit 0. File scope: modern3.js (buildType10 region + pin block
+- npm test exit 0. File scope: modern3.ts (buildType10 region + pin block
   only) + profiles/japan.ts (type10b import/call only); ariete/italy code in
   the shared file untouched.
 The §5.248 JAPAN-WAVE section above stays as history; its KEEP 97267188 is
@@ -406,10 +406,10 @@ profiles/japan.ts addType10BPackage, re-seated at scale).
   this lane; helper A/B proof: type90a + stb1 hash BYTE-IDENTICAL with
   HEAD's profiles/japan.ts vs this lane's (71208238 / f3ee84d8 both ways —
   the s=1-default shared-helper law §F.2 held).
-- Ariete fence: modern3.js ariete spec regions untouched (verbatim);
+- Ariete fence: modern3.ts ariete spec regions untouched (verbatim);
   ariete_c1/c2 hash movement during the session = the live §5.322 lane's
   own italy.js WIP.
-- LIVE-TREE EVENT (snapshot law receipt): mid-session, modern3.js was
+- LIVE-TREE EVENT (snapshot law receipt): mid-session, modern3.ts was
   externally swept to a HEAD-class state carrying the owner bradley WIP
   (§5.349) — this lane's section re-spliced from the scratchpad snapshot
   (wip-snap-2), zero loss. The sweep's kit.js orientedSlab import collided
@@ -430,7 +430,7 @@ profiles/japan.ts addType10BPackage, re-seated at scale).
   old-module cross-check matched to the last double):
   - turretPivot `[0, 1.8027777777777776, 0.2713333333333332]` (both ids;
     sim frame + turret-local equipment datum — the VISUAL turret seat is
-    builder-pinned at [0, 1.672, 0.2354], modern3.js P.turretG line).
+    builder-pinned at [0, 1.672, 0.2354], modern3.ts P.turretG line).
   - gunPivot type10 `[0.01100000000000012, 0.4511015831134565,
     1.1771211453744495]` (the +11 mm x = the certified asymmetric turret
     envelope map, −1.573..+1.595); type10b `[0, 0.4511015831134565,

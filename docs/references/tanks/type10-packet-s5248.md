@@ -20,7 +20,7 @@ source-component gate remains an honest incompatible zero").
   registration rows mirrored across all four harness maps
   (turretComponentMasks:false documented — internal basket).
 
-## Spec true-up (src/vehicles/modern3.js, receipts in type10.md)
+## Spec true-up (src/vehicles/modern3.ts, receipts in type10.md)
 dims 6.79/9.49/3.24/**2.30** -> **6.84/9.49/3.24/2.68** = the 2026-08-10
 sovereign datums (vertex-REG pubDims; §5.73-1 P95-ENVELOPE law — heightM
 includes the mandatory pano head; t14 3.16 / type99a 2.86 / type90 2.55

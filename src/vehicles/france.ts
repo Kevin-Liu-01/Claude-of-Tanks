@@ -6,7 +6,7 @@
 // NOTE: leclerc/amx30/amx30b2 stay in profiles/misc.js (family migration
 // is a separate, owner-approvable move).
 //
-// Registration pattern (modern3.js): tankFactory.ts passes FRANCE_BUILDERS
+// Registration pattern (modern3.ts): tankFactory.ts passes FRANCE_BUILDERS
 // through the checked factory-configuration gate; builders draw on
 // tankFactoryCore's exported geometry KIT.
 
@@ -68,7 +68,7 @@ function xformWithScale<T extends BufferGeometry>(
 // ---------------------------------------------------------------------------
 // §C missing-side winding guard — face-outwardness census; re-orders reversed
 // rings so mirrored slabs never ship inward-facing (FrontSide-culled) walls.
-// Same device as modern3.js orientedSlab / uk.js sslab. KIT dereferenced at
+// Same device as modern3.ts orientedSlab / uk.js sslab. KIT dereferenced at
 // call time only.
 // ---------------------------------------------------------------------------
 function orientedSlab(
@@ -115,7 +115,7 @@ function orientedSlab(
     : KIT.slab(b0, b3, b2, b1, t0, t3, t2, t1);
 }
 
-// §B3.1 MUZZLE BORE (modern3.js mirror — see its header note): open-ended
+// §B3.1 MUZZLE BORE (modern3.ts mirror — see its header note): open-ended
 // outer wall to the face, inward recess funnel, near-black bore disc.
 function muzzleBore(
   P: FranceBuilderPort,

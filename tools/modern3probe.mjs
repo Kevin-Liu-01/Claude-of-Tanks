@@ -1,4 +1,4 @@
-// tools/modern3probe.mjs — captures closeup renders of the modern3.js pack.
+// tools/modern3probe.mjs — captures closeup renders of the modern3.ts pack.
 // Usage: node tools/modern3probe.mjs [--ids a,b,c] [--out shots/modern3]
 //   [--dist meters] [--target-y meters]
 // Two judged angles per vehicle (sun-side front quarter + rear quarter),

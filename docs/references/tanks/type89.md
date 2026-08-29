@@ -10,7 +10,7 @@ along the hull rear sides, thin skirts, Sumitomo M2 12.7 at the commander,
 JGSDF 2-tone, '1071'.
 
 ## OWNERSHIP / ROUND STATE (2026-08-06, AFV lane r1)
-Builder `buildType89` + spec row live in **src/vehicles/modern3.js**
+Builder `buildType89` + spec row live in **src/vehicles/modern3.ts**
 (AFV lane, single owner); registered in MODERN3_BUILDERS + MODERN3_IDS;
 MODEL_SOURCE procedural → garage CUSTOM tab. Owner order 2026-08-06:
 "use the bradley on puma and this type 89 ifv" — bradley recipe base.
@@ -32,7 +32,7 @@ welcome (§E re-source lane open; check the 42manako catalog first).
 | Width | 3.2 m | Wikipedia, tanks-encyclopedia |
 | Height | 2.5 m | Wikipedia (roof cluster line) |
 | Weight | 26.5 t; 600 hp; crew 3+7 | Wikipedia |
-Spec dims (modern3.js): 6.8 / 7.3 / 3.2 / 2.5 — dims sovereign.
+Spec dims (modern3.ts): 6.8 / 7.3 / 3.2 / 2.5 — dims sovereign.
 
 ## r1 BUILD (2026-08-06) — authored inventory
 - HULL: tub ±0.95 (3cm inboard of the 0.98 band face — §B2

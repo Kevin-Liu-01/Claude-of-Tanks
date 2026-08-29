@@ -66,7 +66,7 @@ const REG = {
   // nose = +X (front sprocket wheel_l_1/r_1 raised at +x, doorback1 ramp
   // at -x) -> yawOffset -90 (the leclerc convention). IFV: MK30-2 muzzle
   // stays behind the bow plane in the print -> overall = hull length.
-  // pubDims mirror the modern3.js spec row (7.6 hull; width/height datum
+  // pubDims mirror the modern3.ts spec row (7.6 hull; width/height datum
   // reconciliation documented in docs/references/tanks/spz_puma.md).
   spz_puma: {
     path: 'public/models/tanks/community/spz_puma.glb',
@@ -269,7 +269,7 @@ const REG = {
   // retired T-80U oracle, type90 userdrops5.js source(), ariete + type74 from the
   // fidelity harness LOCAL_REFERENCE_OVERRIDES (quarantine oracles),
   // recon_tank specs.ts MODEL_SOURCE. pubDims from the spec dims rows
-  // (modern2.js t80u/leclerc, modern3.js ariete, userdrops5 type90 make(),
+  // (modern2.js t80u/leclerc, modern3.ts ariete, userdrops5 type90 make(),
   // profiles/miscSpecs.ts TYPE74_SPEC, specs.ts recon_tank).
   leclerc: {
     path: 'public/models/tanks/char_leclerc_andertan.glb',
@@ -476,7 +476,7 @@ const REG = {
   // ---- AFV family (append-only, 2026-08-04) --------------------------------
   // bmp2: registration mirrors the fidelity harness LOCAL_REFERENCE_OVERRIDES
   // quarantine-oracle row (b584a7c) — m_bergman print, gate/measure LOCAL-ONLY,
-  // in-game MODEL_SOURCE stays procedural. pubDims from the modern3.js spec
+  // in-game MODEL_SOURCE stays procedural. pubDims from the modern3.ts spec
   // dims row (2.45 = the turret+ATGM-stack height datum, packet two-datum
   // note).
   bmp2: {

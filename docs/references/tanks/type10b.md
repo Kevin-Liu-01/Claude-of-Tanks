@@ -13,7 +13,7 @@ beter" — "the type 10s" = BOTH marks.
 - **The §5.299/§5.308 byte-pin (77870ef0) is RETIRED BY OWNER AUTHORITY.**
   The §5.299 "keep the type 10b" bound to its LOOK; this order supersedes
   the byte-freeze: buildType10BBase now delegates to the rebuilt ×1.10
-  shared base (modern3.js buildType10Native2026 — full receipts in
+  shared base (modern3.ts buildType10Native2026 — full receipts in
   type10.md §5.336). The pinned copy's two §B4 deltas (sprocket-bay roof
   split, trimmed fender/relief ends) were absorbed into the shared base at
   the new stations, so nothing of the pin's content is lost — it is

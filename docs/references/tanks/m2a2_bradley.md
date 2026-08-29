@@ -78,7 +78,7 @@ batch): bodyH 2.98 (0%) hullMask 6.553 (0%) overall 6.553 (0%) width
 warp verified from this side — do NOT re-warp (e699c868 bytes).
 
 ### WIDTH DATUM RECONCILIATION (the flagged known item — resolved)
-In-game spec widthM moved 3.61 -> 3.28 (modern3.js, this round). The
+In-game spec widthM moved 3.61 -> 3.28 (modern3.ts, this round). The
 3.61 appliqué-stack datum is published (Wikipedia family row) but the
 fidelity harness anchors BOTH models' width via a UNIFORM safeScale —
 against a 3.236-wide print, spec 3.61 inflates the oracle +11.5% on
@@ -100,7 +100,7 @@ the rebuild follows the print's split; the whole-vehicle silhouette is
 the real Bradley's. Turret seat: autoPivot center z -0.466 — ring plane
 1.895 at z -0.45 in the rebuild.
 
-### Rebuild summary (modern3.js buildBradley, full re-author)
+### Rebuild summary (modern3.ts buildBradley, full re-author)
 Hull: tub +-0.95 (floor 0.45), flare slabs out to +-1.62, roof 1.905
 with engine-deck raise 1.98, cargo hump 2.06, rear box 2.02 (the
 print's own roof bumps); one-piece glacis (1.80,1.84)->(3.28,1.26) with
@@ -766,7 +766,7 @@ dressing. LANDED at **3635217c** inside the owner's absorb commit
 (§5.354 shared-checkout rebase incident — the partition's finished work
 rode the owner's rebase continue); this section is the §5.355 closeout.
 
-### The shared grammar — bradleyFlankDressing (modern3.js, exported)
+### The shared grammar — bradleyFlankDressing (modern3.ts, exported)
 ONE closure + skirt-mount grammar for the family (the m3a3 §5.306
 skirt-order treatment PROMOTED to shared; m2a2 wraps it in
 buildM2A2Bradley, m3a3/ua call it inside their wrappers):
@@ -833,7 +833,7 @@ buildM2A2Bradley, m3a3/ua call it inside their wrappers):
   ids = the shared donor's pre-existing debt (the §5.316-documented
   123-front class, m3a3 packet). The dressing adds ZERO offenders
   (course outboard of the shoe reach by construction).
-- dims true-up LIVE (modern3.js ~382-388): the silhouette* rows sit
+- dims true-up LIVE (modern3.ts ~382-388): the silhouette* rows sit
   INSIDE dims (silhouetteWidthM 3.25 / silhouetteHullLengthM 6.28 /
   silhouetteOverallLengthM 6.25 / silhouetteHeightM 2.98 — m3a3 §5.306
   convention); published rows keep the 3.28/6.55 datums. The §5.355
@@ -885,7 +885,7 @@ buildM2A2Bradley, m3a3/ua call it inside their wrappers):
   re-seat), ledger merge-preserved. dims coupling EXPOSED: the
   partition tuned silhouetteHeightM 2.98 against the LIFTED render;
   the re-seated build's actual height is **2.83** — a one-value
-  true-up (silhouetteHeightM 2.98→2.83, modern3.js dims) restores
+  true-up (silhouetteHeightM 2.98→2.83, modern3.ts dims) restores
   dims ~100 and leaves the row whole-limited ~49.1 = the honest
   dressed baseline vs the 42manako print (§5.349 released; the §5.360
   sitting RATIFIED the attachments visually). FLAGGED, not applied —

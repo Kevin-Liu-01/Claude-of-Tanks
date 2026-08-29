@@ -35,6 +35,10 @@ demand-loaded family boundaries and complete donor geometry.
 donor dispatch, muzzle closures, and deterministic exterior fittings. Extend
 its validated builder, profile, and fitting-option contracts instead of
 reintroducing unchecked family-local copies.
+`modern3.ts` owns the strict, demand-loaded Chieftain, K2/K1A1, Type 10,
+Bradley/BMP, Puma, Type 89, and Ariete geometry pack. Family adapters that
+reuse those donors must declare the complete runtime builder surface they
+forward; do not weaken the shared port or bridge through untyped casts.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

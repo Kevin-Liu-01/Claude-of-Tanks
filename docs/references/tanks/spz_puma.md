@@ -9,7 +9,7 @@ heads, 6 big roadwheels + HIGH front drive sprocket, heavy near-deck-height
 modular side armor, rear ramp, twin whips, NATO 3-tone, 'Y-514'.
 
 ## OWNERSHIP / ROUND STATE (2026-08-06, AFV lane r1)
-Builder `buildPuma` + spec row live in **src/vehicles/modern3.js**
+Builder `buildPuma` + spec row live in **src/vehicles/modern3.ts**
 (AFV/modern3 lane, single owner). Registered in MODERN3_BUILDERS +
 MODERN3_IDS; MODEL_SOURCE procedural (garage CUSTOM tab via the
 provenance-intent classifier). Owner order 2026-08-06: "make the spz puma

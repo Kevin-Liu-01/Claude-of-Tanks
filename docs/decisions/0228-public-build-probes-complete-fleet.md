@@ -14,7 +14,7 @@ prevents the marker from being emitted, so the parent strip guard fails closed.
 ## Why
 
 After fleet lazy loading split combat data from visual builders, the old probe
-still imported `modern1.js`, `modern2.js`, and `modern3.js`. Several donor specs
+still imported `modern1.js`, `modern2.js`, and `modern3.ts`. Several donor specs
 were consequently absent when the recovered-family registries evaluated. The
 probe logged those failures and certified only 56 of 129 playables.
 

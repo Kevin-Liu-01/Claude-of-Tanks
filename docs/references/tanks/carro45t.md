@@ -10,7 +10,7 @@ is the dims anchor (LOW-CONF law).
   Dmitry Hlebov (CC-BY-4.0, Blender/OBJ hand-model; LOCAL-ONLY quarantine,
   never ships). Registered: turret `Object_58` (fused antennas), gun
   `Object_4` + follower `Object_6` (mantlet), meters scale.
-- Spec row (modern3.js): 6.98 hull / 10.60 overall / 3.43 width / 2.95 height
+- Spec row (modern3.ts): 6.98 hull / 10.60 overall / 3.43 width / 2.95 height
   — hull/overall/width match the print within 0.3%; heightM 2.95 is the
   registered gameplay anchor. The print's own p95 body envelope reads 2.42
   (roof 2.35 + cupola 2.42; NOTHING between 2.55 and the bare whip tips at

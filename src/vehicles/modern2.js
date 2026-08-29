@@ -1112,7 +1112,7 @@ function galix(P, kit, x, y, z, s) {
 // ---------------------------------------------------------------------------
 // §C missing-side winding guard (BUILD-STANDARD: every profile that mirrors
 // slabs binds through one) — face-outwardness census, re-orders reversed
-// rings. Same device as modern3.js/misc.js. KIT deref at call time only.
+// rings. Same device as modern3.ts/misc.js. KIT deref at call time only.
 // ---------------------------------------------------------------------------
 function orientedSlab99(b0, b1, b2, b3, t0, t1, t2, t3) {
   const c8 = [b0, b1, b2, b3, t0, t1, t2, t3];
@@ -1133,7 +1133,7 @@ function orientedSlab99(b0, b1, b2, b3, t0, t1, t2, t3) {
 }
 
 // §B3.1 MUZZLE BORE (owner directive 2026-08-06) — same device as
-// modern3.js muzzleBore: open outer wall to the face + inward-facing
+// modern3.ts muzzleBore: open outer wall to the face + inward-facing
 // recess funnel + near-black bore disc ~3cm inside; mask-neutral, no
 // see-through. Caller ends its capped tube ~4.2cm short of faceZ.
 function muzzleBore99(P, faceZ, R, boreR, seg = 14, rearR) {

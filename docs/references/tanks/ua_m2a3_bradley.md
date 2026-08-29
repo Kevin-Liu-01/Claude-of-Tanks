@@ -26,7 +26,7 @@ ORDER (verbatim): "the bradleys are still not filled internally (see
 througable) and their side skirts/side armors are not attached to the
 hulls properly or with attachments."
 - **Shared dressing**: takes the family `bradleyFlankDressing`
-  (modern3.js — §B2 donor bow-corner closure on the 1.40..1.44 plane,
+  (modern3.ts — §B2 donor bow-corner closure on the 1.40..1.44 plane,
   8-panel skirt-mount course at ±1.652 with hinge seams + hanger/bolt
   blocks at every joint, raked mounting aprons, course end caps; all
   content |x| >= 1.4425, §B4-clear of the 1.395 shoe reach). Full

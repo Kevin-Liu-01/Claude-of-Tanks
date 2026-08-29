@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleBore, muzzleTipDot } from './kit.ts';
-import { buildBradley, buildBMP2, buildPuma, bradleyFlankDressing } from '../modern3.js';
+import { buildBradley, buildBMP2, buildPuma, bradleyFlankDressing } from '../modern3.ts';
 import { T72_PROFILES } from './t72.ts';
 import { T90_PROFILES } from './t90.js';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -31,6 +31,7 @@ interface SideArmorOptions {
 
 interface AfvMaterials extends Record<string, THREE.MeshStandardMaterial> {
   dark: THREE.MeshStandardMaterial;
+  rubber: THREE.MeshStandardMaterial;
   wheels: THREE.MeshStandardMaterial;
   wheelsRecessed: THREE.MeshStandardMaterial;
 }
@@ -42,13 +43,19 @@ interface AfvBuilderPort {
   readonly recoilG: THREE.Group;
   readonly mats: AfvMaterials;
   readonly rng: () => number;
+  readonly disposables: THREE.BufferGeometry[];
+  readonly spec: {
+    readonly armor: { readonly gunPivot: readonly [number, number, number] };
+    readonly visual: { readonly number?: string };
+  };
   topY?: number;
-  muzzleZ?: number;
+  muzzleZ: number;
   add(slot: string, geometry: unknown, ...transform: number[]): unknown;
   addCupola(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
   addEquipment(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
   addGunExtra(geometry: unknown, ...transform: number[]): unknown;
   addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  addMudguard(id: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
   clear(...slots: string[]): void;
   clearDecals(owner: VehicleAssemblyOwner): void;
   decal(
@@ -961,7 +968,7 @@ function buildM3A3(P: AfvBuilderPort): void {
   }
   // OWNER SKIRT ORDER (2026-08-17, "make m3a3 bradley sideskirts symmetric
   // and properly attached") — promoted by the follow-up BRADLEY order into
-  // the SHARED dressing (modern3.js bradleyFlankDressing): symmetric 8-panel
+  // the SHARED dressing (modern3.ts bradleyFlankDressing): symmetric 8-panel
   // course over the donor's print-asymmetric flanks (the m2a2-guard lattice
   // itself stays untouched in buildBradley), hinge seams + hanger blocks,
   // mounting aprons closing the skirt-top daylight, and the §B2 donor

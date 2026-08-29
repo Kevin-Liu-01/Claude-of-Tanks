@@ -17,7 +17,7 @@ untouched and remains Poland's; this id coexists beside it.
   it used (`mount`, `cassette`, `addPolishWhips`, `addPolishRWS`).
 - Source of truth (spec row): `git show d7ba844f^:src/vehicles/poland.js`
   — `pl01: variant('pl01', 'k2', {…})`.
-- Donor: `k2` (buildK2 + spec, `src/vehicles/modern3.js`). Donor drift check:
+- Donor: `k2` (buildK2 + spec, `src/vehicles/modern3.ts`). Donor drift check:
   buildK2 function body and the k2 spec row are **byte-identical** between
   `d7ba844f` (old pl01's last certified tree) and HEAD (diff receipts run
   2026-08-17), so the resurrection reproduces the certified geometry exactly.

@@ -41,7 +41,7 @@ hash must hold through this round.
    sprocket, big raised front idler, 3 return rollers, shallow track
    guards with long fender stowage bins, side skirt band.
 
-## Corroborated dimensions (photo-class targets; spec row = modern3.js)
+## Corroborated dimensions (photo-class targets; spec row = modern3.ts)
 
 | Measure | Value | Sources (2+ independent) |
 |---|---|---|
@@ -53,7 +53,7 @@ hash must hold through this round.
 | Running gear | 6 paired road wheels (Horstmann), 3 return rollers, rear drive HIGH, big front idler | photos, chieftain5 packet |
 | Combat weight | 55 t | Wikipedia Chieftain (Mk 5 55t; Stillbrew ~+0.5–1 t) |
 
-Spec dims row (modern3.js TANK_SPECS.chieftain_mk10):
+Spec dims row (modern3.ts TANK_SPECS.chieftain_mk10):
 `{ hullLengthM: 7.52, overallLengthM: 10.79, widthM: 3.66, heightM: 2.90 }` —
 these are the sovereign four-box anchors. NOTE the widthM difference vs
 the chieftain5 spec (3.50): the Mk 10 row carries the over-tracks/skirts

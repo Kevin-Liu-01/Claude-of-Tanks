@@ -337,7 +337,7 @@ shots/critic-leo2a5 mid-round (gear p75 63.4 → 67.5 on disk with no
 render of mine) — the main-tree leo2a5 was unscorable AND un-baselineable
 (never score a broken/moving build). Standalone `import()` of leopard.js
 is NOT a valid stability probe: the COMMITTED file throws the same
-`evenStations` TDZ standalone (kit.js-cycle artifact, like modern3.js)
+`evenStations` TDZ standalone (kit.js-cycle artifact, like modern3.ts)
 while rendering perfectly in-app — the probe that matters is a critic
 render. Resolution: `git worktree` at HEAD c1160ed + this round's
 tankFactory.ts copied in (their tree untouched, single-owner law) —

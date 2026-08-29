@@ -1,4 +1,4 @@
-// src/vehicles/modern3.js — HD procedural builder pack #3 (modern roster).
+// src/vehicles/modern3.ts — HD procedural builder pack #3 (modern roster).
 // Vehicles (docs/research/modern-roster.md): Chieftain Mk 10 (§19), K2 Black
 // Panther (§23), Type 10 (§24), M2A2 Bradley (§6), BMP-2 (§17), C1 Ariete (§26),
 // K1A1 (§5.38 KOREA round — new build vs the k1a1_kojf print).
@@ -13,6 +13,72 @@ import { FITTINGS } from './profiles/kit.ts';
 import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.ts';
 import './modern3Specs.ts';
 
+type Vec3Tuple = [number, number, number];
+type GeometryScale = number | readonly [number, number, number];
+type VehicleAssemblyOwner = 'hull' | 'turret';
+
+export interface Modern3BuilderPort {
+  readonly q?: boolean;
+  readonly rng: unknown;
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly recoilG: THREE.Group;
+  readonly mats: Record<string, THREE.Material> & { readonly rubber: THREE.Material };
+  readonly disposables: THREE.BufferGeometry[];
+  readonly spec: {
+    readonly armor: { readonly gunPivot: readonly [number, number, number] };
+    readonly visual: { readonly number?: string };
+  };
+  readonly geometryReceipt?: boolean;
+  muzzleZ: number;
+  topY?: number;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
+  addEquipment(
+    owner: VehicleAssemblyOwner,
+    geometry: THREE.BufferGeometry,
+    ...transform: number[]
+  ): unknown;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): unknown;
+  addMudguard(
+    id: string,
+    slot: string,
+    geometry: THREE.BufferGeometry,
+    ...transform: number[]
+  ): unknown;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    label: string | null,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): unknown;
+}
+
+interface Type10BuildOptions {
+  compactRightGunnerSight?: boolean;
+}
+
+const scaledGeometryTransform = KIT.xform as (
+  geometry: THREE.BufferGeometry,
+  x?: number,
+  y?: number,
+  z?: number,
+  rotationX?: number,
+  rotationY?: number,
+  rotationZ?: number,
+  scale?: GeometryScale,
+) => THREE.BufferGeometry;
+
+const variablePolyLoft = KIT.polyLoft as (
+  plan: readonly (readonly [number, number])[],
+  bottom: number,
+  top: number | readonly number[],
+  inset?: number | readonly number[],
+) => THREE.BufferGeometry;
+
 // ---------------------------------------------------------------------------
 // Builders
 // ---------------------------------------------------------------------------
@@ -21,7 +87,7 @@ import './modern3Specs.ts';
 // §19.5: reclined-driver one-piece shallow glacis (no stepped driver plate),
 // tall louvred engine deck, needle-nose cast turret with Stillbrew collar,
 // Horstmann bogies with external coil springs, NO skirts, IR searchlight.
-function buildChieftain(P) {
+function buildChieftain(P: Modern3BuilderPort) {
   const { box, cylX, cylY, cylZ, frustum, buildGun, buildRunningGear, cupola,
     headlight, liftEye, periscope, pintleMG, smokeCluster, towCable, fenders,
     stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyTurret } = KIT;
@@ -213,7 +279,7 @@ function buildChieftain(P) {
 // the print's furniture band (pano complex/rail masts/antenna pair) reads
 // 2.66..4.58 — a build honoring the 2.40 datum cannot corroborate it; the
 // divergence is certified, §E furniture-band warp queued as recovery.
-export function buildK2(P) {
+export function buildK2(P: Modern3BuilderPort) {
   const { box, cylX, cylY, cylZ, frustum, xform, buildGun, buildRunningGear,
     headlight, liftEye, periscope, smokeCluster, stowage, ammoCan,
     torus } = KIT;
@@ -223,7 +289,13 @@ export function buildK2(P) {
   // candidates for the strict containment audit.  Native end discs,
   // suspension and wheel-bay backers use the explicit running-gear buckets
   // below; do not hide the real guards behind a blanket runningGear tag.
-  const hullRubberLane = (side, geo, x, y, z) => {
+  const hullRubberLane = (
+    side: number,
+    geo: THREE.BufferGeometry,
+    x: number,
+    y: number,
+    z: number,
+  ) => {
     const m = new THREE.Mesh(geo, P.mats.rubber);
     m.name = `k2_track_rubber_${side < 0 ? 'L' : 'R'}`;
     m.position.set(x, y, z);
@@ -275,7 +347,7 @@ export function buildK2(P) {
   // the same two "hanging track" strips even after the real band was fixed.
   for (const s of [-1, 1]) {
     P.add('hullRunningGearDark', box(0.02, 1.23, 2.70), s * 1.10, 0.69, 0.15);
-    const bayWall = (z0, b0, z1, b1) => P.add('hullRunningGearDark', slab(
+    const bayWall = (z0: number, b0: number, z1: number, b1: number) => P.add('hullRunningGearDark', slab(
       [s * 0.94, b0, z0], [s * 0.96, b0, z0], [s * 0.96, b1, z1], [s * 0.94, b1, z1],
       [s * 0.94, 1.305, z0], [s * 0.96, 1.305, z0], [s * 0.96, 1.305, z1], [s * 0.94, 1.305, z1]));
     bayWall(-1.20, 0.075, -2.70, 0.40);
@@ -567,23 +639,31 @@ export function buildK2(P) {
   // rides 0.03 ABOVE the 1.66 deck (sweep law — deck kit budget 1.69) with
   // a sunk ring seat closing the §B2 gap; the nose overhang air over the
   // glacis is the legitimate ring/overhang class.
-  const chkB = (s, u) => [s * (0.55 + 0.65 * u), 0.06, 2.60 - 0.16 * u];       // apex edge (0.55,2.60)->(1.20,2.44)
-  const chkT = (s, u) => [s * (0.55 + 0.94 * u), 0.58, 2.42 - 1.97 * u];       // lowered armor edge; the measured coaming is authored separately below
-  const chkP = (s, u, v) => {
+  const chkB = (s: number, u: number): Vec3Tuple => [s * (0.55 + 0.65 * u), 0.06, 2.60 - 0.16 * u];       // apex edge (0.55,2.60)->(1.20,2.44)
+  const chkT = (s: number, u: number): Vec3Tuple => [s * (0.55 + 0.94 * u), 0.58, 2.42 - 1.97 * u];       // lowered armor edge; the measured coaming is authored separately below
+  const chkP = (s: number, u: number, v: number): Vec3Tuple => {
     const b = chkB(s, u); const t = chkT(s, u);
     return [b[0] + (t[0] - b[0]) * v, b[1] + (t[1] - b[1]) * v, b[2] + (t[2] - b[2]) * v];
   };
-  const cheekPanel = (s, u0, u1, v0, v1, out, mat) => {                        // slab riding the cheek plane (flush by construction)
+  const cheekPanel = (
+    s: number,
+    u0: number,
+    u1: number,
+    v0: number,
+    v1: number,
+    out: number,
+    mat: string,
+  ) => {                                                                        // slab riding the cheek plane (flush by construction)
     const e = 0.01; const uc = (u0 + u1) / 2; const vc = (v0 + v1) / 2;
     const p0 = chkP(s, uc, vc); const pu = chkP(s, uc + e, vc); const pv = chkP(s, uc, vc + e);
     const du = [pu[0] - p0[0], pu[1] - p0[1], pu[2] - p0[2]];
     const dv = [pv[0] - p0[0], pv[1] - p0[1], pv[2] - p0[2]];
-    let n = [du[1] * dv[2] - du[2] * dv[1], du[2] * dv[0] - du[0] * dv[2], du[0] * dv[1] - du[1] * dv[0]];
-    const L = Math.hypot(n[0], n[1], n[2]); n = n.map((c) => c / L);
-    if (n[2] < 0) n = n.map((c) => -c);                                        // outward = +z/up
-    const off = (p, k) => [p[0] + n[0] * k, p[1] + n[1] * k, p[2] + n[2] * k];
+    let n: Vec3Tuple = [du[1] * dv[2] - du[2] * dv[1], du[2] * dv[0] - du[0] * dv[2], du[0] * dv[1] - du[1] * dv[0]];
+    const L = Math.hypot(n[0], n[1], n[2]); n = n.map((c) => c / L) as Vec3Tuple;
+    if (n[2] < 0) n = n.map((c) => -c) as Vec3Tuple;                            // outward = +z/up
+    const off = (p: Vec3Tuple, k: number): Vec3Tuple => [p[0] + n[0] * k, p[1] + n[1] * k, p[2] + n[2] * k];
     const q = [chkP(s, u0, v0), chkP(s, u1, v0), chkP(s, u1, v1), chkP(s, u0, v1)]
-      .map((p) => [p[0], p[1], p[2] - 0.35]);
+      .map((p): Vec3Tuple => [p[0], p[1], p[2] - 0.35]);
     P.add(mat, slab(off(q[0], 0), off(q[1], 0), off(q[2], 0), off(q[3], 0),
       off(q[0], out), off(q[1], out), off(q[2], out), off(q[3], out)));
   };
@@ -632,7 +712,16 @@ export function buildK2(P) {
   // fitted bevel rises to the print's high roof boundary.  The first cut used
   // hairline bars here and read as a stand-off rack; these joined wedge bands
   // are armor, with their inner edge buried into the lower roof skin.
-  const roofBevel = (s, x0, z0, x1, z1, yOuter = 0.778, yInner = 0.720, band = 0.06) => {
+  const roofBevel = (
+    s: number,
+    x0: number,
+    z0: number,
+    x1: number,
+    z1: number,
+    yOuter = 0.778,
+    yInner = 0.720,
+    band = 0.06,
+  ) => {
     const ox0 = s * x0; const ox1 = s * x1;
     const ix0 = s * Math.max(0, x0 - band); const ix1 = s * Math.max(0, x1 - band);
     P.add('turret', slab(
@@ -1029,10 +1118,13 @@ export function buildK2(P) {
     // loads, both cylinders remain wholly inside the existing cage AABB and
     // leave a deliberate center/right service gap.  Rear-facing straps make
     // the different diameters and offsets legible without adding depth.
-    for (const [x, y, z, r, len, strapXs] of [
+    const rearSoftPacks: ReadonlyArray<readonly [
+      number, number, number, number, number, readonly number[],
+    ]> = [
       [-0.86, 0.39, -2.475, 0.245, 0.76, [-1.04, -0.70]],
       [0.25, 0.38, -2.500, 0.215, 0.64, [0.10, 0.40]],
-    ]) {
+    ];
+    for (const [x, y, z, r, len, strapXs] of rearSoftPacks) {
       P.add('turretCloth', cylX(r, len, P.q ? 20 : 12), x, y, z);
       for (const sx of strapXs) {
         const strap = new THREE.PlaneGeometry(0.030, r * 1.72);
@@ -1147,7 +1239,7 @@ export function buildK2(P) {
     P.addGunExtra(box(0.070, 0.34, 0.075), s * 0.305, 0.015, 0.13);            // attached mantlet side flange
     P.addGunExtraDark(box(0.028, 0.24, 0.082), s * 0.260, -0.015, 0.145);      // nested shadow step beside the boot
   }
-  P.addGunExtraDark(xform(cylZ(0.19, 0.26, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [1, 1.10, 1]), 0, 0, 0.48); // canvas boot mass
+  P.addGunExtraDark(scaledGeometryTransform(cylZ(0.19, 0.26, P.q ? 20 : 12), 0, 0, 0, 0, 0, 0, [1, 1.10, 1]), 0, 0, 0.48); // canvas boot mass
   for (const z of [0.39, 0.48, 0.57]) P.addGunExtraDark(cylZ(0.198, 0.022, P.q ? 20 : 12), 0, 0, z);
   P.addGunExtra(cylZ(0.135, 0.24, P.q ? 20 : 12, 0.17), 0, 0, 0.75);            // barrel throat collar
   // Batch-56 CN08 section census. The tube is 15 mm left of center and its
@@ -1199,7 +1291,7 @@ export function buildK2(P) {
 // loader MG left, big protruding rotor/gunshield, bare KM256 with mid-tube
 // evacuator. §H.4 vs k2: shorter blunter turret, no KAPS cheek radars, no
 // pano tower, bare tube (k2 carries the sleeved L/55 + arrowhead wedge).
-function buildK1A1(P) {
+function buildK1A1(P: Modern3BuilderPort) {
   const { box, cylX, cylY, cylZ, frustum, polyLoft, polyMultiLoft, buildGun, buildRunningGear,
     liftEye, periscope, smokeCluster, stowage, ammoCan, torus } = KIT;
   const slab = orientedSlab;                                                   // §C.1 winding guard on every mirrored slab
@@ -1385,7 +1477,7 @@ function buildK1A1(P) {
   // cabinet and an overlong roof. This twelve-station loft follows the
   // source's short nose, swept cheek, rounded side and tapered bustle in one
   // connected skin. Pivot world [0, 1.50, 0.10] remains sovereign.
-  P.add('turret', polyLoft([
+  P.add('turret', variablePolyLoft([
     [-0.46, 1.62], [0.46, 1.62], [0.96, 1.40], [1.25, 0.72],
     [1.32, -0.48], [1.20, -1.16], [0.65, -1.52], [-0.65, -1.52],
     [-1.20, -1.16], [-1.32, -0.48], [-1.25, 0.72], [-0.96, 1.40],
@@ -1594,7 +1686,10 @@ function buildK1A1(P) {
 // real radial relief, §5.262 gear tones (gearFloor + tireHex + wheelHex so
 // the exposed train never reads ambient-black), §B9 skirt hem at ~49%
 // wheel exposure, rotation-invariant end-drum face anatomy.
-function buildType10Native2026(P, { compactRightGunnerSight = true } = {}) {
+function buildType10Native2026(
+  P: Modern3BuilderPort,
+  { compactRightGunnerSight = true }: Type10BuildOptions = {},
+) {
   const { box, cylX, cylY, cylZ, frustum, polyMultiLoft, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, stowage, ammoCan, torus } = KIT;
   const slab = orientedSlab;                                                    // §C.1 winding guard on every mirrored slab
@@ -2158,7 +2253,7 @@ function buildType10Native2026(P, { compactRightGunnerSight = true } = {}) {
 // the new stations. The B-variant identity delta (cheek shell, cassette
 // rows, high side cassettes, EO pair, RWS, Kai mask, basket/whips) stays in
 // profiles/japan.ts addType10BPackage, re-seated at the ×1.10 frame.
-export function buildType10BBase(P) {
+export function buildType10BBase(P: Modern3BuilderPort) {
   buildType10Native2026(P, { compactRightGunnerSight: false });
 }
 
@@ -2166,7 +2261,7 @@ export function buildType10BBase(P) {
 // §6.5: tall slab aluminum box, one-piece 60° glacis, nose shelf, rear troop
 // ramp, RIGHT-offset two-man turret with 25 mm + elevating twin TOW box,
 // A2 appliqué side slabs with stand-off bolts, front drive sprocket.
-function addBradleyUpperHullClosure(P) {
+function addBradleyUpperHullClosure(P: Modern3BuilderPort) {
   const { box } = KIT;
 
   // The Bradley donor is shared by M2A2, M3A3, UA M2A3 and Marder 1A3. Its
@@ -2195,7 +2290,7 @@ function addBradleyUpperHullClosure(P) {
   const flankFrontZ = 1.65;
   const flankRoofHalfWidthsM = Object.freeze({ left: 1.375, right: 1.39 });
   for (const side of [-1, 1]) {
-    const m = (x) => side * x;
+    const m = (x: number) => side * x;
     const roofHalfWidthM = side < 0
       ? flankRoofHalfWidthsM.left
       : flankRoofHalfWidthsM.right;
@@ -2265,7 +2360,7 @@ function addBradleyUpperHullClosure(P) {
   });
 }
 
-export function buildBradley(P) {
+export function buildBradley(P: Modern3BuilderPort) {
   // AFV r1 REBUILD against the 42manako oracle (vertex report docs/
   // references/vertex/m2a2_bradley.json — all targets below are that
   // report's gate-world numbers; batch-38 normalized print, 0%/0%/0% with
@@ -2484,7 +2579,7 @@ export function buildBradley(P) {
                                                                                 //   -2.3; behind the bow's own line
                                                                                 //   the pan is mask-invisible)
   for (const s of [-1, 1]) {
-    const m = (x) => (s < 0 ? -x : x);
+    const m = (x: number) => (s < 0 ? -x : x);
     P.add('hull', orientedSlab(
       [m(1.345), 0.876, 2.94], [m(1.415), 0.876, 2.94], [m(1.415), 0.876, 2.50], [m(1.345), 0.876, 2.50],
       [m(1.30), 1.30, 2.94], [m(1.415), 1.30, 2.94], [m(1.415), 1.50, 2.50], [m(1.30), 1.50, 2.50]));
@@ -3447,7 +3542,7 @@ export function buildBradley(P) {
 // m3a3_bradley + ua_m2a3_bradley via their family wrappers). marder1a3
 // rides the same donor hull but is HARD-GATED (59cb105c) and does NOT take
 // this dressing — its own bow window stays a fenced future round.
-export function bradleyFlankDressing(P) {
+export function bradleyFlankDressing(P: Modern3BuilderPort) {
   const { box, slab, cylY, polyMultiLoft } = KIT;
   // All three Bradley playables share the donor's compact bearing beneath
   // much broader turret furniture. A faceted, turret-owned belly pan and
@@ -3498,7 +3593,7 @@ export function bradleyFlankDressing(P) {
     frontOverlapM: bowClosure.frontZ - 3.125,
   });
   for (const s of [-1, 1]) {
-    const m = (x) => s * x;
+    const m = (x: number) => s * x;
     // §B2 DONOR BOW-CORNER CLOSURE (type89 §5.341 grammar): the bow
     // fender/sprocket bay read clean through at [y 0.65, z 2.99] 0.20x0.14
     // on all three ids (sweep receipts m2a2 205px / m3a3 199 / ua 203).
@@ -3542,7 +3637,7 @@ export function bradleyFlankDressing(P) {
         P.add('hullDetail', box(0.085, 0.10, 0.06),
           s * 1.6125, lo ? 1.30 : 1.46, cuts[k]);
       }
-      const apron = (z0, z1) => P.add('hull', orientedSlab(
+      const apron = (z0: number, z1: number) => P.add('hull', orientedSlab(
         [s * 1.50, 1.565, z1], [s * 1.649, 1.40, z1], [s * 1.649, 1.40, z0], [s * 1.50, 1.565, z0],
         [s * 1.50, 1.605, z1], [s * 1.649, 1.44, z1], [s * 1.649, 1.44, z0], [s * 1.50, 1.605, z0]));
       if (s > 0) { apron(-2.90, 0.93); }
@@ -3557,7 +3652,7 @@ export function bradleyFlankDressing(P) {
   }
 }
 
-function buildM2A2Bradley(P) {
+function buildM2A2Bradley(P: Modern3BuilderPort) {
   buildBradley(P);
   bradleyFlankDressing(P);
 }
@@ -3572,7 +3667,7 @@ function buildM2A2Bradley(P) {
 // low boat hull, sharp two-plane prow, conical two-man center turret, long
 // thin 2A42 + roof Konkurs tube, twin bulged rear doors, firing ports 4L/3R,
 // 3+3 smoke, FRONT drive sprocket + REAR idler both raised (§B6 trapezoid).
-export function buildBMP2(P) {
+export function buildBMP2(P: Modern3BuilderPort) {
   const { box, cylX, cylY, cylZ, frustum, slab, sph, lathe, xform, torus,
     buildGun, buildRunningGear, periscope, shovelTool, stowage } = KIT;
   const { rng } = P;
@@ -3680,7 +3775,7 @@ export function buildBMP2(P) {
                                                                                 //   plane-A rect (0.40) + tub
                                                                                 //   (0.41) + S-plate laps all hold)
   for (const s of [-1, 1]) {
-    const m = (x) => (s < 0 ? -x : x);
+    const m = (x: number) => (s < 0 ? -x : x);
     // S1 rear plate: inside the tub/crest-shoulder overlap band
     P.add('hull', orientedSlab(
       [m(0.92), 0.38, 1.90], [m(0.98), 0.38, 1.90], [m(0.98), 0.38, 1.72], [m(0.92), 0.38, 1.72],
@@ -3801,8 +3896,8 @@ export function buildBMP2(P) {
   }
   // firing ports 4 LEFT / 3 RIGHT with vision blocks above (packet identity;
   // z re-anchored x1.0613 with the warp)
-  const ports = (s, zs) => zs.forEach((zc) => {
-    P.add('hullDark', xform(sph(0.055, 10), 0, 0, 0, 0, 0, 0, [0.6, 1, 1]), s * 1.305, 1.40, zc);
+  const ports = (s: number, zs: readonly number[]) => zs.forEach((zc) => {
+    P.add('hullDark', scaledGeometryTransform(sph(0.055, 10), 0, 0, 0, 0, 0, 0, [0.6, 1, 1]), s * 1.305, 1.40, zc);
     P.add('hullDark', box(0.05, 0.045, 0.10), s * 1.306, 1.52, zc + 0.10);      // vision block
     P.add('hullGlass', box(0.052, 0.02, 0.08), s * 1.307, 1.525, zc + 0.10);
   });
@@ -3826,8 +3921,11 @@ export function buildBMP2(P) {
     P.add('hullDetail', box(0.08, 0.12, 0.36), s * 1.33, 1.30, 1.72,
       0, -s * 0.18, 0);                                                         // forward return into shoulder
   }
-  for (const [zc, yc, xs] of [[2.18, 1.505, [-0.76, -0.255, 0.255, 0.76]],
-    [2.52, 1.415, [-0.72, -0.24, 0.24, 0.72]]]) {
+  const glacisCassetteRows: ReadonlyArray<readonly [number, number, readonly number[]]> = [
+    [2.18, 1.505, [-0.76, -0.255, 0.255, 0.76]],
+    [2.52, 1.415, [-0.72, -0.24, 0.24, 0.72]],
+  ];
+  for (const [zc, yc, xs] of glacisCassetteRows) {
     xs.forEach((xc, k) => {
       const w = k === 0 || k === xs.length - 1 ? 0.42 : 0.40;
       P.add('hull', box(w, 0.115, 0.31), xc, yc, zc, -0.255, 0, 0);
@@ -3845,7 +3943,7 @@ export function buildBMP2(P) {
                                                                                 //   thick under ANY trace grouping
                                                                                 //   (dims body filter) so the read
                                                                                 //   holds the published 6.72
-    P.add('hull', xform(sph(0.26, 14, Math.PI / 2), 0, 0, 0, Math.PI / 2, 0, 0, [1, 0.80, 0.13]),
+    P.add('hull', scaledGeometryTransform(sph(0.26, 14, Math.PI / 2), 0, 0, 0, Math.PI / 2, 0, 0, [1, 0.80, 0.13]),
       s * 0.36, 1.32, -3.325);                                                  // fuel-cell bulge, tip -3.368 (just
                                                                                 //   proud of the leaf; ref's own tail
                                                                                 //   pixels light -3.362 too)
@@ -3911,8 +4009,8 @@ export function buildBMP2(P) {
   // z-radius shrinks 1.045 -> 0.97 (its smooth 30-seg plan overhung the
   // print's faceted dome at the diagonals AND its rear rim lit 2 cover
   // columns past the mapped ref rear falloff).
-  P.add('turret', xform(cylY(0.90, 0.915, 0.05, 30), 0, 0, 0, 0, 0, 0, [1, 1, 0.85]), 0, -0.02, 0.02);
-  P.add('turret', xform(lathe([
+  P.add('turret', scaledGeometryTransform(cylY(0.90, 0.915, 0.05, 30), 0, 0, 0, 0, 0, 0, [1, 1, 0.85]), 0, -0.02, 0.02);
+  P.add('turret', scaledGeometryTransform(lathe([
     [0.93, 0.0], [0.948, 0.06], [0.955, 0.16], [0.948, 0.25], [0.93, 0.35],
     [0.775, 0.385], [0.625, 0.425], [0.455, 0.45], [0.23, 0.485], [0.0, 0.50],
   ], 30), 0, 0, 0, 0, 0, 0, [1.02, 1, 1.031]), 0, 0, 0.01);                    // warped cone (z-scale 1.031: the
@@ -3941,7 +4039,7 @@ export function buildBMP2(P) {
                                                                                 //   ~1.71..1.96 at ±0.973, and the
                                                                                 //   z-extreme 0.9731 keeps the r3
                                                                                 //   slab-4/side-col legal window.
-  P.add('turret', xform(cylY(0.56, 0.56, 0.78, 20), 0, 0, 0, 0, 0, 0, [1, 1, 0.9964]), 0, -0.39, 0.113); // basket z -0.445..+0.671
+  P.add('turret', scaledGeometryTransform(cylY(0.56, 0.56, 0.78, 20), 0, 0, 0, 0, 0, 0, [1, 1, 0.9964]), 0, -0.39, 0.113); // basket z -0.445..+0.671
                                                                                 //   (r3d: both edges pulled INSIDE
                                                                                 //   trace-column bounds — the AA-lit
                                                                                 //   partial columns at ±0.72/-0.49
@@ -4221,18 +4319,27 @@ export function buildBMP2(P) {
 // Same device as misc.js orientedSlab / uk.js sslab. KIT dereferenced at
 // call time only.
 // ---------------------------------------------------------------------------
-function orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
+function orientedSlab(
+  b0: Vec3Tuple,
+  b1: Vec3Tuple,
+  b2: Vec3Tuple,
+  b3: Vec3Tuple,
+  t0: Vec3Tuple,
+  t1: Vec3Tuple,
+  t2: Vec3Tuple,
+  t3: Vec3Tuple,
+): THREE.BufferGeometry {
   const c8 = [b0, b1, b2, b3, t0, t1, t2, t3];
   const cen = [0, 1, 2].map((k) => c8.reduce((s, p) => s + p[k], 0) / 8);
-  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const sub = (a: Vec3Tuple, b: Vec3Tuple): Vec3Tuple => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const cross = (a: Vec3Tuple, b: Vec3Tuple): Vec3Tuple => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const dot = (a: Vec3Tuple, b: Vec3Tuple) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   let outward = 0;
   for (const f of [[b0, b1, t1, t0], [b1, b2, t2, t1], [b2, b3, t3, t2],
     [b3, b0, t0, t3], [t0, t1, t2, t3], [b3, b2, b1, b0]]) {
     const n = cross(sub(f[1], f[0]), sub(f[2], f[0]));
-    const fc = [0, 1, 2].map((k) => (f[0][k] + f[1][k] + f[2][k] + f[3][k]) / 4);
-    if (dot(n, sub(fc, cen)) > 0) outward++;
+    const fc = [0, 1, 2].map((k) => (f[0][k] + f[1][k] + f[2][k] + f[3][k]) / 4) as Vec3Tuple;
+    if (dot(n, sub(fc, cen as Vec3Tuple)) > 0) outward++;
   }
   return outward >= 3
     ? KIT.slab(b0, b1, b2, b3, t0, t1, t2, t3)
@@ -4249,10 +4356,17 @@ function orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
 // Callers end their capped tube/brake body ~4.2cm short of faceZ. rearR
 // lets tapered tips (flash hiders) continue their cone through the wall.
 // ---------------------------------------------------------------------------
-function muzzleBore(P, faceZ, R, boreR, seg = 14, rearR) {
+function muzzleBore(
+  P: Modern3BuilderPort,
+  faceZ: number,
+  R: number,
+  boreR: number,
+  seg = 14,
+  rearR?: number,
+) {
   const { cylY, cylZ, torus, xform } = KIT;
   P.add('gun', xform(cylY(R, rearR ?? R, 0.042, seg, true), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0, faceZ - 0.021);
-  P.add('gunDark', xform(cylY(R - 0.003, boreR, 0.040, seg, true), 0, 0, 0, Math.PI / 2, 0, 0, [-1, 1, 1]), 0, 0, faceZ - 0.0215);
+  P.add('gunDark', scaledGeometryTransform(cylY(R - 0.003, boreR, 0.040, seg, true), 0, 0, 0, Math.PI / 2, 0, 0, [-1, 1, 1]), 0, 0, faceZ - 0.0215);
   P.add('gun', torus(R - 0.002, 0.0045, seg), 0, 0, faceZ - 0.001, -Math.PI / 2, 0, 0);
   P.add('gunDark', cylZ(boreR, 0.008, seg), 0, 0, faceZ - 0.034);
 }
@@ -4275,7 +4389,7 @@ function muzzleBore(P, faceZ, R, boreR, seg = 14, rearR) {
 // whips. §H.4 tells vs bradley (tall slab + turret cluster + TOW left),
 // bmp2 (boat prow + cone) and fv510 (ribbed strakes + manned box turret):
 // the Puma reads as a low wedge wearing a flat robotic turret.
-export function buildPuma(P) {
+export function buildPuma(P: Modern3BuilderPort) {
   const { box, cylX, cylY, cylZ, frustum, buildGun, buildRunningGear,
     liftEye, periscope, stowage, torus } = KIT;
   const slab = orientedSlab;                                                    // §C missing-side law
@@ -4332,7 +4446,7 @@ export function buildPuma(P) {
     // top (the first cut used the bare-band 1.395 apex and clipped 12
     // front voxels: pin caps reach x 1.495 and the shoe stack tops
     // 1.482).
-    const m = (x) => (s < 0 ? -x : x);
+    const m = (x: number) => (s < 0 ? -x : x);
     P.add('hull', slab(
       [m(1.26), 1.44, 3.58], [m(1.42), 1.46, 3.42], [m(1.66), 1.64, 1.41], [m(1.42), 1.92, 1.63],
       [m(1.18), 1.48, 3.56], [m(1.34), 1.50, 3.40], [m(1.58), 1.68, 1.43], [m(1.34), 1.96, 1.63]));
@@ -4354,7 +4468,7 @@ export function buildPuma(P) {
   // top sunk into the plane; front tucks into the face-plate band, plan
   // hides under the plane's +-1.26..1.33 nose taper.
   for (const s of [-1, 1]) {
-    const m = (x) => (s < 0 ? -x : x);
+    const m = (x: number) => (s < 0 ? -x : x);
     // inner nose walls (tub-line continuation)
     P.add('hull', orientedSlab(
       [m(0.94), 0.50, 3.30], [m(1.00), 0.50, 3.30], [m(1.00), 0.64, 2.78], [m(0.94), 0.64, 2.78],
@@ -4704,7 +4818,7 @@ export function buildPuma(P) {
 // §H.4 tells vs bradley (short steep glacis, TOW left only), puma (low
 // wedge + robot turret) and fv510 (ribbed strakes): the Type 89 reads as a
 // long flat wedge wearing a small square turret with winged missile boxes.
-function buildType89(P) {
+function buildType89(P: Modern3BuilderPort) {
   const { box, cylX, cylY, cylZ, frustum, buildGun, buildRunningGear,
     liftEye, periscope, stowage, shovelTool, torus, sph, xform } = KIT;
   const slab = orientedSlab;                                                    // §C missing-side law
@@ -4749,7 +4863,7 @@ function buildType89(P) {
     // facet's bottom-edge line exactly (no slit); bottom stays 0.12+ over
     // the wrap arc (§B4; x 1.40 holds 24 mm outside the 1.376 pin-cap
     // band). The rear box closes the z 1.25..1.53 notch under the crest.
-    const m = (x) => (s < 0 ? -x : x);
+    const m = (x: number) => (s < 0 ? -x : x);
     P.add('hull', slab(
       [m(1.40), 1.02, 2.90], [m(1.44), 1.02, 2.90], [m(1.44), 1.26, 1.50], [m(1.40), 1.26, 1.50],
       [m(1.40), 1.12, 2.90], [m(1.44), 1.12, 2.90], [m(1.44), 1.82, 1.50], [m(1.40), 1.82, 1.50]));
@@ -4807,7 +4921,7 @@ function buildType89(P) {
   // port + vision block above, 3 per side ----------------------------------
   for (const s of [-1, 1]) {
     for (const zc of [-1.35, -2.05, -2.75]) {
-      P.add('hullDark', xform(sph(0.05, 10), 0, 0, 0, 0, 0, 0, [0.55, 1, 1]), s * 1.455, 1.38, zc);
+      P.add('hullDark', scaledGeometryTransform(sph(0.05, 10), 0, 0, 0, 0, 0, 0, [0.55, 1, 1]), s * 1.455, 1.38, zc);
       P.add('hullDark', box(0.045, 0.045, 0.10), s * 1.456, 1.56, zc + 0.09);
       P.add('hullGlass', box(0.047, 0.02, 0.08), s * 1.457, 1.565, zc + 0.09);
     }
@@ -5017,7 +5131,7 @@ function buildType89(P) {
 // §26.5: 90s NATO wedge between Leo 2A4 and CR2 — flat-faced angular turret
 // with plan-angled cheeks, narrow vertical mantlet slot flanked by recesses,
 // protruding gunner sight over the right cheek line, TURMS pano, 7 wheels.
-function buildAriete(P) {
+function buildAriete(P: Modern3BuilderPort) {
   const { box, cylX, cylY, cylZ, frustum, slab, buildGun, buildRunningGear,
     headlight, liftEye, periscope, pintleMG, smokeCluster, towCable, fenders,
     torus } = KIT;
