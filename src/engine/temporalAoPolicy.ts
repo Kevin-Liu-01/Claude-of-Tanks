@@ -17,6 +17,32 @@ export function resolveTemporalAoCurrentWeight(stableCameraFrames: number): numb
 /** Maximum brighter AO history retained over the current sample. */
 export const TEMPORAL_AO_BRIGHT_RETENTION_SLACK = 0.03;
 
+/** Minimum normalized-device-depth separation that invalidates AO history. */
+export const TEMPORAL_AO_DEPTH_REJECT_MIN = 0.00015;
+
+/** Expand rejection tolerance across one current-frame depth footprint. */
+export const TEMPORAL_AO_DEPTH_REJECT_FOOTPRINT_SCALE = 2;
+
+/**
+ * Accept history only when the surface stored at the reprojected pixel is the
+ * surface that the current world point predicts. This is the disocclusion
+ * guard used by the GLSL resolver; normalized depth keeps the test independent
+ * of the active battlefield camera range.
+ */
+export function temporalAoHistoryDepthMatches(
+  expectedDepth: number,
+  historyDepth: number,
+  depthFootprint = 0,
+): boolean {
+  if (!Number.isFinite(expectedDepth) || !Number.isFinite(historyDepth)) return false;
+  const tolerance = Math.max(
+    TEMPORAL_AO_DEPTH_REJECT_MIN,
+    Math.max(0, Number.isFinite(depthFootprint) ? depthFootprint : 0)
+      * TEMPORAL_AO_DEPTH_REJECT_FOOTPRINT_SCALE,
+  );
+  return Math.abs(expectedDepth - historyDepth) <= tolerance;
+}
+
 /**
  * Maximum stale-dark AO retained after a surface becomes brighter.
  *

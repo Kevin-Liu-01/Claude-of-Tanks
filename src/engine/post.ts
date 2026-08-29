@@ -42,6 +42,8 @@ import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import {
   TEMPORAL_AO_BRIGHT_RETENTION_SLACK,
   TEMPORAL_AO_CURRENT_WEIGHT,
+  TEMPORAL_AO_DEPTH_REJECT_FOOTPRINT_SCALE,
+  TEMPORAL_AO_DEPTH_REJECT_MIN,
   TEMPORAL_AO_DARK_RELEASE_SLACK,
   resolveTemporalAoCurrentWeight,
 } from './temporalAoPolicy.ts';
@@ -1808,6 +1810,11 @@ export function createPost(
   //    frame's view-projection, and sample the history there. The boil
   //    sources (trees/terrain/props) are world-static, so camera-only
   //    reprojection is exact for them — no motion vectors needed.
+  //  - REJECT: store current device depth in the otherwise-unused history
+  //    alpha channel. A reprojected sample is accepted only when that stored
+  //    depth matches the depth predicted by the current world point. This is
+  //    the missing disocclusion test around overlapping trunks, leaves,
+  //    buildings and vehicles; it costs no extra render target or texture.
   //  - RECTIFY: clamp the reprojected history to the min/max of the current
   //    frame's 5-tap AO neighborhood (standard TAA neighborhood clamping),
   //    then cap brighter history close to the live sample. The neighborhood
@@ -1869,7 +1876,15 @@ export function createPost(
           vec3 n4 = texture2D(tNow, vUv - vec2(0.0, uTexel.y)).rgb;
           vec3 mn = min(now.rgb, min(min(n1, n2), min(n3, n4)));
           vec3 mx = max(now.rgb, max(max(n1, n2), max(n3, n4)));
-          vec3 hist = clamp(texture2D(tPrev, prevUv).rgb, mn, mx);
+          vec4 historySample = texture2D(tPrev, prevUv);
+          float expectedPrevDepth = (pc.z / pc.w) * 0.5 + 0.5;
+          float depthFootprint = abs(dFdx(expectedPrevDepth)) + abs(dFdy(expectedPrevDepth));
+          float depthTolerance = max(
+            ${TEMPORAL_AO_DEPTH_REJECT_MIN.toFixed(6)},
+            depthFootprint * ${TEMPORAL_AO_DEPTH_REJECT_FOOTPRINT_SCALE.toFixed(1)}
+          );
+          bool depthMismatch = abs(historySample.a - expectedPrevDepth) > depthTolerance;
+          vec3 hist = clamp(historySample.rgb, mn, mx);
           // Responsive AO resolve: retain only a narrow band of bright history
           // while releasing stale darkness immediately on disocclusion.
           hist = clamp(
@@ -1877,8 +1892,10 @@ export function createPost(
             now.rgb - vec3(${TEMPORAL_AO_DARK_RELEASE_SLACK.toFixed(3)}),
             now.rgb + vec3(${TEMPORAL_AO_BRIGHT_RETENTION_SLACK.toFixed(3)})
           );
-          float k = (off || uSeed > 0.5) ? 1.0 : uBlendK;
-          gl_FragColor = vec4(mix(hist, now.rgb, k), 1.0);
+          float k = (off || depthMismatch || uSeed > 0.5) ? 1.0 : uBlendK;
+          // Preserve current device depth beside AO so the next frame can
+          // reject history from a different surface without another target.
+          gl_FragColor = vec4(mix(hist, now.rgb, k), depth);
         }`,
       depthTest: false,
       depthWrite: false,

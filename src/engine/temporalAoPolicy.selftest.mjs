@@ -2,15 +2,20 @@ import assert from 'node:assert/strict';
 import {
   TEMPORAL_AO_BRIGHT_RETENTION_SLACK,
   TEMPORAL_AO_CURRENT_WEIGHT,
+  TEMPORAL_AO_DEPTH_REJECT_FOOTPRINT_SCALE,
+  TEMPORAL_AO_DEPTH_REJECT_MIN,
   TEMPORAL_AO_DARK_RELEASE_SLACK,
   TEMPORAL_AO_STABLE_FRAMES_BEFORE_SETTLE,
   resolveTemporalAoCurrentWeight,
   resolveTemporalAoSample,
+  temporalAoHistoryDepthMatches,
 } from './temporalAoPolicy.ts';
 
 assert.equal(TEMPORAL_AO_BRIGHT_RETENTION_SLACK, 0.03);
 assert.equal(TEMPORAL_AO_CURRENT_WEIGHT, 0.15);
 assert.equal(TEMPORAL_AO_DARK_RELEASE_SLACK, 0);
+assert.equal(TEMPORAL_AO_DEPTH_REJECT_MIN, 0.00015);
+assert.equal(TEMPORAL_AO_DEPTH_REJECT_FOOTPRINT_SCALE, 2);
 assert.equal(TEMPORAL_AO_STABLE_FRAMES_BEFORE_SETTLE, 4);
 assert.equal(resolveTemporalAoCurrentWeight(0), TEMPORAL_AO_CURRENT_WEIGHT);
 assert.equal(resolveTemporalAoCurrentWeight(1), TEMPORAL_AO_CURRENT_WEIGHT,
@@ -18,6 +23,14 @@ assert.equal(resolveTemporalAoCurrentWeight(1), TEMPORAL_AO_CURRENT_WEIGHT,
 assert.equal(resolveTemporalAoCurrentWeight(3), TEMPORAL_AO_CURRENT_WEIGHT);
 assert.equal(resolveTemporalAoCurrentWeight(4), 1,
   'a genuinely stationary camera settles to an exact current-AO frame');
+assert.equal(temporalAoHistoryDepthMatches(0.42, 0.4201), true,
+  'sub-threshold depth jitter keeps valid temporal history');
+assert.equal(temporalAoHistoryDepthMatches(0.42, 0.421), false,
+  'a different overlapping surface rejects temporal history');
+assert.equal(temporalAoHistoryDepthMatches(0.42, 0.421, 0.0006), true,
+  'one sloped depth footprint expands the edge tolerance');
+assert.equal(temporalAoHistoryDepthMatches(Number.NaN, 0.42), false,
+  'non-finite depth never licenses stale history');
 
 assert.equal(resolveTemporalAoSample({
   current: 0.9,
