@@ -265,7 +265,7 @@ const REG = {
     pubDims: { hullLengthM: 6.33, overallLengthM: 8.51, widthM: 3.51, heightM: 3.35 },
   },
   // ---- misc/Euro-Asia moderns family (append-only, 2026-08-03) -------------
-  // Lab registrations mirrored verbatim: leclerc userdrops2.js, t80u
+  // Local comparison registrations: Leclerc wave-2 oracle, t80u
   // userdrops3.js, type90 userdrops5.js source(), ariete + type74 from the
   // fidelity harness LOCAL_REFERENCE_OVERRIDES (quarantine oracles),
   // recon_tank specs.js MODEL_SOURCE. pubDims from the spec dims rows
@@ -397,7 +397,7 @@ const REG = {
   // ---- zero-row instrument batch (triage 2026-08-03): 13 no-profile tanks.
   // Registrations mirror userdrops7 glb() (turret '^Turret$', autoPivot, gun
   // via the loader's default gun|barrel|cannon regex — same default as this
-  // tool) and userdrops2's t90m override. recovered/* rows are the NC-SA
+  // tool) and the retired wave-2 T-90M oracle. recovered/* rows are the NC-SA
   // LOCAL-ONLY quarantine class; these REG rows are local instruments, and
   // the tanks' public builds stay procedural. pubDims from the scout-gen2
   // packet stubs (docs/references/tanks/scout-gen2-*.md).
@@ -466,7 +466,7 @@ const REG = {
     pubDims: { hullLengthM: 7.08, overallLengthM: 9.72, widthM: 3.56, heightM: 2.22 },
   },
   t90m: {
-    // userdrops2 override (minehffd print): no clean hull-only box, so the
+    // Wave-2 minehffd oracle: no clean hull-only box, so the
     // loader uses scaleToOverall; nose raw -X -> yaw +90.
     path: 'public/models/tanks/t90m_minehffd.glb',
     turretNode: '^Turret$', gunNode: '^Main_barrel$', autoPivot: true,
@@ -830,8 +830,8 @@ const REG = {
     // Viewer-rip re-upload suspect; fused 3-mesh, far off-origin.
     // §5.248 ukraine round INSTRUMENT FIX: the diorama parks the tank
     // axis-aligned along raw X (PCA 0.05°, spans 39.86×14.97×19.97u,
-    // 0.242 m/u vs pub), nose = raw -X -> yawOffset +90 (the userdrops2
-    // FLIP-RETIRED convention). Without it the width normalizer reads the
+    // 0.242 m/u vs pub), nose = raw -X -> yawOffset +90 (the retired wave-2
+    // oracle convention). Without it the width normalizer reads the
     // 9.65 m length as width (extract read -86%).
     path: 'public/models/community-candidates/t80u_kursk_manako.glb',
     fixedMount: true, scaleToOverall: true, yawOffset: Math.PI / 2,

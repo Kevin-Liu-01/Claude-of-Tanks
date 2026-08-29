@@ -302,8 +302,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // AFV program (owner directive 2026-08-04, packet docs/references/tanks/
   // bmp2.md): the m_bergman BMP-2 print is QUARANTINE class — gate/measure
   // local-only through this override; the in-game MODEL_SOURCE registration
-  // stays delisted (userdrops2 SHIP_USERDROP2_NEW). Same wiring as the
-  // delisted registration it mirrors.
+  // stays an isolated authoring oracle. The playable is always procedural.
   bmp2: {
     source:'glb',
     glb:{
@@ -338,8 +337,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   },
   // BASE-21 ORACLE WAVE (owner drop 2026-08-06; ATTRIBUTION.md "Base-21
   // oracle wave") — measurement oracles only, the playables stay
-  // procedural (SHIP_USERDROP2_NEW=false keeps runtime MODEL_SOURCE
-  // procedural). Configs derived from raw-GLB node inspection; the
+  // procedural. Configs derived from raw-GLB node inspection; the
   // vertex-extract REG rows mirror them (docs/references/vertex/*.json).
   // NOT REGISTERED from the same drop: leo2a4 <- leopard_2a4_otco.glb
   // (live Sketchfab description "Leopard 2A4 OTCO from War Thunder" —

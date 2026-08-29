@@ -27,10 +27,9 @@
 //              alpha-carrying sheets + body diffuse (GPU texture budget).
 //              Nose = raw +X -> yawOffset -90°.
 //
-// Registration contract follows the remaining userdrops2.js pack: pure data +
-// side effect on the shared specs.js roster tables; imported by
-// tankFactory.ts AFTER the modern spec modules so the MODEL_SOURCE
-// assignments override 'procedural'.
+// Registration is pure data plus a side effect on the shared specs.js roster
+// tables. The fleet facades import this pack after the modern spec modules so
+// its authored rows observe a complete donor registry.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import {

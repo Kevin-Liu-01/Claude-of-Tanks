@@ -6,10 +6,9 @@ amx30, amx30b2, m48, m60a2, vickers_mk1, t84.
 
 Method (false-0 law respected — probe first, gate only renderers):
 
-1. Registration read from `src/vehicles/userdrops7.js` (12 gen2 rows) and
-   `src/vehicles/userdrops2.js` (t90m — NOTE: the specs.js
-   `t90m:{source:'procedural'}` row is REPLACED at import time by the
-   unconditional userdrops2 override; t90m IS a GLB-sourced reference).
+1. Historical comparison registrations were read from the wave-7 registry
+   and the retired wave-2 T-90M oracle. Current playables are procedural; the
+   source files described here are authoring references only.
 2. Render probe `tools/tmp-triage-probe.mjs`: plain fidelity-page load per id,
    console/pageerror capture, red-pixel census over all overlay canvases
    (red=ref, cyan=proc), rig-split mesh counts, screenshots
@@ -31,7 +30,7 @@ Four oracles carry caveats to check during authoring (see notes column).
 
 | id | registration | ref renders | proc renders | extract / stylization (ref vs pub, body-extent) | gate baseline (min / components h,w,t,st,d,f) | bucket | proposed family | blocking defect | notes |
 |---|---|---|---|---|---|---|---|---|---|
-| t90m | userdrops2 glb `t90m_minehffd.glb` turret `^Turret$` gun `^Main_barrel$` autoPivot scaleToOverall yaw +90° heroTex; file OK | YES (25 turret + 6 gun meshes) | YES — canonical `buildT90M`, board 75.4 | no REG; len x1.032, hull x1.089, height x1.350 (roof RWS/sight furniture, thick-column) | 0 / 19.7, 0, 0, 0, 0, 100 | (a) | russia.js | none — packet MISSING (only tank with no scout packet; height datum unresolved) | Closest-to-done: hand-built canonical already bulk-matches (minView 75.9). Proc itself is 13.5% tall vs pub 2.23 (dims 0). One benign 404 (texture-adjacent) during load; masks unaffected. Write packet, then profile-ize vs t90sm/t90a lofts. |
+| t90m | local oracle `t90m_minehffd.glb`: turret `^Turret$`, gun `^Main_barrel$`, autoPivot, scaleToOverall, yaw +90°; file OK | YES (25 turret + 6 gun meshes) | YES — canonical `buildT90M`, board 75.4 | no REG; len x1.032, hull x1.089, height x1.350 (roof RWS/sight furniture, thick-column) | 0 / 19.7, 0, 0, 0, 0, 100 | (a) | russia.js | none — packet was missing during this 2026-08-03 audit | Historical baseline only; current playable is a first-party procedural profile and has a maintained reference packet. |
 | t44 | userdrops7 glb `community/t44_foxygamer.glb` `^Turret$` autoPivot paintUntextured; file OK | YES (12+4) | YES — donor t34_85 canonical, board 69.6 | no REG; len x0.982, hull x1.013, height x0.937 (clean oracle) | 0 / 0, 0, 0, 0, 0, 100 | (a) | russia.js | none | All-zero components = donor divergence (T-44 low hull + centered turret vs T-34-85), not a defect. Spec height 2.72 uses DShK convention (packet roof datum 2.46; print DShK reads thin — ref 2.55). New low-hull shape, medium effort. |
 | t54 | userdrops7 glb `recovered/t54.glb` (NC quarantine, dev-only registration) `^Turret$` autoPivot; file OK | YES (12+4) | YES — donor t62mv1 profile, board 79.2 / minView 83.9 | no REG; len x1.048, hull x1.003, height x1.060 (clean) | 0 / 20.8, 0, 19.1, 6.2, 11.4, 100 | (a) | russia.js | none | Best soviet-medium starting point: hull board 89.2 vs t62mv1 donor. Near-clone of t62mv1 profile (T-62 = stretched T-54). Printed roof DShK present (m26/m45 convention). Easy. |
 | type59 | userdrops7 glb `community/type69_lasttriarius.glb` `^Turret$` autoPivot; file OK | YES (12+4) | YES — donor t62mv1 profile, board 76.2 | no REG; len x0.980, height x1.023 (clean) | 0 / 21.4, 0, 0, 26.2, 0, 100 | (a) | russia.js | none | Oracle is a Type 69-II print (same WZ-120 silhouette per packet). Do AFTER t54 — becomes a t54-profile variant kit. Easy once t54 lands. |
@@ -69,8 +68,8 @@ dims; 1.0 is perfect.
 - `tools/vertex-extract.mjs` has NO REG rows for any of the 13. pubDims live
   in the userdrops7.js rows / scout packets; registration configs mirror the
   userdrops7 `glb()` shape (turretNode `^Turret$`, autoPivot, fused gun) and
-  the userdrops2 t90m entry (`^Turret$`/`^Main_barrel$`, scaleToOverall,
-  yaw +90°).
+  the retired wave-2 T-90M oracle configuration (`^Turret$`/
+  `^Main_barrel$`, scaleToOverall, yaw +90°).
 - t90m has no reference packet (`docs/references/tanks/t90m.md` missing;
   nothing in scout-gen2 covers it). All 12 others are covered by
   `docs/references/tanks/scout-gen2-{t44,t54,type59,t80,amx30,m48,m60a2,
