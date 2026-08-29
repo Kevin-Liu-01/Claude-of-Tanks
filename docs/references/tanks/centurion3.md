@@ -398,7 +398,7 @@ Geo 91.1 gatePassed x2 bit-identical + independent critic 9.0 ALL
 FOURTEEN VIEWS (r8 adjudication, the archived visual-review receipt — floor 9.0). FREEZE HASH bf0a45e8 (47 meshes, 74828
 verts; orchestrator-verified at landing). Flip-era §10: registration
 retired + three-map mirrors landed at the fleet flip (c487188);
-USERDROP6_SOURCED_IDS exclusion verified; variants.js carries no
+USERDROP6_SOURCED_IDS exclusion verified; the core variant registry carries no
 centurion3 rows (nothing to backfill); icons x5 regenerated from a
 clean HEAD worktree at this hash. Critic rig integrity: hashes
 bf0a45e8 / a25a73b8 (challenger1) / 5117b9a8 (chieftain5) stable

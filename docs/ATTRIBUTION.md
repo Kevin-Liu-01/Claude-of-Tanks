@@ -472,11 +472,12 @@ deleted after judging along with the rest of
 
 ## Variant vehicles (public/models/tanks/community/variants/) — CC-BY 4.0 derivatives
 
-Modified versions of on-disk CC-BY 4.0 base models ("variant" sourcing route,
-docs/research/modern-roster.md Part 0). Each file is an offline Blender
-re-export of the base with the modifications listed below — recorded here per
-CC-BY 4.0 §3(a)(1)(B) ("indicate if You modified the Licensed Material").
-Specs + registration: `src/vehicles/variants.js`.
+Historical modified versions of on-disk CC-BY 4.0 base models ("variant"
+sourcing route, docs/research/modern-roster.md Part 0). Each file is an offline
+Blender re-export of the base with the modifications listed below — recorded
+here per CC-BY 4.0 §3(a)(1)(B). The files are comparison candidates only;
+playable combat data is registered by `src/vehicles/combatVariantSpecs.ts` and
+all three live visuals are first-party procedural builds.
 
 | In-game vehicle (spec id) | Base asset | Author | Source | License | File + modifications |
 |---|---|---|---|---|---|
@@ -486,13 +487,10 @@ Specs + registration: `src/vehicles/variants.js`.
 
 Derivative renders (icons `public/icons/m1a1_*`, `t90a_*`, `m1a2_tusk_*`,
 generated 2026-07-28 by tools/genIcons.mjs) are covered by the rows above.
-All three variants are registered playables (src/vehicles/variants.js,
-imported by tankFactory.ts) and carry their credit line on the garage stats
-card (spec.community), satisfying the
-CC-BY 4.0 attribution + "modified" indication requirements in-product as well
-as in this file. The remaining 16 modern-expansion vehicles (modern1/2/3.js
-builder packs) are procedural first-party models — no third-party assets, no
-attribution required.
+All three ids remain registered playables, but none loads these files or
+exposes source-credit metadata as part of its runtime spec. Attribution and
+the required modification indication live in this document; authoring tools
+may use the files for isolated visual comparison.
 
 ### Evaluation record — Type 74 variant (2026-07-28): built, NOT shipped
 

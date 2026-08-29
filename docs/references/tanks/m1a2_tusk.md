@@ -104,7 +104,7 @@ A cap never excuses dims — dims holds >= 90.
 Chimera cert STANDS against current files: in the lab, userdrops4 still
 overrides MODEL_SOURCE.m1a2_tusk to the height-clamped tejas GLB and
 modelLoader adds the real-meter runtime TUSK kit (the preprocessed
-m1a2_tusk_dannzjs_variant.glb registered by variants.js is shadowed by that
+m1a2_tusk_dannzjs_variant.glb retained by the comparison registry was shadowed by that
 later unconditional override — pointing the lab id at the variant bake is a
 loader/userdrops-side ask, out of profile scope). Fresh run:
 hull/whole/turret/stations 0 (structurally capped), dims 97, floaters 100 —

@@ -93,6 +93,6 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // MODEL_SOURCE; the procedural build ships everywhere.
   // m1a2_tusk: §5.31b ERA-GROUP FLIP 2026-08-08 — the dev-only tejas alias
   // is retired so dev renders the same abrams.js tusk profile deploys now
-  // show (variants.js carries the flip + the dannzjs candidateGlb). The
+  // show (combatVariantSpecs.ts carries the flip + candidateGlb). The
   // The retired local comparison print is no longer registered or retained.
 }

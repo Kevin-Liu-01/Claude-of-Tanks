@@ -240,7 +240,7 @@ const SPECS = [
       dims: { hullLengthM: 7.08, overallLengthM: 9.72, widthM: 3.56, heightM: 2.22 },
       visual: { number: '240' } }, T84_REMIX),
   // -- §5.38 T-90 family (owner priority wave 2026-08-08) ---------------------
-  // Three new marks off the t90a base (variants.js donor — legal here, the
+  // Three new marks off the typed t90a combat-spec donor — legal here, the
   // userdrops5 t72bu precedent). The KojfDiscord AW-series prints are
   // LOCAL-ONLY QUARANTINE measurement references (docs/ATTRIBUTION.md series
   // entry): NO MODEL_SOURCE rows and no credit cards — every playable renders

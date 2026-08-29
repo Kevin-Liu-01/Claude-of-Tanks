@@ -22,7 +22,7 @@ import {
 } from './combatAnatomyCalibrationLoader.ts';
 import { finalizeCombatAnatomy } from './combatAnatomy.js';
 
-import './variants.js';
+import './combatVariantSpecs.ts';
 import './modern1Specs.generated.js';
 import './modern2Specs.generated.js';
 import './kf51Specs.ts';

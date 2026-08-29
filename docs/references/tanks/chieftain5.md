@@ -664,7 +664,7 @@ executed: userdrops5 source('chieftain5') registration RETIRED
 (procedural is the model of record; chips under CUSTOM);
 USERDROP5_SOURCED_IDS excludes chieftain5; icons regenerated (EXACTLY 5
 by filename); measurement-only override configs in ALL THREE maps (the
-Z-up print's pitchOffset -PI/2 + paintUntextured carried); variants.js
+Z-up print's pitchOffset -PI/2 + paintUntextured carried); core variant registry
 backfill verified impossible (not in VARIANT_TANK_IDS).
 **FREEZE HASH e8919e36 (43 meshes / 101168 verts)** — any intentional
 change re-runs gate + critic re-cert and re-freezes in the same commit.

@@ -27,9 +27,9 @@
 //   node tools/vertex-extract.mjs --ids=all           (the nine russia ids)
 //   [--out=docs/references/vertex] [--res=2560]
 //
-// The registration table below MIRRORS src/vehicles/userdrops5.js +
-// src/vehicles/variants.js (those modules are vite-env-gated and cannot be
-// imported under plain node). Keep in sync when registrations change.
+// The registration table below mirrors local comparison candidates associated
+// with recovered-family and core-variant specs. Keep it in sync when authoring
+// oracle configurations change.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -38,7 +38,7 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 
 // ---------------------------------------------------------------- registry --
 // pubDims from userdrops5.js make() rows (t72b_1987/t72b3m inherit t72b3 in
-// modern1.js; t72bu/t90a_vladimir inherit t90a in variants.js).
+// modern1.js; t72bu/t90a_vladimir inherit typed t90a combat data).
 const REG = {
   // Owner MBT-70 print is fused by material (no honest articulated masks).
   // Raw nose +X; fixedMount scales the whole source envelope to the authored
