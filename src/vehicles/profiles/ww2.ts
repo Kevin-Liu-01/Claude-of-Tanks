@@ -30,6 +30,66 @@
 // t34_85 1.50 (track outer face EXACT).
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations } from './kit.ts';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+
+type Vec2Tuple = readonly [number, number];
+type Vec3Tuple = readonly [number, number, number];
+type GeometryScale = number | readonly number[];
+
+interface Ww2BuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly mats: unknown;
+  readonly q?: boolean;
+  readonly rng: () => number;
+  readonly spec: { readonly visual: { readonly number?: string } };
+  topY?: number;
+  add(
+    slot: string,
+    geometry: THREE.BufferGeometry,
+    x?: number,
+    y?: number,
+    z?: number,
+    rotationX?: number,
+    rotationY?: number,
+    rotationZ?: number,
+    scale?: GeometryScale,
+  ): void;
+  addEquipment(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  clear(...slots: string[]): void;
+  decal(
+    owner: 'hull' | 'turret',
+    kind: string,
+    label: string | null,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): void;
+}
+
+interface PanzerThreeHullOptions {
+  zc: number;
+  len: number;
+  roofY: number;
+  superW: number;
+  superLen: number;
+  superBias: number;
+  noseDeckY: number;
+  trackXc: number;
+  trackW: number;
+  fenderY: number;
+  tailY: number;
+  gearBias: number;
+  topW: number;
+  frontAnchorDz: number;
+  rearAnchorDz: number;
+  noseFaceDz?: number;
+  frontFlapFat?: boolean;
+}
 
 // ---------------------------------------------------------------------------
 // Family machinery
@@ -38,7 +98,15 @@ import { KIT, FITTINGS, evenStations } from './kit.ts';
 // Dark recess field behind every road wheel (soviet-heavy sovGear rule): the
 // painted rim/hub/bolts stand proud of a shadowed disc so wheels read out of
 // the bay shadow under any camo. Merged into hullDark — zero extra draws.
-function wheelShadows(P, xc, wheelZs, r, w, lift = 0, bucket = 'hullDark') {
+function wheelShadows(
+  P: Ww2BuilderPort,
+  xc: number,
+  wheelZs: readonly number[],
+  r: number,
+  w: number,
+  lift = 0,
+  bucket = 'hullDark',
+): void {
   const { cylX } = KIT;
   for (const z of wheelZs) for (const s of [-1, 1]) {
     P.add(bucket, cylX(r * 0.72, w * 1.06, 12), s * xc, r + 0.10 + lift, z);
@@ -47,14 +115,33 @@ function wheelShadows(P, xc, wheelZs, r, w, lift = 0, bucket = 'hullDark') {
 
 // Call-time KIT.xform alias (KIT resolves inside the tankFactory module
 // cycle only at build time — never destructure it at module scope).
-const xform2 = (geo, ...a) => KIT.xform(geo, ...a);
+const xform2 = KIT.xform as (
+  geometry: THREE.BufferGeometry,
+  x?: number,
+  y?: number,
+  z?: number,
+  rotationX?: number,
+  rotationY?: number,
+  rotationZ?: number,
+  scale?: GeometryScale,
+) => THREE.BufferGeometry;
 
 // Mirror-safe slab (§C MISSING-SIDE law): s=+1 authors the given ring;
 // s=-1 mirrors x AND swaps the corner order so every face stays outward
 // (the leopard mslab4 corner-swap device — never a bare x*s mirror loop,
 // which hands the ring reversed handedness and backface-culls the solid).
-const mirrX = ([x, y, z]) => [-x, y, z];
-function mslab(s, b0, b1, b2, b3, t0, t1, t2, t3) {
+const mirrX = ([x, y, z]: Vec3Tuple): Vec3Tuple => [-x, y, z];
+function mslab(
+  s: number,
+  b0: Vec3Tuple,
+  b1: Vec3Tuple,
+  b2: Vec3Tuple,
+  b3: Vec3Tuple,
+  t0: Vec3Tuple,
+  t1: Vec3Tuple,
+  t2: Vec3Tuple,
+  t3: Vec3Tuple,
+): THREE.BufferGeometry {
   const { slab } = KIT;
   return s > 0
     ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
@@ -62,21 +149,21 @@ function mslab(s, b0, b1, b2, b3, t0, t1, t2, t3) {
 }
 
 // Bow tow hook/shackle: bracket block + dark pin.
-function towHook(P, x, y, z) {
+function towHook(P: Ww2BuilderPort, x: number, y: number, z: number): void {
   const { box, cylX } = KIT;
   P.add('hullDetail', box(0.09, 0.12, 0.09), x, y, z);
   P.add('hullDark', cylX(0.02, 0.12, 6), x, y + 0.01, z + 0.03);
 }
 
 // German rear muffler: transverse dark drum + exhaust stub.
-function muffler(P, x, y, z, len = 0.9, r = 0.11) {
+function muffler(P: Ww2BuilderPort, x: number, y: number, z: number, len = 0.9, r = 0.11): void {
   const { cylX, cylY } = KIT;
   P.add('hullDark', cylX(r, len, 12), x, y, z);
   P.add('hullDark', cylY(0.035, 0.035, 0.12, 8), x + len * 0.30, y + r + 0.05, z);
 }
 
 // Fender pioneer tool row: shovel + axe head + dark clamps.
-function fenderTools(P, x, y, z) {
+function fenderTools(P: Ww2BuilderPort, x: number, y: number, z: number): void {
   const { box } = KIT;
   KIT.shovelTool(P, x, y, z, 0.85);
   P.add('hullWood', box(0.03, 0.022, 0.6), x + 0.10, y, z - 0.15);
@@ -85,7 +172,7 @@ function fenderTools(P, x, y, z) {
 }
 
 // Headlight pair with brush-guard hoops.
-function lightsAndGuards(P, xs, y, z, rx = -0.3) {
+function lightsAndGuards(P: Ww2BuilderPort, xs: readonly number[], y: number, z: number, rx = -0.3): void {
   for (const x of xs) {
     KIT.headlight(P, x, y, z, rx);
     P.add('hullDetail', KIT.torus(0.07, 0.011, 12), x, y, z + 0.055);
@@ -97,7 +184,7 @@ function lightsAndGuards(P, xs, y, z, rx = -0.3) {
 // IS the reference). Squat slab hull ±1.80 × 5.26 m, cab band ±1.09 to 1.17,
 // rear hump to 1.44; snouted dome turret crown 1.65; fat 2-step gun to +3.68.
 // ---------------------------------------------------------------------------
-function buildQHeavy(P) {
+function buildQHeavy(P: Ww2BuilderPort): void {
   const { box, cylY, cylZ, slab, frustum, buildRunningGear, buildGun, polyTurret } = KIT;
   // DIMS-FIRST REBUILD (gate v9): the Quaternius toy oracle at published width
   // measures ~5.4 x 1.7 (len x height) against the invented published spec of
@@ -187,7 +274,7 @@ function buildQHeavy(P) {
 // full-length fenders at ±1.45, 6 small rubber-tired wheels + 3 return
 // rollers, FRONT sprocket. o parametrizes the two oracles' frames.
 // ---------------------------------------------------------------------------
-function pziiiHull(P, o) {
+function pziiiHull(P: Ww2BuilderPort, o: PanzerThreeHullOptions) {
   const { box, cylY, slab, buildRunningGear, sph, cylZ } = KIT;
   const zc = o.zc;                          // hull center (konserwa is rear-shifted)
   const roof = o.roofY;                     // superstructure roof height
@@ -321,7 +408,7 @@ function pziiiHull(P, o) {
 }
 
 // newc_pziii — Ausf. J (late) with the 5 cm KwK 39 L/60.
-function buildNewcPziii(P) {
+function buildNewcPziii(P: Ww2BuilderPort): void {
   const { box, cylY, cylZ, polyTurret, slab, buildGun, periscope, liftEye } = KIT;
   pziiiHull(P, {
     zc: 0, len: 5.39, roofY: 1.66, superW: 1.31, superLen: 4.15, superBias: -0.55,
@@ -386,7 +473,7 @@ function buildNewcPziii(P) {
 }
 
 // pziii_konserwa — early Pz III with the thin 3.7 cm and twin coax MGs.
-function buildPziiiKonserwa(P) {
+function buildPziiiKonserwa(P: Ww2BuilderPort): void {
   const { box, cylY, cylZ, polyTurret, slab, buildGun, periscope, liftEye } = KIT;
   pziiiHull(P, {
     zc: -0.35, len: 5.31, roofY: 1.58, superW: 1.435, superLen: 3.24, superBias: -0.02,
@@ -408,8 +495,8 @@ function buildPziiiKonserwa(P) {
     [-0.50, 0.30, -0.60], [0.50, 0.30, -0.60], [0.40, 0.30, -1.08], [-0.40, 0.30, -1.08],
     [-0.50, 0.52, -0.60], [0.50, 0.52, -0.60], [0.40, 0.52, -1.08], [-0.40, 0.52, -1.08]));
   // rear cupola drum + slits (ref crown 2.49 at world z -0.83..-0.97)
-  P.add('turret', KIT.xform(cylY(0.37, 0.40, 0.38, 16), 0, 0.71, -0.72, 0, 0, 0, [1, 1, 0.875])); // (r2: ref cupola r ~0.40 in x,
-  P.add('turret', KIT.xform(cylY(0.30, 0.30, 0.032, 16), 0, 0.915, -0.70, 0, 0, 0, [1, 1, 0.875])); // z-elliptic: its crown ends -0.97)
+  P.add('turret', xform2(cylY(0.37, 0.40, 0.38, 16), 0, 0.71, -0.72, 0, 0, 0, [1, 1, 0.875])); // (r2: ref cupola r ~0.40 in x,
+  P.add('turret', xform2(cylY(0.30, 0.30, 0.032, 16), 0, 0.915, -0.70, 0, 0, 0, [1, 1, 0.875])); // z-elliptic: its crown ends -0.97)
   P.add('turretDark', box(0.48, 0.015, 0.03), 0, 0.94, -0.70);
   for (let k = 0; k < 5; k++) {
     const a = (k / 5) * Math.PI * 2 + 0.6;
@@ -454,7 +541,7 @@ function buildPziiiKonserwa(P) {
 // sherman_jumbo — docs/references/tanks/sherman_jumbo.md. Slab-sided E2 hull
 // with sand shields, cast transmission nose, huge cast turret, short 75 mm.
 // ---------------------------------------------------------------------------
-function buildShermanJumbo(P) {
+function buildShermanJumbo(P: Ww2BuilderPort): void {
   const { box, cylX, cylY, cylZ, sph, slab, lathe, polyTurret, buildRunningGear, buildGun, periscope, liftEye } = KIT;
   const zc = -0.08;
 
@@ -814,7 +901,7 @@ function buildShermanJumbo(P) {
 // tiger2 — docs/references/tanks/tiger2.md. Rear-shifted frame (zc −1.355),
 // series Henschel turret, 8.8 L/71 with 2.7 m overhang, 9 overlapped wheels.
 // ---------------------------------------------------------------------------
-function buildTiger2(P) {
+function buildTiger2(P: Ww2BuilderPort): void {
   const { box, cylY, cylZ, slab, polyTurret, buildRunningGear, buildGun, periscope, liftEye, cupola, sph } = KIT;
   const front = 2.24, rear = -4.95;
 
@@ -955,7 +1042,7 @@ function buildTiger2(P) {
 // t34_85_cad — docs/references/tanks/t34_85_cad.md. Rear-shifted frame
 // (zc −1.125), sloped sides, cast egg turret, bare 85 mm, 5 Christie wheels.
 // ---------------------------------------------------------------------------
-function buildT3485(P) {
+function buildT3485(P: Ww2BuilderPort): void {
   const { box, cylY, cylZ, cylX, sph, slab, lathe, frustum, buildRunningGear, buildGun, periscope, liftEye } = KIT;
   const zc = -1.125;
   const front = 1.72, rear = -3.97;
@@ -1094,7 +1181,7 @@ function buildT3485(P) {
 // hull, wide drum turret w/ rear bin, 8.8 L/56 w/ double baffle, interleaved
 // dished wheels behind ±1.85 fender flare.
 // ---------------------------------------------------------------------------
-function buildNewcTiger(P) {
+function buildNewcTiger(P: Ww2BuilderPort): void {
   const { box, cylY, cylZ, cylX, sph, slab, polyTurret, buildRunningGear, buildGun, periscope, liftEye } = KIT;
   const front = 3.10, rear = -3.10;
 
@@ -1207,7 +1294,7 @@ function buildNewcTiger(P) {
 // leichttraktor — docs/references/tanks/leichttraktor.md. Stylized VK 31:
 // rear turret, raised cab, tall riveted track frames, thin 37 mm over the deck.
 // ---------------------------------------------------------------------------
-function buildLeichttraktor(P) {
+function buildLeichttraktor(P: Ww2BuilderPort): void {
   const { box, cylY, cylZ, slab, lathe, buildRunningGear, buildGun, periscope } = KIT;
 
   const wheelZs = evenStations(6, 2.70, -0.05);
@@ -1330,7 +1417,7 @@ function buildLeichttraktor(P) {
 // 3.25, track 0.71 m; 8 dual road wheels, REAR drive, long cast turret,
 // 155 mm with ~3.2 m bow overhang) — the local print is the gate oracle.
 // ---------------------------------------------------------------------------
-function buildT30(P) {
+function buildT30(P: Ww2BuilderPort): void {
   const { box, cylX, cylY, cylZ, sph, slab, lathe, buildRunningGear, buildGun, periscope, liftEye } = KIT;
 
   // running gear: 8 dual wheels/side, rear sprocket, front idler, 4 rollers —
@@ -1443,7 +1530,7 @@ function buildT30(P) {
 // SPEC NOTE (packet residual): armor gunBarrel.lengthM 3.96 vs the built
 // 3.44 visible run — shadow-proxy true-up flagged for the orchestrator.
 // ---------------------------------------------------------------------------
-function buildShermanE8(P) {
+function buildShermanE8(P: Ww2BuilderPort): void {
   const { box, cylX, cylY, cylZ, sph, slab, lathe, frustum, buildRunningGear, buildGun,
     fenders, headlight, liftEye, periscope, towCable, stowage, shovelTool } = KIT;
 
@@ -1708,7 +1795,7 @@ function buildShermanE8(P) {
 // superstructure (±1.855 EXACT — §D width guard), height 3.00 (cupola top),
 // muzzle +5.295 = overall 8.455 over the −3.16 tail (spec 8.45).
 // ---------------------------------------------------------------------------
-function buildTigerI(P) {
+function buildTigerI(P: Ww2BuilderPort): void {
   const { box, cylX, cylY, cylZ, sph, slab, frustum, buildRunningGear, buildGun,
     fenders, liftEye, periscope, towCable, stowage, shovelTool, jerryCan, tarpRoll, spareTrackStrip } = KIT;
   const { rng } = P;
@@ -1993,7 +2080,10 @@ function buildTigerI(P) {
   {
     const a = Math.PI * 72 / 180, cs = Math.cos(a), sn = Math.sin(a);
     const ry = Math.PI / 2 - a;                                              // +x face -> wall normal
-    const at = (rad, tan) => [sn * rad + cs * tan, -0.52 - cs * rad + sn * tan];
+    const at = (rad: number, tan: number): Vec2Tuple => [
+      sn * rad + cs * tan,
+      -0.52 - cs * rad + sn * tan,
+    ];
     let [px, pz] = at(1.356, 0);
     P.add('turretDark', box(0.03, 0.62, 0.50), px, 0.38, pz, 0, ry, 0);      // seam plate
     [px, pz] = at(1.372, 0);
@@ -2071,7 +2161,7 @@ function buildTigerI(P) {
 // SPEC NOTE (packet residual): armor gunBarrel.lengthM 4.64 vs the built
 // 4.00 visible run — shadow-proxy true-up flagged for the orchestrator.
 // ---------------------------------------------------------------------------
-function buildT3485Base(P) {
+function buildT3485Base(P: Ww2BuilderPort): void {
   const { box, cylX, cylY, cylZ, sph, slab, lathe, frustum, buildRunningGear, buildGun,
     fenders, headlight, liftEye, periscope, towCable, shovelTool, tarpRoll } = KIT;
 
@@ -2337,4 +2427,4 @@ export const WW2_PROFILES = {
   q_heavy: { build: buildQHeavy },
   tiger2: { build: buildTiger2 },
   sherman_jumbo: { build: buildShermanJumbo },
-};
+} satisfies VehicleProfileRecord;

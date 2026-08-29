@@ -1,7 +1,7 @@
 // Eager assembly point for release tools and headless fleet audits. Browser
 // boot demand-loads the same family maps through fleetFactory.ts.
 import { buildProfile, buildDonorVariant } from './profiles/kit.ts';
-import { WW2_PROFILES } from './profiles/ww2.js';
+import { WW2_PROFILES } from './profiles/ww2.ts';
 import { CASEMATE_PROFILES } from './profiles/casemate.js';
 import { SOVIET_HEAVY_PROFILES } from './profiles/soviet-heavy.ts';
 import { ABRAMS_PROFILES } from './profiles/abrams.js';

@@ -73,7 +73,7 @@ hero-rr 8.7 / hero-toptilt 8.7 / close-front 8.7 / close-roof 8.6.
 schematic vs the photo class; cupola vision-slit ring only reads at
 close range; bin-arc strap seams read thin from directly above.
 
-### §H.4 distinctness vs the ww2.js residents
+### §H.4 distinctness vs the ww2.ts residents
 vs **newc_tiger** (shots/ww2-ladder-r1/h4-newc_tiger): newc = stylized
 flat single-row dished wheels, straight-wall drum-ish turret + tall
 cupola, no stack shrouds; tiger1 = true interleaved 3-row train,

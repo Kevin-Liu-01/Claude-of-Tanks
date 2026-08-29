@@ -290,3 +290,4 @@ runtime documents remain authoritative for behavior.
 - [0278 — Audio policy is independent from the WebAudio runtime](0278-extract-audio-policy.md)
 - [0279 — Battle entry stages only reveal-critical work before first paint](0279-stage-reveal-critical-battle-work.md)
 - [0280 — The WebAudio mixer has a strict TypeScript owner](0280-type-audio-mixer.md)
+- [0281 — WWII profile geometry has a strict TypeScript owner](0281-type-ww2-profile-geometry.md)

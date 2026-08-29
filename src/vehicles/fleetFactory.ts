@@ -128,7 +128,7 @@ const GROUP_LOADERS = Object.freeze({
   poland: () => import('./profiles/poland.ts').then((mod) => registerProfiles(mod.POLAND_PROFILES)),
   abrams: () => import('./profiles/abrams.js').then((mod) => registerProfiles(mod.ABRAMS_PROFILES)),
   patton: () => import('./profiles/patton.js').then((mod) => registerProfiles(mod.PATTON_PROFILES)),
-  ww2: () => import('./profiles/ww2.js').then((mod) => registerProfiles(mod.WW2_PROFILES)),
+  ww2: () => import('./profiles/ww2.ts').then((mod) => registerProfiles(mod.WW2_PROFILES)),
   casemate: () => import('./profiles/casemate.js').then((mod) => {
     const { strv103: _swedenOwnsStrv103, ...profiles } = mod.CASEMATE_PROFILES;
     registerProfiles(profiles);

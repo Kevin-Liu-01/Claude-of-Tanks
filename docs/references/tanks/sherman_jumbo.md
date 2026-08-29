@@ -209,7 +209,7 @@ Decode: track-clip --exact read front 22 / rear 10 band + 34/6 shoe
 strips (x 0.81..1.05 in-lane) inside BOTH shoe wrap sweeps (lanes
 0.81..1.41; sprocket disc reach z 1.90, idler −2.14). Pre-dates and
 survives the gear-r8 pan revert (15a67ea) — own-geometry, not pan.
-Fix (src/vehicles/profiles/ww2.js buildShermanJumbo): belly split into a
+Fix (src/vehicles/profiles/ww2.ts buildShermanJumbo): belly split into a
 full-length ±0.78 center slab + outer 0.78..1.05 strips spanning only
 z −2.08..1.88, clear of both wrap discs. Silhouette-neutral: the E2 sand
 skirts + hullDark backing own every side pixel (after render:

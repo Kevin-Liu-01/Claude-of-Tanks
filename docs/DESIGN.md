@@ -53,7 +53,7 @@ Flow:
    profile function; extension tables merge in from modern1/2/3.js and
    `PROFILED_BUILDERS` (profiledProcedurals.ts → src/vehicles/profiles/*.js, the
    program's family files; PROFILED_BUILDERS wins over legacy tankFactory builders —
-   the leo2a4/ww2.js override mechanism).
+   the leo2a4/ww2.ts override mechanism).
 3. **Bucket grammar**: builders never touch meshes — they call
    `P.add(bucket, geo, x,y,z, rx,ry,rz, s)`. `BUCKET_DEF` in
    `tankFactoryCore.js` maps bucket name → (parent rig group, material slot); e.g.

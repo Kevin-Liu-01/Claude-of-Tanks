@@ -52,6 +52,9 @@ Oplot-M, and field-caged M1A1 builds. Keep its surface-seated ERA, cast-dome
 profiles, welded-face probes, cage stations, and mutable donor-id handoff behind
 the narrow Ukrainian builder port; do not move these vehicles back through an
 eager or untyped fleet path.
+`profiles/ww2.ts` owns the strict original and recovered WWII/inter-war profile
+pack. Preserve its mirror-safe slab winding, family-local builder port, seeded
+fittings, and exact demand-loaded `ww2` registration boundary.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
