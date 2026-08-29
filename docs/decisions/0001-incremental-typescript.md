@@ -130,6 +130,10 @@ Deterministic engineering captures now use the strict
 `src/dev/shotViews.ts` recipe owner. The 34-view table retains the established
 camera, HUD, vehicle, FX, and replay staging while explicit dependency ports
 preserve its demand-loaded separation from ordinary player boot.
+The first authored family pack migrated in place is
+`src/vehicles/profiles/japan.ts`. Its explicit procedural-builder port covers
+the STB-1, Type 90A, and Type 10B geometry deltas while the typed fleet loader
+retains exact-family demand acquisition.
 
 ## Consequences
 

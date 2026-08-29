@@ -1123,7 +1123,7 @@ byte-identical. The shell regroup is a mathematical no-op for turret armor.
   lane's four files): **PASS — 116 receipts current**, no other row moved.
 - `npm test` **exit 0** (includes the landed §5.371 recoil selftest).
 - muzzle-bore probe type90/type90a **PASS** (inner 16.9 / contrast 112.3).
-- hashgeo guard, 36 ids resident in misc.js / profiles/japan.js /
+- hashgeo guard, 36 ids resident in misc.js / profiles/japan.ts /
   userdrops5.js, clean-room A/B at 3a37ec93: **34 byte-held, 2 moved by
   design** (type90 518e88f0 -> **e10fb640**, type90a 71208238 ->
   **61cd559a**). type10 **6e25b62e** / type10b **5e6f7700** hold the §5.369

@@ -1,6 +1,6 @@
 # Type 10B — packet
 
-First-party JGSDF Type 10 up-armored variant (`type10b`, profiles/japan.js).
+First-party JGSDF Type 10 up-armored variant (`type10b`, profiles/japan.ts).
 History through §5.308 lives in docs/references/tanks/type10.md (the
 japan-wave base was pinned verbatim for this mark as buildType10BBase,
 hashgeo 77870ef0).
@@ -19,15 +19,15 @@ beter" — "the type 10s" = BOTH marks.
   the new stations, so nothing of the pin's content is lost — it is
   superseded, at scale, for both marks.
 - **B-variant identity delta PRESERVED, re-seated at ×1.10** (profiles/
-  japan.js addType10BPackage): swept modular cheek shell, 2×5 cassette rows
+  japan.ts addType10BPackage): swept modular cheek shell, 2×5 cassette rows
   per cheek, six high hull cassettes per flank (inner faces re-seated on
   the new 1.6606 skirt outer plane — §B2 no-air; outer 1.7102 inside the
   ±1.782 width anchor), paired EO stations (JGSDF asymmetry), shielded
   commander RWS (roofWeapon, MG scale 0.858), 6-tube smoke banks, joined
   bustle basket + rails, twin whips, Type 10 Kai closed mask + strengthened
-  sleeve, '10-B' decal. Shared japan.js helpers took an opt-in `s` scale
+  sleeve, '10-B' decal. Shared japan.ts helpers took an opt-in `s` scale
   param with byte-identical defaults (§F.2): A/B receipt — type90a
-  71208238 + stb1 f3ee84d8 hash EXACTLY the same with HEAD's japan.js vs
+  71208238 + stb1 f3ee84d8 hash EXACTLY the same with HEAD's japan.ts vs
   this lane's.
 - Spec dims ×1.10 exact: **7.513 / 10.439 / 3.564 / 2.838** (variant()
   copies the scaled type10 armor frame verbatim; armorFactor 1.16 thickness

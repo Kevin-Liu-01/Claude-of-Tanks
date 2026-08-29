@@ -254,3 +254,4 @@ runtime documents remain authoritative for behavior.
 - [0242 — The rendered-frame transaction has a typed application owner](0242-extract-main-frame-runtime.md)
 - [0243 — Ballistic impact decals have a strict TypeScript owner](0243-type-impact-decal-runtime.md)
 - [0244 — Deterministic shot recipes have a strict TypeScript owner](0244-type-deterministic-shot-views.md)
+- [0245 — Japanese profile geometry has a strict TypeScript owner](0245-type-japanese-profile-geometry.md)

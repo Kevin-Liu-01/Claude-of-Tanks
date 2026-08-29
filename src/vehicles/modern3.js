@@ -2157,7 +2157,7 @@ function buildType10Native2026(P, { compactRightGunnerSight = true } = {}) {
 // split, trimmed fender/relief ends) are absorbed into the shared base at
 // the new stations. The B-variant identity delta (cheek shell, cassette
 // rows, high side cassettes, EO pair, RWS, Kai mask, basket/whips) stays in
-// profiles/japan.js addType10BPackage, re-seated at the ×1.10 frame.
+// profiles/japan.ts addType10BPackage, re-seated at the ×1.10 frame.
 export function buildType10BBase(P) {
   buildType10Native2026(P, { compactRightGunnerSight: false });
 }

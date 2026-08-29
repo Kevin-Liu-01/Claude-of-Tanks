@@ -148,7 +148,7 @@ const GROUP_LOADERS = Object.freeze({
   merkava: () => import('./profiles/merkava.js').then((mod) => registerProfiles(mod.MERKAVA_PROFILES)),
   afv: () => import('./profiles/afvFamily.js').then((mod) => registerProfiles(mod.AFV_FAMILY_PROFILES)),
   korea: () => import('./profiles/korea.ts').then((mod) => registerProfiles(mod.KOREA_PROFILES)),
-  japan: () => import('./profiles/japan.js').then((mod) => registerProfiles(mod.JAPAN_PROFILES)),
+  japan: () => import('./profiles/japan.ts').then((mod) => registerProfiles(mod.JAPAN_PROFILES)),
   germany: () => import('./profiles/germany.ts').then((mod) => registerProfiles(mod.GERMANY_PROFILES)),
   sheridan: () => import('./profiles/sheridan.js').then((mod) => registerProfiles(mod.SHERIDAN_PROFILES)),
 } satisfies Record<FleetGroup, GroupLoader>);

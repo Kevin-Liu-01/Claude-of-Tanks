@@ -102,7 +102,7 @@ standard-check clip ✓ contig 0 ✓ census mg1+5d ✓; §B3.1 bore + mantlet �
 - §5.254 check: before/after PNGs differ (md5-verified on
   front/left/top/hero).
 
-## Owner-landing absorb (5ed4d73c japan.js, §5.278 protocol)
+## Owner-landing absorb (5ed4d73c japan.ts, §5.278 protocol)
 Owner intents read from the diff: longer whip antennas (absorbed — masts +
 h 0.70 whips + finials keep tall antenna presence), winding-corrected
 mirrored slabs (absorbed by construction — orientedSlab bound throughout),

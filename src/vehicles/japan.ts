@@ -1,6 +1,6 @@
 // Japanese armored-family gameplay/spec registration. Owner-supplied GLBs
 // are external visual/metric oracles only; playable geometry is authored in
-// profiles/japan.js from first-party procedural donors and primitives.
+// profiles/japan.ts from first-party procedural donors and primitives.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import './profiles/miscSpecs.ts';

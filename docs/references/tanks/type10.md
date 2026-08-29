@@ -262,7 +262,7 @@ plain type 10 to the model before"**. Delivered uncommitted-unstaged.
 - **type10b PINNED FIRST (the keep)**: the japan-wave base it builds on was
   frozen as a verbatim private copy `buildType10BBase` in
   src/vehicles/modern3.js (the buildType10Native2026 text exactly as it read
-  at 9555f7fe), and profiles/japan.js buildType10B re-pointed at it — the
+  at 9555f7fe), and profiles/japan.ts buildType10B re-pointed at it — the
   ONLY consumer. Byte-identity receipt: hashgeo **77870ef0** (76 meshes /
   77,246 verts) before and after the pin, and again after the revert.
 - **plain type10 REVERTED** to the pre-wave model: buildType10Native2026
@@ -286,7 +286,7 @@ plain type 10 to the model before"**. Delivered uncommitted-unstaged.
   byte-identical** (the pixel hold proof of the keep, isu152 precedent).
   Capture determinism proven 28/28 across independent before runs.
 - npm test exit 0. File scope: modern3.js (buildType10 region + pin block
-  only) + profiles/japan.js (type10b import/call only); ariete/italy code in
+  only) + profiles/japan.ts (type10b import/call only); ariete/italy code in
   the shared file untouched.
 The §5.248 JAPAN-WAVE section above stays as history; its KEEP 97267188 is
 superseded by this order for plain type10 — that geometry lives on solely
@@ -298,7 +298,7 @@ our better track system and make their hulls and turrets much mcuh beter."
 Both marks upgraded through ONE shared base (the §5.299/§5.308 type10b
 byte-pin is RETIRED BY OWNER AUTHORITY — buildType10BBase now delegates to
 the rebuilt buildType10Native2026; the B identity delta lives in
-profiles/japan.js addType10BPackage, re-seated at scale).
+profiles/japan.ts addType10BPackage, re-seated at scale).
 
 ### 1. LARGER — owner-decreed ×1.10 (§5.304-class divergence)
 - Scale judged against the owner-corrected type90 side-by-side in the live
@@ -404,7 +404,7 @@ profiles/japan.js addType10BPackage, re-seated at scale).
   session (d4a9410->...->518e88f0 etc., verts invariant) is attributed to
   the foreign landing stream (§5.341-§5.352 + owner live session), not
   this lane; helper A/B proof: type90a + stb1 hash BYTE-IDENTICAL with
-  HEAD's profiles/japan.js vs this lane's (71208238 / f3ee84d8 both ways —
+  HEAD's profiles/japan.ts vs this lane's (71208238 / f3ee84d8 both ways —
   the s=1-default shared-helper law §F.2 held).
 - Ariete fence: modern3.js ariete spec regions untouched (verbatim);
   ariete_c1/c2 hash movement during the session = the live §5.322 lane's

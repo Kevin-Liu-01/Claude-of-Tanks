@@ -2,7 +2,7 @@
 
 First-party JGSDF Type 90 Kai mark (`type90a`). Spec row is a `variant()`
 clone of `type90` in `src/vehicles/japan.ts`; visual build is
-`profiles/japan.js buildType90A` = the `buildType90` donor (profiles/misc.js)
+`profiles/japan.ts buildType90A` = the `buildType90` donor (profiles/misc.js)
 plus `addType90APackage`. Donor history lives in
 docs/references/tanks/type90.md — this file carries only the A-mark delta.
 

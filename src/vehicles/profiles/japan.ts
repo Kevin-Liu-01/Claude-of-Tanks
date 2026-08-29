@@ -9,14 +9,80 @@ import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.j
 import { buildType10BBase } from '../modern3.js';
 import { buildType90 } from './misc.js';
 import { TYPE10_MANTLET_FIT } from './type10GunSeat.ts';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
-function mount(P, fitting, x, y, z, rotation = null, owner = 'turret') {
+type Vec3Tuple = [number, number, number];
+type VehicleAssemblyOwner = 'hull' | 'turret';
+type Axis = 'x' | 'y' | 'z';
+type Quad = [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
+
+interface JapaneseBuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly mats: unknown;
+  readonly q?: boolean;
+  topY?: number;
+  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    label: string,
+    scale: number,
+    position: Vec3Tuple,
+    yaw: number,
+  ): unknown;
+  scaleBuckets(names: readonly string[], x: number, y: number, z: number): unknown;
+  visualEraCluster(
+    key: string,
+    owner: VehicleAssemblyOwner,
+    build: () => void,
+  ): unknown;
+}
+
+interface FaceSample {
+  point: THREE.Vector3;
+  normal: THREE.Vector3;
+  du: THREE.Vector3;
+  dv: THREE.Vector3;
+}
+
+interface SeatedCassetteOptions {
+  axis?: Axis;
+  contactSide?: number;
+  embed?: number;
+  lid?: boolean;
+  lidEmbed?: number;
+}
+
+function mount(
+  P: JapaneseBuilderPort,
+  fitting: THREE.Object3D,
+  x: number,
+  y: number,
+  z: number,
+  rotation: Vec3Tuple | null = null,
+  owner: VehicleAssemblyOwner = 'turret',
+): void {
   fitting.position.set(x, y, z);
   if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
   (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
 }
 
-function cassette(P, owner, x, y, z, w, h, d, rotation = null, fastener = true) {
+function cassette(
+  P: JapaneseBuilderPort,
+  owner: VehicleAssemblyOwner,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  rotation: Vec3Tuple | null = null,
+  fastener = true,
+): void {
   const r = rotation || [0, 0, 0];
   const armor = owner === 'hull' ? 'hull' : 'turret';
   const detail = owner === 'hull' ? 'hullDark' : 'turretDark';
@@ -25,9 +91,20 @@ function cassette(P, owner, x, y, z, w, h, d, rotation = null, fastener = true) 
     x, y + h * 0.5 + 0.009, z + d * 0.25, r[0], r[1], r[2]);
 }
 
-function seatedArmorCassette(P, owner, x, y, z, w, h, d, rotation = null, {
+function seatedArmorCassette(
+  P: JapaneseBuilderPort,
+  owner: VehicleAssemblyOwner,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  rotation: Vec3Tuple | null = null,
+  {
   axis = 'y', contactSide = -1, embed = 0.012, lid = true, lidEmbed = 0.002,
-} = {}) {
+  }: SeatedCassetteOptions = {},
+): void {
   const bucket = owner === 'hull' ? 'hull' : 'turret';
   const detail = owner === 'hull' ? 'hullDark' : 'turretDark';
   const r = rotation || [0, 0, 0];
@@ -54,7 +131,15 @@ function seatedArmorCassette(P, owner, x, y, z, w, h, d, rotation = null, {
   });
 }
 
-function sampleFace(p00, p10, p11, p01, u, v, outwardHint) {
+function sampleFace(
+  p00: Vec3Tuple,
+  p10: Vec3Tuple,
+  p11: Vec3Tuple,
+  p01: Vec3Tuple,
+  u: number,
+  v: number,
+  outwardHint: Vec3Tuple,
+): FaceSample {
   const a = new THREE.Vector3(...p00);
   const b = new THREE.Vector3(...p10);
   const c = new THREE.Vector3(...p11);
@@ -72,7 +157,16 @@ function sampleFace(p00, p10, p11, p01, u, v, outwardHint) {
   return { point, normal, du, dv };
 }
 
-function faceSeatedArmorCassette(P, owner, face, courseAxis, w, h, d, embed = 0.012) {
+function faceSeatedArmorCassette(
+  P: JapaneseBuilderPort,
+  owner: VehicleAssemblyOwner,
+  face: FaceSample,
+  courseAxis: THREE.Vector3,
+  w: number,
+  h: number,
+  d: number,
+  embed = 0.012,
+): { point: THREE.Vector3; normal: THREE.Vector3; center: THREE.Vector3; embed: number } {
   const n = face.normal.clone().normalize();
   const course = courseAxis.clone();
   const zAxis = course.addScaledVector(n, -course.dot(n)).normalize();
@@ -89,7 +183,14 @@ function faceSeatedArmorCassette(P, owner, face, courseAxis, w, h, d, embed = 0.
 // `s` is an opt-in uniform scale on the helpers' internal fixed sizes
 // (§5.336 type10b ×1.10 re-seat) — the default 1 keeps every other
 // consumer (stb1, type90a) byte-identical (§F.2 shared-helper law).
-function whips(P, y, z, seed, spread = 1.02, s = 1) {
+function whips(
+  P: JapaneseBuilderPort,
+  y: number,
+  z: number,
+  seed: number,
+  spread = 1.02,
+  s = 1,
+): void {
   for (const side of [-1, 1]) {
     P.add('turretDetail', KIT.cylY(0.036 * s, 0.046 * s, 0.060 * s, 10), side * spread, y, z);
     mount(P, FITTINGS.antennaWhip({
@@ -99,7 +200,16 @@ function whips(P, y, z, seed, spread = 1.02, s = 1) {
   }
 }
 
-function smoke(P, x, y, z, count, seed, pitch = -0.38, s = 1) {
+function smoke(
+  P: JapaneseBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  count: number,
+  seed: number,
+  pitch = -0.38,
+  s = 1,
+): void {
   for (const side of [-1, 1]) mount(P, FITTINGS.smokeBank({
     mats: P.mats, count, r: 0.041 * s, len: 0.28 * s, splay: side * 1.02,
     pitch, arc: 0.55, spacing: 0.10 * s, slot: 'detail',
@@ -107,7 +217,16 @@ function smoke(P, x, y, z, count, seed, pitch = -0.38, s = 1) {
   }), side * x, y, z);
 }
 
-function roofWeapon(P, x, y, z, seed, scale = 0.78, yaw = 0, s = 1) {
+function roofWeapon(
+  P: JapaneseBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  seed: number,
+  scale = 0.78,
+  yaw = 0,
+  s = 1,
+): void {
   P.add('turret', KIT.box(0.46 * s, 0.075 * s, 0.43 * s), x, y, z);
   P.add('turretDark', KIT.box(0.36 * s, 0.020 * s, 0.33 * s), x, y + 0.048 * s, z);
   P.add('turret', KIT.cylY(0.19 * s, 0.21 * s, 0.070 * s, 16), x, y + 0.085 * s, z);
@@ -117,7 +236,15 @@ function roofWeapon(P, x, y, z, seed, scale = 0.78, yaw = 0, s = 1) {
   }), x, y + 0.105 * s, z, [0, yaw, 0]);
 }
 
-function joinedBasket(P, width, y, z, depth, seed, s = 1) {
+function joinedBasket(
+  P: JapaneseBuilderPort,
+  width: number,
+  y: number,
+  z: number,
+  depth: number,
+  seed: number,
+  s = 1,
+): void {
   P.add('turretDark', KIT.box(width, 0.30 * s, 0.045 * s), 0, y, z - depth * 0.5);
   for (const yy of [y - 0.14 * s, y, y + 0.14 * s])
     P.add('turretDetail', KIT.box(width + 0.18 * s, 0.026 * s, 0.030 * s), 0, yy, z - depth - 0.025 * s);
@@ -129,7 +256,7 @@ function joinedBasket(P, width, y, z, depth, seed, s = 1) {
   }), 0, y + 0.14 * s, z - depth * 0.50);
 }
 
-function buildSTB1(P) {
+function buildSTB1(P: JapaneseBuilderPort): void {
   const {
     box, cylY, cylZ, torus, polyMultiLoft, frustum, xform, buildGun,
     buildRunningGear, fenders, headlight, liftEye, periscope, cupola,
@@ -271,7 +398,7 @@ function buildSTB1(P) {
   // irregular 18-station plan prevents the old mathematically perfect egg:
   // broad side flats, clipped fore-cheeks and a tapered rear shoulder remain
   // readable while the short stations between them retain cast continuity.
-  const stbCastPlan = [
+  const stbCastPlan: Array<readonly [number, number]> = [
     [0.00, 1.34], [0.40, 1.28], [0.78, 1.08], [1.07, 0.78],
     [1.27, 0.38], [1.31, -0.18], [1.27, -0.72], [1.08, -1.18],
     [0.76, -1.52], [0.00, -1.69],
@@ -279,7 +406,7 @@ function buildSTB1(P) {
     [-1.27, 0.38], [-1.07, 0.78], [-0.78, 1.08], [-0.40, 1.28],
   ];
   const stbCastBaseY = -0.045;
-  const raiseSTBCastY = (y) => stbCastBaseY + (y - stbCastBaseY) * 2;
+  const raiseSTBCastY = (y: number): number => stbCastBaseY + (y - stbCastBaseY) * 2;
   P.add('turret', toCreasedNormals(polyMultiLoft(stbCastPlan, [
     { height: stbCastBaseY, inset: 0.70 },
     {
@@ -492,8 +619,9 @@ function buildSTB1(P) {
   // Rounded cast saddle and long bare L7 tube.  The gun group remains the
   // only pitch owner; the searchlight and all roof equipment yaw with turret.
   P.addGunExtra(box(0.66, 0.38, 0.20), 0, 0, 0.28);
-  P.addGunExtra(xform(KIT.sph(0.26, seg), 0, 0, 0, 0, 0, 0,
-    [1.48, 0.90, 0.82]), 0, 0, 0.46);
+  const saddle = KIT.sph(0.26, seg);
+  saddle.scale(1.48, 0.90, 0.82);
+  P.addGunExtra(saddle, 0, 0, 0.46);
   P.addGunExtra(cylZ(0.145, 0.34, seg, 0.115), 0, 0, 0.66);
   P.addGunExtraDark(cylZ(0.031, 0.10, 10), 0.27, 0.07, 0.50);
   buildGun(P, { len: 4.72, r: 0.062, sleeve: false, evac: 0.46,
@@ -522,7 +650,7 @@ function buildSTB1(P) {
   P.topY = 0.90;
 }
 
-function addType90APackage(P) {
+function addType90APackage(P: JapaneseBuilderPort): void {
   const { box, cylY, cylZ, torus } = KIT;
   // Replace the quiet cheek read with joined, faceted NERA carriers and
   // shallow service cassettes. Every carrier overlaps the donor turret core.
@@ -615,12 +743,12 @@ function addType90APackage(P) {
   P.topY = Math.max(P.topY || 0, 0.9928);                                     // rig_turretTop world 2.3928 unchanged = the old 1.46 through the 0.68 shell scale
 }
 
-function buildType90A(P) {
+function buildType90A(P: JapaneseBuilderPort): void {
   buildType90(P);
   addType90APackage(P);
 }
 
-function addType10BPackage(P) {
+function addType10BPackage(P: JapaneseBuilderPort): void {
   const { box, cylY, cylZ } = KIT;
   const eraEmbed = 0.012;
   let turretEraCount = 0;
@@ -632,11 +760,11 @@ function addType10BPackage(P) {
   // Sharp modular Type 10B cheek shell. It remains a shallow swept mass and
   // intersects the donor crown, avoiding a second detached turret volume.
   for (const side of [-1, 1]) {
-    const topFace = [
+    const topFace: Quad = [
       [side * 0.176, 0.638, 1.342], [side * 1.43, 0.671, 0.638],
       [side * 1.375, 0.616, -0.715], [side * 0.407, 0.66, 0.165],
     ];
-    const sideFace = [
+    const sideFace: Quad = [
       [side * 1.694, 0.055, 0.88], [side * 1.43, 0.671, 0.638],
       [side * 1.375, 0.616, -0.715], [side * 1.628, 0.055, -0.638],
     ];
@@ -736,7 +864,7 @@ function addType10BPackage(P) {
   P.topY = Math.max(P.topY || 0, 1.628);
 }
 
-function buildType10B(P) {
+function buildType10B(P: JapaneseBuilderPort): void {
   // §5.336: the shared base is the rebuilt ×1.10 buildType10Native2026
   // (the §5.299 byte-pin retired by owner authority; buildType10BBase now
   // delegates). The B-variant identity rides on top, re-seated at scale.
@@ -748,4 +876,4 @@ export const JAPAN_PROFILES = {
   stb1: { build: buildSTB1 },
   type90a: { build: buildType90A },
   type10b: { build: buildType10B },
-};
+} satisfies VehicleProfileRecord;
