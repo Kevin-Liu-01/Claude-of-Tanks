@@ -74,56 +74,66 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
 const abramsStations = new Map();
 for (const [id, expectedVariant, expectedLoader, expectedShield] of [
   ['m1a2', 'standard', 'm1a2-split-loader', 'split'],
-  ['m1a2_tusk', 'compact', null, null],
+  ['m1a2_tusk', 'tusk-urban', 'tusk-lags-loader', 'open'],
   ['m1a2_sepv2', 'armored', 'sepv2-armored-loader', 'armored'],
-  ['m1a2_sepv3', 'lowProfile', null, null],
+  ['m1a2_sepv3', 'sepv3-armored', 'sepv3-low-loader', 'low'],
 ]) {
   const tank = make(id);
   const turret = tank.root.getObjectByName('rig_turret');
-  const replacesLoaderGun = id === 'm1a2_tusk' || id === 'm1a2_sepv3';
-  const station = fittings(tank.root,
+  const hasFullCommanderTower = id === 'm1a2_tusk' || id === 'm1a2_sepv3';
+  const compactStation = fittings(tank.root,
     (object) => object.userData.americanRwsFamily === 'm551a1-tts-derived-v1');
+  const fullStation = fittings(tank.root,
+    (object) => object.userData.designFamily === 'abramsx-open-yoke-v1');
+  const station = hasFullCommanderTower ? fullStation : compactStation;
   assert.equal(station.length, 1, `${id}: has exactly one commander's weapon tower`);
+  assert.equal(compactStation.length, hasFullCommanderTower ? 0 : 1,
+    `${id}: compact commander gun is removed only where the full tower replaces it`);
+  assert.equal(fullStation.length, hasFullCommanderTower ? 1 : 0,
+    `${id}: full-size commander tower is installed only on SEPv3 and TUSK`);
   assert.equal(station[0].userData.stationVariant, expectedVariant,
     `${id}: uses its distinct commander-station variation`);
   assert.equal(station[0].userData.hasVisibleFeedBelt, true,
     `${id}: tower exposes a readable protected ammunition feed`);
-  assert.equal(station[0].userData.finishStandard, 'continuous-fitting-paint',
-    `${id}: command tower armor uses one coherent finish`);
-  assert.equal(station[0].userData.hasWorkLights, true,
-    `${id}: command tower carries its paired work-light package`);
-  assert.equal(station[0].userData.hasSteelReceiverGuard, true,
-    `${id}: taller receiver is tied into a steel support cage`);
   assert.equal(station[0].userData.machineGunFinish, 'gunmetal',
     `${id}: tower weapon mechanism stays neutral gunmetal`);
-  assert.equal(station[0].getObjectByName('americanRwsMachineGun')?.userData.fittingSlot, 'dark',
-    `${id}: tower armor paint does not leak onto the machine gun`);
-  assert.equal(station[0].children.some((object) => object.userData.fittingSlot === 'hull'), false,
-    `${id}: tower does not resample fragmented host camouflage`);
-  assert.equal(turret.userData.americanRwsReceipt?.variant, expectedVariant);
-  assert.equal(turret.userData.americanRwsReceipt?.buriedSeatM, 0.010,
-    `${id}: command station is flush-seated into the existing roof carrier`);
+  if (hasFullCommanderTower) {
+    assert.equal(station[0].userData.weaponRole, 'commander-primary');
+    assert.equal(station[0].userData.headOnSide, 'left');
+    assert.equal(station[0].userData.sizeStandard, 'm1a3-full-tower');
+    assert.equal(station[0].getObjectByName('openYokeRwsMachineGun')?.userData.fittingSlot, 'dark',
+      `${id}: tower weapon stays gunmetal`);
+    assert.equal(station[0].children.some((object) => object.userData.fittingSlot === 'hull'), true,
+      `${id}: full tower armor inherits the tank's painted material`);
+    assert.equal(turret.userData.commanderWeaponStationReceipt?.variant, expectedVariant);
+    assert.equal(turret.userData.commanderWeaponStationReceipt?.buriedSeatM, 0.010,
+      `${id}: full commander tower is flush-seated into the roof carrier`);
+  } else {
+    assert.equal(station[0].userData.finishStandard, 'continuous-fitting-paint',
+      `${id}: command tower armor uses one coherent finish`);
+    assert.equal(station[0].userData.hasWorkLights, true,
+      `${id}: command tower carries its paired work-light package`);
+    assert.equal(station[0].userData.hasSteelReceiverGuard, true,
+      `${id}: taller receiver is tied into a steel support cage`);
+    assert.equal(station[0].getObjectByName('americanRwsMachineGun')?.userData.fittingSlot, 'dark',
+      `${id}: tower armor paint does not leak onto the machine gun`);
+    assert.equal(station[0].children.some((object) => object.userData.fittingSlot === 'hull'), false,
+      `${id}: tower does not resample fragmented host camouflage`);
+    assert.equal(turret.userData.americanRwsReceipt?.variant, expectedVariant);
+    assert.equal(turret.userData.americanRwsReceipt?.buriedSeatM, 0.010,
+      `${id}: command station is flush-seated into the existing roof carrier`);
+  }
   const loader = fittings(tank.root,
     (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v1');
-  if (replacesLoaderGun) {
-    assert.equal(loader.length, 0, `${id}: former small loader Browning is removed`);
-    const replacement = fittings(tank.root,
-      (object) => object.userData.designFamily === 'abramsx-open-yoke-v1');
-    assert.equal(replacement.length, 1, `${id}: receives one open-yoke loader replacement`);
-    assert.equal(replacement[0].userData.weaponRole, 'loader-primary');
-    assert.equal(replacement[0].userData.headOnSide, 'right');
-    assert.equal(replacement[0].userData.sizeStandard, 'm1a3-full-tower');
-    assert.equal(replacement[0].children.some((object) => object.userData.fittingSlot === 'hull'), true,
-      `${id}: replacement armor inherits the tank's painted material`);
-  } else {
-    assert.equal(loader.length, 1, `${id}: has one standardized crew-served Browning`);
-    assert.equal(loader[0].userData.installationVariant, expectedLoader);
-    assert.equal(loader[0].userData.shieldVariant, expectedShield);
-    loader[0].traverse((object) => {
-      if (object.isMesh) assert.equal(object.userData.combatHitboxRole, 'equipment',
-        `${id}: Browning and shield remain equipment-owned`);
-    });
-  }
+  assert.equal(loader.length, 1, `${id}: has one standardized crew-served Browning`);
+  assert.equal(loader[0].userData.installationVariant, expectedLoader);
+  assert.equal(loader[0].userData.shieldVariant, expectedShield);
+  assert.ok(loader[0].position.x > 0,
+    `${id}: Browning stays on the right in a head-on view`);
+  loader[0].traverse((object) => {
+    if (object.isMesh) assert.equal(object.userData.combatHitboxRole, 'equipment',
+      `${id}: Browning and shield remain equipment-owned`);
+  });
   const optic = turret.userData.abramsRelocatedCommanderOpticReceipt;
   assert.equal(optic?.retainedLegacyAssembly, true,
     `${id}: retains the established commander optics assembly`);
@@ -164,4 +174,4 @@ for (const [id, expectedLoader, expectedShield] of [
   tank.dispose();
 }
 
-console.log('americanModernization.selftest: gunmetal commander towers, M2HB loaders, and right-side replacements verified');
+console.log('americanModernization.selftest: full commander towers and right-side M2HB loaders verified');

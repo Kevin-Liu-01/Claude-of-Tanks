@@ -4,10 +4,14 @@ import { createTank } from '../tankFactory.ts';
 
 const TARGETS = Object.freeze({
   m1a2_sepv3: Object.freeze({
-    variant: 'sepv3-armored', mount: [0.95, 0.84, -0.10], supportTop: 0.85, replacesRoofGun: true,
+    variant: 'sepv3-armored', mount: [-0.70, 0.8003898305084746, 0.2565],
+    supportTop: 0.8103898305084746, replacesCommanderGun: true,
+    loaderVariant: 'sepv3-low-loader',
   }),
   m1a2_tusk: Object.freeze({
-    variant: 'tusk-urban', mount: [1.10, 0.84, 0.20], supportTop: 0.85, replacesRoofGun: true,
+    variant: 'tusk-urban', mount: [-0.70, 0.8103898305084746, 0.2565],
+    supportTop: 0.8203898305084746, replacesCommanderGun: true,
+    loaderVariant: 'tusk-lags-loader',
   }),
   leo2a6m: Object.freeze({ variant: 'a6m-arctic', mount: [-0.72, 0.795, -1.52] }),
   leo2a7v: Object.freeze({ variant: 'a7v-low', mount: [0.72, 0.67, -1.48] }),
@@ -58,11 +62,11 @@ for (const [id, expected] of Object.entries(TARGETS)) {
     assert.equal(station.userData.stationVariant, expected.variant,
       `${id}: receives its host-specific treatment`);
     assert.equal(station.userData.weaponRole,
-      expected.replacesRoofGun ? 'loader-primary' : 'auxiliary',
+      expected.replacesCommanderGun ? 'commander-primary' : 'auxiliary',
       `${id}: station has the intended roof-weapon role`);
-    if (expected.replacesRoofGun) {
-      assert.equal(station.userData.headOnSide, 'right',
-        `${id}: replacement occupies the right side in a head-on view`);
+    if (expected.replacesCommanderGun) {
+      assert.equal(station.userData.headOnSide, 'left',
+        `${id}: commander replacement occupies the left side in a head-on view`);
     }
     assert.equal(station.userData.remoteControlled, true, `${id}: station is remotely operated`);
     assert.equal(station.userData.caliberMm, 12.7, `${id}: station remains machine-gun caliber`);
@@ -79,7 +83,7 @@ for (const [id, expected] of Object.entries(TARGETS)) {
 
     expected.mount.forEach((value, index) => near(station.position.getComponent(index), value, 1e-6,
       `${id}: mount coordinate ${index}`));
-    const roofTop = expected.replacesRoofGun
+    const roofTop = expected.replacesCommanderGun
       ? expected.supportTop
       : structuralRoofTopAt(turretRig, expected.mount[0], expected.mount[2]);
     assert.ok(Number.isFinite(roofTop), `${id}: resolves the station's supporting roof surface`);
@@ -109,7 +113,7 @@ for (const [id, expected] of Object.entries(TARGETS)) {
         otherWeaponFittings.push(node);
       }
     });
-    if (!expected.replacesRoofGun) {
+    if (!expected.replacesCommanderGun) {
       assert.ok(otherWeaponFittings.length >= 1,
         `${id}: auxiliary tower supplements the original roof weapon`);
     }
@@ -120,18 +124,22 @@ for (const [id, expected] of Object.entries(TARGETS)) {
         enclosedCommanderStations.push(node);
       }
     });
-    if (expected.replacesRoofGun) {
-      assert.equal(enclosedCommanderStations.length, 1,
-        `${id}: separate commander CROWS remains on the opposite roof side`);
-      const displacedLoaderGuns = [];
+    if (expected.replacesCommanderGun) {
+      assert.equal(enclosedCommanderStations.length, 0,
+        `${id}: full-size tower replaces the compact commander station`);
+      const retainedLoaderGuns = [];
       turretRig.traverse((node) => {
         if (node.userData?.fittingRoot
           && node.userData.americanWeaponStandard === 'sheridan-m2hb-v1') {
-          displacedLoaderGuns.push(node);
+          retainedLoaderGuns.push(node);
         }
       });
-      assert.equal(displacedLoaderGuns.length, 0,
-        `${id}: full-size tower replaces rather than duplicates the right-side loader gun`);
+      assert.equal(retainedLoaderGuns.length, 1,
+        `${id}: one Browning remains on the opposite loader side`);
+      assert.equal(retainedLoaderGuns[0].userData.installationVariant, expected.loaderVariant,
+        `${id}: retained Browning uses the intended loader installation`);
+      assert.ok(retainedLoaderGuns[0].position.x > 0,
+        `${id}: retained Browning remains on the right in a head-on view`);
     }
 
     const receipt = turretRig.userData.openYokeRwsReceipt
@@ -147,7 +155,7 @@ for (const [id, expected] of Object.entries(TARGETS)) {
     assert.equal(receipt.equipmentOwned, true, `${id}: receipt excludes station from armor`);
     assert.equal(receipt.turretOwned, true, `${id}: receipt records traverse ownership`);
     assert.equal(receipt.weaponRole,
-      expected.replacesRoofGun ? 'loader-primary' : 'auxiliary',
+      expected.replacesCommanderGun ? 'commander-primary' : 'auxiliary',
       `${id}: receipt records whether the station replaces or supplements the roof gun`);
 
     const localPosition = station.position.clone();

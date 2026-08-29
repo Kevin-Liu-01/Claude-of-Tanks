@@ -46,22 +46,30 @@ assert.ok(hasPoint([-1.07, roofCarrier.frontBottomY, roofCarrier.zFront]),
   'carrier front underside vertex is present in the merged roof equipment');
 
 assert.ok(crows.previousBaseY - crows.baseY >= 0.075,
-  'CROWS-LP pedestal remains seated on the lowered roof carrier');
+'full commander tower remains seated on the lowered roof carrier');
+assert.equal(crows.stationFamily, 'abramsx-open-yoke-v1',
+  'commander weapon uses the AbramsX-derived open-yoke family');
+assert.equal(crows.sizeStandard, 'm1a3-full-tower',
+  'commander tower uses the full M1A3 size standard');
+assert.equal(crows.weaponRole, 'commander-primary',
+  'open-yoke tower replaces the smaller commander gun');
+assert.equal(crows.headOnSide, 'left',
+  'full commander tower sits on the left in a head-on view');
 assert.equal(crows.lowerArmorCollar, true,
-  'CROWS-LP has a closed armored lower collar');
+'commander tower has a closed armored lower collar');
 assert.equal(crows.equipmentOwnedShielding, true,
-  'CROWS shielding remains equipment-owned for combat anatomy');
+'commander shielding remains equipment-owned for combat anatomy');
 
-assert.equal(loader.americanWeaponStandard, undefined,
-  'former small loader Browning is removed');
-assert.equal(loader.stationFamily, 'abramsx-open-yoke-v1',
-  'loader weapon uses the AbramsX-derived open-yoke family');
-assert.equal(loader.sizeStandard, 'm1a3-full-tower',
-  'loader tower uses the full M1A3 size standard');
-assert.equal(loader.weaponRole, 'loader-primary',
-  'open-yoke tower replaces rather than duplicates the loader weapon');
-assert.equal(loader.headOnSide, 'right',
-  'loader tower sits on the right in a head-on view');
+assert.equal(loader.americanWeaponStandard, 'sheridan-m2hb-v1',
+  'loader retains the detailed Browning M2HB family');
+assert.equal(loader.shieldVariant, 'low',
+  'loader Browning retains its low SEPv3 guard');
+assert.equal(loader.station, 'sepv3-loader-m2hb',
+  'roof receipt identifies the restored loader installation');
+assert.ok(loader.x > 0,
+  'loader Browning sits on the right in a head-on view');
+assert.ok(near(loader.x, 0.95) && near(loader.pintleZ, -0.10),
+  'loader Browning is centered on its roof mounting foot');
 assert.ok(loader.receiverBottomY < loader.receiverY
   && loader.receiverBottomY > loader.pintleBottomY,
   'loader bearing reaches continuously into the open-yoke receiver');
@@ -71,4 +79,4 @@ assert.equal(loader.equipmentOwnedShielding, true,
   'loader shielding remains equipment-owned for combat anatomy');
 
 tank.dispose();
-console.log('abramsSepv3RoofStation.selftest: pitched carrier, CROWS-LP, and full-size loader tower pass');
+console.log('abramsSepv3RoofStation.selftest: full commander tower and right-side loader Browning pass');

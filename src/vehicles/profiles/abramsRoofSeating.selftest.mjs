@@ -5,7 +5,7 @@ const near = (value, expected, epsilon = 1e-4) =>
   Math.abs(value - expected) <= epsilon;
 const EXPECTED_CROWS_RISER_HEIGHT_M = Object.freeze({
   m1a2: 0.26 * (2 / 3),
-  m1a2_tusk: 0.26 * (2 / 3),
+  m1a2_tusk: 0.18,
   m1a2_sepv2: 0.30 * 0.72,
 });
 
