@@ -1132,6 +1132,111 @@ function orientedSlab99(b0, b1, b2, b3, t0, t1, t2, t3) {
     : KIT.slab(b0, b3, b2, b1, t0, t3, t2, t1);
 }
 
+// Closed eight-corner armor slab with one genuinely open, recessed face.
+// The ordinary slab helper caps every quad, so merely moving a sight behind a
+// cheek leaves it depth-occluded.  This T-14-specific cutter subdivides the
+// selected exterior quad around an aperture, omits its center, and carries
+// four armor returns inward to a separately rendered optical backplane.
+function pocketedSlab99(corners, faceIndex, {
+  u0 = 0.16, u1 = 0.54, v0 = 0.22, v1 = 0.76, depth = 0.085,
+} = {}) {
+  const faces = [
+    [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6],
+    [3, 0, 4, 7], [4, 5, 6, 7], [3, 2, 1, 0],
+  ];
+  if (!faces[faceIndex]) throw new RangeError('pocketedSlab99 faceIndex must be 0..5');
+  const add = (a, b) => a.map((value, index) => value + b[index]);
+  const sub = (a, b) => a.map((value, index) => value - b[index]);
+  const scale = (a, value) => a.map((component) => component * value);
+  const cross = (a, b) => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+  const dot = (a, b) => a.reduce((sum, value, index) => sum + value * b[index], 0);
+  const unit = (a) => {
+    const length = Math.hypot(...a);
+    return length > 1e-9 ? scale(a, 1 / length) : [0, 0, 1];
+  };
+  const average = (points) => points[0].map((_, axis) =>
+    points.reduce((sum, point) => sum + point[axis], 0) / points.length);
+  const positions = [];
+  const pushQuad = (points, toward) => {
+    let [a, b, c, d] = points;
+    if (dot(cross(sub(b, a), sub(c, a)), toward) < 0) [a, b, c, d] = [d, c, b, a];
+    positions.push(...a, ...b, ...c, ...a, ...c, ...d);
+  };
+  const solidCenter = average(corners);
+  const faceCorners = faces[faceIndex].map((index) => corners[index]);
+  let normal = unit(cross(
+    sub(faceCorners[1], faceCorners[0]),
+    sub(faceCorners[2], faceCorners[0]),
+  ));
+  if (dot(normal, sub(average(faceCorners), solidCenter)) < 0) normal = scale(normal, -1);
+  const point = (u, v, inset = 0) => {
+    const [q0, q1, q2, q3] = faceCorners;
+    const outer = [0, 1, 2].map((axis) =>
+      q0[axis] * (1 - u) * (1 - v) + q1[axis] * u * (1 - v)
+      + q2[axis] * u * v + q3[axis] * (1 - u) * v);
+    return add(outer, scale(normal, -inset));
+  };
+
+  for (let index = 0; index < faces.length; index++) {
+    if (index === faceIndex) continue;
+    const quad = faces[index].map((cornerIndex) => corners[cornerIndex]);
+    pushQuad(quad, sub(average(quad), solidCenter));
+  }
+  const us = [0, u0, u1, 1];
+  const vs = [0, v0, v1, 1];
+  for (let v = 0; v < 3; v++) for (let u = 0; u < 3; u++) {
+    if (u === 1 && v === 1) continue;
+    pushQuad([
+      point(us[u], vs[v]), point(us[u + 1], vs[v]),
+      point(us[u + 1], vs[v + 1]), point(us[u], vs[v + 1]),
+    ], normal);
+  }
+  const outer = [point(u0, v0), point(u1, v0), point(u1, v1), point(u0, v1)];
+  const inner = outer.map((corner) => add(corner, scale(normal, -depth)));
+  const openingCenter = average(outer);
+  for (let index = 0; index < 4; index++) {
+    const next = (index + 1) % 4;
+    const wall = [outer[index], outer[next], inner[next], inner[index]];
+    pushQuad(wall, sub(add(openingCenter, scale(normal, depth * 0.25)), average(wall)));
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(
+    new Array((positions.length / 3) * 2).fill(0), 2));
+  geometry.computeVertexNormals();
+  return { geometry, normal, point, u0, u1, v0, v1, depth };
+}
+
+function pocketPatch99(pocket, u0, u1, v0, v1, inset) {
+  const mapU = (value) => pocket.u0 + (pocket.u1 - pocket.u0) * value;
+  const mapV = (value) => pocket.v0 + (pocket.v1 - pocket.v0) * value;
+  const points = [
+    pocket.point(mapU(u0), mapV(v0), inset),
+    pocket.point(mapU(u1), mapV(v0), inset),
+    pocket.point(mapU(u1), mapV(v1), inset),
+    pocket.point(mapU(u0), mapV(v1), inset),
+  ];
+  const sub = (a, b) => a.map((value, index) => value - b[index]);
+  const cross = (a, b) => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+  const dot = (a, b) => a.reduce((sum, value, index) => sum + value * b[index], 0);
+  let [a, b, c, d] = points;
+  if (dot(cross(sub(b, a), sub(c, a)), pocket.normal) < 0) [a, b, c, d] = [d, c, b, a];
+  const positions = [...a, ...b, ...c, ...a, ...c, ...d];
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(new Array(12).fill(0), 2));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 // §B3.1 MUZZLE BORE (owner directive 2026-08-06) — same device as
 // modern3.ts muzzleBore: open outer wall to the face + inward-facing
 // recess funnel + near-black bore disc ~3cm inside; mask-neutral, no
@@ -2874,10 +2979,14 @@ function buildT14(P) {
   // wheels (§B6 trapezoid holds). Dims sovereign: hull side body -4.32..
   // +4.33, width anchor = rear screen faces ±1.945, muzzle +6.45 = 10.8.
   // Packet: docs/references/tanks/t14.md (ladder section).
-  P.add('hull', box(2.12, 0.62, 7.1), 0, 0.74, 0.05);                           // belly ±1.06 y 0.43..1.05 (track inner 1.09 − 0.03 lane law)
-  for (const s of [-1, 1]) {                                                    // sponson under-strip (ref front row 0.34 @ x 0.9-1.05)
-    P.add('hull', box(0.20, 0.71, 6.9), s * 0.96, 0.695, 0.05);
-  }
+  // The linked shoes project farther inward than the nominal track band.
+  // Keep the belly 80 mm inside the 1.09 m band face so the animated shoe
+  // envelope remains clear through the full run, not only at both wraps.
+  P.add('hull', box(2.02, 0.57, 7.1), 0, 0.765, 0.05);                          // belly ±1.01 y 0.48..1.05
+  // A narrow center keel preserves the 0.34 m underside datum without
+  // placing a sponson lip beneath the shoe guide horns. Its top meets the
+  // raised belly exactly, so the underside remains one connected hull.
+  P.add('hull', box(1.10, 0.14, 6.9), 0, 0.41, 0.05);                           // keel ±0.55 y 0.34..0.48
   // deck band as a WRAP-SAFE 3-piece assembly (the r2 sprocket/idler tuck
   // raised the orbit tops to 1.455/1.315 — a full-width band solid would
   // eat the wraps): center spine between the tracks, sponson floors 0.03+
@@ -3116,12 +3225,32 @@ function buildT14(P) {
   P.add('turret', slab(                                                          // left upper facet
     [-1.44, BK, 0.03], [-1.44, BK, 1.04], [-1.02, BK, -0.55], [-1.17, BK, -0.35],
     [-0.95, AH, -0.20], [-0.95, AH, 0.86], [-0.90, AH, -0.50], [-0.92, AH, -0.35]));
-  P.add('turret', slab(                                                          // front-right upper arrow
-    [0.06, BK, 1.958], [0.80, BK, 1.608], [1.44, BK, 1.04], [0.06, BK, 1.476],
-    [0.05, 0.545, 1.911], [0.66, AH, 1.242], [0.95, AH, 0.86], [0.05, AH, 1.413]));
-  P.add('turret', slab(                                                          // front-left upper arrow
-    [-0.80, BK, 1.608], [-0.06, BK, 1.958], [-0.06, BK, 1.476], [-1.44, BK, 1.04],
-    [-0.66, AH, 1.242], [-0.05, 0.545, 1.911], [-0.05, AH, 1.413], [-0.95, AH, 0.86]));
+  // The two upper cheeks carry recessed multi-channel optical apertures.
+  // Cutting their outward quads here matters: a dark rectangle pushed behind
+  // an intact slab is still occluded and reads as a sticker, not a window.
+  const t14CheekPockets = [];
+  {
+    const corners = [
+      [0.06, BK, 1.958], [0.80, BK, 1.608], [1.44, BK, 1.04], [0.06, BK, 1.476],
+      [0.05, 0.545, 1.911], [0.66, AH, 1.242], [0.95, AH, 0.86], [0.05, AH, 1.413],
+    ];
+    const pocket = pocketedSlab99(corners, 1, {
+      u0: 0.16, u1: 0.58, v0: 0.18, v1: 0.76, depth: 0.09,
+    });
+    P.add('turret', pocket.geometry);
+    t14CheekPockets.push({ side: 1, ...pocket });
+  }
+  {
+    const corners = [
+      [-0.80, BK, 1.608], [-0.06, BK, 1.958], [-0.06, BK, 1.476], [-1.44, BK, 1.04],
+      [-0.66, AH, 1.242], [-0.05, 0.545, 1.911], [-0.05, AH, 1.413], [-0.95, AH, 0.86],
+    ];
+    const pocket = pocketedSlab99(corners, 3, {
+      u0: 0.16, u1: 0.58, v0: 0.18, v1: 0.76, depth: 0.09,
+    });
+    P.add('turret', pocket.geometry);
+    t14CheekPockets.push({ side: -1, ...pocket });
+  }
   // apex chin cap: the arrow tip tops out LOW over the gun trough — TWO
   // co-planar pieces to the print's 2.21..2.27w tip flat (no staircase)
   // PROPORTION ROUND r2 NOSE-LINE NOTE: the oracle's turret-union yMax runs
@@ -3140,7 +3269,7 @@ function buildT14(P) {
   // 1.90 x 1.91 rectangle bridged straight across the diagonal shoulders and
   // made the roof read as a square lid. This ten-station cap instead narrows
   // around the gun throat, follows both cheek breaks, and meets the raised
-  // rear crown at the existing -0.50 m seam.
+  // rear bustle at the existing -0.50 m seam.
   const t14RoofPlan = [
     [-0.90, -0.50], [0.90, -0.50], [0.95, -0.20], [0.95, 0.86],
     [0.66, 1.242], [0.18, 1.413], [-0.18, 1.413], [-0.66, 1.242],
@@ -3151,9 +3280,9 @@ function buildT14(P) {
     { height: AH - 0.018, inset: 0.985 },
     { height: AH, inset: 1 },
   ]));
-  // RAISED REAR ROOF crown (print 2.72w, z -0.40..-1.10w): frustum sides
-  // (the print's crown flanks lean — front cols ±1.16-1.21 read 2.73)
-  P.add('turret', frustum(1.24, 0.40, -0.52, 1.16, 0.28, -0.50, AH, 1.035));    // crown front extended to z_w -0.32 (ref 2.74 line)
+  // The former 2.48 m-wide raised rear crown was a second flat roof pasted
+  // over this molded cap.  Removing it leaves one continuous cheek-shaped
+  // roof and a clean structural hand-off to the bustle at z=-0.50.
   // BUSTLE: wide box to the -2.28 local tail, underside FLOATING at
   // 0.285 (1.97w — the print's below-bustle air is real §B2 air); rear
   // half narrows to ±0.965 (print plan x ±1.05 ends at -1.96w), corner
@@ -3233,17 +3362,21 @@ function buildT14(P) {
   }
   // RWS + EO stack on the bustle front — re-derived to the print's OWN
   // plateau (side ref 3.07-3.16 tops across z_w -0.74..-1.83): pedestal +
-  // two tiers + EO head span the full shelf; §B3 census MG (production
-  // PKTM) aims FORWARD-right on the mount, level, top 3.12w.
+  // two seated electronics tiers support the consolidated 30 mm station.
   // PROPORTION ROUND r2 NOTE: the measured oracle yMax collapses 3.083 ->
   // 2.581 between z_w -1.0 and -0.8, so the stack looks 0.28/0.44 long here.
   // Pulling both forward faces back to that line was TRIED and measured
   // turret 76.1 (flat) with whole 77.5 -> 76.4 — the exposed crown re-phases
   // the whole row for no turret gain. Reverted; the r1 stations stand.
+  const rwsPedestalBottomY = 0.835;
   const rwsPedestalTopY = 1.055;
   const rwsRearTierCenterY = rwsPedestalTopY + 0.13;
   const rwsFrontTierCenterY = rwsPedestalTopY + 0.10;
-  P.add('turret', box(0.78, 0.22, 1.10), -0.23, 0.945, -0.75);                  // stack pedestal (z_w -0.80..-1.90)
+  // This is the base of the remote-weapon/electronics stack, not primary
+  // turret armor. Sink it 10 mm into the molded crown so it has a real seat,
+  // while keeping it out of the combat shell and roof-height calculation.
+  P.addEquipment('turret', box(0.78, rwsPedestalTopY - rwsPedestalBottomY, 1.10),
+    -0.23, (rwsPedestalBottomY + rwsPedestalTopY) * 0.5, -0.75);                // stack pedestal (z_w -0.80..-1.90)
   // These two electronics tiers were hovering 85-100 mm over the pedestal.
   // Seat their lower faces on its roof and keep them in the equipment bucket
   // so they do not inflate the base-turret armor envelope.
@@ -3252,51 +3385,51 @@ function buildT14(P) {
   P.add('turretGlass', box(0.18, 0.09, 0.02), -0.45, 1.30, -0.76);
   P.addEquipment('turret', box(0.60, 0.20, 0.55), -0.25, rwsFrontTierCenterY, -0.395);
   P.add('turretGlass', box(0.16, 0.08, 0.02), -0.25, 1.195, -0.11);
-  {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', scale: 0.78, tone: 'dark', seed: 16, elev: 0.03, ammo: true, rotation: [0, Math.PI - 0.35, 0] });
-    mg.position.set(0.10, 0.94, -0.80);                                         // stowed aft-right, SUNK into a pedestal tray (PROPORTION ROUND: the
-    P.turretG.add(mg);                                                          // 1.06 seat's 3.02w receiver tops owned 8 front cols vs the ref's
-                                                                                // clean 2.58-2.71 crown; §B3 census MG holds, tops now ~2.88w)
-  }
-  // Purpose-built low-profile 30 mm remote autocannon on the vehicle-left
-  // crown. Its buried turntable, split shield, ammunition coffin, recoil
-  // cradle, and independent EO head follow the M551A1 TTS station's useful
-  // visual grammar without reusing that vehicle's geometry.
-  const leftRwsX = -0.82;
-  const leftRwsZ = -0.10;
-  P.addEquipment('turretDetail', cylY(0.20, 0.23, 0.075, 14), leftRwsX, 1.0725, leftRwsZ);
-  P.addEquipment('turret', box(0.44, 0.28, 0.52), leftRwsX, 1.30, leftRwsZ + 0.22);
-  for (const s of [-1, 1]) {
-    P.addEquipment('turret', box(0.10, 0.36, 0.62), leftRwsX + s * 0.255,
-      1.33, leftRwsZ + 0.23, 0, 0, s * 0.15);
-  }
-  P.addEquipment('turret', box(0.60, 0.08, 0.58), leftRwsX, 1.53, leftRwsZ + 0.23);
-  P.addEquipment('turret', box(0.30, 0.34, 0.44), leftRwsX - 0.37,
-    1.32, leftRwsZ + 0.13, 0, -0.08, 0);
-  P.add('turretDetail', box(0.32, 0.025, 0.46), leftRwsX - 0.37,
-    1.502, leftRwsZ + 0.13, 0, -0.08, 0);
-  P.addEquipment('turret', box(0.23, 0.30, 0.28), leftRwsX + 0.34,
-    1.35, leftRwsZ + 0.15, 0, 0.08, 0);
-  P.add('turretDark', box(0.19, 0.24, 0.025), leftRwsX + 0.35,
-    1.35, leftRwsZ + 0.30, 0, 0.08, 0);
-  P.add('turretGlass', box(0.085, 0.095, 0.014), leftRwsX + 0.32,
-    1.40, leftRwsZ + 0.318, 0, 0.08, 0);
-  P.add('turretGlass', box(0.052, 0.052, 0.014), leftRwsX + 0.40,
-    1.31, leftRwsZ + 0.325, 0, 0.08, 0);
+
+  // The 30 mm weapon now owns the main roof station rather than a detached
+  // auxiliary tower. Its bearing begins exactly on the marked rear-tier roof
+  // (1.315 m), and every receiver, feed box, optic and barrel is connected.
+  const primaryRwsX = -0.23;
+  const primaryRwsZ = -1.08;
+  const primaryRwsDeckY = rwsRearTierCenterY + 0.13;
+  P.addEquipment('turretDetail', cylY(0.17, 0.20, 0.075, P.q ? 18 : 12),
+    primaryRwsX, primaryRwsDeckY + 0.0375, primaryRwsZ);
+  P.addEquipment('turret', box(0.44, 0.16, 0.42),
+    primaryRwsX, primaryRwsDeckY + 0.155, primaryRwsZ + 0.08);
+  P.addEquipment('turret', box(0.25, 0.20, 0.38),
+    primaryRwsX - 0.34, primaryRwsDeckY + 0.16, primaryRwsZ + 0.04);
+  P.add('turretDetail', box(0.27, 0.024, 0.40),
+    primaryRwsX - 0.34, primaryRwsDeckY + 0.272, primaryRwsZ + 0.04);
+  P.addEquipment('turret', box(0.20, 0.22, 0.25),
+    primaryRwsX + 0.31, primaryRwsDeckY + 0.18, primaryRwsZ + 0.10);
+  P.add('turretDark', box(0.17, 0.17, 0.022),
+    primaryRwsX + 0.31, primaryRwsDeckY + 0.18, primaryRwsZ + 0.236);
+  P.add('turretGlass', box(0.078, 0.072, 0.012),
+    primaryRwsX + 0.28, primaryRwsDeckY + 0.215, primaryRwsZ + 0.254);
+  P.add('turretGlass', box(0.045, 0.045, 0.012),
+    primaryRwsX + 0.35, primaryRwsDeckY + 0.145, primaryRwsZ + 0.254);
   {
     const autocannon = new THREE.Group();
-    autocannon.name = 't14_left_remote_weapon';
+    autocannon.name = 't14_primary_remote_weapon';
     autocannon.userData.remoteControlled = true;
     autocannon.userData.caliberMm = 30;
     autocannon.userData.stationVariant = 'armata-30mm-autocannon';
     autocannon.userData.forwardFacing = true;
+    autocannon.userData.barrelDiameterM = 0.124;
+    const axisY = primaryRwsDeckY + 0.205;
+    const chamberZ = primaryRwsZ + 0.31;
     const darkParts = [
-      xform(cylX(0.065, 0.55, P.q ? 18 : 12), leftRwsX, 1.235, leftRwsZ + 0.33),
-      xform(cylZ(0.050, 1.16, P.q ? 20 : 14), leftRwsX, 1.355, leftRwsZ + 1.00),
-      xform(cylZ(0.088, 0.30, P.q ? 20 : 14), leftRwsX, 1.355, leftRwsZ + 0.44),
-      xform(cylZ(0.066, 0.14, P.q ? 18 : 12), leftRwsX, 1.355, leftRwsZ + 1.65),
-      xform(cylZ(0.024, 0.022, P.q ? 14 : 10), leftRwsX, 1.355, leftRwsZ + 1.73),
-      xform(box(0.13, 0.11, 0.28), leftRwsX - 0.19, 1.38, leftRwsZ + 0.39),
+      xform(cylX(0.062, 0.54, P.q ? 18 : 12), primaryRwsX, axisY, chamberZ),
+      xform(cylZ(0.102, 0.34, P.q ? 20 : 14), primaryRwsX, axisY,
+        primaryRwsZ + 0.28),
+      xform(cylZ(0.062, 1.26, P.q ? 20 : 14), primaryRwsX, axisY,
+        primaryRwsZ + 1.08),
+      xform(cylZ(0.080, 0.16, P.q ? 18 : 12), primaryRwsX, axisY,
+        primaryRwsZ + 1.79),
+      xform(cylZ(0.034, 0.024, P.q ? 14 : 10), primaryRwsX, axisY,
+        primaryRwsZ + 1.882),
+      xform(box(0.15, 0.12, 0.30), primaryRwsX - 0.18, axisY + 0.025,
+        primaryRwsZ + 0.30),
     ];
     const geometry = mergeAll(darkParts);
     geometry.setAttribute('color', new THREE.BufferAttribute(
@@ -3308,8 +3441,26 @@ function buildT14(P) {
     weaponMesh.userData.appearanceRole = 'machineGun';
     autocannon.add(weaponMesh);
     FITTINGS.markExact(autocannon, 'pintleMG');
-    autocannon.name = 't14_left_remote_weapon';
+    autocannon.name = 't14_primary_remote_weapon';
     P.turretG.add(autocannon);
+  }
+  // A stronger NSVT remains available as a separate roof MG. Its mounting
+  // foot is on the molded crown, it aims along vehicle +Z, and the larger
+  // 0.92 scale restores a readable receiver and barrel without a tall stand.
+  const roofMgX = -0.78;
+  const roofMgZ = -0.08;
+  P.addEquipment('turretDetail', cylY(0.14, 0.17, 0.035, 14),
+    roofMgX, AH + 0.0175, roofMgZ);
+  {
+    const mg = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'nsvt', scale: 0.92, tone: 'dark', seed: 16,
+      elev: 0.03, ammo: true, rotation: [0, 0, 0], barrelBridge: true,
+    });
+    mg.name = 't14_roof_machine_gun';
+    mg.userData.forwardFacing = true;
+    mg.userData.stationVariant = 'armata-roof-nsvt';
+    mg.position.set(roofMgX, AH + 0.035, roofMgZ);
+    P.turretG.add(mg);
   }
   // meteo mast front-LEFT (print spike col: tip 3.37w at z_w 0.12, ONE
   // grid-centered column): base block + slim mast + crossbar vanes + tip
@@ -3321,42 +3472,25 @@ function buildT14(P) {
   P.add('turretDetail', cylY(0.012, 0.012, 0.14, 6), -0.70, 1.565, 0.72);       // tip joint sleeve
   P.add('turretDark', box(0.045, 0.09, 0.045), -0.70, 1.64, 0.72);              // tip sensor (3.37w)
   P.add('turretDark', box(0.04, 0.06, 0.04), -0.70, 1.32, 0.83);                // aft sensor pod (3.06w — ref's second meteo column)
-  for (const s of [-1, 1]) {                                                    // Afganit AESA / optical cheek pockets
-    // Four armor rails form a real square recess rather than a solid boss.
-    // Three separately inset panes read as thermal/daylight/laser channels,
-    // with the smallest lower pane doubling as an IR illuminator.
-    const sensorYaw = s * 0.55;
-    const sensorPitch = -0.10;
-    const sensorCenter = new THREE.Vector3(s * 0.90, 0.56, 1.367);
-    const sensorEuler = new THREE.Euler(sensorPitch, sensorYaw, 0, 'XYZ');
-    const onSensor = (dx, dy, depth) => new THREE.Vector3(dx, dy, depth)
-      .applyEuler(sensorEuler).add(sensorCenter);
-    for (const [dx, dy, w, h] of [
-      [0, 0.15, 0.36, 0.055], [0, -0.15, 0.36, 0.055],
-      [-0.15, 0, 0.055, 0.245], [0.15, 0, 0.055, 0.245],
-    ]) {
-      const rail = onSensor(dx, dy, 0);
-      P.addEquipment('turret', box(w, h, 0.07), rail.x, rail.y, rail.z,
-        sensorPitch, sensorYaw, 0);
-    }
-    const socket = onSensor(0, 0, -0.014);
-    P.add('turretDark', box(0.265, 0.245, 0.038), socket.x, socket.y, socket.z,
-      sensorPitch, sensorYaw, 0);
-    const apertures = [
-      [-s * 0.050, 0.042, 0.115, 0.105],
-      [s * 0.066, 0.052, 0.060, 0.060],
-      [s * 0.064, -0.062, 0.052, 0.050],
-    ];
-    for (const [dx, dy, w, h] of apertures) {
-      const lens = onSensor(dx, dy, 0.004);
-      P.add('turretGlass', box(w, h, 0.012), lens.x, lens.y, lens.z,
-        sensorPitch, sensorYaw, 0);
-    }
-    const divider = onSensor(-s * 0.003, -0.015, 0.002);
-    P.add('turretDetail', box(0.018, 0.19, 0.014), divider.x, divider.y, divider.z,
-      sensorPitch, sensorYaw, 0);
-    P.add('turretDark', box(0.28, 0.26, 0.04), s * 1.19, BK + 0.10, -0.24, 0.1, s * 2.6, 0); // rear pair tucked to the trimmed shoulder (was 1.24 —
-  }                                                                             // proud of the new belt edge at the ±1.42 plan cols)
+  for (const pocket of t14CheekPockets) {                                      // Afganit AESA / optical cheek pockets
+    // A 90 mm armor tunnel terminates in a dark backplane. The three glass
+    // channels sit 5-10 mm forward of that plane but remain behind the cheek
+    // surface, so oblique views show real depth and never a floating boss.
+    P.add('turretDark', pocketPatch99(pocket, 0, 1, 0, 1, pocket.depth));
+    const largeU = pocket.side > 0 ? [0.07, 0.58] : [0.42, 0.93];
+    const smallU = pocket.side > 0 ? [0.68, 0.93] : [0.07, 0.32];
+    P.add('turretGlass', pocketPatch99(pocket,
+      largeU[0], largeU[1], 0.17, 0.86, pocket.depth - 0.007));
+    P.add('turretGlass', pocketPatch99(pocket,
+      smallU[0], smallU[1], 0.57, 0.86, pocket.depth - 0.010));
+    P.add('turretGlass', pocketPatch99(pocket,
+      smallU[0], smallU[1], 0.17, 0.46, pocket.depth - 0.010));
+    const dividerU = pocket.side > 0 ? [0.62, 0.655] : [0.345, 0.38];
+    P.add('turretDetail', pocketPatch99(pocket,
+      dividerU[0], dividerU[1], 0.10, 0.91, pocket.depth - 0.014));
+    P.add('turretDark', box(0.28, 0.26, 0.04), pocket.side * 1.19,
+      BK + 0.10, -0.24, 0.1, pocket.side * 2.6, 0);                              // rear paired controller
+  }
 
   // Distributed unmanned-turret electronics: shoulder cameras, corner laser
   // warning receivers, side APS controllers, rear observation cameras and
@@ -3381,11 +3515,11 @@ function buildT14(P) {
       s * 1.218, 0.63, 0.31, 0, s * Math.PI / 2, 0);
 
     P.addEquipment('turret', box(0.16, 0.11, 0.20),
-      s * 0.57, 1.09, -0.45, 0, Math.PI, 0);
+      s * 0.57, AH + 0.055, -0.45, 0, Math.PI, 0);
     P.add('turretDark', box(0.12, 0.070, 0.025),
-      s * 0.57, 1.095, -0.558, 0, Math.PI, 0);
+      s * 0.57, AH + 0.060, -0.558, 0, Math.PI, 0);
     P.add('turretGlass', box(0.075, 0.040, 0.012),
-      s * 0.57, 1.095, -0.578, 0, Math.PI, 0);
+      s * 0.57, AH + 0.060, -0.578, 0, Math.PI, 0);
 
     P.add('turretDetail', box(0.034, 0.022, 0.54),
       s * 0.43, AH + 0.012, 0.55, 0, -s * 0.24, 0);
@@ -3400,16 +3534,18 @@ function buildT14(P) {
       P.add('turretDetail', cylY(0.035, 0.035, 0.3, 8), s * (0.72 + k * 0.09), 0.90 - k * 0.02, -0.68, 0.12, 0, s * 0.15);
     }
   }
-  // Raised-crown service seams are narrow inspection breaks, not filled roof
-  // panels. The rear pair also provides a visual load path to the RWS stack.
-  P.add('turretDark', box(0.022, 0.012, 0.44), 0, 1.035 + 0.006, -0.28);
+  // Service seams lie directly on the single molded roof. The rear pair also
+  // provides a visual load path from that roof into the RWS stack.
+  P.add('turretDark', box(0.022, 0.012, 0.44), 0, AH + 0.006, -0.28);
   for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.54, 0.012, 0.022), s * 0.31, 1.035 + 0.006, -0.44);
+    P.add('turretDark', box(0.54, 0.012, 0.022), s * 0.31, AH + 0.006, -0.44);
   }
-  // GLONASS dome on the rear crown center (roof-presence order; top 2.79w —
-  // under the ref's 3.15 center plateau, mask-interior from side/plan)
-  P.add('turretDark', cylY(0.05, 0.05, 0.045, 10), 0.05, 1.0575, -0.30);
-  P.add('turretDetail', cylY(0.062, 0.062, 0.014, 10), 0.05, 1.028, -0.30);     // mount collar
+  // GLONASS dome and collar begin on the molded roof datum, not in the air
+  // left behind by the deleted raised lid.
+  P.add('turretDetail', cylY(0.062, 0.062, 0.014, 10),
+    0.05, AH + 0.007, -0.30);
+  P.add('turretDark', cylY(0.05, 0.05, 0.045, 10),
+    0.05, AH + 0.0365, -0.30);
   // Paired rear communications whips overlap the 0.835 m bustle roof through
   // armored collars instead of starting in free air.
   for (const [x, rake, seed] of [[-0.66, -0.035, 22], [0.46, 0.035, 23]]) {
@@ -3503,22 +3639,33 @@ function buildT14(P) {
   P.decal('hull', 'number', '512', 0.30, [-1.905, 1.22, 3.05], -Math.PI / 2);
   P.turretG.userData.t14RoofFidelityReceipt = {
     lowerBeltHeightM: BK,
-    roofDatumM: 1.035,
+    roofDatumM: AH,
     moldedCrown: true,
+    singleMoldedRoof: true,
+    raisedRearCrownRemoved: true,
     crownPlanVertexCount: t14RoofPlan.length,
     crownThroatHalfWidthM: 0.18,
     crownShoulderHalfWidthM: 0.95,
+    mainRwsPedestalBottomM: rwsPedestalBottomY,
     mainRwsPedestalTopM: rwsPedestalTopY,
+    mainRwsPedestalEquipment: true,
     mainRwsRearTierBottomM: rwsRearTierCenterY - 0.13,
     mainRwsFrontTierBottomM: rwsFrontTierCenterY - 0.10,
-    leftRemoteWeaponStation: true,
-    leftRemoteWeaponStationX: leftRwsX,
-    leftRemoteWeaponCaliberMm: 30,
-    leftRemoteWeaponVariant: 'armata-30mm-autocannon',
-    leftRemoteWeaponForwardFacing: true,
+    primaryRemoteWeaponStation: true,
+    primaryRemoteWeaponStationX: primaryRwsX,
+    primaryRemoteWeaponDeckM: primaryRwsDeckY,
+    primaryRemoteWeaponCaliberMm: 30,
+    primaryRemoteWeaponBarrelDiameterM: 0.124,
+    primaryRemoteWeaponVariant: 'armata-30mm-autocannon',
+    primaryRemoteWeaponForwardFacing: true,
+    roofMachineGunStation: true,
+    roofMachineGunScale: 0.92,
+    roofMachineGunForwardFacing: true,
     rearAntennaCount: 2,
     cheekSensorRecessCount: 2,
     cheekSensorLensCount: 6,
+    cheekSensorPocketDepthM: 0.09,
+    cheekSensorStructuralCutouts: true,
     auxiliaryTechPartCount: 22,
     externalTechLensCount: 9,
   };
