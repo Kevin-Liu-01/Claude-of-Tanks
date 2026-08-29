@@ -5,7 +5,7 @@
 //   challenger1 — profiles-class build (CHALLENGER_PROFILES, merged by
 //     profiledProcedurals.ts like every ./profiles family map); moved from
 //     uk.js. Its spec row still derives from challenger2's TANK_SPECS row
-//     via the userdrops5 make() donor copy — unchanged mechanism.
+//     via the additional fleet donor copy — unchanged mechanism.
 //   challenger2 / challenger_3 — canonical builders demand-registered from
 //     CHALLENGER_BUILDERS. Their boot-light combat rows live separately in
 //     challengerSpecs.ts so an Abrams garage does not load this geometry.

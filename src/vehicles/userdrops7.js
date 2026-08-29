@@ -346,7 +346,7 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
 
 export const USERDROP7_TANK_IDS = SPECS.map((s) => s.id);
 // every wave-8 row is sourced-from-online (era bucketing intent, cf.
-// USERDROP5_SOURCED_IDS) — t84 graduated out (dual gate, §10); the §5.38
+// additional fleet source audit) — t84 graduated out (dual gate, §10); the §5.38
 // t90 family rows were born procedural (never sourced); t44/type59 flipped
 // procedural at their §5.45 builds (m48/m60a2/vickers precedent).
 export const USERDROP7_SOURCED_IDS = USERDROP7_TANK_IDS.filter((id) => !['t84', 't80', 't80b', 't80bv', 'm60a2', 'vickers_mk1', 'amx30', 'amx30b2', 't90', 't90ms', 't90a_burlak', 'm48', 't44', 'type59'].includes(id));

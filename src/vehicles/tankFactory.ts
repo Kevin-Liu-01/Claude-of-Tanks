@@ -22,7 +22,7 @@ import { finalizeCombatAnatomy } from './combatAnatomy.js';
 import './combatVariantSpecs.ts';
 import './kf51Specs.ts';
 import './abramsConceptSpecs.ts';
-import './userdrops5.js';
+import './additionalFleetSpecs.ts';
 import './userdrops6.js';
 import './ukraine.ts';
 import './china.ts';

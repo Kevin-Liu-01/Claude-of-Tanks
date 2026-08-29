@@ -29,7 +29,7 @@ import './kf51Specs.ts';
 import './abramsConceptSpecs.ts';
 import './challengerSpecs.ts';
 import './modern3Specs.js';
-import './userdrops5.js';
+import './additionalFleetSpecs.ts';
 import './userdrops6.js';
 import './franceSpecs.ts';
 import './ukraine.ts';
