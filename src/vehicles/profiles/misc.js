@@ -2464,10 +2464,13 @@ function buildT80UNative2026(P) {
   // r3g cliff form: the ref side plateau (2.18w) runs to z_w 1.51 then
   // CLIFFS to 1.62 — rails extend to z_w 1.49 and the prongs beyond the
   // cliff drop to 1.69w.
-  const frontChevronLiftY = 0.07;
-  // Reseat the complete chevron 40 mm down the authored Z axis (rearward
-  // in this +Z-forward vehicle frame) without changing its vertical band.
-  const frontChevronForwardM = 0.10;
+  // Keep the carrier on its proven fore/aft seat, but lower both rows and
+  // their center closure 40 mm on the turret's vertical Y axis. The previous
+  // pass mistakenly applied this correction to forwardM (local Z), which
+  // pulled the chevron rearward without fixing its too-high cheek band.
+  const frontChevronVerticalReseatM = 0.04;
+  const frontChevronLiftY = 0.07 - frontChevronVerticalReseatM;
+  const frontChevronForwardM = 0.14;
   const frontChevronReceipt = addSovietChevronEra(P, {
     sector: 't80u-k5-turret-front-era',
     receiptKey: 't80UChevronEraReceipt',
@@ -2691,8 +2694,8 @@ function buildT80UNative2026(P) {
     canonicalCastProfile: 'standard',
     canonicalCastReference: 't80/t80b/ua_t80u_kursk',
     frontChevronRaisedToUpperCheekM: frontChevronLiftY,
+    frontChevronVerticalReseatM,
     frontChevronForwardM,
-    frontChevronRearwardReseatM: 0.04,
     frontEquipmentForwardM,
     frontEquipmentFaceClearanceM:
       1.505 + frontEquipmentForwardM + 0.009 - frontChevronReceipt.frontmostTileZM,

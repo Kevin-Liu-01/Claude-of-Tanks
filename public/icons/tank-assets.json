@@ -149545,7 +149545,7 @@
           }
         ]
       },
-      "geometryHash": "436e3999",
+      "geometryHash": "8b7fe02b",
       "metadataHash": "2cc10b8a",
       "presentationAnchor": {
         "xM": 0.0012,
@@ -149645,24 +149645,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 62478,
-          "sha256": "b1c759c7ddbdbacf201d16d76181a3af2359022fa2a886fb0ab6d81101498c5e"
+          "bytes": 62789,
+          "sha256": "1101ad05c1e653257824a2bf554e526135bd82f8145994f63f5e663e0000f297"
         },
         "armorSide": {
           "file": "t80u_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65509,
-          "sha256": "8c3f243b64a47516eb1c6d75a832c80a72978ea28dd6541c3aa88987b78b0c6a"
+          "bytes": 65824,
+          "sha256": "634bcaa3ac19a63032377c6d4d81dde812ac49ede2271ebaa5dfda3f182a2bc0"
         },
         "modulesSide": {
           "file": "t80u_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71858,
-          "sha256": "1ff784c9d3ef138439647faec20d5bf31af6dafffb29f2db0bb0eeb1fb15b8d4"
+          "bytes": 71353,
+          "sha256": "06d5df31ae523f3d8666e6af80da12420ffc2fc454abc187767e9e1b1693ba22"
         },
         "markings": {
           "file": "t80u_markings.png",

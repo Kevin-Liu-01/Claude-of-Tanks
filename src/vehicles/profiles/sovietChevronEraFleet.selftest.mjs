@@ -6,7 +6,7 @@ import { tankTier } from '../tier.ts';
 const cases = Object.freeze({
   t64bv1: Object.freeze({ receiptKey: 't64BV1ChevronEraReceipt', forwardM: 0 }),
   t72bu: Object.freeze({ receiptKey: 't72BUChevronEraReceipt', forwardM: 0 }),
-  t80u: Object.freeze({ receiptKey: 't80UChevronEraReceipt', forwardM: 0.10, minimumRidgeY: 0.375 }),
+  t80u: Object.freeze({ receiptKey: 't80UChevronEraReceipt', forwardM: 0.14, minimumRidgeY: 0.365 }),
   t80bv: Object.freeze({ receiptKey: 't80BVChevronEraReceipt', forwardM: 0.26, minimumRidgeY: 0.34 }),
   ua_t80bv: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.23, minimumRidgeY: 0.32, omittedCarrierSurfaces: 1 }),
   ua_t80u_kursk: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14 }),

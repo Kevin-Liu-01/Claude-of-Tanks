@@ -121,12 +121,12 @@ try {
   assert.equal(modernizedTurret.rearAmmoBoxes, 1);
   assert.equal(modernizedTurret.canonicalCastProfile, 'standard');
   assert.equal(modernizedTurret.canonicalCastReference, 't80/t80b/ua_t80u_kursk');
-  assert.ok(modernizedTurret.frontChevronRaisedToUpperCheekM >= 0.07,
-    'complete T-80U frontal chevron occupies the upper cheek band');
-  assert.equal(modernizedTurret.frontChevronForwardM, 0.10,
-    'T-80U frontal chevron carrier retains its corrected rearward Z-axis seat');
-  assert.equal(modernizedTurret.frontChevronRearwardReseatM, 0.04,
-    'T-80U records the requested 40 mm negative-Z chevron reseat');
+  assert.ok(Math.abs(modernizedTurret.frontChevronRaisedToUpperCheekM - 0.03) <= 1e-9,
+    'lowered T-80U chevron remains seated on the cast upper cheek');
+  assert.equal(modernizedTurret.frontChevronVerticalReseatM, 0.04,
+    'T-80U records the requested 40 mm vertical-Y chevron reseat');
+  assert.equal(modernizedTurret.frontChevronForwardM, 0.14,
+    'T-80U frontal chevron restores its proven fore/aft Z-axis seat');
   assert.equal(modernizedTurret.frontEquipmentForwardM, 0.30,
     'paired front equipment assemblies are reseated ahead of the chevron');
   assert.ok(modernizedTurret.frontEquipmentFaceClearanceM >= 0.04,
