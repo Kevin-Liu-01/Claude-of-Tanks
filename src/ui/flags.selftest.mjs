@@ -26,7 +26,7 @@ const flagsSource = await readFile(join(uiDir, 'flags.ts'), 'utf8');
 assert.doesNotMatch(flagsSource, /<svg|<rect|<polygon|function star/, 'flag UI no longer draws replacement flags');
 
 const srcRoot = join(uiDir, '..');
-for (const relative of ['ui/garage.js', 'ui/flags.ts', 'ui/flagCodes.ts']) {
+for (const relative of ['ui/garage.ts', 'ui/flags.ts', 'ui/flagCodes.ts']) {
   const source = await readFile(join(srcRoot, relative), 'utf8');
   assert.doesNotMatch(source, /[\u{1F1E6}-\u{1F1FF}]/u, `${relative} has no native flag emoji`);
 }

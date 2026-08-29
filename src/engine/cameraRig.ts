@@ -1331,7 +1331,7 @@ export function createCameraRig(
 //    axis-aligned world box) is projected through the live camera basis and a
 //    distance + framing offsets are solved so the whole silhouette — barrel
 //    included — lands inside the garage's clear STAGE RECT (the screen area
-//    the UI leaves free; garage.js measures it from its own DOM) with even
+//    the UI leaves free; garage.ts measures it from its own DOM) with even
 //    margins. Every vehicle therefore reads at the same apparent size and the
 //    same 3/4 angle regardless of hull length.
 //

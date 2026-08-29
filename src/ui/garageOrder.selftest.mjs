@@ -6,7 +6,7 @@ import {
   topCountrySpec,
 } from './garageOrder.ts';
 
-const garageSource = `${await readFile(new URL('./garage.js', import.meta.url), 'utf8')}\n${
+const garageSource = `${await readFile(new URL('./garage.ts', import.meta.url), 'utf8')}\n${
   await readFile(new URL('./garage.css', import.meta.url), 'utf8')
 }`;
 

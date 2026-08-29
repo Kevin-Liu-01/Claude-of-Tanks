@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const main = fs.readFileSync(path.join(here, '..', 'main.ts'), 'utf8');
-const garage = fs.readFileSync(path.join(here, '..', 'ui', 'garage.js'), 'utf8');
+const garage = fs.readFileSync(path.join(here, '..', 'ui', 'garage.ts'), 'utf8');
 const pedestalPreloader = fs.readFileSync(
   path.join(here, 'garagePedestalPreloader.ts'), 'utf8',
 );

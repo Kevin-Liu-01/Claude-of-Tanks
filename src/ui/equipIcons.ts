@@ -6,7 +6,7 @@
 // readout omits the frame to preserve maximum glyph legibility.
 //
 // equipIconSVG(id, size, ink) returns an inline <svg> string (or '' for
-// unknown ids). Consumers: the garage slot boxes + picker grid (garage.js)
+// unknown ids). Consumers: the garage slot boxes + picker grid (garage.ts)
 // and the battle HUD loadout readout (damagePanel.ts).
 
 /** Default ink — matches hud.js TRAY_INK. */

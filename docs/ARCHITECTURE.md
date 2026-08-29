@@ -22,7 +22,7 @@ Module ownership (file paths are FIXED):
 | movement | `src/sim/movement.ts` |
 | combat   | `src/sim/ballistics.ts`, `src/sim/armor.ts`, `src/sim/damage.ts`, `src/sim/combat.selftest.mjs` |
 | ai       | `src/game/ai.ts` |
-| hud      | `src/ui/hud.js`, `src/ui/garage.js`, `src/ui/damagePanel.ts` |
+| hud      | `src/ui/hud.js`, `src/ui/garage.ts`, `src/ui/damagePanel.ts` |
 | fx       | `src/fx/effects.js`, `src/fx/particles.ts` |
 | audio    | `src/audio/audio.js` |
 | integration | `src/main.ts`, `src/game/state.ts` |
@@ -857,7 +857,7 @@ Bottom-left tank silhouette (top-down, canvas-drawn from spec.dims — generic h
 outline is fine) with module dots (green/yellow/red at armor-model module positions
 projected to top-down) + crew row icons + HP bar + fire icon when burning.
 
-#### 3.7.3 `garage.js`
+#### 3.7.3 `garage.ts`
 ```js
 export function createGarage(opts) => Garage
 // opts = { specs, bus, onSelect, onBattle, garageVariants,

@@ -2,7 +2,7 @@
  * featuredShots.ts — the ONE canonical list of featured stills.
  *
  * Consumed by the boot splash (bootScreen.ts), the garage battle gallery
- * (garage.js) and the state-transition loading screens (transition.ts).
+ * (garage.ts) and the state-transition loading screens (transition.ts).
  * It exists because three hand-maintained copies of these filenames drifted
  * from disk twice (r9.1: preload() errored forever and every rotation stuck
  * on frame 1). URLs must match a checked-in public asset exactly.

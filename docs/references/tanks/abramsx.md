@@ -642,7 +642,7 @@ track-clip --exact: front 0 band / 0 shoe, rear 10 band (pre-existing
 <=60) / 0 shoe, blind spots 0. npm test green (166 checks).
 Constraints held: whips PARKED (coupled landing stays orchestrator
 lane), XM914 azimuth 0 FORWARD at z 0.05, mode-2 8949 px certified
-by-design (unchanged), owner WIP files untouched (main.js/garage.js/
+by-design (unchanged), owner WIP files untouched (main.js/garage.ts/
 materials.js/modelLoader.js), NOTHING committed.
 Evidence: shots/abramsx-dedicated-r1/{garage-newref, garage-relaunch-now,
 garage-after-r2, close-r2} + the audit logs in the session scratchpad.

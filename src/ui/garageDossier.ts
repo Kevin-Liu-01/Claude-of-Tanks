@@ -1,5 +1,5 @@
 // Pure presentation helpers for the garage technical dossier. Keep canonical
-// module, crew, and special-action policy out of garage.js's DOM renderer.
+// module, crew, and special-action policy out of garage.ts's DOM renderer.
 
 import { CREW_LABEL, MODULE_LABEL } from './moduleRegistry.ts';
 import { SPECIAL_ACTION_KINDS, specialActionDescriptor } from '../sim/specialActionPolicy.ts';

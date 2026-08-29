@@ -7,7 +7,7 @@ const [
   garageSource, touch, battleLoad, hud, shotInfo, playMenu, settings, publicNav, responsiveSurfaces, input,
   networkStatus, transition, perfHud, deviceDiag, renderer, main, pointerLockFeedback, gallery, docs,
 ] = await Promise.all([
-  readFile(new URL('./garage.js', import.meta.url), 'utf8'),
+  readFile(new URL('./garage.ts', import.meta.url), 'utf8'),
   readFile(new URL('./touchControls.ts', import.meta.url), 'utf8'),
   readFile(new URL('./battleLoad.ts', import.meta.url), 'utf8'),
   readFile(new URL('./hud.js', import.meta.url), 'utf8'),
@@ -336,7 +336,7 @@ const semanticSurfaceFiles = [
   './battleLoad.ts',
   './contextInfo.ts',
   './endScreen.ts',
-  './garage.js',
+  './garage.ts',
   './garage.css',
   './hud.js',
   './playMenu.ts',

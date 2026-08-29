@@ -709,7 +709,7 @@ export const TANK_SPECS: TankSpecRegistry = {
     // wants this TANK gone (not just the name), delist per the leo2a7
     // TANK_IDS mechanism.
     // §5.74: RETIRED-LEGACY (owner 2026-08-08) — carousel-delisted in
-    // garage.js; name carries the LEGACY mark everywhere it still appears.
+    // garage.ts; name carries the LEGACY mark everywhere it still appears.
     id: 'm1a2_legacy', name: 'M1A2 (Legacy)', nation: 'USA', era: 'modern', role: 'mbt',
     hp: 2600,
     // Real SEPv3 reverses at ~40 km/h, but that reads arcade-y next to the

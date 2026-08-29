@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const [main, garageSource, responsiveCss, garageCss, motionCss, publicNavCss] = await Promise.all([
   readFile(new URL('../main.ts', import.meta.url), 'utf8'),
-  readFile(new URL('./garage.js', import.meta.url), 'utf8'),
+  readFile(new URL('./garage.ts', import.meta.url), 'utf8'),
   readFile(new URL('./responsiveSurfaces.css', import.meta.url), 'utf8'),
   readFile(new URL('./garage.css', import.meta.url), 'utf8'),
   readFile(new URL('./motion.css', import.meta.url), 'utf8'),
@@ -13,7 +13,7 @@ const [main, garageSource, responsiveCss, garageCss, motionCss, publicNavCss] = 
 const motionImport = main.indexOf("import './ui/motion.css';");
 const responsiveImport = main.indexOf("import './ui/responsiveSurfaces.css';");
 const garageImport = main.indexOf("import './ui/garage.css';");
-const garageRuntimeImport = main.indexOf("from './ui/garage.js';");
+const garageRuntimeImport = main.indexOf("from './ui/garage.ts';");
 
 assert.ok(motionImport >= 0, 'composition root must own the shared motion contract');
 assert.ok(responsiveImport > motionImport,

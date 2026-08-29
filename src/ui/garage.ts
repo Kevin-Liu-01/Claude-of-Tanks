@@ -1,4 +1,4 @@
-// src/ui/garage.js — full-screen garage/tank-select overlay: dark gradient
+// src/ui/garage.ts — full-screen garage/tank-select overlay: dark gradient
 // frame with a transparent center band (the 3D pedestal shows through),
 // bottom tank carousel, right stats card, top-center BATTLE button.
 // Contract: docs/ARCHITECTURE.md §3.7.3.
@@ -44,8 +44,145 @@ import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
+import type { GameModeId } from '../sim/matchModes.ts';
+import type { FleetGunSpec, FleetTankSpec } from '../vehicles/specContracts.ts';
+import type { ShellSpec } from '../vehicles/specHelpers.ts';
+import type { GarageVariant } from '../game/garageVariants.ts';
+import type { CustomCamo } from '../vehicles/camoPolicy.ts';
+import type { CustomCamoStudioAccess } from './customCamoStudioAccess.ts';
+import type { ImagePriority } from './imagePreload.ts';
 
-const NATION_LABEL = {
+type BattleMode = 'solo' | 'private' | 'lan' | 'ranked';
+type StatRangeKey = 'hp' | 'speed' | 'hpt' | 'dmg' | 'reload' | 'aim' | 'view' | 'camo';
+type StatRange = Record<StatRangeKey, [number, number]>;
+
+interface GarageTankSpec extends FleetTankSpec {
+  readonly gun: GarageGunSpec;
+  readonly label?: {
+    readonly displayName?: string;
+    readonly shortName?: string;
+  };
+  readonly markings?: {
+    readonly designation?: string;
+    readonly filterLabel?: string;
+    readonly countryLabel?: string;
+  };
+  readonly roster?: {
+    readonly developmentOnly?: boolean;
+    readonly tag?: string;
+  };
+}
+
+interface GarageShellSpec extends ShellSpec {
+  readonly guided?: boolean;
+  readonly reloadS?: number;
+}
+
+interface GarageGunSpec extends FleetGunSpec {
+  readonly autoloader?: {
+    readonly magazineSize: number;
+    readonly intraClipS: number;
+  };
+  readonly primaryGuided?: boolean;
+  readonly shells: GarageShellSpec[];
+}
+
+interface GarageMap {
+  readonly id: string;
+  readonly name: string;
+  readonly blurb?: string;
+  readonly thumb?: string;
+  readonly hero?: string;
+}
+
+interface GarageVariantView extends GarageVariant {
+  readonly thumb?: string;
+  readonly hero?: string;
+}
+
+interface GarageCamoOptions {
+  readonly patterns: readonly string[];
+  readonly label: Readonly<Record<string, string>>;
+  get(specId: string): string;
+  set(specId: string, patternId: string): void;
+  getCustom?(specId: string): CustomCamo;
+  setCustom?(specId: string, value: CustomCamo): void;
+  prewarm?(specId: string): void;
+}
+
+interface GarageRoomStatus {
+  readonly ready?: boolean;
+  readonly readyCount?: number;
+  readonly total?: number;
+  readonly mode?: string;
+  readonly roomCode?: string;
+}
+
+interface PlayRequest {
+  readonly mode: BattleMode;
+  readonly gameMode: GameModeId;
+  readonly specId: string;
+  readonly mapId: string;
+  readonly startSolo: () => void;
+}
+
+interface GarageOptions {
+  readonly specs: GarageTankSpec[];
+  readonly bus?: { emit(event: string, payload: unknown): void };
+  readonly onSelect?: (specId: string) => void;
+  readonly onBattle?: (
+    specId: string,
+    mapId: string,
+    options: { readonly gameMode: GameModeId },
+  ) => void;
+  readonly onPlayRequest?: (request: PlayRequest) => void;
+  readonly onPlayModeIntent?: (mode: BattleMode) => void;
+  readonly onBattleIntent?: (request: { readonly specId: string; readonly mapId: string }) => void;
+  readonly onStudioIntent?: () => void;
+  readonly onTankIntent?: (specId: string) => void;
+  readonly maps?: readonly GarageMap[];
+  readonly garageVariants?: readonly GarageVariantView[];
+  readonly selectedGarageVariantId?: string;
+  readonly onGarageVariantSelect?: (variantId: string) => void;
+  readonly camo?: GarageCamoOptions;
+  readonly onMapSelect?: (mapId: string) => void;
+}
+
+interface GarageRuntime {
+  readonly root: HTMLElement;
+  isOpen: boolean;
+  show(selected?: string): void;
+  hide(): void;
+  drainThumbs(): void;
+  getStageRect(): { x: number; y: number; w: number; h: number };
+  setSelected(specId: string): void;
+  getSelected(): string;
+  getSelectedGarageVariant(): string;
+  setSelectedGarageVariant(variantId: string): boolean;
+  getNeighborIds(radius?: number): string[];
+  setRoomStatus(status?: GarageRoomStatus | null): void;
+  isVehicleLocked(): boolean;
+  attachSettingsControl(control: HTMLElement): void;
+  getSelectedMap(): string;
+  startSolo(): void;
+  setSelectedMap(mapId: string): void;
+}
+
+function requiredElement<T extends Element>(parent: ParentNode, selector: string): T {
+  const element = parent.querySelector<T>(selector);
+  if (!element) throw new Error(`Garage markup is missing ${selector}`);
+  return element;
+}
+
+function eventNode(event: Event): Node | null {
+  return event.target instanceof Node ? event.target : null;
+}
+
+function eventElement(event: Event): Element | null {
+  return event.target instanceof Element ? event.target : null;
+}
+
+const NATION_LABEL: Readonly<Record<string, string>> = {
   USA: 'USA', Germany: 'GER', USSR: 'USSR', Russia: 'RUS', 'USSR/Russia': 'RUS',
   Sweden: 'SWE', Community: 'COM', UK: 'UK', France: 'FRA', Israel: 'ISR',
   China: 'CHN', 'South Korea': 'KOR', Japan: 'JPN', Italy: 'ITA',
@@ -62,12 +199,12 @@ const NATION_RANK = new Map([
   ['Poland', 8], ['South Korea', 9], ['Sweden', 10], ['Community', 11],
   ['Israel', 12], ['Ukraine', 13],
 ]);
-function catalogCompare(a, b) {
+function catalogCompare(a: GarageTankSpec, b: GarageTankSpec): number {
   return compareCountryThenTierThenName(a, b, NATION_RANK, tankTier);
 }
-const countryCodeOf = (spec) => flagIconCode(spec.nation);
+const countryCodeOf = (spec: GarageTankSpec): string => flagIconCode(spec.nation);
 
-const SHELL_TYPE_COLOR = {
+const SHELL_TYPE_COLOR: Readonly<Record<string, string>> = {
   AP: '#ffd27a', APCR: '#e8f4ff', HEAT: '#ff8a5c', HE: '#ffb02e', APFSDS: '#ffc46b',
 };
 
@@ -91,14 +228,18 @@ const REDUCED_MOTION = typeof matchMedia === 'function' &&
 const camoSwatchPaintVersion = new WeakMap();
 const camoSwatchAccess = createCamoSwatchAccess({
   load: () => import('./camoSwatchPainter.ts'),
-  isPlayable: () => globalThis.__GAME_READY === true,
+  isPlayable: () => window.__GAME_READY === true,
 });
 
 function scheduleCamoSwatchLoad(immediate = false) {
   return camoSwatchAccess.preload({ immediate });
 }
 
-function paintCamoSwatchPlaceholder(canvas, spec, pid) {
+function paintCamoSwatchPlaceholder(
+  canvas: HTMLCanvasElement,
+  spec: GarageTankSpec,
+  pid: string,
+): void {
   const W = 128;
   const H = 44;
   canvas.width = W;
@@ -126,7 +267,12 @@ function paintCamoSwatchPlaceholder(canvas, spec, pid) {
   ctx.fillRect(0, 0, W, H);
 }
 
-function queueExactCamoSwatch(canvas, spec, pid, auto = false) {
+function queueExactCamoSwatch(
+  canvas: HTMLCanvasElement,
+  spec: GarageTankSpec,
+  pid: string,
+  auto = false,
+): void {
   const version = (camoSwatchPaintVersion.get(canvas) || 0) + 1;
   camoSwatchPaintVersion.set(canvas, version);
   paintCamoSwatchPlaceholder(canvas, spec, auto ? 'auto' : pid);
@@ -137,17 +283,27 @@ function queueExactCamoSwatch(canvas, spec, pid, auto = false) {
   }).catch(() => { /* placeholder remains; the next intent retries */ });
 }
 
-function paintCamoSwatch(canvas, spec, pid) {
+function paintCamoSwatch(canvas: HTMLCanvasElement, spec: GarageTankSpec, pid: string): void {
   queueExactCamoSwatch(canvas, spec, pid, false);
 }
 
-function paintAutoCamoSwatch(canvas, spec) {
+function paintAutoCamoSwatch(canvas: HTMLCanvasElement, spec: GarageTankSpec): void {
   queueExactCamoSwatch(canvas, spec, 'auto', true);
 }
 // --- END CAMO PICKER SECTION -------------------------------------------------
 
 
-function frontArmorMm(plates, keys) {
+interface GarageArmorPlate {
+  readonly name?: string;
+  readonly kind?: string;
+  readonly keMm?: number;
+  readonly physicalMm?: number;
+}
+
+function frontArmorMm(
+  plates: readonly GarageArmorPlate[] | undefined,
+  keys: readonly string[],
+): number | null {
   if (!plates || !plates.length) return null;
   let best = null;
   for (const p of plates) {
@@ -166,7 +322,7 @@ function frontArmorMm(plates, keys) {
  *   onStudioIntent?:Function,onTankIntent?:Function}} opts
  * @returns {{show:Function,hide:Function,isOpen:boolean,setSelected:Function,root:HTMLElement}} Garage
  */
-export function createGarage(opts) {
+export function createGarage(opts: GarageOptions): GarageRuntime {
   const { bus, onSelect, onBattle } = opts;
   const allSpecs = opts.specs || [];
   // One combined fleet: country first, then tier, then display name. Cards,
@@ -338,19 +494,19 @@ export function createGarage(opts) {
 
   function refreshServiceRecord() {
     const record = getPlayerRecord();
-    const badge = root.querySelector('.cot-record-trigger .record-badge');
+    const badge = root.querySelector<HTMLElement>('.cot-record-trigger .record-badge');
     if (badge) badge.textContent = record.matches > 999 ? '999+' : record.matches.toLocaleString('en-US');
 
-    const body = root.querySelector('.cot-record-body');
+    const body = root.querySelector<HTMLElement>('.cot-record-body');
     if (!body) return;
     const pct = record.matches ? Math.round((record.wins / record.matches) * 100) : 0;
     const avgDamage = record.matches ? Math.round(record.damage / record.matches) : 0;
     const avgKills = record.matches ? record.kills / record.matches : 0;
-    const num = (value) => value.toLocaleString('en-US');
-    const safe = (value) => String(value).replace(/[&<>"']/g, (char) => ({
+    const num = (value: number) => value.toLocaleString('en-US');
+    const safe = (value: unknown) => String(value).replace(/[&<>"']/g, (char) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-    })[char]);
-    const metric = (label, value, note) => `<div class="cot-record-metric"><span>${label}</span>` +
+    } as Record<string, string>)[char] ?? char);
+    const metric = (label: string, value: string, note: string) => `<div class="cot-record-metric"><span>${label}</span>` +
       `<strong>${value}</strong><small>${note}</small></div>`;
     let lastBattle = `<div class="cot-record-empty">Complete a battle to begin your local service history.</div>`;
     if (record.lastBattle) {
@@ -398,7 +554,7 @@ export function createGarage(opts) {
   // splash and the transition screens (hand-synced copies drifted from disk
   // twice; r9.1 was the "always the same picture" bug that caused).
   (() => {
-    const col = root.querySelector('.cot-leftcol');
+    const col = root.querySelector<HTMLElement>('.cot-leftcol');
     if (!col || !FEATURED_SHOTS.length) return;
     const panel = document.createElement('div');
     panel.className = 'cot-featured';
@@ -411,14 +567,14 @@ export function createGarage(opts) {
       `<button class="fnav next" type="button" aria-label="Next shot">&#8250;</button>` +
       `<div class="fcap"></div></div>`;
     col.appendChild(panel);
-    const layers = panel.querySelectorAll('.fly');
-    const capEl = panel.querySelector('.fcap');
-    const dots = panel.querySelectorAll('.fdots span');
-    const shotEl = panel.querySelector('.fshot');
+    const layers = panel.querySelectorAll<HTMLElement>('.fly');
+    const capEl = requiredElement<HTMLElement>(panel, '.fcap');
+    const dots = panel.querySelectorAll<HTMLElement>('.fdots span');
+    const shotEl = requiredElement<HTMLElement>(panel, '.fshot');
     let idx = -1;
     let front = 0;
-    let timer = 0;
-    const show = (i) => {
+    let timer: ReturnType<typeof setInterval> | 0 = 0;
+    const show = (i: number): void => {
       front ^= 1;
       layers[front].style.backgroundImage = `url("${FEATURED_SHOTS[i].img}")`;
       layers[front].classList.add('on');
@@ -428,13 +584,13 @@ export function createGarage(opts) {
       idx = i;
       preloadImageWhenIdle(FEATURED_SHOTS[(i + 1) % FEATURED_SHOTS.length].img);
     };
-    const preload = (i, cb, priority = 'low') => {
+    const preload = (i: number, cb: () => void, priority: ImagePriority = 'low'): void => {
       preloadImage(FEATURED_SHOTS[i].img, { priority }).then((url) => {
         if (url) cb();
       });
     };
-    const jump = (i, priority = 'high') => preload(i, () => show(i), priority);
-    const advance = (priority = 'low') => jump(
+    const jump = (i: number, priority: ImagePriority = 'high') => preload(i, () => show(i), priority);
+    const advance = (priority: ImagePriority = 'low') => jump(
       (idx + 1) % FEATURED_SHOTS.length, priority);
     const arm = () => { if (!timer) timer = setInterval(advance, 8000); };
     // r9.1: manual browse resets the auto-rotate clock so it never snatches
@@ -447,13 +603,13 @@ export function createGarage(opts) {
     // explicit panel intent). No gallery media competes with a pristine boot.
     const first = Math.floor(Math.random() * FEATURED_SHOTS.length);
     let activated = false;
-    const activate = (priority = 'low') => {
+    const activate = (priority: ImagePriority = 'low') => {
       if (activated) return;
       activated = true;
       preload(first, () => { show(first); arm(); }, priority);
     };
     const activateWhenPlayable = () => {
-      if (globalThis.__GAME_READY === true) {
+      if (window.__GAME_READY === true) {
         if (typeof requestIdleCallback === 'function') {
           requestIdleCallback(() => activate('low'), { timeout: 1400 });
         } else setTimeout(() => activate('low'), 500);
@@ -465,12 +621,12 @@ export function createGarage(opts) {
     shotEl.addEventListener('pointerenter', () => activate('high'), { once: true });
     shotEl.addEventListener('focusin', () => activate('high'), { once: true });
     shotEl.addEventListener('click', () => { activate('high'); advance('high'); rearm(); });
-    panel.querySelector('.fnav.prev').addEventListener('click', (e) => {
+    requiredElement<HTMLButtonElement>(panel, '.fnav.prev').addEventListener('click', (e) => {
       e.stopPropagation();
       jump((idx - 1 + FEATURED_SHOTS.length) % FEATURED_SHOTS.length);
       rearm();
     });
-    panel.querySelector('.fnav.next').addEventListener('click', (e) => {
+    requiredElement<HTMLButtonElement>(panel, '.fnav.next').addEventListener('click', (e) => {
       e.stopPropagation(); advance(); rearm();
     });
     dots.forEach((d, k) => d.addEventListener('click', () => { jump(k); rearm(); }));
@@ -478,51 +634,51 @@ export function createGarage(opts) {
     shotEl.addEventListener('mouseleave', arm);
   })();
 
-  const statsEl = root.querySelector('.stats');
-  const cardsEl = root.querySelector('.cot-cards');
-  const countryRailEl = root.querySelector('.cot-country-rail');
-  const chipsEl = root.querySelector('.cot-country-chips');
-  const prevCountryBtn = root.querySelector('.cot-country-edge.prev');
-  const nextCountryBtn = root.querySelector('.cot-country-edge.next');
-  const prevVehicleBtn = root.querySelector('.cot-car-arrow.prev');
-  const nextVehicleBtn = root.querySelector('.cot-car-arrow.next');
-  const battleControl = root.querySelector('.cot-battle-control');
-  const battleBtn = root.querySelector('.cot-battle');
-  const battleModeBtn = root.querySelector('.cot-battle-mode');
-  const battleMenu = root.querySelector('.cot-battle-menu');
-  const battleChoices = [...root.querySelectorAll('.cot-battle-choice[data-mode]')];
-  const battleRuleChoices = [...root.querySelectorAll('.cot-battle-choice[data-game-mode]')];
-  const roomReminder = root.querySelector('.cot-room-reminder');
-  const mapsEl = root.querySelector('.cot-maps');
-  const recordTrigger = root.querySelector('.cot-record-trigger');
-  const garageVariantTrigger = root.querySelector('.cot-garage-variant-trigger');
-  const garageVariantMenu = root.querySelector('.cot-garage-variant-menu');
-  const garageVariantLabel = root.querySelector('.cot-garage-variant-label');
-  const recordModal = root.querySelector('.cot-record-modal');
-  const recordClose = root.querySelector('.cot-record-close');
-  const mobileNavTrigger = root.querySelector('.cot-mobile-nav-trigger');
-  const mobileNavMenu = root.querySelector('.cot-mobile-nav-menu');
-  const garageToolsTrigger = root.querySelector('.cot-garage-tools-trigger');
-  const garageToolsMenu = root.querySelector('.cot-garage-tools-menu');
-  const garagePanelButtons = [...root.querySelectorAll('.cot-garage-tool')];
-  const garagePanelScrim = root.querySelector('.cot-garage-panel-scrim');
+  const statsEl = requiredElement<HTMLElement>(root, '.stats');
+  const cardsEl = requiredElement<HTMLElement>(root, '.cot-cards');
+  const countryRailEl = requiredElement<HTMLElement>(root, '.cot-country-rail');
+  const chipsEl = requiredElement<HTMLElement>(root, '.cot-country-chips');
+  const prevCountryBtn = requiredElement<HTMLButtonElement>(root, '.cot-country-edge.prev');
+  const nextCountryBtn = requiredElement<HTMLButtonElement>(root, '.cot-country-edge.next');
+  const prevVehicleBtn = requiredElement<HTMLButtonElement>(root, '.cot-car-arrow.prev');
+  const nextVehicleBtn = requiredElement<HTMLButtonElement>(root, '.cot-car-arrow.next');
+  const battleControl = requiredElement<HTMLElement>(root, '.cot-battle-control');
+  const battleBtn = requiredElement<HTMLButtonElement>(root, '.cot-battle');
+  const battleModeBtn = requiredElement<HTMLButtonElement>(root, '.cot-battle-mode');
+  const battleMenu = requiredElement<HTMLElement>(root, '.cot-battle-menu');
+  const battleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-mode]')];
+  const battleRuleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-game-mode]')];
+  const roomReminder = requiredElement<HTMLButtonElement>(root, '.cot-room-reminder');
+  const mapsEl = requiredElement<HTMLElement>(root, '.cot-maps');
+  const recordTrigger = requiredElement<HTMLButtonElement>(root, '.cot-record-trigger');
+  const garageVariantTrigger = requiredElement<HTMLButtonElement>(root, '.cot-garage-variant-trigger');
+  const garageVariantMenu = requiredElement<HTMLElement>(root, '.cot-garage-variant-menu');
+  const garageVariantLabel = requiredElement<HTMLElement>(root, '.cot-garage-variant-label');
+  const recordModal = requiredElement<HTMLElement>(root, '.cot-record-modal');
+  const recordClose = requiredElement<HTMLButtonElement>(root, '.cot-record-close');
+  const mobileNavTrigger = requiredElement<HTMLButtonElement>(root, '.cot-mobile-nav-trigger');
+  const mobileNavMenu = requiredElement<HTMLElement>(root, '.cot-mobile-nav-menu');
+  const garageToolsTrigger = requiredElement<HTMLButtonElement>(root, '.cot-garage-tools-trigger');
+  const garageToolsMenu = requiredElement<HTMLElement>(root, '.cot-garage-tools-menu');
+  const garagePanelButtons = [...root.querySelectorAll<HTMLButtonElement>('.cot-garage-tool')];
+  const garagePanelScrim = requiredElement<HTMLButtonElement>(root, '.cot-garage-panel-scrim');
 
-  let selectedId = specs.length ? specs[0].id : null;
-  let battleMode = 'solo';
-  let battleGameMode = 'standard';
+  let selectedId = specs[0]?.id || '';
+  let battleMode: BattleMode = 'solo';
+  let battleGameMode: GameModeId = 'standard';
   let vehicleLocked = false;
   const garageVariants = Array.isArray(opts.garageVariants) ? opts.garageVariants : [];
   let selectedGarageVariantId = garageVariants.some((variant) =>
     variant.id === opts.selectedGarageVariantId)
     ? opts.selectedGarageVariantId : garageVariants[0]?.id || '';
-  const garageVariantButtons = new Map();
-  const cardById = new Map();
-  const specById = new Map();
+  const garageVariantButtons = new Map<string, HTMLButtonElement>();
+  const cardById = new Map<string, HTMLElement>();
+  const specById = new Map<string, GarageTankSpec>();
   // specById covers the FULL roster so direct tooling can still inspect a
   // delisted vehicle without exposing it in the player-facing carousel.
   for (const s of allSpecs) specById.set(s.id, s);
 
-  const emit = (ev, payload) => { if (bus && bus.emit) bus.emit(ev, payload); };
+  const emit = (ev: string, payload: unknown): void => { if (bus?.emit) bus.emit(ev, payload); };
   const selectedGarageVariant = () => garageVariants.find((variant) =>
     variant.id === selectedGarageVariantId) || garageVariants[0] || null;
   const isGarageVariantMenuOpen = () => !garageVariantMenu.hidden;
@@ -558,7 +714,7 @@ export function createGarage(opts) {
       button.setAttribute('aria-selected', String(active));
     }
   };
-  const selectGarageVariant = (variantId, { notify = true } = {}) => {
+  const selectGarageVariant = (variantId: string, { notify = true } = {}) => {
     if (!garageVariantButtons.has(variantId)) return false;
     selectedGarageVariantId = variantId;
     refreshGarageVariantUi();
@@ -602,14 +758,14 @@ export function createGarage(opts) {
     emit('ui:click', {});
     window.location.href = garageGalleryHref(selectedId, layer);
   };
-  let recordRestoreFocus = null;
+  let recordRestoreFocus: HTMLElement | null = null;
   const isRecordOpen = () => recordModal.classList.contains('open');
   const openServiceRecord = () => {
     closeGarageTools();
     closeGarageVariantMenu();
     setGaragePanel('');
     refreshServiceRecord();
-    recordRestoreFocus = document.activeElement;
+    recordRestoreFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     recordModal.hidden = false;
     recordModal.classList.add('open');
     recordTrigger.setAttribute('aria-expanded', 'true');
@@ -701,16 +857,17 @@ export function createGarage(opts) {
     else openMobileNavigation();
   });
   document.addEventListener('pointerdown', (event) => {
+    const target = eventNode(event);
     if (isGarageVariantMenuOpen() && event.target !== garageVariantTrigger &&
-      !garageVariantTrigger.contains(event.target) && !garageVariantMenu.contains(event.target)) {
+      !garageVariantTrigger.contains(target) && !garageVariantMenu.contains(target)) {
       closeGarageVariantMenu();
     }
     if (isMobileNavigationOpen() && event.target !== mobileNavTrigger &&
-      !mobileNavTrigger.contains(event.target) && !mobileNavMenu.contains(event.target)) {
+      !mobileNavTrigger.contains(target) && !mobileNavMenu.contains(target)) {
       closeMobileNavigation();
     }
     if (isGarageToolsOpen() && event.target !== garageToolsTrigger &&
-      !garageToolsTrigger.contains(event.target) && !garageToolsMenu.contains(event.target)) {
+      !garageToolsTrigger.contains(target) && !garageToolsMenu.contains(target)) {
       closeGarageTools();
     }
   });
@@ -765,7 +922,10 @@ export function createGarage(opts) {
     const hasRight = maxScroll > 1 && cardsEl.scrollLeft < maxScroll - 2;
     cardsEl.classList.toggle('has-more-left', hasLeft);
     cardsEl.classList.toggle('has-more-right', hasRight);
-    for (const [button, available] of [[prevVehicleBtn, hasLeft], [nextVehicleBtn, hasRight]]) {
+    const affordances: Array<[HTMLButtonElement, boolean]> = [
+      [prevVehicleBtn, hasLeft], [nextVehicleBtn, hasRight],
+    ];
+    for (const [button, available] of affordances) {
       button.disabled = !available;
       button.classList.toggle('is-unavailable', !available);
       button.setAttribute('aria-hidden', String(!available));
@@ -783,14 +943,17 @@ export function createGarage(opts) {
     );
     countryRailEl.classList.toggle('has-more-left', hasLeft);
     countryRailEl.classList.toggle('has-more-right', hasRight);
-    for (const [button, available] of [[prevCountryBtn, hasLeft], [nextCountryBtn, hasRight]]) {
+    const affordances: Array<[HTMLButtonElement, boolean]> = [
+      [prevCountryBtn, hasLeft], [nextCountryBtn, hasRight],
+    ];
+    for (const [button, available] of affordances) {
       button.disabled = !available;
       button.classList.toggle('is-unavailable', !available);
       button.setAttribute('aria-hidden', String(!available));
     }
   };
   const queueCountryRailAffordances = () => requestAnimationFrame(syncCountryRailAffordances);
-  const scrollCountries = (direction) => {
+  const scrollCountries = (direction: number): void => {
     const distance = Math.max(180, chipsEl.clientWidth * 0.72);
     chipsEl.scrollBy({ left: direction * distance, behavior: REDUCED_MOTION ? 'auto' : 'smooth' });
   };
@@ -825,7 +988,7 @@ export function createGarage(opts) {
   // opts.maps = [{id,name,blurb,thumb}]; 'random' rolls at battle start) ---
   const maps = opts.maps || [];
   let selectedMapId = defaultGarageMapId(maps);
-  const mapCardById = new Map();
+  const mapCardById = new Map<string, HTMLElement>();
   if (maps.length) {
     const title = document.createElement('div');
     title.className = 'mtitle';
@@ -908,15 +1071,15 @@ export function createGarage(opts) {
   //               shown on the pedestal immediately, and persists via
   //               localStorage inside opts.camo.set.
   const camoOpts = opts.camo || null;
-  const camosEl = root.querySelector('.cot-camos');
+  const camosEl = requiredElement<HTMLElement>(root, '.cot-camos');
   const promoteCamoSwatches = () => {
     scheduleCamoSwatchLoad(true).catch(() => { /* next interaction retries */ });
   };
-  camosEl?.addEventListener('pointerenter', promoteCamoSwatches, { once: true });
-  camosEl?.addEventListener('focusin', promoteCamoSwatches, { once: true });
-  camosEl?.addEventListener('touchstart', promoteCamoSwatches, { once: true, passive: true });
-  const camoCardById = new Map();
-  let customCamoStudioAccess = null;
+  camosEl.addEventListener('pointerenter', promoteCamoSwatches, { once: true });
+  camosEl.addEventListener('focusin', promoteCamoSwatches, { once: true });
+  camosEl.addEventListener('touchstart', promoteCamoSwatches, { once: true, passive: true });
+  const camoCardById = new Map<string, HTMLElement>();
+  let customCamoStudioAccess: CustomCamoStudioAccess | null = null;
   if (camoOpts && camoOpts.patterns && camoOpts.patterns.length) {
     const title = document.createElement('div');
     title.className = 'ctitle';
@@ -952,7 +1115,7 @@ export function createGarage(opts) {
         { icon: 'brush', title: 'Local studio', text: 'Custom recipes are device-local and convert to Factory paint online.' },
       ],
     }));
-    let customOpenButton = null;
+    let customOpenButton: HTMLButtonElement | null = null;
     if (typeof camoOpts.getCustom === 'function' && typeof camoOpts.setCustom === 'function') {
       customOpenButton = document.createElement('button');
       customOpenButton.type = 'button';
@@ -978,7 +1141,7 @@ export function createGarage(opts) {
       card.innerHTML = pid === 'auto'
         ? `<div class="sw auto"><canvas></canvas></div><div class="cl"></div>`
         : `<div class="sw"><canvas></canvas></div><div class="cl"></div>`;
-      card.querySelector('.cl').textContent =
+      requiredElement<HTMLElement>(card, '.cl').textContent =
         (camoOpts.label && camoOpts.label[pid]) || pid;
       card.title = (camoOpts.label && camoOpts.label[pid]) || pid;
       card.addEventListener('click', () => {
@@ -994,36 +1157,42 @@ export function createGarage(opts) {
       camoCardById.set(pid, card);
     }
     if (typeof camoOpts.getCustom === 'function' && typeof camoOpts.setCustom === 'function') {
+      const button = requiredElement<HTMLButtonElement>(titleActions, '.cot-custom-open');
+      const getCustom = camoOpts.getCustom;
+      const setCustom = camoOpts.setCustom;
       customCamoStudioAccess = createCustomCamoStudioAccess(async () => {
         const { createCustomCamoStudio } = await import('./customCamoStudio.ts');
         return createCustomCamoStudio({
-          button: customOpenButton,
-          camo: camoOpts,
+          button,
+          camo: { getCustom, setCustom },
           selectedId: () => selectedId,
           selectedSpec: () => (selectedId ? specById.get(selectedId) : null),
-          paintPreview: paintCamoSwatch,
+          paintPreview: (canvas, _spec, patternId) => {
+            const selected = specById.get(selectedId);
+            if (selected) paintCamoSwatch(canvas, selected, patternId);
+          },
           emitClick: () => emit('ui:click', {}),
           refreshSelection: refreshCamoSel,
           requeueThumb: requeueTankThumbs,
         });
       });
       const preloadStudio = () => {
-        customCamoStudioAccess.preload().catch(() => { /* the click path retries */ });
+        customCamoStudioAccess?.preload().catch(() => { /* the click path retries */ });
       };
-      customOpenButton.addEventListener('pointerenter', preloadStudio, { once: true });
-      customOpenButton.addEventListener('focus', preloadStudio, { once: true });
-      customOpenButton.addEventListener('click', async () => {
-        customOpenButton.setAttribute('aria-busy', 'true');
-        customOpenButton.removeAttribute('data-load-error');
+      button.addEventListener('pointerenter', preloadStudio, { once: true });
+      button.addEventListener('focus', preloadStudio, { once: true });
+      button.addEventListener('click', async () => {
+        button.setAttribute('aria-busy', 'true');
+        button.removeAttribute('data-load-error');
         try {
-          await customCamoStudioAccess.open();
-          customOpenButton.removeAttribute('title');
+          await customCamoStudioAccess?.open();
+          button.removeAttribute('title');
         } catch (error) {
-          customOpenButton.dataset.loadError = 'true';
-          customOpenButton.title = 'Custom studio could not load. Click to retry.';
+          button.dataset.loadError = 'true';
+          button.title = 'Custom studio could not load. Click to retry.';
           console.warn('[garage] custom camouflage studio failed to load', error);
         } finally {
-          customOpenButton.removeAttribute('aria-busy');
+          button.removeAttribute('aria-busy');
         }
       });
     }
@@ -1033,7 +1202,7 @@ export function createGarage(opts) {
   // section can show all of its content. Any excess room remains below the
   // pair for Battle Gallery rather than stretching either plate into a void.
   function syncSidebarPanelHeight() {
-    const leftcol = root.querySelector('.cot-leftcol');
+    const leftcol = root.querySelector<HTMLElement>('.cot-leftcol');
     if (!leftcol || isOverlayPanelLayout() || getComputedStyle(mapsEl).display === 'none') {
       leftcol?.style.removeProperty('--cot-sidebar-panel-height');
       return;
@@ -1041,14 +1210,15 @@ export function createGarage(opts) {
     const style = getComputedStyle(leftcol);
     const gap = Number.parseFloat(style.rowGap || style.gap) || 8;
     const fixedChildren = [...leftcol.children]
-      .filter((child) => child !== mapsEl && child !== camosEl && getComputedStyle(child).display !== 'none');
+      .filter((child): child is HTMLElement => child instanceof HTMLElement &&
+        child !== mapsEl && child !== camosEl && getComputedStyle(child).display !== 'none');
     const fixedHeight = fixedChildren.reduce((sum, child) => sum + child.offsetHeight, 0);
     const gapHeight = gap * Math.max(0, leftcol.children.length - 1);
     const pairBudget = Math.max(216, leftcol.clientHeight - fixedHeight - gapHeight);
-    const mapTitle = mapsEl.querySelector('.mtitle');
-    const mapGrid = mapsEl.querySelector('.cot-map-grid');
-    const camoTitle = camosEl.querySelector('.ctitle');
-    const camoGrid = camosEl.querySelector('.cgrid.camo');
+    const mapTitle = mapsEl.querySelector<HTMLElement>('.mtitle');
+    const mapGrid = mapsEl.querySelector<HTMLElement>('.cot-map-grid');
+    const camoTitle = camosEl.querySelector<HTMLElement>('.ctitle');
+    const camoGrid = camosEl.querySelector<HTMLElement>('.cgrid.camo');
     const mapIntrinsic = (mapTitle?.offsetHeight || 0) + (mapGrid?.scrollHeight || 0) + 25;
     const camoIntrinsic = (camoTitle?.offsetHeight || 0) + (camoGrid?.scrollHeight || 0) + 25;
     const contentCap = Math.max(108, mapIntrinsic, camoIntrinsic);
@@ -1063,7 +1233,7 @@ export function createGarage(opts) {
   requestAnimationFrame(syncSidebarPanelHeight);
   if (typeof ResizeObserver === 'function') {
     const sidebarSizeObserver = new ResizeObserver(syncSidebarPanelHeight);
-    sidebarSizeObserver.observe(root.querySelector('.cot-leftcol'));
+    sidebarSizeObserver.observe(requiredElement<HTMLElement>(root, '.cot-leftcol'));
   }
   // --- EQUIPMENT SYSTEM: slot boxes on the stats card + item picker --------
   // Catalog/persistence/era-gating live in game/equipment.ts (localStorage
@@ -1081,11 +1251,12 @@ export function createGarage(opts) {
     selectedId ? loadEquipment(selectedId, specById.get(selectedId)) : [];
 
   /** Assign/remove an item in the open slot, persist, refresh the card. */
-  function eqAssign(itemId) {
+  function eqAssign(itemId: string | null): void {
     if (vehicleLocked || !selectedId || eqOpenSlot < 0) return;
     const spec = specById.get(selectedId);
+    if (!spec) return;
     const cur = curLoadout();
-    const prev = cur.indexOf(itemId);
+    const prev = itemId ? cur.indexOf(itemId) : -1;
     if (itemId && prev === eqOpenSlot) {
       // re-picking the item already in this slot = unequip it
       cur.splice(eqOpenSlot, 1);
@@ -1133,12 +1304,12 @@ export function createGarage(opts) {
       `<div class="chips">${chips}</div>` +
       `<div class="pgrid">${tiles}</div>`;
     // slot highlight on the card
-    for (const el of statsEl.querySelectorAll('.eqslot')) {
+    for (const el of statsEl.querySelectorAll<HTMLElement>('.eqslot')) {
       el.classList.toggle('open', Number(el.dataset.slot) === eqOpenSlot);
     }
   }
 
-  function openEqPicker(slot) {
+  function openEqPicker(slot: number): void {
     if (vehicleLocked) return;
     eqOpenSlot = slot;
     eqpickEl.classList.add('open');
@@ -1150,27 +1321,29 @@ export function createGarage(opts) {
     if (eqOpenSlot < 0) return;
     eqOpenSlot = -1;
     eqpickEl.classList.remove('open');
-    for (const el of statsEl.querySelectorAll('.eqslot')) el.classList.remove('open');
+    for (const el of statsEl.querySelectorAll<HTMLElement>('.eqslot')) el.classList.remove('open');
     document.removeEventListener('keydown', eqKeydown);
     document.removeEventListener('mousedown', eqOutside, true);
   }
-  function eqKeydown(e) {
+  function eqKeydown(e: KeyboardEvent): void {
     if (e.code === 'Escape') { e.stopPropagation(); closeEqPicker(); }
   }
-  function eqOutside(e) {
-    if (!eqpickEl.contains(e.target) && !e.target.closest('.eqslot')) closeEqPicker();
+  function eqOutside(e: MouseEvent): void {
+    const target = eventElement(e);
+    if (!eqpickEl.contains(target) && !target?.closest('.eqslot')) closeEqPicker();
   }
 
   eqpickEl.addEventListener('click', (e) => {
-    const chip = e.target.closest('.chip');
+    const target = eventElement(e);
+    const chip = target?.closest<HTMLElement>('.chip');
     if (chip) {
       emit('ui:click', {});
-      eqCat = chip.dataset.cat;
+      eqCat = chip.dataset.cat || 'all';
       renderEqPicker();
       return;
     }
-    if (e.target.closest('.x')) { emit('ui:click', {}); closeEqPicker(); return; }
-    const tile = e.target.closest('.cot-eqtile');
+    if (target?.closest('.x')) { emit('ui:click', {}); closeEqPicker(); return; }
+    const tile = target?.closest<HTMLElement>('.cot-eqtile');
     if (!tile || tile.classList.contains('locked')) return;
     emit('ui:click', {});
     eqAssign(tile.dataset.eq || null);
@@ -1178,12 +1351,13 @@ export function createGarage(opts) {
 
   // slot boxes are re-created by every renderStats — delegate their clicks
   statsEl.addEventListener('click', (e) => {
-    const galleryLink = e.target.closest('[data-gallery-layer]');
+    const target = eventElement(e);
+    const galleryLink = target?.closest<HTMLElement>('[data-gallery-layer]');
     if (galleryLink) {
       openSelectedInGallery(galleryLink.dataset.galleryLayer || 'appearance');
       return;
     }
-    const slot = e.target.closest('.eqslot');
+    const slot = target?.closest<HTMLElement>('.eqslot');
     if (!slot) return;
     emit('ui:click', {});
     const idx = Number(slot.dataset.slot);
@@ -1196,7 +1370,7 @@ export function createGarage(opts) {
     closeEqPicker();
   }
   // --- END EQUIPMENT SYSTEM -------------------------------------------------
-  let swatchesFor = null; // spec id the swatches are currently painted for
+  let swatchesFor: string | null = null; // spec id the swatches are currently painted for
   function refreshCamoSel() {
     if (!camoOpts || !selectedId) return;
     const cur = camoOpts.get(selectedId);
@@ -1213,7 +1387,7 @@ export function createGarage(opts) {
       const spec = specById.get(selectedId);
       if (spec) {
         for (const [pid, card] of camoCardById) {
-          const cv = card.querySelector('.sw canvas');
+          const cv = card.querySelector<HTMLCanvasElement>('.sw canvas');
           if (cv) {
             if (pid === 'auto') paintAutoCamoSwatch(cv, spec);
             else paintCamoSwatch(cv, spec, pid);
@@ -1238,7 +1412,7 @@ export function createGarage(opts) {
   // tier-VII M60 and tier-X Abrams off the same scale without reintroducing a
   // public vehicle-class taxonomy.
   const statGroupOf = garageStatGroup;
-  const STAT_RANGES = new Map(); // tier/era -> {hp,speed,hpt,dmg,reload:[lo,hi]}
+  const STAT_RANGES = new Map<string, StatRange>(); // tier/era -> {hp,speed,hpt,dmg,reload:[lo,hi]}
   for (const s of allSpecs) {
     const g = statGroupOf(s);
     let r = STAT_RANGES.get(g);
@@ -1254,10 +1428,11 @@ export function createGarage(opts) {
       };
       STAT_RANGES.set(g, r);
     }
-    const add = (key, v) => {
+    const range = r;
+    const add = (key: StatRangeKey, v: number | null | undefined): void => {
       if (v == null || !isFinite(v)) return;
-      if (v < r[key][0]) r[key][0] = v;
-      if (v > r[key][1]) r[key][1] = v;
+      if (v < range[key][0]) range[key][0] = v;
+      if (v > range[key][1]) range[key][1] = v;
     };
     add('hp', s.hp);
     add('speed', s.topSpeedKmh);
@@ -1271,7 +1446,12 @@ export function createGarage(opts) {
   }
   // min→0.14 stub, max→1.0 full; degenerate spans (single-vehicle group)
   // park at a neutral 0.72 so the card never shows an all-stub column
-  function statFrac(group, key, v, invert) {
+  function statFrac(
+    group: string,
+    key: StatRangeKey,
+    v: number | null | undefined,
+    invert = false,
+  ): number {
     const r = STAT_RANGES.get(group);
     if (!r || v == null || !isFinite(v)) return 0.6;
     const [lo, hi] = r[key];
@@ -1285,9 +1465,10 @@ export function createGarage(opts) {
   // --- COUNTRY FILTER CHIPS -------------------------------------------------
   // The row is an explicit national flag selector. USSR and Russia share RU;
   // every historical era stays together inside its country fleet.
-  const inCountry = (spec, countryId) => countryCodeOf(spec) === countryId;
+  const inCountry = (spec: GarageTankSpec, countryId: string): boolean =>
+    countryCodeOf(spec) === countryId;
   let countryFilter = countryGroups[0]?.id || 'us';
-  const chipById = new Map();
+  const chipById = new Map<string, HTMLButtonElement>();
   for (const group of countryGroups) {
     const count = group.count;
     const chip = document.createElement('button');
@@ -1309,7 +1490,7 @@ export function createGarage(opts) {
     chipsEl.appendChild(chip);
     chipById.set(group.id, chip);
   }
-  function applyCountryFilter(countryId) {
+  function applyCountryFilter(countryId: string): void {
     countryFilter = countryId;
     for (const [id, chip] of chipById) chip.classList.toggle('sel', id === countryId);
     // Programmatic tank selection can cross national groups. Keep the active
@@ -1349,26 +1530,27 @@ export function createGarage(opts) {
   // A short dwell is enough to distinguish a deliberate target; focus/touch/
   // press are already explicit and signal immediately. The eventual click
   // joins the same builder/texture promise in main.ts.
-  let tankIntentTimer = 0;
+  let tankIntentTimer: ReturnType<typeof setTimeout> | 0 = 0;
   let tankIntentId = '';
-  const clearTankIntent = (specId = '') => {
+  const clearTankIntent = (specId = ''): void => {
     if (specId && tankIntentId !== specId) return;
     if (tankIntentTimer) clearTimeout(tankIntentTimer);
     tankIntentTimer = 0;
     tankIntentId = '';
   };
-  const signalTankIntent = (specId, immediate = false) => {
+  const signalTankIntent = (specId: string, immediate = false): void => {
     if (!opts.onTankIntent || !specId || specId === selectedId) return;
+    const onTankIntent = opts.onTankIntent;
     clearTankIntent();
     if (immediate) {
-      try { opts.onTankIntent(specId); } catch (_) { /* optional warm path */ }
+      try { onTankIntent(specId); } catch (_) { /* optional warm path */ }
       return;
     }
     tankIntentId = specId;
     tankIntentTimer = setTimeout(() => {
       tankIntentTimer = 0;
       tankIntentId = '';
-      try { opts.onTankIntent(specId); } catch (_) { /* optional warm path */ }
+      try { onTankIntent(specId); } catch (_) { /* optional warm path */ }
     }, 90);
   };
   for (const s of specs) {
@@ -1390,7 +1572,7 @@ export function createGarage(opts) {
       `<img class="ti" data-cot-thumb="${s.id}" src="${getTankThumb(s.id)}" alt="${displayName}">` +
       `<div class="nm"><b class="tiern">${tierNumeral(s.id) || ''}</b><span class="nmt"></span></div>` +
       `<div class="era">${vehicleEraLabel(s.era, { short: true })}</div>`;
-    card.querySelector('.nmt').textContent = shortName;
+    requiredElement<HTMLElement>(card, '.nmt').textContent = shortName;
     card.addEventListener('pointerenter', () => signalTankIntent(s.id), { passive: true });
     card.addEventListener('pointerleave', () => clearTankIntent(s.id), { passive: true });
     card.addEventListener('focusin', () => signalTankIntent(s.id, true));
@@ -1418,13 +1600,27 @@ export function createGarage(opts) {
     Crew: 'Crew stations used by the vehicle damage model. Disabled crew affect the systems associated with their roles.',
     Equipment: 'Three local loadout slots. Mounted equipment changes the same runtime values shown above and used when a battle begins.',
   });
+  type GarageInfoLabel = keyof typeof GARAGE_INFO;
+  interface StatBarOptions {
+    readonly mod?: boolean;
+    readonly title?: string;
+    readonly icon?: string;
+  }
+  interface DisposableInfoTrigger extends HTMLElement {
+    disposeInfo?: () => void;
+  }
 
-  function statSectionTitle(icon, label, meta = '') {
+  function statSectionTitle(icon: string, label: string, meta = ''): string {
     return `<div class="cot-stat-title" data-stat-info="${label}">${uiIconSVG(icon, 13)}` +
       `<span>${label}</span>${meta ? `<small>${meta}</small>` : ''}</div>`;
   }
 
-  function statBar(label, valueText, frac, opts) {
+  function statBar(
+    label: string,
+    valueText: string,
+    frac: number,
+    opts: StatBarOptions = {},
+  ): string {
     const pct = Math.max(2, Math.min(100, frac * 100)).toFixed(1);
     // EQUIPMENT SYSTEM: values changed by the mounted loadout render in the
     // boost tint with the stock value + contributing items in the tooltip.
@@ -1437,9 +1633,9 @@ export function createGarage(opts) {
       `<div class="track"><div class="fill" style="width:${pct}%"></div></div></div>`;
   }
 
-  function garageInfoImages(spec, label) {
+  function garageInfoImages(spec: GarageTankSpec, label: string) {
     const name = spec.label?.displayName || spec.name;
-    const technicalViews = {
+    const technicalViews: Readonly<Record<string, readonly (readonly [string, string])[]>> = {
       'Vehicle dossier': [
         ['angle', 'Procedural vehicle render'], ['armor_side', 'Armor protection diagram'], ['modules_side', 'Internal module diagram'],
       ],
@@ -1460,9 +1656,12 @@ export function createGarage(opts) {
     }));
   }
 
-  let statsFor = null; // last spec rendered — gates the swap micro-fade
-  function renderStats(spec) {
-    statsEl.querySelectorAll('.cot-info-trigger').forEach((button) => button.disposeInfo?.());
+  let statsFor: string | null = null; // last spec rendered — gates the swap micro-fade
+  function renderStats(spec: GarageTankSpec): void {
+    statsEl.querySelectorAll<HTMLElement>('.cot-info-trigger').forEach((button) => {
+      const trigger: DisposableInfoTrigger = button;
+      trigger.disposeInfo?.();
+    });
     const vehicleChanged = statsFor !== spec.id;
     // garage_ui: vehicle-switch micro-fade — the stats card content used to
     // teleport; a 190 ms fade/rise sells the swap without delaying the data.
@@ -1507,7 +1706,7 @@ export function createGarage(opts) {
     // read (or ever written) for a view-only 'print:<id>' pseudo-spec.
     const eqIds = loadEquipment(spec.id, spec);
     const eqM = computeEquipMults(eqIds);
-    const eqNames = eqIds.map((id) => EQUIPMENT_BY_ID.get(id).name).join(', ');
+    const eqNames = eqIds.map((id) => EQUIPMENT_BY_ID.get(id)?.name || id).join(', ');
     const reloadS = spec.gun.reloadS * eqM.reload;
     const autoloader = spec.gun.autoloader;
     const reloadLabel = autoloader ? 'Magazine reload' : 'Reload';
@@ -1526,7 +1725,7 @@ export function createGarage(opts) {
     const viewText = vrStill > vrMove + 0.5
       ? `${Math.round(vrMove)} / ${Math.round(vrStill)} m`
       : `${Math.round(vrMove)} m`;
-    const eqTitle = (base) => `Stock ${base} &middot; ${eqNames}`;
+    const eqTitle = (base: string): string => `Stock ${base} &middot; ${eqNames}`;
     const special = garageSpecialSystem(spec, reloadS);
     const specialCard = special
       ? `<section class="cot-stat-section cot-special-section">` +
@@ -1601,7 +1800,7 @@ export function createGarage(opts) {
       `<section class="cot-stat-section">` +
       `<div class="eqhead"><span>${uiIconSVG('repair', 13)} Equipment</span><i>${eqIds.length}/${EQUIP_SLOTS}</i></div>` +
       `<div class="eqrow">${slotBoxes}</div></section>`;
-    statsEl.querySelector('h3').textContent = spec.label?.displayName || spec.name;
+    requiredElement<HTMLElement>(statsEl, 'h3').textContent = spec.label?.displayName || spec.name;
     const dossierHead = statsEl.querySelector('.cot-dossier-head');
     dossierHead?.appendChild(createInfoButton({
       label: 'About the vehicle dossier',
@@ -1613,14 +1812,14 @@ export function createGarage(opts) {
         { icon: 'gallery', title: 'Technical views', text: 'Open Tank Gallery for interactive armor, module, and appearance layers.' },
       ],
     }));
-    statsEl.querySelectorAll('[data-stat-info]').forEach((heading) => {
+    statsEl.querySelectorAll<HTMLElement>('[data-stat-info]').forEach((heading) => {
       const label = heading.dataset.statInfo;
-      const text = GARAGE_INFO[label];
+      const text = label && label in GARAGE_INFO ? GARAGE_INFO[label as GarageInfoLabel] : '';
       if (text) heading.appendChild(createInfoButton({
         label: `About ${label}`,
-        title: label,
+        title: label || 'Vehicle information',
         text,
-        images: garageInfoImages(spec, label),
+        images: garageInfoImages(spec, label || 'Vehicle dossier'),
       }));
     });
     const equipmentHead = statsEl.querySelector('.eqhead');
@@ -1631,7 +1830,7 @@ export function createGarage(opts) {
     if (vehicleChanged) statsEl.scrollTop = 0;
   }
 
-  function applySelection(specId) {
+  function applySelection(specId: string): boolean {
     if (vehicleLocked && specId !== selectedId) return false;
     const spec = specById.get(specId);
     if (!spec) return false;
@@ -1649,7 +1848,7 @@ export function createGarage(opts) {
     queueCarouselAffordances();
     renderStats(spec);
     battleBtn.disabled = false;
-    battleBtn.querySelector('.battle-word').textContent = 'BATTLE';
+    requiredElement<HTMLElement>(battleBtn, '.battle-word').textContent = 'BATTLE';
     camosEl.style.display = '';
     refreshCamoSel(); // CAMO PICKER SECTION: highlight this tank's pattern
     // camo r4: warm this tank's pattern bakes in the background so picker
@@ -1659,7 +1858,7 @@ export function createGarage(opts) {
     return true;
   }
 
-  function step(dir) {
+  function step(dir: number): void {
     if (vehicleLocked) return;
     // Arrows walk the active national fleet only.
     const pool = specs.filter((spec) => inCountry(spec, countryFilter));
@@ -1670,7 +1869,14 @@ export function createGarage(opts) {
     api.setSelected(next.id);
   }
 
-  function launchBattle(specId, mapId, { emitClick = true, gameMode = battleGameMode } = {}) {
+  function launchBattle(
+    specId: string,
+    mapId: string,
+    { emitClick = true, gameMode = battleGameMode }: {
+      emitClick?: boolean;
+      gameMode?: GameModeId;
+    } = {},
+  ): void {
     // Battle entry must be unstoppable: the pre-battle emits fan out to five+
     // subscribers (audio click, pointer-lock grab, killcam/shot-log resets…)
     // and any one of them throwing in an exotic environment would silently
@@ -1707,13 +1913,18 @@ export function createGarage(opts) {
     launchBattle(specId, mapId);
   }
 
-  const battleModeMeta = {
+  interface BattleChoiceMeta {
+    readonly short: string;
+    readonly label: string;
+    readonly icon: string;
+  }
+  const battleModeMeta: Readonly<Record<BattleMode, BattleChoiceMeta>> = {
     solo: { short: 'BOTS', label: 'Bots', icon: 'battleBots' },
     private: { short: 'CODE', label: 'Private', icon: 'battlePrivate' },
     lan: { short: 'LAN', label: 'LAN', icon: 'battleLan' },
     ranked: { short: 'RANK', label: 'Ranked', icon: 'battleRanked' },
   };
-  const battleRuleMeta = {
+  const battleRuleMeta: Partial<Record<GameModeId, BattleChoiceMeta>> = {
     capture_the_flag: { short: 'CTF', label: 'Capture the Flag', icon: 'modeFlag' },
     zone_control: { short: '1000', label: 'Zone Control', icon: 'modeZones' },
     turbo_ball: { short: 'BALL', label: 'Turbo Ball', icon: 'modeTurbo' },
@@ -1734,32 +1945,33 @@ export function createGarage(opts) {
       : battleRuleChoices.find((choice) => choice.dataset.gameMode === battleGameMode);
     (activeRule || battleChoices.find((choice) => choice.dataset.mode === battleMode))?.focus();
   }
-  function setBattleMode(nextMode) {
-    const meta = battleModeMeta[nextMode];
-    if (!meta) return;
-    battleMode = nextMode;
-    if (nextMode === 'solo') battleGameMode = 'standard';
-    if (nextMode !== 'solo' && opts.onPlayModeIntent) {
-      try { opts.onPlayModeIntent(nextMode); } catch (_) { /* optional warm path */ }
+  function setBattleMode(nextMode: string | undefined): void {
+    if (!nextMode || !(nextMode in battleModeMeta)) return;
+    const mode = nextMode as BattleMode;
+    const meta = battleModeMeta[mode];
+    battleMode = mode;
+    if (mode === 'solo') battleGameMode = 'standard';
+    if (mode !== 'solo' && opts.onPlayModeIntent) {
+      try { opts.onPlayModeIntent(mode); } catch (_) { /* optional warm path */ }
     }
-    battleModeBtn.querySelector('span').textContent = meta.short;
-    battleBtn.querySelector('.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
+    requiredElement<HTMLElement>(battleModeBtn, 'span').textContent = meta.short;
+    requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
     battleModeBtn.setAttribute('aria-label', `Battle type: ${meta.label}. Change battle type`);
     battleBtn.setAttribute('aria-label', `Start ${meta.label} battle`);
     for (const choice of battleChoices) {
-      choice.setAttribute('aria-checked', String(choice.dataset.mode === nextMode));
+      choice.setAttribute('aria-checked', String(choice.dataset.mode === mode));
     }
     for (const choice of battleRuleChoices) choice.setAttribute('aria-checked', 'false');
   }
-  function setBattleGameMode(nextMode) {
+  function setBattleGameMode(nextMode: unknown): void {
     const id = normalizeGameMode(nextMode);
     const meta = battleRuleMeta[id];
     if (!meta) return;
     battleMode = 'solo';
     battleGameMode = id;
     try { localStorage.setItem('cot.game.mode.v1', id); } catch (_) { /* session-only */ }
-    battleModeBtn.querySelector('span').textContent = meta.short;
-    battleBtn.querySelector('.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
+    requiredElement<HTMLElement>(battleModeBtn, 'span').textContent = meta.short;
+    requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
     battleModeBtn.setAttribute('aria-label', `Battle rules: ${meta.label}. Change battle type`);
     battleBtn.setAttribute('aria-label', `Start ${meta.label}`);
     for (const choice of battleChoices) choice.setAttribute('aria-checked', 'false');
@@ -1802,7 +2014,7 @@ export function createGarage(opts) {
     closeBattleMenu({ restoreFocus: true });
   });
   root.addEventListener('pointerdown', (event) => {
-    if (!battleControl.contains(event.target)) closeBattleMenu();
+    if (!battleControl.contains(eventNode(event))) closeBattleMenu();
   });
   prevVehicleBtn.addEventListener('click', () => step(-1));
   nextVehicleBtn.addEventListener('click', () => step(1));
@@ -1831,7 +2043,7 @@ export function createGarage(opts) {
     };
     const coast = () => {
       let prev = performance.now();
-      const frame = (now) => {
+      const frame = (now: number): void => {
         coastRaf = 0;
         const dt = Math.min(0.05, Math.max(0.001, (now - prev) / 1000));
         prev = now;
@@ -1874,7 +2086,7 @@ export function createGarage(opts) {
       lastX = e.clientX;
       lastT = now;
     });
-    const endStripDrag = (e) => {
+    const endStripDrag = (e: PointerEvent): void => {
       if (e.pointerId !== ptrId) return;
       ptrId = -1;
       if (!engaged) return;
@@ -1938,11 +2150,11 @@ export function createGarage(opts) {
     emit('ui:click', {});
     window.location.href = '/home'; // pretty route (vite.config.js rewrite)
   };
-  root.querySelector('[data-nav="studio"]').addEventListener('click', openStudio);
-  root.querySelector('[data-nav="gallery"]').addEventListener('click', () => openSelectedInGallery());
-  root.querySelector('[data-nav="docs"]').addEventListener('click', openDocs);
-  root.querySelector('[data-nav="home"]').addEventListener('click', openHome);
-  root.querySelector('[data-nav="github"]').addEventListener('click', () => {
+  requiredElement<HTMLElement>(root, '[data-nav="studio"]').addEventListener('click', openStudio);
+  requiredElement<HTMLElement>(root, '[data-nav="gallery"]').addEventListener('click', () => openSelectedInGallery());
+  requiredElement<HTMLElement>(root, '[data-nav="docs"]').addEventListener('click', openDocs);
+  requiredElement<HTMLElement>(root, '[data-nav="home"]').addEventListener('click', openHome);
+  requiredElement<HTMLElement>(root, '[data-nav="github"]').addEventListener('click', () => {
     emit('ui:click', {});
   });
   for (const studioIntent of root.querySelectorAll(
@@ -1955,7 +2167,7 @@ export function createGarage(opts) {
     studioIntent.addEventListener('focusin', signalStudioIntent);
     studioIntent.addEventListener('touchstart', signalStudioIntent, { passive: true });
   }
-  for (const item of root.querySelectorAll('[data-mobile-nav]')) {
+  for (const item of root.querySelectorAll<HTMLElement>('[data-mobile-nav]')) {
     item.addEventListener('click', () => {
       const destination = item.dataset.mobileNav;
       closeMobileNavigation();
@@ -1973,13 +2185,14 @@ export function createGarage(opts) {
       }
     });
   }
-  root.querySelector('.cot-settings-slot').addEventListener('pointerdown', () => {
+  requiredElement<HTMLElement>(root, '.cot-settings-slot').addEventListener('pointerdown', () => {
     closeGarageTools();
     setGaragePanel('');
   });
-  function onKey(e) {
+  function onKey(e: KeyboardEvent): void {
     if (!api.isOpen) return;
-    if (e.target?.closest?.('.cot-modal')) return;
+    const target = eventElement(e);
+    if (target?.closest('.cot-modal')) return;
     if (e.code === 'Escape' && isGarageToolsOpen()) {
       closeGarageTools({ restoreFocus: true });
       e.preventDefault();
@@ -2003,13 +2216,13 @@ export function createGarage(opts) {
     if (e.code === 'ArrowLeft') { step(-1); e.preventDefault(); }
     else if (e.code === 'ArrowRight') { step(1); e.preventDefault(); }
     else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
-      if (e.target?.closest?.('button,input,select,a,[role="button"]')) return;
+      if (target?.closest('button,input,select,a,[role="button"]')) return;
       battle();
       e.preventDefault();
     }
   }
 
-  const api = {
+  const api: GarageRuntime = {
     root,
     isOpen: false,
 
@@ -2079,7 +2292,7 @@ export function createGarage(opts) {
      * Highlight a tank in the carousel and refresh the stats card; calls onSelect.
      * @param {string} specId
      */
-    setSelected(specId) {
+    setSelected(specId: string) {
       if (vehicleLocked) {
         if (specId === selectedId) applySelection(specId);
         return;
@@ -2094,7 +2307,7 @@ export function createGarage(opts) {
     getSelectedGarageVariant() { return selectedGarageVariantId; },
 
     /** Select a workshop without conflating it with the next battle map. */
-    setSelectedGarageVariant(variantId) { return selectGarageVariant(variantId); },
+    setSelectedGarageVariant(variantId: string) { return selectGarageVariant(variantId); },
 
     /** Adjacent cards in the active national carousel, forward then back. */
     getNeighborIds(radius = 2) {
@@ -2103,7 +2316,7 @@ export function createGarage(opts) {
       const pool = specs.filter((spec) => countryCodeOf(spec) === countryCodeOf(selected));
       const index = pool.findIndex((spec) => spec.id === selectedId);
       if (index < 0 || pool.length < 2) return [];
-      const result = [];
+      const result: string[] = [];
       for (let distance = 1; distance <= Math.min(radius, pool.length - 1); distance++) {
         for (const offset of [distance, -distance]) {
           const id = pool[(index + offset + pool.length) % pool.length]?.id;
@@ -2114,10 +2327,10 @@ export function createGarage(opts) {
     },
 
     /** Reflect persistent multiplayer membership beneath the main battle action. */
-    setRoomStatus(status = null) {
+    setRoomStatus(status: GarageRoomStatus | null = null) {
       if (!status) {
         roomReminder.classList.remove('show', 'ready');
-        roomReminder.querySelector('.rr-copy').textContent = '';
+        requiredElement<HTMLElement>(roomReminder, '.rr-copy').textContent = '';
         vehicleLocked = false;
         root.classList.remove('vehicle-locked');
         return;
@@ -2125,7 +2338,7 @@ export function createGarage(opts) {
       const ready = !!status.ready;
       const count = Math.max(0, Number(status.readyCount) || 0);
       const total = Math.max(0, Number(status.total) || 0);
-      roomReminder.querySelector('.rr-copy').innerHTML =
+      requiredElement<HTMLElement>(roomReminder, '.rr-copy').innerHTML =
         `<b>${status.mode === 'lan' ? 'LAN' : 'PRIVATE'} ROOM ${status.roomCode || ''}</b> · ` +
         `${ready ? 'READY' : 'NOT READY'} · ${count}/${total} READY`;
       roomReminder.classList.add('show');
@@ -2140,9 +2353,8 @@ export function createGarage(opts) {
     isVehicleLocked() { return vehicleLocked; },
 
     /** Move the settings-owned gear into the garage navigation rail. */
-    attachSettingsControl(control) {
-      const slot = root.querySelector('.cot-settings-slot');
-      if (slot && control) slot.replaceChildren(control);
+    attachSettingsControl(control: HTMLElement) {
+      requiredElement<HTMLElement>(root, '.cot-settings-slot').replaceChildren(control);
     },
 
     // --- MAP-CONFIG WIRING ---
@@ -2158,7 +2370,7 @@ export function createGarage(opts) {
      * Highlight a battlefield in the map picker.
      * @param {string} mapId map id or 'random'
      */
-    setSelectedMap(mapId) {
+    setSelectedMap(mapId: string) {
       if (!mapCardById.has(mapId)) return;
       selectedMapId = mapId;
       for (const [id, card] of mapCardById) card.classList.toggle('sel', id === mapId);

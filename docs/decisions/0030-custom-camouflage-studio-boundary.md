@@ -25,7 +25,7 @@ page reload.
 - The settled editor and persisted pattern format remain unchanged.
 - Garage owns selection and persistence policy; the studio owns authoring UI.
 - Optional transfer failure cannot block the Garage or poison later retries.
-- Future editor work is testable and navigable without expanding `garage.js`.
+- Future editor work is testable and navigable without expanding `garage.ts`.
 
 ## Verification
 

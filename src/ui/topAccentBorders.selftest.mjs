@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const readSource = (relativePath) => readFile(new URL(relativePath, import.meta.url), 'utf8');
 const [garage, contextInfo, settings, hud, endScreen, killcam, publicNav, docs] = await Promise.all([
-  readSource('./garage.js'),
+  readSource('./garage.ts'),
   readSource('./contextInfo.ts'),
   readSource('./settings.ts'),
   readSource('./hud.js'),

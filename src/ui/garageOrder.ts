@@ -1,4 +1,4 @@
-// Pure garage ordering helpers. Kept separate from garage.js so the ordering
+// Pure garage ordering helpers. Kept separate from garage.ts so the ordering
 // contract can be verified in Node without importing browser-only flag assets.
 
 const NAME_COLLATOR = new Intl.Collator('en', {

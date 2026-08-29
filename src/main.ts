@@ -100,7 +100,7 @@ import { createBattleHudAccess } from './ui/battleHudAccess.ts';
 import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
 import './ui/garage.css';
-import { createGarage } from './ui/garage.js';
+import { createGarage } from './ui/garage.ts';
 import { installBattleRecords } from './game/profile.ts';
 import {
   createGarageStage, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,

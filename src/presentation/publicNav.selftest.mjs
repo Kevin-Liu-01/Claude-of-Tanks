@@ -135,7 +135,7 @@ for (const [, contents] of gameRepositoryLinks) {
     'every repository control in the loading flow starts with the numeric fallback');
 }
 
-const garageSource = readFileSync(join(ROOT, 'src/ui/garage.js'), 'utf8');
+const garageSource = readFileSync(join(ROOT, 'src/ui/garage.ts'), 'utf8');
 const garageCss = readFileSync(join(ROOT, 'src/ui/garage.css'), 'utf8');
 const brandUtilities = garageSource.indexOf('class="cot-brand-utilities cot-header-nav"');
 const homeControl = garageSource.indexOf('data-nav="home"');

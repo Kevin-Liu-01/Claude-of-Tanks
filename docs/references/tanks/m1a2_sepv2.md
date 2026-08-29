@@ -642,7 +642,7 @@ dims 100. overall 9.78 (+0.15%), width 3.65 (-0.35%).
 - npm test: 166/166 + track-geometry green (clean-room worktree).
 - Whole round measured in a CLEAN-ROOM worktree at HEAD be02f5d + this
   file only (LIVE-TREE FROZEN-SIB law; the live tree carries foreign
-  owner WIP in materials.js/main.js/garage.js).
+  owner WIP in materials.js/main.js/garage.ts).
 - DELIVERY-TREE RE-VERIFICATION: HEAD moved be02f5d -> f2720c2 mid-round
   (owner lanes landing; abrams.js + both SEP packets untouched
   upstream). Re-proved at f2720c2 + this file: all 8 hashes IDENTICAL

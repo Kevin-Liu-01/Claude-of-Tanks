@@ -1,6 +1,6 @@
 /**
  * Demand-loaded exact camouflage swatch renderer. This decorative canvas
- * work stays outside the garage-critical graph; garage.js supplies an
+ * work stays outside the garage-critical graph; garage.ts supplies an
  * immediate deterministic placeholder until this module is resident.
  */
 import { resolveCamoVisual, CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK }

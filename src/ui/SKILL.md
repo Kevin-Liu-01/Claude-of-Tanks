@@ -11,7 +11,7 @@ Present game and session state with fast, legible desktop/mobile interactions.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`garage.js` owns roster/loadout presentation; its intent-loaded
+`garage.ts` owns roster/loadout presentation; its intent-loaded
 `camoSwatchPainter.ts` owns deterministic exact camouflage cards;
 `garageStage.ts` owns the typed procedural hangar, canvas textures, podium,
 lighting, tracked GPU resources, and environment-variant bridge;
@@ -43,6 +43,10 @@ make boot or Garage presentation depend on a third-party request.
 Shared DOM, font, generated-icon, image-preload, featured-media, and map-art
 primitives are strict TypeScript owners. Extend their exported contracts rather
 than creating screen-local unchecked copies.
+`garage.ts` is a strict presentation adapter: keep fleet, map, camouflage,
+loadout, room-status, and battle-intent inputs explicit; fail fast when its
+static markup contract is missing; and preserve its disclosure/event lifecycle
+when adding responsive controls.
 The public and Studio capture gallery shares `presentation/mediaArchive.ts`;
 keep manifest transfer lazy, pagination bounded, and lightbox cleanup explicit.
 `presentation/publicPages.ts` owns typed, save-data-aware hero, screenshot-rail,
