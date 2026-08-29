@@ -88,6 +88,128 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
 });
 
 /**
+ * Browsing taxonomy for the garage camouflage catalog. Tags describe origin,
+ * environment, and visual construction independently, so patterns can be
+ * found without forcing each one into a single arbitrary folder.
+ */
+export const CAMO_TAG_IDS = Object.freeze([
+  'all',
+  // Service origin / national association.
+  'usa', 'de', 'ru', 'uk', 'fr', 'cn', 'it', 'jp', 'pl', 'kr', 'se', 'il', 'ua',
+  // Intended operating environment.
+  'woodland', 'desert', 'winter', 'urban', 'tropical', 'maritime', 'night',
+  // Pattern construction and catalog role.
+  'digital', 'geometric', 'stripes', 'organic', 'historical',
+  'factory', 'signature', 'adaptive', 'special',
+] as const);
+
+export type CamoTagId = typeof CAMO_TAG_IDS[number];
+
+export const CAMO_TAG_LABEL: Readonly<Record<CamoTagId, string>> = Object.freeze({
+  all: 'All',
+  usa: 'USA', de: 'DE', ru: 'RU', uk: 'UK', fr: 'FR', cn: 'CN', it: 'IT',
+  jp: 'JP', pl: 'PL', kr: 'KR', se: 'SE', il: 'IL', ua: 'UA',
+  woodland: 'Woodland', desert: 'Desert', winter: 'Winter', urban: 'Urban',
+  tropical: 'Tropical', maritime: 'Maritime', night: 'Night',
+  digital: 'Digital', geometric: 'Geometric', stripes: 'Stripes', organic: 'Organic',
+  historical: 'Historical', factory: 'Factory', signature: 'Signature',
+  adaptive: 'Adaptive', special: 'Special',
+});
+
+const CAMO_NATION_TAG: Readonly<Record<string, CamoTagId>> = Object.freeze({
+  USA: 'usa',
+  Germany: 'de',
+  Russia: 'ru',
+  USSR: 'ru',
+  'USSR/Russia': 'ru',
+  UK: 'uk',
+  France: 'fr',
+  China: 'cn',
+  Italy: 'it',
+  Japan: 'jp',
+  Poland: 'pl',
+  'South Korea': 'kr',
+  Sweden: 'se',
+  Israel: 'il',
+  Ukraine: 'ua',
+});
+
+const CAMO_PATTERN_TAGS: Readonly<Record<CamoPatternId, readonly CamoTagId[]>> = Object.freeze({
+  auto: ['adaptive'],
+  factory: ['factory'],
+  summer: ['woodland', 'organic'],
+  desert: ['desert', 'organic'],
+  winter: ['winter', 'organic'],
+  digital: ['woodland', 'digital', 'geometric'],
+  merdc: ['usa', 'woodland', 'historical', 'organic'],
+  tropic: ['tropical', 'woodland', 'organic'],
+  ambushdot: ['de', 'woodland', 'historical', 'organic'],
+  splinter: ['de', 'woodland', 'historical', 'geometric'],
+  pinkdesert: ['uk', 'desert', 'historical', 'organic'],
+  autumn: ['woodland', 'organic'],
+  urbanblock: ['urban', 'geometric'],
+  washworn: ['winter', 'historical', 'organic'],
+  naval: ['maritime', 'geometric'],
+  dazzle: ['maritime', 'historical', 'geometric'],
+  flecktarn: ['de', 'woodland', 'organic'],
+  amoeba: ['ru', 'woodland', 'historical', 'organic'],
+  dpm: ['uk', 'woodland', 'historical', 'organic'],
+  tigerstripe: ['tropical', 'historical', 'stripes'],
+  m90: ['se', 'woodland', 'geometric'],
+  chocchip: ['usa', 'desert', 'historical', 'organic'],
+  digitaldesert: ['desert', 'digital', 'geometric'],
+  merdcwinter: ['usa', 'winter', 'historical', 'organic'],
+  winterbands: ['winter', 'stripes'],
+  berlin: ['uk', 'urban', 'historical', 'geometric'],
+  oakleaf: ['de', 'woodland', 'historical', 'organic'],
+  hexfield: ['geometric', 'special'],
+  midnight: ['night', 'special'],
+  claude: ['geometric', 'special'],
+  spark: ['geometric', 'special'],
+  ducky: ['organic', 'special'],
+  suits: ['geometric', 'special'],
+  flames: ['stripes', 'special'],
+  leopardprint: ['organic', 'special'],
+  bolt: ['geometric', 'special'],
+  stars: ['geometric', 'special'],
+  daisy: ['organic', 'special'],
+  circuit: ['geometric', 'special'],
+  racing: ['stripes', 'special'],
+  paintball: ['organic', 'special'],
+  normandy44: ['usa', 'woodland', 'historical'],
+  berlin45: ['ru', 'urban', 'historical'],
+  ardennes44: ['usa', 'winter', 'historical'],
+  pacific45: ['usa', 'tropical', 'historical'],
+  jungleops: ['tropical', 'woodland', 'historical'],
+  rasputitsa: ['ru', 'woodland', 'historical'],
+  signature: ['signature', 'special'],
+});
+
+export function camoNationTag(nation: unknown): CamoTagId | null {
+  return typeof nation === 'string' ? CAMO_NATION_TAG[nation] || null : null;
+}
+
+/** Tags for one swatch. Factory and Signature inherit the selected tank nation. */
+export function camoPatternTags(patternId: unknown, nation: unknown = null): readonly CamoTagId[] {
+  if (typeof patternId !== 'string') return [];
+  const base = CAMO_PATTERN_TAGS[patternId as CamoPatternId];
+  if (!base) return [];
+  const nationTag = camoNationTag(nation);
+  if ((patternId === 'factory' || patternId === 'signature') && nationTag) {
+    return [nationTag, ...base];
+  }
+  return base;
+}
+
+export function camoMatchesTag(
+  patternId: unknown,
+  nation: unknown,
+  tagId: CamoTagId,
+): boolean {
+  return tagId === 'all' || camoPatternTags(patternId, nation).includes(tagId);
+}
+
+/**
  * Vehicles whose authored pre-standardization finish is intentional identity,
  * not an accidental substitute for their nation's Factory delivery coat.
  *

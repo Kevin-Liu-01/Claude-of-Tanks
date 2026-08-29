@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import {
   CAMO_PATTERN_IDS,
+  CAMO_TAG_IDS,
+  CAMO_TAG_LABEL,
   CUSTOM_CAMO_ID,
   SIGNATURE_CAMO_TANK_IDS,
+  camoMatchesTag,
+  camoPatternTags,
   customCamoPatternId,
   defaultCamoPatternId,
   isBuiltInCamoId,
@@ -23,6 +27,26 @@ assert.equal(defaultCamoPatternId('abramsx'), 'signature');
 assert.equal(defaultCamoPatternId('m1a2'), 'factory');
 assert.ok(SIGNATURE_CAMO_TANK_IDS.length >= 45,
   'the requested personality fleet must remain explicit and substantial');
+
+const camoTagIds = new Set(CAMO_TAG_IDS);
+assert.equal(camoTagIds.size, CAMO_TAG_IDS.length, 'camouflage tag ids stay unique');
+for (const tagId of CAMO_TAG_IDS) {
+  assert.ok(CAMO_TAG_LABEL[tagId], `${tagId} has a visible filter label`);
+}
+for (const patternId of CAMO_PATTERN_IDS) {
+  const tags = camoPatternTags(patternId);
+  assert.ok(tags.length > 0, `${patternId} belongs to at least one camouflage tag`);
+  assert.equal(new Set(tags).size, tags.length, `${patternId} has no duplicate tags`);
+  for (const tagId of tags) assert.ok(camoTagIds.has(tagId), `${patternId} uses known tag ${tagId}`);
+}
+assert.deepEqual(camoPatternTags('factory', 'Germany'), ['de', 'factory']);
+assert.deepEqual(camoPatternTags('signature', 'Ukraine'), ['ua', 'signature', 'special']);
+assert.equal(camoMatchesTag('merdc', 'France', 'usa'), true,
+  'historical national association remains independent of selected tank');
+assert.equal(camoMatchesTag('digitaldesert', 'USA', 'desert'), true);
+assert.equal(camoMatchesTag('digitaldesert', 'USA', 'winter'), false);
+assert.equal(camoMatchesTag('unknown', 'USA', 'all'), true,
+  'All remains the non-destructive catalog view');
 
 const custom = normalizeCustomCamo({
   style: 'digital', base: '#123456', colorA: '#abcdef', colorB: '#010203', repeat: 75,

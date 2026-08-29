@@ -13,7 +13,8 @@ import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } fr
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import {
-  CUSTOM_CAMO_ID, customCamoPatternId,
+  CAMO_TAG_IDS, CAMO_TAG_LABEL, CUSTOM_CAMO_ID,
+  camoMatchesTag, camoPatternTags, customCamoPatternId,
 } from '../vehicles/camoPolicy.ts';
 import { createInfoButton } from './contextInfo.ts';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
@@ -48,7 +49,7 @@ import type { GameModeId } from '../sim/matchModes.ts';
 import type { FleetGunSpec, FleetTankSpec } from '../vehicles/specContracts.ts';
 import type { ShellSpec } from '../vehicles/specHelpers.ts';
 import type { GarageVariant } from '../game/garageVariants.ts';
-import type { CustomCamo } from '../vehicles/camoPolicy.ts';
+import type { CamoTagId, CustomCamo } from '../vehicles/camoPolicy.ts';
 import type { CustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import type { ImagePriority } from './imagePreload.ts';
 
@@ -1079,6 +1080,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   camosEl.addEventListener('focusin', promoteCamoSwatches, { once: true });
   camosEl.addEventListener('touchstart', promoteCamoSwatches, { once: true, passive: true });
   const camoCardById = new Map<string, HTMLElement>();
+  const camoTagButtonById = new Map<CamoTagId, HTMLButtonElement>();
+  let activeCamoTag: CamoTagId = 'all';
   let customCamoStudioAccess: CustomCamoStudioAccess | null = null;
   if (camoOpts && camoOpts.patterns && camoOpts.patterns.length) {
     const title = document.createElement('div');
@@ -1128,6 +1131,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     title.appendChild(titleActions);
     camosEl.appendChild(title);
+    const tagBar = document.createElement('div');
+    tagBar.className = 'cot-camo-tags';
+    tagBar.setAttribute('role', 'toolbar');
+    tagBar.setAttribute('aria-label', 'Filter camouflage by tag');
+    for (const tagId of CAMO_TAG_IDS) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'cot-camo-tag';
+      button.dataset.camoTag = tagId;
+      button.textContent = CAMO_TAG_LABEL[tagId];
+      button.title = `Show ${CAMO_TAG_LABEL[tagId]} camouflage`;
+      button.setAttribute('aria-pressed', String(tagId === activeCamoTag));
+      button.addEventListener('click', () => {
+        emit('ui:click', {});
+        activeCamoTag = activeCamoTag === tagId && tagId !== 'all' ? 'all' : tagId;
+        refreshCamoTagFilters();
+      });
+      tagBar.appendChild(button);
+      camoTagButtonById.set(tagId, button);
+    }
+    camosEl.appendChild(tagBar);
     const grid = document.createElement('div');
     // camo r8: 'camo' modifier — the pattern roster grew 6 -> 16, so THIS
     // grid scrolls (max-height in css) while the equipment grid below stays
@@ -1371,15 +1395,39 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   // --- END EQUIPMENT SYSTEM -------------------------------------------------
   let swatchesFor: string | null = null; // spec id the swatches are currently painted for
+  function refreshCamoTagFilters() {
+    if (!camoOpts || !selectedId) return;
+    const spec = specById.get(selectedId);
+    if (!spec) return;
+    const available = new Set<CamoTagId>(['all']);
+    for (const pid of camoOpts.patterns) {
+      for (const tagId of camoPatternTags(pid, spec.nation)) available.add(tagId);
+    }
+    if (!available.has(activeCamoTag)) activeCamoTag = 'all';
+    for (const [tagId, button] of camoTagButtonById) {
+      button.hidden = tagId !== 'all' && !available.has(tagId);
+      button.setAttribute('aria-pressed', String(tagId === activeCamoTag));
+    }
+    for (const [pid, card] of camoCardById) {
+      const tags = camoPatternTags(pid, spec.nation);
+      card.hidden = !camoMatchesTag(pid, spec.nation, activeCamoTag);
+      card.dataset.tags = tags.join(' ');
+      const label = (camoOpts.label && camoOpts.label[pid]) || pid;
+      card.title = `${label} · ${tags.map((tagId) => CAMO_TAG_LABEL[tagId]).join(', ')}`;
+    }
+    requestAnimationFrame(syncScrollFades);
+  }
+
   function refreshCamoSel() {
     if (!camoOpts || !selectedId) return;
     const cur = camoOpts.get(selectedId);
     customCamoStudioAccess?.peek()?.syncSelected();
+    refreshCamoTagFilters();
     for (const [pid, card] of camoCardById) {
       card.classList.toggle('sel', pid === cur);
       // camo r8: the grid scrolls now — keep the active pattern in view when
       // selection changes (tank switch restoring a persisted pick).
-      if (pid === cur && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+      if (pid === cur && !card.hidden && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
     }
     // repaint swatch tiles for THIS tank (factory palette + nation digital
     // differ per vehicle — the preview must show what the hull will wear)

@@ -646,6 +646,15 @@
   letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
 .cot-custom-open:hover,.cot-custom-open:focus-visible,.cot-custom-open[aria-expanded='true']{
   border-color:#f0a030;background:rgba(240,160,48,.18);outline:none}
+.cot-camo-tags{display:flex;flex:0 0 auto;gap:4px;margin:0 0 6px;min-width:0;overflow-x:auto;
+  overscroll-behavior-x:contain;scrollbar-width:none;scroll-snap-type:x proximity}
+.cot-camo-tags::-webkit-scrollbar{display:none}
+.cot-camo-tag{flex:0 0 auto;min-height:22px;padding:0 7px;border:1px solid rgba(146,164,180,.24);
+  background:rgba(9,13,17,.72);color:#8293a1;cursor:pointer;scroll-snap-align:start;
+  font:900 7px/1 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.08em;text-transform:uppercase;transition:border-color .12s,background .12s,color .12s}
+.cot-camo-tag:hover,.cot-camo-tag:focus-visible{border-color:rgba(210,225,240,.58);color:#d7e1e8;outline:none}
+.cot-camo-tag[aria-pressed='true']{border-color:#f0a030;background:rgba(240,160,48,.15);color:#ffd27a}
 /* garage_polish r9: minmax(0,1fr) + min-width:0 — grid items default to
    min-width:auto, so the widest nowrap label (DESERT PINK ~80px) silently
    inflated every track past the panel and CLIPPED the third column. */
