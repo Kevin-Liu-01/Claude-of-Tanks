@@ -12,7 +12,8 @@ import {
   CAMO_PATTERN_LABEL,
   CUSTOM_CAMO_ID,
   customCamoPatternId,
-  factoryThemePatternId,
+  defaultCamoPatternId,
+  hasSignatureCamo,
   isBuiltInCamoId,
   networkCamoId,
   normalizeCustomCamo,
@@ -3709,16 +3710,17 @@ const BIOME_PATTERN: Readonly<Record<string, readonly MaterialPatternId[]>> = {
 };
 let activeBiome: string = 'verdant';
 
-/** Persisted camo pattern selection for a tank ('factory' when unset). */
+/** Persisted camo choice, or the first-party presentation default when unset. */
 export function getCamoSelection(specId: string): MaterialPatternId {
   try {
     const v = localStorage.getItem(CAMO_LS_PREFIX + specId);
+    if (v == null) return defaultCamoPatternId(specId);
     if (isBuiltInCamoId(v)) return v;
     if (v === CUSTOM_CAMO_ID && localStorage.getItem(CUSTOM_CAMO_LS_PREFIX + specId)) {
       return CUSTOM_CAMO_ID;
     }
     return 'factory';
-  } catch (e) { return 'factory'; }
+  } catch (e) { return defaultCamoPatternId(specId); }
 }
 
 /** Persist a camo pattern selection for a tank. */
@@ -3850,39 +3852,96 @@ export function hasCamoPaint(specId: string): boolean {
     || (BIOME_PATTERN[activeBiome] || []).includes(pat);
 }
 
-// Nation-flavored palettes. Marking/number/zimmerit/camoScale stay authored —
-// only scheme/base/weather/patches are overridden, so the plate-feature and
-// weathering layers (painted by paintCamo on top) are fully respected.
-// Per-model corrections for already-distinct authored factory schemes. Plain
-// green factory visuals are handled by factoryThemePatternId(), so they never
-// need one-off palette exceptions here.
-const FACTORY_OVERRIDE: Readonly<Record<string, Partial<MaterialVisual>>> = {
-  // Hinterhalt tones: the authored '#7a4a35' Rotbraun reads bright orange
-  // under the warm garage key light (r7 "orange/green cow spots"); drop both
-  // patch tones toward RAL 6003/8017 so the scheme reads olive + chocolate.
-  panther_g: { patches: ['#5d6334', '#5e3c29'] },
-  // r8: the SAME Rotbraun flare on the Tiger's authored '#6f4530' stripes was
-  // missed by the r7 fix (it only patched panther_g). The stripes scheme
-  // paints its bands semi-transparent over the light Dunkelgelb, so the brown
-  // must be authored DARKER than the panther's ambush fill to land on the
-  // same RAL 8017 chocolate on screen (measured: '#5e3c29' still left 6.4%
-  // of the hull in saturated orange vs the panther's 3.7%).
-  tiger1: { patches: ['#5d6334', '#452c1e'] },
-  // camo_spotting r3 (critic: t90m factory "flat parade clay"): the authored
-  // weather '#4a5c42' sat too close to the '#3f5138' base for the tonal
-  // layer to register — the hull rendered as one unmodulated green. Weather
-  // pushed toward sun-faded dusty olive (clearly lighter, slightly warmer)
-  // so the tonal/mottle passes + the new solid-scheme weathering block in
-  // paintCamo read at garage range; base stays the roster-doc forest green.
-  t90m: { weather: '#5d6549' },
-  // r9: the Strv 103's authored '#3f5a3a' brightens through the community-GLB
-  // composite (the palette-atlas detail overlay recenters on mid-gray and
-  // LIFTS dark tiles) and read lime/acid on the pedestal — brighter and more
-  // saturated than every other factory paint. Authored darker + grayer so it
-  // lands in the muted Swedish #4c5c44 family AFTER the overlay lift; the
-  // '#6b6b47' khaki stripe tone is pulled down with it.
-  strv103: { base: '#42503d', weather: '#4a5844', patches: ['#2c3629', '#565440'] },
-};
+// Factory is a NATIONAL delivery coat, not whichever palette happened to be
+// authored inside a builder. Each recipe retains the exemplar's pattern
+// language while keeping the requested service color family. The painter's
+// grain, panel, weld, chip, mottle, roughness and weather passes remain active,
+// so a solid national coat is still materially textured rather than flat.
+const NATIONAL_FACTORY_VISUAL: Readonly<Record<string, Partial<MaterialVisual>>> = Object.freeze({
+  USA: {
+    scheme: 'desert', base: '#a88e63', weather: '#b9a175',
+    patches: ['#755c42', '#91784f', '#c3ad82'], camoScale: 0.52,
+  },
+  Germany: {
+    scheme: 'stripes', base: '#45494b', weather: '#565b5e',
+    patches: ['#292d2f', '#62676a', '#353a3c'], camoScale: 0.44,
+  },
+  Russia: {
+    scheme: 'solid', base: '#44553b', weather: '#5a6448', patches: [],
+    camoScale: 0.46, solidWeatheringIntensity: 0.72,
+  },
+  UK: {
+    scheme: 'stripes', base: '#414c38', weather: '#4a5540',
+    patches: ['#1e201d'], camoScale: 0.48,
+  },
+  France: {
+    scheme: 'nato', base: '#344651', weather: '#425663',
+    patches: ['#26343c', '#586b75'], camoScale: 0.45,
+  },
+  China: {
+    scheme: 'digital', base: '#4b573e', weather: '#59654a',
+    patches: ['#68704f', '#35422f', '#252b22'], camoScale: 0.42, digitalCellK: 1.45,
+  },
+  Italy: {
+    scheme: 'stripes', base: '#474b4c', weather: '#585d5f',
+    patches: ['#34393a', '#272b2c'], camoScale: 0.56,
+  },
+  Japan: {
+    scheme: 'stripes', base: '#39463a', weather: '#445144',
+    patches: ['#63523c', '#2e392f'], camoScale: 0.5,
+  },
+  Poland: {
+    scheme: 'digital', base: '#313b38', weather: '#47504a',
+    patches: ['#202725', '#4e5750', '#67685e'], camoScale: 0.36,
+  },
+  'South Korea': {
+    scheme: 'digital', base: '#465341', weather: '#5e6753',
+    patches: ['#2d352c', '#69604b', '#81765b'], camoScale: 0.5,
+  },
+  Sweden: {
+    scheme: 'splinter', base: '#34493c', weather: '#4b5b4c',
+    patches: ['#202b26', '#5c644c', '#81745a'], camoScale: 0.42,
+  },
+  Israel: {
+    scheme: 'solid', base: '#6f7566', weather: '#7b8172', patches: [],
+    camoScale: 0.46, solidWeatheringIntensity: 0.68,
+  },
+  Ukraine: {
+    scheme: 'digital', base: '#4c5142', weather: '#666956',
+    patches: ['#30352d', '#625b46', '#77705a'], camoScale: 0.5,
+  },
+});
+
+const SIGNATURE_VISUAL_OVERRIDE: Readonly<Record<string, Partial<MaterialVisual>>> = Object.freeze({
+  // Keep the T-90M's authored forest coat but preserve the calibrated dusty
+  // modulation that made its solid finish read through the garage key light.
+  t90m: { weather: '#5d6549', solidWeatheringIntensity: 0.82 },
+  t90m_proryv: { weather: '#5d6549', solidWeatheringIntensity: 0.82 },
+  // Type 90 previously duplicated Type 10 byte-for-byte. This warmer JGSDF
+  // two-tone makes the requested Type 90 personality an actual selection.
+  type90: {
+    scheme: 'stripes', base: '#46503d', weather: '#555d49',
+    patches: ['#70563e', '#303a30'], camoScale: 0.48,
+  },
+  // The 105 mm PL-01 shared the national reference verbatim. Give the gun
+  // variant a tighter, cooler stealth-digital field while keeping PL-01's
+  // palette lineage recognizable.
+  pl01_105: {
+    scheme: 'digital', base: '#3b4641', weather: '#525c55',
+    patches: ['#252d2a', '#56615a', '#73746a'], camoScale: 0.3,
+  },
+});
+
+function factoryNationKey(nation: unknown): string {
+  const key = String(nation || '');
+  return key === 'USSR' || key === 'USSR/Russia' || key === 'Russia' ? 'Russia' : key;
+}
+
+function factoryVisual(spec: MaterialTankSpec, authored: MaterialVisual): MaterialVisual {
+  const standard = NATIONAL_FACTORY_VISUAL[factoryNationKey(spec.nation)];
+  return standard ? { ...authored, ...standard } : authored;
+}
+
 function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): MaterialVisual {
   const v = spec.visual || { base: '#5a6b46', weather: '#6f7d55', scheme: 'solid', patches: [] };
   const custom = parseCustomCamoPatternId(patternId);
@@ -3906,13 +3965,13 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
       drawMirror: custom.mirror,
     };
   }
+  if (patternId === 'signature') {
+    if (!hasSignatureCamo(spec.id)) return factoryVisual(spec, v);
+    const override = SIGNATURE_VISUAL_OVERRIDE[spec.id];
+    return override ? { ...v, ...override } : v;
+  }
   if (patternId === 'factory') {
-    const fo = FACTORY_OVERRIDE[spec.id];
-    const authored = fo ? { ...v, ...fo } : v;
-    const themedPattern = factoryThemePatternId({ ...spec, visual: authored });
-    return themedPattern
-      ? patternVisual({ ...spec, visual: authored }, themedPattern)
-      : authored;
+    return factoryVisual(spec, v);
   }
   let o: Partial<MaterialVisual> | null = null;
   if (patternId === 'summer') {

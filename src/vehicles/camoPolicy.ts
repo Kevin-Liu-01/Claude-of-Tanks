@@ -7,8 +7,6 @@
  * allowlist and remain local single-player presentation only.
  */
 
-import { VEHICLE_ERAS } from './taxonomy.ts';
-
 export const CUSTOM_CAMO_BRUSHES = Object.freeze([
   'round', 'flat', 'spray', 'pixel', 'eraser', 'stamp',
 ] as const);
@@ -41,19 +39,6 @@ export interface CustomCamo {
   strokes: CustomCamoStroke[];
 }
 
-interface FactoryVisual {
-  scheme?: unknown;
-  base?: unknown;
-  patches?: readonly unknown[];
-}
-
-interface FactoryCamoSpec {
-  id?: unknown;
-  nation?: unknown;
-  era?: unknown;
-  visual?: FactoryVisual | null;
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object';
 }
@@ -72,6 +57,10 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   'ducky', 'suits', 'flames', 'leopardprint', 'bolt',
   'stars', 'daisy', 'circuit', 'racing', 'paintball',
   'normandy44', 'berlin45', 'ardennes44', 'pacific45', 'jungleops', 'rasputitsa',
+  // Append-only: Signature is the vehicle's deliberately authored identity
+  // finish. It is distinct from Factory, which is the standardized national
+  // delivery coat, and remains match-safe because the recipe is first-party.
+  'signature',
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -95,7 +84,54 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   paintball: 'Paintball',
   normandy44: "Normandy '44", berlin45: "Berlin '45", ardennes44: "Ardennes '44",
   pacific45: "Pacific '45", jungleops: 'Jungle Ops', rasputitsa: "Rasputitsa '42",
+  signature: 'Signature',
 });
+
+/**
+ * Vehicles whose authored pre-standardization finish is intentional identity,
+ * not an accidental substitute for their nation's Factory delivery coat.
+ *
+ * This registry is explicit by design. A new builder does not silently gain a
+ * Signature option merely because its author picked a one-off palette.
+ */
+export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
+  // United States
+  'abramsx', 'm551_sheridan',
+  // Germany
+  'leo2a4_otco', 'mbt70', 'kf51b',
+  // Russia / USSR
+  'bmpt_t90', 't90a_burlak', 't90m', 't90m_proryv', 't90a', 't90a_vladimir',
+  // United Kingdom
+  'challenger2e', 'challenger_3x',
+  // France
+  'amx56', 'leclerc',
+  // Italy
+  'ariete_c2',
+  // Japan
+  'type10b', 'type90', 'type90a',
+  // China — the full current lineup has intentionally distinct service paint.
+  'type59', 'ztz85_iii', 'type99a', 'ztz99a2',
+  // Poland — PL-01 itself owns the national Factory reference.
+  'pt91m', 't72m1_jaguar', 'pt91_twardy', 'pl01_105', 'bwp1', 'upior',
+  // South Korea — BMP-3 ROK itself owns the national Factory reference.
+  'k2', 'k1a1', 'k2b',
+  // Israel — Merkava Mk 2D itself owns the national Factory reference.
+  'merkava1b', 'merkava2b', 'merkava3c', 'merkava3d', 'merkava4b',
+  // Ukraine — the UA M2A3 Bradley owns the national Factory reference.
+  't84', 'ua_challenger2', 'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk',
+  'ua_t84_oplot_m', 'ua_m1a1', 'leo2a6_ua',
+] as const);
+
+const SIGNATURE_CAMO_TANK_ID_SET = new Set<string>(SIGNATURE_CAMO_TANK_IDS);
+
+export function hasSignatureCamo(specId: unknown): boolean {
+  return typeof specId === 'string' && SIGNATURE_CAMO_TANK_ID_SET.has(specId);
+}
+
+/** Initial presentation choice; an explicit player selection always wins. */
+export function defaultCamoPatternId(specId: unknown): CamoPatternId {
+  return hasSignatureCamo(specId) ? 'signature' : 'factory';
+}
 
 export const CUSTOM_CAMO_ID = 'custom';
 // The legacy procedural styles remain readable so existing local saves keep
@@ -121,62 +157,6 @@ const DEFAULT_CUSTOM_CAMO = Object.freeze({
 
 const BUILT_IN = new Set<CamoPatternId>(CAMO_PATTERN_IDS);
 const HEX = /^#[0-9a-f]{6}$/i;
-
-// Distinctive factory fallback for vehicles whose authored visual is still a
-// single green coat. Pools reuse the shipped painter catalog and follow the
-// visual language already authored for each nation/era; the spec id chooses a
-// stable member so a country block does not become one repeated uniform.
-const FACTORY_THEME_POOLS: Readonly<Record<string, readonly CamoPatternId[]>> = Object.freeze({
-  'USA:ww2': ['summer', 'ardennes44'],
-  'USA:modern': ['summer', 'merdc'],
-  'Germany:ww2': ['ambushdot', 'splinter'],
-  'Germany:modern': ['summer', 'flecktarn'],
-  'USSR:ww2': ['amoeba', 'rasputitsa'],
-  'USSR:modern': ['digital', 'amoeba'],
-  'USSR/Russia:modern': ['digital', 'amoeba'],
-  'Russia:modern': ['digital', 'amoeba'],
-  'UK:ww2': ['dpm'],
-  'UK:modern': ['dpm', 'summer'],
-  'France:modern': ['summer'],
-  'Israel:modern': ['desert', 'digitaldesert'],
-  'China:modern': ['digital'],
-  'South Korea:modern': ['digital', 'summer'],
-  'Japan:modern': ['digital', 'tigerstripe'],
-  'Italy:cold-war': ['summer'],
-  'Italy:modern': ['summer'],
-  'Poland:modern': ['digital'],
-  'Sweden:modern': ['m90'],
-  'Ukraine:modern': ['digital', 'summer'],
-});
-
-/** True only for the legacy single-coat green factory presentation. */
-export function isPlainGreenFactoryVisual(visual: FactoryVisual | null | undefined): boolean {
-  if (!visual || visual.scheme !== 'solid' || (visual.patches || []).length) return false;
-  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(visual.base || ''));
-  if (!match) return false;
-  const [, rr, gg, bb] = match;
-  const r = Number.parseInt(rr, 16);
-  const g = Number.parseInt(gg, 16);
-  const b = Number.parseInt(bb, 16);
-  return g >= r && g > b + 4 && Math.max(r, g, b) - Math.min(r, g, b) >= 8;
-}
-
-/** Built-in theme that replaces a plain-green factory coat, or null. */
-export function factoryThemePatternId(spec: FactoryCamoSpec | null | undefined): CamoPatternId | null {
-  if (!spec?.id || !isPlainGreenFactoryVisual(spec.visual)) return null;
-  const id = String(spec.id);
-  const familyEra = spec.era === VEHICLE_ERAS.INTERWAR
-    ? VEHICLE_ERAS.WORLD_WAR_II
-    : spec.era === VEHICLE_ERAS.NEXT_GENERATION ? VEHICLE_ERAS.MODERN : spec.era;
-  const pool = FACTORY_THEME_POOLS[`${spec.nation}:${familyEra}`]
-    || (familyEra === VEHICLE_ERAS.COLD_WAR
-      ? FACTORY_THEME_POOLS[`${spec.nation}:${VEHICLE_ERAS.MODERN}`]
-      : null)
-    || ['summer'];
-  let hash = 0;
-  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) | 0;
-  return pool[(hash >>> 0) % pool.length];
-}
 
 export function isBuiltInCamoId(value: unknown): value is CamoPatternId {
   return typeof value === 'string' && BUILT_IN.has(value as CamoPatternId);

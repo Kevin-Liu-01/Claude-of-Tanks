@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import {
   CAMO_PATTERN_IDS,
   CUSTOM_CAMO_ID,
+  SIGNATURE_CAMO_TANK_IDS,
   customCamoPatternId,
-  factoryThemePatternId,
+  defaultCamoPatternId,
   isBuiltInCamoId,
-  isPlainGreenFactoryVisual,
   networkCamoId,
   normalizeCustomCamo,
   parseCustomCamoPatternId,
@@ -17,17 +17,12 @@ assert.equal(isBuiltInCamoId(CUSTOM_CAMO_ID), false,
 assert.equal(networkCamoId(CUSTOM_CAMO_ID), 'factory');
 assert.equal(networkCamoId('unknown'), 'factory');
 assert.equal(networkCamoId(CAMO_PATTERN_IDS.at(-1)), CAMO_PATTERN_IDS.at(-1));
-
-const plainGreen = {
-  id: 'example', nation: 'Sweden', era: 'modern',
-  visual: { scheme: 'solid', base: '#45513f', patches: [] },
-};
-assert.equal(isPlainGreenFactoryVisual(plainGreen.visual), true);
-assert.equal(factoryThemePatternId(plainGreen), 'm90');
-assert.equal(factoryThemePatternId({
-  ...plainGreen,
-  visual: { scheme: 'nato', base: '#45513f', patches: ['#252a24', '#73563a'] },
-}), null, 'authored patterned factory paint must remain untouched');
+assert.equal(isBuiltInCamoId('signature'), true,
+  'first-party vehicle Signature finishes are match-safe built-ins');
+assert.equal(defaultCamoPatternId('abramsx'), 'signature');
+assert.equal(defaultCamoPatternId('m1a2'), 'factory');
+assert.ok(SIGNATURE_CAMO_TANK_IDS.length >= 45,
+  'the requested personality fleet must remain explicit and substantial');
 
 const custom = normalizeCustomCamo({
   style: 'digital', base: '#123456', colorA: '#abcdef', colorB: '#010203', repeat: 75,

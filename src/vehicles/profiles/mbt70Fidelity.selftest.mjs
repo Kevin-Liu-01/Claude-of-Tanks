@@ -15,12 +15,17 @@ assert.equal(MODEL_SOURCE.mbt70?.source, 'procedural', 'playable never loads the
 assert.equal(spec.authorship?.runtimeExternalGeometry, false, 'runtime external geometry is prohibited');
 assert.equal(spec.nation, 'Germany', 'garage nation is Germany');
 const factoryVisual = resolveCamoVisual(spec, 'factory');
-assert.equal(factoryVisual.scheme, 'fleck',
-  'factory paint uses an authored modernized Bundeswehr flecktarn pattern');
-assert.equal(factoryVisual.base, '#4b5142',
-  'factory paint cannot regress to the old bright olive-green coat');
-assert.ok(factoryVisual.patches.length >= 3 && spec.visual.camoScale <= 0.45,
-  'factory flecktarn carries enough tonal layers and a tight enough repeat to read at gallery range');
+assert.equal(factoryVisual.scheme, 'stripes',
+  'national Factory paint uses the standardized German band language');
+assert.equal(factoryVisual.base, '#45494b',
+  'national Factory paint uses the standardized gunmetal-gray delivery coat');
+const signatureVisual = resolveCamoVisual(spec, 'signature');
+assert.equal(signatureVisual.scheme, 'fleck',
+  'MBT-70 retains its authored modernized Bundeswehr flecktarn as Signature paint');
+assert.equal(signatureVisual.base, '#4b5142',
+  'MBT-70 Signature cannot regress to the old bright olive-green coat');
+assert.ok(signatureVisual.patches.length >= 3 && signatureVisual.camoScale <= 0.45,
+  'Signature flecktarn carries enough tonal layers and a tight enough repeat to read at gallery range');
 assert.equal(spec.gun.caliberMm, 152);
 assert.equal(spec.gun.primaryGuided, true, 'launcher ATGM is the normal primary weapon');
 assert.equal(spec.gun.shells.length, 1, 'no fictional conventional selector round');
