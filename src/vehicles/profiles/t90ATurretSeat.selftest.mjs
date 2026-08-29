@@ -45,9 +45,16 @@ try {
   const gun = tank.root.getObjectByName('rig_gun');
   const barrel = tank.root.getObjectByName('gun');
   const barrelDark = tank.root.getObjectByName('gunDark');
-  assert.ok(turret && gun && barrel?.geometry && barrelDark?.geometry,
-    'T-90A keeps its articulated turret and cannon geometry');
+  const gunMount = gun?.getObjectByName('gunMount');
+  const gunMountDark = gun?.getObjectByName('gunMountDark');
+  assert.ok(turret && gun && barrel?.geometry && barrelDark?.geometry
+    && gunMount?.geometry && gunMountDark?.geometry,
+  'T-90A keeps its articulated turret, cannon, and complete recoil housing geometry');
   assert.equal(gun.parent, turret, 'cannon remains owned by the moved turret');
+  assert.ok(gunMount.parent === gun,
+    'cast mantlet and recoil housing rise with the articulated cannon');
+  assert.ok(gunMountDark.parent?.parent === gun,
+    'housing seams and apertures rise with the articulated cannon');
 
   const receipt = turret.userData.t90aSeatReceipt;
   assert.ok(receipt, 'T-90A exposes its turret, Shtora, and cannon adjustment receipt');
@@ -64,6 +71,10 @@ try {
   assert.ok(receipt.shtoraSupportBodyOverlapM >= 0.10,
     'advanced Shtora bodies remain physically embedded in their support shoes');
   near(receipt.gunRadiusScale, 1.08, 'cannon cross-section grows by eight percent');
+  near(receipt.gunAssemblyRaiseM, 0.04,
+    'complete cannon and recoil housing rise together by 40 mm');
+  near(receipt.gunAxisY, 0.205,
+    'raised cannon trunnion is published in turret-local space');
   assert.equal(receipt.cupolaCount, 2, 'RU-112 carries two complete roof cupolas');
   assert.deepEqual(receipt.leftCupola, [-0.35, -0.48], 'left cupola occupies the left roof station');
   assert.deepEqual(receipt.rightCupola, [0.52, -0.42], 'right cupola occupies the right roof station');
@@ -76,8 +87,10 @@ try {
     'marked aft sensor has a positive pedestal overlap');
   near(receipt.rightBustleBridgeOverlapM, 0.03,
     'marked asymmetric bustle has a positive bridge overlap');
-  assert.deepEqual(gun.position.toArray(), [0, 0.165, 0.825],
-    'cannon trunnion remains fixed in turret-local space');
+  assert.deepEqual([gun.position.x, gun.position.z], [0, 0.825],
+    'complete cannon trunnion retains its accepted horizontal seat');
+  near(gun.position.y, 0.205,
+    'complete cannon trunnion occupies the raised turret-local seat');
 
   barrel.geometry.computeBoundingBox();
   barrelDark.geometry.computeBoundingBox();

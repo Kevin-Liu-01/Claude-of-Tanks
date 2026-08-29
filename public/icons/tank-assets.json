@@ -154192,7 +154192,7 @@
           }
         ]
       },
-      "geometryHash": "3e664ed9",
+      "geometryHash": "047b7908",
       "metadataHash": "118b797f",
       "presentationAnchor": {
         "xM": 0.0032,
@@ -154292,24 +154292,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74731,
-          "sha256": "c4ca8c45d9545f44c3d4ae3d46c28ecacc15048ec8d26ce4045d86a397128ef7"
+          "bytes": 74962,
+          "sha256": "eb85b4de3ead3ca62512ba88fd433701badedf3a1bc8d9c1c50419f2203ff0c6"
         },
         "armorSide": {
           "file": "t90a_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75590,
-          "sha256": "dd545bbd61273d35d010a757d72f5dfb90bb980f5e8314fba4d103573554420c"
+          "bytes": 75497,
+          "sha256": "ee010e556827f5128839a873b6dc4b854c07a4949ccf3f152f8662a0f248e6f3"
         },
         "modulesSide": {
           "file": "t90a_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73370,
-          "sha256": "b5d93c3a85afb8790107a2db08b9be7946d66cb9b8d27f31da9664d250fae2b7"
+          "bytes": 73434,
+          "sha256": "8e69abad16657905b33376b4ad71bb91e219e257db9cc1c404317245380a5a48"
         },
         "markings": {
           "file": "t90a_markings.png",
@@ -156926,7 +156926,7 @@
           }
         ]
       },
-      "geometryHash": "2bb0b64d",
+      "geometryHash": "77523829",
       "metadataHash": "5e06b34a",
       "presentationAnchor": {
         "xM": 0,
@@ -157024,24 +157024,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66492,
-          "sha256": "ff3f650a8f8255e98ea1837c329bfb22a903c30a7048c8c1892fabd222b5ca01"
+          "bytes": 66816,
+          "sha256": "0e719dfd5cddbcadb512a2b3976c3e4ca61cbc2f9987fbd027c03012dc766e46"
         },
         "armorSide": {
           "file": "t90a_vladimir_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 67747,
-          "sha256": "5797a9f83b355ef248b9d238716399f80fa6f92c5a0338e6fea615ec2dc3302e"
+          "bytes": 67815,
+          "sha256": "81a17c8f2e519a2a8028646dcfff3b23d8d117747249c135f5922f33911559ab"
         },
         "modulesSide": {
           "file": "t90a_vladimir_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72941,
-          "sha256": "a3b288d2a1ff31d2ca7400de8bc50d12b5cd95c22d3183a3e5347bfdab292e9d"
+          "bytes": 73175,
+          "sha256": "f484834f801190a4e2add3a9f0630553f31381b53f3578da29bc1e8a1cbaa4e9"
         },
         "markings": {
           "file": "t90a_vladimir_markings.png",

@@ -629,6 +629,7 @@ const T90A_SHTORA_SUPPORT_FRONT_Z_M = T90A_SHTORA_EYE_Z_M - 0.04;
 const T90A_CHEVRON_FORWARD_M = 0.24;
 const T90A_NSVT_RAISE_M = 0.08;
 const T90A_GUN_RADIUS_SCALE = 1.08;
+const T90A_GUN_ASSEMBLY_RAISE_M = 0.04;
 
 function buildT90ALegacy(P, {
   turretSeatZ = T90A_TURRET_SEAT_Z_M,
@@ -639,6 +640,7 @@ function buildT90ALegacy(P, {
   chevronForwardM = T90A_CHEVRON_FORWARD_M,
   nsvtRaiseM = T90A_NSVT_RAISE_M,
   gunRadiusScale = T90A_GUN_RADIUS_SCALE,
+  gunAssemblyRaiseM = T90A_GUN_ASSEMBLY_RAISE_M,
   recordSeatReceipt = true,
 } = {}) {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret } = KIT;
@@ -1209,8 +1211,11 @@ function buildT90ALegacy(P, {
   // Source-seated flank cassettes replace the old continuous U-shaped wall.
   // Real gaps reveal the buried carrier and preserve the cast-dome outline.
   addT90CastFlankCassettes(P, { y: 0.24, raisedLeftRear: true });
-  // ---- 2A46M-2 on the normalized contour: axis 1.50, muzzle world +6.10 ----
-  P.gunG.position.set(0, 0.165, 0.825);
+  // ---- 2A46M-2 on the normalized contour: axis 1.54, muzzle world +6.10 ----
+  // Raise the articulated trunnion as one unit. All gun, gunDark and
+  // gunMount buckets are children of rig_gun, so the saddle, cast collar,
+  // recoil housing, boot, barrel and bore retain their accepted alignment.
+  P.gunG.position.set(0, 0.165 + gunAssemblyRaiseM, 0.825);
   ruSaddle(P, { rollR: 0.22, rollW: 0.62, tubeR: 0.117 * gunRadiusScale, rootL: 0.69 });
   // §B3.1 (prism sweep 2026-08-06): the bare mantlet block becomes the cast
   // collar — elliptical frustum with the SAME plan (±0.28) and side (±0.20)
@@ -1294,6 +1299,8 @@ function buildT90ALegacy(P, {
       shtoraChevronDepthClearanceM,
       shtoraSupportBodyOverlapM,
       gunRadiusScale,
+      gunAssemblyRaiseM,
+      gunAxisY: P.gunG.position.y,
       cupolaCount: 2,
       leftCupola: [t90aRoofStations.left.x, t90aRoofStations.left.z],
       rightCupola: [t90aRoofStations.right.x, t90aRoofStations.right.z],
@@ -1788,7 +1795,8 @@ function buildT90AVladimirLegacy(P) {
   // grow out of the planted K-5 shoulders and enter the rear half of each
   // enlarged housing; the round lenses stay fully open and the complete
   // station remains turret-owned through yaw.
-  const gunAxisY = 0.16;
+  const gunAssemblyRaiseM = 0.04;
+  const gunAxisY = 0.16 + gunAssemblyRaiseM;
   const shtoraCenterY = 0.28;
   const shtoraSupportY = shtoraCenterY - 0.08;
   const shtoraHousingHalfWidthM = 0.12 * p5.eyeScale;
@@ -2058,6 +2066,8 @@ function buildT90AVladimirLegacy(P) {
   P.add('gunDark', cylZ(0.108, 0.04, 14), 0, 0, 2.31);
   muzzleBore(P, { r: 0.060 });
   P.gunG.userData.t90aVladimirGunReceipt = {
+    gunAxisY,
+    gunAssemblyRaiseM,
     sleeveRadiusM: 0.078,
     muzzleRadiusM: 0.060,
     fumeExtractorRadiusM: 0.105,
@@ -8446,6 +8456,7 @@ function buildT90BurlakHybridNative2026(P) {
     chevronForwardM: 0,
     nsvtRaiseM: 0,
     gunRadiusScale: 1,
+    gunAssemblyRaiseM: 0,
     recordSeatReceipt: false,
   });
   // Burlak's hull shoulders sit inside the common T-90A track lanes.  Keep

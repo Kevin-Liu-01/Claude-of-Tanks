@@ -16,8 +16,15 @@ try {
   const turretRig = tank.root.getObjectByName('rig_turret');
   const gunRig = tank.root.getObjectByName('rig_gun');
   const turret = turretRig?.getObjectByName('turret');
-  assert.ok(turretRig && gunRig && turret?.isMesh,
-    'T-90A Vladimir keeps structural turret and gun geometry on articulated rigs');
+  const gunMount = gunRig?.getObjectByName('gunMount');
+  const gunMountDark = gunRig?.getObjectByName('gunMountDark');
+  assert.ok(turretRig && gunRig && turret?.isMesh
+    && gunMount?.isMesh && gunMountDark?.isMesh,
+  'T-90A Vladimir keeps structural turret, gun, and housing geometry on articulated rigs');
+  assert.ok(gunMount.parent === gunRig,
+    'Vladimir saddle and recoil housing rise with the articulated cannon');
+  assert.ok(gunMountDark.parent?.parent === gunRig,
+    'Vladimir housing seams rise with the articulated cannon');
 
   const hull = hullRig?.getObjectByName('hull');
   const hullReceipt = hullRig?.userData.t90aVladimirHullReceipt;
@@ -163,7 +170,7 @@ try {
   assert.ok(near(proportion.shtoraCenterY, 0.28), 'Shtora optical centres sit at the mantlet-side station');
   assert.ok(near(proportion.shtoraSupportY, 0.20), 'Shtora support shoes move with the complete eye assembly');
   assert.ok(near(proportion.shtoraLoweredM, 0.208), 'Shtora package drops by the former cheek-rise inheritance');
-  assert.ok(near(proportion.shtoraToGunAxisM, 0.12), 'Shtora optical centres sit 120 mm above the gun axis');
+  assert.ok(near(proportion.shtoraToGunAxisM, 0.08), 'Shtora optical centres sit 80 mm above the raised gun axis');
   assert.ok(near(proportion.shtoraCenterY - gunRig.position.y, proportion.shtoraToGunAxisM),
     'Shtora-to-gun alignment receipt matches the articulated gun rig');
   assert.ok(near(proportion.chevronForwardM, 0.12),
@@ -191,6 +198,10 @@ try {
 
   const gun = gunRig.userData.t90aVladimirGunReceipt;
   assert.ok(gun, 'T-90A Vladimir exposes its cannon proportion receipt');
+  assert.ok(near(gun.gunAssemblyRaiseM, 0.04),
+    'complete Vladimir cannon and recoil housing rise together by 40 mm');
+  assert.ok(near(gun.gunAxisY, 0.20),
+    'raised Vladimir trunnion is published in turret-local space');
   assert.ok(near(gun.sleeveRadiusM, 0.078), 'cannon carries the enlarged 78-mm sleeve radius');
   assert.ok(near(gun.muzzleRadiusM, 0.060), 'muzzle remains a substantial 60-mm radius');
   assert.ok(near(gun.fumeExtractorRadiusM, 0.105), 'fume extractor is enlarged with the sleeve');
