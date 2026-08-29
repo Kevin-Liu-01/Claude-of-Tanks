@@ -292,3 +292,4 @@ runtime documents remain authoritative for behavior.
 - [0280 — The WebAudio mixer has a strict TypeScript owner](0280-type-audio-mixer.md)
 - [0281 — WWII profile geometry has a strict TypeScript owner](0281-type-ww2-profile-geometry.md)
 - [0282 — Russian profile geometry has a strict TypeScript owner](0282-type-russian-profile-geometry.md)
+- [0283 — British profile geometry has a strict TypeScript owner](0283-type-british-profile-geometry.md)

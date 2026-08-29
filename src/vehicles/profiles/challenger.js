@@ -4,7 +4,7 @@
 // Residents:
 //   challenger1 — profiles-class build (CHALLENGER_PROFILES, merged by
 //     profiledProcedurals.ts like every ./profiles family map); moved from
-//     uk.js. Its spec row still derives from challenger2's TANK_SPECS row
+//     uk.ts. Its spec row still derives from challenger2's TANK_SPECS row
 //     via the additional fleet donor copy — unchanged mechanism.
 //   challenger2 / challenger_3 — canonical builders demand-registered from
 //     CHALLENGER_BUILDERS. Their boot-light combat rows live separately in
@@ -16,16 +16,16 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import '../challengerSpecs.ts';
 // ch1-base tone port (uk round 2026-08-07): materials.js is cycle-free — the
-// ambient-floor hook re-attach is the same import uk.js carries.
+// ambient-floor hook re-attach is the same import uk.ts carries.
 import { vehicleAmbientFloorHook } from '../materials.js';
-// UK family kit stays owned by uk.js (chieftains/centurions/vickers use it);
+// UK family kit stays owned by uk.ts (chieftains/centurions/vickers use it);
 // challenger1Build consumes the exact bindings it always did, including the
-// §C.1 winding-guarded `slab` (orientedSlab via the uk.js KIT proxy).
+// §C.1 winding-guarded `slab` (orientedSlab via the uk.ts KIT proxy).
 import {
   ukHull, segBoxZ, towCableUK, ukToneKit, ukGearAirBackers,
   box, cylY, cylZ, torus, slab, xform, buildRunningGear, buildGun,
   liftEye, periscope, headlight, pintleMG, smokeCluster, stowage,
-} from './uk.js';
+} from './uk.ts';
 
 // ---------------------------------------------------------------------------
 // Challenger 1 Mk.3 — VERTEX r3 FULL RETUNE (post-warp oracle, law v2
@@ -1654,10 +1654,10 @@ function towHook2(P, x, y, z) {
 // ---------------------------------------------------------------------------
 // CH1-BASE TONE KIT (uk round 2026-08-07 — owner order: "challenger 2 and 3
 // ... using the base of the challenger 1"). The challenger1 r8/r9 family
-// tone recipes (uk.js ukToneKit + ukGearAirBackers) re-expressed for the
+// tone recipes (uk.ts ukToneKit + ukGearAirBackers) re-expressed for the
 // modern1 challenger builders: per-instance material work only — the gate
 // renders self-lit masks, so nothing here moves a curve or a mask (§C).
-// uk.js is single-owner + hash-guarded (challenger1 dbe33204), so the
+// uk.ts is single-owner + hash-guarded (challenger1 dbe33204), so the
 // mechanism is PORTED, not imported; hex keys follow the tankFactory
 // buildRunningGear clone defaults (pads 0x171614 / chain 0x27251f) plus the
 // builders' own 0x565c50 tireHex clone (re-keyed to the dark ring tone —

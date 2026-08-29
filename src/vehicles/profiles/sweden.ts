@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.ts';
 import { buildStrv103 } from './casemate.js';
-import { centurionBuild } from './uk.js';
+import { centurionBuild } from './uk.ts';
 import { buildLeo2A5 } from './leopard.js';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -38,10 +38,21 @@ interface SwedishBuilderPort {
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
   readonly mats: {
-    dark: THREE.Material;
+    hull: THREE.MeshStandardMaterial;
+    barrel: THREE.MeshStandardMaterial;
+    detail: THREE.MeshStandardMaterial;
+    dark: THREE.MeshStandardMaterial;
+    glass: THREE.MeshStandardMaterial;
     canvasCloth: THREE.MeshStandardMaterial;
+    wheels: THREE.MeshStandardMaterial;
+    rubber: THREE.MeshStandardMaterial;
+    trackL: THREE.MeshStandardMaterial;
+    trackR: THREE.MeshStandardMaterial;
+    spareTrack: THREE.MeshStandardMaterial;
+    shadow: THREE.MeshStandardMaterial;
     [role: string]: unknown;
   };
+  readonly rng: () => number;
   readonly q?: boolean;
   readonly spec: { id: string; visual: { number?: string } };
   readonly disposables: Array<{ dispose(): void }>;

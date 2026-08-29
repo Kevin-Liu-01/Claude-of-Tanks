@@ -379,7 +379,7 @@ sprocket-crest grazes at the rear. Documented, not chased this round.
 
 rTAIL r13 §B5 NOTE: turret-parent-audit.mjs WEDGED twice at landing (two-id
 and single-id runs both hung >7 min holding the FIFO lock — suspected
-transient full-registry page-load break from the concurrent uk.js session;
+transient full-registry page-load break from the concurrent uk.ts session;
 killed, lock released). §B5 closed on board evidence + construction: no
 hull<->turret re-parents were made this round; the new turret-side content
 (parity rails, roof cluster, mast fin/cap, right fitting) is casting

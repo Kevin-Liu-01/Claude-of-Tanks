@@ -348,7 +348,7 @@ a55c85cc, vickers_mk1 1389d11c, comet 8c9a2098, challenger_cruiser
 d19f7994, charioteer c6fc76a8 recorded). Hash 9e61f688 -> bbcf7d80.
 
 ## r7 — COMBINED UK TONE ROUND (2026-08-05, uk agent; answers shaded-parity r6 f04beee)
-Shared family recipes (ukToneKit + ukGearAirBackers in uk.js, §F.2
+Shared family recipes (ukToneKit + ukGearAirBackers in uk.ts, §F.2
 opt-in — chieftain5 untouched) with three measured dial cycles. Gate:
 **90.5 -> 90.5 PASS x2 bit-identical** (hull 92.6 / whole 90.7 / turret
 90.5 / stations 95.5 / dims 100 / floaters 100 — the a20e801 floor line

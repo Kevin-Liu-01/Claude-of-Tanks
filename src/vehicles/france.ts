@@ -68,7 +68,7 @@ function xformWithScale<T extends BufferGeometry>(
 // ---------------------------------------------------------------------------
 // §C missing-side winding guard — face-outwardness census; re-orders reversed
 // rings so mirrored slabs never ship inward-facing (FrontSide-culled) walls.
-// Same device as modern3.ts orientedSlab / uk.js sslab. KIT dereferenced at
+// Same device as modern3.ts orientedSlab / uk.ts sslab. KIT dereferenced at
 // call time only.
 // ---------------------------------------------------------------------------
 function orientedSlab(

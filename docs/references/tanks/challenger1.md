@@ -107,7 +107,7 @@ Numbers (baseline -> now): hull 63.6 -> 66, whole 24.4 -> 32-33, turret
 Turntable review (tools/tmp-platefill probe, shots/plate-fill-r1/challenger1-
 {before,after}/): the tail overhang bin + shelf hung over a clean SEE-THROUGH
 tunnel (rake band ends -3.42/y0.84; nothing closed up to the 1.14 shelf
-underside — rear-quarter leak 10048 px, rear-deck 11974 px). Fills (uk.js):
+underside — rear-quarter leak 10048 px, rear-deck 11974 px). Fills (uk.ts):
 under-shelf block x±1.48 y0.84..1.16 z-3.42..-3.70 + recessed lower rear
 plate x±1.05 y0.82..1.16 z-3.70..-4.08 (8 cm behind the bin tail, overhang
 read kept), plus the shared ukHull fender-wedge fill at the bow (see below).

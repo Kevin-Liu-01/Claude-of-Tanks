@@ -35,7 +35,7 @@ deliverable.
 ## If the owner greenlights the build
 Spec row first (66 t, 1,500 hp CV12 upgrade path, 120 mm L55A1 smoothbore
 — NEW ammo family vs CR2's rifled L30, Trophy APS, EPSOM/Thales sights);
-profile home = modern1 next to challenger2 or the future uk.js family
+profile home = modern1 next to challenger2 or the future uk.ts family
 file; the build is PHOTO-CLASS with this print as NC-quarantined
 influence + measurement oracle (it may instrument a LOCAL gate the same
 way recovered NC prints do — registration would go into the three
@@ -247,7 +247,7 @@ Baseline (batch-47 tree, x2): min 61.4 | hull 69.8 / whole 61.4 / turret
 
 ### CH1-BASE PORT (same mechanism set as the challenger2 r4 section:
 ### ch1BaseToneKit / ch1BaseGearBackers / smokeTubeTips / rail-over-mesh
-### / stern cable kit — modern1.js shared helpers, uk.js untouched)
+### / stern cable kit — modern1.js shared helpers, uk.ts untouched)
 Backer wall spans the SKIRTED bays only (z -0.955..2.65 — the rear run
 is honestly naked per the print); 3 catch plates at the scallop
 stations; smoke tips on both 2x5 banks; pale rail pair over the bustle

@@ -36,7 +36,7 @@ Old build (r4-era): authored ±1.895 vs the 3.52 published width (§D
 violation — every probe rescaled), muzzle +7.75 = 11.9 overall, idler/
 sprocket wraps buried in the bow/stern (clip 102/78 band + 182/74 shoe),
 hand-rolled pintle (census mg0), §B5 abutting 1. Rebuilt IN
-`src/vehicles/modern1.js` (its profile home — uk.js is owned by the live
+`src/vehicles/modern1.js` (its profile home — uk.ts is owned by the live
 uk round-4 agent; family-rig migration QUEUED for that lane).
 
 ### Build inventory (photo class, current rulebook)
@@ -105,7 +105,7 @@ the boot collar sits slightly deep in the slot shadow at close-front.
 - p95 spike census over the 2.49 line: VS580 head 2.90, whips ~3.1
   (raked), GPMG ~2.72 — all real fittings; if this id ever gains an
   oracle the whip fold-down treatment applies (a6 precedent).
-- Family-rig migration to uk.js when that lane frees (challenger1
+- Family-rig migration to uk.ts when that lane frees (challenger1
   recipes; QUEUED in PROGRAM-STATE-base21).
 - NO ORACLE: §E re-source lane open for a clean-license CR2 print.
 
@@ -349,8 +349,8 @@ the zeroed components; the §5.06 dAlong 1.368 side-registration walk
 stands (harness mechanism under source-level investigation — side/front
 rows stay walk-capped regardless of build; photo class governs there).
 
-### The CH1-BASE PORT (what came over from challenger1Build, uk.js —
-### PORTED not imported: uk.js is single-owner + hash-guarded dbe33204)
+### The CH1-BASE PORT (what came over from challenger1Build, uk.ts —
+### PORTED not imported: uk.ts is single-owner + hash-guarded dbe33204)
 - ch1BaseToneKit (modern1.js — the ch1 r8/r9 family recipes): pale-olive
   Hydrogas DISC faces vs DARK-drawn tire rings (the r8 WHEEL-RING
   GRAMMAR; the builders' 0x565c50 tireHex clone re-keyed to the ring

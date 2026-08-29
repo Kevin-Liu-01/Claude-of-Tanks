@@ -13,18 +13,247 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.js';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 const {
-  box, cylX, cylY, cylZ, sph, torus, slab, frustum, lathe, buildRunningGear,
-  buildGun, liftEye, periscope, headlight, cupola, pintleMG, smokeCluster,
-  stowage, tarpRoll, jerryCan, spareTrackStrip, polyMultiLoft, xform,
-} = new Proxy({}, { get: (_, name) => (...args) => (name === 'slab' ? orientedSlab : KIT[name])(...args) }); // §C.1 winding guard on slab
+  box, cylX, cylY, cylZ, sph, torus, frustum, lathe,
+  liftEye, periscope, headlight, cupola, pintleMG, smokeCluster,
+  stowage, tarpRoll, jerryCan, spareTrackStrip, polyMultiLoft,
+} = KIT;
+// §C.1 winding guard on slab. These direct aliases replace the former dynamic
+// Proxy without changing any geometry calls and make the shared UK kit visible
+// to TypeScript and bundlers.
+const slab = orientedSlab;
+const xform = KIT.xform as (
+  geometry: unknown,
+  x?: number,
+  y?: number,
+  z?: number,
+  rotationX?: number,
+  rotationY?: number,
+  rotationZ?: number,
+  scale?: number | readonly number[],
+) => THREE.BufferGeometry;
+
+type Vec2Tuple = readonly [number, number];
+type Vec3Tuple = readonly [number, number, number];
+type NumericRow = readonly number[];
+type ProfileCurve = readonly NumericRow[];
+
+interface UKGeometryPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly q?: boolean;
+  readonly spec: {
+    readonly visual: {
+      readonly number?: string;
+      bakeDirtDeckEq?: boolean;
+    };
+  };
+  topY?: number;
+  add(
+    slot: string,
+    geometry: unknown,
+    x?: number,
+    y?: number,
+    z?: number,
+    rotationX?: number,
+    rotationY?: number,
+    rotationZ?: number,
+    scale?: number | readonly number[],
+  ): unknown;
+  addEquipment(
+    slot: string,
+    geometry: unknown,
+    x?: number,
+    y?: number,
+    z?: number,
+    rotationX?: number,
+    rotationY?: number,
+    rotationZ?: number,
+    scale?: number | readonly number[],
+  ): unknown;
+  decal(
+    owner: 'hull' | 'turret',
+    kind: string,
+    label: string | null,
+    scale: number,
+    position: readonly number[],
+    ...orientation: number[]
+  ): unknown;
+}
+
+interface UKGunPort extends UKGeometryPort {
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+}
+
+interface UKMaterialSet {
+  readonly hull: THREE.MeshStandardMaterial;
+  readonly barrel: THREE.MeshStandardMaterial;
+  readonly detail: THREE.MeshStandardMaterial;
+  readonly glass: THREE.MeshStandardMaterial;
+  readonly canvasCloth: THREE.MeshStandardMaterial;
+  readonly dark: THREE.MeshStandardMaterial;
+  readonly wheels: THREE.MeshStandardMaterial;
+  readonly rubber: THREE.MeshStandardMaterial;
+  readonly trackL: THREE.MeshStandardMaterial;
+  readonly trackR: THREE.MeshStandardMaterial;
+  readonly spareTrack: THREE.MeshStandardMaterial;
+  readonly shadow: THREE.MeshStandardMaterial;
+}
+
+interface UKMaterialPort extends UKGeometryPort {
+  readonly mats: UKMaterialSet;
+  readonly disposables: Array<{ dispose(): void }>;
+}
+
+interface UKBuilderPort extends UKGunPort, UKMaterialPort {}
+
+interface UKBuilderPort {
+  readonly recoilG: THREE.Group;
+  readonly rng: () => number;
+  clear(slots: readonly string[] | string, ...rest: string[]): void;
+  clearDecals(owner?: 'hull' | 'turret'): void;
+  offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+  scaleBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+}
+
+interface UKCenturionPort extends UKMaterialPort {
+  readonly rng: () => number;
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+}
+
+interface TrackWheel {
+  readonly z: number;
+  readonly y: number;
+  readonly r: number;
+}
+
+interface UKHullOptions {
+  readonly bodyHalfW: number;
+  readonly noseRake: ProfileCurve;
+  readonly tailRake: ProfileCurve;
+  readonly deck: ProfileCurve;
+  readonly nose: number;
+  readonly belly: number;
+  readonly beltTop: number;
+  readonly trackXc: number;
+  readonly trackW: number;
+  readonly trackTop: number;
+  readonly wheelR: number;
+  readonly wheelZs: readonly number[];
+  readonly sprocket: TrackWheel;
+  readonly idler: TrackWheel;
+  readonly rollers?: readonly TrackWheel[];
+  readonly rakeHalfW?: number;
+  readonly deckInset?: number;
+  readonly deckSplit?: { readonly z: number; readonly inset: number };
+  readonly deckCorridor?: { readonly x: number; readonly floor: number; readonly z0: number; readonly z1: number };
+  readonly tailShelf?: { readonly z0: number; readonly z1: number; readonly yBot: number };
+  readonly fenderY?: number;
+  readonly fenderZ0: number;
+  readonly fenderZ1: number;
+  readonly fenderPlaneZ1?: number;
+  readonly fenderHalfW?: number;
+  readonly fenderHalfWL?: number;
+  readonly fenderSegLen?: number;
+  readonly skirt?: { readonly x: number; readonly top: number; readonly bot: number; readonly z0: number; readonly z1: number };
+  readonly skirtPanels?: number;
+  readonly skirtW?: number;
+  readonly skirtHemSplit?: { readonly bot: number; readonly keepPanels: readonly number[] };
+  readonly skirtTrimFlush?: boolean;
+  readonly wheelW?: number;
+  readonly wheelY?: number;
+  readonly wheelStyle?: string;
+  readonly coveredTop?: boolean;
+  readonly arms?: boolean;
+  readonly padHex?: number;
+  readonly chainHex?: number;
+  readonly tireHex?: number;
+  readonly gearFloor?: boolean;
+  readonly contactZF?: number;
+  readonly contactZR?: number;
+  readonly noFlaps?: boolean;
+  readonly flapDrop?: number;
+  readonly numberR?: readonly number[];
+  readonly numberL?: readonly number[];
+  readonly numberSize?: number;
+}
+
+interface HullCorridor {
+  readonly x: number;
+  readonly floor: number;
+  readonly z0: number;
+  readonly z1: number;
+}
+
+interface UKToneOptions {
+  readonly glass?: boolean;
+  readonly glassHex?: number;
+  readonly cloth?: number;
+  readonly clothEnv?: number;
+  readonly dark?: number;
+  readonly wheelHex?: number;
+  readonly wheelEnv?: number;
+  readonly drumHex?: number;
+  readonly drumEnv?: number;
+  readonly ringHex?: number;
+  readonly ringEnv?: number;
+  readonly padHex?: number;
+  readonly padEnv?: number;
+  readonly chainHex?: number;
+  readonly chainEnv?: number;
+  readonly bandMul?: readonly [number, number, number];
+  readonly bandEnv?: number;
+  readonly spareHex?: number;
+  readonly tireEmissive?: number;
+}
+
+interface ClassicUKProfileOptions {
+  readonly width: number;
+  readonly hullLength: number;
+  readonly roofY: number;
+  readonly bandY: number;
+  readonly trackW: number;
+  readonly bowZ: number;
+  readonly bowY: number;
+  readonly noseTipY: number;
+  readonly tailTrim: number;
+  readonly wheels: number;
+  readonly wheelR: number;
+  readonly wheelSpan: number;
+  readonly gunLength: number;
+  readonly noBins?: boolean;
+  readonly bandHalfW?: number;
+  readonly apronY?: number;
+  readonly sprocketInset?: number;
+  readonly lowerBandY?: number;
+  readonly lowerSeamY?: number;
+  readonly trackXc?: number;
+  readonly mgBall?: boolean;
+  readonly corridorY?: number;
+  readonly guardY?: number;
+  readonly hornY?: number;
+  readonly wheelBias?: number;
+  readonly rollers?: readonly TrackWheel[];
+}
+
+const buildRunningGear = KIT.buildRunningGear as (
+  builder: UKGeometryPort,
+  options: Record<string, unknown>,
+) => void;
+const buildGun = KIT.buildGun as (
+  builder: UKGeometryPort,
+  options: Record<string, unknown>,
+) => void;
 
 // ---------------------------------------------------------------------------
 // Curve helpers (same discipline as the Abrams module: the deck/belly tables
 // are the measured polylines, tilt-compensated ~0.05x(plate half width)).
 // ---------------------------------------------------------------------------
-function lineAt(pts, z) {
+function lineAt(pts: ProfileCurve, z: number): number {
   for (let i = 0; i < pts.length - 1; i++) {
     const [z0, y0] = pts[i], [z1, y1] = pts[i + 1];
     if ((z <= z0 && z >= z1) || (z >= z0 && z <= z1)) {
@@ -34,7 +263,17 @@ function lineAt(pts, z) {
   return (Math.abs(z - pts[0][0]) < Math.abs(z - pts[pts.length - 1][0]) ? pts[0] : pts[pts.length - 1])[1];
 }
 
-function loftBand(P, bucket, halfW, inset, top, bottomAt, zA, zB, extraZ = []) {
+function loftBand(
+  P: UKGeometryPort,
+  bucket: string,
+  halfW: number,
+  inset: number,
+  top: ProfileCurve,
+  bottomAt: (z: number) => number,
+  zA: number,
+  zB: number,
+  extraZ: readonly number[] = [],
+): void {
   const zs = [...new Set([zA, zB, ...top.map((p) => p[0]), ...extraZ]
     .filter((z) => z >= Math.min(zA, zB) - 1e-6 && z <= Math.max(zA, zB) + 1e-6)
     .map((z) => Number(z.toFixed(4))))].sort((a, b) => b - a);
@@ -53,7 +292,18 @@ function loftBand(P, bucket, halfW, inset, top, bottomAt, zA, zB, extraZ = []) {
 // Opt-in closed-sponson variant of loftBand. The full inter-track body and
 // exact original roof/outer side surface remain; only the concealed lower
 // over-track volume is omitted above the moving native course.
-function loftBandCorridor(P, bucket, halfW, inset, top, bottomAt, zA, zB, corridor, extraZ = []) {
+function loftBandCorridor(
+  P: UKGeometryPort,
+  bucket: string,
+  halfW: number,
+  inset: number,
+  top: ProfileCurve,
+  bottomAt: (z: number) => number,
+  zA: number,
+  zB: number,
+  corridor: HullCorridor,
+  extraZ: readonly number[] = [],
+): void {
   const lo = Math.min(corridor.z0, corridor.z1), hi = Math.max(corridor.z0, corridor.z1);
   const zs = [...new Set([zA, zB, lo, hi, ...top.map((p) => p[0]), ...extraZ]
     .filter((z) => z >= Math.min(zA, zB) - 1e-6 && z <= Math.max(zA, zB) + 1e-6)
@@ -75,7 +325,7 @@ function loftBandCorridor(P, bucket, halfW, inset, top, bottomAt, zA, zB, corrid
     P.add(bucket, slab(
       [-X, bf, zf], [X, bf, zf], [X, br, zr], [-X, br, zr],
       [-X, tf, zf], [X, tf, zf], [X, tr, zr], [-X, tr, zr]));
-    const widthAtFloor = (b, t) => {
+    const widthAtFloor = (b: number, t: number): number => {
       const k = Math.min(1, Math.max(0, (F - b) / Math.max(1e-6, t - b)));
       return halfW + (topW - halfW) * k;
     };
@@ -92,7 +342,7 @@ function loftBandCorridor(P, bucket, halfW, inset, top, bottomAt, zA, zB, corrid
 
 // Generic UK hull: curve-lofted bow wedge + full band + stern wedge (+ rear
 // shelf), fenders, optional skirts, running gear. All values world meters.
-function ukHull(P, g) {
+function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
   const bw = g.bodyHalfW;
   const bowZ = g.noseRake[0][0];
   const sternZ = g.tailRake[0][0];
@@ -115,12 +365,17 @@ function ukHull(P, g) {
   // silhouettes are unchanged (any-x paints side; the belt/fenders own plan).
   // Default undefined -> single band, byte-identical.
   if (g.deckSplit) {
-    const splitLoft = g.deckCorridor ? loftBandCorridor : loftBand;
-    const corridorArgs = g.deckCorridor ? [g.deckCorridor] : [];
-    splitLoft(P, 'hull', bw, g.deckInset ?? 0.08, g.deck, () => g.beltTop,
-      bowZ, g.deckSplit.z, ...corridorArgs);
-    splitLoft(P, 'hull', bw, g.deckSplit.inset, g.deck, () => g.beltTop,
-      g.deckSplit.z, sternZ, ...corridorArgs);
+    if (g.deckCorridor) {
+      loftBandCorridor(P, 'hull', bw, g.deckInset ?? 0.08, g.deck, () => g.beltTop,
+        bowZ, g.deckSplit.z, g.deckCorridor);
+      loftBandCorridor(P, 'hull', bw, g.deckSplit.inset, g.deck, () => g.beltTop,
+        g.deckSplit.z, sternZ, g.deckCorridor);
+    } else {
+      loftBand(P, 'hull', bw, g.deckInset ?? 0.08, g.deck, () => g.beltTop,
+        bowZ, g.deckSplit.z);
+      loftBand(P, 'hull', bw, g.deckSplit.inset, g.deck, () => g.beltTop,
+        g.deckSplit.z, sternZ);
+    }
   } else {
     if (g.deckCorridor) {
       loftBandCorridor(P, 'hull', bw, g.deckInset ?? 0.08, g.deck, () => g.beltTop,
@@ -131,8 +386,9 @@ function ukHull(P, g) {
   }
   loftBand(P, 'hull', g.rakeHalfW ?? bw * 0.94, 0.04, g.deck, (z) => lineAt(g.tailRake, z),
     sternZ, g.tailRake[g.tailRake.length - 1][0], g.tailRake.map((p) => p[0]));
-  if (g.tailShelf) {
-    loftBand(P, 'hull', g.rakeHalfW ?? bw * 0.94, 0.04, g.deck, () => g.tailShelf.yBot, g.tailShelf.z0, g.tailShelf.z1);
+  const tailShelf = g.tailShelf;
+  if (tailShelf) {
+    loftBand(P, 'hull', g.rakeHalfW ?? bw * 0.94, 0.04, g.deck, () => tailShelf.yBot, tailShelf.z0, tailShelf.z1);
   }
   // Fender plates over the tracks. Outer edge defaults to the track edge;
   // g.fenderHalfW/g.fenderHalfWL pin it (right/left) so the widest full-length
@@ -210,7 +466,7 @@ function ukHull(P, g) {
     // ±skirt-column read; side bottoms are track-owned under the whole
     // span; station widths ride the skirt TOP band (y max), unchanged.
     // Default undefined -> byte-identical (chieftain5/centurion3/fv510).
-    const hemBot = (k) => (g.skirtHemSplit && !g.skirtHemSplit.keepPanels.includes(k))
+    const hemBot = (k: number) => (g.skirtHemSplit && !g.skirtHemSplit.keepPanels.includes(k))
       ? g.skirtHemSplit.bot : sk.bot;
     for (const side of [-1, 1]) {
       for (let k = 0; k < panels; k++) {
@@ -297,7 +553,17 @@ function ukHull(P, g) {
 // measured station width collapses to whatever curved geometry remains.
 // Split long planes into <=segLen chunks: same union silhouette, end caps
 // land in every slice.
-function segBoxZ(P, bucket, w, h, d, x, y, z, segLen = 0.48) {
+function segBoxZ(
+  P: UKGeometryPort,
+  bucket: string,
+  w: number,
+  h: number,
+  d: number,
+  x: number,
+  y: number,
+  z: number,
+  segLen = 0.48,
+): void {
   const n = Math.max(1, Math.ceil(d / segLen));
   const dz = d / n;
   for (let k = 0; k < n; k++) P.add(bucket, box(w, h, dz), x, y, z - d / 2 + dz * (k + 0.5));
@@ -375,7 +641,7 @@ const CHIEFTAIN_HULL = {
   numberSize: 0.34, numberR: [1.66, 2.01, -0.62], numberL: [-1.695, 1.19, 1.0],
 };
 
-function chieftain5Build(P) {
+function chieftain5Build(P: UKBuilderPort): void {
   const g = CHIEFTAIN_HULL;
   ukHull(P, g);
   const { rng } = P;
@@ -390,11 +656,12 @@ function chieftain5Build(P) {
   // the 3.755 tip; bottom 0.22@3.05 -> 0.56@3.43 -> 0.76@3.63 -> 0.82.
   // Left band full-width (certified left-fender asymmetry), right stops at
   // the 1.545 plane (ref station 13 width 1.542).
-  for (const [xw1, xw2a, xw2b] of [
+  const bowWingCourses: ReadonlyArray<readonly [NumericRow | null, NumericRow, NumericRow]> = [
     [[-1.716, -1.077], [-1.716, -1.04], [-1.716, -1.04]],
     [null, [0.78, 0.83], [0.78, 0.83]],
     [[0.875, 1.484], [0.875, 1.523], [0.875, 1.523]],
-  ]) {
+  ];
+  for (const [xw1, xw2a, xw2b] of bowWingCourses) {
     if (xw1) {
       // r5: W1 underside lifted 0.22 -> 0.30 at the z 3.05 heel — the ref's
       // 3.123 side column bottoms at 0.305 (the old heel read 0.244, the
@@ -1000,12 +1267,16 @@ function chieftain5Build(P) {
 }
 
 // Shared UK tow cable on the glacis with clamp cleats.
-const deckAtUK = (g, z) => lineAt(g.deck, z);
+const deckAtUK = (g: Pick<UKHullOptions, 'deck'>, z: number): number => lineAt(g.deck, z);
 
 // Opt-in path/cleat overrides (uk r4): chieftain5's cable sagged over the
 // ref's bare 1.49-1.55 glacis deck line once side registration was honest —
 // its call lowers the run. Defaults byte-identical for every other caller.
-function towCableUK(P, pts = [[-1.0, 1.52, 2.2], [0, 1.62, 1.7], [1.0, 1.52, 2.2]], cleatY = 1.45) {
+function towCableUK(
+  P: UKGeometryPort,
+  pts: readonly (readonly number[])[] = [[-1.0, 1.52, 2.2], [0, 1.62, 1.7], [1.0, 1.52, 2.2]],
+  cleatY = 1.45,
+): void {
   KIT.towCable(P, pts);
   P.add('hullDetail', box(0.1, 0.24, 0.14), -1.0, cleatY, 2.2);
   P.add('hullDetail', box(0.1, 0.24, 0.14), 1.0, cleatY, 2.2);
@@ -1020,8 +1291,8 @@ function towCableUK(P, pts = [[-1.0, 1.52, 2.2], [0, 1.62, 1.7], [1.0, 1.52, 2.2
 // OPT-IN per build fn (§F.2): chieftain5 (frozen graduate 5117b9a8) does NOT
 // call this — its own r5/r6 gear tones live in CHIEFTAIN_HULL config.
 // ---------------------------------------------------------------------------
-function ukToneKit(P, o = {}) {
-  const rehook = (m) => {
+function ukToneKit(P: UKMaterialPort, o: UKToneOptions = {}): void {
+  const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
     // Material.clone() drops onBeforeCompile — re-attach the family ambient
     // floor (merkava r12 gearFloor law / leo r13b gearDarkLift pattern).
     m.onBeforeCompile = vehicleAmbientFloorHook;
@@ -1088,21 +1359,22 @@ function ukToneKit(P, o = {}) {
   ringMat.envMapIntensity = o.ringEnv ?? 0.10;
   ringMat.emissive.setHex(0x000000);
   P.disposables.push(ringMat);
-  P.hullG.traverse((ob) => {
-    if (!ob.isMesh && !ob.isInstancedMesh) return;
+  P.hullG.traverse((ob: THREE.Object3D) => {
+    if (!(ob instanceof THREE.Mesh) && !(ob instanceof THREE.InstancedMesh)) return;
+    const isInstanced = ob instanceof THREE.InstancedMesh;
     const m = ob.material;
     if (!m || !m.color || !m.color.getHex) return;
-    if (ob.isInstancedMesh && m.color.getHex() === 0x171614) {
+    if (isInstanced && m.color.getHex() === 0x171614) {
       rehook(m).color.setHex(o.padHex ?? 0x353928);      // shoe pads
       m.envMapIntensity = o.padEnv ?? 0.30;
-    } else if (ob.isInstancedMesh && m.color.getHex() === 0x27251f) {
+    } else if (isInstanced && m.color.getHex() === 0x27251f) {
       rehook(m).color.setHex(o.chainHex ?? 0x3b402f);    // inner chain/horns
       m.envMapIntensity = o.chainEnv ?? 0.32;
-    } else if (ob.isInstancedMesh && m === P.mats.rubber) {
+    } else if (isInstanced && m === P.mats.rubber) {
       ob.material = ringMat;                             // tire ring + bolt/annulus IMs
     } else if (m === P.mats.wheels) {
       // road-wheel disc InstancedMesh + sprocket/idler body spinners
-      ob.material = ob.isInstancedMesh ? wheelTone : drumTone;
+      ob.material = isInstanced ? wheelTone : drumTone;
     }
   });
   // Band material: linear multiplier over the shared band map (m60/m47
@@ -1135,7 +1407,11 @@ function ukToneKit(P, o = {}) {
 // Placement stays clear of band/shoe/wheel voxels (track-clip-audit does
 // NOT skip them): callers pass per-tank [w, h, d, x, y, z] boxes threaded
 // between the ground ramp and the return-run sag envelope.
-function ukGearAirBackers(P, plates, hex = 0x20261c) {
+function ukGearAirBackers(
+  P: UKMaterialPort,
+  plates: readonly (readonly [number, number, number, number, number, number])[],
+  hex = 0x20261c,
+): void {
   const m = P.mats.shadow.clone();
   m.color.setHex(hex);
   m.roughness = 0.97;
@@ -1165,7 +1441,7 @@ function ukGearAirBackers(P, plates, hex = 0x20261c) {
 // ---------------------------------------------------------------------------
 // Chieftain Mk 10 — BASE-21 PHOTO-CLASS SCAFFOLD (2026-08-07). First real
 // build of the id (the modern3 buildChieftain generic is overridden here via
-// PROFILED_BUILDERS, the same binding every uk.js profile uses). NO ORACLE —
+// PROFILED_BUILDERS, the same binding every uk.ts profile uses). NO ORACLE —
 // FALSE-0 law: never run the geometry gate against this id; the bar is the
 // photo class + published dims + §B battery + §B8.1 proportion gates
 // (docs/references/tanks/chieftain_mk10.md carries the target numbers).
@@ -1234,7 +1510,7 @@ const MK10_HULL = {
   numberSize: 0.34, numberR: [1.831, 1.17, 0.0], numberL: [-1.831, 1.17, 0.0],
 };
 
-function chieftainMk10Build(P) {
+function chieftainMk10Build(P: UKBuilderPort): void {
   const g = MK10_HULL;
   ukHull(P, g);
   // ---- bow fender WINGS to the ±3.76 hull-length extreme (symmetric; the
@@ -1565,7 +1841,7 @@ const CENTURION_HULL = {
   contactZF: 2.50, contactZR: -2.32,
 };
 
-export function centurionBuild(P, mk) {
+export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
   // r7 (combined tone round) — c5 O1 "expose the running gear": the Mk.5/2
   // raises its skirt hem to the ref's own exposed-disc line (outer-strip
   // band bottoms 0.81 per the r2 tables; wheels top 0.85) across panels
@@ -1788,7 +2064,17 @@ export function centurionBuild(P, mk) {
   // world vs the old 1.935; chieftain law — mask reads under-report it, the
   // r4 mask numbers said 1.912/1.943 with the same 0.03 delta).
   P.gunG.position.set(0, 0.125, 0.6);
-  const gunHousing = (bucket, geo, x, y, z, rx = 0, ry = 0, rz = 0, scale = 1) => {
+  const gunHousing = (
+    bucket: string,
+    geo: unknown,
+    x: number,
+    y: number,
+    z: number,
+    rx = 0,
+    ry = 0,
+    rz = 0,
+    scale: number | readonly number[] = 1,
+  ): void => {
     const movingBucket = bucket === 'turretDark' ? 'gunMountDark'
       : bucket === 'turretCloth' ? 'gunMountCloth' : 'gunMount';
     P.add(movingBucket, geo, x - P.gunG.position.x, y - P.gunG.position.y,
@@ -2025,7 +2311,7 @@ export function centurionBuild(P, mk) {
     const c3top = [
       [-0.92, 0.755], [-1.01, 0.78], [-1.06, 0.708], [-1.31, 0.708], [-1.40, 0.728], [-1.477, 0.747],
       [-1.647, 0.637], [-1.75, 0.545]];
-    const c3bot = (z) => lineAt([[-0.92, -0.28], [-1.02, -0.248], [-1.09, 0.011], [-1.42, 0.011],
+    const c3bot = (z: number) => lineAt([[-0.92, -0.28], [-1.02, -0.248], [-1.09, 0.011], [-1.42, 0.011],
       [-1.647, 0.042], [-1.75, 0.07]], z);
     loftBand(P, 'turret', 0.95, 0.19, c3top, c3bot, -0.92, -1.34, [-1.02, -1.09]);
     loftBand(P, 'turret', 0.66, 0.03, c3top, c3bot, -1.34, -1.49);
@@ -2480,7 +2766,7 @@ export function centurionBuild(P, mk) {
     // linear-albedo below ~0.04 (the ink class) toward the print's soft
     // dark-olive; mid camo and the parity side tables are untouched.
     // "Few deep pockets, not many stamps" — §C ordered-class law.
-    const inkLift = (m, key) => {
+    const inkLift = (m: THREE.MeshStandardMaterial, key: string): void => {
       const prev = m.onBeforeCompile;
       m.onBeforeCompile = (shader, rdr) => {
         if (prev) prev(shader, rdr);
@@ -2549,7 +2835,14 @@ export function centurionBuild(P, mk) {
 // guards and exposed Christie gear. Curve-corrected: the tall pannier band
 // ends at the driver's plate; the bow runs LOW to a blunt nose.
 // ---------------------------------------------------------------------------
-function cromwellHull(P, o) {
+interface ClassicHullReceipt {
+  readonly width: number;
+  readonly length: number;
+  readonly halfL: number;
+  readonly roofY: number;
+}
+
+function cromwellHull(P: UKBuilderPort, o: ClassicUKProfileOptions): ClassicHullReceipt {
   const width = o.width, halfL = o.hullLength / 2;
   const rearL = halfL - (o.tailTrim ?? 0);     // hull rear plate station
   const roofY = o.roofY, bandY = o.bandY, trackW = o.trackW;
@@ -2707,7 +3000,7 @@ function cromwellHull(P, o) {
 
 // Comet A34: low welded turret with curved cast front + rear radio bustle,
 // 77 mm HV. Band: turret z -1.9..+2.0 rel ring 0.55, roof 2.55, mantlet 2.0.
-function cometBuild(P, o) {
+function cometBuild(P: UKBuilderPort, o: ClassicUKProfileOptions): void {
   cromwellHull(P, o);
   P.turretG.position.set(0, o.roofY, 0.55);
   P.gunG.position.set(0, 0.16, 0.35);
@@ -2763,13 +3056,13 @@ function cometBuild(P, o) {
   P.addGunExtraDark(cylZ(0.026, 0.12, 8), -0.24, 0.12, 0.72);
   P.addGunExtra(cylZ(0.115, 0.3, 12, 0.145), 0, 0, 0.90);
   buildGun(P, { len: o.gunLength, r: 0.115, brake: 'single', sleeve: false, evac: null, collar: false, baseR: 0.16 });
-  muzzleBore(P, { len: o.gunLength, r: 0.115, brake: 'single' });                     // §B3.1 (shadow-named, 3fca39b)
+  muzzleBore(P, { len: o.gunLength, r: 0.115, brake: true });                         // §B3.1 (shadow-named, 3fca39b)
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [1.0, h * 0.42, -0.35], Math.PI / 2);
   P.topY = h + 0.25;
 }
 
 // FV4101 Charioteer: tall angular two-tier welded turret, slim 20-pdr.
-function charioteerBuild(P, o) {
+function charioteerBuild(P: UKBuilderPort, o: ClassicUKProfileOptions): void {
   cromwellHull(P, o);
   // The print's turret band registers ~1 m aft of the hull-length mid (its
   // bow-short hull anchors the frame) — the pivot follows the oracle.
@@ -2821,7 +3114,7 @@ function charioteerBuild(P, o) {
 }
 
 // A30 Challenger: long six-wheel chassis, tall narrow 17-pdr turret.
-function a30Build(P, o) {
+function a30Build(P: UKBuilderPort, o: ClassicUKProfileOptions): void {
   cromwellHull(P, o);
   P.turretG.position.set(0, o.roofY, 0.12);
   P.gunG.position.set(0, 0.35, 0.35);
@@ -2882,8 +3175,18 @@ function a30Build(P, o) {
 // FrontSide shaded renders cull it inside-out (§C missing-side class; masks
 // are DoubleSide and hide the defect). Mirror + swap corner pairs restores
 // outward winding on both sides.
-function sslab(s, b0, b1, b2, b3, t0, t1, t2, t3) {
-  const m = ([x, y, z]) => [s * x, y, z];
+function sslab(
+  s: number,
+  b0: Vec3Tuple,
+  b1: Vec3Tuple,
+  b2: Vec3Tuple,
+  b3: Vec3Tuple,
+  t0: Vec3Tuple,
+  t1: Vec3Tuple,
+  t2: Vec3Tuple,
+  t3: Vec3Tuple,
+): THREE.BufferGeometry {
+  const m = ([x, y, z]: Vec3Tuple): Vec3Tuple => [s * x, y, z];
   return s >= 0
     ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
     : slab(m(b1), m(b0), m(b3), m(b2), m(t1), m(t0), m(t3), m(t2));
@@ -2902,16 +3205,16 @@ const FV_DECK = [
   [3.17, 1.32], [3.02, 1.50], [2.62, 1.76], [2.30, 2.01], [1.98, 1.95], [1.55, 2.05],
   [0.85, 1.93], [0.70, 2.05], [-2.95, 2.05], [-3.155, 2.03],
 ];
-const fvGlacisY = (z) => 1.93 - (z - 1.55) * 0.549383;
-const fvBowY = (z) => (z > 2.46 ? 0.55 + (z - 2.45) * 1.06 : 0.55);
-const fvSternY = (z) => (z < -2.46 ? 0.45 + (-z - 2.45) * 0.496454 : 0.45);
-const fvSeg = (a, b, step = 0.45) => {
+const fvGlacisY = (z: number): number => 1.93 - (z - 1.55) * 0.549383;
+const fvBowY = (z: number): number => (z > 2.46 ? 0.55 + (z - 2.45) * 1.06 : 0.55);
+const fvSternY = (z: number): number => (z < -2.46 ? 0.45 + (-z - 2.45) * 0.496454 : 0.45);
+const fvSeg = (a: number, b: number, step = 0.45): number[] => {
   const out = [];
   for (let z = Math.max(a, b) - step; z > Math.min(a, b); z -= step) out.push(Number(z.toFixed(3)));
   return out;
 };
 
-function fv510PhotoBuild(P) {
+function fv510PhotoBuild(P: UKBuilderPort): void {
   const num = P.spec.visual.number || '';
   const upperHullScaleY = 0.765;
   // ---- lower body (inter-track ±0.93 — clear of the 0.945 track channel,
@@ -3424,7 +3727,7 @@ function fv510PhotoBuild(P) {
 // rib cages, rear door, native six-station suspension and RARDEN installation.
 // This pass is strictly additive: applique, missile equipment, observation
 // kit and a denser roof/glacis service grammar all land on existing armor.
-function fv510MilanBuild(P) {
+function fv510MilanBuild(P: UKBuilderPort): void {
   fv510PhotoBuild(P);
   const num = P.spec.visual.number || 'M9';
 
@@ -3584,7 +3887,7 @@ const VICKERS_REAR3 = [   // ±0.55 tier (side silhouette line)
   [-1.45, 1.72], [-1.65, 1.786], [-2.28, 1.786], [-2.42, 1.762], [-2.66, 1.745],
 ];
 
-function vickersMk1Build(P) {
+function vickersMk1Build(P: UKBuilderPort): void {
   const { rng } = P;
   // Keep the measured deck and full exterior sponson sides, but open the
   // concealed underside over the native return run.  The center body stays
@@ -3594,7 +3897,11 @@ function vickersMk1Build(P) {
   // Station-slice prism law (russia r7c): every loft below is SEGMENTED at
   // ≤0.5 m pitch via extraZ knots so each 0.57 m station window contains
   // real end caps — a single full-length prism reads zero width edge-on.
-  const seg5 = (a, b) => { const out = []; for (let z = a; z > b; z -= 0.45) out.push(Number(z.toFixed(2))); return out; };
+  const seg5 = (a: number, b: number): number[] => {
+    const out: number[] = [];
+    for (let z = a; z > b; z -= 0.45) out.push(Number(z.toFixed(2)));
+    return out;
+  };
   // ---- sponson band: full width over the tracks, floor above the wrap ----
   // widths: ref stations read ±1.5845 midships, ±1.5525 aft of −2.0.
   loftBandCorridor(P, 'hull', 1.5845, 0.05, VICKERS_DECK, () => 1.05,
@@ -3951,12 +4258,12 @@ const CHIEFTAIN_TURRET_BUCKETS = CHIEFTAIN_UPPER_BUCKETS.filter((bucket) =>
 const CHIEFTAIN_TURRET_HEIGHT_SCALE = 0.80;
 const CHIEFTAIN_TURRET_SEAT_Y = -0.18;
 
-function compressedChieftainTurretY(y) {
+function compressedChieftainTurretY(y: number): number {
   return CHIEFTAIN_TURRET_SEAT_Y
     + (y - CHIEFTAIN_TURRET_SEAT_Y) * CHIEFTAIN_TURRET_HEIGHT_SCALE;
 }
 
-function compressChieftainTurretHeight(P) {
+function compressChieftainTurretHeight(P: UKBuilderPort): void {
   // Compress around the buried ring seat, not local zero. That keeps the
   // casting planted on the hull while lowering its crown by a true 20%.
   P.scaleBuckets(CHIEFTAIN_TURRET_BUCKETS, 1, CHIEFTAIN_TURRET_HEIGHT_SCALE, 1);
@@ -3970,25 +4277,32 @@ function compressChieftainTurretHeight(P) {
   for (const child of P.turretG.children) {
     if (child !== P.gunG) child.position.y = compressedChieftainTurretY(child.position.y);
   }
-  P.topY = compressedChieftainTurretY(P.topY);
+  P.topY = compressedChieftainTurretY(P.topY!);
 }
 
-function clearChieftainUpper(P) {
+function clearChieftainUpper(P: UKBuilderPort): void {
   P.clear(CHIEFTAIN_UPPER_BUCKETS);
   P.clearDecals('turret');
   for (const child of [...P.turretG.children]) {
     if (child === P.gunG) continue;
     P.turretG.remove(child);
-    child.traverse((object) => object.geometry?.dispose?.());
+    child.traverse((object: THREE.Object3D) => {
+      if (object instanceof THREE.Mesh) object.geometry.dispose();
+    });
   }
   for (const child of [...P.gunG.children]) {
     if (child === P.recoilG) continue;
     P.gunG.remove(child);
-    child.traverse((object) => object.geometry?.dispose?.());
+    child.traverse((object: THREE.Object3D) => {
+      if (object instanceof THREE.Mesh) object.geometry.dispose();
+    });
   }
 }
 
-function buildChieftainUpper2026(P, { stillbrew = false } = {}) {
+function buildChieftainUpper2026(
+  P: UKBuilderPort,
+  { stillbrew = false }: { readonly stillbrew?: boolean } = {},
+): void {
   clearChieftainUpper(P);
   const seg = P.q ? 24 : 16;
 
@@ -4211,12 +4525,12 @@ function buildChieftainUpper2026(P, { stillbrew = false } = {}) {
   compressChieftainTurretHeight(P);
 }
 
-function chieftain5OwnerRebuild2026(P) {
+function chieftain5OwnerRebuild2026(P: UKBuilderPort): void {
   chieftain5Build(P);
   buildChieftainUpper2026(P, { stillbrew: false });
 }
 
-function chieftainMk10OwnerRebuild2026(P) {
+function chieftainMk10OwnerRebuild2026(P: UKBuilderPort): void {
   chieftainMk10Build(P);
   buildChieftainUpper2026(P, { stillbrew: true });
 }
@@ -4227,8 +4541,8 @@ export const UK_PROFILES = {
   // oracle (FALSE-0 law). Overrides the modern3 generic via PROFILED_BUILDERS.
   chieftain_mk10: { build: chieftainMk10OwnerRebuild2026 },
   vickers_mk1: { build: vickersMk1Build },
-  centurion3: { build: (P) => centurionBuild(P, 3) },
-  centurion5: { build: (P) => centurionBuild(P, 5) },
+  centurion3: { build: (P: UKBuilderPort) => centurionBuild(P, 3) },
+  centurion5: { build: (P: UKBuilderPort) => centurionBuild(P, 5) },
   comet: {
     build: cometBuild, width: 3.05, hullLength: 6.55, roofY: 1.70, bandY: 0.96, trackW: 0.36,
     bowZ: 2.05, bowY: 1.50, noseTipY: 1.16, tailTrim: 0.02, wheels: 5, wheelR: 0.44, wheelSpan: 3.8,
@@ -4259,7 +4573,7 @@ export const UK_PROFILES = {
   // carry the cap until the parked §E warp lands — packet round section).
   fv510: { build: fv510PhotoBuild },
   fv510_milan: { build: fv510MilanBuild },
-};
+} satisfies VehicleProfileRecord;
 
 // §5.75 family-module split: profiles/challenger.js (challenger1Build moved
 // there) imports the UK family kit from this module. The helpers stay OWNED

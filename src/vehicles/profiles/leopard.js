@@ -140,7 +140,7 @@ function leoGear(P, g) {
     dedupeLoopPoints: g.dedupeLoopPoints,
     paintedEnds: true, coveredTop: true,
     // r9 leo2_revolution B1 opt-ins (merkava r12 gear-tone params via the
-    // uk.js chieftain5 precedent): per-tank pad/chain tones + the ambient
+    // uk.ts chieftain5 precedent): per-tank pad/chain tones + the ambient
     // floor rehook. All undefined for every other caller — buildRunningGear
     // defaults stay byte-identical (a6/kf51/a5 hashes hold).
     padHex: g.padHex, chainHex: g.chainHex, tireHex: g.tireHex,

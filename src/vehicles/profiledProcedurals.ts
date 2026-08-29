@@ -9,7 +9,7 @@ import { RUSSIA_PROFILES as RUSSIA_RESIDUE_PROFILES } from './profiles/russia.ts
 import { T90_PROFILES } from './profiles/t90.js';
 import { T72_PROFILES } from './profiles/t72.ts';
 import { T80_PROFILES } from './profiles/t80.ts';
-import { UK_PROFILES } from './profiles/uk.js';
+import { UK_PROFILES } from './profiles/uk.ts';
 import { CHALLENGER_PROFILES } from './profiles/challenger.js';
 import { LEOPARD_PROFILES } from './profiles/leopard.js';
 import { MERKAVA_PROFILES } from './profiles/merkava.js';

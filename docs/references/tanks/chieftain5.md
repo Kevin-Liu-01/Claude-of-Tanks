@@ -502,7 +502,7 @@ standard-check FULL (clip 0/0 exact, holes 0, contig 0, mg1),
 track-clip 0/0 exact, all eight siblings re-gated BYTE-STABLE to
 committed decimals (challenger1 69.9 / vickers 81.8 / c5 80.8 / c3 78.7
 / comet 11.3 / charioteer 0.6 / challenger_cruiser 0 / fv510 0). No
-graduates live in uk.js (hash-freeze n/a). All measurements below are
+graduates live in uk.ts (hash-freeze n/a). All measurements below are
 official-rig on FINAL bytes (fresh tmp-tank-critic pairs re-rendered
 after the last edit; visual-evaluator digest + vertex-workorder columns
 same bytes). Protected columns honored: W3 nose-roll untouched
@@ -682,7 +682,7 @@ vs wheelY 0.38) so the band curled to ground at the bow — no approach ramp,
 the parallelogram read. The rear was already correct (sprocket y 0.875,
 ~27° departure ramp).
 
-**THE CHANGE (uk.js CHIEFTAIN_HULL, one value + §B6 comment):** idler y
+**THE CHANGE (uk.ts CHIEFTAIN_HULL, one value + §B6 comment):** idler y
 0.42 → **0.62** (z 2.58 / r 0.30 kept). Reasoning: top wrap 0.62 + 0.345
 (r + wrap clear) = 0.965 meets the return-run roller line (rollers y 0.82
 + r 0.09 + half band = 0.955) so the top run flows level into the idler —
@@ -742,7 +742,7 @@ each): front ramp reads \\________/ at rest and with the casting yawed
 
 **§B5 abutting sliver ADJUDICATED (audit: 1 abutting, x≈1.66 y 1.84..2.18
 z −0.79..−0.45).** The flagged member is the right engine-bay bin's OUTER
-CHAMFER + width-nub cluster (uk.js x 1.62..1.75, y 1.84..2.21, z
+CHAMFER + width-nub cluster (uk.ts x 1.62..1.75, y 1.84..2.21, z
 −0.9..−0.35) — hull fender furniture the print itself fuses into its HULL
 mask (r2 cert: "the RIGHT engine-bay bin run... its face is the right
 width plane at 1.75"), which the bustle merely overhangs. Yaw-90 render
@@ -752,14 +752,14 @@ Per §B5 REVIEW tier: **stays in rig_hull**; the audit will keep counting
 1 abutting by design (stranded 0 / dangling 0).
 
 **RE-FREEZE: hash e8919e36 → 5117b9a8 (43 meshes / 101168 verts).** All
-eight uk.js siblings byte-identical before/after (challenger1 7ed08078,
+eight uk.ts siblings byte-identical before/after (challenger1 7ed08078,
 vickers_mk1 1389d11c, centurion3 1adc2314, centurion5 976a8289, comet
 8c9a2098, challenger_cruiser d19f7994, charioteer c6fc76a8, fv510
 8566edc4). Graduate-change flow: this §B6 fix + gate hold + §D parity are
 in place; the graduation critic re-cert on the changed views completes
 the §10 re-freeze in the landing commit.
 
-**§B6 family sweep (authored-geometry audit, uk.js + the modern3 mk10):**
+**§B6 family sweep (authored-geometry audit, uk.ts + the modern3 mk10):**
 - chieftain5 — FIXED this round (above).
 - chieftain_mk10 (modern3.ts, NOT a graduate, no gate ref) — SHARED the
   defect: idler y 0.50 ≈ wheelY 0.46, front ramp ~14° curling at the bow

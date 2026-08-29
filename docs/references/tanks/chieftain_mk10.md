@@ -17,7 +17,7 @@ registration would write a false-0 ledger row and tax every fleet run.
 The bar is the VISUAL photo class + published dims + the §B battery +
 the §B8.1 proportion gates + 14-view self-shots on the critic rig
 (tools/tmp-ww2-photoclass), pending an independent §B8 critic.
-Family grammar donor: the `chieftain5` DUAL-GATE GRADUATE (uk.js, hash
+Family grammar donor: the `chieftain5` DUAL-GATE GRADUATE (uk.ts, hash
 d4f2a9a6) — its ukHull family rig and casting grammar are reused as
 SHARED HELPERS ONLY; the graduate's own geometry is untouched and its
 hash must hold through this round.
@@ -92,7 +92,7 @@ the chieftain5 spec (3.50): the Mk 10 row carries the over-tracks/skirts
 6. Four-box: overall ≈ 10.79 × 3.66 × 2.90; hull l 7.52 (z ±3.76);
    gun bore y ≈ 1.88; muzzle world +7.03.
 
-## Build plan (uk.js — builder `chieftainMk10Build`, registry
+## Build plan (uk.ts — builder `chieftainMk10Build`, registry
 ## UK_PROFILES.chieftain_mk10; overrides modern3 buildChieftain via
 ## PROFILED_BUILDERS, the same binding chieftain5 uses)
 - HULL: family ukHull rig with a Mk 10 param table (MK10_HULL — its own
@@ -126,7 +126,7 @@ the chieftain5 spec (3.50): the Mk 10 row carries the over-tracks/skirts
 
 ## r1 SCAFFOLD BUILD (2026-08-07) — first real build of the id, DELIVERED-PENDING-CRITIC
 
-Builder: `chieftainMk10Build` + `MK10_HULL` (src/vehicles/profiles/uk.js),
+Builder: `chieftainMk10Build` + `MK10_HULL` (src/vehicles/profiles/uk.ts),
 registered `UK_PROFILES.chieftain_mk10` — overrides the modern3 generic
 via PROFILED_BUILDERS. Geometry hash **59551064** (42 meshes / 73473
 verts), stable ×2. Graduate hold: **chieftain5 d4f2a9a6 (41/94065)

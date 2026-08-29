@@ -133,6 +133,10 @@ suspension-count, clearance, or material-role rules.
 Keep shared armor, shell, module, and crew constructors in the pure
 `specHelpers.ts` boundary. It must not import fleet registries, builders,
 Three.js, or browser APIs.
+Keep British family geometry and the cross-family Centurion base in
+`profiles/uk.ts`; Swedish callers satisfy its narrow Centurion port rather than
+depending on the full British builder, and kit helpers remain direct static
+bindings instead of a dynamic proxy.
 Use `specContracts.ts` for boot-light fleet combat rows. Family packs may add
 identity-specific metadata, but must satisfy the shared mobility, gun, armor,
 dimensions, and visual contract before mutating the legacy registry. Variant

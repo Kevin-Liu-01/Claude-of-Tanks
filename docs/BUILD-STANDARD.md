@@ -553,7 +553,7 @@ score is no defense.
   headline (curve score = 100 - 12*mean - 0.6*p95 - 1.5*cover: the 12x
   mean term floors short/shape-divergent prints at 0 regardless).
 - Mirrored-slab winding guards are now per-profile devices: orientedSlab
-  (misc.js) / sslab (uk.js) — every profile that mirrors slabs binds
+  (misc.js) / sslab (uk.ts) — every profile that mirrors slabs binds
   through one (§C missing-side law).
 - INSCRIBED-DRUM CONVERSION CLASS (§B3.1, russia sweep): box->cylinder
   (r = w/2, axis-extreme) and box->elliptical-frustum swaps keep side AND
