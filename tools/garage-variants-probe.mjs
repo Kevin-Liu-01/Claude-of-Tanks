@@ -36,6 +36,10 @@ try {
   await page.waitForFunction(() => window.__GAME_READY === true && window.__GARAGE_WORKSHOP,
     { timeout: 60_000 });
   await page.evaluate(() => window.__GARAGE_WORKSHOP.ensureBuilt());
+  // ensureBuilt deliberately drains the quiet-slice queue for deterministic
+  // capture. Let allocation cleanup settle before timing interactive swaps;
+  // the live scheduler naturally has 140 ms between every exhibit slice.
+  await new Promise((resolve) => setTimeout(resolve, 400));
   // Preview art is intentionally lazy: opening the selector is its demand
   // boundary. Decode every now-visible card once, then close it for stage shots.
   await page.evaluate(async () => {
@@ -133,7 +137,7 @@ try {
       failures.push(`${result.id}: selection/persistence contract failed`);
     }
     if (!result.previewReady) failures.push(`${result.id}: preview did not decode`);
-    if (!result.stats.built || result.stats.triangles <= 0 || result.stats.triangles > 35_000) {
+    if (!result.stats.built || result.stats.triangles <= 0 || result.stats.triangles > 450_000) {
       failures.push(`${result.id}: workshop triangle budget failed (${result.stats.triangles})`);
     }
     if (!result.stats.architecture?.objects || result.stats.architecture.triangles > 10_000) {
@@ -142,8 +146,17 @@ try {
     if (result.stats.wallLayout?.overlaps?.length) {
       failures.push(`${result.id}: overlapping wall bays ${result.stats.wallLayout.overlaps.join(', ')}`);
     }
+    if (result.stats.modelMode !== 'actual-fleet' || result.stats.exhibitCount !== 6) {
+      failures.push(`${result.id}: workshop is not using all six actual fleet exhibits`);
+    }
+    if (Math.abs(result.stats.forwardCorrectionRad - Math.PI) > 0.001) {
+      failures.push(`${result.id}: complete tanks are not corrected 180 degrees in their bays`);
+    }
+    if (result.id === 'verdant_motor_pool' && result.stats.roofMode !== 'enclosed-original') {
+      failures.push('verdant_motor_pool: original enclosed roof/trusses were not restored');
+    }
     if (!['abrams', 't90', 'leclerc'].every((family) => result.stats.families?.includes(family))) {
-      failures.push(`${result.id}: missing family-specific workshop LOD`);
+      failures.push(`${result.id}: missing family-specific actual fleet exhibit`);
     }
     if (!['m1a2', 't90m', 'leclerc'].every((id) => result.stats.sourceVehicleIds?.includes(id))) {
       failures.push(`${result.id}: missing expected workshop source vehicle id`);

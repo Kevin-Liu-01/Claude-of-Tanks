@@ -7,6 +7,8 @@ let constructions = 0;
 let pumps = 0;
 let built = false;
 let variantId = '';
+let preparations = 0;
+const workshopFleet = { createVisual() { throw new Error('not used by access test'); } };
 const engineCtx = { id: 'engine' };
 const pos = new THREE.Vector3(4, 5, 6);
 const access = createGarageDressingAccess(engineCtx, pos, {
@@ -14,12 +16,18 @@ const access = createGarageDressingAccess(engineCtx, pos, {
     attempts++;
     if (attempts === 1) throw new Error('simulated workshop chunk failure');
     return {
+      async prepareGarageDressing(receivedEngine) {
+        preparations++;
+        assert.equal(receivedEngine, engineCtx);
+        return workshopFleet;
+      },
       createGarageDressing(receivedEngine, receivedPos, existing) {
         constructions++;
         assert.equal(receivedEngine, engineCtx);
         assert.equal(receivedPos, pos);
         assert.equal(existing.group, access.group);
         assert.equal(existing.bayFill.parent, access.group);
+        assert.equal(existing.workshopFleet, workshopFleet);
         return {
           group: existing.group,
           pump() { pumps++; built = true; return false; },
@@ -44,6 +52,7 @@ assert.equal(first, shared);
 assert.equal((await first).group, access.group);
 assert.equal(attempts, 2);
 assert.equal(constructions, 1);
+assert.equal(preparations, 1);
 assert.equal(access.isBuilt(), false);
 assert.equal(await access.pump(), false);
 assert.equal(pumps, 1);

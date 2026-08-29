@@ -3,9 +3,11 @@ import type {
   GarageDressingEngineContext,
   GarageDressingExisting,
   GarageDressingRuntime,
+  GarageWorkshopFleet,
 } from './garageDressing.ts';
 
 interface GarageDressingModule {
+  prepareGarageDressing?(engineCtx: GarageDressingEngineContext): Promise<GarageWorkshopFleet>;
   createGarageDressing(
     engineCtx: GarageDressingEngineContext,
     pos: THREE.Vector3,
@@ -64,8 +66,11 @@ export function createGarageDressingAccess(
   const preload = (): Promise<GarageDressingRuntime> => {
     if (current) return Promise.resolve(current);
     if (pending) return pending;
-    const request = loaders.dressing().then((module) => {
-      current = module.createGarageDressing(engineCtx, pos, { group, bayFill, variantId });
+    const request = loaders.dressing().then(async (module) => {
+      const workshopFleet = await module.prepareGarageDressing?.(engineCtx);
+      current = module.createGarageDressing(engineCtx, pos, {
+        group, bayFill, variantId, workshopFleet,
+      });
       return current;
     }).catch((error: unknown) => {
       if (pending === request) pending = null;

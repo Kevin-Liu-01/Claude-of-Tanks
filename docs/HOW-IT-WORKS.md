@@ -44,15 +44,17 @@ persisted independently from the next-battle map. Each selection now owns a
 different structural kit—field shed, shade depot, bunker, brick arsenal,
 drydock, rail roundhouse, rain canopy, cavern, recovery yard, or factory
 line—plus the battlefield's existing thumbnail; it never constructs the
-battlefield itself. Repair scenery uses a dedicated 9.6K-triangle catalog of
-workshop-only Abrams, T-90M, and Leclerc reductions. Their separate hull plans,
-turret plans, wheel counts, bustle/ERA details, guns, and muzzle bores preserve
-the readable family signature without importing or constructing a playable
-tank. Common geometry and materials are shared, repeated wheels/tracks are
-instanced, and one small chunk is added per genuine idle lease after the garage
-is already interactive. Every wall-mounted board, sign, fan, extinguisher and
-location panel is assigned to one measured bay; a Node-runnable overlap audit
-keeps those rectangles aligned and disjoint as later chunks arrive.
+battlefield itself. The repair scenery displays the actual first-party Abrams,
+T-90M, and Leclerc models: three complete static-preview tanks plus exact
+turret/gun clones taken from those same builds. The clones share their source
+geometry and materials instead of constructing the tanks twice. Fleet builders
+load only after a genuine garage lull, each complete tank is added in its own
+quiet lease, and the renderer compiles it before reveal. This preserves exact
+vehicle detail without adding work to the initial garage or any battle frame.
+Every wall-mounted board, sign, fan, extinguisher and location panel is assigned
+to one measured bay; a Node-runnable overlap audit keeps those rectangles
+aligned and disjoint as later chunks arrive. Verdant Motor Pool retains its
+original enclosed ceiling and full roof-truss run.
 
 Viewport synchronization also has one typed engine owner. Renderer output,
 camera projection, post targets, and shadow frustums resize together. If an

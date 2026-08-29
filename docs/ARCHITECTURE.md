@@ -882,11 +882,14 @@ shell and palette; `garageArchitecture.ts` lazily builds and caches the ten
 distinct macro structures. `garageDressingAccess.ts` keeps a stable light/root
 while lazily importing `garageDressing.ts`; `garageDressingScheduler.ts` adds
 one optional slice per quiet lease. `garageWallLayout.ts` is the authoritative
-non-overlapping wall-bay contract. `workshopParts.ts` is the only source for
-background vehicle components: separately authored low-poly Abrams, T-90M and
-Leclerc family reductions with their real wheel counts and silhouette cues. It
-is intentionally independent from `fleetFactory.ts`, so repair bays cannot pull
-tank profile families into garage idle time.
+non-overlapping wall-bay contract. `garageDressingAccess.ts` prepares the real
+`m1a2`, `t90m`, and `leclerc` fleet builders behind that quiet boundary;
+`garageDressing.ts` creates one complete high-detail static preview from each
+and derives each service turret/gun exhibit by cloning the exact turret rig from
+its already-built tank. Those clones share geometry and materials. The first
+garage frame and battle graph therefore stay independent of the optional fleet
+transfer, while workshop displays remain identical to playable vehicle art.
+`workshopParts.ts` remains the source for non-vehicle service racks and props.
 
 ### 3.8 fx — `src/fx/`
 

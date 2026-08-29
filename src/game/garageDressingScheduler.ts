@@ -93,9 +93,9 @@ export function createGarageDressingScheduler({
         return;
       }
 
-      // Every optional slice now comes from the tiny workshop-only part kit.
-      // No fleet-family transfer/build gate is needed between architecture and
-      // vehicle assembly props, so each quiet lease performs exactly one slice.
+      // Access preload resolves the three requested fleet families once. Each
+      // later lease adds one complete static-preview tank or one cheap turret
+      // clone, keeping exact workshop displays outside the visible boot path.
       await dressing.pump();
       onVisualChange();
     } catch (error: unknown) {

@@ -311,6 +311,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/recoilRig.selftest.mjs',
     'src/fx/fxRuntimeAccess.selftest.mjs',
     'src/game/garageDressingAccess.selftest.mjs',
+    'src/game/garageDressingFleet.selftest.mjs',
     'src/game/garageDressingLifecycle.selftest.mjs',
     'src/game/garagePedestalPreloader.selftest.mjs',
     'src/game/armorAimOverlayAccess.selftest.mjs',

@@ -987,8 +987,8 @@ const garage = legacyPort<MainGarageRuntime>(await bootStage('ui', () => createG
 }))));
 
 // Stable read-only diagnostics plus an explicit QA switch hook. Workshop
-// verification can enumerate all ten environments and measure their one
-// retained low-poly catalog without reaching into scene internals.
+// verification can enumerate all ten environments and measure their lazily
+// built real-fleet exhibits without reaching into scene internals.
 legacyPort<Record<string, unknown>>(window).__GARAGE_WORKSHOP = {
   variants: GARAGE_VARIANTS.map(({ id, mapId, name, architecture }) => ({
     id, mapId, name, architecture,
@@ -1006,7 +1006,11 @@ legacyPort<Record<string, unknown>>(window).__GARAGE_WORKSHOP = {
       buildTimings: [...(garageDressing.group.userData.buildTimings || [])],
       mapId: garageDressing.group.userData.garageMapId || '',
       architecture: garageStage.stats?.() || garageStage.group.userData.garageArchitecture || {},
+      roofMode: garageStage.group.userData.garageRoofMode || '',
       wallLayout: garageDressing.group.userData.wallLayout || { bays: 0, overlaps: [] },
+      modelMode: garageDressing.group.userData.workshopModelMode || '',
+      exhibitCount: garageDressing.group.userData.workshopExhibitCount || 0,
+      forwardCorrectionRad: garageDressing.group.userData.workshopForwardCorrectionRad || 0,
       families: [...(garageDressing.group.userData.workshopFamilies || [])],
       sourceVehicleIds: [...(garageDressing.group.userData.workshopSourceVehicleIds || [])],
       renderer: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles },

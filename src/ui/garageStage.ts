@@ -1205,10 +1205,11 @@ export function createGarageStage(
     // Open compounds get their authored canopy/skyline instead of the common
     // flat roof. Perimeter walls remain as the safe distant scene boundary so
     // workshop fixtures never float against the renderer clear color.
-    const openRoof = new Set(['field_shed', 'shade_depot', 'rain_canopy', 'recovery_yard']);
+    const openRoof = new Set(['shade_depot', 'rain_canopy', 'recovery_yard']);
     ceiling.visible = !openRoof.has(variant.architecture);
     for (const truss of roofTrusses) truss.visible = ceiling.visible;
     for (const wall of baseWalls) wall.visible = true;
+    group.userData.garageRoofMode = ceiling.visible ? 'enclosed-original' : 'open-canopy';
     group.userData.garageArchitecture = architectureStats;
     return variant.id;
   };

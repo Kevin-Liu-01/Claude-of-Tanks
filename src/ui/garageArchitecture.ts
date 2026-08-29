@@ -115,11 +115,6 @@ export function createGarageArchitectureController(
       case 'field_shed':
         southPortal(root, 'field', material.frame, 8.8, 0.30);
         frameLine(root, 'field_shed', [-19, -10, 0, 10, 19], -20.8, 7.4);
-        for (const x of [-19, -10, 0, 10, 19]) {
-          put(root, 'field_roof_pitch_l', material.frame, x, 8.45, -17.8, 0.22, 0.22, 6.6, -0.48);
-          put(root, 'field_roof_pitch_r', material.frame, x, 8.45, -23.8, 0.22, 0.22, 6.6, 0.48);
-        }
-        put(root, 'field_canvas_awning', material.canopy, -10.5, 7.75, -17.0, 18, 0.10, 7.0, -0.18);
         for (const x of [-20.6, -14.1, 14.9, 20.6]) put(root, 'field_portal_brace', material.accent,
           x + (x < 0 ? 1.5 : -1.5), 6.8, 21.25, 0.20, 0.20, 4.2, 0, 0, x < 0 ? -0.72 : 0.72);
         break;

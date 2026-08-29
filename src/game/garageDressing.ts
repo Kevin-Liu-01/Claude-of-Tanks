@@ -1,17 +1,17 @@
 // src/game/garageDressing.ts — WORKSHOP SET DRESSING for the garage hangar
 // (garage-scene r1). The bay read as a clean showroom: podium + a handful of
 // crates. This module turns it into a WORKING tank workshop — benches with
-// tools, pegboards, shell racks, low-poly gun/road-wheel/track assemblies,
+// tools, pegboards, shell racks, real fleet tanks and their turret/gun rigs,
 // turret and hull teardown states, armor racks, oil drums, jerrycans, welding cart with a faint
 // arc glow, cable reels, an engine hoist with a hanging engine block, a big
 // wall fan, extra hanging work lamps, two partial tanks and a recovered wreck.
 //
 // Contract with the rest of the game:
-//  - 100% procedural (canvas textures + a dedicated low-poly workshop kit) —
-//    no downloads, GLB jobs, fleet builders or playable tank scene graphs
-//    via the helpers exported from ui/garageStage.ts.
+//  - FLEET-EXACT EXHIBITS: Abrams, T-90M and Leclerc displays use the same
+//    first-party createTank builders as the playable fleet. The module remains
+//    lazy and only ensures those three families after the garage becomes quiet.
 //  - BUILDS IN CHUNKS: first paint pumps only the static workshop shell, then
-//    streams low-poly assembly/component displays during garage-idle windows.
+//    streams one real vehicle/component display per garage-idle window.
 //    Deterministic captures still call ensureBuilt(). This keeps the complete
 //    authored workshop without putting any background tank build on boot/switch.
 //  - PEDESTAL READABILITY IS SACRED: everything sits outside the painted
@@ -39,13 +39,27 @@ import { auditGarageWallBays, garageWallTransform } from './garageWallLayout.ts'
 
 export interface GarageDressingEngineContext {
   readonly anisotropy?: number;
+  readonly renderer?: THREE.WebGLRenderer;
+  readonly scene?: THREE.Scene;
+  readonly camera?: THREE.Camera;
   setupShadowMaterial?(material: THREE.Material): void;
+}
+
+export interface GarageWorkshopVisual {
+  readonly root: THREE.Group;
+  resetForGaragePresentation?(): void;
+  dispose(): void;
+}
+
+export interface GarageWorkshopFleet {
+  createVisual(specId: string): GarageWorkshopVisual;
 }
 
 export interface GarageDressingExisting {
   readonly group?: THREE.Group;
   readonly bayFill?: THREE.PointLight;
   readonly variantId?: string;
+  readonly workshopFleet?: GarageWorkshopFleet;
 }
 
 export interface GarageDressingRuntime {
@@ -59,6 +73,26 @@ export interface GarageDressingRuntime {
 
 type Scale3 = number | [number, number, number];
 type TrackedResource = { dispose(): void };
+
+const WORKSHOP_FLEET_IDS = Object.freeze(['m1a2', 't90m', 'leclerc'] as const);
+
+/** Load only the three real fleet families used by the optional workshop. */
+export async function prepareGarageDressing(
+  engineCtx: GarageDressingEngineContext,
+): Promise<GarageWorkshopFleet> {
+  const { createTank, ensureTankBuilders } = await import('../vehicles/fleetFactory.ts');
+  await ensureTankBuilders(WORKSHOP_FLEET_IDS);
+  return {
+    createVisual(specId: string) {
+      return createTank(specId, engineCtx, {
+        camoSeed: 4200,
+        quality: 'ai',
+        geometryQuality: 'high',
+        staticPreview: true,
+      });
+    },
+  };
+}
 
 /**
  * Build the (initially empty) workshop dressing rig.
@@ -77,7 +111,8 @@ export function createGarageDressing(
   group.name = 'garage_dressing';
   group.userData.perfOwner = 'garage/workshop';
   group.position.copy(pos);
-  group.userData.workshopPartSource = 'garage-low-poly-library';
+  group.userData.workshopPartSource = 'playable-fleet-factory';
+  group.userData.workshopModelMode = 'actual-fleet';
   group.userData.wallLayout = auditGarageWallBays();
 
   // Establish the dressing's final light set before the boot warm renders the
@@ -104,6 +139,9 @@ export function createGarageDressing(
   const signTextures: THREE.Texture[] = [];
   const partLibrary = createWorkshopPartLibrary(engineCtx);
   const variantAssemblies: THREE.Group[] = [];
+  const workshopVisuals: GarageWorkshopVisual[] = [];
+  const workshopVisualById = new Map<string, GarageWorkshopVisual>();
+  const workshopFleet = existing.workshopFleet;
   let currentVariant = getGarageVariant(existing.variantId);
   group.userData.garageVariantId = currentVariant.id;
   group.userData.garageMapId = currentVariant.mapId;
@@ -486,12 +524,16 @@ export function createGarageDressing(
     const driftX = Math.sin((layout + logicalSlot) * 1.7) * 0.8;
     const driftZ = Math.cos((layout * 1.3) + logicalSlot) * 0.7;
     root.position.set((mirrored ? -x0 : x0) + driftX, 0, z0 + driftZ);
-    root.rotation.y = (mirrored ? -yaw0 : yaw0) + (layout % 3 - 1) * 0.08;
+    const bayYaw = (mirrored ? -yaw0 : yaw0) + (layout % 3 - 1) * 0.08;
+    // The original proxy tanks were aligned to the bay but pointed out of it.
+    // Preserve the painted-bay axis and turn complete vehicles toward the
+    // service end; turret cradles and support racks retain their authored yaw.
+    root.rotation.y = bayYaw + (root.userData.completeFleetTank ? Math.PI : 0);
     root.userData.garageVariantId = currentVariant.id;
     root.userData.logicalSlot = logicalSlot;
   }
 
-  function addAssembly(
+  function addSupportAssembly(
     kind: WorkshopPartKind,
     logicalSlot: number,
     scale = 1,
@@ -502,6 +544,60 @@ export function createGarageDressing(
     group.add(root);
     variantAssemblies.push(root);
     return root;
+  }
+
+  function addFleetExhibit(
+    specId: 'm1a2' | 't90m' | 'leclerc',
+    family: 'abrams' | 't90' | 'leclerc',
+    component: 'complete_vehicle' | 'turret_and_gun',
+    logicalSlot: number,
+    scale: number,
+  ): THREE.Group {
+    if (!workshopFleet) throw new Error('garage workshop fleet was not prepared');
+    const exhibit = new THREE.Group();
+    exhibit.name = `dressing_tank_${specId}_${component}`;
+    exhibit.userData.workshopPart = true;
+    exhibit.userData.workshopLod = 'playable-fleet-exact';
+    exhibit.userData.family = family;
+    exhibit.userData.sourceVehicleId = specId;
+    exhibit.userData.component = component;
+    exhibit.userData.completeFleetTank = component === 'complete_vehicle';
+    let visualRoot: THREE.Object3D;
+    let measuredRoot: THREE.Object3D;
+    if (component === 'complete_vehicle') {
+      const visual = workshopFleet.createVisual(specId);
+      visual.resetForGaragePresentation?.();
+      visual.root.scale.setScalar(scale);
+      workshopVisuals.push(visual);
+      workshopVisualById.set(specId, visual);
+      visualRoot = visual.root;
+      measuredRoot = visual.root;
+    } else {
+      const source = workshopVisualById.get(specId);
+      const sourceTurret = source?.root.getObjectByName('rig_turret');
+      if (!sourceTurret) throw new Error(`${specId} is missing its prepared turret rig`);
+      // Exact clone, shared geometry/materials: no substitute mesh and no
+      // second createTank/material allocation for the service-bay display.
+      visualRoot = sourceTurret.clone(true);
+      visualRoot.scale.setScalar(scale);
+      measuredRoot = visualRoot;
+    }
+    exhibit.add(visualRoot);
+
+    exhibit.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(measuredRoot, true);
+    const center = bounds.getCenter(new THREE.Vector3());
+    const seatY = component === 'turret_and_gun' ? 0.92 : 0.02;
+    visualRoot.position.set(-center.x, seatY - bounds.min.y, -center.z);
+
+    poseAssembly(exhibit, logicalSlot);
+    group.add(exhibit);
+    exhibit.updateMatrixWorld(true);
+    if (engineCtx.renderer && engineCtx.camera && engineCtx.scene) {
+      engineCtx.renderer.compile(exhibit, engineCtx.camera, engineCtx.scene);
+    }
+    variantAssemblies.push(exhibit);
+    return exhibit;
   }
 
   function updateMapBackdrop(): void {
@@ -824,47 +920,62 @@ export function createGarageDressing(
   });
 
   // ==========================================================================
-  // CHUNK 2 — recognizable Abrams final assembly + Leclerc power pack.
-  // workshop duplicates, not playable vehicle builds.
+  // CHUNK 2 — real playable-fleet Abrams final assembly + power pack.
   // ==========================================================================
   chunks.push(function buildBayA() {
-    addAssembly('abrams_assembly', 0, 0.82);
-    addAssembly('powerpack', 1, 1.0);
+    addFleetExhibit('m1a2', 'abrams', 'complete_vehicle', 0, 0.82);
+    addSupportAssembly('powerpack', 1, 1.0);
     wallSignAt('ABRAMS LINE', 'north_final');
   });
 
   // ==========================================================================
-  // CHUNK 3 — recognizable T-90M assembly + three-family gun bench.
+  // CHUNK 3 — real playable-fleet T-90M assembly + gun bench.
   // ==========================================================================
   chunks.push(function buildBayB() {
-    addAssembly('t90_assembly', 2, 0.86);
-    addAssembly('weapon_rack', 3, 0.95);
+    addFleetExhibit('t90m', 't90', 'complete_vehicle', 2, 0.86);
+    addSupportAssembly('weapon_rack', 3, 0.95);
     wallSignAt('T-90M LINE', 'south_suspension');
   });
 
   // ==========================================================================
-  // CHUNK 4 — recognizable Leclerc assembly + reactive-armor rack.
+  // CHUNK 4 — real playable-fleet Leclerc assembly + reactive-armor rack.
   // ==========================================================================
   chunks.push(function buildLeclercBay() {
-    addAssembly('leclerc_assembly', 4, 0.84);
-    addAssembly('armor_rack', 5, 0.92);
+    addFleetExhibit('leclerc', 'leclerc', 'complete_vehicle', 4, 0.84);
+    addSupportAssembly('armor_rack', 5, 0.92);
     wallSignAt('LECLERC / ARMOR', 'south_turret_armor');
   });
 
   // ==========================================================================
-  // CHUNK 5 — distinct Abrams, T-90M and Leclerc turret/gun service cradles.
+  // CHUNKS 5-7 — real turret/gun rigs, one build + compile per quiet slice.
   // ==========================================================================
-  chunks.push(function buildTurretService() {
-    addAssembly('abrams_turret_cradle', 6, 0.82);
-    addAssembly('t90_turret_cradle', 7, 0.88);
-    addAssembly('leclerc_turret_cradle', 8, 0.84);
+  chunks.push(function buildAbramsTurretService() {
+    addFleetExhibit('m1a2', 'abrams', 'turret_and_gun', 6, 0.82);
+  });
+  chunks.push(function buildT90TurretService() {
+    addFleetExhibit('t90m', 't90', 'turret_and_gun', 7, 0.88);
+  });
+  chunks.push(function buildLeclercTurretService() {
+    addFleetExhibit('leclerc', 'leclerc', 'turret_and_gun', 8, 0.84);
     group.userData.workshopTriangleCount = variantAssemblies.reduce(
       (sum, root) => sum + countWorkshopTriangles(root), 0,
     );
-    group.userData.workshopFamilies = [...new Set(variantAssemblies
-      .map((root) => root.userData.family).filter((family) => family && family !== 'support'))];
-    group.userData.workshopSourceVehicleIds = [...new Set(variantAssemblies
-      .map((root) => root.userData.sourceVehicleId).filter(Boolean))];
+    let exhibitCount = 0;
+    const families = new Set<string>();
+    const sourceVehicleIds = new Set<string>();
+    for (const root of variantAssemblies) {
+      const family = root.userData.family;
+      if (typeof family === 'string' && family !== 'support') {
+        exhibitCount++;
+        families.add(family);
+      }
+      const sourceVehicleId = root.userData.sourceVehicleId;
+      if (typeof sourceVehicleId === 'string') sourceVehicleIds.add(sourceVehicleId);
+    }
+    group.userData.workshopExhibitCount = exhibitCount;
+    group.userData.workshopForwardCorrectionRad = Math.PI;
+    group.userData.workshopFamilies = [...families];
+    group.userData.workshopSourceVehicleIds = [...sourceVehicleIds];
     wallSignAt('TURRET SERVICE', 'north_teardown');
   });
 
@@ -912,6 +1023,8 @@ export function createGarageDressing(
       backdropGeneration++;
       mapBackdropTexture?.dispose();
       mapBackdropTexture = null;
+      for (const visual of workshopVisuals) visual.dispose();
+      workshopVisuals.length = 0;
       for (const o of group.userData.optimizationDisposables || []) o.dispose?.();
       group.userData.optimizationDisposables = [];
       for (const o of disposables) if (o && o.dispose) o.dispose();
