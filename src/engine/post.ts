@@ -1538,7 +1538,7 @@ class LateFxPass extends Pass {
   /**
    * Bind the demand-loaded combat FX state after the post stack already
    * exists. Garage boot deliberately constructs this pass before importing
-   * effects.js, so constructor-time scene discovery alone cannot be the
+   * effects.ts, so constructor-time scene discovery alone cannot be the
    * ownership seam.
    */
   setSoftState(softState: LateFxSoftState | null): void {

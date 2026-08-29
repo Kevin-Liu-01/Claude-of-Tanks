@@ -47,13 +47,13 @@ const networkBattlePresentation = await readFile(
   new URL('../net/networkBattlePresentationRuntime.ts', import.meta.url), 'utf8',
 );
 
-if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main)) {
+if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.ts['"]/.test(main)) {
   throw new Error('combat effects must not return to the garage boot graph');
 }
-if (!main.includes("import('./fx/effects.js')")) {
+if (!main.includes("import('./fx/effects.ts')")) {
   throw new Error('combat effects must retain an explicit demand-loaded chunk');
 }
-if (!/createFxRuntimeAccess(?:<[^>]+>)?\(\{[\s\S]{0,260}loadModule:\s*async\s*\(\)\s*=>[\s\S]{0,80}import\(['"]\.\/fx\/effects\.js['"]\)/.test(main)
+if (!/createFxRuntimeAccess(?:<[^>]+>)?\(\{[\s\S]{0,260}loadModule:\s*async\s*\(\)\s*=>[\s\S]{0,80}import\(['"]\.\/fx\/effects\.ts['"]\)/.test(main)
     || !/const preloadFxModule = fxRuntimeAccess\.preloadModule/.test(main)
     || !/const ensureFxRuntime = fxRuntimeAccess\.ensureRuntime/.test(main)) {
   throw new Error('the composition root must delegate FX import and construction ownership');

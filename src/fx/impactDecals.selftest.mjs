@@ -12,7 +12,7 @@ if (IMPACT_DECAL_LIFT_M !== SURFACE_MARKING_STYLE.surfaceLiftM) {
 }
 
 // The lazy FX runtime subscribes after the always-live typed combat-feedback
-// owner. Impact decals therefore need one event owner: effects.js. If the
+// owner. Impact decals therefore need one event owner: effects.ts. If the
 // feedback listener also calls the legacy direct API, every penetration gets
 // one hull-local mark followed by a second authoritative articulation-local
 // mark from the same shell:hit dispatch.
@@ -29,9 +29,9 @@ if (shellHitListener.includes('.armorScar(')) {
   throw new Error('battle shell:hit must not stamp a second legacy impact decal');
 }
 
-const effectsSource = await readFile(new URL('./effects.js', import.meta.url), 'utf8');
+const effectsSource = await readFile(new URL('./effects.ts', import.meta.url), 'utf8');
 if (!/bus\.on\('shell:hit',[\s\S]{0,1800}impactDecals\.stampFromEvent\(e, ent\)/.test(effectsSource)) {
-  throw new Error('authoritative shell:hit impact-decal ownership left effects.js');
+  throw new Error('authoritative shell:hit impact-decal ownership left effects.ts');
 }
 
 console.log('impactDecals.selftest: one authoritative decal owner per shell hit passed');

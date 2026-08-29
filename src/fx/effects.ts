@@ -1,5 +1,5 @@
 /**
- * effects.js — combat VFX orchestration (public Fx API, ARCHITECTURE §3.8.2).
+ * effects.ts — combat VFX orchestration (public Fx API, ARCHITECTURE §3.8.2).
  *
  * Muzzle flash (light + additive cards + smoke ring), per-type shell tracers,
  * impact effects by HitEvent.kind (spark fans, ricochet streaks, HE dirt
@@ -22,6 +22,341 @@ import { isEraActivation } from '../game/eraActivation.ts';
 // props (fences, carts, barrels, bales...) break under fire without the sim
 // layer knowing about them (see src/world/destructibles.ts).
 import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../world/destructibles.ts';
+
+type Rng = () => number;
+type MutableVec3 = [number, number, number];
+type WireVec3 = readonly [number, number, number];
+type ShellId = string | number;
+type TracerType = 'ATGM' | 'AP' | 'APCR' | 'HEAT' | 'HE' | 'HESH' | 'APFSDS';
+type DestructionCause = 'ammorack' | 'shot' | 'fire';
+
+interface FxEngineContext {
+  camera?: THREE.Camera;
+  anisotropy?: number;
+  scene?: THREE.Scene;
+}
+
+interface FxHeightField {
+  getHeightAt?(x: number, z: number): number;
+  getWaterMaskAt?(x: number, z: number): number;
+  getGroundType?(x: number, z: number): string;
+}
+
+interface FxOptions {
+  seed?: number;
+}
+
+interface PuffScratch {
+  pos: MutableVec3;
+  vel: MutableVec3;
+  life: number;
+  size0: number;
+  size1: number;
+  rot: number;
+  rotVel: number;
+  col0: MutableVec3;
+  col1: MutableVec3;
+  alpha: number;
+  grav: number;
+  birthOffset: number;
+}
+
+interface StreakScratch {
+  pos: MutableVec3;
+  vel: MutableVec3;
+  life: number;
+  width: number;
+  stretch: number;
+  grav: number;
+  col: MutableVec3;
+  alpha: number;
+  seed: number;
+  birthOffset: number;
+}
+
+interface DebrisScratch {
+  pos: MutableVec3;
+  vel: MutableVec3;
+  life: number;
+  axis: MutableVec3;
+  spin: number;
+  scale: number;
+  groundY: number;
+  hot: boolean | number;
+  seed: number;
+  birthOffset: number;
+}
+
+interface JetScratch {
+  pos: MutableVec3;
+  axis: MutableVec3;
+  life: number;
+  width: number;
+  len0: number;
+  len1: number;
+  seed: number;
+  col: MutableVec3;
+  alpha: number;
+  birthOffset: number;
+}
+
+interface FxVisual {
+  root: THREE.Object3D;
+  setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
+}
+
+interface FxEntity {
+  visual: FxVisual;
+  state: {
+    pos?: THREE.Vector3;
+    yaw?: number;
+  };
+}
+
+interface FxDebugSurface {
+  game?: {
+    tankById?: Map<ShellId, FxEntity>;
+  };
+}
+
+interface FxEventBus {
+  on<EventName extends keyof FxEventMap>(
+    event: EventName,
+    listener: (payload: FxEventMap[EventName]) => void,
+  ): unknown;
+}
+
+interface LightState {
+  light: THREE.PointLight;
+  bornAt: number;
+  dur: number;
+  peak: number;
+  pow: number;
+}
+
+interface ShockRingState {
+  mesh: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
+  mat: THREE.MeshBasicMaterial;
+  bornAt: number;
+  scaleK?: number;
+  alphaK?: number;
+}
+
+interface MuzzleRingState {
+  mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
+  mat: THREE.MeshBasicMaterial;
+  bornAt: number;
+  att: number;
+  dir: THREE.Vector3;
+  origin: THREE.Vector3;
+}
+
+interface GuidedTrail {
+  points: Float32Array;
+  count: number;
+  age: number;
+  seen: boolean;
+}
+
+interface TracerTrail {
+  d: Float32Array;
+  age: number;
+  seen: boolean;
+}
+
+interface FxTimer {
+  t: number;
+  fn: () => void;
+}
+
+interface SmokeColumn {
+  key: string | null;
+  pos: MutableVec3;
+  localPos?: number[];
+  anchorSpace?: object;
+  anchorMode?: 'visual-root' | 'state-yaw';
+  attachmentResolved?: boolean;
+  acc: number;
+  ttl: number;
+  smolder?: number;
+  scale: number;
+}
+
+interface LiveShell {
+  id: ShellId;
+  pos: THREE.Vector3;
+  prevPos?: THREE.Vector3;
+  vel: THREE.Vector3;
+  dead?: boolean;
+  distM?: number;
+  isPlayer?: boolean;
+  spec?: {
+    guided?: boolean;
+    tracer?: TracerType;
+  };
+}
+
+interface TracerGeometry extends THREE.InstancedBufferGeometry {
+  _lastCount?: number;
+}
+
+interface FiringMoment {
+  muzzlePos: THREE.Vector3;
+  dir: THREE.Vector3;
+  caliberMm: number;
+  tracerType: Exclude<TracerType, 'ATGM'>;
+  ageS: number;
+}
+
+interface ExplosionMoment {
+  pos: THREE.Vector3;
+  ageS: number;
+}
+
+interface ShellFiredEvent {
+  muzzlePos: WireVec3;
+  dir: WireVec3;
+  caliberMm: number;
+  shellType: string;
+  shellId: ShellId;
+}
+
+interface ShellHitEvent {
+  pos: WireVec3;
+  normal: WireVec3;
+  caliberMm: number;
+  kind: string;
+  targetId?: string;
+  shellId?: ShellId;
+  eraPlate?: string | null;
+  zone?: string;
+  modulesHit?: readonly unknown[];
+  crewHit?: readonly unknown[];
+  ammoRacked?: boolean;
+  fireStarted?: boolean;
+  impactFrame?: 'hull' | 'turret' | 'gun' | 'barrel';
+  impactLocalPos?: WireVec3;
+  impactLocalNormal?: WireVec3;
+  impactLocalDir?: WireVec3;
+  localPos?: WireVec3;
+  localDir?: WireVec3;
+}
+
+interface ShellExpiredEvent {
+  shellId: ShellId;
+  pos: WireVec3;
+  normal?: WireVec3;
+  hitKind?: string;
+  hitTerrain?: boolean;
+  caliberMm?: number;
+}
+
+interface TankDestroyedEvent {
+  id: string;
+  pos: WireVec3;
+  cause?: DestructionCause;
+}
+
+interface ModuleStateEvent {
+  id: string;
+  module: string;
+  state: string;
+}
+
+interface TankFireEvent {
+  id: string;
+  burning: boolean;
+}
+
+interface FxEventMap {
+  'shell:fired': ShellFiredEvent;
+  'shell:hit': ShellHitEvent;
+  'shell:expired': ShellExpiredEvent;
+  'tank:destroyed': TankDestroyedEvent;
+  'module:state': ModuleStateEvent;
+  'tank:fire': TankFireEvent;
+}
+
+export interface FxRuntime {
+  readonly group: THREE.Group;
+  setReplaySuppressed(suppressed: boolean): void;
+  getReplaySuppressionDebug(): object;
+  getGuidedMissileDebug(): object;
+  getAttachmentDebug(): object;
+  warmTextures(): void;
+  preloadTextures(): Promise<unknown>;
+  warmTexturesChunked(yieldFrame: () => Promise<void>): Promise<void>;
+  warmOpeningEffects(
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    normal: THREE.Vector3,
+    caliberMm?: number,
+  ): void;
+  update(
+    dt: number,
+    shells: LiveShell[],
+    camera: THREE.Camera,
+    resolveSubject?: ((id: string) => FxEntity | null) | null,
+  ): void;
+  bindBus(bus: FxEventBus): void;
+  muzzleFlash(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number): void;
+  vehicleCollision(
+    pos: THREE.Vector3,
+    normal: THREE.Vector3,
+    closingMps?: number,
+  ): void;
+  impact(kind: string, pos: THREE.Vector3, normal: THREE.Vector3, caliberMm: number): void;
+  armorScar(
+    visual: FxVisual,
+    pos: THREE.Vector3,
+    normal: THREE.Vector3,
+    caliberMm: number,
+  ): void;
+  impactDecalStats(): object;
+  clearVehicleDecals(visual: FxVisual): void;
+  destruction(
+    pos: THREE.Vector3,
+    visual: FxVisual | null,
+    cause?: DestructionCause,
+  ): void;
+  dust(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number): void;
+  exhaust(pos: THREE.Vector3, intensity: number, sooty?: boolean): void;
+  loosePropHit(pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
+  propCrush(pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
+  propBreak(kind: string, pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
+  setFrozen(frozen: boolean, atTimeS?: number | null): void;
+  resetSeed(seed: number): void;
+  resetAll(): void;
+  composeFiringMoment(moment: FiringMoment): void;
+  composeExplosionMoment(moment: ExplosionMoment): void;
+}
+
+declare global {
+  interface Window {
+    __DEBUG?: FxDebugSurface;
+    __FX_SKIP_DESTRUCTION?: boolean;
+  }
+}
+
+function context2d(
+  canvas: HTMLCanvasElement,
+  options?: CanvasRenderingContext2DSettings,
+): CanvasRenderingContext2D {
+  const context = canvas.getContext('2d', options);
+  if (!context) throw new Error('fx/effects: Canvas2D context unavailable');
+  return context;
+}
+
+function bufferAttribute(
+  geometry: THREE.BufferGeometry,
+  name: string,
+): THREE.BufferAttribute {
+  const value = geometry.getAttribute(name);
+  if (!(value instanceof THREE.BufferAttribute)) {
+    throw new Error(`fx/effects: ${name} is not a BufferAttribute`);
+  }
+  return value;
+}
 
 // ---------------------------------------------------------------------------
 // Tracer presets (shells-ballistics §10 — colors/widths verbatim)
@@ -265,14 +600,14 @@ const _UP = new THREE.Vector3(0, 1, 0);  // read-only
 const _c0 = new THREE.Color();
 
 /** Build an orthonormal basis (outU, outV) perpendicular to unit dir. */
-function basisFrom(dir, outU, outV) {
+function basisFrom(dir: THREE.Vector3, outU: THREE.Vector3, outV: THREE.Vector3): void {
   if (Math.abs(dir.y) < 0.94) outU.set(0, 1, 0);
   else outU.set(1, 0, 0);
   outU.crossVectors(outU, dir).normalize();
   outV.crossVectors(dir, outU).normalize();
 }
 
-function col3(hex, out) {
+function col3(hex: number, out: MutableVec3): MutableVec3 {
   _c0.setHex(hex);
   out[0] = _c0.r; out[1] = _c0.g; out[2] = _c0.b;
   return out;
@@ -284,11 +619,11 @@ function col3(hex, out) {
  * @param {() => number} rng
  * @returns {THREE.CanvasTexture}
  */
-function makeScorchTexture(rng) {
+function makeScorchTexture(rng: Rng): THREE.CanvasTexture {
   const s = 256;
   const cv = document.createElement('canvas');
   cv.width = cv.height = s;
-  const ctx = cv.getContext('2d');
+  const ctx = context2d(cv);
   ctx.clearRect(0, 0, s, s);
   const c = s / 2;
   const g = ctx.createRadialGradient(c, c, 0, c, c, c);
@@ -343,11 +678,11 @@ function makeScorchTexture(rng) {
  * @param {() => number} rng
  * @returns {THREE.CanvasTexture}
  */
-function makeShockRingTexture(rng) {
+function makeShockRingTexture(rng: Rng): THREE.CanvasTexture {
   const s = 256;
   const cv = document.createElement('canvas');
   cv.width = cv.height = s;
-  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  const ctx = context2d(cv, { willReadFrequently: true });
   ctx.clearRect(0, 0, s, s);
   const c = s / 2;
   // soft band: wide feathered shoulders on BOTH edges (the r5 hard inner
@@ -397,10 +732,10 @@ function makeShockRingTexture(rng) {
 }
 
 // Preallocated emit-option scratch objects (mutated per emit call)
-const _puffO = { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, size0: 1, size1: 2, rot: 0, rotVel: 0, col0: [0, 0, 0], col1: [0, 0, 0], alpha: 1, grav: 0, birthOffset: 0 };
-const _strkO = { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, width: 0.03, stretch: 0.02, grav: -21.6, col: [0, 0, 0], alpha: 1, seed: 0, birthOffset: 0 };
-const _debO = { pos: [0, 0, 0], vel: [0, 0, 0], life: 4, axis: [0, 1, 0], spin: 5, scale: 0.2, groundY: 0, hot: false, seed: 0, birthOffset: 0 };
-const _jetO = { pos: [0, 0, 0], axis: [0, 0, 1], life: 0.1, width: 0.4, len0: 0.4, len1: 2.5, seed: 0, col: [0, 0, 0], alpha: 1, birthOffset: 0 };
+const _puffO: PuffScratch = { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, size0: 1, size1: 2, rot: 0, rotVel: 0, col0: [0, 0, 0], col1: [0, 0, 0], alpha: 1, grav: 0, birthOffset: 0 };
+const _strkO: StreakScratch = { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, width: 0.03, stretch: 0.02, grav: -21.6, col: [0, 0, 0], alpha: 1, seed: 0, birthOffset: 0 };
+const _debO: DebrisScratch = { pos: [0, 0, 0], vel: [0, 0, 0], life: 4, axis: [0, 1, 0], spin: 5, scale: 0.2, groundY: 0, hot: false, seed: 0, birthOffset: 0 };
+const _jetO: JetScratch = { pos: [0, 0, 0], axis: [0, 0, 1], life: 0.1, width: 0.4, len0: 0.4, len1: 2.5, seed: 0, col: [0, 0, 0], alpha: 1, birthOffset: 0 };
 
 // ---------------------------------------------------------------------------
 // Factory
@@ -413,7 +748,11 @@ const _jetO = { pos: [0, 0, 0], axis: [0, 0, 1], life: 0.1, width: 0.4, len0: 0.
  * @param {{ seed?: number }} [opts] fx seed (default 5000 per §1.4)
  * @returns {object} Fx per ARCHITECTURE §3.8.2
  */
-export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
+export function createFx(
+  engineCtx: FxEngineContext,
+  heightField: FxHeightField,
+  { seed = 5000 }: FxOptions = {},
+): FxRuntime {
   const particles = createParticleSystem(engineCtx, { seed });
   // r5: tank-visual animation timelines (recoil, turret pop, char, embers)
   // age against THIS clock — see src/fx/clock.ts. Live play is unchanged
@@ -481,18 +820,18 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   // the old self-timer never decayed across frozen stepped captures, so
   // every destroy_* frame past 0 s still carried the FULL 430-peak orange
   // blast light parked over the wreck (THE "uniform terracotta deck").
-  const lightStates = [
+  const lightStates: LightState[] = [
     { light: muzzleLight, bornAt: -1e9, dur: MUZZLE_LIGHT_S, peak: MUZZLE_LIGHT_PEAK, pow: 2 },
     // pow 2.6 (was 1.15): front-loaded blast punch that visibly collapses —
     // the r5 near-linear decay was the "static painted stain" (r6 major)
     { light: explosionLight, bornAt: -1e9, dur: EXPLOSION_LIGHT_S, peak: EXPLOSION_LIGHT_PEAK, pow: 2.6 },
   ];
 
-  function lightAge(state) {
+  function lightAge(state: LightState): number {
     return particles.getTime() - state.bornAt;
   }
 
-  function applyLight(state) {
+  function applyLight(state: LightState): void {
     if (replaySuppressed) {
       state.light.intensity = 0;
       return;
@@ -516,7 +855,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     state.light.intensity = v;
   }
 
-  function flashLight(state, pos, peak, ageS = 0) {
+  function flashLight(
+    state: LightState,
+    pos: THREE.Vector3,
+    peak: number,
+    ageS = 0,
+  ): void {
     state.light.position.copy(pos);
     state.bornAt = particles.getTime() - ageS;
     state.peak = peak;
@@ -524,7 +868,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   }
 
   // --- tracer instanced mesh -------------------------------------------------
-  const tracerGeo = new THREE.InstancedBufferGeometry();
+  const tracerGeo: TracerGeometry = new THREE.InstancedBufferGeometry();
   tracerGeo.setAttribute('position', new THREE.Float32BufferAttribute(
     [-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0], 3));
   tracerGeo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
@@ -595,17 +939,17 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   // bornAtS (r5): stepped-frozen-clock captures used to show the composed
   // bolt persisting unfaded for 2.5 s+ — statics now age against the shared
   // particle clock like everything else (full bright ≤0.3 s, gone by 0.9 s).
-  const staticTracers = [];
+  const staticTracers: number[][] = [];
   // Afterglow trails: shellId -> { d: Float32Array(14), age, seen }
-  const trails = new Map();
+  const trails = new Map<ShellId, TracerTrail>();
   // Guided flight paths retain multiple sampled positions so steering reads
   // as a curved yellow trace. Each record owns one fixed buffer; the hot
   // render loop only shifts and rewrites it.
-  const guidedTrails = new Map();
-  const _trailCore = [0, 0, 0];
-  const _trailGlow = [0, 0, 0];
-  const _atgmCore = [1, 0.64, 0.015];
-  const _atgmGlow = [1, 0.36, 0];
+  const guidedTrails = new Map<ShellId, GuidedTrail>();
+  const _trailCore: MutableVec3 = [0, 0, 0];
+  const _trailGlow: MutableVec3 = [0, 0, 0];
+  const _atgmCore: MutableVec3 = [1, 0.64, 0.015];
+  const _atgmGlow: MutableVec3 = [1, 0.36, 0];
   const _atgmObject = new THREE.Object3D();
   const _atgmFlareObject = new THREE.Object3D();
   let renderedAtgmBodies = 0;
@@ -641,7 +985,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         uvs.push(Math.cos(a) * rad * 0.5 + 0.5, Math.sin(a) * rad * 0.5 + 0.5);
       }
     }
-    const ringStart = (r) => 1 + (r - 1) * SCORCH_SEG;
+    const ringStart = (r: number) => 1 + (r - 1) * SCORCH_SEG;
     for (let s = 0; s < SCORCH_SEG; s++) idx.push(0, ringStart(1) + s, ringStart(1) + (s + 1) % SCORCH_SEG);
     for (let r = 1; r < SCORCH_RINGS; r++) {
       const a0 = ringStart(r), b0 = ringStart(r + 1);
@@ -657,12 +1001,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     return g;
   }
   const scorchTemplate = makeScorchDiscGeo();
-  const scorchTemplatePos = scorchTemplate.getAttribute('position').array;
-  const scorchMeshes = [];
+  const scorchTemplatePos = bufferAttribute(scorchTemplate, 'position').array;
+  const scorchMeshes: Array<THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>> = [];
   let scorchCursor = 0;
   for (let i = 0; i < MAX_SCORCH; i++) {
     const g = scorchTemplate.clone();
-    g.getAttribute('position').setUsage(THREE.DynamicDrawUsage);
+    bufferAttribute(g, 'position').setUsage(THREE.DynamicDrawUsage);
     const m = new THREE.Mesh(g, scorchMat);
     m.visible = false;
     m.frustumCulled = false; // vertices are written in world space
@@ -673,10 +1017,10 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   }
 
   /** Stamp a charred-ground decal at (x, z), draped over the terrain. */
-  function spawnScorch(x, z, radius) {
+  function spawnScorch(x: number, z: number, radius: number): void {
     const m = scorchMeshes[scorchCursor];
     scorchCursor = (scorchCursor + 1) % MAX_SCORCH;
-    const attr = m.geometry.getAttribute('position');
+    const attr = bufferAttribute(m.geometry, 'position');
     const arr = attr.array;
     const yaw = rng() * Math.PI * 2;
     const cy = Math.cos(yaw), sy = Math.sin(yaw);
@@ -699,7 +1043,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   const shockTex = makeShockRingTexture(mulberry32((seed ^ 0x3c6ef3) >>> 0));
   const shockGeo = new THREE.CircleGeometry(1, 48);
   shockGeo.rotateX(-Math.PI / 2); // face up
-  const shockRings = [];
+  const shockRings: ShockRingState[] = [];
   for (let i = 0; i < 2; i++) {
     const mat = new THREE.MeshBasicMaterial({
       map: shockTex,
@@ -717,7 +1061,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   }
   let shockCursor = 0;
 
-  function applyShockRing(r) {
+  function applyShockRing(r: ShockRingState): void {
     if (replaySuppressed) {
       r.mesh.visible = false;
       r.mat.opacity = 0;
@@ -740,7 +1084,13 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
    * (r4: the 120 mm live fire event needs a visible ground pressure wave —
    * the bore-axis "refraction ring" is hard-gated off side-on framings).
    */
-  function spawnShockRing(x, z, ageS = 0, scaleK = 1, alphaK = 1) {
+  function spawnShockRing(
+    x: number,
+    z: number,
+    ageS = 0,
+    scaleK = 1,
+    alphaK = 1,
+  ): void {
     const r = shockRings[shockCursor];
     shockCursor = (shockCursor + 1) % shockRings.length;
     r.mesh.position.set(x, groundY(x, z) + 0.35, z);
@@ -755,7 +1105,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   // the bore that expands away from the brake and fades fast.
   const MUZZLE_RING_DUR = 0.2;
   const muzzleRingGeo = new THREE.PlaneGeometry(2, 2);
-  const muzzleRings = [];
+  const muzzleRings: MuzzleRingState[] = [];
   for (let i = 0; i < 2; i++) {
     const mat = new THREE.MeshBasicMaterial({
       map: shockTex,
@@ -787,7 +1137,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   };
   const _Z = new THREE.Vector3(0, 0, 1); // read-only
 
-  function applyMuzzleRing(r) {
+  function applyMuzzleRing(r: MuzzleRingState): void {
     if (replaySuppressed) {
       r.mesh.visible = false;
       r.mat.opacity = 0;
@@ -824,7 +1174,13 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   }
 
   /** Expanding pressure ring blown out along the bore axis. */
-  function spawnMuzzleRing(pos, dir, s, ageS = 0, att = 1) {
+  function spawnMuzzleRing(
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    s: number,
+    ageS = 0,
+    att = 1,
+  ): void {
     const r = muzzleRings[muzzleRingCursor];
     muzzleRingCursor = (muzzleRingCursor + 1) % muzzleRings.length;
     r.origin.copy(pos);
@@ -855,7 +1211,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
    *  module owns no game-state reference; window.__DEBUG.game is assigned at
    *  boot before any battle can start — same window-global pattern as
    *  __FX_SKIP_DESTRUCTION). */
-  function decalEntityFor(targetId) {
+  function decalEntityFor(targetId: ShellId | null | undefined): FxEntity | null {
     if (!targetId || typeof window === 'undefined') return null;
     const dbg = window.__DEBUG;
     const g = dbg && dbg.game;
@@ -877,7 +1233,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     const s = 64, h = 128;
     const cv = document.createElement('canvas');
     cv.width = s; cv.height = h;
-    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    const ctx = context2d(cv, { willReadFrequently: true });
     ctx.clearRect(0, 0, s, h);
     // ladder of track-pad rungs with ragged edges
     for (let y = 4; y < h - 4; y += 11) {
@@ -974,7 +1330,11 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   let printCursor = 0;
 
   /** Stamp one dry print or water wake at (pos) aligned to dir. */
-  function stampTrackPrint(pos, dir, water = false) {
+  function stampTrackPrint(
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    water = false,
+  ): void {
     for (let i = 0; i < MAX_PRINTS; i++) {
       const dx = pos.x - printCenters[i * 2], dz = pos.z - printCenters[i * 2 + 1];
       if (dx * dx + dz * dz < 0.85) return; // a print already covers this spot
@@ -1013,10 +1373,23 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     printSurface.needsUpdate = true;
   }
 
-  const _coreArr = [0, 0, 0];
-  const _glowArr = [0, 0, 0];
+  const _coreArr: MutableVec3 = [0, 0, 0];
+  const _glowArr: MutableVec3 = [0, 0, 0];
 
-  function writeTracer(i, ax, ay, az, bx, by, bz, width, bright, core, glow, tint = 0) {
+  function writeTracer(
+    i: number,
+    ax: number,
+    ay: number,
+    az: number,
+    bx: number,
+    by: number,
+    bz: number,
+    width: number,
+    bright: number,
+    core: MutableVec3,
+    glow: MutableVec3,
+    tint = 0,
+  ): void {
     let j = i * 4;
     trA.array[j] = ax; trA.array[j + 1] = ay; trA.array[j + 2] = az; trA.array[j + 3] = width;
     trB.array[j] = bx; trB.array[j + 1] = by; trB.array[j + 2] = bz; trB.array[j + 3] = bright;
@@ -1026,7 +1399,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     trTint.array[i] = tint;
   }
 
-  function appendGuidedTrailPoint(trail, x, y, z) {
+  function appendGuidedTrailPoint(
+    trail: GuidedTrail,
+    x: number,
+    y: number,
+    z: number,
+  ): void {
     const points = trail.points;
     const count = trail.count;
     if (count > 0) {
@@ -1046,7 +1424,11 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     trail.count++;
   }
 
-  function writeGuidedTrail(trail, firstInstance, opacity = 1) {
+  function writeGuidedTrail(
+    trail: GuidedTrail,
+    firstInstance: number,
+    opacity = 1,
+  ): number {
     let instance = firstInstance;
     const points = trail.points;
     const denom = Math.max(1, trail.count - 1);
@@ -1067,34 +1449,34 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
 
   // --- timers, continuous emitters, event bookkeeping ------------------------
   /** @type {{t:number, fn:Function}[]} pending one-shot callbacks (sim-frozen aware) */
-  const timers = [];
+  const timers: FxTimer[] = [];
   /** @type {{key:string|null, pos:number[], localPos?:number[], anchorSpace?:object,
    * anchorMode?:string, attachmentResolved?:boolean, acc:number, ttl:number,
    * scale:number}[]} smoke-column emitters */
-  const columns = [];
+  const columns: SmokeColumn[] = [];
   /** last known world position per tank id (fed by bus events that carry pos) */
-  const lastKnownPos = new Map();
+  const lastKnownPos = new Map<string, MutableVec3>();
   // world-dressing r1: shellId -> shell type, so a world impact knows whether
   // it was HE (radius-breaks destructible props) — fed by shell:fired,
   // cleared on shell:expired (+ a hard size guard against leaks).
-  const shellKinds = new Map();
+  const shellKinds = new Map<ShellId, string>();
   // world-dressing r1: shellId -> last swept point. The sim can step a shell
   // several fixed ticks per render frame (an APFSDS covers ~28 m/tick), so
   // sweeping only prevPos->pos would leave gaps a whole haystack fits into —
   // chaining from the last swept point makes flight coverage continuous.
-  const sweepTails = new Map();
-  const _sweepSeen = new Set();
+  const sweepTails = new Map<ShellId, MutableVec3>();
+  const _sweepSeen = new Set<ShellId>();
   /** r4: clock cursor for delta-driven emitters (see update()) */
   let lastTickS = 0;
   /** r4: seconds since battle start (resetAll) — drives the exhaust
    *  cold-start belch during the opening flyby */
   let battleFreshS = 999;
 
-  function groundY(x, z) {
+  function groundY(x: number, z: number): number {
     return heightField && heightField.getHeightAt ? heightField.getHeightAt(x, z) : 0;
   }
 
-  function calScale(caliberMm) {
+  function calScale(caliberMm: number): number {
     return THREE.MathUtils.clamp(caliberMm / 100, 0.5, 1.7);
   }
 
@@ -1107,7 +1489,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
    * own muzzle right in front of the lens — WoT hides own-gun flash geometry
    * in the scope and sells the shot with light + shake instead.
    */
-  function scopedOwnGun(pos) {
+  function scopedOwnGun(pos: THREE.Vector3): boolean {
     const cam = engineCtx && engineCtx.camera;
     return !!(cam && cam.userData && cam.userData.scoped &&
       cam.position.distanceToSquared(pos) < 100);
@@ -1120,7 +1502,13 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
    *   clipping the screen edge as a blown-out sheet.
    * @returns {number} muzzle-light peak factor (bore-axis view attenuation)
    */
-  function spawnMuzzleFlash(pos, dir, caliberMm, birthOffset = 0, reach = 1) {
+  function spawnMuzzleFlash(
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    caliberMm: number,
+    birthOffset = 0,
+    reach = 1,
+  ): number {
     // Defensive copy (r5): callers may hand in shared scratch vectors; every
     // internal helper below must be free to reuse module scratch without any
     // risk of aliasing the flash's own origin/direction mid-spawn.
@@ -1686,7 +2074,11 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   }
 
   /** APFSDS sabot petals discarding just past the muzzle (shells doc §10). */
-  function spawnSabotPetals(pos, dir, birthOffset = 0) {
+  function spawnSabotPetals(
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    birthOffset = 0,
+  ): void {
     basisFrom(dir, _v1, _v2);
     for (let i = 0; i < 3; i++) {
       const a = (i / 3) * Math.PI * 2 + rng();
@@ -1711,7 +2103,19 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
    * frozen frame shows a mix of ages — long fresh leaders, short dying
    * drooping arcs — never a symmetric fan of identical lines.
    */
-  function sparkFan(pos, normal, count, speed, spread, colHex, life, width, stretch, birthOffset = 0, jitterS = 0) {
+  function sparkFan(
+    pos: THREE.Vector3,
+    normal: THREE.Vector3,
+    count: number,
+    speed: number,
+    spread: number,
+    colHex: number,
+    life: number,
+    width: number,
+    stretch: number,
+    birthOffset = 0,
+    jitterS = 0,
+  ): void {
     basisFrom(normal, _v1, _v2);
     col3(colHex, _strkO.col);
     for (let i = 0; i < count; i++) {
@@ -1736,7 +2140,16 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   }
 
   /** Drifting smoke puffs leaving an impact point along `normal`. */
-  function impactSmoke(pos, normal, count, size, colHex0, colHex1, alpha, birthOffset = 0) {
+  function impactSmoke(
+    pos: THREE.Vector3,
+    normal: THREE.Vector3,
+    count: number,
+    size: number,
+    colHex0: number,
+    colHex1: number,
+    alpha: number,
+    birthOffset = 0,
+  ): void {
     for (let i = 0; i < count; i++) {
       _puffO.pos[0] = pos.x + normal.x * 0.2 + (rng() - 0.5) * 0.3;
       _puffO.pos[1] = pos.y + normal.y * 0.2 + (rng() - 0.5) * 0.3;
@@ -1754,7 +2167,14 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   }
 
   /** Very short additive flash burst at a hit point. */
-  function hitFlash(pos, normal, s, colHex0, colHex1, birthOffset = 0) {
+  function hitFlash(
+    pos: THREE.Vector3,
+    normal: THREE.Vector3,
+    s: number,
+    colHex0: number,
+    colHex1: number,
+    birthOffset = 0,
+  ): void {
     for (let i = 0; i < 3; i++) {
       _puffO.pos[0] = pos.x + normal.x * 0.15; _puffO.pos[1] = pos.y + normal.y * 0.15; _puffO.pos[2] = pos.z + normal.z * 0.15;
       _puffO.vel[0] = normal.x * 2; _puffO.vel[1] = normal.y * 2; _puffO.vel[2] = normal.z * 2;
@@ -1768,7 +2188,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   }
 
   /** HE / terrain dirt plume: dark column + radial skirt + clods + dust ring. */
-  function dirtPlume(pos, caliberMm, big, birthOffset = 0) {
+  function dirtPlume(
+    pos: THREE.Vector3,
+    caliberMm: number,
+    big: boolean,
+    birthOffset = 0,
+  ): void {
     const s = calScale(caliberMm) * (big ? 1.7 : 1.15);
     const gy = groundY(pos.x, pos.z);
     const baseY = Math.max(pos.y, gy) + 0.5;
@@ -1865,7 +2290,11 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   }
 
   /** HE detonation fireball (scaled by caliber) — flash + fire + black smoke. */
-  function heFireball(pos, caliberMm, birthOffset = 0) {
+  function heFireball(
+    pos: THREE.Vector3,
+    caliberMm: number,
+    birthOffset = 0,
+  ): void {
     const s = calScale(caliberMm) * 1.3;
     for (let i = 0; i < 10; i++) {
       const a = rng() * Math.PI * 2, b = rng() * Math.PI;
@@ -1893,7 +2322,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
    *    debris, turret stays seated (gun droop + hatch smoke);
    *  - 'fire': burn-out — flashover whoosh + heavy smoke, almost no debris.
    */
-  function spawnDestruction(pos, visual, birthOffset = 0, cause = 'ammorack') {
+  function spawnDestruction(
+    pos: THREE.Vector3,
+    visual: FxVisual | null,
+    birthOffset = 0,
+    cause: DestructionCause = 'ammorack',
+  ): void {
     const rack = cause === 'ammorack';
     const burn = cause === 'fire';
     const gy = groundY(pos.x, pos.z);
@@ -2033,7 +2467,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     // (the single-frame emit burst was part of the 55->26 fps kill hitch).
     // Composed/backdated captures still spawn synchronously.
     const _dpx = pos.x, _dpz = pos.z;
-    const deferBatch = (delayS, fn) => {
+    const deferBatch = (delayS: number, fn: () => void): void => {
       if (birthOffset < 0 || frozen) fn();
       else timers.push({ t: delayS, fn });
     };
@@ -2507,7 +2941,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   }
 
   /** Camera-distance size compensation so kills stay legible at 200-400 m. */
-  function distBoost(x, y, z) {
+  function distBoost(x: number, y: number, z: number): number {
     const cam = engineCtx && engineCtx.camera;
     if (!cam) return 1;
     _camV.set(x, y, z);
@@ -2517,7 +2951,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   }
 
   /** One tick of a persistent smoke column emitter (stage-decayed). */
-  function emitColumnPuff(col, birthOffset = 0) {
+  function emitColumnPuff(col: SmokeColumn, birthOffset = 0): void {
     // Stage decay: a fresh kill pumps thick black smoke; over the column's
     // life it thins toward pale grey wisps instead of cutting off.
     const stage = Math.min(1, Math.max(0, col.ttl / SMOKE_COLUMN_S));
@@ -2633,8 +3067,8 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
    * the odd ember fleck, so the wreck keeps marking the battlefield instead
    * of going cold the moment the column emitter dies (r7 aftermath critique).
    */
-  function emitSmolderPuff(col, birthOffset = 0) {
-    const k = Math.max(0, col.smolder / SMOKE_SMOLDER_S); // 1 -> 0 over the tail
+  function emitSmolderPuff(col: SmokeColumn, birthOffset = 0): void {
+    const k = Math.max(0, (col.smolder ?? 0) / SMOKE_SMOLDER_S); // 1 -> 0 over the tail
     const dk = distBoost(col.pos[0], col.pos[1], col.pos[2]);
     _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.4;
     _puffO.pos[1] = col.pos[1] + 1.2 + rng() * 1.0; // r5: above the deck line
@@ -2666,7 +3100,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   // --------------------------------------------------------------------------
 
   /** Enforce MAX_COLUMNS by retiring the lowest-remaining-ttl emitter. */
-  function capColumns() {
+  function capColumns(): void {
     while (columns.length > MAX_COLUMNS) {
       let low = 0;
       for (let i = 1; i < columns.length; i++) {
@@ -2677,15 +3111,15 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   }
 
   /** Remove a live subject-following column; wreck columns are world-fixed. */
-  function retireSubjectColumn(key) {
+  function retireSubjectColumn(key: string): void {
     let live = 0;
     for (const col of columns) if (col.key !== key) columns[live++] = col;
     columns.length = live;
   }
 
-  const _due = []; // reused timer-fire scratch (cleared after each use)
+  const _due: FxTimer[] = []; // reused timer-fire scratch (cleared after each use)
 
-  const fx = {
+  const fx: FxRuntime = {
     group,
 
     /**
@@ -2694,7 +3128,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * the gate never dumps a backlog; pooled lights stay in the scene with
      * zero intensity to preserve shader-program stability.
      */
-    setReplaySuppressed(suppressed) {
+    setReplaySuppressed(suppressed: boolean): void {
       replaySuppressed = !!suppressed;
       if (replaySuppressed) {
         for (const st of lightStates) st.light.intensity = 0;
@@ -2757,7 +3191,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     preloadTextures() { return particles.preloadTextures(); },
 
     /** Paint the deferred sprite sheets one deterministic tile per frame. */
-    warmTexturesChunked(yieldFrame) {
+    warmTexturesChunked(yieldFrame: () => Promise<void>) {
       return particles.warmTexturesChunked(yieldFrame);
     },
 
@@ -2766,7 +3200,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * of a battle. The caller renders once and resetAll() removes every warm
      * instance, so no synthetic event enters gameplay or survives loading.
      */
-    warmOpeningEffects(pos, dir, normal, caliberMm = 120) {
+    warmOpeningEffects(
+      pos: THREE.Vector3,
+      dir: THREE.Vector3,
+      normal: THREE.Vector3,
+      caliberMm = 120,
+    ): void {
       fx.muzzleFlash(pos, dir, caliberMm);
       spawnSabotPetals(pos, dir);
       fx.impact('pen', pos, normal, caliberMm);
@@ -2786,7 +3225,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * @param {THREE.Camera} camera active camera (billboarding is GPU-side; unused)
      * @param {(id:string)=>object|null} [resolveSubject] live entity/actor lookup
      */
-    update(dt, shells, camera, resolveSubject = null) {
+    update(
+      dt: number,
+      shells: LiveShell[],
+      camera: THREE.Camera,
+      resolveSubject: ((id: string) => FxEntity | null) | null = null,
+    ): void {
       particles.update(dt);
       printUniforms.uTime.value = particles.getTime();
       // r4 CLOCK-DELTA driving: timers, smoke columns and tracer afterglow
@@ -2897,7 +3341,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           if (compact) {
             let live = 0;
             for (const col of columns) {
-              if (col.ttl > 0 || col.smolder > 0) columns[live++] = col;
+              if (col.ttl > 0 || (col.smolder ?? 0) > 0) columns[live++] = col;
             }
             columns.length = live;
           }
@@ -2949,7 +3393,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         const shVel = sh.vel;
         const guided = !!sh.spec?.guided;
         const tracerId = guided ? 'ATGM' : sh.spec?.tracer;
-        const preset = TRACER_PRESETS[tracerId] || TRACER_PRESETS.AP;
+        const preset = TRACER_PRESETS[tracerId ?? 'AP'];
         const speed = shVel.length();
         // r7 (critic: "30 m uniform laser beam no shell ever produced"): the
         // bolt is a 3-6 m head+tail streak — APFSDS at 1700 m/s tops out at
@@ -3098,7 +3542,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * Subscribe to combat bus events (ARCHITECTURE §1.5 payloads).
      * @param {object} bus injected event bus
      */
-    bindBus(bus) {
+    bindBus(bus: FxEventBus): void {
       bus.on('shell:fired', (e) => {
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
@@ -3240,7 +3684,13 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           const existing = columns.find((c) => c.key === e.id);
           if (existing) existing.ttl = SMOKE_COLUMN_S;
           else {
-            const col = { key: e.id, pos: [p[0], p[1], p[2]], acc: 0, ttl: SMOKE_COLUMN_S, scale: 0.8 };
+            const col: SmokeColumn = {
+              key: e.id,
+              pos: [p[0], p[1], p[2]],
+              acc: 0,
+              ttl: SMOKE_COLUMN_S,
+              scale: 0.8,
+            };
             columns.push(col);
             emitColumnPuff(col); // ignition is visible even on a frozen frame
             capColumns();
@@ -3257,7 +3707,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * @param {THREE.Vector3} dir unit fire direction
      * @param {number} caliberMm gun caliber (scales the effect)
      */
-    muzzleFlash(pos, dir, caliberMm) {
+    muzzleFlash(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number): void {
       const lightK = spawnMuzzleFlash(pos, dir, caliberMm, 0);
       // r2 ON THE BORE AXIS: the r1 light floated 0.45 m ABOVE the tube and
       // its local pool rendered as a glowing lozenge sitting ON TOP of the
@@ -3272,7 +3722,11 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
 
     /** Tank-on-tank metal contact: lateral sparks, track debris and a low
      * pressure-dust shove. Deliberately omits every shell/penetration cue. */
-    vehicleCollision(pos, normal, closingMps = 0) {
+    vehicleCollision(
+      pos: THREE.Vector3,
+      normal: THREE.Vector3,
+      closingMps = 0,
+    ): void {
       const k = THREE.MathUtils.clamp((Number(closingMps) || 0) / 12, 0.35, 1.4);
       _v1.copy(normal);
       if (_v1.lengthSq() < 1e-6) _v1.set(0, 0, 1); else _v1.normalize();
@@ -3322,7 +3776,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * @param {THREE.Vector3} normal outward surface normal
      * @param {number} caliberMm shell caliber
      */
-    impact(kind, pos, normal, caliberMm) {
+    impact(
+      kind: string,
+      pos: THREE.Vector3,
+      normal: THREE.Vector3,
+      caliberMm: number,
+    ): void {
       // r5 combat-range readability: an aimed 340 m pen produced ZERO visible
       // impact through the scope — flash/spall/smoke sizes get the same
       // camera-distance compensation as destructions (sizes only, ~1x inside
@@ -3521,7 +3980,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * @param {THREE.Vector3} normal outward surface normal (world)
      * @param {number} caliberMm scales the scar
      */
-    armorScar(visual, pos, normal, caliberMm) {
+    armorScar(
+      visual: FxVisual,
+      pos: THREE.Vector3,
+      normal: THREE.Vector3,
+      caliberMm: number,
+    ): void {
       if (!visual || !visual.root) return;
       impactDecals.stampDirect(visual, pos, normal, caliberMm, 'pen');
     },
@@ -3536,7 +4000,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * clears the warm marks with this before the battle opens.
      * @param {object} visual TankVisual
      */
-    clearVehicleDecals(visual) { impactDecals.clearVehicle(visual); },
+    clearVehicleDecals(visual: FxVisual): void { impactDecals.clearVehicle(visual); },
 
     /**
      * Vehicle destruction: fireball, debris, persistent smoke column; calls
@@ -3546,7 +4010,11 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * @param {object|null} visual TankVisual or null
      * @param {'ammorack'|'shot'|'fire'} [cause] kill cause (varies the show)
      */
-    destruction(pos, visual, cause = 'ammorack') {
+    destruction(
+      pos: THREE.Vector3,
+      visual: FxVisual | null,
+      cause: DestructionCause = 'ammorack',
+    ): void {
       spawnDestruction(pos, visual, 0, cause);
     },
 
@@ -3557,7 +4025,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * @param {THREE.Vector3} dir hull motion direction (unit-ish)
      * @param {number} intensity 0..1 from |speed| / topSpeed
      */
-    dust(pos, dir, intensity) {
+    dust(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number): void {
       if (intensity <= 0.02) return;
       const waterMask = heightField && heightField.getWaterMaskAt
         ? heightField.getWaterMaskAt(pos.x, pos.z) : 0;
@@ -3753,7 +4221,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * @param {number} intensity 0..1 engine load
      * @param {boolean} [sooty=false] dark diesel puffs instead of thin haze
      */
-    exhaust(pos, intensity, sooty = false) {
+    exhaust(pos: THREE.Vector3, intensity: number, sooty = false): void {
       // r1 "not a single exhaust puff anywhere": the old profile (alpha
       // 0.06-0.29, sub-meter cards, <1.2 s lives) was invisible from any
       // gameplay camera. Diesel puffs are now a clearly readable grey-brown
@@ -3829,7 +4297,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * a few contact sparks plus curb dust sell the shove while the real mesh
      * continues rolling and can be hit again.
      */
-    loosePropHit(pos, dir, heightM = 0.8) {
+    loosePropHit(pos: THREE.Vector3, dir: THREE.Vector3, heightM = 0.8): void {
       const gy = groundY(pos.x, pos.z);
       _v3.set(pos.x, gy + Math.min(0.48, heightM * 0.45), pos.z);
       sparkFan(_v3, _UP, 4, 4.5, 0.45, 0xffd2a0, 0.34, 0.018, 0.026, 0, 0.08);
@@ -3860,7 +4328,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * @param {THREE.Vector3} dir tank travel direction (unit-ish, XZ)
      * @param {number} [heightM=6] prop height (scales the splinter throw)
      */
-    propCrush(pos, dir, heightM = 6) {
+    propCrush(pos: THREE.Vector3, dir: THREE.Vector3, heightM = 6): void {
       const gy = groundY(pos.x, pos.z);
       // base dust burst
       for (let i = 0; i < 10; i++) {
@@ -3904,7 +4372,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * @param {THREE.Vector3} dir break direction (unit-ish, XZ)
      * @param {number} [heightM=1.2] prop height (scales throws)
      */
-    propBreak(kind, pos, dir, heightM = 1.2) {
+    propBreak(
+      kind: string,
+      pos: THREE.Vector3,
+      dir: THREE.Vector3,
+      heightM = 1.2,
+    ): void {
       const gy = groundY(pos.x, pos.z);
       // DESTRUCTIBLES r1: dir now carries MAGNITUDE — 1 = shell-grade break,
       // a ramming hull scales it with its overrun speed (props.ts breakRecord)
@@ -4290,7 +4763,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * @param {boolean} f
      * @param {number|null} [atTimeS] pin the shared clock to this time
      */
-    setFrozen(f, atTimeS = null) {
+    setFrozen(f: boolean, atTimeS: number | null = null): void {
       if (atTimeS !== null && atTimeS !== undefined) {
         const delta = atTimeS - particles.getTime();
         if (Math.abs(delta) > 20) {
@@ -4316,7 +4789,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * Re-seed the deterministic effect RNG.
      * @param {number} newSeed
      */
-    resetSeed(newSeed) {
+    resetSeed(newSeed: number): void {
       rng = mulberry32(newSeed);
     },
 
@@ -4361,7 +4834,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * @param {{ muzzlePos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number,
      *           tracerType: string, ageS: number }} o
      */
-    composeFiringMoment({ muzzlePos, dir, caliberMm, tracerType, ageS }) {
+    composeFiringMoment({ muzzlePos, dir, caliberMm, tracerType, ageS }: FiringMoment): void {
       const preset = TRACER_PRESETS[tracerType] || TRACER_PRESETS.AP;
       const vel = COMPOSE_VELOCITY[tracerType] || 800;
       // NOTE (r5): the recipe samples gunMuzzleWorld AFTER advancing the
@@ -4413,7 +4886,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * fireball + debris mid-flight + smoke column establishing.
      * @param {{ pos: THREE.Vector3, ageS: number }} o
      */
-    composeExplosionMoment({ pos, ageS }) {
+    composeExplosionMoment({ pos, ageS }: ExplosionMoment): void {
       if (!window.__FX_SKIP_DESTRUCTION) spawnDestruction(pos, null, -ageS);
       // pre-seed the smoke column puffs that would have been emitted by now
       const col = columns[columns.length - 1];

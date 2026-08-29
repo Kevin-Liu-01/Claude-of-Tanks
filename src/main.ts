@@ -484,7 +484,7 @@ let battleWarmGeneration = 0;
 // intent separate from GPU construction and makes either failure retryable
 // without a page refresh.
 const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
-  loadModule: async () => legacyPort<MainFxModule>(await import('./fx/effects.js')),
+  loadModule: async () => legacyPort<MainFxModule>(await import('./fx/effects.ts')),
   initialize: ({ createFx }) => {
     const live = createFx(engineCtx, hfProxy, { seed: 5000 });
     scene.add(live.group);

@@ -2,11 +2,11 @@
 // prop layer for destructible small props (world-dressing r1).
 //
 // Why this module exists: shells resolve in src/game/state.ts (frozen) and
-// their impact/flight data surfaces in src/fx/effects.js (bus listeners +
+// their impact/flight data surfaces in src/fx/effects.ts (bus listeners +
 // per-frame shell loop). The destructible props themselves live in
 // src/world/props.ts. Neither layer may import the other's heavyweight module
 // (fx -> props would pull the whole world builder into the fx layer), so both
-// meet here: props.ts registers per-world break handlers, effects.js registers
+// meet here: props.ts registers per-world break handlers, effects.ts registers
 // the particle-burst provider and forwards shell flight/impact events.
 //
 // Worlds are CACHED per mapId and reused across battles (main.ts worldCache),
@@ -47,7 +47,7 @@ type DestroyedEventSink = (event: DestroyedPropEvent) => void;
 let fxProvider: BreakFxProvider | null = null;
 
 /**
- * effects.js registers the kind-aware particle burst here (once, at createFx).
+ * effects.ts registers the kind-aware particle burst here (once, at createFx).
  * @param {?function(string,number,number,number,number,number,number):void} fn
  *   (kind, x, y, z, dirX, dirZ, heightM)
  */
@@ -103,7 +103,7 @@ export function registerWorldDestructibles(entry: WorldDestructibleEntry): void 
 }
 
 /**
- * Shell flight segment (effects.js update loop, one per live shell per frame).
+ * Shell flight segment (effects.ts update loop, one per live shell per frame).
  * Light props crossed by the segment break cosmetically; the shell itself is
  * NEVER consumed (they carry no colliders — sapling behavior).
  */
@@ -119,7 +119,7 @@ export function notifyShellSweep(
 }
 
 /**
- * Shell world-impact point (effects.js shell:expired listener). HE gets a
+ * Shell world-impact point (effects.ts shell:expired listener). HE gets a
  * real blast radius, AP a token one.
  * @param {{r:number, he:boolean}} opts
  */

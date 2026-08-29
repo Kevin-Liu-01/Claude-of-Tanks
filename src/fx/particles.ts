@@ -845,7 +845,7 @@ function makeValueNoise(rng: Rng, grid: number): Noise2D {
 
 /**
  * fbm turbulence built on seeded value noise, output ~[0,1].
- * (Exported for effects.js procedural canvas textures.)
+ * (Exported for effects.ts procedural canvas textures.)
  * @param {() => number} rng
  * @param {number} [octaves=4] 4 or 5 — the 5th (grid 64) adds the fine churn
  *   detail the fire flipbook needs so its erosion front never resolves into

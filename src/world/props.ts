@@ -1733,7 +1733,7 @@ ${snowCap ? `
   //     prop:crushed (generic dust via main.ts fx.propCrush);
   //  2. hull-radius contact via the main.ts crushables loop ('loop' class —
   //     sapling-grade clutter with NO obstacle at all);
-  //  3. shells — src/fx/effects.js forwards per-frame flight segments and
+  //  3. shells — src/fx/effects.ts forwards per-frame flight segments and
   //     world-impact points through src/world/destructibles.ts; light props
   //     are shoot-through (no colliders — a hay bale never eats a shell) and
   //     break cosmetically, HE clears a radius.
@@ -5086,7 +5086,7 @@ ${snowCap ? `
     return breakRecord(propIdx, dx, dz, speed, cause);
   }
 
-  // shell paths (registered through src/world/destructibles.ts; effects.js
+  // shell paths (registered through src/world/destructibles.ts; effects.ts
   // forwards flight segments + world impact points)
   const _dCells: number[][] = [];
   function cellsAround(

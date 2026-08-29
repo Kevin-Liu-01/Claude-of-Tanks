@@ -10,7 +10,7 @@
  * full pose control (hull facing, turret yaw, gun pitch within spec limits,
  * camo scheme, damage state), the game's REAL effects language (muzzle
  * flashes, tracers, impacts, destructions, dust, engine smoke — all through
- * src/fx/effects.js), a free-fly/orbit camera, a studio-owned fx time scale
+ * src/fx/effects.ts), a free-fly/orbit camera, a studio-owned fx time scale
  * with freeze, and a hi-res capture path.
  *
  * Integration contract (kept deliberately tiny — see main.ts):
@@ -982,7 +982,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   /**
    * Apply a damage/state look. States are the killcam/destruction systems'
    * real visual language (tankFactory setDestroyed burn sweep + turret pop,
-   * effects.js smoke columns).
+   * effects.ts smoke columns).
    * @param {object|string} ref actor
    * @param {string} stateName ACTOR_STATES id
    * @param {?number} [ageS] wreck age override (char/settle progress)

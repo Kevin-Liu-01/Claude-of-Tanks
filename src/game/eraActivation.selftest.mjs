@@ -21,7 +21,7 @@ assert.equal(stripActivatedEra({ kind: 'pen' }, { stripEra() {} }), false,
 // Guard the three presentation consumers. ERA is an additive blast: a rod can
 // pop a cassette and still penetrate the base armor, so keying solely on
 // event.kind silently loses the explosion/audio/removal path.
-const fxSource = readFileSync(new URL('../fx/effects.js', import.meta.url), 'utf8');
+const fxSource = readFileSync(new URL('../fx/effects.ts', import.meta.url), 'utf8');
 const audioSource = readFileSync(new URL('../audio/audio.ts', import.meta.url), 'utf8');
 const feedbackSource = readFileSync(new URL('./combatFeedbackRuntime.ts', import.meta.url), 'utf8');
 const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');

@@ -23,7 +23,7 @@ Module ownership (file paths are FIXED):
 | combat   | `src/sim/ballistics.ts`, `src/sim/armor.ts`, `src/sim/damage.ts`, `src/sim/combat.selftest.mjs` |
 | ai       | `src/game/ai.ts` |
 | hud      | `src/ui/hud.js`, `src/ui/garage.ts`, `src/ui/damagePanel.ts` |
-| fx       | `src/fx/effects.js`, `src/fx/particles.ts` |
+| fx       | `src/fx/effects.ts`, `src/fx/particles.ts` |
 | audio    | `src/audio/audio.ts` |
 | integration | `src/main.ts`, `src/game/state.ts` |
 
@@ -910,7 +910,7 @@ InstancedBufferGeometry billboards per graphics doc §9 (no THREE.Points), pools
 smoke 2048 / fire 1024 / dust 1024 / sparks 512 / debris 256 (instanced boxes),
 GPU-animated, tier-1 soft handling (spawn ≥0.5 m up, alpha-in).
 
-#### 3.8.2 `effects.js` (public API)
+#### 3.8.2 `effects.ts` (public API)
 ```js
 export function createFx(engineCtx, heightField, { seed = 5000 } = {}) => Fx
 Fx = {

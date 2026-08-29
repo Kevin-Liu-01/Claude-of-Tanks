@@ -27,7 +27,7 @@ The owner preserves these invariants:
 - a failed module request is retried by the next intent or entry;
 - a failed initializer is retried without downloading the successful module
   again;
-- ordinary garage boot still excludes `effects.js`.
+- ordinary garage boot still excludes `effects.ts`.
 
 ## Consequences
 

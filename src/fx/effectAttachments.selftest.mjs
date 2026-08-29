@@ -72,7 +72,7 @@ for (const family of requiredFamilies) {
 }
 
 // Integration seams: battle + Studio resolution and live->wreck transition.
-const effectsSource = fs.readFileSync(new URL('./effects.js', import.meta.url), 'utf8');
+const effectsSource = fs.readFileSync(new URL('./effects.ts', import.meta.url), 'utf8');
 const mainFrameSource = fs.readFileSync(new URL('../app/mainFrameRuntime.ts', import.meta.url), 'utf8');
 const studioSource = fs.readFileSync(new URL('../game/studio.ts', import.meta.url), 'utf8');
 if (!effectsSource.includes('syncSubjectEmitterAnchor(col, subject, _subjectAnchor)')) {
@@ -81,7 +81,7 @@ if (!effectsSource.includes('syncSubjectEmitterAnchor(col, subject, _subjectAnch
 if (!effectsSource.includes('retireSubjectColumn(e.id);')) {
   throw new Error('tank destruction does not retire the live burning emitter');
 }
-if (!effectsSource.includes('setReplaySuppressed(suppressed)')) {
+if (!/setReplaySuppressed\(suppressed(?:\s*:\s*boolean)?\)/.test(effectsSource)) {
   throw new Error('effects lack the reversible killcam reconstruction gate');
 }
 if (!effectsSource.includes('if (replaySuppressed) col.acc = 0;')) {

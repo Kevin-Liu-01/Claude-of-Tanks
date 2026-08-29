@@ -1,7 +1,7 @@
 /**
  * impactDecals.ts — procedural ballistic armor-scarring decals.
  *
- * Replaces the old effects.js "armor scar" pool (14 shared near-black
+ * Replaces the legacy combat-effects "armor scar" pool (14 shared near-black
  * MeshBasicMaterial quads re-parented onto struck hull roots — the "plain
  * black rhombus" read, made literal on wrecks when tankFactory's burn sweep
  * swapped the un-hookable Basic material for the opaque shared burnt

@@ -61,7 +61,7 @@ export function fxNow(): number | null {
 // ---------------------------------------------------------------------------
 // The tumbling popped turret read as "a distant bird" — a bare dark speck
 // with no motion cue tying it to the explosion. The particle system lives in
-// effects.js; the pop arc lives in tankFactory.ts. effects registers a tiny
+// effects.ts; the pop arc lives in tankFactory.ts. effects registers a tiny
 // emitter here and the visual's applyPop calls it along the arc, so the
 // turret drags a readable smoke + ember wake for its whole flight (works for
 // live kills, GLB swaps and backdated composed captures alike).

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const source = readFileSync(new URL('./killcam.js', import.meta.url), 'utf8');
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 const state = readFileSync(new URL('./state.ts', import.meta.url), 'utf8');
-const effects = readFileSync(new URL('../fx/effects.js', import.meta.url), 'utf8');
+const effects = readFileSync(new URL('../fx/effects.ts', import.meta.url), 'utf8');
 const responsive = readFileSync(new URL('../ui/responsiveSurfaces.css', import.meta.url), 'utf8');
 const cameraRig = readFileSync(new URL('../engine/cameraRig.ts', import.meta.url), 'utf8');
 
@@ -103,7 +103,7 @@ assert.match(cameraRig, /function spectateBlendDuration\(ent: CameraEntity \| nu
   'long-distance spectator target changes receive a distance-aware blend');
 assert.match(state, /applyLethalRamModuleDamage[\s\S]*game\.killcam\.onRam\(ramEvent, a, b\)/,
   'authoritative ram resolution records module failures before live wreck presentation');
-assert.match(effects, /vehicleCollision\(pos, normal, closingMps = 0\)[\s\S]*sparkFan[\s\S]*debris/,
+assert.match(effects, /vehicleCollision\([\s\S]{0,180}closingMps(?:\s*:\s*number)?\s*=\s*0[\s\S]*sparkFan[\s\S]*debris/,
   'vehicle collision effects use metal contact sparks and debris rather than shell penetration FX');
 
 console.log('killcam presentation selftest passed');

@@ -752,7 +752,7 @@ export function createKillCam(deps) {
   // The r6 replay added point lights at begin()/beginXray() and hid the fx
   // group (whose 2 pooled lights left the count) — a live probe measured a
   // 6.3 s stall between begin() and the first painted kill-cam frame, pure
-  // shader recompile. Fix, following the effects.js "dynamic light budget"
+  // shader recompile. Fix, following the effects.ts "dynamic light budget"
   // pattern: a PERMANENT pool of 3 point lights added once at creation
   // (before the first frame ever renders, so the count never changes), plus
   // a one-shot warmup rig that renders every kill-cam material for a few
