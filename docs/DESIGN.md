@@ -35,12 +35,16 @@ The program has four interlocking systems:
   `combatVariantSpecs.ts` registers the core Abrams/T-90 combat variants by
   side effect before roster finalization.
 
-### 1.2 Build pipeline — typed facades and `tankFactoryCore.js`
+### 1.2 Build pipeline — typed facades, geometry kernel, and `tankFactoryCore.js`
 `tankFactory.ts` eagerly registers the complete fleet for release tools and
 headless audits. Player boot uses `fleetFactory.ts` to acquire only the exact
 builder and receipt families it needs. Both typed facades configure the same
 cycle-free `tankFactoryCore.js` implementation, whose
 `createTank(specId, engineCtx, options)` is the single synchronous constructor.
+Vehicle-agnostic transforms, primitive geometry, connected lofts, box UVs, and
+merge behavior live in the strict `factoryGeometry.ts` kernel; the legacy core
+retains fleet policy, rigs, running gear, and presentation state while those
+contracts are migrated independently.
 Flow:
 
 1. **Rig skeleton** (`tankFactoryCore.js`): `root` → `rig_hull` + `rig_turret` (at

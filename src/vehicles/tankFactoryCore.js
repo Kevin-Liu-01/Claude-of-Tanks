@@ -10,8 +10,12 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
+import {
+  box, boxUV, cylX, cylY, cylZ, frustum, lathe, mergeAll, mulberry32,
+  polyLoft, polyMultiLoft, polyTurret, slab, sph, straightRidgeGunMask,
+  torus, xform,
+} from './factoryGeometry.ts';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { wheelPatternFor } from './wheelPatterns.ts';
@@ -38,8 +42,6 @@ import { attachTankDecorations } from './decorations.ts';
 import { fxNow, emitPopTrail } from '../fx/clock.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 
-function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
-  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
 const D2R = Math.PI / 180;
 const SIM_STEP = 1 / 60;
@@ -75,236 +77,6 @@ const _stabilizedEuler = new THREE.Euler(0, 0, 0, 'YXZ');
 // Geometry helpers
 // ---------------------------------------------------------------------------
 
-function xform(geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
-  const sc = Array.isArray(s) ? s : [s, s, s];
-  const m = new THREE.Matrix4().compose(
-    new THREE.Vector3(x, y, z),
-    new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)),
-    new THREE.Vector3(sc[0], sc[1], sc[2]),
-  );
-  geo.applyMatrix4(m);
-  return geo;
-}
-
-// Chamfered box: armor plates get a visible machined bevel instead of a
-// razor-sharp BoxGeometry edge. Tiny fittings fall back to plain boxes.
-const box = (w, h, d) => {
-  const m = Math.min(w, h, d);
-  if (m < 0.06) return new THREE.BoxGeometry(w, h, d);
-  const r = Math.min(0.024, m * 0.24);
-  return new RoundedBoxGeometry(w, h, d, m > 0.5 ? 2 : 1, r);
-};
-const cylY = (rT, rB, h, seg = 16, open = false, th0 = 0, thL = Math.PI * 2) =>
-  new THREE.CylinderGeometry(rT, rB, h, seg, 1, open, th0, thL);
-const cylX = (r, len, seg = 16, r2) => xform(cylY(r, r2 ?? r, len, seg), 0, 0, 0, 0, 0, Math.PI / 2);
-const cylZ = (r, len, seg = 16, r2) => xform(cylY(r, r2 ?? r, len, seg), 0, 0, 0, Math.PI / 2, 0, 0);
-const sph = (r, seg = 16, thetaLen) =>
-  new THREE.SphereGeometry(r, seg, Math.max(8, seg >> 1), 0, Math.PI * 2, 0, thetaLen ?? Math.PI);
-const torus = (r, tube, seg = 16, tSeg = 8) => xform(new THREE.TorusGeometry(r, tube, tSeg, seg), 0, 0, 0, Math.PI / 2, 0, 0);
-// Cast body of revolution: profile is [[r, y], ...] bottom→top, optionally
-// stretched in plan via sz so round castings can go egg-shaped.
-const lathe = (profile, seg = 28, sz = 1) =>
-  xform(new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(Math.max(r, 0.001), y)), seg),
-    0, 0, 0, 0, 0, 0, [1, 1, sz]);
-
-// 8-corner slab: rings in plan order (-x,+z),(+x,+z),(+x,-z),(-x,-z), bottom then top.
-function slab(b0, b1, b2, b3, t0, t1, t2, t3) {
-  const P = [];
-  const quad = (a, b, c, d) => P.push(...a, ...b, ...c, ...a, ...c, ...d);
-  quad(b0, b1, t1, t0);       // +Z front
-  quad(b1, b2, t2, t1);       // +X right
-  quad(b2, b3, t3, t2);       // -Z rear
-  quad(b3, b0, t0, t3);       // -X left
-  quad(t0, t1, t2, t3);       // +Y top
-  quad(b3, b2, b1, b0);       // -Y bottom
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((P.length / 3) * 2).fill(0), 2));
-  g.computeVertexNormals();
-  return g;
-}
-// Axis-aligned frustum: bottom rect (bw×bd) at y0, top rect (tw×td) at y1,
-// with independent z offsets for bottom/top front & rear edges.
-function frustum(bw, bzF, bzR, tw, tzF, tzR, y0, y1) {
-  return slab(
-    [-bw, y0, bzF], [bw, y0, bzF], [bw, y0, bzR], [-bw, y0, bzR],
-    [-tw, y1, tzF], [tw, y1, tzF], [tw, y1, tzR], [-tw, y1, tzR],
-  );
-}
-
-// Faceted cast turret from an arbitrary plan polygon (r7 — T-34-85 hex cast):
-// flared base ring -> inset top ring with a flat roof fan. `plan` is
-// [[x, z], ...] in plan view; face windings are auto-oriented outward.
-function polyTurret(plan, h, flare = 1.08, inset = 0.78) {
-  const n = plan.length;
-  const cx = plan.reduce((s, p) => s + p[0], 0) / n;
-  const cz = plan.reduce((s, p) => s + p[1], 0) / n;
-  const ring = (s, y) => plan.map(([x, z]) => [cx + (x - cx) * s, y, cz + (z - cz) * s]);
-  const b = ring(flare, 0), t = ring(inset, h);
-  const P = [];
-  const tri = (a, b2, c) => P.push(...a, ...b2, ...c);
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    const mx = (b[i][0] + b[j][0]) / 2 - cx, mz = (b[i][2] + b[j][2]) / 2 - cz;
-    const ex = b[j][0] - b[i][0], ez = b[j][2] - b[i][2];
-    if (ex * mz - ez * mx > 0) { tri(b[i], b[j], t[j]); tri(b[i], t[j], t[i]); }
-    else { tri(b[j], b[i], t[i]); tri(b[j], t[i], t[j]); }
-  }
-  const c = [cx, h, cz];
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    const ny = (t[j][2] - t[i][2]) * (c[0] - t[i][0]) - (t[j][0] - t[i][0]) * (c[2] - t[i][2]);
-    if (ny > 0) tri(t[i], t[j], c); else tri(t[j], t[i], c);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((P.length / 3) * 2).fill(0), 2));
-  g.computeVertexNormals();
-  return g;
-}
-
-// Continuous faceted loft with per-station bottom/top heights. This is the
-// asymmetric sibling of polyTurret: it keeps one connected cheek/crown mesh
-// while allowing a real shell to rise toward the nose and fall toward the
-// bustle instead of approximating that curve with stacked boxes.
-function polyLoft(plan, bottom, top, inset = 0.78) {
-  const n = plan.length;
-  const cx = plan.reduce((s, p) => s + p[0], 0) / n;
-  const cz = plan.reduce((s, p) => s + p[1], 0) / n;
-  const at = (v, i) => Array.isArray(v) ? v[i] : (typeof v === 'function' ? v(plan[i], i) : v);
-  const b = plan.map(([x, z], i) => [x, at(bottom, i), z]);
-  const t = plan.map(([x, z], i) => {
-    const s = at(inset, i);
-    return [cx + (x - cx) * s, at(top, i), cz + (z - cz) * s];
-  });
-  const P = [];
-  const tri = (a, b2, c) => P.push(...a, ...b2, ...c);
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    const mx = (b[i][0] + b[j][0]) / 2 - cx, mz = (b[i][2] + b[j][2]) / 2 - cz;
-    const ex = b[j][0] - b[i][0], ez = b[j][2] - b[i][2];
-    if (ex * mz - ez * mx > 0) { tri(b[i], b[j], t[j]); tri(b[i], t[j], t[i]); }
-    else { tri(b[j], b[i], t[i]); tri(b[j], t[i], t[j]); }
-  }
-  const c = [cx, t.reduce((s, p) => s + p[1], 0) / n, cz];
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    const ny = (t[j][2] - t[i][2]) * (c[0] - t[i][0]) - (t[j][0] - t[i][0]) * (c[2] - t[i][2]);
-    if (ny > 0) tri(t[i], t[j], c); else tri(t[j], t[i], c);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((P.length / 3) * 2).fill(0), 2));
-  g.computeVertexNormals();
-  return g;
-}
-
-// One connected faceted shell through any number of vertical rings. This is
-// the welded-turret sibling of polyLoft: a near-vertical lower armor belt can
-// turn through a real shoulder break into an inset crown without stacking
-// intersecting boxes or manufacturing a second shell. Each ring accepts a
-// scalar/array/function height and inset using polyLoft station semantics.
-function polyMultiLoft(plan, rings) {
-  if (!Array.isArray(rings) || rings.length < 2) throw new Error('polyMultiLoft requires at least two rings');
-  const n = plan.length;
-  const cx = plan.reduce((s, p) => s + p[0], 0) / n;
-  const cz = plan.reduce((s, p) => s + p[1], 0) / n;
-  const at = (v, i) => Array.isArray(v) ? v[i] : (typeof v === 'function' ? v(plan[i], i) : v);
-  const rr = rings.map(({ height, inset = 1 }) => plan.map(([x, z], i) => {
-    const s = at(inset, i);
-    return [cx + (x - cx) * s, at(height, i), cz + (z - cz) * s];
-  }));
-  const P = [];
-  const tri = (a, b, c) => P.push(...a, ...b, ...c);
-  for (let r = 0; r < rr.length - 1; r++) {
-    const a = rr[r], b = rr[r + 1];
-    for (let i = 0; i < n; i++) {
-      const j = (i + 1) % n;
-      const mx = (a[i][0] + a[j][0]) / 2 - cx, mz = (a[i][2] + a[j][2]) / 2 - cz;
-      const ex = a[j][0] - a[i][0], ez = a[j][2] - a[i][2];
-      if (ex * mz - ez * mx > 0) { tri(a[i], a[j], b[j]); tri(a[i], b[j], b[i]); }
-      else { tri(a[j], a[i], b[i]); tri(a[j], b[i], b[j]); }
-    }
-  }
-  const cap = (ring, top, centerHeight) => {
-    const c = [cx, centerHeight ?? (ring.reduce((s, p) => s + p[1], 0) / n), cz];
-    for (let i = 0; i < n; i++) {
-      const j = (i + 1) % n;
-      if (top) tri(ring[i], ring[j], c); else tri(ring[j], ring[i], c);
-    }
-  };
-  cap(rr[0], false, rings[0].centerHeight);
-  cap(rr.at(-1), true, rings.at(-1).centerHeight);
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((P.length / 3) * 2).fill(0), 2));
-  g.computeVertexNormals();
-  return g;
-}
-
-// Closed angular mask with a planar rear seat whose upper and lower skins
-// converge on one straight, full-width forward ridge. This makes the direct
-// side silhouette a literal chevron: there is no intervening vertical band,
-// rounded cap, or point apex between the two planes.
-function straightRidgeGunMask({
-  rearHalfWidth, rearHalfHeight, ridgeHalfWidth, rearZ, ridgeZ,
-}) {
-  if (rearHalfWidth <= 0 || rearHalfHeight <= 0
-    || ridgeHalfWidth <= 0 || ridgeZ <= rearZ) {
-    throw new RangeError('straightRidgeGunMask expects positive dimensions and a forward ridge');
-  }
-  const back = [
-    [-rearHalfWidth, -rearHalfHeight, rearZ],
-    [rearHalfWidth, -rearHalfHeight, rearZ],
-    [rearHalfWidth, rearHalfHeight, rearZ],
-    [-rearHalfWidth, rearHalfHeight, rearZ],
-  ];
-  const ridgeLeft = [-ridgeHalfWidth, 0, ridgeZ];
-  const ridgeRight = [ridgeHalfWidth, 0, ridgeZ];
-  const positions = [];
-  const tri = (a, b, c) => positions.push(...a, ...b, ...c);
-
-  // Planar rear seat, two broad skins, and triangular end caps. Both skins
-  // share the exact ridge vertices so the seam cannot split or kink.
-  tri(back[0], back[3], back[2]);
-  tri(back[0], back[2], back[1]);
-  tri(back[3], ridgeLeft, ridgeRight);
-  tri(back[3], ridgeRight, back[2]);
-  tri(back[0], back[1], ridgeRight);
-  tri(back[0], ridgeRight, ridgeLeft);
-  tri(back[0], ridgeLeft, back[3]);
-  tri(back[1], back[2], ridgeRight);
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(
-    new Array((positions.length / 3) * 2).fill(0), 2));
-  geometry.computeVertexNormals();
-  return geometry;
-}
-
-// World-scale box-projected UVs so camo density is uniform across all parts.
-function boxUV(geo, scale = 0.35) {
-  const pos = geo.attributes.position, nor = geo.attributes.normal;
-  const uv = new Float32Array(pos.count * 2);
-  for (let i = 0; i < pos.count; i++) {
-    const nx = Math.abs(nor.getX(i)), ny = Math.abs(nor.getY(i)), nz = Math.abs(nor.getZ(i));
-    let u, v;
-    if (ny >= nx && ny >= nz) { u = pos.getX(i); v = pos.getZ(i); }
-    else if (nx >= nz) { u = pos.getZ(i); v = pos.getY(i); }
-    else { u = pos.getX(i); v = pos.getY(i); }
-    uv[i * 2] = u * scale; uv[i * 2 + 1] = v * scale;
-  }
-  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  return geo;
-}
-
-function mergeAll(list) {
-  const flat = list.map((g) => (g.index ? g.toNonIndexed() : g));
-  const merged = mergeGeometries(flat, false);
-  for (const g of flat) g.dispose();
-  return merged;
-}
 
 // Mobile battle bots inherit a number of profile-authored fittings that are
 // intentionally separate meshes on hero vehicles (garage inspection and
