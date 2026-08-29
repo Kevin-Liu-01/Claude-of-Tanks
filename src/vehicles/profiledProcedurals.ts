@@ -3,7 +3,7 @@
 import { buildProfile, buildDonorVariant } from './profiles/kit.js';
 import { WW2_PROFILES } from './profiles/ww2.js';
 import { CASEMATE_PROFILES } from './profiles/casemate.js';
-import { SOVIET_HEAVY_PROFILES } from './profiles/soviet-heavy.js';
+import { SOVIET_HEAVY_PROFILES } from './profiles/soviet-heavy.ts';
 import { ABRAMS_PROFILES } from './profiles/abrams.js';
 import { RUSSIA_PROFILES as RUSSIA_RESIDUE_PROFILES } from './profiles/russia.js';
 import { T90_PROFILES } from './profiles/t90.js';

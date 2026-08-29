@@ -184,6 +184,10 @@ The Sheridan family pack now uses strict
 `src/vehicles/profiles/sheridan.ts` contracts for measured hull and turret
 lofts, the M81 gun assembly, running gear, fittings, ERA, and the M551A1 TTS
 upgrade while preserving its exact-family demand boundary.
+The Soviet heavy family pack now uses strict
+`src/vehicles/profiles/soviet-heavy.ts` contracts for its shared running gear,
+cast turret and mantlet helpers, pike noses, material retuning, and the IS-3,
+IS-7, Object 279, IS-6B, and KV-2 builds behind the same demand boundary.
 
 ## Consequences
 

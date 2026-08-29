@@ -48,6 +48,7 @@
 // shadow-named muzzleBore device — timing-proof top-level spellings per the
 // kit.js cycle law.
 import { KIT, FITTINGS, muzzleBore } from './kit.js';
+import type * as THREE from 'three';
 // kv2 shaded-parity r4 tell 1 (r5 round): the WoT-style readability floor is
 // what keeps shade-side hardware in the ref's tonal family — but the link
 // pad/inner materials are CLONES made inside buildRunningGear, and
@@ -57,6 +58,113 @@ import { KIT, FITTINGS, muzzleBore } from './kit.js';
 // (plain assignment, exactly the materials.js stub path — never the chained
 // CSM closure, which registers shaders under the SOURCE material key).
 import { vehicleAmbientFloorHook } from '../materials.js';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+
+type Vec3Tuple = [number, number, number];
+type VehicleAssemblyOwner = 'hull' | 'turret';
+
+interface SovietHeavyMaterials extends Record<string, THREE.MeshStandardMaterial> {
+  dark: THREE.MeshStandardMaterial;
+  rubber: THREE.MeshStandardMaterial;
+  spareTrack: THREE.MeshStandardMaterial;
+  trackL: THREE.MeshStandardMaterial;
+  trackR: THREE.MeshStandardMaterial;
+  wheels: THREE.MeshStandardMaterial;
+}
+
+interface SovietHeavyBuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly mats: SovietHeavyMaterials;
+  readonly q?: boolean;
+  readonly spec: { visual: { number?: string } };
+  readonly disposables: THREE.Material[];
+  topY?: number;
+  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addEquipment(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): unknown;
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    label: string | null,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): unknown;
+}
+
+interface SovietGearOptions {
+  wheels: number;
+  zc: number;
+  span: number;
+  trackW: number;
+  wheelR: number;
+  wheelY: number;
+  xc: number;
+  topY: number;
+  style?: string;
+  yLift?: number;
+  sprocketDz?: number;
+  sprocketY?: number;
+  sprocketR?: number;
+  idlerDz?: number;
+  idlerY?: number;
+  idlerR?: number;
+  rollers?: readonly unknown[];
+  botY?: number;
+  corridorOwned?: boolean;
+}
+
+interface RunningGearPort {
+  addRoadWheelLayer(
+    geometry: unknown,
+    material: THREE.Material,
+    options?: { name?: string; outset?: number },
+  ): void;
+}
+
+interface SaddleOptions {
+  rollR: number;
+  rollW: number;
+  ballR?: number;
+  ballZ: number;
+  boltR?: number;
+  boltX?: readonly number[];
+}
+
+interface PikeNoseOptions {
+  zBreak: number;
+  zTip: number;
+  yBelt: number;
+  yRoof: number;
+  yBelly: number;
+  wRoof: number;
+  wBelt: number;
+  lowerCoreW?: number;
+  cheekW: number;
+  cheeks?: boolean;
+  welds?: boolean;
+}
+
+interface MaterialSceneObject extends THREE.Object3D {
+  readonly isMesh?: boolean;
+  readonly isInstancedMesh?: boolean;
+  material?: THREE.MeshStandardMaterial;
+  geometry?: THREE.BufferGeometry;
+}
+
+const nonUniformXform = KIT.xform as (
+  geometry: unknown,
+  x: number,
+  y: number,
+  z: number,
+  rotationX: number,
+  rotationY: number,
+  rotationZ: number,
+  scale: number | readonly number[],
+) => unknown;
 
 // ---------------------------------------------------------------------------
 // Family machinery
@@ -64,7 +172,7 @@ import { vehicleAmbientFloorHook } from '../materials.js';
 
 // IS running gear: big steel wheels low on the hull, rear sprocket, no
 // return-roller gap (KV passes explicit rollers).
-function sovGear(P, g) {
+function sovGear(P: SovietHeavyBuilderPort, g: SovietGearOptions): RunningGearPort {
   const { buildRunningGear, cylX } = KIT;
   const wheelZs = Array.from({ length: g.wheels }, (_, i) =>
     g.zc + g.span / 2 - i * (g.span / (g.wheels - 1)));
@@ -104,7 +212,13 @@ function sovGear(P, g) {
 
 // Squashed cast dome ("frying pan"): lathe profile [[r, y]...] stretched
 // lengthwise by sz, seated at (x, y, z) in turret space.
-function panDome(P, profile, sz, y, z) {
+function panDome(
+  P: SovietHeavyBuilderPort,
+  profile: readonly (readonly [number, number])[],
+  sz: number,
+  y: number,
+  z: number,
+): void {
   const { lathe } = KIT;
   P.add('turret', lathe(profile, P.q ? 32 : 16, sz), 0, y, z);
 }
@@ -114,7 +228,7 @@ function panDome(P, profile, sz, y, z) {
 // a surface of revolution about the trunnion X-axis THROUGH the gun pivot, so
 // its silhouette is invariant under elevation — no slot can ever open. The
 // caller seals the roll's flat end faces with turret-side cheek plates.
-function saddle(P, o) {
+function saddle(P: SovietHeavyBuilderPort, o: SaddleOptions): void {
   const { cylX, sph } = KIT;
   P.addGunExtra(cylX(o.rollR, o.rollW, 16), 0, 0, 0);            // trunnion saddle roll
   if (o.ballR) P.addGunExtra(sph(o.ballR, 12), 0, 0, o.ballZ);   // cast ball at the tube root
@@ -127,7 +241,7 @@ function saddle(P, o) {
 // Roof AA MG rebuilt in gunmetal (r1: "stick-blocks on posts" + one-clay).
 // Detail buckets are mask-safe since the LOD fix, so the receiver/barrels can
 // live in turretDark; only the pintle post stays scheme-painted.
-function aaMG(P, x, y, z, twin = false) {
+function aaMG(P: SovietHeavyBuilderPort, x: number, y: number, z: number, twin = false): void {
   const { box, cylY, cylZ } = KIT;
   P.addEquipment('turret', cylY(0.045, 0.058, 0.30, 8), x, y + 0.15, z);
   P.add('turretDark', box(0.05, 0.15, 0.05), x, y + 0.35, z - 0.05);          // cradle yoke
@@ -141,7 +255,7 @@ function aaMG(P, x, y, z, twin = false) {
 }
 
 // Turret-side grab rail: thin rod held off the dome skin by short posts.
-function domeRail(P, x, y, z, len) {
+function domeRail(P: SovietHeavyBuilderPort, x: number, y: number, z: number, len: number): void {
   const { box } = KIT;
   P.add('turretDetail', box(0.022, 0.022, len), x, y, z);
   for (const dz of [-len / 2 + 0.08, 0, len / 2 - 0.08]) {
@@ -150,7 +264,7 @@ function domeRail(P, x, y, z, len) {
 }
 
 // External fuel drum with dark end caps + mounting straps down to the deck.
-function fuelDrum(P, x, y, z, len, r = 0.165) {
+function fuelDrum(P: SovietHeavyBuilderPort, x: number, y: number, z: number, len: number, r = 0.165): void {
   const { cylZ, box } = KIT;
   P.addEquipment('hull', cylZ(r, len, 12), x, y, z);
   for (const e of [-1, 1]) P.add('hullDark', cylZ(r + 0.004, 0.024, 12), x, y, z + e * (len / 2 - 0.014));
@@ -160,7 +274,7 @@ function fuelDrum(P, x, y, z, len, r = 0.165) {
 }
 
 // Bow tow hook: bracket block + dark pin.
-function towHook(P, x, y, z) {
+function towHook(P: SovietHeavyBuilderPort, x: number, y: number, z: number): void {
   const { box, cylX } = KIT;
   P.add('hullDetail', box(0.09, 0.13, 0.09), x, y, z);
   P.add('hullDark', cylX(0.02, 0.12, 6), x, y + 0.015, z + 0.03);
@@ -174,7 +288,10 @@ function towHook(P, x, y, z) {
 // detached "thin rod lying diagonally on the pike". Both are opt-out now:
 // is7 passes cheeks/welds false (its oracle pike is a clean casting); the
 // long is3 pike keeps them (no pierce there — verified on the r3 board).
-function pikeNose(P, { zBreak, zTip, yBelt, yRoof, yBelly, wRoof, wBelt, lowerCoreW = wBelt, cheekW, cheeks = true, welds = true }) {
+function pikeNose(
+  P: SovietHeavyBuilderPort,
+  { zBreak, zTip, yBelt, yRoof, yBelly, wRoof, wBelt, lowerCoreW = wBelt, cheekW, cheeks = true, welds = true }: PikeNoseOptions,
+): void {
   const { box, frustum } = KIT;
   P.add('hull', frustum(wBelt, zTip, zBreak - 0.02, wRoof, zBreak + (zTip - zBreak) * 0.30, zBreak - 0.04, yBelt, yRoof));
   P.add('hull', frustum(lowerCoreW * 0.84, zBreak + (zTip - zBreak) * 0.72, zBreak, lowerCoreW, zTip, zBreak - 0.02, yBelly, yBelt));
@@ -199,7 +316,7 @@ function pikeNose(P, { zBreak, zTip, yBelt, yRoof, yBelly, wRoof, wBelt, lowerCo
 // hull z −5.04..+1.51 (len 6.55), roof 1.41, glacis→1.08; long egg dome
 // z −3.5..+0.9 crown 2.25; muzzle +5.06 (3.55 m overhang) at axis y 1.71.
 // ---------------------------------------------------------------------------
-function buildIS7(P) {
+function buildIS7(P: SovietHeavyBuilderPort): void {
   const { box, cylY, cylZ, torus, frustum, fenders, headlight, towCable, buildGun, liftEye, cupola } = KIT;
   const zc = -1.76;
   // r5 dims-first: published hull 7.38 (tail zc-3.59, pike tip zc+3.79) and
@@ -312,8 +429,20 @@ function buildIS7(P) {
 // ---------------------------------------------------------------------------
 // Mirrored 8-corner slab: author corners for the +x side; side=-1 mirrors x
 // AND swaps the corner order so the winding stays outward (abrams.js pattern).
-function sideSlab(P, bucket, side, b0, b1, b2, b3, t0, t1, t2, t3) {
-  const M = ([x, y, z]) => [side * x, y, z];
+function sideSlab(
+  P: SovietHeavyBuilderPort,
+  bucket: string,
+  side: number,
+  b0: Vec3Tuple,
+  b1: Vec3Tuple,
+  b2: Vec3Tuple,
+  b3: Vec3Tuple,
+  t0: Vec3Tuple,
+  t1: Vec3Tuple,
+  t2: Vec3Tuple,
+  t3: Vec3Tuple,
+): void {
+  const M = ([x, y, z]: Vec3Tuple): Vec3Tuple => [side * x, y, z];
   P.add(bucket, side > 0
     ? KIT.slab(b0, b1, b2, b3, t0, t1, t2, t3)
     : KIT.slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2)));
@@ -339,7 +468,7 @@ function sideSlab(P, bucket, side, b0, b1, b2, b3, t0, t1, t2, t3) {
 //    fender rears -3.371, tail wedge -3.385.
 // WIDTH GUARD: fenders 1.545+... stay the committed 3.15 anchor; track pads
 // reach 1.525 only (ref front shows nothing at ground past 1.54).
-function is3Hull(P) {
+function is3Hull(P: SovietHeavyBuilderPort): void {
   const { box, cylY, frustum, headlight, towCable } = KIT;
   // belly: centre keel 0.455 + lower tub strips 0.275 (ref front bottoms)
   P.add('hull', box(1.30, 0.55, 5.10), 0, 0.73, -0.35);                        // centre belly 0.455..1.005
@@ -517,7 +646,7 @@ function is3Hull(P) {
 // >= 2.80 so the 12% body filter keeps the 0.33-band brake discs out of
 // hullLengthM (v10 law), while costing only ~2 thin columns vs the warped
 // ref's flat cluster (heightM p95 spike budget: 2 of 4).
-function is3TurretAndGun(P, num) {
+function is3TurretAndGun(P: SovietHeavyBuilderPort, num: string): void {
   const { box, cylY, cylZ, buildGun, liftEye } = KIT;
   // ring pivot at the print's own race (extract turretPivot z -0.17 -> the
   // dome centres near world -0.09); crown 2.435, near-circular plan (sz 1.03)
@@ -581,7 +710,7 @@ function is3TurretAndGun(P, num) {
   P.topY = 1.10;
 }
 
-function buildIS3(P) {
+function buildIS3(P: SovietHeavyBuilderPort): void {
   is3Hull(P);
   is3TurretAndGun(P, '703');
 }
@@ -593,7 +722,7 @@ function buildIS3(P) {
 // lid flush on the deck". r2 rebuilds the REAL proud IS-3 dome + full D-25T:
 // identity beats the metric — the turret/gun component scores are knowingly
 // sacrificed against the broken oracle (cost logged in the packet).
-function buildIS3Bergman(P) {
+function buildIS3Bergman(P: SovietHeavyBuilderPort): void {
   is3Hull(P);
   is3TurretAndGun(P, '703');
   // r3: the degenerate bergman print frames the shared is3 build on its own
@@ -608,7 +737,7 @@ function buildIS3Bergman(P) {
 // elliptical shell z −4.84..+1.51 (len 6.36) roof 1.57, full width to y≈0.35,
 // rounded stern; flat dome crown 2.38; muzzle +4.86 (3.35 m) axis 1.79.
 // ---------------------------------------------------------------------------
-function buildObject279(P) {
+function buildObject279(P: SovietHeavyBuilderPort): void {
   const { box, cylY, cylZ, frustum, xform, headlight, buildGun, liftEye } = KIT;
   const zc = -1.665;
   // r5 dims-first: published 6.99 hull / 10.24 overall / 2.60 roof — shell
@@ -620,7 +749,7 @@ function buildObject279(P) {
   P.add('hull', frustum(1.63, zc + 3.28, zc - 2.88, 1.45, zc + 2.50, zc - 2.75, 1.12, 1.555));
   P.add('hull', box(2.86, 0.04, 5.72), 0, 1.545, zc - 0.10);                   // roof cap
   // rounded stern (plan taper: ~2.2 wide at the rear tip)
-  P.add('hull', xform(cylY(1.62, 1.62, 0.50, P.q ? 24 : 14), 0, 0, 0, 0, 0, 0, [1, 1, 0.42]), 0, 1.15, zc - 2.90);
+  P.add('hull', nonUniformXform(cylY(1.62, 1.62, 0.50, P.q ? 24 : 14), 0, 0, 0, 0, 0, 0, [1, 1, 0.42]), 0, 1.15, zc - 2.90);
   // bow: roof falls 1.57 -> 1.01 at the tip over the last ~0.9 m
   P.add('hull', frustum(1.52, zc + 3.47, zc + 2.54, 1.35, zc + 2.90, zc + 2.54, 1.01, 1.545));
   P.add('hull', frustum(0.90, zc + 2.83, zc + 2.54, 0.90, zc + 3.47, zc + 2.54, 0.42, 1.01)); // sealed inter-track prow core
@@ -726,7 +855,7 @@ function buildObject279(P) {
 //  - plan: nose 1.663 centre, fender tips 1.812 (x 0.82..1.55) = hull mask
 //    front; rear -5.01..-5.06 (hook slivers deepest at x 0.42..0.62).
 // ---------------------------------------------------------------------------
-function buildIS6B(P) {
+function buildIS6B(P: SovietHeavyBuilderPort): void {
   const { box, cylY, cylZ, frustum, slab, headlight, towCable, buildGun, liftEye } = KIT;
   const zc = -1.639;
   // belly + tub steps (ref front bottoms 0.50 / 0.34 / 0.296)
@@ -885,7 +1014,7 @@ function buildIS6B(P) {
 // slab turret 1.88 wide × 1.45 tall (1.67..3.12) × ~2.45 deep, periscope to
 // 3.27; stubby fat 152 mm at axis 2.57, muzzle +3.60.
 // ---------------------------------------------------------------------------
-function buildKV2(P) {
+function buildKV2(P: SovietHeavyBuilderPort): void {
   const { box, cylY, cylZ, cylX, sph, frustum, fenders, headlight, towCable, buildGun, slab } = KIT;
   // r3 (geo round-3): full re-lay against the world-coordinate gate trace
   // (tools/tmp-sovr3-worldtrace.mjs; measured ref lines quoted per piece in
@@ -1335,26 +1464,27 @@ function buildKV2(P) {
     // re-attach the readability floor the clones lost (see import note):
     // without it the pads render ~25 on the shade side while every hooked
     // material floats at ~55 — the exact 3.7x band split the critic scored.
-    const rehook = (m) => {
+    const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
       m.onBeforeCompile = vehicleAmbientFloorHook;
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       return m;
     };
     rehook(wornDrum);
     P.hullG.traverse((o) => {
-      if (!o.isMesh && !o.isInstancedMesh) return;
-      const m = o.material;
-      if (!m || !m.color) return;
-      if (o.isInstancedMesh && m.color.getHex() === 0x171614) {
+      const object: MaterialSceneObject = o;
+      if (!object.isMesh && !object.isInstancedMesh) return;
+      const m = object.material;
+      if (!m) return;
+      if (object.isInstancedMesh && m.color.getHex() === 0x171614) {
         rehook(m).color.setHex(0x423a2e);                    // link pads: contact-worn rusty steel
-      } else if (o.isInstancedMesh && m.color.getHex() === 0x27251f) {
+      } else if (object.isInstancedMesh && m.color.getHex() === 0x27251f) {
         rehook(m).color.setHex(0x342e24);                    // inner chain/pin layer: darker of the two-tone
-      } else if (o.isMesh && m === P.mats.wheels && Math.abs(o.position.x) > 0.9) {
-        o.material = wornDrum;                               // end-wheel body drums
-      } else if (o.isInstancedMesh && m === P.mats.rubber) {
-        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
-        const bw = o.geometry.boundingBox.max.x - o.geometry.boundingBox.min.x;
-        if (bw > 0.26) o.material = pocketVoid;              // pocket inserts (w*1.16) vs tire band (w)
+      } else if (object.isMesh && m === P.mats.wheels && Math.abs(object.position.x) > 0.9) {
+        object.material = wornDrum;                          // end-wheel body drums
+      } else if (object.isInstancedMesh && m === P.mats.rubber && object.geometry) {
+        if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
+        const bounds = object.geometry.boundingBox;
+        if (bounds && bounds.max.x - bounds.min.x > 0.26) object.material = pocketVoid; // pocket inserts (w*1.16) vs tire band (w)
       }
     });
   }
@@ -1640,7 +1770,7 @@ function buildKV2(P) {
     P.add('turretDetail', box(0.14, 0.016, 0.14), -0.55, 1.470, -1.36);        // pintle foot plate into the plateau
   }
   // rivet stud rows along the plate seams (dark studs, mask-safe buckets)
-  const stud = (x, y, z, face) => {
+  const stud = (x: number, y: number, z: number, face: 'x' | 'z'): void => {
     if (face === 'z') P.add('turretDark', box(0.030, 0.030, 0.018), x, y, z);
     else P.add('turretDark', box(0.018, 0.030, 0.030), x, y, z);
   };
@@ -1704,7 +1834,10 @@ function buildKV2(P) {
     boreVoid.color.setHex(0x0a0a09);
     boreVoid.envMapIntensity = 0;
     P.disposables.push(boreVoid);
-    P.gunG.traverse((o) => { if (o.isMesh && o.name === 'muzzleBoreShadowDisc') o.material = boreVoid; });
+    P.gunG.traverse((o) => {
+      const object: MaterialSceneObject = o;
+      if (object.isMesh && object.name === 'muzzleBoreShadowDisc') object.material = boreVoid;
+    });
   }
   P.topY = 1.55;
 }
@@ -1716,4 +1849,4 @@ export const SOVIET_HEAVY_PROFILES = {
   is6b: { build: buildIS6B },
   is3_bergman: { build: buildIS3Bergman },
   kv2: { build: buildKV2 },
-};
+} satisfies VehicleProfileRecord;
