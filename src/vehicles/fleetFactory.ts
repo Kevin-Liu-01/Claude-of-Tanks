@@ -20,7 +20,7 @@ import {
   ensureCombatAnatomyCalibrations,
   isCombatAnatomyCalibrationReady,
 } from './combatAnatomyCalibrationLoader.ts';
-import { finalizeCombatAnatomy } from './combatAnatomy.js';
+import { finalizeCombatAnatomy } from './combatAnatomy.ts';
 
 import './combatVariantSpecs.ts';
 import './modern1Specs.generated.ts';

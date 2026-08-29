@@ -163,6 +163,11 @@ The optional workshop set-piece now uses the strict
 canvas layers, low-poly assembly placement, chunk pump, variant backdrop, and
 disposal lifecycle are checked while `garageDressingAccess.ts` retains the
 retryable demand-import boundary.
+Fleet-wide anatomy reconciliation now uses the strict
+`src/vehicles/combatAnatomy.ts` owner. Its mutable armor plates, calibrated
+closed shells, smooth module and crew volumes, published layout metadata, and
+body-contact point cloud share explicit contracts with the generated receipt
+registry without adding DOM, WebGL, or Three.js to the pure-data finalizer.
 
 ## Consequences
 

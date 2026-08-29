@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Measure the playable fleet's first-party hull/turret/track envelopes and
-// publish the pure-data calibration consumed by combatAnatomy.js.
+// publish the pure-data calibration consumed by combatAnatomy.ts.
 //
 //   node tools/gen-combat-anatomy.mjs          # regenerate the full fleet
 //   node tools/gen-combat-anatomy.mjs --check  # fail when a tank changed

@@ -15,7 +15,7 @@ import { VEHICLE_MARKING_SEATS } from './vehicleMarkingSeats.generated.ts';
 import { registerVehicleMarkingSeatRecords } from './vehicleMarkingSeatRegistry.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.ts';
 import { registerCombatAnatomyCalibrations } from './combatAnatomyCalibrationRegistry.ts';
-import { finalizeCombatAnatomy } from './combatAnatomy.js';
+import { finalizeCombatAnatomy } from './combatAnatomy.ts';
 
 // These modules register specs at evaluation time. Keep donor waves ahead of
 // their derivatives so every clone observes a complete source record.

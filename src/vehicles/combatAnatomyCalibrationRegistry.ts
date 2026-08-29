@@ -2,11 +2,43 @@
 // Browser play registers only the families it is about to construct; fleet
 // tools and the dedicated server register the complete generated set.
 
+export interface AnatomyCalibrationBounds extends Record<string, unknown> {
+  readonly min: readonly number[];
+  readonly max: readonly number[];
+}
+
+export interface AnatomyCalibrationCell extends AnatomyCalibrationBounds {
+  readonly vertices: readonly (readonly number[])[];
+  readonly faces: readonly (readonly number[])[];
+  readonly structureKind?: string | null;
+  readonly structureIndex?: number;
+}
+
+export interface AnatomyCalibrationStructure extends AnatomyCalibrationBounds {
+  readonly kind?: string;
+  readonly sourceHash?: string;
+  readonly index?: number;
+}
+
+export interface AnatomyModuleShapeReceipt extends Record<string, unknown> {
+  readonly module: string;
+  readonly turretLocal?: boolean;
+  readonly parts: readonly AnatomyCalibrationBounds[];
+}
+
 export interface CombatAnatomyCalibration extends Record<string, unknown> {
-  hull: Record<string, unknown>;
+  readonly hull: AnatomyCalibrationBounds;
+  readonly turret?: AnatomyCalibrationBounds;
+  readonly hullCollision?: readonly AnatomyCalibrationCell[];
+  readonly turretCollision?: readonly AnatomyCalibrationCell[];
+  readonly hullStructureCollision?: readonly AnatomyCalibrationCell[];
+  readonly turretStructureCollision?: readonly AnatomyCalibrationCell[];
+  readonly hullStructures?: readonly AnatomyCalibrationStructure[];
+  readonly turretStructures?: readonly AnatomyCalibrationStructure[];
+  readonly moduleShapes?: readonly AnatomyModuleShapeReceipt[];
   tracks: {
-    left: Record<string, unknown>;
-    right: Record<string, unknown>;
+    readonly left: AnatomyCalibrationBounds;
+    readonly right: AnatomyCalibrationBounds;
   };
 }
 

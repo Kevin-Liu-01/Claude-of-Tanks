@@ -36,7 +36,7 @@ development tools, not model authors. Preserve third-party reference credits
 in `docs/ATTRIBUTION.md`.
 Keep turret/gun parenting correct, derive track hit geometry from the running
 gear profile, and land per-tank changes atomically with audits. Every playable
-tank carries the core combat modules; `combatAnatomy.js` adds only
+tank carries the core combat modules; `combatAnatomy.ts` adds only
 gameplay-backed vehicle-specific systems (autoloader, IFV feed, missile rack)
 and calibrates armor/module/crew coordinates to checked geometry receipts.
 Procedural low-polygon shadow hulls are presentation-invisible proxies: route

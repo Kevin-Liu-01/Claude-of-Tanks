@@ -262,3 +262,4 @@ runtime documents remain authoritative for behavior.
 - [0250 — Fitted ghillie geometry has a strict TypeScript owner](0250-type-ghillie-suit.md)
 - [0251 — The original modern MBT wave has a strict TypeScript owner](0251-type-modern1-wave.md)
 - [0252 — Optional Garage workshop dressing has a strict TypeScript owner](0252-type-garage-dressing.md)
+- [0253 — Fleet combat anatomy has a strict TypeScript owner](0253-type-combat-anatomy.md)
