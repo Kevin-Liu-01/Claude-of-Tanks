@@ -22,7 +22,7 @@ export const GARAGE_WALL_BAYS = Object.freeze<readonly GarageWallBay[]>([
   { id: 'south_fan', side: 'south', along: -0.2, y: 6.10, width: 2.2, height: 2.2 },
   { id: 'south_turret_armor', side: 'south', along: -8.7, y: 3.25, width: 3.0, height: 1.1 },
   { id: 'south_keep_clear', side: 'south', along: -4.2, y: 5.05, width: 2.5, height: 1.2 },
-  { id: 'south_location', side: 'south', along: 7.5, y: 7.05, width: 11.2, height: 3.45 },
+  { id: 'south_location', side: 'south', along: 7.5, y: 4.15, width: 11.2, height: 3.45 },
   { id: 'south_suspension', side: 'south', along: 17.4, y: 3.20, width: 3.2, height: 1.1 },
   { id: 'west_tools', side: 'west', along: 1.5, y: 2.72, width: 3.2, height: 1.8 },
   { id: 'west_extinguisher', side: 'west', along: 4.0, y: 1.10, width: 0.6, height: 0.8 },

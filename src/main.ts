@@ -1008,6 +1008,15 @@ legacyPort<Record<string, unknown>>(window).__GARAGE_WORKSHOP = {
       architecture: garageStage.stats?.() || garageStage.group.userData.garageArchitecture || {},
       roofMode: garageStage.group.userData.garageRoofMode || '',
       wallLayout: garageDressing.group.userData.wallLayout || { bays: 0, overlaps: [] },
+      mapImageCount: garageDressing.group.userData.mapImageCount ?? -1,
+      battleScreenMode: garageDressing.group.userData.battleScreenMode || '',
+      battleScreenWallBay: garageDressing.group.userData.battleScreenWallBay || '',
+      battleScreenImageCount: garageDressing.group.userData.battleScreenImageCount || 0,
+      battleScreenResidentImageLimit:
+        garageDressing.group.userData.battleScreenResidentImageLimit || 0,
+      battleScreenResidentImageCount:
+        garageDressing.group.userData.battleScreenResidentImageCount || 0,
+      battleScreenCurrentImage: garageDressing.group.userData.battleScreenCurrentImage || '',
       modelMode: garageDressing.group.userData.workshopModelMode || '',
       exhibitCount: garageDressing.group.userData.workshopExhibitCount || 0,
       verdantOriginalVisible: garageDressing.group.userData.verdantOriginalVisible === true,

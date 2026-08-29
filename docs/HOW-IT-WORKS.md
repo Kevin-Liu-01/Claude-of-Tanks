@@ -43,8 +43,13 @@ from the Workshop control beside Home and Record. The environment choice is
 persisted independently from the next-battle map. Each selection now owns a
 different structural kit—field shed, shade depot, bunker, brick arsenal,
 drydock, rail roundhouse, rain canopy, cavern, recovery yard, or factory
-line—plus the battlefield's existing thumbnail; it never constructs the
-battlefield itself. Verdant keeps the original workshop arrangement rather
+line; it never constructs the battlefield itself. Map thumbnails are not
+mounted inside the workshops. The otherwise unused south-wall bay instead
+holds one curved field-record monitor that scrolls through the canonical battle
+capture archive with scanlines, a rolling glow, and a physical service bezel.
+Only the current and incoming images are resident during a transition, and the
+monitor stops scheduling work while the Garage scene is detached for battle.
+Verdant keeps the original workshop arrangement rather
 than substituting the new layout: T-90A Burlak under its gantry and jack
 stands, M1A2 with removed skirts and welding gear, T-90M turret/gun/Relikt
 service, and rolled K2 hull with its actual wheel and track parts. The original
@@ -56,7 +61,7 @@ constructing the tanks twice. Fleet builders load only after a genuine garage
 lull, each complete tank is added in its own quiet lease, and the renderer
 compiles it before reveal. This preserves exact vehicle detail without adding
 work to the initial garage or any battle frame.
-Every wall-mounted board, sign, fan, extinguisher and location panel is assigned
+Every wall-mounted board, sign, fan, extinguisher and archive monitor is assigned
 to one measured bay; a Node-runnable overlap audit keeps those rectangles
 aligned and disjoint as later chunks arrive. Verdant Motor Pool retains its
 original enclosed ceiling and full roof-truss run.

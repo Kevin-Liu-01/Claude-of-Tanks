@@ -36,6 +36,9 @@ try {
   await page.waitForFunction(() => window.__GAME_READY === true && window.__GARAGE_WORKSHOP,
     { timeout: 60_000 });
   await page.evaluate(() => window.__GARAGE_WORKSHOP.ensureBuilt());
+  await page.waitForFunction(() =>
+    !!window.__GARAGE_WORKSHOP.stats().battleScreenCurrentImage,
+  { timeout: 15_000 });
   // ensureBuilt deliberately drains the quiet-slice queue for deterministic
   // capture. Let allocation cleanup settle before timing interactive swaps;
   // the live scheduler naturally has 140 ms between every exhibit slice.
@@ -146,6 +149,15 @@ try {
     if (result.stats.wallLayout?.overlaps?.length) {
       failures.push(`${result.id}: overlapping wall bays ${result.stats.wallLayout.overlaps.join(', ')}`);
     }
+    if (result.stats.mapImageCount !== 0
+        || result.stats.battleScreenMode !== 'crt-scroll-slideshow'
+        || result.stats.battleScreenWallBay !== 'south_location'
+        || result.stats.battleScreenImageCount < 5
+        || result.stats.battleScreenResidentImageLimit !== 2
+        || result.stats.battleScreenResidentImageCount > 2
+        || !result.stats.battleScreenCurrentImage?.startsWith('/media/')) {
+      failures.push(`${result.id}: battle archive screen contract failed`);
+    }
     const isVerdant = result.id === 'verdant_motor_pool';
     const expectedExhibits = isVerdant ? 4 : 6;
     if (result.stats.modelMode !== 'actual-fleet'
@@ -187,9 +199,29 @@ try {
   if (!mobile.open || mobile.cards !== 10 || !mobile.insideViewport || !mobile.scrollable || !mobile.pointerSelect) {
     failures.push(`mobile selector contract failed: ${JSON.stringify(mobile)}`);
   }
+  const firstScreenImage = results[0]?.stats.battleScreenCurrentImage || '';
+  await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
+  await page.waitForFunction((initialImage) => {
+    const stats = window.__GARAGE_WORKSHOP.stats();
+    return !!stats.battleScreenCurrentImage && stats.battleScreenCurrentImage !== initialImage;
+  }, { timeout: 12_000 }, firstScreenImage);
+  const battleScreenRotation = await page.evaluate((initialImage) => {
+    const stats = window.__GARAGE_WORKSHOP.stats();
+    return {
+      initialImage,
+      currentImage: stats.battleScreenCurrentImage,
+      changed: stats.battleScreenCurrentImage !== initialImage,
+      residentImages: stats.battleScreenResidentImageCount,
+    };
+  }, firstScreenImage);
+  if (!battleScreenRotation.changed || battleScreenRotation.residentImages > 2) {
+    failures.push(`battle archive rotation failed: ${JSON.stringify(battleScreenRotation)}`);
+  }
   if (consoleErrors.length) failures.push(`console errors: ${consoleErrors.join(' | ')}`);
 
-  console.log(JSON.stringify({ cpuRate, variants: results, mobile, consoleErrors, failures }, null, 2));
+  console.log(JSON.stringify({
+    cpuRate, variants: results, mobile, battleScreenRotation, consoleErrors, failures,
+  }, null, 2));
   if (failures.length) process.exitCode = 1;
 } finally {
   await browser.close();

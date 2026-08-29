@@ -43,6 +43,20 @@ assert.match(dressing, /tank\.position\.set\(-16\.25, 0, -16\.85\)/,
   'K2 teardown retains its original transform');
 assert.match(dressing, /legacyVerdantRoot\.visible = isVerdant/,
   'the original fixed composition is selected only for Verdant');
+assert.doesNotMatch(dressing, /\/maps\/thumbs\//,
+  'workshop walls must not reuse battlefield map thumbnails');
+assert.doesNotMatch(dressing, /garage_map_location_preview/,
+  'the old location-preview wall mesh must be removed');
+assert.match(dressing, /import \{ FEATURED_SHOTS \} from '\.\.\/ui\/featuredShots\.ts'/,
+  'the wall monitor reuses the canonical checked-in battle archive');
+assert.match(dressing, /FEATURED_SHOTS\.filter\(\(shot\) => !shot\.handmade && shot\.maps\?\.length\)/,
+  'editor/studio frames must not enter the workshop battle rotation');
+assert.match(dressing, /garage_battle_archive_screen/);
+assert.match(dressing, /battleScreenMode = 'crt-scroll-slideshow'/);
+assert.match(dressing, /uTransition[\s\S]*scanline[\s\S]*rollingGlow/,
+  'the archive changes images with a shader scroll and visible CRT treatment');
+assert.match(dressing, /if \(!group\.parent \|\| !group\.visible \|\| document\.hidden\) return/,
+  'the screen timer must stop instead of polling during battle or background tabs');
 assert.match(dressing, /completeFleetTank \? Math\.PI : 0/,
   'complete tanks must face the corrected direction along their existing bay axis');
 assert.match(access, /prepareGarageDressing\?\./,

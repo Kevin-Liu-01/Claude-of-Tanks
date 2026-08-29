@@ -30,6 +30,7 @@ import * as THREE from 'three';
 import {
   mulberry32, canvasTexture, dither, makeSignTexture, makeHazardTexture, SIGN_FONT,
 } from '../ui/garageStage.ts';
+import { FEATURED_SHOTS } from '../ui/featuredShots.ts';
 import { DECOR_KITS } from '../vehicles/decorations.js';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant } from './garageVariants.ts';
@@ -83,6 +84,16 @@ type TrackedResource = { dispose(): void };
 const WORKSHOP_FLEET_IDS = Object.freeze([
   't90a_burlak', 'm1a2', 't90m', 'k2', 'leclerc',
 ] as const);
+
+// The workshop monitor is a field archive, not a location preview. Reuse the
+// canonical player-facing captures so filenames cannot drift from disk, but
+// keep the rotation compact: only one current and one incoming texture are
+// resident at a time.
+const GARAGE_BATTLE_SCREEN_SHOTS = Object.freeze(
+  FEATURED_SHOTS.filter((shot) => !shot.handmade && shot.maps?.length).slice(0, 6),
+);
+const BATTLE_SCREEN_HOLD_MS = 6_500;
+const BATTLE_SCREEN_SCROLL_MS = 720;
 
 /** Load only the real fleet families used by the optional workshop. */
 export async function prepareGarageDressing(
@@ -673,9 +684,18 @@ export function createGarageDressing(
     [20.2, 2.5, -1.25], [-20.2, -8.0, 1.82], [20.2, -8.0, -1.82],
     [-14.2, -16.0, 2.55], [14.2, -16.0, -2.55], [0, 20.4, Math.PI],
   ];
-  let mapBackdropMaterial: THREE.MeshBasicMaterial | null = null;
-  let mapBackdropTexture: THREE.Texture | null = null;
-  let backdropGeneration = 0;
+  let battleScreenMaterial: THREE.ShaderMaterial | null = null;
+  let battleScreenMesh: THREE.Mesh | null = null;
+  let battleScreenFallbackTexture: THREE.Texture | null = null;
+  let battleScreenCurrentTexture: THREE.Texture | null = null;
+  let battleScreenNextTexture: THREE.Texture | null = null;
+  let battleScreenTimer: number | null = null;
+  let battleScreenFrame: number | null = null;
+  let battleScreenGeneration = 0;
+  let battleScreenIndex = 0;
+  let battleScreenLoading = false;
+  let battleScreenTransitionStartedAt = 0;
+  const battleScreenLoader = new THREE.TextureLoader();
 
   function poseAssembly(root: THREE.Group, logicalSlot: number): void {
     const layout = currentVariant.layout;
@@ -776,25 +796,113 @@ export function createGarageDressing(
     }
   }
 
-  function updateMapBackdrop(): void {
-    if (!mapBackdropMaterial) return;
-    const generation = ++backdropGeneration;
-    mapBackdropMaterial.color.setHex(currentVariant.wallTint).multiplyScalar(1.35);
-    new THREE.TextureLoader().load(
-      `/maps/thumbs/${currentVariant.mapId}.webp`,
-      (texture) => {
-        if (generation !== backdropGeneration) { texture.dispose(); return; }
+  function loadBattleScreenTexture(index: number): Promise<THREE.Texture | null> {
+    const shot = GARAGE_BATTLE_SCREEN_SHOTS[index];
+    if (!shot) return Promise.resolve(null);
+    const generation = battleScreenGeneration;
+    return new Promise((resolve) => {
+      battleScreenLoader.load(shot.img, (texture) => {
+        if (generation !== battleScreenGeneration) {
+          texture.dispose();
+          resolve(null);
+          return;
+        }
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.anisotropy = Math.min(4, aniso);
-        mapBackdropTexture?.dispose();
-        mapBackdropTexture = texture;
-        mapBackdropMaterial!.map = texture;
-        mapBackdropMaterial!.color.setHex(0xffffff);
-        mapBackdropMaterial!.needsUpdate = true;
-      },
-      undefined,
-      () => {},
-    );
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        resolve(texture);
+      }, undefined, () => resolve(null));
+    });
+  }
+
+  function scheduleBattleScreenAdvance(delay = BATTLE_SCREEN_HOLD_MS): void {
+    if (battleScreenTimer !== null || battleScreenFrame !== null || battleScreenLoading
+        || !battleScreenMaterial || !battleScreenCurrentTexture) return;
+    battleScreenTimer = window.setTimeout(() => {
+      battleScreenTimer = null;
+      // The garage phase owner removes this whole root from the scene during
+      // battle. Stop here instead of polling; onBeforeRender restarts the
+      // archive on the first garage-return frame, preserving zero battle cost.
+      if (!group.parent || !group.visible || document.hidden) return;
+      void advanceBattleScreen();
+    }, delay);
+  }
+
+  function finishBattleScreenTransition(nextIndex: number): void {
+    if (!battleScreenMaterial || !battleScreenNextTexture) return;
+    if (battleScreenCurrentTexture
+        && battleScreenCurrentTexture !== battleScreenNextTexture) {
+      battleScreenCurrentTexture.dispose();
+    }
+    battleScreenCurrentTexture = battleScreenNextTexture;
+    battleScreenNextTexture = null;
+    battleScreenIndex = nextIndex;
+    battleScreenMaterial.uniforms.uImageA.value = battleScreenCurrentTexture;
+    battleScreenMaterial.uniforms.uImageB.value = battleScreenCurrentTexture;
+    battleScreenMaterial.uniforms.uTransition.value = 0;
+    battleScreenFrame = null;
+    group.userData.battleScreenResidentImageCount = 1;
+    group.userData.battleScreenCurrentImage =
+      GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex]?.img || '';
+    if (group.parent && group.visible && !document.hidden) scheduleBattleScreenAdvance();
+  }
+
+  function animateBattleScreenTransition(now: number, nextIndex: number): void {
+    if (!battleScreenMaterial || !battleScreenNextTexture) {
+      battleScreenFrame = null;
+      return;
+    }
+    if (!group.parent || !group.visible || document.hidden) {
+      finishBattleScreenTransition(nextIndex);
+      return;
+    }
+    const elapsed = Math.max(0, now - battleScreenTransitionStartedAt);
+    const linear = Math.min(1, elapsed / BATTLE_SCREEN_SCROLL_MS);
+    battleScreenMaterial.uniforms.uTransition.value = linear * linear * (3 - 2 * linear);
+    if (linear >= 1) {
+      finishBattleScreenTransition(nextIndex);
+      return;
+    }
+    battleScreenFrame = window.requestAnimationFrame((time) => {
+      animateBattleScreenTransition(time, nextIndex);
+    });
+  }
+
+  async function advanceBattleScreen(): Promise<void> {
+    if (!battleScreenMaterial || !battleScreenCurrentTexture
+        || battleScreenFrame !== null || battleScreenLoading
+        || GARAGE_BATTLE_SCREEN_SHOTS.length < 2) return;
+    const nextIndex = (battleScreenIndex + 1) % GARAGE_BATTLE_SCREEN_SHOTS.length;
+    battleScreenLoading = true;
+    const texture = await loadBattleScreenTexture(nextIndex);
+    battleScreenLoading = false;
+    if (!texture || !battleScreenMaterial) {
+      if (group.parent && group.visible && !document.hidden) scheduleBattleScreenAdvance(1_500);
+      return;
+    }
+    battleScreenNextTexture = texture;
+    group.userData.battleScreenResidentImageCount = 2;
+    battleScreenMaterial.uniforms.uImageB.value = texture;
+    battleScreenTransitionStartedAt = performance.now();
+    battleScreenFrame = window.requestAnimationFrame((time) => {
+      animateBattleScreenTransition(time, nextIndex);
+    });
+  }
+
+  async function startBattleScreen(fallback: THREE.Texture): Promise<void> {
+    if (!battleScreenMaterial || !GARAGE_BATTLE_SCREEN_SHOTS.length) return;
+    battleScreenCurrentTexture = fallback;
+    battleScreenLoading = true;
+    const texture = await loadBattleScreenTexture(0);
+    battleScreenLoading = false;
+    if (!texture || !battleScreenMaterial) return;
+    battleScreenCurrentTexture = texture;
+    battleScreenMaterial.uniforms.uImageA.value = texture;
+    battleScreenMaterial.uniforms.uImageB.value = texture;
+    group.userData.battleScreenResidentImageCount = 1;
+    group.userData.battleScreenCurrentImage = GARAGE_BATTLE_SCREEN_SHOTS[0].img;
+    scheduleBattleScreenAdvance();
   }
 
   function setVariant(variantId: string): string {
@@ -812,7 +920,6 @@ export function createGarageDressing(
       ? (group.userData.verdantOriginalTriangleCount || 0)
       : (group.userData.variantWorkshopTriangleCount || 0);
     group.userData.workshopExhibitCount = isVerdant ? 4 : 6;
-    updateMapBackdrop();
     return currentVariant.id;
   }
 
@@ -822,22 +929,126 @@ export function createGarageDressing(
   // CHUNK 1 — static workshop clutter on every wall + floor decals
   // ==========================================================================
   chunks.push(function buildCore() {
-    // A framed exterior monitor/door panel uses the selected workshop's real
-    // battlefield thumbnail. It is the only per-variant texture and streams
-    // after readiness; the fallback tint paints immediately.
-    mapBackdropMaterial = track(new THREE.MeshBasicMaterial({
-      color: currentVariant.wallTint, side: THREE.DoubleSide,
+    // The former per-garage map thumbnail is gone. This otherwise empty wall
+    // bay now owns one field-record monitor that scrolls through the canonical
+    // battle archive. A shader moves two resident textures; it never uploads a
+    // canvas every frame, and the timer sleeps completely while the garage is
+    // detached for battle.
+    const screenBay = garageWallTransform('south_location');
+    const screenRoot = new THREE.Group();
+    screenRoot.name = 'garage_battle_archive_monitor';
+    // The original hanging task lamp crosses the bay near its center. Keep the
+    // monitor inside the measured rectangle but bias it toward the clear end
+    // so the shade never masks battle footage from the showroom orbit.
+    screenRoot.position.set(screenBay.x + 2.0, screenBay.y, screenBay.z - 0.10);
+    screenRoot.rotation.y = screenBay.yaw;
+    screenRoot.userData.wallBayId = screenBay.id;
+    group.add(screenRoot);
+
+    put(track(new THREE.BoxGeometry(6.8, 3.82, 0.22)), mat.steelDark,
+      0, 0, 0, 0, 0, 0, 1, screenRoot, false);
+    put(track(new THREE.BoxGeometry(6.26, 3.50, 0.08)), mat.rubber,
+      -0.22, 0, 0.13, 0, 0, 0, 1, screenRoot, false);
+    put(track(new THREE.BoxGeometry(2.35, 0.14, 0.07)), mat.safety,
+      -1.65, 1.74, 0.17, 0, 0, 0, 1, screenRoot, false);
+    put(track(new THREE.BoxGeometry(0.42, 2.92, 0.10)), mat.steelMid,
+      3.04, 0, 0.14, 0, 0, 0, 1, screenRoot, false);
+    for (const y of [0.95, 0.38, -0.19, -0.76]) {
+      put(track(new THREE.BoxGeometry(0.22, 0.08, 0.05)), mat.steelBright,
+        3.04, y, 0.22, 0, 0, 0, 1, screenRoot, false);
+    }
+    const statusLedMaterial = track(new THREE.MeshBasicMaterial({ color: 0x78d891 }));
+    for (const y of [1.38, -1.25]) {
+      put(track(new THREE.SphereGeometry(0.055, 8, 6)), statusLedMaterial,
+        3.04, y, 0.22, 0, 0, 0, 1, screenRoot, false);
+    }
+
+    const fallbackTexture = track(new THREE.DataTexture(
+      new Uint8Array([10, 20, 18, 255]), 1, 1, THREE.RGBAFormat,
+    ));
+    battleScreenFallbackTexture = fallbackTexture;
+    fallbackTexture.colorSpace = THREE.SRGBColorSpace;
+    fallbackTexture.needsUpdate = true;
+    battleScreenMaterial = track(new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,
+      toneMapped: false,
+      uniforms: {
+        uImageA: { value: fallbackTexture },
+        uImageB: { value: fallbackTexture },
+        uTransition: { value: 0 },
+        uTime: { value: 0 },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          vec3 curved = position;
+          vec2 centered = uv * 2.0 - 1.0;
+          curved.z += (1.0 - dot(centered, centered) * 0.45) * 0.065;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(curved, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D uImageA;
+        uniform sampler2D uImageB;
+        uniform float uTransition;
+        uniform float uTime;
+        varying vec2 vUv;
+
+        vec2 bendUv(vec2 uv) {
+          vec2 centered = uv * 2.0 - 1.0;
+          centered *= 1.0 + dot(centered, centered) * 0.035;
+          return centered * 0.5 + 0.5;
+        }
+
+        vec3 screenSample(sampler2D image, vec2 uv) {
+          float inside = step(0.0, uv.x) * step(uv.x, 1.0)
+            * step(0.0, uv.y) * step(uv.y, 1.0);
+          return texture2D(image, clamp(uv, 0.001, 0.999)).rgb * inside;
+        }
+
+        void main() {
+          vec2 uv = bendUv(vUv);
+          vec2 outgoingUv = uv + vec2(0.0, uTransition);
+          vec2 incomingUv = uv + vec2(0.0, uTransition - 1.0);
+          vec3 color = screenSample(uImageA, outgoingUv)
+            + screenSample(uImageB, incomingUv);
+
+          float scanline = 0.92 + 0.08 * sin(gl_FragCoord.y * 3.14159);
+          float grille = 0.975 + 0.025 * sin(gl_FragCoord.x * 2.0944);
+          float flicker = 0.992 + 0.008 * sin(uTime * 33.0);
+          float rollY = fract(vUv.y + uTime * 0.055);
+          float rollDistance = (rollY - 0.5) * 15.0;
+          float rollingGlow = exp(-(rollDistance * rollDistance)) * 0.06;
+          vec2 centered = vUv * 2.0 - 1.0;
+          float vignette = 1.0 - smoothstep(0.45, 1.45, dot(centered, centered)) * 0.48;
+          color *= scanline * grille * flicker * vignette;
+          color += color * rollingGlow;
+          color *= vec3(0.95, 1.02, 0.98);
+          gl_FragColor = vec4(color, 1.0);
+          #include <colorspace_fragment>
+        }
+      `,
     }));
-    const mapBay = garageWallTransform('south_location');
-    const backdropFrame = put(track(new THREE.BoxGeometry(mapBay.width + 0.28, mapBay.height + 0.28, 0.16)), mat.steelDark,
-      mapBay.x, mapBay.y, mapBay.z - 0.10, mapBay.yaw, 0, 0, 1, group, false);
-    backdropFrame.userData.wallBayId = mapBay.id;
-    const backdrop = put(track(new THREE.PlaneGeometry(mapBay.width, mapBay.height)), mapBackdropMaterial,
-      mapBay.x, mapBay.y, mapBay.z - 0.20, mapBay.yaw, 0, 0, 1, group, false);
-    backdrop.name = 'garage_map_location_preview';
-    backdrop.userData.mapId = currentVariant.mapId;
-    backdrop.userData.wallBayId = mapBay.id;
-    updateMapBackdrop();
+    const screenGeometry = track(new THREE.PlaneGeometry(5.70, 3.20, 24, 14));
+    battleScreenMesh = put(screenGeometry, battleScreenMaterial,
+      -0.22, 0, 0.20, 0, 0, 0, 1, screenRoot, false);
+    battleScreenMesh.name = 'garage_battle_archive_screen';
+    battleScreenMesh.userData.keepWorkshopMesh = true;
+    battleScreenMesh.userData.wallBayId = screenBay.id;
+    battleScreenMesh.onBeforeRender = () => {
+      if (!battleScreenMaterial) return;
+      battleScreenMaterial.uniforms.uTime.value = performance.now() * 0.001;
+      if (battleScreenTimer === null && battleScreenFrame === null
+          && group.userData.battleScreenCurrentImage) scheduleBattleScreenAdvance();
+    };
+    group.userData.mapImageCount = 0;
+    group.userData.battleScreenMode = 'crt-scroll-slideshow';
+    group.userData.battleScreenWallBay = screenBay.id;
+    group.userData.battleScreenImageCount = GARAGE_BATTLE_SCREEN_SHOTS.length;
+    group.userData.battleScreenResidentImageLimit = 2;
+    group.userData.battleScreenResidentImageCount = 0;
+    void startBattleScreen(fallbackTexture);
     // --- EAST WALL (left of frame from the hero cam) ------------------------
     workbench(21.95, -7, -Math.PI / 2);
     pegboardAt('east_tools');
@@ -1626,9 +1837,26 @@ export function createGarageDressing(
     setVariant,
     dispose() {
       if (group.parent) group.parent.remove(group);
-      backdropGeneration++;
-      mapBackdropTexture?.dispose();
-      mapBackdropTexture = null;
+      battleScreenGeneration++;
+      if (battleScreenTimer !== null) window.clearTimeout(battleScreenTimer);
+      if (battleScreenFrame !== null) window.cancelAnimationFrame(battleScreenFrame);
+      battleScreenTimer = null;
+      battleScreenFrame = null;
+      battleScreenLoading = false;
+      if (battleScreenCurrentTexture
+          && battleScreenCurrentTexture !== battleScreenFallbackTexture) {
+        battleScreenCurrentTexture.dispose();
+      }
+      if (battleScreenNextTexture && battleScreenNextTexture !== battleScreenCurrentTexture) {
+        battleScreenNextTexture.dispose();
+      }
+      battleScreenCurrentTexture = null;
+      battleScreenNextTexture = null;
+      battleScreenFallbackTexture = null;
+      group.userData.battleScreenResidentImageCount = 0;
+      if (battleScreenMesh) battleScreenMesh.onBeforeRender = () => {};
+      battleScreenMesh = null;
+      battleScreenMaterial = null;
       for (const visual of workshopVisuals) visual.dispose();
       workshopVisuals.length = 0;
       for (const o of group.userData.optimizationDisposables || []) o.dispose?.();

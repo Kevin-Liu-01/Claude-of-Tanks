@@ -76,9 +76,12 @@ T-90M geometry is cloned rather than built twice; all loading, construction,
 and explicit shader compile remain outside the initial visible garage path and
 never run while battle owns the renderer. Ten architecture roots are built
 only on first selection, cached, and hidden as complete subtrees; the largest
-individual structural kit stays below 2.5K triangles. The wall location image
-and ten selector previews reuse existing map thumbnails and decode only when
-demanded. `npm run qa:garage` enumerates all ten locations and checks unique map
+individual structural kit stays below 2.5K triangles. Garage selector previews
+still decode only when demanded, but map thumbnails are not rendered on the
+workshop walls. One shared CRT-style battle archive screen streams canonical
+captures one at a time, retains at most the current and incoming textures, and
+stops its timer when the Garage root leaves the scene. `npm run qa:garage`
+enumerates all ten locations and checks the screen receipt, unique map
 and architecture signatures, persistence, preview decode, zero wall-bay
 overlaps, exact-fleet mode, the four-piece original Verdant receipt, all six
 additive exhibits, the 180-degree bay-facing correction, Verdant's enclosed
