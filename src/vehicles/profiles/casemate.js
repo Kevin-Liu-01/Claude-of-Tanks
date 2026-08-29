@@ -27,7 +27,7 @@
 //    ISU pair and T95/Strv103 oracles are proportionally off published dims;
 //    dims stays sovereign here and the curve ceilings are documented.
 import { BufferAttribute, BufferGeometry, Float32BufferAttribute, Mesh } from 'three';
-import { FITTINGS, KIT, muzzleBore, orientedSlab } from './kit.js';
+import { FITTINGS, KIT, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.js';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 

@@ -47,7 +47,7 @@
 // §5.247 kv2 wave: FITTINGS (census-stamped decoration library) + the
 // shadow-named muzzleBore device — timing-proof top-level spellings per the
 // kit.js cycle law.
-import { KIT, FITTINGS, muzzleBore } from './kit.js';
+import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import type * as THREE from 'three';
 // kv2 shaded-parity r4 tell 1 (r5 round): the WoT-style readability floor is
 // what keeps shade-side hardware in the ref's tonal family — but the link

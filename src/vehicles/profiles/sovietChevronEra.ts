@@ -6,7 +6,7 @@
 // carrier rows meet at one ridge in side elevation, and every visible ERA
 // tile is derived from (and offset along) the carrier's actual outer plane.
 // That prevents guessed Euler boxes, floating tiles and coplanar flicker.
-import { KIT, orientedSlab } from './kit.js';
+import { KIT, orientedSlab } from './kit.ts';
 
 import type * as THREE from 'three';
 

@@ -15,7 +15,7 @@
 // tires/flaps/skirt lips, *Glass = optics, *Cloth = stowage canvas,
 // *Detail = unpainted fittings. Camo lives on hull/turret/gun/gunMount only.
 import * as THREE from 'three';
-import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.js';
+import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.js';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 

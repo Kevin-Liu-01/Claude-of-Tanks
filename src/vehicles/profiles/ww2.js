@@ -29,7 +29,7 @@
 // m4a3e8 1.50 (track outer face EXACT), tiger1 1.855 (superstructure),
 // t34_85 1.50 (track outer face EXACT).
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations } from './kit.js';
+import { KIT, FITTINGS, evenStations } from './kit.ts';
 
 // ---------------------------------------------------------------------------
 // Family machinery

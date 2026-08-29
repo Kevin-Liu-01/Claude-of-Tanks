@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { KIT } from './profiles/kit.js';
+import { KIT } from './profiles/kit.ts';
 import { vehicleAmbientFloorHook } from './materials.js';
 
 type Point2 = readonly [number, number];

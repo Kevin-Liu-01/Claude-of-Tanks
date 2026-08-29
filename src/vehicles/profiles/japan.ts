@@ -4,7 +4,7 @@
 // running-gear course, then adds source-specific supported armor/equipment.
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, orientedSlab } from './kit.js';
+import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildType10BBase } from '../modern3.js';
 import { buildType90 } from './misc.js';

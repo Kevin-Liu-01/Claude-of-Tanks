@@ -6,7 +6,7 @@
 // course, then adds supported Swedish armor, equipment and gun-station cues.
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.js';
+import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.ts';
 import { buildStrv103 } from './casemate.js';
 import { centurionBuild } from './uk.js';
 import { buildLeo2A5 } from './leopard.js';

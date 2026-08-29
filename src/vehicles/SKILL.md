@@ -31,6 +31,10 @@ and `profiles/t72.ts`, while the AMX-40 visual build lives in strict
 `france.ts`; all eleven use narrow
 procedural-builder ports. Preserve their
 demand-loaded family boundaries and complete donor geometry.
+`profiles/kit.ts` is the strict shared owner for generic hull/turret profiles,
+donor dispatch, muzzle closures, and deterministic exterior fittings. Extend
+its validated builder, profile, and fitting-option contracts instead of
+reintroducing unchecked family-local copies.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

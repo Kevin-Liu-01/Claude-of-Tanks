@@ -45,7 +45,7 @@
 // reference barrels are modelled short (see the packets) — the coverage cost
 // lands ONLY in wholeCurves/turretCurves and is certified per packet.
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js';
+import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.js';
 import { tagVehicleMaterial } from '../appearanceAudit.ts';
 

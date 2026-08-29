@@ -10,7 +10,7 @@
 // The type99a oracle package below is a RESIDENT of this module riding the
 // frozen canonical Type-99A constructor — it is guard-held and unchanged.
 
-import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.js';
+import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.ts';
 import {
   loftHull, tubeGun, ruSkirtBand, ruFlaps, widthAnchor,
   buildT62Obr1975Chassis, meshDome, meshDomeCurved, ringSkin, domeRailRu, ruSaddle,

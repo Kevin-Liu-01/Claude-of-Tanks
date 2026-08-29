@@ -12,7 +12,7 @@
 // The three GLBs remain fixed local visual/metric oracles only; runtime
 // playables stay first-party procedural.
 
-import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.js';
+import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type * as THREE from 'three';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';

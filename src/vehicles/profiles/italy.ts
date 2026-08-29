@@ -29,7 +29,7 @@
 // UNTOUCHED donor, byte-held.
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.js';
+import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { buildAriete } from './misc.js';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 

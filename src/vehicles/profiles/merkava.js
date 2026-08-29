@@ -16,7 +16,7 @@
 // ball-and-chain curtain. Mk.1B keeps exposed running gear under a narrow
 // fender line; every later mark hangs deep scalloped skirts.
 import * as THREE from 'three';
-import { KIT, muzzleBore, orientedSlab } from './kit.js';
+import { KIT, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 // ---------------------------------------------------------------------------

@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 // Shared geometry and exact-equipment fittings come from the cycle-free
 // profile kit; builders destructure the geometry they use at call time.
-import { KIT, FITTINGS, muzzleBore } from './kit.js';
+import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import '../challengerSpecs.ts';
 // ch1-base tone port (uk round 2026-08-07): materials.js is cycle-free — the
 // ambient-floor hook re-attach is the same import uk.js carries.

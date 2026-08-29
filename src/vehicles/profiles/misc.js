@@ -24,7 +24,7 @@
 // the whole tank rescales and every mask shifts.
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { KIT, FITTINGS, buildProfile } from './kit.js';
+import { KIT, FITTINGS, buildProfile } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { buildT80CastTurret, domeBoxPlanSeat } from './russia.js';
 

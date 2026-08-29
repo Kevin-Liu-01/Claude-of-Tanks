@@ -7,14 +7,270 @@
 // These are original primitive reconstructions informed by normalized local
 // reference renders and real vehicle dimensions. They intentionally do not
 // contain, decode, or reproduce source mesh topology.
+import * as THREE from 'three';
 import { KIT } from '../tankFactoryCore.js';
+
+type Vec3Tuple = readonly [number, number, number];
+type GeometryScale = number | readonly number[];
+
+interface ProfileBuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly mats: Record<string, THREE.Material> & {
+    dark: THREE.Material;
+    shadow: THREE.Material;
+  };
+  readonly disposables: THREE.BufferGeometry[];
+  readonly spec: {
+    readonly dims: { readonly widthM: number; readonly hullLengthM: number };
+    readonly armor: {
+      readonly turretPivot: readonly [number, number, number];
+      readonly gunBarrel: { readonly radiusM: number; readonly lengthM: number };
+    };
+    readonly visual: { readonly number?: string; readonly trackWidthM?: number };
+  };
+  muzzleZ: number;
+  topY?: number;
+  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  decal(
+    owner: 'hull' | 'turret',
+    kind: string,
+    value: string,
+    scale: number,
+    position: readonly [number, number, number],
+    ...rotation: number[]
+  ): void;
+}
+
+interface ProfileConfig {
+  turretWidth: number;
+  turretHeight: number;
+  turretDepth: number;
+  turretFront: number;
+  turretRear: number;
+  gunLength?: number;
+  hull?: string;
+  width?: number;
+  hullLength?: number;
+  roofY?: number;
+  trackTop?: number;
+  trackW?: number;
+  skirts?: boolean;
+  skirtPanels?: number;
+  skirtLength?: number;
+  skirtY?: number;
+  skirtHeight?: number;
+  era?: boolean;
+  eraRows?: number;
+  casemateWidth?: number;
+  casemateHeight?: number;
+  casemateDepth?: number;
+  casemateRoof?: boolean;
+  frontSprocket?: boolean;
+  wheelStyle?: string;
+  wheelR?: number;
+  wheelSpan?: number;
+  wheelBias?: number;
+  wheelY?: number;
+  wheels?: number;
+  coveredTop?: boolean;
+  arms?: boolean;
+  turret?: string;
+  bustle?: number;
+  gunMountY?: number;
+  gunMountZ?: number;
+  turretPivotX?: number;
+  turretPivotY?: number;
+  turretPivotZ?: number;
+  gunX?: number;
+  gunY?: number;
+  gunZ?: number;
+  gunRadius?: number;
+  mantletWidth?: number;
+  mantletHeight?: number;
+  sleeve?: boolean;
+  smoke?: boolean;
+  smokeCount?: number;
+  cupolaR?: number;
+  cupolaH?: number;
+  cupolaPeriscopes?: number;
+  commanderX?: number;
+  commanderZ?: number;
+  loaderX?: number;
+  pano?: boolean;
+  panoX?: number;
+  sightX?: number;
+  mg?: boolean | 'heavy';
+  antennas?: number | false;
+  antennaHeight?: number;
+  evac?: boolean;
+  evacR?: number;
+  rearDoor?: boolean;
+  muzzleBore?: boolean | MuzzleBoreOptions;
+}
+
+interface DonorProfileConfig extends Record<string, unknown> {
+  base: string;
+  kit?: (builder: ProfileBuilderPort, profile: DonorProfileConfig) => void;
+}
+
+interface MuzzleBoreOptions {
+  r?: number;
+  len?: number;
+  z?: number;
+  x?: number;
+  y?: number;
+  brake?: boolean | 'double' | 'discs';
+  seg?: number;
+  boreR?: number;
+  parent?: 'hullG' | 'turretG' | 'gunG';
+}
+
+interface MuzzleTipOptions {
+  rx?: number;
+  ry?: number;
+  rz?: number;
+  parent?: 'hullG' | 'turretG' | 'gunG';
+}
+
+interface FittingOptions {
+  mats?: unknown;
+  shadows?: boolean;
+  rotation?: Vec3Tuple;
+  seed?: number;
+  cls?: string;
+  scale?: number;
+  tone?: string;
+  elev?: number;
+  ring?: boolean | { r?: number; stubs?: number };
+  ammo?: boolean;
+  ammoSlot?: string;
+  ammoSide?: number;
+  sensorSide?: number;
+  shield?: boolean | string;
+  barrelBridge?: boolean;
+  barrelLength?: number;
+  machineGunFinish?: string;
+  installationVariant?: string;
+  variant?: string;
+  sizeStandard?: string;
+  bodySlot?: string;
+  weaponName?: string;
+  caliberMm?: number;
+  w?: number;
+  d?: number;
+  h?: number;
+  rails?: number;
+  posts?: number;
+  mesh?: boolean;
+  fill?: number;
+  pts?: readonly Vec3Tuple[];
+  r?: number;
+  eyes?: boolean;
+  seg?: number;
+  count?: number;
+  gap?: number;
+  slot?: string;
+  strap?: boolean;
+  links?: number;
+  width?: number;
+  pitch?: number;
+  pods?: number;
+  spacing?: number;
+  guard?: boolean;
+  lens?: string;
+  rake?: number;
+  len?: number;
+  splay?: number;
+  arc?: number;
+  caps?: boolean;
+  base?: boolean;
+  straps?: number;
+  axis?: string;
+}
+
+interface FittingParts {
+  readonly bySlot: Record<string, THREE.BufferGeometry[]>;
+  add(
+    slot: string,
+    geometry: THREE.BufferGeometry,
+    x?: number,
+    y?: number,
+    z?: number,
+    rotationX?: number,
+    rotationY?: number,
+    rotationZ?: number,
+    scale?: GeometryScale,
+  ): void;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object';
+}
+
+function isProfileBuilder(value: unknown): value is ProfileBuilderPort {
+  return isRecord(value) && typeof value.add === 'function' &&
+    typeof value.addGunExtra === 'function' && typeof value.decal === 'function' &&
+    value.hullG instanceof THREE.Group && value.turretG instanceof THREE.Group &&
+    value.gunG instanceof THREE.Group && isRecord(value.mats) &&
+    Array.isArray(value.disposables) && isRecord(value.spec);
+}
+
+function requireProfileBuilder(value: unknown): ProfileBuilderPort {
+  if (!isProfileBuilder(value)) {
+    throw new TypeError('profile builder is missing the procedural builder contract');
+  }
+  return value;
+}
+
+function isProfileConfig(value: unknown): value is ProfileConfig {
+  if (!isRecord(value)) return false;
+  for (const key of [
+    'turretWidth', 'turretHeight', 'turretDepth', 'turretFront', 'turretRear',
+  ]) {
+    if (!Number.isFinite(value[key])) return false;
+  }
+  return true;
+}
+
+function isDonorProfileConfig(value: unknown): value is DonorProfileConfig {
+  return isRecord(value) && typeof value.base === 'string' &&
+    (value.kit === undefined || typeof value.kit === 'function');
+}
+
+function requireDonorProfileConfig(value: unknown): DonorProfileConfig {
+  if (!isDonorProfileConfig(value)) {
+    throw new TypeError('donor profile requires a canonical base and optional kit callback');
+  }
+  return value;
+}
+
+function requireProfileConfig(value: unknown): ProfileConfig {
+  if (!isProfileConfig(value)) {
+    throw new TypeError('vehicle profile requires finite turret, gun, and envelope dimensions');
+  }
+  return value;
+}
+
+const transformGeometry = KIT.xform as (
+  geometry: THREE.BufferGeometry,
+  x: number,
+  y: number,
+  z: number,
+  rotationX: number,
+  rotationY: number,
+  rotationZ: number,
+  scale: GeometryScale,
+) => THREE.BufferGeometry;
 
 export { KIT };
 
-export const evenStations = (count, span, bias = 0) => Array.from({ length:count }, (_, i) =>
+export const evenStations = (count: number, span: number, bias = 0): number[] => Array.from({ length:count }, (_, i) =>
   count === 1 ? bias : span / 2 - i * (span / (count - 1)) + bias);
 
-function addSegmentedSkirts(P, width, length, y, height, panels = 6) {
+function addSegmentedSkirts(P: ProfileBuilderPort, width: number, length: number, y: number, height: number, panels = 6): void {
   const { box } = KIT;
   const panelD = length / panels;
   for (const side of [-1, 1]) {
@@ -31,7 +287,7 @@ function addSegmentedSkirts(P, width, length, y, height, panels = 6) {
   }
 }
 
-function addEra(P, width, frontZ, roofY, rows = 2) {
+function addEra(P: ProfileBuilderPort, width: number, frontZ: number, roofY: number, rows = 2): void {
   const { box } = KIT;
   const cols=7;
   for (let row=0; row<rows; row++) for (let col=0; col<cols; col++) {
@@ -40,7 +296,7 @@ function addEra(P, width, frontZ, roofY, rows = 2) {
   }
 }
 
-function buildHull(P,p) {
+function buildHull(P: ProfileBuilderPort, p: ProfileConfig) {
   const { box,cylY,cylZ,torus,frustum,buildRunningGear,fenders,headlight,towCable }=KIT;
   const d=P.spec.dims;
   const width=p.width || d.widthM;
@@ -207,7 +463,7 @@ function buildHull(P,p) {
   return {width,length,halfL,roofY,trackTop};
 }
 
-function westernWedge(P,p) {
+function westernWedge(P: ProfileBuilderPort, p: ProfileConfig): void {
   const { box,frustum,slab }=KIT;
   const tw=p.turretWidth/2, h=p.turretHeight, front=p.turretFront, rear=p.turretRear;
   P.add('turret',frustum(tw*0.96,front*0.50,rear,tw*0.83,front*0.30,rear*0.94,0.02,h));
@@ -224,7 +480,7 @@ function westernWedge(P,p) {
 // Abrams-family welded turret: broad, low, almost rectangular bustle with
 // distinct swept cheeks. The generic Leopard arrow wedge made every M1 read
 // like a narrowed Leopard 2 and was especially obvious from above.
-function abramsTurret(P,p) {
+function abramsTurret(P: ProfileBuilderPort, p: ProfileConfig): void {
   const { box,frustum,slab }=KIT;
   const tw=p.turretWidth/2,h=p.turretHeight,f=p.turretFront,r=p.turretRear;
   P.add('turret',frustum(tw*0.98,f*0.52,r,tw*0.91,f*0.36,r*0.96,0,h));
@@ -250,7 +506,7 @@ function abramsTurret(P,p) {
   for(let i=0;i<10;i++) P.add('turretDetail',box(0.025,h*0.48,0.025),-tw*0.86+i*(tw*1.72/9),h*0.39,rackZ);
 }
 
-function sovietTurret(P,p) {
+function sovietTurret(P: ProfileBuilderPort, p: ProfileConfig): void {
   const { lathe,box }=KIT;
   const r=p.turretWidth/2, h=p.turretHeight;
   P.add('turret',lathe([[r*0.86,0],[r,0.12],[r*0.94,h*0.48],[r*0.70,h*0.86],[r*0.40,h],[0.02,h]],28,p.turretDepth/(p.turretWidth||1)));
@@ -260,7 +516,7 @@ function sovietTurret(P,p) {
   }
 }
 
-function merkavaTurret(P,p) {
+function merkavaTurret(P: ProfileBuilderPort, p: ProfileConfig): void {
   const { box,cylY,slab }=KIT;
   const tw=p.turretWidth/2,h=p.turretHeight,f=p.turretFront,r=p.turretRear;
   const inner=Math.max(0.11,tw*0.13);
@@ -285,7 +541,7 @@ function merkavaTurret(P,p) {
   }
 }
 
-function castTurret(P,p) {
+function castTurret(P: ProfileBuilderPort, p: ProfileConfig): void {
   const { lathe,frustum,box }=KIT;
   const tw=p.turretWidth/2,h=p.turretHeight;
   const f=p.turretFront ?? p.turretDepth*0.42;
@@ -308,7 +564,7 @@ function castTurret(P,p) {
   for(let i=0;i<7;i++) P.add('turretDetail',box(0.022,h*0.34,0.022),-tw*0.62+i*(tw*1.24/6),h*0.34,rackZ);
 }
 
-function ifvTurret(P,p) {
+function ifvTurret(P: ProfileBuilderPort, p: ProfileConfig): void {
   const { box,polyTurret }=KIT;
   const tw=p.turretWidth/2,h=p.turretHeight,f=p.turretFront,r=p.turretRear;
   P.add('turret',polyTurret([
@@ -323,7 +579,7 @@ function ifvTurret(P,p) {
   for(let i=0;i<5;i++) P.add('turretDetail',box(0.025,h*0.30,0.025),-tw*0.55+i*(tw*1.10/4),h*0.30,r-0.16);
 }
 
-function type90Turret(P,p) {
+function type90Turret(P: ProfileBuilderPort, p: ProfileConfig): void {
   const { box,cylY,polyTurret,slab }=KIT;
   const tw=p.turretWidth/2,h=p.turretHeight,f=p.turretFront,r=p.turretRear;
   // Ten-sided welded shell derived from the Type 90 top view: narrow gun
@@ -362,7 +618,7 @@ function type90Turret(P,p) {
   P.add('turret',cylY(0.24,0.24,0.045,14),-tw*0.38,h+0.025,-0.24);
 }
 
-function buildTurretAndGun(P,p) {
+function buildTurretAndGun(P: ProfileBuilderPort, p: ProfileConfig): void {
   const { box,cylY,cylZ,buildGun,cupola,periscope,pintleMG,smokeCluster }=KIT;
   if (p.turret === 'casemate') {
     // The armor/simulation rig still supplies a gun pitch group, but there is
@@ -447,7 +703,8 @@ function buildTurretAndGun(P,p) {
 //   muzzleBore(P,{z,r,...})      explicit face plane for hand-authored
 //     tubes (x/y for offset bores). MG muzzles do NOT take the ring — the
 //     law gives them pinhole-class dark tips (see muzzleTipDot).
-export function muzzleBore(P, o = {}) {
+export function muzzleBore(builder: unknown, o: MuzzleBoreOptions = {}): void {
+  const P = requireProfileBuilder(builder);
   const { cylZ, torus, xform } = KIT;
   const r = o.r ?? Math.max(0.05, P.spec.armor.gunBarrel.radiusM * 0.82);
   const len = o.len ?? P.muzzleZ;
@@ -490,12 +747,21 @@ export function muzzleBore(P, o = {}) {
 // changes on repaired slabs — flipped graduates take the graduate-change
 // candidate flow). Mixed rings (3-5 outward) pass through untouched —
 // per-face adjudication stays with the owning file (§C.1).
-export function orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
+export function orientedSlab(
+  ...points: readonly (readonly number[])[]
+): THREE.BufferGeometry {
+  if (points.length !== 8 || points.some((point) => point.length < 3)) {
+    throw new TypeError('orientedSlab requires eight 3D corner points');
+  }
+  const [b0, b1, b2, b3, t0, t1, t2, t3] = points;
   const c8 = [b0, b1, b2, b3, t0, t1, t2, t3];
-  const cen = [0, 1, 2].map((k) => c8.reduce((s, p) => s + p[k], 0) / 8);
-  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cen = [0, 1, 2].map((k) => c8.reduce((sum, point) => sum + point[k], 0) / 8);
+  const sub = (a: readonly number[], b: readonly number[]): Vec3Tuple =>
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const cross = (a: Vec3Tuple, b: Vec3Tuple): Vec3Tuple =>
+    [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const dot = (a: Vec3Tuple, b: Vec3Tuple): number =>
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   let outward = 0;
   for (const f of [[b0, b1, t1, t0], [b1, b2, t2, t1], [b2, b3, t3, t2],
     [b3, b0, t0, t3], [t0, t1, t2, t3], [b3, b2, b1, b0]]) {
@@ -513,7 +779,15 @@ export function orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
 // arms tube. Shadow-named for the same mask/framing neutrality. parent =
 // the P group the MG lives in ('turretG'|'hullG'|'gunG', default turretG);
 // pos is that group's frame; rx/ry aim the disc with the tube.
-export function muzzleTipDot(P, x, y, z, r = 0.012, o = {}) {
+export function muzzleTipDot(
+  builder: unknown,
+  x: number,
+  y: number,
+  z: number,
+  r = 0.012,
+  o: MuzzleTipOptions = {},
+): void {
+  const P = requireProfileBuilder(builder);
   const { cylZ, xform } = KIT;
   const dot = new THREE.Mesh(
     xform(cylZ(r, 0.006, 8), 0, 0, 0, o.rx ?? 0, o.ry ?? 0, o.rz ?? 0), P.mats.shadow);
@@ -525,7 +799,9 @@ export function muzzleTipDot(P, x, y, z, r = 0.012, o = {}) {
   P.disposables.push(dot.geometry);
 }
 
-export function buildProfile(P,p) {
+export function buildProfile(builder: unknown, profile: unknown): void {
+  const P = requireProfileBuilder(builder);
+  const p = requireProfileConfig(profile);
   const hull=buildHull(P,p);
   // Recovered roster rows inherit balance data from a nearby vehicle, which
   // includes that donor's articulation anchors. A Pershing inheriting a
@@ -565,7 +841,9 @@ export function buildProfile(P,p) {
  * owning family module apply its own kit deltas via `profile.kit(P, p)`.
  * (The old central variantKit switch is dissolved into the family modules.)
  */
-export function buildDonorVariant(P, p) {
+export function buildDonorVariant(builder: unknown, profile: unknown): void {
+  const P = requireProfileBuilder(builder);
+  const p = requireDonorProfileConfig(profile);
   KIT.buildCanonical(P, p.base);
   if (p.kit) p.kit(P, p);
 }
@@ -620,13 +898,11 @@ export function buildDonorVariant(P, p) {
 // groups, which is what the §B3 census machine-checks.
 //
 // Profile usage:
-//   import { KIT, FITTINGS } from './kit.js';
+//   import { KIT, FITTINGS } from './kit.ts';
 //   const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone' });
 //   mg.position.set(0.62, roofY, -0.85);     // anchor INSIDE the turret AABB
 //   P.turretG.add(mg);
-import * as THREE from 'three';
-
-function fitRng(seed) {
+function fitRng(seed: number): () => number {
   let a = (seed | 0) ^ 0x2c9277b5;
   return function () {
     a = a + 0x6D2B79F5 | 0;
@@ -637,29 +913,41 @@ function fitRng(seed) {
 }
 
 // Per-fitting part collector with P.add ergonomics, keyed by MATERIAL SLOT.
-function fitParts() {
-  const bySlot = {};
+function fitParts(): FittingParts {
+  const bySlot: Record<string, THREE.BufferGeometry[]> = {};
   return {
     bySlot,
-    add(slot, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
-      (bySlot[slot] || (bySlot[slot] = [])).push(KIT.xform(geo, x, y, z, rx, ry, rz, s));
+    add(slot: string, geo: THREE.BufferGeometry, x = 0, y = 0, z = 0,
+      rx = 0, ry = 0, rz = 0, s: GeometryScale = 1): void {
+      (bySlot[slot] || (bySlot[slot] = [])).push(
+        transformGeometry(geo, x, y, z, rx, ry, rz, s),
+      );
     },
   };
 }
 
-function fitMat(mats, slot) {
-  if (slot === 'gunmetalAmmo') return mats.dark;
+function isMaterial(value: unknown): value is THREE.Material {
+  return isRecord(value) && value.isMaterial === true;
+}
+
+function fitMat(mats: Record<string, unknown>, slot: string): THREE.Material {
+  if (slot === 'gunmetalAmmo' && isMaterial(mats.dark)) return mats.dark;
   const m = mats[slot] || mats.dark;
-  if (m && m.isMaterial) return m;
-  for (const v of Object.values(mats)) if (v && v.isMaterial) return v;
-  return null;
+  if (isMaterial(m)) return m;
+  for (const value of Object.values(mats)) if (isMaterial(value)) return value;
+  throw new Error(`KIT.fittings: no material is available for slot ${slot}`);
+}
+
+function requireMaterialMap(value: unknown, type: string): Record<string, unknown> {
+  if (!isRecord(value)) {
+    throw new Error(`KIT.fittings.${type}: opts.mats (family material set, e.g. P.mats) is required`);
+  }
+  return value;
 }
 
 // Merge one mesh per material slot, stamp markers + local AABB, return group.
-function fitAssemble(type, parts, opts) {
-  if (!opts || !opts.mats) {
-    throw new Error(`KIT.fittings.${type}: opts.mats (family material set, e.g. P.mats) is required`);
-  }
+function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): THREE.Group {
+  const mats = requireMaterialMap(opts.mats, type);
   const g = new THREE.Group();
   g.name = `fitting_${type}`;
   const shadows = opts.shadows !== false;
@@ -670,7 +958,7 @@ function fitAssemble(type, parts, opts) {
     // (0,0,0) in WebGL and renders BLACK — bake neutral white (ERA precedent).
     merged.setAttribute('color', new THREE.BufferAttribute(
       new Float32Array(merged.attributes.position.count * 3).fill(1), 3));
-    const mesh = new THREE.Mesh(merged, fitMat(opts.mats, slot));
+    const mesh = new THREE.Mesh(merged, fitMat(mats, slot));
     mesh.castShadow = mesh.receiveShadow = shadows;
     mesh.userData.fitting = type;
     mesh.userData.fittingSlot = slot;
@@ -694,6 +982,15 @@ const MG_CLASSES = {
   mag:  { s: 0.78, rec: [0.100, 0.045, 0.34], barrelR: 0.0120, barrelL: 0.46, jacket: 'none',   flashR: 0.017, flashL: 0.06 },
 };
 
+function isMgClass(value: string | undefined): value is keyof typeof MG_CLASSES {
+  return value !== undefined && Object.hasOwn(MG_CLASSES, value);
+}
+
+function fittingRing(options: FittingOptions): { r?: number; stubs?: number } | null {
+  if (!options.ring) return null;
+  return typeof options.ring === 'object' ? options.ring : {};
+}
+
 /**
  * Roof pintle machine gun (MANDATORY §B3 decoration — MG PHYSICS compliant).
  * Origin: pintle FOOT on the roof plate (caller seats it on the deck/cupola).
@@ -710,9 +1007,9 @@ const MG_CLASSES = {
  * Envelope (m2/scale 1, no ring): x ±0.17, y 0..0.36, z -0.30..+0.93 —
  * authoritative per-build box in group.userData.aabb.
  */
-function fittingPintleMG(opts = {}) {
+function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
   const { box, cylY, cylZ, torus, xform } = KIT;
-  const cls = MG_CLASSES[opts.cls || 'm2'] || MG_CLASSES.m2;
+  const cls = MG_CLASSES[isMgClass(opts.cls) ? opts.cls : 'm2'];
   const s = (opts.scale || 1) * cls.s;
   const tone = opts.tone || 'two-tone';
   const elev = opts.elev ?? 0.06;
@@ -744,7 +1041,8 @@ function fittingPintleMG(opts = {}) {
   // barrel group, elevated about the trunnion at the receiver front.
   const trunY = recY + 0.004;
   const trunZ = recZ + rd / 2;
-  const aim = (geo, dz, dy = 0) => xform(xform(geo, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
+  const aim = (geo: THREE.BufferGeometry, dz: number, dy = 0): THREE.BufferGeometry =>
+    xform(xform(geo, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
   if (cls.jacket === 'sleeve') {
     parts.add(B, aim(cylZ(cls.barrelR * s * 1.7, 0.10 * s, 10), 0.05 * s), 0, trunY, trunZ);
   } else if (cls.jacket === 'fins') {
@@ -772,11 +1070,12 @@ function fittingPintleMG(opts = {}) {
   if (opts.shield) {
     parts.add(tone === 'pale' ? 'detail' : 'dark', box(0.34 * s, 0.22 * s, 0.02), 0, recY + 0.02, trunZ + 0.03);
   }
-  if (opts.ring) {
-    const rr = (opts.ring.r || 0.20) * s;
+  const ring = fittingRing(opts);
+  if (ring) {
+    const rr = (ring.r || 0.20) * s;
     const rSlot = tone === 'dark' ? 'dark' : 'detail';
     parts.add(rSlot, torus(rr, 0.011, 26), 0, 0.035, 0);
-    const stubs = opts.ring.stubs || 3;
+    const stubs = ring.stubs || 3;
     for (let k = 0; k < stubs; k++) {
       const a = 0.6 + k * (Math.PI * 2 / stubs);
       parts.add(rSlot, box(0.024, 0.032, 0.024), Math.cos(a) * rr * 0.98, 0.018, Math.sin(a) * rr * 0.98);
@@ -797,13 +1096,13 @@ function fittingPintleMG(opts = {}) {
  *
  * Origin: mounting foot on the roof. +Z is the firing direction.
  */
-function fittingAmericanM2(opts = {}) {
+function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
   const { box, cylX, cylY, cylZ, torus } = KIT;
   const s = opts.scale || 1;
   const elev = opts.elev ?? 0.035;
   const ammoSide = Math.sign(opts.ammoSide || -1);
   const parts = fitParts();
-  const aim = (geo, dz, dy = 0) => KIT.xform(
+  const aim = (geo: THREE.BufferGeometry, dz: number, dy = 0): THREE.BufferGeometry => KIT.xform(
     KIT.xform(geo, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
 
   // Roof bearing -> spindle -> fork -> trunnion: one unbroken load path.
@@ -866,11 +1165,12 @@ function fittingAmericanM2(opts = {}) {
   parts.add('dark', aim(cylZ(0.014 * s, 0.018 * s, 10),
     0.220 * s + barrelLength + 0.114 * s), 0, recY, trunZ);
 
-  if (opts.ring) {
-    const rr = (opts.ring.r || 0.235) * s;
+  const ring = fittingRing(opts);
+  if (ring) {
+    const rr = (ring.r || 0.235) * s;
     parts.add('dark', torus(rr, 0.014 * s, 28), 0, 0.032 * s, 0);
-    for (let index = 0; index < (opts.ring.stubs || 4); index++) {
-      const a = 0.55 + index * Math.PI * 2 / (opts.ring.stubs || 4);
+    for (let index = 0; index < (ring.stubs || 4); index++) {
+      const a = 0.55 + index * Math.PI * 2 / (ring.stubs || 4);
       parts.add('dark', box(0.030 * s, 0.045 * s, 0.030 * s),
         Math.cos(a) * rr, 0.020 * s, Math.sin(a) * rr);
     }
@@ -937,7 +1237,7 @@ function fittingAmericanM2(opts = {}) {
  * drum, armored cradle, M2HB receiver/feed system and forward EO face while
  * changing the protection and sensor silhouette for each host vehicle.
  */
-function fittingAmericanRws(opts = {}) {
+function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
   const { box, cylY, cylZ, torus } = KIT;
   const variant = opts.variant || 'compact';
   const s = opts.scale || 1;
@@ -1101,7 +1401,7 @@ function fittingAmericanRws(opts = {}) {
  * Host-specific variants change protection and sensor layout while retaining
  * the same mechanical load path. Origin is the mounting foot; +Z is fire.
  */
-function fittingOpenYokeRws(opts = {}) {
+function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   const { box, cylX, cylY, cylZ, torus } = KIT;
   const variant = opts.variant || 'expeditionary';
   const sizeStandard = opts.sizeStandard || 'custom';
@@ -1115,7 +1415,7 @@ function fittingOpenYokeRws(opts = {}) {
   const body = opts.bodySlot || 'detail';
   const parts = fitParts();
   const yokeCenterY = 0.385 * s;
-  const aim = (geo, dz, dy = 0) => KIT.xform(
+  const aim = (geo: THREE.BufferGeometry, dz: number, dy = 0): THREE.BufferGeometry => KIT.xform(
     KIT.xform(geo, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
 
   // Buried slew bearing and gearbox: every upper member resolves to this
@@ -1285,7 +1585,7 @@ function fittingOpenYokeRws(opts = {}) {
  * Envelope: x ±w/2, y 0..~1.35h with fill (0..h bare), z ±d/2 — see
  * group.userData.aabb.
  */
-function fittingStowageRack(opts = {}) {
+function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
   const { box, cylX } = KIT;
   const w = opts.w || 1.2, d = opts.d || 0.45, h = opts.h || 0.30;
   const rails = Math.min(3, Math.max(1, opts.rails || 2));
@@ -1346,7 +1646,7 @@ function fittingStowageRack(opts = {}) {
  * @param {object} opts  mats; pts (required); r=0.020; eyes=true; seg=20;
  *   tone 'dark'|'pale' (default 'dark'); seed, shadows, rotation
  */
-function fittingTowCable(opts = {}) {
+function fittingTowCable(opts: FittingOptions = {}): THREE.Group {
   const pts = opts.pts;
   if (!pts || pts.length < 2) throw new Error('KIT.fittings.towCable: opts.pts (>= 2 local [x,y,z]) required');
   const { box, xform } = KIT;
@@ -1376,7 +1676,7 @@ function fittingTowCable(opts = {}) {
  *   strap=true; seed, shadows, rotation
  * Envelope: x ±(count*(0.16+gap))/2, y 0..0.50, z ±0.17.
  */
-function fittingJerryCans(opts = {}) {
+function fittingJerryCans(opts: FittingOptions = {}): THREE.Group {
   const { box, cylY } = KIT;
   const count = Math.max(1, opts.count || 2);
   const gap = opts.gap ?? 0.05;
@@ -1408,7 +1708,7 @@ function fittingJerryCans(opts = {}) {
  * @param {object} opts  mats; links=4; width=0.5; pitch=0.165; seed,
  *   shadows, rotation=[rx,ry,rz]
  */
-function fittingSpareTrackLinks(opts = {}) {
+function fittingSpareTrackLinks(opts: FittingOptions = {}): THREE.Group {
   const { box } = KIT;
   const links = Math.max(1, opts.links || 4);
   const width = opts.width || 0.5;
@@ -1429,7 +1729,7 @@ function fittingSpareTrackLinks(opts = {}) {
  *   lens='glass' ('glass' | 'dark' — dark-lens law for pale decks);
  *   rake=-0.30 (drum pitch, matches glacis rake); seed, shadows, rotation
  */
-function fittingLightCluster(opts = {}) {
+function fittingLightCluster(opts: FittingOptions = {}): THREE.Group {
   const { box, cylZ, xform } = KIT;
   const pods = Math.max(1, opts.pods || 2);
   const spacing = opts.spacing ?? 0.16;
@@ -1460,7 +1760,7 @@ function fittingLightCluster(opts = {}) {
  *   arc=0.55; spacing=0.095; base=true; caps=true; slot='detail'
  *   ('detail' pale tubes | 'dark'); seed, shadows, rotation
  */
-function fittingSmokeBank(opts = {}) {
+function fittingSmokeBank(opts: FittingOptions = {}): THREE.Group {
   const { box, cylZ, xform } = KIT;
   const n = Math.min(8, Math.max(1, opts.count || 4));
   const r = opts.r || 0.038;
@@ -1495,7 +1795,7 @@ function fittingSmokeBank(opts = {}) {
  * @param {object} opts  mats; h=0.9; r=0.011; rake=0.06 (rz lean);
  *   base=true; slot='detail'; seed, shadows, rotation
  */
-function fittingAntennaWhip(opts = {}) {
+function fittingAntennaWhip(opts: FittingOptions = {}): THREE.Group {
   const { box, cylY } = KIT;
   const h = opts.h || 0.9;
   const r = opts.r || 0.011;
@@ -1517,7 +1817,7 @@ function fittingAntennaWhip(opts = {}) {
  * @param {object} opts  mats; len=2.4; r=0.13; axis='x'; straps=2; seed,
  *   shadows, rotation
  */
-function fittingUnditchingLog(opts = {}) {
+function fittingUnditchingLog(opts: FittingOptions = {}): THREE.Group {
   const { box, cylX } = KIT;
   const len = opts.len || 2.4;
   const r = opts.r || 0.13;
@@ -1543,15 +1843,17 @@ function fittingUnditchingLog(opts = {}) {
 // same marker and AABB contract as fitAssemble. It is intentionally not a
 // marker-only escape hatch: at least one visible mesh is mandatory and every
 // mesh in the group receives the fitting type for the integrity census.
-function fittingMarkExact(group, type) {
+function fittingMarkExact(group: THREE.Group, type: string): THREE.Group {
   if (!group?.isGroup || !type) throw new Error('KIT.fittings.markExact: visible Group and type are required');
   let meshCount = 0;
-  group.traverse((o) => {
-    if (!o.isMesh || !o.geometry || o.material?.colorWrite === false) return;
+  group.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || !object.geometry) return;
+    const material = Array.isArray(object.material) ? object.material[0] : object.material;
+    if (material?.colorWrite === false) return;
     meshCount++;
-    o.userData.fitting = type;
-    o.userData.fittingExact = true;
-    o.userData.combatHitboxRole = 'equipment';
+    object.userData.fitting = type;
+    object.userData.fittingExact = true;
+    object.userData.combatHitboxRole = 'equipment';
   });
   if (!meshCount) throw new Error('KIT.fittings.markExact: group must contain visible mesh geometry');
   group.name = `fitting_${type}_exact`;

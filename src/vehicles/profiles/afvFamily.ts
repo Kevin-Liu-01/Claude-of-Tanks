@@ -6,7 +6,7 @@
 // armor, turret, gun plant and supported equipment in project primitives.
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, orientedSlab, muzzleBore, muzzleTipDot } from './kit.js';
+import { KIT, FITTINGS, orientedSlab, muzzleBore, muzzleTipDot } from './kit.ts';
 import { buildBradley, buildBMP2, buildPuma, bradleyFlankDressing } from '../modern3.js';
 import { T72_PROFILES } from './t72.ts';
 import { T90_PROFILES } from './t90.js';

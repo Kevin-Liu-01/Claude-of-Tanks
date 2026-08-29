@@ -20,7 +20,7 @@
 //   long with a +23% kit band; kursk -2.6% overall (usable as-is).
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.js';
+import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.js';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';

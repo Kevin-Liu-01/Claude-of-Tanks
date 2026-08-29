@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { KIT } from './tankFactoryCore.js';
 // §I fittings census: the FITTINGS import is the spelling that survives
 // synchronous top-level createTank rigs.
-import { FITTINGS, muzzleBore } from './profiles/kit.js';
+import { FITTINGS, muzzleBore } from './profiles/kit.ts';
 import { buildM1A1BareHull } from './profiles/abrams.js';
 import { createType99Armor } from './profiles/type99Armor.ts';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';

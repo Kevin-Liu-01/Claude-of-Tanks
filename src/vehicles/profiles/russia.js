@@ -18,7 +18,7 @@
 // masks (gun overhang especially) line up. Everything is an original
 // primitive construction — measured dimensions only, no source topology.
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.js';
+import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.js';
 

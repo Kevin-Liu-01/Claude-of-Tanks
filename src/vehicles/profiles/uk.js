@@ -11,7 +11,7 @@
 // challenger1 moved to profiles/challenger.js (§5.75 family-module split) —
 // that module imports this file's shared UK kit (export block at the tail).
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js';
+import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 const {

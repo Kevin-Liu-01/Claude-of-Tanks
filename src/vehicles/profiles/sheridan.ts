@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { KIT, FITTINGS, muzzleBore } from './kit.js';
+import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec2Tuple = [number, number];

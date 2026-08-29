@@ -15,7 +15,7 @@
 // Korean). The ONLY functional delta is the baked hull number decal text:
 // 'PL-01' -> 'K2B'.
 
-import { KIT, FITTINGS, orientedSlab } from './kit.js';
+import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { buildK2 } from '../modern3.js';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type {

@@ -79,7 +79,7 @@ let factoryReadyPromise: Promise<void> | null = null;
 function ensureFactoryReady(): Promise<void> {
   if (factoryReady) return Promise.resolve();
   if (!factoryReadyPromise) {
-    factoryReadyPromise = import('./profiles/kit.js').then((kit) => {
+    factoryReadyPromise = import('./profiles/kit.ts').then((kit) => {
       configureTankFactory({
         canonicalBuilderPacks: [],
         profiledBuilders: {},

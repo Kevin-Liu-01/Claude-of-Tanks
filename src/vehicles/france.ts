@@ -11,7 +11,7 @@
 // tankFactoryCore's exported geometry KIT.
 
 import { KIT } from './tankFactoryCore.js';
-import { FITTINGS } from './profiles/kit.js';
+import { FITTINGS } from './profiles/kit.ts';
 import './franceSpecs.ts';
 import type { BufferGeometry, Object3D } from 'three';
 

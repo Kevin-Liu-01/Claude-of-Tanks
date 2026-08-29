@@ -92,8 +92,8 @@ base-21 rebuilds). §H FAMILY RIG: a variant is a <150-line param delta on its f
 rig, never a re-author; per-profile winding guards (orientedSlab in misc.js, sslab in
 uk.js) wrap every mirrored slab (§C missing-side law).
 
-### 1.4 KIT / FITTINGS — src/vehicles/profiles/kit.js (§I)
-`import { KIT, FITTINGS } from './kit.js'` — deterministic, seeded decoration library
+### 1.4 KIT / FITTINGS — src/vehicles/profiles/kit.ts (§I)
+`import { KIT, FITTINGS } from './kit.ts'` — deterministic, seeded decoration library
 (pintleMG m2/dshk/nsvt/mag classes with MG-PHYSICS tones, stowageRack, towCable,
 jerryCans, spareTrackLinks, lightCluster, smokeBank, antennaWhip, unditchingLog).
 Every fitting mesh carries `userData.fitting` (the §B3 census marker); the stamped

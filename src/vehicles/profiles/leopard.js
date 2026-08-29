@@ -32,7 +32,7 @@
 // kf51 3.60, leo2a7v/leo2_revolution 4.00. Nothing may stand wider, and the
 // hull z-extents below replicate each oracle's frame.
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js';
+import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.js';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 

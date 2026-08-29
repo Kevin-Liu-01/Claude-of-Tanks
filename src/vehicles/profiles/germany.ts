@@ -8,7 +8,7 @@
 // print-measured §K builds). This module keeps only the OTCO field-mod
 // package, which deliberately layers on the resident leo2a4.
 
-import { KIT, FITTINGS, orientedSlab } from './kit.js';
+import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { buildLeo2A4 } from './leopard.js';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type {

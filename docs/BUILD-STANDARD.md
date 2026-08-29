@@ -387,7 +387,7 @@ Tanks are built as RIGS, not bespoke mesh piles. Three layers:
 
 ## I. KIT.fittings usage (§B3/§B4 workflow — kit-fittings round)
 Decoration is a WORKFLOW, not per-tank authorship: use
-`KIT.fittings.<fn>` (src/vehicles/profiles/kit.js) — hand-authored
+`KIT.fittings.<fn>` (src/vehicles/profiles/kit.ts) — hand-authored
 decorations need a packet justification.
 - Library: `pintleMG` (M2/DShK/NSVT/MAG classes, tone
   'two-tone'/'pale'/'dark' per MG PHYSICS deck polarity, optional AA ring /
@@ -396,7 +396,7 @@ decorations need a packet justification.
   `unditchingLog`. All deterministic (seed param, no Math.random), material
   slots come from the caller's own family mats.
 - Call pattern (in a profile builder):
-  `import { KIT, FITTINGS } from './kit.js';`
+  `import { KIT, FITTINGS } from './kit.ts';`
   `const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2' });`
   `mg.position.set(x, roofY, z); P.turretG.add(mg);`
   (`KIT.fittings` is the same object on every runtime path; the `FITTINGS`

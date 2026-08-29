@@ -334,7 +334,7 @@ continuity and no front-corner sky pocket. **KEEP `cf97a01b`; the §5.52
 ### shared set — repeated headline here for the rulebook fold-in)
 1. **FITTINGS-IMPORT-ONLY**: in extension modules (modern2/modern3),
    fittings come ONLY from the top-level `import { FITTINGS } from
-   './profiles/kit.js'`, dereferenced inside builder bodies. No
+   './profiles/kit.ts'`, dereferenced inside builder bodies. No
    `kitFittings()` exists (a slice-3 first cut invented one and threw);
    `KIT.fittings` attaches via queueMicrotask AFTER init and can be
    undefined in synchronous rigs. Smoke-load via tankFactory.ts — an

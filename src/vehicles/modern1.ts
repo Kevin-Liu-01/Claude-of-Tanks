@@ -15,7 +15,7 @@
 
 import * as THREE from 'three';
 import { KIT } from './tankFactoryCore.js';
-import { muzzleBore } from './profiles/kit.js';
+import { muzzleBore } from './profiles/kit.ts';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
   plate as par,

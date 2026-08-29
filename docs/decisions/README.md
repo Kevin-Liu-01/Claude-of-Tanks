@@ -280,3 +280,4 @@ runtime documents remain authoritative for behavior.
 - [0268 — T-72 profile geometry has a strict TypeScript owner](0268-type-t72-profile-geometry.md)
 - [0269 — Garage visual residency is bounded without removing authored content](0269-bound-garage-visual-residency.md)
 - [0270 — Multiplayer presentation clocks converge without jumping](0270-slew-multiplayer-presentation-clock.md)
+- [0271 — Shared procedural profile machinery is strict TypeScript](0271-type-shared-profile-kit.md)
