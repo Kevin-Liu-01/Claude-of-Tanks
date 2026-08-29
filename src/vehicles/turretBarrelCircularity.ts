@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 
 const DEFAULT_SAMPLE_FRACTIONS = Object.freeze([0.45, 0.55, 0.65, 0.75]);
+const DEFAULT_AXIS_SAMPLE_FRACTIONS = Object.freeze([0.80, 0.85, 0.90, 0.925, 0.95, 0.975]);
 const BARREL_MESH_NAMES = /^(gun|gunBarrel\d+)$/;
 const BATCHED_BARREL_MESH_NAMES = /^gunMount$/;
-const NUMBERED_BARREL_NAME = /^gunBarrel(\d+)$/;
+const FORWARD_BARREL_MESH_NAMES = /^(gun|gunDark|gunMount|gunMountDark|gunBarrel\d+(?:Dark)?)$/;
+const NUMBERED_BARREL_NAME = /^gunBarrel(\d+)(?:Dark)?$/;
 const EPSILON = 1e-6;
 const NODE_EPSILON = 1e-4;
 
@@ -23,6 +25,7 @@ interface BarrelLane {
   minZ: number;
   maxZ: number;
   allowOffset: boolean;
+  expectedCenterXM: number;
 }
 
 export interface BarrelCircularitySample {
@@ -37,6 +40,9 @@ export interface BarrelCircularitySample {
   fraction?: number;
   lane?: string;
   source?: string;
+  expectedCenterXM?: number;
+  lateralAxisOffsetM?: number;
+  axisPass?: boolean;
   pass?: boolean;
 }
 
@@ -49,6 +55,10 @@ export interface TurretBarrelCircularityOptions {
   requireMeasurement?: boolean;
   meshNamePattern?: RegExp;
   fallbackMeshNamePattern?: RegExp | null;
+  checkAxisAlignment?: boolean;
+  axisSampleFractions?: readonly number[];
+  axisMeshNamePattern?: RegExp;
+  maxLateralAxisOffsetM?: number;
 }
 
 export interface TurretBarrelVisual {
@@ -62,7 +72,9 @@ export interface TurretBarrelCircularityResult {
   reason?: string;
   muzzleZ?: number;
   maxAspectRatio?: number;
+  maxLateralAxisOffsetM?: number;
   worst?: BarrelCircularitySample | null;
+  worstAxis?: BarrelCircularitySample | null;
   samples: BarrelCircularitySample[];
 }
 
@@ -148,7 +160,11 @@ function appendGeometrySlice(
   }
 }
 
-function barrelLanes(meshes: THREE.Mesh[], gunWorldInverse: THREE.Matrix4): BarrelLane[] {
+function barrelLanes(
+  meshes: THREE.Mesh[],
+  gunWorldInverse: THREE.Matrix4,
+  gunRig: THREE.Object3D,
+): BarrelLane[] {
   const laneMeshes = new Map<string, THREE.Mesh[]>([['main', []]]);
   for (const mesh of meshes) {
     const numbered = mesh.name.match(NUMBERED_BARREL_NAME);
@@ -172,12 +188,21 @@ function barrelLanes(meshes: THREE.Mesh[], gunWorldInverse: THREE.Matrix4): Barr
       }
     }
     if (Number.isFinite(minZ) && Number.isFinite(maxZ)) {
+      let expectedCenterXM = 0;
+      const numbered = name.match(/^barrel-(\d+)$/);
+      const muzzleName = numbered ? `rig_muzzle_tip_${numbered[1]}` : 'rig_muzzle';
+      const muzzle = gunRig.getObjectByName(muzzleName);
+      if (muzzle) {
+        muzzle.getWorldPosition(_muzzleWorld);
+        expectedCenterXM = _muzzleWorld.applyMatrix4(gunWorldInverse).x;
+      }
       lanes.push({
         name,
         meshes: meshesForLane,
         minZ,
         maxZ,
         allowOffset: name !== 'main',
+        expectedCenterXM,
       });
     }
   }
@@ -285,6 +310,10 @@ export function measureTurretBarrelCircularity(
     requireMeasurement = false,
     meshNamePattern = BARREL_MESH_NAMES,
     fallbackMeshNamePattern = BATCHED_BARREL_MESH_NAMES,
+    checkAxisAlignment = true,
+    axisSampleFractions = DEFAULT_AXIS_SAMPLE_FRACTIONS,
+    axisMeshNamePattern = FORWARD_BARREL_MESH_NAMES,
+    maxLateralAxisOffsetM = 0.02,
   } = options;
   const root = visual?.root;
   const gunRig = root?.getObjectByName('rig_gun');
@@ -302,23 +331,29 @@ export function measureTurretBarrelCircularity(
 
   _gunWorldInverse.copy(gunRig.matrixWorld).invert();
   const samples: BarrelCircularitySample[] = [];
-  const samplePattern = (pattern: RegExp, source: string): void => {
+  const samplePattern = (
+    pattern: RegExp,
+    source: string,
+    fractions: readonly number[] = sampleFractions,
+    axisAudit = false,
+  ): void => {
     const meshes: THREE.Mesh[] = [];
     gunRig.traverse((object) => {
       if (isMeshObject(object) && object.visible !== false && pattern.test(object.name)) {
         meshes.push(object);
       }
     });
-    for (const lane of barrelLanes(meshes, _gunWorldInverse)) {
+    for (const lane of barrelLanes(meshes, _gunWorldInverse, gunRig)) {
       const startZ = Math.max(0, lane.minZ);
       const endZ = Math.min(muzzleZ, lane.maxZ);
       if (endZ - startZ <= minimumSpanM) continue;
-      for (const fraction of sampleFractions) {
+      for (const fraction of fractions) {
         const zM = startZ + (endZ - startZ) * fraction;
         const segments: SliceSegment[] = [];
         for (const mesh of lane.meshes) {
           appendGeometrySlice(segments, mesh, _gunWorldInverse, zM, maxRadiusM);
         }
+        const stationSamples: BarrelCircularitySample[] = [];
         for (const component of sliceComponents(segments)) {
           const receipt = componentReceipt(component, zM);
           if (!receipt) continue;
@@ -329,7 +364,31 @@ export function measureTurretBarrelCircularity(
           receipt.lane = lane.name;
           receipt.source = source;
           receipt.pass = receipt.aspectRatio <= maxAspectRatio + EPSILON;
-          samples.push(receipt);
+          stationSamples.push(receipt);
+        }
+        if (!axisAudit) {
+          samples.push(...stationSamples);
+          continue;
+        }
+        // Gun mounts can also contain coaxial or secondary weapons. The
+        // widest round contour at a station is the primary barrel envelope;
+        // only that envelope must follow the declared muzzle axis. Numbered
+        // twin-cannon lanes are evaluated independently against their own
+        // rig_muzzle_tip_N anchors.
+        const primary = stationSamples
+          .filter((sample) => sample.aspectRatio <= maxAspectRatio + EPSILON)
+          .reduce<BarrelCircularitySample | null>((current, sample) => (
+            !current
+              || Math.min(sample.widthM, sample.heightM) > Math.min(current.widthM, current.heightM)
+              ? sample
+              : current
+          ), null);
+        if (primary) {
+          primary.expectedCenterXM = lane.expectedCenterXM;
+          primary.lateralAxisOffsetM = Math.abs(primary.centerXM - lane.expectedCenterXM);
+          primary.axisPass = primary.lateralAxisOffsetM <= maxLateralAxisOffsetM + EPSILON;
+          primary.pass = primary.pass && primary.axisPass;
+          samples.push(primary);
         }
       }
     }
@@ -340,6 +399,9 @@ export function measureTurretBarrelCircularity(
   // intentionally non-circular mantlet tunnel could be mistaken for a tube.
   if (!samples.length && fallbackMeshNamePattern) {
     samplePattern(fallbackMeshNamePattern, 'gunMount-fallback');
+  }
+  if (checkAxisAlignment) {
+    samplePattern(axisMeshNamePattern, 'forward-axis', axisSampleFractions, true);
   }
   if (!samples.length) {
     const reason = 'no measurable turret-barrel contour';
@@ -355,11 +417,20 @@ export function measureTurretBarrelCircularity(
   const worst = samples.reduce<BarrelCircularitySample | null>((current, sample) => (
     !current || sample.aspectRatio > current.aspectRatio ? sample : current
   ), null);
+  const worstAxis = samples.reduce<BarrelCircularitySample | null>((current, sample) => (
+    sample.lateralAxisOffsetM === undefined
+      ? current
+      : !current || sample.lateralAxisOffsetM > (current.lateralAxisOffsetM ?? -Infinity)
+        ? sample
+        : current
+  ), null);
   return {
     pass: samples.every((sample) => sample.pass),
     muzzleZ,
     maxAspectRatio,
+    maxLateralAxisOffsetM,
     worst,
+    worstAxis,
     samples,
   };
 }

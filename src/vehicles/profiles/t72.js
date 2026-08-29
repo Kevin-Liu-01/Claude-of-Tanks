@@ -4202,17 +4202,19 @@ function buildT72B3M(P) {
   // 2022 tube retune: the new print's mid/tip band is 1.63..1.52w (r ~0.055
   // c 1.577w) — mid bottoms rise inside the held 1.6455 top (r shrinks with
   // cy up, top-down circle law kept); tip band 1.657..1.55w.
+  // The old mask-tuning center offsets described above are now retired: every
+  // primary sleeve, collar, tip, and bore remains concentric with rig_muzzle.
   tubeGun(P, [
-    [0.55, 2.20, 0.088, 0.088, 0.045],
-    [2.20, 2.26, 0.0655, 0.088, 0.035, 0.006],
-    [2.26, 4.10, 0.0655, 0.0655, 0.023, 0.0105],
-    [4.10, 4.18, 0.052, 0.0655, 0.0225, 0.024],
-    [4.18, 4.615, 0.052, 0.052, 0.02, 0.036],
+    [0.55, 2.20, 0.088, 0.088],
+    [2.20, 2.26, 0.0655, 0.088],
+    [2.26, 4.10, 0.0655, 0.0655],
+    [4.10, 4.18, 0.052, 0.0655],
+    [4.18, 4.615, 0.052, 0.052],
   // (r16 bisect: the two ROOT rings at 1.00/1.60 are station i12/i13 top
   // anchors — deleting them blew i13 topPct 0.84 -> 15.82; they stay as the
   // ref's own sleeve clamp collars. Only the three mid-tube discs and the
   // radius steps carried the stacked-disc read.)
-  ], { rings: [[1.00, 0.090, 0.045], [1.60, 0.090, 0.045], [4.12, 0.0555, 0.0225, 0.030]], muzzle: 4.615 });
+  ], { rings: [[1.00, 0.090], [1.60, 0.090], [4.12, 0.0555]], muzzle: 4.615 });
   // r17 item 6b -> r18: the r0.031 bore disc drowned in the pale camo rim
   // (critic r6 "blank pale muzzle ellipse"). The whole muzzle END goes dark:
   // a gunmetal tip collar (+0.7 mm over the tip radius, same printed rows)
@@ -4221,8 +4223,8 @@ function buildT72B3M(P) {
   // (r21 item 6: collar/bore follow the tip ceiling — r 0.055/0.0475 at
   // cy 0.024: collar top 1.6485 in the 1.637 band, bottom 1.5385 in the
   // tip-band floor window; the dead-rear drum's top rows go w13.6 -> w17.)
-  P.add('gunDark', cylZ(0.0525, 0.06, 14), 0.02, 0.033, 4.583);
-  P.add('gunDark', cylZ(0.045, 0.008, 14), 0.02, 0.033, 4.6115);
+  P.add('gunDark', cylZ(0.0525, 0.06, 14), 0, 0, 4.583);
+  P.add('gunDark', cylZ(0.045, 0.008, 14), 0, 0, 4.6115);
   // r10f: evac 0.092 — at 0.095 its bottom (1.4745) sat half a quantum
   // under the 1.476 print line and cost six evac cols a full quantum
   // r11c: the gate's fine rows read the ref evac band 1.527..1.647 — a
@@ -4717,13 +4719,13 @@ function buildT72BU(P) {
   P.addGunExtra(box(0.42, 0.18, 0.95), 0, 0.22, 0.60);
   // evac r capped 0.132: at r>=0.134 its band crosses the dims 12% body
   // filter beyond the hull nose and hullLengthM reads 7.97 (r3 lesson)
-  // r9 cx seats: the ref tube's RIGHT edge (x>=+0.121) runs to z 5.93 while
-  // its LEFT dies at 4.55 — outer segs biased +0.024 (true cylinders)
+  // Historical mask tuning biased the outer segments +0.024; the primary
+  // barrel now follows rig_muzzle so its head-on cross-section stays centered.
   tubeGun(P, [
     [0.55, 1.90, 0.15], [1.90, 2.80, 0.135], [2.80, 3.26, 0.12],
-    [3.26, 4.05, 0.132, 0.132, 0.006], [4.05, 5.40, 0.115, 0.115, 0.024], [5.40, 5.56, 0.112, 0.104, 0.024],
-  ], { rings: [[1.90, 0.152], [2.80, 0.137], [3.26, 0.134], [4.05, 0.134, 0.006], [5.40, 0.117, 0.024]], muzzle: 5.56 });
-  muzzleBore(P, { r: 0.117, y: 0.024 });  // §B3.1 (shadow-named, mask/frame-neutral)
+    [3.26, 4.05, 0.132, 0.132], [4.05, 5.40, 0.115, 0.115], [5.40, 5.56, 0.112, 0.104],
+  ], { rings: [[1.90, 0.152], [2.80, 0.137], [3.26, 0.134], [4.05, 0.134], [5.40, 0.117]], muzzle: 5.56 });
+  muzzleBore(P, { r: 0.117 });  // §B3.1 (shadow-named, mask/frame-neutral)
   const dxU = ringSkin(rings, 0.36) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dxU, 0.34, -0.4], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-dxU, 0.34, -0.4], -Math.PI / 2);

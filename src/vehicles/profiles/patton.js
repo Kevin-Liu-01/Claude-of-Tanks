@@ -3507,12 +3507,12 @@ function finishM60A2Variant(P, muzzleZ) {
   // accordion boot collars, reinforced trunnion ring, missile-reference
   // box, and a heavy muzzle rim.  All pieces pitch with the gun.
   for (const z of [0.76, 0.94, 1.12]) {
-    P.addGunExtraDark(cylZ(0.23 - (z - 0.76) * 0.16, 0.040, 16), 0.045, 0.02, z);
+    P.addGunExtraDark(cylZ(0.23 - (z - 0.76) * 0.16, 0.040, 16), 0, 0, z);
   }
-  P.addGunExtraDark(torus(0.25, 0.025, 20), 0.045, 0.02, 0.72);
+  P.addGunExtraDark(torus(0.25, 0.025, 20), 0, 0, 0.72);
   P.add('gunDark', box(0.18, 0.15, 0.28), 0.20, 0.13, 1.54);
   P.add('gunDark', box(0.10, 0.08, 0.018), 0.20, 0.13, 1.69);
-  P.add('gunDark', cylZ(0.17, 0.035, 18), 0.045, 0, muzzleZ - 0.04);
+  P.add('gunDark', cylZ(0.17, 0.035, 18), 0, 0, muzzleZ - 0.04);
 
   // Full modernization centerpiece: a compact TTS-derived remotely operated
   // M2 tower buried into the Starship roof, backed by a dedicated sensor box
@@ -3919,20 +3919,19 @@ function buildM60A2(P, cfg) {
   }
   P.addGunExtra(xform(cylX(0.145, 0.62, P.q ? 16 : 10), 0, 0, 0), 0, 0.02, 0.88);
   const seg = P.q ? 20 : 12;
-  // tube: the fresh ref plan seats the circular launcher at x +0.045;
-  // muzzle carried
+  // Keep the circular launcher concentric with rig_muzzle; muzzle carried
   // to the ref's own 3.712 end column (overallLengthM 7.37, +1.37% — the
   // documented dims trade for the side cover columns)
   const glen = cfg.muzzle - 1.55;
-  P.add('gun', cylZ(0.148, glen - 0.08, seg), 0.045, 0, (glen - 0.08) / 2 + 0.02);
-  P.add('gun', cylZ(0.156, 0.22, seg), 0.045, 0, glen - 0.55);
-  P.add('gun', cylZ(0.158, 0.06, seg), 0.045, 0, glen - 0.03);
-  P.add('gunDark', cylZ(0.076, 0.014, seg), 0.045, 0, glen - 0.006);
+  P.add('gun', cylZ(0.148, glen - 0.08, seg), 0, 0, (glen - 0.08) / 2 + 0.02);
+  P.add('gun', cylZ(0.156, 0.22, seg), 0, 0, glen - 0.55);
+  P.add('gun', cylZ(0.158, 0.06, seg), 0, 0, glen - 0.03);
+  P.add('gunDark', cylZ(0.076, 0.014, seg), 0, 0, glen - 0.006);
   // §B3.1 MUZZLE BORE (shadow-named mechanism, 3fca39b): the launcher's
-  // 152 mm bore ring+disc on the collar face (x +0.045 with the tube). The
+  // 152 mm bore ring+disc on the centered collar face. The
   // legacy 0.076 gunDark face disc above stays — certified gate state,
   // fully occluded behind the new furniture.
-  muzzleBore(P, { z: glen, r: 0.148, x: 0.045 });
+  muzzleBore(P, { z: glen, r: 0.148 });
   finishM60A2Variant(P, glen);
   P.topY = 3.14 - py + 0.12;
 }

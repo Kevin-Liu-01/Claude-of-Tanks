@@ -26,11 +26,13 @@ for (const id of ids) {
       requireMeasurement: !turretless,
     });
     const worst = result.worst;
+    const worstAxis = result.worstAxis;
     if (!result.pass) failures.push({ id, result });
     if (result.skipped) skippedCount += 1;
     else if (worst) measuredCount += 1;
     console.log(`[barrel-circularity] ${result.skipped ? 'SKIP' : result.pass ? 'PASS' : 'FAIL'} ${id}`
       + (worst ? ` ratio=${worst.aspectRatio.toFixed(3)} z=${worst.zM.toFixed(3)}m` : '')
+      + (worstAxis ? ` lateral=${(worstAxis.lateralAxisOffsetM * 1000).toFixed(1)}mm` : '')
       + (result.error ? ` ${result.error}` : result.reason ? ` ${result.reason}` : ''));
   } finally {
     visual.dispose();
@@ -42,8 +44,8 @@ console.log(`[barrel-circularity] audited ${ids.length} first-party vehicles: `
 if (failures.length) {
   console.error(`[barrel-circularity] FAIL (${failures.length})`);
   for (const { id, result } of failures) {
-    console.error(`  - ${id}: ${result.error || JSON.stringify(result.worst)}`);
+    console.error(`  - ${id}: ${result.error || JSON.stringify({ worst: result.worst, worstAxis: result.worstAxis })}`);
   }
   process.exit(2);
 }
-console.log('[barrel-circularity] PASS — sampled barrel sections are circular');
+console.log('[barrel-circularity] PASS — sampled barrel sections are circular and centered on their declared firing axes');

@@ -6407,8 +6407,8 @@ function buildMerkavaMark(P, p) {
   }
   if (p.muzzleRing) { // batch-18: sleeve/muzzle end ring — the warped refs
     // read a wide thin ring near the sleeve end (plan ±0.14-0.15 cols reach
-    // the ring z while the side band stays tube-thin). x is WORLD (the ref
-    // rings are not centered on the gun axis; gunXoff is compensated).
+    // the ring z while the side band stays tube-thin). x is WORLD and is
+    // converted to gun-local space by compensating gunXoff.
     // mr.pale (3D r3): sand-toned — the dark disc was a 14/16px "MG-like"
     // dark float on the sleeve in the side orthos (critic: wart).
     const mr = p.muzzleRing;
@@ -11527,7 +11527,7 @@ export const MERKAVA_PROFILES = {
     // MG251 evac sleeve-flush (evacR 1.35). Mantlet band [1.832..2.145]
     // over z 1.66..2.19.
     gunAxisY: 1.955, gunXoff: -0.0285, gunR: 0.080, sleeve: true, evac: 0.72, evacR: 1.35, collar: false, gunTipZ: 4.52, gunZL: 0.32, sleeveTo: 4.10, sleeveR: 0.096,
-    muzzleRing: { x: -0.005, z: 4.02, r: 0.132, len: 0.05, pale: true }, // ref plan ±0.15 cols read fwd 4.04-4.11 (the sleeve-end ring; side band stays thin; pale r3 — the dark disc was the "wart on sleeve" float)
+    muzzleRing: { x: -0.0285, z: 4.02, r: 0.132, len: 0.05, pale: true }, // centered on the gun axis; pale r3 — the dark disc was the "wart on sleeve" float
     mantlet: { r0: 0.150, r1: 0.110, len: 0.51, drop: -0.03, z0: 1.70 }, // r0 trimmed for the 1024 2px mask-bleed law (plan -0.242 col); band re-centered [1.83..2.14]
     // Warped turret: crest face z 1.51 (top jumps 2.067 -> 2.537), plateau
     // 2.537 to z ~0.10, saddle DIP 2.380-2.406 over -0.11..-0.53, band

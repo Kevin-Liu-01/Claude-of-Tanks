@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { measureTurretBarrelCircularity } from './turretBarrelCircularity.ts';
 
-function createBarrelFixture(scaleX = 1) {
+function createBarrelFixture(scaleX = 1, offsetX = 0) {
   const root = new THREE.Group();
   const gunRig = new THREE.Group();
   gunRig.name = 'rig_gun';
@@ -15,6 +15,7 @@ function createBarrelFixture(scaleX = 1) {
   const barrel = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
   barrel.name = 'gun';
   barrel.scale.x = scaleX;
+  barrel.position.x = offsetX;
   gunRig.add(barrel);
 
   const muzzle = new THREE.Object3D();
@@ -36,6 +37,15 @@ assert.equal(ovalResult.pass, false, 'a one-axis-scaled barrel fails the cross-s
 assert.ok(ovalResult.worst?.aspectRatio > 1.9,
   `oval fixture exposes its distortion (${ovalResult.worst?.aspectRatio})`);
 
+const offAxisFixture = createBarrelFixture(1, 0.045);
+const offAxisResult = measureTurretBarrelCircularity({ root: offAxisFixture });
+assert.equal(offAxisResult.pass, false,
+  'a circular barrel offset from its declared firing axis fails the centering gate');
+assert.ok(offAxisResult.worstAxis?.aspectRatio < 1.01,
+  `off-axis fixture remains geometrically round (${offAxisResult.worstAxis?.aspectRatio})`);
+assert.ok(Math.abs((offAxisResult.worstAxis?.lateralAxisOffsetM ?? 0) - 0.045) < 1e-4,
+  `off-axis fixture exposes its 45 mm lateral error (${offAxisResult.worstAxis?.lateralAxisOffsetM})`);
+
 for (const id of [
   't90a_vladimir',
   'fv4034',
@@ -48,6 +58,14 @@ for (const id of [
   'type89',
   'm551_sheridan',
   'm551a1_tts',
+  'leclerc',
+  'leclerc_xlr',
+  'amx56',
+  't72b3m',
+  't72bu',
+  'ariete',
+  'kf51',
+  'merkava3d',
 ]) {
   const visual = createTank(id, null, {
     proceduralOnly: true,
@@ -59,7 +77,7 @@ for (const id of [
   try {
     const result = measureTurretBarrelCircularity(visual, { requireMeasurement: true });
     assert.equal(result.pass, true,
-      `${id} keeps circular barrel sections (worst ratio ${result.worst?.aspectRatio})`);
+      `${id} keeps circular, axis-centered barrel sections (worst ratio ${result.worst?.aspectRatio}, lateral ${result.worstAxis?.lateralAxisOffsetM})`);
     assert.ok(result.worst && result.worst.aspectRatio <= 1.08,
       `${id} exposes a measurable main-gun contour`);
     if (['fv4034', 'challenger2e', 'ua_challenger2'].includes(id)) {
@@ -75,4 +93,4 @@ for (const id of [
   }
 }
 
-console.log('turretBarrelCircularity.selftest: circular geometry enforced for reported barrels');
+console.log('turretBarrelCircularity.selftest: circular, axis-centered geometry enforced for reported barrels');

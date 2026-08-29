@@ -9358,12 +9358,11 @@ function buildKF51(P) {
   P.addGunExtraDark(cylZ(0.178, 0.012, gseg), 0, 0.045, 2.1655);               // root end-face ring (≤1.5 mm past the 2.17 root end, r inside the taper step)
   P.addGunExtraDark(cylZ(0.028, 0.10, 8), 0.25, 0.09, 0.70);                   // coax port
   KIT.buildGun(P, { len: 5.475, r: 0.092, sleeve: false, collar: false, baseR: 0.17 });
-  // overlay sleeve: the ref tube is FAT in plan (r ~0.115 about x +0.03 —
-  // its +0.16 plan column reads to the muzzle) while its side band is only
-  // 1.746..1.926; r 0.115 splits the two (side +0.02, plan column caught)
-  P.add('gun', cylZ(0.115, 4.95, gseg), 0.03, 0, 2.975);
-  P.add('gunDark', cylZ(0.118, 0.036, gseg), 0.03, 0, 3.62);                   // sleeve cinch rings (+3 mm, sub-AA)
-  P.add('gunDark', cylZ(0.118, 0.036, gseg), 0.03, 0, 4.42);
+  // Keep the primary overlay sleeve concentric with the firing axis; the
+  // asymmetric MRS and shroud furniture remain separate components.
+  P.add('gun', cylZ(0.115, 4.95, gseg), 0, 0, 2.975);
+  P.add('gunDark', cylZ(0.118, 0.036, gseg), 0, 0, 3.62);                      // sleeve cinch rings (+3 mm, sub-AA)
+  P.add('gunDark', cylZ(0.118, 0.036, gseg), 0, 0, 4.42);
   P.add('gunDark', cylZ(0.138, 0.030, gseg), 0, 0.01, 3.205);                  // taper-end collar (+3 mm over the 0.135 taper tip)
   // r5: muzzle block re-centred to the ref band — its side cols 6.31/6.79
   // read 1.736..1.915 (centre 1.826, 0.014 BELOW our bore axis); the old

@@ -640,19 +640,16 @@ export function buildAriete(P) {
   // authored = rendered/1.01266; 24-seg per the STATION-PAINT law (the
   // ref's own smooth tube SKIPS its slabs — its i13 top is the 1.628
   // glacis; a 12-seg would paint 1.84). MRS union 0.27 < the 12% cut.
-  P.addGunExtra(cylZ(0.111, 2.913, 24), 0, 0.0174, 3.1055);
+  P.addGunExtra(cylZ(0.111, 2.913, 24), 0, 0, 3.1055);
   buildGun(P, { len: 4.93, r: 0.075, sleeve: true, evac: 0.685, evacR: 1.40, collar: true, baseR: 0.16 });
   muzzleBore(P, 0.075, 4.91);                                                  // §B3.1 muzzle bore (shadow-named — see the helper)
-  // MRS/muzzle collar (push round): the ref's muzzle zone reads a THICK
-  // 1.555-1.884 band at z 5.4-5.7 vs the bare 0.075 tube. Seated 4 cm LEFT
-  // (real MRS units mount off-axis): x -0.175..0.095 covers the plan
-  // x=-0.165 column the ref's off-center fused tube owns — the certified
-  // 1.84-err plan-center col drops to ~0.09. Band 0.27 (+AA 0.29) stays
-  // under the 12% body cut so heightM/hullLengthM never see it.
-  // Keep the off-axis MRS collar behind the actual tube mouth. At 4.78 its
+  // MRS/muzzle collar (push round): keep this primary circular envelope on
+  // the firing axis. Earlier reference-mask tuning shifted it left/up and
+  // made the otherwise round muzzle read visibly eccentric head-on.
+  // Keep the collar behind the actual tube mouth. At 4.78 its
   // closed 4.93 m end face sat 2 mm ahead of the universal recessed bore and
   // read as a painted plug in straight-on macro views.
-  P.addGunExtra(cylZ(0.135, 0.30, 12), -0.04, 0.05, 4.74);
+  P.addGunExtra(cylZ(0.135, 0.30, 12), 0, 0, 4.74);
   P.topY = 1.10;
 }
 
@@ -1864,17 +1861,16 @@ function buildLeclerc(P, variant = 's2') {
   // (france round loops 8-9: an on-axis r 0.125 muzzle sleeve chasing the
   // ref's uniform 1.994..1.744 band read a WASH — 88.7 both seats vs 88.8
   // with the committed drum; reverted to the gate-verified drum)
-  // 90-ladder r1: the print's muzzle drum + sleeve run OFF-CENTER +0.04
-  // (plan col -0.166 [win -0.221..-0.111] carries NO ref muzzle while
-  // -0.052..0.171 run to 6.214 — the centered r 0.146 drum edge at -0.146
-  // sat solidly inside the -0.166 window and printed a 1.13/1.10 err col on
-  // plan_whole/plan_turret). Drum + fore sleeve x -> +0.045 (edges -0.101/
-  // -0.093, clear of -0.111); rear thermal-sleeve section ADDED at the
+  // The outer thermal sleeve and muzzle drum must share the F1 firing axis.
+  // An older reference-mask score tune shifted these pieces right/up even
+  // though the structural tube, bore and rig_muzzle remained centered,
+  // producing the visible eccentric muzzle in direct front views. The rear
+  // thermal-sleeve section remains at the
   // measured ref band [1.732..2.002] over world z 5.0..5.875 (side_whole
   // cols 5.06..5.84 wanted the fat band, the bare 0.085 tube read thin).
-  P.addGunExtra(cylZ(0.146, 0.26, 12), 0.045, 0.047, 5.637);                   // (y 0.047: ref muzzle band c 1.917 — its full 1.74..2.094 band is 0.354, past the 12% cut; r stays 0.146 so the plan window margin holds)
-  P.addGunExtra(cylZ(0.135, 0.891, 12), 0.045, -0.003, 5.0455);                // rear sleeve section (world 5.0..5.891, band 1.732..2.002 = ref; GUN-FRAME LAW: local = world - 0.40, the 4.6375 first seat double-subtracted the frame. 12% JUNCTION LAW: the trace column [5.7895..5.899] must never hold sleeve AND drum — their 1.732..2.063 union (0.331) crosses the 12% cut and hullLengthM swallows the gun (9.09, dims 0, twice). Sleeve rear 5.891 owns that column alone (band 0.27); drum front 5.907 sits 8 mm past the boundary)
-  P.addGunExtra(cylZ(0.138, 1.15, 12), 0.045, -0.014, 3.98);                   // fore sleeve band (ref 1.717..1.994 @ w 4.2-5.0)
+  P.addGunExtra(cylZ(0.146, 0.26, 12), 0, 0, 5.637);
+  P.addGunExtra(cylZ(0.135, 0.891, 12), 0, 0, 5.0455);                         // rear sleeve section (world 5.0..5.891; GUN-FRAME LAW: local = world - 0.40, the 4.6375 first seat double-subtracted the frame. 12% JUNCTION LAW: the trace column [5.7895..5.899] must never hold sleeve AND drum — their union crosses the 12% cut and hullLengthM swallows the gun. Sleeve rear 5.891 owns that column alone; drum front 5.907 sits 8 mm past the boundary)
+  P.addGunExtra(cylZ(0.138, 1.15, 12), 0, 0, 3.98);                            // fore sleeve band
   buildGun(P, { len: 5.89, r: 0.085, sleeve: true, evac: 0.52, evacR: 1.72, collar: true, baseR: 0.17 });
   muzzleBore(P, 0.085, 5.87);                                                  // §B3.1 muzzle bore on the F1 tube (shadow-named)
   P.hullG.userData.leclercRigFinish = {
