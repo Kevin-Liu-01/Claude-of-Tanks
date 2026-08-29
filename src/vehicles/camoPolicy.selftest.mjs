@@ -34,6 +34,9 @@ assert.equal(CAMO_CATALOG_PATTERN_IDS.includes('signature'), false,
 assert.equal(CAMO_CATALOG_PATTERN_IDS.length, CAMO_PATTERN_IDS.length - 1);
 assert.equal(defaultCamoPatternId('abramsx'), 'sig_abramsx');
 assert.equal(defaultCamoPatternId('m1a2'), 'factory');
+for (const id of ['m46_patton', 'm47_patton', 'm48', 'm2a2_bradley']) {
+  assert.equal(defaultCamoPatternId(id), 'summer', `${id} should initially wear Summer camouflage`);
+}
 assert.ok(SIGNATURE_CAMO_TANK_IDS.length >= 45,
   'the requested personality fleet must remain explicit and substantial');
 assert.ok(SHARED_CAMO_PRESETS.length >= 60,
@@ -72,6 +75,8 @@ assert.deepEqual(camoPatternTags('factory', 'Germany'), ['de', 'factory']);
 assert.deepEqual(camoPatternTags('signature', 'Ukraine'), ['ua', 'signature', 'special']);
 assert.deepEqual(camoPatternTags('service_leo2a6m'), ['de', 'woodland', 'stripes', 'factory']);
 assert.deepEqual(camoPatternTags('sig_ua_t80bv'), ['ua', 'woodland', 'digital', 'signature', 'special']);
+assert.deepEqual(camoPatternTags('sig_t90a_burlak'), ['ru', 'woodland', 'digital', 'signature', 'special']);
+assert.deepEqual(camoPatternTags('sig_merkava3c'), ['il', 'desert', 'digital', 'signature', 'special']);
 assert.equal(camoMatchesTag('merdc', 'France', 'usa'), true,
   'historical national association remains independent of selected tank');
 assert.equal(camoMatchesTag('digitaldesert', 'USA', 'desert'), true);

@@ -137,11 +137,11 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   sig_mbt70: 'MBT-70 Flecktarn',
   sig_kf51b: 'KF51B Panther',
   sig_bmpt_t90: 'BMPT T-90 Digital',
-  sig_t90a_burlak: 'T-90A Burlak',
-  sig_t90m: 'T-90M Dust Green',
-  sig_t90m_proryv: 'T-90M Proryv',
-  sig_t90a: 'T-90A Service Worn',
-  sig_t90a_vladimir: 'T-90A Vladimir',
+  sig_t90a_burlak: 'T-90A Burlak Digital',
+  sig_t90m: 'T-90M Field Digital',
+  sig_t90m_proryv: 'T-90M Proryv Digital',
+  sig_t90a: 'T-90A Service Digital',
+  sig_t90a_vladimir: 'T-90A Vladimir Digital',
   sig_challenger2e: 'Challenger 2E',
   sig_challenger_3x: 'Challenger 3 X',
   sig_amx56: 'AMX 56',
@@ -163,11 +163,11 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   sig_k2: 'K2 Black Panther',
   sig_k1a1: 'K1A1',
   sig_k2b: 'K2B Stealth Digital',
-  sig_merkava1b: 'Merkava 1B Early Sinai',
-  sig_merkava2b: 'Merkava 2B Field Gray',
-  sig_merkava3c: 'Merkava 3C Cool Sinai',
-  sig_merkava3d: 'Merkava 3D Deep Sinai',
-  sig_merkava4b: 'Merkava 4B Modern Sinai',
+  sig_merkava1b: 'Merkava 1B Desert Chip',
+  sig_merkava2b: 'Merkava 2B Desert Field',
+  sig_merkava3c: 'Merkava 3C Desert Digital',
+  sig_merkava3d: 'Merkava 3D Sinai Caunter',
+  sig_merkava4b: 'Merkava 4B Sinai Hex',
   sig_t84: 'T-84 Oplot',
   sig_ua_challenger2: 'UA Challenger 2',
   sig_ua_t64bv: 'T-64BV Donbas',
@@ -315,16 +315,18 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'nato', base: '#56573e', weather: '#51533f', patches: ['#303c30', '#473729'], camoScale: 0.34, patchK: 1.28 }),
   preset('sig_bmpt_t90', 'bmpt_t90', signatureTags('ru', 'woodland', 'digital'),
     { scheme: 'digital', base: '#414c39', weather: '#565f48', patches: ['#2b3329', '#615a43', '#6f6852'], camoScale: 0.5 }),
-  preset('sig_t90a_burlak', 't90a_burlak', signatureTags('ru', 'woodland', 'organic'),
-    { scheme: 'solid', base: '#394d35', weather: '#536047', patches: [], camoScale: 0.46, solidWeatheringIntensity: 0.8 }),
-  preset('sig_t90m', 't90m', signatureTags('ru', 'woodland', 'organic'),
-    { scheme: 'solid', base: '#3f5138', weather: '#5d6549', patches: [], camoScale: 0.46, solidWeatheringIntensity: 0.82 }),
-  preset('sig_t90m_proryv', 't90m_proryv', signatureTags('ru', 'woodland', 'organic'),
-    { scheme: 'solid', base: '#384c35', weather: '#566247', patches: [], camoScale: 0.46, solidWeatheringIntensity: 0.86 }),
-  preset('sig_t90a', 't90a', signatureTags('ru', 'woodland', 'organic'),
-    { scheme: 'solid', base: '#43553a', weather: '#5b664b', patches: [], camoScale: 0.46, solidWeatheringIntensity: 0.74 }),
-  preset('sig_t90a_vladimir', 't90a_vladimir', signatureTags('ru', 'woodland', 'organic'),
-    { scheme: 'solid', base: '#3d4f36', weather: '#596348', patches: [], camoScale: 0.46, solidWeatheringIntensity: 0.8 }),
+  // The T-90 personalities deliberately use separate digital field recipes.
+  // They must not collapse back into variations of the national green service coat.
+  preset('sig_t90a_burlak', 't90a_burlak', signatureTags('ru', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#435039', weather: '#5a614a', patches: ['#252d26', '#75654a', '#927f5b'], camoScale: 0.4, digitalCellK: 1.25 }),
+  preset('sig_t90m', 't90m', signatureTags('ru', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#3f5138', weather: '#5d6549', patches: ['#283529', '#667156', '#86795a'], camoScale: 0.34, digitalCellK: 1.1 }),
+  preset('sig_t90m_proryv', 't90m_proryv', signatureTags('ru', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#384c35', weather: '#566247', patches: ['#202b24', '#637050', '#786c51'], camoScale: 0.3, digitalCellK: 1 }),
+  preset('sig_t90a', 't90a', signatureTags('ru', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#43553a', weather: '#5b664b', patches: ['#2c362a', '#6a7053', '#85775a'], camoScale: 0.46, digitalCellK: 1.4 }),
+  preset('sig_t90a_vladimir', 't90a_vladimir', signatureTags('ru', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#3d4f36', weather: '#596348', patches: ['#273128', '#616c50', '#776c52'], camoScale: 0.38, digitalCellK: 1.2 }),
   preset('sig_challenger2e', 'challenger2e', signatureTags('uk', 'woodland', 'stripes'),
     { scheme: 'stripes', base: '#4b513d', weather: '#5c6049', patches: ['#22251f', '#615642'], camoScale: 0.48 }),
   preset('sig_challenger_3x', 'challenger_3x', signatureTags('uk', 'woodland', 'digital'),
@@ -368,15 +370,15 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
   preset('sig_k2b', 'k2b', signatureTags('kr', 'woodland', 'digital'),
     { scheme: 'digital', base: '#313b38', weather: '#47504a', patches: ['#202725', '#4e5750', '#67685e'], camoScale: 0.36 }),
   preset('sig_merkava1b', 'merkava1b', signatureTags('il', 'desert', 'organic'),
-    { scheme: 'solid', base: '#747461', weather: '#858373', patches: [], camoScale: 0.46, solidWeatheringIntensity: 0.64 }),
-  preset('sig_merkava2b', 'merkava2b', signatureTags('il', 'desert', 'organic'),
-    { scheme: 'solid', base: '#6a7165', weather: '#7a806f', patches: [], camoScale: 0.46, solidWeatheringIntensity: 0.72 }),
-  preset('sig_merkava3c', 'merkava3c', signatureTags('il', 'desert', 'organic'),
-    { scheme: 'solid', base: '#697165', weather: '#798174', patches: [], camoScale: 0.46, solidWeatheringIntensity: 0.76 }),
-  preset('sig_merkava3d', 'merkava3d', signatureTags('il', 'desert', 'organic'),
-    { scheme: 'solid', base: '#636c61', weather: '#767e70', patches: [], camoScale: 0.46, solidWeatheringIntensity: 0.82 }),
-  preset('sig_merkava4b', 'merkava4b', signatureTags('il', 'desert', 'organic'),
-    { scheme: 'solid', base: '#687065', weather: '#7b8274', patches: [], camoScale: 0.46, solidWeatheringIntensity: 0.7 }),
+    { scheme: 'chip6', base: '#b39c72', weather: '#c1ab80', patches: ['#8a6f4e', '#c7b68c', '#c3c7c6', '#33342f'], camoScale: 0.56 }),
+  preset('sig_merkava2b', 'merkava2b', signatureTags('il', 'desert', 'geometric'),
+    { scheme: 'desert', base: '#b09466', weather: '#c4ad7d', patches: ['#7a5f43', '#947c52', '#cbb489'], camoScale: 0.52 }),
+  preset('sig_merkava3c', 'merkava3c', signatureTags('il', 'desert', 'digital'),
+    { scheme: 'digital', base: '#a8905f', weather: '#b59d6d', patches: ['#c6b487', '#7a6041', '#57503f'], camoScale: 0.42, digitalCellK: 1.5 }),
+  preset('sig_merkava3d', 'merkava3d', signatureTags('il', 'desert', 'stripes'),
+    { scheme: 'caunter', base: '#b49a7d', weather: '#c2a98a', patches: ['#68757d', '#5c5442'], camoScale: 0.46 }),
+  preset('sig_merkava4b', 'merkava4b', signatureTags('il', 'desert', 'geometric'),
+    { scheme: 'hexfield', base: '#827f6a', weather: '#918d77', patches: ['#5f6254', '#aaa287'], camoScale: 0.38 }),
   preset('sig_t84', 't84', signatureTags('ua', 'woodland', 'organic'),
     { scheme: 'nato', base: '#3a4832', weather: '#44523c', patches: ['#272d22', '#71684a'], camoScale: 0.5 }),
   preset('sig_ua_challenger2', 'ua_challenger2', signatureTags('ua', 'woodland', 'digital'),
@@ -547,9 +549,20 @@ export function signatureCamoPatternId(specId: unknown): CamoPatternId | null {
   return typeof specId === 'string' ? SIGNATURE_CAMO_PATTERN_BY_TANK_ID.get(specId) || null : null;
 }
 
+// These legacy American vehicles keep the national US Desert service coat in
+// the catalog, but initially present in their more appropriate temperate field
+// finish. Explicit player selections still take precedence in materials.ts.
+const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> = Object.freeze({
+  m46_patton: 'summer',
+  m47_patton: 'summer',
+  m48: 'summer',
+  m2a2_bradley: 'summer',
+});
+
 /** Initial presentation choice; an explicit player selection always wins. */
 export function defaultCamoPatternId(specId: unknown): CamoPatternId {
-  return signatureCamoPatternId(specId) || 'factory';
+  if (typeof specId !== 'string') return 'factory';
+  return signatureCamoPatternId(specId) || DEFAULT_CAMO_PATTERN_BY_TANK_ID[specId] || 'factory';
 }
 
 export const CUSTOM_CAMO_ID = 'custom';

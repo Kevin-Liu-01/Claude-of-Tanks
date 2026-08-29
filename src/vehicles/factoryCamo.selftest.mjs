@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import './tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
 import {
+  CAMO_CATALOG_PATTERN_IDS,
   FACTORY_CAMO_PATTERN_BY_NATION,
   SHARED_CAMO_PRESETS,
   SIGNATURE_CAMO_TANK_IDS,
+  camoMatchesTag,
   defaultCamoPatternId,
   hasSignatureCamo,
   signatureCamoPatternId,
@@ -62,6 +64,34 @@ for (const id of SIGNATURE_CAMO_TANK_IDS) {
     paletteKey(resolveCamoVisual(getSpec(id), 'factory')),
     `${id} Signature must remain visibly differentiated from national Factory`,
   );
+  const signature = resolveCamoVisual(getSpec(id), signaturePatternId);
+  assert.notEqual(signature.scheme, 'solid',
+    `${id} Signature must be a real patterned finish, not renamed solid paint`);
+  assert.ok((signature.patches || []).length >= 2,
+    `${id} Signature must retain a multi-tone pattern palette`);
+}
+
+const russianDigitalSignatures = [
+  'bmpt_t90', 't90a_burlak', 't90m', 't90m_proryv', 't90a', 't90a_vladimir',
+];
+for (const id of russianDigitalSignatures) {
+  const patternId = signatureCamoPatternId(id);
+  assert.ok(patternId, `${id} must own a named Russian Signature finish`);
+  assert.equal(resolveCamoVisual(getSpec(id), patternId).scheme, 'digital',
+    `${id} must retain the requested Russian digital camouflage identity`);
+}
+
+const specialPatternIds = CAMO_CATALOG_PATTERN_IDS.filter((patternId) => (
+  camoMatchesTag(patternId, 'USA', 'special')
+));
+assert.ok(specialPatternIds.length >= 59,
+  'the complete named Signature and novelty Special catalog is audited');
+for (const patternId of specialPatternIds) {
+  const visual = resolveCamoVisual(getSpec('m1a2'), patternId);
+  assert.notEqual(visual.scheme, 'solid',
+    `${patternId} Special camo must not resolve to a flat one-color finish`);
+  assert.ok((visual.patches || []).length >= 2,
+    `${patternId} Special camo must expose a multi-tone pattern palette`);
 }
 
 for (const [nation, patternId] of Object.entries(FACTORY_CAMO_PATTERN_BY_NATION)) {
@@ -75,6 +105,14 @@ assert.equal(paletteKey(abramsXOnAbrams), paletteKey(abramsXOnT90),
   'a named vehicle colorway renders identically on tanks from different nations');
 
 assert.equal(defaultCamoPatternId('m1a2'), 'factory');
+for (const id of ['m46_patton', 'm47_patton', 'm48', 'm2a2_bradley']) {
+  assert.equal(defaultCamoPatternId(id), 'summer', `${id} must initially select Summer`);
+  assert.equal(getCamoSelection(id), 'summer', `${id} must present in Summer when no player choice exists`);
+  assert.equal(resolveCamoVisual(getSpec(id), 'summer').scheme, 'nato',
+    `${id} Summer default must use the temperate NATO pattern`);
+  assert.equal(resolveCamoVisual(getSpec(id), 'factory').scheme, 'desert',
+    `${id} must keep US Desert available as its Factory finish`);
+}
 assert.equal(getCamoSelection('abramsx'), 'sig_abramsx',
   'an unset personality vehicle must select its named Signature preset without browser storage');
 assert.equal(getCamoSelection('m1a2'), 'factory',
