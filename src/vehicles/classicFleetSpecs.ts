@@ -179,4 +179,4 @@ for (const spec of SPECS) {
 export const CLASSIC_FLEET_TANK_IDS = SPECS.map((spec) => spec.id);
 
 // Chain-load the following supplemental rows for every fleet facade.
-import './userdrops7.js';
+import './supplementalFleetSpecs.ts';
