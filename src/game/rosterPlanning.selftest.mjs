@@ -3,14 +3,12 @@ import { createGameState } from './stateCore.ts';
 import {
   planBattleCamoOverrides, planBattleParticipantIds, spawnTanks,
 } from './rosterState.ts';
-import { BOT_TANK_IDS, getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.js';
+import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.js';
 
 const game = createGameState();
 spawnTanks(game, {});
-assert.deepEqual(game.allTanks.map((tank) => tank.specId), BOT_TANK_IDS,
+assert.deepEqual(game.allTanks.map((tank) => tank.specId), PRODUCTION_TANK_IDS,
   'solo battles lazily instantiate every production-visible vehicle');
-assert.deepEqual(BOT_TANK_IDS, PRODUCTION_TANK_IDS,
-  'solo bot eligibility exactly matches the production catalog');
 assert.equal(game.tankById.has('m1a2_legacy'), false,
   'a player-hidden development vehicle cannot enter a production bot roster');
 const beforeCount = game.battleCount;
@@ -37,7 +35,7 @@ game.battleCount++;
 const second = planBattleParticipantIds(game, 'm1a2', true);
 assert.notDeepEqual(second, first, 'the next battle ordinal produces a new seeded roster');
 
-const catalogByEra = Map.groupBy(BOT_TANK_IDS, (id) => getSpec(id).era);
+const catalogByEra = Map.groupBy(PRODUCTION_TANK_IDS, (id) => getSpec(id).era);
 for (const [era, ids] of catalogByEra) {
   const playerId = ids.find((id) => getSpec(id).roster?.productionVisible) || ids[0];
   const sameEraCatalog = ids.filter((id) => id !== playerId);

@@ -9,7 +9,7 @@ import {
   DEV_FLEET_ACTIVE,
   PRODUCTION_HIDDEN_TANK_IDS,
 } from '../vehicles/rosterPolicy.ts';
-import { BOT_TANK_IDS } from '../vehicles/specs.js';
+import { PRODUCTION_TANK_IDS } from '../vehicles/specs.js';
 
 // Compatibility export for existing tests/tools. The policy itself lives with
 // the vehicle registry so every carousel and battle path shares one source.
@@ -25,7 +25,7 @@ export const isGarageVisibleTankId = (id: unknown): id is string =>
 
 /** Every vehicle exposed by the production catalog is eligible for bot seats. */
 export const isBotTankId = (id: unknown): id is string =>
-  typeof id === 'string' && (BOT_TANK_IDS as readonly unknown[]).includes(id);
+  typeof id === 'string' && (PRODUCTION_TANK_IDS as readonly unknown[]).includes(id);
 
 /**
  * Curate a pre-shuffled entity pool for a player match.

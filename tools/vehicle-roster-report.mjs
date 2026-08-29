@@ -58,7 +58,7 @@ function buildReport() {
     '',
     '- `src/vehicles/rosterPolicy.ts` owns explicit production exclusions and the local-development gate.',
     '- `src/vehicles/taxonomy.ts` owns the public era taxonomy and every saved vehicle assignment.',
-    '- `src/vehicles/specs.js` publishes saved, production, visible, and runtime projections and stamps every spec with canonical roster metadata.',
+    '- `src/vehicles/specs.js` owns the central `TANK_CATALOGS` registry; garage, gallery, bots, runtime, and tools consume shared projections rather than copied lists.',
     '- Production visibility is independent from record retention: hiding a vehicle never deletes its authored spec or tooling access.',
     '',
   ];

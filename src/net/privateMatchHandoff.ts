@@ -1,5 +1,5 @@
 import { resolveMapId } from '../world/maps/index.ts';
-import { BOT_TANK_IDS, getSpec } from '../vehicles/specs.js';
+import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.js';
 import { isBotTankId } from '../game/matchmaking.ts';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
 import { createLoopbackTransportPair } from './loopbackTransport.ts';
@@ -199,9 +199,9 @@ export function buildPrivateMatchPlayers(lobbyState: unknown): PrivateMatchPlaye
     throw new Error('human roster exceeds the selected team size');
   }
   const referenceEra = humans[0]?.specId ? readVehicleSpec(humans[0].specId)?.era : null;
-  let pool = BOT_TANK_IDS.filter((id) => isBotTankId(id) &&
+  let pool = PRODUCTION_TANK_IDS.filter((id) => isBotTankId(id) &&
     (!referenceEra || readVehicleSpec(id)?.era === referenceEra));
-  if (!pool.length) pool = BOT_TANK_IDS.filter(isBotTankId);
+  if (!pool.length) pool = PRODUCTION_TANK_IDS.filter(isBotTankId);
   const random = seededUnit(lobby.matchSeed ^ 0x5b07f11);
   pool = pool.slice();
   for (let index = pool.length - 1; index > 0; index--) {

@@ -53,24 +53,42 @@ const {
   DEVELOPMENT_TANK_IDS,
   PRODUCTION_TANK_IDS,
   SAVED_TANK_IDS,
+  TANK_CATALOGS,
   TANK_SPECS,
   VISIBLE_TANK_IDS,
+  RUNTIME_TANK_IDS,
 } = await import('./specs.js');
 
 assert.equal(SAVED_TANK_IDS.length, PRODUCT_STATS.savedVehicleRecords,
   'the complete saved procedural fleet is indexed');
 assert.equal(DEVELOPMENT_TANK_IDS.length, PRODUCT_STATS.developmentVehicles,
   'reference-only placeholders are never playable');
-assert.deepEqual(BOT_TANK_IDS, PRODUCTION_TANK_IDS,
-  'bots can field exactly the production-visible catalog');
+assert.strictEqual(BOT_TANK_IDS, PRODUCTION_TANK_IDS,
+  'the bot catalog aliases the production catalog instead of copying it');
+assert.strictEqual(TANK_CATALOGS.bots, TANK_CATALOGS.production,
+  'the central catalog registry gives bots the production projection');
+assert.strictEqual(TANK_CATALOGS.production, PRODUCTION_TANK_IDS,
+  'the production compatibility export points at the central catalog');
+assert.strictEqual(TANK_CATALOGS.saved, SAVED_TANK_IDS,
+  'the saved compatibility export points at the central catalog');
+assert.strictEqual(TANK_CATALOGS.development, DEVELOPMENT_TANK_IDS,
+  'the development compatibility export points at the central catalog');
+assert.strictEqual(TANK_CATALOGS.release, ALL_TANK_IDS,
+  'the release compatibility export points at the central catalog');
+assert.strictEqual(TANK_CATALOGS.visible, VISIBLE_TANK_IDS,
+  'the visible compatibility export points at the central catalog');
+assert.strictEqual(TANK_CATALOGS.runtime, RUNTIME_TANK_IDS,
+  'the runtime compatibility export points at the central catalog');
+assert.strictEqual(VISIBLE_TANK_IDS, PRODUCTION_TANK_IDS,
+  'bare Node and production directly share the curated projection');
+assert.strictEqual(RUNTIME_TANK_IDS, ALL_TANK_IDS,
+  'bare Node and production directly share the release projection');
 assert.equal(BOT_TANK_IDS.includes('m1a2_legacy'), false,
   'production-hidden development tanks cannot occupy bot seats');
 assert.equal(BOT_TANK_IDS.includes('recon_tank'), false,
   'reference placeholders cannot occupy bot seats');
 assert.deepEqual(new Set(SAVED_TANK_IDS), new Set(Object.keys(TANK_SPECS)),
   'every registered spec belongs to the saved-fleet projection');
-assert.deepEqual(VISIBLE_TANK_IDS, PRODUCTION_TANK_IDS,
-  'bare Node and production use the curated projection');
 assert.equal(PRODUCTION_TANK_IDS.length, PRODUCT_STATS.productionVehicles,
   'production fleet count is deliberate');
 for (const id of ownerHidden) {

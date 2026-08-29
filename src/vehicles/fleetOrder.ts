@@ -6,7 +6,7 @@
 // its members by historical/design progression after every pack has loaded.
 // This changes no builder or gameplay spec; it only normalizes ALL_TANK_IDS.
 
-import { ALL_TANK_IDS } from './specs.js';
+import { ALL_TANK_IDS, TANK_CATALOGS } from './specs.js';
 
 export const NATIVE_VARIANT_FAMILIES = Object.freeze({
   t72: Object.freeze([
@@ -76,4 +76,16 @@ export function applyNativeFamilyOrder(ids: string[] = ALL_TANK_IDS): string[] {
     ids.splice(0, ids.length, ...rest);
   }
   return ids;
+}
+
+/** Apply presentation order once to every distinct authoritative catalog. */
+export function applyNativeFamilyOrderToCatalogs(
+  catalogs: Readonly<Record<string, string[]>> = TANK_CATALOGS,
+): void {
+  const ordered = new Set<string[]>();
+  for (const ids of Object.values(catalogs)) {
+    if (ordered.has(ids)) continue;
+    applyNativeFamilyOrder(ids);
+    ordered.add(ids);
+  }
 }

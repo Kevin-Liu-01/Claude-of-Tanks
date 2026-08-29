@@ -35,17 +35,11 @@ import './afvFamily.ts';
 import './sheridan.ts';
 
 import {
-  ALL_TANK_IDS,
-  BOT_TANK_IDS,
-  DEVELOPMENT_TANK_IDS,
-  PRODUCTION_TANK_IDS,
-  RUNTIME_TANK_IDS,
   SAVED_TANK_IDS,
   TANK_SPECS,
-  VISIBLE_TANK_IDS,
   finalizeFirstPartyRoster,
 } from './specs.js';
-import { applyNativeFamilyOrder } from './fleetOrder.ts';
+import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
 
 const tankSpecs = TANK_SPECS as unknown as Record<string, unknown>;
 
@@ -53,15 +47,7 @@ registerCombatAnatomyCalibrations(COMBAT_ANATOMY_CALIBRATIONS);
 finalizeFirstPartyRoster();
 for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(tankSpecs[id]);
 registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);
-for (const ids of [
-  ALL_TANK_IDS,
-  BOT_TANK_IDS,
-  DEVELOPMENT_TANK_IDS,
-  SAVED_TANK_IDS,
-  PRODUCTION_TANK_IDS,
-  VISIBLE_TANK_IDS,
-  RUNTIME_TANK_IDS,
-]) applyNativeFamilyOrder(ids);
+applyNativeFamilyOrderToCatalogs();
 configureTankFactory({
   canonicalBuilderPacks: [
     ['modern1', MODERN1_BUILDERS],

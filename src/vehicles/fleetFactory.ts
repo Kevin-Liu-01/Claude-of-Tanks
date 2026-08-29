@@ -43,17 +43,11 @@ import './afvFamily.ts';
 import './sheridan.ts';
 
 import {
-  ALL_TANK_IDS,
-  BOT_TANK_IDS,
-  DEVELOPMENT_TANK_IDS,
-  PRODUCTION_TANK_IDS,
-  RUNTIME_TANK_IDS,
   SAVED_TANK_IDS,
   TANK_SPECS,
-  VISIBLE_TANK_IDS,
   finalizeFirstPartyRoster,
 } from './specs.js';
-import { applyNativeFamilyOrder } from './fleetOrder.ts';
+import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
 import {
   createProfileBuilders,
   type ProfileBuildFunctions,
@@ -76,15 +70,7 @@ export interface CreateTankOptions {
 }
 
 finalizeFirstPartyRoster();
-for (const ids of [
-  ALL_TANK_IDS,
-  BOT_TANK_IDS,
-  DEVELOPMENT_TANK_IDS,
-  SAVED_TANK_IDS,
-  PRODUCTION_TANK_IDS,
-  VISIBLE_TANK_IDS,
-  RUNTIME_TANK_IDS,
-]) applyNativeFamilyOrder(ids);
+applyNativeFamilyOrderToCatalogs();
 
 let profileKit: ProfileKit | null = null;
 let factoryReady = false;

@@ -1631,15 +1631,27 @@ export const DEVELOPMENT_TANK_IDS = SAVED_TANK_IDS.filter(
   (id) => !RETIRED_EXTERNAL_PLACEHOLDER_IDS.has(id),
 );
 export const PRODUCTION_TANK_IDS = ALL_TANK_IDS.filter((id) => !isProductionHiddenTankId(id));
-// Bot seats use the same owner-approved catalog exposed by the production
-// garage. Development and reference-only records remain available to tools.
-export const BOT_TANK_IDS = [...PRODUCTION_TANK_IDS];
-export const VISIBLE_TANK_IDS = DEV_FLEET_ACTIVE
-  ? [...DEVELOPMENT_TANK_IDS]
-  : [...PRODUCTION_TANK_IDS];
-export const RUNTIME_TANK_IDS = DEV_FLEET_ACTIVE
-  ? [...DEVELOPMENT_TANK_IDS]
-  : [...ALL_TANK_IDS];
+const visibleTankIds = DEV_FLEET_ACTIVE ? DEVELOPMENT_TANK_IDS : PRODUCTION_TANK_IDS;
+const runtimeTankIds = DEV_FLEET_ACTIVE ? DEVELOPMENT_TANK_IDS : ALL_TANK_IDS;
+
+// One catalog registry owns every fleet projection. Role-specific exports
+// below are aliases, never snapshots, so registration/finalization and family
+// ordering cannot leave the garage, gallery, bots, runtime, or tools stale.
+export const TANK_CATALOGS = Object.freeze({
+  saved: SAVED_TANK_IDS,
+  development: DEVELOPMENT_TANK_IDS,
+  release: ALL_TANK_IDS,
+  production: PRODUCTION_TANK_IDS,
+  bots: PRODUCTION_TANK_IDS,
+  visible: visibleTankIds,
+  runtime: runtimeTankIds,
+});
+
+// Compatibility names preserve the existing public API while sharing the
+// exact authoritative catalog arrays above.
+export const BOT_TANK_IDS = TANK_CATALOGS.bots;
+export const VISIBLE_TANK_IDS = TANK_CATALOGS.visible;
+export const RUNTIME_TANK_IDS = TANK_CATALOGS.runtime;
 
 // Generic externally-authored placeholders are useful archaeological/reference
 // records, but they are not historical vehicles authored by this project and
@@ -1681,18 +1693,7 @@ export function finalizeFirstPartyRoster() {
 
   SAVED_TANK_IDS.splice(0, SAVED_TANK_IDS.length, ...savedIds);
   DEVELOPMENT_TANK_IDS.splice(0, DEVELOPMENT_TANK_IDS.length, ...developmentIds);
-  BOT_TANK_IDS.splice(0, BOT_TANK_IDS.length, ...productionIds);
   PRODUCTION_TANK_IDS.splice(0, PRODUCTION_TANK_IDS.length, ...productionIds);
-  VISIBLE_TANK_IDS.splice(
-    0,
-    VISIBLE_TANK_IDS.length,
-    ...(DEV_FLEET_ACTIVE ? developmentIds : productionIds),
-  );
-  RUNTIME_TANK_IDS.splice(
-    0,
-    RUNTIME_TANK_IDS.length,
-    ...(DEV_FLEET_ACTIVE ? developmentIds : ALL_TANK_IDS),
-  );
 
   const productionSet = new Set(productionIds);
   for (const id of savedIds) {

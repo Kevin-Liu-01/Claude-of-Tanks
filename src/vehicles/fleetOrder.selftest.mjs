@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 const { createTank } = await import('./tankFactory.ts');
-const { ALL_TANK_IDS } = await import('./specs.js');
+const { ALL_TANK_IDS, TANK_CATALOGS, TANK_SPECS } = await import('./specs.js');
 const { NATIVE_FAMILY_ORDER, NATIVE_VARIANT_FAMILIES } = await import('./fleetOrder.ts');
 
 for (const [name, family] of Object.entries(NATIVE_FAMILY_ORDER)) {
@@ -14,6 +14,10 @@ for (const [name, family] of Object.entries(NATIVE_FAMILY_ORDER)) {
 }
 
 assert.equal(new Set(ALL_TANK_IDS).size, ALL_TANK_IDS.length, 'roster contains duplicate ids');
+for (const [catalog, ids] of Object.entries(TANK_CATALOGS)) {
+  assert.equal(new Set(ids).size, ids.length, `${catalog} catalog contains duplicate ids`);
+  for (const id of ids) assert.ok(TANK_SPECS[id], `${catalog} catalog contains unknown id ${id}`);
+}
 
 const sovietOrder = NATIVE_FAMILY_ORDER.soviet_modern_mbt;
 for (const [name, family] of Object.entries(NATIVE_VARIANT_FAMILIES)) {

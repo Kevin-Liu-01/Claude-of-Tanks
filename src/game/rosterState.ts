@@ -5,7 +5,7 @@
  * spotting.
  */
 import { Vector3, type Object3D, type Scene } from 'three';
-import { BOT_TANK_IDS, getSpec, TANK_IDS } from '../vehicles/specs.js';
+import { getSpec, PRODUCTION_TANK_IDS, TANK_IDS } from '../vehicles/specs.js';
 import { createTank } from '../vehicles/fleetFactory.ts';
 import { tankTier } from '../vehicles/tier.ts';
 import { isBotTankId, rankMatchCandidates } from './matchmaking.ts';
@@ -104,7 +104,7 @@ export function spawnTanks(game: RosterGameState, engineCtx: EngineContext) {
   // materials.js is refcounted, so eviction frees the canvases/GPU maps).
   game._engineCtx = engineCtx;   // for lazy visual builds (ensureTankVisual)
   game._groundSampler = null;    // set by main.ts; applied to lazy visuals too
-  BOT_TANK_IDS.forEach((specId: string, i: number) => {
+  PRODUCTION_TANK_IDS.forEach((specId: string, i: number) => {
     const spec = getSpec(specId);
     const ent = {
       id: specId,
@@ -136,7 +136,7 @@ export function spawnTanks(game: RosterGameState, engineCtx: EngineContext) {
     game.allTanks.push(ent);
     game.tankById.set(ent.id, ent);
   });
-  // BOT_TANK_IDS is family ordered; the staged screenshot battle is
+  // PRODUCTION_TANK_IDS is family ordered; the staged screenshot battle is
   // the explicitly locked core roster and must not depend on carousel order.
   game.tanks = TANK_IDS.map((id) => game.tankById.get(id))
     .filter((entity): entity is RosterEntity => !!entity);
