@@ -2852,7 +2852,8 @@ function buildMBT70(P) {
 // shroud with sensor mast, AESA corner panels, APS tubes and a clean gun.
 // ---------------------------------------------------------------------------
 function buildT14(P) {
-  const { box, frustum, slab, cylY, cylX, cylZ, torus,
+  const { box, frustum, slab, polyMultiLoft, cylY, cylX, cylZ, torus,
+    xform, mergeAll,
     buildGun, buildRunningGear, fenders, headlight, liftEye, periscope,
     towCable, stowage } = KIT;
   const { rng } = P;
@@ -3135,7 +3136,21 @@ function buildT14(P) {
   P.add('turret', slab(                                                          // flat apex tip over the trough
     [-0.42, 0.525, 1.678], [0.42, 0.525, 1.678], [0.30, 0.525, 1.911], [-0.30, 0.525, 1.911],
     [-0.42, 0.585, 1.694], [0.42, 0.585, 1.694], [0.30, 0.585, 1.896], [-0.30, 0.585, 1.896]));
-  P.add('turret', box(1.90, 0.05, 1.911), 0, AH - 0.025, 0.4655);               // front roof crown plate (2.53w, front edge trimmed to 1.421)
+  // One shallow connected crown follows the actual cheek perimeter. The old
+  // 1.90 x 1.91 rectangle bridged straight across the diagonal shoulders and
+  // made the roof read as a square lid. This ten-station cap instead narrows
+  // around the gun throat, follows both cheek breaks, and meets the raised
+  // rear crown at the existing -0.50 m seam.
+  const t14RoofPlan = [
+    [-0.90, -0.50], [0.90, -0.50], [0.95, -0.20], [0.95, 0.86],
+    [0.66, 1.242], [0.18, 1.413], [-0.18, 1.413], [-0.66, 1.242],
+    [-0.95, 0.86], [-0.95, -0.20],
+  ];
+  P.add('turret', polyMultiLoft(t14RoofPlan, [
+    { height: AH - 0.055, inset: 0.965 },
+    { height: AH - 0.018, inset: 0.985 },
+    { height: AH, inset: 1 },
+  ]));
   // RAISED REAR ROOF crown (print 2.72w, z -0.40..-1.10w): frustum sides
   // (the print's crown flanks lean — front cols ±1.16-1.21 read 2.73)
   P.add('turret', frustum(1.24, 0.40, -0.52, 1.16, 0.28, -0.50, AH, 1.035));    // crown front extended to z_w -0.32 (ref 2.74 line)
@@ -3169,7 +3184,15 @@ function buildT14(P) {
     P.add('turretDark', box(0.16, 0.14, 0.10), s2 * 0.70, AH - 0.10, 1.133, 0, s2 * 0.5, 0);  // corner EO box
     P.add('turretGlass', box(0.09, 0.07, 0.02), s2 * 0.72, AH - 0.09, 1.180, 0, s2 * 0.5, 0);
   }
-  P.add('turretDark', box(0.9, 0.02, 0.9), 0, AH + 0.028, 0.45);
+  // Panel breaks now echo the tapered crown instead of painting another
+  // square plate over it.
+  P.add('turretDark', box(0.022, 0.012, 1.14), 0, AH + 0.008, 0.69);
+  for (const s of [-1, 1]) {
+    P.add('turretDark', box(0.018, 0.012, 0.66), s * 0.42, AH + 0.008, 1.10,
+      0, -s * 0.66, 0);
+    P.add('turretDark', box(0.018, 0.012, 0.54), s * 0.76, AH + 0.008, 0.54,
+      0, -s * 0.10, 0);
+  }
   // gun trough: dark slot the clean tube emerges from, under the arrow apex
   P.add('turretDark', box(0.5, 0.40, 0.2), 0, 0.30, 1.771);
   // Afganit hard-kill launch tubes ringing the shroud base (§B3.1 grammar,
@@ -3235,23 +3258,58 @@ function buildT14(P) {
     P.turretG.add(mg);                                                          // 1.06 seat's 3.02w receiver tops owned 8 front cols vs the ref's
                                                                                 // clean 2.58-2.71 crown; §B3 census MG holds, tops now ~2.88w)
   }
-  // Compact T-90-style remote station on the vehicle-left crown. Every
-  // component begins at the 1.035 m roof datum and remains turret equipment.
+  // Purpose-built low-profile 30 mm remote autocannon on the vehicle-left
+  // crown. Its buried turntable, split shield, ammunition coffin, recoil
+  // cradle, and independent EO head follow the M551A1 TTS station's useful
+  // visual grammar without reusing that vehicle's geometry.
   const leftRwsX = -0.82;
   const leftRwsZ = -0.10;
-  P.addEquipment('turretDetail', cylY(0.15, 0.17, 0.06, 12), leftRwsX, 1.065, leftRwsZ);
-  P.addEquipment('turretDetail', cylY(0.065, 0.08, 0.16, 10), leftRwsX, 1.175, leftRwsZ);
-  P.addEquipment('turret', box(0.24, 0.22, 0.30), leftRwsX, 1.36, leftRwsZ);
-  P.add('turretDark', box(0.14, 0.09, 0.045), leftRwsX, 1.34, leftRwsZ + 0.17);
-  P.add('turretGlass', box(0.095, 0.055, 0.012), leftRwsX, 1.34, leftRwsZ + 0.195);
+  P.addEquipment('turretDetail', cylY(0.20, 0.23, 0.075, 14), leftRwsX, 1.0725, leftRwsZ);
+  P.addEquipment('turret', box(0.44, 0.28, 0.52), leftRwsX, 1.30, leftRwsZ + 0.22);
+  for (const s of [-1, 1]) {
+    P.addEquipment('turret', box(0.10, 0.36, 0.62), leftRwsX + s * 0.255,
+      1.33, leftRwsZ + 0.23, 0, 0, s * 0.15);
+  }
+  P.addEquipment('turret', box(0.60, 0.08, 0.58), leftRwsX, 1.53, leftRwsZ + 0.23);
+  P.addEquipment('turret', box(0.30, 0.34, 0.44), leftRwsX - 0.37,
+    1.32, leftRwsZ + 0.13, 0, -0.08, 0);
+  P.add('turretDetail', box(0.32, 0.025, 0.46), leftRwsX - 0.37,
+    1.502, leftRwsZ + 0.13, 0, -0.08, 0);
+  P.addEquipment('turret', box(0.23, 0.30, 0.28), leftRwsX + 0.34,
+    1.35, leftRwsZ + 0.15, 0, 0.08, 0);
+  P.add('turretDark', box(0.19, 0.24, 0.025), leftRwsX + 0.35,
+    1.35, leftRwsZ + 0.30, 0, 0.08, 0);
+  P.add('turretGlass', box(0.085, 0.095, 0.014), leftRwsX + 0.32,
+    1.40, leftRwsZ + 0.318, 0, 0.08, 0);
+  P.add('turretGlass', box(0.052, 0.052, 0.014), leftRwsX + 0.40,
+    1.31, leftRwsZ + 0.325, 0, 0.08, 0);
   {
-    const leftRwsMg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'nsvt', scale: 0.62, tone: 'dark', seed: 24,
-      elev: 0.03, ammo: true, rotation: [0, 0, 0],
-    });
-    leftRwsMg.name = 't14_left_remote_weapon';
-    leftRwsMg.position.set(leftRwsX, 1.47, leftRwsZ + 0.02);
-    P.turretG.add(leftRwsMg);
+    const autocannon = new THREE.Group();
+    autocannon.name = 't14_left_remote_weapon';
+    autocannon.userData.remoteControlled = true;
+    autocannon.userData.caliberMm = 30;
+    autocannon.userData.stationVariant = 'armata-30mm-autocannon';
+    autocannon.userData.forwardFacing = true;
+    const darkParts = [
+      xform(cylX(0.065, 0.55, P.q ? 18 : 12), leftRwsX, 1.235, leftRwsZ + 0.33),
+      xform(cylZ(0.050, 1.16, P.q ? 20 : 14), leftRwsX, 1.355, leftRwsZ + 1.00),
+      xform(cylZ(0.088, 0.30, P.q ? 20 : 14), leftRwsX, 1.355, leftRwsZ + 0.44),
+      xform(cylZ(0.066, 0.14, P.q ? 18 : 12), leftRwsX, 1.355, leftRwsZ + 1.65),
+      xform(cylZ(0.024, 0.022, P.q ? 14 : 10), leftRwsX, 1.355, leftRwsZ + 1.73),
+      xform(box(0.13, 0.11, 0.28), leftRwsX - 0.19, 1.38, leftRwsZ + 0.39),
+    ];
+    const geometry = mergeAll(darkParts);
+    geometry.setAttribute('color', new THREE.BufferAttribute(
+      new Float32Array(geometry.attributes.position.count * 3).fill(1), 3));
+    const weaponMesh = new THREE.Mesh(geometry, P.mats.dark);
+    weaponMesh.name = 't14_30mm_autocannon_mechanism';
+    weaponMesh.castShadow = true;
+    weaponMesh.receiveShadow = true;
+    weaponMesh.userData.appearanceRole = 'machineGun';
+    autocannon.add(weaponMesh);
+    FITTINGS.markExact(autocannon, 'pintleMG');
+    autocannon.name = 't14_left_remote_weapon';
+    P.turretG.add(autocannon);
   }
   // meteo mast front-LEFT (print spike col: tip 3.37w at z_w 0.12, ONE
   // grid-centered column): base block + slim mast + crossbar vanes + tip
@@ -3263,33 +3321,91 @@ function buildT14(P) {
   P.add('turretDetail', cylY(0.012, 0.012, 0.14, 6), -0.70, 1.565, 0.72);       // tip joint sleeve
   P.add('turretDark', box(0.045, 0.09, 0.045), -0.70, 1.64, 0.72);              // tip sensor (3.37w)
   P.add('turretDark', box(0.04, 0.06, 0.04), -0.70, 1.32, 0.83);                // aft sensor pod (3.06w — ref's second meteo column)
-  for (const s of [-1, 1]) {                                                    // Afganit AESA plates
-    // Square cheek apertures: a painted boss intersects the facet, the dark
-    // socket sits behind its lip, and a smaller lens is inset into the hole.
+  for (const s of [-1, 1]) {                                                    // Afganit AESA / optical cheek pockets
+    // Four armor rails form a real square recess rather than a solid boss.
+    // Three separately inset panes read as thermal/daylight/laser channels,
+    // with the smallest lower pane doubling as an IR illuminator.
     const sensorYaw = s * 0.55;
     const sensorPitch = -0.10;
     const sensorCenter = new THREE.Vector3(s * 0.90, 0.56, 1.367);
-    const sensorNormal = new THREE.Vector3(0, 0, 1)
-      .applyEuler(new THREE.Euler(sensorPitch, sensorYaw, 0, 'XYZ'));
-    const socketCenter = sensorCenter.clone().addScaledVector(sensorNormal, -0.008);
-    const lensCenter = sensorCenter.clone().addScaledVector(sensorNormal, 0.002);
-    P.addEquipment('turret', box(0.36, 0.36, 0.055),
-      sensorCenter.x, sensorCenter.y, sensorCenter.z, sensorPitch, sensorYaw, 0);
-    P.add('turretDark', box(0.29, 0.29, 0.038),
-      socketCenter.x, socketCenter.y, socketCenter.z, sensorPitch, sensorYaw, 0);
-    P.add('turretGlass', box(0.22, 0.22, 0.012),
-      lensCenter.x, lensCenter.y, lensCenter.z, sensorPitch, sensorYaw, 0);
+    const sensorEuler = new THREE.Euler(sensorPitch, sensorYaw, 0, 'XYZ');
+    const onSensor = (dx, dy, depth) => new THREE.Vector3(dx, dy, depth)
+      .applyEuler(sensorEuler).add(sensorCenter);
+    for (const [dx, dy, w, h] of [
+      [0, 0.15, 0.36, 0.055], [0, -0.15, 0.36, 0.055],
+      [-0.15, 0, 0.055, 0.245], [0.15, 0, 0.055, 0.245],
+    ]) {
+      const rail = onSensor(dx, dy, 0);
+      P.addEquipment('turret', box(w, h, 0.07), rail.x, rail.y, rail.z,
+        sensorPitch, sensorYaw, 0);
+    }
+    const socket = onSensor(0, 0, -0.014);
+    P.add('turretDark', box(0.265, 0.245, 0.038), socket.x, socket.y, socket.z,
+      sensorPitch, sensorYaw, 0);
+    const apertures = [
+      [-s * 0.050, 0.042, 0.115, 0.105],
+      [s * 0.066, 0.052, 0.060, 0.060],
+      [s * 0.064, -0.062, 0.052, 0.050],
+    ];
+    for (const [dx, dy, w, h] of apertures) {
+      const lens = onSensor(dx, dy, 0.004);
+      P.add('turretGlass', box(w, h, 0.012), lens.x, lens.y, lens.z,
+        sensorPitch, sensorYaw, 0);
+    }
+    const divider = onSensor(-s * 0.003, -0.015, 0.002);
+    P.add('turretDetail', box(0.018, 0.19, 0.014), divider.x, divider.y, divider.z,
+      sensorPitch, sensorYaw, 0);
     P.add('turretDark', box(0.28, 0.26, 0.04), s * 1.19, BK + 0.10, -0.24, 0.1, s * 2.6, 0); // rear pair tucked to the trimmed shoulder (was 1.24 —
   }                                                                             // proud of the new belt edge at the ±1.42 plan cols)
+
+  // Distributed unmanned-turret electronics: shoulder cameras, corner laser
+  // warning receivers, side APS controllers, rear observation cameras and
+  // armored cable raceways. Every housing begins on a known roof/facet datum;
+  // the glass elements stay proud enough to read without becoming floaters.
+  for (const s of [-1, 1]) {
+    P.addEquipment('turret', box(0.20, 0.12, 0.27), s * 0.61, AH + 0.06, 0.57,
+      -0.06, -s * 0.08, 0);
+    P.add('turretDark', box(0.15, 0.074, 0.035), s * 0.61, AH + 0.07, 0.716,
+      -0.06, -s * 0.08, 0);
+    P.add('turretGlass', box(0.098, 0.046, 0.014), s * 0.61, AH + 0.07, 0.739,
+      -0.06, -s * 0.08, 0);
+
+    P.addEquipment('turretDetail', cylY(0.052, 0.062, 0.055, 10),
+      s * 0.83, AH + 0.0275, 0.90);
+    P.add('turretGlass', cylY(0.038, 0.042, 0.018, 10),
+      s * 0.83, AH + 0.064, 0.90);
+
+    P.addEquipment('turretDetail', box(0.14, 0.17, 0.18),
+      s * 1.12, 0.61, 0.31, 0, s * Math.PI / 2, 0);
+    P.add('turretGlass', box(0.085, 0.075, 0.014),
+      s * 1.218, 0.63, 0.31, 0, s * Math.PI / 2, 0);
+
+    P.addEquipment('turret', box(0.16, 0.11, 0.20),
+      s * 0.57, 1.09, -0.45, 0, Math.PI, 0);
+    P.add('turretDark', box(0.12, 0.070, 0.025),
+      s * 0.57, 1.095, -0.558, 0, Math.PI, 0);
+    P.add('turretGlass', box(0.075, 0.040, 0.012),
+      s * 0.57, 1.095, -0.578, 0, Math.PI, 0);
+
+    P.add('turretDetail', box(0.034, 0.022, 0.54),
+      s * 0.43, AH + 0.012, 0.55, 0, -s * 0.24, 0);
+  }
+  P.addEquipment('turretDetail', cylY(0.055, 0.065, 0.070, 12),
+    0, AH + 0.035, 1.02);
+  P.add('turretGlass', cylY(0.041, 0.046, 0.022, 12),
+    0, AH + 0.081, 1.02);
   // vertical smoke-tube banks on the bustle flanks
   for (const s of [-1, 1]) {
     for (let k = 0; k < 4; k++) {
       P.add('turretDetail', cylY(0.035, 0.035, 0.3, 8), s * (0.72 + k * 0.09), 0.90 - k * 0.02, -0.68, 0.12, 0, s * 0.15);
     }
   }
-  // roof panel seams (unmanned: no hatches on the shroud)
-  P.add('turretDark', box(0.7, 0.012, 1.2), 0, AH + 0.006, 0.50);
-  P.add('turretDark', box(1.9, 0.012, 0.5), 0, 1.035 + 0.006, -0.20);
+  // Raised-crown service seams are narrow inspection breaks, not filled roof
+  // panels. The rear pair also provides a visual load path to the RWS stack.
+  P.add('turretDark', box(0.022, 0.012, 0.44), 0, 1.035 + 0.006, -0.28);
+  for (const s of [-1, 1]) {
+    P.add('turretDark', box(0.54, 0.012, 0.022), s * 0.31, 1.035 + 0.006, -0.44);
+  }
   // GLONASS dome on the rear crown center (roof-presence order; top 2.79w —
   // under the ref's 3.15 center plateau, mask-interior from side/plan)
   P.add('turretDark', cylY(0.05, 0.05, 0.045, 10), 0.05, 1.0575, -0.30);
@@ -3388,14 +3504,23 @@ function buildT14(P) {
   P.turretG.userData.t14RoofFidelityReceipt = {
     lowerBeltHeightM: BK,
     roofDatumM: 1.035,
+    moldedCrown: true,
+    crownPlanVertexCount: t14RoofPlan.length,
+    crownThroatHalfWidthM: 0.18,
+    crownShoulderHalfWidthM: 0.95,
     mainRwsPedestalTopM: rwsPedestalTopY,
     mainRwsRearTierBottomM: rwsRearTierCenterY - 0.13,
     mainRwsFrontTierBottomM: rwsFrontTierCenterY - 0.10,
     leftRemoteWeaponStation: true,
     leftRemoteWeaponStationX: leftRwsX,
+    leftRemoteWeaponCaliberMm: 30,
+    leftRemoteWeaponVariant: 'armata-30mm-autocannon',
+    leftRemoteWeaponForwardFacing: true,
     rearAntennaCount: 2,
     cheekSensorRecessCount: 2,
-    cheekSensorLensCount: 2,
+    cheekSensorLensCount: 6,
+    auxiliaryTechPartCount: 22,
+    externalTechLensCount: 9,
   };
   P.hullG.userData.t14HullFidelityReceipt = {
     glacisAngleDeg: 8.8,

@@ -18,16 +18,26 @@ const roof = turretRig.userData.t14RoofFidelityReceipt;
 assert(roof, 'T-14: roof fidelity receipt is published');
 assert.equal(roof.lowerBeltHeightM, 0.34,
   'T-14: broad lower turret belt is reduced to the 0.34 m knuckle datum');
+assert(roof.moldedCrown && roof.crownPlanVertexCount === 10,
+  'T-14: front roof is a connected multi-station crown rather than a square lid');
+assert(roof.crownThroatHalfWidthM < roof.crownShoulderHalfWidthM * 0.25,
+  'T-14: crown plan narrows materially into the gun throat');
 assert(Math.abs(roof.mainRwsRearTierBottomM - roof.mainRwsPedestalTopM) < 1e-9,
   'T-14: rear electronics tier sits flush on the main RWS pedestal');
 assert(Math.abs(roof.mainRwsFrontTierBottomM - roof.mainRwsPedestalTopM) < 1e-9,
   'T-14: forward electronics tier sits flush on the main RWS pedestal');
 assert(roof.leftRemoteWeaponStation && roof.leftRemoteWeaponStationX < 0,
-  'T-14: compact remote machine-gun station occupies the vehicle-left roof');
+  'T-14: remote autocannon station occupies the vehicle-left roof');
+assert.equal(roof.leftRemoteWeaponCaliberMm, 30);
+assert.equal(roof.leftRemoteWeaponVariant, 'armata-30mm-autocannon');
+assert(roof.leftRemoteWeaponForwardFacing,
+  'T-14: roof autocannon firing axis remains vehicle-forward');
 assert.equal(roof.rearAntennaCount, 2,
   'T-14: paired rear communications antennas are recorded');
 assert.equal(roof.cheekSensorRecessCount, 2);
-assert.equal(roof.cheekSensorLensCount, 2);
+assert.equal(roof.cheekSensorLensCount, 6);
+assert.equal(roof.auxiliaryTechPartCount, 22);
+assert.equal(roof.externalTechLensCount, 9);
 
 const parts = tank.root.userData.combatGeometryParts;
 const lowerBelts = parts.filter((part) => part.bucket === 'turret'
@@ -50,16 +60,19 @@ assert(leftRwsBase,
   'T-14: left remote station base physically begins on the rear crown');
 const leftRemoteWeapon = tank.root.getObjectByName('t14_left_remote_weapon');
 assert(leftRemoteWeapon?.userData.fitting === 'pintleMG'
-    && leftRemoteWeapon.userData.fittingRoot,
-  'T-14: left tower carries a canonical remote machine-gun fitting');
+    && leftRemoteWeapon.userData.fittingRoot
+    && leftRemoteWeapon.userData.caliberMm === 30
+    && leftRemoteWeapon.userData.stationVariant === 'armata-30mm-autocannon'
+    && leftRemoteWeapon.userData.forwardFacing,
+  'T-14: left tower carries one canonical forward-facing 30 mm autocannon fitting');
 
 const cheekLenses = parts.filter((part) => part.bucket === 'turretGlass'
   && part.min[2] > 1.25 && part.max[2] < 1.50
   && Math.abs((part.min[0] + part.max[0]) / 2) > 0.80);
-assert.equal(cheekLenses.length, 2,
-  'T-14: two inset glass lenses occupy the square cheek sockets');
+assert.equal(cheekLenses.length, 6,
+  'T-14: two square cheek sockets carry three inset optical channels apiece');
 for (const lens of cheekLenses) {
-  assert(lens.max[0] - lens.min[0] < 0.25 && lens.max[1] - lens.min[1] < 0.25,
+  assert(lens.max[0] - lens.min[0] < 0.16 && lens.max[1] - lens.min[1] < 0.16,
     'T-14: cheek lens remains visibly inset inside its armored frame');
 }
 
@@ -110,4 +123,4 @@ assert(outwardGlacisFaces >= 4,
   'T-14: both glacis backing panels expose upward/forward outer faces');
 
 tank.dispose();
-console.log('t14RoofFidelity.selftest: roof seats, slim belt, left RWS, rear antennas, mudguards, glacis and sensor recesses verified');
+console.log('t14RoofFidelity.selftest: molded crown, optical cheek pockets, 30 mm RWS, turret tech, antennas, mudguards and glacis verified');
