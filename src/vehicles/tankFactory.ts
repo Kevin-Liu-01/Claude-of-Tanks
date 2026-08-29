@@ -3,7 +3,7 @@
 // configures the cycle-free implementation once. Player boot uses the
 // demand-loaded fleetFactory.ts boundary instead.
 
-import { configureTankFactory } from './tankFactoryCore.js';
+import { configureTankFactory } from './tankFactoryCore.ts';
 import { MODERN3_BUILDERS } from './modern3.ts';
 import { FRANCE_BUILDERS } from './france.ts';
 import { MODERN2_BUILDERS } from './modern2.ts';
@@ -60,4 +60,4 @@ configureTankFactory({
   fittings: FITTINGS,
 });
 
-export { KIT, createTank } from './tankFactoryCore.js';
+export { KIT, createTank } from './tankFactoryCore.ts';

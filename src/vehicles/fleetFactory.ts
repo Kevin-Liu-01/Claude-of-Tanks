@@ -6,7 +6,7 @@ import {
   createTank as createTankCore,
   registerCanonicalBuilders,
   registerProfiledBuilders,
-} from './tankFactoryCore.js';
+} from './tankFactoryCore.ts';
 import { FLEET_GROUP_BY_ID, type FleetGroup } from './fleetManifest.ts';
 import {
   ensureAllVehicleMarkingSeatGroups,
@@ -65,7 +65,7 @@ export interface CreateTankOptions {
   camo?: string;
   geometryReceipt?: boolean;
   proceduralOnly?: boolean;
-  quality?: string;
+  quality?: 'high' | 'ai' | 'low' | 'preview';
   [key: string]: unknown;
 }
 
@@ -213,4 +213,4 @@ export function createTank(
   return createTankCore(specId, engineCtx, opts);
 }
 
-export { KIT } from './tankFactoryCore.js';
+export { KIT } from './tankFactoryCore.ts';

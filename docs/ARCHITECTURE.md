@@ -18,7 +18,7 @@ Module ownership (file paths are FIXED):
 |---|---|
 | engine   | `src/engine/renderer.ts`, `src/engine/lighting.ts`, `src/engine/post.ts`, `src/engine/sky.ts`, `src/engine/cameraRig.ts` |
 | world    | `src/world/terrain.ts`, `src/world/vegetation.ts`, `src/world/props.ts`, `src/world/map.ts` |
-| vehicles | `src/vehicles/specs.ts`, `src/vehicles/fleetFactory.ts`, `src/vehicles/factoryGeometry.ts`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.ts` |
+| vehicles | `src/vehicles/specs.ts`, `src/vehicles/fleetFactory.ts`, `src/vehicles/factoryGeometry.ts`, `src/vehicles/tankFactoryCore.ts`, `src/vehicles/materials.ts` |
 | movement | `src/sim/movement.ts` |
 | combat   | `src/sim/ballistics.ts`, `src/sim/armor.ts`, `src/sim/damage.ts`, `src/sim/combat.selftest.mjs` |
 | ai       | `src/game/ai.ts` |
@@ -574,7 +574,7 @@ engine hp, speeds, shell pens/dmg: from the roster tables verbatim. Shell veloci
 is2 795/800/770 (slot1 = BR-471B AP); panther_g 935/1120/700; m1a2 1670/1400/1000;
 t90m 1750/905/850; leo2a7 1750/1400/1000. (slots: standard/special/HE.)
 
-#### 3.3.2 `fleetFactory.ts` / `factoryGeometry.ts` / `tankFactoryCore.js`
+#### 3.3.2 `fleetFactory.ts` / `factoryGeometry.ts` / `tankFactoryCore.ts`
 ```ts
 export function ensureTankBuilder(specId: string): Promise<void>
 export function ensureTankBuilders(specIds: readonly string[]): Promise<void>

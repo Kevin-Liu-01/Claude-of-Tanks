@@ -8,7 +8,7 @@
 // modern3Specs.ts so unrelated garages never transfer this geometry pack.
 
 import * as THREE from 'three';
-import { KIT } from './tankFactoryCore.js';
+import { KIT } from './tankFactoryCore.ts';
 import { FITTINGS } from './profiles/kit.ts';
 import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.ts';
 import './modern3Specs.ts';

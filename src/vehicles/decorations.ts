@@ -151,7 +151,7 @@ interface DecorationAttachmentArgs {
   turretG: THREE.Group;
   spec: FleetTankSpec;
   engineCtx?: ShadowEngineContext | null;
-  disposables?: Array<THREE.BufferGeometry | THREE.Material>;
+  disposables?: Array<THREE.BufferGeometry | THREE.Material | THREE.Texture>;
   opts?: DecorOptions;
   isDestroyed?: () => boolean;
 }

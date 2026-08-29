@@ -8,7 +8,7 @@
 // reference renders and real vehicle dimensions. They intentionally do not
 // contain, decode, or reproduce source mesh topology.
 import * as THREE from 'three';
-import { KIT } from '../tankFactoryCore.js';
+import { KIT } from '../tankFactoryCore.ts';
 
 type Vec3Tuple = readonly [number, number, number];
 type GeometryScale = number | readonly number[];

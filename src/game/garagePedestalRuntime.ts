@@ -18,7 +18,7 @@ export interface GaragePedestalVisual {
   dispose(): void;
   setVisible?(visible: boolean): void;
   centerOnPresentationPoint?(x: number, z: number): void;
-  presentationTrackFloorYM?: number;
+  presentationTrackFloorYM?: number | null;
   seatOnFloor?(y: number): void;
   seatRunningGearOnFloor?(y: number): void;
   prepareForSimulation?(): void;

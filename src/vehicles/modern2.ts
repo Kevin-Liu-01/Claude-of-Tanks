@@ -15,7 +15,7 @@
 // estimates per the roster doc (game-design baselines).
 
 import * as THREE from 'three';
-import { KIT } from './tankFactoryCore.js';
+import { KIT } from './tankFactoryCore.ts';
 // §I fittings census: the FITTINGS import is the spelling that survives
 // synchronous top-level createTank rigs.
 import { FITTINGS, muzzleBore } from './profiles/kit.ts';

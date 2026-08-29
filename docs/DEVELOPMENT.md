@@ -95,8 +95,8 @@ file and suppress checking. The durable policy and completed owner sequence are
 recorded in `docs/decisions/0001-incremental-typescript.md`. The completed
 migration removes `allowJs`; until then, every slice must reduce the runtime
 JavaScript inventory without adding unchecked replacement modules.
-At ADR 0293, four runtime JavaScript owners remain: the Abrams, Leopard, and
-Merkava vehicle profiles plus `src/vehicles/tankFactoryCore.js`.
+At ADR 0296, two runtime JavaScript owners remain: the Leopard and Merkava
+vehicle profiles.
 Generators must follow migrations too: `tools/map-thumbs.mjs`, for example,
 writes `src/ui/mapThumbs.ts` so regeneration cannot restore a deleted `.js`
 owner.

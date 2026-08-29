@@ -10,7 +10,7 @@
 // through the checked factory-configuration gate; builders draw on
 // tankFactoryCore's exported geometry KIT.
 
-import { KIT } from './tankFactoryCore.js';
+import { KIT } from './tankFactoryCore.ts';
 import { FITTINGS } from './profiles/kit.ts';
 import './franceSpecs.ts';
 import type { BufferGeometry, Object3D } from 'three';

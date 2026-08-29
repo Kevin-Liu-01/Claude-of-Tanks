@@ -11,10 +11,10 @@
 // model-source rows register HERE by mutating the exported tables from
 // specs.ts — specs.ts itself is untouched (it is concurrently edited by the
 // sourcing workflows). Builders draw on the shared geometry/greeble kit
-// exported by tankFactoryCore.js (KIT).
+// exported by tankFactoryCore.ts (KIT).
 
 import * as THREE from 'three';
-import { KIT } from './tankFactoryCore.js';
+import { KIT } from './tankFactoryCore.ts';
 import { muzzleBore } from './profiles/kit.ts';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {

@@ -1,4 +1,4 @@
-// src/vehicles/tankFactoryCore.js — cycle-free procedural factory implementation.
+// src/vehicles/tankFactoryCore.ts — cycle-free procedural factory implementation.
 // Recognizable replicas composed from BufferGeometries (ARCHITECTURE §3.3.2).
 // No top-level side effects; all randomness seeded; time arrives via
 // syncFromState(state, dt) — dt defaults to 1/60 s per call so existing
@@ -41,13 +41,828 @@ import { attachTankDecorations } from './decorations.ts';
 // between captures aged the old dt-accumulators in wall-clock time).
 import { fxNow, emitPopTrail } from '../fx/clock.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
+import type { FleetGunSpec, FleetTankSpec, FleetVisualSpec } from './specContracts.ts';
+import type { ArmorEnvelope } from './specHelpers.ts';
+import type { VehicleMarkingAnchor, VehicleMarkingRecord } from './vehicleMarkings.ts';
+import type { WheelPattern, WheelPatternId } from './wheelPatterns.ts';
+import type { TrackPattern, TrackPatternId } from './trackPatterns.ts';
+import type { SuspensionPatternId } from './suspensionPatterns.ts';
 
 
 const D2R = Math.PI / 180;
 const SIM_STEP = 1 / 60;
 let factoryConfigured = false;
-let KIT_FITTINGS = null;
-const PROFILED_BUILDER_IDS = new Set();
+type Rng = () => number;
+type Side = -1 | 1;
+type GeometryScale = number | readonly [number, number, number];
+type VehicleOwner = 'hull' | 'turret';
+type VehicleMesh = THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>;
+type VehicleInstancedMesh = THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>;
+type DisposableVehicleResource = THREE.BufferGeometry | THREE.Material | THREE.Texture;
+type TankBuilder = (...args: never[]) => unknown;
+type TankBuilderRecord = Record<string, TankBuilder>;
+
+interface TankMaterials {
+  hull: THREE.MeshStandardMaterial;
+  wheels: THREE.MeshStandardMaterial;
+  wheelsRecessed: THREE.MeshStandardMaterial;
+  rubber: THREE.MeshStandardMaterial;
+  detail: THREE.MeshStandardMaterial;
+  dark: THREE.MeshStandardMaterial;
+  shadow: THREE.MeshStandardMaterial;
+  trackLink: THREE.MeshStandardMaterial;
+  spareTrack: THREE.MeshStandardMaterial;
+  glass: THREE.MeshStandardMaterial;
+  barrel: THREE.MeshStandardMaterial;
+  canvasCloth: THREE.MeshStandardMaterial;
+  wood: THREE.MeshStandardMaterial;
+  burnt: THREE.MeshStandardMaterial;
+  trackL: THREE.MeshStandardMaterial;
+  trackR: THREE.MeshStandardMaterial;
+  trackTexL: THREE.Texture;
+  trackTexR: THREE.Texture;
+  trackLinkM: number;
+  prepareBurnt?: () => void;
+  decal(kind: string, text: string | null): THREE.Material;
+  dispose(): void;
+}
+
+interface TankFittings {
+  spareTrackLinks: (options: object) => THREE.Object3D;
+  antennaWhip: (options: object) => THREE.Object3D;
+  pintleMG: (options: object) => THREE.Object3D;
+  [name: string]: (options: object) => THREE.Object3D;
+}
+
+interface FactoryConfiguration {
+  canonicalBuilderPacks: Array<readonly [string, TankBuilderRecord]>;
+  profiledBuilders?: TankBuilderRecord;
+  fittings: Record<string, TankBuilder>;
+}
+
+interface FactoryGunSpec extends FleetGunSpec {
+  muzzles?: Array<{ x?: number; y?: number; z?: number }>;
+}
+
+interface FactoryVisualSpec extends FleetVisualSpec {
+  bakeDirtDeckEq?: boolean;
+}
+
+interface FactoryTankSpec extends FleetTankSpec {
+  armor: ArmorEnvelope;
+  gun: FactoryGunSpec;
+  visual: FactoryVisualSpec;
+  visualBase?: string;
+  variantOf?: string;
+  markings?: VehicleMarkingRecord;
+}
+
+interface GearEndpoint {
+  z: number;
+  y: number;
+  r: number;
+  trackR?: number;
+}
+
+type TrackPoint = [number, number];
+
+interface TrackSupportPoint {
+  z: number;
+  y: number;
+  r?: number;
+}
+
+interface TrackContactSpan {
+  zF: number;
+  zR: number;
+}
+
+interface TrackLoopOptions {
+  idler: GearEndpoint;
+  sprocket: GearEndpoint;
+  botY: number;
+  topY: number;
+  sag?: number;
+  supports?: TrackSupportPoint[] | null;
+  contact?: TrackContactSpan | null;
+  frontArcSteps?: number;
+  rearArcSteps?: number;
+  tautFrontSpan?: boolean;
+  tautRearSpan?: boolean;
+  smoothRearTopTangent?: boolean;
+}
+
+interface WheelGeometrySet {
+  tire: THREE.BufferGeometry | null;
+  disc: THREE.BufferGeometry;
+  dark: THREE.BufferGeometry | null;
+}
+
+interface WheelFaceLayer {
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material;
+  outset?: number;
+  yOffset?: number;
+  zOffset?: number;
+  appearanceRole?: string;
+  name?: string;
+}
+
+interface WheelLayerOptions {
+  outset?: number;
+  yOffset?: number;
+  zOffset?: number;
+  appearanceRole?: string;
+  name?: string;
+}
+
+interface WheelEntry {
+  x: number;
+  y: number;
+  z: number;
+  r: number;
+  road: boolean;
+  i: number;
+  off: number;
+  rec?: boolean;
+  voff?: number;
+  thrown?: boolean;
+  suspensionSource?: WheelEntry;
+}
+
+interface WheelInstanceLayer {
+  im: THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>;
+  list: WheelEntry[];
+}
+
+interface SuspensionEntry {
+  side: Side;
+  wheel: WheelEntry;
+  anchorY: number;
+  anchorZ: number;
+  x: number;
+}
+
+interface WheelSpinner {
+  mesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  r: number;
+  side: Side;
+}
+
+interface SpinnerBatchItem {
+  geo: THREE.BufferGeometry;
+  end: GearEndpoint;
+  spinR: number;
+}
+
+interface SpinnerBatchEntry {
+  instanceId: number;
+  side: Side;
+  r: number;
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface SpinnerBatchRecord {
+  batch: THREE.BatchedMesh;
+  entries: SpinnerBatchEntry[];
+}
+
+interface RunningGearConfig {
+  style?: string;
+  wheelR: number;
+  wheelW: number;
+  wheelZs: number[];
+  xc: number;
+  xcLeft?: number;
+  xcRight?: number;
+  wheelY?: number;
+  wheelZScale?: number;
+  layers?: number[][] | null;
+  sprocket: GearEndpoint;
+  idler: GearEndpoint;
+  rollers?: GearEndpoint[];
+  rollerR?: number;
+  trackW: number;
+  trackTh?: number;
+  topY: number;
+  botY?: number;
+  paintedEnds?: boolean;
+  contactZF?: number;
+  contactZR?: number;
+  containRearRoadWheel?: boolean;
+  deadSag?: number;
+  loopPoints?: TrackPoint[];
+  frontArcSteps?: number;
+  rearArcSteps?: number;
+  tautFrontSpan?: boolean;
+  tautRearSpan?: boolean;
+  smoothRearTopTangent?: boolean;
+  dedupeLoopPoints?: boolean;
+  linkPitchM?: number;
+  wheelPattern?: WheelPatternId;
+  trackPattern?: TrackPatternId;
+  suspensionPattern?: SuspensionPatternId;
+  suspensionDroopM?: number;
+  suspensionCompressionM?: number;
+  shoeRadialScale?: number;
+  shoeWidthScale?: number;
+  shoeOutboardOffset?: number;
+  coveredTop?: boolean;
+  wheelFaceLayers?: WheelFaceLayer[];
+  recessDepth?: number;
+  bayShadowTop?: number;
+  bayShadowBucket?: string;
+  dishR?: number;
+  tireHex?: number;
+  wheelHex?: number;
+  endWheelHex?: number;
+  endRingSpan?: number;
+  sprocketTeeth?: boolean;
+  sprocketDepthScale?: number;
+  idlerDepthScale?: number;
+  endWheelDepthScale?: number;
+  trackBandHex?: number;
+  trackBandRoughness?: number;
+  trackBandEnvMapIntensity?: number;
+  pinCapOuter?: number;
+  gearFloor?: number;
+  arms?: boolean;
+}
+
+interface GunBuildConfig {
+  len: number;
+  r: number;
+  brake?: string | boolean | null;
+  sleeve?: boolean;
+  evac?: number | boolean | null;
+  collar?: boolean;
+  baseR?: number;
+  evacR?: number;
+}
+
+type StowageSpot = readonly [number, number, number, number, number, number];
+type Point3 = readonly number[];
+
+interface VehicleDecal {
+  parent: VehicleOwner;
+  kind: string;
+  text: string | null;
+  size: number;
+  pos: number[];
+  rotY: number;
+  rotX: number;
+  rotZ: number;
+  quaternion?: THREE.Quaternion;
+  surfaceSupported?: boolean;
+  supportGapM?: number;
+  surfaceMesh?: string;
+  anchorProfile?: string;
+  visibilitySamples?: number;
+  visibilityClearSamples?: number;
+  visibilityRatio?: number;
+  maximumSurfaceErrorM?: number | null;
+  visibilityVerified?: boolean;
+}
+
+interface MarkingHit {
+  pointLocal: THREE.Vector3;
+  normalLocal: THREE.Vector3;
+  distance: number;
+  object: VehicleMesh;
+}
+
+interface MarkingVisibilityReceipt {
+  visibilitySamples: number;
+  visibilityClearSamples: number;
+  visibilityRatio: number;
+  maximumSurfaceErrorM: number;
+  visibilityVerified: boolean;
+}
+
+interface MarkingCandidate extends MarkingHit, MarkingVisibilityReceipt {
+  position: THREE.Vector3;
+  quaternion: THREE.Quaternion;
+  searchDistance: number;
+}
+
+interface VerifiedMarkingSeat {
+  parent: VehicleOwner;
+  kind: string;
+  size: number;
+  pos: readonly [number, number, number];
+  quaternion: readonly [number, number, number, number];
+  surfaceMesh: string;
+  anchorProfile: string;
+  visibilitySamples: number;
+  visibilityClearSamples: number;
+  visibilityRatio: number;
+  maximumSurfaceErrorM: number | null;
+}
+
+interface TrackCourseSegment {
+  z: number;
+  y: number;
+  tz: number;
+  ty: number;
+  l: number;
+  c0: number;
+}
+
+interface TrackCourse {
+  pts: TrackPoint[];
+  segments: TrackCourseSegment[];
+  loopLengthM: number;
+  shoeCount: number;
+  shoePitchM: number;
+  textureRepeatM: number;
+  frontEnd: GearEndpoint;
+  rearEnd: GearEndpoint;
+  contact: TrackContactSpan;
+}
+
+interface GearContactGeometry {
+  halfLenM: number;
+  zCenterM: number;
+  halfWidM: number;
+  bottomYM: number;
+  endRise: { dzM: number; frontM: number; rearM: number };
+}
+
+interface TankContactGeometry {
+  halfLenM: number;
+  zCenterM: number;
+  halfWidM: number;
+  bottomYM: number;
+  panYM: number | null;
+  endRise: GearContactGeometry['endRise'] | null;
+  gearBottomYM: number | null;
+}
+
+interface TrackHitboxReceipt {
+  x0: number;
+  x1: number;
+  poly: Array<[number, number]>;
+}
+
+interface VisualSpringState {
+  p: number;
+  r: number;
+  pv: number;
+  rv: number;
+}
+
+interface TankPoseState {
+  pos: { x: number; y: number; z: number };
+  yaw: number;
+  visualPitch: number;
+  visualRoll: number;
+  yawRate: number;
+  speed: number;
+  turretYaw: number;
+  gunPitch: number;
+  trackScroll: { l: number; r: number };
+  _flinch?: VisualSpringState;
+  _susp?: Pick<VisualSpringState, 'p' | 'r'>;
+  _swayEst?: number;
+}
+
+type GroundSampler = (x: number, z: number) => number;
+
+interface RunningGearUnit {
+  __units?: RunningGearUnit[];
+  contactGeom: GearContactGeometry;
+  trackHitbox: TrackHitboxReceipt[];
+  roadWheelLayout?: {
+    xc: number;
+    wheelY: number;
+    wheelR: number;
+    wheelZs: number[];
+  };
+  update(left: number, right: number, dt?: number): void;
+  updateSurface?(left: number, right: number): void;
+  resetPose?(): void;
+  conform(
+    state: TankPoseState,
+    sampler: GroundSampler,
+    pitch?: number,
+    roll?: number,
+    dt?: number,
+  ): boolean;
+  setBroken?(module: 'trackL' | 'trackR', broken: boolean): void;
+  addRoadWheelLayer(
+    geometry: unknown,
+    material: THREE.Material,
+    layer?: Omit<WheelFaceLayer, 'geometry' | 'material'>,
+  ): THREE.InstancedMesh | null;
+}
+
+interface TankRig {
+  root: THREE.Group;
+  hullG: THREE.Group;
+  turretG: THREE.Group;
+  gunG: THREE.Group;
+  recoilG: THREE.Group;
+}
+
+type TransformNumbers = [
+  x?: number,
+  y?: number,
+  z?: number,
+  rx?: number,
+  ry?: number,
+  rz?: number,
+  scale?: GeometryScale,
+];
+type EraPlacement = (
+  x: number,
+  y: number,
+  z: number,
+  rx?: number,
+  ry?: number,
+  rz?: number,
+  sx?: number,
+  sy?: number,
+  sz?: number,
+) => void;
+
+interface GeometryAddPort {
+  readonly q?: boolean;
+  add(bucket: string, geometry: THREE.BufferGeometry, ...transform: TransformNumbers): void;
+}
+
+interface GunBuilderPort extends GeometryAddPort {
+  muzzleZ: number;
+}
+
+interface CupolaBuilderPort extends GeometryAddPort {
+  addCupola(bucket: string, geometry: THREE.BufferGeometry, ...transform: TransformNumbers): void;
+}
+
+interface ModuleVisualBuilderPort extends GeometryAddPort {
+  addModuleVisual(
+    module: string,
+    bucket: string,
+    geometry: THREE.BufferGeometry,
+    ...transform: TransformNumbers
+  ): void;
+}
+
+interface EquipmentBuilderPort extends GeometryAddPort {
+  addEquipment(bucket: string, geometry: THREE.BufferGeometry, ...transform: TransformNumbers): void;
+}
+
+function isGeometryAddPort(value: object): value is GeometryAddPort {
+  return 'add' in value && typeof value.add === 'function';
+}
+
+function requireGeometryAddPort(value: object): GeometryAddPort {
+  if (!isGeometryAddPort(value)) {
+    throw new TypeError('Procedural detail requires a geometry add port');
+  }
+  return value;
+}
+
+function isCupolaBuilderPort(value: object): value is CupolaBuilderPort {
+  return isGeometryAddPort(value)
+    && 'addCupola' in value && typeof value.addCupola === 'function';
+}
+
+function requireCupolaBuilderPort(value: object): CupolaBuilderPort {
+  if (!isCupolaBuilderPort(value)) {
+    throw new TypeError('Cupola detail requires an authored cupola port');
+  }
+  return value;
+}
+
+function isModuleVisualBuilderPort(value: object): value is ModuleVisualBuilderPort {
+  return isGeometryAddPort(value)
+    && 'addModuleVisual' in value && typeof value.addModuleVisual === 'function';
+}
+
+function requireModuleVisualBuilderPort(value: object): ModuleVisualBuilderPort {
+  if (!isModuleVisualBuilderPort(value)) {
+    throw new TypeError('Module detail requires a module-visual port');
+  }
+  return value;
+}
+
+function isEquipmentBuilderPort(value: object): value is EquipmentBuilderPort {
+  return isGeometryAddPort(value)
+    && 'addEquipment' in value && typeof value.addEquipment === 'function';
+}
+
+function requireEquipmentBuilderPort(value: object): EquipmentBuilderPort {
+  if (!isEquipmentBuilderPort(value)) {
+    throw new TypeError('Stowage detail requires an equipment port');
+  }
+  return value;
+}
+
+function isRng(value: unknown): value is Rng {
+  return typeof value === 'function';
+}
+
+function requireRng(value: unknown): Rng {
+  if (!isRng(value)) throw new TypeError('Procedural detail requires a seeded RNG');
+  return value;
+}
+
+function isGunBuildConfig(value: object): value is GunBuildConfig {
+  return 'len' in value && typeof value.len === 'number'
+    && 'r' in value && typeof value.r === 'number';
+}
+
+function tankFittings(): TankFittings {
+  if (!KIT_FITTINGS) throw new Error('Tank factory fittings are not configured');
+  return KIT_FITTINGS;
+}
+
+interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, CupolaBuilderPort,
+  ModuleVisualBuilderPort, EquipmentBuilderPort {
+  readonly spec: FactoryTankSpec;
+  readonly mats: TankMaterials;
+  readonly rng: Rng;
+  readonly q: boolean;
+  readonly geometryReceipt: boolean;
+  readonly batchStatic: boolean;
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly recoilG: THREE.Group;
+  readonly disposables: DisposableVehicleResource[];
+  gear: RunningGearUnit | null;
+  muzzleZ: number;
+  topY: number;
+  fixedMount: boolean;
+  postAssemble: ((rig: TankRig) => unknown) | null;
+  addMudguard(
+    label: string,
+    bucket: string,
+    geometry: THREE.BufferGeometry,
+    ...transform: TransformNumbers
+  ): void;
+  addHatch(bucket: string, geometry: THREE.BufferGeometry, ...transform: TransformNumbers): void;
+  addExternalArmor(bucket: string, geometry: THREE.BufferGeometry, ...transform: TransformNumbers): void;
+  clear(...names: Array<string | string[]>): void;
+  clearDecals(...parents: Array<string | string[]>): void;
+  scaleBuckets(names: string | string[], x?: number, y?: number, z?: number): void;
+  offsetBuckets(names: string | string[], x?: number, y?: number, z?: number): void;
+  forEachBucketPart(
+    names: string | string[],
+    visitor: (geometry: THREE.BufferGeometry, box: THREE.Box3 | null, bucket: string) => void,
+  ): void;
+  addGunExtra(geometry: THREE.BufferGeometry, x?: number, y?: number, z?: number): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, x?: number, y?: number, z?: number): void;
+  decal(
+    parent: VehicleOwner,
+    kind: string,
+    text: string | null,
+    size: number,
+    position: [number, number, number],
+    rotY?: number,
+    rotX?: number,
+    rotZ?: number,
+  ): void;
+  eraCluster(plateName: string, fill: (put: EraPlacement) => void, turretLocal?: boolean): void;
+  visualEraCluster(name: string, owner: VehicleOwner, fill: () => void): void;
+  destructibleCluster(plateName: string, fill: () => void): void;
+}
+
+interface RunningGearBuilderPort {
+  readonly mats: TankMaterials;
+  readonly hullG: THREE.Group;
+  readonly q?: boolean;
+  readonly spec?: FactoryTankSpec;
+  readonly geometryReceipt?: boolean;
+  readonly batchStatic?: boolean;
+  readonly disposables?: DisposableVehicleResource[];
+  gear?: RunningGearUnit | null;
+  add(bucket: string, geometry: THREE.BufferGeometry, ...transform: TransformNumbers): void;
+}
+
+function isRunningGearBuilderPort(value: object): value is RunningGearBuilderPort {
+  return 'mats' in value && 'hullG' in value && 'add' in value
+    && typeof value.add === 'function';
+}
+
+function isRunningGearConfig(value: object): value is RunningGearConfig {
+  return 'wheelR' in value && 'wheelW' in value && 'wheelZs' in value
+    && 'xc' in value && 'sprocket' in value && 'idler' in value
+    && 'trackW' in value && 'topY' in value;
+}
+
+function buildRunningGearPublic(builder: object, options: object): RunningGearUnit {
+  if (!isRunningGearBuilderPort(builder) || !isRunningGearConfig(options)) {
+    throw new TypeError('Invalid procedural running-gear contract');
+  }
+  return buildRunningGear(builder, options);
+}
+
+interface TankFactoryOptions {
+  camoSeed?: number;
+  camoPattern?: string | null;
+  quality?: 'high' | 'ai' | 'low' | 'preview';
+  geometryQuality?: 'high' | 'low';
+  proceduralOnly?: boolean;
+  geometryReceipt?: boolean;
+  batchStatic?: boolean;
+  battleDetailLod?: boolean;
+  staticPreview?: boolean;
+  decor?: boolean;
+}
+
+interface TankEngineContext {
+  anisotropy?: number;
+  setupShadowMaterial?: <T extends THREE.Material>(
+    material: T,
+    extraHook?: typeof vehicleAmbientFloorHook,
+  ) => T;
+  releaseShadowMaterial?: (material: THREE.Material) => boolean;
+}
+
+function normalizeTankEngineContext(value: unknown): TankEngineContext | null | undefined {
+  if (value == null) return value;
+  if (typeof value !== 'object') throw new TypeError('Tank engine context must be an object');
+  const context = value as Partial<TankEngineContext>;
+  if (context.anisotropy !== undefined && typeof context.anisotropy !== 'number') {
+    throw new TypeError('Tank engine anisotropy must be numeric');
+  }
+  if (context.setupShadowMaterial !== undefined
+      && typeof context.setupShadowMaterial !== 'function') {
+    throw new TypeError('Tank shadow setup must be callable');
+  }
+  if (context.releaseShadowMaterial !== undefined
+      && typeof context.releaseShadowMaterial !== 'function') {
+    throw new TypeError('Tank shadow release must be callable');
+  }
+  return value as TankEngineContext;
+}
+
+interface PresentationAnchor {
+  xM: number;
+  zM: number;
+}
+
+interface TankVisual {
+  root: THREE.Group;
+  specId: string;
+  dims: { lengthM: number; widthM: number; heightM: number };
+  boundingRadiusM: number;
+  presentationAnchor: Readonly<PresentationAnchor>;
+  contactGeom: TankContactGeometry | null;
+  presentationFloorYM: number;
+  presentationTrackFloorYM: number | null;
+  seatOnFloor(floorYM?: number): number;
+  seatRunningGearOnFloor(floorYM?: number): number;
+  centerOnPresentationPoint(xM?: number, zM?: number): THREE.Vector3;
+  presentationAnchorWorld(out: THREE.Vector3): THREE.Vector3;
+  prepareForSimulation(): TankContactGeometry | null;
+  syncFromState(
+    state: unknown,
+    dt?: number,
+    viewDistM?: number,
+    presentationState?: unknown,
+    detailVisible?: boolean,
+  ): void;
+  gunMuzzleWorld(out: THREE.Vector3, muzzleIndex?: number): THREE.Vector3;
+  gunDirWorld(out: THREE.Vector3): THREE.Vector3;
+  gunPivotWorld(out: THREE.Vector3): THREE.Vector3;
+  turretTopWorld(out: THREE.Vector3): THREE.Vector3;
+  recoilKick(ageS?: number, impulseScale?: number, muzzleIndex?: number): number | null;
+  setGroundSampler(sampler?: unknown): void;
+  hitFlinch(nx: number, nz: number, magnitude: number, stateYaw?: number): void;
+  setTrackState(module: 'trackL' | 'trackR', broken: boolean): void;
+  stripEra(plateName: string): boolean;
+  resetEra(): boolean;
+  setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
+  isDestroyed(): boolean;
+  prewarmBurn(): THREE.Object3D[];
+  getWreckFallbackMaterial(): THREE.Material;
+  stageBattleDetailsForWarm(): () => void;
+  resetDestroyed(): void;
+  resetForGaragePresentation(): void;
+  setVisible(visible: boolean): void;
+  dispose(): void;
+}
+
+interface MudguardPart {
+  label: string;
+  bucket: string;
+  part: THREE.BufferGeometry;
+}
+
+interface HullSupportPart {
+  bucket: string;
+  part: THREE.BufferGeometry;
+  box: THREE.Box3;
+}
+
+interface EraPlacementRecord {
+  x: number;
+  y: number;
+  z: number;
+  rx: number;
+  ry: number;
+  rz: number;
+  sx?: number;
+  sy?: number;
+  sz?: number;
+  turretLocal: boolean;
+  _mesh?: THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>;
+  _index: number;
+}
+
+interface EraClusterRange {
+  start: number;
+  end: number;
+}
+
+interface DestructibleGeometryRange {
+  position: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
+  start: number;
+  count: number;
+  original: ReturnType<(THREE.BufferAttribute | THREE.InterleavedBufferAttribute)['array']['slice']>;
+}
+
+interface DestructibleCluster {
+  ranges: DestructibleGeometryRange[];
+  spent: boolean;
+}
+
+interface VisualEraCluster {
+  name: string;
+  owner: VehicleOwner;
+}
+
+interface VisualEraReceipt {
+  owner: VehicleOwner;
+  count: number;
+}
+
+interface AuthoredRange {
+  plateName: string;
+  start: number;
+  count: number;
+}
+
+type RigGroupKey = 'hullG' | 'turretG' | 'recoilG' | 'gunG' | 'barrel0G' | 'barrel1G';
+type TankMaterialKey = 'hull' | 'rubber' | 'detail' | 'dark' | 'wood' | 'canvasCloth'
+  | 'glass' | 'barrel' | 'spareTrack' | 'shadow';
+type BucketDefinition = readonly [RigGroupKey, TankMaterialKey];
+type OriginalMaterialRecord = [VehicleMesh, THREE.Material | THREE.Material[], boolean];
+
+function requireTankPoseState(value: unknown): TankPoseState {
+  if (!value || typeof value !== 'object') throw new TypeError('Tank visual requires a pose state');
+  const state = value as Partial<TankPoseState>;
+  if (!state.pos || typeof state.yaw !== 'number' || typeof state.visualPitch !== 'number'
+      || typeof state.visualRoll !== 'number' || typeof state.yawRate !== 'number'
+      || typeof state.speed !== 'number' || typeof state.turretYaw !== 'number'
+      || typeof state.gunPitch !== 'number' || !state.trackScroll) {
+    throw new TypeError('Tank visual received an incomplete pose state');
+  }
+  return state as TankPoseState;
+}
+
+interface StaticDetailRecord {
+  object: THREE.Object3D;
+  baseVisible: boolean;
+}
+
+interface BattleDetailGroup {
+  parent: THREE.Object3D;
+  group: THREE.Group;
+}
+
+interface LodMidLevel {
+  object: THREE.Object3D;
+  distance: number;
+  hysteresis?: number;
+}
+
+function isVehicleMesh(object: THREE.Object3D): object is VehicleMesh {
+  return 'isMesh' in object && object.isMesh === true;
+}
+
+function isVehicleInstancedMesh(object: THREE.Object3D): object is VehicleInstancedMesh {
+  return 'isInstancedMesh' in object && object.isInstancedMesh === true;
+}
+
+function isVehicleBatchedMesh(object: THREE.Object3D): object is THREE.BatchedMesh {
+  return 'isBatchedMesh' in object && object.isBatchedMesh === true;
+}
+
+function isVehicleGroup(object: THREE.Object3D): object is THREE.Group {
+  return 'isGroup' in object && object.isGroup === true;
+}
+
+function isVehicleMaterial(resource: DisposableVehicleResource): resource is THREE.Material {
+  return resource instanceof THREE.Material;
+}
+
+let KIT_FITTINGS: TankFittings | null = null;
+const PROFILED_BUILDER_IDS = new Set<string>();
 
 // PERF (120 Hz): track-link placement and suspension conformance are close-
 // range detail. Keep the player/near combat at render rate, then update from
@@ -96,14 +911,20 @@ const _stabilizedEuler = new THREE.Euler(0, 0, 0, 'YXZ');
 // deliberately stay outside this allowlist.
 const BATTLE_STATIC_BATCH_NAME = /^(?:crowsBarrelShadowRun|gearAirShadowBacker|gear_(?:endWheelDress_(?:dark|detail|hull)|wheelBay(?:AO|VoidDress)|wrapPads[LR])|muzzleBoreShadowFallback(?:Rim|Annulus).*|vehicleMarking_.*)$/;
 
-function batchMobileStaticChildren(parents, disposables, onBatch = null) {
+function batchMobileStaticChildren(
+  parents: readonly THREE.Object3D[],
+  disposables: DisposableVehicleResource[],
+  onBatch: ((sources: VehicleMesh[], batch: VehicleMesh) => void) | null = null,
+) {
   let sourceMeshes = 0;
   let batches = 0;
   for (const parent of parents) {
-    const groups = new Map();
-    for (const mesh of parent.children) {
+    const groups = new Map<string, VehicleMesh[]>();
+    for (const object of parent.children) {
+      if (!isVehicleMesh(object)) continue;
+      const mesh = object;
       const exactStaticNamed = BATTLE_STATIC_BATCH_NAME.test(mesh.name || '');
-      if (!mesh.isMesh || mesh.isInstancedMesh || (!exactStaticNamed && mesh.name)
+      if (isVehicleInstancedMesh(mesh) || (!exactStaticNamed && mesh.name)
           || mesh.children.length
           || !mesh.visible || Array.isArray(mesh.material)
           || (!exactStaticNamed && Object.keys(mesh.userData || {}).length)
@@ -112,7 +933,7 @@ function batchMobileStaticChildren(parents, disposables, onBatch = null) {
       const geo = mesh.geometry;
       if (!geo || geo.drawRange.start !== 0
           || (Number.isFinite(geo.drawRange.count) && geo.drawRange.count !== Infinity)) continue;
-      const attrs = Object.entries(geo.attributes)
+      const attrs = Object.entries(geo.attributes as Record<string, THREE.BufferAttribute | THREE.InterleavedBufferAttribute>)
         .map(([name, attr]) => `${name}:${attr.itemSize}:${attr.normalized ? 1 : 0}`)
         .sort().join(',');
       const key = [mesh.material?.uuid || '', attrs, geo.index ? 1 : 0, mesh.castShadow ? 1 : 0,
@@ -156,16 +977,19 @@ function batchMobileStaticChildren(parents, disposables, onBatch = null) {
   return { sourceMeshes, batches, savedDraws: sourceMeshes - batches };
 }
 
-function collectMobileDetailObjects(root, rigParents) {
-  const records = [];
-  const managedGroups = new Set();
+function collectMobileDetailObjects(
+  root: THREE.Object3D,
+  rigParents: readonly THREE.Object3D[],
+): StaticDetailRecord[] {
+  const records: StaticDetailRecord[] = [];
+  const managedGroups = new Set<THREE.Object3D>();
   root.traverse((object) => {
-    if (!object.isGroup) return;
+    if (!(object instanceof THREE.Group)) return;
     const name = object.name || '';
     if (name.startsWith('rig_decor_') || name.startsWith('fitting_')
         || name.startsWith('muzzleBoreShadowFallback')) managedGroups.add(object);
   });
-  const underManagedGroup = (object) => {
+  const underManagedGroup = (object: THREE.Object3D): boolean => {
     for (let parent = object.parent; parent; parent = parent.parent) {
       if (managedGroups.has(parent)) return true;
       if (parent === root) break;
@@ -175,13 +999,15 @@ function collectMobileDetailObjects(root, rigParents) {
   for (const group of managedGroups) records.push({ object: group, baseVisible: group.visible });
   const fineGear = /^(gearRoadWheel.*(?:Inset|Ring|Rim|Bowl|Hub|Dish|Recess)|gearReturnRollers|gearEndWheelHardware)$/;
   root.traverse((object) => {
-    if (!object.isMesh || underManagedGroup(object)) return;
+    if (!isVehicleMesh(object) || underManagedGroup(object)) return;
     const name = object.name || '';
-    const anonymousStatic = !name && rigParents.includes(object.parent)
+    const anonymousStatic = !name && object.parent !== null && rigParents.includes(object.parent)
       && Object.keys(object.userData || {}).length === 0
-      && !String(object.material?.name || '').includes('armor-paint');
+      && !String((Array.isArray(object.material) ? object.material[0] : object.material)?.name || '')
+        .includes('armor-paint');
     const cosmeticStaticBatch = object.userData.mobileStaticBatch
-      && !String(object.material?.name || '').includes('armor-paint');
+      && !String((Array.isArray(object.material) ? object.material[0] : object.material)?.name || '')
+        .includes('armor-paint');
     if (anonymousStatic || cosmeticStaticBatch
         || name.startsWith('vehicleMarking_') || fineGear.test(name)) {
       records.push({ object, baseVisible: object.visible });
@@ -198,8 +1024,11 @@ function collectMobileDetailObjects(root, rigParents) {
  * original objects/materials are retained byte-for-byte and can be reattached
  * immediately for close combat, inspection, destruction, or a killcam.
  */
-function installBattleDetailGroups(records) {
-  const byParent = new Map();
+function installBattleDetailGroups(records: readonly StaticDetailRecord[]): {
+  groups: BattleDetailGroup[];
+  objectCount: number;
+} {
+  const byParent = new Map<THREE.Object3D, THREE.Object3D[]>();
   let objectCount = 0;
   for (const record of records) {
     const object = record.object;
@@ -210,7 +1039,7 @@ function installBattleDetailGroups(records) {
     objects.push(object);
     objectCount++;
   }
-  const groups = [];
+  const groups: BattleDetailGroup[] = [];
   let index = 0;
   for (const [parent, objects] of byParent) {
     const group = new THREE.Group();
@@ -241,13 +1070,19 @@ function installBattleDetailGroups(records) {
 // object-local even though materials are shared: Three invokes it immediately
 // before applying the material's raster state for that draw. Shadow materials
 // are deliberately ignored, so the arbitration cannot introduce shadow acne.
-function installCoplanarDepthLayers(root) {
-  const records = [];
+function installCoplanarDepthLayers(root: THREE.Object3D): void {
+  interface DepthRecord {
+    object: VehicleMesh;
+    materials: THREE.Material[];
+    priority: number;
+    traversalIndex: number;
+  }
+  const records: DepthRecord[] = [];
   let traversalIndex = 0;
-  const semanticPriority = (object) => {
+  const semanticPriority = (object: VehicleMesh): number => {
     const material = Array.isArray(object.material) ? object.material[0] : object.material;
     const role = material?.userData?.vehicleMaterialRole || object.userData?.appearanceRole || '';
-    const priorities = {
+    const priorities: Record<string, number> = {
       gearShadow: 0,
       armorPaint: 10,
       wheelPaint: 20,
@@ -265,7 +1100,7 @@ function installCoplanarDepthLayers(root) {
     return priority;
   };
   root.traverse((object) => {
-    if (!object.isMesh || object.userData?.vehicleMarking
+    if (!isVehicleMesh(object) || object.userData?.vehicleMarking
         || object.userData?.authoredShadowProxy) return;
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     if (!materials.some((material) => material && material.visible !== false
@@ -280,7 +1115,12 @@ function installCoplanarDepthLayers(root) {
     object.userData.coplanarDepthLayer = layer;
     const previous = object.onBeforeRender;
     object.onBeforeRender = function applyCoplanarDepthLayer(
-      renderer, scene, camera, geometry, renderedMaterial, group,
+      renderer: THREE.WebGLRenderer,
+      scene: THREE.Scene,
+      camera: THREE.Camera,
+      geometry: THREE.BufferGeometry,
+      renderedMaterial: THREE.Material,
+      group: THREE.Group,
     ) {
       if (previous) previous.call(this, renderer, scene, camera, geometry, renderedMaterial, group);
       if (!materials.includes(renderedMaterial) || renderedMaterial.depthTest === false) return;
@@ -296,7 +1136,12 @@ function installCoplanarDepthLayers(root) {
 // shells, wheels and track band carry the silhouette. The renderer drives
 // THREE.LOD automatically, so articulation (turret yaw) is unaffected.
 const LOD1_DIST = 150;
-function lodWrap(parent, obj, dist = LOD1_DIST, midLevel = null) {
+function lodWrap(
+  parent: THREE.Object3D,
+  obj: THREE.Object3D,
+  dist = LOD1_DIST,
+  midLevel: LodMidLevel | null = null,
+): THREE.Object3D {
   const lod = new THREE.LOD();
   // Preserve mechanical ownership on the wrapper itself. Profile-level hull
   // datum passes inspect direct children; without this receipt they can move
@@ -381,9 +1226,14 @@ for (let i = 0; i < SHADOW_SUPPORT_DIRECTIONS.length; i++) {
   SHADOW_SUPPORT_Z[i] = direction.z;
 }
 
-function authoredShadowHull(owner, sourceMeshes, insetM) {
-  const sources = sourceMeshes.filter((mesh) => mesh?.isMesh &&
-    !mesh.isInstancedMesh && mesh.geometry?.getAttribute('position'));
+function authoredShadowHull(
+  owner: THREE.Object3D,
+  sourceMeshes: readonly (THREE.Object3D | undefined)[],
+  insetM: number,
+): THREE.BufferGeometry | null {
+  const sources = sourceMeshes.filter((mesh): mesh is VehicleMesh =>
+    !!mesh && isVehicleMesh(mesh) && !isVehicleInstancedMesh(mesh)
+      && !!mesh.geometry?.getAttribute('position'));
   if (!sources.length) return null;
   owner.updateWorldMatrix(true, true);
   const ownerInverse = new THREE.Matrix4().copy(owner.matrixWorld).invert();
@@ -405,7 +1255,7 @@ function authoredShadowHull(owner, sourceMeshes, insetM) {
       let px;
       let py;
       let pz;
-      if (!position.isInterleavedBufferAttribute && values) {
+      if (!(position instanceof THREE.InterleavedBufferAttribute) && values) {
         const offset = vertex * stride;
         const x = values[offset];
         const y = values[offset + 1];
@@ -435,7 +1285,7 @@ function authoredShadowHull(owner, sourceMeshes, insetM) {
     }
   }
 
-  const unique = new Map();
+  const unique = new Map<string, THREE.Vector3>();
   for (let i = 0; i < SHADOW_SUPPORT_DIRECTIONS.length; i++) {
     if (!Number.isFinite(bestDots[i])) continue;
     const offset = i * 3;
@@ -449,9 +1299,10 @@ function authoredShadowHull(owner, sourceMeshes, insetM) {
   const geometry = new ConvexGeometry([...unique.values()]);
   geometry.computeBoundingBox();
   const bounds = geometry.boundingBox;
+  if (!bounds) return null;
   const center = bounds.getCenter(new THREE.Vector3());
   const size = bounds.getSize(new THREE.Vector3());
-  const axisScale = (axisSize) => Math.max(PROC_SHADOW_MIN_AXIS_SCALE,
+  const axisScale = (axisSize: number): number => Math.max(PROC_SHADOW_MIN_AXIS_SCALE,
     axisSize > 1e-4 ? 1 - (2 * insetM) / axisSize : 1);
   const scaleX = axisScale(size.x);
   const scaleY = axisScale(size.y);
@@ -469,12 +1320,22 @@ function authoredShadowHull(owner, sourceMeshes, insetM) {
   return geometry;
 }
 
-function installProceduralShadowProxies(spec, hullG, turretG, gunG, recoilG, disposables) {
+function installProceduralShadowProxies(
+  spec: FleetTankSpec,
+  hullG: THREE.Group,
+  turretG: THREE.Group,
+  gunG: THREE.Group,
+  recoilG: THREE.Group,
+  disposables: DisposableVehicleResource[],
+): void {
   for (const group of [hullG, turretG, recoilG]) {
-    group.traverse((o) => { if (o.isMesh || o.isInstancedMesh) o.castShadow = false; });
+    group.traverse((object) => {
+      if (isVehicleMesh(object) || isVehicleInstancedMesh(object)) object.castShadow = false;
+    });
   }
 
-  const find = (owner, names) => names.map((name) => owner.getObjectByName(name)).filter(Boolean);
+  const find = (owner: THREE.Object3D, names: readonly string[]) =>
+    names.map((name) => owner.getObjectByName(name)).filter((item): item is THREE.Object3D => !!item);
   const hullGeo = authoredShadowHull(hullG, find(hullG,
     ['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'hullRubber']), PROC_SHADOW_BODY_INSET_M);
   const turretGeo = authoredShadowHull(turretG, find(turretG, ['turret']), PROC_SHADOW_BODY_INSET_M);
@@ -486,7 +1347,7 @@ function installProceduralShadowProxies(spec, hullG, turretG, gunG, recoilG, dis
     ...find(recoilG, ['gun', 'gunDark']),
   ], PROC_SHADOW_GUN_INSET_M);
 
-  const add = (parent, geo, name) => {
+  const add = (parent: THREE.Object3D, geo: THREE.BufferGeometry, name: string): void => {
     disposables.push(geo);
     const mesh = new THREE.Mesh(geo, PROC_SHADOW_MAT);
     mesh.name = `procShadow_${name}`;
@@ -506,9 +1367,14 @@ function installProceduralShadowProxies(spec, hullG, turretG, gunG, recoilG, dis
 }
 
 // Closed track band swept around a 2D loop in the (z,y) plane.
-function trackBandGeo(points, width, th, linkM) {
+function trackBandGeo(
+  points: readonly TrackPoint[],
+  width: number,
+  th: number,
+  linkM: number,
+): THREE.BufferGeometry {
   const n = points.length;
-  const P = [], UV = [];
+  const P: number[] = [], UV: number[] = [];
   const hw = width / 2;
   // cumulative arc length
   const dist = [0];
@@ -516,7 +1382,7 @@ function trackBandGeo(points, width, th, linkM) {
     const a = points[i - 1], b = points[i % n];
     dist.push(dist[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1]));
   }
-  const frame = (i) => {
+  const frame = (i: number) => {
     const p = points[i % n];
     const prev = points[(i - 1 + n) % n], next = points[(i + 1) % n];
     let tz = next[0] - prev[0], ty = next[1] - prev[1];
@@ -524,7 +1390,16 @@ function trackBandGeo(points, width, th, linkM) {
     tz /= l; ty /= l;
     return { z: p[0], y: p[1], nz: -ty, ny: tz };
   };
-  const quad = (a, b, c, d, ua, va, ub, vb) => {
+  const quad = (
+    a: readonly number[],
+    b: readonly number[],
+    c: readonly number[],
+    d: readonly number[],
+    ua: number,
+    va: number,
+    ub: number,
+    vb: number,
+  ) => {
     P.push(...a, ...b, ...c, ...a, ...c, ...d);
     UV.push(ua, va, ub, va, ub, vb, ua, va, ub, vb, ua, vb);
   };
@@ -558,11 +1433,14 @@ function trackBandGeo(points, width, th, linkM) {
 // non-indexed procedural/extracted belts and preserves averaged normals for
 // indexed sourced belts, but removes one of the largest live CPU samples in a
 // full battle (28 animated bands at the near-camera gear cadence).
-function recomputeTrackNormals(geometry, triangleStarts = null) {
-  const position = geometry && geometry.getAttribute('position');
-  let normal = geometry && geometry.getAttribute('normal');
-  if (!position || position.itemSize !== 3 || position.isInterleavedBufferAttribute ||
-      (normal && (normal.itemSize !== 3 || normal.isInterleavedBufferAttribute))) {
+function recomputeTrackNormals(
+  geometry: THREE.BufferGeometry,
+  triangleStarts: ArrayLike<number> | null = null,
+): void {
+  const position = geometry.getAttribute('position');
+  let normal = geometry.getAttribute('normal');
+  if (!position || position.itemSize !== 3 || position instanceof THREE.InterleavedBufferAttribute ||
+      (normal && (normal.itemSize !== 3 || normal instanceof THREE.InterleavedBufferAttribute))) {
     geometry.computeVertexNormals();
     return;
   }
@@ -625,13 +1503,13 @@ function trackLoopPoints({
   idler, sprocket, botY, topY, sag = 0.03, supports = null, contact = null,
   frontArcSteps = 7, rearArcSteps = 7, tautFrontSpan = false,
   tautRearSpan = false, smoothRearTopTangent = false,
-}) {
-  const pts = [];
+}: TrackLoopOptions): TrackPoint[] {
+  const pts: TrackPoint[] = [];
   // CLEAR: the band rides OUTSIDE the sprocket teeth / idler rim — without
   // this radial clearance the wrap is buried in the wheel geometry and the
   // front/rear rises never read (r5 track-gate critique).
   const CLEAR = TRACK_WRAP_CLEARANCE_M;
-  const arc = (c, from, to, steps) => {
+  const arc = (c: GearEndpoint, from: number, to: number, steps: number): void => {
     for (let k = 0; k <= steps; k++) {
       const a = (from + ((to - from) * k) / steps) * D2R;
       pts.push([c.z + Math.sin(a) * (c.r + CLEAR), c.y + Math.cos(a) * (c.r + CLEAR)]);
@@ -642,7 +1520,7 @@ function trackLoopPoints({
   // arc() convention: 0 = straight up, 90 = +z). Raised end wheels get a
   // real APPROACH/DEPARTURE rise instead of the old flat bottom run poking
   // past both wraps at ground level (the "band wraps empty space" read).
-  const tangentDeg = (c, pz, py, sgn) => {
+  const tangentDeg = (c: GearEndpoint, pz: number, py: number, sgn: number): number | null => {
     const R = c.r + CLEAR;
     const uz = pz - c.z, uy = py - c.y;
     const d = Math.hypot(uz, uy);
@@ -663,14 +1541,14 @@ function trackLoopPoints({
     ? supports
       .filter((s) => (s.z - zs) * dir > 0.12 && (zi - s.z) * dir > 0.12)
       .sort((a, b) => (a.z - b.z) * dir)
-      .map((s) => [s.z, s.y])
-    : [];
+      .map((s): TrackPoint => [s.z, s.y])
+    : [] as TrackPoint[];
   // Raised rear drives need to leave the crown on a real tangent. Closing
   // the wrap at 12 o'clock and immediately descending toward the first
   // return roller creates a visible pointed vertex where the two courses
   // meet. This is opt-in so established fleet loops remain byte-identical.
   let rearTopDeg = 0;
-  let rearTop = [zs, ys];
+  let rearTop: TrackPoint = [zs, ys];
   if (smoothRearTopTangent && inner.length) {
     const candidate = tangentDeg(sprocket, inner[0][0], inner[0][1], 1);
     if (candidate != null && candidate > 0 && candidate < 90) {
@@ -682,7 +1560,7 @@ function trackLoopPoints({
       ];
     }
   }
-  const sup = [rearTop];
+  const sup: TrackPoint[] = [rearTop];
   if (supports && supports.length) {
     sup.push(...inner);
   } else {
@@ -726,7 +1604,7 @@ function trackLoopPoints({
   // above ground (every currently-passing rig — audited: no verification
   // tank emits a sub-ground point) have no crossing, so their loops are
   // bit-identical to the pre-rework output.
-  const groundDeg = (c) => {
+  const groundDeg = (c: GearEndpoint): number => {
     const cosA = (botY - c.y) / (c.r + CLEAR);
     return cosA <= -1 ? Infinity : Math.acos(Math.min(1, cosA)) / D2R;
   };
@@ -775,8 +1653,8 @@ function trackLoopPoints({
  * @param {number} [maxV] vertex budget for the hit-test polygon
  * @returns {Array<[number,number]>} convex CCW polygon in (z,y), mm-rounded
  */
-function trackHitboxHull(pts, r, maxV = 12) {
-  const cloud = [];
+function trackHitboxHull(pts: readonly TrackPoint[], r: number, maxV = 12): TrackPoint[] {
+  const cloud: TrackPoint[] = [];
   const N = 8; // disc facets: max inward facet sag = r·(1-cos(π/8)) ≈ 0.076·r
   for (const p of pts) {
     for (let k = 0; k < N; k++) {
@@ -785,13 +1663,14 @@ function trackHitboxHull(pts, r, maxV = 12) {
     }
   }
   cloud.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-  const lo = [];
+  const cross = (o: TrackPoint, a: TrackPoint, b: TrackPoint): number =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo: TrackPoint[] = [];
   for (const p of cloud) {
     while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop();
     lo.push(p);
   }
-  const hi = [];
+  const hi: TrackPoint[] = [];
   for (let i = cloud.length - 1; i >= 0; i--) {
     const p = cloud[i];
     while (hi.length >= 2 && cross(hi[hi.length - 2], hi[hi.length - 1], p) <= 0) hi.pop();
@@ -804,7 +1683,7 @@ function trackHitboxHull(pts, r, maxV = 12) {
   // old drop-a-vertex chord cut measured points up to 3 cm OUTSIDE).
   while (hull.length > maxV) {
     let bi = -1;
-    let bp = null;
+    let bp: TrackPoint | null = null;
     let ba = Infinity;
     const n = hull.length;
     for (let i = 0; i < n; i++) {
@@ -822,11 +1701,11 @@ function trackHitboxHull(pts, r, maxV = 12) {
       if (Math.abs(den) < 1e-9) continue; // parallel support lines
       const t = ((b0[0] - a1[0]) * d2y - (b0[1] - a1[1]) * d2z) / den;
       if (t < 0) continue; // intersection behind the edge — reflex-safe guard
-      const P = [a1[0] + d1z * t, a1[1] + d1y * t];
+      const P: TrackPoint = [a1[0] + d1z * t, a1[1] + d1y * t];
       const added = Math.abs(cross(a1, P, b0)) / 2;
       if (added < ba) { ba = added; bi = i; bp = P; }
     }
-    if (bi < 0) break; // nothing safely mergeable — keep the larger hull
+    if (bi < 0 || !bp) break; // nothing safely mergeable — keep the larger hull
     if (bi === n - 1) {
       // wrap pair (last, first): drop both ends, append the merged vertex
       // (it sits between old hull[n-2] and old hull[1] — CCW preserved)
@@ -843,14 +1722,23 @@ function trackHitboxHull(pts, r, maxV = 12) {
 // Road-wheel geometry per style. Returns { tire, disc } (tire may be null).
 // Every style gets a raised hub cap and a bolt ring so wheels stop reading as
 // flat painted discs at garage distance.
-function boltRing(discs, r, w, n = 8) {
+function boltRing(discs: THREE.BufferGeometry[], r: number, w: number, n = 8): void {
   for (let k = 0; k < n; k++) {
     const a = (k / n) * Math.PI * 2 + 0.2;
     discs.push(xform(cylX(r * 0.042, w * 1.16, 6), 0, Math.sin(a) * r * 0.4, Math.cos(a) * r * 0.4));
   }
 }
-function radialRibs(parts, r, w, count, innerR = 0.20, outerR = 0.75,
-  tangential = 0.13, widthScale = 1.22, phase = 0) {
+function radialRibs(
+  parts: THREE.BufferGeometry[],
+  r: number,
+  w: number,
+  count: number,
+  innerR = 0.20,
+  outerR = 0.75,
+  tangential = 0.13,
+  widthScale = 1.22,
+  phase = 0,
+): void {
   const mid = r * (innerR + outerR) / 2;
   const length = r * (outerR - innerR);
   for (let k = 0; k < count; k++) {
@@ -860,9 +1748,17 @@ function radialRibs(parts, r, w, count, innerR = 0.20, outerR = 0.75,
   }
 }
 
-function wheelGeo(style, r, w, seg, dishR = 0.90, pattern = null, customFace = false) {
+function wheelGeo(
+  style: string,
+  r: number,
+  w: number,
+  seg: number,
+  dishR = 0.90,
+  pattern: WheelPattern | null = null,
+  customFace = false,
+): WheelGeometrySet {
   const patternFasteners = pattern?.fasteners ?? 8;
-  const discs = [];
+  const discs: THREE.BufferGeometry[] = [];
   if (style === 'steel') {
     discs.push(cylX(r, w, seg));
     radialRibs(discs, r, w, pattern?.pockets || 6, 0.18, 0.82, 0.18, 1.18, 0.1);
@@ -881,7 +1777,7 @@ function wheelGeo(style, r, w, seg, dishR = 0.90, pattern = null, customFace = f
     discs.push(cylX(r * 0.28, w * 1.32, 12));            // hub drum
     discs.push(cylX(r * 0.15, w * 1.5, 8));              // hub cap
     boltRing(discs, r * 0.72, w, patternFasteners);
-    const dk = [];
+    const dk: THREE.BufferGeometry[] = [];
     const pocketCount = pattern?.pockets || 6;
     for (let k = 0; k < pocketCount; k++) {
       const a = (k / pocketCount) * Math.PI * 2 + 0.3;
@@ -1023,9 +1919,14 @@ function wheelGeo(style, r, w, seg, dishR = 0.90, pattern = null, customFace = f
 // -> dark bolt heads standing on the dish. Returns { body, dark } geometry
 // so the recess/bolts render in dark steel against the worn-steel body
 // (steel/dark albedo, not hull camo — r8 critique).
-function idlerGeo(r, w, seg, pattern = null) {
-  const body = [];
-  const dark = [];
+function idlerGeo(
+  r: number,
+  w: number,
+  seg: number,
+  pattern: WheelPattern | null = null,
+): { body: THREE.BufferGeometry; dark: THREE.BufferGeometry } {
+  const body: THREE.BufferGeometry[] = [];
+  const dark: THREE.BufferGeometry[] = [];
   const ringSeg = Math.max(12, seg - 8);
   // r5 track-gate rework ("both track wraps are hollow — the track circles a
   // void"): the old face put the RIM BAND *and* a full-radius annulus in the
@@ -1078,13 +1979,22 @@ function idlerGeo(r, w, seg, pattern = null) {
 // per tooth versus the old stacked root-block + tip-cap's twenty-four. All
 // stations are authored into one geometry so pitch accuracy also removes the
 // old per-tooth construction/merge overhead.
-function sprocketTeethGeo(width, height, rootDepth, count, rootR, tipR, offsets, phase) {
+function sprocketTeethGeo(
+  width: number,
+  height: number,
+  rootDepth: number,
+  count: number,
+  rootR: number,
+  tipR: number,
+  offsets: readonly number[],
+  phase: number,
+): THREE.BufferGeometry {
   const hx = width / 2;
   const hy = height / 2;
   const rootZ = rootDepth / 2;
-  const positions = [];
-  const indices = [];
-  const local = [
+  const positions: number[] = [];
+  const indices: number[] = [];
+  const local: Array<[number, number, number]> = [
     [-hx, -hy, -rootZ], [hx, -hy, -rootZ], [hx, -hy, rootZ], [-hx, -hy, rootZ],
     [0, hy, 0],
   ];
@@ -1128,8 +2038,23 @@ function sprocketTeethGeo(width, height, rootDepth, count, rootR, tipR, offsets,
 // recessed core, dark teeth (they read as link engagement, not camo spikes),
 // dark bolt ring, raised hub. `toothOuter` is the band outer radius
 // (r + CLEAR + trackTh/2) supplied by the caller; tips stay a hair proud.
-function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165,
-  ringSpan = null, pattern = null, includeTeeth = true, engagementRadius = null) {
+function sprocketGeo(
+  r: number,
+  w: number,
+  seg: number,
+  teeth = 12,
+  toothOuter: number | null = null,
+  linkM = 0.165,
+  ringSpan: number | null = null,
+  pattern: WheelPattern | null = null,
+  includeTeeth = true,
+  engagementRadius: number | null = null,
+): {
+  body: THREE.BufferGeometry;
+  dark: THREE.BufferGeometry;
+  toothCount: number;
+  toothPitchRadius: number;
+} {
   // r7b TOOTHED-RING REBUILD (hard critique on both judged WWII closeups AND
   // the Sherman drive-end misread): the r5 "teeth hidden just inside the
   // band" compromise rendered the drive end as a FLAT TOOTHLESS PAINTED DISC
@@ -1155,8 +2080,8 @@ function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165,
   const n = Math.max(4, Math.round((Math.PI * 2 * pitchRadius) / linkM));
   const pitchArc = (Math.PI * (rootR + tipR)) / n;       // circumferential pitch at mid
   const toothPhase = Math.PI / 2;                         // link zero is top dead centre
-  const body = [cylX(r * 0.88, w * 0.80, seg)];          // solid painted body drum
-  const dark = [];
+  const body: THREE.BufferGeometry[] = [cylX(r * 0.88, w * 0.80, seg)];
+  const dark: THREE.BufferGeometry[] = [];
   const ringSeg = Math.max(12, seg - 8);
   body.push(cylX(r * 0.30, w * 1.14, 12));               // hub
   body.push(cylX(r * 0.17, w * 1.26, 10));               // hub cap
@@ -1197,14 +2122,20 @@ function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165,
 // across the fleet's instanced shoe courses.
 const SHOE_BOX_TOP = 2;
 const SHOE_BOX_BOTTOM = 3;
-function shoeBox(w, h, d, omittedFaceGroups = null) {
+function shoeBox(
+  w: number,
+  h: number,
+  d: number,
+  omittedFaceGroups: readonly number[] | null = null,
+): THREE.BoxGeometry {
   const geometry = new THREE.BoxGeometry(w, h, d);
   if (!omittedFaceGroups?.length) return geometry;
-  const omitted = new Set(omittedFaceGroups);
-  const sourceIndex = geometry.index.array;
-  const retained = [];
+  const omitted = new Set<number>(omittedFaceGroups);
+  const sourceIndex = geometry.index?.array;
+  if (!sourceIndex) return geometry;
+  const retained: number[] = [];
   for (const group of geometry.groups) {
-    if (omitted.has(group.materialIndex)) continue;
+    if (group.materialIndex != null && omitted.has(group.materialIndex)) continue;
     for (let i = group.start; i < group.start + group.count; i++) {
       retained.push(sourceIndex[i]);
     }
@@ -1214,7 +2145,12 @@ function shoeBox(w, h, d, omittedFaceGroups = null) {
   return geometry;
 }
 
-function oneCappedCylinderX(radius, length, segments, outerSide) {
+function oneCappedCylinderX(
+  radius: number,
+  length: number,
+  segments: number,
+  outerSide: Side,
+): THREE.BufferGeometry {
   const wall = xform(
     new THREE.CylinderGeometry(radius, radius, length, segments, 1, true),
     0, 0, 0, 0, 0, Math.PI / 2,
@@ -1228,8 +2164,13 @@ function oneCappedCylinderX(radius, length, segments, outerSide) {
 
 const TRACK_SHOE_SIMPLIFIED_DIST_M = 55;
 
-function simplifiedTrackShoeGeometry(trackW, pitch, pattern,
-  radialScale = 1, widthScale = 1) {
+function simplifiedTrackShoeGeometry(
+  trackW: number,
+  pitch: number,
+  pattern: TrackPattern,
+  radialScale = 1,
+  widthScale = 1,
+): THREE.BufferGeometry {
   // At this distance one shoe spans only a handful of pixels. Retain its
   // authored pitch, width, pad depth and grouser peak so the track silhouette
   // and deterministic per-link color cadence remain intact. Guide horns,
@@ -1249,8 +2190,14 @@ function simplifiedTrackShoeGeometry(trackW, pitch, pattern,
   return geometry;
 }
 
-function trackShoeGeometry(trackW, pitch, pattern, pinCapOuter = null,
-  radialScale = 1, widthScale = 1) {
+function trackShoeGeometry(
+  trackW: number,
+  pitch: number,
+  pattern: TrackPattern,
+  pinCapOuter: number | null = null,
+  radialScale = 1,
+  widthScale = 1,
+): THREE.BufferGeometry {
   // Every family is authored into ONE geometry and instantiated on ONE
   // closed course. Surface casting, connector web, transverse pins and guide
   // horn remain mechanically distinct within that shoe, but none can become
@@ -1258,14 +2205,30 @@ function trackShoeGeometry(trackW, pitch, pattern, pinCapOuter = null,
   const padCoverage = pattern.padCoverage;
   const padH = pattern.padHeight;
   const grouserH = pattern.grouserHeight;
-  const parts = [];
-  const addBox = (w, h, d, x = 0, y = 0, z = 0, ry = 0, omittedFaces = null) => {
+  const parts: THREE.BufferGeometry[] = [];
+  const addBox = (
+    w: number,
+    h: number,
+    d: number,
+    x = 0,
+    y = 0,
+    z = 0,
+    ry = 0,
+    omittedFaces: readonly number[] | null = null,
+  ): void => {
     parts.push(xform(shoeBox(w, h, d, omittedFaces), x, y, z, 0, ry, 0));
   };
-  const addBar = (w, d, x = 0, z = 0, ry = 0, height = grouserH) => {
+  const addBar = (
+    w: number,
+    d: number,
+    x = 0,
+    z = 0,
+    ry = 0,
+    height: number = grouserH,
+  ): void => {
     addBox(w, height, d, x, padH / 2 + height / 2, z, ry, [SHOE_BOX_BOTTOM]);
   };
-  const addChevron = (z, direction = 1, height = grouserH) => {
+  const addChevron = (z: number, direction = 1, height: number = grouserH): void => {
     addBar(trackW * 0.47, pitch * 0.12, -trackW * 0.225, z, direction * 0.28, height);
     addBar(trackW * 0.47, pitch * 0.12, trackW * 0.225, z, -direction * 0.28, height);
   };
@@ -1339,7 +2302,7 @@ function trackShoeGeometry(trackW, pitch, pattern, pinCapOuter = null,
       addBar(trackW * 0.76, pitch * 0.08, 0, -pitch * 0.31, 0, grouserH * 0.65);
       break;
     default:
-      throw new Error(`Unsupported track shoe surface: ${pattern.surface}`);
+      throw new Error('Unsupported track shoe surface');
   }
 
   // Raised shoulders and a shallow central web keep the shoe legible from
@@ -1371,7 +2334,7 @@ function trackShoeGeometry(trackW, pitch, pattern, pinCapOuter = null,
     const capLength = Math.min(0.058, trackW * 0.15);
     const capX = Math.max(0, outer - capLength / 2);
     const pinY = -(padH / 2 + webH * 0.38);
-    for (const side of [-1, 1]) {
+    for (const side of [-1, 1] as const) {
       for (const z of [-pitch * 0.30, pitch * 0.30]) {
         parts.push(xform(
           oneCappedCylinderX(pattern.pinRadius, capLength, 6, side),
@@ -1387,7 +2350,11 @@ function trackShoeGeometry(trackW, pitch, pattern, pinCapOuter = null,
   return geometry;
 }
 
-function runningGearContactPatch(wheelZs, wheelR, cfg = {}) {
+function runningGearContactPatch(
+  wheelZs: readonly number[],
+  wheelR: number,
+  cfg: Pick<RunningGearConfig, 'contactZF' | 'contactZR' | 'containRearRoadWheel'> = {},
+): TrackContactSpan {
   const rearRoadZ = Math.min(...wheelZs);
   const frontRoadZ = Math.max(...wheelZs);
   let zF = cfg.contactZF ?? frontRoadZ + wheelR * 0.5;
@@ -1410,7 +2377,20 @@ function runningGearContactPatch(wheelZs, wheelR, cfg = {}) {
 function buildTrackCourse({
   sprocket, idler, rollers, rollerR, trackTh, topY, botY,
   wheelZs, wheelY, wheelR, layers, cfg,
-}) {
+}: {
+  sprocket: GearEndpoint;
+  idler: GearEndpoint;
+  rollers: GearEndpoint[];
+  rollerR: number;
+  trackTh: number;
+  topY: number;
+  botY: number;
+  wheelZs: number[];
+  wheelY: number;
+  wheelR: number;
+  layers: number[][] | null;
+  cfg: RunningGearConfig;
+}): TrackCourse {
   const sag = rollers.length ? 0.022 : (cfg.deadSag ?? 0.085);
   const maxOffSup = layers ? Math.max(...layers.flat()) : 0;
   const supports = rollers.length
@@ -1427,7 +2407,7 @@ function buildTrackCourse({
   const rearEnd = { ...rearEndRaw, r: rearEndRaw.trackR ?? rearEndRaw.r };
   const contact = runningGearContactPatch(wheelZs, wheelR, cfg);
   const pts = Array.isArray(cfg.loopPoints) && cfg.loopPoints.length >= 4
-    ? cfg.loopPoints.map((p) => [p[0], p[1]])
+    ? cfg.loopPoints.map((p): TrackPoint => [p[0], p[1]])
     : trackLoopPoints({
       idler: { ...frontEnd }, sprocket: { ...rearEnd },
       botY, topY, sag, supports, contact,
@@ -1470,12 +2450,12 @@ function buildTrackCourse({
       .filter((z) => z > lo + 1e-5 && z < hi - 1e-5)
       .sort((z0, z1) => (b[0] > a[0] ? z0 - z1 : z1 - z0));
     if (stations.length) {
-      pts.splice(i + 1, 0, ...stations.map((z) => [z, botY]));
+      pts.splice(i + 1, 0, ...stations.map((z): TrackPoint => [z, botY]));
       i += stations.length;
     }
   }
 
-  const segments = [];
+  const segments: TrackCourseSegment[] = [];
   let loopLengthM = 0;
   for (let i = 0; i < pts.length; i++) {
     const a = pts[i], b = pts[(i + 1) % pts.length];
@@ -1496,7 +2476,12 @@ function buildTrackCourse({
   };
 }
 
-function buildRunningGear(P, cfg) {
+function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): RunningGearUnit {
+  if (!P.spec || !P.disposables) {
+    throw new TypeError('Running gear requires a vehicle spec and disposal registry');
+  }
+  const builderSpec = P.spec;
+  const disposables = P.disposables;
   const { mats, hullG, q } = P;
   const seg = q ? 26 : 12;
   const {
@@ -1519,16 +2504,16 @@ function buildRunningGear(P, cfg) {
   // the animated shoe sweep.
   const xcLeft = cfg.xcLeft ?? xc;
   const xcRight = cfg.xcRight ?? xc;
-  const xcForSide = (side) => side < 0 ? xcLeft : xcRight;
+  const xcForSide = (side: Side): number => side < 0 ? xcLeft : xcRight;
 
   const wheelY = cfg.wheelY ?? wheelR + 0.10;
-  const hydraulicAim = P.spec?.hydropneumaticAim;
+  const hydraulicAim = builderSpec.hydropneumaticAim;
   const suspensionDroopM = cfg.suspensionDroopM ?? hydraulicAim?.droopM ?? 0.22;
   const suspensionCompressionM = cfg.suspensionCompressionM ?? hydraulicAim?.compressionM ?? 0.30;
-  const wheelPattern = wheelPatternFor(P.spec, style, cfg.wheelPattern ?? null);
-  const trackPattern = trackPatternFor(P.spec, wheelPattern, cfg.trackPattern ?? null);
+  const wheelPattern = wheelPatternFor(builderSpec, style, cfg.wheelPattern ?? null);
+  const trackPattern = trackPatternFor(builderSpec, wheelPattern, cfg.trackPattern ?? null);
   const suspensionPattern = suspensionPatternFor(
-    P.spec, wheelPattern, cfg.suspensionPattern ?? null);
+    builderSpec, wheelPattern, cfg.suspensionPattern ?? null);
   const runningGearUnitId = hullG.userData.runningGearUnitCount || 0;
   hullG.userData.runningGearUnitCount = runningGearUnitId + 1;
   const course = buildTrackCourse({
@@ -1604,7 +2589,9 @@ function buildRunningGear(P, cfg) {
   const wheelReceipts = hullG.userData.wheelPatternReceipts
     || (hullG.userData.wheelPatternReceipts = []);
   wheelReceipts.push(wheelPatternReceipt);
-  hullG.userData.nativeWheelPatterns = [...new Set(wheelReceipts.map((receipt) => receipt.id))];
+  hullG.userData.nativeWheelPatterns = [...new Set(
+    wheelReceipts.map((receipt: { id: string }) => receipt.id),
+  )];
   const trackPatternReceipt = {
     id: trackPattern.id,
     label: trackPattern.label,
@@ -1615,12 +2602,14 @@ function buildRunningGear(P, cfg) {
   const trackReceipts = hullG.userData.trackPatternReceipts
     || (hullG.userData.trackPatternReceipts = []);
   trackReceipts.push(trackPatternReceipt);
-  hullG.userData.nativeTrackPatterns = [...new Set(trackReceipts.map((receipt) => receipt.id))];
-  const entries = [];
+  hullG.userData.nativeTrackPatterns = [...new Set(
+    trackReceipts.map((receipt: { id: string }) => receipt.id),
+  )];
+  const entries: WheelEntry[] = [];
   const maxOff = layers ? Math.max(...layers.flat()) : 0;
   wheelZs.forEach((z, i) => {
     const offs = layers ? layers[i % layers.length] : [0];
-    for (const side of [-1, 1]) {
+    for (const side of [-1, 1] as const) {
       const sideXc = xcForSide(side);
       // off: per-wheel suspension travel from terrain conformance (smoothed)
       // rec: recessed interleave row — rendered with the shadowed wheel
@@ -1653,15 +2642,20 @@ function buildRunningGear(P, cfg) {
     // see-through slit above the lower hull box.
     const shadowH = cfg.bayShadowTop ?? (topY + 0.1);
     const bayShadowBucket = cfg.bayShadowBucket ?? 'hullShadow';
-    for (const side of [-1, 1]) {
+    for (const side of [-1, 1] as const) {
       const sideXc = xcForSide(side);
       P.add(bayShadowBucket, new THREE.BoxGeometry(0.02, shadowH, z1 - z0),
         side * (sideXc - wheelW * 2.0), shadowH / 2 + 0.03, (z0 + z1) / 2);
     }
   }
-  const rollerEntries = [];
+  const rollerEntries: WheelEntry[] = [];
   for (const rl of rollers) {
-    for (const side of [-1, 1]) rollerEntries.push({ x: side * xcForSide(side), y: rl.y, z: rl.z, r: rl.r ?? rollerR, road: false, i: 0 });
+    for (const side of [-1, 1] as const) {
+      rollerEntries.push({
+        x: side * xcForSide(side), y: rl.y, z: rl.z,
+        r: rl.r ?? rollerR, road: false, i: 0, off: 0,
+      });
+    }
   }
 
   const { tire, disc, dark } = wheelGeo(
@@ -1680,8 +2674,14 @@ function buildRunningGear(P, cfg) {
     disc?.scale(1, 1, wheelZScale);
     dark?.scale(1, 1, wheelZScale);
   }
-  const made = [];
-  const mkInst = (geo, mat, list, appearanceRole, name) => {
+  const made: WheelInstanceLayer[] = [];
+  const mkInst = (
+    geo: THREE.BufferGeometry,
+    mat: THREE.Material,
+    list: WheelEntry[],
+    appearanceRole?: string,
+    name?: string,
+  ): THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material> => {
     const im = new THREE.InstancedMesh(geo, mat, list.length);
     im.userData.runningGear = true;
     im.userData.runningGearUnitId = runningGearUnitId;
@@ -1697,12 +2697,16 @@ function buildRunningGear(P, cfg) {
     im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     hullG.add(im);
     made.push({ im, list });
-    P.disposables.push(geo);
+    disposables.push(geo);
     return im;
   };
-  const addRoadWheelLayer = (geometry, material, layer = {}) => {
-    if (!geometry || !material) return null;
-    const roadEntries = [];
+  const addRoadWheelLayer = (
+    geometry: unknown,
+    material: THREE.Material,
+    layer: WheelLayerOptions = {},
+  ): THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material> | null => {
+    if (!(geometry instanceof THREE.BufferGeometry) || !material) return null;
+    const roadEntries: WheelEntry[] = [];
     for (const entry of entries) {
       if (!entry.road) continue;
       roadEntries.push({
@@ -1732,7 +2736,7 @@ function buildRunningGear(P, cfg) {
     tireMat.color = new THREE.Color(cfg.tireHex);
     tireMat.onBeforeCompile = vehicleAmbientFloorHook;
     tireMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    P.disposables.push(tireMat);
+    disposables.push(tireMat);
   }
   if (tire) mkInst(tire, tireMat, entries, 'wheelTire', 'gearRoadWheelTires');
   // Every wheel style, including legacy steel/bogie wheels, uses the same
@@ -1749,7 +2753,7 @@ function buildRunningGear(P, cfg) {
     dishMat.color = new THREE.Color(cfg.wheelHex);
     dishMat.onBeforeCompile = vehicleAmbientFloorHook;
     dishMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    P.disposables.push(dishMat);
+    disposables.push(dishMat);
   }
   const proudList = entries.filter((e) => !e.rec);
   const recList = entries.filter((e) => e.rec);
@@ -1769,7 +2773,7 @@ function buildRunningGear(P, cfg) {
   // canonical terrain-conforming wheel, and are parked wholly inboard of the
   // wheel's measured back face. Two instanced draws cover the complete unit;
   // there are still no per-wheel meshes or frame-loop allocations.
-  const suspensionEntries = [];
+  const suspensionEntries: SuspensionEntry[] = [];
   const suspensionLift = wheelR * suspensionPattern.anchorLiftRatio;
   const suspensionTrail = wheelR * suspensionPattern.trailRatio;
   const armWidth = Math.max(0.05, wheelW * suspensionPattern.armWidthRatio);
@@ -1780,15 +2784,17 @@ function buildRunningGear(P, cfg) {
   for (const geometry of [tire, disc, dark]) {
     if (!geometry) continue;
     geometry.computeBoundingBox();
+    const bounds = geometry.boundingBox;
+    if (!bounds) throw new Error('Wheel geometry did not produce bounds');
     visibleWheelHalfDepth = Math.max(
       visibleWheelHalfDepth,
-      Math.abs(geometry.boundingBox.min.x),
-      Math.abs(geometry.boundingBox.max.x),
+      Math.abs(bounds.min.x),
+      Math.abs(bounds.max.x),
     );
   }
   const suspensionAssemblyHalfDepth = Math.max(armWidth, jointWidth) * 0.5;
   const suspensionWheelClearance = Math.max(0.012, wheelW * 0.055);
-  const suspensionAbsX = (side) => Math.max(
+  const suspensionAbsX = (side: Side): number => Math.max(
     0.04,
     xcForSide(side) - visibleWheelHalfDepth
       - suspensionWheelClearance - suspensionAssemblyHalfDepth,
@@ -1801,12 +2807,13 @@ function buildRunningGear(P, cfg) {
       const mate = Math.min(pairStart + 1, wheelZs.length - 1);
       anchorZ = (wheelZs[pairStart] + wheelZs[mate]) * 0.5;
     }
-    for (const side of [-1, 1]) {
-      let wheel = null;
+    for (const side of [-1, 1] as const) {
+      let wheel: WheelEntry | null = null;
       for (const entry of entries) {
         if (!entry.road || entry.i !== i || (entry.x < 0 ? -1 : 1) !== side) continue;
         if (!wheel || Math.abs(entry.x) > Math.abs(wheel.x)) wheel = entry;
       }
+      if (!wheel) throw new Error('Road-wheel station is missing its suspension source');
       suspensionEntries.push({
         side, wheel, anchorY: wheelY + suspensionLift, anchorZ,
         x: side * suspensionAbsX(side),
@@ -1857,7 +2864,7 @@ function buildRunningGear(P, cfg) {
   suspensionIM.receiveShadow = true;
   suspensionIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   lodWrap(hullG, suspensionIM);
-  P.disposables.push(suspensionGeo);
+  disposables.push(suspensionGeo);
 
   // A stepped two-diameter forging at each endpoint makes the load path clear
   // in a side or oblique view: the forward/high boss is fixed to the hull,
@@ -1886,7 +2893,7 @@ function buildRunningGear(P, cfg) {
   suspensionJointIM.receiveShadow = true;
   suspensionJointIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   lodWrap(hullG, suspensionJointIM);
-  P.disposables.push(suspensionJointGeo);
+  disposables.push(suspensionJointGeo);
 
   function updateSuspensionLinks() {
     for (let i = 0; i < suspensionEntries.length; i++) {
@@ -1949,8 +2956,8 @@ function buildRunningGear(P, cfg) {
   // scheme-painted single-albedo drums rendered as featureless flat painted
   // discs at closeup, the judged shot's worst failure. Steel end wheels also
   // separate cleanly from the scheme-painted road wheels.
-  const spinners = [];
-  const spinnerInstances = [];
+  const spinners: WheelSpinner[] = [];
+  const spinnerInstances: SpinnerBatchRecord[] = [];
   const bandOuterR = TRACK_WRAP_CLEARANCE_M + trackTh / 2;
   // r5 track gate: end drums widened toward the band width — the old 0.7/0.62
   // drums left the outermost interleave row standing PROUD of the sprocket
@@ -1988,7 +2995,7 @@ function buildRunningGear(P, cfg) {
     ? sg.toothPitchRadius
     : (sprocket.trackR ?? sprocket.r) + TRACK_WRAP_CLEARANCE_M;
   const idlerSpinR = (idler.trackR ?? idler.r) + TRACK_WRAP_CLEARANCE_M;
-  P.disposables.push(sg.body, sg.dark, ig.body, ig.dark);
+  disposables.push(sg.body, sg.dark, ig.body, ig.dark);
   // End-wheel BODIES always take scheme paint (crews paint sprocket/idler
   // with the vehicle; the bare near-black drums were the r5 "hollow wrap" /
   // "track circles a void" read) — teeth, recess rings and bolts stay dark.
@@ -2001,11 +3008,16 @@ function buildRunningGear(P, cfg) {
     steelMat.color = new THREE.Color(cfg.endWheelHex);
     steelMat.onBeforeCompile = vehicleAmbientFloorHook;
     steelMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    P.disposables.push(steelMat);
+    disposables.push(steelMat);
   }
   const darkMat = mats.spareTrack || mats.dark;
   if (P.batchStatic) {
-    const addSpinnerBatch = (items, material, name, appearanceRole) => {
+    const addSpinnerBatch = (
+      items: SpinnerBatchItem[],
+      material: THREE.Material,
+      name: string,
+      appearanceRole: string,
+    ): void => {
       let vertexCapacity = 0;
       let indexCapacity = 0;
       for (const { geo } of items) {
@@ -2030,10 +3042,10 @@ function buildRunningGear(P, cfg) {
       batch.name = name;
       batch.castShadow = false;
       batch.receiveShadow = true;
-      const entries = [];
+      const entries: SpinnerBatchEntry[] = [];
       for (const { geo, end, spinR } of items) {
         const geometryId = batch.addGeometry(geo);
-        for (const side of [-1, 1]) {
+        for (const side of [-1, 1] as const) {
           entries.push({
             instanceId: batch.addInstance(geometryId),
             side, r: spinR,
@@ -2053,13 +3065,19 @@ function buildRunningGear(P, cfg) {
       { geo: ig.dark, end: idler, spinR: idlerSpinR },
     ], darkMat, 'gearEndWheelHardware', 'trackHardware');
   } else {
-    for (const [gp, end] of [[sg, sprocket], [ig, idler]]) {
+    const endWheels: Array<[typeof sg | typeof ig, GearEndpoint]> = [
+      [sg, sprocket], [ig, idler],
+    ];
+    for (const [gp, end] of endWheels) {
       // body + dark stay directly under hullG (never a wrapper Group:
       // modelLoader.applySwap hides procedural Mesh/LOD/InstancedMesh children
       // on GLB swap — a Group would survive and leave orphaned wheels).
-      for (const [geo, mat] of [[gp.body, steelMat], [gp.dark, darkMat]]) {
+      const layers: Array<[THREE.BufferGeometry, THREE.Material]> = [
+        [gp.body, steelMat], [gp.dark, darkMat],
+      ];
+      for (const [geo, mat] of layers) {
         const name = geo === gp.body ? 'gearEndWheelBody' : 'gearEndWheelHardware';
-        for (const side of [-1, 1]) {
+        for (const side of [-1, 1] as const) {
           const sideXc = xcForSide(side);
           const m = new THREE.Mesh(geo, mat);
           m.userData.runningGear = true;
@@ -2090,22 +3108,30 @@ function buildRunningGear(P, cfg) {
   // The course above is the sole geometry/animation source. Its texture
   // repeat is exactly four measured shoes, including profile-specific pitch.
   const tg = trackBandGeo(pts, trackW, trackTh, trackTextureRepeatM);
-  P.disposables.push(tg);
+  disposables.push(tg);
   // r1 per-wheel articulation: each side owns its OWN geometry so the bottom
   // run can deform to follow the road wheels' suspension travel (the shared
   // band was the "road-wheel line stays rigidly parallel to the hull" tell —
   // wheels conformed to the terrain but the rigid band above them hid it).
   const tgL = tg.clone(), tgR = tg.clone();
-  tgL.getAttribute('position').setUsage(THREE.DynamicDrawUsage);
-  tgR.getAttribute('position').setUsage(THREE.DynamicDrawUsage);
+  const tgLPosition = tgL.getAttribute('position');
+  const tgRPosition = tgR.getAttribute('position');
+  if (!(tgLPosition instanceof THREE.BufferAttribute)
+    || !(tgRPosition instanceof THREE.BufferAttribute)) {
+    throw new TypeError('Track bands require mutable buffer positions');
+  }
+  tgLPosition.setUsage(THREE.DynamicDrawUsage);
+  tgRPosition.setUsage(THREE.DynamicDrawUsage);
   const bandBasePos = tg.getAttribute('position').array.slice();
-  P.disposables.push(tgL, tgR);
+  disposables.push(tgL, tgR);
   // Most tanks use the shared neutral track texture at full strength. Some
   // families need a warmer oxidized-steel response to keep the band from
   // inheriting a green/blue environmental cast under their dark camouflage.
   // Clone only for explicit profile overrides so the fleet default and the
   // independently scrolling texture maps remain unchanged.
-  const trackBandMaterial = (source) => {
+  const trackBandMaterial = (
+    source: THREE.MeshStandardMaterial,
+  ): THREE.MeshStandardMaterial => {
     if (cfg.trackBandHex == null
       && cfg.trackBandRoughness == null
       && cfg.trackBandEnvMapIntensity == null) return source;
@@ -2124,7 +3150,7 @@ function buildRunningGear(P, cfg) {
         envMapIntensity: material.envMapIntensity,
       },
     };
-    P.disposables.push(material);
+    disposables.push(material);
     return material;
   };
   const tl = new THREE.Mesh(tgL, trackBandMaterial(mats.trackL));
@@ -2156,7 +3182,7 @@ function buildRunningGear(P, cfg) {
   const simplifiedShoe = simplifiedTrackShoeGeometry(
     trackW, lp, trackPattern, shoeRadialScale, shoeWidthScale,
   );
-  P.disposables.push(integratedShoe, simplifiedShoe);
+  disposables.push(integratedShoe, simplifiedShoe);
   // Family-specific neutral steel palettes keep the shoe constructions
   // readable without creating a pale second track. Per-instance colors are
   // assigned once below; this remains one InstancedMesh / one draw call.
@@ -2172,11 +3198,11 @@ function buildRunningGear(P, cfg) {
   padMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
   padMat.userData = { ...(padMat.userData || {}), appearanceRole: 'trackPad' };
   padMat.name = 'cot:track-pad';
-  P.disposables.push(padMat);
+  disposables.push(padMat);
   const padIM = new THREE.InstancedMesh(integratedShoe,padMat,nLinks*2);
   const shadePalette = trackPattern.shadePalette;
   let shadePhase = 0;
-  for (const ch of P.spec.id) shadePhase = (shadePhase * 33 + ch.charCodeAt(0)) >>> 0;
+  for (const ch of builderSpec.id) shadePhase = (shadePhase * 33 + ch.charCodeAt(0)) >>> 0;
   const shade = new THREE.Color();
   for (let sideIndex = 0; sideIndex < 2; sideIndex++) {
     for (let linkI = 0; linkI < nLinks; linkI++) {
@@ -2187,6 +3213,7 @@ function buildRunningGear(P, cfg) {
       padIM.setColorAt(sideIndex * nLinks + linkI, shade.setHex(shadePalette[shadeIndex]));
     }
   }
+  if (!padIM.instanceColor) throw new Error('Track-pad instance colors were not created');
   padIM.instanceColor.setUsage(THREE.StaticDrawUsage);
   padIM.instanceColor.needsUpdate = true;
   padIM.name = 'gearTrackPads';
@@ -2243,11 +3270,11 @@ function buildRunningGear(P, cfg) {
   // Bodywork now performs the occlusion; every shoe remains seated on the
   // closed loop. `coveredTop` is retained only in authoring receipts so old
   // profiles do not need a flag migration.
-  const placeLinks = (l, r) => {
+  const placeLinks = (l: number, r: number): void => {
     // Link distances are monotonic around each side's loop. Walk the segment
     // cursor with them instead of restarting a linear nP search for every
     // shoe. The cursor resets once when distance wraps.
-    for (const side of [-1, 1]) {
+    for (const side of [-1, 1] as const) {
       const baseI = side < 0 ? 0 : nLinks;
       const scroll = side < 0 ? l : r;
       const bandPosition = (side < 0 ? tgL : tgR).getAttribute('position');
@@ -2339,11 +3366,11 @@ function buildRunningGear(P, cfg) {
   ribMat.color = new THREE.Color(0x232019);
   ribMat.roughness = 0.97;
   ribMat.metalness = 0.10;
-  P.disposables.push(ribMat);
-  const thrownRibbons = {};
-  const slumpBands = {};
+  disposables.push(ribMat);
+  const thrownRibbons: Partial<Record<Side, THREE.Mesh>> = {};
+  const slumpBands: Partial<Record<Side, THREE.Mesh>> = {};
   let thrownKitBuilt = false;
-  function buildThrownKit() {
+  function buildThrownKit(): void {
     if (thrownKitBuilt) return;
     thrownKitBuilt = true;
     const rearIsSprocket = sprocket.z < idler.z;
@@ -2351,7 +3378,7 @@ function buildRunningGear(P, cfg) {
     const rearR = rearIsSprocket ? sprocket.r : idler.r;
     const rearY = rearIsSprocket ? sprocket.y : idler.y;
     const RIB_N = 16;
-    const ribPads = [];
+    const ribPads: THREE.BufferGeometry[] = [];
     // low drape start: the shed band slips off the LOWER rear wheel rim and
     // lies nearly flat — the r4 probe showed a chest-high curl reading as a
     // giant pale drum parked against the hull
@@ -2363,18 +3390,21 @@ function buildRunningGear(P, cfg) {
     // (tail whips outboard in a decaying S), uneven clumped spacing, yaw
     // following the curve tangent + jitter, random roll with the odd pad
     // folded up on edge, and a 3-pad pile right at the breakpoint.
-    const rr = (k) => { const x = Math.sin(k * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+    const rr = (k: number): number => {
+      const x = Math.sin(k * 127.1 + 311.7) * 43758.5453;
+      return x - Math.floor(x);
+    };
     // r5 (critic: "chain of oversized flat lit-tan link slabs curling like
     // dominoes"): pad plates HALVED in thickness (0.05 -> 0.026) with a slim
     // center GUIDE HORN so each link carries the double-pin track silhouette
     // instead of reading as a bare wooden plank.
-    const ribPad = () => mergeAll([
+    const ribPad = (): THREE.BufferGeometry => mergeAll([
       box(trackW * 0.96, 0.026, 0.17),
       xform(box(trackW * 0.88, 0.022, 0.05), 0, 0.024, 0), // grouser bar
       xform(box(0.045, 0.055, 0.05), 0, 0.04, 0.02),       // guide horn
     ]);
     // spline points first, so each pad's yaw can follow the local tangent
-    const ribPts = [];
+    const ribPts: Array<[number, number, number, number, number]> = [];
     for (let i = 0; i < RIB_N; i++) {
       const t = i / (RIB_N - 1);
       const drape = Math.exp(-t * 4.6);
@@ -2419,13 +3449,13 @@ function buildRunningGear(P, cfg) {
         (rr(i + 66) - 0.5) * 0.24));
     }
     const ribbonGeo = mergeAll(ribPads);
-    P.disposables.push(ribbonGeo);
+    disposables.push(ribbonGeo);
     // r4 SLUMPED PARTIAL BAND (critic detrack minor): the broken side is not
     // just bare wheels + a ground ribbon — a torn stub of the band stays
     // HUNG off the rear sprocket/idler, draping down its back face and
     // piling on the ground in a catenary sag. Built once from the same pad
     // kit; toggled with the ribbon in setBroken.
-    const slumpPads = [];
+    const slumpPads: THREE.BufferGeometry[] = [];
     {
       const cx = rearY, cz = rearZ; // rear wheel center (hull-local y/z)
       const R = rearR + 0.055;
@@ -2449,8 +3479,8 @@ function buildRunningGear(P, cfg) {
       }
     }
     const slumpGeo = mergeAll(slumpPads);
-    P.disposables.push(slumpGeo);
-    for (const side of [-1, 1]) {
+    disposables.push(slumpGeo);
+    for (const side of [-1, 1] as const) {
       const rm = new THREE.Mesh(ribbonGeo, ribMat);
       rm.name = 'gearThrownRibbon';
       rm.position.x = side * xcForSide(side);
@@ -2508,11 +3538,12 @@ function buildRunningGear(P, cfg) {
     sprocket.y - (sprocket.r + bandOuterR),
     idler.y - (idler.r + bandOuterR),
   );
-  const gearContactGeom = {
+  const gearContactGeom: GearContactGeometry = {
     halfLenM: (contact.zF - contact.zR) / 2,
     zCenterM: (contact.zF + contact.zR) / 2,
     halfWidM: Math.max(xcLeft, xcRight) + trackW / 2,
     bottomYM: Math.min(gearBandBotY, gearPadBotY, gearWheelBotY, gearEndBotY),
+    endRise: { dzM: 0.4, frontM: 0.35, rearM: 0.35 },
   };
   // Wrap approach-rise: lowest band-centerline height in the 0.45 m just
   // BEYOND each end of the flat contact run, relative to the run. The solve
@@ -2525,7 +3556,7 @@ function buildRunningGear(P, cfg) {
     // sparse — a whole approach tangent is two endpoints, and window-min
     // sampling caught upper-arc points on short overhangs). Min over all
     // loop crossings picks the bottom run/ramp, not the return run.
-    const bandYAtZ = (zq) => {
+    const bandYAtZ = (zq: number): number => {
       let best = Infinity;
       for (let i = 0; i < pts.length; i++) {
         const a = pts[i], b = pts[(i + 1) % pts.length];
@@ -2542,7 +3573,7 @@ function buildRunningGear(P, cfg) {
     const yR = bandYAtZ(contact.zR - 0.4);
     // Clamped to the physical approach-rise band; no crossing (overhang past
     // the whole loop) keeps the guard near-inert at the max rise.
-    const clampRise = (y) => Math.min(0.35, Math.max(0.02, y));
+    const clampRise = (y: number): number => Math.min(0.35, Math.max(0.02, y));
     gearContactGeom.endRise = {
       dzM: 0.4,
       frontM: Number.isFinite(yF) ? clampRise(yF - botY) : 0.35,
@@ -2561,7 +3592,7 @@ function buildRunningGear(P, cfg) {
   // piecewise-linear offset field the deformable band bottom run and the
   // ground-run link pads sample, so wheel travel reads as suspension travel
   // of the whole running gear, not discs sliding behind a rigid band.
-  const suspWheels = { [-1]: [], [1]: [] };
+  const suspWheels: Record<Side, WheelEntry[]> = { [-1]: [], [1]: [] };
   for (const e of entries) {
     if (!e.road || e.rec) continue;
     suspWheels[e.x < 0 ? -1 : 1].push(e);
@@ -2588,8 +3619,12 @@ function buildRunningGear(P, cfg) {
     0, 1, 1, 0, 1, 0,  // +X edge
     0, 0, 1, 0, 1, 1,  // -X edge
   ];
-  function buildBandInfluence(ws) {
-    const vertices = [], wheelA = [], wheelB = [], weightA = [], weightB = [];
+  function buildBandInfluence(ws: WheelEntry[]) {
+    const vertices: number[] = [];
+    const wheelA: number[] = [];
+    const wheelB: number[] = [];
+    const weightA: number[] = [];
+    const weightB: number[] = [];
     const dirtyVertex = new Uint8Array(bandBasePos.length / 3);
     const span = Math.max(wheelY - botY, 1e-3);
     for (let vi = 0, j = 0; j < bandBasePos.length; vi++, j += 3) {
@@ -2623,7 +3658,7 @@ function buildRunningGear(P, cfg) {
       vertices.push(vi); wheelA.push(a); wheelB.push(b); weightA.push(wa); weightB.push(wb);
       dirtyVertex[vi] = 1;
     }
-    const triangles = [];
+    const triangles: number[] = [];
     for (let vi = 0; vi + 2 < dirtyVertex.length; vi += 3) {
       if (dirtyVertex[vi] || dirtyVertex[vi + 1] || dirtyVertex[vi + 2]) {
         triangles.push(vi * 3); // scalar position/normal-array offset
@@ -2644,7 +3679,7 @@ function buildRunningGear(P, cfg) {
   // deform one band's bottom run toward the wheel offset field (weight fades
   // to zero by the axle line so the top run / arcs never move)
   const bandDeformed = { [-1]: false, [1]: false };
-  function deformBand(side) {
+  function deformBand(side: Side): void {
     const ws = suspWheels[side];
     let any = 0;
     for (const w of ws) any = Math.max(any, Math.abs(w.voff || 0));
@@ -2653,6 +3688,9 @@ function buildRunningGear(P, cfg) {
     bandDeformed[side] = active;
     const geo = side < 0 ? tgL : tgR;
     const attr = geo.getAttribute('position');
+    if (!(attr instanceof THREE.BufferAttribute)) {
+      throw new TypeError('Track deformation requires a mutable position buffer');
+    }
     const arr = attr.array;
     const inf = bandInfluence[side];
     for (let k = 0; k < inf.vertices.length; k++) {
@@ -2674,7 +3712,7 @@ function buildRunningGear(P, cfg) {
   // Cheap phase lane used on frames where distant terrain conformance is
   // cadence-limited. Track UV motion and end-wheel spin stay continuous while
   // the expensive road-wheel/band/link matrix work waits for its next slot.
-  function updateGearSurface(l, r) {
+  function updateGearSurface(l: number, r: number): void {
     for (const sp of spinners) sp.mesh.rotation.x = (sp.side < 0 ? l : r) / sp.r;
     for (const record of spinnerInstances) {
       for (const sp of record.entries) {
@@ -2689,7 +3727,13 @@ function buildRunningGear(P, cfg) {
     mats.trackTexR.offset.y = -(r / trackTextureRepeatM) % 1;
   }
 
-  const gearUnit = {
+  const gearUnit: RunningGearUnit = {
+    contactGeom: gearContactGeom,
+    trackHitbox: [{
+      x0: xc - trackW / 2,
+      x1: xc + trackW / 2,
+      poly: trackHitboxHull(pts, trackTh / 2 + 0.045),
+    }],
     addRoadWheelLayer,
     roadWheelLayout: { xc, wheelY, wheelR, wheelZs: [...wheelZs] },
     updateSurface: updateGearSurface,
@@ -2909,7 +3953,6 @@ function buildRunningGear(P, cfg) {
       if (pick) pick.thrown = !!broken;
     },
   };
-  gearUnit.contactGeom = gearContactGeom;
   // TRACK-HITBOX metadata (RUNTIME DATA ONLY — no geometry, same channel as
   // contactGeom): the real band silhouette + lateral extent of this unit's
   // tracks, derived from the exact loop the visual band was built from.
@@ -2918,11 +3961,6 @@ function buildRunningGear(P, cfg) {
   // (owner order 2026-08-06). Expansion = half band thickness + 0.045 m shoe
   // pad/grouser depth (family track shoes reach ~0.05-0.08 outward on
   // the running faces; the old hand-authored boxes included none of it).
-  gearUnit.trackHitbox = [{
-    x0: xc - trackW / 2,
-    x1: xc + trackW / 2,
-    poly: trackHitboxHull(pts, trackTh / 2 + 0.045),
-  }];
   // Seat this unit's InstancedMesh matrices at rest NOW (scroll 0/0). The
   // instanced wheels/link pads otherwise carry identity matrices — an origin
   // blob reaching ~0.4 m below ground — until someone calls update(). The
@@ -2959,7 +3997,7 @@ function buildRunningGear(P, cfg) {
  * @param {object} P profile build context
  * @param {object} unit one buildRunningGear result (update/conform/setBroken)
  */
-function registerGearUnit(P, unit) {
+function registerGearUnit(P: RunningGearBuilderPort, unit: RunningGearUnit): void {
   const prev = P.gear;
   if (!prev) { P.gear = unit; return; }
   const units = (prev.__units || [prev]).concat(unit);
@@ -2968,7 +4006,14 @@ function registerGearUnit(P, unit) {
   const zR = Math.min(...cgs.map((c) => c.zCenterM - c.halfLenM));
   P.gear = {
     __units: units,
-    update(l, r) { for (const u of units) u.update(l, r); },
+    addRoadWheelLayer(geometry, material, layer) {
+      let result: THREE.InstancedMesh | null = null;
+      for (const entry of units) {
+        result = entry.addRoadWheelLayer(geometry, material, layer) ?? result;
+      }
+      return result;
+    },
+    update(l, r, dt) { for (const u of units) u.update(l, r, dt); },
     resetPose() { for (const u of units) u.resetPose?.(); },
     conform(state, sampler, pitchEff, rollEff, dt) {
       let settling = false;
@@ -2977,7 +4022,7 @@ function registerGearUnit(P, unit) {
       }
       return settling;
     },
-    setBroken(module, broken) { for (const u of units) u.setBroken(module, broken); },
+    setBroken(module, broken) { for (const u of units) u.setBroken?.(module, broken); },
     // multi-unit rigs (t95 four-track): one hitbox hull PER UNIT, per side —
     // attachTrackShapes mirrors each entry to trackL/trackR prisms.
     trackHitbox: units.flatMap((u) => u.trackHitbox || []),
@@ -2998,12 +4043,18 @@ function registerGearUnit(P, unit) {
 // ---------------------------------------------------------------------------
 // Gun assembly (into the recoil group). cfg fractions are along barrel length.
 // ---------------------------------------------------------------------------
-function buildGun(P, cfg) {
+function buildGun(builder: object, config: object): void {
+  if (!isGunBuildConfig(config)) throw new TypeError('Invalid procedural gun contract');
+  buildGunStrict(builder, config);
+}
+
+function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
+  const P = requireGeometryAddPort(builder);
   const { len, r, brake = null, sleeve = false, evac = null, collar = false,
     baseR = r * 1.9, evacR = 1.62 } = cfg;
   const seg = P.q ? 28 : 12;
-  const g = [];
-  const gd = [];                                                             // dark fittings on the tube
+  const g: THREE.BufferGeometry[] = [];
+  const gd: THREE.BufferGeometry[] = [];                                     // dark fittings on the tube
   g.push(xform(cylZ(baseR, 0.55, seg, baseR * 1.15), 0, 0, 0.2));           // mantlet root / breech collar
   const bLen = brake === 'double' ? len - 0.66 : brake ? len - 0.42 : len - 0.02;
   g.push(xform(cylZ(r, bLen - 0.4, seg, r * 1.25), 0, 0, 0.4 + (bLen - 0.4) / 2));
@@ -3020,14 +4071,17 @@ function buildGun(P, cfg) {
     }
   }
   if (evac !== null) {
+    const evacFraction = typeof evac === 'number' ? evac : 0;
     // Bore evacuator: a clearly readable tapered drum blended into the tube —
     // the single most identifying feature of a modern gun tube at closeup.
     // r7b: diameter now per-gun (cfg.evacR) — the 2A46M's fat drum barely
     // read over the thermal sleeve at the default 1.62x.
     const el = Math.max(0.62, len * 0.13);
-    g.push(xform(cylZ(r * evacR, el * 0.55, seg), 0, 0, evac * len));
-    g.push(xform(cylZ(r * evacR, el * 0.32, seg, r * 1.16), 0, 0, evac * len - el * 0.43));
-    g.push(xform(cylZ(r * 1.16, el * 0.32, seg, r * evacR), 0, 0, evac * len + el * 0.43));
+    g.push(xform(cylZ(r * evacR, el * 0.55, seg), 0, 0, evacFraction * len));
+    g.push(xform(cylZ(r * evacR, el * 0.32, seg, r * 1.16), 0, 0,
+      evacFraction * len - el * 0.43));
+    g.push(xform(cylZ(r * 1.16, el * 0.32, seg, r * evacR), 0, 0,
+      evacFraction * len + el * 0.43));
   }
   if (collar) g.push(xform(cylZ(r * 1.35, 0.09, seg), 0, 0, len - 0.55));    // MRS collar
   if (brake) {
@@ -3080,13 +4134,23 @@ function buildGun(P, cfg) {
   }
   for (const geo of g) P.add('gun', geo);
   for (const geo of gd) P.add('gunDark', geo);
-  P.muzzleZ = len;
+  Object.assign(builder, { muzzleZ: len });
 }
 
 // ---------------------------------------------------------------------------
 // Small shared detail assemblies
 // ---------------------------------------------------------------------------
-function cupola(P, bucket, x, y, z, r, h, periscopes = 6) {
+function cupola(
+  builder: object,
+  bucket: string,
+  x: number,
+  y: number,
+  z: number,
+  r: number,
+  h: number,
+  periscopes = 6,
+): void {
+  const P = requireCupolaBuilderPort(builder);
   const cs = P.q ? 22 : 10;
   const darkB = bucket === 'turret' ? 'turretDark' : 'hullDark';
   const glassB = bucket === 'turret' ? 'turretGlass' : 'hullGlass';
@@ -3108,26 +4172,51 @@ function cupola(P, bucket, x, y, z, r, h, periscopes = 6) {
 }
 
 // Headlight: armored drum + glass lens face (lens offset baked pre-rotation).
-function headlight(P, x, y, z, rx = 0, r = 0.055) {
+function headlight(
+  builder: object,
+  x: number,
+  y: number,
+  z: number,
+  rx = 0,
+  r = 0.055,
+): void {
+  const P = requireGeometryAddPort(builder);
   P.add('hullDetail', cylZ(r, r * 1.35, 12), x, y, z, rx, 0, 0);
   P.add('hullGlass', xform(cylZ(r * 0.8, 0.02, 12), 0, 0, r * 0.72), x, y, z, rx, 0, 0);
   P.add('hullDark', xform(box(0.02, r * 2.3, 0.02), 0, 0, r * 0.5), x, y, z, rx, 0, 0); // brush guard rib
 }
 
 // Lifting eye: small torus stood on a foot plate.
-function liftEye(P, bucket, x, y, z, ry = 0) {
+function liftEye(
+  builder: object,
+  bucket: string,
+  x: number,
+  y: number,
+  z: number,
+  ry = 0,
+): void {
+  const P = requireGeometryAddPort(builder);
   P.add(bucket, xform(torus(0.045, 0.016, 12), 0, 0.04, 0, Math.PI / 2, 0, 0), x, y, z, 0, ry, 0);
   P.add(bucket, box(0.09, 0.03, 0.06), x, y - 0.01, z, 0, ry, 0);
 }
 
 // Fixed periscope block with glass slit (driver / roof optics).
-function periscope(P, bucket, x, y, z, ry = 0) {
+function periscope(
+  builder: object,
+  bucket: string,
+  x: number,
+  y: number,
+  z: number,
+  ry = 0,
+): void {
+  const P = requireModuleVisualBuilderPort(builder);
   P.addModuleVisual('optics', bucket, box(0.14, 0.07, 0.1), x, y, z, 0, ry, 0);
   const glassB = bucket.startsWith('turret') ? 'turretGlass' : 'hullGlass';
   P.addModuleVisual('optics', glassB, box(0.11, 0.028, 0.102), x, y + 0.012, z, 0, ry, 0);
 }
 
-function pintleMG(P, x, y, z, big = true) {
+function pintleMG(builder: object, x: number, y: number, z: number, big = true): void {
+  const P = requireGeometryAddPort(builder);
   const s = big ? 1 : 0.75;
   P.add('turretDark', cylY(0.02 * s, 0.02 * s, 0.22), x, y + 0.11, z);
   P.add('turretDark', box(0.09 * s, 0.09 * s, 0.5 * s), x, y + 0.27, z);
@@ -3135,7 +4224,16 @@ function pintleMG(P, x, y, z, big = true) {
   if (big) P.add('turretDark', box(0.16, 0.05, 0.12), x, y + 0.2, z - 0.28);
 }
 
-function smokeCluster(P, x, y, z, n, yaw, arc = 0.5) {
+function smokeCluster(
+  builder: object,
+  x: number,
+  y: number,
+  z: number,
+  n: number,
+  yaw: number,
+  arc = 0.5,
+): void {
+  const P = requireGeometryAddPort(builder);
   for (let k = 0; k < n; k++) {
     const f = k - (n - 1) / 2;
     const a = yaw + f * (arc / n);
@@ -3144,18 +4242,39 @@ function smokeCluster(P, x, y, z, n, yaw, arc = 0.5) {
   }
 }
 
-function towCable(P, pts, r = 0.022) {
-  const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
+function towCable(builder: object, pts: readonly Point3[], r = 0.022): void {
+  const P = requireGeometryAddPort(builder);
+  const curve = new THREE.CatmullRomCurve3(
+    pts.map((p) => new THREE.Vector3(p[0] ?? 0, p[1] ?? 0, p[2] ?? 0)),
+    false,
+    'centripetal',
+  );
   P.add('hullDark', new THREE.TubeGeometry(curve, P.q ? 20 : 10, r, 6, false));
 }
 
-function fenders(P, xInner, xOuter, y, z0, z1, th = 0.035) {
+function fenders(
+  builder: object,
+  xInner: number,
+  xOuter: number,
+  y: number,
+  z0: number,
+  z1: number,
+  th = 0.035,
+): void {
+  const P = requireGeometryAddPort(builder);
   const w = xOuter - xInner, xm = (xInner + xOuter) / 2;
   P.add('hull', box(w, th, z1 - z0), xm, y, (z0 + z1) / 2);
   P.add('hull', box(w, th, z1 - z0), -xm, y, (z0 + z1) / 2);
 }
 
-function stowage(P, bucket, rng, spots) {
+function stowage(
+  builder: object,
+  bucket: string,
+  rngSource: unknown,
+  spots: readonly StowageSpot[],
+): void {
+  const P = requireEquipmentBuilderPort(builder);
+  const rng = requireRng(rngSource);
   // tank_models r7 ("read as placeholder primitives"): every canvas bundle
   // carries a soft tarp lid + two dark cinch straps so the boxes read as
   // strapped-down kit, not bare prisms.
@@ -3175,11 +4294,18 @@ function stowage(P, bucket, rng, spots) {
 }
 
 // ---- procedural prop kit (stowage clutter at canonical locations) ----------
-function jerryCan(P, bucket, x, y, z, yaw = 0) {
+function jerryCan(
+  builder: object, bucket: string, x: number, y: number, z: number, yaw = 0,
+): void {
+  const P = requireEquipmentBuilderPort(builder);
   P.addEquipment(bucket, box(0.16, 0.46, 0.34), x, y, z, 0, yaw, 0);
   P.addEquipment(bucket, box(0.04, 0.06, 0.12), x, y + 0.26, z, 0, yaw, 0);   // handles
 }
-function tarpRoll(P, bucket, x, y, z, len, r = 0.1, alongX = true, seg = 10) {
+function tarpRoll(
+  builder: object, bucket: string, x: number, y: number, z: number,
+  len: number, r = 0.1, alongX = true, seg = 10,
+): void {
+  const P = requireEquipmentBuilderPort(builder);
   P.addEquipment(bucket, alongX ? cylX(r, len, seg) : cylZ(r, len, seg), x, y, z);
   const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
   for (const f of [-0.3, 0.3]) {
@@ -3189,14 +4315,22 @@ function tarpRoll(P, bucket, x, y, z, len, r = 0.1, alongX = true, seg = 10) {
       x + (alongX ? f * len : 0), y, z + (alongX ? 0 : f * len));    // straps
   }
 }
-function ammoCan(P, bucket, x, y, z, yaw = 0) {
+function ammoCan(
+  builder: object, bucket: string, x: number, y: number, z: number, yaw = 0,
+): void {
+  const P = requireEquipmentBuilderPort(builder);
   P.addEquipment(bucket, box(0.14, 0.2, 0.3), x, y, z, 0, yaw, 0);
 }
-function shovelTool(P, x, y, z, len = 0.95) {
+function shovelTool(builder: object, x: number, y: number, z: number, len = 0.95): void {
+  const P = requireGeometryAddPort(builder);
   P.add('hullWood', box(0.035, 0.025, len), x, y, z);
   P.add('hullDark', box(0.11, 0.03, 0.22), x, y, z + len * 0.55);
 }
-function spareTrackStrip(P, bucket, x, y, z, links, rx = 0, ry = 0) {
+function spareTrackStrip(
+  builder: object, bucket: string, x: number, y: number, z: number,
+  links: number, rx = 0, ry = 0,
+): void {
+  const P = requireGeometryAddPort(builder);
   // stack of individual link slabs so the strip reads segmented — worn track
   // steel (trackLink material), never flat blockout black (r5)
   const steel = bucket.startsWith('turret') ? 'turretTrack' : 'hullTrack';
@@ -3210,8 +4344,10 @@ function spareTrackStrip(P, bucket, x, y, z, links, rx = 0, ry = 0) {
 // Keep the original grille spacing at full quality and retain an evenly
 // distributed relief sample at low quality instead of collapsing to a flat
 // dark rectangle. Results are shared because builders never mutate them.
-const GRILLE_INDEX_CACHE = new Map();
-function grilleIndices(highDetail, count, lowCount = 3) {
+const GRILLE_INDEX_CACHE = new Map<string, readonly number[]>();
+function grilleIndices(
+  highDetail: boolean | undefined, count: number, lowCount = 3,
+): readonly number[] {
   if (!Number.isInteger(count) || count < 1 ||
       !Number.isInteger(lowCount) || lowCount < 1) {
     throw new RangeError('grilleIndices expects positive integer counts');
@@ -3229,6 +4365,14 @@ function grilleIndices(highDetail, count, lowCount = 3) {
   return frozen;
 }
 
+function buildM1A2Public(builder: object): void {
+  Reflect.apply(buildM1A2, undefined, [builder]);
+}
+
+function buildCanonicalPublic(builder: object, id: string): void {
+  Reflect.apply(buildCanonical, undefined, [builder, id]);
+}
+
 // ---------------------------------------------------------------------------
 // EXTENSION HOOK (HD modern roster): shared geometry/greeble kit for builder
 // modules (modern1.ts etc.). Everything here is the same battle-tested code
@@ -3240,14 +4384,14 @@ export const KIT = {
   mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometry,
   simplifiedTrackShoeGeometry, trackHitboxHull,
   runningGearContactPatch,
-  buildRunningGear, buildGun,
+  buildRunningGear: buildRunningGearPublic, buildGun,
   cupola, headlight, liftEye, periscope, pintleMG, smokeCluster, towCable,
   fenders, stowage, jerryCan, tarpRoll, ammoCan, shovelTool, spareTrackStrip,
   grilleIndices,
   // Exposed for the recovered Abrams family: those variants layer their own
   // kits onto the detailed native Abrams rather than replacing it with a
   // generic wedge profile.
-  buildM1A2, buildCanonical,
+  buildM1A2: buildM1A2Public, buildCanonical: buildCanonicalPublic,
   D2R,
 };
 
@@ -3255,7 +4399,7 @@ export const KIT = {
 // Per-tank builders
 // ===========================================================================
 
-function buildM4A3E8(P) {
+function buildM4A3E8(P: TankBuilderPort): void {
   const { rng } = P;
   // hull
   P.add('hull', box(1.9, 0.67, 5.75), 0, 0.765, -0.125);                        // lower hull
@@ -3362,7 +4506,7 @@ function buildM4A3E8(P) {
   P.topY = 0.72;
 }
 
-function buildTiger(P) {
+function buildTiger(P: TankBuilderPort): void {
   const { rng } = P;
   P.add('hull', box(2.26, 0.68, 6.32), 0, 0.81, 0);                             // lower hull
   // ONE continuous overhanging superstructure box reaching down to the track
@@ -3669,7 +4813,7 @@ function buildTiger(P) {
   P.topY = 1.05;
 }
 
-function buildT34(P) {
+function buildT34(P: TankBuilderPort): void {
   const { rng } = P;
   P.add('hull', box(2.0, 0.65, 5.4), 0, 0.725, -0.15);                          // lower hull
   // r8 upper-hull rework: the r7 frustum's top ring overhung the bottom at
@@ -3760,7 +4904,7 @@ function buildT34(P) {
   P.topY = 1.10;
 }
 
-function buildIS2(P) {
+function buildIS2(P: TankBuilderPort): void {
   const { rng } = P;
   P.add('hull', box(1.56, 0.65, 5.72), 0, 0.775, 0.05);                         // closed inter-track lower hull
   // r7 hull rework: the sponson band starts at the FENDER LINE (1.22), not at
@@ -3870,7 +5014,7 @@ function buildIS2(P) {
   P.topY = 0.72;
 }
 
-function buildPanther(P) {
+function buildPanther(P: TankBuilderPort): void {
   // §5.247 ww2-wave FULL REDESIGN (photo-class, no oracle — FALSE-0 law).
   // Panther Ausf. G, late 1944 (ambush-scheme era, zimmerit discontinued):
   // published dims proven in the authored world — hull 6.87 m = shoe run
@@ -4063,7 +5207,7 @@ function buildPanther(P) {
   P.add('hullDark', box(0.05, 0.03, 0.06), 1.545, 1.545, -0.36, 0, 0, -1.05);   // clamp
   // spare-link pairs flat on both sponson slopes, rear quarter (§I census)
   for (const s of [-1, 1]) {
-    const st = KIT_FITTINGS.spareTrackLinks({
+    const st = tankFittings().spareTrackLinks({
       mats: P.mats, links: 2, width: 0.15, pitch: 0.18, seed: s < 0 ? 4 : 8,
       rotation: [0, 0, s * -1.05],
     });
@@ -4080,7 +5224,7 @@ function buildPanther(P) {
   // 2 m rod antenna, right rear deck (census; raked so the tip stays under
   // the 2.99 cupola-crest height law)
   {
-    const aw = KIT_FITTINGS.antennaWhip({ mats: P.mats, h: 1.05, rake: 0.35, seed: 3 });
+    const aw = tankFittings().antennaWhip({ mats: P.mats, h: 1.05, rake: 0.35, seed: 3 });
     aw.position.set(1.12, 1.87, -2.15);
     P.hullG.add(aw);
   }
@@ -4102,7 +5246,10 @@ function buildPanther(P) {
   cupola(P, 'turret', -0.27, 0.78, -0.35, 0.27, 0.28, 7);
   P.add('turretDetail', torus(0.30, 0.016, P.q ? 22 : 12), -0.27, 1.02, -0.35); // AA rail
   {
-    const mg = KIT_FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 7, elev: 0.24, ammo: false, rotation: [0, -2.35, 0] });
+    const mg = tankFittings().pintleMG({
+      mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 7,
+      elev: 0.24, ammo: false, rotation: [0, -2.35, 0],
+    });
     mg.position.set(-0.05, 0.96, -0.56);
     P.turretG.add(mg);
   }
@@ -4164,7 +5311,7 @@ function buildPanther(P) {
   P.decal('turret', 'number', '435', 0.34, [-0.82, 0.33, -0.10], -Math.PI / 2, 0, -0.415);
   P.topY = 1.10;
 }
-function buildM1A2(P) {
+function buildM1A2(P: TankBuilderPort): void {
   const { rng } = P;
   P.add('hull', box(2.38, 0.6, 7.6), 0, 0.75, -0.1);                            // lower hull
   P.add('hull', box(3.66, 0.42, 5.56), 0, 1.26, -1.18);                         // upper hull slab (low profile)
@@ -4293,7 +5440,7 @@ function buildM1A2(P) {
   P.topY = 0.88;
 }
 
-function buildT90M(P) {
+function buildT90M(P: TankBuilderPort): void {
   const { rng } = P;
   // r7 hull rebuild (barge-hull critical): the real T-90M side is essentially
   // TRACKS + SKIRTS — no meter-tall sponson wall. Lower hull narrows to sit
@@ -4485,7 +5632,7 @@ function buildT90M(P) {
   });
   // ---- Relikt ERA bricks (instanced, strippable per armor plate name) ----
   // Glacis rows seated on the r5 glacis plane z(y) = 1.90 + (1.40-y)*2.473.
-  const t90GlacisZ = (y) => 1.90 + (1.40 - y) * 2.473 + 0.04;
+  const t90GlacisZ = (y: number): number => 1.90 + (1.40 - y) * 2.473 + 0.04;
   // r5 ("glacis reads as smooth wide panels instead of a grid of Relikt
   // tiles with visible gaps"): a DARK mounting bed sits behind the field and
   // the courses spread to a 0.325/0.15 pitch, so every tile stands as a
@@ -4512,7 +5659,7 @@ function buildT90M(P) {
   });
   // Turret cheek tiles ride ON the rebuilt chunky wedge-course faces — 2 rows
   // x 5 cols per side, parallel to the 0.55 rad plan wedge angle (r5).
-  const t90Cheek = (put, s) => {
+  const t90Cheek = (put: EraPlacement, s: Side): void => {
     const dx = Math.cos(0.55), dz = -Math.sin(0.55);
     const nx = Math.sin(0.55), nz = Math.cos(0.55);
     for (let row = 0; row < 2; row++) for (let c = 0; c < 5; c++) {
@@ -4524,7 +5671,7 @@ function buildT90M(P) {
   P.eraCluster('turret_era_R', (put) => t90Cheek(put, 1), true);
   P.eraCluster('turret_era_L', (put) => t90Cheek(put, -1), true);
   // side rows on the shoulder clusters (1.15 rad plan angle)
-  const t90Side = (put, s) => {
+  const t90Side = (put: EraPlacement, s: Side): void => {
     const dx = Math.cos(1.15), dz = -Math.sin(1.15);
     const nx = Math.sin(1.15), nz = Math.cos(1.15);
     for (let row = 0; row < 2; row++) for (let c = 0; c < 4; c++) {
@@ -4557,7 +5704,7 @@ function buildT90M(P) {
   P.topY = 0.95;
 }
 
-function buildLeo2A7(P) {
+function buildLeo2A7(P: TankBuilderPort): void {
   const { rng } = P;
   // r7 hull rework (barge critique): the full-width 0.64-tall sponson slab
   // and its long rear overhang are gone — the upper hull is a shallow band
@@ -4931,11 +6078,11 @@ function buildLeo2A7(P) {
   P.topY = 1.08;
 }
 
-const BUILDERS = {
+const BUILDERS: TankBuilderRecord = {
   m4a3e8: buildM4A3E8, tiger1: buildTiger, t34_85: buildT34, is2: buildIS2,
   panther_g: buildPanther, m1a2_legacy: buildM1A2, t90m: buildT90M, leo2a7: buildLeo2A7,
 };
-const CANONICAL_BUILDERS = { ...BUILDERS };
+const CANONICAL_BUILDERS: TankBuilderRecord = { ...BUILDERS };
 
 /**
  * Configure the core once the fleet facade has evaluated every spec and
@@ -4943,14 +6090,18 @@ const CANONICAL_BUILDERS = { ...BUILDERS };
  * one explicit override layer because recovered vehicles intentionally
  * replace donor silhouettes while still calling the frozen donor builder.
  */
-export function configureTankFactory({ canonicalBuilderPacks, profiledBuilders, fittings }) {
+export function configureTankFactory({
+  canonicalBuilderPacks,
+  profiledBuilders,
+  fittings,
+}: FactoryConfiguration): void {
   if (factoryConfigured) throw new Error('Tank factory is already configured');
   if (!Array.isArray(canonicalBuilderPacks)) {
     throw new TypeError('canonicalBuilderPacks must be an array');
   }
 
   const registered = new Set(Object.keys(BUILDERS));
-  const canonicalEntries = [];
+  const canonicalEntries: Array<[string, TankBuilder]> = [];
   for (const entry of canonicalBuilderPacks) {
     if (!Array.isArray(entry) || entry.length !== 2 || !entry[1] || typeof entry[1] !== 'object') {
       throw new TypeError('Each canonical builder pack must be [name, builders]');
@@ -4989,7 +6140,19 @@ export function configureTankFactory({ canonicalBuilderPacks, profiledBuilders, 
     BUILDERS[id] = builder;
     PROFILED_BUILDER_IDS.add(id);
   }
-  KIT_FITTINGS = fittings;
+  const fitting = (name: 'spareTrackLinks' | 'antennaWhip' | 'pintleMG') =>
+    (options: object): THREE.Object3D => {
+      const result = Reflect.apply(fittings[name], undefined, [options]);
+      if (!(result instanceof THREE.Object3D)) {
+        throw new TypeError(`Tank fitting ${name} did not return an Object3D`);
+      }
+      return result;
+    };
+  KIT_FITTINGS = {
+    spareTrackLinks: fitting('spareTrackLinks'),
+    antennaWhip: fitting('antennaWhip'),
+    pintleMG: fitting('pintleMG'),
+  };
   factoryConfigured = true;
 }
 
@@ -4999,7 +6162,10 @@ export function configureTankFactory({ canonicalBuilderPacks, profiledBuilders, 
  * CANONICAL_BUILDERS without replacing an already-registered profile. This
  * makes independent family imports deterministic regardless of network order.
  */
-export function registerCanonicalBuilders(packName, builders) {
+export function registerCanonicalBuilders(
+  packName: string,
+  builders: TankBuilderRecord,
+): void {
   if (!factoryConfigured) throw new Error('Tank factory is not configured yet');
   if (!builders || typeof builders !== 'object') {
     throw new TypeError(`Canonical builder pack ${packName} must be an object`);
@@ -5023,7 +6189,7 @@ export function registerCanonicalBuilders(packName, builders) {
  * module evaluation is cached, while this also makes retrying a resolved
  * loader harmless.
  */
-export function registerProfiledBuilders(profiledBuilders) {
+export function registerProfiledBuilders(profiledBuilders: TankBuilderRecord): void {
   if (!factoryConfigured) throw new Error('Tank factory is not configured yet');
   if (!profiledBuilders || typeof profiledBuilders !== 'object') {
     throw new TypeError('profiledBuilders must be an object');
@@ -5035,17 +6201,17 @@ export function registerProfiledBuilders(profiledBuilders) {
   }
 }
 
-function buildCanonical(P, id) {
+function buildCanonical(P: TankBuilderPort, id: string): void {
   const builder = CANONICAL_BUILDERS[id];
   if (!builder) throw new Error(`No canonical procedural builder for ${id}`);
-  builder(P);
+  Reflect.apply(builder, undefined, [P]);
 }
 
 // Recovered variants should fall back to the closest articulated family
 // model, not the generic box placeholder, when their candidate GLB fails the
 // quality gate. Follow visualBase/variantOf chains with cycle protection.
-function resolveBuilder(specId, spec) {
-  const seen = new Set();
+function resolveBuilder(specId: string, spec: FactoryTankSpec): TankBuilder | null {
+  const seen = new Set<string>();
   let id = specId;
   let row = spec;
   while (id && !seen.has(id)) {
@@ -5064,7 +6230,7 @@ function resolveBuilder(specId, spec) {
 // off the spec so the silhouette is sane for the frames before the GLB swap
 // lands (modelLoader hides these meshes on success; on failure the vehicle
 // still reads as a tank).
-function buildCommunityPlaceholder(P) {
+function buildCommunityPlaceholder(P: TankBuilderPort): void {
   const d = P.spec.dims;
   const a = P.spec.armor;
   const hw = d.widthM / 2;
@@ -5087,7 +6253,7 @@ function buildCommunityPlaceholder(P) {
 }
 
 // Bucket -> [parent group key, material key]
-const BUCKET_DEF = {
+const BUCKET_DEF: Record<string, BucketDefinition> = {
   hull: ['hullG', 'hull'], hullCupola: ['hullG', 'hull'], hullHatch: ['hullG', 'hull'],
   hullExternalArmor: ['hullG', 'hull'], hullEquipment: ['hullG', 'hull'],
   hullDetail: ['hullG', 'detail'], hullDark: ['hullG', 'dark'],
@@ -5181,7 +6347,12 @@ const LOD0_KEEP = new Set([
 //    re-cert bundled.
 // Down-face AO 0.28 (ref 0.26) and jitter 0.09 (ref 0.08) intentionally
 // kept — cited by no window.
-function bakeDirt(geo, yOffset, strength = 1, deckEq = false) {
+function bakeDirt(
+  geo: THREE.BufferGeometry,
+  yOffset: number,
+  strength = 1,
+  deckEq = false,
+): THREE.BufferGeometry {
   const pos = geo.attributes.position, nor = geo.attributes.normal;
   const col = new Float32Array(pos.count * 3);
   for (let i = 0; i < pos.count; i++) {
@@ -5239,11 +6410,11 @@ function bakeDirt(geo, yOffset, strength = 1, deckEq = false) {
 const _rcM = new THREE.Matrix4();
 const _rcM2 = new THREE.Matrix4();
 const _rcV = new THREE.Vector3();
-const _floorHeap = [];
+const _floorHeap: number[] = [];
 const FLOOR_DENSE_SAMPLES = 12;
 const FLOOR_DENSE_BAND_M = 0.015;
 
-function maxHeapPush(heap, value) {
+function maxHeapPush(heap: number[], value: number): void {
   let index = heap.length;
   heap.push(value);
   while (index > 0) {
@@ -5255,7 +6426,7 @@ function maxHeapPush(heap, value) {
   heap[index] = value;
 }
 
-function maxHeapReplaceRoot(heap, value) {
+function maxHeapReplaceRoot(heap: number[], value: number): void {
   const length = heap.length;
   let index = 0;
   for (;;) {
@@ -5284,7 +6455,9 @@ function maxHeapReplaceRoot(heap, value) {
  * @param {number[]} ys root-local vertical samples
  * @returns {number|undefined} exact robust floor sample
  */
-function robustFloorYStrided(values, offset = 0, stride = 1) {
+function robustFloorYStrided(
+  values: ArrayLike<number>, offset = 0, stride = 1,
+): number | undefined {
   const length = values.length <= offset
     ? 0 : Math.floor((values.length - 1 - offset) / stride) + 1;
   if (!length) return undefined;
@@ -5313,7 +6486,7 @@ function robustFloorYStrided(values, offset = 0, stride = 1) {
   }
 }
 
-export function robustFloorY(ys) {
+export function robustFloorY(ys: ArrayLike<number>): number | undefined {
   return robustFloorYStrided(ys);
 }
 
@@ -5332,9 +6505,16 @@ const PRESENTATION_TRACK_TIP_ALLOWANCE_M = 0.025;
  * visible cold-garage frame. This tight typed-array walk performs the same XY
  * barycentric triangle test without allocations or subtree traversal.
  */
-function axisGeometryCapZ(geometry, x, y, minZ, maxZ) {
+function axisGeometryCapZ(
+  geometry: THREE.BufferGeometry,
+  x: number,
+  y: number,
+  minZ: number,
+  maxZ: number,
+): number | null {
   const position = geometry && geometry.getAttribute && geometry.getAttribute('position');
-  if (!position || position.itemSize < 3 || position.isInterleavedBufferAttribute) return null;
+  if (!position || position.itemSize < 3
+    || position instanceof THREE.InterleavedBufferAttribute) return null;
   const vertices = position.array;
   const stride = position.itemSize;
   const index = geometry.index && geometry.index.array;
@@ -5360,26 +6540,43 @@ function axisGeometryCapZ(geometry, x, y, minZ, maxZ) {
   return Number.isFinite(best) ? best : null;
 }
 
-function measureRestContact(root) {
+interface RestContactReceipt {
+  bottomYM: number;
+  absMinYM: number;
+  panYM: number | null;
+  halfLenM: number | null;
+  halfWidM: number | null;
+  zCenterM: number | null;
+}
+
+function materialWritesColor(material: THREE.Material | THREE.Material[]): boolean {
+  const materials = Array.isArray(material) ? material : [material];
+  return materials.some((entry) => entry.colorWrite !== false);
+}
+
+function measureRestContact(root: THREE.Object3D): RestContactReceipt | null {
   try {
     root.updateMatrixWorld(true);
     const invRoot = _rcM2.copy(root.matrixWorld).invert().clone();
-    const isVisible = (o) => {
-      for (let p = o; p && p !== root; p = p.parent) if (!p.visible) return false;
+    const isVisible = (o: THREE.Object3D): boolean => {
+      for (let p: THREE.Object3D | null = o; p && p !== root; p = p.parent) {
+        if (!p.visible) return false;
+      }
       return true;
     };
-    const pts = [];
+    const pts: number[] = [];
     let absMinYM = Infinity;
     // Hull-pan floor candidates: lowest root-local bbox bottom over
     // non-instanced meshes whose bbox SPANS the centerline (vertex sampling
     // cannot see a wide belly plate — a 1.9 m box face crossing the center
     // strip has all its vertices at the ±corners, outside any strip). Track
     // bands/skirts sit one-sided; wheels/pads are instanced — excluded.
-    let panYM = null;
-    const panConsider = (o) => {
-      if (o.isInstancedMesh || !o.isMesh) return;
+    let panYM: number | null = null;
+    const panConsider = (o: VehicleMesh): void => {
+      if (isVehicleInstancedMesh(o)) return;
       if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
       const bb = o.geometry.boundingBox;
+      if (!bb) return;
       _rcM2.multiplyMatrices(invRoot, o.matrixWorld);
       let mnX = Infinity, mxX = -Infinity, mnY = Infinity;
       for (const cx of [bb.min.x, bb.max.x]) {
@@ -5395,13 +6592,13 @@ function measureRestContact(root) {
       if (mnX < -0.2 && mxX > 0.2 && (panYM === null || mnY < panYM)) panYM = mnY;
     };
     root.traverse((o) => {
-      if (!o.geometry) return;
-      if (o.material && o.material.colorWrite === false) return; // shadow proxies
+      if (!isVehicleMesh(o) && !isVehicleInstancedMesh(o)) return;
+      if (!materialWritesColor(o.material)) return; // shadow proxies
       if (!isVisible(o)) return;
       const pa = o.geometry.getAttribute && o.geometry.getAttribute('position');
       if (!pa || !pa.count) return;
-      panConsider(o);
-      if (o.isInstancedMesh) {
+      if (isVehicleMesh(o)) panConsider(o);
+      if (isVehicleInstancedMesh(o)) {
         const per = Math.max(1, Math.floor(pa.count / 48));
         for (let i = 0; i < o.count; i++) {
           o.getMatrixAt(i, _rcM);
@@ -5428,6 +6625,7 @@ function measureRestContact(root) {
     });
     if (!pts.length) return null;
     const bottomYM = robustFloorYStrided(pts, 1, 3);
+    if (bottomYM === undefined) return null;
     // Hull-pan floor (see panConsider above). The movement belly guard used a
     // fixed 0.34 m line on the premise every pan sits ≥ 0.40 m — stale on the
     // rebuilt profiles (soviet-heavy/sepv2 bellies at 0.30): sharing the fan
@@ -5468,12 +6666,12 @@ function measureRestContact(root) {
 const _pfM = new THREE.Matrix4();
 const _pfM2 = new THREE.Matrix4();
 const _pfV = new THREE.Vector3();
-function measurePresentationFloor(root) {
+function measurePresentationFloor(root: THREE.Object3D): number | null {
   try {
     root.updateMatrixWorld(true);
     const invRoot = _pfM2.copy(root.matrixWorld).invert().clone();
     let minY = Infinity;
-    const considerBox = (box, matrix) => {
+    const considerBox = (box: THREE.Box3, matrix: THREE.Matrix4): void => {
       for (const x of [box.min.x, box.max.x]) {
         for (const y of [box.min.y, box.max.y]) {
           for (const z of [box.min.z, box.max.z]) {
@@ -5484,16 +6682,17 @@ function measurePresentationFloor(root) {
       }
     };
     root.traverse((object) => {
-      if (!object.geometry || !(object.isMesh || object.isInstancedMesh)) return;
-      if (object.material?.colorWrite === false) return;
-      for (let current = object; current && current !== root; current = current.parent) {
+      if (!isVehicleMesh(object) && !isVehicleInstancedMesh(object)) return;
+      if (!materialWritesColor(object.material)) return;
+      for (let current: THREE.Object3D | null = object;
+        current && current !== root; current = current.parent) {
         if (!current.visible) return;
       }
       if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
       const box = object.geometry.boundingBox;
       if (!box || box.isEmpty()) return;
       _pfM2.multiplyMatrices(invRoot, object.matrixWorld);
-      if (!object.isInstancedMesh) {
+      if (!isVehicleInstancedMesh(object)) {
         considerBox(box, _pfM2);
         return;
       }
@@ -5511,9 +6710,12 @@ function measurePresentationFloor(root) {
   }
 }
 
-function createGeometryReceiptMaterials() {
-  const owned = [];
-  const make = (color, extra = {}) => {
+function createGeometryReceiptMaterials(): TankMaterials {
+  const owned: Array<THREE.Material | THREE.Texture> = [];
+  const make = (
+    color: THREE.ColorRepresentation,
+    extra: THREE.MeshStandardMaterialParameters = {},
+  ): THREE.MeshStandardMaterial => {
     const material = new THREE.MeshStandardMaterial({
       color,
       roughness: 0.9,
@@ -5533,7 +6735,7 @@ function createGeometryReceiptMaterials() {
   trackTexL.offset.set(0, 0);
   trackTexR.offset.set(0, 0);
   owned.push(trackTexL, trackTexR, neutralAlbedo);
-  const mats = {
+  const mats: TankMaterials = {
     hull: make(0x667055, { map: neutralAlbedo }),
     wheels: make(0x545b48),
     wheelsRecessed: make(0x34382f),
@@ -5553,14 +6755,14 @@ function createGeometryReceiptMaterials() {
     trackTexL,
     trackTexR,
     trackLinkM: 0.165 * 4,
+    decal: () => mats.detail,
+    dispose: () => { for (const resource of owned) resource.dispose(); },
   };
   tagVehicleMaterial(mats.wheels, 'wheelPaint', 'wheel-paint-receipt');
   tagVehicleMaterial(mats.wheelsRecessed, 'wheelPaint', 'wheel-paint-recessed-receipt');
   tagVehicleMaterial(mats.rubber, 'tireRubber', 'tire-rubber-receipt');
   tagVehicleMaterial(mats.trackLink, 'trackSteel', 'track-steel-receipt');
   tagVehicleMaterial(mats.spareTrack, 'trackSteel', 'spare-track-steel-receipt');
-  mats.decal = () => mats.detail;
-  mats.dispose = () => { for (const resource of owned) resource.dispose(); };
   return mats;
 }
 
@@ -5569,19 +6771,19 @@ const MARKING_ARMOR_MESH_NAMES = Object.freeze({
   turret: new Set(['turret']),
 });
 
-function markingObjectVisibleInTree(object, root) {
-  for (let current = object; current; current = current.parent) {
+function markingObjectVisibleInTree(object: THREE.Object3D, root: THREE.Object3D): boolean {
+  for (let current: THREE.Object3D | null = object; current; current = current.parent) {
     if (!current.visible) return false;
     if (current === root) return true;
   }
   return false;
 }
 
-function markingArmorMeshes(owner, ownerName) {
+function markingArmorMeshes(owner: THREE.Object3D, ownerName: VehicleOwner): VehicleMesh[] {
   const names = MARKING_ARMOR_MESH_NAMES[ownerName];
-  const meshes = [];
+  const meshes: VehicleMesh[] = [];
   owner.traverse((object) => {
-    if (!object.isMesh || object.isInstancedMesh || !names.has(object.name)
+    if (!isVehicleMesh(object) || isVehicleInstancedMesh(object) || !names.has(object.name)
         || !markingObjectVisibleInTree(object, owner)) return;
     if (!object.geometry?.attributes?.position) return;
     meshes.push(object);
@@ -5589,7 +6791,7 @@ function markingArmorMeshes(owner, ownerName) {
   return meshes;
 }
 
-function markingLocalBounds(owner, meshes) {
+function markingLocalBounds(owner: THREE.Object3D, meshes: readonly VehicleMesh[]): THREE.Box3 {
   const bounds = new THREE.Box3();
   const localPoint = new THREE.Vector3();
   const worldPoint = new THREE.Vector3();
@@ -5615,7 +6817,10 @@ function markingLocalBounds(owner, meshes) {
   return bounds;
 }
 
-function markingHitNormalLocal(hit, owner) {
+function markingHitNormalLocal(
+  hit: THREE.Intersection<VehicleMesh>,
+  owner: THREE.Object3D,
+): THREE.Vector3 | null {
   const position = hit.object.geometry.attributes.position;
   const face = hit.face;
   if (!position || !face) return null;
@@ -5626,12 +6831,18 @@ function markingHitNormalLocal(hit, owner) {
   return b.sub(a).cross(c.sub(a)).normalize();
 }
 
-function raySeatMarking(owner, meshes, originLocal, directionLocal, maxDistance = 1.0) {
+function raySeatMarking(
+  owner: THREE.Object3D,
+  meshes: VehicleMesh[],
+  originLocal: THREE.Vector3,
+  directionLocal: THREE.Vector3,
+  maxDistance = 1.0,
+): MarkingHit | null {
   owner.updateWorldMatrix(true, true);
   const originWorld = owner.localToWorld(originLocal.clone());
   const directionWorld = directionLocal.clone().transformDirection(owner.matrixWorld).normalize();
   const raycaster = new THREE.Raycaster(originWorld, directionWorld, 0, maxDistance);
-  const hit = raycaster.intersectObjects(meshes, false)[0];
+  const hit = raycaster.intersectObjects<VehicleMesh>(meshes, false)[0];
   if (!hit) return null;
   const pointLocal = owner.worldToLocal(hit.point.clone());
   const normalLocal = markingHitNormalLocal(hit, owner);
@@ -5642,7 +6853,10 @@ function raySeatMarking(owner, meshes, originLocal, directionLocal, maxDistance 
   return { pointLocal, normalLocal, distance: hit.distance, object: hit.object };
 }
 
-function markingQuaternion(normalLocal, preferredTangent = null) {
+function markingQuaternion(
+  normalLocal: THREE.Vector3,
+  preferredTangent: THREE.Vector3 | null = null,
+): THREE.Quaternion {
   let tangent = preferredTangent?.clone() || new THREE.Vector3(0, 0, 1);
   tangent.addScaledVector(normalLocal, -tangent.dot(normalLocal));
   if (tangent.lengthSq() < 1e-6) {
@@ -5661,10 +6875,10 @@ const MARKING_VISIBILITY_SAMPLE_GRID = Object.freeze([
   [-0.28, 0.28], [0, 0.28], [0.28, 0.28],
 ]);
 
-function markingOccluderMeshes(root) {
-  const meshes = [];
+function markingOccluderMeshes(root: THREE.Object3D): VehicleMesh[] {
+  const meshes: VehicleMesh[] = [];
   root.traverse((object) => {
-    if ((!object.isMesh && !object.isInstancedMesh)
+    if (!isVehicleMesh(object)
         || object.userData?.vehicleMarking
         || !markingObjectVisibleInTree(object, root)
         || !object.geometry?.attributes?.position) return;
@@ -5673,8 +6887,8 @@ function markingOccluderMeshes(root) {
   return meshes;
 }
 
-function doubleSidedMarkingRaycastScope(meshes) {
-  const originalSides = new Map();
+function doubleSidedMarkingRaycastScope(meshes: readonly VehicleMesh[]): () => void {
+  const originalSides = new Map<THREE.Material, THREE.Side>();
   for (const mesh of meshes) {
     const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     for (const material of materials) {
@@ -5688,7 +6902,13 @@ function doubleSidedMarkingRaycastScope(meshes) {
   };
 }
 
-function markingVisibilityReceipt(owner, position, quaternion, size, occluders) {
+function markingVisibilityReceipt(
+  owner: THREE.Object3D,
+  position: THREE.Vector3,
+  quaternion: THREE.Quaternion,
+  size: number,
+  occluders: VehicleMesh[],
+): MarkingVisibilityReceipt {
   owner.updateWorldMatrix(true, true);
   const centerWorld = owner.localToWorld(position.clone());
   const worldQuaternion = owner.getWorldQuaternion(new THREE.Quaternion()).multiply(quaternion);
@@ -5731,7 +6951,13 @@ function markingVisibilityReceipt(owner, position, quaternion, size, occluders) 
   };
 }
 
-function markingSeatOverlaps(position, quaternion, size, ownerName, avoid) {
+function markingSeatOverlaps(
+  position: THREE.Vector3,
+  quaternion: THREE.Quaternion,
+  size: number,
+  ownerName: VehicleOwner,
+  avoid: readonly VehicleDecal[],
+): boolean {
   const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion).normalize();
   return avoid.some((placed) => {
     if (placed.parent !== ownerName || !placed.quaternion || !placed.pos) return false;
@@ -5743,10 +6969,10 @@ function markingSeatOverlaps(position, quaternion, size, ownerName, avoid) {
   });
 }
 
-function markingSearchOffsets() {
+function markingSearchOffsets(): Array<[number, number]> {
   const longitudinal = [0, 0.05, -0.05, 0.11, -0.11, 0.18, -0.18, 0.27, -0.27];
   const vertical = [0, 0.06, -0.06, 0.13, -0.13, 0.21, -0.21, 0.32, -0.32];
-  const offsets = [];
+  const offsets: Array<[number, number]> = [];
   for (const dz of longitudinal) {
     for (const dy of vertical) offsets.push([dz, dy]);
   }
@@ -5758,22 +6984,22 @@ function markingSearchOffsets() {
 const MARKING_SEARCH_OFFSETS = markingSearchOffsets();
 
 function solveProfileMarkingSeat(
-  profile,
-  owner,
-  ownerName,
-  meshes,
-  occluders,
-  longitudinal,
-  size,
-  avoid = [],
+  profile: VehicleMarkingAnchor,
+  owner: THREE.Object3D,
+  ownerName: VehicleOwner,
+  meshes: VehicleMesh[],
+  occluders: VehicleMesh[],
+  longitudinal: number,
+  size: number,
+  avoid: readonly VehicleDecal[] = [],
   vertical = profile.vertical,
-) {
+): MarkingCandidate | null {
   const bounds = markingLocalBounds(owner, meshes);
   if (bounds.isEmpty()) return null;
   const width = bounds.max.x - bounds.min.x;
   const rayDirection = new THREE.Vector3(profile.side === 'right' ? -1 : 1, 0, 0);
   const originX = profile.side === 'right' ? bounds.max.x + 0.24 : bounds.min.x - 0.24;
-  let best = null;
+  let best: MarkingCandidate | null = null;
   for (const [dz, dy] of MARKING_SEARCH_OFFSETS) {
     const zT = THREE.MathUtils.clamp(longitudinal + dz, 0.08, 0.92);
     const yT = THREE.MathUtils.clamp(vertical + dy, 0.12, 0.90);
@@ -5808,7 +7034,12 @@ function solveProfileMarkingSeat(
   return best;
 }
 
-function reseatAuthoredMarking(decal, owner, meshes, occluders) {
+function reseatAuthoredMarking(
+  decal: VehicleDecal,
+  owner: THREE.Object3D,
+  meshes: VehicleMesh[],
+  occluders: VehicleMesh[],
+): boolean {
   const euler = new THREE.Euler(decal.rotX, decal.rotY, decal.rotZ, 'ZYX');
   const normal = new THREE.Vector3(0, 0, 1).applyEuler(euler).normalize();
   const tangent = new THREE.Vector3(1, 0, 0).applyEuler(euler).normalize();
@@ -5817,7 +7048,7 @@ function reseatAuthoredMarking(decal, owner, meshes, occluders) {
     [position.clone().addScaledVector(normal, 0.12), normal.clone().multiplyScalar(-1)],
     [position.clone().addScaledVector(normal, -0.12), normal.clone()],
   ];
-  let best = null;
+  let best: (MarkingHit & { delta: number }) | null = null;
   for (const [origin, direction] of attempts) {
     const hit = raySeatMarking(owner, meshes, origin, direction, 0.42);
     if (!hit) continue;
@@ -5838,9 +7069,16 @@ function reseatAuthoredMarking(decal, owner, meshes, occluders) {
   return size >= SURFACE_MARKING_STYLE.minimumReadableSizeM && receipt.visibilityVerified;
 }
 
-function finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG) {
-  const owners = { hull: hullG, turret: turretG };
-  const surfaces = {
+function finalizeVehicleMarkingSeats(
+  spec: FactoryTankSpec,
+  marking: VehicleMarkingRecord,
+  decals: VehicleDecal[],
+  root: THREE.Object3D,
+  hullG: THREE.Group,
+  turretG: THREE.Group,
+): void {
+  const owners: Record<VehicleOwner, THREE.Group> = { hull: hullG, turret: turretG };
+  const surfaces: Record<VehicleOwner, VehicleMesh[]> = {
     hull: markingArmorMeshes(hullG, 'hull'),
     turret: markingArmorMeshes(turretG, 'turret'),
   };
@@ -5865,7 +7103,7 @@ function finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG
 
   const profile = vehicleMarkingAnchor(spec.id);
   if (!profile) return;
-  const addProfileDecal = (kind, longitudinal, size) => {
+  const addProfileDecal = (kind: string, longitudinal: number, size: number): boolean => {
     const readableSize = Math.max(size, SURFACE_MARKING_STYLE.minimumReadableSizeM);
     const candidateSizes = [...new Set([
       readableSize,
@@ -5874,10 +7112,14 @@ function finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG
     ])];
     const avoid = decals.filter((decal) => decal.kind === 'insignia'
       || decal.kind === 'designation');
-    const ownerOrder = [profile.owner, profile.owner === 'turret' ? 'hull' : 'turret'];
-    const sideOrder = [profile.side, profile.side === 'right' ? 'left' : 'right'];
-    let seat = null;
-    let selectedOwnerName = profile.owner;
+    const ownerOrder: VehicleOwner[] = [
+      profile.owner, profile.owner === 'turret' ? 'hull' : 'turret',
+    ];
+    const sideOrder: Array<VehicleMarkingAnchor['side']> = [
+      profile.side, profile.side === 'right' ? 'left' : 'right',
+    ];
+    let seat: MarkingCandidate | null = null;
+    let selectedOwnerName: VehicleOwner = profile.owner;
     let selectedSize = readableSize;
     for (const candidateSize of candidateSizes) {
       for (const ownerName of ownerOrder) {
@@ -5938,7 +7180,30 @@ function finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG
   }
 }
 
-function applyVerifiedVehicleMarkingSeats(marking, decals, seats) {
+function isVerifiedMarkingSeat(value: unknown): value is VerifiedMarkingSeat {
+  if (!value || typeof value !== 'object') return false;
+  return 'parent' in value && (value.parent === 'hull' || value.parent === 'turret')
+    && 'kind' in value && typeof value.kind === 'string'
+    && 'size' in value && typeof value.size === 'number'
+    && 'pos' in value && Array.isArray(value.pos) && value.pos.length === 3
+    && value.pos.every((entry) => typeof entry === 'number')
+    && 'quaternion' in value && Array.isArray(value.quaternion)
+    && value.quaternion.length === 4
+    && value.quaternion.every((entry) => typeof entry === 'number')
+    && 'surfaceMesh' in value && typeof value.surfaceMesh === 'string'
+    && 'anchorProfile' in value && typeof value.anchorProfile === 'string'
+    && 'visibilitySamples' in value && typeof value.visibilitySamples === 'number'
+    && 'visibilityClearSamples' in value && typeof value.visibilityClearSamples === 'number'
+    && 'visibilityRatio' in value && typeof value.visibilityRatio === 'number'
+    && 'maximumSurfaceErrorM' in value
+    && (value.maximumSurfaceErrorM === null || typeof value.maximumSurfaceErrorM === 'number');
+}
+
+function applyVerifiedVehicleMarkingSeats(
+  marking: VehicleMarkingRecord,
+  decals: VehicleDecal[],
+  seats: readonly VerifiedMarkingSeat[],
+): void {
   // Builder-authored identity planes are inputs to the authoritative solver,
   // not a second runtime layer. Replace them with the exact generated output
   // of that solver so the visible result remains identical without repeating
@@ -5970,9 +7235,13 @@ function applyVerifiedVehicleMarkingSeats(marking, decals, seats) {
   }
 }
 
-export function createTank(specId, engineCtx, opts = {}) {
+export function createTank(
+  specId: string,
+  engineContext: unknown,
+  opts: TankFactoryOptions = {},
+): TankVisual {
   if (!factoryConfigured) {
-    throw new Error('Import tankFactory.ts instead of the unconfigured tankFactoryCore.js');
+    throw new Error('Import tankFactory.ts instead of the unconfigured tankFactoryCore.ts');
   }
   const {
     camoSeed = 4000,
@@ -5984,10 +7253,11 @@ export function createTank(specId, engineCtx, opts = {}) {
     batchStatic = false,
     battleDetailLod = false,
   } = opts;
-  const spec = getSpec(specId);
+  const engineCtx = normalizeTankEngineContext(engineContext);
+  const spec = getSpec(specId) as FactoryTankSpec;
   const armor = spec.armor;
-  const marking = spec.markings || vehicleMarkingRecord(spec);
-  const mats = geometryReceipt
+  const marking: VehicleMarkingRecord = spec.markings || vehicleMarkingRecord(spec);
+  const mats: TankMaterials = geometryReceipt
     ? createGeometryReceiptMaterials()
     : createTankMaterials(spec, engineCtx, camoSeed, quality, camoPattern);
   const rng = mulberry32((camoSeed | 0) ^ 0x9e37);
@@ -6020,28 +7290,28 @@ export function createTank(specId, engineCtx, opts = {}) {
   turretG.add(gunG);
   gunG.add(recoilG);
 
-  const buckets = {};
-  const mudguardParts = [];
-  const moduleVisualParts = new Map();
-  const eraClusters = new Map();
-  const eraPlacements = [];
+  const buckets: Record<string, THREE.BufferGeometry[]> = {};
+  const mudguardParts: MudguardPart[] = [];
+  const moduleVisualParts = new Map<THREE.BufferGeometry, string>();
+  const eraClusters = new Map<string, EraClusterRange>();
+  const eraPlacements: EraPlacementRecord[] = [];
   // Most historical ERA uses one shared instanced brick. Native fleet
   // profiles increasingly author irregular cassettes, seams and carrier caps
   // with their exact final geometry instead. Keep those vertices in the same
   // merged material buckets (zero extra draw calls), but retain the small
   // authored ranges needed to collapse and restore one gameplay plate after
   // its one-shot charge fires.
-  const destructiblePartCluster = new WeakMap();
-  const destructibleClusters = new Map();
-  const layeredEraPartsByCluster = new Map();
-  const layeredEraCassetteCounts = new Map();
-  let activeDestructibleCluster = null;
-  const visualEraPartsByCluster = new Map();
-  let activeVisualEraCluster = null;
-  const decals = [];
-  const disposables = [];
+  const destructiblePartCluster = new WeakMap<THREE.BufferGeometry, string>();
+  const destructibleClusters = new Map<string, DestructibleCluster>();
+  const layeredEraPartsByCluster = new Map<string, number>();
+  const layeredEraCassetteCounts = new Map<string, number>();
+  let activeDestructibleCluster: string | null = null;
+  const visualEraPartsByCluster = new Map<string, VisualEraReceipt>();
+  let activeVisualEraCluster: VisualEraCluster | null = null;
+  const decals: VehicleDecal[] = [];
+  const disposables: DisposableVehicleResource[] = [];
 
-  const P = {
+  const P: TankBuilderPort = {
     // PERF r3: `quality` remains the texture tier. Mobile battle bots can
     // independently select the existing authored low-detail geometry path,
     // leaving the player's close camera subject and all garage/kilcam heroes
@@ -6180,17 +7450,17 @@ export function createTank(specId, engineCtx, opts = {}) {
     // preserves their topology, materials and articulation ownership. This
     // must never be used on imported payloads (none enter this builder).
     scaleBuckets(names, x = 1, y = 1, z = 1) {
-      for (const name of names.flat()) {
+      for (const name of typeof names === 'string' ? [names] : names) {
         for (const geo of buckets[name] || []) geo.scale(x, y, z);
       }
     },
     offsetBuckets(names, x = 0, y = 0, z = 0) {
-      for (const name of names.flat()) {
+      for (const name of typeof names === 'string' ? [names] : names) {
         for (const geo of buckets[name] || []) geo.translate(x, y, z);
       }
     },
     forEachBucketPart(names, visitor) {
-      for (const name of names.flat()) {
+      for (const name of typeof names === 'string' ? [names] : names) {
         for (const geo of buckets[name] || []) {
           if (!geo.boundingBox) geo.computeBoundingBox();
           visitor(geo, geo.boundingBox, name);
@@ -6292,7 +7562,9 @@ export function createTank(specId, engineCtx, opts = {}) {
     },
   };
 
-  (resolveBuilder(specId, spec) || buildCommunityPlaceholder)(P);
+  const builder = resolveBuilder(specId, spec);
+  if (builder) Reflect.apply(builder, undefined, [P]);
+  else buildCommunityPlaceholder(P);
 
   // Preserve the builder's unmerged semantic parts only for offline geometry
   // receipts. Runtime meshes stay merged exactly as before. Each AABB is in
@@ -6333,7 +7605,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   root.userData.mudguardFenderSeats = [];
   if (geometryReceipt && liveMudguardParts.length) {
     const mudguardSet = new Set(liveMudguardParts.map(({ part }) => part));
-    const hullSupportParts = [];
+    const hullSupportParts: HullSupportPart[] = [];
     for (const [bucket, list] of Object.entries(buckets)) {
       const bucketDef = BUCKET_DEF[bucket];
       if (!bucketDef || bucketDef[0] !== 'hullG') continue;
@@ -6341,22 +7613,24 @@ export function createTank(specId, engineCtx, opts = {}) {
       for (const part of list) {
         if (mudguardSet.has(part)) continue;
         if (!part.boundingBox) part.computeBoundingBox();
-        hullSupportParts.push({ bucket, part, box: part.boundingBox });
+        if (part.boundingBox) hullSupportParts.push({ bucket, part, box: part.boundingBox });
       }
     }
-    const axisGap = (a0, a1, b0, b1) => Math.max(0, a0 - b1, b0 - a1);
-    const boxAxisGaps = (a, b) => [
+    const axisGap = (a0: number, a1: number, b0: number, b1: number): number =>
+      Math.max(0, a0 - b1, b0 - a1);
+    const boxAxisGaps = (a: THREE.Box3, b: THREE.Box3): [number, number, number] => [
       axisGap(a.min.x, a.max.x, b.min.x, b.max.x),
       axisGap(a.min.y, a.max.y, b.min.y, b.max.y),
       axisGap(a.min.z, a.max.z, b.min.z, b.max.z),
     ];
-    const boxGap = (a, b) => Math.hypot(...boxAxisGaps(a, b));
+    const boxGap = (a: THREE.Box3, b: THREE.Box3): number => Math.hypot(...boxAxisGaps(a, b));
     const guardNodes = liveMudguardParts.map((entry) => {
       if (!entry.part.boundingBox) entry.part.computeBoundingBox();
       const box = entry.part.boundingBox;
+      if (!box) throw new Error(`${specId}: mudguard ${entry.label} has no bounds`);
       let directGapM = Infinity;
-      let directAxisGapM = null;
-      let supportBucket = null;
+      let directAxisGapM: [number, number, number] | null = null;
+      let supportBucket: string | null = null;
       for (const support of hullSupportParts) {
         const axisGaps = boxAxisGaps(box, support.box);
         const gap = Math.hypot(...axisGaps);
@@ -6368,7 +7642,7 @@ export function createTank(specId, engineCtx, opts = {}) {
       }
       return { ...entry, box, directGapM, directAxisGapM, supportBucket };
     });
-    const supported = new Set();
+    const supported = new Set<number>();
     for (let index = 0; index < guardNodes.length; index++) {
       if (guardNodes[index].directGapM <= MUDGUARD_SEAT_TOLERANCE_M) {
         supported.add(index);
@@ -6402,14 +7676,14 @@ export function createTank(specId, engineCtx, opts = {}) {
 
   // ---- merge buckets into meshes ----
   const gunYOff = armor.turretPivot[1] + armor.gunPivot[1];
-  const DIRT_Y = {
+  const DIRT_Y: Record<RigGroupKey, number> = {
     hullG: 0, turretG: armor.turretPivot[1], recoilG: gunYOff, gunG: gunYOff,
     barrel0G: gunYOff, barrel1G: gunYOff,
   };
   for (const [bucket, list] of Object.entries(buckets)) {
     if (!list.length) continue;
     const [parentKey, matKey] = BUCKET_DEF[bucket];
-    const authoredRanges = [];
+    const authoredRanges: AuthoredRange[] = [];
     let vertexOffset = 0;
     for (const part of list) {
       const vertexCount = part.index
@@ -6475,18 +7749,19 @@ export function createTank(specId, engineCtx, opts = {}) {
     // only — geometry/hash-invariant; banded builds are unaffected).
     if (/track|tread/i.test(bucket)) mesh.userData.trackBucket = bucket;
     mesh.castShadow = mesh.receiveShadow = true;
-    const parent = ({
+    const parentMap: Record<RigGroupKey, THREE.Group | undefined> = {
       hullG, turretG, recoilG, gunG,
       barrel0G: barrelGs[0], barrel1G: barrelGs[1],
-    })[parentKey];
+    };
+    const parent = parentMap[parentKey];
     if (!parent) throw new Error(`${specId}: bucket ${bucket} requires authored twin barrels`);
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
     else lodWrap(parent, mesh, geometryQuality === 'low' ? 64 : LOD1_DIST);
   }
 
   // ---- ERA bricks (t90m) ----
-  let eraMesh = null;
-  const eraLocal = [];
+  let eraMesh: THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material> | null = null;
+  const eraLocal: Array<THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>> = [];
   if (eraPlacements.length) {
     // crisp flat Relikt tile — the rounded 0.1-deep brick read as rows of
     // pills on the glacis (r7); real tiles are shallow sharp-edged slabs
@@ -6512,7 +7787,7 @@ export function createTank(specId, engineCtx, opts = {}) {
     ...new Set([...eraClusters.keys(), ...destructibleClusters.keys()]),
   ].sort());
   if (destructibleClusters.size || visualEraPartsByCluster.size) {
-    const owners = new Set();
+    const owners = new Set<VehicleOwner>();
     if ((buckets.hullExternalArmor || []).length) {
       owners.add('hull');
     }
@@ -6521,6 +7796,11 @@ export function createTank(specId, engineCtx, opts = {}) {
     }
     const visualSectors = [...visualEraPartsByCluster.keys()].sort();
     const finishSectors = [...new Set([...root.userData.eraClusterNames, ...visualSectors])].sort();
+    const partsBySector: Array<[string, number]> = [
+      ...layeredEraPartsByCluster.entries(),
+      ...[...visualEraPartsByCluster.entries()].map(
+        ([name, { count }]): [string, number] => [name, count]),
+    ];
     root.userData.eraFinishReceipt = Object.freeze({
       revision: 'fleet-layered-vehicle-scale-camo-r1',
       sectors: Object.freeze(finishSectors),
@@ -6538,9 +7818,7 @@ export function createTank(specId, engineCtx, opts = {}) {
         .reduce((sum, count) => sum + count, 0),
       layeredCassettes: [...layeredEraCassetteCounts.values()].reduce((sum, count) => sum + count, 0),
       partsBySector: Object.freeze(Object.fromEntries(
-        [...layeredEraPartsByCluster.entries(),
-          ...[...visualEraPartsByCluster.entries()].map(([name, { count }]) => [name, count])]
-          .sort(([a], [b]) => a.localeCompare(b)))),
+        partsBySector.sort(([a], [b]) => a.localeCompare(b)))),
     });
   }
 
@@ -6555,7 +7833,14 @@ export function createTank(specId, engineCtx, opts = {}) {
   // only when they can be re-seated on their selected articulation owner.
   const verifiedMarkingSeats = geometryReceipt ? null : vehicleMarkingSeats(spec.id);
   if (verifiedMarkingSeats) {
-    applyVerifiedVehicleMarkingSeats(marking, decals, verifiedMarkingSeats);
+    const checkedSeats: VerifiedMarkingSeat[] = [];
+    for (const seat of verifiedMarkingSeats) {
+      if (!isVerifiedMarkingSeat(seat)) {
+        throw new Error(`Invalid vehicle marking seat contract for ${spec.id}`);
+      }
+      checkedSeats.push(seat);
+    }
+    applyVerifiedVehicleMarkingSeats(marking, decals, checkedSeats);
     root.userData.markingSeatPath = 'generated';
   } else {
     root.updateMatrixWorld(true);
@@ -6564,7 +7849,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   }
   const decalGeo = new THREE.PlaneGeometry(1, 1);
   disposables.push(decalGeo);
-  const decalMeshes = [];
+  const decalMeshes: VehicleMesh[] = [];
   for (const d of decals) {
     const mesh = new THREE.Mesh(decalGeo, mats.decal(d.kind, d.text));
     mesh.name = `vehicleMarking_${d.kind}`;
@@ -6627,13 +7912,13 @@ export function createTank(specId, engineCtx, opts = {}) {
   // but the one universal annulus/disc assembly owns the visible mouth.
   root.updateMatrixWorld(true);
   const muzzleWorld = recoilG.localToWorld(new THREE.Vector3(0, 0, P.muzzleZ));
-  const authoredRims = [];
-  const authoredDiscs = [];
+  const authoredRims: THREE.Object3D[] = [];
+  const authoredDiscs: THREE.Object3D[] = [];
   root.traverse((object) => {
     if (object.name === 'muzzleBoreShadowRim') authoredRims.push(object);
     else if (object.name === 'muzzleBoreShadowDisc') authoredDiscs.push(object);
   });
-  const nearestMuzzlePart = (parts) => parts
+  const nearestMuzzlePart = (parts: THREE.Object3D[]): THREE.Object3D | null => parts
     .map((part) => ({
       part,
       distance: part.getWorldPosition(new THREE.Vector3()).distanceToSquared(muzzleWorld),
@@ -6671,7 +7956,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   // authored bore at its own seated tip, parented under its tube group so a
   // mid-stroke sample rides the recoiled tube. gunMuzzleWorld(out, i) reads
   // them; the absent-knob fleet keeps the exact legacy center anchor.
-  const muzzleTips = [];
+  const muzzleTips: THREE.Object3D[] = [];
   root.updateMatrixWorld(true);
   for (let mi = 0; mi < muzzleDefs.length; mi++) {
     const def = muzzleDefs[mi];
@@ -6751,7 +8036,7 @@ export function createTank(specId, engineCtx, opts = {}) {
       : ['gun', 'gunDark'];
     for (const name of surfaceNames) {
       const surface = (independentBarrel || recoilG).getObjectByName(name);
-      if (!surface || !surface.isMesh) continue;
+      if (!surface || !isVehicleMesh(surface)) continue;
       const z = axisGeometryCapZ(surface.geometry, boreX, boreY,
         P.muzzleZ - 2, P.muzzleZ + 1);
       if (z != null && (capZ == null || z > capZ)) capZ = z;
@@ -6817,16 +8102,24 @@ export function createTank(specId, engineCtx, opts = {}) {
   // the analytic contact midpoint as a safe fallback until the receipt is
   // regenerated.
   const renderedAnchor = presentationAnchorFor(specId);
-  const presentationAnchor = Object.freeze({
-    xM: Number.isFinite(renderedAnchor?.xM) ? renderedAnchor.xM : 0,
-    zM: Number.isFinite(renderedAnchor?.zM)
-      ? renderedAnchor.zM
-      : (Number.isFinite(gearCG?.zCenterM)
-        ? gearCG.zCenterM
-        : (Number.isFinite(restScan?.zCenterM) ? restScan.zCenterM : 0)),
+  const renderedAnchorX = typeof renderedAnchor?.xM === 'number'
+    && Number.isFinite(renderedAnchor.xM) ? renderedAnchor.xM : 0;
+  const renderedAnchorZ = typeof renderedAnchor?.zM === 'number'
+    && Number.isFinite(renderedAnchor.zM) ? renderedAnchor.zM : null;
+  const gearAnchorZ = typeof gearCG?.zCenterM === 'number'
+    && Number.isFinite(gearCG.zCenterM) ? gearCG.zCenterM : null;
+  const scanAnchorZ = typeof restScan?.zCenterM === 'number'
+    && Number.isFinite(restScan.zCenterM) ? restScan.zCenterM : 0;
+  const presentationAnchor: Readonly<PresentationAnchor> = Object.freeze({
+    xM: renderedAnchorX,
+    zM: renderedAnchorZ ?? gearAnchorZ ?? scanAnchorZ,
   });
-  const composeContactGeom = (scan) => {
+  const composeContactGeom = (scan: RestContactReceipt | null): TankContactGeometry | null => {
     if (!gearCG && !scan) return null;
+    const halfLenM = gearCG?.halfLenM ?? scan?.halfLenM ?? null;
+    const halfWidM = gearCG?.halfWidM ?? scan?.halfWidM ?? null;
+    const zCenterM = gearCG?.zCenterM ?? scan?.zCenterM ?? null;
+    if (halfLenM == null || halfWidM == null || zCenterM == null) return null;
     // Floor selection: the gear's analytic flat-run underside is the
     // load-bearing surface and the anchor. The scan's ABSOLUTE min only
     // overrides when a real surface sits well below the gear line (> 2.5 cm —
@@ -6836,19 +8129,21 @@ export function createTank(specId, engineCtx, opts = {}) {
     // ~1.6 cm under the flat run) stay IGNORED: seating them would float the
     // whole visible contact run to protect one grouser tip. Gearless builds
     // (community placeholder) trust the scan outright.
-    let bottomYM;
+    let bottomYM: number;
     if (gearCG) {
       bottomYM = gearCG.bottomYM;
       if (scan && scan.absMinYM < bottomYM - 0.025) {
         bottomYM = Math.max(scan.absMinYM, bottomYM - 0.12);
       }
-    } else {
+    } else if (scan) {
       bottomYM = scan.bottomYM;
+    } else {
+      return null;
     }
     return {
-      halfLenM: gearCG ? gearCG.halfLenM : scan.halfLenM,
-      halfWidM: gearCG ? gearCG.halfWidM : scan.halfWidM,
-      zCenterM: gearCG ? gearCG.zCenterM : scan.zCenterM,
+      halfLenM,
+      halfWidM,
+      zCenterM,
       bottomYM,
       // measured hull-pan floor (belly-guard line — see measureRestContact)
       panYM: scan ? scan.panYM : null,
@@ -6864,16 +8159,23 @@ export function createTank(specId, engineCtx, opts = {}) {
   if (contactGeom) {
     root.userData.contactGeom = contactGeom;
   }
-  const presentationFloorFrom = (scan, contact) => {
-    const floors = [];
-    if (Number.isFinite(scan?.absMinYM)) floors.push(scan.absMinYM);
-    if (Number.isFinite(contact?.bottomYM)) floors.push(contact.bottomYM);
-    if (Number.isFinite(gearCG?.bottomYM)) {
+  const presentationFloorFrom = (
+    scan: RestContactReceipt | null,
+    contact: TankContactGeometry | null,
+  ): number | null => {
+    const floors: number[] = [];
+    if (scan && Number.isFinite(scan.absMinYM)) floors.push(scan.absMinYM);
+    if (contact && Number.isFinite(contact.bottomYM)) floors.push(contact.bottomYM);
+    if (gearCG && Number.isFinite(gearCG.bottomYM)) {
       floors.push(gearCG.bottomYM - PRESENTATION_TRACK_TIP_ALLOWANCE_M);
     }
     return floors.length ? Math.min(...floors) : null;
   };
-  let presentationFloorYM = presentationFloorFrom(restScan, contactGeom);
+  let presentationFloorYM = presentationFloorFrom(restScan, contactGeom) ?? 0;
+  const presentationTrackFloorYM = typeof gearCG?.bottomYM === 'number'
+    && Number.isFinite(gearCG.bottomYM)
+    ? gearCG.bottomYM
+    : null;
   let presentationFloorMeasured = false;
 
   // ---- track hitbox attach (combat data only — no geometry writes) --------
@@ -6906,7 +8208,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   // destruction/firing beats hold/step WITH every particle instead of
   // racing ahead in wall time. Fallback (no fx system registered — unit
   // probes, garage-only boots): the caller's dt, as before.
-  let lastFxS = null;
+  let lastFxS: number | null = null;
   // Recuperator profile: sharp ~90 ms slide back in the cradle, then a damped
   // hydraulic return over ~0.65 s. r7: at 28-30 fps captures the
   // 60 ms slide landed BETWEEN frames ("barrel appears static through the
@@ -6944,7 +8246,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   // the only stubs are the ISU hidden collars at 0.26 m and true empties.
   let recoilTubeSpan = 0;
   recoilG.traverse((o) => {
-    if (!o.isMesh || !o.geometry || o.userData.cannonBoreFallbackPart) return;
+    if (!isVehicleMesh(o) || !o.geometry || o.userData.cannonBoreFallbackPart) return;
     const mm = Array.isArray(o.material) ? o.material[0] : o.material;
     if (mm && mm.colorWrite === false) return; // shadow proxies mirror the tube
     if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
@@ -6954,14 +8256,14 @@ export function createTank(specId, engineCtx, opts = {}) {
   const recoilHasTube = recoilTubeSpan >= 0.5;
   // Capture original materials lazily when destruction starts so decoration
   // added after the base build participates in the continuous burn treatment.
-  const originalMats = [];
+  const originalMats: OriginalMaterialRecord[] = [];
   // Exact meshes that cannot carry this visual's in-place burn hook. The
   // visual streamer may discover them before the later network wreck warm,
   // so retain the identities instead of returning only the current traversal.
-  const wreckFallbackWarmSources = new Set();
+  const wreckFallbackWarmSources = new Set<VehicleMesh>();
 
   // ---- animation-layer state (visual only, self-timed at SIM_STEP) ---------
-  let groundSampler = null;          // (x, z) => terrain height, set by integration
+  let groundSampler: GroundSampler | null = null; // terrain height, set by integration
   let gearAccumDt = 0;               // elapsed time across distance-cadence skips
   let gearForceUpdate = true;
   let gearSettling = true;
@@ -7002,11 +8304,11 @@ export function createTank(specId, engineCtx, opts = {}) {
   // ownership contract in docs/SYSTEMS.md.
   const SUSP_VIS_P = 2.2, SUSP_VIS_R = 1.9, SWAY_VIS = 2.4;
   let wreckAge = -1;                 // >= 0 while destroyed (ember pulse timer)
-  let mobileDetailObjects = [];
+  let mobileDetailObjects: StaticDetailRecord[] = [];
   let mobileDetailsVisible = true;
-  let battleDetailGroups = [];
+  let battleDetailGroups: BattleDetailGroup[] = [];
   let battleDetailsAttached = true;
-  function setBattleDetailsAttached(attached) {
+  function setBattleDetailsAttached(attached: boolean): void {
     if (!battleDetailGroups.length || attached === battleDetailsAttached) return;
     battleDetailsAttached = attached;
     for (const record of battleDetailGroups) {
@@ -7071,7 +8373,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   const _popV = new THREE.Vector3(); // pop-trail world-position scratch
 
   /** Local-space pop-arc offsets at time t (shared by pose + trail). */
-  function popArcAt(t, v0) {
+  function popArcAt(t: number, v0: number): { h: number; x: number } {
     return {
       h: v0 * t - 0.5 * POP_G * t * t,
       x: Math.min(t * 1.05, 1.30) * popScale,
@@ -7113,7 +8415,7 @@ export function createTank(specId, engineCtx, opts = {}) {
     gunG.rotation.x = Math.min(0.12 + t * 0.25, 0.3);
   }
 
-  const visual = {
+  const visual: TankVisual = {
     root,
     specId,
     dims: { lengthM: spec.dims.overallLengthM, widthM: spec.dims.widthM, heightM: spec.dims.heightM },
@@ -7132,20 +8434,16 @@ export function createTank(specId, engineCtx, opts = {}) {
     // Exact authored running-gear contact line. Garage turntables use this
     // instead of the conservative visible-envelope floor so belly fittings do
     // not leave the tracks visibly hovering above the concrete.
-    presentationTrackFloorYM: Number.isFinite(gearCG?.bottomYM)
-      ? gearCG.bottomYM
-      : null,
+    presentationTrackFloorYM,
 
     /** Seat the neutral rest-pose envelope on a world-space horizontal plane. */
     seatOnFloor(floorYM = 0) {
       if (!presentationFloorMeasured) {
         const measured = measurePresentationFloor(root);
-        presentationFloorYM = Number.isFinite(measured)
+        presentationFloorYM = typeof measured === 'number' && Number.isFinite(measured)
           ? measured
-          : presentationFloorFrom(null, this.contactGeom);
-        this.presentationFloorYM = Number.isFinite(presentationFloorYM)
-          ? presentationFloorYM
-          : 0;
+          : (presentationFloorFrom(null, this.contactGeom) ?? 0);
+        this.presentationFloorYM = presentationFloorYM;
         presentationFloorMeasured = true;
       }
       root.position.y = floorYM - this.presentationFloorYM;
@@ -7154,10 +8452,11 @@ export function createTank(specId, engineCtx, opts = {}) {
 
     /** Seat the load-bearing track run on a rigid presentation surface. */
     seatRunningGearOnFloor(floorYM = 0) {
-      if (!Number.isFinite(this.presentationTrackFloorYM)) {
+      const trackFloorYM = this.presentationTrackFloorYM;
+      if (typeof trackFloorYM !== 'number' || !Number.isFinite(trackFloorYM)) {
         return this.seatOnFloor(floorYM);
       }
-      root.position.y = floorYM - this.presentationTrackFloorYM;
+      root.position.y = floorYM - trackFloorYM;
       return root.position.y;
     },
 
@@ -7197,7 +8496,7 @@ export function createTank(specId, engineCtx, opts = {}) {
       contactGeom = prepared;
       this.contactGeom = prepared;
       root.userData.contactGeom = prepared;
-      presentationFloorYM = presentationFloorFrom(null, prepared);
+      presentationFloorYM = presentationFloorFrom(null, prepared) ?? 0;
       this.presentationFloorYM = presentationFloorYM;
       presentationFloorMeasured = false;
       return prepared;
@@ -7218,7 +8517,11 @@ export function createTank(specId, engineCtx, opts = {}) {
      * @param {boolean} [detailVisible] false when the actor is outside the
      *   camera guard band; exact running gear catches up on re-entry.
      */
-    syncFromState(state, dt = SIM_STEP, viewDistM, presentationState = null, detailVisible = true) {
+    syncFromState(stateValue, dt = SIM_STEP, viewDistM, presentationStateValue = null, detailVisible = true) {
+      const state = requireTankPoseState(stateValue);
+      const presentationState = presentationStateValue == null
+        ? null
+        : requireTankPoseState(presentationStateValue);
       // The authority state remains the mutation target for queued recoil /
       // flinch impulses. A presentation state is a read-only, allocation-free
       // interpolated view used only for transforms and running-gear phase.
@@ -7585,7 +8888,7 @@ export function createTank(specId, engineCtx, opts = {}) {
       const idx = muzzleIndex != null
         ? ((muzzleIndex % n) + n) % n
         : (muzzleAltCursor++ % n);
-      const def = spec.gun.muzzles[idx] || {};
+      const def = spec.gun.muzzles?.[idx] || {};
       recoilBarrelIndex = idx;
       const side = Math.sign(def.x || 0);
       // asymmetric moment toward the firing barrel: the muzzle line sweeps
@@ -7601,7 +8904,10 @@ export function createTank(specId, engineCtx, opts = {}) {
      * @param {?(x:number, z:number) => number} fn ground height query (null disables)
      */
     setGroundSampler(fn) {
-      groundSampler = fn;
+      if (fn != null && typeof fn !== 'function') {
+        throw new TypeError('Ground sampler must be a function or null');
+      }
+      groundSampler = fn == null ? null : fn as GroundSampler;
       gearForceUpdate = true;
       gearSettling = true;
     },
@@ -7723,7 +9029,7 @@ export function createTank(specId, engineCtx, opts = {}) {
       // any rematch (giant black/camo box enclosing the real model).
       originalMats.length = 0;
       root.traverse((o) => {
-        if (!o.isMesh) return;
+        if (!isVehicleMesh(o)) return;
         // never char meshes that are not currently rendered (hidden
         // placeholder hulls, retracted proxies) — charring them was harmless
         // only until any code path toggled their visibility
@@ -7818,7 +9124,7 @@ export function createTank(specId, engineCtx, opts = {}) {
         // '|burn-r6' cacheKey variants linked on the kill frame instead of
         // behind the loading screen. A disarmed hook is exact-identity
         // output, so hooking a hidden mesh has no visual effect ever.
-        if (!o.isMesh) return;
+        if (!isVehicleMesh(o)) return;
         const mm = Array.isArray(o.material) ? o.material : [o.material];
         if (!mm[0] || mm[0].colorWrite === false) return;
         let patchable = true;
@@ -7938,18 +9244,18 @@ export function createTank(specId, engineCtx, opts = {}) {
       // Reattach before resource disposal so no retained mesh is skipped.
       setBattleDetailsAttached(true);
       for (const resource of disposables) {
-        if (resource?.isMaterial) engineCtx?.releaseShadowMaterial?.(resource);
+        if (isVehicleMaterial(resource)) engineCtx?.releaseShadowMaterial?.(resource);
       }
       for (const g of disposables) g.dispose();
       root.traverse((o) => {
-        if (o.isBatchedMesh) o.dispose();
-        if (o.isInstancedMesh) o.dispose();
+        if (isVehicleBatchedMesh(o)) o.dispose();
+        if (isVehicleInstancedMesh(o)) o.dispose();
         // PERF (performance_budget r3): kit-merged GLB geometry is baked
         // per instance (modelLoader mergeStaticKit) — unlike the shared
         // cache geometry it must die with the visual or eviction leaks it.
-        if (o.isMesh && o.userData.__kitMerged && o.geometry) o.geometry.dispose();
-        else if (o.isMesh && o.userData.__cotTrackRuntimeClone && o.geometry) o.geometry.dispose();
-        else if (o.isMesh && o.userData.__cotSharedAttributeView && o.geometry) o.geometry.dispose();
+        if (isVehicleMesh(o) && o.userData.__kitMerged && o.geometry) o.geometry.dispose();
+        else if (isVehicleMesh(o) && o.userData.__cotTrackRuntimeClone && o.geometry) o.geometry.dispose();
+        else if (isVehicleMesh(o) && o.userData.__cotSharedAttributeView && o.geometry) o.geometry.dispose();
       });
       mats.dispose();
       if (root.parent) root.parent.remove(root);
@@ -7991,7 +9297,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   if (geometryQuality === 'low' || batchStatic) {
     const mobileBatchParents = [hullG, turretG, gunG, recoilG];
     root.traverse((object) => {
-      if (!object.isGroup) return;
+      if (!isVehicleGroup(object)) return;
       const name = object.name || '';
       if (name.startsWith('rig_decor_') || name.startsWith('fitting_')
           || name.startsWith('muzzleBoreShadowFallback')

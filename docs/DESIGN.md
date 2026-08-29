@@ -35,11 +35,11 @@ The program has four interlocking systems:
   `combatVariantSpecs.ts` registers the core Abrams/T-90 combat variants by
   side effect before roster finalization.
 
-### 1.2 Build pipeline — typed facades, geometry kernel, and `tankFactoryCore.js`
+### 1.2 Build pipeline — typed facades, geometry kernel, and `tankFactoryCore.ts`
 `tankFactory.ts` eagerly registers the complete fleet for release tools and
 headless audits. Player boot uses `fleetFactory.ts` to acquire only the exact
 builder and receipt families it needs. Both typed facades configure the same
-cycle-free `tankFactoryCore.js` implementation, whose
+cycle-free `tankFactoryCore.ts` implementation, whose
 `createTank(specId, engineCtx, options)` is the single synchronous constructor.
 Vehicle-agnostic transforms, primitive geometry, connected lofts, box UVs, and
 merge behavior live in the strict `factoryGeometry.ts` kernel; the legacy core
@@ -47,39 +47,40 @@ retains fleet policy, rigs, running gear, and presentation state while those
 contracts are migrated independently.
 Flow:
 
-1. **Rig skeleton** (`tankFactoryCore.js`): `root` → `rig_hull` + `rig_turret` (at
+1. **Rig skeleton** (`tankFactoryCore.ts`): `root` → `rig_hull` + `rig_turret` (at
    `armor.turretPivot`) → `rig_gun` (at `gunPivot`) → `rig_recoil`. This skeleton is the
    §H BASE RIG — the gate's articulation poses, damage/recoil systems, and the §B5
    parenting law all assume it. Decoration groups `rig_decor_hull`/`rig_decor_turret`
    attach at the end (skipped for proceduralOnly/metrology so the
    gate measures bare silhouettes).
-2. **The builder runs** (`tankFactoryCore.js`): `resolveBuilder(specId)` picks the
-   profile function; extension tables merge in from modern1/2/3.js and
-   `PROFILED_BUILDERS` (profiledProcedurals.ts → src/vehicles/profiles/*.js, the
+2. **The builder runs** (`tankFactoryCore.ts`): `resolveBuilder(specId)` picks the
+   profile function; extension tables merge in from `modern1.ts`, `modern2.ts`,
+   and `modern3.ts`, plus `PROFILED_BUILDERS` (`profiledProcedurals.ts` →
+   `src/vehicles/profiles/`, the
    program's family files; PROFILED_BUILDERS wins over legacy tankFactory builders —
    the leo2a4/ww2.ts override mechanism).
 3. **Bucket grammar**: builders never touch meshes — they call
    `P.add(bucket, geo, x,y,z, rx,ry,rz, s)`. `BUCKET_DEF` in
-   `tankFactoryCore.js` maps bucket name → (parent rig group, material slot); e.g.
+   `tankFactoryCore.ts` maps bucket name → (parent rig group, material slot); e.g.
    'hull'/'hullDark'/'hullDetail' → rig_hull, 'turret*' → rig_turret, 'gun*' →
    rig_recoil/rig_gun. `P.clear(...)` lets variants replace a family's turret/gun while
    keeping its hull. `P.addGunExtra*` = pitches but does not
    recoil. `P.eraCluster` places instanced ERA bricks (hull- or turret-frame).
 4. **Merge + camo bake**: each bucket merges to ONE mesh; CAMO_BUCKETS get
-   box-UV + `bakeDirt` in `tankFactoryCore.js` — vertex-color dirt baked
+   box-UV + `bakeDirt` in `tankFactoryCore.ts` — vertex-color dirt baked
    in the merged bucket's LOCAL frame (why §B5 camo-bucket re-parents reseed the mottle
    and force a critic re-cert). Track-family buckets get `userData.trackBucket` for the
    §B4 audit.
 5. **LOD + laziness**: non-LOD0 buckets wrap in `lodWrap` (LOD1
    ~150 m de-greeble). State-gated visuals (de-track destruction kit,
-   in `tankFactoryCore.js`) are built lazily at the state transition — the INVISIBLE-LOD
+   in `tankFactoryCore.ts`) are built lazily at the state transition — the INVISIBLE-LOD
    ENVELOPE law (BUILD-STANDARD §C addendum): invisible meshes still carry world AABBs
    that icon framing/probes/hashers see; nothing parks hidden at a triggered pose.
    Materials stay EAGER (material ids are a draw-sort key; deferred clones renumber and
    break pixel identity).
-6. **Running gear**: `buildRunningGear(P, cfg)` in `tankFactoryCore.js` — wheels/idler/
+6. **Running gear**: `buildRunningGear(P, cfg)` in `tankFactoryCore.ts` — wheels/idler/
    sprocket positions, contact-tangent ramps (§B6 trapezoid), the two-layer track:
-   band + `trackShoeGeometries` in `tankFactoryCore.js`, with instanced shoes riding
+   band + `trackShoeGeometries` in `tankFactoryCore.ts`, with instanced shoes riding
    rOut = trackTh/2 + 0.012 off the band centerline + 0.073 m pad/grouser depth — the
    PLAYER-VISIBLE surface the §B4 shoe audit voxelizes. Multi-unit rigs supported
    through explicit running-gear-unit receipts.
@@ -87,12 +88,12 @@ Flow:
    age on the shared FX clock so frozen screenshot captures step
    deterministically.
 
-### 1.3 Profiles — src/vehicles/profiles/*.js (single-owner law)
-kit.js:1-9: family modules own their PROFILE DATA and family-only helpers; everything
-generic lives in kit.js "so two family agents never have to edit the same file" — the
-mechanical basis of the one-agent-one-file law. Families: abrams, leopard, merkava,
-patton, russia, uk, misc, casemate, soviet-heavy, ww2 (+ modern1/2/3.js homes for
-base-21 rebuilds). §H FAMILY RIG: a variant is a <150-line param delta on its family
+### 1.3 Profiles — `src/vehicles/profiles/` (single-owner law)
+Family modules own their profile data and family-only helpers; everything generic
+lives in `kit.ts` so two family owners never have to edit the same file. Families:
+Abrams, Leopard, Merkava, Patton, Russia, UK, misc, casemate, Soviet-heavy, and WW2
+(plus `modern1.ts`, `modern2.ts`, and `modern3.ts` homes for base-21 rebuilds).
+§H FAMILY RIG: a variant is a <150-line param delta on its family
 rig, never a re-author; per-profile winding guards (orientedSlab in misc.ts, sslab in
 uk.ts) wrap every mirrored slab (§C missing-side law).
 

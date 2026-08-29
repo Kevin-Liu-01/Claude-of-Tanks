@@ -6,7 +6,7 @@ import {
   registerCanonicalBuilders,
   registerProfiledBuilders,
   robustFloorY,
-} from './tankFactoryCore.js';
+} from './tankFactoryCore.ts';
 
 function referenceRobustFloorY(values) {
   const sorted = values.slice().sort((a, b) => a - b);

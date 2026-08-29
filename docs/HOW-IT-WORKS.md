@@ -144,7 +144,7 @@ reference placeholders remain report-only. The generated inventory is
 maintained in `VEHICLE-ROSTER.md`.
 Playable geometry is assembled at runtime from authored profile stations,
 armor forms, fittings, and procedural running gear in
-`src/vehicles/factoryGeometry.ts`, `src/vehicles/tankFactoryCore.js`,
+`src/vehicles/factoryGeometry.ts`, `src/vehicles/tankFactoryCore.ts`,
 `src/vehicles/fleetFactory.ts`, and
 `src/vehicles/profiles/`. Node audits retain the eager `tankFactory.ts` facade;
 the browser runtime uses the demand-loaded facade. The public runtime
