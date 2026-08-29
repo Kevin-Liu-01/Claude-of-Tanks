@@ -154035,17 +154035,17 @@
           }
         ]
       },
-      "geometryHash": "a1f1aafa",
+      "geometryHash": "3e664ed9",
       "metadataHash": "118b797f",
       "presentationAnchor": {
-        "xM": 0.0028,
-        "zM": 0.0235
+        "xM": 0.0032,
+        "zM": 0.025
       },
-      "presentationHash": "1375fab3",
+      "presentationHash": "cfbfd811",
       "presentationProjection": {
         "centerYM": 1.5013,
-        "topHalfM": 6.0782,
-        "sideHalfM": 3.0391
+        "topHalfM": 5.991,
+        "sideHalfM": 2.9955
       },
       "appearance": {
         "version": 1,
@@ -154053,7 +154053,7 @@
         "roles": {
           "fittingPaint": 10,
           "opticGlass": 4,
-          "gunmetal": 16,
+          "gunmetal": 24,
           "trackSteel": 2,
           "wheelTire": 2,
           "wheelDish": 6,
@@ -154064,7 +154064,7 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 10,
+          "armorPaint": 11,
           "tireRubber": 1,
           "wood": 1,
           "unclassified": 11,
@@ -154135,24 +154135,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74045,
-          "sha256": "d4d98ed3aa38af1f403d49590675d5fd64ab8e96c44bc57ee0d4644293da5e62"
+          "bytes": 74731,
+          "sha256": "c4ca8c45d9545f44c3d4ae3d46c28ecacc15048ec8d26ce4045d86a397128ef7"
         },
         "armorSide": {
           "file": "t90a_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74395,
-          "sha256": "4a41b67f9412e5be979c6ef70264333176fabd3a01d2ef672fc814b047fedd70"
+          "bytes": 75590,
+          "sha256": "dd545bbd61273d35d010a757d72f5dfb90bb980f5e8314fba4d103573554420c"
         },
         "modulesSide": {
           "file": "t90a_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72291,
-          "sha256": "e7998b70ba11f0246a46944255047ab05675b504547d1dd87facc2346b633f26"
+          "bytes": 73370,
+          "sha256": "b5d93c3a85afb8790107a2db08b9be7946d66cb9b8d27f31da9664d250fae2b7"
         },
         "markings": {
           "file": "t90a_markings.png",

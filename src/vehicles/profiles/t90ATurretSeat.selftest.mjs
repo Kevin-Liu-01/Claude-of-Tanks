@@ -9,6 +9,26 @@ const near = (actual, expected, message, epsilon = EPSILON) => {
   assert.ok(Math.abs(actual - expected) <= epsilon,
     `${message}: expected ${expected}, received ${actual}`);
 };
+const partCenter = (part) => part.min.map((value, axis) => (value + part.max[axis]) * 0.5);
+const findPartAt = (parts, bucket, expectedCenter, message, epsilon = 2e-4) => {
+  const part = parts.find((candidate) => candidate.bucket === bucket
+    && partCenter(candidate).every((value, axis) => Math.abs(value - expectedCenter[axis]) <= epsilon));
+  assert.ok(part, message);
+  return part;
+};
+const overlapM = (a, b, axis) => Math.min(a.max[axis], b.max[axis]) - Math.max(a.min[axis], b.min[axis]);
+const assertOverlaps = (a, b, message, epsilon = 1e-5) => {
+  for (const axis of [0, 1, 2]) {
+    assert.ok(overlapM(a, b, axis) > epsilon,
+      `${message} on ${['x', 'y', 'z'][axis]} (${overlapM(a, b, axis).toFixed(6)} m)`);
+  }
+};
+const meshPartInParent = (mesh) => {
+  mesh.geometry.computeBoundingBox();
+  mesh.updateMatrix();
+  const bounds = mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrix);
+  return { min: bounds.min.toArray(), max: bounds.max.toArray() };
+};
 
 const tank = createTank('t90a', null, {
   proceduralOnly: true,
@@ -31,14 +51,14 @@ try {
 
   const receipt = turret.userData.t90aSeatReceipt;
   assert.ok(receipt, 'T-90A exposes its turret, Shtora, and cannon adjustment receipt');
-  near(turret.position.z, 0.02, 'turret yaw seat moves rearward to the accepted station');
-  near(receipt.turretRearwardShiftM, 0.10, 'turret moves rearward by 100 mm');
-  near(receipt.shtoraEyeZ, 1.76, 'Shtora housings move ahead of the advanced cheek ERA');
-  near(receipt.shtoraLocalRearwardShiftM, 0.04, 'Shtora remains 40 mm behind its original local datum');
-  near(receipt.shtoraSupportFrontZ, 1.72, 'Shtora support shoes follow the advanced emitters');
-  near(receipt.shtoraHousingRearZ, 1.6148, 'Shtora housing rear stays buried in its tapered pedestal');
-  near(receipt.shtoraHousingFrontZ, 1.9052, 'complete Shtora housings project beyond the chevron faces');
-  near(receipt.shtoraLensFrontZ, 1.9316, 'red lenses remain the frontmost optical surface');
+  near(turret.position.z, -0.06, 'turret yaw seat moves rearward to the accepted station');
+  near(receipt.turretRearwardShiftM, 0.18, 'turret moves rearward by 180 mm');
+  near(receipt.shtoraEyeZ, 1.86, 'Shtora housings stay ahead of the advanced cheek ERA');
+  near(receipt.shtoraLocalForwardShiftM, 0.06, 'Shtora advances 60 mm from its original local datum');
+  near(receipt.shtoraSupportFrontZ, 1.82, 'Shtora support shoes follow the advanced emitters');
+  near(receipt.shtoraHousingRearZ, 1.7148, 'Shtora housing rear stays buried in its tapered pedestal');
+  near(receipt.shtoraHousingFrontZ, 2.0052, 'complete Shtora housings project beyond the chevron faces');
+  near(receipt.shtoraLensFrontZ, 2.0316, 'red lenses remain the frontmost optical surface');
   assert.ok(receipt.shtoraChevronDepthClearanceM >= 0.045,
     'Shtora housing faces clear the advanced ERA by a visible margin');
   assert.ok(receipt.shtoraSupportBodyOverlapM >= 0.10,
@@ -49,6 +69,13 @@ try {
   assert.deepEqual(receipt.rightCupola, [0.52, -0.42], 'right cupola occupies the right roof station');
   assert.equal(receipt.rightCupolaLightCount, 2, 'right cupola carries two forward lights');
   assert.equal(receipt.leftCupolaMannedMg, 'nsvt', 'left cupola carries the manually served NSVT');
+  near(receipt.nsvtRaiseM, 0.08, 'complete NSVT station is raised by 80 mm');
+  near(receipt.roofHousingPedestalOverlapM, 0.12,
+    'marked roof housing has a positive pedestal overlap');
+  near(receipt.aftSensorPedestalOverlapM, 0.015,
+    'marked aft sensor has a positive pedestal overlap');
+  near(receipt.rightBustleBridgeOverlapM, 0.03,
+    'marked asymmetric bustle has a positive bridge overlap');
   assert.deepEqual(gun.position.toArray(), [0, 0.165, 0.825],
     'cannon trunnion remains fixed in turret-local space');
 
@@ -65,6 +92,47 @@ try {
     `T-90A faceting stays round (${barrelCircularity.worst?.aspectRatio})`);
 
   const parts = tank.root.userData.combatGeometryParts;
+  const foundationCrown = findPartAt(parts, 'turret', [0, 0.55, -0.025],
+    'welded foundation crown remains available as the roof load path');
+  const roofPedestal = findPartAt(parts, 'turret', [-0.78, 0.57, -0.03],
+    'marked ESSA roof housing receives its widened pedestal');
+  const roofHousing = findPartAt(parts, 'turret', [-0.88, 0.725, -0.06],
+    'marked ESSA roof housing remains present');
+  assertOverlaps(foundationCrown, roofPedestal,
+    'ESSA pedestal overlaps the welded foundation crown');
+  assertOverlaps(roofPedestal, roofHousing,
+    'ESSA pedestal overlaps the marked roof housing');
+
+  const foundationShelf = findPartAt(parts, 'turret', [0, 0.3125, -0.95],
+    'welded foundation shelf remains available as the aft load path');
+  const aftSensorPedestal = findPartAt(parts, 'turret', [-0.93, 0.62, -1.26],
+    'marked aft sensor receives its structural shoe');
+  const aftSensor = findPartAt(parts, 'turretDark', [-0.93, 0.805, -1.33],
+    'marked aft sensor post remains present');
+  assertOverlaps(foundationShelf, aftSensorPedestal,
+    'aft sensor shoe overlaps the welded foundation shelf');
+  assertOverlaps(aftSensorPedestal, aftSensor,
+    'aft sensor shoe overlaps the marked sensor post');
+
+  const centralBustle = findPartAt(parts, 'turret', [0, 0.2375, -1.62],
+    'central bustle foundation remains present');
+  const bustleBridge = findPartAt(parts, 'turret', [1.05, 0.0375, -1.859],
+    'marked right bustle receives its inboard bridge');
+  const bustleShoulder = findPartAt(parts, 'turret', [1.325, 0.115, -1.624],
+    'marked right bustle shoulder remains present');
+  const forwardBin = findPartAt(parts, 'turret', [1.48, 0.14, -1.50],
+    'forward asymmetric bustle bin remains present');
+  const rearBin = findPartAt(parts, 'turret', [1.48, 0.14, -1.82],
+    'rear asymmetric bustle bin remains present');
+  assertOverlaps(centralBustle, bustleBridge,
+    'right bustle bridge overlaps the central bustle');
+  assertOverlaps(bustleBridge, bustleShoulder,
+    'right bustle bridge overlaps the outboard shoulder');
+  assertOverlaps(bustleShoulder, forwardBin,
+    'outboard shoulder overlaps the forward asymmetric bin');
+  assertOverlaps(bustleShoulder, rearBin,
+    'outboard shoulder overlaps the rear asymmetric bin');
+
   const cupolaParts = parts.filter((part) => part.bucket === 'turretCupola');
   const hatchParts = parts.filter((part) => part.bucket === 'turretHatch');
   assert.equal(cupolaParts.length, 4,
@@ -84,17 +152,33 @@ try {
   assert.equal(rightLampLenses.length, 2,
     'two recessed lenses physically occupy the right cupola lamp housings');
 
-  const leftMgBarrels = parts.filter((part) => {
-    if (part.bucket !== 'turretDark') return false;
-    const width = part.max[0] - part.min[0];
-    const depth = part.max[2] - part.min[2];
-    const centerX = (part.min[0] + part.max[0]) * 0.5;
-    return Math.abs(width - 0.058) < 2e-4
-      && Math.abs(depth - 0.64) < 2e-5
-      && Math.abs(centerX + 0.35) < 2e-5;
-  });
-  assert.equal(leftMgBarrels.length, 1,
-    'the left cupola carries one full-length forward NSVT barrel');
+  const exactMg = turret.children.find((child) => child.userData?.fittingRoot
+    && child.userData.fitting === 'pintleMG'
+    && child.getObjectByName('t90a_nsvt_barrel'));
+  assert.ok(exactMg, 'the T-90A-specific NSVT is published as one exact fitting');
+  assert.equal(exactMg.userData.fittingExact, true,
+    'the exact NSVT is recognized without replacing it with generic geometry');
+  assert.equal(exactMg.parent, turret, 'the complete NSVT assembly is turret-owned');
+  assert.equal(exactMg.children.filter((child) => child.isMesh).length, 9,
+    'the exact NSVT retains its nine connected visible members');
+  const raisedBarrel = meshPartInParent(exactMg.getObjectByName('t90a_nsvt_barrel'));
+  near(raisedBarrel.max[0] - raisedBarrel.min[0], 0.058,
+    'the exact fitting retains the full-length NSVT barrel diameter', 2e-4);
+  near(raisedBarrel.max[2] - raisedBarrel.min[2], 0.64,
+    'the exact fitting retains the full-length forward NSVT barrel');
+  near((raisedBarrel.min[1] + raisedBarrel.max[1]) * 0.5, 0.955,
+    'the full-length NSVT barrel follows the raised weapon station');
+  const raisedPintle = meshPartInParent(exactMg.getObjectByName('t90a_nsvt_pintle'));
+  const raisedCradle = meshPartInParent(exactMg.getObjectByName('t90a_nsvt_cradle'));
+  const raisedReceiver = meshPartInParent(exactMg.getObjectByName('t90a_nsvt_receiver'));
+  const leftHatch = findPartAt(parts, 'turretHatch', [-0.35, 0.718, -0.48],
+    'left structural hatch remains beneath the NSVT station');
+  assert.ok(overlapM(leftHatch, raisedPintle, 1) > 0,
+    'elongated NSVT pintle remains buried in the left hatch station');
+  assertOverlaps(raisedPintle, raisedCradle,
+    'elongated NSVT pintle overlaps the raised cradle');
+  assertOverlaps(raisedCradle, raisedReceiver,
+    'raised cradle overlaps the NSVT receiver');
 
   const shtoraBodies = parts.filter((part) => {
     if (part.bucket !== 'turretDark') return false;
@@ -105,12 +189,14 @@ try {
     return Math.abs(width - 0.24 * 1.32) < 2e-5
       && Math.abs(height - 0.27 * 1.32) < 2e-5
       && Math.abs(depth - 0.22 * 1.32) < 2e-5
-      && Math.abs(centerZ - 1.76) < 2e-5;
+      && Math.abs(centerZ - receipt.shtoraEyeZ) < 2e-5;
   });
   assert.equal(shtoraBodies.length, 2,
     'both complete Shtora emitter bodies occupy the advanced seat');
   const chevron = turret.userData.t90AChevronEraReceipt;
   assert.ok(chevron, 'T-90A publishes its advanced chevron receipt');
+  near(chevron.forwardM, 0.24,
+    'chevron carriers advance 240 mm from the base cheek datum');
   for (const body of shtoraBodies) {
     assert.ok(body.max[2] - chevron.frontmostTileZM >= 0.045,
       'actual Shtora housing geometry stands visibly ahead of the frontmost ERA tile');

@@ -248,12 +248,12 @@ function addT90AAsymmetricBustleBins(P) {
   // carrier buried in the dome shoulder; their seams remain visible and the
   // terminal face closes the package instead of leaving a hollow rail cage.
   const side = 1;
-  P.add('turretDark', box(0.12, 0.14, 0.72), side * 1.30, 0.08, -1.64);
+  P.add('turretDark', box(0.22, 0.16, 0.76), side * 1.30, 0.09, -1.64);
   for (const [z, d, w, cant] of [
     [-1.50, 0.30, 0.27, -0.03],
     [-1.82, 0.36, 0.27, -0.06],
   ]) {
-    const x = 1.515;
+    const x = 1.48;
     P.add('turret', box(w, 0.28, d), side * x, 0.14, z, 0, -cant, 0);
     // Keep the face seam flush inside the bin's rotated outer plane.  The
     // former half-width seat swung its rear corner beyond the actual bin at
@@ -617,24 +617,27 @@ function seatArmorOnHorizontalPlane(planeY, height, depth, pitch, embed = 0.012)
 }
 
 const T90A_ORIGINAL_TURRET_SEAT_Z_M = 0.12;
-const T90A_TURRET_SEAT_Z_M = 0.02;
+const T90A_TURRET_SEAT_Z_M = -0.06;
 const T90A_TURRET_REARWARD_SHIFT_M = T90A_ORIGINAL_TURRET_SEAT_Z_M - T90A_TURRET_SEAT_Z_M;
 const T90A_ORIGINAL_SHTORA_EYE_Z_M = 1.80;
 // The frontal K-5 package now sits on the visible cheek datum. Keep the
 // complete OTShU housing (not only its red lens) ahead of the tile faces so
 // the dazzler and the two-row chevron remain separately readable.
-const T90A_SHTORA_EYE_Z_M = 1.76;
-const T90A_SHTORA_LOCAL_REARWARD_SHIFT_M = T90A_ORIGINAL_SHTORA_EYE_Z_M - T90A_SHTORA_EYE_Z_M;
+const T90A_SHTORA_EYE_Z_M = 1.86;
+const T90A_SHTORA_LOCAL_FORWARD_SHIFT_M = T90A_SHTORA_EYE_Z_M - T90A_ORIGINAL_SHTORA_EYE_Z_M;
 const T90A_SHTORA_SUPPORT_FRONT_Z_M = T90A_SHTORA_EYE_Z_M - 0.04;
+const T90A_CHEVRON_FORWARD_M = 0.24;
+const T90A_NSVT_RAISE_M = 0.08;
 const T90A_GUN_RADIUS_SCALE = 1.08;
 
 function buildT90ALegacy(P, {
   turretSeatZ = T90A_TURRET_SEAT_Z_M,
   turretRearwardShiftM = T90A_TURRET_REARWARD_SHIFT_M,
   shtoraEyeZ = T90A_SHTORA_EYE_Z_M,
-  shtoraLocalRearwardShiftM = T90A_SHTORA_LOCAL_REARWARD_SHIFT_M,
+  shtoraLocalForwardShiftM = T90A_SHTORA_LOCAL_FORWARD_SHIFT_M,
   shtoraSupportFrontZ = T90A_SHTORA_SUPPORT_FRONT_Z_M,
-  chevronForwardM = 0.14,
+  chevronForwardM = T90A_CHEVRON_FORWARD_M,
+  nsvtRaiseM = T90A_NSVT_RAISE_M,
   gunRadiusScale = T90A_GUN_RADIUS_SCALE,
   recordSeatReceipt = true,
 } = {}) {
@@ -1018,7 +1021,12 @@ function buildT90ALegacy(P, {
   P.add('turretDark', box(0.012, 0.04, 0.05), -0.608, 0.50, 0.25);       // latch pair
   P.add('turretDark', box(0.012, 0.04, 0.05), -0.608, 0.50, 0.47);
   P.add('turretDark', box(0.008, 0.30, 0.018), -0.917 - 0.185 + 0.0, 0.60, -0.30);  // C-face seam (x -1.102 face inset)
-  P.add('turret', box(0.11, 0.25, 0.52), -0.665, 0.57, -0.03);
+  // The ESSA shoulder used to meet the crown at a single 10 mm edge, so the
+  // broad housing read as a floating box from the marked rear-quarter view.
+  // Widen the lower pedestal inboard across the welded crown and outboard
+  // beneath the housing; both joins deliberately overlap instead of relying
+  // on coincident faces.
+  P.add('turret', box(0.44, 0.25, 0.52), -0.78, 0.57, -0.03);
   P.add('turret', box(0.42, 0.30, 0.52), -0.88, 0.725, -0.06);
   P.add('turretDark', box(0.38, 0.016, 0.46), -0.88, 0.867, -0.06);
   // T4A ESSA rear run: the deleted left tier owned the side band z_w
@@ -1060,20 +1068,52 @@ function buildT90ALegacy(P, {
       P.addEquipment('turretGlass', cylZ(0.043, 0.012, 14), x, 0.76, 0.021);
     }
 
-    // Left manually served NSVT. Every part is equipment-owned so the large
-    // weapon remains visually prominent without expanding the turret armor
-    // hit volume. The pintle intersects the cupola's forward rim, and the
-    // receiver, grips and ammunition box make the station visibly mannable.
+    // Left manually served NSVT. Keep the source-specific receiver, heavy
+    // jacket and cupola seat, but publish them as one exact fitting instead
+    // of nine unrelated bucket parts. The fitting root is turret-owned, so
+    // the complete station follows yaw; markExact keeps it equipment-only
+    // while making the real visible assembly legible to the decoration gate.
     const leftMgX = t90aRoofStations.left.x;
-    P.addEquipment('turretDark', cylY(0.052, 0.066, 0.17, 12), leftMgX, 0.765, -0.28);
-    P.addEquipment('turretDark', box(0.30, 0.065, 0.12), leftMgX, 0.83, -0.25);
-    P.addEquipment('turretDark', box(0.22, 0.15, 0.43), leftMgX, 0.865, -0.035);
-    P.addEquipment('turretDark', cylZ(0.055, 0.40, 14), leftMgX, 0.875, 0.33);
-    P.addEquipment('turretDark', cylZ(0.029, 0.64, 12), leftMgX, 0.875, 0.84);
-    P.addEquipment('turretDark', cylZ(0.052, 0.13, 14), leftMgX, 0.875, 1.225);
-    P.addEquipment('turret', box(0.24, 0.21, 0.28), leftMgX - 0.22, 0.835, -0.04);
-    P.addEquipment('turretDark', box(0.055, 0.12, 0.24), leftMgX - 0.10, 0.80, -0.32, -0.22, 0, 0);
-    P.addEquipment('turretDark', box(0.055, 0.12, 0.24), leftMgX + 0.10, 0.80, -0.32, -0.22, 0, 0);
+    const exactNsvt = new THREE.Group();
+    const nsvtPart = (name, geometry, material, x, y, z, rx = 0, ry = 0, rz = 0) => {
+      // Painted vehicle materials sample vertex colors. Bucket geometry
+      // normally receives this neutral channel during merge; exact fittings
+      // need the same channel before they become direct scene meshes.
+      if (material?.vertexColors && !geometry.getAttribute('color')) {
+        geometry.setAttribute('color', new THREE.BufferAttribute(
+          new Float32Array(geometry.getAttribute('position').count * 3).fill(1), 3));
+      }
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = name;
+      mesh.position.set(x, y, z);
+      mesh.rotation.set(rx, ry, rz);
+      mesh.castShadow = mesh.receiveShadow = true;
+      exactNsvt.add(mesh);
+      return mesh;
+    };
+    // Lift the complete weapon, not only its barrel. A taller pintle retains
+    // the accepted lower cupola overlap while carrying the raised receiver,
+    // ammunition box, grips and tube as one physically connected station.
+    nsvtPart('t90a_nsvt_pintle', cylY(0.052, 0.066, 0.17 + nsvtRaiseM, 12), P.mats.dark,
+      leftMgX, 0.765 + nsvtRaiseM * 0.5, -0.28);
+    nsvtPart('t90a_nsvt_cradle', box(0.30, 0.065, 0.12), P.mats.dark,
+      leftMgX, 0.83 + nsvtRaiseM, -0.25);
+    nsvtPart('t90a_nsvt_receiver', box(0.22, 0.15, 0.43), P.mats.dark,
+      leftMgX, 0.865 + nsvtRaiseM, -0.035);
+    nsvtPart('t90a_nsvt_jacket', cylZ(0.055, 0.40, 14), P.mats.dark,
+      leftMgX, 0.875 + nsvtRaiseM, 0.33);
+    nsvtPart('t90a_nsvt_barrel', cylZ(0.029, 0.64, 12), P.mats.dark,
+      leftMgX, 0.875 + nsvtRaiseM, 0.84);
+    nsvtPart('t90a_nsvt_flash_hider', cylZ(0.052, 0.13, 14), P.mats.dark,
+      leftMgX, 0.875 + nsvtRaiseM, 1.225);
+    nsvtPart('t90a_nsvt_ammo_box', box(0.24, 0.21, 0.28), P.mats.hull,
+      leftMgX - 0.22, 0.835 + nsvtRaiseM, -0.04);
+    nsvtPart('t90a_nsvt_left_grip', box(0.055, 0.12, 0.24), P.mats.dark,
+      leftMgX - 0.10, 0.80 + nsvtRaiseM, -0.32, -0.22);
+    nsvtPart('t90a_nsvt_right_grip', box(0.055, 0.12, 0.24), P.mats.dark,
+      leftMgX + 0.10, 0.80 + nsvtRaiseM, -0.32, -0.22);
+    FITTINGS.markExact(exactNsvt, 'pintleMG');
+    P.turretG.add(exactNsvt);
   } else {
     // Legacy derivatives replace these ordinary buckets wholesale. Preserve
     // their old donor roof so RU-112's semantic cupola buckets cannot leak
@@ -1113,6 +1153,10 @@ function buildT90ALegacy(P, {
   // their 2.257/2.284 spikes; spike B rear edge pulled off the -1.002 col)
   // (T4A: the turretDetail spike DUPLICATES are deleted — the narrowed
   // camo-bucket pair after meshDomeCurved is the single carrier now.)
+  // The aft sensor post previously began 200 mm above the welded bustle
+  // crown. This compact shoe overlaps the shell shelf below and the post
+  // above, closing the exact unsupported markup surface.
+  P.add('turret', box(0.14, 0.24, 0.16), -0.93, 0.62, -1.26);
   P.add('turretDark', cylY(0.05, 0.05, 0.16, 10), -0.93, 0.805, -1.33);
   // Narrow met/crown collar at the measured left roof station.  Its full
   // lower half penetrates the dome and its lid remains below the adjacent
@@ -1150,8 +1194,11 @@ function buildT90ALegacy(P, {
   // NONE (the T3A "-1.755 ONLY-PROC col" law re-proven, err 9) and the
   // -1.008 plan window re-owned rear -1.74 where the ref notches -0.906.
   // The plan-rear residual stays the certified print-asym class.)
-  P.add('turret', box(0.15, 0.07, 0.52), 1.125, 0.0375, -1.859);  // T3A: rear -1.66w (ref 1.142 col -1.658)
-  P.add('turret', box(0.27, 0.20, 0.55), 1.335, 0.115, -1.624);
+  // Join the asymmetric right bustle run to the central bustle with real
+  // overlap. The former 120 mm lateral air gap left every outboard bin
+  // parented to the turret but visibly unsupported at oblique yaw.
+  P.add('turret', box(0.30, 0.07, 0.52), 1.05, 0.0375, -1.859);
+  P.add('turret', box(0.27, 0.20, 0.55), 1.325, 0.115, -1.624);
   P.add('turret', box(1.70, 0.055, 0.11), 0, 0.0225, -2.055);
   // A narrow casting tongue closes the final source profile station.  It
   // continues directly from the low bustle shelf; its one-pixel-height end
@@ -1239,7 +1286,7 @@ function buildT90ALegacy(P, {
       turretSeatZ,
       turretRearwardShiftM,
       shtoraEyeZ,
-      shtoraLocalRearwardShiftM,
+      shtoraLocalForwardShiftM,
       shtoraSupportFrontZ,
       shtoraHousingRearZ,
       shtoraHousingFrontZ,
@@ -1252,6 +1299,10 @@ function buildT90ALegacy(P, {
       rightCupola: [t90aRoofStations.right.x, t90aRoofStations.right.z],
       rightCupolaLightCount: 2,
       leftCupolaMannedMg: 'nsvt',
+      nsvtRaiseM,
+      roofHousingPedestalOverlapM: 0.12,
+      aftSensorPedestalOverlapM: 0.015,
+      rightBustleBridgeOverlapM: 0.03,
     };
   }
   // T5F-d: numbers on the VERTICAL flank-wall faces — the prism wall is
@@ -8390,9 +8441,10 @@ function buildT90BurlakHybridNative2026(P) {
     turretSeatZ: T90A_ORIGINAL_TURRET_SEAT_Z_M,
     turretRearwardShiftM: 0,
     shtoraEyeZ: T90A_ORIGINAL_SHTORA_EYE_Z_M,
-    shtoraLocalRearwardShiftM: 0,
+    shtoraLocalForwardShiftM: 0,
     shtoraSupportFrontZ: T90A_ORIGINAL_SHTORA_EYE_Z_M - 0.04,
     chevronForwardM: 0,
+    nsvtRaiseM: 0,
     gunRadiusScale: 1,
     recordSeatReceipt: false,
   });

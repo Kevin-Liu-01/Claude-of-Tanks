@@ -10,7 +10,7 @@ const cases = Object.freeze({
   t80bv: Object.freeze({ receiptKey: 't80BVChevronEraReceipt', forwardM: 0.26, minimumRidgeY: 0.34 }),
   ua_t80bv: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.23, minimumRidgeY: 0.32, omittedCarrierSurfaces: 1 }),
   ua_t80u_kursk: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14 }),
-  t90a: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0.14 }),
+  t90a: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0.24 }),
   t90a_burlak: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0 }),
   t90a_vladimir: Object.freeze({ receiptKey: 't90aVladimirChevronEraReceipt', forwardM: 0.12 }),
   t90: Object.freeze({ receiptKey: 't90ChevronEraReceipt', forwardM: 0.27 }),

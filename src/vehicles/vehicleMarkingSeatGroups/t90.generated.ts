@@ -132,7 +132,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          1.6535538,
+          1.6185539,
           0.10675,
           -1.5836288
         ],
@@ -147,7 +147,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0077879
+        "maximumSurfaceErrorM": 0.0077881
       },
       {
         "kind": "designation",
