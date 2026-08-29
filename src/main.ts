@@ -1251,12 +1251,12 @@ const endOverlay = createEndOverlayRuntime({
 // persistent exit control is not WoT battle chrome and it shadowed the
 // minimap corner. Leaving stays one Esc away: the settings overlay (Esc, or
 // the touch HUD's menu button) carries its red 'Leave Battle' row in every
-// battle/spectator/end state (settings.js canLeaveBattle/onLeaveBattle,
+// battle/spectator/end state (settings.ts canLeaveBattle/onLeaveBattle,
 // wired below), and the end-of-battle overlay keeps RETURN TO GARAGE.
 
 // ---------------------------------------------------------------------------
 // Input — routed through the rebindable action layer (src/game/input.ts) and
-// the settings panel (src/ui/settings.js). Zoom is the zoomIn/zoomOut actions (wheel by default).
+// the settings panel (src/ui/settings.ts). Zoom is the zoomIn/zoomOut actions (wheel by default).
 // ---------------------------------------------------------------------------
 const debugFlags: { forceFire: boolean; lastEndFlow?: unknown } = { forceFire: false };
 const battleResultPresentation = createBattleResultPresentationRuntime(legacyPort({
@@ -1270,7 +1270,7 @@ const battleResultPresentation = createBattleResultPresentationRuntime(legacyPor
   recordFlow: (receipt: unknown) => { debugFlags.lastEndFlow = receipt; },
 }));
 
-const input = legacyPort<MainInputRuntime>(createInput({ lockElement: renderer.domElement }));
+const input = createInput({ lockElement: renderer.domElement });
 bus.on('ui:debugHud', (payload) => {
   perfHud.setVisible(!!legacyPort<{ on?: boolean }>(payload).on);
 });

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { battleControlHintGroups } from './settings.js';
+import { battleControlHintGroups } from './settings.ts';
 import { SETTINGS_ACTION_ICONS, SETTINGS_OPTION_ICONS } from './settingsIcons.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
 

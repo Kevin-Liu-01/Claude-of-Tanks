@@ -1,41 +1,14 @@
 import { createElement, ensureStyle } from './dom.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import type {
+  SettingsOptions as SettingsPanelOptions,
+  SettingsRuntime,
+} from './settings.ts';
 
-interface SettingsInput {
-  onAction(action: string, handler: () => void): unknown;
-}
+export type SettingsOptions = Omit<SettingsPanelOptions, 'gear' | 'registerMenuAction'>;
 
-interface SettingsBus {
-  on(event: string, handler: (payload?: unknown) => void): unknown;
-}
-
-export interface SettingsOptions {
-  input: SettingsInput;
-  bus?: SettingsBus;
-  isBattleActive?: () => boolean;
-  canLeaveBattle?: () => boolean;
-  onLeaveBattle?: () => void;
-  gearVisible?: () => boolean;
-  isGamePaused?: () => boolean;
-}
-
-export interface SettingsRuntime {
-  readonly root: HTMLElement;
-  readonly gear: HTMLButtonElement;
-  open(): void;
-  close(options?: { noRelock?: boolean }): void;
-  toggle(): void;
-  isOpen(): boolean;
-  showHints(): void;
-}
-
-interface SettingsModule {
-  createSettings(options: SettingsOptions & {
-    gear: HTMLButtonElement;
-    registerMenuAction: false;
-  }): SettingsRuntime;
-}
+type SettingsModule = typeof import('./settings.ts');
 
 interface SettingsAccessEnvironment {
   createGear(): HTMLButtonElement;
@@ -43,7 +16,14 @@ interface SettingsAccessEnvironment {
   now(): number;
 }
 
-export interface SettingsAccess extends SettingsRuntime {
+export interface SettingsAccess {
+  readonly root: HTMLElement | null;
+  readonly gear: HTMLButtonElement;
+  open(): void;
+  close(options?: { noRelock?: boolean }): void;
+  toggle(): void;
+  isOpen(): boolean;
+  showHints(): void;
   preload(): Promise<SettingsRuntime>;
   readonly current: SettingsRuntime | null;
 }
@@ -74,7 +54,7 @@ const DEFAULT_ENVIRONMENT: SettingsAccessEnvironment = {
 };
 
 const loadDefaultSettings = async (): Promise<SettingsModule> =>
-  await import('./settings.js') as unknown as SettingsModule;
+  await import('./settings.ts');
 
 /**
  * Keep the exact settings trigger in the first garage frame while deferring
@@ -127,7 +107,7 @@ export function createSettingsAccess(
   };
 
   const access: SettingsAccess = {
-    root: null as unknown as HTMLElement,
+    get root() { return current?.root ?? null; },
     gear,
     preload,
     open,
@@ -140,11 +120,6 @@ export function createSettingsAccess(
     showHints: () => { current?.showHints(); },
     get current() { return current; },
   };
-
-  Object.defineProperty(access, 'root', {
-    enumerable: true,
-    get: () => current?.root ?? null,
-  });
 
   gear.addEventListener('click', open);
   options.input.onAction('settingsMenu', () => {

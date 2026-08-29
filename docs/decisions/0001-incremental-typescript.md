@@ -192,6 +192,11 @@ The procedural Garage environment now uses strict `src/ui/garageStage.ts`
 contracts for deterministic texture painting, GPU resource ownership, shadow
 material setup, architecture variants, and the stage lifecycle returned to
 the application composition root.
+The demand-loaded Settings surface now uses strict `src/ui/settings.ts`
+contracts for input bindings, typed setting keys, conflict resolution,
+graphics choices, gamepad capture, pause ownership, and DOM lifetime. Its
+access shim imports the real module contract directly instead of maintaining
+an unchecked duplicate and double-asserting the lazy module.
 
 ## Consequences
 

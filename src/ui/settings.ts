@@ -1,4 +1,4 @@
-// src/ui/settings.js — in-game settings panel (Esc in battle, gear in garage).
+// src/ui/settings.ts — in-game settings panel (Esc in battle, gear in garage).
 //
 // CONTROLS tab: every action from src/game/input.ts with three binding chips —
 // primary key, secondary key (arrow-key movement ships as default alt), and a
@@ -31,15 +31,135 @@
 
 import { FONT_STACK, ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { SETTINGS_ACTION_ICONS, SETTINGS_OPTION_ICONS } from './settingsIcons.ts';
+import {
+  SETTINGS_ACTION_ICONS,
+  SETTINGS_OPTION_ICONS,
+  type SettingsIconSpec,
+} from './settingsIcons.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
+import type {
+  ActionId,
+  AiDifficulty,
+  BindingSlot,
+  InputLayer,
+  InputSettings,
+  RmbMode,
+} from '../game/input.ts';
 import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
   MOBILE_PRESET_ORDER, PRESET_ORDER, PRESETS,
   setMobilePresetName, setPresetName,
+  type PresetName,
 } from '../engine/quality.ts';
+
+type SettingsTab = 'controls' | 'gameplay' | 'sound' | 'graphics';
+type BindingSlotKey = BindingSlot | 'pad';
+type NumericSettingKey =
+  | 'sensitivity'
+  | 'sniperSensScale'
+  | 'aimSmoothing'
+  | 'padSensitivity'
+  | 'volMaster'
+  | 'volEngine'
+  | 'volCombat'
+  | 'volAmbience'
+  | 'volUi'
+  | 'volVoice';
+type BooleanSettingKey =
+  | 'invertY'
+  | 'showPerfMeter'
+  | 'showDebugHud'
+  | 'armorAimOverlay'
+  | 'alarmHeartbeat';
+type ActionDefinition = InputLayer['actionDefs'][number];
+type TimerHandle = ReturnType<typeof setTimeout>;
+
+interface SettingsEventPayload {
+  readonly phase?: string;
+  readonly [key: string]: unknown;
+}
+
+interface SettingsBus {
+  emit(event: string, payload: unknown): unknown;
+  on(event: string, handler: (payload: unknown) => void): unknown;
+}
+
+export interface SettingsOptions {
+  readonly input: InputLayer;
+  readonly bus?: SettingsBus;
+  readonly isBattleActive?: () => boolean;
+  readonly canLeaveBattle?: () => boolean;
+  readonly onLeaveBattle?: () => void;
+  readonly gearVisible?: () => boolean;
+  readonly isGamePaused?: () => boolean;
+  readonly gear?: HTMLButtonElement;
+  readonly registerMenuAction?: boolean;
+}
+
+export interface SettingsRuntime {
+  readonly root: HTMLDivElement;
+  readonly gear: HTMLButtonElement;
+  open(): void;
+  close(options?: { noRelock?: boolean }): void;
+  toggle(): void;
+  isOpen(): boolean;
+  showHints(): void;
+}
+
+interface SliderOptions {
+  readonly toDisp?: (value: number) => number;
+  readonly fromDisp?: (value: number) => number;
+  readonly digits?: number;
+  readonly step?: string;
+  readonly dispStep?: string;
+  readonly unit?: string;
+  readonly onChange?: () => void;
+  readonly blipOnCommit?: boolean;
+}
+
+interface CaptureState {
+  readonly actionId: ActionId;
+  readonly slot: BindingSlotKey;
+  readonly chip: HTMLButtonElement;
+}
+
+type ConflictState =
+  | {
+      readonly pad: false;
+      readonly actionId: ActionId;
+      readonly slot: BindingSlot;
+      readonly otherId: ActionId;
+      readonly otherSlot: BindingSlot;
+      readonly code: string;
+    }
+  | {
+      readonly pad: true;
+      readonly actionId: ActionId;
+      readonly slot: 'pad';
+      readonly otherId: ActionId;
+      readonly otherSlot: 'pad';
+      readonly code: number;
+    };
+
+interface ActionBindingRow {
+  readonly row: HTMLDivElement;
+  readonly chips: {
+    readonly 0: HTMLButtonElement;
+    readonly 1: HTMLButtonElement;
+    readonly pad: HTMLButtonElement;
+  };
+}
+
+function requiredElement<ElementType extends Element>(
+  parent: ParentNode,
+  selector: string,
+): ElementType {
+  const element = parent.querySelector<ElementType>(selector);
+  if (!element) throw new Error(`[settings] missing required element: ${selector}`);
+  return element;
+}
 
 const SETTINGS_CSS = `
 /* settings_ui r2 (owner: "make our settings screen look much better"):
@@ -334,7 +454,7 @@ const MAX_PAD_BUTTONS = 17;
 const KC_DONE_GRACE_MS = 250;
 
 /** Canonical compact battle-control reference, shared by the hint UI and tests. */
-export function battleControlHintGroups(rmbMode = 'hold') {
+export function battleControlHintGroups(rmbMode: RmbMode = 'hold'): Array<[string, ActionId[]]> {
   return [
     ['Move', ['forward', 'left', 'back', 'right']],
     ['Fire', ['fire']],
@@ -365,7 +485,7 @@ export function battleControlHintGroups(rmbMode = 'hold') {
  * @returns {{open:Function,close:(opts?:{noRelock?:boolean})=>void,
  *   toggle:Function,isOpen:()=>boolean,showHints:Function,root:HTMLElement}}
  */
-export function createSettings(opts) {
+export function createSettings(opts: SettingsOptions): SettingsRuntime {
   ensureFonts();
   const { input, bus } = opts;
   const isBattleActive = opts.isBattleActive || (() => false);
@@ -376,7 +496,9 @@ export function createSettings(opts) {
   // shows exactly when the open panel is what froze the sim (garage Esc and
   // the end-overlay Esc keep the plain settings header).
   const isGamePaused = opts.isGamePaused || (() => false);
-  const emit = (ev, payload) => { if (bus && bus.emit) bus.emit(ev, payload); };
+  const emit = (event: string, payload: SettingsEventPayload = {}) => {
+    bus?.emit(event, payload);
+  };
 
   ensureStyle('cot-settings-style', SETTINGS_CSS);
 
@@ -406,12 +528,12 @@ export function createSettings(opts) {
     `</div>`;
   document.body.appendChild(root);
 
-  const body = root.querySelector('.cot-set-body');
-  const conflictBar = root.querySelector('.cot-set-conflict');
-  const conflictMsg = conflictBar.querySelector('.msg');
-  const resetBtn = root.querySelector('.reset');
-  const leaveBtn = root.querySelector('.leave');
-  const resumeBtn = root.querySelector('.resume');
+  const body = requiredElement<HTMLDivElement>(root, '.cot-set-body');
+  const conflictBar = requiredElement<HTMLDivElement>(root, '.cot-set-conflict');
+  const conflictMsg = requiredElement<HTMLSpanElement>(conflictBar, '.msg');
+  const resetBtn = requiredElement<HTMLButtonElement>(root, '.reset');
+  const leaveBtn = requiredElement<HTMLButtonElement>(root, '.leave');
+  const resumeBtn = requiredElement<HTMLButtonElement>(root, '.resume');
 
   // settings_ui r2: overflow-gated scroll fades on the rows area (garage r9
   // .can-scroll pattern, split per edge so the top fade only appears once the
@@ -438,7 +560,7 @@ export function createSettings(opts) {
   /** A compact, decorative vector plate that keeps the setting text as the
    *  accessible label. Icon maps are exhaustive over ActionId/InputSettings,
    *  so adding a new setting fails typecheck until it receives a glyph. */
-  function settingLabel(parent, label, spec) {
+  function settingLabel(parent: HTMLElement, label: string, spec: SettingsIconSpec): HTMLSpanElement {
     const lb = el('span', 'lb', parent);
     const icon = el('span', `cot-setting-icon tone-${spec.tone || 'steel'}`, lb);
     icon.setAttribute('aria-hidden', 'true');
@@ -509,34 +631,34 @@ export function createSettings(opts) {
   const nowMs = () =>
     (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const replayOwnsScreen = () => kcReplay || nowMs() - kcDoneMs < KC_DONE_GRACE_MS;
-  let activeTab = 'controls';
+  let activeTab: SettingsTab = 'controls';
   // A touch-only device has no keyboard to rebind, so the Controls
   // tab rendered 70+ sub-30px keycap chips (useless, and every one a failed
   // touch target). Hide the tab and land on Gameplay instead.
   if (input.isTouchLayout && input.isTouchLayout()) {
     activeTab = 'gameplay';
-    const tb = root.querySelector('.cot-set-tab[data-tab="controls"]');
+    const tb = root.querySelector<HTMLButtonElement>('.cot-set-tab[data-tab="controls"]');
     if (tb) tb.style.display = 'none';
   }
-  let capture = null; // { actionId, slot: 0|1|'pad', chip }
-  let escHoldTimer = null; // pending hold-Esc-to-bind timer during capture
-  let conflict = null; // { actionId, slot, otherId, otherSlot, code, pad }
+  let capture: CaptureState | null = null; // { actionId, slot: 0|1|'pad', chip }
+  let escHoldTimer: TimerHandle | null = null; // pending hold-Esc-to-bind timer during capture
+  let conflict: ConflictState | null = null; // binding collision awaiting swap/cancel
   let relockOnClose = false;
-  let hintTimer = null;
-  let hintFadeTimer = null;
+  let hintTimer: TimerHandle | null = null;
+  let hintFadeTimer: TimerHandle | null = null;
   let panelRaf = 0; // gamepad poll while the panel is open
   const panelPadPrev = new Array(MAX_PAD_BUTTONS).fill(true);
 
-  const SLOT_NAME = { 0: 'primary', 1: 'secondary' };
-  const bindLabel = (id) =>
+  const SLOT_NAME: Readonly<Record<BindingSlot, string>> = { 0: 'primary', 1: 'secondary' };
+  const bindLabel = (id: ActionId): string =>
     input.labelFor(input.getBinding(id, 0) || input.getBinding(id, 1));
 
   /** Broadcast current shell/consumable hotkey labels so the HUD tray never
    *  shows a stale (or hardcoded) key. */
   function emitBindings() {
     emit('ui:bindingsChanged', {
-      shells: ['shell1', 'shell2', 'shell3'].map(bindLabel),
-      consumables: ['consumable1', 'consumable2', 'consumable3'].map(bindLabel),
+      shells: (['shell1', 'shell2', 'shell3'] as const).map(bindLabel),
+      consumables: (['consumable1', 'consumable2', 'consumable3'] as const).map(bindLabel),
       specialAction: bindLabel('specialAction'),
     });
   }
@@ -548,14 +670,18 @@ export function createSettings(opts) {
   }
 
   // --- CONTROLS tab -----------------------------------------------------------
-  const rowByAction = new Map(); // actionId -> { row, chips: {0,1,pad} }
+  const rowByAction = new Map<ActionId, ActionBindingRow>();
 
-  function chipText(actionId, slotKey) {
+  function chipText(actionId: ActionId, slotKey: BindingSlotKey): string {
     if (slotKey === 'pad') return input.padLabelFor(input.getPadBinding(actionId));
     return input.labelFor(input.getBinding(actionId, slotKey));
   }
 
-  function makeChip(def, slotKey, parent) {
+  function makeChip(
+    def: ActionDefinition,
+    slotKey: BindingSlotKey,
+    parent: HTMLElement,
+  ): HTMLButtonElement {
     const chip = el('button', `cot-chip${slotKey === 'pad' ? ' padcol' : ''}`, parent);
     chip.type = 'button';
     chip.title = slotKey === 'pad'
@@ -615,7 +741,7 @@ export function createSettings(opts) {
     for (const def of input.actionDefs) {
       const r = rowByAction.get(def.id);
       if (!r) continue;
-      for (const slotKey of [0, 1, 'pad']) {
+      for (const slotKey of [0, 1, 'pad'] as const satisfies readonly BindingSlotKey[]) {
         const chip = r.chips[slotKey];
         if (capture && capture.chip === chip) continue; // keep listening label
         const t = chipText(def.id, slotKey);
@@ -626,9 +752,16 @@ export function createSettings(opts) {
   }
 
   // --- GAMEPLAY tab -----------------------------------------------------------
-  function sliderRow(parent, label, key, min, max, o = {}) {
-    const toD = o.toDisp || ((v) => v);
-    const fromD = o.fromDisp || ((v) => v);
+  function sliderRow(
+    parent: HTMLElement,
+    label: string,
+    key: NumericSettingKey,
+    min: number,
+    max: number,
+    o: SliderOptions = {},
+  ): void {
+    const toD = o.toDisp || ((value: number) => value);
+    const fromD = o.fromDisp || ((value: number) => value);
     const digits = o.digits != null ? o.digits : 2;
     const row = el('div', 'cot-set-row', parent);
     settingLabel(row, label, SETTINGS_OPTION_ICONS[key]);
@@ -677,7 +810,7 @@ export function createSettings(opts) {
 
   /** settings_ui r2: plate group-card — a cluster (title + rows + notes) on
    *  one industrial plate (garage r9 battlefield/camo treatment). */
-  function groupCard(parent, title) {
+  function groupCard(parent: HTMLElement, title: string): HTMLDivElement {
     const card = el('div', 'cot-set-card', parent);
     el('div', 'cot-set-group', card).textContent = title;
     return card;
@@ -685,11 +818,16 @@ export function createSettings(opts) {
 
   /** settings_ui r2: WoT-style ON/OFF segmented chip pair (replaces the old
    *  knob switch). Same persistence path: input.setSetting(key, bool). */
-  function onOffRow(parent, label, key, onChange) {
+  function onOffRow(
+    parent: HTMLElement,
+    label: string,
+    key: BooleanSettingKey,
+    onChange?: () => void,
+  ): HTMLDivElement {
     const row = el('div', 'cot-set-row', parent);
     settingLabel(row, label, SETTINGS_OPTION_ICONS[key]);
     const seg = el('div', 'cot-set-seg onoff', row);
-    const btns = [];
+    const btns: HTMLButtonElement[] = [];
     const sync = () => {
       const on = !!input.getSettings()[key];
       btns[0].classList.toggle('sel', !on);
@@ -697,7 +835,7 @@ export function createSettings(opts) {
       btns[0].setAttribute('aria-pressed', String(!on));
       btns[1].setAttribute('aria-pressed', String(on));
     };
-    for (const [val, txt] of [[false, 'Off'], [true, 'On']]) {
+    for (const [val, txt] of [[false, 'Off'], [true, 'On']] as const) {
       const b = el('button', '', seg);
       b.type = 'button';
       b.textContent = txt;
@@ -731,7 +869,7 @@ export function createSettings(opts) {
     // gunnery r1 (owner): what right-click does — hold-to-aim (default),
     // toggle-aim, or the classic gun-lock free look. Persisted as
     // settings.rmbMode; main.ts routes the RMB-bound action per frame.
-    const RMB_MODE_DEFS = [
+    const RMB_MODE_DEFS: ReadonlyArray<readonly [RmbMode, string]> = [
       ['hold', 'hold-to-aim'],
       ['toggle', 'toggle-aim'],
       ['freelook', 'free look'],
@@ -740,7 +878,7 @@ export function createSettings(opts) {
       const rmbRow = el('div', 'cot-set-row', aim);
       settingLabel(rmbRow, 'Right click (RMB)', SETTINGS_OPTION_ICONS.rmbMode);
       const rmbSeg = el('div', 'cot-set-seg', rmbRow);
-      const rmbBtns = [];
+      const rmbBtns: HTMLButtonElement[] = [];
       for (const [value, label] of RMB_MODE_DEFS) {
         const b = el('button', '', rmbSeg);
         b.type = 'button';
@@ -767,8 +905,8 @@ export function createSettings(opts) {
     const diffRow = el('div', 'cot-set-row', battle);
     settingLabel(diffRow, 'AI difficulty (next battle)', SETTINGS_OPTION_ICONS.aiDifficulty);
     const seg = el('div', 'cot-set-seg', diffRow);
-    const diffBtns = [];
-    for (const tier of ['easy', 'normal', 'hard']) {
+    const diffBtns: HTMLButtonElement[] = [];
+    for (const tier of ['easy', 'normal', 'hard'] as const satisfies readonly AiDifficulty[]) {
       const b = el('button', '', seg);
       b.type = 'button';
       b.textContent = tier;
@@ -828,7 +966,7 @@ export function createSettings(opts) {
     ['volAmbience', 'Ambience volume (wind, birds, garage)'],
     ['volUi', 'Interface & music volume'],
     ['volVoice', 'Crew voices & alarms volume'],
-  ];
+  ] as const satisfies ReadonlyArray<readonly [NumericSettingKey, string]>;
 
   /** Broadcast the persisted FPS/ping preference (default on, user opt-out). */
   function emitPerfMeter() {
@@ -883,9 +1021,11 @@ export function createSettings(opts) {
     const row = el('div', 'cot-set-row', card);
     settingLabel(row, 'Graphics quality', SETTINGS_OPTION_ICONS.graphicsQuality);
     const seg = el('div', 'cot-set-seg', row);
-    const btns = [];
+    const btns: HTMLButtonElement[] = [];
     const mobile = getDeviceTier() === 'mobile';
-    const choices = mobile ? MOBILE_PRESET_ORDER : ['auto', ...PRESET_ORDER];
+    const choices: readonly ('auto' | PresetName)[] = mobile
+      ? MOBILE_PRESET_ORDER
+      : ['auto', ...PRESET_ORDER];
     for (const name of choices) {
       const b = el('button', '', seg);
       b.type = 'button';
@@ -914,7 +1054,7 @@ export function createSettings(opts) {
   function renderTab() {
     cancelCapture();
     clearConflict();
-    for (const t of root.querySelectorAll('.cot-set-tab')) {
+    for (const t of root.querySelectorAll<HTMLButtonElement>('.cot-set-tab')) {
       t.classList.toggle('sel', t.dataset.tab === activeTab);
     }
     resetBtn.style.visibility =
@@ -929,7 +1069,11 @@ export function createSettings(opts) {
   }
 
   // --- rebind capture ------------------------------------------------------------
-  function beginCapture(actionId, slot, chip) {
+  function beginCapture(
+    actionId: ActionId,
+    slot: BindingSlotKey,
+    chip: HTMLButtonElement,
+  ): void {
     cancelCapture();
     clearConflict();
     capture = { actionId, slot, chip };
@@ -954,7 +1098,8 @@ export function createSettings(opts) {
     refreshChips();
   }
 
-  function finishCapture(code) {
+  function finishCapture(code: string): void {
+    if (!capture || capture.slot === 'pad') return;
     const { actionId, slot } = capture;
     cancelCapture();
     if (code === input.getBinding(actionId, slot)) return; // no-op rebind
@@ -974,7 +1119,8 @@ export function createSettings(opts) {
     bindingsMutated();
   }
 
-  function finishPadCapture(index) {
+  function finishPadCapture(index: number): void {
+    if (!capture || capture.slot !== 'pad') return;
     const { actionId } = capture;
     cancelCapture();
     if (index === input.getPadBinding(actionId)) return;
@@ -987,14 +1133,14 @@ export function createSettings(opts) {
     bindingsMutated();
   }
 
-  function onCaptureMouse(e) {
+  function onCaptureMouse(e: MouseEvent): void {
     if (!capture || capture.slot === 'pad') return;
     e.preventDefault();
     e.stopPropagation();
     finishCapture(`Mouse${e.button}`);
   }
 
-  function onCaptureWheel(e) {
+  function onCaptureWheel(e: WheelEvent): void {
     if (!capture || capture.slot === 'pad' || e.deltaY === 0) return;
     e.preventDefault();
     e.stopPropagation();
@@ -1002,7 +1148,7 @@ export function createSettings(opts) {
   }
 
   // --- conflict handling -----------------------------------------------------------
-  function showConflict(c) {
+  function showConflict(c: ConflictState): void {
     conflict = c;
     const defA = input.actionDefs.find((d) => d.id === c.actionId);
     const defB = input.actionDefs.find((d) => d.id === c.otherId);
@@ -1025,20 +1171,20 @@ export function createSettings(opts) {
     for (const { row } of rowByAction.values()) row.classList.remove('conflict');
   }
 
-  conflictBar.querySelector('.swap').addEventListener('click', () => {
+  requiredElement<HTMLButtonElement>(conflictBar, '.swap').addEventListener('click', () => {
     if (!conflict) return;
     if (conflict.pad) input.swapPadBindings(conflict.actionId, conflict.otherId, conflict.code);
     else input.swapBindings(conflict.actionId, conflict.slot, conflict.otherId, conflict.otherSlot, conflict.code);
     clearConflict();
     bindingsMutated();
   });
-  conflictBar.querySelector('.dismiss').addEventListener('click', () => {
+  requiredElement<HTMLButtonElement>(conflictBar, '.dismiss').addEventListener('click', () => {
     clearConflict();
     emit('ui:click', {});
   });
 
   // --- panel-wide key handling (capture phase; the input layer is disabled) -------
-  function onPanelKey(e) {
+  function onPanelKey(e: KeyboardEvent): void {
     if (!open) return;
     if (capture) {
       e.preventDefault();
@@ -1069,7 +1215,7 @@ export function createSettings(opts) {
     }
   }
 
-  function onPanelKeyUp(e) {
+  function onPanelKeyUp(e: KeyboardEvent): void {
     if (!open) return;
     if (capture && e.code === 'Escape' && escHoldTimer) {
       // released before the hold threshold: plain cancel
@@ -1166,7 +1312,7 @@ export function createSettings(opts) {
    *   the panel programmatically — they must never fire a gesture-less lock
    *   request (a denial there would feed the cursor-aim denial streak).
    */
-  function closePanel(o) {
+  function closePanel(o: { noRelock?: boolean } = {}): void {
     if (!open) return;
     if (o && o.noRelock) relockOnClose = false;
     cancelCapture();
@@ -1184,7 +1330,7 @@ export function createSettings(opts) {
   }
 
   root.addEventListener('mousedown', (e) => e.stopPropagation()); // keep clicks off the game layer
-  root.querySelector('.cot-set-close').addEventListener('click', () => api.close());
+  requiredElement<HTMLButtonElement>(root, '.cot-set-close').addEventListener('click', () => api.close());
   resumeBtn.addEventListener('click', () => api.close());
   leaveBtn.addEventListener('click', () => {
     if (!onLeaveBattle || !canLeaveBattle()) return;
@@ -1203,7 +1349,13 @@ export function createSettings(opts) {
     }
     if (activeTab === 'sound') {
       input.setSetting('volMaster', 0.8);
-      for (const key of ['volEngine', 'volCombat', 'volAmbience', 'volUi', 'volVoice']) {
+      for (const key of [
+        'volEngine',
+        'volCombat',
+        'volAmbience',
+        'volUi',
+        'volVoice',
+      ] as const satisfies readonly NumericSettingKey[]) {
         input.setSetting(key, 1);
       }
       input.setSetting('alarmHeartbeat', true);
@@ -1215,9 +1367,12 @@ export function createSettings(opts) {
     input.resetBindings();
     bindingsMutated();
   });
-  for (const t of root.querySelectorAll('.cot-set-tab')) {
+  for (const t of root.querySelectorAll<HTMLButtonElement>('.cot-set-tab')) {
     t.addEventListener('click', () => {
-      activeTab = t.dataset.tab;
+      const tab = t.dataset.tab;
+      if (tab === 'controls' || tab === 'gameplay' || tab === 'sound' || tab === 'graphics') {
+        activeTab = tab;
+      }
       renderTab();
       emit('ui:click', {});
     });
@@ -1290,11 +1445,14 @@ export function createSettings(opts) {
     refreshPausedTag(); // PAUSE: tag follows phase/result while the panel is up
   }
   gear.addEventListener('click', () => { if (!open) openPanel(); });
-  if (bus && bus.on) {
+  if (bus) {
     bus.on('phase:change', (ev) => {
       updateGear();
       // leaving battle (garage / result) always clears the resume veil
-      if (!ev || ev.phase !== 'battle') hideResumeVeil();
+      const phase = typeof ev === 'object' && ev !== null && 'phase' in ev
+        ? Reflect.get(ev, 'phase')
+        : undefined;
+      if (phase !== 'battle') hideResumeVeil();
       // belt for the kill-cam flag: killcam.cancel() only emits killcam:done
       // while a replay is live, so a phase flip is the reset of last resort
       kcReplay = false;
@@ -1323,7 +1481,7 @@ export function createSettings(opts) {
   updateGear();
 
   // --- controls hint strip -----------------------------------------------------------
-  function hintGroup(label, actionIds) {
+  function hintGroup(label: string, actionIds: readonly ActionId[]): string {
     const kbds = actionIds
       .map((id) => `<kbd>${bindLabel(id)}</kbd>`)
       .join('');

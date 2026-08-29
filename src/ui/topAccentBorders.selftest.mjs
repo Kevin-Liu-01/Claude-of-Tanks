@@ -5,7 +5,7 @@ const readSource = (relativePath) => readFile(new URL(relativePath, import.meta.
 const [garage, contextInfo, settings, hud, endScreen, killcam, publicNav, docs] = await Promise.all([
   readSource('./garage.js'),
   readSource('./contextInfo.ts'),
-  readSource('./settings.js'),
+  readSource('./settings.ts'),
   readSource('./hud.js'),
   readSource('./endScreen.ts'),
   readSource('../game/killcam.js'),

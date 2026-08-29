@@ -3924,7 +3924,7 @@ export function initHud(bus) {
     netOptIn = !!(p && p.on);
     if (!netOptIn) { netEl.style.display = 'none'; netFrames = 0; netLastPaintMs = 0; }
   });
-  // Live hotkey labels — settings.js broadcasts at boot and after every
+  // Live hotkey labels — settings.ts broadcasts at boot and after every
   // rebind/clear/reset, so the tray never lies about the player's keys.
   bus.on('ui:bindingsChanged', (p) => {
     if (!p) return;
