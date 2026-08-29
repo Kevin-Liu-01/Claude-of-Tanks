@@ -214,10 +214,13 @@ function modernT80CheekCarrier(s) {
 // segmented clamshell read from front, quarter and plan views.
 function addFacetedT80FrontERA(P, variant) {
   const kursk = variant === 'kursk';
-  const chevronForwardM = 0.14;
-  // The Kursk control already occupies the upper cheek. Raise the BV's
-  // complete carriers, tiles, gaskets and center closure to the same band.
-  const chevronLiftY = kursk ? 0 : 0.06;
+  // The Ukrainian BV needs its complete carrier ahead of the articulated
+  // Luna lamp, while the accepted Kursk installation retains its datum.
+  const chevronForwardM = kursk ? 0.14 : 0.23;
+  // Lower the BV bank by 50 mm from the former raised course. The upper
+  // inboard port surface is intentionally absent on the lamp side below,
+  // producing a real articulated-equipment notch instead of overlap.
+  const chevronLiftY = kursk ? 0 : 0.01;
   const plans = kursk ? [
     [[0.12, 1.46], [0.24, 1.59], [0.78, 1.21], [0.66, 1.08]],
     [[0.67, 1.12], [0.80, 1.24], [1.33, 0.69], [1.20, 0.57]],
@@ -247,6 +250,9 @@ function addFacetedT80FrontERA(P, variant) {
     // the exact variant plans, but install the complete two-row package on
     // that visible face rather than leaving its tiles buried in the shell.
     forwardM: chevronForwardM,
+    surfaceOmissions: kursk ? [] : [
+      { side: -1, planIndex: 0, rowIndex: 1 },
+    ],
     centerClosure: {
       width: kursk ? 0.43 : 0.39,
       height: kursk ? 0.23 : 0.21,
@@ -267,6 +273,8 @@ function addFacetedT80FrontERA(P, variant) {
     frontmostTileZM: chevron.frontmostTileZM,
     exactSurfaceOffsets: chevron.exactSurfaceOffsets,
     raisedToUpperCheekM: chevronLiftY,
+    gunLampReliefNotch: !kursk,
+    omittedCarrierSurfaces: chevron.carrierSurfacesOmitted,
   };
   P.turretG.userData.uaT80FrontERAReceipt = Object.freeze(receipt);
 }
@@ -890,7 +898,10 @@ function buildUAT80BV(P) {
       [-2.60, 0.44], [2.35, 0.44], [2.90, 0.56], [3.39, 0.74],
     ],
     wUp: [[-3.39, 1.28], [3.39, 1.28]],
-    wLo: [[-3.39, 1.05], [3.39, 1.02]],
+    // Narrow the hidden lower-tub shoulder by 30 mm so the inner corners
+    // of the animated T-80 shoe course do not graze it through the wheel
+    // well. Published outer width and skirt/fender silhouettes are intact.
+    wLo: [[-3.39, 1.02], [3.39, 1.02]],
     sponsonY: [[-3.39, 1.42], [-2.35, 1.42], [-2.20, 1.24], [2.40, 1.24], [3.39, 1.24]],
   });
 
@@ -920,10 +931,14 @@ function buildUAT80BV(P) {
     // 1.22) entered the idler-lane strict sweep (44/60 voxel receipt)
     if (row === 2 && i === 3) continue;
     const proud = (i + row) & 1;
-    kTile(P, 'hull', s * (0.235 + i * 0.285),
+    // The final column sits beside the idler wrap. A 40 mm inboard seat
+    // retains the four-column read while clearing the articulated shoe
+    // corner that the old cassette overhung by 17 mm.
+    const outerColumnInsetM = i === 3 ? 0.09 : 0;
+    kTile(P, 'hull', s * (0.235 + i * 0.285 - outerColumnInsetM),
       1.328 - row * 0.089 + (proud ? 0.022 : 0),
       2.34 + row * 0.27 + (proud ? 0.008 : 0),
-      0.26, 0.135, 0.27, [-0.34, s * 0.03, 0], true);
+      i === 3 ? 0.18 : 0.26, 0.135, 0.27, [-0.34, s * 0.03, 0], true);
   }
   // §5.341 "more era": varied low fourth course — staggered half-tiles
   // riding the glacis toe between the raft columns (x <= 1.02, clear of

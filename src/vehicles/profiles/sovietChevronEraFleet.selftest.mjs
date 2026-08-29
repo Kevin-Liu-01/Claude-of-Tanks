@@ -6,9 +6,9 @@ import { tankTier } from '../tier.ts';
 const cases = Object.freeze({
   t64bv1: Object.freeze({ receiptKey: 't64BV1ChevronEraReceipt', forwardM: 0 }),
   t72bu: Object.freeze({ receiptKey: 't72BUChevronEraReceipt', forwardM: 0 }),
-  t80u: Object.freeze({ receiptKey: 't80UChevronEraReceipt', forwardM: 0.14, minimumRidgeY: 0.375 }),
-  t80bv: Object.freeze({ receiptKey: 't80BVChevronEraReceipt', forwardM: 0.18, minimumRidgeY: 0.38 }),
-  ua_t80bv: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14, minimumRidgeY: 0.38 }),
+  t80u: Object.freeze({ receiptKey: 't80UChevronEraReceipt', forwardM: 0.10, minimumRidgeY: 0.375 }),
+  t80bv: Object.freeze({ receiptKey: 't80BVChevronEraReceipt', forwardM: 0.26, minimumRidgeY: 0.34 }),
+  ua_t80bv: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.23, minimumRidgeY: 0.32, omittedCarrierSurfaces: 1 }),
   ua_t80u_kursk: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14 }),
   t90a: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0.14 }),
   t90a_burlak: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0 }),
@@ -38,9 +38,19 @@ for (const [id, expected] of Object.entries(cases)) {
       assert.ok(receipt.ridgeY >= expected.minimumRidgeY,
         `${id}: keeps both front chevron rows high on the turret cheek`);
     }
-    assert.equal(receipt.carrierSurfacesTotal,
+    assert.equal(receipt.carrierSurfacesOmitted, expected.omittedCarrierSurfaces ?? 0,
+      `${id}: records only intentional equipment reliefs`);
+    assert.equal(receipt.carrierSurfacesTotal + receipt.carrierSurfacesOmitted,
       receipt.rowsPerCheek * receipt.carriersPerRow * 2,
-      `${id}: mirrors the complete carrier topology`);
+      `${id}: mirrors the complete carrier topology except explicit equipment notches`);
+    if (id === 't80bv') {
+      const hull = tank.root.getObjectByName('rig_hull');
+      const bridges = hull?.userData.t80bvFenderBridgeReceipt;
+      assert.ok(bridges, 't80bv: receipts the plan-contiguous fender transition');
+      assert.equal(bridges.planSeamsOpen, 0);
+      assert.ok(bridges.minimumShoeClearanceM > 0,
+        't80bv: fender bridge remains physically above the animated shoe envelope');
+    }
   } finally {
     tank.dispose();
   }

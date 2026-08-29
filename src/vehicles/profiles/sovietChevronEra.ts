@@ -22,6 +22,12 @@ interface ChevronRow {
   z1: number;
 }
 
+interface ChevronSurfaceOmission {
+  side: Side;
+  planIndex: number;
+  rowIndex: number;
+}
+
 interface CenterClosure {
   width: number;
   height: number;
@@ -65,6 +71,7 @@ export interface SovietChevronEraOptions {
   gasketPadY?: number;
   tilePadY?: number;
   forwardM?: number;
+  surfaceOmissions?: readonly ChevronSurfaceOmission[];
   centerClosure?: CenterClosure | null;
 }
 
@@ -73,6 +80,7 @@ export interface SovietChevronEraReceipt {
   readonly rowsPerCheek: number;
   readonly carriersPerRow: number;
   readonly carrierSurfacesTotal: number;
+  readonly carrierSurfacesOmitted: number;
   readonly tilesPerCarrierSurface: number;
   readonly tilesTotal: number;
   readonly ridgeY: number;
@@ -183,6 +191,7 @@ export function addSovietChevronEra(P: ChevronBuilderPort, {
   gasketPadY = -0.006,
   tilePadY = 0.012,
   forwardM = 0,
+  surfaceOmissions = [],
   centerClosure = null,
 }: SovietChevronEraOptions): SovietChevronEraReceipt {
   if (!sector || !receiptKey || !family) throw new Error('Chevron ERA requires sector, receiptKey and family');
@@ -193,12 +202,26 @@ export function addSovietChevronEra(P: ChevronBuilderPort, {
   const seatedPlans: ChevronPlan[] = plans.map((plan: ChevronPlan) => (
     plan.map(([x, z]: PlanPoint): PlanPoint => [x, z + forwardM])
   ));
+  const omittedSurfaceKeys = new Set(surfaceOmissions.map(({ side, planIndex, rowIndex }) => {
+    if (side !== -1 && side !== 1) throw new Error(`${family}: chevron omission side must be -1 or 1`);
+    if (!Number.isInteger(planIndex) || planIndex < 0 || planIndex >= plans.length) {
+      throw new Error(`${family}: chevron omission plan index ${planIndex} is out of range`);
+    }
+    if (!Number.isInteger(rowIndex) || rowIndex < 0 || rowIndex >= rows.length) {
+      throw new Error(`${family}: chevron omission row index ${rowIndex} is out of range`);
+    }
+    return `${side}:${planIndex}:${rowIndex}`;
+  }));
   const frontmostTileZM = frontmostTileZ(seatedPlans, rows, tileRanges, tileDepthM, tilePadY);
 
   P.visualEraCluster(sector, 'turret', () => {
     for (const side of [-1, 1] as const) {
-      for (const row of rows) {
-        for (const plan of seatedPlans) {
+      for (const [rowIndex, row] of rows.entries()) {
+        for (const [planIndex, plan] of seatedPlans.entries()) {
+          // Equipment reliefs remove the complete carrier face as well as
+          // its tiles. Skipping tiles alone would leave the structural slab
+          // intersecting a gun-mounted lamp or sight during elevation.
+          if (omittedSurfaceKeys.has(`${side}:${planIndex}:${rowIndex}`)) continue;
           P.add(carrierBucket, mirroredCarrier(side, plan, row));
           for (const [t0, t1] of tileRanges) {
             P.add(gasketBucket, carrierFaceTile(
@@ -221,9 +244,10 @@ export function addSovietChevronEra(P: ChevronBuilderPort, {
     family,
     rowsPerCheek: rows.length,
     carriersPerRow: plans.length,
-    carrierSurfacesTotal: rows.length * plans.length * 2,
+    carrierSurfacesTotal: rows.length * plans.length * 2 - omittedSurfaceKeys.size,
+    carrierSurfacesOmitted: omittedSurfaceKeys.size,
     tilesPerCarrierSurface: tileRanges.length,
-    tilesTotal: rows.length * plans.length * tileRanges.length * 2,
+    tilesTotal: (rows.length * plans.length * 2 - omittedSurfaceKeys.size) * tileRanges.length,
     ridgeY,
     lowerRearZOffset: rows[0].z0,
     ridgeZOffset: rows[0].z1,

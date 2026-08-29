@@ -150,6 +150,50 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
     "schemaVersion": 1,
     "seats": [
       {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          1.3241192,
+          0.2195253,
+          -0.3027002
+        ],
+        "quaternion": [
+          0.0377532,
+          0.8506423,
+          -0.0232505,
+          0.523872
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.2624169
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          -1.3241192,
+          0.2195253,
+          -0.3027002
+        ],
+        "quaternion": [
+          0.0377542,
+          -0.8506422,
+          0.0232511,
+          0.523872
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.262417
+      },
+      {
         "kind": "insignia",
         "parent": "turret",
         "size": 0.23,
@@ -170,28 +214,6 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
         "maximumSurfaceErrorM": 0.0119028
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.23,
-        "pos": [
-          0.886,
-          0.369815,
-          -1.2924
-        ],
-        "quaternion": [
-          0,
-          0.7071068,
-          0,
-          0.7071068
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "t80bv",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
       }
     ]
   },

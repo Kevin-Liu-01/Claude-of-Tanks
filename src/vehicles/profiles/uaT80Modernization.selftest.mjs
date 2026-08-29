@@ -30,17 +30,21 @@ for (const [id, receipt, weaponName] of variants) {
     assert.ok(rws?.isGroup && rws.parent === turretRig,
       `${id}: Kord RWS yaws with the turret`);
     assert.equal(frontERA.paintedArmorOnly, true);
-    assert.equal(frontERA.cheekCassettes, 24,
-      `${id}: two-row frontal carriers expose all face tiles`);
+    assert.equal(frontERA.cheekCassettes, id === 'ua_t80bv' ? 21 : 24,
+      `${id}: two-row frontal carriers expose every non-notched face tile`);
     assert.equal(frontERA.mantletCassettes, 0,
       `${id}: no loose mantlet cassette duplicates the joined center closure`);
     assert.equal(frontERA.shoulderReturnCassettes, 6);
     assert.equal(frontERA.rowsPerCheek, 2);
-    assert.equal(frontERA.forwardM, 0.14,
+    assert.equal(frontERA.forwardM, id === 'ua_t80bv' ? 0.23 : 0.14,
       `${id}: complete chevron package is installed on the visible cheek face`);
     assert.ok(frontERA.frontmostTileZM >= 1.79,
       `${id}: frontal ERA faces remain visibly proud of the welded carrier`);
     assert.equal(frontERA.exactSurfaceOffsets, true);
+    assert.equal(frontERA.gunLampReliefNotch, id === 'ua_t80bv',
+      `${id}: only the BV carrier opens an articulated Luna-lamp relief`);
+    assert.equal(frontERA.omittedCarrierSurfaces, id === 'ua_t80bv' ? 1 : 0,
+      `${id}: relief-cuts exactly the requested carrier surface`);
     assert.equal(turretRig.getObjectByName('turretTrack'), undefined,
       `${id}: obsolete spare-track-steel frontal blocks are removed`);
 

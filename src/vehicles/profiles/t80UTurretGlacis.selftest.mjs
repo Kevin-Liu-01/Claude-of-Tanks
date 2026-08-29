@@ -30,6 +30,25 @@ try {
   assert.equal(glacis.attachmentGapM, 0,
     'lower glacis permits no daylight below the steep nose');
 
+  const hullClosure = hullRig.userData.t80uHullClosureReceipt;
+  assert.ok(hullClosure, 'T-80U exposes its under-glacis and fender closure receipt');
+  assert.equal(hullClosure.centralSeamGapM, 0);
+  assert.equal(hullClosure.bowWebGapM, 0);
+  assert.equal(hullClosure.shoulderSeamGapM, 0);
+  assert.equal(hullClosure.frontFenderRisers, 2,
+    'both front skirts connect structurally to their fender caps');
+  assert.equal(hullClosure.trackEnvelopeIntrusions, 0);
+  assert.ok(hullClosure.minimumReturnTrackClearanceM >= 0.17);
+
+  const rearFuel = hullRig.userData.t80uRearFuelReceipt;
+  assert.ok(rearFuel, 'T-80U exposes its supported rear auxiliary-fuel receipt');
+  assert.equal(rearFuel.fuelDrums, 2);
+  assert.equal(rearFuel.axis, 'x', 'both rear fuel drums sit transversely');
+  assert.ok(rearFuel.drumDiameterM >= 0.48 && rearFuel.drumLengthM >= 1.20,
+    'rear fuel drums remain legible in rear and quarter views');
+  assert.ok(rearFuel.exhaustShelfOverlapM >= 0.09,
+    'rear fuel drums bear on the exhaust shelf rather than floating');
+
   const hullLift = hullRig.userData.t80uHullLiftReceipt;
   assert.ok(hullLift, 'T-80U exposes its fixed-running-gear hull-lift receipt');
   assert.equal(hullLift.architecture, 'lifted-hull-fixed-running-gear');
@@ -104,8 +123,10 @@ try {
   assert.equal(modernizedTurret.canonicalCastReference, 't80/t80b/ua_t80u_kursk');
   assert.ok(modernizedTurret.frontChevronRaisedToUpperCheekM >= 0.07,
     'complete T-80U frontal chevron occupies the upper cheek band');
-  assert.equal(modernizedTurret.frontChevronForwardM, 0.14,
-    'complete T-80U frontal chevron carrier clears the cast nose');
+  assert.equal(modernizedTurret.frontChevronForwardM, 0.10,
+    'T-80U frontal chevron carrier retains its corrected rearward Z-axis seat');
+  assert.equal(modernizedTurret.frontChevronRearwardReseatM, 0.04,
+    'T-80U records the requested 40 mm negative-Z chevron reseat');
   assert.equal(modernizedTurret.frontEquipmentForwardM, 0.30,
     'paired front equipment assemblies are reseated ahead of the chevron');
   assert.ok(modernizedTurret.frontEquipmentFaceClearanceM >= 0.04,
@@ -114,6 +135,13 @@ try {
     'T-80U turret lowering retains every equipment seat relative to the shell');
   assert.equal(modernizedTurret.turretAssemblyLoweringM, 0.04,
     'T-80U complete rotating package sits 40 mm lower on the hull');
+  assert.equal(modernizedTurret.turretArmorSeatDropM, 0.025,
+    'external armor and attached equipment settle 25 mm into the cast surface');
+  assert.equal(modernizedTurret.commanderCupolaReseatM, 0.22,
+    'commander cupola no longer begins deep inside the cast roof');
+  assert.equal(modernizedTurret.commanderWeaponReseatM, 0.22,
+    'Utyos receiver follows the corrected commander-station seat');
+  assert.equal(modernizedTurret.roofEquipmentClippedIntoTurret, false);
   assert.ok(Math.abs((modernizedTurret.previousCrownWorldY
     - modernizedTurret.canonicalCrownWorldY) - modernizedTurret.turretAssemblyLoweringM) <= 0.005,
   'standardized shell crown follows the complete 40 mm turret lowering');

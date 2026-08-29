@@ -36,7 +36,10 @@ function buildT80Line(P, v) {
     deck: [[-3.26, 1.43], [-2.90, 1.41], [-2.55, 1.44], [-1.95, 1.465], [-1.66, 1.503], [-1.36, 1.503], [-1.10, 1.458], [1.25, 1.44], [1.55, 1.452], [1.80, 1.44], [2.00, 1.415], [2.12, 1.345], [2.30, 1.32], [2.44, 1.283], [2.58, 1.232], [2.96, 1.235], [3.05, 1.19]],
     belly: [[-3.26, 1.35], [-3.16, 1.12], [-3.06, 0.90], [-2.96, 0.725], [-2.86, 0.73], [-2.60, 0.44], [2.60, 0.44], [2.88, 0.55], [3.05, 0.72]],
     wUp: [[-3.26, 1.28], [3.05, 1.28]],
-    wLo: [[-3.26, 1.05], [3.05, 1.02]],
+    // The BV's inner shoe shoulders finish at |x|=1.04. Pull its lower
+    // tub wall 30 mm inboard so the animated connector corners retain a
+    // real clearance instead of grazing the hidden belly by 17 mm.
+    wLo: [[-3.26, v === 2 ? 1.02 : 1.05], [3.05, 1.02]],
     // First-party track corridor: the sponson underside stays above the
     // native return/suspension envelope along the wheelbase, then rises
     // farther over the sprocket/idler wraps.  The earlier 0.82 m centre
@@ -229,7 +232,9 @@ function buildT80Line(P, v) {
   // seven-ring shell; roof-relative seats inherit it through roofDrop.
   const bvSeatLiftY = v === 2 ? roofTopY - previousBVRoofY : 0;
   const turretSeatY = (y) => y + bvSeatLiftY;
-  const frontChevronY = (y) => turretSeatY(y) + 0.08;
+  // Keep the BV chevrons on the lower cast cheek so their two-row V reads
+  // cleanly beneath the roof stations instead of riding above the brow.
+  const frontChevronY = (y) => turretSeatY(y) + 0.04;
   const roofY = (y) => y - roofDrop;
   // crown plate: the ref roof is FLAT 2.20-2.25 with a falloff beyond — the
   // compressed ref's front profile now falls continuously from ±0.60
@@ -502,7 +507,7 @@ function buildT80Line(P, v) {
       // The cast shell previously swallowed the carrier faces in quarter
       // views. Move the complete carrier-and-tile package to the installed
       // cheek datum; its long rear edges remain buried in the dome.
-      forwardM: 0.18,
+      forwardM: 0.26,
       centerClosure: { width: 0.36, height: 0.18, depth: 0.055, y: frontChevronY(0.23), z: 1.43, rx: -0.20 },
     });
     // Continue the coherent front into the cast shoulder and flank wrap.
@@ -516,11 +521,11 @@ function buildT80Line(P, v) {
       const yaw = 0.66 + i * 0.105;
       const shoeY = turretSeatY(0.12 - i * 0.006);
       const cassetteY = turretSeatY(0.15 - i * 0.006);
-      const shoe = seatEra(s * (x - 0.035), shoeY, z,
-        0.19, 0.11, 0.20, -0.06, s * yaw, 0.040);
+      const shoe = seatEra(s * (x - 0.055), shoeY, z,
+        0.23, 0.15, 0.25, -0.06, s * yaw, 0.055);
       const cassette = seatEra(s * x, cassetteY, z,
-        0.22, 0.14, 0.22, -0.06, s * yaw);
-      P.add('turret', box(0.19, 0.11, 0.20), shoe.x, shoeY, shoe.z, -0.06, s * yaw, 0);
+        0.22, 0.14, 0.22, -0.06, s * yaw, 0.025);
+      P.add('turret', box(0.23, 0.15, 0.25), shoe.x, shoeY, shoe.z, -0.06, s * yaw, 0);
       P.add('turret', box(0.22, 0.14, 0.22), cassette.x, cassetteY, cassette.z, -0.06, s * yaw, 0);
       P.add('turretDark', box(0.17, 0.012, 0.15), cassette.x, turretSeatY(0.226 - i * 0.006), cassette.z, -0.06, s * yaw, 0);
     }
@@ -530,6 +535,9 @@ function buildT80Line(P, v) {
       arcCassetteOverlapM: 0.008,
       maximumSurfaceGapM: Math.max(...eraSurfaceSeats.map((seat) => seat.surfaceGapM)),
       minimumSurfaceGapM: Math.min(...eraSurfaceSeats.map((seat) => seat.surfaceGapM)),
+      supportEmbedM: 0.055,
+      cassetteEmbedM: 0.025,
+      maximumCarrierJointM: 0,
     });
     });
     // The production BV's 902B system is visibly asymmetric: seven tubes
@@ -560,6 +568,20 @@ function buildT80Line(P, v) {
       P.add('hull', box(0.78, 0.10, 0.32), s * 1.42, 1.17, 3.13, -0.08, -s * 0.10, 0);
     }
     P.add('hull', box(0.90, 0.075, 0.18), 0, 1.205, 3.08, -0.10, 0, 0);
+    // Raised fender bridge caps close the visible plan seams at the idler
+    // and sprocket transitions. Their 1.37 m undersides remain above the
+    // measured 1.352 m animated shoe envelope, preserving a true gap.
+    for (const s of [-1, 1]) {
+      P.add('hull', box(0.32, 0.04, 0.50), s * 1.58, 1.39, 2.65);
+      P.add('hull', box(0.32, 0.04, 0.70), s * 1.58, 1.39, -2.25);
+    }
+    P.hullG.userData.t80bvFenderBridgeReceipt = Object.freeze({
+      planSeamsOpen: 0,
+      bridgeCaps: 4,
+      bridgeUndersideY: 1.37,
+      animatedShoeEnvelopeTopY: 1.352,
+      minimumShoeClearanceM: 0.018,
+    });
     // Full skirt-mounted K-1 cadence.  Modules overlap the retained skirt
     // faces by 15 mm, so this is additive armor rather than a replacement
     // band and cannot open the wheel well or alter the smart-track course.

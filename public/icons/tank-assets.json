@@ -145303,17 +145303,17 @@
           }
         ]
       },
-      "geometryHash": "be4f6684",
+      "geometryHash": "957d7af2",
       "metadataHash": "1d8cf4f4",
       "presentationAnchor": {
         "xM": 0.0003,
-        "zM": 0.0433
+        "zM": 0.0438
       },
-      "presentationHash": "2953edfa",
+      "presentationHash": "2969b449",
       "presentationProjection": {
         "centerYM": 1.7506,
-        "topHalfM": 6.2229,
-        "sideHalfM": 3.1115
+        "topHalfM": 6.2224,
+        "sideHalfM": 3.1112
       },
       "appearance": {
         "version": 1,
@@ -145335,7 +145335,7 @@
           "opticGlass": 2,
           "tireRubber": 1,
           "wood": 1,
-          "unclassified": 10,
+          "unclassified": 11,
           "gearShadow": 2
         }
       },
@@ -145347,12 +145347,12 @@
         "fallback": 1
       },
       "vehicleMarkings": {
-        "total": 2,
+        "total": 3,
         "insignia": 1,
-        "designation": 1,
+        "designation": 2,
         "verifiedInsignia": 1,
-        "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 1,
+        "verifiedDesignation": 2,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "RU:ru-star:319"
         ]
@@ -145403,24 +145403,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 60907,
-          "sha256": "c1fafc7c1f741c06981ec110d3fd56d4ed1c282c231ed5e80d63e4c44abb268a"
+          "bytes": 61579,
+          "sha256": "822a364a980165c8340120f64198a859b5d5f57468099b88d7cdbc250b4a4d12"
         },
         "armorSide": {
           "file": "t80bv_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 63537,
-          "sha256": "3ffd9df5309c82ca9161240339ecee73db6ff0c8d4f412a8d07ec81291c325f4"
+          "bytes": 64129,
+          "sha256": "afb80b839bbba2fd3f6e3020707abd22b546555cbc61039fff82dc63717e4f31"
         },
         "modulesSide": {
           "file": "t80bv_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70983,
-          "sha256": "b3cb156be59ba0e9a0607b65009eac4e64a5b5ad404450f971d9f9a2dbcb2a70"
+          "bytes": 71339,
+          "sha256": "28098b376e1c878a94c4903158b7d61d98bec45ed467ab7a287179e1d452bf0f"
         },
         "markings": {
           "file": "t80bv_markings.png",
@@ -146223,22 +146223,22 @@
             "verts": [
               [
                 0.2892,
-                0.393,
+                0.613,
                 -0.1168
               ],
               [
                 0.7508,
-                0.393,
+                0.613,
                 -0.1168
               ],
               [
                 0.7508,
-                0.5355,
+                0.7555,
                 -0.1168
               ],
               [
                 0.2892,
-                0.5355,
+                0.7555,
                 -0.1168
               ]
             ]
@@ -146254,22 +146254,22 @@
             "verts": [
               [
                 0.7508,
-                0.393,
+                0.613,
                 -0.5832
               ],
               [
                 0.2892,
-                0.393,
+                0.613,
                 -0.5832
               ],
               [
                 0.2892,
-                0.5355,
+                0.7555,
                 -0.5832
               ],
               [
                 0.7508,
-                0.5355,
+                0.7555,
                 -0.5832
               ]
             ]
@@ -146285,22 +146285,22 @@
             "verts": [
               [
                 0.7508,
-                0.393,
+                0.613,
                 -0.1168
               ],
               [
                 0.7508,
-                0.393,
+                0.613,
                 -0.5832
               ],
               [
                 0.7508,
-                0.5355,
+                0.7555,
                 -0.5832
               ],
               [
                 0.7508,
-                0.5355,
+                0.7555,
                 -0.1168
               ]
             ]
@@ -146316,22 +146316,22 @@
             "verts": [
               [
                 0.2892,
-                0.393,
+                0.613,
                 -0.5832
               ],
               [
                 0.2892,
-                0.393,
+                0.613,
                 -0.1168
               ],
               [
                 0.2892,
-                0.5355,
+                0.7555,
                 -0.1168
               ],
               [
                 0.2892,
-                0.5355,
+                0.7555,
                 -0.5832
               ]
             ]
@@ -146347,22 +146347,22 @@
             "verts": [
               [
                 0.2892,
-                0.5355,
+                0.7555,
                 -0.1168
               ],
               [
                 0.7508,
-                0.5355,
+                0.7555,
                 -0.1168
               ],
               [
                 0.7508,
-                0.5355,
+                0.7555,
                 -0.5832
               ],
               [
                 0.2892,
-                0.5355,
+                0.7555,
                 -0.5832
               ]
             ]
@@ -146494,7 +146494,7 @@
             "name": "optics",
             "min": [
               -0.6353,
-              0.345,
+              0.32,
               -0.5281
             ],
             "max": [
@@ -146506,48 +146506,48 @@
               {
                 "min": [
                   0.381,
-                  0.515,
+                  0.735,
                   -0.5281
                 ],
                 "max": [
                   0.4521,
-                  0.541,
+                  0.761,
                   -0.4567
                 ]
               },
               {
                 "min": [
                   0.5879,
-                  0.515,
+                  0.735,
                   -0.5281
                 ],
                 "max": [
                   0.659,
-                  0.541,
+                  0.761,
                   -0.4567
                 ]
               },
               {
                 "min": [
                   0.3202,
-                  0.515,
+                  0.735,
                   -0.3274
                 ],
                 "max": [
                   0.3851,
-                  0.541,
+                  0.761,
                   -0.2638
                 ]
               },
               {
                 "min": [
                   0.6549,
-                  0.515,
+                  0.735,
                   -0.3274
                 ],
                 "max": [
                   0.7198,
-                  0.541,
+                  0.761,
                   -0.2638
                 ]
               },
@@ -146566,12 +146566,12 @@
               {
                 "min": [
                   0.495,
-                  0.515,
+                  0.735,
                   -0.2
                 ],
                 "max": [
                   0.545,
-                  0.541,
+                  0.761,
                   -0.148
                 ]
               },
@@ -146638,36 +146638,36 @@
               {
                 "min": [
                   0.46,
-                  0.345,
+                  0.32,
                   1.08
                 ],
                 "max": [
                   0.64,
-                  0.495,
+                  0.47,
                   1.1
                 ]
               },
               {
                 "min": [
                   -0.5285,
-                  0.4671,
+                  0.4421,
                   1.7736
                 ],
                 "max": [
                   -0.4115,
-                  0.5889,
+                  0.5639,
                   1.8104
                 ]
               },
               {
                 "min": [
                   0.4115,
-                  0.4671,
+                  0.4421,
                   1.7736
                 ],
                 "max": [
                   0.5285,
-                  0.5889,
+                  0.5639,
                   1.8104
                 ]
               }
@@ -146753,17 +146753,17 @@
           }
         ]
       },
-      "geometryHash": "9f9548d1",
-      "metadataHash": "da1d01a9",
+      "geometryHash": "436e3999",
+      "metadataHash": "2cc10b8a",
       "presentationAnchor": {
-        "xM": 0.0008,
-        "zM": 0.0479
+        "xM": 0.0012,
+        "zM": 0.0279
       },
-      "presentationHash": "dc02a7b7",
+      "presentationHash": "1eb22b1c",
       "presentationProjection": {
         "centerYM": 1.8802,
-        "topHalfM": 6.4534,
-        "sideHalfM": 3.2267
+        "topHalfM": 6.4748,
+        "sideHalfM": 3.2374
       },
       "appearance": {
         "version": 1,
@@ -146853,24 +146853,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 62797,
-          "sha256": "ff3e8298fdea8cbe50695b86a0dd844e6e2c06b7070ada8d7599dd736633fd08"
+          "bytes": 62478,
+          "sha256": "b1c759c7ddbdbacf201d16d76181a3af2359022fa2a886fb0ab6d81101498c5e"
         },
         "armorSide": {
           "file": "t80u_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65306,
-          "sha256": "10f48d6553e9512ec619425016664f939d2080594cf01bec59b810550c89ff6e"
+          "bytes": 65509,
+          "sha256": "8c3f243b64a47516eb1c6d75a832c80a72978ea28dd6541c3aa88987b78b0c6a"
         },
         "modulesSide": {
           "file": "t80u_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71332,
-          "sha256": "8295e3bfce6b20186fb5a9037877a38e3b001eacea6ed50c9f9f6f6169d76e0e"
+          "bytes": 71858,
+          "sha256": "1ff784c9d3ef138439647faec20d5bf31af6dafffb29f2db0bb0eeb1fb15b8d4"
         },
         "markings": {
           "file": "t80u_markings.png",
@@ -180232,17 +180232,17 @@
           }
         ]
       },
-      "geometryHash": "bbbadee7",
+      "geometryHash": "dd39263e",
       "metadataHash": "a6a9b52d",
       "presentationAnchor": {
         "xM": 0,
-        "zM": -0.0083
+        "zM": -0.0085
       },
-      "presentationHash": "8f502ee5",
+      "presentationHash": "8b411e0f",
       "presentationProjection": {
-        "centerYM": 1.567,
-        "topHalfM": 6.7597,
-        "sideHalfM": 3.3798
+        "centerYM": 1.5891,
+        "topHalfM": 6.7599,
+        "sideHalfM": 3.3799
       },
       "appearance": {
         "version": 1,
@@ -180332,24 +180332,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 61621,
-          "sha256": "8652769f69de77ba65f5ddca18e7e18c62b24590d6cb505458f4406002b4a918"
+          "bytes": 61943,
+          "sha256": "7deb3fe8ccc0c8775bef3d1848aa4d1a16288f7f871f6f1a7c951be96b7cadf6"
         },
         "armorSide": {
           "file": "ua_t80bv_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 63369,
-          "sha256": "f6f5354ac33f28c88f94fc493b2753be865c123717145bcd91938954084b66e4"
+          "bytes": 64033,
+          "sha256": "4c560990c90ccff30c712d4d1b4748eef13bcf847e02619d47d66f5ea1aeca3c"
         },
         "modulesSide": {
           "file": "ua_t80bv_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72822,
-          "sha256": "fab82558385e56e87730cef45e5e4b7daf2db597cc1eae0a3e30fc5021a3a114"
+          "bytes": 73279,
+          "sha256": "a2441244c0cd4c6bb6c0a2d050b1335547b92fe8d3dc1ab7b82bc2fc9aff2de6"
         },
         "markings": {
           "file": "ua_t80bv_markings.png",

@@ -2198,6 +2198,28 @@ function buildT80UNative2026(P) {
   P.add('hull', frustum(1.14, 3.06, 1.16, 1.14, 1.22, 1.16, 1.138, 1.353));    // upper glacis center strip: full crest line (3.06,1.14)->(1.22,1.353)
   P.add('hull', frustum(1.66, 2.70, 1.16, 1.66, 1.22, 1.16, 1.18, 1.353));     // upper glacis wide plate, bottom 1.18 above the wrap top (same plane, trimmed)
   P.add('hull', frustum(1.10, 3.34, 2.96, 1.14, 3.06, 2.86, 0.89, 1.14));      // steep nose NARROW; tip ends z 3.34 (ref plan bow 3.344; below 0.89 the tub face undercuts)
+  // Close the three construction seams beneath the upper glacis. These
+  // masses are deliberately inboard of the native track lanes: a shallow
+  // deck-to-glacis key, a solid bow web, and mirrored shoulder keys join
+  // the previously disconnected y=1.11/1.138/1.18 authored surfaces.
+  P.add('hull', box(2.22, 0.05, 1.36), 0, 1.124, 1.82);
+  P.add('hull', box(2.16, 0.28, 0.64), 0, 1.01, 2.76);
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.62, 0.07, 1.58), s * 1.35, 1.155, 1.95);
+    // A short structural riser joins the armored front skirt to the fender
+    // cap at the exact bay called out in the markup. It overlaps both
+    // assemblies and remains outside the idler/return-track envelope.
+    P.add('hull', box(0.14, 0.25, 0.58), s * 1.71, 1.15, 1.65);
+  }
+  P.hullG.userData.t80uHullClosureReceipt = Object.freeze({
+    architecture: 'three-course-glacis-web-and-fender-risers',
+    centralSeamGapM: 0,
+    bowWebGapM: 0,
+    shoulderSeamGapM: 0,
+    frontFenderRisers: 2,
+    trackEnvelopeIntrusions: 0,
+    minimumReturnTrackClearanceM: 0.17,
+  });
   // (r5: bow mudguard tips deleted — the ref's 1.4-1.7 band at z~3.5 is
   // GUN-node sleeve content, its hull row is NONE above the ramp there)
   // K-5 glacis wedge raft: 3 courses FLUSH on the plate (r3 workorder: ref
@@ -2279,13 +2301,27 @@ function buildT80UNative2026(P) {
   for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.50, 0.042, 0.04), 0, 0.74 + k * 0.10, -3.205);
   P.add('hullDetail', box(1.70, 0.05, 0.12), 0, 1.18, -3.19);
   for (const s of [-1, 1]) P.add('hull', box(0.09, 0.08, 0.18), s * 1.035, 1.17, -3.37); // tail mudguard pods = the ref's -3.43 side lip (1.13..1.21) + its plan -3.46 columns at x 0.99..1.08 ONLY (r3b: the 0.92..1.14 spread bled into the ±0.94/±1.13 plan cols)
+  // Paired transverse auxiliary fuel drums. The former narrow vertical
+  // canisters disappeared against the exhaust plate; these full round
+  // bochki overlap the exhaust shelf on buried saddles and retain a clear
+  // center service gap in rear and elevated-quarter views.
   for (const s of [-1, 1]) {
-    // r3 §B4: drums pulled inboard (x 0.98, lean 0.045) — the old ±1.05/0.10
-    // lean put their upper halves across the band inner plane (72 rear vox)
-    P.add('hullDetail', cylY(0.14, 0.14, 0.50, 12), s * 0.98, 0.93, -3.14, 0, 0, s * 0.045);
-    P.add('hullDark', cylY(0.145, 0.145, 0.03, 12), s * 0.98, 1.19, -3.15, 0, 0, s * 0.045);
-    P.add('hullDark', box(0.05, 0.34, 0.03), s * 0.98, 0.96, -3.26);
+    P.add('hull', cylX(0.24, 1.20, 18), s * 0.72, 1.30, -3.10);
+    P.add('hullDark', cylX(0.248, 0.045, 18), s * 0.16, 1.30, -3.10);
+    P.add('hullDark', cylX(0.248, 0.045, 18), s * 1.28, 1.30, -3.10);
+    P.add('hullDetail', cylX(0.055, 0.035, 10), s * 1.315, 1.36, -3.10);
+    P.add('hullDark', box(0.07, 0.24, 0.30), s * 0.44, 1.13, -3.10);
+    P.add('hullDark', box(0.07, 0.24, 0.30), s * 1.00, 1.13, -3.10);
+    P.add('hullDetail', box(0.045, 0.025, 0.30), s * 0.72, 1.445, -3.10);
   }
+  P.hullG.userData.t80uRearFuelReceipt = Object.freeze({
+    fuelDrums: 2,
+    axis: 'x',
+    drumDiameterM: 0.48,
+    drumLengthM: 1.20,
+    exhaustShelfOverlapM: 0.095,
+    supportBrackets: 4,
+  });
   P.add('hullWood', cylX(0.12, 2.20, 12), 0, 0.79, -3.17);                     // full-width unditching log on the rear service plate
   for (const s of [-0.58, 0, 0.58]) P.add('hullDark', cylX(0.128, 0.045, 12), s * 1.70, 0.79, -3.17);
   // engine deck: turbine intake field + louvres + hump
@@ -2401,9 +2437,10 @@ function buildT80UNative2026(P) {
   // replaces the shell without moving armor, optics, bustle, or roof
   // equipment in world space.
   const turretLocalDatumY = 0.06;
+  const turretArmorSeatDropM = 0.025;
   const previousT80URoofY = 0.67 * turretBodyScaleY;
   const roofY = (y) => y - (0.67 * (1 - turretBodyScaleY)) + turretLocalDatumY;
-  const bodyY = (y) => y * turretBodyScaleY + turretLocalDatumY;
+  const bodyY = (y) => y * turretBodyScaleY + turretLocalDatumY - turretArmorSeatDropM;
   const eraSurfaceSeats = [];
   const seatEra = (x, y, z, w, h, d, rx, ry, overlap = 0.01) => {
     const seat = domeBoxPlanSeat(t80uRings, 0.88, {
@@ -2432,7 +2469,9 @@ function buildT80UNative2026(P) {
   // CLIFFS to 1.62 — rails extend to z_w 1.49 and the prongs beyond the
   // cliff drop to 1.69w.
   const frontChevronLiftY = 0.07;
-  const frontChevronForwardM = 0.14;
+  // Reseat the complete chevron 40 mm down the authored Z axis (rearward
+  // in this +Z-forward vehicle frame) without changing its vertical band.
+  const frontChevronForwardM = 0.10;
   const frontChevronReceipt = addSovietChevronEra(P, {
     sector: 't80u-k5-turret-front-era',
     receiptKey: 't80UChevronEraReceipt',
@@ -2524,13 +2563,18 @@ function buildT80UNative2026(P) {
   // A broad buried collar and rear equipment shoe give both stations the
   // planted hierarchy of the late T-90 family without replacing the T-80U
   // roof layout.
-  P.add('turret', cylY(0.30, 0.32, 0.075, 18), 0.52, roofY(0.575), -0.35);
-  cupola(P, 'turret', 0.52, roofY(0.40), -0.35, 0.22, 0.10, 5);
+  // Commander station: the old cupola floor began 220 mm inside the cast
+  // roof and dragged the Utyos receiver into the dome. Plant the collar in
+  // the roof skin, then build the visible cupola and weapon from that seat.
+  const commanderCupolaReseatM = 0.22;
+  const commanderWeaponReseatM = 0.22;
+  P.add('turret', cylY(0.30, 0.32, 0.075, 18), 0.52, roofY(0.595), -0.35);
+  cupola(P, 'turret', 0.52, roofY(0.40) + commanderCupolaReseatM, -0.35, 0.22, 0.10, 5);
   P.add('turretDetail', torus(0.30, 0.02, 14), 0.52, roofY(0.63), -0.35);
   // NSVT "Utyos" — §B3 KIT fitting (replaces the r2 hand-authored gun; the
   // receiver top lands 2.18w, inside the ref's 2.15-2.16 Utyos band + grace)
   const utyos = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'two-tone', seed: 3, shield: true, ammo: true, elev: -0.06, scale: 0.94 });
-  utyos.position.set(0.52, roofY(0.42), -0.32);
+  utyos.position.set(0.52, roofY(0.42) + commanderWeaponReseatM, -0.32);
   P.turretG.add(utyos);
   P.addEquipment('turret', box(0.38, 0.11, 0.30), 0.52, roofY(0.655), -0.60, 0, -0.08, 0);
   P.add('turret', cylY(0.23, 0.23, 0.04, 14), -0.48, roofY(0.64), -0.30);
@@ -2652,9 +2696,14 @@ function buildT80UNative2026(P) {
     canonicalCastReference: 't80/t80b/ua_t80u_kursk',
     frontChevronRaisedToUpperCheekM: frontChevronLiftY,
     frontChevronForwardM,
+    frontChevronRearwardReseatM: 0.04,
     frontEquipmentForwardM,
     frontEquipmentFaceClearanceM:
       1.505 + frontEquipmentForwardM + 0.009 - frontChevronReceipt.frontmostTileZM,
+    turretArmorSeatDropM,
+    commanderCupolaReseatM,
+    commanderWeaponReseatM,
+    roofEquipmentClippedIntoTurret: false,
     baseShellEquipmentRelativeTransformPreserved: true,
     turretAssemblyLoweringM: turretAssemblyDropM,
     canonicalCrownWorldY: 1.36 + hullBodyLiftM - turretAssemblyDropM + t80uRoofTopY,
