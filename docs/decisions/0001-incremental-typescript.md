@@ -123,6 +123,9 @@ their Three.js builders into Garage startup.
 and its time, FOV, cinematic, and Garage-pacing latches. The composition root
 supplies live ports and starts the scheduler without reimplementing render
 order or allocating a Garage request on every frame.
+Ballistic surface marks now use the strict `src/fx/impactDecals.ts` owner. Its
+seeded atlas, articulation-local skin clamp, bounded node batches, vehicle ring,
+and reset lifecycle retain the exact established presentation behavior.
 
 ## Consequences
 

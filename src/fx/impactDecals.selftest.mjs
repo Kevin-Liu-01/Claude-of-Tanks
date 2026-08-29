@@ -1,4 +1,4 @@
-import { IMPACT_DECAL_CAP, IMPACT_DECAL_LIFT_M } from './impactDecals.js';
+import { IMPACT_DECAL_CAP, IMPACT_DECAL_LIFT_M } from './impactDecals.ts';
 import { SURFACE_MARKING_STYLE } from '../vehicles/vehicleMarkings.ts';
 import { readFile } from 'node:fs/promises';
 import './lazyRuntime.selftest.mjs';

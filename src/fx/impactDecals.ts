@@ -1,5 +1,5 @@
 /**
- * impactDecals.js — procedural ballistic armor-scarring decals.
+ * impactDecals.ts — procedural ballistic armor-scarring decals.
  *
  * Replaces the old effects.js "armor scar" pool (14 shared near-black
  * MeshBasicMaterial quads re-parented onto struck hull roots — the "plain
@@ -58,14 +58,160 @@ const FAMILY_CELLS = {
   scuff: [6, 7],
   gouge: [8, 9, 10, 11],
   scorch: [12, 13, 14],
-};
+} as const;
+
+type Rng = () => number;
+type Fbm = (x: number, y: number) => number;
+type ImpactFamily = keyof typeof FAMILY_CELLS;
+type DecalNodeKey = 'hull' | 'turret' | 'gun';
+type ImpactFrame = DecalNodeKey | 'barrel';
+type Vec3Tuple = readonly [number, number, number];
+
+interface ImpactDecalOptions {
+  anisotropy?: number;
+  seed?: number;
+}
+
+interface ImpactVisual {
+  root: THREE.Object3D;
+  isDestroyed?(): boolean;
+}
+
+interface ArmorPlate {
+  verts?: readonly Vec3Tuple[];
+}
+
+interface ImpactArmor {
+  turretPivot?: Vec3Tuple;
+  gunPivot?: Vec3Tuple;
+  turretPlates?: readonly ArmorPlate[];
+}
+
+interface ImpactSpec {
+  id: string;
+  armor?: ImpactArmor;
+}
+
+interface ImpactState {
+  pos?: THREE.Vector3;
+  yaw?: number;
+  turretYaw?: number;
+  visualPitch?: number;
+  visualRoll?: number;
+}
+
+interface ImpactEntity {
+  visual?: ImpactVisual | null;
+  state: ImpactState;
+  spec?: ImpactSpec;
+}
+
+interface ImpactEvent {
+  kind?: string;
+  targetId?: string | number;
+  caliberMm?: number;
+  zone?: string;
+  modulesHit?: readonly unknown[];
+  crewHit?: readonly unknown[];
+  ammoRacked?: boolean;
+  fireStarted?: boolean;
+  impactFrame?: ImpactFrame;
+  impactLocalPos?: Vec3Tuple;
+  impactLocalNormal?: Vec3Tuple;
+  impactLocalDir?: Vec3Tuple;
+  localPos?: Vec3Tuple;
+  localDir?: Vec3Tuple;
+  pos?: Vec3Tuple;
+  normal?: Vec3Tuple;
+}
+
+interface ClassifiedMark {
+  fam: ImpactFamily;
+  sizeK: number;
+}
+
+interface MarkSize {
+  w: number;
+  h: number;
+}
+
+interface MarkShade {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
+interface CellUv {
+  u0: number;
+  u1: number;
+  v0: number;
+  v1: number;
+}
+
+interface NodeMesh {
+  mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+  geo: THREE.BufferGeometry;
+  pos: THREE.Float32BufferAttribute;
+  uv: THREE.Float32BufferAttribute;
+  col: THREE.Float32BufferAttribute;
+  used: number;
+  free: number[];
+}
+
+interface RingEntry {
+  nodeKey: DecalNodeKey;
+  slot: number;
+}
+
+interface DecalRecord {
+  key: string;
+  visual: ImpactVisual;
+  hull: NodeMesh | null;
+  turret: NodeMesh | null;
+  gun: NodeMesh | null;
+  turretNode: THREE.Object3D | null;
+  gunNode: THREE.Object3D | null;
+  ring: Array<RingEntry | undefined>;
+  head: number;
+  count: number;
+  lastStampT: number;
+}
+
+interface TurretEnvelope {
+  mn: [number, number, number];
+  mx: [number, number, number];
+}
+
+export interface ImpactDecalStats {
+  vehicles: number;
+  decals: number;
+  meshes: number;
+  pooled: number;
+}
+
+export interface ImpactDecalRuntime {
+  readonly material: THREE.MeshBasicMaterial;
+  stampFromEvent(event: ImpactEvent, entity: ImpactEntity): boolean;
+  stampDirect(
+    visual: ImpactVisual,
+    worldPos: THREE.Vector3,
+    worldNormal: THREE.Vector3,
+    caliberMm: number,
+    kind?: string,
+  ): boolean;
+  clearVehicle(keyOrVisual: string | number | ImpactVisual | null | undefined): void;
+  clearAll(): void;
+  sweep(): void;
+  stats(): ImpactDecalStats;
+}
 
 // ---------------------------------------------------------------------------
 // Atlas bake (2D canvas, seeded — no external assets)
 // ---------------------------------------------------------------------------
 
 /** Begin drawing one cell: clipped + translated to cell space. */
-function beginCell(ctx, idx) {
+function beginCell(ctx: CanvasRenderingContext2D, idx: number): [number, number] {
   const ox = (idx % GRID) * CELL;
   const oy = Math.floor(idx / GRID) * CELL;
   ctx.save();
@@ -77,7 +223,14 @@ function beginCell(ctx, idx) {
 }
 
 /** fbm alpha erosion over one cell so no mark reads as a clean stamp. */
-function erodeCell(ctx, fbm, ox, oy, strength, freq = 3.1) {
+function erodeCell(
+  ctx: CanvasRenderingContext2D,
+  fbm: Fbm,
+  ox: number,
+  oy: number,
+  strength: number,
+  freq = 3.1,
+): void {
   const img = ctx.getImageData(ox, oy, CELL, CELL);
   const d = img.data;
   for (let y = 0; y < CELL; y++) {
@@ -93,7 +246,14 @@ function erodeCell(ctx, fbm, ox, oy, strength, freq = 3.1) {
 }
 
 /** Radial soot halo — several offset soft gradients so it is never a disc. */
-function sootHalo(ctx, rng, cx, cy, radius, alpha) {
+function sootHalo(
+  ctx: CanvasRenderingContext2D,
+  rng: Rng,
+  cx: number,
+  cy: number,
+  radius: number,
+  alpha: number,
+): void {
   for (let i = 0; i < 3; i++) {
     const ox = (rng() - 0.5) * radius * 0.22;
     const oy = (rng() - 0.5) * radius * 0.22;
@@ -108,7 +268,7 @@ function sootHalo(ctx, rng, cx, cy, radius, alpha) {
 }
 
 /** Penetration cell: halo + spall streaks + molten rim + hole + scratches. */
-function drawPen(ctx, rng, crit) {
+function drawPen(ctx: CanvasRenderingContext2D, rng: Rng, crit: boolean): void {
   const c = CELL / 2;
   const R = c;
   sootHalo(ctx, rng, c, c, R * (crit ? 0.95 : 0.80), crit ? 0.75 : 0.60);
@@ -205,7 +365,7 @@ function drawPen(ctx, rng, crit) {
  * Ricochet gouge cell — drawn horizontal: entry (heat tint) at the LEFT
  * edge, brushed bare-metal streaks tapering out toward the right.
  */
-function drawGouge(ctx, rng) {
+function drawGouge(ctx: CanvasRenderingContext2D, rng: Rng): void {
   const cy = CELL / 2 + (rng() - 0.5) * 10;
   const x0 = CELL * 0.08;
   // brushed-metal body: many thin horizontal sub-streaks
@@ -271,7 +431,7 @@ function drawGouge(ctx, rng) {
 }
 
 /** HE splash cell: wide shallow ragged soot blot — no hole, feathered edge. */
-function drawScorch(ctx, rng) {
+function drawScorch(ctx: CanvasRenderingContext2D, rng: Rng): void {
   const c = CELL / 2;
   const R = c;
   const nBlot = 5 + Math.floor(rng() * 3);
@@ -308,7 +468,7 @@ function drawScorch(ctx, rng) {
 }
 
 /** Blunt non-pen scuff: chipped-paint dish with a bare-metal ring. */
-function drawScuff(ctx, rng) {
+function drawScuff(ctx: CanvasRenderingContext2D, rng: Rng): void {
   const c = CELL / 2;
   const R = c;
   // shallow dark smudge where the shell slammed
@@ -347,13 +507,14 @@ function drawScuff(ctx, rng) {
 }
 
 /** Bake the full atlas. @returns {THREE.CanvasTexture} */
-function bakeAtlas(rng, anisotropy) {
+function bakeAtlas(rng: Rng, anisotropy: number): THREE.CanvasTexture {
   const cv = document.createElement('canvas');
   cv.width = cv.height = ATLAS;
   const ctx = cv.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('Impact decal atlas requires a 2D canvas context.');
   ctx.clearRect(0, 0, ATLAS, ATLAS);
   const fbm = makeFbm(rng);
-  const bake = (idx, draw, erode, freq) => {
+  const bake = (idx: number, draw: () => void, erode: number, freq: number): void => {
     const [ox, oy] = beginCell(ctx, idx);
     draw();
     ctx.restore();
@@ -409,7 +570,11 @@ const _nm3 = new THREE.Matrix3();
  * Mutates pos/normal in place; keeps them untouched when nothing is hit.
  * @returns {boolean} true when a skin point was adopted
  */
-function clampToSkin(node, pos, normal) {
+function clampToSkin(
+  node: THREE.Object3D,
+  pos: THREE.Vector3,
+  normal: THREE.Vector3,
+): boolean {
   // ancestors AND descendants: a stamp can land before the next visual sync
   // renders (headless probes, same-tick kills), leaving child mesh world
   // matrices stale — the ray would test yesterday's pose and miss
@@ -430,7 +595,8 @@ function clampToSkin(node, pos, normal) {
     // visible opaque skin only: never our own decals, never the hidden
     // placeholder hull under a GLB swap, never colorWrite-false shadow
     // proxies, never glass/soot overlay cards, never ERA brick instances
-    if (!o.visible || o.name === 'fx_impactDecals' || o.isInstancedMesh) continue;
+    if (!o.visible || o.name === 'fx_impactDecals'
+      || !(o instanceof THREE.Mesh) || o instanceof THREE.InstancedMesh) continue;
     let vis = true;
     for (let par = o.parent; par && par !== node; par = par.parent) {
       if (!par.visible) { vis = false; break; }
@@ -454,7 +620,7 @@ function clampToSkin(node, pos, normal) {
 }
 
 /** UV rect for an atlas cell (respects CanvasTexture flipY). */
-function cellUV(idx) {
+function cellUV(idx: number): CellUv {
   const col = idx % GRID;
   const row = Math.floor(idx / GRID);
   return {
@@ -469,8 +635,10 @@ function cellUV(idx) {
 /**
  * @param {{ anisotropy?: number, seed?: number }} [opts]
  */
-export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
-  const rng = mulberry32(seed >>> 0);
+export function createImpactDecals(
+  { anisotropy = 4, seed = 0x51f7a3 }: ImpactDecalOptions = {},
+): ImpactDecalRuntime {
+  const rng: Rng = mulberry32(seed >>> 0);
   // Field-painted identifiers and ballistic scars share the same deterministic
   // surface-marking seed vocabulary and millimetre-scale lift contract.
   const atlas = bakeAtlas(mulberry32((seed ^ SURFACE_MARKING_STYLE.wearSeedSalt) >>> 0), anisotropy);
@@ -485,7 +653,7 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
   });
 
   /** Pooled batched node-mesh: capacity IMPACT_DECAL_CAP quads. */
-  function makeNodeMesh() {
+  function makeNodeMesh(): NodeMesh {
     const geo = new THREE.BufferGeometry();
     const pos = new THREE.Float32BufferAttribute(new Float32Array(IMPACT_DECAL_CAP * 12), 3);
     const uv = new THREE.Float32BufferAttribute(new Float32Array(IMPACT_DECAL_CAP * 8), 2);
@@ -493,7 +661,7 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
     pos.setUsage(THREE.DynamicDrawUsage);
     uv.setUsage(THREE.DynamicDrawUsage);
     col.setUsage(THREE.DynamicDrawUsage);
-    const idx = [];
+    const idx: number[] = [];
     for (let i = 0; i < IMPACT_DECAL_CAP; i++) {
       const v = i * 4;
       idx.push(v, v + 1, v + 2, v, v + 2, v + 3);
@@ -510,8 +678,8 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
     mesh.frustumCulled = false; // rides its parent node; quads are hull-sized
     return { mesh, geo, pos, uv, col, used: 0, free: [] };
   }
-  const meshPool = [];
-  function obtainNodeMesh() {
+  const meshPool: NodeMesh[] = [];
+  function obtainNodeMesh(): NodeMesh {
     const nm = meshPool.pop() || makeNodeMesh();
     nm.mesh.material = material; // defensive: undo any historical burnt swap
     nm.used = 0;
@@ -520,7 +688,7 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
     nm.pos.needsUpdate = true;
     return nm;
   }
-  function releaseNodeMesh(nm) {
+  function releaseNodeMesh(nm: NodeMesh): void {
     if (nm.mesh.parent) nm.mesh.parent.remove(nm.mesh);
     if (meshPool.length < 24) meshPool.push(nm);
     else nm.geo.dispose();
@@ -530,21 +698,24 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
    * Per-vehicle record.
    * ring[i] = { nodeKey: 'hull'|'turret', slot } in stamp order.
    */
-  const records = new Map(); // key -> rec
-  const legacyKeys = new WeakMap(); // visual -> synthetic key
+  const records = new Map<string, DecalRecord>();
+  const legacyKeys = new WeakMap<ImpactVisual, string>();
   let legacySeq = 0;
-  const turretEnvBySpec = new Map(); // specId -> {min:[3],max:[3]}|null
+  const turretEnvBySpec = new Map<string, TurretEnvelope | null>();
 
-  function recFor(key, visual) {
+  function recFor(key: string, visual: ImpactVisual): DecalRecord {
     let rec = records.get(key);
-    if (rec && rec.visual !== visual) { clearRecord(rec); rec = null; }
+    if (rec && rec.visual !== visual) { clearRecord(rec); rec = undefined; }
     if (!rec) {
       // hard ceiling on tracked vehicles: evict the least-recently stamped
       if (records.size >= 20) {
         let oldK = null;
         let oldT = Infinity;
         for (const [k, r] of records) if (r.lastStampT < oldT) { oldT = r.lastStampT; oldK = k; }
-        if (oldK !== null) clearRecord(records.get(oldK));
+        if (oldK !== null) {
+          const oldest = records.get(oldK);
+          if (oldest) clearRecord(oldest);
+        }
       }
       rec = {
         key, visual,
@@ -559,7 +730,7 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
     return rec;
   }
 
-  function clearRecord(rec) {
+  function clearRecord(rec: DecalRecord): void {
     if (rec.hull) releaseNodeMesh(rec.hull);
     if (rec.turret) releaseNodeMesh(rec.turret);
     if (rec.gun) releaseNodeMesh(rec.gun);
@@ -567,15 +738,15 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
   }
 
   /** Armor-model turret envelope (turret-local AABB over turretPlates). */
-  function turretEnvelope(spec) {
+  function turretEnvelope(spec?: ImpactSpec): TurretEnvelope | null {
     if (!spec || !spec.armor) return null;
     let env = turretEnvBySpec.get(spec.id);
     if (env !== undefined) return env;
     env = null;
     const plates = spec.armor.turretPlates;
     if (plates && plates.length) {
-      const mn = [Infinity, Infinity, Infinity];
-      const mx = [-Infinity, -Infinity, -Infinity];
+      const mn: [number, number, number] = [Infinity, Infinity, Infinity];
+      const mx: [number, number, number] = [-Infinity, -Infinity, -Infinity];
       for (const p of plates) {
         if (!Array.isArray(p.verts)) continue;
         for (const v of p.verts) {
@@ -594,7 +765,7 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
   const MARGIN = 0.22; // m of tolerance around the turret envelope
 
   /** Map HitEvent.kind (+crit flags) to a mark family, or null to skip. */
-  function classify(ev) {
+  function classify(ev: ImpactEvent): ClassifiedMark | null {
     const kind = ev.kind;
     if (kind === 'pen' || kind === 'he_pen') {
       const crit = (ev.modulesHit && ev.modulesHit.length > 0) ||
@@ -613,7 +784,7 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
   }
 
   /** Full quad side sizes (m) per family, caliber-scaled + jittered. */
-  function sizeFor(fam, caliberMm, sizeK) {
+  function sizeFor(fam: ImpactFamily, caliberMm: number | undefined, sizeK: number): MarkSize {
     const calK = THREE.MathUtils.clamp((caliberMm || 90) / 100, 0.5, 1.7);
     switch (fam) {
       case 'crit': return { w: 0.40 * calK * (0.85 + rng() * 0.35) * sizeK, h: 0 };
@@ -629,7 +800,7 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
   }
 
   /** Per-family tint (grime jitter) + alpha. */
-  function shadeFor(fam) {
+  function shadeFor(fam: ImpactFamily): MarkShade {
     const j = 0.9 + rng() * 0.1;
     switch (fam) {
       case 'crit': return { r: 0.82 * j, g: 0.82 * j, b: 0.82 * j, a: 1 };
@@ -642,7 +813,17 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
   }
 
   /** Write one quad into a node mesh slot (node-local corner positions). */
-  function writeQuad(nm, slot, center, t, b, w2, h2, cell, shade) {
+  function writeQuad(
+    nm: NodeMesh,
+    slot: number,
+    center: THREE.Vector3,
+    t: THREE.Vector3,
+    b: THREE.Vector3,
+    w2: number,
+    h2: number,
+    cell: number,
+    shade: MarkShade,
+  ): void {
     const pa = nm.pos.array;
     const ua = nm.uv.array;
     const ca = nm.col.array;
@@ -670,7 +851,7 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
     nm.col.needsUpdate = true;
   }
 
-  function zeroQuad(nm, slot) {
+  function zeroQuad(nm: NodeMesh, slot: number): void {
     nm.pos.array.fill(0, slot * 12, slot * 12 + 12);
     nm.col.array.fill(0, slot * 16, slot * 16 + 16);
     nm.pos.needsUpdate = true;
@@ -678,7 +859,11 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
   }
 
   /** Allocate a quad slot in the vehicle ring (evicting the oldest). */
-  function allocEntry(rec, nodeKey, node) {
+  function allocEntry(
+    rec: DecalRecord,
+    nodeKey: DecalNodeKey,
+    node: THREE.Object3D,
+  ): { nm: NodeMesh; slot: number } {
     let nm = rec[nodeKey];
     if (!nm) {
       nm = obtainNodeMesh();
@@ -693,13 +878,13 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
       const old = rec.ring[rec.head];
       rec.head = (rec.head + 1) % IMPACT_DECAL_CAP;
       rec.count--;
-      const oldNm = rec[old.nodeKey];
-      if (oldNm) {
+      const oldNm = old ? rec[old.nodeKey] : null;
+      if (old && oldNm) {
         zeroQuad(oldNm, old.slot);
         oldNm.free.push(old.slot);
       }
     }
-    const slot = nm.free.length ? nm.free.pop() : nm.used++;
+    const slot = nm.free.length ? nm.free.pop()! : nm.used++;
     const at = (rec.head + rec.count) % IMPACT_DECAL_CAP;
     rec.ring[at] = { nodeKey, slot };
     rec.count++;
@@ -710,18 +895,32 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
    * Core stamp in the supplied articulation frame. Legacy calls pass no
    * impactFrame and retain the hull-local turret-envelope fallback.
    */
-  function stampLocal(key, visual, fam, sizeK, caliberMm, pos, normal, dir,
-    turretYaw, turretPivot, env, impactFrame = null, gunPivot = null) {
+  function stampLocal(
+    key: string,
+    visual: ImpactVisual,
+    fam: ImpactFamily,
+    sizeK: number,
+    caliberMm: number | undefined,
+    pos: THREE.Vector3,
+    normal: THREE.Vector3,
+    dir: THREE.Vector3 | null,
+    turretYaw: number,
+    turretPivot: Vec3Tuple | null,
+    env: TurretEnvelope | null,
+    impactFrame: DecalNodeKey | null = null,
+    gunPivot: Vec3Tuple | null = null,
+  ): boolean {
     const rec = recFor(key, visual);
     rec.lastStampT = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     // --- exact node routing from the authoritative collision frame ----------
-    let nodeKey = 'hull';
+    let nodeKey: DecalNodeKey = 'hull';
     let node = visual.root;
     if (impactFrame === 'turret' || impactFrame === 'gun') {
       const isGun = impactFrame === 'gun';
       const cacheKey = isGun ? 'gunNode' : 'turretNode';
       const rigName = isGun ? 'rig_gun' : 'rig_turret';
-      const exactNode = rec[cacheKey] || (rec[cacheKey] = visual.root.getObjectByName(rigName));
+      const exactNode = rec[cacheKey]
+        || (rec[cacheKey] = visual.root.getObjectByName(rigName) ?? null);
       if (!exactNode) return false;
       nodeKey = impactFrame;
       node = exactNode;
@@ -745,8 +944,8 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
       if (tx > env.mn[0] - MARGIN && tx < env.mx[0] + MARGIN &&
           _pt.y > env.mn[1] - MARGIN && _pt.y < env.mx[1] + MARGIN &&
           tz > env.mn[2] - MARGIN && tz < env.mx[2] + MARGIN) {
-        const tn = rec.turretNode ||
-          (rec.turretNode = visual.root.getObjectByName('rig_turret'));
+        const tn = rec.turretNode
+          || (rec.turretNode = visual.root.getObjectByName('rig_turret') ?? null);
         if (tn) {
           nodeKey = 'turret';
           node = tn;
@@ -791,13 +990,13 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
   }
 
   /** In-place rotate a vector by yaw angle (cos/sin given) about +Y. */
-  function rot2D(v, cy, sy) {
+  function rot2D(v: THREE.Vector3, cy: number, sy: number): void {
     const x = v.x * cy + v.z * sy;
     const z = -v.x * sy + v.z * cy;
     v.x = x; v.z = z;
   }
 
-  const api = {
+  const api: ImpactDecalRuntime = {
     material, // exposed for tests/perf probes
 
     /**
@@ -805,7 +1004,7 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
      * Uses the sim's exact articulation-local hit data; returns false when
      * skipped. Old recordings fall back to hull-local inference.
      */
-    stampFromEvent(ev, ent) {
+    stampFromEvent(ev: ImpactEvent, ent: ImpactEntity): boolean {
       if (!ev || !ent || !ent.visual || !ent.visual.root) return false;
       const visual = ent.visual;
       if (visual.isDestroyed && visual.isDestroyed()) return false;
@@ -813,11 +1012,12 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
       const cls = classify(ev);
       if (!cls) return false;
       const st = ent.state;
-      const exactFrame = typeof ev.impactFrame === 'string' &&
-        Array.isArray(ev.impactLocalPos) ? ev.impactFrame : null;
+      const impactLocalPos = ev.impactLocalPos;
+      const exactFrame: ImpactFrame | null = typeof ev.impactFrame === 'string'
+        && Array.isArray(impactLocalPos) ? ev.impactFrame : null;
       if (exactFrame === 'barrel') return false; // tube cannot host a flat quad
-      if (exactFrame) {
-        _p.set(ev.impactLocalPos[0], ev.impactLocalPos[1], ev.impactLocalPos[2]);
+      if (exactFrame && impactLocalPos) {
+        _p.set(impactLocalPos[0], impactLocalPos[1], impactLocalPos[2]);
       } else if (ev.localPos) {
         _p.set(ev.localPos[0], ev.localPos[1], ev.localPos[2]);
       } else if (ev.pos && st && st.pos) {
@@ -847,15 +1047,21 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
       const armor = ent.spec && ent.spec.armor;
       return stampLocal(String(ev.targetId), visual, cls.fam, cls.sizeK,
         ev.caliberMm, _p, _n, dir, st.turretYaw || 0,
-        armor ? armor.turretPivot : null,
-        turretEnvelope(ent.spec), exactFrame, armor ? armor.gunPivot : null);
+        armor?.turretPivot ?? null,
+        turretEnvelope(ent.spec), exactFrame, armor?.gunPivot ?? null);
     },
 
     /**
      * Legacy/direct stamp (world-space args, no entity — the old armorScar
      * contract). Hull-frame only; kind optional.
      */
-    stampDirect(visual, worldPos, worldNormal, caliberMm, kind = 'pen') {
+    stampDirect(
+      visual: ImpactVisual,
+      worldPos: THREE.Vector3,
+      worldNormal: THREE.Vector3,
+      caliberMm: number,
+      kind = 'pen',
+    ): boolean {
       if (!visual || !visual.root) return false;
       if (visual.isDestroyed && visual.isDestroyed()) return false;
       const cls = classify({ kind, zone: 'x', localPos: [0, 0, 0] }) || { fam: 'pen', sizeK: 1 };
@@ -871,7 +1077,7 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
     },
 
     /** Remove all decals for a vehicle (by targetId key or visual). */
-    clearVehicle(keyOrVisual) {
+    clearVehicle(keyOrVisual: string | number | ImpactVisual | null | undefined): void {
       if (keyOrVisual == null) return;
       const rec = records.get(String(keyOrVisual));
       if (rec) { clearRecord(rec); return; }
@@ -881,12 +1087,12 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
     },
 
     /** Battle reset: detach every decal mesh and drop all records. */
-    clearAll() {
+    clearAll(): void {
       for (const rec of [...records.values()]) clearRecord(rec);
     },
 
     /** Drop decals whose vehicle has wrecked (defensive sweep). */
-    sweep() {
+    sweep(): void {
       for (const rec of [...records.values()]) {
         const v = rec.visual;
         if (!v || !v.root || !v.root.parent ||
@@ -895,7 +1101,7 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
     },
 
     /** @returns {{vehicles:number,decals:number,meshes:number,pooled:number}} */
-    stats() {
+    stats(): ImpactDecalStats {
       let decals = 0;
       let meshes = 0;
       for (const rec of records.values()) {
