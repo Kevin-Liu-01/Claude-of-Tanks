@@ -47,8 +47,8 @@ export default {
     tintC: [0.94, 1.08, 0.76], roadTint: [0.72, 0.67, 0.53], midRelief: 0.72,
   },
   vegetation: {
-    species: ['palm', 'oak'], clusterMix: [['palm', 0.55], ['oak', 0.45]],
-    loneMix: [['palm', 0.6], ['oak', 0.4]], rimMix: [['palm', 0.42], ['oak', 0.58]],
+    species: ['palm', 'willow', 'eucalyptus', 'oak'], clusterMix: [['willow', 0.35], ['palm', 0.28], ['eucalyptus', 0.22], ['oak', 0.15]],
+    loneMix: [['palm', 0.30], ['willow', 0.30], ['eucalyptus', 0.25], ['oak', 0.15]], rimMix: [['willow', 0.38], ['eucalyptus', 0.28], ['palm', 0.20], ['oak', 0.14]],
     clusterCount: 96, loneCount: 214, rimCount: 112, grassDensity: 1.22,
     clusterScrub: 2.2, bushCount: 1.45, bushSpecies: 'oak',
   },

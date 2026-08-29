@@ -51,10 +51,10 @@ export default {
     roadTint: [0.66, 0.68, 0.67], midRelief: 0.94,
   },
   vegetation: {
-    species: ['pine', 'oak'], clusterMix: [['pine', 0.88], ['oak', 0.12]],
-    loneMix: [['pine', 0.82], ['oak', 0.18]], rimMix: [['pine', 0.94], ['oak', 0.06]],
+    species: ['spruce', 'fir', 'birch'], clusterMix: [['spruce', 0.58], ['fir', 0.32], ['birch', 0.10]],
+    loneMix: [['spruce', 0.50], ['fir', 0.30], ['birch', 0.20]], rimMix: [['spruce', 0.66], ['fir', 0.29], ['birch', 0.05]],
     clusterCount: 86, loneCount: 124, rimCount: 132, grassDensity: 0.78,
-    bushCount: 0.8, bushSpecies: 'pine',
+    bushCount: 0.8, bushSpecies: 'spruce',
   },
   props: {
     plan: ['lighthouse', 'fishery', 'netyard', 'depot', 'logcabin', 'alpine',

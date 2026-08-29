@@ -56,10 +56,10 @@ export default {
     rippleAmp: 0.14, midRelief: 1.0, midReliefFar: 840,
   },
   vegetation: {
-    species: ['oak', 'pine'], clusterMix: [['oak', 0.76], ['pine', 0.24]],
-    loneMix: [['oak', 0.84], ['pine', 0.16]], rimMix: [['oak', 0.7], ['pine', 0.3]],
+    species: ['pine', 'poplar', 'cedar'], clusterMix: [['poplar', 0.40], ['pine', 0.35], ['cedar', 0.25]],
+    loneMix: [['poplar', 0.44], ['pine', 0.31], ['cedar', 0.25]], rimMix: [['pine', 0.40], ['cedar', 0.34], ['poplar', 0.26]],
     clusterCount: 24, loneCount: 42, rimCount: 34, grassDensity: 0.30,
-    clusterScrub: 1.4, bushCount: 0.52, bushSpecies: 'oak',
+    clusterScrub: 1.4, bushCount: 0.52, bushSpecies: 'poplar',
   },
   props: {
     plan: [

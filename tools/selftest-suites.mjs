@@ -146,6 +146,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
     'src/world/treeGrounding.selftest.mjs',
+    'src/world/treeSpecies.selftest.mjs',
+    'src/world/battlefieldBounds.selftest.mjs',
     'tools/coplanar-surface-overlap.selftest.mjs',
     'src/engine/frameScheduler.selftest.mjs',
     'src/engine/programWarm.selftest.mjs',

@@ -65,13 +65,12 @@ export default {
   },
 
   vegetation: {
-    // r2: birch is OUT — its twig-cloud crowns are authored for the bare
-    // winter read and rendered as dead sticks; oak carries the full golden
-    // crowns the shelterbelts need
-    species: ['oak', 'pine'],
-    clusterMix: [['oak', 0.85], ['pine', 0.15]],
-    loneMix: [['oak', 0.9], ['pine', 0.10]],
-    rimMix: [['oak', 0.6], ['pine', 0.4]],
+    // Narrow poplars carry the planted shelterbelt silhouette; broad oaks and
+    // sparse pines keep the open plain from reading as a repeated tree stamp.
+    species: ['poplar', 'oak', 'pine'],
+    clusterMix: [['poplar', 0.50], ['oak', 0.35], ['pine', 0.15]],
+    loneMix: [['poplar', 0.54], ['oak', 0.34], ['pine', 0.12]],
+    rimMix: [['poplar', 0.40], ['oak', 0.35], ['pine', 0.25]],
     clusterCount: 7,   // the plain is the point — groves are rare landmarks
     loneCount: 30,
     rimCount: 34,
@@ -82,12 +81,12 @@ export default {
     // rows that read as the steppe's signature man-made geometry and serve
     // as the map's concealment corridors
     belts: [
-      { x0: -420, z0: -150, x1: -70, z1: -162, species: 'oak', gap: 7 },
-      { x0: -380, z0: 58, x1: -130, z1: 72, species: 'oak', gap: 7 },
-      { x0: 120, z0: -205, x1: 400, z1: -188, species: 'oak', gap: 7 },
-      { x0: 95, z0: 168, x1: 380, z1: 188, species: 'oak', gap: 7 },
+      { x0: -420, z0: -150, x1: -70, z1: -162, species: 'poplar', gap: 7 },
+      { x0: -380, z0: 58, x1: -130, z1: 72, species: 'poplar', gap: 7 },
+      { x0: 120, z0: -205, x1: 400, z1: -188, species: 'poplar', gap: 7 },
+      { x0: 95, z0: 168, x1: 380, z1: 188, species: 'poplar', gap: 7 },
       { x0: -300, z0: 258, x1: -50, z1: 272, species: 'oak', gap: 8 },
-      { x0: 205, z0: -35, x1: 430, z1: -15, species: 'oak', gap: 8 },
+      { x0: 205, z0: -35, x1: 430, z1: -15, species: 'poplar', gap: 8 },
       { x0: -430, z0: -300, x1: -180, z1: -312, species: 'oak', gap: 8 },
     ],
     grassTexTone: (h: number, s: number, l: number) => [0.118, clamp01(s * 0.75 + 0.05), clamp01(l * 1.05 + 0.07)],

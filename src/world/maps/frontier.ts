@@ -40,8 +40,8 @@ export default {
     tintC: [1.04, 0.98, 0.73], roadTint: [0.82, 0.77, 0.66], midRelief: 0.82,
   },
   vegetation: {
-    species: ['pine', 'oak'], clusterMix: [['oak', 0.66], ['pine', 0.34]],
-    loneMix: [['oak', 0.72], ['pine', 0.28]], rimMix: [['pine', 0.56], ['oak', 0.44]],
+    species: ['pine', 'spruce', 'oak', 'aspen'], clusterMix: [['pine', 0.36], ['spruce', 0.28], ['oak', 0.24], ['aspen', 0.12]],
+    loneMix: [['oak', 0.34], ['aspen', 0.26], ['pine', 0.22], ['spruce', 0.18]], rimMix: [['pine', 0.38], ['spruce', 0.34], ['oak', 0.18], ['aspen', 0.10]],
     clusterCount: 78, loneCount: 188, rimCount: 116, grassDensity: 1.08,
     bushCount: 1.18, bushSpecies: 'oak',
   },

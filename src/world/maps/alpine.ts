@@ -48,10 +48,10 @@ export default {
     roadTint: [0.65, 0.69, 0.72], midRelief: 0.58,
   },
   vegetation: {
-    species: ['pine', 'oak'], clusterMix: [['pine', 0.95], ['oak', 0.05]],
-    loneMix: [['pine', 0.92], ['oak', 0.08]], rimMix: [['pine', 1]],
+    species: ['spruce', 'fir', 'pine'], clusterMix: [['spruce', 0.62], ['fir', 0.28], ['pine', 0.10]],
+    loneMix: [['spruce', 0.52], ['fir', 0.30], ['pine', 0.18]], rimMix: [['spruce', 0.70], ['fir', 0.25], ['pine', 0.05]],
     clusterCount: 92, loneCount: 146, rimCount: 152, grassDensity: 0.36,
-    bushCount: 0.48, bushSpecies: 'pine',
+    bushCount: 0.48, bushSpecies: 'spruce',
   },
   props: {
     plan: ['rangerlodge', 'logcabin', 'chapel', 'alpine', 'depot', 'onionchurch',

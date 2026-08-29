@@ -378,11 +378,12 @@ function assembleWorld(
   group.updateMatrixWorld = () => {};
 
   const obstacles = [...props.obstacles, ...vegetation.treeObstacles];
+  const colliders = [...props.colliders, ...vegetation.treeObstacles];
   // Static spatial broad phases: movement queries only the handful of props
   // around a hull, and a shell/LOS ray only the cells spanned by its segment.
   // The narrow phase still uses the authored OBB/circle/convex footprint.
   const queryObstacles = createObstacleGrid(obstacles);
-  const queryColliders = createObstacleGrid(props.colliders);
+  const queryColliders = createObstacleGrid(colliders);
   const rayCandidates: CollisionRecord[] = [];
 
   const sp = layout.spawns;
@@ -503,7 +504,7 @@ function assembleWorld(
     /** @returns {Array<{min:number[],max:number[]}>} static obstacle AABBs */
     getObstacles: () => obstacles,
     /** Shell/LOS cover records; exposed for deterministic server manifests. */
-    getColliders: () => props.colliders,
+    getColliders: () => colliders,
     /** Allocation-free local obstacle broad phase; caller owns `out`. */
     queryObstacles,
     /**
@@ -547,7 +548,14 @@ function assembleWorld(
       speedMps = 0,
     ) => {
       if (!ob) return false;
-      if (ob.treeIdx != null && vegetation.crushTree) return vegetation.crushTree(ob, dx, dz);
+      if (ob.treeIdx != null && vegetation.crushTree) {
+        const toppled = vegetation.crushTree(ob, dx, dz);
+        if (toppled) {
+          ob.crushed = true;
+          ob.dead = true;
+        }
+        return toppled;
+      }
       // DESTRUCTIBLES r1: the overrun speed rides through so debris inherits
       // the hull's velocity (props.ts breakRecord scales the throw).
       if (ob.propIdx != null && props.crushDestructible) return props.crushDestructible(ob.propIdx, dx, dz, speedMps, 'ram');

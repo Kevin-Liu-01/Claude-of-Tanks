@@ -73,10 +73,10 @@ export default {
   },
 
   vegetation: {
-    species: ['oak', 'birch'],
-    clusterMix: [['oak', 0.6], ['birch', 0.4]],
-    loneMix: [['oak', 0.65], ['birch', 0.35]],
-    rimMix: [['oak', 0.5], ['birch', 0.5]],
+    species: ['poplar', 'birch', 'oak'],
+    clusterMix: [['poplar', 0.42], ['birch', 0.33], ['oak', 0.25]],
+    loneMix: [['poplar', 0.44], ['birch', 0.31], ['oak', 0.25]],
+    rimMix: [['poplar', 0.38], ['birch', 0.34], ['oak', 0.28]],
     clusterCount: 9,  // scrub survives only outside the worked ground
     loneCount: 34,
     rimCount: 66,

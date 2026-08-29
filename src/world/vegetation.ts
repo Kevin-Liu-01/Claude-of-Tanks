@@ -11,6 +11,8 @@ import { sampleSplatNoise, applyTone, type HeightField } from './terrain.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { setCircleShape, type CollisionRecord } from './collision.ts';
 import { treeRootDecalAreaM2, treeRootDecalRadius } from './treeGrounding.ts';
+import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
+import { TREE_ARCHETYPES, type TreeSpecies } from './treeSpecies.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
@@ -23,7 +25,7 @@ type ToneFunction = (
 ) => readonly [number, number, number];
 type MaterialShader = Parameters<THREE.Material['onBeforeCompile']>[0];
 type MaterialShaderHook = (shader: MaterialShader) => void;
-type Species = 'pine' | 'oak' | 'palm' | 'birch';
+type Species = TreeSpecies;
 type TreeMesh = THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>;
 type MutableNumberArray = Float32Array | Float64Array | number[];
 
@@ -251,6 +253,11 @@ function clamp(x: number, a: number, b: number): number { return x < a ? a : x >
 function smoothstepJs(a: number, b: number, x: number): number {
   const t = clamp((x - a) / (b - a), 0, 1);
   return t * t * (3 - 2 * t);
+}
+
+function treePositionNoise(x: number, z: number, salt: number): number {
+  const raw = Math.sin(x * 12.9898 + z * 78.233 + salt * 37.719) * 43758.5453;
+  return raw - Math.floor(raw);
 }
 
 function _mustReplace(src: string, anchor: string, replacement: string): string {
@@ -1765,22 +1772,39 @@ export function createGarageTreeKit(
   variant = 0,
 ): GarageTreeKit {
   const palettes = cfg?.vegetation?.palettes || {};
-  const palette = palettes[species] || {};
   const k = ((variant % 3) + 3) % 3;
+  const archetype = TREE_ARCHETYPES[species];
+  const palette = palettes[species]
+    || (archetype.family === 'conifer' ? palettes.pine : undefined)
+    || (archetype.family === 'birch' ? palettes.birch : undefined)
+    || (archetype.family === 'palm' ? palettes.palm : palettes.oak)
+    || {};
   let pair: FarTreeGeometryPair;
-  switch (species) {
-    case 'pine':
+  switch (archetype.family) {
+    case 'conifer': {
       pair = buildPineFarGeometry(mulberry32(seed + 71 + k * 101), palette);
+      const radial = archetype.canopyRadiusM / TREE_ARCHETYPES.pine.canopyRadiusM;
+      pair.trunk.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.pine.fallHeightM, radial);
+      pair.canopy.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.pine.fallHeightM, radial);
       break;
+    }
     case 'palm':
       pair = buildPalmFarGeometry(mulberry32(seed + 75 + k * 101), palette, k % 2);
       break;
-    case 'birch':
+    case 'birch': {
       pair = buildBirchFarGeometry(mulberry32(seed + 77 + k * 101), palette);
+      const radial = archetype.canopyRadiusM / TREE_ARCHETYPES.birch.canopyRadiusM;
+      pair.trunk.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.birch.fallHeightM, radial);
+      pair.canopy.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.birch.fallHeightM, radial);
       break;
-    default:
+    }
+    default: {
       pair = buildOakFarGeometry(mulberry32(seed + 73 + k * 101), palette, k % 2);
+      const radial = archetype.canopyRadiusM / TREE_ARCHETYPES.oak.canopyRadiusM;
+      pair.trunk.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.oak.fallHeightM, radial);
+      pair.canopy.scale(radial, archetype.fallHeightM / TREE_ARCHETYPES.oak.fallHeightM, radial);
       break;
+    }
   }
   const trunkMaterial = new THREE.MeshStandardMaterial({
     vertexColors: true, roughness: 0.92, metalness: 0,
@@ -2776,6 +2800,26 @@ function* vegetationBuildSteps(
     { cy: 5.05, rx: 2.05, ry: 2.30, rz: 2.05, trunkH: 3.8, n: 62 }, // tall columnar
     { cy: 3.80, rx: 3.05, ry: 1.40, rz: 3.05, trunkH: 2.6, n: 66 }, // wide spreading
   ];
+  const POPLAR_SHAPES: Array<BroadleafShape & { n: number }> = [
+    { cy: 5.5, rx: 1.35, ry: 2.55, rz: 1.35, trunkH: 4.2, n: 56 },
+    { cy: 6.0, rx: 1.15, ry: 2.85, rz: 1.15, trunkH: 4.7, n: 54 },
+    { cy: 5.0, rx: 1.60, ry: 2.25, rz: 1.60, trunkH: 3.8, n: 60 },
+  ];
+  const WILLOW_SHAPES: Array<BroadleafShape & { n: number }> = [
+    { cy: 3.55, rx: 3.55, ry: 1.30, rz: 3.55, trunkH: 2.4, n: 72 },
+    { cy: 3.85, rx: 3.20, ry: 1.55, rz: 3.55, trunkH: 2.7, n: 72 },
+    { cy: 3.30, rx: 3.85, ry: 1.15, rz: 3.45, trunkH: 2.2, n: 76 },
+  ];
+  const ACACIA_SHAPES: Array<BroadleafShape & { n: number }> = [
+    { cy: 4.15, rx: 3.55, ry: 0.92, rz: 3.35, trunkH: 3.4, n: 62 },
+    { cy: 4.55, rx: 3.15, ry: 1.05, rz: 3.65, trunkH: 3.8, n: 60 },
+    { cy: 3.85, rx: 3.90, ry: 0.80, rz: 3.10, trunkH: 3.1, n: 64 },
+  ];
+  const EUCALYPTUS_SHAPES: Array<BroadleafShape & { n: number }> = [
+    { cy: 6.0, rx: 1.55, ry: 2.50, rz: 1.55, trunkH: 4.8, n: 50 },
+    { cy: 6.55, rx: 1.35, ry: 2.80, rz: 1.70, trunkH: 5.2, n: 48 },
+    { cy: 5.55, rx: 1.85, ry: 2.15, rz: 1.45, trunkH: 4.4, n: 54 },
+  ];
   const PALM_VAR: PalmVariant[] = [
     { h0: 4.5, hr: 1.0, rMul: 1.40, lean0: 0.72, leanR: 0.5 }, // squat, thick, leaning
     { h0: 5.6, hr: 1.4, rMul: 1.15, lean0: 0.50, leanR: 0.5 }, // classic (thicker)
@@ -2791,26 +2835,77 @@ function* vegetationBuildSteps(
     near(index: number, palette: VegetationPalette): TreeGeometryPair;
     far(rng: RandomSource, palette: VegetationPalette, index: number): FarTreeGeometryPair;
   }
-  const SPECIES: Record<Species, SpeciesDefinition> = {
-    pine: {
-      texSeed: 52, nearSeed: 61, farSeed: 71,
+  function scaleNear(
+    pair: TreeGeometryPair,
+    x: number,
+    y: number,
+    z: number,
+  ): TreeGeometryPair {
+    pair.trunk.scale(x, y, z);
+    pair.cards.scale(x, y, z);
+    return pair;
+  }
+  function scaleFar(
+    pair: FarTreeGeometryPair,
+    x: number,
+    y: number,
+    z: number,
+  ): FarTreeGeometryPair {
+    pair.trunk.scale(x, y, z);
+    pair.canopy.scale(x, y, z);
+    return pair;
+  }
+  function coniferDefinition(
+    texSeed: number,
+    nearSeed: number,
+    farSeed: number,
+    scale: readonly [number, number, number],
+  ): SpeciesDefinition {
+    return {
+      texSeed, nearSeed, farSeed,
       tex: (r, pal) => makeNeedleSprayTexture(r, pal.texTone || null),
-      near: (k, pal) => ({
-        trunk: buildPineTrunk(mulberry32(seed + 61 + k * 7), pal),
-        cards: buildPineCards(mulberry32(seed + 63 + k * 7), 0.60, 1.0, pal),
-      }),
-      far: (r, pal) => buildPineFarGeometry(r, pal),
-    },
-    oak: {
-      texSeed: 51, nearSeed: 65, farSeed: 73,
+      near: (k, pal) => scaleNear({
+        trunk: buildPineTrunk(mulberry32(seed + nearSeed + k * 7), pal),
+        cards: buildPineCards(mulberry32(seed + nearSeed + 2 + k * 7), 0.60, 1.0, pal),
+      }, scale[0], scale[1], scale[2]),
+      far: (r, pal) => scaleFar(buildPineFarGeometry(r, pal), scale[0], scale[1], scale[2]),
+    };
+  }
+  function broadleafDefinition(
+    texSeed: number,
+    nearSeed: number,
+    farSeed: number,
+    shapes: Array<BroadleafShape & { n: number }>,
+    farScale: readonly [number, number, number],
+  ): SpeciesDefinition {
+    return {
+      texSeed, nearSeed, farSeed,
       tex: (r, pal) => makeLeafClusterTexture(r, pal.texTone || null),
-      near: (k, pal) => ({
-        trunk: buildBroadleafTrunk(mulberry32(seed + 65 + k * 7), OAK_SHAPES[k % 3]),
-        cards: buildBroadleafCards(mulberry32(seed + 67 + k * 7),
-          OAK_SHAPES[k % 3].n, 1.0, pal, OAK_SHAPES[k % 3]),
-      }),
-      far: (r, pal, k) => buildOakFarGeometry(r, pal, k),
-    },
+      near: (k, pal) => {
+        const shape = shapes[k % shapes.length];
+        return {
+          trunk: buildBroadleafTrunk(mulberry32(seed + nearSeed + k * 7), shape),
+          cards: buildBroadleafCards(
+            mulberry32(seed + nearSeed + 2 + k * 7), shape.n, 1.0, pal, shape,
+          ),
+        };
+      },
+      far: (r, pal, k) => scaleFar(
+        buildOakFarGeometry(r, pal, k), farScale[0], farScale[1], farScale[2],
+      ),
+    };
+  }
+  const SPECIES: Record<Species, SpeciesDefinition> = {
+    pine: coniferDefinition(52, 61, 71, [1, 1, 1]),
+    spruce: coniferDefinition(55, 91, 111, [0.72, 1.22, 0.72]),
+    fir: coniferDefinition(56, 121, 141, [1.14, 1.04, 1.14]),
+    cedar: coniferDefinition(57, 151, 171, [1.36, 0.88, 1.36]),
+    cypress: coniferDefinition(58, 181, 201, [0.48, 1.25, 0.48]),
+    oak: broadleafDefinition(51, 65, 73, OAK_SHAPES, [1, 1, 1]),
+    poplar: broadleafDefinition(59, 211, 231, POPLAR_SHAPES, [0.58, 1.25, 0.58]),
+    willow: broadleafDefinition(60, 241, 261, WILLOW_SHAPES, [1.45, 0.82, 1.45]),
+    acacia: broadleafDefinition(62, 271, 291, ACACIA_SHAPES, [1.48, 0.78, 1.42]),
+    eucalyptus: broadleafDefinition(63, 301, 321, EUCALYPTUS_SHAPES, [0.68, 1.35, 0.72]),
     palm: {
       texSeed: 53, nearSeed: 81, farSeed: 75,
       tex: (r, pal) => makePalmFrondTexture(r, pal.texTone || null),
@@ -2827,11 +2922,28 @@ function* vegetationBuildSteps(
       near: (k, pal) => buildBirchGeometry(mulberry32(seed + 85 + k * 7), pal, BIRCH_VAR[k % 3]),
       far: (r, pal) => buildBirchFarGeometry(r, pal),
     },
+    aspen: {
+      texSeed: 64, nearSeed: 331, farSeed: 351,
+      tex: (r, pal) => makeTwigTexture(r, pal.texTone || null),
+      near: (k, pal) => scaleNear(
+        buildBirchGeometry(mulberry32(seed + 331 + k * 7), pal, BIRCH_VAR[k % 3]),
+        0.78, 1.12, 0.78,
+      ),
+      far: (r, pal) => scaleFar(buildBirchFarGeometry(r, pal), 0.78, 1.12, 0.78),
+    },
   };
   const speciesList = veg.species.filter((sp) => SPECIES[sp]);
   const bushSpecies = speciesList.includes(veg.bushSpecies) ? veg.bushSpecies : speciesList[0];
   if (!bushSpecies) throw new Error('world/vegetation: at least one species is required');
-  const palOf = (sp: Species): VegetationPalette => veg.palettes[sp] || {};
+  const palOf = (sp: Species): VegetationPalette => {
+    const explicit = veg.palettes[sp];
+    if (explicit) return explicit;
+    const family = TREE_ARCHETYPES[sp].family;
+    if (family === 'conifer') return veg.palettes.pine || {};
+    if (family === 'birch') return veg.palettes.birch || {};
+    if (family === 'palm') return veg.palettes.palm || {};
+    return veg.palettes.oak || {};
+  };
 
   const foliageTex = {} as Record<Species, THREE.CanvasTexture>;
   const foliageMats = {} as Record<Species, THREE.MeshStandardMaterial>;
@@ -2895,6 +3007,38 @@ function* vegetationBuildSteps(
   // SPOTTING WIRING: concealment discs {x,z,r,add} sampled by the spotting
   // sim (src/sim/spotting.ts) — bushes conceal strongly, tree canopies mildly.
   const concealers: ConcealmentDisc[] = [];
+  function registerTreeInteraction(
+    treeIndex: number,
+    groundY: number,
+    scaleX: number,
+    scaleY: number,
+    scaleZ: number,
+    concealment = 0.08,
+  ): void {
+    const tree = trees[treeIndex];
+    const archetype = TREE_ARCHETYPES[tree.species];
+    const radialScale = Math.max(scaleX, scaleZ);
+    const radius = Math.max(0.16, archetype.trunkRadiusM * radialScale);
+    treeObstacles.push(setCircleShape({
+      min: [tree.x - radius, groundY, tree.z - radius],
+      max: [tree.x + radius, groundY + archetype.trunkHeightM * scaleY, tree.z + radius],
+      crushable: true,
+      // Trees topple on contact and do not scrub drivetrain speed. Their
+      // physical response is the fall animation, not an invisible wall that
+      // can divert a bot or trap a low-speed tank between trunks.
+      crushMin: 0,
+      crushKeep: 1,
+      crushed: false,
+      treeIdx: treeIndex,
+      kind: 'tree',
+    }, tree.x, tree.z, radius) as TreeObstacle);
+    concealers.push({
+      x: tree.x,
+      z: tree.z,
+      r: archetype.canopyRadiusM * radialScale * 0.8,
+      add: concealment,
+    });
+  }
   function siteOk(x: number, z: number, margin: number): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
     if (inAvoid(x, z)) return false;
@@ -2923,16 +3067,23 @@ function* vegetationBuildSteps(
   ): void {
     const y = heightField.getHeightAt(x, z);
     const sc = scMin + rng() * (scMax - scMin);
+    const archetype = TREE_ARCHETYPES[species];
+    // Independent, position-keyed width/depth/height variation changes the
+    // silhouette without consuming the placement RNG stream. Stands retain
+    // their authored positions while individual trees stop reading as clones.
+    const sx = sc * (0.86 + treePositionNoise(x, z, 1) * 0.28);
+    const sy = sc * (0.88 + treePositionNoise(x, z, 2) * 0.24);
+    const sz = sc * (0.86 + treePositionNoise(x, z, 3) * 0.28);
     _q.setFromAxisAngle(_up, rng() * Math.PI * 2);
     // r3 terrain_environment: per-instance LEAN jitter — every trunk used to
     // stand bolt vertical, a loud repetition tell in stands; a few degrees of
     // random tilt (more for palms) reads as natural growth
     const leanA = rng() * Math.PI * 2;
-    const leanM = rng() * (species === 'palm' ? 0.10 : 0.05);
+    const leanM = treePositionNoise(x, z, 4) * archetype.leanMaxRad;
     _qLean.setFromAxisAngle(_axLean.set(Math.cos(leanA), 0, Math.sin(leanA)), leanM);
     _q.multiply(_qLean);
     // height variance clamped tight (no needle-thin scaling-bug giants)
-    _m4.compose(_pv.set(x, y - 0.06, z), _q, _sv.set(sc, sc * (0.92 + rng() * 0.16), sc));
+    _m4.compose(_pv.set(x, y - 0.06, z), _q, _sv.set(sx, sy, sz));
     // per-tree hue/value jitter, WIDE: identical-sibling canopies are the
     // loudest mid-distance tell, so value swings ~2x and hue drifts between
     // yellow-green and blue-green per instance
@@ -2942,7 +3093,7 @@ function* vegetationBuildSteps(
     // back to summer green (the critique's lone green tree). pal.jitterHue
     // (0..1, default 1) scales the per-channel spread around the neutral
     // value jitter; winter runs ~0.22 = near value-only.
-    const pj = (veg.palettes[species] && veg.palettes[species].jitterHue) ?? 1;
+    const pj = palOf(species).jitterHue ?? 1;
     _c.setRGB(vj * (1 + (rng() * 0.26 - 0.12) * pj), vj * (1 + (rng() * 0.22 - 0.04) * pj),
       vj * (1 + (rng() * 0.24 - 0.16) * pj));
     // r7 terrain_environment: ~10% DRY/YELLOWED individuals (critique: "no
@@ -2953,7 +3104,7 @@ function* vegetationBuildSteps(
     // range. Rolled from a POSITION HASH, not the shared rng stream — one
     // extra rng() here would shift every subsequent placement and re-break
     // the authored establishing-shot compositions (see sapRng note above).
-    const dryRoll = (Math.sin(x * 12.9898 + z * 78.233) * 43758.5453 % 1 + 1) % 1;
+    const dryRoll = treePositionNoise(x, z, 0);
     if (pj >= 0.5 && dryRoll < 0.10) {
       const deep = dryRoll < 0.03; // a few fully browned-off trees
       _c.r *= deep ? 1.30 : 1.26;
@@ -2967,26 +3118,26 @@ function* vegetationBuildSteps(
       // generous enough for every species' card spread), eased fade 0..1 and
       // the instance slot assigned by the current near partition (-1 = far).
       // fslot mirrors slot for the far partition (incremental repartition).
-      cy: y + 4.4 * sc, cr: 2.9 * sc, fade: 0, slot: -1, fslot: -1,
+      cy: y + archetype.canopyCenterM * sy,
+      cr: archetype.canopyRadiusM * Math.max(sx, sz),
+      fade: 0, slot: -1, fslot: -1,
       lodF: 0, lodT: false,
-      dr: (species === 'pine' || species === 'birch' ? 1.3 : 1.8) * sc, // root-decal radius
-      fallH: (species === 'palm' ? 7.4 : 6.8) * sc,
-      fallR: (species === 'palm' ? 0.18 : 0.15) * sc,
+      dr: archetype.rootDecalRadiusM * Math.max(sx, sz),
+      fallH: archetype.fallHeightM * sy,
+      fallR: archetype.fallRadiusM * Math.max(sx, sz),
     });
-    if (withObstacle) {
+    // Every tree reachable inside the playable square uses the same physical
+    // trunk record. Outer-rim trees beyond the wall remain horizon dressing.
+    if (withObstacle || Math.max(Math.abs(x), Math.abs(z)) <= PLAYABLE_HALF_EXTENT_M) {
       // gameplay_feel r6 (round critique MAJOR): tree trunks are CRUSHABLE —
       // state.ts's collider drives a moving hull THROUGH the tagged record,
       // marks it `crushed` and calls world.crushObstacle → crushTree below
       // for the hinge-topple. treeIdx links the record to its tree instance.
-      treeObstacles.push(setCircleShape({
-        min: [x - 0.55, y, z - 0.55], max: [x + 0.55, y + 3.2 * sc, z + 0.55],
-        crushable: true, crushed: false, treeIdx: trees.length - 1, kind: 'tree',
-      }, x, z, 0.55) as TreeObstacle);
+      registerTreeInteraction(trees.length - 1, y, sx, sy, sz);
       // camo_spotting r3 forest balance: 0.13 stacked any clump to the bush
       // cap — bloom-hot forest campers at 250 m+ never lit up. Canopies
       // soft-conceal (0.08); bushes (0.35) stay the real hides. Pairs with
       // MAX_BUSH_BONUS 0.6 -> 0.5 in src/sim/spotting.ts (already applied).
-      concealers.push({ x, z, r: 2.3 * sc, add: 0.08 }); // canopy soft-conceals
     }
   }
   function addTree(x: number, z: number, species: Species): boolean {
@@ -3116,7 +3267,8 @@ function* vegetationBuildSteps(
   // "undergrowth transition"). 3-6 half-scale trees ring each stand, drawn
   // from the DEDICATED sapRng stream AFTER every shared-rng placement pass so
   // the authored tree layout (and the composed establishing shots) stays
-  // untouched. Purely visual: no obstacles/concealers.
+  // untouched. These young trees still register a proportionally small trunk
+  // so shells and hulls topple them through the same path as mature trees.
   for (const c of clusters) {
     const nSap = 3 + (sapRng() * 4) | 0;
     for (let sIt = 0; sIt < nSap; sIt++) {
@@ -3131,19 +3283,39 @@ function* vegetationBuildSteps(
       if (!siteOk(sx, sz, 0)) continue;
       const sy = heightField.getHeightAt(sx, sz);
       const spS = pickSpecies(veg.clusterMix, roll);
+      const archetypeS = TREE_ARCHETYPES[spS];
+      const sapScaleX = sc * (0.86 + treePositionNoise(sx, sz, 11) * 0.28);
+      const sapScaleY = sc * (0.90 + treePositionNoise(sx, sz, 12) * 0.20);
+      const sapScaleZ = sc * (0.86 + treePositionNoise(sx, sz, 13) * 0.28);
       _q.setFromAxisAngle(_up, yawS);
-      _m4.compose(_pv.set(sx, sy - 0.06, sz), _q, _sv.set(sc, sc * 0.98, sc));
+      _m4.compose(
+        _pv.set(sx, sy - 0.06, sz),
+        _q,
+        _sv.set(sapScaleX, sapScaleY, sapScaleZ),
+      );
       // young growth runs a touch brighter/yellower against the mature stand
-      const pjS = (veg.palettes[spS] && veg.palettes[spS].jitterHue) ?? 1;
+      const pjS = palOf(spS).jitterHue ?? 1;
       _c.setRGB(vjS * (1 + jr * 0.20 * pjS), vjS * (1.02 + jg * 0.16 * pjS),
         vjS * (0.88 + jb * 0.16 * pjS));
       trees.push({
         x: sx, z: sz, species: spS, variant: variantS, fv: fvS,
         mat: _m4.clone(), tint: _c.clone(), near: false,
-        cy: sy + 4.4 * sc, cr: 2.9 * sc, fade: 0, slot: -1, fslot: -1,
+        cy: sy + archetypeS.canopyCenterM * sapScaleY,
+        cr: archetypeS.canopyRadiusM * Math.max(sapScaleX, sapScaleZ),
+        fade: 0, slot: -1, fslot: -1,
         lodF: 0, lodT: false,
-        dr: 1.0 * sc,
+        dr: archetypeS.rootDecalRadiusM * Math.max(sapScaleX, sapScaleZ),
+        fallH: archetypeS.fallHeightM * sapScaleY,
+        fallR: archetypeS.fallRadiusM * Math.max(sapScaleX, sapScaleZ),
       });
+      registerTreeInteraction(
+        trees.length - 1,
+        sy,
+        sapScaleX,
+        sapScaleY,
+        sapScaleZ,
+        0.04,
+      );
     }
   }
 
@@ -3849,6 +4021,8 @@ function* vegetationBuildSteps(
     if (!t || t.crushed) return false;
     if (!t.uprightMat) t.uprightMat = t.mat.clone();
     t.crushed = true;
+    ob.crushed = true;
+    ob.dead = true;
     setToppleAxis(_tcax, dx, dz);
     treeCrushAnims.push({
       t, base: t.mat.clone(), x: t.x, y: ob.min[1], z: t.z,
@@ -3862,6 +4036,7 @@ function* vegetationBuildSteps(
     treeCrushAnims.length = 0;
     for (const ob of treeObstacles) {
       ob.crushed = false;
+      ob.dead = false;
       ob._pressS = 0;
       ob._pressT = -1e9;
       const t = trees[ob.treeIdx];

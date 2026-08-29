@@ -9,6 +9,7 @@ import {
   sampleTreelineCrownProfile,
 } from './maps/horizon.ts';
 import { UTILITY_POLE_PAIR_MAX_RELIEF, planUtilityPoleStation } from './propPlacement.ts';
+import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import './treeGrounding.selftest.mjs';
 
 const EXPANSION = [
@@ -54,7 +55,7 @@ for (const mapId of MAP_IDS) {
   assert.equal(config.spawns.enemies.length, 7, `${mapId}: seven enemy spawn pads`);
   for (const spawn of [config.spawns.player, ...config.spawns.enemies]) {
     assert.ok(Number.isFinite(spawn.x) && Number.isFinite(spawn.z), `${mapId}: finite spawn`);
-    assert.ok(Math.max(Math.abs(spawn.x), Math.abs(spawn.z)) <= 470,
+    assert.ok(Math.max(Math.abs(spawn.x), Math.abs(spawn.z)) <= PLAYABLE_HALF_EXTENT_M,
       `${mapId}: spawn stays inside the playable bounds`);
   }
   assert.equal(config.shot.pos.length, 3, `${mapId}: establishing camera position`);
@@ -78,9 +79,9 @@ for (const mapId of MAP_IDS) {
       const length = Math.hypot(bx - ax, bz - az) || 1;
       const tx = (bx - ax) / length, tz = (bz - az) / length;
       const x = ax - tz * 6.9, z = az + tx * 6.9;
-      if (Math.max(Math.abs(x), Math.abs(z)) > 470 || noPlacement(x, z)) continue;
+      if (Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M || noPlacement(x, z)) continue;
       const partnerX = x + tx * 6.5, partnerZ = z + tz * 6.5;
-      const allowPair = Math.max(Math.abs(partnerX), Math.abs(partnerZ)) <= 470
+      const allowPair = Math.max(Math.abs(partnerX), Math.abs(partnerZ)) <= PLAYABLE_HALF_EXTENT_M
         && !noPlacement(partnerX, partnerZ);
       const station = planUtilityPoleStation(hf, x, z, tx, tz, { allowPair });
       stations.push(station);

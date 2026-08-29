@@ -93,6 +93,10 @@ function unpackRecord(packed: PackedCollisionRecord): CollisionRecord {
   if (packed.m != null) record.crushMin = packed.m;
   if (packed.e != null) record.crushKeep = packed.e;
   if (packed.k != null) record.kind = packed.k;
+  if (record.kind === 'tree') {
+    record.crushMin = 0;
+    record.crushKeep = 1;
+  }
   if (packed.t != null) record.treeIdx = packed.t;
   if (packed.p != null) record.propIdx = packed.p;
   return record;
@@ -111,6 +115,14 @@ export function createHeadlessCollisionWorld(
   const worldHeightField = heightField;
   const obstacles = manifest.obstacles.map(unpackRecord);
   const colliders = manifest.colliders.map(unpackRecord);
+  const packedTreeIds = new Set(
+    colliders.filter((record) => record.treeIdx != null).map((record) => record.treeIdx),
+  );
+  for (const obstacle of obstacles) {
+    if (obstacle.treeIdx != null && !packedTreeIds.has(obstacle.treeIdx)) {
+      colliders.push(obstacle);
+    }
+  }
   const concealers = (manifest.concealers || []).map(([x, z, r, add]) => ({ x, z, r, add }));
   const queryObstacles = createObstacleGrid(obstacles);
   const queryColliders = createObstacleGrid(colliders);
@@ -203,12 +215,20 @@ export function createHeadlessCollisionWorld(
   function crushObstacle(obstacle: CollisionRecord | null | undefined) {
     if (!obstacle || obstacle.crushed) return false;
     obstacle.crushed = true;
-    if (obstacle.propIdx != null) {
+    if (obstacle.propIdx != null || obstacle.treeIdx != null) {
+      const sameRecord = (record: CollisionRecord): boolean => (
+        obstacle.propIdx != null
+          ? record.propIdx === obstacle.propIdx
+          : record.treeIdx === obstacle.treeIdx
+      );
       for (const record of obstacles) {
-        if (record.propIdx === obstacle.propIdx) record.crushed = true;
+        if (sameRecord(record)) record.crushed = true;
       }
       for (const record of colliders) {
-        if (record.propIdx === obstacle.propIdx) record.dead = true;
+        if (sameRecord(record)) {
+          record.crushed = true;
+          record.dead = true;
+        }
       }
     }
     return true;

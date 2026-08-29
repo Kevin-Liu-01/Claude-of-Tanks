@@ -7,26 +7,26 @@ import {
 import { MAP_IDS } from '../src/world/maps/index.ts';
 
 const expected = {
-  verdant: [3816, 490, 4091],
-  desert: [1792, 579, 1250],
-  winter: [3566, 547, 2765],
-  urban: [1786, 1003, 606],
-  coastal: [2203, 470, 1552],
-  autumn: [3694, 498, 3860],
-  steppe: [1424, 546, 601],
-  railyard: [1156, 481, 425],
-  frontier: [4338, 599, 4512],
-  fjord: [3558, 595, 2752],
-  delta: [4933, 403, 6157],
-  badlands: [2037, 741, 1063],
-  monsoon: [6015, 688, 7754],
-  alpine: [4878, 723, 3897],
-  caldera: [2982, 862, 1868],
-  foundry: [2138, 597, 1167],
-  ruinspires: [1717, 1254, 22],
-  blackglass: [1988, 913, 737],
-  titan_gorge: [1982, 1033, 669],
-  skybridge: [2286, 969, 1052],
+  verdant: [6619, 6312, 6873],
+  desert: [2408, 2308, 1847],
+  winter: [5125, 4854, 4319],
+  urban: [3663, 3409, 2479],
+  coastal: [3440, 3156, 2789],
+  autumn: [6004, 5679, 6203],
+  steppe: [2175, 1848, 1340],
+  railyard: [2664, 2353, 1947],
+  frontier: [7364, 7022, 7537],
+  fjord: [6534, 6233, 5758],
+  delta: [7762, 7400, 8989],
+  badlands: [2855, 2546, 1889],
+  monsoon: [9975, 9646, 11754],
+  alpine: [8850, 8533, 7898],
+  caldera: [4732, 4408, 3621],
+  foundry: [4039, 3614, 3077],
+  ruinspires: [3020, 2557, 1331],
+  blackglass: [3544, 3178, 2294],
+  titan_gorge: [2489, 2167, 1181],
+  skybridge: [3083, 2763, 1830],
 };
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(stats), MAP_IDS, 'manifest order and map registry stay in lockstep');
@@ -43,6 +43,15 @@ for (const [mapId, counts] of Object.entries(expected)) {
     `${mapId} dedicated movement preserves narrow hedgehog beam shapes`);
   assert.ok(hedgehogColliders.every((record) => record.shape2?.kind === 'obb'),
     `${mapId} dedicated shell collision preserves narrow hedgehog beam shapes`);
+  const treeObstacles = mapWorld.getObstacles().filter((record) => record.treeIdx != null);
+  const treeColliders = mapWorld.getColliders().filter((record) => record.treeIdx != null);
+  assert.ok(treeObstacles.length > 0, `${mapId} captures reachable trees as movement obstacles`);
+  assert.equal(treeColliders.length, treeObstacles.length,
+    `${mapId} movement and shell tree censuses agree`);
+  assert.ok(treeObstacles.every((record) => record.crushable && record.kind === 'tree'),
+    `${mapId} every reachable tree follows the shared destruction behavior`);
+  assert.ok(treeObstacles.every((record) => record.crushMin === 0 && record.crushKeep === 1),
+    `${mapId} trees topple immediately without becoming invisible speed bumps`);
 }
 
 const world = createDedicatedWorldCollision('verdant');
@@ -57,6 +66,11 @@ const destructibleCollider = world.getColliders().find((record) =>
   record.propIdx === destructible.propIdx);
 assert.equal(world.crushObstacle(destructible), true);
 assert.equal(destructibleCollider.dead, true, 'destroyed server cover opens shell and LOS paths');
+
+const tree = world.getObstacles().find((record) => record.treeIdx != null);
+const treeCollider = world.getColliders().find((record) => record.treeIdx === tree.treeIdx);
+assert.equal(world.crushObstacle(tree), true, 'dedicated tree yields to shell or ram destruction');
+assert.equal(treeCollider.dead, true, 'felled dedicated tree leaves the shell/LOS collider set');
 
 const collider = world.getColliders().find((record) => !record.dead);
 const centerZ = (collider.min[2] + collider.max[2]) * 0.5;

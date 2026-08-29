@@ -46,10 +46,10 @@ export default {
     roadTint: [0.32, 0.35, 0.37], roadTexMix: 0.88, townWear: 2.0, midRelief: 0.95,
   },
   vegetation: {
-    species: ['pine', 'oak'], clusterMix: [['pine', 0.55], ['oak', 0.45]],
-    loneMix: [['oak', 0.65], ['pine', 0.35]], rimMix: [['pine', 0.78], ['oak', 0.22]],
+    species: ['cedar', 'cypress', 'pine'], clusterMix: [['cedar', 0.45], ['cypress', 0.35], ['pine', 0.20]],
+    loneMix: [['cypress', 0.45], ['cedar', 0.35], ['pine', 0.20]], rimMix: [['cedar', 0.55], ['cypress', 0.30], ['pine', 0.15]],
     clusterCount: 18, loneCount: 36, rimCount: 62, grassDensity: 0.32,
-    bushCount: 0.38, bushSpecies: 'pine',
+    bushCount: 0.38, bushSpecies: 'cedar',
   },
   props: {
     plan: [

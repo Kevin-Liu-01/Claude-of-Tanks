@@ -94,10 +94,10 @@ export default {
   },
 
   vegetation: {
-    species: ['birch', 'pine'],
-    clusterMix: [['birch', 0.55], ['pine', 0.45]],
-    loneMix: [['birch', 0.6], ['pine', 0.4]],
-    rimMix: [['pine', 0.8], ['birch', 0.2]],
+    species: ['birch', 'spruce', 'fir', 'aspen'],
+    clusterMix: [['birch', 0.32], ['spruce', 0.30], ['fir', 0.22], ['aspen', 0.16]],
+    loneMix: [['birch', 0.34], ['aspen', 0.28], ['spruce', 0.23], ['fir', 0.15]],
+    rimMix: [['spruce', 0.48], ['fir', 0.27], ['birch', 0.15], ['aspen', 0.10]],
     clusterCount: 66, // denser birch/pine stands — forest blocks as landmarks (r5)
     loneCount: 92,
     rimCount: 64,
@@ -118,7 +118,7 @@ export default {
     bushCount: 0.15,
     // pine scrub, not birch twig-balls: the dark leafless bush scatter read
     // as speckle noise against the snow in establishing shots
-    bushSpecies: 'pine',
+    bushSpecies: 'spruce',
     palettes: {
       // r3 (content_breadth): the foreground stands read as DEAD AUTUMN
       // SAPLINGS — pale trunks, beige-mauve twig puffs, zero snow, one

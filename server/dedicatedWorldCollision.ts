@@ -28,7 +28,7 @@ export function createDedicatedWorldCollision(
 ): ReturnType<typeof createHeadlessCollisionWorld> {
   const id = String(mapId || 'verdant');
   const manifest = collisionManifests.maps[id];
-  if (!manifest || collisionManifests.version !== 1) {
+  if (!manifest || collisionManifests.version !== 2) {
     throw new Error(`missing compatible collision manifest for ${id}`);
   }
   let heightField = terrainByMap.get(id);
@@ -41,9 +41,18 @@ export function createDedicatedWorldCollision(
 }
 
 export function dedicatedCollisionManifestStats(): Record<string, DedicatedCollisionManifestStats> {
-  return Object.fromEntries(Object.entries(collisionManifests.maps).map(([id, manifest]) => [id, {
-    obstacles: manifest.obstacles.length,
-    colliders: manifest.colliders.length,
-    concealers: manifest.concealers?.length || 0,
-  }]));
+  return Object.fromEntries(Object.entries(collisionManifests.maps).map(([id, manifest]) => {
+    const packedTreeIds = new Set(
+      manifest.colliders.flatMap((record) => record.t == null ? [] : [record.t]),
+    );
+    let sharedTreeColliders = 0;
+    for (const record of manifest.obstacles) {
+      if (record.t != null && !packedTreeIds.has(record.t)) sharedTreeColliders++;
+    }
+    return [id, {
+      obstacles: manifest.obstacles.length,
+      colliders: manifest.colliders.length + sharedTreeColliders,
+      concealers: manifest.concealers?.length || 0,
+    }];
+  }));
 }

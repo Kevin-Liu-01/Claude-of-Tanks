@@ -46,8 +46,8 @@ export default {
     rippleAmp: 0.20, midRelief: 0.92, midReliefFar: 840,
   },
   vegetation: {
-    species: ['oak', 'palm'], clusterMix: [['oak', 0.92], ['palm', 0.08]],
-    loneMix: [['oak', 0.96], ['palm', 0.04]], rimMix: [['oak', 1]],
+    species: ['cedar', 'acacia', 'oak'], clusterMix: [['cedar', 0.42], ['acacia', 0.36], ['oak', 0.22]],
+    loneMix: [['acacia', 0.46], ['cedar', 0.34], ['oak', 0.20]], rimMix: [['cedar', 0.48], ['acacia', 0.34], ['oak', 0.18]],
     clusterCount: 16, loneCount: 34, rimCount: 18, grassDensity: 0.22,
     clusterScrub: 1.7, bushCount: 0.46, bushSpecies: 'oak',
   },

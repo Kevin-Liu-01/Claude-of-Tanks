@@ -51,10 +51,10 @@ export default {
   },
 
   vegetation: {
-    species: ['pine', 'oak'],
-    clusterMix: [['pine', 0.55], ['oak', 0.45]],
-    loneMix: [['pine', 0.5], ['oak', 0.5]],
-    rimMix: [['pine', 0.7], ['oak', 0.3]],
+    species: ['oak', 'poplar', 'willow', 'pine'],
+    clusterMix: [['oak', 0.34], ['poplar', 0.28], ['willow', 0.20], ['pine', 0.18]],
+    loneMix: [['oak', 0.32], ['poplar', 0.28], ['willow', 0.22], ['pine', 0.18]],
+    rimMix: [['pine', 0.32], ['poplar', 0.28], ['oak', 0.24], ['willow', 0.16]],
     // r5 density push: designated forest strips must read as closed tree
     // lines in establishing shots, not loose orchards
     // r2 terrain_environment: midground push — the 250-450 m band read as

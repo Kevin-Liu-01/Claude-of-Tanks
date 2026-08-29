@@ -4,6 +4,8 @@ import '../vehicles/tankFactory.ts'; // register the full authored fleet
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
 import { MAP_IDS } from '../world/maps/index.ts';
+import { PLAYABLE_HALF_EXTENT_M } from '../world/battlefieldBounds.ts';
+import { tankContactRect } from './tankContactShape.ts';
 
 function articulatedGunDirection(entity) {
   const state = entity.state;
@@ -40,6 +42,35 @@ const drive = new Map([['alpha-1', {
 const z0 = match.entityById.get('alpha-1').state.pos.z;
 for (let i = 0; i < 120; i++) match.step({ dt: 1 / 60, tick: ++tick, inputs: drive });
 assert.ok(match.entityById.get('alpha-1').state.pos.z > z0 + 1, 'shared movement model advances');
+
+const boundaryMatch = createAuthoritativeMatch({
+  mapId: 'verdant', countdownS: 0,
+  players: [
+    { id: 'edge-a', specId: 'm1a2', team: 'alpha', spawn: { x: 468, z: 0, yaw: Math.PI / 2 } },
+    { id: 'edge-b', specId: 'm1a2', team: 'bravo', spawn: { x: -300, z: 300, yaw: 0 } },
+  ],
+});
+boundaryMatch.onMatchReady();
+const edgeDrive = new Map([['edge-a', {
+  throttle: 1, steer: 0, brake: false, fire: false,
+  aimYaw: Math.PI / 2, aimPitch: 0, shellSlot: 0,
+}]]);
+for (let index = 0; index < 600; index++) {
+  boundaryMatch.step({ dt: 1 / 60, tick: index + 1, inputs: edgeDrive });
+}
+const edgeEntity = boundaryMatch.entityById.get('edge-a');
+const edgeRect = tankContactRect(edgeEntity.spec);
+const edgeFx = Math.sin(edgeEntity.state.yaw);
+const edgeFz = Math.cos(edgeEntity.state.yaw);
+const edgeRx = edgeFz;
+const edgeRz = -edgeFx;
+const edgeCenterX = edgeEntity.state.pos.x + edgeRx * edgeRect.centerX + edgeFx * edgeRect.centerZ;
+const edgeCenterZ = edgeEntity.state.pos.z + edgeRz * edgeRect.centerX + edgeFz * edgeRect.centerZ;
+const edgeExtentX = Math.abs(edgeFx) * edgeRect.halfLength + Math.abs(edgeRx) * edgeRect.halfWidth;
+const edgeExtentZ = Math.abs(edgeFz) * edgeRect.halfLength + Math.abs(edgeRz) * edgeRect.halfWidth;
+assert.ok(Math.abs(edgeCenterX) + edgeExtentX <= PLAYABLE_HALF_EXTENT_M + 1e-6
+  && Math.abs(edgeCenterZ) + edgeExtentZ <= PLAYABLE_HALF_EXTENT_M + 1e-6,
+'authoritative collision keeps the complete moving hull inside the battlefield');
 
 const wall = {
   min: [-12, -100, -35.5],
@@ -90,6 +121,64 @@ assert.equal(structureImpact.shellType, 'APFSDS',
   'authoritative structure impacts preserve their shell presentation class');
 assert.ok(structureImpact.caliberMm > 0 && Number.isFinite(structureImpact.ny),
   'authoritative structure impacts carry caliber and a usable surface normal');
+
+const shellTree = {
+  min: [-1, -100, -35.5],
+  max: [1, 100, -34.5],
+  shape2: { kind: 'circle', cx: 0, cz: -35, r: 1 },
+  crushable: true,
+  treeIdx: 17,
+  kind: 'tree',
+};
+let treeCrushReceipt = null;
+const treeWorld = {
+  mapId: 'verdant',
+  getObstacles: () => [shellTree],
+  queryObstacles: (_minX, _minZ, _maxX, _maxZ, out) => {
+    out.length = 0;
+    out.push(shellTree);
+    return out;
+  },
+  raycast(origin, dir, maxDist) {
+    if (Math.abs(dir.z) < 1e-9) return null;
+    const distance = (-35 - origin.z) / dir.z;
+    if (distance < 0 || distance > maxDist) return null;
+    return {
+      dist: distance,
+      kind: 'prop',
+      record: shellTree,
+      normal: new Vector3(0, 0, -1),
+    };
+  },
+  crushObstacle(obstacle, directionX, directionZ, speedMps) {
+    treeCrushReceipt = { obstacle, directionX, directionZ, speedMps };
+    obstacle.crushed = true;
+    return true;
+  },
+};
+const treeMatch = createAuthoritativeMatch({
+  mapId: 'verdant', countdownS: 0, worldCollision: treeWorld,
+  players: [
+    { id: 'tree-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+    { id: 'tree-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+  ],
+});
+treeMatch.onMatchReady();
+const treeFire = new Map([['tree-a', {
+  throttle: 0, steer: 0, brake: false, fire: true,
+  aimYaw: 0, aimPitch: 0, shellSlot: 0,
+}]]);
+for (let index = 0; index < 90; index++) treeMatch.step({ dt: 1 / 60, inputs: treeFire });
+const treeEvents = treeMatch.snapshot({
+  tick: 90, serverTimeMs: 1500, viewerId: 'tree-a', ackInputSeq: 1,
+}).events;
+assert.equal(shellTree.crushed, true, 'authoritative shell impact destroys a registered tree');
+assert.equal(treeCrushReceipt?.obstacle, shellTree, 'tree destruction reaches the world collision owner');
+assert.ok(treeCrushReceipt?.directionZ > 0 && treeCrushReceipt?.speedMps > 100,
+  'tree receives the shell travel direction and impact speed for its fall');
+assert.ok(treeEvents.some((event) => event.type === 'world_prop_destroyed'
+  && event.treeIdx === 17 && event.kind === 'tree' && event.cause === 'shell'),
+'tree shell destruction replicates with stable owner binding');
 
 const crushWall = {
   ...wall,

@@ -75,6 +75,7 @@ import type {
 } from '../net/snapshot.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
 import type { CollisionRecord } from '../world/collision.ts';
+import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.ts';
 import type {
   EquipmentCombatState,
@@ -375,7 +376,6 @@ const makeBotNavigationGrid = createBotNavigationGrid as unknown as (options: {
 
 const BATTLE_LIMIT_S = 15 * 60;
 const FIRE_TICK_S = 0.5;
-const MAP_HALF_M = 508;
 const MAX_EVENTS = 128;
 const CRUSH_MIN_MPS = 6 / 3.6;
 const CRUSH_PRESS_S = 0.45;
@@ -692,9 +692,13 @@ export function createAuthoritativeMatch({
     staticObstacles.map((obstacle, index) => [obstacle, index]),
   );
   const obstacleByPropIdx = new Map<number, AuthoritativeObstacle>();
+  const obstacleByTreeIdx = new Map<number, AuthoritativeObstacle>();
   for (const obstacle of staticObstacles) {
     if (obstacle.propIdx != null && !obstacleByPropIdx.has(obstacle.propIdx)) {
       obstacleByPropIdx.set(obstacle.propIdx, obstacle);
+    }
+    if (obstacle.treeIdx != null && !obstacleByTreeIdx.has(obstacle.treeIdx)) {
+      obstacleByTreeIdx.set(obstacle.treeIdx, obstacle);
     }
   }
   const pendingCrush: PendingCrush[] = [];
@@ -894,11 +898,6 @@ export function createAuthoritativeMatch({
     outPush: Vector3,
   ): boolean {
     outPush.set(0, 0, 0);
-    const safeX = Math.max(-MAP_HALF_M, Math.min(MAP_HALF_M, pos.x));
-    const safeZ = Math.max(-MAP_HALF_M, Math.min(MAP_HALF_M, pos.z));
-    outPush.x += safeX - pos.x;
-    outPush.z += safeZ - pos.z;
-
     const contactRect = tankContactRect(entity.spec);
     const halfL = contactRect.halfLength;
     const halfW = contactRect.halfWidth;
@@ -910,6 +909,9 @@ export function createAuthoritativeMatch({
     const centerX = pos.x + rx * contactRect.centerX + fx * contactRect.centerZ;
     const centerZ = pos.z + rz * contactRect.centerX + fz * contactRect.centerZ;
     _contactCenter.set(centerX, pos.y, centerZ);
+    pushHullInsidePlayableBounds(
+      centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
+    );
     const broadRadius = Math.hypot(halfL, halfW) + 0.01;
     const candidates = worldCollision && typeof worldCollision.queryObstacles === 'function'
       ? worldCollision.queryObstacles(
@@ -993,12 +995,19 @@ export function createAuthoritativeMatch({
     obstacle: AuthoritativeObstacle | null | undefined,
     entity: AuthoritativeEntity | null,
     cause = 'ram',
+    impactDirectionX?: number,
+    impactDirectionZ?: number,
+    impactSpeedMps?: number,
   ): boolean {
     if (!obstacle || obstacle.crushed) return false;
     const directionSign = entity?.state ? Math.sign(entity.state.speed || 1) : 1;
-    const directionX = entity?.state ? Math.sin(entity.state.yaw) * directionSign : 0;
-    const directionZ = entity?.state ? Math.cos(entity.state.yaw) * directionSign : 1;
-    const speedMps = entity?.state ? Math.abs(entity.state.speed) : 0;
+    const directionX = impactDirectionX ?? (
+      entity?.state ? Math.sin(entity.state.yaw) * directionSign : 0
+    );
+    const directionZ = impactDirectionZ ?? (
+      entity?.state ? Math.cos(entity.state.yaw) * directionSign : 1
+    );
+    const speedMps = impactSpeedMps ?? (entity?.state ? Math.abs(entity.state.speed) : 0);
     const destroyed = worldCollision && typeof worldCollision.crushObstacle === 'function'
       ? worldCollision.crushObstacle(obstacle, directionX, directionZ, speedMps)
       : true;
@@ -1047,6 +1056,9 @@ export function createAuthoritativeMatch({
       const a = contact.a;
       const b = contact.b;
       if (!a.combat || !b.combat || a.combat.destroyed) continue;
+      // Teammates still resolve physical separation, but contact can never
+      // become friendly-fire damage or a kill credit.
+      if (a.team === b.team) continue;
       const damage = ramDamage(a.spec.weightTons, b.spec.weightTons, contact.closing);
       if (damage.total <= 0) continue;
       ramPairTime.set(key, timeS);
@@ -1273,9 +1285,23 @@ export function createAuthoritativeMatch({
         } else {
           shell.dead = true;
         }
-        if (worldHit.record?.propIdx != null) {
-          const propObstacle = obstacleByPropIdx.get(worldHit.record.propIdx);
-          if (propObstacle?.crushable) destroyObstacle(propObstacle, null, 'shell');
+        const hitObstacle = worldHit.record?.treeIdx != null
+          ? obstacleByTreeIdx.get(worldHit.record.treeIdx)
+          : worldHit.record?.propIdx != null
+            ? obstacleByPropIdx.get(worldHit.record.propIdx)
+            : null;
+        if (hitObstacle?.crushable) {
+          const shotX = shell.pos.x - shell.prevPos.x;
+          const shotZ = shell.pos.z - shell.prevPos.z;
+          const shotLength = Math.hypot(shotX, shotZ) || 1;
+          destroyObstacle(
+            hitObstacle,
+            null,
+            'shell',
+            shotX / shotLength,
+            shotZ / shotLength,
+            shell.spec.velocityMps,
+          );
         }
         emit('shell_impact', {
           shellId: shell.id,

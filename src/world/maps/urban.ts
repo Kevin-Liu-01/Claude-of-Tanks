@@ -92,10 +92,10 @@ export default {
   },
 
   vegetation: {
-    species: ['oak', 'pine'],
-    clusterMix: [['oak', 0.7], ['pine', 0.3]],
-    loneMix: [['oak', 0.8], ['pine', 0.2]],
-    rimMix: [['pine', 0.6], ['oak', 0.4]],
+    species: ['poplar', 'oak', 'cypress'],
+    clusterMix: [['poplar', 0.42], ['oak', 0.38], ['cypress', 0.20]],
+    loneMix: [['poplar', 0.48], ['oak', 0.35], ['cypress', 0.17]],
+    rimMix: [['poplar', 0.38], ['cypress', 0.34], ['oak', 0.28]],
     clusterCount: 14,
     loneCount: 40,
     rimCount: 72, // r7: fuller rim forest under the serrated backdrop tree line

@@ -10,6 +10,7 @@ import { sampleHorizonSilhouette, type HorizonStyle } from './maps/horizon.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { createHeightField, mulberry32, sampleSplatNoise, type HeightField } from './terrain.ts';
 import { createGarageTreeKit, type GarageTreeKit } from './vegetation.ts';
+import type { TreeSpecies } from './treeSpecies.ts';
 
 interface EngineContext {
   setupShadowMaterial?(material: THREE.Material): void;
@@ -32,7 +33,7 @@ interface MapStageConfig {
     rockTone?: (h: number, s: number, l: number) => readonly [number, number, number];
   };
   vegetation?: {
-    species?: Array<'pine' | 'oak' | 'palm' | 'birch'>;
+    species?: TreeSpecies[];
   };
   props?: { tacticalBeats?: TacticalBeat[] };
   sky?: { fogTintHex?: number; sunColorHex?: number };
@@ -47,7 +48,7 @@ interface GarageTreePlacement {
 }
 
 interface GarageTreePlacementSet {
-  species: 'pine' | 'oak' | 'palm' | 'birch';
+  species: TreeSpecies;
   placements: GarageTreePlacement[];
 }
 

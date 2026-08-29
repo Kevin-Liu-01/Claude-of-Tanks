@@ -39,8 +39,8 @@ export default {
     roadTint: [0.51, 0.51, 0.49], midRelief: 0.72,
   },
   vegetation: {
-    species: ['oak', 'pine'], clusterMix: [['oak', 0.66], ['pine', 0.34]],
-    loneMix: [['oak', 0.72], ['pine', 0.28]], rimMix: [['pine', 0.6], ['oak', 0.4]],
+    species: ['poplar', 'oak', 'birch'], clusterMix: [['poplar', 0.42], ['oak', 0.38], ['birch', 0.20]],
+    loneMix: [['poplar', 0.44], ['oak', 0.36], ['birch', 0.20]], rimMix: [['poplar', 0.40], ['oak', 0.34], ['birch', 0.26]],
     clusterCount: 28, loneCount: 72, rimCount: 74, grassDensity: 0.44,
     bushCount: 0.5, bushSpecies: 'oak',
   },

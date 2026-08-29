@@ -14,6 +14,7 @@ import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { prebakeSharedTextures } from '../vehicles/materials.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
+import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { LocalTankPredictor } from './localTankPrediction.ts';
 import {
   PresentationEventQueue,
@@ -319,7 +320,6 @@ const recoilScale = shotRecoilScale as unknown as (
 
 const POS_SCALE = 100;
 const VEL_SCALE = 100;
-const MAP_HALF_M = 508;
 const _muzzleTip = new Vector3(); // §5.362 twin-plant flash-origin scratch
 const _predictionContactCenter = new Vector3();
 
@@ -382,11 +382,6 @@ export function createBrowserBattleBridge({
     outPush: Vector3,
   ): boolean {
     outPush.set(0, 0, 0);
-    const safeX = Math.max(-MAP_HALF_M, Math.min(MAP_HALF_M, pos.x));
-    const safeZ = Math.max(-MAP_HALF_M, Math.min(MAP_HALF_M, pos.z));
-    outPush.x = safeX - pos.x;
-    outPush.z = safeZ - pos.z;
-    if (!worldCollision) return outPush.x !== 0 || outPush.z !== 0;
     const contactRect = tankContactRect(entity.spec as unknown as TankSpec);
     const halfL = contactRect.halfLength;
     const halfW = contactRect.halfWidth;
@@ -396,6 +391,10 @@ export function createBrowserBattleBridge({
     const centerX = pos.x + rx * contactRect.centerX + fx * contactRect.centerZ;
     const centerZ = pos.z + rz * contactRect.centerX + fz * contactRect.centerZ;
     _predictionContactCenter.set(centerX, pos.y, centerZ);
+    pushHullInsidePlayableBounds(
+      centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
+    );
+    if (!worldCollision) return outPush.x !== 0 || outPush.z !== 0;
     const broadRadius = Math.hypot(halfL, halfW) + 0.01;
     const candidates = typeof worldCollision.queryObstacles === 'function'
       ? worldCollision.queryObstacles(

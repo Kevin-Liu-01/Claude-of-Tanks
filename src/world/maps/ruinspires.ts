@@ -49,8 +49,8 @@ export default {
     roadTint: [0.39, 0.40, 0.41], roadTexMix: 0.92, townWear: 2.2, midRelief: 0.72,
   },
   vegetation: {
-    species: ['oak', 'pine'], clusterMix: [['oak', 0.72], ['pine', 0.28]],
-    loneMix: [['oak', 0.8], ['pine', 0.2]], rimMix: [['pine', 0.7], ['oak', 0.3]],
+    species: ['cypress', 'poplar', 'oak'], clusterMix: [['cypress', 0.46], ['poplar', 0.34], ['oak', 0.20]],
+    loneMix: [['cypress', 0.42], ['poplar', 0.38], ['oak', 0.20]], rimMix: [['cypress', 0.50], ['poplar', 0.30], ['oak', 0.20]],
     clusterCount: 10, loneCount: 24, rimCount: 54, grassDensity: 0.25,
     bushCount: 0.30, bushSpecies: 'oak',
     parks: [{ x: -194, z: 188, r: 52 }, { x: 196, z: -178, r: 48 }],

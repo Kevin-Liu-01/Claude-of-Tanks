@@ -92,10 +92,10 @@ export default {
   },
 
   vegetation: {
-    species: ['pine', 'oak', 'palm'],
-    clusterMix: [['pine', 0.75], ['oak', 0.25]],
-    loneMix: [['pine', 0.45], ['oak', 0.35], ['palm', 0.20]],
-    rimMix: [['pine', 0.8], ['oak', 0.2]],
+    species: ['pine', 'cedar', 'oak', 'palm'],
+    clusterMix: [['pine', 0.48], ['cedar', 0.32], ['oak', 0.20]],
+    loneMix: [['pine', 0.30], ['cedar', 0.25], ['oak', 0.25], ['palm', 0.20]],
+    rimMix: [['cedar', 0.48], ['pine', 0.37], ['oak', 0.15]],
     clusterCount: 34,
     loneCount: 88,
     rimCount: 70,

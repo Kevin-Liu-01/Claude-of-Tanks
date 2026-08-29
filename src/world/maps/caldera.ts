@@ -46,8 +46,8 @@ export default {
     roadTint: [0.49, 0.46, 0.43], strata: 0.05, midRelief: 1.15,
   },
   vegetation: {
-    species: ['pine', 'oak'], clusterMix: [['pine', 0.72], ['oak', 0.28]],
-    loneMix: [['pine', 0.65], ['oak', 0.35]], rimMix: [['pine', 0.82], ['oak', 0.18]],
+    species: ['pine', 'cedar', 'eucalyptus'], clusterMix: [['pine', 0.45], ['cedar', 0.35], ['eucalyptus', 0.20]],
+    loneMix: [['eucalyptus', 0.40], ['pine', 0.35], ['cedar', 0.25]], rimMix: [['cedar', 0.45], ['pine', 0.40], ['eucalyptus', 0.15]],
     clusterCount: 42, loneCount: 72, rimCount: 64, grassDensity: 0.48,
     bushCount: 0.62, bushSpecies: 'pine',
   },

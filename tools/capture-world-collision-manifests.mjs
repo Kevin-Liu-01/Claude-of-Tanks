@@ -47,8 +47,10 @@ for (const mapId of MAP_IDS) {
       else if (shape?.kind === 'circle') out.s = ['c', n(shape.cx), n(shape.cz), n(shape.r)];
       else if (shape?.kind === 'convex') out.s = ['v', ...shape.points.map(n)];
       if (record.crushable) out.q = 1;
-      if (record.crushMin != null) out.m = n(record.crushMin);
-      if (record.crushKeep != null) out.e = n(record.crushKeep);
+      // Tree contact policy is a shared runtime invariant; avoid repeating
+      // its two constant values thousands of times in the server manifest.
+      if (record.treeIdx == null && record.crushMin != null) out.m = n(record.crushMin);
+      if (record.treeIdx == null && record.crushKeep != null) out.e = n(record.crushKeep);
       if (record.kind != null) out.k = record.kind;
       if (record.treeIdx != null) out.t = record.treeIdx;
       if (record.propIdx != null) out.p = record.propIdx;
@@ -56,7 +58,10 @@ for (const mapId of MAP_IDS) {
     };
     return {
       obstacles: world.getObstacles().map(pack),
-      colliders: world.getColliders().map(pack),
+      // Tree trunks are the exact same logical record for movement and shell
+      // raycasts. Version 2 stores them once in obstacles; the headless world
+      // reuses that object in its collider grid instead of inflating a clone.
+      colliders: world.getColliders().filter((record) => record.treeIdx == null).map(pack),
       concealers: world.getConcealment().map((entry) => [n(entry.x), n(entry.z), n(entry.r), n(entry.add)]),
     };
   })()`;
@@ -67,7 +72,7 @@ for (const mapId of MAP_IDS) {
 }
 
 const manifest = {
-  version: 1,
+  version: 2,
   terrainSeed: 1337,
   propsSeed: 2002,
   vegetationSeed: 2001,

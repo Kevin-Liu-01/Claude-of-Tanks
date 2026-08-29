@@ -66,6 +66,7 @@ import {
 import { createAI, roleOf } from './ai.ts';
 import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
+import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { getStoredDifficulty } from './input.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.ts';
@@ -1356,6 +1357,9 @@ function makeCollide(game: SoloGameState, world: SoloWorld): CollisionBundle {
     const centerX = pos.x + rx * (contactRect?.centerX || 0) + fx * (contactRect?.centerZ || 0);
     const centerZ = pos.z + rz * (contactRect?.centerX || 0) + fz * (contactRect?.centerZ || 0);
     _contactCenter.set(centerX, pos.y, centerZ);
+    if (pushHullInsidePlayableBounds(
+      centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
+    )) pushed = true;
     const selfSpeed = self && self.state ? Math.abs(self.state.speed) : 0;
 
     // --- other tanks: exact-shell bounds as oriented rectangles ------------
@@ -1743,6 +1747,23 @@ function stepShells(game: SoloGameState, bus: EventBus, world: SoloWorld): void 
         for (const ev of events) emitHitOutcome(game, bus, ev);
       } else {
         shell.dead = true;
+      }
+      if (worldHit.record?.treeIdx != null && worldHit.record.crushable && world.crushObstacle) {
+        world.crushObstacle(
+          worldHit.record,
+          _seg.x,
+          _seg.z,
+          shell.spec.velocityMps,
+        );
+        bus.emit('prop:crushed', {
+          shooterId: shell.shooterId,
+          cause: 'shell',
+          speedMps: shell.spec.velocityMps,
+          kind: 'tree',
+          h: worldHit.record.max[1] - worldHit.record.min[1],
+          pos: [worldHit.point.x, worldHit.point.y, worldHit.point.z],
+          dir: [_seg.x, 0, _seg.z],
+        });
       }
       bus.emit('shell:expired', {
         shellId: shell.id,

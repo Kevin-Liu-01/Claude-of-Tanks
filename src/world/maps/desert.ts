@@ -135,12 +135,12 @@ export default {
   },
 
   vegetation: {
-    species: ['palm', 'oak'],
-    clusterMix: [['palm', 1]],
-    // all-palm standalone trees: the occasional far-LOD oak read as a pale
-    // olive saucer floating over the oasis
-    loneMix: [['palm', 1]],
-    rimMix: [['palm', 1]],
+    species: ['palm', 'acacia', 'eucalyptus'],
+    clusterMix: [['palm', 0.72], ['acacia', 0.23], ['eucalyptus', 0.05]],
+    // Dry-canopy companions are deliberately sparse; their new silhouettes
+    // stay grounded instead of using the old far-LOD oak saucer.
+    loneMix: [['palm', 0.70], ['acacia', 0.25], ['eucalyptus', 0.05]],
+    rimMix: [['palm', 0.55], ['acacia', 0.35], ['eucalyptus', 0.10]],
     // r5: denser oases + more standalone palms — the sparse-stick read was a
     // top critique item; scrub density up with the new clump-gated scatter
     // r8: fewer LONE palms, more oasis clusters — uniformly scattered far
@@ -176,7 +176,7 @@ export default {
     // hard shadow speck at establishing distance) while the clump-gated wadi
     // thickets keep their density
     bushCount: 0.92, // r4: more wadi scrub — mid-map emptiness critique
-    bushSpecies: 'oak',
+    bushSpecies: 'acacia',
     palettes: {
       oak: { // r7: sun-bleached sage scrub — the r6 olive still bottomed out
         // at ~0.26 luminance in the far cards, and against ~0.85-luminance
