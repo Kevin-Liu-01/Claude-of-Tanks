@@ -1843,7 +1843,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     for (const [id, card] of cardById) card.classList.toggle('sel', id === specId);
     const card = cardById.get(specId);
     if (card && card.scrollIntoView) {
-      card.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+      // Selection may jump from the first card to the far-right top tank when
+      // a nation opens. Reveal it before the next paint instead of animating
+      // through every intermediate card (which also exposed clipped cards
+      // during the sweep).
+      card.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'auto' });
     }
     queueCarouselAffordances();
     renderStats(spec);

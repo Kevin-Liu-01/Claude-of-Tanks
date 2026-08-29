@@ -493,7 +493,7 @@
 .cot-cards{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;
   /* Horizontal scrolling computes overflow-y:auto too; reserve real headroom
      so the selected card's upward lift keeps its entire top border visible. */
-  padding-top:8px;margin-top:-8px;
+  padding:8px 8px 0;margin-top:-8px;scroll-padding-inline:8px;
   cursor:grab;touch-action:pan-x;}
 .cot-cards.has-more-left:not(.has-more-right){
   -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 64px,#000 100%);
