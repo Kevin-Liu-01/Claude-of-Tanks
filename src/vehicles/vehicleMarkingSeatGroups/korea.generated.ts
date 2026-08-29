@@ -3,24 +3,24 @@
 
 export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 
-export const VEHICLE_MARKING_SEATS = Object.freeze({
-  "tiger1": {
+export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.freeze({
+  "k2b": {
     "schemaVersion": 1,
     "seats": [
       {
-        "kind": "insignia",
+        "kind": "designation",
         "parent": "hull",
-        "size": 0.5,
+        "size": 0.24,
         "pos": [
-          1.861,
-          1.62,
-          0.8
+          -1.9042223,
+          1.179928,
+          -0.42
         ],
         "quaternion": [
-          0,
-          0.7071068,
-          0,
-          0.7071068
+          0.0042426,
+          -0.7070941,
+          0.0042426,
+          0.7070941
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "authored-surface-seat",
@@ -32,68 +32,68 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
       {
         "kind": "insignia",
         "parent": "hull",
-        "size": 0.5,
+        "size": 0.26,
         "pos": [
-          -1.861,
-          1.62,
-          0.8
+          -1.9042823,
+          1.192928,
+          -0.0369749
         ],
         "quaternion": [
-          0,
-          -0.7071068,
-          0,
-          0.7071068
+          0.0042426,
+          -0.7070941,
+          0.0042426,
+          0.7070941
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "authored-surface-seat",
+        "anchorProfile": "k2b",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0174567
       },
       {
         "kind": "designation",
         "parent": "turret",
-        "size": 0.42,
+        "size": 0.3,
         "pos": [
-          1.376,
-          0.42,
-          0.3
+          1.3882909,
+          0.2962777,
+          -0.8497185
         ],
         "quaternion": [
-          0,
-          0.7071068,
-          0,
-          0.7071068
+          -0.1407684,
+          0.6758135,
+          0.1475359,
+          0.7083033
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 8,
+        "visibilityRatio": 0.8888889,
+        "maximumSurfaceErrorM": 0.0054995
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.3,
+        "pos": [
+          -1.4058462,
+          0.2971585,
+          -0.85
+        ],
+        "quaternion": [
+          -0.1441919,
+          -0.692249,
+          -0.1441919,
+          0.692249
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.42,
-        "pos": [
-          -1.376,
-          0.42,
-          0.3
-        ],
-        "quaternion": [
-          0,
-          -0.7071068,
-          0,
-          0.7071068
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.006738
       }
     ]
   }

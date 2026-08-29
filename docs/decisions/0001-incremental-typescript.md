@@ -110,6 +110,9 @@ typed mesh, lane, contour, receipt, and result boundaries.
 Generated combat-anatomy receipts now share that strict graph: the eager
 fleet aggregate, 27 demand-loaded family payloads, and loader table are emitted
 as TypeScript while the runtime registry remains the narrowing boundary.
+Exact vehicle-marking seat receipts use the same pattern: generated TypeScript
+payloads retain family-local chunking, and the authored registry validates the
+schema before any seat reaches the painter.
 
 ## Consequences
 

@@ -1,22 +1,17 @@
 import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import type { FleetGroup } from './fleetManifest.ts';
-import { VEHICLE_MARKING_SEAT_GROUP_LOADERS } from './vehicleMarkingSeatLoaders.generated.js';
+import { VEHICLE_MARKING_SEAT_GROUP_LOADERS } from './vehicleMarkingSeatLoaders.generated.ts';
 import {
   hasVehicleMarkingSeats,
   registerVehicleMarkingSeatRecords,
 } from './vehicleMarkingSeatRegistry.ts';
 
-interface MarkingSeatGroupModule {
-  VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>>;
-}
-
-type MarkingSeatGroupLoader = () => Promise<MarkingSeatGroupModule>;
+type MarkingSeatGroupLoader = typeof VEHICLE_MARKING_SEAT_GROUP_LOADERS[string];
 type MarkingSeatGroup = FleetGroup | 'core';
 
 const CORE_GROUP: MarkingSeatGroup = 'core';
-const GROUP_LOADERS = VEHICLE_MARKING_SEAT_GROUP_LOADERS as unknown as Readonly<
-  Record<MarkingSeatGroup, MarkingSeatGroupLoader>
->;
+const GROUP_LOADERS: Readonly<Record<string, MarkingSeatGroupLoader>> =
+  VEHICLE_MARKING_SEAT_GROUP_LOADERS;
 const pendingGroups = new Map<MarkingSeatGroup, Promise<void>>();
 const readyGroups = new Set<MarkingSeatGroup>();
 

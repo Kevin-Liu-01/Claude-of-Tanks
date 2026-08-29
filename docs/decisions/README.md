@@ -248,3 +248,4 @@ runtime documents remain authoritative for behavior.
 - [0236 — Camouflage swatch painting is strict TypeScript](0236-type-camouflage-swatches.md)
 - [0237 — Turret-barrel circularity measurement is strict TypeScript](0237-type-turret-barrel-circularity.md)
 - [0238 — Combat-anatomy receipts are generated as strict TypeScript](0238-type-combat-anatomy-receipts.md)
+- [0239 — Vehicle-marking seat receipts are generated as strict TypeScript](0239-type-vehicle-marking-seat-receipts.md)

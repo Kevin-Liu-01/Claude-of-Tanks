@@ -3,7 +3,7 @@
 
 export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 
-export const VEHICLE_MARKING_SEATS = Object.freeze({
+export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.freeze({
   "m60a1": {
     "schemaVersion": 1,
     "seats": [
