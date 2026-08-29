@@ -65,12 +65,17 @@ touch but does not construct the authoring runtime until entry. These boundaries
 keep demand loading without making a card or route click pay the cold parse.
 
 Garage workshop scenery must not import `fleetFactory.ts` or request profile
-families. It uses the standalone workshop part catalog, currently 7,462
-triangles for every assembly state combined. The wall location image and ten
-selector previews reuse existing map thumbnails and decode only when the
-workshop/selector is demanded. `npm run qa:garage` enumerates all ten locations,
-checks unique map bindings, persistence, preview decode, the 35K hard triangle
-ceiling, desktop switch frame gaps, console health, and the 390×844 selector.
+families. It uses the standalone workshop part catalog, currently 9,562
+triangles for all three family-specific vehicle assemblies, all three detached
+turret/gun cradles, and service racks combined. Ten architecture roots are
+built only on first selection, cached, and hidden as complete subtrees; the
+largest individual structural kit stays below 2.5K triangles. The wall location
+image and ten selector previews reuse existing map thumbnails and decode only
+when demanded. `npm run qa:garage` enumerates all ten locations and checks
+unique map and architecture signatures, persistence, preview decode, zero wall
+bay overlaps, required Abrams/T-90M/Leclerc LOD ownership, the 35K workshop and
+10K per-architecture ceilings, desktop switch frame gaps, console health, and
+the 390×844 selector.
 
 An opaque transition must be visible before asynchronous battle imports or
 world loading. Hiding the menu before painting the transition can expose one

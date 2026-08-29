@@ -990,7 +990,9 @@ const garage = legacyPort<MainGarageRuntime>(await bootStage('ui', () => createG
 // verification can enumerate all ten environments and measure their one
 // retained low-poly catalog without reaching into scene internals.
 legacyPort<Record<string, unknown>>(window).__GARAGE_WORKSHOP = {
-  variants: GARAGE_VARIANTS.map(({ id, mapId, name }) => ({ id, mapId, name })),
+  variants: GARAGE_VARIANTS.map(({ id, mapId, name, architecture }) => ({
+    id, mapId, name, architecture,
+  })),
   async ensureBuilt() {
     await garageDressing.ensureBuilt();
     invalidateGaragePresentation();
@@ -1003,6 +1005,10 @@ legacyPort<Record<string, unknown>>(window).__GARAGE_WORKSHOP = {
       triangles: garageDressing.group.userData.workshopTriangleCount || 0,
       buildTimings: [...(garageDressing.group.userData.buildTimings || [])],
       mapId: garageDressing.group.userData.garageMapId || '',
+      architecture: garageStage.stats?.() || garageStage.group.userData.garageArchitecture || {},
+      wallLayout: garageDressing.group.userData.wallLayout || { bays: 0, overlaps: [] },
+      families: [...(garageDressing.group.userData.workshopFamilies || [])],
+      sourceVehicleIds: [...(garageDressing.group.userData.workshopSourceVehicleIds || [])],
       renderer: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles },
     };
   },

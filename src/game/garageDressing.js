@@ -31,6 +31,7 @@ import {
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant } from './garageVariants.ts';
 import { countWorkshopTriangles, createWorkshopPartLibrary } from './workshopParts.ts';
+import { auditGarageWallBays, garageWallTransform } from './garageWallLayout.ts';
 
 /**
  * Build the (initially empty) workshop dressing rig.
@@ -46,6 +47,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   group.userData.perfOwner = 'garage/workshop';
   group.position.copy(pos);
   group.userData.workshopPartSource = 'garage-low-poly-library';
+  group.userData.wallLayout = auditGarageWallBays();
 
   // Establish the dressing's final light set before the boot warm renders the
   // hero. Adding this light from a later build chunk changes Three's lighting
@@ -299,7 +301,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   }
 
   /** pegboard quad + backing plate flush against a wall. */
-  function pegboard(x, y, z, ry, w = 2.5, h = 1.55) {
+  function pegboard(x, y, z, ry, w = 2.5, h = 1.55, wallBayId = '') {
     const tex = track(canvasTexture(makePegboardTexture(), { aniso }));
     const m = track(shadowMat(new THREE.MeshStandardMaterial({
       map: tex, roughness: 0.7, metalness: 0.15,
@@ -307,12 +309,19 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     })));
     const back = put(track(new THREE.BoxGeometry(w + 0.1, h + 0.1, 0.05)), mat.steelDark, x, y, z, ry, 0, 0, 1, group, false);
     back.castShadow = false;
+    back.userData.wallBayId = wallBayId;
     const boardGeo = track(new THREE.PlaneGeometry(w, h));
     const board = new THREE.Mesh(boardGeo, m);
     board.position.set(x, y, z);
     board.rotation.y = ry;
     board.translateZ(0.032);
+    board.userData.wallBayId = wallBayId;
     group.add(board);
+  }
+
+  function pegboardAt(wallBayId) {
+    const bay = garageWallTransform(wallBayId);
+    pegboard(bay.x, bay.y, bay.z, bay.yaw, bay.width - 0.12, bay.height - 0.12, wallBayId);
   }
 
   /** rolling drawer toolbox (colorway via mats). */
@@ -338,31 +347,45 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   }
 
   /** wall sign: steel plate + stencil board (garageStage language). */
-  function wallSign(text, x, y, z, ry, w = 2.0, h = 1.0) {
+  function wallSign(text, x, y, z, ry, w = 2.0, h = 1.0, wallBayId = '') {
     const tex = track(canvasTexture(makeSignTexture(rng, text), { aniso }));
     signTextures.push(tex);
     const m = track(shadowMat(new THREE.MeshStandardMaterial({
       map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.13,
       roughness: 0.6, metalness: 0.2,
     })));
-    put(track(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.05)), mat.steelDark, x, y, z, ry, 0, 0, 1, group, false);
+    const back = put(track(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.05)), mat.steelDark, x, y, z, ry, 0, 0, 1, group, false);
+    back.userData.wallBayId = wallBayId;
     const board = new THREE.Mesh(track(new THREE.PlaneGeometry(w, h)), m);
     board.position.set(x, y, z);
     board.rotation.y = ry;
     board.translateZ(0.032);
+    board.userData.wallBayId = wallBayId;
     group.add(board);
   }
 
+  function wallSignAt(text, wallBayId) {
+    const bay = garageWallTransform(wallBayId);
+    wallSign(text, bay.x, bay.y, bay.z, bay.yaw,
+      bay.width - 0.12, bay.height - 0.12, wallBayId);
+  }
+
   /** fire extinguisher on a wall bracket. */
-  function extinguisher(x, y, z, ry) {
+  function extinguisher(x, y, z, ry, wallBayId = '') {
     const e = new THREE.Group();
     e.position.set(x, y, z);
     e.rotation.y = ry;
+    e.userData.wallBayId = wallBayId;
     group.add(e);
     put(track(new THREE.BoxGeometry(0.05, 0.4, 0.2)), mat.steelDark, -0.09, 0, 0, 0, 0, 0, 1, e, false);
     put(track(new THREE.CylinderGeometry(0.085, 0.085, 0.48, 12)), mat.extRed, 0, 0, 0, 0, 0, 0, 1, e);
     put(track(new THREE.CylinderGeometry(0.02, 0.02, 0.1, 8)), mat.steelBright, 0, 0.28, 0, 0, 0, 0, 1, e, false);
     put(track(new THREE.TorusGeometry(0.07, 0.014, 6, 12, Math.PI * 1.3)), mat.rubber, 0.06, 0.16, 0, 0, Math.PI / 2, 0.6, 1, e, false);
+  }
+
+  function extinguisherAt(wallBayId) {
+    const bay = garageWallTransform(wallBayId);
+    extinguisher(bay.x, bay.y, bay.z, bay.yaw, wallBayId);
   }
 
   // Assembly positions all stay outside the showroom orbit envelope. Each of
@@ -442,16 +465,19 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     mapBackdropMaterial = track(new THREE.MeshBasicMaterial({
       color: currentVariant.wallTint, side: THREE.DoubleSide,
     }));
-    put(track(new THREE.BoxGeometry(12.6, 3.75, 0.16)), mat.steelDark,
-      8.0, 7.05, 22.76, Math.PI, 0, 0, 1, group, false);
-    const backdrop = put(track(new THREE.PlaneGeometry(12.0, 3.25)), mapBackdropMaterial,
-      8.0, 7.05, 22.66, Math.PI, 0, 0, 1, group, false);
+    const mapBay = garageWallTransform('south_location');
+    const backdropFrame = put(track(new THREE.BoxGeometry(mapBay.width + 0.28, mapBay.height + 0.28, 0.16)), mat.steelDark,
+      mapBay.x, mapBay.y, mapBay.z - 0.10, mapBay.yaw, 0, 0, 1, group, false);
+    backdropFrame.userData.wallBayId = mapBay.id;
+    const backdrop = put(track(new THREE.PlaneGeometry(mapBay.width, mapBay.height)), mapBackdropMaterial,
+      mapBay.x, mapBay.y, mapBay.z - 0.20, mapBay.yaw, 0, 0, 1, group, false);
     backdrop.name = 'garage_map_location_preview';
     backdrop.userData.mapId = currentVariant.mapId;
+    backdrop.userData.wallBayId = mapBay.id;
     updateMapBackdrop();
     // --- EAST WALL (left of frame from the hero cam) ------------------------
     workbench(21.95, -7, -Math.PI / 2);
-    pegboard(22.86, 2.62, -7, -Math.PI / 2);
+    pegboardAt('east_tools');
     workLamp(21.6, -7);
     // steel locker pair
     for (const lz of [-11.9, -10.9]) {
@@ -493,15 +519,15 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
       put(G.shellBody, mat.olive, 0.05, 0.16, 0.95, 0.2, 0, Math.PI / 2, 1, rack);
       put(G.shellBody, mat.olive, 0.35, 0.16, 1.02, 0.35, 0, Math.PI / 2, 1, rack);
     }
-    wallSign('BAY 02', 22.9, 5.6, -3.5, -Math.PI / 2, 2.6, 1.3);
-    extinguisher(22.84, 1.12, 4.8, -Math.PI / 2);
+    wallSignAt('BAY 02', 'east_bay_02');
+    extinguisherAt('east_extinguisher');
     // oil drum cluster (one with a hand pump), plus a tipped drum
     for (const [dx, dz, c] of [[21.3, 7.6, mat.redCabDark], [20.5, 8.2, mat.blueSteel], [21.4, 8.7, mat.olive]]) {
       put(G.drum, c, dx, 0.58, dz, rng() * Math.PI);
     }
     put(track(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 8)), mat.steelBright, 21.3, 1.35, 7.6, 0, 0, 0, 1, group, false);
     put(G.drum, mat.olive, 20.2, 0.42, 10.1, 0.4, 0, Math.PI / 2); // tipped
-    wallSign('FLAMMABLE', 22.9, 3.4, 8.1, -Math.PI / 2, 1.7, 0.85);
+    wallSignAt('FLAMMABLE', 'east_flammable');
 
     // --- SOUTH WALL (right of frame from the hero cam) ----------------------
     // Timber X-trestles for the real T-90M gun rig built in the modern
@@ -521,7 +547,9 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     // big workshop wall fan (static) + guard
     {
       const f = new THREE.Group();
-      f.position.set(0.8, 6.05, 22.72);
+      const fanBay = garageWallTransform('south_fan');
+      f.position.set(fanBay.x, fanBay.y, fanBay.z - 0.14);
+      f.userData.wallBayId = fanBay.id;
       group.add(f);
       put(track(new THREE.BoxGeometry(0.5, 0.5, 0.3)), mat.steelDark, 0, 0, 0.22, 0, 0, 0, 1, f);
       put(track(new THREE.TorusGeometry(0.95, 0.06, 8, 26)), mat.steelMid, 0, 0, 0, 0, 0, 0, 1, f);
@@ -535,7 +563,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
       const barG = track(new THREE.BoxGeometry(0.025, 1.9, 0.025));
       for (let k = 0; k < 4; k++) put(barG, mat.steelDark, 0, 0, -0.14, 0, 0, (k * Math.PI) / 4, 1, f, false);
     }
-    wallSign('KEEP CLEAR', 10.6, 5.3, 22.9, Math.PI, 2.2, 1.1);
+    wallSignAt('KEEP CLEAR', 'south_keep_clear');
     // welding cart: gas bottles + frame + hose + FAINT ARC GLOW (emissive
     // + additive sprite only — no live light)
     {
@@ -570,8 +598,8 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     }
 
     // --- WEST + NORTH walls (seen when the free orbit swings behind) --------
-    pegboard(-22.86, 2.62, 1.5, Math.PI / 2, 2.9, 1.6); // over the existing bench
-    extinguisher(-22.84, 1.12, 3.4, Math.PI / 2);
+    pegboardAt('west_tools');
+    extinguisherAt('west_extinguisher');
     // jerrycan row (one tipped)
     {
       const cans = new THREE.InstancedMesh(G.jerrycan, mat.olive, 6);
@@ -645,7 +673,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
     }
     // NORTH wall: second bench + red chest + engine on pallet + lamp
     workbench(3.2, -21.85, 0);
-    pegboard(3.2, 2.62, -22.86, 0);
+    pegboardAt('north_tools');
     toolChest(6.6, -21.4, 0.15, mat.redCab, mat.redCabDark);
     workLamp(3.2, -21.2);
     {
@@ -709,44 +737,48 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   });
 
   // ==========================================================================
-  // CHUNK 2 — western final assembly + detached power pack. Both are tiny
+  // CHUNK 2 — recognizable Abrams final assembly + Leclerc power pack.
   // workshop duplicates, not playable vehicle builds.
   // ==========================================================================
   chunks.push(function buildBayA() {
-    addAssembly('western_assembly', 0, 0.84);
+    addAssembly('abrams_assembly', 0, 0.82);
     addAssembly('powerpack', 1, 1.0);
-    wallSign('FINAL ASSEMBLY', 17.3, 3.3, -22.86, 0, 3.0, 0.9);
+    wallSignAt('ABRAMS LINE', 'north_final');
   });
 
   // ==========================================================================
-  // CHUNK 3 — eastern suspension-install state + serviced weapon bench.
+  // CHUNK 3 — recognizable T-90M assembly + three-family gun bench.
   // ==========================================================================
   chunks.push(function buildBayB() {
-    addAssembly('eastern_assembly', 2, 0.9);
+    addAssembly('t90_assembly', 2, 0.86);
     addAssembly('weapon_rack', 3, 0.95);
-    wallSign('SUSPENSION LINE', 17.0, 3.2, 22.86, Math.PI, 3.0, 0.9);
+    wallSignAt('T-90M LINE', 'south_suspension');
   });
 
   // ==========================================================================
-  // CHUNK 4 — separately seated T-90M-inspired turret and reactive-armor rack.
+  // CHUNK 4 — recognizable Leclerc assembly + reactive-armor rack.
   // ==========================================================================
-  chunks.push(function buildT90mComponents() {
-    addAssembly('turret_cradle', 4, 0.94);
+  chunks.push(function buildLeclercBay() {
+    addAssembly('leclerc_assembly', 4, 0.84);
     addAssembly('armor_rack', 5, 0.92);
-    wallSign('TURRET / ARMOR', -8.7, 3.25, 22.86, Math.PI, 2.8, 0.9);
+    wallSignAt('LECLERC / ARMOR', 'south_turret_armor');
   });
 
   // ==========================================================================
-  // CHUNK 5 — bare K2-inspired hull, sorted running gear and recovery wreck.
+  // CHUNK 5 — distinct Abrams, T-90M and Leclerc turret/gun service cradles.
   // ==========================================================================
-  chunks.push(function buildK2Components() {
-    addAssembly('bare_hull', 6, 0.88);
-    addAssembly('running_gear', 7, 0.95);
-    addAssembly('recovery_wreck', 8, 0.76);
+  chunks.push(function buildTurretService() {
+    addAssembly('abrams_turret_cradle', 6, 0.82);
+    addAssembly('t90_turret_cradle', 7, 0.88);
+    addAssembly('leclerc_turret_cradle', 8, 0.84);
     group.userData.workshopTriangleCount = variantAssemblies.reduce(
       (sum, root) => sum + countWorkshopTriangles(root), 0,
     );
-    wallSign('TEARDOWN / RECOVERY', -16.3, 3.2, -22.86, 0, 3.2, 0.9);
+    group.userData.workshopFamilies = [...new Set(variantAssemblies
+      .map((root) => root.userData.family).filter((family) => family && family !== 'support'))];
+    group.userData.workshopSourceVehicleIds = [...new Set(variantAssemblies
+      .map((root) => root.userData.sourceVehicleId).filter(Boolean))];
+    wallSignAt('TURRET SERVICE', 'north_teardown');
   });
 
   // sign plates bake before the webfont settles — refresh them once it lands

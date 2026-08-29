@@ -65,6 +65,7 @@
 .cot-garage-variant-menu{position:absolute;z-index:85;left:230px;top:62px;width:570px;
   max-width:calc(100vw - 72px);max-height:calc(100vh - 92px);padding:8px;display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;overflow-y:auto;overscroll-behavior:contain;
+  pointer-events:auto;
   background:linear-gradient(150deg,rgba(18,24,30,.99),rgba(6,10,14,.995));
   border:1px solid rgba(166,184,199,.42);box-shadow:0 24px 70px rgba(0,0,0,.8),0 0 0 1px rgba(0,0,0,.5) inset;
   scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.5) rgba(8,11,14,.8);}

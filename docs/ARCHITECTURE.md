@@ -876,13 +876,17 @@ colored badge, tier, era), right-side stats card (HP, top speed, hp/t, pen/dmg o
 3 shells, reload, armor highlights — from TankSpec), big orange BATTLE button top-center.
 Emits `ui:battleStart` and `ui:click` on the bus. Keyboard: ←/→ select, Enter battle.
 
-`src/game/garageVariants.ts` owns the immutable ten-location registry and
-persistence key. `garageStage.js` owns the first-paint shell and location
-palette. `garageDressingAccess.ts` keeps a stable light/root while lazily
-importing `garageDressing.js`; `garageDressingScheduler.ts` adds one optional
-slice per quiet lease. `workshopParts.ts` is the only source for background
-vehicle components. It is intentionally independent from `fleetFactory.ts`,
-so repair bays cannot pull tank profile families into garage idle time.
+`src/game/garageVariants.ts` owns the immutable ten-location registry,
+architecture key, and persistence key. `garageStage.js` owns the first-paint
+shell and palette; `garageArchitecture.ts` lazily builds and caches the ten
+distinct macro structures. `garageDressingAccess.ts` keeps a stable light/root
+while lazily importing `garageDressing.js`; `garageDressingScheduler.ts` adds
+one optional slice per quiet lease. `garageWallLayout.ts` is the authoritative
+non-overlapping wall-bay contract. `workshopParts.ts` is the only source for
+background vehicle components: separately authored low-poly Abrams, T-90M and
+Leclerc family reductions with their real wheel counts and silhouette cues. It
+is intentionally independent from `fleetFactory.ts`, so repair bays cannot pull
+tank profile families into garage idle time.
 
 ### 3.8 fx — `src/fx/`
 

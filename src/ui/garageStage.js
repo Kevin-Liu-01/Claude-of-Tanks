@@ -11,6 +11,7 @@
 // showcase spotlights can stay — the stage's own fixtures complement them.
 import * as THREE from 'three';
 import { getGarageVariant } from '../game/garageVariants.ts';
+import { createGarageArchitectureController } from './garageArchitecture.ts';
 
 // The floor texture's approach scuffs run along world Z. Face showroom tanks
 // toward -Z (the nearest exact floor-track heading to the old 162-degree pose)
@@ -343,7 +344,9 @@ export function makeHazardTexture() {
  * @param {{setupShadowMaterial:Function,anisotropy:number}} engineCtx
  * @param {THREE.Vector3} pos - garage stage center (ground level)
  * @param {string} [initialVariantId] persisted workshop environment id
- * @returns {{group:THREE.Group, setVariant:(variantId:string)=>string, dispose:Function}}
+ * @returns {{group:THREE.Group, setVariant:(variantId:string)=>string,
+ *            stats:()=>import('./garageArchitecture.ts').GarageArchitectureStats,
+ *            dispose:Function}}
  */
 export function createGarageStage(engineCtx, pos, initialVariantId = '') {
   const rng = mulberry32(90210);
@@ -536,6 +539,7 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
   }));
   track(wallMat);
   const wallGeo = track(new THREE.PlaneGeometry(HW * 2, WALL_H));
+  const baseWalls = [];
   for (const [rx, ry, x, z] of [
     [0, 0, 0, -HW],            // north (faces +z, behind the tank in frame)
     [0, Math.PI, 0, HW],       // south
@@ -547,6 +551,7 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
     wall.position.set(x, WALL_H / 2, z);
     wall.receiveShadow = true;
     group.add(wall);
+    baseWalls.push(wall);
   }
   const ceilMat = shadowMat(new THREE.MeshStandardMaterial({
     color: 0x1e2124, roughness: 0.95, metalness: 0.1,
@@ -564,11 +569,14 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
   }));
   track(trussMat);
   const trussGeo = track(new THREE.BoxGeometry(HW * 2, 0.5, 0.22));
+  const roofTrusses = [];
   for (let i = -1; i <= 1; i++) {
     const truss = new THREE.Mesh(trussGeo, trussMat);
     truss.position.set(0, WALL_H - 0.35, i * 12);
     group.add(truss);
+    roofTrusses.push(truss);
   }
+  const architecture = createGarageArchitectureController(engineCtx || {}, group);
 
   // --- light fixtures (visible housings + real lights) -----------------------
   const housingMat = shadowMat(new THREE.MeshStandardMaterial({
@@ -1131,6 +1139,15 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
     rimRingMat.emissive.setHex(variant.lightTint);
     lampMat.color.setHex(variant.lightTint);
     lensMat.emissive.setHex(variant.lightTint);
+    const architectureStats = architecture.setVariant(variant);
+    // Open compounds get their authored canopy/skyline instead of the common
+    // flat roof. Perimeter walls remain as the safe distant scene boundary so
+    // workshop fixtures never float against the renderer clear color.
+    const openRoof = new Set(['field_shed', 'shade_depot', 'rain_canopy', 'recovery_yard']);
+    ceiling.visible = !openRoof.has(variant.architecture);
+    for (const truss of roofTrusses) truss.visible = ceiling.visible;
+    for (const wall of baseWalls) wall.visible = true;
+    group.userData.garageArchitecture = architectureStats;
     return variant.id;
   };
   setVariant(initialVariantId);
@@ -1138,7 +1155,9 @@ export function createGarageStage(engineCtx, pos, initialVariantId = '') {
   return {
     group,
     setVariant,
+    stats: () => architecture.stats(),
     dispose() {
+      architecture.dispose();
       for (const o of disposables) if (o && o.dispose) o.dispose();
     },
   };
