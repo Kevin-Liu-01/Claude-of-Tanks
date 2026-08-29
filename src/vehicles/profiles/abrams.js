@@ -7463,6 +7463,21 @@ const AX_HULL = {
   laneCarve: { x: 0.96, bowZ: [2.30, 3.56], sternZ: [-3.56, -2.30] },
 };
 
+// AbramsX was originally authored around the recovered source node at
+// z=-0.39 even though the finished structural shell is centered at z=-0.0385.
+// Keep the source-space authoring values above/below intact, then rebase the
+// complete articulated assembly onto the physical turret center.  The
+// 0.35 m counter-shift preserves the rest pose exactly while eliminating the
+// visible fore/aft orbit during yaw.
+const AX_TURRET_PIVOT = Object.freeze([0, 1.95, -0.04]);
+const AX_TURRET_AUTHORED_PIVOT_Z = -0.39;
+const AX_TURRET_CONTENT_SHIFT_Z = -0.35;
+const AX_TURRET_BUCKETS = Object.freeze([
+  'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
+  'turretEquipment', 'turretDetail', 'turretDark', 'turretCloth',
+  'turretGlass', 'turretTrack',
+]);
+
 function buildAbramsX(P) {
   const g = AX_HULL;
   // AbramsX-local mirrored slab guard. The family helper preserves legacy
@@ -7839,7 +7854,7 @@ function buildAbramsX(P) {
   // offset, so the live turret now sits on the oracle's actual ring datum.
   // This also aligns the XM914 muzzle, roof sights and bustle whips without
   // any component-specific compensating shifts.
-  seatAbramsTurret(P.turretG, 0, 1.95, -0.39);
+  seatAbramsTurret(P.turretG, ...AX_TURRET_PIVOT);
   P.gunG.position.set(0, -0.02, 2.539);
   const axHullAdd = P.add;
   let axKitY = { src: 1.50, dst: 1.413, scale: (2.53 - 1.413) / (2.44 - 1.50) };
@@ -8770,8 +8785,9 @@ function buildAbramsX(P) {
   // Yawing shell (turret mask — the repaired oracle articulates it): sharp
   // front face at z 2.55, roof rising 2.13 -> 2.46 plateau (z 0.65..-0.55),
   // 2.39 shelf to -1.85, tail taper to 2.13 at -2.45; bottom 1.57 forward
-  // rising to 2.04 at the tail. Local to ring (0, 1.95, -0.39).
-  seatAbramsTurret(P.turretG, 0, 1.95, -0.39);
+  // rising to 2.04 at the tail. Authored in the recovered source frame at
+  // ring (0, 1.95, -0.39); the complete assembly is centered below.
+  seatAbramsTurret(P.turretG, ...AX_TURRET_PIVOT);
   P.gunG.position.set(0, -0.02, 2.539);
   // Hexagonal plan (current bake): face 2.34 wide ±0.6 chamfering to the
   // ±1.70 flanks at z 1.9, flank run to -1.29, rear chamfer to the flat
@@ -9268,6 +9284,28 @@ function buildAbramsX(P) {
   // (world z +7.48, 1.7 m past the real XM360 tip) — pin it to the real
   // gun-local muzzle (tube cap 3.58 + bore rim).
   P.muzzleZ = 3.69;
+  // Rebase every turret-owned geometry source plus the hand-parented gun,
+  // terrace shadows and smoke banks.  Their world-space rest pose remains
+  // byte-for-byte stable; only the rig_turret origin changes.  Keeping the
+  // gun under the same centered yaw group also prevents a second orbit in
+  // battle and killcam articulation.
+  P.offsetBuckets(AX_TURRET_BUCKETS, 0, 0, AX_TURRET_CONTENT_SHIFT_Z);
+  for (const child of P.turretG.children) {
+    child.position.z += AX_TURRET_CONTENT_SHIFT_Z;
+  }
+  const feedReceipt = P.turretG.userData.abramsxRwsFeedReceipt;
+  if (feedReceipt) {
+    for (const key of ['feedMouthCenter', 'beltTailEnd']) {
+      feedReceipt[key][2] += AX_TURRET_CONTENT_SHIFT_Z;
+    }
+  }
+  seatAbramsTurret(P.turretG, ...AX_TURRET_PIVOT);
+  P.turretG.userData.abramsxTurretPivotReceipt = Object.freeze({
+    authoredPivotZ: AX_TURRET_AUTHORED_PIVOT_Z,
+    centeredPivotZ: AX_TURRET_PIVOT[2],
+    structuralRestCenterZ: -0.0385,
+    contentShiftZ: AX_TURRET_CONTENT_SHIFT_Z,
+  });
   P.topY = 1.6;
 }
 

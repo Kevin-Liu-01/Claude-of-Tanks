@@ -156,6 +156,13 @@ const m1a3 = {
 const abramsx = clone(tankSpecs.m1a2) as AbramsConceptSpec;
 abramsx.id = 'abramsx';
 abramsx.name = 'AbramsX';
+// The procedural shell spans world z -2.481..2.404, placing its structural
+// center at z=-0.0385.  The inherited M1A2 pivot and the old visual-only
+// -0.39 m override made the turret orbit around a point deep in the bustle.
+// Publish the centered AbramsX ring and its unchanged world-space gun axis
+// so simulation, armor, killcam and the rendered rig all yaw about one datum.
+abramsx.armor.turretPivot = [0, 1.95, -0.04];
+abramsx.armor.gunPivot = [0, -0.02, 2.189];
 // §5.73-1 / §5.82 P95 datum: the mandatory XM914/RWS is a broad roof-kit
 // band, not an antenna outlier. Both independent local Mortavex kits measure
 // its crest at 3.4694 m after the committed 3.66 m width registration; the
