@@ -130,6 +130,12 @@ assert.match(garageSource,
 assert.match(garageSource,
   /\.cot-cards\{[^}]*padding:8px 8px 0;[^}]*scroll-padding-inline:8px;/,
   'vehicle rails keep selected end cards inset from their clipping edges');
+assert.match(garageSource,
+  /body\[data-cot-width='laptop'\] \.cot-header-nav \.cot-garage-variant-trigger\{[^}]*width:34px;min-width:34px;max-width:34px;[^}]*\}/,
+  'laptop headers collapse the workshop picker to the same compact footprint as adjacent icon controls');
+assert.match(garageSource,
+  /body\[data-cot-width='laptop'\] \.cot-garage-variant-trigger \.cot-garage-variant-label\{display:none;\}/,
+  'compact workshop controls keep only their environment icon and dropdown indicator');
 assert.doesNotMatch(garageSource, /\.cot-dossier-head\{[^}]*border-top:/,
   'the vehicle dossier header uses one consistent neutral border');
 assert.doesNotMatch(garageSource, /\.cot-stat-section::before\{/,

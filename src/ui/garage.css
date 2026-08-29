@@ -1053,7 +1053,13 @@ body[data-cot-width='phone'] .cot-record-body{padding:14px}
 body[data-cot-width='phone'] .cot-record-ring{width:116px}
 body[data-cot-width='phone'] .cot-record-metrics,
 body[data-cot-width='phone'] .cot-last-battle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-body[data-cot-width='laptop'] .cot-garage-variant-trigger .cot-garage-variant-label{display:inline;}
+body[data-cot-width='laptop'] .cot-header-nav .cot-garage-variant-trigger{
+  width:34px;min-width:34px;max-width:34px;padding:0 4px;gap:3px;justify-content:center;
+}
+body[data-cot-width='laptop'] .cot-garage-variant-trigger .cot-garage-variant-label{display:none;}
+body[data-cot-width='laptop'] .cot-garage-variant-chevron{
+  width:7px!important;height:7px!important;margin-left:0;
+}
 
 /* Short viewports keep one setup control in the side lane. The old vertical
    stack of three tabs permanently consumed the tank silhouette and collided
