@@ -1203,7 +1203,7 @@ export function initHud(bus) {
   const killfeed = el('div', 'cot-killfeed', root);
 
   // ===================== SPECTATE BAR (killcam_endscreen r1) ================
-  // Driven by killcam.js's ally-spectate controller over the bus (additive
+  // Driven by killcam.ts's ally-spectate controller over the bus (additive
   // spectate:begin/change/end events). The GARAGE action adopts the
   // integration end button's existing click handler — either where main.ts
   // built it (.cot-end) or where the end screen reparented it (.cot-es-btn).

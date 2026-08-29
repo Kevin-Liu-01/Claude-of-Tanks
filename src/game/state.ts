@@ -1479,7 +1479,7 @@ function emitHitOutcome(game: SoloGameState, bus: EventBus, ev: SoloHitEvent): v
     ev.targetSpecId = target.specId;
     ev.targetMaxHp = target.combat ? target.combat.maxHp : 0;
   }
-  // KILL-CAM CAPTURE (ADDITIVE — src/game/killcam.js): snapshot the fully
+  // KILL-CAM CAPTURE (ADDITIVE — src/game/killcam.ts): snapshot the fully
   // resolved event chain + victim pose for lethal-shot replays. main.ts
   // assigns game.killcam; nothing here changes when it is absent.
   if (game.killcam) game.killcam.onShellHit(ev, target);
@@ -2075,7 +2075,7 @@ export function simStep(
     tryFire(game, ent, bus, rig);
   }
 
-  // KILL-CAM CAPTURE (ADDITIVE — src/game/killcam.js): record trajectory
+  // KILL-CAM CAPTURE (ADDITIVE — src/game/killcam.ts): record trajectory
   // points for every live shell (new shells contribute their muzzle position;
   // the impact point is appended at capture time from the HitEvent).
   if (game.killcam) game.killcam.recordSimStep(game);

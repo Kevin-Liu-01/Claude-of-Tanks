@@ -51,7 +51,7 @@ transaction;
 `battleResultPresentationRuntime.ts` owns live player-death holds, result
 replay handoff, final verdict presentation, and round/exit reset state;
 `killcamAccess.ts` owns retryable replay acquisition and its stable inactive
-facade; `killcam.js` owns replay presentation, while `studio.ts` renders the
+facade; `killcam.ts` owns replay presentation, while `studio.ts` renders the
 Scene Studio and `studioTimeline.ts` owns its strict JSON-safe storyboard and
 allocation-free camera/actor sampling contract.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU

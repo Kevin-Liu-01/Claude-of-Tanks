@@ -1129,13 +1129,13 @@ const showroom = createGarageShowroomRuntime({
 // relight the midfield; intensity eases in below ~20 m aim distance.
 const sniperFill = createSniperFillRuntime(scene, camera, rig);
 
-// --- KILL-CAM (src/game/killcam.js) -----------------------------------------
+// --- KILL-CAM (src/game/killcam.ts) -----------------------------------------
 // End-of-battle cinematic: slow-mo tracer replay of the killing shell + x-ray
 // module breakdown. Capture hooks live in the KILL-CAM sections of state.ts
 // (game.killcam); the camera is driven only via rig.setExternalPose.
 const killcamAccess = createKillcamAccess({
   loadModule: async () => legacyPort<{ createKillCam: (...args: unknown[]) => MainKillcamRuntime }>(
-    await import('./game/killcam.js'),
+    await import('./game/killcam.ts'),
   ),
   initialize: ({ createKillCam }) => {
     const live = createKillCam(legacyPort({

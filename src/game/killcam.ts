@@ -1,5 +1,5 @@
 /**
- * killcam.js — War Thunder-class kill camera (integration-owned module).
+ * killcam.ts — War Thunder-class kill camera (integration-owned module).
  *
  * CAPTURE: state.ts calls `game.killcam.recordSimStep(game)` every fixed step
  * (shell trajectory points) and `game.killcam.onShellHit(ev, target)` for every
@@ -91,6 +91,470 @@ import {
   alignReplayPoseToShot, captureReplayPose, createReplayFlightTimeline,
   replayDistanceAtTime, replayStateFromPose,
 } from './replayPose.ts';
+import type { CameraRig } from '../engine/cameraRig.ts';
+import type { FxRuntime } from '../fx/effects.ts';
+import type { EventBus } from './stateCore.ts';
+import type { ReplayFlightTimeline, ReplayPose, ReplayPoseState } from './replayPose.ts';
+import type { ArmorEnvelope, CrewBox, ModuleBox } from '../vehicles/specHelpers.ts';
+import type { FleetTankSpec } from '../vehicles/specContracts.ts';
+
+type Vec3Tuple = [number, number, number];
+type ModuleStateName = 'ok' | 'yellow' | 'red';
+type ModuleStates = Partial<Record<string, ModuleStateName>>;
+type ReplayKind = 'projectile' | 'collision';
+type PlaybackKind = 'death' | 'victory';
+type PlaybackPhase = 'wreck' | 'approach' | 'firing' | 'flight' | 'contact'
+  | 'collision' | 'impact' | 'xray' | 'exit';
+type Disposable = { dispose(): void };
+type XrayMaterial = THREE.MeshBasicMaterial | THREE.MeshLambertMaterial;
+
+interface KillcamModuleBox extends ModuleBox {
+  parts?: Array<Pick<ModuleBox, 'min' | 'max'>>;
+}
+
+interface KillcamCrewBox extends CrewBox {
+  parts?: Array<Pick<CrewBox, 'min' | 'max'>>;
+}
+
+type KillcamBox = {
+  min: readonly [number, number, number];
+  max: readonly [number, number, number];
+  turretLocal: boolean;
+};
+
+interface NearMissRecord {
+  key: string;
+  label: string;
+  score: number;
+}
+
+interface TrackShape {
+  module: string;
+  x0: number;
+  x1: number;
+  poly: Array<readonly [number, number]>;
+}
+
+interface KillcamArmor extends Omit<ArmorEnvelope, 'modules' | 'crew'> {
+  modules: KillcamModuleBox[];
+  crew: KillcamCrewBox[];
+  trackShapes?: TrackShape[];
+}
+
+interface KillcamSpec extends FleetTankSpec {
+  armor: KillcamArmor;
+  gunArcDeg?: number;
+}
+
+interface KillcamModuleState {
+  state: ModuleStateName;
+}
+
+interface KillcamCombat {
+  destroyed: boolean;
+  maxHp: number;
+  modules: Partial<Record<string, KillcamModuleState>>;
+  crew: Record<string, boolean>;
+  eraSpent: Set<string>;
+}
+
+interface KillcamVisual {
+  root: THREE.Object3D;
+  syncFromState(state: ReplayPoseState, dt?: number): void;
+  setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
+  isDestroyed?(): boolean;
+  resetDestroyed?(): void;
+  setVisible?(visible: boolean): void;
+  setTrackState?(module: string, destroyed: boolean): void;
+  resetEra?(): void;
+  stripEra?(plate: string): void;
+  gunDirWorld?(out: THREE.Vector3): THREE.Vector3;
+  gunMuzzleWorld?(out: THREE.Vector3): THREE.Vector3;
+  recoilKick?(amount?: number, scale?: number, muzzleIndex?: number): void;
+  hitFlinch?(normalX: number, normalZ: number, scale: number, yaw: number): void;
+  turretTopWorld(out: THREE.Vector3): unknown;
+  gunPivotWorld(out: THREE.Vector3): unknown;
+}
+
+interface KillcamPoseState extends ReplayPoseState {
+  pos: THREE.Vector3;
+  yaw: number;
+  turretYaw: number;
+}
+
+interface KillcamEntity {
+  id: string;
+  specId: string;
+  spec: KillcamSpec;
+  state: KillcamPoseState;
+  combat: KillcamCombat;
+  visual: KillcamVisual;
+  displayName?: string;
+  team?: string;
+  isPlayer?: boolean;
+  modeActive?: boolean;
+}
+
+interface KillcamShell {
+  id: number;
+  dead?: boolean;
+  pos: THREE.Vector3;
+}
+
+interface KillcamGame {
+  phase: string;
+  result: string | null;
+  tanks: KillcamEntity[];
+  shells: KillcamShell[];
+  tankById: Map<string, KillcamEntity>;
+}
+
+interface ModuleHit {
+  module: string;
+  newState: ModuleStateName;
+  dmg?: number;
+}
+
+interface KillcamHitEvent {
+  kind: string;
+  cause?: string;
+  shellId: number | null;
+  shellType?: string;
+  shellName?: string;
+  caliberMm?: number;
+  attackerId?: string;
+  attackerName?: string;
+  attackerSpecId?: string;
+  targetId?: string;
+  targetName?: string;
+  targetSpecId?: string;
+  targetMaxHp?: number;
+  pos: Vec3Tuple;
+  normal: Vec3Tuple;
+  localPos: Vec3Tuple | null;
+  localDir: Vec3Tuple | null;
+  modulesHit: ModuleHit[];
+  crewHit: string[];
+  damage?: number;
+  destroyed?: boolean;
+  ammoRacked?: boolean;
+  flightDistM?: number;
+  timeS?: number;
+  impactAngleDeg?: number;
+  effectiveMm?: number;
+  nominalMm?: number;
+  physicalMm?: number;
+  penRollMm?: number;
+  penRollFreshMm?: number;
+  eraPlate?: string | null;
+  zone?: string;
+  closingMps?: number;
+  aId?: string;
+  dmgA?: number;
+  dmgB?: number;
+  aModulesHit?: ModuleHit[];
+  bModulesHit?: ModuleHit[];
+}
+
+interface ShellFiredPayload {
+  shellId: number;
+  shooterId: string;
+  muzzlePos: Vec3Tuple;
+  dir: Vec3Tuple;
+  velocityMps?: number;
+  timeS?: number;
+  caliberMm?: number;
+  weaponSound?: string | null;
+  muzzleIndex?: number;
+  recoilScale?: number;
+}
+
+interface TrajectoryRecord {
+  pts: number[];
+  muzzle: Vec3Tuple;
+  dir: Vec3Tuple;
+  velocityMps: number;
+  timeS: number;
+  attackerEnt: KillcamEntity | null;
+  attackerPose: ReplayPose | null | undefined;
+  moduleStates: ModuleStates | null;
+  eraSpent: string[];
+  caliberMm: number;
+  weaponSound: string | null;
+  muzzleIndex: number;
+  recoilScale: number;
+}
+
+interface EntityFrame {
+  pose: ReplayPose;
+  crewAlive: Record<string, boolean> | null;
+  moduleStates: ModuleStates | null;
+  eraSpent: string[];
+  destroyed: boolean;
+}
+
+interface ReplaySnapshot {
+  replayKind: ReplayKind;
+  ev: KillcamHitEvent;
+  timeS: number;
+  trajPts: number[] | null;
+  crewAlive: Record<string, boolean> | null;
+  moduleStates: ModuleStates | null;
+  eraSpent: string[];
+  preCrewAlive: Record<string, boolean> | null;
+  preModuleStates: ModuleStates | null;
+  preEraSpent: string[];
+  pose: ReplayPose;
+  prePose?: ReplayPose | null;
+  impactPose: ReplayPose | null;
+  attackerEnt: KillcamEntity | null;
+  attackerPose: ReplayPose | null | undefined;
+  attackerImpactPose?: ReplayPose | null;
+  attackerPreModuleStates: ModuleStates | null;
+  attackerPreEraSpent: string[];
+  attackerPreDestroyed?: boolean;
+  attackerModuleStates?: ModuleStates | null;
+  attackerEraSpent?: string[];
+  attackerModulesHit?: ModuleHit[];
+  muzzle: Vec3Tuple | null;
+  shotDir: Vec3Tuple | null;
+  muzzleVelocityMps: number;
+  firedTimeS: number;
+  caliberMm: number;
+  weaponSound: string | null;
+  muzzleIndex: number;
+  recoilScale: number;
+  targetEnt: KillcamEntity;
+  armor: KillcamArmor;
+  heightM: number;
+  boundingRadiusM: number;
+}
+
+interface SharedMaterials {
+  ghost: THREE.MeshBasicMaterial;
+  ghostCenter: { value: THREE.Vector3 };
+  ghostRad: { value: number };
+  ghostRingY: { value: number };
+  ghostGearY: { value: number };
+  trail: THREE.LineBasicMaterial;
+  trailGlow: THREE.MeshBasicMaterial;
+  trailCore: THREE.MeshBasicMaterial;
+  trailGlowFar: THREE.MeshBasicMaterial;
+  trailCoreFar: THREE.MeshBasicMaterial;
+  halo: THREE.SpriteMaterial;
+  tail: THREE.MeshBasicMaterial;
+  edgeDim: THREE.LineBasicMaterial;
+  edgeRed: THREE.LineBasicMaterial;
+  edgeYellow: THREE.LineBasicMaterial;
+  edgeCrew: THREE.LineBasicMaterial;
+  fillRed: THREE.MeshBasicMaterial;
+  fillYellow: THREE.MeshBasicMaterial;
+  fillCrew: THREE.MeshBasicMaterial;
+  pathIn: THREE.MeshBasicMaterial;
+  pathOut: THREE.MeshBasicMaterial;
+  pathCore: THREE.MeshBasicMaterial;
+  spall: THREE.MeshBasicMaterial;
+  frag: THREE.MeshBasicMaterial;
+  fragRed: THREE.MeshBasicMaterial;
+  fragYellow: THREE.MeshBasicMaterial;
+  fragCrew: THREE.MeshBasicMaterial;
+  marker: THREE.MeshBasicMaterial;
+  core: THREE.MeshBasicMaterial;
+  streak: THREE.MeshBasicMaterial;
+  proxIntact: THREE.MeshLambertMaterial;
+  proxSteel: THREE.MeshLambertMaterial;
+  proxGreen: THREE.MeshLambertMaterial;
+  proxYellow: THREE.MeshLambertMaterial;
+  proxRed: THREE.MeshLambertMaterial;
+  proxGrey: THREE.MeshLambertMaterial;
+}
+
+interface KillcamDom {
+  root: HTMLDivElement;
+  title: HTMLDivElement;
+  titleT: HTMLDivElement;
+  titleS: HTMLDivElement;
+  skip: HTMLDivElement;
+  hdMeta: HTMLDivElement;
+  hdK: HTMLDivElement;
+  hdW: HTMLDivElement;
+  rows: HTMLDivElement;
+  banner: HTMLDivElement;
+  annot: HTMLDivElement;
+  labelHost: HTMLDivElement;
+  leader: SVGSVGElement;
+  flash: HTMLDivElement;
+  killer: {
+    root: HTMLDivElement;
+    sil: HTMLElement;
+    name: HTMLElement;
+    veh: HTMLElement;
+    rows: HTMLElement;
+  };
+}
+
+interface XrayCamera {
+  center: THREE.Vector3;
+  off: THREE.Vector3;
+  pos: THREE.Vector3;
+  look: THREE.Vector3;
+}
+
+interface ScreenObstacle {
+  parent: THREE.Object3D | null;
+  corners: THREE.Vector3[];
+  key: string | null;
+}
+
+interface LayoutRect {
+  left: number;
+  top: number;
+  lw: number;
+  lh: number;
+  fixed: boolean;
+}
+
+interface KillcamLabel extends LayoutRect {
+  label: HTMLElement;
+  dot: HTMLElement | null;
+  line: SVGLineElement | null;
+  big: boolean;
+  micro?: boolean;
+  world: THREE.Vector3;
+  key: string | null;
+  hidden: boolean;
+  ax: number;
+  ay: number;
+  below: boolean;
+}
+
+interface CollisionPlayback {
+  t: number;
+  hit: boolean;
+  targetFrom: ReplayPose;
+  targetTo: ReplayPose;
+  attackerFrom: ReplayPose;
+  attackerTo: ReplayPose;
+  targetState: ReturnType<typeof replayStateFromPose>;
+  attackerState: ReturnType<typeof replayStateFromPose>;
+  cameraPos: THREE.Vector3;
+  cameraLook: THREE.Vector3;
+  side: THREE.Vector3;
+}
+
+interface PlaybackBundle {
+  snap: ReplaySnapshot;
+  kind: PlaybackKind;
+  onDone: (() => void) | null;
+  replayKind: ReplayKind;
+  phase: PlaybackPhase;
+  t: number;
+  xt: number;
+  group: THREE.Group;
+  disposables: Disposable[];
+  ghostBackup: Array<[THREE.Mesh, THREE.Material | THREE.Material[], number, boolean]> | null;
+  ghostSeen: WeakSet<THREE.Mesh> | null;
+  ghostVis: KillcamVisual | null;
+  ghostSkin: (() => void) | null;
+  labels: KillcamLabel[];
+  obstacles: ScreenObstacle[];
+  pts: THREE.Vector3[];
+  cum: Float32Array;
+  total: number;
+  dur: number;
+  segIdx: number;
+  flightLift: Float32Array | null;
+  flightDist: number;
+  flightTimeline: ReplayFlightTimeline;
+  contactT: number;
+  contactDir: THREE.Vector3;
+  app: {
+    t: number; dur: number; fromPos: THREE.Vector3; fromLook: THREE.Vector3;
+    fromFov: number; toPos: THREE.Vector3; toLook: THREE.Vector3;
+    side: THREE.Vector3; sideAmt: number; lift: number; losLift: number;
+  } | null;
+  shot: { t: number; fired: boolean; pos: THREE.Vector3; look: THREE.Vector3; side: THREE.Vector3 } | null;
+  shotFxT: number;
+  shotFxLive: boolean;
+  collision: CollisionPlayback | null;
+  isDeathView: boolean;
+  killerShown: boolean;
+  core: THREE.Object3D;
+  streak: THREE.Object3D;
+  trailGeo: THREE.BufferGeometry;
+  halo: THREE.Sprite;
+  tail: THREE.Object3D;
+  shellLight: THREE.PointLight;
+  muzzleLight: THREE.PointLight;
+  xcam: XrayCamera;
+  fxGroup: THREE.Object3D | null;
+  fxHidden: THREE.Object3D[] | null;
+  vegGroup: THREE.Object3D | null;
+  vegWasVisible: boolean;
+  dimmedLights: Array<[THREE.DirectionalLight | THREE.HemisphereLight, number]> | null;
+  rewreck: { pop: boolean; brokenTracks: string[]; eraSpent: string[] } | null;
+  restageModuleStates: ModuleStates | null;
+  restageEraSpent: string[];
+  snapPoseState: ReturnType<typeof replayStateFromPose>;
+  attackerPoseState: ReturnType<typeof replayStateFromPose> | null;
+  attackerRestore: { wasDestroyed: boolean; wasVisible: boolean } | null;
+  replayMuzzle: THREE.Vector3 | null;
+  barrelDot: number | null;
+  wreck: {
+    t: number; next: 'approach' | 'xray' | 'collision'; vis: KillcamVisual; ent: KillcamEntity;
+    fromPos: THREE.Vector3; fromLook: THREE.Vector3; fromFov: number;
+    az?: number;
+  } | null;
+  it: number;
+  itWall: number;
+  impactVis: KillcamVisual;
+  xrayAng0: number;
+  xrayHoldS: number;
+  cameraBlend: {
+    t: number; dur: number; fromPos: THREE.Vector3; fromLook: THREE.Vector3; fromFov: number;
+  } | null;
+  finalePending: boolean;
+  isFinale: boolean;
+  impactAng0: number;
+  exitWallMs?: number;
+}
+
+interface KillcamWorld {
+  getConcealment(): Array<{ x: number; z: number; r: number; add: number }>;
+  raycast(origin: THREE.Vector3, direction: THREE.Vector3, maxDistanceM: number): unknown;
+}
+
+interface WorldClearance {
+  clearAt(cameraPosition: THREE.Vector3, lookTarget: THREE.Vector3): boolean;
+}
+
+interface KillcamDeps {
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  rig: CameraRig;
+  heightField: { getHeightAt(x: number, z: number): number };
+  getPlayer(): KillcamEntity | null;
+  getGame?(): KillcamGame | null;
+  getEntity?(id: string): KillcamEntity | null;
+  getWorld?(): KillcamWorld | null;
+  getFx?(): FxRuntime | null;
+}
+
+interface KillcamDebugSurface {
+  game?: KillcamGame | null;
+  world?: KillcamWorld | null;
+  fx?: FxRuntime | null;
+  settings?: { isOpen?(): boolean };
+}
+
+function debugSurface(): KillcamDebugSurface | null {
+  if (typeof window === 'undefined' || !window.__DEBUG) return null;
+  return window.__DEBUG as KillcamDebugSurface;
+}
+
+function cloneVec3Tuple(value: readonly number[]): Vec3Tuple {
+  return [value[0] || 0, value[1] || 0, value[2] || 0];
+}
 
 const XRAY_HOLD_S = 7.0;
 const FLIGHT_MIN_S = 1.9;
@@ -145,17 +609,19 @@ const TRAJ_MAX_PTS = 400 * 3;  // ≥ SHELL_MAX_LIFETIME_S at 60 Hz
 const ORBIT_RAD_S = 0.05;      // x-ray camera drift
 const VICTORY_WINDOW_S = 1.0;  // final blow must be this fresh at battle end
 
-const KC_MODULE_ICON = Object.freeze({
+const KC_MODULE_ICON: Readonly<Record<string, string>> = Object.freeze({
   trackL: 'track', trackR: 'track', engine: 'engine', transmission: 'transmission',
   fuelTank: 'fuelTank', ammoRack: 'ammoRack', gun: 'gun', gunMount: 'gunMount',
   radio: 'radio', optics: 'optics', turretRing: 'turretRing', autoloader: 'autoloader',
   feedSystem: 'feedSystem', missileRack: 'missileRack',
 });
-const KC_CREW_ICON = Object.freeze({
+const KC_CREW_ICON: Readonly<Record<string, string>> = Object.freeze({
   commander: 'crewCommander', gunner: 'crewGunner', driver: 'crewDriver', loader: 'crewLoader',
 });
+const KC_MODULE_LABELS = MODULE_LABEL as Readonly<Record<string, string>>;
+const KC_CREW_LABELS = CREW_LABEL as Readonly<Record<string, string>>;
 
-function killcamLabelIcon(key, fallback = 'penetration') {
+function killcamLabelIcon(key: string | null | undefined, fallback = 'penetration'): string {
   if (!key) return fallback;
   if (key.startsWith('m:')) return KC_MODULE_ICON[key.slice(2)] || 'repair';
   if (key.startsWith('c:')) return KC_CREW_ICON[key.slice(2)] || 'crew';
@@ -164,7 +630,7 @@ function killcamLabelIcon(key, fallback = 'penetration') {
 
 const UP = new THREE.Vector3(0, 1, 0);
 
-function wrapPi(a) {
+function wrapPi(a: number): number {
   while (a > Math.PI) a -= Math.PI * 2;
   while (a < -Math.PI) a += Math.PI * 2;
   return a;
@@ -190,10 +656,10 @@ const _fitCam = new THREE.PerspectiveCamera(42, 16 / 9, 0.5, 4000);
 // ---------------------------------------------------------------------------
 // Shared x-ray material set (lazy singleton; depth-tested)
 // ---------------------------------------------------------------------------
-let S = null;
-function sharedMats() {
+let S: SharedMaterials | null = null;
+function sharedMats(): SharedMaterials {
   if (S) return S;
-  const mesh = (color, opacity, side = THREE.FrontSide) => new THREE.MeshBasicMaterial({
+  const mesh = (color: THREE.ColorRepresentation, opacity: number, side: THREE.Side = THREE.FrontSide) => new THREE.MeshBasicMaterial({
     color, transparent: true, opacity, blending: THREE.AdditiveBlending,
     depthWrite: false, depthTest: true, side, toneMapped: false, fog: false,
   });
@@ -202,11 +668,11 @@ function sharedMats() {
   // white and vanishes (r5 — the internal path was invisible exactly where
   // the story happens). Alpha-over REPLACES background color, so the hot
   // channel stays saturated over any skin density.
-  const nmesh = (color, opacity, side = THREE.FrontSide) => new THREE.MeshBasicMaterial({
+  const nmesh = (color: THREE.ColorRepresentation, opacity: number, side: THREE.Side = THREE.FrontSide) => new THREE.MeshBasicMaterial({
     color, transparent: true, opacity, blending: THREE.NormalBlending,
     depthWrite: false, depthTest: true, side, toneMapped: false, fog: false,
   });
-  const line = (color, opacity) => new THREE.LineBasicMaterial({
+  const line = (color: THREE.ColorRepresentation, opacity: number) => new THREE.LineBasicMaterial({
     color, transparent: true, opacity, blending: THREE.AdditiveBlending,
     depthWrite: false, depthTest: true, toneMapped: false, fog: false,
   });
@@ -217,7 +683,7 @@ function sharedMats() {
   // columns that buried the ammo cassettes and engine block (r3 critique);
   // alpha-over keeps each organ a distinct colored silhouette (WT-style),
   // whatever the view angle. Diffuse is still scaled down (sun ~4.5).
-  const prox = (hex, opacity, ds, es) => {
+  const prox = (hex: THREE.ColorRepresentation, opacity: number, ds: number, es: number) => {
     const c = new THREE.Color(hex);
     return new THREE.MeshLambertMaterial({
       color: c.clone().multiplyScalar(ds),
@@ -250,6 +716,7 @@ function sharedMats() {
   const glowCanvas = document.createElement('canvas');
   glowCanvas.width = glowCanvas.height = 64;
   const gctx = glowCanvas.getContext('2d');
+  if (!gctx) throw new Error('killcam glow canvas requires a 2D context');
   const grad = gctx.createRadialGradient(32, 32, 0, 32, 32, 32);
   grad.addColorStop(0.0, 'rgba(255,255,255,1)');
   grad.addColorStop(0.22, 'rgba(255,224,168,0.9)');
@@ -269,7 +736,7 @@ function sharedMats() {
   // no dim) so the warmup rig and any pre-x-ray render stay unchanged.
   const ghostRingY = { value: 1e7 };
   const ghostGearY = { value: -1e7 };
-  ghost.onBeforeCompile = (sh) => {
+  ghost.onBeforeCompile = (sh: THREE.WebGLProgramParametersWithUniforms) => {
     sh.uniforms.kcCenter = ghostCenter;
     sh.uniforms.kcRad = ghostRad;
     sh.uniforms.kcRingY = ghostRingY;
@@ -437,10 +904,11 @@ function sharedMats() {
  * proxy shapes and the label chips, never from the tint — an amber "fuel
  * hue" on an untouched tank read as damage the sim never resolved.
  */
-function proxMatForState(state) {
-  return state === 'red' ? S.proxRed
-    : state === 'yellow' ? S.proxYellow
-      : S.proxIntact;
+function proxMatForState(state: ModuleStateName): THREE.MeshLambertMaterial {
+  const materials = sharedMats();
+  return state === 'red' ? materials.proxRed
+    : state === 'yellow' ? materials.proxYellow
+      : materials.proxIntact;
 }
 
 // ---------------------------------------------------------------------------
@@ -702,7 +1170,14 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 `;
 
 /** Cylinder mesh between two points (local space of `parent`). */
-function tube(a, b, radius, mat, parent, disposables) {
+function tube(
+  a: THREE.Vector3,
+  b: THREE.Vector3,
+  radius: number,
+  mat: THREE.Material,
+  parent: THREE.Object3D,
+  disposables: Disposable[],
+): THREE.Mesh | null {
   _s.copy(b).sub(a);
   const len = _s.length();
   if (len < 1e-4) return null;
@@ -723,13 +1198,13 @@ function tube(a, b, radius, mat, parent, disposables) {
  *   getEntity?:(id:string) => ?object}} deps injected by integration (main.ts)
  * @returns {object} killcam API
  */
-export function createKillCam(deps) {
+export function createKillCam(deps: KillcamDeps) {
   const { scene, camera, rig, heightField, getPlayer } = deps;
+  const S = sharedMats();
   const getGame = deps.getGame
-    || (() => (typeof window !== 'undefined' && window.__DEBUG ? window.__DEBUG.game : null));
+    || (() => debugSurface()?.game || null);
   const getEntity = deps.getEntity
-    || ((id) => (typeof window !== 'undefined' && window.__DEBUG && window.__DEBUG.game
-      && window.__DEBUG.game.tankById ? window.__DEBUG.game.tankById.get(id) : null));
+    || ((id: string) => debugSurface()?.game?.tankById.get(id) || null);
   // World access for the flight LOS solve (r6 major): terrain/prop raycast +
   // the vegetation concealment discs the spotting sim itself uses. Prefer an
   // injected getter (docs/GUNNERY-CAMERA-SPEC.md wires main.ts to
@@ -737,14 +1212,14 @@ export function createKillCam(deps) {
   // is live before the integration dep lands. Resolved lazily per replay —
   // the world object is REPLACED on every map switch.
   const getWorld = deps.getWorld
-    || (() => (typeof window !== 'undefined' && window.__DEBUG ? window.__DEBUG.world : null));
+    || (() => debugSurface()?.world || null);
   // FX system access (killcam r2): the IMPACT beat re-fires the real
   // destruction sequence (fx.destruction — fireball, debris, smoke column)
   // on the restaged victim. Injected by main.ts (getFx); the debug handle is
   // the pre-integration fallback, and a missing fx system only mutes the
   // particle side of the beat (the turret pop still plays off the visual).
   const getFx = deps.getFx
-    || (() => (typeof window !== 'undefined' && window.__DEBUG ? window.__DEBUG.fx : null));
+    || (() => debugSurface()?.fx || null);
 
   // ---- LIGHT-COUNT / PROGRAM STABILITY --------------------------------------
   // three.js recompiles EVERY lit material program when the renderer's light
@@ -757,7 +1232,7 @@ export function createKillCam(deps) {
   // (before the first frame ever renders, so the count never changes), plus
   // a one-shot warmup rig that renders every kill-cam material for a few
   // seconds of the first battle so playback always hits the program cache.
-  const kcLights = [];
+  const kcLights: THREE.PointLight[] = [];
   for (let i = 0; i < 3; i++) {
     const L = new THREE.PointLight(0xffffff, 0, 10, 2);
     L.castShadow = false;
@@ -766,10 +1241,10 @@ export function createKillCam(deps) {
     scene.add(L);
     kcLights.push(L);
   }
-  let warmRig = null;
+  let warmRig: THREE.Group | null = null;
   let warmSteps = 0;
   function buildWarmRig() {
-    sharedMats();
+    const materials = sharedMats();
     const g = new THREE.Group();
     g.name = 'killcamWarmup';
     g.position.set(0, -80, 0);
@@ -778,24 +1253,24 @@ export function createKillCam(deps) {
     lineGeo.setAttribute('position',
       new THREE.BufferAttribute(new Float32Array([0, 0, 0, 0.01, 0, 0]), 3));
     g.userData.disposables = [box, lineGeo];
-    const meshMats = [S.trailGlow, S.trailCore, S.trailGlowFar, S.trailCoreFar,
-      S.core, S.streak, S.tail,
-      S.ghost, S.pathIn, S.pathOut, S.pathCore, S.spall, S.frag, S.fragRed,
-      S.fragYellow, S.fragCrew, S.marker,
-      S.fillRed, S.fillYellow, S.fillCrew, S.proxIntact,
-      S.proxSteel, S.proxGreen, S.proxYellow,
-      S.proxRed, S.proxGrey];
+    const meshMats = [materials.trailGlow, materials.trailCore, materials.trailGlowFar, materials.trailCoreFar,
+      materials.core, materials.streak, materials.tail,
+      materials.ghost, materials.pathIn, materials.pathOut, materials.pathCore, materials.spall, materials.frag, materials.fragRed,
+      materials.fragYellow, materials.fragCrew, materials.marker,
+      materials.fillRed, materials.fillYellow, materials.fillCrew, materials.proxIntact,
+      materials.proxSteel, materials.proxGreen, materials.proxYellow,
+      materials.proxRed, materials.proxGrey];
     for (const m of meshMats) g.add(new THREE.Mesh(box, m));
     // instanced Lambert variant (ammo cassettes) compiles a separate program
-    for (const m of [S.proxIntact, S.proxYellow, S.proxRed]) {
+    for (const m of [materials.proxIntact, materials.proxYellow, materials.proxRed]) {
       const im = new THREE.InstancedMesh(box, m, 1);
       im.setMatrixAt(0, new THREE.Matrix4());
       g.add(im);
     }
-    for (const m of [S.trail, S.edgeDim, S.edgeRed, S.edgeYellow, S.edgeCrew]) {
+    for (const m of [materials.trail, materials.edgeDim, materials.edgeRed, materials.edgeYellow, materials.edgeCrew]) {
       g.add(new THREE.Line(lineGeo, m));
     }
-    g.add(new THREE.Sprite(S.halo));
+    g.add(new THREE.Sprite(materials.halo));
     // must actually RENDER to compile — frustum-culled objects compile nothing
     g.traverse((o) => { o.frustumCulled = false; });
     return g;
@@ -804,27 +1279,33 @@ export function createKillCam(deps) {
   scene.add(warmRig);
 
   // ---- capture state ----
-  let busRef = null;      // bound in bindBus — replay lifecycle announcements
-  const traj = new Map(); // shellId -> { pts:number[], muzzle:[3] }
-  const poseHistory = new Map(); // entity id -> prior fixed-step presentation state
-  let pendingDeath = null;    // lethal shell snapshot, target = player
-  let pendingVictory = null;  // lethal shell snapshot, attacker = player
-  let lastHitOnPlayer = null; // fallback for fire deaths (x-ray only)
+  let busRef: EventBus | null = null;      // bound in bindBus — replay lifecycle announcements
+  const traj = new Map<number, TrajectoryRecord>(); // shellId -> { pts:number[], muzzle:[3] }
+  const poseHistory = new Map<string, EntityFrame>(); // entity id -> prior fixed-step presentation state
+  let pendingDeath: ReplaySnapshot | null = null;    // lethal shell snapshot, target = player
+  let pendingVictory: ReplaySnapshot | null = null;  // lethal shell snapshot, attacker = player
+  let lastHitOnPlayer: ReplaySnapshot | null = null; // fallback for fire deaths (x-ray only)
 
   // ---- playback state ----
   let active = false;
   let staged = false;
-  let pb = null; // playback bundle
-  let dom = null;
+  // Runtime guards (`active`, `isActive`, and every public entry point) still
+  // treat this as nullable. The definite slot keeps the deeply nested phase
+  // helpers typed against one bundle after `begin()` establishes ownership.
+  let pb: PlaybackBundle = null!; // playback bundle
+  let dom: KillcamDom | null = null;
   let lastBeginWallMs = 0; // onset instrumentation (dead-air audit, r6)
 
-  function copyModules(ent) {
-    return ent && ent.combat && ent.combat.modules
-      ? Object.fromEntries(Object.entries(ent.combat.modules).map(([k, v]) => [k, v.state]))
-      : null;
+  function copyModules(ent: KillcamEntity | null): ModuleStates | null {
+    if (!ent?.combat?.modules) return null;
+    const states: ModuleStates = {};
+    for (const [key, value] of Object.entries(ent.combat.modules)) {
+      if (value) states[key] = value.state;
+    }
+    return states;
   }
 
-  function captureEntityFrame(ent) {
+  function captureEntityFrame(ent: KillcamEntity | null): EntityFrame | null {
     if (!ent || !ent.state) return null;
     return {
       pose: captureReplayPose(ent.state),
@@ -835,11 +1316,11 @@ export function createKillCam(deps) {
     };
   }
 
-  function clonePose(pose) {
-    return pose ? { ...pose, pos: pose.pos.slice() } : null;
+  function clonePose(pose: ReplayPose | null | undefined): ReplayPose | null {
+    return pose ? { ...pose, pos: cloneVec3Tuple(pose.pos) } : null;
   }
 
-  function ensureDom() {
+  function ensureDom(): KillcamDom {
     if (dom) return dom;
     ensureFonts();
     ensureStyle('cot-kc-style', KC_CSS);
@@ -879,12 +1360,19 @@ export function createKillCam(deps) {
     killer.innerHTML = `<div class="kk">${uiIconSVG('skull', 10)}<span>Destroyed by</span></div>` +
       '<div class="nm"><span class="sil"></span><span class="t"><span class="n"></span><i class="v"></i></span></div>' +
       '<div class="rows"></div>';
+    const sil = killer.querySelector<HTMLElement>('.sil');
+    const killerName = killer.querySelector<HTMLElement>('.n');
+    const killerVehicle = killer.querySelector<HTMLElement>('.v');
+    const killerRows = killer.querySelector<HTMLElement>('.rows');
+    if (!sil || !killerName || !killerVehicle || !killerRows) {
+      throw new Error('killcam killer card markup is incomplete');
+    }
     const killerRefs = {
       root: killer,
-      sil: killer.querySelector('.sil'),
-      name: killer.querySelector('.n'),
-      veh: killer.querySelector('.v'),
-      rows: killer.querySelector('.rows'),
+      sil,
+      name: killerName,
+      veh: killerVehicle,
+      rows: killerRows,
     };
     // shock flash last — it must paint over every overlay child
     const flash = el('div', 'cot-kc-flash', root);
@@ -903,9 +1391,9 @@ export function createKillCam(deps) {
   // body-level fade-through-black for the exit transition — appended lazily,
   // torn down by clearExit()/cancel() so a mid-transition cancel can never
   // strand a black frame over the game.
-  let fadeEl = null;
-  let exitTimers = [];
-  function ensureFade() {
+  let fadeEl: HTMLDivElement | null = null;
+  let exitTimers: Array<ReturnType<typeof setTimeout>> = [];
+  function ensureFade(): HTMLDivElement {
     if (!fadeEl) {
       fadeEl = el('div', 'cot-kc-fadeblk');
       document.body.appendChild(fadeEl);
@@ -934,9 +1422,9 @@ export function createKillCam(deps) {
   // -------------------------------------------------------------------------
 
   /** Deep-enough snapshot of a resolved HitEvent + victim pose. */
-  function makeSnapshot(ev, target) {
-    const rec = traj.get(ev.shellId);
-    let pts = null;
+  function makeSnapshot(ev: KillcamHitEvent, target: KillcamEntity): ReplaySnapshot {
+    const rec = ev.shellId === null ? undefined : traj.get(ev.shellId);
+    let pts: number[] | null = null;
     if (rec && rec.pts.length >= 3) {
       pts = rec.pts.slice();
       pts.push(ev.pos[0], ev.pos[1], ev.pos[2]);
@@ -947,12 +1435,13 @@ export function createKillCam(deps) {
       replayKind: 'projectile',
       ev: {
         ...ev,
-        pos: ev.pos.slice(),
-        normal: ev.normal ? ev.normal.slice() : [0, 1, 0],
+        zone: ev.zone || undefined,
+        pos: cloneVec3Tuple(ev.pos),
+        normal: ev.normal ? cloneVec3Tuple(ev.normal) : [0, 1, 0],
         modulesHit: (ev.modulesHit || []).map((m) => ({ ...m })),
         crewHit: (ev.crewHit || []).slice(),
-        localPos: ev.localPos ? ev.localPos.slice() : null,
-        localDir: ev.localDir ? ev.localDir.slice() : null,
+        localPos: ev.localPos ? cloneVec3Tuple(ev.localPos) : null,
+        localDir: ev.localDir ? cloneVec3Tuple(ev.localDir) : null,
       },
       timeS: ev.timeS || 0,
       trajPts: pts,
@@ -970,15 +1459,15 @@ export function createKillCam(deps) {
       preCrewAlive: before ? before.crewAlive : null,
       preModuleStates: before ? before.moduleStates : null,
       preEraSpent: before ? before.eraSpent : [],
-      pose: clonePose(before && before.pose),
+      pose: clonePose(before && before.pose)!,
       impactPose: clonePose(now && now.pose),
       // The killer is a live scene tank, so playback must restage its exact
       // shot-time hull/turret/gun pose too. Without this the frozen visual
       // showed whatever direction the AI turned after firing.
       attackerEnt: rec ? rec.attackerEnt : null,
-      attackerPose: rec && rec.attackerPose ? { ...rec.attackerPose, pos: rec.attackerPose.pos.slice() } : null,
-      muzzle: rec ? rec.muzzle.slice() : null,
-      shotDir: rec ? rec.dir.slice() : null,
+      attackerPose: rec ? clonePose(rec.attackerPose) : null,
+      muzzle: rec ? cloneVec3Tuple(rec.muzzle) : null,
+      shotDir: rec ? cloneVec3Tuple(rec.dir) : null,
       muzzleVelocityMps: rec ? rec.velocityMps : 0,
       firedTimeS: rec ? rec.timeS : 0,
       caliberMm: rec ? rec.caliberMm : (ev.caliberMm || 100),
@@ -994,7 +1483,12 @@ export function createKillCam(deps) {
     };
   }
 
-  function makeCollisionSnapshot(ev, target, attacker, targetModulesHit) {
+  function makeCollisionSnapshot(
+    ev: KillcamHitEvent,
+    target: KillcamEntity,
+    attacker: KillcamEntity,
+    targetModulesHit: ModuleHit[],
+  ): ReplaySnapshot {
     const targetNow = captureEntityFrame(target);
     const attackerNow = captureEntityFrame(attacker);
     const targetBefore = poseHistory.get(target.id) || targetNow;
@@ -1003,13 +1497,14 @@ export function createKillCam(deps) {
       replayKind: 'collision',
       ev: {
         ...ev,
+        zone: ev.zone || undefined,
         kind: 'collision', cause: 'ram', shellId: null,
         attackerId: attacker.id, attackerName: attacker.spec.name,
         attackerSpecId: attacker.specId,
         targetId: target.id, targetName: target.spec.name,
         targetSpecId: target.specId,
         targetMaxHp: target.combat ? target.combat.maxHp : 0,
-        pos: ev.pos.slice(), normal: ev.normal.slice(),
+        pos: cloneVec3Tuple(ev.pos), normal: cloneVec3Tuple(ev.normal),
         localPos: null, localDir: null, crewHit: [],
         modulesHit: (targetModulesHit || []).map((m) => ({ ...m })),
         damage: target.id === ev.aId ? ev.dmgA : ev.dmgB,
@@ -1023,8 +1518,9 @@ export function createKillCam(deps) {
       preCrewAlive: targetBefore ? targetBefore.crewAlive : null,
       preModuleStates: targetBefore ? targetBefore.moduleStates : null,
       preEraSpent: targetBefore ? targetBefore.eraSpent : [],
-      pose: clonePose(targetNow && targetNow.pose),
+      pose: clonePose(targetNow && targetNow.pose)!,
       prePose: clonePose(targetBefore && targetBefore.pose),
+      impactPose: clonePose(targetNow && targetNow.pose),
       attackerEnt: attacker,
       attackerPose: clonePose(attackerBefore && attackerBefore.pose),
       attackerImpactPose: clonePose(attackerNow && attackerNow.pose),
@@ -1036,6 +1532,7 @@ export function createKillCam(deps) {
       attackerModulesHit: ((attacker.id === ev.aId ? ev.aModulesHit : ev.bModulesHit) || [])
         .map((m) => ({ ...m })),
       muzzle: null, shotDir: null, muzzleVelocityMps: 0, firedTimeS: 0,
+      caliberMm: 0, weaponSound: null, muzzleIndex: -1, recoilScale: 1,
       targetEnt: target,
       armor: target.spec.armor,
       heightM: target.spec.dims.heightM,
@@ -1048,18 +1545,22 @@ export function createKillCam(deps) {
      * Subscribe to capture-side bus events (shell muzzles, cleanup).
      * @param {{on:Function}} bus the game event bus
      */
-    bindBus(bus) {
+    bindBus(bus: EventBus) {
       busRef = bus;
-      bus.on('shell:fired', (p) => {
-        if (traj.size >= TRAJ_KEEP) traj.delete(traj.keys().next().value);
+      bus.on('shell:fired', (payload) => {
+        const p = payload as ShellFiredPayload;
+        if (traj.size >= TRAJ_KEEP) {
+          const oldest = traj.keys().next().value;
+          if (oldest !== undefined) traj.delete(oldest);
+        }
         const attackerEnt = getEntity ? getEntity(p.shooterId) : null;
         const attackerPose = attackerEnt && attackerEnt.state
           ? alignReplayPoseToShot(captureReplayPose(attackerEnt.state), p.dir, attackerEnt.spec)
           : null;
         traj.set(p.shellId, {
           pts: [p.muzzlePos[0], p.muzzlePos[1], p.muzzlePos[2]],
-          muzzle: p.muzzlePos.slice(),
-          dir: p.dir.slice(),
+          muzzle: cloneVec3Tuple(p.muzzlePos),
+          dir: cloneVec3Tuple(p.dir),
           velocityMps: Number(p.velocityMps) || 0,
           timeS: Number(p.timeS) || 0,
           attackerEnt,
@@ -1069,11 +1570,14 @@ export function createKillCam(deps) {
             ? [...attackerEnt.combat.eraSpent] : [],
           caliberMm: Number(p.caliberMm) || 100,
           weaponSound: p.weaponSound || null,
-          muzzleIndex: Number.isFinite(p.muzzleIndex) ? p.muzzleIndex : -1,
-          recoilScale: Number.isFinite(p.recoilScale) ? p.recoilScale : 1,
+          muzzleIndex: Number.isFinite(p.muzzleIndex) ? Number(p.muzzleIndex) : -1,
+          recoilScale: Number.isFinite(p.recoilScale) ? Number(p.recoilScale) : 1,
         });
       });
-      bus.on('shell:expired', (p) => traj.delete(p.shellId));
+      bus.on('shell:expired', (payload) => {
+        const p = payload as { shellId: number };
+        traj.delete(p.shellId);
+      });
       bus.on('ui:battleStart', () => {
         traj.clear();
         poseHistory.clear();
@@ -1087,8 +1591,12 @@ export function createKillCam(deps) {
       // Pointer/touch controls in the HUD use the same controller as A/D and
       // arrow keys, so the on-screen keycaps are real controls instead of
       // decorative hints. cycle() is a no-op outside spectator mode.
-      bus.on('spectate:cycle', (p) => spectate.cycle(p?.direction < 0 ? -1 : 1));
-      bus.on('phase:change', (p) => {
+      bus.on('spectate:cycle', (payload) => {
+        const p = payload as { direction?: number } | null;
+        spectate.cycle(p?.direction !== undefined && p.direction < 0 ? -1 : 1);
+      });
+      bus.on('phase:change', (payload) => {
+        const p = payload as { phase?: string } | null;
         if (!p || p.phase !== 'battle') {
           spectate.stop(true);
           api.cancel();
@@ -1111,7 +1619,7 @@ export function createKillCam(deps) {
      * to their trajectory traces (KILL-CAM capture hook).
      * @param {object} game game state ({shells})
      */
-    recordSimStep(game) {
+    recordSimStep(game: KillcamGame) {
       // retire the one-shot program-warmup rig once the first battle has
       // rendered it for ~1.5 s (sim stepping implies frames are flowing)
       if (warmRig && ++warmSteps > 90) {
@@ -1138,7 +1646,7 @@ export function createKillCam(deps) {
      * Snapshots lethal chains for the player-death and victory replays.
      * @param {object} ev enriched HitEvent @param {?object} target TankEntity
      */
-    onShellHit(ev, target) {
+    onShellHit(ev: KillcamHitEvent, target: KillcamEntity | null) {
       if (!target || !target.state || !ev.localPos) return;
       const player = getPlayer();
       if (!player) return;
@@ -1151,29 +1659,30 @@ export function createKillCam(deps) {
     },
 
     /** Capture a lethal tank-on-tank collision as its own replay type. */
-    onRam(ev, a, b) {
+    onRam(ev: KillcamHitEvent, a: KillcamEntity | null, b: KillcamEntity | null) {
       if (!ev || !a || !b) return;
       const player = getPlayer();
       if (!player) return;
-      let target = null;
-      let attacker = null;
-      let modules = null;
-      let direction = null;
+      let target: KillcamEntity | null = null;
+      let attacker: KillcamEntity | null = null;
+      let modules: ModuleHit[] | null = null;
+      let direction: Vec3Tuple | null = null;
       if (player === a && a.combat && a.combat.destroyed) {
         target = a; attacker = b; modules = ev.aModulesHit || [];
         direction = [-ev.normal[0], -ev.normal[1], -ev.normal[2]];
       } else if (player === b && b.combat && b.combat.destroyed) {
         target = b; attacker = a; modules = ev.bModulesHit || [];
-        direction = ev.normal.slice();
+        direction = cloneVec3Tuple(ev.normal);
       } else if (player === a && b.combat && b.combat.destroyed) {
         target = b; attacker = a; modules = ev.bModulesHit || [];
-        direction = ev.normal.slice();
+        direction = cloneVec3Tuple(ev.normal);
       } else if (player === b && a.combat && a.combat.destroyed) {
         target = a; attacker = b; modules = ev.aModulesHit || [];
         direction = [-ev.normal[0], -ev.normal[1], -ev.normal[2]];
       }
       if (!target || !attacker || !target.visual || !attacker.visual) return;
-      const snap = makeCollisionSnapshot({ ...ev, normal: direction }, target, attacker, modules);
+      if (!direction) return;
+      const snap = makeCollisionSnapshot({ ...ev, normal: direction }, target, attacker, modules || []);
       if (target === player) pendingDeath = snap;
       else pendingVictory = snap;
     },
@@ -1190,9 +1699,14 @@ export function createKillCam(deps) {
      *   main.ts instead and never set it.
      * @returns {boolean} true if a replay started (caller defers the overlay)
      */
-    playForResult(result, timeS, onDone, opts) {
-      let snap = null;
-      let kind = 'death';
+    playForResult(
+      result: 'victory' | 'defeat',
+      timeS: number,
+      onDone: () => void,
+      opts?: { freshKill?: boolean },
+    ): boolean {
+      let snap: ReplaySnapshot | null = null;
+      let kind: PlaybackKind = 'death';
       let xrayOnly = false;
       if (result === 'defeat') {
         snap = pendingDeath || lastHitOnPlayer;
@@ -1225,7 +1739,7 @@ export function createKillCam(deps) {
      * @param {object} snap snapshot shaped like makeSnapshot's output
      * @param {'xray'|'firing'|'collision'} [phase]
      */
-    stageReplayShot(snap, phase = 'xray') {
+    stageReplayShot(snap: ReplaySnapshot, phase: 'xray' | 'firing' | 'collision' = 'xray') {
       api.cancel();
       begin(snap, 'death', null, phase === 'xray');
       if (phase === 'firing') {
@@ -1265,7 +1779,7 @@ export function createKillCam(deps) {
     },
 
     /** Backward-compatible x-ray screenshot entry point. */
-    stageXrayShot(snap) {
+    stageXrayShot(snap: ReplaySnapshot) {
       return api.stageReplayShot(snap, 'xray');
     },
 
@@ -1291,7 +1805,7 @@ export function createKillCam(deps) {
      * Advance the replay one render frame (drives camera + labels).
      * @param {number} dt render delta seconds
      */
-    update(dt) {
+    update(dt: number) {
       if (!active || !pb || staged) return;
       if (pb.phase === 'wreck') updateWreck(dt);
       else if (pb.phase === 'approach') updateApproach(dt);
@@ -1393,7 +1907,13 @@ export function createKillCam(deps) {
     }
   }
 
-  function begin(snap, kind, onDone, xrayOnly, freshKill) {
+  function begin(
+    snap: ReplaySnapshot,
+    kind: PlaybackKind,
+    onDone: (() => void) | null,
+    xrayOnly: boolean,
+    freshKill = false,
+  ): void {
     const d = ensureDom();
     sharedMats();
     active = true;
@@ -1416,33 +1936,33 @@ export function createKillCam(deps) {
       ghostSeen: null,
       ghostVis: null, ghostSkin: null, // re-assertable skin pass (r3)
       labels: [],
-      obstacles: null, // module/crew box screen rects (label repulsion, r3)
-      pts: null, cum: null, total: 0, dur: 0, segIdx: 0,
+      obstacles: null!, // module/crew box screen rects (label repulsion, r3)
+      pts: null!, cum: null!, total: 0, dur: 0, segIdx: 0,
       flightLift: null, // per-sample camera lift (flight LOS solve, r6)
-      flightDist: 0, flightTimeline: null, // refresh-rate invariant retime
-      contactT: 0, contactDir: null, // readable shell-on-armor transition
+      flightDist: 0, flightTimeline: null!, // refresh-rate invariant retime
+      contactT: 0, contactDir: null!, // readable shell-on-armor transition
       app: null, // death-sequence push-in approach state
       shot: null, // attacker firing beat before projectile flight
       shotFxT: 0, shotFxLive: false, // muzzle flash overlaps chase acquisition
       collision: null, // two-vehicle rewind/contact beat
       isDeathView: false, // player is the victim (grade + killer card + approach)
       killerShown: false,
-      core: null, streak: null, trailGeo: null,
-      halo: null, tail: null, shellLight: null, muzzleLight: null,
-      xcam: null,
+      core: null!, streak: null!, trailGeo: null!,
+      halo: null!, tail: null!, shellLight: null!, muzzleLight: null!,
+      xcam: null!,
       fxGroup: null, fxHidden: null,
       vegGroup: null, vegWasVisible: true,
       dimmedLights: null, // x-ray backdrop light dim, restored in finish (r4)
       rewreck: null, // wreck look to re-apply in finish() (pre-wreck restage)
       restageModuleStates: snap.preModuleStates || null,
       restageEraSpent: snap.preEraSpent || [],
-      snapPoseState: null, // snapshot pose as a syncFromState-shaped object
+      snapPoseState: null!, // snapshot pose as a syncFromState-shaped object
       attackerPoseState: null, // shot-time killer pose (restored on teardown)
       attackerRestore: null, // visibility/wreck state lifted for the replay
       replayMuzzle: null, barrelDot: null, // launch-fidelity diagnostics
       wreck: null,   // killcam r2: live WRECK hold state (fresh own death)
       it: 0, itWall: 0, // killcam r2: IMPACT beat clocks (anim / wall)
-      impactVis: null,  // victim visual driven through the impact beat
+      impactVis: null!,  // victim visual driven through the impact beat
       xrayAng0: 0,      // orbit angle inherited from the impact drift
       xrayHoldS: XRAY_HOLD_S, // trimmed by beginXray to the replay budget
       cameraBlend: null, // continuous pose/fov handoff between replay phases
@@ -1483,7 +2003,7 @@ export function createKillCam(deps) {
     {
       const vis0 = snap.targetEnt && snap.targetEnt.visual;
       if (vis0 && vis0.isDestroyed && vis0.isDestroyed()) {
-        const deadTrack = (m) =>
+        const deadTrack = (m: string): boolean =>
           (snap.moduleStates && snap.moduleStates[m] === 'red') ||
           (snap.ev.modulesHit || []).some((x) => x.module === m && x.newState === 'red');
         pb.rewreck = {
@@ -1541,7 +2061,7 @@ export function createKillCam(deps) {
     d.hdK.textContent = cleanName ? `${ev.shellType || ''} · ${cleanName}` : (ev.shellType || '');
     d.hdW.textContent = `${ev.attackerName || 'Enemy'} → ${ev.targetName || ''}`;
     d.rows.textContent = '';
-    const statIcon = {
+    const statIcon: Readonly<Record<string, string>> = {
       Distance: 'scope',
       'Impact angle': 'turretRing',
       Armor: 'shield',
@@ -1551,7 +2071,7 @@ export function createKillCam(deps) {
       'Closing speed': 'speed',
       'Failed modules': 'repair',
     };
-    const kv = (k, v, wide) => {
+    const kv = (k: string, v: string, wide = false): HTMLDivElement => {
       const r = el('div', `cot-kc-kv${wide ? ' w' : ''}`, d.rows);
       const ks = el('span', '', r);
       ks.innerHTML = `${uiIconSVG(statIcon[k] || 'battleRecord', 10)}<span>${k}</span>`;
@@ -1828,7 +2348,7 @@ export function createKillCam(deps) {
     if (!pb || !pb.fxGroup) return;
     if (!pb.fxHidden) pb.fxHidden = [];
     for (const child of pb.fxGroup.children) {
-      if (child.isLight || !child.visible) continue;
+      if ((child as THREE.Light).isLight || !child.visible) continue;
       child.visible = false;
       pb.fxHidden.push(child);
     }
@@ -1871,7 +2391,7 @@ export function createKillCam(deps) {
     const snap = pb.snap;
     const ent = snap.attackerEnt;
     const vis = ent && ent !== snap.targetEnt ? ent.visual : null;
-    if (!vis || !snap.attackerPose) return;
+    if (!ent || !vis || !snap.attackerPose) return;
 
     const wasDestroyed = !!(vis.isDestroyed && vis.isDestroyed());
     if (!pb.attackerRestore) {
@@ -1883,9 +2403,9 @@ export function createKillCam(deps) {
     if (wasDestroyed && !snap.attackerPreDestroyed && vis.resetDestroyed) vis.resetDestroyed();
     if (vis.setVisible) vis.setVisible(true);
 
-    const pose = {
+    const pose: ReplayPose = {
       ...snap.attackerPose,
-      pos: snap.attackerPose.pos.slice(),
+      pos: cloneVec3Tuple(snap.attackerPose.pos),
     };
     const shot = snap.shotDir && snap.shotDir.length >= 3
       ? new THREE.Vector3().fromArray(snap.shotDir).normalize() : null;
@@ -1905,7 +2425,7 @@ export function createKillCam(deps) {
       const desiredPitch = Math.atan2(shot.y, Math.hypot(shot.x, shot.z));
       const actualPitch = Math.atan2(actual.y, Math.hypot(actual.x, actual.z));
       let turretYaw = state.turretYaw + yawErr;
-      const arc = ent.spec && Number.isFinite(ent.spec.gunArcDeg)
+      const arc = typeof ent.spec.gunArcDeg === 'number' && Number.isFinite(ent.spec.gunArcDeg)
         ? Math.abs(ent.spec.gunArcDeg) * Math.PI / 180 : Infinity;
       if (Math.abs(turretYaw) > arc) {
         const clamped = Math.max(-arc, Math.min(arc, turretYaw));
@@ -1937,7 +2457,7 @@ export function createKillCam(deps) {
    * allowed the live actor pose to flash back in and then snap into place at
    * beginFiring(). This lock is allocation-free and remains active through
    * the firing hold, where `dt` also advances the authored recoil response. */
-  function pinAttackerAtFiringPose(dt = 0) {
+  function pinAttackerAtFiringPose(dt = 0): void {
     if (!pb || !pb.attackerPoseState) return;
     const ent = pb.snap.attackerEnt;
     if (!ent || ent === pb.snap.targetEnt || !ent.visual) return;
@@ -1947,7 +2467,11 @@ export function createKillCam(deps) {
     if (vis.root) vis.root.updateMatrixWorld(true);
   }
 
-  function applyReplaySurfaceState(vis, moduleStates, eraSpent) {
+  function applyReplaySurfaceState(
+    vis: KillcamVisual,
+    moduleStates: ModuleStates | null,
+    eraSpent: readonly string[],
+  ): void {
     if (!vis) return;
     if (vis.setTrackState) {
       vis.setTrackState('trackL', !!(moduleStates && moduleStates.trackL === 'red'));
@@ -1985,11 +2509,11 @@ export function createKillCam(deps) {
    *   beginImpact note). Left false, an already-intact victim is untouched —
    *   exact r2 parity.
    */
-  function restageIntact(prime) {
+  function restageIntact(prime = false): void {
     const vis = pb && pb.snap.targetEnt && pb.snap.targetEnt.visual;
     if (!vis) return;
     const wrecked = !!(vis.isDestroyed && vis.isDestroyed());
-    if (wrecked) vis.resetDestroyed();
+    if (wrecked && vis.resetDestroyed) vis.resetDestroyed();
     if (vis.setVisible) vis.setVisible(true);
     vis.syncFromState(pb.snapPoseState, 0);
     applyReplaySurfaceState(vis, pb.restageModuleStates || pb.snap.preModuleStates,
@@ -2004,7 +2528,7 @@ export function createKillCam(deps) {
   // frozen during replays, so the killcam advances the victim's pop/burn
   // timelines itself (syncFromState rides the shared fx clock).
   // ---------------------------------------------------------------------------
-  function beginWreck(next) {
+  function beginWreck(next: 'approach' | 'xray' | 'collision'): boolean {
     const ent = pb.snap.targetEnt;
     const vis = ent && ent.visual;
     if (!vis || !vis.isDestroyed || !vis.isDestroyed() || !ent.state) return false;
@@ -2027,8 +2551,9 @@ export function createKillCam(deps) {
     return true;
   }
 
-  function updateWreck(dt) {
+  function updateWreck(dt: number): void {
     const w = pb.wreck;
+    if (!w) return;
     w.t += dt;
     // destruction timelines advance on the fx clock; pose from the entity's
     // LIVE dead state (visual continuity — the snapshot restage happens at
@@ -2087,7 +2612,7 @@ export function createKillCam(deps) {
 
   /** Frame the restored attacker and make the replayed shot visibly leave its
    * real rendered bore before the close tracer chase begins. */
-  function firingCameraPose(outPos, outLook) {
+  function firingCameraPose(outPos: THREE.Vector3, outLook: THREE.Vector3): void {
     const ent = pb.snap.attackerEnt;
     const st = pb.attackerPoseState;
     const h = Math.max(1.7, ent?.spec?.dims?.heightM || 2.5);
@@ -2096,7 +2621,7 @@ export function createKillCam(deps) {
     _d.y = 0;
     if (_d.lengthSq() < 1e-6) _d.set(0, 0, 1); else _d.normalize();
     _s.crossVectors(_d, UP).normalize();
-    const c = st ? st.pos : _p.fromArray(pb.snap.attackerPose.pos);
+    const c = st ? st.pos : _p.fromArray(pb.snap.attackerPose?.pos || [0, 0, 0]);
     // Keep the turret, bore and first meters of the shot in one readable
     // composition. The former look-ahead was 1.5 hull radii and cropped most
     // of the attacker off the left edge exactly when the muzzle flash fired.
@@ -2133,7 +2658,7 @@ export function createKillCam(deps) {
    * target (projectile chase, collision orbit, x-ray drift) stays live while
    * position, look direction, and lens converge without a cut.
    */
-  function beginCameraHandoff(duration = CAMERA_HANDOFF_S) {
+  function beginCameraHandoff(duration = CAMERA_HANDOFF_S): void {
     if (!pb) return;
     camera.getWorldDirection(_d);
     pb.cameraBlend = {
@@ -2146,7 +2671,12 @@ export function createKillCam(deps) {
   }
 
   /** Apply a replay camera target through the active continuous handoff. */
-  function setReplayCamera(pos, look, fov, dt = 0) {
+  function setReplayCamera(
+    pos: THREE.Vector3,
+    look: THREE.Vector3,
+    fov: number,
+    dt = 0,
+  ): void {
     const blend = pb && pb.cameraBlend;
     if (!blend) {
       rig.setExternalPose(pos, look, fov);
@@ -2161,7 +2691,7 @@ export function createKillCam(deps) {
     if (u >= 1) pb.cameraBlend = null;
   }
 
-  function beginFiring(stagedHold = false) {
+  function beginFiring(stagedHold = false): void {
     if (!pb || pb.replayKind !== 'projectile') return;
     if (!pb.snap.attackerEnt || !pb.snap.attackerPose || !pb.replayMuzzle) {
       beginShotFlight();
@@ -2219,7 +2749,7 @@ export function createKillCam(deps) {
     updateFlight(0);
   }
 
-  function updateFiring(dt) {
+  function updateFiring(dt: number): void {
     const shot = pb.shot;
     if (!shot) return;
     shot.t += Math.max(0, dt);
@@ -2238,7 +2768,12 @@ export function createKillCam(deps) {
     }
   }
 
-  function writePoseState(out, from, to, k) {
+  function writePoseState(
+    out: ReturnType<typeof replayStateFromPose>,
+    from: ReplayPose,
+    to: ReplayPose,
+    k: number,
+  ): void {
     out.pos.set(
       from.pos[0] + (to.pos[0] - from.pos[0]) * k,
       from.pos[1] + (to.pos[1] - from.pos[1]) * k,
@@ -2261,7 +2796,7 @@ export function createKillCam(deps) {
       pb.attackerPoseState = replayStateFromPose(pb.snap.attackerImpactPose);
       pb.snap.attackerEnt.visual.syncFromState(pb.attackerPoseState, 0);
       applyReplaySurfaceState(pb.snap.attackerEnt.visual,
-        pb.snap.attackerModuleStates, pb.snap.attackerEraSpent);
+        pb.snap.attackerModuleStates || null, pb.snap.attackerEraSpent || []);
     }
   }
 
@@ -2273,6 +2808,7 @@ export function createKillCam(deps) {
     const targetTo = pb.snap.pose;
     const attackerFrom = pb.snap.attackerPose;
     const attackerTo = pb.snap.attackerImpactPose || attackerFrom;
+    if (!attackerFrom || !attackerTo) return;
     const targetState = replayStateFromPose(targetFrom);
     const attackerState = replayStateFromPose(attackerFrom);
     pb.snapPoseState = targetState;
@@ -2307,7 +2843,7 @@ export function createKillCam(deps) {
     updateCollision(0);
   }
 
-  function updateCollision(dt) {
+  function updateCollision(dt: number): void {
     const c = pb.collision;
     if (!c) return;
     c.t += Math.max(0, dt);
@@ -2324,7 +2860,11 @@ export function createKillCam(deps) {
       c.hit = true;
       showFx();
       applyReplaySurfaceState(tvis, pb.snap.moduleStates, pb.snap.eraSpent);
-      applyReplaySurfaceState(avis, pb.snap.attackerModuleStates, pb.snap.attackerEraSpent);
+      if (avis) applyReplaySurfaceState(
+        avis,
+        pb.snap.attackerModuleStates || null,
+        pb.snap.attackerEraSpent || [],
+      );
       const normal = pb.snap.ev.normal || [0, 0, 1];
       if (tvis?.hitFlinch) tvis.hitFlinch(normal[0], normal[2], 2.2, c.targetState.yaw);
       if (avis?.hitFlinch) avis.hitFlinch(-normal[0], -normal[2], 1.6, c.attackerState.yaw);
@@ -2442,8 +2982,9 @@ export function createKillCam(deps) {
     return true;
   }
 
-  function updateApproach(dt) {
+  function updateApproach(dt: number): void {
     const a = pb.app;
+    if (!a) return;
     a.t += dt;
     pinAttackerAtFiringPose(0);
     const u = Math.min(1, a.t / a.dur);
@@ -2466,7 +3007,7 @@ export function createKillCam(deps) {
 
   /** Shared firing/flight pose at launch — the approach lands on it and the
    * shell departs immediately while the restored shooter remains in frame. */
-  function flightStartPose(outPos, outLook) {
+  function flightStartPose(outPos: THREE.Vector3, outLook: THREE.Vector3): void {
     firingCameraPose(outPos, outLook);
     pb.segIdx = 0;
   }
@@ -2496,15 +3037,15 @@ export function createKillCam(deps) {
    * occluder data is the world the sim itself uses — nothing invented.
    * @returns {?{clearAt:(cp:THREE.Vector3, lk:THREE.Vector3)=>boolean}}
    */
-  function worldClearance() {
-    let world = null;
+  function worldClearance(): WorldClearance | null {
+    let world: KillcamWorld | null = null;
     try { world = getWorld ? getWorld() : null; } catch (_) { world = null; }
     const conceal = (world && world.getConcealment && world.getConcealment()) || [];
     const canRay = !!(world && world.raycast);
     if (!conceal.length && !canRay) return null;
     const ray = new THREE.Vector3();
     /** Camera pose acceptable: outside foliage volumes, view line open. */
-    const clearAt = (cp, lk) => {
+    const clearAt = (cp: THREE.Vector3, lk: THREE.Vector3): boolean => {
       // 1. inside a foliage clump? Discs are 2D (x,z,r) — bushes (add>=0.2)
       // occlude a low band, tree canopies an elevated one (trunk gaps below
       // ~1.8 m read fine; canopy tops out ~11.5 m across the tree kits).
@@ -2540,14 +3081,14 @@ export function createKillCam(deps) {
       if (canRay) {
         ray.copy(lk).sub(cp);
         const d = ray.length();
-        if (d > 2 && world.raycast(cp, ray.multiplyScalar(1 / d), d * 0.8)) return false;
+        if (d > 2 && world?.raycast(cp, ray.multiplyScalar(1 / d), d * 0.8)) return false;
       }
       return true;
     };
     return { clearAt };
   }
 
-  function solveFlightOcclusion() {
+  function solveFlightOcclusion(): Float32Array | null {
     const clr = worldClearance();
     if (!clr || !pb.pts || pb.total <= 0) return null;
     const clearAt = clr.clearAt;
@@ -2595,7 +3136,7 @@ export function createKillCam(deps) {
   }
 
   /** Sample the trajectory polyline at arc length `dist`. */
-  function sampleTraj(dist, outPos, outDir) {
+  function sampleTraj(dist: number, outPos: THREE.Vector3, outDir: THREE.Vector3): number {
     const pts = pb.pts;
     const cum = pb.cum;
     let i = pb.segIdx;
@@ -2609,7 +3150,7 @@ export function createKillCam(deps) {
     return i;
   }
 
-  function updateFlight(dt) {
+  function updateFlight(dt: number): void {
     pb.t = Math.min(pb.dur, pb.t + Math.max(0, dt));
     // The battle presentation can repaint actors between replay ticks. Keep
     // the restored killer at its captured firing transform through the camera
@@ -2721,7 +3262,7 @@ export function createKillCam(deps) {
     updateContact(0);
   }
 
-  function updateContact(dt) {
+  function updateContact(dt: number): void {
     pb.contactT += Math.max(0, dt);
     const f = Math.min(1, pb.contactT / CONTACT_HOLD_S);
     const sink = 0.22 * THREE.MathUtils.smoothstep(f, 0, 1);
@@ -2758,7 +3299,7 @@ export function createKillCam(deps) {
    * @param {number} t impact-beat anim time (s)
    * @returns {number} fx dt multiplier (0..1]
    */
-  function impactRate(t) {
+  function impactRate(t: number): number {
     const inS = THREE.MathUtils.smoothstep(t, 0.22, 0.42);
     const outS = 1 - THREE.MathUtils.smoothstep(t, 1.0, 1.38);
     return 1 - (1 - IMPACT_SLOWMO) * inS * outS;
@@ -2825,7 +3366,7 @@ export function createKillCam(deps) {
       dom.leader.textContent = '';
     }
     pb.labels.length = 0;
-    pb.obstacles = null;
+    pb.obstacles = null!;
   }
 
   function beginImpact() {
@@ -2854,7 +3395,7 @@ export function createKillCam(deps) {
       pb.group.remove(pb.core, pb.streak, pb.halo, pb.tail);
       pb.shellLight.intensity = 0;
       pb.muzzleLight.intensity = 0;
-      pb.core = pb.streak = pb.halo = pb.tail = pb.shellLight = pb.muzzleLight = null;
+      pb.core = pb.streak = pb.halo = pb.tail = pb.shellLight = pb.muzzleLight = null!;
     }
     // the destruction must be SEEN: battle fx come back for the beat (the
     // x-ray re-hides them), and the victim — restaged to its live pre-hit
@@ -2903,7 +3444,7 @@ export function createKillCam(deps) {
     updateImpact(0);
   }
 
-  function updateImpact(dt) {
+  function updateImpact(dt: number): void {
     // anim time advances on the SAME dilated clock main.ts scales the fx dt
     // by (fxTimeScale getter reads impactRate(pb.it)) — window, particles
     // and the visual's pop arc stay in lockstep.
@@ -2974,7 +3515,7 @@ export function createKillCam(deps) {
   }
 
   /** Deterministic x-ray vantage from the snapshot (side-on to the path). */
-  function computeXrayCam(snap) {
+  function computeXrayCam(snap: ReplaySnapshot): XrayCamera {
     const pose = snap.pose;
     const center = new THREE.Vector3(pose.pos[0], pose.pos[1] + snap.heightM * 0.55, pose.pos[2]);
     _e.set(-pose.pitch, pose.yaw, pose.roll, 'YXZ');
@@ -3036,7 +3577,7 @@ export function createKillCam(deps) {
    * Mutates xcam.off / xcam.pos / xcam.look in place; center is untouched
    * (the veil + ghost-shader uniforms key off it).
    */
-  function fitXrayFrame(snap, xcam) {
+  function fitXrayFrame(snap: ReplaySnapshot, xcam: XrayCamera): void {
     // Victim bbox from SNAPSHOT pose + spec dims — deliberately not
     // Box3.setFromObject(visual.root): the live visual carries helper nodes
     // (fx anchors, hidden LOD shells) that inflate the box and shoved the
@@ -3140,7 +3681,7 @@ export function createKillCam(deps) {
     // fx suppressed again (the beats re-showed them so the fireball/smoke
     // could play — r2: the death fireball rendered ON TOP of the ghost).
     // Both are no-ops when flight/approach handed over normally.
-    pb.impactVis = null;
+    pb.impactVis = null!;
     pb.wreck = null;
     restageIntact();
     hideFx();
@@ -3170,7 +3711,7 @@ export function createKillCam(deps) {
       pb.group.remove(pb.core, pb.streak, pb.halo, pb.tail);
       pb.shellLight.intensity = 0;
       pb.muzzleLight.intensity = 0;
-      pb.core = pb.streak = pb.halo = pb.tail = pb.shellLight = pb.muzzleLight = null;
+      pb.core = pb.streak = pb.halo = pb.tail = pb.shellLight = pb.muzzleLight = null!;
     }
     // Cap the visible trail to the final ~60 m of arc: the full muzzle-to-hull
     // polyline read as a beam lasering across the whole map during the hold.
@@ -3233,9 +3774,11 @@ export function createKillCam(deps) {
 
     // 1. ghost-translucent victim — fresnel skin (see sharedMats).
     const vis = snap.targetEnt.visual;
-    vis.setVisible(true); // player may have died while scoped (hull hidden)
-    pb.ghostBackup = [];
-    pb.ghostSeen = new WeakSet();
+    if (vis.setVisible) vis.setVisible(true); // player may have died while scoped (hull hidden)
+    const ghostBackup: Array<[THREE.Mesh, THREE.Material | THREE.Material[], number, boolean]> = [];
+    const ghostSeen = new WeakSet<THREE.Mesh>();
+    pb.ghostBackup = ghostBackup;
+    pb.ghostSeen = ghostSeen;
     // Ghost every color-rendering mesh, including currently-hidden LOD detail
     // levels. The x-ray camera sits close enough to flip LODs mid-hold, and a
     // skipped painted mesh would pop in with its original dark non-additive
@@ -3249,26 +3792,28 @@ export function createKillCam(deps) {
     // meshes on the live probe) into the visual ASYNCHRONOUSLY, and a
     // one-shot traverse left them wearing their lit materials: the ghost
     // rendered as a black add-on shell over an invisible hull.
-    pb.ghostVis = vis;
+    const ghostVis = vis;
+    pb.ghostVis = ghostVis;
     pb.ghostSkin = () => {
-      pb.ghostVis.root.traverse((o) => {
-        if (!o.isMesh || o.material === S.ghost || pb.ghostSeen.has(o)) return;
-        pb.ghostSeen.add(o);
-        pb.ghostBackup.push([o, o.material, o.renderOrder, o.castShadow]);
+      ghostVis.root.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        if (!mesh.isMesh || mesh.material === S.ghost || ghostSeen.has(mesh)) return;
+        ghostSeen.add(mesh);
+        ghostBackup.push([mesh, mesh.material, mesh.renderOrder, mesh.castShadow]);
         // Invisible authored shadow hulls stay in the scene with colorWrite
         // disabled. Ghosting them made their coarse convex silhouettes appear
         // as huge cones around barrels and roof fittings. Suspend their shadow
         // only; never turn a non-painting helper into visible x-ray geometry.
-        if (!isKillcamGhostSurface(o)) {
-          o.castShadow = false;
+        if (!isKillcamGhostSurface(mesh)) {
+          mesh.castShadow = false;
           return;
         }
-        o.material = S.ghost;
-        o.renderOrder = 11;
+        mesh.material = S.ghost;
+        mesh.renderOrder = 11;
         // the hull's own cast shadow otherwise sits directly beneath the
         // translucent skin and reads THROUGH it as a black tank-shaped
         // void (live Abrams probe) — WT floats the wreck on lit ground
-        o.castShadow = false;
+        mesh.castShadow = false;
       });
     };
     pb.ghostSkin();
@@ -3313,10 +3858,12 @@ export function createKillCam(deps) {
     // COUNT never changes, so no material recompiles (LIGHT-COUNT note).
     // Exact originals restored in finish().
     pb.dimmedLights = [];
-    scene.traverse((o) => {
-      if ((o.isDirectionalLight || o.isHemisphereLight) && o.intensity > 0) {
-        pb.dimmedLights.push([o, o.intensity]);
-        o.intensity *= o.isHemisphereLight ? 0.42 : 0.30;
+    const dimmedLights = pb.dimmedLights;
+    scene.traverse((object) => {
+      if ((object instanceof THREE.DirectionalLight || object instanceof THREE.HemisphereLight)
+          && object.intensity > 0) {
+        dimmedLights.push([object, object.intensity]);
+        object.intensity *= object instanceof THREE.HemisphereLight ? 0.42 : 0.30;
       }
     });
     // pull the victim fill light in tight: at R*4.5 it pooled a bright disc
@@ -3352,13 +3899,18 @@ export function createKillCam(deps) {
     const modHit = new Map();
     for (const m of ev.modulesHit) modHit.set(m.module, m.newState);
     const crewHit = new Set(ev.crewHit);
-    const effState = (name) => {
+    const effState = (name: string): ModuleStateName => {
       const s = (snap.moduleStates && snap.moduleStates[name]) || modHit.get(name);
-      return s === 'red' || s === 'yellow' ? s : null;
+      return s === 'red' || s === 'yellow' ? s : 'ok';
     };
     const anchors = new Map(); // labelKey -> anchor object
     pb.obstacles = []; // module/crew boxes as label-repulsion obstacles
-    const addBox = (bb, key, mat, fillMat) => {
+    const addBox = (
+      bb: KillcamBox,
+      key: string | null,
+      mat: THREE.LineBasicMaterial,
+      fillMat: THREE.MeshBasicMaterial | null,
+    ): void => {
       const sx = bb.max[0] - bb.min[0];
       const sy = bb.max[1] - bb.min[1];
       const sz = bb.max[2] - bb.min[2];
@@ -3422,7 +3974,12 @@ export function createKillCam(deps) {
     // faces + connecting rails) and, when hit, tread slats laid ALONG the
     // band perimeter — ground run, approach/departure ramps and raised
     // end-wheel wraps — instead of one full-length box + a flat slab row.
-    const addTrackPrism = (shapes, key, mat, fillMat) => {
+    const addTrackPrism = (
+      shapes: TrackShape[],
+      key: string,
+      mat: THREE.LineBasicMaterial,
+      fillMat: THREE.MeshBasicMaterial | null,
+    ): void => {
       // union AABB first: the group is POSITIONED at the prism center so the
       // damage chip's anchor (getWorldPosition) lands on the track itself,
       // exactly like addBox's centered seg.
@@ -3445,8 +4002,10 @@ export function createKillCam(deps) {
       for (const shape of shapes) {
         const poly = shape.poly;
         const n = poly.length;
-        const posArr = [];
-        const push = (x, p) => posArr.push(x - cx, p[1] - cy, p[0] - cz);
+        const posArr: number[] = [];
+        const push = (x: number, p: readonly [number, number]): void => {
+          posArr.push(x - cx, p[1] - cy, p[0] - cz);
+        };
         for (let i = 0; i < n; i++) {
           const a = poly[i];
           const b = poly[(i + 1) % n];
@@ -3509,7 +4068,7 @@ export function createKillCam(deps) {
       pb.obstacles.push({ parent: poseGrp, corners, key: key || null });
       if (key && !anchors.has(key)) anchors.set(key, group);
     };
-    const trackShapesOf = (name) => {
+    const trackShapesOf = (name: string): TrackShape[] | null => {
       const list = (armor.trackShapes || []).filter((s) => s.module === name);
       return list.length ? list : null;
     };
@@ -3546,13 +4105,21 @@ export function createKillCam(deps) {
     // own dims box before geometry is built (turret-local boxes ride the
     // turret frame and stay authored). No-op for spec-conform layouts.
     const specDims = snap.targetEnt && snap.targetEnt.spec ? snap.targetEnt.spec.dims : null;
-    const clampBB = (bb) => {
+    const clampBB = <T extends KillcamBox>(bb: T): T => {
       if (!specDims || bb.turretLocal) return bb;
       const hx = specDims.widthM / 2 + 0.03;
       const hz = (specDims.hullLengthM || specDims.overallLengthM * 0.8) / 2 + 0.08;
       const hy = specDims.heightM + 0.05;
-      const min = [Math.max(bb.min[0], -hx), Math.max(bb.min[1], -0.05), Math.max(bb.min[2], -hz)];
-      const max = [Math.min(bb.max[0], hx), Math.min(bb.max[1], hy), Math.min(bb.max[2], hz)];
+      const min: Vec3Tuple = [
+        Math.max(bb.min[0], -hx),
+        Math.max(bb.min[1], -0.05),
+        Math.max(bb.min[2], -hz),
+      ];
+      const max: Vec3Tuple = [
+        Math.min(bb.max[0], hx),
+        Math.min(bb.max[1], hy),
+        Math.min(bb.max[2], hz),
+      ];
       if (min[0] >= max[0] || min[1] >= max[1] || min[2] >= max[2]) return bb;
       return { ...bb, min, max };
     };
@@ -3590,7 +4157,7 @@ export function createKillCam(deps) {
     // bright internal segment carried all the way to the DEEPEST damaged
     // component (entry -> ammo rack is the story), and a spall cone with
     // deterministic fragment rays opening from the penetration point.
-    const nearMiss = []; // spall-brushed but undamaged internals (labeled in 5)
+    const nearMiss: NearMissRecord[] = []; // spall-brushed but undamaged internals (labeled in 5)
     if (ev.localPos && ev.localDir) {
       const lp = new THREE.Vector3().fromArray(ev.localPos);
       const ld = new THREE.Vector3().fromArray(ev.localDir).normalize();
@@ -3600,7 +4167,7 @@ export function createKillCam(deps) {
       const ts = Math.sin(tyaw);
       let deepest = 0;
       /** Module/crew box center in the HULL frame (turret boxes rotated). */
-      const centerOf = (bb, out) => {
+      const centerOf = (bb: KillcamBox, out: THREE.Vector3): THREE.Vector3 => {
         const cx = (bb.min[0] + bb.max[0]) / 2;
         const cyy = (bb.min[1] + bb.max[1]) / 2;
         const cz = (bb.min[2] + bb.max[2]) / 2;
@@ -3613,7 +4180,7 @@ export function createKillCam(deps) {
         }
         return out.set(cx, cyy, cz);
       };
-      const depthOf = (bb) => centerOf(bb, _a).sub(lp).dot(ld);
+      const depthOf = (bb: KillcamBox): number => centerOf(bb, _a).sub(lp).dot(ld);
       for (const m of ev.modulesHit) {
         const bb = (armor.modules || []).find((b) => b.module === m.module);
         if (bb) deepest = Math.max(deepest, depthOf(bb));
@@ -3631,7 +4198,7 @@ export function createKillCam(deps) {
       // No damage is implied: the chips take the demoted gray 'ok' tier.
       if (ev.kind === 'pen' || ev.kind === 'he_pen') {
         const spallTan = 0.26; // rendered cone opens at r=0.24·len (+ margin)
-        const consider = (bb, kkey, klabel) => {
+        const consider = (bb: KillcamBox, kkey: string, klabel: string): void => {
           centerOf(bb, _a).sub(lp);
           const along = _a.dot(ld);
           if (along < 0.12 || along > innerLen + 0.3) return;
@@ -3650,12 +4217,12 @@ export function createKillCam(deps) {
           if (mb.module === 'trackL' || mb.module === 'trackR'
             || mb.module === 'turretRing') continue;
           if (modHit.has(mb.module)) continue;
-          consider(mb, `m:${mb.module}`, MODULE_LABEL[mb.module] || mb.module);
+          consider(mb, `m:${mb.module}`, KC_MODULE_LABELS[mb.module] || mb.module);
         }
         for (const cb of armor.crew || []) {
           if (crewHit.has(cb.crew)) continue;
           if (crewAlive && crewAlive[cb.crew] === false) continue; // earlier casualty — red proxy tells that
-          consider(cb, `c:${cb.crew}`, CREW_LABEL[cb.crew] || cb.crew);
+          consider(cb, `c:${cb.crew}`, KC_CREW_LABELS[cb.crew] || cb.crew);
         }
         nearMiss.sort((a, b) => a.score - b.score);
         nearMiss.length = Math.min(nearMiss.length,
@@ -3705,7 +4272,7 @@ export function createKillCam(deps) {
       // of a terminal glow ball. Radii sit ~55% under the old baton and scale
       // with the solved orbit radius so the dart stays legible on big hulls.
       _b.copy(lp).addScaledVector(ld, innerLen);
-      const dart = (r0, r1, mat) => {
+      const dart = (r0: number, r1: number, mat: THREE.Material): void => {
         const g = new THREE.CylinderGeometry(r1, r0, innerLen, 8, 1, true);
         pb.disposables.push(g);
         const m = new THREE.Mesh(g, mat);
@@ -3760,7 +4327,13 @@ export function createKillCam(deps) {
         const fd = new THREE.Vector3();
         const fe = new THREE.Vector3();
         const fc = new THREE.Vector3();
-        const fragTo = (bb, mat, n, r, spark) => {
+        const fragTo = (
+          bb: KillcamBox,
+          mat: THREE.Material,
+          n: number,
+          r: number,
+          spark: boolean,
+        ): void => {
           centerOf(bb, fc);
           const L = Math.max(0.5, fc.distanceTo(lp));
           fd.copy(fc).sub(lp).multiplyScalar(1 / L);
@@ -3813,7 +4386,7 @@ export function createKillCam(deps) {
     // finalize label-repulsion obstacles: world-space corners (static for the
     // whole hold — only the camera moves, so projection happens per frame)
     for (const ob of pb.obstacles) {
-      for (const c of ob.corners) ob.parent.localToWorld(c);
+      if (ob.parent) for (const c of ob.corners) ob.parent.localToWorld(c);
       ob.parent = null;
     }
 
@@ -3846,7 +4419,7 @@ export function createKillCam(deps) {
       d.killer.sil.style.backgroundImage = ev.attackerSpecId
         ? `url(${iconUrl(ev.attackerSpecId, 'side_silhouette')})` : 'none';
       d.killer.rows.textContent = '';
-      const kkv = (k2, v2, cls2, iconId) => {
+      const kkv = (k2: string, v2: string, cls2: string, iconId: string): void => {
         const r2 = el('div', `kv${cls2 ? ` ${cls2}` : ''}`, d.killer.rows);
         const ks2 = el('span', '', r2);
         ks2.innerHTML = `${uiIconSVG(iconId, 10)}<span>${k2}</span>`;
@@ -3854,12 +4427,12 @@ export function createKillCam(deps) {
       };
       if (pb.replayKind === 'collision') {
         kkv('Cause', 'Hull collision', 'w', 'damage');
-        kkv('Damage', (ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : '0', 'dmg', 'damage');
+        kkv('Damage', (ev.damage || 0) > 0 ? `−${Math.round(ev.damage || 0)}` : '0', 'dmg', 'damage');
         kkv('Closing speed', `${Math.round((ev.closingMps || 0) * 3.6)} km/h`, '', 'speed');
       } else {
         const cleanShell = shellDisplayName(ev);
         kkv('Shell', `${ev.shellType || ''}${cleanShell ? ` ${cleanShell}` : ''}`.trim() || '—', 'w', 'shell');
-        kkv('Damage', (ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : '0', 'dmg', 'damage');
+        kkv('Damage', (ev.damage || 0) > 0 ? `−${Math.round(ev.damage || 0)}` : '0', 'dmg', 'damage');
         kkv('Distance', `${Math.round(ev.flightDistM || 0)} m`, '', 'scope');
       }
       d.killer.root.classList.add('on');
@@ -3868,7 +4441,15 @@ export function createKillCam(deps) {
       d.killer.root.classList.remove('on', 'rv');
     }
     pb.labels.length = 0;
-    const addLabel = (world, color, main, sub, big, ok, key) => {
+      const addLabel = (
+        world: THREE.Vector3,
+        color: string,
+        main: string,
+        sub: string,
+        big = false,
+        ok = false,
+        key: string | null = null,
+      ): void => {
       // ok = the hit left the module functional: the chip is demoted to the
       // dim-gray tier (hollow ring dot, faint leader) so only yellow/red
       // chips carry casualty weight — an 'ok' TRACK R / HIT chip in full
@@ -3900,10 +4481,12 @@ export function createKillCam(deps) {
       }
       pb.labels.push({
         label, dot, line, big: !!big, world: world.clone(), key: key || null,
+        hidden: false, ax: 0, ay: 0, lw: 0, lh: 0, left: 0, top: 0,
+        below: false, fixed: false,
       });
     };
     /** Idle micro-label (no dot/leader): WT-style always-on internals tag. */
-    const addMicro = (world, text, key) => {
+    const addMicro = (world: THREE.Vector3, text: string, key: string): void => {
       const label = el('div', 'cot-kc-micro', d.labelHost);
       const icon = el('span', 'ico', label);
       icon.innerHTML = uiIconSVG(killcamLabelIcon(key), 9);
@@ -3912,6 +4495,8 @@ export function createKillCam(deps) {
       pb.labels.push({
         label, dot: null, line: null, big: false, micro: true,
         world: world.clone(), key: key || null,
+        hidden: false, ax: 0, ay: 0, lw: 0, lh: 0, left: 0, top: 0,
+        below: false, fixed: false,
       });
     };
     /**
@@ -3922,7 +4507,7 @@ export function createKillCam(deps) {
      * micro identity tags — always inside the silhouette, never straddling
      * its edge — visibly informational, never a casualty.
      */
-    const addNearMiss = (world, text, key) => {
+    const addNearMiss = (world: THREE.Vector3, text: string, key: string): void => {
       const label = el('div', 'cot-kc-label nm', d.labelHost);
       const icon = el('span', 'ico', label);
       icon.innerHTML = uiIconSVG(killcamLabelIcon(key), 9);
@@ -3934,17 +4519,23 @@ export function createKillCam(deps) {
       pb.labels.push({
         label, dot: null, line: null, big: false, micro: true,
         world: world.clone(), key: key || null,
+        hidden: false, ax: 0, ay: 0, lw: 0, lh: 0, left: 0, top: 0,
+        below: false, fixed: false,
       });
     };
-    const MOD_STATE_WORD = { red: 'DESTROYED', yellow: 'DAMAGED', ok: 'HIT' };
-    const MOD_STATE_COLOR = { red: '#ff5a4a', yellow: '#ffb43c', ok: '#8a97a3' };
+    const MOD_STATE_WORD: Readonly<Record<ModuleStateName, string>> = {
+      red: 'DESTROYED', yellow: 'DAMAGED', ok: 'HIT',
+    };
+    const MOD_STATE_COLOR: Readonly<Record<ModuleStateName, string>> = {
+      red: '#ff5a4a', yellow: '#ffb43c', ok: '#8a97a3',
+    };
     // A shell can cross more than one physical volume assigned to the same
     // module. The simulation correctly applies both impulses, but the replay
     // should present one final-state callout rather than stacking two TRACK R
     // cards at the same anchor. Preserve total resolved damage and the most
     // severe resulting state.
-    const moduleLabels = new Map();
-    const stateRank = { ok: 0, yellow: 1, red: 2 };
+    const moduleLabels = new Map<string, ModuleHit>();
+    const stateRank: Readonly<Record<ModuleStateName, number>> = { ok: 0, yellow: 1, red: 2 };
     for (const m of ev.modulesHit) {
       const prev = moduleLabels.get(m.module);
       if (!prev) {
@@ -3954,24 +4545,27 @@ export function createKillCam(deps) {
       if ((stateRank[m.newState] || 0) > (stateRank[prev.newState] || 0)) {
         prev.newState = m.newState;
       }
-      if (Number.isFinite(m.dmg)) prev.dmg = (Number.isFinite(prev.dmg) ? prev.dmg : 0) + m.dmg;
+      if (typeof m.dmg === 'number' && Number.isFinite(m.dmg)) {
+        prev.dmg = (typeof prev.dmg === 'number' && Number.isFinite(prev.dmg) ? prev.dmg : 0) + m.dmg;
+      }
     }
     for (const m of moduleLabels.values()) {
       const seg = anchors.get(`m:${m.module}`);
       if (!seg) continue;
       seg.getWorldPosition(_p);
       // honest damage number: only the sim's rolled value, never the caliber
-      const dmgTxt = Number.isFinite(m.dmg) ? ` −${Math.round(m.dmg)}` : '';
+      const dmgTxt = typeof m.dmg === 'number' && Number.isFinite(m.dmg)
+        ? ` −${Math.round(m.dmg)}` : '';
       const ok = m.newState !== 'red' && m.newState !== 'yellow';
       addLabel(_p, MOD_STATE_COLOR[m.newState] || MOD_STATE_COLOR.ok,
-        MODULE_LABEL[m.module] || m.module,
+        KC_MODULE_LABELS[m.module] || m.module,
         `${MOD_STATE_WORD[m.newState] || 'HIT'}${dmgTxt}`, false, ok, `m:${m.module}`);
     }
     for (const c of new Set(ev.crewHit)) {
       const seg = anchors.get(`c:${c}`);
       if (!seg) continue;
       seg.getWorldPosition(_p);
-      addLabel(_p, '#ff7d8a', CREW_LABEL[c] || c, 'KNOCKED OUT', false, false, `c:${c}`);
+      addLabel(_p, '#ff7d8a', KC_CREW_LABELS[c] || c, 'KNOCKED OUT', false, false, `c:${c}`);
     }
     // ENTRY-PLATE chip (r6 minor): the struck zone is ALWAYS annotated at the
     // penetration point — a clean pen with no module/crew casualties used to
@@ -3979,7 +4573,7 @@ export function createKillCam(deps) {
     // word all come straight off the payload (zone, physicalMm, kind).
     if (ev.zone && ev.localPos) {
       const outcome = hitOutcomeFor(ev);
-      const mm = (ev.physicalMm || 0) > 0 ? ` · ${Math.round(ev.physicalMm)} mm` : '';
+      const mm = (ev.physicalMm || 0) > 0 ? ` · ${Math.round(ev.physicalMm || 0)} mm` : '';
       _p.set(ev.pos[0], ev.pos[1], ev.pos[2]);
       addLabel(_p, outcome.color, zoneLabel(ev.zone),
         `${outcome.label}${mm}`, false, false, null);
@@ -3995,10 +4589,12 @@ export function createKillCam(deps) {
     }
     if ((ev.damage || 0) > 0) {
       _p.set(ev.pos[0], ev.pos[1], ev.pos[2]);
-      addLabel(_p, '', `−${Math.round(ev.damage)} HP`, '', true);
+      addLabel(_p, '', `−${Math.round(ev.damage || 0)} HP`, '', true);
     }
     // idle micro-labels on the key internals the eye needs to identify
-    const MICRO = { ammoRack: 'AMMO', engine: 'ENGINE', fuelTank: 'FUEL' };
+    const MICRO: Readonly<Record<string, string>> = {
+      ammoRack: 'AMMO', engine: 'ENGINE', fuelTank: 'FUEL',
+    };
     for (const key of Object.keys(MICRO)) {
       if (modHit.has(key)) continue; // hit ones already carry a damage chip
       if (nearMiss.some((n) => n.key === `m:${key}`)) continue; // NEAR MISS chip owns it
@@ -4110,7 +4706,7 @@ export function createKillCam(deps) {
     // module's leader-dot cluster (r7: −519 HP muddied TRACK R's dot right
     // at the penetration point); a second sweep settles cascades that land
     // a chip on a dot further down.
-    const items = [];
+    const items: LayoutRect[] = [];
     for (const it of pb.labels) {
       if (it.hidden) continue;
       items.push(it);
@@ -4167,9 +4763,9 @@ export function createKillCam(deps) {
     // the compact ballistic card share the bottom third of the frame. Move a
     // colliding callout toward the unobstructed center instead of letting its
     // text ghost through a panel; leaders retain the anchor relationship.
-    let panelRects = [];
+    let panelRects: DOMRect[] = [];
     if (dom) {
-      const panelEls = [dom.title, dom.skip, dom.annot, dom.killer && dom.killer.root].filter(Boolean);
+      const panelEls: HTMLElement[] = [dom.title, dom.skip, dom.annot, dom.killer.root];
       panelRects = panelEls
         .filter((node) => getComputedStyle(node).display !== 'none')
         .map((node) => node.getBoundingClientRect())
@@ -4191,16 +4787,16 @@ export function createKillCam(deps) {
     // damage cards at the impact point). Run one final bounded label-only
     // separation pass after every other obstacle has settled.
     {
-      const priority = (it) => it.big ? 3 : it.micro ? 1 : 2;
+      const priority = (it: KillcamLabel): number => it.big ? 3 : it.micro ? 1 : 2;
       const visible = pb.labels.filter((it) => !it.hidden)
         .sort((a, b) => priority(b) - priority(a) || a.top - b.top || a.left - b.left);
       const minTop = h * 0.095;
       const maxBottom = h * 0.885;
-      const hitsPanel = (it, top) => panelRects.some((r) =>
+      const hitsPanel = (it: KillcamLabel, top: number): boolean => panelRects.some((r) =>
         it.left < r.right + 6 && r.left < it.left + it.lw + 6 &&
         top < r.bottom + 6 && r.top < top + it.lh + 6);
-      const placed = [];
-      const fits = (it, top) => top >= minTop && top + it.lh <= maxBottom &&
+      const placed: KillcamLabel[] = [];
+      const fits = (it: KillcamLabel, top: number): boolean => top >= minTop && top + it.lh <= maxBottom &&
         !hitsPanel(it, top) && !placed.some((other) =>
           it.left < other.left + other.lw + 5 && other.left < it.left + it.lw + 5 &&
           top < other.top + other.lh + 4 && other.top < top + it.lh + 4);
@@ -4255,7 +4851,7 @@ export function createKillCam(deps) {
     }
   }
 
-  function updateXray(dt) {
+  function updateXray(dt: number): void {
     pb.xt += dt;
     // late-attached meshes (async GLB kit deferral) join the ghost skin the
     // frame they arrive — see the r3 note at pb.ghostSkin
@@ -4325,12 +4921,12 @@ export function createKillCam(deps) {
     }, 50));
   }
 
-  function finish(runCallback) {
+  function finish(runCallback: boolean): void {
     // legacy seam kept for cancel(): immediate teardown, no exit choreography
     teardown(runCallback);
   }
 
-  function teardown(runCallback) {
+  function teardown(runCallback: boolean): void {
     if (!active) return;
     window.removeEventListener('keydown', onSkipKey, true);
     window.removeEventListener('mousedown', onSkipKey, true);
@@ -4358,7 +4954,9 @@ export function createKillCam(deps) {
       if (pb.rewreck && pb.snap.targetEnt && pb.snap.targetEnt.visual) {
         const vis = pb.snap.targetEnt.visual;
         vis.setDestroyed({ pop: pb.rewreck.pop, ageS: 12 });
-        for (const m of pb.rewreck.brokenTracks) vis.setTrackState(m, true);
+        if (vis.setTrackState) {
+          for (const m of pb.rewreck.brokenTracks) vis.setTrackState(m, true);
+        }
         if (vis.stripEra) for (const pl of pb.rewreck.eraSpent) vis.stripEra(pl);
       }
       // Release the temporary shot-time killer pose back to its authoritative
@@ -4389,7 +4987,7 @@ export function createKillCam(deps) {
     resetDomPresentation();
     const done = pb ? pb.onDone : null;
     const wasDeathView = pb ? pb.isDeathView : false;
-    pb = null;
+    pb = null!;
     active = false;
     staged = false;
     if (runCallback && done) done();
@@ -4424,25 +5022,25 @@ export function createKillCam(deps) {
   const spectate = (() => {
     let on = false;
     let observerAllTeams = false;
-    let curId = null;
-    let pollId = 0;
-    let advanceTimer = 0;
-    let lastX = null; // clientX/Y fallback deltas (movementX preferred)
-    let lastY = null;
-    const gameRef = () => {
+    let curId: string | null = null;
+    let pollId: ReturnType<typeof setInterval> | null = null;
+    let advanceTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastX: number | null = null; // clientX/Y fallback deltas (movementX preferred)
+    let lastY: number | null = null;
+    const gameRef = (): KillcamGame | null => {
       try { return getGame ? getGame() : null; } catch (_) { return null; }
     };
-    const livingAllies = () => {
+    const livingAllies = (): KillcamEntity[] => {
       const g = gameRef();
       if (!g || !Array.isArray(g.tanks)) return [];
       return g.tanks.filter((t) => t && (observerAllTeams || (!t.isPlayer && t.team !== 'enemy'))
         && t.combat && !t.combat.destroyed && t.state && t.visual);
     };
-    const entById = (id) => {
+    const entById = (id: string): KillcamEntity | null => {
       const g = gameRef();
-      return g && g.tankById ? g.tankById.get(id) : null;
+      return g && g.tankById ? g.tankById.get(id) || null : null;
     };
-    function announce(kind, ent, list) {
+    function announce(kind: 'begin' | 'change', ent: KillcamEntity, list: KillcamEntity[]): void {
       if (!busRef || !ent) return;
       busRef.emit(`spectate:${kind}`, {
         id: ent.id,
@@ -4454,13 +5052,13 @@ export function createKillCam(deps) {
         allTeams: observerAllTeams,
       });
     }
-    function retarget(ent, list, first) {
+    function retarget(ent: KillcamEntity, list: KillcamEntity[], first: boolean): void {
       curId = ent.id;
       if (first) rig.startSpectate(ent);
       else rig.setSpectateTarget(ent);
       announce(first ? 'begin' : 'change', ent, list);
     }
-    function cycle(dir) {
+    function cycle(dir = 1): void {
       if (!on) return;
       const list = livingAllies();
       if (!list.length) { stop(true); return; }
@@ -4469,7 +5067,7 @@ export function createKillCam(deps) {
       else i = ((i + dir) % list.length + list.length) % list.length;
       retarget(list[i], list, false);
     }
-    function onKey(e) {
+    function onKey(e: KeyboardEvent): void {
       if (!on || e.repeat) return;
       if (e.code === 'ArrowRight' || e.code === 'KeyD') cycle(1);
       else if (e.code === 'ArrowLeft' || e.code === 'KeyA') cycle(-1);
@@ -4482,12 +5080,12 @@ export function createKillCam(deps) {
     // AND unlocked (a canvas click mid-spectate re-grabs pointer lock —
     // main.ts battle mousedown — and client deltas die with the cursor);
     // client-delta fallback covers browsers without movement fields.
-    function onMove(e) {
+    function onMove(e: MouseEvent): void {
       if (!on) return;
       // never orbit behind an open settings panel (read-only introspection —
       // the same seam this controller already reads battle state through)
       try {
-        const dbg = typeof window !== 'undefined' ? window.__DEBUG : null;
+        const dbg = debugSurface();
         if (dbg && dbg.settings && dbg.settings.isOpen && dbg.settings.isOpen()) return;
       } catch (_) { /* no settings surface — orbit freely */ }
       let dx;
@@ -4505,23 +5103,23 @@ export function createKillCam(deps) {
       if (dx || dy) rig.spectateLook(dx, dy);
     }
     // wheel zooms the orbit (chase-cam grammar; the rig clamps + eases)
-    function onWheel(e) {
+    function onWheel(e: WheelEvent): void {
       if (!on || !e.deltaY || !rig.spectateZoom) return;
       rig.spectateZoom(e.deltaY > 0 ? 1 : -1);
     }
-    function watchTarget() {
+    function watchTarget(): void {
       if (!on) return;
       const cur = curId != null ? entById(curId) : null;
       const dead = !cur || !cur.combat || cur.combat.destroyed;
-      if (dead && !advanceTimer) {
+      if (dead && advanceTimer === null) {
         // let the ally's death read for a beat, then glide to the next
         advanceTimer = setTimeout(() => {
-          advanceTimer = 0;
+          advanceTimer = null;
           if (on) cycle(1); // cycle() re-resolves the living list / stops
         }, 900);
       }
     }
-    function start() {
+    function start(): boolean {
       const list = livingAllies();
       if (!list.length) return false;
       on = true;
@@ -4533,7 +5131,7 @@ export function createKillCam(deps) {
       pollId = setInterval(watchTarget, 400);
       return true;
     }
-    function stop(emitEnd) {
+    function stop(emitEnd = false): void {
       if (!on) return;
       on = false;
       observerAllTeams = false;
@@ -4541,8 +5139,8 @@ export function createKillCam(deps) {
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('mousemove', onMove, true);
       window.removeEventListener('wheel', onWheel, { capture: true });
-      if (pollId) { clearInterval(pollId); pollId = 0; }
-      if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = 0; }
+      if (pollId !== null) { clearInterval(pollId); pollId = null; }
+      if (advanceTimer !== null) { clearTimeout(advanceTimer); advanceTimer = null; }
       if (rig.stopSpectate) rig.stopSpectate();
       if (emitEnd && busRef) busRef.emit('spectate:end', {});
     }

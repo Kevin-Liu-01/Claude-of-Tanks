@@ -8,7 +8,7 @@ const [garage, contextInfo, settings, hud, endScreen, killcam, publicNav, docs] 
   readSource('./settings.ts'),
   readSource('./hud.js'),
   readSource('./endScreen.ts'),
-  readSource('../game/killcam.js'),
+  readSource('../game/killcam.ts'),
   readSource('../presentation/publicNav.css'),
   readSource('../docs/docs.css'),
 ]);

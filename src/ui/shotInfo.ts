@@ -1530,7 +1530,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   // whole 7 s x-ray hold under the full-screen DEFEAT panel (z 71 over the
   // replay's z 60; r6 critical). Stat ACCUMULATION stays on battle:ended;
   // RENDERING is buffered and flushed when the replay releases the screen
-  // (killcam:done — emitted by src/game/killcam.js on finish, skip and cancel
+  // (killcam:done — emitted by src/game/killcam.ts on finish, skip and cancel
   // alike). The no-replay path flushes after one animation frame + macrotask:
   // killcam:begin is emitted synchronously inside begin(), which runs either
   // in the same task as battle:ended (live loop) or in the next main-loop

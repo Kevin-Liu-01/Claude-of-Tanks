@@ -49,7 +49,7 @@ for (const [event, id, label, penetrated, blocked] of outcomeCases) {
   assert.ok(['damage', 'penetration', 'shield'].includes(outcome.icon));
 }
 
-const killcamSource = await readFile(new URL('../game/killcam.js', import.meta.url), 'utf8');
+const killcamSource = await readFile(new URL('../game/killcam.ts', import.meta.url), 'utf8');
 assert.match(killcamSource, /const outcome = hitOutcomeFor\(ev\)/,
   'kill-cam annotations must consume the canonical hit outcome');
 assert.doesNotMatch(killcamSource, /KIND_WORD|STOPPED BY ERA|NO PENETRATION/,

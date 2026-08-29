@@ -86,7 +86,7 @@ if (!/window\.__SHOTS\s*=\s*\{[\s\S]{0,320}import\(['"]\.\/dev\/shotRuntime\.ts[
     || !/export async function setShotView[\s\S]*context\.ensureFxRuntime\(\)/.test(shotRuntime)) {
   throw new Error('deterministic shots can enter without the live effects runtime');
 }
-if (!/createKillcamAccess\(\{[\s\S]{0,300}loadModule:\s*async\s*\(\)\s*=>[\s\S]{0,120}import\(['"]\.\/game\/killcam\.js['"]\)/.test(main)
+if (!/createKillcamAccess\(\{[\s\S]{0,300}loadModule:\s*async\s*\(\)\s*=>[\s\S]{0,120}import\(['"]\.\/game\/killcam\.ts['"]\)/.test(main)
     || !/const killcam = killcamAccess\.presentation/.test(main)
     || !/const ensureKillcamRuntime = killcamAccess\.ensureRuntime/.test(main)) {
   throw new Error('the composition root must delegate killcam import and runtime ownership');

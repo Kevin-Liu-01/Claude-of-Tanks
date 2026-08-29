@@ -324,7 +324,7 @@ for (const [source, pattern, label] of [
 ]) assert.match(source, pattern, `${label} surface must remain present while responsive composition owns its geometry`);
 
 const semanticSurfaceFiles = [
-  '../game/killcam.js',
+  '../game/killcam.ts',
   '../gallery/gallery.css',
   '../presentation/mediaArchive.css',
   '../presentation/publicNav.css',

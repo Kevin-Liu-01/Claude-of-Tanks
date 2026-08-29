@@ -281,7 +281,7 @@ export function createCameraRig(
   // solveArcade, plus an eased pose BLEND whenever the target changes so
   // cycling allies never teleports the camera (owner ask). Driven entirely
   // through rig.startSpectate / setSpectateTarget / spectateLook /
-  // stopSpectate — no main.ts wiring needed (killcam.js owns the flow).
+  // stopSpectate — no main.ts wiring needed (killcam.ts owns the flow).
   // killcam r2 FREE CURSOR ORBIT: yaw/pitch/dist carry eased TARGETS
   // (yawT/pitchT/distT) fed by spectateLook/spectateZoom — cursor motion
   // orbits the camera with chase-free-look damping instead of raw per-event
