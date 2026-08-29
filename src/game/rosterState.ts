@@ -5,10 +5,10 @@
  * spotting.
  */
 import { Vector3, type Object3D, type Scene } from 'three';
-import { getSpec, TANK_IDS, RUNTIME_TANK_IDS } from '../vehicles/specs.js';
+import { BOT_TANK_IDS, getSpec, TANK_IDS } from '../vehicles/specs.js';
 import { createTank } from '../vehicles/fleetFactory.ts';
 import { tankTier } from '../vehicles/tier.ts';
-import { isGarageVisibleTankId, rankMatchCandidates } from './matchmaking.ts';
+import { isBotTankId, rankMatchCandidates } from './matchmaking.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { mulberry32 } from './stateCore.ts';
 
@@ -104,7 +104,7 @@ export function spawnTanks(game: RosterGameState, engineCtx: EngineContext) {
   // materials.js is refcounted, so eviction frees the canvases/GPU maps).
   game._engineCtx = engineCtx;   // for lazy visual builds (ensureTankVisual)
   game._groundSampler = null;    // set by main.ts; applied to lazy visuals too
-  RUNTIME_TANK_IDS.forEach((specId: string, i: number) => {
+  BOT_TANK_IDS.forEach((specId: string, i: number) => {
     const spec = getSpec(specId);
     const ent = {
       id: specId,
@@ -136,7 +136,7 @@ export function spawnTanks(game: RosterGameState, engineCtx: EngineContext) {
     game.allTanks.push(ent);
     game.tankById.set(ent.id, ent);
   });
-  // RUNTIME_TANK_IDS is garage/family ordered; the staged screenshot battle is
+  // BOT_TANK_IDS is family ordered; the staged screenshot battle is
   // the explicitly locked core roster and must not depend on carousel order.
   game.tanks = TANK_IDS.map((id) => game.tankById.get(id))
     .filter((entity): entity is RosterEntity => !!entity);
@@ -343,7 +343,7 @@ export function pickBattleParticipants(
     if (randomize && !exact && list.length < enemySlots) {
       const rng = mulberry32(0x51e57 ^ (battleOrdinal * 2654435761));
       const pool = game.allTanks.filter((e) =>
-        e !== player && !list.includes(e) && isGarageVisibleTankId(e.specId));
+        e !== player && !list.includes(e) && isBotTankId(e.specId));
       for (let i = pool.length - 1; i > 0; i--) {
         const j = (rng() * (i + 1)) | 0;
         [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -358,16 +358,17 @@ export function pickBattleParticipants(
   let others;
   if (randomize) {
     const rng = mulberry32(0x51e57 ^ (battleOrdinal * 2654435761));
-    others = game.allTanks.filter((e) => e !== player && isGarageVisibleTankId(e.specId));
+    others = game.allTanks.filter((e) => e !== player && isBotTankId(e.specId));
     for (let i = others.length - 1; i > 0; i--) {       // Fisher-Yates
       const j = (rng() * (i + 1)) | 0;
       [others[i], others[j]] = [others[j], others[i]];
     }
-    // Curated matchmaking: same-era tanks always fill first, ordered by
-    // nearest tier. A cross-era tank is now an emergency fallback only when
-    // the visible garage roster cannot fill all 13 non-player slots; picking
-    // the Random battlefield no longer turns WWII vs modern back on.
-    others = rankMatchCandidates(others, player, tankTier);
+    // Curated matchmaking: same-era tanks always fill first, while their
+    // seeded order lets the production catalog rotate through bot seats. A
+    // cross-era tank is an emergency fallback only when
+    // the production catalog cannot fill all 13 non-player slots;
+    // picking the Random battlefield no longer turns WWII vs modern back on.
+    others = rankMatchCandidates(others, player);
   } else {
     // deterministic staged battle (boot, screenshot contract): core roster
     others = TANK_IDS

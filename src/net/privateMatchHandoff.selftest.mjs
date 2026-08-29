@@ -13,6 +13,9 @@ import { MATCH_CONTROL_CHANNEL_LABEL, MATCH_STATE_CHANNEL_LABEL } from './webrtc
 import { addLobbyPlayer, applyLobbyCommand, createLobby, serializeLobby } from './lobby.ts';
 import { MAP_IDS } from '../world/maps/index.ts';
 
+await import('../vehicles/tankFactory.ts');
+const { BOT_TANK_IDS } = await import('../vehicles/specs.js');
+
 class FakeRtcChannel {
   constructor(label) {
     this.label = label;
@@ -432,6 +435,17 @@ const observedRoster = buildPrivateMatchPlayers(observedLobby);
 assert.equal(observedRoster.length, 2);
 assert.ok(observedRoster.every((player) => player.bot),
   'spectator-only rooms still receive the selected bot team fill');
+const catalogSeen = new Set();
+for (let seed = 0; seed < 512 && catalogSeen.size < BOT_TANK_IDS.length; seed++) {
+  const roster = buildPrivateMatchPlayers({
+    ...observedLobby,
+    matchSeed: seed,
+    teamSize: 7,
+  });
+  for (const player of roster) catalogSeen.add(player.specId);
+}
+assert.deepEqual(catalogSeen, new Set(BOT_TANK_IDS),
+  'authority-owned private-match bots can draw every production-visible vehicle');
 const observed = beginPrivateHostMatch({
   session: {
     roomInfo: { peerId: 'observer-1', mode: 'private' },

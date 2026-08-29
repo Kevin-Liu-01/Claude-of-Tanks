@@ -49,6 +49,7 @@ for (const id of ownerHidden) {
 await import('./tankFactory.ts');
 const {
   ALL_TANK_IDS,
+  BOT_TANK_IDS,
   DEVELOPMENT_TANK_IDS,
   PRODUCTION_TANK_IDS,
   SAVED_TANK_IDS,
@@ -60,6 +61,12 @@ assert.equal(SAVED_TANK_IDS.length, PRODUCT_STATS.savedVehicleRecords,
   'the complete saved procedural fleet is indexed');
 assert.equal(DEVELOPMENT_TANK_IDS.length, PRODUCT_STATS.developmentVehicles,
   'reference-only placeholders are never playable');
+assert.deepEqual(BOT_TANK_IDS, PRODUCTION_TANK_IDS,
+  'bots can field exactly the production-visible catalog');
+assert.equal(BOT_TANK_IDS.includes('m1a2_legacy'), false,
+  'production-hidden development tanks cannot occupy bot seats');
+assert.equal(BOT_TANK_IDS.includes('recon_tank'), false,
+  'reference placeholders cannot occupy bot seats');
 assert.deepEqual(new Set(SAVED_TANK_IDS), new Set(Object.keys(TANK_SPECS)),
   'every registered spec belongs to the saved-fleet projection');
 assert.deepEqual(VISIBLE_TANK_IDS, PRODUCTION_TANK_IDS,

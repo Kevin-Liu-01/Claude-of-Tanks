@@ -36,6 +36,7 @@ import './sheridan.ts';
 
 import {
   ALL_TANK_IDS,
+  BOT_TANK_IDS,
   DEVELOPMENT_TANK_IDS,
   PRODUCTION_TANK_IDS,
   RUNTIME_TANK_IDS,
@@ -54,6 +55,7 @@ for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(tankSpecs[id]);
 registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);
 for (const ids of [
   ALL_TANK_IDS,
+  BOT_TANK_IDS,
   DEVELOPMENT_TANK_IDS,
   SAVED_TANK_IDS,
   PRODUCTION_TANK_IDS,

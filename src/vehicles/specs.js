@@ -1631,6 +1631,9 @@ export const DEVELOPMENT_TANK_IDS = SAVED_TANK_IDS.filter(
   (id) => !RETIRED_EXTERNAL_PLACEHOLDER_IDS.has(id),
 );
 export const PRODUCTION_TANK_IDS = ALL_TANK_IDS.filter((id) => !isProductionHiddenTankId(id));
+// Bot seats use the same owner-approved catalog exposed by the production
+// garage. Development and reference-only records remain available to tools.
+export const BOT_TANK_IDS = [...PRODUCTION_TANK_IDS];
 export const VISIBLE_TANK_IDS = DEV_FLEET_ACTIVE
   ? [...DEVELOPMENT_TANK_IDS]
   : [...PRODUCTION_TANK_IDS];
@@ -1678,6 +1681,7 @@ export function finalizeFirstPartyRoster() {
 
   SAVED_TANK_IDS.splice(0, SAVED_TANK_IDS.length, ...savedIds);
   DEVELOPMENT_TANK_IDS.splice(0, DEVELOPMENT_TANK_IDS.length, ...developmentIds);
+  BOT_TANK_IDS.splice(0, BOT_TANK_IDS.length, ...productionIds);
   PRODUCTION_TANK_IDS.splice(0, PRODUCTION_TANK_IDS.length, ...productionIds);
   VISIBLE_TANK_IDS.splice(
     0,

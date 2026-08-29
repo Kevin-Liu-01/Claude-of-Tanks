@@ -44,6 +44,7 @@ import './sheridan.ts';
 
 import {
   ALL_TANK_IDS,
+  BOT_TANK_IDS,
   DEVELOPMENT_TANK_IDS,
   PRODUCTION_TANK_IDS,
   RUNTIME_TANK_IDS,
@@ -77,6 +78,7 @@ export interface CreateTankOptions {
 finalizeFirstPartyRoster();
 for (const ids of [
   ALL_TANK_IDS,
+  BOT_TANK_IDS,
   DEVELOPMENT_TANK_IDS,
   SAVED_TANK_IDS,
   PRODUCTION_TANK_IDS,

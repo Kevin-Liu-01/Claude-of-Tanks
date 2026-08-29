@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
-import {
-  GARAGE_HIDDEN_TANK_IDS, isGarageVisibleTankId, rankMatchCandidates,
-} from './matchmaking.ts';
 
-const tiers = { player: 8, peerA: 8, peerB: 9, far: 5, otherEra: 8, recon_tank: 8, q_heavy: 9 };
-const tierOf = (id) => tiers[id] ?? 6;
+await import('../vehicles/tankFactory.ts');
+const {
+  GARAGE_HIDDEN_TANK_IDS, isBotTankId, isGarageVisibleTankId, rankMatchCandidates,
+} = await import('./matchmaking.ts');
+
 const ent = (specId, era = 'modern') => ({ specId, spec: { era } });
-const player = ent('player');
+const player = ent('m1a2');
 
 assert.ok(GARAGE_HIDDEN_TANK_IDS.has('recon_tank'));
 assert.ok(GARAGE_HIDDEN_TANK_IDS.has('q_heavy'));
@@ -14,19 +14,22 @@ assert.equal(isGarageVisibleTankId('m1a2'), true,
   'canonical Tejas M1A2 remains visible in the player garage');
 assert.equal(isGarageVisibleTankId('m1a2_legacy'), false,
   'retired M1A2 remains available to tools but not the player garage');
-assert.equal(isGarageVisibleTankId('peerA'), true);
+assert.equal(isBotTankId('m1a2_legacy'), false,
+  'player-hidden development tanks are unavailable to production bots');
+assert.equal(isBotTankId('recon_tank'), false,
+  'reference placeholders remain unavailable to bots');
 
 const ranked = rankMatchCandidates([
-  ent('otherEra', 'ww2'), ent('far'), ent('recon_tank'),
-  ent('peerB'), ent('q_heavy'), ent('peerA'),
-], player, tierOf);
-assert.deepEqual(ranked.map((e) => e.specId), ['peerA', 'peerB', 'far', 'otherEra'],
-  'garage-visible same-era vehicles rank by tier before cross-era fallback');
+  ent('type74', 'cold-war'), ent('t72b3m'), ent('recon_tank'),
+  ent('t90m'), ent('q_heavy'), ent('m1a2_legacy'),
+], player);
+assert.deepEqual(ranked.map((e) => e.specId), ['t72b3m', 't90m', 'type74'],
+  'the production bot catalog preserves seeded same-era variety before cross-era fallback');
 assert.equal(ranked.some((e) => /recon_tank|q_heavy/.test(e.specId)), false,
-  'generic hidden tanks never enter a player match');
+  'generic reference tanks never enter a bot roster');
 
-const stable = rankMatchCandidates([ent('peerB'), ent('peerA')], player, () => 8);
-assert.deepEqual(stable.map((e) => e.specId), ['peerB', 'peerA'],
+const stable = rankMatchCandidates([ent('t90m'), ent('t72b3m')], player);
+assert.deepEqual(stable.map((e) => e.specId), ['t90m', 't72b3m'],
   'seeded shuffle order survives equal matchmaking scores');
 
-console.log('matchmaking.selftest: garage eligibility, era priority, tier ranking, and stable variety passed');
+console.log('matchmaking.selftest: production bot eligibility, era priority, and catalog variety passed');
