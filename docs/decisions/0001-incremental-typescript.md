@@ -102,6 +102,9 @@ responsive stylesheet, boot-screen, battle-loading, and state-transition
 modules in place. Their public DOM and lifecycle contracts are now strict
 TypeScript while their rendered markup, CSS, timing, and loading behavior stay
 unchanged.
+Mobile battle input and the demand-loaded camouflage-card painter now follow
+the same rule: browser gestures, Canvas2D inputs, fleet specs, and custom-stroke
+recipes are checked without moving either module into pristine Garage boot.
 
 ## Consequences
 

@@ -90,7 +90,7 @@ const REDUCED_MOTION = typeof matchMedia === 'function' &&
 // opening the camouflage surface never waits for the idle deadline.
 const camoSwatchPaintVersion = new WeakMap();
 const camoSwatchAccess = createCamoSwatchAccess({
-  load: () => import('./camoSwatchPainter.js'),
+  load: () => import('./camoSwatchPainter.ts'),
   isPlayable: () => globalThis.__GAME_READY === true,
 });
 

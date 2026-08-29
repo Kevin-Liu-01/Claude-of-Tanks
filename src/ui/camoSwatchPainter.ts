@@ -6,12 +6,33 @@
 import { resolveCamoVisual, CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK }
   from '../vehicles/materials.js';
 import { paintCustomCamoStrokes } from '../vehicles/customCamoCanvas.ts';
+import type { FleetTankSpec } from '../vehicles/specContracts.ts';
+
+type SwatchRng = () => number;
+type SwatchRgb = [number, number, number];
+type CustomCamoStrokes = Parameters<typeof paintCustomCamoStrokes>[1];
+
+interface CamoVisual {
+  base: string;
+  weather?: string;
+  patches?: string[];
+  scheme?: string;
+  patternRepeat?: number;
+  drawRepeatX?: number;
+  drawRepeatY?: number;
+  drawRotation?: number;
+  drawMirror?: boolean;
+  drawStrokes?: CustomCamoStrokes;
+  bandAngle?: number;
+  patchK?: number;
+  rainK?: number;
+}
 
 // --- CAMO PICKER SECTION: swatch painter ------------------------------------
 // Paints a 64px-class preview tile of the ACTUAL resolved pattern — palette
 // and scheme come from materials.resolveCamoVisual, and each scheme branch
 // mirrors the corresponding paintCamo language at tile scale.
-function swRngFactory(a) {
+function swRngFactory(a: number): SwatchRng {
   return function () {
     a |= 0; a = (a + 0x6D2B79F5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
@@ -19,14 +40,25 @@ function swRngFactory(a) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const swHex = (h) => {
+const swHex = (h: string): SwatchRgb => {
   const n = parseInt(String(h).replace('#', ''), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 };
-const swRgb = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
-const swMix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const swRgb = (c: SwatchRgb, a = 1): string =>
+  `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+const swMix = (a: SwatchRgb, b: SwatchRgb, t: number): SwatchRgb => [
+  a[0] + (b[0] - a[0]) * t,
+  a[1] + (b[1] - a[1]) * t,
+  a[2] + (b[2] - a[2]) * t,
+];
 
-function swBlob(c, rng, x, y, r) {
+function swBlob(
+  c: CanvasRenderingContext2D,
+  rng: SwatchRng,
+  x: number,
+  y: number,
+  r: number,
+): void {
   const n = 8;
   const px = [], py = [];
   for (let i = 0; i < n; i++) {
@@ -44,7 +76,14 @@ function swBlob(c, rng, x, y, r) {
   c.closePath();
 }
 
-function swPoly(c, rng, x, y, r, sides) {
+function swPoly(
+  c: CanvasRenderingContext2D,
+  rng: SwatchRng,
+  x: number,
+  y: number,
+  r: number,
+  sides: number,
+): void {
   c.beginPath();
   for (let i = 0; i < sides; i++) {
     const a = (i / sides) * Math.PI * 2 + rng() * 0.6;
@@ -55,22 +94,27 @@ function swPoly(c, rng, x, y, r, sides) {
   c.closePath();
 }
 
-export function paintCamoSwatch(canvas, spec, pid) {
+export function paintCamoSwatch(
+  canvas: HTMLCanvasElement,
+  spec: FleetTankSpec,
+  pid: string,
+): void {
   const W = 128, H = 44;
   canvas.width = W; canvas.height = H;
-  const c = canvas.getContext('2d');
+  const c = canvas.getContext('2d')!;
   let seed = 11;
   for (const ch of `${spec.id}:${pid}`) seed = (seed * 31 + ch.charCodeAt(0)) | 0;
   const rng = swRngFactory(seed);
-  const vis = resolveCamoVisual(spec, pid);
+  const vis: CamoVisual = resolveCamoVisual(spec, pid);
   const base = swHex(vis.base || '#5a6b46');
   const weather = swHex(vis.weather || vis.base || '#5a6b46');
   const patches = (vis.patches || []).map(swHex);
   // tile-scale reference dimension: 1.6x over the raw canvas width so the
   // pattern features render BOLDER than on-hull scale — at 62px display width
   // the true-scale features smeared into flat noise (r3 readability)
-  const repeatScale = Number.isFinite(vis.patternRepeat)
-    ? 1.28 - (vis.patternRepeat / 100) * 0.72
+  const patternRepeat = Number(vis.patternRepeat);
+  const repeatScale = Number.isFinite(patternRepeat)
+    ? 1.28 - (patternRepeat / 100) * 0.72
     : 1;
   const S = W * 1.6 * repeatScale;
   c.fillStyle = swRgb(base);
@@ -144,7 +188,7 @@ export function paintCamoSwatch(canvas, spec, pid) {
       c.fill();
     }
   } else if (scheme === 'winter') {
-    const under = patches.length ? patches[0] : [70, 80, 55];
+    const under: SwatchRgb = patches.length ? patches[0] : [70, 80, 55];
     for (let i = 0; i < 40; i++) { // brushed whitewash strokes
       const x0 = rng() * W, y0 = rng() * H, len = S * (0.05 + rng() * 0.1);
       const w2 = S * (0.01 + rng() * 0.02);
@@ -239,7 +283,7 @@ export function paintCamoSwatch(canvas, spec, pid) {
       c.fillRect(rng() * W - w2 / 2, rng() * H - h2 / 2, w2, h2);
     }
   } else if (scheme === 'washworn') {
-    const under = patches.length ? patches[0] : [70, 80, 55];
+    const under: SwatchRgb = patches.length ? patches[0] : [70, 80, 55];
     for (let i = 0; i < 26; i++) { // opaque mop swathes
       swBlob(c, rng, rng() * W, rng() * H, S * (0.025 + rng() * 0.03));
       c.fillStyle = swRgb(swMix(base, [255, 255, 255], 0.06), 0.7);
@@ -304,7 +348,7 @@ export function paintCamoSwatch(canvas, spec, pid) {
     // pale interstripes (mirrors the tigerstripe painter at tile scale)
     const dark = patches[0];
     const pale = patches[1] || swMix(base, [214, 208, 168], 0.4);
-    const drawStripe = (col, w2, alpha) => {
+    const drawStripe = (col: SwatchRgb, w2: number, alpha: number): void => {
       const x0 = rng() * W, y0 = rng() * H, len = S * (0.28 + rng() * 0.2);
       const ang = 0.12 + (rng() - 0.5) * 0.3;
       c.strokeStyle = swRgb(col, alpha);
@@ -349,7 +393,7 @@ export function paintCamoSwatch(canvas, spec, pid) {
   } else if (scheme === 'brush' && patches.length) {
     // camo r2: DPM — directional brush strokes, green/brown then black on top
     const flow = 0.6 + rng() * 0.5;
-    const strokeOne = (col, w2, alpha) => {
+    const strokeOne = (col: SwatchRgb, w2: number, alpha: number): void => {
       const x0 = rng() * W, y0 = rng() * H, len = S * (0.16 + rng() * 0.14);
       const a = flow + (rng() - 0.5) * 0.6 + (rng() < 0.18 ? Math.PI / 2 : 0);
       c.strokeStyle = swRgb(col, alpha);
@@ -407,7 +451,7 @@ export function paintCamoSwatch(canvas, spec, pid) {
     // Code guys in terracotta/slate straight on ivory (fields gone, owner
     // ask; same card language as 'spark'). evenodd keeps the eyes open.
     const terra = patches[0], slate = patches[1] || patches[0];
-    const guy = (x, y, s, ink, a) => {
+    const guy = (x: number, y: number, s: number, ink: SwatchRgb, a: number): void => {
       c.save();
       c.translate(x, y);
       c.scale(s / 24, s / 24);
@@ -422,7 +466,7 @@ export function paintCamoSwatch(canvas, spec, pid) {
   } else if (scheme === 'spark' && patches.length) {
     // camo r4: the Claude spark from sprinkle to hero scale on warm ivory.
     const terra = patches[0], slate = patches[1] || patches[0];
-    const spark = (x, y, s, ink, a) => {
+    const spark = (x: number, y: number, s: number, ink: SwatchRgb, a: number): void => {
       c.save();
       c.translate(x, y);
       c.scale(s / 24, s / 24);
@@ -437,7 +481,7 @@ export function paintCamoSwatch(canvas, spec, pid) {
   } else if (scheme === 'ducky' && patches.length) {
     // camo r6 fun set: each card sells its motif with 1-3 signature marks.
     const gold = patches[0], ink = patches[1] || patches[0];
-    const duck = (x, y, sc, a) => {
+    const duck = (x: number, y: number, sc: number, a: number): void => {
       c.save(); c.translate(x, y); c.scale(sc, sc);
       c.fillStyle = swRgb(gold, a);
       c.beginPath(); c.ellipse(0.02, 0.10, 0.46, 0.33, 0, 0, Math.PI * 2); c.fill();
@@ -452,7 +496,13 @@ export function paintCamoSwatch(canvas, spec, pid) {
     duck(W * 0.74, H * 0.5, H * 0.32, 0.9);
   } else if (scheme === 'suits' && patches.length) {
     const red = patches[0], blk = patches[1] || patches[0];
-    const glyph = (d, x, y, sc, col) => {
+    const glyph = (
+      d: string,
+      x: number,
+      y: number,
+      sc: number,
+      col: SwatchRgb,
+    ): void => {
       c.save(); c.translate(x, y); c.scale(sc / 24, sc / 24); c.translate(-12, -12);
       c.fillStyle = swRgb(col, 0.94); c.fill(new Path2D(d)); c.restore();
     };
@@ -466,7 +516,13 @@ export function paintCamoSwatch(canvas, spec, pid) {
     glyph(HEART, W * 0.88, H * 0.68, H * 0.35, red);
   } else if (scheme === 'flames' && patches.length) {
     const fr = patches[0], fo = patches[1] || fr, fg = patches[2] || fo;
-    const lick = (x, y, sc, col, a) => {
+    const lick = (
+      x: number,
+      y: number,
+      sc: number,
+      col: SwatchRgb,
+      a: number,
+    ): void => {
       c.fillStyle = swRgb(col, a);
       for (let k = 0; k < 3; k++) {
         c.beginPath();
@@ -495,7 +551,13 @@ export function paintCamoSwatch(canvas, spec, pid) {
     }
   } else if (scheme === 'bolt' && patches.length) {
     const gold = patches[0], ink = patches[1] || patches[0];
-    const zap = (x, y, sc, col, a) => {
+    const zap = (
+      x: number,
+      y: number,
+      sc: number,
+      col: SwatchRgb,
+      a: number,
+    ): void => {
       c.save(); c.translate(x, y); c.scale(sc, sc);
       c.fillStyle = swRgb(col, a);
       c.beginPath();
@@ -508,7 +570,13 @@ export function paintCamoSwatch(canvas, spec, pid) {
     zap(W * 0.86, H * 0.62, H * 0.32, gold, 0.85);
   } else if (scheme === 'stars' && patches.length) {
     const cream = patches[0], gold = patches[1] || patches[0];
-    const star = (x, y, sc, col, a) => {
+    const star = (
+      x: number,
+      y: number,
+      sc: number,
+      col: SwatchRgb,
+      a: number,
+    ): void => {
       c.save(); c.translate(x, y); c.scale(sc, sc);
       c.fillStyle = swRgb(col, a); c.beginPath();
       for (let k = 0; k < 10; k++) {
@@ -523,7 +591,7 @@ export function paintCamoSwatch(canvas, spec, pid) {
     star(W * 0.87, H * 0.68, H * 0.28, gold, 0.85);
   } else if (scheme === 'daisy' && patches.length) {
     const cream = patches[0], button = patches[1] || patches[0];
-    const flower = (x, y, sc, a) => {
+    const flower = (x: number, y: number, sc: number, a: number): void => {
       for (let k = 0; k < 6; k++) {
         const aa = (k * Math.PI) / 3 + 0.3;
         c.beginPath();
@@ -538,7 +606,7 @@ export function paintCamoSwatch(canvas, spec, pid) {
     flower(W * 0.72, H * 0.5, H * 0.42, 0.9);
   } else if (scheme === 'circuit' && patches.length) {
     const pad = patches[0], trace = patches[1] || patches[0];
-    const via = (x, y, r) => {
+    const via = (x: number, y: number, r: number): void => {
       c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
       c.fillStyle = swRgb(pad, 0.92); c.fill();
     };
@@ -589,7 +657,7 @@ export function paintCamoSwatch(canvas, spec, pid) {
   } else if (scheme === 'star' && patches.length) {
     // camo r7 loadout set: the circled invasion star on olive drab
     const white = patches[0];
-    const star = (x, y, sc, a) => {
+    const star = (x: number, y: number, sc: number, a: number): void => {
       c.save(); c.translate(x, y); c.scale(sc, sc);
       c.fillStyle = swRgb(white, a); c.beginPath();
       for (let k = 0; k < 10; k++) {
@@ -684,10 +752,13 @@ export function paintCamoSwatch(canvas, spec, pid) {
 // AUTO is a per-map policy, so its tile previews four real resolved pattern
 // families as a clean seasonal contact sheet. The caption below already
 // supplies the AUTO identity, so no badge obscures the paint.
-export function paintAutoCamoSwatch(canvas, spec) {
+export function paintAutoCamoSwatch(
+  canvas: HTMLCanvasElement,
+  spec: FleetTankSpec,
+): void {
   const W = 128, H = 44;
   canvas.width = W; canvas.height = H;
-  const c = canvas.getContext('2d');
+  const c = canvas.getContext('2d')!;
   c.fillStyle = '#11171c';
   c.fillRect(0, 0, W, H);
   const patterns = ['summer', 'desert', 'winter', 'urbanblock'];
