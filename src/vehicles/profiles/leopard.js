@@ -10078,7 +10078,7 @@ function buildKF51OwnerExact(P) {
   // the retirement receipt is the before/after pair in
   // shots/kf51b-integration/). The build now renders on the fleet camo /
   // CSM / ambient stack exactly like every other leopard; the woodland
-  // palette lives in the spec visual row (userdrops3.js).
+  // palette lives in the typed spec visual row (kf51Specs.ts).
 
   // ---- HULL — §5.345 LEOPARD-DESCENT REBASE (owner order: "completely
   // update our kf51 b to look actually descended from our leopard family,

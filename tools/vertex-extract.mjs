@@ -266,7 +266,7 @@ const REG = {
   },
   // ---- misc/Euro-Asia moderns family (append-only, 2026-08-03) -------------
   // Local comparison registrations: Leclerc wave-2 oracle, t80u
-  // userdrops3.js, type90 userdrops5.js source(), ariete + type74 from the
+  // retired T-80U oracle, type90 userdrops5.js source(), ariete + type74 from the
   // fidelity harness LOCAL_REFERENCE_OVERRIDES (quarantine oracles),
   // recon_tank specs.js MODEL_SOURCE. pubDims from the spec dims rows
   // (modern2.js t80u/leclerc, modern3.js ariete, userdrops5 type90 make(),
@@ -729,8 +729,8 @@ const REG = {
   t72m1_jaguar: {
     // FUSED two-mesh conversion (CC-BY-NC) — whole-view instrument only.
     // §5.248 poland measure-lane orientation TBD resolved (round 1): nose =
-    // raw +x (az-0 render shows a full side profile, gun +x — userdrops3
-    // convention receipt) -> yawOffset -90°, same as bmp3/leo2a6m.
+    // raw +x (az-0 render shows a full side profile, gun +x — retired
+    // wave-four oracle convention) -> yawOffset -90°, same as bmp3/leo2a6m.
     path: 'public/models/community-candidates/t72m1_jaguar_manako.glb',
     yawOffset: -Math.PI / 2,
     fixedMount: true, scaleToOverall: true,

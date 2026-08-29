@@ -25,7 +25,7 @@ import { finalizeCombatAnatomy } from './combatAnatomy.js';
 import './variants.js';
 import './modern1Specs.generated.js';
 import './modern2Specs.generated.js';
-import './userdrops3.js';
+import './kf51Specs.ts';
 import './abramsConceptSpecs.ts';
 import './challengerSpecs.js';
 import './modern3Specs.js';

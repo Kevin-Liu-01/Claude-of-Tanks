@@ -27,7 +27,7 @@ near-black gear tones). Resident guard: kf51 `ffb1144c` UNTOUCHABLE
    fleet lighting the sides read near-black with the deck crease floating,
    §5.266-crown class). The build now renders on the fleet camo/CSM/
    ambient stack like every leopard; woodland palette lives in the spec
-   visual row (userdrops3.js). FLEET SKIRT READ replaces the bare
+   visual row (`kf51Specs.ts`). FLEET SKIRT READ replaces the bare
    demonstrator flank: two-band modular course (proud upper band under the
    fender lip + recessed lower panel run to the 0.55 hem, panel joints,
    hangers, chamfered leading block), §B8.1 exposure ~62% of the 0.81 disc
@@ -70,14 +70,14 @@ and retires only the pre-deepening shader grade + gear hexes.
 Both read KF51 Panther (low faceted wedge turret, SEOSS tower, rear-right
 RWS, 130 mm class gun). kf51b distinctions: owner-source proportions
 (z ±3.84 hull, narrow tub + full-width sponson), Rh-130 at the measured
-5.30 tube / 6.88 muzzle (userdrops3 armor truth-up: ring 1.72/0.20, gun
+5.30 tube / 6.88 muzzle (`kf51Specs.ts` armor truth-up: ring 1.72/0.20, gun
 axis 1.94 — the inherited GLB-era 6.63 barrel + 1.86/0.52 pivots were a
 §C shadow proxy 1.33 m too long), full modular two-band skirts vs the
 resident's own course read, woodland 3-tone (#56573e base, number 52,
 trackWidthM 0.587), b3d15714 flank-panel/roof-cadence grammar. Resident
 kf51 `ffb1144c` byte-held.
 
-## Spec truth-up (src/vehicles/userdrops3.js, kf51b row ONLY)
+## Spec truth-up (`src/vehicles/kf51Specs.ts`, kf51b row only)
 Fresh communityArmor instance (kf51's shared armor object untouched):
 lenM 7.70 / widM 3.60 / hgtM 2.90, turretPivot [0,1.72,0.20], gunPivot
 [0,0.22,1.58], barrelLenM 5.30, barrelRadM 0.064, visual trackWidthM
