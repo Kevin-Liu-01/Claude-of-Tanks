@@ -3,7 +3,7 @@
 ## Round (2026-08-17, ukraine §5.248 builder lane)
 Ground-up §K rebuild replacing the donor-clone composition
 (`MISC_PROFILES.t80u.build` + kit). New builder `buildUAT80UKursk` in
-`src/vehicles/profiles/ukraine.js`. Donor t80u untouched (hash e963fb60
+`src/vehicles/profiles/ukraine.ts`. Donor t80u untouched (hash e963fb60
 held through the round).
 
 ## Print / instrument — THE DIORAMA FIX

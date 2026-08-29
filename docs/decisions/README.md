@@ -284,3 +284,4 @@ runtime documents remain authoritative for behavior.
 - [0272 — The third modern fleet pack is strict TypeScript](0272-type-modern3-fleet-pack.md)
 - [0273 — The second modern fleet pack is strict TypeScript](0273-type-modern2-fleet-pack.md)
 - [0274 — Deterministic vehicle decorations are strict TypeScript](0274-type-vehicle-decorations.md)
+- [0275 — Ukrainian profile geometry has a strict TypeScript owner](0275-type-ukrainian-profile-geometry.md)

@@ -1,5 +1,5 @@
 // Ukrainian family gameplay/spec registration. Builders remain in
-// profiles/ukraine.js; these rows clone the nearest certified combat envelope
+// profiles/ukraine.ts; these rows clone the nearest certified combat envelope
 // and apply only the typed national delta.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';

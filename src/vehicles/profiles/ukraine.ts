@@ -43,15 +43,127 @@ import {
   T64_FRONT_IDLER_LIFT_M,
 } from './russia.js';
 import { ABRAMS_PROFILES } from './abrams.js';
+import type { ProfileBuilderPort, VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
-function seat(P, owner, fitting, x, y, z, rotation = null) {
+type Vec3Tuple = [number, number, number];
+type ReadonlyVec3Tuple = readonly [number, number, number];
+type VehicleAssemblyOwner = 'hull' | 'turret';
+type Axis = 'x' | 'y' | 'z';
+type T80ModernizationVariant = 'bv' | 'kursk';
+type DomeRing = readonly [radius: number, y: number];
+type FaceQuad = readonly [ReadonlyVec3Tuple, ReadonlyVec3Tuple, ReadonlyVec3Tuple, ReadonlyVec3Tuple];
+
+interface DisposableResource {
+  dispose(): void;
+}
+
+interface UkraineBuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly mats: Record<string, unknown> & {
+    readonly canvasCloth: THREE.MeshStandardMaterial;
+    readonly dark: THREE.Material;
+    readonly detail: THREE.Material;
+    readonly wood: THREE.MeshStandardMaterial;
+  };
+  readonly spec: { id: string; readonly visual: { readonly number?: string } };
+  readonly disposables: DisposableResource[];
+  topY?: number;
+  add(slot: string, geometry: unknown, ...transform: number[]): void;
+  addEquipment(slot: string, geometry: unknown, ...transform: number[]): void;
+  addExternalArmor(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): void;
+  addMudguard(label: string, slot: string, geometry: unknown, ...transform: number[]): void;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    label: string,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): void;
+  visualEraCluster(key: string, owner: VehicleAssemblyOwner, build: () => void): void;
+}
+
+interface CassetteOptions {
+  axis?: Axis;
+  contactSide?: number;
+  embed?: number;
+  lid?: boolean;
+  painted?: boolean;
+  external?: boolean;
+  lidClearance?: number;
+}
+
+interface DomeProfile {
+  readonly rings: readonly DomeRing[];
+  readonly sz: number;
+  readonly cz: number;
+}
+
+interface WhipOptions {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly hL: number;
+  readonly hR: number;
+  readonly seed: number;
+}
+
+interface SmokeOptions {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly count?: number;
+  readonly splay?: number;
+  readonly pitch?: number;
+  readonly arc?: number;
+  readonly yaw?: number;
+  readonly seed?: number;
+}
+
+interface DonbasEraSeat {
+  readonly supportLocal: readonly number[];
+  readonly centerLocal: readonly number[];
+  readonly normalLocal: readonly number[];
+  readonly contactEmbedM: number;
+}
+
+interface CageStation {
+  readonly z: number;
+  readonly x: number;
+  readonly base: number;
+  readonly roof: number;
+  readonly rail?: number;
+}
+
+function seat(
+  P: UkraineBuilderPort,
+  owner: VehicleAssemblyOwner,
+  fitting: THREE.Object3D,
+  x: number,
+  y: number,
+  z: number,
+  rotation: ReadonlyVec3Tuple | null = null,
+): void {
   fitting.position.set(x, y, z);
   if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
   (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
 }
 
 // K-1 cassette: full body + dark lid seam INSIDE the face (§B3 tile grammar).
-function kTile(P, owner, x, y, z, w, h, d, rotation = null, lid = true) {
+function kTile(
+  P: UkraineBuilderPort,
+  owner: VehicleAssemblyOwner,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  rotation: ReadonlyVec3Tuple | null = null,
+  lid = true,
+): void {
   const { box } = KIT;
   const bucket = owner === 'hull' ? 'hullTrack' : 'turretTrack';
   const dark = owner === 'hull' ? 'hullDark' : 'turretDark';
@@ -67,16 +179,27 @@ function kTile(P, owner, x, y, z, w, h, d, rotation = null, lid = true) {
 // the body grows only toward the carrier, so a sloped/vertical ERA module has
 // a real load path instead of balancing on an edge or hovering above armor.
 // `axis` is the cassette-local carrier normal; `contactSide` points inward.
-function seatedCassette(P, owner, x, y, z, w, h, d, rotation = null, {
+function seatedCassette(
+  P: UkraineBuilderPort,
+  owner: VehicleAssemblyOwner,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  rotation: ReadonlyVec3Tuple | null = null,
+  {
   axis = 'y', contactSide = -1, embed = 0.04, lid = true, painted = false,
   external = false, lidClearance = 0,
-} = {}) {
+  }: CassetteOptions = {},
+): void {
   const { box } = KIT;
   const bucket = painted ? owner : (owner === 'hull' ? 'hullTrack' : 'turretTrack');
   const dark = owner === 'hull' ? 'hullDark' : 'turretDark';
   const r = rotation || [0, 0, 0];
-  const dims = { x: w, y: h, z: d };
-  const shift = { x: 0, y: 0, z: 0 };
+  const dims: Record<Axis, number> = { x: w, y: h, z: d };
+  const shift: Record<Axis, number> = { x: 0, y: 0, z: 0 };
   dims[axis] += embed;
   shift[axis] = contactSide * embed * 0.5;
   const body = KIT.xform(box(dims.x, dims.y, dims.z), shift.x, shift.y, shift.z);
@@ -86,9 +209,9 @@ function seatedCassette(P, owner, x, y, z, w, h, d, rotation = null, {
     if (!lid) return;
 
     const outward = -contactSide;
-    const lidDims = { x: w * 0.80, y: h * 0.80, z: d * 0.80 };
+    const lidDims: Record<Axis, number> = { x: w * 0.80, y: h * 0.80, z: d * 0.80 };
     lidDims[axis] = Math.min(0.024, dims[axis] * 0.22);
-    const lidShift = { x: 0, y: 0, z: 0 };
+    const lidShift: Record<Axis, number> = { x: 0, y: 0, z: 0 };
     // The lid is a real shallow cassette layer, not gray trim. Its inner
     // face overlaps the body while both layers share one vehicle-space camo.
     lidShift[axis] = outward * (dims[axis] * 0.5 - embed * 0.5
@@ -102,10 +225,20 @@ function seatedCassette(P, owner, x, y, z, w, h, d, rotation = null, {
 // pitch with hand-authored Euler angles. Local +Y is the armor-face normal,
 // local +Z follows the requested course direction, and the body penetrates
 // the carrier by `embed` so there can be no daylight under the module.
-function faceSeatedCassette(P, owner, point, normal, courseAxis, w, h, d, {
+function faceSeatedCassette(
+  P: UkraineBuilderPort,
+  owner: VehicleAssemblyOwner,
+  point: ReadonlyVec3Tuple,
+  normal: ReadonlyVec3Tuple,
+  courseAxis: ReadonlyVec3Tuple,
+  w: number,
+  h: number,
+  d: number,
+  {
   embed = 0.012, painted = true, lid = true, external = false,
   lidClearance = 0,
-} = {}) {
+  }: CassetteOptions = {},
+) {
   const n = new THREE.Vector3(...normal).normalize();
   const course = new THREE.Vector3(...courseAxis);
   const zAxis = course.clone().addScaledVector(n, -course.dot(n)).normalize();
@@ -127,7 +260,15 @@ function faceSeatedCassette(P, owner, point, normal, courseAxis, w, h, d, {
 // The support point is projected to the actual elliptical ring at `y`, and
 // its normal/course tangents come from that same profile segment. This keeps
 // a bank outside the casting while allowing a deliberate attachment embed.
-function sampleDomeFace(rings, sz, y, xHint, zHint, cx = 0, cz = 0) {
+function sampleDomeFace(
+  rings: readonly DomeRing[],
+  sz: number,
+  y: number,
+  xHint: number,
+  zHint: number,
+  cx = 0,
+  cz = 0,
+) {
   let segment = 1;
   while (segment < rings.length - 1 && y > rings[segment][1]) segment += 1;
   const [r0, y0] = rings[segment - 1];
@@ -154,7 +295,15 @@ function sampleDomeFace(rings, sz, y, xHint, zHint, cx = 0, cz = 0) {
 // Bilinear face probe for the welded wing and shoulder quads. Besides the
 // point it returns both surface tangents, allowing every ERA course to inherit
 // the compound pitch/yaw of the armor underneath it.
-function sampleFace(p00, p10, p11, p01, u, v, outwardHint) {
+function sampleFace(
+  p00: ReadonlyVec3Tuple,
+  p10: ReadonlyVec3Tuple,
+  p11: ReadonlyVec3Tuple,
+  p01: ReadonlyVec3Tuple,
+  u: number,
+  v: number,
+  outwardHint: ReadonlyVec3Tuple,
+) {
   const a = new THREE.Vector3(...p00);
   const b = new THREE.Vector3(...p10);
   const c = new THREE.Vector3(...p11);
@@ -173,7 +322,7 @@ function sampleFace(p00, p10, p11, p01, u, v, outwardHint) {
 }
 
 // Ukrainian service whip pair (staggered heights, rear-quarter seats).
-function uaWhips(P, o) {
+function uaWhips(P: UkraineBuilderPort, o: WhipOptions): void {
   for (const s of [-1, 1]) {
     P.add('turretDark', KIT.box(0.06, 0.07, 0.06), s * o.x, o.y, o.z);
     seat(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats,
@@ -183,7 +332,7 @@ function uaWhips(P, o) {
 }
 
 // Paired 902-family smoke banks on the cheek flanks.
-function uaSmoke(P, o) {
+function uaSmoke(P: UkraineBuilderPort, o: SmokeOptions): void {
   for (const s of [-1, 1]) {
     seat(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: o.count ?? 4,
       r: 0.042, len: 0.28, splay: s * (o.splay ?? 1.02), pitch: o.pitch ?? -0.40,
@@ -194,12 +343,12 @@ function uaSmoke(P, o) {
   }
 }
 
-function modernT80CheekCarrier(s) {
-  const bottom = [
+function modernT80CheekCarrier(s: number): { bottom: FaceQuad; top: FaceQuad; front: FaceQuad } {
+  const bottom: FaceQuad = [
     [s * 0.12, 0.12, 1.62], [s * 1.28, 0.12, 0.79],
     [s * 1.16, 0.15, -0.12], [s * 0.16, 0.14, 0.38],
   ];
-  const top = [
+  const top: FaceQuad = [
     [s * 0.12, 0.57, 1.54], [s * 1.10, 0.57, 0.76],
     [s * 0.98, 0.60, -0.14], [s * 0.12, 0.61, 0.34],
   ];
@@ -212,7 +361,7 @@ function modernT80CheekCarrier(s) {
 // arrow, and only narrow service seams use the dark material. This removes
 // the former spare-track-steel wedges/V tips while preserving a T-90-family
 // segmented clamshell read from front, quarter and plan views.
-function addFacetedT80FrontERA(P, variant) {
+function addFacetedT80FrontERA(P: UkraineBuilderPort, variant: T80ModernizationVariant): void {
   const kursk = variant === 'kursk';
   // The Ukrainian BV needs its complete carrier ahead of the articulated
   // Luna lamp, while the accepted Kursk installation retains its datum.
@@ -221,20 +370,28 @@ function addFacetedT80FrontERA(P, variant) {
   // inboard port surface is intentionally absent on the lamp side below,
   // producing a real articulated-equipment notch instead of overlap.
   const chevronLiftY = kursk ? 0 : 0.01;
-  const plans = kursk ? [
+  const plans: readonly (readonly (readonly [number, number])[])[] = kursk ? [
     [[0.12, 1.46], [0.24, 1.59], [0.78, 1.21], [0.66, 1.08]],
     [[0.67, 1.12], [0.80, 1.24], [1.33, 0.69], [1.20, 0.57]],
   ] : [
     [[0.12, 1.45], [0.23, 1.57], [0.74, 1.20], [0.63, 1.08]],
     [[0.64, 1.11], [0.76, 1.22], [1.27, 0.72], [1.15, 0.60]],
   ];
-  const rows = (kursk ? [
+  const rawRows: readonly [
+    { readonly z0: number; readonly z1: number; readonly y0: number; readonly y1: number },
+    { readonly z0: number; readonly z1: number; readonly y0: number; readonly y1: number },
+  ] = kursk ? [
     { y0: 0.11, y1: 0.34, z0: -0.09, z1: 0.075 },
     { y0: 0.34, y1: 0.58, z0: 0.075, z1: -0.085 },
   ] : [
     { y0: 0.10, y1: 0.32, z0: -0.08, z1: 0.065 },
     { y0: 0.32, y1: 0.55, z0: 0.065, z1: -0.075 },
-  ]).map((row) => ({ ...row, y0: row.y0 + chevronLiftY, y1: row.y1 + chevronLiftY }));
+  ];
+  const rows = rawRows.map((row) => ({
+    ...row,
+    y0: row.y0 + chevronLiftY,
+    y1: row.y1 + chevronLiftY,
+  })) as [typeof rawRows[0], typeof rawRows[1]];
   const chevron = addSovietChevronEra(P, {
     sector: `ua-t80-${variant}-front-era`,
     receiptKey: 'uaT80ChevronEraReceipt',
@@ -285,12 +442,16 @@ function addFacetedT80FrontERA(P, variant) {
 // angular T-90-family read requested by the owner. True armor stays in the
 // structural turret buckets; sights, RWS hardware, basket rails and stowage
 // use the equipment path so they cannot enlarge combat hit volumes.
-function addModernizedT80TurretSuite(P, variant, dome) {
+function addModernizedT80TurretSuite(
+  P: UkraineBuilderPort,
+  variant: T80ModernizationVariant,
+  dome: DomeProfile,
+): void {
   const { box, cylX, cylY, torus } = KIT;
   const kursk = variant === 'kursk';
   const suite = kursk ? 't80u-kursk-t90-style' : 't80bv-ua-t90-style';
   P.turretG.userData.uaT80ModernizationSuite = suite;
-  const returnSurfaceGaps = [];
+  const returnSurfaceGaps: number[] = [];
 
   // Joined faceted cheek carriers: their inner/rear edges are buried in the
   // casting, while the shared frontal datum stands proud of the cast skin.
@@ -307,7 +468,7 @@ function addModernizedT80TurretSuite(P, variant, dome) {
       [-0.30, 0.46, -0.04, -0.03],
       [-0.80, 0.42, 0.08, 0.05],
     ]) {
-      const rotation = [-0.10, s * yaw, s * roll];
+      const rotation: Vec3Tuple = [-0.10, s * yaw, s * roll];
       const cassetteSeat = domeBoxPlanSeat(dome.rings, dome.sz, {
         x: s * 1.22, y, z, w: 0.28, h: 0.22, d: 0.42,
         rx: rotation[0], ry: rotation[1], rz: rotation[2],
@@ -452,7 +613,7 @@ function addModernizedT80TurretSuite(P, variant, dome) {
 // rear tall snorkel rack + transom drums + the btr stowage bin (kitbash
 // rear cluster); AKM + crate prop cluster on the left rear roof.
 // ---------------------------------------------------------------------------
-function buildUAT64BV(P) {
+function buildUAT64BV(P: UkraineBuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
   // Grow the course upward by 10% while keeping the lower run grounded and
   // seating the road wheels just above its shoe crest. The body retains a
@@ -681,7 +842,7 @@ function buildUAT64BV(P) {
   // -0.26, crown at the 2.10 line under the 2.17 published p95 datum with
   // the raised LEFT commander gallery carrying it.
   P.turretG.position.set(0, 1.30, -0.26 + turretForwardShiftM);
-  const rings = [
+  const rings: readonly DomeRing[] = [
     [1.12, -0.02], [1.26, 0.07], [1.30, 0.18], [1.27, 0.32],
     [1.18, 0.44], [1.02, 0.55], [0.80, 0.615], [0.46, 0.66], [0.12, 0.675],
   ];
@@ -694,15 +855,23 @@ function buildUAT64BV(P) {
   // three flank returns each side. Every visible cassette is projected to
   // the measured dome and authored as external armor; the previous generic
   // track-steel boxes sat as much as 230 mm inside the cast turret.
+  const donbasEraSeats: DonbasEraSeat[] = [];
   const donbasEraReceipt = {
     family: 'ua-t64bv-donbas-k1-surface-r1',
     carrierDerivedTransforms: true,
     contactEmbedM: 0.04,
     maxSupportGapM: 0,
     totalCassettes: 0,
-    seats: [],
+    seats: donbasEraSeats as readonly DonbasEraSeat[],
   };
-  const addDonbasDomeCassette = (x, y, z, width, thickness, courseLength) => {
+  const addDonbasDomeCassette = (
+    x: number,
+    y: number,
+    z: number,
+    width: number,
+    thickness: number,
+    courseLength: number,
+  ): void => {
     const face = sampleDomeFace(rings, 1.08, y, x, z);
     const cassette = faceSeatedCassette(P, 'turret', face.point.toArray(),
       face.normal.toArray(), face.vertical.toArray(), width, thickness, courseLength, {
@@ -711,7 +880,7 @@ function buildUAT64BV(P) {
         external: true,
       });
     donbasEraReceipt.totalCassettes += 1;
-    donbasEraReceipt.seats.push(Object.freeze({
+    donbasEraSeats.push(Object.freeze({
       supportLocal: Object.freeze(cassette.support.toArray()),
       centerLocal: Object.freeze(cassette.center.toArray()),
       normalLocal: Object.freeze(cassette.normal.toArray()),
@@ -749,7 +918,7 @@ function buildUAT64BV(P) {
     // toward-the-mantlet extension above carries the chevron-completion
     // intent at zero gate cost.)
   }
-  donbasEraReceipt.seats = Object.freeze(donbasEraReceipt.seats);
+  donbasEraReceipt.seats = Object.freeze(donbasEraSeats);
   P.turretG.userData.uaT64DonbasERAReceipt = Object.freeze(donbasEraReceipt);
   P.add('turretDark', box(0.40, 0.14, 0.06), 0, 0.03, 1.10);
   P.add('turretDark', box(0.34, 0.22, 0.10), 0, 0.16, 0.96, -0.16, 0, 0);
@@ -880,7 +1049,7 @@ function buildUAT64BV(P) {
 // y 1.27..1.85, z -2.87..-3.40; K-1 skirt band z -1.0..+1.8; K-1 cheek fan
 // to the 2.24 line; glacis raft; NSVT right cupola; white-cross-era stowage.
 // ---------------------------------------------------------------------------
-function buildUAT80BV(P) {
+function buildUAT80BV(P: UkraineBuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
 
   // T-80 hull loft to the print lines at the published datum: 1.51 mid
@@ -1045,11 +1214,11 @@ function buildUAT80BV(P) {
   // preserves this vehicle's roof datum while armor and fittings remain
   // variant-owned and surface-seated around the common cz +0.22 plan.
   P.turretG.position.set(0, 1.44, -0.05);
-  const { rings } = buildT80CastTurret(P, {
+  const rings = buildT80CastTurret(P, {
     scaleY: 0.94, sz: 0.88, cz: 0.22, curved: true,
     reference: 't80/t80b/ua_t80u_kursk',
     equipmentSeatRevision: 'ua-t80bv-family-reseat-r2',
-  });
+  }).rings.map((ring) => [ring[0]!, ring[1]!] as const);
   P.add('turret', cylY(0.82, 0.86, 0.10, 24), 0, 0.0, 0);
   P.add('turretDark', cylY(0.88, 0.88, 0.035, 24), 0, 0.02, 0);
   P.add('turretDark', box(1.00, 0.40, 1.20), 0, -0.18, 0.20);
@@ -1070,7 +1239,13 @@ function buildUAT80BV(P) {
     // p95 discipline — the published 2.20 datum is the crown, and a
     // standing pintle sweeps 6+ columns above it). Exact-group census.
     const g = new THREE.Group();
-    const mk = (mat, geo, x, y, z) => {
+    const mk = (
+      mat: THREE.Material,
+      geo: THREE.BufferGeometry,
+      x: number,
+      y: number,
+      z: number,
+    ): THREE.Mesh => {
       const m = new THREE.Mesh(geo, mat);
       m.position.set(x, y, z);
       m.castShadow = m.receiveShadow = true;
@@ -1174,7 +1349,7 @@ function buildUAT80BV(P) {
 // glacis wedge, tall right-forward gunner sight, asymmetric rear roof
 // crates, rolled snorkel across the bustle, triangle-era stowage.
 // ---------------------------------------------------------------------------
-function buildUAT80UKursk(P) {
+function buildUAT80UKursk(P: UkraineBuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
 
   // T-80U hull: same turbine chassis lines as the T-80 family at the
@@ -1257,7 +1432,11 @@ function buildUAT80UKursk(P) {
     woodDim.color = new THREE.Color(0x77705d);
     woodDim.onBeforeCompile = vehicleAmbientFloorHook;
     woodDim.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    log.traverse((o) => { if (o.isMesh && o.material === P.mats.wood) o.material = woodDim; });
+    log.traverse((object) => {
+      if (object instanceof THREE.Mesh && object.material === P.mats.wood) {
+        object.material = woodDim;
+      }
+    });
     P.disposables.push(woodDim);
     P.hullG.add(log);
     P.add('hullDark', box(0.045, 0.52, 0.05), -0.72, 0.95, -3.35, 0.12, 0, 0);
@@ -1304,10 +1483,10 @@ function buildUAT80UKursk(P) {
   // cz +0.22 per the resident. turretG drops 1.50 -> 1.44 (ring recess);
   // the gun axis keeps its certified 1.70 world height below.
   P.turretG.position.set(0, 1.44, 0.0);
-  const { rings } = buildT80CastTurret(P, {
+  const rings = buildT80CastTurret(P, {
     scaleY: 0.88, sz: 0.88, cz: 0.22, curved: true,
     reference: 't80/t80b/ua_t80u_kursk', equipmentSeatRevision: 'reference-original',
-  });
+  }).rings.map((ring) => [ring[0]!, ring[1]!] as const);
   P.add('turret', cylY(0.82, 0.86, 0.10, 24), 0, 0.0, 0);
   P.add('turretDark', cylY(0.88, 0.88, 0.035, 24), 0, 0.02, 0);
   P.add('turretDark', box(1.00, 0.40, 1.20), 0, -0.18, 0.24);
@@ -1333,7 +1512,13 @@ function buildUAT80UKursk(P) {
     // spade grips, cradle blocks. Everything under the 2.20 p95 datum;
     // census via the exact-group contract.
     const g = new THREE.Group();
-    const mk = (mat, geo, x, y, z) => {
+    const mk = (
+      mat: THREE.Material,
+      geo: THREE.BufferGeometry,
+      x: number,
+      y: number,
+      z: number,
+    ): THREE.Mesh => {
       const m = new THREE.Mesh(geo, mat);
       m.position.set(x, y, z);
       m.castShadow = m.receiveShadow = true;
@@ -1433,7 +1618,7 @@ function buildUAT80UKursk(P) {
 // rear anti-thermal cover roll on the bustle; Varta dazzler pair flanking
 // the gun; 6x rubber-rim gear with the Ukrainian skirt line.
 // ---------------------------------------------------------------------------
-function buildUAOplotM(P) {
+function buildUAOplotM(P: UkraineBuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
   const slab = orientedSlab;
   const eraReceipt = {
@@ -1483,8 +1668,10 @@ function buildUAOplotM(P) {
   // armor slope; deriving +X pitch from dy/dz makes their backs parallel to
   // the glacis and buries the complete inner face by 12 mm.
   {
-    const profile = [[1.85, 1.36], [2.30, 1.245], [2.80, 1.10], [3.20, 0.95], [3.54, 0.84]];
-    const carrierAt = (z) => {
+    const profile: readonly (readonly [number, number])[] = [
+      [1.85, 1.36], [2.30, 1.245], [2.80, 1.10], [3.20, 0.95], [3.54, 0.84],
+    ];
+    const carrierAt = (z: number): { y: number; slope: number } => {
       for (let i = 0; i < profile.length - 1; i++) {
         const [z0, y0] = profile[i];
         const [z1, y1] = profile[i + 1];
@@ -1672,7 +1859,7 @@ function buildUAOplotM(P) {
     [1.52, 0.10], [1.34, -0.86], [1.04, -1.54], [0.60, -1.58],
   ], 0.775, 1, 0.90), 0, 0.02, 0);
   for (const s of [-1, 1]) {
-    const wingTop = [
+    const wingTop: FaceQuad = [
       [s * 0.24, 0.40, 2.10], [s * 1.18, 0.56, 1.24],
       [s * 1.38, 0.845, 0.30], [s * 0.30, 0.845, 0.52],
     ];
@@ -1704,7 +1891,7 @@ function buildUAOplotM(P) {
     P.add('turretDark', box(0.02, 0.30, 0.035), s * 1.258, 0.34, -1.28, 0, s * 0.30, 0);
     // Shoulder wrap follows the actual welded side quad rather than four
     // plumb boxes. Local width runs vertically and the course runs aft.
-    const shoulderFace = [
+    const shoulderFace: FaceQuad = [
       [s * 1.52, 0.02, 0.10], [s * 1.34, 0.02, -0.86],
       [s * 1.206, 0.795, -0.774], [s * 1.368, 0.795, 0.09],
     ];
@@ -1765,7 +1952,13 @@ function buildUAOplotM(P) {
     // NSVT stowed on the low bustle deck (UA wartime fit) — exact-group
     // census; the PNK-6 keeps the single p95 spike window.
     const g = new THREE.Group();
-    const mk = (mat, geo, x, y, z) => {
+    const mk = (
+      mat: THREE.Material,
+      geo: THREE.BufferGeometry,
+      x: number,
+      y: number,
+      z: number,
+    ): THREE.Mesh => {
       const m = new THREE.Mesh(geo, mat);
       m.position.set(x, y, z);
       m.castShadow = m.receiveShadow = true;
@@ -2017,11 +2210,22 @@ function buildUAOplotM(P) {
 // ua_m1a1 — unchanged certified composition (abrams base + first-party
 // drone cage). NOT part of the §5.248 drop set.
 // ---------------------------------------------------------------------------
-function addCageBar(P, w, h, d, x, y, z, rx = 0, ry = 0, rz = 0) {
+function addCageBar(
+  P: UkraineBuilderPort,
+  w: number,
+  h: number,
+  d: number,
+  x: number,
+  y: number,
+  z: number,
+  rx = 0,
+  ry = 0,
+  rz = 0,
+): void {
   P.add('turretDark', KIT.box(w, h, d), x, y, z, rx, ry, rz);
 }
 
-function addAbramsDroneCage(P) {
+function addAbramsDroneCage(P: UkraineBuilderPort): void {
   const { box, cylY } = KIT;
   const t = 0.032;
   // The Ukrainian field cage follows the Abrams turret's wedge instead of
@@ -2032,18 +2236,26 @@ function addAbramsDroneCage(P) {
   // Keep the cage outside that envelope instead of using the armor skin as
   // its centerline. The front remains shorter for the gun aperture, while
   // the bustle station clears the ammunition compartment and rear rack.
-  const stations = [
+  const stations: readonly CageStation[] = [
     { z: 2.62, x: 1.94, base: 0.20, roof: 1.16 },
     { z: 0.28, x: 1.98, base: 0.10, roof: 1.30 },
     { z: -1.28, x: 2.04, base: 0.08, roof: 1.34 },
     { z: -3.34, x: 2.06, base: 0.14, roof: 1.28 },
   ];
-  const pitchedZBar = (s, a, b, yKey, thickness = t) => {
+  const pitchedZBar = (
+    s: number,
+    a: CageStation,
+    b: CageStation,
+    yKey: 'base' | 'roof' | 'rail',
+    thickness = t,
+  ): void => {
     const dz = b.z - a.z;
-    const dy = b[yKey] - a[yKey];
+    const aY = yKey === 'rail' ? a.rail! : a[yKey];
+    const bY = yKey === 'rail' ? b.rail! : b[yKey];
+    const dy = bY - aY;
     const len = Math.hypot(dz, dy);
     addCageBar(P, thickness, thickness, len,
-      s * (a.x + b.x) * 0.5, (a[yKey] + b[yKey]) * 0.5, (a.z + b.z) * 0.5,
+      s * (a.x + b.x) * 0.5, (aY + bY) * 0.5, (a.z + b.z) * 0.5,
       -Math.atan2(dy, dz), 0, 0);
   };
 
@@ -2138,7 +2350,7 @@ function addAbramsDroneCage(P) {
 
   // Connected rear wall and filled bustle payload.  The rack, spare aerial
   // boxes, EW heads and rolled covers eliminate the former empty black cage.
-  const rear = stations.at(-1);
+  const rear = stations.at(-1)!;
   addCageBar(P, rear.x * 2, t, t, 0, rear.base, rear.z);
   addCageBar(P, rear.x * 2, t, t, 0, rear.roof, rear.z);
   for (let i = 0; i <= 8; i++) addCageBar(P, t, rear.roof - rear.base, t,
@@ -2168,7 +2380,7 @@ function addAbramsDroneCage(P) {
   P.topY = Math.max(P.topY || 0, 1.48);
 }
 
-function buildUAM1A1(P) {
+function buildUAM1A1(P: UkraineBuilderPort): void {
   // buildTejasFamily branches on the source family id.  Present the exact
   // M1A1HA id only for the base build, then restore the Ukrainian identity
   // before attaching the first-party cage and decals.
@@ -2184,9 +2396,9 @@ function buildUAM1A1(P) {
 }
 
 export const UKRAINE_PROFILES = {
-  ua_t64bv: { build: buildUAT64BV },
-  ua_t80bv: { build: buildUAT80BV },
-  ua_t80u_kursk: { build: buildUAT80UKursk },
-  ua_t84_oplot_m: { build: buildUAOplotM },
-  ua_m1a1: { build: buildUAM1A1 },
-};
+  ua_t64bv: { build: (builder: ProfileBuilderPort) => buildUAT64BV(builder as UkraineBuilderPort) },
+  ua_t80bv: { build: (builder: ProfileBuilderPort) => buildUAT80BV(builder as UkraineBuilderPort) },
+  ua_t80u_kursk: { build: (builder: ProfileBuilderPort) => buildUAT80UKursk(builder as UkraineBuilderPort) },
+  ua_t84_oplot_m: { build: (builder: ProfileBuilderPort) => buildUAOplotM(builder as UkraineBuilderPort) },
+  ua_m1a1: { build: (builder: ProfileBuilderPort) => buildUAM1A1(builder as UkraineBuilderPort) },
+} satisfies VehicleProfileRecord;

@@ -47,6 +47,11 @@ registration idempotent.
 surface seating. Keep decoration geometry merged by material and owner frame,
 retain the 3,000-triangle budget and 150 m LOD, and preserve the typed
 projected-ray index plus gun, turret-sweep, width, and overlap guards.
+`profiles/ukraine.ts` owns the strict Ukrainian T-64BV, T-80BV, T-80U Kursk,
+Oplot-M, and field-caged M1A1 builds. Keep its surface-seated ERA, cast-dome
+profiles, welded-face probes, cage stations, and mutable donor-id handoff behind
+the narrow Ukrainian builder port; do not move these vehicles back through an
+eager or untyped fleet path.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

@@ -2,7 +2,7 @@
 
 ## Round (2026-08-17, ukraine §5.248 builder lane)
 Ground-up §K rebuild replacing the donor-clone composition (`buildT64BV1` +
-kit). New builder `buildUAT64BV` in `src/vehicles/profiles/ukraine.js`.
+kit). New builder `buildUAT64BV` in `src/vehicles/profiles/ukraine.ts`.
 NOTE: the donor t64bv1 is mid-§5.247 rebuild in the russia lane and moved
 externally during this round (its own lane; russia.js was never in this
 round's edit set). This build is the UA VARIANT — distinct print, distinct

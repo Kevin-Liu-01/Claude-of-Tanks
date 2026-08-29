@@ -2,7 +2,7 @@
 
 ## Round (2026-08-17, ukraine §5.248 builder lane)
 Ground-up §K rebuild replacing the donor-clone composition (`T80_PROFILES.t84.build`
-+ additive kit). New builder `buildUAOplotM` in `src/vehicles/profiles/ukraine.js`
++ additive kit). New builder `buildUAOplotM` in `src/vehicles/profiles/ukraine.ts`
 is measured from the registered print and authored to PUBLISHED dims. No donor
 build call remains; the t84 graduate is untouched (hash 54b9debb held through
 the round).

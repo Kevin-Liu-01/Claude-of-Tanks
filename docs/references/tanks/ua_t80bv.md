@@ -3,7 +3,7 @@
 ## Round (2026-08-17, ukraine §5.248 builder lane)
 Ground-up §K rebuild replacing the donor-clone composition
 (`T80_PROFILES.t80bv.build` + kit). New builder `buildUAT80BV` in
-`src/vehicles/profiles/ukraine.js`. Donor t80bv untouched (hash d2d21390
+`src/vehicles/profiles/ukraine.ts`. Donor t80bv untouched (hash d2d21390
 held through the round).
 
 ## Print / instrument
