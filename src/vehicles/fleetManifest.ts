@@ -41,7 +41,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   poland: Object.freeze(['t72m1_jaguar', 'pt91_twardy', 'pl01', 'pl01_105']),
   abrams: Object.freeze([
     'm1a2_legacy', 'm1a2', 'm1a1', 'm1a1ha', 'm1a2_tusk', 'm1a2_sepv2',
-    'm1a2_sepv3', 'm1a1_aim', 'abramsx',
+    'm1a2_sepv3', 'm1a1_aim', 'm1a3', 'abramsx',
   ]),
   patton: Object.freeze([
     'm26_pershing', 'm45_patton', 'm46_patton', 'm47_patton', 'm48', 'm60a2',

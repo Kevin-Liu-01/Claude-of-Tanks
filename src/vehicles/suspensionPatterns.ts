@@ -60,7 +60,7 @@ export const SUSPENSION_PATTERN_IDS = Object.freeze(
   Object.keys(SUSPENSION_PATTERN_DEFINITIONS) as SuspensionPatternId[]);
 
 const FAMILY_RULES: ReadonlyArray<readonly [RegExp, SuspensionPatternId]> = Object.freeze([
-  [/(?:^|_)(?:m1a1|m1a2|abramsx|ua_m1a1)(?:$|_)/, 'abrams-torsion-arm'],
+  [/(?:^|_)(?:m1a1|m1a2|m1a3|abramsx|ua_m1a1)(?:$|_)/, 'abrams-torsion-arm'],
   [/^(?:t64bv1|ua_t64bv)$/, 't64-torsion-arm'],
   [/(?:^|_)(?:m4a3e8|centurion3|centurion5|strv81|chieftain5|chieftain_mk10)(?:$|_)/,
     'paired-bogie'],

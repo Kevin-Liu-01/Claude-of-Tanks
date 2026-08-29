@@ -14,7 +14,7 @@ stack, authoring tools, test rigs, and public presentation.
 
 | Area | Current implementation |
 | --- | --- |
-| Playable fleet | 119 production-visible and 156 keyed local-development first-party procedural vehicles |
+| Playable fleet | 120 production-visible and 157 keyed local-development first-party procedural vehicles |
 | Runtime vehicle provenance | 0 playable vehicles sourced from GLB geometry |
 | Battlefields | 20 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
@@ -28,10 +28,10 @@ The executable provenance check is:
 
     npm run tank:native:check
 
-At the time of this document update it reports 129 first-party procedural battle
+At the time of this document update it reports 130 first-party procedural battle
 playables, no GLB-sourced playables, and no comparison-source paths in the
 runtime registry. Offline reference articulation lives under `tools/` only.
-The canonical saved-roster report separately tracks all 158 records, including
+The canonical saved-roster report separately tracks all 159 records, including
 development-only vehicles and two reference-only placeholders.
 
 ## Battle rules

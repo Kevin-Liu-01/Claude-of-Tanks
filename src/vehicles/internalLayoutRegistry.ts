@@ -303,6 +303,16 @@ const LAYOUTS = Object.freeze({
   abramsX: { confidence: 'published-demonstrator', sources: ['gdAbramsX', 'armyNgmbt'], crew: crew(
     ['gunner', 'hull', 'frontLeft'], ['driver', 'hull', 'frontCenter'], ['commander', 'hull', 'frontRight'],
   ), systems: systems({ engine: { placement: 'rear', form: 'hybridDieselPowerpack' }, ammoRack: { placement: 'turret', form: 'blowOffBustleRack' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
+  m1a3: { confidence: 'owner-directed', sources: ['gdAbramsX', 'armyNgmbt'], crew: crew(
+    ['commander', 'hull', 'frontLeft'], ['driver', 'hull', 'frontCenter'], ['gunner', 'hull', 'frontRight'],
+  ), systems: systems({
+    engine: { placement: 'rear', form: 'hybridElectricPowerpack' },
+    transmission: { placement: 'rear', form: 'electricCrossDrive' },
+    optics: { placement: 'turretPerimeter', form: 'distributedSensorFusionSuite' },
+    ammoRack: { placement: 'turret', form: 'isolatedBlowOffBustleRack' },
+    autoloader: { placement: 'turret', form: 'fourRoundBustleConveyor' },
+    missileRack: { placement: 'turret', form: 'gunLaunchedHypersonicRounds' },
+  }) },
   ifvFrontTwoMan: { confidence: 'platform-inferred', sources: ['roeBmp2', 'bundeswehrMarder', 'britishWarrior', 'jgsdfType89'], crew: IFV_TWO_MAN_TURRET, systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
   bmp1: { confidence: 'platform-inferred', sources: ['roeBmp2'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['commander', 'hull', 'midLeft'], ['gunner', 'turret', 'frontCenter'],
@@ -344,6 +354,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   armata: ['t14'],
   kf51: ['kf51', 'kf51b'],
   abramsX: ['abramsx'],
+  m1a3: ['m1a3'],
   bradley: ['m2a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley'],
   ifvFrontTwoMan: ['bmp2', 'type89', 'fv510', 'fv510_milan', 'marder1a3'],
   bmp1: ['bwp1'],

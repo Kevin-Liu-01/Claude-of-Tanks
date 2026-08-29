@@ -75,7 +75,7 @@ const FAMILY_RULES: ReadonlyArray<readonly [RegExp, WheelPatternId]> = Object.fr
   [/(?:t34_85|type59|kv2|bmp2|isu152|isu122s)/, 'christie-six'],
   [/(?:tiger1|panther_g|jpz_e100|sturmtiger)/, 'interleaved-dish'],
   [/(?:m26_pershing|m45_patton|m46_patton|m47_patton|m48|m60a1|m60a2|m60a3)/, 'cast-five-spoke'],
-  [/(?:mbt70|m1a1|m1a2|abramsx|ua_m1a1)/, 'split-rim-ten'],
+  [/(?:mbt70|m1a1|m1a2|m1a3|abramsx|ua_m1a1)/, 'split-rim-ten'],
   [/(?:leo1a5|leopard2|leo2|kf51|strv122|pl01)/, 'radial-eight'],
   [/(?:merkava)/, 'deep-dish-eight'],
   [/(?:leclerc|amx30|amx40|amx56|carro45t)/, 'scalloped-six'],

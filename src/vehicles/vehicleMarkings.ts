@@ -219,6 +219,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   m1a1ha: anchor('turret', 'left', 0.42, 0.44, 0.27, 1),
   m1a2_sepv2: anchor('turret', 'right', 0.40, 0.43, 0.27, -1),
   m1a2_sepv3: anchor('turret', 'left', 0.39, 0.44, 0.27, 1),
+  m1a3: anchor('hull', 'right', 0.48, 0.62, 0.26, -1),
   m60a1: anchor('turret', 'right', 0.44, 0.48, 0.25, -1),
   merkava1b: anchor('turret', 'left', 0.40, 0.45, 0.25, 1),
   merkava2b: anchor('turret', 'right', 0.39, 0.46, 0.25, -1),

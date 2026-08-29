@@ -15,7 +15,7 @@
 // tires/flaps/skirt lips, *Glass = optics, *Cloth = stowage canvas,
 // *Detail = unpainted fittings. Camo lives on hull/turret/gun/gunMount only.
 import * as THREE from 'three';
-import { KIT, FITTINGS, orientedSlab } from './kit.js';
+import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 import { addVehicleGhillieSuit } from '../ghillieSuit.js';
 
@@ -615,7 +615,7 @@ function abramsHull(P, g) {
   // g.beltCoreTop opt-in (AXFIX-O1, abramsx §5.27 order 1): caps the core at
   // a real belly-PAN top instead of beltTop, opening the under-sponson wheel
   // bay (§B2 legal air: wheel-train daylight). Default byte-identical.
-  const innerW = g.trackXc - g.trackW / 2 - 0.02;
+  const innerW = g.bellyCoreHalfW ?? (g.trackXc - g.trackW / 2 - 0.02);
   const coreTop = g.beltCoreTop ?? g.beltTop;
   // (pan-mode cores take the dark bucket: the exposed side faces read as
   // under-hull shade like the print's bay, not key-lit camo — masks paint
@@ -911,25 +911,26 @@ function abramsHull(P, g) {
   // (no proud splash board or periscope hump on the silhouette).
   const glacisTopZ = g.glacisTopZ ?? noseRake[0][0];
   const noseTipY = deckAt(g, g.nose);
+  const bowLightX = g.bowLightX ?? bw * 0.72;
   const boardZ = glacisTopZ + (g.nose - glacisTopZ) * 0.30;
   const boardY = deckAt(g, boardZ);
   for (const side of [-1, 1]) {
     P.add('hullDetail', box(0.8 * s, 0.03, 0.06), side * 0.38 * s, boardY + 0.002, boardZ, -0.18, side * 0.38, 0);
     P.add('hullDetail', cylY(0.085 * s, 0.085 * s, 0.03, 12), side * 1.1 * s, deckAt(g, glacisTopZ - 0.5) + 0.015, glacisTopZ - 0.5);
-    P.add('hullDetail', box(0.2 * s, 0.1 * s, 0.12), side * bw * 0.72, noseTipY - 0.14, g.nose - 0.3);
-    headlight(P, side * bw * 0.72, noseTipY - 0.12, g.nose - 0.21, -0.12, 0.045 * s);
+    P.add('hullDetail', box(0.2 * s, 0.1 * s, 0.12), side * bowLightX, noseTipY - 0.14, g.nose - 0.3);
+    headlight(P, side * bowLightX, noseTipY - 0.12, g.nose - 0.21, -0.12, 0.045 * s);
     // g.cleanBow (visual r2, tejas): the heavy near-black brush-guard bars +
     // shackle rings read as debris fragments scattered on the glacis at
     // critic zoom (fleet class: isu122s orange fragments). Slim scheme-tone
     // frames instead; same footprint, detail bucket.
     if (g.cleanBow) {
-      P.add('hullDetail', box(0.014, 0.12 * s, 0.13), side * (bw * 0.72 - 0.11 * s), noseTipY - 0.12, g.nose - 0.24);
-      P.add('hullDetail', box(0.014, 0.12 * s, 0.13), side * (bw * 0.72 + 0.11 * s), noseTipY - 0.12, g.nose - 0.24);
-      P.add('hullDetail', box(0.24 * s, 0.014, 0.13), side * bw * 0.72, noseTipY - 0.065, g.nose - 0.24);
+      P.add('hullDetail', box(0.014, 0.12 * s, 0.13), side * (bowLightX - 0.11 * s), noseTipY - 0.12, g.nose - 0.24);
+      P.add('hullDetail', box(0.014, 0.12 * s, 0.13), side * (bowLightX + 0.11 * s), noseTipY - 0.12, g.nose - 0.24);
+      P.add('hullDetail', box(0.24 * s, 0.014, 0.13), side * bowLightX, noseTipY - 0.065, g.nose - 0.24);
     } else {
-      P.add('hullDark', box(0.02, 0.13 * s, 0.15), side * (bw * 0.72 - 0.12 * s), noseTipY - 0.12, g.nose - 0.24);
-      P.add('hullDark', box(0.02, 0.13 * s, 0.15), side * (bw * 0.72 + 0.12 * s), noseTipY - 0.12, g.nose - 0.24);
-      P.add('hullDark', box(0.26 * s, 0.02, 0.15), side * bw * 0.72, noseTipY - 0.06, g.nose - 0.24);
+      P.add('hullDark', box(0.02, 0.13 * s, 0.15), side * (bowLightX - 0.12 * s), noseTipY - 0.12, g.nose - 0.24);
+      P.add('hullDark', box(0.02, 0.13 * s, 0.15), side * (bowLightX + 0.12 * s), noseTipY - 0.12, g.nose - 0.24);
+      P.add('hullDark', box(0.26 * s, 0.02, 0.15), side * bowLightX, noseTipY - 0.06, g.nose - 0.24);
     }
     P.add('hullDetail', torus(0.05 * s, 0.015, 12), side * 1.05 * s, boardY - 0.06, boardZ - 0.22, Math.PI / 2, 0, 0);
     const toeY = lineAt(noseRake, bowZ + (g.nose - bowZ) * 0.35);
@@ -9271,6 +9272,341 @@ function buildAbramsX(P) {
 }
 
 // ---------------------------------------------------------------------------
+// M1A3 — first-party next-generation Abrams concept.
+//
+// This is intentionally not a reskinned Tejas/M1A2. The shared hull loft and
+// running-gear machinery provides family-scale suspension, but every visible
+// armor course, the low unmanned-style turret, isolated autoloader bustle,
+// 130 mm cannon, hybrid cooling deck, APS/sensor forest, skirts and cages are
+// authored here as a separate configuration. Semantic add* calls keep roof
+// equipment and external protection out of the broad structural hit volumes.
+// ---------------------------------------------------------------------------
+function buildM1A3(P) {
+  const g = {
+    ...TEJAS_HULL,
+    bodyHalfW: 1.78,
+    nose: 4.00,
+    deck: [[4.00, 1.24], [3.72, 1.31], [3.30, 1.42], [2.30, 1.62],
+      [1.72, 1.66], [-1.78, 1.66], [-2.18, 1.72], [-3.64, 1.70],
+      [-3.96, 1.62], [-4.04, 1.26]],
+    // Keep the sponson floor above the 1.473 m return-course envelope. The
+    // running gear now occupies real air instead of intersecting a hidden
+    // full-width belt slab.
+    beltTop: 1.51,
+    belly: 0.43,
+    bellyCoreHalfW: 1.04,
+    noseRake: [[2.58, 0.43], [3.10, 0.48], [3.54, 0.66], [3.82, 0.98], [4.00, 1.15]],
+    tailRake: [[-2.58, 0.43], [-3.18, 0.49], [-3.54, 0.66], [-3.74, 0.92]],
+    tailShelf: { z0: -3.74, z1: -4.04, yBot: 0.92 },
+    skirt: { x: 1.88, top: 1.50, bot: 0.54, z0: -3.76, z1: 3.72 },
+    planTaper: { bowHalfW: 0.78, bowPull: 0.07, tailHalfW: 1.02, tailPull: 0.24 },
+    laneCarve: { x: 1.04, bowZ: [2.34, 3.88], sternZ: [-3.76, -2.32] },
+    engineZ: -2.90,
+    glacisTopZ: 2.30,
+    periZ: 2.20,
+    noNumber: true,
+    noCable: true,
+    noTip: true,
+    noRearFace: true,
+    noFrontFlaps: true,
+    noRearFlap: true,
+    cleanBow: true,
+    // Inboard light pods leave the front track wraps unobstructed while
+    // retaining a readable paired-light signature.
+    bowLightX: 0.82,
+    softSeams: true,
+    trackXc: 1.46,
+    trackW: 0.64,
+    trackTh: 0.095,
+    wheelR: 0.32,
+    wheelY: 0.43,
+    wheelZs: [2.25, 1.50, 0.75, 0, -0.75, -1.50, -2.25],
+    contactZF: 2.40,
+    contactZR: -2.38,
+    trackBotY: 0.040,
+    idlerZ: 3.27,
+    idlerY: 0.88,
+    idlerR: 0.35,
+    sprocketZ: -3.42,
+    sprocketY: 0.96,
+    sprocketR: 0.35,
+    returnRollerR: 0.105,
+    returnTrackTopY: 1.09,
+    returnRollerZs: [1.82, 0.60, -0.62, -1.84],
+    arms: true,
+    armBucket: 'hullRunningGearDetail',
+    tireHex: 0x20211e,
+    wheelHex: 0x43483c,
+  };
+  const t = {
+    tw: 1.60,
+    throat: 0.36,
+    zTip: 2.18,
+    zWide: 1.08,
+    zMain: -0.54,
+    zRear: -3.14,
+    zFaceOff: 0.08,
+    throatDepth: 1.46,
+    yBot: -0.10,
+    yBotRear: 0.04,
+    yBotKnees: [[-1.54, -0.06], [-2.48, 0.02]],
+    roofTip: 0.50,
+    roofWide: 0.68,
+    roofMain: 0.76,
+    roofRear: 0.70,
+    faceRake: 0.44,
+    inset: 0.18,
+    wedgePull: 0.05,
+    roofCapW: 1.72,
+    slotW: 0.58,
+    slotX: 0,
+    ring: [0, 1.67, -0.15],
+    gun: [0, 0.28, 0.78],
+    gunLen: 5.65,
+    gunR: 0.115,
+  };
+
+  abramsHull(P, g);
+
+  // Sharp, integrated glacis shoulders and a central sensor/service spine.
+  for (const side of [-1, 1]) {
+    sideSlab(P, 'hull', side,
+      [0.78, 1.42, 3.88], [1.69, 1.50, 3.66], [1.76, 1.52, 2.74], [0.78, 1.52, 2.76],
+      [0.76, 1.49, 3.82], [1.62, 1.57, 3.61], [1.67, 1.59, 2.79], [0.76, 1.61, 2.80]);
+    P.addExternalArmor('hull', box(0.16, 0.14, 0.92), side * 1.71, 1.58, 3.17,
+      0, side * -0.10, 0);
+  }
+  P.add('hull', slab(
+    [-0.70, 1.25, 3.92], [0.70, 1.25, 3.92], [0.82, 1.51, 2.72], [-0.82, 1.51, 2.72],
+    [-0.62, 1.31, 3.80], [0.62, 1.31, 3.80], [0.70, 1.59, 2.78], [-0.70, 1.59, 2.78]));
+  // Localized upper-fender bridges close the narrow plan-view seam between
+  // the center glacis and the shoulder armor. They sit above the complete
+  // return-shoe envelope, so the tracks retain unobstructed suspension air.
+  for (const side of [-1, 1]) {
+    P.addExternalArmor('hull', box(0.22, 0.035, 0.34), side * 1.10, 1.56, 2.69);
+  }
+
+  // Eleven physically separated modular skirt cassettes per flank. Their
+  // gaps and stepped lower edges keep the running gear legible in motion.
+  const skirtPanelCount = 11;
+  for (const side of [-1, 1]) {
+    for (let k = 0; k < skirtPanelCount; k++) {
+      const z = -3.36 + k * 0.64;
+      const frontBias = k > 8 ? (k - 8) * 0.055 : 0;
+      const h = 0.80 - frontBias;
+      P.addExternalArmor('hull', box(0.17, h, 0.58), side * 1.985,
+        1.10 + frontBias * 0.35, z, 0, 0, side * (k % 2 ? 0.008 : -0.008));
+      P.add('hullDetail', box(0.025, h * 0.72, 0.045), side * 2.075,
+        1.10 + frontBias * 0.35, z);
+      P.add('hullDark', box(0.012, h * 0.82, 0.022), side * 2.079,
+        1.10 + frontBias * 0.35, z + 0.302);
+    }
+    P.addExternalArmor('hull', box(0.20, 0.14, 7.18), side * 1.995, 1.53, -0.02);
+    P.add('hullDetail', box(0.04, 0.07, 7.04), side * 2.105, 1.60, -0.02);
+  }
+
+  // Rear flank and stern slat cages. Bars remain individually separated,
+  // avoiding coplanar cage sheets and the z-fighting they would create.
+  const cageRailYs = [0.78, 1.04, 1.30, 1.56];
+  for (const side of [-1, 1]) {
+    for (const y of cageRailYs) {
+      P.addExternalArmor('hull', box(0.035, 0.035, 1.86), side * 2.14, y, -3.02);
+    }
+    for (const z of [-3.88, -3.58, -3.28, -2.98, -2.68, -2.38, -2.10]) {
+      P.addExternalArmor('hull', box(0.035, 0.82, 0.035), side * 2.14, 1.17, z);
+    }
+    P.addExternalArmor('hull', box(0.25, 0.035, 1.80), side * 2.02, 0.78, -3.02);
+  }
+  for (const y of cageRailYs) {
+    P.addExternalArmor('hull', box(3.96, 0.035, 0.035), 0, y, -4.16);
+  }
+  for (const x of [-1.92, -1.38, -0.84, -0.28, 0.28, 0.84, 1.38, 1.92]) {
+    P.addExternalArmor('hull', box(0.035, 0.82, 0.035), x, 1.17, -4.16);
+  }
+
+  // Hybrid-electric powerpack: separated cooling plenums, inverter boxes
+  // and louvers expose the actual rear-mounted engine/transmission modules.
+  for (const side of [-1, 1]) {
+    P.addModuleVisual('engine', 'hull', box(1.30, 0.16, 1.30), side * 0.72, 1.71, -2.78);
+    P.addEquipment('hull', box(1.16, 0.035, 1.16), side * 0.72, 1.805, -2.78);
+    for (let k = 0; k < 7; k++) {
+      P.add('hullDark', box(1.02, 0.022, 0.045), side * 0.72, 1.828,
+        -3.24 + k * 0.15);
+    }
+    P.addModuleVisual('transmission', 'hullDetail', box(0.42, 0.20, 0.55),
+      side * 1.36, 1.70, -3.45);
+  }
+  P.addModuleVisual('radio', 'hull', box(0.88, 0.13, 0.54), 0, 1.70, 1.25);
+  for (const x of [-0.72, 0, 0.72]) {
+    P.addHatch('hull', cylY(0.27, 0.29, 0.055, 16), x, 1.66, 1.72);
+    P.add('hullDark', torus(0.26, 0.014, 18), x, 1.705, 1.72);
+  }
+
+  seatAbramsTurret(P.turretG, t.ring[0], t.ring[1], t.ring[2]);
+  P.gunG.position.set(t.gun[0], t.gun[1], t.gun[2]);
+  abramsShell(P, t);
+
+  // Isolated, armored bustle autoloader with six blow-off roof panels.
+  P.add('turret', box(2.92, 0.53, 1.46), 0, 0.37, -2.42);
+  P.add('turret', box(3.12, 0.22, 0.74), 0, 0.58, -3.01);
+  P.add('turretDark', box(2.72, 0.035, 0.045), 0, 0.655, -1.69);
+  for (let k = 0; k < 6; k++) {
+    const x = -1.10 + k * 0.44;
+    P.addHatch('turret', box(0.37, 0.045, 0.75), x, 0.775, -2.48);
+    P.add('turretDark', box(0.018, 0.052, 0.70), x + 0.205, 0.778, -2.48);
+  }
+
+  // Layered turret side armor and open bustle cage.
+  for (const side of [-1, 1]) {
+    for (let k = 0; k < 5; k++) {
+      P.addExternalArmor('turret', box(0.18, 0.48, 0.44), side * 1.68,
+        0.35, -0.74 - k * 0.47, 0, 0, side * 0.015);
+      P.add('turretDetail', box(0.025, 0.30, 0.34), side * 1.78,
+        0.35, -0.74 - k * 0.47);
+    }
+    for (const y of [0.10, 0.38, 0.68]) {
+      P.addExternalArmor('turret', box(0.035, 0.035, 2.22), side * 1.86, y, -2.25);
+    }
+    for (const z of [-3.33, -2.96, -2.59, -2.22, -1.85, -1.48, -1.15]) {
+      P.addExternalArmor('turret', box(0.035, 0.62, 0.035), side * 1.86, 0.39, z);
+    }
+    P.addExternalArmor('turret', box(0.20, 0.035, 2.18), side * 1.76, 0.10, -2.24);
+  }
+  for (const y of [0.12, 0.40, 0.68]) {
+    P.addExternalArmor('turret', box(3.64, 0.035, 0.035), 0, y, -3.35);
+  }
+  for (const x of [-1.72, -1.20, -0.68, 0, 0.68, 1.20, 1.72]) {
+    P.addExternalArmor('turret', box(0.035, 0.58, 0.035), x, 0.39, -3.35);
+  }
+
+  // Four-corner hard-kill launchers and radar faces correspond to the
+  // protection suite on the gameplay spec. Optics receipts hug the lenses.
+  for (const side of [-1, 1]) {
+    for (const z of [-0.76, 0.72]) {
+      const yaw = side * (z < 0 ? 0.62 : 0.42);
+      P.addEquipment('turret', box(0.25, 0.28, 0.30), side * 1.48, 0.81, z, 0, yaw, 0);
+      P.addModuleVisual('optics', 'turretGlass', box(0.16, 0.15, 0.018),
+        side * 1.62, 0.84, z + (z < 0 ? -0.08 : 0.08), 0, yaw, 0);
+      P.addEquipment('turret', cylZ(0.075, 0.33, 10), side * 1.60, 0.64,
+        z + (z < 0 ? -0.18 : 0.18), side * 0.12, yaw, 0);
+    }
+  }
+
+  // Sensor-fusion roof forest: low panoramic head, twin distributed EO
+  // towers, datalink mast and a forward RWS. Every visible lens is tied to
+  // the damageable optics module; antenna furniture stays non-structural.
+  P.addEquipment('turret', cylY(0.31, 0.34, 0.10, 18), 0, 0.82, -0.40);
+  P.addModuleVisual('optics', 'turret', box(0.48, 0.34, 0.44), 0, 1.01, -0.40);
+  for (const side of [-1, 1]) {
+    P.addModuleVisual('optics', 'turretGlass', box(0.17, 0.13, 0.022),
+      side * 0.18, 1.04, -0.17, 0, side * 0.12, 0);
+    P.addEquipment('turret', box(0.26, 0.31, 0.27), side * 0.88, 0.94, 0.46);
+    P.addModuleVisual('optics', 'turretGlass', box(0.17, 0.15, 0.018),
+      side * 0.88, 0.96, 0.605);
+  }
+  P.addEquipment('turret', box(0.34, 0.22, 0.36), 0.76, 0.92, -1.08);
+  P.addEquipment('turret', cylY(0.13, 0.15, 0.30, 12), 0.76, 1.17, -1.08);
+  P.addEquipment('turret', box(0.42, 0.045, 0.42), 0.76, 1.35, -1.08);
+
+  // AbramsX-inspired elevated remote weapon tower. This is a new, compact
+  // M1A3 assembly rather than copied AbramsX geometry: a buried foundation,
+  // armored pedestal, open fork, cross-shaft, forward M2, independent EO
+  // head, ammunition enclosure and exposed feed/data paths. The deliberate
+  // daylight around the fork keeps it mechanical instead of reading as one
+  // monolithic box, while every major mass remains equipment-owned.
+  const towerX = -0.64;
+  const towerZ = 0.14;
+  P.addEquipment('turret', cylY(0.34, 0.38, 0.15, 18), towerX, 0.805, towerZ);
+  P.addEquipment('turret', cylY(0.25, 0.31, 0.27, 16), towerX, 0.995, towerZ);
+  P.add('turretDark', torus(0.245, 0.018, 18), towerX, 1.135, towerZ);
+  P.addEquipment('turret', box(0.50, 0.10, 0.42), towerX, 1.18, towerZ);
+  for (const side of [-1, 1]) {
+    P.addEquipment('turret', box(0.075, 0.34, 0.11), towerX + side * 0.19,
+      1.37, towerZ - 0.02, 0, 0, side * 0.07);
+    P.add('turretDetail', box(0.035, 0.28, 0.05), towerX + side * 0.235,
+      1.35, towerZ + 0.01, 0, 0, side * 0.16);
+  }
+  P.add('turretDark', cylX(0.055, 0.51, 12), towerX, 1.49, towerZ + 0.01);
+
+  const rws = FITTINGS.pintleMG({
+    mats: P.mats, cls: 'm2', scale: 1.28, tone: 'two-tone', seed: 93,
+    shield: false, elev: 0.035, rotation: [0, 0, 0],
+  });
+  rws.name = 'm1a3RemoteWeaponTower';
+  rws.position.set(towerX, 1.42, towerZ + 0.04);
+  P.turretG.add(rws);
+
+  // Gun-right sensor and gun-left ammunition box echo the useful asymmetry
+  // of AbramsX without reproducing its silhouette. The optic face is backed
+  // by the damageable optics module used by the main sensor-fusion suite.
+  P.addEquipment('turret', box(0.25, 0.28, 0.30), towerX + 0.36, 1.52, towerZ - 0.02);
+  P.add('turretDark', box(0.20, 0.21, 0.025), towerX + 0.36, 1.54, towerZ + 0.145);
+  P.addModuleVisual('optics', 'turretGlass', box(0.15, 0.14, 0.014),
+    towerX + 0.36, 1.54, towerZ + 0.164);
+  P.addEquipment('turret', box(0.24, 0.30, 0.34), towerX - 0.36, 1.47, towerZ - 0.04);
+  P.add('turretDetail', box(0.16, 0.035, 0.20), towerX - 0.20, 1.53, towerZ + 0.02,
+    0, 0, -0.42);
+  for (const [dx, dy, dz, rz] of [
+    [-0.18, 1.34, -0.08, -0.34], [-0.12, 1.28, -0.03, -0.16],
+    [0.18, 1.27, -0.05, 0.28], [0.14, 1.18, -0.01, 0.48],
+  ]) P.add('turretDark', box(0.028, 0.12, 0.028), towerX + dx, dy,
+    towerZ + dz, 0, 0, rz);
+
+  for (const [x, z, seed, rake] of [
+    [-1.18, -2.82, 101, -0.08], [1.18, -2.82, 102, 0.08],
+    [-1.34, -1.58, 103, -0.05], [1.34, -1.58, 104, 0.05],
+  ]) {
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.88, r: 0.012, rake, seed });
+    whip.position.set(x, 0.70, z);
+    P.turretG.add(whip);
+    P.addEquipment('turret', cylY(0.055, 0.07, 0.10, 10), x, 0.76, z);
+  }
+  smokeBank(P, -1.30, 0.37, 0.77, -1, 0.82);
+  smokeBank(P, 1.30, 0.37, 0.77, 1, 0.82);
+
+  // New 130 mm cannon: deep armored cradle, segmented thermal shroud,
+  // compact bore evacuator and a visibly larger muzzle/bore than M256.
+  abramsMantlet(P, 1.05, 0.76, 0.54, 0.05, 0.82);
+  buildGun(P, { len: t.gunLen, r: t.gunR, sleeve: false, collar: false, baseR: 0.18 });
+  for (const [z0, z1, radius] of [[0.60, 1.46, 0.145], [1.52, 2.38, 0.140], [2.44, 3.18, 0.136]]) {
+    P.add('gun', cylZ(radius, z1 - z0, 22), 0, 0, (z0 + z1) / 2);
+    P.add('gunDark', torus(radius * 1.01, 0.012, 20), 0, 0, z0, Math.PI / 2, 0, 0);
+  }
+  P.add('gun', cylZ(0.178, 0.48, 22), 0, 0, 3.46);
+  P.add('gunDark', torus(0.178, 0.016, 20), 0, 0, 3.23, Math.PI / 2, 0, 0);
+  P.add('gun', cylZ(0.150, 0.38, 20), 0, 0, 5.43);
+  P.add('gunDark', torus(0.153, 0.018, 20), 0, 0, 5.26, Math.PI / 2, 0, 0);
+  // Shadow-named bore furniture remains visible in production while staying
+  // neutral to silhouette/centering receipts. Its proud annulus and recessed
+  // disc prevent the base tube's closed cylinder cap from winning head-on
+  // depth tests.
+  muzzleBore(P, { z: 5.63, r: 0.153, boreR: 0.099, seg: 20 });
+
+  P.muzzleZ = 5.65;
+  P.topY = 1.80;
+  const receipt = Object.freeze({
+    family: 'first-party-m1a3-concept',
+    hull: 'new-faceted-hybrid-abrams',
+    turret: 'low-unmanned-style-isolated-bustle',
+    mainGunCaliberMm: 130,
+    magazineRounds: 4,
+    crewCapsuleStations: 3,
+    hybridDrive: true,
+    modularSkirtPanelsPerSide: skirtPanelCount,
+    hullCageRailsPerSide: cageRailYs.length,
+    turretCageRailsPerSide: 3,
+    hardKillLauncherCount: 4,
+    radarFaceCount: 4,
+    roofSensorTowers: 3,
+    networkMasts: 4,
+    rws: true,
+    rwsTowerStyle: 'abramsx-inspired-open-yoke',
+  });
+  P.hullG.userData.m1a3DesignReceipt = receipt;
+  P.turretG.userData.m1a3DesignReceipt = receipt;
+}
+
+// ---------------------------------------------------------------------------
 // Profile table
 // ---------------------------------------------------------------------------
 export const ABRAMS_PROFILES = {
@@ -9302,5 +9638,6 @@ export const ABRAMS_PROFILES = {
   // §B8.1 four-box + self-shots.
   m1a2_sepv3: { build: buildTejasFamily, station: 'ttsLowProfile', abramsKit: 'sepv3' },
   m1a1_aim: { build: buildAim },
+  m1a3: { build: buildM1A3 },
   abramsx: { build: buildAbramsX },
 };

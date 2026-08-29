@@ -23,6 +23,10 @@ export const NATIVE_VARIANT_FAMILIES = Object.freeze({
 } as const);
 
 export const NATIVE_FAMILY_ORDER = Object.freeze({
+  abrams: Object.freeze([
+    'm1a1', 'm1a1ha', 'm1a1_aim', 'm1a2', 'm1a2_tusk',
+    'm1a2_sepv2', 'm1a2_sepv3', 'm1a3', 'abramsx',
+  ]),
   sheridan: Object.freeze([
     'm551_sheridan', 'm551a1_tts',
   ]),
