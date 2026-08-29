@@ -55,7 +55,7 @@ function reachableSrcModules(root) {
 /**
  * Pretty routes (owner: "/studio", "/gallery", and "/home"). Pure URL rewrites — the
  * browser's address bar keeps the pretty path while the server serves the
- * real file. /studio boots the game (index.html; src/game/studio.js sees the
+ * real file. /studio boots the game (index.html; src/game/studio.ts sees the
  * pathname and auto-enters), /home serves the showcase page (home.html — a
  * real build entry, so /home also ships in dist; vercel.json carries the
  * same two rewrites for the deployed host). Queries pass through

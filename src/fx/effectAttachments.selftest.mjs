@@ -74,7 +74,7 @@ for (const family of requiredFamilies) {
 // Integration seams: battle + Studio resolution and live->wreck transition.
 const effectsSource = fs.readFileSync(new URL('./effects.js', import.meta.url), 'utf8');
 const mainFrameSource = fs.readFileSync(new URL('../app/mainFrameRuntime.ts', import.meta.url), 'utf8');
-const studioSource = fs.readFileSync(new URL('../game/studio.js', import.meta.url), 'utf8');
+const studioSource = fs.readFileSync(new URL('../game/studio.ts', import.meta.url), 'utf8');
 if (!effectsSource.includes('syncSubjectEmitterAnchor(col, subject, _subjectAnchor)')) {
   throw new Error('burning columns are not refreshed through the attachment helper');
 }

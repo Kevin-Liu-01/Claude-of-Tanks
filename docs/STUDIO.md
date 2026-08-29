@@ -8,7 +8,7 @@ game effects, operate a free camera, define camera and vehicle tracks, edit a
 20-second timeline, record browser video, and capture high-resolution stills.
 
 Implementation: `src/game/studioAccess.ts` (retryable chunk/FX acquisition,
-stable frame proxy, and temporary F8 ownership), `src/game/studio.js` (runtime
+stable frame proxy, and temporary F8 ownership), `src/game/studio.ts` (runtime
 and `window.__STUDIO`), `src/game/studioTimeline.ts` (pure storyboard
 normalization and sampling), and `src/ui/studioPanel.ts` (panel interface).
 `main.ts` supplies integration ports and retains only the Studio `tick()`

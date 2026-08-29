@@ -20,7 +20,7 @@ not move renderer or effect authority into the UI.
   marker.
 - Map images, timeline controls, archive dialogs, and recording controls use
   their concrete DOM types.
-- The next migration of `src/game/studio.js` has a reviewed consumer contract
+- The next migration of `src/game/studio.ts` has a reviewed consumer contract
   to satisfy instead of an untyped panel callback graph.
 
 ## Verification

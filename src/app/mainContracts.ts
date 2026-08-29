@@ -160,6 +160,7 @@ declare global {
     __SHOTS?: unknown;
     __START_BATTLE_TIMINGS?: unknown;
     __STUDIO?: unknown;
+    __STUDIO_LOAD?: unknown;
     __STUDIO_WARM?: unknown;
     __VISUAL_LOAD_TIMINGS?: unknown[];
     __WORLD_LOAD?: unknown;

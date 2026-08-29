@@ -2479,13 +2479,13 @@ function createCombatWarmRuntimeContext() {
 // the Studio. Battles own the complete roster/wreck/shadow warm; Studio uses
 // the focused shared-FX warm above and compiles only actors it actually adds.
 
-// SCENE STUDIO (staging rig + scripted marketing-shot API, src/game/studio.js):
+// SCENE STUDIO (staging rig + scripted marketing-shot API, src/game/studio.ts):
 // entered via ?studio=1 (map via ?map=…) or F8 from the garage; scriptable via
 // window.__STUDIO (schema in docs/STUDIO.md). main.ts only hands it these
 // integration seams plus the one tick() branch above — entry keys, panel,
 // actors, effects, capture all live in the studio module.
 const studioAccess = createStudioAccess(legacyPort({
-  loadModule: () => import('./game/studio.js'),
+  loadModule: () => import('./game/studio.ts'),
   preloadFxModule,
   ensureFxRuntime,
   prepareRuntime: () => lighting.setFarCascadeDormant(false),

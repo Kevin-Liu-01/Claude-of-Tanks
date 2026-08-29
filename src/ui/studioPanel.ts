@@ -1,5 +1,5 @@
 /**
- * studioPanel.ts — SCENE STUDIO control panel (src/game/studio.js's UI).
+ * studioPanel.ts — SCENE STUDIO control panel (src/game/studio.ts's UI).
  *
  * Workspace layout: one scrollable, grouped workspace (Battlefield / Tanks /
  * Effects / Global / Output). The panel stays a THIN VIEW over the studio API
@@ -40,15 +40,15 @@ const STUDIO_SECTION_INFO: Readonly<Record<string, string>> = Object.freeze({
 
 type StudioActorState = string;
 
-interface StudioPoint {
+export interface StudioPoint {
   x: number;
   y: number;
   z: number;
 }
 
-interface StudioActor {
+export interface StudioActor {
   readonly uid: string;
-  readonly name?: string;
+  readonly name?: string | null;
   readonly spec: {
     readonly id: string;
     readonly name: string;
@@ -68,18 +68,18 @@ interface StudioActor {
   readonly camo?: string | null;
 }
 
-interface StudioEffect {
+export interface StudioEffect {
   readonly id: string;
   readonly type: string;
   readonly tMs: number;
-  readonly selected: boolean;
-  readonly actor?: string | null;
+  readonly selected?: boolean;
+  readonly actor?: string | number | null;
   readonly from?: readonly number[];
   readonly to?: readonly number[];
   readonly at?: readonly number[];
 }
 
-interface StudioCameraShot {
+export interface StudioCameraShot {
   readonly id: string;
   readonly label: string;
   readonly tMs: number;
@@ -87,7 +87,7 @@ interface StudioCameraShot {
   readonly transition: string;
 }
 
-interface StudioStoryboard {
+export interface StudioStoryboard {
   readonly shots: readonly StudioCameraShot[];
   readonly actorTracks: ReadonlyArray<{
     readonly actor: string;
@@ -95,7 +95,7 @@ interface StudioStoryboard {
   }>;
 }
 
-interface StudioCameraState {
+export interface StudioCameraState {
   readonly mode: 'fly' | 'orbit' | string;
   readonly pos: readonly number[];
   readonly lookAt: readonly number[];
@@ -105,7 +105,7 @@ interface StudioCameraState {
   readonly rollDeg: number;
 }
 
-interface StudioSpecInfo {
+export interface StudioSpecInfo {
   readonly id: string;
   readonly name: string;
   readonly era?: string;
@@ -113,15 +113,15 @@ interface StudioSpecInfo {
   readonly rosterTag?: string;
 }
 
-interface StudioRecordingStatus {
+export interface StudioRecordingStatus {
   readonly active: boolean;
   readonly supported: boolean;
   readonly elapsedMs: number;
   readonly durationMs: number;
-  readonly mimeType?: string;
+  readonly mimeType?: string | null;
 }
 
-interface StudioEffectRecipe {
+export interface StudioEffectRecipe {
   readonly type: string;
   readonly actor?: string;
   readonly from?: readonly number[];
@@ -131,7 +131,7 @@ interface StudioEffectRecipe {
   readonly params?: Readonly<Record<string, unknown>>;
 }
 
-interface StudioPanelApi {
+export interface StudioPanelApi {
   readonly MAP_IDS: readonly string[];
   readonly TANK_IDS: readonly string[];
   readonly CAMO_PATTERN_IDS: readonly string[];
@@ -163,7 +163,7 @@ interface StudioPanelApi {
   addActor(config: Readonly<Record<string, unknown>>): unknown;
   removeActor(actor: StudioActor): unknown;
   updateActor(actor: StudioActor, patch: Readonly<Record<string, unknown>>): unknown;
-  setActorState(actor: StudioActor, state: string): unknown;
+  setActorState(actor: StudioActor, state: string, ageS?: number | null): unknown;
   selectActor(uid: string): unknown;
   effect(recipe: StudioEffectRecipe): unknown;
   clearEffects(): unknown;

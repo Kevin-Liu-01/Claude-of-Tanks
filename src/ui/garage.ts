@@ -2118,7 +2118,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   // --- END DRAG-SCROLL CAROUSEL ---------------------------------------------
 
-  // r9.1 header nav — Studio rides the exact F8 production path (studio.js
+  // r9.1 header nav — Studio rides the exact F8 production path (studio.ts
   // listens on window keydown and gates on game.phase === 'garage'); Home and
   // Docs use their public pretty routes. Garage is the current screen.
   garageVariantTrigger.addEventListener('click', () => {

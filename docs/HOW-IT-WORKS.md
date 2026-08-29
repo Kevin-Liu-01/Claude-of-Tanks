@@ -323,7 +323,7 @@ staged over subsequent frames without changing the outcome.
 
 ## Scene Studio and the 88-frame field archive
 
-Scene Studio (`src/game/studio.js`) runs a live battlefield with combat AI
+Scene Studio (`src/game/studio.ts`) runs a live battlefield with combat AI
 paused. It can place any current vehicle, conform it to terrain, pose turret and
 gun within spec limits, apply camouflage/damage states, fire the game's real
 effects, freeze deterministic time, and capture through the full renderer up
