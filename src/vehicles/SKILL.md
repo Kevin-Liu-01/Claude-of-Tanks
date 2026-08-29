@@ -100,6 +100,9 @@ do not replace that with an unchecked options bag.
 Bind legacy spec/source/ID dictionaries and perform donor cloning, inherited
 silhouette cleanup, armor scaling, and idempotent registration through
 `fleetSpecRegistry.ts`; nation modules own only their explicit deltas.
+Keep `modern1Specs.generated.ts` and `modern2Specs.generated.ts` generator-owned;
+they expose boot-safe metadata while their authored visual builders remain
+demand-loaded.
 Keep the Type 10 / Type 10B trunnion, muzzle, throat, and mantlet-fit receipts
 in the pure `profiles/type10GunSeat.ts` boundary; geometry builders consume the
 datums but do not redefine them.

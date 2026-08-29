@@ -23,8 +23,8 @@ import {
 import { finalizeCombatAnatomy } from './combatAnatomy.js';
 
 import './combatVariantSpecs.ts';
-import './modern1Specs.generated.js';
-import './modern2Specs.generated.js';
+import './modern1Specs.generated.ts';
+import './modern2Specs.generated.ts';
 import './kf51Specs.ts';
 import './abramsConceptSpecs.ts';
 import './challengerSpecs.ts';

@@ -250,3 +250,4 @@ runtime documents remain authoritative for behavior.
 - [0238 — Combat-anatomy receipts are generated as strict TypeScript](0238-type-combat-anatomy-receipts.md)
 - [0239 — Vehicle-marking seat receipts are generated as strict TypeScript](0239-type-vehicle-marking-seat-receipts.md)
 - [0240 — Presentation-anchor receipts are generated as strict TypeScript](0240-type-presentation-anchor-receipts.md)
+- [0241 — Legacy fleet metadata receipts are generated as strict TypeScript](0241-type-legacy-fleet-spec-receipts.md)

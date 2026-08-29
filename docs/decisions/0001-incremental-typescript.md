@@ -116,6 +116,9 @@ schema before any seat reaches the painter.
 Rendered-pixel presentation anchors and orthographic fit envelopes are also
 generated as strict TypeScript, keeping Garage framing and combat hit diagrams
 on one nullable lookup contract.
+The final boot-safe metadata receipts for legacy builder/spec hybrids now emit
+strict TypeScript and bind through the shared fleet registry without pulling
+their Three.js builders into Garage startup.
 
 ## Consequences
 
