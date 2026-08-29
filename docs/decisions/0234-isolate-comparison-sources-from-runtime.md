@@ -10,7 +10,8 @@ the seven active local comparison articulation records in
 audit.
 
 Strengthen `tank:native:check` and product-stat coverage to reject any future
-runtime `glb` or `candidateGlb` path.
+runtime `glb` or `candidateGlb` path. The audit scans JavaScript and TypeScript
+sources and rejects local recovered-model feature switches as well.
 
 ## Why
 

@@ -1718,33 +1718,14 @@ export function finalizeFirstPartyRoster() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Visual source of truth per tank: 'procedural' | 'glb'.
-// 'glb' additionally needs { glb: { path, yawOffset?, turretNode?, gunNode? } }
-// (see src/vehicles/modelLoader.js). Deep-hunt verdict 2026-07: ONE sourced
-// model beat its procedural counterpart — the dannzjs M1A2 SEPv3 (CC-BY-4.0,
-// docs/ATTRIBUTION.md). The other 7 stay procedural: every other candidate on
-// the allowed sources was either not recognizable as the specific vehicle,
-// had no articulable turret node, had no usable materials, or was a ripped
-// game asset (forbidden).
-// ---------------------------------------------------------------------------
+// Runtime geometry provenance. Registrars add procedural rows for the rest of
+// the fleet; native-playables-audit rejects every external runtime source.
 export const MODEL_SOURCE = {
   m4a3e8: { source: 'procedural' },
   tiger1: { source: 'procedural' },
   t34_85: { source: 'procedural' },
   is2: { source: 'procedural' },
   panther_g: { source: 'procedural' },
-  // m1a2: DUAL-GATE GRADUATE (2026-08-04) — the program's 17th. Geometry
-  // min 91.5 gatePassed x2 + graduation critic 9.0 on ALL FOURTEEN views
-  // (floor 8.0 -> 8.6 -> 8.8 -> 9.0 across the SEPv2 realign + six visual
-  // rounds; mean 9.08). ARC: the original dannzjs "SEPv3" oracle was a
-  // MISLABELED LEOPARD 2A5 (owner-identified 2026-08-03) — honest reset to
-  // 0, full realign vs the recovered SEPv2 exemplar, the shared-track-rig
-  // owner directive, wheel anatomy rebuilt to the print. NO MODEL_SOURCE —
-  // freeze hash bc225318 via tmp-hashgeo; the SEPv2 oracle stays on disk
-  // (LOCAL-ONLY QUARANTINE) as the measurement reference in all three
-  // override maps. The public-build gate below is now vacuous (kept as
-  // documentation of the quarantine polarity).
   m1a2: { source: 'procedural' },
   m1a2_legacy: { source: 'procedural' },
   t90m: { source: 'procedural' },
@@ -1752,40 +1733,8 @@ export const MODEL_SOURCE = {
   leo2a7: { source: 'procedural' },
 };
 
-// PUBLIC-BUILD GATE for the m1a2 exemplar: its GLB lives under
-// community/recovered/ (LOCAL-ONLY QUARANTINE — strip-nc-assets deletes that
-// whole tree from public dists, and its postbuild guard fails the build if a
-// registered playable still points there). Same polarity as the userdrops
-// gates: only an explicit local/dev vite env keeps the GLB; public builds and
-// bare-node imports (the strip guard itself) fall back to the procedural
-// m1a2, which ships everywhere.
-// (graduation 2026-08-04: m1a2 is procedural everywhere — the gate below
-// is retained as a no-op safety for any future recovered-path registration.)
-{
-  const allowLocalRecovered = typeof import.meta !== 'undefined'
-    && import.meta.env && !import.meta.env.VITE_PUBLIC_BUILD;
-  if (!allowLocalRecovered && MODEL_SOURCE.m1a2 && MODEL_SOURCE.m1a2.source === 'glb') delete MODEL_SOURCE.m1a2;
-}
-
-// COMMUNITY TANKS: all sourced GLBs (public/models/tanks/community/*.glb).
-// Node names below were verified offline against each asset's node tree
-// (GLTFLoader sanitizes names: dots stripped, e.g. 'Plane.000' -> 'Plane000').
-// glb config extensions understood by modelLoader.applySwap:
-//   fixedMount      — casemate vehicle: no turret node; whole model rides the
-//                     hull, sim aims a virtual turret (muzzle anchors only)
-//   autoPivot       — derive turret yaw / gun pitch pivots from the asset's
-//                     node origins / subtree bounds (community assets carry
-//                     ring-centered pivots or clean node splits)
-//   pivot           — explicit [x,y,z] turret pivot override, in post-yaw raw
-//                     model units (scaled by the normalization factor)
-//   scaleToOverall  — normalize scale against dims.overallLengthM even when a
-//                     gun node exists (single-skinned-mesh models where the
-//                     barrel cannot be excluded from the bbox)
-//   paintUntextured — box-UV untextured meshes onto the shared camo canvas
-//                     (material-upgrade pass for flat-color / CAD assets)
-// Runtime source selection is intentionally procedural-only. Local GLB
-// comparison inputs and their articulation metadata live under tools/ so
-// the browser cannot discover or load authoring references.
+// Browser runtime sources are procedural-only. Offline comparison articulation
+// metadata lives under tools/ and native-playables-audit rejects regressions.
 
 /**
  * TRACK-HITBOX SCHEMA (combat round 2026-08-06, owner order: "make track

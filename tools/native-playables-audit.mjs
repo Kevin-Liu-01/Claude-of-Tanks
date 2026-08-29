@@ -38,10 +38,10 @@ for (const file of files) {
   if (/source-geometry\.js$/i.test(file)) {
     failures.push(`${rel}: baked source-geometry payload is forbidden`);
   }
-  if (!file.endsWith('.js')) continue;
+  if (!/\.(?:[cm]?js|[cm]?ts)$/.test(file)) continue;
   const source = fs.readFileSync(file, 'utf8');
-  if (/ALLOW_LOCAL_RECOVERED_MODELS\s*=\s*true/.test(source)) {
-    failures.push(`${rel}: local recovered-model runtime switch is enabled`);
+  if (/\bALLOW_LOCAL_RECOVERED_MODELS\b/.test(source)) {
+    failures.push(`${rel}: local recovered-model runtime switch is forbidden`);
   }
   if (/from\s+['"][^'"]*source-geometry\.js['"]/.test(source)) {
     failures.push(`${rel}: imports baked source geometry`);
