@@ -524,7 +524,7 @@ export const MODERN3_SPECS = {
     dims: { hullLengthM: 7.59, overallLengthM: 9.67, widthM: 3.60, heightM: 2.55 },
     armor: modernArmor({
       // geometric FRAME params re-seated on the arrafi-print measured build
-      // (profiles/italy.js buildArieteMk); every RHAe VALUE byte-identical.
+      // (profiles/italy.ts buildArieteMk); every RHAe VALUE byte-identical.
       hl: 3.8, hw: 1.80, inW: 1.22, floor: 0.50, trkTop: 1.06, roofY: 1.59,
       turretPivot: [0, 1.40, -0.10], gunPivot: [0, 0.35, 1.05],
       barrelLenM: 4.93, barrelRadM: 0.105,
@@ -612,7 +612,7 @@ export const MODERN3_SPECS = {
       silhouetteHeightM: 2.42 },
     armor: modernArmor({
       // frame re-seated on the hlebov-print measured build (profiles/
-      // italy.js buildCarro45T); every RHAe VALUE byte-identical.
+      // italy.ts buildCarro45T); every RHAe VALUE byte-identical.
       hl: 3.48, hw: 1.40, inW: 1.08, floor: 0.49, trkTop: 0.94, roofY: 1.50,
       turretPivot: [0, 1.50, -0.30], gunPivot: [0, 0.40, 1.30],
       barrelLenM: 6.13, barrelRadM: 0.10,

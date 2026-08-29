@@ -15,7 +15,7 @@ import { LEOPARD_PROFILES } from './profiles/leopard.js';
 import { MERKAVA_PROFILES } from './profiles/merkava.js';
 import { PATTON_PROFILES } from './profiles/patton.js';
 import { MISC_PROFILES } from './profiles/misc.js';
-import { ITALY_PROFILES } from './profiles/italy.js';
+import { ITALY_PROFILES } from './profiles/italy.ts';
 import { UKRAINE_PROFILES } from './profiles/ukraine.js';
 import { CHINA_PROFILES } from './profiles/china.js';
 import { SWEDEN_PROFILES } from './profiles/sweden.ts';

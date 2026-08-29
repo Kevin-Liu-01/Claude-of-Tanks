@@ -168,6 +168,10 @@ Fleet-wide anatomy reconciliation now uses the strict
 closed shells, smooth module and crew volumes, published layout metadata, and
 body-contact point cloud share explicit contracts with the generated receipt
 registry without adding DOM, WebGL, or Three.js to the pure-data finalizer.
+The Italian authored family pack now uses strict
+`src/vehicles/profiles/italy.ts` contracts for C1/C2 Ariete carrier-seated ERA,
+equipment and geometry receipts and the Carro 45t closed procedural build. Its
+exact-family dynamic import remains unchanged.
 
 ## Consequences
 

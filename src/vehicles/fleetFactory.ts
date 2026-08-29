@@ -129,7 +129,7 @@ const GROUP_LOADERS = Object.freeze({
     registerProfiles(mod.CHALLENGER_PROFILES);
   }),
   leopard: () => import('./profiles/leopard.js').then((mod) => registerProfiles(mod.LEOPARD_PROFILES)),
-  italy: () => import('./profiles/italy.js').then((mod) => registerProfiles(mod.ITALY_PROFILES)),
+  italy: () => import('./profiles/italy.ts').then((mod) => registerProfiles(mod.ITALY_PROFILES)),
   sweden: () => import('./profiles/sweden.ts').then((mod) => registerProfiles(mod.SWEDEN_PROFILES)),
   sovietHeavy: () => import('./profiles/soviet-heavy.js').then((mod) => registerProfiles(mod.SOVIET_HEAVY_PROFILES)),
   t90: () => import('./profiles/t90.js').then((mod) => registerProfiles(mod.T90_PROFILES)),

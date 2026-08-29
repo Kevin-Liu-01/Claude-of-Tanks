@@ -31,8 +31,80 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.js';
 import { buildAriete } from './misc.js';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
-function addFitting(P, owner, fitting, x, y, z, rotation = null) {
+type Vec3Tuple = [number, number, number];
+type VehicleAssemblyOwner = 'hull' | 'turret';
+type Quad = [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
+type ArieteMark = 'c1' | 'c2';
+
+interface ItalyBuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly mats: unknown;
+  readonly rng: unknown;
+  readonly q?: boolean;
+  readonly geometryReceipt?: boolean;
+  topY?: number;
+  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addCupola(
+    owner: VehicleAssemblyOwner,
+    geometry: unknown,
+    ...transform: number[]
+  ): unknown;
+  addEquipment(
+    owner: VehicleAssemblyOwner,
+    geometry: unknown,
+    ...transform: number[]
+  ): unknown;
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  addMudguard(key: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    label: string,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): unknown;
+  offsetBuckets(names: readonly string[], x: number, y: number, z: number): unknown;
+  visualEraCluster(
+    key: string,
+    owner: VehicleAssemblyOwner,
+    build: () => void,
+  ): unknown;
+}
+
+interface ArmorFaceSample {
+  point: THREE.Vector3;
+  normal: THREE.Vector3;
+  du?: THREE.Vector3;
+  dv?: THREE.Vector3;
+}
+
+interface ArieteC2EraReceipt {
+  carrierDerivedTransforms: boolean;
+  contactEmbedM: number;
+  maxSupportGapM: number;
+  faceNormalAlignmentDeg: number;
+  turretCheekCassettes: number;
+  turretSideCassettes: number;
+  turretBustleCassettes: number;
+  sideSkirtCassettes: number;
+  totalTurretCassettes?: number;
+  totalCassettes?: number;
+}
+
+function addFitting(
+  P: ItalyBuilderPort,
+  owner: VehicleAssemblyOwner,
+  fitting: THREE.Object3D,
+  x: number,
+  y: number,
+  z: number,
+  rotation: Vec3Tuple | null = null,
+): void {
   fitting.position.set(x, y, z);
   if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
   (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
@@ -40,7 +112,15 @@ function addFitting(P, owner, fitting, x, y, z, rotation = null) {
 
 // Sample the actual carrier quad so add-on modules inherit its compound
 // pitch/sweep instead of approximating the surface with hand-tuned Eulers.
-function sampleArmorFace(p00, p10, p11, p01, u, v, outwardHint) {
+function sampleArmorFace(
+  p00: Vec3Tuple,
+  p10: Vec3Tuple,
+  p11: Vec3Tuple,
+  p01: Vec3Tuple,
+  u: number,
+  v: number,
+  outwardHint: Vec3Tuple,
+): Required<ArmorFaceSample> {
   const a = new THREE.Vector3(...p00);
   const b = new THREE.Vector3(...p10);
   const c = new THREE.Vector3(...p11);
@@ -61,7 +141,16 @@ function sampleArmorFace(p00, p10, p11, p01, u, v, outwardHint) {
 // Local +Y is the carrier normal and local +Z follows the selected course.
 // Extending the normal dimension inward by `embed` guarantees physical
 // overlap while keeping the visible outer face at the requested datum.
-function faceSeatedArmorCassette(P, owner, face, courseAxis, w, h, d, embed) {
+function faceSeatedArmorCassette(
+  P: ItalyBuilderPort,
+  owner: VehicleAssemblyOwner,
+  face: ArmorFaceSample,
+  courseAxis: THREE.Vector3,
+  w: number,
+  h: number,
+  d: number,
+  embed: number,
+): void {
   const normal = face.normal.clone().normalize();
   const zAxis = courseAxis.clone().addScaledVector(normal,
     -courseAxis.dot(normal)).normalize();
@@ -83,7 +172,13 @@ function faceSeatedArmorCassette(P, owner, face, courseAxis, w, h, d, embed) {
 }
 
 // flush hatch ring + coaming (shared by the italy builders)
-function cupolaRing(P, x, yLocal, zLocal, r) {
+function cupolaRing(
+  P: ItalyBuilderPort,
+  x: number,
+  yLocal: number,
+  zLocal: number,
+  r: number,
+): void {
   const { box, cylY, torus } = KIT;
   P.add('turret', cylY(r, r + 0.015, 0.055, P.q ? 18 : 10), x, yLocal + 0.028, zLocal);
   P.add('turretDark', torus(r * 0.96, 0.013, 16), x, yLocal + 0.062, zLocal);
@@ -108,14 +203,14 @@ function cupolaRing(P, x, yLocal, zLocal, r) {
 // The C2 package regions (cheek armor, glacis add-on, full-run skirts, new
 // sight housings, APU) are photo-class per the round brief.
 // ---------------------------------------------------------------------------
-function buildArieteMk(P, mark) {
+function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   const { box, cylY, cylZ, torus, buildGun, buildRunningGear,
     headlight, liftEye, periscope, towCable, stowage } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
   const c2 = mark === 'c2';
   const C2_ERA_EMBED_M = 0.012;
-  const c2EraReceipt = c2 ? {
+  const c2EraReceipt: ArieteC2EraReceipt | null = c2 ? {
     carrierDerivedTransforms: true,
     contactEmbedM: C2_ERA_EMBED_M,
     maxSupportGapM: 0,
@@ -135,8 +230,8 @@ function buildArieteMk(P, mark) {
   // stayed behind when the turret yawed.  L() and localY() preserve their
   // exact zero-yaw world seats while transferring ownership to rig_turret.
   P.turretG.position.set(0, 1.30 + BODY_RIDE_LIFT, -0.10);
-  const L = (zWorld) => zWorld + 0.10;                                         // world z -> turret local
-  const localY = (yWorldBeforeLift) => yWorldBeforeLift - 1.30;
+  const L = (zWorld: number): number => zWorld + 0.10;                         // world z -> turret local
+  const localY = (yWorldBeforeLift: number): number => yWorldBeforeLift - 1.30;
 
   // ---- hull tub + sponsons -------------------------------------------------
   P.add('hull', box(1.90, 0.90, 6.30), 0, 0.85, 0.05);                         // tub x ±0.95 (inner band plane 1.017, audit dilates 2), belly 0.40
@@ -212,8 +307,8 @@ function buildArieteMk(P, mark) {
     const armorBucket = c2 ? 'turret' : 'hull';
     const darkBucket = c2 ? 'turretDark' : 'hullDark';
     const detailBucket = c2 ? 'turretDetail' : 'hullDetail';
-    const y = (value) => c2 ? localY(value) : value;
-    const z = (value) => c2 ? L(value) : value;
+    const y = (value: number): number => c2 ? localY(value) : value;
+    const z = (value: number): number => c2 ? L(value) : value;
     P.add(armorBucket, box(0.42, 0.49, 0.66), s * 1.25, y(1.745), z(-0.06));    // sponson bin aft (top 1.99; ref inner edge 2.02)
     P.add(armorBucket, box(0.42, 0.40, 0.62), s * 1.25, y(1.70), z(0.62));      // sponson bin fore (top 1.90)
     P.add(darkBucket, box(0.38, 0.02, 0.58), s * 1.25, y(2.00), z(-0.06));     // bin lids
@@ -329,7 +424,7 @@ function buildArieteMk(P, mark) {
           };
           faceSeatedArmorCassette(P, 'hull', face, face.dv,
             0.275, 0.040, panelD - 0.055, C2_ERA_EMBED_M);
-          c2EraReceipt.sideSkirtCassettes += 1;
+          if (c2EraReceipt) c2EraReceipt.sideSkirtCassettes += 1;
         }
       }
     }
@@ -590,11 +685,11 @@ function buildArieteMk(P, mark) {
   if (c2) {
     // ---- C2/AMV upgrade package (photo-class; print is C1-only here) -------
     for (const s of [-1, 1]) {
-      const cheekBottom = [
+      const cheekBottom: Quad = [
         [s * 0.40, 0.16, L(2.04)], [s * 1.10, 0.24, L(1.72)],
         [s * 1.18, 0.22, L(1.30)], [s * 0.42, 0.16, L(1.58)],
       ];
-      const cheekTop = [
+      const cheekTop: Quad = [
         [s * 0.40, 0.62, L(1.70)], [s * 1.04, 0.56, L(1.48)],
         [s * 1.12, 0.53, L(1.26)], [s * 0.42, 0.62, L(1.52)],
       ];
@@ -607,14 +702,14 @@ function buildArieteMk(P, mark) {
         const face = sampleArmorFace(...cheekTop, u, v, [0, 1, 0.2]);
         faceSeatedArmorCassette(P, 'turret', face, face.dv,
           0.20, 0.055, 0.20, C2_ERA_EMBED_M);
-        c2EraReceipt.turretCheekCassettes += 1;
+        if (c2EraReceipt) c2EraReceipt.turretCheekCassettes += 1;
       }
-      const cheekOuterFace = [cheekBottom[1], cheekBottom[2], cheekTop[2], cheekTop[1]];
+      const cheekOuterFace: Quad = [cheekBottom[1], cheekBottom[2], cheekTop[2], cheekTop[1]];
       for (const u of [0.27, 0.73]) for (const v of [0.34, 0.72]) {
         const face = sampleArmorFace(...cheekOuterFace, u, v, [s, 0, 0.25]);
         faceSeatedArmorCassette(P, 'turret', face, face.du,
           0.18, 0.055, 0.18, C2_ERA_EMBED_M);
-        c2EraReceipt.turretCheekCassettes += 1;
+        if (c2EraReceipt) c2EraReceipt.turretCheekCassettes += 1;
       }
 
       // The C2 shoulder boxes are already turret-owned armor carriers. Seat
@@ -634,7 +729,7 @@ function buildArieteMk(P, mark) {
           };
           faceSeatedArmorCassette(P, 'turret', face, face.dv,
             carrier.h * 0.34, 0.055, carrier.d * 0.37, C2_ERA_EMBED_M);
-          c2EraReceipt.turretSideCassettes += 1;
+          if (c2EraReceipt) c2EraReceipt.turretSideCassettes += 1;
         }
       }
 
@@ -649,7 +744,7 @@ function buildArieteMk(P, mark) {
         };
         faceSeatedArmorCassette(P, 'turret', face, face.dv,
           0.16, 0.050, 0.26, C2_ERA_EMBED_M);
-        c2EraReceipt.turretBustleCassettes += 1;
+        if (c2EraReceipt) c2EraReceipt.turretBustleCassettes += 1;
       }
       for (const [i, py, prx] of [[0, 1.364, -0.064], [1, 1.345, -0.10], [2, 1.315, -0.10]]) {
         P.add('hull', box(0.44, 0.09, 0.52), s * (0.28 + i * 0.47), py, 2.30 + i * 0.30, prx, 0, 0); // glacis add-on rows re-seated ON the §5.299 raked plane
@@ -700,7 +795,7 @@ function buildArieteMk(P, mark) {
     maxSupportGapM: 0,
     followsTurretYaw: true,
   });
-  if (c2) {
+  if (c2 && c2EraReceipt) {
     c2EraReceipt.totalTurretCassettes = c2EraReceipt.turretCheekCassettes
       + c2EraReceipt.turretSideCassettes + c2EraReceipt.turretBustleCassettes;
     c2EraReceipt.totalCassettes = c2EraReceipt.totalTurretCassettes
@@ -748,8 +843,8 @@ function buildArieteMk(P, mark) {
   P.topY = 2.55 + BODY_RIDE_LIFT;
 }
 
-function buildArieteC1(P) { buildArieteMk(P, 'c1'); }
-function buildArieteC2(P) { buildArieteMk(P, 'c2'); }
+function buildArieteC1(P: ItalyBuilderPort): void { buildArieteMk(P, 'c1'); }
+function buildArieteC2(P: ItalyBuilderPort): void { buildArieteMk(P, 'c2'); }
 
 // ---------------------------------------------------------------------------
 // Carro 45t — OTO 45-tonne paper project, print-true ground-up build.
@@ -762,7 +857,7 @@ function buildArieteC2(P) { buildArieteMk(P, 'c2'); }
 // 105mm with mid-tube evacuator (2.03@+5.55), muzzle +7.11; exposed
 // six-wheel gear with raised idler (ramp to +3.5) and rear sprocket.
 // ---------------------------------------------------------------------------
-function buildCarro45T(P) {
+function buildCarro45T(P: ItalyBuilderPort): void {
   const { box, cylY, cylZ, torus, frustum, polyMultiLoft, buildGun,
     buildRunningGear, headlight, periscope, liftEye, towCable, stowage } = KIT;
   const slab = orientedSlab;
@@ -881,7 +976,7 @@ function buildCarro45T(P) {
 
   // ---- turret ---------------------------------------------------------------
   P.turretG.position.set(0, 1.50, -0.30);
-  const L = (zWorld) => zWorld + 0.30;
+  const L = (zWorld: number): number => zWorld + 0.30;
   const CARRO_SHELL = [
     [-0.50, L(1.81)], [-0.31, L(1.81)], [-0.30, L(1.55)], [0.30, L(1.55)],
     [0.31, L(1.81)], [0.50, L(1.81)], [1.50, L(0.64)], [1.51, L(0.40)],
@@ -1079,4 +1174,4 @@ export const ITALY_PROFILES = {
   ariete_c1: { build: buildArieteC1 },
   ariete_c2: { build: buildArieteC2 },
   carro45t: { build: buildCarro45T },
-};
+} satisfies VehicleProfileRecord;
