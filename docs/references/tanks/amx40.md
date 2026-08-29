@@ -17,8 +17,8 @@ antennas; GIAT CN120-25 120mm smoothbore (thermal sleeve, NO bore
 evacuator — compressed-air scavenging), 7.62 AANF1 roof MG (FORWARD, low
 mount), export-demonstrator sand livery, 'AMX 40' skirt branding.
 
-## OWNERSHIP / ROUND STATE (2026-08-08, france.js r1)
-Builder `buildAMX40` + spec row live in **src/vehicles/france.js** (NEW
+## OWNERSHIP / ROUND STATE (2026-08-08, france.ts r1)
+Builder `buildAMX40` + spec row live in **src/vehicles/france.ts** (NEW
 module, orchestrator-stubbed and wired into tankFactory at the marked
 extension hook; single owner = the france lane). Registered in
 FRANCE_BUILDERS; specs merge at import (modern3 pattern);
@@ -360,7 +360,7 @@ playable geometry.
 ## OWNER FORWARD-SECTION + 20% HEIGHT / STRICT TRACK RE-CERT (2026-08-12)
 
 The active AMX-40 remains the first-party `buildAMX40` implementation in
-`src/vehicles/france.js`. The local Armored Warfare file remains an isolated
+`src/vehicles/france.ts`. The local Armored Warfare file remains an isolated
 private measurement/render oracle only. No source vertices, converted mesh
 payload, material, texture, rig, animation or source-backed wrapper enters
 the runtime.

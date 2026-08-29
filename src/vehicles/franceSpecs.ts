@@ -1,5 +1,5 @@
 // Boot-light combat-data registration for the French AMX-40. The procedural
-// geometry implementation is demand-loaded from france.js when selected.
+// geometry implementation is demand-loaded from france.ts when selected.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import { shell, apfsdsPenetration as apfsdsPens, modernArmor } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';

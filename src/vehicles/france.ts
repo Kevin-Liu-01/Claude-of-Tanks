@@ -13,6 +13,57 @@
 import { KIT } from './tankFactoryCore.js';
 import { FITTINGS } from './profiles/kit.js';
 import './franceSpecs.ts';
+import type { BufferGeometry, Object3D } from 'three';
+
+type Vec3Tuple = [number, number, number];
+
+interface RoadWheelLayerOptions {
+  outset: number;
+  name: string;
+}
+
+interface FranceBuilderPort {
+  readonly hullG: { add(object: Object3D): unknown };
+  readonly turretG: { add(object: Object3D): unknown; userData: Record<string, unknown> };
+  readonly mats: { detail: unknown; dark: unknown; [role: string]: unknown };
+  readonly q?: boolean;
+  readonly gear: {
+    addRoadWheelLayer(
+      geometry: unknown,
+      material: unknown,
+      options: RoadWheelLayerOptions,
+    ): unknown;
+  };
+  muzzleZ?: number;
+  topY?: number;
+  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addEquipment(owner: 'hull' | 'turret', geometry: unknown, ...transform: number[]): unknown;
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  decal(
+    owner: 'hull' | 'turret',
+    kind: string,
+    label: string | null,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): unknown;
+  scaleBuckets(names: readonly string[], x: number, y: number, z: number): unknown;
+}
+
+function xformWithScale<T extends BufferGeometry>(
+  geometry: T,
+  x: number,
+  y: number,
+  z: number,
+  rx: number,
+  ry: number,
+  rz: number,
+  scale: Vec3Tuple,
+): T {
+  geometry.scale(scale[0], scale[1], scale[2]);
+  return KIT.xform(geometry, x, y, z, rx, ry, rz);
+}
 
 // ---------------------------------------------------------------------------
 // §C missing-side winding guard — face-outwardness census; re-orders reversed
@@ -20,17 +71,43 @@ import './franceSpecs.ts';
 // Same device as modern3.js orientedSlab / uk.js sslab. KIT dereferenced at
 // call time only.
 // ---------------------------------------------------------------------------
-function orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
+function orientedSlab(
+  b0: Vec3Tuple,
+  b1: Vec3Tuple,
+  b2: Vec3Tuple,
+  b3: Vec3Tuple,
+  t0: Vec3Tuple,
+  t1: Vec3Tuple,
+  t2: Vec3Tuple,
+  t3: Vec3Tuple,
+): unknown {
   const c8 = [b0, b1, b2, b3, t0, t1, t2, t3];
-  const cen = [0, 1, 2].map((k) => c8.reduce((s, p) => s + p[k], 0) / 8);
-  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cen: Vec3Tuple = [
+    c8.reduce((sum, point) => sum + point[0], 0) / 8,
+    c8.reduce((sum, point) => sum + point[1], 0) / 8,
+    c8.reduce((sum, point) => sum + point[2], 0) / 8,
+  ];
+  const sub = (a: Vec3Tuple, b: Vec3Tuple): Vec3Tuple => (
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+  );
+  const cross = (a: Vec3Tuple, b: Vec3Tuple): Vec3Tuple => (
+    [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+  );
+  const dot = (a: Vec3Tuple, b: Vec3Tuple): number => (
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+  );
   let outward = 0;
-  for (const f of [[b0, b1, t1, t0], [b1, b2, t2, t1], [b2, b3, t3, t2],
-    [b3, b0, t0, t3], [t0, t1, t2, t3], [b3, b2, b1, b0]]) {
+  const faces: [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple][] = [
+    [b0, b1, t1, t0], [b1, b2, t2, t1], [b2, b3, t3, t2],
+    [b3, b0, t0, t3], [t0, t1, t2, t3], [b3, b2, b1, b0],
+  ];
+  for (const f of faces) {
     const n = cross(sub(f[1], f[0]), sub(f[2], f[0]));
-    const fc = [0, 1, 2].map((k) => (f[0][k] + f[1][k] + f[2][k] + f[3][k]) / 4);
+    const fc: Vec3Tuple = [
+      (f[0][0] + f[1][0] + f[2][0] + f[3][0]) / 4,
+      (f[0][1] + f[1][1] + f[2][1] + f[3][1]) / 4,
+      (f[0][2] + f[1][2] + f[2][2] + f[3][2]) / 4,
+    ];
     if (dot(n, sub(fc, cen)) > 0) outward++;
   }
   return outward >= 3
@@ -40,10 +117,17 @@ function orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
 
 // §B3.1 MUZZLE BORE (modern3.js mirror — see its header note): open-ended
 // outer wall to the face, inward recess funnel, near-black bore disc.
-function muzzleBore(P, faceZ, R, boreR, seg = 14, rearR) {
+function muzzleBore(
+  P: FranceBuilderPort,
+  faceZ: number,
+  R: number,
+  boreR: number,
+  seg = 14,
+  rearR?: number,
+): void {
   const { cylY, cylZ, torus, xform } = KIT;
   P.add('gun', xform(cylY(R, rearR ?? R, 0.042, seg, true), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0, faceZ - 0.021);
-  P.add('gunDark', xform(cylY(R - 0.003, boreR, 0.040, seg, true), 0, 0, 0, Math.PI / 2, 0, 0, [-1, 1, 1]), 0, 0, faceZ - 0.0215);
+  P.add('gunDark', xformWithScale(cylY(R - 0.003, boreR, 0.040, seg, true), 0, 0, 0, Math.PI / 2, 0, 0, [-1, 1, 1]), 0, 0, faceZ - 0.0215);
   P.add('gun', torus(R - 0.002, 0.0045, seg), 0, 0, faceZ - 0.001, -Math.PI / 2, 0, 0);
   P.add('gunDark', cylZ(boreR, 0.008, seg), 0, 0, faceZ - 0.034);
 }
@@ -83,7 +167,7 @@ function muzzleBore(P, faceZ, R, boreR, seg = 14, rearR) {
 // receipt gunContour r 0.131/0.121 sleeve, 0.063 bare gap, 0.076
 // muzzle), roof 7.62 FORWARD on a LOW mount (type10 published-line
 // precedent: a roof-standing MG owns heightM p95).
-function buildAMX40(P) {
+function buildAMX40(P: FranceBuilderPort): void {
   const { box, cylX, cylY, cylZ, frustum, polyMultiLoft, buildGun, buildRunningGear,
     liftEye, periscope, torus, xform } = KIT;
   const slab = orientedSlab;                                                    // §C winding guard on every mirrored slab
@@ -95,7 +179,15 @@ function buildAMX40(P) {
   // axis-aligned boxes present ONLY end caps to the 0.52m station slabs —
   // authored as butted segments at ≤0.48 pitch (strictly under the window,
   // so every slab holds a real cross-section face; 4mm laps kill z-fights).
-  const segZ = (bucket, w, h, xc2, yc2, zLo, zHi) => {
+  const segZ = (
+    bucket: string,
+    w: number,
+    h: number,
+    xc2: number,
+    yc2: number,
+    zLo: number,
+    zHi: number,
+  ): void => {
     const n = Math.max(1, Math.ceil((zHi - zLo) / 0.48));
     const pitch = (zHi - zLo) / n;
     for (let k = 0; k < n; k++) {
@@ -188,13 +280,15 @@ function buildAMX40(P) {
   // §B4: inner faces 1.646 vs shoe reach 1.542). Receipt: hem 0.651, top
   // band 1.33, straight run to rear -3.27, raked-hem front panel rising
   // toward the idler (Object_16 front bots 0.756 -> 1.285, z 2.4..3.2).
-  const skirtBands = [                                                         // source station widths, rear -> bow shoulder
+  const skirtBands: [number, number, number][] = [                             // source station widths, rear -> bow shoulder
     [-3.27, -2.91, 1.639], [-2.91, -2.42, 1.639], [-2.42, -1.93, 1.653],
     [-1.93, -1.44, 1.656], [-1.44, -0.95, 1.646], [-0.95, -0.46, 1.646],
     [-0.46, 0.03, 1.646], [0.03, 0.52, 1.600], [0.52, 1.01, 1.643],
     [1.01, 1.50, 1.637], [1.50, 2.01, 1.590], [2.01, 2.35, 1.671],
   ];
-  const skirtOuterAt = (z) => skirtBands.find(([lo, hi]) => z >= lo && z < hi)?.[2] ?? 1.648;
+  const skirtOuterAt = (z: number): number => (
+    skirtBands.find(([lo, hi]) => z >= lo && z < hi)?.[2] ?? 1.648
+  );
   for (const s of [-1, 1]) {
     // r2 stations fix: the flat ±1.68 run read +2.6..3.7% width at every
     // slice (ref slice faces vary 1.61..1.675). Main run now sits at the
@@ -250,7 +344,7 @@ function buildAMX40(P) {
     // y 0.55 dipped the wrap bottoms 0.2-0.35 UNDER the ref's visible wrap
     // lines (side_hull worst clusters z ±2.66..3.23 / -2.89..-3.11)
     sprocket: { z: -2.70, y: 0.67, r: 0.24, trackR: 0.16 }, idler: { z: 2.72, y: 0.70, r: 0.28, trackR: 0.20 },
-    rollers: [1.72, 0.43, -0.86, -1.98].map((z) => ({ z, y: 0.98, r: 0.07 })),
+    rollers: [1.72, 0.43, -0.86, -1.98].map((z: number) => ({ z, y: 0.98, r: 0.07 })),
     trackW: 0.54, endRingSpan: 0.50, topY: 1.03, contactZF: 2.30, contactZR: -2.00,
     loopPoints: [
       [-2.70, 1.03], [2.72, 1.03], [2.86, 0.98], [3.00, 0.74],
@@ -381,7 +475,7 @@ function buildAMX40(P) {
   // rake), LEFT plate sweeps to the wall in ONE plane (the identity
   // face), RIGHT cheek in TWO facets; bustle rear right-deep (-2.31w
   // right / -2.23w left); roof plateau 2.385 raking to 2.32 at the tail.
-  P.add('turret', xform(cylY(1.00, 1.04, 0.10, P.q ? 24 : 14), 0, 0, 0, 0, 0, 0, [1, 1, 0.54]), 0, 0.015, 0.26); // oval ring riser, source plan depth
+  P.add('turret', xformWithScale(cylY(1.00, 1.04, 0.10, P.q ? 24 : 14), 0, 0, 0, 0, 0, 0, [1, 1, 0.54]), 0, 0.015, 0.26); // oval ring riser, source plan depth
   P.add('turret', box(1.90, 0.14, 1.30), 0, 0.08, 0.35);                        // ring-zone throat bridges continuously into the raised low shell
   // Object_12 primary shell as one continuous loft. A twelve-sided base
   // follows the narrow nose, expanding cheeks, broad mid-body and tapered
@@ -406,24 +500,24 @@ function buildAMX40(P) {
   // first eight stations carry the actual crown, lower shoulder, side armor,
   // welds and attached forward cassettes into the new nose.  The aft half,
   // turret ring and height are unchanged.
-  const amx40ShellPlan = [
+  const amx40ShellPlan: [number, number][] = [
     [-0.86, 1.98], [-0.20, 2.08], [0.38, 2.08], [0.80, 1.98], [1.10, 1.62],
     [1.34, 1.12], [1.39, 0.50], [1.39, -0.42], [1.34, -1.02],
     [1.25, -1.55], [0.88, -1.87], [0.36, -2.02], [-0.36, -2.04],
     [-0.86, -1.94], [-1.21, -1.66], [-1.36, -1.18], [-1.41, -0.44],
     [-1.39, 0.44], [-1.34, 1.08], [-1.08, 1.60],
   ];
-  const shellSideStations = {
+  const shellSideStations: Record<number, [number, number][]> = {
     '-1': amx40ShellPlan
       .filter(([x]) => x < 0)
-      .map(([x, z]) => [z, Math.abs(x)])
+      .map(([x, z]): [number, number] => [z, Math.abs(x)])
       .sort((a, b) => a[0] - b[0]),
     1: amx40ShellPlan
       .filter(([x]) => x > 0)
-      .map(([x, z]) => [z, x])
+      .map(([x, z]): [number, number] => [z, x])
       .sort((a, b) => a[0] - b[0]),
   };
-  const shellWallXAt = (side, z) => {
+  const shellWallXAt = (side: number, z: number): number => {
     const stations = shellSideStations[side];
     if (z <= stations[0][0]) return stations[0][1];
     if (z >= stations[stations.length - 1][0]) return stations[stations.length - 1][1];
@@ -435,7 +529,7 @@ function buildAMX40(P) {
     }
     return 1.34;
   };
-  const shellCrownXAt = (side, z) => {
+  const shellCrownXAt = (side: number, z: number): number => {
     const wallX = shellWallXAt(side, z);
     const cheek = Math.max(0, Math.min(1, (z + 0.10) / 1.55));
     const flank = Math.min(1, wallX / 1.35);
@@ -491,7 +585,14 @@ function buildAMX40(P) {
   // + latches (§B3 equipment grammar) -------------------------------------
   for (const s of [-1, 1]) {
     const innerTop = s > 0 ? 0.70 : 0.64;
-    const flankModule = (zc, d, topF = innerTop, topR = innerTop, bottomF = 0.20, bottomR = 0.20) => {
+    const flankModule = (
+      zc: number,
+      d: number,
+      topF = innerTop,
+      topR = innerTop,
+      bottomF = 0.20,
+      bottomR = 0.20,
+    ): void => {
       const zFront = zc + d / 2;
       const zRear = zc - d / 2;
       const bottomFrontX = s * (shellWallXAt(s, zFront) - attachmentEmbedM);
@@ -551,13 +652,13 @@ function buildAMX40(P) {
     [s * 1.14, 0.18, -0.39], [s * 1.26, 0.18, -0.39], [s * 1.26, 0.28, -0.55], [s * 1.14, 0.28, -0.55]));
   P.add('turretDetail', box(0.12, 0.14, 0.12), -0.32, 0.75, -1.35);            // low seated service pot; the adjacent narrow mast owns the height peak
   P.add('turretDetail', box(0.10, 0.30, 0.12), 0.18, 0.745, -0.48);            // source mid-aft hatch/periscope now runs down into the crown instead of hovering over it
-  P.add('turret', xform(cylY(0.48, 0.50, 0.060, 24), 0, 0, 0, 0, 0, 0, [1, 1, 0.68]), -0.80, 0.620, -0.162); // broad, flat collar physically bridges the crown to the dominant annulus
-  P.add('turretDetail', xform(cylY(0.49, 0.50, 0.014, 24), 0, 0, 0, 0, 0, 0, [1, 1, 0.68]), -0.80, 0.657, -0.162); // low-contrast outer well lip
-  P.add('turretDark', xform(torus(0.39, 0.010, 24), 0, 0, 0, 0, 0, 0, [1, 1, 0.68]), -0.80, 0.667, -0.162); // thin inner drainage seam, not a raised black rim
-  P.add('turret', xform(cylY(0.36, 0.39, 0.030, 22), 0, 0, 0, 0, 0, 0, [1, 1, 0.65]), -0.80, 0.677, -0.162); // second stepped seat
-  P.add('turret', xform(cylY(0.31, 0.325, 0.080, 22), 0, 0, 0, 0, 0, 0, [1, 1, 0.62]), -0.80, 0.730, -0.162); // low commander cupola, deliberately subordinate to its annulus
-  P.add('turret', xform(cylY(0.285, 0.30, 0.035, 22), 0, 0, 0, 0, 0, 0, [1, 1, 0.62]), -0.80, 0.787, -0.162);
-  P.add('turretDark', xform(torus(0.285, 0.010, 22), 0, 0, 0, 0, 0, 0, [1, 1, 0.62]), -0.80, 0.808, -0.162);
+  P.add('turret', xformWithScale(cylY(0.48, 0.50, 0.060, 24), 0, 0, 0, 0, 0, 0, [1, 1, 0.68]), -0.80, 0.620, -0.162); // broad, flat collar physically bridges the crown to the dominant annulus
+  P.add('turretDetail', xformWithScale(cylY(0.49, 0.50, 0.014, 24), 0, 0, 0, 0, 0, 0, [1, 1, 0.68]), -0.80, 0.657, -0.162); // low-contrast outer well lip
+  P.add('turretDark', xformWithScale(torus(0.39, 0.010, 24), 0, 0, 0, 0, 0, 0, [1, 1, 0.68]), -0.80, 0.667, -0.162); // thin inner drainage seam, not a raised black rim
+  P.add('turret', xformWithScale(cylY(0.36, 0.39, 0.030, 22), 0, 0, 0, 0, 0, 0, [1, 1, 0.65]), -0.80, 0.677, -0.162); // second stepped seat
+  P.add('turret', xformWithScale(cylY(0.31, 0.325, 0.080, 22), 0, 0, 0, 0, 0, 0, [1, 1, 0.62]), -0.80, 0.730, -0.162); // low commander cupola, deliberately subordinate to its annulus
+  P.add('turret', xformWithScale(cylY(0.285, 0.30, 0.035, 22), 0, 0, 0, 0, 0, 0, [1, 1, 0.62]), -0.80, 0.787, -0.162);
+  P.add('turretDark', xformWithScale(torus(0.285, 0.010, 22), 0, 0, 0, 0, 0, 0, [1, 1, 0.62]), -0.80, 0.808, -0.162);
   P.add('turretDetail', box(0.13, 0.05, 0.12), -0.615, 0.780, -0.162);          // asymmetric hatch hinge closes the source cupola shoulder
   P.add('turretDetail', box(0.26, 0.14, 0.10), -0.58, 0.88, -0.05);            // broad low hatch handle bridges the main well shoulder
   P.add('turretDetail', box(0.18, 0.12, 0.10), -0.82, 0.86, 0.00);             // broad, low source hatch/periscope peak, fully seated on the main lid
@@ -673,8 +774,8 @@ function buildAMX40(P) {
   P.addGunExtra(slab(                                                           // source-height canted outer mantlet web; its soft facet encloses the oval tunnel without a rectangular shoulder block
     [-0.72, -0.22, 0.02], [0.62, -0.22, 0.02], [0.58, -0.25, 0.38], [-0.66, -0.25, 0.38],
     [-0.62, 0.43, 0.02], [0.54, 0.43, 0.02], [0.51, 0.29, 0.38], [-0.58, 0.29, 0.38]));
-  P.addGunExtraDark(xform(cylZ(0.41, 0.035, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [1.50, 0.56, 1]), -0.04, 0.02, 0.275); // deep oval recess behind the CN120 cradle
-  P.addGunExtra(xform(cylZ(0.36, 0.20, P.q ? 20 : 14), 0, 0, 0, 0, 0, 0, [1.42, 0.64, 1]), -0.04, 0.02, 0.39); // rounded CN120 cradle transition
+  P.addGunExtraDark(xformWithScale(cylZ(0.41, 0.035, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [1.50, 0.56, 1]), -0.04, 0.02, 0.275); // deep oval recess behind the CN120 cradle
+  P.addGunExtra(xformWithScale(cylZ(0.36, 0.20, P.q ? 20 : 14), 0, 0, 0, 0, 0, 0, [1.42, 0.64, 1]), -0.04, 0.02, 0.39); // rounded CN120 cradle transition
   P.addGunExtra(slab(                                                           // housing crown chamfer (top 2.36w; at +20° the rear corner rises
     [-0.70, 0.18, 0.18], [0.60, 0.18, 0.18], [0.60, 0.16, 0.38], [-0.70, 0.16, 0.38],
     [-0.66, 0.22, 0.18], [0.56, 0.22, 0.18], [0.56, 0.20, 0.38], [-0.66, 0.20, 0.38])); //   continuously seated over the compact housing)
@@ -688,7 +789,7 @@ function buildAMX40(P) {
     [-0.19, 0.14, 0.40], [0.25, 0.14, 0.40], [0.25, 0.14, 0.50], [-0.19, 0.14, 0.50],
     [-0.19, 0.14, 0.40], [0.25, 0.14, 0.40], [0.25, 0.13, 0.50], [-0.19, 0.13, 0.50]));
   {                                                                             // measured faceted crown over the center course
-    const crownCourse = [[0.55, 0.15], [0.585, 0.35], [0.695, 0.45],
+    const crownCourse: [number, number][] = [[0.55, 0.15], [0.585, 0.35], [0.695, 0.45],
       [0.805, 0.25], [0.925, 0.16], [1.035, 0.14], [1.10, 0.14]];
     for (let i = 0; i < crownCourse.length - 1; i++) {
       const [z0, y0] = crownCourse[i], [z1, y1] = crownCourse[i + 1];
@@ -697,8 +798,8 @@ function buildAMX40(P) {
         [-0.19, y0, z0], [0.25, y0, z0], [0.25, y1, z1], [-0.19, y1, z1]));
     }
   }
-  P.addGunExtra(xform(cylZ(0.32, 0.12, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [1.45, 0.50, 1]), -0.05, 0.015, 0.96); // soft annular cheek continuation, vertically compressed to the source tunnel
-  P.addGunExtraDark(xform(cylZ(0.255, 0.045, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [1.45, 0.56, 1]), -0.05, 0.015, 1.035); // recessed oval gun tunnel, never a square mask
+  P.addGunExtra(xformWithScale(cylZ(0.32, 0.12, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [1.45, 0.50, 1]), -0.05, 0.015, 0.96); // soft annular cheek continuation, vertically compressed to the source tunnel
+  P.addGunExtraDark(xformWithScale(cylZ(0.255, 0.045, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [1.45, 0.56, 1]), -0.05, 0.015, 1.035); // recessed oval gun tunnel, never a square mask
   P.addGunExtra(cylZ(0.15, 0.38, P.q ? 18 : 12, 0.17), 0.01, 0.01, 1.24);       // compact cast cradle collar tapering to the tube (print Object_14)
   P.addGunExtraDark(cylZ(0.18, 0.05, P.q ? 18 : 12), 0.01, 0, 1.10);            // boot seam ring
   P.addGunExtra(cylZ(0.16, 0.18, P.q ? 18 : 12), 0.03, 0, 1.58);               // asymmetric forward clamp shoulder

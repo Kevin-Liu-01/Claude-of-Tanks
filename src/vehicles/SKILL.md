@@ -20,8 +20,9 @@ own remaining metadata, `tankAssets.ts` owns UI asset mappings, and
 `turretBarrelCircularity.ts` measures actual rig-local gun sections for the
 fleet release gate.
 The Japanese and Swedish visual deltas live in strict `profiles/japan.ts` and
-`profiles/sweden.ts` packs behind narrow procedural-builder ports; preserve
-their demand-loaded family boundaries and complete donor geometry.
+`profiles/sweden.ts` packs, while the AMX-40 visual build lives in strict
+`france.ts`; all three use narrow procedural-builder ports. Preserve their
+demand-loaded family boundaries and complete donor geometry.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

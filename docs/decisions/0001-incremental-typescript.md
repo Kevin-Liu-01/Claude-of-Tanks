@@ -137,6 +137,10 @@ retains exact-family demand acquisition.
 `src/vehicles/profiles/sweden.ts` follows the same boundary for UDES 03, Strv
 103A/B, Strv 81, and Strv 122, including fixed-gun, hydropneumatic, running
 gear, and fitted-equipment contracts.
+The standalone `src/vehicles/france.ts` AMX-40 builder is also strict. Its
+builder port covers geometry buckets, running-gear layers, fitted equipment,
+decals, receipts, and nonuniform transforms while retaining one-vehicle demand
+loading.
 
 ## Consequences
 

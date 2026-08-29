@@ -51,7 +51,7 @@ lil more turret rounding, the cupolas lights machine guns etc. update the
 amx-30b and amx-30b2"
 
 **Build:** `buildAMX30` in `src/vehicles/profiles/misc.js` rewritten on the
-`france.js buildAMX40` construction grammar, stripped per the order:
+`france.ts buildAMX40` construction grammar, stripped per the order:
 
 - **Base (amx40 grammar):** belly tub + sloped belly shoulders between the
   shoe lanes, full-width sponson course (±1.51, y 1.26..1.585), stepped

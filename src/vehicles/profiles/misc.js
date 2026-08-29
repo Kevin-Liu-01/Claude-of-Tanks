@@ -3978,7 +3978,7 @@ function buildType74Native2026(P) {
 // verbatim: "make the amx 30bs based off of stripped down versions of amx 40
 // without sideskirts and as much side turret armor, with a lil more turret
 // rounding, the cupolas lights machine guns etc. update the amx-30b and
-// amx-30b2"). Base = france.js buildAMX40 construction grammar (belly tub +
+// amx-30b2"). Base = france.ts buildAMX40 construction grammar (belly tub +
 // sloped belly shoulders, full-width sponson course, stepped REAR-RAISED
 // engine deck, §B1 one-plane bow courses, §B3.2 stern service field,
 // station-slice segZ discipline) STRIPPED DOWN per the order:
@@ -3989,7 +3989,7 @@ function buildType74Native2026(P) {
 //     rails are gone; the cast walls carry only lift lugs, grab rails and
 //     smoke banks.
 //   * A LIL MORE TURRET ROUNDING — the amx40 20-station welded shell plan
-//     (france.js amx40ShellPlan) is re-derived at x*0.87 / z*0.78 fwd /
+//     (france.ts amx40ShellPlan) is re-derived at x*0.87 / z*0.78 fwd /
 //     *0.97 aft, Chaikin-smoothed to 40 stations, and lofted through FIVE
 //     rings + a domed cap (the welded 3-ring prism becomes a cast round
 //     with the long AMX-30 bustle taper).
@@ -4277,7 +4277,7 @@ function buildAMX30(P, b2) {
     deadSag: 0.028, paintedEnds: false, coveredTop: false, arms: true,
   });
   // ---- turret: the amx40 shell RE-LOFTED AS A CAST ROUND ("a lil more
-  // turret rounding"). Plan = france.js amx40ShellPlan at x*0.87 / z*0.78
+  // turret rounding"). Plan = france.ts amx40ShellPlan at x*0.87 / z*0.78
   // fwd / *0.97 aft, then ONE Chaikin corner-cut pass (20 -> 40 stations);
   // five rings + domed cap replace the welded 3-ring prism. NO flank
   // cassettes / appliqué (the "as much side turret armor" strip). ---------

@@ -118,7 +118,7 @@ const GROUP_LOADERS = Object.freeze({
       registerCanonicalBuilders('modern2', canonical.MODERN2_BUILDERS);
       registerProfiles(profiles.CHINA_PROFILES);
     }),
-  franceCore: () => import('./france.js')
+  franceCore: () => import('./france.ts')
     .then((mod) => registerCanonicalBuilders('france', mod.FRANCE_BUILDERS)),
   modern3Core: () => import('./modern3.js')
     .then((mod) => registerCanonicalBuilders('modern3', mod.MODERN3_BUILDERS)),
