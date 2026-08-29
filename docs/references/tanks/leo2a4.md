@@ -36,7 +36,7 @@ configuration (muzzle +5.82 over the −3.86 tail = 9.68).
 Old build (modern2.ts buildLeo2A4): slab-pile hull, parallelogram track
 run (§B6 fail), to-the-ground skirt curtain, hand-rolled pintle (census
 0), clip 83/436 + shoe 51/14. The new build lives in
-src/vehicles/profiles/leopard.js (LEOPARD_PROFILES.leo2a4 — the profile
+src/vehicles/profiles/leopard.ts (LEOPARD_PROFILES.leo2a4 — the profile
 map overrides MODERN2_BUILDERS because PROFILED_BUILDERS is assigned
 last in tankFactory).
 

@@ -121,7 +121,7 @@ until lane E lands — lane E replaces the turret anyway, re-pricing any
 future normalize plan).
 
 ## Build notes (ground-up §5.248 rebuild — buildLeo2A4M,
-## src/vehicles/profiles/leopard.js)
+## src/vehicles/profiles/leopard.ts)
 leoHullV3 family loft (same real base hull as the a6m — print corroborates
 within a column), leoGear print cadence, GROUND-UP boxy A4 turret (frustum
 walls + angled-back cheek faces + gun-slot bridge + roof plate), A4M slab
@@ -197,7 +197,7 @@ tree's foreign WIP poisons measurements — bisect receipts: the live pre-edit
 gate read a4m dims 39.7 / a6m dims 25; those POLLUTED rows sat in main's gate
 JSONs until this completion replaced them with fresh clean-frame rows).
 
-### Items (buildLeo2A4M, src/vehicles/profiles/leopard.js)
+### Items (buildLeo2A4M, src/vehicles/profiles/leopard.ts)
 1. TWO-BAND SKIRT SYSTEM — helper frontSkirt/rearSkirt OPTED OUT
    (§SRCFIX-0808; the segRun curtain read as a uniform plank fence, §5.284
    class). FORE (z 1.52..3.67): the A4M armor-module row IS the upper band —

@@ -4,12 +4,12 @@
 //
 // §5.248 germany-leopards round: the leo2a4m/leo2a6m donor-wrapper builders
 // (buildLeo2A4 / buildLeo2A6 + add-on packages) are RETIRED — both ids now
-// build ground-up in profiles/leopard.js (buildLeo2A4M / buildLeo2A6M,
+// build ground-up in profiles/leopard.ts (buildLeo2A4M / buildLeo2A6M,
 // print-measured §K builds). This module keeps only the OTCO field-mod
 // package, which deliberately layers on the resident leo2a4.
 
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
-import { buildLeo2A4 } from './leopard.js';
+import { buildLeo2A4 } from './leopard.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type {
   ProceduralBuilderPort,

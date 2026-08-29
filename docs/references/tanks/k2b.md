@@ -80,7 +80,7 @@ k2's oracle onto it). Bar for future fidelity rounds = photo class.
 
 - `npm test` **green** at HEAD+this-wiring-only (clean worktree at 6b5b7cf3
   + the 7 files above; the live shared tree carried an unrelated foreign
-  mid-edit WIP in profiles/leopard.js — `frustum` ReferenceError in
+  mid-edit WIP in profiles/leopard.ts — `frustum` ReferenceError in
   buildLeo2A4M — which fails the suite there independently of this lane).
   tier.selftest 115 tanks (k2b covered), vehicleMarkings.selftest 115
   anchors (k2b paint raycast seats on real armor), tankAssets.selftest 115

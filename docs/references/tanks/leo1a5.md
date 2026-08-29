@@ -19,7 +19,7 @@ and fidelity tools.
   pivot, `yawOffset = PI`. The extracted normalized receipt lives at
   `docs/references/vertex/leo1a5.json`.
 - Builder: `buildLeo1A5ArticulatedProfile` in
-  `src/vehicles/profiles/leopard.js`, selected by
+  `src/vehicles/profiles/leopard.ts`, selected by
   `LEOPARD_PROFILES.leo1a5`.
 
 ### Rebuild result
@@ -54,7 +54,7 @@ The historical packets below are retained as an audit trail. Their old
 Spec home: src/vehicles/modern2.ts (dims 7.09 / 9.54 / 3.37 / 2.62).
 Old build: buildLeo1A5 (modern2), pre-oracle era ("wholly ancient"
 owner class). NEW build (2026-08-07 scaffold round): profile builder in
-src/vehicles/profiles/leopard.js (LEOPARD_PROFILES.leo1a5 — overrides
+src/vehicles/profiles/leopard.ts (LEOPARD_PROFILES.leo1a5 — overrides
 MODERN2_BUILDERS via PROFILED_BUILDERS, the same binding leo2a4 uses).
 Family guidance (owner 2026-08-06): leo1a5 takes inspiration from the
 leopard1 family.
@@ -175,7 +175,7 @@ Spec dims row (modern2.ts TANK_SPECS.leo1a5):
 
 ## r1 SCAFFOLD BUILD (2026-08-07) — first real build of the id, DELIVERED-PENDING-CRITIC
 
-Builder: `buildLeo1A5Profile` (src/vehicles/profiles/leopard.js),
+Builder: `buildLeo1A5Profile` (src/vehicles/profiles/leopard.ts),
 registered `LEOPARD_PROFILES.leo1a5` — overrides the ancient modern2
 buildLeo1A5 via PROFILED_BUILDERS. Geometry hash **1c79188** (44 meshes
 / 60781 verts), stable ×2. Graduate holds: **leo2a5 e215a738 / leo2a6

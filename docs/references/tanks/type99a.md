@@ -530,7 +530,7 @@ floaters 100 x2; npm test exit 0 (equipment 166 + track-geometry green).
 Resident invariance: t80u af5e3ad9, leclerc 206c5fd1 (the §K frozen
 triumph ✓), leo1a5 1c79188, t14 60d7d14 — BYTE-MATCH HEAD-worktree
 baselines; leo2a4 differs (12db10a0 -> b68e42c2) = the LEOPARD lane's
-live uncommitted buildLeo2A4 WIP (profiles/leopard.js +297/-158,
+live uncommitted buildLeo2A4 WIP (profiles/leopard.ts +297/-158,
 PROFILED_BUILDERS override; modern2's copy is dead code) — not this lane.
 
 ### Evidence

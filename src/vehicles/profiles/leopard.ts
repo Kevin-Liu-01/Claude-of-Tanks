@@ -35,6 +35,609 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type { PolyMultiLoftRing } from '../factoryGeometry.ts';
+
+type Vec2Tuple = readonly [number, number];
+type Vec3Tuple = readonly [number, number, number];
+type MutableVec3 = [number, number, number];
+type FourPointRing = readonly [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
+type VehicleMaterial = THREE.MeshStandardMaterial;
+type Polygon2D = readonly Vec2Tuple[];
+type Side = -1 | 1;
+type VehicleOwner = 'hull' | 'turret';
+type NumericSeries = number | readonly number[];
+
+function isTankBuilderPort(value: object): value is TankBuilderPort {
+  return 'spec' in value
+    && 'rng' in value
+    && 'hullG' in value
+    && 'turretG' in value
+    && 'gunG' in value
+    && 'mats' in value
+    && 'add' in value && typeof value.add === 'function'
+    && 'addEquipment' in value && typeof value.addEquipment === 'function'
+    && 'decal' in value && typeof value.decal === 'function';
+}
+
+function requireTankBuilderPort(value: object): TankBuilderPort {
+  if (!isTankBuilderPort(value)) {
+    throw new TypeError('Leopard profile requires a complete procedural tank builder');
+  }
+  return value;
+}
+
+interface GearEndpoint {
+  readonly z: number;
+  readonly y: number;
+  readonly r: number;
+  readonly trackR?: number;
+}
+
+interface ChevronSurfaceStation {
+  readonly x: number;
+  readonly upperY: number;
+  readonly upperZ: number;
+  readonly ridgeY: number;
+  readonly ridgeZ: number;
+}
+
+interface ChevronClosedStation extends ChevronSurfaceStation {
+  readonly lowerY: number;
+  readonly lowerZ: number;
+}
+
+interface ChevronRoofBridgeOptions {
+  readonly bodyHalfWidth: number;
+  readonly bodyFrontZ: number;
+  readonly bodyTopY: number;
+  readonly thickness?: number;
+  readonly rearOverlapM?: number;
+  readonly frontEmbedM?: number;
+}
+
+interface ChevronSurfacePanelOptions {
+  readonly ridgeMargin?: number;
+  readonly rootMargin?: number;
+  readonly thickness?: number;
+}
+
+interface LeopardGearConfig {
+  readonly dishR?: number;
+  readonly wheelHex?: number;
+  readonly wheelR: number;
+  readonly trackW: number;
+  readonly wheelY?: number;
+  readonly xc: number;
+  readonly span: Vec2Tuple;
+  readonly sprocket: GearEndpoint;
+  readonly idler: GearEndpoint;
+  readonly rollers?: readonly GearEndpoint[];
+  readonly trackTh?: number;
+  readonly topY: number;
+  readonly botY?: number;
+  readonly linkPitchM?: number;
+  readonly shoeRadialScale?: number;
+  readonly shoeWidthScale?: number;
+  readonly shoeOutboardOffset?: number;
+  readonly frontArcSteps?: number;
+  readonly rearArcSteps?: number;
+  readonly tautFrontSpan?: boolean;
+  readonly tautRearSpan?: boolean;
+  readonly smoothRearTopTangent?: boolean;
+  readonly dedupeLoopPoints?: boolean;
+  readonly padHex?: number;
+  readonly chainHex?: number;
+  readonly tireHex?: number;
+  readonly gearFloor?: boolean;
+  readonly wheelFaceLayers?: readonly object[];
+  readonly contactZF?: number;
+  readonly contactZR?: number;
+}
+
+interface LeopardHullSkirt {
+  readonly x?: number;
+  readonly y0: number;
+  readonly y1: number;
+  readonly z0: number;
+  readonly z1: number;
+  readonly seams?: number;
+  readonly heavy?: boolean;
+}
+
+interface LeopardHullConfig {
+  readonly W: number;
+  readonly bodyHW?: number;
+  readonly trackW: number;
+  readonly skirtX: number;
+  readonly sponsonY: number;
+  readonly deck: readonly Vec2Tuple[];
+  readonly deckShellY?: number;
+  readonly crease: { readonly z: number; readonly y: number };
+  readonly prow: { readonly z: number; readonly y: number };
+  readonly beltY: number;
+  readonly bellyY?: number;
+  readonly rear: { readonly z: number; readonly yTop: number; readonly yBot: number };
+  readonly skirts: readonly LeopardHullSkirt[];
+  readonly fans?: { readonly z?: number; readonly x?: number; readonly r?: number };
+  readonly fansOnDeck?: boolean;
+  readonly antiSlip?: boolean;
+  readonly rope?: boolean;
+  readonly rearFlaps?: boolean;
+  readonly frontFlaps?: boolean;
+  readonly driverZ?: number;
+  readonly xc?: number;
+  readonly wheelR: number;
+  readonly wheelY?: number;
+  readonly span: Vec2Tuple;
+  readonly sprocket: GearEndpoint;
+  readonly idler: GearEndpoint;
+  readonly topY: number;
+  readonly botY?: number;
+}
+
+interface LeopardWedgeTurretConfig {
+  readonly tw: number;
+  readonly boxW: number;
+  readonly boxFront: number;
+  readonly boxRear: number;
+  readonly h: number;
+  readonly apexY?: number;
+  readonly apexZ: number;
+  readonly baseY?: number;
+  readonly gunW: number;
+  readonly slotZ?: number;
+}
+
+interface LeopardTurretRoofConfig {
+  readonly h: number;
+  readonly boxW: number;
+  readonly boxRear: number;
+  readonly emes: { readonly x: number; readonly z: number };
+  readonly peri: { readonly x: number; readonly z: number; readonly top: number };
+  readonly cmdr: { readonly x: number; readonly z: number };
+  readonly loader: { readonly x: number; readonly z: number };
+  readonly mastZ?: number;
+  readonly mastTop?: number;
+  readonly antennaZ: number;
+  readonly antennaTop: number;
+  readonly rackZ: number;
+  readonly rackTop: number;
+  readonly rackBottom?: number;
+  readonly smoke: { readonly y: number; readonly z: number };
+}
+
+interface LeopardMantletGunConfig {
+  readonly rollR: number;
+  readonly rollW: number;
+  readonly plateW: number;
+  readonly plateH: number;
+  readonly len: number;
+  readonly r: number;
+  readonly evac?: number;
+  readonly evacR?: number;
+  readonly sleeve?: boolean;
+  readonly mrs?: boolean;
+}
+
+interface SponsonLaneLift {
+  readonly z0: number;
+  readonly z1: number;
+  readonly x0: number;
+  readonly y: number;
+  readonly capZ0?: number;
+  readonly capY?: number;
+  readonly crestZ0?: number;
+  readonly crestZ1?: number;
+  readonly crestY?: number;
+}
+
+interface UnderGlacisClosure {
+  readonly halfW?: number;
+  readonly lowerPlateRearZ?: number;
+  readonly lowerPlateFrontZ?: number;
+  readonly bellyRunRearZ?: number;
+  readonly bellyRunFrontZ?: number;
+  readonly upperFill?: boolean;
+  readonly upperFillHalfW?: number;
+  readonly upperFillSideInsetM?: number;
+  readonly upperFillOverlapM?: number;
+  readonly upperFillRearSupportY?: number;
+  readonly upperFillFrontSupportY?: number;
+  readonly upperShoulderFill?: boolean;
+  readonly upperShoulderCoreOverlapM?: number;
+  readonly upperShoulderSideInsetM?: number;
+  readonly upperShoulderFloorY?: number;
+  readonly upperShoulderMinDepthM?: number;
+}
+
+interface LeopardRemoteWeaponStationOptions {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly s?: number;
+  readonly widthScale?: number;
+  readonly drumH?: number;
+  readonly elev?: number;
+  readonly gunScale?: number;
+  readonly gunY: number;
+  readonly podH?: number;
+  readonly podY?: number;
+  readonly seed?: number;
+  readonly shields?: boolean;
+  readonly towerTop?: number | null;
+  readonly towerW?: number;
+  readonly towerZ?: number;
+}
+
+interface GhillieTopClothOptions {
+  readonly x0: number;
+  readonly x1: number;
+  readonly z0: number;
+  readonly z1: number;
+  readonly nx: number;
+  readonly nz: number;
+  readonly yAt: (x: number, z: number) => number;
+  readonly outline?: Polygon2D | null;
+  readonly holes?: readonly Polygon2D[];
+  readonly seed?: number;
+}
+
+interface GhillieSideClothOptions {
+  readonly side: Side;
+  readonly z0: number;
+  readonly z1: number;
+  readonly nz: number;
+  readonly ny: number;
+  readonly topAt: (z: number) => number;
+  readonly bottomAt: (z: number) => number;
+  readonly outAt: (z: number, fraction: number) => number;
+  readonly seed?: number;
+}
+
+interface GhillieFaceClothOptions {
+  readonly z: number;
+  readonly x0: number;
+  readonly x1: number;
+  readonly y0: number;
+  readonly y1: number;
+  readonly nx: number;
+  readonly ny: number;
+  readonly outline?: Polygon2D | null;
+  readonly holes?: readonly Polygon2D[];
+  readonly seed?: number;
+}
+
+interface EraCassetteScale {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+interface LeopardCheekEraSeat {
+  readonly side: Side;
+  readonly row: number;
+  readonly station: number;
+  readonly courseFraction: number;
+  readonly surfaceLocal: number[];
+  readonly centerLocal: number[];
+  readonly normalLocal: number[];
+  readonly scaleY: number;
+  readonly innerFaceOverlapM: number;
+}
+
+interface LeopardGlacisEraSeat {
+  readonly row: number;
+  readonly station: number;
+  readonly surfaceLocal: number[];
+  readonly centerLocal: number[];
+  readonly normalLocal: number[];
+  readonly innerFaceOverlapM: number;
+}
+
+interface LeopardUaFrontEraSeat extends LeopardGlacisEraSeat {
+  readonly side: Side;
+}
+
+interface RemoteStationOptions {
+  readonly x: number;
+  readonly z: number;
+  readonly roofMinY: number;
+  readonly roofMaxY: number;
+  readonly heavy: boolean;
+  readonly seed: number;
+}
+
+interface WrapArmorCheekOptions {
+  readonly reach?: number;
+  readonly crest?: number;
+}
+
+interface WrapSideSlatOptions {
+  readonly outer: number;
+  readonly seat: number;
+  readonly y0: number;
+  readonly y1: number;
+  readonly z0: number;
+  readonly z1: number;
+  readonly sections?: number;
+}
+
+interface LeopardSlatRunOptions {
+  readonly x: number;
+  readonly y0: number;
+  readonly y1: number;
+  readonly z0: number;
+  readonly z1: number;
+  readonly seat: number;
+  readonly sections?: number;
+  readonly rows?: number;
+  readonly railTh?: number;
+  readonly seatY0?: number;
+  readonly run?: string | null;
+}
+
+interface LeopardSlatRearOptions {
+  readonly w: number;
+  readonly y0: number;
+  readonly y1: number;
+  readonly z: number;
+  readonly seatZ: number;
+  readonly rows?: number;
+}
+
+interface SurfaceFrame {
+  readonly point: THREE.Vector3;
+  readonly normal: THREE.Vector3;
+}
+
+interface OpenYokeMountOptions {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly variant: string;
+  readonly ammoSide: Side;
+  readonly sensorSide: Side;
+  readonly yaw?: number;
+}
+
+interface LeopardSkirtRun {
+  readonly x: number;
+  readonly y0: number;
+  readonly y1: number;
+  readonly z0: number;
+  readonly z1: number;
+  readonly th?: number;
+  readonly flap?: boolean;
+  readonly lip?: {
+    readonly x: number;
+    readonly y0: number;
+    readonly y1: number;
+    readonly z0: number;
+    readonly z1: number;
+  };
+}
+
+interface LeopardHullV3Config {
+  readonly bodyHW: number;
+  readonly deck: readonly Vec2Tuple[];
+  readonly sponsonY: number;
+  readonly sponsonLaneLift?: SponsonLaneLift;
+  readonly bellyY?: number;
+  readonly innerW?: number;
+  readonly xc: number;
+  readonly trackW: number;
+  readonly tubZrear?: number;
+  readonly tubRearY?: number;
+  readonly tubWedgeEnd?: number;
+  readonly glacis: readonly Vec2Tuple[];
+  readonly glacisTaper?: number;
+  readonly glacisLaneCut?: { readonly x: number; readonly z0: number };
+  readonly underGlacisClosure?: boolean | UnderGlacisClosure;
+  readonly beakWings?: {
+    readonly z: number;
+    readonly x0: number;
+    readonly x1?: number;
+    readonly th?: number;
+    readonly dropTip?: number;
+    readonly mirrorFix?: boolean;
+    readonly rubberTip?: number;
+  };
+  readonly beltY: number;
+  readonly noseFillZFront?: number;
+  readonly splashArms?: boolean;
+  readonly headlightX?: number;
+  readonly headlightY?: number;
+  readonly headlightZ?: number;
+  readonly driverZ?: number;
+  readonly fans: { readonly z: number; readonly x: number; readonly r: number };
+  readonly fanWell?: boolean;
+  readonly rope?: boolean;
+  readonly rear: {
+    readonly yTop: number;
+    readonly yBot: number;
+    readonly wallZ: number;
+    readonly lipZ: number;
+  };
+  readonly rearWallHW?: number;
+  readonly jackDark?: boolean;
+  readonly jackX?: number;
+  readonly jackY?: number;
+  readonly rearFlaps?: {
+    readonly x: number;
+    readonly y0: number;
+    readonly y1: number;
+    readonly z: number;
+  };
+  readonly tailFrame?: {
+    readonly z0: number;
+    readonly z1: number;
+    readonly yLo: number;
+    readonly yHi: number;
+    readonly w: number;
+    readonly posts: readonly number[];
+  };
+  readonly fender: {
+    readonly x0: number;
+    readonly x1: number;
+    readonly y0: number;
+    readonly y1: number;
+    readonly z0: number;
+    readonly z1: number;
+    readonly drop?: number;
+    readonly followDeck?: boolean;
+  };
+  readonly fenderFore?: {
+    readonly z0: number;
+    readonly z1: number;
+    readonly drop?: number;
+    readonly cutZ0?: number;
+    readonly cutX0?: number;
+  };
+  readonly frontSkirt?: LeopardSkirtRun;
+  readonly rearSkirt?: LeopardSkirtRun;
+  readonly wheelR: number;
+  readonly wheelY?: number;
+  readonly span: Vec2Tuple;
+  readonly sprocket: GearEndpoint;
+  readonly idler: GearEndpoint;
+  readonly topY: number;
+  readonly botY?: number;
+  readonly rollers?: readonly GearEndpoint[];
+  readonly dishR?: number;
+  readonly gearFloor?: boolean;
+  readonly tireHex?: number;
+  readonly padHex?: number;
+  readonly chainHex?: number;
+  readonly shoeRadialScale?: number;
+  readonly shoeWidthScale?: number;
+  readonly shoeOutboardOffset?: number;
+  readonly wheelFaceLayers?: readonly object[];
+  readonly linkPitchM?: number;
+  readonly frontArcSteps?: number;
+  readonly rearArcSteps?: number;
+  readonly tautFrontSpan?: boolean;
+  readonly tautRearSpan?: boolean;
+  readonly smoothRearTopTangent?: boolean;
+  readonly dedupeLoopPoints?: boolean;
+  readonly contactZF?: number;
+  readonly contactZR?: number;
+}
+
+interface WedgeBodyCourse {
+  readonly x: number;
+  readonly z0: number;
+  readonly z1: number;
+  readonly y0?: number;
+  readonly top?: number;
+  readonly topL?: number;
+  readonly xt?: number;
+  readonly xtL?: number;
+  readonly cY?: number;
+  readonly vT?: number;
+}
+
+interface LeopardChevronConfig {
+  readonly profile: string;
+  readonly rootDepthM: NumericSeries;
+  readonly rootY: NumericSeries;
+  readonly ridgeLiftM: NumericSeries;
+  readonly ridgeInsetM?: number;
+  readonly upperSlopeDeg?: number;
+  readonly upperRootY?: number;
+  readonly upperTipY?: number;
+  readonly upperTaperStartX?: number;
+  readonly roofBridgeThicknessM?: number;
+  readonly roofBridgeOverlapM?: number;
+  readonly panelBands?: readonly Vec2Tuple[];
+  readonly panelThicknessM?: number;
+  readonly panelRidgeMargin?: number;
+  readonly panelRootMargin?: number;
+}
+
+interface LeopardWedgeV3Config {
+  readonly h: number;
+  readonly baseY?: number;
+  readonly underbodyPlan?: readonly Vec2Tuple[];
+  readonly underbodyRings?: readonly PolyMultiLoftRing[];
+  readonly seatRing?: {
+    readonly r0: number;
+    readonly r1: number;
+    readonly h: number;
+    readonly x?: number;
+    readonly y: number;
+    readonly z: number;
+    readonly hiSeg?: number;
+    readonly loSeg?: number;
+  };
+  readonly shellPlan?: readonly Vec2Tuple[];
+  readonly shellRings?: readonly PolyMultiLoftRing[];
+  readonly body: readonly WedgeBodyCourse[];
+  readonly chamferY?: number;
+  readonly roofX?: number;
+  readonly underride?: {
+    readonly plan?: readonly Vec2Tuple[];
+    readonly rings?: readonly PolyMultiLoftRing[];
+    readonly h?: number;
+    readonly d?: number;
+    readonly wScale?: number;
+    readonly y?: number;
+    readonly zOffset?: number;
+  };
+  readonly nose: readonly Vec2Tuple[];
+  readonly noseUpper?: readonly Vec2Tuple[];
+  readonly apexY: number;
+  readonly chevron?: LeopardChevronConfig;
+  readonly crest: readonly Vec3Tuple[];
+  readonly crestL?: readonly Vec3Tuple[];
+  readonly tipPads?: ReadonlyArray<{
+    readonly s: Side; readonly x: number; readonly x0: number;
+    readonly y0: number; readonly y1: number; readonly z0: number; readonly z1: number;
+    readonly yaw?: number;
+  }>;
+  readonly sideMods?: ReadonlyArray<{
+    readonly s: Side; readonly x: number; readonly y0: number; readonly y1: number;
+    readonly z0: number; readonly z1: number; readonly th?: number;
+  }>;
+  readonly crestTail?: number;
+  readonly crestTailDrop?: number;
+  readonly wallDrop?: number;
+  readonly wallShadowXCap?: number;
+  readonly slotCheekD?: number;
+  readonly slotZ: number;
+  readonly gunW: number;
+  readonly rack: {
+    readonly x: number; readonly top: number; readonly bot: number;
+    readonly z0: number; readonly z1: number; readonly wall?: boolean;
+    readonly slats?: boolean; readonly cargo?: boolean;
+  };
+  readonly emes: {
+    readonly x: number; readonly z: number; readonly top: number;
+    readonly scale?: number; readonly d?: number;
+  };
+  readonly peri: {
+    readonly x: number; readonly z: number; readonly top: number;
+    readonly d?: number; readonly mat?: string; readonly crownW?: number;
+    readonly crownD?: number; readonly crownX?: number; readonly w?: number;
+    readonly baseTop?: number;
+  };
+  readonly cmdr: { readonly x: number; readonly z: number };
+  readonly loader: { readonly x: number; readonly z: number };
+  readonly hatchTop?: number;
+  readonly hatchTopL?: number;
+  readonly hatchRound?: boolean;
+  readonly mastTop?: number;
+  readonly mastX?: number;
+  readonly mastZ: number;
+  readonly whips?: ReadonlyArray<{
+    readonly x: number; readonly z: number; readonly baseY: number; readonly top: number;
+  }>;
+  readonly pots?: ReadonlyArray<{
+    readonly x: number; readonly z: number; readonly top: number; readonly w?: number;
+  }>;
+  readonly smoke?: { readonly x: number; readonly y: number; readonly z: number };
+}
 
 // ---------------------------------------------------------------------------
 // Family machinery
@@ -45,9 +648,14 @@ import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 // silhouettes and seats are correct.  Keep the repair profile-local and
 // address only the audited components by exact authored bounds; this avoids
 // changing any sibling geometry or papering over open-sheet defects.
-function repairClosedPartsByBounds(P, bucket, targets, tolerance = 0.006) {
-  const close = (a, b) => Math.abs(a - b) <= tolerance;
-  const matches = (bb, t) => {
+function repairClosedPartsByBounds(
+  P: TankBuilderPort,
+  bucket: string,
+  targets: readonly (readonly [Vec3Tuple, Vec3Tuple])[],
+  tolerance = 0.006,
+): void {
+  const close = (a: number, b: number): boolean => Math.abs(a - b) <= tolerance;
+  const matches = (bb: THREE.Box3, t: readonly [Vec3Tuple, Vec3Tuple]): boolean => {
     const exact = close(bb.min.x, t[0][0]) && close(bb.min.y, t[0][1]) && close(bb.min.z, t[0][2])
       && close(bb.max.x, t[1][0]) && close(bb.max.y, t[1][1]) && close(bb.max.z, t[1][2]);
     // Audit bounds are reported after the profile's armor pivot.  Matching
@@ -59,7 +667,7 @@ function repairClosedPartsByBounds(P, bucket, targets, tolerance = 0.006) {
       && close(bb.max.z - bb.min.z, t[1][2] - t[0][2]);
     return exact || sameAuthoredShape;
   };
-  const swapAttributeItems = (attr, a, b) => {
+  const swapAttributeItems = (attr: THREE.BufferAttribute, a: number, b: number): void => {
     for (let k = 0; k < attr.itemSize; k++) {
       const av = attr.array[a * attr.itemSize + k];
       attr.array[a * attr.itemSize + k] = attr.array[b * attr.itemSize + k];
@@ -68,7 +676,7 @@ function repairClosedPartsByBounds(P, bucket, targets, tolerance = 0.006) {
     attr.needsUpdate = true;
   };
   P.forEachBucketPart([bucket], (geo, bb) => {
-    if (!targets.some((t) => matches(bb, t))) return;
+    if (!bb || !targets.some((t) => matches(bb, t))) return;
     if (geo.index) {
       const idx = geo.index.array;
       for (let i = 0; i < idx.length; i += 3) [idx[i + 1], idx[i + 2]] = [idx[i + 2], idx[i + 1]];
@@ -77,7 +685,9 @@ function repairClosedPartsByBounds(P, bucket, targets, tolerance = 0.006) {
       const count = geo.getAttribute('position').count;
       for (let i = 0; i < count; i += 3) {
         for (const attr of Object.values(geo.attributes)) {
-          if (!attr.isInterleavedBufferAttribute && attr.count === count) swapAttributeItems(attr, i + 1, i + 2);
+          if (attr instanceof THREE.BufferAttribute && attr.count === count) {
+            swapAttributeItems(attr, i + 1, i + 2);
+          }
         }
       }
     }
@@ -86,8 +696,14 @@ function repairClosedPartsByBounds(P, bucket, targets, tolerance = 0.006) {
   });
 }
 
-function outwardClosedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
-  const build = (r0, r1, r2, r3, u0, u1, u2, u3) => KIT.slab(r0, r1, r2, r3, u0, u1, u2, u3);
+function outwardClosedSlab(
+  b0: Vec3Tuple, b1: Vec3Tuple, b2: Vec3Tuple, b3: Vec3Tuple,
+  t0: Vec3Tuple, t1: Vec3Tuple, t2: Vec3Tuple, t3: Vec3Tuple,
+): THREE.BufferGeometry {
+  const build = (
+    r0: Vec3Tuple, r1: Vec3Tuple, r2: Vec3Tuple, r3: Vec3Tuple,
+    u0: Vec3Tuple, u1: Vec3Tuple, u2: Vec3Tuple, u3: Vec3Tuple,
+  ): THREE.BufferGeometry => KIT.slab(r0, r1, r2, r3, u0, u1, u2, u3);
   let g = build(b0, b1, b2, b3, t0, t1, t2, t3);
   const p = g.getAttribute('position');
   let volume6 = 0;
@@ -109,14 +725,20 @@ function outwardClosedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
 // against the turret at the rear. Building the complete side as one volume
 // also removes the coincident end caps that made the old course-by-course
 // construction read as stacked armor layers.
-function closedLeopardChevronCheek(stations, side) {
-  const point = (station, key) => [
+function closedLeopardChevronCheek(
+  stations: readonly ChevronClosedStation[],
+  side: Side,
+): THREE.BufferGeometry {
+  if (stations.length < 2) throw new RangeError('Chevron cheek requires two stations');
+  const point = (station: ChevronClosedStation, key: 'upper' | 'ridge' | 'lower'): Vec3Tuple => [
     side * station.x,
-    station[`${key}Y`],
-    station[`${key}Z`],
+    station[`${key}Y` as keyof ChevronClosedStation],
+    station[`${key}Z` as keyof ChevronClosedStation],
   ];
-  const positions = [];
-  const tri = (p0, p1, p2) => positions.push(...p0, ...p1, ...p2);
+  const positions: number[] = [];
+  const tri = (p0: Vec3Tuple, p1: Vec3Tuple, p2: Vec3Tuple): void => {
+    positions.push(...p0, ...p1, ...p2);
+  };
 
   for (let index = 0; index < stations.length - 1; index++) {
     const a = stations[index], b = stations[index + 1];
@@ -126,7 +748,7 @@ function closedLeopardChevronCheek(stations, side) {
     tri(ar, al, bl); tri(ar, bl, br); // shorter lower return
     tri(al, au, bu); tri(al, bu, bl); // buried rear closure
   }
-  const first = stations[0], last = stations.at(-1);
+  const first = stations[0], last = stations[stations.length - 1];
   tri(point(first, 'upper'), point(first, 'lower'), point(first, 'ridge'));
   tri(point(last, 'upper'), point(last, 'ridge'), point(last, 'lower'));
 
@@ -163,20 +785,27 @@ function closedLeopardChevronCheek(stations, side) {
 // lower skin is buried in both owners. One continuous volume per side keeps
 // oblique/top sight-lines closed without rebuilding the cheek as stacked
 // slabs or adding coincident caps at every plan station.
-function closedLeopardChevronRoofBridge(stations, side, options) {
+function closedLeopardChevronRoofBridge(
+  stations: readonly ChevronClosedStation[],
+  side: Side,
+  options: ChevronRoofBridgeOptions,
+) {
+  if (stations.length < 2) throw new RangeError('Chevron roof bridge requires two stations');
   const bodyHalfWidth = options.bodyHalfWidth;
   const bodyFrontZ = options.bodyFrontZ;
   const bodyTopY = options.bodyTopY;
   const thickness = options.thickness ?? 0.11;
   const rearOverlapM = options.rearOverlapM ?? 0.08;
   const frontEmbedM = options.frontEmbedM ?? 0.012;
-  const positions = [];
-  const tri = (p0, p1, p2) => positions.push(...p0, ...p1, ...p2);
+  const positions: number[] = [];
+  const tri = (p0: Vec3Tuple, p1: Vec3Tuple, p2: Vec3Tuple): void => {
+    positions.push(...p0, ...p1, ...p2);
+  };
   const points = stations.map((station) => {
-    const frontTop = [side * station.x, station.upperY, station.upperZ];
+    const frontTop: Vec3Tuple = [side * station.x, station.upperY, station.upperZ];
     const closureSpan = Math.max(1e-6, station.upperY - station.lowerY);
     const embedT = THREE.MathUtils.clamp(thickness / closureSpan, 0, 0.92);
-    const frontBottom = [
+    const frontBottom: Vec3Tuple = [
       side * station.x,
       station.upperY - thickness,
       THREE.MathUtils.lerp(station.upperZ, station.lowerZ, embedT) - frontEmbedM,
@@ -184,8 +813,8 @@ function closedLeopardChevronRoofBridge(stations, side, options) {
     const rearX = Math.min(station.x, Math.max(0.01, bodyHalfWidth - 0.012));
     const rearZ = Math.min(bodyFrontZ - rearOverlapM, station.upperZ - rearOverlapM);
     const rearY = Math.min(bodyTopY, station.upperY + 0.08);
-    const rearTop = [side * rearX, rearY, rearZ];
-    const rearBottom = [side * rearX, rearY - thickness, rearZ];
+    const rearTop: Vec3Tuple = [side * rearX, rearY, rearZ];
+    const rearBottom: Vec3Tuple = [side * rearX, rearY - thickness, rearZ];
     return Object.freeze({ frontTop, frontBottom, rearTop, rearBottom });
   });
 
@@ -196,7 +825,7 @@ function closedLeopardChevronRoofBridge(stations, side, options) {
     tri(a.frontTop, a.frontBottom, b.frontBottom); tri(a.frontTop, b.frontBottom, b.frontTop);
     tri(a.rearTop, b.rearTop, b.rearBottom); tri(a.rearTop, b.rearBottom, a.rearBottom);
   }
-  const first = points[0], last = points.at(-1);
+  const first = points[0], last = points[points.length - 1];
   tri(first.frontTop, first.rearTop, first.rearBottom);
   tri(first.frontTop, first.rearBottom, first.frontBottom);
   tri(last.frontTop, last.frontBottom, last.rearBottom);
@@ -243,7 +872,11 @@ const LEO_CHEVRON_PANEL_BANDS = Object.freeze([
   Object.freeze([0.785, 0.955]),
 ]);
 
-function interpolateChevronStation(stations, x) {
+function interpolateChevronStation(
+  stations: readonly ChevronSurfaceStation[],
+  x: number,
+): ChevronSurfaceStation {
+  if (stations.length === 0) throw new RangeError('Chevron interpolation requires a station');
   if (x <= stations[0].x) return stations[0];
   for (let index = 0; index < stations.length - 1; index++) {
     const a = stations[index], b = stations[index + 1];
@@ -257,7 +890,7 @@ function interpolateChevronStation(stations, x) {
       ridgeZ: THREE.MathUtils.lerp(a.ridgeZ, b.ridgeZ, t),
     };
   }
-  return stations.at(-1);
+  return stations[stations.length - 1];
 }
 
 // Shallow, closed armor cassette seated directly on the uninterrupted upper
@@ -265,16 +898,23 @@ function interpolateChevronStation(stations, x) {
 // narrow gaps expose the parent armor as real seams while the proud perimeter
 // catches light. Keeping four broad panels avoids returning to the noisy
 // course-by-course stack that the source comparison disproved.
-function leopardChevronSurfacePanel(a, b, side, options = {}) {
+function leopardChevronSurfacePanel(
+  a: ChevronSurfaceStation,
+  b: ChevronSurfaceStation,
+  side: Side,
+  options: ChevronSurfacePanelOptions = {},
+) {
   const ridgeMargin = options.ridgeMargin ?? 0.075;
   const rootMargin = options.rootMargin ?? 0.085;
   const thickness = options.thickness ?? 0.022;
-  const point = (station, key) => new THREE.Vector3(
+  const point = (station: ChevronSurfaceStation, key: 'upper' | 'ridge') => new THREE.Vector3(
     side * station.x,
     station[`${key}Y`],
     station[`${key}Z`],
   );
-  const onFace = (station, t) => point(station, 'ridge').lerp(point(station, 'upper'), t);
+  const onFace = (station: ChevronSurfaceStation, t: number) => (
+    point(station, 'ridge').lerp(point(station, 'upper'), t)
+  );
   const base = [
     onFace(a, ridgeMargin),
     onFace(b, ridgeMargin),
@@ -303,7 +943,7 @@ function leopardChevronSurfacePanel(a, b, side, options = {}) {
 // straight in. The old raisedEnds workaround (wheel-height inboard end
 // wheels + static wrap rings/tooth boxes/ramp slabs + a wrap-radius ground
 // clamp) is redundant and deleted; verified per tank by gate re-runs.
-function leoGear(P, g) {
+function leoGear(P: TankBuilderPort, g: LeopardGearConfig): void {
   const { buildRunningGear } = KIT;
   buildRunningGear(P, {
     // dishR opt-in (r3 leo2a6 #1): a smaller painted dish widens the dark
@@ -354,7 +994,7 @@ function leoGear(P, g) {
 //     prow:{z,y}, beltY, rear:{z,yTop,yBot}, trackW, xc, wheelR, wheelY?,
 //     span, sprocket, idler, topY, skirts:[{z0,z1,y0,y1,seams,heavy}...],
 //     fans?:{z,x,r}, driverZ?, fansOnDeck?, mastZ?/mastTop?, antiSlip? }
-function leoHull(P, H) {
+function leoHull(P: TankBuilderPort, H: LeopardHullConfig): { hw: number } {
   const { box, cylY, cylZ, frustum, torus, headlight, liftEye, towCable, periscope } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const hw = H.bodyHW ?? (H.W / 2 - 0.01);
@@ -396,7 +1036,7 @@ function leoHull(P, H) {
   const gRx = -Math.atan2(cr.y - pw.y, pw.z - cr.z);
   const gMid = (cr.z + pw.z) / 2;
   const gY = (cr.y + pw.y) / 2 + 0.012;
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDetail', box(0.92, 0.045, 0.07), s * 0.46, cr.y - 0.045, cr.z + 0.42, gRx, s * 0.42, 0);
     if (H.antiSlip !== false) {
       P.add('hullRubber', box(hw * 0.52, 0.013, (pw.z - cr.z) * 0.62), s * hw * 0.5, gY, gMid, gRx, 0, 0);
@@ -410,7 +1050,7 @@ function leoHull(P, H) {
     headlight(P, s * hw * 0.72, H.beltY + 0.28, pw.z - 0.30, -0.5);
   }
   towCable(P, [[-hw * 0.62, gY + 0.02, pw.z - 0.55], [0, cr.y - 0.02, cr.z + 0.35], [hw * 0.62, gY + 0.02, pw.z - 0.55]], 0.028);
-  for (const s of [-1, 1]) P.add('hullDetail', box(0.09, 0.07, 0.12), s * hw * 0.62, gY + 0.02, pw.z - 0.55, gRx, 0, 0);
+  for (const s of [-1, 1] as const) P.add('hullDetail', box(0.09, 0.07, 0.12), s * hw * 0.62, gY + 0.02, pw.z - 0.55, gRx, 0, 0);
 
   // driver station front-right: hatch ring + 3 periscopes; ammo hatch left
   const dz = H.driverZ ?? cr.z - 0.55;
@@ -424,7 +1064,7 @@ function leoHull(P, H) {
   P.add('hullDark', torus(0.24, 0.012, P.q ? 20 : 12), -0.60, dy + 0.026, dz);
   P.add('hull', box(0.32, 0.09, 0.46), -hw * 0.72, dy + 0.05, dz + 0.35);    // NBC intake
   P.add('hullDark', box(0.26, 0.045, 0.38), -hw * 0.72, dy + 0.10, dz + 0.35);
-  for (const s of [-1, 1]) P.add('hullDetail', cylY(0.08, 0.08, 0.026, 12), s * hw * 0.66, dy + 0.014, dz - 0.72); // filler caps
+  for (const s of [-1, 1] as const) P.add('hullDetail', cylY(0.08, 0.08, 0.026, 12), s * hw * 0.66, dy + 0.014, dz - 0.72); // filler caps
 
   // rear deck: twin circular cooling fans + slat bars, longitudinal radiator
   // wells, transverse louver inset, torsion access caps, tow rope on clamps
@@ -433,7 +1073,7 @@ function leoHull(P, H) {
     const fx = H.fans?.x ?? 0.78;
     const fr = H.fans?.r ?? 0.38;
     const fy = deckYAt(deck, fz);
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       P.add('hullDark', cylY(fr, fr, 0.02, P.q ? 26 : 14), s * fx, fy + 0.012, fz);
       P.add('hullDetail', torus(fr, 0.032, P.q ? 24 : 14), s * fx, fy + 0.02, fz);
       P.add('hullDetail', torus(fr * 0.58, 0.018, P.q ? 20 : 12), s * fx, fy + 0.018, fz);
@@ -463,7 +1103,7 @@ function leoHull(P, H) {
       for (const [cx, cz] of [[-hw * 0.5, fz - 0.3], [0, tz - 0.3], [hw * 0.5, fz - 0.3]]) {
         P.add('hullDetail', box(0.10, 0.06, 0.13), cx, deckYAt(deck, cz) + 0.02, cz);
       }
-      for (const s of [-1, 1]) {
+      for (const s of [-1, 1] as const) {
         P.add('hullDark', KIT.xform(torus(0.06, 0.022, 12), 0, 0, 0, Math.PI / 2, 0, 0), s * hw * 0.76, ty + 0.02, fz - 0.6);
       }
     }
@@ -484,7 +1124,7 @@ function leoHull(P, H) {
   const R = H.rear;
   P.add('hull', box(hw * 1.72, R.yTop - R.yBot, 0.12), 0, (R.yTop + R.yBot) / 2, R.z + 0.05);
   P.add('hull', box(innerW, 0.55, 0.10), 0, R.yBot - 0.15, R.z + 0.09);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDark', box(0.62, 0.15, 0.04), s * hw * 0.52, R.yTop - 0.32, R.z - 0.005);
     for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.58, 0.03, 0.05), s * hw * 0.52, R.yTop - 0.395 + k * 0.062, R.z - 0.015);
     P.add('hullDark', box(0.15, 0.085, 0.04), s * hw * 0.78, R.yTop - 0.12, R.z - 0.005); // taillights
@@ -499,7 +1139,7 @@ function leoHull(P, H) {
   P.add('hullWood', box(0.26, 0.11, 0.09), 0, R.yBot + 0.10, R.z - 0.02);
   // front mud flaps behind the beak
   if (H.frontFlaps !== false) {
-    for (const s of [-1, 1]) P.addMudguard(`leopard-kit-front-flap-${s}`, 'hullRubber',
+    for (const s of [-1, 1] as const) P.addMudguard(`leopard-kit-front-flap-${s}`, 'hullRubber',
       box(0.36, 0.40, 0.03), s * (H.xc ?? hw - H.trackW / 2),
       H.beltY + 0.06, pw.z - 0.14);
   }
@@ -508,7 +1148,7 @@ function leoHull(P, H) {
   // seams and a dangling rubber lip (or full deep courses per variant)
   for (const sk of H.skirts) {
     const skX = sk.x ?? H.skirtX;
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       const h = sk.y1 - sk.y0;
       const th = sk.heavy ? 0.10 : 0.045;
       P.add('hull', box(th, h, sk.z1 - sk.z0), s * (skX - th / 2), (sk.y0 + sk.y1) / 2, (sk.z0 + sk.z1) / 2);
@@ -532,7 +1172,7 @@ function leoHull(P, H) {
   // sponson chamfer strip closing the slot between deck edge and skirt top,
   // with a skirt-mount rail + bolt dots so the flank never reads as one
   // featureless dark band (shaded-parity r1 #7)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hull', box(0.09, 0.16, deck[0][0] - tailZ - 0.2), s * (H.skirtX - 0.05), H.sponsonY + 0.05, (deck[0][0] + tailZ) / 2);
     P.add('hullDetail', box(0.035, 0.05, deck[0][0] - tailZ - 0.3), s * (H.skirtX - 0.005), H.sponsonY + 0.10, (deck[0][0] + tailZ) / 2);
     for (let k = 0; k < 8; k++) {
@@ -549,7 +1189,7 @@ function leoHull(P, H) {
   return { hw };
 }
 
-function deckYAt(deck, z) {
+function deckYAt(deck: readonly Vec2Tuple[], z: number): number {
   for (let i = 0; i < deck.length - 1; i++) {
     const [z0, y0] = deck[i], [z1, y1] = deck[i + 1];
     if ((z <= z0 && z >= z1) || (z >= z0 && z <= z1)) {
@@ -565,7 +1205,7 @@ function deckYAt(deck, z) {
 // ahead of a plate mantlet slot. All coordinates are turret-local.
 // T: { tw (wedge tip half-width), boxW, h, boxFront, boxRear, apexZ,
 //     gunY (mantlet slot center), sideModules? }
-function wedgeTurretShell(P, T) {
+function wedgeTurretShell(P: TankBuilderPort, T: LeopardWedgeTurretConfig): void {
   const { box, frustum } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const tw = T.tw, h = T.h;
@@ -573,7 +1213,7 @@ function wedgeTurretShell(P, T) {
   P.add('turret', frustum(T.boxW, T.boxFront, T.boxRear, T.boxW * 0.96, T.boxFront - 0.03, T.boxRear + 0.03, T.baseY ?? 0.0, h));
   const aZ = T.apexZ, aF = T.boxFront;
   // apex tier: thin near-horizontal arrow plates sweeping under the gun
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', slab(
       [s * 0.03, aB, aZ], [s * tw, aB, aF + 0.02], [s * tw, aB, aF - 0.14], [s * 0.03, aB, aZ - 0.16],
       [s * 0.03, aB + 0.16, aZ - 0.08], [s * tw, aB + 0.16, aF - 0.06], [s * tw, aB + 0.16, aF - 0.22], [s * 0.03, aB + 0.16, aZ - 0.24]));
@@ -589,11 +1229,11 @@ function wedgeTurretShell(P, T) {
   // mantlet slot: painted back wall + dark cheek walls
   const slotZ = T.slotZ ?? (aZ - 1.02);
   P.add('turret', box(T.gunW * 2 + 0.06, h * 0.8, 0.06), 0, h * 0.42, slotZ);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDark', box(0.05, h * 0.74, 0.9), s * (T.gunW + 0.03), h * 0.42, slotZ + 0.42);
   }
   // side armor modules continuing the wedge mass around the corners
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', box(0.10, h * 0.64, (T.boxFront - T.boxRear) * 0.42), s * (T.boxW + 0.05), h * 0.44, (T.boxFront + T.boxRear) / 2 + 0.35);
     P.add('turretDark', box(0.02, h * 0.56, 0.025), s * (T.boxW + 0.105), h * 0.44, (T.boxFront + T.boxRear) / 2 + 0.35);
   }
@@ -602,7 +1242,7 @@ function wedgeTurretShell(P, T) {
 // Leopard 2 roof furniture + bustle. Turret-local coordinates.
 // R: { h, boxW, boxRear, emes:{x,z}, peri:{x,z,top}, cmdr:{x,z}, loader:{x,z},
 //     mastZ, antennaZ/antennaTop, rackZ, rackTop, basketZ0?, smoke:{z,y} }
-function leoTurretRoof(P, R) {
+function leoTurretRoof(P: TankBuilderPort, R: LeopardTurretRoofConfig): void {
   const { box, cylY, cylZ, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const h = R.h;
@@ -619,7 +1259,10 @@ function leoTurretRoof(P, R) {
   P.add('turretDark', box(0.17, 0.20, 0.19), R.peri.x, R.peri.top - 0.12, R.peri.z);
   P.add('turretGlass', box(0.11, 0.10, 0.018), R.peri.x, R.peri.top - 0.10, R.peri.z + 0.10);
   // commander + loader hatch rings with lids and periscope blocks
-  for (const [st, lo] of [[R.cmdr, false], [R.loader, true]]) {
+  const hatchStations: ReadonlyArray<readonly [LeopardTurretRoofConfig['cmdr'], boolean]> = [
+    [R.cmdr, false], [R.loader, true],
+  ];
+  for (const [st, lo] of hatchStations) {
     P.add('turret', cylY(lo ? 0.22 : 0.24, lo ? 0.22 : 0.24, 0.05, 14), st.x, h + 0.025, st.z);
     P.add('turret', cylY(lo ? 0.19 : 0.21, lo ? 0.19 : 0.21, 0.028, 14), st.x, h + 0.066, st.z);
     P.add('turretDark', box((lo ? 0.34 : 0.38), 0.014, 0.035), st.x, h + 0.085, st.z);
@@ -635,7 +1278,7 @@ function leoTurretRoof(P, R) {
   const mTop = R.mastTop ?? (h + 0.34);
   P.add('turretDetail', cylY(0.014, 0.018, mTop - h - 0.06, 8), R.mastZ != null ? -0.85 : 0, (h + mTop - 0.06) / 2, R.mastZ ?? R.boxRear + 0.4);
   P.add('turretDark', box(0.04, 0.04, 0.11), R.mastZ != null ? -0.85 : 0, mTop - 0.02, R.mastZ ?? R.boxRear + 0.4);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDetail', box(0.03, R.antennaTop - h, 0.03),
       s * (R.boxW - 0.18), h + (R.antennaTop - h) / 2, R.antennaZ, 0, 0, s * 0.05);
     P.add('turretDetail', box(0.06, 0.14, 0.06), s * (R.boxW - 0.18), h + 0.06, R.antennaZ); // antenna base pot
@@ -647,7 +1290,7 @@ function leoTurretRoof(P, R) {
   for (let k = 0; k <= 12; k++) {
     P.add('turretDetail', box(0.032, rackT - rackB, 0.032), -R.boxW - 0.08 + k * ((2 * R.boxW + 0.16) / 12), (rackT + rackB) / 2, rackZ);
   }
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDetail', box(0.045, 0.045, R.boxRear - rackZ + 0.05), s * (R.boxW + 0.09), rackT, (R.boxRear + rackZ) / 2);
     P.add('turretDetail', box(0.045, 0.045, R.boxRear - rackZ + 0.05), s * (R.boxW + 0.09), rackB, (R.boxRear + rackZ) / 2);
   }
@@ -663,18 +1306,18 @@ function leoTurretRoof(P, R) {
   spareTrackStrip(P, 'turret', -R.boxW * 0.3, 0.60, bz, 2, 0, 0);
   // 2x4 Wegmann smoke mortars per side on mount plates, rear cheeks
   // (held inside the wedge-tip width so the turret front mask stays honest)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', box(0.05, 0.24, 0.58), s * (R.boxW - 0.01), R.smoke.y, R.smoke.z, 0, s * 0.22, 0);
     smokeCluster(P, s * (R.boxW + 0.02), R.smoke.y + 0.11, R.smoke.z + 0.16, 4, s * 1.05, 0.85);
     smokeCluster(P, s * (R.boxW + 0.04), R.smoke.y - 0.05, R.smoke.z - 0.04, 4, s * 1.2, 0.85);
   }
-  for (const s of [-1, 1]) liftEye(P, 'turretDetail', s * (R.boxW * 0.8), h + 0.02, R.emes.z - 0.55, s * 0.4);
+  for (const s of [-1, 1] as const) liftEye(P, 'turretDetail', s * (R.boxW * 0.8), h + 0.02, R.emes.z - 0.55, s * 0.4);
 }
 
 // Plate mantlet sealed by a trunnion-axis roll (rotation-invariant about the
 // gun pivot — no void can open at min/max elevation) + Rh 120/130 tube.
 // G: { rollR, rollW, plateW, plateH, len, r, evac, evacR, sleeve, mrs }
-function leoMantletGun(P, G) {
+function leoMantletGun(P: TankBuilderPort, G: LeopardMantletGunConfig): void {
   const { box, cylX, cylZ, buildGun } = KIT;
   P.addGunExtra(cylX(G.rollR, G.rollW, P.q ? 18 : 12), 0, 0, 0);              // trunnion roll
   P.addGunExtra(box(G.plateW, G.plateH, 0.26), 0, 0, G.rollR * 0.62);         // plate mantlet
@@ -694,7 +1337,10 @@ function leoMantletGun(P, G) {
 // bridge follows the inner arrowhead-cheek edges instead of spanning them
 // with a broad rectangular shelf. Variants share the construction while an
 // optional front width lets applique packages meet their own cheek opening.
-function leopardA6MantletRoofBridge(P, o = {}) {
+function leopardA6MantletRoofBridge(
+  P: TankBuilderPort,
+  o: { readonly frontHalfWidth?: number } = {},
+): void {
   const { box, polyMultiLoft } = KIT;
   const frontZ = 2.20;
   const rearZ = 0.50;
@@ -713,8 +1359,8 @@ function leopardA6MantletRoofBridge(P, o = {}) {
   ]));
 
   const rise = Math.atan2(0.175, frontZ - rearZ);
-  const topAt = (z) => 0.68 - (z - rearZ) * (0.175 / (frontZ - rearZ));
-  const widthAt = (z) => 2 * (
+  const topAt = (z: number): number => 0.68 - (z - rearZ) * (0.175 / (frontZ - rearZ));
+  const widthAt = (z: number): number => 2 * (
     rearHalfWidth
     + (z - rearZ) * ((frontHalfWidth - rearHalfWidth) / (frontZ - rearZ))
   );
@@ -748,7 +1394,7 @@ function leopardA6MantletRoofBridge(P, o = {}) {
 // wall/lip, segmented full-length fender planks (width carriers must catch
 // station slice windows — merkava packet mechanics), heavy front skirt
 // blocks at EXACTLY the committed half-width, inset rear skirt run.
-function leoHullV3(P, H) {
+function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
   const { box, cylY, cylZ, torus, headlight, liftEye, towCable, periscope } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const hw = H.bodyHW;
@@ -776,7 +1422,7 @@ function leoHullV3(P, H) {
   //                 authored against (a5 rear 138 vox at the 1.50 floor).
   for (let i = 0; i < deck.length - 1; i++) {
     const [zF, yF] = deck[i], [zR, yR] = deck[i + 1];
-    const winLo = SLL && (SLL.capZ0 ?? SLL.z0);
+    const winLo = SLL?.capZ0 ?? SLL?.z0 ?? 0;
     if (!SLL || Math.min(zF, zR) >= SLL.z1 || Math.max(zF, zR) <= winLo) {
       P.add('hull', slab(
         [-hw, H.sponsonY, zF], [hw, H.sponsonY, zF], [hw, H.sponsonY, zR], [-hw, H.sponsonY, zR],
@@ -784,7 +1430,7 @@ function leoHullV3(P, H) {
       continue;
     }
     // split this segment at the lift window (deck runs front->rear: zF > zR)
-    const yAt = (z) => yF + (yR - yF) * ((z - zF) / (zR - zF));
+    const yAt = (z: number): number => yF + (yR - yF) * ((z - zF) / (zR - zF));
     const bounds = [SLL.z1, SLL.z0, SLL.capZ0, SLL.crestZ0, SLL.crestZ1]
       .filter((v) => v != null).map((v) => Math.max(zR, Math.min(zF, v)));
     const cuts = [zF, ...bounds, zR]
@@ -800,12 +1446,14 @@ function leoHullV3(P, H) {
           [-hw, H.sponsonY, za], [hw, H.sponsonY, za], [hw, H.sponsonY, zb], [-hw, H.sponsonY, zb],
           [-hw, ya, za], [hw, ya, za], [hw, yb, zb], [-hw, yb, zb]));
       } else {
-        const lift = inCap ? SLL.capY
-          : (SLL.crestZ0 != null && mid <= SLL.crestZ1 && mid >= SLL.crestZ0) ? SLL.crestY : SLL.y;
+        const inCrest = SLL.crestZ0 != null && SLL.crestZ1 != null
+          && mid <= SLL.crestZ1 && mid >= SLL.crestZ0;
+        const lift = inCap ? (SLL.capY ?? SLL.y)
+          : inCrest ? (SLL.crestY ?? SLL.y) : SLL.y;
         P.add('hull', slab(                                                    // centre: full-depth to the sponson floor
           [-SLL.x0, H.sponsonY, za], [SLL.x0, H.sponsonY, za], [SLL.x0, H.sponsonY, zb], [-SLL.x0, H.sponsonY, zb],
           [-SLL.x0, ya, za], [SLL.x0, ya, za], [SLL.x0, yb, zb], [-SLL.x0, yb, zb]));
-        for (const s of [-1, 1]) {                                              // outboard: lifted over the wrap crest
+        for (const s of [-1, 1] as const) {                                              // outboard: lifted over the wrap crest
           P.add('hull', slab(
             [s * SLL.x0, lift, za], [s * hw, lift, za], [s * hw, lift, zb], [s * SLL.x0, lift, zb],
             [s * SLL.x0, ya, za], [s * hw, ya, za], [s * hw, yb, zb], [s * SLL.x0, yb, zb]));
@@ -863,12 +1511,15 @@ function leoHullV3(P, H) {
   let upperFillSegments = 0;
   let upperShoulderFillSegments = 0;
   let upperShoulderOuterHalfWMax = upperFillHalfW;
-  const upperFillSupportYAt = (z) => THREE.MathUtils.lerp(
+  const upperFillSupportYAt = (z: number): number => THREE.MathUtils.lerp(
     upperFillRearSupportY,
     upperFillFrontSupportY,
     THREE.MathUtils.clamp((z - upperFillRearZ) / (upperFillFrontZ - upperFillRearZ), 0, 1),
   );
-  const addUpperGlacisFill = (za, ya, wa, zb, yb, wb, depthA, depthB) => {
+  const addUpperGlacisFill = (
+    za: number, ya: number, wa: number, zb: number, yb: number, wb: number,
+    depthA: number, depthB: number,
+  ): void => {
     if (!upperFillEnabled) return;
     // Keep the deep structural backer inside the inter-track hull corridor.
     // The armor slab itself remains full width; this infill blocks the lateral
@@ -941,7 +1592,10 @@ function leoHullV3(P, H) {
       addUpperGlacisFill(zF, yF, wF, zR, yR, wR, 0.16, 0.14);
       continue;
     }
-    const cutSlab = (za, ya, wa, zb, yb, wb, dA, dB) => {
+    const cutSlab = (
+      za: number, ya: number, wa: number, zb: number, yb: number, wb: number,
+      dA: number, dB: number,
+    ): void => {
       P.add('hull', slab(
         [-wa, ya - dA, za], [wa, ya - dA, za], [wb, yb - dB, zb], [-wb, yb - dB, zb],
         [-wa, ya, za], [wa, ya, za], [wb, yb, zb], [-wb, yb, zb]));
@@ -971,16 +1625,17 @@ function leoHullV3(P, H) {
     // rim; a5 pulls the wing outer edge to the inter-track body and lets
     // the band/pads/wing-band own the vacated front/plan columns.
     const bwX1 = BW.x1 ?? (hw * 0.97);
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       // FULL-THICKNESS plank to the wing tip: the old wedge (bottom face
       // stopping at the glacis tip) left the far wing columns a <0.1 blade —
       // below the 12% body filter, so the bow body column never lit and the
       // hull registration sat a full column off the ref's midpoint.
-      const bot = [
+      type FourPointRing = readonly [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
+      const bot: FourPointRing = [
         [s * BW.x0, tip[1] - bwT - dt, BW.z], [s * bwX1, tip[1] - bwT - dt, BW.z - 0.02],
         [s * bwX1, tip[1] - bwT + 0.01, tip[0] - 0.3], [s * BW.x0, tip[1] - bwT + 0.01, tip[0] - 0.3],
       ];
-      const top = [
+      const top: FourPointRing = [
         [s * BW.x0, tip[1] - dt, BW.z], [s * bwX1, tip[1] - dt + 0.005, BW.z - 0.02],
         [s * bwX1, tip[1] + 0.01, tip[0] - 0.3], [s * BW.x0, tip[1] + 0.01, tip[0] - 0.3],
       ];
@@ -992,7 +1647,9 @@ function leoHullV3(P, H) {
       // (procedural-fidelity.html maskMaterial), so gate scores never saw the
       // difference — this is a shaded-render-only repair. Reversing each
       // corner ring restores outward winding on the mirrored side.
-      const ord = (r) => (BW.mirrorFix && s < 0) ? [r[1], r[0], r[3], r[2]] : r;
+      const ord = (r: FourPointRing): FourPointRing => (
+        BW.mirrorFix && s < 0 ? [r[1], r[0], r[3], r[2]] : r
+      );
       if (BW.rubberTip) {
         // a6 r6 OPT-IN rubberTip: the leading rubberTip meters of the wing
         // build as a hullRubber nose piece on the SAME footprint (corner
@@ -1000,8 +1657,12 @@ function leoHullV3(P, H) {
         // reads a DARK mudguard-front band over the idler wrap where ours
         // read lit camo; silhouette-identical, bucket/tone change only.
         const zc = BW.z - BW.rubberTip;
-        const lerp3 = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
-        const split = (ring) => {
+        const lerp3 = (a: Vec3Tuple, b: Vec3Tuple, f: number): Vec3Tuple => [
+          a[0] + (b[0] - a[0]) * f,
+          a[1] + (b[1] - a[1]) * f,
+          a[2] + (b[2] - a[2]) * f,
+        ];
+        const split = (ring: FourPointRing): { nose: FourPointRing; rear: FourPointRing } => {
           const f0 = (ring[0][2] - zc) / (ring[0][2] - ring[3][2]);
           const f1 = (ring[1][2] - zc) / (ring[1][2] - ring[2][2]);
           const m3 = lerp3(ring[0], ring[3], f0);
@@ -1046,7 +1707,7 @@ function leoHullV3(P, H) {
   // and beak. Deriving the stations from the live hull keeps the closure
   // continuous on both the long-nose 2A4 and shorter 2A6 hulls while staying
   // inside the track lanes.
-  if (H.underGlacisClosure) {
+  if (UGC) {
     const halfW = UGC.halfW ?? Math.min(GLC?.x ?? hw * 0.62, hw * 0.60);
     const lowerPlateRearZ = UGC.lowerPlateRearZ ?? (tip[0] - 0.84);
     const lowerPlateFrontZ = UGC.lowerPlateFrontZ ?? (tip[0] - 0.42);
@@ -1099,7 +1760,7 @@ function leoHullV3(P, H) {
   const cr = g[0];
   P.add('hullDark', box(hw * 1.8, 0.014, 0.026), 0, cr[1] + 0.006, cr[0] + 0.02);
   const gRx = -Math.atan2(g[0][1] - g[1][1], g[1][0] - g[0][0]);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // splashArms opt-out (r3 leo2a6 #10): these bare detail-grey slabs were
     // the critic's "two untextured grey glacis slabs" — a6 replaces them
     // with scheme-camo deflector boards on the same footprint.
@@ -1125,7 +1786,7 @@ function leoHullV3(P, H) {
   // rear deck furniture: flush fan discs, radiator wells, transverse louvre
   const fz = H.fans.z, fx = H.fans.x, fr = H.fans.r;
   const fy = deckYAt(deck, fz);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     if (H.fanWell) {
       // a5 r6 OPT-IN fanWell (default off — siblings byte-identical): the
       // flush torus+bars recipe reads as DRAWN circles from top/tilt (a5 r5
@@ -1195,7 +1856,7 @@ function leoHullV3(P, H) {
     [hw, R.yTop, R.lipZ], [-hw, R.yTop, R.lipZ]));
   const lvX = H.rearWallHW ? Math.min(hw * 0.52, rwHW - 0.31) : hw * 0.52;
   const lvW = H.rearWallHW ? Math.min(0.60, (rwHW - lvX) * 2 - 0.02) : 0.60;
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDark', box(lvW, 0.14, 0.04), s * lvX, R.yTop - 0.30, R.wallZ - 0.005);
     for (let k = 0; k < 3; k++) P.add('hullDetail', box(lvW - 0.04, 0.028, 0.05), s * lvX, R.yTop - 0.36 + k * 0.058, R.wallZ - 0.015);
     P.add('hullDark', box(0.14, 0.08, 0.04), s * hw * 0.80, R.yTop - 0.11, R.wallZ - 0.005);
@@ -1213,7 +1874,7 @@ function leoHullV3(P, H) {
   // also carry the tail body-span columns the published hullLengthM needs)
   if (H.rearFlaps) {
     const FL = H.rearFlaps;
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       P.addMudguard(`leopard-native-rear-flap-${s}`, 'hullRubber',
         box(0.38, FL.y1 - FL.y0, 0.035), s * FL.x,
         (FL.y0 + FL.y1) / 2, FL.z, 0.06, 0, 0);
@@ -1231,7 +1892,7 @@ function leoHullV3(P, H) {
     P.add('hullDetail', box(TF.w, 0.05, TF.z0 - TF.z1), 0, TF.yLo, (TF.z0 + TF.z1) / 2);
     P.add('hullDetail', box(TF.w, 0.05, TF.z0 - TF.z1), 0, TF.yHi, (TF.z0 + TF.z1) / 2);
     for (const px of TF.posts) {
-      for (const s of [-1, 1]) {
+      for (const s of [-1, 1] as const) {
         P.add('hullDetail', box(0.05, TF.yHi - TF.yLo, 0.05), s * px, (TF.yLo + TF.yHi) / 2, (TF.z0 + TF.z1) / 2);
         P.add('hullDetail', box(0.05, 0.05, R.wallZ - TF.z1), s * px, TF.yHi, (TF.z1 + R.wallZ) / 2);
       }
@@ -1249,7 +1910,7 @@ function leoHullV3(P, H) {
     const segL = (F.z1 - F.z0) / segN;
     const th = F.y1 - F.y0;
     const drop = F.drop ?? 0.005;            // fender top below the deck line
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       for (let k = 0; k < segN; k++) {
         const zc = F.z0 + segL * (k + 0.5);
         const yTop = F.followDeck === false ? F.y1 : Math.min(F.y1, deckYAt(deck, zc) - drop);
@@ -1273,8 +1934,9 @@ function leoHullV3(P, H) {
       // byte-identical): segments past cutZ0 dived through the idler-wrap
       // crest at lane x; they keep only the outboard sliver (cutX0..x1) —
       // the side line is x-invariant, vacated front columns are rim-covered.
-      const xIn = (FF.cutZ0 != null && za >= FF.cutZ0 - 1e-6) ? FF.cutX0 : F.x0;
-      for (const s of [-1, 1]) {
+      const xIn = (FF.cutZ0 != null && za >= FF.cutZ0 - 1e-6)
+        ? (FF.cutX0 ?? F.x0) : F.x0;
+      for (const s of [-1, 1] as const) {
         P.add('hull', slab(
           [s * xIn, ya - 0.05, za], [s * F.x1, ya - 0.05, za], [s * F.x1, yb - 0.05, zb], [s * xIn, yb - 0.05, zb],
           [s * xIn, ya, za], [s * F.x1, ya, za], [s * F.x1, yb, zb], [s * xIn, yb, zb]));
@@ -1286,10 +1948,13 @@ function leoHullV3(P, H) {
   // a5 gate read the bare 3.40 track band on every skirt slice (flat 2%
   // width error rows). Every skirt course is laid as ~0.44 m segments with
   // hairline gaps so each slice window catches an end cap.
-  const segRun = (mat, xFace, th, y0, y1, z0, z1) => {
+  const segRun = (
+    mat: string, xFace: number, th: number,
+    y0: number, y1: number, z0: number, z1: number,
+  ): void => {
     const n = Math.max(2, Math.round((z1 - z0) / 0.44));
     const L = (z1 - z0) / n;
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       for (let k = 0; k < n; k++) {
         P.add(mat, box(th, y1 - y0, L - 0.012), s * (xFace - th / 2), (y0 + y1) / 2, z0 + L * (k + 0.5));
       }
@@ -1314,7 +1979,7 @@ function leoHullV3(P, H) {
   segRun('hull', fsX, fsTh, FS.y0, FS.y1, FS.z0, FS.z1);
   if (FS.lip) segRun('hull', FS.lip.x, 0.02, FS.lip.y0, FS.lip.y1, FS.lip.z0, FS.lip.z1);
   if (FS.flap !== false) {
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       P.add('hull', box(fsTh, 0.12, FS.z1 - FS.z0 - 0.06), s * (fsX - fsTh / 2 - 0.005), FS.y0 - 0.02, (FS.z0 + FS.z1) / 2, 0, 0, -s * 0.22);
     }
   }
@@ -1360,7 +2025,7 @@ const LEO_A6_UNDERBODY_PLAN = [
   [-1.39, 0.42], [-1.22, 0.92],
 ];
 
-function wedgeTurretV3(P, T) {
+function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
   const { box, frustum, polyMultiLoft, cylY, cylZ, torus, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const h = T.h;
@@ -1377,7 +2042,7 @@ function wedgeTurretV3(P, T) {
     P.add('turret', cylY(R.r0, R.r1, R.h, P.q ? (R.hiSeg ?? 26) : (R.loSeg ?? 16)),
       R.x ?? 0, R.y, R.z);
   }
-  if (T.shellPlan) {
+  if (T.shellPlan && T.shellRings) {
     // Per-profile continuous welded shell.  This opt-in replaces only the
     // helper's primary body/cheek plates; rack, mantlet furniture, stations
     // and every sibling default remain unchanged.
@@ -1396,7 +2061,7 @@ function wedgeTurretV3(P, T) {
       // 2.41 at x 0 vs 2.60 at +-0.9; a flat course read +0.17 on the center
       // front columns). Per-side wedge: cY at the wall -> B.top at +-xt,
       // dipping to B.vT along the centerline.
-      for (const s of [-1, 1]) {
+      for (const s of [-1, 1] as const) {
         const xt = (s < 0 ? B.xtL : null) ?? B.xt ?? Math.min(B.x, T.roofX ?? B.x * 0.76);
         const bTop = (s < 0 ? B.topL : null) ?? B.top ?? h;
         P.add('turret', slab(
@@ -1431,11 +2096,11 @@ function wedgeTurretV3(P, T) {
   const N = T.nose;              // [[x, z] ...] apex ridge -> tip nose corner
   const aB = T.apexY;
   const chevron = T.chevron;
-  const stationValue = (value, index, fallback) => {
-    if (Array.isArray(value)) return value[Math.min(index, value.length - 1)] ?? fallback;
-    return value ?? fallback;
+  const stationValue = (value: NumericSeries, index: number, fallback: number): number => {
+    if (typeof value !== 'number') return value[Math.min(index, value.length - 1)] ?? fallback;
+    return value;
   };
-  const interpolate = (rows, x, column) => {
+  const interpolate = (rows: readonly (readonly number[])[], x: number, column: number): number => {
     if (x <= rows[0][0]) return rows[0][column];
     for (let index = 0; index < rows.length - 1; index++) {
       const a = rows[index], b = rows[index + 1];
@@ -1443,15 +2108,15 @@ function wedgeTurretV3(P, T) {
       const t = THREE.MathUtils.clamp((x - a[0]) / Math.max(1e-6, b[0] - a[0]), 0, 1);
       return THREE.MathUtils.lerp(a[column], b[column], t);
     }
-    return rows.at(-1)[column];
+    return rows[rows.length - 1][column];
   };
   const chevronSides = [];
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // per-side crest tables (T.crestL): the a6 print's LEFT cheek crests
     // ~0.3 taller than the right — a mirrored table cannot match both
     const C = (s < 0 && T.crestL) ? T.crestL : T.crest;
     if (chevron) {
-      const minimumX = N[0][0], maximumX = N.at(-1)[0];
+      const minimumX = N[0][0], maximumX = N[N.length - 1][0];
       const xs = [...new Set([
         ...N.map(([x]) => x),
         ...C.map(([x]) => x).filter((x) => x > minimumX && x < maximumX),
@@ -1573,7 +2238,7 @@ function wedgeTurretV3(P, T) {
     const NU = T.noseUpper ?? N;
     for (let i = 0; i < C.length - 1; i++) {
       const [cx0, cy0, cz0] = C[i], [cx1, cy1, cz1] = C[i + 1];
-      const nz = (x) => {                          // z on the (upper) nose line at x
+      const nz = (x: number): number => {          // z on the (upper) nose line at x
         for (let k = 0; k < NU.length - 1; k++) {
           const [xa, za] = NU[k], [xb, zb] = NU[k + 1];
           if (x <= xb + 1e-6 || k === NU.length - 2) return za + (zb - za) * ((x - xa) / (xb - xa || 1));
@@ -1651,7 +2316,7 @@ function wedgeTurretV3(P, T) {
   // anchored at the same slotZ - 0.045 line)
   const scZ = T.slotCheekD != null ? T.slotZ - 0.045 + scD / 2 : T.slotZ + 0.28;
   P.add('turret', box(T.gunW * 2 + 0.08, h * 0.82, 0.06), 0, h * 0.44, T.slotZ);
-  for (const s of [-1, 1]) P.add('turretDark', box(0.05, h * 0.5, scD), s * (T.gunW + 0.04), h * 0.345, scZ);
+  for (const s of [-1, 1] as const) P.add('turretDark', box(0.05, h * 0.5, scD), s * (T.gunW + 0.04), h * 0.345, scZ);
   }
   // bustle rack: rails + slats + strapped kit, measured width/height.
   // Rails span EXACTLY 2*RK.x — the old +0.26 overhang read as proc-only
@@ -1668,7 +2333,7 @@ function wedgeTurretV3(P, T) {
     if (RK.wall && k > 0 && k < 10) continue;
     P.add('turretDetail', box(0.03, RK.top - RK.bot, 0.03), -RK.x + 0.015 + k * ((2 * RK.x - 0.03) / 10), (RK.top + RK.bot) / 2, RK.z1 + 0.015);
   }
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDetail', box(0.045, 0.045, RK.z0 - RK.z1), s * RK.x, RK.top, (RK.z0 + RK.z1) / 2);
     P.add('turretDetail', box(0.045, 0.045, RK.z0 - RK.z1), s * RK.x, RK.bot, (RK.z0 + RK.z1) / 2);
   }
@@ -1736,7 +2401,10 @@ function wedgeTurretV3(P, T) {
     P.add(periB, box(PR.w ?? 0.24, 0.26, prD), PR.x, PR.top - 0.13, PR.z);
     P.add('turretGlass', box(0.15, 0.10, 0.016), PR.x, PR.top - 0.10, PR.z + prD / 2);
   }
-  for (const [st, lo] of [[T.cmdr, false], [T.loader, true]]) {
+  const wedgeHatchStations: ReadonlyArray<readonly [LeopardWedgeV3Config['cmdr'], boolean]> = [
+    [T.cmdr, false], [T.loader, true],
+  ];
+  for (const [st, lo] of wedgeHatchStations) {
     P.add('turret', cylY(lo ? 0.21 : 0.23, lo ? 0.21 : 0.23, 0.035, 14), st.x, h + 0.017, st.z);
     P.add('turretDark', box((lo ? 0.32 : 0.36), 0.012, 0.03), st.x, h + 0.042, st.z);
     if (T.hatchTop) {
@@ -1790,7 +2458,7 @@ function wedgeTurretV3(P, T) {
     P.add('turretDetail', cylY(0.035, 0.04, (pt.top - h) * 0.4, 8), pt.x, h + (pt.top - h) * 0.2, pt.z);
     P.add('turretDark', box(pt.w ?? 0.10, (pt.top - h) * 0.62, pt.w ?? 0.10), pt.x, pt.top - (pt.top - h) * 0.31, pt.z);
   }
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     if (T.smoke) {
       const sm = T.smoke;
       P.add('turret', box(0.05, 0.22, 0.52), s * sm.x, sm.y, sm.z, 0, s * 0.20, 0);
@@ -1811,7 +2479,7 @@ function wedgeTurretV3(P, T) {
 // plan nose 3.08 -> tips +-1.50 @ z 0.65..1.90, rack +-1.02 to -2.78,
 // mantlet block top 2.14 over z 3.35..3.90, L/55 axis 1.94 muzzle 7.08.
 // ---------------------------------------------------------------------------
-function buildLeo2A6(P) {
+function buildLeo2A6(P: TankBuilderPort) {
   const { box, cylX, cylZ, torus, xform, frustum } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
@@ -1954,7 +2622,7 @@ function buildLeo2A6(P) {
   // tip) — these carry the measured bumps; they hide inside the side/front
   // beak bands
   P.add('hullDetail', box(0.16, 0.16, 0.15), 0, 1.09, 3.63);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDetail', box(0.042, 0.16, 0.16), s * 0.676, 1.08, 3.647);
     P.add('hullDetail', box(0.09, 0.14, 0.10), s * 0.30, 1.09, 3.60);
     // outer bow scallop: ref plan reads 3.634 again at |x| 0.78..0.93
@@ -1991,10 +2659,14 @@ function buildLeo2A6(P) {
     //     (front cols 1.01..1.53 are band-lit to ~1.29 regardless);
     //   - the rubber nose band keeps its exact certified footprint.
     const wx0 = 0.90, wx1 = 0.94, sx1 = 0.94, zn = 3.752;
-    const topAt = (z) => 1.145 + (1.1249 - 1.145) * (z - 3.675) / (3.758 - 3.675);
-    for (const s of [-1, 1]) {
-      const ord = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
-      const ring = (pts) => ord(pts.map(([x, y, z]) => [s * x, y, z]));
+    const topAt = (z: number): number => 1.145 + (1.1249 - 1.145) * (z - 3.675) / (3.758 - 3.675);
+    for (const s of [-1, 1] as const) {
+      const ord = (ring: FourPointRing): FourPointRing => (
+        s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
+      );
+      const ring = (points: FourPointRing): FourPointRing => ord(points.map(
+        ([x, y, z]): Vec3Tuple => [s * x, y, z],
+      ) as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple]);
       P.add('hull', orientedSlab(                                              // inboard sliver: original profile
         ...ring([[wx0, 1.045, 3.715], [sx1, 1.045, 3.715], [sx1, 1.045, 3.758], [wx0, 1.045, 3.758]]),
         ...ring([[wx0, 1.145, 3.675], [sx1, 1.145, 3.675], [sx1, 1.1249, 3.758], [wx0, 1.1249, 3.758]])));
@@ -2006,7 +2678,7 @@ function buildLeo2A6(P) {
   // hidden scan patch: the vertical root is buried in the inboard glacis and
   // the shallow cap overlaps it. The cap stops inboard of the terminal shoe
   // lane, preserving the native course without lifting the source shoulder.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hull', box(0.08, 0.14, 0.40), s * 0.83, 1.25, 3.46);               // buried glacis root
     P.add('hull', box(0.14, 0.06, 0.40), s * 0.89, 1.34, 3.46);               // supported shoulder cap, |x| <= 0.96
   }
@@ -2068,7 +2740,7 @@ function buildLeo2A6(P) {
   // covers them (each case argued inline). No new p95 height columns, no
   // face wider than 1.874 (width guard 1.875), +faces >=12 mm off owned
   // column boundaries (mask pixel-growth law).
-  const gY = (z) => deckYAt([[2.05, 1.67], [2.35, 1.60], [2.64, 1.575], [3.13, 1.37], [3.60, 1.21]], z);
+  const gY = (z: number): number => deckYAt([[2.05, 1.67], [2.35, 1.60], [2.64, 1.575], [3.13, 1.37], [3.60, 1.21]], z);
   // #1 glacis: headlight CLUSTERS around the kit pods — armored pod plate +
   // blackout lamp + brush-guard bars, all inside the certified pod column
   // (ref col 3.267 tops 1.495; everything here tops <=1.492)
@@ -2470,8 +3142,8 @@ function buildLeo2A6(P) {
   P.turretG.position.set(0, 1.77, 0.35);
   // contiguity r9: crest tables hoisted to consts — the wedge END-CLOSURE
   // pieces below (owner contiguity flag) are computed off the same points.
-  const crestR = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.32, 0.58, -0.12], [1.36, 0.24, -0.16], [1.43, 0.19, -0.20]];
-  const crestLt = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.30, 0.61, -0.10], [1.41, 0.55, -0.16], [1.44, 0.30, -0.20]];
+  const crestR: Vec3Tuple[] = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.32, 0.58, -0.12], [1.36, 0.24, -0.16], [1.43, 0.19, -0.20]];
+  const crestLt: Vec3Tuple[] = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.30, 0.61, -0.10], [1.41, 0.55, -0.16], [1.44, 0.30, -0.20]];
   wedgeTurretV3(P, {
     h: 0.75, apexY: 0.09, gunW: 0.36, slotZ: 1.55, crestTail: 0.05, wallDrop: 0.10,
     underbodyRings: [
@@ -2662,7 +3334,9 @@ function buildLeo2A6(P) {
   // course's profile (side rows stay under the certified 0.82/0.835 peaks),
   // bottoms sink into the certified 0.62 wall band — zero trace movement.
   for (const s2 of [-1, 1]) {
-    const ordS = (r) => (s2 < 0 ? [r[1], r[0], r[3], r[2]] : r);
+    const ordS = (ring: FourPointRing): FourPointRing => (
+      s2 < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
+    );
     P.add('turret', slab(
       ...ordS([[s2 * 0.06, 0.60, -1.47], [s2 * 0.87, 0.60, -1.47], [s2 * 0.87, 0.60, -1.57], [s2 * 0.06, 0.60, -1.57]]),
       ...ordS([[s2 * 0.06, 0.628, -1.47], [s2 * 0.87, 0.808, -1.47], [s2 * 0.87, 0.808, -1.57], [s2 * 0.06, 0.628, -1.57]])));
@@ -2684,7 +3358,7 @@ function buildLeo2A6(P) {
   // certified r 0.041 (their top 0.573 already rides 8 mm under the crest).
   {
     const gs = P.q ? 12 : 10;
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       for (let k = 0; k < 4; k++) {
         const zA = -0.40 - k * 0.14, zB = -0.47 - k * 0.14;
         P.add('turret', KIT.cylZ(0.036, 0.24, gs), s * 1.281, 0.405, zA, -0.52, s * 0.16, 0);
@@ -2724,9 +3398,13 @@ function buildLeo2A6(P) {
   // MIRROR LAW: slab corner rings reverse for s=-1 (the r6 beak-wing
   // inside-out lesson — masks are DoubleSide, shaded renders are not).
   {
-    const ordC = (s, r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
-    const mirC = (s, r) => r.map(([x, y, z]) => [s * x, y, z]);
-    for (const s of [-1, 1]) {
+    const ordC = (side: Side, ring: FourPointRing): FourPointRing => (
+      side < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
+    );
+    const mirC = (side: Side, ring: FourPointRing): FourPointRing => ring.map(
+      ([x, y, z]): Vec3Tuple => [side * x, y, z],
+    ) as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
+    for (const s of [-1, 1] as const) {
       const C = s < 0 ? crestLt : crestR;
       // top cap over crest segment 4->5
       const [xA0, yA0, zA0] = C[4], [xB0, yB0, zB0] = C[5];
@@ -3073,7 +3751,7 @@ function buildLeo2A6(P) {
     wornDrum.color.setHex(0x3e4437);
     wornDrum.envMapIntensity = 0.25;
     P.disposables.push(wornDish, wornDrum);
-    const rehook = (m) => {
+    const rehook = <T extends VehicleMaterial>(m: T): T => {
       m.onBeforeCompile = vehicleAmbientFloorHook;
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       return m;
@@ -3105,8 +3783,8 @@ function buildLeo2A6(P) {
     // parity rects, normal.y ~ 0) render byte-identical. Chained after the
     // fleet ambient-floor hook on these per-build clones; own cache key;
     // zero shared-path edits.
-    const regrime = (m) => {
-      m.onBeforeCompile = (shader) => {
+    const regrime = <T extends VehicleMaterial>(m: T): T => {
+      m.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
         vehicleAmbientFloorHook(shader);
         shader.fragmentShader = shader.fragmentShader.replace(
           '#include <opaque_fragment>',
@@ -3117,10 +3795,10 @@ function buildLeo2A6(P) {
       return m;
     };
     P.hullG.traverse((ob) => {
-      if (!ob.isMesh && !ob.isInstancedMesh) return;
+      if (!(ob instanceof THREE.Mesh) || Array.isArray(ob.material)) return;
       const m = ob.material;
-      if (!m || !m.color || !m.color.getHex) return;
-      if (ob.isInstancedMesh && m.color.getHex() === 0x171614) {
+      if (!(m instanceof THREE.MeshStandardMaterial)) return;
+      if (ob instanceof THREE.InstancedMesh && m.color.getHex() === 0x171614) {
         // link pads r6 #3: solved per-rect (transfer method) against the
         // ref FRONT faces — rendered front med lands (64,60,55) = the ref's
         // exact read (hue 27.7 -> ~34, sat 20 -> ~15, lum med ~60.5); the
@@ -3132,7 +3810,7 @@ function buildLeo2A6(P) {
         m.envMapIntensity = 0.05;
         m.roughness = 1.0;                               // r6 #1: ridge-glint cut — the wrap-arc grouser
         m.metalness = 0.04;                              // ridges fired the top-zone p90 tail
-      } else if (ob.isInstancedMesh && m.color.getHex() === 0x27251f) {
+      } else if (ob instanceof THREE.InstancedMesh && m.color.getHex() === 0x27251f) {
         // inner chain / guide-horn layer. r6 #1+#3: the tread-recess pixels
         // are 1-2 px SUB-PIXEL BLENDS of pad and chain (tricolor-probe
         // verified — pure chain pixels are rare at board scale), so the
@@ -3144,7 +3822,7 @@ function buildLeo2A6(P) {
         regrime(m).color.setHex(0x252320);
         m.envMapIntensity = 0.08;                        // r6: sky-wash cut with the pad/band family
       } else if (m === P.mats.wheels) {
-        ob.material = ob.isInstancedMesh ? wornDish : wornDrum;
+        ob.material = ob instanceof THREE.InstancedMesh ? wornDish : wornDrum;
       }
     });
     // r8 #2 POST-MERGE SWAP LAW: bucket meshes do not exist while the
@@ -3156,11 +3834,13 @@ function buildLeo2A6(P) {
     // wrapper swaps the single hullG canvasCloth mesh — the hullCloth
     // bucket = plate skin + taillight ovals — then delegates. turretCloth
     // lives under turretG and keeps the certified bin-green.
-    const gearUpdate0 = P.gear.update;
-    P.gear.update = (trackL, trackR) => {
-      P.gear.update = gearUpdate0;
+    const gear = P.gear;
+    if (!gear) throw new Error('Leopard 2A6 running gear must exist before finish materials');
+    const gearUpdate0 = gear.update;
+    gear.update = (trackL: number, trackR: number) => {
+      gear.update = gearUpdate0;
       P.hullG.traverse((ob) => {
-        if ((ob.isMesh || ob.isInstancedMesh) && ob.material === P.mats.canvasCloth) ob.material = platePale;
+        if (ob instanceof THREE.Mesh && ob.material === P.mats.canvasCloth) ob.material = platePale;
       });
       return gearUpdate0(trackL, trackR);
     };
@@ -3187,10 +3867,11 @@ function buildLeo2A6(P) {
 // bustle to -2.90, whips (x -0.96, z -1.93) / (+1.08, -2.02) to 4.11,
 // mantlet block top 2.21 over z 3.43..3.95, L/44 axis 1.99 muzzle 6.02.
 // ---------------------------------------------------------------------------
-export function buildLeo2A5(P) {
+export function buildLeo2A5(builder: object) {
+  const P = requireTankBuilderPort(builder);
   const { box } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
-  const hookWheelFace = (material) => {
+  const hookWheelFace = <T extends VehicleMaterial>(material: T): T => {
     material.onBeforeCompile = vehicleAmbientFloorHook;
     material.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     return material;
@@ -3216,7 +3897,7 @@ export function buildLeo2A5(P) {
   // not these crowns — see the norim note — but the litKit family keeps
   // the crowns inside the ref's own lit-kit cap regardless.) Same
   // certified transforms, non-casting overlay (r8 law 3).
-  const litCrownGeos = [];
+  const litCrownGeos: THREE.BufferGeometry[] = [];
   // (a r9-b stern-frame litKit conversion was tried and REVERTED: the
   // frame rails are the rear-window med's bright population — toning them
   // slid the louvre med 82.4 -> 80.6 under its 82 floor)
@@ -3312,15 +3993,15 @@ export function buildLeo2A5(P) {
   });
   // r6 fender wide-strip overlay (see fender note): front cols ±1.73..1.76
   // read the ref's 1.683 fender line; z-parked outside stations 0-8
-  for (const s of [-1, 1]) P.add('hull', box(0.018, 0.065, 1.30), s * 1.746, 1.6425, 1.73);
+  for (const s of [-1, 1] as const) P.add('hull', box(0.018, 0.065, 1.30), s * 1.746, 1.6425, 1.73);
   // r3 flush splash deflector boards (decoration continuity for the kit
   // arms disabled above): same glacis footprint, pitched onto the plate —
   // tops ride ~0.02 proud, under the ref's 1.488 line at the arm zone
-  for (const s of [-1, 1]) P.add('hullDetail', box(0.85, 0.018, 0.05), s * 0.44, 1.505, 2.82, 0.41, s * 0.42, 0);
+  for (const s of [-1, 1] as const) P.add('hullDetail', box(0.85, 0.018, 0.05), s * 0.44, 1.505, 2.82, 0.41, s * 0.42, 0);
   // r3 rear-deck side shelf: the warped front ±1.66 columns read a 1.793
   // line outboard of the 1.638 body (the ref's intake armor lip runs to
   // ±1.685); z-parked on the aft deck, under the 1.825 side deck line
-  for (const s of [-1, 1]) P.add('hull', box(0.047, 0.06, 0.80), s * 1.6615, 1.76, -2.90);
+  for (const s of [-1, 1] as const) P.add('hull', box(0.047, 0.06, 0.80), s * 1.6615, 1.76, -2.90);
   // Running-gear ownership law: the idler wrap and animated shoes alone own
   // the lane below the fender.  The former five-piece static "mudflap
   // stack" was planted inside that swept volume to imitate the side trace;
@@ -3330,7 +4011,7 @@ export function buildLeo2A5(P) {
   // mudflap band over the skirt face; z-parked behind the skirt front edge
   // so the plan ±1.84 cols cannot move. r3: x-narrowed to 1.812..1.848 —
   // the ±1.87 front cols read the ref's bare 1.339 skirt-face line
-  for (const s of [-1, 1]) P.add('hull', box(0.036, 0.60, 0.10), s * 1.830, 1.11, 3.59);
+  for (const s of [-1, 1] as const) P.add('hull', box(0.036, 0.60, 0.10), s * 1.830, 1.11, 3.59);
   // Likewise, no flush "track-face cover" is permitted ahead of the idler.
   // The real linked shoes remain readable from the front and keep exclusive
   // ownership of their animated orbit.
@@ -3342,7 +4023,7 @@ export function buildLeo2A5(P) {
   // board bottom. Boards widen inboard to x 0.96 so the hanger posts can
   // route through the band-free inter-track corridor up to the tail lip
   // (contiguity law — the old bracket bridged THROUGH the wrap).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // VISUAL r1: boards re-bucketed hullRubber -> hullTrack — the ref's rear
     // flaps sample warm brown-grey (68,62,52) sat 23.5 where the rubber
     // bucket rides the neutral deep-shade floor (54,52,48 sat 11); the
@@ -3388,7 +4069,7 @@ export function buildLeo2A5(P) {
   // (the old 1.755-wide course floor read 0.707 there, err 0.095 x2)
   {
     const n = 5;
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       for (let k = 0; k < n; k++) {
         const zc = 1.50 + (2.10 / n) * (k + 0.5);
         // r4 CONTAINMENT: the inner course's 1.700 face shares the band's
@@ -3408,7 +4089,7 @@ export function buildLeo2A5(P) {
     // x >= 1.71 clears it; vacated front/plan columns are pin-cap and
     // fender-owned); the wing band's rear face steps off the 3.818 wrap
     // far edge (3.825 -> 3.845) with its 3.925 plan face EXACT.
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       P.add('hull', box(0.09, 0.21, 0.33), s * 1.755, 1.155, 3.765);
       P.add('hullDark', box(0.08, 0.15, 0.02), s * 1.75, 1.15, 3.60);
       // §B4 shoe round (2026-08-06): the wing band's rear face (3.845) was
@@ -3438,14 +4119,14 @@ export function buildLeo2A5(P) {
     // corners read -3.943 on the ±1.28..1.42 columns (the -3.87 park read
     // -3.887, err 0.056 x4); raised to y 1.49 so the LAST side column
     // (-3.969) reads the ref's 1.74..1.46 end-frame band exactly
-    for (const s of [-1, 1]) P.add('hullDetail', box(0.25, 0.05, 0.05), s * 1.295, 1.49, -3.917); // corner rails (ref −3.914/−3.943 at ±1.17..1.42 only)
+    for (const s of [-1, 1] as const) P.add('hullDetail', box(0.25, 0.05, 0.05), s * 1.295, 1.49, -3.917); // corner rails (ref −3.914/−3.943 at ±1.17..1.42 only)
     // r3 hook straps under the corner rails: the settled-grid −3.862 side
     // column bottoms at 1.291 (z-ends short of the −3.974 column, whose
     // 1.46..1.74 end-frame band the raised rail/upright pair carries)
-    for (const s of [-1, 1]) P.add('hullDetail', box(0.05, 0.17, 0.06), s * 1.295, 1.38, -3.865);
+    for (const s of [-1, 1] as const) P.add('hullDetail', box(0.05, 0.17, 0.06), s * 1.295, 1.38, -3.865);
     // r3 plan mid-step stubs: the warped plan rear staircase reads −3.859
     // at ±1.05 between the −3.775 rail and the −3.915 corner line
-    for (const s of [-1, 1]) P.add('hullDetail', box(0.12, 0.05, 0.10), s * 1.05, 1.42, -3.82);
+    for (const s of [-1, 1] as const) P.add('hullDetail', box(0.12, 0.05, 0.10), s * 1.05, 1.42, -3.82);
     // r4 CONTAINMENT: forward rail narrows 3.05 -> 2.04 — its over-track
     // span skimmed the sprocket-wrap crown (arc tops 1.39-1.42 across its
     // z-run); side view is x-invariant and the legs (now at ±0.99) still
@@ -3453,11 +4134,11 @@ export function buildLeo2A5(P) {
     P.add('hullDetail', box(2.04, 0.05, 0.05), 0, 1.38, -3.44);
     // frame end uprights: the ref stowage frame's last column (-3.97) reads
     // a 1.46..1.74 band; upright bottom raised to the 1.465 line (r3)
-    for (const s of [-1, 1]) P.add('hullDetail', box(0.05, 0.29, 0.05), s * 1.2, 1.61, -3.90);
+    for (const s of [-1, 1] as const) P.add('hullDetail', box(0.05, 0.29, 0.05), s * 1.2, 1.61, -3.90);
     for (let k = 0; k < 8; k++) {
       P.add('hullDetail', box(0.035, 0.035, 0.30), -1.47 + k * 0.42, 1.44, -3.60, -0.05, 0, 0);
     }
-    for (const s of [-1, 1]) {                                                // frame legs onto the hull wall
+    for (const s of [-1, 1] as const) {                                                // frame legs onto the hull wall
       // r4 CONTAINMENT: legs slide 1.42 -> 0.99 inboard — at ±1.42 they
       // crossed the sprocket wrap's upper arc; the inter-track corridor is
       // band-free and the legs still land on the (narrowed) rear wall.
@@ -3526,7 +4207,7 @@ export function buildLeo2A5(P) {
     }
     litCrownGeos.push(KIT.xform(box(3.28, 0.006, 0.058), 0, 1.448, -3.75, 0.12, 0, 0)); // low-rail crown (tilted to the sky)
     litCrownGeos.push(KIT.xform(box(2.02, 0.006, 0.058), 0, 1.408, -3.44, 0.12, 0, 0)); // fwd-rail crown
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       litCrownGeos.push(KIT.xform(box(0.24, 0.004, 0.046), s * 1.295, 1.517, -3.917)); // corner-rail crowns
       litCrownGeos.push(KIT.xform(box(0.052, 0.004, 0.052), s * 1.2, 1.757, -3.90));   // upright caps
     }
@@ -3564,7 +4245,7 @@ export function buildLeo2A5(P) {
   // plumbing and zero mask cost on 0.04-tall members). Fixed table, no rng.
   const slatJ = [0.043, -0.038, 0.012, -0.052, 0.031, -0.012, 0.050, -0.027, 0.006];
   const slatY = [0.0015, -0.002, 0.001, 0.0025, -0.0015, 0.002, -0.001, 0.0005, -0.0025];
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (const [ci, [cx, w]] of [[0.28, 0.44], [0.78, 0.44]].entries()) {
       P.add('hullShadow', box(w, 0.44, 0.014), s * cx, 1.48, -3.448);         // near-black field
       for (let k = 0; k < 9; k++) {
@@ -3589,7 +4270,7 @@ export function buildLeo2A5(P) {
   // -0.68, y 0.89..1.23) — concentric pale rings over a dark backing disc +
   // olive lens, stepped proud (all z >= -3.472, wall-column legal, inside
   // |x| <= 1.02). The crossed cables pass in front like the print's own.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDark', KIT.cylZ(0.135, 0.008, P.q ? 24 : 16), s * 0.87, 1.06, -3.452);
     P.add('hullDetail', KIT.xform(KIT.torus(0.125, 0.011, P.q ? 24 : 16), 0, 0, 0, Math.PI / 2, 0, 0), s * 0.87, 1.06, -3.458);
     P.add('hullDetail', KIT.xform(KIT.torus(0.085, 0.010, P.q ? 20 : 14), 0, 0, 0, Math.PI / 2, 0, 0), s * 0.87, 1.06, -3.462);
@@ -3597,7 +4278,7 @@ export function buildLeo2A5(P) {
     P.add('hullGlass', KIT.cylZ(0.030, 0.010, 12), s * 0.87, 1.06, -3.464);
     P.add('hullDark', box(0.05, 0.05, 0.02), s * 0.87, 0.925, -3.444);        // mount foot onto the wall
   }
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // cables + eyes stay in the band-free inter-track corridor (|x| <= 1.02
     // — the r4 lane-corridor routing law; a ±1.3 first cut put the low ends
     // inside the sprocket-wrap swept band, 22 exact-voxels)
@@ -3621,7 +4302,7 @@ export function buildLeo2A5(P) {
   // headlight pod bezels: the bare kit pod sides read as pale grey discs in
   // the side pairs — dark ring shrouds co-axial with the pods (sub-pixel
   // radius delta, silhouette-free)
-  for (const s of [-1, 1]) P.add('hullDark', KIT.cylZ(0.058, 0.032, 12), s * 0.90, 1.395, 3.615, -0.30, 0, 0);
+  for (const s of [-1, 1] as const) P.add('hullDark', KIT.cylZ(0.058, 0.032, 12), s * 0.90, 1.395, 3.615, -0.30, 0, 0);
   // VISUAL r6 3e GLACIS ANTI-SLIP + X-STRAPS + POD CLUSTER PLATES (critic
   // driver C: glacis BARE and +11.8 bright vs ref 61.8): dark matte fields
   // hug the two plate slopes (<=8 mm proud, slope-aligned — the a6 #1
@@ -3629,16 +4310,16 @@ export function buildLeo2A5(P) {
   // a6-r2 yawed-furniture law: constant-y runs bury on a falling plate);
   // armored backing plates + 3-bar brush guards cluster the headlight pods
   // (tops <= the pods' own 1.45 line; plan stays wing/pad-owned).
-  const antiSlipGeos = [];
+  const antiSlipGeos: THREE.BufferGeometry[] = [];
   {
     // r8 1b GLACIS DECOUPLE: the anti-slip fields leave the shared rubber
     // bucket (tires needed a big sub45 lift that pushed the glacis med
     // over its 66 gate) — collected here, meshed on the antiSlip clone in
     // the r8 tone block. Same certified geometry/transforms.
-    const gY = (z) => (z <= 2.95
+    const gY = (z: number): number => (z <= 2.95
       ? 1.56 - 0.293 * (z - 2.66)
       : 1.475 - 0.0746 * (z - 2.95));
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       antiSlipGeos.push(KIT.xform(box(0.70, 0.008, 0.27), s * 0.51, gY(2.80) + 0.004, 2.80, -0.285, 0, 0));
       antiSlipGeos.push(KIT.xform(box(0.88, 0.008, 0.62), s * 0.57, gY(3.30) + 0.004, 3.30, -0.0745, 0, 0));
       // r8 1b GLACIS CALM: X-straps re-bucketed hullDetail -> hull — the
@@ -3669,7 +4350,7 @@ export function buildLeo2A5(P) {
   }
   // bow tow-clevis bumps: the ref plan beak SCALLOPS (3.945 at ±0.60..0.74
   // over the 3.86 wing line)
-  for (const s of [-1, 1]) P.add('hull', box(0.14, 0.15, 0.10), s * 0.67, 1.155, 3.895);
+  for (const s of [-1, 1] as const) P.add('hull', box(0.14, 0.15, 0.10), s * 0.67, 1.155, 3.895);
   // r5 BELLY-CHIN LAW (front axis, gate-frame 1024): the ref front belly is
   // TIERED — centre 0.527..0.562 (|x|<0.70, our 0.562 tub line matches) but
   // side chins 0.427..0.444 over |x| 0.72..1.00 where our flat tub read
@@ -3678,7 +4359,7 @@ export function buildLeo2A5(P) {
   // every side-view bottom (side/plan/stations unchanged).
   // r3: chins widened inboard to x 0.675 — the warped front ±0.70 columns
   // read the 0.454 chin line (the 0.72 edge left them on the 0.548 tub)
-  for (const s of [-1, 1]) P.add('hull', box(0.325, 0.19, 2.2), s * 0.8375, 0.532, 0.60);
+  for (const s of [-1, 1] as const) P.add('hull', box(0.325, 0.19, 2.2), s * 0.8375, 0.532, 0.60);
   // VISUAL r6 4a deck-line consolidation (critic driver E: the proc deck
   // draws MORE, PALER lines on a darker field — med 54.7 vs 59.9, sub45
   // 1466 vs 909): camo cover plates mute the radiator-well slat stacks
@@ -3794,7 +4475,7 @@ export function buildLeo2A5(P) {
   // (x 1.42..1.462, clear of the ±1.49 col's bare 2.036 read) rooted on
   // the pad tops, z inside both pads' footprints (side/plan invisible:
   // side tops there are the 2.55-2.58 roof, plan owned by the pads).
-  for (const s of [-1, 1]) P.add('turret', box(0.042, 0.115, 0.50), s * 1.441, 0.3125, 0.70);
+  for (const s of [-1, 1] as const) P.add('turret', box(0.042, 0.115, 0.50), s * 1.441, 0.3125, 0.70);
   // VISUAL r6 4c TURRET-FLANK TOP QUARTILE (critic driver: side p95 81.5 vs
   // ref 84.4): pale crown strips on the armor-module top edges (+5 mm,
   // sub-row at the 0.0305 trace pitch), segmented <=0.49 m per the station
@@ -3805,7 +4486,7 @@ export function buildLeo2A5(P) {
   for (let k = 0; k < 3; k++) {
     P.add('turretDetail', box(0.058, 0.005, 0.37), 1.3865, 0.2625, -2.7833 + k * 0.4133);
   }
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (const mz of [-0.35, 0.55]) {
       P.add('turretDetail', box(0.005, 0.13, 0.05), s * 1.4045, 0.18, mz);   // module lift-strap glints (inside the 1.4075 dark-strip plane)
     }
@@ -3836,8 +4517,8 @@ export function buildLeo2A5(P) {
   // tubes silhouette. Outermost reach: caps 1.380 < the 1.41 col limit
   // (the r6 smoke-x law); backdrop tops 2.18w stay >=0.03 under the crest.
   {
-    const rows = [[0.36, 0.24], [0.20, 0.04]];
-    for (const s of [-1, 1]) {
+    const rows: Vec2Tuple[] = [[0.36, 0.24], [0.20, 0.04]];
+    for (const s of [-1, 1] as const) {
       P.add('turretDark', box(0.02, 0.26, 0.56), s * 1.150, 0.27, 0.10, 0, s * 0.20, 0);
       for (const [ry, rz] of rows) {
         for (let k = 0; k < 4; k++) {
@@ -3845,8 +4526,8 @@ export function buildLeo2A5(P) {
           const a = s * 0.95 + f * (0.85 / 4);
           const cx = s * 1.16 + Math.cos(s * 0.95) * f * 0.095;
           const cz = rz - Math.sin(s * 0.95) * f * 0.095;
-          const dir = [0.878 * Math.sin(a), 0.479, 0.878 * Math.cos(a)];
-          const at = (t) => [cx + dir[0] * t, ry + dir[1] * t, cz + dir[2] * t];
+          const dir: Vec3Tuple = [0.878 * Math.sin(a), 0.479, 0.878 * Math.cos(a)];
+          const at = (t: number): Vec3Tuple => [cx + dir[0] * t, ry + dir[1] * t, cz + dir[2] * t];
           // r8 3b LAUNCHER BRISTLE (critic order: tubes read as dressed
           // slabs from the quarters): muzzle caps push +0.009 along the
           // tube axis (reach 1.380 -> ~1.388, inside the 1.41 col limit)
@@ -4105,7 +4786,7 @@ export function buildLeo2A5(P) {
   // sleeve side lugs (a6 MRS-lug law): the ref ±0.17 PLAN columns run to
   // the muzzle while its side band holds r 0.098 — flat lugs carry the
   // plan reach, hidden inside the side band
-  for (const s of [-1, 1]) P.add('gun', box(0.06, 0.05, 4.10), s * 0.155, 0, 2.42);
+  for (const s of [-1, 1] as const) P.add('gun', box(0.06, 0.05, 4.10), s * 0.155, 0, 2.42);
   // ---- VISUAL r1 tone block (a6 shaded-parity r2..r8 landed recipe,
   // a5-scoped: createTankMaterials is per-instance). Baseline pairs read the
   // a6-r1 defect classes verbatim: near-pure-black band/chain, saturated
@@ -4174,7 +4855,7 @@ export function buildLeo2A5(P) {
     wornDrum.color.setHex(0x333527);
     wornDrum.envMapIntensity = 0.22;
     P.disposables.push(wornDish, wornDrum);
-    const rehook = (m) => {
+    const rehook = <T extends VehicleMaterial>(m: T): T => {
       m.onBeforeCompile = vehicleAmbientFloorHook;
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       return m;
@@ -4204,8 +4885,8 @@ export function buildLeo2A5(P) {
     // the gap tone (med had run 62.2 -> 71.8 on the pad lift), and the
     // same term walks the front-face med back onto the ref's 63.5 line;
     // the r8-a nz-0.33 failure was a dark-chain artifact, not the term.
-    const regrime = (m) => {
-      m.onBeforeCompile = (shader) => {
+    const regrime = <T extends VehicleMaterial>(m: T): T => {
+      m.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
         vehicleAmbientFloorHook(shader);
         shader.fragmentShader = shader.fragmentShader.replace(
           '#include <opaque_fragment>',
@@ -4221,8 +4902,8 @@ export function buildLeo2A5(P) {
     // reads below ~51 anywhere). The chain keeps the full nz (the corner
     // ladder lives on z-faces, 3.95/3.99 at the <=4.0 gate) but takes a
     // lighter crown term; pads keep the full pairing.
-    const chainGrime = (m) => {
-      m.onBeforeCompile = (shader) => {
+    const chainGrime = <T extends VehicleMaterial>(m: T): T => {
+      m.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
         vehicleAmbientFloorHook(shader);
         shader.fragmentShader = shader.fragmentShader.replace(
           '#include <opaque_fragment>',
@@ -4233,10 +4914,10 @@ export function buildLeo2A5(P) {
       return m;
     };
     P.hullG.traverse((ob) => {
-      if (!ob.isMesh && !ob.isInstancedMesh) return;
+      if (!(ob instanceof THREE.Mesh) || Array.isArray(ob.material)) return;
       const m = ob.material;
-      if (!m || !m.color || !m.color.getHex) return;
-      if (ob.isInstancedMesh && m.color.getHex() === 0x171614) {
+      if (!(m instanceof THREE.MeshStandardMaterial)) return;
+      if (ob instanceof THREE.InstancedMesh && m.color.getHex() === 0x171614) {
         // link pads: the strip MEDIAN is a pad pixel (70% coverage) — this
         // print's strip reads sat 26.7 warm vs the a6 print's 21, so the a6
         // 0x403c39 sampled sat 11 here; warmed to the measured target.
@@ -4253,7 +4934,7 @@ export function buildLeo2A5(P) {
         m.envMapIntensity = 0.05;
         m.roughness = 1.0;
         m.metalness = 0.04;
-      } else if (ob.isInstancedMesh && m.color.getHex() === 0x27251f) {
+      } else if (ob instanceof THREE.InstancedMesh && m.color.getHex() === 0x27251f) {
         // inner chain / guide horns: the under-skirt strip pixels ride the
         // deep-shade floor whose tint is NORMALIZED albedo — the strip's
         // sat-11 read was this layer's near-neutral hex (the ref strip
@@ -4268,7 +4949,7 @@ export function buildLeo2A5(P) {
         chainGrime(m).color.setHex(0x393524);
         m.envMapIntensity = 0.08;
       } else if (m === P.mats.wheels) {
-        ob.material = ob.isInstancedMesh ? wornDish : wornDrum;
+        ob.material = ob instanceof THREE.InstancedMesh ? wornDish : wornDrum;
       }
     });
     // MG PHYSICS pale parts (a6 r9 / kf51 r8 recipe): the loader MG3 rides
@@ -4325,8 +5006,8 @@ export function buildLeo2A5(P) {
     discDark.roughnessMap = null;
     discDark.roughness = 0.97;
     P.disposables.push(discFace, discDark);
-    for (const s of [-1, 1]) {
-      for (const [g, mat] of [
+    for (const s of [-1, 1] as const) {
+      const runningGearFaces: Array<readonly [THREE.BufferGeometry, VehicleMaterial]> = [
         // r 0.32/0.315 — a 0.355 first cut bottomed 0.735 and cost 4 front
         // columns 0.08 each vs the ref's 0.787 line; 0.32 bottoms 0.77.
         [KIT.xform(KIT.cylX(0.320, 0.012, P.q ? 26 : 18), s * 1.730, 1.09, -3.19), discFace],   // sprocket face disc
@@ -4335,7 +5016,8 @@ export function buildLeo2A5(P) {
         [KIT.xform(KIT.cylX(0.315, 0.012, P.q ? 26 : 18), s * 1.7315, 1.11, 3.48), discFace],   // idler face disc
         [KIT.xform(KIT.cylX(0.285, 0.004, P.q ? 24 : 16), s * 1.738, 1.11, 3.48), discDark],
         [KIT.xform(KIT.cylX(0.125, 0.014, 12), s * 1.733, 1.11, 3.48), discDark],
-      ]) {
+      ];
+      for (const [g, mat] of runningGearFaces) {
         const mesh = new THREE.Mesh(g, mat);
         mesh.userData.runningGear = true;
         mesh.receiveShadow = true;
@@ -4362,7 +5044,12 @@ export function buildLeo2A5(P) {
     //   any seed, the same trick as stowage()'s own cinch straps).
     {
       const camoScale = (P.spec.visual && P.spec.visual.camoScale) || 0.34;
-      const panelPrep = (geo, yOff, strength, tint) => {
+      const panelPrep = (
+        geo: THREE.BufferGeometry,
+        yOff: number,
+        strength: number,
+        tint: number,
+      ): THREE.BufferGeometry => {
         const pos = geo.attributes.position, nor = geo.attributes.normal;
         const uv = new Float32Array(pos.count * 2);
         const col = new Float32Array(pos.count * 3);
@@ -4388,10 +5075,14 @@ export function buildLeo2A5(P) {
         geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
         return geo;
       };
-      const hullPanels = [];
-      const turretPanels = [];
-      const hPanel = (geo, tint) => hullPanels.push(panelPrep(geo, 0, 1, tint));
-      const tPanel = (geo, tint) => turretPanels.push(panelPrep(geo, 1.78, 0.5, tint));
+      const hullPanels: THREE.BufferGeometry[] = [];
+      const turretPanels: THREE.BufferGeometry[] = [];
+      const hPanel = (geo: THREE.BufferGeometry, tint: number): void => {
+        hullPanels.push(panelPrep(geo, 0, 1, tint));
+      };
+      const tPanel = (geo: THREE.BufferGeometry, tint: number): void => {
+        turretPanels.push(panelPrep(geo, 1.78, 0.5, tint));
+      };
       const camoRed = rehook(P.mats.shadow.clone());     // scheme red-brown (rendered target ~(66,55,42))
       camoRed.color.setHex(0x453428);
       camoRed.envMapIntensity = 0.12;
@@ -4413,8 +5104,8 @@ export function buildLeo2A5(P) {
       // floor" flattens above 0.09). The print's flat-lit canvas carries
       // no rim glow: these a5 clones zero the rim term; the fleet
       // material and every casting bucket keep the fleet look.
-      const norim = (m) => {
-        m.onBeforeCompile = (shader) => {
+      const norim = <T extends VehicleMaterial>(m: T): T => {
+        m.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
           vehicleAmbientFloorHook(shader);
           shader.fragmentShader = shader.fragmentShader.replace(
             '0.45 * vehRim * vehShade', '0.0 * vehRim * vehShade');
@@ -4441,7 +5132,11 @@ export function buildLeo2A5(P) {
       rimBand.envMapIntensity = 0.10;
       rimBand.roughness = 0.95;
       P.disposables.push(camoRed, camoOlv, litKit, rimBand);
-      const blob = (mat, parent, geo) => {
+      const blob = (
+        mat: THREE.Material,
+        parent: THREE.Object3D,
+        geo: THREE.BufferGeometry,
+      ): void => {
         const mesh = new THREE.Mesh(geo, mat);
         mesh.receiveShadow = true;
         parent.add(mesh);
@@ -4573,7 +5268,7 @@ export function buildLeo2A5(P) {
       // y-centre read as a horizontal bright band in the layer cake; each
       // splits into two offset sub-quads at split tints, riding PROUD of
       // the r9 wall-lift panel. The >83 p95 population holds by area.)
-      for (const s of [-1, 1]) {
+      for (const s of [-1, 1] as const) {
         tPanel(KIT.xform(KIT.box(0.005, 0.17, 0.42), s * 1.3830, 0.505, -0.57), 1.13);
         tPanel(KIT.xform(KIT.box(0.005, 0.15, 0.38), s * 1.3830, 0.360, -0.53), 1.10);
         tPanel(KIT.xform(KIT.box(0.005, 0.16, 0.40), s * 1.3830, 0.375, -0.11), 0.97);
@@ -4581,24 +5276,44 @@ export function buildLeo2A5(P) {
         tPanel(KIT.xform(KIT.box(0.005, 0.18, 0.42), s * 1.3830, 0.480, 0.35), 1.12);
         tPanel(KIT.xform(KIT.box(0.005, 0.14, 0.38), s * 1.3830, 0.340, 0.31), 1.09);
       }
-      const cheek = (s, xa, xb, ta, tb, tint, A, B) => {
-        const cyf = (x) => A[1] + (B[1] - A[1]) * ((x - A[0]) / (B[0] - A[0]));
-        const czf = (x) => A[2] + (B[2] - A[2]) * ((x - A[0]) / (B[0] - A[0]));
-        const nzf = (x) => 2.05 + 0.05 * ((x - 0.30) / 0.99);
-        const Pt = (x, t) => [s * x, 0.29 + t * (cyf(x) - 0.29), nzf(x) + t * (czf(x) - nzf(x))];
-        const q = [Pt(xa, ta), Pt(xb, ta), Pt(xb, tb), Pt(xa, tb)];
-        const u = [q[1][0] - q[0][0], q[1][1] - q[0][1], q[1][2] - q[0][2]];
-        const v = [q[3][0] - q[0][0], q[3][1] - q[0][1], q[3][2] - q[0][2]];
-        let n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+      const cheek = (
+        s: Side,
+        xa: number,
+        xb: number,
+        ta: number,
+        tb: number,
+        tint: number,
+        A: Vec3Tuple,
+        B: Vec3Tuple,
+      ): void => {
+        const cyf = (x: number): number => A[1] + (B[1] - A[1]) * ((x - A[0]) / (B[0] - A[0]));
+        const czf = (x: number): number => A[2] + (B[2] - A[2]) * ((x - A[0]) / (B[0] - A[0]));
+        const nzf = (x: number): number => 2.05 + 0.05 * ((x - 0.30) / 0.99);
+        const point = (x: number, t: number): Vec3Tuple => [
+          s * x,
+          0.29 + t * (cyf(x) - 0.29),
+          nzf(x) + t * (czf(x) - nzf(x)),
+        ];
+        const q: FourPointRing = [point(xa, ta), point(xb, ta), point(xb, tb), point(xa, tb)];
+        const u: MutableVec3 = [q[1][0] - q[0][0], q[1][1] - q[0][1], q[1][2] - q[0][2]];
+        const v: MutableVec3 = [q[3][0] - q[0][0], q[3][1] - q[0][1], q[3][2] - q[0][2]];
+        let n: MutableVec3 = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
         const nl = Math.hypot(n[0], n[1], n[2]);
-        n = n.map((c) => c / nl);
-        if (n[1] < 0) n = n.map((c) => -c);
-        const off = (p) => [p[0] + n[0] * 0.0035, p[1] + n[1] * 0.0035, p[2] + n[2] * 0.0035];
-        const ord = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
-        const bot = ord(q), top = ord(q.map(off));
+        n = [n[0] / nl, n[1] / nl, n[2] / nl];
+        if (n[1] < 0) n = [-n[0], -n[1], -n[2]];
+        const off = (p: Vec3Tuple): Vec3Tuple => [
+          p[0] + n[0] * 0.0035,
+          p[1] + n[1] * 0.0035,
+          p[2] + n[2] * 0.0035,
+        ];
+        const ord = (ring: FourPointRing): FourPointRing => (
+          s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
+        );
+        const topRing: FourPointRing = [off(q[0]), off(q[1]), off(q[2]), off(q[3])];
+        const bot = ord(q), top = ord(topRing);
         tPanel(outwardClosedSlab(...bot, ...top), tint);
       };
-      for (const s of [-1, 1]) {
+      for (const s of [-1, 1] as const) {
         cheek(s, 0.30, 0.62, 0.30, 0.62, 1.135, [0.20, 0.82, 1.75], [0.95, 0.775, 1.70]);
         cheek(s, 0.68, 0.92, 0.36, 0.68, 0.96, [0.20, 0.82, 1.75], [0.95, 0.775, 1.70]);
         cheek(s, 1.03, 1.27, 0.35, 0.75, 1.10, [1.00, 0.67, 0.72], [1.30, 0.66, 0.28]);
@@ -4606,7 +5321,7 @@ export function buildLeo2A5(P) {
       // (r8-b: mix shifted up — hull-side med sat at -2.0 of ref, the exact
       // gate edge; the down-tints move toward 1.0)
       const skT = [1.09, 0.98, 1.07, 0.96, 1.08, 0.99, 1.07, 0.97, 1.09, 0.98];
-      for (const s of [-1, 1]) {
+      for (const s of [-1, 1] as const) {
         for (let k = 0; k < 10; k++) {
           hPanel(KIT.xform(KIT.box(0.0035, 0.44, 0.44), s * 1.72675, 1.12, -3.28 + k * 0.50), skT[k]);
         }
@@ -4629,26 +5344,51 @@ export function buildLeo2A5(P) {
       // lit edge lines at every tier boundary (r8 laws 3+4: flat overlays,
       // no covers that become the ring). The topmost cluster crown stays in
       // the ref's own bright-roofline family — only its EDGES band.
-      const rimT = [];                                   // rimBand geos (turret)
-      const litT = [];                                   // litKit geos (turret)
+      const rimT: THREE.BufferGeometry[] = [];            // rimBand geos (turret)
+      const litT: THREE.BufferGeometry[] = [];            // litKit geos (turret)
       // crest-slab top surface parameterization (the roof plateau): x along
       // the crest table 0.20..0.95 (y 0.82->0.775, z 1.75->1.70), d back
       // over the 0.79 crestTail (y -0.005). Quads ride +1.5mm off the slab.
-      const crestSurf = (s, xa, xb, d0, d1, mat, tint) => {
-        const cy = (x) => 0.82 - 0.045 * ((x - 0.20) / 0.75);
-        const cz = (x) => 1.75 - 0.05 * ((x - 0.20) / 0.75);
-        const q = (x, d) => [s * x, cy(x) - 0.005 * d + 0.0015, cz(x) - 0.79 * d];
-        const bot = [q(xa, d0), q(xb, d0), q(xb, d1), q(xa, d1)];
-        const top = bot.map((p) => [p[0], p[1] + 0.0018, p[2]]);
-        const ord = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
+      const crestSurf = (
+        s: Side,
+        xa: number,
+        xb: number,
+        d0: number,
+        d1: number,
+        mat: THREE.Material | null,
+        tint: number,
+      ): void => {
+        const cy = (x: number): number => 0.82 - 0.045 * ((x - 0.20) / 0.75);
+        const cz = (x: number): number => 1.75 - 0.05 * ((x - 0.20) / 0.75);
+        const point = (x: number, d: number): Vec3Tuple => [s * x, cy(x) - 0.005 * d + 0.0015, cz(x) - 0.79 * d];
+        const bot: FourPointRing = [point(xa, d0), point(xb, d0), point(xb, d1), point(xa, d1)];
+        const top: FourPointRing = bot.map(
+          (p): Vec3Tuple => [p[0], p[1] + 0.0018, p[2]],
+        ) as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
+        const ord = (ring: FourPointRing): FourPointRing => (
+          s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
+        );
         const g = outwardClosedSlab(...ord(bot), ...ord(top));
         if (mat) rimT.push(g); else tPanel(g, tint);
       };
       // chamfer face (wall shoulder -> roof edge) down-tint quad
-      const chamQuad = (s, z0, z1, xw, yw, xt, yt, tint) => {
-        const bot = [[s * xw, yw, z1], [s * xw, yw, z0], [s * xt, yt, z0 + 0.028], [s * xt, yt, z1 - 0.028]];
-        const top = bot.map((p) => [p[0] + s * 0.0014, p[1] + 0.0022, p[2]]);
-        const ord = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
+      const chamQuad = (
+        s: Side,
+        z0: number,
+        z1: number,
+        xw: number,
+        yw: number,
+        xt: number,
+        yt: number,
+        tint: number,
+      ): void => {
+        const bot: FourPointRing = [[s * xw, yw, z1], [s * xw, yw, z0], [s * xt, yt, z0 + 0.028], [s * xt, yt, z1 - 0.028]];
+        const top: FourPointRing = bot.map(
+          (p): Vec3Tuple => [p[0] + s * 0.0014, p[1] + 0.0022, p[2]],
+        ) as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
+        const ord = (ring: FourPointRing): FourPointRing => (
+          s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
+        );
         tPanel(KIT.slab(...ord(bot), ...ord(top)), tint);
       };
       // r9-b REBALANCE (cycle-1 profile read): the REF roofline/side is
@@ -4663,20 +5403,24 @@ export function buildLeo2A5(P) {
       // overlay mechanism; med 73.1 -> ~76 toward ref 77.8) so quilts stop
       // reading as a bright band on a dark wall. Edge bands stay ONLY on
       // real step edges (bustle tiers, tail plate, nose stack).
-      for (const s of [-1, 1]) {
+      for (const s of [-1, 1] as const) {
         // plateau: mild trim, ref-bright family
         crestSurf(s, 0.21, 0.94, 0.03, 0.925, null, 0.97);
         // tail->roof apron: bridges the crest-tail step (covers the shadow
         // wall's dark top strip + the step's CSM seam; reads as the ref's
         // one smooth crown falling to the roof)
         {
-          const cy = (x) => 0.82 - 0.045 * ((x - 0.20) / 0.75);
-          const cz = (x) => 1.75 - 0.05 * ((x - 0.20) / 0.75);
-          const q1 = (x) => [s * x, cy(x) - 0.003 + 0.0016, cz(x) - 0.785];
-          const q2 = (x) => [s * x, 0.7625, cz(x) - 0.868];
-          const bot = [q1(0.21), q1(0.94), q2(0.94), q2(0.21)];
-          const top = bot.map((p) => [p[0], p[1] + 0.0018, p[2]]);
-          const ord = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
+          const cy = (x: number): number => 0.82 - 0.045 * ((x - 0.20) / 0.75);
+          const cz = (x: number): number => 1.75 - 0.05 * ((x - 0.20) / 0.75);
+          const q1 = (x: number): Vec3Tuple => [s * x, cy(x) - 0.003 + 0.0016, cz(x) - 0.785];
+          const q2 = (x: number): Vec3Tuple => [s * x, 0.7625, cz(x) - 0.868];
+          const bot: FourPointRing = [q1(0.21), q1(0.94), q2(0.94), q2(0.21)];
+          const top: FourPointRing = bot.map(
+            (p): Vec3Tuple => [p[0], p[1] + 0.0018, p[2]],
+          ) as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
+          const ord = (ring: FourPointRing): FourPointRing => (
+            s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
+          );
           tPanel(outwardClosedSlab(...ord(bot), ...ord(top)), 1.0);
         }
         // bustle chamfer stays mild (hero-rr tier bar); fore chamfers left
@@ -4735,7 +5479,7 @@ export function buildLeo2A5(P) {
       tPanel(KIT.xform(KIT.box(0.0035, 0.17, 0.37), 0.4075, 0.757, 0.30), 0.98);  // EMES hood inboard
       tPanel(KIT.xform(KIT.box(0.50, 0.17, 0.0035), 0.68, 0.757, 0.098), 0.98);   // EMES hood rear
       tPanel(KIT.xform(KIT.box(0.46, 0.0022, 0.375), 0.68, 0.8741, 0.27), 1.0);   // EMES lid (pale bucket -> scheme)
-      for (const s of [-1, 1]) {
+      for (const s of [-1, 1] as const) {
         tPanel(KIT.xform(KIT.box(0.0045, 0.25, 0.55), s * 1.1598, 0.27, 0.098, 0, s * 0.20, 0), 0.88); // launcher backdrop
       }
       tPanel(KIT.xform(KIT.box(0.115, 0.34, 0.0035), 0.96, 0.475, 1.8525), 0.95); // dip fill front
@@ -4774,10 +5518,11 @@ export function buildLeo2A5(P) {
       // faces deliberately stay out of this static finish pass: leoGear's
       // canonical instanced tires/discs/insets are the sole wheel train and
       // receive every suspension update.
-      for (const [geos, mat, parent, cast] of [
+      const finishMeshes: Array<readonly [THREE.BufferGeometry[], THREE.Material, THREE.Object3D, boolean]> = [
         [rimT, rimBand, P.turretG, false], [litT, litKit, P.turretG, false],
         [litCrownGeos, litKit, P.hullG, false],
-      ]) {
+      ];
+      for (const [geos, mat, parent, cast] of finishMeshes) {
         if (!geos.length) continue;
         const merged = KIT.mergeAll(geos);
         const mesh = new THREE.Mesh(merged, mat);
@@ -4787,7 +5532,11 @@ export function buildLeo2A5(P) {
         P.disposables.push(merged);
       }
       // ================= end VISUAL r9 =================
-      for (const [list, parent] of [[hullPanels, P.hullG], [turretPanels, P.turretG]]) {
+      const panelMeshes: Array<readonly [THREE.BufferGeometry[], THREE.Object3D]> = [
+        [hullPanels, P.hullG],
+        [turretPanels, P.turretG],
+      ];
+      for (const [list, parent] of panelMeshes) {
         if (!list.length) continue;
         const merged = KIT.mergeAll(list);
         const mesh = new THREE.Mesh(merged, P.mats.hull);
@@ -4836,7 +5585,7 @@ export function buildLeo2A5(P) {
       rimMud.roughnessMap = null;
       rimMud.roughness = 0.98;
       P.disposables.push(rimMud);
-      for (const s of [-1, 1]) {
+      for (const s of [-1, 1] as const) {
         // KIT.torus is pre-rotated FLAT (y-axis ring) — stand it up facing
         // x with an rz quarter-turn (an ry turn is a no-op on a y-axis ring
         // and left 0.63 m horizontal hoops blowing dims/stations to 0).
@@ -4845,7 +5594,7 @@ export function buildLeo2A5(P) {
         // +y): Euler XYZ applies rz->ry->rx to vectors, so ry PI/2 stands
         // the ring to face x, then rx -0.824 spins the 85-deg gap (arc
         // 4.80, gap centre theta = PI + 2.40) to point straight DOWN.
-        for (const [g2, mt] of [
+        const wheelFinishParts: Array<readonly [THREE.BufferGeometry, VehicleMaterial]> = [
           [KIT.xform(KIT.torus(0.316, 0.0075, P.q ? 30 : 20), s * 1.7305, 1.09, -3.19, 0, 0, Math.PI / 2), rimMud],
           [KIT.xform(KIT.torus(0.311, 0.0075, P.q ? 30 : 20), s * 1.7305, 1.11, 3.48, 0, 0, Math.PI / 2), rimMud],
           // r8-i FLAT WASHERS: the persistent thin >80 ring is the fleet
@@ -4856,7 +5605,8 @@ export function buildLeo2A5(P) {
           [KIT.xform(new THREE.RingGeometry(0.278, 0.3135, P.q ? 40 : 28), s * 1.7381, 1.11, 3.48, 0, s * Math.PI / 2, 0), discFace],
           [KIT.xform(new THREE.TorusGeometry(0.332, 0.014, 8, P.q ? 30 : 22, 5.40), s * 1.7035, 1.09, -3.19, -1.124, Math.PI / 2, 0), rimMud],
           [KIT.xform(new THREE.TorusGeometry(0.322, 0.013, 8, P.q ? 30 : 22, 5.40), s * 1.7045, 1.11, 3.48, -1.124, Math.PI / 2, 0), rimMud],
-        ]) {
+        ];
+        for (const [g2, mt] of wheelFinishParts) {
           const mesh = new THREE.Mesh(g2, mt);
           mesh.userData.runningGear = true;
           mesh.receiveShadow = true;
@@ -4870,7 +5620,7 @@ export function buildLeo2A5(P) {
       // under the local 1.765/1.825 deck lines; x 1.6295..1.7295 inside the
       // 1.737 fender station line; the body wall behind carries the side
       // silhouette). Two strips per side, per the ref's top-view speckle.
-      for (const s of [-1, 1]) {
+      for (const s of [-1, 1] as const) {
         for (const [zc, links, seed] of [[-2.58, 4, 11], [-1.72, 3, 5]]) {
           const st = FITTINGS.spareTrackLinks({ mats: P.mats, links, width: 0.10, pitch: 0.165, seed });
           st.position.set(s * 1.6795, 1.678, zc);
@@ -4907,7 +5657,7 @@ export function buildLeo2A5(P) {
 //      top local y; null = none), towerZ (tower z-center, local),
 //      towerW (z window, default 0.16), shields (flank armor), seed }
 // ---------------------------------------------------------------------------
-function leoFLW200(P, o) {
+function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
   const { box, cylY, cylZ } = KIT;
   const s = o.s ?? 1.0;
   const ws = o.widthScale ?? s;
@@ -5010,16 +5760,21 @@ function leoFLW200(P, o) {
 // FLW and antenna seats; the turret face is split around a 0.9 m gun corridor.
 // Everything is equipment geometry, never part of an armor material bucket.
 // ---------------------------------------------------------------------------
-function leo2A4FullGhillie(P) {
+function leo2A4FullGhillie(P: TankBuilderPort) {
   if (P.spec.id !== 'leo2a4') return;
   const { box, xform, mergeAll, slab } = KIT;
-  const hullNet = [], turretNet = [], hullLight = [], hullDark = [], turretLight = [], turretDark = [];
-  const noise01 = (n, salt = 0) => {
+  const hullNet: THREE.BufferGeometry[] = [];
+  const turretNet: THREE.BufferGeometry[] = [];
+  const hullLight: THREE.BufferGeometry[] = [];
+  const hullDark: THREE.BufferGeometry[] = [];
+  const turretLight: THREE.BufferGeometry[] = [];
+  const turretDark: THREE.BufferGeometry[] = [];
+  const noise01 = (n: number, salt = 0): number => {
     const v = Math.sin((n + 1) * 12.9898 + (salt + 1) * 78.233) * 43758.5453;
     return v - Math.floor(v);
   };
 
-  const makeCloth = (hex, key) => {
+  const makeCloth = (hex: number, key: string): VehicleMaterial => {
     const mat = P.mats.canvasCloth.clone();
     mat.color.setHex(hex);
     mat.roughness = 1;
@@ -5036,6 +5791,7 @@ function leo2A4FullGhillie(P) {
       const canvas = document.createElement('canvas');
       canvas.width = canvas.height = 128;
       const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Leopard ghillie texture requires a 2D canvas context');
       ctx.clearRect(0, 0, 128, 128);
       ctx.strokeStyle = 'rgba(34,48,27,0.72)';
       ctx.lineWidth = 1.25;
@@ -5100,16 +5856,23 @@ function leo2A4FullGhillie(P) {
     }
     return { mat, texture };
   };
-  const addMerged = (parent, geos, mat, name, extra = []) => {
+  const addMerged = (
+    parent: THREE.Object3D,
+    geos: readonly THREE.BufferGeometry[],
+    mat: VehicleMaterial,
+    name: string,
+    extra: Array<THREE.Texture | null> = [],
+  ): void => {
     if (!geos.length) return;
     const geo = mergeAll(geos);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.name = name;
     mesh.castShadow = mesh.receiveShadow = true;
     parent.add(mesh);
-    P.disposables.push(geo, mat, ...extra.filter(Boolean));
+    const liveExtra = extra.filter((item): item is THREE.Texture => item !== null);
+    P.disposables.push(geo, mat, ...liveExtra);
   };
-  const leaf = (w, d, h = 0.018, seed = 0) => {
+  const leaf = (w: number, d: number, h = 0.018, seed = 0): THREE.BufferGeometry => {
     const skew = ((seed % 7) - 3) * 0.035;
     const bite = 0.58 + (seed % 5) * 0.055;
     return slab(
@@ -5118,7 +5881,14 @@ function leo2A4FullGhillie(P) {
       [-w * (0.32 + bite * 0.12), h, -d], [w, h, -d * (0.22 + skew)],
       [w * (0.18 + skew), h, d], [-w * bite, h, d * (0.08 - skew)]);
   };
-  const topLeaf = (out, x, y, z, s, seed) => {
+  const topLeaf = (
+    out: THREE.BufferGeometry[],
+    x: number,
+    y: number,
+    z: number,
+    s: number,
+    seed: number,
+  ): void => {
     out.push(xform(leaf(0.075 * s, 0.15 * s, 0.024, seed), x, y, z,
       (seed % 3 - 1) * 0.08, seed * 0.67, (seed % 2 ? 1 : -1) * 0.06));
     out.push(xform(leaf(0.058 * s, 0.13 * s, 0.020, seed + 13),
@@ -5130,7 +5900,15 @@ function leo2A4FullGhillie(P) {
       z + Math.sin(seed * 1.1) * 0.055 * s,
       0, seed * 0.31 - 0.6, (seed % 3 - 1) * 0.07));
   };
-  const sideLeaf = (out, side, x, y, z, s, seed) => {
+  const sideLeaf = (
+    out: THREE.BufferGeometry[],
+    side: Side,
+    x: number,
+    y: number,
+    z: number,
+    s: number,
+    seed: number,
+  ): void => {
     out.push(xform(leaf(0.070 * s, 0.15 * s, 0.018, seed), side * x, y, z,
       seed * 0.29, 0, side * Math.PI / 2));
     out.push(xform(leaf(0.055 * s, 0.13 * s, 0.016, seed + 17), side * x,
@@ -5145,7 +5923,7 @@ function leo2A4FullGhillie(P) {
   // subdivided sheet with deterministic low-amplitude ripples rather than
   // painting flat boxes directly onto the armor.  Cells are removed around
   // articulated/fitted equipment, producing physical openings in the net.
-  const insidePoly = (x, z, poly) => {
+  const insidePoly = (x: number, z: number, poly: Polygon2D): boolean => {
     let inside = false;
     for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
       const [xi, zi] = poly[i], [xj, zj] = poly[j];
@@ -5153,14 +5931,14 @@ function leo2A4FullGhillie(P) {
     }
     return inside;
   };
-  const clothTop = ({ x0, x1, z0, z1, nx, nz, yAt, outline = null, holes = [], seed = 0 }) => {
-    const positions = [], uvs = [];
-    const vertex = (x, z) => {
+  const clothTop = ({ x0, x1, z0, z1, nx, nz, yAt, outline = null, holes = [], seed = 0 }: GhillieTopClothOptions): THREE.BufferGeometry => {
+    const positions: number[] = [], uvs: number[] = [];
+    const vertex = (x: number, z: number): Vec3Tuple => {
       const ripple = Math.sin(x * 8.3 + z * 5.7 + seed) * 0.010
         + Math.cos(x * 3.9 - z * 7.1 + seed * 0.7) * 0.006;
       return [x, yAt(x, z) + ripple, z];
     };
-    const pushTri = (a, b, c) => {
+    const pushTri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): void => {
       for (const p of [a, b, c]) {
         positions.push(...p);
         uvs.push(p[0] * 0.72, p[2] * 0.72);
@@ -5186,9 +5964,9 @@ function leo2A4FullGhillie(P) {
     geo.computeVertexNormals();
     return geo;
   };
-  const clothSide = ({ side, z0, z1, nz, ny, topAt, bottomAt, outAt, seed = 0 }) => {
-    const positions = [], uvs = [];
-    const vertex = (z, t) => {
+  const clothSide = ({ side, z0, z1, nz, ny, topAt, bottomAt, outAt, seed = 0 }: GhillieSideClothOptions): THREE.BufferGeometry => {
+    const positions: number[] = [], uvs: number[] = [];
+    const vertex = (z: number, t: number): Vec3Tuple => {
       const top = topAt(z), bottom = bottomAt(z);
       const y = bottom + (top - bottom) * t
         + Math.sin(z * 7.1 + t * 5.3 + seed) * 0.008;
@@ -5196,7 +5974,7 @@ function leo2A4FullGhillie(P) {
         + Math.sin(z * 5.9 + t * 8.1 + seed * 0.4) * 0.008);
       return [x, y, z];
     };
-    const tri = (a, b, c) => {
+    const tri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): void => {
       for (const p of [a, b, c]) {
         positions.push(...p);
         uvs.push(p[2] * 0.72, p[1] * 0.72);
@@ -5217,12 +5995,12 @@ function leo2A4FullGhillie(P) {
     geo.computeVertexNormals();
     return geo;
   };
-  const clothFace = ({ z, x0, x1, y0, y1, nx, ny, outline = null, holes = [], seed = 0 }) => {
-    const positions = [], uvs = [];
-    const vertex = (x, y) => [x, y,
+  const clothFace = ({ z, x0, x1, y0, y1, nx, ny, outline = null, holes = [], seed = 0 }: GhillieFaceClothOptions): THREE.BufferGeometry => {
+    const positions: number[] = [], uvs: number[] = [];
+    const vertex = (x: number, y: number): Vec3Tuple => [x, y,
       z + Math.sin(x * 7.7 + y * 6.1 + seed) * 0.010
         + Math.cos(x * 4.3 - y * 8.7 + seed * 0.5) * 0.006];
-    const tri = (a, b, c) => {
+    const tri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): void => {
       for (const p of [a, b, c]) {
         positions.push(...p);
         uvs.push(p[0] * 0.72, p[1] * 0.72);
@@ -5247,7 +6025,14 @@ function leo2A4FullGhillie(P) {
     geo.computeVertexNormals();
     return geo;
   };
-  const faceLeaf = (out, x, y, z, s, seed) => {
+  const faceLeaf = (
+    out: THREE.BufferGeometry[],
+    x: number,
+    y: number,
+    z: number,
+    s: number,
+    seed: number,
+  ): void => {
     out.push(xform(leaf(0.070 * s, 0.15 * s, 0.020, seed), x, y, z,
       Math.PI / 2, 0, (seed % 5 - 2) * 0.17));
     out.push(xform(leaf(0.052 * s, 0.13 * s, 0.017, seed + 19),
@@ -5261,15 +6046,15 @@ function leo2A4FullGhillie(P) {
   // HULL TOP: one rippled blanket floats 5-7 cm above the entire deck and
   // follows the glacis down to the beak.  The turret rises through a tailored
   // central aperture instead of intersecting a surface-applied texture.
-  const hullTurretOpening = [[-1.39, -2.12], [-1.39, 1.58], [1.39, 1.58], [1.39, -2.12]];
-  const hullBlanketY = (_x, z) => {
+  const hullTurretOpening: Vec2Tuple[] = [[-1.39, -2.12], [-1.39, 1.58], [1.39, 1.58], [1.39, -2.12]];
+  const hullBlanketY = (_x: number, z: number): number => {
     if (z <= 2.20) return 1.765;
     if (z <= 2.40) return 1.765 - (z - 2.20) * 0.45;
     if (z <= 2.96) return 1.675 - (z - 2.40) * 0.33;
     if (z <= 3.52) return 1.490 - (z - 2.96) * 0.18;
     return 1.389 - (z - 3.52) * 0.44;
   };
-  const hullBlanketOutline = [
+  const hullBlanketOutline: Vec2Tuple[] = [
     [-0.94, -3.80], [0.94, -3.80], [1.02, -3.42], [1.68, -3.12],
     [1.71, -2.62], [1.72, 2.18], [1.57, 2.72], [0.96, 3.42],
     [0.88, 3.82], [-0.88, 3.82], [-0.96, 3.42], [-1.57, 2.72],
@@ -5284,15 +6069,15 @@ function leo2A4FullGhillie(P) {
   // tapered nose at each side.  Its irregular hem stays above the native
   // linked track.  The visible mass is made from individual leaves below,
   // never from rectangular curtain panels.
-  const hullSideWidth = (z) => {
+  const hullSideWidth = (z: number): number => {
     if (z > 2.25) return THREE.MathUtils.lerp(1.71, 1.06, (z - 2.25) / 1.53);
     if (z < -3.20) return THREE.MathUtils.lerp(1.71, 1.33, (-z - 3.20) / 0.58);
     return 1.71;
   };
-  const hullSideTop = (z) => hullBlanketY(0, z) - 0.015;
-  const hullSideBottom = (z) => 0.625
+  const hullSideTop = (z: number): number => hullBlanketY(0, z) - 0.015;
+  const hullSideBottom = (z: number): number => 0.625
     + Math.sin(z * 3.1) * 0.035 + Math.cos(z * 5.7) * 0.020;
-  for (const side of [-1, 1]) {
+  for (const side of [-1, 1] as const) {
     hullNet.push(clothSide({
       // Stop the hanging skirt where the sprocket/idler arcs begin.  The
       // center blanket and tailored end faces continue the suit across the
@@ -5300,7 +6085,7 @@ function leo2A4FullGhillie(P) {
       // shoe course instead of slicing through the animated wrap.
       side, z0: -3.12, z1: 2.24, nz: 44, ny: 10,
       topAt: hullSideTop, bottomAt: hullSideBottom,
-      outAt: (z, t) => hullSideWidth(z) + 0.025 + (1 - t) * 0.075,
+      outAt: (z: number, t: number): number => hullSideWidth(z) + 0.025 + (1 - t) * 0.075,
       seed: 11 + side,
     }));
     for (let iz = 0; iz < 24; iz++) {
@@ -5317,11 +6102,11 @@ function leo2A4FullGhillie(P) {
       }
     }
   }
-  const hullFrontOutline = [[-0.86, 0.69], [0.86, 0.69], [1.04, 0.88], [0.91, 1.40],
+  const hullFrontOutline: Vec2Tuple[] = [[-0.86, 0.69], [0.86, 0.69], [1.04, 0.88], [0.91, 1.40],
     [0.67, 1.55], [-0.67, 1.55], [-0.91, 1.40], [-1.04, 0.88]];
-  const hullRearOutline = [[-1.31, 0.66], [1.31, 0.66], [1.46, 0.92], [1.37, 1.62],
+  const hullRearOutline: Vec2Tuple[] = [[-1.31, 0.66], [1.31, 0.66], [1.46, 0.92], [1.37, 1.62],
     [0.98, 1.72], [-0.98, 1.72], [-1.37, 1.62], [-1.46, 0.92]];
-  const hullFrontHoles = [
+  const hullFrontHoles: Vec2Tuple[][] = [
     [[-0.72, 1.09], [-0.46, 1.09], [-0.46, 1.34], [-0.72, 1.34]],
     [[0.46, 1.09], [0.72, 1.09], [0.72, 1.34], [0.46, 1.34]],
   ];
@@ -5336,7 +6121,7 @@ function leo2A4FullGhillie(P) {
   // keeping these high and forward also leaves the complete idler/shoe orbit
   // untouched.  Without the tongues, the net edge and mudguard lip enclosed
   // a pair of one-cell sky pinholes in the top-down continuity audit.
-  for (const side of [-1, 1]) {
+  for (const side of [-1, 1] as const) {
     const seed = side > 0 ? 207 : 203;
     hullDark.push(xform(leaf(0.13, 0.15, 0.020, seed), side * 1.64, 1.515, 3.92,
       0.02, side * 0.08, side * 0.025));
@@ -5371,26 +6156,26 @@ function leo2A4FullGhillie(P) {
 
   // TURRET FACE: a tailored brow/cheek carrier follows the welded face and
   // has a literal opening for the complete gun/mantlet/recoil assembly.
-  const turretFaceOutline = [[-1.18, 0.10], [1.18, 0.10], [1.11, 0.72],
+  const turretFaceOutline: Vec2Tuple[] = [[-1.18, 0.10], [1.18, 0.10], [1.11, 0.72],
     [0.74, 0.79], [-0.74, 0.79], [-1.11, 0.72]];
-  const turretGunOpening = [[-0.47, 0.04], [0.47, 0.04], [0.47, 0.73], [-0.47, 0.73]];
+  const turretGunOpening: Vec2Tuple[] = [[-0.47, 0.04], [0.47, 0.04], [0.47, 0.73], [-0.47, 0.73]];
   turretNet.push(clothFace({ z: 1.292, x0: -1.20, x1: 1.20, y0: 0.06, y1: 0.80,
     nx: 20, ny: 9, outline: turretFaceOutline, holes: [turretGunOpening], seed: 37 }));
 
   // TURRET FLANKS / REAR: curved-in-plan side carriers land just outside the
   // welded armor and narrow into the bustle.  There are no box-side panels.
-  const turretSideWidth = (z) => {
+  const turretSideWidth = (z: number): number => {
     if (z > 0.55) return THREE.MathUtils.lerp(1.31, 1.05, (z - 0.55) / 0.55);
     if (z < -1.45) return THREE.MathUtils.lerp(1.28, 1.03, (-z - 1.45) / 1.28);
     return z < -0.50 ? 1.28 : 1.31;
   };
-  const turretSideTop = (z) => 0.755 - Math.max(0, -z - 1.55) * 0.045;
-  const turretSideBottom = (z) => 0.10 + Math.sin(z * 4.7) * 0.028;
-  for (const side of [-1, 1]) {
+  const turretSideTop = (z: number): number => 0.755 - Math.max(0, -z - 1.55) * 0.045;
+  const turretSideBottom = (z: number): number => 0.10 + Math.sin(z * 4.7) * 0.028;
+  for (const side of [-1, 1] as const) {
     turretNet.push(clothSide({
       side, z0: -2.73, z1: 1.08, nz: 38, ny: 9,
       topAt: turretSideTop, bottomAt: turretSideBottom,
-      outAt: (z, t) => turretSideWidth(z) + 0.018 + (1 - t) * 0.028,
+      outAt: (z: number, t: number): number => turretSideWidth(z) + 0.018 + (1 - t) * 0.028,
       seed: 43 + side,
     }));
     for (let iz = 0; iz < 15; iz++) {
@@ -5407,7 +6192,7 @@ function leo2A4FullGhillie(P) {
       }
     }
   }
-  const turretRearOutline = [[-0.98, 0.10], [0.98, 0.10], [1.09, 0.28],
+  const turretRearOutline: Vec2Tuple[] = [[-0.98, 0.10], [0.98, 0.10], [1.09, 0.28],
     [0.91, 0.69], [-0.91, 0.69], [-1.09, 0.28]];
   turretNet.push(clothFace({ z: -2.755, x0: -1.10, x1: 1.10, y0: 0.08, y1: 0.70,
     nx: 18, ny: 8, outline: turretRearOutline, seed: 47 }));
@@ -5417,13 +6202,13 @@ function leo2A4FullGhillie(P) {
   // silhouette and visible air layer; it is not a material applied to the
   // armor.  The concave outline opens around the mantlet and EMES, while
   // physical cells are omitted for every remaining working station.
-  const turretRoofOutline = [
+  const turretRoofOutline: Vec2Tuple[] = [
     [-0.81, 1.06], [-0.48, 1.06], [-0.48, 0.80], [0.18, 0.80],
     [0.18, 0.30], [1.05, 0.30], [1.09, 0.69], [1.06, -0.72],
     [0.99, -1.58], [0.91, -2.28], [-0.91, -2.28], [-0.99, -1.58],
     [-1.06, -0.72], [-1.09, 0.69],
   ];
-  const turretRoofHoles = [
+  const turretRoofHoles: Vec2Tuple[][] = [
     [[-1.00, -0.98], [-1.00, 0.34], [-0.14, 0.34], [-0.14, -0.98]],
     [[0.19, -0.52], [0.19, -0.10], [0.53, -0.10], [0.53, -0.52]],
     [[0.28, -0.52], [0.91, -0.52], [0.91, -0.62], [0.96, -0.62],
@@ -5495,7 +6280,8 @@ function leo2A4FullGhillie(P) {
 // flap/board recipes carry over verbatim because the running-gear
 // geometry is identical).
 // ---------------------------------------------------------------------------
-export function buildLeo2A4(P) {
+export function buildLeo2A4(builder: object) {
+  const P = requireTankBuilderPort(builder);
   const { box, cylY, cylZ, torus, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
@@ -5578,12 +6364,12 @@ export function buildLeo2A4(P) {
   // the lower wheel arcs + pale hubs read like the real 2A4 photo class
   // (skirt covers the upper ~third of the wheel; §B8.1 exposure 67%/59%,
   // inside the real 40-70% family band).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // The armor curtain lives outboard of the linked-shoe envelope.  A
     // former inboard face at |x| 1.62 crossed the suspension sweep even
     // though the static course happened to clear; the upper root now
     // overlaps the fender edge at 1.735 while the full plate remains clear.
-    const taperedForePanel = (za, zb) => slab(
+    const taperedForePanel = (za: number, zb: number): THREE.BufferGeometry => slab(
       [s * 1.735, 0.52, za], [s * 1.775, 0.52, za], [s * 1.775, 0.52, zb], [s * 1.735, 0.52, zb],
       [s * 1.735, 1.26, za], [s * 1.775, 1.26, za], [s * 1.775, 1.26, zb], [s * 1.735, 1.26, zb]);
     for (const [za, zb] of [[1.60, 2.28], [2.30, 2.96]]) {
@@ -5668,7 +6454,7 @@ export function buildLeo2A4(P) {
   // rubber lower lip under the aft skirt run (the A4's wavy rubber edge),
   // segmented per the station law. §SRCFIX-0808: rides the raised 0.52 run
   // (top 2 cm behind the band bottom — no slit); the wheels read below it.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (let k = 0; k < 6; k++) {
       P.add('hullRubber', box(0.020, 0.05, 0.80), s * 1.785, 0.515, -3.45 + 0.858 * k + 0.42);
     }
@@ -5683,7 +6469,9 @@ export function buildLeo2A4(P) {
     hubPale.onBeforeCompile = vehicleAmbientFloorHook;
     hubPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     P.disposables.push(hubPale);
-    P.gear.addRoadWheelLayer(KIT.cylX(0.135, 0.004, P.q ? 16 : 12), hubPale, {
+    const gear = P.gear;
+    if (!gear) throw new Error('Leopard 2A4 running gear must exist before adding hub caps');
+    gear.addRoadWheelLayer(KIT.cylX(0.135, 0.004, P.q ? 16 : 12), hubPale, {
       outset: 1.486 - 1.37,
       name: 'gearRoadWheelPaleHubCaps',
     });
@@ -5692,7 +6480,7 @@ export function buildLeo2A4(P) {
   // by the track-safe glacis lane cut. The upright roots overlap the real
   // glacis surface; the caps terminate before the terminal shoe lane, so the
   // idler course remains fully native and collision-free.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hull', box(0.08, 0.18, 0.38), s * 0.87, 1.34, 3.37);               // buried glacis root
     P.add('hull', box(0.12, 0.06, 0.38), s * 0.94, 1.45, 3.37);               // supported shoulder cap, |x| <= 1.00
     // Continue the shoulder seat rearward across the tiny plan pocket left
@@ -5709,7 +6497,7 @@ export function buildLeo2A4(P) {
   // idler's upper front. The lower idler/shoe run stays VISIBLE — never
   // the old floor-to-fender curtain. Flap top 1.00 stays 0.023 under the
   // pad-arc lower rim at its z-plane (arc y 1.023 @ z 3.85, >=0.02 law).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hull', box(0.04, 0.21, 0.34), s * 1.82, 1.155, 3.80);               // mudguard post, outside terminal shoe lane
     // Supported top cap over the outboard post/lip junction.  This closes
     // the enclosed plan pocket at the front corner while staying outboard
@@ -5728,7 +6516,7 @@ export function buildLeo2A4(P) {
   // corners): flap y 0.92..1.56 under the 1.61 fender line, bracket
   // overlapping the fender solid. z -3.80 is 0.185 past the sprocket
   // shoe-orbit far edge (-3.615) — §B4-clear.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullRubber', box(0.22, 0.48, 0.032), s * 1.53, 1.30, -3.80);        // compact flap board
     P.add('hullDetail', box(0.07, 0.06, 0.20), s * 1.53, 1.60, -3.72);         // hanger into the fender end
     P.add('hullDetail', box(0.22, 0.035, 0.05), s * 1.53, 1.585, -3.795);      // hinge strip over the flap top
@@ -5792,7 +6580,7 @@ export function buildLeo2A4(P) {
   ]));
   // weld seam engraving down each face/chamfer knuckle (on the face planes;
   // mirrored with the corner-swap law — orientedSlab re-guards winding)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDark', box(0.020, 0.62, 0.050), s * 0.92, 0.33, 1.17, 0, s * 0.68, 0);
     P.add('turretDark', box(0.018, 0.46, 0.042), s * 1.205, 0.25, 0.73, 0, s * 0.12, 0);
   }
@@ -5806,7 +6594,7 @@ export function buildLeo2A4(P) {
   P.add('turret', box(0.88, 0.61, 0.24), 0, 0.325, 0.96);                      // slot back wall block
   P.add('turret', box(0.92, 0.14, 0.18), 0, 0.57, 1.075);                     // brow strip integrated below the roof
   P.add('turret', box(0.92, 0.08, 0.18), 0, 0.06, 1.075);                     // chin plate
-  for (const s of [-1, 1]) P.add('turretDark', box(0.026, 0.35, 0.20), s * 0.448, 0.285, 1.065);
+  for (const s of [-1, 1] as const) P.add('turretDark', box(0.026, 0.35, 0.20), s * 0.448, 0.285, 1.065);
   // turret ring plinth: closes the deck<->turret slit from every side
   // sight-line (§B2) and yaws with the mass.
   P.add('turret', cylY(1.00, 1.04, 0.09, P.q ? 26 : 16), 0, -0.02, -0.35);
@@ -5835,7 +6623,11 @@ export function buildLeo2A4(P) {
   P.add('turretDark', box(0.17, 0.20, 0.19), 0.36, 1.06, -0.32);
   P.add('turretGlass', box(0.11, 0.10, 0.018), 0.36, 1.08, -0.222);
   // hatches: commander right (ring + lid + periscope ring), loader left.
-  for (const [st, lo] of [[{ x: 0.60, z: -0.75 }, false], [{ x: -0.64, z: -0.55 }, true]]) {
+  const hatchStations: Array<readonly [{ readonly x: number; readonly z: number }, boolean]> = [
+    [{ x: 0.60, z: -0.75 }, false],
+    [{ x: -0.64, z: -0.55 }, true],
+  ];
+  for (const [st, lo] of hatchStations) {
     P.add('turret', cylY(lo ? 0.22 : 0.24, lo ? 0.22 : 0.24, 0.05, 14), st.x, 0.665, st.z);
     P.add('turret', cylY(lo ? 0.19 : 0.21, lo ? 0.19 : 0.21, 0.028, 14), st.x, 0.706, st.z);
     P.add('turretDark', box(lo ? 0.34 : 0.38, 0.014, 0.035), st.x, 0.725, st.z);
@@ -5859,7 +6651,7 @@ export function buildLeo2A4(P) {
   // Family grammar stays in the proportions, not borrowed fittings.
   P.add('turretDetail', cylY(0.012, 0.016, 0.24, 8), -0.85, 0.765, -1.92);
   P.add('turretDark', box(0.04, 0.04, 0.11), -0.85, 0.895, -1.92);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // Full-height SEM 25 whips.  The short 0.46 m placeholders were the
     // largest surviving regression in the recovered native A4: they cut the
     // combat-station silhouette off at the RCWS and made both the frontal and
@@ -5876,7 +6668,7 @@ export function buildLeo2A4(P) {
   // collar rings on every tube (the Wegmann tube-mouth tell at 1x), and a
   // support arm into the wall — the bank reads as a mounted BLOCK from
   // the side, not loose pips.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', box(0.07, 0.26, 0.58), s * 1.14, 0.38, -1.38, 0, s * 0.05, 0);
     P.add('turretDetail', box(0.05, 0.05, 0.30), s * 1.155, 0.225, -1.38, 0, s * 0.05, 0); // support arm under the banks
     smokeCluster(P, s * 1.16, 0.47, -1.24, 4, s * 1.05, 0.85);
@@ -5895,7 +6687,7 @@ export function buildLeo2A4(P) {
     }
   }
   // side-wall grab rails (segmented — station end-cap law) + lift eyes
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDetail', box(0.022, 0.022, 0.78), s * 1.218, 0.42, 0.26);
     P.add('turretDetail', box(0.022, 0.022, 1.00), s * 1.175, 0.42, -0.92);
     P.add('turretDetail', box(0.022, 0.022, 0.82), s * 1.105, 0.39, -1.94);
@@ -5909,7 +6701,7 @@ export function buildLeo2A4(P) {
   // restore the authored A4 service grammar without creating stand-off
   // decoration or a second bustle mass.
   P.add('turretDark', box(1.70, 0.012, 0.025), 0, 0.684, -1.82);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDetail', box(0.08, 0.040, 0.12), s * 0.72, 0.685, -2.02);
     P.add('turretDark', box(0.045, 0.030, 0.035), s * 0.72, 0.711, -1.97);
     P.add('turretDetail', box(0.055, 0.12, 0.025), s * 0.74, 0.35, -2.28);
@@ -5926,7 +6718,7 @@ export function buildLeo2A4(P) {
     for (let k = 0; k <= 10; k++) {
       P.add('turretDetail', box(0.032, rackT - rackB, 0.032), -1.10 + k * 0.22, (rackT + rackB) / 2, rackZ);
     }
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       P.add('turretDetail', box(0.045, 0.045, 0.40), s * 1.11, rackT, -2.48);
       P.add('turretDetail', box(0.045, 0.045, 0.40), s * 1.11, (rackT + rackB) / 2, -2.48); // end mid rail
       P.add('turretDetail', box(0.045, 0.045, 0.40), s * 1.11, rackB, -2.48);
@@ -5972,18 +6764,22 @@ export function buildLeo2A4(P) {
   P.topY = 1.24;
 }
 
-const LEO2A7V_CHEEK_NOSE = Object.freeze([
+const LEO2A7V_CHEEK_NOSE: readonly Vec2Tuple[] = Object.freeze([
   [0.30, 1.90], [1.38, 1.86], [1.57, 0.98],
 ]);
-const LEO2A7V_CHEEK_CREST = Object.freeze([
+const LEO2A7V_CHEEK_CREST: readonly Vec3Tuple[] = Object.freeze([
   [0.20, 0.80, 0.44], [1.03, 0.775, 0.40], [1.08, 0.67, -0.55],
   [1.40, 0.66, -0.95], [1.53, 0.32, -1.10],
 ]);
-const LEO2A7V_GLACIS = Object.freeze([
+const LEO2A7V_GLACIS: readonly Vec2Tuple[] = Object.freeze([
   [2.05, 1.60], [2.45, 1.50], [2.95, 1.44], [3.55, 1.40], [3.86, 1.26],
 ]);
 
-function sampleLeo2A7VSurface(stations, coordinate, valueIndex = 1) {
+function sampleLeo2A7VSurface(
+  stations: readonly (readonly number[])[],
+  coordinate: number,
+  valueIndex = 1,
+): number {
   if (coordinate <= stations[0][0]) return stations[0][valueIndex];
   for (let index = 1; index < stations.length; index++) {
     const coordinate1 = stations[index][0];
@@ -5995,16 +6791,16 @@ function sampleLeo2A7VSurface(stations, coordinate, valueIndex = 1) {
       );
     }
   }
-  return stations.at(-1)[valueIndex];
+  return stations.at(-1)?.[valueIndex] ?? 0;
 }
 
 // Point and tangent frame on the A7V's real ruled upper-cheek plate. ERA
 // courses use this surface directly so their inner faces follow the falling
 // crest and arrowhead sweep rather than bridging it with a flat tile wall.
-function leo2A7VCheekSurface(side, absX, courseFraction) {
+function leo2A7VCheekSurface(side: Side, absX: number, courseFraction: number) {
   const fraction = THREE.MathUtils.clamp(courseFraction, 0, 1);
   const lowerY = 0.35;
-  const surfacePoint = (x) => {
+  const surfacePoint = (x: number): THREE.Vector3 => {
     const noseZ = sampleLeo2A7VSurface(LEO2A7V_CHEEK_NOSE, x);
     const crestY = sampleLeo2A7VSurface(LEO2A7V_CHEEK_CREST, x, 1);
     const crestZ = sampleLeo2A7VSurface(LEO2A7V_CHEEK_CREST, x, 2);
@@ -6037,7 +6833,7 @@ function leo2A7VCheekSurface(side, absX, courseFraction) {
   };
 }
 
-function addLeo2A7VFrontalERA(P) {
+function addLeo2A7VFrontalERA(P: TankBuilderPort) {
   const cassette = Object.freeze({
     widthM: 0.28,
     heightM: 0.13,
@@ -6046,8 +6842,8 @@ function addLeo2A7VFrontalERA(P) {
     coverDepthM: 0.014,
     coverOverlapM: 0.003,
   });
-  const cheekSeats = [];
-  const glacisSeats = [];
+  const cheekSeats: LeopardCheekEraSeat[] = [];
+  const glacisSeats: LeopardGlacisEraSeat[] = [];
   const sectors = [
     'a7v_turret_cheek_era_R', 'a7v_turret_cheek_era_L',
     'a7v_upper_glacis_era',
@@ -6059,7 +6855,13 @@ function addLeo2A7VFrontalERA(P) {
   // restarting its full 0..1 pattern on every tiny cassette instance. The
   // inset cover is captured by the same destructible sector as its charge
   // body, preserving one-shot strip/reset behavior without another draw call.
-  const addLayeredCassette = (bucket, center, normal, rotation, scale) => {
+  const addLayeredCassette = (
+    bucket: string,
+    center: THREE.Vector3,
+    normal: THREE.Vector3,
+    rotation: THREE.Euler,
+    scale: EraCassetteScale,
+  ): void => {
     const width = cassette.widthM * scale.x;
     const height = cassette.heightM * scale.y;
     const depth = cassette.depthM * scale.z;
@@ -6084,7 +6886,7 @@ function addLeo2A7VFrontalERA(P) {
     );
   };
 
-  for (const side of [-1, 1]) {
+  for (const side of [-1, 1] as const) {
     const sector = `a7v_turret_cheek_era_${side > 0 ? 'R' : 'L'}`;
     P.destructibleCluster(sector, () => {
       for (let row = 0; row < 6; row++) {
@@ -6191,7 +6993,7 @@ function addLeo2A7VFrontalERA(P) {
 // census (FITTING-SINK under the 2.64 line); low-profile ADS-ready
 // sensor pods on the roof corners (photo class).
 // ---------------------------------------------------------------------------
-function buildLeo2A7V(P) {
+function buildLeo2A7V(P: TankBuilderPort) {
   const { box, cylY, cylZ, polyMultiLoft } = KIT;
   leoHullV3(P, {
     bodyHW: 1.76, sponsonY: 1.24, trackW: 0.66, xc: 1.53,
@@ -6234,7 +7036,7 @@ function buildLeo2A7V(P) {
   // band: they sit outboard of the linked course, meet the existing skirt
   // along their lower edge, and tuck directly beneath the fender shelf.
   // Nothing in the hull, suspension or lower skirt is deleted or shifted.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     const upperSideArmor = [
       [-2.78, 0.56, 0.27], [-2.18, 0.58, 0.29], [-1.56, 0.60, 0.30],
       [-0.92, 0.60, 0.30], [-0.28, 0.60, 0.30], [0.36, 0.60, 0.30],
@@ -6270,7 +7072,7 @@ function buildLeo2A7V(P) {
   P.add('hullDark', box(2.12, 0.014, 0.02), 0, 1.115, 3.795);                  // module top seam
   // front mudguard assembly (a4 recipe at the a7v frame; idler shoe orbit
   // far edge 3.825 -> lip fully past it).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // The vertical post lives completely outside the shoe lane.  The lip,
     // hinge and rubber face start ahead of the 3.84 m pad envelope; this is
     // the real cantilevered mudguard arrangement, not a plate occupying the
@@ -6282,7 +7084,7 @@ function buildLeo2A7V(P) {
   }
   // rear mudflaps hanging from the fender ends (a4 recipe; sprocket orbit
   // far edge -3.725, flap z -3.80 clear).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullRubber', box(0.26, 0.50, 0.032), s * 1.85, 1.285, -3.80);
     P.add('hullDetail', box(0.07, 0.06, 0.20), s * 1.89, 1.585, -3.72);
     P.add('hullDetail', box(0.22, 0.035, 0.05), s * 1.85, 1.585, -3.795);
@@ -6290,7 +7092,7 @@ function buildLeo2A7V(P) {
   P.mats.rubber.color.setHex(0x33352b);
   // rear APU/cooling housings on the deck shoulders — §B3 bin grammar
   // (louvre ribs + lid seam + latches + intake mesh, never bare cuboids).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hull', box(0.34, 0.22, 0.74), s * 1.37, 2.03, -3.32);               // housing (top 2.14)
     P.add('hull', box(0.28, 0.26, 0.60), s * 1.37, 1.81, -3.32);               // buried deck pedestal / cooling trunk
     for (let k = 0; k < 4; k++) {
@@ -6433,7 +7235,7 @@ function buildLeo2A7V(P) {
   // shallow seams divide the long native side modules into plausible armor
   // cassettes; every strip is buried in the existing module face and stays
   // inside the certified turret envelope.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (const z of [-1.64, -1.06, -0.47, 0.12, 0.62]) {
       P.add('turretDark', box(0.014, 0.092, 0.026), s * 1.343, 0.185, z);
     }
@@ -6521,7 +7323,7 @@ function buildLeo2A7V(P) {
   // deployed fits): segmented horizontal bar panels around the bustle rear
   // corners — frame posts + 4 bars per panel, ≤0.48 m chunks (STATION
   // END-CAP law), standing off the rack line on visible brackets.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // side panel (z -2.10..-2.55) + corner panel (angled across the corner)
     for (const [px, pz, ry, len] of [[1.22, -2.55, 0, 0.72], [1.10, -2.95, s * 0.62, 0.42]]) {
       // Two broad, end-aligned returns at both elevations carry the open
@@ -6541,7 +7343,7 @@ function buildLeo2A7V(P) {
   }
   // ADS-ready sensor pods at the roof corners (photo class: low-profile
   // countermeasure fittings — §B3 tells: body + dark lens + conduit).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (const [pz, ry] of [[0.30, s * 0.5], [-1.95, s * 2.6]]) {
       P.add('turretDetail', box(0.10, 0.085, 0.10), s * 1.05, 0.785, pz, 0, ry, 0);
       P.add('turretDark', box(0.075, 0.055, 0.014), s * 1.05 + Math.sin(ry) * 0.052, 0.79, pz + Math.cos(ry) * 0.052, 0, ry, 0);
@@ -6601,7 +7403,7 @@ function buildLeo2A7V(P) {
 // deck-level gun bar): curve/station rows stay capped ~0 BY CERTIFICATE;
 // dims + floaters MUST hold 100. The visual bar is the §B8 photo class.
 // ---------------------------------------------------------------------------
-function buildLeo2Proto(P) {
+function buildLeo2Proto(P: TankBuilderPort) {
   const { box, cylY, cylZ, sph, xform, periscope, liftEye, smokeCluster, stowage, tarpRoll, ammoCan, polyMultiLoft } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
@@ -6654,7 +7456,7 @@ function buildLeo2Proto(P) {
   // faces close the bay the way the real shadowed sponson underside reads
   // (the buildRunningGear bayShadow mechanism, seated per-tank). Fully
   // inside the silhouette: |x| 1.01 < track inner face 1.0525.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullShadow', box(0.02, 0.78, 6.90), s * 1.01, 0.93, -0.25);
   }
   // Retain the early vehicle's pale hub cadence on the moving wheel train.
@@ -6666,21 +7468,23 @@ function buildLeo2Proto(P) {
     hubPale.onBeforeCompile = vehicleAmbientFloorHook;
     hubPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     P.disposables.push(hubPale);
-    P.gear.addRoadWheelLayer(KIT.cylX(0.10, 0.004, P.q ? 16 : 12), hubPale, {
+    const gear = P.gear;
+    if (!gear) throw new Error('Leopard prototype running gear must exist before adding hub caps');
+    gear.addRoadWheelLayer(KIT.cylX(0.10, 0.004, P.q ? 16 : 12), hubPale, {
       outset: 1.486 - 1.37,
       name: 'gearRoadWheelPaleHubCaps',
     });
   }
   // front mudguard assembly (the a4's §B4-certified pieces — identical gear
   // geometry, proven z-planes past the 3.905 idler shoe orbit).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hull', box(0.09, 0.21, 0.42), s * 1.775, 1.155, 3.74);              // mudguard post
     P.add('hull', box(0.90, 0.20, 0.04), s * 1.35, 1.14, 3.93);                // mudguard lip
     P.add('hullDetail', box(0.86, 0.022, 0.024), s * 1.35, 1.033, 3.926);      // hinge line
     P.add('hullRubber', box(0.66, 0.40, 0.024), s * 1.36, 0.78, 3.849);        // rubber flap (top 0.02 under the 1.00 orbit line)
   }
   // rear mudflaps hung from the fender ends (production pattern)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullRubber', box(0.38, 0.64, 0.032), s * 1.53, 1.24, -3.80);
     P.add('hullDetail', box(0.07, 0.06, 0.20), s * 1.53, 1.60, -3.72);
     P.add('hullDetail', box(0.30, 0.035, 0.05), s * 1.53, 1.585, -3.795);
@@ -6694,7 +7498,7 @@ function buildLeo2Proto(P) {
   // the real unskirted PTs show. Faces unchanged (inner 1.7075 keeps the
   // §B4 2.0 cm band annulus, shoes 1.678 clear; top inside the fender and
   // glacis side lines — §B1 silhouette-neutral).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // main rail: laps the fender underside (bottoms 1.595..1.61) and the
     // skirt top band (1.32..1.36) — §B2 no-air: skirt->rail->fender->body.
     // Bottom AT the 1.32 sponson-floor line: the skirt-uncovered columns
@@ -6816,7 +7620,7 @@ function buildLeo2Proto(P) {
   P.add('turret', box(0.88, 0.675, 0.24), 0, 0.3125, 0.96);                    // slot back wall (top 0.65 = the roof plane)
   P.add('turret', box(0.92, 0.16, 0.16), 0, 0.57, 1.06);                       // brow strip (flush to the roof line)
   P.add('turret', box(0.92, 0.08, 0.16), 0, 0.045, 1.06);                      // chin plate
-  for (const s of [-1, 1]) P.add('turretDark', box(0.028, 0.42, 0.18), s * 0.448, 0.29, 1.055);
+  for (const s of [-1, 1] as const) P.add('turretDark', box(0.028, 0.42, 0.18), s * 0.448, 0.29, 1.055);
   // roof = the wall solids' own top faces at 0.65 (2.37w one plane — a
   // rectangular cap plate overhung the tapered plan as ledge corners in
   // the top view); ring plinth (§B2 slit closure, yaws with the mass)
@@ -6830,7 +7634,7 @@ function buildLeo2Proto(P) {
   // finder are hidden behind the armoured blocks at the turret sides"):
   // §SRCFIX-0808 adds the block collar under each dome so they read as
   // armored housings, not soap bubbles; dark optic cap outboard.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', box(0.22, 0.26, 0.40), s * 1.075, 0.44, 0.26);             // armored block base (outer face 1.185)
     P.add('turret', xform(sph(0.17, P.q ? 16 : 10), 0, 0, 0, 0, 0, 0, [1.0, 0.74, 1.45]), s * 1.12, 0.55, 0.28);
     P.add('turretDark', KIT.cylX(0.082, 0.030, 10), s * 1.215, 0.55, 0.28);
@@ -6873,7 +7677,7 @@ function buildLeo2Proto(P) {
   // low-raked whips on side brackets — tips stay 2.497w < the 2.5048 grace
   // line (dims heightM p95 budget = mast + cupola class; §SRCFIX-0808:
   // seats re-derived for the widened plan, wall 1.113 at z -1.55).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDetail', box(0.06, 0.05, 0.08), s * 1.105, 0.50, -1.55);      // side bracket seat
     const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.32, r: 0.012, seed: 8 + s, rotation: [-1.05, 0, s * 0.05] });
     whip.position.set(s * 1.09, 0.50, -1.55);
@@ -6890,7 +7694,7 @@ function buildLeo2Proto(P) {
   }
   // early smoke mortars: 2x4 clusters per side LOW on the rear walls
   // (§SRCFIX-0808: seats re-derived for the widened plan, wall 1.135@-1.02)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', box(0.06, 0.22, 0.50), s * 1.145, 0.26, -1.02, 0, s * 0.06, 0);
     smokeCluster(P, s * 1.17, 0.34, -0.90, 4, s * 1.05, 0.85);
     smokeCluster(P, s * 1.18, 0.19, -1.06, 4, s * 1.2, 0.85);
@@ -6900,7 +7704,7 @@ function buildLeo2Proto(P) {
   // latches, never bare cuboids). Slight yaw follows the wall taper so
   // both ends embed (no floats); outer faces 1.2225 / 1.187 stay inside
   // the blister-cap width.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', box(0.07, 0.30, 0.75), s * 1.1875, 0.26, -0.325, 0, s * 0.043, 0);   // bin A (z 0.05..-0.70)
     P.add('turretDark', box(0.072, 0.006, 0.71), s * 1.1875, 0.352, -0.325, 0, s * 0.043, 0);
     P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.2245, 0.20, -0.115, 0, s * 0.043, 0);
@@ -6911,7 +7715,7 @@ function buildLeo2Proto(P) {
     P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.171, 0.19, -2.38, 0, s * 0.024, 0);
   }
   // side grab rails seated ON the bin faces (segmented) + lift eyes
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDetail', box(0.022, 0.022, 0.66), s * 1.232, 0.40, -0.33);    // inner face 1.221 embeds bin A face 1.2225
     P.add('turretDetail', box(0.022, 0.022, 1.42), s * 1.196, 0.38, -1.79);    // inner face embeds stretched bin B
     liftEye(P, 'turretDetail', s * 0.95, 0.63, -0.05, s * 0.4);
@@ -6995,7 +7799,7 @@ function buildLeo2Proto(P) {
 // 1.33 notch at x -0.55..-0.90; L/44 axis 1.85, muzzle 6.02 (published
 // overall 9.97; print tube ends 5.93 -> ~1 cover column, documented).
 // ---------------------------------------------------------------------------
-function buildLeo2Revolution(P) {
+function buildLeo2Revolution(P: TankBuilderPort) {
   const { box, cylY, cylZ, torus, periscope, liftEye, polyMultiLoft } = KIT;
   const slab = orientedSlab;                                  // outward winding on every authored wedge
   // r9 F1/F2 accumulators: jacket flank pieces leave the 'hull' bucket and
@@ -7003,7 +7807,7 @@ function buildLeo2Revolution(P) {
   // tint (the a5 r8 PANEL-TINT mechanism — same boxUV frame, same bakeDirt
   // math, per-plate tint constant). Geometry byte-identical to the bucket
   // path; the ±2.00 width-guard faces stay on a mesh that reaches ±2.00.
-  const r9jacket = [];                                                         // [geo, tint]
+  const r9jacket: Array<readonly [THREE.BufferGeometry, number]> = [];          // [geo, tint]
   const r9jkT = [0.875, 0.905, 0.885, 0.910, 0.880, 0.900];                    // F2 per-plate jitter (±2-3 L about the -8 target)
   let r9jkN = 0;
   // ---- hull ----
@@ -7029,7 +7833,7 @@ function buildLeo2Revolution(P) {
   // crown; their inner edge overlaps the narrow tub in plan, while the
   // outer underside remains a real suspension clearance instead of a
   // track intersection.
-  const deckBand = (top, z0, z1, w = 3.10) =>
+  const deckBand = (top: number, z0: number, z1: number, w = 3.10): void =>
     P.add('hull', box(w, top - 1.42, z1 - z0), 0, (top + 1.42) / 2, (z0 + z1) / 2);
   deckBand(1.619, -0.32, 1.32);                                                // main deck flat (ref 1.619 x33 cols)
   deckBand(1.542, -0.52, -0.32);                                               // ring recess dip (ref 1.537-1.547)
@@ -7155,8 +7959,8 @@ function buildLeo2Revolution(P) {
   // undercut; SEGMENTED per the station law (an unbroken 6.85 box was
   // edge-on invisible to the slice cameras — stations 1/4 read the naked
   // 3.4 track band).
-  for (const s of [-1, 1]) {
-    const segRunX = (x, th, y0, y1, z0, z1) => {
+  for (const s of [-1, 1] as const) {
+    const segRunX = (x: number, th: number, y0: number, y1: number, z0: number, z1: number): void => {
       const n = Math.max(2, Math.round((z1 - z0) / 0.52));
       const L = (z1 - z0) / n;
       for (let k = 0; k < n; k++) {
@@ -7176,8 +7980,8 @@ function buildLeo2Revolution(P) {
     // hull line (the flat 1.70 was the vlo bake's midship band; the honest
     // chassis courses fall toward the ring: novlo trace mins per segment
     // span, parked 5 mm under so the deck plates own their shared columns).
-    const segTopsRear = [1.696, 1.689, 1.662, 1.590, 1.573, 1.532, 1.614];
-    const segRunXT = (x, th, y0, y1s, z0, z1) => {
+    const segTopsRear: number[] = [1.696, 1.689, 1.662, 1.590, 1.573, 1.532, 1.614];
+    const segRunXT = (x: number, th: number, y0: number, y1s: readonly number[], z0: number, z1: number): void => {
       const n = y1s.length;
       const L = (z1 - z0) / n;
       for (let k = 0; k < n; k++) {
@@ -7283,7 +8087,7 @@ function buildLeo2Revolution(P) {
     // windows where the old stair caps painted). Tip nub unchanged (plan
     // front 3.766 + the dAlong body-span cap 1.02).
     const hemX0 = s * 1.610, hemX1 = s * 1.670;
-    const hemFacet = (x0, x1, z0, y0, z1, y1) => P.add('hull', slab(
+    const hemFacet = (x0: number, x1: number, z0: number, y0: number, z1: number, y1: number): void => P.add('hull', slab(
       [x0, y0, z0], [x1, y0, z0], [x1, y1, z1], [x0, y1, z1],
       [x0, 1.30, z0], [x1, 1.30, z0], [x1, 1.30, z1], [x0, 1.30, z1]));
     hemFacet(hemX0, hemX1, 3.2585, 0.446, 3.3665, 0.499);                      // hem facet A (col 3.32: 0.444)
@@ -7513,7 +8317,7 @@ function buildLeo2Revolution(P) {
   // narrowed, these become the mid columns' front-top painters; every top
   // pulled <=1.712 (the honest 1.71 print bin; the old 1.7185 rim line
   // straddles the next bin edge on the r16 grid). Same wells, 6 mm deeper.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDark', cylY(0.36, 0.36, 0.004, P.q ? 26 : 16), s * 0.42, 1.7095, -3.2675); // recess disc (top 1.7115)
     P.add('hullDetail', cylY(0.29, 0.29, 0.003, P.q ? 26 : 16), s * 0.42, 1.7095, -3.2675); // screen ring (r9-b: pale — the ref arches read BRIGHT, luma 84-93)
     P.add('hullDark', cylY(0.225, 0.225, 0.003, P.q ? 24 : 14), s * 0.42, 1.7105, -3.2675); // inner grille disc (top 1.712)
@@ -7976,7 +8780,7 @@ function buildLeo2Revolution(P) {
   // stays exactly the segment reads
   P.add('turretDark', box(0.28, 0.08, 0.53), -0.71, 0.44, -1.775);             // runner (w -1.86..-2.39)
   P.add('turretDark', box(0.083, 0.08, 0.21), -0.5965, 0.44, -2.145);          // runner tail (w -2.39..-2.60, col -0.597 lane)
-  for (const s of [-1, 1]) {                                                   // side rails (right pulled per ref plan -2.51)
+  for (const s of [-1, 1] as const) {                                                   // side rails (right pulled per ref plan -2.51)
     // r5: hanger lugs ride UNDER the rails at the ref's 2.135..2.17 band
     // (the old 1.99-bottom posts printed the -2.68w column 0.12 low)
     P.add('turretDetail', box(0.05, 0.037, 0.05), s * 1.10, 0.5535, -2.38);
@@ -8055,7 +8859,7 @@ function buildLeo2Revolution(P) {
     mg.position.set(0.43, 0.60, -1.25);
     P.turretG.add(mg);
   }
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // r5: left cluster forward 0.07 — its tubes printed -2.54 into the
     // -1.375 plan column where the ref basket edge reads -2.375
     KIT.smokeCluster(P, s * (s > 0 ? 1.18 : 1.22), 0.53, s > 0 ? -1.90 : -1.98, 4, s * 0.9, 0.8);
@@ -8096,7 +8900,7 @@ function buildLeo2Revolution(P) {
   // r5: top 2.15 -> 2.02 (its AA read 2.185 on the lone 2.21w column where
   // the ref falls to 2.056)
   P.add('turret', box(0.92, 0.29, 0.10), 0, 0.28, 2.55);
-  for (const s of [-1, 1]) P.add('turretDark', box(0.065, 0.27, 0.44), s * 0.47, 0.285, 2.43);
+  for (const s of [-1, 1] as const) P.add('turretDark', box(0.065, 0.27, 0.44), s * 0.47, 0.285, 2.43);
   // P-1 (defuse-recert critic order): the mantlet cheek blocks read as
   // bare grey "posts" over the black ring window at close-front. Tells:
   // the RIGHT cheek carries the coax MG port (pale collar + dark bore on
@@ -8195,12 +8999,17 @@ function buildLeo2Revolution(P) {
   // read); thin dressing renders NON-CASTING (a5 r8-g bisect law).
   {
     const camoScale = (P.spec.visual && P.spec.visual.camoScale) || 0.34;
-    const rehook = (m) => {
+    const rehook = <T extends VehicleMaterial>(m: T): T => {
       m.onBeforeCompile = vehicleAmbientFloorHook;
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       return m;
     };
-    const prepCamo = (geo, yOff, strength, tint) => {
+    const prepCamo = (
+      geo: THREE.BufferGeometry,
+      yOff: number,
+      strength: number,
+      tint: number,
+    ): THREE.BufferGeometry => {
       const pos = geo.attributes.position, nor = geo.attributes.normal;
       const uv = new Float32Array(pos.count * 2);
       const col = new Float32Array(pos.count * 3);
@@ -8226,7 +9035,12 @@ function buildLeo2Revolution(P) {
       geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
       return geo;
     };
-    const meshUp = (geo, mat, parent, cast) => {
+    const meshUp = (
+      geo: THREE.BufferGeometry,
+      mat: THREE.Material,
+      parent: THREE.Object3D,
+      cast: boolean,
+    ): THREE.Mesh => {
       const mesh = new THREE.Mesh(geo, mat);
       mesh.receiveShadow = true;
       mesh.castShadow = !!cast;
@@ -8259,8 +9073,8 @@ function buildLeo2Revolution(P) {
       // the window med at the dark holes' 56 — the REF band is the
       // INVERSE (pale slats, dark slits, med 78.6). Five horizontal slats
       // (~59% coverage) + frame verticals.
-      const bars = [];
-      const barsB = [];
+      const bars: THREE.BufferGeometry[] = [];
+      const barsB: THREE.BufferGeometry[] = [];
       for (let k = 0; k < 5; k++) {
         (k % 2 ? barsB : bars).push(KIT.xform(box(2.56, 0.062, 0.055), 0, 1.19 + k * 0.105, -3.8495));
       }
@@ -8359,7 +9173,7 @@ function buildLeo2Revolution(P) {
       P.hullG.add(cxA);
       const cxB = FITTINGS.towCable({ mats: P.mats, r: 0.016, seed: 8, eyes: false, pts: [[-1.08, 1.26, -3.863], [0.05, 1.46, -3.863], [1.08, 1.62, -3.863]] });
       P.hullG.add(cxB);
-      for (const s of [-1, 1]) {
+      for (const s of [-1, 1] as const) {
         const lc = FITTINGS.lightCluster({ mats: P.mats, pods: 2, r: 0.040, lens: 'dark', rake: 0, seed: 5, rotation: [0, Math.PI, 0] });
         lc.position.set(s * 1.18, 1.615, -3.826);
         P.hullG.add(lc);
@@ -8387,7 +9201,7 @@ function buildLeo2Revolution(P) {
       cableDark.metalness = 0.04;
       cableDark.envMapIntensity = 0.05;
       P.disposables.push(cableDark);
-      const mkCable = (ptsArr, r) => {
+      const mkCable = (ptsArr: readonly Vec3Tuple[], r: number): void => {
         const curve = new THREE.CatmullRomCurve3(ptsArr.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
         meshUp(new THREE.TubeGeometry(curve, P.q ? 20 : 10, r, 6, false), cableDark, P.hullG, false);
       };
@@ -8406,7 +9220,7 @@ function buildLeo2Revolution(P) {
     // beak faces. §B5 r16: re-planed onto the HONEST beak (root 1.44@2.83
     // falling 0.965@3.85, rx -0.436 = 24.6°; the old -0.777 seams rode the
     // bake-height 1.97 plane).
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       P.add('hullDark', box(0.62, 0.008, 0.020), s * 0.72, 1.345, 3.033, -0.436, 0, 0);
       P.add('hullDark', box(0.56, 0.006, 0.014), s * 0.72, 1.204, 3.336, -0.436, 0, 0);
       P.add('hullDark', box(0.50, 0.006, 0.014), s * 0.72, 1.064, 3.638, -0.436, 0, 0);
@@ -8504,7 +9318,9 @@ function buildLeo2Revolution(P) {
     P.turretG.add(forwardMag);
     // Preserve the pale hub read, now driven by the wheel matrices instead
     // of a fixed row that separated during suspension travel.
-    P.gear.addRoadWheelLayer(KIT.cylX(0.10, 0.004, 14), mgPale, {
+    const gear = P.gear;
+    if (!gear) throw new Error('Leopard Revolution running gear must exist before adding hub caps');
+    gear.addRoadWheelLayer(KIT.cylX(0.10, 0.004, 14), mgPale, {
       outset: 1.386 - 1.2875,
       name: 'gearRoadWheelPaleHubCaps',
     });
@@ -8528,7 +9344,7 @@ function buildLeo2Revolution(P) {
 }
 
 // small rectangular mud flap helper (leopard family)
-function mudflapRect(P, x, y, z) {
+function mudflapRect(P: TankBuilderPort, x: number, y: number, z: number) {
   P.addMudguard(`leopard-mudflap-${x < 0 ? 'left' : 'right'}-${z < 0 ? 'rear' : 'front'}`,
     'hullRubber', KIT.box(0.34, 0.44, 0.03), x, y, z);
 }
@@ -8545,7 +9361,7 @@ function mudflapRect(P, x, y, z) {
 // Published envelope: tail −3.80, prow +3.90 (7.70), muzzle +6.93 (10.73),
 // p95 roof anchored by SEOSS top 3.03 (mast is the 1-2 spike-col budget).
 // ---------------------------------------------------------------------------
-function buildKF51(P) {
+function buildKF51(P: TankBuilderPort) {
   const { box, cylY, cylZ, frustum, torus, periscope, xform } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   // VISUAL r1 helper — plain-faced box via slab (centered at origin, so it
@@ -8555,7 +9371,7 @@ function buildKF51(P) {
   // a V-groove of up-tilted bevel quads that caught the key light as pale
   // "mint bare-edge ribbons" (critic r1 #8, sampled: a grid of pale lines at
   // the 0.465 segment pitch). Plain faces = same silhouette, no groove.
-  const pbox = (w, h, d) => slab(
+  const pbox = (w: number, h: number, d: number): THREE.BufferGeometry => slab(
     [-w / 2, -h / 2, d / 2], [w / 2, -h / 2, d / 2], [w / 2, -h / 2, -d / 2], [-w / 2, -h / 2, -d / 2],
     [-w / 2, h / 2, d / 2], [w / 2, h / 2, d / 2], [w / 2, h / 2, -d / 2], [-w / 2, h / 2, -d / 2]);
   // ---- hull: low tub + deck shell band with the fore-deck step ----
@@ -8587,8 +9403,8 @@ function buildKF51(P) {
     // side-wall bottom behind the sprocket, as before.
     const LW0 = -3.55, LW1 = -2.81, LX0 = 0.945;
     const CAP = 0.012, SIDE = 0.025, CLEAR_Y = 1.58;
-    const yAt = (z) => yF + (yR - yF) * ((z - zF) / (zR - zF));
-    const wAt = (z) => wF + (wR - wF) * ((z - zF) / (zR - zF));
+    const yAt = (z: number): number => yF + (yR - yF) * ((z - zF) / (zR - zF));
+    const wAt = (z: number): number => wF + (wR - wF) * ((z - zF) / (zR - zF));
     const cuts = [zF, zR, LW1, LW0]
       .filter((z) => z <= zF + 1e-6 && z >= zR - 1e-6)
       .sort((a2, b2) => b2 - a2).filter((z, k, arr) => k === 0 || z < arr[k - 1] - 1e-6);
@@ -8601,7 +9417,7 @@ function buildKF51(P) {
         [-LX0, ya, za], [LX0, ya, za], [LX0, yb, zb], [-LX0, yb, zb]));
       const rearWindow = (za + zb) * 0.5 <= LW1 && (za + zb) * 0.5 >= LW0;
       const sideBottom = rearWindow ? CLEAR_Y : yB;
-      for (const sd of [-1, 1]) {
+      for (const sd of [-1, 1] as const) {
         P.add('hull', slab(                                                    // original roof skin, closed and full-width
           [sd * LX0, ya - CAP, za], [sd * wa, ya - CAP, za], [sd * wb, yb - CAP, zb], [sd * LX0, yb - CAP, zb],
           [sd * LX0, ya, za], [sd * wa, ya, za], [sd * wb, yb, zb], [sd * LX0, yb, zb]));
@@ -8636,8 +9452,10 @@ function buildKF51(P) {
   P.add('hull', slab(                                                        // complete inter-track glacis body
     [-0.94, 1.24, 2.55], [0.94, 1.24, 2.55], [0.94, 1.1695, 3.13], [-0.94, 1.1695, 3.13],
     [-0.94, 1.43, 2.55], [0.94, 1.43, 2.55], [0.94, 1.3417, 3.13], [-0.94, 1.3417, 3.13]));
-  for (const s of [-1, 1]) {
-    const ordG = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
+  for (const s of [-1, 1] as const) {
+    const ordG = (ring: FourPointRing): FourPointRing => (
+      s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
+    );
     P.add('hull', slab(                                                      // exact visible glacis surface, closed 25 mm armor skin
       ...ordG([[s * 0.94, 1.405, 2.55], [s * 1.56, 1.405, 2.55], [s * 1.5449, 1.3167, 3.13], [s * 0.94, 1.3167, 3.13]]),
       ...ordG([[s * 0.94, 1.43, 2.55], [s * 1.685, 1.43, 2.55], [s * 1.6699, 1.3417, 3.13], [s * 0.94, 1.3417, 3.13]])));
@@ -8652,8 +9470,10 @@ function buildKF51(P) {
   // line), covering the gap like the real front fender run; x 1.57..1.70 is
   // entirely outside the band's voxel columns, and the ref's own plan cols
   // 1.62..1.73 read a 3.76-3.78 mudguard face there (this improves them).
-  for (const s of [-1, 1]) {
-    const ordF = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);                // mirror-winding law (a6 r6)
+  for (const s of [-1, 1] as const) {
+    const ordF = (ring: FourPointRing): FourPointRing => (                     // mirror-winding law (a6 r6)
+      s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
+    );
     P.add('hull', slab(
       ...ordF([[s * 1.57, 1.2917, 3.13], [s * 1.70, 1.2917, 3.13], [s * 1.70, 1.205, 3.70], [s * 1.57, 1.205, 3.70]]),
       ...ordF([[s * 1.57, 1.3417, 3.13], [s * 1.70, 1.3417, 3.13], [s * 1.70, 1.255, 3.70], [s * 1.57, 1.255, 3.70]])));
@@ -8693,7 +9513,7 @@ function buildKF51(P) {
   // mid-band exactly like the real hull rear. The notch is pad-occluded
   // from the rear; side cols keep their 0.52..1.80 band from the centre.
   P.add('hull', box(1.88, 1.28, 0.10), 0, 1.16, -3.55);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hull', box(0.49, 0.40, 0.10), s * 1.185, 1.60, -3.55);              // sponson-tail wing (radially clear of the wrap: r>=0.489)
     P.add('hull', box(0.49, 0.135, 0.10), s * 1.185, 0.5875, -3.55);           // tub-floor wing
   }
@@ -8725,7 +9545,7 @@ function buildKF51(P) {
   // geometry, same placement, mask-byte-identical (white-mask law); the
   // unlit-face read lands ~26 (sRGB ramp vs the 0.001 tint clamp).
   {
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       // arm channel floors (12.2-deg members) are chevFloor tone pieces
       // (r7 #1); the aAng/nX/nY frame lives at the tone-block chevron group.
       // pale bevel lip + upper shadow line live in the tone block (paleLip /
@@ -8746,7 +9566,7 @@ function buildKF51(P) {
   }
   P.add('hull', box(0.30, 0.26, 0.0035), 0, 1.02, -3.6015);                    // centre coupling plate
   P.add('hullDark', torus(0.075, 0.005, 14), 0, 1.02, -3.6005, Math.PI / 2, 0, 0); // coupling ring (z −3.5955..−3.6055 — ≤1 mm past the plate's own column)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDark', box(0.15, 0.09, 0.04), s * 1.28, 1.70, -3.615);
     P.add('hullDetail', box(0.05, 0.16, 0.08), s * 0.85, 1.10, -3.62);         // shackles (tucked to the plate; r3: +0.10 clear of the grown hex rims)
     // rear mud flaps behind the sprockets: the ref −3.72 column reads a
@@ -8803,7 +9623,7 @@ function buildKF51(P) {
   // unbroken box is edge-on invisible to the clipped slice cameras). The
   // outer lip steps to ±1.74 over the tail zone (ref station-0 width 3.48)
   // and the ±1.80 front column stays the bare 0.71..1.12 rail band.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (let k = 0; k < 15; k++) {
       const zc = -3.485 + 0.4467 * k;
       P.add('hull', box(0.18, 0.05, 0.435), s * 1.70, 1.335, zc);              // inner run y 1.31..1.36 (−3.70..2.86)
@@ -8841,7 +9661,7 @@ function buildKF51(P) {
   // cover miss (edge col falling off the interp span). Left rail thinned
   // to the ref rib; left strip pinned ≥13mm off the column boundary; left
   // stubs pulled onto the mid course so no 0.22+ band can re-flip the col.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (let k = 0; k < 9; k++) {
       const zc = -2.15 + 0.465 * k;
       // VISUAL r1 #2 (wheel exposure) — the deep face and the visible mid
@@ -8900,7 +9720,7 @@ function buildKF51(P) {
       // against the deep wall. Mask: pier ∪ wall ∪ wheels ⊇ the old union
       // on every column (wall carries 0.40; pier top chords unchanged).
       const xin = s * 1.57, xout = s * 1.66;
-      const gapPier = (yB, b0, b1, t0, t1) => P.add('hullShadow', slab( // z-extents: bottom b0..b1 (y yB), top t0..t1 (y 0.71)
+      const gapPier = (yB: number, b0: number, b1: number, t0: number, t1: number): void => P.add('hullShadow', slab( // z-extents: bottom b0..b1 (y yB), top t0..t1 (y 0.71)
         [xin, yB, b0], [xout, yB, b0], [xout, yB, b1], [xin, yB, b1],
         [xin, 0.71, t0], [xout, 0.71, t0], [xout, 0.71, t1], [xin, 0.71, t1]));
       for (let w = 0; w < 5; w++) {                              // 5 interior gaps (wheel pairs 2-3 .. 6-7)
@@ -8939,7 +9759,7 @@ function buildKF51(P) {
   periscope(P, 'hullDetail', 0.80, 1.63, 1.72, 0.3);
   // headlight pods ON the glacis (the oracle's 1.445 bump at z 3.02, falling
   // 1.415 by 3.14 — pods slimmed so the 3.14 column reads the bare glacis)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hull', box(0.24, 0.10, 0.14), s * 1.05, 1.375, 3.05, -0.16, 0, 0);
     // VISUAL r1 #7 — light clusters: twin lenses in a dark bezel + two brush
     // guard bars, all inside the certified pod bump (y ≤ 1.445, z ≤ 3.13,
@@ -9021,7 +9841,7 @@ function buildKF51(P) {
   // frozen-box law's vertical twin). Two buried contact shims restore the
   // exact 0.005 floor under the band bottom run (sub-pixel sliver, dark,
   // under-track — invisible at render scale).
-  for (const s of [-1, 1]) P.add('hullDark', box(0.02, 0.010, 0.02), s * 1.262, 0.010, -1.585);
+  for (const s of [-1, 1] as const) P.add('hullDark', box(0.02, 0.010, 0.02), s * 1.262, 0.010, -1.585);
   // engine deck furniture — r5 #6 REAR DECK DE-INVENT (hero-zoom): the fan
   // discs + pale torus shoulder arcs + long slat grilles had no ref
   // counterpart (ref deck = dot-perforated dark plates + low stowage).
@@ -9031,7 +9851,7 @@ function buildKF51(P) {
   // fan spots (tone block — moat-class plate + true-dark bore dots) and low
   // strap-lidded stowage boxes on the old louvre-field footprints, capped
   // at 1.839 under the 1.8415 deck-band side line.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hull', box(0.34, 0.044, 0.42), s * 1.30, 1.817, -2.32);             // stowage lid (top 1.839 < band 1.8415)
     P.add('hull', box(0.30, 0.044, 0.36), s * 1.28, 1.817, -2.80);
     P.add('hullDark', box(0.36, 0.010, 0.028), s * 1.30, 1.833, -2.42);        // lid straps (flush, top 1.838)
@@ -9056,7 +9876,7 @@ function buildKF51(P) {
   // footprint — the r2 side-only strips left the camo bleeding hull→turret
   // across the front and rear arcs in top/toptilt. Every new piece follows
   // its deck/glacis rows at +6..10 mm (sloped-deck strip law).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     const bx0 = s * 1.435, bx1 = s * 1.525;
     P.add('hullShadow', slab(                                                  // z −0.49..0.30 (deck 1.615 → 1.62)
       [bx0, 1.613, 0.30], [bx1, 1.613, 0.30], [bx1, 1.608, -0.49], [bx0, 1.608, -0.49],
@@ -9105,7 +9925,7 @@ function buildKF51(P) {
   });
   // VISUAL r1 #2 dressing (all inside certified unions — the gate's mask
   // pass renders a white override material, so tone/bucket carries nothing):
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // bay AO wall behind the exposed wheel row (isu122s/abrams recipe): the
     // inter-wheel slits otherwise show the camo tub at x 1.14.
     // r4 #5: the wall keeps its certified 0.42..0.74 envelope; a buried lip
@@ -9205,7 +10025,7 @@ function buildKF51(P) {
   // shell course is laid in ~0.45 m z-segments so each slice window
   // catches a frontal face; segment planes are coincident (no silhouette
   // change in side/plan/front).
-  const zseg = (zF, zR, n, fn) => {
+  const zseg = (zF: number, zR: number, n: number, fn: (front: number, rear: number) => void): void => {
     const L = (zF - zR) / n;
     for (let i = 0; i < n; i++) fn(zF - L * i, zF - L * (i + 1));
   };
@@ -9223,7 +10043,7 @@ function buildKF51(P) {
   // returns, not exposed grey trim. Keep the proven geometry and contact
   // line, but paint it through the turret camo bucket so the two long rails
   // no longer read as unpainted fallback strips in the garage heroes.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', box(0.012, 0.027, 2.96), s * 1.4965, 0.1735, 0.50);        // cheek-base armor return
     P.add('turret', box(0.012, 0.027, 3.39), s * 1.4365, 0.1735, -1.015);      // mid-wall armor return
   }
@@ -9256,14 +10076,25 @@ function buildKF51(P) {
   // facet read; the corner strip twists onto the wall-front plane (the
   // casting's corner blend). Sloped faces paint station slices (§C: the
   // sloped zone is one explicit wedge slab; bodies keep frontal faces).
-  const ARC = [[0.32, 2.70], [0.46, 2.70], [0.95, 2.52], [1.30, 2.42], [1.415, 2.16]];
-  const AREAR = [1.85, 1.85, 1.60, 1.15];                                      // body rears (certified apron footprint kept)
+  const ARC: Vec2Tuple[] = [[0.32, 2.70], [0.46, 2.70], [0.95, 2.52], [1.30, 2.42], [1.415, 2.16]];
+  const AREAR: number[] = [1.85, 1.85, 1.60, 1.15];                            // body rears (certified apron footprint kept)
   const YP = 0.139, YB = 0.20, YH = 0.545, HK = 2.798;                         // prow y (1.84w), chin base, hood-top y, hood slope
-  const fslab = (bk, s, b0, b1, b2, b3, t0, t1, t2, t3) => {                   // mirrored 8-corner slab (abrams sideSlab pattern: mirror x AND swap
-    const M = (v) => [s * v[0], v[1], v[2]];                                   // corner order so windings stay outward)
+  const fslab = (
+    bk: string,
+    s: Side,
+    b0: Vec3Tuple,
+    b1: Vec3Tuple,
+    b2: Vec3Tuple,
+    b3: Vec3Tuple,
+    t0: Vec3Tuple,
+    t1: Vec3Tuple,
+    t2: Vec3Tuple,
+    t3: Vec3Tuple,
+  ): void => {                                                                 // mirrored 8-corner slab (abrams sideSlab pattern: mirror x AND swap
+    const mirror = (v: Vec3Tuple): Vec3Tuple => [s * v[0], v[1], v[2]];        // corner order so windings stay outward)
     P.add(bk, s > 0
       ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
-      : slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2)));
+      : slab(mirror(b1), mirror(b0), mirror(b3), mirror(b2), mirror(t1), mirror(t0), mirror(t3), mirror(t2)));
   };
   // centre (gun notch |x| <= 0.32 — the ref's mantlet slot): chin + prow +
   // a low hood stub to the notch floor y 0.30; the shroud emerges through
@@ -9274,14 +10105,14 @@ function buildKF51(P) {
   P.add('turret', slab(                                                        // centre prow wedge: 81.7° chin under, 70.3° hood stub over
     [-0.32, YP, 2.70], [0.32, YP, 2.70], [0.32, YB, 2.28], [-0.32, YB, 2.28],
     [-0.32, 0.145, 2.683], [0.32, 0.145, 2.683], [0.32, 0.30, 2.25], [-0.32, 0.30, 2.25]));
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (let i = 0; i < 4; i++) {
       const [xa, Pa] = ARC[i], [xb, Pb] = ARC[i + 1], R = AREAR[i];
       // hood-top edge: strips 0-2 cap at the y 0.545 crown shoulder; the
       // corner strip blends onto the retracted wall-front plane (twisted
       // quad = the casting's corner crease, slab-crossing at ~(0.30, 1.70))
-      const tA = i < 3 ? [YH, Pa - 1.136] : [YH, Pa - 1.136];
-      const tB = i < 3 ? [YH, Pb - 1.136] : [0.30, 1.70];
+      const tA: Vec2Tuple = i < 3 ? [YH, Pa - 1.136] : [YH, Pa - 1.136];
+      const tB: Vec2Tuple = i < 3 ? [YH, Pb - 1.136] : [0.30, 1.70];
       fslab('turret', s,                                                       // prow wedge: chin band + hood facet meeting at the 6 mm prow land
         [xa, YP, Pa], [xb, YP, Pb], [xb, YB, Pb - 0.42], [xa, YB, Pa - 0.42],
         [xa, 0.145, Pa - 0.017], [xb, 0.145, Pb - 0.017], [xb, tB[0], tB[1]], [xa, tA[0], tA[1]]);
@@ -9640,7 +10471,7 @@ function buildKF51(P) {
   P.add('turretDetail', box(0.018, 0.26, 0.018), 1.03, 0.99, -2.52);           // pot stem onto the shelf (floater guard)
   // smoke clusters on the mid-wall chamfer plane (tube tips ≤1.39: the
   // ±1.44 front columns are the ref's falling cheek line, no smoke there)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDark', box(0.04, 0.24, 0.52), s * 1.385, 0.30, 0.10, 0, s * 0.16, 0);
     KIT.smokeCluster(P, s * 1.16, 0.34, 0.22, 4, s * 1.05, 0.8);
     // r5: flat tie-down cleats, NOT proud lift eyes (a6/hull law extended
@@ -9751,7 +10582,7 @@ function buildKF51(P) {
       // Chained after the fleet ambient-floor hook on these per-build
       // materials (leo2a6 regrime precedent); own cache key; white-mask
       // law: the gate's mask pass overrides materials — silhouette-inert.
-      tm.onBeforeCompile = (shader) => {
+      tm.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
         vehicleAmbientFloorHook(shader);
         shader.fragmentShader = shader.fragmentShader.replace(
           '#include <opaque_fragment>',
@@ -9764,7 +10595,7 @@ function buildKF51(P) {
       };
       tm.customProgramCacheKey = () => 'kf51-track-hicap-r8';
     }
-    const rehook = (m) => {
+    const rehook = <T extends VehicleMaterial>(m: T): T => {
       m.onBeforeCompile = vehicleAmbientFloorHook;
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       return m;
@@ -9785,16 +10616,16 @@ function buildKF51(P) {
     moatMat.color.setHex(0x1d1e13);
     moatMat.envMapIntensity = 0.05;
     P.disposables.push(moatMat);
-    const finishReceipt = {};
+    const finishReceipt: Record<string, number> = {};
     P.hullG.userData.kf51Finish = finishReceipt;
-    const armorShell = (name, geo, toTurret = false) => {
+    const armorShell = (name: string, geo: THREE.BufferGeometry, toTurret = false): void => {
       finishReceipt[name] = (finishReceipt[name] || 0) + 1;
       // P.add keeps the piece in the canonical merged paint bucket, which
       // applies the same box-projected camouflage UVs as the main shell.
       P.add(toTurret ? 'turret' : 'hull', geo);
     };
-    const moatDeck = [[2.18, 1.6004], [0.30, 1.62], [-0.49, 1.615], [-0.80, 1.73], [-1.20, 1.755], [-1.94, 1.79], [-2.30, 1.805], [-2.42, 1.8062]];
-    for (const s of [-1, 1]) {
+    const moatDeck: Vec2Tuple[] = [[2.18, 1.6004], [0.30, 1.62], [-0.49, 1.615], [-0.80, 1.73], [-1.20, 1.755], [-1.94, 1.79], [-2.30, 1.805], [-2.42, 1.8062]];
+    for (const s of [-1, 1] as const) {
       // Keep only a narrow bearing seam at the turret foot. The previous
       // 155 mm moat projected as two large grey rails down both turret
       // sides; 30 mm retains readable separation without covering the
@@ -9842,8 +10673,10 @@ function buildKF51(P) {
     // the stepped hull roof. They taper inward at the top and stop outboard
     // of the mantlet, preserving gun travel while seating the turret through
     // yaw instead of leaving one long black background stripe.
-    for (const s of [-1, 1]) {
-      const ord = (ring) => (s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring);
+    for (const s of [-1, 1] as const) {
+      const ord = (ring: FourPointRing): FourPointRing => (
+        s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
+      );
       armorShell('kf51TurretLowerCollar', KIT.slab(
         ...ord([[s * 1.18, 0.075, 1.78], [s * 1.46, 0.075, 1.78], [s * 1.46, 0.075, -2.45], [s * 1.18, 0.075, -2.45]]),
         ...ord([[s * 1.16, 0.190, 1.78], [s * 1.44, 0.190, 1.78], [s * 1.44, 0.190, -2.45], [s * 1.16, 0.190, -2.45]])), true);
@@ -9853,9 +10686,11 @@ function buildKF51(P) {
     // at y=.81 and a side return climbs to the fender tip. Both pieces sit
     // outboard of the moving track envelope and are hull-owned, so the flaps
     // no longer float in front of the idlers.
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       const sideName = s < 0 ? 'kf51TrackShoulderL' : 'kf51TrackShoulderR';
-      const ord = (ring) => (s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring);
+      const ord = (ring: FourPointRing): FourPointRing => (
+        s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
+      );
       armorShell(sideName, KIT.slab(
         ...ord([[s * 1.18, 0.800, 3.758], [s * 1.72, 0.800, 3.758], [s * 1.72, 1.235, 3.690], [s * 1.18, 1.235, 3.690]]),
         ...ord([[s * 1.18, 0.800, 3.718], [s * 1.72, 0.800, 3.718], [s * 1.72, 1.235, 3.650], [s * 1.18, 1.235, 3.650]])));
@@ -9872,10 +10707,10 @@ function buildKF51(P) {
     tireMat.envMapIntensity = 0.0;
     P.disposables.push(wornDish, wornDrum, tireMat);
     P.hullG.traverse((ob) => {
-      if (!ob.isMesh && !ob.isInstancedMesh) return;
+      if (!(ob instanceof THREE.Mesh) || Array.isArray(ob.material)) return;
       const m = ob.material;
-      if (!m || !m.color || !m.color.getHex) return;
-      if (ob.isInstancedMesh && m === P.mats.rubber) {
+      if (!(m instanceof THREE.MeshStandardMaterial)) return;
+      if (ob instanceof THREE.InstancedMesh && m === P.mats.rubber) {
         // r6 #1a WHEEL-FACE DE-INVENT (critic r5: "ref wheels PLAIN" — the
         // 12-bolt ring + recess annulus + hub sidewall were invented; the
         // ref wheel zone is FLAT 51-58, p10 51.1). TWO instanced meshes
@@ -9884,12 +10719,13 @@ function buildKF51(P) {
         // point (strictly interior furniture: annulus/bolts sat inside the
         // dish/hub axial envelope — mask-inert); the tires keep tireMat.
         ob.geometry.computeBoundingBox();
-        if (ob.geometry.boundingBox.max.y < 0.30) {
+        const bounds = ob.geometry.boundingBox;
+        if (bounds && bounds.max.y < 0.30) {
           ob.geometry.scale(0.001, 0.001, 0.001);        // dark insert: annulus + sidewall + 12 bolt dots deleted
         } else {
           ob.material = tireMat;                         // instanced tire rings (identity test: the color-value tests below can't tell them from the inner chain)
         }
-      } else if (ob.isInstancedMesh && m.color.getHex() === 0x171614) {
+      } else if (ob instanceof THREE.InstancedMesh && m.color.getHex() === 0x171614) {
         // r3 #2 — SAW-TOOTH CUT (geometry, kf51-private: shoe.pad is built
         // per rig). The pad/grouser stack stood 85 mm proud of the band and
         // fringed the whole loop as a sawblade; pitch is mask-locked but
@@ -9910,7 +10746,7 @@ function buildKF51(P) {
         // the ref's flat 63.8 leg class), hue-preserving scalar — R>G
         // warmth lock intact; side faces render 45-60 and never engage
         // (locked side-strip parity byte-identical).
-        m.onBeforeCompile = (shader) => {
+        m.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
           vehicleAmbientFloorHook(shader);
           shader.fragmentShader = shader.fragmentShader.replace(
             '#include <opaque_fragment>',
@@ -9926,12 +10762,12 @@ function buildKF51(P) {
         m.envMapIntensity = 0.05;
         m.roughness = 1.0;
         m.metalness = 0.04;
-      } else if (ob.isInstancedMesh && m.color.getHex() === 0x27251f) {
+      } else if (ob instanceof THREE.InstancedMesh && m.color.getHex() === 0x27251f) {
         rehook(m).color.setHex(0x020202);                // r5 #3: inner chain / tread recess into the sub-floor ramp — the between-shoe gaps carry the ref's p10-32 dark tail (0x2c2f26 and 0x040404 both floor at 52; the collapse needs <0x04)
         m.envMapIntensity = 0.02;
       } else if (m === P.mats.wheels) {
-        ob.material = ob.isInstancedMesh ? wornDish : wornDrum;
-        if (ob.isInstancedMesh) {
+        ob.material = ob instanceof THREE.InstancedMesh ? wornDish : wornDrum;
+        if (ob instanceof THREE.InstancedMesh) {
           // r6 #1a: crush the painted 8-bolt ring out of the road-wheel
           // disc (the pale bolt-dot circles around the hub — invented; ref
           // wheels plain). Bolt verts live alone in the radial band
@@ -9958,13 +10794,13 @@ function buildKF51(P) {
     // (real 0x15-0x28 with env ~0.05) own the lit-top 26-40 band (the r4
     // moat's 31 is the proof case). All pieces silhouette-interior or
     // sub-raster proud like the moat shell.
-    const tone = (mat, geo, toTurret) => {
+    const tone = (mat: THREE.Material, geo: THREE.BufferGeometry, toTurret = false): void => {
       const mesh = new THREE.Mesh(geo, mat);
       mesh.receiveShadow = true;
       (toTurret ? P.turretG : P.hullG).add(mesh);
       P.disposables.push(geo);
     };
-    const mkTone = (hex, env) => {
+    const mkTone = (hex: number, env: number): VehicleMaterial => {
       const m = rehook(P.mats.shadow.clone());
       m.color.setHex(hex);
       m.envMapIntensity = env;
@@ -9976,7 +10812,7 @@ function buildKF51(P) {
     // flat from every view — the ONLY route into bands the shade floors
     // wall off (24-28 on unlit faces, sub-40 charcoal in cast-shadow deck
     // zones). White-mask override replaces it in the gate pass (proven).
-    const flat = (hex, name = '') => {
+    const flat = (hex: number, name = ''): THREE.MeshBasicMaterial => {
       const m = new THREE.MeshBasicMaterial({ color: hex });
       m.name = name;
       P.disposables.push(m);
@@ -10017,7 +10853,7 @@ function buildKF51(P) {
     // (which hung inside the track lane over the sprocket wrap) to x 0.944,
     // one voxel inboard of the band's 0.9685 inner face and 2 cm short of
     // the pad-occlusion edge, so the rendered V composition barely moves.
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       tone(chevFloor, KIT.xform(KIT.box(0.140, 0.74, 0.0022), s * 0.5678, 1.1285, -3.6010, 0, 0, s * 1.3337)); // arm channel floor
     }
     tone(chevFloor, KIT.slab(                                                  // apex trapezoid recess floor
@@ -10026,7 +10862,7 @@ function buildKF51(P) {
     tone(chevFloor, KIT.xform(KIT.box(0.50, 0.135, 0.0022), 0, 0.795, -3.6010)); // tie bar channel floor
     // #1 chevron member frames: pale bevel lip on each LOWER edge, shadow
     // line on each UPPER edge (the beveled-recessed-frame pair)
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       tone(edgeDark, KIT.xform(KIT.box(0.018, 0.72, 0.0024), s * 0.5863, 1.2064, -3.6013, 0, 0, s * 1.3337));
       tone(paleLip, KIT.xform(KIT.box(0.022, 0.72, 0.0014), s * 0.5485, 1.0498, -3.6014, 0, 0, s * 1.3337)); // d 0.0014: the skyward ribbon face fired a 94-luma glint sliver at d 0.0026 (mint-ribbon law class)
       tone(paleLip, KIT.xform(KIT.box(0.014, 0.26, 0.0014), s * 0.225, 1.18, -3.6013, 0, 0, s * -0.6435)); // apex side rails
@@ -10091,7 +10927,7 @@ function buildKF51(P) {
     // ~2 mm proud along the facet normal (0, 0.934, 0.334). They read as
     // the ref's winged-mantlet splash plates ON the cheek facets, x
     // 0.48..0.85 clear of the 0.32 notch and below the 0.36+ eyebrows.)
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       tone(wingPale, KIT.xform(KIT.box(0.38, 0.085, 0.004), s * 0.665, 0.304, 2.169, -1.2273, s * 0.1230, s * 0.53), true);
       tone(moatMat, KIT.xform(KIT.box(0.24, 0.02, 0.003), s * 0.653, 0.311, 2.149, -1.2273, s * 0.1230, s * 0.53), true);
       tone(moatMat, KIT.xform(KIT.box(0.24, 0.02, 0.003), s * 0.677, 0.297, 2.189, -1.2273, s * 0.1230, s * 0.53), true);
@@ -10130,7 +10966,7 @@ function buildKF51(P) {
     // ref's own flap faces, previously our two worst plan columns).
     const flapRear16 = flat(0x292c22, 'cot:kf51-mudguard');
     const flapFront25 = flat(0x313529, 'cot:kf51-mudguard');
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       tone(flapRear16, KIT.xform(KIT.box(0.50, 0.42, 0.024), s * 1.46, 0.60, -3.700));
       tone(flapFront25, KIT.xform(KIT.box(0.50, 0.42, 0.024), s * 1.46, 0.60, 3.756));
     }
@@ -10164,7 +11000,7 @@ function buildKF51(P) {
     // 0.741..0.851 body-critical band — REGISTRATION-SAFE by construction).
     // Segmented at the certified joints (gaps let the dark seams through =
     // the ref band's p10 58.6 texture) with a two-tone alternation.
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       for (let k = 0; k < 12; k++) {
         const aft = k < 9;
         const zc = aft ? -2.15 + 0.465 * k : 2.025 + 0.465 * (k - 9);
@@ -10186,7 +11022,16 @@ function buildKF51(P) {
     // roofDark2 patch + strap + a pale lit-edge sliver on the +z edge.
     // Pads grown toward the ref weight (0.34x0.50 / 0.56x0.46 — still
     // plan-interior on the 2.525w roof course, <=+10mm over the roof).
-    const rrect = (mat, cx, cz, w, d, r, y, th) => {
+    const rrect = (
+      mat: THREE.Material,
+      cx: number,
+      cz: number,
+      w: number,
+      d: number,
+      r: number,
+      y: number,
+      th: number,
+    ): void => {
       tone(mat, KIT.xform(KIT.box(w - 2 * r, th, d), cx, y, cz), true);
       tone(mat, KIT.xform(KIT.box(w, th, d - 2 * r), cx, y, cz), true);
       for (const sx of [-1, 1]) {
@@ -10211,7 +11056,7 @@ function buildKF51(P) {
     // as an unbroken bright roofline coping in the heroes. Segmented runs
     // with real gaps + mid-tone members (widths up a step so the roof p90
     // pale area survives the cuts).
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       tone(paleStrip, KIT.xform(KIT.box(0.11, 0.004, 0.46), s * 0.86, 0.8177, s > 0 ? -0.62 : -0.52), true);
       tone(paleStrip2, KIT.xform(KIT.box(0.11, 0.004, 0.30), s * 0.86, 0.8177, s > 0 ? -0.08 : 0.02), true);
       tone(paleStrip, KIT.xform(KIT.box(0.11, 0.004, 0.34), s * 0.86, 0.8177, s > 0 ? 0.35 : 0.45), true);
@@ -10228,7 +11073,7 @@ function buildKF51(P) {
     // (pier-face overlays tried and REMOVED: ref gaps read ~51 at p25 — the
     // certified 52-class piers already match; only the wedge zone goes black)
     const bayVoid = mkTone(0x010101, 0.0);               // r6 #1c: wedges join the rings in the 25.8 class (ref wheel-zone dark tail p5 25.8, nothing at 16; 0x020202 measured FLOORED ~52 here — 0x010101 is the reachable step)
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       tone(bayVoid, KIT.xform(KIT.box(0.002, 0.325, 5.09), s * 1.1625, 0.5875, 0.145));   // AO wall face overlay (the wedges read ~42 now = one step above black, ref-plain zone)
       tone(edgeDark, KIT.xform(KIT.box(0.002, 0.036, 4.17), s * 1.1625, 0.4215, -0.29375)); // wall lip strip: TRUE-DARK crevice line under the hem — the small-area carrier of the ref zone's p5 25.8 dark tail
     }
@@ -10237,7 +11082,7 @@ function buildKF51(P) {
     // r6 #7b METRONOME BREAK: every dot grid/row re-laid on hand-jittered
     // positions with drops (the exact 0.15/0.145/0.20 pitches read as
     // machine rhythm at 640 — the ref deck texture is irregular).
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       tone(deckPlate, KIT.xform(KIT.box(0.74, 0.012, 0.62), s * 0.74, 1.8215, -2.75));
       for (const [dx, dz] of [[-0.31, -2.545], [-0.16, -2.52], [0.02, -2.55], [0.155, -2.535], [0.30, -2.56],
         [-0.28, -2.69], [-0.13, -2.665], [0.04, -2.70], [0.185, -2.67],
@@ -10326,7 +11171,13 @@ function buildKF51(P) {
     // repeated its brown motif ~every 2.0 m because one v-band tiled in u
     // along the hull; rotating mixes v per repeat so no two repeats sample
     // the same band).
-    const remap = (mesh, k, du, dv, th) => {
+    const remap = (
+      mesh: THREE.Mesh | undefined,
+      k: number,
+      du: number,
+      dv: number,
+      th: number,
+    ): void => {
       if (!mesh || !mesh.geometry || !mesh.geometry.attributes.uv) return;
       const uv = mesh.geometry.attributes.uv;
       const c = Math.cos(th), s = Math.sin(th);
@@ -10336,19 +11187,23 @@ function buildKF51(P) {
       }
       uv.needsUpdate = true;
     };
-    let turretMesh = null, gunMountMesh = null, hullMesh = null;
+    const meshes: {
+      turret?: THREE.Mesh;
+      gunMount?: THREE.Mesh;
+      hull?: THREE.Mesh;
+    } = {};
     P.turretG.traverse((o) => {
-      if (!o.isMesh || o.isInstancedMesh || o.material !== P.mats.hull) return;
-      if (o.parent === P.gunG) gunMountMesh = gunMountMesh || o;
-      else turretMesh = turretMesh || o;
+      if (!(o instanceof THREE.Mesh) || o instanceof THREE.InstancedMesh || o.material !== P.mats.hull) return;
+      if (o.parent === P.gunG) meshes.gunMount ??= o;
+      else meshes.turret ??= o;
     });
     P.hullG.traverse((o) => {
-      if (!o.isMesh || o.isInstancedMesh || o.material !== P.mats.hull) return;
-      hullMesh = hullMesh || o;
+      if (!(o instanceof THREE.Mesh) || o instanceof THREE.InstancedMesh || o.material !== P.mats.hull) return;
+      meshes.hull ??= o;
     });
-    remap(turretMesh, 0.573, 0.31, 0.17, -0.38);
-    remap(gunMountMesh, 0.573, 0.31, 0.17, -0.38);
-    remap(hullMesh, 1.45, 0.12, 0.55, 0.62);
+    remap(meshes.turret, 0.573, 0.31, 0.17, -0.38);
+    remap(meshes.gunMount, 0.573, 0.31, 0.17, -0.38);
+    remap(meshes.hull, 1.45, 0.12, 0.55, 0.62);
     // #8 pano-lid pop: the SEOSS dome cap reads +7V lighter than the deck on
     // the ref. Vertex-color lift on the dome step/core verts only (the well
     // collar/ring are detail-bucket meshes; the parapet posts sit at r 0.298
@@ -10360,11 +11215,14 @@ function buildKF51(P) {
     // fill). x0.71 on the brow slab's verts (the only turret-bucket verts
     // inside y 0.44..0.725 x z 1.335..1.44) extrapolates to ~40.
     // Ladder target: brow ~40 / dip ~43-46 / base 50-58 = the ref polarity.
+    const turretMesh = meshes.turret;
     if (turretMesh && turretMesh.geometry.attributes.color) {
       const pos = turretMesh.geometry.attributes.position;
       const col = turretMesh.geometry.attributes.color;
-      const tint = (i, k) => col.setXYZ(i,
-        Math.min(1.6, col.getX(i) * k), Math.min(1.6, col.getY(i) * k), Math.min(1.6, col.getZ(i) * k));
+      const tint = (i: number, k: number): void => {
+        col.setXYZ(i, Math.min(1.6, col.getX(i) * k),
+          Math.min(1.6, col.getY(i) * k), Math.min(1.6, col.getZ(i) * k));
+      };
       for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
         const dx = x + 0.51, dz = z + 0.535;
@@ -10395,7 +11253,7 @@ function buildKF51(P) {
 // source-specific build separate so old mask compensations cannot leak back
 // into the live tank.
 // ---------------------------------------------------------------------------
-function buildKF51OwnerExact(P) {
+function buildKF51OwnerExact(P: TankBuilderPort) {
   const { box, cylX, cylY, cylZ, torus, frustum, polyMultiLoft, buildGun, periscope,
     liftEye, headlight, jerryCan } = KIT;
   const slab = orientedSlab;
@@ -10479,7 +11337,7 @@ function buildKF51OwnerExact(P) {
   // ~68% of the 0.81 wheel disc reading below (family 40-70 band). §5.263:
   // widest skirt face 1.7975 < the ±1.80 anchor (the cage rails below own
   // the anchor face EXACT).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     const z0 = -3.02, z1 = 2.62, n = 7, L = (z1 - z0) / n;
     for (let k = 0; k < n; k++) {
       const zc = z0 + L * (k + 0.5);
@@ -10519,7 +11377,7 @@ function buildKF51OwnerExact(P) {
   }
   // ---- German fender/deck grammar (leo1a5/a6m census set at this frame;
   // deck kit tops <= 1.71 — the low KF51 turret's sweep plane)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // slim fore fender bin (lid + latches) seated on the fore-fender run;
     // top 1.69 stays under the 1.71 turret-sweep plane
     P.add('hullDetail', box(0.26, 0.13, 0.88), s * 1.62, 1.607, 1.78);
@@ -10598,13 +11456,13 @@ function buildKF51OwnerExact(P) {
   // shoulder belt; the former profile's stacked crown is intentionally gone.
   P.turretG.position.set(0, 1.72, 0.30);
   P.add('turret', cylY(1.00, 1.08, 0.12, P.q ? 24 : 14), 0, -0.08, -0.02);
-  const turretPlan = [
+  const turretPlan: Vec2Tuple[] = [
     [-0.36, 1.95], [0.36, 1.95], [1.48, 1.28], [1.55, 0.18],
     [1.40, -2.43], [0.96, -2.96], [-0.96, -2.96], [-1.40, -2.43],
     [-1.55, 0.18], [-1.48, 1.28],
   ];
   const rightTurretWall = turretPlan.slice(1, 6);
-  const turretWallHalfWidthAt = (z) => {
+  const turretWallHalfWidthAt = (z: number): number => {
     for (let i = 0; i < rightTurretWall.length - 1; i++) {
       const [x0, z0] = rightTurretWall[i];
       const [x1, z1] = rightTurretWall[i + 1];
@@ -10620,7 +11478,7 @@ function buildKF51OwnerExact(P) {
   // The panel belt sits midway up the loft wall. At that height the wall is
   // about 94-96% of the plan ring; use the same taper station-by-station so
   // the aft panels do not remain stranded at the widest cheek datum.
-  const turretPanelWallXAt = (z) => turretWallHalfWidthAt(z) * (0.945 + Math.max(0, -z) * 0.006);
+  const turretPanelWallXAt = (z: number): number => turretWallHalfWidthAt(z) * (0.945 + Math.max(0, -z) * 0.006);
   P.add('turret', polyMultiLoft(turretPlan, [
     { height: -0.01, inset: 0.93 },
     { height: 0.24, inset: 1.00 },
@@ -10632,7 +11490,7 @@ function buildKF51OwnerExact(P) {
   ]));
 
   // Buried front cheek undercuts and the narrow central mantlet channel.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDark', slab(
       [s * 0.18, 0.09, 1.55], [s * 0.48, 0.10, 1.48], [s * 1.31, 0.23, 0.92], [s * 1.07, 0.22, 0.84],
       [s * 0.18, 0.23, 1.55], [s * 0.48, 0.25, 1.48], [s * 1.31, 0.34, 0.92], [s * 1.07, 0.34, 0.84]));
@@ -10673,8 +11531,8 @@ function buildKF51OwnerExact(P) {
   P.add('turret', box(0.58, 0.055, 0.46), 0.47, 0.603, -0.22, 0, -0.10, 0);
   // These two forward periscopes previously started 30 mm above the roof.
   // Lower their armored bodies into the plate while leaving the glass clear.
-  periscope(P, 'turret', 0.18, 0.615, 0.34, 0.17, 0.09, 0.12, 0);
-  periscope(P, 'turret', -0.08, 0.615, 0.42, 0.15, 0.08, 0.10, 0);
+  periscope(P, 'turret', 0.18, 0.615, 0.34, 0.17);
+  periscope(P, 'turret', -0.08, 0.615, 0.42, 0.15);
 
   // The source roof is low, not featureless.  Give its two crew stations a
   // readable coaming/lid/hinge cadence and carry the access-panel seams
@@ -10687,7 +11545,7 @@ function buildKF51OwnerExact(P) {
   for (const [x, z, yaw] of [
     [-0.72, -0.12, Math.PI / 2], [-0.48, 0.13, 0], [-0.24, -0.12, Math.PI / 2],
     [0.24, -0.18, Math.PI / 2], [0.48, 0.02, 0], [0.70, -0.25, Math.PI / 2],
-  ]) periscope(P, 'turretDetail', x, 0.682, z, yaw, 0.080, 0.055, 0.040);
+  ]) periscope(P, 'turretDetail', x, 0.682, z, yaw);
   for (const [z, w] of [[0.70, 1.18], [0.18, 1.42], [-0.64, 1.72], [-1.46, 1.78], [-2.18, 1.54]]) {
     P.add('turretDark', box(w, 0.014, 0.028), 0, 0.587, z);
   }
@@ -10699,7 +11557,7 @@ function buildKF51OwnerExact(P) {
   // side sheets without turning the Panther into an ERA brick.  Each armor
   // face overlaps the connected turret wall; the thin dark joints are
   // recessed visually and cannot read as floating panels.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     const sidePanels = [
       [0.82, 0.34, 0.22], [0.42, 0.42, 0.24], [-0.04, 0.46, 0.25],
       [-0.54, 0.47, 0.25], [-1.05, 0.47, 0.24], [-1.56, 0.45, 0.23],
@@ -10770,7 +11628,7 @@ function buildKF51OwnerExact(P) {
   for (const y of [0.25, 0.47]) {
     P.add('turretDetail', box(1.88, 0.028, 0.018), 0, y, -2.992);
   }
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     liftEye(P, 'turretDetail', s * 0.94, 0.59, -1.74, s * 2.2);
     P.add('turretDetail', box(0.035, 0.12, 0.035), s * 1.03, 0.62, -2.05);
   }
@@ -10779,7 +11637,7 @@ function buildKF51OwnerExact(P) {
   // bustle corners (every KF51 photo class); base pots + thin near-vertical
   // rods, tips ~3.1 world = inside the SEOSS/RWS height band (no new
   // heightM column class; §B5: turretG-owned, yaws with the mass).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDetail', cylY(0.030, 0.038, 0.06, 8), s * 1.02, 0.565, -2.42);
     const whip = FITTINGS.antennaWhip({
       mats: P.mats, h: s < 0 ? 0.84 : 0.78, r: 0.011,
@@ -10795,7 +11653,7 @@ function buildKF51OwnerExact(P) {
   // Turret-owned (§B5, yaws with the mass); rails stand 2-4 cm off the
   // b3d15714 sidePanels faces with dark brackets bridging (the §5.335
   // flank-panel grammar is untouched underneath).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (let sec = 0; sec < 2; sec++) {
       const z0 = -2.55 + sec * 0.62;
       for (let row = 0; row < 6; row++) {
@@ -10873,20 +11731,20 @@ function buildKF51OwnerExact(P) {
 // rear spare links), loaded wrap baskets (bespoke rear + FITTINGS side
 // racks). Fittings census: pintleMG + spareTrackLinks ×2 + stowageRack ×2.
 // ---------------------------------------------------------------------------
-function buildLeo1A5Profile(P) {
+function buildLeo1A5Profile(P: TankBuilderPort) {
   const { box, cylX, cylY, cylZ, torus, frustum, sph, buildGun, buildRunningGear,
     headlight, liftEye, periscope, towCable, smokeCluster, stowage, jerryCan,
     tarpRoll, ammoCan, shovelTool, xform } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const { rng } = P;
   const deck = [[1.55, 1.38], [0.2, 1.38], [-1.2, 1.365], [-2.6, 1.335], [-3.44, 1.30]];
-  const glaY = (z) => 1.38 - 0.33166 * (z - 1.55);            // the one glacis plane
+  const glaY = (z: number): number => 1.38 - 0.33166 * (z - 1.55);            // the one glacis plane
 
   // ---- hull core: lower hull between the tracks + full-width sponson band
   // + the sloped upper side plates (the Leopard 1 tumblehome) + deck band.
   P.add('hull', box(2.08, 0.50, 6.72), 0, 0.65, 0.03);        // lower hull ±1.04, y 0.40..0.90
   P.add('hull', box(3.24, 0.11, 5.62), 0, 1.005, -0.65);      // sponson band ±1.62, y 0.95..1.06 (top-run shoes crest 0.91)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hull', slab(                                       // upper side plate, fore (45° lean-in)
       [s * 1.58, 1.06, 2.10], [s * 1.62, 1.06, 2.10], [s * 1.62, 1.06, -1.2], [s * 1.58, 1.06, -1.2],
       [s * 1.26, 1.38, 2.06], [s * 1.30, 1.38, 2.06], [s * 1.30, 1.365, -1.2], [s * 1.26, 1.365, -1.2]));
@@ -10908,7 +11766,7 @@ function buildLeo1A5Profile(P) {
   P.add('hull', slab(                                         // lower nose (boat bow)
     [-1.045, 0.40, 3.20], [1.045, 0.40, 3.20], [1.045, 0.40, 2.90], [-1.045, 0.40, 2.90],
     [-1.045, 0.72, 3.545], [1.045, 0.72, 3.545], [1.045, 0.72, 3.30], [-1.045, 0.72, 3.30]));
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hull', slab(                                       // co-planar glacis wing over the track front
       [s * 1.045, 1.33, 1.55], [s * 1.60, 1.33, 1.55], [s * 1.60, 0.998, 2.55], [s * 1.045, 0.998, 2.55],
       [s * 1.045, 1.38, 1.55], [s * 1.60, 1.38, 1.55], [s * 1.60, 1.048, 2.55], [s * 1.045, 1.048, 2.55]));
@@ -10921,7 +11779,7 @@ function buildLeo1A5Profile(P) {
   // idler/track front shows head-on), rubber-dark drops/flaps, and
   // SCALLOPED apron segments (hem 0.78 bays / 0.71 tabs — the wavy 1A5
   // apron edge) so the rollers and climbing runs read under the hem.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDetail', box(0.625, 0.03, 6.87), s * 1.3725, 0.985, -0.015);   // plank x 1.06..1.685, y 0.97..1.00
     P.add('hullDetail', box(0.625, 0.03, 0.13), s * 1.3725, 0.985, 3.47);     // front cap over the idler
     P.addMudguard(`leopard1a5-front-drop-${s}`, 'hullRubber',
@@ -10942,7 +11800,7 @@ function buildLeo1A5Profile(P) {
   P.mats.rubber.color.setHex(0x33352b);                       // weathered rubber (a4 recipe)
   // ---- German fender grammar (§5.247 G5): stowage bins (outer face 1.66 <
   // the 1.685 anchor), Bosch horn, width-indicator rods on the bow corners.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (const [bz, bl] of [[0.91, 1.22], [-1.35, 1.30]]) {
       P.add('hullDetail', box(0.29, 0.17, bl), s * 1.515, 1.085, bz);         // bin body (seats into the sponson slope)
       P.add('hullDetail', box(0.31, 0.025, bl + 0.02), s * 1.515, 1.180, bz); // lid lip
@@ -10961,11 +11819,11 @@ function buildLeo1A5Profile(P) {
   // stick-on vents; the banks are now large corner-cut ribbed panels
   // (rx −0.45 rake + ry corner turn) with real rib ladders.
   P.add('hull', box(2.08, 0.88, 0.10), 0, 0.86, -3.475);      // center rear wall
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hull', box(0.30, 0.30, 0.10), s * 1.19, 1.15, -3.47); // outboard tops (over the 0.95 sprocket-orbit crest)
   }
   P.add('hull', box(2.60, 0.045, 0.16), 0, 1.295, -3.465);    // deck lip (tail −3.545)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // corner-cut louvre bank: near-vertical panel turning rear-plate → side
     // (ry only; every corner computed INSIDE the −3.545 tail anchor:
     // span x 0.624..1.281, z −3.538..−3.262 — the measured scan corner cut)
@@ -10996,7 +11854,7 @@ function buildLeo1A5Profile(P) {
   // ---- glacis furniture: splash-board V (rx follows the plane — §B8.1
   // GLACIS-FURNITURE rx sign law), driver station front-RIGHT, headlights on
   // the mudguards with brush guards, tow cable, spare links fitting, shovel.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDetail', box(0.90, 0.045, 0.06), s * 0.42, glaY(2.32) + 0.025, 2.32, 0.3217, s * 0.42, 0);
   }
   P.add('hull', cylY(0.26, 0.26, 0.032, P.q ? 20 : 12), 0.62, 1.394, 0.95);   // driver hatch ring
@@ -11006,7 +11864,7 @@ function buildLeo1A5Profile(P) {
   periscope(P, 'hullDetail', 0.84, 1.40, 1.24, 0.3);
   P.add('hull', cylY(0.22, 0.22, 0.028, P.q ? 18 : 12), -0.62, 1.392, 0.90);  // left deck hatch
   P.add('hullDark', torus(0.22, 0.012, P.q ? 18 : 12), -0.62, 1.398, 0.90);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     headlight(P, s * 1.37, 1.075, 3.44, -0.35);
     P.add('hullDark', xform(cylZ(0.044, 0.014, 12), 0, 0, 0.050), s * 1.37, 1.075, 3.44, -0.35, 0, 0);
     P.add('hullDark', xform(cylZ(0.026, 0.05, 10), 0, 0, 0.02), s * 1.19, 1.115, 3.375, -0.35, 0, 0); // blackout lamp inboard
@@ -11035,7 +11893,7 @@ function buildLeo1A5Profile(P) {
   // intake fields behind the ring, central spine, TWO circular cooling-fan
   // rings, framed transverse exhaust grille, fuel caps, access seams, cable.
   // Everything under the bustle sweep stays ≤ 1.376 (< the 1.38 ring plane).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDark', box(0.74, 0.018, 0.92), s * 0.50, 1.364, -1.68);        // intake field
     P.add('hullDetail', box(0.78, 0.022, 0.03), s * 0.50, 1.365, -1.215);     // frame front
     P.add('hullDetail', box(0.78, 0.022, 0.03), s * 0.50, 1.363, -2.145);     // frame rear
@@ -11086,7 +11944,7 @@ function buildLeo1A5Profile(P) {
   // (torus rim lip + hub cap only; bodies of revolution stay visually
   // identical while the idler spins, so no parked-face artifact) inside the
   // ±1.625 track envelope.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // ring radii capped at 0.155 — the shoe guide-horn sweep at the end-wheel
     // wraps reaches r ≈ 0.165 from the wheel axis (§B4 shoe-envelope law)
     P.add('hullTrack', xform(torus(0.132, 0.022, P.q ? 20 : 12), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.553, 0.54, 3.05);
@@ -11109,13 +11967,23 @@ function buildLeo1A5Profile(P) {
   P.add('turret', cylY(0.98, 1.02, 0.10, P.q ? 22 : 14), 0, -0.055, 0.0);     // ring plinth (§B2 slit closure)
   P.add('turret', frustum(0.94, 0.30, -1.24, 0.74, 0.24, -1.20, -0.04, 0.90)); // interior core
   P.add('turret', box(1.50, 0.03, 1.05), 0, -0.025, -0.70);                   // bustle floor (§B2 under-overhang closure)
-  const mirrL = ([x, y, z]) => [-x, y, z];
-  const mslabL = (s2, b0, b1, b2, b3, t0, t1, t2, t3) => (s2 > 0
+  const mirrL = ([x, y, z]: Vec3Tuple): Vec3Tuple => [-x, y, z];
+  const mslabL = (
+    s2: Side,
+    b0: Vec3Tuple,
+    b1: Vec3Tuple,
+    b2: Vec3Tuple,
+    b3: Vec3Tuple,
+    t0: Vec3Tuple,
+    t1: Vec3Tuple,
+    t2: Vec3Tuple,
+    t3: Vec3Tuple,
+  ): THREE.BufferGeometry => (s2 > 0
     ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
     : slab(mirrL(b1), mirrL(b0), mirrL(b3), mirrL(b2), mirrL(t1), mirrL(t0), mirrL(t3), mirrL(t2)));
   // base outline (y −0.04): A(0.96,−1.30) B(1.06,−0.15) C(0.98,+0.34) D(0.60,+0.80)
   // roof outline (y 0.90): A'(0.78,−1.26) B'(0.82,−0.15) C'(0.64,+0.30) D'(0.42,+0.72)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', mslabL(s,                                 // wall P1: rear side panel (lean ~14°)
       [0.82, -0.04, -1.30], [0.96, -0.04, -1.30], [1.06, -0.04, -0.15], [0.92, -0.04, -0.15],
       [0.64, 0.90, -1.26], [0.78, 0.90, -1.26], [0.82, 0.90, -0.15], [0.68, 0.90, -0.15]));
@@ -11141,7 +12009,7 @@ function buildLeo1A5Profile(P) {
     [-0.60, -0.04, 0.46], [0.60, -0.04, 0.46], [0.60, -0.04, 0.82], [-0.60, -0.04, 0.82],
     [-0.58, 0.12, 0.44], [0.58, 0.12, 0.44], [0.58, 0.12, 0.78], [-0.58, 0.12, 0.78]));
   P.add('turret', box(1.06, 0.50, 0.18), 0, 0.35, 0.41);      // slot back plate
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', box(0.10, 0.46, 0.30), s * 0.53, 0.35, 0.63); // trunnion frame cheeks
   }
   P.add('turret', slab(                                       // brow over the mantlet
@@ -11157,7 +12025,7 @@ function buildLeo1A5Profile(P) {
   P.add('turret', box(0.44, 0.09, 0.44), 0.46, 0.94, 0.18);   // pedestal (base on the 0.90 roof)
   P.add('turret', box(0.50, 0.20, 0.50), 0.46, 1.05, 0.18);   // housing 0.95..1.15
   P.add('turretDetail', box(0.54, 0.028, 0.54), 0.46, 1.155, 0.18); // lid (2.59 world < the 2.62 datum)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', box(0.032, 0.20, 0.50), 0.46 + s * 0.262, 1.06, 0.16);    // hood side cheeks
   }
   P.add('turretDark', box(0.40, 0.165, 0.028), 0.46, 1.05, 0.425);  // aperture back panel
@@ -11200,7 +12068,7 @@ function buildLeo1A5Profile(P) {
   // ---- Wegmann smoke banks 2×4 per side (§5.247 G10): bracket plate ON
   // the leaning wall, cup rows PROUD of it and clear of the side racks
   // (racks live aft of z −0.54 — the cups fire forward-out at z −0.18/−0.42).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', box(0.026, 0.30, 0.46), s * 0.945, 0.49, -0.30, 0, 0, s * 0.24);
     smokeCluster(P, s * 0.98, 0.60, -0.18, 4, s * 1.05, 0.85);
     smokeCluster(P, s * 1.00, 0.40, -0.42, 4, s * 1.2, 0.85);
@@ -11226,7 +12094,7 @@ function buildLeo1A5Profile(P) {
   for (let k = 0; k < 5; k++) {
     P.add('turretDetail', box(0.028, 0.49, 0.028), -0.76 + k * 0.38, 0.375, -1.90);
   }
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDetail', xform(box(0.025, 0.52, 0.025), 0, 0, 0, 0, 0, s * 0.64), s * 0.38, 0.375, -1.915); // diagonal stays
     P.add('turretDetail', box(0.035, 0.035, 0.56), s * 0.76, 0.62, -1.58);    // side arms to the bustle
     P.add('turretDetail', box(0.035, 0.035, 0.56), s * 0.76, 0.13, -1.58);
@@ -11244,7 +12112,7 @@ function buildLeo1A5Profile(P) {
   tarpRoll(P, 'turretCloth', -0.10, 0.67, -1.54, 0.95, 0.095, true, P.q ? 12 : 8);
   ammoCan(P, 'turretDark', -0.74, 0.36, -1.54, 0.15);
   ammoCan(P, 'turretDark', 0.42, 0.33, -1.50, -0.22);
-  for (const s of [-1, 1]) {                                        // side racks (fitting census)
+  for (const s of [-1, 1] as const) {                                        // side racks (fitting census)
     const rack = FITTINGS.stowageRack({ mats: P.mats, w: 0.72, d: 0.30, h: 0.28,
       rails: 2, fill: 0.85, seed: s > 0 ? 11 : 12, rotation: [0, s * Math.PI / 2, 0] });
     rack.position.set(s * 1.02, 0.16, -0.90);
@@ -11290,7 +12158,7 @@ function buildLeo1A5Profile(P) {
 // first-party procedural geometry. Its high track course, shallow boat hull,
 // long low cast turret, compact saddle and rear basket set the base shape;
 // A5-only B&V appliqué, EMES-18 and German equipment are then surface-seated.
-function buildLeo1A5ArticulatedProfile(P) {
+function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
   const { box, cylX, cylY, cylZ, torus, sph, buildGun, buildRunningGear,
     headlight, liftEye, towCable, stowage, jerryCan, tarpRoll, ammoCan,
     shovelTool, xform } = KIT;
@@ -11308,10 +12176,10 @@ function buildLeo1A5ArticulatedProfile(P) {
   );
   const upperGlacisRearZ = upperGlacisFrontZ
     - (upperGlacisRearY - upperGlacisFrontY) / upperGlacisRisePerRun;
-  const upperGlacisY = (z) => upperGlacisFrontY
+  const upperGlacisY = (z: number): number => upperGlacisFrontY
     + (upperGlacisFrontZ - z) * upperGlacisRisePerRun;
   const centerDeckRearZ = -1.25;
-  const centerDeckTopY = (z) => THREE.MathUtils.lerp(
+  const centerDeckTopY = (z: number): number => THREE.MathUtils.lerp(
     1.77,
     1.60,
     THREE.MathUtils.clamp(
@@ -11377,8 +12245,8 @@ function buildLeo1A5ArticulatedProfile(P) {
     [1.05, 1.34, -3.34], [-1.05, 1.34, -3.34],
     [-1.24, 1.54, upperGlacisRearZ], [1.24, 1.54, upperGlacisRearZ],
     [1.24, 1.51, -3.34], [-1.24, 1.51, -3.34]));
-  for (const s of [-1, 1]) {
-    const m = (x) => s * x;
+  for (const s of [-1, 1] as const) {
+    const m = (x: number): number => s * x;
     P.add('hull', slab(
       [m(1.05), 1.34, upperGlacisRearZ], [m(1.63), 1.34, upperGlacisRearZ],
       [m(1.63), 1.34, -3.34], [m(1.05), 1.34, -3.34],
@@ -11432,7 +12300,7 @@ function buildLeo1A5ArticulatedProfile(P) {
   // the revised inner shoe edge starts at x=1.17, leaving a literal sightline
   // through the vehicle. These plates are the real hull side behind the running gear,
   // with the return run and suspension still outboard of them.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hull', box(0.08, 0.62, 6.30), s * 0.95, 1.02, -0.05);
     P.add('hull', box(0.10, 0.30, 0.30), s * 0.95, 1.15, 3.18, -0.28, 0, 0);
     P.add('hull', box(0.10, 0.32, 0.28), s * 0.95, 1.12, -3.22, 0.12, 0, 0);
@@ -11477,7 +12345,7 @@ function buildLeo1A5ArticulatedProfile(P) {
   const roundHatchY = centerDeckTopY(0.70);
   P.addEquipment('hull', cylY(0.18, 0.18, 0.025, P.q ? 20 : 14), 0.63, roundHatchY + 0.0125, 0.70);
   P.addEquipment('hull', torus(0.18, 0.012, P.q ? 20 : 14), 0.63, roundHatchY + 0.031, 0.70);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     headlight(P, s * 1.31, 1.30, 3.27, -0.26);
     P.addEquipment('hull', box(0.018, 0.18, 0.16), s * 1.31, 1.33, 3.30, -0.26, 0, 0);
     P.add('hull', box(0.10, 0.10, 0.13), s * 0.70, 0.64, 3.37);
@@ -11495,7 +12363,7 @@ function buildLeo1A5ArticulatedProfile(P) {
 
   // Leopard engine deck: long intake fields, twin fan rings, transverse
   // exhaust bank and rear louvres, all below the rotating basket.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDark', box(0.82, 0.018, 1.04), s * 0.52, 1.785, -1.72);
     P.addEquipment('hull', box(0.86, 0.022, 0.035), s * 0.52, 1.786, -1.20);
     P.addEquipment('hull', box(0.86, 0.022, 0.035), s * 0.52, 1.806, -2.24);
@@ -11517,7 +12385,7 @@ function buildLeo1A5ArticulatedProfile(P) {
   for (let k = 0; k < 7; k++) {
     P.add('hullDetail', box(0.035, 0.38, 0.035), -0.90 + k * 0.30, 1.34, -3.545);
   }
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     const canX = s * 0.72;
     P.addEquipment('hullCloth', box(0.56, 0.66, 0.24), canX, 1.44, -3.45);
     P.addEquipment('hullCloth', box(0.48, 0.09, 0.22), canX, 1.805, -3.45);
@@ -11634,12 +12502,13 @@ function buildLeo1A5ArticulatedProfile(P) {
 
   // Surface-seated A5 Blohm & Voss spaced appliqué. The paired panels form a
   // joined chevron and retain the low cast source shell beneath them.
-  const mirror = (s, p) => [s * p[0], p[1], p[2]];
-  const sideSlab = (s, a, b, c, d, e, f, g, h) => s > 0
+  const mirror = (s: Side, p: Vec3Tuple): Vec3Tuple => [s * p[0], p[1], p[2]];
+  const sideSlab = (s: Side, a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple, d: Vec3Tuple,
+    e: Vec3Tuple, f: Vec3Tuple, g: Vec3Tuple, h: Vec3Tuple): THREE.BufferGeometry => s > 0
     ? slab(a, b, c, d, e, f, g, h)
     : slab(mirror(s, b), mirror(s, a), mirror(s, d), mirror(s, c),
       mirror(s, f), mirror(s, e), mirror(s, h), mirror(s, g));
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // Bury the inner course and the high outer shoulder in the cast shell.
     // The former high corners (x ~= 1.03) sat outside the narrowing turret
     // ellipse and made these cheeks read as detached plates.
@@ -11694,7 +12563,7 @@ function buildLeo1A5ArticulatedProfile(P) {
     mg.rotation.y = 0.34;
     P.turretG.add(mg);
   }
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.addEquipment('turret', box(0.08, 0.28, 0.42), s * 1.22, 0.45, -0.08, 0, 0, s * 0.25);
     for (let k = 0; k < 8; k++) {
       const row = Math.floor(k / 4), col = k % 4;
@@ -11723,7 +12592,7 @@ function buildLeo1A5ArticulatedProfile(P) {
     P.addEquipment('turret', box(0.030, 0.49, 0.030), x, 0.535, bustleRearZ);
     P.addEquipment('turret', box(0.034, 0.034, bustleDepth - 0.03), x, 0.37, bustleCenterZ, -0.10, 0, 0);
   }
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.addEquipment('turret', box(0.040, 0.040, bustleDepth + 0.04), s * 0.92, 0.78, bustleCenterZ);
     P.addEquipment('turret', box(0.040, 0.040, bustleDepth + 0.04), s * 0.92, 0.29, bustleCenterZ);
     P.addEquipment('turret', box(0.055, 0.055, bustleDepth + 0.02), s * 0.76, 0.47, bustleCenterZ, -0.50, 0, 0);
@@ -11857,7 +12726,7 @@ function buildLeo1A5ArticulatedProfile(P) {
 // Bar-armor (slat) cage run: 4 horizontal rails + section verticals +
 // standoff brackets seated into the parent body. Owner-side geometry only —
 // rails are real boxes, brackets bridge to the seat face (floater law).
-function leoSlatRun(P, owner, side, o) {
+function leoSlatRun(P: TankBuilderPort, owner: VehicleOwner, side: Side, o: LeopardSlatRunOptions): void {
   const { box } = KIT;
   const rail = owner === 'hull' ? 'hullDetail' : 'turretDetail';
   const body = owner === 'hull' ? 'hullDark' : 'turretDark';
@@ -11912,7 +12781,7 @@ function leoSlatRun(P, owner, side, o) {
 }
 
 // Transverse bar-armor panel (stern cage) with drop brackets to a seat z.
-function leoSlatRear(P, o) {
+function leoSlatRear(P: TankBuilderPort, o: LeopardSlatRearOptions): void {
   const { box } = KIT;
   const rows = o.rows || 8;
   for (let row = 0; row < rows; row++) {
@@ -11934,19 +12803,21 @@ function leoSlatRear(P, o) {
 // + stern + turret flanks), raised belly line with the bolted mine plate,
 // reinforced crew-hatch hardware, ISAF stowage density; L55 at the
 // 7.18 bore mouth (spec overall 10.97 exactly).
-const LEO2A6M_CHEEK_NOSE = Object.freeze([
+const LEO2A6M_CHEEK_NOSE: readonly Vec2Tuple[] = Object.freeze([
   [0.26, 2.74], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96],
 ]);
-const LEO2A6M_CHEEK_CREST_R = Object.freeze([
+const LEO2A6M_CHEEK_CREST_R: readonly Vec3Tuple[] = Object.freeze([
   [0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73],
   [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.32, 0.58, -0.12],
 ]);
-const LEO2A6M_CHEEK_CREST_L = Object.freeze([
+const LEO2A6M_CHEEK_CREST_L: readonly Vec3Tuple[] = Object.freeze([
   [0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73],
   [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.30, 0.61, -0.10],
 ]);
 
-function sampleLeo2A6MProfile(stations, coordinate, valueIndex = 1) {
+function sampleLeo2A6MProfile(
+  stations: readonly (readonly number[])[], coordinate: number, valueIndex = 1,
+): number {
   if (coordinate <= stations[0][0]) return stations[0][valueIndex];
   for (let index = 1; index < stations.length; index++) {
     const coordinate1 = stations[index][0];
@@ -11958,14 +12829,14 @@ function sampleLeo2A6MProfile(stations, coordinate, valueIndex = 1) {
         (coordinate - coordinate0) / (coordinate1 - coordinate0));
     }
   }
-  return stations.at(-1)[valueIndex];
+  return stations.at(-1)![valueIndex];
 }
 
 // Point and tangent frame on the real A6M upper-cheek plate. The plate is a
 // ruled surface from the low 2A6 nose line to the asymmetric falling crest;
 // sampling by course fraction keeps the outer cassettes down on the turret
 // instead of letting fixed-y rows drift into the air as the crest falls.
-function leo2A6MCheekSurface(side, absX, courseFraction) {
+function leo2A6MCheekSurface(side: Side, absX: number, courseFraction: number) {
   const crest = side > 0 ? LEO2A6M_CHEEK_CREST_R : LEO2A6M_CHEEK_CREST_L;
   const fraction = THREE.MathUtils.clamp(courseFraction, 0, 1);
   const lowerY = 0.235;
@@ -11979,7 +12850,7 @@ function leo2A6MCheekSurface(side, absX, courseFraction) {
   );
 
   const epsilon = 0.002;
-  const framePoint = (x) => {
+  const framePoint = (x: number): THREE.Vector3 => {
     const nZ = sampleLeo2A6MProfile(LEO2A6M_CHEEK_NOSE, x);
     const cY = sampleLeo2A6MProfile(crest, x, 1);
     const cZ = sampleLeo2A6MProfile(crest, x, 2);
@@ -12006,21 +12877,21 @@ function leo2A6MCheekSurface(side, absX, courseFraction) {
   };
 }
 
-function addLeo2A6MCheekCage(P) {
+function addLeo2A6MCheekCage(P: TankBuilderPort) {
   const { box } = KIT;
   const surfaceOffsetM = 0.085;
   const armorTieOffsetM = 0.018;
   let railSegments = 0;
   let tieSegments = 0;
 
-  const cageSurface = (side, absX, fraction, offset = surfaceOffsetM) => {
+  const cageSurface = (side: Side, absX: number, fraction: number, offset = surfaceOffsetM): SurfaceFrame => {
     const surface = leo2A6MCheekSurface(side, absX, fraction);
     return {
       point: surface.point.clone().addScaledVector(surface.normal, offset),
       normal: surface.normal,
     };
   };
-  const addSegment = (a, b, axis, tie = false) => {
+  const addSegment = (a: SurfaceFrame, b: SurfaceFrame, axis: 'x' | 'y' | 'z', tie = false): void => {
     const center = a.point.clone().add(b.point).multiplyScalar(0.5);
     const delta = b.point.clone().sub(a.point);
     const length = delta.length();
@@ -12058,7 +12929,7 @@ function addLeo2A6MCheekCage(P) {
   const contourX = [0.40, 0.58, 0.76, 0.94, 1.11, 1.28];
   const courseFractions = [0.055, 0.235, 0.415, 0.595, 0.775, 0.955];
   const uprightX = [0.42, 0.63, 0.84, 1.06, 1.27];
-  for (const side of [-1, 1]) {
+  for (const side of [-1, 1] as const) {
     for (const fraction of courseFractions) {
       for (let station = 0; station < contourX.length - 1; station++) {
         addSegment(
@@ -12071,7 +12942,7 @@ function addLeo2A6MCheekCage(P) {
     for (const absX of uprightX) {
       addSegment(
         cageSurface(side, absX, courseFractions[0]),
-        cageSurface(side, absX, courseFractions.at(-1)),
+        cageSurface(side, absX, courseFractions.at(-1)!),
         'y',
       );
     }
@@ -12100,7 +12971,7 @@ function addLeo2A6MCheekCage(P) {
   });
 }
 
-function addLeo2A6MRoofRCWS(P) {
+function addLeo2A6MRoofRCWS(P: TankBuilderPort) {
   const { box, cylY, torus } = KIT;
   const x = 0.08;
   const z = -1.50;
@@ -12163,9 +13034,9 @@ function addLeo2A6MRoofRCWS(P) {
   });
 }
 
-function addLeopardOpenYokeAuxRws(P, {
+function addLeopardOpenYokeAuxRws(P: TankBuilderPort, {
   x, y, z, variant, ammoSide, sensorSide, yaw = 0,
-}) {
+}: OpenYokeMountOptions) {
   const station = FITTINGS.openYokeRws({
     mats: P.mats,
     bodySlot: 'hull',
@@ -12201,9 +13072,9 @@ function addLeopardOpenYokeAuxRws(P, {
   });
 }
 
-function addLeo2A6MFrontalERA(P, sectorPrefix) {
+function addLeo2A6MFrontalERA(P: TankBuilderPort, sectorPrefix: string) {
   const turretPivot = P.spec.armor.turretPivot;
-  const sample = (stations, coordinate) => {
+  const sample = (stations: readonly Vec2Tuple[], coordinate: number): number => {
     if (coordinate <= stations[0][0]) return stations[0][1];
     for (let index = 1; index < stations.length; index++) {
       const [coordinate1, value1] = stations[index];
@@ -12213,12 +13084,12 @@ function addLeo2A6MFrontalERA(P, sectorPrefix) {
           (coordinate - coordinate0) / (coordinate1 - coordinate0));
       }
     }
-    return stations.at(-1)[1];
+    return stations.at(-1)![1];
   };
-  const glacisStations = [
+  const glacisStations: readonly Vec2Tuple[] = [
     [2.05, 1.67], [2.35, 1.60], [2.64, 1.575], [3.13, 1.37], [3.60, 1.21],
   ];
-  const glacisSurface = (x, z) => {
+  const glacisSurface = (x: number, z: number) => {
     const y = sample(glacisStations, z);
     const epsilon = 0.002;
     const dydZ = (sample(glacisStations, z + epsilon)
@@ -12230,8 +13101,8 @@ function addLeo2A6MFrontalERA(P, sectorPrefix) {
     const rotation = new THREE.Euler().setFromRotationMatrix(basis, 'YXZ');
     return { point: new THREE.Vector3(x, y, z), normal, rotation };
   };
-  const cheekEraSeats = [];
-  const glacisEraSeats = [];
+  const cheekEraSeats: LeopardCheekEraSeat[] = [];
+  const glacisEraSeats: LeopardGlacisEraSeat[] = [];
   const sectors = [
     `${sectorPrefix}_turret_cheek_era_R`, `${sectorPrefix}_turret_cheek_era_L`,
     `${sectorPrefix}_upper_glacis_era`,
@@ -12242,7 +13113,7 @@ function addLeo2A6MFrontalERA(P, sectorPrefix) {
   // run, so the outboard courses descend and sweep rearward with the armor
   // rather than hovering on a rectangular fixed-y grid. Thinner cassettes
   // bury their backs by 24 mm for a visibly flush installation.
-  for (const side of [-1, 1]) {
+  for (const side of [-1, 1] as const) {
     const suffix = side > 0 ? 'R' : 'L';
     P.eraCluster(`${sectorPrefix}_turret_cheek_era_${suffix}`, (place) => {
       for (let row = 0; row < 7; row++) {
@@ -12318,7 +13189,7 @@ function addLeo2A6MFrontalERA(P, sectorPrefix) {
   });
 }
 
-function buildLeo2A6M(P, { fieldEra = true } = {}) {
+function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
   const { box, cylX, cylY, cylZ, torus, xform, sph, periscope, shovelTool, towCable } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
@@ -12365,7 +13236,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
   // glacis, reinforced driver-hatch hardware.
   P.add('hull', box(1.86, 0.06, 5.40), 0, 0.545, 0.30);       // belly plate slab (under tub 0.56)
   P.add('hullDark', box(1.90, 0.030, 0.10), 0, 0.545, 3.02);  // forward lip
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDark', box(0.03, 0.05, 4.60), s * 0.945, 0.545, 0.20); // side seam strips
     for (let k = 0; k < 6; k++) {
       P.add('hullDetail', box(0.05, 0.028, 0.05), s * 0.80, 0.545, 2.70 - k * 0.95); // bolt pads
@@ -12381,7 +13252,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
   // ~0.015 proud (the ref's own glacis rows carry hardware mass there —
   // ref-matched density, not proc-only growth; §B4 inter-track x <= 0.62).
   for (let k = 0; k < 3; k++) periscope(P, 'hullDetail', 0.38 + k * 0.21, 1.677, 1.98, (k - 1) * -0.10);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (const [gz, gy] of [[2.44, 1.60], [2.72, 1.55], [3.00, 1.43], [3.26, 1.325]]) {
       P.add('hullDetail', box(0.055, 0.030, 0.055), s * 0.55, gy, gz, 0.35, 0, 0);
     }
@@ -12394,7 +13265,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
   // Two supported runs now follow those real seat planes. The short bow run
   // retains the certified 1.99 m width anchor, and transverse links make the
   // 19 cm change of plane one continuous cage rather than an abrupt step.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     leoSlatRun(P, 'hull', s, {
       run: 'rear-skirt',
       x: 1.800,
@@ -12443,7 +13314,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
   // the front-skirt plate; the inner end stays outboard of the 1.66 shoe
   // envelope (§B4 a4m mudflap-law class) and every extreme stays inside
   // the certified ±2.00 cage extreme (widthM 3.98 anchor untouched).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // §5.345: flare rows follow the tightened 0.78..1.26 hull-run band
     for (let row = 0; row < 7; row++) {
       P.add('hullDetail', box(0.020, 0.020, 0.40), s * 1.885, 0.78 + row * 0.08, 3.24, 0, s * -0.485, 0);
@@ -12459,7 +13330,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
   // anchor and seat on the tail frame / rear wall; no track course exists
   // at this z past the sprocket wrap (§B4-safe — the cage drop-brackets
   // already own the band).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDark', cylX(0.020, 2.52, 8), 0, 1.43, -3.685, 0, 0, s * 0.183); // crossed tow cables (X)
     P.add('hullDark', box(0.10, 0.10, 0.07), s * 1.26, 1.66, -3.66);           // upper cable eyes
     P.add('hullDark', box(0.10, 0.10, 0.07), s * -1.26, 1.20, -3.66);          // lower cable eyes
@@ -12469,7 +13340,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
     P.add('hullDetail', box(0.18, 0.025, 0.09), s * 1.34, 1.605, -3.675);      // lamp guard bar
   }
   // ---- German fender grammar: bins, width rods, Bosch horn, pioneer kit.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (const [bz, bl] of [[1.05, 1.10], [-1.55, 1.25]]) {
       P.add('hullDetail', box(0.27, 0.16, bl), s * 1.50, 1.75, bz);           // sponson bins
       P.add('hullDetail', box(0.29, 0.024, bl + 0.02), s * 1.50, 1.838, bz);  // lid lip
@@ -12501,7 +13372,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
     P.hullG.add(st);
   }
   P.add('hullDetail', box(0.30, 0.16, 0.015), 0.02, 1.32, -3.755);            // convoy plate
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDetail', box(0.09, 0.09, 0.12), s * 0.72, 1.28, 3.66);         // bow tow eyes
     P.add('hullDetail', cylX(0.030, 0.22, 8), s * 0.62, 0.98, -3.70);         // stern shackle bows
   }
@@ -12510,8 +13381,8 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
   // Keep the canonical 2A6 arrowhead as the structural front.  The 2A6M
   // package is additional applique, Barracuda hardware and ISAF furniture;
   // it must not replace the base wedge with a second broad cheek volume.
-  const a6mCrestR = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.32, 0.58, -0.12], [1.36, 0.24, -0.16], [1.43, 0.19, -0.20]];
-  const a6mCrestL = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.30, 0.61, -0.10], [1.41, 0.55, -0.16], [1.44, 0.30, -0.20]];
+  const a6mCrestR: readonly Vec3Tuple[] = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.32, 0.58, -0.12], [1.36, 0.24, -0.16], [1.43, 0.19, -0.20]];
+  const a6mCrestL: readonly Vec3Tuple[] = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.30, 0.61, -0.10], [1.41, 0.55, -0.16], [1.44, 0.30, -0.20]];
   wedgeTurretV3(P, {
     h: 0.82, apexY: 0.09, gunW: 0.36, slotZ: 1.55,
     crestTail: 0.05, wallDrop: 0.10,
@@ -12600,7 +13471,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
   // 2A6M/CAN additions sit ON the canonical 2A6 cheek.  These are shallow,
   // closed Barracuda/applique skins and attachment hardware, not a second
   // turret front.  Every panel remains inside the 2A6 crest and tip envelope.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // Upper thermal skin follows the inner arrow plane and overlaps the
     // helper-owned plate by 12 mm at its rear edge.
     P.add('turret', slab(
@@ -12658,7 +13529,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
   // spaced-armor shadow wall's outboard hang read as a floating dark plank
   // from the front quarter — a camo gusset ties its foot into the side-
   // module band (no-air law; tops held under the local crest line).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', box(0.08, 0.14, 0.30), s * 1.33, 0.33, 0.78);
   }
   // turret bar-armor flank + tail sections (turret-owned — they yaw; §5.246
@@ -12669,7 +13540,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
   // documented in the packet): the run holds the BUSTLE ONLY (two sections,
   // world -2.40..-0.84) so the welded wedge reads first, cage third. Rails
   // thinned 0.024 -> 0.020.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     const rail = 'turretDetail';
     for (let sec = 0; sec < 2; sec++) {
       const z0 = -2.85 + sec * 0.78;
@@ -12694,7 +13565,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
     if (i % 2 === 0) P.add('turretDark', box(0.034, 0.034, 0.14), x, 0.30, -3.40);
   }
   // Wegmann 2x4 smoke banks on the rear chamfer slopes (proud, visible)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', box(0.06, 0.22, 0.55), s * 1.31, 0.36, -0.95, 0, s * 0.18, 0);
     const bank = FITTINGS.smokeBank({
       mats: P.mats, count: 4, r: 0.043, len: 0.30, splay: s * 1.05,
@@ -12740,7 +13611,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
   // (.55,.695,2.28): roughly 0.27 m above and partly ahead of the armor.
   // Low-profile round heads below are inset into the cheek plane, so they
   // read as attachment hardware rather than a constellation of floaters.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (const [x, y, z, rx] of [
       [0.47, 0.354, 2.30, 0.08],
       [0.62, 0.352, 2.17, 0.08],
@@ -12793,13 +13664,13 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
 // Added ERA is gameplay-backed through six independently strippable sectors;
 // cages and twin remote weapon stations remain merged visual equipment, so
 // the dramatic silhouette does not create extra simulation or frame work.
-function buildLeopard2A6UA(P) {
+function buildLeopard2A6UA(P: TankBuilderPort) {
   const { box, cylX, cylY, cylZ, torus } = KIT;
   const turretPivot = P.spec.armor.turretPivot;
   buildLeo2A6M(P, { fieldEra: false });
   P.clearDecals('turret');
 
-  const sample = (stations, x) => {
+  const sample = (stations: readonly Vec2Tuple[], x: number): number => {
     if (x <= stations[0][0]) return stations[0][1];
     for (let index = 1; index < stations.length; index++) {
       const [x1, value1] = stations[index];
@@ -12808,11 +13679,11 @@ function buildLeopard2A6UA(P) {
         return THREE.MathUtils.lerp(value0, value1, (x - x0) / (x1 - x0));
       }
     }
-    return stations.at(-1)[1];
+    return stations.at(-1)![1];
   };
-  const frontLower = [[0.32, 2.70], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96]];
-  const frontUpper = [[0.32, 2.02], [0.55, 1.87], [0.90, 1.62], [1.08, 1.40], [1.30, 1.16]];
-  const frontSurface = (side, absX, y) => {
+  const frontLower: readonly Vec2Tuple[] = [[0.32, 2.70], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96]];
+  const frontUpper: readonly Vec2Tuple[] = [[0.32, 2.02], [0.55, 1.87], [0.90, 1.62], [1.08, 1.40], [1.30, 1.16]];
+  const frontSurface = (side: Side, absX: number, y: number) => {
     const t = THREE.MathUtils.clamp((y - 0.16) / 0.46, 0, 1);
     const lower = sample(frontLower, absX);
     const upper = sample(frontUpper, absX);
@@ -12829,14 +13700,14 @@ function buildLeopard2A6UA(P) {
     const rotation = new THREE.Euler().setFromRotationMatrix(basis, 'YXZ');
     return { point: new THREE.Vector3(side * absX, y, z), normal, rotation };
   };
-  const cageSurface = (side, absX, y, offset = 0.095) => {
+  const cageSurface = (side: Side, absX: number, y: number, offset = 0.095): SurfaceFrame => {
     const surface = frontSurface(side, absX, y);
     return {
       point: surface.point.clone().addScaledVector(surface.normal, offset),
       normal: surface.normal,
     };
   };
-  const addCageSegment = (a, b, axis) => {
+  const addCageSegment = (a: SurfaceFrame, b: SurfaceFrame, axis: 'x' | 'y' | 'z'): void => {
     const center = a.point.clone().add(b.point).multiplyScalar(0.5);
     const delta = b.point.clone().sub(a.point);
     const length = delta.length();
@@ -12868,7 +13739,7 @@ function buildLeopard2A6UA(P) {
     P.add(axis === 'z' ? 'turretDark' : 'turretDetail', geometry,
       center.x, center.y, center.z, rotation.x, rotation.y, rotation.z);
   };
-  const frontEraSeats = [];
+  const frontEraSeats: LeopardUaFrontEraSeat[] = [];
 
   const eraReceipt = {
     cheekTilesPerSide: 18,
@@ -12886,7 +13757,7 @@ function buildLeopard2A6UA(P) {
   // ruled 2A6M cheek rather than sharing one flat diagonal. The brick's back
   // face overlaps the armor by 12 mm, so all three rows remain visibly seated
   // while the center gun channel stays clear through elevation and recoil.
-  for (const side of [-1, 1]) {
+  for (const side of [-1, 1] as const) {
     const sector = `ua_turret_cheek_era_${side > 0 ? 'R' : 'L'}`;
     P.eraCluster(sector, (place) => {
       for (let row = 0; row < 3; row++) {
@@ -12962,7 +13833,7 @@ function buildLeopard2A6UA(P) {
   // Stand-off cage around the skirt package. Long rails merge into one
   // detail bucket and every upright has a short physical tie back to the ERA
   // carrier, so the assembly reads attached from front, side and rear views.
-  for (const side of [-1, 1]) {
+  for (const side of [-1, 1] as const) {
     for (let row = 0; row < 6; row++) {
       P.add('hullDetail', box(0.026, 0.026, 6.45), side * 2.22, 0.76 + row * 0.16, 0.03);
     }
@@ -12982,7 +13853,7 @@ function buildLeopard2A6UA(P) {
   for (let station = 0; station < 9; station++) {
     P.add('hullDetail', box(0.028, 0.56, 0.028), -2.18 + station * 0.545, 1.75, -3.30);
   }
-  for (const side of [-1, 1]) {
+  for (const side of [-1, 1] as const) {
     // Upper corner gussets bridge the stern grid into the skirt carriers;
     // their inner edges remain outside the 1.62 m shoe envelope.
     P.add('hullDark', box(0.56, 0.035, 0.20), side * 1.94, 1.46, -3.29);
@@ -12993,7 +13864,7 @@ function buildLeopard2A6UA(P) {
 
   // A second, wider turret cage wraps the full flank and cheek armor. The
   // forward rail segments follow the arrowhead rather than bridging the gun.
-  for (const side of [-1, 1]) {
+  for (const side of [-1, 1] as const) {
     for (let row = 0; row < 6; row++) {
       P.add('turretDetail', box(0.026, 0.026, 4.28), side * 1.84, 0.08 + row * 0.15, -0.72);
     }
@@ -13042,7 +13913,7 @@ function buildLeopard2A6UA(P) {
     P.add('turretDetail', box(0.28, 0.032, 0.032), side * 1.42, 0.91, 0.62);
   }
 
-  const addRemoteStation = ({ x, z, roofMinY, roofMaxY, heavy, seed }) => {
+  const addRemoteStation = ({ x, z, roofMinY, roofMaxY, heavy, seed }: RemoteStationOptions) => {
     const receiverW = heavy ? 0.48 : 0.40;
     const barrelR = heavy ? 0.040 : 0.032;
     const barrelLen = heavy ? 1.22 : 1.05;
@@ -13053,7 +13924,7 @@ function buildLeopard2A6UA(P) {
     const baseHeight = baseTopY - baseBottomY;
     const baseCenterY = baseBottomY + baseHeight * 0.5;
     const yShiftM = baseTopY - 0.99;
-    const seatedY = (y) => y + yShiftM;
+    const seatedY = (y: number): number => y + yShiftM;
     P.addEquipment('turret', cylY(0.22, 0.24, baseHeight, P.q ? 20 : 12),
       x, baseCenterY, z);
     P.addEquipment('turret', box(0.16, 0.26, 0.16), x, seatedY(1.10), z);
@@ -13127,14 +13998,16 @@ function buildLeopard2A6UA(P) {
 // donor-wrapper builders §5.280) and renamed wrap* against module collisions.
 // They dress the donor A4 turret spliced back into buildLeo2A4M below.
 // ============================================================================
-function wrapMount(P, owner, fitting, x, y, z, rotation = null) {
+function wrapMount(P: TankBuilderPort, owner: VehicleOwner, fitting: THREE.Object3D,
+  x: number, y: number, z: number, rotation: Vec3Tuple | null = null): void {
   fitting.position.set(x, y, z);
   if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
   (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
 }
 
-function wrapPlate(P, owner, x, y, z, w, h, d, rotation = null, cap = true) {
-  const r = rotation || [0, 0, 0];
+function wrapPlate(P: TankBuilderPort, owner: VehicleOwner, x: number, y: number, z: number,
+  w: number, h: number, d: number, rotation: Vec3Tuple | null = null, cap = true): void {
+  const r: Vec3Tuple = rotation || [0, 0, 0];
   const body = owner === 'hull' ? 'hull' : 'turret';
   const detail = owner === 'hull' ? 'hullDark' : 'turretDark';
   P.add(body, KIT.box(w, h, d), x, y, z, r[0], r[1], r[2]);
@@ -13142,18 +14015,23 @@ function wrapPlate(P, owner, x, y, z, w, h, d, rotation = null, cap = true) {
     x, y + h * 0.5 + 0.008, z + d * 0.20, r[0], r[1], r[2]);
 }
 
-function wrapMirroredSlab(side, lower, upper) {
-  const row = (points) => {
-    const mapped = points.map(([x, y, z]) => [side * x, y, z]);
+function wrapMirroredSlab(side: Side, lower: FourPointRing, upper: FourPointRing): THREE.BufferGeometry {
+  const row = (points: FourPointRing): FourPointRing => {
+    const mapped: FourPointRing = [
+      [side * points[0][0], points[0][1], points[0][2]],
+      [side * points[1][0], points[1][1], points[1][2]],
+      [side * points[2][0], points[2][1], points[2][2]],
+      [side * points[3][0], points[3][1], points[3][2]],
+    ];
     return side < 0 ? [mapped[1], mapped[0], mapped[3], mapped[2]] : mapped;
   };
   return orientedSlab(...row(lower), ...row(upper));
 }
 
-function wrapArmorCheeks(P, options = {}) {
+function wrapArmorCheeks(P: TankBuilderPort, options: WrapArmorCheekOptions = {}): void {
   const reach = options.reach || 1.54;
   const crest = options.crest || 0.65;
-  for (const side of [-1, 1]) {
+  for (const side of [-1, 1] as const) {
     P.add('turret', wrapMirroredSlab(side, [
       [0.22, 0.00, 1.94], [reach, 0.04, 1.48],
       [reach + 0.04, 0.06, 0.54], [0.43, 0.00, 0.92],
@@ -13175,8 +14053,8 @@ function wrapArmorCheeks(P, options = {}) {
 // the floater law). Their reads return inline in buildLeo2A4M under the
 // §5.311 hardware-line rework; verbatim source: b66d6d03^ germany.js.)
 
-function wrapCanadianSmoke(P, count, seed, x = 1.31, z = 0.12) {
-  for (const side of [-1, 1]) {
+function wrapCanadianSmoke(P: TankBuilderPort, count: number, seed: number, x = 1.31, z = 0.12): void {
+  for (const side of [-1, 1] as const) {
     P.add('turret', KIT.box(0.10, 0.24, 0.46), side * (x - 0.05), 0.43, z,
       0, side * 0.14, 0);
     wrapMount(P, 'turret', FITTINGS.smokeBank({
@@ -13187,7 +14065,8 @@ function wrapCanadianSmoke(P, count, seed, x = 1.31, z = 0.12) {
   }
 }
 
-function wrapSideSlat(P, owner, side, options) {
+function wrapSideSlat(P: TankBuilderPort, owner: VehicleOwner, side: Side,
+  options: WrapSideSlatOptions): void {
   const body = owner === 'hull' ? 'hullDark' : 'turretDark';
   const rail = owner === 'hull' ? 'hullDetail' : 'turretDetail';
   const outer = options.outer;
@@ -13220,7 +14099,8 @@ function wrapSideSlat(P, owner, side, options) {
   }
 }
 
-function wrapRearSlat(P, width, y0, y1, z, seatZ) {
+function wrapRearSlat(P: TankBuilderPort, width: number, y0: number, y1: number,
+  z: number, seatZ: number): void {
   for (let row = 0; row < 4; row++) {
     P.add('turretDetail', KIT.box(width, 0.028, 0.026), 0,
       y0 + (y1 - y0) * row / 3, z);
@@ -13243,7 +14123,7 @@ function wrapRearSlat(P, width, y0, y1, z, seatZ) {
 // slabs, mine-belly, the big rear stowage rack; gun keeps the §5.248 L44
 // package re-seated at the old turret's trunnion face (muzzle world 6.24,
 // overall 9.96 — bore-mouth law receipts in src/vehicles/germany.ts).
-function buildLeo2A4M(P) {
+function buildLeo2A4M(P: TankBuilderPort) {
   const { box, cylX, cylY, cylZ, torus, xform, sph, periscope, liftEye, smokeCluster, shovelTool, towCable, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
   leoHullV3(P, {
     bodyHW: 1.58, sponsonY: 1.30, trackW: 0.635, xc: 1.31,
@@ -13283,7 +14163,7 @@ function buildLeo2A4M(P) {
   // ---- mine-protection belly (2A4M kit)
   P.add('hull', box(1.86, 0.06, 5.20), 0, 0.545, 0.34);
   P.add('hullDark', box(1.90, 0.030, 0.10), 0, 0.545, 2.96);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDark', box(0.03, 0.05, 4.40), s * 0.945, 0.545, 0.26);
     for (let k = 0; k < 5; k++) {
       P.add('hullDetail', box(0.05, 0.028, 0.05), s * 0.80, 0.545, 2.55 - k * 1.05);
@@ -13302,7 +14182,7 @@ function buildLeo2A4M(P) {
   // (family 40-70 band; the old 0.87 skirt line read bare-wheeled).
   // §B4: every inner face >= 1.746 vs the 1.69 shoe envelope.
   P.mats.rubber.color.setHex(0x33352b);                        // weathered rubber (a4 receipt)
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // fore upper band: armor modules (4 full + 1 short at the idler)
     for (let i = 0; i < 5; i++) {
       const short = i === 0;
@@ -13365,7 +14245,7 @@ function buildLeo2A4M(P) {
   // bays a real seat.  Coordinates and section cadence are intentionally the
   // wrapper-era values: outer rail x=+-2.02, armor face x=+-1.925, and the
   // cage runs continuously from the rear sprocket guard to the mid-hull.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (let i = 0; i < 7; i++) {
       const z = 2.43 - i * 0.82;
       wrapPlate(P, 'hull', s * 1.89, 1.18, z,
@@ -13400,10 +14280,11 @@ function buildLeo2A4M(P) {
   // the right 2.94-band bay stays kit — the spare-links fitting owns it).
   // Blocks ride their local glacis plane (+0.035 proud), inboard of the
   // 0.90 lane cuts; sub-row in every mask (raked-plane relief).
-  for (const [bz, by, rx, cells] of [
+  const glacisEraRows: readonly (readonly [number, number, number, readonly Vec2Tuple[]])[] = [
     [2.50, 1.622, -0.086, [[-0.76, 0], [-0.46, 0.012], [-0.16, 0], [0.16, 0], [0.46, 0], [0.76, 0.012]]],
     [2.94, 1.483, -0.396, [[-0.76, 0.012], [-0.46, 0], [-0.16, 0], [0.16, 0]]],
-  ]) {
+  ];
+  for (const [bz, by, rx, cells] of glacisEraRows) {
     for (const [bx, extra] of cells) {
       P.add('hull', box(0.26, 0.045 + extra, 0.17), bx, by + extra * 0.5, bz, rx, 0, 0);
       P.add('hullDark', box(0.22, 0.012, 0.014), bx, by + extra + 0.020, bz + 0.062, rx, 0, 0); // cassette lip
@@ -13447,7 +14328,7 @@ function buildLeo2A4M(P) {
   for (let k = 0; k < 4; k++) {
     P.add('hullDetail', box(0.62, 0.014, 0.042), 0, 1.8235, -2.38 - k * 0.085); // rib ladder w/ depth
   }
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDark', box(0.30, 0.22, 0.06), s * 1.05, 1.52, -3.665);         // tail-frame service box
     P.add('hullDetail', box(0.32, 0.020, 0.07), s * 1.05, 1.645, -3.665);     // box lid lip
     P.add('hullDark', box(0.010, 0.05, 0.05), s * 1.20, 1.50, -3.668);        // box latch
@@ -13458,7 +14339,7 @@ function buildLeo2A4M(P) {
     P.add('hullDark', cylX(0.022, 0.15, 8), s * 0.72, 1.26, 3.705);           // tow-eye shackle pins
   }
   // ---- German fender grammar + pioneer kit
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     for (const [bz, bl] of [[0.95, 1.15], [-1.60, 1.25]]) {
       P.add('hullDetail', box(0.27, 0.16, bl), s * 1.50, 1.75, bz);
       P.add('hullDetail', box(0.29, 0.024, bl + 0.02), s * 1.50, 1.838, bz);
@@ -13485,7 +14366,7 @@ function buildLeo2A4M(P) {
     P.hullG.add(st);
   }
   P.add('hullDetail', box(0.30, 0.16, 0.015), 0.02, 1.32, -3.755);            // convoy plate
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('hullDetail', box(0.09, 0.09, 0.12), s * 0.72, 1.28, 3.66);
     P.add('hullDetail', cylX(0.030, 0.22, 8), s * 0.62, 0.98, -3.70);
     // mudflaps: front pair at the skirt line ahead of the idler, rear pair
@@ -13564,7 +14445,7 @@ function buildLeo2A4M(P) {
     { height: 0.11, inset: 0.985 },
   ]));
   // weld seam engraving down each face/chamfer knuckle
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDark', box(0.020, 0.62, 0.050), s * 0.92, 0.33, 1.17, 0, s * 0.68, 0);
     P.add('turretDark', box(0.018, 0.46, 0.042), s * 1.205, 0.25, 0.73, 0, s * 0.12, 0);
   }
@@ -13576,7 +14457,7 @@ function buildLeo2A4M(P) {
   P.add('turret', box(0.88, 0.61, 0.24), 0, 0.325, 0.96);                      // slot back wall block
   P.add('turret', box(0.92, 0.14, 0.18), 0, 0.57, 1.075);                     // brow strip integrated below the roof
   P.add('turret', box(0.92, 0.08, 0.18), 0, 0.06, 1.075);                     // chin plate
-  for (const s of [-1, 1]) P.add('turretDark', box(0.026, 0.35, 0.20), s * 0.448, 0.285, 1.065);
+  for (const s of [-1, 1] as const) P.add('turretDark', box(0.026, 0.35, 0.20), s * 0.448, 0.285, 1.065);
   // turret ring plinth: closes the deck<->turret slit from every side
   // sight-line (§B2) and yaws with the mass.
   P.add('turret', cylY(1.08, 1.12, 0.16, P.q ? 26 : 16), 0, -0.045, -0.35);
@@ -13604,7 +14485,11 @@ function buildLeo2A4M(P) {
   P.add('turretDark', box(0.17, 0.20, 0.14), 0.36, 1.06, -0.28);
   P.add('turretGlass', box(0.11, 0.10, 0.018), 0.36, 1.08, -0.204);
   // hatches: commander right (ring + lid + periscope ring), loader left.
-  for (const [st, lo] of [[{ x: 0.60, z: -0.75 }, false], [{ x: -0.64, z: -0.55 }, true]]) {
+  const hatchStations: readonly (readonly [{ readonly x: number; readonly z: number }, boolean])[] = [
+    [{ x: 0.60, z: -0.75 }, false],
+    [{ x: -0.64, z: -0.55 }, true],
+  ];
+  for (const [st, lo] of hatchStations) {
     P.add('turret', cylY(lo ? 0.22 : 0.24, lo ? 0.22 : 0.24, 0.05, 14), st.x, 0.665, st.z);
     P.add('turret', cylY(lo ? 0.19 : 0.21, lo ? 0.19 : 0.21, 0.028, 14), st.x, 0.706, st.z);
     P.add('turretDark', box(lo ? 0.34 : 0.38, 0.014, 0.035), st.x, 0.725, st.z);
@@ -13628,14 +14513,14 @@ function buildLeo2A4M(P) {
   // a 1-column spike inside the budget (§5.248 receipt class).
   P.add('turretDetail', cylY(0.012, 0.016, 0.24, 8), -0.85, 0.765, -1.92);
   P.add('turretDark', box(0.04, 0.04, 0.11), -0.85, 0.895, -1.92);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 1.39, r: 0.011, seed: 6 + s, rotation: [0, 0, s * 0.035] });
     whip.position.set(s * 1.00, 0.66, -2.04);
     P.turretG.add(whip);
   }
   // 2x4 Wegmann smoke mortars per side on the rear side walls (§B3
   // launcher grammar — mount plate + angled tube banks + collar rings).
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turret', box(0.07, 0.26, 0.58), s * 1.14, 0.38, -1.38, 0, s * 0.05, 0);
     P.add('turretDetail', box(0.05, 0.05, 0.30), s * 1.155, 0.225, -1.38, 0, s * 0.05, 0); // support arm under the banks
     smokeCluster(P, s * 1.16, 0.47, -1.24, 4, s * 1.05, 0.85);
@@ -13650,7 +14535,7 @@ function buildLeo2A4M(P) {
     }
   }
   // side-wall grab rails (segmented — station end-cap law) + lift eyes
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDetail', box(0.022, 0.022, 0.78), s * 1.218, 0.42, 0.26);
     P.add('turretDetail', box(0.022, 0.022, 1.00), s * 1.175, 0.42, -0.92);
     P.add('turretDetail', box(0.022, 0.022, 0.82), s * 1.105, 0.39, -1.94);
@@ -13661,7 +14546,7 @@ function buildLeo2A4M(P) {
   }
   // low roof weld + rear-shoulder latch cadence
   P.add('turretDark', box(1.70, 0.012, 0.025), 0, 0.684, -1.82);
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDetail', box(0.08, 0.040, 0.12), s * 0.72, 0.685, -2.02);
     P.add('turretDark', box(0.045, 0.030, 0.035), s * 0.72, 0.711, -1.97);
     P.add('turretDetail', box(0.055, 0.12, 0.025), s * 0.74, 0.35, -2.28);
@@ -13675,7 +14560,7 @@ function buildLeo2A4M(P) {
     for (let k = 0; k <= 10; k++) {
       P.add('turretDetail', box(0.032, rackT - rackB, 0.032), -1.10 + k * 0.22, (rackT + rackB) / 2, rackZ);
     }
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       P.add('turretDetail', box(0.045, 0.045, 0.40), s * 1.11, rackT, -2.48);
       P.add('turretDetail', box(0.045, 0.045, 0.40), s * 1.11, (rackT + rackB) / 2, -2.48); // end mid rail
       P.add('turretDetail', box(0.045, 0.045, 0.40), s * 1.11, rackB, -2.48);
@@ -13710,7 +14595,7 @@ function buildLeo2A4M(P) {
   // armor/cage course was restored above over the current two-band inner
   // skirt; both courses remain independently hull-owned.
   wrapArmorCheeks(P, { reach: 1.60, crest: 0.66 });
-  for (const side of [-1, 1]) {
+  for (const side of [-1, 1] as const) {
     for (let i = 0; i < 5; i++) wrapPlate(P, 'turret', side * 1.57,
       0.42 + (i & 1) * 0.022, 0.44 - i * 0.48,
       0.12, 0.40, 0.40, [0, 0, side * 0.065], true);
@@ -13745,7 +14630,7 @@ function buildLeo2A4M(P) {
   // 0.16 behind the -2.30 loft rear. The pair stays as capped base drums
   // SEATED on the bustle-rack end rails (CAN field-mod read); the donor
   // SEM 25 pair carries the whip read.
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     P.add('turretDetail', cylY(0.035, 0.045, 0.06, 10), s * 1.11, 0.6525, -2.40);
     P.add('turretDark', cylY(0.030, 0.030, 0.016, 10), s * 1.11, 0.6905, -2.40);
   }
@@ -13762,7 +14647,7 @@ function buildLeo2A4M(P) {
 }
 
 // FITTINGS mount helper (position + attach to the turret group).
-function mountFit(P, fitting, x, y, z) {
+function mountFit(P: TankBuilderPort, fitting: THREE.Object3D, x: number, y: number, z: number): void {
   fitting.position.set(x, y, z);
   P.turretG.add(fitting);
 }
@@ -13791,4 +14676,4 @@ export const LEOPARD_PROFILES = {
   leo2a4m: { build: buildLeo2A4M },
   leo2a6m: { build: buildLeo2A6M },
   leo2a6_ua: { build: buildLeopard2A6UA },
-};
+} satisfies VehicleProfileRecord;

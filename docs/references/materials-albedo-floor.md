@@ -116,7 +116,7 @@ floor 50 it measurably widens. Render response is also heavily compressed
 
 Coupling: the dark-class share of this census is ≈ 0. The population is
 (a) leopard-lane gear hexes (pads 0x474734 / chain 0x393524 — the r8
-corner-ladder-capped system, profiles/leopard.js) and (b) BASE-class camo
+corner-ladder-capped system, profiles/leopard.ts) and (b) BASE-class camo
 texels under bakeDirt's hem dust (G ×0.66 at ground; base 77.9 → canvas 67 →
 hem-effective ~44). Both out of the patch palette's reach; (b) is
 tankFactory-lane, (a) is leopard-lane.
@@ -190,7 +190,7 @@ graduate exercising the guarded ingestion path end-to-end.
 
 CONCURRENT-LANE NOTE (the m47-r6 §F.2 hazard class, live again): at 16:05:35
 the leopard lane landed uncommitted working-tree edits on
-src/vehicles/profiles/leopard.js (75+/29−, stern-relief round) carrying a
+src/vehicles/profiles/leopard.ts (75+/29−, stern-relief round) carrying a
 transient `litCrownGeos` TDZ error that breaks buildLeo2A5 — my final
 leo2a5 render/hash/standard-check runs at 16:0x failed on THEIR tree state,
 not on this change. Everything leo2a5 in §3/§4 was rendered and measured

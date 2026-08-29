@@ -100,7 +100,7 @@ cagfes". Built in the PINNED CLEAN WORKTREE wt-5335 @ a7218931 (§5.359
 clean-room law). FALSE-0/photo-class respected throughout: kf51b is
 NEVER-GATED (no oracle) — ledger absence re-verified at both frames.
 
-### Items (buildKF51OwnerExact, src/vehicles/profiles/leopard.js)
+### Items (buildKF51OwnerExact, src/vehicles/profiles/leopard.ts)
 1. HULL — LEOPARD-DESCENT REBASE: the real KF51 rides a Leopard 2 hull.
    The bespoke demonstrator tub/deck polyMultiLofts, thin fender lips and
    lamp blade are RETIRED; the hull now builds on the FAMILY RIG

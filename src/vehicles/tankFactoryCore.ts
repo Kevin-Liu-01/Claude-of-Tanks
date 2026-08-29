@@ -287,7 +287,7 @@ interface RunningGearConfig {
   trackBandRoughness?: number;
   trackBandEnvMapIntensity?: number;
   pinCapOuter?: number;
-  gearFloor?: number;
+  gearFloor?: boolean;
   arms?: boolean;
 }
 
@@ -579,7 +579,7 @@ function tankFittings(): TankFittings {
   return KIT_FITTINGS;
 }
 
-interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, CupolaBuilderPort,
+export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, CupolaBuilderPort,
   ModuleVisualBuilderPort, EquipmentBuilderPort {
   readonly spec: FactoryTankSpec;
   readonly mats: TankMaterials;

@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.ts';
 import { buildStrv103 } from './casemate.ts';
 import { centurionBuild } from './uk.ts';
-import { buildLeo2A5 } from './leopard.js';
+import { buildLeo2A5 } from './leopard.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 

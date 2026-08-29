@@ -138,7 +138,7 @@ honest post-re-registration). If lane E prefers the pristine print, the
 revert is one command (restore the .bak; demote batch 63 to history).
 
 ## Build notes (ground-up §5.248 rebuild — buildLeo2A6M,
-## src/vehicles/profiles/leopard.js)
+## src/vehicles/profiles/leopard.ts)
 leoHullV3 family loft (own deck/glacis tables, family stations), leoGear
 print cadence (7 @ 0.804, span [2.53,-2.29], sprocket -3.11, idler 3.60
 wrap-to-3.98), wedgeTurretV3 with print-traced nose/crest/body tables

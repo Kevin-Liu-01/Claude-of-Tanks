@@ -121,7 +121,7 @@ plain kit-native fits.
 
 ## 2026-08-06 §B8 BUILD-UP (owner order: "the leopard 2 prototype and
 ## leopard 2a4 need a lot of work"; leopard-family builder round)
-FULL photo-class rebuild in src/vehicles/profiles/leopard.js: the old V1
+FULL photo-class rebuild in src/vehicles/profiles/leopard.ts: the old V1
 leoHull playable-fallback build (67-class fidelity, wrong-era hull lines)
 is replaced by a FAMILY V3 RIG build (leoHullV3 param delta — the rig
 litmus) + a bespoke PT turret/gun.

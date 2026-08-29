@@ -116,7 +116,7 @@ const GROUP_LOADERS = Object.freeze({
     registerCanonicalBuilders('challenger', mod.CHALLENGER_BUILDERS);
     registerProfiles(mod.CHALLENGER_PROFILES);
   }),
-  leopard: () => import('./profiles/leopard.js').then((mod) => registerProfiles(mod.LEOPARD_PROFILES)),
+  leopard: () => import('./profiles/leopard.ts').then((mod) => registerProfiles(mod.LEOPARD_PROFILES)),
   italy: () => import('./profiles/italy.ts').then((mod) => registerProfiles(mod.ITALY_PROFILES)),
   sweden: () => import('./profiles/sweden.ts').then((mod) => registerProfiles(mod.SWEDEN_PROFILES)),
   sovietHeavy: () => import('./profiles/soviet-heavy.ts').then((mod) => registerProfiles(mod.SOVIET_HEAVY_PROFILES)),

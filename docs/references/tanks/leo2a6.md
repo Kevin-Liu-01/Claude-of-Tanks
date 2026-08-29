@@ -90,7 +90,7 @@ are not comparable.
 
 ## GATE-V10 from-scratch re-lay (2026-07-31, round 2)
 
-Both hull and turret rebuilt in `src/vehicles/profiles/leopard.js`
+Both hull and turret rebuilt in `src/vehicles/profiles/leopard.ts`
 (leoHullV3 + wedgeTurretV3, measured-loft builders) against the repaired
 curves: lofted deck polyline (1.67 fore / 1.60 dip / 1.83 aft), two-slope
 glacis with the clipped beak centre (3.60) + wing tips (3.81), rear wall
@@ -287,7 +287,7 @@ flat wheels, near-black track band.
 
 ## Shaded-parity r2 — VISUAL FIX ROUND (2026-08-02)
 
-All 11 r1 defects addressed in `src/vehicles/profiles/leopard.js`
+All 11 r1 defects addressed in `src/vehicles/profiles/leopard.ts`
 (buildLeo2A6 + opt-in params only). Gate after round: **min 91.0 PASS**
 (hull 91.5 / whole 91.0 / turret 91.0 / stations 93.4 / dims 91.0 /
 floaters 100) — same headline as the certified entry; stations +0.4;
@@ -394,7 +394,7 @@ by pixel sampling, luminance ratio alone is insufficient.
 
 ## Shaded-parity r3 — VISUAL FIX ROUND (2026-08-02)
 
-All 10 r2 work-order items addressed in `src/vehicles/profiles/leopard.js`
+All 10 r2 work-order items addressed in `src/vehicles/profiles/leopard.ts`
 (buildLeo2A6 + opt-in params only: `leoGear g.dishR`, `leoHullV3
 H.dishR/H.splashArms`; the PERI round-cap edit lives in the `PR.crownW`
 branch only a6 reaches). Gate after round: **min 91.0 PASS** (hull 91.1 /
@@ -504,7 +504,7 @@ exact element. Grey slabs still placeholder. r4 = 5 mechanical items.
 ## Shaded-parity r4 — VISUAL FIX ROUND (2026-08-02, closing round)
 
 All 5 mechanical r3 work-order items addressed in
-`src/vehicles/profiles/leopard.js` (buildLeo2A6 only — zero shared-path
+`src/vehicles/profiles/leopard.ts` (buildLeo2A6 only — zero shared-path
 edits this round). Gate after round: **min 91.0 PASS, gatePassed:true
 verified in docs/geometry-gate/leo2a6.json across 2 consecutive runs**
 (hull 91.2 / whole 91.0 / turret 91.2 / stations 93.4 / dims 91.0 /
@@ -600,7 +600,7 @@ shadows, 10-slat grille density, solid bustle backing.
 
 ## Shaded-parity r5 — NARROW TONE PASS (2026-08-02)
 
-All r4 work-order items in `src/vehicles/profiles/leopard.js` (buildLeo2A6
+All r4 work-order items in `src/vehicles/profiles/leopard.ts` (buildLeo2A6
 only; zero shared-path edits). Gate after round: **min 91.0 PASS,
 gatePassed:true** (hull 91.2 / whole 91.0 / turret 91.2 / stations 93.4 /
 dims 91.0 / floaters 100 — identical to the r4 entry; the two geometry-
@@ -676,7 +676,7 @@ wells) — game-visible, not gate-visible.
 
 ## Shaded-parity r6 — FRONT WRAP + REAR GRILLE/GRID + HERO SEALS (2026-08-02)
 
-All r5 work-order items in `src/vehicles/profiles/leopard.js` (buildLeo2A6
+All r5 work-order items in `src/vehicles/profiles/leopard.ts` (buildLeo2A6
 + two OPT-IN leoHullV3 params siblings do not pass). Gate after round:
 **min 91.0 PASS, gatePassed:true** (hull 91.2 / whole 91.0 / turret 91.2 /
 stations 93.4 / dims 91.0 / floaters 100 — byte-identical to r5; grille
@@ -788,7 +788,7 @@ behind-wheel sponson extension. All geometry: re-gate each.
 
 ## Shaded-parity r7 — REAR STRUCTURE: FULL BANK + BOLD FANS + SOLID WALL + WHEEL CURTAIN (2026-08-02)
 
-All three r6 work-order items in `src/vehicles/profiles/leopard.js`
+All three r6 work-order items in `src/vehicles/profiles/leopard.ts`
 (buildLeo2A6 + ONE opt-in wedgeTurretV3 rack param `wall` — siblings do
 not pass it). Gate after round: **min 91.0 PASS, gatePassed:true, run
 twice** (hull 91.2 / whole 91.0 / turret 91.2 / stations 93.4 / dims
@@ -894,7 +894,7 @@ lower plate bevel+brighten+fittings, center fan + taillight ovals.
 
 ## Shaded-parity r8 — MICRO-ROUND: the three view-rear elements (2026-08-02)
 
-All three r7 work-order items in `src/vehicles/profiles/leopard.js`
+All three r7 work-order items in `src/vehicles/profiles/leopard.ts`
 (buildLeo2A6 + ONE new leoHullV3 opt-in `jackX`, default 0 — siblings do
 not pass it). Gate after round: **min 91.0 PASS** (hull 91.2 / whole
 91.0 / turret 91.2 / stations 93.4 / dims 91.0 / floaters 100 —
