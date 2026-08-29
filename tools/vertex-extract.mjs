@@ -743,7 +743,7 @@ const REG = {
     pubDims: { hullLengthM: 6.95, overallLengthM: 9.67, widthM: 3.59, heightM: 2.19 },
   },
   strv103: {
-    // Casemate, fixedMount by design; wesiora candidateGlb stays in specs.
+    // Casemate, fixedMount by design; the Wesiora print is tools-only.
     // Orientation resolved (sweden rebuild lane 2026-08-17): length on raw X,
     // nose -X (thin fixed-gun tube width 0.043-0.051 at raw X -1.00..-0.48,
     // tube height y 0.027..0.081 = the ~1.4 m gun line; full-width body ends

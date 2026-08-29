@@ -2,12 +2,11 @@
 // donor and apply explicit published/balance deltas. Historical third-party
 // inputs are attribution and offline comparison evidence, never playable
 // geometry; retained candidate metadata is procedural-only.
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
+import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
 import { shell, type ArmorEnvelope } from './specHelpers.ts';
 import type {
   FleetDimensions,
   FleetGunSpec,
-  ModelSourceRecord,
   FleetTankSpec,
   FleetVisualSpec,
 } from './specContracts.ts';
@@ -28,7 +27,6 @@ interface SourceCredit {
 
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const tankSpecs: typeof TANK_SPECS & Record<string, unknown> = TANK_SPECS;
-const modelSources: typeof MODEL_SOURCE & Record<string, unknown> = MODEL_SOURCE;
 
 function isFleetSpecRecord(value: unknown): value is FleetTankSpec {
   return value !== null && typeof value === 'object';
@@ -297,58 +295,4 @@ for (const spec of SPECS) {
 }
 
 // ---------------------------------------------------------------------------
-// model sources — every gen2 bake exports the same node contract
-// (Root > HullMesh + Turret > TurretMesh, fused gun rides the turret)
-// ---------------------------------------------------------------------------
-// shippable class (CC BY / CC BY-SA) — registered in every build
-// t44 §5.45 BUILD LANDED (russia lane 2026-08-08): the id renders OUR
-// procedural build everywhere (profiles/russia.js buildT44); the Foxygamer
-// CC BY-SA print is retained only as offline comparison provenance.
-// Measurement registration moved to
-// the three override maps (§10-pattern mirror, helper-expanded config).
-modelSources.t44 = {
-  source: 'procedural',
-  candidateGlb: { path: '/models/tanks/community/t44_foxygamer.glb', turretNode: '^Turret$', autoPivot: true, paintUntextured: true },
-} satisfies ModelSourceRecord;
-// m48 §5.45 BUILD LANDED (patton lane 2026-08-08): the id renders OUR
-// procedural build everywhere (profiles/patton.js buildM48); the ATModeler
-// print remains offline comparison provenance for repeatable A/B audits.
-// Measurement registration moved to the three
-// override maps (§10-pattern mirror, helper-expanded config).
-modelSources.m48 = {
-  source: 'procedural',
-  candidateGlb: { path: '/models/tanks/community/m48a5_atmodeler.glb', turretNode: '^Turret$', autoPivot: true, paintUntextured: true },
-} satisfies ModelSourceRecord;
-// FLEET FLIP 2026-08-04: MODEL_SOURCE_RETIRED.m60a2 = glb('m60a2_ahab.glb');
-// FRANCE ROUND 2026-08-07 (owner: "the amx 30bs' hulls are backwards"):
-// the ahab bakes carry an INTERNAL hull/turret 180 — build_gen2_tanks.py
-// rotates the hull RZ(-90) but the turret RZ(+90), so the hull glacis
-// renders at -z while the gun points +z (vertex extracts amx30/amx30b2:
-// glacisSign -1, gunSign +1, agree:false). A MODEL_SOURCE yawOffset cannot
-// fix an internal disagreement (a scene yaw flips BOTH), so the playables
-// flip to the misc.js procedural builds; the one-line re-bake fix
-// (hull RZ(-90) -> RZ(90) in the manifest) is the §E lane's, and the
-// re-baked GLBs can then re-register as measurement oracles.
-// MODEL_SOURCE_RETIRED.amx30 = glb('amx30b_ahab.glb');
-// MODEL_SOURCE_RETIRED.amx30b2 = glb('amx30b2_ahab.glb');
-// type59 §5.45 BUILD LANDED (russia lane 2026-08-08): renders buildType59
-// everywhere; the LastTriarius Type 69 CC BY print retires to candidateGlb
-// (same flip pattern as t44/m48 above).
-// §5.304 (2026-08-17): buildType59 REDESIGNED onto the widened obr-1975
-// chassis (profiles/china.js — owner order). The flip mechanics here are
-// unchanged: source stays 'procedural', the Type 69 print stays on disk as
-// the registered measurement oracle (three override maps) and comparison
-// provenance — its rows now measure an owner-decreed divergence.
-modelSources.type59 = {
-  source: 'procedural',
-  candidateGlb: { path: '/models/tanks/community/type69_lasttriarius.glb', turretNode: '^Turret$', autoPivot: true, paintUntextured: true },
-} satisfies ModelSourceRecord;
-// FLEET FLIP 2026-08-04: MODEL_SOURCE_RETIRED.vickers_mk1 = glb('vickers_mk1_jack.glb');
-
-// quarantine class (NC-SA) — local builds only; public builds keep these ids
-// on their procedural family fallbacks and strip-nc-assets deletes the files
-// t84 GRADUATED 2026-08-04 (dual gate: 90.2 x2 f27feef + critic PASS 9.14
-// floor 9.0, 346c758; hash frozen 531fe4f0) — registration retired per
-// GEOMETRY-GATE §10; the reference lives on only in the three local
-// measurement override maps.
 export const SUPPLEMENTAL_FLEET_TANK_IDS = SPECS.map((spec) => spec.id);

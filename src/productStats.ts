@@ -14,7 +14,6 @@ export interface ProductStats {
   developmentOnlyVehicles: number;
   referenceVehicleRecords: number;
   battlePlayableVehicles: number;
-  comparisonCandidates: number;
   battlefields: number;
 }
 
@@ -25,7 +24,6 @@ export const PRODUCT_STATS: Readonly<ProductStats> = Object.freeze({
   developmentOnlyVehicles: 37,
   referenceVehicleRecords: 2,
   battlePlayableVehicles: 129,
-  comparisonCandidates: 7,
   battlefields: 20,
 });
 
@@ -36,7 +34,6 @@ export const PRODUCT_STAT_TOKENS: Readonly<Record<string, number>> = Object.free
   '{{COT_DEVELOPMENT_ONLY_VEHICLES}}': PRODUCT_STATS.developmentOnlyVehicles,
   '{{COT_REFERENCE_VEHICLE_RECORDS}}': PRODUCT_STATS.referenceVehicleRecords,
   '{{COT_BATTLE_PLAYABLE_VEHICLES}}': PRODUCT_STATS.battlePlayableVehicles,
-  '{{COT_COMPARISON_CANDIDATES}}': PRODUCT_STATS.comparisonCandidates,
   '{{COT_BATTLEFIELDS}}': PRODUCT_STATS.battlefields,
 });
 

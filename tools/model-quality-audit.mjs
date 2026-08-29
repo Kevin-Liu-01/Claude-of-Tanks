@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as THREE from 'three';
 import { createServer } from 'vite';
+import { VEHICLE_COMPARISON_SOURCES } from './vehicleComparisonSources.mjs';
 
 const ROOT = process.cwd();
 const REPORT_DIR = path.join(ROOT, '.qa-dev', 'reports');
@@ -245,9 +246,9 @@ function scoreGlb(id, spec, cfg, role) {
     components: { source, turret, gun, hierarchy, pivot, proportions: round(proportions), hygiene } };
 }
 
-function scoreProcedural(id, spec, sourceRow) {
+function scoreProcedural(id, spec, hasComparisonSource) {
   const family = spec.visualBase || (spec.variantOf && spec.variantOf !== id);
-  const generic = !family && !!sourceRow?.candidateGlb;
+  const generic = !family && hasComparisonSource;
   const score = generic ? 8.5 : family ? 9 : 9.5;
   const issues = [];
   if (generic) issues.push('uses dimension-correct generic articulated fallback');
@@ -269,14 +270,15 @@ try {
   for (const id of ALL_TANK_IDS) {
     const spec = TANK_SPECS[id];
     const src = MODEL_SOURCE[id] || { source: 'procedural' };
+    const comparisonSource = VEHICLE_COMPARISON_SOURCES[id];
     const selected = src.source === 'glb'
       ? scoreGlb(id, spec, src.glb, 'selected')
-      : scoreProcedural(id, spec, src);
+      : scoreProcedural(id, spec, !!comparisonSource);
     selected.era = spec.era;
     selected.name = spec.name;
     rows.push(selected);
-    if (src.candidateGlb) {
-      const candidate = scoreGlb(id, spec, src.candidateGlb, 'candidate');
+    if (comparisonSource) {
+      const candidate = scoreGlb(id, spec, comparisonSource, 'candidate');
       Object.assign(candidate, { era: spec.era, name: spec.name });
       rows.push(candidate);
     }

@@ -26,9 +26,13 @@ const actual = {
   developmentOnlyVehicles: DEVELOPMENT_TANK_IDS.length - PRODUCTION_TANK_IDS.length,
   referenceVehicleRecords: RETIRED_EXTERNAL_PLACEHOLDER_IDS.size,
   battlePlayableVehicles: ALL_TANK_IDS.length,
-  comparisonCandidates: ALL_TANK_IDS.filter((id) => MODEL_SOURCE[id]?.candidateGlb).length,
   battlefields: MAP_IDS.length,
 };
+assert.equal(
+  ALL_TANK_IDS.filter((id) => MODEL_SOURCE[id]?.candidateGlb).length,
+  0,
+  'runtime fleet registry must not contain offline comparison GLBs',
+);
 assert.deepEqual(PRODUCT_STATS, actual,
   'src/productStats.ts must match the canonical vehicle and battlefield registries');
 

@@ -1,6 +1,6 @@
 // Boot-light combat data for three core first-party procedural variants.
-// Historical derivative GLBs remain attributed comparison candidates only;
-// they never replace these runtime specs or builders.
+// Historical derivative GLBs remain offline comparison inputs only; they
+// never enter the runtime registry or replace these specs/builders.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import {
@@ -9,7 +9,7 @@ import {
   type ArmorEnvelope,
   type ArmorPlate,
 } from './specHelpers.ts';
-import type { FleetTankSpec, ModelSourceRecord } from './specContracts.ts';
+import type { FleetTankSpec } from './specContracts.ts';
 import { bindFleetRegistries } from './fleetSpecRegistry.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
@@ -190,49 +190,13 @@ const VARIANT_SPECS = {
   },
 } satisfies Readonly<Record<VariantTankId, FleetTankSpec>>;
 
-// Visual source of truth: preprocessed variant GLBs. All three carry authored
-// TurretPivot/GunPivot nodes; paintUntextured routes the baked-in kit parts
-// (untextured CARC-green Principled materials) onto the live camo canvas and
-// keeps near-black hardware dark, exactly like the community CAD assets.
-const VARIANT_MODEL_SOURCE: Partial<Record<VariantTankId, ModelSourceRecord>> = {
-  // m1a1: DUAL-GATE GRADUATE (2026-08-02, freeze e500174c after the r5
-  // cable re-freeze) — NO variant backfill. The graduation retired the
-  // primary registration and this backfill silently re-sourced the slot,
-  // keeping the graduate OFF the CUSTOM tab and showing a dannzjs-lineage
-  // GLB (the print family owner-identified as a mislabeled Leopard 2A5)
-  // instead of the graduated procedural build. Caught 2026-08-04 by the
-  // owner's custom-list check. The variant GLB stays on disk unregistered.
-  // t90a: FLEET FLIP 2026-08-04 (owner: every MBT renders procedural +
-  // CUSTOM) — variant registration retired; the xarchenko GLB stays a
-  // measurement oracle via the three override maps.
-  // m1a2_tusk: §5.31b ERA-GROUP FLIP 2026-08-08 (owner: "im not seeing our
-  // custom models on our deployed versions"). This row was the PUBLIC-build
-  // render of record: dev builds overwrote it with the quarantined tejas
-  // alias (userdrops4, now also retired), so deploys silently kept showing
-  // the dannzjs-lineage variant GLB — the exact m1a1 backfill class above.
-  // The abrams.js tusk profile (buildTejasFamily + real-scale ARAT/slat/TIP
-  // kit) renders everywhere now; the variant print retires to candidateGlb
-  // (kv2/t30 pattern) for the Sources catalog + A/B audit.
-
-  m1a2_tusk: {
-    source: 'procedural',
-    candidateGlb: {
-      path: '/models/tanks/community/variants/m1a2_tusk_dannzjs_variant.glb',
-      turretNode: 'TurretPivot',
-      gunNode: 'GunPivot',
-      paintUntextured: true,
-    },
-  },
-};
-
 // ---------------------------------------------------------------------------
 // Registration side effect: fold the variants into the shared roster tables.
 // Guarded so a double import (or a concurrent registrar) can't duplicate ids.
 // ---------------------------------------------------------------------------
 for (const id of VARIANT_TANK_IDS) {
   registries.tankSpecs[id] ||= VARIANT_SPECS[id];
-  const source = VARIANT_MODEL_SOURCE[id];
-  if (!registries.modelSources[id] && source) registries.modelSources[id] = source;
+  registries.modelSources[id] ||= { source: 'procedural' };
   if (!registries.allTankIds.includes(id)) registries.allTankIds.push(id);
 }
 

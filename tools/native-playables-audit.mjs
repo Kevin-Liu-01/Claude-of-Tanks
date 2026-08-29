@@ -82,8 +82,8 @@ for (const file of files) {
 await import(pathToFileURL(path.join(vehicleRoot, 'tankFactory.ts')).href);
 const specsUrl = pathToFileURL(path.join(vehicleRoot, 'specs.js')).href;
 const { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS, RETIRED_EXTERNAL_PLACEHOLDER_IDS } = await import(specsUrl);
-// No MODEL_SOURCE row is the original procedural default. An explicit row
-// is legal only when it also says procedural (usually to carry candidateGlb).
+// Runtime source selection is procedural-only. Comparison GLBs and their
+// articulation metadata belong to tools/vehicleComparisonSources.mjs.
 const nonNative = ALL_TANK_IDS.filter((id) => MODEL_SOURCE[id] && MODEL_SOURCE[id].source !== 'procedural');
 for (const id of nonNative) {
   failures.push(`${id}: battle playable resolves to ${MODEL_SOURCE[id]?.source ?? 'unknown'} geometry`);
@@ -91,6 +91,9 @@ for (const id of nonNative) {
 for (const id of ALL_TANK_IDS) {
   if (MODEL_SOURCE[id]?.glb?.path) {
     failures.push(`${id}: battle playable retains an active external geometry path (${MODEL_SOURCE[id].glb.path})`);
+  }
+  if (MODEL_SOURCE[id]?.candidateGlb?.path) {
+    failures.push(`${id}: runtime registry leaks an offline comparison source (${MODEL_SOURCE[id].candidateGlb.path})`);
   }
 }
 
@@ -119,5 +122,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-const candidateCount = ALL_TANK_IDS.filter((id) => MODEL_SOURCE[id]?.candidateGlb).length;
-console.log(`Native-playable provenance audit PASS: ${ALL_TANK_IDS.length} first-party procedural battle playables, 0 GLB-sourced, ${candidateCount} isolated comparison candidates.`);
+console.log(`Native-playable provenance audit PASS: ${ALL_TANK_IDS.length} first-party procedural battle playables, 0 runtime GLB or comparison sources.`);
