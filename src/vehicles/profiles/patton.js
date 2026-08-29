@@ -582,6 +582,24 @@ function m2Station(P, M, yl, zl) {
   }
 }
 
+function standardizedAmericanM2Station(P, M, yl, zl, variant = 'open') {
+  const barrelLength = Math.max(0.30, M.tipZ - M.z - 0.779);
+  const mg = FITTINGS.americanM2({
+    mats: P.mats,
+    tone: 'two-tone',
+    ammoSide: (M.cans?.[0] ?? 0) < 0 ? -1 : 1,
+    barrelLength,
+    elev: M.elev ?? 0.02,
+    ring: { r: variant === 'patton' ? 0.245 : 0.22, stubs: 4 },
+    shield: Boolean(M.shield),
+    seed: M.seed ?? 46,
+  });
+  mg.position.set(M.x, yl(M.baseY), zl(M.z));
+  mg.userData.hostVariant = variant;
+  P.turretG.add(mg);
+  return mg;
+}
+
 // Bustle stowage rack. The v6 plan traces show the reference racks are
 // DEEP at the side rails but SHALLOW at the centre (the load stops ~0.25 m
 // short of the rail tips): centre floor/loads end at zC, side rails run to
@@ -837,11 +855,14 @@ function t26Cast(P, T) {
     P.add('turretDetail', cylY(0.045, 0.06, 0.10, 8), T.antenna.x, yl(T.antenna.y), zl(T.antenna.z));
     P.add('turretDetail', cylY(0.014, 0.018, 0.16, 6), T.antenna.x, yl(T.antenna.y + 0.11), zl(T.antenna.z));
   }
-  if (T.mg) m2Station(P, mgPale && T.mg.tone === 'two-tone' ? { ...T.mg, paleMat: mgPale } : T.mg, yl, zl);
+  if (T.mg) {
+    if (T.standardAmericanM2) standardizedAmericanM2Station(P, T.mg, yl, zl, 'patton');
+    else m2Station(P, mgPale && T.mg.tone === 'two-tone' ? { ...T.mg, paleMat: mgPale } : T.mg, yl, zl);
+  }
   if (T.pedestal) {
     aaPedestal(P, mgPale && T.pedestal.tone === 'two-tone' ? { ...T.pedestal, paleMat: mgPale } : T.pedestal, yl, zl);
   }
-  if (T.mg && T.mg.tone === 'two-tone' && mgPale) {
+  if (T.mg && !T.standardAmericanM2 && T.mg.tone === 'two-tone' && mgPale) {
     // r7 B1 crown strips (MG PHYSICS: >=2px pale top-lit edges over the
     // upper works; m47 r4 B5 lesson — crowns FLUSH with their parts, widths
     // WRAP by +0.02; with M.grammar the receiver crown follows the broken
@@ -1384,7 +1405,8 @@ function m47Cast(P, T) {
     liftEye(P, 'turretDetail', side * 0.80, ly(2.55), zl(-0.10));
     P.add('turretDetail', box(0.02, 0.02, 0.55), side * (B.w1 - 0.02), yl(B.top0 - 0.24), zl(-2.10));
   }
-  m2Station(P, mgPale && T.mg.tone === 'two-tone' ? { ...T.mg, paleMat: mgPale } : T.mg, yl, zl);
+  if (T.standardAmericanM2) standardizedAmericanM2Station(P, T.mg, yl, zl, 'patton');
+  else m2Station(P, mgPale && T.mg.tone === 'two-tone' ? { ...T.mg, paleMat: mgPale } : T.mg, yl, zl);
   if (T.pedestal) {
     aaPedestal(P, mgPale && T.pedestal.tone === 'two-tone' ? { ...T.pedestal, paleMat: mgPale } : T.pedestal, yl, zl);
   }
@@ -1406,7 +1428,7 @@ function m47Cast(P, T) {
     P.add('turretDetail', box(0.05, 0.042, 0.45), (Tp.x + T.mg.x) / 2, ly(3.175), zl((Tp.z + T.mg.z) / 2),
       0, Math.atan2(T.mg.x - Tp.x, T.mg.z - Tp.z), 0);
   }
-  if (T.mg.tone === 'two-tone' && mgPale) {
+  if (!T.standardAmericanM2 && T.mg.tone === 'two-tone' && mgPale) {
     // r4 B5 crown strips (MG PHYSICS: >=2px pale top-lit edges over the
     // upper works, shared mgPale material). Crown tops FLUSH with their
     // parts (the 3.375 heightM carrier never moves); widths WRAP the parts
@@ -2200,6 +2222,37 @@ function buildPershing(P, cfg) {
   P.gunG.position.set(0, cfg.gun.axisY - cfg.ring[0], cfg.gun.rootZ - cfg.ring[1]);
   if (cfg.turret.m47) m47Cast(P, cfg.turret); else t26Cast(P, cfg.turret);
   pattonGun(P, cfg.gun);
+  if (cfg.americanModernization) {
+    const mark = cfg.americanModernization;
+    // Paired guarded lamp clusters and roof electronics stay equipment-only;
+    // the original cast armor and calibrated hull dimensions remain intact.
+    for (const side of [-1, 1]) {
+      const lights = FITTINGS.lightCluster({
+        mats: P.mats, pods: mark === 'm47' ? 2 : 1, spacing: 0.14,
+        r: mark === 'm47' ? 0.060 : 0.065, rake: -0.20, seed: side > 0 ? 471 : 469,
+      });
+      lights.position.set(side * 0.86, 1.48, 1.86);
+      P.hullG.add(lights);
+      const whip = FITTINGS.antennaWhip({ mats: P.mats, h: mark === 'm47' ? 0.78 : 0.64,
+        r: 0.009, rake: side * 0.055, seed: side > 0 ? 472 : 468 });
+      whip.position.set(side * 0.82, 2.54 - cfg.ring[0], -1.12 - cfg.ring[1]);
+      P.turretG.add(whip);
+    }
+    const electronics = FITTINGS.stowageRack({
+      mats: P.mats, w: mark === 'm47' ? 0.72 : 0.62, d: 0.30, h: 0.20,
+      posts: 4, rails: 2, fill: 0.55, seed: mark === 'm47' ? 477 : 467,
+    });
+    electronics.position.set(0.48, 2.08 - cfg.ring[0], -1.92 - cfg.ring[1]);
+    electronics.rotation.y = Math.PI;
+    P.turretG.add(electronics);
+    P.turretG.userData.americanModernizationReceipt = {
+      standardMachineGun: 'sheridan-m2hb-v1',
+      guardedLightClusters: 2,
+      antennaWhips: 2,
+      equipmentRack: true,
+      mark,
+    };
+  }
   // -------------------------------------------------------------------------
   // r4 (m47 TONE round) material work. createTankMaterials is PER-INSTANCE
   // and the gate renders self-lit masks — nothing here moves a curve.
@@ -2965,16 +3018,43 @@ function finishM60Variant(P, variant) {
     } : null,
   };
 
-  // Complete marker-carrying M85-style plant.  The fitting's flanged foot
-  // is sunk into the cupola crown, so receiver, ammo can and forward tube
-  // have one visible load path and yaw with the complete turret package.
-  const m85 = FITTINGS.pintleMG({
-    mats: P.mats, cls: 'm2', tone: 'dark', scale: a3 ? 0.50 : 0.53,
+  // Sheridan-derived M2HB is now the common visible American roof weapon.
+  // A3 gets the later armored shield; A1 retains the open Vietnam-era plant.
+  const m2 = FITTINGS.americanM2({
+    mats: P.mats, tone: 'two-tone', scale: a3 ? 0.58 : 0.62,
     seed: a3 ? 603 : 601, elev: a3 ? 0.035 : 0.02, ammo: true,
-    ring: { r: 0.22, stubs: 3 }, rotation: [0, a3 ? -0.06 : 0.04, 0],
+    ammoSide: 1, shield: a3, ring: { r: 0.23, stubs: 4 },
+    rotation: [0, a3 ? -0.06 : 0.04, 0],
   });
-  m85.position.set(-0.58, 1.42, 0.20);
-  P.turretG.add(m85);
+  m2.position.set(-0.58, 1.34, 0.20);
+  m2.userData.hostVariant = a3 ? 'm60a3-shielded' : 'm60a1-open';
+  P.turretG.add(m2);
+
+  // Useful roof clutter with clear attachment: paired antenna bases, a
+  // compact electronics/stowage cage and protected auxiliary lamp pods.
+  for (const side of [-1, 1]) {
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: a3 ? 0.82 : 0.70,
+      r: 0.009, rake: side * 0.055, seed: a3 ? 630 + side : 610 + side });
+    whip.position.set(side * 1.02, 0.74, -1.24);
+    P.turretG.add(whip);
+    const lamp = FITTINGS.lightCluster({ mats: P.mats, pods: 1, r: 0.052,
+      rake: -0.14, seed: a3 ? 640 + side : 620 + side });
+    lamp.position.set(side * 0.93, 0.48, 0.98);
+    P.turretG.add(lamp);
+  }
+  const rack = FITTINGS.stowageRack({ mats: P.mats, w: 0.78, d: 0.34,
+    h: 0.22, posts: 4, rails: 2, fill: a3 ? 0.70 : 0.55,
+    seed: a3 ? 6033 : 6011 });
+  rack.position.set(0.42, 0.31, -1.54);
+  rack.rotation.y = Math.PI;
+  P.turretG.add(rack);
+  P.turretG.userData.americanModernizationReceipt = {
+    standardMachineGun: 'sheridan-m2hb-v1',
+    stationVariant: m2.userData.hostVariant,
+    guardedAuxiliaryLights: 2,
+    antennaWhips: 2,
+    equipmentRack: true,
+  };
 }
 
 function buildM60(P, cfg) {
@@ -3434,6 +3514,40 @@ function finishM60A2Variant(P, muzzleZ) {
   P.add('gunDark', box(0.10, 0.08, 0.018), 0.20, 0.13, 1.69);
   P.add('gunDark', cylZ(0.17, 0.035, 18), 0.045, 0, muzzleZ - 0.04);
 
+  // Full modernization centerpiece: a compact TTS-derived remotely operated
+  // M2 tower buried into the Starship roof, backed by a dedicated sensor box
+  // and bustle service equipment.  This replaces the former rack-stowed gun
+  // as the visible defensive station without altering the 152 mm gun rig.
+  const rws = FITTINGS.americanRws({
+    mats: P.mats, variant: 'hunter', scale: 0.72, seed: 6022,
+  });
+  rws.position.set(-0.58, 0.82, -0.34);
+  rws.userData.hostVariant = 'm60a2-starship-hunter';
+  P.turretG.add(rws);
+  for (const side of [-1, 1]) {
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.86, r: 0.009,
+      rake: side * 0.07, seed: 6200 + side });
+    whip.position.set(side * 0.96, 0.78, -1.24);
+    P.turretG.add(whip);
+    const lamp = FITTINGS.lightCluster({ mats: P.mats, pods: 1, r: 0.060,
+      rake: -0.15, seed: 6250 + side });
+    lamp.position.set(side * 0.88, 0.53, 0.92);
+    P.turretG.add(lamp);
+  }
+  const serviceRack = FITTINGS.stowageRack({ mats: P.mats, w: 0.92, d: 0.38,
+    h: 0.26, posts: 5, rails: 2, fill: 0.78, seed: 6020 });
+  serviceRack.position.set(0.30, 0.29, -1.72);
+  serviceRack.rotation.y = Math.PI;
+  P.turretG.add(serviceRack);
+  P.turretG.userData.americanModernizationReceipt = {
+    standardMachineGun: 'sheridan-m2hb-v1',
+    stationFamily: 'm551a1-tts-derived-v1',
+    stationVariant: 'hunter',
+    guardedAuxiliaryLights: 2,
+    antennaWhips: 2,
+    equipmentRack: true,
+  };
+
 }
 
 function buildM60A2(P, cfg) {
@@ -3729,12 +3843,8 @@ function buildM60A2(P, cfg) {
   // §B3 FITTINGS decoration (from birth): M85-pattern cupola-flank MG on
   // the bustle shoulder (pintle allowance class), stowage + cable + whip
   {
-    // stowed INSIDE the open bustle rack (the real A2's M85 lives inside
-    // the cupola — an external roof gun would be a parity invention AND
-    // the 2.66-2.68 ref bustle band leaves no silhouette allowance)
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.85, seed: 62 });
-    mg.position.set(0.30, yl(2.38), zl(-1.62));
-    P.turretG.add(mg);
+    // The modernization pass moves the defensive weapon to a connected
+    // roof RWS in finishM60A2Variant; keep this bustle bay for stores.
     const cans = FITTINGS.jerryCans({ mats: P.mats, count: 2, seed: 62 });
     cans.position.set(-0.45, yl(2.16), zl(-1.75));
     P.turretG.add(cans);
@@ -5356,7 +5466,7 @@ export const PATTON_PROFILES = {
     // 2.75 left-cheek roll, loader-ring band 2.712, M2 station raised to
     // the ref's 3.169 band with the barrel to +1.23 (station i12 carrier).
     build: (P) => buildPershing(P, {
-      hull: M46_HULL, fit: M46_FIT,
+      hull: M46_HULL, fit: M46_FIT, americanModernization: 'm46',
       ring: [1.56, -0.29], topWorld: 3.18,
       lowTurret: {
         profile: 'm46-low-patton-cast', scale: 0.78, widthScale: 1.03,
@@ -5564,7 +5674,8 @@ export const PATTON_PROFILES = {
         // stay under the cover; collar END pinned at tipZ 1.222, the
         // station-i12 carrier; pedestal head/cover are the heightM p95
         // carriers and never move — dims 100 x2 required).
-        mg: { x: -0.47, z: -0.10, baseY: 2.68, topY: 3.125, tipZ: 1.222, rl: 0.70, w: 1.5, canY: 2.85, coverZ: 0.02, coverL: 0.40, cans: [0.28, 0.375], tone: 'two-tone', grammar: true },
+        standardAmericanM2: true,
+        mg: { x: -0.47, z: -0.10, baseY: 2.68, topY: 3.125, tipZ: 1.222, rl: 0.70, w: 1.5, canY: 2.85, cans: [0.28], tone: 'two-tone', seed: 460 },
         stowMG: [0.30, 2.30, -0.335],
         pedestal: { x: -0.175, z: -0.39, baseY: 2.62, top: 3.18, zw: 0.13, w: 0.24, tone: 'two-tone' },
         decalSec: 17,
@@ -5590,7 +5701,7 @@ export const PATTON_PROFILES = {
     // -4.135+8.51 = 4.375 station (dims sovereign; ~2 proc-only columns
     // pending the batch z-warp that stretches the oracle tube to 8.51).
     build: (P) => buildPershing(P, {
-      hull: M47_HULL, fit: M47_FIT,
+      hull: M47_HULL, fit: M47_FIT, americanModernization: 'm47',
       ring: [1.676, -0.318], topWorld: 3.37,
       lowTurret: {
         profile: 'm47-low-t42-cast', scale: 0.65, widthScale: 1.04,
@@ -5816,7 +5927,8 @@ export const PATTON_PROFILES = {
         // slice-11 flip is inherent to this pair and lives in the
         // stations trim slot with i9 (the r2-packet flip-flop class).
         // r6 B7: grammar — receiver hump/dip/cap + dapple (certified band)
-        mg: { x: 0.17, z: -0.28, baseY: 2.92, topY: 3.345, tipZ: 0.814, rl: 0.84, w: 2.0, canY: 3.02, cans: [-0.26], coverZ: -0.29, coverL: 0.22, tone: 'two-tone', grammar: true },
+        standardAmericanM2: true,
+        mg: { x: 0.17, z: -0.28, baseY: 2.92, topY: 3.345, tipZ: 0.814, rl: 0.84, w: 2.0, canY: 3.02, cans: [-0.26], tone: 'two-tone', seed: 470 },
         pedestal: { x: -0.095, z: -0.64, baseY: 2.94, top: 3.38, zw: 0.53, w: 0.24, capW: 0.23, tone: 'two-tone' },
         // r4: B5 mount truss, B2/B3 rack tray fill, D1 whip (ref spike band
         // z ~ -0.8, tip ~3.5 = 2.72 base + 0.12 pot + 0.66 whip)

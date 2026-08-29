@@ -786,6 +786,295 @@ function fittingPintleMG(opts = {}) {
 }
 
 /**
+ * Detailed US M2HB installation shared by the Sheridan, Patton and M60
+ * families.  The generic `pintleMG({ cls: 'm2' })` remains the inexpensive
+ * fleet fitting; this version is the American hero-prop standard with the
+ * receiver, feed path, ammunition chest, cradle and perforated jacket all
+ * reading as separate connected members.
+ *
+ * Origin: mounting foot on the roof. +Z is the firing direction.
+ */
+function fittingAmericanM2(opts = {}) {
+  const { box, cylX, cylY, cylZ, torus } = KIT;
+  const s = opts.scale || 1;
+  const elev = opts.elev ?? 0.035;
+  const ammoSide = Math.sign(opts.ammoSide || -1);
+  const parts = fitParts();
+  const aim = (geo, dz, dy = 0) => KIT.xform(
+    KIT.xform(geo, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
+
+  // Roof bearing -> spindle -> fork -> trunnion: one unbroken load path.
+  parts.add('dark', cylY(0.070 * s, 0.082 * s, 0.026 * s, 16), 0, 0.013 * s, 0);
+  parts.add('dark', cylY(0.032 * s, 0.045 * s, 0.180 * s, 14), 0, 0.116 * s, 0);
+  parts.add('dark', box(0.190 * s, 0.055 * s, 0.155 * s), 0, 0.220 * s, 0.035 * s);
+  for (const side of [-1, 1]) {
+    parts.add('dark', box(0.032 * s, 0.120 * s, 0.130 * s),
+      side * 0.073 * s, 0.278 * s, 0.070 * s, side * 0.08, 0, 0);
+  }
+  parts.add('dark', cylX(0.046 * s, 0.205 * s, 14), 0, 0.330 * s, 0.105 * s);
+
+  // M2 receiver and recognizable top-cover/charging-handle grammar.
+  const recY = 0.345 * s;
+  const recZ = 0.195 * s;
+  parts.add('dark', box(0.155 * s, 0.145 * s, 0.500 * s), 0, recY, recZ);
+  parts.add('dark', box(0.145 * s, 0.022 * s, 0.445 * s),
+    0, recY + 0.083 * s, recZ + 0.005 * s);
+  parts.add('dark', box(0.052 * s, 0.035 * s, 0.120 * s),
+    -0.105 * s, recY + 0.025 * s, recZ - 0.015 * s);
+  parts.add('dark', box(0.090 * s, 0.036 * s, 0.046 * s),
+    0, recY - 0.015 * s, recZ - 0.280 * s);
+  for (const side of [-1, 1]) {
+    parts.add('dark', box(0.027 * s, 0.032 * s, 0.125 * s),
+      side * 0.053 * s, recY - 0.005 * s, recZ - 0.315 * s,
+      side * 0.06, 0, 0);
+  }
+
+  // Closed ammunition chest, proud lid, retaining rack and receiver bridge.
+  if (opts.ammo !== false) {
+    const ax = ammoSide * 0.245 * s;
+    parts.add('detail', box(0.270 * s, 0.205 * s, 0.260 * s),
+      ax, recY - 0.020 * s, recZ - 0.015 * s);
+    parts.add('detail', box(0.286 * s, 0.020 * s, 0.276 * s),
+      ax, recY + 0.092 * s, recZ - 0.015 * s);
+    for (const side of [-1, 1]) {
+      parts.add('dark', box(0.020 * s, 0.230 * s, 0.295 * s),
+        ax + side * 0.152 * s, recY - 0.015 * s, recZ - 0.015 * s);
+    }
+    parts.add('dark', box(0.115 * s, 0.070 * s, 0.125 * s),
+      ammoSide * 0.115 * s, recY + 0.035 * s, recZ + 0.155 * s,
+      0, -ammoSide * 0.18, 0);
+  }
+
+  // Jacket, barrel and flash hider share the receiver trunnion and elevation.
+  const trunZ = recZ + 0.250 * s;
+  parts.add('dark', aim(cylZ(0.043 * s, 0.220 * s, 16), 0.110 * s),
+    0, recY, trunZ);
+  for (let index = 0; index < 5; index++) {
+    parts.add('detail', aim(torus(0.044 * s, 0.006 * s, 14), (0.035 + index * 0.039) * s),
+      0, recY, trunZ);
+  }
+  const barrelLength = (opts.barrelLength ?? 0.68) * s;
+  parts.add('dark', aim(cylZ(0.019 * s, barrelLength, 12),
+    0.220 * s + barrelLength / 2), 0, recY, trunZ);
+  parts.add('dark', aim(cylZ(0.038 * s, 0.105 * s, 14),
+    0.220 * s + barrelLength + 0.0525 * s), 0, recY, trunZ);
+  parts.add('dark', aim(cylZ(0.014 * s, 0.018 * s, 10),
+    0.220 * s + barrelLength + 0.114 * s), 0, recY, trunZ);
+
+  if (opts.ring) {
+    const rr = (opts.ring.r || 0.235) * s;
+    parts.add('detail', torus(rr, 0.014 * s, 28), 0, 0.032 * s, 0);
+    for (let index = 0; index < (opts.ring.stubs || 4); index++) {
+      const a = 0.55 + index * Math.PI * 2 / (opts.ring.stubs || 4);
+      parts.add('dark', box(0.030 * s, 0.045 * s, 0.030 * s),
+        Math.cos(a) * rr, 0.020 * s, Math.sin(a) * rr);
+    }
+  }
+  const shieldVariant = opts.shield === true ? 'standard' : opts.shield;
+  if (shieldVariant === 'low') {
+    parts.add('hull', box(0.46 * s, 0.21 * s, 0.030 * s),
+      0, recY - 0.015 * s, trunZ + 0.085 * s);
+    parts.add('dark', box(0.15 * s, 0.075 * s, 0.035 * s),
+      0, recY - 0.015 * s, trunZ + 0.108 * s);
+  } else if (shieldVariant === 'split') {
+    for (const side of [-1, 1]) {
+      parts.add('hull', box(0.205 * s, 0.30 * s, 0.032 * s),
+        side * 0.145 * s, recY + 0.015 * s, trunZ + 0.090 * s,
+        0, -side * 0.055, 0);
+      parts.add('dark', box(0.022 * s, 0.275 * s, 0.040 * s),
+        side * 0.252 * s, recY + 0.010 * s, trunZ + 0.080 * s);
+    }
+    parts.add('hull', box(0.36 * s, 0.040 * s, 0.045 * s),
+      0, recY + 0.175 * s, trunZ + 0.085 * s);
+  } else if (shieldVariant === 'armored') {
+    parts.add('hull', box(0.58 * s, 0.34 * s, 0.040 * s),
+      0, recY + 0.020 * s, trunZ + 0.090 * s);
+    for (const side of [-1, 1]) {
+      parts.add('hull', box(0.035 * s, 0.30 * s, 0.23 * s),
+        side * 0.272 * s, recY + 0.005 * s, trunZ - 0.010 * s,
+        0, -side * 0.10, 0);
+    }
+    parts.add('hull', box(0.57 * s, 0.035 * s, 0.25 * s),
+      0, recY + 0.205 * s, trunZ - 0.005 * s);
+    parts.add('dark', box(0.18 * s, 0.115 * s, 0.045 * s),
+      0, recY, trunZ + 0.120 * s);
+  } else if (shieldVariant) {
+    parts.add('hull', box(0.52 * s, 0.30 * s, 0.035 * s),
+      0, recY + 0.015 * s, trunZ + 0.090 * s);
+    parts.add('dark', box(0.17 * s, 0.11 * s, 0.040 * s),
+      0, recY, trunZ + 0.115 * s);
+  }
+
+  const fitting = fitAssemble('pintleMG', parts, opts);
+  fitting.name = 'fitting_americanM2HB';
+  const detailMesh = fitting.children.find((child) => child.userData.fittingSlot === 'detail');
+  if (detailMesh) detailMesh.name = 'sheridanCommanderM2AmmoBox';
+  const bodyMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
+  if (bodyMesh) bodyMesh.name = 'americanM2HBBody';
+  fitting.userData.americanWeaponStandard = 'sheridan-m2hb-v1';
+  fitting.userData.weaponName = 'Browning M2HB';
+  fitting.userData.caliberMm = 12.7;
+  fitting.userData.ammoSide = ammoSide;
+  fitting.userData.shieldVariant = shieldVariant || 'open';
+  fitting.userData.installationVariant = opts.installationVariant || 'open-cradle';
+  return fitting;
+}
+
+/**
+ * M551A1-TTS-derived remote station family.  Variants share a buried slew
+ * drum, armored cradle, M2HB receiver/feed system and forward EO face while
+ * changing the protection and sensor silhouette for each host vehicle.
+ */
+function fittingAmericanRws(opts = {}) {
+  const { box, cylY, cylZ, torus } = KIT;
+  const variant = opts.variant || 'compact';
+  const s = opts.scale || 1;
+  const standard = variant === 'standard';
+  const armored = variant === 'armored';
+  const hunter = variant === 'hunter';
+  const low = variant === 'lowProfile';
+  const parts = fitParts();
+  // Keep the station in one continuous fitting-paint finish.  Sampling the
+  // host hull camouflage independently on every small armor box made the
+  // tower read as a stack of unrelated miniature camo tiles.
+  const body = opts.bodySlot || 'detail';
+  const baseR = (low ? 0.25 : 0.28) * s;
+  const pedestalH = (low ? 0.19 : armored ? 0.30 : 0.26) * s;
+  const headY = pedestalH + (low ? 0.19 : 0.24) * s;
+  const headW = (low ? 0.52 : armored ? 0.48 : 0.42) * s;
+  const headH = (low ? 0.22 : armored ? 0.36 : 0.30) * s;
+  const headD = (low ? 0.48 : 0.44) * s;
+
+  parts.add(body, cylY(baseR * 0.92, baseR, 0.105 * s, 20), 0, 0.0525 * s, 0);
+  parts.add('dark', torus(baseR * 0.88, 0.025 * s, 24), 0, 0.108 * s, 0);
+  parts.add(body, box(0.24 * s, pedestalH, 0.22 * s), 0,
+    0.095 * s + pedestalH / 2, 0);
+  parts.add('dark', box(0.34 * s, 0.055 * s, 0.31 * s), 0,
+    0.095 * s + pedestalH, 0);
+  // Exposed load-carrying yoke: four tied steel legs make the extra height
+  // look engineered rather than like a floating box on a stretched post.
+  for (const side of [-1, 1]) {
+    parts.add('dark', box(0.028 * s, pedestalH * 0.76, 0.036 * s),
+      side * 0.125 * s, 0.095 * s + pedestalH * 0.56, 0.055 * s,
+      0, 0, -side * 0.105);
+    parts.add('dark', box(0.028 * s, pedestalH * 0.64, 0.036 * s),
+      side * 0.105 * s, 0.095 * s + pedestalH * 0.52, -0.065 * s,
+      0, 0, side * 0.090);
+  }
+
+  // Armored sensor/weapon head and serviceable top cover.
+  parts.add(body, box(headW, headH, headD), 0, headY, 0.04 * s);
+  parts.add('detail', box(headW - 0.025 * s, 0.026 * s, headD - 0.035 * s),
+    0, headY + headH / 2 + 0.013 * s, 0.04 * s);
+  parts.add('glass', box(0.115 * s, 0.095 * s, 0.020 * s),
+    -0.105 * s, headY + 0.035 * s, headD / 2 + 0.050 * s);
+  parts.add('glass', box(0.070 * s, 0.060 * s, 0.020 * s),
+    0.085 * s, headY - 0.045 * s, headD / 2 + 0.050 * s);
+  parts.add('dark', box(0.055 * s, 0.050 * s, 0.022 * s),
+    0.088 * s, headY + 0.065 * s, headD / 2 + 0.052 * s);
+  // Paired protected work/identification lights share the forward EO face.
+  for (const x of [0.155, 0.225]) {
+    parts.add('dark', cylZ(0.031 * s, 0.040 * s, 12),
+      x * s, headY - 0.075 * s, headD / 2 + 0.052 * s);
+    parts.add('glass', cylZ(0.024 * s, 0.006 * s, 12),
+      x * s, headY - 0.075 * s, headD / 2 + 0.075 * s);
+  }
+
+  // M2 receiver is nested into the head roof; side coffin and feed are one
+  // connected protected assembly rather than a floating generic gun.
+  const recY = headY + headH / 2 + 0.090 * s;
+  parts.add('dark', box(0.235 * s, 0.145 * s, 0.46 * s), 0, recY, 0.16 * s);
+  parts.add('dark', box(0.215 * s, 0.018 * s, 0.41 * s),
+    0, recY + 0.080 * s, 0.16 * s);
+  parts.add(body, box(0.25 * s, 0.28 * s, 0.34 * s),
+    -0.29 * s, headY + 0.02 * s, -0.01 * s);
+  parts.add('dark', box(0.10 * s, 0.10 * s, 0.18 * s),
+    -0.17 * s, recY - 0.02 * s, 0.24 * s, 0, -0.22, 0);
+  // Visible disintegrating-link run from the armored ammunition coffin into
+  // the receiver.  Alternating dark links and painted spacers keep the belt
+  // legible at gallery distance without adding separate draw calls.
+  for (let index = 0; index < 8; index++) {
+    const t = index / 7;
+    const x = (-0.205 + t * 0.205) * s;
+    const y = recY + (-0.025 + t * 0.030) * s;
+    const z = (0.175 + t * 0.045) * s;
+    parts.add('dark', box(0.030 * s, 0.040 * s, 0.028 * s), x, y, z,
+      0, 0, -0.08 + t * 0.13);
+    parts.add('detail', box(0.011 * s, 0.044 * s, 0.031 * s),
+      x + 0.008 * s, y, z);
+  }
+  // Receiver guard and service tower carry the added lights, wiring, and
+  // ammunition hardware.  The guard is dark steel; the tower stays in the
+  // same continuous fitting-paint finish as the armored head.
+  for (const side of [-1, 1]) {
+    parts.add('dark', box(0.026 * s, 0.245 * s, 0.034 * s),
+      side * 0.165 * s, recY - 0.015 * s, 0.105 * s,
+      0, 0, side * 0.115);
+  }
+  parts.add('dark', box(0.355 * s, 0.028 * s, 0.034 * s),
+    0, recY + 0.105 * s, 0.105 * s);
+  const serviceY = recY + 0.105 * s;
+  parts.add(body, box(0.175 * s, 0.205 * s, 0.165 * s),
+    0.205 * s, serviceY, -0.065 * s);
+  parts.add('dark', box(0.195 * s, 0.022 * s, 0.185 * s),
+    0.205 * s, serviceY + 0.113 * s, -0.065 * s);
+  parts.add('glass', box(0.095 * s, 0.070 * s, 0.018 * s),
+    0.205 * s, serviceY + 0.025 * s, 0.027 * s);
+  parts.add('dark', cylZ(0.030 * s, 0.72 * s, 14),
+    0, recY, 0.74 * s);
+  parts.add('dark', cylZ(0.050 * s, 0.105 * s, 14),
+    0, recY, 1.1525 * s);
+  parts.add('dark', cylZ(0.017 * s, 0.018 * s, 10),
+    0, recY, 1.214 * s);
+
+  if (standard) {
+    // Baseline M1A2 station: open service cheeks and a narrow sensor brow.
+    // It keeps the TTS-derived gun/head anatomy while remaining visibly
+    // lighter than the TUSK compact and SEP armored installations.
+    parts.add(body, box(headW + 0.09 * s, 0.025 * s, headD + 0.05 * s),
+      0, headY + headH / 2 + 0.060 * s, 0.04 * s);
+    for (const side of [-1, 1]) {
+      parts.add('dark', box(0.025 * s, headH * 0.68, headD + 0.03 * s),
+        side * (headW / 2 + 0.030 * s), headY - 0.02 * s, 0.04 * s,
+        0, 0, side * 0.055);
+    }
+  } else if (armored) {
+    parts.add(body, box(headW + 0.16 * s, 0.030 * s, headD + 0.10 * s),
+      0, recY + 0.105 * s, 0.08 * s);
+    for (const side of [-1, 1]) {
+      parts.add(body, box(0.035 * s, headH + 0.27 * s, headD + 0.08 * s),
+        side * (headW / 2 + 0.06 * s), headY + 0.08 * s, 0.04 * s,
+        0, 0, side * 0.06);
+    }
+  } else if (hunter) {
+    parts.add(body, box(0.25 * s, 0.28 * s, 0.25 * s),
+      0.31 * s, headY + 0.06 * s, 0.00);
+    parts.add('glass', box(0.15 * s, 0.13 * s, 0.022 * s),
+      0.31 * s, headY + 0.07 * s, 0.137 * s);
+    parts.add('detail', cylY(0.045 * s, 0.060 * s, 0.10 * s, 14),
+      0.31 * s, headY + 0.25 * s, 0.00);
+  } else if (low) {
+    for (const side of [-1, 1]) {
+      parts.add(body, box(0.030 * s, headH + 0.08 * s, headD + 0.04 * s),
+        side * (headW / 2 + 0.015 * s), headY, 0.04 * s);
+    }
+  }
+
+  const fitting = fitAssemble('pintleMG', parts, opts);
+  fitting.name = `fitting_americanRws_${variant}`;
+  fitting.userData.americanRwsFamily = 'm551a1-tts-derived-v1';
+  fitting.userData.stationVariant = variant;
+  fitting.userData.remoteControlled = true;
+  fitting.userData.weaponName = 'Browning M2HB';
+  fitting.userData.caliberMm = 12.7;
+  fitting.userData.finishStandard = 'continuous-fitting-paint';
+  fitting.userData.hasVisibleFeedBelt = true;
+  fitting.userData.hasWorkLights = true;
+  fitting.userData.hasSteelReceiverGuard = true;
+  return fitting;
+}
+
+/**
  * Rail stowage rack with soft fill (§B3 dressing). Rail fence + dark mesh
  * back panel + tone-varied duffels/crates/tarp rolls.
  * Origin: center of the rack FLOOR plane; +z is the open/outboard face.
@@ -1080,6 +1369,8 @@ function fittingMarkExact(group, type) {
 
 export const FITTINGS = {
   pintleMG: fittingPintleMG,
+  americanM2: fittingAmericanM2,
+  americanRws: fittingAmericanRws,
   stowageRack: fittingStowageRack,
   towCable: fittingTowCable,
   jerryCans: fittingJerryCans,

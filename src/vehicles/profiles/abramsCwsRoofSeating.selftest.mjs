@@ -44,6 +44,28 @@ for (const id of ['m1a1', 'm1a1ha', 'ua_m1a1']) {
   assert.ok(near(receipt.cws.drumTopY,
     receipt.cws.drumCarrierTopY - 0.003),
   `${id}: hatch ring remains flush with the carrier surface`);
+  const optic = turretRig.userData.abramsEarlyCommanderOpticReceipt;
+  const ha = authoredVariant === 'm1a1ha';
+  assert.equal(receipt.cws.commanderOpticType,
+    ha ? 'ha-large-window' : 'm1a1-binocular',
+    `${id}: marked left station is an observation package, not a second gun`);
+  assert.equal(optic?.type, ha ? 'ha-large-window' : 'm1a1-binocular');
+  assert.equal(optic?.windowCount, ha ? 1 : 2,
+    `${id}: commander optic publishes its distinct viewing-window layout`);
+  assert.equal(optic?.equipmentOwned, true);
+  const gunRig = tank.root.getObjectByName('rig_gun');
+  if (ha) {
+    const light = gunRig?.userData.abramsGunRigSearchlightReceipt;
+    assert.equal(light?.pitchesWithGun, true,
+      `${id}: large searchlight belongs to the elevating gun rig`);
+    assert.equal(light?.attachedToMantlet, true,
+      `${id}: searchlight housing overlaps its mantlet attachment`);
+    assert.ok(light?.lensWidthM >= 0.24 && light?.lensHeightM >= 0.21,
+      `${id}: HA searchlight carries the requested large lens`);
+  } else {
+    assert.equal(gunRig?.userData.abramsGunRigSearchlightReceipt, undefined,
+      `${id}: base M1A1 retains the compact optical fit without the HA lamp`);
+  }
 
   if (id === 'ua_m1a1') {
     const cage = turretRig.userData.uaM1A1CageRailReceipt;
@@ -61,4 +83,4 @@ for (const id of ['m1a1', 'm1a1ha', 'ua_m1a1']) {
   }
 }
 
-console.log('abramsCwsRoofSeating.selftest: M1A1, HA and UA roof panels are flush; UA cage rail is tied');
+console.log('abramsCwsRoofSeating.selftest: early Abrams commander optics and HA gun-rig searchlight are seated');

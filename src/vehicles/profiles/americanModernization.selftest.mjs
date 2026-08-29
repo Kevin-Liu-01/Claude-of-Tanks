@@ -1,0 +1,124 @@
+import assert from 'node:assert/strict';
+import { createTank } from '../tankFactory.ts';
+
+const make = (id) => createTank(id, null, {
+  proceduralOnly: true,
+  quality: 'high',
+  camoSeed: 4242,
+  geometryReceipt: true,
+});
+
+const fittings = (root, predicate) => {
+  const found = [];
+  root.traverse((object) => {
+    if (object.userData?.fittingRoot && predicate(object)) found.push(object);
+  });
+  return found;
+};
+
+for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']) {
+  const tank = make(id);
+  const guns = fittings(tank.root,
+    (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v1');
+  assert.ok(guns.length >= 1, `${id}: uses the Sheridan-derived American M2HB standard`);
+  for (const gun of guns) {
+    assert.equal(gun.userData.weaponName, 'Browning M2HB');
+    assert.equal(gun.userData.caliberMm, 12.7);
+    gun.traverse((object) => {
+      if (object.isMesh) assert.equal(object.userData.combatHitboxRole, 'equipment',
+        `${id}: standardized M2 cannot expand primary armor hitboxes`);
+    });
+  }
+  if (id !== 'm551_sheridan') {
+    const receipt = tank.root.getObjectByName('rig_turret')?.userData.americanModernizationReceipt;
+    assert.equal(receipt?.standardMachineGun, 'sheridan-m2hb-v1',
+      `${id}: publishes its American modernization receipt`);
+    assert.equal(receipt?.guardedAuxiliaryLights ?? receipt?.guardedLightClusters, 2,
+      `${id}: carries a paired guarded light upgrade`);
+    assert.equal(receipt?.antennaWhips, 2, `${id}: carries paired modern radio whips`);
+    assert.equal(receipt?.equipmentRack, true, `${id}: carries seated service equipment`);
+  }
+  tank.dispose();
+}
+
+{
+  const tank = make('m60a2');
+  const turret = tank.root.getObjectByName('rig_turret');
+  const station = fittings(tank.root,
+    (object) => object.userData.americanRwsFamily === 'm551a1-tts-derived-v1');
+  assert.equal(station.length, 1, 'M60A2 replaces the stowed MG with one visible TTS-derived RWS');
+  assert.equal(station[0].userData.stationVariant, 'hunter');
+  assert.equal(station[0].userData.finishStandard, 'continuous-fitting-paint');
+  assert.equal(station[0].userData.hasVisibleFeedBelt, true);
+  assert.equal(station[0].userData.hasWorkLights, true);
+  assert.equal(station[0].userData.hasSteelReceiverGuard, true);
+  assert.equal(turret.userData.americanModernizationReceipt?.stationVariant, 'hunter');
+  assert.equal(turret.userData.americanModernizationReceipt?.guardedAuxiliaryLights, 2);
+  tank.dispose();
+}
+
+const abramsStations = new Map();
+for (const [id, expectedVariant, expectedLoader, expectedShield] of [
+  ['m1a2', 'standard', 'm1a2-split-loader', 'split'],
+  ['m1a2_tusk', 'compact', 'tusk-lags-loader', 'open'],
+  ['m1a2_sepv2', 'armored', 'sepv2-armored-loader', 'armored'],
+  ['m1a2_sepv3', 'lowProfile', 'sepv3-low-loader', 'low'],
+]) {
+  const tank = make(id);
+  const turret = tank.root.getObjectByName('rig_turret');
+  const station = fittings(tank.root,
+    (object) => object.userData.americanRwsFamily === 'm551a1-tts-derived-v1');
+  assert.equal(station.length, 1, `${id}: has exactly one TTS-derived commander's tower`);
+  assert.equal(station[0].userData.stationVariant, expectedVariant,
+    `${id}: uses its distinct TTS station variation`);
+  assert.equal(station[0].userData.finishStandard, 'continuous-fitting-paint',
+    `${id}: tower armor uses one coherent finish instead of miniature camo fragments`);
+  assert.equal(station[0].userData.hasVisibleFeedBelt, true,
+    `${id}: tower exposes a readable protected ammunition feed`);
+  assert.equal(station[0].userData.hasWorkLights, true,
+    `${id}: tower carries its paired work-light package`);
+  assert.equal(station[0].userData.hasSteelReceiverGuard, true,
+    `${id}: taller receiver is tied into a steel support cage`);
+  assert.equal(station[0].children.some((object) => object.userData.fittingSlot === 'hull'), false,
+    `${id}: tower does not resample fragmented host camouflage`);
+  assert.equal(turret.userData.americanRwsReceipt?.variant, expectedVariant);
+  assert.equal(turret.userData.americanRwsReceipt?.buriedSeatM, 0.010,
+    `${id}: station is flush-seated into the existing roof carrier`);
+  const loader = fittings(tank.root,
+    (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v1');
+  assert.equal(loader.length, 1, `${id}: has one standardized crew-served Browning`);
+  assert.equal(loader[0].userData.installationVariant, expectedLoader);
+  assert.equal(loader[0].userData.shieldVariant, expectedShield);
+  loader[0].traverse((object) => {
+    if (object.isMesh) assert.equal(object.userData.combatHitboxRole, 'equipment',
+      `${id}: Browning and shield remain equipment-owned`);
+  });
+  const optic = turret.userData.abramsRelocatedCommanderOpticReceipt;
+  assert.equal(optic?.retainedLegacyAssembly, true,
+    `${id}: retains the established commander optics assembly`);
+  assert.equal(optic?.clearsWeaponTower, true,
+    `${id}: relocates the optic clear of the new gun tower`);
+  assert.equal(optic?.x, -0.84);
+  assert.equal(optic?.z, 0.70);
+  assert.ok(Math.abs(optic.seatDepthM - 0.008) < 1e-9,
+    `${id}: relocated optic is flush-seated on the roof carrier`);
+  abramsStations.set(id, station[0].userData.stationVariant);
+  tank.dispose();
+}
+assert.equal(new Set(abramsStations.values()).size, 4,
+  'M1A2, TUSK, SEPv2 and SEPv3 do not repeat one generic remote tower');
+
+for (const [id, expectedLoader, expectedShield] of [
+  ['m1a1', 'm1a1-open-loader', 'open'],
+  ['m1a1ha', 'm1a1ha-armored-loader', 'armored'],
+]) {
+  const tank = make(id);
+  const loader = fittings(tank.root,
+    (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v1');
+  assert.equal(loader.length, 1, `${id}: has one standardized crew-served Browning`);
+  assert.equal(loader[0].userData.installationVariant, expectedLoader);
+  assert.equal(loader[0].userData.shieldVariant, expectedShield);
+  tank.dispose();
+}
+
+console.log('americanModernization.selftest: standardized M2HB, relocated optics, coherent taller RWS family verified');

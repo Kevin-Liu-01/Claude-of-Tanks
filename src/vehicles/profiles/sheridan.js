@@ -472,6 +472,8 @@ function sheridanTtsAutocannon(P) {
   group.name = 'm551a1TtsRemoteAutocannon';
   group.userData.remoteControlled = true;
   group.userData.caliberMm = 30;
+  group.userData.americanRwsFamily = 'm551a1-tts-derived-v1';
+  group.userData.stationVariant = 'tts30-demonstrator';
 
   const body = [];
   const dark = [];
@@ -1326,7 +1328,21 @@ function buildSheridan(P) {
         station.x, 0.7720, station.z);
     }
     if (station.mg === 'm2' && !isTts) {
-      P.turretG.add(measuredCommanderM2(P));
+      // Fleet-standard American hero M2.  Its dimensions and ammo-side
+      // layout are derived from the Sheridan comparison assembly, making
+      // this vehicle the canonical source used by the Patton/M60 families.
+      const m2 = FITTINGS.americanM2({
+        mats: P.mats,
+        tone: 'two-tone',
+        ammoSide: 1,
+        barrelLength: 0.42,
+        elev: 0,
+        ring: { r: 0.235, stubs: 4 },
+        seed: 551,
+      });
+      m2.position.set(-0.498, 0.965, 0.290);
+      m2.userData.sourceVehicle = 'm551_sheridan';
+      P.turretG.add(m2);
     } else if (station.mg !== 'm2') {
       const mg = FITTINGS.pintleMG({
         mats: P.mats,

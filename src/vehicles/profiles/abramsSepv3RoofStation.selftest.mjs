@@ -52,10 +52,15 @@ assert.equal(crows.lowerArmorCollar, true,
 assert.equal(crows.equipmentOwnedShielding, true,
   'CROWS shielding remains equipment-owned for combat anatomy');
 
-assert.ok(loader.previousReceiverY - loader.receiverY >= 0.029,
-  'loader weapon receiver is at least 29 mm lower');
-assert.equal(loader.armoredLowerPlinth, true,
-  'loader weapon has an armored lower plinth');
+assert.equal(loader.americanWeaponStandard, 'sheridan-m2hb-v1',
+  'loader weapon uses the shared American Browning standard');
+assert.equal(loader.shieldVariant, 'low',
+  'loader Browning uses the SEPv3 low shield');
+assert.ok(loader.receiverBottomY < loader.receiverY
+  && loader.receiverBottomY > loader.pintleBottomY,
+  'loader bearing reaches continuously into the Browning receiver');
+assert.equal(loader.connectedBearing, true,
+  'loader weapon has an attached roof bearing');
 assert.equal(loader.equipmentOwnedShielding, true,
   'loader shielding remains equipment-owned for combat anatomy');
 

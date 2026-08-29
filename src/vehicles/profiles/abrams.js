@@ -1507,6 +1507,46 @@ export function buildM1A1BareHull(P, {
   }
 }
 
+function addAbramsBrowning(P, {
+  x, y, z, scale = 0.66, shield = false, ammoSide = 1,
+  installationVariant, yaw = 0, elevation = 0.035, barrelLength = 0.68,
+  ring = false,
+}) {
+  const gun = FITTINGS.americanM2({
+    mats: P.mats,
+    scale,
+    shield,
+    ammoSide,
+    elev: elevation,
+    barrelLength,
+    ring: ring ? { r: 0.235, stubs: 4 } : false,
+    seed: P.spec.id === 'm1a2_sepv3' ? 153
+      : P.spec.id === 'm1a2_sepv2' ? 152
+        : P.spec.id === 'm1a2_tusk' ? 151 : 150,
+    installationVariant,
+  });
+  gun.position.set(x, y, z);
+  gun.rotation.y = yaw;
+  gun.name = `fitting_abramsM2HB_${installationVariant}`;
+  gun.userData.hostVariant = P.spec.id;
+  gun.userData.sourceVehicle = 'm551_sheridan';
+  P.turretG.add(gun);
+  const stations = P.turretG.userData.americanBrowningStations || [];
+  P.turretG.userData.americanBrowningStations = Object.freeze([
+    ...stations,
+    Object.freeze({
+      installationVariant,
+      shieldVariant: gun.userData.shieldVariant,
+      x,
+      y,
+      z,
+      scale,
+      americanWeaponStandard: 'sheridan-m2hb-v1',
+    }),
+  ]);
+  return gun;
+}
+
 // Roof kit shared by the tejas-oracle family. station: 'crows' or 'cws'
 // (same oracle massing, different dressing).
 // DIMS CLAMP, post-W1b (batch-16 tail flatten y' = 2.46 + 0.03*(y_orig -
@@ -1524,7 +1564,14 @@ export function buildM1A1BareHull(P, {
 function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
   const roof = t.roofMain;                    // 0.79 local = 2.36 world
   const reactiveLeftWeapons = ['m1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3'].includes(P.spec.id);
-  const lowProfileStation = station === 'crowslp';
+  const ttsDerivedVariant = ({
+    ttsStandard: 'standard',
+    ttsCompact: 'compact',
+    ttsArmored: 'armored',
+    ttsLowProfile: 'lowProfile',
+  })[station] || null;
+  const lowProfileStation = station === 'crowslp' || station === 'ttsLowProfile';
+  const tallStation = station === 'crows2tall' || station === 'ttsArmored';
   const plat = 0.87;                          // 2.44 world — rack/hatch plateau
   // 2.453 world — warped furniture knee. NOT 2.46: the 1024-px trace
   // quantizes tops UP a pixel, and a 2.46 knee class measured heightM 2.47
@@ -1638,9 +1685,54 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
   // rear edge legitimately slivers both whip columns like the ref) = 3
   // spikes exactly; the p95 reads the 2.4524 knee. Face plates ride below
   // the knee in the same column (top 2.4538, no spike).
-  P.addModuleVisual('optics', 'turret', box(0.515, 0.17, 0.06), -0.8475, 0.8288, 0.17);
-  P.addModuleVisual('optics', 'turretDark', box(0.42, 0.12, 0.028), -0.8475, 0.8233, 0.214);
-  P.addModuleVisual('optics', 'turretGlass', box(0.34, 0.08, 0.018), -0.8475, 0.8233, 0.224);
+  // Keep the established commander EO package on every M1A2-family roof,
+  // but move it to the marked forward-left carrier seat so the new remote
+  // weapon tower owns the old central mast position. Preserve the previous
+  // CROWS-II / CROWS-LP head envelopes and aperture sizes exactly; only the
+  // pedestal and roof registration change.
+  if (station !== 'cws') {
+    const opticX = -0.84;
+    const opticZ = 0.70;
+    const opticSeatY = carrierTopAt(opticZ) - 0.008;
+    const retainedHeadW = lowProfileStation ? 0.46 : 0.36;
+    const retainedHeadH = lowProfileStation ? 0.22 : 0.28;
+    const retainedHeadD = lowProfileStation ? 0.46 : 0.42;
+    const retainedNeckH = lowProfileStation ? 0.10 : 0.13;
+    const retainedHeadY = opticSeatY + 0.055 + retainedNeckH + retainedHeadH / 2;
+    const retainedFaceZ = opticZ + retainedHeadD / 2 + 0.007;
+    P.addModuleVisual('optics', 'turretDark', cylY(0.095, 0.11, 0.055, 16),
+      opticX, opticSeatY + 0.0275, opticZ);
+    P.addModuleVisual('optics', 'turret', box(0.16, retainedNeckH, 0.14),
+      opticX, opticSeatY + 0.055 + retainedNeckH / 2, opticZ);
+    P.addModuleVisual('optics', 'turretDark', box(retainedHeadW, retainedHeadH, retainedHeadD),
+      opticX, retainedHeadY, opticZ);
+    P.addModuleVisual('optics', 'turretDetail',
+      box(retainedHeadW + 0.01, 0.025, retainedHeadD + 0.01),
+      opticX, retainedHeadY + retainedHeadH / 2 + 0.0125, opticZ);
+    P.addModuleVisual('optics', 'turretGlass',
+      box(0.13, lowProfileStation ? 0.075 : 0.095, 0.014),
+      opticX - 0.075, retainedHeadY + 0.035, retainedFaceZ);
+    P.addModuleVisual('optics', 'turretGlass',
+      box(0.10, lowProfileStation ? 0.060 : 0.075, 0.014),
+      opticX + 0.085, retainedHeadY + 0.015, retainedFaceZ);
+    P.addModuleVisual('optics', 'turretDark', box(0.055, 0.050, 0.014),
+      opticX - 0.075, retainedHeadY - 0.075, retainedFaceZ);
+    P.addModuleVisual('optics', 'turretDark', cylZ(0.020, 0.014, 10),
+      opticX + 0.070, retainedHeadY - 0.075, retainedFaceZ + 0.002);
+    P.turretG.userData.abramsRelocatedCommanderOpticReceipt = Object.freeze({
+      host: P.spec.id,
+      x: opticX,
+      z: opticZ,
+      carrierTopY: carrierTopAt(opticZ),
+      seatDepthM: carrierTopAt(opticZ) - opticSeatY,
+      headWidthM: retainedHeadW,
+      headHeightM: retainedHeadH,
+      headDepthM: retainedHeadD,
+      preservedHeadClass: lowProfileStation ? 'crows-lp' : 'crows-ii',
+      retainedLegacyAssembly: true,
+      clearsWeaponTower: true,
+    });
+  }
   // ---- STATION MAST (visibility escalation, owner order 2026-08-06: "i
   // still dont see the ... CROWS or machines for our existing abrams" —
   // owner-authorized gate spend, §B7-precedent). The r3/r4 flat skeletal
@@ -1659,73 +1751,96 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
   // depth <= 0.213 (face windows/LRF at 0.357, HA shield to 0.3465).
   // Front-col spends decoded per §C.)
   if (station === 'cws') {
-    // M1A1/M1A1HA CWS — CROWS-FORWARD LAW (owner 2026-08-07, §5.07: "focus
-    // on making the crows machine guns point forward, not to the left" —
-    // supersedes the §4.999a +90 transverse ruling and its window-pin
-    // adjudication; the banked +95 trial rows stand as history). The M2
-    // rides the same aim frame, now at A = 0 (forward).
-    // DIMS MECHANISM (heightM p95 = 4th-tallest side body column; budget 3
-    // spike cols): the fat above-grace solids (backplate/receiver/can/
-    // cradle) stay PINNED inside this mark's own certified 3 spike columns
-    // (probe tmp-abrams-heightm this round: centers z 0.522/0.63/0.743
-    // world = usable local [0.1175..0.4475], 8 mm+ AA margins held); the
-    // barrel run forward of the window ships SHADOW-NAMED (shadowBarrel
-    // helper above — §C render furniture, mask/frame-excluded), because a
-    // real forward barrel at the 1.082 bore lights every column it crosses
-    // and zeroes dims. Connections (§4.999a) held: post->cradle->receiver,
-    // can GUN-LEFT (+x at A = 0) on bracket + chute nesting the receiver
-    // flank. Receiver proportions stay byte-identical while the complete
-    // station follows the carrier down to the pitched roof.
-    const A = 0;
-    const cA = Math.cos(A), sA = Math.sin(A);
-    const rd = 0.185;                                      // receiver width across aim (certified class)
+    // Early Abrams use this left roof seat as a commander observation
+    // package, not a second weapon.  The M1A1 receives a compact binocular
+    // head; HA receives the larger armored panoramic window requested for
+    // the heavy-armor mark.  Both stay attached to the already certified
+    // roof carrier and leave the vehicle-right loader Browning untouched.
+    const ha = P.spec.id === 'm1a1ha';
     const carrierMountTopY = carrierTopAt(0.2565);
-    const cwsStationDy = carrierMountTopY - plat2;
-    const at = (u, v) => [-0.70 - u * cA + v * sA, 0.2565 + u * sA + v * cA];
-    const part = (bk, geo, u, v, y) => {
-      const [px, pz] = at(u, v);
-      P.addEquipment(bk, geo, px, y + cwsStationDy, pz, 0, A, 0);
-    };
-    part('turretDark', box(0.075, 0.155, 0.055), 0, 0, 0.958);            // pintle post (base seats 2.5 mm into the carrier top)
-    part('turretDark', box(0.155, 0.045, 0.13), 0, 0.035, 1.035);         // cradle (bottom 1.0125 on the post top 1.0355)
-    part('turretDark', box(rd, 0.095, 0.26), 0, 0.03, 1.075);             // receiver (long axis ALONG aim; z [0.1565..0.4165] pinned in-window)
-    part('turretDetail', box(rd - 0.015, 0.012, 0.22), 0, 0.03, 1.128);   // top cover lick
-    part('turretDark', box(0.10, 0.05, 0.03), 0, -0.115, 1.068);          // spade grips / backplate (rear of aim; z 0.1265 >= the 0.1175 window edge)
-    part('turretDetail', box(0.065, 0.105, 0.155), -0.05, 0.0325, 1.055); // ammo can GUN-LEFT of the receiver
-    part('turretDark', box(0.075, 0.045, 0.03), -0.038, 0.02, 1.0325);    // can bracket -> cradle left arm
-    part('turretDark', box(0.012, 0.052, 0.12), -0.072, 0.055, 1.09);     // feed chute can top -> receiver left rail
-    // Forward barrel run — SHADOW-NAMED (see shadowBarrel): jacket collar +
-    // barrel + §B3.1 dark tip continue the 1.082 bore line out of the
-    // receiver face (z local 0.4165) over the forward base edge.
-    shadowBarrel(P, P.turretG, [
-      [0.0148, 0.115, -0.70, 1.082 + cwsStationDy, 0.474],
-      [0.0145, 0.30, -0.70, 1.082 + cwsStationDy, 0.6815],
-      [0.0155, 0.012, -0.70, 1.082 + cwsStationDy, 0.8375],
-    ]);
-    // Powered-ring conduit: flush dark cable run on the base top from the
-    // ring drum to the mast root (§4.999a cabling; top follows carrier plane,
-    // zero-silhouette tone line).
-    P.add('turretDark', box(0.03, 0.006, 0.17),
-      -0.70, carrierTopAt(0.335) - 0.003, 0.335);
-    if (P.spec.id === 'm1a1ha') {
-      // §H.4 tell: the HA carries its CWS gun SHIELDED (m1a1 bare). The
-      // shield re-seats ON the gun line for the forward station (owner
-      // order): re-centered x -0.575 -> -0.70 and moved to the receiver
-      // face plane (z 0.4295, still inside the certified spike window),
-      // notch enlarged so the shadow barrel passes through it. Its top stays
-      // on the receiver's own line after the station is re-seated.
-      P.addEquipment('turret', box(0.30, 0.115, 0.019),
-        -0.70, 1.064 + cwsStationDy, 0.4295);
-      P.add('turretDark', box(0.10, 0.06, 0.008),
-        -0.70, 1.075 + cwsStationDy, 0.4325);
+    const pedestalBottomY = carrierMountTopY - 0.0025;
+    const opticX = -0.70;
+    const opticZ = 0.305;
+    const bodyW = ha ? 0.44 : 0.32;
+    const bodyH = ha ? 0.30 : 0.23;
+    const bodyD = ha ? 0.32 : 0.27;
+    const bodyY = pedestalBottomY + 0.11 + bodyH / 2;
+    P.addModuleVisual('optics', 'turretDark', cylY(0.15, 0.18, 0.105, 18),
+      opticX, pedestalBottomY + 0.0525, opticZ);
+    P.addModuleVisual('optics', 'turretDetail', box(0.18, 0.12, 0.16),
+      opticX, pedestalBottomY + 0.115, opticZ);
+    P.addModuleVisual('optics', 'turretDark', box(bodyW, bodyH, bodyD),
+      opticX, bodyY, opticZ + 0.015);
+    P.addModuleVisual('optics', 'turretDetail', box(bodyW + 0.025, 0.026, bodyD + 0.02),
+      opticX, bodyY + bodyH / 2 + 0.013, opticZ + 0.015);
+    const faceZ = opticZ + 0.015 + bodyD / 2 + 0.009;
+    if (ha) {
+      // One large protected viewing window is the HA's unmistakable cue.
+      P.addModuleVisual('optics', 'turretDark', box(0.365, 0.205, 0.025),
+        opticX, bodyY, faceZ - 0.006);
+      P.addModuleVisual('optics', 'turretGlass', box(0.305, 0.155, 0.016),
+        opticX, bodyY, faceZ + 0.008);
+      P.addModuleVisual('optics', 'turretDetail', box(0.40, 0.035, 0.055),
+        opticX, bodyY + 0.125, faceZ - 0.020);
+    } else {
+      for (const x of [-0.075, 0.075]) {
+        P.addModuleVisual('optics', 'turretGlass', box(0.105, 0.085, 0.016),
+          opticX + x, bodyY + 0.015, faceZ);
+      }
+      P.addModuleVisual('optics', 'turretDark', box(0.27, 0.025, 0.035),
+        opticX, bodyY + 0.095, faceZ - 0.012);
     }
+    P.add('turretDark', box(0.030, 0.010, 0.19),
+      opticX, carrierTopAt(0.36) - 0.004, 0.36);
+    P.turretG.userData.abramsEarlyCommanderOpticReceipt = Object.freeze({
+      host: P.spec.id,
+      type: ha ? 'ha-large-window' : 'm1a1-binocular',
+      windowWidthM: ha ? 0.305 : 0.105,
+      windowCount: ha ? 1 : 2,
+      equipmentOwned: true,
+    });
     cwsStationReceipt = {
       carrierMountTopY,
-      stationOffsetY: cwsStationDy,
-      pedestalBottomY: 0.8805 + cwsStationDy,
+      stationOffsetY: pedestalBottomY - 0.8805,
+      pedestalBottomY,
       drumCarrierTopY: carrierTopAt(0.42),
       drumTopY: carrierTopAt(0.42) - 0.003,
+      commanderOpticType: ha ? 'ha-large-window' : 'm1a1-binocular',
     };
+  } else if (ttsDerivedVariant) {
+    // Modern Abrams receive distinct heads from the shared M551A1-TTS
+    // remote-station family.  Their existing roof carrier remains because
+    // it is already conformed to the sloping Abrams roof; only the old CROWS
+    // mast/head is replaced.
+    const rwsScale = ttsDerivedVariant === 'armored' ? 0.72
+      : ttsDerivedVariant === 'lowProfile' ? 0.68
+        : (2 / 3);
+    const carrierMountTopY = carrierTopAt(0.2565);
+    const rws = FITTINGS.americanRws({
+      mats: P.mats,
+      variant: ttsDerivedVariant,
+      scale: rwsScale,
+      seed: P.spec.id === 'm1a2' ? 119
+        : P.spec.id === 'm1a2_tusk' ? 120 : P.spec.id === 'm1a2_sepv2' ? 122 : 123,
+    });
+    rws.position.set(-0.70, carrierMountTopY - 0.010, 0.2565);
+    rws.userData.hostVariant = P.spec.id;
+    P.turretG.add(rws);
+    crowsBaseY = carrierMountTopY - 0.010;
+    crowsRiserH = (ttsDerivedVariant === 'armored' ? 0.30
+      : ttsDerivedVariant === 'lowProfile' ? 0.19 : 0.26) * rwsScale;
+    P.turretG.userData.americanRwsReceipt = Object.freeze({
+      family: 'm551a1-tts-derived-v1',
+      variant: ttsDerivedVariant,
+      host: P.spec.id,
+      carrierTopY: carrierMountTopY,
+      buriedSeatM: 0.010,
+      equipmentOwned: true,
+      finishStandard: 'continuous-fitting-paint',
+      visibleFeedBelt: true,
+      workLights: 2,
+      steelReceiverGuard: true,
+    });
   } else {
     // TEJAS/TUSK CROWS II — CROWS-FORWARD LAW (owner 2026-08-07, §5.07:
     // "focus on making the crows machine guns point forward, not to the
@@ -1791,7 +1906,7 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
     // global plateau height. This keeps the complete M2/CROWS stack seated
     // when the carrier follows the sloped roof.
     const baseY = carrierTopAt(0.2565) - 0.010;
-    const riserH = lp ? 0.205 : station === 'crows2tall' ? 0.18 : 0.14;
+    const riserH = lp ? 0.205 : tallStation ? 0.18 : 0.14;
     crowsBaseY = baseY;
     crowsRiserH = riserH;
     const slewY = baseY + riserH + 0.02;
@@ -1842,7 +1957,7 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
     // IR pointer pod on the cradle right rail (§4.999a lights; aim-aligned).
     part('turretDetail', cylZ(0.032, 0.14, 10), 0.205, receiverV + receiverD / 2 - 0.06, receiverY - 0.025);
     part('turretGlass', cylZ(0.024, 0.010, 10), 0.205, receiverV + receiverD / 2 + 0.015, receiverY - 0.025);
-    if (station === 'crows2tall') {
+    if (tallStation) {
       // SEPv2: the tallest mark gets a full rectangular armor hood and
       // broad sensor brow — unmistakable even in a garage thumbnail.
       part('turret', box(0.48, 0.025, receiverD + 0.05), 0, receiverV, receiverTop + 0.025);
@@ -1954,70 +2069,44 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
   // down +z like the main CROWS rather than laid transversely across the roof,
   // so the two weapons read as separate stations from every hero angle.
   if (reactiveLeftWeapons && P.spec.id !== 'm1a2_tusk') {
-    // The second weapon is deliberately on vehicle-right, opposite the
-    // commander's left CROWS.  A long exposed barrel and separated receiver
-    // make both guns readable at the normal garage distance; the earlier
-    // compact mount disappeared into the roof-equipment silhouette.
-    const reSeatLoader = station === 'crows2tall';
+    // The loader weapon is the same detailed M2HB family used by Sheridan,
+    // with a different installation on each SEP roof.  SEPv2 receives the
+    // full armored shield; SEPv3 keeps a low compact guard and ring.  Both
+    // remain vehicle-right and forward-firing, opposite the commander's RWS.
+    const reSeatLoader = tallStation;
     const loaderX = reSeatLoader ? loaderMountX : 1.16;
-    const receiverY = plat2 + (station === 'crows2tall' ? 0.140
-      : lowProfileStation ? 0.085 : 0.115);
-    if (lowProfileStation) sepv3LoaderReceiverY = receiverY;
-    const previousPintleH = receiverY - plat2 + 0.085;
-    const pintleBottomY = reSeatLoader
+    const scale = tallStation ? 0.68 : 0.64;
+    const baseY = reSeatLoader
       ? loaderMountTopAt(loaderMountZ) - 0.008
       : plat2 - 0.025;
-    const pintleTopY = reSeatLoader
-      ? receiverY + 0.005
-      : pintleBottomY + previousPintleH;
-    const pintleH = pintleTopY - pintleBottomY;
-    P.add('turretDark', box(0.44, 0.12, 0.46), loaderX, receiverY, -0.14);       // receiver
-    P.add('turretDetail', box(0.39, 0.018, 0.38), loaderX, receiverY + 0.069, -0.14); // top cover
-    P.add('turretDark', box(0.15, 0.065, 0.060), loaderX, receiverY - 0.012, -0.40); // grips
-    P.add('turretDark', box(0.055, pintleH, 0.055), loaderX,
-      (pintleBottomY + pintleTopY) / 2, reSeatLoader ? loaderMountZ : -0.23);   // connected pintle
-    P.add('turretDetail', box(0.17, 0.20, 0.23), loaderX + 0.27, receiverY - 0.018, -0.23); // ammo can
-    P.add('turretDark', box(0.032, 0.11, 0.18), loaderX + 0.19, receiverY + 0.012, -0.10); // feed
-    if (reSeatLoader) {
-      loaderWeaponReceipt = {
-        station: 'sepv2-loader',
-        x: loaderX,
-        pintleZ: loaderMountZ,
-        pintleBottomY,
-        pintleTopY,
-        receiverBottomY: receiverY - 0.06,
-        receiverY,
-      };
-    }
-    if (station === 'crows2tall') {
-      // SEPv2: taller three-sided loader shield and a moderately raised,
-      // outboard-rested M240.  The inner wing closes the former open side.
-      P.addEquipment('turret', box(0.50, 0.25, 0.040), loaderX, receiverY - 0.035, 0.01);
-      for (const sx of [-1, 1]) {
-        P.addEquipment('turret', box(0.040, 0.27, 0.32), loaderX + sx * 0.235,
-          receiverY - 0.025, -0.14, 0, -sx * 0.08, 0);
-      }
-      P.add('turretDetail', box(0.54, 0.055, 0.07), loaderX,
-        receiverY + 0.105, 0.005);
-      angledLoaderGunRun(P, { x: loaderX, y: receiverY, z: 0.03,
-        barrelLength: 0.70, outDeg: 7, upDeg: 5 });
-    } else {
-      // SEPv3: a low armored plinth closes the exposed pintle below the
-      // compact three-sided shield. The receiver also sits 3 cm lower than
-      // the former stand, reducing the roof-line spike without shrinking the
-      // weapon itself.
-      P.addEquipment('turret', box(0.36, 0.10, 0.28), loaderX, plat2 + 0.025, -0.14);
-      P.addEquipment('turret', box(0.42, 0.15, 0.035), loaderX, receiverY - 0.025, 0.015);
-      for (const sx of [-1, 1]) {
-        P.addEquipment('turret', box(0.035, 0.17, 0.24), loaderX + sx * 0.195,
-          receiverY - 0.025, -0.095, 0, -sx * 0.055, 0);
-      }
-      P.add('turretDetail', box(0.44, 0.040, 0.055), loaderX,
-        receiverY + 0.040, 0.010);
-      angledLoaderGunRun(P, { x: loaderX, y: receiverY, z: 0.03,
-        barrelLength: 0.64, outDeg: 4, upDeg: 3, hiderLength: 0.14 });
-    }
-  } else if (!reactiveLeftWeapons && station === 'crows2tall') {
+    const baseZ = reSeatLoader ? loaderMountZ : -0.23;
+    const receiverY = baseY + 0.345 * scale;
+    if (lowProfileStation) sepv3LoaderReceiverY = receiverY;
+    addAbramsBrowning(P, {
+      x: loaderX,
+      y: baseY,
+      z: baseZ,
+      scale,
+      shield: tallStation ? 'armored' : 'low',
+      ammoSide: 1,
+      installationVariant: tallStation ? 'sepv2-armored-loader' : 'sepv3-low-loader',
+      yaw: tallStation ? -0.07 : -0.035,
+      elevation: tallStation ? 0.075 : 0.050,
+      barrelLength: tallStation ? 0.72 : 0.66,
+      ring: lowProfileStation,
+    });
+    loaderWeaponReceipt = {
+      station: tallStation ? 'sepv2-loader-m2hb' : 'sepv3-loader-m2hb',
+      x: loaderX,
+      pintleZ: baseZ,
+      pintleBottomY: baseY,
+      pintleTopY: baseY + 0.330 * scale,
+      receiverBottomY: baseY + (0.345 - 0.0725) * scale,
+      receiverY,
+      americanWeaponStandard: 'sheridan-m2hb-v1',
+      shieldVariant: tallStation ? 'armored' : 'low',
+    };
+  } else if (!reactiveLeftWeapons && tallStation) {
     // §H.4 SEPv2 tell (loader station): the skate rail carries a SECOND M2
     // — twin fifties. Fatter receiver + top cover lick + spade grips +
     // heavy barrel with muzzle device + bigger can + feed chute, all on
@@ -2031,57 +2120,45 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
     P.add('turretDetail', box(0.085, 0.115, 0.16), 0.842, plat2 - 0.095, -0.335); // fat ammo can
     P.add('turretDark', box(0.02, 0.05, 0.10), 0.885, plat2 - 0.075, -0.30);      // feed chute
   } else if (!reactiveLeftWeapons) {
-    // M1A1 family right-loader M240.  The old gun lay transversely along +x
-    // and its tube sat below the receiver; rebuild it as a planted forward
-    // weapon while preserving the independent left CWS station above.
+    // Earlier Abrams marks keep an exposed crew-served Browning family read:
+    // M1A1 is open, HA is fully shielded, and base M1A2 uses a split shield.
     const ha = P.spec.id === 'm1a1ha';
     const standardM1A2 = P.spec.id === 'm1a2';
     const loaderX = standardM1A2 ? loaderMountX : 0.98;
+    const scale = standardM1A2 ? 0.65 : ha ? 0.64 : 0.61;
     const receiverY = plat2 + (ha ? 0.045 : 0.025);
     const pintleZ = standardM1A2 ? loaderMountZ : -0.20;
     const pintleBottomY = standardM1A2
       ? loaderMountTopAt(loaderMountZ) - 0.008
       : receiverY - 0.185;
-    const pintleTopY = standardM1A2 ? receiverY + 0.005 : receiverY - 0.035;
-    P.add('turretDark', box(0.22, 0.105, 0.38), loaderX, receiverY, -0.14);
-    P.add('turretDetail', box(0.19, 0.016, 0.32), loaderX, receiverY + 0.060, -0.14);
-    P.add('turretDark', box(0.052, pintleTopY - pintleBottomY, 0.052), loaderX,
-      (pintleBottomY + pintleTopY) / 2, pintleZ);                             // seated pintle
-    P.add('turretDetail', box(0.14, 0.16, 0.18), loaderX + 0.19,
-      receiverY - 0.025, -0.18);                                             // ammo can
-    P.add('turretDark', box(0.030, 0.090, 0.14), loaderX + 0.125,
-      receiverY + 0.010, -0.08);                                             // feed chute
+    const pintleTopY = pintleBottomY + 0.330 * scale;
+    const shieldVariant = standardM1A2 ? 'split' : ha ? 'armored' : false;
+    addAbramsBrowning(P, {
+      x: loaderX,
+      y: pintleBottomY,
+      z: pintleZ,
+      scale,
+      shield: shieldVariant,
+      ammoSide: 1,
+      installationVariant: standardM1A2
+        ? 'm1a2-split-loader' : ha ? 'm1a1ha-armored-loader' : 'm1a1-open-loader',
+      yaw: standardM1A2 ? -0.045 : ha ? -0.075 : 0.035,
+      elevation: ha ? 0.070 : 0.045,
+      barrelLength: ha ? 0.70 : 0.64,
+      ring: !ha,
+    });
     if (standardM1A2) {
       loaderWeaponReceipt = {
-        station: 'm1a2-loader',
+        station: 'm1a2-loader-m2hb',
         x: loaderX,
         pintleZ,
         pintleBottomY,
         pintleTopY,
-        receiverBottomY: receiverY - 0.0525,
-        receiverY,
+        receiverBottomY: pintleBottomY + (0.345 - 0.0725) * scale,
+        receiverY: pintleBottomY + 0.345 * scale,
+        americanWeaponStandard: 'sheridan-m2hb-v1',
+        shieldVariant: 'split',
       };
-    }
-    if (ha) {
-      // HA: deeper three-sided armor and a more assertive outboard/up rest.
-      P.addEquipment('turret', box(0.46, 0.23, 0.040), loaderX, receiverY - 0.025, 0.045);
-      for (const sx of [-1, 1]) {
-        P.addEquipment('turret', box(0.040, 0.25, 0.28), loaderX + sx * 0.215,
-          receiverY - 0.020, -0.10, 0, -sx * 0.075, 0);
-      }
-      P.add('turretDetail', box(0.49, 0.050, 0.065), loaderX,
-        receiverY + 0.110, 0.040);
-      angledLoaderGunRun(P, { x: loaderX, y: receiverY, z: 0.03,
-        barrelLength: 0.66, outDeg: 8, upDeg: 5, hiderLength: 0.14 });
-    } else {
-      // Base M1A1: lighter low shield and a restrained field-rest angle.
-      P.addEquipment('turret', box(0.38, 0.17, 0.035), loaderX, receiverY - 0.035, 0.040);
-      P.addEquipment('turret', box(0.035, 0.18, 0.23), loaderX + 0.175,
-        receiverY - 0.035, -0.085, 0, -0.055, 0);
-      P.add('turretDetail', box(0.40, 0.038, 0.055), loaderX,
-        receiverY + 0.058, 0.038);
-      angledLoaderGunRun(P, { x: loaderX, y: receiverY, z: 0.03,
-        barrelLength: 0.60, outDeg: 5, upDeg: 3, hiderLength: 0.13 });
     }
   }
   // ---- gunner's primary sight doghouse right-forward: knee top only to
@@ -2440,8 +2517,11 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
       }),
       loader: Object.freeze({
         receiverY: sepv3LoaderReceiverY,
-        previousReceiverY: plat2 + 0.115,
-        armoredLowerPlinth: true,
+        pintleBottomY: loaderWeaponReceipt?.pintleBottomY,
+        receiverBottomY: loaderWeaponReceipt?.receiverBottomY,
+        americanWeaponStandard: loaderWeaponReceipt?.americanWeaponStandard,
+        shieldVariant: loaderWeaponReceipt?.shieldVariant,
+        connectedBearing: true,
         equipmentOwnedShielding: true,
       }),
     });
@@ -3617,6 +3697,29 @@ function buildTejasFamily(P, p) {
   P.addGunExtraDark(box(0.44, 0.024, 0.028), 0, -0.14, 0.47);
   P.addGunExtraDark(cylZ(0.042, 0.18, 10), 0.16, 0.02, 0.47);
   P.addGunExtra(cylZ(0.125, 0.28, 14), 0, 0, 0.66);
+  if (P.spec.id === 'm1a1ha') {
+    // HA gun-rig searchlight: its rear shell overlaps the left mantlet edge,
+    // so the complete lamp pitches with rig_gun instead of floating on the
+    // turret when the cannon elevates.  The broad glass face is deliberately
+    // visible beside the tube from frontal and left-quarter views.
+    P.add('gunMount', box(0.34, 0.32, 0.22), -0.48, 0.04, 0.54);
+    P.add('gunMountDark', box(0.305, 0.285, 0.028), -0.48, 0.04, 0.660);
+    P.add('gunMountGlass', box(0.245, 0.215, 0.016), -0.48, 0.04, 0.683);
+    P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.285, 0.04, 0.525,
+      0, 0, -0.12);
+    P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.675, 0.04, 0.525,
+      0, 0, 0.12);
+    P.gunG.userData.abramsGunRigSearchlightReceipt = Object.freeze({
+      host: P.spec.id,
+      x: -0.48,
+      y: 0.04,
+      z: 0.54,
+      lensWidthM: 0.245,
+      lensHeightM: 0.215,
+      pitchesWithGun: true,
+      attachedToMantlet: true,
+    });
+  }
   // Slim tube: stock sleeve OFF — its f1 clamp ring (r 1.31x at gun-local
   // 3.19 = world 5.10) lit the x ±0.18 plan column all the way to the
   // muzzle (plan-column sliver law). Dust covers run as BOXES on the ref's
@@ -3909,7 +4012,7 @@ function buildTejasFamily(P, p) {
     for (const tz of [-0.88, -1.32]) {
       P.add('hullDark', box(0.30, 0.016, 0.035), 1.41, 1.705, tz);     // clamp straps
     }
-    // ---- Loader's armored gun shield (LAGS) with its MOUNTED M240 (the
+    // ---- Loader's armored gun shield (LAGS) with a mounted M2HB (the
     // TUSK tell — shield wings, vision window, coping, gun through the
     // notch). Turret bucket: yaws with the turret (§B5). Tops <= 0.86
     // local = 2.43 world (under the 2.44 plateau).
@@ -3924,18 +4027,23 @@ function buildTejasFamily(P, p) {
     P.add('turretDetail', box(0.3, 0.14, 0.02), lagsX, 0.68, 0.35);
     P.add('turretGlass', box(0.26, 0.1, 0.02), lagsX, 0.68, 0.36);
     P.add('turretGlass', box(0.02, 0.09, 0.30), lagsX - 0.345, 0.70, 0.05); // wing slit
-    P.add('turretDark', box(0.045, 0.30, 0.045), lagsX, 0.775, 0.20);   // connected pintle post
-    P.add('turretDark', box(0.21, 0.115, 0.50), lagsX, 0.96, 0.24);    // raised M240 receiver
-    P.add('turretDetail', box(0.18, 0.018, 0.42), lagsX, 1.027, 0.24); // receiver cover
-    // TUSK: the LAGS station gets the strongest outboard/up rest angle and
-    // a short receiver-level armored notch above the main shield wings.
+    addAbramsBrowning(P, {
+      x: lagsX,
+      y: 0.735,
+      z: 0.20,
+      scale: 0.66,
+      shield: false,
+      ammoSide: -1,
+      installationVariant: 'tusk-lags-loader',
+      yaw: -0.08,
+      elevation: 0.075,
+      barrelLength: 0.72,
+    });
+    // TUSK: the external LAGS supplies the full armored shield around the
+    // shared Browning, with an assertive outboard/up field-rest angle.
     P.add('turret', box(0.055, 0.20, 0.28), lagsX - 0.15, 0.92, 0.39, 0, 0.08, 0);
     P.add('turret', box(0.055, 0.20, 0.28), lagsX + 0.15, 0.92, 0.39, 0, -0.08, 0);
     P.add('turretDetail', box(0.35, 0.055, 0.11), lagsX, 1.035, 0.42);
-    angledLoaderGunRun(P, { x: lagsX + 0.015, y: 0.96, z: 0.44,
-      barrelLength: 0.68, outDeg: 9, upDeg: 6,
-      barrelRadius: 0.020, hiderRadius: 0.029, hiderLength: 0.16 });
-    P.add('turretDetail', box(0.14, 0.17, 0.20), lagsX - 0.14, 0.93, 0.08); // ammo pouch
     // §5.74 TUSK identity emphasis: laminated outer wings, coping frame and
     // cheek-side ARAT-2 shingles make the loader shield the dominant roof
     // tell.  All added shield solids stay below the 0.883 furniture knee.
@@ -9178,32 +9286,32 @@ function buildAbramsX(P) {
 // ---------------------------------------------------------------------------
 export const ABRAMS_PROFILES = {
   m1a2_legacy: { build: buildM1a2 },
-  m1a2: { build: buildTejasFamily, station: 'crows' },
+  m1a2: { build: buildTejasFamily, station: 'ttsStandard' },
   m1a1: { build: buildTejasFamily, station: 'cws' },
   m1a1ha: { build: buildTejasFamily, station: 'cws' },
   // TUSK: published-true full-scale body + real-scale ARAT/slat/TIP kit.
   // The tusk oracle is the tejas GLB height-clamped small PLUS a real-scale
   // runtime kit (certified chimera — see the packet); dims/floaters are the
   // achievable components and the build no longer chases the 0.727 body.
-  m1a2_tusk: { build: buildTejasFamily, abramsKit: 'tusk', station: 'crows' },
+  m1a2_tusk: { build: buildTejasFamily, abramsKit: 'tusk', station: 'ttsCompact' },
   // SEP REBUILD-ON-BASE (§5.19 + §5.19a owner orders 2026-08-07: "rebuild
   // them to use the M1A2 abrams base model ... i meant the m1a2 abrams
   // (ex tejas) is the correct base, the base m1a2 platform is WRONG"):
   // both SEP variants now ride the TEJAS-GRADE platform (buildTejasFamily)
   // as §H param deltas — station variant + abramsKit layer on top.
-  // SEPv2: elevated forward CROWS II ('crows2tall') + twin-fifty loader +
-  // CITV + CIP panels + deck tow cable + rigid rack crate + UAAPU exhaust
-  // read. RE-ORACLED to the tejas GLB (§5.34, 2026-08-07) — the old
+  // SEPv2: armored TTS-derived tower + shielded loader Browning + relocated
+  // legacy CROWS-II optics + CITV/CIP panels, deck tow cable, rack crate and
+  // UAAPU exhaust read. RE-ORACLED to the tejas GLB (§5.34, 2026-08-07) — the old
   // recovered-print registration is retired for this id, and the
   // works-field parity echo that served its REF-HULL mask is DELETED
   // (§5.34 echo-deletion round 2026-08-08; see the packet).
-  m1a2_sepv2: { build: buildTejasFamily, station: 'crows2tall', abramsKit: 'sepv2' },
-  // SEPv3/M1A2C: CROWS-LP forward ('crowslp') + Trophy APS + 4 radar
-  // panels + ARAT 9x2 skirt grid + left-rear UAAPU housing + IFLIR-scale
-  // CITV/sight + ADL boxes + split IFF panels + loader M240. NO oracle
+  m1a2_sepv2: { build: buildTejasFamily, station: 'ttsArmored', abramsKit: 'sepv2' },
+  // SEPv3/M1A2C: low TTS-derived tower + retained CROWS-LP optics + Trophy
+  // APS, 4 radar panels, ARAT 9x2 skirt grid, left-rear UAAPU housing,
+  // IFLIR-scale CITV/sight, ADL boxes, split IFF panels and low-shield M2. NO oracle
   // registration (FALSE-0 law — never gate this id); measures are the
   // §B8.1 four-box + self-shots.
-  m1a2_sepv3: { build: buildTejasFamily, station: 'crowslp', abramsKit: 'sepv3' },
+  m1a2_sepv3: { build: buildTejasFamily, station: 'ttsLowProfile', abramsKit: 'sepv3' },
   m1a1_aim: { build: buildAim },
   abramsx: { build: buildAbramsX },
 };

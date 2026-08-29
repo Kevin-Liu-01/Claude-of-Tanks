@@ -128,6 +128,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/k1a1Geometry.selftest.mjs',
     'src/vehicles/profiles/k2RunningGearSeat.selftest.mjs',
     'src/vehicles/profiles/leopard2A7VGunEra.selftest.mjs',
+    'src/vehicles/profiles/americanModernization.selftest.mjs',
     'src/vehicles/profiles/m60FamilyAttachments.selftest.mjs',
     'src/vehicles/profiles/t14RoofFidelity.selftest.mjs',
     'src/vehicles/profiles/t90SprocketTier.selftest.mjs',
