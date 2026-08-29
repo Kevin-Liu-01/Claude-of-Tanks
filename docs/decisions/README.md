@@ -301,3 +301,4 @@ runtime documents remain authoritative for behavior.
 - [0289 — Combat effects have a strict TypeScript owner](0289-type-combat-effects-runtime.md)
 - [0290 — Killcam playback has a strict TypeScript owner](0290-type-killcam-runtime.md)
 - [0291 — The battle HUD has a strict TypeScript owner](0291-type-battle-hud-runtime.md)
+- [0292 — Procedural geometry primitives have a strict TypeScript kernel](0292-type-procedural-geometry-kernel.md)

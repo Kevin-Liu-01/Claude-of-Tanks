@@ -35,3 +35,14 @@ weakens the standard budgets.
 
     npm run build
     npm run perf:cold -- --sessions 3 --summary 1
+
+## Production evidence
+
+On 2026-08-29, three independent cache-disabled sessions against
+`https://cot.kevinliu.studio/` passed the standard 4× CPU, 150 ms latency,
+1.6 Mbps download, and 750 Kbps upload profile. Wall time was 7.556, 6.226,
+and 6.313 seconds; application boot time was 1.655, 1.638, and 1.705 seconds.
+All sessions reached Garage without recovery, duplicate script transfers, or
+browser errors. The same run recovered automatically from one failed main
+download, one failed main evaluation, and two consecutive selected-builder
+download failures.
