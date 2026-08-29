@@ -257,12 +257,15 @@ assert.deepEqual(gunRig.userData.leopard1A5MantletReceipt, {
   shapedButterflyCasting: true,
   flatFacetedFace: true,
   flatRearContactFace: true,
-  sideChevron: true,
-  straightRidge: true,
-  integratedFrontWedge: true,
-  integratedFrontWedgeOwner: 'gun',
-  ridgeWidth: 1.00,
-  ridgeZ: 0.38,
+  trapezoidalSideProfile: true,
+  flatForwardFace: true,
+  lowerCenterWedgeRemoved: true,
+  frontFaceWidth: 1.00,
+  frontFaceHeight: 0.32,
+  frontFaceZ: 0.38,
+  castingRearWidth: 1.28,
+  castingRearHeight: 0.58,
+  castingRearZ: -0.30,
   turretReceiver: true,
   width: 1.32,
   height: 0.55,
@@ -307,18 +310,19 @@ const hasMountVertex = (x, y, z, tolerance = 1e-5) => {
   }
   return false;
 };
-assert.ok(hasMountVertex(-0.50, 0, 0.38) && hasMountVertex(0.50, 0, 0.38),
-  'Leopard 1A5 upper and lower skins meet across one straight forward ridge');
-assert.equal(hasMountVertex(0, 0.24, 0.38), false,
-  'Leopard 1A5 ridge has no separated upper ledge or intervening front band');
+for (const x of [-0.50, 0.50]) {
+  for (const y of [-0.16, 0.16]) {
+    assert.ok(hasMountVertex(x, y, 0.38),
+      'Leopard 1A5 mantlet terminates in a finite rectangular forward face');
+  }
+}
 assert.ok(hasMountVertex(0.64, 0.29, -0.30)
   && hasMountVertex(-0.64, -0.29, -0.30),
-  'Leopard 1A5 chevron casting tapers back into its broad planar seat');
-assert.ok(hasMountVertex(-0.55, -0.35, 0.19)
-  && hasMountVertex(0.55, -0.35, 0.19)
-  && hasMountVertex(-0.43, 0.15, 0.15)
-  && hasMountVertex(0.43, 0.15, 0.15),
-  'the former fixed center wedge is merged into the moving mantlet mesh');
+  'Leopard 1A5 trapezoid casting tapers back into its broad planar seat');
+assert.equal(hasMountVertex(-0.55, -0.35, 0.19), false,
+  'the marked lower center wedge is removed from the moving mantlet');
+assert.equal(hasMountVertex(0.43, 0.15, 0.15), false,
+  'the marked lower center wedge leaves no doubled forward strip');
 
 const turretPosition = mesh('turret').geometry.attributes.position;
 const hasTurretVertex = (x, y, z, tolerance = 1e-5) => {
@@ -346,10 +350,10 @@ for (const pitchDeg of [-9, 0, 20]) {
   const contactCenter = new THREE.Vector3(0, 0, -0.42).applyEuler(gunRig.rotation).add(gunRig.position);
   assert.ok(receiver.containsPoint(contactCenter),
     `mantlet rear pad remains inside the turret receiver at ${pitchDeg} degrees`);
-  const integratedWedgePoint = new THREE.Vector3(0.55, -0.35, 0.19)
+  const trapezoidFacePoint = new THREE.Vector3(0.50, -0.16, 0.38)
     .applyEuler(gunRig.rotation).add(gunRig.position);
-  assert.ok(Number.isFinite(integratedWedgePoint.y) && integratedWedgePoint.z > 1,
-    `incorporated center wedge follows the gun assembly at ${pitchDeg} degrees`);
+  assert.ok(Number.isFinite(trapezoidFacePoint.y) && trapezoidFacePoint.z > 1,
+    `trapezoidal mantlet face follows the gun assembly at ${pitchDeg} degrees`);
 }
 gunRig.rotation.x = 0;
 visual.root.updateMatrixWorld(true);

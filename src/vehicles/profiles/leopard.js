@@ -10966,7 +10966,7 @@ function buildLeo1A5Profile(P) {
 function buildLeo1A5ArticulatedProfile(P) {
   const { box, cylX, cylY, cylZ, torus, sph, buildGun, buildRunningGear,
     headlight, liftEye, towCable, stowage, jerryCan, tarpRoll, ammoCan,
-    shovelTool, xform, straightRidgeGunMask } = KIT;
+    shovelTool, xform } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
   // Leopard 1 upper glacis: 60 degrees from vertical (30 degrees above the
@@ -11436,14 +11436,18 @@ function buildLeo1A5ArticulatedProfile(P) {
   // Broad cast butterfly saddle and source-length L7A3. The turret owns a
   // flat receiver plate while the moving mantlet owns a matching planar rear
   // pad. Their volumes overlap through the complete legal pitch range, so the
-  // attachment side reads as a real bolted seat instead of tapering into the
-  // turret through the rounded shoulder ears. The shallow faceted center
-  // shield and flattened ears retain the established Leopard 1 silhouette.
+  // attachment side reads as a real bolted seat. The casting tapers to a
+  // finite forward face in both side and plan view: a real trapezoid rather
+  // than the former upper/lower triangles meeting at a knife-edge ridge.
   const mantletReceiver = {
     width: 1.16, height: 0.50, depth: 0.18, y: 0.47, z: 0.79,
   };
   const mantletRearPad = {
     width: 1.22, height: 0.46, depth: 0.16, z: -0.34,
+  };
+  const mantletCasting = {
+    rearHalfWidth: 0.64, rearHalfHeight: 0.29, rearZ: -0.30,
+    frontHalfWidth: 0.50, frontHalfHeight: 0.16, frontZ: 0.38,
   };
   P.add('turret', new THREE.BoxGeometry(
     mantletReceiver.width, mantletReceiver.height, mantletReceiver.depth,
@@ -11453,23 +11457,21 @@ function buildLeo1A5ArticulatedProfile(P) {
   P.addGunExtra(new THREE.BoxGeometry(
     mantletRearPad.width, mantletRearPad.height, mantletRearPad.depth,
   ), 0, 0, mantletRearPad.z);
-  P.addGunExtra(straightRidgeGunMask({
-    rearHalfWidth: 0.64,
-    rearHalfHeight: 0.29,
-    ridgeHalfWidth: 0.50,
-    rearZ: -0.30,
-    ridgeZ: 0.38,
-  }));
-  // The central front wedge used to be turret-owned, leaving it behind when
-  // the gun elevated. Express the same authored envelope about the gun pivot
-  // (turret-local y=.47, z=1.15) and merge it into gunMount with the mantlet.
   P.addGunExtra(slab(
-    [-0.56, -0.35, -0.33], [0.56, -0.35, -0.33], [0.55, -0.35, 0.19], [-0.55, -0.35, 0.19],
-    [-0.46, 0.19, -0.37], [0.46, 0.19, -0.37], [0.43, 0.15, 0.15], [-0.43, 0.15, 0.15]));
+    [-mantletCasting.frontHalfWidth, -mantletCasting.frontHalfHeight, mantletCasting.frontZ],
+    [mantletCasting.frontHalfWidth, -mantletCasting.frontHalfHeight, mantletCasting.frontZ],
+    [mantletCasting.rearHalfWidth, -mantletCasting.rearHalfHeight, mantletCasting.rearZ],
+    [-mantletCasting.rearHalfWidth, -mantletCasting.rearHalfHeight, mantletCasting.rearZ],
+    [-mantletCasting.frontHalfWidth, mantletCasting.frontHalfHeight, mantletCasting.frontZ],
+    [mantletCasting.frontHalfWidth, mantletCasting.frontHalfHeight, mantletCasting.frontZ],
+    [mantletCasting.rearHalfWidth, mantletCasting.rearHalfHeight, mantletCasting.rearZ],
+    [-mantletCasting.rearHalfWidth, mantletCasting.rearHalfHeight, mantletCasting.rearZ]));
+  // Do not restore the old lower center wedge here. Its thin forward strip
+  // doubled the casting skin and read as a loose plate in oblique views.
   // The former ellipsoid shoulder ears projected ahead of the angular mask
-  // in exact side view and visually replaced its new ridge with a round
-  // blob. The connected mask already tapers from its 1.28 m rear butterfly
-  // seat to the 1.00 m front course, so no separate rounded caps are needed.
+  // in exact side view. The connected casting already tapers from its 1.28 m
+  // rear butterfly seat to the 1.00 m front course, so no separate rounded
+  // caps are needed.
   P.addGunExtraDark(xform(sph(1, P.q ? 20 : 14), 0, 0, 0, 0, 0, 0, [0.54, 0.12, 0.10]), 0, 0, -0.13);
   P.addGunExtra(cylZ(0.18, 0.30, P.q ? 20 : 14, 0.20), 0, 0, 0.38);
   P.addGunExtraDark(cylZ(0.026, 0.10, 9), 0.37, 0.06, 0.37);
@@ -11481,12 +11483,15 @@ function buildLeo1A5ArticulatedProfile(P) {
     shapedButterflyCasting: true,
     flatFacetedFace: true,
     flatRearContactFace: true,
-    sideChevron: true,
-    straightRidge: true,
-    integratedFrontWedge: true,
-    integratedFrontWedgeOwner: 'gun',
-    ridgeWidth: 1.00,
-    ridgeZ: 0.38,
+    trapezoidalSideProfile: true,
+    flatForwardFace: true,
+    lowerCenterWedgeRemoved: true,
+    frontFaceWidth: mantletCasting.frontHalfWidth * 2,
+    frontFaceHeight: mantletCasting.frontHalfHeight * 2,
+    frontFaceZ: mantletCasting.frontZ,
+    castingRearWidth: mantletCasting.rearHalfWidth * 2,
+    castingRearHeight: mantletCasting.rearHalfHeight * 2,
+    castingRearZ: mantletCasting.rearZ,
     turretReceiver: true,
     width: 1.32,
     height: 0.55,
