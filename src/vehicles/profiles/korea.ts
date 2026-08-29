@@ -94,6 +94,43 @@ function addRoofRWS(
   }), x, y + 0.11, z, [0, yaw, 0]);
 }
 
+function addOpenYokeAuxRWS(P: ProceduralBuilderPort): void {
+  const x = 0.70;
+  const y = 0.70;
+  const z = -1.43;
+  const scale = 0.62;
+  const yaw = -0.025;
+  const station = FITTINGS.openYokeRws({
+    mats: P.mats,
+    scale,
+    variant: 'korean-twin',
+    ammoSide: 1,
+    sensorSide: -1,
+    elev: 0.055,
+    weaponName: 'K6 remote machine gun',
+    seed: 1040,
+  });
+  station.name = 'k2bAuxOpenYokeRws';
+  station.userData.hostVariant = 'k2b';
+  station.userData.weaponRole = 'auxiliary';
+  mount(P, 'turret', station, x, y, z, [0, yaw, 0]);
+  P.turretG.userData.auxiliaryOpenYokeRwsReceipt = Object.freeze({
+    host: 'k2b',
+    designFamily: station.userData.designFamily,
+    variant: station.userData.stationVariant,
+    mountLocal: Object.freeze([x, y, z]),
+    scale,
+    yaw,
+    caliberMm: station.userData.caliberMm,
+    ammoSide: station.userData.ammoSide,
+    sensorSide: station.userData.sensorSide,
+    visibleFeedBelt: station.userData.hasVisibleFeedBelt,
+    firingAxis: station.userData.firingAxis,
+    equipmentOwned: true,
+    turretOwned: true,
+  });
+}
+
 function addK2BPackage(P: ProceduralBuilderPort): void {
   const { box, cylY, cylZ } = KIT;
   const slab = orientedSlab;
@@ -150,6 +187,7 @@ function addK2BPackage(P: ProceduralBuilderPort): void {
     P.add('turretDetail', box(0.035, 0.22, 0.30), side * 0.96, 0.75, 0.18);
   }
   addRoofRWS(P, -0.28, 0.77, -0.94, 1020, 0.78, 0.03);
+  addOpenYokeAuxRWS(P);
   addRoofWhips(P, 0.64, -1.72, 1030, 1.00);
 
   // Closed 120-mm gun plant: faceted mask, oval collar, clamp and bore cue.

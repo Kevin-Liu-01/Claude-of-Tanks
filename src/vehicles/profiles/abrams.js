@@ -1548,6 +1548,42 @@ function addAbramsBrowning(P, {
   return gun;
 }
 
+function addAbramsXStyleAuxRws(P, {
+  x, y, z, scale, variant, ammoSide, sensorSide, yaw = 0,
+}) {
+  const station = FITTINGS.openYokeRws({
+    mats: P.mats,
+    scale,
+    variant,
+    ammoSide,
+    sensorSide,
+    elev: variant === 'tusk-urban' ? 0.065 : 0.045,
+    seed: P.spec.id === 'm1a2_tusk' ? 191 : 193,
+  });
+  station.name = `${P.spec.id}AuxOpenYokeRws`;
+  station.position.set(x, y, z);
+  station.rotation.y = yaw;
+  station.userData.hostVariant = P.spec.id;
+  station.userData.weaponRole = 'auxiliary';
+  P.turretG.add(station);
+  P.turretG.userData.auxiliaryOpenYokeRwsReceipt = Object.freeze({
+    host: P.spec.id,
+    designFamily: station.userData.designFamily,
+    variant,
+    mountLocal: Object.freeze([x, y, z]),
+    scale,
+    yaw,
+    caliberMm: station.userData.caliberMm,
+    ammoSide,
+    sensorSide,
+    visibleFeedBelt: station.userData.hasVisibleFeedBelt,
+    firingAxis: station.userData.firingAxis,
+    equipmentOwned: true,
+    turretOwned: true,
+  });
+  return station;
+}
+
 // Roof kit shared by the tejas-oracle family. station: 'crows' or 'cws'
 // (same oracle massing, different dressing).
 // DIMS CLAMP, post-W1b (batch-16 tail flatten y' = 2.46 + 0.03*(y_orig -
@@ -4783,6 +4819,21 @@ function buildTejasFamily(P, p) {
   // §B3.2 deck tie-down rings (all tejas-family marks — hull frame).
   for (const [dx, dz] of [[-0.55, 2.75], [0.55, 2.75], [-0.86, -2.20], [0.86, -2.20]]) {
     P.add('hullDetail', torus(0.028, 0.008, 10), dx, deckAt(g, dz) + 0.006, dz, Math.PI / 2, 0, 0);
+  }
+  // Secondary AbramsX-style stations complement rather than replace the
+  // established CROWS/LAGS weapons. Both are buried into the rear roof and
+  // remain direct children of rig_turret, so traverse and replay poses keep
+  // every fork, sensor, ammunition box and barrel together.
+  if (vid === 'm1a2_sepv3') {
+    addAbramsXStyleAuxRws(P, {
+      x: 0.20, y: 0.70, z: -1.58, scale: 0.68,
+      variant: 'sepv3-armored', ammoSide: 1, sensorSide: -1, yaw: -0.025,
+    });
+  } else if (vid === 'm1a2_tusk') {
+    addAbramsXStyleAuxRws(P, {
+      x: 0.18, y: 0.69, z: -1.58, scale: 0.66,
+      variant: 'tusk-urban', ammoSide: -1, sensorSide: 1, yaw: 0.035,
+    });
   }
   abramsArmorHardware(P, vid, t);
   // SEPv3 receives a tailored ULCANS-style multispectral cover. Other marks

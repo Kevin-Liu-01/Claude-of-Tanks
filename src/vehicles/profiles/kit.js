@@ -1075,6 +1075,159 @@ function fittingAmericanRws(opts = {}) {
 }
 
 /**
+ * AbramsX-inspired open-yoke remote machine-gun family.
+ *
+ * This is deliberately a different silhouette from the enclosed CROWS/FLW
+ * stations above: the slew drum, two load-bearing fork arms, cross-shaft,
+ * receiver rails, ammunition coffin and EO head remain visibly separate.
+ * Host-specific variants change protection and sensor layout while retaining
+ * the same mechanical load path. Origin is the mounting foot; +Z is fire.
+ */
+function fittingOpenYokeRws(opts = {}) {
+  const { box, cylX, cylY, cylZ, torus } = KIT;
+  const variant = opts.variant || 'expeditionary';
+  const s = opts.scale || 1;
+  const elev = opts.elev ?? 0.045;
+  const ammoSide = Math.sign(opts.ammoSide || -1);
+  const sensorSide = Math.sign(opts.sensorSide || -ammoSide);
+  const body = opts.bodySlot || 'detail';
+  const parts = fitParts();
+  const low = variant === 'a7v-low';
+  const yokeCenterY = (low ? 0.325 : 0.385) * s;
+  const aim = (geo, dz, dy = 0) => KIT.xform(
+    KIT.xform(geo, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
+
+  // Buried slew bearing and gearbox: every upper member resolves to this
+  // broad roof foot, so the station never reads as a floating gun prop.
+  parts.add(body, cylY(0.245 * s, 0.270 * s, 0.075 * s, 20), 0, 0.0375 * s, 0);
+  parts.add('dark', torus(0.225 * s, 0.018 * s, 22), 0, 0.081 * s, 0);
+  parts.add(body, box(0.34 * s, 0.105 * s, 0.30 * s), 0, 0.1375 * s, -0.015 * s);
+  parts.add('dark', box(0.28 * s, 0.025 * s, 0.24 * s), 0, 0.2025 * s, -0.015 * s);
+
+  // Open fork, exposed cross-shaft and recoil rails are the AbramsX cues.
+  for (const side of [-1, 1]) {
+    parts.add(body, box(0.065 * s, (low ? 0.22 : 0.30) * s, 0.105 * s),
+      side * 0.165 * s, (low ? 0.30 : 0.34) * s, -0.015 * s,
+      0, 0, side * 0.075);
+    parts.add('dark', box(0.027 * s, (low ? 0.18 : 0.25) * s, 0.040 * s),
+      side * 0.213 * s, (low ? 0.30 : 0.345) * s, 0.010 * s,
+      0, 0, side * 0.14);
+    parts.add('dark', box(0.032 * s, 0.035 * s, 0.42 * s),
+      side * 0.090 * s, yokeCenterY - 0.045 * s, 0.145 * s);
+  }
+  parts.add('dark', cylX(0.050 * s, 0.41 * s, 14), 0, yokeCenterY, 0.025 * s);
+
+  // M2/K6-class receiver and long, true forward run.
+  const receiverY = yokeCenterY + 0.018 * s;
+  const receiverZ = 0.185 * s;
+  parts.add('dark', box(0.170 * s, 0.135 * s, 0.43 * s), 0, receiverY, receiverZ);
+  parts.add('detail', box(0.145 * s, 0.020 * s, 0.37 * s),
+    0, receiverY + 0.078 * s, receiverZ - 0.005 * s);
+  parts.add('dark', box(0.075 * s, 0.045 * s, 0.070 * s),
+    0, receiverY - 0.018 * s, receiverZ - 0.250 * s);
+  const trunnionZ = receiverZ + 0.215 * s;
+  parts.add('dark', aim(cylZ(0.033 * s, 0.18 * s, 14), 0.09 * s),
+    0, receiverY, trunnionZ);
+  for (let index = 0; index < 4; index++) {
+    parts.add('detail', aim(torus(0.034 * s, 0.0045 * s, 12),
+      (0.025 + index * 0.042) * s), 0, receiverY, trunnionZ);
+  }
+  parts.add('dark', aim(cylZ(0.0155 * s, 0.62 * s, 10), 0.49 * s),
+    0, receiverY, trunnionZ);
+  parts.add('dark', aim(cylZ(0.028 * s, 0.085 * s, 12), 0.8425 * s),
+    0, receiverY, trunnionZ);
+  parts.add('dark', aim(cylZ(0.010 * s, 0.015 * s, 10), 0.895 * s),
+    0, receiverY, trunnionZ);
+
+  // Asymmetric ammunition coffin and feed bridge. Individual alternating
+  // links remain legible in the gallery without creating per-link meshes.
+  const ammoX = ammoSide * 0.305 * s;
+  parts.add(body, box(0.245 * s, 0.255 * s, 0.31 * s),
+    ammoX, yokeCenterY - 0.055 * s, 0.015 * s);
+  parts.add('detail', box(0.265 * s, 0.023 * s, 0.33 * s),
+    ammoX, yokeCenterY + 0.084 * s, 0.015 * s);
+  parts.add('dark', box(0.022 * s, 0.22 * s, 0.27 * s),
+    ammoX + ammoSide * 0.133 * s, yokeCenterY - 0.055 * s, 0.015 * s);
+  for (let index = 0; index < 8; index++) {
+    const t = index / 7;
+    const x = (ammoX * (1 - t) + ammoSide * 0.075 * s * t);
+    const y = yokeCenterY + (0.055 + 0.018 * t) * s;
+    const z = (0.13 + 0.085 * t) * s;
+    parts.add(index % 2 ? 'detail' : 'dark', box(0.032 * s, 0.041 * s, 0.026 * s),
+      x, y, z, 0, 0, -ammoSide * (0.10 + t * 0.12));
+  }
+
+  // Independent EO/thermal head on the opposite cheek.
+  const sensorX = sensorSide * 0.30 * s;
+  const sensorY = yokeCenterY + (variant === 'a6m-arctic' ? 0.015 : 0.005) * s;
+  parts.add(body, box(0.215 * s, (variant === 'korean-twin' ? 0.20 : 0.24) * s, 0.215 * s),
+    sensorX, sensorY, 0.055 * s);
+  parts.add('dark', box(0.190 * s, 0.024 * s, 0.19 * s),
+    sensorX, sensorY + (variant === 'korean-twin' ? 0.112 : 0.132) * s, 0.055 * s);
+  const opticXs = variant === 'korean-twin' ? [-0.045, 0.045] : [0];
+  for (const dx of opticXs) {
+    parts.add('glass', box((variant === 'korean-twin' ? 0.065 : 0.125) * s,
+      (variant === 'korean-twin' ? 0.075 : 0.105) * s, 0.014 * s),
+    sensorX + dx * s, sensorY + 0.018 * s, 0.170 * s);
+  }
+  parts.add('glass', cylZ(0.026 * s, 0.014 * s, 10),
+    sensorX - sensorSide * 0.055 * s, sensorY - 0.075 * s, 0.171 * s);
+
+  if (variant === 'sepv3-armored') {
+    parts.add(body, box(0.70 * s, 0.035 * s, 0.35 * s),
+      0, yokeCenterY + 0.175 * s, 0.035 * s);
+    for (const side of [-1, 1]) {
+      parts.add(body, box(0.035 * s, 0.24 * s, 0.29 * s),
+        side * 0.355 * s, yokeCenterY + 0.035 * s, 0.035 * s,
+        0, 0, side * 0.07);
+    }
+  } else if (variant === 'tusk-urban') {
+    for (const side of [-1, 1]) {
+      parts.add(body, box(0.25 * s, 0.25 * s, 0.030 * s),
+        side * 0.225 * s, yokeCenterY + 0.015 * s, 0.275 * s,
+        0, -side * 0.08, 0);
+    }
+    for (const x of [-0.095, 0.095]) {
+      parts.add('dark', cylZ(0.032 * s, 0.040 * s, 12),
+        x * s, yokeCenterY - 0.105 * s, 0.265 * s);
+      parts.add('glass', cylZ(0.024 * s, 0.008 * s, 12),
+        x * s, yokeCenterY - 0.105 * s, 0.289 * s);
+    }
+  } else if (variant === 'a6m-arctic') {
+    parts.add(body, box(0.29 * s, 0.030 * s, 0.25 * s),
+      sensorX, sensorY + 0.148 * s, 0.055 * s);
+    parts.add('dark', box(0.030 * s, 0.18 * s, 0.20 * s),
+      -sensorX, yokeCenterY - 0.05 * s, 0.06 * s);
+  } else if (variant === 'a7v-low') {
+    parts.add(body, box(0.58 * s, 0.030 * s, 0.28 * s),
+      0, yokeCenterY + 0.135 * s, 0.035 * s);
+    parts.add('dark', box(0.44 * s, 0.075 * s, 0.028 * s),
+      0, yokeCenterY - 0.105 * s, 0.23 * s);
+  } else if (variant === 'korean-twin') {
+    for (const side of [-1, 1]) {
+      parts.add('detail', box(0.028 * s, 0.16 * s, 0.27 * s),
+        side * 0.255 * s, yokeCenterY - 0.04 * s, 0.045 * s,
+        0, 0, side * 0.12);
+    }
+  }
+
+  const fitting = fitAssemble('openYokeRws', parts, opts);
+  fitting.name = `fitting_openYokeRws_${variant}`;
+  fitting.userData.designFamily = 'abramsx-open-yoke-v1';
+  fitting.userData.stationVariant = variant;
+  fitting.userData.remoteControlled = true;
+  fitting.userData.weaponName = opts.weaponName || '12.7 mm remote machine gun';
+  fitting.userData.caliberMm = opts.caliberMm || 12.7;
+  fitting.userData.ammoSide = ammoSide;
+  fitting.userData.sensorSide = sensorSide;
+  fitting.userData.hasVisibleFeedBelt = true;
+  fitting.userData.firingAxis = '+Z';
+  fitting.userData.muzzleLocalZ = 1.295 * s;
+  fitting.userData.barrelAxisLocalY = receiverY;
+  return fitting;
+}
+
+/**
  * Rail stowage rack with soft fill (§B3 dressing). Rail fence + dark mesh
  * back panel + tone-varied duffels/crates/tarp rolls.
  * Origin: center of the rack FLOOR plane; +z is the open/outboard face.
@@ -1371,6 +1524,7 @@ export const FITTINGS = {
   pintleMG: fittingPintleMG,
   americanM2: fittingAmericanM2,
   americanRws: fittingAmericanRws,
+  openYokeRws: fittingOpenYokeRws,
   stowageRack: fittingStowageRack,
   towCable: fittingTowCable,
   jerryCans: fittingJerryCans,

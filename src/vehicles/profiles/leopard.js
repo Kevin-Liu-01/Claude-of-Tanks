@@ -6165,6 +6165,10 @@ function buildLeo2A7V(P) {
   // "~3.0 over sights" band is the PERI's.
   leoFLW200(P, { x: -0.12, y: 0.70, z: -1.35, s: 0.90, gunY: 0.71, gunScale: 0.90,
     drumH: 0.07, podY: 0.89, podH: 0.16, shields: true, elev: 0.08, seed: 21 });
+  P.turretG.userData.auxiliaryOpenYokeRwsReceipt = addLeopardOpenYokeAuxRws(P, {
+    x: 0.72, y: 0.67, z: -1.48, scale: 0.62,
+    variant: 'a7v-low', ammoSide: 1, sensorSide: -1, yaw: -0.035,
+  });
   // loader MG3 — the §I census fitting, FITTING-SUNK (revolution law):
   // foot below the roof through a mount collar so the pale cap stays
   // under the 2.6664 grace line (EMES hood keeps the anchor).
@@ -11827,6 +11831,41 @@ function addLeo2A6MRoofRCWS(P) {
   });
 }
 
+function addLeopardOpenYokeAuxRws(P, {
+  x, y, z, scale, variant, ammoSide, sensorSide, yaw = 0,
+}) {
+  const station = FITTINGS.openYokeRws({
+    mats: P.mats,
+    scale,
+    variant,
+    ammoSide,
+    sensorSide,
+    elev: variant === 'a7v-low' ? 0.035 : 0.050,
+    seed: P.spec.id === 'leo2a7v' ? 27027 : 26026,
+  });
+  station.name = `${P.spec.id}AuxOpenYokeRws`;
+  station.position.set(x, y, z);
+  station.rotation.y = yaw;
+  station.userData.hostVariant = P.spec.id;
+  station.userData.weaponRole = 'auxiliary';
+  P.turretG.add(station);
+  return Object.freeze({
+    host: P.spec.id,
+    designFamily: station.userData.designFamily,
+    variant,
+    mountLocal: Object.freeze([x, y, z]),
+    scale,
+    yaw,
+    caliberMm: station.userData.caliberMm,
+    ammoSide,
+    sensorSide,
+    visibleFeedBelt: station.userData.hasVisibleFeedBelt,
+    firingAxis: station.userData.firingAxis,
+    equipmentOwned: true,
+    turretOwned: true,
+  });
+}
+
 function addLeo2A6MFrontalERA(P, sectorPrefix) {
   const turretPivot = P.spec.armor.turretPivot;
   const sample = (stations, coordinate) => {
@@ -12393,11 +12432,16 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
     const eraReceipt = addLeo2A6MFrontalERA(P, 'a6m');
     const cheekCage = addLeo2A6MCheekCage(P);
     const roofRemoteWeapon = addLeo2A6MRoofRCWS(P);
+    const auxiliaryOpenYokeRws = addLeopardOpenYokeAuxRws(P, {
+      x: -0.72, y: 0.795, z: -1.52, scale: 0.64,
+      variant: 'a6m-arctic', ammoSide: -1, sensorSide: 1, yaw: 0.030,
+    });
     if (P.geometryReceipt) {
       P.turretG.userData.leopard2A6MERAReceipt = Object.freeze({
         ...eraReceipt,
         cheekCage,
         roofRemoteWeapon,
+        auxiliaryOpenYokeRws,
       });
     }
   }
