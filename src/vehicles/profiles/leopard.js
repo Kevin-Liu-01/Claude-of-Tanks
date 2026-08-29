@@ -1842,13 +1842,22 @@ function buildLeo2A6(P) {
     // Native-course restoration: the visible idler wrap owns the terminal
     // silhouette.  Keep the structural nose inside the clear corridor
     // instead of reproducing that silhouette with intersecting armor.
-    glacisLaneCut: { x: 0.90, z0: 3.13 },
+    // Start the inter-track cut 5 cm before the measured break so the last
+    // full-width glacis sample cannot round into the live idler-shoe voxel.
+    // The displaced shoulder is entirely behind the track/fender envelope.
+    glacisLaneCut: { x: 0.98, z0: 3.08 },
     // §B4 shoe round (2026-08-06): capZ0/capY — the full slab abutting the
     // window read 10 exact-voxels inside the sprocket-crown SHOE pads at its
     // z -3.34 bottom corner (bandVox 0, the m1a1ha blind-spot class). The
     // 8 cm cap strip lifts its outboard floor to 1.35 (flag band tops 1.326
     // + margin); centre keeps 1.30, side/front rows are skirt/deck-interior.
-    sponsonLaneLift: { z0: -3.62, z1: -2.88, x0: 0.90, y: 1.54, capZ0: -3.66, capY: 1.52 },
+    // Carry the over-track floor relief continuously from the sprocket bay
+    // to the glacis lane cut.  The old rear-only window cleared the band but
+    // restored the full-width 1.30 m floor at z=-2.88; live shoe shoulders
+    // then pierced that floor all the way to z=3.10 during the strict
+    // animated sweep.  The centre tub remains unchanged while the outboard
+    // sponson follows the real above-track shelf.
+    sponsonLaneLift: { z0: -3.62, z1: 3.08, x0: 0.90, y: 1.54, capZ0: -3.66, capY: 1.52 },
     beltY: 0.62, bellyY: 0.50,
     underGlacisClosure: {
       halfW: 0.88,
@@ -3228,7 +3237,9 @@ export function buildLeo2A5(P) {
     // columns deck+rim-owned, side is centre-carried); headlight pods slide
     // inboard off the crest; rear wall narrows between the sprockets; the
     // sponson floor lifts to 1.50 over the wrap crest z -3.36..-2.86.
-    glacisLaneCut: { x: 1.02, z0: 3.02 },
+    // Pull the lane transition 6 cm rearward so the cut boundary clears the
+    // idler shoe's rounded voxel envelope instead of sharing its final row.
+    glacisLaneCut: { x: 1.02, z0: 2.96 },
     beakWings: { z: 3.845, x0: 0.55, th: 0.21, x1: 1.02 },
     beltY: 0.62, bellyY: 0.615, headlightY: 1.40, headlightZ: 3.58, headlightX: 0.90,
     // §B4 shoe round (2026-08-06): crest sub-window — the 1.50 floor was
@@ -3237,7 +3248,10 @@ export function buildLeo2A5(P) {
     // (138 exact voxels, bandVox 0 — the m1a1ha blind-spot class). Only the
     // crown sub-range lifts to 1.54 (flag window z -3.27..-3.11 + margin);
     // the station cross-sections there stay pad/band-carried in the masks.
-    sponsonLaneLift: { z0: -3.36, z1: -2.86, x0: 1.02, y: 1.50, crestZ0: -3.32, crestZ1: -3.06, crestY: 1.54 },
+    // Keep the lifted over-track shelf continuous through the straight run.
+    // Returning to the 1.38 m full-width floor at z=-2.86 put that floor
+    // inside every live shoe course up to the glacis cut at z=3.02.
+    sponsonLaneLift: { z0: -3.36, z1: 2.96, x0: 1.02, y: 1.50, crestZ0: -3.32, crestZ1: -3.06, crestY: 1.54 },
     rearWallHW: 1.02,
     rear: { wallZ: -3.42, lipZ: -3.56, yTop: 1.82, yBot: 0.86 },
     // r6 STATION-WIDTH LAW: the ref's station slices 0-8 read ±1.737 as the
@@ -3877,7 +3891,24 @@ export function buildLeo2A5(P) {
     // floor (barrel Ø 0.038 = 2.1 px at the 54 px/m side rigs, receiver
     // MASS): every top stays under the certified 2.638/2.653 lines (receiver
     // 2.635w, barrel 2.645w, hider ends 0.49L inside the 0.79w col).
-    P.add('turretDark', box(0.075, 0.062, 0.46), -0.50, 0.824, 0.02);         // receiver mass (top 2.635w)
+    // The loader gun predates KIT.fittings, but its source-measured receiver
+    // is already the real visible load-bearing core of the assembly.  Keep
+    // that exact certified mesh and register it as the fitting root instead
+    // of adding a second generic gun or a marker-only escape hatch.
+    {
+      const exactLoaderMg = new THREE.Group();
+      const receiverGeometry = box(0.075, 0.062, 0.46);
+      const receiver = new THREE.Mesh(receiverGeometry, P.mats.dark);
+      receiver.position.set(-0.50, 0.824, 0.02);
+      receiver.castShadow = true;
+      receiver.receiveShadow = true;
+      receiver.userData.appearanceRole = 'machineGun';
+      exactLoaderMg.add(receiver);
+      FITTINGS.markExact(exactLoaderMg, 'pintleMG');
+      exactLoaderMg.name = 'leo2a5_loader_machine_gun';
+      P.turretG.add(exactLoaderMg);
+      P.disposables.push(receiverGeometry);
+    }
     // barrel flat-forward (an AA-elevated cut was tried and REVERTED: a
     // diagonal rod above the 2.6564 anchor lights a STAIRCASE of side
     // columns — p95 anchor slid to 2.70, dims -10; the r5 anchor law
@@ -12297,7 +12328,10 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
     deck: [[2.05, 1.67], [-0.10, 1.67], [-0.24, 1.60], [-0.68, 1.60], [-0.95, 1.71], [-1.32, 1.79], [-2.45, 1.815], [-3.10, 1.82], [-3.60, 1.82]],
     glacis: [[2.05, 1.67], [2.35, 1.60], [2.64, 1.575], [3.13, 1.37], [3.60, 1.21]],
     glacisLaneCut: { x: 0.90, z0: 3.13 },
-    sponsonLaneLift: { z0: -3.62, z1: -2.88, x0: 0.90, y: 1.54, capZ0: -3.66, capY: 1.52 },
+    // Match the base A6 containment shelf: the M-package retains the same
+    // straight-run shoe envelope, so the relief must continue to the front
+    // glacis lane cut rather than ending behind the final road wheel.
+    sponsonLaneLift: { z0: -3.62, z1: 3.13, x0: 0.90, y: 1.54, capZ0: -3.66, capY: 1.52 },
     // M-package belly: the mine kit lifts the visible belly line (family
     // 0.50 -> 0.56); the bolted plate itself is authored below.
     beltY: 0.62, bellyY: 0.56,
