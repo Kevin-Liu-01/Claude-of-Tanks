@@ -47,6 +47,7 @@ import type {
   MainWorld,
   SoloBattleRequest,
 } from './app/mainContracts.ts';
+import { createMainFrameRuntime } from './app/mainFrameRuntime.ts';
 import { createRenderer } from './engine/renderer.ts';
 import { createOffscreenSceneWarmer } from './engine/offscreenWarm.ts';
 import {
@@ -235,7 +236,6 @@ const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 const _rayO = new THREE.Vector3();
 const _rayD = new THREE.Vector3();
-const _fwd = new THREE.Vector3();
 
 // ---------------------------------------------------------------------------
 // BOOT STAGES (src/ui/bootScreen.ts)
@@ -2152,13 +2152,48 @@ const battleFrame = createBattleFrameRuntime(legacyPort({
   simulationDt: SIM_DT,
 }));
 const pauseInfo = battleFrame.pauseInfo;
-let lastMs = -1;
-let lastFov = camera.fov;
 // controls_gunnery r5: true while the current __SHOTS view staged a live HUD
 // frame (player_view / sniper_view) — those views re-run hud.update each
 // shot-mode frame so the reticle canvas stays live (forceHitMark etc.).
 let shotHudFrame = false;
-let lastCineActive = false; // battle-open flyby HUD veil edge latch
+
+const mainFrame = createMainFrameRuntime({
+  scene,
+  camera,
+  game,
+  scheduleFrame: () => frameLoop.schedule(),
+  isGraphicsContextLost: () => graphicsContextLost,
+  battleEntryLifecycle,
+  getFx: () => fxRuntimeAccess.current,
+  getWorld: currentWorld,
+  getBaseFogDensity: () => baseFogDensity,
+  getStudio: () => studio,
+  getShotMode: () => shotMode,
+  getShotHudFrame: () => shotHudFrame,
+  sniperFill,
+  resolveFxSubject,
+  battleHudFrame,
+  lighting,
+  post,
+  showroom,
+  pedestal,
+  networkSession,
+  garageFramePacer,
+  battleFrame,
+  isBattleLoadCovering: () => battleLoad.covering === true,
+  cameraInput: camInput,
+  getMobileAutoAim: () => mobileAutoAim,
+  rig,
+  killcam,
+  veilHud,
+  worldFramePresentation,
+  matchModeWorld,
+  audioListener,
+  isGaragePresentationDirty: () => garagePresentationDirty,
+  clearGaragePresentationDirty: () => { garagePresentationDirty = false; },
+  perfHud,
+  trace: devTrace,
+});
 
 // rAF-STARVATION FALLBACK (embedded panes): some embedded Chromium panes
 // report visibilityState 'hidden' PERMANENTLY (while still focused, receiving
@@ -2176,7 +2211,7 @@ let lastCineActive = false; // battle-open flyby HUD veil edge latch
 // rAF re-arming is latched (rafQueued) so fallback ticks can never stack
 // extra rAF callbacks for a speed burst when frames come back.
 const frameLoop = createFrameLoopScheduler({
-  tick,
+  tick: mainFrame.tick,
   isBootComplete: () => bootComplete,
   // A settled, room-free Garage is event-driven. CSS/UI transitions remain
   // browser-owned; the complete Three.js clock wakes for camera motion,
@@ -2196,146 +2231,6 @@ invalidateGaragePresentation = () => {
   frameLoop.restart();
 };
 bus.on('phase:change', () => frameLoop.restart());
-
-function tick(nowMs: number) {
-  frameLoop.schedule();
-  if (lastMs < 0) lastMs = nowMs;
-  const frameWallDtS = Math.max(0, (nowMs - lastMs) / 1000);
-  // Frame dt clamp (0.1 s): a stalled/backgrounded loop never integrates its
-  // whole gap. The PAUSE block below extends this on the resume edge.
-  let dtR = Math.min(0.1, frameWallDtS);
-  lastMs = nowMs;
-  devTrace?.frame(dtR * 1000);
-  if (graphicsContextLost) return;
-
-  if (battleEntryLifecycle.renderingCovered) return;
-  const fx = fxRuntimeAccess.current;
-  const world = currentWorld();
-
-  // Sniper-zoom de-fog: at high zoom the exp2 fog + ACES crush distant
-  // contrast to haze; scale density down toward 0.35x as FOV drops below 15
-  // (applies in shot mode too so sniper_view captures stay crisp).
-  if (scene.fog) {
-    const fogScale = camera.fov < 15 ? Math.max(0.22, Math.pow(camera.fov / 15, 1.6)) : 1;
-  if (scene.fog instanceof THREE.FogExp2) scene.fog.density = baseFogDensity * fogScale;
-  }
-
-  // SCENE STUDIO: while active the studio owns the whole frame — no battle
-  // sim, no rig, no HUD chrome (src/game/studio.js drives world/fx/render).
-  if (studio.active) { studio.tick(dtR); return; }
-
-  if (shotMode) {
-    // Deterministic screenshot hold: no sim, no rig, frozen fx clock.
-    // (dt = 0 also snaps the foliage occlusion fade to zero — see vegetation.)
-    camera.getWorldDirection(_fwd);
-    if (world) world.update(0, camera.position, _fwd, null);
-    sniperFill.update(); // same close-scope fill state as live play
-    fx?.update(dtR, game.shells, camera, resolveFxSubject);
-    // controls_gunnery r5: staged HUD views redraw the reticle canvas every
-    // frame from the FROZEN frameInfo — the old early-return skipped
-    // hud.update entirely, so any post-set() canvas state change (e.g. the
-    // __DEBUG.forceHitMark hook, r3) never rendered and staged captures
-    // could under-report the live sight picture. Only views that staged a
-    // HUD frame (forcedHudFrame sets the latch) redraw; establishing shots
-    // stay hidden.
-    if (shotHudFrame) battleHudFrame.redrawFrozen();
-    lighting.update(true); // force ALL shadow cascades — deterministic capture
-    post.render(dtR);
-    return;
-  }
-
-  // A settled Garage is a static presentation, not a 60 Hz game simulation.
-  // Read the controller's allocation-free motion latch before doing any
-  // camera solve. Pointer input mutates that latch synchronously, so drag,
-  // zoom, spring return, and vehicle swaps still run at display cadence. A
-  // settled camera is evaluated only on the bounded watchdog paint instead
-  // of re-solving its fixed frame sixty times per second.
-  const garageAnimating = game.phase === 'garage' &&
-    (showroom.moving || pedestal.switchPending);
-  // Persistent room ownership is independent of WebGL presentation cadence.
-  // Keep lobby recovery and host snapshots at display cadence even while a
-  // settled Garage only paints twice per second.
-  if (game.phase === 'garage') networkSession.pump(dtR, nowMs);
-  if (game.phase === 'garage' && !garageFramePacer.shouldRender(nowMs, {
-    animate: garageAnimating,
-  })) return;
-  if (game.phase === 'garage') showroom.update(dtR);
-
-  // One typed transaction advances pause/input/network/countdown/simulation,
-  // then resolves tank presentation before the camera consumes its anchors.
-  const frameState = battleFrame.advance(
-    dtR,
-    frameWallDtS,
-    nowMs,
-    game.phase === 'battle' && battleLoad?.covering === true,
-  );
-  dtR = frameState.dtSeconds;
-  const { inBattle, paused, livePaused } = frameState;
-  const kcActive = frameState.killcamActive;
-  camInput.autoAimPoint = mobileAutoAim?.sample(inBattle && !paused && !kcActive) || null;
-  if (inBattle && !paused && !kcActive) rig.update(dtR, camInput);
-  if (kcActive) killcam.update(dtR);
-
-  // Battle-open flyby: hide the battle HUD while the rig owns the camera
-  // (the rig itself shows the letterbox bars — cameraRig.setLetterbox).
-  // Edge-triggered so the kill-cam's own veilHud calls are never fought.
-  // killcam_shotinfo r4: re-check killcam.isActive() LIVE — the replay may
-  // have STARTED in step 2 of this very tick (death path mid-frame), and the
-  // stale frame-top kcActive snapshot let the flyby edge-latch un-veil the
-  // battle HUD over a live replay. If the edge is swallowed here, the latch
-  // fires on the first frame after the replay ends (veilHud(false) — exactly
-  // the state finishBattle/afterDeath restore anyway).
-  if (!kcActive && !killcam.isActive() && rig.cinematicActive !== lastCineActive) {
-    lastCineActive = rig.cinematicActive;
-    veilHud(lastCineActive);
-  }
-  sniperFill.update(); // close-quarters scope readability (see definition)
-
-  // 4. retained terrain/vegetation presentation; dormant Garage does no work.
-  worldFramePresentation.update(dtR, inBattle, kcActive);
-
-  // 5. fx — dt 0 while live-paused pins the shared particle clock, which is
-  // the one timeline every particle/timer/light/decal ages against (the same
-  // mechanism deterministic shot captures rely on), so effects hold mid-air.
-  // killcam r2: the replay's IMPACT beat briefly dilates the fx clock (~0.55x
-  // through the turret launch) — the same clock drives the pop arc, so the
-  // whole destruction slows coherently. 1 everywhere else.
-  if (fx) {
-    fx.update(livePaused ? 0 : dtR * (kcActive ? killcam.fxTimeScale : 1),
-      game.shells, camera, resolveFxSubject);
-  }
-
-  // Objective markers are retained, shadow-free meshes. Standard battles and
-  // the garage hide the root, so the feature adds no traversal work there.
-  matchModeWorld.update(
-    inBattle ? legacyPort(game.matchModeState) : null,
-    game.timeS,
-  );
-
-  // 7. HUD (hidden + frozen while the kill-cam letterbox owns the screen).
-  battleHudFrame.update(inBattle, kcActive);
-
-  // 8. hybrid camera/occupied-vehicle listener (allocation-free typed owner)
-  audioListener.update(dtR, inBattle, kcActive);
-
-  // 9-10. shadows + post
-  // FEEL r12: fov lerps (scope zoom / aim transitions / per-shot recoil
-  // kick) hit this EVERY frame of the animation — the full updateFrustums
-  // swept all CSM-registered materials each time (~1 ms/frame, the "look
-  // around is laggy" report). Splits are fov-independent; refresh only the
-  // cascade geometry.
-  if (camera.fov !== lastFov) { lighting.updateFov(); lastFov = camera.fov; }
-  const garageShadowsDirty = game.phase === 'garage'
-    && (garageAnimating || garagePresentationDirty);
-  lighting.setStaticPresentationDormant(
-    game.phase === 'garage' && !garageShadowsDirty,
-  );
-  lighting.update(false, dtR);
-  post.render(dtR);
-  if (game.phase === 'garage') garagePresentationDirty = false;
-  if (game.phase === 'battle') battleEntryLifecycle.noteBattleFrame();
-  perfHud.update(dtR * 1000); // FEEL r12: after render — info.render is fresh
-}
 
 // Deterministic engineering captures keep a synchronous discovery facade for
 // screenshot tooling, while the orchestration and recipes stay out of every
@@ -2379,7 +2274,7 @@ window.__SHOTS = {
       setGarageSunTrim,
       hideGarage: () => garage.hide(),
       hideEndOverlay: endOverlay.hide,
-      setLastFov: (value: number) => { lastFov = value; },
+      setLastFov: mainFrame.noteFovPrimed,
       refreshSpotFrame,
       getWorld: currentWorld,
       getHud: () => hud,
@@ -2520,7 +2415,7 @@ const deploymentShadowWarm = createDeploymentShadowWarmOwner({
   lighting: legacyPort(lighting),
   warmRender,
   getWorldGroup: () => currentWorld()?.group ?? null,
-  noteFovPrimed: (fov) => { lastFov = fov; },
+  noteFovPrimed: mainFrame.noteFovPrimed,
   simDt: SIM_DT,
 });
 

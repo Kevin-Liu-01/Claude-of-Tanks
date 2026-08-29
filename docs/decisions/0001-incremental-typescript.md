@@ -119,11 +119,15 @@ on one nullable lookup contract.
 The final boot-safe metadata receipts for legacy builder/spec hybrids now emit
 strict TypeScript and bind through the shared fleet registry without pulling
 their Three.js builders into Garage startup.
+`src/app/mainFrameRuntime.ts` now owns the retained rendered-frame transaction
+and its time, FOV, cinematic, and Garage-pacing latches. The composition root
+supplies live ports and starts the scheduler without reimplementing render
+order or allocating a Garage request on every frame.
 
 ## Consequences
 
 - Type coverage grows monotonically without blocking gameplay work.
-- `src/main.js` shrinks through tested extractions rather than a rename-only
+- `src/main.ts` shrinks through tested extractions rather than a rename-only
   conversion.
 - Mixed `.js` and `.ts` imports are expected during the migration.
 - Source imports may use explicit `.ts` extensions; `allowImportingTsExtensions`

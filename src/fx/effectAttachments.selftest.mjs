@@ -73,7 +73,7 @@ for (const family of requiredFamilies) {
 
 // Integration seams: battle + Studio resolution and live->wreck transition.
 const effectsSource = fs.readFileSync(new URL('./effects.js', import.meta.url), 'utf8');
-const mainSource = fs.readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+const mainFrameSource = fs.readFileSync(new URL('../app/mainFrameRuntime.ts', import.meta.url), 'utf8');
 const studioSource = fs.readFileSync(new URL('../game/studio.js', import.meta.url), 'utf8');
 if (!effectsSource.includes('syncSubjectEmitterAnchor(col, subject, _subjectAnchor)')) {
   throw new Error('burning columns are not refreshed through the attachment helper');
@@ -87,7 +87,7 @@ if (!effectsSource.includes('setReplaySuppressed(suppressed)')) {
 if (!effectsSource.includes('if (replaySuppressed) col.acc = 0;')) {
   throw new Error('suppressed wreck columns can accumulate a replay emission backlog');
 }
-if (!mainSource.includes('game.shells, camera, resolveFxSubject')) {
+if (!mainFrameSource.includes('game.shells, camera, resolveFxSubject')) {
   throw new Error('battle fx update lacks the solo/network subject resolver');
 }
 if (!studioSource.includes('fx.update(dt, shells, camera, resolveFxSubject)')) {

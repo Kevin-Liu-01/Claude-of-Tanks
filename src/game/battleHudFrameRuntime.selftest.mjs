@@ -123,11 +123,14 @@ assert.equal(runtime.frameInfo.shells, game.shells);
 assert.throws(() => createBattleHudFrameRuntime({}), /requires every presentation port/);
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+const mainFrameSource = await readFile(new URL('../app/mainFrameRuntime.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(mainSource, /const frameInfo\s*=\s*\{/,
   'main must not rebuild the mutable HUD frame');
 assert.doesNotMatch(mainSource, /const armorScopeTargets\s*=\s*\[/,
   'main must not own scoped opponent filtering');
-assert.match(mainSource, /battleHudFrame\.update\(inBattle, kcActive\)/,
-  'the render loop delegates one HUD transaction');
+assert.match(mainSource, /createMainFrameRuntime\(/,
+  'the composition root delegates through the typed frame owner');
+assert.match(mainFrameSource, /battleHudFrame\.update\(inBattle, killcamActive\)/,
+  'the frame owner delegates one HUD transaction');
 
 console.log('battleHudFrameRuntime.selftest: all assertions passed');

@@ -207,8 +207,11 @@ prop contacts behind one allocation-bounded interface.
 
 `src/game/battleFrameRuntime.ts` owns the stateful advance order above that
 presentation owner. It retains fixed-step debt, pause diagnostics, its input
-sample, and its frame receipt. `src/main.ts` consumes only the receipt before
-continuing camera, world, effects, HUD, audio, lighting, and postprocessing.
+sample, and its frame receipt. `src/app/mainFrameRuntime.ts` owns the complete
+allocation-neutral rendered-frame transaction around that receipt: Garage
+pacing, Studio/capture branches, camera, world, effects, HUD, audio, lighting,
+postprocessing, and the battle-reveal edge. `src/main.ts` only connects its
+live ports and starts the scheduler.
 
 `src/game/battleHudFrameRuntime.ts` is the corresponding rendered-information
 owner. The frame loop supplies only the battle and replay latches; the runtime

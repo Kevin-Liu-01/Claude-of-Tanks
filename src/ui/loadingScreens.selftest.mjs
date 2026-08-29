@@ -145,6 +145,8 @@ assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
 await import('./imagePreload.selftest.mjs');
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+const mainFrameSource = await readFile(
+  new URL('../app/mainFrameRuntime.ts', import.meta.url), 'utf8');
 const networkBattleLaunchSource = await readFile(
   new URL('../net/networkBattleLaunchRuntime.ts', import.meta.url), 'utf8');
 const battlePresentationSource = await readFile(
@@ -389,14 +391,14 @@ const battleOpenAt = soloLoaderBody.indexOf('openBattle(visiblePreBattleSeconds)
 assert.ok(cameraPrepareAt >= 0 && revealPrimeAt > cameraPrepareAt &&
   loaderFadeAt > revealPrimeAt && battleOpenAt > loaderFadeAt,
   'solo battle entry must lock the chase camera and paint it before the roster loader fades');
-assert.match(mainSource,
-  /post\.render\(dtR\);\s*if \(game\.phase === 'garage'\) garagePresentationDirty = false;\s*if \(game\.phase === 'battle'\) battleEntryLifecycle\.noteBattleFrame\(\);/,
+assert.match(mainFrameSource,
+  /post\.render\(dtR\);\s*if \(game\.phase === 'garage'\) clearGaragePresentationDirty\(\);\s*if \(game\.phase === 'battle'\) battleEntryLifecycle\.noteBattleFrame\(\);/,
   'the reveal barrier must advance only after a real battle frame is rendered');
 assert.match(battleEntryLifecycleSource,
   /noteBattleFrame\(\) \{ presentedBattleFrameSerial \+= 1; \}[\s\S]*firstRequiredSerial = presentedBattleFrameSerial \+ 1/,
   'the typed reveal owner must wait for a newer presented battle frame');
-assert.match(mainSource,
-  /battleFrame\.advance\([\s\S]{0,180}game\.phase === 'battle' && battleLoad\?\.covering === true,/,
+assert.match(mainFrameSource,
+  /battleFrame\.advance\([\s\S]{0,180}game\.phase === 'battle' && isBattleLoadCovering\(\),/,
   'camera input must stay locked through the complete loader fade');
 assert.match(battleFrameRuntimeSource,
   /inputSample\.cameraLocked = cameraLocked;[\s\S]{0,180}input\.poll\(inputSample\);/,

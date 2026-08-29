@@ -126,11 +126,14 @@ assert.throws(() => createBattleFrameRuntime({
 }), /requires every frame port|simulationDt/);
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+const mainFrameSource = await readFile(new URL('../app/mainFrameRuntime.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(mainSource, /let simAcc\s*=/,
   'main must not retain fixed-step debt');
 assert.doesNotMatch(mainSource, /const pauseInfo\s*=\s*\{/,
   'main must not retain pause transition state');
-assert.match(mainSource, /battleFrame\.advance\(/,
-  'the render loop delegates advancement through one state machine');
+assert.match(mainSource, /createMainFrameRuntime\(/,
+  'the composition root delegates rendered frames through one owner');
+assert.match(mainFrameSource, /battleFrame\.advance\(/,
+  'the frame owner delegates gameplay advancement through one state machine');
 
 console.log('battleFrameRuntime.selftest: pause, countdown, network, fixed-step, and presentation pass');
