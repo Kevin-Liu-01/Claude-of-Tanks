@@ -24,12 +24,12 @@ interface TopMaskEngineContext {
   renderer: THREE.WebGLRenderer;
 }
 
-interface TankMaskVisual {
+export interface TankMaskVisual {
   root: THREE.Object3D;
   dispose(): void;
 }
 
-interface TankMaskSpec {
+export interface TankMaskSpec {
   id: string;
   dims?: {
     overallLengthM?: number;

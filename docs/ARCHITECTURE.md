@@ -22,7 +22,7 @@ Module ownership (file paths are FIXED):
 | movement | `src/sim/movement.ts` |
 | combat   | `src/sim/ballistics.ts`, `src/sim/armor.ts`, `src/sim/damage.ts`, `src/sim/combat.selftest.mjs` |
 | ai       | `src/game/ai.ts` |
-| hud      | `src/ui/hud.js`, `src/ui/garage.js`, `src/ui/damagePanel.js` |
+| hud      | `src/ui/hud.js`, `src/ui/garage.js`, `src/ui/damagePanel.ts` |
 | fx       | `src/fx/effects.js`, `src/fx/particles.js` |
 | audio    | `src/audio/audio.js` |
 | integration | `src/main.ts`, `src/game/state.ts` |
@@ -848,7 +848,7 @@ attackerId === player id), hit direction indicator (from `shell:hit` where targe
 player id). Damage numbers/killfeed animate on real time — for screenshots they simply
 may be absent (acceptable) unless the view recipe seeds them via bus emits.
 
-#### 3.7.2 `damagePanel.js`
+#### 3.7.2 `damagePanel.ts`
 ```js
 export function createDamagePanel() => Panel
 Panel = { root: HTMLElement, setTank(spec), update(combat: CombatState), setState(sample) }

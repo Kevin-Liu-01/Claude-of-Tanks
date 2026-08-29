@@ -13,7 +13,7 @@ pass (2026-07-31); sources of record are listed per section.
 | Hit resolution (saves, damage, fire, detonation) | `src/sim/damage.ts` | `game/state.ts` stepShells |
 | Module state machine (`ok`/`yellow`/`red`, repairs) | `src/sim/damage.ts` (`refreshModuleState`, `tickModuleRepairs`, `repairAllModules`) | state.ts game loop, main.ts repair-kit consumable |
 | State broadcasts | `module:state` bus event `{ id, module, state, repaired? }` emitted by `game/state.ts` only | audio.js, hud.js alerts, (killcam/damage panel read CombatState directly) |
-| Presentation (labels, colors, order) | `src/ui/moduleRegistry.ts` | hud.js, damagePanel.js, shotInfo.js, killcam.js |
+| Presentation (labels, colors, order) | `src/ui/moduleRegistry.ts` | hud.js, damagePanel.ts, shotInfo.js, killcam.js |
 
 The `repaired: true` payload flag marks a red→yellow RECOVERY so the HUD
 toasts `<MODULE> REPAIRED` instead of `DAMAGED`; audio infers direction from
@@ -140,7 +140,7 @@ spotting (spotting.ts).
   ricochet, ERA, tracks and spaced armor included). Sampling is spread across
   48-face frame batches to avoid periodic render stalls; battle exit disposes
   every generated buffer.
-- Damage panel (`ui/damagePanel.js`): reads CombatState directly per frame;
+- Damage panel (`ui/damagePanel.ts`): reads CombatState directly per frame;
   canvas schematic repaints only when the dirty signature (non-ok module
   states + quantized turret bearing) changes. Colors/order from
   `ui/moduleRegistry.ts`.

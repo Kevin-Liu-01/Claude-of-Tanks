@@ -7,7 +7,7 @@
 //
 // equipIconSVG(id, size, ink) returns an inline <svg> string (or '' for
 // unknown ids). Consumers: the garage slot boxes + picker grid (garage.js)
-// and the battle HUD loadout readout (damagePanel.js).
+// and the battle HUD loadout readout (damagePanel.ts).
 
 /** Default ink — matches hud.js TRAY_INK. */
 const EQUIP_INK = 'rgba(238,244,250,0.86)';

@@ -662,7 +662,7 @@ export function createShotInfo(bus) {
   // ---------- armor mini-diagram ----------
   // Icon framing (tools/icons-page.html): bbox-normalized ortho renders with
   // MARGIN 1.07. Hull-local extent approximated from spec.dims exactly like
-  // damagePanel.js: z in [-hullL/2, overallL - hullL/2] -> center (overall-hull)/2.
+  // damagePanel.ts: z in [-hullL/2, overallL - hullL/2] -> center (overall-hull)/2.
   function diagramFor(ev, cls) {
     const specId = ev.targetSpecId || ev.targetId;
     let dims = null;

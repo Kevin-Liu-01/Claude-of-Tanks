@@ -145,6 +145,10 @@ Shared killcam and Gallery internals now use the strict
 `src/vehicles/internalAnatomyVisuals.ts` owner. Its armor, volume, material,
 resource-lifetime, crew-seating, and drivetrain contracts replace the former
 Gallery double-assertion bridge.
+The battle-only schematic now uses strict `src/ui/damagePanel.ts` contracts for
+tank masks, modules, crew, combat state, screenshot samples, and Canvas2D
+resources. `battleHudAccess.ts` imports that runtime directly instead of
+asserting a dynamically loaded JavaScript module.
 
 ## Consequences
 

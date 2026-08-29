@@ -7,7 +7,9 @@
  * network, capture, and debug entry paths.
  */
 
-export interface DamagePanelRuntime {}
+import type { DamagePanelController } from './damagePanel.ts';
+
+export type DamagePanelRuntime = DamagePanelController;
 
 export interface BattleHudRuntime {
   setDamagePanel(panel: DamagePanelRuntime): void;
@@ -46,7 +48,7 @@ const DEFAULT_LOADERS: BattleHudLoaders = {
   // This access boundary narrows only the methods it owns and validates by
   // immediate construction; consumers receive the explicit runtime contract.
   hud: async () => await import('./hud.js') as unknown as HudModule,
-  damagePanel: async () => await import('./damagePanel.js') as unknown as DamagePanelModule,
+  damagePanel: async () => await import('./damagePanel.ts'),
   tankThumbs: async () => await import('./tankThumbs.ts') as unknown as TankThumbModule,
 };
 

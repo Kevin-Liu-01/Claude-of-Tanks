@@ -17,6 +17,8 @@ Present game and session state with fast, legible desktop/mobile interactions.
 Private, LAN, and Ranked deployment; `networkStatus.ts` owns reconnect feedback;
 `hud.js` owns live battle chrome; `minimapAssetRuntime.ts` owns baked-map load
 coalescing, stale-world rejection, and the procedural cartography fallback;
+`damagePanel.ts` owns the battle-only camera-up tank schematic and its
+redraw-on-change module/crew presentation;
 `perfHud.ts` owns the lazy typed diagnostics surface and its bounded 4 Hz DOM
 paint;
 `settings.js` and `touchControls.ts` own input-facing UI; `transition.ts`,
