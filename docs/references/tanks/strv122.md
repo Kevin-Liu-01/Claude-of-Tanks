@@ -4,7 +4,7 @@
 Swedish Leopard 2A5-class (Strv 122): the 122's roof armor arrays, Galix
 dischargers, Swedish stowage, wavy skirt hems, L44 with the Leo sleeve/MRS.
 Leo2a5 grammar kinship is legitimate; the geometry is a FRESH §K build in
-`src/vehicles/profiles/sweden.js` (no `buildLeo2A5` call; the donor-clone
+`src/vehicles/profiles/sweden.ts` (no `buildLeo2A5` call; the donor-clone
 is retired; leopard.js stays byte-held).
 
 ## Instrument — WEAK (visual influence only)

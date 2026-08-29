@@ -134,6 +134,9 @@ The first authored family pack migrated in place is
 `src/vehicles/profiles/japan.ts`. Its explicit procedural-builder port covers
 the STB-1, Type 90A, and Type 10B geometry deltas while the typed fleet loader
 retains exact-family demand acquisition.
+`src/vehicles/profiles/sweden.ts` follows the same boundary for UDES 03, Strv
+103A/B, Strv 81, and Strv 122, including fixed-gun, hydropneumatic, running
+gear, and fitted-equipment contracts.
 
 ## Consequences
 

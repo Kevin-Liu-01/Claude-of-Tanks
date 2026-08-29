@@ -11,14 +11,82 @@ import { buildStrv103 } from './casemate.js';
 import { centurionBuild } from './uk.js';
 import { buildLeo2A5 } from './leopard.js';
 import { addVehicleGhillieSuit } from '../ghillieSuit.js';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
-function mount(P, owner, fitting, x, y, z, rotation = null) {
+type Vec3Tuple = [number, number, number];
+type VehicleAssemblyOwner = 'hull' | 'turret';
+
+interface LoftRow {
+  z: number;
+  b: number;
+  t: number;
+  w: number;
+  wt?: number;
+}
+
+interface FixedGunSection {
+  z0: number;
+  z1: number;
+  r: number;
+  r2?: number;
+  dark?: boolean;
+  dy?: number;
+}
+
+interface SwedishBuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly mats: { dark: THREE.Material; [role: string]: unknown };
+  readonly q?: boolean;
+  readonly spec: { visual: { number?: string } };
+  fixedMount?: boolean;
+  muzzleZ?: number;
+  topY?: number;
+  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addEquipment(
+    owner: VehicleAssemblyOwner,
+    geometry: unknown,
+    ...transform: number[]
+  ): unknown;
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    label: string,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): unknown;
+}
+
+function mount(
+  P: SwedishBuilderPort,
+  owner: VehicleAssemblyOwner,
+  fitting: THREE.Object3D,
+  x: number,
+  y: number,
+  z: number,
+  rotation: Vec3Tuple | null = null,
+): void {
   fitting.position.set(x, y, z);
   if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
   (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
 }
 
-function plate(P, owner, x, y, z, w, h, d, rotation = null, darkCap = true) {
+function plate(
+  P: SwedishBuilderPort,
+  owner: VehicleAssemblyOwner,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  rotation: Vec3Tuple | null = null,
+  darkCap = true,
+): void {
   const r = rotation || [0, 0, 0];
   const bucket = owner === 'hull' ? 'hull' : 'turret';
   const detail = owner === 'hull' ? 'hullDark' : 'turretDark';
@@ -27,7 +95,13 @@ function plate(P, owner, x, y, z, w, h, d, rotation = null, darkCap = true) {
     x, y + h * 0.5 + 0.009, z + d * 0.24, r[0], r[1], r[2]);
 }
 
-function addSwedishRadioPair(P, owner, y, z, seed) {
+function addSwedishRadioPair(
+  P: SwedishBuilderPort,
+  owner: VehicleAssemblyOwner,
+  y: number,
+  z: number,
+  seed: number,
+): void {
   for (const side of [-1, 1]) {
     const x = side * 0.96;
     P.add(owner === 'hull' ? 'hullDetail' : 'turretDetail',
@@ -39,7 +113,7 @@ function addSwedishRadioPair(P, owner, y, z, seed) {
   }
 }
 
-function addStrv103BOraclePackage(P) {
+function addStrv103BOraclePackage(P: SwedishBuilderPort): void {
   const { box, cylY } = KIT;
 
   // Source-defining nose protection screen. Two horizontal carriers are
@@ -81,13 +155,13 @@ function addStrv103BOraclePackage(P) {
   P.decal('hull', 'number', '103B', 0.28, [-1.76, 1.52, -1.22], -Math.PI / 2);
 }
 
-function buildStrv103B(P) {
+function buildStrv103B(P: SwedishBuilderPort): void {
   buildStrv103(P);
   addStrv103BOraclePackage(P);
   addVehicleGhillieSuit(P);
 }
 
-function addStrv81Package(P) {
+function addStrv81Package(P: SwedishBuilderPort): void {
   const { box, cylX, cylY, cylZ } = KIT;
   const slab = orientedSlab;
 
@@ -185,7 +259,7 @@ function addStrv81Package(P) {
   P.topY = Math.max(P.topY || 0, 1.26);
 }
 
-function buildStrv81(P) {
+function buildStrv81(P: SwedishBuilderPort): void {
   centurionBuild(P, 3);
   addStrv81Package(P);
   // The oracle has a squat cast fighting compartment. Scale the complete
@@ -196,7 +270,7 @@ function buildStrv81(P) {
   P.topY = 1.13;
 }
 
-function addStrv122Package(P) {
+function addStrv122Package(P: SwedishBuilderPort): void {
   const { box, cylY, cylZ } = KIT;
   const slab = orientedSlab;
 
@@ -305,7 +379,7 @@ function addStrv122Package(P) {
   P.topY = Math.max(P.topY || 0, 1.54);
 }
 
-function buildStrv122(P) {
+function buildStrv122(P: SwedishBuilderPort): void {
   buildLeo2A5(P);
   addStrv122Package(P);
   addVehicleGhillieSuit(P);
@@ -339,7 +413,11 @@ function buildStrv122(P) {
 
 // Closed measured loft (§C.1 winding-guarded slabs between stations).
 // Row: { z, b, t, w, wt? } — bottom/top y, lower/upper half-widths.
-function loftRows(P, rows, bucket = 'hull') {
+function loftRows(
+  P: SwedishBuilderPort,
+  rows: readonly LoftRow[],
+  bucket = 'hull',
+): void {
   for (let i = 0; i < rows.length - 1; i++) {
     const a = rows[i], c = rows[i + 1];
     const awt = a.wt ?? a.w, cwt = c.wt ?? c.w;
@@ -350,8 +428,12 @@ function loftRows(P, rows, bucket = 'hull') {
 }
 
 // Fixed hull-bucket gun run, sections muzzle->rear ({ z0, z1, r, r2?, dark? }).
-function fixedGunRun(P, axisY, secs) {
-  for (const s of secs) {
+function fixedGunRun(
+  P: SwedishBuilderPort,
+  axisY: number,
+  sections: readonly FixedGunSection[],
+): void {
+  for (const s of sections) {
     const len = s.z0 - s.z1;
     P.add(s.dark ? 'hullDark' : 'hull', KIT.cylZ(s.r, len, P.q ? 18 : 12, s.r2),
       0, axisY + (s.dy || 0), s.z1 + len / 2);
@@ -365,7 +447,7 @@ function fixedGunRun(P, axisY, secs) {
 // Its identity is the short low wedge, six-wheel course, exposed loaded run,
 // centered fixed 105 mm, broad service hatches, and uncluttered rear deck.
 // ---------------------------------------------------------------------------
-function buildUdes03(P) {
+function buildUdes03(P: SwedishBuilderPort): void {
   const { box, cylY, cylZ, torus, liftEye, periscope } = KIT;
   P.fixedMount = true;
 
@@ -373,7 +455,7 @@ function buildUdes03(P) {
   // upper slab.  The narrow belly stays between the tracks while the upper
   // facets flare continuously into the fenders.  The descending nose is the
   // UDES 03 identity from front, profile and elevated three-quarter views.
-  const outline = [
+  const outline: LoftRow[] = [
     { z: 2.98, b: 0.64, t: 0.98, w: 0.70, wt: 0.94 },
     { z: 2.62, b: 0.48, t: 1.13, w: 0.78, wt: 1.22 },
     { z: 1.84, b: 0.33, t: 1.37, w: 0.84, wt: 1.34 },
@@ -443,7 +525,7 @@ function buildUdes03(P) {
 
   // Glacis louvres and splash rail follow the actual roof slope. Alternating
   // ribs stay in merged buckets, preserving one draw call per material.
-  const glY = (z) => 1.52 - (z - 1.30) * 0.22;
+  const glY = (z: number): number => 1.52 - (z - 1.30) * 0.22;
   for (const side of [-1, 1]) {
     P.add('hullDark', box(0.62, 0.022, 0.86), side * 0.52, glY(1.82), 1.82, -0.22, 0, 0);
     for (let i = 0; i < 7; i++) {
@@ -545,13 +627,13 @@ function buildUdes03(P) {
   P.topY = 1.34;
 }
 
-function buildStrv103A(P) {
+function buildStrv103A(P: SwedishBuilderPort): void {
   const { box, cylX, cylY, cylZ, frustum, torus, sph, liftEye, periscope } = KIT;
   P.fixedMount = true;
 
   // ---- primary silhouette loft (print z-profile mapped to the published
   // frame; glacis plane 1.845@z0.62 -> 1.47@z2.98, beak lip 1.50@3.52).
-  const primary = [
+  const primary: LoftRow[] = [
     { z: 3.52, b: 1.26, t: 1.50, w: 1.30, wt: 1.46 },        // bare beak lip (no dozer/fence)
     { z: 2.98, b: 0.88, t: 1.47, w: 1.44, wt: 1.60 },        // beak root over the sprockets
     { z: 2.36, b: 0.64, t: 1.57, w: 1.48, wt: 1.65 },        // nose run (print yMin 0.61-0.74)
@@ -608,7 +690,7 @@ function buildStrv103A(P) {
 
   // ---- glacis louvre banks (radiators ON the glacis — family identity).
   // Glacis plane y(z) = 1.845 - (z - 0.62) * 0.1585 over the tube flanks.
-  const glY = (z) => 1.845 - (z - 0.62) * 0.1585;
+  const glY = (z: number): number => 1.845 - (z - 0.62) * 0.1585;
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.86, 0.025, 1.24), s * 0.48, glY(1.62) + 0.005, 1.62, -0.335, 0, 0);
     for (let i = 0; i < 6; i++) {
@@ -767,4 +849,4 @@ export const SWEDEN_PROFILES = {
   strv103a: { build: buildStrv103A },
   strv81: { build: buildStrv81 },
   strv122: { build: buildStrv122 },
-};
+} satisfies VehicleProfileRecord;

@@ -106,7 +106,7 @@ L74 low over the long louvred glacis (glacis plane 1.845@z0.62 →
 cupola/sight/dome cluster, four-wheel course + front drive + raised rear
 idler, raked twin whips.
 
-## Build (src/vehicles/profiles/sweden.js `buildStrv103A`)
+## Build (src/vehicles/profiles/sweden.ts `buildStrv103A`)
 
 Self-contained measured loft (NOT a casemate.js donor clone): two closed
 §C.1-guarded lofts split at the 1.38 shoe seam + beak core wedge; fixed
@@ -124,7 +124,7 @@ published 2.14 p95-sovereign — resident-class cap).
 - `src/vehicles/sweden.ts` — SWEDEN_IDS + SWEDEN_SPECS.strv103a
   (variant of strv103; class td; stats 1000 hp / 540 hp / 37.0 t /
   45 km/h; same L74 shells/reload; dims per published A)
-- `src/vehicles/profiles/sweden.js` — buildStrv103A + SWEDEN_PROFILES row
+- `src/vehicles/profiles/sweden.ts` — buildStrv103A + SWEDEN_PROFILES row
   (profiledProcedurals.ts spreads SWEDEN_PROFILES — no edit needed there)
 - `src/vehicles/tier.ts` — strv103a: 8 (one below the B per the
   earlier-mark convention: centurion3/5, ariete/c1, t80/t80b)

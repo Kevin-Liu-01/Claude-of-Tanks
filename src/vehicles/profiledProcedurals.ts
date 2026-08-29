@@ -18,7 +18,7 @@ import { MISC_PROFILES } from './profiles/misc.js';
 import { ITALY_PROFILES } from './profiles/italy.js';
 import { UKRAINE_PROFILES } from './profiles/ukraine.js';
 import { CHINA_PROFILES } from './profiles/china.js';
-import { SWEDEN_PROFILES } from './profiles/sweden.js';
+import { SWEDEN_PROFILES } from './profiles/sweden.ts';
 import { POLAND_PROFILES } from './profiles/poland.js';
 import { KOREA_PROFILES } from './profiles/korea.ts';
 import { JAPAN_PROFILES } from './profiles/japan.ts';

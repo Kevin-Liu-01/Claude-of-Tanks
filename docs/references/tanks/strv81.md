@@ -3,7 +3,7 @@
 ## Identity
 Swedish Centurion Mk 3, 20-pdr era. Centurion grammar legitimately shared
 with the frozen centurion3 (bad74e60 lineage) but the geometry is a FRESH
-§K measured-loft build in `src/vehicles/profiles/sweden.js` (no donor build
+§K measured-loft build in `src/vehicles/profiles/sweden.ts` (no donor build
 calls; the old donor-clone `centurionBuild(P,3)+package` is retired).
 
 ## Instrument

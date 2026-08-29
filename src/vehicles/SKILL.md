@@ -19,9 +19,9 @@ vocabulary and complete saved-fleet assignment, `tier.ts` and `fleetOrder.ts`
 own remaining metadata, `tankAssets.ts` owns UI asset mappings, and
 `turretBarrelCircularity.ts` measures actual rig-local gun sections for the
 fleet release gate.
-The STB-1, Type 90A, and Type 10B visual deltas live in the strict
-`profiles/japan.ts` pack behind a narrow procedural-builder port; preserve its
-demand-loaded family boundary and complete donor geometry.
+The Japanese and Swedish visual deltas live in strict `profiles/japan.ts` and
+`profiles/sweden.ts` packs behind narrow procedural-builder ports; preserve
+their demand-loaded family boundaries and complete donor geometry.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
