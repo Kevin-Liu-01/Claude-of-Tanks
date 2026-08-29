@@ -28,6 +28,23 @@ function evaluate(script) {
   return envelope.data.result;
 }
 
+async function waitForEvaluation(script, timeoutMs = 180_000) {
+  const deadline = Date.now() + timeoutMs;
+  let lastError = null;
+  while (Date.now() < deadline) {
+    try {
+      const result = evaluate(script);
+      if (result?.error) throw new Error(result.error);
+      if (result?.ready) return result;
+      lastError = null;
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw lastError || new Error('browser evaluation did not become ready');
+}
+
 if (!evaluate('window.__GAME_READY === true && !!window.__DEBUG?.lighting')) {
   throw new Error('game/render debug facade is not ready in the audit browser');
 }
@@ -524,61 +541,128 @@ for (const preset of presets) {
   );
 }
 
+// The preset sweep intentionally enters deterministic shot mode. A real
+// battle must begin from the ordinary boot lifecycle: shot mode owns a frozen
+// world and cannot be promoted into player authority. Reopen the same URL in
+// this isolated session before the live-drive phase instead of coupling the
+// two mutually exclusive presentation owners.
+const liveAuditUrl = new URL(evaluate('location.href'));
+liveAuditUrl.searchParams.set('_shadowAuditLive', String(Date.now()));
+execFileSync('agent-browser', [
+  '--session', session,
+  'open', liveAuditUrl.href,
+], { encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 });
+await waitForEvaluation(`(() => ({
+  ready: window.__GAME_READY === true && !!window.__DEBUG?.lighting,
+  error: '',
+}))()`);
+
 // The bug report is specifically a moving player tank, not an orbiting QA
 // camera. Exercise the real input listeners, fixed-step movement, suspension,
 // player shadow caster, chase rig, GTAO history and destruction/fire path in
 // one live battle. The force-all sweep above is the pixel-level shadow truth;
 // this contract makes sure that truth also covers the actual gameplay path.
-const liveDrive = evaluate(`(async () => {
+evaluate(`(() => {
   const D = window.__DEBUG;
   D.quality.setPresetName('high');
   D.post.pinDynScale(1);
   window.__AO_EMA_OFF = false;
-  await D.startBattle('m1a1', 'verdant');
-  await new Promise((resolve) => setTimeout(resolve, 700));
+  return true;
+})()`);
+
+evaluate(`(() => {
+  const D = window.__DEBUG;
+  const status = { ready: false, error: '' };
+  window.__COT_RENDER_STABILITY_BATTLE = status;
+  // Enter through the ordinary demand-loaded path. The older startBattle
+  // debug helper intentionally imports the entire fleet for broad QA probes;
+  // that makes a production shadow audit wait on unrelated vehicle families
+  // and no longer represents the player-facing loading architecture.
+  Promise.resolve(D.beginSoloBattle({
+    specId: D.selectedSpecId,
+    mapId: 'verdant',
+    randomRoster: false,
+  }))
+    .then(() => { status.ready = D.game?.phase === 'battle'; })
+    .catch((error) => { status.error = error?.stack || error?.message || String(error); });
+  return true;
+})()`);
+await waitForEvaluation(`(() => ({
+  ready: window.__COT_RENDER_STABILITY_BATTLE?.ready === true
+    && window.__DEBUG?.game?.phase === 'battle',
+  error: window.__COT_RENDER_STABILITY_BATTLE?.error
+    || document.querySelector('.cot-error-overlay:not([hidden])')?.textContent || '',
+}))()`);
+
+evaluate(`(() => {
+  const D = window.__DEBUG;
 
   const key = (type, code, value) => window.dispatchEvent(new KeyboardEvent(type, {
     code, key: value, bubbles: true,
   }));
-  const playerStart = D.game.player.state.pos.clone();
-  const cameraStart = D.camera.position.clone();
-  const externalAtStart = D.rig.externalActive;
-  const frameTimes = [];
-  const frameSamples = [];
-  let sampling = true;
-  let previous = performance.now();
-  const sampleStart = previous;
-  const sample = (now) => {
-    const frameMs = now - previous;
-    frameTimes.push(frameMs);
-    frameSamples.push({
+  const state = {
+    key,
+    playerStart: D.game.player.state.pos.clone(),
+    cameraStart: D.camera.position.clone(),
+    externalAtStart: D.rig.externalActive,
+    frameTimes: [],
+    frameSamples: [],
+    sampling: true,
+    previous: performance.now(),
+    sampleStart: performance.now(),
+  };
+  state.sample = (now) => {
+    const frameMs = now - state.previous;
+    state.frameTimes.push(frameMs);
+    state.frameSamples.push({
       frameMs,
-      elapsedMs: now - sampleStart,
+      elapsedMs: now - state.sampleStart,
       programs: D.renderer.info.programs?.length || 0,
       drawCalls: D.renderer.info.render.calls,
       triangles: D.renderer.info.render.triangles,
     });
-    previous = now;
-    if (sampling) requestAnimationFrame(sample);
+    state.previous = now;
+    if (state.sampling) requestAnimationFrame(state.sample);
   };
-  requestAnimationFrame(sample);
-
+  window.__COT_RENDER_STABILITY_DRIVE = state;
+  requestAnimationFrame(state.sample);
   key('keydown', 'KeyW', 'w');
   key('keydown', 'KeyD', 'd');
   D.flags.forceFire = true;
-  await new Promise((resolve) => setTimeout(resolve, 2400));
-  key('keyup', 'KeyD', 'd');
-  key('keydown', 'KeyA', 'a');
-  await new Promise((resolve) => setTimeout(resolve, 2400));
-  key('keyup', 'KeyA', 'a');
-  key('keydown', 'KeyD', 'd');
-  await new Promise((resolve) => setTimeout(resolve, 2400));
-  key('keyup', 'KeyW', 'w');
-  key('keyup', 'KeyD', 'd');
-  D.flags.forceFire = false;
-  sampling = false;
-  await new Promise((resolve) => requestAnimationFrame(resolve));
+  return true;
+})()`);
 
+evaluate(`(async () => {
+  const state = window.__COT_RENDER_STABILITY_DRIVE;
+  await new Promise((resolve) => setTimeout(resolve, 2400));
+  state.key('keyup', 'KeyD', 'd');
+  state.key('keydown', 'KeyA', 'a');
+  return true;
+})()`);
+
+evaluate(`(async () => {
+  const state = window.__COT_RENDER_STABILITY_DRIVE;
+  await new Promise((resolve) => setTimeout(resolve, 2400));
+  state.key('keyup', 'KeyA', 'a');
+  state.key('keydown', 'KeyD', 'd');
+  return true;
+})()`);
+
+evaluate(`(async () => {
+  const D = window.__DEBUG;
+  const state = window.__COT_RENDER_STABILITY_DRIVE;
+  await new Promise((resolve) => setTimeout(resolve, 2400));
+  state.key('keyup', 'KeyW', 'w');
+  state.key('keyup', 'KeyD', 'd');
+  D.flags.forceFire = false;
+  state.sampling = false;
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  return true;
+})()`);
+
+const liveDrive = evaluate(`(() => {
+  const D = window.__DEBUG;
+  const state = window.__COT_RENDER_STABILITY_DRIVE;
   const playerEnd = D.game.player.state.pos;
   const cameraEnd = D.camera.position;
   const telemetry = D.telemetry();
@@ -627,24 +711,24 @@ const liveDrive = evaluate(`(async () => {
       if (object.receiveShadow) groundContactDecalReceivers++;
     }
   });
-  frameTimes.sort((a, b) => a - b);
-  frameSamples.sort((a, b) => b.frameMs - a.frameMs);
-  const percentile = (q) => frameTimes[Math.min(
-    frameTimes.length - 1, Math.floor(frameTimes.length * q))] || 0;
-  return {
+  state.frameTimes.sort((a, b) => a - b);
+  state.frameSamples.sort((a, b) => b.frameMs - a.frameMs);
+  const percentile = (q) => state.frameTimes[Math.min(
+    state.frameTimes.length - 1, Math.floor(state.frameTimes.length * q))] || 0;
+  const result = {
     map: D.game.mapId,
     phase: D.game.phase,
-    externalAtStart,
+    externalAtStart: state.externalAtStart,
     externalAtEnd: D.rig.externalActive,
-    distanceM: playerStart.distanceTo(playerEnd),
-    cameraDistanceM: cameraStart.distanceTo(cameraEnd),
-    frames: frameTimes.length,
+    distanceM: state.playerStart.distanceTo(playerEnd),
+    cameraDistanceM: state.cameraStart.distanceTo(cameraEnd),
+    frames: state.frameTimes.length,
     frameMsP50: percentile(0.50),
     frameMsP95: percentile(0.95),
     frameMsP99: percentile(0.99),
     frameMsMax: percentile(1),
-    framesOver33Ms: frameTimes.filter((ms) => ms > 33.4).length,
-    slowestFrames: frameSamples.slice(0, 8),
+    framesOver33Ms: state.frameTimes.filter((ms) => ms > 33.4).length,
+    slowestFrames: state.frameSamples.slice(0, 8),
     glError,
     shaderErrors: telemetry.shadows.shaderErrors,
     canopyShadowProxyCasters,
@@ -664,6 +748,8 @@ const liveDrive = evaluate(`(async () => {
     nearAutoUpdate: telemetry.shadows.cascades
       .slice(0, 2).map((cascade) => cascade.autoUpdate),
   };
+  delete window.__COT_RENDER_STABILITY_DRIVE;
+  return result;
 })()`);
 
 const liveDriveReasons = [];
