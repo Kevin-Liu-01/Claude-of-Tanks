@@ -94,7 +94,7 @@ Relevant implementation:
 
 - src/sim/armor.ts
 - src/sim/ballistics.ts
-- src/ui/shotInfo.js
+- src/ui/shotInfo.ts
 - src/game/killcam.js
 
 ### Ballistics and ammunition

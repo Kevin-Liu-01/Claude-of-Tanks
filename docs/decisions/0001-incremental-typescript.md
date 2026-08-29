@@ -202,6 +202,11 @@ for staged actors, effects, camera shots, timeline tracks, capture state,
 recording, and every interactive DOM control. The underlying Studio runtime
 retains its demand-loaded JavaScript owner while that larger simulation and
 renderer boundary awaits its own migration.
+The combat-intelligence surface now uses strict `src/ui/shotInfo.ts` contracts
+for resolved hit events, diagram inputs, team inference, per-target and
+per-shell ledgers, report-gate timers, and its after-action summary. The
+simulation remains authoritative; this UI boundary only formats event values
+that have already been resolved.
 
 ## Consequences
 

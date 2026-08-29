@@ -1465,7 +1465,7 @@ function makeCollide(game: SoloGameState, world: SoloWorld): CollisionBundle {
 /** Emit the derived bus events flagged inside one HitEvent. */
 function emitHitOutcome(game: SoloGameState, bus: EventBus, ev: SoloHitEvent): void {
   const target = ev.targetId ? game.tankById.get(ev.targetId) || null : null;
-  // SHOT-INFO ENRICHMENT (ADDITIVE ONLY — consumed by src/ui/shotInfo.js):
+  // SHOT-INFO ENRICHMENT (ADDITIVE ONLY — consumed by src/ui/shotInfo.ts):
   // resolve ids to names/spec ids + stamp sim time. Existing fields untouched.
   ev.timeS = game.timeS;
   const attacker = ev.attackerId ? game.tankById.get(ev.attackerId) || null : null;
@@ -2145,7 +2145,7 @@ export function simStep(
       game.resultReason = 'time_limit';
     }
     // SHOT-INFO ENRICHMENT (additive): announce the decision once so results
-    // UIs (src/ui/shotInfo.js session stats) can render without polling.
+    // UIs (src/ui/shotInfo.ts session stats) can render without polling.
     if (game.result !== null) {
       bus.emit('battle:ended', {
         result: game.result, reason: game.resultReason, timeS: game.timeS,

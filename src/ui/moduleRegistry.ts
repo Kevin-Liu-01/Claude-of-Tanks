@@ -1,7 +1,7 @@
 // src/ui/moduleRegistry.ts — ONE source of truth for internal-module and crew
 // PRESENTATION (module_hitbox r1 consolidation). Display labels, state colors
 // and roster order used to be re-declared per consumer (killcam.js,
-// shotInfo.js, hud.js, damagePanel.ts) and had already drifted
+// shotInfo.ts, hud.js, damagePanel.ts) and had already drifted
 // ('Fuel' vs 'Fuel Tank'). Pure data — no DOM, no three.
 //
 // The SIM truth lives elsewhere and is deliberately not re-exported here:

@@ -1401,7 +1401,7 @@ export function createKillCam(deps) {
     lastBeginWallMs = performance.now();
     // REPORT GATE (r6 critical): announce that the replay owns the screen.
     // state.ts emits battle:ended in the same JS task begin() runs in, and
-    // shotInfo.js used to render its full-screen battle report on that event
+    // shotInfo.ts used to render its full-screen battle report on that event
     // immediately — the z-71 DEFEAT panel buried the still-playing z-60
     // flight + x-ray hold. shotInfo now BUFFERS the report while a replay is
     // live and flushes it on killcam:done (emitted in finish() below).

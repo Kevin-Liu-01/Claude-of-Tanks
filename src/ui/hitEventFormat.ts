@@ -12,7 +12,7 @@ export interface HitEventPresentation {
   readonly zone?: string;
   readonly shellType?: string;
   readonly shellName?: string;
-  readonly attackerSpecId?: string;
+  readonly attackerSpecId?: string | null;
   readonly flightDistM?: number;
 }
 

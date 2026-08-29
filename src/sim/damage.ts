@@ -257,7 +257,7 @@ const FIRE_TICK_MODULE_DMG = 10;
 const FIRE_EXTINGUISH_CHANCE = 0.12;
 const DEFAULT_CREW = ['commander', 'gunner', 'driver', 'loader'];
 
-// --- SHOT-INFO ENRICHMENT scratch (additive UI metadata; src/ui/shotInfo.js).
+// --- SHOT-INFO ENRICHMENT scratch (additive UI metadata; src/ui/shotInfo.ts).
 const _siEuler = new Euler();
 const _siQuat = new Quaternion();
 const _siMat = new Matrix4();
@@ -603,7 +603,7 @@ function baseEvent(shell: DamageShell, targetId: string | null): HitEvent {
     ammoRacked: false,
     destroyed: false,
     eraPlate: null,
-    // --- SHOT-INFO ENRICHMENT (ADDITIVE ONLY — consumed by src/ui/shotInfo.js;
+    // --- SHOT-INFO ENRICHMENT (ADDITIVE ONLY — consumed by src/ui/shotInfo.ts;
     // existing fields/math above are untouched) ------------------------------
     shellName: shell.spec.name || shell.spec.type, // display name of the round
     penRollFreshMm: shell.freshPenRollMm || 0, // pre-ERA/screen ±25% roll

@@ -214,8 +214,8 @@ import { maskIcon, tintedIcon } from './icons.ts';
 import { moduleAlertLabel } from './moduleRegistry.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
 // SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,
-// incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.js.
-import { createShotInfo } from './shotInfo.js';
+// incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.ts.
+import { createShotInfo } from './shotInfo.ts';
 import { hitOutcomeFor } from './hitEventFormat.ts';
 import {
   SPECIAL_ACTION_KINDS,
@@ -1267,7 +1267,7 @@ export function initHud(bus) {
   // diagrams for the player's connecting shots, incoming-hit toasts, a
   // collapsible last-6-shots + received-damage log (rebindable 'shotLog'
   // action -> bus 'ui:shotLog'), and the end-of-battle session stats.
-  // All rendering/bookkeeping lives in src/ui/shotInfo.js; the HUD only
+  // All rendering/bookkeeping lives in src/ui/shotInfo.ts; the HUD only
   // mounts the layer and forwards player identity + lifecycle below.
   const shotInfo = createShotInfo(bus);
   root.appendChild(shotInfo.root);

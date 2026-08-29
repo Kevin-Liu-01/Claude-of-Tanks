@@ -66,7 +66,7 @@ const ACTION_DEFS = [
   { id: 'zoomIn', label: 'Zoom In', group: 'Camera' },
   { id: 'zoomOut', label: 'Zoom Out', group: 'Camera' },
   { id: 'minimapZoom', label: 'Minimap Zoom', group: 'Interface' },
-  { id: 'shotLog', label: 'Shot Info Log', group: 'Interface' }, // SHOT-INFO (shotInfo.js)
+  { id: 'shotLog', label: 'Shot Info Log', group: 'Interface' }, // SHOT-INFO (shotInfo.ts)
   { id: 'perfHud', label: 'Performance Overlay', group: 'Interface' }, // FEEL r12 (perfHud.ts)
   { id: 'settingsMenu', label: 'Settings Menu', group: 'Interface' },
 ] as const;

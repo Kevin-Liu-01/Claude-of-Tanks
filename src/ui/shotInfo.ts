@@ -1,4 +1,4 @@
-// src/ui/shotInfo.js — combat-intelligence panels (WoT damage-log/armor-info
+// src/ui/shotInfo.ts — combat-intelligence panels (WoT damage-log/armor-info
 // mod class). Everything rendered here traces 1:1 to RESOLVED sim events on
 // the bus (shell:hit / shell:fired / tank:destroyed / battle:ended) — no
 // number is ever recomputed in the UI:
@@ -17,6 +17,8 @@ import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
 import {
   hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
+  type HitEventPresentation,
+  type HitOutcomePresentation,
 } from './hitEventFormat.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { maskIcon, iconUrl } from './icons.ts';
@@ -24,6 +26,8 @@ import { MODULE_LABEL, CREW_LABEL, STATE_COLOR } from './moduleRegistry.ts';
 import {
   createShotDiagramProjection,
   impactForShotDiagram,
+  type ShotDiagramEvent,
+  type ShotDiagramSpec,
 } from './shotDiagramProjection.ts';
 import { getSpec } from '../vehicles/specs.js';
 import {
@@ -34,7 +38,196 @@ import { getMapConfig } from '../world/maps/index.ts';
 // END SCREEN (killcam_endscreen r1): the full-screen battle report is now the
 // cinematic end screen in src/ui/endScreen.ts — this module keeps ALL the
 // bookkeeping (resolved-event sums, REPORT GATE) and hands a summary over.
-import { createEndScreen } from './endScreen.ts';
+import {
+  createEndScreen,
+  type EndScreenResult,
+  type EndScreenSummary,
+  type EndScreenTeamRow,
+} from './endScreen.ts';
+import type { EventBus } from '../game/stateCore.ts';
+
+type EntityId = string;
+type TeamSide = 'ally' | 'enemy' | null;
+type TimerHandle = ReturnType<typeof setTimeout>;
+
+interface ModuleHit {
+  readonly module: string;
+  readonly newState: string;
+}
+
+interface ShotHitEvent extends HitEventPresentation, ShotDiagramEvent {
+  readonly kind: string;
+  readonly attackerId?: EntityId | null;
+  readonly attackerName?: string | null;
+  readonly attackerSpecId?: string | null;
+  readonly targetId: EntityId;
+  readonly targetName?: string | null;
+  readonly targetSpecId?: string | null;
+  readonly damage: number;
+  readonly dmgRoll?: number;
+  readonly effectiveMm?: number;
+  readonly physicalMm?: number;
+  readonly nominalMm?: number;
+  readonly penRollFreshMm?: number;
+  readonly penRollMm?: number;
+  readonly flightDistM?: number;
+  readonly impactAngleDeg?: number;
+  readonly timeS?: number;
+  readonly targetHpAfter?: number;
+  readonly destroyed?: boolean;
+  readonly eraPlate?: unknown;
+  readonly fireStarted?: boolean;
+  readonly modulesHit?: readonly ModuleHit[];
+  readonly crewHit?: readonly string[];
+  readonly shellType: string;
+}
+
+interface ShellFiredEvent {
+  readonly isPlayer?: boolean;
+  readonly shooterId?: EntityId | null;
+  readonly shellType?: string;
+}
+
+interface TankSpottedEvent {
+  readonly id?: EntityId | null;
+  readonly team?: string;
+  readonly spotterId?: EntityId | null;
+  readonly timeS?: number;
+}
+
+interface TankDestroyedEvent {
+  readonly id: EntityId;
+  readonly killerId?: EntityId | null;
+  readonly specId: string;
+}
+
+interface EndRosterRow {
+  readonly id: EntityId;
+  readonly vehicle?: string | null;
+  readonly name?: string | null;
+  readonly specId?: string | null;
+  readonly team?: string;
+  readonly alive?: boolean;
+  readonly isPlayer?: boolean;
+}
+
+interface BattleEndedEvent {
+  readonly roster?: readonly EndRosterRow[];
+  readonly timeS?: number;
+  readonly map?: string | null;
+  readonly reason?: string | null;
+  readonly result?: EndScreenResult;
+}
+
+interface Combatant {
+  name: string | null;
+  specId: string | null;
+  dmg: number;
+  kills: number;
+  dead: boolean;
+}
+
+interface TeamGraphNode {
+  p: EntityId;
+  r: number;
+}
+
+interface ShellStats {
+  fired: number;
+  hits: number;
+  pens: number;
+  dmg: number;
+}
+
+interface TargetStats {
+  name: string | null | undefined;
+  specId: string | null | undefined;
+  dmg: number;
+  hits: number;
+  pens: number;
+  killed: boolean;
+  lastZone: string | null;
+  hpLeft: number | null;
+}
+
+interface BattleStats {
+  fired: number;
+  hits: number;
+  pens: number;
+  dealt: number;
+  received: number;
+  blocked: number;
+  assist: number;
+  modulesDestroyed: number;
+  perTarget: Map<EntityId, TargetStats>;
+  perShell: Map<string, ShellStats>;
+  timeline: Array<{ t: number; d: number }>;
+}
+
+interface ShotEntry {
+  readonly ev: ShotHitEvent;
+  readonly cls: HitOutcomePresentation;
+}
+
+interface ReceivedEntry {
+  readonly t: number;
+  readonly dmg: number;
+  readonly kind: string;
+  readonly aid?: EntityId | null;
+  readonly attacker: string;
+  readonly shellType: string;
+  readonly mods: string;
+  readonly outcome: HitOutcomePresentation;
+  readonly zone: string;
+}
+
+interface EndInfo {
+  readonly timeS?: number;
+  readonly map: string | null;
+  readonly reason: string | null;
+}
+
+interface SummaryTeamRow extends EndScreenTeamRow {
+  side: TeamSide;
+}
+
+interface PresentationTankSpec extends ShotDiagramSpec {
+  readonly name: string;
+  readonly dims: {
+    readonly widthM: number;
+    readonly hullLengthM: number;
+    readonly overallLengthM: number;
+    readonly heightM: number;
+  };
+}
+
+export interface ShotInfoRuntime {
+  readonly root: HTMLDivElement;
+  readonly statsRoot: HTMLDivElement;
+  warmSchematics(specIds: readonly string[]): void;
+  toggleLog(): void;
+  setPlayer(id: EntityId | null): void;
+  hideStats(): void;
+  reset(): void;
+}
+
+function eventPayload<Payload>(payload: unknown): Payload {
+  return payload as Payload;
+}
+
+function presentationSpec(id: string): PresentationTankSpec {
+  return getSpec(id) as PresentationTankSpec;
+}
+
+function registryLabel(registry: Readonly<Record<string, string>>, id: string): string {
+  return registry[id] || id;
+}
+
+function requireCanvasContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) throw new Error('[shot-info] Canvas2D context unavailable');
+  return context;
+}
 
 const COL = {
   green: '#7ee87e',
@@ -44,7 +237,7 @@ const COL = {
   dim: '#8a97a3',
 };
 
-const SHELL_TYPE_COLOR = {
+const SHELL_TYPE_COLOR: Readonly<Record<string, string>> = {
   AP: '#ffd27a', APCR: '#e8f4ff', HEAT: '#ff8a5c', HE: '#ffb02e',
   APFSDS: '#ffc46b', HESH: '#ffb02e',
 };
@@ -55,7 +248,7 @@ const SHELL_TYPE_COLOR = {
 
 // Crisp 12px module/crew glyphs (currentColor) — same visual language as the
 // damage panel's canvas icons, redrawn as inline SVG for DOM cards.
-const GLYPH = {
+const GLYPH: Record<string, string> = {
   ballistic: uiIconSVG('scope', 10),
   shell: uiIconSVG('shell', 10),
   target: uiIconSVG('autoAim', 10),
@@ -401,7 +594,7 @@ body.cot-touch-layout .cot-si-toast .l2{height:14px;font-size:7.5px;}
 }
 `;
 
-const fmtTime = (s) => {
+const fmtTime = (s: number): string => {
   const t = Math.max(0, Math.floor(s || 0));
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 };
@@ -417,12 +610,17 @@ const fmtTime = (s) => {
 // in. Cached per id/view; async — callers show the raw icon under the CSS
 // fallback filter and swap in the bake when it lands (same-origin PNG, so
 // canvas readback is always allowed; any failure keeps the fallback).
-const schemCache = new Map();
+const schemCache = new Map<string, Promise<string | null>>();
 // Card box sizes (shared with warmSchematics so the pre-warm hits the exact
 // cache keys the live cards request).
 const CARD_TOP_S = 96;
 const CARD_SIDE_W = 184, CARD_SIDE_H = 92;
-function schematicUrl(id, view, outW, outH) {
+function schematicUrl(
+  id: string,
+  view: string,
+  outW: number,
+  outH: number,
+): Promise<string | null> {
   const key = `${id}|${view}|${outW}x${outH}`;
   let p = schemCache.get(key);
   if (!p) {
@@ -433,7 +631,7 @@ function schematicUrl(id, view, outW, outH) {
           const c = document.createElement('canvas');
           c.width = img.naturalWidth;
           c.height = img.naturalHeight;
-          const x = c.getContext('2d', { willReadFrequently: true });
+          const x = requireCanvasContext(c);
           x.drawImage(img, 0, 0);
           const d = x.getImageData(0, 0, c.width, c.height);
           const px = d.data;
@@ -460,7 +658,7 @@ function schematicUrl(id, view, outW, outH) {
           const t = document.createElement('canvas');
           t.width = outW;
           t.height = outH;
-          const tx = t.getContext('2d', { willReadFrequently: true });
+          const tx = requireCanvasContext(t);
           const fit = Math.min(outW / c.width, outH / c.height);
           const fw = c.width * fit;
           const fh = c.height * fit;
@@ -476,7 +674,7 @@ function schematicUrl(id, view, outW, outH) {
               if (src[i + 3] < 8) continue;
               for (let ch = 0; ch < 3; ch++) {
                 const cv = src[i + ch];
-                const nb = (off) => (src[i + off + 3] >= 8 ? src[i + off + ch] : cv);
+                const nb = (off: number) => (src[i + off + 3] >= 8 ? src[i + off + ch] : cv);
                 p2[i + ch] = cv * (1 + 4 * A)
                   - A * (nb(-4) + nb(4) + nb(-outW * 4) + nb(outW * 4));
               }
@@ -519,7 +717,13 @@ function schematicUrl(id, view, outW, outH) {
 }
 
 /** Plan-form layer: raw icon + CSS fallback now, baked schematic on arrival. */
-function planForm(parent, specId, view, boxW, boxH) {
+function planForm(
+  parent: HTMLElement,
+  specId: string,
+  view: string,
+  boxW: number,
+  boxH: number,
+): HTMLDivElement {
   const pf = el('div', 'pf', parent);
   pf.style.backgroundImage = `url(${iconUrl(specId, view)})`;
   schematicUrl(specId, view, boxW * 2, boxH * 2).then((u) => {
@@ -537,7 +741,7 @@ function planForm(parent, specId, view, boxW, boxH) {
  * @param {{on:Function,emit:Function}} bus event bus (§1.5)
  * @returns {{root:HTMLElement,statsRoot:HTMLElement,setPlayer:Function,reset:Function,hideStats:Function,toggleLog:Function}}
  */
-export function createShotInfo(bus) {
+export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   ensureFonts();
   ensureStyle('cot-si-style', SI_CSS);
 
@@ -556,14 +760,14 @@ export function createShotInfo(bus) {
   // the kill-cam parity veil CSS addresses `.cot-si-stats`.
   const endScreen = createEndScreen(bus, statsRoot);
 
-  let playerId = null;
+  let playerId: EntityId | null = null;
   let logOpen = false;
-  const shotLog = [];      // last 6 outgoing summaries {ev, cls}
-  const allShots = [];     // EVERY outgoing hit this battle {ev, cls} — the
+  const shotLog: ShotEntry[] = [];      // last 6 outgoing summaries {ev, cls}
+  const allShots: ShotEntry[] = [];     // EVERY outgoing hit this battle {ev, cls} — the
                            // report's expandable per-enemy exchange ledger (r4)
-  const receivedLog = [];  // per-battle incoming entries (full battle)
+  const receivedLog: ReceivedEntry[] = [];  // per-battle incoming entries (full battle)
   const stats = newStats();
-  let endInfo = null;      // battle:ended {timeS, map} for the report header
+  let endInfo: EndInfo | null = null;      // battle:ended report header
 
   const isTouchBattleLayout = () =>
     document.body.classList.contains('cot-touch-layout');
@@ -578,8 +782,8 @@ export function createShotInfo(bus) {
   // row only renders once an enriched event has been SEEN (spotAttributed) —
   // a zero from missing data must never masquerade as a real zero.
   const ASSIST_WINDOW_S = 12;
-  const spotWindow = new Map(); // enemyId -> timeS of last player-spot edge
-  const spottedSet = new Set(); // distinct enemies the player lit
+  const spotWindow = new Map<EntityId, number>(); // enemyId -> timeS of last player-spot edge
+  const spottedSet = new Set<EntityId>(); // distinct enemies the player lit
   let spotAttributed = false;   // saw a spotterId-carrying event this battle
 
   // --- team-wide roster bookkeeping (battle report) -------------------------
@@ -591,11 +795,15 @@ export function createShotInfo(bus) {
   // anchored at the player resolves ally/enemy for the whole battle graph.
   // A `battle:ended` payload roster (additive state.ts enrichment, see
   // docs/SYSTEMS.md) overrides with authoritative teams when present.
-  const combatants = new Map(); // id -> {name,specId,dmg,kills,dead}
-  let endRoster = null;         // battle:ended payload roster (if provided)
-  const tg = new Map();         // parity union-find: id -> {p:parent, r:0|1}
+  const combatants = new Map<EntityId, Combatant>();
+  let endRoster: readonly EndRosterRow[] | null = null;
+  const tg = new Map<EntityId, TeamGraphNode>();
 
-  function combatant(id, name, specId) {
+  function combatant(
+    id: EntityId,
+    name: string | null | undefined = null,
+    specId: string | null | undefined = null,
+  ): Combatant {
     let c = combatants.get(id);
     if (!c) {
       c = { name: null, specId: null, dmg: 0, kills: 0, dead: false };
@@ -604,12 +812,12 @@ export function createShotInfo(bus) {
     if (name && !c.name) c.name = name;
     if (specId && !c.specId) {
       c.specId = specId;
-      if (!c.name) { try { c.name = getSpec(specId).name; } catch (_) { /* raw id */ } }
+      if (!c.name) { try { c.name = presentationSpec(specId).name; } catch (_) { /* raw id */ } }
     }
     return c;
   }
 
-  function tgFind(x) {
+  function tgFind(x: EntityId): { root: EntityId; r: number } {
     let e = tg.get(x);
     if (!e) { e = { p: x, r: 0 }; tg.set(x, e); }
     if (e.p === x) return { root: x, r: 0 };
@@ -620,18 +828,19 @@ export function createShotInfo(bus) {
   }
 
   /** Record that a and b fought — therefore sit on opposing teams. */
-  function linkOpposed(a, b) {
+  function linkOpposed(a: EntityId | null | undefined, b: EntityId | null | undefined): void {
     if (a == null || b == null || a === b) return;
     const fa = tgFind(a);
     const fb = tgFind(b);
     if (fa.root === fb.root) return;
     const ra = tg.get(fa.root);
+    if (!ra) return;
     ra.p = fb.root;
     ra.r = (fa.r + fb.r + 1) & 1;
   }
 
   /** 'ally' | 'enemy' | null (combatant not connected to the player yet). */
-  function sideOf(id) {
+  function sideOf(id: EntityId): TeamSide {
     if (playerId == null) return null;
     if (id === playerId) return 'ally';
     if (!tg.has(id)) return null;
@@ -641,16 +850,16 @@ export function createShotInfo(bus) {
     return fi.r === fp.r ? 'ally' : 'enemy';
   }
 
-  function newStats() {
+  function newStats(): BattleStats {
     return {
       fired: 0, hits: 0, pens: 0, dealt: 0, received: 0, blocked: 0, assist: 0,
-      modulesDestroyed: 0, perTarget: new Map(),
-      perShell: new Map(),   // shellType -> {fired,hits,pens,dmg}
+      modulesDestroyed: 0, perTarget: new Map<EntityId, TargetStats>(),
+      perShell: new Map<string, ShellStats>(),   // shellType -> {fired,hits,pens,dmg}
       timeline: [],          // dealt-damage events [{t, d}] (battle report strip)
     };
   }
 
-  function perShell(type) {
+  function perShell(type: string): ShellStats {
     let s = stats.perShell.get(type);
     if (!s) {
       s = { fired: 0, hits: 0, pens: 0, dmg: 0 };
@@ -663,12 +872,15 @@ export function createShotInfo(bus) {
   // Icon framing (tools/icons-page.html): bbox-normalized ortho renders with
   // MARGIN 1.07. Hull-local extent approximated from spec.dims exactly like
   // damagePanel.ts: z in [-hullL/2, overallL - hullL/2] -> center (overall-hull)/2.
-  function diagramFor(ev, cls) {
+  function diagramFor(
+    ev: ShotHitEvent,
+    cls: HitOutcomePresentation,
+  ): HTMLDivElement | null {
     const specId = ev.targetSpecId || ev.targetId;
     let dims = null;
     let arm = null;
     try {
-      const spec = specId ? getSpec(specId) : null;
+      const spec = specId ? presentationSpec(specId) : null;
       dims = spec ? spec.dims : null;
       arm = spec ? spec.armor : null;
     } catch (_) { dims = null; }
@@ -680,12 +892,12 @@ export function createShotInfo(bus) {
     }
     const lp = diagramImpact.point;
     const ld = diagramImpact.direction;
-    const projection = createShotDiagramProjection({ dims, armor: arm }, {
+    const projection = createShotDiagramProjection({ dims, armor: arm || undefined }, {
       topSize: CARD_TOP_S,
       sideWidth: CARD_SIDE_W,
       sideHeight: CARD_SIDE_H,
-      presentationAnchor: presentationAnchorFor(specId),
-      presentationProjection: presentationProjectionFor(specId),
+      presentationAnchor: presentationAnchorFor(specId) || undefined,
+      presentationProjection: presentationProjectionFor(specId) || undefined,
     });
     const badgeCol = (cls && cls.color) || '#ff8a5c';
     // silhouette contrast (r4: the 0.34-alpha mask read as a gray pill):
@@ -694,7 +906,13 @@ export function createShotInfo(bus) {
     const SIL_OUTLINE =
       'drop-shadow(0 0 1px rgba(232,242,250,0.9)) drop-shadow(0 0 1px rgba(150,175,195,0.5))';
     /** Badge-colored glow clipped to the silhouette mask at the hit point. */
-    const zoneTint = (parent, view, x, y, r) => {
+    const zoneTint = (
+      parent: HTMLElement,
+      view: string,
+      x: number,
+      y: number,
+      r: number,
+    ): void => {
       const tint = el('div', 'sil', parent);
       maskIcon(tint, specId, view, 'transparent');
       // r4: inner/mid stops raised again (ee/88 -> ff/c0) — under the .86
@@ -733,7 +951,7 @@ export function createShotInfo(bus) {
         const ux = ld[0] / wl; // screen dir toward the shooter (both axes of
         const uy = ld[2] / wl; // topPx negate, so -localDir maps to +ld here)
         const WR = 17;
-        const rot = (vx, vy, a) => [
+        const rot = (vx: number, vy: number, a: number): [number, number] => [
           vx * Math.cos(a) - vy * Math.sin(a),
           vx * Math.sin(a) + vy * Math.cos(a),
         ];
@@ -818,8 +1036,8 @@ export function createShotInfo(bus) {
     return wrap;
   }
 
-  function modChips(ev, parent) {
-    const items = [];
+  function modChips(ev: ShotHitEvent, parent: HTMLElement): void {
+    const items: Array<{ glyph: string; label: string; col: string }> = [];
     // ERA chip (r6 major): the payload's eraPlate marks a tile this shell
     // detonated — without it the card never said WHY the pen roll shrank.
     // Yellow (spent, did its job), never red: no crew/module was lost.
@@ -833,10 +1051,10 @@ export function createShotInfo(bus) {
       // the damage panel paints, so one module state reads as ONE color.
       const col = m.newState === 'red' ? STATE_COLOR.red
         : m.newState === 'yellow' ? STATE_COLOR.yellow : COL.dim;
-      items.push({ glyph: GLYPH[m.module] || GLYPH.gun, label: MODULE_LABEL[m.module] || m.module, col });
+      items.push({ glyph: GLYPH[m.module] || GLYPH.gun, label: registryLabel(MODULE_LABEL, m.module), col });
     }
     for (const c of ev.crewHit || []) {
-      items.push({ glyph: GLYPH.crew, label: CREW_LABEL[c] || c, col: COL.red });
+      items.push({ glyph: GLYPH.crew, label: registryLabel(CREW_LABEL, c), col: COL.red });
     }
     if (ev.fireStarted) items.push({ glyph: GLYPH.fuelTank, label: 'Fire', col: '#ff6a3c' });
     if (!items.length) return;
@@ -849,7 +1067,7 @@ export function createShotInfo(bus) {
   }
 
   // ---------- 1. outgoing shot card ----------
-  function buildCard(ev, cls) {
+  function buildCard(ev: ShotHitEvent, cls: HitOutcomePresentation): HTMLDivElement {
     const card = el('div', 'cot-si-card');
     // machine-checkable trace back to the sim event (verification harness)
     card.dataset.kind = ev.kind;
@@ -884,7 +1102,7 @@ export function createShotInfo(bus) {
 
     const body = el('div', 'cot-si-body', card);
     const rows = el('div', 'cot-si-rows', body);
-    const kv = (k, v, cls) => {
+    const kv = (k: string, v: string, cls = ''): HTMLDivElement => {
       const r = el('div', `cot-si-kv${cls ? ` ${cls}` : ''}`, rows);
       r.innerHTML = `<span class="cot-si-k">${GLYPH[k.toLowerCase()] || ''}<span>${k}</span></span><b>${v}</b>`;
       return r;
@@ -897,7 +1115,7 @@ export function createShotInfo(bus) {
     let penQual = '';
     let penLegend = '';
     if (ev.kind === 'screen_pierce') {
-      kv('Armor', (ev.physicalMm || 0) > 0 ? `${Math.round(ev.physicalMm)} mm screen` : 'screen', 'w armor');
+      kv('Armor', (ev.physicalMm || 0) > 0 ? `${Math.round(ev.physicalMm || 0)} mm screen` : 'screen', 'w armor');
       penHtml = 'passed through';
     } else {
       // 'N → M mm eff.' labels the angle-adjusted number (r5: nothing said
@@ -965,7 +1183,7 @@ export function createShotInfo(bus) {
     return card;
   }
 
-  function showCard(ev, cls) {
+  function showCard(ev: ShotHitEvent, cls: HitOutcomePresentation): void {
     // Mobile already has the resolved damage number and reticle confirmation.
     // Do not build diagrams or start image bakes for a surface CSS will hide.
     if (isTouchBattleLayout()) return;
@@ -991,7 +1209,7 @@ export function createShotInfo(bus) {
   }
 
   // ---------- 2. collapsible log ----------
-  function renderLog() {
+  function renderLog(): void {
     logPanel.textContent = '';
     const sec1 = el('div', 'sec', logPanel);
     sec1.innerHTML = `<span>Your shots</span><span>last ${shotLog.length}</span>`;
@@ -1020,7 +1238,7 @@ export function createShotInfo(bus) {
     }
   }
 
-  function toggleLog() {
+  function toggleLog(): void {
     if (isTouchBattleLayout()) {
       logOpen = false;
       logPanel.classList.remove('open');
@@ -1035,7 +1253,7 @@ export function createShotInfo(bus) {
   }
 
   // ---------- 3. incoming toasts ----------
-  function showToast(ev, cls) {
+  function showToast(ev: ShotHitEvent, cls: HitOutcomePresentation): void {
     const t = el('div', 'cot-si-toast', toastHost);
     t.dataset.damage = String(Math.round(ev.damage || 0));
     t.dataset.kind = ev.kind;
@@ -1043,13 +1261,15 @@ export function createShotInfo(bus) {
     // worse: dim for a hit that left the module 'ok', yellow damaged, red
     // destroyed (an 'ok' Track R styled as a red casualty lied, r3 critique).
     // Registry ramp = the damage panel's exact hues (one state, one color).
-    const stateCol = (s) => (s === 'red' ? STATE_COLOR.red : s === 'yellow' ? STATE_COLOR.yellow : COL.dim);
+    const stateCol = (state: string) => (
+      state === 'red' ? STATE_COLOR.red : state === 'yellow' ? STATE_COLOR.yellow : COL.dim
+    );
     const modsLost = (ev.eraPlate
       ? [`<span style="color:${COL.yellow}">ERA</span>`] : [])
       .concat((ev.modulesHit || [])
         .map((m) => `<span style="color:${stateCol(m.newState)}">` +
-          `${MODULE_LABEL[m.module] || m.module}${m.newState === 'red' ? ' ✕' : ''}</span>`))
-      .concat((ev.crewHit || []).map((c) => `<span style="color:${COL.red}">${CREW_LABEL[c] || c} ✕</span>`))
+          `${registryLabel(MODULE_LABEL, m.module)}${m.newState === 'red' ? ' ✕' : ''}</span>`))
+      .concat((ev.crewHit || []).map((c) => `<span style="color:${COL.red}">${registryLabel(CREW_LABEL, c)} ✕</span>`))
       .join(', ');
     t.innerHTML =
       `<div class="l1"><span>${ev.attackerName || 'Enemy'}</span>` +
@@ -1060,8 +1280,9 @@ export function createShotInfo(bus) {
     t.dataset.outcome = cls.id;
     if (!(ev.damage > 0)) t.classList.add('deflected');
     t.style.borderLeftColor = (ev.damage || 0) > 0 ? COL.red : cls.color;
-    t.querySelector('.l1 b').style.color = (ev.damage || 0) > 0 ? COL.red : cls.color;
-    while (toastHost.children.length > 3) toastHost.firstChild.remove();
+    const outcomeValue = t.querySelector<HTMLElement>('.l1 b');
+    if (outcomeValue) outcomeValue.style.color = (ev.damage || 0) > 0 ? COL.red : cls.color;
+    while (toastHost.children.length > 3) toastHost.firstChild?.remove();
     setTimeout(() => t.classList.add('out'), 4600);
     setTimeout(() => { if (t.parentNode) t.remove(); }, 5500);
   }
@@ -1075,8 +1296,8 @@ export function createShotInfo(bus) {
   // full-battle allShots ledger. Nothing recomputed, nothing invented:
   // side-unconfirmed contacts are OMITTED rather than guessed onto a team,
   // and there is no base-capture stat because the sim has no capture.
-  function buildSummary(result) {
-    const rows = new Map();
+  function buildSummary(result: EndScreenResult): EndScreenSummary {
+    const rows = new Map<EntityId, SummaryTeamRow>();
     for (const [id, c] of combatants) {
       rows.set(id, {
         id,
@@ -1103,38 +1324,40 @@ export function createShotInfo(bus) {
         if (r.isPlayer) row.isPlayer = true;
       }
     }
-    const allies = [];
-    const enemies = [];
+    const allies: EndScreenTeamRow[] = [];
+    const enemies: EndScreenTeamRow[] = [];
     for (const r of rows.values()) {
       if (r.side === 'ally') allies.push(r);
       else if (r.side === 'enemy') enemies.push(r);
     }
-    const bySort = (a, b) => (b.isPlayer ? 1 : 0) - (a.isPlayer ? 1 : 0) || b.dmg - a.dmg;
+    const bySort = (a: EndScreenTeamRow, b: EndScreenTeamRow): number => (
+      (b.isPlayer ? 1 : 0) - (a.isPlayer ? 1 : 0) || b.dmg - a.dmg
+    );
     allies.sort(bySort);
     enemies.sort(bySort);
-    const kills = [];
+    const kills: Array<{ id: string; name: string; specId: string; dmg: number }> = [];
     for (const [id, t] of stats.perTarget) {
       if (t.killed) kills.push({ id, name: t.name || id, specId: t.specId || id, dmg: Math.round(t.dmg) });
     }
     kills.sort((a, b) => b.dmg - a.dmg);
-    let best = null;
+    let best: ShotEntry | null = null;
     for (const sh of allShots) {
       if ((sh.ev.damage || 0) > 0 && (!best || sh.ev.damage > best.ev.damage)) best = sh;
     }
-    const me = rows.get(playerId) || {};
+    const me = playerId === null ? undefined : rows.get(playerId);
     let mapName = endInfo && endInfo.map ? endInfo.map : null;
     if (mapName) {
       try { mapName = getMapConfig(mapName).name || mapName; } catch (_) { /* raw id */ }
     }
-    const timeS = endInfo && Number.isFinite(endInfo.timeS)
+    const timeS = endInfo && typeof endInfo.timeS === 'number' && Number.isFinite(endInfo.timeS)
       ? endInfo.timeS
       : Math.max(0, ...stats.timeline.map((e) => e.t), ...receivedLog.map((e) => e.t));
     return {
       result,
       reason: endInfo?.reason || null,
-      playerVehicle: me.name || '',
-      playerSpecId: me.specId || null,
-      playerDead: !!me.dead,
+      playerVehicle: me?.name || '',
+      playerSpecId: me?.specId || null,
+      playerDead: !!me?.dead,
       map: mapName,
       timeS,
       stats: {
@@ -1164,13 +1387,13 @@ export function createShotInfo(bus) {
     };
   }
 
-  function renderStats(result) {
+  function renderStats(result: EndScreenResult): void {
     endScreen.show(result, buildSummary(result));
     statsRoot.classList.add('show'); // endScreen owns this too — kept for parity
   }
 
   // ---------- bookkeeping ----------
-  function perTarget(ev) {
+  function perTarget(ev: ShotHitEvent): TargetStats {
     let t = stats.perTarget.get(ev.targetId);
     if (!t) {
       t = {
@@ -1182,7 +1405,8 @@ export function createShotInfo(bus) {
     return t;
   }
 
-  bus.on('shell:fired', (p) => {
+  bus.on('shell:fired', (payload) => {
+    const p = eventPayload<ShellFiredEvent>(payload);
     if (!p.isPlayer) return;
     // identity hardening (r3 audit): latch the player id from the sim event
     // itself — hud.update only forwards setPlayer once a frame has rendered,
@@ -1195,7 +1419,8 @@ export function createShotInfo(bus) {
     perShell(p.shellType || '—').fired += 1;
   });
 
-  bus.on('tank:spotted', (ev) => {
+  bus.on('tank:spotted', (payload) => {
+    const ev = eventPayload<TankSpottedEvent | null>(payload);
     if (!ev || ev.id == null) return;
     // a spot is a sim-asserted cross-team fact: the spotting TEAM ('player'
     // side) opposes the target — feed the parity graph the same way a direct
@@ -1209,7 +1434,8 @@ export function createShotInfo(bus) {
     }
   });
 
-  bus.on('shell:hit', (ev) => {
+  bus.on('shell:hit', (payload) => {
+    const ev = eventPayload<ShotHitEvent>(payload);
     // team-wide roster bookkeeping (every combatant, incl. AI-vs-AI)
     if (ev.attackerId != null && ev.targetId != null && ev.attackerId !== ev.targetId) {
       const a = combatant(ev.attackerId, ev.attackerName, ev.attackerSpecId);
@@ -1223,11 +1449,12 @@ export function createShotInfo(bus) {
     // spotting assist (r3): ally (non-player) damage on an enemy the PLAYER
     // lit within the last ASSIST_WINDOW_S — summed only from resolved events
     // (damage from the payload, the spot edge from the sim's tank:spotted)
+    const spottedAt = spotWindow.get(ev.targetId);
     if (ev.attackerId !== playerId && ev.targetId !== playerId
-        && (ev.damage || 0) > 0 && spotWindow.has(ev.targetId)
-        && (ev.timeS || 0) - spotWindow.get(ev.targetId) <= ASSIST_WINDOW_S
-        && sideOf(ev.attackerId) === 'ally') {
-      stats.assist += ev.damage || 0;
+        && ev.damage > 0 && spottedAt !== undefined
+        && (ev.timeS || 0) - spottedAt <= ASSIST_WINDOW_S
+        && ev.attackerId != null && sideOf(ev.attackerId) === 'ally') {
+      stats.assist += ev.damage;
     }
     if (ev.attackerId === playerId && ev.targetId && ev.targetId !== playerId) {
       const cls = hitOutcomeFor(ev);
@@ -1238,7 +1465,7 @@ export function createShotInfo(bus) {
       sh.hits += 1;
       if (cls.penetrated) sh.pens += 1;
       sh.dmg += ev.damage || 0;
-      if ((ev.damage || 0) > 0) stats.timeline.push({ t: ev.timeS || 0, d: ev.damage });
+      if (ev.damage > 0) stats.timeline.push({ t: ev.timeS || 0, d: ev.damage });
       stats.modulesDestroyed += (ev.modulesHit || []).filter((m) => m.newState === 'red').length;
       const t = perTarget(ev);
       t.dmg += ev.damage || 0;
@@ -1246,7 +1473,9 @@ export function createShotInfo(bus) {
       if (cls.penetrated) t.pens += 1;
       if (ev.zone) t.lastZone = ev.zone;
       // remaining HP straight from the sim payload (report roster shows it)
-      if (Number.isFinite(ev.targetHpAfter)) t.hpLeft = Math.max(0, Math.round(ev.targetHpAfter));
+      if (typeof ev.targetHpAfter === 'number' && Number.isFinite(ev.targetHpAfter)) {
+        t.hpLeft = Math.max(0, Math.round(ev.targetHpAfter));
+      }
       if (ev.destroyed) { t.killed = true; t.hpLeft = 0; }
       shotLog.unshift({ ev, cls });
       if (shotLog.length > 6) shotLog.pop();
@@ -1259,7 +1488,7 @@ export function createShotInfo(bus) {
       stats.received += ev.damage || 0;
       if ((ev.damage || 0) <= 0 && cls.blocked) stats.blocked += ev.dmgRoll || 0;
       const mods = (ev.modulesHit || []).filter((m) => m.newState === 'red')
-        .map((m) => MODULE_LABEL[m.module] || m.module).join(', ');
+        .map((m) => registryLabel(MODULE_LABEL, m.module)).join(', ');
       receivedLog.push({
         t: ev.timeS || 0, dmg: ev.damage || 0, kind: ev.kind, aid: ev.attackerId,
         attacker: ev.attackerName || 'Enemy', shellType: ev.shellType || '', mods,
@@ -1271,7 +1500,8 @@ export function createShotInfo(bus) {
     }
   });
 
-  bus.on('tank:destroyed', (p) => {
+  bus.on('tank:destroyed', (payload) => {
+    const p = eventPayload<TankDestroyedEvent>(payload);
     // team-wide roster bookkeeping (fire deaths included — no shell:hit fires)
     combatant(p.id, null, p.specId).dead = true;
     if (p.killerId != null && p.killerId !== p.id) {
@@ -1282,7 +1512,7 @@ export function createShotInfo(bus) {
     let t = stats.perTarget.get(p.id);
     if (!t) {
       let name = p.specId;
-      try { name = getSpec(p.specId).name; } catch (_) { /* keep raw id */ }
+      try { name = presentationSpec(p.specId).name; } catch (_) { /* keep raw id */ }
       t = {
         name, specId: p.specId, dmg: 0, hits: 0, pens: 0,
         killed: false, lastZone: null, hpLeft: null,
@@ -1309,25 +1539,25 @@ export function createShotInfo(bus) {
   // A watchdog past the longest possible replay (3.4 s flight + 7 s hold +
   // slack) guarantees a stuck replay can never eat the report.
   let kcReplayActive = false;
-  let pendingReport = null; // buffered battle:ended result ('' is a valid result)
-  let reportFlushTimer = null;
-  let reportWatchdog = null;
+  let pendingReport: EndScreenResult | null = null; // buffered battle:ended result ('' is valid)
+  let reportFlushTimer: TimerHandle | null = null;
+  let reportWatchdog: TimerHandle | null = null;
   const REPORT_MAX_WAIT_MS = 16000;
 
-  function clearReportBuffer() {
+  function clearReportBuffer(): void {
     pendingReport = null;
     if (reportFlushTimer) { clearTimeout(reportFlushTimer); reportFlushTimer = null; }
     if (reportWatchdog) { clearTimeout(reportWatchdog); reportWatchdog = null; }
   }
 
-  function flushReport() {
+  function flushReport(): void {
     if (pendingReport === null) return;
     const result = pendingReport;
     clearReportBuffer();
     renderStats(result);
   }
 
-  function scheduleReportFlush() {
+  function scheduleReportFlush(): void {
     const decide = () => {
       if (pendingReport === null) return;
       if (reportFlushTimer) { clearTimeout(reportFlushTimer); reportFlushTimer = null; }
@@ -1351,7 +1581,8 @@ export function createShotInfo(bus) {
     if (pendingReport !== null) flushReport();
   });
 
-  bus.on('battle:ended', (p) => {
+  bus.on('battle:ended', (payload) => {
+    const p = eventPayload<BattleEndedEvent | null>(payload);
     // the floating shot card and incoming toasts must never linger behind the
     // results screen — a dimmed PENETRATION card double-reported the final
     // shot in the corner of the DEFEAT report for up to 7 s (r4 critique)
@@ -1375,7 +1606,7 @@ export function createShotInfo(bus) {
   bus.on('ui:shotLog', () => toggleLog());
   bus.on('ui:battleStart', () => api.reset());
 
-  const api = {
+  const api: ShotInfoRuntime = {
     /**
      * PERF (perf-r2): pre-bake the plan-form schematics for a roster while
      * the battle loading screen holds the frame. The bake is a synchronous
@@ -1387,7 +1618,7 @@ export function createShotInfo(bus) {
      * fallback path exactly as before.
      * @param {string[]} specIds fielded roster (both teams)
      */
-    warmSchematics(specIds) {
+    warmSchematics(specIds: readonly string[]): void {
       // perf-r3 (play-session probe): a 14-tank roster kicked 28 decodes at
       // once and their onload bakes (two full-image getImageData passes each)
       // landed as one burst of small tasks in the same window — measured as
@@ -1409,7 +1640,7 @@ export function createShotInfo(bus) {
     toggleLog,
 
     /** Latch the player entity id (hud.js forwards it each frame). */
-    setPlayer(id) { playerId = id; },
+    setPlayer(id: EntityId | null): void { playerId = id; },
 
     /** Hide the end-of-battle stats card (garage/hidden HUD). */
     hideStats() {

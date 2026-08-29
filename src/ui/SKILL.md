@@ -21,6 +21,9 @@ Private, LAN, and Ranked deployment; `networkStatus.ts` owns reconnect feedback;
 coalescing, stale-world rejection, and the procedural cartography fallback;
 `damagePanel.ts` owns the battle-only camera-up tank schematic and its
 redraw-on-change module/crew presentation;
+`shotInfo.ts` owns typed resolved-hit cards, incoming-fire alerts, the bounded
+combat log, armor-diagram projection, event-derived battle statistics, and the
+killcam-aware handoff to the after-action report;
 `perfHud.ts` owns the lazy typed diagnostics surface and its bounded 4 Hz DOM
 paint;
 `studioPanel.ts` owns the typed Scene Studio workspace, actor/effect/timeline
