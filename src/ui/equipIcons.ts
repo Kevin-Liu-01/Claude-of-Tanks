@@ -9,7 +9,7 @@
 // unknown ids). Consumers: the garage slot boxes + picker grid (garage.ts)
 // and the battle HUD loadout readout (damagePanel.ts).
 
-/** Default ink — matches hud.js TRAY_INK. */
+/** Default ink — matches hud.ts TRAY_INK. */
 const EQUIP_INK = 'rgba(238,244,250,0.86)';
 
 // Each entry is the inner markup of a 24x24 viewBox, as a function of ink.

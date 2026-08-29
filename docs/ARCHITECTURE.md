@@ -22,7 +22,7 @@ Module ownership (file paths are FIXED):
 | movement | `src/sim/movement.ts` |
 | combat   | `src/sim/ballistics.ts`, `src/sim/armor.ts`, `src/sim/damage.ts`, `src/sim/combat.selftest.mjs` |
 | ai       | `src/game/ai.ts` |
-| hud      | `src/ui/hud.js`, `src/ui/garage.ts`, `src/ui/damagePanel.ts` |
+| hud      | `src/ui/hud.ts`, `src/ui/garage.ts`, `src/ui/damagePanel.ts` |
 | fx       | `src/fx/effects.ts`, `src/fx/particles.ts` |
 | audio    | `src/audio/audio.ts` |
 | integration | `src/main.ts`, `src/game/state.ts` |
@@ -809,7 +809,7 @@ garage & interactive buttons. No three.js scene objects; may import three for
 Vector3/projection math only. Crisp typography: system font stack
 `'Segoe UI', Roboto, Helvetica, Arial, sans-serif`, no placeholder styling.
 
-#### 3.7.1 `hud.js`
+#### 3.7.1 `hud.ts`
 ```js
 export function initHud(bus) => Hud
 Hud = {

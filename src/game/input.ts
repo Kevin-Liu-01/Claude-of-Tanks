@@ -248,7 +248,7 @@ const DEFAULT_SETTINGS: InputSettings = {
   // hold/exit semantics (CamInput.aimHold).
   rmbMode: 'hold',
   aiDifficulty: 'normal', // bot tier for the NEXT battle: 'easy'|'normal'|'hard'
-  // FPS/ping readout (hud.js cot-net top-right element). It is useful live
+  // FPS/ping readout (hud.ts cot-net top-right element). It is useful live
   // connection/performance feedback, so new profiles start with it enabled;
   // the Interface switch remains available as an explicit opt-out.
   showPerfMeter: true,

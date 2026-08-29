@@ -17,7 +17,7 @@ Present game and session state with fast, legible desktop/mobile interactions.
 lighting, tracked GPU resources, and environment-variant bridge;
 `playMenu.ts` owns direct Solo,
 Private, LAN, and Ranked deployment; `networkStatus.ts` owns reconnect feedback;
-`hud.js` owns live battle chrome; `minimapAssetRuntime.ts` owns baked-map load
+`hud.ts` owns live battle chrome; `minimapAssetRuntime.ts` owns baked-map load
 coalescing, stale-world rejection, and the procedural cartography fallback;
 `damagePanel.ts` owns the battle-only camera-up tank schematic and its
 redraw-on-change module/crew presentation;

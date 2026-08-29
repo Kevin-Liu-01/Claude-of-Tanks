@@ -8,7 +8,7 @@ import {
   hitConfirmVisualState,
   reloadHudFraction,
   resolveReticleAnchor,
-} from './hud.js';
+} from './hud.ts';
 
 assert.deepEqual(
   aimWarningState({ blockedDistM: 18.4, blockedLabel: false }),

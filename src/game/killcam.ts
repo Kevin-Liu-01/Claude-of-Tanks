@@ -5014,7 +5014,7 @@ export function createKillCam(deps: KillcamDeps) {
   // controller owns target selection, cycling input (←/→ or A/D), the FREE
   // CURSOR ORBIT + wheel zoom (killcam r2 — no button hold, see onMove),
   // auto-advance when the spectated ally dies, and the bus announcements
-  // hud.js renders the spectate bar from ('spectate:begin/change/end' —
+  // hud.ts renders the spectate bar from ('spectate:begin/change/end' —
   // additive events, no main.ts wiring).
   // Battle state comes from the composition root's injected getter. The old
   // diagnostics-only window.__DEBUG.game dependency made this silently fail

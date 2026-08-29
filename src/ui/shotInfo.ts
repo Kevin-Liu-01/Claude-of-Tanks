@@ -11,7 +11,7 @@
 //      (toggled by the rebindable 'shotLog' action → bus 'ui:shotLog').
 //   3. INCOMING   — mirrored compact toasts for hits the player receives.
 //   4. SESSION STATS — end-of-battle report (bus 'battle:ended').
-// Mounted by the clearly-marked SHOT-INFO section in src/ui/hud.js.
+// Mounted by the clearly-marked SHOT-INFO section in src/ui/hud.ts.
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
@@ -737,7 +737,7 @@ function planForm(
 
 /**
  * Create the combat-intelligence UI bundle. All data arrives via bus events;
- * hud.js mounts `root` and forwards player identity / lifecycle.
+ * hud.ts mounts `root` and forwards player identity / lifecycle.
  * @param {{on:Function,emit:Function}} bus event bus (§1.5)
  * @returns {{root:HTMLElement,statsRoot:HTMLElement,setPlayer:Function,reset:Function,hideStats:Function,toggleLog:Function}}
  */
@@ -1639,7 +1639,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     statsRoot,
     toggleLog,
 
-    /** Latch the player entity id (hud.js forwards it each frame). */
+    /** Latch the player entity id (hud.ts forwards it each frame). */
     setPlayer(id: EntityId | null): void { playerId = id; },
 
     /** Hide the end-of-battle stats card (garage/hidden HUD). */

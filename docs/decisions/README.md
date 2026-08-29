@@ -300,3 +300,4 @@ runtime documents remain authoritative for behavior.
 - [0288 — Casemate profile geometry has a strict TypeScript owner](0288-type-casemate-profile-geometry.md)
 - [0289 — Combat effects have a strict TypeScript owner](0289-type-combat-effects-runtime.md)
 - [0290 — Killcam playback has a strict TypeScript owner](0290-type-killcam-runtime.md)
+- [0291 — The battle HUD has a strict TypeScript owner](0291-type-battle-hud-runtime.md)

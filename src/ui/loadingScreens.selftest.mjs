@@ -174,7 +174,7 @@ const pedestalRuntimeSource = await readFile(
   new URL('../game/garagePedestalRuntime.ts', import.meta.url), 'utf8',
 );
 const studioSource = await readFile(new URL('../game/studio.ts', import.meta.url), 'utf8');
-const hudSource = await readFile(new URL('./hud.js', import.meta.url), 'utf8');
+const hudSource = await readFile(new URL('./hud.ts', import.meta.url), 'utf8');
 const minimapRuntimeSource = await readFile(
   new URL('./minimapAssetRuntime.ts', import.meta.url), 'utf8',
 );

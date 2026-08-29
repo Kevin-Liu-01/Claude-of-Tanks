@@ -79,7 +79,7 @@ for (const mapId of MAP_IDS) {
   verifyDeploymentUp(nearYaw + Math.PI, `${mapId} opposite deployment`);
 }
 
-const hudSource = await readFile(new URL('./hud.js', import.meta.url), 'utf8');
+const hudSource = await readFile(new URL('./hud.ts', import.meta.url), 'utf8');
 const worldActivationSource = await readFile(
   new URL('../world/worldActivationRuntime.ts', import.meta.url), 'utf8',
 );

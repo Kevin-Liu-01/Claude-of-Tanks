@@ -47,7 +47,7 @@ const DEFAULT_LOADERS: BattleHudLoaders = {
   // The legacy JS modules intentionally expose broad Function annotations.
   // This access boundary narrows only the methods it owns and validates by
   // immediate construction; consumers receive the explicit runtime contract.
-  hud: async () => await import('./hud.js') as unknown as HudModule,
+  hud: async () => await import('./hud.ts') as HudModule,
   damagePanel: async () => await import('./damagePanel.ts'),
   tankThumbs: async () => await import('./tankThumbs.ts') as unknown as TankThumbModule,
 };

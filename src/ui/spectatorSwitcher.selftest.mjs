@@ -21,7 +21,7 @@ assert.match(markup, /<svg[^>]*aria-hidden="true"/);
 assert.doesNotMatch(markup, /Allied vehicle/);
 assert.doesNotMatch(markup, /portrait-mark/, 'spectator strip omits decorative corner brackets');
 
-const hudSource = readFileSync(new URL('./hud.js', import.meta.url), 'utf8');
+const hudSource = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(hudSource, /\.cot-spec \.portrait::after/,
   'spectator portrait omits the decorative diagonal overlay');
 assert.match(hudSource, /\.cot-spec\{[^}]*bottom:16px;/,

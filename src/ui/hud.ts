@@ -1,4 +1,4 @@
-// src/ui/hud.js — battle HUD overlay: dispersion/reload reticle, shell
+// src/ui/hud.ts — battle HUD overlay: dispersion/reload reticle, shell
 // selector with ammo counts, consumable slots, penetration indicator, sniper
 // scope, team panels ("ears") + score/timer plate, spotting-driven enemy
 // nameplates and minimap, kill feed, damage log, damage numbers, hit-direction
@@ -10,6 +10,20 @@ import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
 import { uiPixelRatio } from '../engine/resolutionPolicy.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import type { EventBus } from '../game/stateCore.ts';
+import type { TankState } from '../sim/movement.ts';
+import type { CombatState } from '../sim/damage.ts';
+import type {
+  SpecialActionKind,
+  SpecialActionSpec,
+  SpecialActionState,
+} from '../sim/specialActionPolicy.ts';
+import type { FleetTankSpec } from '../vehicles/specContracts.ts';
+import type { DamagePanelController } from './damagePanel.ts';
+import type { DriveTelemetry } from './driveTelemetry.ts';
+import type { HitEventPresentation } from './hitEventFormat.ts';
+import type { ShotInfoRuntime } from './shotInfo.ts';
+import type { SpectatorCardPayload } from './spectatorSwitcher.ts';
 import {
   MINIMAP_NORTH_UP,
   minimapRotationForSpawnYaw,
@@ -17,6 +31,409 @@ import {
   orientMinimapPoint,
   orientMinimapYaw,
 } from './minimapOrientation.ts';
+
+type HudMode = 'battle' | 'sniper' | 'hidden';
+type Vec3Tuple = readonly [number, number, number];
+
+interface ReloadView {
+  t: number;
+  totalS: number;
+  kind?: string;
+}
+
+interface MagazineView {
+  rounds?: number;
+  capacity?: number;
+}
+
+interface AimWarningView {
+  blockedDistM?: number | null;
+  blockedLabel?: boolean;
+  gunLimitSpec?: boolean;
+}
+
+interface AimWarningState {
+  visible: boolean;
+  kind: string;
+  text: string;
+}
+
+interface HitConfirmState {
+  visible: boolean;
+  opacity: number;
+  radius: number;
+  length: number;
+  halfWidth: number;
+  flash: number;
+}
+
+interface ReticleAnchorInput {
+  gunX?: number | null;
+  gunY?: number | null;
+  cx?: number | null;
+  cy?: number | null;
+  singleReticle?: boolean;
+}
+
+interface ReticleAnchorState {
+  x: number | null;
+  y: number | null;
+  single: boolean;
+}
+
+interface AutoloaderHudState {
+  capacity: number;
+  rounds: number;
+  visibleShells: number;
+  readyShells: number;
+  overflow: number;
+  fullReload: boolean;
+  loadProgress: number;
+  intraClip: boolean;
+  reloading: boolean;
+}
+
+interface AutoloaderShellPose {
+  y: number;
+  rotation: number;
+}
+
+interface HudShellCard {
+  name?: string;
+  type?: string;
+  dmg?: number;
+  penLabel?: string | number;
+  count?: number;
+}
+
+interface HudAimInput {
+  point?: THREE.Vector3 | null;
+  distM?: number | null;
+  dispersionRadM?: number | null;
+  penRatio?: number | null;
+  blockedDistM?: number | null;
+  blockedLabel?: boolean;
+  gunMarker?: THREE.Vector3 | null;
+  gunDistM?: number | null;
+  gunTargetId?: string | null;
+  singleReticle?: boolean;
+  atGunLimit?: boolean;
+  gunLimitSpec?: boolean;
+  reload?: ReloadView;
+  magazine?: MagazineView | null;
+  shellSlot?: number;
+  shells?: HudShellCard[];
+  zoom?: number;
+}
+
+interface HudAimView {
+  cx: number;
+  cy: number;
+  radPx: number;
+  penRatio: number | null;
+  distM: number | null;
+  blockedDistM: number | null;
+  blockedLabel: boolean;
+  gunX: number | null;
+  gunY: number | null;
+  gunDistM: number | null;
+  gunTargetId: string | null;
+  singleReticle: boolean;
+  atGunLimit: boolean;
+  gunLimitSpec: boolean;
+  reload: ReloadView;
+  magazine: MagazineView | null;
+  zoom: number;
+  dispRadM: number | null;
+}
+
+interface HudTankVisual {
+  turretTopWorld?(out: THREE.Vector3): void;
+}
+
+interface HudTank {
+  id: string;
+  team?: string;
+  isPlayer?: boolean;
+  displayName?: string;
+  state?: TankState;
+  combat?: CombatState;
+  spec?: FleetTankSpec & SpecialActionSpec;
+  visual?: HudTankVisual;
+  specialAction?: SpecialActionState;
+}
+
+interface ConcealmentView {
+  spotted?: boolean;
+  inBush?: boolean;
+  fired?: boolean;
+  camo?: number;
+}
+
+interface HudSpottingView {
+  player?: ConcealmentView | null;
+  isSpotted(id: string): boolean;
+}
+
+interface HudMatchModeState {
+  id?: string;
+  label?: string;
+  perspectiveTeam?: 'alpha' | 'bravo';
+  score?: Partial<Record<'alpha' | 'bravo', number>>;
+  target?: number;
+  playerAmmo?: number;
+  playerAmmoCapacity?: number;
+  horde?: { wave?: number; alive?: number; nextWaveInS?: number } | null;
+}
+
+interface HudFrame {
+  timeS: number;
+  pingMs?: number;
+  mode?: HudMode;
+  camera?: THREE.PerspectiveCamera | null;
+  player?: HudTank | null;
+  tanks?: HudTank[];
+  rosterTanks?: HudTank[];
+  aim?: HudAimInput;
+  spotting?: HudSpottingView | null;
+  matchModeState?: HudMatchModeState | null;
+}
+
+interface HudHeightField {
+  size?: number;
+  minY: number;
+  maxY: number;
+  getHeightAt(x: number, z: number): number;
+  getGroundType(x: number, z: number): string;
+}
+
+interface MapDisc { x: number; z: number; r: number }
+interface MapBuilding {
+  x: number;
+  z: number;
+  w?: number;
+  d?: number;
+  yaw?: number;
+  rot?: number;
+}
+interface HudMinimapFeatures {
+  roads?: Array<Array<readonly [number, number]>>;
+  buildings?: MapBuilding[];
+  tacticalBeats?: MapBuilding[];
+  treeClusters?: MapDisc[];
+  waterOrSoft?: MapDisc[];
+}
+
+interface HudMinimapPalette {
+  base: readonly [number, number, number];
+  hard: readonly [number, number, number];
+  soft: readonly [number, number, number];
+  forest: string;
+  forestStroke: string;
+  water: string;
+  waterStroke: string;
+  roadCasing: string;
+  roadFill: string;
+  buildingFill: string;
+}
+
+interface HudMinimapSnapshot {
+  renderer: THREE.WebGLRenderer;
+  scene: THREE.Scene;
+  exclude?: THREE.Object3D[];
+}
+
+interface HudHitEvent extends HitEventPresentation {
+  attackerId?: string | null;
+  targetId?: string | null;
+  pos: Vec3Tuple;
+  localDir?: Vec3Tuple | null;
+  damage: number;
+  modulesHit?: ReadonlyArray<{ newState?: string }>;
+  crewHit?: readonly unknown[];
+}
+
+interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
+  id?: string;
+  killerId?: string;
+  name?: string;
+  vehicle?: string;
+  cause?: 'shot' | 'fire' | 'ammorack' | 'ram';
+  timeS?: number;
+  on?: boolean;
+  shells?: string[];
+  consumables?: string[];
+  specialAction?: string;
+  active?: boolean;
+  reason?: string;
+  slot?: number;
+  readyAt?: number;
+  cooldownS?: number;
+  remainingS?: number;
+  targetName?: string;
+  by?: string;
+  wave?: number;
+  team?: string;
+  module?: string;
+  state?: string;
+  repaired?: boolean;
+}
+
+interface HitDirection {
+  wx: number;
+  wz: number;
+  kind: 'pen' | 'bounce' | 'he';
+  crit: boolean;
+  dmg: number;
+  t0: number;
+  re: boolean;
+  _screenAng: number | null;
+}
+
+interface MinimapBlip {
+  x: number;
+  y: number;
+  yaw: number;
+  fill: string;
+  s: number;
+  a: number;
+  fixed: boolean;
+}
+
+interface TargetPlateRect { cx: number; hw: number; top: number; bottom: number }
+interface EarRow {
+  root: HTMLDivElement;
+  hp: HTMLElement;
+  ic: HTMLElement;
+  ally: boolean;
+  lastFrac: number;
+  wasDead: boolean | null;
+  wasSpotted: boolean;
+}
+interface HpBar {
+  root: HTMLDivElement;
+  nm: HTMLElement;
+  fill: HTMLElement;
+  lastFrac: number;
+  lastName: string;
+  lastOp: number;
+  layoutW: number;
+}
+interface SpotMemory {
+  vis: boolean;
+  lastT: number;
+  lastX: number;
+  lastZ: number;
+  lastYaw: number;
+  ever: boolean;
+}
+interface LiveDamageNumber { x: number; y: number; until: number }
+interface HitMark { t0: number; bounced: boolean }
+interface SpawnFlag { x: number; z: number; color: string; fill?: string }
+
+interface ReticlePaintState {
+  valid: boolean;
+  mode: string;
+  w: number;
+  h: number;
+  cx: number;
+  cy: number;
+  radPx: number;
+  gunX: number | null;
+  gunY: number | null;
+  penRatio: number | null;
+  distM: number | null;
+  blockedDistM: number | null;
+  gunDistM: number | null;
+  gunTargetId: string | null;
+  aimTargetId: string | null;
+  singleReticle: boolean;
+  atGunLimit: boolean;
+  gunLimitSpec: boolean;
+  zoom: number;
+  reloadKind: string;
+  magazineCapacity: number;
+  magazineRounds: number;
+  shellType: string;
+  shellCount: number;
+  drawnR: number;
+}
+
+interface SceneRenderable extends THREE.Object3D {
+  isMesh?: boolean;
+  isSprite?: boolean;
+  geometry?: THREE.BufferGeometry;
+}
+
+interface ShellSlotButton extends HTMLButtonElement {
+  _icon: HTMLCanvasElement;
+  _iconType: string | null;
+}
+
+interface AlertOptions { tone?: string; icon?: string }
+
+export interface HudRuntime {
+  root: HTMLDivElement;
+  shotInfo: ShotInfoRuntime;
+  forceHitMark(bounced?: boolean): void;
+  getHitArcs(): Array<{ kind: string; crit: boolean; dmg: number; screenAngRad: number | null; ageS: number }>;
+  getSpectateBar(): { shown: boolean; nick: string | null; vehicle: string | null };
+  stageSpectateBar(payload?: HudEventPayload): void;
+  warmShotCards(specIds: readonly string[]): void;
+  preBattleCountdown(secondsLeft: number): void;
+  setMode(mode: HudMode): void;
+  update(frame: HudFrame): void;
+  buildMinimap(
+    heightField: HudHeightField,
+    features?: HudMinimapFeatures | null,
+    palette?: Partial<HudMinimapPalette> | null,
+    snapshot?: HudMinimapSnapshot | null,
+  ): void;
+  preloadMinimapAsset(src: string): Promise<HTMLImageElement>;
+  buildMinimapFromAsset(heightField: HudHeightField, src: string): Promise<boolean>;
+  exportMinimapBackground(type?: string, quality?: number): string | null;
+  setDamagePanel(panel: DamagePanelController): void;
+  forceAimDisplay(frame: HudAimInput): void;
+}
+
+interface HudDebugSurface {
+  getHitArcs(): ReturnType<HudRuntime['getHitArcs']>;
+  getSpectateBar(): ReturnType<HudRuntime['getSpectateBar']>;
+  stageSpectateBar(payload?: HudEventPayload): void;
+  getMinimapBackgroundDataUrl(type?: string, quality?: number): string | null;
+  getMinimapState(): Record<string, unknown>;
+  getReticleState(): Record<string, unknown>;
+}
+
+declare global {
+  interface Window {
+    webkitAudioContext?: typeof AudioContext;
+    __HUD_DEBUG?: HudDebugSurface;
+    __HUD_HIDE_ZOOM_PLATE?: boolean;
+  }
+}
+
+function requireCanvasContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('[hud] Canvas2D context unavailable');
+  return context;
+}
+
+function requireElement<ElementType extends Element>(
+  root: ParentNode,
+  selector: string,
+): ElementType {
+  const element = root.querySelector<ElementType>(selector);
+  if (!element) throw new Error(`[hud] missing required element: ${selector}`);
+  return element;
+}
+
+function isHudHitEvent(payload: HudEventPayload): payload is HudEventPayload & HudHitEvent {
+  return Array.isArray(payload.pos)
+    && payload.pos.length >= 3
+    && payload.pos.every((value) => Number.isFinite(value))
+    && Number.isFinite(payload.damage);
+}
 
 // --- palette (locked colors per ARCHITECTURE §3.7.1) ---
 const PEN_GREEN = '#7ee87e';
@@ -44,8 +461,11 @@ export const HIT_CONFIRM_LIFETIME_S = 1.4;
  * A blocked bore tints immediately, but its copy appears only after the aim
  * controller's dwell gate so rough terrain cannot flicker text every frame.
  */
-export function aimWarningState(view, out = null) {
-  const state = out || {};
+export function aimWarningState(
+  view: AimWarningView | null | undefined,
+  out: AimWarningState | null = null,
+): AimWarningState {
+  const state = out || { visible: false, kind: '', text: '' };
   state.visible = false;
   state.kind = '';
   state.text = '';
@@ -61,7 +481,7 @@ export function aimWarningState(view, out = null) {
   return state;
 }
 
-function smoothstep01(value) {
+function smoothstep01(value: number): number {
   const t = Math.max(0, Math.min(1, value));
   return t * t * (3 - 2 * t);
 }
@@ -71,8 +491,14 @@ function smoothstep01(value) {
  * The four shards snap inward immediately, hold long enough to read, then
  * fade in place. Reduced motion keeps their position fixed throughout.
  */
-export function hitConfirmVisualState(ageS, reducedMotion = false, out = null) {
-  const state = out || {};
+export function hitConfirmVisualState(
+  ageS: number,
+  reducedMotion = false,
+  out: HitConfirmState | null = null,
+): HitConfirmState {
+  const state = out || {
+    visible: false, opacity: 0, radius: 18.5, length: 13, halfWidth: 3.5, flash: 0,
+  };
   state.visible = Number.isFinite(ageS) && ageS >= 0 && ageS <= HIT_CONFIRM_LIFETIME_S;
   if (!state.visible) {
     state.opacity = 0;
@@ -98,9 +524,11 @@ export function hitConfirmVisualState(ageS, reducedMotion = false, out = null) {
 }
 
 /** Remaining authoritative reload fraction painted into the reticle dots. */
-export function reloadHudFraction(reload) {
-  if (!(reload?.totalS > 0) || !(reload?.t > 0.001)) return 0;
-  return Math.max(0, Math.min(1, reload.t / reload.totalS));
+export function reloadHudFraction(reload: ReloadView | null | undefined): number {
+  const totalS = reload?.totalS ?? 0;
+  const remainingS = reload?.t ?? 0;
+  if (!(totalS > 0) || !(remainingS > 0.001)) return 0;
+  return Math.max(0, Math.min(1, remainingS / totalS));
 }
 
 /**
@@ -108,12 +536,15 @@ export function reloadHudFraction(reload) {
  * hydraulic vehicles expose one gun-true sight; conventional tanks retain the
  * separate camera request and physical gun markers.
  */
-export function resolveReticleAnchor(view, out = null) {
-  const result = out || {};
+export function resolveReticleAnchor(
+  view: ReticleAnchorInput | null | undefined,
+  out: ReticleAnchorState | null = null,
+): ReticleAnchorState {
+  const result = out || { x: null, y: null, single: false };
   const gunPlaced = Number.isFinite(view?.gunX) && Number.isFinite(view?.gunY);
   result.single = !!view?.singleReticle && gunPlaced;
-  result.x = result.single ? view.gunX : view?.cx;
-  result.y = result.single ? view.gunY : view?.cy;
+  result.x = (result.single ? view?.gunX : view?.cx) ?? null;
+  result.y = (result.single ? view?.gunY : view?.cy) ?? null;
   return result;
 }
 
@@ -122,15 +553,31 @@ export function resolveReticleAnchor(view, out = null) {
  * The HUD draws the actual capacity through four shells; larger magazines
  * retain an exact overflow read without turning a four-round rack into +1.
  */
-export function autoloaderHudState(magazine, reload, out = null) {
-  const capacity = Math.max(0, magazine?.capacity | 0);
+export function autoloaderHudState(
+  magazine: MagazineView | null | undefined,
+  reload: ReloadView | null | undefined,
+  out: AutoloaderHudState | null = null,
+): AutoloaderHudState | null {
+  const capacity = Math.max(0, (magazine?.capacity ?? 0) | 0);
   if (capacity <= 1) return null;
-  const rounds = Math.max(0, Math.min(capacity, magazine?.rounds | 0));
-  const fullReload = reload?.kind === 'magazine' && reload.totalS > 0 && reload.t > 0.001;
+  const rounds = Math.max(0, Math.min(capacity, (magazine?.rounds ?? 0) | 0));
+  const reloadTotalS = reload?.totalS ?? 0;
+  const reloadRemainingS = reload?.t ?? 0;
+  const fullReload = reload?.kind === 'magazine' && reloadTotalS > 0 && reloadRemainingS > 0.001;
   const loadProgress = fullReload
-    ? Math.max(0, Math.min(1, 1 - reload.t / reload.totalS))
+    ? Math.max(0, Math.min(1, 1 - reloadRemainingS / reloadTotalS))
     : 0;
-  const state = out || {};
+  const state = out || {
+    capacity: 0,
+    rounds: 0,
+    visibleShells: 0,
+    readyShells: 0,
+    overflow: 0,
+    fullReload: false,
+    loadProgress: 0,
+    intraClip: false,
+    reloading: false,
+  };
   state.capacity = capacity;
   state.rounds = rounds;
   state.visibleShells = Math.min(AUTOLOADER_HUD_SHELLS, capacity);
@@ -138,23 +585,33 @@ export function autoloaderHudState(magazine, reload, out = null) {
   state.overflow = Math.max(0, rounds - state.visibleShells);
   state.fullReload = fullReload;
   state.loadProgress = loadProgress;
-  state.intraClip = reload?.kind === 'intraClip' && reload.t > 0.001;
-  state.reloading = reload?.t > 0.001;
+  state.intraClip = reload?.kind === 'intraClip' && reloadRemainingS > 0.001;
+  state.reloading = reloadRemainingS > 0.001;
   return state;
 }
 
-export function autoloaderHudShellPose(index, shellCount, out = null) {
+export function autoloaderHudShellPose(
+  index: number,
+  shellCount: number,
+  out: AutoloaderShellPose | null = null,
+): AutoloaderShellPose {
   const count = Math.max(1, Math.min(AUTOLOADER_HUD_SHELLS, shellCount | 0));
   const safeIndex = Math.max(0, Math.min(count - 1, index | 0));
   const center = (count - 1) * 0.5;
   const normalized = center > 0 ? (safeIndex - center) / center : 0;
-  const pose = out || {};
+  const pose = out || { y: 0, rotation: 0 };
   pose.y = (1 - Math.abs(normalized)) * AUTOLOADER_HUD_ARC_DEPTH;
   pose.rotation = -normalized * AUTOLOADER_HUD_OUTER_ROTATION;
   return pose;
 }
 
-function magazineShellPath(ctx, x, y, shellW, shellH) {
+function magazineShellPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  shellW: number,
+  shellH: number,
+): void {
   ctx.beginPath();
   ctx.moveTo(x + shellW * 0.5, y);
   ctx.lineTo(x + shellW, y + shellH * 0.28);
@@ -166,7 +623,17 @@ function magazineShellPath(ctx, x, y, shellW, shellH) {
   ctx.closePath();
 }
 
-function hitConfirmShardPath(ctx, cx, cy, ca, sa, radius, length, halfWidth, pad = 0) {
+function hitConfirmShardPath(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  ca: number,
+  sa: number,
+  radius: number,
+  length: number,
+  halfWidth: number,
+  pad = 0,
+): void {
   const px = -sa;
   const py = ca;
   const inner = radius - pad;
@@ -228,14 +695,14 @@ const _cs = new THREE.Vector3();
 const _ndc = new THREE.Vector3();
 const _tmp = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
-const _reticleAnchor = { x: 0, y: 0, single: false };
-const aimWarningScratch = {};
+const _reticleAnchor: ReticleAnchorState = { x: 0, y: 0, single: false };
+const aimWarningScratch: AimWarningState = { visible: false, kind: '', text: '' };
 const MODULE_ALERT_ICON_IDS = new Set([
   'gun', 'turretRing', 'gunMount', 'autoloader', 'feedSystem', 'missileRack',
   'engine', 'transmission', 'fuelTank', 'ammoRack', 'radio', 'optics',
 ]);
 
-function moduleAlertIcon(moduleId) {
+function moduleAlertIcon(moduleId: string): string {
   if (moduleId === 'trackL' || moduleId === 'trackR') return 'track';
   return MODULE_ALERT_ICON_IDS.has(moduleId) ? moduleId : 'damage';
 }
@@ -252,25 +719,29 @@ const BATTLE_DURATION_S = 900; // 15:00 countdown
 
 // Default shell card data (used only when a forced screenshot aim view arrives
 // before any live frame — matches the m1a2 default player loadout).
-const DEFAULT_SHELLS = [
+const DEFAULT_SHELLS: HudShellCard[] = [
   { name: 'M829A4', type: 'APFSDS', dmg: 540, penLabel: '750 mm' },
   { name: 'M830A1', type: 'HEAT', dmg: 480, penLabel: '600 mm' },
   { name: 'M1147', type: 'HE', dmg: 600, penLabel: '60 mm' },
 ];
 
-const SHELL_TYPE_COLOR = {
+const SHELL_TYPE_COLOR: Readonly<Record<string, string>> = {
   AP: '#ffd27a', APCR: '#e8f4ff', HEAT: '#ff8a5c', HE: '#ffb02e', APFSDS: '#ffc46b',
 };
 // slot underline per shell CLASS (r6-2): silver = kinetic (AP/APCR/APFSDS),
 // orange = chemical (HEAT), olive = high-explosive — WoT's ammo color read
-const SHELL_CLASS_UNDERLINE = {
+const SHELL_CLASS_UNDERLINE: Readonly<Record<string, string>> = {
   AP: 'rgba(205,216,226,.85)', APCR: 'rgba(205,216,226,.85)',
   APFSDS: 'rgba(205,216,226,.85)',
   HEAT: 'rgba(240,138,74,.9)', HE: 'rgba(154,165,90,.9)',
 };
-const SHELL_DEFAULT_COUNT = { AP: 24, APCR: 20, APFSDS: 24, HEAT: 16, HE: 12 };
+const SHELL_DEFAULT_COUNT: Readonly<Record<string, number>> = {
+  AP: 24, APCR: 20, APFSDS: 24, HEAT: 16, HE: 12,
+};
 
-const CAUSE_LABEL = { shot: '', fire: 'FIRE', ammorack: 'AMMO RACK', ram: 'RAMMED' };
+const CAUSE_LABEL: Readonly<Record<string, string>> = {
+  shot: '', fire: 'FIRE', ammorack: 'AMMO RACK', ram: 'RAMMED',
+};
 
 // Roster identity: WoT rows read "Nickname (Vehicle)" with a tier numeral.
 // Bot nicknames are assigned deterministically per battle from this pool
@@ -283,7 +754,7 @@ const BOT_NICKS = [
   'CamoNet', 'LongStop', 'DerbyDozer', 'PakWagen',
 ];
 const PLAYER_NICK = 'Claude';
-function hashStr(s) {
+function hashStr(s: string): number {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
   return h >>> 0;
@@ -319,19 +790,19 @@ const CONSUMABLES = [
 // consumable pictograms). Only the nose/body profile differs (the WoT read):
 //   AP/APCR  sharp ogive           HEAT  tapered cone + standoff probe
 //   APFSDS   finned dart in sabot  HE    fat blunt round-nose
-function drawShellIcon(canvas, type) {
+function drawShellIcon(canvas: HTMLCanvasElement, type: string): void {
   const S = 46;
   const dpr = uiPixelRatio(S, S, window.devicePixelRatio || 1, getDeviceTier() === 'mobile');
   canvas.width = Math.round(S * dpr); canvas.height = Math.round(S * dpr);
   canvas.style.width = `${S}px`; canvas.style.height = `${S}px`;
-  const c = canvas.getContext('2d');
+  const c = requireCanvasContext(canvas);
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   c.clearRect(0, 0, S, S);
   const cx = S / 2;
   const TOP = 4, BOT = 42; // shared silhouette extents — uniform set
 
   // body path per type (projectile silhouette, tip at TOP, base at BOT)
-  function bodyPath() {
+  function bodyPath(): void {
     c.beginPath();
     if (type === 'APFSDS') {
       const rw = 2.0; // rod half-width
@@ -974,12 +1445,12 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 }
 `;
 
-function penColor(r) {
+function penColor(r: number | null | undefined): string {
   if (r == null || !isFinite(r)) return PEN_NONE;
   return r >= 1.15 ? PEN_GREEN : r >= 0.85 ? PEN_ORANGE : PEN_RED;
 }
 
-function fmtTimer(s) {
+function fmtTimer(s: number): string {
   const t = Math.max(0, Math.floor(s));
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 }
@@ -989,7 +1460,7 @@ function fmtTimer(s) {
  * @param {{on:Function,off:Function,emit:Function}} bus - injected event bus (§1.5).
  * @returns {{setMode:Function,update:Function,buildMinimap:Function,setDamagePanel:Function,forceAimDisplay:Function,root:HTMLElement}} Hud
  */
-export function initHud(bus) {
+export function initHud(bus: EventBus): HudRuntime {
   ensureFonts();
   ensureStyle('cot-hud-style', HUD_CSS);
 
@@ -997,7 +1468,9 @@ export function initHud(bus) {
   document.body.appendChild(root);
 
   const retCanvas = el('canvas', 'cot-ret', root);
-  const ctx = retCanvas.getContext('2d');
+  const ctx = requireCanvasContext(retCanvas);
+  const on = (event: string, listener: (payload: HudEventPayload) => void): (() => void) =>
+    bus.on(event, (payload) => listener(payload as HudEventPayload));
   const reducedMotionQuery = typeof window.matchMedia === 'function'
     ? window.matchMedia('(prefers-reduced-motion: reduce)')
     : null;
@@ -1011,18 +1484,21 @@ export function initHud(bus) {
     `<div class="hrow"><div class="tr"><div class="fl"></div></div>` +
     `<div class="hp"></div></div><div class="anch"></div></div>`;
   const tgtRefs = {
-    nick: tgtEl.querySelector('.nick'), tier: tgtEl.querySelector('.tier'),
-    veh: tgtEl.querySelector('.veh'), fl: tgtEl.querySelector('.fl'),
-    hp: tgtEl.querySelector('.hp'), cg: tgtEl.querySelector('.cg'),
+    nick: requireElement<HTMLElement>(tgtEl, '.nick'),
+    tier: requireElement<HTMLElement>(tgtEl, '.tier'),
+    veh: requireElement<HTMLElement>(tgtEl, '.veh'),
+    fl: requireElement<HTMLElement>(tgtEl, '.fl'),
+    hp: requireElement<HTMLElement>(tgtEl, '.hp'),
+    cg: requireElement<HTMLElement>(tgtEl, '.cg'),
   };
-  let tgtLastVehicleId = null; // cached silhouette key (avoid repeated mask writes)
+  let tgtLastVehicleId: string | null = null; // cached silhouette key (avoid repeated mask writes)
   let tgtShown = false;
-  let tgtRect = null; // screen-px rect of the shown plate (sniper hairline gap)
+  let tgtRect: TargetPlateRect | null = null; // screen-px rect of the shown plate (sniper hairline gap)
   let tgtPlateWidth = 176; // expands only when a new full vehicle/name string needs it
-  let aimTargetId = null;
-  let lastTanksRef = null;  // roster snapshot for the forced-still target scan
+  let aimTargetId: string | null = null;
+  let lastTanksRef: HudTank[] | null = null;  // roster snapshot for the forced-still target scan
   let forcedStill = false;  // true between forceAimDisplay and the next update
-  let dmgPanelRef = null;   // mounted damage panel (turret-bearing feed)
+  let dmgPanelRef: DamagePanelController | null = null;   // mounted damage panel (turret-bearing feed)
 
   // --- top score/timer plate ---
   // Each score numeral carries per-team frag sockets. The clock occupies its
@@ -1033,22 +1509,22 @@ export function initHud(bus) {
     `<div class="tm-block"><span class="tm-label">Time</span><span class="tm">15:00</span></div>` +
     `<div class="sc enemy"><span class="team-label">Enemy</span>` +
     `<b class="fe">0</b><div class="wedge r"></div></div>`;
-  const fgEl = topPlate.querySelector('.fg');
-  const feEl = topPlate.querySelector('.fe');
-  const tmEl = topPlate.querySelector('.tm');
-  const allyLabelEl = topPlate.querySelector('.sc.ally .team-label');
-  const enemyLabelEl = topPlate.querySelector('.sc.enemy .team-label');
-  const timerLabelEl = topPlate.querySelector('.tm-label');
-  const wedgeL = topPlate.querySelector('.wedge.l');
-  const wedgeR = topPlate.querySelector('.wedge.r');
+  const fgEl = requireElement<HTMLElement>(topPlate, '.fg');
+  const feEl = requireElement<HTMLElement>(topPlate, '.fe');
+  const tmEl = requireElement<HTMLElement>(topPlate, '.tm');
+  const allyLabelEl = requireElement<HTMLElement>(topPlate, '.sc.ally .team-label');
+  const enemyLabelEl = requireElement<HTMLElement>(topPlate, '.sc.enemy .team-label');
+  const timerLabelEl = requireElement<HTMLElement>(topPlate, '.tm-label');
+  const wedgeL = requireElement<HTMLElement>(topPlate, '.wedge.l');
+  const wedgeR = requireElement<HTMLElement>(topPlate, '.wedge.r');
   const modeStatusEl = el('div', 'cot-mode-status', root);
   modeStatusEl.setAttribute('role', 'status');
   modeStatusEl.innerHTML = `<span class="mi"></span><span class="mn"></span><span class="mv"></span>`;
-  const modeStatusIcon = modeStatusEl.querySelector('.mi');
-  const modeStatusName = modeStatusEl.querySelector('.mn');
-  const modeStatusValue = modeStatusEl.querySelector('.mv');
+  const modeStatusIcon = requireElement<HTMLElement>(modeStatusEl, '.mi');
+  const modeStatusName = requireElement<HTMLElement>(modeStatusEl, '.mn');
+  const modeStatusValue = requireElement<HTMLElement>(modeStatusEl, '.mv');
   let lastModeStatus = '';
-  let objectiveTeam = 'alpha';
+  let objectiveTeam: 'alpha' | 'bravo' = 'alpha';
 
   // --- ping/fps readout (WoT battle constant, top-right corner) ---
   const netEl = el('div', 'cot-net', root);
@@ -1056,11 +1532,11 @@ export function initHud(bus) {
   netEl.setAttribute('aria-label', 'Performance and network status');
   netEl.innerHTML = `<span class="cot-net-unit fps"><b class="metric">—</b><span class="label">FPS</span></span>` +
     `<span class="cot-net-unit ping"><b class="metric">LOCAL</b><span class="label">LINK</span></span>`;
-  const netFpsUnit = netEl.querySelector('.fps');
-  const netPingUnit = netEl.querySelector('.ping');
-  const netFpsValue = netFpsUnit.querySelector('.metric');
-  const netPingValue = netPingUnit.querySelector('.metric');
-  const netPingLabel = netPingUnit.querySelector('.label');
+  const netFpsUnit = requireElement<HTMLElement>(netEl, '.fps');
+  const netPingUnit = requireElement<HTMLElement>(netEl, '.ping');
+  const netFpsValue = requireElement<HTMLElement>(netFpsUnit, '.metric');
+  const netPingValue = requireElement<HTMLElement>(netPingUnit, '.metric');
+  const netPingLabel = requireElement<HTMLElement>(netPingUnit, '.label');
   netEl.style.display = 'none'; // hidden until live frames are measured
   let netFrames = 0;       // consecutive live frames since last mode switch
   let netLastMs = 0;       // wall-clock of previous update (fps EMA only)
@@ -1069,7 +1545,7 @@ export function initHud(bus) {
   // Desktop keeps the player's Interface preference. Mobile always shows the
   // compact readout directly below its top-right control row.
   let netOptIn = false;
-  function updateNetReadout(frame) {
+  function updateNetReadout(frame: HudFrame): void {
     const mobileRequired = document.body.classList.contains('cot-touch-layout');
     if (!netOptIn && !mobileRequired) return;
     const now = performance.now();
@@ -1114,12 +1590,20 @@ export function initHud(bus) {
     `<div class="needle"></div><div class="hub"></div>` +
     `<strong class="speed" data-drive-speed>0</strong><span class="unit">KM/H</span>` +
     `<span class="zero">0</span><span class="limit" data-drive-limit>—</span>`;
-  const driveSpeedEl = driveEl.querySelector('[data-drive-speed]');
-  const driveLimitEl = driveEl.querySelector('[data-drive-limit]');
-  const driveArcEl = driveEl.querySelector('.arc-value');
-  const driveNeedleEl = driveEl.querySelector('.needle');
-  const driveModel = {};
-  let drivePlayerId = null;
+  const driveSpeedEl = requireElement<HTMLElement>(driveEl, '[data-drive-speed]');
+  const driveLimitEl = requireElement<HTMLElement>(driveEl, '[data-drive-limit]');
+  const driveArcEl = requireElement<SVGCircleElement>(driveEl, '.arc-value');
+  const driveNeedleEl = requireElement<HTMLElement>(driveEl, '.needle');
+  const driveModel: DriveTelemetry = {
+    speedKmh: 0,
+    direction: 'HOLD',
+    limitKmh: 0,
+    speedRatio: 0,
+    sweepDeg: 0,
+    sweepLength: 0,
+    needleDeg: -135,
+  };
+  let drivePlayerId: string | null = null;
   let driveLastTimeS = -1;
   let driveLastNeedleS = -1;
   let driveLastArcS = -1;
@@ -1129,7 +1613,7 @@ export function initHud(bus) {
   let driveSweepMilli = -1;
   let driveNeedleMilli = -999000;
 
-  function updateDriveReadout(player, timeS) {
+  function updateDriveReadout(player: HudTank | null | undefined, timeS: number): void {
     const state = player?.state;
     if (!state) return;
     const nowS = Number.isFinite(timeS) ? timeS : 0;
@@ -1180,7 +1664,12 @@ export function initHud(bus) {
   // segment ticks (max team size), always visible as slim dark notches; each
   // kill a team scores fills one tick in that team's color, growing outward
   // from the timer in the middle (tug-of-war read at a glance).
-  function syncWedge(wEl, slots, victims, reverse) {
+  function syncWedge(
+    wEl: HTMLElement,
+    slots: number,
+    victims: string[],
+    reverse: boolean,
+  ): void {
     const kills = victims.length;
     if (wEl.children.length !== slots) {
       wEl.textContent = '';
@@ -1198,7 +1687,7 @@ export function initHud(bus) {
   const earR = el('div', 'cot-ear r', root);
   earL.innerHTML = `<div class="hd"><span>Allies</span><span class="al"></span></div>`;
   earR.innerHTML = `<div class="hd"><span class="al"></span><span>Enemies</span></div>`;
-  const earRows = new Map(); // tank id -> { root, hp, dead, name }
+  const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
 
   const killfeed = el('div', 'cot-killfeed', root);
 
@@ -1209,25 +1698,25 @@ export function initHud(bus) {
   // built it (.cot-end) or where the end screen reparented it (.cot-es-btn).
   const specBar = el('div', 'cot-spec', root);
   specBar.innerHTML = spectatorSwitcherMarkup();
-  const specWho = specBar.querySelector('.who');
-  const specNick = specBar.querySelector('.nick');
-  const specVeh = specBar.querySelector('.veh');
-  const specIndex = specBar.querySelector('.idx');
-  const specPortrait = specBar.querySelector('.portrait img');
-  specBar.querySelector('.cycle.prev').addEventListener('click', () => {
+  const specWho = requireElement<HTMLElement>(specBar, '.who');
+  const specNick = requireElement<HTMLElement>(specBar, '.nick');
+  const specVeh = requireElement<HTMLElement>(specBar, '.veh');
+  const specIndex = requireElement<HTMLElement>(specBar, '.idx');
+  const specPortrait = requireElement<HTMLImageElement>(specBar, '.portrait img');
+  requireElement<HTMLButtonElement>(specBar, '.cycle.prev').addEventListener('click', () => {
     bus.emit('spectate:cycle', { direction: -1 });
     bus.emit('ui:click', {});
   });
-  specBar.querySelector('.cycle.next').addEventListener('click', () => {
+  requireElement<HTMLButtonElement>(specBar, '.cycle.next').addEventListener('click', () => {
     bus.emit('spectate:cycle', { direction: 1 });
     bus.emit('ui:click', {});
   });
-  specBar.querySelector('.gar').addEventListener('click', () => {
-    const btn = document.querySelector('.cot-end button')
-      || document.querySelector('.cot-es-btn.ghost');
+  requireElement<HTMLButtonElement>(specBar, '.gar').addEventListener('click', () => {
+    const btn = document.querySelector<HTMLButtonElement>('.cot-end button')
+      || document.querySelector<HTMLButtonElement>('.cot-es-btn.ghost');
     if (btn) btn.click(); // existing endOverlayRuntime Garage handler
   });
-  function specPopulate(p, first) {
+  function specPopulate(p: HudEventPayload, first: boolean): void {
     const ent = (lastTanksRef || []).find((t) => t && t.id === p.id) || null;
     const card = spectatorCardModel(p);
     // same nickname the team panels show for this entity (nickById-backed)
@@ -1250,16 +1739,16 @@ export function initHud(bus) {
       specWho.classList.add('sw'); // retarget pulse
     }
   }
-  function specHide() {
+  function specHide(): void {
     specBar.classList.remove('in');
     document.body.classList.remove('cot-spectating');
     setTimeout(() => {
       if (!specBar.classList.contains('in')) specBar.classList.remove('show');
     }, 350);
   }
-  bus.on('spectate:begin', (p) => specPopulate(p, true));
-  bus.on('spectate:change', (p) => specPopulate(p, false));
-  bus.on('spectate:end', () => specHide());
+  on('spectate:begin', (p) => specPopulate(p, true));
+  on('spectate:change', (p) => specPopulate(p, false));
+  on('spectate:end', () => specHide());
   // =================== END SPECTATE BAR =====================================
 
   // ========================= SHOT-INFO SECTION ==============================
@@ -1278,7 +1767,7 @@ export function initHud(bus) {
   pbKick.textContent = 'BATTLE BEGINS IN';
   const pbNum = el('div', 'n', preBattleEl);
   let pbShownSec = -1;
-  let pbHideTimer = 0;
+  let pbHideTimer: ReturnType<typeof setTimeout> | null = null;
 
   const alertEl = el('div', 'cot-alert', root);
   alertEl.setAttribute('role', 'status');
@@ -1298,8 +1787,8 @@ export function initHud(bus) {
   let sixthPendingS = -1; // sim time the lamp should light (spot time + 3 s)
   let sixthUntilS = -1;
   let sixthOn = false;
-  let stingCtx = null;
-  function playSixthSting() {
+  let stingCtx: AudioContext | null = null;
+  function playSixthSting(): void {
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
@@ -1321,12 +1810,12 @@ export function initHud(bus) {
       }
     } catch (e) { /* audio unavailable (headless/autoplay) — lamp still shows */ }
   }
-  bus.on('player:spotted', ({ timeS }) => {
+  on('player:spotted', ({ timeS = 0 }) => {
     if (sixthPendingS < 0 && !(sixthOn && timeS < sixthUntilS - SIXTH_SENSE_DELAY_S)) {
       sixthPendingS = timeS + SIXTH_SENSE_DELAY_S;
     }
   });
-  function updateSixthSense(timeS) {
+  function updateSixthSense(timeS: number): void {
     if (sixthPendingS >= 0 && timeS >= sixthPendingS) {
       sixthPendingS = -1;
       sixthUntilS = timeS + SIXTH_SENSE_SHOW_S;
@@ -1352,13 +1841,13 @@ export function initHud(bus) {
     `style="display:none"/>` +
     `<circle class="cpup" cx="12" cy="12" r="3" fill="#8a97a3"/></svg>`;
   camoInd.style.display = 'none';
-  const camoSvgEl = camoInd.querySelector('svg');
-  const camoEyeEl = camoInd.querySelector('.ceye');
-  const camoLidEl = camoInd.querySelector('.clid');
-  const camoPupEl = camoInd.querySelector('.cpup');
-  let camoIndState = 'off'; // 'off'|'concealed'
-  function updateCamoIndicator(sp) {
-    const state = sp && !sp.spotted && ((sp.inBush && !sp.fired) || sp.camo >= 0.40)
+  const camoSvgEl = requireElement<SVGElement>(camoInd, 'svg');
+  const camoEyeEl = requireElement<SVGElement>(camoInd, '.ceye');
+  const camoLidEl = requireElement<SVGElement>(camoInd, '.clid');
+  const camoPupEl = requireElement<SVGElement>(camoInd, '.cpup');
+  let camoIndState: 'off' | 'concealed' = 'off';
+  function updateCamoIndicator(sp: ConcealmentView | null | undefined): void {
+    const state = sp && !sp.spotted && ((sp.inBush && !sp.fired) || (sp.camo ?? 0) >= 0.40)
       ? 'concealed' : 'off';
     if (state === camoIndState) return;
     const prev = camoIndState;
@@ -1399,13 +1888,13 @@ export function initHud(bus) {
     event.stopPropagation();
     if (event.detail === 0) bus.emit('ui:specialAction', {});
   });
-  const specialIcon = specialButton.querySelector('.si');
-  const specialLabel = specialButton.querySelector('.sl');
-  const specialKey = specialButton.querySelector('.sk');
-  let specialSpecId = null;
-  let specialKind = SPECIAL_ACTION_KINDS.NONE;
+  const specialIcon = requireElement<HTMLElement>(specialButton, '.si');
+  const specialLabel = requireElement<HTMLElement>(specialButton, '.sl');
+  const specialKey = requireElement<HTMLElement>(specialButton, '.sk');
+  let specialSpecId: string | null = null;
+  let specialKind: SpecialActionKind = SPECIAL_ACTION_KINDS.NONE;
 
-  function updateSpecialAction(player) {
+  function updateSpecialAction(player: HudTank | null | undefined): void {
     const specId = player?.spec?.id || null;
     if (specId !== specialSpecId) {
       specialSpecId = specId;
@@ -1432,9 +1921,9 @@ export function initHud(bus) {
   const shellBox = el('div', 'cot-shells', root);
   shellBox.setAttribute('role', 'group');
   shellBox.setAttribute('aria-label', 'Ammunition selector');
-  const slotEls = [];
+  const slotEls: ShellSlotButton[] = [];
   let touchAmmoOpen = false;
-  function setTouchAmmoOpen(open) {
+  function setTouchAmmoOpen(open: boolean): void {
     const touch = document.body.classList.contains('cot-touch-layout');
     touchAmmoOpen = !!open && touch;
     shellBox.classList.toggle('touch-open', touchAmmoOpen);
@@ -1451,7 +1940,7 @@ export function initHud(bus) {
       else slot.removeAttribute('aria-expanded');
     }
   }
-  function activateShellSlot(index, event) {
+  function activateShellSlot(index: number, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
     const touch = document.body.classList.contains('cot-touch-layout');
@@ -1465,13 +1954,13 @@ export function initHud(bus) {
     bus.emit('ui:click', {});
   }
   for (let i = 0; i < 3; i++) {
-    const s = el('button', 'cot-shell', shellBox);
+    const s = el('button', 'cot-shell', shellBox) as ShellSlotButton;
     s.type = 'button';
     s.innerHTML = `<div class="key">${i + 1}</div><canvas></canvas><div class="cnt"></div><div class="ty"></div>` +
       `<div class="clr"></div>` +
       `<div class="tip"><div class="tnm"></div>PEN <b class="p"></b> &nbsp;&middot;&nbsp; DMG <b class="d"></b></div>` +
       `<div class="cool"></div>`;
-    s._icon = s.querySelector('canvas');
+    s._icon = requireElement<HTMLCanvasElement>(s, 'canvas');
     s._iconType = null;
     s.addEventListener('pointerdown', (event) => {
       if (document.body.classList.contains('cot-touch-layout')) activateShellSlot(i, event);
@@ -1488,13 +1977,15 @@ export function initHud(bus) {
   }
   setTouchAmmoOpen(false);
   window.addEventListener('pointerdown', (event) => {
-    if (touchAmmoOpen && !shellBox.contains(event.target)) setTouchAmmoOpen(false);
+    if (touchAmmoOpen && event.target instanceof Node && !shellBox.contains(event.target)) {
+      setTouchAmmoOpen(false);
+    }
   }, { capture: true });
   el('div', 'cot-consep', shellBox);
   // MOBILE-UX r1: consumables get their own wrapper (desktop: display:contents
   // — no box, no layout change; mobile tier re-parks it as a vertical column)
   const conBox = el('div', 'cot-cons', shellBox);
-  const conEls = [];
+  const conEls: HTMLButtonElement[] = [];
   const conReadyAt = [0, 0, 0];
   const conCooldownS = CONSUMABLE_RULES.map((r) => r.cooldownS);
   for (let i = 0; i < CONSUMABLES.length; i++) {
@@ -1505,7 +1996,7 @@ export function initHud(bus) {
     s.setAttribute('aria-label', `${c.label}, ready`);
     s.innerHTML = `<div class="key">${c.key}</div>${c.svg}` +
       `<div class="cnt">${c.count != null ? c.count : ''}</div><div class="cool"></div>`;
-    const activateConsumable = (event) => {
+    const activateConsumable = (event: Event): void => {
       event.preventDefault();
       event.stopPropagation();
       bus.emit('ui:consumable', { slot: i });
@@ -1524,12 +2015,12 @@ export function initHud(bus) {
     conEls.push(s);
   }
 
-  function updateConsumableCooldowns(timeS) {
+  function updateConsumableCooldowns(timeS: number): void {
     for (let i = 0; i < conEls.length; i++) {
       const s = conEls[i];
       const remaining = cooldownRemaining(timeS, conReadyAt[i]);
-      const cool = s.querySelector('.cool');
-      const count = s.querySelector('.cnt');
+      const cool = requireElement<HTMLElement>(s, '.cool');
+      const count = requireElement<HTMLElement>(s, '.cnt');
       if (remaining > 0) {
         const pct = Math.max(0, Math.min(100, remaining / conCooldownS[i] * 100));
         cool.style.display = 'block';
@@ -1554,61 +2045,67 @@ export function initHud(bus) {
   // DPR-3 browser never stretches a DPR-2 tactical map.
   const mmDpr = uiPixelRatio(MM, MM, window.devicePixelRatio || 1, getDeviceTier() === 'mobile');
   mmCanvas.width = Math.round(MM * mmDpr); mmCanvas.height = Math.round(MM * mmDpr);
-  const mmCtx = mmCanvas.getContext('2d');
+  const mmCtx = requireCanvasContext(mmCanvas);
   mmCtx.setTransform(mmDpr, 0, 0, mmDpr, 0, 0);
   // Canvas for the procedural/bake path, HTMLImageElement for production.
   // Keeping the decoded baked image as the draw source avoids iPad Safari's
   // memory-pressure canvas purge, which left live blips over a blank panel.
-  let mmBg = null;
+  let mmBg: HTMLCanvasElement | HTMLImageElement | null = null;
   let minimapRotation = MINIMAP_NORTH_UP;
-  let minimapDeploymentYaw = null;
+  let minimapDeploymentYaw: number | null = null;
   let minimapOrientationLocked = false;
 
   // --- internal state ---
-  let mode = 'hidden';
+  let mode: HudMode = 'hidden';
   let mmLastPaintMs = -1e9; // minimap repaint throttle (PERF: 20 Hz, time-based)
   let mmDirty = true; // force an immediate minimap paint on the next update()
   let mmBuildGeneration = 0;
-  const minimapAssetCache = new Map();
+  const minimapAssetCache = new Map<string, Promise<HTMLImageElement>>();
   let w = 1, h = 1, dpr = 1;
-  let scopeGrad = null;
+  let scopeGrad: CanvasGradient | null = null;
+  let scopeGradZoom = -1;
   let scopeFadeMs = -1; // scope-shadow fade-in start (perf.now ms; -1 = settled)
-  let scopePrevMode = 'hidden'; // transition detector for the fade
-  let lastCamera = null;
+  let scopePrevMode: HudMode = 'hidden'; // transition detector for the fade
+  let lastCamera: THREE.PerspectiveCamera | null = null;
   let lastTimeS = 0;
-  let playerId = null;
+  let playerId: string | null = null;
   let smoothRadPx = 40;
   let wasReloading = false; // reload-complete edge detector (ready pulse)
   let readyPulseT = -1;     // sim time the reload-dot sweep finished draining
   let localSlot = 0;
-  let forced = null; // partial FrameInfo.aim override (cleared by next update)
-  let lastShells = DEFAULT_SHELLS;
-  let alertTimer = null;
-  let heightFieldRef = null; // for spotting line-of-sight tests
-  const nameById = new Map();
-  const specIdById = new Map(); // entity id -> tank spec id (icon lookups)
+  let forced: HudAimInput | null = null; // partial FrameInfo.aim override (cleared by next update)
+  let lastShells: HudShellCard[] = DEFAULT_SHELLS;
+  let alertTimer: ReturnType<typeof setTimeout> | null = null;
+  let heightFieldRef: HudHeightField | null = null; // for spotting line-of-sight tests
+  const nameById = new Map<string, string>();
+  const specIdById = new Map<string, string>(); // entity id -> tank spec id (icon lookups)
   // incoming-hit direction wedges (hitind r1, on the killcam_endscreen r1
   // world-anchoring): SHOOTER world pos + impact kind — screen angle re-projected
   // per frame from the camera basis so the wedges counter-rotate with the
   // camera (see pushHitDirection root-cause note). `re` marks a merged
   // repeat (re-pulse attack); max 5 live entries.
-  const hitDirs = []; // { wx, wz, kind:'pen'|'bounce'|'he', crit, dmg, t0, re, _screenAng }
-  const liveNums = []; // { x, y, until } — active damage-number rects (stacking)
-  let hitMark = null; // { t0, bounced } — reticle hit-confirm marker (own shots)
-  const hitConfirmScratch = {};
-  let lastMagazineIndicatorY = null;
-  let lastMagazineIndicatorState = null;
-  const magazineHudScratch = {};
-  const magazineShellPoseScratch = {};
-  const hpPool = new Map(); // tank id -> { root, fill, nm, lastFrac }
-  const spotById = new Map(); // tank id -> { vis, lastT, lastX, lastZ, ever }
+  const hitDirs: HitDirection[] = [];
+  const liveNums: LiveDamageNumber[] = [];
+  let hitMark: HitMark | null = null;
+  const hitConfirmScratch: HitConfirmState = {
+    visible: false, opacity: 0, radius: 18.5, length: 13, halfWidth: 3.5, flash: 0,
+  };
+  let lastMagazineIndicatorY: number | null = null;
+  let lastMagazineIndicatorState: AutoloaderHudState | null = null;
+  const magazineHudScratch: AutoloaderHudState = {
+    capacity: 0, rounds: 0, visibleShells: 0, readyShells: 0, overflow: 0,
+    fullReload: false, loadProgress: 0, intraClip: false, reloading: false,
+  };
+  const magazineShellPoseScratch: AutoloaderShellPose = { y: 0, rotation: 0 };
+  const hpPool = new Map<string, HpBar>(); // tank id -> { root, fill, nm, lastFrac }
+  const spotById = new Map<string, SpotMemory>(); // tank id -> { vis, lastT, lastX, lastZ, ever }
   let mapWorldSize = 1024;
   let lastScore = '';
   let lastTimer = '';
-  let spawnFlags = null; // [{x,z,color}] — team spawn markers, set per battle
+  let spawnFlags: SpawnFlag[] | null = null; // team spawn markers, set per battle
 
   /** Clear every transient combat-feedback owner at a round/phase boundary. */
-  function resetCombatPresentation() {
+  function resetCombatPresentation(): void {
     hitDirs.length = 0;
     hitMark = null;
     liveNums.length = 0;
@@ -1621,7 +2118,7 @@ export function initHud(bus) {
     alertEl.classList.remove('show', 'danger', 'warning', 'success', 'info');
   }
 
-  function resize() {
+  function resize(): void {
     w = root.clientWidth || window.innerWidth;
     h = root.clientHeight || window.innerHeight;
     // The sight is a cheap 2D overlay, so keep it truly retina-sharp even
@@ -1637,12 +2134,13 @@ export function initHud(bus) {
     retCanvas.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     scopeGrad = null;
+    scopeGradZoom = -1;
   }
   window.addEventListener('resize', resize);
   resize();
   root.style.display = 'none'; // starts hidden until setMode/update
 
-  function selectSlot(i) {
+  function selectSlot(i: number): void {
     localSlot = i;
     for (let k = 0; k < 3; k++) slotEls[k].classList.toggle('sel', k === i);
     setTouchAmmoOpen(false);
@@ -1650,7 +2148,7 @@ export function initHud(bus) {
 
   // ---------- projection ----------
   let _sx = 0, _sy = 0, _sVisible = false, _sDist = 0;
-  function project(camera, x, y, z) {
+  function project(camera: THREE.PerspectiveCamera, x: number, y: number, z: number): void {
     _cs.set(x, y, z).applyMatrix4(_mInv);
     _sDist = -_cs.z;
     if (_cs.z > -0.3) { _sVisible = false; return; }
@@ -1660,13 +2158,20 @@ export function initHud(bus) {
     _sVisible = _sx > -200 && _sx < w + 200 && _sy > -200 && _sy < h + 200;
   }
 
-  function pxPerMeterAt(camera, dist) {
+  function pxPerMeterAt(camera: THREE.PerspectiveCamera | null | undefined, dist: number): number {
     const fov = (camera && camera.fov ? camera.fov : 60) * Math.PI / 180;
     return (h * 0.5) / (Math.tan(fov * 0.5) * Math.max(dist, 1));
   }
 
   // ---------- spotting ----------
-  function hasLOS(x0, y0, z0, x1, y1, z1) {
+  function hasLOS(
+    x0: number,
+    y0: number,
+    z0: number,
+    x1: number,
+    y1: number,
+    z1: number,
+  ): boolean {
     if (!heightFieldRef) return true;
     const steps = 16;
     for (let i = 1; i < steps; i++) {
@@ -1678,7 +2183,7 @@ export function initHud(bus) {
     return true;
   }
 
-  function updateSpotting(frame) {
+  function updateSpotting(frame: HudFrame): void {
     const player = frame.player;
     if (!player || !player.state) return;
     const pp = player.state.pos;
@@ -1688,7 +2193,10 @@ export function initHud(bus) {
       if (!t || t.isPlayer || !t.state) continue;
       if (t.team === 'player') continue; // allies always known
       let sp = spotById.get(t.id);
-      if (!sp) { sp = { vis: false, lastT: -1e9, lastX: 0, lastZ: 0, ever: false }; spotById.set(t.id, sp); }
+      if (!sp) {
+        sp = { vis: false, lastT: -1e9, lastX: 0, lastZ: 0, lastYaw: 0, ever: false };
+        spotById.set(t.id, sp);
+      }
       if (t.combat && t.combat.destroyed) {
         // wrecks are permanently known once dead
         sp.vis = true; sp.ever = true;
@@ -1702,7 +2210,7 @@ export function initHud(bus) {
       // forced screenshot frames and headless fixtures.
       const sys = frame.spotting && typeof frame.spotting.isSpotted === 'function'
         ? frame.spotting : null;
-      let seen;
+      let seen: boolean;
       if (sys) {
         seen = sys.isSpotted(t.id);
       } else {
@@ -1723,14 +2231,14 @@ export function initHud(bus) {
     }
   }
 
-  function isSpotted(id) {
+  function isSpotted(id: string): boolean {
     const sp = spotById.get(id);
     return sp ? sp.vis : true;
   }
 
   // ---------- team panels + score plate ----------
-  const nickById = new Map(); // entity id -> stable bot nickname (per battle)
-  function nickFor(t) {
+  const nickById = new Map<string, string>(); // entity id -> stable bot nickname (per battle)
+  function nickFor(t: HudTank): string {
     if (t.displayName) return t.displayName;
     if (t.isPlayer) return PLAYER_NICK;
     let nick = nickById.get(t.id);
@@ -1748,7 +2256,7 @@ export function initHud(bus) {
   }
 
   let rosterSig = '';
-  function updateTeams(frame) {
+  function updateTeams(frame: HudFrame): void {
     // Network presentation may omit hidden enemies from `frame.tanks` to
     // prevent reticle/minimap leakage. The team ears still know the locked
     // match roster and death state through this policy-safe companion list.
@@ -1770,12 +2278,12 @@ export function initHud(bus) {
       lastScore = '';
     }
     let allyAlive = 0, allyTotal = 0, enemyAlive = 0, enemyTotal = 0;
-    const deadEnemies = []; // vehicle ids — fill the ALLY frag chips
-    const deadAllies = [];  // vehicle ids — fill the ENEMY frag chips
+    const deadEnemies: string[] = []; // vehicle ids — fill the ALLY frag chips
+    const deadAllies: string[] = [];  // vehicle ids — fill the ENEMY frag chips
     for (let i = 0; i < tanks.length; i++) {
       const t = tanks[i];
       if (!t || !t.spec) continue;
-      const ally = t.team === 'player' || t.isPlayer;
+      const ally = t.team === 'player' || !!t.isPlayer;
       const dead = !!(t.combat && t.combat.destroyed);
       if (ally) { allyTotal++; if (!dead) allyAlive++; else deadAllies.push(t.spec.id); }
       else { enemyTotal++; if (!dead) enemyAlive++; else deadEnemies.push(t.spec.id); }
@@ -1791,14 +2299,16 @@ export function initHud(bus) {
           `<div class="hpm"><i></i></div>`;
         // Per-vehicle generated silhouette, team-tinted. The right ear mirrors
         // it in CSS so opposing vehicles face inward toward the playfield.
-        maskIcon(r.querySelector('.ic'), t.spec.id, 'side_silhouette', color);
+        maskIcon(requireElement<HTMLElement>(r, '.ic'), t.spec.id, 'side_silhouette', color);
         if (t.isPlayer) r.classList.add('me');
-        r.querySelector('.tier').textContent = tierNumeral(t.spec.id) || '–';
-        r.querySelector('.nick').textContent = nickFor(t);
-        r.querySelector('.vn').textContent = t.spec.name;
+        requireElement<HTMLElement>(r, '.tier').textContent = tierNumeral(t.spec.id) || '–';
+        requireElement<HTMLElement>(r, '.nick').textContent = nickFor(t);
+        requireElement<HTMLElement>(r, '.vn').textContent = t.spec.name;
         (ally ? earL : earR).appendChild(r);
         row = {
-          root: r, hp: r.querySelector('.hpm i'), ic: r.querySelector('.ic'),
+          root: r,
+          hp: requireElement<HTMLElement>(r, '.hpm i'),
+          ic: requireElement<HTMLElement>(r, '.ic'),
           ally, lastFrac: -1, wasDead: null, wasSpotted: ally,
         };
         earRows.set(t.id, row);
@@ -1839,8 +2349,8 @@ export function initHud(bus) {
         enemyLabelEl.textContent = horde ? 'Hostiles' : 'Enemy';
         wedgeL.textContent = '';
         wedgeR.textContent = '';
-        earL.querySelector('.al').textContent = `${allyAlive} / ${allyTotal}`;
-        earR.querySelector('.al').textContent = `${enemyAlive} / ${enemyTotal}`;
+        requireElement<HTMLElement>(earL, '.al').textContent = `${allyAlive} / ${allyTotal}`;
+        requireElement<HTMLElement>(earR, '.al').textContent = `${enemyAlive} / ${enemyTotal}`;
         lastScore = score;
       }
       const waitS = horde ? Math.ceil(horde.nextWaveInS || 0) : 0;
@@ -1886,8 +2396,8 @@ export function initHud(bus) {
       const slots = Math.max(allyTotal, enemyTotal);
       syncWedge(wedgeL, slots, deadEnemies, false);
       syncWedge(wedgeR, slots, deadAllies, true);
-      earL.querySelector('.al').textContent = `${allyAlive} / ${allyTotal}`;
-      earR.querySelector('.al').textContent = `${enemyAlive} / ${enemyTotal}`;
+      requireElement<HTMLElement>(earL, '.al').textContent = `${allyAlive} / ${allyTotal}`;
+      requireElement<HTMLElement>(earR, '.al').textContent = `${enemyAlive} / ${enemyTotal}`;
       lastScore = score;
     }
     const timer = fmtTimer(BATTLE_DURATION_S - frame.timeS);
@@ -1906,16 +2416,17 @@ export function initHud(bus) {
   //   2. FULL-WIDTH HAIRLINES — 1px cross lines running from the screen
   //      edges up to the dispersion circle's rim (interior stays clean);
   //   3. the zoom readout anchored below reticle center (drawReticle).
-  function drawScope(view) {
+  function drawScope(view: HudAimView): void {
     const zoom = view.zoom || 2;
     // Sight furniture follows the actual server-aim projection. This matters
     // while the cursor-follow camera is easing onto a newly selected point:
     // the scope remains truthful instead of showing a second cross at screen
     // centre. The optical vignette itself remains centred on the lens.
     const anchor = resolveReticleAnchor(view, _reticleAnchor);
-    const cx = anchor.x, cy = anchor.y;
+    const cx = anchor.x ?? view.cx;
+    const cy = anchor.y ?? view.cy;
     const lensCx = w / 2, lensCy = h / 2;
-    if (!scopeGrad || scopeGrad._zoom !== zoom) {
+    if (!scopeGrad || scopeGradZoom !== zoom) {
       // r7-2 MAJOR (round critique: "vignette nearly imperceptible at the
       // frame edges — 8x reads as a plain FOV change"): the falloff is now
       // ELLIPTICAL, built in a y-scaled space where every frame edge is
@@ -1933,7 +2444,7 @@ export function initHud(bus) {
       scopeGrad.addColorStop(0, 'rgba(2,3,4,0)');
       scopeGrad.addColorStop(0.5, `rgba(2,3,4,${(deep * 0.34).toFixed(3)})`);
       scopeGrad.addColorStop(1, `rgba(2,3,4,${deep.toFixed(3)})`);
-      scopeGrad._zoom = zoom;
+      scopeGradZoom = zoom;
     }
     // vignette fade-in (~0.1 s); forced screenshot frames snap it complete
     // via forceAimDisplay
@@ -1970,9 +2481,9 @@ export function initHud(bus) {
       const rNow = clampRetR(smoothRadPx); // same clamp the circle draws with
       const gap = rNow + 3;
       const armEnd = rNow * 1.55 + 3; // arms clipped to ~1.55x circle radius
-      const vRuns = [[cy - armEnd, cy - gap], [cy + gap, cy + armEnd]];
-      const hRuns = [[cx - armEnd, cx - gap], [cx + gap, cx + armEnd]];
-      const cut = (runs, a, b) => {
+      const vRuns: Array<[number, number]> = [[cy - armEnd, cy - gap], [cy + gap, cy + armEnd]];
+      const hRuns: Array<[number, number]> = [[cx - armEnd, cx - gap], [cx + gap, cx + armEnd]];
+      const cut = (runs: Array<[number, number]>, a: number, b: number): void => {
         for (let i = runs.length - 1; i >= 0; i--) {
           const [r0, r1] = runs[i];
           if (b <= r0 || a >= r1) continue;
@@ -2068,7 +2579,14 @@ export function initHud(bus) {
   // edge lifts to R0+thick at the wedge center and returns to R0 at the tips
   // (gradient fill handles the radial falloff, the taper the angular one —
   // never a cheap solid triangle)
-  function wedgePath(cx, cy, cAng, half, R0, thick) {
+  function wedgePath(
+    cx: number,
+    cy: number,
+    cAng: number,
+    half: number,
+    R0: number,
+    thick: number,
+  ): void {
     ctx.beginPath();
     for (let i = 0; i <= ARC_SEGS; i++) {
       const a = cAng + (-1 + (2 * i) / ARC_SEGS) * half;
@@ -2087,7 +2605,7 @@ export function initHud(bus) {
     ctx.closePath();
   }
 
-  function drawHitIndicators(timeS) {
+  function drawHitIndicators(timeS: number): void {
     if (!hitDirs.length) return;
     const cam = lastCamera;
     const pl = playerRef && playerRef.state ? playerRef.state.pos : null;
@@ -2217,7 +2735,7 @@ export function initHud(bus) {
 
   // Hit-confirm marker: four tapered lock shards snapping toward the reticle
   // when one of the player's shells connects (amber = damage, steel = block).
-  function drawHitMark(view, timeS) {
+  function drawHitMark(view: HudAimView, timeS: number): void {
     if (!hitMark) return;
     const age = timeS - hitMark.t0;
     const visual = hitConfirmVisualState(
@@ -2291,18 +2809,21 @@ export function initHud(bus) {
   // constants + rationale at RET_FLOOR_PX/RET_CEIL_FRAC). The [floor,
   // ceiling] clamp is applied at DRAW time (clampRetR) so smoothing eases
   // toward the truth and the clamp can never amplify it.
-  function reticleTargetR(view) {
+  function reticleTargetR(view: HudAimView): number {
     return view.radPx;
   }
   // Display clamp for the DRAWN dispersion-circle radius — the single
   // authority every consumer reads (circle, sniper hairline gaps, hit-wedge
   // ring, nameplate avoidance), so all sight furniture agrees on the size.
-  function retCeilPx() { return Math.min(w, h) * RET_CEIL_FRAC; }
-  function clampRetR(r) { return Math.max(RET_FLOOR_PX, Math.min(r, retCeilPx())); }
+  function retCeilPx(): number { return Math.min(w, h) * RET_CEIL_FRAC; }
+  function clampRetR(r: number): number {
+    return Math.max(RET_FLOOR_PX, Math.min(r, retCeilPx()));
+  }
   let lastDrawnR = RET_FLOOR_PX;   // actual radius painted by drawReticle
   let lastGunOutside = false;      // actual gun marker lies outside dispersion radius
   let lastCircleX = 0, lastCircleY = 0;
-  let lastCameraMarkerCol = PEN_NONE, lastGunMarkerCol = PEN_NONE;
+  let lastCameraMarkerCol: string | null = PEN_NONE;
+  let lastGunMarkerCol: string | null = PEN_NONE;
 
   // A settled reticle is usually pixel-identical for dozens of frames while
   // a parked/reloading-ready tank holds aim. Keep the live canvas (no bitmap
@@ -2310,7 +2831,7 @@ export function initHud(bus) {
   // several hundred 2D path operations until an input actually changes.
   // Transient arcs, confirmations, reloads, scope fades and radius smoothing
   // deliberately bypass this cache so their animation remains full-rate.
-  const reticlePaint = {
+  const reticlePaint: ReticlePaintState = {
     valid: false, mode: '', w: 0, h: 0,
     cx: 0, cy: 0, radPx: 0, gunX: null, gunY: null,
     penRatio: null, distM: null, blockedDistM: null,
@@ -2319,9 +2840,14 @@ export function initHud(bus) {
     zoom: 1, reloadKind: '', magazineCapacity: 0, magazineRounds: 0,
     shellType: '', shellCount: 0, drawnR: 0,
   };
-  const nearPaint = (a, b, eps = 0.02) =>
-    (a == null && b == null) || (Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= eps);
-  function reticleCanReuse(view) {
+  const nearPaint = (
+    a: number | null,
+    b: number | null,
+    eps = 0.02,
+  ): boolean => (a == null && b == null)
+    || (a != null && b != null && Number.isFinite(a) && Number.isFinite(b)
+      && Math.abs(a - b) <= eps);
+  function reticleCanReuse(view: HudAimView): boolean {
     if (!reticlePaint.valid || hitDirs.length || hitMark || readyPulseT >= 0 || scopeFadeMs >= 0) return false;
     if (reloadHudFraction(view.reload) > 0) return false;
     const targetR = clampRetR(reticleTargetR(view));
@@ -2343,13 +2869,13 @@ export function initHud(bus) {
       && reticlePaint.gunLimitSpec === !!view.gunLimitSpec
       && nearPaint(reticlePaint.zoom, view.zoom || 1, 0.001)
       && reticlePaint.reloadKind === (view.reload?.kind || '')
-      && reticlePaint.magazineCapacity === (mag?.capacity | 0)
-      && reticlePaint.magazineRounds === (mag?.rounds | 0)
+      && reticlePaint.magazineCapacity === ((mag?.capacity ?? 0) | 0)
+      && reticlePaint.magazineRounds === ((mag?.rounds ?? 0) | 0)
       && reticlePaint.shellType === (shell.type || '')
       && reticlePaint.shellCount === shellCount(shell)
       && nearPaint(reticlePaint.drawnR, lastDrawnR, 0.01);
   }
-  function captureReticlePaint(view) {
+  function captureReticlePaint(view: HudAimView): void {
     const shell = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
     const mag = view.magazine;
     reticlePaint.valid = true;
@@ -2362,14 +2888,16 @@ export function initHud(bus) {
     reticlePaint.singleReticle = !!view.singleReticle;
     reticlePaint.atGunLimit = !!view.atGunLimit; reticlePaint.gunLimitSpec = !!view.gunLimitSpec;
     reticlePaint.zoom = view.zoom || 1; reticlePaint.reloadKind = view.reload?.kind || '';
-    reticlePaint.magazineCapacity = mag?.capacity | 0; reticlePaint.magazineRounds = mag?.rounds | 0;
+    reticlePaint.magazineCapacity = (mag?.capacity ?? 0) | 0;
+    reticlePaint.magazineRounds = (mag?.rounds ?? 0) | 0;
     reticlePaint.shellType = shell.type || ''; reticlePaint.shellCount = shellCount(shell);
     reticlePaint.drawnR = lastDrawnR;
   }
 
-  function drawReticle(view, dt) {
+  function drawReticle(view: HudAimView, dt: number): void {
     const anchor = resolveReticleAnchor(view, _reticleAnchor);
-    const cx = anchor.x, cy = anchor.y;
+    const cx = anchor.x ?? view.cx;
+    const cy = anchor.y ?? view.cy;
     // bloom/shrink smoothing toward the target pixel radius
     const targetR = reticleTargetR(view);
     const k = 1 - Math.exp(-14 * dt);
@@ -2476,7 +3004,7 @@ export function initHud(bus) {
     // read the same canonical reload state.
     if (wasReloading && !isReloading) readyPulseT = lastTimeS;
     wasReloading = isReloading;
-    function markerPass(inkOnly) {
+    function markerPass(inkOnly: boolean): void {
       ctx.beginPath();
       ctx.moveTo(cx - 8 * zs, cy + 0.5); ctx.lineTo(cx - 2.8 * zs, cy + 0.5);
       ctx.moveTo(cx + 2.8 * zs, cy + 0.5); ctx.lineTo(cx + 8 * zs, cy + 0.5);
@@ -2752,30 +3280,32 @@ export function initHud(bus) {
   }
 
   // ---------- shell selector ----------
-  function shellCount(sp) {
+  function shellCount(sp: HudShellCard): number {
     if (sp.count != null) return sp.count;
-    return SHELL_DEFAULT_COUNT[sp.type] != null ? SHELL_DEFAULT_COUNT[sp.type] : 20;
+    const type = sp.type || '';
+    return SHELL_DEFAULT_COUNT[type] != null ? SHELL_DEFAULT_COUNT[type] : 20;
   }
 
-  function renderShells(shells, slot) {
+  function renderShells(shells: HudShellCard[] | null | undefined, slot: number): void {
     for (let i = 0; i < 3; i++) {
       const sp = shells && shells[i] ? shells[i] : DEFAULT_SHELLS[i];
       const s = slotEls[i];
-      if (s._iconType !== sp.type) {
-        drawShellIcon(s._icon, sp.type);
-        s._iconType = sp.type;
+      const type = sp.type || '';
+      if (s._iconType !== type) {
+        drawShellIcon(s._icon, type);
+        s._iconType = type;
       }
-      const ty = s.querySelector('.ty');
+      const ty = requireElement<HTMLElement>(s, '.ty');
       ty.textContent = sp.type || '';
-      ty.style.color = SHELL_TYPE_COLOR[sp.type] || '#9fb0bf';
+      ty.style.color = SHELL_TYPE_COLOR[type] || '#9fb0bf';
       // shell-CLASS underline (silver kinetic / orange chemical / olive HE)
-      s.querySelector('.clr').style.background =
-        SHELL_CLASS_UNDERLINE[sp.type] || 'rgba(146,164,180,.4)';
-      s.querySelector('.tnm').textContent = sp.name || '—';
-      s.querySelector('.p').textContent = sp.penLabel != null ? sp.penLabel : '—';
-      s.querySelector('.d').textContent = sp.dmg != null ? String(sp.dmg) : '—';
+      requireElement<HTMLElement>(s, '.clr').style.background =
+        SHELL_CLASS_UNDERLINE[type] || 'rgba(146,164,180,.4)';
+      requireElement<HTMLElement>(s, '.tnm').textContent = sp.name || '—';
+      requireElement<HTMLElement>(s, '.p').textContent = sp.penLabel != null ? String(sp.penLabel) : '—';
+      requireElement<HTMLElement>(s, '.d').textContent = sp.dmg != null ? String(sp.dmg) : '—';
       const n = shellCount(sp);
-      s.querySelector('.cnt').textContent = `${n}`;
+      requireElement<HTMLElement>(s, '.cnt').textContent = `${n}`;
       const selected = i === slot;
       s.classList.toggle('sel', selected);
       s.setAttribute('aria-pressed', selected ? 'true' : 'false');
@@ -2786,9 +3316,9 @@ export function initHud(bus) {
   }
 
   // dim/sweep the active shell plate during reload (WoT ammo-plate feedback)
-  function updateShellCooldown(reload, slot) {
+  function updateShellCooldown(reload: ReloadView | null | undefined, slot: number): void {
     for (let i = 0; i < 3; i++) {
-      const coolEl = slotEls[i].querySelector('.cool');
+      const coolEl = requireElement<HTMLElement>(slotEls[i], '.cool');
       if (i === slot && reload && reload.totalS > 0 && reload.t > 0.001) {
         coolEl.style.height = `${((reload.t / reload.totalS) * 100).toFixed(1)}%`;
       } else {
@@ -2798,9 +3328,11 @@ export function initHud(bus) {
   }
 
   // ---------- world-space tank nameplates ----------
-  function updateHpBars(frame) {
+  const hpBarsSeen = new Set<string>();
+  function updateHpBars(frame: HudFrame): void {
     const camera = frame.camera;
-    const seen = updateHpBars._seen || (updateHpBars._seen = new Set());
+    if (!camera) return;
+    const seen = hpBarsSeen;
     seen.clear();
     const tanks = frame.tanks || [];
     for (let i = 0; i < tanks.length; i++) {
@@ -2824,12 +3356,16 @@ export function initHud(bus) {
         rootEl.innerHTML = `<div class="nm"><i class="si"></i><span></span></div>` +
           `<div class="tr"><div class="fl"></div></div>`;
         if (t.spec) {
-          maskIcon(rootEl.querySelector('.si'), t.spec.id, 'side_silhouette',
+          maskIcon(requireElement<HTMLElement>(rootEl, '.si'), t.spec.id, 'side_silhouette',
             ally ? PEN_GREEN : '#ff5555');
         }
         bar = {
-          root: rootEl, nm: rootEl.querySelector('.nm span'),
-          fill: rootEl.querySelector('.fl'), lastFrac: -1, lastName: '', lastOp: -1,
+          root: rootEl,
+          nm: requireElement<HTMLElement>(rootEl, '.nm span'),
+          fill: requireElement<HTMLElement>(rootEl, '.fl'),
+          lastFrac: -1,
+          lastName: '',
+          lastOp: -1,
           layoutW: 128,
         };
         hpPool.set(t.id, bar);
@@ -2875,8 +3411,9 @@ export function initHud(bus) {
   // the aim distance lands on the hull — a tank far BEHIND the aim point
   // never lights up. Live battles additionally require the target to be
   // spotted; forced screenshot stills trust the recipe (vehicle is rendered).
-  function updateTargetPlate() {
-    let best = null, bestPx = Infinity;
+  function updateTargetPlate(): void {
+    let best: HudTank | null = null;
+    let bestPx = Infinity;
     const cam = lastCamera;
     const tanks = lastTanksRef || [];
     if (cam && mode !== 'hidden' && aimView.distM != null) {
@@ -2904,7 +3441,7 @@ export function initHud(bus) {
       }
     }
     aimTargetId = best ? best.id : null;
-    if (!best) {
+    if (!best || !best.state || !best.combat || !cam) {
       if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }
       tgtRect = null;
       return;
@@ -2958,10 +3495,11 @@ export function initHud(bus) {
       maskIcon(tgtRefs.cg, targetVehicleId, 'side_silhouette', '#f0b4ab');
       tgtLastVehicleId = targetVehicleId;
     }
-    const frac = Math.max(0, Math.min(1, best.combat.hp / best.combat.maxHp));
+    const bestCombat = best.combat;
+    const frac = Math.max(0, Math.min(1, bestCombat.hp / bestCombat.maxHp));
     const hpWidth = `${(frac * 100).toFixed(1)}%`;
     if (tgtRefs.fl.style.width !== hpWidth) tgtRefs.fl.style.width = hpWidth;
-    const hpText = `${Math.max(0, Math.round(best.combat.hp))}/${Math.round(best.combat.maxHp)}`;
+    const hpText = `${Math.max(0, Math.round(bestCombat.hp))}/${Math.round(bestCombat.maxHp)}`;
     if (tgtRefs.hp.textContent !== hpText) tgtRefs.hp.textContent = hpText;
     if (!tgtShown) { tgtEl.style.display = 'block'; tgtShown = true; }
     // record the plate's screen rect so the sniper hairlines gap behind it
@@ -2979,8 +3517,8 @@ export function initHud(bus) {
   // PERF: write-through scratch — worldToMap is called per blip/ping/vertex on
   // every 20 Hz repaint; every call site destructures immediately (verified),
   // so a shared 2-element array is safe and allocation-free.
-  const _wm = [0, 0];
-  function worldToMap(x, z, oriented = true) {
+  const _wm: [number, number] = [0, 0];
+  function worldToMap(x: number, z: number, oriented = true): [number, number] {
     // +X right, +Z up (north)
     const half = mapWorldSize / 2;
     _wm[0] = ((x + half) / mapWorldSize) * MM;
@@ -2997,7 +3535,10 @@ export function initHud(bus) {
   // it. One ortho render into an offscreen target at map load (main.ts passes
   // {renderer, scene, exclude} through buildMinimap); any failure falls back
   // to the procedural cartography below, so the harness can never go dark.
-  function renderTopDownSnap(snap, N0) {
+  function renderTopDownSnap(
+    snap: HudMinimapSnapshot | null | undefined,
+    N0: number,
+  ): HTMLCanvasElement | null {
     try {
       if (!snap || !snap.renderer || !snap.scene) return null;
       // r7: SUPERSAMPLE the one-time capture at 2x the display resolution —
@@ -3020,7 +3561,7 @@ export function initHud(bus) {
       const oldTarget = renderer.getRenderTarget();
       const oldFog = scene.fog;
       const rt = new THREE.WebGLRenderTarget(N, N, { depthBuffer: true });
-      const hidden = [];
+      const hidden: THREE.Object3D[] = [];
       try {
         rt.texture.colorSpace = THREE.SRGBColorSpace;
         scene.fog = null;
@@ -3035,7 +3576,8 @@ export function initHud(bus) {
         // whose world-space bounding radius rivals the whole map is scenery
         // shell, not map content.
         const _ws = new THREE.Vector3();
-        scene.traverse((o) => {
+        scene.traverse((node) => {
+          const o = node as SceneRenderable;
           if (!o.visible || (!o.isMesh && !o.isSprite)) return;
           const g = o.geometry;
           if (!g) return;
@@ -3057,7 +3599,7 @@ export function initHud(bus) {
       }
       const c = document.createElement('canvas');
       c.width = N; c.height = N;
-      const x2 = c.getContext('2d');
+      const x2 = requireCanvasContext(c);
       const img = x2.createImageData(N, N);
       // GL pixel rows come bottom-up (vertical flip) and the down-look basis
       // mirrors east-west (horizontal flip) — undo both while copying, and
@@ -3081,14 +3623,19 @@ export function initHud(bus) {
   }
 
   // MAP-CONFIG WIRING: per-map minimap palette (src/world/maps/*.js cfg.minimap)
-  const MM_PALETTE_DEFAULT = {
+  const MM_PALETTE_DEFAULT: HudMinimapPalette = {
     base: [70, 94, 52], hard: [104, 96, 78], soft: [48, 70, 54],
     forest: 'rgba(36,64,30,0.82)', forestStroke: 'rgba(22,40,18,0.9)',
     water: 'rgba(50,84,82,0.7)', waterStroke: 'rgba(28,48,48,0.8)',
     roadCasing: 'rgba(46,40,28,0.9)', roadFill: 'rgba(196,178,140,0.95)',
     buildingFill: '#ccd1d9',
   };
-  function buildMinimapBg(heightField, features, palette, snap) {
+  function buildMinimapBg(
+    heightField: HudHeightField,
+    features?: HudMinimapFeatures | null,
+    palette?: Partial<HudMinimapPalette> | null,
+    snap?: HudMinimapSnapshot | null,
+  ): void {
     const pal = { ...MM_PALETTE_DEFAULT, ...(palette || {}) };
     heightFieldRef = heightField;
     mapWorldSize = heightField && heightField.size ? heightField.size : 1024;
@@ -3105,7 +3652,7 @@ export function initHud(bus) {
     // canopy just like WoT's stylized aerial tiles.
     const bg = document.createElement('canvas');
     bg.width = N; bg.height = N;
-    const bctx = bg.getContext('2d');
+    const bctx = requireCanvasContext(bg);
     if (snapBg) {
       // Keep the one-time satellite capture readable independently of the
       // source-texture cache state. The old 15% black veil plus sub-unity
@@ -3139,7 +3686,9 @@ export function initHud(bus) {
         shade = Math.round(shade * 5) / 5;
         const tone = Math.round(((hgt - minY) / range) * 5) / 5; // 6 flat bands
         const gt = heightField.getGroundType(x, z);
-        let r, g, b;
+        let r: number;
+        let g: number;
+        let b: number;
         if (gt === 'hard') { [r, g, b] = pal.hard; }
         else if (gt === 'soft') { [r, g, b] = pal.soft; }
         else { [r, g, b] = pal.base; }
@@ -3154,7 +3703,7 @@ export function initHud(bus) {
     // compose feature layers at device resolution (vector coords in CSS px)
     const out = document.createElement('canvas');
     out.width = MM * mmDpr; out.height = MM * mmDpr;
-    const octx = out.getContext('2d');
+    const octx = requireCanvasContext(out);
     octx.drawImage(bg, 0, 0); // 1:1 device pixels — no resampling blur
     octx.setTransform(mmDpr, 0, 0, mmDpr, 0, 0);
 
@@ -3195,7 +3744,8 @@ export function initHud(bus) {
         const m = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?\)/
           .exec(String(pal.forest));
         if (m) {
-          const mix = (a, b, k) => Math.round(a + (b - a) * k);
+          const mix = (a: number, b: number, k: number): number =>
+            Math.round(a + (b - a) * k);
           const r0 = +m[1], g0 = +m[2], b0 = +m[3], a0 = m[4] != null ? +m[4] : 1;
           forestFill = `rgba(${mix(r0, 52, 0.35)},${mix(g0, 60, 0.35)},` +
             `${mix(b0, 48, 0.35)},${(a0 * 0.8).toFixed(2)})`;
@@ -3220,7 +3770,7 @@ export function initHud(bus) {
           vx[k] = px + Math.cos(a) * jr;
           vy[k] = py + Math.sin(a) * jr * (0.86 + 0.12 * Math.sin(seed * 1.7));
         }
-        const poly = (dx, dy, s) => {
+        const poly = (dx: number, dy: number, s: number): void => {
           octx.beginPath();
           for (let k = 0; k < NV; k++) {
             const x2 = px + (vx[k] - px) * s + dx;
@@ -3293,9 +3843,9 @@ export function initHud(bus) {
         const [px, py] = worldToMap(b.x, b.z, false);
         octx.save();
         octx.translate(px, py);
-        octx.rotate(-(b.rot || 0));
-        const bw = Math.max(4, (b.w / mapWorldSize) * MM);
-        const bd = Math.max(4, (b.d / mapWorldSize) * MM);
+        octx.rotate(-(b.rot || b.yaw || 0));
+        const bw = Math.max(4, ((b.w ?? 0) / mapWorldSize) * MM);
+        const bd = Math.max(4, ((b.d ?? 0) / mapWorldSize) * MM);
         octx.globalAlpha = 0.9;
         octx.fillStyle = bFill;
         octx.fillRect(-bw / 2, -bd / 2, bw, bd);
@@ -3307,11 +3857,11 @@ export function initHud(bus) {
     mmBg = out;
   }
 
-  function preloadMinimapAsset(src) {
+  function preloadMinimapAsset(src: string): Promise<HTMLImageElement> {
     if (!src) return Promise.reject(new Error('Missing minimap asset URL'));
     let pending = minimapAssetCache.get(src);
     if (pending) return pending;
-    pending = new Promise((resolve, reject) => {
+    pending = new Promise<HTMLImageElement>((resolve, reject) => {
       const image = new Image();
       image.decoding = 'async';
       image.onload = () => resolve(image);
@@ -3328,7 +3878,11 @@ export function initHud(bus) {
     return pending;
   }
 
-  async function installMinimapAsset(heightField, src, generation) {
+  async function installMinimapAsset(
+    heightField: HudHeightField,
+    src: string,
+    generation: number,
+  ): Promise<boolean> {
     const image = await preloadMinimapAsset(src);
     if (generation !== mmBuildGeneration) return false;
     heightFieldRef = heightField;
@@ -3345,7 +3899,7 @@ export function initHud(bus) {
 
   // Shared minimap chrome: 10x10 grid, coordinate strips, inner vignette —
   // drawn over BOTH underlay styles (ortho capture and procedural fallback).
-  function drawMinimapChrome(octx) {
+  function drawMinimapChrome(octx: CanvasRenderingContext2D): void {
     const flipped = Math.cos(minimapRotation) < 0;
     // grid 10x10
     octx.strokeStyle = 'rgba(230,240,250,0.11)';
@@ -3386,7 +3940,7 @@ export function initHud(bus) {
     octx.strokeRect(0.75, 0.75, MM - 1.5, MM - 1.5);
   }
 
-  function drawMinimapBackground() {
+  function drawMinimapBackground(): void {
     mmCtx.fillStyle = '#0b100e';
     mmCtx.fillRect(0, 0, MM, MM);
     if (mmBg) {
@@ -3421,7 +3975,7 @@ export function initHud(bus) {
 
   // Team spawn flags (mode objective markers for annihilation): captured from
   // the rosters' first battle frame, when every tank still sits on its spawn.
-  function captureSpawnFlags(frame) {
+  function captureSpawnFlags(frame: HudFrame): void {
     const tanks = frame.tanks || [];
     let ax = 0, az = 0, an = 0, ex = 0, ez = 0, en = 0;
     for (const t of tanks) {
@@ -3459,7 +4013,12 @@ export function initHud(bus) {
   // WoT-style base/spawn glyph: pole + team-colored pennant with a dark halo.
   // r4: taller pole (pennant at -14..-8) so the own-base pennant clears the
   // player/ally arrow blips parked on top of it at battle start.
-  function drawSpawnFlag(c, x, y, color) {
+  function drawSpawnFlag(
+    c: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    color: string,
+  ): void {
     c.save();
     c.translate(Math.round(x), Math.round(y));
     c.lineJoin = 'round';
@@ -3484,13 +4043,22 @@ export function initHud(bus) {
 
   // canvas rotation that makes a forward-up sprite/shape point along hull yaw
   // (same mapping the player arrow has always used)
-  const blipAngle = (yaw) => Math.atan2(-Math.cos(yaw), Math.sin(yaw)) + Math.PI / 2;
+  const blipAngle = (yaw: number): number =>
+    Math.atan2(-Math.cos(yaw), Math.sin(yaw)) + Math.PI / 2;
 
   // minimap blip: WoT's vanilla marker language is ARROWS — a directional
   // vehicle arrow (nose forward, swept tail notch) rotated to hull heading.
   // Player = larger white arrow, allies = green, enemies = red (r3: tinted
   // top-down silhouettes at 15 px read as directionless discs).
-  function drawArrowBlip(c, x, y, yaw, fill, s, alpha) {
+  function drawArrowBlip(
+    c: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    yaw: number,
+    fill: string,
+    s: number,
+    alpha: number,
+  ): void {
     c.save();
     c.translate(x, y);
     c.rotate(blipAngle(yaw));
@@ -3519,17 +4087,25 @@ export function initHud(bus) {
   // blip per 20 Hz repaint (~320 small arrays/s in a 16-tank battle) was the
   // last steady per-frame allocation in the hot loop. Jitter is deterministic
   // per id, so the memo is exact.
-  const _bj = new Map(); // id -> [dx, dy]
+  const _bj = new Map<string, [number, number]>(); // id -> [dx, dy]
   // PERF r3: minimap blip record pool (see drawMinimap)
-  const _liveBlipPool = [];
+  const _liveBlipPool: MinimapBlip[] = [];
   let _liveBlipCount = 0;
-  function pushLiveBlip(x, y, yaw, fill, s, a, fixed) {
+  function pushLiveBlip(
+    x: number,
+    y: number,
+    yaw: number,
+    fill: string,
+    s: number,
+    a: number,
+    fixed: boolean,
+  ): void {
     let b = _liveBlipPool[_liveBlipCount];
     if (!b) { b = { x: 0, y: 0, yaw: 0, fill: '', s: 0, a: 0, fixed: false }; _liveBlipPool[_liveBlipCount] = b; }
     b.x = x; b.y = y; b.yaw = yaw; b.fill = fill; b.s = s; b.a = a; b.fixed = fixed;
     _liveBlipCount++;
   }
-  function blipJitter(id) {
+  function blipJitter(id: string): [number, number] {
     let v = _bj.get(id);
     if (!v) {
       const j = hashStr(String(id));
@@ -3541,13 +4117,17 @@ export function initHud(bus) {
 
   // Last-known contacts use one neutral stale-intel marker. Era is metadata,
   // never a combat shape, and exact vehicle silhouettes stay in team panels.
-  function ghostMarkerPath(c, s) {
+  function ghostMarkerPath(c: CanvasRenderingContext2D, s: number): void {
     c.beginPath();
     c.moveTo(0, -4.1 * s); c.lineTo(4.6 * s, 0);
     c.lineTo(0, 4.1 * s); c.lineTo(-4.6 * s, 0);
     c.closePath();
   }
-  function drawGhostMarker(c, x, y) {
+  function drawGhostMarker(
+    c: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+  ): void {
     c.save();
     c.translate(x, y);
     const s = 1.35;                          // ~13 px wide, live-blip footprint
@@ -3567,7 +4147,7 @@ export function initHud(bus) {
     c.restore();
   }
 
-  function drawMinimap(frame) {
+  function drawMinimap(frame: HudFrame): void {
     drawMinimapBackground();
     const tanks = frame.tanks || [];
     const player = frame.player;
@@ -3746,7 +4326,7 @@ export function initHud(bus) {
       }
       if (!moved) break;
     }
-    let playerBlip = null;
+    let playerBlip: MinimapBlip | null = null;
     for (let bi = 0; bi < _liveBlipCount; bi++) {
       const b = liveBlips[bi];
       if (!b.fixed) {
@@ -3762,30 +4342,30 @@ export function initHud(bus) {
   }
 
   // ---------- bus feeds ----------
-  function pushKill(payload) {
-    const killer = nameById.get(payload.killerId) || 'Enemy';
-    const victim = nameById.get(payload.id) || payload.specId || 'Tank';
+  function pushKill(payload: HudEventPayload): void {
+    const killer = (payload.killerId ? nameById.get(payload.killerId) : null) || 'Enemy';
+    const victim = (payload.id ? nameById.get(payload.id) : null) || payload.specId || 'Tank';
     const item = el('div', 'cot-kf', killfeed);
-    const cause = CAUSE_LABEL[payload.cause] || '';
+    const cause = CAUSE_LABEL[payload.cause || ''] || '';
     // side-profile silhouettes of the actual tanks flank the names
-    const kSpec = specIdById.get(payload.killerId);
-    const vSpec = specIdById.get(payload.id) || payload.specId;
+    const kSpec = payload.killerId ? specIdById.get(payload.killerId) : null;
+    const vSpec = (payload.id ? specIdById.get(payload.id) : null) || payload.specId;
     item.innerHTML =
       (kSpec ? `<span class="si ksi"></span>` : '') + `<span class="k"></span>` +
       `<span class="d">destroyed</span>` +
       (vSpec ? `<span class="si vsi"></span>` : '') + `<span class="v"></span>` +
       (cause ? `<span class="c">${cause}</span>` : '');
-    if (kSpec) maskIcon(item.querySelector('.ksi'), kSpec, 'side_silhouette', '#cfe3f4');
-    if (vSpec) maskIcon(item.querySelector('.vsi'), vSpec, 'side_silhouette', '#f28f8f');
-    item.querySelector('.k').textContent = killer;
-    item.querySelector('.v').textContent = victim;
+    if (kSpec) maskIcon(requireElement<HTMLElement>(item, '.ksi'), kSpec, 'side_silhouette', '#cfe3f4');
+    if (vSpec) maskIcon(requireElement<HTMLElement>(item, '.vsi'), vSpec, 'side_silhouette', '#f28f8f');
+    requireElement<HTMLElement>(item, '.k').textContent = killer;
+    requireElement<HTMLElement>(item, '.v').textContent = victim;
     killfeed.prepend(item);
-    while (killfeed.children.length > 5) killfeed.lastChild.remove();
+    while (killfeed.children.length > 5) killfeed.lastChild?.remove();
     setTimeout(() => item.classList.add('out'), 5200);
     setTimeout(() => { if (item.parentNode) item.remove(); }, 6200);
   }
 
-  function pushDamageNumber(hit) {
+  function pushDamageNumber(hit: HudHitEvent): void {
     if (!lastCamera || mode === 'hidden') return;
     project(lastCamera, hit.pos[0], hit.pos[1] + 1.5, hit.pos[2]);
     if (!_sVisible) return;
@@ -3846,14 +4426,14 @@ export function initHud(bus) {
    * counter-rotates as the camera turns, like the minimap wedge.
    * When neither source exists the arc is OMITTED rather than lied about.
    */
-  function pushHitDirection(hit, playerEnt) {
+  function pushHitDirection(hit: HudHitEvent, playerEnt: HudTank | null): void {
     if (!playerEnt || !playerEnt.state) return;
     const pp = playerEnt.state.pos;
-    let wx = null;
-    let wz = null;
+    let wx: number | null = null;
+    let wz: number | null = null;
     const att = hit.attackerId != null && lastTanksRef
       ? lastTanksRef.find((t) => t && t.id === hit.attackerId && t.state) : null;
-    if (att) {
+    if (att?.state) {
       wx = att.state.pos.x;
       wz = att.state.pos.z;
     } else if (hit.localDir) {
@@ -3870,7 +4450,7 @@ export function initHud(bus) {
         wz = pp.z - (tz / L) * 180;
       }
     }
-    if (wx === null) return; // no honest bearing — draw nothing
+    if (wx === null || wz === null) return; // no honest bearing — draw nothing
     // visual language tiers (drawHitIndicators): red damage wedge / thin
     // steel deflect arc / amber splash wedge; crits ride the damage wedge
     // as a hot core flash
@@ -3880,7 +4460,8 @@ export function initHud(bus) {
     // a 0-damage PENETRATION that cost a module/crewman is still damage-in —
     // it keeps the red wedge (+ crit flash), never the deflect read
     const outcome = hitOutcomeFor(hit);
-    const kind = hit.kind === 'he_splash' ? 'he' : (outcome.penetrated || dmg > 0) ? 'pen' : 'bounce';
+    const kind: HitDirection['kind'] = hit.kind === 'he_splash'
+      ? 'he' : (outcome.penetrated || dmg > 0) ? 'pen' : 'bounce';
     // repeat fire from (nearly) the same bearing RE-PULSES the existing wedge
     // — refresh its timer, pool the damage weight — instead of stacking a
     // second copy on top (WoT read; ~20° merge window per class)
@@ -3905,7 +4486,7 @@ export function initHud(bus) {
     while (hitDirs.length > 5) hitDirs.shift();
   }
 
-  function showAlert(text, { tone = 'warning', icon = 'info' } = {}) {
+  function showAlert(text: string, { tone = 'warning', icon = 'info' }: AlertOptions = {}): void {
     alertCopyEl.textContent = text;
     alertIconEl.innerHTML = uiIconSVG(icon, 18);
     alertEl.classList.remove('danger', 'warning', 'success', 'info');
@@ -3915,18 +4496,20 @@ export function initHud(bus) {
     alertTimer = setTimeout(() => alertEl.classList.remove('show'), 2400);
   }
 
-  let playerRef = null;
-  bus.on('tank:destroyed', (p) => { pushKill(p); });
+  let playerRef: HudTank | null = null;
+  on('tank:destroyed', (p) => { pushKill(p); });
   // Shell hotkeys route through input.ts actions only (main.ts emits this) —
   // the HUD renders selection state from the bus instead of its own listener.
-  bus.on('ui:shellSelect', ({ slot }) => selectSlot(slot));
-  bus.on('ui:perfMeter', (p) => {
+  on('ui:shellSelect', ({ slot }) => {
+    if (slot != null) selectSlot(slot);
+  });
+  on('ui:perfMeter', (p) => {
     netOptIn = !!(p && p.on);
     if (!netOptIn) { netEl.style.display = 'none'; netFrames = 0; netLastPaintMs = 0; }
   });
   // Live hotkey labels — settings.ts broadcasts at boot and after every
   // rebind/clear/reset, so the tray never lies about the player's keys.
-  bus.on('ui:bindingsChanged', (p) => {
+  on('ui:bindingsChanged', (p) => {
     if (!p) return;
     if (Array.isArray(p.shells)) {
       for (let i = 0; i < 3 && i < p.shells.length; i++) {
@@ -3942,7 +4525,7 @@ export function initHud(bus) {
     }
     if (typeof p.specialAction === 'string') specialKey.textContent = p.specialAction;
   });
-  bus.on('ui:specialActionResult', ({ kind, active }) => {
+  on('ui:specialActionResult', ({ kind, active }) => {
     if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {
       showAlert(active ? 'ATGM GUIDANCE ENGAGED · CLICK TO FIRE'
         : 'ATGM GUIDANCE DISENGAGED', { icon: 'missileRack', tone: active ? 'success' : 'info' });
@@ -3954,19 +4537,20 @@ export function initHud(bus) {
       showAlert('MAGAZINE RELOAD STARTED', { icon: 'shell' });
     }
   });
-  bus.on('ui:specialActionDenied', ({ reason }) => {
+  on('ui:specialActionDenied', ({ reason }) => {
     showAlert(reason === 'BUSY' ? 'SPECIAL ACTION IN PROGRESS'
       : reason === 'MAGAZINE_RELOADING' ? 'MAGAZINE RELOAD IN PROGRESS'
         : reason === 'MAGAZINE_FULL' ? 'MAGAZINE ALREADY FULL'
           : 'SPECIAL ACTION UNAVAILABLE', { icon: 'clock', tone: 'info' });
   });
-  bus.on('ui:magazineReloadStarted', () => showAlert('MAGAZINE RELOAD STARTED', { icon: 'shell' }));
-  bus.on('ui:magazineReloadDenied', ({ reason }) => {
+  on('ui:magazineReloadStarted', () => showAlert('MAGAZINE RELOAD STARTED', { icon: 'shell' }));
+  on('ui:magazineReloadDenied', ({ reason }) => {
     showAlert(reason === 'MAGAZINE_RELOADING' ? 'MAGAZINE RELOAD IN PROGRESS'
       : reason === 'MAGAZINE_FULL' ? 'MAGAZINE ALREADY FULL'
         : 'MAGAZINE RELOAD UNAVAILABLE', { icon: reason === 'MAGAZINE_FULL' ? 'check' : 'clock', tone: 'info' });
   });
-  bus.on('ui:consumableUsed', ({ slot, readyAt, cooldownS }) => {
+  on('ui:consumableUsed', ({ slot, readyAt, cooldownS }) => {
+    if (slot == null || readyAt == null || cooldownS == null) return;
     const s = conEls[slot];
     if (!s) return;
     conReadyAt[slot] = readyAt;
@@ -3975,7 +4559,8 @@ export function initHud(bus) {
     const icons = ['repair', 'medkit', 'extinguisher'];
     showAlert(`${CONSUMABLES[slot].label.toUpperCase()} USED`, { icon: icons[slot] || 'check', tone: 'success' });
   });
-  bus.on('ui:consumableDenied', ({ slot, reason, remainingS }) => {
+  on('ui:consumableDenied', ({ slot, reason, remainingS }) => {
+    if (slot == null) return;
     if (reason === 'NOTHING') {
       const icons = ['repair', 'medkit', 'extinguisher'];
       showAlert(slot === 2 ? 'NO FIRE TO EXTINGUISH' : slot === 1 ? 'CREW UNHARMED' : 'NOTHING TO REPAIR',
@@ -3986,50 +4571,50 @@ export function initHud(bus) {
     const s = conEls[slot];
     if (s) { s.classList.remove('deny'); void s.offsetWidth; s.classList.add('deny'); }
   });
-  bus.on('ui:consumableReset', () => {
+  on('ui:consumableReset', () => {
     for (let i = 0; i < conEls.length; i++) {
       conReadyAt[i] = 0;
       conCooldownS[i] = CONSUMABLE_RULES[i].cooldownS;
-      conEls[i].querySelector('.cnt').textContent = CONSUMABLE_READY_MARK;
-      conEls[i].querySelector('.cool').style.display = 'none';
+      requireElement<HTMLElement>(conEls[i], '.cnt').textContent = CONSUMABLE_READY_MARK;
+      requireElement<HTMLElement>(conEls[i], '.cool').style.display = 'none';
       conEls[i].classList.remove('used', 'deny', 'cooling');
       conEls[i].setAttribute('aria-label', `${CONSUMABLES[i].label}, ready`);
     }
   });
-  bus.on('ui:autoAimState', ({ on, targetName, reason }) => {
+  on('ui:autoAimState', ({ on, targetName, reason }) => {
     if (on) showAlert(`AUTO-AIM: ${String(targetName || 'TARGET').toUpperCase()}`,
       { icon: 'autoAim', tone: 'success' });
     else if (reason) showAlert(reason, { icon: 'autoAim', tone: 'info' });
   });
-  bus.on('mode:ammo_empty', ({ id }) => {
+  on('mode:ammo_empty', ({ id }) => {
     if (playerId == null || id === playerId) {
       showAlert('AMMUNITION EMPTY · FIND A CACHE', { icon: 'shell', tone: 'danger' });
     }
   });
-  bus.on('mode:pickup_collected', ({ by, kind }) => {
+  on('mode:pickup_collected', ({ by, kind }) => {
     if (playerId != null && by !== playerId) return;
     showAlert(kind === 'heal' ? 'FIELD REPAIR ACQUIRED' : 'AMMUNITION ACQUIRED', {
       icon: kind === 'heal' ? 'repair' : 'shell', tone: 'success',
     });
   });
-  bus.on('mode:wave_started', ({ wave }) => {
+  on('mode:wave_started', ({ wave }) => {
     showAlert(`WAVE ${Math.max(1, Number(wave) || 1)} INBOUND`, {
       icon: 'modeHorde', tone: 'warning',
     });
   });
-  bus.on('mode:flag_captured', ({ team }) => {
+  on('mode:flag_captured', ({ team }) => {
     const allied = team === objectiveTeam;
     showAlert(allied ? 'ALLIED FLAG CAPTURE' : 'ENEMY FLAG CAPTURE', {
       icon: 'modeFlag', tone: allied ? 'success' : 'danger',
     });
   });
-  bus.on('mode:zone_captured', ({ team }) => {
+  on('mode:zone_captured', ({ team }) => {
     const allied = team === objectiveTeam;
     showAlert(allied ? 'SECTOR SECURED' : 'SECTOR LOST', {
       icon: 'modeZones', tone: allied ? 'success' : 'danger',
     });
   });
-  bus.on('mode:goal_scored', ({ team }) => {
+  on('mode:goal_scored', ({ team }) => {
     const allied = team === objectiveTeam;
     showAlert(allied ? 'ALLIED GOAL' : 'ENEMY GOAL', {
       icon: 'modeTurbo', tone: allied ? 'success' : 'danger',
@@ -4039,13 +4624,14 @@ export function initHud(bus) {
   // resolution; CSS scales it, so blips/labels stay proportionate.
   const MM_SIZES = [160, 220, 300];
   let mmSizeIdx = 1;
-  bus.on('ui:minimapZoom', () => {
+  on('ui:minimapZoom', () => {
     mmSizeIdx = (mmSizeIdx + 1) % MM_SIZES.length;
     const px = `${MM_SIZES[mmSizeIdx]}px`;
     mmWrap.style.width = px;
     mmWrap.style.height = px;
   });
-  bus.on('shell:hit', (hit) => {
+  on('shell:hit', (hit) => {
+    if (!isHudHitEvent(hit)) return;
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
       // Zero-damage and pass-through outcomes use the steel confirmation;
@@ -4058,10 +4644,11 @@ export function initHud(bus) {
       pushHitDirection(hit, playerRef);
     }
   });
-  bus.on('module:state', (p) => {
+  on('module:state', (p) => {
     if (playerId == null || p.id !== playerId || p.state === 'ok') return;
-    const label = moduleAlertLabel(p.module);
-    const icon = moduleAlertIcon(p.module);
+    const moduleId = p.module || '';
+    const label = moduleAlertLabel(moduleId);
+    const icon = moduleAlertIcon(moduleId);
     // repaired:true = auto-repair finished (red → yellow). This used to toast
     // '<MODULE> DAMAGED' — a recovery announced as fresh damage (the audio
     // layer already said 'repairs' over it). WoT language: 'Track repaired'.
@@ -4071,7 +4658,7 @@ export function initHud(bus) {
   });
 
   // ---------- aim view assembly ----------
-  const aimView = {
+  const aimView: HudAimView = {
     cx: 0, cy: 0, radPx: 40, penRatio: null, distM: null, blockedDistM: null,
     blockedLabel: false, // gameplay_feel r7: dwell-gated PATH BLOCKED text
     gunX: null, gunY: null, gunDistM: null, gunTargetId: null,
@@ -4081,7 +4668,10 @@ export function initHud(bus) {
     dispRadM: null, // MOBILE-UX r1: last assembled sim dispersion (probe seam)
   };
 
-  function assembleAimView(camera, aim) {
+  function assembleAimView(
+    camera: THREE.PerspectiveCamera | null | undefined,
+    aim: HudAimInput,
+  ): void {
     aimView.dispRadM = aim.dispersionRadM != null ? aim.dispersionRadM : null;
     aimView.penRatio = aim.penRatio != null ? aim.penRatio : null;
     aimView.gunDistM = aim.gunDistM != null ? aim.gunDistM : null;
@@ -4121,7 +4711,7 @@ export function initHud(bus) {
     }
   }
 
-  function renderCanvas(dt, force = false) {
+  function renderCanvas(dt: number, force = false): void {
     if (!force && reticleCanReuse(aimView)) return;
     ctx.clearRect(0, 0, w, h);
     // Clearing for a cinematic/garage invalidates the pixels represented by
@@ -4143,15 +4733,15 @@ export function initHud(bus) {
   // same scene at a narrow FOV — no saturation/contrast push, no green cast.
   // (An earlier saturate/contrast CSS filter on the scene canvas made the
   // verdant sniper frame read acid-green; guard against any stale filter.)
-  let sceneCanvasEl = null;
-  function sceneCanvas() {
+  let sceneCanvasEl: HTMLCanvasElement | null = null;
+  function sceneCanvas(): HTMLCanvasElement | null {
     if (!sceneCanvasEl || !sceneCanvasEl.isConnected) {
       const app = document.getElementById('app');
-      sceneCanvasEl = app ? app.querySelector('canvas') : null;
+      sceneCanvasEl = app ? app.querySelector<HTMLCanvasElement>('canvas') : null;
     }
     return sceneCanvasEl;
   }
-  function applyMode() {
+  function applyMode(): void {
     root.style.display = mode === 'hidden' ? 'none' : 'block';
     // scope shadow fades in over ~0.1 s on ENTERING sniper (movement §9.2)
     if (mode === 'sniper' && scopePrevMode !== 'sniper') scopeFadeMs = performance.now();
@@ -4161,7 +4751,7 @@ export function initHud(bus) {
   }
 
   // ---------- public API ----------
-  const hud = {
+  const hud: HudRuntime = {
     root,
     shotInfo, // SHOT-INFO SECTION: exposed for tests/debug hooks
 
@@ -4202,7 +4792,7 @@ export function initHud(bus) {
     },
 
     /** Deterministic presentation seam used by the screenshot harness. */
-    stageSpectateBar(payload = {}) {
+    stageSpectateBar(payload: HudEventPayload = {}) {
       specPopulate({
         id: payload.id || 'spectator-preview',
         name: payload.name || 'SteppeWolf_71',
@@ -4216,7 +4806,7 @@ export function initHud(bus) {
     /** PERF (perf-r2): pre-bake shot-card schematics for a fielded roster
      * while the battle loading screen holds the frame (shotInfo owns the
      * cache; see warmSchematics there). @param {string[]} specIds */
-    warmShotCards(specIds) { shotInfo.warmSchematics(specIds); },
+    warmShotCards(specIds: readonly string[]) { shotInfo.warmSchematics(specIds); },
 
     /**
      * battle_countdown r1: drive the pre-battle freeze overlay. Called every
@@ -4225,10 +4815,10 @@ export function initHud(bus) {
      * only updates when the displayed second changes.
      * @param {number} secondsLeft remaining hold (0 = released)
      */
-    preBattleCountdown(secondsLeft) {
+    preBattleCountdown(secondsLeft: number) {
       if (secondsLeft > 0) {
         const sec = Math.ceil(secondsLeft);
-        clearTimeout(pbHideTimer);
+        if (pbHideTimer) clearTimeout(pbHideTimer);
         preBattleEl.classList.remove('rollout');
         preBattleEl.classList.add('on');
         if (sec !== pbShownSec) {
@@ -4245,7 +4835,7 @@ export function initHud(bus) {
         pbNum.textContent = 'ROLL OUT!';
         void pbNum.offsetWidth;
         pbNum.classList.add('tick', 'go');
-        clearTimeout(pbHideTimer);
+        if (pbHideTimer) clearTimeout(pbHideTimer);
         pbHideTimer = setTimeout(() => {
           preBattleEl.classList.remove('on');
           // Keep the rollout typography intact for the entire opacity fade.
@@ -4260,7 +4850,7 @@ export function initHud(bus) {
      * Switch overall HUD mode.
      * @param {'battle'|'sniper'|'hidden'} m
      */
-    setMode(m) {
+    setMode(m: HudMode) {
       const wasHidden = mode === 'hidden';
       mode = m;
       applyMode();
@@ -4313,7 +4903,7 @@ export function initHud(bus) {
      * Per-render-frame HUD refresh.
      * @param {FrameInfo} frame - see ARCHITECTURE §3.7.1.
      */
-    update(frame) {
+    update(frame: HudFrame) {
       // r5: only an ADVANCING frame supersedes a forced screenshot display.
       // Shot mode (main.ts, controls_gunnery r5) now re-runs hud.update every
       // frozen tick with an identical timeS — those re-runs must not clear
@@ -4399,7 +4989,12 @@ export function initHud(bus) {
      *   optional live-scene handles for the one-time top-down ortho capture
      *   (tank roots in `exclude` are hidden during the capture).
      */
-    buildMinimap(heightField, features, palette, snap) {
+    buildMinimap(
+      heightField: HudHeightField,
+      features?: HudMinimapFeatures | null,
+      palette?: Partial<HudMinimapPalette> | null,
+      snap?: HudMinimapSnapshot | null,
+    ) {
       mmBuildGeneration++;
       buildMinimapBg(heightField, features, palette, snap);
       drawMinimapBackground();
@@ -4408,18 +5003,18 @@ export function initHud(bus) {
 
     preloadMinimapAsset,
 
-    buildMinimapFromAsset(heightField, src) {
+    buildMinimapFromAsset(heightField: HudHeightField, src: string) {
       const generation = ++mmBuildGeneration;
       return installMinimapAsset(heightField, src, generation);
     },
 
     exportMinimapBackground(type = 'image/webp', quality = 0.92) {
       if (!mmBg) return null;
-      if (typeof mmBg.toDataURL === 'function') return mmBg.toDataURL(type, quality);
+      if (mmBg instanceof HTMLCanvasElement) return mmBg.toDataURL(type, quality);
       const out = document.createElement('canvas');
       out.width = mmBg.naturalWidth || Math.round(MM * mmDpr);
       out.height = mmBg.naturalHeight || Math.round(MM * mmDpr);
-      out.getContext('2d').drawImage(mmBg, 0, 0, out.width, out.height);
+      requireCanvasContext(out).drawImage(mmBg, 0, 0, out.width, out.height);
       return out.toDataURL(type, quality);
     },
 
@@ -4427,7 +5022,7 @@ export function initHud(bus) {
      * Mount the damage panel instance into the HUD layer.
      * @param {{root:HTMLElement}} panel - createDamagePanel() result.
      */
-    setDamagePanel(panel) {
+    setDamagePanel(panel: DamagePanelController) {
       if (panel && panel.root && panel.root.parentNode !== root) {
         root.appendChild(panel.root);
         // r7: the spotted/camo lamp perches on the panel's top edge (WoT
@@ -4446,25 +5041,26 @@ export function initHud(bus) {
      * Stays until the next update(frame).
      * @param {object} f - partial FrameInfo.aim.
      */
-    forceAimDisplay(f) {
+    forceAimDisplay(f: HudAimInput) {
       scopeFadeMs = -1; // deterministic still: scope shadow fully settled
-      forced = Object.assign({}, f);
+      const nextForced: HudAimInput = { ...f };
+      forced = nextForced;
       forcedStill = true; // target plate trusts the recipe's aim state
       // r8 MAJOR: disarm the reload-complete ready pulse and sync its edge
       // detector to the STAGED reload — a previous view's mid-reload preset
       // otherwise trips the edge here and the frozen-clock pulse whites out
       // the penetration marker in every captured frame.
       readyPulseT = -1;
-      const frl = forced.reload;
+      const frl = nextForced.reload;
       wasReloading = !!(frl && frl.totalS > 0 && frl.t > 0.001);
-      assembleAimView(lastCamera, forced);
+      assembleAimView(lastCamera, nextForced);
       // no bloom animation in a forced still — land directly on the target
       // radius (including the post-shot bloom read from the reload state)
       smoothRadPx = reticleTargetR(aimView);
-      if (forced.shells) lastShells = forced.shells;
-      const slot = forced.shellSlot != null ? forced.shellSlot : localSlot;
+      if (nextForced.shells) lastShells = nextForced.shells;
+      const slot = nextForced.shellSlot != null ? nextForced.shellSlot : localSlot;
       renderShells(lastShells, slot);
-      updateShellCooldown(forced.reload, slot);
+      updateShellCooldown(nextForced.reload, slot);
       updateTargetPlate(); // over-target marker for the vehicle under the gun
       renderCanvas(1, true); // after the plate: hairlines gap around its rect
     },
@@ -4486,8 +5082,9 @@ export function initHud(bus) {
         deploymentYawRad: minimapDeploymentYaw,
         flipped: Math.cos(minimapRotation) < 0,
         orientationLocked: minimapOrientationLocked,
-        backgroundKind: !mmBg ? 'none' : (mmBg.tagName === 'IMG' ? 'image' : 'canvas'),
-        backgroundReady: !!mmBg && (mmBg.tagName === 'IMG'
+        backgroundKind: !mmBg ? 'none'
+          : mmBg instanceof HTMLImageElement ? 'image' : 'canvas',
+        backgroundReady: !!mmBg && (mmBg instanceof HTMLImageElement
           ? mmBg.complete && mmBg.naturalWidth > 0
           : mmBg.width > 0 && mmBg.height > 0),
         backingWidth: mmCanvas.width,
@@ -4515,7 +5112,8 @@ export function initHud(bus) {
         gunY: aimView.gunY,
         circleX: lastCircleX,
         circleY: lastCircleY,
-        gunOffsetPx: aimView.gunX == null ? null : Math.hypot(aimView.gunX - aimView.cx, aimView.gunY - aimView.cy),
+        gunOffsetPx: aimView.gunX == null || aimView.gunY == null
+          ? null : Math.hypot(aimView.gunX - aimView.cx, aimView.gunY - aimView.cy),
         atGunLimit: aimView.atGunLimit,
         gunTargetId: aimView.gunTargetId,
         penRatio: aimView.penRatio,

@@ -19,7 +19,7 @@
 // the bus) the panel never auto-opens, never veils, and closes itself — the
 // replay's ANY-KEY skip always wins (player death hands off to the death cam
 // with a free cursor, like WoT).
-// Design language mirrors src/ui/hud.js / garage.ts (palette, chamfers, type).
+// Design language mirrors src/ui/hud.ts / garage.ts (palette, chamfers, type).
 // settings_ui r2 (owner: "make our settings screen look much better too"):
 // premium reskin in the garage r9 kit — blurred pause veil + panel enter
 // transition (reduced-motion aware), amber-underline segmented tabs, amber

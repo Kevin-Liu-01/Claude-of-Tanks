@@ -186,7 +186,7 @@ export const RADIO_DAMAGED_FACTOR = 0.5; // damaged radio: share range halved
 export const SPOT_LINGER_S = 5;        // spotted state persists after last pass
 // Sixth sense: how long after the enemy's check passes the player LEARNS of
 // it, and how long that knowledge stays displayed (mirrors the HUD lamp's
-// 3 s fuse + 8 s bulb — src/ui/hud.js SIXTH_DELAY_S/SIXTH_SHOW_S). Only the
+// 3 s fuse + 8 s bulb — src/ui/hud.ts SIXTH_DELAY_S/SIXTH_SHOW_S). Only the
 // getConcealment() display state uses these; isSpotted stays instant.
 export const SIXTH_SENSE_DELAY_S = 3;
 export const SIXTH_SENSE_SHOW_S = 8;
