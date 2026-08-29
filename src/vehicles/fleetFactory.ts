@@ -113,7 +113,7 @@ function registerProfiles(profiles: VehicleProfileRecord): void {
 }
 
 const GROUP_LOADERS = Object.freeze({
-  modern2: () => Promise.all([import('./modern2.js'), import('./profiles/china.js')])
+  modern2: () => Promise.all([import('./modern2.js'), import('./profiles/china.ts')])
     .then(([canonical, profiles]) => {
       registerCanonicalBuilders('modern2', canonical.MODERN2_BUILDERS);
       registerProfiles(profiles.CHINA_PROFILES);

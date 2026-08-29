@@ -17,7 +17,7 @@ import { PATTON_PROFILES } from './profiles/patton.js';
 import { MISC_PROFILES } from './profiles/misc.js';
 import { ITALY_PROFILES } from './profiles/italy.ts';
 import { UKRAINE_PROFILES } from './profiles/ukraine.js';
-import { CHINA_PROFILES } from './profiles/china.js';
+import { CHINA_PROFILES } from './profiles/china.ts';
 import { SWEDEN_PROFILES } from './profiles/sweden.ts';
 import { POLAND_PROFILES } from './profiles/poland.js';
 import { KOREA_PROFILES } from './profiles/korea.ts';

@@ -172,6 +172,10 @@ The Italian authored family pack now uses strict
 `src/vehicles/profiles/italy.ts` contracts for C1/C2 Ariete carrier-seated ERA,
 equipment and geometry receipts and the Carro 45t closed procedural build. Its
 exact-family dynamic import remains unchanged.
+The Chinese authored family pack now uses strict
+`src/vehicles/profiles/china.ts` contracts for ZTZ-85-III, Type 99A,
+ZTZ-99A2, and Type 59 geometry, equipment, ERA clusters, running-gear
+receipts, and nonuniform mantlet transforms while remaining demand loaded.
 
 ## Consequences
 

@@ -1,5 +1,5 @@
 // Chinese family gameplay/spec registration. Geometry remains demand-owned by
-// profiles/china.js; these rows inherit a certified combat envelope and apply
+// profiles/china.ts; these rows inherit a certified combat envelope and apply
 // explicit typed deltas.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';

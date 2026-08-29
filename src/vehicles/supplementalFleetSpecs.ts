@@ -127,7 +127,7 @@ const SPECS: FleetTankSpec[] = [
   make('t62mv1', 'type59', 'Type 59', 'China',
     // §5.304 REDESIGN (owner order verbatim 2026-08-17: "update our t62 obr
     // 1975 10% wider and then redeisgn our type 59 to be based off of
-    // that"): the visual is profiles/china.js buildType59 — the WZ-120
+    // that"): the visual is profiles/china.ts buildType59 — the WZ-120
     // (T-54A-family) dome + 100 mm kit on the WIDENED obr-1975 chassis.
     // Stats stay the Type 59's; dims RE-DERIVE from the widened base
     // (hull/width = the t62mv1 rows, height = the authored cupola crown,

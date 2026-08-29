@@ -583,7 +583,7 @@ export function ruFlaps(P, o) {
 // §5.304 SHARED WIDENED CHASSIS (owner order: "update our t62 obr 1975 10%
 // wider and then redeisgn our type 59 to be based off of that"): the widened
 // obr-1975 hull/gear/fender/tail construction is the family base.
-// buildT62MV1 dresses it with the T-62 casting + U-5TS; profiles/china.js
+// buildT62MV1 dresses it with the T-62 casting + U-5TS; profiles/china.ts
 // buildType59 dresses the SAME chassis with the WZ-120 (T-54A-family) dome
 // + 100 mm kit. o.gear spreads over the base running-gear config (the Type
 // 59 wheel-gap pattern); defaults are byte-identical to the widened T-62.
@@ -1319,7 +1319,7 @@ function buildT44(P) {
 // then redeisgn our type 59 to be based off of that") supersedes the §5.45
 // type69-print build that lived here (git history keeps it; decode notes
 // live on in docs/references/tanks/type59.md). The playable now renders
-// profiles/china.js buildType59 — the WZ-120 dome + 100 mm kit on the
+// profiles/china.ts buildType59 — the WZ-120 dome + 100 mm kit on the
 // widened buildT62Obr1975Chassis base above.
 
 // ---- T-90A "Vladimir" recovered print (profiles/t90a_vladimir.json) -------
@@ -2573,7 +2573,7 @@ export const RUSSIA_PROFILES = {
   t64bv1: { build: buildT64BV1 },
   t54: { build: buildT54 },
   t44: { build: buildT44 },
-  // type59 §5.304: builder moved to profiles/china.js (buildType59 on the
+  // type59 §5.304: builder moved to profiles/china.ts (buildType59 on the
   // widened obr-1975 chassis) — profiledProcedurals.ts keys it from
   // CHINA_PROFILES at the same carousel position.
 };

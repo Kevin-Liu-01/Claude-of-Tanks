@@ -264,3 +264,4 @@ runtime documents remain authoritative for behavior.
 - [0252 — Optional Garage workshop dressing has a strict TypeScript owner](0252-type-garage-dressing.md)
 - [0253 — Fleet combat anatomy has a strict TypeScript owner](0253-type-combat-anatomy.md)
 - [0254 — Italian profile geometry has a strict TypeScript owner](0254-type-italian-profile-geometry.md)
+- [0255 — Chinese profile geometry has a strict TypeScript owner](0255-type-chinese-profile-geometry.md)

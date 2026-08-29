@@ -16,14 +16,130 @@ import {
   buildT62Obr1975Chassis, meshDome, meshDomeCurved, ringSkin, domeRailRu, ruSaddle,
   ruBoot,
 } from './russia.js';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
-function mount(P, owner, fitting, x, y, z, rotation = null) {
+type Vec3Tuple = [number, number, number];
+type Vec2Tuple = [number, number];
+type VehicleAssemblyOwner = 'hull' | 'turret';
+
+interface ChineseRoofOptions {
+  y?: number;
+  panoX?: number;
+  panoZ?: number;
+  mgScale?: number;
+  elev?: number;
+  seed?: number;
+  mgX?: number;
+  mgZ?: number;
+  mgYaw?: number;
+  whipL?: number;
+  whipR?: number;
+  whipX?: number;
+  whipZ?: number;
+}
+
+interface TrackContactGeometry {
+  halfLenM: number;
+  zCenterM: number;
+  halfWidM: number;
+  bottomYM: number;
+  endRise?: {
+    dzM: number;
+    frontM: number;
+    rearM: number;
+  };
+}
+
+interface TrackHitboxLane {
+  x0: number;
+  x1: number;
+  poly: Vec2Tuple[];
+}
+
+interface ChinaBuilderPort {
+  readonly hullG: import('three').Group;
+  readonly turretG: import('three').Group;
+  readonly gunG: import('three').Group;
+  readonly mats: unknown;
+  readonly rng: unknown;
+  readonly q?: boolean;
+  readonly spec: { visual: { number?: string } };
+  readonly gear?: {
+    contactGeom?: TrackContactGeometry;
+    trackHitbox?: TrackHitboxLane[];
+  };
+  topY?: number;
+  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addEquipment(
+    slot: string,
+    geometry: unknown,
+    ...transform: number[]
+  ): unknown;
+  addExternalArmor(
+    owner: VehicleAssemblyOwner,
+    geometry: unknown,
+    ...transform: number[]
+  ): unknown;
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  addModuleVisual(
+    module: string,
+    slot: string,
+    geometry: unknown,
+    ...transform: number[]
+  ): unknown;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    label: string | null,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): unknown;
+  visualEraCluster(
+    key: string,
+    owner: VehicleAssemblyOwner,
+    build: () => void,
+  ): unknown;
+}
+
+const nonUniformXform = KIT.xform as (
+  geometry: unknown,
+  x: number,
+  y: number,
+  z: number,
+  rotationX: number,
+  rotationY: number,
+  rotationZ: number,
+  scale: number | readonly number[],
+) => unknown;
+
+function mount(
+  P: ChinaBuilderPort,
+  owner: VehicleAssemblyOwner,
+  fitting: import('three').Object3D,
+  x: number,
+  y: number,
+  z: number,
+  rotation: Vec3Tuple | null = null,
+): void {
   fitting.position.set(x, y, z);
   if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
   (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
 }
 
-function armorCassette(P, owner, x, y, z, w, h, d, rotation = null, seam = true) {
+function armorCassette(
+  P: ChinaBuilderPort,
+  owner: VehicleAssemblyOwner,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  rotation: Vec3Tuple | null = null,
+  seam = true,
+): void {
   const r = rotation || [0, 0, 0];
   const bucket = owner === 'hull' ? 'hull' : 'turret';
   const detail = owner === 'hull' ? 'hullDark' : 'turretDark';
@@ -36,7 +152,7 @@ function armorCassette(P, owner, x, y, z, w, h, d, rotation = null, seam = true)
   });
 }
 
-function addChineseRoofSuite(P, options = {}) {
+function addChineseRoofSuite(P: ChinaBuilderPort, options: ChineseRoofOptions = {}): void {
   const { box, cylY } = KIT;
   const y = options.y ?? 1.08;
   const panoX = options.panoX ?? -0.52;
@@ -67,7 +183,14 @@ function addChineseRoofSuite(P, options = {}) {
   }
 }
 
-function addSmokeBanks(P, x, y, z, count, seed) {
+function addSmokeBanks(
+  P: ChinaBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  count: number,
+  seed: number,
+): void {
   for (const side of [-1, 1]) {
     mount(P, 'turret', FITTINGS.smokeBank({
       mats: P.mats, count, r: 0.043, len: 0.30, splay: side * 1.02,
@@ -77,7 +200,7 @@ function addSmokeBanks(P, x, y, z, count, seed) {
   }
 }
 
-function addRearFuelDrums(P, y, z, seed) {
+function addRearFuelDrums(P: ChinaBuilderPort, y: number, z: number, seed: number): void {
   const { cylX, box } = KIT;
   for (const side of [-1, 1]) {
     P.add('hull', cylX(0.17, 0.76, 16), side * 0.78, y, z);
@@ -90,7 +213,7 @@ function addRearFuelDrums(P, y, z, seed) {
   }), 0, y + 0.18, z + 0.12);
 }
 
-function addZTZ99A2RearServiceComplex(P) {
+function addZTZ99A2RearServiceComplex(P: ChinaBuilderPort): void {
   const { box, cylX, cylZ, torus } = KIT;
 
   // The welded rear wall is armor; everything mounted to it is equipment.
@@ -168,7 +291,7 @@ function addZTZ99A2RearServiceComplex(P) {
 // overhang — published wins, type59 muzzle-law).  The print runs ~9% tall
 // against its own width datum (hull LOW-CONF instrument): published heights
 // rule every horizontal line.
-function buildZTZ85III(P) {
+function buildZTZ85III(P: ChinaBuilderPort): void {
   const { box, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye, stowage } = KIT;
   const seg = P.q ? 18 : 12;
 
@@ -311,7 +434,7 @@ function buildZTZ85III(P) {
   // length becomes a low integral bustle over the engine deck.
   const turretShellFrontZ = 1.55;
   const turretShellRearZ = -3.00;
-  const plan85 = [
+  const plan85: Vec2Tuple[] = [
     [0.34, turretShellFrontZ], [0.74, 1.22], [1.12, 0.25], [1.18, -0.55],
     [1.16, -1.55], [1.05, -2.55], [0.52, turretShellRearZ],
     [-0.52, turretShellRearZ], [-1.05, -2.55], [-1.16, -1.55],
@@ -515,7 +638,15 @@ function buildZTZ85III(P) {
 }
 
 // low armored sight box with layered plan chamfers (no bare-cuboid read)
-function chamferBox85(P, w, h, d, x, y, z) {
+function chamferBox85(
+  P: ChinaBuilderPort,
+  w: number,
+  h: number,
+  d: number,
+  x: number,
+  y: number,
+  z: number,
+): void {
   const { box } = KIT;
   P.add('turret', box(w, h, d - 0.10), x, y, z);
   P.add('turret', box(w - 0.10, h, d), x, y, z);
@@ -526,14 +657,25 @@ function chamferBox85(P, w, h, d, x, y, z) {
 // as a pale unpainted ribbon in plan/top-tilt.  Dress the rim with a dark
 // weld-trim band: one thin plate per plan edge hugging the lip (2 mm proud
 // of the ring — inside AA, mask-neutral) and lapping 7 cm onto the roof.
-function crownRimTrim(P, plan, insets, crowns) {
+function crownRimTrim(
+  P: ChinaBuilderPort,
+  plan: readonly Vec2Tuple[],
+  insets: number | readonly number[],
+  crowns: number | readonly number[],
+): void {
   const n = plan.length;
   const cx = plan.reduce((s, p) => s + p[0], 0) / n;
   const cz = plan.reduce((s, p) => s + p[1], 0) / n;
-  const at = (v, i) => (Array.isArray(v) ? v[i] : v);
+  const at = (value: number | readonly number[], index: number): number => (
+    typeof value === 'number' ? value : value[index]
+  );
   const ring = plan.map(([x, z], i) => [
     cx + (x - cx) * at(insets, i), at(crowns, i), cz + (z - cz) * at(insets, i)]);
-  const pull = (p, k) => [p[0] + (cx - p[0]) * k, p[1], p[2] + (cz - p[2]) * k];
+  const pull = (point: readonly number[], scale: number): Vec3Tuple => [
+    point[0] + (cx - point[0]) * scale,
+    point[1],
+    point[2] + (cz - point[2]) * scale,
+  ];
   for (let i = 0; i < n; i++) {
     const a = ring[i]; const b = ring[(i + 1) % n];
     const ao = pull(a, -0.004); const bo = pull(b, -0.004);
@@ -546,7 +688,7 @@ function crownRimTrim(P, plan, insets, crowns) {
   }
 }
 
-function addZTZ99AOraclePackage(P) {
+function addZTZ99AOraclePackage(P: ChinaBuilderPort): void {
   const { box, cylY } = KIT;
   // Reference-specific rear drums and open basket cadence.  These live on
   // the hull powerpack, so they stay fixed when the turret yaws.
@@ -603,7 +745,7 @@ function addZTZ99AOraclePackage(P) {
 // rear fuel drums hanging 1.5..2.1 behind the transom.  This tank is
 // DISTINCT from the resident type99a: longer/deeper cheek wedge, revised
 // roof optics, drum rack — and its own frame throughout.
-function buildZTZ99A2(P) {
+function buildZTZ99A2(P: ChinaBuilderPort): void {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye } = KIT;
   const seg = P.q ? 20 : 14;
 
@@ -751,7 +893,7 @@ function buildZTZ99A2(P) {
   P.turretG.position.set(0, 1.56, -0.15);
   // §5.266 critic fix 3: the plan nose broadened toward the print's ~1.0 m
   // arrow chord (was a ~0.6 m pinch).
-  const plan99 = [
+  const plan99: Vec2Tuple[] = [
     [0.44, 1.58], [1.02, 0.95], [1.50, 0.10], [1.62, -0.60], [1.38, -1.55],
     [0.62, -1.72], [-0.62, -1.72], [-1.38, -1.55], [-1.62, -0.60],
     [-1.50, 0.10], [-1.02, 0.95], [-0.44, 1.58],
@@ -949,7 +1091,7 @@ function buildZTZ99A2(P) {
 // redesign diverges from it BY OWNER DECREE (+10% width, obr-1975 hull) —
 // gate deltas are documented in docs/references/tanks/type59.md §5.304,
 // never chased back toward the print.
-function buildType59(P) {
+function buildType59(P: ChinaBuilderPort): void {
   const {
     box, cylX, cylY, cylZ, stowage, tarpRoll, shovelTool, spareTrackStrip,
   } = KIT;
@@ -1203,8 +1345,8 @@ function buildType59(P) {
   // world z ~1.97, past the whole old collar). rootL 0.48→0.30 tucks the
   // saddle cone fully under the new boot (no cone sliver under the canvas).
   ruSaddle(P, { rollR: 0.185, rollW: 0.528, tubeR: 0.13, rootR: 0.185, rootL: 0.30 });
-  P.addGunExtra(KIT.xform(cylZ(0.5, 0.28, 16, 0.42), 0, 0, 0, 0, 0, 0, [0.484, 0.33, 1]), 0, 0, 0.11);
-  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.042, 14), 0, 0, 0, 0, 0, 0, [0.319, 0.25, 1]), 0, 0, 0.28);
+  P.addGunExtra(nonUniformXform(cylZ(0.5, 0.28, 16, 0.42), 0, 0, 0, 0, 0, 0, [0.484, 0.33, 1]), 0, 0, 0.11);
+  P.addGunExtraDark(nonUniformXform(cylZ(0.5, 0.042, 14), 0, 0, 0, 0, 0, 0, [0.319, 0.25, 1]), 0, 0, 0.28);
   // Compact cast-collar mantlet with the canvas-covered wedge look (§5.327,
   // owner order): three tapered boot sections root→tube, root face buried
   // into the casting at every corner (dome front at the ±0.31 root edge is
@@ -1265,11 +1407,13 @@ function buildType59(P) {
   // metadata below is still converted to the reduced vehicle frame because
   // it is consumed outside the scaled render hierarchy.
   if (P.gear?.contactGeom) {
-    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM']) {
+    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM'] as const) {
       P.gear.contactGeom[key] *= vehicleScale;
     }
     if (P.gear.contactGeom.endRise) {
-      for (const key of ['dzM', 'frontM', 'rearM']) P.gear.contactGeom.endRise[key] *= vehicleScale;
+      for (const key of ['dzM', 'frontM', 'rearM'] as const) {
+        P.gear.contactGeom.endRise[key] *= vehicleScale;
+      }
     }
   }
   for (const lane of P.gear?.trackHitbox || []) {
@@ -1313,4 +1457,4 @@ export const CHINA_PROFILES = {
   ztz99a2: { build: buildZTZ99A2 },
   // §5.304 redesign: Type 59 on the widened obr-1975 chassis (owner order).
   type59: { build: buildType59 },
-};
+} satisfies VehicleProfileRecord;
