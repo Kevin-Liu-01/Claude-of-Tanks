@@ -1466,7 +1466,6 @@ const battlePresentation = createBattlePresentationRuntime(legacyPort({
 // terrain, FX and first-frame warm order plus cancellation/fallback policy.
 const soloBattleDeployment = createSoloBattleDeploymentRuntime(legacyPort({
   game,
-  renderer,
   scene,
   camera,
   battleLoad,
@@ -1628,6 +1627,8 @@ const soloBattleLoading = createSoloBattleLoadingRuntime(legacyPort({
     return battleVisuals;
   },
   ensureBattleHud,
+  preloadMinimap: (mapId: string) => ensureBattleHud()
+    .then(() => hud?.preloadMinimapAsset(minimapAssetUrl(mapId))),
   ensureTouchControls,
   preloadSettings: () => settings.preload(),
   preloadArmorAim: () => armorAimOverlay.preload(),

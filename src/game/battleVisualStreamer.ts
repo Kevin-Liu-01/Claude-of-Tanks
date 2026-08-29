@@ -33,7 +33,10 @@ interface VisualLoadTiming {
   prebakeMs?: number;
   buildMs?: number;
   uploadMs?: number;
+  preUploadYieldMs?: number;
+  textureUploadMs?: number;
   compileMs?: number;
+  postCompileYieldMs?: number;
   totalMs?: number;
 }
 
@@ -48,6 +51,14 @@ interface ArmorAimWarmOwner {
 
 interface ForwardCompileOwner {
   compile(root: Object3D): void;
+}
+
+export interface BattleVisualStageReceipt {
+  preUploadYieldMs: number;
+  textureUploadMs: number;
+  compileMs: number;
+  postCompileYieldMs: number;
+  totalMs: number;
 }
 
 export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisualEntity[] }> {
@@ -86,7 +97,7 @@ export interface BattleVisualStreamer {
     entity: BattleVisualEntity,
     yieldForBudget: VisualBudgetYield,
     initiallyHidden?: boolean,
-  ): Promise<void>;
+  ): Promise<BattleVisualStageReceipt>;
 }
 
 /**
@@ -138,14 +149,24 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     entity: BattleVisualEntity,
     yieldForBudget: VisualBudgetYield,
     initiallyHidden = false,
-  ): Promise<void> => {
+  ): Promise<BattleVisualStageReceipt> => {
     const visual = entity.visual;
     const root = visual?.root;
-    if (!root || root.userData.loadStaged) return;
+    const emptyReceipt: BattleVisualStageReceipt = {
+      preUploadYieldMs: 0,
+      textureUploadMs: 0,
+      compileMs: 0,
+      postCompileYieldMs: 0,
+      totalMs: 0,
+    };
+    if (!root || root.userData.loadStaged) return emptyReceipt;
+    const stageAt = now();
     const parent = root.parent;
     if (parent) parent.remove(root);
+    let mark = now();
     await yieldForBudget(true);
-    await stageRootTextureUploads(root, yieldForBudget);
+    const preUploadYieldMs = Math.round(now() - mark);
+    const textureUpload = await stageRootTextureUploads(root, yieldForBudget);
     root.userData.loadStaged = true;
     (parent || scene).add(root);
     if (entity.state && visual.syncFromState) visual.syncFromState(entity.state);
@@ -156,13 +177,24 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     const restoreArmorWarmVisibility = armorAimOverlay.warm();
     try { forwardProgramWarm.compile(root); } catch { /* first render fallback */ }
     finally { restoreArmorWarmVisibility(); }
-    root.userData.loadCompileMs = Math.round(now() - compileAt);
+    const compileMs = Math.round(now() - compileAt);
+    root.userData.loadCompileMs = compileMs;
     if (initiallyHidden) {
       visual.setVisible?.(false);
       root.removeFromParent();
       root.userData.battleVisibilityDetached = true;
     }
+    mark = now();
     await yieldForBudget(true);
+    const receipt: BattleVisualStageReceipt = {
+      preUploadYieldMs,
+      textureUploadMs: textureUpload.totalMs,
+      compileMs,
+      postCompileYieldMs: Math.round(now() - mark),
+      totalMs: Math.round(now() - stageAt),
+    };
+    root.userData.loadStageReceipt = receipt;
+    return receipt;
   };
 
   const stream = async (
@@ -199,9 +231,16 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
       ensureStagedVisuals(game, 1, predicate);
       timing.buildMs = Math.round(now() - mark);
       mark = now();
-      await stageBattleVisualReveal(next.ent, yieldForBudget, initiallyHidden);
+      const stageReceipt = await stageBattleVisualReveal(
+        next.ent,
+        yieldForBudget,
+        initiallyHidden,
+      );
       timing.uploadMs = Math.round(now() - mark);
-      timing.compileMs = Number(next.ent.visual?.root?.userData.loadCompileMs) || 0;
+      timing.preUploadYieldMs = stageReceipt.preUploadYieldMs;
+      timing.textureUploadMs = stageReceipt.textureUploadMs;
+      timing.compileMs = stageReceipt.compileMs;
+      timing.postCompileYieldMs = stageReceipt.postCompileYieldMs;
       timing.totalMs = Math.round(now() - timing.startedAt);
       built += 1;
       onProgress?.(built / Math.max(1, total));

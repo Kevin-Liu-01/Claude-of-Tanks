@@ -398,7 +398,8 @@ function heuristicAutoCap(): AutoTier | null {
 /** The persisted governor demotion ('medium'|'low'), if any. ?gfxreset clears. */
 function storedAutoTier(): AutoTier | null {
   try {
-    if (new URLSearchParams(window.location.search).has('gfxreset')) {
+    if (!_autoPolicyHandled
+        && new URLSearchParams(window.location.search).has('gfxreset')) {
       window.localStorage.removeItem(LS_AUTO_TIER);
       window.localStorage.setItem(LS_AUTO_POLICY, AUTO_POLICY_VERSION);
       _autoPolicyHandled = true;

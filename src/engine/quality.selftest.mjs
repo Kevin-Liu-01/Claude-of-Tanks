@@ -49,4 +49,15 @@ assert.equal(unsubscribe(), true);
 desktop.setPresetName('invalid');
 assert.equal(desktop.resolvePresetName(), 'medium', 'invalid choices do not mutate quality');
 
+const resetBrowser = installBrowser('?tier=desktop&gfxreset=1');
+const resetDesktop = await import('./quality.ts?quality-reset-contract');
+assert.equal(resetDesktop.resolvePresetName(), 'high');
+assert.equal(resetDesktop.reportSustainedOverload(), true);
+assert.equal(resetDesktop.resolvePresetName(), 'medium',
+  'gfxreset is consumed once instead of erasing the live governor decision');
+assert.equal(resetBrowser.storage.get('cot.gfxAutoTier'), 'medium');
+assert.equal(resetDesktop.reportSustainedOverload(), true);
+assert.equal(resetDesktop.resolvePresetName(), 'low',
+  'a second sustained-overload decision can converge to the floor');
+
 console.log('quality.selftest: device, texture, preset, and subscription contracts passed');

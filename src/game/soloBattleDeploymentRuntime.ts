@@ -8,11 +8,6 @@ import {
   createDeploymentForwardWarmBatches,
   createIsolatedForwardWarmBatches,
 } from '../engine/deploymentWarm.ts';
-import {
-  snapshotRendererPrograms,
-  warmNewRendererProgramUniforms,
-  type RendererWithPrograms,
-} from '../engine/programWarm.ts';
 import type { DeploymentShadowWarmOwner } from '../engine/deploymentShadowWarm.ts';
 import type { ForwardProgramWarmOwner } from '../engine/programWarm.ts';
 import type { BattleEntryLifecycle } from './battleEntryLifecycle.ts';
@@ -88,14 +83,14 @@ interface DeploymentWarmTrace {
   done: boolean;
   phase: 'transition';
   stages: Record<string, number>;
-  enemyProgramUniformWarm?: unknown;
+  enemyVisualsDeferred?: boolean;
   deploymentCompileMs?: number;
   deploymentFxForwardWarm?: {
     batches: number;
     maxMs: number;
     totalMs: number;
   };
-  deploymentProgramUniformWarm?: unknown;
+  deploymentUniformsDeferred?: boolean;
   deploymentShadowWarm?: unknown;
   deploymentForwardWarm?: {
     batches: unknown[];
@@ -120,7 +115,6 @@ type DeploymentWarmHost = typeof globalThis & {
 
 export interface SoloBattleDeploymentRuntimeOptions {
   game: DeploymentGame;
-  renderer: RendererWithPrograms;
   scene: Scene;
   camera: Camera;
   battleLoad: BattleLoadPort;
@@ -165,7 +159,6 @@ export interface SoloBattleDeploymentRuntime {
  */
 export function createSoloBattleDeploymentRuntime({
   game,
-  renderer,
   scene,
   camera,
   battleLoad,
@@ -245,23 +238,10 @@ export function createSoloBattleDeploymentRuntime({
         if (!stillCurrent(generation)) return { generation, revealPrimed };
         mark('allyVisuals');
 
-        battleLoad.progress(0.94, 'Preparing opposing vehicles');
-        const enemyProgramBaseline = snapshotRendererPrograms(renderer);
-        await battleVisuals.stream(
-          (entity) => (entity as DeploymentEntity).team === 'enemy',
-          coveredYield,
-          (fraction) => battleLoad.progress(
-            0.94 + fraction * 0.02,
-            'Preparing opposing vehicles',
-          ),
-          true,
-        );
-        trace.enemyProgramUniformWarm = await warmNewRendererProgramUniforms(
-          renderer,
-          enemyProgramBaseline,
-          coveredYield,
-          now,
-        );
+        // Hidden opponents cannot participate in the first revealed frame.
+        // The deferred warm owner streams the same exact builders during the
+        // visible deployment countdown, before control is released.
+        trace.enemyVisualsDeferred = true;
         if (!stillCurrent(generation)) return { generation, revealPrimed };
         mark('enemyVisuals');
 
@@ -280,7 +260,6 @@ export function createSoloBattleDeploymentRuntime({
         prepareRevealCamera();
 
         const deploymentCompileStartedAt = now();
-        const deploymentProgramBaseline = snapshotRendererPrograms(renderer);
         const restoreArmorWarmVisibility = armorAimOverlay.warm();
         const fx = getFx();
         const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({
@@ -329,12 +308,10 @@ export function createSoloBattleDeploymentRuntime({
 
         await yieldFrame();
         await yieldFrame();
-        trace.deploymentProgramUniformWarm = await warmNewRendererProgramUniforms(
-          renderer,
-          deploymentProgramBaseline,
-          coveredYield,
-          now,
-        );
+        // Those newly submitted programs belong to hidden combat effects.
+        // Reflecting every private ANGLE uniform table here can block for more
+        // than a second even though none is rendered by the reveal frame.
+        trace.deploymentUniformsDeferred = true;
         battleLoad.progress(0.969, 'Priming deployment shadows');
         trace.deploymentShadowWarm = await getDeploymentShadowWarm().prime(coveredYield);
         mark('shadowMaps');

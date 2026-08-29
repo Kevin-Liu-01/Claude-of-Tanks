@@ -129,3 +129,27 @@ npm run fx:textures:bake
 
 The FX bake is reproducible: its self-test verifies the exact dimensions and
 SHA-256 digest of all six generated atlases.
+
+### Reveal-critical battle staging follow-up
+
+The 2026-08-29 cold-entry trace separated scheduler wait from texture upload
+and shader compilation. It showed that a reported 1.14-second player-vehicle
+"upload" was actually the baked minimap decode running at the next scheduler
+yield; the tank's exact upload was zero milliseconds and its compile was 19
+milliseconds. The selected minimap now decodes in the world acquisition barrier
+instead of after roster setup.
+
+Detached opponents and hidden combat-effect uniform reflection also moved from
+the opaque pre-reveal transaction into the existing two-second deployment
+countdown. On an interactive Apple Metal run, covered deployment warming took
+718 milliseconds and deferred work completed 1.024 seconds before control
+release. A clean production-build sweep passed Verdant, Urban,
+and Autumn at 3.632–4.091 seconds to reveal, 5.648–6.102 seconds to control,
+and 257–420 milliseconds maximum frame gap. No shader, shadow, texture,
+vehicle, effect, or quality setting changed.
+
+The same cold-profile pass fixed `gfxreset` lifecycle ownership. The query
+flag now clears historical auto-tier state once at navigation; subsequent
+sustained-overload decisions persist for the rest of the page. Slow-device QA
+therefore exercises the real High → Medium → Low convergence instead of
+repeating High → Medium while continuing to render High.

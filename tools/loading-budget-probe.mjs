@@ -329,7 +329,13 @@ async function openPage(search = '', { transitions = false } = {}) {
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
   page.on('response', (response) => {
-    if (response.status() >= 400 && !response.url().includes('/_vercel/insights/')) {
+    const responseUrl = response.url();
+    const expectedStaticPreviewMiss = response.status() === 404
+      && responseUrl.startsWith(baseUrl)
+      && new URL(responseUrl).pathname === '/api/github-stars';
+    if (response.status() >= 400
+        && !responseUrl.includes('/_vercel/insights/')
+        && !expectedStaticPreviewMiss) {
       errors.push(`HTTP ${response.status()} ${response.url()}`);
     }
   });

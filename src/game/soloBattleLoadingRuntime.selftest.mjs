@@ -23,6 +23,13 @@ const battleVisuals = {
   },
   async stageBattleVisualReveal(entity) {
     events.push(`reveal:${entity.specId}`);
+    return {
+      preUploadYieldMs: 1,
+      textureUploadMs: 2,
+      compileMs: 3,
+      postCompileYieldMs: 4,
+      totalMs: 10,
+    };
   },
   async stream(predicate) {
     assert.equal(predicate(game.tanks[0]), true);
@@ -101,6 +108,7 @@ const runtime = createSoloBattleLoadingRuntime({
   ensureBattleVisuals: async () => events.push('visuals:ready'),
   getBattleVisuals: () => battleVisuals,
   ensureBattleHud: async () => events.push('hud:ready'),
+  preloadMinimap: async (mapId) => events.push(`minimap:preload:${mapId}`),
   ensureTouchControls: async () => events.push('touch:ready'),
   preloadSettings: async () => events.push('settings:ready'),
   preloadArmorAim: async () => events.push('armor:ready'),
@@ -158,7 +166,9 @@ const runtime = createSoloBattleLoadingRuntime({
 
 try {
   await runtime.begin('m1a2', null, { randomRoster: false });
-  assert.equal(acquiredTasks, 11, 'all independent cold-entry tasks share one barrier');
+  assert.equal(acquiredTasks, 12, 'all independent cold-entry tasks share one barrier');
+  assert.ok(events.includes('minimap:preload:verdant'),
+    'the exact tactical-map asset decodes alongside world construction');
   assert.equal(shown.mapName, 'Verdant Fields');
   assert.equal(shown.mode, 'Random Battle · Standard');
   assert.equal(delayMs, 840, 'fast entries preserve the minimum loader dwell');

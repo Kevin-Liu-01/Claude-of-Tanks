@@ -28,7 +28,6 @@ function createHarness({ failAllies = false } = {}) {
 
   const runtime = createSoloBattleDeploymentRuntime({
     game,
-    renderer: { info: { programs: [] } },
     scene,
     camera: new THREE.PerspectiveCamera(),
     battleLoad: {
@@ -127,8 +126,7 @@ assert.equal(happy.pending, true, 'deferred warm owns the pending latch after en
 assert.equal(happy.destructionWarmed, true);
 const order = happy.calls.map(([name]) => name);
 for (const [before, after] of [
-  ['allies', 'enemies'],
-  ['enemies', 'terrain'],
+  ['allies', 'terrain'],
   ['terrain', 'camera'],
   ['camera', 'shadowWarm'],
   ['shadowWarm', 'postWarm'],
@@ -138,8 +136,12 @@ for (const [before, after] of [
   assert.ok(order.indexOf(before) >= 0 && order.indexOf(before) < order.indexOf(after),
     `${before} precedes ${after}`);
 }
+assert.equal(order.includes('enemies'), false,
+  'hidden opponents are deferred until the visible deployment countdown');
 assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.done, true);
 assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.doneBeforeRollout, true);
+assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.enemyVisualsDeferred, true);
+assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.deploymentUniformsDeferred, true);
 assert.equal(globalThis.__COMBAT_OPENING_WARM.covered, true);
 
 const cancelled = createHarness();

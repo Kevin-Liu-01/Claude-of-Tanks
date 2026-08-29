@@ -99,6 +99,10 @@ interface VisualLoadTiming {
   buildMs: number;
   prebakeMs: number;
   uploadMs?: number;
+  preUploadYieldMs?: number;
+  textureUploadMs?: number;
+  compileMs?: number;
+  postCompileYieldMs?: number;
   totalMs?: number;
 }
 
@@ -130,6 +134,7 @@ export interface SoloBattleLoadingRuntimeOptions {
   ensureBattleVisuals(): Promise<unknown>;
   getBattleVisuals(): BattleVisualStreamer;
   ensureBattleHud(): Promise<unknown>;
+  preloadMinimap(mapId: string): Promise<unknown>;
   ensureTouchControls(): Promise<unknown>;
   preloadSettings(): Promise<unknown>;
   preloadArmorAim(): Promise<unknown>;
@@ -211,6 +216,7 @@ export function createSoloBattleLoadingRuntime({
   ensureBattleVisuals,
   getBattleVisuals,
   ensureBattleHud,
+  preloadMinimap,
   ensureTouchControls,
   preloadSettings,
   preloadArmorAim,
@@ -248,7 +254,7 @@ export function createSoloBattleLoadingRuntime({
     audio?.ambientOn, audio?.warmBattleEvents, acquisition?.acquireSolo,
     deployment?.warm, lifecycle?.primeReveal, getPendingMapId, getMapConfig,
     getMapThumb, hasCachedWorld, getWorld, ensureWorld, ensureBattleVisuals,
-    getBattleVisuals, ensureBattleHud, ensureTouchControls, preloadSettings,
+    getBattleVisuals, ensureBattleHud, preloadMinimap, ensureTouchControls, preloadSettings,
     preloadArmorAim, planRoster, planCamoOverrides, ensureTankBuilders,
     preloadSoloAuthority, preloadBattleClient, preloadBattleWarm, ensureKillcam,
     preloadBattleStart, ensureFx, startBattle, prepareBattleWorldServices, getPedestalVisual,
@@ -336,6 +342,7 @@ export function createSoloBattleLoadingRuntime({
 
       await acquisition.acquireSolo([
         () => battleInterface,
+        () => preloadMinimap(resolved),
         () => ensureWorld(
           resolved,
           (fraction, label) => battleLoad.progress(0.02 + fraction * 0.53, label),
@@ -389,8 +396,15 @@ export function createSoloBattleLoadingRuntime({
       (host.__VISUAL_LOAD_TIMINGS ||= []).push(playerVisualTiming);
       const uploadStartedAt = now();
       if (!game.player) throw new Error('solo battle loading requires a player after setup');
-      await battleVisuals.stageBattleVisualReveal(game.player, loadYield);
+      const playerStageReceipt = await battleVisuals.stageBattleVisualReveal(
+        game.player,
+        loadYield,
+      );
       playerVisualTiming.uploadMs = Math.round(now() - uploadStartedAt);
+      playerVisualTiming.preUploadYieldMs = playerStageReceipt.preUploadYieldMs;
+      playerVisualTiming.textureUploadMs = playerStageReceipt.textureUploadMs;
+      playerVisualTiming.compileMs = playerStageReceipt.compileMs;
+      playerVisualTiming.postCompileYieldMs = playerStageReceipt.postCompileYieldMs;
       playerVisualTiming.totalMs = Math.round(now() - playerVisualStartedAt);
       mark('roster');
       battleLoad.rosters(rosterRows('player'), rosterRows('enemy'));
