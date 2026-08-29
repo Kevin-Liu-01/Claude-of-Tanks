@@ -47786,7 +47786,7 @@
           }
         ]
       },
-      "geometryHash": "8b1fab48",
+      "geometryHash": "10e07f9e",
       "metadataHash": "526d0ce5",
       "presentationAnchor": {
         "xM": 0.0052,
@@ -47814,13 +47814,14 @@
           "tireRubber": 8,
           "fittingPaint": 11,
           "opticGlass": 7,
-          "gunmetal": 18,
+          "gunmetal": 17,
           "trackSteel": 1,
           "canvas": 2,
           "wood": 1,
           "armorPaint": 5,
           "unclassified": 14,
-          "gearShadow": 1
+          "gearShadow": 2,
+          "machineGun": 1
         }
       },
       "muzzleBore": {
@@ -47887,24 +47888,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 60240,
-          "sha256": "1cc925d5166968fc9c1aff5689e90ed3db27501aea1291654b712d0b87672c5a"
+          "bytes": 59961,
+          "sha256": "e56a58a0f8b30485ba00617b9377e90a4546f3d3aebb868f76121d170d1536be"
         },
         "armorSide": {
           "file": "k2b_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 61701,
-          "sha256": "99aac2bfd46b0c92619482596b8fe4b93dbf45992690d794a0f3b2587ee511fb"
+          "bytes": 61551,
+          "sha256": "307a24e69e96fcc6e61e8d9a70fcfab23135897b6f1673a54681bf1875b0b21f"
         },
         "modulesSide": {
           "file": "k2b_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69182,
-          "sha256": "d49acbb4a5afb24a1859d13bc51859f66a4a31d724d52883977c7b9bf99142c3"
+          "bytes": 69145,
+          "sha256": "84082656c808aff14622fc544d6a0be537d7e3bbbe2b1fdefdbc00ba565c8f1f"
         },
         "markings": {
           "file": "k2b_markings.png",
@@ -66033,7 +66034,7 @@
           }
         ]
       },
-      "geometryHash": "42008b27",
+      "geometryHash": "614c443b",
       "metadataHash": "7b7d2d3d",
       "presentationAnchor": {
         "xM": 0,
@@ -66060,13 +66061,14 @@
           "trackPadSimplified": 1,
           "trackSteel": 1,
           "armorPaint": 7,
-          "gunmetal": 14,
+          "gunmetal": 13,
           "fittingPaint": 9,
           "opticGlass": 3,
           "tireRubber": 1,
           "wood": 1,
           "unclassified": 10,
-          "gearShadow": 2,
+          "gearShadow": 3,
+          "machineGun": 1,
           "canvas": 1
         }
       },
@@ -66134,24 +66136,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70942,
-          "sha256": "ad1f41ba39e7524b001319ff7e5db1bf0729a0a13825f267e4b6d5764477b385"
+          "bytes": 70520,
+          "sha256": "0025d369c6878cecf4096738b7ced96be92c904e668e63bdc4f86f32a472292f"
         },
         "armorSide": {
           "file": "leo2a6m_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70550,
-          "sha256": "f0fdb3481435f6795817b4a212c7bb61db83b4171f8920339bb174da7d76630c"
+          "bytes": 71068,
+          "sha256": "ec5083b61b904f7939fcdd2a1ee5993457aeb4491888ae16fac6fc0cbe4d6278"
         },
         "modulesSide": {
           "file": "leo2a6m_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76556,
-          "sha256": "741a2cdc3104626ba59c53a629f380896574d3f62d4de603bd520b403d49a371"
+          "bytes": 75533,
+          "sha256": "f0c30dba5c67700ed8f3ef61aafcc85ae7216f0e3f4a83325fa972fed6d27009"
         },
         "markings": {
           "file": "leo2a6m_markings.png",
@@ -68584,7 +68586,7 @@
           }
         ]
       },
-      "geometryHash": "9cf48712",
+      "geometryHash": "7f6ed1e0",
       "metadataHash": "4ccb587d",
       "presentationAnchor": {
         "xM": 0,
@@ -68610,13 +68612,14 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 6,
-          "gunmetal": 10,
+          "gunmetal": 9,
           "fittingPaint": 5,
           "opticGlass": 3,
           "tireRubber": 1,
           "wood": 1,
           "unclassified": 12,
-          "gearShadow": 2,
+          "gearShadow": 3,
+          "machineGun": 1,
           "canvas": 1
         }
       },
@@ -71198,7 +71201,7 @@
           }
         ]
       },
-      "geometryHash": "c7d8dc59",
+      "geometryHash": "5f51f18b",
       "metadataHash": "a47f46d5",
       "presentationAnchor": {
         "xM": 0.0011,
@@ -71223,14 +71226,16 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "gunmetal": 7,
-          "fittingPaint": 4,
+          "gunmetal": 6,
+          "fittingPaint": 3,
           "armorPaint": 6,
           "gearShadow": 7,
           "tireRubber": 1,
           "opticGlass": 2,
           "wood": 1,
           "unclassified": 14,
+          "machineGun": 1,
+          "ammoBox": 1,
           "canvas": 1
         }
       },
@@ -71298,24 +71303,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73629,
-          "sha256": "633c5616b5adf72b37c36664d4071884c964004294ed75e3930cec6e58d36c67"
+          "bytes": 72970,
+          "sha256": "2865219d66b25ae3d1e64971bfc7f691d2e6ea085b8306667f22e19bd26c0337"
         },
         "armorSide": {
           "file": "m1a1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73744,
-          "sha256": "aad07f049f58c1794c54fccfc17dfff67d40e410768d95c781f321d6093f1f7b"
+          "bytes": 73482,
+          "sha256": "f29cc6f6174e0b81433b95a1dc15cf1fabd1ebee565afcc6918ec818dccc6f7e"
         },
         "modulesSide": {
           "file": "m1a1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75885,
-          "sha256": "54dc36fd50d68c18f11d401a7bf59ba63979886f6e4765dd7ffad63dbd093a79"
+          "bytes": 76246,
+          "sha256": "d8df2e123dad762cdb2155c676156be46a2c061ee19ee629bd846841c2b9ee63"
         },
         "markings": {
           "file": "m1a1_markings.png",
@@ -72676,7 +72681,7 @@
           }
         ]
       },
-      "geometryHash": "22916f23",
+      "geometryHash": "656f2a4b",
       "metadataHash": "12ac7d10",
       "presentationAnchor": {
         "xM": 0.0002,
@@ -72701,14 +72706,16 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "gunmetal": 7,
-          "fittingPaint": 4,
+          "gunmetal": 6,
+          "fittingPaint": 3,
           "armorPaint": 7,
           "gearShadow": 8,
           "tireRubber": 1,
           "opticGlass": 3,
           "wood": 1,
           "unclassified": 15,
+          "machineGun": 1,
+          "ammoBox": 1,
           "canvas": 1
         }
       },
@@ -74154,7 +74161,7 @@
           }
         ]
       },
-      "geometryHash": "09d70346",
+      "geometryHash": "35b6f3ed",
       "metadataHash": "3f477fc6",
       "presentationAnchor": {
         "xM": 0.0006,
@@ -74179,15 +74186,17 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "gunmetal": 8,
-          "fittingPaint": 6,
+          "gunmetal": 6,
+          "fittingPaint": 5,
           "trackSteel": 1,
           "armorPaint": 7,
-          "gearShadow": 7,
+          "gearShadow": 8,
           "tireRubber": 1,
           "opticGlass": 3,
           "wood": 1,
           "unclassified": 15,
+          "machineGun": 2,
+          "ammoBox": 1,
           "canvas": 1
         }
       },
@@ -74256,23 +74265,23 @@
           "height": 256,
           "mime": "image/png",
           "bytes": 72902,
-          "sha256": "5f7fb606e1be9c2684a5eb74b91c8a8dcd8734686469126583bb27c79c5f6da1"
+          "sha256": "a2fdbc48b50c5dc5031415c0e00188bf0026839079fbf8f73be7ff8fbda04b09"
         },
         "armorSide": {
           "file": "m1a2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71934,
-          "sha256": "5f22ddf8755bce15ac9f9738b5c991efc17f83455e37b83fd1ea7724b594d93c"
+          "bytes": 72325,
+          "sha256": "10b0269e2cd795c093c5e81ddc84a4352375b623937b26453382d533b584fb52"
         },
         "modulesSide": {
           "file": "m1a2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74269,
-          "sha256": "c07e170543339772373621a2dbb6fd7d20317f392576536d17112c982e703b91"
+          "bytes": 74262,
+          "sha256": "d4c1f8491823d44d1e4540ba9326d055a0422a004a3b008f0e3d904eda6c07dd"
         },
         "markings": {
           "file": "m1a2_markings.png",
@@ -76852,7 +76861,7 @@
           }
         ]
       },
-      "geometryHash": "c33dbe75",
+      "geometryHash": "9894c48d",
       "metadataHash": "3ecd290d",
       "presentationAnchor": {
         "xM": 0,
@@ -76877,16 +76886,18 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "gunmetal": 9,
-          "fittingPaint": 6,
+          "gunmetal": 7,
+          "fittingPaint": 5,
           "canvas": 2,
           "trackSteel": 1,
           "armorPaint": 9,
-          "gearShadow": 7,
+          "gearShadow": 8,
           "tireRubber": 1,
           "opticGlass": 3,
           "wood": 1,
-          "unclassified": 13
+          "unclassified": 13,
+          "machineGun": 2,
+          "ammoBox": 1
         }
       },
       "muzzleBore": {
@@ -78332,7 +78343,7 @@
           }
         ]
       },
-      "geometryHash": "c34bf10e",
+      "geometryHash": "ee44beb1",
       "metadataHash": "3c795938",
       "presentationAnchor": {
         "xM": 0.0003,
@@ -78357,15 +78368,17 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "gunmetal": 9,
-          "fittingPaint": 7,
+          "gunmetal": 6,
+          "fittingPaint": 6,
           "canvas": 7,
           "armorPaint": 9,
-          "gearShadow": 7,
+          "gearShadow": 9,
           "tireRubber": 1,
           "opticGlass": 4,
           "wood": 1,
-          "unclassified": 13
+          "unclassified": 13,
+          "machineGun": 3,
+          "ammoBox": 1
         }
       },
       "muzzleBore": {
@@ -78432,24 +78445,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 83869,
-          "sha256": "70e9e14cc36c20553cc9dab49f100092ebf2d8c503838833971c5d264d786f8f"
+          "bytes": 84148,
+          "sha256": "d06d122e9b7738124038bcb52d1749cf287ad71d7697f13d025778baf9265d54"
         },
         "armorSide": {
           "file": "m1a2_sepv3_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 83390,
-          "sha256": "3ace379caacb230a5bf39f68c78e394801dc43f73b83a8eea28ec07cf3dbfa2a"
+          "bytes": 83547,
+          "sha256": "f7fa369604da82dc77227dee472ac3fdc97de4b0577ce5778a568fe15c3eb2bd"
         },
         "modulesSide": {
           "file": "m1a2_sepv3_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84441,
-          "sha256": "045b31f6bdc499af9d4ae13e4d27a4d9dbac5509154a6af2125913d289860acc"
+          "bytes": 85278,
+          "sha256": "9681104d8ca8f456edf2b111dfbb7745b3c91aa83c2a7b6b5e24a90f3aceda86"
         },
         "markings": {
           "file": "m1a2_sepv3_markings.png",
@@ -79835,7 +79848,7 @@
           }
         ]
       },
-      "geometryHash": "4bd8f7fb",
+      "geometryHash": "522ba360",
       "metadataHash": "82c48a2d",
       "presentationAnchor": {
         "xM": 0.0004,
@@ -79860,16 +79873,18 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "gunmetal": 14,
-          "fittingPaint": 9,
+          "gunmetal": 11,
+          "fittingPaint": 8,
           "opticGlass": 6,
           "trackSteel": 1,
           "canvas": 2,
           "armorPaint": 8,
-          "gearShadow": 7,
+          "gearShadow": 9,
           "tireRubber": 1,
           "wood": 1,
-          "unclassified": 13
+          "unclassified": 13,
+          "machineGun": 3,
+          "ammoBox": 1
         }
       },
       "muzzleBore": {
@@ -79936,24 +79951,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75985,
-          "sha256": "1963433243f73a5fbed1bb19a0664daeab45bd375182a8e4f42dff67e9542cf8"
+          "bytes": 75967,
+          "sha256": "2ecaaaa4f1c9071a7d8b3e64142346a2bfce3c3f8d4d1e1cab7ee2b1a88296a5"
         },
         "armorSide": {
           "file": "m1a2_tusk_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75406,
-          "sha256": "65d433cd39bec34c6299e2e977b63762ef39a43c955e64d969e079e8c2ac8dbc"
+          "bytes": 74922,
+          "sha256": "b4b0b235db8be83026f34c66fc91daf99ad690b9e4875f5c4703129c9b44c3e9"
         },
         "modulesSide": {
           "file": "m1a2_tusk_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78973,
-          "sha256": "bfedbcf1c55009129d318a40ee81239bc0fdce84e43128a14cf955f8277c387b"
+          "bytes": 78769,
+          "sha256": "3f93b8cc88f25bda642138490ab07aff57026f6e37292e45e24bd494a669eb96"
         },
         "markings": {
           "file": "m1a2_tusk_markings.png",
@@ -82568,7 +82583,7 @@
           }
         ]
       },
-      "geometryHash": "93b578f2",
+      "geometryHash": "b8911df2",
       "metadataHash": "51fd67f1",
       "presentationAnchor": {
         "xM": 0,
@@ -82595,7 +82610,7 @@
           "trackPadSimplified": 1,
           "armorPaint": 10,
           "gearShadow": 3,
-          "fittingPaint": 7,
+          "fittingPaint": 6,
           "tireRubber": 1,
           "opticGlass": 2,
           "gunmetal": 12,
@@ -82666,24 +82681,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68627,
-          "sha256": "27ff1a537a45dbe13f5f6ef2a1261da3c0c4c25163a60fcc69b7d25eb87e7f67"
+          "bytes": 68973,
+          "sha256": "801f649b72adbc569809b0dfc2eb3cf98feed4a6637ac8ea797870a206fac974"
         },
         "armorSide": {
           "file": "m1a3_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69194,
-          "sha256": "07e9b6f08785bdd305b7e011c9acab659c24fc56b25293bbbb6f467fa67d12fb"
+          "bytes": 69095,
+          "sha256": "caf6001461c062c9dbe5e00dea9c769d968f8a878b7820787ffdc833face36bb"
         },
         "modulesSide": {
           "file": "m1a3_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75921,
-          "sha256": "162caa47a47993200b7c3b58bf4c57f5a1be877ca986aa4db47c7db826d4e118"
+          "bytes": 75814,
+          "sha256": "de5375bcf9d4a7db25455ea70e7b0277abd6b82f355eff61ae55a05c66ccc402"
         },
         "markings": {
           "file": "m1a3_markings.png",
@@ -88467,7 +88482,7 @@
           }
         ]
       },
-      "geometryHash": "5064fb95",
+      "geometryHash": "195fc011",
       "metadataHash": "10af8c89",
       "presentationAnchor": {
         "xM": -0.0024,
@@ -88493,13 +88508,15 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "gearShadow": 5,
-          "gunmetal": 15,
-          "fittingPaint": 8,
+          "gunmetal": 14,
+          "fittingPaint": 7,
           "opticGlass": 4,
           "armorPaint": 5,
           "unclassified": 12,
           "canvas": 13,
-          "trackSteel": 1
+          "trackSteel": 1,
+          "machineGun": 1,
+          "ammoBox": 1
         }
       },
       "muzzleBore": {
@@ -88566,24 +88583,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69062,
-          "sha256": "589714d3e64d065ae1241da9e50f5c0dc343aa20949c7b79af12256379ceddb0"
+          "bytes": 68578,
+          "sha256": "c6e2334ae747e4bbbdee6aef36122ef0ca662d9e8886bb21f2502733ad1d9849"
         },
         "armorSide": {
           "file": "m46_patton_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70550,
-          "sha256": "03c1aaddbf2c0d5f6bc67a15ea2729a39c19cbfdc5dc310c50d49017243ea3c1"
+          "bytes": 70820,
+          "sha256": "f296f5b29e49e2e7f7ffda052590cd667b6f162c301f60c8132730f64f7c9986"
         },
         "modulesSide": {
           "file": "m46_patton_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81383,
-          "sha256": "9cc87de639d65c9628aaa25e11f209c4ef2339047e34b1bb9d4cb9d7b308b528"
+          "bytes": 81361,
+          "sha256": "e73f8166bb1470b96b13d407fa50acb2c00e3ff20988cc83611b86ea08d5958d"
         },
         "markings": {
           "file": "m46_patton_markings.png",
@@ -89711,7 +89728,7 @@
           }
         ]
       },
-      "geometryHash": "7eff7035",
+      "geometryHash": "c4bff7a0",
       "metadataHash": "a2e31a30",
       "presentationAnchor": {
         "xM": -0.0007,
@@ -89736,14 +89753,16 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "fittingPaint": 9,
+          "fittingPaint": 8,
           "opticGlass": 4,
-          "gunmetal": 15,
+          "gunmetal": 14,
           "armorPaint": 5,
           "canvas": 3,
           "wood": 2,
           "unclassified": 11,
-          "gearShadow": 14
+          "gearShadow": 14,
+          "machineGun": 1,
+          "ammoBox": 1
         }
       },
       "muzzleBore": {
@@ -89810,24 +89829,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68833,
-          "sha256": "0ad3c70c52aa0695dce9afbaa555bbdd2ce46c4587a109c1b077f26af31e65aa"
+          "bytes": 69430,
+          "sha256": "8d957f9a20ffa5d8e9012f838ec4c7034aebec01e568b21cef4d3dbd5b6bc6dd"
         },
         "armorSide": {
           "file": "m47_patton_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71020,
-          "sha256": "007f560b3cab7eb61cf1c303d2407cdb6dc2e4bceaa8d823fb5b0baf2d3e0602"
+          "bytes": 70277,
+          "sha256": "91914e6c59a4ee0315caa054511f7c752c751922661cace52dfba620d329f2ec"
         },
         "modulesSide": {
           "file": "m47_patton_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78934,
-          "sha256": "c421d94f2ba14d1f1d7f2f120e71c7f723aa53e69c2733019b6e96214580d9bb"
+          "bytes": 79619,
+          "sha256": "349b994994677580f0a85acc6d06ae05793fca1470c1c8156c5ffe83de0fe9c0"
         },
         "markings": {
           "file": "m47_patton_markings.png",
@@ -90869,7 +90888,7 @@
           }
         ]
       },
-      "geometryHash": "15f49f45",
+      "geometryHash": "a2926c58",
       "metadataHash": "073a6606",
       "presentationAnchor": {
         "xM": 0,
@@ -90896,7 +90915,7 @@
           "trackPadSimplified": 1,
           "armorPaint": 4,
           "gunmetal": 9,
-          "fittingPaint": 4,
+          "fittingPaint": 2,
           "opticGlass": 2,
           "tireRubber": 1,
           "unclassified": 12,
@@ -90968,24 +90987,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71241,
-          "sha256": "661c4557397232d98e90915b4250b714687dca2b79103c5cb7815950040d17a7"
+          "bytes": 70981,
+          "sha256": "8075507eb7f196151cecdfba22f38c2e1ab14508e5bfdec6e091de4a2ce50f4b"
         },
         "armorSide": {
           "file": "m48_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73048,
-          "sha256": "0ef683047ab044bb11bd92fb2dc38dee64b07a6e0117c52633d2bd5ecf53b9d8"
+          "bytes": 72624,
+          "sha256": "9309634d67d2e1d17a9c1e6ab18f1fe37371e8787d7594b716476ae5ac5a75b6"
         },
         "modulesSide": {
           "file": "m48_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80012,
-          "sha256": "915552459bb18ef7da7e2b84c10a0864f7375794d88d8e2b2517e794e7167a8d"
+          "bytes": 79952,
+          "sha256": "9d4455162ce0dfcdfa03f9e4bfdf26d7eae16de2c0142c8af40eb9d9d804c856"
         },
         "markings": {
           "file": "m48_markings.png",
@@ -93691,7 +93710,7 @@
           }
         ]
       },
-      "geometryHash": "dd29f00b",
+      "geometryHash": "0cee5876",
       "metadataHash": "eaae31dc",
       "presentationAnchor": {
         "xM": -0.0003,
@@ -93717,11 +93736,13 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 10,
-          "gunmetal": 8,
-          "fittingPaint": 4,
+          "gunmetal": 7,
+          "fittingPaint": 2,
           "opticGlass": 2,
           "unclassified": 11,
           "gearShadow": 2,
+          "machineGun": 1,
+          "ammoBox": 1,
           "canvas": 1
         }
       },
@@ -93749,24 +93770,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84442,
-          "sha256": "901626db322ce6bc9c851d3abbc55f6d4b5f5cb8d3e30a3e8ad5a0e09dcce9f8"
+          "bytes": 84361,
+          "sha256": "be6e4150405c42b2789f4762d089f6adadf32eb1f68ed935f8a3bd08774e14b6"
         },
         "armorSide": {
           "file": "m551_sheridan_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84033,
-          "sha256": "7085ab91203f5d74dffbca57a66a09a11e21a79437f424b1ce18ab2582b49051"
+          "bytes": 84179,
+          "sha256": "b6fbb96ae31144cb980ff8e536cc6c55c29f1ca95bccd155d89eecee9bd6f888"
         },
         "modulesSide": {
           "file": "m551_sheridan_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 88614,
-          "sha256": "41e3827c58a589f6c708f03f68405535fc3c7dd3e89431c689d8a2e0dffb0e1d"
+          "bytes": 88778,
+          "sha256": "09a3ef1d9f5082a7536bf92f5234f968927ad7a097f8192f9f4c99841026efa9"
         },
         "angle": {
           "file": "m551_sheridan_angle.webp",
@@ -95912,7 +95933,7 @@
           }
         ]
       },
-      "geometryHash": "8c76b5a2",
+      "geometryHash": "9b396b54",
       "metadataHash": "d8da6cbf",
       "presentationAnchor": {
         "xM": 0.0002,
@@ -95939,7 +95960,7 @@
           "trackPadSimplified": 1,
           "armorPaint": 10,
           "gunmetal": 7,
-          "fittingPaint": 3,
+          "fittingPaint": 2,
           "opticGlass": 2,
           "unclassified": 10,
           "gearShadow": 2,
@@ -95971,24 +95992,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94937,
-          "sha256": "883e4f8d142413eba2ceb733c3fd7330d09ac6f955d34e3a63f93da1fd02cc70"
+          "bytes": 94773,
+          "sha256": "dd63d547670efd3d907e4cc19d142d68f44995da838162b4ec6ca28b044d9e8f"
         },
         "armorSide": {
           "file": "m551a1_tts_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 91273,
-          "sha256": "fc3d48ee6f8c8589574fa6f6db22ec22cfc55c8bd0e50dbf65567a2d7138f832"
+          "bytes": 91209,
+          "sha256": "12a415361732134f2d6279e7ce1bc6e5e0fc11e6e5f6abf291e80ddca56be430"
         },
         "modulesSide": {
           "file": "m551a1_tts_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94545,
-          "sha256": "f8a8d393e0ec8987170063c26b6c2c8e8f4987a00ef6a3581dc20cefe594b3a5"
+          "bytes": 94628,
+          "sha256": "fe7b05ae0a1f04b80595cec918c8f640ea4ab9046b4edd0903e4f94b854fd621"
         },
         "angle": {
           "file": "m551a1_tts_angle.webp",
@@ -96998,7 +97019,7 @@
           }
         ]
       },
-      "geometryHash": "d95c3bcc",
+      "geometryHash": "851ed904",
       "metadataHash": "9710efa9",
       "presentationAnchor": {
         "xM": 0.0022,
@@ -97024,12 +97045,14 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 4,
-          "gunmetal": 13,
-          "fittingPaint": 7,
+          "gunmetal": 12,
+          "fittingPaint": 6,
           "tireRubber": 1,
           "opticGlass": 5,
           "unclassified": 15,
           "gearShadow": 2,
+          "machineGun": 1,
+          "ammoBox": 1,
           "canvas": 2,
           "wood": 1
         }
@@ -97098,24 +97121,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68627,
-          "sha256": "fa5f3288a1a143241269302ca69d2bcd3ea537f9a6b1c3a6ef0ca21a2730a726"
+          "bytes": 68897,
+          "sha256": "6e9fefd9000a480cda1205e9fc6a0001a263664d58ae17d209bfcc85f1b67b6b"
         },
         "armorSide": {
           "file": "m60a1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71167,
-          "sha256": "ad0fedbc9a4c6330d326cf24a66cf5c05a3b5f82ec764a672019e2720cc7a9ea"
+          "bytes": 71200,
+          "sha256": "ecb545a79bf1091198f670946d543d0a1dae7841c94b808b00f82d0c52d218e3"
         },
         "modulesSide": {
           "file": "m60a1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80171,
-          "sha256": "68f512ae10795492b4dcccb05bfae8a7d0b56463c79bb0b9b1a815f4460ecaad"
+          "bytes": 80080,
+          "sha256": "cc233f25741a9aaac25c2dea49dd8ef286aafa10f97eee017f81ec3609746bb0"
         },
         "markings": {
           "file": "m60a1_markings.png",
@@ -98028,7 +98051,7 @@
           }
         ]
       },
-      "geometryHash": "b9633362",
+      "geometryHash": "6579b16e",
       "metadataHash": "9f7ad35b",
       "presentationAnchor": {
         "xM": 0.0002,
@@ -98053,14 +98076,15 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "gunmetal": 17,
+          "gunmetal": 16,
           "armorPaint": 4,
           "fittingPaint": 8,
           "opticGlass": 5,
           "tireRubber": 1,
           "unclassified": 12,
-          "gearShadow": 2,
+          "gearShadow": 3,
           "canvas": 2,
+          "machineGun": 1,
           "wood": 1
         }
       },
@@ -98128,24 +98152,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 87023,
-          "sha256": "90a03cb1e649f5000ce579cbeb84157006c313679c6f7cfd95d06b8bff38573f"
+          "bytes": 87510,
+          "sha256": "f943a1f29737d467f125f58e486b63e66e6dd78e3ee614d035a752d7d409fb5a"
         },
         "armorSide": {
           "file": "m60a2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 89053,
-          "sha256": "8f384eb82031e71926f1bebd6caa49d8debe941f5fa3686d639e5a52cb9aeafd"
+          "bytes": 89395,
+          "sha256": "f834f4758f35fdbe58878442ec292e849ece62144304913b24764019b9ac184b"
         },
         "modulesSide": {
           "file": "m60a2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 96577,
-          "sha256": "b1755178ec390c819c8342295edb5acef8ca4afcc2c1720994069b19e2ce9476"
+          "bytes": 96445,
+          "sha256": "099fc90afbd5145c7f80491976a4152c87c2f1611e2207a91e6c94392d9b0d5f"
         },
         "markings": {
           "file": "m60a2_markings.png",
@@ -99262,7 +99286,7 @@
           }
         ]
       },
-      "geometryHash": "beee3b0a",
+      "geometryHash": "322ef7dc",
       "metadataHash": "ffde6d5d",
       "presentationAnchor": {
         "xM": -0.0001,
@@ -99288,12 +99312,14 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 7,
-          "gunmetal": 13,
-          "fittingPaint": 7,
+          "gunmetal": 12,
+          "fittingPaint": 6,
           "tireRubber": 1,
           "opticGlass": 5,
           "unclassified": 14,
           "gearShadow": 2,
+          "machineGun": 1,
+          "ammoBox": 1,
           "canvas": 2,
           "wood": 1
         }
@@ -99362,24 +99388,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65814,
-          "sha256": "6530a9e6151c072154e5adffb6551613c6c6f0bd198984bc0137dd2d14c6fc0c"
+          "bytes": 65707,
+          "sha256": "28d4f71900f489b51497599d6dcc5fdb6b8907fb429be2baa03162c2ee11dcd8"
         },
         "armorSide": {
           "file": "m60a3_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68758,
-          "sha256": "a340e05a3101e17139cdcd10e74dc8fbc2c6bfbddf7e22dea3eb293f0f2a0bcf"
+          "bytes": 68002,
+          "sha256": "22e986b50b72f349de1cb93e4f163e74a45904ae5f1339310fe89ca4dd8016ee"
         },
         "modulesSide": {
           "file": "m60a3_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78403,
-          "sha256": "d22066eaad5d4e187f916d777421b4813cd8e256ad1dc9509ad320aaa5f94b93"
+          "bytes": 78098,
+          "sha256": "120f1ff808817462eb86814c07b4edcabb171754bcc4b690734acea4bd6eddc4"
         },
         "markings": {
           "file": "m60a3_markings.png",
@@ -155635,24 +155661,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73834,
-          "sha256": "51fa5dcb1674c13c6d49e9ae397cf88797eb3d913a10f7134a72fea2a6c9b65f"
+          "bytes": 73737,
+          "sha256": "1268d6d245e88a459f5ace7a121c27af0d2c1c43e9b33957496179f67ddd8e0f"
         },
         "armorSide": {
           "file": "t90a_burlak_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75649,
-          "sha256": "2101cb57006604e0209c2f278ae93149e7327a84bb7637c6458f6720acffd5a2"
+          "bytes": 75078,
+          "sha256": "a0c2e60788e71eb4661e44bc6549fbf05a485f0545e64a626832bc4af5017a32"
         },
         "modulesSide": {
           "file": "t90a_burlak_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78209,
-          "sha256": "2501bb3340547895d8fb1a5bc772979982dbadf4b0bf4245967ca8908c18c080"
+          "bytes": 78572,
+          "sha256": "5e0c6ab81d011faf0ee2cc9e5d6f1cba14551353830b6ec96021571475de5c3c"
         },
         "markings": {
           "file": "t90a_burlak_markings.png",
@@ -179238,7 +179264,7 @@
           }
         ]
       },
-      "geometryHash": "1e0664fb",
+      "geometryHash": "f116192f",
       "metadataHash": "25c5628a",
       "presentationAnchor": {
         "xM": 0.0036,
@@ -179263,15 +179289,17 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "gunmetal": 10,
-          "fittingPaint": 7,
+          "gunmetal": 9,
+          "fittingPaint": 6,
           "canvas": 8,
           "armorPaint": 7,
           "gearShadow": 8,
           "tireRubber": 1,
           "opticGlass": 3,
           "wood": 2,
-          "unclassified": 13
+          "unclassified": 13,
+          "machineGun": 1,
+          "ammoBox": 1
         }
       },
       "muzzleBore": {
@@ -179338,24 +179366,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 98668,
-          "sha256": "0f2f0baea8d6c568ec561c66bb07a8901b67a28b0de68fd8e3174b707c6f343a"
+          "bytes": 98505,
+          "sha256": "e9ad689a7bddd5413b66bcc9ad08c5f0bf3e143f94ce1797f9161c07efb576bb"
         },
         "armorSide": {
           "file": "ua_m1a1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 99519,
-          "sha256": "8c8dcd2a205c9f63d1dc801477edb04c3b577d48f945a0221657592943121a9c"
+          "bytes": 99480,
+          "sha256": "a6ff1cd65a175eda71a7d36565ba0f67b440de64bbab547d2c8324399f6152b8"
         },
         "modulesSide": {
           "file": "ua_m1a1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 99699,
-          "sha256": "4fec25143f66260279fdaa496658994a6b7cef8938f9114ea97235029071641c"
+          "bytes": 99248,
+          "sha256": "35c22ae7d1446f83af99cb105ed4aae736eb7fcff9eac6b547f94e17b16bd452"
         },
         "markings": {
           "file": "ua_m1a1_markings.png",

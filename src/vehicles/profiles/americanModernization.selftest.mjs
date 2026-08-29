@@ -24,6 +24,17 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
   for (const gun of guns) {
     assert.equal(gun.userData.weaponName, 'Browning M2HB');
     assert.equal(gun.userData.caliberMm, 12.7);
+    assert.equal(gun.userData.machineGunFinish, 'gunmetal',
+      `${id}: Browning publishes the neutral weapon-finish contract`);
+    const receiver = gun.getObjectByName('americanM2HBBody');
+    assert.equal(receiver?.userData.fittingSlot, 'dark',
+      `${id}: receiver, jacket, barrel and mount stay in gunmetal`);
+    assert.equal(receiver?.userData.appearanceRole, 'machineGun');
+    const ammoBox = gun.getObjectByName('sheridanCommanderM2AmmoBox');
+    assert.equal(ammoBox?.userData.fittingSlot, 'gunmetalAmmo',
+      `${id}: ammunition chest does not inherit green vehicle paint`);
+    assert.equal(gun.children.some((object) => object.userData.fittingSlot === 'detail'), false,
+      `${id}: no M2 component is routed through camouflaged fitting paint`);
     gun.traverse((object) => {
       if (object.isMesh) assert.equal(object.userData.combatHitboxRole, 'equipment',
         `${id}: standardized M2 cannot expand primary armor hitboxes`);
@@ -52,6 +63,9 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
   assert.equal(station[0].userData.hasVisibleFeedBelt, true);
   assert.equal(station[0].userData.hasWorkLights, true);
   assert.equal(station[0].userData.hasSteelReceiverGuard, true);
+  assert.equal(station[0].userData.machineGunFinish, 'gunmetal');
+  assert.equal(station[0].getObjectByName('americanRwsMachineGun')?.userData.fittingSlot, 'dark',
+    'M60A2 RWS keeps the weapon mechanism gunmetal while its armor stays painted');
   assert.equal(turret.userData.americanModernizationReceipt?.stationVariant, 'hunter');
   assert.equal(turret.userData.americanModernizationReceipt?.guardedAuxiliaryLights, 2);
   tank.dispose();
@@ -79,6 +93,10 @@ for (const [id, expectedVariant, expectedLoader, expectedShield] of [
     `${id}: tower carries its paired work-light package`);
   assert.equal(station[0].userData.hasSteelReceiverGuard, true,
     `${id}: taller receiver is tied into a steel support cage`);
+  assert.equal(station[0].userData.machineGunFinish, 'gunmetal',
+    `${id}: tower weapon mechanism stays neutral gunmetal`);
+  assert.equal(station[0].getObjectByName('americanRwsMachineGun')?.userData.fittingSlot, 'dark',
+    `${id}: tower armor paint does not leak onto the machine gun`);
   assert.equal(station[0].children.some((object) => object.userData.fittingSlot === 'hull'), false,
     `${id}: tower does not resample fragmented host camouflage`);
   assert.equal(turret.userData.americanRwsReceipt?.variant, expectedVariant);
@@ -118,7 +136,18 @@ for (const [id, expectedLoader, expectedShield] of [
   assert.equal(loader.length, 1, `${id}: has one standardized crew-served Browning`);
   assert.equal(loader[0].userData.installationVariant, expectedLoader);
   assert.equal(loader[0].userData.shieldVariant, expectedShield);
+  assert.equal(loader[0].userData.machineGunFinish, 'gunmetal');
   tank.dispose();
 }
 
-console.log('americanModernization.selftest: standardized M2HB, relocated optics, coherent taller RWS family verified');
+{
+  const tank = make('m1a3');
+  const towerGun = tank.root.getObjectByName('m1a3RemoteWeaponTower');
+  assert.equal(towerGun?.userData.machineGunFinish, 'gunmetal',
+    'M1A3 tower gun uses the neutral gunmetal finish');
+  assert.equal(towerGun?.children.some((object) => object.userData.fittingSlot === 'detail'), false,
+    'M1A3 tower gun does not inherit the green fitting-paint slot');
+  tank.dispose();
+}
+
+console.log('americanModernization.selftest: standardized gunmetal M2HB, relocated optics, coherent taller RWS family verified');

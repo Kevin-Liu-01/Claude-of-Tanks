@@ -648,6 +648,7 @@ function fitParts() {
 }
 
 function fitMat(mats, slot) {
+  if (slot === 'gunmetalAmmo') return mats.dark;
   const m = mats[slot] || mats.dark;
   if (m && m.isMaterial) return m;
   for (const v of Object.values(mats)) if (v && v.isMaterial) return v;
@@ -717,6 +718,7 @@ function fittingPintleMG(opts = {}) {
   const elev = opts.elev ?? 0.06;
   const B = tone === 'pale' ? 'detail' : 'dark';   // body slot
   const CAP = tone === 'dark' ? null : 'detail';   // pale top caps
+  const ammoSlot = opts.ammoSlot || 'detail';
   const parts = fitParts();
   const [rw, rh, rd] = cls.rec.map((v) => v * s);
 
@@ -764,7 +766,7 @@ function fittingPintleMG(opts = {}) {
 
   if (opts.ammo !== false) {
     const ax = -(rw / 2 + 0.055 * s);
-    parts.add('detail', box(0.085 * s, 0.11 * s, 0.17 * s), ax, recY - 0.005, recZ - 0.02);
+    parts.add(ammoSlot, box(0.085 * s, 0.11 * s, 0.17 * s), ax, recY - 0.005, recZ - 0.02);
     parts.add('dark', box(0.075 * s, 0.006, 0.15 * s), ax, recY + 0.055 * s, recZ - 0.02);
   }
   if (opts.shield) {
@@ -782,6 +784,7 @@ function fittingPintleMG(opts = {}) {
   }
   const fitting = fitAssemble('pintleMG', parts, opts);
   fitting.userData.barrelBridge = Boolean(opts.barrelBridge);
+  if (opts.machineGunFinish) fitting.userData.machineGunFinish = opts.machineGunFinish;
   return fitting;
 }
 
@@ -830,11 +833,13 @@ function fittingAmericanM2(opts = {}) {
   }
 
   // Closed ammunition chest, proud lid, retaining rack and receiver bridge.
+  // This is part of the weapon installation rather than vehicle armor, so it
+  // stays in neutral gunmetal and never inherits the host camouflage.
   if (opts.ammo !== false) {
     const ax = ammoSide * 0.245 * s;
-    parts.add('detail', box(0.270 * s, 0.205 * s, 0.260 * s),
+    parts.add('gunmetalAmmo', box(0.270 * s, 0.205 * s, 0.260 * s),
       ax, recY - 0.020 * s, recZ - 0.015 * s);
-    parts.add('detail', box(0.286 * s, 0.020 * s, 0.276 * s),
+    parts.add('gunmetalAmmo', box(0.286 * s, 0.020 * s, 0.276 * s),
       ax, recY + 0.092 * s, recZ - 0.015 * s);
     for (const side of [-1, 1]) {
       parts.add('dark', box(0.020 * s, 0.230 * s, 0.295 * s),
@@ -850,7 +855,7 @@ function fittingAmericanM2(opts = {}) {
   parts.add('dark', aim(cylZ(0.043 * s, 0.220 * s, 16), 0.110 * s),
     0, recY, trunZ);
   for (let index = 0; index < 5; index++) {
-    parts.add('detail', aim(torus(0.044 * s, 0.006 * s, 14), (0.035 + index * 0.039) * s),
+    parts.add('dark', aim(torus(0.044 * s, 0.006 * s, 14), (0.035 + index * 0.039) * s),
       0, recY, trunZ);
   }
   const barrelLength = (opts.barrelLength ?? 0.68) * s;
@@ -863,7 +868,7 @@ function fittingAmericanM2(opts = {}) {
 
   if (opts.ring) {
     const rr = (opts.ring.r || 0.235) * s;
-    parts.add('detail', torus(rr, 0.014 * s, 28), 0, 0.032 * s, 0);
+    parts.add('dark', torus(rr, 0.014 * s, 28), 0, 0.032 * s, 0);
     for (let index = 0; index < (opts.ring.stubs || 4); index++) {
       const a = 0.55 + index * Math.PI * 2 / (opts.ring.stubs || 4);
       parts.add('dark', box(0.030 * s, 0.045 * s, 0.030 * s),
@@ -907,16 +912,23 @@ function fittingAmericanM2(opts = {}) {
 
   const fitting = fitAssemble('pintleMG', parts, opts);
   fitting.name = 'fitting_americanM2HB';
-  const detailMesh = fitting.children.find((child) => child.userData.fittingSlot === 'detail');
-  if (detailMesh) detailMesh.name = 'sheridanCommanderM2AmmoBox';
+  const ammoMesh = fitting.children.find((child) => child.userData.fittingSlot === 'gunmetalAmmo');
+  if (ammoMesh) {
+    ammoMesh.name = 'sheridanCommanderM2AmmoBox';
+    ammoMesh.userData.appearanceRole = 'ammoBox';
+  }
   const bodyMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
-  if (bodyMesh) bodyMesh.name = 'americanM2HBBody';
+  if (bodyMesh) {
+    bodyMesh.name = 'americanM2HBBody';
+    bodyMesh.userData.appearanceRole = 'machineGun';
+  }
   fitting.userData.americanWeaponStandard = 'sheridan-m2hb-v1';
   fitting.userData.weaponName = 'Browning M2HB';
   fitting.userData.caliberMm = 12.7;
   fitting.userData.ammoSide = ammoSide;
   fitting.userData.shieldVariant = shieldVariant || 'open';
   fitting.userData.installationVariant = opts.installationVariant || 'open-cradle';
+  fitting.userData.machineGunFinish = 'gunmetal';
   return fitting;
 }
 
@@ -991,8 +1003,8 @@ function fittingAmericanRws(opts = {}) {
   parts.add('dark', box(0.10 * s, 0.10 * s, 0.18 * s),
     -0.17 * s, recY - 0.02 * s, 0.24 * s, 0, -0.22, 0);
   // Visible disintegrating-link run from the armored ammunition coffin into
-  // the receiver.  Alternating dark links and painted spacers keep the belt
-  // legible at gallery distance without adding separate draw calls.
+  // the receiver. Alternating gunmetal and shadow-steel links keep the belt
+  // legible without sampling the host camouflage onto the ammunition.
   for (let index = 0; index < 8; index++) {
     const t = index / 7;
     const x = (-0.205 + t * 0.205) * s;
@@ -1000,7 +1012,7 @@ function fittingAmericanRws(opts = {}) {
     const z = (0.175 + t * 0.045) * s;
     parts.add('dark', box(0.030 * s, 0.040 * s, 0.028 * s), x, y, z,
       0, 0, -0.08 + t * 0.13);
-    parts.add('detail', box(0.011 * s, 0.044 * s, 0.031 * s),
+    parts.add('shadow', box(0.011 * s, 0.044 * s, 0.031 * s),
       x + 0.008 * s, y, z);
   }
   // Receiver guard and service tower carry the added lights, wiring, and
@@ -1071,6 +1083,12 @@ function fittingAmericanRws(opts = {}) {
   fitting.userData.hasVisibleFeedBelt = true;
   fitting.userData.hasWorkLights = true;
   fitting.userData.hasSteelReceiverGuard = true;
+  fitting.userData.machineGunFinish = 'gunmetal';
+  const weaponMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
+  if (weaponMesh) {
+    weaponMesh.name = 'americanRwsMachineGun';
+    weaponMesh.userData.appearanceRole = 'machineGun';
+  }
   return fitting;
 }
 
@@ -1121,7 +1139,7 @@ function fittingOpenYokeRws(opts = {}) {
   const receiverY = yokeCenterY + 0.018 * s;
   const receiverZ = 0.185 * s;
   parts.add('dark', box(0.170 * s, 0.135 * s, 0.43 * s), 0, receiverY, receiverZ);
-  parts.add('detail', box(0.145 * s, 0.020 * s, 0.37 * s),
+  parts.add('dark', box(0.145 * s, 0.020 * s, 0.37 * s),
     0, receiverY + 0.078 * s, receiverZ - 0.005 * s);
   parts.add('dark', box(0.075 * s, 0.045 * s, 0.070 * s),
     0, receiverY - 0.018 * s, receiverZ - 0.250 * s);
@@ -1129,7 +1147,7 @@ function fittingOpenYokeRws(opts = {}) {
   parts.add('dark', aim(cylZ(0.033 * s, 0.18 * s, 14), 0.09 * s),
     0, receiverY, trunnionZ);
   for (let index = 0; index < 4; index++) {
-    parts.add('detail', aim(torus(0.034 * s, 0.0045 * s, 12),
+    parts.add('dark', aim(torus(0.034 * s, 0.0045 * s, 12),
       (0.025 + index * 0.042) * s), 0, receiverY, trunnionZ);
   }
   parts.add('dark', aim(cylZ(0.0155 * s, 0.62 * s, 10), 0.49 * s),
@@ -1153,7 +1171,7 @@ function fittingOpenYokeRws(opts = {}) {
     const x = (ammoX * (1 - t) + ammoSide * 0.075 * s * t);
     const y = yokeCenterY + (0.055 + 0.018 * t) * s;
     const z = (0.13 + 0.085 * t) * s;
-    parts.add(index % 2 ? 'detail' : 'dark', box(0.032 * s, 0.041 * s, 0.026 * s),
+    parts.add(index % 2 ? 'shadow' : 'dark', box(0.032 * s, 0.041 * s, 0.026 * s),
       x, y, z, 0, 0, -ammoSide * (0.10 + t * 0.12));
   }
 
@@ -1221,9 +1239,15 @@ function fittingOpenYokeRws(opts = {}) {
   fitting.userData.ammoSide = ammoSide;
   fitting.userData.sensorSide = sensorSide;
   fitting.userData.hasVisibleFeedBelt = true;
+  fitting.userData.machineGunFinish = 'gunmetal';
   fitting.userData.firingAxis = '+Z';
   fitting.userData.muzzleLocalZ = 1.295 * s;
   fitting.userData.barrelAxisLocalY = receiverY;
+  const weaponMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
+  if (weaponMesh) {
+    weaponMesh.name = 'openYokeRwsMachineGun';
+    weaponMesh.userData.appearanceRole = 'machineGun';
+  }
   return fitting;
 }
 

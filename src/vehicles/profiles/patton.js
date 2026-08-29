@@ -586,7 +586,7 @@ function standardizedAmericanM2Station(P, M, yl, zl, variant = 'open') {
   const barrelLength = Math.max(0.30, M.tipZ - M.z - 0.779);
   const mg = FITTINGS.americanM2({
     mats: P.mats,
-    tone: 'two-tone',
+    tone: 'dark',
     ammoSide: (M.cans?.[0] ?? 0) < 0 ? -1 : 1,
     barrelLength,
     elev: M.elev ?? 0.02,
@@ -3021,7 +3021,7 @@ function finishM60Variant(P, variant) {
   // Sheridan-derived M2HB is now the common visible American roof weapon.
   // A3 gets the later armored shield; A1 retains the open Vietnam-era plant.
   const m2 = FITTINGS.americanM2({
-    mats: P.mats, tone: 'two-tone', scale: a3 ? 0.58 : 0.62,
+    mats: P.mats, tone: 'dark', scale: a3 ? 0.58 : 0.62,
     seed: a3 ? 603 : 601, elev: a3 ? 0.035 : 0.02, ammo: true,
     ammoSide: 1, shield: a3, ring: { r: 0.23, stubs: 4 },
     rotation: [0, a3 ? -0.06 : 0.04, 0],
@@ -4168,7 +4168,8 @@ function buildM48(P, cfg) {
   // vertices, materials or mesh data enter the runtime build.
   for (const [i, M] of (cfg.turret.fittingMgs || []).entries()) {
     const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'm2', tone: 'two-tone', scale: M.scale,
+      mats: P.mats, cls: 'm2', tone: 'dark', scale: M.scale,
+      ammoSlot: 'dark', machineGunFinish: 'gunmetal',
       seed: 48 + i, elev: M.elev ?? 0.04, ammo: true,
     });
     mg.position.set(M.x, yl(M.baseY), zl(M.z));

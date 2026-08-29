@@ -9618,7 +9618,8 @@ function buildM1A3(P) {
   P.add('turretDark', cylX(0.055, 0.51, 12), towerX, 1.49, towerZ + 0.01);
 
   const rws = FITTINGS.pintleMG({
-    mats: P.mats, cls: 'm2', scale: 1.28, tone: 'two-tone', seed: 93,
+    mats: P.mats, cls: 'm2', scale: 1.28, tone: 'dark', seed: 93,
+    ammoSlot: 'dark', machineGunFinish: 'gunmetal',
     shield: false, elev: 0.035, rotation: [0, 0, 0],
   });
   rws.name = 'm1a3RemoteWeaponTower';

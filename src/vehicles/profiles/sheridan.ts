@@ -607,7 +607,7 @@ function sheridanTtsAutocannon(P: SheridanBuilderPort): THREE.Group {
   dark.push(xform(cylZ(0.073, 0.12, P.q ? 18 : 12), -0.49, 1.345, 1.43));
   dark.push(xform(cylZ(0.025, 0.020, P.q ? 14 : 10), -0.49, 1.345, 1.50));
   for (const z of [0.45, 0.67, 0.89]) {
-    detail.push(xform(torus(0.064, 0.010, P.q ? 18 : 12), -0.49, 1.345, z));
+    dark.push(xform(torus(0.064, 0.010, P.q ? 18 : 12), -0.49, 1.345, z));
   }
 
   // Asymmetric ammunition coffin and protected feed bridge distinguish the
@@ -1448,7 +1448,7 @@ function buildSheridan(P: SheridanBuilderPort): void {
       // this vehicle the canonical source used by the Patton/M60 families.
       const m2 = FITTINGS.americanM2({
         mats: P.mats,
-        tone: 'two-tone',
+        tone: 'dark',
         ammoSide: 1,
         barrelLength: 0.42,
         elev: 0,
@@ -1463,7 +1463,9 @@ function buildSheridan(P: SheridanBuilderPort): void {
         mats: P.mats,
         cls: station.mg,
         scale: station.scale,
-        tone: 'two-tone',
+        tone: 'dark',
+        ammoSlot: 'dark',
+        machineGunFinish: 'gunmetal',
         elev: 0.035,
         ammo: station.ammo,
         ring: { r: 0.21, stubs: 3 },
