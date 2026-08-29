@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTank } from '../src/vehicles/tankFactory.ts';
-import { ALL_TANK_IDS } from '../src/vehicles/specs.js';
+import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

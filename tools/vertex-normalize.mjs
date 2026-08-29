@@ -130,7 +130,7 @@ export const PLANS = {
     z: [[-4.063, -4.1675], [3.178, 3.2825], [4.053, 4.4625]],
     yTopMax: 3.50,
   },
-  // ---- batch-19: m1a2 sepv3 print (m1a2_sepv3_dannzjs.glb; specs.js
+  // ---- batch-19: m1a2 sepv3 print (m1a2_sepv3_dannzjs.glb; specs.ts
   // TurretPivot rig). Width TRUE (-0.5%). Hull -5.9% short: stretch body
   // x1.0645 (hullMask 7.461 -> 7.93), muzzle pinned so overall = 9.77
   // (tube segment gives back its +2% overmodel). Height +59.4% is the
@@ -531,7 +531,7 @@ export const PLANS = {
   },
   // ---- WW2 family plans (authored 2026-08-03, ww2 r1 agent; ORCHESTRATOR
   // executes — repair_oracles batches are orchestrator-only). Derivations
-  // from docs/references/vertex/<id>.json vs specs.js pubDims; per-tank
+  // from docs/references/vertex/<id>.json vs specs.ts pubDims; per-tank
   // structural caps these retire are logged in the r1 packet updates.
   sherman_jumbo: { // roof-furniture band +5.6% (crown/MG 2.99-3.13 vs pub
     // 2.95 — the capped-crown tax on side/front/stations); body -3.9%

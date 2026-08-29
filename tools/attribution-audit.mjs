@@ -11,7 +11,7 @@ import {
   PROJECT_COPYRIGHT,
   PROJECT_CREATOR,
 } from '../src/authorship.ts';
-import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.js';
+import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (path) => readFileSync(join(root, path), 'utf8');

@@ -17,7 +17,7 @@ const {
   PRODUCTION_TANK_IDS,
   RETIRED_EXTERNAL_PLACEHOLDER_IDS,
   SAVED_TANK_IDS,
-} = await import('./vehicles/specs.js');
+} = await import('./vehicles/specs.ts');
 
 const actual = {
   productionVehicles: PRODUCTION_TANK_IDS.length,

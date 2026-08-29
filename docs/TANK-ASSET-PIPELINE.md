@@ -89,7 +89,7 @@ every registered tank, or `--ids=id_a,id_b` while iterating on specific models.
 
 - `src/vehicles/tier.ts` is the only tier table. UI and matchmaking use it.
 - `src/ui/flagCodes.ts` is the nation-to-official-flag-code table.
-- `src/vehicles/specs.js` and registration modules own armor, penetration,
+- `src/vehicles/specs.ts` and registration modules own armor, penetration,
   module, crew, and dimension data.
 - `src/vehicles/tankAssets.ts` owns the required output contract.
 - `tools/icons-page.html` renders; `tools/genIcons.mjs` writes; the checker

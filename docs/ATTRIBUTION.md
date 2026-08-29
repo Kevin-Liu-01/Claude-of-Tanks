@@ -94,7 +94,7 @@ side skirts), turret yaw / gun pitch / recoil / camo tint / killcam all work
 through `modelLoader.js`'s re-parenting path.
 
 The per-tank source-of-truth switch is `MODEL_SOURCE` in
-`src/vehicles/specs.js`. Battle playables must resolve to `procedural`; the
+`src/vehicles/specs.ts`. Battle playables must resolve to `procedural`; the
 GLB ingestion path in `src/vehicles/modelLoader.js` exists for isolated review
 and non-battle presentation tooling, not fleet geometry.
 
@@ -412,7 +412,7 @@ quoted license line for each asset is preserved in
 | Recon Tank (`recon_tank`) | Recon Tank (Update) | Mophs — derivative of "Recon Tank" by MNDV.ecb / Eric Buisson (both credited) | https://opengameart.org/content/recon-tank-update | CC-BY 4.0 | `public/models/tanks/community/recon_tank_mophs.glb` (full PBR set embedded; bone-rigged Turret/Barrel articulation) |
 | Heavy Tank (Quaternius) (`q_heavy`) | Tank (heavy, tan) | Quaternius | https://poly.pizza/m/FA5daiyZQq | CC0 1.0 | `public/models/tanks/community/tank_quaternius_fa5.glb` |
 
-Integration path: `MODEL_SOURCE` community entries in `src/vehicles/specs.js`
+Integration path: `MODEL_SOURCE` community entries in `src/vehicles/specs.ts`
 (parametric class-template armor/stats), generalized GLB ingestion in
 `src/vehicles/modelLoader.js` (fixed-gun casemates, sibling gun nodes,
 bone-rigged turrets, auto-derived yaw/pitch pivots, untextured-asset camo

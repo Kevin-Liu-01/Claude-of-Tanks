@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.js';
+import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.js';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { wheelPatternFor } from './wheelPatterns.ts';
@@ -3489,7 +3489,7 @@ function buildM4A3E8(P) {
   P.add('hull', box(1.9, 0.67, 5.75), 0, 0.765, -0.125);                        // lower hull
   // r4 (critic: "hull reads long-and-low; roster calls it the tallest-
   // proportioned WWII tank"): sponson roof raised 1.93 -> 2.02 with all deck
-  // furniture; turret pivot rides up in specs.js armorM4.
+  // furniture; turret pivot rides up in specs.ts armorM4.
   // tank_models r7 (the long-and-low read persisted): another +8% — roof
   // 2.02 -> 2.18, all deck/glacis furniture re-seated on the taller plates.
   P.add('hull', frustum(1.5, 3.02, -3.13, 1.5, 2.10, -3.13, 1.10, 2.18));       // sponson + steep glacis
@@ -3747,7 +3747,7 @@ function buildTiger(P) {
   // ~2.5m so it no longer reads as a toy turret on the 3.7m hull (r3).
   // tank_models r2 (critic: "turret reads ~60% hull width, should be ~75%"):
   // widened again 1.26 -> 1.37 half-width (2.74 m on the 3.71 m hull ≈ 74%);
-  // the armor shell in specs.js stays at 1.26 (visual sits a hair proud).
+  // the armor shell in specs.ts stays at 1.26 (visual sits a hair proud).
   const TW = 1.37, TH = 0.80, tZF = 0.62, tZR = -0.52;
   const horseshoe = new THREE.Shape();
   horseshoe.moveTo(-TW, -tZF);
@@ -5028,7 +5028,7 @@ function buildLeo2A7(P) {
   // and the wedge pair spans the WHOLE front — apex sweep under the gun,
   // full-height outer shells reaching x ±1.46 and cresting the roofline —
   // so the front 3/4 silhouette is nothing but the two big wedge planes,
-  // exactly the 2A5/A7 arrow. specs.js moves the ring forward (0.12 ->
+  // exactly the 2A5/A7 arrow. specs.ts moves the ring forward (0.12 ->
   // 0.30) so the bow deck drops to ~25% of hull length.
   const LTW = 1.34;                    // base turret half-width (2.68 m box)
   const LTH = 0.88;                    // roofline: 1.72 + 0.88 = 2.60 m ≈ spec 2.64

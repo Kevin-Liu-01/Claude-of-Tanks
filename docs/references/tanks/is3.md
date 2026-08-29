@@ -11,7 +11,7 @@ steel road wheels, external fuel tanks on the rear sponsons.
   inverted frying pan"; pike nose welded plates.
 - Weaponsystems.net (https://www.weaponsystems.net/system/506-IS-3): same
   class figures (9.8 m overall, ~3.1 m wide, 2.45 m high).
-- Game spec `specs.js is3.dims`: hull 6.77, overall 9.85, w 3.15, h 2.45.
+- Game spec `specs.ts is3.dims`: hull 6.77, overall 9.85, w 3.15, h 2.45.
 
 ## GLB oracle
 `/models/tanks/community/is3_panzerfactory.glb` (Nick Tallon / PanzerFactory,

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
-import { ALL_TANK_IDS, getSpec } from './specs.js';
+import { ALL_TANK_IDS, getSpec } from './specs.ts';
 
 const DEG = Math.PI / 180;
 const MAX_SEAT_GAP_M = 0.125;

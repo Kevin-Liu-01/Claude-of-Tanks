@@ -9,14 +9,14 @@
 // Registration pattern: tankFactory.ts passes MODERN1_BUILDERS through the
 // checked factory-configuration gate. Specs and
 // model-source rows register HERE by mutating the exported tables from
-// specs.js — specs.js itself is untouched (it is concurrently edited by the
+// specs.ts — specs.ts itself is untouched (it is concurrently edited by the
 // sourcing workflows). Builders draw on the shared geometry/greeble kit
 // exported by tankFactoryCore.js (KIT).
 
 import * as THREE from 'three';
 import { KIT } from './tankFactoryCore.js';
 import { muzzleBore } from './profiles/kit.js';
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
   plate as par,
   frontPlate as fr,
@@ -347,7 +347,7 @@ const MODERN1_SPECS = {
 
 // Register specs + model-source rows + garage roster ids (idempotent —
 // vite HMR can re-evaluate this module).
-// DELIST-KEEP-SPEC donors (the leo2a7 pattern, specs.js:7 precedent): their
+// DELIST-KEEP-SPEC donors (the leo2a7 pattern, specs.ts:7 precedent): their
 // TANK_SPECS rows stay registered because later first-party variants clone
 // them, but they never enter ALL_TANK_IDS and therefore have no garage card.
 // - t72b3: owner removal 2026-08-06; donor for pt91m/t64bv1/t72b_1987.

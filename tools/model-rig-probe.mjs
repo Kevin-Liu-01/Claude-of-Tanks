@@ -43,7 +43,7 @@ try {
   });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
   const manifest = await page.evaluate(async () => {
-    const { ALL_TANK_IDS, TANK_SPECS, MODEL_SOURCE } = await import('/src/vehicles/specs.js');
+    const { ALL_TANK_IDS, TANK_SPECS, MODEL_SOURCE } = await import('/src/vehicles/specs.ts');
     return ALL_TANK_IDS.map((id) => ({
       id,
       turretless: TANK_SPECS[id].armor?.turretless === true,

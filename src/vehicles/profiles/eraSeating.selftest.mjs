@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
-import { TANK_SPECS } from '../specs.js';
+import { TANK_SPECS } from '../specs.ts';
 import './leopard2A7VGunEra.selftest.mjs';
 
 const a = new THREE.Vector3();

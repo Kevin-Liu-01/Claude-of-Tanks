@@ -60,7 +60,7 @@ try {
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
 
   const manifest = await page.evaluate(async () => {
-    const { ALL_TANK_IDS, TANK_SPECS, MODEL_SOURCE } = await import('/src/vehicles/specs.js');
+    const { ALL_TANK_IDS, TANK_SPECS, MODEL_SOURCE } = await import('/src/vehicles/specs.ts');
     return ALL_TANK_IDS
       .filter((id) => TANK_SPECS[id] && TANK_SPECS[id].armor)
       .map((id) => ({ id, source: (MODEL_SOURCE[id] && MODEL_SOURCE[id].source) || 'procedural' }));
@@ -94,7 +94,7 @@ try {
       }
 
       const scan = await page.evaluate(async (id) => {
-        const { TANK_SPECS } = await import('/src/vehicles/specs.js');
+        const { TANK_SPECS } = await import('/src/vehicles/specs.ts');
         const { COMBAT_ANATOMY_CALIBRATIONS } = await import('/src/vehicles/combatAnatomyCalibrations.ts');
         const armor = TANK_SPECS[id].armor;
         const calibration = COMBAT_ANATOMY_CALIBRATIONS[id];

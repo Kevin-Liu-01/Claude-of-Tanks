@@ -5,7 +5,7 @@
  * final contact instead of a rigid root plane tracing the heightfield.
  * Run with: node src/sim/movement.selftest.mjs
  * Exits 0 quietly on pass, non-zero with messages on failure.
- * Uses inline fixtures only — no dependency on vehicles/specs.js.
+ * Uses inline fixtures only — no dependency on vehicles/specs.ts.
  */
 
 import { Euler, Quaternion, Vector3 } from 'three';

@@ -7,7 +7,7 @@ import type { BattleHudRuntime, DamagePanelRuntime } from '../ui/battleHudAccess
 import type { HeightField } from '../world/terrain.ts';
 import type { ActiveWorld } from '../world/worldActivationRuntime.ts';
 import type { SkyPreset } from '../engine/sky.ts';
-import type { getSpec } from '../vehicles/specs.js';
+import type { getSpec } from '../vehicles/specs.ts';
 
 export interface MainLightingRuntime {
   setupShadowMaterial(material: THREE.Material, extraHook?: unknown): void;

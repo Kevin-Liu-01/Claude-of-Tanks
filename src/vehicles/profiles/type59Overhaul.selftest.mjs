@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
-import { getSpec } from '../specs.js';
+import { getSpec } from '../specs.ts';
 
 const near = (value, expected, epsilon = 1e-6) => Math.abs(value - expected) <= epsilon;
 const scale = 0.855;

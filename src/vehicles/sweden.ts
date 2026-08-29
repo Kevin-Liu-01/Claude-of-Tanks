@@ -6,7 +6,7 @@ import {
   MODEL_SOURCE,
   ALL_TANK_IDS,
   fitArmorToDims,
-} from './specs.js';
+} from './specs.ts';
 import {
   crewBox,
   frontPlate,

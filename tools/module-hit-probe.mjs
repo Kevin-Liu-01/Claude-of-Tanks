@@ -28,7 +28,7 @@ import { writeFileSync } from 'node:fs';
 // Register the FULL roster (specs + modern1-3 + userdrops + variants) the
 // same way the game does. tankFactory is node-safe (no DOM at module scope).
 await import('../src/vehicles/tankFactory.ts');
-const { TANK_SPECS, ALL_TANK_IDS } = await import('../src/vehicles/specs.js');
+const { TANK_SPECS, ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
 const { traceTank } = await import('../src/sim/armor.ts');
 const { resolveShellHit } = await import('../src/sim/damage.ts');
 

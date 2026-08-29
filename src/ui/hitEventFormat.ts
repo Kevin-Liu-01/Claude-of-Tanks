@@ -2,7 +2,7 @@
 // out of individual panels so the kill-cam and shot report cannot drift.
 
 import { penAtDistanceMm } from '../sim/ballistics.ts';
-import { RUNTIME_TANK_IDS, getSpec } from '../vehicles/specs.js';
+import { RUNTIME_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 
 export interface HitEventPresentation {
   readonly kind?: string;

@@ -2,7 +2,7 @@
 // remain external visual and metric oracles; all playable geometry is the
 // first-party procedural work in profiles/poland.ts.
 
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import type { ArmorEnvelope, ShellSpec, Vec3Tuple } from './specHelpers.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import {

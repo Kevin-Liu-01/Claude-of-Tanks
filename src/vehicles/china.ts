@@ -2,7 +2,7 @@
 // profiles/china.ts; these rows inherit a certified combat envelope and apply
 // explicit typed deltas.
 
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import { createType99Armor } from './profiles/type99Armor.ts';
 import type { ArmorEnvelope } from './specHelpers.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';

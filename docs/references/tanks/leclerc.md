@@ -868,7 +868,7 @@ through the batch-1 window (only §5.329 edits in tree); their later movement
 (amx40 ed5d23b2 at identical verts; amx30/amx30b2 twice) is the LIVE §5.328
 amx lane's own uncommitted WIP arriving in profiles/misc.js (buildAMX30
 region, disjoint hunks 3995+ vs this round's 1063-1954) plus a fleet-wide
-specs.js finalizeCombatAnatomy WIP from another lane — attribution receipts
+specs.ts finalizeCombatAnatomy WIP from another lane — attribution receipts
 in the round snapshots (misc.js.baseline/.wip1/.wip2-dualstate/.wip3).
 Delivered UNCOMMITTED-UNSTAGED per the graduate-change order; §3 freeze row
 update (733d24fd -> e6523de8) belongs to the landing authority.

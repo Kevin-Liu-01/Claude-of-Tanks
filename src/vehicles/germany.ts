@@ -2,7 +2,7 @@
 // the project and are used only for comparison; all playable geometry is
 // first-party procedural work in profiles/leopard.js and profiles/germany.ts.
 
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
   frontPlate,
   leftCheekPlate,

@@ -29,7 +29,7 @@
  * frames.
  */
 import * as THREE from 'three';
-import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.js';
+import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 import { createTank, ensureFullFleet } from '../vehicles/fleetFactory.ts';
 import {
   createTankState, resetTankVerticalState, updateTank, SIM_DT,

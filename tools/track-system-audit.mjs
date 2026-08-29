@@ -15,7 +15,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 await import('../src/vehicles/tankFactory.ts');
-const { ALL_TANK_IDS } = await import('../src/vehicles/specs.js');
+const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
 
 const idArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const mapArg = process.argv.find((arg) => arg.startsWith('--maps='));

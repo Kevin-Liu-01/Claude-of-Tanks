@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { createShell, guideShellToward } from '../../sim/ballistics.ts';
 import { specialActionGuidesShell } from '../../sim/specialActions.ts';
 import { createTank } from '../tankFactory.ts';
-import { getSpec } from '../specs.js';
+import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 import { garageStatGroup } from '../../ui/garageDossier.ts';
 

@@ -11,7 +11,7 @@ import puppeteer from 'puppeteer';
 // Loading the factory initializes every extension pack before the roster is
 // read, matching the provenance audit's complete-fleet discovery order.
 await import('../src/vehicles/tankFactory.ts');
-const { ALL_TANK_IDS } = await import('../src/vehicles/specs.js');
+const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
 
 const idArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const wheelOverlaysOnly = process.argv.includes('--wheel-overlays-only');

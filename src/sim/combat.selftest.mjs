@@ -2,7 +2,7 @@
  * combat.selftest.mjs — standalone verification of the combat sim
  * (ARCHITECTURE.md §3.5.4). Run with: node src/sim/combat.selftest.mjs
  * Exits 0 quietly on pass, non-zero with messages on failure.
- * Uses inline fixtures only — no dependency on vehicles/specs.js.
+ * Uses inline fixtures only — no dependency on vehicles/specs.ts.
  */
 
 import { Vector3 } from 'three';

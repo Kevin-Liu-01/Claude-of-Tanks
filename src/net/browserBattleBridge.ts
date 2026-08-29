@@ -9,7 +9,7 @@ import type {
   MovementHeightField,
   MovementSpec,
 } from '../sim/movement.ts';
-import { getSpec } from '../vehicles/specs.js';
+import { getSpec } from '../vehicles/specs.ts';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { prebakeSharedTextures } from '../vehicles/materials.js';
 import { tankContactRect } from '../sim/tankContactShape.ts';

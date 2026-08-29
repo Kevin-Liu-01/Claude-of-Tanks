@@ -2,7 +2,7 @@
 // elevated, spotted, LOS-clear target even when its gun pitch is pinned at
 // the depression stop (r6 repro). Flat-ground control included.
 import { Vector3 } from 'three';
-import { getSpec } from '../vehicles/specs.js';
+import { getSpec } from '../vehicles/specs.ts';
 import { createTankState, updateTank, SIM_DT } from './movement.ts';
 import { createAI, mulberry32 } from '../game/ai.ts';
 

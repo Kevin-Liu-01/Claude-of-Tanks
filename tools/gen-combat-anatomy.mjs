@@ -13,7 +13,7 @@ import { join, resolve } from 'node:path';
 import * as THREE from 'three';
 import { ConvexHull } from 'three/addons/math/ConvexHull.js';
 import { createTank } from '../src/vehicles/tankFactory.ts';
-import { ALL_TANK_IDS, TANK_SPECS } from '../src/vehicles/specs.js';
+import { ALL_TANK_IDS, TANK_SPECS } from '../src/vehicles/specs.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS } from '../src/vehicles/combatAnatomyCalibrations.ts';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 

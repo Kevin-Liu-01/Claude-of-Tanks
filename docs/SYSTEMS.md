@@ -421,7 +421,7 @@ A vehicle has three related but separate forms:
 Player identity and vehicle identity are independent. Multiple players can use
 the same vehicle specification without sharing authority or visual state.
 
-The registry is finalized by src/vehicles/specs.js and the first-party
+The registry is finalized by src/vehicles/specs.ts and the first-party
 registration modules. src/vehicles/tankFactory.ts constructs the visual from
 the selected specification. Generated assets are checked against live geometry
 and metadata fingerprints.

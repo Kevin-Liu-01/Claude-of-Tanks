@@ -17,7 +17,7 @@
 // m3a3_bradley revert to their pre-wave hulls/bases per owner order — see
 // their rows.
 
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
   shell,
   modernArmor as ifvArmor,

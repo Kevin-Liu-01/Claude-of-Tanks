@@ -10,7 +10,7 @@
 // Registration pattern (established by modern1.ts): tankFactory.ts passes
 // MODERN2_BUILDERS through the checked factory-configuration gate; builders
 // draw on tankFactoryCore's exported geometry KIT. Specs/model-source rows
-// register here by mutating the exported specs.js tables (specs.js itself is
+// register here by mutating the exported specs.ts tables (specs.ts itself is
 // a contested file, left untouched). Armor values are open-source RHAe
 // estimates per the roster doc (game-design baselines).
 
@@ -21,7 +21,7 @@ import { KIT } from './tankFactoryCore.js';
 import { FITTINGS, muzzleBore } from './profiles/kit.js';
 import { buildM1A1BareHull } from './profiles/abrams.js';
 import { createType99Armor } from './profiles/type99Armor.ts';
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
   plate as par,
   frontPlate as fr,

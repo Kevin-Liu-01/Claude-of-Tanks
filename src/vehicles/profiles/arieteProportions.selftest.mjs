@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
-import { getSpec } from '../specs.js';
+import { getSpec } from '../specs.ts';
 import { vehicleMarkingAnchor } from '../vehicleMarkings.ts';
 
 function countPanelCarrierFaces(mesh) {

@@ -2,7 +2,7 @@
 // are external visual/metric oracles only; playable geometry is authored in
 // profiles/japan.ts from first-party procedural donors and primitives.
 
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import './profiles/miscSpecs.ts';
 import { TYPE10_GUN_SEAT } from './profiles/type10GunSeat.ts';
 import type {

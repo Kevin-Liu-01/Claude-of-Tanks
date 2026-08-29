@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.ts';
-import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.js';
+import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 import { MAP_IDS } from '../src/world/maps/index.ts';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.ts';
 

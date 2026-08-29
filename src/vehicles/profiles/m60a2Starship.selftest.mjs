@@ -8,7 +8,7 @@ import {
   specialActionKind,
 } from '../../sim/specialActions.ts';
 import { createTank } from '../tankFactory.ts';
-import { getSpec } from '../specs.js';
+import { getSpec } from '../specs.ts';
 
 const spec = getSpec('m60a2');
 assert.equal(spec.gun.caliberMm, 152, 'Starship retains the 152 mm gun/launcher');

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 // The factory registers every first-party expansion module before finalizing
 // ALL_TANK_IDS. The browser gallery imports it first for the same reason.
 import '../vehicles/tankFactory.ts';
-import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.js';
+import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 import {
   buildGalleryRecords,
   createGalleryRecord,

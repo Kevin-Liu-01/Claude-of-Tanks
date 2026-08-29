@@ -34,7 +34,7 @@ execFileSync(process.execPath, [join(here, '../../tools/gen-legacy-fleet-specs.m
   timeout: 30_000,
 });
 const facadeUrl = pathToFileURL(join(here, 'fleetFactory.ts')).href;
-const specsUrl = pathToFileURL(join(here, 'specs.js')).href;
+const specsUrl = pathToFileURL(join(here, 'specs.ts')).href;
 const markingRegistryUrl = pathToFileURL(join(here, 'vehicleMarkingSeatRegistry.ts')).href;
 const anatomyRegistryUrl = pathToFileURL(join(here, 'combatAnatomyCalibrationRegistry.ts')).href;
 const facadeSource = await readFile(join(here, 'fleetFactory.ts'), 'utf8');

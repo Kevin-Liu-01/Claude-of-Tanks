@@ -11,7 +11,7 @@ return-roller gap, very wide (3.4 m) low hull.
 - Tank Encyclopedia (https://tanks-encyclopedia.com/coldwar/USSR/is-7-object-260):
   hull ~7.38 m, overall ~11.17 m gun forward, width 3.4 m, height ~2.6 m
   (page 403s from CLI but figures match the game spec row sourced from it).
-- Game spec `specs.js is7.dims`: hull 7.38 m, overall 11.17 m, w 3.4, h 2.6.
+- Game spec `specs.ts is7.dims`: hull 7.38 m, overall 11.17 m, w 3.4, h 2.6.
 
 ## GLB oracle
 `/models/tanks/community/is7-snowleopard.glb` (Jt Steele / SnowLeopard101,

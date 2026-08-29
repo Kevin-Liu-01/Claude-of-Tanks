@@ -37,7 +37,7 @@ const server = await createServer({
 });
 await server.listen();
 await server.ssrLoadModule('/src/vehicles/tankFactory.ts');
-const { ALL_TANK_IDS } = await server.ssrLoadModule('/src/vehicles/specs.js');
+const { ALL_TANK_IDS } = await server.ssrLoadModule('/src/vehicles/specs.ts');
 const tankAssets = JSON.parse(readFileSync(resolve(root, 'public/icons/tank-assets.json'), 'utf8'));
 const registeredIds = Object.keys(tankAssets.tanks || {});
 const ids = selectedIds.length ? selectedIds : registeredIds;

@@ -78,7 +78,7 @@ import {
   hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
 } from '../ui/hitEventFormat.ts';
 import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.ts';
-import { getSpec } from '../vehicles/specs.js';
+import { getSpec } from '../vehicles/specs.ts';
 import { iconUrl } from '../ui/icons.ts';
 import { tierNumeral } from '../ui/battleLoad.ts';
 import { isKillcamGhostSurface } from './killcamGhostPolicy.ts';

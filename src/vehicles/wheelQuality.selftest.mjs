@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from './tankFactory.ts';
-import { ALL_TANK_IDS, getSpec } from './specs.js';
+import { ALL_TANK_IDS, getSpec } from './specs.ts';
 import {
   WHEEL_PATTERN_DEFINITIONS,
   WHEEL_PATTERN_IDS,

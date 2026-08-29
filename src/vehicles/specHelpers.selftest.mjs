@@ -10,7 +10,7 @@ import {
   modernArmor,
 } from './specHelpers.ts';
 import './tankFactory.ts';
-import { SAVED_TANK_IDS, TANK_SPECS } from './specs.js';
+import { SAVED_TANK_IDS, TANK_SPECS } from './specs.ts';
 
 const quad = plate('test', 40, [0, 0, 0], [2, 0, 0], [0, 3, 1], {
   keMm: 60,

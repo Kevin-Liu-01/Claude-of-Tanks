@@ -1,7 +1,7 @@
 // Boot-light combat data for the repository-authored KF51 family. The
 // recovered GRIP420 asset is retained only as an attributed authoring oracle;
 // neither it nor the retired T-80U comparison participates in this registry.
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
   shell,
   apfsdsPenetration as apfsdsPens,

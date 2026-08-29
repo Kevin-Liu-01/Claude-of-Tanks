@@ -7,7 +7,7 @@ import {
   DEVELOPMENT_TANK_IDS,
   RETIRED_EXTERNAL_PLACEHOLDER_IDS,
   getSpec,
-} from './specs.js';
+} from './specs.ts';
 import {
   TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, expectedMuzzleBoreCount, geometryFingerprint, metadataFingerprint,
   requiredTankAssetFiles, tankAssetMetadata,

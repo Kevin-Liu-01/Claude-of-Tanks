@@ -246,7 +246,7 @@ try {
       const closeupOk = await page.evaluate(async () => {
         const t = window.__DEBUG.game.tankById.get('m1a2');
         if (!t || !t.visual) return false;
-        const S = await import('/src/vehicles/specs.js');
+        const S = await import('/src/vehicles/specs.ts');
         const src = (S.MODEL_SOURCE || {}).m1a2;
         const wantsGlb = !!(src && src.source && src.source !== 'procedural');
         let swapped = false, vis = 0;

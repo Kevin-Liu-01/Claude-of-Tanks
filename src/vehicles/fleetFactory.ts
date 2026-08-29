@@ -46,7 +46,7 @@ import {
   SAVED_TANK_IDS,
   TANK_SPECS,
   finalizeFirstPartyRoster,
-} from './specs.js';
+} from './specs.ts';
 import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
 import {
   createProfileBuilders,

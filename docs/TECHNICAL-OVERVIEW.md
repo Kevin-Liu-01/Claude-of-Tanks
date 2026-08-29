@@ -263,7 +263,7 @@ A playable vehicle has four coordinated representations.
 
 ### 6.1 Specification
 
-`src/vehicles/specs.js` owns the registry. A specification includes:
+`src/vehicles/specs.ts` owns the registry. A specification includes:
 
 - stable ID, display label metadata, nation, era, class, and tier;
 - hit points, engine power, mass, speed limits, resistance, and traverse;

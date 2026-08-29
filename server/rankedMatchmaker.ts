@@ -4,7 +4,7 @@ import {
   type EquipmentSpecLike,
 } from '../src/game/equipment.ts';
 import { isGarageVisibleTankId } from '../src/game/matchmaking.ts';
-import { getSpec } from '../src/vehicles/specs.js';
+import { getSpec } from '../src/vehicles/specs.ts';
 import { RANDOM_BATTLE_MAP_IDS } from '../src/world/maps/index.ts';
 import { uniquePlayerName } from '../src/net/playerNames.ts';
 import { networkCamoId } from '../src/vehicles/camoPolicy.ts';

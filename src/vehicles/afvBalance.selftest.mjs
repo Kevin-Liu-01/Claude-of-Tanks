@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import './tankFactory.ts'; // registers the complete modern roster
-import { ALL_TANK_IDS, TANK_SPECS, getSpec } from './specs.js';
+import { ALL_TANK_IDS, TANK_SPECS, getSpec } from './specs.ts';
 
 const EXPECTED = Object.freeze({
   m2a2_bradley:       { hp: 1650, speed: 61, reverse: 20, traverse: 42, damage: 58, pen: [130, 118, 106], reload: 0.42, sound: 'm242-bushmaster', missile: [540, 'tow-launch'] },

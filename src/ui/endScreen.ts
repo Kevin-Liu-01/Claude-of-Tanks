@@ -31,7 +31,7 @@ import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
 import { iconUrl, maskIcon } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { getSpec } from '../vehicles/specs.js';
+import { getSpec } from '../vehicles/specs.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type {
   NetworkRoomPlayer,

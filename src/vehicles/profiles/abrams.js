@@ -4851,7 +4851,7 @@ function buildTejasFamily(P, p) {
 // drop (/models/tanks/community/recovered/m1a2_sepv2.glb, warped to
 // published dims; extract docs/references/vertex/m1a2.json).
 //
-// MASK ARCHITECTURE (matches the print's node split + specs.js
+// MASK ARCHITECTURE (matches the print's node split + specs.ts
 // turretFollowers): the ref's yawing subtree carries the FULL turret shell,
 // bustle rack and most roof works; its HULL mask retains a STATIC mid-deck
 // works field (the 2.38/2.16/2.24 blocks over z 0.4..-2.7) that never yaws.

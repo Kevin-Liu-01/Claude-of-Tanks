@@ -12,7 +12,7 @@ return rollers, long flat fenders.
   "housed in an enormous turret".
 - Tank Encyclopedia (https://tanks-encyclopedia.com/ww2/soviet/soviet_kv2.php):
   KV-2 1940, MT-1 turret, 152 mm M-10T L/24, ~52 t, 3.25 m tall.
-- Game spec `specs.js kv2.dims`: hull 6.95, overall 6.95, w 3.32, h 3.25.
+- Game spec `specs.ts kv2.dims`: hull 6.95, overall 6.95, w 3.32, h 3.25.
 
 ## GLB oracle
 `/models/tanks/community/kv2-full-comrade1280.glb` (Comrade1280, CC-BY 4.0).
@@ -346,7 +346,7 @@ front-column window untouched), no new tops (every fill under the plate that
 owns its side/plan column), extreme-z columns untouched (hooks 3.26/−3.615,
 chamfer −3.52). Gate re-run with the candidateGlb temporarily re-registered:
 **90.2 PASS, byte-identical row** (hull 92.1 whole 90.2 turret 90.3 stations
-96 dims 100 floaters 100); specs.js reverted byte-identically after the run.
+96 dims 100 floaters 100); specs.ts reverted byte-identically after the run.
 Geometry hash re-frozen (tmp-hashgeo.html pipeline): 3e08fe88 -> **f01e1e00**
 (36 meshes, 109688 -> 110408 verts). Board refreshed.
 
@@ -358,7 +358,7 @@ this round's bar is the §K exemplar flow proven in pixels + the independent
 rows staged or chased.
 
 SOURCES VERIFIED FIRST (per §5.247 first-step law): the candidateGlb
-registration (`specs.js` kv2 row, `/models/tanks/community/
+registration (`specs.ts` kv2 row, `/models/tanks/community/
 kv2-full-comrade1280.glb`) RESOLVES and LOADS — the working tree carried
 NO live GLB (the main tree's community models are .bak-only right now;
 kv2 had no .bak at all), so the print bytes were restored from the

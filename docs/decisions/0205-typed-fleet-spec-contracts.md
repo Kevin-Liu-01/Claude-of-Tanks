@@ -10,8 +10,9 @@ aiming, gun and shell data, dimensions, armor, and visual identity while
 permitting family-specific extension metadata.
 
 Migrate `franceSpecs.ts` and `profiles/miscSpecs.ts` first. They register the
-AMX-40 and Type 74 without importing their Three.js builders, and explicitly
-adapt the legacy JavaScript registries to typed records at that boundary.
+AMX-40 and Type 74 without importing their Three.js builders. The central
+registry subsequently migrated to `specs.ts`, so those packs now consume the
+typed records directly.
 
 ## Why
 
@@ -24,7 +25,7 @@ shape errors while preserving the demand-loaded builder topology.
 
 - Compact spec packs can migrate without importing a builder or the eager
   fleet facade.
-- The legacy registry cast is isolated and visible until `specs.js` itself is
-  migrated.
+- The central registry and every current source/tool import now use
+  `specs.ts`; no JavaScript registry adapter remains.
 - AMX-40 and Type 74 values, registration order, and runtime chunks are
   unchanged.

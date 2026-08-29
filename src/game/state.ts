@@ -37,7 +37,8 @@ import type { CollisionRecord } from '../world/collision.ts';
 import type { EventBus, RandomSource } from './stateCore.ts';
 import type { RosterEntity, RosterGameState } from './rosterState.ts';
 import type { ModuleId } from '../sim/moduleCatalog.ts';
-import { getSpec } from '../vehicles/specs.js';
+import type { FleetTankSpec } from '../vehicles/specContracts.ts';
+import { getSpec } from '../vehicles/specs.ts';
 import { tankTier } from '../vehicles/tier.ts';
 import {
   createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
@@ -99,7 +100,7 @@ type SoloArmorSpec = ArmorModel & MovementArmorSpec & {
   boundingRadiusM: number;
 };
 
-type SoloSpec = Omit<MovementSpec, 'gun' | 'armor'> &
+type SoloSpec = FleetTankSpec & Omit<MovementSpec, 'gun' | 'armor'> &
   Omit<DamageTankSpec, 'gun' | 'armor' | 'dims'> &
   Omit<SpecialActionSpec, 'gun'> & {
     id: string;

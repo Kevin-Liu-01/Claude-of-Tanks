@@ -265,7 +265,7 @@ const server = await createServer({
 let report;
 try {
   await server.ssrLoadModule('/src/vehicles/tankFactory.ts');
-  const { ALL_TANK_IDS, TANK_SPECS, MODEL_SOURCE } = await server.ssrLoadModule('/src/vehicles/specs.js');
+  const { ALL_TANK_IDS, TANK_SPECS, MODEL_SOURCE } = await server.ssrLoadModule('/src/vehicles/specs.ts');
   const rows = [];
   for (const id of ALL_TANK_IDS) {
     const spec = TANK_SPECS[id];

@@ -83,7 +83,7 @@ import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts'
 import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';
 import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
-import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.js';
+import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
   createTank, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
 } from './vehicles/fleetFactory.ts';

@@ -115,7 +115,7 @@ DoD/VIRIN imagery (public domain) is the clean source for real-tank photos.
    - *Hunyuan3D-Part, open source local* (P3-SAM + X-Part, Sept 2025): native
      3D part segmentation + watertight part regeneration, free, needs a
      24 GB-class GPU — not this MacBook; would be a cloud-GPU batch job.
-4. **Ingest as usual**: scale-normalize to specs.js dims, materials pass,
+4. **Ingest as usual**: scale-normalize to specs.ts dims, materials pass,
    `npm run model:audit`, `npm run model:rig`, geometry gate vs reference.
 
 ### Recommendation (models)

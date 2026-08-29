@@ -3,7 +3,7 @@
 // Keeping gameplay registration here lets donor specs and the garage roster
 // initialize without importing Three.js, the UK fitting kit, or any builder.
 
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
   plate as par,
   frontPlate as fr,

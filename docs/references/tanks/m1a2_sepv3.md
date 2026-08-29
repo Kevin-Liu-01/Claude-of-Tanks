@@ -31,10 +31,10 @@ and sepv3 based on the current abrams platforms."
   never gate this id. Measures = §B8.1 four-box + 14-view self-shots.
 - Mask split: works field TURRET-parented (the m1a2 §B5-correct
   arrangement — no worksHull flag).
-- NAME COLLISION FLAG for the owner/orchestrator: specs.js still names the
+- NAME COLLISION FLAG for the owner/orchestrator: specs.ts still names the
   base m1a2 row "M1A2 Abrams SEPv3" (the dannzjs-era label). With this row
   shipping as "M1A2 SEPv3" the garage shows two SEPv3-named tanks — the base
-  row wants a rename (owner call; specs.js is outside this lane's files).
+  row wants a rename (owner call; specs.ts is outside this lane's files).
 
 ## Measurement/influence source (owner-supplied local asset)
 `public/models/tanks/m1a2_sepv3_dannzjs.glb` — probed OFFLINE this round

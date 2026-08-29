@@ -80,7 +80,7 @@ for (const file of files) {
 // Loading the factory also loads every extension pack; those packs append
 // their ids/specs to the shared tables during module initialization.
 await import(pathToFileURL(path.join(vehicleRoot, 'tankFactory.ts')).href);
-const specsUrl = pathToFileURL(path.join(vehicleRoot, 'specs.js')).href;
+const specsUrl = pathToFileURL(path.join(vehicleRoot, 'specs.ts')).href;
 const { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS, RETIRED_EXTERNAL_PLACEHOLDER_IDS } = await import(specsUrl);
 // Runtime source selection is procedural-only. Comparison GLBs and their
 // articulation metadata belong to tools/vehicleComparisonSources.mjs.

@@ -72,7 +72,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { KIT, createTank } from '/src/vehicles/tankFactory.ts';
-import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
+import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
 
 const params = new URLSearchParams(location.search);
 const mode = params.get('mode') || 'audit';

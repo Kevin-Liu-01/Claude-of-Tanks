@@ -154,7 +154,7 @@ for (const [id, chip] of Object.entries(WAVE8)) {
   // (t80/t80b/t80bv/t84/m60a2/vickers_mk1...) legitimately play our custom
   // procedural build, so the old all-GLB wave assertion went stale.
   const wantGlb = await page.evaluate(async (tid) => {
-    const m = await import('/src/vehicles/specs.js');
+    const m = await import('/src/vehicles/specs.ts');
     return (m.MODEL_SOURCE[tid] && m.MODEL_SOURCE[tid].source) === 'glb';
   }, id);
   if (conv.glb !== wantGlb) {

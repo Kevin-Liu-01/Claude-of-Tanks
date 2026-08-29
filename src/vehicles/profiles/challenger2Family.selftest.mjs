@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
-import { getSpec } from '../specs.js';
+import { getSpec } from '../specs.ts';
 
 function make(id) {
   return createTank(id, null, {

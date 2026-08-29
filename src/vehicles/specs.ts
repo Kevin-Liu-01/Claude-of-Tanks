@@ -1,4 +1,4 @@
-// src/vehicles/specs.js — pure gameplay stat and armor data for the registered fleet.
+// src/vehicles/specs.ts — pure gameplay stat and armor data for the registered fleet.
 // PURE data module: no three import, no side effects. Runs under plain node.
 // Sources: docs/research/tank-roster.md (+ locked overrides in docs/ARCHITECTURE.md §3.3.1).
 // Units per ARCHITECTURE §1.2 — suffixed fields keep human units; consumers convert.
@@ -30,25 +30,62 @@ import {
   apfsdsPenetration as apfsdsPens,
   communityArmor,
 } from './specHelpers.ts';
+import type {
+  ArmorEnvelope,
+  ArmorPlate,
+  MutableVec3Tuple,
+} from './specHelpers.ts';
+import type {
+  AimBloom,
+  FleetDimensions,
+  FleetTankSpec,
+  ModelSourceRegistry,
+  TankSpecRegistry,
+} from './specContracts.ts';
+
+type TrackModule = 'trackL' | 'trackR';
+type MutableVec2Tuple = [number, number];
+
+interface TrackHull {
+  readonly module?: TrackModule;
+  readonly x0: number;
+  readonly x1: number;
+  readonly poly: readonly (readonly [number, number])[];
+}
+
+type TrackShapePlate = Omit<ArmorPlate, 'verts'>;
+
+interface TrackShape {
+  readonly module: TrackModule;
+  x0: number;
+  x1: number;
+  poly: MutableVec2Tuple[];
+  readonly plate: TrackShapePlate;
+}
+
+interface TrackArmorEnvelope extends ArmorEnvelope {
+  trackShapesOverride?: TrackHull[];
+  trackShapes?: TrackShape[];
+}
 
 /** Foundational roster ids in their locked relative garage-carousel order. */
 // leo2a7 REMOVED from the roster BY OWNER 2026-08-06 ('remove the leopard
 // 2a7 and fully focus on the 2a7v') — its TANK_SPECS row STAYS as the
 // leo2_revolution make() donor (userdrops5); it just never enters
 // TANK_IDS/ALL_TANK_IDS, so no garage card, no ledger row.
-export const TANK_IDS = ['m4a3e8', 'tiger1', 't34_85', 'is2', 'panther_g', 'm1a2', 't90m', 't90m_proryv'];
+export const TANK_IDS: string[] = ['m4a3e8', 'tiger1', 't34_85', 'is2', 'panther_g', 'm1a2', 't90m', 't90m_proryv'];
 
 
 // controls_gunnery r2: afterShot 4/3 → 2.8/2.2 with the movement.ts LN6
 // shrink tau so a second aimed shot is possible ~2.3 s (modern) / ~3.5 s
 // (WW2) after firing — the old pair needed ~4.6 s on an M1A2.
-const BLOOM_WW2 = { move: 0.20, hullRot: 0.20, turret: 0.12, afterShot: 2.8 };
-const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
+const BLOOM_WW2: AimBloom = { move: 0.20, hullRot: 0.20, turret: 0.12, afterShot: 2.8 };
+const BLOOM_MODERN: AimBloom = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
 
 // ---------------------------------------------------------------------------
 // M4A3E8 Sherman "Easy Eight"
 // ---------------------------------------------------------------------------
-function armorM4() {
+function armorM4(): ArmorEnvelope {
   // r4: roofY raised 1.93 -> 2.02 with the visual sponson (roster: the
   // tallest-proportioned WWII tank; height ~= hull length x 0.47)
   // tank_models r7: +8% again (2.02 -> 2.18) with the visual — the E8 still
@@ -107,7 +144,7 @@ function armorM4() {
 // ---------------------------------------------------------------------------
 // Tiger I
 // ---------------------------------------------------------------------------
-function armorTiger() {
+function armorTiger(): ArmorEnvelope {
   const hw = 1.855, inW = 1.13, roofY = 1.96, trkTop = 1.15, floor = 0.47;
   return {
     boundingRadiusM: 4.55,
@@ -158,7 +195,7 @@ function armorTiger() {
 // ---------------------------------------------------------------------------
 // T-34-85
 // ---------------------------------------------------------------------------
-function armorT34() {
+function armorT34(): ArmorEnvelope {
   const trkTop = 1.05, floor = 0.4, roofY = 1.70;
   return {
     boundingRadiusM: 4.35,
@@ -215,7 +252,7 @@ function armorT34() {
 // ---------------------------------------------------------------------------
 // IS-2 (model 1944)
 // ---------------------------------------------------------------------------
-function armorIS2() {
+function armorIS2(): ArmorEnvelope {
   const trkTop = 1.10, floor = 0.45, roofY = 1.80;
   return {
     boundingRadiusM: 5.25,
@@ -269,7 +306,7 @@ function armorIS2() {
 // ---------------------------------------------------------------------------
 // Panther Ausf. G
 // ---------------------------------------------------------------------------
-function armorPanther() {
+function armorPanther(): ArmorEnvelope {
   const trkTop = 1.15, floor = 0.52, roofY = 1.85;
   return {
     boundingRadiusM: 4.65,
@@ -322,7 +359,7 @@ function armorPanther() {
 // ---------------------------------------------------------------------------
 // M1A2 Abrams SEPv3 (composite: keMm/ceMm are RHAe estimates; physicalMm for geometry)
 // ---------------------------------------------------------------------------
-function armorM1A2() {
+function armorM1A2(): ArmorEnvelope {
   const trkTop = 1.05, floor = 0.45, roofY = 1.47;
   return {
     boundingRadiusM: 5.2,
@@ -379,7 +416,7 @@ function armorM1A2() {
 // ---------------------------------------------------------------------------
 // T-90M Proryv (Relikt ERA: consumable tiles, keReduction 0.25 / ceFlat 500)
 // ---------------------------------------------------------------------------
-function armorT90M() {
+function armorT90M(): ArmorEnvelope {
   // r7: hull roof dropped 1.45 -> 1.40 with the barge-hull visual rebuild
   // (deck band rides just above the fender line; turret scaled up instead).
   const trkTop = 1.0, floor = 0.43, roofY = 1.40;
@@ -444,7 +481,7 @@ function armorT90M() {
 // ---------------------------------------------------------------------------
 // Leopard 2A7
 // ---------------------------------------------------------------------------
-function armorLeo2A7() {
+function armorLeo2A7(): ArmorEnvelope {
   const trkTop = 1.08, floor = 0.5, roofY = 1.72;
   return {
     boundingRadiusM: 5.8,
@@ -515,7 +552,7 @@ function armorLeo2A7() {
 // The spec table (locked values from ARCHITECTURE §3.3.1 + roster tables)
 // ---------------------------------------------------------------------------
 
-export const TANK_SPECS = {
+export const TANK_SPECS: TankSpecRegistry = {
   m4a3e8: {
     id: 'm4a3e8', name: 'M4A3E8 Sherman', nation: 'USA', era: 'ww2', role: 'medium',
     hp: 720,
@@ -775,7 +812,7 @@ TANK_SPECS.m1a2.visual.number = '23';
   const t90 = TANK_SPECS.t90m.armor;
   const l = t90.hullPlates[0];
   // Re-place the single glacis ERA quad as two side-by-side tiles.
-  const mk = (name, x0, x1) => par(name, 15,
+  const mk = (name: string, x0: number, x1: number): ArmorPlate => par(name, 15,
     [x0, 0.95, 3.42], [x1, 0.95, 3.42], [x0, 1.42, 2.02],
     { kind: 'era', era: l.era });
   t90.hullPlates.splice(0, 1, mk('glacis_era_L', -1.5, -0.02), mk('glacis_era_R', 0.02, 1.5));
@@ -804,7 +841,7 @@ TANK_SPECS.t90m_proryv.visual.number = '623';
 
 
 /** First-party expansion ids (garage carousel order, appended after core). */
-const FIRST_PARTY_EXPANSION_TANK_IDS = [
+const FIRST_PARTY_EXPANSION_TANK_IDS: string[] = [
   'strv103', 'is3', 't34_85_cad', 'newc_tiger', 'newc_pziii',
   'pziii_konserwa', 'leichttraktor',
   // wave 2 (print-model crawl, 2026-07-28)
@@ -814,7 +851,7 @@ const FIRST_PARTY_EXPANSION_TANK_IDS = [
   'is7', 'object279', 'is6b', 'is1',
 ];
 
-const FIRST_PARTY_EXPANSION_SPECS = {
+const FIRST_PARTY_EXPANSION_SPECS: TankSpecRegistry = {
   strv103: {
     id: 'strv103', name: 'Stridsvagn 103', nation: 'Sweden', era: 'modern', role: 'td',
     community: {
@@ -1659,7 +1696,7 @@ export const RUNTIME_TANK_IDS = TANK_CATALOGS.runtime;
 // ALL_TANK_IDS while retaining the audit trail in this file.
 export { RETIRED_EXTERNAL_PLACEHOLDER_IDS };
 
-const FIRST_PARTY_DISPLAY_NAMES = {
+const FIRST_PARTY_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   t34_85_cad: 'T-34-85 obr. 1944',
   newc_tiger: 'Tiger I Early',
   newc_pziii: 'Panzer III Ausf. J',
@@ -1675,7 +1712,7 @@ const FIRST_PARTY_DISPLAY_NAMES = {
  * references rather than the live procedural model, normalizes source-branded
  * display names, and makes generic third-party placeholders unselectable.
  */
-export function finalizeFirstPartyRoster() {
+export function finalizeFirstPartyRoster(): void {
   for (let i = TANK_IDS.length - 1; i >= 0; i -= 1) {
     const spec = TANK_SPECS[TANK_IDS[i]];
     if (isRetiredHistoricalTank(spec)) TANK_IDS.splice(i, 1);
@@ -1725,7 +1762,7 @@ export function finalizeFirstPartyRoster() {
 
 // Runtime geometry provenance. Registrars add procedural rows for the rest of
 // the fleet; native-playables-audit rejects every external runtime source.
-export const MODEL_SOURCE = {
+export const MODEL_SOURCE: ModelSourceRegistry = {
   m4a3e8: { source: 'procedural' },
   tiger1: { source: 'procedural' },
   t34_85: { source: 'procedural' },
@@ -1780,13 +1817,16 @@ export const MODEL_SOURCE = {
  *   track hulls, RIGHT-side coordinates (x0>0); mirrored here for the left
  * @returns {object} the same armor object
  */
-export function attachTrackShapes(armor, hulls) {
+export function attachTrackShapes<T extends TrackArmorEnvelope>(
+  armor: T,
+  hulls: readonly TrackHull[],
+): T {
   if (!armor) return armor;
   const src = Array.isArray(armor.trackShapesOverride) && armor.trackShapesOverride.length
     ? armor.trackShapesOverride
     : hulls;
   if (!Array.isArray(src) || !src.length) return armor;
-  const shapes = [];
+  const shapes: TrackShape[] = [];
   for (const h of src) {
     if (!h || !Array.isArray(h.poly) || h.poly.length < 3) continue;
     const sides = h.module === 'trackL' ? [-1] : h.module === 'trackR' ? [1] : [-1, 1];
@@ -1800,7 +1840,7 @@ export function attachTrackShapes(armor, hulls) {
         module,
         x0: side < 0 ? -hi : lo,
         x1: side < 0 ? -lo : hi,
-        poly: h.poly.map((v) => [v[0], v[1]]),
+        poly: h.poly.map((v: readonly [number, number]) => [v[0], v[1]]),
         plate: {
           name: legacy ? legacy.name : (side < 0 ? 'track_L' : 'track_R'),
           physicalMm: legacy ? legacy.physicalMm : 20,
@@ -1838,14 +1878,23 @@ export function attachTrackShapes(armor, hulls) {
  * @param {object} toDims recipient spec.dims
  * @returns {object} the same armor object, fitted
  */
-export function fitArmorToDims(armor, fromDims, toDims) {
+export function fitArmorToDims<T extends TrackArmorEnvelope>(
+  armor: T,
+  fromDims: FleetDimensions,
+  toDims: FleetDimensions,
+): T {
   if (!armor || !fromDims || !toDims) return armor;
-  const ratio = (a, b) => (a > 0 && b > 0 ? b / a : 1);
+  const ratio = (a: number, b: number): number => (a > 0 && b > 0 ? b / a : 1);
   const sx = ratio(fromDims.widthM, toDims.widthM);
   const sy = ratio(fromDims.heightM, toDims.heightM);
   const sz = ratio(fromDims.hullLengthM, toDims.hullLengthM);
   if (Math.abs(sx - 1) < 1e-3 && Math.abs(sy - 1) < 1e-3 && Math.abs(sz - 1) < 1e-3) return armor;
-  const v3 = (v) => { v[0] *= sx; v[1] *= sy; v[2] *= sz; };
+  const v3 = (v: readonly [number, number, number]): void => {
+    const mutable = v as MutableVec3Tuple;
+    mutable[0] *= sx;
+    mutable[1] *= sy;
+    mutable[2] *= sz;
+  };
   for (const plates of [armor.hullPlates, armor.turretPlates]) {
     for (const p of plates || []) for (const v of p.verts) v3(v);
   }
@@ -1871,7 +1920,7 @@ export function fitArmorToDims(armor, fromDims, toDims) {
  * @returns {object} TankSpec (ARCHITECTURE §2.2)
  * @throws {Error} on unknown id
  */
-export function getSpec(id) {
+export function getSpec(id: string): FleetTankSpec {
   const s = TANK_SPECS[id];
   if (!s) throw new Error(`Unknown tank id: ${id}`);
   return s;

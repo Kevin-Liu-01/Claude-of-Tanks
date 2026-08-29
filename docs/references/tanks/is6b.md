@@ -11,7 +11,7 @@ road wheels.
 - Tank Encyclopedia (https://tanks-encyclopedia.com/coldwar/soviet/is-6-object-253/
   and https://tanks-encyclopedia.com/is-6/): Object 252/253 ~54 t, 122 mm,
   torsion-bar 6-wheel running gear.
-- Game spec `specs.js is6b.dims`: hull 6.9, overall 9.1, w 3.2, h 2.5.
+- Game spec `specs.ts is6b.dims`: hull 6.9, overall 9.1, w 3.2, h 2.5.
 
 ## GLB oracle
 `/models/tanks/community/is6b-snowleopard.glb` (Jt Steele / SnowLeopard101,

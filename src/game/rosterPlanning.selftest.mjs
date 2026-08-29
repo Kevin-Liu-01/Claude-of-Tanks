@@ -3,7 +3,7 @@ import { createGameState } from './stateCore.ts';
 import {
   planBattleCamoOverrides, planBattleParticipantIds, spawnTanks,
 } from './rosterState.ts';
-import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.js';
+import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
 
 const game = createGameState();
 spawnTanks(game, {});

@@ -14,7 +14,7 @@ import { addLobbyPlayer, applyLobbyCommand, createLobby, serializeLobby } from '
 import { MAP_IDS } from '../world/maps/index.ts';
 
 await import('../vehicles/tankFactory.ts');
-const { PRODUCTION_TANK_IDS } = await import('../vehicles/specs.js');
+const { PRODUCTION_TANK_IDS } = await import('../vehicles/specs.ts');
 
 class FakeRtcChannel {
   constructor(label) {

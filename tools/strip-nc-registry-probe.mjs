@@ -16,7 +16,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MARKER = '__STRIP_NC_REGISTRY__';
 
 await import(path.join(ROOT, 'src', 'vehicles', 'fleetFactory.ts'));
-const specs = await import(path.join(ROOT, 'src', 'vehicles', 'specs.js'));
+const specs = await import(path.join(ROOT, 'src', 'vehicles', 'specs.ts'));
 
 const sources = {};
 for (const id of specs.ALL_TANK_IDS) {

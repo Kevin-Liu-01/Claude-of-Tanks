@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import '../vehicles/tankFactory.ts';
 import { MODULE_IDS } from '../sim/moduleCatalog.ts';
-import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.js';
+import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 import {
   CREW_ARMOR_CLEARANCE_M,
   CREW_STANDING_HEIGHT_M,

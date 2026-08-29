@@ -8,7 +8,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.ts';
-import { getSpec } from '/src/vehicles/specs.js';
+import { getSpec } from '/src/vehicles/specs.ts';
 
 const q = new URLSearchParams(location.search);
 const id = q.get('id') || 'chieftain_mk10';

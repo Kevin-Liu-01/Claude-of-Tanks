@@ -1,5 +1,5 @@
 import { resolveMapId } from '../world/maps/index.ts';
-import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.js';
+import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
 import { isBotTankId } from '../game/matchmaking.ts';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
 import { createLoopbackTransportPair } from './loopbackTransport.ts';

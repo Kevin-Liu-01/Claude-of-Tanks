@@ -172,5 +172,5 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 
 - `src/vehicles/rosterPolicy.ts` owns explicit production exclusions and the local-development gate.
 - `src/vehicles/taxonomy.ts` owns the public era taxonomy and every saved vehicle assignment.
-- `src/vehicles/specs.js` owns the central `TANK_CATALOGS` registry; garage, gallery, bots, runtime, and tools consume shared projections rather than copied lists.
+- `src/vehicles/specs.ts` owns the central `TANK_CATALOGS` registry, publishes saved, production, visible, and runtime projections, and stamps every spec with canonical roster metadata.
 - Production visibility is independent from record retention: hiding a vehicle never deletes its authored spec or tooling access.

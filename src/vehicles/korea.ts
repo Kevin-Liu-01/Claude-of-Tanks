@@ -2,7 +2,7 @@
 // K2B resurrects the former PL-01 combat deltas on the certified K2 donor;
 // all playable geometry remains first-party procedural work in profiles/korea.ts.
 
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import {
   bindFleetRegistries,

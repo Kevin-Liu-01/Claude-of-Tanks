@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import { penAtDistanceMm } from '../sim/ballistics.ts';
-import { getSpec } from '../vehicles/specs.js';
+import { getSpec } from '../vehicles/specs.ts';
 import {
   hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
 } from './hitEventFormat.ts';

@@ -5,7 +5,7 @@ authored balance/dimension source; there are no published real-vehicle dims.
 
 ## Spec dims (authoritative for the geometry gate)
 
-`specs.js`: hullLengthM 6.2, overallLengthM 7.2, widthM 3.0, heightM 2.5.
+`specs.ts`: hullLengthM 6.2, overallLengthM 7.2, widthM 3.0, heightM 2.5.
 
 ## Local GLB oracle notes
 

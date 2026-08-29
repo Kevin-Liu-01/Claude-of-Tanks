@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from './tankFactory.ts';
-import { ALL_TANK_IDS } from './specs.js';
+import { ALL_TANK_IDS } from './specs.ts';
 
 let coveredVehicles = 0;
 let registeredParts = 0;

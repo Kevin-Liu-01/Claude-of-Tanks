@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { TANK_SPECS } from '../specs.js';
+import { TANK_SPECS } from '../specs.ts';
 import { createTank } from '../tankFactory.ts';
 import { measureTurretBarrelCircularity } from '../turretBarrelCircularity.ts';
 

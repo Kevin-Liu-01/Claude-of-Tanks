@@ -91,13 +91,13 @@ spotting (spotting.ts).
   semantic location and articulation frame (`turretLocal`) of each system;
   the finalizer changes collision representation, not module identity.
 - **Parametric expansion template**: additional first-party vehicles
-  (`communityArmor` is the retained helper name in specs.js and its userdrops
+  (`communityArmor` is the retained helper name in specs.ts and its userdrops
   mirror) derive every box from `spec.dims` —
   rear-half engine, mid fuel, center-forward ammo, ring band at the roof.
 - **Donor copies re-fitted to dims** (module_hitbox r1): derived variants
   (`additionalFleetSpecs.ts` and `classicFleetSpecs.ts`) copy a donor spec and
   patch `dims`; the armor is
-  now refit through `fitArmorToDims(armor, donorDims, dims)` (specs.js) —
+  now refit through `fitArmorToDims(armor, donorDims, dims)` (specs.ts) —
   per-axis affine scale of plates/authoring bounds/pivots/barrel. Before the fit the
   m60a1 carried Leopard-1-sized armor 1.2 m shorter and 0.23 m narrower than
   its rendered hull: shots at the rendered turret resolved as air. The

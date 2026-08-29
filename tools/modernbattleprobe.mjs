@@ -44,7 +44,7 @@ try {
 
   // 1. roster registration
   const roster = await page.evaluate(async () => {
-    const s = await import('/src/vehicles/specs.js');
+    const s = await import('/src/vehicles/specs.ts');
     const specs = s.ALL_TANK_IDS.map((id) => s.TANK_SPECS[id]);
     return {
       total: specs.length,

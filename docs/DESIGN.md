@@ -23,15 +23,15 @@ The program has four interlocking systems:
 
 ## 1. The runtime
 
-### 1.1 Spec layer — src/vehicles/specs.js
-- `TANK_SPECS` (specs.js:543) — every playable's stats, `dims` (published real-vehicle
+### 1.1 Spec layer — src/vehicles/specs.ts
+- `TANK_SPECS` (specs.ts:543) — every playable's stats, `dims` (published real-vehicle
   dimensions: the gate's sovereign anchor), `armor` (incl. `turretPivot`/`gunPivot` —
   the rig seats), `visual` knobs (trackWidthM, camoScale, bakeDirtDeckEq...).
-- `MODEL_SOURCE` (specs.js:1690) — the per-tank source-of-truth switch: which ids load a
+- `MODEL_SOURCE` (specs.ts:1690) — the per-tank source-of-truth switch: which ids load a
   GLB, with registration config (turretNode/gunNode regexes, autoPivot, yawOffset,
   flip). Procedural-only ids simply have no row. The userdrops*.js modules override rows
   in the eager facade's declared import order—later waves land on top.
-- `getSpec` (specs.js:2013), `ALL_TANK_IDS` (specs.js:1678).
+- `getSpec` (specs.ts:2013), `ALL_TANK_IDS` (specs.ts:1678).
   `combatVariantSpecs.ts` registers the core Abrams/T-90 combat variants by
   side effect before roster finalization.
 

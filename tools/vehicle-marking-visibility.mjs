@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import '../src/vehicles/tankFactory.ts';
-import { ALL_TANK_IDS } from '../src/vehicles/specs.js';
+import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';
 
 const outputArg = process.argv.find((arg) => arg.startsWith('--sheet='));
 const sheetPath = resolve(outputArg?.slice('--sheet='.length)

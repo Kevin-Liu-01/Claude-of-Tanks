@@ -7,7 +7,7 @@ export interface AimBloom {
   afterShot: number;
 }
 
-export interface TerrainResistance {
+export interface TerrainResistance extends Record<string, number> {
   hard: number;
   medium: number;
   soft: number;
@@ -22,6 +22,7 @@ export interface HydropneumaticAim {
 }
 
 export interface FleetGunSpec extends Record<string, unknown> {
+  autoloader?: unknown;
   caliberMm: number;
   reloadS: number;
   baseAccuracy: number;

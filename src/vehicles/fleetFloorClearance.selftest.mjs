@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
-import { ALL_TANK_IDS } from './specs.js';
+import { ALL_TANK_IDS } from './specs.ts';
 import { TANK_PRESENTATION_ANCHORS } from './presentationAnchors.generated.ts';
 
 const SURFACE_Y_M = 0.36;

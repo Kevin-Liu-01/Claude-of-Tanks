@@ -2705,7 +2705,7 @@ REPAIRS['merkava1b'] = [
 ]
 
 # =============================================================== batch 19 ===
-# M1A2 SEPV3 NORMALIZATION (m1a2_sepv3_dannzjs.glb; specs.js TurretPivot rig;
+# M1A2 SEPV3 NORMALIZATION (m1a2_sepv3_dannzjs.glb; specs.ts TurretPivot rig;
 # chained AFTER the batch-5 turret translation — extract measured the post-
 # batch-5 state; the translate is x-lateral only, so the y/z plan basis is
 # unaffected). Width TRUE (-0.5%). Hull -5.9% short: body x1.0645 (hullMask

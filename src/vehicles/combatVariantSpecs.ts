@@ -2,7 +2,7 @@
 // Historical derivative GLBs remain offline comparison inputs only; they
 // never enter the runtime registry or replace these specs/builders.
 
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
   shell,
   apfsdsPenetration as apfsdsPens,

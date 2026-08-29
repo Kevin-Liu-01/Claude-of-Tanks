@@ -48,7 +48,7 @@ const VITE_ENV = typeof import.meta !== 'undefined' && import.meta.env
 
 export const DEV_FLEET_ACTIVE = developmentFleetEnabled(VITE_ENV);
 
-export function isProductionHiddenTankId(id: unknown): id is string {
+export function isProductionHiddenTankId(id: unknown): boolean {
   return typeof id === 'string' && PRODUCTION_HIDDEN_TANK_IDS.has(id);
 }
 

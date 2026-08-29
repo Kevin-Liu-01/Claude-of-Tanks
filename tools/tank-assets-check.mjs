@@ -11,7 +11,7 @@ import '../src/vehicles/tankFactory.ts';
 import {
   TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, expectedMuzzleBoreCount,
 } from '../src/vehicles/tankAssets.ts';
-import { DEVELOPMENT_TANK_IDS, getSpec } from '../src/vehicles/specs.js';
+import { DEVELOPMENT_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 
 const args = process.argv.slice(2);
 function opt(name, fallback = '') {

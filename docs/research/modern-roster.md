@@ -11,13 +11,13 @@ are open-source RHAe estimates** (real values classified) — game-design baseli
 claims of fact. Visual proportions from public walkaround photo sets and manufacturer
 imagery only; no ripped game assets consulted or downloadable from this plan.
 
-Conventions (match `tank-roster.md` + `src/vehicles/specs.js`):
+Conventions (match `tank-roster.md` + `src/vehicles/specs.ts`):
 
 - **L/W/H** in meters; "overall length" = gun forward, "hull length" excludes overhang.
 - **RHAe KE / CE**: estimated protection vs kinetic (APFSDS) / chemical (HEAT) in mm RHA
   equivalent. ERA is modeled as separate `kind:'era'` plates in the sim (see T-90M armor
-  in specs.js); base + ERA are listed separately below.
-- **APFSDS sim baseline**: the argument passed to `apfsdsPens(n)` in specs.js (it derives
+  in specs.ts); base + ERA are listed separately below.
+- **APFSDS sim baseline**: the argument passed to `apfsdsPens(n)` in specs.ts (it derives
   the 100 m / 1000 m / 2000 m curve). Calibrated against the shipped trio: M829A4 = 750,
   DM63 = 730, 3BM60 Svinets-2 = 640.
 - **HP pools**: modern MBT envelope 2,000–2,700; cold-war-generation vehicles (M60A3,
@@ -35,7 +35,7 @@ Conventions (match `tank-roster.md` + `src/vehicles/specs.js`):
 
 ### What exists on disk (2026-07-28 inventory)
 
-**Shipped** (`public/models/tanks/`, `src/vehicles/specs.js`):
+**Shipped** (`public/models/tanks/`, `src/vehicles/specs.ts`):
 - `m1a2` M1A2 Abrams SEPv3 — sourced GLB (`m1a2_sepv3_dannzjs.glb`, CC-BY 4.0, dannzjs)
 - `t90m` T-90M Proryv — procedural (post-round-5 rebuild, meets visual bar)
 - `leo2a7` Leopard 2A7 — procedural (post-round-5 rebuild, meets visual bar)
@@ -113,7 +113,7 @@ highest-demand procedurals); 3 = second wave (fills every remaining required nat
 
 ## 1. M1A2 Abrams SEPv3 — SHIPPED
 
-See `tank-roster.md` §6 and `specs.js` (`m1a2`). Sourced dannzjs GLB, CC-BY 4.0.
+See `tank-roster.md` §6 and `specs.ts` (`m1a2`). Sourced dannzjs GLB, CC-BY 4.0.
 Serves as the **variant base** for M1A1 (§2) and M1A2 TUSK (§3): the GLB's named-mesh
 re-parenting path (modelLoader.js) allows mesh deletion/addition per variant; each
 variant ships as its own preprocessed GLB with its own attribution line
@@ -303,7 +303,7 @@ rear corners, headlight brush guards.
 ## Part II — Germany
 
 ## 7. Leopard 2A7 — SHIPPED
-See `tank-roster.md` §8 and `specs.js` (`leo2a7`). Procedural; its hull, running gear
+See `tank-roster.md` §8 and `specs.ts` (`leo2a7`). Procedural; its hull, running gear
 (7 wheels, wavy-bottom skirts), and wedge turret are the family base for §8/§9.
 
 ## 8. Leopard 2A6 (Germany, MBT) — procedural (2A7 family)
@@ -432,7 +432,7 @@ camo, muzzle-brake check. Flagship "prototype" flavor pick — pairs with T-14.
 ## Part III — Russia / USSR
 
 ## 12. T-90M Proryv — SHIPPED
-See `tank-roster.md` §7 and `specs.js` (`t90m`). Procedural. Its Relikt-tiled welded
+See `tank-roster.md` §7 and `specs.ts` (`t90m`). Procedural. Its Relikt-tiled welded
 turret and 6-wheel gear inform the T-72B3 (§14) but the T-72 build is its own hull.
 
 ## 13. T-90A (Russia, MBT) — variant of `t-90` (alexxx_xarchenko, CC-BY 4.0)
@@ -1017,7 +1017,7 @@ low-contrast); white "EI" registration on hull front.
 ## Part XI — Sweden
 
 ## 27. Stridsvagn 103 — SHIPPED
-See `specs.js` (`strv103`) and ATTRIBUTION.md. Counts as the roster's casemate TD.
+See `specs.ts` (`strv103`) and ATTRIBUTION.md. Counts as the roster's casemate TD.
 No changes planned; already meets bar as a sourced community vehicle.
 
 ---
@@ -1046,7 +1046,7 @@ plate/ERA penetration model.
 4. ERA/appliqué as raised geometry, not paint (Russians/Type 99A/TUSK).
 5. Weathering: dust-band on skirts, exhaust soot at the correct port, edge chipping;
    parade-clean exceptions (T-14, Type 10) noted per vehicle.
-6. Camo scheme + marking per vehicle Paint paragraph, using the specs.js `visual`
+6. Camo scheme + marking per vehicle Paint paragraph, using the specs.ts `visual`
    scheme vocabulary (nato/solid/stripes/digital + camoScale).
 7. Variants: ATTRIBUTION.md row with base model, author, license, and "modified" note
    before the GLB lands in `public/models/tanks/`.

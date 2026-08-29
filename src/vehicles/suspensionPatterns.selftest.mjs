@@ -13,7 +13,7 @@ await import('./profiles/k1a1Geometry.selftest.mjs');
 // Profile registration expands the base spec table to the complete playable
 // fleet; this test intentionally certifies that full runtime registry.
 await import('./tankFactory.ts');
-const { ALL_TANK_IDS, getSpec } = await import('./specs.js');
+const { ALL_TANK_IDS, getSpec } = await import('./specs.ts');
 const { wheelPatternFor } = await import('./wheelPatterns.ts');
 
 const counts = new Map(SUSPENSION_PATTERN_IDS.map((id) => [id, 0]));

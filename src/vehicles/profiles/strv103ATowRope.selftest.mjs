@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { decorManifestFor } from '../decorations.js';
-import { getSpec } from '../specs.js';
+import { getSpec } from '../specs.ts';
 import { createTank } from '../tankFactory.ts';
 
 const visual = createTank('strv103a', null, {

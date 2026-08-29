@@ -1,6 +1,6 @@
 // Additional first-party classic tank and assault-gun combat rows. Visual
 // geometry remains in the demand-loaded procedural family builders.
-import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
+import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
 import {
   rightCheekPlate as chR,
   leftCheekPlate as chL,

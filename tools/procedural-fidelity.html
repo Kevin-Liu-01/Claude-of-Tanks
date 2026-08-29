@@ -29,7 +29,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.ts';
-import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
+import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
 import { loadReferenceGlb } from '/tools/reference-glb-loader.js';
 
 window.__FIDELITY_ERROR = null;
@@ -487,7 +487,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
       pitchOffset:-Math.PI/2, paintUntextured:true },
   },
-  // m1a2 (graduated 2026-08-04, the 17th): retired specs.js SEPv2
+  // m1a2 (graduated 2026-08-04, the 17th): retired specs.ts SEPv2
   // registration — measurement-only.
   m1a2_legacy: {
     source:'glb',

@@ -275,3 +275,4 @@ runtime documents remain authoritative for behavior.
 - [0263 — The instanced particle engine has a strict TypeScript owner](0263-type-particle-engine.md)
 - [0264 — Shared AFV profile geometry has a strict TypeScript owner](0264-type-afv-profile-geometry.md)
 - [0265 — Polish profile geometry has a strict TypeScript owner](0265-type-polish-profile-geometry.md)
+- [0266 — The fleet specification registry has a strict TypeScript owner](0266-type-fleet-spec-registry.md)

@@ -594,7 +594,7 @@ const DVDT_CLAMP = 16;           // m/s² — reject collision-pushback spikes
 const BLOOM_GROW_TAU = 0.05;     // s — bloom-up is effectively instant
 const LN3 = Math.log(3);         // aimTime = time to shrink to 1/3 ⇒ tau = aimTime/ln3
 // controls_gunnery r2: SHRINK tau uses ln6 (grow keeps LN3 semantics via
-// BLOOM_GROW_TAU) — pairs with the smaller afterShot multipliers in specs.js
+// BLOOM_GROW_TAU) — pairs with the smaller afterShot multipliers in specs.ts
 // so post-shot re-settle under the fire gate lands ~2.3 s on modern MBTs.
 const LN6 = Math.log(6);
 // Rapid IFV cannon fire is a stabilized stream, not a sequence of full-size
@@ -851,7 +851,7 @@ function pointCloudSupportY(
 /**
  * Build a fresh TankState (ARCHITECTURE §2.4) for a tank at rest.
  *
- * @param {object} spec - TankSpec (specs.js schema, ARCHITECTURE §2.2).
+ * @param {object} spec - TankSpec (specs.ts schema, ARCHITECTURE §2.2).
  * @param {Vector3} pos - World spawn position (copied; y snaps to terrain on first update).
  * @param {number} yaw - Hull yaw in radians (0 faces world +Z).
  * @returns {object} TankState owned by this module.

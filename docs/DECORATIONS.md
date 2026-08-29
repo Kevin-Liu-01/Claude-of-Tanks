@@ -49,7 +49,7 @@ node tools/decoration-eval.mjs --catalog-only
 - The mandated `--ids=m60a1,kv2` baseline (90.7 / 90.2) was captured and
   reproduced BEFORE integration. Mid-round, both ids **graduated the dual
   gate** (their recovered GLB oracles were retired by the fleet agents —
-  `userdrops5.js` / `specs.js`), so the gate can no longer *run* for them;
+  `userdrops5.js` / `specs.ts`), so the gate can no longer *run* for them;
   their ledger rows carry the last-good pre-graduation measurements. A
   mid-transition gate invocation from this round briefly wrote error rows
   into `ledger.json`; the rows were restored to the last-good values (the

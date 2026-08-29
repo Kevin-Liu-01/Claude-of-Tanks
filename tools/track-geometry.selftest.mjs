@@ -254,7 +254,7 @@ for (const [id, definition] of Object.entries(TRACK_PATTERN_DEFINITIONS)) {
 // legacy authored screen stats, honors the hand-override hook, and scales
 // with fitArmorToDims.
 {
-  const { attachTrackShapes, fitArmorToDims } = await import('../src/vehicles/specs.js');
+  const { attachTrackShapes, fitArmorToDims } = await import('../src/vehicles/specs.ts');
   const mkTrackPlate = (name, link) => ({
     name, verts: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]],
     physicalMm: 33, keMm: 34, ceMm: 35, kind: 'external', era: null,

@@ -2,7 +2,7 @@
 // The Three.js builders remain in modern3.js and are loaded only when one of
 // their canonical vehicles (or a derived family profile) is requested.
 
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
   crewBox as cbox,
   shell,

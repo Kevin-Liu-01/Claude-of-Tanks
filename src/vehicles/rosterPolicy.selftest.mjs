@@ -57,7 +57,7 @@ const {
   TANK_SPECS,
   VISIBLE_TANK_IDS,
   RUNTIME_TANK_IDS,
-} = await import('./specs.js');
+} = await import('./specs.ts');
 
 assert.equal(SAVED_TANK_IDS.length, PRODUCT_STATS.savedVehicleRecords,
   'the complete saved procedural fleet is indexed');

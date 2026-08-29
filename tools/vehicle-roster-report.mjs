@@ -6,7 +6,7 @@ import {
   PRODUCTION_TANK_IDS,
   SAVED_TANK_IDS,
   TANK_SPECS,
-} from '../src/vehicles/specs.js';
+} from '../src/vehicles/specs.ts';
 import { tankTier, tierNumeral } from '../src/vehicles/tier.ts';
 import { vehicleEraLabel } from '../src/vehicles/taxonomy.ts';
 
@@ -58,7 +58,7 @@ function buildReport() {
     '',
     '- `src/vehicles/rosterPolicy.ts` owns explicit production exclusions and the local-development gate.',
     '- `src/vehicles/taxonomy.ts` owns the public era taxonomy and every saved vehicle assignment.',
-    '- `src/vehicles/specs.js` owns the central `TANK_CATALOGS` registry; garage, gallery, bots, runtime, and tools consume shared projections rather than copied lists.',
+    '- `src/vehicles/specs.ts` owns the central `TANK_CATALOGS` registry, publishes saved, production, visible, and runtime projections, and stamps every spec with canonical roster metadata.',
     '- Production visibility is independent from record retention: hiding a vehicle never deletes its authored spec or tooling access.',
     '',
   ];

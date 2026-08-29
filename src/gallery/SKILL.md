@@ -41,7 +41,7 @@ contract. `gallery.html` and `gallery.css` own the public surface;
 <!-- agent-docs:fill:tasks -->
 - Dossier/search work: change `catalog.ts`, then run
   `node src/gallery/catalog.selftest.mjs`.
-- Overlay work: inspect the source volume shape in `src/vehicles/specs.js`,
+- Overlay work: inspect the source volume shape in `src/vehicles/specs.ts`,
   verify hull- versus turret-local ownership, then select the live volume in a
   browser.
 - Surface-markup work: run `node src/gallery/surfaceMarkup.selftest.mjs`, then

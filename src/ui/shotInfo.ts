@@ -29,7 +29,7 @@ import {
   type ShotDiagramEvent,
   type ShotDiagramSpec,
 } from './shotDiagramProjection.ts';
-import { getSpec } from '../vehicles/specs.js';
+import { getSpec } from '../vehicles/specs.ts';
 import {
   presentationAnchorFor,
   presentationProjectionFor,

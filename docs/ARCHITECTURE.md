@@ -18,7 +18,7 @@ Module ownership (file paths are FIXED):
 |---|---|
 | engine   | `src/engine/renderer.ts`, `src/engine/lighting.ts`, `src/engine/post.ts`, `src/engine/sky.ts`, `src/engine/cameraRig.ts` |
 | world    | `src/world/terrain.ts`, `src/world/vegetation.ts`, `src/world/props.ts`, `src/world/map.ts` |
-| vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.ts`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
+| vehicles | `src/vehicles/specs.ts`, `src/vehicles/fleetFactory.ts`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
 | movement | `src/sim/movement.ts` |
 | combat   | `src/sim/ballistics.ts`, `src/sim/armor.ts`, `src/sim/damage.ts`, `src/sim/combat.selftest.mjs` |
 | ai       | `src/game/ai.ts` |
@@ -58,7 +58,7 @@ vehicles specs, ai), `docs/research/tank-roster.md` (vehicles, hud garage),
   so events are JSON-serializable).
 
 ### 1.2 Unit-suffix convention for spec/stat fields
-Static spec data (`specs.js`) keeps the research docs' human units, flagged by field-name
+Static spec data (`specs.ts`) keeps the research docs' human units, flagged by field-name
 suffix — consumers convert at point of use:
 `...Kmh` (km/h, `mps = kmh/3.6`), `...DegS` (deg/s), `...Deg` (degrees), `...Mm` (mm),
 `...M` (meters), `...S` (seconds), `...Hp` (horsepower), `...Tons` (metric tons).
@@ -72,7 +72,7 @@ No suffix ⇒ SI/radians. Never store radians in specs; never pass degrees at ru
 - **ES modules everywhere.** `package.json` has `"type": "module"` (already set — do not
   change it). Imports: `three` and `three/examples/jsm/...` only. No other packages, no
   CDN, no fetch of any asset.
-- `src/sim/*`, `src/vehicles/specs.js`, and `src/game/ai.ts` are **pure-logic modules**:
+- `src/sim/*`, `src/vehicles/specs.ts`, and `src/game/ai.ts` are **pure-logic modules**:
   they may import `three` **for math classes only** (Vector3/Matrix4/Quaternion/Ray/Box3)
   — never anything that touches WebGL or DOM — so they run under plain node.
 - **Import rules**: any module may import the pure-logic modules above. Nothing else may
@@ -138,13 +138,13 @@ browser presentation consumer.
 
 ### 2.1 `TankId` and roster constants
 
-`specs.js` owns stable vehicle IDs and registered records.
+`specs.ts` owns stable vehicle IDs and registered records.
 `rosterPolicy.ts` derives the production, development, and reference
 projections; `fleetOrder.ts` then makes each related native family contiguous
 in historical/design progression. Registration order is never a UI or
 matchmaking contract.
 
-### 2.2 `TankSpec` (exported by `src/vehicles/specs.js`)
+### 2.2 `TankSpec` (exported by `src/vehicles/specs.ts`)
 ```js
 TankSpec = {
   id: TankId, name: string, nation: string,
@@ -258,7 +258,7 @@ converted to ellipsoids, capsules or elliptic cylinders, split across shell cell
 necessary, and seated fully inside the closed armor before combat begins.
 
 **trackShapes addendum (2026-08-06, fleet-wide).** Track hitboxes are no
-longer per-tank rectangle stacks: `attachTrackShapes` (specs.js) derives one
+longer per-tank rectangle stacks: `attachTrackShapes` (specs.ts) derives one
 convex prism per side from each profile's `trackLoopPoints` at spec time, and
 `tankFactory.trackHitboxHull` mirrors the same derivation for the visual
 debug hull, so the killcam and combat agree by construction. Combat raycasts
@@ -543,7 +543,7 @@ Exports locked in §2.7. Additional requirements:
 
 ### 3.3 vehicles — `src/vehicles/`
 
-#### 3.3.1 `specs.js` (PURE data + pure functions; **no three import at all** here)
+#### 3.3.1 `specs.ts` (PURE data + pure functions; **no three import at all** here)
 ```js
 export const TANK_IDS;                       // §2.1 locked order
 export const TANK_SPECS: { [TankId]: TankSpec };
@@ -742,7 +742,7 @@ export function blastRadiusM(caliberMm)
 
 #### 3.5.4 `combat.selftest.mjs`
 Runnable: `node src/sim/combat.selftest.mjs` — exits 0 silent-ish on pass, non-zero with
-message on fail. Must NOT import `specs.js` (may not exist yet) — use inline fixtures.
+message on fail. Must NOT import `specs.ts` (may not exist yet) — use inline fixtures.
 Required asserts (rng stubbed to constant 0.5 ⇒ rolls = 1.0×; angles are raw impact
 angles from plate normal):
 1. T-34-85 BR-365K (AP 85 mm, pen100 119, pen1000 97) at 500 m ⇒ `penAtDistanceMm` =

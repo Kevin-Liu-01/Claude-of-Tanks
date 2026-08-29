@@ -11,7 +11,7 @@ with only a slim multi-slot muzzle device, rounded stern.
   "elliptical shield" hull, all-cast rounded turret, four-track running gear.
 - Tank Encyclopedia (https://tanks-encyclopedia.com/coldwar/USSR/object-279):
   same figures (60 t, four tracks, 130 mm M-65).
-- Game spec `specs.js object279.dims`: hull 6.99, overall 10.24, w 3.4, h 2.6.
+- Game spec `specs.ts object279.dims`: hull 6.99, overall 10.24, w 3.4, h 2.6.
 
 ## GLB oracle
 `/models/tanks/community/object279-snowleopard.glb` (Jt Steele /

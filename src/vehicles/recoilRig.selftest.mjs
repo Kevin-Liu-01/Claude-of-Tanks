@@ -22,7 +22,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
-import { getSpec, TANK_SPECS } from './specs.js';
+import { getSpec, TANK_SPECS } from './specs.ts';
 import { createTankState } from '../sim/movement.ts';
 import './garagePresentation.selftest.mjs';
 

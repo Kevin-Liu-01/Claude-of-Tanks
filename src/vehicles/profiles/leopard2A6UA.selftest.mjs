@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { GHILLIE_SUIT_CONFIGS } from '../ghillieSuit.ts';
-import { getSpec } from '../specs.js';
+import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 
 const id = 'leo2a6_ua';

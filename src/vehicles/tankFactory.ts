@@ -38,7 +38,7 @@ import {
   SAVED_TANK_IDS,
   TANK_SPECS,
   finalizeFirstPartyRoster,
-} from './specs.js';
+} from './specs.ts';
 import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
 
 const tankSpecs = TANK_SPECS as unknown as Record<string, unknown>;

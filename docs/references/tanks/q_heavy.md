@@ -18,7 +18,7 @@ Probe: tools/tmp-ww2-probe drive of the fidelity-lab frame (scale 0.926).
 | Turret | plan snout ±0.59 @ z 1.35 widening to ±1.34 @ z 0..−0.15, taper to ±1.17 @ −1.65; base y ~1.20 (floats over cab roof 1.16), crown 1.64–1.65; forward shield lip 1.19..1.50 at z 1.2–1.4 |
 | Gun | axis y 1.40, tube Ø0.24 to z≈3.0, stepped to Ø0.18, muzzle z 3.68 (1.05 m past bow) |
 
-Spec row (`specs.js q_heavy.dims`): 7.2 × 3.6 × 3.0 — the GLB is proportionally
+Spec row (`specs.ts q_heavy.dims`): 7.2 × 3.6 × 3.0 — the GLB is proportionally
 much squatter/shorter; the loader's width clamp (3.6×1.08) governs, so the
 scored oracle stands 5.26 m long and 1.65 m tall. The procedural build
 replicates the ORACLE frame (the r7 parametric used hullLength 7.2/roofY 1.64

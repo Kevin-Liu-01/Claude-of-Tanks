@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
-import { getSpec } from './specs.js';
+import { getSpec } from './specs.ts';
 import { createTankState } from '../sim/movement.ts';
 
 const visual = createTank('m1a2', null, {

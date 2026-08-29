@@ -2,7 +2,7 @@
 // donor and apply explicit published/balance deltas. Historical third-party
 // inputs are attribution and offline comparison evidence, never playable
 // geometry; retained candidate metadata is procedural-only.
-import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
+import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
 import { shell, type ArmorEnvelope } from './specHelpers.ts';
 import type {
   FleetDimensions,
@@ -246,7 +246,7 @@ const SPECS: FleetTankSpec[] = [
       visual: { marking: 'star', number: 'S12' } }, AHAB_M60A2),
   // donor is chieftain_mk10, NOT centurion5: this module is chain-imported
   // from userdrops6.js, so ES hoisting evaluates it BEFORE the userdrops6
-  // rows exist — only specs.js/modern*/variants/userdrops1-5 ids are legal
+  // rows exist — only specs.ts/modern*/variants/userdrops1-5 ids are legal
   // donors here. The L7 caliber is patched in over the Chieftain's 120.
   make('chieftain_mk10', 'vickers_mk1', 'Vickers MBT Mk.1', 'UK',
     { hp: 1500, enginePowerHp: 650, weightTons: 38.6, topSpeedKmh: 48,

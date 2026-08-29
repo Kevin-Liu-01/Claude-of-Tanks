@@ -1,7 +1,7 @@
 // Additional first-party Cold-War and modern combat rows. Each variant clones
 // the nearest researched donor and applies explicit identity/balance changes;
 // visual geometry remains in the demand-loaded procedural family builders.
-import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
+import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
 import { shell, type ArmorEnvelope } from './specHelpers.ts';
 import type {
   FleetDimensions,

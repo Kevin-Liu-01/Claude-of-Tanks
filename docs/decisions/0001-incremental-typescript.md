@@ -221,6 +221,11 @@ The Polish vehicle pack now uses strict `src/vehicles/profiles/poland.ts`
 contracts for its connected hull and turret groups, ERAWA courses, measured
 dome seats, running gear, gun followers, ghillie resources, and PL-01,
 Jaguar, and Twardy recipes behind the existing Poland demand boundary.
+The central `src/vehicles/specs.ts` registry now checks every base and
+first-party expansion row against the shared fleet contract. It also owns
+typed roster projections, source provenance, track-prism derivation, armor
+dimension fitting, and lookup semantics; all runtime, server, test, and tool
+consumers resolve that TypeScript owner directly.
 
 ## Consequences
 

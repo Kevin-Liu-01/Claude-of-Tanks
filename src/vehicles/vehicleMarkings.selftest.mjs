@@ -29,7 +29,7 @@ assert.deepEqual(vehicleMarkingRecord({ id: 'stable', nation: 'USA', visual: {} 
 // class-wide width/pivot fallback that can leave paint floating beside a
 // reshaped hull or turret.
 const { createTank } = await import('./tankFactory.ts');
-const { ALL_TANK_IDS } = await import('./specs.js');
+const { ALL_TANK_IDS } = await import('./specs.ts');
 assert.deepEqual(
   Object.keys(VEHICLE_MARKING_ANCHORS).sort(),
   [...ALL_TANK_IDS].sort(),

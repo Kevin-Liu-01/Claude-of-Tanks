@@ -102,7 +102,7 @@ no confusion. Separable at a glance.
 
 ## §5.247 LECLERC-LEVEL WAVE r3 (2026-08-17, ww2 lane — leave nothing untouched)
 
-SOURCES VERIFIED FIRST: MODEL_SOURCE `procedural` (specs.js), NO
+SOURCES VERIFIED FIRST: MODEL_SOURCE `procedural` (specs.ts), NO
 procedural-fidelity override row, no oracle GLB on disk, no gate JSON —
 FALSE-0 law holds, photo-class flow. Live builder resolution PROVEN:
 PROFILED_BUILDERS override -> buildTigerI (hash receipt + render tells:

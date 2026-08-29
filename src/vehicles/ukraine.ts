@@ -2,7 +2,7 @@
 // profiles/ukraine.js; these rows clone the nearest certified combat envelope
 // and apply only the typed national delta.
 
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import {
   bindFleetRegistries,

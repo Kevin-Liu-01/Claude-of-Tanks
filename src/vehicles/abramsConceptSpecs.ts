@@ -1,6 +1,6 @@
 // Abrams-family concept rows. The former M1A2 remains available as
 // m1a2_legacy while AbramsX uses the first-party procedural family builder.
-import { TANK_SPECS, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, ALL_TANK_IDS } from './specs.ts';
 import {
   plate as par,
   frontPlate as fr,
@@ -15,17 +15,18 @@ import {
   shell,
   apfsdsPenetration as apfsdsPens,
 } from './specHelpers.ts';
+import type { ArmorEnvelope } from './specHelpers.ts';
+import type { FleetTankSpec, FleetVisualSpec } from './specContracts.ts';
 
-type AbramsDonorSpec = typeof TANK_SPECS.m1a2_legacy;
-type AbramsConceptSpec = Omit<AbramsDonorSpec, 'visual'> & {
+type AbramsConceptSpec = FleetTankSpec & {
   variantOf?: string;
-  visual: AbramsDonorSpec['visual'] & { patchK?: number };
+  visual: FleetVisualSpec & { patchK?: number };
 };
 
 const tankSpecs = TANK_SPECS as typeof TANK_SPECS & Record<string, AbramsConceptSpec>;
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
-function armorM1A3() {
+function armorM1A3(): ArmorEnvelope {
   const hullPlates = [
     fr('integrated_upper_glacis', 260, 1.77, 0.84, 4.00, 1.64, 2.08,
       { keMm: 930, ceMm: 1280 }),
@@ -110,7 +111,7 @@ function armorM1A3() {
   };
 }
 
-const m1a3 = {
+const m1a3: AbramsConceptSpec = {
   id: 'm1a3', name: 'M1A3 Abrams', nation: 'USA', era: 'next-generation', role: 'mbt',
   variantOf: 'm1a2',
   hp: 2950,
@@ -151,9 +152,9 @@ const m1a3 = {
     scheme: 'solid', base: '#464b3c', weather: '#555b49', patches: [],
     marking: 'star', number: 'A3', trackWidthM: 0.64, camoScale: 0.46,
   },
-} as unknown as AbramsConceptSpec;
+};
 
-const abramsx = clone(tankSpecs.m1a2) as AbramsConceptSpec;
+const abramsx: AbramsConceptSpec = clone(tankSpecs.m1a2);
 abramsx.id = 'abramsx';
 abramsx.name = 'AbramsX';
 // The procedural shell spans world z -2.481..2.404, placing its structural

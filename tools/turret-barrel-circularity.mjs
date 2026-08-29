@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createTank } from '../src/vehicles/tankFactory.ts';
-import { DEVELOPMENT_TANK_IDS, getSpec } from '../src/vehicles/specs.js';
+import { DEVELOPMENT_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 import { measureTurretBarrelCircularity } from '../src/vehicles/turretBarrelCircularity.ts';
 
 const idsArg = process.argv.find((arg) => arg.startsWith('--ids='));

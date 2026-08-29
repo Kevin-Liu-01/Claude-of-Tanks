@@ -137,7 +137,7 @@ const REG = {
   // doomturtle as the row oracle (doomturtle retired to reference-history).
   // LOCAL-ONLY gitignored quarantine (extraction-suspect class, ATTRIBUTION
   // §t95). Raw nose +z, fixedMount casemate (gun fused-fixed; whole model is
-  // hull). pubDims mirror the specs.js §5.317 row (widthM 3.86 = the
+  // hull). pubDims mirror the specs.ts §5.317 row (widthM 3.86 = the
   // published shipping-width datum; the print's raw stance is fighting-trim
   // 4.565 over the outer tracks — packet two-datum note).
   t95: {
@@ -268,9 +268,9 @@ const REG = {
   // Local comparison registrations: Leclerc wave-2 oracle, t80u
   // retired T-80U oracle, type90 userdrops5.js source(), ariete + type74 from the
   // fidelity harness LOCAL_REFERENCE_OVERRIDES (quarantine oracles),
-  // recon_tank specs.js MODEL_SOURCE. pubDims from the spec dims rows
+  // recon_tank specs.ts MODEL_SOURCE. pubDims from the spec dims rows
   // (modern2.js t80u/leclerc, modern3.js ariete, userdrops5 type90 make(),
-  // profiles/miscSpecs.ts TYPE74_SPEC, specs.js recon_tank).
+  // profiles/miscSpecs.ts TYPE74_SPEC, specs.ts recon_tank).
   leclerc: {
     path: 'public/models/tanks/char_leclerc_andertan.glb',
     // raw GLB name is 'Cylinder.086' — GLTFLoader sanitizes the dot out;
@@ -314,12 +314,12 @@ const REG = {
     pubDims: { hullLengthM: 6.2, overallLengthM: 7.2, widthM: 3.0, heightM: 2.5 },
   },
   // ---- soviet-heavy family (append-only, 2026-08-03) -----------------------
-  // Lab registrations mirrored verbatim: is3/is7/object279/is6b from specs.js
+  // Lab registrations mirrored verbatim: is3/is7/object279/is6b from specs.ts
   // MODEL_SOURCE (snowleopard prints fuse the gun into the Turret mesh — no
   // gun node, loader normalizes on the FULL box); is3_bergman from
   // userdrops6.js articulated('is3_bergman','bergman_is3'). Explicit loader
-  // pivots (specs.js pivot:[...]) affect articulation seating only, not the
-  // yaw-0 silhouettes this tool measures. pubDims from specs.js dims rows
+  // pivots (specs.ts pivot:[...]) affect articulation seating only, not the
+  // yaw-0 silhouettes this tool measures. pubDims from specs.ts dims rows
   // (is3_bergman inherits is3 via make()).
   is3: {
     path: 'public/models/tanks/community/is3_panzerfactory.glb',
@@ -347,11 +347,11 @@ const REG = {
     pubDims: { hullLengthM: 6.77, overallLengthM: 9.85, widthM: 3.15, heightM: 2.45 },
   },
   // ---- WW2 family (append-only, 2026-08-03) --------------------------------
-  // Lab registrations mirrored verbatim from specs.js MODEL_SOURCE (tiger2 /
+  // Lab registrations mirrored verbatim from specs.ts MODEL_SOURCE (tiger2 /
   // sherman_jumbo / t34_85_cad / pziii_konserwa carry explicit loader pivots —
   // articulation-only, no effect on the yaw-0 silhouettes this tool measures;
   // fused-gun prints (no gunNode) normalize on the FULL box to
-  // overallLengthM, loader parity). pubDims from the specs.js dims rows.
+  // overallLengthM, loader parity). pubDims from the specs.ts dims rows.
   sherman_jumbo: {
     path: 'public/models/tanks/community/sherman-jumbo.glb',
     turretNode: '^turret$', autoPivot: true,

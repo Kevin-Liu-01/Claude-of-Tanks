@@ -62,7 +62,7 @@ try {
   }));
   check('garage booted', roster.phase === 'garage', `phase=${roster.phase}`);
   const sourceById = await page.evaluate(async () => {
-    const { MODEL_SOURCE } = await import('/src/vehicles/specs.js');
+    const { MODEL_SOURCE } = await import('/src/vehicles/specs.ts');
     return Object.fromEntries(Object.entries(MODEL_SOURCE).map(([id, row]) => [id, row?.source]));
   });
 

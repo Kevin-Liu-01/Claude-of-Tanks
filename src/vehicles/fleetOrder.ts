@@ -6,7 +6,7 @@
 // its members by historical/design progression after every pack has loaded.
 // This changes no builder or gameplay spec; it only normalizes ALL_TANK_IDS.
 
-import { ALL_TANK_IDS, TANK_CATALOGS } from './specs.js';
+import { ALL_TANK_IDS, TANK_CATALOGS } from './specs.ts';
 
 export const NATIVE_VARIANT_FAMILIES = Object.freeze({
   t72: Object.freeze([

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import './m60FamilyAttachments.selftest.mjs';
 import { createTank } from '../tankFactory.ts';
-import { getSpec } from '../specs.js';
+import { getSpec } from '../specs.ts';
 
 const sectorNames = [
   'm60a3_turret_era_front_L',

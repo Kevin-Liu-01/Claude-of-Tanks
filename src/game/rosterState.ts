@@ -5,7 +5,7 @@
  * spotting.
  */
 import { Vector3, type Object3D, type Scene } from 'three';
-import { getSpec, PRODUCTION_TANK_IDS, TANK_IDS } from '../vehicles/specs.js';
+import { getSpec, PRODUCTION_TANK_IDS, TANK_IDS } from '../vehicles/specs.ts';
 import { createTank } from '../vehicles/fleetFactory.ts';
 import { tankTier } from '../vehicles/tier.ts';
 import { isBotTankId, rankMatchCandidates } from './matchmaking.ts';
