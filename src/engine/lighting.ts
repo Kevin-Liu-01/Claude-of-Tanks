@@ -757,8 +757,8 @@ let shadowChunksPatched = false;
 /**
  * Layer the shadow-density capture over the (CSM-installed) lighting chunks:
  *  - `lights_fragment_begin`: declare `cotSunVis`, record the CSM sun's
- *    shadow visibility (fade semantics preserved — the capture reads the
- *    post-fade color ratio, green channel: our sun colors never zero it);
+ *    shadow visibility (green channel: our sun colors never zero it), and
+ *    resolve fade overlaps with the same weights as the direct-light blend;
  *  - `lights_fragment_end`: scale ambient/IBL irradiance (and env radiance)
  *    by SHADOW_AMBIENT_DIM inside the sun's cast shadow.
  * Guards compile away on non-CSM materials (no USE_CSM define). Throws on a
@@ -773,18 +773,27 @@ function patchShadowAmbientChunks() {
   const declAnchor = 'IncidentLight directLight;';
   const fadeAnchor =
     'directLight.color = mix( prevColor, directLight.color, shouldFadeLastCascade ? ratio : 1.0 );';
+  const fadeBlendAnchor =
+    'float blendRatio = shouldBlend ? ratio : 1.0;';
+  const fadeEndAnchor =
+    '\t\t#pragma unroll_loop_end\n\t#elif defined (USE_SHADOWMAP)';
   const noFadeAnchor =
     'if(linearDepth >= CSM_cascades[UNROLLED_LOOP_INDEX].x && linearDepth < CSM_cascades[UNROLLED_LOOP_INDEX].y) directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;';
 
   let frag = THREE.ShaderChunk.lights_fragment_begin;
-  if (!frag.includes(declAnchor) || !frag.includes(fadeAnchor) || !frag.includes(noFadeAnchor)) {
+  if (!frag.includes(declAnchor) || !frag.includes(fadeAnchor) ||
+      !frag.includes(fadeBlendAnchor) || !frag.includes(fadeEndAnchor) ||
+      !frag.includes(noFadeAnchor)) {
     throw new Error('lighting.ts: shadow-density anchors not found in lights_fragment_begin');
   }
   frag = frag.replace(declAnchor, `${declAnchor}
 float cotSunVis = 1.0;
+float cotCascadeVis = 1.0;
 vec3 cotPrev;`);
   frag = frag.replace(fadeAnchor, `${fadeAnchor}
-					cotSunVis = min( cotSunVis, directLight.color.g / max( prevColor.g, 1e-4 ) );`);
+					cotCascadeVis = directLight.color.g / max( prevColor.g, 1e-4 );`);
+  frag = frag.replace(fadeBlendAnchor, `${fadeBlendAnchor}
+					cotSunVis = mix( cotSunVis, cotCascadeVis, blendRatio );`);
   frag = frag.replace(noFadeAnchor, `cotPrev = directLight.color;
 				${noFadeAnchor}
 				cotSunVis = min( cotSunVis, directLight.color.g / max( cotPrev.g, 1e-4 ) );`);

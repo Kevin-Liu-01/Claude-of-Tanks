@@ -276,3 +276,4 @@ runtime documents remain authoritative for behavior.
 - [0264 — Shared AFV profile geometry has a strict TypeScript owner](0264-type-afv-profile-geometry.md)
 - [0265 — Polish profile geometry has a strict TypeScript owner](0265-type-polish-profile-geometry.md)
 - [0266 — The fleet specification registry has a strict TypeScript owner](0266-type-fleet-spec-registry.md)
+- [0267 — Ambient shadow density follows the CSM overlap blend](0267-blend-csm-ambient-shadow-overlaps.md)

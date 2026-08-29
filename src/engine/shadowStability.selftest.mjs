@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { PRESETS } from './quality.ts';
 import {
   SHADOW_NORMAL_BIAS_MAX_M,
@@ -45,4 +46,21 @@ assert.equal(shadowNormalBiasForTexel(Number.NaN), SHADOW_NORMAL_BIAS_MIN_M,
 assert.equal(shadowNormalBiasForTexel(100), SHADOW_NORMAL_BIAS_MAX_M,
   'extreme far footprints remain bounded');
 
-console.log('shadowStability.selftest: texel snapping and cascade-scaled bias pass');
+const lightingSource = await readFile(new URL('./lighting.ts', import.meta.url), 'utf8');
+assert.match(lightingSource,
+  /cotSunVis = mix\( cotSunVis, cotCascadeVis, blendRatio \);/,
+  'fade-overlap ambient visibility uses the same sequential CSM blend as direct light');
+assert.doesNotMatch(lightingSource,
+  /frag\.replace\(fadeAnchor,[\s\S]{0,180}cotSunVis = min/,
+  'a barely contributing fade cascade cannot own the complete ambient-shadow term');
+
+const blendVisibility = (previous, sample, weight) =>
+  previous + (sample - previous) * weight;
+assert.equal(blendVisibility(1, 0, 0.05), 0.95,
+  'a dark cascade at five-percent overlap may only dim the ambient term by five percent');
+assert.equal(blendVisibility(0.95, 1, 0.95), 0.9975,
+  'the next cascade resolves the overlap with the same sequential blend as direct light');
+assert.equal(blendVisibility(1, 0, 1), 0,
+  'a fully owned shadow remains fully dark');
+
+console.log('shadowStability.selftest: texel snapping, cascade-scaled bias, and weighted overlap pass');
