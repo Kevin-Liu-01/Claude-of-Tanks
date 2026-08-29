@@ -49,7 +49,12 @@ interface GaragePedestalRuntimeOptions {
   anisotropy: number;
   createVisual(
     specId: string,
-    options: { camoSeed: number; quality: 'ai'; staticPreview: true },
+    options: {
+      camoSeed: number;
+      quality: 'ai';
+      staticPreview: true;
+      batchStatic: true;
+    },
   ): GaragePedestalVisual;
   getSpec(specId: string): GaragePedestalSpec;
   ensureTankBuilder(specId: string): Promise<unknown>;
@@ -310,6 +315,13 @@ export function createGaragePedestalRuntime({
       camoSeed: 4200,
       quality: 'ai',
       staticPreview: true,
+      // A Garage hero still articulates at the hull/turret/gun boundaries,
+      // but every fitting inside those owners is static. Collapse those
+      // exact meshes before their first GPU submission so a pristine ANGLE
+      // process does not compile and upload hundreds of redundant draws.
+      // The same batched representation is already battle-safe and the
+      // selected visual can still be lent directly to simulation.
+      batchStatic: true,
     });
     visual.spec = getSpec(specId);
     pose(visual);

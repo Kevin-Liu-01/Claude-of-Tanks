@@ -49,27 +49,47 @@ const variantB = new THREE.Mesh(repeatedGeometry, material);
 variantRoot.add(variantA, variantB);
 nested.add(variantRoot);
 
+const displayRoot = new THREE.Group();
+displayRoot.userData.sourceVehicleId = 'display_test';
+displayRoot.position.set(4, 0, 0);
+const displayMaterial = new THREE.MeshStandardMaterial();
+const displayA = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.6), displayMaterial);
+displayA.position.set(-0.8, 0.25, 0);
+const displayB = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.4), displayMaterial);
+displayB.position.set(0.8, 0.15, 0);
+const displayRig = new THREE.Group();
+displayRig.add(displayA, displayB);
+displayRoot.add(displayRig);
+nested.add(displayRoot);
+
 const proxyMaterial = new THREE.MeshBasicMaterial({ colorWrite: false });
 const proxy = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.05), proxyMaterial);
 proxy.castShadow = true;
 proxy.userData.authoredShadowProxy = true;
 nested.add(proxy);
 
-const receipt = optimizeGarageDressing(root, { minimumShadowRadiusM: 0.4 });
+const receipt = optimizeGarageDressing(root, {
+  minimumShadowRadiusM: 0.4,
+  staticDisplayOwners: [displayRoot],
+});
 assert.equal(small.castShadow, false, 'sub-resolution fitting leaves the shadow passes');
 assert.equal(large.castShadow, true, 'large workshop structure keeps its shadow');
 assert.equal(proxy.castShadow, true, 'authored shadow proxies are never pruned');
 assert.equal(receipt.shadowCastersBefore, 5);
 assert.equal(receipt.shadowCastersAfter, 4);
 assert.equal(receipt.shadowCastersPruned, 1);
-assert.equal(receipt.objectsFrozen, 14);
+assert.equal(receipt.objectsFrozen, 18);
 assert.equal(receipt.meshesInstanced, 2, 'exact repeated static props become instances');
 assert.equal(receipt.instanceBatches, 1);
 assert.equal(receipt.meshesMerged, 2, 'different static geometries sharing state become one draw');
 assert.equal(receipt.mergeBatches, 1);
-assert.equal(receipt.sourceGeometriesReleased, 2);
+assert.equal(receipt.sourceGeometriesReleased, 4,
+  'unreferenced workshop and decorative-display sources leave GPU residency');
 assert.equal(releasedMergeSources, 2, 'unreferenced uploaded source geometry is released immediately');
-assert.equal(receipt.drawCallsRemoved, 2);
+assert.equal(receipt.displayMeshesMerged, 2);
+assert.equal(receipt.displayMergeBatches, 1);
+assert.equal(receipt.displayDrawCallsRemoved, 1);
+assert.equal(receipt.drawCallsRemoved, 3);
 const batch = root.getObjectByName('workshop_static_instances_1');
 assert.ok(batch?.isInstancedMesh, 'the optimized scene owns one repeated-prop batch');
 assert.equal(repeatedA.parent, null);
@@ -82,6 +102,11 @@ assert.equal(fleetA.parent, fleetRoot, 'fleet exhibit ownership remains intact')
 assert.equal(fleetB.parent, fleetRoot, 'fleet exhibit meshes are not flattened');
 assert.equal(variantA.parent, variantRoot, 'variant-controlled set pieces retain local ownership');
 assert.equal(variantB.parent, variantRoot, 'variant-controlled set pieces remain visibility-switchable');
+assert.ok(displayRoot.getObjectByName('workshop_display_merge_1'),
+  'an explicitly immutable authored display shares one exact draw owner');
+assert.equal(displayRig.parent, null, 'empty decorative rig branches leave the live scene graph');
+assert.deepEqual(displayRoot.position.toArray(), [4, 0, 0],
+  'the authored display owner remains movable after its leaf draws collapse');
 assert.equal(nested.matrixAutoUpdate, false);
 assert.equal(small.matrixAutoUpdate, false);
 assert.equal(root.matrixAutoUpdate, true, 'integration may still re-seat the workshop root');
@@ -98,5 +123,6 @@ for (const geometry of root.userData.optimizationDisposables || []) geometry.dis
 material.dispose();
 mergeMaterial.dispose();
 proxyMaterial.dispose();
+displayMaterial.dispose();
 
 console.log('garageDressingOptimization.selftest: static transforms and proxy-safe shadow budget pass');

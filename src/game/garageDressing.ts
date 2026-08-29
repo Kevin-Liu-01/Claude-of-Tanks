@@ -164,12 +164,17 @@ export function createGarageDressing(
   const workshopVisualById = new Map<string, GarageWorkshopVisual>();
   const workshopFleet = existing.workshopFleet;
   let currentVariant = getGarageVariant(existing.variantId);
+  const variantWorkshopRoot = new THREE.Group();
+  variantWorkshopRoot.name = 'garage_variant_workshop';
+  variantWorkshopRoot.userData.variantSwitchOwner = true;
   const legacyVerdantRoot = new THREE.Group();
   legacyVerdantRoot.name = 'garage_verdant_original_workshop';
   legacyVerdantRoot.userData.variantSwitchOwner = true;
   legacyVerdantRoot.userData.layoutReceipt = 'pre-6c7b07533-original';
-  legacyVerdantRoot.visible = currentVariant.id === 'verdant_motor_pool';
-  group.add(legacyVerdantRoot);
+  const initialVerdant = currentVariant.id === 'verdant_motor_pool';
+  legacyVerdantRoot.visible = initialVerdant;
+  variantWorkshopRoot.visible = !initialVerdant;
+  group.add(initialVerdant ? legacyVerdantRoot : variantWorkshopRoot);
   group.userData.garageVariantId = currentVariant.id;
   group.userData.garageMapId = currentVariant.mapId;
   group.userData.verdantOriginalLayoutReceipt = legacyVerdantRoot.userData.layoutReceipt;
@@ -525,7 +530,7 @@ export function createGarageDressing(
     root.name = `garage_variant_sign_${wallBayId}`;
     root.userData.variantSwitchOwner = true;
     root.visible = currentVariant.id !== 'verdant_motor_pool';
-    group.add(root);
+    variantWorkshopRoot.add(root);
     variantOnlyRoots.push(root);
     wallSign(text, bay.x, bay.y, bay.z, bay.yaw,
       bay.width - 0.12, bay.height - 0.12, wallBayId, root);
@@ -725,7 +730,7 @@ export function createGarageDressing(
     root.userData.variantSwitchOwner = true;
     root.scale.setScalar(scale);
     poseAssembly(root, logicalSlot);
-    group.add(root);
+    variantWorkshopRoot.add(root);
     variantAssemblies.push(root);
     return root;
   }
@@ -775,15 +780,25 @@ export function createGarageDressing(
     visualRoot.position.set(-center.x, seatY - bounds.min.y, -center.z);
 
     poseAssembly(exhibit, logicalSlot);
-    group.add(exhibit);
+    variantWorkshopRoot.add(exhibit);
     exhibit.updateMatrixWorld(true);
     compileWorkshopObject(exhibit);
     variantAssemblies.push(exhibit);
     return exhibit;
   }
 
-  function compileWorkshopObject(root: THREE.Object3D): void {
+  function compileWorkshopObject(root: THREE.Object3D, includeDetached = false): void {
     if (engineCtx.renderer && engineCtx.camera && engineCtx.scene) {
+      // Inactive workshop layouts are intentionally detached from the live
+      // scene. Do not upload their hundreds of exact fleet meshes merely
+      // because the quiet builder has prepared the CPU-side graph. The first
+      // explicit environment switch submits the newly mounted layout.
+      for (let owner: THREE.Object3D | null = root; owner; owner = owner.parent) {
+        if (!includeDetached
+            && owner === variantWorkshopRoot && variantWorkshopRoot.parent !== group) return;
+        if (!includeDetached
+            && owner === legacyVerdantRoot && legacyVerdantRoot.parent !== group) return;
+      }
       // WebGLRenderer.compile respects Object3D.visible. Both the fixed
       // Verdant set and the additive set can be hidden while the other layout
       // is selected, so make this one root force-visible only for submission.
@@ -912,9 +927,15 @@ export function createGarageDressing(
     mat.safety.color.setHex(currentVariant.accent);
     bayFill.color.setHex(currentVariant.lightTint);
     const isVerdant = currentVariant.id === 'verdant_motor_pool';
+    const activeWorkshopRoot = isVerdant ? legacyVerdantRoot : variantWorkshopRoot;
+    const inactiveWorkshopRoot = isVerdant ? variantWorkshopRoot : legacyVerdantRoot;
+    inactiveWorkshopRoot.removeFromParent();
+    if (activeWorkshopRoot.parent !== group) group.add(activeWorkshopRoot);
     legacyVerdantRoot.visible = isVerdant;
+    variantWorkshopRoot.visible = !isVerdant;
     for (const root of variantOnlyRoots) root.visible = !isVerdant;
     for (const root of variantAssemblies) poseAssembly(root, root.userData.logicalSlot || 0);
+    compileWorkshopObject(activeWorkshopRoot);
     group.userData.verdantOriginalVisible = isVerdant && legacyVerdantRoot.children.length > 0;
     group.userData.workshopTriangleCount = isVerdant
       ? (group.userData.verdantOriginalTriangleCount || 0)
@@ -1796,6 +1817,36 @@ export function createGarageDressing(
     setVariant(currentVariant.id);
   });
 
+  // Finalization remains outside first paint and runs only after the complete
+  // authored set exists. Compile the newly merged active composition in the
+  // same quiet lease, then submit each detached alternate bay in its own later
+  // lease. A first environment switch therefore never links/uploads the whole
+  // workshop in one interaction frame.
+  chunks.push(function optimizeWorkshopDisplays() {
+    optimizeGarageDressing(group, {
+      // Verdant is one fixed authored composition. Alternate environments
+      // keep one movable owner per bay assembly, so layout switching remains
+      // exact while redundant tank/fitting leaf draws collapse.
+      staticDisplayOwners: [
+        legacyVerdantRoot,
+        ...variantAssemblies,
+        ...variantOnlyRoots,
+      ],
+      // One layout is detached by design. Include both roots in lifetime
+      // accounting because their prepared visuals share source geometry.
+      additionalResourceRoots: [legacyVerdantRoot, variantWorkshopRoot],
+    });
+    const activeRoot = currentVariant.id === 'verdant_motor_pool'
+      ? legacyVerdantRoot : variantWorkshopRoot;
+    compileWorkshopObject(activeRoot, true);
+  });
+  for (let index = 0; index < assemblySlots.length; index++) {
+    chunks.push(function warmAlternateWorkshopBay() {
+      const assembly = variantAssemblies[index];
+      if (assembly) compileWorkshopObject(assembly, true);
+    });
+  }
+
   // sign plates bake before the webfont settles — refresh them once it lands
   // (same contract as garageStage's own signs)
   if (document.fonts && !document.fonts.check(SIGN_FONT)) {
@@ -1820,7 +1871,6 @@ export function createGarageDressing(
           chunk: fn.name,
           ms: Math.round(performance.now() - startedAt),
         });
-        if (next >= chunks.length) optimizeGarageDressing(group);
       } catch (error: unknown) {
         const message = (error as { message: string }).message;
         group.userData.lastBuildError = { chunk: fn.name, message };

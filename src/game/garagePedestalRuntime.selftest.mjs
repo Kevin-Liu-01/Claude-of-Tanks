@@ -12,6 +12,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   const scene = new THREE.Scene();
   const debugTarget = {};
   const visuals = [];
+  const visualOptions = [];
   const disposed = [];
   const prebakes = [];
   const ensured = [];
@@ -28,7 +29,8 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   let frameCalls = 0;
   let presentationInvalidations = 0;
 
-  const makeVisual = (specId) => {
+  const makeVisual = (specId, options) => {
+    visualOptions.push(options);
     const root = new THREE.Object3D();
     const visual = {
       specId,
@@ -98,6 +100,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
     scene,
     debugTarget,
     visuals,
+    visualOptions,
     disposed,
     prebakes,
     ensured,
@@ -132,6 +135,8 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   ], 'fresh garage visuals use the canonical stage heading');
   assert.equal(h.prebakes[0], 'preview', 'initial hero must preserve preview-quality paint');
   assert.equal(h.visuals.length, 1);
+  assert.equal(h.visualOptions[0].batchStatic, true,
+    'garage heroes collapse exact articulation-local static draws before upload');
   assert.equal(h.presentationInvalidations, 1,
     'initial reveal invalidates the event-driven Garage frame');
 

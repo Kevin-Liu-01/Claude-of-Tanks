@@ -68,10 +68,12 @@ neutral showroom sun, mutually exclusive scene membership, renewable dressing
 GPU residency, world-root swaps, and terrain-relative stage placement. Camera
 framing and pedestal pose math remain with their existing owners.
 `garageDressingOptimization.ts` finalizes the fully streamed static workshop,
-bakes descendant transforms, instances exact repeats, merges only compatible
-semantic-free opaque surfaces, and removes only sub-resolution fitting shadows
-while preserving authored vehicle exhibits, shadow proxies, and all color
-geometry.
+bakes descendant transforms, instances exact repeats, merges compatible
+semantic-free opaque surfaces, and collapses only high-return leaf draws inside
+explicitly immutable display owners. The movable bay owners, authored shadow
+proxies, materials, and all color geometry remain exact. Only the selected
+workshop layout stays attached; detached layouts remain CPU-only until their
+post-boot quiet warm or explicit selection.
 `battleIntentRuntime.ts` owns the explicit Battle hover/focus lifecycle:
 concrete Random-map reservation, exact-roster texture coalescing, stale intent
 cancellation, and the camouflage-safe handoff into covered loading. Passive
@@ -150,7 +152,10 @@ succeed.
 Route result, death-beat, and replay-handoff changes through
 `battleResultPresentationRuntime.ts`; keep those latches out of `tick()`.
 Workshop changes must preserve the typed optimization receipt and pass the
-phase resource gate; do not re-enable shadows on every tiny static fitting.
+phase resource gate. Keep display merging bounded by elements saved per draw,
+and stream detached-layout GPU warm one bay per quiet lease so an environment
+switch cannot link the whole workshop in one frame. Do not re-enable shadows
+on every tiny static fitting.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

@@ -43,6 +43,14 @@ assert.match(dressing, /tank\.position\.set\(-16\.25, 0, -16\.85\)/,
   'K2 teardown retains its original transform');
 assert.match(dressing, /legacyVerdantRoot\.visible = isVerdant/,
   'the original fixed composition is selected only for Verdant');
+assert.match(dressing, /inactiveWorkshopRoot\.removeFromParent\(\)/,
+  'the inactive workshop graph must leave the live scene instead of taxing traversal');
+assert.match(dressing,
+  /owner === variantWorkshopRoot[\s\S]*variantWorkshopRoot\.parent !== group[\s\S]*return/,
+  'detached alternate layouts must remain CPU-only until selected');
+assert.match(dressing,
+  /staticDisplayOwners:\s*\[[\s\S]*legacyVerdantRoot,[\s\S]*\.\.\.variantAssemblies/,
+  'the fixed workshop and individually movable alternate bays collapse static leaf draws');
 assert.doesNotMatch(dressing, /\/maps\/thumbs\//,
   'workshop walls must not reuse battlefield map thumbnails');
 assert.doesNotMatch(dressing, /garage_map_location_preview/,
