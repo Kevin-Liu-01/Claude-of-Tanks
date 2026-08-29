@@ -26,6 +26,7 @@ const HIGH_RISE_IDS = [
   'megatower', 'arcology', 'needletower', 'broadcasttower', 'terracetower',
 ];
 const highRiseDimensions = new Map();
+const lightPitchedFamilies = new Set();
 
 let connectedHeavyStructures = 0;
 function boundsGap(a, b) {
@@ -108,6 +109,10 @@ for (const [id, meta] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) {
   assert.ok(connectivity.parts >= 5, `${id}: connectivity covers a detailed assembly`);
   assert.ok(connectivity.maxConnectionGap <= connectivity.epsilon,
     `${id}: connections stay inside the fixture tolerance`);
+  for (const pitch of intact.userData.skillionRoofPitches || []) {
+    assert.ok(pitch.drop > 0.01, `${id}: porch/lean-to roof descends away from its wall`);
+    lightPitchedFamilies.add(id);
+  }
   for (const [state, geo] of [['intact', intact], ['broken', broken]]) {
     const { position, color, uv } = geo.attributes;
     assert.ok(position.count >= 120, `${id}: ${state} geometry is detailed`);
@@ -121,6 +126,13 @@ for (const [id, meta] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) {
     assert.ok(Number.isFinite(geo.boundingBox.min.x) && Number.isFinite(geo.boundingBox.max.z),
       `${id}: ${state} bounds are finite`);
   }
+}
+
+for (const id of [
+  'fieldhut', 'leanto', 'fishershack', 'alpinerefuge', 'stilthouse',
+  'checkpointhut', 'securityoffice', 'corneroffice',
+]) {
+  assert.ok(lightPitchedFamilies.has(id), `${id}: wall roof has a verified orientation receipt`);
 }
 
 const used = new Set();

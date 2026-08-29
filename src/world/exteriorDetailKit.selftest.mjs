@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   addCatalogExterior, addConnectedExterior, exteriorSupportEpsilon,
 } from './maps/exteriorDetailKit.ts';
+import { auditSkillionRoofPitch } from './propGeometry.ts';
 
 const bucketNames = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark'];
 const makeParts = () => Object.fromEntries(bucketNames.map((name) => [name, []]));
@@ -27,6 +28,13 @@ for (const [profile, minimum] of [
     `${profile}: the shared facade pass includes a framed entrance`);
   assert.ok(receipt.added <= 72,
     `${profile}: exterior variety remains bounded before material merging`);
+  const pitched = [];
+  for (const geo of authored) {
+    if (geo.userData.skillionRoofPitch) pitched.push(auditSkillionRoofPitch(geo));
+  }
+  assert.ok(pitched.length >= 1, `${profile}: rain hood participates in the pitch audit`);
+  assert.ok(pitched.every(({ drop }) => drop > 0.01),
+    `${profile}: every wall-mounted exterior canopy drains away from the facade`);
   const partIds = new Set(receipt.records.map(({ part }) => part));
   if (profile === 'rural' || profile === 'timber') {
     assert.ok(partIds.has('shutter-head'), `${profile}: timber facade signature`);

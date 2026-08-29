@@ -6,6 +6,7 @@
 // existing material buckets without carrying per-object runtime overhead.
 
 import * as THREE from 'three';
+import { pitchSkillionRoof } from '../propGeometry.ts';
 
 const SUPPORT_EPSILON = 0.065;
 const EXTERIOR_RECEIPTS = Symbol('exterior-detail-receipts');
@@ -342,8 +343,7 @@ function addSupportedAwning(
   const awningD = Math.min(1.25, d * 0.18);
   const y = Math.min(wallH - 0.42, 2.85);
   const z = d / 2 + awningD / 2 - 0.025;
-  const canopy = box(awningW, 0.11, awningD);
-  canopy.rotateX(-0.11);
+  const canopy = pitchSkillionRoof(box(awningW, 0.11, awningD), 'z', 1, 0.11);
   author.add('awning', material, canopy.translate(0, y, z));
   for (const sx of [-1, 1]) {
     const brace = box(0.10, 0.10, awningD * 0.92);
@@ -384,8 +384,7 @@ function addEntryAssembly(
   // Alternate variants gain a shallow supported rain hood. Its rear edge is
   // embedded in the facade and both braces terminate at the wall.
   if (variant % 2 === 0) {
-    const hood = box(doorW + 0.75, 0.10, 0.95);
-    hood.rotateX(-0.10);
+    const hood = pitchSkillionRoof(box(doorW + 0.75, 0.10, 0.95), 'z', 1, 0.10);
     author.add('entry-hood', profile === 'desert' ? 'wood' : 'roof',
       hood.translate(x, doorH + 0.52, d / 2 + 0.40));
     for (const side of [-1, 1]) {

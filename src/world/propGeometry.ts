@@ -4,6 +4,18 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 type RandomSource = () => number;
 type Rgb = readonly [number, number, number];
 
+export interface SkillionRoofPitchReceipt {
+  axis: 'x' | 'z';
+  outwardSign: -1 | 1;
+  angleRad: number;
+}
+
+export interface SkillionRoofPitchAudit extends SkillionRoofPitchReceipt {
+  wallEdgeY: number;
+  outwardEdgeY: number;
+  drop: number;
+}
+
 export function scaleUV<T extends THREE.BufferGeometry>(
   geometry: T,
   scaleU: number,
@@ -43,6 +55,86 @@ export function slabBox(
     }
   }
   return geometry;
+}
+
+/**
+ * Pitch a wall-mounted mono-slope roof so rain runs away from the building.
+ *
+ * The sign convention for Three.js rotations is easy to reverse when the
+ * same canopy is authored on +Z, -Z, +X, and -X walls. Keeping the wall side
+ * implicit in a raw rotateX/rotateZ call caused several porch roofs to rise
+ * toward their unsupported outer edge. This helper owns the convention and
+ * leaves an authoring receipt that deterministic structure audits can inspect
+ * before the geometry is merged into a map-wide material bucket.
+ */
+export function pitchSkillionRoof<T extends THREE.BufferGeometry>(
+  geometry: T,
+  axis: 'x' | 'z',
+  outwardSign: -1 | 1,
+  angleRad: number,
+): T {
+  if ((outwardSign !== -1 && outwardSign !== 1)
+      || !Number.isFinite(angleRad) || angleRad <= 0 || angleRad >= Math.PI / 2) {
+    throw new TypeError('skillion roof requires a finite outward sign and acute positive pitch');
+  }
+  if (axis === 'z') geometry.rotateX(outwardSign * angleRad);
+  else if (axis === 'x') geometry.rotateZ(-outwardSign * angleRad);
+  else throw new TypeError(`unsupported skillion roof axis: ${String(axis)}`);
+  geometry.userData.skillionRoofPitch = { axis, outwardSign, angleRad } satisfies SkillionRoofPitchReceipt;
+  return geometry;
+}
+
+/** Measure the authored high wall edge and low free edge from actual vertices. */
+export function auditSkillionRoofPitch(
+  geometry: THREE.BufferGeometry,
+): SkillionRoofPitchAudit {
+  const receipt = geometry.userData.skillionRoofPitch as SkillionRoofPitchReceipt | undefined;
+  if (!receipt) throw new Error('geometry has no skillion-roof pitch receipt');
+  const position = geometry.getAttribute('position');
+  if (!position?.count) throw new Error('skillion roof has no vertices');
+  const coordinate = receipt.axis === 'x'
+    ? (index: number) => position.getX(index)
+    : (index: number) => position.getZ(index);
+  let min = Infinity;
+  let max = -Infinity;
+  for (let index = 0; index < position.count; index++) {
+    const value = coordinate(index);
+    min = Math.min(min, value);
+    max = Math.max(max, value);
+  }
+  const span = max - min;
+  if (!(span > 0)) throw new Error('skillion roof has no outward span');
+  // Regress the broad slab's centre plane rather than comparing its absolute
+  // AABB corners. On shallow roofs, the thickness itself moves the extreme
+  // corner farther than the pitch and can falsely report the correct slope
+  // as reversed.
+  let meanCoordinate = 0;
+  let meanY = 0;
+  for (let index = 0; index < position.count; index++) {
+    meanCoordinate += coordinate(index);
+    meanY += position.getY(index);
+  }
+  meanCoordinate /= position.count;
+  meanY /= position.count;
+  let covariance = 0;
+  let variance = 0;
+  for (let index = 0; index < position.count; index++) {
+    const dx = coordinate(index) - meanCoordinate;
+    covariance += dx * (position.getY(index) - meanY);
+    variance += dx * dx;
+  }
+  if (!(variance > 0)) throw new Error('skillion roof has no measurable pitch axis');
+  const slope = covariance / variance;
+  const wallCoordinate = receipt.outwardSign > 0 ? min : max;
+  const outwardCoordinate = receipt.outwardSign > 0 ? max : min;
+  const wallEdgeY = meanY + slope * (wallCoordinate - meanCoordinate);
+  const outwardEdgeY = meanY + slope * (outwardCoordinate - meanCoordinate);
+  return {
+    ...receipt,
+    wallEdgeY,
+    outwardEdgeY,
+    drop: wallEdgeY - outwardEdgeY,
+  };
 }
 
 export function gablePrism(

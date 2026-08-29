@@ -34,14 +34,17 @@ import {
   sampleDiscGround, sampleObbGround,
 } from './propPlacement.ts';
 import {
-  box, gablePrism, jitterUV, makeTelephonePoleDistanceGeometry, scaleUV, slabBox,
+  box, gablePrism, jitterUV, makeTelephonePoleDistanceGeometry,
+  pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.ts';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
 import { preloadPropModels, requirePropModels } from './propsModelStore.ts';
-import { writeStructureInstanceTint } from './structureInstanceAppearance.ts';
+import {
+  resolveRowhouseTrimBucket, resolveStructureWindowStyle, writeStructureInstanceTint,
+} from './structureInstanceAppearance.ts';
 import type { CollisionRecord } from './collision.ts';
 import type { LoosePropBody, LoosePropKickCause } from './loosePropPhysics.ts';
 import type { UtilityNetwork } from './utilityNetwork.ts';
@@ -128,6 +131,7 @@ interface BakedGeometryOptions {
 interface RowhouseDimensions {
   w: number;
   d: number;
+  lowContrastTrim?: boolean;
 }
 
 interface InhabitSettings {
@@ -1167,6 +1171,7 @@ function makeRowhouse(
   wallBucket = 'plaster',
   dims: RowhouseDimensions | null = null,
 ): StructureDimensions {
+  const lowContrastFacade = dims?.lowContrastTrim === true;
   const w = (dims && dims.w) || 8.0 + rng() * 3.0;
   const d = (dims && dims.d) || 9.0 + rng() * 4.0;
   const stories = 2 + ((rng() * 2) | 0);
@@ -1193,6 +1198,7 @@ function makeRowhouse(
   // open casements in a shelled town) — kills the uniform void grid
   const paneBucket = (): string => {
     const r = rng();
+    if (lowContrastFacade) return r < 0.76 ? 'glass' : 'dark';
     return r < 0.62 ? 'glass' : r < 0.83 ? 'curtain' : 'dark';
   };
   parts.stone.push(box(w + 0.3, 1.2, d + 0.3).translate(0, -0.1, 0));
@@ -1244,7 +1250,9 @@ function makeRowhouse(
   // proud eaves cornice band under the roofline (~60%) and stone corner
   // quoin strips on masonry walls (~45%): the two most-repeated street
   // archetypes stop reading as bare extruded boxes
-  const trimB = wallBucket === 'plaster' || wallBucket === 'stone' ? 'stone' : 'plaster';
+  const trimB = lowContrastFacade
+    ? 'stone'
+    : wallBucket === 'plaster' || wallBucket === 'stone' ? 'stone' : 'plaster';
   if (rng() < 0.6) {
     parts[trimB].push(box(w + 0.22, 0.16, 0.12).translate(0, wallH - 0.10, d / 2 + 0.05));
     parts[trimB].push(box(w + 0.22, 0.16, 0.12).translate(0, wallH - 0.10, -d / 2 - 0.05));
@@ -1339,7 +1347,9 @@ function makeRowhouse(
   const winW = 0.72 + rng() * 0.22;                // opening width
   const winH = 1.10 + rng() * 0.30;                // opening height
   const wPhase = (rng() - 0.5) * 0.5;              // whole-facade rhythm shift
-  const trimBucket = rng() < 0.5 ? 'stone' : wallBucket === 'plaster' ? 'stone' : 'plaster';
+  const trimBucket = resolveRowhouseTrimBucket(
+    wallBucket, rng() < 0.5, lowContrastFacade,
+  );
   for (let st = 0; st < stories; st++) {
     const wy = 1.8 + st * 2.9;
     const nwn = Math.max(2, Math.round(d / bayPitch));
@@ -1359,8 +1369,9 @@ function makeRowhouse(
               // content_breadth r3: shop AWNING — an angled slab over the
               // display glass; the one street-level cue that still reads as
               // "storefront" from the establishing camera
-              const aw = box(0.85, 0.06, 2.15);
-              aw.rotateZ(side * -0.42);
+              const aw = pitchSkillionRoof(
+                box(0.85, 0.06, 2.15), 'x', side as -1 | 1, 0.42,
+              );
               aw.translate(wx + side * 0.52, 2.62, zz);
               parts.roof.push(aw);
             }
@@ -1585,6 +1596,7 @@ function* propsBuildSteps(
   // urban) in place when they load; procedural stays the fallback of record.
   const sourcedTexturesReady = applySourcedBuildings({ plaster, roof: roofT, wood, stone }, mapId);
 
+  const windowStyle = resolveStructureWindowStyle(mapId);
   const mats: Record<string, THREE.MeshStandardMaterial> = {
     plaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal,
       roughnessMap: plaster.surface, aoMap: plaster.surface, roughness: 1, metalness: 0 }),
@@ -1602,17 +1614,22 @@ function* propsBuildSteps(
     // content_breadth r3: window PANES get real materials — the old shared
     // near-black 'dark' slabs read as unframed voids at establishing
     // distance (critique). 'glass' is a low-roughness slate that picks up
-    // sky/env specular; 'curtain' is a warm pale fill (daytime curtained /
-    // shuttered interiors) that breaks the all-black grid.
+    // sky/env specular; 'curtain' is a muted warm fill (daytime curtained /
+    // shuttered interiors) that breaks the all-black grid without turning
+    // into the white/emissive rectangles seen under Ruinspires' exposure.
     // world-dressing r1 + AA agent's FINAL measured glass spec (4eccce8):
     // roughness floor 0.35 (sub-pixel sky-glints shimmered under AA at
     // range — the sky-catch read comes from envMapIntensity, not tightness),
     // metalness <= 0.2, envMapIntensity capped at 1.0 below (1.5 pushed
     // glints past the 1.78 bloom threshold).
-    glass: new THREE.MeshPhysicalMaterial({ color: 0x2b3640, roughness: 0.35, metalness: 0.12,
-      clearcoat: 0.32, clearcoatRoughness: 0.28 }),
-    curtain: new THREE.MeshStandardMaterial({ color: 0xb3a992, roughness: 0.92, metalness: 0,
-      emissive: 0x8a4d1c, emissiveIntensity: 0.32 }),
+    glass: new THREE.MeshPhysicalMaterial({ color: windowStyle.glassColor,
+      roughness: windowStyle.glassRoughness, metalness: windowStyle.glassMetalness,
+      clearcoat: windowStyle.glassClearcoat,
+      clearcoatRoughness: windowStyle.glassClearcoatRoughness,
+      envMapIntensity: windowStyle.glassEnvMapIntensity }),
+    curtain: new THREE.MeshStandardMaterial({ color: windowStyle.curtainColor,
+      roughness: 0.94, metalness: 0, emissive: windowStyle.curtainEmissive,
+      emissiveIntensity: windowStyle.curtainEmissiveIntensity }),
     straw: new THREE.MeshStandardMaterial({ map: straw.albedo, normalMap: straw.normal,
       roughnessMap: straw.surface, aoMap: straw.surface, roughness: 1, metalness: 0 }),
     rock: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }),
@@ -2300,7 +2317,9 @@ ${snowCap ? `
           };
           const info = ruined
             ? makeRuin(rng, tmp)
-            : makeRowhouse(rng, tmp, pickWall(srng), { w, d });
+            : makeRowhouse(rng, tmp, pickWall(srng), {
+              w, d, lowContrastTrim: mapId === 'ruinspires',
+            });
           const fit = groundFit(px, pz, info.w, info.d, rot);
           if (fit.spread > 3.2) { t += w; continue; }
           for (const bk of Object.keys(tmp)) for (const g of tmp[bk]) {

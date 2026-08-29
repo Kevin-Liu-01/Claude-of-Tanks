@@ -14,6 +14,9 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import {
+  certifyGroundedStructureParts, certifyStructureAttachments,
+} from '../structureConnectivity.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -101,6 +104,7 @@ const GALV: Palette = [0.56, 0.03, 0.46];
 const RUST: Palette = [0.05, 0.55, 0.22];
 const LINEN: Palette = [0.11, 0.12, 0.64];
 const IRON: Palette = [0.60, 0.05, 0.13];
+const LAMP_GLASS: Palette = [0.105, 0.42, 0.42];
 
 function P<T extends THREE.BufferGeometry>(geo: T, pal: Palette, jit: number, rng: Rng): T {
   return paint(geo, pal[0], pal[1], pal[2], jit, rng);
@@ -476,20 +480,68 @@ function bLooseWheel(rng: Rng): THREE.BufferGeometry {
 }
 
 function bLamp(rng: Rng): THREE.BufferGeometry { // baked: cast-iron street lamp (topple class)
-  const parts = [];
-  const H = 4.5;
-  const pole = new THREE.CylinderGeometry(0.05, 0.09, H, 6, 1);
-  parts.push(P(pole.translate(0, H / 2, 0), IRON, 0.05, rng));
+  const parts: THREE.BufferGeometry[] = [];
+  const H = 4.35;
+  const pole = new THREE.CylinderGeometry(0.055, 0.09, H, 6, 1);
+  const polePart = P(pole.translate(0, H / 2, 0), IRON, 0.05, rng);
+  parts.push(polePart);
   const collar = new THREE.CylinderGeometry(0.12, 0.16, 0.5, 6, 1);
-  parts.push(P(collar.translate(0, 0.25, 0), IRON, 0.05, rng));
-  const arm = new THREE.CylinderGeometry(0.035, 0.045, 1.2, 5, 1);
-  arm.rotateZ(Math.PI / 2 - 0.5);
-  parts.push(P(arm.translate(0.5, H - 0.2, 0), IRON, 0.05, rng));
-  const head = new THREE.CylinderGeometry(0.16, 0.24, 0.34, 6, 1);
-  parts.push(P(head.translate(1.0, H - 0.05, 0), IRON, 0.05, rng));
+  const collarPart = P(collar.translate(0, 0.25, 0), IRON, 0.05, rng);
+  parts.push(collarPart);
+  const addArm = (start: THREE.Vector3, end: THREE.Vector3, radius: number): THREE.BufferGeometry => {
+    const direction = end.clone().sub(start);
+    const segment = new THREE.CylinderGeometry(radius, radius * 1.08, direction.length(), 5, 1);
+    segment.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0), direction.normalize(),
+    ));
+    segment.translate(
+      (start.x + end.x) / 2,
+      (start.y + end.y) / 2,
+      (start.z + end.z) / 2,
+    );
+    const painted = P(segment, IRON, 0.05, rng);
+    parts.push(painted);
+    return painted;
+  };
+  // Pole -> rising elbow -> horizontal arm -> drop neck -> lamp housing.
+  // Every joint deliberately overlaps: the old single diagonal stopped at a
+  // corner of the shade and made the light read as floating beside the pole.
+  const elbowPart = addArm(
+    new THREE.Vector3(0, H - 0.24, 0), new THREE.Vector3(0.30, H + 0.10, 0), 0.045,
+  );
+  const armPart = addArm(
+    new THREE.Vector3(0.27, H + 0.10, 0), new THREE.Vector3(0.98, H + 0.10, 0), 0.042,
+  );
+  const neckPart = addArm(
+    new THREE.Vector3(0.98, H + 0.13, 0), new THREE.Vector3(0.98, H - 0.08, 0), 0.042,
+  );
+  const head = new THREE.CylinderGeometry(0.17, 0.25, 0.36, 6, 1);
+  const headPart = P(head.translate(0.98, H - 0.25, 0), IRON, 0.05, rng);
+  parts.push(headPart);
   const cap = new THREE.ConeGeometry(0.20, 0.16, 6, 1);
-  parts.push(P(cap.translate(1.0, H + 0.20, 0), IRON, 0.05, rng));
-  return merge(parts);
+  const capPart = P(cap.translate(0.98, H - 0.01, 0), IRON, 0.05, rng);
+  parts.push(capPart);
+  const lens = new THREE.CylinderGeometry(0.20, 0.20, 0.055, 6, 1);
+  const lensPart = P(lens.translate(0.98, H - 0.455, 0), LAMP_GLASS, 0.035, rng);
+  parts.push(lensPart);
+  const connectivity = certifyGroundedStructureParts('streetlamp', parts, {
+    epsilon: 0.025, groundMinY: -0.04, groundMaxY: 0.02,
+  });
+  const attachments = certifyStructureAttachments('streetlamp', {
+    id: 'pole', geometry: polePart,
+  }, [
+    { id: 'base-collar', geometry: collarPart, support: 'pole' },
+    { id: 'elbow', geometry: elbowPart, support: 'pole' },
+    { id: 'arm', geometry: armPart, support: 'elbow' },
+    { id: 'drop-neck', geometry: neckPart, support: 'arm' },
+    { id: 'housing', geometry: headPart, support: 'drop-neck' },
+    { id: 'cap', geometry: capPart, support: 'housing' },
+    { id: 'lens', geometry: lensPart, support: 'housing' },
+  ]);
+  const geometry = merge(parts);
+  geometry.userData.structureConnectivity = connectivity;
+  geometry.userData.streetFurnitureAttachment = attachments;
+  return geometry;
 }
 
 function bDrum(rng: Rng): THREE.BufferGeometry { // baked: 200 L oil drum, rust-blotched (topple class)

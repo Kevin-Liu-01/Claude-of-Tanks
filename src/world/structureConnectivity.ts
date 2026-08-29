@@ -15,11 +15,69 @@ export interface StructureConnectivityOptions {
   groundMaxY?: number;
 }
 
+export interface StructureAttachmentPart {
+  id: string;
+  geometry: BufferGeometry;
+  support: string;
+}
+
+export interface StructureAttachmentRecord {
+  part: string;
+  support: string;
+  gap: number;
+}
+
+export interface StructureAttachmentReceipt {
+  id: string;
+  parts: number;
+  maxGap: number;
+  epsilon: number;
+  records: StructureAttachmentRecord[];
+}
+
 function boundsGap(a: Box3, b: Box3): number {
   const dx = Math.max(0, b.min.x - a.max.x, a.min.x - b.max.x);
   const dy = Math.max(0, b.min.y - a.max.y, a.min.y - b.max.y);
   const dz = Math.max(0, b.min.z - a.max.z, a.min.z - b.max.z);
   return Math.hypot(dx, dy, dz);
+}
+
+/**
+ * Verify named fixture-to-support joints before authoring parts are merged.
+ * Unlike the whole-assembly flood fill below, this catches a lamp head that
+ * happens to touch some unrelated AABB but not the arm intended to carry it.
+ */
+export function certifyStructureAttachments(
+  id: string,
+  base: { id: string; geometry: BufferGeometry },
+  parts: StructureAttachmentPart[],
+  epsilon = 0.025,
+): StructureAttachmentReceipt {
+  if (!id || !base.id || !parts.length || !(epsilon >= 0)) {
+    throw new TypeError(`${id || 'structure'}: invalid attachment audit`);
+  }
+  const supports = new Map<string, Box3>();
+  base.geometry.computeBoundingBox();
+  if (!base.geometry.boundingBox) throw new Error(`${id}: ${base.id} has no finite bounds`);
+  supports.set(base.id, base.geometry.boundingBox.clone());
+  const records: StructureAttachmentRecord[] = [];
+  let maxGap = 0;
+  for (const part of parts) {
+    if (!part.id || supports.has(part.id)) throw new Error(`${id}: duplicate attachment ${part.id}`);
+    const support = supports.get(part.support);
+    if (!support) throw new Error(`${id}: attachment ${part.id} has missing support ${part.support}`);
+    part.geometry.computeBoundingBox();
+    if (!part.geometry.boundingBox) throw new Error(`${id}: attachment ${part.id} has no finite bounds`);
+    const bounds = part.geometry.boundingBox.clone();
+    const gap = boundsGap(bounds, support);
+    if (gap > epsilon) {
+      throw new Error(`${id}: attachment ${part.id} floats ${gap.toFixed(3)} m from ${part.support}`);
+    }
+    maxGap = Math.max(maxGap, gap);
+    records.push({ part: part.id, support: part.support, gap });
+    supports.set(part.id, bounds);
+  }
+  return { id, parts: records.length + 1, maxGap, epsilon, records };
 }
 
 /**

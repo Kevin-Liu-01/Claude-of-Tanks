@@ -9,6 +9,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { addConnectedExterior } from './exteriorDetailKit.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
 import { certifyGroundedStructureParts } from '../structureConnectivity.ts';
+import { auditSkillionRoofPitch, pitchSkillionRoof } from '../propGeometry.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -189,8 +190,13 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
  */
 function mergeConnectedStructure(id: string, parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   const connectivity = certifyGroundedStructureParts(id, parts);
+  const skillionRoofPitches = [];
+  for (const part of parts) {
+    if (part.userData.skillionRoofPitch) skillionRoofPitches.push(auditSkillionRoofPitch(part));
+  }
   const geometry = merge(parts);
   geometry.userData.structureConnectivity = connectivity;
+  geometry.userData.skillionRoofPitches = skillionRoofPitches;
   return geometry;
 }
 
@@ -284,7 +290,8 @@ export function makeTavern(rng: Rng, buckets: GeometryBuckets, wallBucket = 'pla
     // Posts reach the balcony bearer instead of stopping 30 cm below it.
     out.wood.push(box(0.10, 3.05, 0.10).translate(x, 1.525, d / 2 + 1.25));
   }
-  out.roof.push(slab(w * 0.88, 0.11, 2.1).rotateX(-0.15).translate(0, 5.05, d / 2 + 0.72));
+  out.roof.push(pitchSkillionRoof(slab(w * 0.88, 0.11, 2.1), 'z', 1, 0.15)
+    .translate(0, 5.05, d / 2 + 0.72));
   out.dark.push(box(1.6, 0.95, 0.10).translate(-w / 2 - 0.08, 3.1, d * 0.2));
   out.stone.push(box(0.72, 2.5, 0.72).translate(2.6, wallH + roofH - 0.3, -2.7));
   for (const x of [-2.5, 0, 2.5]) addWindow(out, x, 2.0, d / 2 + 0.04);
@@ -307,7 +314,8 @@ export function makeSchoolhouse(rng: Rng, buckets: GeometryBuckets, wallBucket =
   cap.rotateY(Math.PI / 4); cap.translate(0, wallH + roofH + 2.6, 1.0); out.roof.push(cap);
   out.wood.push(box(3.5, 0.18, 2.0).translate(0, 0.18, d / 2 + 1.0));
   for (const x of [-1.35, 1.35]) out.wood.push(box(0.13, 2.7, 0.13).translate(x, 1.5, d / 2 + 1.65));
-  out.roof.push(slab(4.1, 0.12, 2.4).rotateX(-0.14).translate(0, 3.0, d / 2 + 0.95));
+  out.roof.push(pitchSkillionRoof(slab(4.1, 0.12, 2.4), 'z', 1, 0.14)
+    .translate(0, 3.0, d / 2 + 0.95));
   for (const z of [-4.4, -1.5, 1.4]) for (const side of [-1, 1]) addWindow(out, side * (w / 2 + 0.04), 2.35, z, 'x', 1.25, 1.55);
   addConnectedExterior(out, { id: 'schoolhouse', w, d, wallH, profile: 'civic', variant: 2 });
   finish(buckets, out);
@@ -390,7 +398,7 @@ export function makeCaravanserai(rng: Rng, buckets: GeometryBuckets, wallBucket 
   // The courtyard posts carry a continuous shade arcade back into the north
   // wing. Besides giving the 21 m facade a readable rhythm, this closes the
   // former one-metre air gap between every post and the actual structure.
-  out.wood.push(slab(16.4, 0.18, 1.25).rotateX(-0.045)
+  out.wood.push(pitchSkillionRoof(slab(16.4, 0.18, 1.25), 'z', 1, 0.045)
     .translate(0, 2.86, -d / 2 + 4.48));
   for (const x of [-8.2, -4.1, 0, 4.1, 8.2]) {
     out.stone.push(box(0.42, wallH - 0.25, 0.38)
@@ -432,7 +440,8 @@ export function makeRangerLodge(rng: Rng, buckets: GeometryBuckets, wallBucket =
   // Full porch, stone fireplace and observation cupola.
   out.wood.push(box(w + 1.8, 0.18, 2.6).translate(0, 0.24, d / 2 + 1.3));
   for (const x of [-5.2, -2.6, 0, 2.6, 5.2]) out.wood.push(box(0.16, 2.8, 0.16).translate(x, 1.55, d / 2 + 2.25));
-  out.roof.push(slab(w + 2.0, 0.13, 3.1).rotateX(-0.17).translate(0, 3.25, d / 2 + 1.25));
+  out.roof.push(pitchSkillionRoof(slab(w + 2.0, 0.13, 3.1), 'z', 1, 0.17)
+    .translate(0, 3.25, d / 2 + 1.25));
   out.stone.push(box(1.35, 5.8, 1.35).translate(-3.4, wallH + 0.9, -2.2));
   out.wood.push(box(3.0, 1.7, 3.0).translate(2.0, wallH + roofH + 0.35, -1.0));
   const cap = new THREE.ConeGeometry(2.15, 1.9, 4, 1);
@@ -919,7 +928,7 @@ function gableLight({
   if (porch > 0) {
     colored(out, box(w * 0.9, 0.12, porch).translate(0, y0 + 0.08, d / 2 + porch / 2), trim, rng);
     for (const x of [-w * 0.38, w * 0.38]) colored(out, box(0.10, wallH * 0.68, 0.10).translate(x, y0 + wallH * 0.35, d / 2 + porch * 0.82), dark, rng);
-    const awning = slab(w, 0.08, porch + 0.35); awning.rotateX(-0.16);
+    const awning = pitchSkillionRoof(slab(w, 0.08, porch + 0.35), 'z', 1, 0.16);
     colored(out, awning.translate(0, y0 + wallH * 0.73, d / 2 + porch * 0.42), trim, rng);
   }
   if (chimney) colored(out, box(0.42, 1.8, 0.42).translate(-w * 0.28, y0 + wallH + roofH * 0.78, -d * 0.2), dark, rng);
@@ -1000,7 +1009,8 @@ function makeLeanTo(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.paleWood;
   for (const x of [-2.4, 2.4]) for (const z of [-2.0, 2.0]) colored(out, box(0.16, 2.8, 0.16).translate(x, 1.4, z), p[2], rng);
   colored(out, box(5.2, 2.3, 0.18).translate(0, 1.15, -2.05), p[0], rng);
-  const roof = slab(5.8, 0.12, 5.0); roof.rotateX(-0.18); colored(out, roof.translate(0, 2.75, 0), p[1], rng);
+  const roof = pitchSkillionRoof(slab(5.8, 0.12, 5.0), 'z', 1, 0.18);
+  colored(out, roof.translate(0, 2.75, 0), p[1], rng);
   for (let i = 0; i < 3; i++) colored(out, box(1.1, 0.85, 0.8).translate(-1.5 + i * 1.45, 0.43, -1.45), p[0], rng);
   return mergeConnectedStructure('leanto', out);
 }
@@ -1148,7 +1158,8 @@ function makeCheckpointHut(rng: Rng): THREE.BufferGeometry {
   for (const side of [-1, 1]) colored(out, box(0.08, 1.0, 2.7).translate(side * (w / 2 + 0.05), 1.95, 0), 0x718b90, rng);
   colored(out, box(2.5, 0.12, 1.8).translate(0, 0.12, d / 2 + 0.85), p[1], rng);
   for (const x of [-1.0, 1.0]) colored(out, box(0.12, 2.2, 0.12).translate(x, 1.15, d / 2 + 1.55), p[2], rng);
-  colored(out, slab(2.8, 0.10, 2.0).rotateX(-0.12).translate(0, 2.35, d / 2 + 0.9), p[1], rng);
+  colored(out, pitchSkillionRoof(slab(2.8, 0.10, 2.0), 'z', 1, 0.12)
+    .translate(0, 2.35, d / 2 + 0.9), p[1], rng);
   return mergeConnectedStructure('checkpointhut', out);
 }
 
@@ -1165,7 +1176,7 @@ function makeSecurityOffice(rng: Rng): THREE.BufferGeometry {
     colored(out, box(0.12, 1.62, 0.13).translate(x + 0.72, 3.05, d / 2 + 0.04), p[1], _detailRng);
   }
   colored(out, box(1.45, 2.55, 0.12).translate(0, 1.28, d / 2 + 0.06), p[2], rng);
-  colored(out, slab(3.6, 0.14, 1.45).rotateX(-0.08)
+  colored(out, pitchSkillionRoof(slab(3.6, 0.14, 1.45), 'z', 1, 0.08)
     .translate(0, 3.15, d / 2 + 0.62), p[1], rng);
   for (const x of [-1.55, 1.55]) {
     colored(out, box(0.13, 3.05, 0.13).translate(x, 1.52, d / 2 + 1.18), p[2], rng);
@@ -1235,7 +1246,7 @@ function makeCornerOffice(rng: Rng): THREE.BufferGeometry {
     colored(out, box(0.18, 0.18, d + 0.10).translate(w / 2 + 0.04, y - 0.76, 0), p[1], _detailRng);
   }
   colored(out, box(1.5, 2.55, 0.12).translate(-2.55, 1.28, d / 2 + 0.06), p[2], rng);
-  colored(out, slab(3.2, 0.14, 1.25).rotateX(-0.07)
+  colored(out, pitchSkillionRoof(slab(3.2, 0.14, 1.25), 'z', 1, 0.07)
     .translate(-2.55, 3.10, d / 2 + 0.53), p[1], rng);
   for (const x of [-3.85, -1.25]) {
     colored(out, box(0.13, 3.0, 0.13).translate(x, 1.5, d / 2 + 1.04), p[2], rng);

@@ -115,4 +115,21 @@ assert.equal(buildingLayer.normal.disposeCount, 1, 'building normal swaps once')
 assert.equal(buildingLayer.surface.disposeCount, 1,
   'building packed AO/roughness surface swaps once');
 
+const ruinspiresLayers = {
+  plaster: { albedo: texture(), normal: texture(), surface: texture() },
+  roof: { albedo: texture(), normal: texture(), surface: texture() },
+  wood: { albedo: texture(), normal: texture(), surface: texture() },
+};
+await applySourcedBuildings(ruinspiresLayers, 'ruinspires');
+assert.equal(ruinspiresLayers.plaster.albedo.disposeCount, 1,
+  'Ruinspires receives its smoke-muted sourced facade texture');
+assert.equal(ruinspiresLayers.wood.albedo.disposeCount, 1,
+  'Ruinspires receives its restrained sourced trim texture');
+assert.equal(ruinspiresLayers.roof.albedo.disposeCount, 0,
+  'Ruinspires preserves the authored procedural roof palette like Steinburg');
+const facadeRgb = [...ruinspiresLayers.plaster.albedo.image.pixels]
+  .filter((_, index) => index % 4 !== 3);
+assert.ok(Math.max(...facadeRgb) < 160,
+  'Ruinspires facade source cannot reintroduce near-white texture lines');
+
 console.log('sourcedTextures.selftest: byte, readback, and async readiness contracts passed');

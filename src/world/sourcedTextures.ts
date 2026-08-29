@@ -489,6 +489,13 @@ export function applySourcedTerrain(
 // roofs and desert adobe stayed white without these.
 const BUILDING_TINTS: Record<string, Partial<Record<BuildingBucket, BuildingTint>>> = {
   urban:  { roof: [0.52, 0.55, 0.62], plaster: [0.88, 0.86, 0.82] }, // slate / sooty render
+  ruinspires: {
+    // Keep the megacity in the same bounded, authored-material discipline as
+    // Steinburg. Raw Plaster007/Planks023A bypassed map tones and made facade
+    // trim flash white against the charcoal towers.
+    plaster: { tint: [0.62, 0.63, 0.62], desat: 0.52 },
+    wood: { tint: [0.58, 0.56, 0.52], desat: 0.38 },
+  },
   desert: { plaster: [1.08, 0.92, 0.70], wood: [1.05, 0.95, 0.80] }, // sand-plaster adobe
   // r5 terrain_environment: winter roofs were still SATURATED ORANGE under a
   // deep-snow sky (critique) — the multiply tint cannot desaturate terracotta.
@@ -540,10 +547,11 @@ export function applySourcedBuildings(
   // maps r1: the rail yard's industrial halls are brick like the town's
   if ((mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera')
       && sets.stone) plan.stone = 'brick';
-  // urban keeps the PROCEDURAL roof sheet: its tone hook bakes a slate/clay
-  // patchwork (cfg.props.tones.roof) that the single-tint sourced set cannot
-  // reproduce — the uniform maroon roofscape was a top critic complaint
-  if (mapId === 'urban') delete plan.roof;
+  // Steinburg and Ruinspires keep the PROCEDURAL roof sheet: their tone hooks
+  // bake deliberately restrained roof families that a single sourced tint
+  // cannot reproduce. This also prevents the raw orange tile set from
+  // overriding Ruinspires' smoke-darkened roof policy.
+  if (mapId === 'urban' || mapId === 'ruinspires') delete plan.roof;
   const jobs: Array<Promise<void>> = [];
   for (const [bucket, setKey] of Object.entries(plan)) {
     const bucketKey = bucket as BuildingBucket;

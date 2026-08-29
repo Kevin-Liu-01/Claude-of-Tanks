@@ -19,7 +19,7 @@
 // road-side fence runs), tanks drive through reeds, not into invisible walls.
 
 import * as THREE from 'three';
-import { box, jitterUV, scaleUV } from '../propGeometry.ts';
+import { box, jitterUV, pitchSkillionRoof, scaleUV } from '../propGeometry.ts';
 import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
 
@@ -396,8 +396,7 @@ function makeCompound(rng: Rng, buckets: GeometryBuckets): StructureDimensions {
   const ax = -hs * (w / 2 - aw / 2 - 0.5), az = -d / 2 + ad / 2 + 0.6;
   adobeBlock(rng, buckets, aw, ad, ah, ax, az, 'z', 'plaster');
   // lean-to awning off the annex (shade for goods/animals)
-  const awn = box(aw * 0.9, 0.08, 2.4, 0.35);
-  awn.rotateX(-0.12);
+  const awn = pitchSkillionRoof(box(aw * 0.9, 0.08, 2.4, 0.35), 'z', 1, 0.12);
   awn.translate(ax, ah - 0.35, az + ad / 2 + 1.15);
   buckets.plaster.push(jitterUV(awn, rng));
   for (const s of [-1, 1]) {

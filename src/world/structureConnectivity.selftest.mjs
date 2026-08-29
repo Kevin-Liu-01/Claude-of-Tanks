@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { STRUCTURE_BUILDERS } from './maps/structureKit.ts';
+import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
+import { auditSkillionRoofPitch } from './propGeometry.ts';
 import { certifyGroundedStructureParts } from './structureConnectivity.ts';
 
 const BUCKET_NAMES = [
@@ -30,6 +32,8 @@ assert.equal(entries.length, 41, 'all heavyweight and site structure families ar
 assert.equal(new Set(entries.map(([id]) => id)).size, entries.length,
   'structure registries cannot silently replace a duplicate family id');
 
+const pitchedFamilies = new Set();
+
 for (const seed of [0x51a7c7, 0xa1139e]) {
   for (const [id, build] of entries) {
     const buckets = Object.fromEntries(BUCKET_NAMES.map((name) => [name, []]));
@@ -43,8 +47,40 @@ for (const seed of [0x51a7c7, 0xa1139e]) {
       `${id}: fixture gaps stay within the construction tolerance`);
     assert.ok(dimensions.w > 1 && dimensions.d > 1 && dimensions.h > 2,
       `${id}: finite battlefield-scale dimensions`);
+    for (const geometry of geometries) {
+      if (!geometry.userData.skillionRoofPitch) continue;
+      const pitch = auditSkillionRoofPitch(geometry);
+      assert.ok(pitch.drop > 0.01,
+        `${id}: wall-mounted roof drains toward its unsupported edge`);
+      pitchedFamilies.add(id);
+    }
   }
 }
+
+for (const id of ['farmhouse', 'compound', 'tavern', 'schoolhouse', 'caravanserai', 'rangerlodge']) {
+  assert.ok(pitchedFamilies.has(id), `${id}: side-roof orientation participates in the map-wide audit`);
+}
+
+const streetlamp = DESTRUCTIBLE_TYPES.lamp.build(seeded(0x1a4f));
+const lampConnectivity = streetlamp.userData.structureConnectivity;
+assert.equal(lampConnectivity.id, 'streetlamp', 'streetlight carries an attachment receipt');
+assert.equal(lampConnectivity.connected, lampConnectivity.parts,
+  'streetlight pole, elbow, arm, neck, housing, cap, and lens form one supported assembly');
+assert.ok(lampConnectivity.maxConnectionGap <= 0.025,
+  'streetlight joints stay inside the strict furniture attachment tolerance');
+const lampAttachments = streetlamp.userData.streetFurnitureAttachment;
+assert.equal(lampAttachments.id, 'streetlamp');
+assert.equal(lampAttachments.parts, 8,
+  'streetlight attachment receipt covers pole, collar, elbow, arm, neck, housing, cap, and lens');
+assert.ok(lampAttachments.records.every(({ gap }) => gap <= lampAttachments.epsilon),
+  'every named streetlight fixture reaches its intended local support');
+assert.deepEqual(lampAttachments.records.map(({ part, support }) => [part, support]), [
+  ['base-collar', 'pole'], ['elbow', 'pole'], ['arm', 'elbow'],
+  ['drop-neck', 'arm'], ['housing', 'drop-neck'],
+  ['cap', 'housing'], ['lens', 'housing'],
+], 'streetlight audit names every visible load-path joint');
+assert.ok((streetlamp.index?.count || streetlamp.attributes.position.count) / 3 <= 180,
+  'the repaired streetlight stays a sub-180-triangle instanced prop');
 
 const floor = new THREE.BoxGeometry(2, 0.2, 2).translate(0, 0, 0);
 const floating = new THREE.BoxGeometry(0.4, 0.4, 0.4).translate(0, 2, 0);
@@ -54,4 +90,4 @@ assert.throws(
   'the authoring gate rejects a fixture that cannot reach ground or another support',
 );
 
-console.log('structureConnectivity.selftest: 41 heavyweight/site families × 2 variants are grounded');
+console.log(`structureConnectivity.selftest: 41 heavyweight/site families × 2 variants grounded; ${pitchedFamilies.size} pitched families + streetlight load path audited`);

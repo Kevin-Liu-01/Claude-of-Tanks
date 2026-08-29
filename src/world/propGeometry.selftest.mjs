@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
-  box, gablePrism, jitterUV, makeTelephonePoleDistanceGeometry, scaleUV, slabBox,
+  auditSkillionRoofPitch, box, gablePrism, jitterUV,
+  makeTelephonePoleDistanceGeometry, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 
 const scaled = new THREE.PlaneGeometry(2, 2);
@@ -22,6 +23,23 @@ for (let i = 0; i < ordinary.attributes.uv.count; i++) {
 const slab = slabBox(2, 0.2, 6, 0.5);
 assert.equal(slab.attributes.uv.getY(8), 3,
   'the first top-face UV uses slab depth rather than slab thickness');
+
+for (const [axis, outwardSign] of [
+  ['x', -1], ['x', 1], ['z', -1], ['z', 1],
+]) {
+  const roof = pitchSkillionRoof(slabBox(2.4, 0.12, 3.2), axis, outwardSign, 0.16);
+  const receipt = auditSkillionRoofPitch(roof);
+  assert.ok(receipt.drop > 0.25,
+    `${axis}${outwardSign}: the wall edge stays above the unsupported outer edge`);
+  assert.equal(receipt.axis, axis);
+  assert.equal(receipt.outwardSign, outwardSign);
+  roof.dispose();
+}
+const reversedRoof = pitchSkillionRoof(slabBox(2.4, 0.12, 3.2), 'z', 1, 0.16);
+reversedRoof.rotateX(-0.32);
+assert.ok(auditSkillionRoofPitch(reversedRoof).drop < 0,
+  'the pitch audit rejects a canopy manually flipped back toward the building');
+reversedRoof.dispose();
 
 const gable = gablePrism(4, 2, 0.6);
 gable.computeBoundingBox();

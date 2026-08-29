@@ -9,7 +9,9 @@
 // foundation course (the props.ts grounding precedent).
 
 import * as THREE from 'three';
-import { box, gablePrism, scaleUV, slabBox } from '../propGeometry.ts';
+import {
+  box, gablePrism, pitchSkillionRoof, scaleUV, slabBox,
+} from '../propGeometry.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
 
 interface BuildingParts {
@@ -106,7 +108,7 @@ export function makeFarmhouse(
   }
   {
     const pr = slabBox(1.7, 0.09, d * 0.72, 0.4);
-    pr.rotateZ(-0.28);
+    pitchSkillionRoof(pr, 'x', -1, 0.28);
     parts.roof.push(pr.translate(px - 0.02, 2.45, 0));
   }
   parts.stone.push(box(1.4, 0.16, 1.3).translate(px, 0.08, d * 0.18));
