@@ -7129,6 +7129,12 @@ export function createTank(specId, engineCtx, opts = {}) {
     // showroom/gallery visual on a rigid surface. Battle movement continues
     // to use contactGeom.bottomYM, the load-bearing flat track run.
     presentationFloorYM,
+    // Exact authored running-gear contact line. Garage turntables use this
+    // instead of the conservative visible-envelope floor so belly fittings do
+    // not leave the tracks visibly hovering above the concrete.
+    presentationTrackFloorYM: Number.isFinite(gearCG?.bottomYM)
+      ? gearCG.bottomYM
+      : null,
 
     /** Seat the neutral rest-pose envelope on a world-space horizontal plane. */
     seatOnFloor(floorYM = 0) {
@@ -7143,6 +7149,15 @@ export function createTank(specId, engineCtx, opts = {}) {
         presentationFloorMeasured = true;
       }
       root.position.y = floorYM - this.presentationFloorYM;
+      return root.position.y;
+    },
+
+    /** Seat the load-bearing track run on a rigid presentation surface. */
+    seatRunningGearOnFloor(floorYM = 0) {
+      if (!Number.isFinite(this.presentationTrackFloorYM)) {
+        return this.seatOnFloor(floorYM);
+      }
+      root.position.y = floorYM - this.presentationTrackFloorYM;
       return root.position.y;
     },
 

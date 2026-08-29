@@ -9,12 +9,12 @@ import {
 } from './garageVariants.ts';
 import { getMapConfig } from '../world/maps/index.ts';
 
-assert.equal(GARAGE_VARIANTS.length, 10, 'garage selector must expose exactly ten workshops');
+assert.equal(GARAGE_VARIANTS.length, 10, 'garage selector must expose exactly ten staging areas');
 assert.equal(new Set(GARAGE_VARIANTS.map((variant) => variant.id)).size, 10, 'variant ids unique');
-assert.equal(new Set(GARAGE_VARIANTS.map((variant) => variant.mapId)).size, 10, 'each workshop uses a distinct real battlefield');
+assert.equal(new Set(GARAGE_VARIANTS.map((variant) => variant.mapId)).size, 10, 'each staging area uses a distinct real battlefield');
 assert.equal(new Set(GARAGE_VARIANTS.map((variant) => variant.layout)).size, 10, 'each workshop has a distinct assembly layout');
 assert.equal(new Set(GARAGE_VARIANTS.map((variant) => variant.architecture)).size, 10,
-  'each battlefield selection has a distinct macro garage architecture');
+  'each battlefield selection has a distinct staging vignette');
 for (const variant of GARAGE_VARIANTS) {
   assert.match(variant.id, /^[a-z0-9_]+$/);
   assert.ok(variant.name && variant.location && variant.description);

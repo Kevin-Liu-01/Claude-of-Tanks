@@ -200,6 +200,22 @@ interface BuildStageTiming {
   rowEnd?: boolean;
 }
 
+export interface GarageTreeKit {
+  species: Species;
+  trunk: THREE.BufferGeometry;
+  foliage: THREE.BufferGeometry;
+  trunkMaterial: THREE.MeshStandardMaterial;
+  foliageMaterial: THREE.MeshStandardMaterial;
+  dispose(): void;
+}
+
+interface GarageTreeEngineContext {
+  setupShadowMaterial?(
+    material: THREE.Material,
+    hook?: MaterialShaderHook | null,
+  ): unknown;
+}
+
 function context2d(
   canvas: HTMLCanvasElement,
   options?: CanvasRenderingContext2DSettings,
@@ -1733,6 +1749,64 @@ function buildBushCards(rng: RandomSource, pal: VegetationPalette = {}): THREE.B
       _e, shade, hue0 + (rng() - 0.5) * 0.055, sat0 + rng() * 0.06, 0.22, 0, cy, 0, 0.75, 0.45));
   }
   return mergeParts(parts);
+}
+
+/**
+ * Build one static battlefield far-tree kit with the same geometry and per-map
+ * palette used beyond the near-LOD transition. Garage staging places these
+ * trees in its 30–65 m background, where the opaque range silhouette is both
+ * the correct asset and much cheaper than constructing map-wide alpha foliage.
+ */
+export function createGarageTreeKit(
+  engineCtx: GarageTreeEngineContext,
+  cfg: VegetationMapConfig | null,
+  species: Species,
+  seed = 2001,
+  variant = 0,
+): GarageTreeKit {
+  const palettes = cfg?.vegetation?.palettes || {};
+  const palette = palettes[species] || {};
+  const k = ((variant % 3) + 3) % 3;
+  let pair: FarTreeGeometryPair;
+  switch (species) {
+    case 'pine':
+      pair = buildPineFarGeometry(mulberry32(seed + 71 + k * 101), palette);
+      break;
+    case 'palm':
+      pair = buildPalmFarGeometry(mulberry32(seed + 75 + k * 101), palette, k % 2);
+      break;
+    case 'birch':
+      pair = buildBirchFarGeometry(mulberry32(seed + 77 + k * 101), palette);
+      break;
+    default:
+      pair = buildOakFarGeometry(mulberry32(seed + 73 + k * 101), palette, k % 2);
+      break;
+  }
+  const trunkMaterial = new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.92, metalness: 0,
+  });
+  const foliageMaterial = new THREE.MeshStandardMaterial({
+    side: species === 'palm' ? THREE.DoubleSide : THREE.FrontSide,
+    vertexColors: true,
+    roughness: 1,
+    metalness: 0,
+  });
+  foliageMaterial.envMapIntensity = 0.85;
+  engineCtx.setupShadowMaterial?.(trunkMaterial);
+  engineCtx.setupShadowMaterial?.(foliageMaterial);
+  return {
+    species,
+    trunk: pair.trunk,
+    foliage: pair.canopy,
+    trunkMaterial,
+    foliageMaterial,
+    dispose() {
+      pair.trunk.dispose();
+      pair.canopy.dispose();
+      trunkMaterial.dispose();
+      foliageMaterial.dispose();
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------

@@ -64,30 +64,38 @@ profile-family chunks. Studio transfers its route chunk on nav hover/focus/
 touch but does not construct the authoring runtime until entry. These boundaries
 keep demand loading without making a card or route click pay the cold parse.
 
-Garage workshop scenery uses the real first-party `t90a_burlak`, `m1a2`,
-`t90m`, `k2`, and `leclerc` fleet builders only behind
-`garageDressingAccess` and the shared garage-lull gate. Verdant Motor Pool
-preserves the pre-multi-garage repair floor exactly: Burlak under the turret
-gantry, skirt-off Abrams beside the welder, T-90M turret/Relikt service line,
-and rolled K2 teardown with its wheel, shoe, and weapon racks. Its four visible
-exhibits total 369,886 rendered triangles. The other nine environments use the
-additive three-tank/three-turret layout at 352,762 triangles. Shared Abrams and
-T-90M geometry is cloned rather than built twice; all loading, construction,
-and explicit shader compile remain outside the initial visible garage path and
-never run while battle owns the renderer. Ten architecture roots are built
-only on first selection, cached, and hidden as complete subtrees; the largest
-individual structural kit stays below 2.5K triangles. Garage selector previews
-still decode only when demanded, but map thumbnails are not rendered on the
-workshop walls. One shared CRT-style battle archive screen streams canonical
-captures one at a time, retains at most the current and incoming textures, and
-stops its timer when the Garage root leaves the scene. `npm run qa:garage`
-enumerates all ten locations and checks the screen receipt, unique map
-and architecture signatures, persistence, preview decode, zero wall-bay
-overlaps, exact-fleet mode, the four-piece original Verdant receipt, all six
-additive exhibits, the 180-degree bay-facing correction, Verdant's enclosed
-original roof, the 450K workshop and 10K
-per-architecture ceilings, desktop switch frame gaps, console health, and the
-390×844 selector.
+Garage workshop scenery uses only the real first-party `t90a_burlak`, `m1a2`,
+`t90m`, and `k2` builders behind `garageDressingAccess` and the shared
+garage-lull gate. Verdant Motor Pool preserves the pre-multi-garage repair floor
+exactly: Burlak under the turret gantry, skirt-off Abrams beside the welder,
+T-90M turret/Relikt service line, and rolled K2 teardown with its wheel, shoe,
+and weapon racks. The same four already-built scenes are reused across all ten
+locations; the former second three-tank/three-turret graph and its Leclerc build
+are gone.
+
+Verdant alone mounts the enclosed workshop shell and indoor clutter. Each other
+selection lazily creates and caches an open slice of its real battlefield:
+seeded canonical terrain around a named tactical beat, the beat's real authored
+structure, the map horizon profile, and its actual far-tree geometry/species/
+palette. The full 257×257 heightfield derivation runs in a module worker; the
+main thread receives only a 37×37 terrain patch and a bounded set of tree
+transforms. Terrain, skyline, landmark, and tree draw owners reveal one per
+frame, eliminating the former first-visit upload burst. No wall, roof, world
+builder, grass system, collision tree, destructible runtime, or PMREM is built.
+Architecture remains below the 180K release ceiling (current map slices are
+under 7K triangles). Existing Garage lights remain mounted across selection
+changes so switching cannot change shader light-count defines and relink.
+
+Garage selector previews still decode only when demanded. One shared CRT-style
+battle archive screen streams canonical captures one at a time, retains at most
+the current and incoming textures, and stops its timer when the Garage root
+leaves the scene. `npm run qa:garage` enumerates all ten locations and checks
+map bindings, nine zero-enclosure exterior receipts, Verdant's original roof,
+the four shared exact maintenance bays, selected-hero track contact within one
+millimetre, screen rotation/residency, persistence, preview decode, architecture
+budgets, desktop frame gaps, console health, and the 390×844 selector. The same
+probe runs under CDP 4× CPU throttling; the worker-backed map derivation keeps
+the measured UI-frame maximum below 120 ms there as well.
 
 An opaque transition must be visible before asynchronous battle imports or
 world loading. Hiding the menu before painting the transition can expose one

@@ -1,9 +1,11 @@
-// Ten low-poly macro garage shells. The central podium and lighting remain
-// stable while each battlefield selection swaps a genuinely different
-// structural language around it. Roots are built lazily, cached, and hidden as
-// whole subtrees, so repeat selection is allocation-free and battle cost stays 0.
+// Lightweight garage macro environments. Verdant keeps the authored indoor
+// motor pool; every other selection is an open, map-native service staging
+// area. Each bounded slice is rebuilt from the selected map's canonical
+// heightfield, horizon, tactical structure, tree kit, and palettes. Roots are
+// lazy/cached and never wake map-wide streaming, grass, PMREM, or colliders.
 import * as THREE from 'three';
 import type { GarageVariant } from '../game/garageVariants.ts';
+import type { GarageMapStage } from '../world/garageMapStage.ts';
 
 interface ArchitectureEngineContext {
   setupShadowMaterial?(material: THREE.Material): void;
@@ -11,15 +13,28 @@ interface ArchitectureEngineContext {
 
 export interface GarageArchitectureStats {
   key: GarageVariant['architecture'];
+  mapId: string;
+  mode: 'verdant-workshop' | 'map-staging';
   signature: string;
   objects: number;
   triangles: number;
   cached: number;
+  enclosingSurfaces: number;
+  ready: boolean;
+  source: 'verdant-workshop' | 'canonical-map-slice' | 'loading';
+  sourceCoordinate: readonly [number, number] | null;
+  sourceBeat: string;
+  sourceStructure: string;
+  sourceLandmarkLocal: readonly [number, number, number] | null;
+  terrainVertices: number;
+  treeSpecies: readonly string[];
+  trees: number;
 }
 
 export function createGarageArchitectureController(
   engineCtx: ArchitectureEngineContext,
   parent: THREE.Object3D,
+  requestRender: () => void = () => {},
 ) {
   const group = new THREE.Group();
   group.name = 'garage_variant_architecture';
@@ -36,25 +51,22 @@ export function createGarageArchitectureController(
     return material;
   };
   const material = {
-    frame: track(shadow(new THREE.MeshStandardMaterial({ color: 0x46535c, roughness: 0.55, metalness: 0.58, emissive: 0x111820, emissiveIntensity: 0.32 }))),
-    dark: track(shadow(new THREE.MeshStandardMaterial({ color: 0x1d2328, roughness: 0.7, metalness: 0.35 }))),
-    accent: track(shadow(new THREE.MeshStandardMaterial({ color: 0xc99b35, roughness: 0.6, metalness: 0.25, emissive: 0x241708, emissiveIntensity: 0.28 }))),
+    frame: track(shadow(new THREE.MeshStandardMaterial({ color: 0x46535c, roughness: 0.55, metalness: 0.58 }))),
+    dark: track(shadow(new THREE.MeshStandardMaterial({ color: 0x1d2328, roughness: 0.78, metalness: 0.30 }))),
+    accent: track(shadow(new THREE.MeshStandardMaterial({ color: 0xc99b35, roughness: 0.60, metalness: 0.25 }))),
+    ground: track(shadow(new THREE.MeshStandardMaterial({ color: 0x53584f, roughness: 0.98, metalness: 0 }))),
     concrete: track(shadow(new THREE.MeshStandardMaterial({ color: 0x5c6264, roughness: 0.92, metalness: 0.02 }))),
-    brick: track(shadow(new THREE.MeshStandardMaterial({ color: 0x5b4037, roughness: 0.94, metalness: 0 }))),
-    rock: track(shadow(new THREE.MeshStandardMaterial({ color: 0x4d5351, roughness: 1, metalness: 0 }))),
-    canopy: track(shadow(new THREE.MeshStandardMaterial({ color: 0x56594d, roughness: 0.88, metalness: 0.03, side: THREE.DoubleSide }))),
-    glass: track(new THREE.MeshBasicMaterial({ color: 0x83aab5, transparent: true, opacity: 0.20, depthWrite: false, side: THREE.DoubleSide })),
     glow: track(new THREE.MeshBasicMaterial({ color: 0xf0a04a })),
   };
   const geometry = {
     box: track(new THREE.BoxGeometry(1, 1, 1)),
-    cylinder: track(new THREE.CylinderGeometry(1, 1, 1, 10, 1)),
     pipe: track(new THREE.CylinderGeometry(1, 1, 1, 8, 1)),
-    arch: track(new THREE.TorusGeometry(8.8, 0.17, 6, 30, Math.PI)),
-    rock: track(new THREE.DodecahedronGeometry(1, 0)),
   };
   const cache = new Map<GarageVariant['architecture'], THREE.Group>();
+  const mapStages = new Map<GarageVariant['architecture'], GarageMapStage>();
+  const pendingStages = new Map<GarageVariant['architecture'], Promise<void>>();
   let active: THREE.Group | null = null;
+  let disposed = false;
 
   function put(
     root: THREE.Object3D, name: string, mat: THREE.Material,
@@ -74,155 +86,86 @@ export function createGarageArchitectureController(
     return object;
   }
 
-  function frameLine(
-    root: THREE.Object3D, name: string,
-    columns: readonly number[], z: number, height: number,
-    mat: THREE.Material = material.frame,
-  ): void {
-    for (const x of columns) put(root, `${name}_column`, mat, x, height / 2, z, 0.28, height, 0.28);
-    put(root, `${name}_header`, mat, 0, height, z, 43, 0.32, 0.36);
-  }
-
-  function rails(root: THREE.Object3D, z0 = -22, z1 = 22): void {
-    const length = z1 - z0;
-    for (const x of [-2.9, -2.1, 2.1, 2.9]) {
-      put(root, 'rail_track', material.dark, x, 0.06, (z0 + z1) / 2,
-        0.10, 0.11, length);
-    }
-    for (let z = z0; z <= z1; z += 1.2) {
-      put(root, 'rail_sleeper', material.concrete, 0, 0.035, z, 7.4, 0.07, 0.20);
+  function lightMast(root: THREE.Object3D, x: number, z: number, yaw = 0): void {
+    put(root, 'staging_light_mast', material.frame, x, 4.0, z,
+      0.18, 8, 0.18, 0, 0, 0, geometry.pipe);
+    put(root, 'staging_light_bar', material.frame, x, 7.9, z,
+      2.2, 0.16, 0.16, 0, yaw);
+    for (const side of [-0.75, 0.75]) {
+      put(root, 'staging_flood_lamp', material.glow,
+        x + Math.cos(yaw) * side, 7.82, z - Math.sin(yaw) * side,
+        0.42, 0.26, 0.10, -0.18, yaw);
     }
   }
 
-  // The showroom camera favors the south wall. Every architecture owns a
-  // broad portal there, deliberately using the clear structural lanes around
-  // the measured dressing bays so its identity reads on the normal garage UI.
-  function southPortal(
-    root: THREE.Object3D, name: string, mat: THREE.Material,
-    height = 8.9, depth = 0.44,
-  ): void {
-    for (const x of [-20.6, -14.1, 14.9, 20.6]) {
-      put(root, `${name}_portal_post`, mat, x, height / 2, 21.65, depth, height, depth);
+  function serviceSupports(root: THREE.Object3D): void {
+    // The battle archive and the two workshop placards were wall-mounted in
+    // Verdant. Outdoors they ride on independent service rails, not invisible
+    // walls, so every display retains an honest load path.
+    for (const [name, x, z, width, height] of [
+      ['archive_display', 9.5, 22.72, 7.5, 4.2],
+      ['t90_service_sign', -8.7, 22.78, 3.3, 3.8],
+      ['k2_service_sign', -11.4, -22.78, 8.8, 3.8],
+    ] as const) {
+      for (const side of [-1, 1]) {
+        put(root, `${name}_post`, material.frame, x + side * width * 0.42,
+          height / 2, z, 0.16, height, 0.16);
+        put(root, `${name}_foot`, material.concrete, x + side * width * 0.42,
+          0.10, z, 0.75, 0.20, 0.75);
+      }
+      put(root, `${name}_crossbar`, material.frame, x, height - 0.15, z,
+        width, 0.16, 0.16);
     }
-    put(root, `${name}_portal_header`, mat, 0, height, 21.65, 42.0, depth, depth);
+  }
+
+  function openStage(root: THREE.Group, key: GarageVariant['architecture']): void {
+    root.userData.mode = 'map-staging';
+    root.userData.enclosingSurfaces = 0;
+    root.userData.ready = false;
+    root.userData.source = 'loading';
+    put(root, 'service_hardstand', material.ground, 0, -0.015, 0, 44, 0.08, 44);
+    put(root, 'staging_access_lane', material.ground, 0, -0.035, -38, 13, 0.05, 32);
+    serviceSupports(root);
+    lightMast(root, -25, 18, 0.2);
+    lightMast(root, 25, -18, -0.2);
+
+    // Map terrain, horizon, vegetation and the tactical landmark are hydrated
+    // from the canonical world modules after this synchronous, already-warm
+    // service shell is visible. No hand-authored biome proxy belongs here.
+    void key;
   }
 
   function build(key: GarageVariant['architecture']): THREE.Group {
     const root = new THREE.Group();
     root.name = `garage_architecture_${key}`;
     root.userData.architectureKey = key;
-    switch (key) {
-      case 'field_shed':
-        southPortal(root, 'field', material.frame, 8.8, 0.30);
-        frameLine(root, 'field_shed', [-19, -10, 0, 10, 19], -20.8, 7.4);
-        for (const x of [-20.6, -14.1, 14.9, 20.6]) put(root, 'field_portal_brace', material.accent,
-          x + (x < 0 ? 1.5 : -1.5), 6.8, 21.25, 0.20, 0.20, 4.2, 0, 0, x < 0 ? -0.72 : 0.72);
-        break;
-      case 'shade_depot':
-        southPortal(root, 'shade', material.accent, 7.5, 0.28);
-        for (const x of [-18, -6, 6, 18]) for (const z of [-18, 18]) {
-          put(root, 'shade_post', material.accent, x, 3.7, z, 0.24, 7.4, 0.24);
-        }
-        put(root, 'shade_canopy', material.canopy, 0, 7.45, 0, 42, 0.12, 34);
-        put(root, 'shade_front_valance', material.canopy, 0, 7.15, 21.30, 41.5, 0.65, 0.10);
-        for (const z of [-18, 18]) put(root, 'dust_screen', material.glass, 0, 4.2, z, 42, 6.2, 0.05);
-        break;
-      case 'repair_bunker':
-        southPortal(root, 'bunker', material.concrete, 9.3, 0.82);
-        for (const x of [-19.5, -13, -6.5, 0, 6.5, 13, 19.5]) {
-          put(root, 'bunker_rib', material.concrete, x, 4.7, -21.7, 0.75, 9.4, 1.25);
-        }
-        for (const x of [-14, -7, 0, 7, 14]) {
-          put(root, 'blast_door_panel', material.dark, x, 3.35, -21.0, 6.4, 6.5, 0.30);
-          put(root, 'blast_door_chevron', material.accent, x, 3.35, -20.78, 0.12, 5.3, 0.12, 0, 0, x < 0 ? -0.58 : 0.58);
-        }
-        put(root, 'bunker_duct', material.frame, -17.5, 7.4, -18.8, 0.55, 19, 0.55, Math.PI / 2, 0, 0, geometry.pipe);
-        break;
-      case 'brick_arsenal':
-        southPortal(root, 'arsenal', material.brick, 9.4, 0.72);
-        for (const x of [-20, -14, -7, 0, 7, 14, 20]) put(root, 'brick_pilaster', material.brick, x, 4.8, -21.8, 0.78, 9.6, 0.9);
-        for (const x of [-17, -10.5, -3.5, 3.5, 10.5, 17]) {
-          put(root, 'arsenal_window', material.glass, x, 5.6, -21.2, 4.3, 3.7, 0.08);
-          put(root, 'window_lintel', material.concrete, x, 7.6, -21.0, 4.8, 0.36, 0.34);
-        }
-        put(root, 'arsenal_mezzanine', material.frame, -17.8, 4.0, 0, 0.42, 0.28, 42);
-        for (const x of [-11.0, -6.0]) put(root, 'arsenal_south_window', material.glass,
-          x, 6.9, 21.18, 3.8, 2.2, 0.08);
-        break;
-      case 'naval_drydock':
-        southPortal(root, 'drydock', material.accent, 9.0, 0.52);
-        for (const x of [-20, 20]) {
-          put(root, 'drydock_leg', material.accent, x, 4.7, -2, 0.65, 9.4, 0.65);
-          put(root, 'drydock_foot', material.concrete, x, 0.22, -2, 2.2, 0.44, 3.4);
-        }
-        put(root, 'drydock_crane', material.accent, 0, 8.7, -2, 41, 0.72, 0.72);
-        put(root, 'drydock_catwalk', material.frame, 0, 5.7, -20.8, 40, 0.24, 1.8);
-        for (const x of [-19, -12, -5, 2, 9, 16]) put(root, 'catwalk_stanchion', material.frame, x, 6.25, -20.0, 0.12, 1.1, 0.12);
-        put(root, 'drydock_front_catwalk', material.frame, 0, 8.0, 20.95, 40.0, 0.32, 1.4);
-        break;
-      case 'rail_roundhouse':
-        rails(root);
-        southPortal(root, 'roundhouse', material.frame, 9.1, 0.32);
-        for (const z of [-20.8, -10.4, 0, 10.4, 20.8]) {
-          const arch = put(root, 'roundhouse_arch', material.frame, 0, 0.18, z,
-            1, 1, 1, 0, 0, 0, geometry.arch);
-          arch.rotation.x = 0;
-          put(root, 'roundhouse_arch_left', material.frame, -8.8, 4.5, z, 0.35, 9, 0.35);
-          put(root, 'roundhouse_arch_right', material.frame, 8.8, 4.5, z, 0.35, 9, 0.35);
-        }
-        put(root, 'roundhouse_front_lintel', material.accent, 0, 8.2, 21.15, 27.0, 0.30, 0.36);
-        break;
-      case 'rain_canopy':
-        southPortal(root, 'monsoon', material.frame, 7.8, 0.26);
-        for (const x of [-19, -9.5, 0, 9.5, 19]) {
-          put(root, 'rain_post', material.frame, x, 3.8, -19.5, 0.24, 7.6, 0.24);
-          put(root, 'rain_roof_left', material.canopy, x, 8.0, -9.8, 0.20, 0.20, 20, -0.22);
-          put(root, 'rain_roof_right', material.canopy, x, 8.0, 9.8, 0.20, 0.20, 20, 0.22);
-        }
-        for (const x of [-20.5, 20.5]) put(root, 'rain_gutter', material.accent, x, 7.2, 0,
-          0.16, 43, 0.16, Math.PI / 2, 0, 0, geometry.pipe);
-        for (const x of [-15, -5, 5, 15]) put(root, 'rain_curtain', material.glass, x, 4.0, -21.6, 8.5, 7.7, 0.03);
-        put(root, 'monsoon_front_eave_l', material.canopy, -10.8, 8.35, 20.9, 20.5, 0.18, 2.0, 0, 0, -0.12);
-        put(root, 'monsoon_front_eave_r', material.canopy, 10.8, 8.35, 20.9, 20.5, 0.18, 2.0, 0, 0, 0.12);
-        break;
-      case 'rock_cavern':
-        southPortal(root, 'cavern', material.frame, 8.6, 0.32);
-        for (const side of [-1, 1]) for (let index = 0; index < 9; index++) {
-          const z = -20 + index * 5;
-          const scale = 2.1 + (index % 3) * 0.55;
-          put(root, 'cavern_rock', material.rock, side * (20.5 + (index % 2) * 0.5),
-            2.2 + (index % 2), z, scale, scale * 1.4, scale, index * 0.18, index * 0.27, 0, geometry.rock);
-        }
-        for (const x of [-16, -8, 0, 8, 16]) put(root, 'cavern_crown', material.rock,
-          x, 9.25, -20.5, 3.8, 2.1, 2.6, x * 0.03, x * 0.05, 0, geometry.rock);
-        put(root, 'cavern_reinforcement', material.accent, 0, 8.0, -19.8, 34, 0.34, 0.34);
-        for (const x of [-19.0, -14.6, 15.4, 19.4]) put(root, 'cavern_portal_rock', material.rock,
-          x, 6.8, 21.0, 2.0, 2.6, 1.6, x * 0.02, x * 0.03, 0, geometry.rock);
-        break;
-      case 'recovery_yard':
-        southPortal(root, 'recovery', material.accent, 7.8, 0.26);
-        for (const x of [-20, -10, 0, 10, 20]) put(root, 'yard_light_mast', material.frame, x, 4.2, -20.5, 0.26, 8.4, 0.26);
-        put(root, 'yard_crane_mast', material.accent, 18.5, 5.4, 9.5, 0.65, 10.8, 0.65);
-        put(root, 'yard_crane_boom', material.accent, 8.0, 9.6, 9.5, 22, 0.42, 0.42, 0, 0, -0.18);
-        for (const x of [-17, -11, -5, 5, 11, 17]) put(root, 'yard_barrier', material.concrete,
-          x, 0.55, -20.5, 5.0, 1.1, 1.1);
-        for (const z of [-16, -10, -4, 2, 8, 14]) put(root, 'scrap_screen', material.dark,
-          -21.0, 2.0, z, 0.35, 4.0, 4.8, 0, 0, z * 0.01);
-        put(root, 'recovery_front_crane', material.accent, -9.5, 8.6, 20.8, 8.0, 0.32, 0.32, 0, 0, -0.22);
-        break;
-      case 'factory_line':
-        southPortal(root, 'factory', material.accent, 9.5, 0.46);
-        for (const x of [-20, -12, -4, 4, 12, 20]) {
-          put(root, 'factory_column', material.accent, x, 4.8, -19.8, 0.55, 9.6, 0.55);
-          put(root, 'factory_drop', material.frame, x, 7.2, 0, 0.20, 0.20, 38);
-        }
-        put(root, 'factory_conveyor', material.dark, 0, 6.2, -17.8, 38, 1.1, 1.4);
-        for (const x of [-15, -9, -3, 3, 9, 15]) put(root, 'furnace_window', material.glow,
-          x, 3.5, -21.1, 3.8, 2.4, 0.05);
-        put(root, 'factory_crane_rail', material.accent, 0, 8.8, 2, 43, 0.48, 0.48);
-        put(root, 'factory_front_conveyor', material.dark, -7.5, 7.0, 21.05, 12.0, 1.0, 0.90);
-        break;
+    if (key === 'field_shed') {
+      root.userData.mode = 'verdant-workshop';
+      root.userData.enclosingSurfaces = 4;
+      root.userData.ready = true;
+      root.userData.source = 'verdant-workshop';
+      for (const x of [-20.6, -14.1, 14.9, 20.6]) {
+        put(root, 'field_portal_post', material.frame, x, 4.4, 21.65, 0.30, 8.8, 0.30);
+      }
+      put(root, 'field_portal_header', material.frame, 0, 8.8, 21.65, 42, 0.30, 0.30);
+      for (const x of [-19, -10, 0, 10, 19]) {
+        put(root, 'field_shed_column', material.frame, x, 3.7, -20.8, 0.28, 7.4, 0.28);
+      }
+      put(root, 'field_shed_header', material.frame, 0, 7.4, -20.8, 43, 0.32, 0.36);
+      for (const x of [-20.6, -14.1, 14.9, 20.6]) {
+        put(root, 'field_portal_brace', material.accent,
+          x + (x < 0 ? 1.5 : -1.5), 6.8, 21.25,
+          0.20, 0.20, 4.2, 0, 0, x < 0 ? -0.72 : 0.72);
+      }
+    } else {
+      openStage(root, key);
     }
+
+    refreshRootStats(root, key);
+    return root;
+  }
+
+  function refreshRootStats(root: THREE.Group, key: GarageVariant['architecture']): void {
     let objects = 0;
     let triangles = 0;
     const names = new Set<string>();
@@ -231,12 +174,68 @@ export function createGarageArchitectureController(
       objects++;
       names.add(object.name);
       const geo = object.geometry;
-      triangles += (geo.index ? geo.index.count : geo.attributes.position?.count || 0) / 3;
+      const one = (geo.index ? geo.index.count : geo.attributes.position?.count || 0) / 3;
+      triangles += one * (object instanceof THREE.InstancedMesh ? object.count : 1);
     });
     root.userData.objects = objects;
     root.userData.triangles = Math.round(triangles);
-    root.userData.signature = `${key}:${objects}:${[...names].sort().join(',')}`;
-    return root;
+    const source = root.userData.sourceCoordinate
+      ? `:${root.userData.sourceCoordinate.join(',')}:${root.userData.sourceBeat}` : '';
+    root.userData.signature = `${key}:${objects}:${[...names].sort().join(',')}${source}`;
+  }
+
+  function hydrateCanonicalMap(
+    root: THREE.Group,
+    variant: GarageVariant,
+  ): void {
+    const key = variant.architecture;
+    if (typeof document === 'undefined'
+        || key === 'field_shed' || mapStages.has(key) || pendingStages.has(key)) return;
+    const request = import('../world/garageMapStage.ts')
+      .then(({ createGarageMapStage }) => createGarageMapStage(engineCtx, variant.mapId))
+      .then(async (stage) => {
+        if (disposed) {
+          stage.dispose();
+          return;
+        }
+        mapStages.set(key, stage);
+        // The slice is assembled off-scene, then revealed one draw owner per
+        // frame. Attaching the complete terrain/landmark/tree set at once made
+        // ANGLE upload every buffer in one presentation frame (a repeatable
+        // 458 ms first visit on Frosthollow).
+        const reveal = [...stage.group.children];
+        for (const child of reveal) child.visible = false;
+        root.add(stage.group);
+        requestRender();
+        for (const child of reveal) {
+          if (disposed) break;
+          await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+          child.visible = true;
+          requestRender();
+        }
+        if (disposed) {
+          stage.dispose();
+          return;
+        }
+        Object.assign(root.userData, stage.stats);
+        refreshRootStats(root, key);
+        requestRender();
+        if (active === root) {
+          Object.assign(group.userData, root.userData, {
+            key,
+            mapId: variant.mapId,
+            cached: cache.size,
+          });
+        }
+      })
+      .catch((error) => {
+        root.userData.ready = false;
+        root.userData.source = 'loading';
+        root.userData.error = String(error);
+        console.error(`[garageArchitecture] ${variant.mapId} staging slice failed`, error);
+      })
+      .finally(() => pendingStages.delete(key));
+    pendingStages.set(key, request);
   }
 
   function setVariant(variant: GarageVariant): GarageArchitectureStats {
@@ -249,16 +248,29 @@ export function createGarageArchitectureController(
     }
     active = next;
     active.visible = true;
+    active.userData.mapId = variant.mapId;
+    hydrateCanonicalMap(active, variant);
     material.accent.color.setHex(variant.accent);
-    material.canopy.color.setHex(variant.wallTint).offsetHSL(0, 0, 0.05);
-    material.glass.color.setHex(variant.lightTint).offsetHSL(0, -0.18, -0.2);
+    material.ground.color.setHex(variant.floorTint).offsetHSL(0, -0.06, 0.04);
     material.glow.color.setHex(variant.lightTint);
-    const stats = {
+    const stats: GarageArchitectureStats = {
       key: variant.architecture,
+      mapId: variant.mapId,
+      mode: active.userData.mode,
       signature: String(active.userData.signature),
       objects: Number(active.userData.objects),
       triangles: Number(active.userData.triangles),
       cached: cache.size,
+      enclosingSurfaces: Number(active.userData.enclosingSurfaces || 0),
+      ready: active.userData.ready === true,
+      source: active.userData.source || 'loading',
+      sourceCoordinate: active.userData.sourceCoordinate || null,
+      sourceBeat: active.userData.sourceBeat || '',
+      sourceStructure: active.userData.sourceStructure || '',
+      sourceLandmarkLocal: active.userData.sourceLandmarkLocal || null,
+      terrainVertices: Number(active.userData.terrainVertices || 0),
+      treeSpecies: active.userData.treeSpecies || [],
+      trees: Number(active.userData.trees || 0),
     };
     Object.assign(group.userData, stats);
     return stats;
@@ -269,13 +281,28 @@ export function createGarageArchitectureController(
     setVariant,
     stats: (): GarageArchitectureStats => ({
       key: group.userData.key || 'field_shed',
+      mapId: group.userData.mapId || 'verdant',
+      mode: group.userData.mode || 'verdant-workshop',
       signature: group.userData.signature || '',
       objects: group.userData.objects || 0,
       triangles: group.userData.triangles || 0,
       cached: cache.size,
+      enclosingSurfaces: group.userData.enclosingSurfaces || 0,
+      ready: group.userData.ready === true,
+      source: group.userData.source || 'loading',
+      sourceCoordinate: group.userData.sourceCoordinate || null,
+      sourceBeat: group.userData.sourceBeat || '',
+      sourceStructure: group.userData.sourceStructure || '',
+      sourceLandmarkLocal: group.userData.sourceLandmarkLocal || null,
+      terrainVertices: group.userData.terrainVertices || 0,
+      treeSpecies: group.userData.treeSpecies || [],
+      trees: group.userData.trees || 0,
     }),
     dispose() {
+      disposed = true;
       group.removeFromParent();
+      for (const stage of mapStages.values()) stage.dispose();
+      mapStages.clear();
       for (const value of disposables) value.dispose?.();
       disposables.length = 0;
       cache.clear();

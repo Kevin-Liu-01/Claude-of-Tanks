@@ -543,7 +543,12 @@ bus.on('module:state', (payload) => {
 GARAGE_POS.y = hfProxy.getHeightAt(GARAGE_POS.x, GARAGE_POS.z);
 let selectedGarageVariantId = loadGarageVariantId();
 const { stage: garageStage, dressing: garageDressing } = await bootStage('garage', async () => {
-  const gs = createGarageStage(engineCtx, GARAGE_POS, selectedGarageVariantId);
+  const gs = createGarageStage(
+    engineCtx,
+    GARAGE_POS,
+    selectedGarageVariantId,
+    () => invalidateGaragePresentation(),
+  );
   scene.add(gs.group);
   const gd = createGarageDressingAccess(engineCtx, GARAGE_POS, selectedGarageVariantId);
   scene.add(gd.group);
@@ -1006,6 +1011,7 @@ legacyPort<Record<string, unknown>>(window).__GARAGE_WORKSHOP = {
       buildTimings: [...(garageDressing.group.userData.buildTimings || [])],
       mapId: garageDressing.group.userData.garageMapId || '',
       architecture: garageStage.stats?.() || garageStage.group.userData.garageArchitecture || {},
+      sceneMode: garageStage.group.userData.garageSceneMode || '',
       roofMode: garageStage.group.userData.garageRoofMode || '',
       wallLayout: garageDressing.group.userData.wallLayout || { bays: 0, overlaps: [] },
       mapImageCount: garageDressing.group.userData.mapImageCount ?? -1,
@@ -1019,6 +1025,18 @@ legacyPort<Record<string, unknown>>(window).__GARAGE_WORKSHOP = {
       battleScreenCurrentImage: garageDressing.group.userData.battleScreenCurrentImage || '',
       modelMode: garageDressing.group.userData.workshopModelMode || '',
       exhibitCount: garageDressing.group.userData.workshopExhibitCount || 0,
+      sharedMaintenanceBayCount:
+        garageDressing.group.userData.sharedMaintenanceBayCount || 0,
+      sharedMaintenanceBayIds: [
+        ...(garageDressing.group.userData.sharedMaintenanceBayIds || []),
+      ],
+      heroTrackContactErrorM: Number.isFinite(pedestal.current?.presentationTrackFloorYM)
+        ? Math.abs(
+          (pedestal.current?.root.position.y || 0)
+          + (pedestal.current?.presentationTrackFloorYM || 0)
+          - (GARAGE_POS.y + GARAGE_PODIUM_TOP_Y_M)
+        )
+        : null,
       verdantOriginalVisible: garageDressing.group.userData.verdantOriginalVisible === true,
       verdantOriginalLayoutReceipt:
         garageDressing.group.userData.verdantOriginalLayoutReceipt || '',

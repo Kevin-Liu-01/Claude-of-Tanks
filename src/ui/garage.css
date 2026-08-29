@@ -69,7 +69,7 @@
   background:linear-gradient(150deg,rgba(18,24,30,.99),rgba(6,10,14,.995));
   border:1px solid rgba(166,184,199,.42);box-shadow:0 24px 70px rgba(0,0,0,.8),0 0 0 1px rgba(0,0,0,.5) inset;
   scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.5) rgba(8,11,14,.8);}
-.cot-garage-variant-menu::before{content:'Workshop environments';grid-column:1/-1;padding:4px 4px 2px;
+.cot-garage-variant-menu::before{content:'Battlefield staging areas';grid-column:1/-1;padding:4px 4px 2px;
   color:#e5a74a;font:900 7px 'ABC Monument Grotesk','Arial Narrow',Arial,sans-serif;
   letter-spacing:.22em;text-transform:uppercase;}
 .cot-garage-variant-card{position:relative;min-width:0;min-height:82px;padding:5px;display:grid;

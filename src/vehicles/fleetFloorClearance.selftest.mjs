@@ -56,6 +56,10 @@ for (const id of ALL_TANK_IDS) {
       `${id}: static presentation exposes a finite rest-floor envelope`);
     assert.equal(typeof visual.seatOnFloor, 'function',
       `${id}: static presentation exposes the canonical floor-seat operation`);
+    assert.equal(typeof visual.seatRunningGearOnFloor, 'function',
+      `${id}: static presentation exposes the running-gear floor-seat operation`);
+    assert.ok(Number.isFinite(visual.presentationTrackFloorYM),
+      `${id}: static presentation exposes a finite running-gear contact line`);
     assert.ok(Number.isFinite(visual.presentationAnchor?.xM)
       && Number.isFinite(visual.presentationAnchor?.zM),
     `${id}: static presentation exposes a finite rendered-body center`);
@@ -80,6 +84,11 @@ for (const id of ALL_TANK_IDS) {
       `${id}: static presentation clips the floor by ${(-marginM).toFixed(4)} m`);
     assert.ok(marginM <= MAX_PRESENTATION_GAP_M,
       `${id}: static presentation floats ${marginM.toFixed(4)} m above the floor`);
+
+    visual.seatRunningGearOnFloor(SURFACE_Y_M);
+    const trackContactYM = visual.root.position.y + visual.presentationTrackFloorYM;
+    assert.ok(Math.abs(trackContactYM - SURFACE_Y_M) <= EPSILON_M,
+      `${id}: garage track contact misses the surface by ${Math.abs(trackContactYM - SURFACE_Y_M).toFixed(4)} m`);
 
     const contact = visual.prepareForSimulation();
     assert.ok(Number.isFinite(contact?.bottomYM),

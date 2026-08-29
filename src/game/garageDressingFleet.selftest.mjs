@@ -10,15 +10,13 @@ assert.match(dressing, /import\('\.\.\/vehicles\/fleetFactory\.ts'\)/,
 assert.match(dressing, /ensureTankBuilders\(WORKSHOP_FLEET_IDS\)/);
 assert.match(dressing, /quality: 'ai'[\s\S]*geometryQuality: 'high'[\s\S]*staticPreview: true/,
   'workshop tanks use exact fleet geometry with the garage material tier');
-for (const id of ['m1a2', 't90m', 'leclerc']) {
-  assert.match(dressing, new RegExp(`addFleetExhibit\\('${id}'.*'complete_vehicle'`));
-  assert.match(dressing, new RegExp(`addFleetExhibit\\('${id}'.*'turret_and_gun'`));
-}
-for (const id of ['t90a_burlak', 'k2']) {
+for (const id of ['t90a_burlak', 'm1a2', 't90m', 'k2']) {
   assert.match(dressing, new RegExp(`createLegacyVisual\\('${id}'`));
 }
-assert.match(dressing, /sourceTurret\.clone\(true\)/,
-  'service turrets must clone the already-built exact rig instead of rebuilding a tank');
+assert.doesNotMatch(dressing, /addFleetExhibit\(/,
+  'alternate duplicate fleet displays must not be built');
+assert.doesNotMatch(dressing, /leclerc/,
+  'the retired alternate Leclerc display must not wake its builder');
 assert.match(dressing, /layoutReceipt = 'pre-6c7b07533-original'/,
   'Verdant must carry an explicit receipt for the pre-overhaul arrangement');
 for (const signature of [
@@ -41,16 +39,17 @@ assert.match(dressing, /tank\.position\.set\(-6\.6, 0, 20\.5\)/,
   'T-90M component bay retains its original transform');
 assert.match(dressing, /tank\.position\.set\(-16\.25, 0, -16\.85\)/,
   'K2 teardown retains its original transform');
-assert.match(dressing, /legacyVerdantRoot\.visible = isVerdant/,
-  'the original fixed composition is selected only for Verdant');
-assert.match(dressing, /inactiveWorkshopRoot\.removeFromParent\(\)/,
-  'the inactive workshop graph must leave the live scene instead of taxing traversal');
+assert.match(dressing, /legacyVerdantRoot\.visible = true/,
+  'the original four-bay composition must remain shared across every staging area');
+assert.match(dressing, /verdantInteriorRoot\.visible = isVerdant/,
+  'indoor wall clutter must remain exclusive to Verdant');
 assert.match(dressing,
-  /owner === variantWorkshopRoot[\s\S]*variantWorkshopRoot\.parent !== group[\s\S]*return/,
-  'detached alternate layouts must remain CPU-only until selected');
-assert.match(dressing,
-  /staticDisplayOwners:\s*\[[\s\S]*legacyVerdantRoot,[\s\S]*\.\.\.variantAssemblies/,
-  'the fixed workshop and individually movable alternate bays collapse static leaf draws');
+  /staticDisplayOwners:\s*\[legacyVerdantRoot, verdantInteriorRoot\]/,
+  'the shared bays and Verdant-only interior collapse static leaf draws independently');
+assert.match(dressing, /sharedMaintenanceBayCount = 4/);
+for (const bay of ['burlak_gantry', 'abrams_welding', 't90m_relikt', 'rolled_k2']) {
+  assert.match(dressing, new RegExp(bay));
+}
 assert.doesNotMatch(dressing, /\/maps\/thumbs\//,
   'workshop walls must not reuse battlefield map thumbnails');
 assert.doesNotMatch(dressing, /garage_map_location_preview/,
@@ -65,11 +64,9 @@ assert.match(dressing, /uTransition[\s\S]*scanline[\s\S]*rollingGlow/,
   'the archive changes images with a shader scroll and visible CRT treatment');
 assert.match(dressing, /if \(!group\.parent \|\| !group\.visible \|\| document\.hidden\) return/,
   'the screen timer must stop instead of polling during battle or background tabs');
-assert.match(dressing, /completeFleetTank \? Math\.PI : 0/,
-  'complete tanks must face the corrected direction along their existing bay axis');
 assert.match(access, /prepareGarageDressing\?\./,
   'the access boundary prepares fleet builders before the synchronous chunk pump');
 assert.doesNotMatch(stage, /openRoof = new Set\(\['field_shed'/,
   'Verdant must retain the original enclosed ceiling and roof trusses');
 
-console.log('garageDressingFleet.selftest: original Verdant set, additive variants, facing, and roof pass');
+console.log('garageDressingFleet.selftest: shared four-bay set, map staging, and Verdant interior pass');

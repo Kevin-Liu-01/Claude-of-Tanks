@@ -355,10 +355,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `${uiIconSVG('battleRecord', 15, 'currentColor', 'nvi')}` +
     `<span class="nav-label">Record</span><span class="record-badge" aria-hidden="true">0</span></button>` +
     `<div class="cot-garage-variant-control">` +
-    `<button class="nv cot-garage-variant-trigger" type="button" aria-label="Choose garage environment" ` +
+    `<button class="nv cot-garage-variant-trigger" type="button" aria-label="Choose staging area" ` +
     `title="Garage environment" aria-haspopup="listbox" aria-expanded="false" ` +
     `aria-controls="cot-garage-variant-menu">${uiIconSVG('garage', 15, 'currentColor', 'nvi')}` +
-    `<span class="nav-label cot-garage-variant-label">Workshop</span>` +
+    `<span class="nav-label cot-garage-variant-label">Staging Area</span>` +
     `${uiIconSVG('chevronRight', 10, 'currentColor', 'cot-garage-variant-chevron')}</button></div>` +
     `</div></div>` +
     `<div class="cot-garage-variant-menu" id="cot-garage-variant-menu" role="listbox" ` +
@@ -405,7 +405,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<strong>Record</strong><small>Local career stats</small></span></button>` +
     `<button type="button" data-mobile-nav="environment">` +
     `${uiIconSVG('garage', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
-    `<strong>Workshop</strong><small>Choose garage environment</small></span></button></div></nav>` +
+    `<strong>Staging Area</strong><small>Choose battlefield location</small></span></button></div></nav>` +
     `<div class="cot-record-modal" id="cot-record-modal" role="dialog" aria-modal="true" ` +
     `aria-labelledby="cot-record-title" aria-describedby="cot-record-description" hidden>` +
     `<section class="cot-record-dialog">` +

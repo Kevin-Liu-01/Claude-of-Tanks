@@ -18,7 +18,9 @@ export interface GaragePedestalVisual {
   dispose(): void;
   setVisible?(visible: boolean): void;
   centerOnPresentationPoint?(x: number, z: number): void;
+  presentationTrackFloorYM?: number;
   seatOnFloor?(y: number): void;
+  seatRunningGearOnFloor?(y: number): void;
   prepareForSimulation?(): void;
   setGroundSampler?(sampler: unknown): void;
   __everShown?: boolean;
@@ -218,7 +220,9 @@ export function createGaragePedestalRuntime({
       visual.root.position.x = garagePosition.x;
       visual.root.position.z = garagePosition.z;
     }
-    if (visual.seatOnFloor) {
+    if (visual.seatRunningGearOnFloor) {
+      visual.seatRunningGearOnFloor(garagePosition.y + podiumTopY);
+    } else if (visual.seatOnFloor) {
       visual.seatOnFloor(garagePosition.y + podiumTopY);
     } else {
       visual.root.position.y = garagePosition.y + 0.35;

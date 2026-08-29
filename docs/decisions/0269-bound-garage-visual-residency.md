@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted.
+Accepted; alternate-layout clauses superseded by
+[0295](0295-open-map-garage-staging.md).
 
 ## Context
 
@@ -21,17 +22,18 @@ ownership and residency, not polygonal art.
 - Build the hero with the existing exact `batchStatic` representation. Hull,
   turret, and gun articulation remains available, including direct battle
   lending, while static fittings under those owners share submissions.
-- Attach exactly one workshop layout to the live scene. The other authored
-  layout remains prepared on the CPU and is mounted only when selected.
+- Attach the single shared four-bay maintenance layout to the live scene.
+  Verdant-only interior clutter and one lightweight map-staging root are the
+  only selection-dependent scene residents.
 - Collapse compatible opaque leaves inside explicitly immutable decorative
   display owners. Preserve every vertex, material, shadow flag, render state,
   and movable bay owner.
 - Bound merge duplication to 1,200 vertex/index elements per removed draw. A
   large hull batch that saves one call stays in its authored buffers.
 - Include detached roots when releasing shared source geometry.
-- After the quiet build, warm the alternate layout one movable bay per quiet
-  lease. A player's first environment switch must not compile/upload the whole
-  layout in one interaction frame.
+- Build the shared maintenance bays behind the existing quiet leases. Lazy
+  canonical map slices derive in a worker, reveal draw owners across frames,
+  and keep the Garage light topology stable across selection changes.
 
 ## Evidence
 
@@ -47,8 +49,7 @@ stay below 67 ms in the release probe after quiet warming.
 
 ## Consequences
 
-The first switch made before quiet warming can still submit an unfinished bay;
-the synchronous selection path remains a correctness fallback. Normal idle
-construction spreads that cost across leases. Generated merge geometries are
-owned by the dressing lifecycle and disposed with it; source geometries shared
-by the detached layout are not released prematurely.
+The first switch made before quiet warming can still submit unfinished shared
+dressing; the synchronous selection path remains a correctness fallback.
+Normal idle construction spreads that cost across leases. Generated merge
+geometries are owned by the dressing lifecycle and disposed with it.

@@ -78,7 +78,11 @@ try {
     // pointer-events:none from the transparent garage overlay.
     await page.click('.cot-garage-variant-trigger');
     await page.click(`[data-variant-id="${variant.id}"]`);
-    await new Promise((resolve) => setTimeout(resolve, 220));
+    await page.waitForFunction((id) => {
+      const stats = window.__GARAGE_WORKSHOP.stats();
+      return stats.selected === id && stats.architecture?.ready === true;
+    }, { timeout: 20_000 }, variant.id);
+    await new Promise((resolve) => setTimeout(resolve, 80));
     const result = await page.evaluate(async (id) => {
       const probe = window.__GARAGE_VARIANT_PROBE;
       probe.running = false;
@@ -130,10 +134,10 @@ try {
   const architectureSignatures = new Set(results.map((result) => result.stats.architecture?.signature));
   const failures = [];
   if (results.length !== 10 || ids.size !== 10 || mapIds.size !== 10) {
-    failures.push('expected ten unique workshop ids and ten unique battlefield bindings');
+    failures.push('expected ten unique staging ids and ten unique battlefield bindings');
   }
   if (architectureKeys.size !== 10 || architectureSignatures.size !== 10) {
-    failures.push('expected ten unique structural garage architectures/signatures');
+    failures.push('expected ten unique battlefield staging signatures');
   }
   for (const result of results) {
     if (!result.selected || result.persisted !== result.id || !result.optionSelected) {
@@ -143,7 +147,7 @@ try {
     if (!result.stats.built || result.stats.triangles <= 0 || result.stats.triangles > 450_000) {
       failures.push(`${result.id}: workshop triangle budget failed (${result.stats.triangles})`);
     }
-    if (!result.stats.architecture?.objects || result.stats.architecture.triangles > 10_000) {
+    if (!result.stats.architecture?.objects || result.stats.architecture.triangles > 180_000) {
       failures.push(`${result.id}: architecture geometry budget failed`);
     }
     if (result.stats.wallLayout?.overlaps?.length) {
@@ -159,16 +163,24 @@ try {
       failures.push(`${result.id}: battle archive screen contract failed`);
     }
     const isVerdant = result.id === 'verdant_motor_pool';
-    const expectedExhibits = isVerdant ? 4 : 6;
+    const expectedExhibits = 4;
     if (result.stats.modelMode !== 'actual-fleet'
         || result.stats.exhibitCount !== expectedExhibits) {
       failures.push(`${result.id}: expected ${expectedExhibits} visible actual-fleet exhibits`);
     }
-    if (!isVerdant && Math.abs(result.stats.forwardCorrectionRad - Math.PI) > 0.001) {
-      failures.push(`${result.id}: complete tanks are not corrected 180 degrees in their bays`);
+    if (result.stats.sharedMaintenanceBayCount !== 4
+        || !['burlak_gantry', 'abrams_welding', 't90m_relikt', 'rolled_k2']
+          .every((id) => result.stats.sharedMaintenanceBayIds?.includes(id))) {
+      failures.push(`${result.id}: shared four-bay maintenance set is incomplete`);
+    }
+    if (result.stats.heroTrackContactErrorM === null
+        || result.stats.heroTrackContactErrorM > 0.001) {
+      failures.push(`${result.id}: hero tracks miss the podium by ${result.stats.heroTrackContactErrorM} m`);
     }
     if (isVerdant) {
-      if (result.stats.roofMode !== 'enclosed-original') {
+      if (result.stats.sceneMode !== 'verdant-workshop'
+          || result.stats.roofMode !== 'enclosed-original'
+          || result.stats.architecture?.mode !== 'verdant-workshop') {
         failures.push('verdant_motor_pool: original enclosed roof/trusses were not restored');
       }
       if (!result.stats.verdantOriginalVisible
@@ -182,13 +194,27 @@ try {
           failures.push(`verdant_motor_pool: missing original ${id} set piece`);
         }
       }
-    } else if (result.stats.verdantOriginalVisible) {
-      failures.push(`${result.id}: fixed Verdant set leaked into an additive garage`);
+    } else if (result.stats.sceneMode !== 'map-staging'
+        || result.stats.roofMode !== 'open-map-staging'
+        || result.stats.architecture?.mode !== 'map-staging'
+        || result.stats.architecture?.enclosingSurfaces !== 0) {
+      failures.push(`${result.id}: expected a wall-free map staging area`);
+    } else if (result.stats.architecture?.source !== 'canonical-map-slice'
+        || !Array.isArray(result.stats.architecture?.sourceCoordinate)
+        || result.stats.architecture.sourceCoordinate.length !== 2
+        || !result.stats.architecture.sourceBeat
+        || !result.stats.architecture.sourceStructure
+        || result.stats.architecture.terrainVertices < 1_000
+        || !result.stats.architecture.treeSpecies?.length) {
+      failures.push(`${result.id}: canonical battlefield source receipt failed`);
     }
-    if (!['abrams', 't90', 'leclerc'].every((family) => result.stats.families?.includes(family))) {
+    if (!result.stats.verdantOriginalVisible) {
+      failures.push(`${result.id}: shared original maintenance bays are not visible`);
+    }
+    if (!['burlak', 'abrams', 't90', 'k2'].every((family) => result.stats.families?.includes(family))) {
       failures.push(`${result.id}: missing family-specific actual fleet exhibit`);
     }
-    if (!['t90a_burlak', 'm1a2', 't90m', 'k2', 'leclerc']
+    if (!['t90a_burlak', 'm1a2', 't90m', 'k2']
       .every((id) => result.stats.sourceVehicleIds?.includes(id))) {
       failures.push(`${result.id}: missing expected workshop source vehicle id`);
     }

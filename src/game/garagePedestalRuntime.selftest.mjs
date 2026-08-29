@@ -40,7 +40,14 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
         root.position.x = x;
         root.position.z = z;
       },
-      seatOnFloor(y) { root.position.y = y; },
+      seatOnFloor(y) {
+        this.envelopeSeatCalls = (this.envelopeSeatCalls || 0) + 1;
+        root.position.y = y + 10;
+      },
+      seatRunningGearOnFloor(y) {
+        this.trackSeatCalls = (this.trackSeatCalls || 0) + 1;
+        root.position.y = y;
+      },
       prepareForSimulation() { this.prepared = true; },
       setGroundSampler(sampler) { this.groundSampler = sampler; },
       dispose() { disposed.push(specId); },
@@ -128,6 +135,10 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   assert.equal(h.runtime.current?.specId, 'alpha');
   assert.equal(h.runtime.isOnStage(), true);
   assert.equal(h.runtime.current?.root.position.y, 5.36);
+  assert.ok(h.runtime.current?.trackSeatCalls >= 1,
+    'garage heroes seat their running gear on the podium');
+  assert.equal(h.runtime.current?.envelopeSeatCalls || 0, 0,
+    'garage heroes do not use protruding belly fittings as the podium contact');
   assert.deepEqual(h.runtime.current?.root.rotation.toArray().slice(0, 3), [
     0,
     Math.PI / 3,

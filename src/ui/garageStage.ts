@@ -405,6 +405,7 @@ export function createGarageStage(
   engineCtx: GarageStageEngineContext,
   pos: THREE.Vector3,
   initialVariantId = '',
+  requestRender: () => void = () => {},
 ): GarageStageRuntime {
   const rng = mulberry32(90210);
   const group = new THREE.Group();
@@ -633,7 +634,7 @@ export function createGarageStage(
     group.add(truss);
     roofTrusses.push(truss);
   }
-  const architecture = createGarageArchitectureController(engineCtx || {}, group);
+  const architecture = createGarageArchitectureController(engineCtx || {}, group, requestRender);
 
   // --- light fixtures (visible housings + real lights) -----------------------
   const housingMat = shadowMat(new THREE.MeshStandardMaterial({
@@ -1188,6 +1189,18 @@ export function createGarageStage(
     }
   }
 
+  // Everything authored above except the turntable and variant architecture
+  // belongs to the original Verdant indoor set. Hiding this explicit owner
+  // list prevents ceilings, corrugated walls, hanging lamps, and wall props
+  // from leaking into the nine outdoor battlefield staging areas.
+  const indoorStageObjects = group.children.filter((object) => (
+    object !== podium
+    && object !== rimRing
+    && object !== architecture.group
+    && object !== target
+    && !(object instanceof THREE.Light)
+  ));
+
   const setVariant = (variantId: string): string => {
     const variant = getGarageVariant(variantId);
     const neutral = new THREE.Color(0xffffff);
@@ -1202,14 +1215,10 @@ export function createGarageStage(
     lampMat.color.setHex(variant.lightTint);
     lensMat.emissive.setHex(variant.lightTint);
     const architectureStats = architecture.setVariant(variant);
-    // Open compounds get their authored canopy/skyline instead of the common
-    // flat roof. Perimeter walls remain as the safe distant scene boundary so
-    // workshop fixtures never float against the renderer clear color.
-    const openRoof = new Set(['shade_depot', 'rain_canopy', 'recovery_yard']);
-    ceiling.visible = !openRoof.has(variant.architecture);
-    for (const truss of roofTrusses) truss.visible = ceiling.visible;
-    for (const wall of baseWalls) wall.visible = true;
-    group.userData.garageRoofMode = ceiling.visible ? 'enclosed-original' : 'open-canopy';
+    const isVerdant = variant.id === 'verdant_motor_pool';
+    for (const object of indoorStageObjects) object.visible = isVerdant;
+    group.userData.garageSceneMode = isVerdant ? 'verdant-workshop' : 'map-staging';
+    group.userData.garageRoofMode = isVerdant ? 'enclosed-original' : 'open-map-staging';
     group.userData.garageArchitecture = architectureStats;
     return variant.id;
   };

@@ -7,11 +7,10 @@
 // wall fan, extra hanging work lamps, two partial tanks and a recovered wreck.
 //
 // Contract with the rest of the game:
-//  - FLEET-EXACT EXHIBITS: Verdant preserves its original T-90A Burlak, Abrams,
-//    T-90M and K2 repair choreography. The nine newer environments retain the
-//    Abrams, T-90M and Leclerc layout. Every vehicle comes from the same
-//    first-party createTank builders as the playable fleet, loaded only after
-//    the garage becomes quiet.
+//  - FLEET-EXACT EXHIBITS: every staging area carries the same original T-90A
+//    Burlak, Abrams, T-90M and K2 repair choreography. Every vehicle comes from
+//    the same first-party createTank builders as the playable fleet, loaded
+//    only after the garage becomes quiet.
 //  - BUILDS IN CHUNKS: first paint pumps only the static workshop shell, then
 //    streams one real vehicle/component display per garage-idle window.
 //    Deterministic captures still call ensureBuilt(). This keeps the complete
@@ -36,8 +35,6 @@ import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant } from './garageVariants.ts';
 import {
   countWorkshopTriangles,
-  createWorkshopPartLibrary,
-  type WorkshopPartKind,
 } from './workshopParts.ts';
 import { auditGarageWallBays, garageWallTransform } from './garageWallLayout.ts';
 
@@ -82,7 +79,7 @@ type Scale3 = number | [number, number, number];
 type TrackedResource = { dispose(): void };
 
 const WORKSHOP_FLEET_IDS = Object.freeze([
-  't90a_burlak', 'm1a2', 't90m', 'k2', 'leclerc',
+  't90a_burlak', 'm1a2', 't90m', 'k2',
 ] as const);
 
 // The workshop monitor is a field archive, not a location preview. Reuse the
@@ -157,24 +154,20 @@ export function createGarageDressing(
     return o;
   };
   const signTextures: THREE.Texture[] = [];
-  const partLibrary = createWorkshopPartLibrary(engineCtx);
-  const variantAssemblies: THREE.Group[] = [];
-  const variantOnlyRoots: THREE.Group[] = [];
   const workshopVisuals: GarageWorkshopVisual[] = [];
-  const workshopVisualById = new Map<string, GarageWorkshopVisual>();
   const workshopFleet = existing.workshopFleet;
   let currentVariant = getGarageVariant(existing.variantId);
-  const variantWorkshopRoot = new THREE.Group();
-  variantWorkshopRoot.name = 'garage_variant_workshop';
-  variantWorkshopRoot.userData.variantSwitchOwner = true;
   const legacyVerdantRoot = new THREE.Group();
   legacyVerdantRoot.name = 'garage_verdant_original_workshop';
   legacyVerdantRoot.userData.variantSwitchOwner = true;
   legacyVerdantRoot.userData.layoutReceipt = 'pre-6c7b07533-original';
+  const verdantInteriorRoot = new THREE.Group();
+  verdantInteriorRoot.name = 'garage_verdant_interior_clutter';
+  verdantInteriorRoot.userData.variantSwitchOwner = true;
   const initialVerdant = currentVariant.id === 'verdant_motor_pool';
-  legacyVerdantRoot.visible = initialVerdant;
-  variantWorkshopRoot.visible = !initialVerdant;
-  group.add(initialVerdant ? legacyVerdantRoot : variantWorkshopRoot);
+  legacyVerdantRoot.visible = true;
+  verdantInteriorRoot.visible = initialVerdant;
+  group.add(legacyVerdantRoot, verdantInteriorRoot);
   group.userData.garageVariantId = currentVariant.id;
   group.userData.garageMapId = currentVariant.mapId;
   group.userData.verdantOriginalLayoutReceipt = legacyVerdantRoot.userData.layoutReceipt;
@@ -524,18 +517,6 @@ export function createGarageDressing(
       bay.width - 0.12, bay.height - 0.12, wallBayId);
   }
 
-  function wallSignAtForVariants(text: string, wallBayId: string): void {
-    const bay = garageWallTransform(wallBayId);
-    const root = new THREE.Group();
-    root.name = `garage_variant_sign_${wallBayId}`;
-    root.userData.variantSwitchOwner = true;
-    root.visible = currentVariant.id !== 'verdant_motor_pool';
-    variantWorkshopRoot.add(root);
-    variantOnlyRoots.push(root);
-    wallSign(text, bay.x, bay.y, bay.z, bay.yaw,
-      bay.width - 0.12, bay.height - 0.12, wallBayId, root);
-  }
-
   /** fire extinguisher on a wall bracket. */
   function extinguisher(
     x: number,
@@ -602,7 +583,7 @@ export function createGarageDressing(
   }
 
   function createLegacyVisual(
-    specId: 't90a_burlak' | 'k2',
+    specId: 't90a_burlak' | 'm1a2' | 't90m' | 'k2',
     camoSeed: number,
   ): GarageWorkshopVisual {
     if (!workshopFleet) throw new Error('garage workshop fleet was not prepared');
@@ -614,19 +595,7 @@ export function createGarageDressing(
     });
     visual.resetForGaragePresentation?.();
     workshopVisuals.push(visual);
-    workshopVisualById.set(specId, visual);
     return visual;
-  }
-
-  /** Clone an already-built exact fleet visual without duplicating GPU assets. */
-  function clonePreparedVisualRoot(specId: 'm1a2' | 't90m'): THREE.Group {
-    const source = workshopVisualById.get(specId);
-    if (!source) throw new Error(`${specId} is missing its prepared workshop visual`);
-    const clone = source.root.clone(true);
-    clone.position.set(0, 0, 0);
-    clone.rotation.set(0, 0, 0);
-    clone.scale.setScalar(1);
-    return clone;
   }
 
   function placeGunRig(
@@ -681,14 +650,6 @@ export function createGarageDressing(
     return mg;
   }
 
-  // Assembly positions all stay outside the showroom orbit envelope. Each of
-  // the ten workshop layouts rotates and mirrors this list, producing a real
-  // scene-composition change without retaining ten copies of the geometry.
-  const assemblySlots: readonly (readonly [number, number, number])[] = [
-    [-16.8, 14.8, 2.62], [-20.2, 2.5, 1.25], [16.8, 14.8, -2.62],
-    [20.2, 2.5, -1.25], [-20.2, -8.0, 1.82], [20.2, -8.0, -1.82],
-    [-14.2, -16.0, 2.55], [14.2, -16.0, -2.55], [0, 20.4, Math.PI],
-  ];
   let battleScreenMaterial: THREE.ShaderMaterial | null = null;
   let battleScreenMesh: THREE.Mesh | null = null;
   let battleScreenFallbackTexture: THREE.Texture | null = null;
@@ -702,107 +663,15 @@ export function createGarageDressing(
   let battleScreenTransitionStartedAt = 0;
   const battleScreenLoader = new THREE.TextureLoader();
 
-  function poseAssembly(root: THREE.Group, logicalSlot: number): void {
-    const layout = currentVariant.layout;
-    const [x0, z0, yaw0] = assemblySlots[logicalSlot % assemblySlots.length];
-    const mirrored = layout % 2 === 1;
-    const driftX = Math.sin((layout + logicalSlot) * 1.7) * 0.8;
-    const driftZ = Math.cos((layout * 1.3) + logicalSlot) * 0.7;
-    root.position.set((mirrored ? -x0 : x0) + driftX, 0, z0 + driftZ);
-    const bayYaw = (mirrored ? -yaw0 : yaw0) + (layout % 3 - 1) * 0.08;
-    // The original proxy tanks were aligned to the bay but pointed out of it.
-    // Preserve the painted-bay axis and turn complete vehicles toward the
-    // service end; turret cradles and support racks retain their authored yaw.
-    root.rotation.y = bayYaw + (root.userData.completeFleetTank ? Math.PI : 0);
-    root.visible = currentVariant.id !== 'verdant_motor_pool';
-    root.userData.garageVariantId = currentVariant.id;
-    root.userData.logicalSlot = logicalSlot;
-    root.updateMatrix();
-    root.updateMatrixWorld(true);
-  }
-
-  function addSupportAssembly(
-    kind: WorkshopPartKind,
-    logicalSlot: number,
-    scale = 1,
-  ): THREE.Group {
-    const root = partLibrary.createAssembly(kind, { name: `dressing_${kind}` });
-    root.userData.variantSwitchOwner = true;
-    root.scale.setScalar(scale);
-    poseAssembly(root, logicalSlot);
-    variantWorkshopRoot.add(root);
-    variantAssemblies.push(root);
-    return root;
-  }
-
-  function addFleetExhibit(
-    specId: 'm1a2' | 't90m' | 'leclerc',
-    family: 'abrams' | 't90' | 'leclerc',
-    component: 'complete_vehicle' | 'turret_and_gun',
-    logicalSlot: number,
-    scale: number,
-  ): THREE.Group {
-    if (!workshopFleet) throw new Error('garage workshop fleet was not prepared');
-    const exhibit = new THREE.Group();
-    exhibit.name = `dressing_tank_${specId}_${component}`;
-    exhibit.userData.workshopPart = true;
-    exhibit.userData.workshopLod = 'playable-fleet-exact';
-    exhibit.userData.family = family;
-    exhibit.userData.sourceVehicleId = specId;
-    exhibit.userData.component = component;
-    exhibit.userData.completeFleetTank = component === 'complete_vehicle';
-    let visualRoot: THREE.Object3D;
-    let measuredRoot: THREE.Object3D;
-    if (component === 'complete_vehicle') {
-      const visual = workshopFleet.createVisual(specId);
-      visual.resetForGaragePresentation?.();
-      visual.root.scale.setScalar(scale);
-      workshopVisuals.push(visual);
-      workshopVisualById.set(specId, visual);
-      visualRoot = visual.root;
-      measuredRoot = visual.root;
-    } else {
-      const source = workshopVisualById.get(specId);
-      const sourceTurret = source?.root.getObjectByName('rig_turret');
-      if (!sourceTurret) throw new Error(`${specId} is missing its prepared turret rig`);
-      // Exact clone, shared geometry/materials: no substitute mesh and no
-      // second createTank/material allocation for the service-bay display.
-      visualRoot = sourceTurret.clone(true);
-      visualRoot.scale.setScalar(scale);
-      measuredRoot = visualRoot;
-    }
-    exhibit.add(visualRoot);
-
-    exhibit.updateMatrixWorld(true);
-    const bounds = new THREE.Box3().setFromObject(measuredRoot, true);
-    const center = bounds.getCenter(new THREE.Vector3());
-    const seatY = component === 'turret_and_gun' ? 0.92 : 0.02;
-    visualRoot.position.set(-center.x, seatY - bounds.min.y, -center.z);
-
-    poseAssembly(exhibit, logicalSlot);
-    variantWorkshopRoot.add(exhibit);
-    exhibit.updateMatrixWorld(true);
-    compileWorkshopObject(exhibit);
-    variantAssemblies.push(exhibit);
-    return exhibit;
-  }
-
   function compileWorkshopObject(root: THREE.Object3D, includeDetached = false): void {
     if (engineCtx.renderer && engineCtx.camera && engineCtx.scene) {
-      // Inactive workshop layouts are intentionally detached from the live
-      // scene. Do not upload their hundreds of exact fleet meshes merely
-      // because the quiet builder has prepared the CPU-side graph. The first
-      // explicit environment switch submits the newly mounted layout.
       for (let owner: THREE.Object3D | null = root; owner; owner = owner.parent) {
-        if (!includeDetached
-            && owner === variantWorkshopRoot && variantWorkshopRoot.parent !== group) return;
         if (!includeDetached
             && owner === legacyVerdantRoot && legacyVerdantRoot.parent !== group) return;
       }
-      // WebGLRenderer.compile respects Object3D.visible. Both the fixed
-      // Verdant set and the additive set can be hidden while the other layout
-      // is selected, so make this one root force-visible only for submission.
-      // Otherwise the first garage switch pays all of its shader births.
+      // WebGLRenderer.compile respects Object3D.visible. Force the shared
+      // maintenance root visible only for submission so the first staging-area
+      // switch cannot inherit shader births from a hidden preparation pass.
       const wasVisible = root.visible;
       root.visible = true;
       root.updateMatrixWorld(true);
@@ -927,20 +796,15 @@ export function createGarageDressing(
     mat.safety.color.setHex(currentVariant.accent);
     bayFill.color.setHex(currentVariant.lightTint);
     const isVerdant = currentVariant.id === 'verdant_motor_pool';
-    const activeWorkshopRoot = isVerdant ? legacyVerdantRoot : variantWorkshopRoot;
-    const inactiveWorkshopRoot = isVerdant ? variantWorkshopRoot : legacyVerdantRoot;
-    inactiveWorkshopRoot.removeFromParent();
-    if (activeWorkshopRoot.parent !== group) group.add(activeWorkshopRoot);
-    legacyVerdantRoot.visible = isVerdant;
-    variantWorkshopRoot.visible = !isVerdant;
-    for (const root of variantOnlyRoots) root.visible = !isVerdant;
-    for (const root of variantAssemblies) poseAssembly(root, root.userData.logicalSlot || 0);
-    compileWorkshopObject(activeWorkshopRoot);
-    group.userData.verdantOriginalVisible = isVerdant && legacyVerdantRoot.children.length > 0;
-    group.userData.workshopTriangleCount = isVerdant
-      ? (group.userData.verdantOriginalTriangleCount || 0)
-      : (group.userData.variantWorkshopTriangleCount || 0);
-    group.userData.workshopExhibitCount = isVerdant ? 4 : 6;
+    legacyVerdantRoot.visible = true;
+    verdantInteriorRoot.visible = isVerdant;
+    compileWorkshopObject(legacyVerdantRoot);
+    group.userData.verdantOriginalVisible = legacyVerdantRoot.children.length > 0;
+    group.userData.workshopTriangleCount = group.userData.verdantOriginalTriangleCount || 0;
+    group.userData.workshopExhibitCount = 4;
+    group.userData.sharedMaintenanceBayCount = 4;
+    group.userData.sharedMaintenanceBayIds = ['burlak_gantry', 'abrams_welding', 't90m_relikt', 'rolled_k2'];
+    group.userData.workshopSceneMode = isVerdant ? 'verdant-workshop' : 'map-staging';
     return currentVariant.id;
   }
 
@@ -1070,6 +934,7 @@ export function createGarageDressing(
     group.userData.battleScreenResidentImageLimit = 2;
     group.userData.battleScreenResidentImageCount = 0;
     void startBattleScreen(fallbackTexture);
+    const interiorChildrenStart = group.children.length;
     // --- EAST WALL (left of frame from the hero cam) ------------------------
     workbench(21.95, -7, -Math.PI / 2);
     pegboardAt('east_tools');
@@ -1333,6 +1198,12 @@ export function createGarageDressing(
       lane.position.set(11.2, 0.023, -6.8);
       group.add(lane);
     }
+    // The scrolling battle display remains shared and gets a freestanding
+    // support outdoors. Everything authored after it is wall/floor clutter
+    // from the original Verdant hangar and must disappear with that interior.
+    for (const child of group.children.slice(interiorChildrenStart)) {
+      verdantInteriorRoot.add(child);
+    }
   });
 
   // ==========================================================================
@@ -1432,15 +1303,12 @@ export function createGarageDressing(
   });
 
   // ==========================================================================
-  // CHUNK 3 — current alternate-garage Abrams exhibit plus ORIGINAL VERDANT
-  // BAY B: M1A2 with its side skirts pulled, tools, creeper and welding cable.
+  // CHUNK 3 — shared M1A2 bay with its side skirts pulled, tools, creeper and
+  // welding cable.
   // ==========================================================================
   chunks.push(function buildAbramsAndOriginalVerdantBay() {
-    addFleetExhibit('m1a2', 'abrams', 'complete_vehicle', 0, 0.82);
-    addSupportAssembly('powerpack', 1, 1.0);
-    wallSignAtForVariants('ABRAMS LINE', 'north_final');
-
-    const tank = markModernPart(clonePreparedVisualRoot('m1a2'), 'm1a2', 'skirt_repair_vehicle');
+    const visual = createLegacyVisual('m1a2', 1440);
+    const tank = markModernPart(visual.root, 'm1a2', 'skirt_repair_vehicle');
     tank.name = 'dressing_tank_b';
     tank.rotation.y = -2.03;
     tank.position.set(16.9, 0, 17.7);
@@ -1522,20 +1390,19 @@ export function createGarageDressing(
     pool.rotation.x = -Math.PI / 2;
     pool.position.set(15.9, 0.03, 16.6);
     legacyVerdantRoot.add(pool);
-    workLamp(15.9, 16.6, 0, 7.4, legacyVerdantRoot);
+    // This fixture hangs from Verdant's roof. Outdoor staging areas use their
+    // freestanding flood masts, so never leave the cable/lamp in empty sky.
+    workLamp(15.9, 16.6, 0, 7.4, verdantInteriorRoot);
     compileWorkshopObject(tank);
   });
 
   // ==========================================================================
-  // CHUNK 4 — alternate-garage T-90M plus ORIGINAL VERDANT T-90M turret,
-  // exact gun rig, timber cradle and Relikt service rack.
+  // CHUNK 4 — shared T-90M turret, exact gun rig, timber cradle and Relikt
+  // service rack.
   // ==========================================================================
   chunks.push(function buildT90AndOriginalVerdantComponents() {
-    addFleetExhibit('t90m', 't90', 'complete_vehicle', 2, 0.86);
-    addSupportAssembly('weapon_rack', 3, 0.95);
-    wallSignAtForVariants('T-90M LINE', 'south_suspension');
-
-    const tank = markModernPart(clonePreparedVisualRoot('t90m'), 't90m', 'turret_cradle');
+    const visual = createLegacyVisual('t90m', 1540);
+    const tank = markModernPart(visual.root, 't90m', 'turret_cradle');
     const hull = tank.getObjectByName('rig_hull');
     const turret = tank.getObjectByName('rig_turret');
     const gun = tank.getObjectByName('rig_gun');
@@ -1763,44 +1630,11 @@ export function createGarageDressing(
     compileWorkshopObject(tank);
   });
 
-  // ==========================================================================
-  // CHUNK 6 — real playable-fleet Leclerc assembly + reactive-armor rack for
-  // the nine additive garage environments.
-  // ==========================================================================
-  chunks.push(function buildLeclercBay() {
-    addFleetExhibit('leclerc', 'leclerc', 'complete_vehicle', 4, 0.84);
-    addSupportAssembly('armor_rack', 5, 0.92);
-    wallSignAtForVariants('LECLERC / ARMOR', 'south_turret_armor');
-  });
-
-  // ==========================================================================
-  // CHUNKS 7-9 — real turret/gun rigs, one build + compile per quiet slice.
-  // ==========================================================================
-  chunks.push(function buildAbramsTurretService() {
-    addFleetExhibit('m1a2', 'abrams', 'turret_and_gun', 6, 0.82);
-  });
-  chunks.push(function buildT90TurretService() {
-    addFleetExhibit('t90m', 't90', 'turret_and_gun', 7, 0.88);
-  });
-  chunks.push(function buildLeclercTurretService() {
-    addFleetExhibit('leclerc', 'leclerc', 'turret_and_gun', 8, 0.84);
-    group.userData.variantWorkshopTriangleCount = variantAssemblies.reduce(
-      (sum, root) => sum + countWorkshopTriangles(root), 0,
-    );
+  // One canonical four-bay service set now travels with every map staging
+  // area. This deletes the prior six-display alternate graph (and its Leclerc
+  // builds) instead of paying CPU/GPU/memory for hidden duplicate exhibits.
+  chunks.push(function finalizeSharedMaintenanceBays() {
     group.userData.verdantOriginalTriangleCount = countWorkshopTriangles(legacyVerdantRoot);
-    let exhibitCount = 0;
-    const families = new Set<string>();
-    const sourceVehicleIds = new Set<string>();
-    for (const root of variantAssemblies) {
-      const family = root.userData.family;
-      if (typeof family === 'string' && family !== 'support') {
-        exhibitCount++;
-        families.add(family);
-      }
-      const sourceVehicleId = root.userData.sourceVehicleId;
-      if (typeof sourceVehicleId === 'string') sourceVehicleIds.add(sourceVehicleId);
-    }
-    group.userData.variantWorkshopExhibitCount = exhibitCount;
     group.userData.verdantOriginalExhibitCount = 4;
     group.userData.verdantOriginalExhibitIds = ['t90a_burlak', 'm1a2', 't90m', 'k2'];
     group.userData.verdantOriginalSetPieces = [
@@ -1809,43 +1643,22 @@ export function createGarageDressing(
       'road_wheel_stacks', 'track_shoe_pallet', 'weapon_service_rack',
     ];
     group.userData.workshopForwardCorrectionRad = Math.PI;
-    group.userData.workshopFamilies = [...families];
-    group.userData.workshopSourceVehicleIds = [
-      ...new Set([...sourceVehicleIds, 't90a_burlak', 'k2']),
-    ];
-    wallSignAtForVariants('TURRET SERVICE', 'north_teardown');
+    group.userData.workshopFamilies = ['burlak', 'abrams', 't90', 'k2'];
+    group.userData.workshopSourceVehicleIds = ['t90a_burlak', 'm1a2', 't90m', 'k2'];
+    group.userData.sharedMaintenanceBayCount = 4;
+    group.userData.sharedMaintenanceBayIds = ['burlak_gantry', 'abrams_welding', 't90m_relikt', 'rolled_k2'];
     setVariant(currentVariant.id);
   });
 
   // Finalization remains outside first paint and runs only after the complete
-  // authored set exists. Compile the newly merged active composition in the
-  // same quiet lease, then submit each detached alternate bay in its own later
-  // lease. A first environment switch therefore never links/uploads the whole
-  // workshop in one interaction frame.
+  // shared authored set exists.
   chunks.push(function optimizeWorkshopDisplays() {
     optimizeGarageDressing(group, {
-      // Verdant is one fixed authored composition. Alternate environments
-      // keep one movable owner per bay assembly, so layout switching remains
-      // exact while redundant tank/fitting leaf draws collapse.
-      staticDisplayOwners: [
-        legacyVerdantRoot,
-        ...variantAssemblies,
-        ...variantOnlyRoots,
-      ],
-      // One layout is detached by design. Include both roots in lifetime
-      // accounting because their prepared visuals share source geometry.
-      additionalResourceRoots: [legacyVerdantRoot, variantWorkshopRoot],
+      staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot],
+      additionalResourceRoots: [legacyVerdantRoot, verdantInteriorRoot],
     });
-    const activeRoot = currentVariant.id === 'verdant_motor_pool'
-      ? legacyVerdantRoot : variantWorkshopRoot;
-    compileWorkshopObject(activeRoot, true);
+    compileWorkshopObject(legacyVerdantRoot, true);
   });
-  for (let index = 0; index < assemblySlots.length; index++) {
-    chunks.push(function warmAlternateWorkshopBay() {
-      const assembly = variantAssemblies[index];
-      if (assembly) compileWorkshopObject(assembly, true);
-    });
-  }
 
   // sign plates bake before the webfont settles — refresh them once it lands
   // (same contract as garageStage's own signs)
@@ -1913,7 +1726,6 @@ export function createGarageDressing(
       group.userData.optimizationDisposables = [];
       for (const o of disposables) if (o && o.dispose) o.dispose();
       disposables.length = 0;
-      partLibrary.dispose();
     },
   };
 }
