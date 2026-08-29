@@ -283,3 +283,4 @@ runtime documents remain authoritative for behavior.
 - [0271 — Shared procedural profile machinery is strict TypeScript](0271-type-shared-profile-kit.md)
 - [0272 — The third modern fleet pack is strict TypeScript](0272-type-modern3-fleet-pack.md)
 - [0273 — The second modern fleet pack is strict TypeScript](0273-type-modern2-fleet-pack.md)
+- [0274 — Deterministic vehicle decorations are strict TypeScript](0274-type-vehicle-decorations.md)

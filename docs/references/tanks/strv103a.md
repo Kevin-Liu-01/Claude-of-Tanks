@@ -134,7 +134,7 @@ published 2.14 p95-sovereign — resident-class cap).
   strv103 → strv122
 - `src/vehicles/rosterPolicy.ts` — COLD_WAR_IDS + RETAINED_COLD_WAR_IDS
   (mirrors strv103)
-- `src/vehicles/decorations.js` — COLDWAR_IDS decor era (mirrors strv103)
+- `src/vehicles/decorations.ts` — COLDWAR_IDS decor era (mirrors strv103)
 - `src/vehicles/tankAssets.selftest.mjs` — HULL_ONLY_SHADOW_IDS (fixedMount
   casemate class: hull-only shadow caster, like strv103/jpz/sturmtiger/t95)
 - `public/icons/strv103a_*` — 9 asset files generated

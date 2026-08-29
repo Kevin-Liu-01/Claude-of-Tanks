@@ -43,6 +43,10 @@ forward; do not weaken the shared port or bridge through untyped casts.
 Leopard 1A5, MBT-70, and T-14 spec/geometry pack. Keep its mutable armor-lift
 operation explicit, its variable loft/scale adapters narrow, and its runtime
 registration idempotent.
+`decorations.ts` owns deterministic cosmetic-kit construction and exact
+surface seating. Keep decoration geometry merged by material and owner frame,
+retain the 3,000-triangle budget and 150 m LOD, and preserve the typed
+projected-ray index plus gun, turret-sweep, width, and overlap guards.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

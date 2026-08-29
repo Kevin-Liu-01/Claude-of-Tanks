@@ -1,4 +1,4 @@
-// src/vehicles/decorations.js — cosmetic external-stowage / fittings kit for
+// src/vehicles/decorations.ts — cosmetic external-stowage / fittings kit for
 // the whole fleet ("decoration system", 2026-07 round).
 //
 // WHAT THIS IS: a library of parameterized decoration builders (cupolas, roof
@@ -52,15 +52,205 @@ import {
   vehicleAmbientFloorHook, getKitPaintTexture, getSharedRoughnessTexture,
 } from './materials.js';
 import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.ts';
+import type { FleetTankSpec } from './specContracts.ts';
+
+type Rng = () => number;
+type GeometryScale = number | readonly [number, number, number];
+type DecorFrame = 'hull' | 'turret';
+type DecorMaterialKey = 'kit' | 'steel' | 'wood' | 'canvas' | 'burlap'
+  | 'rubber' | 'cans' | 'net' | 'mesh' | 'lens';
+
+interface DecorOptions {
+  proceduralOnly?: boolean;
+  decor?: boolean;
+}
+
+interface ShadowEngineContext {
+  setupShadowMaterial?: (
+    material: THREE.Material,
+    extraHook?: typeof vehicleAmbientFloorHook,
+  ) => THREE.Material;
+}
+
+interface DecorPartMeta {
+  mount?: string;
+  centerY?: number;
+  clearY?: number;
+  h?: number;
+  d?: number;
+  w?: number;
+  basket?: boolean;
+  runH?: number;
+}
+
+interface DecorPart {
+  mat: DecorMaterialKey;
+  geo: THREE.BufferGeometry;
+}
+
+interface DecorPartList extends Array<DecorPart> {
+  meta?: DecorPartMeta;
+  metaCx?: number;
+}
+
+interface DecorKitArgs {
+  rng: Rng;
+  v?: string;
+  shield?: boolean;
+  ring?: boolean;
+  helmet?: boolean;
+  flat?: boolean;
+  rubberRim?: boolean;
+  water?: boolean;
+  mesh?: boolean;
+  w?: number;
+  h?: number;
+  d?: number;
+  len?: number;
+  sag?: number;
+  n?: number;
+  linkW?: number;
+  rows?: number;
+  perRow?: number;
+  r?: number;
+  links?: number;
+  _W?: number;
+  set?: string[];
+}
+
+type DecorKitBuilder = (args: DecorKitArgs) => DecorPartList;
+
+interface DecorSlotArgs {
+  side?: number;
+  corner?: number;
+  zFrac?: number;
+  x?: number;
+  spread?: number;
+  rear?: boolean;
+  high?: boolean;
+  center?: boolean;
+  back?: boolean;
+  small?: boolean;
+  along?: boolean;
+  low?: boolean;
+  onBasket?: boolean;
+}
+
+interface DecorManifestRow {
+  kit: string;
+  p?: number;
+  v?: Omit<DecorKitArgs, 'rng'>;
+  slot: [string, DecorSlotArgs];
+}
+
+type DecorManifestBuilder = (spec: FleetTankSpec, rng: Rng) => DecorManifestRow[];
+
+interface DecorationAttachmentArgs {
+  root: THREE.Object3D;
+  hullG: THREE.Group;
+  turretG: THREE.Group;
+  spec: FleetTankSpec;
+  engineCtx?: ShadowEngineContext | null;
+  disposables?: Array<THREE.BufferGeometry | THREE.Material>;
+  opts?: DecorOptions;
+  isDestroyed?: () => boolean;
+}
+
+type SurfaceMesh = THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+
+interface SurfaceHit {
+  p: THREE.Vector3;
+  n: THREE.Vector3;
+  dist: number;
+}
+
+interface ProjectedGrid {
+  minU: number;
+  maxU: number;
+  minV: number;
+  maxV: number;
+  size: number;
+  scaleU: number;
+  scaleV: number;
+  cells: Array<number[] | undefined>;
+  broad: number[];
+}
+
+interface SurfaceRecord {
+  mesh: SurfaceMesh;
+  position: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
+  index: ArrayLike<number> | null;
+  triangleCount: number;
+  toGroup: THREE.Matrix4;
+  toLocal: THREE.Matrix4;
+  worldNormalMatrix: THREE.Matrix3;
+}
+
+interface AxisSurfaceIndex {
+  cast(origin: THREE.Vector3, direction: THREE.Vector3): SurfaceHit | null;
+}
+
+interface SurfaceProber {
+  top(x: number, z: number, fromY: number): SurfaceHit | null;
+  side(y: number, z: number, side: number, fromX: number): SurfaceHit | null;
+  zface(x: number, y: number, dirZ: number, fromZ: number): SurfaceHit | null;
+}
+
+interface SurfaceSeat {
+  y: number;
+  n: THREE.Vector3 | null;
+  spread: number;
+}
+
+interface GunGuard {
+  (boxes: THREE.Box3[], seatY?: number | null): boolean;
+  lastYaw: number | null;
+}
+
+interface CommitOptions {
+  allowOverlap?: boolean;
+  seatY?: number | null;
+  zExtra?: number;
+}
+
+interface DecorPieceSummary {
+  kit: string;
+  frame: DecorFrame;
+  tris: number;
+}
+
+interface DecorSummary {
+  pieces: DecorPieceSummary[];
+  tris: number;
+  drawCalls: number;
+  skipped: Array<[string, string]>;
+}
+
+interface BasketAnchor {
+  x: number;
+  y: number;
+  z: number;
+  d?: number;
+}
+
+type SlotPlacer = (
+  args: DecorSlotArgs,
+  parts: DecorPartList,
+  name: string,
+) => boolean;
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 // ---------------------------------------------------------------------------
 // Deterministic seeding — spec id ONLY (mandate: stable per vehicle).
 // ---------------------------------------------------------------------------
 
-function mulberry32(a){a|=0;return function(){a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+function mulberry32(a: number): Rng {a|=0;return function(){a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
-function fnv1a(str) {
+function fnv1a(str: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < str.length; i++) {
     h ^= str.charCodeAt(i);
@@ -78,7 +268,16 @@ const D2R = Math.PI / 180;
 // greeble-class and budgeted (~3k tris/tank).
 // ---------------------------------------------------------------------------
 
-function xform(geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
+function xform(
+  geo: THREE.BufferGeometry,
+  x = 0,
+  y = 0,
+  z = 0,
+  rx = 0,
+  ry = 0,
+  rz = 0,
+  s: GeometryScale = 1,
+): THREE.BufferGeometry {
   const sc = Array.isArray(s) ? s : [s, s, s];
   const m = new THREE.Matrix4().compose(
     new THREE.Vector3(x, y, z),
@@ -88,24 +287,24 @@ function xform(geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
   geo.applyMatrix4(m);
   return geo;
 }
-const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
-const cylY = (rT, rB, h, seg = 10) => new THREE.CylinderGeometry(rT, rB, h, seg);
-const cylX = (r, len, seg = 10, r2) => xform(cylY(r, r2 ?? r, len, seg), 0, 0, 0, 0, 0, Math.PI / 2);
-const cylZ = (r, len, seg = 10, r2) => xform(cylY(r, r2 ?? r, len, seg), 0, 0, 0, Math.PI / 2, 0, 0);
-const sph = (r, w = 9, h = 6) => new THREE.SphereGeometry(r, w, h);
-const capX = (r, len, seg = 8) =>
+const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
+const cylY = (rT: number, rB: number, h: number, seg = 10) => new THREE.CylinderGeometry(rT, rB, h, seg);
+const cylX = (r: number, len: number, seg = 10, r2?: number) => xform(cylY(r, r2 ?? r, len, seg), 0, 0, 0, 0, 0, Math.PI / 2);
+const cylZ = (r: number, len: number, seg = 10, r2?: number) => xform(cylY(r, r2 ?? r, len, seg), 0, 0, 0, Math.PI / 2, 0, 0);
+const sph = (r: number, w = 9, h = 6) => new THREE.SphereGeometry(r, w, h);
+const capX = (r: number, len: number, seg = 8) =>
   xform(new THREE.CapsuleGeometry(r, Math.max(len - 2 * r, 0.01), 2, seg), 0, 0, 0, 0, 0, Math.PI / 2);
-const torus = (r, tube, seg = 10, tSeg = 5, arc = Math.PI * 2) =>
+const torus = (r: number, tube: number, seg = 10, tSeg = 5, arc = Math.PI * 2) =>
   xform(new THREE.TorusGeometry(r, tube, tSeg, seg, arc), 0, 0, 0, Math.PI / 2, 0, 0);
 // torus in its native XY plane (vertical rings: bail handles, end loops)
-const torusV = (r, tube, seg = 10, tSeg = 5, arc = Math.PI * 2) =>
+const torusV = (r: number, tube: number, seg = 10, tSeg = 5, arc = Math.PI * 2) =>
   new THREE.TorusGeometry(r, tube, tSeg, seg, arc);
-const lathe = (profile, seg = 16) =>
+const lathe = (profile: readonly (readonly [number, number])[], seg = 16) =>
   new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(Math.max(r, 0.001), y)), seg);
 
 // World-scale box-projected UVs (same recipe as tankFactory.boxUV) so the
 // shared weave/wood canvases keep a uniform texel density across pieces.
-function boxUV(geo, scale = 1.1) {
+function boxUV(geo: THREE.BufferGeometry, scale = 1.1): THREE.BufferGeometry {
   const pos = geo.attributes.position;
   if (!geo.attributes.normal) geo.computeVertexNormals();
   const nor = geo.attributes.normal;
@@ -122,12 +321,12 @@ function boxUV(geo, scale = 1.1) {
   return geo;
 }
 
-const triCount = (geo) => ((geo.index ? geo.index.count : geo.attributes.position.count) / 3) | 0;
+const triCount = (geo: THREE.BufferGeometry) => ((geo.index ? geo.index.count : geo.attributes.position.count) / 3) | 0;
 
 // Per-piece baked shade: tone jitter + a soft downward-face AO so merged
 // families don't read as one flat injection-molded color (the same trick
 // tankFactory.bakeDirt plays on the camo shells, minus the dust ramp).
-function bakeShade(geo, tone = 1, ao = 0.3) {
+function bakeShade(geo: THREE.BufferGeometry, tone = 1, ao = 0.3): THREE.BufferGeometry {
   const pos = geo.attributes.position;
   if (!geo.attributes.normal) geo.computeVertexNormals();
   const nor = geo.attributes.normal;
@@ -143,7 +342,7 @@ function bakeShade(geo, tone = 1, ao = 0.3) {
 
 // Tinted variant (rgb multipliers) — one merged family can carry several
 // authored colors (fuel-tan vs water-green jerrycans, helmet OD).
-function bakeTint(geo, r, g, b, ao = 0.3) {
+function bakeTint(geo: THREE.BufferGeometry, r: number, g: number, b: number, ao = 0.3): THREE.BufferGeometry {
   bakeShade(geo, 1, ao);
   const col = geo.attributes.color;
   for (let i = 0; i < col.count; i++) {
@@ -153,17 +352,17 @@ function bakeTint(geo, r, g, b, ao = 0.3) {
 }
 
 // shift/rotate every part of a kit in its local frame (builder helper)
-function xformParts(parts, x, y, z, rx = 0, ry = 0, rz = 0, from = 0) {
+function xformParts(parts: DecorPartList, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0, from = 0): DecorPartList {
   for (let i = from; i < parts.length; i++) xform(parts[i].geo, x, y, z, rx, ry, rz);
   return parts;
 }
 
-function partsBBox(parts) {
+function partsBBox(parts: DecorPartList): THREE.Box3 {
   const bb = new THREE.Box3();
   const t = new THREE.Box3();
   for (const p of parts) {
     p.geo.computeBoundingBox();
-    t.copy(p.geo.boundingBox);
+    if (p.geo.boundingBox) t.copy(p.geo.boundingBox);
     bb.union(t);
   }
   return bb;
@@ -175,13 +374,19 @@ function partsBBox(parts) {
 // material instances).
 // ---------------------------------------------------------------------------
 
-const _texCache = new Map();
-function canvasTex(key, size, paint) {
-  if (_texCache.has(key)) return _texCache.get(key);
+const _texCache = new Map<string, THREE.CanvasTexture | null>();
+function canvasTex(
+  key: string,
+  size: number,
+  paint: (context: CanvasRenderingContext2D, size: number) => void,
+): THREE.CanvasTexture | null {
+  if (_texCache.has(key)) return _texCache.get(key)!;
   if (typeof document === 'undefined') { _texCache.set(key, null); return null; } // node safety
   const c = document.createElement('canvas');
   c.width = c.height = size;
-  paint(c.getContext('2d'), size);
+  const context = c.getContext('2d');
+  if (!context) { _texCache.set(key, null); return null; }
+  paint(context, size);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -282,10 +487,10 @@ function gridTex() {
 // metrology — they render the game's shipped look and stay decorated.
 // ---------------------------------------------------------------------------
 
-const CTX_PROBED = new WeakMap(); // engineCtx -> boolean (real CSM ctx)
-function isRealShadowCtx(engineCtx) {
+const CTX_PROBED = new WeakMap<ShadowEngineContext, boolean>(); // engineCtx -> boolean (real CSM ctx)
+function isRealShadowCtx(engineCtx: ShadowEngineContext | null | undefined): boolean {
   if (!engineCtx || typeof engineCtx.setupShadowMaterial !== 'function') return false;
-  if (CTX_PROBED.has(engineCtx)) return CTX_PROBED.get(engineCtx);
+  if (CTX_PROBED.has(engineCtx)) return CTX_PROBED.get(engineCtx) ?? false;
   let real = false;
   try {
     const probe = new THREE.MeshStandardMaterial();
@@ -303,7 +508,10 @@ function isRealShadowCtx(engineCtx) {
  * @param {?object} engineCtx
  * @returns {boolean}
  */
-export function resolveDecorMode(opts = {}, engineCtx = null) {
+export function resolveDecorMode(
+  opts: DecorOptions = {},
+  engineCtx: ShadowEngineContext | null = null,
+): boolean {
   if (opts.proceduralOnly) return false;          // metrology contract — hard skip
   if (opts.decor === false) return false;          // explicit off
   if (opts.decor === true) return true;            // explicit on (decoration board)
@@ -329,21 +537,29 @@ export function resolveDecorMode(opts = {}, engineCtx = null) {
 // readable in shade like the rest of the vehicle.
 // ---------------------------------------------------------------------------
 
-function buildDecorMaterials(spec, engineCtx) {
+interface DecorMaterials {
+  get(key: DecorMaterialKey): THREE.MeshStandardMaterial;
+  all(): Partial<Record<DecorMaterialKey, THREE.MeshStandardMaterial>>;
+}
+
+function buildDecorMaterials(
+  spec: FleetTankSpec,
+  engineCtx: ShadowEngineContext | null | undefined,
+): DecorMaterials {
   const setup = isRealShadowCtx(engineCtx)
-    ? (m) => {
-      engineCtx.setupShadowMaterial(m, vehicleAmbientFloorHook);
+    ? (m: THREE.MeshStandardMaterial) => {
+      engineCtx?.setupShadowMaterial?.(m, vehicleAmbientFloorHook);
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       return m;
     }
-    : (m) => {
+    : (m: THREE.MeshStandardMaterial) => {
       m.onBeforeCompile = vehicleAmbientFloorHook;
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       return m;
     };
 
-  const made = {};
-  const defs = {
+  const made: Partial<Record<DecorMaterialKey, THREE.MeshStandardMaterial>> = {};
+  const defs: Record<DecorMaterialKey, () => THREE.MeshStandardMaterialParameters> = {
     // scheme-painted steel kit: the shared per-spec kit-paint canvas keeps
     // bolt-on hardware in the ACTIVE camo pattern's tonal family and live-
     // repaints with garage pattern switches (same texture the ARAT/stowage
@@ -393,14 +609,14 @@ function buildDecorMaterials(spec, engineCtx) {
     }),
   };
   return {
-    get(key) {
+    get(key: DecorMaterialKey) {
       if (!made[key]) {
-        const def = defs[key]();
+        const def = { ...defs[key]() };
         if (!def.map) delete def.map; // node safety (no canvas available)
         made[key] = setup(new THREE.MeshStandardMaterial(def));
-        made[key].name = `Decor_${key}`;
+        made[key]!.name = `Decor_${key}`;
       }
-      return made[key];
+      return made[key]!;
     },
     all: () => made,
   };
@@ -415,11 +631,11 @@ function buildDecorMaterials(spec, engineCtx) {
 // material family. `parts.meta` may carry mount hints for the slot resolver.
 // ---------------------------------------------------------------------------
 
-export const DECOR_KITS = {
+export const DECOR_KITS: Record<string, DecorKitBuilder> = {
 
   // -- commander's cupola upgrade: raised vision-block ring ------------------
   cupola({ rng, v = 'ring' }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     const tone = 0.92 + rng() * 0.14;
     if (v === 'ring') {              // low vision-block ring + closed lid
       const r = 0.30;
@@ -454,7 +670,7 @@ export const DECOR_KITS = {
   // -- openable-looking hatch cover with hinges -------------------------------
   hatch({ rng, v = 'round' }) {
     const tone = 0.9 + rng() * 0.16;
-    const parts = [];
+    const parts: DecorPartList = [];
     if (v === 'round') {
       const r = 0.25;
       parts.push({ mat: 'kit', geo: bakeShade(lathe([[r, 0], [r, 0.035], [r * 0.86, 0.055], [r * 0.3, 0.07], [0.001, 0.075]], 14), tone) });
@@ -475,9 +691,9 @@ export const DECOR_KITS = {
 
   // -- roof AAMG: .50 M2 / DShK, pintle or ring, with/without gun shield ------
   aamg({ rng, v = 'm2', shield = false, ring = false }) {
-    const parts = [];
-    const steel = (geo, t = 0.6) => parts.push({ mat: 'steel', geo: bakeShade(geo, t + rng() * 0.06) });
-    const kit = (geo, t = 0.95) => parts.push({ mat: 'kit', geo: bakeShade(geo, t) });
+    const parts: DecorPartList = [];
+    const steel = (geo: THREE.BufferGeometry, t = 0.6) => parts.push({ mat: 'steel', geo: bakeShade(geo, t + rng() * 0.06) });
+    const kit = (geo: THREE.BufferGeometry, t = 0.95) => parts.push({ mat: 'kit', geo: bakeShade(geo, t) });
     const H = 0.30;                          // pintle head height above seat
     if (ring) {                              // ring mount: rail + 3 standoffs
       steel(xform(torus(0.33, 0.016, 16, 4), 0, 0.10, 0), 0.55);
@@ -523,7 +739,7 @@ export const DECOR_KITS = {
 
   // -- roof lights: IR searchlight (large/small) + convoy light ----------------
   light({ rng, v = 'ir_large' }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     const tone = 0.9 + rng() * 0.12;
     if (v === 'convoy') {
       parts.push({ mat: 'steel', geo: bakeShade(xform(cylY(0.02, 0.024, 0.1, 6), 0, 0.05, 0), 0.55) });
@@ -548,7 +764,7 @@ export const DECOR_KITS = {
 
   // -- antenna set: whip short/long, star command antenna, helmet gag ----------
   antenna({ rng, v = 'whip_short', helmet = false }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     parts.push({ mat: 'kit', geo: bakeShade(lathe([[0.045, 0], [0.05, 0.02], [0.03, 0.05], [0.022, 0.09]], 8), 0.85) });
     if (v === 'star') {
       const H = 1.15;
@@ -571,7 +787,7 @@ export const DECOR_KITS = {
   // -- gunner's sight head / periscope hood ------------------------------------
   sight({ rng, v = 'peri' }) {
     const tone = 0.92 + rng() * 0.1;
-    const parts = [];
+    const parts: DecorPartList = [];
     if (v === 'peri') {
       parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.14, 0.09, 0.12), 0, 0.045, 0), tone) });
       parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.12, 0.05, 0.10), 0, 0.112, -0.012, -14 * D2R), tone) });
@@ -587,7 +803,7 @@ export const DECOR_KITS = {
 
   // -- add-on applique armor plate (bolted) -------------------------------------
   applique({ rng, v = 'rect', w = 0.9, h = 0.5 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     const tone = 0.95 + rng() * 0.1;
     const t = 0.045;
     parts.push({ mat: 'kit', geo: bakeShade(xform(box(w, h, t), 0, h / 2, t / 2), tone) });
@@ -604,7 +820,7 @@ export const DECOR_KITS = {
   // -- smoke grenade launcher cluster: 4/6/8 tubes, angled, turret-side --------
   smoke({ rng, v = '6' }) {
     const n = parseInt(v, 10) || 6;
-    const parts = [];
+    const parts: DecorPartList = [];
     const tone = 0.9 + rng() * 0.1;
     const rows = n > 6 ? 2 : 1;
     const per = Math.ceil(n / rows);
@@ -629,7 +845,7 @@ export const DECOR_KITS = {
 
   // -- stowage boxes: wood crate / steel bin / long fender box ------------------
   bin({ rng, v = 'steel', w = 0.55, h = 0.28, d = 0.4 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     if (v === 'crate') {
       parts.push({ mat: 'wood', geo: bakeShade(boxUV(xform(box(w, h, d), 0, h / 2, 0), 2.2), 0.9 + rng() * 0.2) });
       for (const sy of [0.14, 0.9]) { // batten frames
@@ -651,7 +867,7 @@ export const DECOR_KITS = {
 
   // -- rolled tarp / canvas roll --------------------------------------------------
   tarp({ rng, v = 'fat', len = 0.9 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     const R = v === 'fat' ? 0.125 : 0.085;
     const tone = 0.85 + rng() * 0.25;
     const body = boxUV(capX(R, len, 9), 2.6);
@@ -670,7 +886,7 @@ export const DECOR_KITS = {
 
   // -- camo netting: rolled bundle or draped flat patch ---------------------------
   camonet({ rng, v = 'roll', len = 1.0, w = 0.9 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     if (v === 'roll') {
       const R = 0.135;
       const body = boxUV(capX(R, len, 9), 2.0);
@@ -707,7 +923,7 @@ export const DECOR_KITS = {
 
   // -- unditching log (rear-strapped beam, axis X) ---------------------------------
   log({ rng, len = 2.4 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     const R = 0.115;
     parts.push({ mat: 'wood', geo: bakeShade(boxUV(cylX(R, len, 9, R * 0.94), 2.0), 0.6 + rng() * 0.12) });
     for (const s of [-1, 1]) {
@@ -720,7 +936,7 @@ export const DECOR_KITS = {
 
   // -- soft stowage: rucksack / bedroll / duffel cluster -----------------------------
   packs({ rng, n = 3 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     let x = 0;
     for (let i = 0; i < n; i++) {
       const kind = rng();
@@ -746,9 +962,9 @@ export const DECOR_KITS = {
   // -- turret bustle basket (rod frame + mesh + soft contents) -----------------------
   // Local frame: open face toward +Z (bolts to the bustle), extends -Z.
   basket({ rng, w = 1.2, d = 0.42, h = 0.34 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     const rod = 0.016;
-    const st = (geo) => parts.push({ mat: 'steel', geo: bakeShade(geo, 0.5 + rng() * 0.06) });
+    const st = (geo: THREE.BufferGeometry) => parts.push({ mat: 'steel', geo: bakeShade(geo, 0.5 + rng() * 0.06) });
     for (const y of [h * 0.3, h]) {          // rails
       st(xform(cylX(rod, w, 5), 0, y, -d));
       for (const s of [-1, 1]) st(xform(cylZ(rod, d, 5), s * w / 2, y, -d / 2));
@@ -772,7 +988,7 @@ export const DECOR_KITS = {
 
   // -- tow cable run with end loops (axis X; slots lay it fore-aft) ------------------
   cable({ rng, len = 2.2, sag = 0.05 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     const R = 0.032; // reads as a heavy wire rope at gameplay distance
     const pts = [];
     const seed = rng() * 6;
@@ -797,7 +1013,7 @@ export const DECOR_KITS = {
 
   // -- spare track link run (built flat in the X/Y plane, +Z outward) -----------------
   tracks({ rng, n = 5, linkW = 0.42 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     const pitch = 0.15;
     for (let i = 0; i < n; i++) {
       const y = (i - (n - 1) / 2) * pitch;
@@ -824,9 +1040,9 @@ export const DECOR_KITS = {
 
   // -- pioneer tools on fender clamps (laid along +Z, fanned across X) ---------------
   tools({ rng, set = ['shovel', 'axe', 'crowbar'] }) {
-    const parts = [];
-    const wood = (geo, t = 1) => parts.push({ mat: 'wood', geo: bakeShade(geo, t) });
-    const st = (geo, t = 0.55) => parts.push({ mat: 'steel', geo: bakeShade(geo, t + rng() * 0.05) });
+    const parts: DecorPartList = [];
+    const wood = (geo: THREE.BufferGeometry, t = 1) => parts.push({ mat: 'wood', geo: bakeShade(geo, t) });
+    const st = (geo: THREE.BufferGeometry, t = 0.55) => parts.push({ mat: 'steel', geo: bakeShade(geo, t + rng() * 0.05) });
     set.forEach((tool, idx) => {
       const lane = (idx - (set.length - 1) / 2) * 0.115;
       const from = parts.length;
@@ -856,7 +1072,7 @@ export const DECOR_KITS = {
 
   // -- tow hooks / shackles (bolted to a vertical plate, +Z outward) ------------------
   shackles({ rng, v = 'hook' }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     const tone = 0.55 + rng() * 0.1;
     if (v === 'hook') { // cast C-hook on a base plate
       parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.16, 0.16, 0.03), 0, 0, 0.015), 0.9) });
@@ -876,9 +1092,9 @@ export const DECOR_KITS = {
   // twin: two longitudinal 200 L drums as one piece, brackets down (deck-seat).
   // single: one TRANSVERSE drum (axis X), rear-plate cantilever mount.
   drums({ rng, v = 'twin', _W = 0 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     const R = 0.28, L = 0.85;
-    const drum = (cx, transverse) => {
+    const drum = (cx: number, transverse: boolean) => {
       const tone = 0.86 + rng() * 0.18;
       const body = transverse ? cylX(R, L, 14) : cylZ(R, L, 14);
       parts.push({ mat: 'kit', geo: bakeShade(xform(body, cx, 0, 0), tone) });
@@ -888,7 +1104,9 @@ export const DECOR_KITS = {
           : xform(torus(R + 0.011, 0.012, 14, 4), cx, 0, rz, Math.PI / 2, 0, 0);
         parts.push({ mat: 'kit', geo: bakeShade(rib, tone * 0.92) });
       }
-      const bungAt = transverse ? [cx + L * 0.31, R * 0.86, 0.1] : [cx + R * 0.4, R * 0.86, L * 0.31];
+      const bungAt: [number, number, number] = transverse
+        ? [cx + L * 0.31, R * 0.86, 0.1]
+        : [cx + R * 0.4, R * 0.86, L * 0.31];
       parts.push({ mat: 'steel', geo: bakeShade(xform(cylY(0.035, 0.035, 0.03, 7), ...bungAt), 0.5) });
       // cradle brackets + straps
       for (const b of [-L * 0.3, L * 0.3]) {
@@ -918,11 +1136,13 @@ export const DECOR_KITS = {
 
   // -- jerrycan rack (fuel tan / water green) ---------------------------------------
   jerry({ rng, n = 3, water = true }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     for (let i = 0; i < n; i++) {
       const x = (i - (n - 1) / 2) * 0.20;
       const isWater = water && i === n - 1;
-      const tint = isWater ? [0.24, 0.30, 0.22] : [0.45, 0.37, 0.24];
+      const tint: [number, number, number] = isWater
+        ? [0.24, 0.30, 0.22]
+        : [0.45, 0.37, 0.24];
       parts.push({ mat: 'cans', geo: bakeTint(xform(box(0.17, 0.44, 0.33), x, 0.22, 0), ...tint) });
       for (const s of [-1, 1]) { // X-stamp ribs
         parts.push({ mat: 'cans', geo: bakeTint(xform(box(0.012, 0.36, 0.05), x + s * 0.086, 0.21, 0, 38 * D2R), tint[0] * 1.08, tint[1] * 1.08, tint[2] * 1.08) });
@@ -945,7 +1165,7 @@ export const DECOR_KITS = {
 
   // -- spare road wheel (radius matched to the tank's own gear) -----------------------
   wheel({ rng, r = 0.31, flat = true, rubberRim = true }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     const W = Math.max(0.14, r * 0.42);
     const rimR = r * (rubberRim ? 0.8 : 0.95);
     parts.push({
@@ -968,7 +1188,7 @@ export const DECOR_KITS = {
 
   // -- exhaust shroud / muffler (axis Z along the fender) ------------------------------
   exhaust({ rng, v = 'muffler', len = 0.9 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     const tone = 0.7 + rng() * 0.15; // heat-scorched paint
     if (v === 'muffler') {
       parts.push({ mat: 'kit', geo: bakeShade(xform(cylZ(0.105, len, 12), 0, 0.105, 0), tone * 0.82) });
@@ -988,7 +1208,7 @@ export const DECOR_KITS = {
 
   // -- sandbag applique (glacis stack) ---------------------------------------------
   sandbags({ rng, rows = 2, perRow = 4, w = 1.2 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     for (let r = 0; r < rows; r++) {
       const n = perRow - (r % 2);
       for (let i = 0; i < n; i++) {
@@ -1004,7 +1224,7 @@ export const DECOR_KITS = {
 
   // -- welded patch plate (+Z outward) ------------------------------------------------
   patch({ rng, w = 0.5, h = 0.4 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     parts.push({ mat: 'kit', geo: bakeShade(xform(box(w, h, 0.024), 0, 0, 0.012), 1.03 + rng() * 0.06) });
     const bead = 0.016;
     parts.push({ mat: 'steel', geo: bakeShade(xform(cylX(bead, w + 0.02, 5), 0, h / 2, 0.022), 0.72) });
@@ -1016,9 +1236,9 @@ export const DECOR_KITS = {
 
   // -- slat / wire-mesh standoff armor section (modern; faces +Z, struts -Z) -----------
   slat({ rng, w = 1.5, h = 0.55, mesh = false }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     const frame = 0.02;
-    const st = (geo, t = 0.55) => parts.push({ mat: 'steel', geo: bakeShade(geo, t + rng() * 0.05) });
+    const st = (geo: THREE.BufferGeometry, t = 0.55) => parts.push({ mat: 'steel', geo: bakeShade(geo, t + rng() * 0.05) });
     st(xform(box(w, frame * 1.7, frame * 1.7), 0, h / 2, 0));
     st(xform(box(w, frame * 1.7, frame * 1.7), 0, -h / 2, 0));
     st(xform(box(frame * 1.7, h, frame * 1.7), -w / 2, 0, 0));
@@ -1039,7 +1259,7 @@ export const DECOR_KITS = {
 
   // -- barrel travel lock, stowed folded on the deck -----------------------------------
   travelLock({ rng }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     const tone = 0.9 + rng() * 0.1;
     parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.14, 0.06, 0.12), 0, 0.03, 0), tone) });
     for (const s of [-1, 1]) { // folded A-frame arms lying aft
@@ -1052,7 +1272,7 @@ export const DECOR_KITS = {
 
   // -- ration / small-stores box stack ---------------------------------------------------
   rations({ rng, n = 2 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     for (let i = 0; i < n; i++) {
       const w = 0.34 - i * 0.04;
       parts.push({
@@ -1065,7 +1285,7 @@ export const DECOR_KITS = {
 
   // -- bucket hung on a rear hook ---------------------------------------------------------
   bucket({ rng }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     parts.push({ mat: 'steel', geo: bakeShade(lathe([[0.075, 0], [0.09, 0.02], [0.115, 0.20], [0.105, 0.21], [0.088, 0.205]], 11), 0.62 + rng() * 0.1) });
     parts.push({ mat: 'steel', geo: bakeShade(xform(torusV(0.1, 0.007, 10, 4, Math.PI), 0, 0.21, 0), 0.5) }); // bail up
     parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.02, 0.06, 0.014), 0, 0.30, 0.02), 0.5) });          // hook tab
@@ -1074,7 +1294,7 @@ export const DECOR_KITS = {
 
   // -- chain segment hanging off a bow shackle --------------------------------------------
   chain({ rng, links = 6 }) {
-    const parts = [];
+    const parts: DecorPartList = [];
     for (let i = 0; i < links; i++) {
       const y = -i * 0.05;
       parts.push({
@@ -1123,7 +1343,7 @@ export const DECOR_KIT_INFO = {
 // ERA + MANIFESTS
 // ---------------------------------------------------------------------------
 
-export function decorEra(spec) {
+export function decorEra(spec: FleetTankSpec): string {
   if (spec.era === VEHICLE_ERAS.COLD_WAR) return VEHICLE_ERAS.COLD_WAR;
   return isContemporaryVehicleEra(spec.era) ? VEHICLE_ERAS.MODERN : VEHICLE_ERAS.WORLD_WAR_II;
 }
@@ -1139,12 +1359,12 @@ const US_RE = /USA/i;
 // Entries: { kit, p:probability, v:params, slot:[name, args] }. `p` rolls are
 // drawn deterministically IN ORDER for every entry whether or not the piece
 // lands, so one skip never reshuffles the rest of the tank.
-function defaultManifest(spec, rng) {
+function defaultManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const era = decorEra(spec);
   const sov = SOVIET_RE.test(spec.nation || '');
   const us = US_RE.test(spec.nation || '');
   const casemate = !!(spec.armor && spec.armor.turretless);
-  const M = [];
+  const M: DecorManifestRow[] = [];
 
   // ---- turret / roof kit ----
   if (!casemate) {
@@ -1203,7 +1423,7 @@ function defaultManifest(spec, rng) {
 // period-documented loadout replacing the era default. Fleet profile agents
 // may REQUEST changes here (docs/DECORATIONS.md carries the ask process) —
 // this table is decorations-owned.
-const TANK_MANIFESTS = {
+const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // --- WW2 ---
   tiger1: () => [
     { kit: 'cable', p: 1, v: { len: 2.7, sag: 0.05 }, slot: ['hullSideTop', { side: 1 }] },
@@ -1415,7 +1635,7 @@ const TANK_MANIFESTS = {
 };
 
 /** Resolve the manifest rows for one spec (curated table or era default). */
-export function decorManifestFor(spec, rng) {
+export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const curated = TANK_MANIFESTS[spec.id];
   return curated ? curated(spec, rng) : defaultManifest(spec, rng);
 }
@@ -1429,16 +1649,17 @@ const GEAR_NAME_RE = /wheel|sprocket|idler|roller|road|track|tread/i;
 
 // probe target collector: visible, color-writing, non-instanced meshes under
 // `group`, excluding running gear (by name), decor itself, and LOD levels > 0.
-function probeTargets(group) {
-  const out = [];
+function probeTargets(group: THREE.Group): SurfaceMesh[] {
+  const out: SurfaceMesh[] = [];
   group.updateWorldMatrix(true, false);
-  const visit = (o) => {
+  const visit = (o: THREE.Object3D): void => {
     if (o.visible === false) return;
     if (o.name && o.name.startsWith('rig_decor')) return;
-    if (o.isLOD) { if (o.levels.length && o.levels[0].object) visit(o.levels[0].object); return; }
-    if (o.isMesh && !o.isInstancedMesh && o.geometry) {
+    if (o instanceof THREE.LOD) { if (o.levels.length && o.levels[0].object) visit(o.levels[0].object); return; }
+    if (o instanceof THREE.Mesh && !(o instanceof THREE.InstancedMesh) && o.geometry) {
       const m = Array.isArray(o.material) ? o.material[0] : o.material;
-      if (m && m.colorWrite !== false && !GEAR_NAME_RE.test(o.name || '')) out.push(o);
+      if (m && m.colorWrite !== false && !GEAR_NAME_RE.test(o.name || '')
+          && !Array.isArray(o.material)) out.push(o as SurfaceMesh);
     }
     for (const c of o.children) visit(c);
   };
@@ -1463,7 +1684,13 @@ const AXIS_GRID_MAX = 32;
 const AXIS_GRID_MAX_CELLS_PER_TRIANGLE = 96;
 const AXIS_GRID_EPS = 1e-9;
 
-function projectedGrid(minU, maxU, minV, maxV, size) {
+function projectedGrid(
+  minU: number,
+  maxU: number,
+  minV: number,
+  maxV: number,
+  size: number,
+): ProjectedGrid {
   const spanU = Math.max(1e-6, maxU - minU);
   const spanV = Math.max(1e-6, maxV - minV);
   return {
@@ -1475,7 +1702,7 @@ function projectedGrid(minU, maxU, minV, maxV, size) {
   };
 }
 
-function projectedCell(grid, u, v) {
+function projectedCell(grid: ProjectedGrid, u: number, v: number): number[] | null {
   if (u < grid.minU - AXIS_GRID_EPS || u > grid.maxU + AXIS_GRID_EPS
       || v < grid.minV - AXIS_GRID_EPS || v > grid.maxV + AXIS_GRID_EPS) return null;
   const x = Math.min(grid.size - 1,
@@ -1485,7 +1712,14 @@ function projectedCell(grid, u, v) {
   return grid.cells[y * grid.size + x] || null;
 }
 
-function addProjectedTriangle(grid, minU, maxU, minV, maxV, encoded) {
+function addProjectedTriangle(
+  grid: ProjectedGrid,
+  minU: number,
+  maxU: number,
+  minV: number,
+  maxV: number,
+  encoded: number,
+): void {
   const x0 = Math.min(grid.size - 1,
     Math.max(0, Math.floor((minU - AXIS_GRID_EPS - grid.minU) * grid.scaleU)));
   const x1 = Math.min(grid.size - 1,
@@ -1506,11 +1740,14 @@ function addProjectedTriangle(grid, minU, maxU, minV, maxV, encoded) {
   }
 }
 
-function buildAxisSurfaceIndex(group, targets) {
+function buildAxisSurfaceIndex(
+  group: THREE.Group,
+  targets: SurfaceMesh[],
+): AxisSurfaceIndex | null {
   if (!targets.length || targets.length >= 2048) return null;
   group.updateWorldMatrix(true, false);
   const groupInverse = new THREE.Matrix4().copy(group.matrixWorld).invert();
-  const records = [];
+  const records: SurfaceRecord[] = [];
   const bounds = new THREE.Box3();
   const corner = new THREE.Vector3();
   const a = new THREE.Vector3();
@@ -1585,13 +1822,14 @@ function buildAxisSurfaceIndex(group, targets) {
   const vb = new THREE.Vector3();
   const vc = new THREE.Vector3();
   const normal = new THREE.Vector3();
-  let bestRecord = null;
+  let bestRecordIndex = -1;
   let bestTriangle = -1;
   let bestDistance = Infinity;
-  let activeRecord = null;
+  let activeRecord: SurfaceRecord | null = null;
 
-  const testEncoded = (encoded) => {
-    const record = records[Math.floor(encoded / 0x100000)];
+  const testEncoded = (encoded: number): void => {
+    const recordIndex = Math.floor(encoded / 0x100000);
+    const record = records[recordIndex];
     const triangle = encoded % 0x100000;
     if (record !== activeRecord) {
       activeRecord = record;
@@ -1613,14 +1851,14 @@ function buildAxisSurfaceIndex(group, targets) {
     const distance = hitGroup.distanceTo(rayGroup.origin);
     if (distance < 0 || distance > 80 || distance >= bestDistance) return;
     bestDistance = distance;
-    bestRecord = record;
+    bestRecordIndex = recordIndex;
     bestTriangle = triangle;
     bestPoint.copy(hitGroup);
   };
 
   return {
-    cast(origin, direction) {
-      let grid;
+    cast(origin: THREE.Vector3, direction: THREE.Vector3): SurfaceHit | null {
+      let grid: ProjectedGrid;
       let u;
       let v;
       if (Math.abs(direction.y) > 0.999999) {
@@ -1631,21 +1869,21 @@ function buildAxisSurfaceIndex(group, targets) {
         grid = xy; u = origin.x; v = origin.y;
       } else return null;
       rayGroup.set(origin, direction);
-      bestRecord = null;
+      bestRecordIndex = -1;
       bestTriangle = -1;
       bestDistance = Infinity;
       activeRecord = null;
-      const candidates = projectedCell(grid, u, v);
+      const candidates = projectedCell(grid, u, v) ?? [];
       // Both lists are appended in source mesh/triangle order. Merge them in
       // that same order so equal-distance coplanar faces choose the identical
       // first triangle (and therefore identical authored face normal) as
       // THREE.Mesh.raycast.
       let broadIndex = 0;
       let cellIndex = 0;
-      while (broadIndex < grid.broad.length || cellIndex < (candidates?.length || 0)) {
+      while (broadIndex < grid.broad.length || cellIndex < candidates.length) {
         const broadEncoded = broadIndex < grid.broad.length
           ? grid.broad[broadIndex] : Infinity;
-        const cellEncoded = cellIndex < (candidates?.length || 0)
+        const cellEncoded = cellIndex < candidates.length
           ? candidates[cellIndex] : Infinity;
         if (broadEncoded <= cellEncoded) {
           testEncoded(broadEncoded);
@@ -1656,23 +1894,24 @@ function buildAxisSurfaceIndex(group, targets) {
           cellIndex++;
         }
       }
-      if (!bestRecord) return null;
+      const resolvedRecord = records[bestRecordIndex];
+      if (!resolvedRecord) return null;
       const offset = bestTriangle * 3;
-      const ia = bestRecord.index ? bestRecord.index[offset] : offset;
-      const ib = bestRecord.index ? bestRecord.index[offset + 1] : offset + 1;
-      const ic = bestRecord.index ? bestRecord.index[offset + 2] : offset + 2;
-      bestRecord.mesh.getVertexPosition(ia, va);
-      bestRecord.mesh.getVertexPosition(ib, vb);
-      bestRecord.mesh.getVertexPosition(ic, vc);
+      const ia = resolvedRecord.index ? resolvedRecord.index[offset] : offset;
+      const ib = resolvedRecord.index ? resolvedRecord.index[offset + 1] : offset + 1;
+      const ic = resolvedRecord.index ? resolvedRecord.index[offset + 2] : offset + 2;
+      resolvedRecord.mesh.getVertexPosition(ia, va);
+      resolvedRecord.mesh.getVertexPosition(ib, vb);
+      resolvedRecord.mesh.getVertexPosition(ic, vc);
       THREE.Triangle.getNormal(va, vb, vc, normal);
-      normal.applyMatrix3(bestRecord.worldNormalMatrix).normalize();
+      normal.applyMatrix3(resolvedRecord.worldNormalMatrix).normalize();
       normal.transformDirection(groupInverse);
       return { p: bestPoint.clone(), n: normal.clone(), dist: bestDistance };
     },
   };
 }
 
-function makeProber(group, targets) {
+function makeProber(group: THREE.Group, targets: SurfaceMesh[]): SurfaceProber {
   const axisIndex = buildAxisSurfaceIndex(group, targets);
   const ray = new THREE.Raycaster();
   ray.far = 80;
@@ -1682,7 +1921,7 @@ function makeProber(group, targets) {
   const inv = new THREE.Matrix4();
   const nrm = new THREE.Vector3();
   const nm3 = new THREE.Matrix3();
-  function legacyCast(oLocal, dLocal) {
+  function legacyCast(oLocal: THREE.Vector3, dLocal: THREE.Vector3): SurfaceHit | null {
     group.updateWorldMatrix(true, false);
     inv.copy(group.matrixWorld).invert();
     orig.copy(oLocal).applyMatrix4(group.matrixWorld);
@@ -1701,7 +1940,7 @@ function makeProber(group, targets) {
   }
   const verify = typeof location !== 'undefined'
     && new URLSearchParams(location.search).has('decorprobe');
-  function cast(oLocal, dLocal) {
+  function cast(oLocal: THREE.Vector3, dLocal: THREE.Vector3): SurfaceHit | null {
     if (!axisIndex) return legacyCast(oLocal, dLocal);
     const fast = axisIndex.cast(oLocal, dLocal);
     if (verify) {
@@ -1719,9 +1958,9 @@ function makeProber(group, targets) {
     return fast;
   }
   return {
-    top(x, z, fromY) { return cast(new THREE.Vector3(x, fromY, z), new THREE.Vector3(0, -1, 0)); },
-    side(y, z, side, fromX) { return cast(new THREE.Vector3(fromX * side, y, z), new THREE.Vector3(-side, 0, 0)); },
-    zface(x, y, dirZ, fromZ) { return cast(new THREE.Vector3(x, y, fromZ), new THREE.Vector3(0, 0, dirZ)); },
+    top(x: number, z: number, fromY: number) { return cast(new THREE.Vector3(x, fromY, z), new THREE.Vector3(0, -1, 0)); },
+    side(y: number, z: number, side: number, fromX: number) { return cast(new THREE.Vector3(fromX * side, y, z), new THREE.Vector3(-side, 0, 0)); },
+    zface(x: number, y: number, dirZ: number, fromZ: number) { return cast(new THREE.Vector3(x, y, fromZ), new THREE.Vector3(0, 0, dirZ)); },
   };
 }
 
@@ -1729,8 +1968,16 @@ function makeProber(group, targets) {
 // rejects occupied/steep surfaces (this is the greeble de-dupe: an existing
 // searchlight/periscope in the footprint blows the spread and the slot walks
 // on). Returns { y, n, spread } or null.
-function seatProbe(prober, cx, cz, w, d, fromY, maxSpread = 0.16) {
-  const pts = [[0, 0], [-w * 0.4, -d * 0.4], [w * 0.4, -d * 0.4], [-w * 0.4, d * 0.4], [w * 0.4, d * 0.4]];
+function seatProbe(
+  prober: SurfaceProber,
+  cx: number,
+  cz: number,
+  w: number,
+  d: number,
+  fromY: number,
+  maxSpread = 0.16,
+): SurfaceSeat | null {
+  const pts: Array<[number, number]> = [[0, 0], [-w * 0.4, -d * 0.4], [w * 0.4, -d * 0.4], [-w * 0.4, d * 0.4], [w * 0.4, d * 0.4]];
   let top = -Infinity, bot = Infinity;
   let n = null;
   for (const [dx, dz] of pts) {
@@ -1744,7 +1991,7 @@ function seatProbe(prober, cx, cz, w, d, fromY, maxSpread = 0.16) {
 }
 
 // piece record for guard bookkeeping: local-frame AABB after placement.
-function placedBox(parts, pos, rot) {
+function placedBox(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler): THREE.Box3 {
   const bb = partsBBox(parts);
   const m = new THREE.Matrix4().compose(
     pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1),
@@ -1758,7 +2005,7 @@ function placedBox(parts, pos, rot) {
 }
 
 // per-part placed boxes (gun-guard granularity: no empty-corner false hits)
-function placedPartBoxes(parts, pos, rot) {
+function placedPartBoxes(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler): THREE.Box3[] {
   const m = new THREE.Matrix4().compose(
     pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1),
   );
@@ -1767,6 +2014,7 @@ function placedPartBoxes(parts, pos, rot) {
     p.geo.computeBoundingBox();
     const b = p.geo.boundingBox;
     const out = new THREE.Box3();
+    if (!b) return out;
     for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) {
       out.expandByPoint(v.set(x, y, z).applyMatrix4(m));
     }
@@ -1774,10 +2022,10 @@ function placedPartBoxes(parts, pos, rot) {
   });
 }
 
-function clonePartList(parts) {
+function clonePartList(parts: DecorPartList): DecorPartList {
   return parts.map((p) => ({ mat: p.mat, geo: p.geo.clone() }));
 }
-function disposePartList(parts) {
+function disposePartList(parts: DecorPartList): void {
   for (const p of parts) p.geo.dispose();
 }
 
@@ -1800,7 +2048,7 @@ function disposePartList(parts) {
  * @param {() => boolean} [a.isDestroyed] live-wreck guard (never dress a wreck)
  * @returns {?object} summary { pieces, tris, drawCalls, skipped } or null
  */
-export function attachTankDecorations(a) {
+export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary | null {
   const { root, hullG, turretG, spec, engineCtx, disposables = [], opts = {} } = a;
   try {
     if (!root || root.userData.__decorApplied) return null;
@@ -1839,14 +2087,17 @@ export function attachTankDecorations(a) {
       const bb = new THREE.Box3();
       const inv = new THREE.Matrix4();
       const m = new THREE.Matrix4();
-      const samples = [];
+      const samples: Array<[number, number]> = [];
       turretG.updateWorldMatrix(true, false);
       inv.copy(turretG.matrixWorld).invert();
       for (const o of turretTargets) {
         let underGun = false; // gun subtree pitches — the gun guard owns it
-        for (let p = o; p && p !== turretG; p = p.parent) if (p.name === 'rig_gun') { underGun = true; break; }
+        for (let p: THREE.Object3D | null = o; p && p !== turretG; p = p.parent) {
+          if (p.name === 'rig_gun') { underGun = true; break; }
+        }
         if (underGun) continue;
         if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        if (!o.geometry.boundingBox) continue;
         bb.copy(o.geometry.boundingBox);
         m.multiplyMatrices(inv, o.matrixWorld);
         for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) {
@@ -1874,12 +2125,12 @@ export function attachTankDecorations(a) {
     const boreLen = (armor.gunBarrel && armor.gunBarrel.lengthM) || 4;
     const boreR = ((armor.gunBarrel && armor.gunBarrel.radiusM) || 0.08) * 1.15 + 0.02;
     const boreReach = boreRho + boreLen * Math.cos(dep) + 0.2;
-    const boreYAt = (r) => boreY0 - Math.max(0, r - boreRho) * Math.tan(dep);
+    const boreYAt = (r: number) => boreY0 - Math.max(0, r - boreRho) * Math.tan(dep);
     // guards evolve as turret decor lands: baskets legally extend the bustle
     let sweepRLive = sweepR;
     let turretMinYLive = turretMinY;
 
-    const widthGuardOK = (bb, zExtra = 0) => {
+    const widthGuardOK = (bb: THREE.Box3, zExtra = 0) => {
       if (Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) > W / 2 + 0.048) return false;
       const zLim = dims.overallLengthM / 2 + 0.4 + zExtra;
       return bb.min.z > -zLim && bb.max.z < zLim;
@@ -1894,7 +2145,7 @@ export function attachTankDecorations(a) {
     const _gray = new THREE.Ray();
     const _ghit = new THREE.Vector3();
     const guardRay = new THREE.Raycaster();
-    const gunGuardOK = (boxes, seatY = null) => {
+    const gunGuardOK: GunGuard = (boxes, seatY = null) => {
       void seatY;
       // analytic quick-accept: every PART fully under the depressed bore cone
       let clear = true;
@@ -1948,7 +2199,8 @@ export function attachTankDecorations(a) {
       }
       return true;
     };
-    const sweepGuardOK = (bb) => {
+    gunGuardOK.lastYaw = null;
+    const sweepGuardOK = (bb: THREE.Box3) => {
       if (casemate) return true;
       // closest horizontal approach of the box to the yaw axis (edges count,
       // not just corners — a long cable's mid-span is its nearest point)
@@ -1972,20 +2224,22 @@ export function attachTankDecorations(a) {
     };
 
     // --- collision ledgers (hull & turret frames kept apart) ---------------
-    const placedHull = [];
-    const placedTurret = [];
-    const overlaps = (bb, ledger) => ledger.some((o) => bb.intersectsBox(o));
+    const placedHull: THREE.Box3[] = [];
+    const placedTurret: THREE.Box3[] = [];
+    const overlaps = (bb: THREE.Box3, ledger: THREE.Box3[]) =>
+      ledger.some((other) => bb.intersectsBox(other));
 
     // --- spare-wheel radius: measured off the real gear ---------------------
     let wheelR = 0.31;
     {
-      let best = null;
+      let best: number | null = null;
       const s = new THREE.Vector3();
       hullG.traverse((o) => {
-        if (!o.geometry) return;
-        const wheelish = o.isInstancedMesh || GEAR_NAME_RE.test(o.name || '');
+        if (!(o instanceof THREE.Mesh) || !o.geometry) return;
+        const wheelish = o instanceof THREE.InstancedMesh || GEAR_NAME_RE.test(o.name || '');
         if (!wheelish) return;
         if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        if (!o.geometry.boundingBox) return;
         o.geometry.boundingBox.getSize(s);
         const ext = [s.x, s.y, s.z].sort((p, q) => p - q);
         const r = (ext[1] + ext[2]) / 4;
@@ -1993,16 +2247,16 @@ export function attachTankDecorations(a) {
           if (!best || r > best) best = r;
         }
       });
-      if (best) wheelR = Math.min(0.45, best);
+      if (best !== null) wheelR = Math.min(0.45, best);
     }
 
     // --- deck landmarks ------------------------------------------------------
     const topFrom = H + 1.5;
-    const deckProbe = (x, z) => hullP.top(x, z, topFrom);
+    const deckProbe = (x: number, z: number) => hullP.top(x, z, topFrom);
     const sternZ = -L / 2;
     let rearDeckY = H * 0.6;
     {
-      const ys = [];
+      const ys: number[] = [];
       for (let i = 0; i <= 6; i++) {
         const z = sternZ + 0.2 + (i / 6) * Math.max(0.4, (pivot[2] - sweepR - 0.25) - sternZ - 0.3);
         const h = deckProbe(0, z);
@@ -2013,12 +2267,23 @@ export function attachTankDecorations(a) {
 
     // --- placement bookkeeping ----------------------------------------------
     const budget = { tris: 0, max: 3000 };
-    const buckets = { hull: new Map(), turret: new Map() };
-    const summary = { pieces: [], tris: 0, skipped: [] };
-    let basketAnchor = null; // set by turretRearFrame; used by onBasket packs
+    const buckets: Record<DecorFrame, Map<DecorMaterialKey, THREE.BufferGeometry[]>> = {
+      hull: new Map(),
+      turret: new Map(),
+    };
+    const summary: DecorSummary = { pieces: [], tris: 0, drawCalls: 0, skipped: [] };
+    let basketAnchor: BasketAnchor | null = null; // set by turretRearFrame; used by onBasket packs
 
     /** Commit one built kit at pos/rot under hull|turret. */
-    function commit(name, parts, frame, pos, rot, ledger, { allowOverlap = false, seatY = null, zExtra = 0 } = {}) {
+    function commit(
+      name: string,
+      parts: DecorPartList,
+      frame: DecorFrame,
+      pos: THREE.Vector3,
+      rot: THREE.Euler,
+      ledger: THREE.Box3[],
+      { allowOverlap = false, seatY = null, zExtra = 0 }: CommitOptions = {},
+    ): boolean {
       let tris = 0;
       for (const p of parts) tris += triCount(p.geo);
       if (budget.tris + tris > budget.max) { summary.skipped.push([name, 'budget']); disposePartList(parts); return false; }
@@ -2058,18 +2323,18 @@ export function attachTankDecorations(a) {
       for (const p of parts) {
         p.geo.applyMatrix4(m);
         if (!map.has(p.mat)) map.set(p.mat, []);
-        map.get(p.mat).push(p.geo);
+        map.get(p.mat)!.push(p.geo);
       }
       summary.pieces.push({ kit: name, frame, tris });
       return true;
     }
 
-    const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
     const E = (rx = 0, ry = 0, rz = 0) => new THREE.Euler(rx, ry, rz);
 
     // fender line: walk inboard from the width guard until a fender-height
     // top face answers (sponson/fender tops live in [0.35H, 0.85H])
-    const fenderX = (side) => {
+    const fenderX = (side: number): number | null => {
       // pass 1: true track-guard band (low fenders); pass 2: sponson roofline
       for (const [y0, y1] of [[H * 0.32, H * 0.62], [H * 0.62, H * 0.86]]) {
         for (const fx of [W / 2 - 0.14, W / 2 - 0.22, W / 2 - 0.30]) {
@@ -2082,7 +2347,7 @@ export function attachTankDecorations(a) {
       return null;
     };
 
-    const SLOTS = {
+    const SLOTS: Record<string, SlotPlacer> = {
       rearDeck(args, parts, name) {
         const bb = partsBBox(parts);
         const w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z;
@@ -2101,7 +2366,8 @@ export function attachTankDecorations(a) {
         return false;
       },
       fender(args, parts, name) {
-        const fx = fenderX(args.side);
+        const side = args.side ?? 1;
+        const fx = fenderX(side);
         if (fx === null) { disposePartList(parts); return false; }
         const bb = partsBBox(parts);
         // auto-orient: the LONG axis always runs fore-aft along the fender
@@ -2109,10 +2375,10 @@ export function attachTankDecorations(a) {
         const w = rot90 ? bb.max.z - bb.min.z : bb.max.x - bb.min.x;   // across
         const d = rot90 ? bb.max.x - bb.min.x : bb.max.z - bb.min.z;   // along
         const z = (args.zFrac ?? 0) * L;
-        const seat = seatProbe(hullP, args.side * fx, z, Math.min(w, 0.34), Math.min(d, 0.4), topFrom, 0.26);
+        const seat = seatProbe(hullP, side * fx, z, Math.min(w, 0.34), Math.min(d, 0.4), topFrom, 0.26);
         if (!seat) { disposePartList(parts); return false; }
         const yaw = (rot90 ? Math.PI / 2 : 0) + (rng() - 0.5) * 0.08;
-        return commit(name, parts, 'hull', V(args.side * fx, seat.y - 0.012, z), E(0, yaw, 0), placedHull, { seatY: seat.y });
+        return commit(name, parts, 'hull', V(side * fx, seat.y - 0.012, z), E(0, yaw, 0), placedHull, { seatY: seat.y });
       },
       glacis(args, parts, name) {
         const x = (args.side || 0) * W * (casemate ? 0.22 : 0.16);
@@ -2156,11 +2422,12 @@ export function attachTankDecorations(a) {
         return false;
       },
       hullSideTop(args, parts, name) {
-        const fx = fenderX(args.side) ?? (W / 2 - 0.2);
+        const side = args.side ?? 1;
+        const fx = fenderX(side) ?? (W / 2 - 0.2);
         for (const z0 of [0.1, -0.4]) {
-          const seat = seatProbe(hullP, args.side * fx, z0, 0.2, 1.2, topFrom, 0.3);
+          const seat = seatProbe(hullP, side * fx, z0, 0.2, 1.2, topFrom, 0.3);
           if (!seat) continue;
-          if (commit(name, clonePartList(parts), 'hull', V(args.side * fx, seat.y - 0.004, z0 * 0.5),
+          if (commit(name, clonePartList(parts), 'hull', V(side * fx, seat.y - 0.004, z0 * 0.5),
             E(0, Math.PI / 2, 0), placedHull, { seatY: seat.y })) {
             disposePartList(parts);
             return true;
@@ -2170,10 +2437,10 @@ export function attachTankDecorations(a) {
         // (the classic Tiger cable line) — under the roof, inside the width
         for (const yf of [0.6, 0.52]) {
           const y = H * yf;
-          const h = hullP.side(y, 0, args.side, W / 2 + 1);
+          const h = hullP.side(y, 0, side, W / 2 + 1);
           if (!h || Math.abs(h.n.x) < 0.55) continue;
-          if (commit(name, clonePartList(parts), 'hull', V(h.p.x + args.side * 0.012, y, 0),
-            E(0, Math.PI / 2, args.side * 1.35), placedHull)) {
+          if (commit(name, clonePartList(parts), 'hull', V(h.p.x + side * 0.012, y, 0),
+            E(0, Math.PI / 2, side * 1.35), placedHull)) {
             disposePartList(parts);
             return true;
           }
@@ -2209,14 +2476,15 @@ export function attachTankDecorations(a) {
           E(), placedHull, { seatY: y, zExtra: 0.35 });
       },
       hullSide(args, parts, name) {
+        const side = args.side ?? 1;
         // plate flat against the upper hull side (spare tracks, patches)
         const z = (args.zFrac ?? 0) * L;
         for (const yf of [0.55, 0.62, 0.48]) {
           const y = H * yf;
-          const h = hullP.side(y, z, args.side, W / 2 + 1);
+          const h = hullP.side(y, z, side, W / 2 + 1);
           if (!h || Math.abs(h.n.x) < 0.7) continue;
-          if (commit(name, clonePartList(parts), 'hull', V(h.p.x + args.side * 0.006, y, z),
-            E(0, args.side > 0 ? Math.PI / 2 : -Math.PI / 2, 0), placedHull)) {
+          if (commit(name, clonePartList(parts), 'hull', V(h.p.x + side * 0.006, y, z),
+            E(0, side > 0 ? Math.PI / 2 : -Math.PI / 2, 0), placedHull)) {
             disposePartList(parts);
             return true;
           }
@@ -2317,7 +2585,7 @@ export function attachTankDecorations(a) {
           const x = xBase + dx, z = zBase + dz;
           if (Math.abs(x) < 0.24 && z > 0 && !casemate) continue; // gun corridor
           const seat = seatProbe(turP, x, z, Math.min(w, 0.42), Math.min(d, 0.42), 3.5, spread);
-          if (!seat || seat.n.y < minNy) continue;
+          if (!seat || !seat.n || seat.n.y < minNy) continue;
           if (commit(name, parts, 'turret', V(x, seat.y - 0.008, z), E(0, (rng() - 0.5) * 0.2, 0), placedTurret)) return true;
         }
         disposePartList(parts);
@@ -2374,15 +2642,16 @@ export function attachTankDecorations(a) {
         return false;
       },
       turretSide(args, parts, name) {
+        const side = args.side ?? 1;
         const bb = partsBBox(parts);
         const out = (bb.max.z - bb.min.z) * 0.35;
         for (const z of [-0.2, -0.45, 0.05]) {
           for (const yf of [0.35, 0.5]) {
             const y = Math.max(0.18, pivotTopY() * yf);
-            const h = turP.side(y, z, args.side, W / 2 + 1);
+            const h = turP.side(y, z, side, W / 2 + 1);
             if (!h || Math.abs(h.n.x) < 0.55) continue;
-            if (commit(name, clonePartList(parts), 'turret', V(h.p.x + args.side * out * 0.3, y - 0.06, z),
-              E(0, args.side > 0 ? Math.PI / 2 : -Math.PI / 2, (rng() - 0.5) * 0.1), placedTurret)) {
+            if (commit(name, clonePartList(parts), 'turret', V(h.p.x + side * out * 0.3, y - 0.06, z),
+              E(0, side > 0 ? Math.PI / 2 : -Math.PI / 2, (rng() - 0.5) * 0.1), placedTurret)) {
               disposePartList(parts);
               return true;
             }
@@ -2392,12 +2661,13 @@ export function attachTankDecorations(a) {
         return false;
       },
       turretSidePlate(args, parts, name) {
+        const side = args.side ?? 1;
         for (const z of [0.05, -0.25]) {
           const y = Math.max(0.2, pivotTopY() * 0.45);
-          const h = turP.side(y, z, args.side, W / 2 + 1);
+          const h = turP.side(y, z, side, W / 2 + 1);
           if (!h || Math.abs(h.n.x) < 0.6) continue;
-          if (commit(name, clonePartList(parts), 'turret', V(h.p.x + args.side * 0.035, y, z),
-            E(0, args.side > 0 ? Math.PI / 2 : -Math.PI / 2, 0), placedTurret)) {
+          if (commit(name, clonePartList(parts), 'turret', V(h.p.x + side * 0.035, y, z),
+            E(0, side > 0 ? Math.PI / 2 : -Math.PI / 2, 0), placedTurret)) {
             disposePartList(parts);
             return true;
           }
@@ -2426,8 +2696,8 @@ export function attachTankDecorations(a) {
     };
 
     // turret roof height above the pivot (probed once, cached)
-    let _pivotTopY = null;
-    function pivotTopY() {
+    let _pivotTopY: number | null = null;
+    function pivotTopY(): number {
       if (_pivotTopY !== null) return _pivotTopY;
       const h = seatProbe(turP, 0, -Math.max(0.2, sweepR * 0.3), 0.3, 0.3, 3.5, 0.5)
         || seatProbe(turP, 0, 0, 0.3, 0.3, 3.5, 0.6);
@@ -2446,7 +2716,7 @@ export function attachTankDecorations(a) {
       const kitFn = DECOR_KITS[row.kit];
       const slotFn = SLOTS[row.slot[0]];
       if (!kitFn || !slotFn) continue;
-      let parts;
+      let parts: DecorPartList;
       try {
         const localRng = mulberry32(fnv1a(`${spec.id}:${row.kit}:${row.slot[0]}`) ^ jitterSeed);
         const v = { ...(row.v || {}) };
@@ -2461,7 +2731,7 @@ export function attachTankDecorations(a) {
         // miss (no anchor surface answered) — record it so nothing hides
         if (!ok && summary.skipped.length === before) summary.skipped.push([row.kit, 'probe']);
       } catch (e) {
-        summary.skipped.push([row.kit, `slot:${e.message}`]);
+        summary.skipped.push([row.kit, `slot:${errorMessage(e)}`]);
         try { disposePartList(parts); } catch (_) { /* already consumed */ }
       }
     }
@@ -2499,14 +2769,14 @@ export function attachTankDecorations(a) {
       parent.add(g);
       g.userData.combatHitboxRole = 'equipment';
     }
-    for (const m of Object.values(mats.all())) disposables.push(m);
+    for (const m of Object.values(mats.all())) if (m) disposables.push(m);
 
     summary.tris = budget.tris;
     summary.drawCalls = drawCalls;
     root.userData.__decorSummary = summary;
     return summary;
   } catch (e) {
-    try { console.warn(`[decorations] ${spec && spec.id}: attach failed —`, e.message); } catch (_) { /* noop */ }
+    try { console.warn(`[decorations] ${spec.id}: attach failed —`, errorMessage(e)); } catch (_) { /* noop */ }
     return null;
   }
 }

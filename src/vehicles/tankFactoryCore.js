@@ -26,7 +26,7 @@ import {
 // createTank (see the seam near the GLB-swap block). Skipped for
 // proceduralOnly builds and metrology stub contexts so the geometry gate and
 // parity boards keep measuring bare silhouettes.
-import { attachTankDecorations } from './decorations.js';
+import { attachTankDecorations } from './decorations.ts';
 // effects_combat r5 ANIMATION CLOCK: the self-timed visual timelines (gun
 // recuperator, turret-pop arc, wreck char/ember cooldown) now age against
 // the shared fx clock — see src/fx/clock.ts. Live play is identical (the
@@ -8174,7 +8174,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   gunG.rotation.x = 0;
   if (P.gear) P.gear.update(0, 0);
 
-  // ---- DECORATION SYSTEM seam (src/vehicles/decorations.js) ---------------
+  // ---- DECORATION SYSTEM seam (src/vehicles/decorations.ts) ---------------
   // Cosmetic stowage/fittings under rig_decor_hull / rig_decor_turret.
   // HARD-SKIPPED inside attachTankDecorations for proceduralOnly builds and
   // for metrology stub ctxs (geometry gate / shaded-parity boards keep
