@@ -1,8 +1,9 @@
-// Pure family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
+// Strictly typed family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
+import { KIT as UNTYPED_KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import {
   loftHull,
   meshDome,
@@ -24,17 +25,140 @@ import {
   ruShtora,
 } from './russia.ts';
 
+type Vec2Tuple = readonly [number, number];
+type Vec3Tuple = readonly [number, number, number];
+type MutableVec3 = [number, number, number];
+type GeometryScale = number | readonly number[];
+type WeldedStation = readonly [
+  z: number, y0: number, y1: number, xl: number, xr: number,
+  xbl: number, xbr: number, xtl: number, xtr: number,
+];
+type CastLevel = readonly [y: number, xl: number, xr: number];
+type CastStation = readonly [z: number, levels: readonly CastLevel[]];
+
+interface T90Materials extends Record<string, THREE.MeshStandardMaterial> {
+  readonly dark: THREE.MeshStandardMaterial;
+  readonly hull: THREE.MeshStandardMaterial;
+}
+
+interface T90BuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly mats: T90Materials;
+  readonly disposables: Array<THREE.BufferGeometry | THREE.Material>;
+  readonly spec: {
+    readonly id: string;
+    readonly visual: { readonly number?: string };
+    readonly armor: { readonly gunBarrel: { lengthM: number } };
+  };
+  readonly rng: () => number;
+  readonly q?: boolean;
+  topY?: number;
+  _shtoraRed?: THREE.MeshStandardMaterial;
+  gear?: {
+    contactGeom?: { halfWidM: number };
+    trackHitbox?: Array<{ x0: number; x1: number }>;
+  };
+  postAssemble?: (context: { hullG: THREE.Group }) => void;
+  add(
+    slot: string,
+    geometry: THREE.BufferGeometry,
+    x?: number,
+    y?: number,
+    z?: number,
+    rotationX?: number,
+    rotationY?: number,
+    rotationZ?: number,
+    scale?: GeometryScale,
+  ): void;
+  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addCupola(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addEquipment(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addHatch(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  clear(...slots: string[]): void;
+  destructibleCluster(label: string, build: () => void): void;
+  visualEraCluster(label: string, owner: 'hull' | 'turret', build: () => void): void;
+  decal(
+    owner: 'hull' | 'turret',
+    kind: string,
+    label: string | null,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): void;
+  offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+  scaleBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+  forEachBucketPart(
+    slots: readonly string[],
+    visit: (geometry: THREE.BufferGeometry, bounds: THREE.Box3) => void,
+  ): void;
+}
+
+const KIT = UNTYPED_KIT;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object';
+}
+
+function isT90Builder(value: unknown): value is T90BuilderPort {
+  if (!isRecord(value)) return false;
+  return value.hullG instanceof THREE.Group
+    && value.turretG instanceof THREE.Group
+    && value.gunG instanceof THREE.Group
+    && isRecord(value.mats)
+    && isRecord(value.spec)
+    && Array.isArray(value.disposables)
+    && typeof value.rng === 'function'
+    && typeof value.add === 'function'
+    && typeof value.addGunExtra === 'function'
+    && typeof value.addGunExtraDark === 'function'
+    && typeof value.addCupola === 'function'
+    && typeof value.addEquipment === 'function'
+    && typeof value.addHatch === 'function'
+    && typeof value.addMudguard === 'function'
+    && typeof value.clear === 'function'
+    && typeof value.destructibleCluster === 'function'
+    && typeof value.visualEraCluster === 'function'
+    && typeof value.decal === 'function'
+    && typeof value.offsetBuckets === 'function'
+    && typeof value.scaleBuckets === 'function'
+    && typeof value.forEachBucketPart === 'function';
+}
+
+function requireT90Builder(value: unknown): T90BuilderPort {
+  if (!isT90Builder(value)) {
+    throw new TypeError('T-90 profile requires the complete procedural builder contract');
+  }
+  return value;
+}
+
+function t90Profile(build: (builder: T90BuilderPort) => void) {
+  return { build: (builder: unknown): void => build(requireT90Builder(builder)) };
+}
+
 // Faceted turret shell with a source-defined lower ring.  The top ring and
 // plan outline use the same construction as KIT.polyTurret; only the lower
 // y-value may vary along the perimeter.  Edge breakpoints preserve the exact
 // straight plan edges while allowing a short, real underside step.
-function polyTurretVariableBase(plan, h, flare, inset, baseAtZ, breakZs = []) {
+function polyTurretVariableBase(
+  plan: readonly Vec2Tuple[],
+  h: number,
+  flare: number,
+  inset: number,
+  baseAtZ: (z: number) => number,
+  breakZs: readonly number[] = [],
+): THREE.BufferGeometry {
   const n = plan.length;
   const cx = plan.reduce((s, p) => s + p[0], 0) / n;
   const cz = plan.reduce((s, p) => s + p[1], 0) / n;
-  const ring = (scale, y) => plan.map(([x, z]) => [cx + (x - cx) * scale, y, cz + (z - cz) * scale]);
+  const ring = (scale: number, y: number): MutableVec3[] => plan.map(([x, z]) => (
+    [cx + (x - cx) * scale, y, cz + (z - cz) * scale]
+  ));
   const b0 = ring(flare, 0), t0 = ring(inset, h);
-  const b = [], t = [];
+  const b: MutableVec3[] = [], t: MutableVec3[] = [];
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
     const cuts = [0];
@@ -46,14 +170,16 @@ function polyTurretVariableBase(plan, h, flare, inset, baseAtZ, breakZs = []) {
     }
     cuts.sort((a, b2) => a - b2);
     for (const q of cuts) {
-      const lerp = (a, c) => a + (c - a) * q;
+      const lerp = (a: number, c: number): number => a + (c - a) * q;
       const bz = lerp(b0[i][2], b0[j][2]);
       b.push([lerp(b0[i][0], b0[j][0]), baseAtZ(bz), bz]);
       t.push([lerp(t0[i][0], t0[j][0]), h, lerp(t0[i][2], t0[j][2])]);
     }
   }
-  const positions = [];
-  const tri = (a, b2, c) => positions.push(...a, ...b2, ...c);
+  const positions: number[] = [];
+  const tri = (a: Vec3Tuple, b2: Vec3Tuple, c: Vec3Tuple): void => {
+    positions.push(...a, ...b2, ...c);
+  };
   for (let i = 0; i < b.length; i++) {
     const j = (i + 1) % b.length;
     const mx = (b[i][0] + b[j][0]) / 2 - cx, mz = (b[i][2] + b[j][2]) / 2 - cz;
@@ -61,7 +187,7 @@ function polyTurretVariableBase(plan, h, flare, inset, baseAtZ, breakZs = []) {
     if (ex * mz - ez * mx > 0) { tri(b[i], b[j], t[j]); tri(b[i], t[j], t[i]); }
     else { tri(b[j], b[i], t[i]); tri(b[j], t[i], t[j]); }
   }
-  const c = [cx, h, cz];
+  const c: MutableVec3 = [cx, h, cz];
   for (let i = 0; i < t.length; i++) {
     const j = (i + 1) % t.length;
     const ny = (t[j][2] - t[i][2]) * (c[0] - t[i][0]) - (t[j][0] - t[i][0]) * (c[2] - t[i][2]);
@@ -74,17 +200,19 @@ function polyTurretVariableBase(plan, h, flare, inset, baseAtZ, breakZs = []) {
   return geometry;
 }
 
-function weldedStationLoft(stations) {
-  const positions = [];
-  const tri = (a, b, c, expect) => {
+function weldedStationLoft(stations: readonly WeldedStation[]): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const tri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple, expect: Vec3Tuple): void => {
     const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
     const ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
     const n = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
     if (n[0] * expect[0] + n[1] * expect[1] + n[2] * expect[2] < 0) positions.push(...a, ...c, ...b);
     else positions.push(...a, ...b, ...c);
   };
-  const quad = (a, b, c, d, expect) => { tri(a, b, c, expect); tri(a, c, d, expect); };
-  const rings = stations.map(([z, y0, y1, xl, xr, xbl, xbr, xtl, xtr]) => {
+  const quad = (
+    a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple, d: Vec3Tuple, expect: Vec3Tuple,
+  ): void => { tri(a, b, c, expect); tri(a, c, d, expect); };
+  const rings: MutableVec3[][][] = stations.map(([z, y0, y1, xl, xr, xbl, xbr, xtl, xtr]) => {
     const ym = y0 + (y1 - y0) * 0.46;
     return [
       [[xbl, y0, z], [xbr, y0, z]],
@@ -101,7 +229,7 @@ function weldedStationLoft(stations) {
     quad(a[2][0], a[2][1], b[2][1], b[2][0], [0, 1, 0]);
     quad(a[0][0], b[0][0], b[0][1], a[0][1], [0, -1, 0]);
   }
-  const cap = (r, expect) => {
+  const cap = (r: MutableVec3[][], expect: Vec3Tuple): void => {
     for (let k = 0; k < 2; k++) quad(r[k][0], r[k][1], r[k + 1][1], r[k + 1][0], expect);
   };
   // The loft is used in both ascending- and descending-Z station order.
@@ -122,17 +250,24 @@ function weldedStationLoft(stations) {
 // upper cheek and crown widths at every fore/aft station, including real
 // left/right asymmetry.  It is intentionally faceted at the large foundry
 // breaks while vertex normals keep each authored armor plane coherent.
-function castSectionLoft(stations, { faceted = false } = {}) {
-  const positions = [];
-  const tri = (a, b, c, expect) => {
+function castSectionLoft(
+  stations: readonly CastStation[],
+  { faceted = false }: { faceted?: boolean } = {},
+): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const tri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple, expect: Vec3Tuple): void => {
     const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
     const ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
     const n = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
     if (n[0] * expect[0] + n[1] * expect[1] + n[2] * expect[2] < 0) positions.push(...a, ...c, ...b);
     else positions.push(...a, ...b, ...c);
   };
-  const quad = (a, b, c, d, expect) => { tri(a, b, c, expect); tri(a, c, d, expect); };
-  const rings = stations.map(([z, levels]) => levels.map(([y, xl, xr]) => [[xl, y, z], [xr, y, z]]));
+  const quad = (
+    a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple, d: Vec3Tuple, expect: Vec3Tuple,
+  ): void => { tri(a, b, c, expect); tri(a, c, d, expect); };
+  const rings: MutableVec3[][][] = stations.map(([z, levels]) => (
+    levels.map(([y, xl, xr]) => [[xl, y, z], [xr, y, z]])
+  ));
   const levelCount = rings[0].length;
   for (let i = 0; i < rings.length - 1; i++) {
     const a = rings[i], b = rings[i + 1];
@@ -144,7 +279,7 @@ function castSectionLoft(stations, { faceted = false } = {}) {
     quad(a[0][0], b[0][0], b[0][1], a[0][1], [0, -1, 0]);
   }
   const zDirection = Math.sign(stations[stations.length - 1][0] - stations[0][0]) || 1;
-  const cap = (r, expect) => {
+  const cap = (r: MutableVec3[][], expect: Vec3Tuple): void => {
     for (let k = 0; k < levelCount - 1; k++) quad(r[k][0], r[k][1], r[k + 1][1], r[k + 1][0], expect);
   };
   cap(rings[0], [0, 0, -zDirection]);
@@ -162,7 +297,8 @@ function castSectionLoft(stations, { faceted = false } = {}) {
   // Weld coincident section vertices before computing normals.  This rounds
   // the transition along authored cast stations when a softer casting is
   // explicitly wanted.
-  const unique = [], indices = [], indexByPosition = new Map();
+  const unique: number[] = [], indices: number[] = [];
+  const indexByPosition = new Map<string, number>();
   for (let i = 0; i < positions.length; i += 3) {
     const x = positions[i], y = positions[i + 1], z = positions[i + 2];
     const key = `${x.toFixed(6)},${y.toFixed(6)},${z.toFixed(6)}`;
@@ -182,7 +318,12 @@ function castSectionLoft(stations, { faceted = false } = {}) {
   return geometry;
 }
 
-function addT90RadialArmorBelt(P, rings, sz, { y = 0.16, cz = 0, scale = 1 } = {}) {
+function addT90RadialArmorBelt(
+  P: T90BuilderPort,
+  rings: readonly (readonly number[])[],
+  sz: number,
+  { y = 0.16, cz = 0, scale = 1 }: { y?: number; cz?: number; scale?: number } = {},
+): void {
   const { box } = KIT;
   const A = ringSkin(rings, y);
   const B = A * sz;
@@ -209,10 +350,15 @@ function addT90RadialArmorBelt(P, rings, sz, { y = 0.16, cz = 0, scale = 1 } = {
   }
 }
 
-function addT90CastFlankCassettes(P, { y = 0.24, compact = false, raisedLeftRear = false } = {}) {
+function addT90CastFlankCassettes(
+  P: T90BuilderPort,
+  { y = 0.24, compact = false, raisedLeftRear = false }: {
+    y?: number; compact?: boolean; raisedLeftRear?: boolean;
+  } = {},
+): void {
   const { box } = KIT;
   const k = compact ? 0.94 : 1;
-  const stations = [
+  const stations: readonly (readonly [number, number, number, number, number, number])[] = [
     // x, z, width, height, depth, plan cant
     [1.39, 0.24, 0.22, 0.34, 0.38, 0.08],
     [1.46, -0.14, 0.20, 0.35, 0.34, 0.03],
@@ -241,7 +387,7 @@ function addT90CastFlankCassettes(P, { y = 0.24, compact = false, raisedLeftRear
 
 }
 
-function addT90AAsymmetricBustleBins(P) {
+function addT90AAsymmetricBustleBins(P: T90BuilderPort): void {
   const { box } = KIT;
   // The Xarchenko reference carries a long, low vehicle-right bustle run
   // beyond the last cast-side cassette.  Three separate bins share one
@@ -264,7 +410,7 @@ function addT90AAsymmetricBustleBins(P) {
   P.add('turretDark', box(0.22, 0.20, 0.025), side * 1.515, 0.14, -2.012);
 }
 
-function addT90ACastPerimeterFlanges(P) {
+function addT90ACastPerimeterFlanges(P: T90BuilderPort): void {
   // Measured low perimeter ledges beneath the side equipment.  These are
   // solid casting continuations, not proxy silhouettes: each inner edge is
   // buried in the dome/cassette carrier and each outer edge follows the
@@ -290,7 +436,10 @@ function addT90ACastPerimeterFlanges(P) {
   P.add('turretDark', KIT.box(0.20, 0.018, 0.035), -1.45, 0.268, 0.65, 0, 0.34, 0);
 }
 
-function addT90CastSightCrown(P, { y0 = 0.72, forwardHead = true } = {}) {
+function addT90CastSightCrown(
+  P: T90BuilderPort,
+  { y0 = 0.72, forwardHead = true }: { y0?: number; forwardHead?: boolean } = {},
+): void {
   // Tapered ESSA head: its full-size footprint sinks into the existing
   // housing, then steps inward toward the sensor cap.  This replaces the
   // visual read of another loose roof box with one supported instrument.
@@ -318,10 +467,17 @@ function addT90CastSightCrown(P, { y0 = 0.72, forwardHead = true } = {}) {
   }
 }
 
-function addT90SternFaceKit(P, { z, y, width = 1.55, scaleY = 1 }) {
+function addT90SternFaceKit(
+  P: T90BuilderPort,
+  { z, y, width = 1.55, scaleY = 1 }: {
+    z: number; y: number; width?: number; scaleY?: number;
+  },
+): void {
   const { box, cylZ, torus } = KIT;
   const sy = scaleY;
-  const squashY = (geo) => sy === 1 ? geo : KIT.xform(geo, 0, 0, 0, 0, 0, 0, [1, sy, 1]);
+  const squashY = (geo: THREE.BufferGeometry): THREE.BufferGeometry => (
+    sy === 1 ? geo : KIT.xform(geo, 0, 0, 0, 0, 0, 0, [1, sy, 1])
+  );
   for (let i = 0; i < 5; i++) {
     P.add('hullDetail', box(width / 5 - 0.035, 0.026 * sy, 0.012), -width * 0.4 + i * width * 0.2, y, z);
     P.add('hullDetail', box(width / 5 - 0.035, 0.026 * sy, 0.012), -width * 0.4 + i * width * 0.2, y - 0.11 * sy, z);
@@ -352,7 +508,10 @@ function addT90SternFaceKit(P, { z, y, width = 1.55, scaleY = 1 }) {
 // Keeping the outline, variable lower break, rear casting shelf and crown in
 // one helper prevents the T-90A from drifting back to a rotational dome while
 // leaving each variant free to author its own armor and combat equipment.
-function addT90SMTurretFoundation(P, { position = [0, 1.40, 0.09] } = {}) {
+function addT90SMTurretFoundation(
+  P: T90BuilderPort,
+  { position = [0, 1.40, 0.09] }: { position?: Vec3Tuple } = {},
+): { tw: number; f: number; b: number; h: number } {
   const { box } = KIT;
   P.turretG.position.set(...position);
   const tw = 1.55, f = 1.40, b = -0.80, h = 0.515;
@@ -376,7 +535,7 @@ function addT90SMTurretFoundation(P, { position = [0, 1.40, 0.09] } = {}) {
 // jets without inflating the base hull hit shell, while paired buried brackets
 // make the visual load path into the fender explicit.  Each T-90 family member
 // supplies its own hull stations instead of inheriting Tagil's dimensions.
-function addT90RearQuarterSlatCage(P, {
+function addT90RearQuarterSlatCage(P: T90BuilderPort, {
   variant,
   originalSkirtRearZ,
   originalSkirtFrontZ,
@@ -390,7 +549,21 @@ function addT90RearQuarterSlatCage(P, {
   horizontalRails = 6,
   verticalStiles = 7,
   bracketStations = 4,
-}) {
+}: {
+  variant: string;
+  originalSkirtRearZ: number;
+  originalSkirtFrontZ: number;
+  solidSkirtRearZ: number;
+  cageRearZ?: number;
+  cageFrontZ?: number;
+  xInner: number;
+  xOuter: number;
+  yBottom: number;
+  yTop: number;
+  horizontalRails?: number;
+  verticalStiles?: number;
+  bracketStations?: number;
+}): void {
   const { box } = KIT;
   const cageDepth = cageFrontZ - cageRearZ;
   const cageHeight = yTop - yBottom;
@@ -466,29 +639,43 @@ function addT90RearQuarterSlatCage(P, {
 // taper and stern break even when their installed ride heights differ. The
 // caller-owned Y offset lets the later assembly pass establish that datum
 // without forking the actual hull shape again.
-const T90_FAMILY_HULL_PROFILE = Object.freeze({
-  deck: Object.freeze([[-3.43, 1.35], [-3.20, 1.47], [-3.00, 1.52], [-2.55, 1.545], [0.95, 1.545], [1.40, 1.50], [1.75, 1.46], [2.30, 1.40], [2.90, 1.26], [3.43, 1.04]]),
-  belly: Object.freeze([[-3.43, 1.05], [-3.36, 0.86], [-3.10, 0.72], [-2.62, 0.48], [-2.40, 0.44], [2.45, 0.44], [2.80, 0.56], [3.10, 0.71], [3.43, 0.82]]),
-  wUp: Object.freeze([[-3.43, 1.02], [-3.09, 1.30], [-2.96, 1.60], [2.95, 1.60], [3.16, 1.32], [3.43, 0.60]]),
-  wLo: Object.freeze([[-3.43, 0.64], [-2.95, 0.88], [-2.30, 0.94], [2.35, 0.94], [2.85, 0.88], [3.43, 0.64]]),
-  sponsonY: Object.freeze([[-3.43, 1.22], [-2.90, 1.22], [-2.82, 1.40], [-2.05, 1.40], [-1.80, 1.22], [2.42, 1.22], [3.43, 1.22]]),
+const T90_FAMILY_HULL_PROFILE: Readonly<{
+  deck: readonly Vec2Tuple[];
+  belly: readonly Vec2Tuple[];
+  wUp: readonly Vec2Tuple[];
+  wLo: readonly Vec2Tuple[];
+  sponsonY: readonly Vec2Tuple[];
+}> = Object.freeze({
+  deck: Object.freeze([[-3.43, 1.35], [-3.20, 1.47], [-3.00, 1.52], [-2.55, 1.545], [0.95, 1.545], [1.40, 1.50], [1.75, 1.46], [2.30, 1.40], [2.90, 1.26], [3.43, 1.04]] as const),
+  belly: Object.freeze([[-3.43, 1.05], [-3.36, 0.86], [-3.10, 0.72], [-2.62, 0.48], [-2.40, 0.44], [2.45, 0.44], [2.80, 0.56], [3.10, 0.71], [3.43, 0.82]] as const),
+  wUp: Object.freeze([[-3.43, 1.02], [-3.09, 1.30], [-2.96, 1.60], [2.95, 1.60], [3.16, 1.32], [3.43, 0.60]] as const),
+  wLo: Object.freeze([[-3.43, 0.64], [-2.95, 0.88], [-2.30, 0.94], [2.35, 0.94], [2.85, 0.88], [3.43, 0.64]] as const),
+  sponsonY: Object.freeze([[-3.43, 1.22], [-2.90, 1.22], [-2.82, 1.40], [-2.05, 1.40], [-1.80, 1.22], [2.42, 1.22], [3.43, 1.22]] as const),
 });
 
-function addT90FamilyHull(P, {
+function addT90FamilyHull(P: T90BuilderPort, {
   yOffset = 0,
   sponsonYOffset = yOffset,
   sponsonFloorY = null,
   receiptKey = 't90FamilyHullFormReceipt',
-} = {}) {
-  const shift = (stations) => stations.map(([z, y]) => [z, y + yOffset]);
-  const sponsonY = Number.isFinite(sponsonFloorY)
+}: {
+  yOffset?: number;
+  sponsonYOffset?: number;
+  sponsonFloorY?: number | null;
+  receiptKey?: string;
+} = {}): void {
+  const shift = (stations: readonly Vec2Tuple[]): Vec2Tuple[] => (
+    stations.map(([z, y]) => [z, y + yOffset])
+  );
+  const hasFlatSponson = sponsonFloorY !== null && Number.isFinite(sponsonFloorY);
+  const sponsonY: number | Vec2Tuple[] = hasFlatSponson
     ? sponsonFloorY
-    : T90_FAMILY_HULL_PROFILE.sponsonY.map(([z, y]) => [z, y + sponsonYOffset]);
+    : T90_FAMILY_HULL_PROFILE.sponsonY.map(([z, y]): Vec2Tuple => [z, y + sponsonYOffset]);
   loftHull(P, {
     deck: shift(T90_FAMILY_HULL_PROFILE.deck),
     belly: shift(T90_FAMILY_HULL_PROFILE.belly),
-    wUp: T90_FAMILY_HULL_PROFILE.wUp.map(([z, x]) => [z, x]),
-    wLo: T90_FAMILY_HULL_PROFILE.wLo.map(([z, x]) => [z, x]),
+    wUp: T90_FAMILY_HULL_PROFILE.wUp.map(([z, x]): Vec2Tuple => [z, x]),
+    wLo: T90_FAMILY_HULL_PROFILE.wLo.map(([z, x]): Vec2Tuple => [z, x]),
     // The concealed sponson floor is a mechanical clearance surface, not a
     // visible family-outline station. Proryv's later whole-hull ride lift
     // compensates its visible -200 mm construction offset, but its taller
@@ -519,7 +706,7 @@ function addT90FamilyHull(P, {
 // remote mount instead of being scattered between a sight tower and one or
 // more hand-served pintles. Only the buried race/foundation is structural;
 // sensors and weapon fittings stay in equipment buckets.
-function addT90AutomatedCommanderStation(P, {
+function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   x,
   z,
   seatY,
@@ -530,10 +717,21 @@ function addT90AutomatedCommanderStation(P, {
   weaponYaw = 0,
   weaponName,
   receiptKey,
-}) {
+}: {
+  x: number;
+  z: number;
+  seatY: number;
+  yaw?: number;
+  scale?: number;
+  heightScale?: number;
+  weaponScale?: number;
+  weaponYaw?: number;
+  weaponName: string;
+  receiptKey: string;
+}): THREE.Group {
   const { box, cylY, torus } = KIT;
-  const fit = (value) => value * scale;
-  const fitY = (value) => value * scale * heightScale;
+  const fit = (value: number): number => value * scale;
+  const fitY = (value: number): number => value * scale * heightScale;
   const raceBottomY = seatY;
   const raceTopY = seatY + fitY(0.24);
   const foundationTopY = raceTopY + fitY(0.15);
@@ -610,7 +808,13 @@ function addT90AutomatedCommanderStation(P, {
   return weapon;
 }
 
-function seatArmorOnHorizontalPlane(planeY, height, depth, pitch, embed = 0.012) {
+function seatArmorOnHorizontalPlane(
+  planeY: number,
+  height: number,
+  depth: number,
+  pitch: number,
+  embed = 0.012,
+): number {
   const verticalHalfExtent = Math.abs(Math.cos(pitch)) * height * 0.5
     + Math.abs(Math.sin(pitch)) * depth * 0.5;
   return planeY + verticalHalfExtent - embed;
@@ -631,7 +835,20 @@ const T90A_NSVT_RAISE_M = 0.08;
 const T90A_GUN_RADIUS_SCALE = 1.08;
 const T90A_GUN_ASSEMBLY_RAISE_M = 0.04;
 
-function buildT90ALegacy(P, {
+interface T90ALegacyOptions {
+  turretSeatZ?: number;
+  turretRearwardShiftM?: number;
+  shtoraEyeZ?: number;
+  shtoraLocalForwardShiftM?: number;
+  shtoraSupportFrontZ?: number;
+  chevronForwardM?: number;
+  nsvtRaiseM?: number;
+  gunRadiusScale?: number;
+  gunAssemblyRaiseM?: number;
+  recordSeatReceipt?: boolean;
+}
+
+function buildT90ALegacy(P: T90BuilderPort, {
   turretSeatZ = T90A_TURRET_SEAT_Z_M,
   turretRearwardShiftM = T90A_TURRET_REARWARD_SHIFT_M,
   shtoraEyeZ = T90A_SHTORA_EYE_Z_M,
@@ -642,7 +859,7 @@ function buildT90ALegacy(P, {
   gunRadiusScale = T90A_GUN_RADIUS_SCALE,
   gunAssemblyRaiseM = T90A_GUN_ASSEMBLY_RAISE_M,
   recordSeatReceipt = true,
-} = {}) {
+}: T90ALegacyOptions = {}): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret } = KIT;
   // VERTEX ROUND r2 (batch-12 oracle normalized to published dims): re-anchor
   // to docs/references/vertex/t90a.json — hull mask +-3.43 (6.865), deck
@@ -1077,7 +1294,17 @@ function buildT90ALegacy(P, {
     // while making the real visible assembly legible to the decoration gate.
     const leftMgX = t90aRoofStations.left.x;
     const exactNsvt = new THREE.Group();
-    const nsvtPart = (name, geometry, material, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    const nsvtPart = (
+      name: string,
+      geometry: THREE.BufferGeometry,
+      material: THREE.MeshStandardMaterial,
+      x: number,
+      y: number,
+      z: number,
+      rx = 0,
+      ry = 0,
+      rz = 0,
+    ): THREE.Mesh => {
       // Painted vehicle materials sample vertex colors. Bucket geometry
       // normally receives this neutral channel during merge; exact fittings
       // need the same channel before they become direct scene meshes.
@@ -1337,7 +1564,7 @@ function buildT90ALegacy(P, {
 }
 
 
-function buildT90AVladimirLegacy(P) {
+function buildT90AVladimirLegacy(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret } = KIT;
   const vladimirBow = Object.freeze({
     rearZ: 1.68,
@@ -1708,18 +1935,18 @@ function buildT90AVladimirLegacy(P) {
   const k5FlankCarrierSeats = Object.freeze([
     Object.freeze({
       station: 'rear-return',
-      point: Object.freeze([1.42, 0.26613, 0.40]),
-      normal: Object.freeze([0.47120, 0.88203, 0]),
+      point: [1.42, 0.26613, 0.40] as const,
+      normal: [0.47120, 0.88203, 0] as const,
     }),
     Object.freeze({
       station: 'mid-cheek',
-      point: Object.freeze([1.30, 0.29154, 0.64]),
-      normal: Object.freeze([0.37351, 0.86325, 0.33955]),
+      point: [1.30, 0.29154, 0.64] as const,
+      normal: [0.37351, 0.86325, 0.33955] as const,
     }),
     Object.freeze({
       station: 'front-cheek',
-      point: Object.freeze([1.20, 0.25462, 0.85]),
-      normal: Object.freeze([0.38930, 0.86686, 0.31144]),
+      point: [1.20, 0.25462, 0.85] as const,
+      normal: [0.38930, 0.86686, 0.31144] as const,
     }),
   ]);
   const k5FlankSurfaceRowOffsets = Object.freeze([0, 0.305]);
@@ -2007,7 +2234,7 @@ function buildT90AVladimirLegacy(P) {
     remoteControlled: true,
   };
   // rear bin stack + basket (ref rows 1.86-1.97 over -1.49..-2.29)
-  const rearBin = (x, w, zRear, h) => {
+  const rearBin = (x: number, w: number, zRear: number, h: number): void => {
     P.add('turret', box(w, h, -0.65 - zRear), x, 0.145, (zRear - 0.65) / 2);
     P.add('turretDark', box(w, h - 0.04, 0.03), x, 0.165, zRear + 0.015);
   };
@@ -2086,7 +2313,7 @@ function buildT90AVladimirLegacy(P) {
 // with ERAWA plates ±1.79 on the front half; dome crown ~2.33 center 0.18,
 // left cluster 2.64, pano 2.85, met mast 3.82 @ (-0.25, -1.0); tube axis
 // 2.008, sleeve r.122, muzzle 6.58.
-function buildPT91M(P) {
+function buildPT91M(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
   // VERTEX ROUND r2 (batch-12 normalized oracle): re-anchored to
   // docs/references/vertex/pt91m.json — hull mask +-3.43 (6.856 = published,
@@ -2173,7 +2400,11 @@ function buildPT91M(P) {
   //      about the drum axis (meshDomeCurved class — shading-only, the gate
   //      cannot see normals), so the dead-rear stepped-slab stack shades as
   //      one continuous drum body with the ref's crown-band gradient.
-  const drumShell = (geo, cy = 1.46, cz = -3.10) => {
+  const drumShell = (
+    geo: THREE.BufferGeometry,
+    cy = 1.46,
+    cz = -3.10,
+  ): THREE.BufferGeometry => {
     const pos = geo.attributes.position, nor = geo.attributes.normal;
     for (let i = 0; i < pos.count; i++) {
       if (nor.getZ(i) > -0.5) continue;              // rear-facing verts only
@@ -2669,7 +2900,7 @@ function buildPT91M(P) {
   //    1.94 vs the ref's 1.931 line (was 1.92 — equal |err|, ref-render
   //    outranks: the ref's own NSVT rides ABOVE its cupola crown).
   {
-    const rehookMG = (m) => {
+    const rehookMG = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
       m.onBeforeCompile = vehicleAmbientFloorHook;
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       return m;
@@ -2867,7 +3098,7 @@ function buildPT91M(P) {
   // under the scheme paint, both rehooked clones (CLONE-MATERIAL LAW — the
   // instanced gear materials never see the mats.* retints).
   {
-    const rehook = (m) => {
+    const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
       m.onBeforeCompile = vehicleAmbientFloorHook;
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       return m;
@@ -2881,10 +3112,14 @@ function buildPT91M(P) {
     const darkDish = rehook(P.mats.wheels.clone());
     darkDish.color.multiplyScalar(0.66);
     if (darkDish.emissive) darkDish.emissive.setHex(0x0a0c08);
-    P.hullG.traverse((ob) => {
-      if (ob.isInstancedMesh && ob.material === P.mats.rubber) ob.material = darkTire;
-      else if (ob.isInstancedMesh && ob.material === P.mats.wheels) ob.material = darkDish;
-      else if (ob.isMesh && ob.material === P.mats.wheels) ob.material = darkDish; // sprocket/idler bodies
+    P.hullG.traverse((object) => {
+      if (object instanceof THREE.InstancedMesh && object.material === P.mats.rubber) {
+        object.material = darkTire;
+      } else if (object instanceof THREE.InstancedMesh && object.material === P.mats.wheels) {
+        object.material = darkDish;
+      } else if (object instanceof THREE.Mesh && object.material === P.mats.wheels) {
+        object.material = darkDish; // sprocket/idler bodies
+      }
     });
   }
   // ORDER 3 tone: drum shells in the ref's warm brown family (top-view warm
@@ -2922,7 +3157,7 @@ function buildPT91M(P) {
   // (order 1 protect: view-left skirt band med Δref <= 5 must hold).
   // Lift factors iterated BY SAMPLE against the official pairs.
   {
-    const liftDeck = (mesh, isTurret) => {
+    const liftDeck = (mesh: THREE.Mesh, isTurret: boolean): void => {
       const g = mesh.geometry;
       const pos = g.attributes.position, nor = g.attributes.normal, col = g.attributes.color;
       if (!pos || !nor || !col) return;
@@ -2943,8 +3178,16 @@ function buildPT91M(P) {
       col.needsUpdate = true;
     };
     queueMicrotask(() => {
-      P.hullG.traverse((ob) => { if (ob.isMesh && ob.material === P.mats.hull) liftDeck(ob, false); });
-      P.turretG.traverse((ob) => { if (ob.isMesh && ob.material === P.mats.hull) liftDeck(ob, true); });
+      P.hullG.traverse((object) => {
+        if (object instanceof THREE.Mesh && object.material === P.mats.hull) {
+          liftDeck(object, false);
+        }
+      });
+      P.turretG.traverse((object) => {
+        if (object instanceof THREE.Mesh && object.material === P.mats.hull) {
+          liftDeck(object, true);
+        }
+      });
     });
   }
   P.topY = 1.22;
@@ -2952,7 +3195,7 @@ function buildPT91M(P) {
 
 
 
-function buildT90MProryv(P) {
+function buildT90MProryv(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret, slab } = KIT;
   loftHull(P, {
     // r26a render re-read: plan bow center is 3.05 (extract corners said
@@ -3237,10 +3480,10 @@ function buildT90MProryv(P) {
     darkDish.color.multiplyScalar(0.68);
     if (darkDish.emissive) darkDish.emissive.setHex(0x060705);
     P.disposables.push(darkTire, darkDish);
-    P.hullG.traverse((ob) => {
-      if (!ob.isInstancedMesh) return;
-      if (ob.material === P.mats.rubber) ob.material = darkTire;
-      else if (ob.material === P.mats.wheels) ob.material = darkDish;
+    P.hullG.traverse((object) => {
+      if (!(object instanceof THREE.InstancedMesh)) return;
+      if (object.material === P.mats.rubber) object.material = darkTire;
+      else if (object.material === P.mats.wheels) object.material = darkDish;
     });
   }
   // r8 ORDER 1e: wheel-face packages (t72b3m hub/seam-ring precedent) so
@@ -3649,7 +3892,7 @@ function buildT90MProryv(P) {
   // in the 45° free lane).
   eraRuCheeks(P, {
     rings: [[twm, 0], [twm * 0.96, hm * 0.6], [twm * 0.9, hm]], sz: 0.72,
-    weldFlat: true, rCz: 0.10, rDist: -0.14, rRows: 1, rTilt: -0.22, rY: 0.13,
+    rCz: 0.10, rDist: -0.14, rRows: 1, rTilt: -0.22, rY: 0.13,
     // Deepen inward from the calibrated face so the cassettes retain broad
     // readable top shoulders without growing the turret outline.  Two lower
     // flank pairs continue the protection into the clipped side casting.
@@ -3785,7 +4028,7 @@ function buildT90MProryv(P) {
 }
 
 
-function buildT90SMLegacy(P) {
+function buildT90SMLegacy(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret, slab } = KIT;
   // VERTEX ROUND r2 (batch-12 normalized oracle): re-anchored to
   // docs/references/vertex/t90sm.json — hull mask +-3.43 (6.857 = published,
@@ -4353,7 +4596,13 @@ function buildT90SMLegacy(P) {
     P.add('turretDark', box(0.03, 0.03, 0.05), bx, 0.37, -2.472);        // standoff struts onto step3 (§B2 attached)
   }
   const cageRailYs = [0.17, 0.27, 0.37, 0.47];
-  const addSMBustleSideCell = (s, x, z, d, { backing = true } = {}) => {
+  const addSMBustleSideCell = (
+    s: number,
+    x: number,
+    z: number,
+    d: number,
+    { backing = true }: { backing?: boolean } = {},
+  ): void => {
     const y = 0.31, h = 0.36;
     // The aft cell retains its recessed closure. Owner-selected forward
     // backplates can be omitted independently while their carrier feet and
@@ -4438,7 +4687,7 @@ function buildT90SMLegacy(P) {
   P.add('turretDetail', box(0.12, 0.02, 0.03), -0.62, 0.545, -1.85);   // strap
   P.add('turretDetail', box(0.12, 0.02, 0.03), -0.62, 0.545, -2.25);
   const pW = { rings: [[tw, 0], [tw * 0.96, h * 0.6], [tw * 0.9, h]], sz: 0.95 };
-  eraRuCheeks(P, { ...pW, weldFlat: true, rRows: 1, rY: 0.12, rH: 0.34 }, 'relikt');  // T6SM: preserve the 0.42 roof while lifting the recovered front-course underside from 0.00 to 0.08; single course avoids the former roof overshoot
+  eraRuCheeks(P, { ...pW, rRows: 1, rY: 0.12, rH: 0.34 }, 'relikt');  // T6SM: preserve the 0.42 roof while lifting the recovered front-course underside from 0.00 to 0.08; single course avoids the former roof overshoot
   // T3R rear tower zone: body stays LOW (ref side_turret -1.861 col reads
   // 1.966), but the ref DOES carry a one-col 2.239 spike at z world -1.97
   // (side_whole err 0.174 appeared the moment the old panel dropped — r9's
@@ -4516,7 +4765,7 @@ function buildT90SMLegacy(P) {
 }
 
 
-function buildT90(P) {
+function buildT90(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
   addT90FamilyHull(P);
   // CENTER GLACIS SLAB — the print's true falling plate (1.46 @ 1.75 ->
@@ -4947,7 +5196,7 @@ function buildT90(P) {
   P.topY = 0.80;
 }
 
-function finishT90BaseAuthored(P) {
+function finishT90BaseAuthored(P: T90BuilderPort): void {
   const { box, cylY, cylZ } = KIT;
 
   // The clipped fighting compartment already owns the frontal K-5 fan,
@@ -5112,7 +5361,10 @@ function finishT90BaseAuthored(P) {
 // two marks from that measured core, then add only variant-owned equipment.
 // This also makes their kinship structural rather than a collection of
 // similarly coloured boxes.
-function addT90AFamilyFinish(P, { vladimir = false, base = false } = {}) {
+function addT90AFamilyFinish(
+  P: T90BuilderPort,
+  { vladimir = false, base = false }: { vladimir?: boolean; base?: boolean } = {},
+): void {
   const { box, cylY, cylZ } = KIT;
 
   // ESSA/1G46 sight station: a half-buried foundation follows the crown and
@@ -5164,7 +5416,12 @@ function addT90AFamilyFinish(P, { vladimir = false, base = false } = {}) {
   }
 }
 
-function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {}) {
+function replaceT90ACastTurret(
+  P: T90BuilderPort,
+  { vladimir = false, burlakBase = false }: {
+    vladimir?: boolean; burlakBase?: boolean;
+  } = {},
+): void {
   const { box, cylY, cylZ, polyTurret } = KIT;
 
   // Atomic turret replacement: keep the variant's measured hull, discard the
@@ -5488,7 +5745,10 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
 // the Leclerc graduate: first match the shell/bustle envelopes, then place
 // variant hardware on visible load-bearing shoes.  The T-90SM and Tagil use
 // the same construction grammar without becoming palette-swapped clones.
-function replaceT90ModernWeldedTurret(P, { sm = false } = {}) {
+function replaceT90ModernWeldedTurret(
+  P: T90BuilderPort,
+  { sm = false }: { sm?: boolean } = {},
+): void {
   const { box, cylY, cylZ, polyTurret } = KIT;
   P.turretG.clear();
   P.turretG.add(P.gunG);
@@ -5591,7 +5851,13 @@ function replaceT90ModernWeldedTurret(P, { sm = false } = {}) {
   P.add('turretGlass', box(0.055, 0.07, 0.012), -0.54, sm ? 1.50 : 1.52, panoZ + 0.071);
   {
     const rws = new THREE.Group();
-    const part = (geo, mat, x, y, z) => {
+    const part = (
+      geo: THREE.BufferGeometry,
+      mat: THREE.Material,
+      x: number,
+      y: number,
+      z: number,
+    ): void => {
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(x, y, z);
       mesh.castShadow = mesh.receiveShadow = true;
@@ -5638,7 +5904,10 @@ function replaceT90ModernWeldedTurret(P, { sm = false } = {}) {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [-1.53, 0.28, -0.30], -Math.PI / 2);
 }
 
-function replaceT90BurlakTurret(P, { preserveGun = false } = {}) {
+function replaceT90BurlakTurret(
+  P: T90BuilderPort,
+  { preserveGun = false }: { preserveGun?: boolean } = {},
+): void {
   const { box, cylY, cylZ, polyTurret } = KIT;
   P.turretG.clear();
   P.turretG.add(P.gunG);
@@ -5838,7 +6107,7 @@ function replaceT90BurlakTurret(P, { preserveGun = false } = {}) {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [-1.67, 0.28, -0.42], -Math.PI / 2);
 }
 
-function buildT90A(P, legacyOptions) {
+function buildT90A(P: T90BuilderPort, legacyOptions: T90ALegacyOptions = {}): void {
   buildT90ALegacy(P, legacyOptions);
   // The mature T4A/T5F assembly already passed its independent 14-view
   // sitting.  Family harmony is not permission to replace its measured
@@ -5886,7 +6155,7 @@ function buildT90A(P, legacyOptions) {
   addT90SternFaceKit(P, { z: -3.36, y: 1.32, width: 1.35, scaleY: 0.72 });
 }
 
-function buildT90AVladimir(P) {
+function buildT90AVladimir(P: T90BuilderPort): void {
   buildT90AVladimirLegacy(P);
   // Owner correction: the accepted long welded bustle used to rise above
   // the legacy cast crown through one abrupt vertical step.  That made the
@@ -5968,7 +6237,7 @@ function buildT90AVladimir(P) {
   P.turretG.userData.t90aVladimirSideRailReceipt = Object.freeze({
     owner: 'rig_turret',
     railY: sideRailY,
-    railZRange: [sideRailCourse.at(-1)[0], sideRailCourse[0][0]],
+    railZRange: [sideRailCourse.at(-1)?.[0] ?? 0, sideRailCourse[0][0]],
     supportStations: sideRailCourse.map(([z, shellX]) => [z, shellX]),
     segmentsPerSide: sideRailCourse.length - 1,
     shellPenetrationM: sideRailThicknessM * 0.5 - sideRailOutsetM,
@@ -6038,7 +6307,7 @@ function buildT90AVladimir(P) {
   }
 }
 
-function finishT90SMOwnerRedesign(P) {
+function finishT90SMOwnerRedesign(P: T90BuilderPort): void {
   const { box } = KIT;
 
   // Source-deep segmented skirts: the recovered demonstrator carries a
@@ -6103,7 +6372,7 @@ function finishT90SMOwnerRedesign(P) {
 
 // The source-measured T-90SM shell remains the redesign datum; owner-directed
 // refinements replace its equipment layer without discarding that geometry.
-function buildT90SM(P) {
+function buildT90SM(P: T90BuilderPort): void {
   buildT90SMLegacy(P);
   // Keep the source-specific cheek, crown and bustle stations and repair
   // their ownership/seating in place rather than replacing them with a
@@ -6145,7 +6414,7 @@ function buildT90SM(P) {
 }
 
 
-function buildT90MS(P) {
+function buildT90MS(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, polyTurret } = KIT;
   loftHull(P, {
     // §B4 FIX ROUND (critic defect 5, shoe 215-351 = the t90sm r12 class):
@@ -6198,10 +6467,16 @@ function buildT90MS(P) {
   // Register the complete mirrored chain as one physical mudguard: the broad
   // bridge overlaps the centre glacis, each step overlaps its riser, and the
   // terminal lip shares a seat with the rubber drop authored below.
-  const tagilFrontGuardLabels = [];
+  const tagilFrontGuardLabels: string[] = [];
   for (const s of [-1, 1]) {
     const side = s < 0 ? 'left' : 'right';
-    const addGuardPart = (segment, geo, x, y, z) => {
+    const addGuardPart = (
+      segment: string,
+      geo: THREE.BufferGeometry,
+      x: number,
+      y: number,
+      z: number,
+    ): void => {
       const label = `t90ms-front-guard-${side}-${segment}`;
       tagilFrontGuardLabels.push(label);
       P.addMudguard(label, 'hull', geo, x, y, z);
@@ -6530,7 +6805,7 @@ function buildT90MS(P) {
 }
 
 
-function rebuildT90MSTurretExact(P) {
+function rebuildT90MSTurretExact(P: T90BuilderPort): void {
   const { box, cylY, cylZ, polyTurret, torus } = KIT;
 
   // T-90MS SOURCE REBUILD (2026-08-10).  The recovered print measures a
@@ -6580,14 +6855,16 @@ function rebuildT90MSTurretExact(P) {
     [ 0.900,1.516,1.990,-0.827,0.827,-0.654,0.656,-0.826,0.827],
     [ 1.040,1.643,1.955,-0.412,0.412,-0.412,0.411,-0.412,0.412],
   ];
-  P.add('turret', weldedStationLoft(shellWorld.map(([z,y0,y1,xl,xr,xbl,xbr,xtl,xtr]) => [
+  P.add('turret', weldedStationLoft(shellWorld.map((
+    [z, y0, y1, xl, xr, xbl, xbr, xtl, xtr],
+  ): WeldedStation => [
     z < 0 ? z * 0.82 : z, y0 - 1.443, y1 - 1.443,
     xl, xr, xbl, xbr, xtl * 0.78, xtr * 0.78,
   ])));
   // Joined outer diamond skin: the measured inner casting above supplies
   // the load path, while this continuous low wrapper owns the clipped
   // Tagil cheek/shoulder silhouette. Every station overlaps that core.
-  const outerSkinStations = [
+  const outerSkinStations: WeldedStation[] = [
     [ 1.34, 0.05, 0.46, -0.33, 0.33, -0.25, 0.25, -0.25, 0.25],
     [ 1.10, 0.03, 0.55, -0.78, 0.78, -0.52, 0.52, -0.62, 0.62],
     [ 0.70, 0.12, 0.60, -1.27, 1.27, -0.96, 0.96, -0.84, 0.84],
@@ -6603,7 +6880,7 @@ function rebuildT90MSTurretExact(P) {
   // Sample the exact outer wrapper used above. All non-frontal Relikt is
   // generated from these same planes below, so every cassette back shares
   // its carrier surface instead of approximating it with rotated boxes.
-  const skinStationAt = (z) => {
+  const skinStationAt = (z: number): WeldedStation => {
     const front = outerSkinStations[0];
     const rear = outerSkinStations[outerSkinStations.length - 1];
     if (z >= front[0]) return front;
@@ -6613,13 +6890,17 @@ function rebuildT90MSTurretExact(P) {
       const b = outerSkinStations[i + 1];
       if (z > a[0] || z < b[0]) continue;
       const t = (z - a[0]) / (b[0] - a[0]);
-      return a.map((value, index) => index === 0
+      const lerp = (index: number): number => index === 0
         ? z
-        : value + (b[index] - value) * t);
+        : a[index] + (b[index] - a[index]) * t;
+      return [
+        lerp(0), lerp(1), lerp(2), lerp(3), lerp(4),
+        lerp(5), lerp(6), lerp(7), lerp(8),
+      ];
     }
     return rear;
   };
-  const skinPoint = (side, z, v) => {
+  const skinPoint = (side: number, z: number, v: number): MutableVec3 => {
     const station = skinStationAt(z);
     const [, y0, y1, xl, xr, xbl, xbr, xtl, xtr] = station;
     const clampedV = Math.max(0, Math.min(1, v));
@@ -6632,27 +6913,41 @@ function rebuildT90MSTurretExact(P) {
       : middleX + (topX - middleX) * ((clampedV - midV) / (1 - midV));
     return [x, y0 + (y1 - y0) * clampedV, z];
   };
-  const skinNormal = (side, z, v) => {
+  const skinNormal = (side: number, z: number, v: number): MutableVec3 => {
     const dz = 0.008;
     const dv = 0.008;
     const pz0 = skinPoint(side, z - dz, v);
     const pz1 = skinPoint(side, z + dz, v);
     const pv0 = skinPoint(side, z, Math.max(0, v - dv));
     const pv1 = skinPoint(side, z, Math.min(1, v + dv));
-    const tz = pz1.map((value, i) => value - pz0[i]);
-    const tv = pv1.map((value, i) => value - pv0[i]);
-    let normal = [
+    const tz: MutableVec3 = pz1.map((value, i) => value - pz0[i]) as MutableVec3;
+    const tv: MutableVec3 = pv1.map((value, i) => value - pv0[i]) as MutableVec3;
+    let normal: MutableVec3 = [
       tv[1] * tz[2] - tv[2] * tz[1],
       tv[2] * tz[0] - tv[0] * tz[2],
       tv[0] * tz[1] - tv[1] * tz[0],
     ];
-    if (normal[0] * side < 0) normal = normal.map((value) => -value);
+    if (normal[0] * side < 0) {
+      normal = normal.map((value) => -value) as MutableVec3;
+    }
     const length = Math.hypot(...normal) || 1;
-    return normal.map((value) => value / length);
+    return normal.map((value) => value / length) as MutableVec3;
   };
-  const offsetPoint = (point, normal, offset) => point.map((value, i) => value + normal[i] * offset);
-  const skinPatchSlab = (side, frontZ, rearZ, lowerV, upperV, depth, seat = 0.002) => {
-    const anchors = [
+  const offsetPoint = (
+    point: Vec3Tuple,
+    normal: Vec3Tuple,
+    offset: number,
+  ): MutableVec3 => point.map((value, i) => value + normal[i] * offset) as MutableVec3;
+  const skinPatchSlab = (
+    side: number,
+    frontZ: number,
+    rearZ: number,
+    lowerV: number,
+    upperV: number,
+    depth: number,
+    seat = 0.002,
+  ): THREE.BufferGeometry => {
+    const anchors: Vec2Tuple[] = [
       [frontZ, lowerV], [rearZ, lowerV],
       [rearZ, upperV], [frontZ, upperV],
     ];
@@ -6666,21 +6961,28 @@ function rebuildT90MSTurretExact(P) {
     });
     return orientedSlab(...back, ...face);
   };
-  const roofPoint = (x, z) => {
+  const roofPoint = (x: number, z: number): MutableVec3 => {
     const [, , y] = skinStationAt(z);
     return [x, y, z];
   };
-  const roofNormal = (z) => {
+  const roofNormal = (z: number): MutableVec3 => {
     const dz = 0.008;
     const rearPoint = roofPoint(0, z - dz);
     const frontPoint = roofPoint(0, z + dz);
-    const tangentZ = frontPoint.map((value, i) => value - rearPoint[i]);
-    const normal = [-tangentZ[1], tangentZ[0], 0];
+    const tangentZ = frontPoint.map((value, i) => value - rearPoint[i]) as MutableVec3;
+    const normal: MutableVec3 = [-tangentZ[1], tangentZ[0], 0];
     const length = Math.hypot(...normal) || 1;
-    return normal.map((value) => value / length);
+    return normal.map((value) => value / length) as MutableVec3;
   };
-  const roofPatchSlab = (x0, x1, frontZ, rearZ, depth, seat = 0.002) => {
-    const anchors = [[x0, frontZ], [x1, frontZ], [x1, rearZ], [x0, rearZ]];
+  const roofPatchSlab = (
+    x0: number,
+    x1: number,
+    frontZ: number,
+    rearZ: number,
+    depth: number,
+    seat = 0.002,
+  ): THREE.BufferGeometry => {
+    const anchors: Vec2Tuple[] = [[x0, frontZ], [x1, frontZ], [x1, rearZ], [x0, rearZ]];
     const back = anchors.map(([x, z]) => offsetPoint(roofPoint(x, z), roofNormal(z), seat));
     const face = anchors.map(([x, z]) => offsetPoint(roofPoint(x, z), roofNormal(z), seat + depth));
     return orientedSlab(...back, ...face);
@@ -6704,13 +7006,20 @@ function rebuildT90MSTurretExact(P) {
   // welded turret's rearward sweep from gun mask to shoulder.  A single tall
   // carrier cannot encode that section and was the reason the previous pass
   // only read as a staircase.
-  const innerChevronPlan = [
+  const innerChevronPlan: Vec2Tuple[] = [
     [0.28, 1.35], [0.42, 1.50], [0.96, 1.17], [0.82, 1.02],
   ];
-  const outerChevronPlan = [
+  const outerChevronPlan: Vec2Tuple[] = [
     [0.79, 1.04], [0.94, 1.18], [1.50, 0.61], [1.35, 0.47],
   ];
-  const chevronRows = [
+  interface ChevronRow {
+    readonly name: string;
+    readonly y0: number;
+    readonly y1: number;
+    readonly z0: number;
+    readonly z1: number;
+  }
+  const chevronRows: ChevronRow[] = [
     // y0/y1 bound a row; z0/z1 move its rear edge and shared forward ridge.
     { name: 'lower', y0: 0.11, y1: 0.34, z0: -0.10, z1: 0.09 },
     { name: 'upper', y0: 0.34, y1: 0.59, z0: 0.09, z1: -0.11 },
@@ -6719,12 +7028,16 @@ function rebuildT90MSTurretExact(P) {
   // hold two broad blocks. Preserve a narrow gasket seam between neighbors
   // and the original eight-percent end margin so density increases without
   // widening the approved chevron footprint or crowding either optic head.
-  const chevronTileRanges = [
+  const chevronTileRanges: Vec2Tuple[] = [
     [0.080, 0.340], [0.370, 0.630], [0.660, 0.920],
   ];
-  const mirroredChevronRow = (side, plan, row) => orientedSlab(
-    ...plan.map(([x, z]) => [side * x, row.y0, z + row.z0]),
-    ...plan.map(([x, z]) => [side * x, row.y1, z + row.z1]),
+  const mirroredChevronRow = (
+    side: number,
+    plan: readonly Vec2Tuple[],
+    row: ChevronRow,
+  ): THREE.BufferGeometry => orientedSlab(
+    ...plan.map(([x, z]): Vec3Tuple => [side * x, row.y0, z + row.z0]),
+    ...plan.map(([x, z]): Vec3Tuple => [side * x, row.y1, z + row.z1]),
   );
   P.visualEraCluster('t90ms-relikt-turret-era', 'turret', () => {
     for (const side of [-1, 1]) {
@@ -6750,14 +7063,24 @@ function rebuildT90MSTurretExact(P) {
   // each carrier surface while their buried shoes overlap the main carriers
   // rather than creating a second floating armor bank.
   P.visualEraCluster('t90ms-relikt-nose-era', 'turret', () => {
-  const noseReliktSegments = [
+  interface ReliktSegment { readonly a: Vec2Tuple; readonly b: Vec2Tuple }
+  const noseReliktSegments: ReliktSegment[] = [
     // a/b trace the OUTER face of each main carrier module in plan. Their
     // bounds stay beside the paired circular optic heads instead of running
     // down the whole turret flank.
     { a: [0.42, 1.50], b: [0.96, 1.17] },
     { a: [0.94, 1.18], b: [1.50, 0.61] },
   ];
-  const tileSlab = (side, segment, row, t0, t1, depth, padT = 0, padY = 0) => {
+  const tileSlab = (
+    side: number,
+    segment: ReliktSegment,
+    row: ChevronRow,
+    t0: number,
+    t1: number,
+    depth: number,
+    padT = 0,
+    padY = 0,
+  ): THREE.BufferGeometry => {
     const { a, b } = segment;
     const dx = b[0] - a[0];
     const dz = b[1] - a[1];
@@ -6768,8 +7091,10 @@ function rebuildT90MSTurretExact(P) {
     const hiT = Math.min(1, t1 + padT);
     const loY = row.y0 + padY;
     const hiY = row.y1 - padY;
-    const zAtY = (y) => row.z0 + (row.z1 - row.z0) * ((y - row.y0) / (row.y1 - row.y0));
-    const point = (t, y, push = 0) => [
+    const zAtY = (y: number): number => (
+      row.z0 + (row.z1 - row.z0) * ((y - row.y0) / (row.y1 - row.y0))
+    );
+    const point = (t: number, y: number, push = 0): MutableVec3 => [
       side * (a[0] + dx * t) + nx * push,
       y,
       a[1] + dz * t + zAtY(y) + nz * push,
@@ -7038,7 +7363,7 @@ function rebuildT90MSTurretExact(P) {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-1.67, 0.30, -0.38], -Math.PI / 2);
 }
 
-function buildT90Burlak(P) {
+function buildT90Burlak(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, polyTurret } = KIT;
   loftHull(P, {
     // §B4 FIX ROUND (critic defect 5, shoe 215-351 = the t90sm r12 class):
@@ -7358,7 +7683,7 @@ function buildT90Burlak(P) {
   P.topY = 0.91;
 }
 
-function replaceT90MProryvHull(P) {
+function replaceT90MProryvHull(P: T90BuilderPort): void {
   const { box, cylX, cylY, torus, buildRunningGear } = KIT;
 
   // Remove the calibration-era hull and every direct fitting/gear child.
@@ -7521,7 +7846,7 @@ function replaceT90MProryvHull(P) {
   P.hullG.add(rearCable);
 }
 
-function replaceT90MProryvTurret(P) {
+function replaceT90MProryvTurret(P: T90BuilderPort): void {
   const { box, cylY, polyTurret, torus } = KIT;
   P.turretG.clear();
   P.turretG.add(P.gunG);
@@ -7789,7 +8114,7 @@ function replaceT90MProryvTurret(P) {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [-1.55, 0.28, -0.40], -Math.PI / 2);
 }
 
-function enhanceT90MProryvSurface2026(P) {
+function enhanceT90MProryvSurface2026(P: T90BuilderPort): void {
   const { box, cylX } = KIT;
 
   // Split the two broad native cheek carriers into the compact, irregular
@@ -7883,7 +8208,7 @@ function enhanceT90MProryvSurface2026(P) {
   };
 }
 
-function finishT90MProryvOwner2026(P) {
+function finishT90MProryvOwner2026(P: T90BuilderPort): void {
   const { box, cylZ, torus } = KIT;
 
   // T-90SM-grade segmented side curtain, added outside the existing Proryv
@@ -7974,7 +8299,7 @@ function finishT90MProryvOwner2026(P) {
 // suspension ownership untouched.  The new hull pieces terminate above the
 // idler crown; turret furniture remains turret-owned and physically overlaps
 // a roof, cupola, bustle shell or cage return.
-function refineT90MProryvArmor2026(P) {
+function refineT90MProryvArmor2026(P: T90BuilderPort): void {
   const { box, cylX, cylY, torus } = KIT;
 
   // Deep, swept track shoulders bridge the upper glacis into the outer
@@ -8110,7 +8435,7 @@ function refineT90MProryvArmor2026(P) {
 // welded Tagil fighting compartment is resectioned and given a continuous
 // tapered bustle. External GLBs are comparison oracles only; no source
 // vertices, generated payloads or runtime meshes enter this builder.
-function buildT90MProryvNative2026(P) {
+function buildT90MProryvNative2026(P: T90BuilderPort): void {
   buildT90MProryv(P);
   replaceT90MProryvHull(P);
   replaceT90MProryvTurret(P);
@@ -8203,12 +8528,17 @@ function buildT90MProryvNative2026(P) {
 // autoloader bustle.  Reuse the authored family chassis, then replace only
 // the complete turret/gun package with the distinct repository-authored
 // Burlak assembly.
-function addT90BurlakShoulderFoundationNative2026(P, {
+function addT90BurlakShoulderFoundationNative2026(P: T90BuilderPort, {
   includeProtection = true,
   carrierDrop = 0,
   frontLift = 0,
   frontForward = 0,
-} = {}) {
+}: {
+  includeProtection?: boolean;
+  carrierDrop?: number;
+  frontLift?: number;
+  frontForward?: number;
+} = {}): void {
   const { box, polyTurret } = KIT;
   // Burlak keeps the mature cast T-90A fighting compartment.  Its defining
   // armor is a clipped, open-edged outer shoulder system rather than a
@@ -8256,24 +8586,28 @@ function addT90BurlakShoulderFoundationNative2026(P, {
   P.add('turretDark', box(0.80, 0.29, 0.028), 0, 0.17 + frontLift, 1.605 + frontForward, -0.08, 0, 0);
 }
 
-function addT90BurlakBustleNative2026(P, { scale = 1 } = {}) {
+function addT90BurlakBustleNative2026(
+  P: T90BuilderPort,
+  { scale = 1 }: { scale?: number } = {},
+): void {
   const { box } = KIT;
   const rootZ = -1.08;
-  const fit = (value) => value * scale;
-  const fitZ = (z) => rootZ + (z - rootZ) * scale;
+  const fit = (value: number): number => value * scale;
+  const fitZ = (z: number): number => rootZ + (z - rootZ) * scale;
   // One shallow tapered bustle begins inside the existing cast rear bins.
   // It is a closed authored loft with a real floor and roof; lids and rails
   // merely articulate that load-bearing body and never substitute for it.
   // Scale remains available to comparison tools, while production vehicles
   // use the complete source envelope around the fixed neck plane.
-  const stations = [
+  const stations: WeldedStation[] = [
     [-1.08, 0.00, 0.64, -1.10, 1.10, -0.98, 0.98, -1.04, 1.04],
     [-1.50, 0.05, 0.67, -1.02, 1.02, -0.90, 0.90, -0.96, 0.96],
     [-2.08, 0.07, 0.65, -0.84, 0.84, -0.72, 0.72, -0.79, 0.79],
     [-2.68, 0.08, 0.60, -0.72, 0.72, -0.60, 0.60, -0.67, 0.67],
     [-3.30, 0.00, 0.58, -0.58, 0.58, -0.47, 0.47, -0.54, 0.54],
-  ].map(([z, y0, y1, ...widths]) => [
-    fitZ(z), fit(y0), fit(y1), ...widths.map(fit),
+  ].map(([z, y0, y1, xl, xr, xbl, xbr, xtl, xtr]): WeldedStation => [
+    fitZ(z), fit(y0), fit(y1), fit(xl), fit(xr),
+    fit(xbl), fit(xbr), fit(xtl), fit(xtr),
   ]);
   P.add('turret', weldedStationLoft(stations));
   for (const [z, w, d, y] of [
@@ -8317,14 +8651,16 @@ function addT90BurlakBustleNative2026(P, { scale = 1 } = {}) {
   });
 }
 
-function finishT90BurlakNative2026(P) {
+function finishT90BurlakNative2026(P: T90BuilderPort): void {
   const { box, cylY, cylZ, torus } = KIT;
   // Preserve the full authored magazine envelope. A previous 0.90 scale made
   // the Burlak bustle visibly undersized relative to its turret foundation.
   const bustleScale = 1;
   const bustleRootZ = -1.08;
-  const fitBustle = (value) => value * bustleScale;
-  const fitBustleZ = (z) => bustleRootZ + (z - bustleRootZ) * bustleScale;
+  const fitBustle = (value: number): number => value * bustleScale;
+  const fitBustleZ = (z: number): number => (
+    bustleRootZ + (z - bustleRootZ) * bustleScale
+  );
 
   addT90BurlakShoulderFoundationNative2026(P);
   addT90BurlakBustleNative2026(P, { scale: bustleScale });
@@ -8412,7 +8748,7 @@ function finishT90BurlakNative2026(P) {
   P.gunG.position.y += 0.08;
 }
 
-function replaceT90BurlakCoreNative2026(P) {
+function replaceT90BurlakCoreNative2026(P: T90BuilderPort): void {
   const { polyMultiLoft, polyTurret } = KIT;
   // Retain the mature T-90A cannon tree but remove every cast-turret bucket
   // and direct fitting.  This guarantees there is one rotating primary mass,
@@ -8446,7 +8782,7 @@ function replaceT90BurlakCoreNative2026(P) {
   P.add('turretDark', polyTurret(apron, 0.022, 0.95, 0.97), 0, 0.04, -0.06);
 }
 
-function buildT90BurlakHybridNative2026(P) {
+function buildT90BurlakHybridNative2026(P: T90BuilderPort): void {
   buildT90A(P, {
     turretSeatZ: T90A_ORIGINAL_TURRET_SEAT_Z_M,
     turretRearwardShiftM: 0,
@@ -8491,7 +8827,16 @@ function buildT90BurlakHybridNative2026(P) {
   // the fixed hull at x=1.43 and the existing guard's inner lip at x=1.72,
   // so the glacis, fender and skirt read as one supported assembly without
   // deleting any of the prototype's bins, timber pads or terminal guards.
-  const addFenderShelf = (s, label, z0, z1, innerY0, innerY1, outerY0 = 1.250, outerY1 = 1.250) => {
+  const addFenderShelf = (
+    s: number,
+    label: string,
+    z0: number,
+    z1: number,
+    innerY0: number,
+    innerY1: number,
+    outerY0 = 1.250,
+    outerY1 = 1.250,
+  ): void => {
     const innerX = 1.43;
     const outerX = 1.72;
     const thickness = 0.055;
@@ -8512,12 +8857,15 @@ function buildT90BurlakHybridNative2026(P) {
       [s * 1.455, innerY1 - 0.055, z1 - 0.035], [s * 1.425, innerY1 - 0.055, z1 - 0.035],
     ));
   };
+  const fenderSections: readonly (readonly [string, number, number, number, number])[] = [
+    ['centre', -1.30, 0.00, 1.362, 1.378],
+    ['forward', 0.00, 1.35, 1.378, 1.352],
+    ['shoulder', 1.35, 2.35, 1.352, 1.272],
+  ];
   for (const s of [-1, 1]) {
-    for (const [label, z0, z1, y0, y1] of [
-      ['centre', -1.30, 0.00, 1.362, 1.378],
-      ['forward', 0.00, 1.35, 1.378, 1.352],
-      ['shoulder', 1.35, 2.35, 1.352, 1.272],
-    ]) addFenderShelf(s, label, z0, z1, y0, y1);
+    for (const [label, z0, z1, y0, y1] of fenderSections) {
+      addFenderShelf(s, label, z0, z1, y0, y1);
+    }
 
     // The bow shoulder follows the glacis taper instead of ending as a
     // square shelf in front of the lead timber pad. Its aft edge laps the
@@ -8581,13 +8929,13 @@ function buildT90BurlakHybridNative2026(P) {
 }
 
 export const T90_PROFILES = {
-  t90a: { build: buildT90A },
-  t90: { build: buildT90 },
-  t90ms: { build: buildT90MS },
-  t90a_burlak: { build: buildT90BurlakHybridNative2026 },
-  pt91m: { build: buildPT91M },
-  t90sm: { build: buildT90SM },
-  t90a_vladimir: { build: buildT90AVladimir },
-  t90m: { build: buildT90MProryvNative2026 },
-  t90m_proryv: { build: buildT90MProryvNative2026 },
-};
+  t90a: t90Profile(buildT90A),
+  t90: t90Profile(buildT90),
+  t90ms: t90Profile(buildT90MS),
+  t90a_burlak: t90Profile(buildT90BurlakHybridNative2026),
+  pt91m: t90Profile(buildPT91M),
+  t90sm: t90Profile(buildT90SM),
+  t90a_vladimir: t90Profile(buildT90AVladimir),
+  t90m: t90Profile(buildT90MProryvNative2026),
+  t90m_proryv: t90Profile(buildT90MProryvNative2026),
+} satisfies VehicleProfileRecord;

@@ -1592,7 +1592,7 @@ export function createGarageDressing(
       't90m',
       'relikt_cassettes',
     );
-    cassettes.userData.sourceGeometry = 'profiles/t90.js:Proryv Relikt fan';
+    cassettes.userData.sourceGeometry = 'profiles/t90.ts:Proryv Relikt fan';
     const matrix = new THREE.Matrix4();
     const rotation = new THREE.Quaternion();
     const position = new THREE.Vector3();

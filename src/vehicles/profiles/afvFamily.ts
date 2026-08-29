@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleBore, muzzleTipDot } from './kit.ts';
 import { buildBradley, buildBMP2, buildPuma, bradleyFlankDressing } from '../modern3.ts';
 import { T72_PROFILES } from './t72.ts';
-import { T90_PROFILES } from './t90.js';
+import { T90_PROFILES } from './t90.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec3Tuple = [number, number, number];

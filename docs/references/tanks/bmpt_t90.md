@@ -20,7 +20,7 @@
 ## Construction (grammar sources)
 
 - **Hull — the certified T-90A donor**, called as `T90_PROFILES.t90a.build(P)`
-  from `src/vehicles/profiles/t90.js` (the shared-export path — the exact
+  from `src/vehicles/profiles/t90.ts` (the shared-export path — the exact
   `T72_PROFILES.t72b3m` precedent bmpt_terminator2 already uses in this
   file). The donor supplies the §5.75-family loft hull, K-5 glacis cassette
   courses, §5.262 six-wheel rubber running gear, guarded bow/stern light

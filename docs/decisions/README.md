@@ -302,3 +302,4 @@ runtime documents remain authoritative for behavior.
 - [0290 — Killcam playback has a strict TypeScript owner](0290-type-killcam-runtime.md)
 - [0291 — The battle HUD has a strict TypeScript owner](0291-type-battle-hud-runtime.md)
 - [0292 — Procedural geometry primitives have a strict TypeScript kernel](0292-type-procedural-geometry-kernel.md)
+- [0293 — The T-90 profile family has a strict TypeScript owner](0293-type-t90-profile-family.md)
