@@ -79,6 +79,35 @@ for (const [id, expectedProfile] of modernProfiles) {
   assert.equal(receipt.lowerReturnSolids, receipt.cheekCourseCount,
     `${id} spans every plan course with its continuous lower return`);
   assert.equal(receipt.sides.length, 2, `${id} publishes both cheek sides`);
+  if (['leo2a5', 'leo2a6', 'leo2a7v', 'strv122'].includes(id)) {
+    assert.equal(receipt.lowerArmorPanArchitecture, 'cheek-return-owned',
+      `${id} removes the separate underride blocker beneath its extended lower cheeks`);
+    assert.equal(receipt.separateUnderrideFront, false,
+      `${id} does not retain a flat front behind the structural lower return`);
+  }
+  if (id === 'leo2a5' || id === 'strv122') {
+    const covered = receipt.sides[0].stations.filter((station) => station.x <= 1.011 + 1e-6);
+    assert.ok(covered.length >= 2, `${id} samples the complete owner-marked inner cheek span`);
+    assert.ok(covered.every((station) => station.lowerY <= -0.066 + 1e-6),
+      `${id} lower cheek covers the old z=1.91 underride face down to y=-0.066`);
+    assert.ok(covered.every((station) => station.lowerZ <= 1.91 + 1e-6),
+      `${id} lower cheek returns behind the old z=1.91 underride face`);
+  }
+  if (id === 'leo2a6') {
+    const covered = receipt.sides[0].stations.filter((station) => station.x <= 1.011 + 1e-6);
+    assert.ok(covered.length >= 3, 'leo2a6 samples the complete owner-marked inner cheek span');
+    assert.ok(covered.every((station) => station.lowerY <= -0.066 + 1e-6),
+      'leo2a6 lower cheek covers the old z=1.90 underride face down to y=-0.066');
+    assert.ok(covered.every((station) => station.lowerZ <= 1.90 + 1e-6),
+      'leo2a6 lower cheek returns behind the old z=1.90 underride face');
+  }
+  if (id === 'leo2a6m' || id === 'leo2a6_ua') {
+    assert.equal(receipt.tipPads.filter((pad) => pad.s < 0).length, 0,
+      `${id} removes both owner-marked left-side tip plates`);
+    assert.ok(receipt.tipPads.every((pad) => Math.abs(pad.x - 1.44) > 1e-6
+        && Math.abs(pad.x - 1.53) > 1e-6),
+    `${id} has no residual plate at either marked blocker plane`);
+  }
   if (id === 'leo2a7v') {
     assert.ok(receipt.ridgeControlLine.length >= 6,
       'leo2a7v distributes its arrowhead sweep across the complete turret front');
@@ -91,8 +120,12 @@ for (const [id, expectedProfile] of modernProfiles) {
     }
     assert.ok(receipt.ridgeControlLine[0][1] - receipt.ridgeControlLine.at(-1)[1] >= 0.95,
       'leo2a7v carries a deep gun-root-to-outboard plan chevron');
-    assert.equal(receipt.lowerArmorPanArchitecture, 'arrowhead-plan-loft',
-      'leo2a7v replaces the full-width rectangular underride with a pointed armor pan');
+    for (const sideReceipt of receipt.sides) {
+      for (const station of sideReceipt.stations) {
+        assert.ok(Math.abs(station.upperRiseM - station.lowerDropM) <= 1e-9,
+          'leo2a7v lower cheek matches the upper cheek height at every station');
+      }
+    }
   }
 
   const turret = findMergedMesh(turretRig, 'turret');
@@ -145,10 +178,13 @@ for (const [id, expectedProfile] of modernProfiles) {
         `${id} ${sideReceipt.side} station ${index} lower root drops from the ridge`);
       assert.ok(Math.abs(station.upperSweepDeg - receipt.upperSlopeDeg) <= 1e-6,
         `${id} ${sideReceipt.side} station ${index} stays on the one continuous upper slope`);
-      assert.ok(station.lowerSweepDeg >= 15 && station.lowerSweepDeg <= 30,
+      const minimumLowerSweep = id === 'leo2a7v' ? 35 : 15;
+      const maximumLowerSweep = id === 'leo2a7v' ? 50 : 30;
+      assert.ok(station.lowerSweepDeg >= minimumLowerSweep && station.lowerSweepDeg <= maximumLowerSweep,
         `${id} ${sideReceipt.side} station ${index} lower return has a plausible arrowhead angle (${station.lowerSweepDeg} deg)`);
-      assert.ok(station.upperDominanceRatio >= 2,
-        `${id} ${sideReceipt.side} station ${index} keeps the upper armor at least twice the lower return (${station.upperDominanceRatio})`);
+      const minimumDominance = id === 'leo2a7v' ? 1 : expectedProfile === 'leopard-2a6m' ? 2 : 1.2;
+      assert.ok(station.upperDominanceRatio >= minimumDominance - 1e-9,
+        `${id} ${sideReceipt.side} station ${index} preserves its profile's upper/lower balance (${station.upperDominanceRatio})`);
       const ridge = [side * station.x, station.ridgeY, station.ridgeZ];
       assert.ok(hasVertex(position, ridge),
         `${id} ${sideReceipt.side} station ${index} ridge is authored in the merged armor`);

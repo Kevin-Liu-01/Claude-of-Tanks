@@ -541,8 +541,8 @@ interface WedgeBodyCourse {
 interface LeopardChevronConfig {
   readonly profile: string;
   readonly rootDepthM: NumericSeries;
-  readonly rootY: NumericSeries;
-  readonly ridgeLiftM: NumericSeries;
+  readonly rootY?: NumericSeries;
+  readonly ridgeLiftM?: NumericSeries;
   readonly ridgeInsetM?: number;
   readonly upperSlopeDeg?: number;
   readonly upperRootY?: number;
@@ -554,6 +554,7 @@ interface LeopardChevronConfig {
   readonly panelThicknessM?: number;
   readonly panelRidgeMargin?: number;
   readonly panelRootMargin?: number;
+  readonly equalLowerReturnHeight?: boolean;
 }
 
 interface LeopardWedgeV3Config {
@@ -2075,13 +2076,19 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
     }
   }
   {
+    // A5/A6/A7V lower chevrons now own the complete visible lower front.
+    // `false` deliberately suppresses the old independent underride block;
+    // keeping that block behind a deeper return produced the exact flat
+    // forward faces and low side wedges marked by the owner.
     const U = T.underride ?? {};
-    if (U.plan && U.rings) {
-      P.add('turret', polyMultiLoft(U.plan, U.rings));
-    } else {
-      const uh = U.h ?? 0.40, ud = U.d ?? 1.60;
-      P.add('turret', box(T.body[0].x * (U.wScale ?? 1.5), uh, ud),
-        0, U.y ?? 0.11, T.body[0].z1 + (U.zOffset ?? 0.50)); // seated bridge into the mantlet slot
+    if (U !== false) {
+      if (U.plan && U.rings) {
+        P.add('turret', polyMultiLoft(U.plan, U.rings));
+      } else {
+        const uh = U.h ?? 0.40, ud = U.d ?? 1.60;
+        P.add('turret', box(T.body[0].x * (U.wScale ?? 1.5), uh, ud),
+          0, U.y ?? 0.11, T.body[0].z1 + (U.zOffset ?? 0.50)); // seated bridge into the mantlet slot
+      }
     }
   }
   // basket/ring shading kept ABOVE the hull deck line (a hanging tub reads
@@ -2096,7 +2103,8 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
   const N = T.nose;              // [[x, z] ...] apex ridge -> tip nose corner
   const aB = T.apexY;
   const chevron = T.chevron;
-  const stationValue = (value: NumericSeries, index: number, fallback: number): number => {
+  const stationValue = (value: NumericSeries | undefined, index: number, fallback: number): number => {
+    if (value == null) return fallback;
     if (typeof value !== 'number') return value[Math.min(index, value.length - 1)] ?? fallback;
     return value;
   };
@@ -2144,7 +2152,14 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
           (x - upperTaperStartX) / Math.max(1e-6, maximumX - upperTaperStartX), 0, 1);
         const upperY = THREE.MathUtils.lerp(upperRootY, upperTipY, upperTaper);
         const upperZ = ridgeZ - (upperY - ridgeY) / upperSlopeTan;
-        const lowerY = interpolate(lowerYRows, x, 1);
+        const configuredLowerY = interpolate(lowerYRows, x, 1);
+        // The A7V source and marked front-quarter view show a genuinely
+        // full-height lower cheek: its return drops by the same vertical
+        // amount that the upper plate rises from the shared ridge. Keep the
+        // option profile-local because the A5/A6 returns remain asymmetric.
+        const lowerY = chevron.equalLowerReturnHeight
+          ? ridgeY - (upperY - ridgeY)
+          : configuredLowerY;
         const lowerZ = noseZ - interpolate(lowerDepthRows, x, 1);
         const upperRiseM = upperY - ridgeY;
         const lowerDropM = ridgeY - lowerY;
@@ -2295,9 +2310,13 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
       roofBridgeVolumes: 2,
       roofBridgeStructural: true,
       ridgeControlLine: Object.freeze(N.map(([x, z]) => Object.freeze([x, z]))),
-      lowerArmorPanArchitecture: T.underride?.plan
-        ? 'arrowhead-plan-loft'
-        : 'rectangular-bridge',
+      lowerArmorPanArchitecture: T.underride === false
+        ? 'cheek-return-owned'
+        : T.underride?.plan
+          ? 'arrowhead-plan-loft'
+          : 'rectangular-bridge',
+      separateUnderrideFront: T.underride !== false,
+      tipPads: Object.freeze((T.tipPads ?? []).map((pad) => Object.freeze({ ...pad }))),
       upperSlopeDeg: chevron.upperSlopeDeg ?? 20,
       ridgeInsetM: chevron.ridgeInsetM ?? 0.035,
       sourceComparisonOnly: true,
@@ -3194,9 +3213,13 @@ function buildLeo2A6(P: TankBuilderPort) {
     chevron: {
       profile: 'leopard-2a6', ridgeInsetM: 0.030, ridgeLiftM: 0.13,
       upperSlopeDeg: 19, upperRootY: 0.66, upperTipY: 0.50, upperTaperStartX: 1.30,
-      rootDepthM: [0.56, 0.54, 0.49, 0.44, 0.38, 0.32],
-      rootY: [0.07, 0.075, 0.08, 0.09, 0.10, 0.12],
+      // The lower return replaces the former z=1.90 rectangular underride
+      // face. It reaches beneath and behind that complete marked plane while
+      // rising again at the outboard tip, preserving the swept arrowhead.
+      rootDepthM: [0.90, 0.82, 0.68, 0.66, 0.52, 0.34],
+      rootY: [-0.07, -0.07, -0.07, -0.07, 0.05, 0.12],
     },
+    underride: false,
     // tip pads (fresh registered frame): BOTH pads are short fore pads
     // (0.66..1.89w); the LEFT one rides tall (front cols -1.47..-1.53 read
     // 1.98-2.05, the right side reads bare deck). yaw 0: the default 0.04
@@ -4406,8 +4429,11 @@ export function buildLeo2A5(builder: object) {
     chevron: {
       profile: 'leopard-2a5', ridgeInsetM: 0.025, ridgeLiftM: 0.09,
       upperSlopeDeg: 20, upperRootY: 0.74, upperTipY: 0.52, upperTaperStartX: 1.29,
-      rootDepthM: [0.52, 0.44, 0.34], rootY: [0.09, 0.12, 0.15],
+      // Extend the lower cheek behind the old z=1.91 front wall and below
+      // its -0.066 m lower edge; the return itself now closes that area.
+      rootDepthM: [1.02, 0.60, 0.34], rootY: [-0.07, -0.07, 0.08],
     },
+    underride: false,
     // measured per-side armor bands: the LEFT widest run is a short pad
     // (w 0.69..1.36 at x 1.50); the RIGHT is a long module −1.19..+1.22 at
     // x 1.53. Pads ride BELOW the deck line (the plan mask sees them; the
@@ -7133,20 +7159,10 @@ function buildLeo2A7V(P: TankBuilderPort) {
   wedgeTurretV3(P, {
     h: 0.64, apexY: 0.22, gunW: 0.36, slotZ: 1.18,
     chamferY: 0.55, roofX: 1.06, crestTail: 0.62, crestTailDrop: 0.005,
-    // A pointed lower armor pan supports the mantlet and follows the same
-    // arrowhead plan as the cheeks. The former full-width box made the
-    // entire A7V front read as a square brow from front and top views.
-    underride: {
-      plan: [
-        [-0.34, 1.92], [0.34, 1.92], [0.76, 1.69], [1.12, 1.37],
-        [1.35, 0.98], [1.39, 0.58], [1.28, -0.10], [-1.28, -0.10],
-        [-1.39, 0.58], [-1.35, 0.98], [-1.12, 1.37], [-0.76, 1.69],
-      ],
-      rings: [
-        { height: -0.01, inset: 0.97 },
-        { height: 0.21, inset: 1.00 },
-      ],
-    },
+    // The full-height lower cheek is the front's structural return. Retire
+    // the separate pointed pan whose low roof and side faces protruded in
+    // front of it at the owner's exact marked coordinates.
+    underride: false,
     body: [
       { x: 1.41, z0: -0.10, z1: 0.55, cY: 0.55 },
       { x: 1.41, z0: -0.75, z1: -0.10, cY: 0.55 },
@@ -7165,7 +7181,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
       profile: 'leopard-2a7v', ridgeInsetM: 0.040, ridgeLiftM: 0.09,
       upperSlopeDeg: 18, upperRootY: 0.76, upperTipY: 0.54, upperTaperStartX: 1.24,
       rootDepthM: [0.54, 0.52, 0.49, 0.44, 0.39, 0.34],
-      rootY: [0.13, 0.14, 0.15, 0.17, 0.19, 0.22],
+      equalLowerReturnHeight: true,
     },
     noseUpper: [[0.30, 1.90], [0.62, 1.82], [0.96, 1.66], [1.26, 1.43], [1.48, 1.16], [1.57, 0.98]],
     crest: [[0.20, 0.80, 0.44], [1.03, 0.775, 0.40], [1.08, 0.67, -0.55], [1.40, 0.66, -0.95], [1.53, 0.32, -1.10]],
@@ -13040,7 +13056,12 @@ function addLeopardOpenYokeAuxRws(P: TankBuilderPort, {
   const station = FITTINGS.openYokeRws({
     mats: P.mats,
     bodySlot: 'hull',
-    sizeStandard: 'm1a3-full-tower',
+    // Leopard roofs carry a reduced-height derivative of the AbramsX yoke:
+    // retain the complete mechanism and feed path, but trim its previously
+    // oversized 1.28x battle silhouette on the A6M and A7V.
+    sizeStandard: 'leopard-reduced-tower',
+    scale: 1.12,
+    towerRise: 0.14,
     variant,
     ammoSide,
     sensorSide,
@@ -13060,6 +13081,7 @@ function addLeopardOpenYokeAuxRws(P: TankBuilderPort, {
     mountLocal: Object.freeze([x, y, z]),
     scale: station.userData.scale,
     sizeStandard: station.userData.sizeStandard,
+    towerRiseM: station.userData.towerRise,
     yaw,
     caliberMm: station.userData.caliberMm,
     ammoSide,
@@ -13425,10 +13447,11 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
       rootDepthM: [0.58, 0.56, 0.51, 0.46, 0.40, 0.34],
       rootY: [0.07, 0.075, 0.08, 0.09, 0.10, 0.12],
     },
+    // Keep the compact right tip support. The two left-side plates at
+    // x=-1.53/-1.44 were the exact owner-marked blockers and are retired so
+    // the continuous chevron remains the visible armor surface.
     tipPads: [
       { s: 1, x: 1.462, x0: 1.32, z0: 0.31, z1: 1.70, y0: -0.04, y1: 0.06, yaw: 0 },
-      { s: -1, x: 1.53, x0: 1.44, z0: 0.29, z1: 1.51, y0: 0.02, y1: 0.26, yaw: 0 },
-      { s: -1, x: 1.44, x0: 1.32, z0: 0.29, z1: 1.92, y0: 0.02, y1: 0.26, yaw: 0 },
     ],
     sideMods: [
       { s: 1, x: 1.42, z0: -1.75, z1: 1.55, y0: 0.12, y1: 0.30 },

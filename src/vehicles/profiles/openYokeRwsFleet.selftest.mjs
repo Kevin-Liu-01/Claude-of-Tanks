@@ -7,15 +7,28 @@ const TARGETS = Object.freeze({
     variant: 'sepv3-armored', mount: [-0.70, 0.8003898305084746, 0.2565],
     supportTop: 0.8103898305084746, replacesCommanderGun: true,
     loaderVariant: 'sepv3-low-loader',
+    sizeStandard: 'm1a3-full-tower', scale: 1.28, minimumWidth: 0.84, minimumHeight: 0.82,
   }),
   m1a2_tusk: Object.freeze({
     variant: 'tusk-urban', mount: [-0.70, 0.8103898305084746, 0.2565],
     supportTop: 0.8203898305084746, replacesCommanderGun: true,
     loaderVariant: 'tusk-lags-loader',
+    sizeStandard: 'm1a3-full-tower', scale: 1.28, minimumWidth: 0.84, minimumHeight: 0.82,
   }),
-  leo2a6m: Object.freeze({ variant: 'a6m-arctic', mount: [-0.72, 0.795, -1.52] }),
-  leo2a7v: Object.freeze({ variant: 'a7v-low', mount: [0.72, 0.67, -1.48] }),
-  k2b: Object.freeze({ variant: 'korean-twin', mount: [0.70, 0.70, -0.68] }),
+  leo2a6m: Object.freeze({
+    variant: 'a6m-arctic', mount: [-0.72, 0.795, -1.52],
+    sizeStandard: 'leopard-reduced-tower', scale: 1.12, towerRiseM: 0.14,
+    minimumWidth: 0.88, minimumHeight: 0.72,
+  }),
+  leo2a7v: Object.freeze({
+    variant: 'a7v-low', mount: [0.72, 0.67, -1.48],
+    sizeStandard: 'leopard-reduced-tower', scale: 1.12, towerRiseM: 0.14,
+    minimumWidth: 0.88, minimumHeight: 0.72,
+  }),
+  k2b: Object.freeze({
+    variant: 'korean-twin', mount: [0.70, 0.70, -0.68],
+    sizeStandard: 'm1a3-full-tower', scale: 1.28, minimumWidth: 0.84, minimumHeight: 0.82,
+  }),
 });
 
 const near = (actual, expected, tolerance, message) => {
@@ -72,14 +85,18 @@ for (const [id, expected] of Object.entries(TARGETS)) {
     assert.equal(station.userData.caliberMm, 12.7, `${id}: station remains machine-gun caliber`);
     assert.equal(station.userData.hasVisibleFeedBelt, true, `${id}: ammunition path is modeled`);
     assert.equal(station.userData.firingAxis, '+Z', `${id}: weapon follows vehicle-forward convention`);
-    assert.equal(station.userData.sizeStandard, 'm1a3-full-tower',
-      `${id}: uses the M1A3 tower size standard`);
-    near(station.userData.scale, 1.28, 1e-9, `${id}: matches the M1A3 weapon scale`);
+    assert.equal(station.userData.sizeStandard, expected.sizeStandard,
+      `${id}: uses the intended host tower size standard`);
+    near(station.userData.scale, expected.scale, 1e-9, `${id}: matches the host weapon scale`);
+    if (expected.towerRiseM != null) {
+      near(station.userData.towerRise, expected.towerRiseM, 1e-9,
+        `${id}: trims the auxiliary tower riser with the rest of the assembly`);
+    }
     const stationBounds = station.userData.aabb;
-    assert.ok(stationBounds.max[0] - stationBounds.min[0] >= 0.84,
-      `${id}: full-size tower remains broad enough to read at battle distance`);
-    assert.ok(stationBounds.max[1] - stationBounds.min[1] >= 0.82,
-      `${id}: full-size tower retains the M1A3 vertical presence`);
+    assert.ok(stationBounds.max[0] - stationBounds.min[0] >= expected.minimumWidth,
+      `${id}: tower remains broad enough to read at battle distance`);
+    assert.ok(stationBounds.max[1] - stationBounds.min[1] >= expected.minimumHeight,
+      `${id}: tower retains the intended vertical presence`);
 
     expected.mount.forEach((value, index) => near(station.position.getComponent(index), value, 1e-6,
       `${id}: mount coordinate ${index}`));
@@ -149,9 +166,13 @@ for (const [id, expected] of Object.entries(TARGETS)) {
     assert.equal(receipt.designFamily, 'abramsx-open-yoke-v1',
       `${id}: receipt exposes the shared mechanical family`);
     assert.equal(receipt.variant, expected.variant, `${id}: receipt preserves variant identity`);
-    assert.equal(receipt.sizeStandard, 'm1a3-full-tower',
-      `${id}: receipt preserves the fleet tower-size invariant`);
-    near(receipt.scale, 1.28, 1e-9, `${id}: receipt records M1A3 scale`);
+    assert.equal(receipt.sizeStandard, expected.sizeStandard,
+      `${id}: receipt preserves the host tower-size invariant`);
+    near(receipt.scale, expected.scale, 1e-9, `${id}: receipt records host scale`);
+    if (expected.towerRiseM != null) {
+      near(receipt.towerRiseM, expected.towerRiseM, 1e-9,
+        `${id}: receipt records the reduced Leopard riser`);
+    }
     assert.equal(receipt.equipmentOwned, true, `${id}: receipt excludes station from armor`);
     assert.equal(receipt.turretOwned, true, `${id}: receipt records traverse ownership`);
     assert.equal(receipt.weaponRole,
@@ -180,4 +201,4 @@ for (const [id, expected] of Object.entries(TARGETS)) {
 assert.equal(new Set(Object.values(TARGETS).map(({ variant }) => variant)).size, 5,
   'all five hosts receive visibly distinct open-yoke variants');
 
-console.log('openYokeRwsFleet.selftest: five full-size AbramsX-style turret stations pass');
+console.log('openYokeRwsFleet.selftest: five host-sized AbramsX-style turret stations pass');

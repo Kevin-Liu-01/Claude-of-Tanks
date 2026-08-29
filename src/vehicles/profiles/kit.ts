@@ -156,6 +156,7 @@ interface FittingOptions {
   installationVariant?: string;
   variant?: string;
   sizeStandard?: string;
+  towerRise?: number;
   bodySlot?: string;
   weaponName?: string;
   caliberMm?: number;
@@ -1536,7 +1537,8 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   // bearing plate alone. Lift the complete working assembly as one unit and
   // close the load path back to the roof with a broad, contiguous pedestal.
   // This adds height without inflating the weapon, sensors or side armor.
-  const towerRise = sizeStandard === 'm1a3-full-tower' ? 0.18 : 0;
+  const towerRise = opts.towerRise
+    ?? (sizeStandard === 'm1a3-full-tower' ? 0.18 : 0);
   if (towerRise > 0) {
     for (const geometries of Object.values(parts.bySlot)) {
       for (const geometry of geometries) geometry.translate(0, towerRise, 0);
@@ -1563,6 +1565,7 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   fitting.userData.barrelAxisLocalY = receiverY + towerRise;
   fitting.userData.sizeStandard = sizeStandard;
   fitting.userData.scale = s;
+  fitting.userData.towerRise = towerRise;
   const weaponMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
   if (weaponMesh) {
     weaponMesh.name = 'openYokeRwsMachineGun';
