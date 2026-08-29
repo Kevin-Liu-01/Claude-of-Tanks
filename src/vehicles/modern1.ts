@@ -1,4 +1,4 @@
-// src/vehicles/modern1.js — HD procedural builder #1: modern MBT roster wave.
+// src/vehicles/modern1.ts — HD procedural builder #1: modern MBT roster wave.
 // Vehicles: t72b3 (T-72B3), dormant merkava4 family donor, leo2a6
 // (Leopard 2A6). Specs per docs/research/modern-roster.md §14 / §21 / §8;
 // visual bar per Appendix B (trapezoidal track runs, silhouette identity,
@@ -31,6 +31,48 @@ import {
   shell,
   apfsdsPenetration as apfsdsPens,
 } from './specHelpers.ts';
+import type { ArmorEnvelope } from './specHelpers.ts';
+import type { FleetTankSpec, ModelSourceRecord } from './specContracts.ts';
+
+type Vec3Tuple = [number, number, number];
+type VehicleAssemblyOwner = 'hull' | 'turret';
+type EraPlacement = (
+  x: number,
+  y: number,
+  z: number,
+  rx?: number,
+  ry?: number,
+  rz?: number,
+  sx?: number,
+  sy?: number,
+  sz?: number,
+) => void;
+
+interface ModernWaveBuilderPort {
+  readonly q?: boolean;
+  readonly rng: unknown;
+  topY?: number;
+  add(slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addEquipment(
+    owner: VehicleAssemblyOwner,
+    geometry: unknown,
+    ...transform: number[]
+  ): unknown;
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  eraCluster(
+    plateName: string,
+    fill: (put: EraPlacement) => void,
+    turretLocal?: boolean,
+  ): unknown;
+  decal(
+    owner: VehicleAssemblyOwner,
+    kind: string,
+    label: string | null,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): unknown;
+}
 
 const D2R = Math.PI / 180;
 
@@ -42,7 +84,7 @@ const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 }
 
 // T-72B3 — §14.2: turret ~480/500 + Kontakt-5, glacis ~450/500 + K-5,
 // sides 80 mm + soft skirts with K-1 forward.
-function armorT72B3() {
+function armorT72B3(): ArmorEnvelope {
   const trkTop = 0.98, floor = 0.42, roofY = 1.38;
   const k5 = { keReduction: 0.20, ceFlatMm: 450 };
   const k1 = { keReduction: 0.05, ceFlatMm: 280 };
@@ -106,7 +148,7 @@ function armorT72B3() {
 
 // Merkava IVm — §21.2: turret wedge ~650/1000, hull front ~500/750 + engine
 // block behind (front engine soaks pens), rear = weak spot (troop door).
-function armorMerkava4() {
+function armorMerkava4(): ArmorEnvelope {
   const trkTop = 1.02, floor = 0.45, roofY = 1.62;
   return {
     boundingRadiusM: 5.2,
@@ -162,7 +204,7 @@ function armorMerkava4() {
 
 // Leopard 2A6 — §8.2: geometry identical to the shipped 2A7 armor model with
 // the roster's 2A6 RHAe values (turret ~700/1000, hull ~620/750).
-function armorLeo2A6() {
+function armorLeo2A6(): ArmorEnvelope {
   const trkTop = 1.08, floor = 0.5, roofY = 1.72;
   return {
     boundingRadiusM: 5.8,
@@ -301,7 +343,7 @@ const MODERN1_SPECS = {
       marking: 'cross', number: '24', trackWidthM: 0.635, camoScale: 0.5,
     },
   },
-};
+} satisfies Record<string, FleetTankSpec>;
 
 // Register specs + model-source rows + garage roster ids (idempotent —
 // vite HMR can re-evaluate this module).
@@ -311,10 +353,15 @@ const MODERN1_SPECS = {
 // - t72b3: owner removal 2026-08-06; donor for pt91m/t64bv1/t72b_1987.
 // - merkava4: owner removal 2026-08-13; donor for the Mk.1B–Mk.3D family.
 const MODERN1_DELISTED = new Set(['t72b3', 'merkava4']);
+type Modern1SpecId = keyof typeof MODERN1_SPECS;
+const tankSpecs: typeof TANK_SPECS & Partial<Record<Modern1SpecId, FleetTankSpec>> = TANK_SPECS;
+const modelSources: typeof MODEL_SOURCE & Partial<Record<Modern1SpecId, ModelSourceRecord>> = MODEL_SOURCE;
+const allTankIds: string[] = ALL_TANK_IDS;
 for (const [id, spec] of Object.entries(MODERN1_SPECS)) {
-  TANK_SPECS[id] = TANK_SPECS[id] || spec;
-  MODEL_SOURCE[id] = MODEL_SOURCE[id] || { source: 'procedural' };
-  if (!MODERN1_DELISTED.has(id) && !ALL_TANK_IDS.includes(id)) ALL_TANK_IDS.push(id);
+  const specId = id as Modern1SpecId;
+  tankSpecs[specId] ||= spec;
+  modelSources[specId] ||= { source: 'procedural' };
+  if (!MODERN1_DELISTED.has(specId) && !allTankIds.includes(specId)) allTankIds.push(specId);
 }
 
 // ===========================================================================
@@ -327,7 +374,7 @@ for (const [id, spec] of Object.entries(MODERN1_SPECS)) {
 // Sosna-U box left of gun, 6 big stamped wheels + 3 rollers, saddle fuel
 // drums, unditching log, snorkel. No Shtora eyes.
 // ---------------------------------------------------------------------------
-function buildT72B3(P) {
+function buildT72B3(P: ModernWaveBuilderPort): void {
   const { box, cylX, cylY, cylZ, sph, lathe, frustum, fenders, headlight, liftEye,
     periscope, smokeCluster, towCable, stowage, jerryCan, spareTrackStrip,
     buildGun, buildRunningGear, cupola, xform, torus } = KIT;
@@ -347,7 +394,7 @@ function buildT72B3(P) {
   for (const s of [-1, 1]) P.add('hullDetail', box(0.8, 0.05, 0.08), s * 0.38, 1.06, 2.55, -1.19, s * 0.5, 0);
   // Kontakt-5 glacis: 4 chevron wedge courses proud of the plate (raised
   // geometry per Appendix B) with strippable brick tiles riding them.
-  const glz = (y) => 1.88 + (1.38 - y) * 2.43 + 0.045;                          // glacis plane + proud
+  const glz = (y: number): number => 1.88 + (1.38 - y) * 2.43 + 0.045;          // glacis plane + proud
   for (const s of [-1, 1]) {
     for (const xw of [0.42, 1.24]) {
       P.add('hull', box(0.78, 0.13, 0.10), s * xw, 1.10, glz(1.10), -68 * D2R, s * 0.30, 0);
@@ -416,7 +463,7 @@ function buildT72B3(P) {
     P.add('turret', box(0.74, 0.30, 0.24), s * 0.44, 0.24, 0.66, -0.24, s * 0.55, 0);
     P.add('turret', box(0.58, 0.16, 0.20), s * 0.42, 0.47, 0.56, -0.42, s * 0.55, 0);
   }
-  const t72Brow = (put, s) => {
+  const t72Brow = (put: EraPlacement, s: number): void => {
     const dx = Math.cos(0.55), dz = -Math.sin(0.55);
     const nx = Math.sin(0.55), nz = Math.cos(0.55);
     for (let row = 0; row < 2; row++) for (let c = 0; c < 4; c++) {
@@ -478,7 +525,7 @@ function buildT72B3(P) {
 // arrowhead turret with ball-and-chain curtain + Trophy slabs, external
 // coil-spring bogies, sprocket FRONT, Sinai grey.
 // ---------------------------------------------------------------------------
-function buildMerkava4(P) {
+function buildMerkava4(P: ModernWaveBuilderPort): void {
   const { box, cylX, cylY, cylZ, sph, slab, frustum, fenders, headlight, liftEye,
     periscope, smokeCluster, towCable, stowage, tarpRoll, buildGun,
     buildRunningGear, torus } = KIT;
@@ -642,7 +689,7 @@ function buildMerkava4(P) {
 // PERI R17 on the LEFT roof, crosswind mast rear RIGHT. Bundeswehr cross +
 // 2-digit tactical number.
 // ---------------------------------------------------------------------------
-function buildLeo2A6(P) {
+function buildLeo2A6(P: ModernWaveBuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, frustum, fenders, headlight, liftEye,
     periscope, smokeCluster, towCable, stowage, jerryCan, tarpRoll, ammoCan,
     spareTrackStrip, buildGun, buildRunningGear, torus } = KIT;

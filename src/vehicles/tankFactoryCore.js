@@ -3459,7 +3459,7 @@ function grilleIndices(highDetail, count, lowCount = 3) {
 
 // ---------------------------------------------------------------------------
 // EXTENSION HOOK (HD modern roster): shared geometry/greeble kit for builder
-// modules (modern1.js etc.). Everything here is the same battle-tested code
+// modules (modern1.ts etc.). Everything here is the same battle-tested code
 // the core 8 builders use — extension builders must NOT fork these.
 // ---------------------------------------------------------------------------
 export const KIT = {

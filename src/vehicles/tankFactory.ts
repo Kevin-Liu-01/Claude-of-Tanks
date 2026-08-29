@@ -7,7 +7,7 @@ import { configureTankFactory } from './tankFactoryCore.js';
 import { MODERN3_BUILDERS } from './modern3.js';
 import { FRANCE_BUILDERS } from './france.ts';
 import { MODERN2_BUILDERS } from './modern2.js';
-import { MODERN1_BUILDERS } from './modern1.js';
+import { MODERN1_BUILDERS } from './modern1.ts';
 import { CHALLENGER_BUILDERS } from './profiles/challenger.js';
 import { FITTINGS } from './profiles/kit.js';
 import { PROFILED_BUILDERS } from './profiledProcedurals.ts';

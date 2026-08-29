@@ -22,9 +22,9 @@ import {
 import type { FleetTankSpec, ModelSourceRecord } from './specContracts.ts';
 
 // ===========================================================================
-// Modern-class residents (spec+build, the modern1.js pattern): challenger2 +
+// Modern-class residents (spec+build, the modern1.ts pattern): challenger2 +
 // challenger_3. Armor tables, spec rows, helpers and builders below moved
-// byte-intact from modern1.js (§5.75).
+// byte-intact from modern1.ts (§5.75).
 // ===========================================================================
 
 // Challenger 2 — §18.2 Dorchester L2: turret ~600/900, hull ~500/800,
@@ -377,8 +377,8 @@ const modelSources: typeof MODEL_SOURCE & Partial<Record<ChallengerSpecId, Model
 const allTankIds: string[] = ALL_TANK_IDS;
 
 // Register specs + model-source rows + garage roster ids (idempotent — vite
-// HMR can re-evaluate this module; the modern1.js mechanism, moved with its
-// residents). §5.75 ORDER GUARD: modern1.js registered challenger2 and
+// HMR can re-evaluate this module; the modern1.ts mechanism, moved with its
+// residents). §5.75 ORDER GUARD: modern1.ts registered challenger2 and
 // challenger_3 BEFORE merkava4/leo2a6, and the garage carousel is ordered by
 // ALL_TANK_IDS (main.ts); modern1 always evaluates before this module (its
 // helpers are imported above), so re-insert at the original slot instead of

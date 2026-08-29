@@ -38,7 +38,7 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 
 // ---------------------------------------------------------------- registry --
 // pubDims from userdrops5.js make() rows (t72b_1987/t72b3m inherit t72b3 in
-// modern1.js; t72bu/t90a_vladimir inherit typed t90a combat data).
+// modern1.ts; t72bu/t90a_vladimir inherit typed t90a combat data).
 const REG = {
   // Owner MBT-70 print is fused by material (no honest articulated masks).
   // Raw nose +X; fixedMount scales the whole source envelope to the authored
@@ -900,7 +900,7 @@ const REG = {
   challenger_3: {
     // "Challenger 3" by 42manako — CC-BY-NC-4.0: LOCAL MEASUREMENT ONLY,
     // never ship. OWNER GREENLIGHT 2026-08-06: challenger_3 is now a BUILT
-    // vehicle (modern1.js spec+builder) and this row is mirrored into all
+    // vehicle (modern1.ts spec+builder) and this row is mirrored into all
     // THREE harness maps (oracle-backed moderns round). Authored FBX hierarchy
     // (hull/turret/trophy/smoke*/antennas; gun = 'weapon' under 'mount').
     // pubDims ANCHOR CAVEAT: no CR3 spec exists in the roster — anchored

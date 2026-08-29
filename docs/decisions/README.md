@@ -260,3 +260,4 @@ runtime documents remain authoritative for behavior.
 - [0248 — Internal anatomy visuals have one strict TypeScript owner](0248-type-internal-anatomy-visuals.md)
 - [0249 — The damage schematic has a strict TypeScript owner](0249-type-damage-panel.md)
 - [0250 — Fitted ghillie geometry has a strict TypeScript owner](0250-type-ghillie-suit.md)
+- [0251 — The original modern MBT wave has a strict TypeScript owner](0251-type-modern1-wave.md)

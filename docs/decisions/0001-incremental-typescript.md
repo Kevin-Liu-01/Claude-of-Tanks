@@ -153,6 +153,11 @@ Fitted vehicle camouflage now uses the strict `src/vehicles/ghillieSuit.ts`
 owner. Its top, side, and face panel recipes, deterministic foliage styles,
 material lifecycle, and procedural-builder port are checked without changing
 the merged geometry or exact-family demand-loading boundary.
+The original modern MBT wave now uses strict `src/vehicles/modern1.ts`
+contracts for its three armor envelopes, fleet registry rows, ERA placement
+callbacks, and procedural geometry builders. The T-72B3, dormant Merkava IVm
+donor, and Leopard 2A6 remain byte-for-byte recipe owners in the same lazy
+family pack.
 
 ## Consequences
 
