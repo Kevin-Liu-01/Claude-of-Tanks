@@ -486,6 +486,47 @@ assert.equal(migrateLobby.players.get('a-next').isHost, true);
   client.close('done');
 }
 
+// RTT variance may update the desired server-clock offset, but it must never
+// jump the render timeline in the packet-receive frame. The display clock
+// converges through a bounded slew instead.
+{
+  const channel = new FakeChannel();
+  const transport = createWebRTCDataChannelTransport(channel);
+  let nowMs = 100;
+  const client = new MatchClientRuntime({
+    transport,
+    playerId: 'clock-slew',
+    clock: () => nowMs,
+    pingIntervalMs: 10_000,
+  });
+  channel.emit('message', { data: JSON.stringify(createEnvelope(MESSAGE_TYPES.WELCOME, {
+    protocolVersion: 1,
+    peerId: 'clock-slew',
+    tickHz: 60,
+    snapshotHz: 20,
+    serverTick: 0,
+    serverTimeMs: 100,
+  }, { seq: 1, tick: 0 })) });
+  client.update(nowMs);
+  nowMs = 300;
+  channel.emit('message', { data: JSON.stringify(createEnvelope(MESSAGE_TYPES.PONG, {
+    clientTimeMs: 100,
+    serverTimeMs: 300,
+  }, { seq: 2, tick: 0 })) });
+  assert.equal(client.serverOffsetMs, 0,
+    'RTT response cannot jump the active presentation clock');
+  assert.equal(client.serverOffsetTargetMs, 15,
+    'RTT response updates the smoothed clock target');
+  client.update(nowMs);
+  assert.equal(client.serverOffsetMs, 10,
+    'clock correction is bounded to 50 ms per second of active presentation');
+  nowMs = 500;
+  client.update(nowMs);
+  assert.equal(client.serverOffsetMs, 15,
+    'presentation clock converges without overshooting its target');
+  client.close('done');
+}
+
 // Lobby→match handoff adopts the starting round before the independent state
 // lane can deliver a snapshot. Otherwise the later reliable ROOM_STATE clears
 // an already-acknowledged baseline and every following delta is undecodable.

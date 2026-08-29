@@ -140,7 +140,14 @@ async function openPlayers(origin, renderedRole) {
         lastLobby: null,
         startingLobby: null,
         eventCounts: { fired: 0, hits: 0, damage: 0, destroyed: 0, firedBy: {} },
-        motion: { samples: 0, maxStepM: 0, maxBackstepM: 0, last: null },
+        motion: {
+          samples: 0,
+          maxStepM: 0,
+          maxShortFrameStepM: 0,
+          maxExcessStepM: 0,
+          maxBackstepM: 0,
+          last: null,
+        },
         advanceDurations: [],
       };
     }, { isFull: full, pageIndex: index });
@@ -667,10 +674,11 @@ async function startLightCombat(page, isHost, formation) {
     state.measureMotion = true;
     state.combatStartedAt = performance.now();
     const buildInput = () => {
+      const motionAtMs = performance.now();
       const playerId = state.roomInfo.peerId;
       const pair = state.formation.pairById[playerId];
-      const elapsed = performance.now() - state.combatStartedAt;
-      const driveElapsed = performance.now() -
+      const elapsed = motionAtMs - state.combatStartedAt;
+      const driveElapsed = motionAtMs -
         (state.measurementStartedAt || state.combatStartedAt);
       const sample = state.sample;
       const own = sample?.entities?.find((entity) => entity.id === playerId);
@@ -689,7 +697,18 @@ async function startLightCombat(page, isHost, formation) {
           const dx = own.x - motion.last.x;
           const dy = own.y - motion.last.y;
           const dz = own.z - motion.last.z;
-          motion.maxStepM = Math.max(motion.maxStepM, Math.hypot(dx, dy, dz));
+          const stepM = Math.hypot(dx, dy, dz);
+          const elapsedS = Math.max(0, motionAtMs - motion.last.atMs) / 1000;
+          const speedMps = Math.hypot(own.vx || 0, own.vy || 0, own.vz || 0);
+          const expectedStepM = Math.max(speedMps, motion.last.speedMps || 0) * elapsedS;
+          motion.maxStepM = Math.max(motion.maxStepM, stepM);
+          if (elapsedS <= 0.025) {
+            motion.maxShortFrameStepM = Math.max(motion.maxShortFrameStepM, stepM);
+          }
+          motion.maxExcessStepM = Math.max(
+            motion.maxExcessStepM,
+            Math.max(0, stepM - expectedStepM),
+          );
           // Measure reconciliation against the tank's live heading, not its
           // opening formation heading. Pursuit deliberately turns survivors
           // after a stalemate; a fast tank driving forward after a 180-degree
@@ -702,7 +721,14 @@ async function startLightCombat(page, isHost, formation) {
           const forward = dx * Math.sin(headingYaw) + dz * Math.cos(headingYaw);
           motion.maxBackstepM = Math.max(motion.maxBackstepM, -forward);
         }
-        motion.last = { x: own.x, y: own.y, z: own.z, yaw: own.yaw };
+        motion.last = {
+          x: own.x,
+          y: own.y,
+          z: own.z,
+          yaw: own.yaw,
+          atMs: motionAtMs,
+          speedMps: Math.hypot(own.vx || 0, own.vy || 0, own.vz || 0),
+        };
         motion.samples++;
       }
       if (!state.combatEnabled || !own || own.destroyed || !target) return null;
@@ -768,7 +794,8 @@ async function startFullCombat(page, formation) {
       }));
     };
     const loop = () => {
-      const elapsed = performance.now() - state.combatStartedAt;
+      const motionAtMs = performance.now();
+      const elapsed = motionAtMs - state.combatStartedAt;
       const player = window.__DEBUG.game.player;
       const preferred = window.__DEBUG.game.tankById.get(pair.targetId);
       let target = preferred && !preferred.combat?.destroyed ? preferred : null;
@@ -808,7 +835,21 @@ async function startFullCombat(page, formation) {
           const dx = own.x - motion.last.x;
           const dy = own.y - motion.last.y;
           const dz = own.z - motion.last.z;
-          motion.maxStepM = Math.max(motion.maxStepM, Math.hypot(dx, dy, dz));
+          const stepM = Math.hypot(dx, dy, dz);
+          const elapsedS = Math.max(0, motionAtMs - motion.last.atMs) / 1000;
+          const speedMps = Math.hypot(
+            player.state.speed || 0,
+            player.state.verticalSpeed || 0,
+          );
+          const expectedStepM = Math.max(speedMps, motion.last.speedMps || 0) * elapsedS;
+          motion.maxStepM = Math.max(motion.maxStepM, stepM);
+          if (elapsedS <= 0.025) {
+            motion.maxShortFrameStepM = Math.max(motion.maxShortFrameStepM, stepM);
+          }
+          motion.maxExcessStepM = Math.max(
+            motion.maxExcessStepM,
+            Math.max(0, stepM - expectedStepM),
+          );
           const previousYaw = Number.isFinite(motion.last.yaw)
             ? motion.last.yaw : player.state.yaw;
           const headingYaw = Math.atan2(
@@ -818,7 +859,14 @@ async function startFullCombat(page, formation) {
           const forward = dx * Math.sin(headingYaw) + dz * Math.cos(headingYaw);
           motion.maxBackstepM = Math.max(motion.maxBackstepM, -forward);
         }
-        motion.last = { x: own.x, y: own.y, z: own.z, yaw: player.state.yaw };
+        motion.last = {
+          x: own.x,
+          y: own.y,
+          z: own.z,
+          yaw: player.state.yaw,
+          atMs: motionAtMs,
+          speedMps: Math.hypot(player.state.speed || 0, player.state.verticalSpeed || 0),
+        };
         motion.samples++;
       } else {
         setPursuitKey('KeyW', 'w', false);
@@ -837,7 +885,14 @@ async function beginMeasuredCombat(pages, renderedRole) {
   await Promise.all(pages.map((page, index) => page.evaluate((full) => {
     const state = globalThis.__COT_LIVE_7V7;
     state.measurementStartedAt = performance.now();
-    state.motion = { samples: 0, maxStepM: 0, maxBackstepM: 0, last: null };
+    state.motion = {
+      samples: 0,
+      maxStepM: 0,
+      maxShortFrameStepM: 0,
+      maxExcessStepM: 0,
+      maxBackstepM: 0,
+      last: null,
+    };
     state.measureMotion = true;
     if (full) {
       state.predictionCombatBaseline = { ...(window.__DEBUG.network?.prediction || {}) };
@@ -997,8 +1052,12 @@ function assertClientHealth(report, label) {
   assert.ok(report.network.transportBufferedBytes < 64 * 1024,
     `${label} stays below transport backpressure threshold`);
   assert.ok(report.motion.samples >= 30, `${label} samples live movement`);
-  assert.ok(report.motion.maxStepM < 0.5,
-    `${label} display stream has no teleport/rubber-band step (${report.motion.maxStepM.toFixed(3)} m)`);
+  assert.ok(report.motion.maxShortFrameStepM < 0.5,
+    `${label} display stream has no single-frame teleport ` +
+    `(${report.motion.maxShortFrameStepM.toFixed(3)} m)`);
+  assert.ok(report.motion.maxExcessStepM < 0.25,
+    `${label} display motion stays within authority velocity ` +
+    `(${report.motion.maxExcessStepM.toFixed(3)} m excess)`);
   assert.ok(report.motion.maxBackstepM < 0.3,
     `${label} display stream has no backwards correction (${report.motion.maxBackstepM.toFixed(3)} m)`);
   assert.ok(Object.keys(report.events.firedBy).length === PLAYER_COUNT,

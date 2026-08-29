@@ -157,6 +157,13 @@ Recent terrain or dynamic contact extends hull envelopes to 180/240 ms for
 immediately but settles the displayed wreck onto the final authority pose
 through the same bounded correction path, preventing a last-frame hull pop.
 
+RTT samples update a target server-clock offset rather than moving the active
+presentation timeline immediately. The client slews toward that target at a
+bounded 50 ms per second and caps the correction window after a suspended tab.
+Network delay can therefore stretch or compress presentation imperceptibly,
+but a late ping response cannot advance a fast tank by a visible fraction of a
+meter in one rendered frame.
+
 Both presentation paths suppress quantization chatter only when a tank is
 actually at rest. Remote snapshot samples retain a stable hull pose across
 sub-contact-patch position and attitude changes; local reconciliation holds the

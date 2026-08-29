@@ -26,6 +26,12 @@ import {
 type Unsubscribe = () => void;
 type MatchEvent = Record<string, unknown>;
 
+// Never let an RTT sample move the presentation timeline in one frame. A
+// bounded 50 ms/s slew corrects normal clock drift quickly while limiting the
+// extra visual displacement to less than one millisecond per 60 Hz frame.
+const SERVER_CLOCK_SLEW_MS_PER_MS = 0.05;
+const SERVER_CLOCK_MAX_SLEW_WINDOW_MS = 250;
+
 export interface MatchTransport {
   readonly kind?: string;
   readonly readyState?: string;
@@ -180,6 +186,7 @@ export interface MatchClientStats extends Record<string, unknown> {
   rttMs: number | null;
   rttJitterMs: number;
   serverOffsetMs: number;
+  serverOffsetTargetMs: number;
   snapshotPacketsReceived: number;
   estimatedMissingSnapshots: number;
   estimatedSnapshotLoss: number;
@@ -993,6 +1000,7 @@ export class MatchClientRuntime {
   lastSnapshotPacketTick: number | null = null;
   snapshotEveryTicks = 3;
   serverOffsetMs = 0;
+  serverOffsetTargetMs = 0;
   rttMs: number | null = null;
   rttJitterMs = 0;
   lastRttSampleMs: number | null = null;
@@ -1212,6 +1220,8 @@ export class MatchClientRuntime {
               Math.round(tickHz / snapshotHz));
           }
           this.serverOffsetMs = serverTimeMs - this.clock();
+          this.serverOffsetTargetMs = this.serverOffsetMs;
+          this._lastUpdateNowMs = undefined;
           for (const listener of [...this.connectionListeners]) listener(true);
           break;
         }
@@ -1229,7 +1239,7 @@ export class MatchClientRuntime {
             this.lastRttSampleMs = rtt;
             this.rttMs = this.rttMs == null ? rtt : this.rttMs + (rtt - this.rttMs) * 0.2;
             const sample = server - (sent + now) * 0.5;
-            this.serverOffsetMs += (sample - this.serverOffsetMs) * 0.15;
+            this.serverOffsetTargetMs += (sample - this.serverOffsetTargetMs) * 0.15;
           }
           break;
         }
@@ -1417,6 +1427,15 @@ export class MatchClientRuntime {
 
   update(nowMs: number): SampledSnapshotFrame | null {
     if (!Number.isFinite(nowMs)) throw new TypeError('nowMs must be finite');
+    if (this._lastUpdateNowMs != null && nowMs > this._lastUpdateNowMs) {
+      const elapsedMs = Math.min(
+        SERVER_CLOCK_MAX_SLEW_WINDOW_MS,
+        nowMs - this._lastUpdateNowMs,
+      );
+      const maxStepMs = elapsedMs * SERVER_CLOCK_SLEW_MS_PER_MS;
+      const offsetErrorMs = this.serverOffsetTargetMs - this.serverOffsetMs;
+      this.serverOffsetMs += Math.max(-maxStepMs, Math.min(maxStepMs, offsetErrorMs));
+    }
     this._lastUpdateNowMs = nowMs;
     if (this.connected && nowMs - this.lastPingAtMs >= this.pingIntervalMs) {
       this.lastPingAtMs = nowMs;
@@ -1477,6 +1496,7 @@ export class MatchClientRuntime {
       rttMs: this.rttMs,
       rttJitterMs: this.rttJitterMs,
       serverOffsetMs: this.serverOffsetMs,
+      serverOffsetTargetMs: this.serverOffsetTargetMs,
       snapshotPacketsReceived: this.snapshotPacketsReceived,
       estimatedMissingSnapshots: this.estimatedMissingSnapshots,
       estimatedSnapshotLoss: snapshotTotal > 0
