@@ -527,6 +527,7 @@ function addT90AutomatedCommanderStation(P, {
   scale = 1,
   heightScale = 1,
   weaponScale = 1,
+  weaponYaw = 0,
   weaponName,
   receiptKey,
 }) {
@@ -583,7 +584,9 @@ function addT90AutomatedCommanderStation(P, {
   });
   weapon.name = weaponName;
   weapon.position.set(x, weaponFootY, z + fit(0.10));
-  weapon.rotation.y = yaw;
+  // Keep the armored station's deliberate roof angle, but align the Kord
+  // itself with the vehicle centreline. The fitting's barrel axis is +Z.
+  weapon.rotation.y = weaponYaw;
   P.turretG.add(weapon);
 
   P.turretG.userData[receiptKey] = Object.freeze({
@@ -593,6 +596,8 @@ function addT90AutomatedCommanderStation(P, {
     panoramicIntegrated: true,
     weapon: 'kord',
     weaponName,
+    stationYaw: yaw,
+    weaponYaw,
     seat: Object.freeze([x, seatY, z]),
     raceBottomY,
     raceTopY,
@@ -4946,6 +4951,7 @@ function finishT90BaseAuthored(P) {
     scale: 0.98,
     heightScale: 1.10,
     weaponScale: 1.12,
+    weaponYaw: 0,
     weaponName: 't90Ru417AutomatedKord',
     receiptKey: 't90Ru417AutomatedStationReceipt',
   });
@@ -6923,7 +6929,8 @@ function rebuildT90MSTurretExact(P) {
     // foot enters the faceted station above and the receiver/barrel now own
     // the reference-height horizontal combat silhouette.
     mg.position.set(-0.55, 1.12, -1.12);
-    mg.rotation.y = 0.28;
+    mg.rotation.y = 0;
+    mg.name = 't90msTagilRemoteKord';
     P.turretG.add(mg);
   }
 
@@ -7675,6 +7682,7 @@ function replaceT90MProryvTurret(P) {
     scale: 1.04,
     heightScale: 1.42,
     weaponScale: 1.12,
+    weaponYaw: 0,
     weaponName: 't90mProryvRemoteKord',
     receiptKey: 't90mProryvAutomatedStationReceipt',
   });
