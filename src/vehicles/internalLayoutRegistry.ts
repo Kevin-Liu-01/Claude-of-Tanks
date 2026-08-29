@@ -1,7 +1,7 @@
 // Published/internal-layout metadata for every playable vehicle. This is the
 // presentation and topology source of truth shared by combat anatomy, Gallery
 // diagnostics and the kill cam. Exact armour envelopes remain geometry-derived
-// in combatAnatomyCalibrations.js; classified dimensions are never invented.
+// in combatAnatomyCalibrations.ts; classified dimensions are never invented.
 
 export interface InternalLayoutSource {
   readonly title: string;

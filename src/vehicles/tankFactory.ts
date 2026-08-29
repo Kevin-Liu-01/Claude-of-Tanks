@@ -13,7 +13,7 @@ import { FITTINGS } from './profiles/kit.js';
 import { PROFILED_BUILDERS } from './profiledProcedurals.ts';
 import { VEHICLE_MARKING_SEATS } from './vehicleMarkingSeats.generated.js';
 import { registerVehicleMarkingSeatRecords } from './vehicleMarkingSeatRegistry.ts';
-import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.js';
+import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.ts';
 import { registerCombatAnatomyCalibrations } from './combatAnatomyCalibrationRegistry.ts';
 import { finalizeCombatAnatomy } from './combatAnatomy.js';
 

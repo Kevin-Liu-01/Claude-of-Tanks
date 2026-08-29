@@ -1,22 +1,17 @@
 import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import type { FleetGroup } from './fleetManifest.ts';
-import { COMBAT_ANATOMY_GROUP_LOADERS } from './combatAnatomyLoaders.generated.js';
+import { COMBAT_ANATOMY_GROUP_LOADERS } from './combatAnatomyLoaders.generated.ts';
 import {
   hasCombatAnatomyCalibration,
   registerCombatAnatomyCalibrations,
 } from './combatAnatomyCalibrationRegistry.ts';
 
-interface CalibrationGroupModule {
-  COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, unknown>>;
-}
-
-type CalibrationGroupLoader = () => Promise<CalibrationGroupModule>;
+type CalibrationGroupLoader = typeof COMBAT_ANATOMY_GROUP_LOADERS[string];
 type CalibrationGroup = FleetGroup | 'core';
 
 const CORE_GROUP: CalibrationGroup = 'core';
-const GROUP_LOADERS = COMBAT_ANATOMY_GROUP_LOADERS as unknown as Readonly<
-  Record<CalibrationGroup, CalibrationGroupLoader>
->;
+const GROUP_LOADERS: Readonly<Record<string, CalibrationGroupLoader>> =
+  COMBAT_ANATOMY_GROUP_LOADERS;
 const pendingGroups = new Map<CalibrationGroup, Promise<void>>();
 const readyGroups = new Set<CalibrationGroup>();
 

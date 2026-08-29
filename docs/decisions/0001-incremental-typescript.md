@@ -107,6 +107,9 @@ the same rule: browser gestures, Canvas2D inputs, fleet specs, and custom-stroke
 recipes are checked without moving either module into pristine Garage boot.
 Fleet geometry gates follow it too: turret-barrel section measurement now has
 typed mesh, lane, contour, receipt, and result boundaries.
+Generated combat-anatomy receipts now share that strict graph: the eager
+fleet aggregate, 27 demand-loaded family payloads, and loader table are emitted
+as TypeScript while the runtime registry remains the narrowing boundary.
 
 ## Consequences
 

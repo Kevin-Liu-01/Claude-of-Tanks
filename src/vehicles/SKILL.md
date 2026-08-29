@@ -75,10 +75,10 @@ For every added or changed playable tank, run this required sequence:
 3. `npm run tank:release:check -- --ids=<changed ids> --gate` — assets,
    tracks, muzzle, geometry, full tests and private build.
 
-Never hand-edit `combatAnatomyCalibrations.js` or the generated technical PNGs.
+Never hand-edit `combatAnatomyCalibrations.ts` or the generated technical PNGs.
 The authored receipt boundaries are `combatAnatomyCalibrationRegistry.ts`,
 `combatAnatomyCalibrationLoader.ts`, `vehicleMarkingSeatRegistry.ts`, and
-`vehicleMarkingSeatLoader.ts`. Keep grouped `*.generated.js` payloads owned by
+`vehicleMarkingSeatLoader.ts`. Keep grouped `*.generated.ts` payloads owned by
 their generators; browser consumers must acquire receipts through the typed
 loaders, while fleet-wide release tools use the eager typed `tankFactory.ts`
 facade. Player boot must continue through the demand-loaded `fleetFactory.ts`.

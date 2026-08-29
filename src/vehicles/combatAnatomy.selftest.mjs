@@ -8,7 +8,7 @@ import { createCombatState, startReload } from '../sim/damage.ts';
 import { traceTank } from '../sim/armor.ts';
 import { CORE_MODULE_IDS, MODULE_IDS } from '../sim/moduleCatalog.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.js';
-import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.js';
+import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.ts';
 import {
   INTERNAL_LAYOUT_BY_TANK,
   INTERNAL_LAYOUT_SOURCES,

@@ -95,7 +95,7 @@ try {
 
       const scan = await page.evaluate(async (id) => {
         const { TANK_SPECS } = await import('/src/vehicles/specs.js');
-        const { COMBAT_ANATOMY_CALIBRATIONS } = await import('/src/vehicles/combatAnatomyCalibrations.js');
+        const { COMBAT_ANATOMY_CALIBRATIONS } = await import('/src/vehicles/combatAnatomyCalibrations.ts');
         const armor = TANK_SPECS[id].armor;
         const calibration = COMBAT_ANATOMY_CALIBRATIONS[id];
         const v = window.__DEBUG.pedestalVisual;

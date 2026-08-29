@@ -94,7 +94,7 @@
 | src/vehicles/tier.ts | `bmpt_t90: 10` |
 | src/vehicles/tankLabels.ts | displayName/shortName/aliases |
 | src/vehicles/vehicleMarkings.ts | `anchor('hull','left',0.44,0.60,0.22,1)` — the skirt-ERA panel field (station walls sit behind the Ataka columns) |
-| src/vehicles/combatAnatomyCalibrations.js | bmpt_t90 row spliced (+56 append; see cross-lane note) |
+| src/vehicles/combatAnatomyCalibrations.ts | bmpt_t90 row spliced (+56 append; see cross-lane note) |
 | public/icons/ | 9 asset views + manifest rows (genIcons --ids=bmpt_t90) |
 | roster/garage | none needed — mirrors bmpt_terminator2 (dynamic country/tier/name ordering; garageOrder.selftest green) |
 | profiledProcedurals | automatic (AFV_FAMILY_PROFILES spread) |
