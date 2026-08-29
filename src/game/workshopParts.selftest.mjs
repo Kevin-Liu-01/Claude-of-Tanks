@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createWorkshopPartLibrary, countWorkshopTriangles, WORKSHOP_PART_KINDS } from './workshopParts.js';
+import { createWorkshopPartLibrary, countWorkshopTriangles, WORKSHOP_PART_KINDS } from './workshopParts.ts';
 
 const library = createWorkshopPartLibrary();
 let total = 0;

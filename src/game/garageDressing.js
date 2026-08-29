@@ -30,7 +30,7 @@ import {
 } from '../ui/garageStage.js';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant } from './garageVariants.ts';
-import { countWorkshopTriangles, createWorkshopPartLibrary } from './workshopParts.js';
+import { countWorkshopTriangles, createWorkshopPartLibrary } from './workshopParts.ts';
 
 /**
  * Build the (initially empty) workshop dressing rig.
