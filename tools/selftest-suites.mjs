@@ -92,6 +92,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/resourceLifetime.selftest.mjs',
     'src/fx/lazyRuntime.selftest.mjs',
     'src/fx/clock.selftest.mjs',
+    'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',
     'src/game/loadingIntent.selftest.mjs',

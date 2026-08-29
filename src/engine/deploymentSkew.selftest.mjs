@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict';
 import config from '../../vite.config.js';
 import middleware, {
+  config as middlewareConfig,
   deploymentPinCookie,
   deploymentResetCookie,
   deploymentResetLocation,
 } from '../../middleware.js';
+
+for (const route of ['/gallery', '/gallery/', '/gallery.html']) {
+  assert.ok(middlewareConfig.matcher.includes(route),
+    `${route} must share the site-wide deployment pin and reset handshake`);
+}
 
 assert.equal(config.experimental, undefined,
   'build URLs must stay canonical instead of query-splitting preload and import identities');

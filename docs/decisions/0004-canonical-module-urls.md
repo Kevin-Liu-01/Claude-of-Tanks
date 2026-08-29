@@ -19,7 +19,10 @@ All Vite-generated module URLs remain canonical. Root-level Vercel Routing
 Middleware sets the platform's official HttpOnly `__vdpl` cookie on playable
 document responses. Vercel applies that deployment pin to later asset and
 document requests without changing JavaScript module identity. Middleware is
-limited to the game and Studio document routes; static assets bypass it.
+limited to the game, Studio, and Gallery document routes; static assets bypass
+it. Gallery is included because the deployment cookie is scoped to the whole
+site: excluding its document can mix an old game deployment pin with a newer
+Gallery document and produce removed hashed-chunk URLs.
 
 Boot/chunk recovery appends a one-shot `_dplreset=1` signal. Middleware expires
 the HttpOnly deployment pin and redirects back to the same playable URL while
@@ -38,7 +41,9 @@ platform boundary does not set the language policy for domain modules.
 - Modulepreload and native import requests share the browser module cache.
 - Long-running battles can lazy-load against their originating deployment.
 - A missing game chunk can escape its stale pin without clearing all site data.
-- Public presentation routes avoid middleware cost.
+- Gallery can escape a stale site-wide pin without clearing cookies, and its
+  HTML is never stored independently from its hashed module graph.
+- Other public presentation routes avoid middleware cost.
 - Production cold-load checks reject duplicate positive-byte script transfers.
 
 ## Verification

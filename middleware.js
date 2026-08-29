@@ -45,10 +45,12 @@ export function deploymentPinCookie(cookieHeader, deploymentId) {
 }
 
 export const config = {
-  // Only the long-lived playable documents need a session deployment pin.
+  // Long-lived playable documents and Gallery share the site-wide deployment
+  // cookie. Gallery must participate too: otherwise a stale game pin can make
+  // its HTML request chunk hashes from a different deployment.
   // Asset requests bypass middleware and inherit the cookie set on the HTML
   // response before the browser begins parsing modulepreload links.
-  matcher: ['/', '/index.html', '/studio', '/studio/'],
+  matcher: ['/', '/index.html', '/studio', '/studio/', '/gallery', '/gallery/', '/gallery.html'],
 };
 
 /** @param {Request} request */

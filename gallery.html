@@ -2,6 +2,107 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <script>
+    // GALLERY CHUNK RECOVERY: this page shares the game's site-wide Vercel
+    // deployment pin. If an old pin or cached document names removed hashes,
+    // recover onto one coherent deployment without asking users to clear data.
+    (() => {
+      const KEY = 'cot.galleryRecovery.v1';
+      const MAX_AUTO_RELOADS = 2;
+      let navigating = false;
+      let scheduled = false;
+
+      function retryCountFromUrl() {
+        try {
+          const receipt = new URL(location.href).searchParams.get('_galleryretry');
+          if (!receipt) return 0;
+          const count = Number.parseInt(receipt.split('-', 1)[0], 10);
+          return Number.isFinite(count) ? Math.max(1, Math.min(MAX_AUTO_RELOADS, count)) : 1;
+        } catch (_) { return 0; }
+      }
+
+      function retryCount() {
+        let stored = 0;
+        try {
+          const value = JSON.parse(sessionStorage.getItem(KEY) || 'null');
+          if (value && Date.now() - value.at < 15 * 60 * 1000) stored = Number(value.count) || 0;
+        } catch (_) { /* storage may be blocked */ }
+        return Math.max(stored, retryCountFromUrl());
+      }
+
+      function remember(count, reason) {
+        try { sessionStorage.setItem(KEY, JSON.stringify({ count, reason, at: Date.now() })); }
+        catch (_) { /* storage may be blocked */ }
+      }
+
+      function showRetry() {
+        if (document.getElementById('gallery-runtime-retry')) return;
+        const button = document.createElement('button');
+        button.id = 'gallery-runtime-retry';
+        button.type = 'button';
+        button.textContent = 'A gallery file did not load — reload';
+        button.style.cssText = 'position:fixed;z-index:10000;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 18px;border:1px solid #f0a030;background:#0b1117;color:#ffe4b0;font:700 12px sans-serif;cursor:pointer';
+        button.onclick = () => navigate('manual');
+        document.body.appendChild(button);
+      }
+
+      function navigate(reason) {
+        if (navigating) return;
+        navigating = true;
+        const nextCount = Math.min(MAX_AUTO_RELOADS, retryCount() + 1);
+        remember(nextCount, reason);
+        const receipt = `${nextCount}-${Date.now().toString(36)}`;
+        const finish = () => {
+          const url = new URL(location.href);
+          url.searchParams.set('_galleryretry', receipt);
+          url.searchParams.delete('_dplreset');
+          location.replace(url.href);
+        };
+        // Older deployments did not run middleware on /gallery. The root
+        // route has always owned the reset handshake, so fetch it first and
+        // let its redirect clear the stale cookie before replacing Gallery.
+        if (typeof fetch === 'function') {
+          const reset = new URL('/', location.href);
+          reset.searchParams.set('_dplreset', '1');
+          fetch(reset.href, {
+            cache: 'no-store',
+            credentials: 'same-origin',
+            redirect: 'follow',
+          }).then(finish, finish);
+        } else {
+          const url = new URL(location.href);
+          url.searchParams.set('_galleryretry', receipt);
+          url.searchParams.set('_dplreset', '1');
+          location.replace(url.href);
+        }
+      }
+
+      function recover(reason) {
+        if (navigating || scheduled) return;
+        if (retryCount() >= MAX_AUTO_RELOADS) {
+          showRetry();
+          return;
+        }
+        scheduled = true;
+        setTimeout(() => navigate(reason), 150);
+      }
+
+      addEventListener('vite:preloadError', () => recover('preload'));
+      addEventListener('error', (event) => {
+        const node = event.target;
+        const moduleScript = node && node.tagName === 'SCRIPT' && node.type === 'module';
+        if (moduleScript || /module script|dynamically imported module|module preload/i.test(String(event.message || ''))) {
+          recover('module');
+        }
+      }, true);
+      addEventListener('unhandledrejection', (event) => {
+        const message = String(event.reason && (event.reason.message || event.reason) || '');
+        if (/module script|dynamically imported module|module preload|failed to fetch/i.test(message)) {
+          recover('module-promise');
+        }
+      });
+    })();
+  </script>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#07090b">
   <meta name="author" content="Kevin B. Liu">
