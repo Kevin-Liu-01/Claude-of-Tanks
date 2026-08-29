@@ -197,6 +197,11 @@ contracts for input bindings, typed setting keys, conflict resolution,
 graphics choices, gamepad capture, pause ownership, and DOM lifetime. Its
 access shim imports the real module contract directly instead of maintaining
 an unchecked duplicate and double-asserting the lazy module.
+The Scene Studio workspace now uses strict `src/ui/studioPanel.ts` contracts
+for staged actors, effects, camera shots, timeline tracks, capture state,
+recording, and every interactive DOM control. The underlying Studio runtime
+retains its demand-loaded JavaScript owner while that larger simulation and
+renderer boundary awaits its own migration.
 
 ## Consequences
 

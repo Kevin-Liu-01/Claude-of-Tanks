@@ -1,5 +1,5 @@
 /**
- * studioPanel.js — SCENE STUDIO control panel (src/game/studio.js's UI).
+ * studioPanel.ts — SCENE STUDIO control panel (src/game/studio.js's UI).
  *
  * Workspace layout: one scrollable, grouped workspace (Battlefield / Tanks /
  * Effects / Global / Output). The panel stays a THIN VIEW over the studio API
@@ -17,9 +17,9 @@ import { FEATURED_SHOTS } from './featuredShots.ts';
 import { mountMediaArchive } from '../presentation/mediaArchive.ts';
 import { PRODUCT_STATS } from '../productStats.ts';
 import { vehicleEraLabel } from '../vehicles/taxonomy.ts';
-import { createInfoButton } from './contextInfo.ts';
+import { createInfoButton, type InfoButton, type InfoImage } from './contextInfo.ts';
 
-const STUDIO_GROUP_INFO = Object.freeze({
+const STUDIO_GROUP_INFO: Readonly<Record<string, string>> = Object.freeze({
   Battlefield: 'Choose the live battlefield, seed, and environmental foundation used by the current composition.',
   Tanks: 'Add first-party playable vehicles, then stage their position, facing, turret, gun, camouflage, and damage state.',
   Effects: 'Schedule the same pooled firing, impact, destruction, weather, and battlefield effects used by the game.',
@@ -27,7 +27,7 @@ const STUDIO_GROUP_INFO = Object.freeze({
   Output: 'Capture stills or video, copy the complete scene JSON, and restore a composition with the same Studio load contract.',
 });
 
-const STUDIO_SECTION_INFO = Object.freeze({
+const STUDIO_SECTION_INFO: Readonly<Record<string, string>> = Object.freeze({
   Map: 'Select any live battlefield and preserve its deterministic environment in the scene JSON.',
   'Add tanks': 'Add a vehicle from the shipped roster to the current composition.',
   'Selected tank': 'Edit the selected actor’s pose, paint, state, and scene identity.',
@@ -37,6 +37,204 @@ const STUDIO_SECTION_INFO = Object.freeze({
   'Video · Stills · Scene': 'The complete JSON in this info panel can be copied and passed directly to window.__STUDIO.load(recipe).',
   'Production archive': 'Each field frame with an info icon exposes the complete Scene Studio JSON used to reproduce it.',
 });
+
+type StudioActorState = string;
+
+interface StudioPoint {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface StudioActor {
+  readonly uid: string;
+  readonly name?: string;
+  readonly spec: {
+    readonly id: string;
+    readonly name: string;
+    readonly dims: { readonly heightM: number };
+    readonly gunDepressionDeg?: number;
+    readonly gunElevationDeg?: number;
+  };
+  readonly state: { readonly pos: StudioPoint };
+  readonly pose: {
+    readonly x: number;
+    readonly z: number;
+    readonly facingDeg: number;
+    readonly turretDeg: number;
+    readonly gunDeg: number;
+  };
+  readonly stateName: StudioActorState;
+  readonly camo?: string | null;
+}
+
+interface StudioEffect {
+  readonly id: string;
+  readonly type: string;
+  readonly tMs: number;
+  readonly selected: boolean;
+  readonly actor?: string | null;
+  readonly from?: readonly number[];
+  readonly to?: readonly number[];
+  readonly at?: readonly number[];
+}
+
+interface StudioCameraShot {
+  readonly id: string;
+  readonly label: string;
+  readonly tMs: number;
+  readonly fov: number;
+  readonly transition: string;
+}
+
+interface StudioStoryboard {
+  readonly shots: readonly StudioCameraShot[];
+  readonly actorTracks: ReadonlyArray<{
+    readonly actor: string;
+    readonly keys: ReadonlyArray<{ readonly tMs: number }>;
+  }>;
+}
+
+interface StudioCameraState {
+  readonly mode: 'fly' | 'orbit' | string;
+  readonly pos: readonly number[];
+  readonly lookAt: readonly number[];
+  readonly yawDeg: number;
+  readonly pitchDeg: number;
+  readonly fov: number;
+  readonly rollDeg: number;
+}
+
+interface StudioSpecInfo {
+  readonly id: string;
+  readonly name: string;
+  readonly era?: string;
+  readonly developmentOnly?: boolean;
+  readonly rosterTag?: string;
+}
+
+interface StudioRecordingStatus {
+  readonly active: boolean;
+  readonly supported: boolean;
+  readonly elapsedMs: number;
+  readonly durationMs: number;
+  readonly mimeType?: string;
+}
+
+interface StudioEffectRecipe {
+  readonly type: string;
+  readonly actor?: string;
+  readonly from?: readonly number[];
+  readonly to?: readonly number[];
+  readonly at?: readonly number[];
+  readonly hFrac?: number;
+  readonly params?: Readonly<Record<string, unknown>>;
+}
+
+interface StudioPanelApi {
+  readonly MAP_IDS: readonly string[];
+  readonly TANK_IDS: readonly string[];
+  readonly CAMO_PATTERN_IDS: readonly string[];
+  readonly ACTOR_STATES: readonly string[];
+  readonly mapId: string | null;
+  readonly timeScale: number;
+  readonly fxTimeMs: number;
+  readonly durationMs: number;
+  readonly playing: boolean;
+  readonly railVisible: boolean;
+  readonly selectedShotId: string | null;
+  readonly _internal: {
+    selected: StudioActor | null;
+    readonly actors: readonly StudioActor[];
+    placeArmed: string | null;
+    readonly markerActive: boolean;
+    readonly markerPos: StudioPoint;
+    readonly cam: { speed: number };
+  };
+  getMapInfo(id: string): { readonly name: string };
+  getSpecInfo(id: string): StudioSpecInfo;
+  getCamera(): StudioCameraState;
+  getStoryboard(): StudioStoryboard;
+  listEffects(): readonly StudioEffect[];
+  recordingStatus(): StudioRecordingStatus;
+  state(): Record<string, unknown>;
+  exit(): void;
+  setMap(id: string): Promise<unknown> | unknown;
+  addActor(config: Readonly<Record<string, unknown>>): unknown;
+  removeActor(actor: StudioActor): unknown;
+  updateActor(actor: StudioActor, patch: Readonly<Record<string, unknown>>): unknown;
+  setActorState(actor: StudioActor, state: string): unknown;
+  selectActor(uid: string): unknown;
+  effect(recipe: StudioEffectRecipe): unknown;
+  clearEffects(): unknown;
+  advanceFx(milliseconds: number): unknown;
+  setStoryboardDuration(milliseconds: number): unknown;
+  setTimeScale(scale: number): unknown;
+  stop(): unknown;
+  pause(): unknown;
+  play(): unknown;
+  seek(milliseconds: number): unknown;
+  addCameraShot(): unknown;
+  keyActor(actor: StudioActor): unknown;
+  setRailVisible(visible: boolean): unknown;
+  clearActorTrack(actor: StudioActor): unknown;
+  directDuel(): unknown;
+  setCamera(config: Readonly<Record<string, unknown>>): unknown;
+  recordVideo(options: { readonly fps: number; readonly download: boolean }): Promise<{ size: number }>;
+  stopRecording(): unknown;
+  capture(options: { readonly width: number; readonly download: boolean }): unknown;
+  load(state: unknown): Promise<unknown>;
+  updateEffect(id: string, patch: Readonly<Record<string, unknown>>): unknown;
+  removeEffect(id: string): unknown;
+  selectEffect(id: string): unknown;
+  selectCameraShot(id: string): unknown;
+  updateCameraShot(id: string, patch: Readonly<Record<string, unknown>>): unknown;
+  removeCameraShot(id: string): unknown;
+}
+
+interface SliderControl {
+  readonly row: HTMLDivElement;
+  readonly input: HTMLInputElement;
+  set(value: number): void;
+  setRange(min: number, max: number): void;
+}
+
+interface PanelGroup {
+  readonly root: HTMLElement;
+  readonly body: HTMLDivElement;
+}
+
+type StudioEffectAction = readonly [string, () => unknown, boolean?];
+
+function imageFor(
+  catalog: Readonly<Record<string, string>>,
+  id: string,
+): string | undefined {
+  return catalog[id];
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+export interface StudioPanelRuntime {
+  readonly root: HTMLDivElement;
+  show(): void;
+  hide(): void;
+  setBusy(text: string | null): void;
+  setPlaceArmed(specId: string | null): void;
+  setSelected(actor: StudioActor | null): void;
+  setSelectedEffect(effect: StudioEffect | null): void;
+  refreshActors(): void;
+  refreshSelected(): void;
+  refreshEffects(): void;
+  refreshCamera(): void;
+  refreshTime(): void;
+  refreshStoryboard(): void;
+  refreshMap(): void;
+  refreshAll(): void;
+  tick(dt: number): void;
+}
 
 const CSS = `
 .cot-studio{position:fixed;inset:0;z-index:58;display:none;pointer-events:none;
@@ -310,7 +508,7 @@ const CSS = `
  *   setPlaceArmed, refreshActors, refreshSelected, refreshCamera,
  *   refreshTime, refreshAll }
  */
-export function createStudioPanel(S) {
+export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   ensureFonts();
   if (!document.getElementById('cot-studio-css')) {
     const st = document.createElement('style');
@@ -323,7 +521,7 @@ export function createStudioPanel(S) {
   document.body.appendChild(root);
 
   /** Tinted side-silhouette icon for a tank id (mask, so one PNG serves any tint). */
-  function tankIcon(id, cls = 'tic') {
+  function tankIcon(id: string, cls = 'tic'): HTMLDivElement {
     const d = el('div', cls);
     const u = `url(${iconUrl(id, 'side_silhouette')})`;
     d.style.webkitMaskImage = u;
@@ -389,8 +587,8 @@ export function createStudioPanel(S) {
   const mapPopHead = el('div', 'mapPopHead');
   mapPopHead.append(el('span', null, 'Choose battlefield'), el('span', null, 'Preview · click to load'));
   const mapGrid = el('div', 'mapGrid');
-  const mapCards = new Map();
-  const mapImages = [];
+  const mapCards = new Map<string, HTMLButtonElement>();
+  const mapImages: HTMLImageElement[] = [];
   for (const id of S.MAP_IDS) {
     const info = S.getMapInfo ? S.getMapInfo(id) : { name: id };
     const card = el('button', 'mapCard');
@@ -403,7 +601,7 @@ export function createStudioPanel(S) {
     thumb.alt = '';
     thumb.loading = 'lazy';
     thumb.decoding = 'async';
-    thumb.dataset.src = MAP_THUMBS[id] || '';
+    thumb.dataset.src = imageFor(MAP_THUMBS, id) || '';
     mapImages.push(thumb);
     card.append(
       thumb,
@@ -427,27 +625,30 @@ export function createStudioPanel(S) {
       if (image.dataset.src) image.src = image.dataset.src;
     }
   }
-  function toggleMapPick(open) {
+  function toggleMapPick(open?: boolean): void {
     const next = open != null ? open : !mapPop.classList.contains('open');
     mapPop.classList.toggle('open', next);
     mapBtn.setAttribute('aria-expanded', String(next));
     mapArrow.textContent = next ? '▲' : '▼';
     if (next) {
       hydrateMapPreviews();
-      requestAnimationFrame(() => mapCards.get(S.mapId)?.focus({ preventScroll: true }));
+      const currentMapId = S.mapId;
+      if (currentMapId) {
+        requestAnimationFrame(() => mapCards.get(currentMapId)?.focus({ preventScroll: true }));
+      }
     }
   }
-  function setMapLoading(loading) {
+  function setMapLoading(loading: boolean): void {
     mapBtn.disabled = loading;
     mapPick.setAttribute('aria-busy', String(loading));
     for (const card of mapCards.values()) card.disabled = loading;
   }
-  function chooseMap(id) {
+  function chooseMap(id: string): void {
     toggleMapPick(false);
     if (!id || id === S.mapId) return;
     setMapLoading(true);
     Promise.resolve(S.setMap(id))
-      .catch((error) => flashBusy(`MAP FAILED: ${error.message}`))
+      .catch((error: unknown) => flashBusy(`MAP FAILED: ${errorMessage(error)}`))
       .finally(() => {
         setMapLoading(false);
         api.refreshMap();
@@ -461,7 +662,8 @@ export function createStudioPanel(S) {
     }
   });
   document.addEventListener('pointerdown', (event) => {
-    if (mapPop.classList.contains('open') && !mapPick.contains(event.target)) toggleMapPick(false);
+    if (mapPop.classList.contains('open') &&
+        !(event.target instanceof Node && mapPick.contains(event.target))) toggleMapPick(false);
   });
 
   // === TANKS group ===
@@ -486,10 +688,10 @@ export function createStudioPanel(S) {
   pick.append(pickBtn, pickPop);
   secActors.appendChild(pick);
 
-  const specInfo = (id) => {
+  const specInfo = (id: string): StudioSpecInfo => {
     try { return S.getSpecInfo(id); } catch (_) { return { id, name: id, era: '' }; }
   };
-  function setPicked(id) {
+  function setPicked(id: string): void {
     pickedId = id;
     const info = specInfo(id);
     pickName.textContent = info.name;
@@ -497,10 +699,10 @@ export function createStudioPanel(S) {
     pickIcon.style.webkitMaskImage = u;
     pickIcon.style.maskImage = u;
   }
-  function buildPickList(filter = '') {
+  function buildPickList(filter = ''): void {
     pickList.textContent = '';
     const f = filter.trim().toLowerCase();
-    const groups = [
+    const groups: ReadonlyArray<readonly [string, string[]]> = [
       ['Production roster', S.TANK_IDS.filter((id) => !specInfo(id).developmentOnly)],
       ['Development roster', S.TANK_IDS.filter((id) => specInfo(id).developmentOnly)],
     ];
@@ -527,7 +729,7 @@ export function createStudioPanel(S) {
       }
     }
   }
-  function togglePick(open) {
+  function togglePick(open?: boolean): void {
     const o = open != null ? open : !pickPop.classList.contains('open');
     pickPop.classList.toggle('open', o);
     if (o) {
@@ -541,12 +743,13 @@ export function createStudioPanel(S) {
   pickFlt.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') togglePick(false);
     if (e.key === 'Enter') {
-      const first = pickList.querySelector('.prow');
+      const first = pickList.querySelector<HTMLElement>('.prow');
       if (first) first.click();
     }
   });
   document.addEventListener('pointerdown', (e) => {
-    if (pickPop.classList.contains('open') && !pick.contains(e.target)) togglePick(false);
+    if (pickPop.classList.contains('open') &&
+        !(e.target instanceof Node && pick.contains(e.target))) togglePick(false);
   });
   setPicked(pickedId);
 
@@ -644,19 +847,21 @@ export function createStudioPanel(S) {
   fxStack.setAttribute('role', 'listbox');
   fxStack.setAttribute('aria-label', 'Authored effects');
   secFx.append(fxStackBar, fxStack);
-  const selOr = (fn, needActor = false) => {
-    const a = S._internal.selected;
-    if (needActor && !a) { flashBusy('SELECT AN ACTOR FIRST'); return null; }
-    return fn(a);
+  const selOr = <Result>(fn: (actor: StudioActor | null) => Result): Result =>
+    fn(S._internal.selected);
+  const withSelected = <Result>(fn: (actor: StudioActor) => Result): Result | null => {
+    const actor = S._internal.selected;
+    if (!actor) { flashBusy('SELECT AN ACTOR FIRST'); return null; }
+    return fn(actor);
   };
-  const atMarker = (fn) => {
+  const atMarker = <Result>(fn: () => Result): Result | null => {
     if (!S._internal.markerActive) {
       flashBusy('CLICK THE BATTLEFIELD TO PLACE THE FX MARKER');
       return null;
     }
     return fn();
   };
-  const fireProjectile = (effect) => {
+  const fireProjectile = (effect: StudioEffectRecipe): unknown => {
     const fired = S.effect(effect);
     // A shell born on a frozen timeline is still at its muzzle. Advance one
     // real simulation frame so the button immediately shows the projectile
@@ -665,10 +870,10 @@ export function createStudioPanel(S) {
     return fired;
   };
   /** actor-anchored when one is selected, marker-anchored otherwise */
-  const impactFx = (kind, hFrac = 0.55, caliberMm = 120) => selOr((a) => S.effect({
+  const impactFx = (kind: string, hFrac = 0.55, caliberMm = 120) => withSelected((a) => S.effect({
     type: 'impact', actor: a.uid, hFrac, params: { kind, caliberMm, normal: [0.15, 0.35, -0.92] },
-  }), true);
-  function fxGroup(title, defs) {
+  }));
+  function fxGroup(title: string, defs: readonly StudioEffectAction[]): void {
     const g = el('div', 'fxg');
     g.appendChild(el('div', 'gh', title));
     const grid = el('div', 'grid');
@@ -682,12 +887,12 @@ export function createStudioPanel(S) {
     secFx.appendChild(g);
   }
   fxGroup('Gunnery', [
-    ['FIRE GUN', () => selOr((a) => fireProjectile({ type: 'fire', actor: a.uid }), true)],
+    ['FIRE GUN', () => withSelected((a) => fireProjectile({ type: 'fire', actor: a.uid }))],
     ['MUZZLE FLASH', () => selOr((a) => S.effect(a
       ? { type: 'muzzle_flash', actor: a.uid } : { type: 'muzzle_flash' }))],
-    ['MG BURST', () => selOr((a) => S.effect({ type: 'mg_burst', actor: a.uid }), true)],
-    ['RECOIL + FLASH', () => selOr((a) => S.effect({ type: 'firing_moment', actor: a.uid, params: { ageS: 0.05 } }), true)],
-    ['TRACER MARKER → ACTOR', () => selOr((a) => {
+    ['MG BURST', () => withSelected((a) => S.effect({ type: 'mg_burst', actor: a.uid }))],
+    ['RECOIL + FLASH', () => withSelected((a) => S.effect({ type: 'firing_moment', actor: a.uid, params: { ageS: 0.05 } }))],
+    ['TRACER MARKER → ACTOR', () => withSelected((a) => {
       if (!S._internal.markerActive) {
         flashBusy('CLICK THE BATTLEFIELD TO PLACE THE TRACER ORIGIN');
         return false;
@@ -700,7 +905,7 @@ export function createStudioPanel(S) {
         to: [t.x, t.y + a.spec.dims.heightM * 0.6, t.z],
         params: { shellType: 'APFSDS' },
       });
-    }, true), true],
+    }), true],
   ]);
   fxGroup('Strikes · at marker', [
     ['EXPL SMALL', () => atMarker(() => S.effect({ type: 'explosion', params: { size: 'small' } }))],
@@ -719,20 +924,20 @@ export function createStudioPanel(S) {
     ['RICOCHET', () => impactFx('ricochet', 0.72)],
     ['HE SPLASH', () => impactFx('he_splash', 0.5, 152)],
     ['ERA POP', () => impactFx('era', 0.45)],
-    ['ARMOR SCARS', () => selOr((a) => S.effect({ type: 'armor_scar', actor: a.uid }), true)],
+    ['ARMOR SCARS', () => withSelected((a) => S.effect({ type: 'armor_scar', actor: a.uid }))],
   ]);
   fxGroup('Vehicle state', [
-    ['KILL · AMMO-RACK', () => selOr((a) => S.effect({ type: 'tank_kill', actor: a.uid }), true)],
-    ['KILL · BURN-OUT', () => selOr((a) => S.effect({ type: 'tank_kill', actor: a.uid, params: { cause: 'fire', pop: false } }), true)],
-    ['DETRACK L', () => selOr((a) => S.effect({ type: 'detrack', actor: a.uid, params: { side: 'L' } }), true)],
-    ['DETRACK R', () => selOr((a) => S.effect({ type: 'detrack', actor: a.uid, params: { side: 'R' } }), true)],
-    ['EXHAUST BELCH', () => selOr((a) => S.effect({ type: 'exhaust', actor: a.uid }), true)],
-    ['ENGINE SMOKE', () => selOr((a) => S.effect({ type: 'engine_smoke', actor: a.uid }), true)],
-    ['SET BURNING', () => selOr((a) => S.effect({ type: 'burning', actor: a.uid }), true)],
-    ['EXTINGUISH', () => selOr((a) => {
+    ['KILL · AMMO-RACK', () => withSelected((a) => S.effect({ type: 'tank_kill', actor: a.uid }))],
+    ['KILL · BURN-OUT', () => withSelected((a) => S.effect({ type: 'tank_kill', actor: a.uid, params: { cause: 'fire', pop: false } }))],
+    ['DETRACK L', () => withSelected((a) => S.effect({ type: 'detrack', actor: a.uid, params: { side: 'L' } }))],
+    ['DETRACK R', () => withSelected((a) => S.effect({ type: 'detrack', actor: a.uid, params: { side: 'R' } }))],
+    ['EXHAUST BELCH', () => withSelected((a) => S.effect({ type: 'exhaust', actor: a.uid }))],
+    ['ENGINE SMOKE', () => withSelected((a) => S.effect({ type: 'engine_smoke', actor: a.uid }))],
+    ['SET BURNING', () => withSelected((a) => S.effect({ type: 'burning', actor: a.uid }))],
+    ['EXTINGUISH', () => withSelected((a) => {
       S.effect({ type: 'burning', actor: a.uid, params: { off: true } });
       S.effect({ type: 'engine_smoke', actor: a.uid, params: { off: true } });
-    }, true)],
+    })],
   ]);
   effectsGroup.body.appendChild(secFx);
 
@@ -775,7 +980,7 @@ export function createStudioPanel(S) {
   secTime.appendChild(scrub);
 
   const timelineBoard = el('div', 'timelineBoard');
-  function timelineLane(label) {
+  function timelineLane(label: string): HTMLDivElement {
     const lane = el('div', 'tlane');
     lane.appendChild(el('div', 'lbl', label));
     const track = el('div', 'tltrack');
@@ -823,8 +1028,8 @@ export function createStudioPanel(S) {
     try {
       S.directDuel();
       flashBusy('12 SECOND DUEL STORYBOARD READY');
-    } catch (error) {
-      flashBusy(error.message);
+    } catch (error: unknown) {
+      flashBusy(errorMessage(error));
     }
   });
   secTime.appendChild(duelBtn);
@@ -864,7 +1069,7 @@ export function createStudioPanel(S) {
   const videoRow = el('div', 'row');
   videoRow.appendChild(el('label', 'k', 'Video'));
   const fpsSel = document.createElement('select');
-  for (const [label, fps] of [['60 FPS · 12 Mbps', 60], ['30 FPS · 12 Mbps', 30]]) {
+  for (const [label, fps] of [['60 FPS · 12 Mbps', 60], ['30 FPS · 12 Mbps', 30]] as const) {
     const option = document.createElement('option');
     option.value = String(fps);
     option.textContent = label;
@@ -880,7 +1085,7 @@ export function createStudioPanel(S) {
     }
     S.recordVideo({ fps: Number(fpsSel.value), download: true })
       .then((result) => flashBusy(`VIDEO SAVED · ${(result.size / 1048576).toFixed(1)} MB`))
-      .catch((error) => flashBusy(`RECORD FAILED: ${error.message}`));
+      .catch((error: unknown) => flashBusy(`RECORD FAILED: ${errorMessage(error)}`));
     api.refreshStoryboard();
   });
   secCap.appendChild(recordBtn);
@@ -890,7 +1095,12 @@ export function createStudioPanel(S) {
   capRow.style.marginTop = '8px';
   capRow.appendChild(el('label', 'k', 'Width'));
   const capSel = document.createElement('select');
-  for (const [label, w] of [['2560 px', 2560], ['3200 px', 3200], ['3840 px', 3840], ['5120 px', 5120]]) {
+  for (const [label, w] of [
+    ['2560 px', 2560],
+    ['3200 px', 3200],
+    ['3840 px', 3840],
+    ['5120 px', 5120],
+  ] as const) {
     const o = document.createElement('option');
     o.value = String(w);
     o.textContent = label;
@@ -924,7 +1134,7 @@ export function createStudioPanel(S) {
     const f = fileIn.files && fileIn.files[0];
     if (!f) return;
     f.text().then((txt) => S.load(JSON.parse(txt)))
-      .catch((err) => flashBusy(`LOAD FAILED: ${err.message}`));
+      .catch((error: unknown) => flashBusy(`LOAD FAILED: ${errorMessage(error)}`));
     fileIn.value = '';
   });
   loadBtn.addEventListener('click', () => fileIn.click());
@@ -952,7 +1162,7 @@ export function createStudioPanel(S) {
       } else {
         const txt = localStorage.getItem(key);
         if (!txt) { flashBusy(`SLOT ${i} EMPTY (shift-click saves)`); return; }
-        S.load(JSON.parse(txt)).catch((err) => flashBusy(`LOAD FAILED: ${err.message}`));
+        S.load(JSON.parse(txt)).catch((error: unknown) => flashBusy(`LOAD FAILED: ${errorMessage(error)}`));
       }
     });
     slotRow.appendChild(b);
@@ -965,18 +1175,26 @@ export function createStudioPanel(S) {
   const archiveBtn = el('button', null, 'OPEN FIELD FRAMES · 61');
   archiveBtn.style.width = '100%';
   archiveBtn.addEventListener('click', () => {
-    let dialog = document.querySelector('.cot-studio-archive');
+    let dialog = document.querySelector<HTMLDialogElement>('.cot-studio-archive');
     if (!dialog) {
       dialog = document.createElement('dialog');
       dialog.className = 'cot-studio-archive';
       dialog.innerHTML = '<header><div><small>Scene Studio // shared component</small><strong>Field frames.</strong><span>Current renderer references for composition, lighting, effects, and vehicle staging.</span></div><button type="button" aria-label="Close field frames">×</button></header><div class="archiveBody" data-media-archive></div>';
-      dialog.querySelector('button').addEventListener('click', () => dialog.close());
-      dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+      const createdDialog = dialog;
+      createdDialog.querySelector<HTMLButtonElement>('button')?.addEventListener(
+        'click',
+        () => createdDialog.close(),
+      );
+      createdDialog.addEventListener('click', (event) => {
+        if (event.target === createdDialog) createdDialog.close();
+      });
       document.body.appendChild(dialog);
     }
     dialog.showModal();
-    mountMediaArchive(dialog.querySelector('[data-media-archive]'), { mode: 'compact', limit: 61 })
-      .catch((error) => flashBusy(error.message));
+    const archiveRoot = dialog.querySelector<HTMLElement>('[data-media-archive]');
+    if (!archiveRoot) throw new Error('[studio] missing production archive root');
+    mountMediaArchive(archiveRoot, { mode: 'compact', limit: 61 })
+      .catch((error: unknown) => flashBusy(errorMessage(error)));
   });
   secArchive.append(archiveCopy, archiveBtn);
   outputGroup.body.appendChild(secArchive);
@@ -991,13 +1209,17 @@ export function createStudioPanel(S) {
   root.appendChild(foot);
 
   // --- helpers -------------------------------------------------------------------
-  function el(tag, cls, text) {
+  function el<Tag extends keyof HTMLElementTagNameMap>(
+    tag: Tag,
+    cls: string | null = null,
+    text: string | number | null = null,
+  ): HTMLElementTagNameMap[Tag] {
     const d = document.createElement(tag);
     if (cls) d.className = cls;
-    if (text != null) d.textContent = text;
+    if (text != null) d.textContent = String(text);
     return d;
   }
-  function studioInfoImages(title) {
+  function studioInfoImages(title: string): InfoImage[] {
     if (title === 'Tanks' || title === 'Add tanks' || title === 'Selected tank') {
       const id = S._internal.selected?.spec?.id || pickedId;
       if (!id) return [];
@@ -1014,21 +1236,23 @@ export function createStudioPanel(S) {
         caption: `${info.name || id} // module layout`,
       }];
     }
-    const src = MAP_HEROES[S.mapId] || MAP_THUMBS[S.mapId];
+    const currentMapId = S.mapId;
+    if (!currentMapId) return [];
+    const src = imageFor(MAP_HEROES, currentMapId) || imageFor(MAP_THUMBS, currentMapId);
     if (!src) return [];
-    const info = S.getMapInfo ? S.getMapInfo(S.mapId) : { name: S.mapId };
-    const shot = FEATURED_SHOTS.find((entry) => entry.maps?.includes(S.mapId)) || FEATURED_SHOTS[0];
+    const info = S.getMapInfo(currentMapId);
+    const shot = FEATURED_SHOTS.find((entry) => entry.maps?.includes(currentMapId)) || FEATURED_SHOTS[0];
     return [{
       src,
-      alt: `${info.name || S.mapId} Studio battlefield`,
-      caption: `${info.name || S.mapId} // current production canvas`,
+      alt: `${info.name || currentMapId} Studio battlefield`,
+      caption: `${info.name || currentMapId} // current production canvas`,
     }, shot ? {
       src: shot.img,
       alt: shot.cap,
       caption: `${shot.cap} // authored Scene Studio output`,
     } : null].filter(Boolean);
   }
-  function section(title, sub) {
+  function section(title: string, sub = ''): HTMLDivElement {
     const s = el('div', 'sec');
     const h = el('div', 'h', title);
     if (sub) h.appendChild(el('span', 'sub', sub));
@@ -1043,7 +1267,7 @@ export function createStudioPanel(S) {
     s.appendChild(h);
     return s;
   }
-  function panelGroup(index, title, sub) {
+  function panelGroup(index: string, title: string, sub: string): PanelGroup {
     const groupRoot = el('section', 'pgroup');
     groupRoot.dataset.group = title.toLowerCase();
     const head = el('div', 'ghead');
@@ -1063,7 +1287,13 @@ export function createStudioPanel(S) {
     groupRoot.append(head, body);
     return { root: groupRoot, body };
   }
-  function sliderRow(label, min, max, step, onInput) {
+  function sliderRow(
+    label: string,
+    min: number,
+    max: number,
+    step: number,
+    onInput: (value: number) => void,
+  ): SliderControl {
     const row = el('div', 'row');
     row.appendChild(el('label', 'k', label));
     const r = document.createElement('input');
@@ -1079,36 +1309,42 @@ export function createStudioPanel(S) {
     row.append(r, val);
     return {
       row, input: r,
-      set(v) { r.value = String(v); val.textContent = String(Math.round(v * 10) / 10); },
-      setRange(mn, mx) { r.min = String(mn); r.max = String(mx); },
+      set(value: number) {
+        r.value = String(value);
+        val.textContent = String(Math.round(value * 10) / 10);
+      },
+      setRange(rangeMin: number, rangeMax: number) {
+        r.min = String(rangeMin);
+        r.max = String(rangeMax);
+      },
     };
   }
-  function numInput(onChange) {
+  function numInput(onChange: (value: number) => void): HTMLInputElement {
     const n = document.createElement('input');
     n.type = 'number';
     n.step = '1';
     n.addEventListener('change', () => onChange(parseFloat(n.value) || 0));
     return n;
   }
-  function patchSel(patch) {
+  function patchSel(patch: Readonly<Record<string, unknown>>): void {
     const a = S._internal.selected;
     if (a) { S.updateActor(a, patch); }
   }
-  let busyTimer = 0;
-  function flashBusy(text) {
+  let busyTimer: ReturnType<typeof setTimeout> | null = null;
+  function flashBusy(text: string): void {
     api.setBusy(text);
-    clearTimeout(busyTimer);
+    if (busyTimer !== null) clearTimeout(busyTimer);
     busyTimer = setTimeout(() => api.setBusy(null), 1600);
   }
   /** amber/red tinting class for an actor row by damage state */
-  function stateClass(name) {
+  function stateClass(name: StudioActorState): string {
     if (name === 'engine-smoking') return ' st-warn';
     if (name === 'burning' || name === 'wrecked' || name === 'wrecked-burnt'
       || name === 'turret-popped') return ' st-bad';
     return '';
   }
 
-  function effectAnchorLabel(effect) {
+  function effectAnchorLabel(effect: StudioEffect): string {
     if (effect.actor != null) return `ACTOR ${String(effect.actor)}`;
     if (effect.from && effect.to) return 'FLIGHT PATH';
     if (effect.at) return `POINT ${effect.at.map((v) => Number(v).toFixed(1)).join(' / ')}`;
@@ -1173,7 +1409,14 @@ export function createStudioPanel(S) {
     }
   }
 
-  function addTimelineMarker(track, className, timeMs, title, onClick, selected = false) {
+  function addTimelineMarker(
+    track: HTMLElement,
+    className: string,
+    timeMs: number,
+    title: string,
+    onClick: () => void,
+    selected = false,
+  ): void {
     const marker = el('button', `tlmarker ${className}${selected ? ' sel' : ''}`);
     marker.type = 'button';
     marker.style.left = `${Math.max(0, Math.min(100, (timeMs / Math.max(1, S.durationMs)) * 100))}%`;
@@ -1186,7 +1429,7 @@ export function createStudioPanel(S) {
     track.appendChild(marker);
   }
 
-  function addPlayhead(track) {
+  function addPlayhead(track: HTMLElement): void {
     const playhead = el('div', 'playhead');
     playhead.style.left = `${Math.max(0, Math.min(100, (S.fxTimeMs / Math.max(1, S.durationMs)) * 100))}%`;
     track.appendChild(playhead);
@@ -1197,7 +1440,8 @@ export function createStudioPanel(S) {
     cameraLane.textContent = '';
     actorLane.textContent = '';
     effectLane.textContent = '';
-    shotboard.querySelectorAll('.cot-info-trigger').forEach((button) => button.disposeInfo?.());
+    shotboard.querySelectorAll<InfoButton>('.cot-info-trigger')
+      .forEach((button) => button.disposeInfo?.());
     shotboard.textContent = '';
     board.shots.forEach((shot, index) => {
       addTimelineMarker(
@@ -1274,7 +1518,7 @@ export function createStudioPanel(S) {
 
   // --- public panel API -------------------------------------------------------
   let refreshAcc = 0;
-  const api = {
+  const api: StudioPanelRuntime = {
     root,
     show() { root.style.display = 'block'; api.refreshAll(); },
     hide() { root.style.display = 'none'; togglePick(false); toggleMapPick(false); },
@@ -1358,7 +1602,9 @@ export function createStudioPanel(S) {
       const text = `${(S.fxTimeMs / 1000).toFixed(2)} / ${seconds.toFixed(2)} S`;
       if (clockNow.textContent !== text) clockNow.textContent = text;
       const left = `${Math.max(0, Math.min(100, (S.fxTimeMs / Math.max(1, S.durationMs)) * 100))}%`;
-      for (const playhead of timelineBoard.querySelectorAll('.playhead')) playhead.style.left = left;
+      for (const playhead of timelineBoard.querySelectorAll<HTMLElement>('.playhead')) {
+        playhead.style.left = left;
+      }
       const rec = S.recordingStatus();
       recordBtn.textContent = rec.active ? 'STOP RECORDING' : 'RECORD VIDEO';
       recordBtn.classList.toggle('on', rec.active);
@@ -1389,7 +1635,7 @@ export function createStudioPanel(S) {
       badgeMap.textContent = id ? id.toUpperCase() : '';
       if (!id) return;
       const info = S.getMapInfo ? S.getMapInfo(id) : { name: id };
-      mapHero.src = MAP_HEROES[id] || MAP_THUMBS[id] || '';
+      mapHero.src = imageFor(MAP_HEROES, id) || imageFor(MAP_THUMBS, id) || '';
       mapName.textContent = info.name || id;
       mapId.textContent = id.toUpperCase();
       mapBtn.setAttribute('aria-label', `Choose battlefield. Current: ${info.name || id}`);

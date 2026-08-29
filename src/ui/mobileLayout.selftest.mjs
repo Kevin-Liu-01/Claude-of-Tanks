@@ -345,7 +345,7 @@ const semanticSurfaceFiles = [
   './perfHud.ts',
   './settings.ts',
   './shotInfo.js',
-  './studioPanel.js',
+  './studioPanel.ts',
   './touchControls.ts',
   './transition.ts',
   './responsiveSurfaces.css',

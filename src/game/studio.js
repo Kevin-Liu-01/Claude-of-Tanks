@@ -41,7 +41,7 @@ import {
   setCamoBiome,
 } from '../vehicles/materials.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from '../world/maps/index.ts';
-import { createStudioPanel } from '../ui/studioPanel.js';
+import { createStudioPanel } from '../ui/studioPanel.ts';
 import {
   STUDIO_MAX_DURATION_MS,
   normalizeStoryboard,

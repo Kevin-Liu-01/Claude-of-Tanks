@@ -23,6 +23,8 @@ coalescing, stale-world rejection, and the procedural cartography fallback;
 redraw-on-change module/crew presentation;
 `perfHud.ts` owns the lazy typed diagnostics surface and its bounded 4 Hz DOM
 paint;
+`studioPanel.ts` owns the typed Scene Studio workspace, actor/effect/timeline
+controls, capture/export surface, and production archive;
 `settings.ts` and `touchControls.ts` own input-facing UI; `transition.ts`,
 `battleLoad.ts`, and `endScreen.ts` own flow beats.
 
