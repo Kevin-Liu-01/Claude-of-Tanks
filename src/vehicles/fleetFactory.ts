@@ -27,7 +27,7 @@ import './modern1Specs.generated.js';
 import './modern2Specs.generated.js';
 import './kf51Specs.ts';
 import './abramsConceptSpecs.ts';
-import './challengerSpecs.js';
+import './challengerSpecs.ts';
 import './modern3Specs.js';
 import './userdrops5.js';
 import './userdrops6.js';

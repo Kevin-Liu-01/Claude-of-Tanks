@@ -17,7 +17,9 @@ import {
   crewBox as cbox,
   shell,
   apfsdsPenetration as apfsdsPens,
+  type ArmorEnvelope,
 } from './specHelpers.ts';
+import type { FleetTankSpec, ModelSourceRecord } from './specContracts.ts';
 
 // ===========================================================================
 // Modern-class residents (spec+build, the modern1.js pattern): challenger2 +
@@ -27,7 +29,7 @@ import {
 
 // Challenger 2 — §18.2 Dorchester L2: turret ~600/900, hull ~500/800,
 // turret sides ~300/450, hull sides 100 + skirt.
-function armorChallenger2() {
+function armorChallenger2(): ArmorEnvelope {
   const trkTop = 1.0, floor = 0.45, roofY = 1.55;
   return {
     boundingRadiusM: 5.95,
@@ -83,7 +85,7 @@ function armorChallenger2() {
 
 const CR2E_ERA = Object.freeze({ keReduction: 0.24, ceFlatMm: 410 });
 
-function armorChallenger2Enhanced() {
+function armorChallenger2Enhanced(): ArmorEnvelope {
   const armor = armorChallenger2();
   armor.hullPlates.push(
     fr('cr2e_glacis_era_R', 18, 0.82, 1.19, 3.58, 1.50, 2.30,
@@ -109,7 +111,7 @@ function armorChallenger2Enhanced() {
 // plates, Trophy APS side modules, RWS. 120 mm L55A1 SMOOTHBORE — the key
 // identity change from CR2's rifled L30. RHAe = CR2-class base + modular
 // uplift estimates (no public CR3 armor data; game-design baseline).
-function armorChallenger3() {
+function armorChallenger3(): ArmorEnvelope {
   const trkTop = 1.0, floor = 0.42, roofY = 1.55;
   return {
     boundingRadiusM: 5.95,
@@ -172,7 +174,7 @@ function armorChallenger3() {
 
 const CHALLENGER3X_ERA = Object.freeze({ keReduction: 0.30, ceFlatMm: 460 });
 
-function armorChallenger3X() {
+function armorChallenger3X(): ArmorEnvelope {
   const armor = armorChallenger3();
   const era = { kind: 'era', era: CHALLENGER3X_ERA, keMm: 220, ceMm: 680 };
 
@@ -194,6 +196,16 @@ function armorChallenger3X() {
 // ---------------------------------------------------------------------------
 // Specs (stats per roster §18.3-4; CR3 per its packet)
 // ---------------------------------------------------------------------------
+const CHALLENGER_SPEC_IDS = [
+  'fv4034',
+  'challenger2',
+  'challenger2e',
+  'ua_challenger2',
+  'challenger_3',
+  'challenger_3x',
+] as const;
+type ChallengerSpecId = typeof CHALLENGER_SPEC_IDS[number];
+
 export const CHALLENGER_SPECS = {
   fv4034: {
     id: 'fv4034', name: 'FV4034', nation: 'UK', era: 'cold-war', role: 'mbt',
@@ -355,7 +367,14 @@ export const CHALLENGER_SPECS = {
       marking: 'number', number: '3X', trackWidthM: 0.68, camoScale: 0.40,
     },
   },
-};
+} satisfies Readonly<Record<ChallengerSpecId, FleetTankSpec>>;
+
+// The legacy registries are JavaScript-owned mutable records. Intersect their
+// inferred keys with this family's optional keys so TypeScript can prove the
+// writes without adding a runtime adapter to the boot path.
+const tankSpecs: typeof TANK_SPECS & Partial<Record<ChallengerSpecId, FleetTankSpec>> = TANK_SPECS;
+const modelSources: typeof MODEL_SOURCE & Partial<Record<ChallengerSpecId, ModelSourceRecord>> = MODEL_SOURCE;
+const allTankIds: string[] = ALL_TANK_IDS;
 
 // Register specs + model-source rows + garage roster ids (idempotent — vite
 // HMR can re-evaluate this module; the modern1.js mechanism, moved with its
@@ -364,12 +383,14 @@ export const CHALLENGER_SPECS = {
 // ALL_TANK_IDS (main.ts); modern1 always evaluates before this module (its
 // helpers are imported above), so re-insert at the original slot instead of
 // appending to the tail — a pure refactor must not reorder the roster.
-for (const [id, spec] of Object.entries(CHALLENGER_SPECS)) {
-  TANK_SPECS[id] = TANK_SPECS[id] || spec;
-  MODEL_SOURCE[id] = MODEL_SOURCE[id] || { source: 'procedural' };
-  if (!ALL_TANK_IDS.includes(id)) {
-    const at = ALL_TANK_IDS.indexOf('merkava4');
-    if (at >= 0) ALL_TANK_IDS.splice(at, 0, id);
-    else ALL_TANK_IDS.push(id);
+for (const id of CHALLENGER_SPEC_IDS) {
+  tankSpecs[id] ||= CHALLENGER_SPECS[id];
+  modelSources[id] ||= { source: 'procedural' };
+  if (!allTankIds.includes(id)) {
+    const at = allTankIds.indexOf('merkava4');
+    if (at >= 0) allTankIds.splice(at, 0, id);
+    else allTankIds.push(id);
   }
 }
+
+export { CHALLENGER_SPEC_IDS };
