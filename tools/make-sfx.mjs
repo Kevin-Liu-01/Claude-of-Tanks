@@ -14,7 +14,7 @@
 // (character EQ, tanh soft-clip saturation for weight, compression, peak
 // normalize, limiter) and encodes mono 48 kHz Opus into public/audio/sfx/.
 //
-// The runtime (src/audio/audio.js) plays these as LAYERS: cannon fire is
+// The runtime (src/audio/audio.ts) plays these as LAYERS: cannon fire is
 // sub + crack + tail per caliber class, so distance can rebalance toward the
 // tail and the player's own gun can run a hotter sub. Layer loudness balance
 // is therefore baked as per-file PEAK targets here, and verified on rendered
@@ -221,7 +221,7 @@ function echoes(dst, src, taps) {
 }
 
 // ---------------------------------------------------------------- recipes ---
-// Caliber classes (runtime boundaries in src/audio/audio.js gunshot()):
+// Caliber classes (runtime boundaries in src/audio/audio.ts gunshot()):
 //   small <=76 mm | medium 76-105 | large 105-130 | huge >130 (152 KV-2/ISU)
 const FIRE = {
   small:  { subF0: 78, subF1: 50, subTau: 0.10, subDec: 0.14, atk: 0.005, harm: 0.42,

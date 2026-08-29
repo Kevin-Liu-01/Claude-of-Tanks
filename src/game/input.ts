@@ -260,7 +260,7 @@ const DEFAULT_SETTINGS: InputSettings = {
   // players can opt out in Gameplay → Interface.
   armorAimOverlay: true,
   // Sound mix (settings panel SOUND tab). The synth audio stack
-  // (src/audio/audio.js) reads these at graph build and live-follows the
+  // (src/audio/audio.ts) reads these at graph build and live-follows the
   // 'ui:volumes' bus event the panel emits on every slider change.
   volMaster: 0.8, // final output gain 0..1
   volEngine: 1, // engine loops

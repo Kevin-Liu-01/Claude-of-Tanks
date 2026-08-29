@@ -248,7 +248,7 @@ music ~3.6k → **≈ 20–23k credits total**.
    the procedural set at equal LUFS. Only migrate classes that clearly win —
    the bass-energy gates keep meaning what they mean either way.
 3. **Engine loops (needs runtime work)**: engines are LIVE-synthesized in
-   audio.js today; sampled loops mean an AudioBufferSourceNode loop path +
+   audio.ts today; sampled loops mean an AudioBufferSourceNode loop path +
    RPM via playbackRate. Generated "heavy diesel idle" loops will sound
    generic-good, not turbine-specific (reviews: fails at "a specific
    engine"). Defer unless the procedural engines start to grate.

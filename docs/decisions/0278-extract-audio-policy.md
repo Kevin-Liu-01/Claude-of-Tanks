@@ -4,7 +4,7 @@
 
 Keep baked-sample manifests, distance and perspective curves, powertrain and
 weapon-report catalogs, seeded randomness, safe scheduling, and reload cue
-planning in `src/audio/audioPolicy.ts`. The lazy `audio.js` mixer imports and
+planning in `src/audio/audioPolicy.ts`. The lazy `audio.ts` mixer imports and
 re-exports that public policy while retaining exclusive ownership of browser
 audio nodes, event subscriptions, voices, and world-loop lifetimes.
 
@@ -20,7 +20,7 @@ and browser resources.
 
 - Tests and asset tools can validate audio policy without acquiring or parsing
   the WebAudio implementation.
-- Existing consumers of exports from `audio.js` remain compatible.
+- Existing consumers of exports from `audio.ts` remain compatible.
 - Sound values, sample names, random sequences, distance curves, perspective
   mixes, reload timings, and lazy gesture behavior are unchanged.
 - The remaining mixer migration can focus on node ownership, event payloads,

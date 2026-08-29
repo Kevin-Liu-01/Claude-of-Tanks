@@ -10,25 +10,13 @@
  */
 
 import type { AudioListenerPose } from './listenerPoseRuntime.ts';
+import type { AudioMixer } from './audio.ts';
 import type { EventBus } from '../game/stateCore.ts';
 
 interface FallbackLoadingTone {
   context: AudioContext;
   gain: GainNode;
   nodes: OscillatorNode[];
-}
-
-interface AudioMixer {
-  bindBus(bus: EventBus): void;
-  resume(): void;
-  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly unknown[]): void;
-  setMasterVolume(value: number): void;
-  mute(muted: boolean): void;
-  playGarageSting(): void;
-  loadingOn(active: boolean): void;
-  warmBattleEvents?(): unknown;
-  ambientOn(active: boolean): void;
-  hitConfirm(kind: string, damage: number): void;
 }
 
 interface AudioMixerModule {
@@ -114,7 +102,7 @@ export function startFallbackLoadingTone(context: AudioContext | null): Fallback
 }
 
 export function createLazyAudio({
-  loadMixer = () => import('./audio.js'),
+  loadMixer = () => import('./audio.ts'),
   createContext = () => {
     const scope = globalThis as typeof globalThis & {
       webkitAudioContext?: typeof AudioContext;

@@ -11,7 +11,7 @@
  * and system-restored calls.
  * Variant files (_b/_c) are alternate reads so repeats don't sound sampled.
  * Nothing here touches the DOM or the AudioContext until load() is called by
- * audio.js after resume().
+ * audio.ts after resume().
  *
  * Radio discipline (what keeps it from turning into chatter):
  *   - ONE line at a time — it is a single radio net, not a mixer.
@@ -23,7 +23,7 @@
  *     battle results wait out a kill confirm instead of vanishing).
  *   - ±1.5% playback-rate jitter and no immediate take repeat.
  *
- * Event selection lives in audio.js. This module is deliberately only the
+ * Event selection lives in audio.ts. This module is deliberately only the
  * radio scheduler: it owns timing, priority, stale-call rejection, variant
  * rotation and the single active source. Keeping one event director prevents
  * the same shell from producing parallel hit/module callouts.
@@ -132,7 +132,7 @@ const QUEUE_STALE_S = 1.2;
 
 /**
  * Create the radio. Pure factory — call load() once the AudioContext exists.
- * @param {() => number} rng seeded 0..1 generator (shared with audio.js)
+ * @param {() => number} rng seeded 0..1 generator (shared with audio.ts)
  */
 export function createVoiceRadio(rng: () => number): VoiceRadio {
   let ctx: AudioContext | null = null;

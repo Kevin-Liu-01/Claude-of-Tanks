@@ -289,3 +289,4 @@ runtime documents remain authoritative for behavior.
 - [0277 — Scene Studio runtime has a strict TypeScript boundary](0277-type-scene-studio-runtime.md)
 - [0278 — Audio policy is independent from the WebAudio runtime](0278-extract-audio-policy.md)
 - [0279 — Battle entry stages only reveal-critical work before first paint](0279-stage-reveal-critical-battle-work.md)
+- [0280 — The WebAudio mixer has a strict TypeScript owner](0280-type-audio-mixer.md)

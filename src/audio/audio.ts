@@ -1,5 +1,5 @@
 /**
- * src/audio/audio.js — the Claude of Tanks sound system (COMBAT-SFX r4).
+ * src/audio/audio.ts — the Claude of Tanks sound system (COMBAT-SFX r4).
  *
  * COMBAT one-shots (cannon fire, penetrations, deflections, HE bursts, tank
  * explosions) play BAKED layered samples: dense seeded PCM synthesized
@@ -54,6 +54,8 @@
  */
 
 import { createVoiceRadio } from './voices.ts';
+import type { AudioListenerPose } from './listenerPoseRuntime.ts';
+import type { EventBus } from '../game/stateCore.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
 
 import {
@@ -80,6 +82,267 @@ import {
   safeAudioStart,
   worldDistanceGain,
 } from './audioPolicy.ts';
+import type {
+  ReloadCuePlan,
+  ReloadCueType,
+  WeaponReportProfile,
+} from './audioPolicy.ts';
+
+type Vec3Tuple = readonly [number, number, number];
+type ScheduledAudioSource = AudioBufferSourceNode | OscillatorNode;
+type ResultKind = 'victory' | 'defeat' | 'draw';
+type DestructionCause = 'ammorack' | 'shot' | 'fire';
+type ModuleCondition = 'ok' | 'yellow' | 'red';
+
+interface AudioMixerOptions {
+  context?: AudioContext | null;
+}
+
+export interface AudioMixer {
+  resume(): void;
+  bindBus(bus: EventBus): void;
+  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly unknown[]): void;
+  setMasterVolume(value: number): void;
+  mute(muted: boolean): void;
+  playGarageSting(): void;
+  loadingOn(active: boolean): void;
+  warmBattleEvents(): void;
+  ambientOn(active: boolean): void;
+  hitConfirm(kind: string, damage?: number): void;
+}
+
+interface OneShotVoice {
+  start: number;
+  end: number;
+  in: GainNode;
+  pan: StereoPannerNode;
+  sources: ScheduledAudioSource[];
+  dead: boolean;
+  baseGain: number;
+}
+
+interface AudioPosition {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface AudioTankSpec {
+  topSpeedKmh?: number;
+  role?: unknown;
+  weightTons?: unknown;
+  era?: unknown;
+}
+
+interface AudioTankState {
+  pos: AudioPosition;
+  speed: number;
+  _spool?: number;
+  turretYawRate?: number;
+  gunPitch?: number;
+}
+
+interface AudioTankEntity {
+  id: string;
+  team?: string;
+  isPlayer?: boolean;
+  specId?: string;
+  spec?: AudioTankSpec;
+  state: AudioTankState;
+  input?: { throttle?: number };
+  combat?: { destroyed?: boolean; hp: number; maxHp: number };
+}
+
+interface TankInfo {
+  team?: string;
+  isPlayer: boolean;
+  pos: AudioPosition;
+}
+
+interface EngineVoice {
+  out: GainNode;
+  pan: StereoPannerNode;
+  rangeLp: BiquadFilterNode;
+  id: string;
+  lastDist: number;
+  lastGain: number;
+  lastCutoffHz: number;
+  own: boolean;
+  scoped: boolean;
+  update(entity: AudioTankEntity, own: boolean, scoped: boolean): number;
+  kill(): void;
+}
+
+interface TraverseRig {
+  update(entity: AudioTankEntity, dtSeconds: number, scoped: boolean): void;
+  kill(): void;
+}
+
+interface KillableRig { kill(): void }
+interface FireLoop extends KillableRig { out: GainNode; pan: StereoPannerNode }
+interface HeartbeatRig { o: OscillatorNode; g: GainNode }
+interface LandingTracker { prevY: number; vy: number; lastThumpT: number }
+
+interface SoundLogEntry extends Record<string, unknown> {
+  seq: number;
+  t: number;
+  type: string;
+}
+
+interface SfxLogEntry {
+  seq: number;
+  n: string;
+  t: number;
+  g: number;
+  r: number;
+  killcam?: true;
+}
+
+interface KillcamSfxLogEntry {
+  t: number;
+  cause: DestructionCause;
+  slowRate: number;
+  baked: boolean;
+  gain: number;
+}
+
+interface AudioTap {
+  sp: ScriptProcessorNode;
+  sink: GainNode;
+  chunks: Int16Array[];
+  data: Int16Array | null;
+}
+
+interface ShellFiredEvent {
+  shellId?: number;
+  shooterId?: string;
+  muzzlePos: Vec3Tuple;
+  caliberMm: number;
+  isPlayer?: boolean;
+  weaponSound?: string;
+  muzzleIndex?: number;
+  pos?: Vec3Tuple;
+  dir: Vec3Tuple;
+  velocityMps?: number;
+  shellType: string;
+}
+
+interface HitModuleRecord { module: string; newState?: ModuleCondition }
+interface ShellHitEvent {
+  shellId?: number;
+  pos: Vec3Tuple;
+  kind: string;
+  targetId?: string | null;
+  attackerId?: string | null;
+  damage?: number;
+  caliberMm?: number;
+  destroyed?: boolean;
+  fireStarted?: boolean;
+  targetMaxHp?: number;
+  targetHpAfter: number;
+  crewHit?: string[];
+  modulesHit?: HitModuleRecord[];
+  era?: unknown;
+  eraActivated?: unknown;
+  reactiveArmor?: unknown;
+}
+
+interface TankDestroyedEvent {
+  id: string;
+  killerId?: string | null;
+  pos: Vec3Tuple;
+  cause?: string;
+}
+
+interface ModuleStateEvent {
+  id: string;
+  module: string;
+  state: ModuleCondition;
+  source?: string;
+  repaired?: boolean;
+}
+
+interface TankImpactEvent {
+  id?: string;
+  pos: Vec3Tuple;
+  speedMps: number;
+}
+
+interface TankRamEvent {
+  aId?: string;
+  bId?: string;
+  aIsPlayer?: boolean;
+  bIsPlayer?: boolean;
+  pos: Vec3Tuple;
+  closingMps?: number;
+  dmgA?: number;
+  dmgB?: number;
+}
+
+interface PropCrushedEvent { id?: string; kind?: string; pos: Vec3Tuple }
+
+interface KillcamImpactEvent { pos: Vec3Tuple; cause?: DestructionCause; timeScale?: number }
+interface ReloadEvent {
+  total?: number;
+  kind?: string;
+  caliberMm?: number;
+  t?: number;
+  progress?: number;
+  done?: boolean;
+}
+
+interface ShellExpiredEvent {
+  shellId?: number;
+  hitTerrain?: boolean;
+  hitKind?: string;
+  pos?: Vec3Tuple;
+}
+
+interface TankFireEvent { id: string; burning?: boolean }
+interface TankSpottedEvent { id: string; team?: string; spotterId?: string | null }
+interface ConsumableEvent { slot?: number }
+interface PhaseChangeEvent { phase?: string }
+interface BattleResultEvent { result?: ResultKind }
+interface KillcamShotEvent extends ShellFiredEvent { shooterId?: string }
+interface PauseEvent { on?: boolean }
+interface VolumeEvent {
+  master?: number;
+  engine?: number;
+  combat?: number;
+  ambience?: number;
+  ui?: number;
+  voice?: number;
+  alarmHeartbeat?: boolean;
+}
+
+interface AudioDebugSurface {
+  readonly ctx: AudioContext | null;
+  readonly voiceLog: readonly unknown[];
+  readonly voicesLoaded: boolean;
+  readonly sfxLog: readonly SfxLogEntry[];
+  readonly sfxLoaded: boolean;
+  readonly sfxCount: number;
+  readonly killcamSfxLog: readonly KillcamSfxLogEntry[];
+  readonly soundLog: readonly SoundLogEntry[];
+  readonly loadingActive: boolean;
+  listenerState(): Record<string, unknown>;
+  spatialAt(x: number, y: number, z: number): { dist: number; gain: number; pan: number };
+  engineState(): Array<Record<string, unknown>>;
+  setEngineProbeSolo(id?: string | null): string | null;
+  sayVoice(id: string): boolean;
+  clearVoiceQueue(): void;
+  startTap(maxS?: number): boolean;
+  stopTap(): number;
+  readTapB64(offset: number, count: number): string;
+  clearTap(): void;
+  readonly sampleRate: number;
+  busGains(): Record<string, unknown> | null;
+  readonly _nodes: Record<string, AudioNode>;
+}
+
+declare global {
+  interface Window { __COT_AUDIO?: AudioDebugSurface }
+}
 
 export {
   AUDIO_DISTANCE_MODEL,
@@ -117,21 +380,20 @@ export {
  * }} Audio interface per ARCHITECTURE.md §3.9.
  */
 /** @param {{ context?: AudioContext | null }} [options] */
-export function createAudio({ context: initialContext = null } = {}) {
-  /** @type {AudioContext|null} */
-  let ctx = initialContext;
+export function createAudio({ context: initialContext = null }: AudioMixerOptions = {}): AudioMixer {
+  let ctx: AudioContext | null = initialContext;
   let graphReady = false;
   let battleEventsWarmed = false;
   let bakedBattleEventsWarmed = false;
-  let master = null;      // final volume gain
-  let comp = null;        // safety compressor (24 voices never clip)
-  let limiter = null;     // tanh soft-clip stage (COMBAT-SFX r4 volley guard)
-  let sfxBus = null, cinematicBus = null, engineBus = null;
-  let ambientBus = null, musicBus = null, voiceBus = null;
-  let whiteBuf = null;    // 2 s seeded white noise, looped everywhere
-  let crackleBuf = null;  // sparse impulse train for fire crackle / debris
-  let windBuf = null;     // pink-ish noise for wind bed
-  let gunBufs = null;     // pre-synthesized caliber beds (synth-fallback only)
+  let master: GainNode;      // final volume gain
+  let comp: DynamicsCompressorNode; // safety compressor (24 voices never clip)
+  let limiter: WaveShaperNode; // tanh soft-clip stage (COMBAT-SFX r4 volley guard)
+  let sfxBus: GainNode, cinematicBus: GainNode, engineBus: GainNode;
+  let ambientBus: GainNode, musicBus: GainNode, voiceBus: GainNode;
+  let whiteBuf: AudioBuffer;    // 2 s seeded white noise, looped everywhere
+  let crackleBuf: AudioBuffer;  // sparse impulse train for fire crackle / debris
+  let windBuf: AudioBuffer;     // pink-ish noise for wind bed
+  let gunBufs: Record<'light' | 'medium' | 'heavy' | 'huge', AudioBuffer>;
 
   // BAKED COMBAT SAMPLES (COMBAT-SFX r4): decoded lazily after resume().
   /** @type {Map<string, AudioBuffer>} name → decoded sample */
@@ -139,10 +401,10 @@ export function createAudio({ context: initialContext = null } = {}) {
   let sfxReady = false;    // ALL samples decoded — baked paths take over
   let sfxLoading = false;
   /** Probe trail (tools/sfx-smoke.mjs): {n,t,g,r} per baked sample played. */
-  const sfxLog = [];
+  const sfxLog: SfxLogEntry[] = [];
   let sfxSeq = 0;
   /** Replayed kill-cam impacts: auditable time-stretch/pitch trail. */
-  const killcamSfxLog = [];
+  const killcamSfxLog: KillcamSfxLogEntry[] = [];
 
   let masterVolume = 0.8;
   let muted = false;
@@ -151,7 +413,9 @@ export function createAudio({ context: initialContext = null } = {}) {
   // (cot.settings.v1) and live-updated via 'ui:volumes'.
   const chanVol = { engine: 1, combat: 1, ambience: 1, ui: 1, voice: 1 };
   let alarmHeartbeatOn = true; // critical-HP heartbeat option (settings toggle)
-  const clamp01 = (v, d) => (typeof v === 'number' ? Math.max(0, Math.min(1, v)) : d);
+  const clamp01 = (v: unknown, fallback: number): number => (
+    typeof v === 'number' ? Math.max(0, Math.min(1, v)) : fallback
+  );
   try {
     const s = JSON.parse(localStorage.getItem('cot.settings.v1') || 'null');
     if (s && typeof s === 'object') {
@@ -174,9 +438,9 @@ export function createAudio({ context: initialContext = null } = {}) {
   // ringing out. Near-zero (not zero) so resume never clicks. UI/music stays
   // up (menu clicks, slider reference blips) and so do crew voices.
   let pauseK = 1;
-  function applyChannelVolumes(smooth) {
+  function applyChannelVolumes(smooth: boolean): void {
     if (!ctx) return;
-    const t = ctx.currentTime;
+    const t = ctx!.currentTime;
     // Robustness (found by tools/audio-probe.mjs): a bare setTargetAtTime on a
     // bus with NO active inputs is unreliable in Chrome — the renderer puts
     // input-less nodes to sleep, and on wake the exponential can resume from
@@ -184,14 +448,14 @@ export function createAudio({ context: initialContext = null } = {}) {
     // played after a slider change. Smoothing is therefore always PINNED with
     // an exact setValueAtTime shortly after (6.7τ — inaudible step), so a
     // woken bus lands on the correct target no matter when it slept.
-    const set = (bus, v) => {
+    const set = (bus: GainNode, value: number): void => {
       const g = bus.gain;
       g.cancelScheduledValues(t);
       if (smooth) {
-        g.setTargetAtTime(v, t, 0.03);
-        g.setValueAtTime(v, t + 0.2);
+        g.setTargetAtTime(value, t, 0.03);
+        g.setValueAtTime(value, t + 0.2);
       } else {
-        g.value = v;
+        g.value = value;
       }
     };
     set(sfxBus, 1.0 * chanVol.combat * duckK * pauseK);
@@ -211,68 +475,76 @@ export function createAudio({ context: initialContext = null } = {}) {
   let lx = 0, ly = 0, lz = 0;   // position
   let lfx = 0, lfz = 1;         // forward (XZ, normalized-ish)
   let listenerValid = false;
-  let listenerKind = 'camera';
-  let listenerOwnerId = null;
+  let listenerKind: AudioListenerPose['kind'] = 'camera';
+  let listenerOwnerId: string | null = null;
   let listenerScoped = false;
 
   // Game context tracked listener-side (NO new emitter-side hooks needed):
   // player identity comes from update(tanks); phase from 'phase:change'.
-  let playerId = null;
+  let playerId: string | null = null;
   let phase = 'garage';
   /** id -> {team, isPlayer} minimal roster mirror for spotted-voice checks */
-  const tankInfo = new Map();
+  const tankInfo = new Map<string, TankInfo>();
   /** `${id}:${module}` -> last known module state, for damage/repair edges */
-  const moduleState = new Map();
+  const moduleState = new Map<string, ModuleCondition>();
 
   /** Active one-shot voices: { start, end, in: GainNode, pan, sources[], dead } */
-  const voices = [];
+  const voices: OneShotVoice[] = [];
   /** tankId -> engine loop voice */
-  const engines = new Map();
+  const engines = new Map<string, EngineVoice>();
   // Reused nearest-emitter ranking. The cap protects CPU/headroom; ranking
   // guarantees it is the nearest battlefield, not roster order, that wins.
-  const engineCandidates = new Array(MAX_ENGINE_VOICES).fill(null);
+  const engineCandidates: Array<AudioTankEntity | null> = new Array(MAX_ENGINE_VOICES).fill(null);
   const engineCandidateScore = new Float64Array(MAX_ENGINE_VOICES);
   let engineCandidateCount = 0;
-  let probeEngineSoloId = null; // verification-only filter, set via __COT_AUDIO
+  let probeEngineSoloId: string | null = null; // verification-only filter, set via __COT_AUDIO
   /** tankId -> burning-fire loop */
-  const fireLoops = new Map();
+  const fireLoops = new Map<string, FireLoop>();
   /** tankId -> {prevY, vy, lastThumpT} suspension landing tracker */
-  const landing = new Map();
+  const landing = new Map<string, LandingTracker>();
   /** Ambient wind nodes (null when off). */
-  let windRig = null;
-  let birdTimerId = null;
+  let windRig: KillableRig | null = null;
+  let birdTimerId: ReturnType<typeof setInterval> | null = null;
   /** Garage workshop room tone (null when off). */
-  let garageRig = null;
+  let garageRig: KillableRig | null = null;
   /** Battle-transition mechanical bed (null when off). */
-  let loadingRig = null;
+  let loadingRig: KillableRig | null = null;
   /** Player turret-traverse / gun-elevation whir rig (null until battle). */
-  let traverseRig = null;
+  let traverseRig: TraverseRig | null = null;
   /** Alarm rigs (player only). */
-  let fireAlarmRig = null;
-  let heartbeatRig = null;
+  let fireAlarmRig: KillableRig | null = null;
+  let heartbeatRig: HeartbeatRig | null = null;
   let heartbeatArmedBelow = 0;   // last hp fraction that triggered a pulse window
   let playerBurning = false;
   let battleOver = false;
-  let pendingResult = null;
+  let pendingResult: ResultKind | null = null;
   let reloadCalled = false;
-  const reloadCycle = {
+  const reloadCycle: {
+    active: boolean;
+    total: number;
+    kind: string;
+    caliberMm: number;
+    lastT: number;
+    nextCue: number;
+    plan: ReloadCuePlan | null;
+  } = {
     active: false, total: 0, kind: 'ready', caliberMm: 100,
     lastT: 0, nextCue: 0, plan: null,
   };
   let lowHpCalled = false;
   let _uiVolEvents = 0;   // debug: ui:volumes deliveries (tools/audio-probe.mjs)
-  const soundLog = [];
+  const soundLog: SoundLogEntry[] = [];
   let soundSeq = 0;
 
-  function logSound(type, data = null) {
-    soundLog.push({ seq: ++soundSeq, t: ctx ? ctx.currentTime : 0, type, ...(data || {}) });
+  function logSound(type: string, data: Record<string, unknown> | null = null): void {
+    soundLog.push({ seq: ++soundSeq, t: ctx ? ctx!.currentTime : 0, type, ...(data || {}) });
     if (soundLog.length > 256) soundLog.shift();
   }
 
   // ---------------------------------------------------------------- graph ---
 
-  function buildGraph() {
-    comp = ctx.createDynamicsCompressor();
+  function buildGraph(): void {
+    comp = ctx!.createDynamicsCompressor();
     comp.threshold.value = AUDIO_MIX_PROFILE.compressorThresholdDb;
     comp.knee.value = 12;
     comp.ratio.value = AUDIO_MIX_PROFILE.compressorRatio;
@@ -282,7 +554,7 @@ export function createAudio({ context: initialContext = null } = {}) {
     // r4 leaves single-shot transients intact. Only dense simultaneous volleys
     // reach the soft knee; the former 0.55 knee and 8:1 compressor made every
     // report sound equally flat and metallic.
-    limiter = ctx.createWaveShaper();
+    limiter = ctx!.createWaveShaper();
     {
       const N = 4097;
       const curve = new Float32Array(N);
@@ -296,11 +568,11 @@ export function createAudio({ context: initialContext = null } = {}) {
       limiter.oversample = '2x';
     }
 
-    master = ctx.createGain();
+    master = ctx!.createGain();
     master.gain.value = muted ? 0 : masterVolume;
     comp.connect(limiter);
     limiter.connect(master);
-    master.connect(ctx.destination);
+    master.connect(ctx!.destination);
 
     // Combat tone shaping is broad and intentionally low-Q. It adds plate and
     // blast body, trims the old 2–6 kHz “tin can” emphasis, and keeps ultrasonic
@@ -316,35 +588,35 @@ export function createAudio({ context: initialContext = null } = {}) {
     combatPresence.connect(combatCeiling);
     combatCeiling.connect(comp);
 
-    sfxBus = ctx.createGain();     sfxBus.gain.value = 1.0;   sfxBus.connect(combatHp);
-    cinematicBus = ctx.createGain(); cinematicBus.gain.value = 1.0; cinematicBus.connect(combatHp);
+    sfxBus = ctx!.createGain();     sfxBus.gain.value = 1.0;   sfxBus.connect(combatHp);
+    cinematicBus = ctx!.createGain(); cinematicBus.gain.value = 1.0; cinematicBus.connect(combatHp);
 
     const enginePresence = flt('peaking', 1850, 0.68);
     enginePresence.gain.value = -3.2;
     const engineCeiling = flt('lowpass', 8200, 0.55);
     enginePresence.connect(engineCeiling); engineCeiling.connect(comp);
-    engineBus = ctx.createGain();  engineBus.gain.value = 0.78; engineBus.connect(enginePresence);
-    ambientBus = ctx.createGain(); ambientBus.gain.value = 0.55; ambientBus.connect(comp);
-    musicBus = ctx.createGain();   musicBus.gain.value = 0.9;  musicBus.connect(comp);
+    engineBus = ctx!.createGain();  engineBus.gain.value = 0.78; engineBus.connect(enginePresence);
+    ambientBus = ctx!.createGain(); ambientBus.gain.value = 0.55; ambientBus.connect(comp);
+    musicBus = ctx!.createGain();   musicBus.gain.value = 0.9;  musicBus.connect(comp);
     const voicePresence = flt('peaking', 2850, 0.78);
     voicePresence.gain.value = -1.4;
-    voiceBus = ctx.createGain();   voiceBus.gain.value = 1.0;  voiceBus.connect(voicePresence);
+    voiceBus = ctx!.createGain();   voiceBus.gain.value = 1.0;  voiceBus.connect(voicePresence);
     voicePresence.connect(comp);
     applyChannelVolumes(false);
   }
 
-  function buildBuffers() {
-    const sr = ctx.sampleRate;
+  function buildBuffers(): void {
+    const sr = ctx!.sampleRate;
 
     // White noise (2 s), seeded.
-    whiteBuf = ctx.createBuffer(1, (sr * 2) | 0, sr);
+    whiteBuf = ctx!.createBuffer(1, (sr * 2) | 0, sr);
     {
       const d = whiteBuf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = rng() * 2 - 1;
     }
 
     // Pink-ish noise for wind (Paul Kellet economy filter over seeded white).
-    windBuf = ctx.createBuffer(1, (sr * 4) | 0, sr);
+    windBuf = ctx!.createBuffer(1, (sr * 4) | 0, sr);
     {
       const d = windBuf.getChannelData(0);
       let b0 = 0, b1 = 0, b2 = 0;
@@ -358,7 +630,7 @@ export function createAudio({ context: initialContext = null } = {}) {
     }
 
     // Crackle: sparse decaying impulses (fire crackle, debris patter).
-    crackleBuf = ctx.createBuffer(1, (sr * 2) | 0, sr);
+    crackleBuf = ctx!.createBuffer(1, (sr * 2) | 0, sr);
     {
       const d = crackleBuf.getChannelData(0);
       for (let e = 0; e < 160; e++) {
@@ -378,14 +650,14 @@ export function createAudio({ context: initialContext = null } = {}) {
     // still schedules just one source + one distance filter, plus a cheap
     // 2-node crack overlay for nearby shots).
     //   light ≤76 mm | medium ≤105 mm | heavy ≤130 mm | huge >130 mm (152/380)
-    const makeGunBed = (kind) => {
+    const makeGunBed = (kind: 'light' | 'medium' | 'heavy' | 'huge'): AudioBuffer => {
       const P = {
         light:  { dur: 0.55, crackT: 0.030, bodyT: 0.10, rumT: 0.20, f0: 62, f1: 46, subT: 0.16, bark: 195, barkT: 0.045, out: 0.78 },
         medium: { dur: 1.00, crackT: 0.040, bodyT: 0.17, rumT: 0.42, f0: 54, f1: 34, subT: 0.32, bark: 150, barkT: 0.060, out: 0.86 },
         heavy:  { dur: 1.70, crackT: 0.055, bodyT: 0.25, rumT: 0.80, f0: 46, f1: 27, subT: 0.50, bark: 120, barkT: 0.080, out: 0.92 },
         huge:   { dur: 2.60, crackT: 0.070, bodyT: 0.34, rumT: 1.25, f0: 40, f1: 22, subT: 0.75, bark: 96,  barkT: 0.110, out: 0.97 },
       }[kind];
-      const out = ctx.createBuffer(1, Math.ceil(sr * P.dur), sr);
+      const out = ctx!.createBuffer(1, Math.ceil(sr * P.dur), sr);
       const d = out.getChannelData(0);
       const grng = mulberry32(0x6a09e667 ^ (P.bark | 0));
       let low = 0, prevNoise = 0, phaseAcc = 0;
@@ -427,10 +699,10 @@ export function createAudio({ context: initialContext = null } = {}) {
     };
   }
 
-  function applyMaster() {
+  function applyMaster(): void {
     if (!ctx) return;
     // Same sleeping-node pin as applyChannelVolumes (probe-found Chrome quirk).
-    const t = ctx.currentTime;
+    const t = ctx!.currentTime;
     const v = muted ? 0 : masterVolume;
     master.gain.cancelScheduledValues(t);
     master.gain.setTargetAtTime(v, t, 0.02);
@@ -443,7 +715,7 @@ export function createAudio({ context: initialContext = null } = {}) {
   const _sp = { dist: 1, gain: 1, pan: 0 };
 
   /** Distance gain + equal-power pan for a world position. Mutates _sp. */
-  function spat(x, y, z) {
+  function spat(x: number, y: number, z: number): { dist: number; gain: number; pan: number } {
     const dx = x - lx, dy = y - ly, dz = z - lz;
     const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
     _sp.dist = d < 0.5 ? 0.5 : d;
@@ -460,7 +732,7 @@ export function createAudio({ context: initialContext = null } = {}) {
 
   // ------------------------------------------------------------ one-shots ---
 
-  function disposeVoice(v) {
+  function disposeVoice(v: OneShotVoice): void {
     if (v.dead) return;
     v.dead = true;
     for (const s of v.sources) { try { s.stop(); } catch (_) { /* already stopped */ } }
@@ -469,9 +741,15 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Steal-oldest capped voice allocator. All one-shots flow through here. */
-  function spawnVoice(when, durS, gainVal, panVal, dest) {
+  function spawnVoice(
+    when: number,
+    durS: number,
+    gainVal: number,
+    panVal: number,
+    dest: AudioNode | null = null,
+  ): OneShotVoice {
     // Prune finished voices first, then steal the oldest if still over budget.
-    const now = ctx.currentTime;
+    const now = ctx!.currentTime;
     for (let i = voices.length - 1; i >= 0; i--) {
       if (voices[i].end <= now || voices[i].dead) { disposeVoice(voices[i]); voices.splice(i, 1); }
     }
@@ -479,9 +757,9 @@ export function createAudio({ context: initialContext = null } = {}) {
       disposeVoice(voices[0]);
       voices.shift();
     }
-    const g = ctx.createGain();
+    const g = ctx!.createGain();
     g.gain.value = gainVal;
-    const p = ctx.createStereoPanner();
+    const p = ctx!.createStereoPanner();
     p.pan.value = panVal;
     g.connect(p);
     p.connect(dest || sfxBus);
@@ -491,8 +769,14 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Looping seeded-noise source, registered on the voice for stealing. */
-  function nsrc(v, when, durS, rate, buf) {
-    const s = ctx.createBufferSource();
+  function nsrc(
+    v: OneShotVoice,
+    when: number,
+    durS: number,
+    rate = 1,
+    buf: AudioBuffer | null = null,
+  ): AudioBufferSourceNode {
+    const s = ctx!.createBufferSource();
     s.buffer = buf || whiteBuf;
     s.loop = true;
     s.playbackRate.value = rate || 1;
@@ -503,8 +787,14 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Oscillator source registered on the voice. */
-  function osrc(v, type, freq, when, durS) {
-    const o = ctx.createOscillator();
+  function osrc(
+    v: OneShotVoice,
+    type: OscillatorType,
+    freq: number,
+    when: number,
+    durS: number,
+  ): OscillatorNode {
+    const o = ctx!.createOscillator();
     o.type = type;
     o.frequency.setValueAtTime(Math.max(1, freq), when);
     o.start(when);
@@ -513,8 +803,8 @@ export function createAudio({ context: initialContext = null } = {}) {
     return o;
   }
 
-  function flt(type, freq, q) {
-    const f = ctx.createBiquadFilter();
+  function flt(type: BiquadFilterType, freq: number, q: number | null = null): BiquadFilterNode {
+    const f = ctx!.createBiquadFilter();
     f.type = type;
     f.frequency.value = freq;
     f.Q.value = q == null ? 1 : q;
@@ -522,8 +812,8 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Attack/exponential-decay envelope gain node. */
-  function env(when, attack, peak, decay) {
-    const g = ctx.createGain();
+  function env(when: number, attack: number, peak: number, decay: number): GainNode {
+    const g = ctx!.createGain();
     const a = Math.max(0.001, attack);
     g.gain.setValueAtTime(0.0001, when);
     g.gain.linearRampToValueAtTime(peak, when + a);
@@ -532,26 +822,26 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Connect src → …nodes → v.in. */
-  function wire(v, src, ...rest) {
+  function wire(v: OneShotVoice, src: AudioNode, ...rest: AudioNode[]): void {
     let n = src;
     for (const x of rest) { n.connect(x); n = x; }
     n.connect(v.in);
   }
 
   /** Air-absorption lowpass by distance (bright at 0 m, muffled far away). */
-  function distLowpass(dist) {
+  function distLowpass(dist: number): BiquadFilterNode {
     return flt('lowpass', distanceLowpassHz(dist), 0.5);
   }
 
   /** Propagation delay for far events (capped so nothing feels broken). */
-  function travelDelay(dist) {
+  function travelDelay(dist: number): number {
     return dist > 40 ? Math.min(1.6, dist / SPEED_OF_SOUND_MPS) : 0;
   }
 
   // Air absorption already removes most detail at range. A modest tail carry
   // keeps 600–900 m guns readable as distant battlefield thunder after r4's
   // lower, cleaner layer mastering without lifting close shots at all.
-  function cannonDistanceCarry(dist) {
+  function cannonDistanceCarry(dist: number): number {
     return 1 + 0.85 * Math.max(0, Math.min(1, (dist - 180) / 720));
   }
 
@@ -564,7 +854,7 @@ export function createAudio({ context: initialContext = null } = {}) {
    * set (sfxReady): a partial decode keeps the live-synthesis fallback for
    * everything rather than mixing old and new combat sounds.
    */
-  function loadSfx() {
+  function loadSfx(): void {
     if (sfxLoading || !ctx) return;
     sfxLoading = true;
     const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || '/';
@@ -573,7 +863,7 @@ export function createAudio({ context: initialContext = null } = {}) {
     Promise.all(names.map((name) =>
       fetch(`${base}audio/sfx/${SFX_FILES[name]}`)
         .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); })
-        .then((ab) => ctx.decodeAudioData(ab))
+        .then((ab) => ctx!.decodeAudioData(ab))
         .then((buf) => { sfxBufs.set(name, buf); })
         .catch(() => { failures++; }),
     )).then(() => {
@@ -585,20 +875,27 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** ±4% playback-rate jitter — repeats never sound identical. */
-  function jitterRate() { return 0.96 + rng() * 0.08; }
+  function jitterRate(): number { return 0.96 + rng() * 0.08; }
 
   /**
    * Start one baked sample on an existing voice, through `through` (usually
    * the shot's shared distance lowpass) with its own layer gain.
    * @returns {number} the layer's end time (ctx clock)
    */
-  function sampleLayer(v, name, when, layerGain, rate, through) {
+  function sampleLayer(
+    v: OneShotVoice,
+    name: string,
+    when: number,
+    layerGain: number,
+    rate = 1,
+    through: AudioNode | null = null,
+  ): number {
     const buf = sfxBufs.get(name);
     if (!buf) return when;
-    const src = ctx.createBufferSource();
+    const src = ctx!.createBufferSource();
     src.buffer = buf;
     src.playbackRate.value = rate;
-    const g = ctx.createGain();
+    const g = ctx!.createGain();
     g.gain.value = layerGain;
     src.connect(g);
     g.connect(through || v.in);
@@ -618,17 +915,24 @@ export function createAudio({ context: initialContext = null } = {}) {
    * requested physically stretched cinematic sound instead of an unaffected
    * sample merely played under a slow picture.
    */
-  function sampleLayerRetime(v, name, when, layerGain, slowRate, through) {
+  function sampleLayerRetime(
+    v: OneShotVoice,
+    name: string,
+    when: number,
+    layerGain: number,
+    slowRate: number,
+    through: AudioNode | null = null,
+  ): number {
     const buf = sfxBufs.get(name);
     if (!buf) return when;
-    const src = ctx.createBufferSource();
+    const src = ctx!.createBufferSource();
     src.buffer = buf;
     const r = Math.max(0.4, Math.min(1, Number(slowRate) || 0.55));
     src.playbackRate.setValueAtTime(1, when);
     src.playbackRate.linearRampToValueAtTime(r, when + 0.42);
     src.playbackRate.setValueAtTime(r, when + 1.48);
     src.playbackRate.linearRampToValueAtTime(0.92, when + 2.0);
-    const g = ctx.createGain();
+    const g = ctx!.createGain();
     g.gain.value = layerGain;
     src.connect(g);
     g.connect(through || v.in);
@@ -647,15 +951,17 @@ export function createAudio({ context: initialContext = null } = {}) {
    * distance lowpass). Player's own gun: hotter overall, more sub, plus the
    * mechanical action foley (breech clank at end of recoil, brass tinkle).
    */
-  function bakedGunshot(x, y, z, caliberMm, isPlayer, profileId, muzzleIndex = -1,
-    gainOverride = null) {
+  function bakedGunshot(
+    x: number, y: number, z: number, caliberMm: number, isPlayer: boolean,
+    profileId: string | null | undefined, muzzleIndex = -1, gainOverride: number | null = null,
+  ): void {
     const s = spat(x, y, z);
     if (s.gain < 0.00075) return;
     const report = resolveWeaponReportProfile(profileId);
     const perspective = isPlayer && listenerScoped
       ? AUDIO_PERSPECTIVE_MIX.sniper
       : AUDIO_PERSPECTIVE_MIX.arcade;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const cls = caliberMm > 130 ? 'huge' : caliberMm > 105 ? 'large' : caliberMm > 76 ? 'medium' : 'small';
     const shotGain = gainOverride ?? (s.gain * cannonDistanceCarry(s.dist) *
       (isPlayer ? 1.15 : 1) * report.gain * perspective.cannonGain);
@@ -710,10 +1016,10 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Baked pen clang (+ interior whump when WE took the damage). */
-  function bakedPen(x, y, z, playerWhumpK) {
+  function bakedPen(x: number, y: number, z: number, playerWhumpK: number): void {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const v = spawnVoice(when, 1.35, s.gain * 0.95, s.pan, sfxBus);
     const lp = distLowpass(s.dist);
     lp.connect(v.in);
@@ -725,17 +1031,19 @@ export function createAudio({ context: initialContext = null } = {}) {
    * Interior whump — the receiving end of a hit. Non-spatial (it is OUR hull
    * flexing around us), rides under whatever played at the impact point.
    */
-  function hitWhump(k) {
-    const when = ctx.currentTime + 0.012;
+  function hitWhump(k: number): void {
+    const when = ctx!.currentTime + 0.012;
     const v = spawnVoice(when, 1.0, 0.85 * k, 0, sfxBus);
     sampleLayer(v, 'hit_whump', when, 1.0, jitterRate(), null);
   }
 
   /** Baked deflection zing / non-pen thunk. */
-  function bakedPing(x, y, z, deflected, playerWhumpK) {
+  function bakedPing(
+    x: number, y: number, z: number, deflected: boolean, playerWhumpK: number,
+  ): void {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const lp = distLowpass(s.dist);
     if (deflected) {
       const v = spawnVoice(when, 1.2, s.gain * 0.9, s.pan, sfxBus);
@@ -751,10 +1059,12 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Baked HE burst (shell explosion). Caliber re-pitches the one sample. */
-  function bakedShellExplosion(x, y, z, caliberMm, dirt) {
+  function bakedShellExplosion(
+    x: number, y: number, z: number, caliberMm: number, dirt: boolean,
+  ): void {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const rate = Math.max(0.82, Math.min(1.18, 0.9 + (122 - (caliberMm || 122)) / 300)) * (0.97 + rng() * 0.06);
     const v = spawnVoice(when, 2.0 / rate + 0.3, s.gain * (dirt ? 0.85 : 1.0), s.pan, sfxBus);
     const lp = distLowpass(dirt ? s.dist + 120 : s.dist);
@@ -770,11 +1080,13 @@ export function createAudio({ context: initialContext = null } = {}) {
    * @param {'ammorack'|'shot'|'fire'} cause ammo-rack detonation (turret pop
    *   accent) | regular HP kill | burn-out cook-off
    */
-  function bakedTankExplosion(x, y, z, cause, gainOverride = null) {
+  function bakedTankExplosion(
+    x: number, y: number, z: number, cause: DestructionCause, gainOverride: number | null = null,
+  ): void {
     const s = spat(x, y, z);
     const g = Math.pow(Math.min(1, 26 / s.dist), 1.6);
     if (g < 0.002) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const lp = distLowpass(s.dist);
     if (cause === 'fire') {
       const v = spawnVoice(when, 4.4, gainOverride ?? g * 0.95, s.pan, sfxBus);
@@ -802,11 +1114,13 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Replayed destruction, routed outside the ducked live battle bed. */
-  function bakedKillcamImpact(x, y, z, cause, slowRate) {
+  function bakedKillcamImpact(
+    x: number, y: number, z: number, cause: DestructionCause, slowRate: number,
+  ): void {
     const s = spat(x, y, z);
     const gain = Math.pow(Math.min(1, 30 / s.dist), 1.45);
     if (gain < 0.002) return;
-    const when = ctx.currentTime + 0.005;
+    const when = ctx!.currentTime + 0.005;
     const rack = cause === 'ammorack';
     const r = Math.max(0.4, Math.min(1, Number(slowRate) || 0.55));
     const v = spawnVoice(when, 7.0, gain * (rack ? 1 : 0.9), s.pan, cinematicBus);
@@ -828,11 +1142,13 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Synth fallback for a replay that begins before baked assets decode. */
-  function synthKillcamImpact(x, y, z, cause, slowRate) {
+  function synthKillcamImpact(
+    x: number, y: number, z: number, cause: DestructionCause, slowRate: number,
+  ): void {
     const s = spat(x, y, z);
     const gain = Math.pow(Math.min(1, 30 / s.dist), 1.45);
     if (gain < 0.002) return;
-    const when = ctx.currentTime + 0.005;
+    const when = ctx!.currentTime + 0.005;
     const rack = cause === 'ammorack';
     const r = Math.max(0.4, Math.min(1, Number(slowRate) || 0.55));
     const v = spawnVoice(when, 6.5, gain * (rack ? 1 : 0.9), s.pan, cinematicBus);
@@ -849,18 +1165,20 @@ export function createAudio({ context: initialContext = null } = {}) {
     if (killcamSfxLog.length > 32) killcamSfxLog.shift();
   }
 
-  function killcamImpact(e) {
-    if (!e || !e.pos) return;
-    const p = e.pos;
-    if (sfxReady) bakedKillcamImpact(p[0], p[1], p[2], e.cause, e.timeScale);
-    else synthKillcamImpact(p[0], p[1], p[2], e.cause, e.timeScale);
+  function killcamImpact(event: KillcamImpactEvent): void {
+    if (!event?.pos) return;
+    const p = event.pos;
+    const cause = event.cause || 'shot';
+    const timeScale = event.timeScale ?? 0.55;
+    if (sfxReady) bakedKillcamImpact(p[0], p[1], p[2], cause, timeScale);
+    else synthKillcamImpact(p[0], p[1], p[2], cause, timeScale);
   }
 
   /** Baked ERA tile detonation. */
-  function bakedEraPop(x, y, z) {
+  function bakedEraPop(x: number, y: number, z: number): void {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const v = spawnVoice(when, 0.9, s.gain * 0.9, s.pan, sfxBus);
     const lp = distLowpass(s.dist);
     lp.connect(v.in);
@@ -868,10 +1186,10 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Baked shell-into-dirt thud (shell:expired hitTerrain). */
-  function bakedDirtImpact(x, y, z) {
+  function bakedDirtImpact(x: number, y: number, z: number): void {
     const s = spat(x, y, z);
     if (s.gain < 0.003) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const v = spawnVoice(when, 1.2, s.gain * 0.75, s.pan, sfxBus);
     const lp = distLowpass(s.dist + 60);
     lp.connect(v.in);
@@ -881,13 +1199,16 @@ export function createAudio({ context: initialContext = null } = {}) {
   // ------------------------------------------------------------- gunfire ---
 
   /** Guided-weapon motor: launch thump, ignition tone and pressure hiss. */
-  function missileLaunch(x, y, z, isPlayer, report, muzzleIndex = -1) {
+  function missileLaunch(
+    x: number, y: number, z: number, isPlayer: boolean,
+    report: Readonly<WeaponReportProfile>, muzzleIndex = -1,
+  ): void {
     const s = spat(x, y, z);
     if (s.gain < 0.00075) return;
     const perspective = isPlayer && listenerScoped
       ? AUDIO_PERSPECTIVE_MIX.sniper
       : AUDIO_PERSPECTIVE_MIX.arcade;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const v = spawnVoice(when, report.durationS + 0.25,
       s.gain * report.gain * (isPlayer ? 1.08 : 1) * perspective.cannonGain,
       s.pan * (isPlayer ? perspective.enginePanScale : 1), sfxBus);
@@ -911,7 +1232,10 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Weapon shot: baked cannon layers, synth fallback, or launcher motor. */
-  function gunshot(x, y, z, caliberMm, isPlayer, profileId, muzzleIndex = -1) {
+  function gunshot(
+    x: number, y: number, z: number, caliberMm: number, isPlayer: boolean,
+    profileId: string | null | undefined, muzzleIndex = -1,
+  ): void {
     const report = resolveWeaponReportProfile(profileId);
     if (report.kind === 'launcher') {
       missileLaunch(x, y, z, isPlayer, report, muzzleIndex);
@@ -930,15 +1254,17 @@ export function createAudio({ context: initialContext = null } = {}) {
    * The PLAYER's own gun gets a mechanical action tail: breech clank at the
    * end of recoil and a brass-casing tinkle.
    */
-  function synthGunshot(x, y, z, caliberMm, isPlayer, profileId, muzzleIndex = -1,
-    gainOverride = null) {
+  function synthGunshot(
+    x: number, y: number, z: number, caliberMm: number, isPlayer: boolean,
+    profileId: string | null | undefined, muzzleIndex = -1, gainOverride: number | null = null,
+  ): void {
     const s = spat(x, y, z);
     if (s.gain < 0.00075) return;
     const report = resolveWeaponReportProfile(profileId);
     const perspective = isPlayer && listenerScoped
       ? AUDIO_PERSPECTIVE_MIX.sniper
       : AUDIO_PERSPECTIVE_MIX.arcade;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const cls = caliberMm > 130 ? 'huge' : caliberMm > 105 ? 'heavy' : caliberMm > 76 ? 'medium' : 'light';
     const dur = { light: 0.55, medium: 1.0, heavy: 1.7, huge: 2.6 }[cls];
     const v = spawnVoice(when, dur + (isPlayer ? 1.0 : 0),
@@ -946,7 +1272,7 @@ export function createAudio({ context: initialContext = null } = {}) {
         (isPlayer ? 1.08 : 1) * report.gain * perspective.cannonGain),
       s.pan * (isPlayer ? perspective.enginePanScale : 1), sfxBus);
     const lp = distLowpass(s.dist + (isPlayer ? perspective.cannonDistanceBiasM : 0));
-    const src = ctx.createBufferSource();
+    const src = ctx!.createBufferSource();
     src.buffer = gunBufs[cls];
     src.playbackRate.value = (0.94 + rng() * 0.12) * report.rate;
     src.start(when);
@@ -996,18 +1322,18 @@ export function createAudio({ context: initialContext = null } = {}) {
    * SOUND overhaul: fast rams (>6 m/s — the marketing shots feature ramming)
    * add a metal grind/scrape tail so a full-speed ram reads as a crunch.
    */
-  function onTankImpact(e) {
-    const s = spat(e.pos[0], e.pos[1], e.pos[2]);
-    const k = Math.min(1, e.speedMps / 12);
+  function onTankImpact(event: TankImpactEvent): void {
+    const s = spat(event.pos[0], event.pos[1], event.pos[2]);
+    const k = Math.min(1, event.speedMps / 12);
     if (s.gain * k < 0.002) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const v = spawnVoice(when, 0.8, s.gain * (0.4 + 0.6 * k), s.pan, sfxBus);
     const lp = distLowpass(s.dist);
     lp.connect(v.in);
     wire(v, nsrc(v, when, 0.12), flt('lowpass', 420, 0.7), env(when, 0.002, 0.9, 0.1), lp);
     wire(v, osrc(v, 'triangle', 138, when, 0.22), env(when, 0.002, 0.5 * k, 0.18), lp);
     wire(v, nsrc(v, when, 0.05), flt('bandpass', 1400, 1.1), env(when, 0.001, 0.35 * k, 0.04), lp);
-    if (e.speedMps > 6) {
+    if (event.speedMps > 6) {
       // Ram crunch: dragging metal squeal + plate rattle after the initial hit.
       const grind = nsrc(v, when + 0.03, 0.4, 0.9);
       const gBp = flt('bandpass', 520 + rng() * 260, 0.92);
@@ -1015,20 +1341,22 @@ export function createAudio({ context: initialContext = null } = {}) {
       wire(v, nsrc(v, when + 0.05, 0.35, 1, crackleBuf), flt('bandpass', 900, 1.4),
         env(when + 0.05, 0.01, 0.35 * k, 0.3), lp);
     }
-    logSound('tank:impact', { id: e.id, dist: s.dist, gain: s.gain, speedMps: e.speedMps });
+    logSound('tank:impact', {
+      id: event.id, dist: s.dist, gain: s.gain, speedMps: event.speedMps,
+    });
   }
 
   /** Tank-on-tank collision. This is a distinct replicated event from a hull
    * touching scenery, and needs plate crush plus an interior hit for either
    * locally occupied participant. */
-  function onTankRam(e, warmOnly = false) {
-    if (!e || !e.pos) return;
-    const s = spat(e.pos[0], e.pos[1], e.pos[2]);
-    const closing = Math.max(0, Number(e.closingMps) || 0);
-    const damage = Math.max(Number(e.dmgA) || 0, Number(e.dmgB) || 0);
+  function onTankRam(event: TankRamEvent, warmOnly = false): void {
+    if (!event?.pos) return;
+    const s = spat(event.pos[0], event.pos[1], event.pos[2]);
+    const closing = Math.max(0, Number(event.closingMps) || 0);
+    const damage = Math.max(Number(event.dmgA) || 0, Number(event.dmgB) || 0);
     const k = Math.max(0.25, Math.min(1, closing / 11 + damage / 900));
     if (!warmOnly && s.gain * k < 0.0012) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const v = spawnVoice(
       when,
       1.15,
@@ -1051,8 +1379,9 @@ export function createAudio({ context: initialContext = null } = {}) {
       flt('bandpass', 1180, 1.2),
       env(when + 0.045, 0.008, 0.42, 0.64), lp);
 
-    const occupied = !warmOnly && !!(e.aIsPlayer || e.bIsPlayer ||
-      (listenerOwnerId != null && (e.aId === listenerOwnerId || e.bId === listenerOwnerId)));
+    const occupied = !warmOnly && !!(event.aIsPlayer || event.bIsPlayer ||
+      (listenerOwnerId != null &&
+        (event.aId === listenerOwnerId || event.bId === listenerOwnerId)));
     if (occupied) {
       if (sfxReady) {
         hitWhump(0.55 + 0.45 * k);
@@ -1066,7 +1395,8 @@ export function createAudio({ context: initialContext = null } = {}) {
     }
     if (!warmOnly) {
       logSound('tank:ram', {
-        aId: e.aId, bId: e.bId, occupied, dist: s.dist, gain: s.gain, closingMps: closing,
+        aId: event.aId, bId: event.bId, occupied, dist: s.dist, gain: s.gain,
+        closingMps: closing,
       });
     }
   }
@@ -1077,7 +1407,7 @@ export function createAudio({ context: initialContext = null } = {}) {
    * paying that one-time cost on the first live ram created a 50-70 ms frame.
    * The scheduled warm voice has zero gain and uses the exact production nodes.
    */
-  function warmBattleEvents() {
+  function warmBattleEvents(): void {
     if (!ctx || !graphReady || battleEventsWarmed) return;
     battleEventsWarmed = true;
     onTankRam({
@@ -1093,7 +1423,7 @@ export function createAudio({ context: initialContext = null } = {}) {
     warmBakedBattleEvents();
   }
 
-  function warmBakedBattleEvents() {
+  function warmBakedBattleEvents(): void {
     if (!sfxReady || bakedBattleEventsWarmed) return;
     bakedBattleEventsWarmed = true;
     bakedGunshot(lx, ly, lz, 152, true, null, -1, 0);
@@ -1102,17 +1432,19 @@ export function createAudio({ context: initialContext = null } = {}) {
 
   /** gameplay_feel r6: sapling/trunk crush under a hull — sharp wood crack,
    * low trunk-snap body, foliage crunch tail. Fired by 'prop:crushed'. */
-  function onPropCrushed(e) {
-    const s = spat(e.pos[0], e.pos[1], e.pos[2]);
+  function onPropCrushed(event: PropCrushedEvent): void {
+    const s = spat(event.pos[0], event.pos[1], event.pos[2]);
     if (s.gain < 0.002) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const v = spawnVoice(when, 0.7, s.gain * 0.8, s.pan, sfxBus);
     const lp = distLowpass(s.dist);
     lp.connect(v.in);
     wire(v, nsrc(v, when, 0.05), flt('bandpass', 950, 1.3), env(when, 0.001, 0.9, 0.045), lp);
     wire(v, osrc(v, 'triangle', 92, when, 0.2), env(when, 0.002, 0.55, 0.16), lp);
     wire(v, nsrc(v, when, 0.38), flt('lowpass', 1500, 0.8), env(when, 0.012, 0.4, 0.32), lp);
-    logSound('prop:crushed', { id: e.id, kind: e.kind, dist: s.dist, gain: s.gain });
+    logSound('prop:crushed', {
+      id: event.id, kind: event.kind, dist: s.dist, gain: s.gain,
+    });
   }
 
   /**
@@ -1120,7 +1452,7 @@ export function createAudio({ context: initialContext = null } = {}) {
    * whump layer when WE are the one holed), or the pre-r2 synth fallback.
    * @param {number} [playerWhumpK] 0..1 — receiving-end whump strength
    */
-  function clang(x, y, z, playerWhumpK = 0) {
+  function clang(x: number, y: number, z: number, playerWhumpK = 0): void {
     if (sfxReady) { bakedPen(x, y, z, playerWhumpK); return; }
     synthClang(x, y, z);
   }
@@ -1130,22 +1462,22 @@ export function createAudio({ context: initialContext = null } = {}) {
    * flex and short spall burst so a shot fired during asynchronous sample
    * loading cannot fall back to the old high-Q dinner-bell sound.
    */
-  function synthClang(x, y, z) {
+  function synthClang(x: number, y: number, z: number): void {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const v = spawnVoice(when, 1.0, s.gain, s.pan, sfxBus);
     const lp = distLowpass(s.dist);
     lp.connect(v.in);
     // Plate collector so the two tiny interior taps hear the whole flex.
-    const ring = ctx.createGain();
+    const ring = ctx!.createGain();
     ring.gain.value = 1;
     ring.connect(lp);
-    const d1 = ctx.createDelay(0.2); d1.delayTime.value = 0.055;
-    const g1 = ctx.createGain(); g1.gain.value = 0.14;
+    const d1 = ctx!.createDelay(0.2); d1.delayTime.value = 0.055;
+    const g1 = ctx!.createGain(); g1.gain.value = 0.14;
     ring.connect(d1); d1.connect(g1); g1.connect(lp);
-    const d2 = ctx.createDelay(0.2); d2.delayTime.value = 0.128;
-    const g2 = ctx.createGain(); g2.gain.value = 0.06;
+    const d2 = ctx!.createDelay(0.2); d2.delayTime.value = 0.128;
+    const g2 = ctx!.createGain(); g2.gain.value = 0.06;
     ring.connect(d2); d2.connect(g2); g2.connect(lp);
     const partials = [185, 318, 515, 785, 1180];
     const gains = [1.0, 0.82, 0.60, 0.36, 0.18];
@@ -1171,7 +1503,9 @@ export function createAudio({ context: initialContext = null } = {}) {
    * @param {boolean} deflected true = ricochet, false = nonpen/absorb
    * @param {number} [playerWhumpK] 0..1 — receiving-end whump strength
    */
-  function ping(x, y, z, deflected, playerWhumpK = 0) {
+  function ping(
+    x: number, y: number, z: number, deflected: boolean, playerWhumpK = 0,
+  ): void {
     if (sfxReady) { bakedPing(x, y, z, deflected, playerWhumpK); return; }
     synthPing(x, y, z, deflected);
   }
@@ -1182,10 +1516,10 @@ export function createAudio({ context: initialContext = null } = {}) {
    * permits the former long, narrow 3–5 kHz ringing stack.
    * @param {boolean} deflected true = ricochet, false = nonpen/absorb
    */
-  function synthPing(x, y, z, deflected) {
+  function synthPing(x: number, y: number, z: number, deflected: boolean): void {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const lp = distLowpass(s.dist);
     if (deflected) {
       const variant = (rng() * 3) | 0;
@@ -1193,11 +1527,13 @@ export function createAudio({ context: initialContext = null } = {}) {
       lp.connect(v.in);
       wire(v, nsrc(v, when, 0.04), flt('bandpass', 1650, 0.68), env(when, 0.001, 0.44, 0.02), lp);
       wire(v, nsrc(v, when, 0.12), flt('bandpass', 520, 0.62), env(when, 0.002, 0.52, 0.08), lp);
-      const sweep = (f0, f1, at, dur, peak, q) => {
+      const sweep = (
+        f0: number, f1: number, at: number, dur: number, peak: number, q: number,
+      ): void => {
         const o = osrc(v, 'sine', f0, at, dur + 0.05);
         o.frequency.exponentialRampToValueAtTime(Math.max(80, f1), at + dur);
         const vib = osrc(v, 'sine', 24 + rng() * 10, at, dur);
-        const vibG = ctx.createGain();
+        const vibG = ctx!.createGain();
         vibG.gain.value = f0 * 0.012;
         vib.connect(vibG); vibG.connect(o.frequency);
         wire(v, o, flt('bandpass', (f0 + f1) * 0.5, q == null ? 0.9 : q), env(at, 0.004, peak, dur));
@@ -1247,10 +1583,13 @@ export function createAudio({ context: initialContext = null } = {}) {
    * Explosion. scale ~1 = 122 mm HE; bigger = longer, deeper. dirt=true
    * muffles it (ground burst).
    */
-  function synthExplosion(x, y, z, scale, dirt, debris, gainOverride = null) {
+  function synthExplosion(
+    x: number, y: number, z: number, scale: number, dirt: boolean, debris: boolean,
+    gainOverride: number | null = null,
+  ): void {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const k = Math.max(0.4, Math.min(2.2, scale));
     const dur = 1.4 * k + (debris ? 1.6 : 0);
     const v = spawnVoice(when, dur, gainOverride ?? s.gain, s.pan, sfxBus);
@@ -1291,16 +1630,16 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** ERA tile detonation (baked, or pre-r2 synth fallback). */
-  function eraPop(x, y, z) {
+  function eraPop(x: number, y: number, z: number): void {
     if (sfxReady) { bakedEraPop(x, y, z); return; }
     synthEraPop(x, y, z);
   }
 
   /** Live ERA fallback: sharp fracture over a short armor-body pulse. */
-  function synthEraPop(x, y, z) {
+  function synthEraPop(x: number, y: number, z: number): void {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const v = spawnVoice(when, 0.5, s.gain, s.pan, sfxBus);
     const lp = distLowpass(s.dist);
     lp.connect(v.in);
@@ -1313,10 +1652,10 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Track link snapped (module trackL/R → red): metal snap + chain clatter. */
-  function trackSnap(x, y, z) {
+  function trackSnap(x: number, y: number, z: number): void {
     const s = spat(x, y, z);
     if (s.gain < 0.002) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const v = spawnVoice(when, 0.8, s.gain * 0.9, s.pan, sfxBus);
     const lp = distLowpass(s.dist);
     lp.connect(v.in);
@@ -1332,16 +1671,16 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Shell landing in dirt with no target (shell:expired hitTerrain). */
-  function dirtImpact(x, y, z) {
+  function dirtImpact(x: number, y: number, z: number): void {
     if (sfxReady) { bakedDirtImpact(x, y, z); return; }
     synthDirtImpact(x, y, z);
   }
 
   /** (Pre-COMBAT-SFX-r2 fallback.) Shell landing in dirt with no target. */
-  function synthDirtImpact(x, y, z) {
+  function synthDirtImpact(x: number, y: number, z: number): void {
     const s = spat(x, y, z);
     if (s.gain < 0.003) return;
-    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
     const v = spawnVoice(when, 0.5, s.gain * 0.7, s.pan, sfxBus);
     const lp = distLowpass(s.dist + 60);
     lp.connect(v.in);
@@ -1352,11 +1691,11 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Hard suspension landing: hull slam + bogie rattle, scaled by sink speed. */
-  function suspensionThump(x, y, z, vyMps) {
+  function suspensionThump(x: number, y: number, z: number, vyMps: number): void {
     const s = spat(x, y, z);
     const k = Math.min(1, (vyMps - LANDING_VY_MPS) / 7);
     if (s.gain * k < 0.002) return;
-    const when = ctx.currentTime + 0.005;
+    const when = ctx!.currentTime + 0.005;
     const v = spawnVoice(when, 0.5, s.gain * (0.35 + 0.65 * k), s.pan, engineBus);
     wire(v, nsrc(v, when, 0.1), flt('lowpass', 340, 0.7), env(when, 0.002, 0.9, 0.09));
     const sub = osrc(v, 'sine', 64, when, 0.22);
@@ -1373,9 +1712,9 @@ export function createAudio({ context: initialContext = null } = {}) {
    * Schedule a flyby whizz from a shell:fired event: closest approach of the
    * fired ray to the listener, timed by estimated shell velocity.
    */
-  function scheduleWhizz(e) {
+  function scheduleWhizz(event: ShellFiredEvent): void {
     if (!listenerValid) return;
-    const mp = e.muzzlePos, d = e.dir;
+    const mp = event.muzzlePos, d = event.dir;
     const rx = lx - mp[0], ry = ly - mp[1], rz = lz - mp[2];
     const t = rx * d[0] + ry * d[1] + rz * d[2];   // meters along the ray
     if (t < 12 || t > 900) return;
@@ -1383,17 +1722,17 @@ export function createAudio({ context: initialContext = null } = {}) {
     const px = cx - lx, py = cy - ly, pz = cz - lz;
     const miss = Math.sqrt(px * px + py * py + pz * pz);
     if (miss > WHIZZ_MAX_MISS_M) return;
-    const vel = WHIZZ_VEL_MPS[e.shellType] || 900;
+    const vel = WHIZZ_VEL_MPS[event.shellType] || 900;
     if (vel <= MIN_WHIZZ_SPEED_MPS) return;
 
-    const passAt = ctx.currentTime + t / vel;
+    const passAt = ctx!.currentTime + t / vel;
     const closeness = 1 - miss / WHIZZ_MAX_MISS_M;     // 0..1
     const gain = 0.15 + 0.7 * closeness * closeness;
     // Pan by which side the shell passes on.
     const pan = miss > 0.001
       ? Math.max(-1, Math.min(1, (px * lfz - pz * lfx) / miss)) * 0.9 : 0;
 
-    const w0 = safeAudioStart(ctx.currentTime, passAt - 0.12);
+    const w0 = safeAudioStart(ctx!.currentTime, passAt - 0.12);
     // A very near pass can occur before the ideal 120 ms lead-in. Preserve a
     // strictly increasing automation window rather than addressing AudioParam
     // at a negative/past timestamp during the first AudioContext moments.
@@ -1403,7 +1742,7 @@ export function createAudio({ context: initialContext = null } = {}) {
     const bp = flt('bandpass', 4200, 1.8);
     bp.frequency.setValueAtTime(4200, w0);
     bp.frequency.exponentialRampToValueAtTime(600, w0 + 0.32);
-    const g = ctx.createGain();
+    const g = ctx!.createGain();
     g.gain.setValueAtTime(0.0001, w0);
     g.gain.linearRampToValueAtTime(1.0, when);          // peak exactly at pass
     g.gain.exponentialRampToValueAtTime(0.0001, w0 + 0.4);
@@ -1417,8 +1756,8 @@ export function createAudio({ context: initialContext = null } = {}) {
 
   // --------------------------------------------------------------- ui/fx ---
 
-  function uiClick() {
-    const when = ctx.currentTime;
+  function uiClick(): void {
+    const when = ctx!.currentTime;
     // UI blips route through the UI/music channel so the Interface slider
     // governs clicks as well as the garage sting (hitConfirm stays on sfxBus).
     const v = spawnVoice(when, 0.1, 0.4, 0, musicBus);
@@ -1427,26 +1766,26 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Quieter sibling of uiClick for pointer hover over buttons. */
-  function uiHover() {
-    const when = ctx.currentTime;
+  function uiHover(): void {
+    const when = ctx!.currentTime;
     const v = spawnVoice(when, 0.06, 0.13, 0, musicBus);
     wire(v, osrc(v, 'sine', 1260, when, 0.032), env(when, 0.001, 0.34, 0.022));
   }
 
-  let _lastHoverEl = null;
+  let _lastHoverEl: Element | null = null;
   let _lastHoverT = 0;
   /** Delegated hover ticks for buttons/toggles/tabs (installed at resume()). */
-  function installHoverTicks() {
+  function installHoverTicks(): void {
     if (typeof document === 'undefined') return;
     document.addEventListener('mouseover', (ev) => {
       if (!ctx || muted) return;
       if (document.pointerLockElement) return;   // battle mouselook — no cursor
-      const t = ev.target;
-      if (!t || !t.closest) return;
-      const el = t.closest('button, .cot-set-toggle, .cot-set-tab');
+      const target = ev.target instanceof Element ? ev.target : null;
+      if (!target) return;
+      const el = target.closest('button, .cot-set-toggle, .cot-set-tab');
       if (!el || el === _lastHoverEl) return;
       _lastHoverEl = el;
-      const now = ctx.currentTime;
+      const now = ctx!.currentTime;
       if (now - _lastHoverT < 0.07) return;
       _lastHoverT = now;
       uiHover();
@@ -1459,9 +1798,9 @@ export function createAudio({ context: initialContext = null } = {}) {
    * @param {boolean} pen true = damaging hit (bright two-tone dink);
    *                      false = bounce/absorb (short dull knock)
    */
-  function hitConfirmSound(kind, damage = 0) {
+  function hitConfirmSound(kind: string, damage = 0): void {
     if (!ctx) return;
-    const when = ctx.currentTime + 0.01;
+    const when = ctx!.currentTime + 0.01;
     const pen = kind === 'pen' || kind === 'he_pen' || damage > 0;
     const ricochet = kind === 'ricochet';
     if (pen) {
@@ -1487,9 +1826,9 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Interior reload mechanism, keyed to the real reload timer's cue plan. */
-  function reloadMechanicalSound(type, caliberMm = 100) {
+  function reloadMechanicalSound(type: ReloadCueType, caliberMm = 100): void {
     if (!ctx) return;
-    const when = ctx.currentTime + 0.004;
+    const when = ctx!.currentTime + 0.004;
     const mass = Math.max(0.65, Math.min(1.45, caliberMm / 100));
     const v = spawnVoice(when, type === 'motor' ? 0.46 : 0.30,
       0.26 + mass * 0.10, 0, sfxBus);
@@ -1536,9 +1875,9 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Non-spatial breech latch: the loaded gun is ready to fire again. */
-  function reloadReadySound(caliberMm = 100) {
+  function reloadReadySound(caliberMm = 100): void {
     if (!ctx) return;
-    const when = ctx.currentTime + 0.004;
+    const when = ctx!.currentTime + 0.004;
     const mass = Math.max(0.7, Math.min(1.35, caliberMm / 100));
     const v = spawnVoice(when, 0.24, 0.32 + mass * 0.06, 0, sfxBus);
     wire(v, nsrc(v, when, 0.035), flt('bandpass', 720, 0.82), env(when, 0.001, 0.34, 0.028));
@@ -1550,8 +1889,8 @@ export function createAudio({ context: initialContext = null } = {}) {
   // -------------------------------------------------- stingers / fanfares ---
 
   /** Battle-open horn: short two-note brass rise, distinct from the garage sting. */
-  function battleHorn() {
-    const when = ctx.currentTime + 0.02;
+  function battleHorn(): void {
+    const when = ctx!.currentTime + 0.02;
     const v = spawnVoice(when, 1.6, 0.55, 0, musicBus);
     const notes = [[110.0, 0], [146.83, 0.16]];         // A2 → D3
     for (const [f, at0] of notes) {
@@ -1572,8 +1911,8 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Kill-confirm sting: quick bright arpeggio (player scored a kill). */
-  function killSting() {
-    const when = ctx.currentTime + 0.01;
+  function killSting(): void {
+    const when = ctx!.currentTime + 0.01;
     const v = spawnVoice(when, 0.8, 0.34, 0, musicBus);
     const notes = [659.26, 987.77, 1318.5];             // E5 B5 E6
     for (let i = 0; i < notes.length; i++) {
@@ -1587,8 +1926,8 @@ export function createAudio({ context: initialContext = null } = {}) {
    * Result fanfare on 'battle:ended'.
    * @param {'victory'|'defeat'|'draw'} result
    */
-  function resultFanfare(result) {
-    const when = ctx.currentTime + 0.05;
+  function resultFanfare(result: ResultKind): void {
+    const when = ctx!.currentTime + 0.05;
     if (result === 'victory') {
       const v = spawnVoice(when, 3.4, 0.6, 0, musicBus);
       // Rising D-major brass: D3 F#3 A3 D4, staggered, bright filter bloom.
@@ -1601,7 +1940,7 @@ export function createAudio({ context: initialContext = null } = {}) {
         shape.frequency.setValueAtTime(420, at);
         shape.frequency.linearRampToValueAtTime(2600, at + 0.4);
         shape.frequency.exponentialRampToValueAtTime(600, at + 2.2);
-        const g = ctx.createGain();
+        const g = ctx!.createGain();
         g.gain.setValueAtTime(0.0001, at);
         g.gain.linearRampToValueAtTime(0.16, at + 0.07);
         g.gain.setValueAtTime(0.16, at + 1.2);
@@ -1624,7 +1963,7 @@ export function createAudio({ context: initialContext = null } = {}) {
         const shape = flt('lowpass', 700, 0.7);
         shape.frequency.setValueAtTime(700, when);
         shape.frequency.exponentialRampToValueAtTime(160, when + 2.4);
-        const g = ctx.createGain();
+        const g = ctx!.createGain();
         g.gain.setValueAtTime(0.0001, when);
         g.gain.linearRampToValueAtTime(0.20, when + 0.25);
         g.gain.setValueAtTime(0.20, when + 1.5);
@@ -1649,39 +1988,39 @@ export function createAudio({ context: initialContext = null } = {}) {
 
   // ----------------------------------------------------------- fire loops ---
 
-  function startFireLoop(id) {
+  function startFireLoop(id: string): void {
     if (fireLoops.has(id)) return;
-    const out = ctx.createGain();
+    const out = ctx!.createGain();
     out.gain.value = 0;
-    const pan = ctx.createStereoPanner();
+    const pan = ctx!.createStereoPanner();
     out.connect(pan);
     pan.connect(sfxBus);
 
-    const now = ctx.currentTime;
+    const now = ctx!.currentTime;
     // Roaring flame bed.
-    const roar = ctx.createBufferSource();
+    const roar = ctx!.createBufferSource();
     roar.buffer = whiteBuf; roar.loop = true; roar.start(now, rng() * 1.7);
     const roarLp = flt('lowpass', 480, 0.7);
-    const roarG = ctx.createGain(); roarG.gain.value = 0.5;
+    const roarG = ctx!.createGain(); roarG.gain.value = 0.5;
     roar.connect(roarLp); roarLp.connect(roarG); roarG.connect(out);
     // Flicker LFO on the roar.
-    const lfo = ctx.createOscillator(); lfo.type = 'sine';
+    const lfo = ctx!.createOscillator(); lfo.type = 'sine';
     lfo.frequency.value = 6.5 + rng() * 2; lfo.start(now);
-    const lfoG = ctx.createGain(); lfoG.gain.value = 0.14;
+    const lfoG = ctx!.createGain(); lfoG.gain.value = 0.14;
     lfo.connect(lfoG); lfoG.connect(roarG.gain);
     // Crackle.
-    const crk = ctx.createBufferSource();
+    const crk = ctx!.createBufferSource();
     crk.buffer = crackleBuf; crk.loop = true;
     crk.playbackRate.value = 0.9 + rng() * 0.2; crk.start(now, rng() * 1.7);
     const crkBp = flt('bandpass', 2300, 0.9);
-    const crkG = ctx.createGain(); crkG.gain.value = 0.55;
+    const crkG = ctx!.createGain(); crkG.gain.value = 0.55;
     crk.connect(crkBp); crkBp.connect(crkG); crkG.connect(out);
 
     out.gain.setTargetAtTime(1, now, 0.25);
     fireLoops.set(id, {
       out, pan,
       kill() {
-        const t = ctx.currentTime;
+        const t = ctx!.currentTime;
         out.gain.setTargetAtTime(0, t, 0.15);
         try { roar.stop(t + 0.6); crk.stop(t + 0.6); lfo.stop(t + 0.6); } catch (_) { /* stopped */ }
         roar.onended = () => { try { out.disconnect(); pan.disconnect(); } catch (_) { /* detached */ } };
@@ -1689,14 +2028,14 @@ export function createAudio({ context: initialContext = null } = {}) {
     });
   }
 
-  function stopFireLoop(id) {
+  function stopFireLoop(id: string): void {
     const f = fireLoops.get(id);
     if (!f) return;
     f.kill();
     fireLoops.delete(id);
   }
 
-  function stopWorldLoops(reason) {
+  function stopWorldLoops(reason: string): void {
     for (const [id, eng] of engines) {
       eng.kill();
       logSound('engine:stop', { id, reason });
@@ -1711,15 +2050,15 @@ export function createAudio({ context: initialContext = null } = {}) {
   // ---------------------------------------------------------------- alarms ---
 
   /** Two-tone fire klaxon while the PLAYER burns (voice bus — crew compartment). */
-  function startFireAlarm() {
+  function startFireAlarm(): void {
     if (fireAlarmRig || !ctx) return;
-    const now = ctx.currentTime;
-    const out = ctx.createGain(); out.gain.value = 0;
+    const now = ctx!.currentTime;
+    const out = ctx!.createGain(); out.gain.value = 0;
     out.connect(voiceBus);
-    const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 690;
+    const o = ctx!.createOscillator(); o.type = 'square'; o.frequency.value = 690;
     // Square LFO flips the pitch between the two klaxon tones.
-    const lfo = ctx.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 2.5;
-    const lfoG = ctx.createGain(); lfoG.gain.value = 118;
+    const lfo = ctx!.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 2.5;
+    const lfoG = ctx!.createGain(); lfoG.gain.value = 118;
     lfo.connect(lfoG); lfoG.connect(o.frequency);
     const bp = flt('bandpass', 950, 1.1);
     o.connect(bp); bp.connect(out);
@@ -1727,7 +2066,7 @@ export function createAudio({ context: initialContext = null } = {}) {
     out.gain.setTargetAtTime(0.12, now, 0.08);
     fireAlarmRig = {
       kill() {
-        const t = ctx.currentTime;
+        const t = ctx!.currentTime;
         out.gain.setTargetAtTime(0, t, 0.1);
         try { o.stop(t + 0.4); lfo.stop(t + 0.4); } catch (_) { /* stopped */ }
         o.onended = () => { try { out.disconnect(); } catch (_) { /* detached */ } };
@@ -1735,15 +2074,15 @@ export function createAudio({ context: initialContext = null } = {}) {
     };
   }
 
-  function stopFireAlarm() {
+  function stopFireAlarm(): void {
     if (!fireAlarmRig) return;
     fireAlarmRig.kill();
     fireAlarmRig = null;
   }
 
   /** Urgent triple beep — ammo rack took damage. One-shot, non-spatial. */
-  function ammoRackWarning() {
-    const when = ctx.currentTime + 0.01;
+  function ammoRackWarning(): void {
+    const when = ctx!.currentTime + 0.01;
     const v = spawnVoice(when, 0.6, 0.30, 0, voiceBus);
     for (let i = 0; i < 3; i++) {
       const at = when + i * 0.15;
@@ -1753,11 +2092,11 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** 6-second low heartbeat pulse window (critical HP). One osc, no pool use. */
-  function heartbeatPulse() {
+  function heartbeatPulse(): void {
     if (heartbeatRig || !ctx) return;
-    const now = ctx.currentTime;
-    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 56;
-    const g = ctx.createGain(); g.gain.value = 0;
+    const now = ctx!.currentTime;
+    const o = ctx!.createOscillator(); o.type = 'sine'; o.frequency.value = 56;
+    const g = ctx!.createGain(); g.gain.value = 0;
     o.connect(g); g.connect(voiceBus);
     o.start(now);
     // Schedule lub-dub pairs across the window up front — no timers needed.
@@ -1780,65 +2119,66 @@ export function createAudio({ context: initialContext = null } = {}) {
 
   // --------------------------------------------------------- engine loops ---
 
-  function createEngineVoice(entity) {
+  function createEngineVoice(entity: AudioTankEntity): EngineVoice {
     const profile = resolveEngineSoundProfile(entity.specId, entity.spec);
     const isTurbine = profile.kind === 'turbine';
     const f0 = profile.baseHz;   // fundamental at idle pitch 1.0
 
-    const out = ctx.createGain(); out.gain.value = 0;
+    const out = ctx!.createGain(); out.gain.value = 0;
     const rangeLp = flt('lowpass', 18000, 0.5);
-    const pan = ctx.createStereoPanner();
+    const pan = ctx!.createStereoPanner();
     out.connect(rangeLp); rangeLp.connect(pan); pan.connect(engineBus);
-    const now = ctx.currentTime;
+    const now = ctx!.currentTime;
 
     // Broadly filtered firing pulses. The low-Q filter carries engine mass;
     // raw oscillator buzz no longer reaches the mix as a synthetic rasp.
-    const sawA = ctx.createOscillator(); sawA.type = isTurbine ? 'triangle' : 'sawtooth'; sawA.frequency.value = f0;
-    const sawB = ctx.createOscillator(); sawB.type = 'triangle'; sawB.frequency.value = f0 * 2.02;
-    const sub = ctx.createOscillator();  sub.type = 'sine';      sub.frequency.value = f0 * 0.5;
+    const sawA = ctx!.createOscillator(); sawA.type = isTurbine ? 'triangle' : 'sawtooth'; sawA.frequency.value = f0;
+    const sawB = ctx!.createOscillator(); sawB.type = 'triangle'; sawB.frequency.value = f0 * 2.02;
+    const sub = ctx!.createOscillator();  sub.type = 'sine';      sub.frequency.value = f0 * 0.5;
     const sawLp = flt('lowpass', profile.toneCutoffHz, 0.58);
-    const gSaw = ctx.createGain(); gSaw.gain.value = profile.pulseGain;
-    const gSub = ctx.createGain(); gSub.gain.value = profile.subGain;
+    const gSaw = ctx!.createGain(); gSaw.gain.value = profile.pulseGain;
+    const gSub = ctx!.createGain(); gSub.gain.value = profile.subGain;
     sawA.connect(sawLp); sawB.connect(sawLp); sawLp.connect(gSaw); gSaw.connect(out);
     sub.connect(gSub); gSub.connect(out);
     // Rattle FM wobble on the saws (diesel unevenness).
-    const wob = ctx.createOscillator(); wob.type = 'sine';
+    const wob = ctx!.createOscillator(); wob.type = 'sine';
     wob.frequency.value = 9 + rng() * 4;
-    const wobG = ctx.createGain(); wobG.gain.value = profile.wobbleDepthHz;
+    const wobG = ctx!.createGain(); wobG.gain.value = profile.wobbleDepthHz;
     wob.connect(wobG); wobG.connect(sawA.frequency); wobG.connect(sawB.frequency);
 
     // Combustion / intake noise.
-    const noi = ctx.createBufferSource();
+    const noi = ctx!.createBufferSource();
     noi.buffer = whiteBuf; noi.loop = true; noi.start(now, rng() * 1.7);
     const noiBp = flt('bandpass', profile.intakeHz, 0.62);
-    const gNoi = ctx.createGain(); gNoi.gain.value = profile.intakeGain;
+    const gNoi = ctx!.createGain(); gNoi.gain.value = profile.intakeGain;
     noi.connect(noiBp); noiBp.connect(gNoi); gNoi.connect(out);
 
     // Tread scrub: a wide low-mid texture. The former 1450 Hz / Q=9 band was
     // the main continuous “metal in a pan” sound while driving.
-    const sq = ctx.createBufferSource();
+    const sq = ctx!.createBufferSource();
     sq.buffer = whiteBuf; sq.loop = true; sq.playbackRate.value = 0.8; sq.start(now, rng() * 1.7);
     const sqBp = flt('bandpass', profile.trackHz, profile.trackQ);
-    const gSq = ctx.createGain(); gSq.gain.value = 0;
+    const gSq = ctx!.createGain(); gSq.gain.value = 0;
     sq.connect(sqBp); sqBp.connect(gSq); gSq.connect(out);
-    const sqLfo = ctx.createOscillator(); sqLfo.type = 'sine';
+    const sqLfo = ctx!.createOscillator(); sqLfo.type = 'sine';
     sqLfo.frequency.value = 2.3 + rng() * 1.2;
-    const sqLfoG = ctx.createGain(); sqLfoG.gain.value = 70;
+    const sqLfoG = ctx!.createGain(); sqLfoG.gain.value = 70;
     sqLfo.connect(sqLfoG); sqLfoG.connect(sqBp.frequency);
     // Individual link/road-wheel energy stays below 700 Hz and low-Q so it
     // adds weight without a permanent ringing pitch.
-    const clat = ctx.createBufferSource();
+    const clat = ctx!.createBufferSource();
     clat.buffer = crackleBuf; clat.loop = true; clat.start(now, rng() * 1.7);
     const clatBp = flt('bandpass', profile.clatterHz, 0.76);
-    const gClat = ctx.createGain(); gClat.gain.value = 0;
+    const gClat = ctx!.createGain(); gClat.gain.value = 0;
     clat.connect(clatBp); clatBp.connect(gClat); gClat.connect(out);
 
     // Turbine whine is a restrained triangle layer, with T-80 and S-tank
     // families correctly joining Abrams in this powertrain profile.
-    let tur = null, gTur = null;
+    let tur: OscillatorNode | null = null;
+    let gTur: GainNode | null = null;
     if (isTurbine) {
-      tur = ctx.createOscillator(); tur.type = 'triangle'; tur.frequency.value = 620;
-      gTur = ctx.createGain(); gTur.gain.value = profile.whineGain * 0.55;
+      tur = ctx!.createOscillator(); tur.type = 'triangle'; tur.frequency.value = 620;
+      gTur = ctx!.createGain(); gTur.gain.value = profile.whineGain * 0.55;
       tur.connect(gTur); gTur.connect(out);
       tur.start(now);
     }
@@ -1847,7 +2187,7 @@ export function createAudio({ context: initialContext = null } = {}) {
 
     const topMps = Math.max(1, ((entity.spec && entity.spec.topSpeedKmh) || 40) / 3.6);
 
-    const voice = {
+    const voice: EngineVoice = {
       out, pan, rangeLp,
       id: entity.id,
       lastDist: Infinity,
@@ -1855,8 +2195,8 @@ export function createAudio({ context: initialContext = null } = {}) {
       lastCutoffHz: 18000,
       own: false,
       scoped: false,
-      update(ent, isOwn, scoped) {
-        const t = ctx.currentTime;
+      update(ent: AudioTankEntity, isOwn: boolean, scoped: boolean): number {
+        const t = ctx!.currentTime;
         const spd = Math.abs(ent.state.speed);
         const frac = Math.min(1, spd / topMps);
         // Perceived throttle bite: engine load responds on the input edge,
@@ -1870,7 +2210,7 @@ export function createAudio({ context: initialContext = null } = {}) {
         sawB.frequency.setTargetAtTime(f0 * 2.02 * p, t, 0.12);
         sub.frequency.setTargetAtTime(f0 * 0.5 * p, t, 0.12);
         noiBp.frequency.setTargetAtTime(profile.intakeHz * (0.82 + 0.55 * rpm), t, 0.11);
-        if (tur) {
+        if (tur && gTur) {
           tur.frequency.setTargetAtTime(620 + 520 * rpm, t, 0.16);
           gTur.gain.setTargetAtTime(profile.whineGain * (0.55 + 0.45 * rpm), t, 0.16);
         }
@@ -1900,8 +2240,8 @@ export function createAudio({ context: initialContext = null } = {}) {
         voice.scoped = !!(isOwn && scoped);
         return s.dist;
       },
-      kill() {
-        const t = ctx.currentTime;
+      kill(): void {
+        const t = ctx!.currentTime;
         out.gain.setTargetAtTime(0, t, 0.1);
         const all = [sawA, sawB, sub, wob, noi, sq, sqLfo, clat, tur];
         for (const n of all) { if (n) { try { n.stop(t + 0.4); } catch (_) { /* stopped */ } } }
@@ -1916,40 +2256,40 @@ export function createAudio({ context: initialContext = null } = {}) {
   // ------------------------------------------------------ turret traverse ---
 
   /** Player-only turret traverse whir + gun elevation servo (engine bus). */
-  function createTraverseRig() {
-    const now = ctx.currentTime;
-    const out = ctx.createGain(); out.gain.value = 1;
+  function createTraverseRig(): TraverseRig {
+    const now = ctx!.currentTime;
+    const out = ctx!.createGain(); out.gain.value = 1;
     out.connect(engineBus);
     // Traverse motor: low pulse and broad gear-mesh noise. Narrow servo bands
     // read as an artificial whistle during every aim correction.
-    const motor = ctx.createOscillator(); motor.type = 'sawtooth'; motor.frequency.value = 84;
+    const motor = ctx!.createOscillator(); motor.type = 'sawtooth'; motor.frequency.value = 84;
     const mLp = flt('lowpass', 330, 1.2);
-    const gMotor = ctx.createGain(); gMotor.gain.value = 0;
+    const gMotor = ctx!.createGain(); gMotor.gain.value = 0;
     motor.connect(mLp); mLp.connect(gMotor); gMotor.connect(out);
-    const gearN = ctx.createBufferSource();
+    const gearN = ctx!.createBufferSource();
     gearN.buffer = whiteBuf; gearN.loop = true; gearN.playbackRate.value = 0.7;
     gearN.start(now, rng() * 1.7);
     const gearBp = flt('bandpass', 560, 0.82);
-    const gGear = ctx.createGain(); gGear.gain.value = 0;
+    const gGear = ctx!.createGain(); gGear.gain.value = 0;
     gearN.connect(gearBp); gearBp.connect(gGear); gGear.connect(out);
     // Gear-mesh AM texture.
-    const am = ctx.createOscillator(); am.type = 'sine'; am.frequency.value = 13;
-    const amG = ctx.createGain(); amG.gain.value = 0;
+    const am = ctx!.createOscillator(); am.type = 'sine'; am.frequency.value = 13;
+    const amG = ctx!.createGain(); amG.gain.value = 0;
     am.connect(amG); amG.connect(gGear.gain);
     // Elevation servo remains distinct, but wide enough to avoid a ringing
     // stationary pitch.
-    const servoN = ctx.createBufferSource();
+    const servoN = ctx!.createBufferSource();
     servoN.buffer = whiteBuf; servoN.loop = true; servoN.playbackRate.value = 1.1;
     servoN.start(now, rng() * 1.7);
     const servoBp = flt('bandpass', 980, 0.92);
-    const gServo = ctx.createGain(); gServo.gain.value = 0;
+    const gServo = ctx!.createGain(); gServo.gain.value = 0;
     servoN.connect(servoBp); servoBp.connect(gServo); gServo.connect(out);
     motor.start(now); am.start(now);
 
-    let lastPitch = null;
+    let lastPitch: number | null = null;
     return {
-      update(ent, dt, scoped) {
-        const t = ctx.currentTime;
+      update(ent: AudioTankEntity, dt: number, scoped: boolean): void {
+        const t = ctx!.currentTime;
         const cabinK = scoped ? 1.18 : 1;
         const rate = Math.min(1, Math.abs(ent.state.turretYawRate || 0) / TRAVERSE_RATE_FULL);
         gMotor.gain.setTargetAtTime(rate * 0.085 * cabinK, t, 0.06);
@@ -1963,8 +2303,8 @@ export function createAudio({ context: initialContext = null } = {}) {
         }
         lastPitch = pitch;
       },
-      kill() {
-        const t = ctx.currentTime;
+      kill(): void {
+        const t = ctx!.currentTime;
         out.gain.setTargetAtTime(0, t, 0.08);
         for (const n of [motor, gearN, servoN, am]) { try { n.stop(t + 0.3); } catch (_) { /* stopped */ } }
         motor.onended = () => { try { out.disconnect(); } catch (_) { /* detached */ } };
@@ -1972,7 +2312,7 @@ export function createAudio({ context: initialContext = null } = {}) {
     };
   }
 
-  function stopTraverseRig() {
+  function stopTraverseRig(): void {
     if (!traverseRig) return;
     traverseRig.kill();
     traverseRig = null;
@@ -1980,9 +2320,9 @@ export function createAudio({ context: initialContext = null } = {}) {
 
   // -------------------------------------------------------------- ambient ---
 
-  function maybeBird() {
+  function maybeBird(): void {
     if (!ctx || rng() > 0.32) return;
-    const when = ctx.currentTime + rng() * 0.4;
+    const when = ctx!.currentTime + rng() * 0.4;
     const panV = (rng() * 2 - 1) * 0.9;
     const notes = 2 + ((rng() * 4) | 0);
     const v = spawnVoice(when, notes * 0.15 + 0.3, 0.045 + rng() * 0.05, panV, ambientBus);
@@ -1997,29 +2337,29 @@ export function createAudio({ context: initialContext = null } = {}) {
     }
   }
 
-  function ambientStart() {
+  function ambientStart(): void {
     if (windRig) return;
-    const now = ctx.currentTime;
+    const now = ctx!.currentTime;
     // Wind bed: pink noise, slow amplitude swell.
-    const wsrc = ctx.createBufferSource();
+    const wsrc = ctx!.createBufferSource();
     wsrc.buffer = windBuf; wsrc.loop = true; wsrc.start(now, rng() * 3.5);
     const wLp = flt('lowpass', 420, 0.6);
-    const wG = ctx.createGain(); wG.gain.value = 0;
+    const wG = ctx!.createGain(); wG.gain.value = 0;
     wsrc.connect(wLp); wLp.connect(wG); wG.connect(ambientBus);
-    const swell = ctx.createOscillator(); swell.type = 'sine';
+    const swell = ctx!.createOscillator(); swell.type = 'sine';
     swell.frequency.value = 0.07; swell.start(now);
-    const swellG = ctx.createGain(); swellG.gain.value = 0.16;
+    const swellG = ctx!.createGain(); swellG.gain.value = 0.16;
     swell.connect(swellG); swellG.connect(wG.gain);
     // Gust layer: airier band, slower cycle out of phase.
-    const gsrc = ctx.createBufferSource();
+    const gsrc = ctx!.createBufferSource();
     gsrc.buffer = whiteBuf; gsrc.loop = true; gsrc.playbackRate.value = 0.55;
     gsrc.start(now, rng() * 1.7);
     const gBp = flt('bandpass', 640, 0.6);
-    const gG = ctx.createGain(); gG.gain.value = 0;
+    const gG = ctx!.createGain(); gG.gain.value = 0;
     gsrc.connect(gBp); gBp.connect(gG); gG.connect(ambientBus);
-    const gust = ctx.createOscillator(); gust.type = 'sine';
+    const gust = ctx!.createOscillator(); gust.type = 'sine';
     gust.frequency.value = 0.043; gust.start(now);
-    const gustG = ctx.createGain(); gustG.gain.value = 0.05;
+    const gustG = ctx!.createGain(); gustG.gain.value = 0.05;
     gust.connect(gustG); gustG.connect(gG.gain);
 
     wG.gain.setTargetAtTime(0.45, now, 1.2);
@@ -2027,7 +2367,7 @@ export function createAudio({ context: initialContext = null } = {}) {
 
     windRig = {
       kill() {
-        const t = ctx.currentTime;
+        const t = ctx!.currentTime;
         wG.gain.setTargetAtTime(0, t, 0.4);
         gG.gain.setTargetAtTime(0, t, 0.4);
         for (const n of [wsrc, gsrc, swell, gust]) { try { n.stop(t + 1.5); } catch (_) { /* stopped */ } }
@@ -2039,7 +2379,7 @@ export function createAudio({ context: initialContext = null } = {}) {
     birdTimerId = setInterval(maybeBird, 700);
   }
 
-  function ambientStop() {
+  function ambientStop(): void {
     if (!windRig) return;
     windRig.kill();
     windRig = null;
@@ -2049,9 +2389,9 @@ export function createAudio({ context: initialContext = null } = {}) {
   // -------------------------------------------------------- garage ambient ---
 
   /** One distant workshop tool movement (or dry ratchet), random pan. */
-  function garageClank() {
+  function garageClank(): void {
     if (!ctx) return;
-    const when = ctx.currentTime + rng() * 0.3;
+    const when = ctx!.currentTime + rng() * 0.3;
     const panV = (rng() * 2 - 1) * 0.8;
     if (rng() < 0.3) {
       // Ratchet: 3-5 fast dry ticks.
@@ -2075,27 +2415,27 @@ export function createAudio({ context: initialContext = null } = {}) {
   }
 
   /** Garage room tone: mains hum + HVAC air + sparse workshop clanks. */
-  function garageToneStart() {
+  function garageToneStart(): void {
     if (garageRig || !ctx) return;
-    const now = ctx.currentTime;
-    const out = ctx.createGain(); out.gain.value = 0;
+    const now = ctx!.currentTime;
+    const out = ctx!.createGain(); out.gain.value = 0;
     out.connect(ambientBus);
     // Fluorescent/mains hum.
-    const hum1 = ctx.createOscillator(); hum1.type = 'sine'; hum1.frequency.value = 60;
-    const hum2 = ctx.createOscillator(); hum2.type = 'sine'; hum2.frequency.value = 120;
-    const gH1 = ctx.createGain(); gH1.gain.value = 0.05;
-    const gH2 = ctx.createGain(); gH2.gain.value = 0.022;
+    const hum1 = ctx!.createOscillator(); hum1.type = 'sine'; hum1.frequency.value = 60;
+    const hum2 = ctx!.createOscillator(); hum2.type = 'sine'; hum2.frequency.value = 120;
+    const gH1 = ctx!.createGain(); gH1.gain.value = 0.05;
+    const gH2 = ctx!.createGain(); gH2.gain.value = 0.022;
     hum1.connect(gH1); gH1.connect(out);
     hum2.connect(gH2); gH2.connect(out);
     // HVAC air wash.
-    const air = ctx.createBufferSource();
+    const air = ctx!.createBufferSource();
     air.buffer = windBuf; air.loop = true; air.playbackRate.value = 0.6;
     air.start(now, rng() * 3.5);
     const airLp = flt('lowpass', 260, 0.5);
-    const gAir = ctx.createGain(); gAir.gain.value = 0.5;
+    const gAir = ctx!.createGain(); gAir.gain.value = 0.5;
     air.connect(airLp); airLp.connect(gAir); gAir.connect(out);
-    const swell = ctx.createOscillator(); swell.type = 'sine'; swell.frequency.value = 0.05;
-    const swellG = ctx.createGain(); swellG.gain.value = 0.1;
+    const swell = ctx!.createOscillator(); swell.type = 'sine'; swell.frequency.value = 0.05;
+    const swellG = ctx!.createGain(); swellG.gain.value = 0.1;
     swell.connect(swellG); swellG.connect(gAir.gain);
     hum1.start(now); hum2.start(now); swell.start(now);
     out.gain.setTargetAtTime(0.5, now, 0.8);
@@ -2104,7 +2444,7 @@ export function createAudio({ context: initialContext = null } = {}) {
     garageRig = {
       kill() {
         clearInterval(timerId);
-        const t = ctx.currentTime;
+        const t = ctx!.currentTime;
         out.gain.setTargetAtTime(0, t, 0.3);
         for (const n of [hum1, hum2, air, swell]) { try { n.stop(t + 1.2); } catch (_) { /* stopped */ } }
         hum1.onended = () => { try { out.disconnect(); } catch (_) { /* detached */ } };
@@ -2112,7 +2452,7 @@ export function createAudio({ context: initialContext = null } = {}) {
     };
   }
 
-  function garageToneStop() {
+  function garageToneStop(): void {
     if (!garageRig) return;
     garageRig.kill();
     garageRig = null;
@@ -2126,40 +2466,40 @@ export function createAudio({ context: initialContext = null } = {}) {
    * roster work is never presented as a silent/frozen page. No fetch, decode,
    * timer or per-frame update is added to the loading path.
    */
-  function loadingStart() {
+  function loadingStart(): void {
     if (loadingRig || !ctx) return;
     garageToneStop();
     ambientStop();
-    const now = ctx.currentTime;
-    const out = ctx.createGain();
+    const now = ctx!.currentTime;
+    const out = ctx!.createGain();
     out.gain.setValueAtTime(0.0001, now);
     out.gain.exponentialRampToValueAtTime(0.16, now + 0.16);
     out.connect(musicBus);
 
-    const rumble = ctx.createOscillator();
+    const rumble = ctx!.createOscillator();
     rumble.type = 'sine';
     rumble.frequency.value = 58;
-    const rumbleGain = ctx.createGain();
+    const rumbleGain = ctx!.createGain();
     rumbleGain.gain.value = 0.22;
     rumble.connect(rumbleGain); rumbleGain.connect(out);
 
-    const machinery = ctx.createOscillator();
+    const machinery = ctx!.createOscillator();
     machinery.type = 'triangle';
     machinery.frequency.value = 116;
-    const machineryGain = ctx.createGain();
+    const machineryGain = ctx!.createGain();
     machineryGain.gain.value = 0.055;
     machinery.connect(machineryGain); machineryGain.connect(out);
 
-    const air = ctx.createBufferSource();
+    const air = ctx!.createBufferSource();
     air.buffer = windBuf; air.loop = true; air.playbackRate.value = 0.72;
     const airLp = flt('lowpass', 520, 0.55);
-    const airGain = ctx.createGain(); airGain.gain.value = 0.16;
+    const airGain = ctx!.createGain(); airGain.gain.value = 0.16;
     air.connect(airLp); airLp.connect(airGain); airGain.connect(out);
 
     // Slow ready-rack pulse: movement without a distracting melody.
-    const pulse = ctx.createOscillator();
+    const pulse = ctx!.createOscillator();
     pulse.type = 'sine'; pulse.frequency.value = 0.82;
-    const pulseGain = ctx.createGain(); pulseGain.gain.value = 0.035;
+    const pulseGain = ctx!.createGain(); pulseGain.gain.value = 0.035;
     pulse.connect(pulseGain); pulseGain.connect(out.gain);
 
     rumble.start(now); machinery.start(now); air.start(now); pulse.start(now);
@@ -2177,7 +2517,7 @@ export function createAudio({ context: initialContext = null } = {}) {
       flt('bandpass', 1180, 0.72), env(now + 0.01, 0.001, 0.22, 0.035));
     loadingRig = {
       kill() {
-        const t = ctx.currentTime;
+        const t = ctx!.currentTime;
         out.gain.cancelScheduledValues(t);
         out.gain.setValueAtTime(Math.max(0.0001, out.gain.value), t);
         out.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
@@ -2190,7 +2530,7 @@ export function createAudio({ context: initialContext = null } = {}) {
     logSound('loading:start');
   }
 
-  function loadingStop() {
+  function loadingStop(): void {
     if (!loadingRig) return;
     loadingRig.kill();
     loadingRig = null;
@@ -2199,8 +2539,8 @@ export function createAudio({ context: initialContext = null } = {}) {
 
   // --------------------------------------------------------- garage sting ---
 
-  function garageSting() {
-    const when = ctx.currentTime + 0.02;
+  function garageSting(): void {
+    const when = ctx!.currentTime + 0.02;
     const v = spawnVoice(when, 3.2, 0.8, 0, musicBus);
 
     // Timpani hit.
@@ -2219,7 +2559,7 @@ export function createAudio({ context: initialContext = null } = {}) {
       shape.frequency.setValueAtTime(300, at);
       shape.frequency.linearRampToValueAtTime(2300, at + 0.5);
       shape.frequency.exponentialRampToValueAtTime(500, at + 2.4);
-      const g = ctx.createGain();
+      const g = ctx!.createGain();
       g.gain.setValueAtTime(0.0001, at);
       g.gain.linearRampToValueAtTime(amps[i], at + 0.08);
       g.gain.setValueAtTime(amps[i], at + 1.4);
@@ -2232,29 +2572,29 @@ export function createAudio({ context: initialContext = null } = {}) {
 
   // -------------------------------------------------------------- events ---
 
-  function onShellFired(e) {
-    const mp = e.muzzlePos;
+  function onShellFired(event: ShellFiredEvent): void {
+    const mp = event.muzzlePos;
     const ownShot = listenerOwnerId != null
-      ? e.shooterId === listenerOwnerId
-      : !!e.isPlayer;
+      ? event.shooterId === listenerOwnerId
+      : !!event.isPlayer;
     const s = spat(mp[0], mp[1], mp[2]);
     const dist = s.dist, gain = s.gain;
-    gunshot(mp[0], mp[1], mp[2], e.caliberMm, ownShot,
-      e.weaponSound, e.muzzleIndex);
-    if (!ownShot) scheduleWhizz(e);
-    if (e.isPlayer) radio.say('firing', { prob: 0.18, delayS: 0.08 });
+    gunshot(mp[0], mp[1], mp[2], event.caliberMm, ownShot,
+      event.weaponSound, event.muzzleIndex);
+    if (!ownShot) scheduleWhizz(event);
+    if (event.isPlayer) radio.say('firing', { prob: 0.18, delayS: 0.08 });
     logSound('shell:fired', {
-      id: e.shellId, shooterId: e.shooterId, own: ownShot,
-      scoped: ownShot && listenerScoped, caliberMm: e.caliberMm,
-      report: resolveWeaponReportProfile(e.weaponSound).kind, dist, gain,
+      id: event.shellId, shooterId: event.shooterId, own: ownShot,
+      scoped: ownShot && listenerScoped, caliberMm: event.caliberMm,
+      report: resolveWeaponReportProfile(event.weaponSound).kind, dist, gain,
     });
   }
 
-  const CREW_DAMAGE_CALL = {
+  const CREW_DAMAGE_CALL: Readonly<Record<string, string>> = {
     commander: 'commander_down', gunner: 'gunner_down',
     driver: 'driver_down', loader: 'loader_down',
   };
-  const MODULE_DAMAGE_CALL = {
+  const MODULE_DAMAGE_CALL: Readonly<Record<string, string>> = {
     ammoRack: 'ammo_rack', gun: 'gun_damaged', trackL: 'track_gone',
     trackR: 'track_gone', engine: 'engine_damaged', fuelTank: 'fuel_tank',
     optics: 'optics_damaged', radio: 'radio_damaged',
@@ -2264,34 +2604,37 @@ export function createAudio({ context: initialContext = null } = {}) {
 
   /** One shell gets one context-accurate report, never a hit line plus a
    *  backlog of module lines from the synchronous module:state fan-out. */
-  function incomingCallFor(e) {
-    if (e.destroyed || e.fireStarted) return null; // fire/death have dedicated edges
-    const crew = new Set(e.crewHit || []);
+  function incomingCallFor(event: ShellHitEvent): string | null {
+    if (event.destroyed || event.fireStarted) return null; // fire/death have dedicated edges
+    const crew = new Set(event.crewHit || []);
     for (const role of CREW_DAMAGE_ORDER) if (crew.has(role)) return CREW_DAMAGE_CALL[role];
-    const modules = new Map((e.modulesHit || []).map((m) => [m.module, m.newState]));
+    const modules = new Map((event.modulesHit || []).map((module) => (
+      [module.module, module.newState] as const
+    )));
     for (const name of MODULE_DAMAGE_ORDER) {
       if (!modules.has(name)) continue;
       if ((name === 'trackL' || name === 'trackR') && modules.get(name) !== 'red') continue;
       return MODULE_DAMAGE_CALL[name];
     }
-    if ((e.damage || 0) > 0) return 'were_hit';
-    if (e.kind === 'ricochet' || e.kind === 'nonpen' || e.kind === 'spaced_absorb') return 'bounced_us';
+    if ((event.damage || 0) > 0) return 'were_hit';
+    if (event.kind === 'ricochet' || event.kind === 'nonpen' ||
+        event.kind === 'spaced_absorb') return 'bounced_us';
     return null;
   }
 
-  function onShellHit(e) {
-    const p = e.pos;
+  function onShellHit(event: ShellHitEvent): void {
+    const p = event.pos;
     // Receiving-end feel: a damaging hit on the PLAYER adds
     // an interior low whump + rumble under the impact sound. Deflections
     // deliberately get NONE — a bounce must feel like relief, not damage.
-    const playerHit = (listenerOwnerId != null && e.targetId === listenerOwnerId) ||
-      (listenerOwnerId == null && playerId != null && e.targetId === playerId);
+    const playerHit = (listenerOwnerId != null && event.targetId === listenerOwnerId) ||
+      (listenerOwnerId == null && playerId != null && event.targetId === playerId);
     // Like the FX path, the reactive charge is additive to the deeper armor
     // result. Play its sharp cassette blast even when the final event is pen.
-    if (isEraActivation(e) && e.kind !== 'era') eraPop(p[0], p[1], p[2]);
-    switch (e.kind) {
+    if (isEraActivation(event) && event.kind !== 'era') eraPop(p[0], p[1], p[2]);
+    switch (event.kind) {
       case 'pen':
-        clang(p[0], p[1], p[2], playerHit && (e.damage || 0) > 0 ? 1 : 0);
+        clang(p[0], p[1], p[2], playerHit && (event.damage || 0) > 0 ? 1 : 0);
         break;
       case 'ricochet':
         ping(p[0], p[1], p[2], true);
@@ -2307,32 +2650,35 @@ export function createAudio({ context: initialContext = null } = {}) {
       case 'he_pen':
       case 'he_splash':
         if (sfxReady) {
-          bakedShellExplosion(p[0], p[1], p[2], e.caliberMm || 122, false);
-          if (playerHit && (e.damage || 0) > 0) hitWhump(0.9);
+          bakedShellExplosion(p[0], p[1], p[2], event.caliberMm || 122, false);
+          if (playerHit && (event.damage || 0) > 0) hitWhump(0.9);
         } else {
-          synthExplosion(p[0], p[1], p[2], 0.55 + (e.caliberMm || 122) / 160, false, false);
+          synthExplosion(p[0], p[1], p[2],
+            0.55 + (event.caliberMm || 122) / 160, false, false);
         }
         break;
       case 'terrain':
-        if (sfxReady) bakedShellExplosion(p[0], p[1], p[2], e.caliberMm || 100, true);
-        else synthExplosion(p[0], p[1], p[2], 0.4 + (e.caliberMm || 100) / 220, true, false);
+        if (sfxReady) bakedShellExplosion(p[0], p[1], p[2], event.caliberMm || 100, true);
+        else synthExplosion(p[0], p[1], p[2],
+          0.4 + (event.caliberMm || 100) / 220, true, false);
         break;
       default:
         break;
     }
     logSound('shell:hit', {
-      id: e.shellId, kind: e.kind, targetId: e.targetId,
-      attackerId: e.attackerId, occupied: playerHit, damage: e.damage || 0,
+      id: event.shellId, kind: event.kind, targetId: event.targetId,
+      attackerId: event.attackerId, occupied: playerHit, damage: event.damage || 0,
     });
     // Voice director — exactly one report per resolved shell. Incoming damage
     // chooses the most actionable crew/module consequence; outgoing fire
     // reports the final result only after the impact is known.
     if (playerId == null) return;
-    if (e.targetId === playerId) {
-      const call = incomingCallFor(e);
+    if (event.targetId === playerId) {
+      const call = incomingCallFor(event);
       if (call) radio.say(call, { delayS: 0.12 });
-      if (!lowHpCalled && !e.destroyed && (e.damage || 0) > 0 &&
-          (e.targetMaxHp || 0) > 0 && e.targetHpAfter / e.targetMaxHp <= 0.25) {
+      if (!lowHpCalled && !event.destroyed && (event.damage || 0) > 0 &&
+          (event.targetMaxHp || 0) > 0 &&
+          event.targetHpAfter / (event.targetMaxHp || 1) <= 0.25) {
         // Only add the threshold warning when the shell had no more specific
         // consequence; otherwise it would replace a gun/crew/fire warning.
         if (!call || call === 'were_hit') {
@@ -2340,77 +2686,82 @@ export function createAudio({ context: initialContext = null } = {}) {
           radio.say('low_hp', { delayS: 0.35 });
         }
       }
-    } else if (e.attackerId === playerId && e.targetId != null && !e.destroyed) {
-      const rackHit = (e.modulesHit || []).some((m) => m.module === 'ammoRack');
+    } else if (event.attackerId === playerId && event.targetId != null && !event.destroyed) {
+      const rackHit = (event.modulesHit || []).some((module) => module.module === 'ammoRack');
       if (rackHit) radio.say('enemy_ammo_rack', { delayS: 0.18 });
-      else if (((e.modulesHit && e.modulesHit.length) || (e.crewHit && e.crewHit.length)) &&
-          (e.damage || 0) > 0) radio.say('enemy_crit', { prob: 0.72, delayS: 0.18 });
-      else if ((e.kind === 'pen' || e.kind === 'he_pen') && (e.damage || 0) > 0) {
+      else if (((event.modulesHit && event.modulesHit.length) ||
+          (event.crewHit && event.crewHit.length)) && (event.damage || 0) > 0) {
+        radio.say('enemy_crit', { prob: 0.72, delayS: 0.18 });
+      } else if ((event.kind === 'pen' || event.kind === 'he_pen') &&
+          (event.damage || 0) > 0) {
         radio.say('penetration', { prob: 0.82, delayS: 0.18 });
-      } else if (e.kind === 'ricochet' || e.kind === 'nonpen' || e.kind === 'spaced_absorb') {
+      } else if (event.kind === 'ricochet' || event.kind === 'nonpen' ||
+          event.kind === 'spaced_absorb') {
         radio.say('ricochet', { prob: 0.8, delayS: 0.16 });
       }
     }
   }
 
-  function onTankDestroyed(e) {
-    const p = e.pos;
+  function onTankDestroyed(event: TankDestroyedEvent): void {
+    const p = event.pos;
     // The kill blast keys off the destruction CAUSE —
     // 'ammorack' detonation (turret-pop accent) > 'shot' > 'fire' burn-out.
     if (sfxReady) {
       bakedTankExplosion(p[0], p[1], p[2],
-        e.cause === 'ammorack' || e.cause === 'fire' ? e.cause : 'shot');
+        event.cause === 'ammorack' || event.cause === 'fire' ? event.cause : 'shot');
     } else {
       synthExplosion(p[0], p[1], p[2], 1.8, false, true);
     }
-    const eng = engines.get(e.id);
-    if (eng) { eng.kill(); engines.delete(e.id); }
-    landing.delete(e.id);
-    if (playerId != null && e.id === playerId) {
+    const eng = engines.get(event.id);
+    if (eng) { eng.kill(); engines.delete(event.id); }
+    landing.delete(event.id);
+    if (playerId != null && event.id === playerId) {
       stopFireAlarm();
       stopTraverseRig();
       playerBurning = false;
       radio.silence();
-    } else if (playerId != null && e.killerId === playerId) {
+    } else if (playerId != null && event.killerId === playerId) {
       killSting();
       radio.say('target_destroyed', { delayS: 0.22 });
     }
     logSound('tank:destroyed', {
-      id: e.id, killerId: e.killerId, cause: e.cause || 'shot',
-      occupied: e.id === listenerOwnerId,
+      id: event.id, killerId: event.killerId, cause: event.cause || 'shot',
+      occupied: event.id === listenerOwnerId,
     });
   }
 
   /** Player module damage/repair → alarms + crew calls (edge-triggered). */
-  function onModuleState(e) {
-    const key = `${e.id}:${e.module}`;
+  function onModuleState(event: ModuleStateEvent): void {
+    const key = `${event.id}:${event.module}`;
     const prev = moduleState.get(key) || 'ok';
-    moduleState.set(key, e.state);
-    if (e.state === prev) return;
-    const RANK = { ok: 0, yellow: 1, red: 2 };
-    const worse = (RANK[e.state] || 0) > (RANK[prev] || 0);
+    moduleState.set(key, event.state);
+    if (event.state === prev) return;
+    const RANK: Readonly<Record<ModuleCondition, number>> = { ok: 0, yellow: 1, red: 2 };
+    const worse = RANK[event.state] > RANK[prev];
     // Track break is a WORLD sound (any tank in earshot, spatial).
-    if (worse && e.state === 'red' && (e.module === 'trackL' || e.module === 'trackR')) {
-      const info = tankInfo.get(e.id);
+    if (worse && event.state === 'red' &&
+        (event.module === 'trackL' || event.module === 'trackR')) {
+      const info = tankInfo.get(event.id);
       if (info && info.pos) trackSnap(info.pos.x, info.pos.y, info.pos.z);
     }
-    if (playerId == null || e.id !== playerId || phase !== 'battle') return;
+    if (playerId == null || event.id !== playerId || phase !== 'battle') return;
     // The parent shell:hit already selected one best call from the entire hit.
     // Keep alarms/world sounds above, but never enqueue each module again.
-    if (e.source === 'hit') {
-      if (worse && e.module === 'ammoRack') ammoRackWarning();
+    if (event.source === 'hit') {
+      if (worse && event.module === 'ammoRack') ammoRackWarning();
       return;
     }
     if (worse) {
-      if (e.module === 'ammoRack') ammoRackWarning();
-      const call = MODULE_DAMAGE_CALL[e.module];
-      if (call && (e.state === 'red' || e.module !== 'trackL' && e.module !== 'trackR')) {
+      if (event.module === 'ammoRack') ammoRackWarning();
+      const call = MODULE_DAMAGE_CALL[event.module];
+      if (call && (event.state === 'red' ||
+          event.module !== 'trackL' && event.module !== 'trackR')) {
         radio.say(call, { delayS: 0.1 });
       }
-    } else if (e.repaired) {
-      const call = e.module === 'gun' ? 'gun_repaired'
-        : (e.module === 'trackL' || e.module === 'trackR') ? 'track_repaired'
-          : e.module === 'engine' ? 'engine_repaired' : 'repairs';
+    } else if (event.repaired) {
+      const call = event.module === 'gun' ? 'gun_repaired'
+        : (event.module === 'trackL' || event.module === 'trackR') ? 'track_repaired'
+          : event.module === 'engine' ? 'engine_repaired' : 'repairs';
       radio.say(call, { delayS: 0.12 });
     }
   }
@@ -2421,18 +2772,21 @@ export function createAudio({ context: initialContext = null } = {}) {
    * Create (or resume) the AudioContext. MUST be called from a user gesture.
    * Before this, every other method is a silent no-op.
    */
-  function resume() {
+  function resume(): void {
     if (!ctx) {
-      const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
+      const scope = globalThis as typeof globalThis & {
+        webkitAudioContext?: typeof AudioContext;
+      };
+      const AC = scope.AudioContext || scope.webkitAudioContext;
       if (!AC) return;   // headless / unsupported: stay silently inert
       ctx = new AC({ latencyHint: 'interactive' });
     }
-    if (ctx.state === 'suspended') ctx.resume();
+    if (ctx!.state === 'suspended') ctx!.resume();
     if (graphReady) return;
     buildGraph();
     buildBuffers();
     applyMaster();
-    radio.load(ctx, voiceBus);
+    radio.load(ctx!, voiceBus);
     loadSfx();
     installHoverTicks();
     if (phase === 'garage') garageToneStart();
@@ -2445,47 +2799,55 @@ export function createAudio({ context: initialContext = null } = {}) {
    * until the context exists.
    * @param {import('../game/stateCore.ts').EventBus} bus injected event bus
    */
-  function bindBus(bus) {
-    bus.on('shell:fired', (e) => { if (ctx) onShellFired(e); });
-    bus.on('shell:hit', (e) => { if (ctx) onShellHit(e); });
+  function bindBus(bus: EventBus): void {
+    const on = <T>(event: string, listener: (payload: T) => void): void => {
+      bus.on(event, (payload) => listener(payload as T));
+    };
+    on<ShellFiredEvent>('shell:fired', (event) => { if (ctx) onShellFired(event); });
+    on<ShellHitEvent>('shell:hit', (event) => { if (ctx) onShellHit(event); });
     // Shells that terminate in the world (dirt/rubble) were silent before the
     // SOUND overhaul — fx already keyed off this event, audio now does too.
-    bus.on('shell:expired', (e) => {
-      if (ctx && e && (e.hitTerrain || e.hitKind === 'prop') && e.pos) {
-        dirtImpact(e.pos[0], e.pos[1], e.pos[2]);
-        logSound('shell:expired', { id: e.shellId, hitKind: e.hitKind || 'terrain' });
+    on<ShellExpiredEvent>('shell:expired', (event) => {
+      if (ctx && event && (event.hitTerrain || event.hitKind === 'prop') && event.pos) {
+        dirtImpact(event.pos[0], event.pos[1], event.pos[2]);
+        logSound('shell:expired', {
+          id: event.shellId, hitKind: event.hitKind || 'terrain',
+        });
       }
     });
-    bus.on('player:reload', (e) => {
-      if (!ctx || !e || phase !== 'battle' || battleOver) return;
-      const total = Math.max(0.05, Number(e.total) || 0.05);
-      const kind = e.kind || 'shell';
-      const caliberMm = Math.max(12, Number(e.caliberMm) || 100);
+    on<ReloadEvent>('player:reload', (event) => {
+      if (!ctx || !event || phase !== 'battle' || battleOver) return;
+      const total = Math.max(0.05, Number(event.total) || 0.05);
+      const kind = event.kind || 'shell';
+      const caliberMm = Math.max(12, Number(event.caliberMm) || 100);
+      const reloadTime = Number(event.t) || 0;
       const restarted = !reloadCycle.active || reloadCycle.kind !== kind ||
-        Math.abs(reloadCycle.total - total) > 0.01 || e.t > reloadCycle.lastT + 0.04;
+        Math.abs(reloadCycle.total - total) > 0.01 || reloadTime > reloadCycle.lastT + 0.04;
       if (restarted) {
         reloadCycle.active = true;
         reloadCycle.total = total;
         reloadCycle.kind = kind;
         reloadCycle.caliberMm = caliberMm;
-        reloadCycle.lastT = e.t;
+        reloadCycle.lastT = reloadTime;
         reloadCycle.nextCue = 0;
         reloadCycle.plan = resolveReloadCuePlan(total, kind, caliberMm);
         logSound('reload:start', { kind, total, caliberMm });
       }
-      const progress = Number.isFinite(e.progress)
-        ? Math.max(0, Math.min(1, e.progress))
-        : Math.max(0, Math.min(1, 1 - (Number(e.t) || 0) / total));
-      const cues = reloadCycle.plan.cues;
+      const progress = Number.isFinite(event.progress)
+        ? Math.max(0, Math.min(1, Number(event.progress)))
+        : Math.max(0, Math.min(1, 1 - reloadTime / total));
+      const plan = reloadCycle.plan || resolveReloadCuePlan(total, kind, caliberMm);
+      reloadCycle.plan = plan;
+      const cues = plan.cues;
       while (reloadCycle.nextCue < cues.length &&
           progress + 1e-6 >= cues[reloadCycle.nextCue].at) {
         const cue = cues[reloadCycle.nextCue++];
         reloadMechanicalSound(cue.type, caliberMm);
         logSound('reload:cue', { cue: cue.type, kind, progress, caliberMm });
       }
-      reloadCycle.lastT = Number(e.t) || 0;
-      if (e.done) {
-        if (reloadCycle.plan.ready) {
+      reloadCycle.lastT = reloadTime;
+      if (event.done) {
+        if (plan.ready) {
           reloadReadySound(caliberMm);
           logSound('reload:ready', { kind, total, caliberMm });
         }
@@ -2493,28 +2855,32 @@ export function createAudio({ context: initialContext = null } = {}) {
         reloadCalled = false;
         // Autocannon cycles keep their mechanical cue but do not flood the
         // radio; spoken ready calls are for reloads the player had to wait on.
-        if ((e.total || 0) >= 1.25) radio.say('reloaded', { prob: 0.82, delayS: 0.08 });
-      } else if (!reloadCalled && (e.total || 0) >= 2.2) {
+        if ((event.total || 0) >= 1.25) radio.say('reloaded', { prob: 0.82, delayS: 0.08 });
+      } else if (!reloadCalled && (event.total || 0) >= 2.2) {
         reloadCalled = true;
         radio.say('reloading', { prob: 0.5, delayS: 0.1 });
       }
     });
-    bus.on('tank:destroyed', (e) => { if (ctx) onTankDestroyed(e); });
+    on<TankDestroyedEvent>('tank:destroyed', (event) => {
+      if (ctx) onTankDestroyed(event);
+    });
     // gameplay_feel r2: blocked-drive collision feedback (state.ts emits once
     // per genuine hit, 5.4 km/h closing-speed floor)
-    bus.on('tank:impact', (e) => { if (ctx) onTankImpact(e); });
-    bus.on('tank:ram', (e) => { if (ctx) onTankRam(e); });
-    bus.on('prop:crushed', (e) => { if (ctx) onPropCrushed(e); }); // gameplay_feel r6
-    bus.on('tank:fire', (e) => {
+    on<TankImpactEvent>('tank:impact', (event) => { if (ctx) onTankImpact(event); });
+    on<TankRamEvent>('tank:ram', (event) => { if (ctx) onTankRam(event); });
+    on<PropCrushedEvent>('prop:crushed', (event) => { if (ctx) onPropCrushed(event); });
+    on<TankFireEvent>('tank:fire', (event) => {
       if (!ctx) return;
-      if (e.burning) startFireLoop(e.id); else stopFireLoop(e.id);
-      logSound('tank:fire', { id: e.id, burning: !!e.burning, occupied: e.id === listenerOwnerId });
-      if (playerId != null && e.id === playerId) {
-        if (e.burning && !playerBurning) {
+      if (event.burning) startFireLoop(event.id); else stopFireLoop(event.id);
+      logSound('tank:fire', {
+        id: event.id, burning: !!event.burning, occupied: event.id === listenerOwnerId,
+      });
+      if (playerId != null && event.id === playerId) {
+        if (event.burning && !playerBurning) {
           playerBurning = true;
           startFireAlarm();
           radio.say('fire');
-        } else if (!e.burning && playerBurning) {
+        } else if (!event.burning && playerBurning) {
           playerBurning = false;
           stopFireAlarm();
           radio.say('fire_out', { prob: 0.8 });
@@ -2522,33 +2888,35 @@ export function createAudio({ context: initialContext = null } = {}) {
       }
     });
     // Module damage/repair (alarms + crew calls + track-snap world sound).
-    bus.on('module:state', (e) => { if (ctx && e) onModuleState(e); });
+    on<ModuleStateEvent>('module:state', (event) => {
+      if (ctx && event) onModuleState(event);
+    });
     // Spotting: the crew calls out NEW enemy contacts made by the player team.
-    bus.on('tank:spotted', (e) => {
-      if (!ctx || !e || phase !== 'battle') return;
-      if (e.team !== 'player') return;
-      const info = tankInfo.get(e.id);
+    on<TankSpottedEvent>('tank:spotted', (event) => {
+      if (!ctx || !event || phase !== 'battle') return;
+      if (event.team !== 'player') return;
+      const info = tankInfo.get(event.id);
       // A crew call belongs to a contact this tank actually acquired, not a
       // teammate's contact hundreds of metres away on the shared radio net.
-      if (info && info.team === 'enemy' && e.spotterId === playerId) {
+      if (info && info.team === 'enemy' && event.spotterId === playerId) {
         radio.say('enemy_spotted', { delayS: 0.1 });
       }
     });
     // Match the actual three-second sixth-sense fuse used by the HUD instead
     // of announcing detection on the raw spotting edge.
-    bus.on('player:spotted', () => {
+    on<undefined>('player:spotted', () => {
       if (ctx && phase === 'battle' && !battleOver) radio.say('sixth_sense', { delayS: 3.0 });
     });
-    bus.on('ui:consumableUsed', (e) => {
-      if (!ctx || !e || phase !== 'battle' || battleOver) return;
-      if (e.slot === 0) radio.say('repairs', { delayS: 0.12 });
-      else if (e.slot === 1) radio.say('crew_recovered', { delayS: 0.12 });
+    on<ConsumableEvent>('ui:consumableUsed', (event) => {
+      if (!ctx || !event || phase !== 'battle' || battleOver) return;
+      if (event.slot === 0) radio.say('repairs', { delayS: 0.12 });
+      else if (event.slot === 1) radio.say('crew_recovered', { delayS: 0.12 });
     });
-    bus.on('ui:click', () => { if (ctx) uiClick(); });
+    on<undefined>('ui:click', () => { if (ctx) uiClick(); });
     // Phase flow only prepares the soundscape. The horn and command wait for
     // battle:rollout, emitted exactly when the visible countdown reaches zero.
-    bus.on('phase:change', (e) => {
-      const next = (e && e.phase) || 'garage';
+    on<PhaseChangeEvent>('phase:change', (event) => {
+      const next = event?.phase || 'garage';
       const prev = phase;
       phase = next;
       battleOver = false;
@@ -2583,30 +2951,30 @@ export function createAudio({ context: initialContext = null } = {}) {
         garageToneStart();
       }
     });
-    bus.on('battle:rollout', () => {
+    on<undefined>('battle:rollout', () => {
       if (!ctx || phase !== 'battle' || battleOver) return;
       battleHorn();
       radio.say('battle_start', { delayS: 0.48 });
     });
-    bus.on('battle:ended', (e) => {
+    on<BattleResultEvent>('battle:ended', (event) => {
       if (!ctx || battleOver) return;
       battleOver = true;
-      pendingResult = e && e.result ? e.result : 'draw';
+      pendingResult = event?.result || 'draw';
       radio.cancelPending(['shot_result'], true);
       stopFireAlarm();
     });
     // Results wait until the kill-cam/report gate hands presentation back to
     // the battle-over UI. This keeps victory/defeat speech out of the replay.
-    bus.on('battle:presented', (e) => {
+    on<BattleResultEvent>('battle:presented', (event) => {
       if (!ctx) return;
-      const result = (e && e.result) || pendingResult || 'draw';
+      const result = event?.result || pendingResult || 'draw';
       resultFanfare(result);
       radio.say(result === 'victory' ? 'victory' : result === 'defeat' ? 'defeat' : 'draw',
         { delayS: 0.2 });
       pendingResult = null;
     });
     // KILL-CAM: replay slow-mo ducks the battle beds under the narration.
-    bus.on('killcam:begin', () => {
+    on<undefined>('killcam:begin', () => {
       if (!ctx) return;
       duckK = 0.35;
       // The replay can reach impact only a few milliseconds after this edge
@@ -2614,38 +2982,44 @@ export function createAudio({ context: initialContext = null } = {}) {
       // full-level cannon/engine transient never masks the cinematic impact.
       applyChannelVolumes(false);
     });
-    bus.on('killcam:done', () => {
+    on<undefined>('killcam:done', () => {
       if (!ctx) return;
       duckK = 1;
       applyChannelVolumes(true);
     });
-    bus.on('killcam:impact', (e) => { if (ctx) killcamImpact(e); });
-    bus.on('killcam:shot', (e) => {
-      if (!ctx || !e || !e.muzzlePos) return;
-      gunshot(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2], e.caliberMm,
-        !!e.isPlayer, e.weaponSound, e.muzzleIndex);
-      logSound('killcam:shot', { shooterId: e.shooterId, caliberMm: e.caliberMm });
+    on<KillcamImpactEvent>('killcam:impact', (event) => {
+      if (ctx) killcamImpact(event);
     });
-    bus.on('killcam:collision', (e) => { if (ctx) onTankRam(e); });
+    on<KillcamShotEvent>('killcam:shot', (event) => {
+      if (!ctx || !event || !event.muzzlePos) return;
+      gunshot(event.muzzlePos[0], event.muzzlePos[1], event.muzzlePos[2],
+        event.caliberMm, !!event.isPlayer, event.weaponSound, event.muzzleIndex);
+      logSound('killcam:shot', {
+        shooterId: event.shooterId, caliberMm: event.caliberMm,
+      });
+    });
+    on<TankRamEvent>('killcam:collision', (event) => { if (ctx) onTankRam(event); });
     // PAUSE (Esc overlay over a live battle — main.ts tick edge): duck the
     // battle beds to near-silence, restore on resume. pauseK is tracked even
     // before the context exists so a later resume() builds the graph with
     // the correct level (buildGraph -> applyChannelVolumes reads it).
-    bus.on('ui:pause', (e) => {
-      pauseK = e && e.on ? 0.04 : 1;
+    on<PauseEvent>('ui:pause', (event) => {
+      pauseK = event?.on ? 0.04 : 1;
       if (ctx) applyChannelVolumes(true);
     });
     // SOUND SETTINGS: live channel-mix updates from the settings panel sliders.
-    bus.on('ui:volumes', (v) => {
-      if (!v) return;
+    on<VolumeEvent>('ui:volumes', (volume) => {
+      if (!volume) return;
       _uiVolEvents++;
-      if (typeof v.master === 'number') setMasterVolume(v.master);
-      chanVol.engine = clamp01(v.engine, chanVol.engine);
-      chanVol.combat = clamp01(v.combat, chanVol.combat);
-      chanVol.ambience = clamp01(v.ambience, chanVol.ambience);
-      chanVol.ui = clamp01(v.ui, chanVol.ui);
-      chanVol.voice = clamp01(v.voice, chanVol.voice);
-      if (typeof v.alarmHeartbeat === 'boolean') alarmHeartbeatOn = v.alarmHeartbeat;
+      if (typeof volume.master === 'number') setMasterVolume(volume.master);
+      chanVol.engine = clamp01(volume.engine, chanVol.engine);
+      chanVol.combat = clamp01(volume.combat, chanVol.combat);
+      chanVol.ambience = clamp01(volume.ambience, chanVol.ambience);
+      chanVol.ui = clamp01(volume.ui, chanVol.ui);
+      chanVol.voice = clamp01(volume.voice, chanVol.voice);
+      if (typeof volume.alarmHeartbeat === 'boolean') {
+        alarmHeartbeatOn = volume.alarmHeartbeat;
+      }
       applyChannelVolumes(true);
     });
   }
@@ -2659,7 +3033,24 @@ export function createAudio({ context: initialContext = null } = {}) {
    *   ownerId?: string|null, scoped?: boolean}} listener camera/vehicle pose
    * @param {Array<object>} tanks all TankEntity objects (alive and dead)
    */
-  function rankEngineCandidate(ent, score) {
+  function toAudioTankEntity(value: unknown): AudioTankEntity | null {
+    if (!value || typeof value !== 'object') return null;
+    const candidate = value as {
+      id?: unknown;
+      state?: {
+        pos?: { x?: unknown; y?: unknown; z?: unknown };
+        speed?: unknown;
+      };
+    };
+    if (typeof candidate.id !== 'string' || !candidate.state?.pos ||
+        typeof candidate.state.pos.x !== 'number' ||
+        typeof candidate.state.pos.y !== 'number' ||
+        typeof candidate.state.pos.z !== 'number' ||
+        typeof candidate.state.speed !== 'number') return null;
+    return value as AudioTankEntity;
+  }
+
+  function rankEngineCandidate(entity: AudioTankEntity, score: number): void {
     let at = engineCandidateCount;
     if (at < MAX_ENGINE_VOICES) {
       engineCandidateCount++;
@@ -2672,18 +3063,22 @@ export function createAudio({ context: initialContext = null } = {}) {
       engineCandidateScore[at] = engineCandidateScore[at - 1];
       at--;
     }
-    engineCandidates[at] = ent;
+    engineCandidates[at] = entity;
     engineCandidateScore[at] = score;
   }
 
-  function isEngineCandidate(id) {
+  function isEngineCandidate(id: string): boolean {
     for (let i = 0; i < engineCandidateCount; i++) {
-      if (engineCandidates[i] && engineCandidates[i].id === id) return true;
+      if (engineCandidates[i]?.id === id) return true;
     }
     return false;
   }
 
-  function update(dt, listener, tanks) {
+  function update(
+    dt: number,
+    listener: AudioListenerPose,
+    tanks: readonly unknown[],
+  ): void {
     if (!ctx) return;
     // Refresh listener pose (XZ forward, normalized defensively).
     lx = listener.pos.x; ly = listener.pos.y; lz = listener.pos.z;
@@ -2696,7 +3091,7 @@ export function createAudio({ context: initialContext = null } = {}) {
     listenerValid = true;
 
     // Prune finished one-shots.
-    const now = ctx.currentTime;
+    const now = ctx!.currentTime;
     for (let i = voices.length - 1; i >= 0; i--) {
       if (voices[i].end <= now || voices[i].dead) { disposeVoice(voices[i]); voices.splice(i, 1); }
     }
@@ -2709,8 +3104,8 @@ export function createAudio({ context: initialContext = null } = {}) {
     // then ranks the nearest audible engines. Existing voices receive a small
     // hysteresis bias so equal-distance tanks do not churn at the cap edge.
     for (let i = 0; i < tanks.length; i++) {
-      const ent = tanks[i];
-      if (!ent || !ent.state || !ent.state.pos) continue;
+      const ent = toAudioTankEntity(tanks[i]);
+      if (!ent) continue;
       const id = ent.id;
       let info = tankInfo.get(id);
       if (!info) {
@@ -2728,8 +3123,8 @@ export function createAudio({ context: initialContext = null } = {}) {
     for (let i = 0; i < engineCandidateCount; i++) engineCandidates[i] = null;
     engineCandidateCount = 0;
     for (let i = 0; i < tanks.length; i++) {
-      const ent = tanks[i];
-      if (!ent || !ent.state || !ent.state.pos || ent.combat?.destroyed) continue;
+      const ent = toAudioTankEntity(tanks[i]);
+      if (!ent || ent.combat?.destroyed) continue;
       if (probeEngineSoloId != null && ent.id !== probeEngineSoloId) continue;
       const pos = ent.state.pos;
       const dx = pos.x - lx, dy = pos.y - ly, dz = pos.z - lz;
@@ -2751,11 +3146,11 @@ export function createAudio({ context: initialContext = null } = {}) {
     }
 
     for (let i = 0; i < tanks.length; i++) {
-      const ent = tanks[i];
+      const ent = toAudioTankEntity(tanks[i]);
       // Deferred battle staging leaves roster shells in game.tanks while the
       // garage is open; they intentionally have no simulation state yet.
       // Audio must ignore them until setupBattle supplies a world position.
-      if (!ent || !ent.state || !ent.state.pos) continue;
+      if (!ent) continue;
       const id = ent.id;
       const dead = !!(ent.combat && ent.combat.destroyed);
       let eng = engines.get(id);
@@ -2819,8 +3214,8 @@ export function createAudio({ context: initialContext = null } = {}) {
    * Set master volume.
    * @param {number} v 0..1
    */
-  function setMasterVolume(v) {
-    masterVolume = Math.max(0, Math.min(1, v));
+  function setMasterVolume(value: number): void {
+    masterVolume = Math.max(0, Math.min(1, value));
     applyMaster();
   }
 
@@ -2828,19 +3223,19 @@ export function createAudio({ context: initialContext = null } = {}) {
    * Mute / unmute everything (volume setting is preserved).
    * @param {boolean} m
    */
-  function mute(m) {
-    muted = !!m;
+  function mute(on: boolean): void {
+    muted = !!on;
     applyMaster();
   }
 
   /** Play the garage music sting (short synthesized brass/timpani hit). */
-  function playGarageSting() {
+  function playGarageSting(): void {
     if (!ctx) return;
     garageSting();
   }
 
   /** Toggle the audible Battle-loading bed. */
-  function loadingOn(on) {
+  function loadingOn(on: boolean): void {
     if (!ctx) return;
     if (on) loadingStart();
     else {
@@ -2853,7 +3248,7 @@ export function createAudio({ context: initialContext = null } = {}) {
    * Toggle the ambient bed: wind + sparse seeded bird chirps.
    * @param {boolean} on
    */
-  function ambientOn(on) {
+  function ambientOn(on: boolean): void {
     if (!ctx) return;
     if (on) ambientStart(); else ambientStop();
   }
@@ -2862,8 +3257,8 @@ export function createAudio({ context: initialContext = null } = {}) {
 
   // Verification-only introspection for tools/audio-probe.mjs: a PCM tap on
   // the master output plus the radio's play log. Zero cost until startTap().
-  let tap = null;
-  function installDebugSurface() {
+  let tap: AudioTap | null = null;
+  function installDebugSurface(): void {
     if (typeof window === 'undefined') return;
     window.__COT_AUDIO = {
       get ctx() { return ctx; },
@@ -2904,14 +3299,14 @@ export function createAudio({ context: initialContext = null } = {}) {
       clearVoiceQueue() { radio.silence(); },
       startTap(maxS = 40) {
         if (!ctx || tap) return false;
-        const sp = ctx.createScriptProcessor(4096, 2, 2);
-        const sink = ctx.createGain();
+        const sp = ctx!.createScriptProcessor(4096, 2, 2);
+        const sink = ctx!.createGain();
         sink.gain.value = 0;
         master.connect(sp);
         sp.connect(sink);
-        sink.connect(ctx.destination);
-        const maxChunks = Math.ceil((maxS * ctx.sampleRate) / 4096);
-        const chunks = [];
+        sink.connect(ctx!.destination);
+        const maxChunks = Math.ceil((maxS * ctx!.sampleRate) / 4096);
+        const chunks: Int16Array[] = [];
         sp.onaudioprocess = (ev) => {
           if (chunks.length >= maxChunks) return;
           const l = ev.inputBuffer.getChannelData(0);
@@ -2946,12 +3341,12 @@ export function createAudio({ context: initialContext = null } = {}) {
         const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
         let s = '';
         for (let i = 0; i < bytes.length; i += 0x8000) {
-          s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+          s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
         }
         return btoa(s);
       },
       clearTap() { tap = null; },
-      get sampleRate() { return ctx ? ctx.sampleRate : 0; },
+      get sampleRate() { return ctx ? ctx!.sampleRate : 0; },
       busGains() {
         if (!ctx) return null;
         return {

@@ -179,7 +179,7 @@ try {
 
   // 2) battle START through the real game bus. The live boot entered battle
   //    via __DEBUG.startBattle before the voice payload finished decoding, so
-  //    re-drive the garage→battle phase edge (all real bus events — audio.js
+  //    re-drive the garage→battle phase edge (all real bus events — audio.ts
   //    replays the horn, the r2 voices.ts wiring announces battle_start).
   await page.evaluate(() => {
     const D = window.__DEBUG;
@@ -198,7 +198,7 @@ try {
     window.__P.emit('phase:change', { phase: 'battle' });
     window.__P.emit('battle:rollout', {});
   });
-  await sleep(4200); // battle_start + audio.js's own on_the_move follow-up drain
+  await sleep(4200); // battle_start + audio.ts's own on_the_move follow-up drain
 
   // 3) five combat event lines through the bus (2 s gaps: every asserted line
   //    is ≤1.6 s + the 0.3 s radio gap). Organic battle chatter can front-run

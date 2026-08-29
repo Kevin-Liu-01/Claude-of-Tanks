@@ -4,7 +4,7 @@
 // Boots the game headless (own vite on a 7xxx port — NEVER 5001/5002), enters
 // a battle, then drives the full event → sound matrix through window.__DEBUG
 // while recording the REAL master output via the __COT_AUDIO PCM tap
-// (src/audio/audio.js debug surface). Writes the recordings as .wav files
+// (src/audio/audio.ts debug surface). Writes the recordings as .wav files
 // under shots/audio-probe/ so the mix can be listened to, and asserts:
 //   - zero page console errors
 //   - no digital clipping (peak < 0 dBFS on every capture; warn above -1)

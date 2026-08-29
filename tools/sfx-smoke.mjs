@@ -3,7 +3,7 @@
 //
 // Boots the game headless (own vite on a 7xxx port — NEVER 5001/5002), enters
 // a battle, then drives REAL bus events (window.__DEBUG.bus — the same object
-// audio.js bound via bindBus) and records the master output via the
+// audio.ts bound via bindBus) and records the master output via the
 // __COT_AUDIO PCM tap. Two modes:
 //
 //   node tools/sfx-smoke.mjs                # assert mode (default)
@@ -17,7 +17,7 @@
 //         old-metrics.json exists there (from --capture-old), the README.md
 //         table comparing bass energy (<120 Hz, % of total) old vs new.
 //
-//   node tools/sfx-smoke.mjs --capture-old  # run BEFORE the audio.js swap
+//   node tools/sfx-smoke.mjs --capture-old  # run BEFORE the audio.ts swap
 //       - same scenes, no sample assertions (old code has no sfxLog)
 //       - writes old_*.wav + old-metrics.json into shots/sfx-r4/ab/
 //

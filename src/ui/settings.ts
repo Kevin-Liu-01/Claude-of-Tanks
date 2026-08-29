@@ -11,7 +11,7 @@
 // battle setup), controller aim sensitivity — each slider is paired with a
 // numeric entry field. SOUND tab: master/engine/gunfire/ambience/UI volume
 // sliders (persisted with the gameplay settings; broadcast live over the bus
-// as 'ui:volumes' for src/audio/audio.js). All state persists via the input
+// as 'ui:volumes' for src/audio/audio.ts). All state persists via the input
 // layer's localStorage stores. Also owns the fading controls-hint strip
 // shown on battle start and the garage gear button, and broadcasts
 // 'ui:bindingsChanged' so the HUD's shell/consumable hotkey labels stay honest.

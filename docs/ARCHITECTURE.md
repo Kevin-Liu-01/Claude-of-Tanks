@@ -24,7 +24,7 @@ Module ownership (file paths are FIXED):
 | ai       | `src/game/ai.ts` |
 | hud      | `src/ui/hud.js`, `src/ui/garage.ts`, `src/ui/damagePanel.ts` |
 | fx       | `src/fx/effects.js`, `src/fx/particles.ts` |
-| audio    | `src/audio/audio.js` |
+| audio    | `src/audio/audio.ts` |
 | integration | `src/main.ts`, `src/game/state.ts` |
 
 Research docs each builder MUST read: `docs/research/graphics-aaa.md` (engine, world,
@@ -968,7 +968,7 @@ the menu import and construction retryable, bypasses it for solo entry,
 prioritizes an already-active room, selects mode-specific preload ports, and
 hides the menu for battle without terminating the retained session.
 
-### 3.9 audio — `src/audio/audio.js` (+ `src/audio/voices.ts`)
+### 3.9 audio — `src/audio/audio.ts` (+ `src/audio/voices.ts`)
 ```js
 export function createAudio() => Audio
 Audio = {
