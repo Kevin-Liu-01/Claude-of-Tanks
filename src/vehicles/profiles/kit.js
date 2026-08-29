@@ -1104,14 +1104,17 @@ function fittingAmericanRws(opts = {}) {
 function fittingOpenYokeRws(opts = {}) {
   const { box, cylX, cylY, cylZ, torus } = KIT;
   const variant = opts.variant || 'expeditionary';
-  const s = opts.scale || 1;
+  const sizeStandard = opts.sizeStandard || 'custom';
+  // The M1A3 tower is the fleet reference: its weapon and open-yoke hardware
+  // are authored at 1.28x. Hosts may change armor, optics and ammunition
+  // layout, but a full-size station must not quietly become a miniature.
+  const s = sizeStandard === 'm1a3-full-tower' ? 1.28 : (opts.scale || 1);
   const elev = opts.elev ?? 0.045;
   const ammoSide = Math.sign(opts.ammoSide || -1);
   const sensorSide = Math.sign(opts.sensorSide || -ammoSide);
   const body = opts.bodySlot || 'detail';
   const parts = fitParts();
-  const low = variant === 'a7v-low';
-  const yokeCenterY = (low ? 0.325 : 0.385) * s;
+  const yokeCenterY = 0.385 * s;
   const aim = (geo, dz, dy = 0) => KIT.xform(
     KIT.xform(geo, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
 
@@ -1124,11 +1127,11 @@ function fittingOpenYokeRws(opts = {}) {
 
   // Open fork, exposed cross-shaft and recoil rails are the AbramsX cues.
   for (const side of [-1, 1]) {
-    parts.add(body, box(0.065 * s, (low ? 0.22 : 0.30) * s, 0.105 * s),
-      side * 0.165 * s, (low ? 0.30 : 0.34) * s, -0.015 * s,
+    parts.add(body, box(0.065 * s, 0.30 * s, 0.105 * s),
+      side * 0.165 * s, 0.34 * s, -0.015 * s,
       0, 0, side * 0.075);
-    parts.add('dark', box(0.027 * s, (low ? 0.18 : 0.25) * s, 0.040 * s),
-      side * 0.213 * s, (low ? 0.30 : 0.345) * s, 0.010 * s,
+    parts.add('dark', box(0.027 * s, 0.25 * s, 0.040 * s),
+      side * 0.213 * s, 0.345 * s, 0.010 * s,
       0, 0, side * 0.14);
     parts.add('dark', box(0.032 * s, 0.035 * s, 0.42 * s),
       side * 0.090 * s, yokeCenterY - 0.045 * s, 0.145 * s);
@@ -1229,6 +1232,21 @@ function fittingOpenYokeRws(opts = {}) {
     }
   }
 
+  // The reference M1A3 station stands on a real powered riser rather than a
+  // bearing plate alone. Lift the complete working assembly as one unit and
+  // close the load path back to the roof with a broad, contiguous pedestal.
+  // This adds height without inflating the weapon, sensors or side armor.
+  const towerRise = sizeStandard === 'm1a3-full-tower' ? 0.18 : 0;
+  if (towerRise > 0) {
+    for (const geometries of Object.values(parts.bySlot)) {
+      for (const geometry of geometries) geometry.translate(0, towerRise, 0);
+    }
+    parts.add(body, cylY(0.255 * s, 0.285 * s, towerRise, 20),
+      0, towerRise / 2, 0);
+    parts.add('dark', torus(0.245 * s, 0.018 * s, 22),
+      0, towerRise - 0.010, 0);
+  }
+
   const fitting = fitAssemble('openYokeRws', parts, opts);
   fitting.name = `fitting_openYokeRws_${variant}`;
   fitting.userData.designFamily = 'abramsx-open-yoke-v1';
@@ -1242,7 +1260,9 @@ function fittingOpenYokeRws(opts = {}) {
   fitting.userData.machineGunFinish = 'gunmetal';
   fitting.userData.firingAxis = '+Z';
   fitting.userData.muzzleLocalZ = 1.295 * s;
-  fitting.userData.barrelAxisLocalY = receiverY;
+  fitting.userData.barrelAxisLocalY = receiverY + towerRise;
+  fitting.userData.sizeStandard = sizeStandard;
+  fitting.userData.scale = s;
   const weaponMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
   if (weaponMesh) {
     weaponMesh.name = 'openYokeRwsMachineGun';

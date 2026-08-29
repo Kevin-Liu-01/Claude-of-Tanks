@@ -46,23 +46,29 @@ assert.ok(hasPoint([-1.07, roofCarrier.frontBottomY, roofCarrier.zFront]),
   'carrier front underside vertex is present in the merged roof equipment');
 
 assert.ok(crows.previousBaseY - crows.baseY >= 0.075,
-  'CROWS-LP pedestal is at least 75 mm lower');
+  'CROWS-LP pedestal remains seated on the lowered roof carrier');
 assert.equal(crows.lowerArmorCollar, true,
   'CROWS-LP has a closed armored lower collar');
 assert.equal(crows.equipmentOwnedShielding, true,
   'CROWS shielding remains equipment-owned for combat anatomy');
 
-assert.equal(loader.americanWeaponStandard, 'sheridan-m2hb-v1',
-  'loader weapon uses the shared American Browning standard');
-assert.equal(loader.shieldVariant, 'low',
-  'loader Browning uses the SEPv3 low shield');
+assert.equal(loader.americanWeaponStandard, undefined,
+  'former small loader Browning is removed');
+assert.equal(loader.stationFamily, 'abramsx-open-yoke-v1',
+  'loader weapon uses the AbramsX-derived open-yoke family');
+assert.equal(loader.sizeStandard, 'm1a3-full-tower',
+  'loader tower uses the full M1A3 size standard');
+assert.equal(loader.weaponRole, 'loader-primary',
+  'open-yoke tower replaces rather than duplicates the loader weapon');
+assert.equal(loader.headOnSide, 'right',
+  'loader tower sits on the right in a head-on view');
 assert.ok(loader.receiverBottomY < loader.receiverY
   && loader.receiverBottomY > loader.pintleBottomY,
-  'loader bearing reaches continuously into the Browning receiver');
+  'loader bearing reaches continuously into the open-yoke receiver');
 assert.equal(loader.connectedBearing, true,
   'loader weapon has an attached roof bearing');
 assert.equal(loader.equipmentOwnedShielding, true,
   'loader shielding remains equipment-owned for combat anatomy');
 
 tank.dispose();
-console.log('abramsSepv3RoofStation.selftest: pitched roof carrier and low armored stations pass');
+console.log('abramsSepv3RoofStation.selftest: pitched carrier, CROWS-LP, and full-size loader tower pass');

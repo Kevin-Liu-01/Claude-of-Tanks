@@ -6166,7 +6166,7 @@ function buildLeo2A7V(P) {
   leoFLW200(P, { x: -0.12, y: 0.70, z: -1.35, s: 0.90, gunY: 0.71, gunScale: 0.90,
     drumH: 0.07, podY: 0.89, podH: 0.16, shields: true, elev: 0.08, seed: 21 });
   P.turretG.userData.auxiliaryOpenYokeRwsReceipt = addLeopardOpenYokeAuxRws(P, {
-    x: 0.72, y: 0.67, z: -1.48, scale: 0.62,
+    x: 0.72, y: 0.67, z: -1.48,
     variant: 'a7v-low', ammoSide: 1, sensorSide: -1, yaw: -0.035,
   });
   // loader MG3 — the §I census fitting, FITTING-SUNK (revolution law):
@@ -11837,11 +11837,12 @@ function addLeo2A6MRoofRCWS(P) {
 }
 
 function addLeopardOpenYokeAuxRws(P, {
-  x, y, z, scale, variant, ammoSide, sensorSide, yaw = 0,
+  x, y, z, variant, ammoSide, sensorSide, yaw = 0,
 }) {
   const station = FITTINGS.openYokeRws({
     mats: P.mats,
-    scale,
+    bodySlot: 'hull',
+    sizeStandard: 'm1a3-full-tower',
     variant,
     ammoSide,
     sensorSide,
@@ -11859,11 +11860,13 @@ function addLeopardOpenYokeAuxRws(P, {
     designFamily: station.userData.designFamily,
     variant,
     mountLocal: Object.freeze([x, y, z]),
-    scale,
+    scale: station.userData.scale,
+    sizeStandard: station.userData.sizeStandard,
     yaw,
     caliberMm: station.userData.caliberMm,
     ammoSide,
     sensorSide,
+    weaponRole: 'auxiliary',
     visibleFeedBelt: station.userData.hasVisibleFeedBelt,
     firingAxis: station.userData.firingAxis,
     equipmentOwned: true,
@@ -12438,7 +12441,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
     const cheekCage = addLeo2A6MCheekCage(P);
     const roofRemoteWeapon = addLeo2A6MRoofRCWS(P);
     const auxiliaryOpenYokeRws = addLeopardOpenYokeAuxRws(P, {
-      x: -0.72, y: 0.795, z: -1.52, scale: 0.64,
+      x: -0.72, y: 0.795, z: -1.52,
       variant: 'a6m-arctic', ammoSide: -1, sensorSide: 1, yaw: 0.030,
     });
     if (P.geometryReceipt) {

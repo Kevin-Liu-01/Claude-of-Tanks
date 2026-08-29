@@ -97,12 +97,12 @@ function addRoofRWS(
 function addOpenYokeAuxRWS(P: ProceduralBuilderPort): void {
   const x = 0.70;
   const y = 0.70;
-  const z = -1.43;
-  const scale = 0.62;
+  const z = -0.68;
   const yaw = -0.025;
   const station = FITTINGS.openYokeRws({
     mats: P.mats,
-    scale,
+    bodySlot: 'hull',
+    sizeStandard: 'm1a3-full-tower',
     variant: 'korean-twin',
     ammoSide: 1,
     sensorSide: -1,
@@ -119,11 +119,13 @@ function addOpenYokeAuxRWS(P: ProceduralBuilderPort): void {
     designFamily: station.userData.designFamily,
     variant: station.userData.stationVariant,
     mountLocal: Object.freeze([x, y, z]),
-    scale,
+    scale: station.userData.scale,
+    sizeStandard: station.userData.sizeStandard,
     yaw,
     caliberMm: station.userData.caliberMm,
     ammoSide: station.userData.ammoSide,
     sensorSide: station.userData.sensorSide,
+    weaponRole: 'auxiliary',
     visibleFeedBelt: station.userData.hasVisibleFeedBelt,
     firingAxis: station.userData.firingAxis,
     equipmentOwned: true,
