@@ -21,7 +21,12 @@ sampled with a pose that did not create it.
 
 `src/engine/temporalAoPolicy.ts` owns the temporal GTAO current-frame weight and
 an asymmetric release invariant. Bright history may soften a transient dark
-sample; dark history may never make a newly exposed current sample darker.
+sample, but is capped to 3% above the current sample so high-contrast AO edges
+cannot retain a pale neighbor. Dark history may never make a newly exposed
+current sample darker. The current-frame weight remains continuous across an
+isolated repeated camera pose; a binary moved/still switch made alternating
+render frames snap between retained history and current AO. Four consecutive
+identical poses retire history so a genuinely stopped view becomes byte-stable.
 `post.ts` applies that policy inside the existing reprojection shader, with no
 new pass or target.
 
@@ -37,6 +42,8 @@ apply and render every cascade together.
 ## Consequences
 
 - Moving tree, structure, and contact shadows no longer trail stale darkness.
+- Camera-motion frames no longer retain large bright AO patches and snap dark
+  when the next presented frame repeats the same camera pose.
 - Far terrain avoids acne without detaching close vehicle contact shadows.
 - A far cascade may remain one scheduled frame old, but its projection and
   depth stay internally coherent.

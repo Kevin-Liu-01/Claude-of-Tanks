@@ -1,6 +1,22 @@
 /** Current-frame weight while temporal AO history is valid. */
 export const TEMPORAL_AO_CURRENT_WEIGHT = 0.15;
 
+/** Consecutive identical camera frames required before history is retired. */
+export const TEMPORAL_AO_STABLE_FRAMES_BEFORE_SETTLE = 4;
+
+/**
+ * Keep isolated repeated presentation frames temporal at high refresh rates,
+ * but make a genuinely stopped view converge to a byte-stable current frame.
+ */
+export function resolveTemporalAoCurrentWeight(stableCameraFrames: number): number {
+  return stableCameraFrames >= TEMPORAL_AO_STABLE_FRAMES_BEFORE_SETTLE
+    ? 1
+    : TEMPORAL_AO_CURRENT_WEIGHT;
+}
+
+/** Maximum brighter AO history retained over the current sample. */
+export const TEMPORAL_AO_BRIGHT_RETENTION_SLACK = 0.03;
+
 /**
  * Maximum stale-dark AO retained after a surface becomes brighter.
  *
@@ -30,9 +46,12 @@ export function resolveTemporalAoSample(sample: TemporalAoSample): number {
     ? Math.max(current, sample.neighborhoodMax)
     : current;
   if (sample.historyValid === false || !Number.isFinite(sample.history)) return current;
-  const boundedHistory = Math.max(
-    current - TEMPORAL_AO_DARK_RELEASE_SLACK,
-    Math.min(high, Math.max(low, sample.history)),
+  const boundedHistory = Math.min(
+    current + TEMPORAL_AO_BRIGHT_RETENTION_SLACK,
+    Math.max(
+      current - TEMPORAL_AO_DARK_RELEASE_SLACK,
+      Math.min(high, Math.max(low, sample.history)),
+    ),
   );
   return boundedHistory + (current - boundedHistory) * TEMPORAL_AO_CURRENT_WEIGHT;
 }

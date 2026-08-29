@@ -244,9 +244,11 @@ for (const preset of presets) {
     // camera motion around overlapping trees/structures even while the shadow
     // maps themselves were byte-stable. Compare the ordinary temporally
     // composed output against current-frame AO with every CSM cascade forced
-    // current. A healthy resolver may retain brighter history to suppress a
-    // transient dark pulse, but must not leave a visibly darker trail on a
-    // newly exposed surface. High is the default desktop path and therefore
+    // current. A healthy resolver may retain a narrow band of brighter history
+    // to suppress a transient dark pulse, but must not leave either a dark
+    // trail or a bright flash. Capture the identical pose once more as well:
+    // the old binary moved/still weight snapped from 85% history to 100% current
+    // on that repeated frame. High is the default desktop path and therefore
     // owns this full-resolution release gate; the scalar policy has a focused
     // unit test and the remaining presets retain the raw/frozen CSM contracts.
     const auditTemporalAo = ${JSON.stringify(preset === 'high')};
@@ -255,22 +257,48 @@ for (const preset of presets) {
     let aoTemporalDarkerSamples = 0;
     let aoTemporalStrongDarkSamples = 0;
     let aoTemporalMaxStrongDarkSamplesPerFrame = 0;
+    let aoTemporalBrighterSamples = 0;
+    let aoTemporalStrongBrightSamples = 0;
+    let aoTemporalMaxStrongBrightSamplesPerFrame = 0;
     let aoTemporalMaxRgbDelta = 0;
     let aoTemporalRgbDeltaSum = 0;
+    let aoRepeatComparedSamples = 0;
+    let aoRepeatStrongSamples = 0;
+    let aoRepeatMaxStrongSamplesPerFrame = 0;
+    let aoRepeatMaxRgbDelta = 0;
     if (auditTemporalAo) {
       const aoGl = D.renderer.getContext();
       const aoWidth = aoGl.drawingBufferWidth;
       const aoHeight = aoGl.drawingBufferHeight;
       const aoBytes = aoWidth * aoHeight * 4;
-      const aoOffsets = [0, 0.6, 1.2, 1.8, 2.4, 3.0, 3.6, 4.2, 4.8, 5.4];
+      const aoPoses = [
+        { offset: 0 },
+        ...[0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.05, 1.2]
+          .map((offset) => ({ offset })),
+        ...[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4]
+          .map((yawDeg) => ({ yawDeg })),
+      ];
       const aoPos = basePos.clone();
       const aoLook = baseLook.clone();
       const aoDelta = right.clone();
+      const aoRelativeLook = baseLook.clone().sub(basePos);
       const savedAoEmaOff = window.__AO_EMA_OFF;
-      const setAoPose = (offset) => {
-        aoDelta.copy(right).multiplyScalar(offset);
-        aoPos.copy(basePos).add(aoDelta);
-        aoLook.copy(baseLook).add(aoDelta);
+      const setAoPose = (pose) => {
+        if (Number.isFinite(pose.yawDeg)) {
+          const yaw = pose.yawDeg * Math.PI / 180;
+          const cosYaw = Math.cos(yaw);
+          const sinYaw = Math.sin(yaw);
+          const lookX = aoRelativeLook.x * cosYaw + aoRelativeLook.z * sinYaw;
+          const lookZ = -aoRelativeLook.x * sinYaw + aoRelativeLook.z * cosYaw;
+          aoPos.copy(basePos);
+          aoLook.copy(basePos).add(aoRelativeLook);
+          aoLook.x = basePos.x + lookX;
+          aoLook.z = basePos.z + lookZ;
+        } else {
+          aoDelta.copy(right).multiplyScalar(pose.offset);
+          aoPos.copy(basePos).add(aoDelta);
+          aoLook.copy(baseLook).add(aoDelta);
+        }
         D.rig.setExternalPose(aoPos, aoLook, camera.fov);
         camera.updateMatrixWorld(true);
         D.lighting.update(true);
@@ -285,15 +313,18 @@ for (const preset of presets) {
       };
 
       window.__AO_EMA_OFF = false;
-      setAoPose(0);
+      setAoPose(aoPoses[0]);
       for (let frame = 0; frame < 8; frame++) captureAo();
-      for (let frame = 1; frame < aoOffsets.length; frame++) {
-        setAoPose(aoOffsets[frame]);
+      for (let frame = 1; frame < aoPoses.length; frame++) {
+        setAoPose(aoPoses[frame]);
         window.__AO_EMA_OFF = true;
         const current = captureAo();
         window.__AO_EMA_OFF = false;
         const temporal = captureAo();
+        const repeated = captureAo();
         let strongDarkThisFrame = 0;
+        let strongBrightThisFrame = 0;
+        let strongRepeatThisFrame = 0;
         // Quarter-density readback analysis keeps the audit cheap while still
         // sampling hundreds of thousands of pixels over the camera sweep.
         for (let i = 0; i < aoBytes; i += 16) {
@@ -311,10 +342,29 @@ for (const preset of presets) {
             aoTemporalStrongDarkSamples++;
             strongDarkThisFrame++;
           }
+          if (signed > 6) aoTemporalBrighterSamples++;
+          if (signed > 24) {
+            aoTemporalStrongBrightSamples++;
+            strongBrightThisFrame++;
+          }
           aoTemporalMaxRgbDelta = Math.max(aoTemporalMaxRgbDelta, delta);
+
+          const repeatDelta = Math.abs(repeated[i] - temporal[i])
+            + Math.abs(repeated[i + 1] - temporal[i + 1])
+            + Math.abs(repeated[i + 2] - temporal[i + 2]);
+          aoRepeatComparedSamples++;
+          if (repeatDelta > 24) {
+            aoRepeatStrongSamples++;
+            strongRepeatThisFrame++;
+          }
+          aoRepeatMaxRgbDelta = Math.max(aoRepeatMaxRgbDelta, repeatDelta);
         }
         aoTemporalMaxStrongDarkSamplesPerFrame = Math.max(
           aoTemporalMaxStrongDarkSamplesPerFrame, strongDarkThisFrame);
+        aoTemporalMaxStrongBrightSamplesPerFrame = Math.max(
+          aoTemporalMaxStrongBrightSamplesPerFrame, strongBrightThisFrame);
+        aoRepeatMaxStrongSamplesPerFrame = Math.max(
+          aoRepeatMaxStrongSamplesPerFrame, strongRepeatThisFrame);
       }
       window.__AO_EMA_OFF = savedAoEmaOff;
     }
@@ -442,9 +492,16 @@ for (const preset of presets) {
       aoTemporalDarkerSamples,
       aoTemporalStrongDarkSamples,
       aoTemporalMaxStrongDarkSamplesPerFrame,
+      aoTemporalBrighterSamples,
+      aoTemporalStrongBrightSamples,
+      aoTemporalMaxStrongBrightSamplesPerFrame,
       aoTemporalMaxRgbDelta,
       aoTemporalMeanRgbDelta: aoTemporalRgbDeltaSum
         / Math.max(1, aoTemporalComparedSamples),
+      aoRepeatComparedSamples,
+      aoRepeatStrongSamples,
+      aoRepeatMaxStrongSamplesPerFrame,
+      aoRepeatMaxRgbDelta,
       trimShadowThrottle: trimTelemetry.shadows.throttle,
       trimmedNearAutoUpdate,
       lods,
@@ -503,6 +560,29 @@ for (const preset of presets) {
       + `${result.aoTemporalMaxStrongDarkSamplesPerFrame})`,
     );
   }
+  const aoStrongBrightRatio = result.aoTemporalStrongBrightSamples
+    / Math.max(1, result.aoTemporalComparedSamples);
+  if (result.aoTemporalComparedSamples > 0 && aoStrongBrightRatio > 0.002) {
+    reasons.push(
+      `${result.aoTemporalStrongBrightSamples} strongly over-bright temporal AO samples `
+      + `(${(aoStrongBrightRatio * 100).toFixed(3)}%, max frame `
+      + `${result.aoTemporalMaxStrongBrightSamplesPerFrame})`,
+    );
+  }
+  const aoRepeatStrongRatio = result.aoRepeatStrongSamples
+    / Math.max(1, result.aoRepeatComparedSamples);
+  // The reproduced binary moved/still snap changed 10-11% of samples. The
+  // responsive resolver leaves only isolated SMAA threshold pixels while its
+  // bounded history converges. Gate at 0.1% so any regional flash still fails
+  // with two orders of magnitude of margin.
+  if (result.aoRepeatComparedSamples > 0 && aoRepeatStrongRatio > 0.001) {
+    reasons.push(
+      `${result.aoRepeatStrongSamples} strongly changed temporal AO samples on `
+      + `an identical repeated pose (${(aoRepeatStrongRatio * 100).toFixed(3)}%, `
+      + `max frame ${result.aoRepeatMaxStrongSamplesPerFrame}, `
+      + `max RGB delta ${result.aoRepeatMaxRgbDelta})`,
+    );
+  }
   if (result.trimShadowThrottle !== 0) {
     reasons.push(`adaptive trim enabled shadow throttle ${result.trimShadowThrottle}`);
   }
@@ -536,6 +616,8 @@ for (const preset of presets) {
     + `crossings=${result.transitions} lods=${result.lods} `
     + (result.aoTemporalComparedSamples > 0
       ? `aoDark=${result.aoTemporalStrongDarkSamples} `
+        + `aoBright=${result.aoTemporalStrongBrightSamples} `
+        + `aoRepeat=${result.aoRepeatStrongSamples} `
       : '')
     + `calls=${result.renderer.calls} tris=${Math.round(result.renderer.triangles / 1000)}k`,
   );
@@ -580,7 +662,7 @@ evaluate(`(() => {
   // and no longer represents the player-facing loading architecture.
   Promise.resolve(D.beginSoloBattle({
     specId: D.selectedSpecId,
-    mapId: 'verdant',
+    mapId: 'fjord',
     randomRoster: false,
   }))
     .then(() => { status.ready = D.game?.phase === 'battle'; })
@@ -753,7 +835,7 @@ const liveDrive = evaluate(`(() => {
 })()`);
 
 const liveDriveReasons = [];
-if (liveDrive.phase !== 'battle' || liveDrive.map !== 'verdant') {
+if (liveDrive.phase !== 'battle' || liveDrive.map !== 'fjord') {
   liveDriveReasons.push(`wrong live scene ${liveDrive.phase}/${liveDrive.map}`);
 }
 if (liveDrive.externalAtStart || liveDrive.externalAtEnd) {
@@ -828,7 +910,7 @@ console.log(
 
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify({
-  version: 6,
+  version: 7,
   capturedAt: new Date().toISOString(),
   deviceTier,
   failures,

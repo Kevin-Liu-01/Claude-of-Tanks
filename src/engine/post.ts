@@ -40,8 +40,10 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import {
+  TEMPORAL_AO_BRIGHT_RETENTION_SLACK,
   TEMPORAL_AO_CURRENT_WEIGHT,
   TEMPORAL_AO_DARK_RELEASE_SLACK,
+  resolveTemporalAoCurrentWeight,
 } from './temporalAoPolicy.ts';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
@@ -1807,18 +1809,21 @@ export function createPost(
   //    sources (trees/terrain/props) are world-static, so camera-only
   //    reprojection is exact for them — no motion vectors needed.
   //  - RECTIFY: clamp the reprojected history to the min/max of the current
-  //    frame's 5-tap AO neighborhood (standard TAA neighborhood clamping).
-  //    Neighborhood rectification bounds history spatially; the asymmetric
-  //    release below handles stale-dark disocclusion without another depth-
-  //    history pass or render target.
-  //  - ACCUMULATE: fixed k=0.15 toward the current frame (~85% history).
-  //    Boil amplitude drops ~6x once the history tracks the world.
+  //    frame's 5-tap AO neighborhood (standard TAA neighborhood clamping),
+  //    then cap brighter history close to the live sample. The neighborhood
+  //    alone can contain both sides of a high-contrast contact edge and admit
+  //    an almost-white history sample over newly dark AO.
+  //  - ACCUMULATE: k=0.15 toward the current frame (~85% history). Isolated
+  //    identical matrices retain that weight: switching the first repeated
+  //    frame to k=1 made 60 Hz camera motion on 120 Hz output alternate between
+  //    retained history and current AO. Four consecutive identical matrices
+  //    retire history so a genuinely stopped view becomes byte-stable.
   //  - RELEASE: history may suppress a one-frame dark occlusion spike, but it
   //    may never keep a newly exposed surface darker than the current AO.
-  //    This asymmetric clamp is the missing disocclusion rule:
-  //    foliage/card edges settle into shade instead of flashing into it, while
-  //    stale dark contact patches clear in one frame rather than trailing the
-  //    camera through overlapping tree and structure silhouettes.
+  //    Bright history is bounded as well, so foliage/card edges settle without
+  //    flashing pale on motion frames. Stale dark contact patches still clear
+  //    in one frame rather than trailing the camera through overlapping tree
+  //    and structure silhouettes.
   // Off-screen reprojections and the first frame after a >250 ms gap (map
   // switch, AO re-enable, resize) take the current frame verbatim.
   // Integration: GTAOPass.OUTPUT.Off runs G-buffer + AO + denoise and skips
@@ -1865,11 +1870,13 @@ export function createPost(
           vec3 mn = min(now.rgb, min(min(n1, n2), min(n3, n4)));
           vec3 mx = max(now.rgb, max(max(n1, n2), max(n3, n4)));
           vec3 hist = clamp(texture2D(tPrev, prevUv).rgb, mn, mx);
-          // Responsive AO resolve: preserve bright history to reject a
-          // transient dark sample, but release stale darkness immediately on
-          // disocclusion. A symmetric history blend is what made tree/contact
-          // shadows pulse dark-light-dark during camera motion.
-          hist = max(hist, now.rgb - vec3(${TEMPORAL_AO_DARK_RELEASE_SLACK.toFixed(3)}));
+          // Responsive AO resolve: retain only a narrow band of bright history
+          // while releasing stale darkness immediately on disocclusion.
+          hist = clamp(
+            hist,
+            now.rgb - vec3(${TEMPORAL_AO_DARK_RELEASE_SLACK.toFixed(3)}),
+            now.rgb + vec3(${TEMPORAL_AO_BRIGHT_RETENTION_SLACK.toFixed(3)})
+          );
           float k = (off || uSeed > 0.5) ? 1.0 : uBlendK;
           gl_FragColor = vec4(mix(hist, now.rgb, k), 1.0);
         }`,
@@ -1881,17 +1888,8 @@ export function createPost(
     let emaCur = gtao.pdRenderTarget.clone();
     let emaLastMs = -1e9; // >250 ms without an AO render → history is stale
     const prevViewProj = emaMat.uniforms.uPrevViewProj.value;
-    const emaLastCameraWorld = new THREE.Matrix4();
-    const emaLastProjection = new THREE.Matrix4();
-    let emaPoseValid = false;
-    const cameraMatrixMoved = (current: THREE.Matrix4, previous: THREE.Matrix4): boolean => {
-      const a = current.elements;
-      const b = previous.elements;
-      for (let i = 0; i < 16; i++) {
-        if (Math.abs(a[i] - b[i]) > 1e-7) return true;
-      }
-      return false;
-    };
+    const currentViewProj = new THREE.Matrix4();
+    let stableCameraFrames = 0;
     const origSetSize = gtao.setSize.bind(gtao);
     const syncEmaSize = () => {
       emaPrev.setSize(gtao.pdRenderTarget.width, gtao.pdRenderTarget.height);
@@ -1899,7 +1897,6 @@ export function createPost(
       emaMat.uniforms.uTexel.value.set(
         1 / gtao.pdRenderTarget.width, 1 / gtao.pdRenderTarget.height);
       emaLastMs = -1e9; // reseed — old history is the wrong resolution
-      emaPoseValid = false;
     };
     gtao.setSize = (w, h) => {
       const s = preset.aoScale || 1;
@@ -1923,27 +1920,28 @@ export function createPost(
         .multiplyMatrices(cam.matrixWorld, cam.projectionMatrixInverse);
       const now = performance.now();
       const seed = now - emaLastMs > 250;
-      const cameraMoved = !emaPoseValid
-        || cameraMatrixMoved(cam.matrixWorld, emaLastCameraWorld)
-        || cameraMatrixMoved(cam.projectionMatrix, emaLastProjection);
+      currentViewProj.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
       if (seed) {
-        prevViewProj.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+        prevViewProj.copy(currentViewProj);
+        stableCameraFrames = 0;
+      } else {
+        let maxMatrixDelta = 0;
+        for (let index = 0; index < 16; index++) {
+          maxMatrixDelta = Math.max(
+            maxMatrixDelta,
+            Math.abs(currentViewProj.elements[index] - prevViewProj.elements[index]),
+          );
+        }
+        stableCameraFrames = maxMatrixDelta <= 1e-9 ? stableCameraFrames + 1 : 0;
       }
       emaLastMs = now;
       emaMat.uniforms.tNow.value = this.pdRenderTarget.texture;
       emaMat.uniforms.tPrev.value = emaPrev.texture;
       emaMat.uniforms.uSeed.value = seed ? 1 : 0;
-      // Temporal history suppresses half-resolution AO boil while the view is
-      // moving. Once the camera is still, the current AO is deterministic;
-      // resolve it immediately instead of letting old darkness crawl/fade for
-      // several more frames after the player stops looking around.
-      emaMat.uniforms.uBlendK.value = cameraMoved ? TEMPORAL_AO_CURRENT_WEIGHT : 1.0;
+      emaMat.uniforms.uBlendK.value = resolveTemporalAoCurrentWeight(stableCameraFrames);
       this._renderPass(renderer2, emaMat, emaCur, 0xffffff, 1.0);
       // this frame's view-projection becomes next frame's reprojection source
-      prevViewProj.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
-      emaLastCameraWorld.copy(cam.matrixWorld);
-      emaLastProjection.copy(cam.projectionMatrix);
-      emaPoseValid = true;
+      prevViewProj.copy(currentViewProj);
       // Default composition, verbatim from GTAOPass.prototype.render (r185)
       // with the blend input rerouted to the reprojected history.
       this.copyMaterial.uniforms.tDiffuse.value = readBuffer.texture;
