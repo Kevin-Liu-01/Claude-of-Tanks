@@ -39,7 +39,7 @@
  * (4 vertices written). All randomness through the injected seeded rng.
  */
 import * as THREE from 'three';
-import { mulberry32, makeFbm } from './particles.js';
+import { mulberry32, makeFbm } from './particles.ts';
 import { SURFACE_MARKING_STYLE } from '../vehicles/vehicleMarkings.ts';
 
 /** Per-vehicle decal budget (oldest evicted beyond this). */

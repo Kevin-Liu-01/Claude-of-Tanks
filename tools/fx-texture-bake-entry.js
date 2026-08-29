@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createParticleSystem } from '../src/fx/particles.js';
+import { createParticleSystem } from '../src/fx/particles.ts';
 
 const particles = createParticleSystem({ scene: new THREE.Scene() }, { seed: 5000 });
 const proceduralStartedAt = performance.now();

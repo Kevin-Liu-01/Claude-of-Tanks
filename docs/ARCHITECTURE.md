@@ -23,7 +23,7 @@ Module ownership (file paths are FIXED):
 | combat   | `src/sim/ballistics.ts`, `src/sim/armor.ts`, `src/sim/damage.ts`, `src/sim/combat.selftest.mjs` |
 | ai       | `src/game/ai.ts` |
 | hud      | `src/ui/hud.js`, `src/ui/garage.js`, `src/ui/damagePanel.ts` |
-| fx       | `src/fx/effects.js`, `src/fx/particles.js` |
+| fx       | `src/fx/effects.js`, `src/fx/particles.ts` |
 | audio    | `src/audio/audio.js` |
 | integration | `src/main.ts`, `src/game/state.ts` |
 
@@ -890,7 +890,7 @@ tank profile families into garage idle time.
 
 ### 3.8 fx — `src/fx/`
 
-#### 3.8.1 `particles.js` (fx-internal engine)
+#### 3.8.1 `particles.ts` (fx-internal engine)
 ```js
 export function createParticleSystem(engineCtx, { seed = 5000 } = {}) => Particles
 Particles = {

@@ -1,5 +1,5 @@
 /**
- * particles.js — fx-internal instanced GPU particle engine.
+ * particles.ts — fx-internal instanced GPU particle engine.
  *
  * InstancedBufferGeometry billboards (never THREE.Points) per graphics-aaa §9.
  * Pools (locked sizes): smoke 2048 / fire 1024 / dust 1024 / sparks 512 /
@@ -15,13 +15,98 @@
 import * as THREE from 'three';
 import { LATE_FX_LAYER } from './layers.ts';
 
+type Rng = () => number;
+type Noise2D = (x: number, y: number) => number;
+type FlipbookStyle = 'smoke' | 'dust' | 'fire' | 'prop';
+type Vec3Tuple = readonly [number, number, number];
+type ParticlePoolName = 'smoke' | 'fire' | 'billow' | 'psmoke' | 'dust'
+  | 'flash' | 'jet' | 'sparks' | 'debris';
+
+interface ParticleEngineContext {
+  readonly scene?: {
+    readonly userData?: {
+      readonly sunDirWorld?: THREE.Vector3;
+    };
+  };
+}
+
+interface PuffOptions {
+  readonly pos: Vec3Tuple;
+  readonly vel: Vec3Tuple;
+  readonly life: number;
+  readonly size0: number;
+  readonly size1: number;
+  readonly col0: Vec3Tuple;
+  readonly col1: Vec3Tuple;
+  readonly alpha: number;
+  readonly birthOffset?: number;
+  readonly rot?: number;
+  readonly rotVel?: number;
+  readonly grav?: number;
+}
+
+interface StreakOptions {
+  readonly pos: Vec3Tuple;
+  readonly vel: Vec3Tuple;
+  readonly life: number;
+  readonly width: number;
+  readonly stretch: number;
+  readonly col: Vec3Tuple;
+  readonly alpha: number;
+  readonly birthOffset?: number;
+  readonly grav?: number;
+  readonly seed?: number;
+}
+
+interface DebrisOptions {
+  readonly pos: Vec3Tuple;
+  readonly vel: Vec3Tuple;
+  readonly life: number;
+  readonly axis: Vec3Tuple;
+  readonly spin: number;
+  readonly scale: number;
+  readonly groundY: number;
+  readonly birthOffset?: number;
+  readonly hot?: boolean | number;
+  readonly seed?: number;
+}
+
+interface JetOptions {
+  readonly pos: Vec3Tuple;
+  readonly axis: Vec3Tuple;
+  readonly life: number;
+  readonly width: number;
+  readonly len0: number;
+  readonly len1: number;
+  readonly col: Vec3Tuple;
+  readonly alpha: number;
+  readonly birthOffset?: number;
+  readonly seed?: number;
+}
+
+interface ParticleOptionsByPool {
+  smoke: PuffOptions;
+  fire: PuffOptions;
+  billow: PuffOptions;
+  psmoke: PuffOptions;
+  dust: PuffOptions;
+  flash: PuffOptions;
+  jet: JetOptions;
+  sparks: StreakOptions;
+  debris: DebrisOptions;
+}
+
+interface CapacityGeometry extends THREE.InstancedBufferGeometry {
+  _capacity: number;
+}
+
 // Transparent combat FX render after the opaque/world post passes so their
 // shaders can sample resolved scene depth without a framebuffer feedback loop.
 // Layer 30 is reserved for this late pass by engine/post.ts.
 export { LATE_FX_LAYER };
 
 /** Canonical PRNG (ARCHITECTURE §1.4). @param {number} a seed @returns {() => number} */
-export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+export function mulberry32(a: number): Rng {return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
 const POOL_SIZES = { smoke: 2048, fire: 1024, billow: 256, psmoke: 384, dust: 1024, sparks: 512, debris: 256, flash: 128, jet: 64 };
@@ -742,10 +827,10 @@ void main() {
  * @param {() => number} rng @param {number} grid lattice size
  * @returns {(x: number, y: number) => number} sampler, x/y in [0,1)
  */
-function makeValueNoise(rng, grid) {
+function makeValueNoise(rng: Rng, grid: number): Noise2D {
   const g = new Float32Array(grid * grid);
   for (let i = 0; i < g.length; i++) g[i] = rng();
-  return (x, y) => {
+  return (x: number, y: number): number => {
     const fx = (x - Math.floor(x)) * grid;
     const fy = (y - Math.floor(y)) * grid;
     const x0 = Math.floor(fx) % grid, y0 = Math.floor(fy) % grid;
@@ -767,18 +852,18 @@ function makeValueNoise(rng, grid) {
  *   coarse GIF-dither stipple at 5-7 m card sizes (r6 explosion critique)
  * @returns {(x: number, y: number) => number}
  */
-export function makeFbm(rng, octaves = 4) {
+export function makeFbm(rng: Rng, octaves = 4): Noise2D {
   const o1 = makeValueNoise(rng, 4);
   const o2 = makeValueNoise(rng, 8);
   const o3 = makeValueNoise(rng, 16);
   const o4 = makeValueNoise(rng, 32);
   const o5 = octaves >= 5 ? makeValueNoise(rng, 64) : null;
   if (o5) {
-    return (x, y) =>
+    return (x: number, y: number): number =>
       (o1(x, y) * 0.5 + o2(x, y) * 0.25 + o3(x, y) * 0.125 + o4(x, y) * 0.0625 +
         o5(x, y) * 0.03125) / 0.96875;
   }
-  return (x, y) =>
+  return (x: number, y: number): number =>
     (o1(x, y) * 0.5 + o2(x, y) * 0.25 + o3(x, y) * 0.125 + o4(x, y) * 0.0625) / 0.9375;
 }
 
@@ -790,9 +875,14 @@ export function makeFbm(rng, octaves = 4) {
  * @param {number} [alphaPower=1] optional base-alpha shaping fused into the
  *   same readback so callers never need a second getImageData/putImageData pass
  */
-function applyFbmAlpha(cv, rng, strength, alphaPower = 1) {
+function applyFbmAlpha(
+  cv: HTMLCanvasElement,
+  rng: Rng,
+  strength: number,
+  alphaPower = 1,
+): void {
   const fbm = makeFbm(rng);
-  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  const ctx = cv.getContext('2d', { willReadFrequently: true })!;
   const img = ctx.getImageData(0, 0, cv.width, cv.height);
   const d = img.data;
   const w = cv.width, h = cv.height;
@@ -825,7 +915,10 @@ function applyFbmAlpha(cv, rng, strength, alphaPower = 1) {
  * @param {'smoke'|'dust'|'fire'|'prop'} style contrast/churn profile
  * @returns {Generator<void, THREE.CanvasTexture, void>}
  */
-function* makeFlipbookTextureSteps(rng, style) {
+function* makeFlipbookTextureSteps(
+  rng: Rng,
+  style: FlipbookStyle,
+): Generator<void, THREE.CanvasTexture, void> {
   // fire tiles at 176 px with 5-octave churn (was 128/4-oct for all styles):
   // a destruction fireball card reaches 5-7 m, and the coarse noise scaled to
   // ~25 cm/texel is what read as GIF-dither stipple once the erosion front
@@ -841,7 +934,7 @@ function* makeFlipbookTextureSteps(rng, style) {
   const TILES = 4, T = fire ? 256 : (prop ? 192 : 128), S = TILES * T;
   const cv = document.createElement('canvas');
   cv.width = cv.height = S;
-  const ctx = cv.getContext('2d');
+  const ctx = cv.getContext('2d')!;
   const warp = makeFbm(rng, (fire || prop) ? 5 : 4);
   const churn = makeFbm(rng, (fire || prop) ? 5 : 4);
   const img = ctx.createImageData(S, S);
@@ -908,11 +1001,11 @@ function* makeFlipbookTextureSteps(rng, style) {
  * @param {() => number} rng
  * @returns {THREE.CanvasTexture}
  */
-function makeJetTexture(rng) {
+function makeJetTexture(rng: Rng): THREE.CanvasTexture {
   const w = 256, h = 96;
   const cv = document.createElement('canvas');
   cv.width = w; cv.height = h;
-  const ctx = cv.getContext('2d');
+  const ctx = cv.getContext('2d')!;
   const fbm = makeFbm(rng);
   const img = ctx.createImageData(w, h);
   const d = img.data;
@@ -949,11 +1042,11 @@ function makeJetTexture(rng) {
  * @param {() => number} rng
  * @returns {THREE.CanvasTexture}
  */
-function makeFlashTexture(rng) {
+function makeFlashTexture(rng: Rng): THREE.CanvasTexture {
   const s = 128;
   const cv = document.createElement('canvas');
   cv.width = cv.height = s;
-  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  const ctx = cv.getContext('2d', { willReadFrequently: true })!;
   ctx.clearRect(0, 0, s, s);
   ctx.globalCompositeOperation = 'lighter';
   const c = s / 2;
@@ -1006,8 +1099,8 @@ function makeFlashTexture(rng) {
 // ---------------------------------------------------------------------------
 
 /** Unit billboard quad: position.xy in [-0.5, 0.5], uv in [0,1]. */
-function makeQuadGeometry(count) {
-  const geo = new THREE.InstancedBufferGeometry();
+function makeQuadGeometry(count: number): CapacityGeometry {
+  const geo = new THREE.InstancedBufferGeometry() as CapacityGeometry;
   geo.setAttribute('position', new THREE.Float32BufferAttribute(
     [-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0], 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
@@ -1023,7 +1116,7 @@ function makeQuadGeometry(count) {
  * with the per-instance nonuniform scale/shear in DEBRIS_VERT this kills the
  * "axis-aligned box confetti" read.
  */
-function makeChunkGeometry(count, rng) {
+function makeChunkGeometry(count: number, rng: Rng): CapacityGeometry {
   // r7 "flat orange boxes": the displaced icosahedron kept a convex, roundish
   // silhouette that read as a box at range. Scrap armor is a torn CHUNK with
   // a thin bent PLATE welded off one side — the concave composite silhouette
@@ -1031,7 +1124,7 @@ function makeChunkGeometry(count, rng) {
   const chunk = new THREE.IcosahedronGeometry(0.52, 0);
   {
     const pos = chunk.getAttribute('position');
-    const disp = new Map();
+    const disp = new Map<string, number>();
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
       const key = `${x.toFixed(3)}|${y.toFixed(3)}|${z.toFixed(3)}`;
@@ -1044,7 +1137,7 @@ function makeChunkGeometry(count, rng) {
   const plate = new THREE.IcosahedronGeometry(0.55, 0);
   {
     const pos = plate.getAttribute('position');
-    const disp = new Map();
+    const disp = new Map<string, number>();
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
       const key = `${x.toFixed(3)}|${y.toFixed(3)}|${z.toFixed(3)}`;
@@ -1059,7 +1152,7 @@ function makeChunkGeometry(count, rng) {
   }
   const merged = mergeGeoms([chunk, plate]);
   merged.computeVertexNormals(); // non-indexed => hard facet normals
-  const geo = new THREE.InstancedBufferGeometry();
+  const geo = new THREE.InstancedBufferGeometry() as CapacityGeometry;
   geo.setAttribute('position', merged.getAttribute('position'));
   geo.setAttribute('normal', merged.getAttribute('normal'));
   geo.setAttribute('uv', merged.getAttribute('uv'));
@@ -1069,7 +1162,7 @@ function makeChunkGeometry(count, rng) {
 }
 
 /** Minimal non-indexed position/normal/uv concat (avoids the examples dep). */
-function mergeGeoms(geoms) {
+function mergeGeoms(geoms: readonly THREE.BufferGeometry[]): THREE.BufferGeometry {
   let vcount = 0;
   for (const g of geoms) vcount += g.getAttribute('position').count;
   const pos = new Float32Array(vcount * 3);
@@ -1093,7 +1186,30 @@ function mergeGeoms(geoms) {
  * Writes go through a staging cursor; touched spans upload via updateRanges.
  */
 class Pool {
-  constructor(name, geometry, material, layout, capacity, lifeAttr, lifeComp) {
+  declare readonly name: string;
+  declare readonly capacity: number;
+  declare cursor: number;
+  declare highWater: number;
+  declare readonly lifeAttr: string;
+  declare readonly lifeComp: number;
+  declare dirtyStart: number;
+  declare dirtyEnd: number;
+  declare dirtyStart2: number;
+  declare dirtyEnd2: number;
+  declare readonly attrs: Record<string, THREE.InstancedBufferAttribute>;
+  declare readonly attrList: THREE.InstancedBufferAttribute[];
+  declare readonly geometry: THREE.InstancedBufferGeometry;
+  declare readonly mesh: THREE.Mesh<THREE.InstancedBufferGeometry, THREE.Material>;
+
+  constructor(
+    name: string,
+    geometry: THREE.InstancedBufferGeometry,
+    material: THREE.Material,
+    layout: Readonly<Record<string, number>>,
+    capacity: number,
+    lifeAttr: string,
+    lifeComp: number,
+  ) {
     this.name = name;
     this.capacity = capacity;
     this.cursor = 0;
@@ -1127,7 +1243,7 @@ class Pool {
   }
 
   /** Claim the next ring slot; returns the instance index. */
-  claim() {
+  claim(): number {
     const i = this.cursor;
     this.cursor = (this.cursor + 1) % this.capacity;
     this.highWater = Math.max(this.highWater, i + 1);
@@ -1136,7 +1252,7 @@ class Pool {
   }
 
   /** Mark one instance's span dirty on every attribute. */
-  dirty(i) {
+  dirty(i: number): void {
     if (this.dirtyStart < 0) {
       this.dirtyStart = i;
       this.dirtyEnd = i + 1;
@@ -1160,7 +1276,7 @@ class Pool {
   }
 
   /** Commit all CPU writes as one or two contiguous ranges per attribute. */
-  flush() {
+  flush(): void {
     if (this.dirtyStart < 0) return;
     for (const a of this.attrList) {
       // ACCUMULATE ranges — never clearUpdateRanges() here. The renderer
@@ -1188,7 +1304,7 @@ class Pool {
   }
 
   /** Kill every live particle (zero the life component) and reset the ring. */
-  killAll() {
+  killAll(): void {
     const a = this.attrs[this.lifeAttr];
     const arr = a.array;
     const k = a.itemSize;
@@ -1212,7 +1328,10 @@ class Pool {
  * @param {{ seed?: number }} [opts]
  * @returns {Particles} { group, update(dt), setFrozen(frozen, atTimeS), emit(poolName, opts), pools, resetAll() }
  */
-export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
+export function createParticleSystem(
+  engineCtx: ParticleEngineContext,
+  { seed = 5000 }: { seed?: number } = {},
+) {
   const texRng = mulberry32(seed);
   const group = new THREE.Group();
   group.name = 'fx-particles';
@@ -1265,11 +1384,11 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   const flashTex = lazyTex();
   const jetTex = lazyTex();
   let texturesBaked = false;
-  let textureBakeGen = null;
-  let textureAssetImages = null;
-  let textureAssetPromise = null;
+  let textureBakeGen: Generator<void, void, void> | null = null;
+  let textureAssetImages: Record<keyof typeof PARTICLE_TEXTURE_ASSETS, HTMLImageElement> | null = null;
+  let textureAssetPromise: Promise<boolean> | null = null;
 
-  function installBakedTexture(tex, baked) {
+  function installBakedTexture(tex: THREE.CanvasTexture, baked: THREE.CanvasTexture): void {
     // STUDIO selftest fix: the 4×4 placeholder HAS usually been uploaded by
     // now — pool meshes render every frame at instanceCount 0, and a zero-
     // instance draw still binds the material and allocates the sampler's GL
@@ -1287,14 +1406,14 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     baked.dispose();
   }
 
-  function installTextureImage(tex, image) {
+  function installTextureImage(tex: THREE.Texture, image: HTMLImageElement): void {
     tex.dispose();
     tex.image = image;
     tex.needsUpdate = true;
   }
 
-  function loadTextureImage(src) {
-    return new Promise((resolve, reject) => {
+  function loadTextureImage(src: string): Promise<HTMLImageElement> {
+    return new Promise<HTMLImageElement>((resolve, reject) => {
       const image = new Image();
       image.decoding = 'async';
       image.onload = async () => {
@@ -1309,20 +1428,23 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     });
   }
 
-  function preloadTextures() {
+  function preloadTextures(): Promise<boolean> {
     if (texturesBaked || textureAssetImages) return Promise.resolve(true);
     if (!textureAssetPromise) {
       textureAssetPromise = Promise.all(Object.entries(PARTICLE_TEXTURE_ASSETS).map(
-        async ([name, src]) => [name, await loadTextureImage(src)],
+        async ([name, src]) => [name, await loadTextureImage(src)] as const,
       )).then((entries) => {
-        textureAssetImages = Object.fromEntries(entries);
+        textureAssetImages = Object.fromEntries(entries) as Record<
+          keyof typeof PARTICLE_TEXTURE_ASSETS,
+          HTMLImageElement
+        >;
         return true;
       }).catch(() => false);
     }
     return textureAssetPromise;
   }
 
-  function installTextureAssets() {
+  function installTextureAssets(): boolean {
     if (texturesBaked || !textureAssetImages) return texturesBaked;
     installTextureImage(smokeTex, textureAssetImages.smoke);
     installTextureImage(fireTex, textureAssetImages.fire);
@@ -1334,9 +1456,9 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     return true;
   }
 
-  function* warmTextureSteps() {
+  function* warmTextureSteps(): Generator<void, void, void> {
     // Exact original bake order — the shared RNG stream must not shift.
-    const flipbookJobs = [
+    const flipbookJobs: ReadonlyArray<readonly [THREE.CanvasTexture, FlipbookStyle]> = [
       [smokeTex, 'smoke'],
       [fireTex, 'fire'],
       [propTex, 'prop'],
@@ -1357,13 +1479,13 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     installBakedTexture(jetTex, makeJetTexture(texRng));
   }
 
-  function finishTextureBake(g) {
+  function finishTextureBake(g: Generator<void, void, void>): void {
     if (textureBakeGen !== g) return;
     textureBakeGen = null;
     texturesBaked = true;
   }
 
-  function warmTextures() {
+  function warmTextures(): void {
     if (texturesBaked) return;
     if (installTextureAssets()) return;
     const g = textureBakeGen || (textureBakeGen = warmTextureSteps());
@@ -1379,7 +1501,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     }
   }
 
-  async function warmTexturesChunked(yieldFrame) {
+  async function warmTexturesChunked(yieldFrame: () => Promise<void>): Promise<void> {
     if (texturesBaked) return;
     if (await preloadTextures()) {
       installTextureAssets();
@@ -1406,7 +1528,14 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   // stale Verdant-only key after a map/studio atmosphere switch.
   const sunDirW = new THREE.Vector3(0.527, 0.574, -0.627).normalize();
 
-  function puffMaterial(map, additive, drag, intensity, tiles = 1, nearFade = [0.5, 2.2]) {
+  function puffMaterial(
+    map: THREE.Texture,
+    additive: boolean,
+    drag: number,
+    intensity: number,
+    tiles = 1,
+    nearFade: readonly [number, number] = [0.5, 2.2],
+  ): THREE.ShaderMaterial {
     const mat = new THREE.ShaderMaterial({
       vertexShader: PUFF_VERT,
       fragmentShader: additive ? PUFF_FRAG_ADDITIVE : PUFF_FRAG_NORMAL,
@@ -1437,7 +1566,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   const DEBRIS_LAYOUT = { aPB: 4, aVL: 4, aAR: 4, aSG: 4 };
   const JET_LAYOUT = { aPB: 4, aAL: 4, aWL: 4, aC: 4 };
 
-  const pools = {
+  const pools: Record<ParticlePoolName, Pool> = {
     smoke: new Pool('smoke', makeQuadGeometry(POOL_SIZES.smoke),
       puffMaterial(smokeTex, false, 0.9, 1, 4), PUFF_LAYOUT, POOL_SIZES.smoke, 'aVL', 3),
     fire: new Pool('fire', makeQuadGeometry(POOL_SIZES.fire),
@@ -1535,11 +1664,11 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     // renderOrder relationship remains intact after the layer split.
     if (key !== 'debris') pool.mesh.layers.set(LATE_FX_LAYER);
   }
-  for (const key of Object.keys(pools)) group.add(pools[key].mesh);
+  for (const pool of poolList) group.add(pool.mesh);
 
   // --- emit dispatch --------------------------------------------------------
 
-  function emitPuff(pool, o) {
+  function emitPuff(pool: Pool, o: PuffOptions): void {
     const i = pool.claim();
     const birth = uTime.value + (o.birthOffset || 0);
     const A = pool.attrs;
@@ -1555,7 +1684,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     pool.dirty(i);
   }
 
-  function emitStreak(pool, o) {
+  function emitStreak(pool: Pool, o: StreakOptions): void {
     const i = pool.claim();
     const birth = uTime.value + (o.birthOffset || 0);
     const A = pool.attrs;
@@ -1570,7 +1699,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     pool.dirty(i);
   }
 
-  function emitDebris(pool, o) {
+  function emitDebris(pool: Pool, o: DebrisOptions): void {
     const i = pool.claim();
     const birth = uTime.value + (o.birthOffset || 0);
     const A = pool.attrs;
@@ -1587,7 +1716,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     pool.dirty(i);
   }
 
-  function emitJet(pool, o) {
+  function emitJet(pool: Pool, o: JetOptions): void {
     const i = pool.claim();
     const birth = uTime.value + (o.birthOffset || 0);
     const A = pool.attrs;
@@ -1602,15 +1731,15 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   }
 
   const EMITTERS = {
-    smoke: (o) => emitPuff(pools.smoke, o),
-    fire: (o) => emitPuff(pools.fire, o),
-    billow: (o) => emitPuff(pools.billow, o),
-    psmoke: (o) => emitPuff(pools.psmoke, o),
-    dust: (o) => emitPuff(pools.dust, o),
-    flash: (o) => emitPuff(pools.flash, o),
-    jet: (o) => emitJet(pools.jet, o),
-    sparks: (o) => emitStreak(pools.sparks, o),
-    debris: (o) => emitDebris(pools.debris, o),
+    smoke: (o: PuffOptions) => emitPuff(pools.smoke, o),
+    fire: (o: PuffOptions) => emitPuff(pools.fire, o),
+    billow: (o: PuffOptions) => emitPuff(pools.billow, o),
+    psmoke: (o: PuffOptions) => emitPuff(pools.psmoke, o),
+    dust: (o: PuffOptions) => emitPuff(pools.dust, o),
+    flash: (o: PuffOptions) => emitPuff(pools.flash, o),
+    jet: (o: JetOptions) => emitJet(pools.jet, o),
+    sparks: (o: StreakOptions) => emitStreak(pools.sparks, o),
+    debris: (o: DebrisOptions) => emitDebris(pools.debris, o),
   };
 
   return {
@@ -1634,7 +1763,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
      * Advance the shared particle clock (no-op while frozen).
      * @param {number} dt seconds
      */
-    update(dt) {
+    update(dt: number): void {
       if (!frozen) uTime.value += dt;
       const liveSun = engineCtx?.scene?.userData?.sunDirWorld;
       if (liveSun && liveSun.lengthSq() > 1e-8) sunDirW.copy(liveSun).normalize();
@@ -1646,7 +1775,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
      * @param {boolean} f
      * @param {number|null} [atTimeS]
      */
-    setFrozen(f, atTimeS = null) {
+    setFrozen(f: boolean, atTimeS: number | null = null): void {
       frozen = f;
       if (atTimeS !== null && atTimeS !== undefined) uTime.value = atTimeS;
     },
@@ -1656,8 +1785,11 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
      * @param {'smoke'|'fire'|'billow'|'psmoke'|'dust'|'flash'|'jet'|'sparks'|'debris'} poolName
      * @param {object} opts pool-specific fields (pos, vel, life, ...; birthOffset backdates)
      */
-    emit(poolName, opts) {
-      const fn = EMITTERS[poolName];
+    emit<Name extends ParticlePoolName>(
+      poolName: Name,
+      opts: ParticleOptionsByPool[Name],
+    ): void {
+      const fn = EMITTERS[poolName] as (options: ParticleOptionsByPool[Name]) => void;
       if (!fn) throw new Error(`particles: unknown pool '${poolName}'`);
       fn(opts);
     },
@@ -1671,9 +1803,8 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
      * 0.8 s-old fire after the pin. Live gameplay never takes this path.
      * @param {number} delta seconds to add to every live birth stamp
      */
-    shiftTime(delta) {
-      for (const key of Object.keys(pools)) {
-        const pool = pools[key];
+    shiftTime(delta: number): void {
+      for (const pool of poolList) {
         const pb = pool.attrs.aPB;
         const life = pool.attrs[pool.lifeAttr];
         const n = pool.highWater;

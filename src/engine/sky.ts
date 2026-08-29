@@ -827,7 +827,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   let cumulusBaked = false;
   const swapCloudTexture = (deck: CloudDeck, baked: THREE.CanvasTexture): void => {
     const tex = deck.material.uniforms.uMap!.value as THREE.Texture;
-    // dispose BEFORE the image swap (same fix as particles.js sprite
+    // dispose BEFORE the image swap (same fix as particles.ts sprite
     // sheets): the placeholder has usually been uploaded by now, and
     // swapping `image` to a different-sized canvas with only needsUpdate
     // re-uses the old GL allocation — the upload no-ops (blank clouds) or

@@ -207,6 +207,11 @@ for resolved hit events, diagram inputs, team inference, per-target and
 per-shell ledgers, report-gate timers, and its after-action summary. The
 simulation remains authoritative; this UI boundary only formats event values
 that have already been resolved.
+The instanced particle engine now uses strict `src/fx/particles.ts` contracts
+for seeded noise, texture warming, ring-buffer attributes, pool-specific
+emission recipes, soft-particle integration, and the shared FX clock. Its GPU
+pool sizes, shader sources, update ranges, deferred atlas cadence, and visual
+output remain unchanged.
 
 ## Consequences
 

@@ -6,7 +6,7 @@ const battleVisualStreamer = await readFile(
 );
 const post = await readFile(new URL('../engine/post.ts', import.meta.url), 'utf8');
 const state = await readFile(new URL('../game/state.ts', import.meta.url), 'utf8');
-const particles = await readFile(new URL('./particles.js', import.meta.url), 'utf8');
+const particles = await readFile(new URL('./particles.ts', import.meta.url), 'utf8');
 const battleWarm = await readFile(new URL('../game/battleWarmRuntime.ts', import.meta.url), 'utf8');
 const combatWarmCoordinator = await readFile(
   new URL('../game/combatWarmCoordinator.ts', import.meta.url), 'utf8',
@@ -65,7 +65,7 @@ if (!/if \(modulePromise === request\) modulePromise = null/.test(fxRuntimeAcces
 if (!/scene\.add\(live\.group\)[\s\S]{0,480}post\.attachLateFxState\(live\.group\.userData\.softParticles\)/.test(main)) {
   throw new Error('demand-loaded FX must register with the already-live late composite pass');
 }
-if (post.includes("../fx/particles.js") || !post.includes("../fx/layers.ts")) {
+if (post.includes("../fx/particles.ts") || !post.includes("../fx/layers.ts")) {
   throw new Error('the post stack must not pull the particle engine into the garage graph');
 }
 if (!/attachLateFxState\(softState(?:\s*:\s*[^)]+)?\)[\s\S]{0,140}lateFx\.setSoftState\(/.test(post)
