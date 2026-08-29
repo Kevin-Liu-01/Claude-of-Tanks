@@ -2,9 +2,20 @@
 // Do not hand-edit. Cannon/antenna-width rows are excluded before the opaque
 // pixel centroid is converted back into the tank rig's local X/Z coordinates.
 
+export interface TankPresentationAnchor {
+  readonly xM: number;
+  readonly zM: number;
+}
+
+export interface TankPresentationProjection {
+  readonly centerYM: number;
+  readonly topHalfM: number;
+  readonly sideHalfM: number;
+}
+
 export const TANK_PRESENTATION_ANCHOR_SCHEMA_VERSION = 2;
 
-export const TANK_PRESENTATION_ANCHORS = Object.freeze({
+export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentationAnchor>> = Object.freeze({
   abramsx: Object.freeze({ xM: 0.0033, zM: -0.0227 }),
   amx30: Object.freeze({ xM: 0.0001, zM: 0.0068 }),
   amx30b2: Object.freeze({ xM: 0.0001, zM: 0.0066 }),
@@ -66,13 +77,13 @@ export const TANK_PRESENTATION_ANCHORS = Object.freeze({
   leo2a7: Object.freeze({ xM: 0, zM: 0.029 }),
   leo2a7v: Object.freeze({ xM: 0, zM: -0.0062 }),
   leopard2_proto: Object.freeze({ xM: 0, zM: 0.0232 }),
-  m1a1: Object.freeze({ xM: 0.0011, zM: 0.0362 }),
+  m1a1: Object.freeze({ xM: 0.0011, zM: 0.0361 }),
   m1a1ha: Object.freeze({ xM: 0.0002, zM: 0.0791 }),
   m1a2: Object.freeze({ xM: 0.0006, zM: 0.0559 }),
   m1a2_legacy: Object.freeze({ xM: -0.0002, zM: 0.0604 }),
   m1a2_sepv2: Object.freeze({ xM: 0, zM: 0.0234 }),
   m1a2_sepv3: Object.freeze({ xM: 0.0003, zM: 0.0337 }),
-  m1a2_tusk: Object.freeze({ xM: 0.0004, zM: -0.0138 }),
+  m1a2_tusk: Object.freeze({ xM: 0.0004, zM: -0.0139 }),
   m1a3: Object.freeze({ xM: 0, zM: -0.0718 }),
   m26_pershing: Object.freeze({ xM: -0.0003, zM: -1.2087 }),
   m2a2_bradley: Object.freeze({ xM: 0.0107, zM: 0.0209 }),
@@ -85,7 +96,7 @@ export const TANK_PRESENTATION_ANCHORS = Object.freeze({
   m551_sheridan: Object.freeze({ xM: -0.0003, zM: -0.0775 }),
   m551a1_tts: Object.freeze({ xM: 0.0002, zM: -0.2265 }),
   m60a1: Object.freeze({ xM: 0.0022, zM: 0.0052 }),
-  m60a2: Object.freeze({ xM: 0.0002, zM: -0.084 }),
+  m60a2: Object.freeze({ xM: 0.0002, zM: -0.0841 }),
   m60a3: Object.freeze({ xM: -0.0001, zM: 0.018 }),
   marder1a3: Object.freeze({ xM: 0.0552, zM: 0.0064 }),
   mbt70: Object.freeze({ xM: 0.0002, zM: -0.1156 }),
@@ -132,8 +143,8 @@ export const TANK_PRESENTATION_ANCHORS = Object.freeze({
   t80u: Object.freeze({ xM: 0.0012, zM: 0.0279 }),
   t84: Object.freeze({ xM: 0.0003, zM: -1.2264 }),
   t90: Object.freeze({ xM: 0.0029, zM: -0.0421 }),
-  t90a: Object.freeze({ xM: 0.0028, zM: 0.0252 }),
-  t90a_burlak: Object.freeze({ xM: 0.002, zM: 0.0552 }),
+  t90a: Object.freeze({ xM: 0.0028, zM: 0.0235 }),
+  t90a_burlak: Object.freeze({ xM: 0.002, zM: 0.0535 }),
   t90a_vladimir: Object.freeze({ xM: 0, zM: -1.1994 }),
   t90m: Object.freeze({ xM: -0.0001, zM: -0.0711 }),
   t90m_proryv: Object.freeze({ xM: 0.0005, zM: -0.0708 }),
@@ -164,14 +175,14 @@ export const TANK_PRESENTATION_ANCHORS = Object.freeze({
   ztz99a2: Object.freeze({ xM: 0.0001, zM: -0.425 }),
 });
 
-export function presentationAnchorFor(id) {
+export function presentationAnchorFor(id: string): TankPresentationAnchor | null {
   return TANK_PRESENTATION_ANCHORS[id] || null;
 }
 
 // Exact orthographic fit envelopes shared with tools/icons-page.html.
 // Hit markers consume these receipts so they overlay the generated assets
 // without re-deriving scale from symmetric published dimensions.
-export const TANK_PRESENTATION_PROJECTIONS = Object.freeze({
+export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresentationProjection>> = Object.freeze({
   abramsx: Object.freeze({ centerYM: 2.0455, topHalfM: 6.3175, sideHalfM: 3.1588 }),
   amx30: Object.freeze({ centerYM: 1.9669, topHalfM: 6.6468, sideHalfM: 3.3234 }),
   amx30b2: Object.freeze({ centerYM: 1.6671, topHalfM: 6.647, sideHalfM: 3.3235 }),
@@ -233,13 +244,13 @@ export const TANK_PRESENTATION_PROJECTIONS = Object.freeze({
   leo2a7: Object.freeze({ centerYM: 2.1599, topHalfM: 8.0394, sideHalfM: 4.0197 }),
   leo2a7v: Object.freeze({ centerYM: 2.354, topHalfM: 7.6063, sideHalfM: 3.8032 }),
   leopard2_proto: Object.freeze({ centerYM: 1.4003, topHalfM: 7.2836, sideHalfM: 3.6418 }),
-  m1a1: Object.freeze({ centerYM: 1.7447, topHalfM: 6.2, sideHalfM: 3.1 }),
+  m1a1: Object.freeze({ centerYM: 1.7447, topHalfM: 6.2001, sideHalfM: 3.1 }),
   m1a1ha: Object.freeze({ centerYM: 1.7446, topHalfM: 6.1541, sideHalfM: 3.077 }),
   m1a2: Object.freeze({ centerYM: 2.0432, topHalfM: 6.1789, sideHalfM: 3.0894 }),
   m1a2_legacy: Object.freeze({ centerYM: 2.0912, topHalfM: 6.1773, sideHalfM: 3.0886 }),
   m1a2_sepv2: Object.freeze({ centerYM: 2.0446, topHalfM: 6.2137, sideHalfM: 3.1068 }),
   m1a2_sepv3: Object.freeze({ centerYM: 2.0963, topHalfM: 6.2026, sideHalfM: 3.1013 }),
-  m1a2_tusk: Object.freeze({ centerYM: 2.044, topHalfM: 6.2535, sideHalfM: 3.1267 }),
+  m1a2_tusk: Object.freeze({ centerYM: 2.044, topHalfM: 6.2536, sideHalfM: 3.1268 }),
   m1a3: Object.freeze({ centerYM: 2.0825, topHalfM: 6.8222, sideHalfM: 3.4111 }),
   m26_pershing: Object.freeze({ centerYM: 1.9301, topHalfM: 5.9578, sideHalfM: 2.9789 }),
   m2a2_bradley: Object.freeze({ centerYM: 1.9338, topHalfM: 3.6114, sideHalfM: 2.1376 }),
@@ -252,7 +263,7 @@ export const TANK_PRESENTATION_PROJECTIONS = Object.freeze({
   m551_sheridan: Object.freeze({ centerYM: 2.256, topHalfM: 3.6485, sideHalfM: 2.433 }),
   m551a1_tts: Object.freeze({ centerYM: 2.256, topHalfM: 3.8481, sideHalfM: 2.433 }),
   m60a1: Object.freeze({ centerYM: 2.1664, topHalfM: 6.4184, sideHalfM: 3.2092 }),
-  m60a2: Object.freeze({ centerYM: 2.1465, topHalfM: 4.1096, sideHalfM: 2.3524 }),
+  m60a2: Object.freeze({ centerYM: 2.1465, topHalfM: 4.1097, sideHalfM: 2.3524 }),
   m60a3: Object.freeze({ centerYM: 1.686, topHalfM: 6.4047, sideHalfM: 3.2024 }),
   marder1a3: Object.freeze({ centerYM: 2.0375, topHalfM: 3.6321, sideHalfM: 2.2486 }),
   mbt70: Object.freeze({ centerYM: 1.7859, topHalfM: 6.0646, sideHalfM: 3.0323 }),
@@ -299,8 +310,8 @@ export const TANK_PRESENTATION_PROJECTIONS = Object.freeze({
   t80u: Object.freeze({ centerYM: 1.8802, topHalfM: 6.4748, sideHalfM: 3.2374 }),
   t84: Object.freeze({ centerYM: 1.7145, topHalfM: 6.5543, sideHalfM: 3.2772 }),
   t90: Object.freeze({ centerYM: 2.2514, topHalfM: 6.6661, sideHalfM: 3.333 }),
-  t90a: Object.freeze({ centerYM: 1.5013, topHalfM: 6.0763, sideHalfM: 3.0382 }),
-  t90a_burlak: Object.freeze({ centerYM: 2.1414, topHalfM: 5.9173, sideHalfM: 2.9586 }),
+  t90a: Object.freeze({ centerYM: 1.5013, topHalfM: 6.0782, sideHalfM: 3.0391 }),
+  t90a_burlak: Object.freeze({ centerYM: 2.1414, topHalfM: 5.9191, sideHalfM: 2.9595 }),
   t90a_vladimir: Object.freeze({ centerYM: 1.6704, topHalfM: 6.4386, sideHalfM: 3.2193 }),
   t90m: Object.freeze({ centerYM: 1.581, topHalfM: 6.1875, sideHalfM: 3.0938 }),
   t90m_proryv: Object.freeze({ centerYM: 1.5807, topHalfM: 6.1872, sideHalfM: 3.0936 }),
@@ -331,6 +342,6 @@ export const TANK_PRESENTATION_PROJECTIONS = Object.freeze({
   ztz99a2: Object.freeze({ centerYM: 1.8394, topHalfM: 8.0103, sideHalfM: 4.0051 }),
 });
 
-export function presentationProjectionFor(id) {
+export function presentationProjectionFor(id: string): TankPresentationProjection | null {
   return TANK_PRESENTATION_PROJECTIONS[id] || null;
 }

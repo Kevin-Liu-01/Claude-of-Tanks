@@ -33,7 +33,7 @@ if (update && selectedIds.length) {
 }
 
 const root = process.cwd();
-const outputPath = resolve(root, 'src/vehicles/presentationAnchors.generated.js');
+const outputPath = resolve(root, 'src/vehicles/presentationAnchors.generated.ts');
 const cacheDir = resolve('/tmp', `cot-centering-vite-${process.pid}`);
 const MAX_RESIDUAL_PX = 0.25;
 const MAX_EXPORTED_RESIDUAL_PX = 0.5;
@@ -57,24 +57,35 @@ function generatedSource(rows) {
     '// Do not hand-edit. Cannon/antenna-width rows are excluded before the opaque',
     "// pixel centroid is converted back into the tank rig's local X/Z coordinates.",
     '',
+    'export interface TankPresentationAnchor {',
+    '  readonly xM: number;',
+    '  readonly zM: number;',
+    '}',
+    '',
+    'export interface TankPresentationProjection {',
+    '  readonly centerYM: number;',
+    '  readonly topHalfM: number;',
+    '  readonly sideHalfM: number;',
+    '}',
+    '',
     'export const TANK_PRESENTATION_ANCHOR_SCHEMA_VERSION = 2;',
     '',
-    'export const TANK_PRESENTATION_ANCHORS = Object.freeze({',
+    'export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentationAnchor>> = Object.freeze({',
     ...records,
     '});',
     '',
-    'export function presentationAnchorFor(id) {',
+    'export function presentationAnchorFor(id: string): TankPresentationAnchor | null {',
     '  return TANK_PRESENTATION_ANCHORS[id] || null;',
     '}',
     '',
     '// Exact orthographic fit envelopes shared with tools/icons-page.html.',
     '// Hit markers consume these receipts so they overlay the generated assets',
     '// without re-deriving scale from symmetric published dimensions.',
-    'export const TANK_PRESENTATION_PROJECTIONS = Object.freeze({',
+    'export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresentationProjection>> = Object.freeze({',
     ...projections,
     '});',
     '',
-    'export function presentationProjectionFor(id) {',
+    'export function presentationProjectionFor(id: string): TankPresentationProjection | null {',
     '  return TANK_PRESENTATION_PROJECTIONS[id] || null;',
     '}',
     '',

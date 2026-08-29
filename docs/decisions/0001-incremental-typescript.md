@@ -113,6 +113,9 @@ as TypeScript while the runtime registry remains the narrowing boundary.
 Exact vehicle-marking seat receipts use the same pattern: generated TypeScript
 payloads retain family-local chunking, and the authored registry validates the
 schema before any seat reaches the painter.
+Rendered-pixel presentation anchors and orthographic fit envelopes are also
+generated as strict TypeScript, keeping Garage framing and combat hit diagrams
+on one nullable lookup contract.
 
 ## Consequences
 

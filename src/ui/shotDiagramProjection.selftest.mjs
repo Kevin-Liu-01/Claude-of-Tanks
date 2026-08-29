@@ -6,7 +6,7 @@ import {
 import {
   presentationAnchorFor,
   presentationProjectionFor,
-} from '../vehicles/presentationAnchors.generated.js';
+} from '../vehicles/presentationAnchors.generated.ts';
 
 // AMX 56 is the reported case. Its icon is presentation-centred near the
 // hull, while the old readout treated the long forward gun as if it moved the

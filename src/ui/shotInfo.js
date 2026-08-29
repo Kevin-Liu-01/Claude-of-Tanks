@@ -29,7 +29,7 @@ import { getSpec } from '../vehicles/specs.js';
 import {
   presentationAnchorFor,
   presentationProjectionFor,
-} from '../vehicles/presentationAnchors.generated.js';
+} from '../vehicles/presentationAnchors.generated.ts';
 import { getMapConfig } from '../world/maps/index.ts';
 // END SCREEN (killcam_endscreen r1): the full-screen battle report is now the
 // cinematic end screen in src/ui/endScreen.ts — this module keeps ALL the

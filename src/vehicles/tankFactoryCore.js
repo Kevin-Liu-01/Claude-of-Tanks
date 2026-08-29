@@ -17,7 +17,7 @@ import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.t
 import { wheelPatternFor } from './wheelPatterns.ts';
 import { trackPatternFor } from './trackPatterns.ts';
 import { suspensionPatternFor } from './suspensionPatterns.ts';
-import { presentationAnchorFor } from './presentationAnchors.generated.js';
+import { presentationAnchorFor } from './presentationAnchors.generated.ts';
 import {
   SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord, vehicleMarkingSeats,
 } from './vehicleMarkings.ts';

@@ -16,7 +16,7 @@ import { VEHICLE_ERA_META } from './taxonomy.ts';
 import {
   TANK_PRESENTATION_ANCHORS,
   TANK_PRESENTATION_PROJECTIONS,
-} from './presentationAnchors.generated.js';
+} from './presentationAnchors.generated.ts';
 import { isKillcamGhostSurface } from '../game/killcamGhostPolicy.ts';
 import { FIRST_PARTY_LICENSE } from '../authorship.ts';
 
