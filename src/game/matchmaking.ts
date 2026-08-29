@@ -25,7 +25,7 @@ export const isGarageVisibleTankId = (id: unknown): id is string =>
 
 /** Every vehicle exposed by the production catalog is eligible for bot seats. */
 export const isBotTankId = (id: unknown): id is string =>
-  typeof id === 'string' && BOT_TANK_IDS.includes(id);
+  typeof id === 'string' && (BOT_TANK_IDS as readonly unknown[]).includes(id);
 
 /**
  * Curate a pre-shuffled entity pool for a player match.
