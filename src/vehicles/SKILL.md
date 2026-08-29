@@ -146,6 +146,10 @@ family geometry in `profiles/misc.ts`. Its typed builder port owns shared
 running-gear layers, ERA placement, gun-frame geometry, and post-assembly
 articulation; Japanese Type 90 derivatives must explicitly satisfy that donor
 contract.
+Keep the Pershing, Patton, M48, M60, and M60A2 family in
+`profiles/patton.ts`. Preserve its asymmetric cast-loft sections, roof fitting
+inventories, low-profile transformation contract, M60 surface-aligned ERA,
+and explicit invalid-geometry guards behind the narrow Patton builder port.
 Use `specContracts.ts` for boot-light fleet combat rows. Family packs may add
 identity-specific metadata, but must satisfy the shared mobility, gun, armor,
 dimensions, and visual contract before mutating the legacy registry. Variant

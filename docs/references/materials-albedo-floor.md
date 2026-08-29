@@ -281,7 +281,7 @@ One global constant cannot serve both classes → per-spec opt-in.
 
 m47 rows measured at the FIXED patton-r8 tree state (the 16:20 drop
 landed between my first baseline and ship renders; the whole m47 A/B/C
-was REDONE at one tree state, patton.js sha 1ff9efdf guarded across all
+was REDONE at one tree state, then-`patton.js` sha 1ff9efdf guarded across all
 three renders — packet-baseline numbers reproduced exactly at r8 state).
 A SECOND patton drop (+216/−15, sha 11524738, ~16:5x) landed after the
 A/B/C completed; an informational re-measure at that state reproduced

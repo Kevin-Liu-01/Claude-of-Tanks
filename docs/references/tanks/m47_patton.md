@@ -529,7 +529,7 @@ track-clip --exact 0/0; turret-parent 0/0/0. Evaluator RIG PARITY OK x3 runs
 (max yawProxy 1.3° @front, |dCentroid| 0.047 m). Hashes: m47 **70941de0**
 (109 meshes / 103383 verts; was f02ef936 96/100818 — smooth grids + rings +
 proxies); m46 **99a3b0b4 FROZEN** (verified after every batch; its r7 critic
-ran concurrently — patton.js m46 sections byte-identical, all shared-code
+ran concurrently — then-`patton.js` m46 sections byte-identical, all shared-code
 edits opt-in with m46 defaults); graduates m60a1 **81e69e34** / m60a3
 **efcde5c4** exact. npm test green (166 + track-geometry). MID-ROUND
 RE-BASELINE: the materials lane landed bakeDirtDeckEq ON for m47/m46

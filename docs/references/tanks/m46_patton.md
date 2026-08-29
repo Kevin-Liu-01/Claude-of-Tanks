@@ -465,7 +465,7 @@ their r5 coordinates (toptilt 4.193 m² projection triangle, close-roof
 track-geometry). Hashes: m46 **99a3b0b4 → 8cf23500** (99 meshes / 89 106
 verts — smooth grid + 11 texture meshes + 2 curtain segments); m47
 **70941de0 FROZEN** (verified before/mid/after — its graduation critic ran
-concurrently, patton.js m47 sections untouched); m26 **2621292c** / m45
+concurrently, then-`patton.js` m47 sections untouched); m26 **2621292c** / m45
 **e103a2dc** / m60a1 **81e69e34** / m60a3 **efcde5c4** byte-identical (the
 t26Cast smooth branch is opt-in, default = the slab loft). Shots:
 shots/patton-r9/ (baseline/ = R1 re-baseline pairs, c1/ = delivered state;

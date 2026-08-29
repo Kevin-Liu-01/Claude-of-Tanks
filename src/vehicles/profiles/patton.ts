@@ -48,6 +48,668 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.js';
 import { tagVehicleMaterial } from '../appearanceAudit.ts';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+
+type Vec2Tuple = readonly [number, number];
+type Vec3Tuple = readonly [number, number, number];
+type GeometryScale = number | readonly number[];
+type ProfileCurve = readonly Vec2Tuple[];
+type ProfileOwner = 'hull' | 'turret';
+type Disposable = { dispose(): void };
+type HeightMap = (value: number) => number;
+
+interface GeometrySection {
+  readonly z: number;
+  readonly hw: number;
+  readonly top: number;
+  readonly bot: number;
+  readonly hwL?: number;
+}
+
+interface LoftOptions {
+  readonly wall?: number;
+  readonly mid?: number;
+  readonly midW?: number;
+  readonly crownW?: number;
+  readonly crownX?: number;
+  readonly shiftX?: number;
+  readonly oy?: number;
+  readonly oz?: number;
+  readonly smooth?: boolean;
+}
+
+interface RoadWheelLayerOptions {
+  readonly outset?: number;
+  readonly yOffset?: number;
+  readonly name?: string;
+  readonly appearanceRole?: string;
+}
+
+interface EraPlacement {
+  (
+    x: number,
+    y: number,
+    z: number,
+    rotationX?: number,
+    rotationY?: number,
+    rotationZ?: number,
+    scaleX?: number,
+    scaleY?: number,
+    scaleZ?: number,
+  ): void;
+}
+
+interface PattonMaterialSet extends Record<string, THREE.Material> {
+  readonly canvasCloth: THREE.MeshStandardMaterial;
+  readonly glass: THREE.MeshStandardMaterial;
+  readonly hull: THREE.MeshStandardMaterial;
+  readonly rubber: THREE.MeshStandardMaterial;
+  readonly shadow: THREE.MeshStandardMaterial;
+  readonly spareTrack: THREE.MeshStandardMaterial;
+  readonly trackL: THREE.MeshStandardMaterial;
+  readonly trackR: THREE.MeshStandardMaterial;
+  readonly wheels: THREE.MeshStandardMaterial;
+}
+
+interface PattonBuilderPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly mats: PattonMaterialSet;
+  readonly disposables: Disposable[];
+  readonly rng: () => number;
+  readonly q?: boolean;
+  readonly gear: {
+    addRoadWheelLayer(
+      geometry: THREE.BufferGeometry,
+      material: THREE.Material,
+      options?: RoadWheelLayerOptions,
+    ): void;
+  };
+  readonly spec: {
+    readonly armor: { readonly turretPivot: Vec3Tuple };
+    readonly visual: { readonly number?: string };
+  };
+  readonly geometryReceipt?: boolean;
+  muzzleZ: number;
+  topY: number;
+  add(
+    slot: string,
+    geometry: unknown,
+    x?: number,
+    y?: number,
+    z?: number,
+    rotationX?: number,
+    rotationY?: number,
+    rotationZ?: number,
+    scale?: GeometryScale,
+  ): unknown;
+  addEquipment(
+    owner: ProfileOwner,
+    geometry: unknown,
+    ...transform: Array<number | readonly number[]>
+  ): unknown;
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  addModuleVisual(module: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
+  addMudguard(label: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
+  decal(
+    owner: ProfileOwner,
+    kind: string,
+    value: string | null,
+    scale: number,
+    position: readonly number[],
+    ...rotation: number[]
+  ): unknown;
+  eraCluster(key: string, build: (place: EraPlacement) => void, turretOwned?: boolean): void;
+}
+
+interface TrackWheel {
+  readonly z: number;
+  readonly y: number;
+  readonly r: number;
+  readonly support?: boolean;
+}
+
+interface RunningGearConfig {
+  readonly wheelR: number;
+  readonly wheelY?: number;
+  readonly span: Vec2Tuple;
+  readonly idler: TrackWheel;
+  readonly sprocket: TrackWheel;
+  readonly tension?: TrackWheel;
+  readonly rollerN: number;
+  readonly rollerY: number;
+  readonly sprocketTeeth?: boolean;
+  readonly contactZF?: number;
+  readonly contactZR?: number;
+  readonly botY?: number;
+  readonly endRingSpan?: number;
+  readonly shoeRadialScale?: number;
+  readonly shoeWidthScale?: number;
+}
+
+interface DeckCorridor {
+  readonly z0: number;
+  readonly z1: number;
+  readonly x: number;
+  readonly floor: number;
+}
+
+interface PattonHullConfig {
+  readonly W: number;
+  readonly trackW: number;
+  readonly sponsonY: number;
+  readonly deck: ProfileCurve;
+  readonly bellyFrontZ: number;
+  readonly bellyRearZ: number;
+  readonly gear: RunningGearConfig;
+  readonly bandHW?: number;
+  readonly bellyHW?: number;
+  readonly bellyY?: number;
+  readonly darkGearFit?: boolean;
+  readonly deckCorridor?: DeckCorridor;
+  readonly duckbills?: { readonly z: number };
+  readonly fenderHW?: number;
+  readonly fenderY?: readonly [number, number, number];
+  readonly flapF?: readonly [number, number, number];
+  readonly flapR?: readonly [number, number, number];
+  readonly flatDeck?: boolean;
+  readonly glacisWingDrop?: number;
+  readonly glacisWingY0?: number;
+  readonly glacisWingZ0?: number;
+  readonly mufflers?: {
+    readonly z0: number;
+    readonly z1: number;
+    readonly top: number;
+    readonly x?: number;
+    readonly straps?: readonly number[];
+    readonly legY0?: number;
+  };
+  readonly narrowTail?: { readonly hw: number; readonly z0: number; readonly z1: number; readonly top1: number; readonly botY: number };
+  readonly noseW?: number;
+  readonly runningGearFace?: boolean;
+  readonly runningGearFit?: boolean;
+  readonly sponsonAftY?: number;
+  readonly sponsonAftZ?: number;
+  readonly sponsonBandY?: number;
+  readonly tailBotY?: number;
+  readonly tailTaper?: { readonly z0: number; readonly z1?: number; readonly hw1: number };
+  readonly toeBot?: number;
+  readonly tongues?: readonly (readonly [number, number, number])[];
+  readonly trackInset?: number;
+  readonly trackBandHex?: number;
+  readonly trackBandRoughness?: number;
+  readonly trackBandEnvMapIntensity?: number;
+}
+
+interface BuiltHull {
+  readonly hw: number;
+  readonly bhw: number;
+  readonly xc: number;
+  readonly iw: number;
+  readonly spons: number;
+  readonly deckAt: HeightMap;
+  readonly toeZ: number;
+  readonly tailZ: number;
+  readonly kneeZ: number;
+  readonly kneeY: number;
+}
+
+interface HullFurniture {
+  readonly hatchZ: number;
+  readonly lights: { readonly x: number; readonly y: number; readonly z: number; readonly rx: number };
+  readonly shackleY: number;
+  readonly shackleZ: number;
+  readonly grille: { readonly z0: number; readonly z1: number; readonly y: number; readonly rx?: number; readonly x?: number; readonly w?: number };
+  readonly hatchX?: number;
+  readonly hatchX0?: number;
+  readonly hatchFlush?: boolean;
+  readonly singleHatch?: boolean;
+  readonly bowMG?: readonly [number, number, number, number];
+  readonly bowMGHeavy?: boolean;
+  readonly siren?: Vec3Tuple;
+  readonly noRearEyes?: boolean;
+  readonly caps?: Vec2Tuple;
+  readonly rearGrilleW?: number;
+  readonly rearGrilleY?: number;
+  readonly rearGrilleZ?: number;
+}
+
+interface M2StationConfig {
+  x: number;
+  z: number;
+  baseY: number;
+  topY: number;
+  readonly tipZ: number;
+  readonly rl?: number;
+  readonly cans?: readonly number[];
+  readonly w?: number;
+  readonly tone?: string;
+  readonly paleMat?: THREE.Material;
+  readonly grammar?: boolean;
+  readonly coverL?: number;
+  readonly coverZ?: number;
+  readonly jacketDy?: number;
+  canY?: number;
+  readonly elev?: number;
+  readonly shield?: boolean;
+  readonly seed?: number;
+  readonly scale?: number;
+}
+
+interface BustleRackConfig {
+  readonly z0: number;
+  readonly z1: number;
+  readonly halfW: number;
+  floorY: number;
+  railY: number;
+  readonly zC?: number;
+  readonly railW?: number;
+  sideFloorY?: number;
+  loadTop?: number;
+  readonly loadBucket?: string;
+}
+
+interface PedestalConfig {
+  readonly x: number;
+  readonly z: number;
+  baseY: number;
+  top: number;
+  readonly zw: number;
+  readonly w?: number;
+  readonly capW?: number;
+  readonly tone?: string;
+  readonly paleMat?: THREE.Material;
+}
+
+interface BasketConfig {
+  x?: number;
+  y0: number;
+  y1: number;
+  z0: number;
+  z1: number;
+  w: number;
+}
+
+interface CheekPodConfig {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+  z0: number;
+  z1: number;
+  roll?: Vec2Tuple[];
+  chamfer?: number[];
+}
+
+interface CastingWedge {
+  x0: number;
+  x1: number;
+  y0: number;
+  z0: number;
+  z1: number;
+  top0: number;
+  top1: number;
+}
+
+interface CupolaConfig {
+  x: number;
+  z: number;
+  base: number;
+  r: number;
+  h: number;
+  ring?: {
+    r: number;
+    x?: number;
+    z?: number;
+    h: number;
+    top: number;
+    lidHalfW: number;
+    lidH: number;
+    lidD: number;
+  };
+}
+
+interface TurretBump {
+  x: number;
+  y: number;
+  z: number;
+  r: number;
+  len: number;
+}
+
+interface WhipConfig {
+  x: number;
+  y: number;
+  z: number;
+  r?: number;
+  h: number;
+}
+
+interface T26TurretConfig {
+  ringY: number;
+  ringZ: number;
+  sections: GeometrySection[];
+  rack?: BustleRackConfig;
+  cupola: CupolaConfig;
+  loader: Vec3Object;
+  lowProfile?: { readonly ringY: number; readonly scale: number };
+  loft?: LoftOptions;
+  basket?: BasketConfig;
+  cheekPod?: CheekPodConfig;
+  cheekPods?: CheekPodConfig[];
+  zWedges?: CastingWedge[];
+  rollWedges?: CastingWedge[];
+  antenna?: Vec3Object;
+  vent?: Vec3Object;
+  mg?: M2StationConfig | null;
+  pedestal?: PedestalConfig;
+  standardAmericanM2?: boolean;
+  stowMG?: [number, number, number];
+  decalSec?: number;
+  rackLoad?: boolean;
+  tailTarp?: boolean;
+  rackFill?: boolean;
+  mountTruss?: boolean;
+  sideLinks?: { readonly links?: number; readonly width?: number; readonly x: number; readonly y: number; readonly z: number };
+  stowBump?: TurretBump;
+  cupolaCollar?: { readonly r: number; readonly h: number; readonly x: number; readonly top: number; readonly z: number };
+  whip?: WhipConfig;
+  bustleSecs?: BustleSection[];
+  bustleSmooth?: SmoothBustleOptions;
+  blisterX?: number;
+  blisterY?: number;
+  blisterZ?: number;
+  noseCasting?: boolean;
+  tailLip?: [number, number, number];
+  m47?: boolean;
+}
+
+interface M47TurretConfig extends T26TurretConfig {
+  bustleSecs: BustleSection[];
+  mg: M2StationConfig;
+  blisterX: number;
+  blisterY: number;
+  blisterZ: number;
+}
+
+interface Vec3Object {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface BustleSection {
+  z: number;
+  xL: number;
+  xR: number;
+  top: number;
+  floor: number;
+}
+
+interface BustleWrapRing {
+  readonly z: number;
+  readonly b?: number;
+}
+
+interface SmoothBustleOptions {
+  readonly bulge?: number;
+  readonly wrapRings?: readonly BustleWrapRing[];
+  readonly tapers?: readonly Vec2Tuple[];
+  tailFloorEase?: Vec2Tuple[];
+  readonly tailBulge?: { readonly z0: number; readonly z1: number; readonly b: number };
+}
+
+interface ShieldConfig {
+  w: number;
+  h: number;
+  dy: number;
+  readonly zF: number;
+  readonly d?: number;
+  chinRise?: number;
+  rotorR?: number;
+  rotorW?: number;
+  wings?: { w: number; h: number; d: number; zF: number; dy?: number };
+  readonly lip?: { readonly w: number; y0: number; y1: number; readonly z0: number; readonly z1: number };
+}
+
+interface PattonGunConfig {
+  readonly rootZ: number;
+  axisY: number;
+  readonly muzzle: number;
+  readonly r: number;
+  readonly device: string;
+  readonly shield: ShieldConfig;
+  readonly brakeBars?: boolean;
+  readonly evacZ0?: number;
+  readonly evacZ1?: number;
+  readonly evacL?: number;
+  readonly drumL?: number;
+  readonly drumR?: number;
+  readonly drumSy?: number;
+  readonly baffleSlot?: boolean;
+  readonly tubeZ0?: number;
+  readonly rings?: readonly (readonly [number, number, number])[];
+}
+
+interface LowProfileOptions {
+  readonly scale?: number;
+  readonly widthScale?: number;
+  readonly podWidthScale?: number;
+  readonly mantletScale?: number;
+  readonly mantletWidthScale?: number;
+  readonly minMantletHeight?: number;
+  readonly profile?: string;
+}
+
+type HeightKey =
+  | 'base' | 'baseY' | 'bot' | 'canY' | 'floor' | 'floorY' | 'loadTop'
+  | 'railY' | 'sideFloorY' | 'top' | 'top0' | 'top1' | 'topY' | 'y' | 'y0' | 'y1';
+type HeightMutable = Partial<Record<HeightKey, number>>;
+
+interface TailStackBlock { hw: number; y0: number; y1: number; z0: number; z1: number }
+interface PintleHook { w: number; h: number; y: number; z0: number; z1: number }
+interface FlatFenderBlock { x0: number; x1: number; z0: number; z1: number; y: number }
+interface SlopedFenderBlock { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number }
+type FenderBlock = FlatFenderBlock | SlopedFenderBlock;
+interface BoundaryBlock { x0: number; x1: number; y0: number; y1: number; z0: number; z1: number }
+interface DeckShoulder { x0: number; x1: number; drop: number; zMin: number; zMax: number; skirt?: number }
+interface DeckRail { w: number; h: number; x: number; top: number; z0: number; z1: number }
+interface DeckCap { hw: number; h: number; top: number; z0: number; z1: number }
+interface TailTray { x0: number; x1: number; z0: number; z1: number }
+interface BowCasting {
+  z0: number; z1: number; y0: number; y1: number; ribYs: number[]; hw: number; toeZ: number;
+  seamY?: number; clevisY?: number;
+}
+interface RearLouvres { hw0: number; backH: number; backY: number; z: number; rows: Vec2Tuple[] }
+interface DeckSlats {
+  z0: number; z1: number; fieldTop: number; fieldBot: number; crownTop: number;
+  x0: number; x1: number; crests: number[]; dashes: Vec2Tuple[]; skips?: Vec2Tuple[]; hex?: number;
+}
+interface RampBank { x0: number; x1: number; zs: number[] }
+interface RampBanks { readonly hex?: number; readonly banks: RampBank[] }
+interface TowCableConfig { readonly pts: Vec3Tuple[]; readonly r?: number }
+interface BowEye { readonly x: number; readonly y0: number; readonly y1: number; readonly z0: number; readonly z1: number; readonly w?: number; readonly pinDz?: number }
+interface HoodBlock { readonly w: number; readonly top: number; readonly x: number; readonly z0: number; readonly z1: number }
+interface GearShadeConfig {
+  readonly covers: number[][];
+  readonly curtains: number[][];
+  readonly backers: number[][];
+  readonly endRings?: Array<readonly [number, number, number, number, string | null, number?]> | null;
+  readonly rimBoost?: boolean;
+}
+
+interface M60Section extends GeometrySection {
+  readonly hwR?: number;
+}
+
+type CrossProfile = readonly (readonly [number, number])[];
+
+interface EraCell {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly rx: number;
+  readonly ry: number;
+  readonly rz: number;
+  readonly nx: number;
+  readonly ny: number;
+  readonly nz: number;
+  readonly w: number;
+  readonly h: number;
+  readonly d: number;
+}
+
+type Side = -1 | 1;
+
+interface M60BuildConfig {
+  readonly hull: PattonHullConfig;
+  readonly fit: HullFurniture;
+  readonly sections: readonly M60Section[];
+  readonly bustle: readonly M60Section[];
+  readonly gunLen: number;
+  readonly searchlight?: boolean | number;
+  readonly sleeve?: boolean;
+  readonly a3?: boolean;
+}
+
+interface M60A2BuildConfig {
+  readonly hull: PattonHullConfig;
+  readonly fit: HullFurniture;
+  readonly sections: readonly GeometrySection[];
+  readonly muzzle: number;
+}
+
+interface M48RoofWeapon {
+  readonly x: number;
+  readonly z: number;
+  readonly baseY: number;
+  readonly scale: number;
+  readonly elev?: number;
+}
+
+interface M48RadioStation extends Vec3Object {
+  readonly h: number;
+}
+
+interface M48Searchlight extends Vec3Object {
+  readonly r: number;
+  readonly len: number;
+  readonly rx: number;
+  readonly ry: number;
+}
+
+interface M48TransformPart extends Vec3Object {
+  readonly rx?: number;
+  readonly ry?: number;
+  readonly rz?: number;
+}
+
+interface M48RearPack extends M48TransformPart {
+  readonly s: Vec3Tuple;
+}
+
+interface M48RearRack {
+  readonly x: number;
+  readonly z: number;
+  readonly w: number;
+  readonly y0: number;
+  readonly y1: number;
+  readonly railsY: readonly number[];
+  readonly postsX: readonly number[];
+  readonly strapsX: readonly number[];
+}
+
+interface M48BoxPart extends M48TransformPart {
+  readonly w: number;
+  readonly h: number;
+  readonly d: number;
+}
+
+interface M48ServiceFixture extends M48BoxPart {
+  readonly bucket?: string;
+  readonly face?: 'front' | 'top';
+}
+
+interface M48TurretConfig extends Omit<T26TurretConfig, 'ringY' | 'ringZ'> {
+  readonly fittingMgs?: readonly M48RoofWeapon[];
+  readonly radioStations?: readonly M48RadioStation[];
+  readonly searchlight?: M48Searchlight;
+  readonly rearPacks?: readonly M48RearPack[];
+  readonly rearRack?: M48RearRack;
+  readonly sideCans?: readonly M48BoxPart[];
+  readonly serviceFixtures?: readonly M48ServiceFixture[];
+  readonly sideRails?: readonly M48BoxPart[];
+}
+
+interface M48BuildConfig {
+  readonly hull: PattonHullConfig;
+  readonly fit: HullFurniture;
+  readonly ring: Vec2Tuple;
+  readonly turretSeatLiftM?: number;
+  readonly topWorld: number;
+  readonly turret: M48TurretConfig;
+  readonly gun: {
+    readonly axisY: number;
+    readonly rootZ: number;
+    readonly len: number;
+  };
+}
+
+interface PershingBuildConfig {
+  hull: PattonHullConfig;
+  fit: HullFurniture;
+  turret: T26TurretConfig;
+  gun: PattonGunConfig;
+  topWorld: number;
+  ring: Vec2Tuple;
+  lowTurret?: LowProfileOptions;
+  tailStack?: TailStackBlock[];
+  pintleHook?: PintleHook;
+  pintleKit?: boolean;
+  bowFenders?: FenderBlock;
+  bowShelf?: FlatFenderBlock;
+  bowTabs?: BoundaryBlock[];
+  bowGuards?: number[][];
+  bumpStops?: number[][];
+  fenderRamps?: BoundaryBlock[];
+  deckShoulder?: DeckShoulder;
+  deckRails?: DeckRail[];
+  deckCaps?: DeckCap[];
+  tailTray?: TailTray;
+  bowCasting?: BowCasting;
+  rearLouvres?: RearLouvres;
+  deckSlats?: DeckSlats;
+  rampBanks?: RampBanks;
+  fenderBumps?: Vec2Tuple[];
+  deckKit?: boolean;
+  hoodScopes?: boolean;
+  hatchHoods?: HoodBlock[];
+  flapWings?: Array<readonly [number, number, number]>;
+  gearShade?: true | GearShadeConfig;
+  gearTone?: boolean;
+  wheelMul?: Vec3Tuple;
+  wheelEnv?: number;
+  towCable?: TowCableConfig;
+  bowEyes?: BowEye[];
+  fenderHW?: number;
+  fenderSkirt?: number;
+  fenderSkirtB?: string;
+  fenderSkirtSlim?: Vec2Tuple;
+  americanModernization?: string;
+}
+
+const geometryXform = KIT.xform as (
+  geometry: THREE.BufferGeometry,
+  x?: number,
+  y?: number,
+  z?: number,
+  rotationX?: number,
+  rotationY?: number,
+  rotationZ?: number,
+  scale?: GeometryScale,
+) => THREE.BufferGeometry;
 
 // The M60 family uses exposed manganese-steel tracks. Keep the continuous
 // band neutral and matte so woodland camouflage and the garage environment
@@ -71,7 +733,7 @@ export const M46_M47_TRACK_FINISH = Object.freeze({
 // ---------------------------------------------------------------------------
 // Piecewise deck lookup (z descending front->rear).
 // ---------------------------------------------------------------------------
-const deckLine = (deck) => (z) => {
+const deckLine = (deck: ProfileCurve): HeightMap => (z: number): number => {
   if (z >= deck[0][0]) return deck[0][1];
   for (let i = 0; i < deck.length - 1; i++) {
     const [z0, y0] = deck[i], [z1, y1] = deck[i + 1];
@@ -88,7 +750,12 @@ const deckLine = (deck) => (z) => {
 // shifts the roof band centreline sideways (fraction of hw) for castings
 // whose roof ridge is offset (M60: ridge left of centre).
 // ---------------------------------------------------------------------------
-function loftBody(P, bucket, sections, opts = {}) {
+function loftBody(
+  P: PattonBuilderPort,
+  bucket: string,
+  sections: readonly GeometrySection[],
+  opts: LoftOptions = {},
+): void {
   const slab = orientedSlab;                                  // §C.1 winding guard
   const wallT = opts.wall ?? 0.55;     // top of the vertical cheek band
   const midT = opts.mid ?? 0.84;      // top of the shoulder band
@@ -97,18 +764,23 @@ function loftBody(P, bucket, sections, opts = {}) {
   const crownX = opts.crownX ?? 0;     // roof band centre offset fraction
   const sx = opts.shiftX ?? 0;         // whole-section lateral offset (m)
   const oy = opts.oy ?? 0, oz = opts.oz ?? 0;
-  const L = (s, f) => s.bot + (s.top - s.bot) * f;
+  const L = (s: GeometrySection, f: number): number => s.bot + (s.top - s.bot) * f;
   // opt-in asymmetric plan: s.hwL narrows the LEFT wall/shoulder only (m60a2
   // Starship nose rake). Absent -> the exact symmetric expressions below
   // (byte-identical for every section without hwL).
-  const hl = (s) => s.hwL ?? s.hw;
-  const crownL = (s) => (s.hwL != null
+  const hl = (s: GeometrySection): number => s.hwL ?? s.hw;
+  const crownL = (s: GeometrySection): number => (s.hwL != null
     ? Math.max((crownX - crownW) * s.hw, -midW * s.hwL)
     : (crownX - crownW) * s.hw);
   for (let i = 0; i < sections.length - 1; i++) {
     const a = sections[i], b = sections[i + 1];
     const az = a.z - oz, bz = b.z - oz;
-    const quad = (xA0, xA1, yA, xB0, xB1, yB, x2A0, x2A1, y2A, x2B0, x2B1, y2B) => P.add(bucket, slab(
+    const quad = (
+      xA0: number, xA1: number, yA: number,
+      xB0: number, xB1: number, yB: number,
+      x2A0: number, x2A1: number, y2A: number,
+      x2B0: number, x2B1: number, y2B: number,
+    ): unknown => P.add(bucket, slab(
       [xA0 + sx, yA - oy, az], [xA1 + sx, yA - oy, az], [xB1 + sx, yB - oy, bz], [xB0 + sx, yB - oy, bz],
       [x2A0 + sx, y2A - oy, az], [x2A1 + sx, y2A - oy, az], [x2B1 + sx, y2B - oy, bz], [x2B0 + sx, y2B - oy, bz]));
     // wall band (vertical cheeks)
@@ -135,7 +807,7 @@ function loftBody(P, bucket, sections, opts = {}) {
 //      gear: { wheelR, wheelY?, span:[zF,zR], idler, sprocket, tension?,
 //              rollerN, rollerY } }
 // ---------------------------------------------------------------------------
-function curveHull(P, H) {
+function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
   const { box, cylX, cylZ, torus, buildRunningGear } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const hw = H.W / 2 - 0.008;          // fender edge (widest point)
@@ -179,7 +851,7 @@ function curveHull(P, H) {
     // 1.82 deck; my nudged deck painted 1.828 -> topPct 8-10 on two
     // slices). Default byte-identical (the nudge stands for every sibling).
     if (Math.abs(y1 - y0) < 0.004) y1 = H.flatDeck ? y0 : y0 + 0.006;
-    const sb = (z) => (H.sponsonAftY != null && z <= H.sponsonAftZ
+    const sb = (z: number): number => (H.sponsonAftY != null && H.sponsonAftZ != null && z <= H.sponsonAftZ
       ? H.sponsonAftY
       : (H.sponsonBandY ?? spons - 0.03));
     const C = H.deckCorridor;
@@ -389,7 +1061,10 @@ function curveHull(P, H) {
   for (const rl of rollers) for (const side of [-1, 1]) {
     P.add(rollerFitB, box(0.05, Math.max(0.05, spons - rl.y - 0.02), 0.13), side * xc, (spons + rl.y) / 2, rl.z);
   }
-  for (const [fz, fy0, fy1] of [H.flapF, H.flapR].filter(Boolean)) {
+  const flaps = [H.flapF, H.flapR].filter(
+    (flap): flap is readonly [number, number, number] => flap !== undefined,
+  );
+  for (const [fz, fy0, fy1] of flaps) {
     for (const side of [-1, 1]) {
       P.addMudguard(`patton-${fz < 0 ? 'rear' : 'front'}-flap-${side}`,
         'hullRubber', box(H.trackW * 0.92, fy1 - fy0, 0.03),
@@ -408,7 +1083,7 @@ function curveHull(P, H) {
 // F: { hatchX?, hatchZ, bowMG?, lights:{x,y,z,rx}, siren?,
 //      shackleZ, shackleY, grille:{z0,z1,y,rx?,x?,w?}, caps?, rearGrilleY? }
 // ---------------------------------------------------------------------------
-function usKit(P, hull, F) {
+function usKit(P: PattonBuilderPort, hull: BuiltHull, F: HullFurniture): void {
   const { box, cylY, cylZ, sph, torus, headlight, liftEye } = KIT;
   const { bhw, deckAt, tailZ } = hull;
   // driver (+ assistant) hatch discs — FLUSH (v6: the reference decks read
@@ -459,7 +1134,7 @@ function usKit(P, hull, F) {
   const gr = F.grille;
   const gm = (gr.z0 + gr.z1) / 2, gd = gr.z0 - gr.z1;
   const gx0 = gr.x ?? 0.55, gw = gr.w ?? 0.92;
-  const gy = (z, lift) => gr.y + lift + (gr.rx ? (z - gm) * gr.rx : 0);
+  const gy = (z: number, lift: number): number => gr.y + lift + (gr.rx ? (z - gm) * gr.rx : 0);
   for (const side of [-1, 1]) {
     const gx = side * gx0;
     P.add('hullDark', box(gw, 0.012, gd), gx, gy(gm, 0.006), gm, gr.rx || 0, 0, 0);
@@ -490,7 +1165,12 @@ function usKit(P, hull, F) {
 // w scales the receiver/cradle plan width (dims-driven tall masts on m46/m47
 // keep the elevated block 1-2 gate columns wide in the front view).
 // ---------------------------------------------------------------------------
-function m2Station(P, M, yl, zl) {
+function m2Station(
+  P: PattonBuilderPort,
+  M: M2StationConfig,
+  yl: HeightMap,
+  zl: HeightMap,
+): void {
   const { box, cylY, cylZ, ammoCan } = KIT;
   const axis = M.topY - 0.10;
   const rl = M.rl ?? 0.56;
@@ -510,7 +1190,7 @@ function m2Station(P, M, yl, zl) {
   // When provided, the upper works emit as direct meshes on the caller's
   // pale-fitting material; geometry and transforms are identical to the
   // bucket path (xform semantics replicated via mesh position+rotation).
-  const emUp = (geo, x, y, z, rx = 0) => {
+  const emUp = (geo: THREE.BufferGeometry, x: number, y: number, z: number, rx = 0): void => {
     if (two && M.paleMat) {
       const mesh = new THREE.Mesh(geo, M.paleMat);
       mesh.position.set(x, y, z);
@@ -582,7 +1262,13 @@ function m2Station(P, M, yl, zl) {
   }
 }
 
-function standardizedAmericanM2Station(P, M, yl, zl, variant = 'open') {
+function standardizedAmericanM2Station(
+  P: PattonBuilderPort,
+  M: M2StationConfig,
+  yl: HeightMap,
+  zl: HeightMap,
+  variant = 'open',
+): THREE.Group {
   const barrelLength = Math.max(0.30, M.tipZ - M.z - 0.779);
   const mg = FITTINGS.americanM2({
     mats: P.mats,
@@ -604,7 +1290,13 @@ function standardizedAmericanM2Station(P, M, yl, zl, variant = 'open') {
 // DEEP at the side rails but SHALLOW at the centre (the load stops ~0.25 m
 // short of the rail tips): centre floor/loads end at zC, side rails run to
 // z1. R: { z0, z1, zC?, halfW, floorY, railY, loadTop? }
-function bustleRack(P, R, yl, zl, rng) {
+function bustleRack(
+  P: PattonBuilderPort,
+  R: BustleRackConfig,
+  yl: HeightMap,
+  zl: HeightMap,
+  rng: () => number,
+): void {
   const { box, tarpRoll, ammoCan } = KIT;
   const zC = R.zC ?? (R.z1 + 0.24);
   const dC = R.z0 - zC, d = R.z0 - R.z1;
@@ -645,7 +1337,12 @@ function bustleRack(P, R, yl, zl, rng) {
 // "height over MG". Kept narrow (<= 0.16 m across, ~0.48 m along) so the
 // mast owns the dims p95 roof read while its curve cost stays inside the
 // certified columns (see the tank packets).
-function aaPedestal(P, A, yl, zl) {
+function aaPedestal(
+  P: PattonBuilderPort,
+  A: PedestalConfig,
+  yl: HeightMap,
+  zl: HeightMap,
+): void {
   const { box, cylY } = KIT;
   const w = A.w ?? 0.15;
   // r4 B5 (m47): A.tone 'two-tone' paints the cradle/cap in the pale
@@ -658,7 +1355,7 @@ function aaPedestal(P, A, yl, zl) {
   for (const [geo, gy] of [
     [box(w, 0.10, A.zw), A.top - 0.11],
     [box(A.capW ?? w * 0.66, 0.06, A.zw * 0.55), A.top - 0.03],
-  ]) {
+  ] satisfies ReadonlyArray<readonly [THREE.BufferGeometry, number]>) {
     if (A.tone === 'two-tone' && A.paleMat) {
       const mesh = new THREE.Mesh(geo, A.paleMat);
       mesh.position.set(A.x, yl(gy), zl(A.z));
@@ -674,10 +1371,12 @@ function aaPedestal(P, A, yl, zl) {
 // ---------------------------------------------------------------------------
 // T26-family cast turret (m26/m45/m46): lofted from the measured side band.
 // ---------------------------------------------------------------------------
-function t26Cast(P, T) {
+function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
   const { box, cylY, sph, liftEye, cupola, tarpRoll } = KIT;
-  const yl = (y) => y - T.ringY, zl = (z) => z - T.ringZ;
-  const ly = (y) => yl(originalProfileY(T, y));
+  if (!T.rack) throw new Error('T26 turret configuration requires a bustle rack');
+  const yl = (y: number): number => y - T.ringY;
+  const zl = (z: number): number => z - T.ringZ;
+  const ly = (y: number): number => yl(originalProfileY(T, y));
   const secs = T.sections;
   // r7 B1 (m46, adopting the m47 r4 B5 lane): shared pale-fitting material
   // for the sky-backed M2/pedestal cluster — the shared 'detail' bucket
@@ -685,7 +1384,7 @@ function t26Cast(P, T) {
   // 73-80 class (m46 r5 verdict: rod med 57.0 vs ref 73.3). leo r9 mgPale
   // recipe, per-build clone + ambient rehook (merkava gearFloor law).
   // Default OFF — m26/m45 stay byte-identical.
-  let mgPale = null;
+  let mgPale: THREE.MeshStandardMaterial | null = null;
   if ((T.mg && T.mg.tone === 'two-tone') || (T.pedestal && T.pedestal.tone === 'two-tone')) {
     mgPale = P.mats.shadow.clone();
     mgPale.color.setHex(0x424635);
@@ -696,7 +1395,8 @@ function t26Cast(P, T) {
     mgPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     P.disposables.push(mgPale);
   }
-  const paleMesh = (geo, x, y, z) => {
+  const paleMesh = (geo: THREE.BufferGeometry, x: number, y: number, z: number): void => {
+    if (!mgPale) return;
     const mesh = new THREE.Mesh(geo, mgPale);
     mesh.position.set(x, y, z);
     mesh.receiveShadow = true;
@@ -762,7 +1462,7 @@ function t26Cast(P, T) {
     // junction + strap webbing swapped near-black (geometry identical).
     // Per-build canvasCloth clones + ambient rehook (clone drops
     // onBeforeCompile — merkava gearFloor law).
-    const mkCloth = (hex) => {
+    const mkCloth = (hex: number): THREE.MeshStandardMaterial => {
       const m = P.mats.canvasCloth.clone();
       m.color.setHex(hex);
       m.onBeforeCompile = vehicleAmbientFloorHook;
@@ -773,7 +1473,15 @@ function t26Cast(P, T) {
     const clothPale = mkCloth(0x565a41);   // bleached top canvas
     const clothDeep = mkCloth(0x313423);   // shadowed folds / mottle
     const webDark = mkCloth(0x211f19);     // strap webbing + junction shadow
-    const texMesh = (mat, geo, x, y, z, rx = 0, ry = 0) => {
+    const texMesh = (
+      mat: THREE.Material,
+      geo: THREE.BufferGeometry,
+      x: number,
+      y: number,
+      z: number,
+      rx = 0,
+      ry = 0,
+    ): void => {
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(x, yl(y), zl(z));
       if (rx || ry) mesh.rotation.set(rx, ry, 0);
@@ -811,7 +1519,8 @@ function t26Cast(P, T) {
     tarpRoll(P, 'turretDark', T.stowBump.x, yl(T.stowBump.y), zl(T.stowBump.z), T.stowBump.len, T.stowBump.r, true, P.q ? 12 : 8);
   }
   // commander cupola (vehicle right = world -x) + loader hatch (left)
-  if (T.cupola.ring) {
+  const splitCupolaRing = T.cupola.ring;
+  if (splitCupolaRing) {
     // GRADUATION ORDER 2 (m45 §5.47): the print's ~0.63 m split-hatch RING
     // class instead of the r-0.076 knob. Hand-built (KIT.cupola's scaled
     // lid disc would poke a side sliver past the pod-cover window at big
@@ -823,21 +1532,21 @@ function t26Cast(P, T) {
     // absent — m26/m46 keep the knob byte-identical.
     const C = T.cupola;
     const cs = P.q ? 26 : 12;
-    const rx = C.ring.x ?? C.x, rz = C.ring.z ?? C.z;
-    P.add('turret', cylY(C.ring.r, C.ring.r * 1.02, C.ring.h, cs), rx, yl(C.ring.top - C.ring.h / 2), zl(rz));
+    const rx = splitCupolaRing.x ?? C.x, rz = splitCupolaRing.z ?? C.z;
+    P.add('turret', cylY(splitCupolaRing.r, splitCupolaRing.r * 1.02, splitCupolaRing.h, cs), rx, yl(splitCupolaRing.top - splitCupolaRing.h / 2), zl(rz));
     for (const side of [-1, 1]) {
       // split-lid halves about the HINGE line C.x (the ordered station);
       // outer edge ref-pinned; a 0.02 hinge gap at the mast line
-      P.add('turret', box(C.ring.lidHalfW, C.ring.lidH, C.ring.lidD),
-        C.x + side * (C.ring.lidHalfW / 2 + 0.01), yl(C.ring.top + C.ring.lidH / 2), zl(C.z));
+      P.add('turret', box(splitCupolaRing.lidHalfW, splitCupolaRing.lidH, splitCupolaRing.lidD),
+        C.x + side * (splitCupolaRing.lidHalfW / 2 + 0.01), yl(splitCupolaRing.top + splitCupolaRing.lidH / 2), zl(C.z));
     }
-    P.add('turretDark', box(0.02, C.ring.lidH + 0.006, C.ring.lidD),
-      C.x, yl(C.ring.top + (C.ring.lidH + 0.006) / 2), zl(C.z));
+    P.add('turretDark', box(0.02, splitCupolaRing.lidH + 0.006, splitCupolaRing.lidD),
+      C.x, yl(splitCupolaRing.top + (splitCupolaRing.lidH + 0.006) / 2), zl(C.z));
     // forward vision-block arc (interior: 0.6r keeps the a=0 block's z
     // reach inside the ridge-pod side-cover window ending 0.455)
     for (const a of [-0.5, 0, 0.5]) {
       P.addModuleVisual('optics', 'turretDark', box(0.06, 0.045, 0.045),
-        rx + Math.sin(a) * C.ring.r * 0.6, yl(C.ring.top + 0.02), zl(rz + Math.cos(a) * C.ring.r * 0.6), 0, a, 0);
+        rx + Math.sin(a) * splitCupolaRing.r * 0.6, yl(splitCupolaRing.top + 0.02), zl(rz + Math.cos(a) * splitCupolaRing.r * 0.6), 0, a, 0);
     }
   } else {
     cupola(P, 'turret', T.cupola.x, yl(T.cupola.base), zl(T.cupola.z), T.cupola.r, T.cupola.h, 6);
@@ -913,7 +1622,12 @@ function t26Cast(P, T) {
 // construction (verified in-gate x2 this round). m60Loft (tankFactory) is
 // the lineage; this variant adds loftBody's ring parametrization.
 // ---------------------------------------------------------------------------
-function smoothLoft(P, bucket, sections, opts = {}) {
+function smoothLoft(
+  P: PattonBuilderPort,
+  bucket: string,
+  sections: readonly GeometrySection[],
+  opts: LoftOptions = {},
+): void {
   const wallT = opts.wall ?? 0.55;
   const midT = opts.mid ?? 0.84;
   const midW = opts.midW ?? 0.94;
@@ -921,23 +1635,23 @@ function smoothLoft(P, bucket, sections, opts = {}) {
   const crownX = opts.crownX ?? 0;
   const sx = opts.shiftX ?? 0;
   const oy = opts.oy ?? 0, oz = opts.oz ?? 0;
-  const L = (s, f) => s.bot + (s.top - s.bot) * f;
+  const L = (s: GeometrySection, f: number): number => s.bot + (s.top - s.bot) * f;
   // r4 (m26 graduation retune): per-side LEFT widths — loftBody's exact
   // opt-in s.hwL expressions (hl / crownL), so hwL-carrying castings (m26
   // cupola-flank bulge) keep their slab silhouette through the smooth
   // re-emit. Absent -> the symmetric expressions below are byte-identical
   // (m46/m47 smooth rings carry no hwL; hash-verified).
-  const hl = (s) => s.hwL ?? s.hw;
-  const crownL = (s) => (s.hwL != null
+  const hl = (s: GeometrySection): number => s.hwL ?? s.hw;
+  const crownL = (s: GeometrySection): number => (s.hwL != null
     ? Math.max((crownX - crownW) * s.hw, -midW * s.hwL)
     : (crownX - crownW) * s.hw);
-  const ring = (s) => [
+  const ring = (s: GeometrySection): number[][] => [
     [-hl(s) + sx, s.bot], [-hl(s) + sx, L(s, wallT)], [-midW * hl(s) + sx, L(s, midT)],
     [crownL(s) + sx, s.top], [(crownX + crownW) * s.hw + sx, s.top],
     [midW * s.hw + sx, L(s, midT)], [s.hw + sx, L(s, wallT)], [s.hw + sx, s.bot],
   ];
   const M = 8, nS = sections.length;
-  const emit = (pos, idx) => {
+  const emit = (pos: number[], idx: number[] | null): void => {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((pos.length / 3) * 2).fill(0), 2));
@@ -972,7 +1686,10 @@ function smoothLoft(P, bucket, sections, opts = {}) {
     emit(pos, idx);
   }
   // flush end caps in the exact end-section planes (m60Loft orientation)
-  for (const [s, sign] of [[sections[0], 1], [sections[nS - 1], -1]]) {
+  for (const [s, sign] of [
+    [sections[0], 1],
+    [sections[nS - 1], -1],
+  ] satisfies ReadonlyArray<readonly [GeometrySection, number]>) {
     const r = ring(s);
     const cx2 = r.reduce((t, p) => t + p[0], 0) / M;
     const cy2 = r.reduce((t, p) => t + p[1], 0) / M;
@@ -1008,7 +1725,13 @@ function smoothLoft(P, bucket, sections, opts = {}) {
 //   - floor + front face stay separate flat soups (hard edges: the crisp
 //     under-bustle shadow line and the dome-buried front cap)
 // ---------------------------------------------------------------------------
-function smoothBustle(P, BS, yl, zl, opts = {}) {
+function smoothBustle(
+  P: PattonBuilderPort,
+  BS: readonly BustleSection[],
+  yl: HeightMap,
+  zl: HeightMap,
+  opts: SmoothBustleOptions = {},
+): void {
   const taper = 0.96, taperEnd = 0.94;
   const bulge = opts.bulge ?? 0.010;    // wall-zone outward sagitta (m)
   // ring list: sections + interpolated wrap rings (sorted front -> rear)
@@ -1019,7 +1742,7 @@ function smoothBustle(P, BS, yl, zl, opts = {}) {
     while (i < BS.length - 1 && !(W.z <= BS[i].z && W.z >= BS[i + 1].z)) i++;
     if (i >= BS.length - 1) continue;
     const a = BS[i], b = BS[i + 1], f = (W.z - a.z) / (b.z - a.z);
-    const lerp = (ka, kb) => ka + (kb - ka) * f;
+    const lerp = (ka: number, kb: number): number => ka + (kb - ka) * f;
     rings.push({
       z: W.z, t: taper,
       xL: lerp(a.xL, b.xL) - (W.b ?? 0), xR: lerp(a.xR, b.xR) + (W.b ?? 0),
@@ -1049,15 +1772,15 @@ function smoothBustle(P, BS, yl, zl, opts = {}) {
   // genuine tangent swing to stop fitting as one 0.64 m vertical (the
   // B1-class finding both quarters). Chord-limit: tail sagitta <= 2.4 cm,
   // the B1-priced <=4.7 cm class.
-  const sec = (s) => {
-    const wallX = (x0, xt, y) => x0 + (xt - x0) * ((y - s.floor) / (s.top - s.floor));
+  const sec = (s: BustleSection & { t: number }): number[][] => {
+    const wallX = (x0: number, xt: number, y: number): number => x0 + (xt - x0) * ((y - s.floor) / (s.top - s.floor));
     const xLt = s.xL * s.t, xRt = s.xR * s.t;
     const tail = opts.tailBulge
       ? Math.max(0, Math.min(1, (opts.tailBulge.z0 - s.z) / (opts.tailBulge.z0 - opts.tailBulge.z1)))
       : 0;
-    const bAt = (f) => (bulge + (opts.tailBulge ? tail * (opts.tailBulge.b - bulge) : 0)) *
+    const bAt = (f: number): number => (bulge + (opts.tailBulge ? tail * (opts.tailBulge.b - bulge) : 0)) *
       (f === 0.30 ? 0.52 : f === 0.55 ? 1.0 : 0.50);
-    const pt = (sideX, sideT, sign, f) => {
+    const pt = (sideX: number, sideT: number, sign: number, f: number): number[] => {
       const y = s.floor + (s.top - s.floor) * f;
       const xw = wallX(sideX, sideT, y);
       let b = bAt(f);
@@ -1074,13 +1797,14 @@ function smoothBustle(P, BS, yl, zl, opts = {}) {
   // tail cap: two collapsing rings ON the tail plane (z anchor untouched) —
   // shared grid vertices grade the wrap into the face; interior stays -z flat
   const last = rows[rows.length - 1];
-  const cx = last.pts.reduce((t, p) => t + p[0], 0) / last.pts.length;
-  const cy = last.pts.reduce((t, p) => t + p[1], 0) / last.pts.length;
+  if (!last) return;
+  const cx = last.pts.reduce((t: number, p: number[]) => t + p[0], 0) / last.pts.length;
+  const cy = last.pts.reduce((t: number, p: number[]) => t + p[1], 0) / last.pts.length;
   for (const f of [0.52, 0]) {
     rows.push({ z: last.z, pts: last.pts.map(([x, y]) => [cx + (x - cx) * f, cy + (y - cy) * f]) });
   }
   const M = 11;
-  const emit = (pos, idx) => {
+  const emit = (pos: number[], idx: number[] | null): void => {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((pos.length / 3) * 2).fill(0), 2));
@@ -1127,17 +1851,21 @@ function smoothBustle(P, BS, yl, zl, opts = {}) {
 // M47 long-nose turret: needle prow -> plateau loft, long squared bustle
 // overhang, rangefinder blister pods, low cupola, roof M2.
 // ---------------------------------------------------------------------------
-function m47Cast(P, T) {
+function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
   const { box, cylY, cylX, cylZ, sph, liftEye, cupola, tarpRoll } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
-  const yl = (y) => y - T.ringY, zl = (z) => z - T.ringZ;
-  const ly = (y) => yl(originalProfileY(T, y));
+  if (!T.bustleSecs || !T.mg || T.blisterX == null || T.blisterY == null || T.blisterZ == null) {
+    throw new Error('M47 profile requires bustle, machine-gun, and rangefinder geometry');
+  }
+  const yl = (y: number): number => y - T.ringY;
+  const zl = (z: number): number => z - T.ringZ;
+  const ly = (y: number): number => yl(originalProfileY(T, y));
   // r4 shared pale-fitting material (B2 cavity + B5 M2 upper works): the
   // shared 'detail' bucket ceilings at ~67 on vertical faces where the
   // ref's lit-fitting class reads 73-80 — leo r9 mgPale recipe, hex
   // sampled on the render; clone drops onBeforeCompile -> rehook
   // (merkava gearFloor law). Per-build clone, disposed with the tank.
-  let mgPale = null;
+  let mgPale: THREE.MeshStandardMaterial | null = null;
   if (T.rackFill || (T.mg && T.mg.tone === 'two-tone')) {
     mgPale = P.mats.shadow.clone();
     // cycle-7/8 dial (ordered-class law, sampled on the render): 0x565a45
@@ -1151,7 +1879,8 @@ function m47Cast(P, T) {
     mgPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     P.disposables.push(mgPale);
   }
-  const paleMesh = (geo, x, y, z) => {
+  const paleMesh = (geo: THREE.BufferGeometry, x: number, y: number, z: number): void => {
+    if (!mgPale) return;
     const mesh = new THREE.Mesh(geo, mgPale);
     mesh.position.set(x, y, z);
     mesh.receiveShadow = true;
@@ -1298,7 +2027,7 @@ function m47Cast(P, T) {
     // floor (bottoms <= 9 mm under the certified floor line — sub-pixel at
     // the gate pitch; the rear camera reads their lit rear faces + the
     // dark underside between = the ref's slat/through-shadow rhythm).
-    const floorAt = (z) => {
+    const floorAt = (z: number): number => {
       for (let i = 0; i < BS.length - 1; i++) {
         if (z <= BS[i].z && z >= BS[i + 1].z) {
           return BS[i].floor + (BS[i + 1].floor - BS[i].floor) * ((z - BS[i].z) / (BS[i + 1].z - BS[i].z));
@@ -1502,11 +2231,11 @@ function m47Cast(P, T) {
 // mantlet matches the measured shield band (it pitches with the gun).
 // G: { rootZ, axisY, muzzle, r, device, shield:{w,h,dy,zF,d} }
 // ---------------------------------------------------------------------------
-function pattonGun(P, G) {
+function pattonGun(P: PattonBuilderPort, G: PattonGunConfig): void {
   const { box, cylX, cylZ, xform } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const len = G.muzzle - G.rootZ;
-  const w2l = (z) => z - G.rootZ;                            // world z -> gun local
+  const w2l = (z: number): number => z - G.rootZ;            // world z -> gun local
   const seg = P.q ? 20 : 12;
   // cast mantlet: a tall rounded wedge (measured band: chin ~0.43 below the
   // bore, top sloping up-rearward), plus rotor cheeks.
@@ -1535,7 +2264,9 @@ function pattonGun(P, G) {
     P.addGunExtra(box(S.lip.w, S.lip.y1 - S.lip.y0, S.lip.z1 - S.lip.z0),
       0, (S.lip.y0 + S.lip.y1) / 2 - G.axisY, w2l((S.lip.z0 + S.lip.z1) / 2));
   }
-  const sq = (r, l, at, sy = 1, sx = 1) => P.add('gun', xform(cylZ(r, l, seg), 0, 0, 0, 0, 0, 0, [sx, sy, 1]), 0, 0, at);
+  const sq = (r: number, l: number, at: number, sy = 1, sx = 1): unknown => P.add(
+    'gun', geometryXform(cylZ(r, l, seg), 0, 0, 0, 0, 0, 0, [sx, sy, 1]), 0, 0, at,
+  );
   if (G.device === 'm3') {
     // 90 mm M3: bare tube then the double-baffle brake — an oblong solid body
     // with proud baffle rings and dark side windows. Bands kept < 0.33 tall
@@ -1564,6 +2295,7 @@ function pattonGun(P, G) {
     // drum at the published muzzle. G.drumL/drumR/drumSy opt-in (m46 r5:
     // the batch-36 tube compress squashed the print's brake+evac — its
     // muzzle band reads 0.34 dia over a 0.40 band; defaults byte-identical).
+    if (G.evacZ0 == null || G.evacZ1 == null) throw new Error('M3A1 gun requires an evacuator span');
     P.add('gun', cylZ(G.r, len - 0.10, seg), 0, 0, (len - 0.10) / 2 + 0.02);
     P.add('gun', cylZ(0.160, w2l(G.evacZ1) - w2l(G.evacZ0), seg), 0, 0, (w2l(G.evacZ0) + w2l(G.evacZ1)) / 2);
     const dl = G.drumL ?? 0.17;                             // single baffle drum
@@ -1579,11 +2311,12 @@ function pattonGun(P, G) {
         P.add('gunDark', box(0.008, 0.062, dl * 0.44), side * (drumR - 0.001), 0, dz);
       }
     }
-    P.add('gunDark', xform(cylZ(0.23, 0.03, seg), 0, 0, 0, 0, 0, 0, [1, 0.7, 1]), 0, 0, len - 0.21);
+    P.add('gunDark', geometryXform(cylZ(0.23, 0.03, seg), 0, 0, 0, 0, 0, 0, [1, 0.7, 1]), 0, 0, len - 0.21);
     sq(0.18, 0.05, len - 0.022, 0.8);                       // muzzle face
   } else if (G.device === 'm36') {
     // 90 mm M36: small bore evacuator mid-tube + short WIDE flat blast
     // deflector at the published muzzle (measured: side 0.24 / plan 0.68).
+    if (G.evacZ0 == null || G.evacL == null) throw new Error('M36 gun requires an evacuator station');
     const t0 = G.tubeZ0 != null ? w2l(G.tubeZ0) : 0.02;
     P.add('gun', cylZ(G.r, len - 0.28 - t0, seg), 0, 0, (len - 0.28 + t0) / 2);
     P.add('gun', cylZ(0.15, G.evacL, seg), 0, 0, w2l(G.evacZ0) + G.evacL / 2);
@@ -1595,7 +2328,7 @@ function pattonGun(P, G) {
       P.add('gunDark', cylZ(rr, rw, seg), 0, 0, w2l(rz));
     }
     sq(0.35, 0.14, len - 0.24, 0.34);                       // rear drum
-    P.add('gunDark', xform(cylZ(0.32, 0.05, seg), 0, 0, 0, 0, 0, 0, [1, 0.30, 1]), 0, 0, len - 0.15);
+    P.add('gunDark', geometryXform(cylZ(0.32, 0.05, seg), 0, 0, 0, 0, 0, 0, [1, 0.30, 1]), 0, 0, len - 0.15);
     sq(0.35, 0.12, len - 0.075, 0.34);                      // front drum
     sq(0.18, 0.04, len - 0.01, 0.6);                        // rounded exit
   } else {
@@ -1622,7 +2355,7 @@ function pattonGun(P, G) {
 // (Kept OUT of curveHull/usKit: those are frozen m60a1 code paths — every
 // T26-family extra lives here.)
 // ---------------------------------------------------------------------------
-function applyLowProfileTurret(cfg) {
+function applyLowProfileTurret(cfg: PershingBuildConfig): void {
   const L = cfg.lowTurret;
   if (!L) return;
 
@@ -1630,12 +2363,16 @@ function applyLowProfileTurret(cfg) {
   if (T.lowProfile) return;
   const scale = L.scale ?? 0.5;
   const ringY = T.ringY;
-  const sy = (y) => ringY + (y - ringY) * scale;
-  const mapY = (object, keys) => {
+  const sy = (y: number): number => ringY + (y - ringY) * scale;
+  const mapY = (object: HeightMutable | undefined, keys: readonly HeightKey[]): void => {
     if (!object) return;
     for (const key of keys) if (object[key] != null) object[key] = sy(object[key]);
   };
-  const shiftAssembly = (object, baseKey, keys) => {
+  const shiftAssembly = (
+    object: HeightMutable | null | undefined,
+    baseKey: HeightKey,
+    keys: readonly HeightKey[],
+  ): void => {
     if (!object || object[baseKey] == null) return;
     const dy = sy(object[baseKey]) - object[baseKey];
     for (const key of keys) if (object[key] != null) object[key] += dy;
@@ -1720,12 +2457,12 @@ function applyLowProfileTurret(cfg) {
   cfg.topWorld = sy(cfg.topWorld);
 }
 
-function originalProfileY(T, y) {
+function originalProfileY(T: T26TurretConfig, y: number): number {
   const L = T.lowProfile;
   return L ? L.ringY + (y - L.ringY) * L.scale : y;
 }
 
-function buildPershing(P, cfg) {
+function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
   applyLowProfileTurret(cfg);
   const { box, cylX } = KIT;
   const hull = curveHull(P, cfg.hull);
@@ -1779,7 +2516,7 @@ function buildPershing(P, cfg) {
     const B = cfg.bowFenders;
     const slab = orientedSlab;                                  // §C.1 winding guard
     for (const side of [-1, 1]) {
-      if (B.y1 != null) {
+      if ('y1' in B) {
         const xa = side * B.x0, xb = side * B.x1;
         P.add('hull', slab(
           [Math.min(xa, xb), B.y0 - 0.04, B.z0], [Math.max(xa, xb), B.y0 - 0.04, B.z0],
@@ -1907,7 +2644,7 @@ function buildPershing(P, cfg) {
       if (z1 >= TT.z0 || z0 <= TT.z1) continue;
       if (z0 > TT.z0) { y0 = y0 + (y1 - y0) * ((TT.z0 - z0) / (z1 - z0)); z0 = TT.z0; }
       if (z1 < TT.z1) { y1 = y0 + (y1 - y0) * ((TT.z1 - z0) / (z1 - z0)); z1 = TT.z1; }
-      const lineAt = (z) => y0 + (y1 - y0) * ((z - z0) / (z1 - z0));
+      const lineAt = (z: number): number => y0 + (y1 - y0) * ((z - z0) / (z1 - z0));
       for (const side of [-1, 1]) {
         const xa = side * TT.x0, xb = side * TT.x1;
         // INVERTED scheme (cycle-3, sampled at the rear camera's ~4.6 deg
@@ -1937,7 +2674,7 @@ function buildPershing(P, cfg) {
     // by the 2.00/2.087 fender/eye anchors, front by the nose face
     // itself). Default absent — byte-identical.
     const BC = cfg.bowCasting;
-    const zAt = (y) => BC.z0 + (y - BC.y0) * (BC.z1 - BC.z0) / (BC.y1 - BC.y0);
+    const zAt = (y: number): number => BC.z0 + (y - BC.y0) * (BC.z1 - BC.z0) / (BC.y1 - BC.y0);
     for (const ry of BC.ribYs) {
       // pale rib crest + dark shadow bar under it (louvre rhythm — the
       // shading contrast is what reads at the glancing close-front angle)
@@ -2276,7 +3013,7 @@ function buildPershing(P, cfg) {
     // ambient floor on the per-build pad/chain clones, the leo r13b
     // gearDarkLift pattern) + the m60 r4 grey-olive retone + camo-painted
     // wheel drums (the ref paints its whole wheel train).
-    const rehook = (m) => {
+    const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
       m.onBeforeCompile = vehicleAmbientFloorHook;
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       return m;
@@ -2299,15 +3036,20 @@ function buildPershing(P, cfg) {
     // rig) and read a dark cross-hatch at med 57.6 vs the ref's pale
     // 62.8-64.1 plate rhythm; the sky-env term lifts shaded wrap faces
     // ~2x more than the already-lit side run (A1 window re-verified).
-    const retone = new Map([[0x171614, [0x353928, 0.30]], [0x27251f, [0x3b402f, 0.32]]]);
+    const retone = new Map<number, readonly [number, number]>([
+      [0x171614, [0x353928, 0.30]],
+      [0x27251f, [0x3b402f, 0.32]],
+    ]);
     P.hullG.traverse((o) => {
-      const m = o.material;
-      if (m && m.color && m.color.getHex && retone.has(m.color.getHex())) {
-        const [hex, env] = retone.get(m.color.getHex());
-        m.color.setHex(hex);
-        m.envMapIntensity = env;
-        rehook(m);
-      }
+      if (!(o instanceof THREE.Mesh || o instanceof THREE.InstancedMesh)) return;
+      const material = o.material;
+      if (Array.isArray(material) || !(material instanceof THREE.MeshStandardMaterial)) return;
+      const tone = retone.get(material.color.getHex());
+      if (!tone) return;
+      const [hex, env] = tone;
+      material.color.setHex(hex);
+      material.envMapIntensity = env;
+      rehook(material);
     });
     // band material: linear multiplier over the shared band map (m60 recipe)
     // r6 N1: multiplier r/g 1.0175 -> 0.956 at the same luma weight
@@ -2327,7 +3069,9 @@ function buildPershing(P, cfg) {
     const wheelCamo = rehook(P.mats.hull.clone());
     tagVehicleMaterial(wheelCamo, 'wheelPaint', 'patton-wheel-camouflage');
     wheelCamo.vertexColors = false;
-    wheelCamo.map = P.mats.hull.map.clone();
+    const hullMap = P.mats.hull.map;
+    if (!hullMap) throw new Error('Patton wheel camouflage requires the hull texture');
+    wheelCamo.map = hullMap.clone();
     wheelCamo.map.repeat.set(0.26, 0.26);
     wheelCamo.map.offset.set(0.08, 0.42);
     wheelCamo.map.needsUpdate = true;
@@ -2339,7 +3083,8 @@ function buildPershing(P, cfg) {
     wheelCamo.envMapIntensity = cfg.wheelEnv ?? 0.22;
     P.disposables.push(wheelCamo, wheelCamo.map);
     P.hullG.traverse((o) => {
-      if ((o.isMesh || o.isInstancedMesh) && o.material === P.mats.wheels) {
+      if ((o instanceof THREE.Mesh || o instanceof THREE.InstancedMesh)
+          && o.material === P.mats.wheels) {
         o.material = wheelCamo;
         // r6 N2: the sprocket/idler drum BODIES are the per-side spinner
         // Meshes (road wheels are InstancedMesh) — their lathe/cylinder cap
@@ -2348,7 +3093,7 @@ function buildPershing(P, cfg) {
         // every rear quarter/hero per the r4 verdict). World-box re-project
         // their UVs at the hull's own camo density (camoScale 0.34 over the
         // clone's 0.26 repeat) so the drum faces carry real blotches.
-        if (o.isMesh && !o.isInstancedMesh && o.geometry?.attributes?.uv) {
+        if (o instanceof THREE.Mesh && !(o instanceof THREE.InstancedMesh) && o.geometry.attributes.uv) {
           const pos = o.geometry.attributes.position;
           const nor = o.geometry.attributes.normal;
           const uv = o.geometry.attributes.uv;
@@ -2407,7 +3152,7 @@ function buildPershing(P, cfg) {
       // wheel-rim lane. m46's object form lacks the flag: byte-identical.
       rimBoost: true,
     } : cfg.gearShade;
-    const mkShade = (hex, env = 0.12) => {
+    const mkShade = (hex: number, env = 0.12): THREE.MeshStandardMaterial => {
       const m = P.mats.shadow.clone();
       m.color.setHex(hex);
       m.roughness = 0.97;
@@ -2418,7 +3163,16 @@ function buildPershing(P, cfg) {
       P.disposables.push(m);
       return m;
     };
-    const shadeBox = (mat, w, h, d, x, y, z, rx = 0) => {
+    const shadeBox = (
+      mat: THREE.Material,
+      w: number,
+      h: number,
+      d: number,
+      x: number,
+      y: number,
+      z: number,
+      rx = 0,
+    ): THREE.Mesh => {
       const geo = new THREE.BoxGeometry(w, h, d);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.name = 'gearShadowProxy';
@@ -2445,7 +3199,15 @@ function buildPershing(P, cfg) {
     // the model AABB (framing law). Full lane width 0.61 so the band-edge
     // pad sliver cannot serrate past the plate line.
     const plateMat = mkShade(0x2b2e26, 0.12);
-    const coverBox = (w, h, d, x, y, z, rx = 0) => {
+    const coverBox = (
+      w: number,
+      h: number,
+      d: number,
+      x: number,
+      y: number,
+      z: number,
+      rx = 0,
+    ): void => {
       const geo = new THREE.BoxGeometry(w, h, d);
       const mesh = new THREE.Mesh(geo, plateMat);
       mesh.name = 'gearRunCover';
@@ -2494,7 +3256,7 @@ function buildPershing(P, cfg) {
     glintMat.metalness = 0.30;
     const G = H.gear;
     const wheelWS = Math.min(0.24, H.trackW * 0.4);
-    const glintRing = (r, x, y, z, name = 'gearRimGlint') => {
+    const glintRing = (r: number, x: number, y: number, z: number, name = 'gearRimGlint'): THREE.Mesh => {
       const geo = torus(r, 0.008, 24);
       const mesh = new THREE.Mesh(geo, glintMat);
       mesh.name = name;
@@ -2520,7 +3282,7 @@ function buildPershing(P, cfg) {
       outset: wheelWS / 2 + 0.016,
       name: 'gearRoadWheelRimGlints',
     });
-    if (GS.rimBoost) {
+    if (glintBoost) {
       P.gear.addRoadWheelLayer(torus(G.wheelR * 0.52, 0.008, 24).rotateZ(Math.PI / 2), glintBoost, {
         outset: wheelWS / 2 + 0.052,
         name: 'gearRoadWheelInnerRimGlints',
@@ -2579,23 +3341,39 @@ function buildPershing(P, cfg) {
 // now-closed skin) and both end caps are FLUSH full-ring faces at the exact
 // end-section planes (inside the old rim + end-annulus footprint).
 // ---------------------------------------------------------------------------
-function m60Loft(P, bucket, secs, profile, oy, oz, creases = [0]) {
-  const pt = (s, f) => [f[0] * (f[0] > 0 && s.hwR ? s.hwR : s.hw), s.bot + (s.top - s.bot) * f[1]];
+function m60Loft(
+  P: PattonBuilderPort,
+  bucket: string,
+  secs: readonly M60Section[],
+  profile: CrossProfile,
+  oy: number,
+  oz: number,
+  creases: readonly number[] = [0],
+): void {
+  if (secs.length === 0 || profile.length === 0) {
+    throw new Error('M60 loft requires at least one section and profile point');
+  }
+  const pt = (s: M60Section, f: readonly [number, number]): Vec2Tuple => [
+    f[0] * (f[0] > 0 && s.hwR ? s.hwR : s.hw),
+    s.bot + (s.top - s.bot) * f[1],
+  ];
   const M = profile.length, nS = secs.length;
   const cs = [...new Set(creases.map((k) => ((k % M) + M) % M))].sort((a, b) => a - b);
   // smooth runs of consecutive ring indices between creases (ring wraps
   // k(M-1) -> k0 along the flat underside)
-  const runs = [];
+  const runs: number[][] = [];
   for (let c = 0; c < cs.length; c++) {
-    const run = [cs[c]];
+    const start = cs[c];
     const end = cs[(c + 1) % cs.length];
-    for (let k = (cs[c] + 1) % M; ; k = (k + 1) % M) {
+    if (start == null || end == null) throw new Error('M60 loft crease index is invalid');
+    const run = [start];
+    for (let k = (start + 1) % M; ; k = (k + 1) % M) {
       run.push(k);
       if (k === end) break;
     }
     runs.push(run);
   }
-  const emit = (pos, idx) => {
+  const emit = (pos: number[], idx: number[] | null): void => {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((pos.length / 3) * 2).fill(0), 2));
@@ -2607,8 +3385,12 @@ function m60Loft(P, bucket, secs, profile, oy, oz, creases = [0]) {
     const nR = run.length, pos = [], idx = [];
     for (let i = 0; i < nS; i++) {
       for (let j = 0; j < nR; j++) {
-        const p = pt(secs[i], profile[run[j]]);
-        pos.push(p[0], p[1] - oy, secs[i].z - oz);
+        const section = secs[i];
+        const profileIndex = run[j];
+        const profilePoint = profileIndex == null ? undefined : profile[profileIndex];
+        if (!section || !profilePoint) throw new Error('M60 loft grid index is invalid');
+        const p = pt(section, profilePoint);
+        pos.push(p[0], p[1] - oy, section.z - oz);
       }
     }
     for (let i = 0; i < nS - 1; i++) {
@@ -2622,13 +3404,18 @@ function m60Loft(P, bucket, secs, profile, oy, oz, creases = [0]) {
   // FLUSH end caps: flat full-ring fans in the exact end-section planes.
   // Own geometry -> flat normals -> a hard cast rim edge (correct), and the
   // bustle tail stops reading as an open-backed box.
-  for (const [s, sign] of [[secs[0], 1], [secs[nS - 1], -1]]) {
+  const firstSection = secs[0];
+  const lastSection = secs[nS - 1];
+  if (!firstSection || !lastSection) throw new Error('M60 loft end section is missing');
+  const endCaps: ReadonlyArray<readonly [M60Section, number]> = [[firstSection, 1], [lastSection, -1]];
+  for (const [s, sign] of endCaps) {
     const ring = profile.map((f) => pt(s, f));
     const cx = ring.reduce((t, p) => t + p[0], 0) / M;
     const cy = ring.reduce((t, p) => t + p[1], 0) / M;
     const z = s.z - oz, pos = [];
     for (let k = 0; k < M; k++) {
       const a = ring[k], b = ring[(k + 1) % M];
+      if (!a || !b) throw new Error('M60 loft cap index is invalid');
       if (sign > 0) pos.push(cx, cy - oy, z, b[0], b[1] - oy, z, a[0], a[1] - oy, z);
       else pos.push(cx, cy - oy, z, a[0], a[1] - oy, z, b[0], b[1] - oy, z);
     }
@@ -2650,8 +3437,21 @@ function m60Loft(P, bucket, secs, profile, oy, oz, creases = [0]) {
 //   top 1.45 @ -3.44, tail tip 1.35/0.95 to -3.55 (band < 0.39 so
 //   hullLengthM keeps its -3.445 anchor); pintle to -3.52 at |x|<0.17.
 // ---------------------------------------------------------------------------
-function pattonFaceCassette(P, bucket, x, y, z, w, h, d, rx = 0, ry = 0, rz = 0,
-  rows = 1, cols = 1) {
+function pattonFaceCassette(
+  P: PattonBuilderPort,
+  bucket: string,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  rx = 0,
+  ry = 0,
+  rz = 0,
+  rows = 1,
+  cols = 1,
+): void {
   const { box, xform } = KIT;
   P.add(bucket, box(w, h, d), x, y, z, rx, ry, rz);
   const faceZ = d / 2 + 0.004;
@@ -2672,7 +3472,15 @@ function pattonFaceCassette(P, bucket, x, y, z, w, h, d, rx = 0, ry = 0, rz = 0,
   }
 }
 
-function pattonSideCassette(P, side, y, z, h, len, variant) {
+function pattonSideCassette(
+  P: PattonBuilderPort,
+  side: number,
+  y: number,
+  z: number,
+  h: number,
+  len: number,
+  variant: string,
+): void {
   const { box, xform } = KIT;
   const x = side * (variant === 'a2' ? 1.775 : 1.765);
   const depth = 0.075;
@@ -2687,7 +3495,13 @@ function pattonSideCassette(P, side, y, z, h, len, variant) {
   }
 }
 
-function pattonSmokeBank(P, side, y, z, scale = 1) {
+function pattonSmokeBank(
+  P: PattonBuilderPort,
+  side: number,
+  y: number,
+  z: number,
+  scale = 1,
+): void {
   const { box, cylZ } = KIT;
   const yaw = side * 0.62;
   P.add('turret', box(0.48 * scale, 0.18 * scale, 0.15 * scale), side * 1.17, y - 0.06, z - 0.08, 0, yaw, 0);
@@ -2706,15 +3520,20 @@ function pattonSmokeBank(P, side, y, z, scale = 1) {
   }
 }
 
-function m60SectionAt(worldZ) {
-  const sections = worldZ >= M60_SECTIONS.at(-1).z ? M60_SECTIONS : M60_BUSTLE;
-  if (worldZ >= sections[0].z) return { ...sections[0], hwR: sections[0].hwR ?? sections[0].hw };
+function m60SectionAt(worldZ: number): M60Section {
+  const finalFrontSection = M60_SECTIONS[M60_SECTIONS.length - 1];
+  if (!finalFrontSection) throw new Error('M60 front casting sections are empty');
+  const sections = worldZ >= finalFrontSection.z ? M60_SECTIONS : M60_BUSTLE;
+  const first = sections[0];
+  if (!first) throw new Error('M60 casting sections are empty');
+  if (worldZ >= first.z) return { ...first, hwR: first.hwR ?? first.hw };
   for (let index = 0; index < sections.length - 1; index++) {
     const front = sections[index];
     const rear = sections[index + 1];
+    if (!front || !rear) throw new Error('M60 casting section index is invalid');
     if (worldZ <= front.z && worldZ >= rear.z) {
       const mix = (front.z - worldZ) / Math.max(0.001, front.z - rear.z);
-      const lerp = (a, b) => a + (b - a) * mix;
+      const lerp = (a: number, b: number): number => a + (b - a) * mix;
       return {
         z: worldZ,
         hw: lerp(front.hw, rear.hw),
@@ -2724,38 +3543,47 @@ function m60SectionAt(worldZ) {
       };
     }
   }
-  const tail = sections.at(-1);
+  const tail = sections[sections.length - 1];
+  if (!tail) throw new Error('M60 casting tail section is missing');
   return { ...tail, hwR: tail.hwR ?? tail.hw };
 }
 
-function m60CastingPointAt(side, worldZ, heightFraction) {
+function m60CastingPointAt(side: number, worldZ: number, heightFraction: number): THREE.Vector3 {
   const section = m60SectionAt(worldZ);
-  const profile = side < 0
+  const profile: CrossProfile = side < 0
     ? [[-1, 0.29], [-0.94, 0.445], [-0.919, 0.795], [-0.837, 0.927]]
     : [[1, 0.29], [0.23, 0.72], [0.038, 0.915]];
   let a = profile[0], b = profile[1];
+  if (!a || !b) throw new Error('M60 casting profile requires two points');
   for (let index = 0; index < profile.length - 1; index++) {
-    if (heightFraction >= profile[index][1] && heightFraction <= profile[index + 1][1]) {
-      a = profile[index]; b = profile[index + 1]; break;
+    const nextA = profile[index];
+    const nextB = profile[index + 1];
+    if (!nextA || !nextB) throw new Error('M60 casting profile index is invalid');
+    if (heightFraction >= nextA[1] && heightFraction <= nextB[1]) {
+      a = nextA; b = nextB; break;
     }
   }
   const mix = (heightFraction - a[1]) / Math.max(0.001, b[1] - a[1]);
   const fx = a[0] + (b[0] - a[0]) * mix;
-  const halfWidth = side > 0 ? section.hwR : section.hw;
+  const halfWidth = side > 0 ? (section.hwR ?? section.hw) : section.hw;
   const x = fx * halfWidth;
   const y = section.bot + (section.top - section.bot) * heightFraction;
   return new THREE.Vector3(x, y - 1.76, worldZ - 0.30);
 }
 
-function m60CastingSurfaceYAt(worldX, worldZ) {
+function m60CastingSurfaceYAt(worldX: number, worldZ: number): number {
   const section = m60SectionAt(worldZ);
-  const halfWidth = worldX >= 0 ? section.hwR : section.hw;
+  const halfWidth = worldX >= 0 ? (section.hwR ?? section.hw) : section.hw;
   const fx = Math.max(-1, Math.min(1, worldX / Math.max(halfWidth, 0.001)));
   let a = M60_PROFILE[0], b = M60_PROFILE[1];
+  if (!a || !b) throw new Error('M60 surface profile requires two points');
   for (let index = 0; index < M60_PROFILE.length - 1; index++) {
-    if (fx >= M60_PROFILE[index][0] && fx <= M60_PROFILE[index + 1][0]) {
-      a = M60_PROFILE[index];
-      b = M60_PROFILE[index + 1];
+    const nextA = M60_PROFILE[index];
+    const nextB = M60_PROFILE[index + 1];
+    if (!nextA || !nextB) throw new Error('M60 surface profile index is invalid');
+    if (fx >= nextA[0] && fx <= nextB[0]) {
+      a = nextA;
+      b = nextB;
       break;
     }
   }
@@ -2764,11 +3592,11 @@ function m60CastingSurfaceYAt(worldX, worldZ) {
   return section.bot + (section.top - section.bot) * heightFraction;
 }
 
-function m60RoofShelfGeometry(py, pz) {
+function m60RoofShelfGeometry(py: number, pz: number): THREE.BufferGeometry {
   const x0 = 0.06, x1 = 0.84;
   const z0 = -0.42, z1 = 0.58;
   const topY = 2.715;
-  const embeddedY = (x, z) => m60CastingSurfaceYAt(x, z) - 0.015;
+  const embeddedY = (x: number, z: number): number => m60CastingSurfaceYAt(x, z) - 0.015;
   return orientedSlab(
     [x0, embeddedY(x0, z0) - py, z0 - pz],
     [x1, embeddedY(x1, z0) - py, z0 - pz],
@@ -2781,7 +3609,7 @@ function m60RoofShelfGeometry(py, pz) {
   );
 }
 
-function addM60MantletSearchlight(P, scale = 1) {
+function addM60MantletSearchlight(P: PattonBuilderPort, scale = 1): void {
   const { box, cylX, cylZ, xform } = KIT;
   const width = 0.40 * scale;
   const height = 0.34 * Math.min(scale, 1.28);
@@ -2821,7 +3649,15 @@ function addM60MantletSearchlight(P, scale = 1) {
   };
 }
 
-function m60EraCellAt(side, worldZ, heightFraction, w, h, d, castEmbedM) {
+function m60EraCellAt(
+  side: number,
+  worldZ: number,
+  heightFraction: number,
+  w: number,
+  h: number,
+  d: number,
+  castEmbedM: number,
+): EraCell {
   const point = m60CastingPointAt(side, worldZ, heightFraction);
   // Two finite tangents reconstruct the actual loft patch under this one
   // cassette: longitudinal curvature from adjacent z sections and dome
@@ -2849,12 +3685,12 @@ function m60EraCellAt(side, worldZ, heightFraction, w, h, d, castEmbedM) {
   };
 }
 
-function addM60A3TurretEra(P) {
+function addM60A3TurretEra(P: PattonBuilderPort): void {
   const turretPivot = P.spec.armor.turretPivot;
   const frontTilesPerSide = 15;
   const sideTilesPerSide = 18;
   const castEmbedM = 0.0125;
-  const putTurretLocal = (put, cell) => put(
+  const putTurretLocal = (put: EraPlacement, cell: EraCell): void => put(
     cell.x,
     turretPivot[1] + cell.y,
     turretPivot[2] + cell.z,
@@ -2863,7 +3699,7 @@ function addM60A3TurretEra(P) {
   );
 
   for (const side of [-1, 1]) {
-    const frontCells = [];
+    const frontCells: EraCell[] = [];
     for (let row = 0; row < 3; row++) {
       for (let column = 0; column < 5; column++) {
         // Lower courses reach the narrow nose; higher courses start farther
@@ -2876,11 +3712,11 @@ function addM60A3TurretEra(P) {
           0.27 - row * 0.025, 0.17, 0.078, castEmbedM));
       }
     }
-    P.eraCluster(`m60a3_turret_era_front_${side > 0 ? 'R' : 'L'}`, (put) => {
+    P.eraCluster(`m60a3_turret_era_front_${side > 0 ? 'R' : 'L'}`, (put: EraPlacement) => {
       for (const cell of frontCells) putTurretLocal(put, cell);
     }, true);
 
-    const sideCells = [];
+    const sideCells: EraCell[] = [];
     for (let row = 0; row < 3; row++) {
       const heightFraction = 0.34 + row * 0.14;
       for (let column = 0; column < 6; column++) {
@@ -2890,7 +3726,7 @@ function addM60A3TurretEra(P) {
           0.22, 0.17, 0.078, castEmbedM));
       }
     }
-    P.eraCluster(`m60a3_turret_era_side_${side > 0 ? 'R' : 'L'}`, (put) => {
+    P.eraCluster(`m60a3_turret_era_side_${side > 0 ? 'R' : 'L'}`, (put: EraPlacement) => {
       for (const cell of sideCells) putTurretLocal(put, cell);
     }, true);
   }
@@ -2911,7 +3747,7 @@ function addM60A3TurretEra(P) {
   };
 }
 
-function finishM60Variant(P, variant) {
+function finishM60Variant(P: PattonBuilderPort, variant: string): void {
   const { box, cylY, cylZ } = KIT;
   const a3 = variant === 'a3';
 
@@ -2982,7 +3818,7 @@ function finishM60Variant(P, variant) {
     const pivotZ = P.spec.armor.turretPivot[2];
     const x0 = 0.54, x1 = 0.90, z0 = 0.745, z1 = 1.135;
     const topY = 2.72;
-    const bottomY = (x, z) => m60CastingSurfaceYAt(x, z) - 0.015;
+    const bottomY = (x: number, z: number): number => m60CastingSurfaceYAt(x, z) - 0.015;
     P.addEquipment('turret', orientedSlab(
       [x0, bottomY(x0, z0) - pivotY, z0 - pivotZ],
       [x1, bottomY(x1, z0) - pivotY, z0 - pivotZ],
@@ -3057,7 +3893,7 @@ function finishM60Variant(P, variant) {
   };
 }
 
-function buildM60(P, cfg) {
+function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   const { box, cylY, cylZ, cylX, sph, xform, liftEye, buildGun, tarpRoll, torus, towCable } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   // SHADED-PARITY r3 item 3 (m60-scoped material lift): 'glass' (near-black
@@ -3086,7 +3922,7 @@ function buildM60(P, cfg) {
   // centre engine crown over the fender-level band deck, CAMBERED: full
   // height only |x|<=0.78, wing wedges taper to the band by |x| 1.02 (the
   // reference front-hull columns read 1.82 at x 0.88, 1.79 by 1.08).
-  const CROWN = [
+  const CROWN: Vec2Tuple[] = [
     [-0.45, 1.744], [-1.00, 1.782], [-1.60, 1.884], [-2.10, 1.886],
     [-2.45, 1.872], [-2.80, 1.849], [-3.10, 1.831], [-3.28, 1.838]];
   for (let i = 0; i < CROWN.length - 1; i++) {
@@ -3106,12 +3942,14 @@ function buildM60(P, cfg) {
   // dark bay panels +6 mm over the crown surface and slat strips +12 mm,
   // flat-seated per short bay (tops <= 1.904, inside the reference's
   // 1.81-1.91 rear-deck band; no full-width frame rails).
-  const crownAt = (z) => {
+  const crownAt = (z: number): number => {
     for (let i = 0; i < CROWN.length - 1; i++) {
       const [z0, y0] = CROWN[i], [z1, y1] = CROWN[i + 1];
       if (z <= z0 && z >= z1) return y0 + (y1 - y0) * ((z - z0) / (z1 - z0));
     }
-    return CROWN[CROWN.length - 1][1];
+    const tail = CROWN[CROWN.length - 1];
+    if (!tail) throw new Error('M60 engine crown profile is empty');
+    return tail[1];
   };
   for (const side of [-1, 1]) {
     for (const [gz0, gz1] of [[-1.92, -2.24], [-2.30, -2.60]]) {
@@ -3188,7 +4026,7 @@ function buildM60(P, cfg) {
   // side trace shows over z -0.7..-2.6; the full-height first attempt cost
   // hull -1.3 via registration drift), plan-inside the 1.70 band.
   {
-    const cy = (z) => hull.deckAt(z) + 0.014;
+    const cy = (z: number): number => hull.deckAt(z) + 0.014;
     towCable(P, [
       [-1.36, cy(0.30) - 0.010, 0.30], [-1.43, cy(-0.55), -0.55],
       [-1.44, cy(-1.45), -1.45], [-1.36, cy(-2.55) - 0.008, -2.55],
@@ -3238,7 +4076,8 @@ function buildM60(P, cfg) {
   const py = 1.76, pz = 0.30;
   P.turretG.position.set(0, py, pz);
   P.gunG.position.set(0, 2.087 - py, 1.55 - pz);
-  const yl = (y) => y - py, zl = (z) => z - pz;
+  const yl = (y: number): number => y - py;
+  const zl = (z: number): number => z - pz;
 
   // crew basket under the ring (ref cast underside 1.33-1.35 over -0.34..+1.47)
   P.add('turretDark', box(1.40, 0.42, 1.79), 0, yl(1.525), zl(0.535));
@@ -3320,13 +4159,21 @@ function buildM60(P, cfg) {
   // x <= 1.158 are covered to 2.587; nothing new above 2.3 outboard).
   {
     const railT = yl(2.656);              // top rail: top face 2.670
-    const rseg = (b, y, x0, z0, x1, z1, s = 0.034) => {
+    const rseg = (
+      b: string,
+      y: number,
+      x0: number,
+      z0: number,
+      x1: number,
+      z1: number,
+      s = 0.034,
+    ): void => {
       const len = Math.hypot(x1 - x0, z1 - z0) + s;
       P.add(b, box(s, s, len),
         (x0 + x1) / 2, y, zl((z0 + z1) / 2), 0, Math.atan2(x0 - x1, z0 - z1), 0);
     };
     // top rail along the roof shoulder (LEFT wider than RIGHT: hw vs hwR)
-    const RAIL = {
+    const RAIL: Record<Side, Vec2Tuple[]> = {
       [-1]: [[-1.025, -1.02], [-1.005, -1.42], [-0.952, -1.78], [-0.45, -1.950]],
       [1]: [[1.015, -1.02], [0.975, -1.42], [0.900, -1.78], [0.45, -1.950]],
     };
@@ -3342,11 +4189,11 @@ function buildM60(P, cfg) {
     // by its z -0.95 chamfer cover line (2.601 at x 1.138) — its rail
     // stays at y 2.589 (top 2.600), a shallower but still-off-the-wall
     // read (the reference is itself asymmetric here: hwR < hw).
-    const BASKET = {
+    const BASKET: Record<Side, { readonly y: number; readonly pts: Vec2Tuple[] }> = {
       [-1]: { y: yl(2.647), pts: [[-1.040, -1.04], [-1.185, -1.14], [-1.185, -1.50], [-1.070, -1.70], [-0.952, -1.80]] },
       [1]: { y: yl(2.589), pts: [[1.028, -1.04], [1.138, -1.16], [1.138, -1.38], [1.010, -1.62], [0.900, -1.78]] },
     };
-    for (const side of [-1, 1]) {
+    for (const side of [-1, 1] as const) {
       const pts = RAIL[side];
       for (let i = 0; i < pts.length - 1; i++) {
         rseg('turretDark', railT, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
@@ -3470,7 +4317,7 @@ function buildM60(P, cfg) {
 // print (its rear deck crowns 2.18 vs the A1's 1.886), so the hull chain is
 // re-authored in the extract frame. Published dims 6.95/7.27/3.63/3.11.
 // ---------------------------------------------------------------------------
-function finishM60A2Variant(P, muzzleZ) {
+function finishM60A2Variant(P: PattonBuilderPort, muzzleZ: number): void {
   const { box, cylZ, torus } = KIT;
 
   // Starship modernization course.  It deliberately stops above the native
@@ -3550,7 +4397,7 @@ function finishM60A2Variant(P, muzzleZ) {
 
 }
 
-function buildM60A2(P, cfg) {
+function buildM60A2(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
   const { box, cylY, cylZ, cylX, xform, liftEye } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const hull = curveHull(P, cfg.hull);
@@ -3627,7 +4474,7 @@ function buildM60A2(P, cfg) {
   // Its 1.48 m floor clears the authored track crown (1.41 m) by 70 mm while
   // overlapping both the native hull band inboard and the roof plate above.
   const shoulderBottomY = 1.48;
-  const SHOULDER_RUN = [
+  const SHOULDER_RUN: Vec2Tuple[] = [
     [-0.60, 1.86], [-0.92, 2.005], [-2.45, 2.005], [-3.50, 2.005],
   ];
   for (const side of [-1, 1]) {
@@ -3644,16 +4491,19 @@ function buildM60A2(P, cfg) {
     }
   }
   if (P.geometryReceipt) {
+    const firstShoulder = SHOULDER_RUN[0];
+    const lastShoulder = SHOULDER_RUN[SHOULDER_RUN.length - 1];
+    if (!firstShoulder || !lastShoulder) throw new Error('M60A2 shoulder run is empty');
     const trackCrownY = cfg.hull.gear.sprocket.y + cfg.hull.gear.sprocket.r + 0.09;
     P.hullG.userData.m60a2SideShoulderReceipt = {
       panels: 6,
       innerX: shoulderInner,
       outerX: shoulderOuter,
       bottomY: shoulderBottomY,
-      frontZ: SHOULDER_RUN[0][0],
-      rearZ: SHOULDER_RUN.at(-1)[0],
-      roofMinY: SHOULDER_RUN[0][1],
-      roofMaxY: SHOULDER_RUN.at(-1)[1],
+      frontZ: firstShoulder[0],
+      rearZ: lastShoulder[0],
+      roofMinY: firstShoulder[1],
+      roofMaxY: lastShoulder[1],
       trackCrownY,
       trackClearanceM: shoulderBottomY - trackCrownY,
       roofOverlapM: 0.0175,
@@ -3759,7 +4609,8 @@ function buildM60A2(P, cfg) {
   const py = 1.90, pz = 0.38;
   P.turretG.position.set(0, py, pz);
   P.gunG.position.set(0, 2.27 - py, 1.55 - pz);
-  const yl = (y) => y - py, zl = (z) => z - pz;
+  const yl = (y: number): number => y - py;
+  const zl = (z: number): number => z - pz;
 
   // deep crew basket (push round fresh pair: the ref turret-bucket floor
   // runs z -0.60..+1.42 down to y 1.153 — side_turret's worst column was
@@ -3881,7 +4732,7 @@ function buildM60A2(P, cfg) {
   // 2.54-2.58 with wings to -0.60/+0.575 at 2.18-2.27. Gun-local frame:
   // ly = world y - 2.27, lz = world z - 1.55.
   {
-    const gp = (x, y, z) => [x, y - 2.27, z - 1.55];
+    const gp = (x: number, y: number, z: number): Vec3Tuple => [x, y - 2.27, z - 1.55];
     // two-segment face (r2 fresh side re-read): the UPPER face (above the
     // tube line 2.43) is near-vertical and DONE by z 2.42 (side cols 2.46+
     // read tube-top only), the lower lip rakes forward to the plan's 2.56;
@@ -3953,18 +4804,31 @@ function buildM60A2(P, cfg) {
 // trunnion (0, 2.00, z' 1.28); the resulting whole/turret-root/station-top
 // caps are certified in the packet with the §E _region_pitch repair plan.
 // ---------------------------------------------------------------------------
-function m48RadialRoofSeat(cx, cz, radius, topY, roofYs, ringY, ringZ) {
+function m48RadialRoofSeat(
+  cx: number,
+  cz: number,
+  radius: number,
+  topY: number,
+  roofYs: readonly number[],
+  ringY: number,
+  ringZ: number,
+): THREE.BufferGeometry {
   const segments = roofYs.length;
-  const positions = [];
-  const local = (x, y, z) => [x, y - ringY, z - ringZ];
-  const pushTriangle = (a, b, c) => positions.push(...a, ...b, ...c);
+  const positions: number[] = [];
+  const local = (x: number, y: number, z: number): Vec3Tuple => [x, y - ringY, z - ringZ];
+  const pushTriangle = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): void => {
+    positions.push(...a, ...b, ...c);
+  };
   const topCenter = local(cx, topY, cz);
   for (let i = 0; i < segments; i++) {
     const j = (i + 1) % segments;
     const a0 = (i / segments) * Math.PI * 2;
     const a1 = (j / segments) * Math.PI * 2;
-    const b0 = local(cx + Math.sin(a0) * radius, roofYs[i], cz + Math.cos(a0) * radius);
-    const b1 = local(cx + Math.sin(a1) * radius, roofYs[j], cz + Math.cos(a1) * radius);
+    const roofY0 = roofYs[i];
+    const roofY1 = roofYs[j];
+    if (roofY0 == null || roofY1 == null) throw new Error('M48 roof-seat profile index is invalid');
+    const b0 = local(cx + Math.sin(a0) * radius, roofY0, cz + Math.cos(a0) * radius);
+    const b1 = local(cx + Math.sin(a1) * radius, roofY1, cz + Math.cos(a1) * radius);
     const t0 = local(cx + Math.sin(a0) * radius, topY, cz + Math.cos(a0) * radius);
     const t1 = local(cx + Math.sin(a1) * radius, topY, cz + Math.cos(a1) * radius);
     // Clockwise plan order viewed from above: outward skirt faces, followed
@@ -3980,7 +4844,7 @@ function m48RadialRoofSeat(cx, cz, radius, topY, roofYs, ringY, ringZ) {
   return geometry;
 }
 
-function buildM48(P, cfg) {
+function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
   const { box, cylX, cylY, cylZ, sph, buildGun, tarpRoll } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const hull = curveHull(P, cfg.hull);
@@ -4051,7 +4915,7 @@ function buildM48(P, cfg) {
   // left bins, deck-flush run like the m60 recipe)
   {
     const { towCable } = KIT;
-    const cy = (z) => hull.deckAt(z) + 0.012;
+    const cy = (z: number): number => hull.deckAt(z) + 0.012;
     towCable(P, [
       [1.665, cy(0.55) - 0.008, 0.55], [1.70, cy(-0.30), -0.30],
       [1.70, cy(-1.10), -1.10], [1.655, cy(-1.85) - 0.006, -1.85],
@@ -4110,8 +4974,9 @@ function buildM48(P, cfg) {
   const turretSeatLiftM = cfg.turretSeatLiftM ?? 0;
   const seatedRingY = sourceRingY + turretSeatLiftM;
   P.turretG.position.set(0, seatedRingY, cfg.ring[1]);
-  t26Cast(P, { ringY: sourceRingY, ringZ: cfg.ring[1], ...cfg.turret });
-  const yl = (y) => y - sourceRingY, zl = (z) => z - cfg.ring[1];
+  t26Cast(P, { ...cfg.turret, ringY: sourceRingY, ringZ: cfg.ring[1] });
+  const yl = (y: number): number => y - sourceRingY;
+  const zl = (z: number): number => z - cfg.ring[1];
   if (P.geometryReceipt) {
     P.turretG.userData.m48TurretSeatReceipt = Object.freeze({
       sourceRingY,
@@ -4273,10 +5138,13 @@ function buildM48(P, cfg) {
     P.disposables.push(crown);
     const M = cfg.turret.mg;
     const axis = M.topY - 0.10;
-    for (const [gw, gh, gd, gx, gy, gz] of [
-      [0.163, 0.030, 0.22, M.x, axis + 0.115, M.coverZ],           // cover crown
-      [0.274, 0.030, 0.32, M.x, axis + 0.070, M.z + M.rl / 2 - 0.14], // receiver crown
-    ]) {
+    const coverZ = M.coverZ ?? (M.z + 0.10);
+    const receiverLength = M.rl ?? 0.56;
+    const crownParts: ReadonlyArray<readonly [number, number, number, number, number, number]> = [
+      [0.163, 0.030, 0.22, M.x, axis + 0.115, coverZ],           // cover crown
+      [0.274, 0.030, 0.32, M.x, axis + 0.070, M.z + receiverLength / 2 - 0.14], // receiver crown
+    ];
+    for (const [gw, gh, gd, gx, gy, gz] of crownParts) {
       const geo = KIT.box(gw, gh, gd);
       const mesh = new THREE.Mesh(geo, crown);
       mesh.position.set(gx, yl(gy), zl(gz));
@@ -4371,7 +5239,7 @@ function buildM48(P, cfg) {
 }
 // tiny helper: flush pale lens disc for the twin lamp pods (kept out of
 // KIT — m48-local dressing)
-function xformCyl(r, x, y, z) {
+function xformCyl(r: number): THREE.CylinderGeometry {
   const g = new THREE.CylinderGeometry(r, r, 0.012, 10);
   g.rotateX(Math.PI / 2);
   return g;
@@ -4408,7 +5276,7 @@ function xformCyl(r, x, y, z) {
 // wrap bottom 0.55 flat -4.04..-4.14 (face -4.15 vs plan tracks -4.11:
 // certified +0.04), tension idler (-3.30, 0.25, 0.15) pressing the ref's
 // shallow ramp start (bots 0.03-0.16 over -3.09..-3.41).
-const M26_HULL = {
+const M26_HULL: PattonHullConfig = {
   // front view: belly 0.4344 spans |x| <= ~0.98, track inner edge ~1.03 /
   // outer ~1.71 (trackW 0.67 / inset 0.05), deck plates 1.50-1.54 out to
   // +-1.60, fender line 1.313-1.372 at +-1.66..1.755
@@ -4435,7 +5303,7 @@ const M26_HULL = {
     tension: { z: -3.30, y: 0.25, r: 0.15, support: true },
   },
 };
-const M26_FIT = {
+const M26_FIT: HullFurniture = {
   hatchZ: 0.75, bowMG: [0.55, 1.28, 1.37, 0.35],
   lights: { x: 0.68, y: 1.40, z: 1.48, rx: -0.35 }, siren: [-0.3, 1.51, 1.10],
   shackleY: 1.12, shackleZ: 1.575,
@@ -4461,7 +5329,7 @@ const M26_FIT = {
 // print's chopped small end wheel (wrap bottom ~0.50, plan end -2.88 —
 // §B6 both-ends-raised holds; the small-radius residual is the m46
 // chopped-track class, documented in the packet).
-const M45_HULL = {
+const M45_HULL: PattonHullConfig = {
   // r2 (90-ladder): bandHW 1.60 -> 1.28 + cfg.deckShoulder (m47 r2 lane,
   // skirt-deepened) — the ref front view rolls the deck edge down 1.5525 ->
   // ~1.50 over |x| 1.28..1.61 (the flat 1.60 band read +0.02..+0.06 on ~17
@@ -4514,7 +5382,7 @@ const M45_HULL = {
     tension: { z: -2.05, y: 0.30, r: 0.15, support: true },
   },
 };
-const M45_FIT = {
+const M45_FIT: HullFurniture = {
   hatchZ: 1.82, hatchFlush: true, bowMG: [0.55, 1.28, 2.42, -0.80],
   lights: { x: 0.68, y: 1.40, z: 2.52, rx: -0.62 },
   shackleY: 0.98, shackleZ: 2.60,
@@ -4542,7 +5410,7 @@ const M45_FIT = {
 // the exact body map z' = 1.02872 z + 0.2819, verified to 1 mm on the mask
 // ends). Feature stations below are from the r5 retrace probe (dense 96-col
 // ref dump, gate-parity station slices; tools/tmp-m46-retrace.mjs).
-const M46_HULL = {
+const M46_HULL: PattonHullConfig = {
   W: 3.51, bandHW: 1.42, trackW: 0.60, trackInset: 0.10, sponsonY: 1.12, bellyY: 0.48, noseW: 1.30,
   ...M46_M47_TRACK_FINISH,
   bellyHW: 1.025, glacisWingY0: 1.30, glacisWingDrop: 0.04, sponsonAftY: 1.35, sponsonAftZ: -2.39,
@@ -4584,7 +5452,7 @@ const M46_HULL = {
     sprocketTeeth: false,
   },
 };
-const M46_FIT = {
+const M46_FIT: HullFurniture = {
   hatchZ: 0.45, bowMG: [0.55, 1.26, 1.42, -0.60],
   lights: { x: 0.75, y: 1.55, z: 1.60, rx: -0.45 },
   // shackles on the glacis toe (r2 law: at the old aft station they hung
@@ -4609,7 +5477,7 @@ const M46_FIT = {
 // Hull span authored -4.135..+2.195 (published 6.33; the ref's own mask is
 // 6.266 — the extra 0.032/end keeps the 12%-filter bodyLen inside the dims
 // grace while staying under half a gate column of curve error).
-const M47_HULL = {
+const M47_HULL: PattonHullConfig = {
   // r2 (workorder columns): band narrowed 1.56 -> 1.42 (the ref deck rolls
   // off from ~1.42 — cfg.deckShoulder carries the roll); track widened to
   // the ref's 1.685 outer edge with the inner edge held at 1.055; belly
@@ -4642,7 +5510,7 @@ const M47_HULL = {
     sprocketTeeth: false,
   },
 };
-const M47_FIT = {
+const M47_FIT: HullFurniture = {
   hatchZ: 0.75, bowMG: [0.55, 1.31, 1.63, -0.60], bowMGHeavy: true, // r6 C3
 
   lights: { x: 0.75, y: 1.44, z: 1.63, rx: -0.45 },
@@ -4668,7 +5536,7 @@ const M47_FIT = {
 // tension idler at -2.487 (the print's own contact ends there), raised
 // sprocket -3.14 / idler +3.02 (§B6 trapezoid), 5 return rollers, track
 // band x 1.055..1.715, ground line ~0.01 (botY 0.02).
-const M48_HULL = {
+const M48_HULL: PattonHullConfig = {
   // r1b registration lattice (census-calibrated): the side-view frame is
   // the HULL row's 12%-fat mid, and BOTH my hull-row fat ends are the
   // wrap-arc columns (hull-row thr ~0.23; the same arcs stay sub-threshold
@@ -4705,7 +5573,7 @@ const M48_HULL = {
     shoeRadialScale: 0.94,
   },
 };
-const M48_FIT = {
+const M48_FIT: HullFurniture = {
   singleHatch: true, hatchX0: 0, hatchZ: 2.02,
   lights: { x: 1.40, y: 1.52, z: 3.20, rx: -0.20 },
   shackleY: 1.25, shackleZ: 3.18,
@@ -4716,7 +5584,7 @@ const M48_FIT = {
   rearGrilleY: 1.24, rearGrilleW: 1.55, rearGrilleZ: -3.180, noRearEyes: false,
 };
 
-const M60_HULL = {
+const M60_HULL: PattonHullConfig = {
   W: 3.631, bandHW: 1.70, trackW: 0.69, trackInset: 0.037,
   ...M60_TRACK_FINISH,
   sponsonY: 1.16, sponsonBandY: 1.40, bellyY: 0.47, noseW: 1.66,
@@ -4732,7 +5600,7 @@ const M60_HULL = {
     idler: { z: 3.00, y: 0.96, r: 0.28 }, sprocket: { z: -2.84, y: 0.97, r: 0.28 },
   },
 };
-const M60_FIT = {
+const M60_FIT: HullFurniture = {
   singleHatch: true, hatchX0: 0, hatchZ: 2.56,
   lights: { x: 0.92, y: 1.47, z: 3.10, rx: -0.24 },
   shackleY: 1.18, shackleZ: 3.34,
@@ -4751,14 +5619,14 @@ const M60_FIT = {
 // M60 casting cross profiles (signed fractions of hw / bot->top): the LEFT
 // wall climbs a near-vertical cliff to the ridge shoulder; the RIGHT roof
 // falls immediately off the ridge to the long 2.72 shelf line.
-const M60_PROFILE = [
+const M60_PROFILE: CrossProfile = [
   [-1, 0], [-1, 0.29], [-0.94, 0.445], [-0.919, 0.795], [-0.837, 0.927],
   [-0.268, 1.0], [0.038, 0.915], [0.23, 0.72], [1, 0.29], [1, 0]];
 // True profile knuckles (weld crease list — everything else shades smooth):
 // k4 left cliff-top shoulder (52 deg turn), k5 ridge crest, k6 right roof
 // break (31 deg), k8 right wall top (59 deg), k9/k0 wall-to-underside.
 const M60_PROFILE_CREASES = [0, 4, 5, 6, 8, 9];
-const M60_BUSTLE_PROFILE = [
+const M60_BUSTLE_PROFILE: CrossProfile = [
   [-1, 0], [-1, 0.30], [-0.965, 0.66], [-0.945, 0.91], [-0.848, 1.0],
   [0.848, 1.0], [0.945, 0.91], [0.965, 0.66], [1, 0.30], [1, 0]];
 // Bustle knuckles: roof-chamfer shoulders both sides (53/30 deg) + the
@@ -4767,7 +5635,7 @@ const M60_BUSTLE_CREASES = [0, 3, 4, 5, 6, 9];
 // Front casting loft (world coords; tops/hw from the true-axis trace: saddle
 // 2.564 @ 1.70..1.91, forehead shelf 2.895 @ 1.06..1.59, crest 3.09 @ ~0,
 // falling 2.845 @ -0.77; nose underside hangs to the measured 1.74-1.78)
-const M60_SECTIONS = [
+const M60_SECTIONS: M60Section[] = [
   { z: 2.16, hw: 0.30, top: 2.30, bot: 1.90 },
   { z: 2.10, hw: 0.44, top: 2.36, bot: 1.84 },
   { z: 2.02, hw: 0.54, top: 2.42, bot: 1.79 },
@@ -4800,7 +5668,7 @@ const M60_SECTIONS = [
 // station boundary and the -2.033 trace column boundary sit just behind it),
 // plan taper 1.12 @ -1.78 -> 0.90 @ -1.87 -> 0.60 @ -1.96 -> 0.30 @ -2.01;
 // the RIGHT cheek tapers earlier (measured rear -1.35 at x +1.24).
-const M60_BUSTLE = [
+const M60_BUSTLE: M60Section[] = [
   { z: -0.95, hw: 1.235, hwR: 1.225, top: 2.665, bot: 1.80 },
   { z: -1.30, hw: 1.215, hwR: 1.175, top: 2.664, bot: 1.84 },
   { z: -1.60, hw: 1.19, hwR: 1.13, top: 2.664, bot: 1.90 },
@@ -4818,7 +5686,7 @@ const M60_BUSTLE = [
 // thin tip plates to +3.415 (both hullLengthM readings inside the 1% grace
 // of the published 6.95); rear flaps to -3.655 + muzzle +3.655 puts
 // overallLengthM at 7.31 (+0.55% of 7.27).
-const M60A2_HULL = {
+const M60A2_HULL: PattonHullConfig = {
   // live-pair track read: inner edge 1.245 / outer 1.79 (narrower than the
   // A1's 0.69 band) — the belly widens to 1.195 and owns the 0.42-0.59
   // front-view floor the ref shows at |x| 0.95-1.2
@@ -4847,7 +5715,7 @@ const M60A2_HULL = {
     idler: { z: 2.895, y: 0.90, r: 0.26 }, sprocket: { z: -3.19, y: 1.03, r: 0.29 },
   },
 };
-const M60A2_FIT = {
+const M60A2_FIT: HullFurniture = {
   singleHatch: true, hatchX0: 0, hatchZ: 2.60, hatchFlush: true,
   lights: { x: 0.90, y: 1.575, z: 2.98, rx: -0.20 },
   shackleY: 1.25, shackleZ: 3.24,
@@ -4897,7 +5765,7 @@ export const PATTON_PROFILES = {
     // side hwL: the -x/cupola flank bulges like the m45), the right shelf /
     // cupola seat / left shoulder ride flush casting pods. Muzzle 4.31
     // (brake face 4.32 vs extract muzzle 4.326; overall 8.646 = -0.05%).
-    build: (P) => buildPershing(P, {
+    build: (P: PattonBuilderPort) => buildPershing(P, {
       // r3 tone transfer: the m47-r4/r6-olive gear recipe via the SHARED
       // cfg.gearTone path (materials only — gate-mask inert). wheelMul at
       // the shared default pending the per-tank render dial (LAW: the
@@ -5126,7 +5994,7 @@ export const PATTON_PROFILES = {
     // Muzzle +3.39 carries the pub-6.6 overall row (seated print muzzle
     // +3.234 = 6.468 — the r1 convention flag stands; 2 side + 1 plan
     // proc-only columns certified until the owner rules on the row).
-    build: (P) => buildPershing(P, {
+    build: (P: PattonBuilderPort) => buildPershing(P, {
       // r1 tone transfer: the m47-r4/r6-olive gear recipe via the SHARED
       // cfg.gearTone path (materials only — gate-mask inert; m46 r7 proved
       // the olive constants). wheelMul left at the shared default pending
@@ -5465,7 +6333,7 @@ export const PATTON_PROFILES = {
     // crest band split 2.818 (z -0.50..-0.795, M2-hidden in front) over a
     // 2.75 left-cheek roll, loader-ring band 2.712, M2 station raised to
     // the ref's 3.169 band with the barrel to +1.23 (station i12 carrier).
-    build: (P) => buildPershing(P, {
+    build: (P: PattonBuilderPort) => buildPershing(P, {
       hull: M46_HULL, fit: M46_FIT, americanModernization: 'm46',
       ring: [1.56, -0.29], topWorld: 3.18,
       lowTurret: {
@@ -5700,7 +6568,7 @@ export const PATTON_PROFILES = {
     // tube ends at 4.103 but the muzzle is authored at the PUBLISHED
     // -4.135+8.51 = 4.375 station (dims sovereign; ~2 proc-only columns
     // pending the batch z-warp that stretches the oracle tube to 8.51).
-    build: (P) => buildPershing(P, {
+    build: (P: PattonBuilderPort) => buildPershing(P, {
       hull: M47_HULL, fit: M47_FIT, americanModernization: 'm47',
       ring: [1.676, -0.318], topWorld: 3.37,
       lowTurret: {
@@ -5966,7 +6834,7 @@ export const PATTON_PROFILES = {
     // p95 (m26/m45 over-mounted-MG convention; the print mounts NO roof
     // gun and its low-cupola crown is 2.718 — the per-column cost is the
     // packet's configuration-datum cert, ASK-OWNER row flag banked).
-    build: (P) => buildM48(P, {
+    build: (P: PattonBuilderPort) => buildM48(P, {
       hull: M48_HULL, fit: M48_FIT,
       ring: [1.595, 0.563], turretSeatLiftM: 0.055, topWorld: 3.62,
       turret: {
@@ -6063,13 +6931,13 @@ export const PATTON_PROFILES = {
     // width system on the ref's low boards. Ceiling MEASURED at ~87.5
     // whole: bow-tip tube-overlap + crest height-cap + stern overall-cap
     // (certified-cap candidates; mechanisms in the packet round section).
-    build: (P) => buildM60A2(P, {
+    build: (P: PattonBuilderPort) => buildM60A2(P, {
       hull: M60A2_HULL, fit: M60A2_FIT, sections: M60A2_SECTIONS, muzzle: 3.712,
     }),
   },
-  m60a1: { build: (P) => buildM60(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: true, sleeve: false, gunLen: 4.435 }) },
+  m60a1: { build: (P: PattonBuilderPort) => buildM60(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: true, sleeve: false, gunLen: 4.435 }) },
   // A3 TTS: the supplied A3 oracle resolves the correct variant package —
   // thermal sleeve, TTS head, paired smoke banks and crosswind mast, without
   // the A1's large AN/VSS-1 mantlet searchlight.
-  m60a3: { build: (P) => buildM60(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: 1.42, sleeve: true, a3: true, gunLen: 4.435 }) },
-};
+  m60a3: { build: (P: PattonBuilderPort) => buildM60(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: 1.42, sleeve: true, a3: true, gunLen: 4.435 }) },
+} satisfies VehicleProfileRecord;

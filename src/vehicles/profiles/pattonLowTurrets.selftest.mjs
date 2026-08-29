@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
-import { M46_M47_TRACK_FINISH } from './patton.js';
+import { M46_M47_TRACK_FINISH } from './patton.ts';
 
 const CASES = {
   m26_pershing: { profile: 'm26-broad-cast', castScale: 0.65, gunY: 0.27846, mantletW: 1.50 },

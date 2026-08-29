@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
-import { M60_TRACK_FINISH } from './patton.js';
+import { M60_TRACK_FINISH } from './patton.ts';
 
 const worldGeometryCenter = (mesh) => {
   mesh.geometry.computeBoundingBox();

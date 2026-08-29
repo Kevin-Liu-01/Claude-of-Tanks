@@ -67,7 +67,7 @@ function m60a3Armor(): ArmorEnvelope {
   // First-generation Blazer-style protection: a meaningful shaped-charge
   // defeat layer with only a modest kinetic effect.  The broad records are
   // sector hit surfaces; each name maps to a dense visual cassette cluster
-  // in profiles/patton.js and is independently consumed after detonation.
+  // in profiles/patton.ts and is independently consumed after detonation.
   const blazer = { keReduction: 0.08, ceFlatMm: 300 };
   const era = { kind: 'era', era: blazer, keMm: 18, ceMm: 18 };
   armor.turretPlates = [

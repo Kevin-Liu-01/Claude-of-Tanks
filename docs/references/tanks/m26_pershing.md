@@ -75,7 +75,7 @@ run was deleted — the oracle's flank along the gun-tube band is bare, and any
 deck-edge kit there subtracts the tube band out of the upper-assembly mask.
 
 ## From-scratch rebuild (2026-07-31, measured-curve program)
-Build rewritten in `src/vehicles/profiles/patton.js` against
+Build rewritten in `src/vehicles/profiles/patton.ts` against
 `docs/references/profiles/m26_pershing.json` (mask-trace-1024 of the repaired
 oracle) — lofted station-slab hull following the deck/belly polylines, turret
 lofted from the whole−hull side band + plan footprint (no lathe egg). Key
@@ -111,7 +111,7 @@ contract: 90 mm M3 muzzle now at +4.97 (overall reads 8.57 m vs 8.65 published,
 double-baffle body 0.32 x 0.50 at the tube end, tube r 0.115 at axis 1.60.
 The old CERTIFIED CAP on dims.overallLengthM is RETIRED — dims now scores
 96.3 (heightM 0.99% / hullLengthM 0.40% / overallLengthM 0.91% / widthM 1.46%).
-v6 true-camera constants baked into patton.js: deck 1.535-1.55 (not 1.57),
+v6 true-camera constants baked into patton.ts: deck 1.535-1.55 (not 1.57),
 casting crest 2.31 (not 2.37), plan peak hw 1.225 @ z -1.40, mantlet chin
 1.17..1.43 sloping up to the face at -0.18, basket floor 0.375 over
 -0.84..-2.16, M2 band top 2.78, high sprocket (-2.90, 0.85) fitting the

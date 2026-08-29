@@ -452,7 +452,7 @@ m47 **2fc99c50** (FROZEN ✓), m26 **2f006738** — NOTE: the registry
 records m26 at 65c564c0; the drift is PRE-EXISTING and attributed this
 round by worktree bisect to landed commit **5f39989** (armorM4
 gunBarrel shadow-proxy true-up 3.96 -> 3.44; m26/m45 inherit the
-m4a3e8 base, m46/m47 do not — patton.js bytes unchanged). Orchestrator
+m4a3e8 base, m46/m47 do not — then-`patton.js` bytes unchanged). Orchestrator
 lane: re-record m26 at 2f006738 with that attribution (proxy-only,
 render-invisible) or decouple proxy sizes from frozen-hash coverage.
 NEW SHARED-CODE OPT-INS (defaults byte-identical, §F.2, hash-proven on

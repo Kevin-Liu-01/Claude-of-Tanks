@@ -35,7 +35,7 @@ stations 83.1 / dims 98.6 / floaters 100), gate x2 stable. Track clip 0/0,
 contiguity 0, mg1+3d fittings census (pintleMG m2 stowed in the open
 bustle rack, jerryCans, antennaWhip, towCable — §B3 from birth). Target
 was >=75. Profile: `PATTON_PROFILES.m60a2` (buildM60A2 + M60A2_HULL/FIT/
-SECTIONS in src/vehicles/profiles/patton.js) — A1-family curveHull/usKit/
+SECTIONS in src/vehicles/profiles/patton.ts) — A1-family curveHull/usKit/
 loftBody reuse, re-authored in this print's own extract frame (ring py
 1.90 pz +0.38; gun axis 2.27 rootZ 1.55).
 MEASURED BUILD FRAME (live gate pair, world):

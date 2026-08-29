@@ -1285,7 +1285,7 @@ function towCableUK(
 // ---------------------------------------------------------------------------
 // UK TONE KIT (combined tone round 2026-08-05, challenger1 r7 O1a/O2/O4 +
 // centurion5 r6 O2/O4 + centurion3 r6 Groups 1-2). Family recipe = the
-// m47/m46 gearTone lineage (patton.js r4-r7) in the UK olive family:
+// m47/m46 gearTone lineage (patton.ts r4-r7) in the UK olive family:
 // per-instance material work only — createTankMaterials is per-build and the
 // gate renders self-lit masks, so nothing here moves a curve or a mask.
 // OPT-IN per build fn (§F.2): chieftain5 (frozen graduate 5117b9a8) does NOT
