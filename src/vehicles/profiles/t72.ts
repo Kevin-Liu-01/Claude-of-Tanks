@@ -1,4 +1,4 @@
-// Pure family extraction from russia.js (§5.75). Geometry bytes are unchanged.
+// Pure family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
@@ -23,7 +23,7 @@ import {
   domeRailRu,
   eraRuCheeks,
   ruShtora,
-} from './russia.js';
+} from './russia.ts';
 import type { ProfileBuilderPort, VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec3Tuple = [number, number, number];
@@ -53,7 +53,7 @@ interface T72BuilderPort {
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
-  readonly mats: Record<string, T72Material>;
+  readonly mats: Record<string, T72Material> & { readonly dark: T72Material };
   readonly spec: { readonly id: string; readonly visual: { readonly number?: string } };
   readonly disposables: DisposableResource[];
   readonly rng: () => number;
@@ -65,6 +65,7 @@ interface T72BuilderPort {
       options: { readonly outset: number; readonly name: string },
     ): void;
   };
+  muzzleZ?: number;
   topY?: number;
   postAssemble?: (() => void) | null;
   add(slot: string, geometry: unknown, ...transform: number[]): void;

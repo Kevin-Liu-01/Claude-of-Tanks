@@ -296,7 +296,7 @@ const SPECS: FleetTankSpec[] = [
       dims: {
         // widthM 3.30 -> 3.63 (§5.304 OWNER ORDER 2026-08-17, verbatim:
         // "update our t62 obr 1975 10% wider ..."): owner-decreed spec
-        // change landed WITH the build widen (profiles/russia.js
+        // change landed WITH the build widen (profiles/russia.ts
         // buildT62MV1 — every lateral station ×1.10). The offline obr-1975
         // oracle print now reads ~9.1% narrow vs this row by decree —
         // adjudicated FALSE-class divergence (never chase the print back).

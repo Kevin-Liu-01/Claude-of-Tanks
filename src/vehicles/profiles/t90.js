@@ -1,4 +1,4 @@
-// Pure family extraction from russia.js (§5.75). Geometry bytes are unchanged.
+// Pure family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
@@ -22,7 +22,7 @@ import {
   domeRailRu,
   eraRuCheeks,
   ruShtora,
-} from './russia.js';
+} from './russia.ts';
 
 // Faceted turret shell with a source-defined lower ring.  The top ring and
 // plan outline use the same construction as KIT.polyTurret; only the lower

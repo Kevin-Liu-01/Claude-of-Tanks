@@ -121,7 +121,7 @@ const GROUP_LOADERS = Object.freeze({
   sweden: () => import('./profiles/sweden.ts').then((mod) => registerProfiles(mod.SWEDEN_PROFILES)),
   sovietHeavy: () => import('./profiles/soviet-heavy.ts').then((mod) => registerProfiles(mod.SOVIET_HEAVY_PROFILES)),
   t90: () => import('./profiles/t90.js').then((mod) => registerProfiles(mod.T90_PROFILES)),
-  russia: () => import('./profiles/russia.js').then((mod) => registerProfiles(mod.RUSSIA_PROFILES)),
+  russia: () => import('./profiles/russia.ts').then((mod) => registerProfiles(mod.RUSSIA_PROFILES)),
   t72: () => import('./profiles/t72.ts').then((mod) => registerProfiles(mod.T72_PROFILES)),
   t80: () => import('./profiles/t80.ts').then((mod) => registerProfiles(mod.T80_PROFILES)),
   ukraine: () => import('./profiles/ukraine.ts').then((mod) => registerProfiles(mod.UKRAINE_PROFILES)),

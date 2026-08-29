@@ -695,8 +695,8 @@ strip fade) had already cleared everything but ONE flag — official
 (pre-round A/B on the same instrument, same day).
 
 Decomposition (tools/tmp-ru-b4-census.{html,mjs} — the tmp-leo-r13-census
-per-add pattern adapted for russia.js): front 24 = the ruGlacisKit
-TOW-EYE TORI (russia.js L306, 12 vox/side, aabb x ±1.141..1.343,
+per-add pattern adapted for russia.ts): front 24 = the ruGlacisKit
+TOW-EYE TORI (russia.ts L306, 12 vox/side, aabb x ±1.141..1.343,
 y 0.404..0.596, z 2.864..2.896) — per-side in-lane fittings (lane x
 window 1.12..1.62) whose merged center-spanning hullDetail AABB (reach 0)
 defeated the audit's lane-local skip: the t72b3m/leo r13 false-flag class
@@ -709,7 +709,7 @@ FIX (split-only, zero transforms): ruGlacisKit gains opt-in `eyeSplit`
 tori into per-side hullTrackDetailL/R buckets; BUCKET_DEF gains
 hullTrackDetailL/R: ['hullG','detail'] (tankFactory.ts, the e3918e6
 rider class: same 'detail' material slot + LOD path as hullDetail, no
-other caller — NEEDS ORCHESTRATOR LANDING with the russia.js change in
+other caller — NEEDS ORCHESTRATOR LANDING with the russia.ts change in
 one commit). Each merged mesh keeps an honest one-sided AABB (reach
 1.141 > laneInnerX−0.15 = 0.97) and the audit classifies the eyes as the
 in-lane bow fittings they are.

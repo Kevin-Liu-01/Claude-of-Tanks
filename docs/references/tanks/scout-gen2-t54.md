@@ -32,7 +32,7 @@ Dimension sources (secondary military references — cite the specific page at i
 ## 0 -> 17.0 min ×2 (hull 17 / whole 17.7 / turret 46.9 / stations 72.7 /
 ## dims 100 / floaters 100) — CEILING IS THE PRISTINE ORACLE, measured below
 
-buildT54 in src/vehicles/profiles/russia.js (RUSSIA_PROFILES.t54 overrides
+buildT54 in src/vehicles/profiles/russia.ts (RUSSIA_PROFILES.t54 overrides
 the t62mv1 donor stand-in). Dims SOVEREIGN per the incident law (spec dims:
 hull 6.45 / overall 9.00 / width 3.27 / heightM 2.65 = the registered
 crown+MG convention — the scout stub's 2.40 is the bare-roof figure).

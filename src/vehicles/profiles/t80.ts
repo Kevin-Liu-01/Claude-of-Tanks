@@ -1,4 +1,4 @@
-// Pure family extraction from russia.js (§5.75). Geometry bytes are unchanged.
+// Pure family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
@@ -17,7 +17,7 @@ import {
   ruSkirtBand,
   widthAnchor,
   eraRuCheeks,
-} from './russia.js';
+} from './russia.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec3Tuple = [number, number, number];
@@ -38,6 +38,7 @@ interface T80BuilderPort {
   };
   readonly spec: { id: string; visual: { number?: string } };
   readonly disposables: DisposableResource[];
+  muzzleZ?: number;
   topY?: number;
   add(slot: string, geometry: unknown, ...transform: number[]): void;
   addEquipment(slot: string, geometry: unknown, ...transform: number[]): unknown;

@@ -15,7 +15,7 @@ import {
   loftHull, tubeGun, ruSkirtBand, ruFlaps, widthAnchor,
   buildT62Obr1975Chassis, meshDome, meshDomeCurved, ringSkin, domeRailRu, ruSaddle,
   ruBoot,
-} from './russia.js';
+} from './russia.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec3Tuple = [number, number, number];
@@ -68,6 +68,7 @@ interface ChinaBuilderPort {
     contactGeom?: TrackContactGeometry;
     trackHitbox?: TrackHitboxLane[];
   };
+  muzzleZ?: number;
   topY?: number;
   add(slot: string, geometry: unknown, ...transform: number[]): unknown;
   addEquipment(
@@ -82,6 +83,7 @@ interface ChinaBuilderPort {
   ): unknown;
   addGunExtra(geometry: unknown, ...transform: number[]): unknown;
   addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  addMudguard(label: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
   addModuleVisual(
     module: string,
     slot: string,
@@ -101,6 +103,7 @@ interface ChinaBuilderPort {
     owner: VehicleAssemblyOwner,
     build: () => void,
   ): unknown;
+  offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
 }
 
 const nonUniformXform = KIT.xform as (
@@ -1064,7 +1067,7 @@ function buildZTZ99A2(P: ChinaBuilderPort): void {
 // ===========================================================================
 // OWNER ORDER (verbatim, 2026-08-17): "update our t62 obr 1975 10% wider and
 // then redeisgn our type 59 to be based off of that".  The chassis IS the
-// widened obr-1975 construction (profiles/russia.js buildT62Obr1975Chassis —
+// widened obr-1975 construction (profiles/russia.ts buildT62Obr1975Chassis —
 // hull loft, twin tail drums, transom, fender/bin rails, §B3.2 service kit),
 // re-gauged here only in the wheel PATTERN: the licensed-T-54A big 1st-2nd
 // gap replaces the T-62's rear-biased spacing (same span/idler/sprocket, so

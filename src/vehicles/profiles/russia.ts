@@ -21,6 +21,389 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.js';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+
+type Vec2Tuple = readonly [number, number];
+type Vec3Tuple = readonly [number, number, number];
+type ProfileCurve = readonly Vec2Tuple[];
+// Several already-typed sibling profiles derive these rings with Array.map,
+// which deliberately widens the tuple to a numeric row. The geometry contract
+// only reads indices 0 and 1, so expose the honest interoperable shape here.
+type DomeRing = readonly number[];
+type GeometryScale = number | readonly number[];
+type EraKind = 'k1' | 'k5' | 'tip' | 'erawa' | 'relikt';
+
+interface RussiaGeometryPort {
+  readonly hullG: THREE.Group;
+  readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
+  readonly q?: boolean;
+  topY?: number;
+  add(
+    slot: string,
+    geometry: unknown,
+    x?: number,
+    y?: number,
+    z?: number,
+    rotationX?: number,
+    rotationY?: number,
+    rotationZ?: number,
+    scale?: GeometryScale,
+  ): unknown;
+  decal(
+    owner: 'hull' | 'turret',
+    kind: string,
+    label: string | null,
+    scale: number,
+    position: Vec3Tuple,
+    ...orientation: number[]
+  ): unknown;
+}
+
+interface RussiaGunPort extends RussiaGeometryPort {
+  muzzleZ?: number;
+}
+
+interface RussiaGunMountPort extends RussiaGeometryPort {
+  addGunExtra(geometry: unknown, ...transform: number[]): unknown;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+}
+
+interface RussiaMudguardPort extends RussiaGeometryPort {
+  addMudguard(label: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
+}
+
+interface RussiaOffsetPort extends RussiaGeometryPort {
+  offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+}
+
+interface RussiaChassisPort extends RussiaGeometryPort {
+  readonly mats: unknown;
+}
+
+interface RussiaEraPort extends RussiaGeometryPort {
+  visualEraCluster(key: string, owner: 'hull' | 'turret', build: () => void): void;
+}
+
+interface RussiaBuilderPort
+  extends RussiaGunPort, RussiaGunMountPort, RussiaMudguardPort, RussiaOffsetPort, RussiaEraPort {
+  readonly mats: Record<string, THREE.MeshStandardMaterial> & {
+    readonly dark: THREE.MeshStandardMaterial;
+  };
+  readonly spec: { readonly visual: { readonly number?: string } };
+  _shtoraRed?: THREE.MeshStandardMaterial;
+}
+
+interface RussiaShtoraPort extends RussiaGeometryPort {
+  readonly mats: { readonly dark: THREE.MeshStandardMaterial };
+  _shtoraRed?: THREE.MeshStandardMaterial;
+}
+
+interface LoftHullOptions {
+  readonly deck: ProfileCurve;
+  readonly belly: ProfileCurve;
+  readonly wUp: ProfileCurve;
+  readonly wLo: ProfileCurve;
+  readonly sponsonY: number | ProfileCurve;
+}
+
+interface T80CastTurretOptions {
+  readonly scaleY?: number;
+  readonly sz?: number;
+  readonly cx?: number;
+  readonly cz?: number;
+  readonly curved?: boolean;
+  readonly capR?: number;
+  readonly roofTiltScale?: number;
+  readonly reference?: string;
+  readonly equipmentSeatRevision?: string;
+}
+
+interface CurvedDomeOptions {
+  readonly capR?: number;
+  readonly roofTiltScale?: number;
+  readonly bucket?: string;
+}
+
+interface DomeBoxSeatOptions {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly w: number;
+  readonly h: number;
+  readonly d: number;
+  readonly cx?: number;
+  readonly cz?: number;
+  readonly rx?: number;
+  readonly ry?: number;
+  readonly rz?: number;
+  readonly order?: THREE.EulerOrder;
+  readonly overlap?: number;
+  readonly standoff?: number;
+}
+
+type GunSegment = readonly [
+  zStart: number,
+  zEnd: number,
+  radius: number,
+  endRadius?: number,
+  centerX?: number,
+  centerY?: number,
+  legacyPlanRadius?: number,
+];
+
+type GunRing = readonly [z: number, radius: number, centerX?: number, centerY?: number];
+
+interface TubeGunOptions {
+  readonly rings?: readonly GunRing[];
+  readonly muzzle?: number;
+}
+
+interface SaddleOptions {
+  readonly rollR: number;
+  readonly rollW: number;
+  readonly tubeR: number;
+  readonly rootR?: number;
+  readonly rootL?: number;
+}
+
+type BootPoint = readonly [z: number, width: number, height: number, centerY?: number];
+
+interface BootOptions {
+  readonly pts: readonly BootPoint[];
+  readonly bulge?: number;
+  readonly creaseD?: number;
+  readonly clamp?: boolean;
+}
+
+interface GlacisKitOptions {
+  readonly w: number;
+  readonly y: number;
+  readonly z: number;
+  readonly barY?: number;
+  readonly hookBucket?: string;
+  readonly hookH?: number;
+  readonly hookD?: number;
+  readonly hookX?: number;
+  readonly hookY?: number;
+  readonly hookZ?: number;
+  readonly eyes?: boolean;
+  readonly eyeSplit?: boolean;
+  readonly eyeX?: number;
+  readonly eyeY?: number;
+  readonly eyeZ?: number;
+  readonly lights?: boolean;
+  readonly hlX?: number;
+  readonly hlY?: number;
+}
+
+interface DeckOptions {
+  readonly deckY: number;
+  readonly hatchZ: number;
+  readonly gz: number;
+  readonly hatchX?: number;
+  readonly hatchY?: number;
+  readonly periY?: number;
+  readonly grilles?: number;
+  readonly gw?: number;
+  readonly gx?: number;
+  readonly gY?: number;
+  readonly ribY?: number;
+}
+
+interface SkirtBandOptions {
+  readonly x: number;
+  readonly z0: number;
+  readonly z1: number;
+  readonly yTop: number;
+  readonly yBot: number;
+  readonly panels?: number;
+  readonly firstYBot?: number;
+  readonly rubberBotH?: number;
+  readonly th?: number;
+  readonly dressIn?: number;
+  readonly lipX?: number;
+  readonly lipXL?: number;
+  readonly lipY?: number;
+  readonly lipYL?: number;
+  readonly firstLipY?: number;
+}
+
+interface FlapOptions {
+  readonly x: number;
+  readonly w: number;
+  readonly front?: Vec2Tuple;
+  readonly frontZ: number;
+  readonly rear?: Vec2Tuple;
+  readonly rearZ?: number;
+}
+
+interface T62BowServiceOptions {
+  readonly stiffenerY?: number;
+  readonly stiffenerZ?: number;
+  readonly stiffenerPitch?: number;
+  readonly recoveryY?: number;
+  readonly recoveryBodyZ?: number;
+  readonly recoveryEyeZ?: number;
+}
+
+interface T62ChassisOptions {
+  readonly bowService?: T62BowServiceOptions;
+  readonly gear?: Readonly<Record<string, unknown>>;
+}
+
+interface TallTrackLiftOptions {
+  readonly trackHeightIncreaseM: number;
+  readonly hullRideHeightIncreaseM?: number;
+  readonly lowerHullDropM?: number;
+  readonly trackBottomY: number;
+  readonly trackTopY: number;
+  readonly authoredEnvelopeHeightM: number;
+  readonly roadWheelRadiusM: number;
+  readonly roadWheelCenterY: number;
+  readonly frontIdlerLiftM?: number;
+}
+
+interface EraLowerLeafOptions {
+  readonly dy?: number;
+  readonly tuck?: number;
+  readonly h?: number;
+  readonly dPitch?: number;
+}
+
+interface EraSurfaceSeat {
+  readonly point: Vec3Tuple;
+  readonly normal: Vec3Tuple;
+}
+
+interface EraChevronOptions {
+  readonly t0?: number;
+  readonly out?: number;
+  readonly inX?: number;
+  readonly inZ?: number;
+  readonly yaw: number;
+  readonly rows?: number;
+  readonly arcFrom?: number;
+  readonly arcTop?: boolean;
+  readonly banksOff?: boolean;
+  readonly d0?: number;
+  readonly pitch?: number;
+  readonly rowTuck?: number;
+  readonly bucket?: string;
+  readonly bw?: number;
+  readonly bh?: number;
+  readonly bd?: number;
+  readonly tilt?: number;
+  readonly tiltRow?: number;
+}
+
+interface EraTipOptions {
+  readonly x?: number;
+  readonly z: number;
+  readonly ox: number;
+  readonly oz: number;
+  readonly y?: number;
+  readonly h?: number;
+  readonly d?: number;
+  readonly tilt?: number;
+  readonly segs?: number;
+  readonly rows?: number;
+  readonly bucket?: string;
+  readonly pad?: number;
+  readonly capW?: number;
+  readonly noBacker?: boolean;
+  readonly gap?: boolean;
+  readonly gapH?: number;
+  readonly lip?: EraLowerLeafOptions;
+}
+
+interface EraCheekOptions {
+  readonly rings?: readonly DomeRing[];
+  readonly sz?: number;
+  readonly rCz?: number;
+  readonly k5T?: number;
+  readonly k5Y?: number;
+  readonly k5Out?: number;
+  readonly k5Yaw?: number;
+  readonly k5Len?: number;
+  readonly k5H?: number;
+  readonly k5Rise?: number;
+  readonly k5Pitch?: number;
+  readonly k5D?: number;
+  readonly k5Bucket?: string;
+  readonly k5LeafOff?: boolean;
+  readonly k5Seg?: number;
+  readonly k5Lower?: EraLowerLeafOptions;
+  readonly k5CapIn?: number;
+  readonly k5FlankSurfaceSeats?: readonly EraSurfaceSeat[];
+  readonly k5FlankSurfaceRowOffsets?: readonly number[];
+  readonly k5FlankRowOffsets?: readonly number[];
+  readonly k5TileWidth?: number;
+  readonly k5TileHeight?: number;
+  readonly k5TileDepth?: number;
+  readonly k5TileEmbed?: number;
+  readonly k5TileBackerDepth?: number;
+  readonly k5TileBackerOverlap?: number;
+  readonly k5LayeredFlankTiles?: boolean;
+  readonly k5MirrorFlankTiles?: boolean;
+  readonly k5TileY?: number;
+  readonly k5TileOut?: number;
+  readonly k5FlushFlankTiles?: boolean;
+  readonly k5TileYaw0?: number;
+  readonly k5TileYawStep?: number;
+  readonly k5TilePitch?: number;
+  readonly k1Chevron?: EraChevronOptions;
+  readonly k1Y?: number;
+  readonly k1Pitch?: number;
+  readonly k1N?: number;
+  readonly k1T0?: number;
+  readonly k1Step?: number;
+  readonly k1H?: number;
+  readonly k1Out?: number;
+  readonly k1OutI?: readonly number[];
+  readonly k1Bucket?: string;
+  readonly tip?: EraTipOptions;
+  readonly eDists?: readonly number[];
+  readonly rT0?: number;
+  readonly rStep?: number;
+  readonly rDist?: number;
+  readonly rDists?: readonly number[];
+  readonly rD?: number;
+  readonly rY?: number;
+  readonly rY0?: number;
+  readonly rH?: number;
+  readonly rTilt?: number;
+  readonly rBucket?: string;
+  readonly rGapBucket?: string;
+  readonly rRows?: number;
+  readonly rDeep?: number;
+  readonly rChev?: { readonly lean?: number };
+  readonly rSeam?: boolean;
+  readonly rGapH?: number;
+  readonly rStrip?: boolean;
+  readonly rXPairs?: readonly (readonly number[])[];
+}
+
+interface ShtoraOptions {
+  readonly rings: readonly DomeRing[];
+  readonly sz: number;
+  readonly eyeScale?: number;
+  readonly eyeX?: number;
+  readonly eyeZ?: number;
+  readonly eyeRound?: boolean;
+  readonly eyeKit?: boolean;
+}
+
+const nonUniformXform = KIT.xform as (
+  geometry: THREE.BufferGeometry,
+  x?: number,
+  y?: number,
+  z?: number,
+  rotationX?: number,
+  rotationY?: number,
+  rotationZ?: number,
+  scale?: GeometryScale,
+) => THREE.BufferGeometry;
 
 // THREE is used only for the t72b3m r23 light-immune flat class (kf51 r7
 // precedent, leopard.js): MeshBasicMaterial renders its albedo flat from
@@ -44,7 +427,7 @@ import { vehicleAmbientFloorHook } from '../materials.js';
 // ---------------------------------------------------------------------------
 
 // Piecewise-linear lookup over [[z, v], ...] breakpoints (sorted by z).
-function lerpPts(pts, z) {
+function lerpPts(pts: ProfileCurve, z: number): number {
   if (z <= pts[0][0]) return pts[0][1];
   for (let i = 1; i < pts.length; i++) {
     if (z <= pts[i][0]) {
@@ -62,7 +445,7 @@ function lerpPts(pts, z) {
 //   wLo  : [[z, halfW]] lower-band half width (between the tracks)
 //   sponsonY: track-bay roof — the upper band lofts sponsonY->deck, the
 //   lower band belly->sponsonY, both pinch out where the curves cross.
-export function loftHull(P, o) {
+export function loftHull(P: RussiaGeometryPort, o: LoftHullOptions): void {
   const { slab } = KIT;
   // sponsonY: scalar (fleet default, byte-identical) OR [[z, y]] profile
   // (t72b3m §B4: the track-bay roof lifts above the idler/sprocket wrap
@@ -70,7 +453,7 @@ export function loftHull(P, o) {
   // sponson-floor-station recipe). Profile z-knots join the station cuts
   // so the knees land exactly.
   const spProf = Array.isArray(o.sponsonY) ? o.sponsonY : null;
-  const spAt = (z) => (spProf ? lerpPts(spProf, z) : o.sponsonY);
+  const spAt = (z: number): number => (spProf ? lerpPts(spProf, z) : o.sponsonY as number);
   const raw = [...new Set([o.deck, o.belly, o.wUp, o.wLo, ...(spProf ? [spProf] : [])].flat().map((p) => p[0]))]
     .sort((a, b) => a - b);
   // EDGE-ON PRISM LAW (docs/GEOMETRY-GATE.md, r7c): the station cameras clip
@@ -122,7 +505,7 @@ export const T64_LOWER_HULL_DROP_M = 0.08;
 // gear retain the same front-idler stance without lifting either sprocket or
 // the loaded lower run.
 export const T64_FRONT_IDLER_LIFT_M = 0.04;
-export function lowerT64BellyProfile(points, dropM = T64_LOWER_HULL_DROP_M) {
+export function lowerT64BellyProfile(points: ProfileCurve, dropM = T64_LOWER_HULL_DROP_M): Vec2Tuple[] {
   return points.map(([z, y]) => [z, y - dropM]);
 }
 
@@ -137,28 +520,31 @@ export const T80_CAST_TURRET_RINGS = Object.freeze([
   Object.freeze([0.02, 0.735]),
 ]);
 
-export function buildT80CastTurret(P, {
+export function buildT80CastTurret(P: RussiaGeometryPort, {
   scaleY = 0.90, sz = 0.88, cx = 0, cz = 0.22,
   curved = false, capR = 1.60, roofTiltScale = 0.62,
   reference = 't80/t80b/ua_t80u_kursk',
   equipmentSeatRevision = 'reference-original',
-} = {}) {
+}: T80CastTurretOptions = {}) {
   const rawRings = T80_CAST_TURRET_RINGS;
-  const baseY = rawRings[0][1];
+  const firstRawRing = rawRings[0]!;
+  const lastRawRing = rawRings[rawRings.length - 1]!;
+  const baseY = firstRawRing[1];
   const rings = rawRings.map(([r, y]) => [r, baseY + (y - baseY) * scaleY]);
   if (curved) {
     meshDomeCurved(P, rings, sz, cx, cz, { capR, roofTiltScale });
   } else {
     meshDome(P, rings, sz, cx, cz);
   }
-  const roofDrop = (rawRings.at(-1)[1] - baseY) * (1 - scaleY);
+  const lastRing = rings[rings.length - 1]!;
+  const roofDrop = (lastRawRing[1] - baseY) * (1 - scaleY);
   P.turretG.userData.t80CastTurretReceipt = Object.freeze({
     architecture: 'shared-t80-cast-dome-r1',
     profile: 'standard',
     reference,
     ringCount: rawRings.length,
     ringBaseY: baseY,
-    crownY: rings.at(-1)[1],
+    crownY: lastRing[1],
     maximumRadiusM: Math.max(...rawRings.map(([r]) => r)),
     planScaleZ: sz,
     planCenterZ: cz,
@@ -166,12 +552,12 @@ export function buildT80CastTurret(P, {
     curvedNormals: curved,
     equipmentSeatRevision,
   });
-  return { rawRings, rings, roofDrop, roofTopY: rings.at(-1)[1] };
+  return { rawRings, rings, roofDrop, roofTopY: lastRing[1] };
 }
 
 // Measured cast dome: lathe rings [[r, y]] (y=0 at the ring base, in the
 // turret frame), plan-stretched by sz = depth/width, centered (cx, cz).
-export function meshDome(P, rings, sz, cx = 0, cz = 0) {
+export function meshDome(P: RussiaGeometryPort, rings: readonly DomeRing[], sz: number, cx = 0, cz = 0): void {
   P.add('turret', KIT.lathe(rings, P.q ? 30 : 16, sz), cx, 0, cz);
 }
 
@@ -192,10 +578,17 @@ export function meshDome(P, rings, sz, cx = 0, cz = 0) {
 // patch exactly on the cap's camera face in both heroes (box-UV accident
 // of the cap mesh; the ref GLB's own UVs sample a clean region). Siblings
 // keep the default camo bucket.
-export function meshDomeCurved(P, rings, sz, cx = 0, cz = 0, o = {}) {
+export function meshDomeCurved(
+  P: RussiaGeometryPort,
+  rings: readonly DomeRing[],
+  sz: number,
+  cx = 0,
+  cz = 0,
+  o: CurvedDomeOptions = {},
+): void {
   const seg = P.q ? 30 : 16;
   const n0 = rings.length;
-  const segTh = [];
+  const segTh: number[] = [];
   for (let i = 0; i < n0 - 1; i++) {
     const dr = rings[i + 1][0] - rings[i][0], dy = rings[i + 1][1] - rings[i][1];
     segTh.push(Math.atan2(dy, -dr)); // outward profile-normal angle from +y
@@ -203,7 +596,7 @@ export function meshDomeCurved(P, rings, sz, cx = 0, cz = 0, o = {}) {
   const vTh = [segTh[0]];
   for (let i = 1; i < n0 - 1; i++) vTh.push((segTh[i - 1] + segTh[i]) / 2);
   vTh.push(segTh[n0 - 2]);
-  const pts = [], ths = [];
+  const pts: Vec2Tuple[] = [], ths: number[] = [];
   for (let i = 0; i < n0 - 1; i++) {
     const [r0, y0] = rings[i], [r1, y1] = rings[i + 1];
     const cuts = Math.max(1, Math.ceil(Math.hypot(r1 - r0, y1 - y0) / 0.055));
@@ -246,7 +639,7 @@ export function meshDomeCurved(P, rings, sz, cx = 0, cz = 0, o = {}) {
 }
 
 // Dome-skin radius at height y for a measured ring profile (fitting seats).
-export function ringSkin(rings, y) {
+export function ringSkin(rings: readonly DomeRing[], y: number): number {
   let r = rings[0][0];
   for (let i = 1; i < rings.length; i++) {
     const [r0, y0] = rings[i - 1], [r1, y1] = rings[i];
@@ -262,7 +655,7 @@ export function ringSkin(rings, y) {
 // supported outer layer instead of either floating clear or disappearing
 // through the casting. This is a build-time geometry helper, never a render
 // loop allocation path.
-export function domeBoxPlanSeat(rings, sz, o) {
+export function domeBoxPlanSeat(rings: readonly DomeRing[], sz: number, o: DomeBoxSeatOptions) {
   const cx = o.cx ?? 0;
   const cz = o.cz ?? 0;
   const dx = o.x - cx;
@@ -310,13 +703,25 @@ export function domeBoxPlanSeat(rings, sz, o) {
 // full-depth run inside its own column band (c stays well under half a
 // 0.107 column), so no printed row can move — only the "rect footprint"
 // corner read goes away.
-export function chamferBox(P, bucket, w, h, d, x, y, z, c = 0.04) {
+export function chamferBox(
+  P: RussiaGeometryPort,
+  bucket: string,
+  w: number,
+  h: number,
+  d: number,
+  x: number,
+  y: number,
+  z: number,
+  c = 0.04,
+): void {
   const { box, slab } = KIT;
   P.add(bucket, box(w, h, d - 2 * c), x, y, z);
   const y0 = y - h / 2, y1 = y + h / 2;
-  const strip = (b0, b1, b2, b3) => P.add(bucket, slab(
-    [b0[0], y0, b0[1]], [b1[0], y0, b1[1]], [b2[0], y0, b2[1]], [b3[0], y0, b3[1]],
-    [b0[0], y1, b0[1]], [b1[0], y1, b1[1]], [b2[0], y1, b2[1]], [b3[0], y1, b3[1]]));
+  const strip = (b0: Vec2Tuple, b1: Vec2Tuple, b2: Vec2Tuple, b3: Vec2Tuple): void => {
+    P.add(bucket, slab(
+      [b0[0], y0, b0[1]], [b1[0], y0, b1[1]], [b2[0], y0, b2[1]], [b3[0], y0, b3[1]],
+      [b0[0], y1, b0[1]], [b1[0], y1, b1[1]], [b2[0], y1, b2[1]], [b3[0], y1, b3[1]]));
+  };
   // front strip (+z narrow edge) then rear strip (-z narrow edge), corners
   // in slab's plan order (-x,+z),(+x,+z),(+x,-z),(-x,-z)
   strip([x - w / 2 + c, z + d / 2], [x + w / 2 - c, z + d / 2], [x + w / 2, z + d / 2 - c], [x - w / 2, z + d / 2 - c]);
@@ -331,7 +736,7 @@ export function chamferBox(P, bucket, w, h, d, x, y, z, c = 0.04) {
 // tube spans x -0.05..+0.17): the tube stays a TRUE CYLINDER (top-down
 // circle law) — only its axis shifts a few cm, invisible at tank scale but
 // it decides which 0.107 m plan columns the tube owns.
-export function tubeGun(P, segs, opts = {}) {
+export function tubeGun(P: RussiaGunPort, segs: readonly GunSegment[], opts: TubeGunOptions = {}): void {
   const { cylZ } = KIT;
   const seg = P.q ? 24 : 12;
   // cy (r10f): tiny per-segment vertical seat — the t72b3m ref's printed
@@ -356,7 +761,7 @@ export function tubeGun(P, segs, opts = {}) {
 // Sealed trunnion saddle for the Soviet slit mantlet: every piece is a body
 // of revolution about the trunnion X-axis through the gun pivot, so no slot
 // can open at any elevation. Root cone tapers onto the tube.
-export function ruSaddle(P, o) {
+export function ruSaddle(P: RussiaGunMountPort, o: SaddleOptions): void {
   const { cylX, cylZ } = KIT;
   P.addGunExtra(cylX(o.rollR, o.rollW, 14), 0, 0, 0);
   P.addGunExtra(cylZ(o.rootR ?? o.rollR * 0.62, o.rootL ?? 0.55, 12, o.tubeR * 1.25), 0, 0, (o.rootL ?? 0.55) * 0.5 + 0.05);
@@ -378,8 +783,8 @@ export function ruSaddle(P, o) {
 //   o.clamp : false to skip the end clamp ring
 // Sections are gunMount (pitch, no recoil) like every mantlet part; the
 // crease/clamp collars ride gunMountDark.
-export function ruBoot(P, o) {
-  const { frustum, xform, cylZ } = KIT;
+export function ruBoot(P: RussiaGunMountPort, o: BootOptions): void {
+  const { frustum, cylZ } = KIT;
   const pts = o.pts;
   for (let i = 0; i < pts.length - 1; i++) {
     const [zA, wA, hA, yAr] = pts[i], [zB, wB, hB, yBr] = pts[i + 1];
@@ -387,18 +792,18 @@ export function ruBoot(P, o) {
     // frustum builds along +Y; rotate +Y -> +Z (rx = PI/2 maps y'->z, z'->-y)
     const g = frustum(wA / 2, -(yA - hA / 2), -(yA + hA / 2),
       wB / 2, -(yB - hB / 2), -(yB + hB / 2), 0, zB - zA);
-    P.addGunExtra(xform(g, 0, 0, 0, Math.PI / 2, 0, 0), 0, 0, zA);
+    P.addGunExtra(nonUniformXform(g, 0, 0, 0, Math.PI / 2, 0, 0), 0, 0, zA);
     if (i > 0) {
       // crease collar at the joint: elliptical ring a few mm proud of the
       // local canvas skin (the accordion fold read)
       const b = o.bulge ?? 0.007;
-      P.addGunExtraDark(xform(cylZ(0.5, o.creaseD ?? 0.035, 14), 0, 0, 0, 0, 0, 0,
+      P.addGunExtraDark(nonUniformXform(cylZ(0.5, o.creaseD ?? 0.035, 14), 0, 0, 0, 0, 0, 0,
         [wA + b * 2, hA + b * 2, 1]), 0, yA, zA);
     }
   }
   if (o.clamp !== false) {
     const [zE, wE, hE, yEr] = pts[pts.length - 1];
-    P.addGunExtraDark(xform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0,
+    P.addGunExtraDark(nonUniformXform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0,
       [wE + 0.012, hE + 0.012, 1]), 0, yEr ?? 0, zE - 0.02);
   }
 }
@@ -409,7 +814,7 @@ export function ruBoot(P, o) {
 
 // NSVT/DShK pintle with a real cradle, receiver, finned barrel and ammo box
 // (r1 bullet 8: "AA MGs are stick-blocks on posts") — turret frame.
-export function nsvt(P, x, y, z, shield = false) {
+export function nsvt(P: RussiaGeometryPort, x: number, y: number, z: number, shield = false): void {
   const { box, cylY, cylZ } = KIT;
   P.add('turretDark', cylY(0.025, 0.032, 0.16, 8), x, y + 0.08, z);          // pintle post
   P.add('turretDark', box(0.10, 0.06, 0.16), x, y + 0.19, z);                // cradle yoke
@@ -420,7 +825,7 @@ export function nsvt(P, x, y, z, shield = false) {
   if (shield) P.add('turretDetail', box(0.34, 0.22, 0.025), x, y + 0.30, z + 0.20);
 }
 // Thin roof mast (met mast / antenna base / pano tower stem) — turret frame.
-export function mast(P, x, yBase, z, yTop, r = 0.028, head = 0.11) {
+export function mast(P: RussiaGeometryPort, x: number, yBase: number, z: number, yTop: number, r = 0.028, head = 0.11): void {
   const { box } = KIT;
   const h = Math.max(0.05, yTop - yBase);
   P.add('turretDetail', box(r * 2, h, r * 2), x, yBase + h / 2, z);
@@ -430,7 +835,11 @@ export function mast(P, x, yBase, z, yTop, r = 0.028, head = 0.11) {
 // slot materials KEEP the ambient floor (clone drops onBeforeCompile) and
 // take an honest albedo/emissive floor so corner fittings never render
 // unmovable near-black. Render-only — masks use overrideMaterial.
-export function rehookClone(base, colorHex, emissiveHex) {
+export function rehookClone(
+  base: THREE.MeshStandardMaterial,
+  colorHex: number | null,
+  emissiveHex: number | null,
+): THREE.MeshStandardMaterial {
   const m = base.clone();
   m.onBeforeCompile = vehicleAmbientFloorHook;
   m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
@@ -443,7 +852,7 @@ export function rehookClone(base, colorHex, emissiveHex) {
 // ---------------------------------------------------------------------------
 
 // Shared Russia-family dressing at measured seats.
-export function ruGlacisKit(P, o) {
+export function ruGlacisKit(P: RussiaGeometryPort, o: GlacisKitOptions): void {
   const { box, torus, headlight } = KIT;
   const yG = o.y, zG = o.z;                       // glacis mid reference
   for (const s of [-1, 1]) {
@@ -485,7 +894,7 @@ export function ruGlacisKit(P, o) {
 }
 
 // Soviet deck furniture at explicit seats: driver hatch, engine grilles.
-export function ruDeck(P, o) {
+export function ruDeck(P: RussiaGeometryPort, o: DeckOptions): void {
   const { box, cylY } = KIT;
   // hatchY (r10): hatch seat on the LOCAL deck line when it differs from the
   // grille plateau (t72b3m glacis hatch sits at 1.34, plateau 1.40)
@@ -508,7 +917,7 @@ export function ruDeck(P, o) {
 // Segmented rubber skirt band with dark inset lip (r3 language, explicit y).
 // o.th: panel thickness (default 0.04) — front-view columns only register
 // the band when the face is >1-2 mask pixels deep (t62mv1 r6 lesson).
-export function ruSkirtBand(P, o) {
+export function ruSkirtBand(P: RussiaGeometryPort, o: SkirtBandOptions): void {
   const { box } = KIT;
   const panels = o.panels ?? 7;
   const panelD = (o.z1 - o.z0) / panels;
@@ -555,14 +964,14 @@ export function ruSkirtBand(P, o) {
 }
 
 // Front/rear rubber mud flaps over the track runs.
-export function ruFlaps(P, o) {
+export function ruFlaps(P: RussiaMudguardPort, o: FlapOptions): void {
   const { box } = KIT;
   for (const s of [-1, 1]) {
     const xf = s * o.x;
     if (o.front) P.addMudguard(`ru-front-flap-${s}`, 'hullRubber',
       box(o.w, o.front[1], 0.045), xf, o.front[0], o.frontZ);
     if (o.rear) P.addMudguard(`ru-rear-flap-${s}`, 'hullRubber',
-      box(o.w, o.rear[1], 0.045), xf, o.rear[0], o.rearZ);
+      box(o.w, o.rear[1], 0.045), xf, o.rear[0], o.rearZ!);
   }
 }
 
@@ -587,7 +996,7 @@ export function ruFlaps(P, o) {
 // buildType59 dresses the SAME chassis with the WZ-120 (T-54A-family) dome
 // + 100 mm kit. o.gear spreads over the base running-gear config (the Type
 // 59 wheel-gap pattern); defaults are byte-identical to the widened T-62.
-export function buildT62Obr1975Chassis(P, o = {}) {
+export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOptions = {}): void {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
   const bowService = o.bowService || {};
   // §5.304 OWNER-DECREED WIDEN (2026-08-17, order verbatim: "update our t62
@@ -787,7 +1196,7 @@ export function buildT62Obr1975Chassis(P, o = {}) {
   widthAnchor(P, 1.815, 1.344, -0.463);
 }
 
-function buildT62MV1(P) {
+function buildT62MV1(P: RussiaBuilderPort): void {
   const { box, cylX, cylY, cylZ } = KIT;
   buildT62Obr1975Chassis(P);
 
@@ -912,8 +1321,8 @@ function buildT62MV1(P) {
   // height (±0.165 at center-x) as the old box; masks see identical
   // plan/side rectangles, only the corner read changes. Boot crease rings
   // inside the local skin + clamp where the cast meets the tube.
-  P.addGunExtra(KIT.xform(cylZ(0.5, 0.36, 16, 0.4425), 0, 0, 0, 0, 0, 0, [0.572, 0.33, 1]), 0, -0.06, 0.13);
-  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.035, 16), 0, 0, 0, 0, 0, 0, [0.5555, 0.318, 1]), 0, -0.058, 0.20);
+  P.addGunExtra(nonUniformXform(cylZ(0.5, 0.36, 16, 0.4425), 0, 0, 0, 0, 0, 0, [0.572, 0.33, 1]), 0, -0.06, 0.13);
+  P.addGunExtraDark(nonUniformXform(cylZ(0.5, 0.035, 16), 0, 0, 0, 0, 0, 0, [0.5555, 0.318, 1]), 0, -0.058, 0.20);
   P.addGunExtraDark(KIT.xform(cylZ(0.150, 0.04, 14), 0, 0, 0), 0, -0.02, 0.325);
   // §B3.2 (2026-08-06): PKT coax port right of the tube — stub + washer
   // inside the mantlet's plan rectangle (±0.26 to z 0.31) and side band.
@@ -923,7 +1332,7 @@ function buildT62MV1(P) {
   // §B3.1: the KTD-2 rangefinder is a rounded pod — elliptical shell with
   // the certified top band (2.35-2.37) and ±0.15 plan width held exactly;
   // dark lens inset in the front face.
-  P.addGunExtra(KIT.xform(cylZ(0.5, 0.26, 14), 0, 0, 0, 0, 0, 0, [0.33, 0.28, 1]), 0, 0.50, -0.072);
+  P.addGunExtra(nonUniformXform(cylZ(0.5, 0.26, 14), 0, 0, 0, 0, 0, 0, [0.33, 0.28, 1]), 0, 0.50, -0.072);
   P.add('gunMountDark', box(0.22, 0.16, 0.02), 0, 0.50, 0.052);
   // §B3.1: the Luna L-2AG is a SEARCHLIGHT — drum + glass face + yoke arms
   // + mount plate replacing the bare bracket prism. The old box's plan
@@ -969,7 +1378,7 @@ function buildT62MV1(P) {
 // z 0.32, rear tip -0.71, mantlet collar band 1.94..2.09 (halfW 0.46 ->
 // 0.20), tube top 1.79 (axis ~1.65), print muzzle 6.00 -> tube PINNED to
 // 5.72 = rearmost + 9.00 (dims sovereign; the print runs +4.4%).
-function buildT54(P) {
+function buildT54(P: RussiaBuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
   // r30b REGISTERED RE-SEAT (gate-digest, authored frame): the gate registers
   // by BODY-span mids (the print's thin nose lip is band-excluded), landing
@@ -1092,8 +1501,8 @@ function buildT54(P) {
   // side (±0.17) extremes at the center axes (INSCRIBED-DRUM law: masks
   // read identical rectangles, only the corner read rounds), with the
   // canvas boot ring tying it onto the tube.
-  P.addGunExtra(KIT.xform(cylZ(0.5, 0.30, 16, 0.42), 0, 0, 0, 0, 0, 0, [0.46, 0.34, 1]), 0, 0, 0.12);
-  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.045, 14), 0, 0, 0, 0, 0, 0, [0.30, 0.26, 1]), 0, 0, 0.30);
+  P.addGunExtra(nonUniformXform(cylZ(0.5, 0.30, 16, 0.42), 0, 0, 0, 0, 0, 0, [0.46, 0.34, 1]), 0, 0, 0.12);
+  P.addGunExtraDark(nonUniformXform(cylZ(0.5, 0.045, 14), 0, 0, 0, 0, 0, 0, [0.30, 0.26, 1]), 0, 0, 0.30);
   // Luna L-2 IR searchlight right of the mantlet (era kit, gun-slaved like
   // the real linkage): drum + dark rim + glass + yoke bracket onto the
   // collar — inside the turret-face plan/side envelopes.
@@ -1137,7 +1546,7 @@ function buildT54(P) {
 // DShK cluster crest 2.537 @ +0.48; bustle bin -1.45..-2.07 y 1.56..2.06;
 // turret-node APRON bottoming 1.03 over -0.95..+0.10 (t90m/t54 class);
 // tube band 1.597..1.812 (axis 1.705, r 0.108) to +3.74.
-function buildT44(P) {
+function buildT44(P: RussiaBuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
   // r2 registered decode: ref deck plate spans only ±1.30 (front_hull tops
   // 1.449@|x|<1.28 = deck-edge bins, 1.31-1.35@1.35..1.59 = the narrow
@@ -1301,8 +1710,8 @@ function buildT44(P) {
   P.gunG.position.set(0, 0.395, 0.89);
   ruSaddle(P, { rollR: 0.175, rollW: 0.46, tubeR: 0.12, rootR: 0.175, rootL: 0.44 });
   // cast collar (pig-snout class, INSCRIBED-DRUM law) + canvas boot ring
-  P.addGunExtra(KIT.xform(cylZ(0.5, 0.26, 16, 0.42), 0, 0, 0, 0, 0, 0, [0.40, 0.30, 1]), 0, 0, 0.10);
-  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0, [0.27, 0.23, 1]), 0, 0, 0.26);
+  P.addGunExtra(nonUniformXform(cylZ(0.5, 0.26, 16, 0.42), 0, 0, 0, 0, 0, 0, [0.40, 0.30, 1]), 0, 0, 0.10);
+  P.addGunExtraDark(nonUniformXform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0, [0.27, 0.23, 1]), 0, 0, 0.26);
   tubeGun(P, [
     [0.30, 0.80, 0.125], [0.80, 1.45, 0.112], [1.45, 2.20, 0.108],
     [2.20, 2.95, 0.108], [2.95, 3.54, 0.105],
@@ -1336,7 +1745,7 @@ function buildT44(P) {
 // 125 mm at axis 1.466, evac swell z 2.11..3.01, muzzle 4.312. The bergman
 // print parents its rear drum/log rack into the Turret node — matched here
 // (same world seats) so the component masks compare like for like.
-function buildT64BV1(P) {
+function buildT64BV1(P: RussiaBuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
   // Grow the authored 0.80 m course upward by 10%. The loaded lower run stays
   // on its ground datum while the road wheels clear its shoe crest; the
@@ -1771,7 +2180,7 @@ function buildT64BV1(P) {
 // 2.008, sleeve r.122, muzzle 6.58.
 // Invisible width anchor: sub-pixel studs at the exact normalized half-width
 // (is7 precedent) so safeScale stays 1.0 and authored heights hold.
-export function widthAnchor(P, halfW, y, z) {
+export function widthAnchor(P: RussiaGeometryPort, halfW: number, y: number, z: number): void {
   for (const s of [-1, 1]) P.add('hull', KIT.box(0.012, 0.02, 0.02), s * (halfW - 0.006), y, z);
 }
 
@@ -1779,7 +2188,7 @@ export function widthAnchor(P, halfW, y, z) {
 // Hull buckets are still unmerged here, while fittings and running gear are
 // direct rig children. Moving only non-running-gear ownership keeps the
 // lower course planted and raises the complete vehicle body above it.
-export function liftT64HullAboveTallTrack(P, {
+export function liftT64HullAboveTallTrack(P: RussiaOffsetPort, {
   trackHeightIncreaseM,
   hullRideHeightIncreaseM = trackHeightIncreaseM,
   lowerHullDropM = 0,
@@ -1789,7 +2198,7 @@ export function liftT64HullAboveTallTrack(P, {
   roadWheelRadiusM,
   roadWheelCenterY,
   frontIdlerLiftM = 0,
-}) {
+}: TallTrackLiftOptions): void {
   P.offsetBuckets([
     'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
     'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth',
@@ -1801,7 +2210,7 @@ export function liftT64HullAboveTallTrack(P, {
   let liftedDirectHullChildren = 0;
   for (const child of P.hullG.children) {
     let containsRunningGear = child.userData.runningGear === true;
-    child.traverse((node) => { containsRunningGear ||= node.userData.runningGear === true; });
+    child.traverse((node: THREE.Object3D) => { containsRunningGear ||= node.userData.runningGear === true; });
     if (containsRunningGear) continue;
     child.position.y += hullRideHeightIncreaseM;
     liftedDirectHullChildren += 1;
@@ -1988,7 +2397,13 @@ export function liftT64HullAboveTallTrack(P, {
 // the authority on its unusual shape). SPIN §5.31: pivot at the CASTING
 // plan-chord center (turretG z -0.25; the bustle is rear kit, not chord).
 // Dome grab rail pair seated just off the measured skin.
-export function domeRailRu(P, rings, sz, y, len) {
+export function domeRailRu(
+  P: RussiaGeometryPort,
+  rings: readonly DomeRing[],
+  sz: number,
+  y: number,
+  len: number,
+): void {
   const { box } = KIT;
   const r = ringSkin(rings, y) + 0.035;
   for (const s of [-1, 1]) {
@@ -2000,15 +2415,25 @@ export function domeRailRu(P, rings, sz, y, len) {
 }
 
 // K-5/K-1/relikt/erawa cheek arrays seated on a MEASURED ring profile.
-export function eraRuCheeks(P, p, kind) {
+export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind): void {
   P.visualEraCluster(`ru-${kind}-turret-era`, 'turret', () => {
   const { box } = KIT;
-  const skinD = (t, y) => {
-    const r = ringSkin(p.rings, y);
-    const A = r, B = r * p.sz;
+  const skinD = (t: number, y: number): number => {
+    const r = ringSkin(p.rings!, y);
+    const A = r, B = r * p.sz!;
     return 1 / Math.sqrt((Math.cos(t) / A) ** 2 + (Math.sin(t) / B) ** 2);
   };
-  const addCover = (x, y, z, w, hgt, d, rx, ry, rz) => {
+  const addCover = (
+    x: number,
+    y: number,
+    z: number,
+    w: number,
+    hgt: number,
+    d: number,
+    rx: number,
+    ry: number,
+    rz: number,
+  ): void => {
     const coverD = Math.min(0.014, d * 0.30);
     P.add('turretDark', KIT.xform(
       box(w * 0.82, hgt * 0.82, coverD),
@@ -2019,7 +2444,17 @@ export function eraRuCheeks(P, p, kind) {
   // authored at (cx, cz) but this ring used to revolve around z=0 — on a
   // cz -0.20 dome every front-arc cassette floated 0.2 m proud of the skin
   // in plan (t72b3m r9 workorder: 8 columns x 0.1-0.25).
-  const put = (t, y, w, hgt, d, tilt, bucket, dist, layered = true) => {
+  const put = (
+    t: number,
+    y: number,
+    w: number,
+    hgt: number,
+    d: number,
+    tilt: number,
+    bucket: string,
+    dist: number,
+    layered = true,
+  ): void => {
     const x = Math.cos(t) * dist;
     const z = Math.sin(t) * dist + (p.rCz ?? 0);
     const ry = Math.PI / 2 - t;
@@ -2227,18 +2662,21 @@ export function eraRuCheeks(P, p, kind) {
     // byte-identical: absent param reproduces the legacy arc exactly.
     const C = p.k1Chevron;
     for (const s of [1, -1]) {
-      let bank = null;
-      if (C) {
+      const bank = C ? (() => {
         const y0 = p.k1Y ?? 0.15;
         const t0 = Math.PI / 2 + s * (C.t0 ?? p.k1T0 ?? 0.22);
         const d0 = skinD(t0, y0) + (C.out ?? p.k1OutI?.[0] ?? p.k1Out ?? 0.03);
-        bank = { ax: Math.abs(Math.cos(t0) * d0) + (C.inX ?? 0), z0: Math.sin(t0) * d0 + (p.rCz ?? 0) + (C.inZ ?? 0), a: C.yaw };
-      }
+        return {
+          ax: Math.abs(Math.cos(t0) * d0) + (C.inX ?? 0),
+          z0: Math.sin(t0) * d0 + (p.rCz ?? 0) + (C.inZ ?? 0),
+          a: C.yaw,
+        };
+      })() : null;
       const rowsN = C?.rows ?? 3;
       for (let row = 0; row < 3; row++) {
         const y = (p.k1Y ?? 0.15) + row * (p.k1Pitch ?? 0.27);
         for (let i = 0; i < (p.k1N ?? 4); i++) {
-          if (C && i < (C.arcFrom ?? (p.k1N ?? 4)) && !(C.arcTop && row >= rowsN)) {
+          if (C && bank && i < (C.arcFrom ?? (p.k1N ?? 4)) && !(C.arcTop && row >= rowsN)) {
             if (row >= rowsN) continue;
             // TIP §5.29 banksOff (opt-in): the banked bricks are replaced by
             // the 'tip' panel pair — arc bricks (i >= arcFrom) and arcTop
@@ -2260,7 +2698,7 @@ export function eraRuCheeks(P, p, kind) {
           }
         }
       }
-      if (C && !C.banksOff) {
+      if (C && bank && !C.banksOff) {
         // backer frame: spans the banked bricks, sits behind their backs
         // toward the casting (dark slot — reads as the mounting frame in
         // the brick gaps; its inner half embeds into the dome skin).
@@ -2294,7 +2732,7 @@ export function eraRuCheeks(P, p, kind) {
     //   rows (horizontal seam rows), bucket, pad (length pad), lip
     //   {h, dy, dPitch, tuck} (K-5 lower-leaf class), gap:false, gapH,
     //   noBacker, capW }
-    const T = p.tip;
+    const T = p.tip!;
     const tX = T.x ?? 0.12, tZ = T.z, oX = T.ox, oZ = T.oz;
     const H = T.h ?? 0.42, D = T.d ?? 0.12, yc = T.y ?? 0.18;
     const tilt = T.tilt ?? -0.12;
@@ -2518,7 +2956,7 @@ export function eraRuCheeks(P, p, kind) {
 // p.eyeZ (r9): absolute local-z seat for prints whose eyes ride the mantlet
 // plane forward of the dome skin (t72bu: ref plan front 1.89-1.92 at
 // |x| 0.4..0.65); the caller adds a bracket back to the skin.
-export function ruShtora(P, p, y) {
+export function ruShtora(P: RussiaShtoraPort, p: ShtoraOptions, y: number): void {
   const { box } = KIT;
   const r = ringSkin(p.rings, y);
   const es = p.eyeScale ?? 1;
@@ -2576,4 +3014,4 @@ export const RUSSIA_PROFILES = {
   // type59 §5.304: builder moved to profiles/china.ts (buildType59 on the
   // widened obr-1975 chassis) — profiledProcedurals.ts keys it from
   // CHINA_PROFILES at the same carousel position.
-};
+} satisfies VehicleProfileRecord;

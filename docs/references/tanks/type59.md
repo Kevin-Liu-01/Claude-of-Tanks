@@ -125,7 +125,7 @@ OWNER ORDER (verbatim): **"update our t62 obr 1975 10% wider and then
 redeisgn our type 59 to be based off of that"**.
 
 WHAT LANDED (item 2 of 2):
-- The §5.45 type69-print build RETIRED from profiles/russia.js (git history
+- The §5.45 type69-print build RETIRED from profiles/russia.ts (git history
   keeps it; pointer comment at the old seat). The playable now renders
   **profiles/china.js buildType59** — a ground-up derivation:
   `buildT62Obr1975Chassis(P, { gear: { wheelZs: [2.235, 1.08, 0.10,

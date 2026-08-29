@@ -264,7 +264,7 @@ const SPECS: FleetTankSpec[] = [
   // userdrops5 t72bu precedent). The KojfDiscord AW-series prints are
   // LOCAL-ONLY QUARANTINE measurement references (docs/ATTRIBUTION.md series
   // entry): NO MODEL_SOURCE rows and no credit cards — every playable renders
-  // its OWN procedural build (profiles/russia.js, RUSSIA_PROFILES).
+  // its OWN procedural build (profiles/russia.ts, RUSSIA_PROFILES).
   // t90: base 1992 obr. — V-84MS 840 hp, cast turret, K-5 clamshell, NSVT.
   make('t90a', 't90', 'T-90', 'USSR/Russia',
     { hp: 2150, enginePowerHp: 840, weightTons: 46.5,

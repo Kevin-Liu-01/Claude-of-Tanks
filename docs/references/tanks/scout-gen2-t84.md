@@ -39,7 +39,7 @@ is the PRISTINE short print again (overall 8.58 / hull 6.40, −11.8%).
 ## 0 -> 15.4 min ×2 (hull 29.9 / whole 15.4 / turret 36.1 / stations 69.3 /
 ## dims 99.4 / floaters 100) — dims-sovereign vs the pristine SHORT print
 
-buildT84 in src/vehicles/profiles/russia.js (RUSSIA_PROFILES.t84 replaces
+buildT84 in src/vehicles/profiles/russia.ts (RUSSIA_PROFILES.t84 replaces
 the t80u donor stand-in). Spec dims sovereign: hull 7.08 / overall 9.72 /
 width 3.56 / heightM 2.22 BARE-ROOF (unlike t54/t44 there is no MG
 convention here — the print's 13-col 2.53-2.60 sight/Utes cluster is
@@ -437,8 +437,8 @@ NOT re-roll):
   batch must NOT be committed alone (§E gate-in-loop: verify against the
   RE-SEATED proc build in the same round; one graduate-change landing).
 
-PROC RE-SEAT MAP (buildT84, src/vehicles/profiles/russia.js — DOCUMENTED
-DIFF ONLY, NOT LANDED; russia.js untouched this round, hash 531fe4f0
+PROC RE-SEAT MAP (buildT84, src/vehicles/profiles/russia.ts — DOCUMENTED
+DIFF ONLY, NOT LANDED; russia.ts untouched this round, hash 531fe4f0
 re-verified frozen 2026-08-04 via tools/tmp-t84-hashgeo74.mjs alongside
 pt91m e6994e54 + t72b3m 3d92bb98). Meters formula (certified world y ->
 new world y): hull y<=0.9919 keep; 0.9919..1.3239: 0.9919+(y-0.9919)

@@ -19,7 +19,7 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import {
   loftHull, meshDomeCurved, ringSkin, tubeGun, ruBoot, ruSaddle, nsvt, mast,
   ruGlacisKit, ruDeck, ruSkirtBand, ruFlaps, rehookClone, domeBoxPlanSeat,
-} from './russia.js';
+} from './russia.ts';
 import { buildT72B87Native, t72TrackFinishFor } from './t72.ts';
 
 type Vec3Tuple = [number, number, number];
@@ -55,12 +55,14 @@ interface PolishBuilderPort {
     readonly armor: { readonly gunPivot: Vec3Tuple };
     readonly visual: { readonly number?: string };
   };
+  muzzleZ?: number;
   topY?: number;
   add(slot: string, geometry: unknown, ...transform: number[]): unknown;
   addCupola(slot: string, geometry: unknown, ...transform: number[]): unknown;
   addEquipment(slot: string, geometry: unknown, ...transform: number[]): unknown;
   addGunExtra(geometry: unknown, ...transform: number[]): unknown;
   addGunExtraDark(geometry: unknown, ...transform: number[]): unknown;
+  addMudguard(label: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,

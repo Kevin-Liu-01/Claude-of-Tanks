@@ -41,7 +41,7 @@ import {
   lowerT64BellyProfile,
   T64_LOWER_HULL_DROP_M,
   T64_FRONT_IDLER_LIFT_M,
-} from './russia.js';
+} from './russia.ts';
 import { ABRAMS_PROFILES } from './abrams.js';
 import type { ProfileBuilderPort, VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
@@ -69,10 +69,13 @@ interface UkraineBuilderPort {
   };
   readonly spec: { id: string; readonly visual: { readonly number?: string } };
   readonly disposables: DisposableResource[];
+  muzzleZ?: number;
   topY?: number;
   add(slot: string, geometry: unknown, ...transform: number[]): void;
   addEquipment(slot: string, geometry: unknown, ...transform: number[]): void;
   addExternalArmor(owner: VehicleAssemblyOwner, geometry: unknown, ...transform: number[]): void;
+  addGunExtra(geometry: unknown, ...transform: number[]): void;
+  addGunExtraDark(geometry: unknown, ...transform: number[]): void;
   addMudguard(label: string, slot: string, geometry: unknown, ...transform: number[]): void;
   decal(
     owner: VehicleAssemblyOwner,
@@ -83,6 +86,7 @@ interface UkraineBuilderPort {
     ...orientation: number[]
   ): void;
   visualEraCluster(key: string, owner: VehicleAssemblyOwner, build: () => void): void;
+  offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
 }
 
 interface CassetteOptions {

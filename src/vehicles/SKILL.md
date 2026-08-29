@@ -55,6 +55,11 @@ eager or untyped fleet path.
 `profiles/ww2.ts` owns the strict original and recovered WWII/inter-war profile
 pack. Preserve its mirror-safe slab winding, family-local builder port, seeded
 fittings, and exact demand-loaded `ww2` registration boundary.
+`profiles/russia.ts` owns both the strict T-44/T-54/T-62/T-64 Russian profile
+pack and the shared Soviet geometry vocabulary consumed by China, Poland,
+T-72, T-80, and Ukraine. Keep its hull, dome, gun, ERA, Shtora, mudguard, and
+ride-height helpers behind capability-specific ports; do not replace them with
+one oversized builder contract or an eager fleet dependency.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
