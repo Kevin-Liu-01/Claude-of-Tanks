@@ -83,8 +83,10 @@ for (const id of ['fv4034', 'challenger2e', 'ua_challenger2']) {
     const towerReceipt = turret.userData.challenger2WeaponTowerReceipt;
     assert.equal(towerReceipt?.exactChallenger2Assembly, true,
       `${id} must inherit the exact Challenger 2 remote weapon tower`);
-    assert.deepEqual(towerReceipt.localSeat, [0.7095, 0.690, 0.20],
-      `${id} weapon tower must retain the Challenger 2 roof seat`);
+    assert.equal(towerReceipt.centeredOnRoof, true,
+      `${id} weapon tower must be centered on the roof`);
+    assert.deepEqual(towerReceipt.localSeat, [0, 0.690, 0.20],
+      `${id} weapon tower must use the centered roof seat`);
     assert.equal(receipt.enhancedSkirtPanels, 16,
       `${id} enhanced skirts remain segmented on both sides`);
     assert.equal(receipt.fuelBarrels, 2,
@@ -105,6 +107,8 @@ for (const id of ['fv4034', 'challenger2e', 'ua_challenger2']) {
       `${id} cheek ERA needs a visible horizontal gap between cassettes`);
     assert.ok(receipt.cheekEraVerticalGapM >= 0.025,
       `${id} cheek ERA needs a visible vertical gap between cassettes`);
+    close(receipt.cheekEraSurfaceLoweringM, 0.075,
+      `${id} cheek ERA must follow the cheek surface slightly downward`);
     assert.equal(receipt.cheekEraHorizontallyMirrored, true,
       `${id} cheek ERA courses must mirror horizontally across the turret`);
     close(receipt.cheekEraNormalAlignmentDot, 1,

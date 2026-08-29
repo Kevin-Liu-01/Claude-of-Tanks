@@ -2253,85 +2253,88 @@ function cr2MountedMg(P, { x, y, z, cls = 'mag', seed = 1, rotationY = 0,
 }
 
 /** Challenger 2's source-matched remote weapon tower. Keep this assembly in
- * one builder so the 2E derivatives inherit the same roof seat, open cradle,
- * transverse MAG, optics, and articulated boom as the baseline vehicle. */
-function buildChallenger2WeaponTower(P) {
+ * one builder so the 2E derivatives inherit the open cradle, transverse MAG,
+ * optics, and articulated boom while choosing their own roof seat. */
+function buildChallenger2WeaponTower(P, { centerX = 0.7095 } = {}) {
   const { box, cylX, cylY, cylZ, torus } = KIT;
+  const stationX = (x) => x + centerX - 0.7095;
 
-  P.add('turretDark', box(0.111, 0.110, 0.110), 0.7095, 0.7126, 0.136);
-  P.addEquipment('turret', box(0.081, 0.080, 0.080), 0.7095, 0.7226, 0.136);
+  P.add('turretDark', box(0.111, 0.110, 0.110), stationX(0.7095), 0.7126, 0.136);
+  P.addEquipment('turret', box(0.081, 0.080, 0.080), stationX(0.7095), 0.7226, 0.136);
   for (const x of [0.605, 0.824]) P.addEquipment('turret', box(0.035, 0.129, 0.380),
-    x, 0.7775, 0.515);
+    stationX(x), 0.7775, 0.515);
   for (const z of [0.412, 0.695]) P.add('turretDetail', box(0.264, 0.030, 0.026),
-    0.7095, 0.810, z);
-  P.add('turretGlass', box(0.19, 0.055, 0.014), 0.7095, 0.790, 0.713);
-  P.addEquipment('turret', cylY(0.145, 0.155, 0.070, P.q ? 22 : 14), 0.77, 0.690, 0.20);
-  P.add('turretDark', torus(0.140, 0.010, P.q ? 22 : 14), 0.77, 0.730, 0.20);
+    stationX(0.7095), 0.810, z);
+  P.add('turretGlass', box(0.19, 0.055, 0.014), stationX(0.7095), 0.790, 0.713);
+  P.addEquipment('turret', cylY(0.145, 0.155, 0.070, P.q ? 22 : 14), stationX(0.77), 0.690, 0.20);
+  P.add('turretDark', torus(0.140, 0.010, P.q ? 22 : 14), stationX(0.77), 0.730, 0.20);
   for (const x of [0.70, 0.85]) {
-    P.addEquipment('turret', box(0.032, 0.18, 0.12), x, 0.805, 0.20);
-    P.add('turretDetail', box(0.018, 0.15, 0.018), x, 0.805, 0.20);
+    P.addEquipment('turret', box(0.032, 0.18, 0.12), stationX(x), 0.805, 0.20);
+    P.add('turretDetail', box(0.018, 0.15, 0.018), stationX(x), 0.805, 0.20);
   }
   for (const x of [0.685, 0.865]) {
-    P.add('turretDark', cylX(0.052, 0.020, P.q ? 16 : 10), x, 0.835, 0.20);
+    P.add('turretDark', cylX(0.052, 0.020, P.q ? 16 : 10), stationX(x), 0.835, 0.20);
   }
-  P.add('turretDetail', box(0.024, 0.18, 0.030), 0.725, 0.815, 0.18,
+  P.add('turretDetail', box(0.024, 0.18, 0.030), stationX(0.725), 0.815, 0.18,
     0, 0, -0.38);
-  P.add('turretDetail', box(0.024, 0.18, 0.030), 0.825, 0.815, 0.18,
+  P.add('turretDetail', box(0.024, 0.18, 0.030), stationX(0.825), 0.815, 0.18,
     0, 0, 0.38);
-  P.add('turretDark', box(0.105, 0.090, 0.13), 0.655, 0.825, 0.15);
-  P.add('turretDetail', box(0.075, 0.018, 0.10), 0.655, 0.878, 0.15);
-  P.add('turretGlass', box(0.11, 0.055, 0.012), 0.775, 0.855, 0.282);
-  P.addEquipment('turret', box(0.11, 0.105, 0.20), 0.80, 0.865, 0.20);
-  P.add('turretDark', cylX(0.022, 0.34, P.q ? 16 : 10), 0.98, 0.910, 0.20);
-  P.add('turretDark', cylX(0.034, 0.065, P.q ? 16 : 10), 1.16, 0.830, 0.20);
+  P.add('turretDark', box(0.105, 0.090, 0.13), stationX(0.655), 0.825, 0.15);
+  P.add('turretDetail', box(0.075, 0.018, 0.10), stationX(0.655), 0.878, 0.15);
+  P.add('turretGlass', box(0.11, 0.055, 0.012), stationX(0.775), 0.855, 0.282);
+  P.addEquipment('turret', box(0.11, 0.105, 0.20), stationX(0.80), 0.865, 0.20);
+  P.add('turretDark', cylX(0.022, 0.34, P.q ? 16 : 10), stationX(0.98), 0.910, 0.20);
+  P.add('turretDark', cylX(0.034, 0.065, P.q ? 16 : 10), stationX(1.16), 0.830, 0.20);
 
   const stationMg = new THREE.Group();
   const stationReceiver = new THREE.Mesh(box(0.18, 0.080, 0.15), P.mats.dark);
-  stationReceiver.position.set(0.775, 0.905, 0.20);
+  stationReceiver.position.set(stationX(0.775), 0.905, 0.20);
   stationReceiver.castShadow = stationReceiver.receiveShadow = true;
   stationMg.add(stationReceiver);
   const stationTube = new THREE.Mesh(cylX(0.018, 0.62, P.q ? 16 : 10), P.mats.dark);
-  stationTube.position.set(0.84, 0.925, 0.20);
+  stationTube.position.set(stationX(0.84), 0.925, 0.20);
   stationTube.castShadow = stationTube.receiveShadow = true;
   stationMg.add(stationTube);
   FITTINGS.markExact(stationMg, 'pintleMG');
   P.turretG.add(stationMg);
 
   for (const x of [0.685, 0.735]) {
-    P.add('turretDark', cylZ(0.012, 0.58, P.q ? 14 : 10), x, 0.902, 0.015);
+    P.add('turretDark', cylZ(0.012, 0.58, P.q ? 14 : 10), stationX(x), 0.902, 0.015);
   }
   for (const z of [-0.25, -0.02, 0.27]) {
-    P.add('turretDetail', box(0.075, 0.025, 0.025), 0.710, 0.910, z);
+    P.add('turretDetail', box(0.075, 0.025, 0.025), stationX(0.710), 0.910, z);
   }
-  P.addEquipment('turret', box(0.073, 0.060, 0.282), 0.710, 0.921, 0.442);
-  P.add('turretGlass', box(0.050, 0.036, 0.012), 0.710, 0.922, 0.589);
+  P.addEquipment('turret', box(0.073, 0.060, 0.282), stationX(0.710), 0.921, 0.442);
+  P.add('turretGlass', box(0.050, 0.036, 0.012), stationX(0.710), 0.922, 0.589);
   for (const x of [0.680, 0.740]) P.add('turretDark', box(0.010, 0.052, 0.242),
-    x, 0.921, 0.442);
+    stationX(x), 0.921, 0.442);
   for (const z of [0.335, 0.445, 0.555]) {
-    P.add('turretDetail', cylX(0.018, 0.071, P.q ? 14 : 10), 0.710, 0.949, z);
-    P.add('turretDark', cylX(0.010, 0.078, P.q ? 12 : 8), 0.710, 0.950, z);
+    P.add('turretDetail', cylX(0.018, 0.071, P.q ? 14 : 10), stationX(0.710), 0.949, z);
+    P.add('turretDark', cylX(0.010, 0.078, P.q ? 12 : 8), stationX(0.710), 0.950, z);
   }
-  P.add('turretDark', box(0.041, 0.027, 0.053), 0.7095, 0.9215, 0.6485);
-  P.add('turretGlass', box(0.030, 0.018, 0.012), 0.7095, 0.922, 0.676);
-  P.add('turretDark', box(0.042, 0.028, 0.083), 0.709, 0.921, -0.315);
-  P.add('turretDetail', box(0.030, 0.018, 0.014), 0.709, 0.922, -0.359);
-  P.add('turretDark', box(0.046, 0.030, 0.974), 0.710, 0.912, 0.776);
+  P.add('turretDark', box(0.041, 0.027, 0.053), stationX(0.7095), 0.9215, 0.6485);
+  P.add('turretGlass', box(0.030, 0.018, 0.012), stationX(0.7095), 0.922, 0.676);
+  P.add('turretDark', box(0.042, 0.028, 0.083), stationX(0.709), 0.921, -0.315);
+  P.add('turretDetail', box(0.030, 0.018, 0.014), stationX(0.709), 0.922, -0.359);
+  P.add('turretDark', box(0.046, 0.030, 0.974), stationX(0.710), 0.912, 0.776);
   for (const z of [0.64, 0.96, 1.22]) {
-    P.add('turretDetail', cylZ(0.022, 0.055, P.q ? 14 : 10), 0.710, 0.912, z);
+    P.add('turretDetail', cylZ(0.022, 0.055, P.q ? 14 : 10), stationX(0.710), 0.912, z);
   }
-  P.addEquipment('turret', box(0.060, 0.10, 0.15), 0.75, 0.940, 0.47);
-  P.addEquipment('turret', box(0.060, 0.10, 0.20), 0.75, 0.940, -0.12);
+  P.addEquipment('turret', box(0.060, 0.10, 0.15), stationX(0.75), 0.940, 0.47);
+  P.addEquipment('turret', box(0.060, 0.10, 0.20), stationX(0.75), 0.940, -0.12);
   if (P.q) for (let k = 0; k < 6; k++) {
     const x = 0.708 + k * 0.025;
-    P.add('turretDetail', box(0.018, 0.018, 0.13), x,
+    P.add('turretDetail', box(0.018, 0.018, 0.13), stationX(x),
       0.940 - Math.abs(k - 2.5) * 0.003, 0.21);
-    P.add('turretDark', box(0.010, 0.012, 0.10), x,
+    P.add('turretDark', box(0.010, 0.012, 0.10), stationX(x),
       0.947 - Math.abs(k - 2.5) * 0.003, 0.21);
   }
 
   const receipt = Object.freeze({
     exactChallenger2Assembly: true,
-    localSeat: [0.7095, 0.690, 0.20],
+    centerX,
+    centeredOnRoof: Math.abs(centerX) < 1e-9,
+    localSeat: [centerX, 0.690, 0.20],
     ringRearZ: 0.355,
     receiverSupportFrontZ: 0.325,
     planOverlapM: 0.030,
@@ -2386,6 +2389,7 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
     cheekEraHorizontalGapM: 0,
     cheekEraVerticalGapM: 0,
     cheekEraIndividualSquares: false,
+    cheekEraSurfaceLoweringM: 0,
     glacisEraNormalAlignmentDot: 0,
     smokeBanks: 0,
     smokeCanisters: 0,
@@ -2492,6 +2496,7 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
         const normalValues = [side * 0.3915, 0.6650, 0.6359];
         const frame = cr2SurfaceFrame(normalValues, [side, 0, -0.62]);
         const planePoint = new THREE.Vector3(side * 0.98, 0.2034, 1.36);
+        const surfaceLowering = 0.075;
         const surfaceOffset = 0.07 * 0.82 * 0.5 - 0.006;
         // Leave daylight around every cassette. The former 4 x 3 course used
         // a pitch identical to each block's face dimensions, so twelve parts
@@ -2507,7 +2512,8 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
         for (let row = 0; row < rows; row++) for (let c = 0; c < columns; c++) {
           const point = planePoint.clone()
             .addScaledVector(frame.horizontal, (c - (columns - 1) * 0.5) * horizontalPitch)
-            .addScaledVector(frame.vertical, (row - (rows - 1) * 0.5) * verticalPitch)
+            .addScaledVector(frame.vertical,
+              (row - (rows - 1) * 0.5) * verticalPitch - surfaceLowering)
             .addScaledVector(frame.normal, surfaceOffset);
           put(point.x, pivotY + point.y, pivotZ + point.z,
             ...frame.rotation, widthScale, heightScale, 0.82);
@@ -2519,6 +2525,7 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
         receipt.cheekEraCassetteHeightM = 0.13 * heightScale;
         receipt.cheekEraHorizontalGapM = horizontalPitch - receipt.cheekEraCassetteWidthM;
         receipt.cheekEraVerticalGapM = verticalPitch - receipt.cheekEraCassetteHeightM;
+        receipt.cheekEraSurfaceLoweringM = surfaceLowering;
       }, true);
     }
     receipt.cheekEraHorizontallyMirrored = true;
@@ -2539,7 +2546,7 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
     cr2MountedMg(P, { x: -0.58, y: loaderMgSeatY, z: -0.74, cls: 'mag', seed: 51, rotationY: -0.18 });
     cr2MountedMg(P, { x: 0.56, y: commanderMgSeatY, z: -0.60, cls: 'm2', seed: 52, rotationY: 0.16, shield: true });
     cr2MountedMg(P, { x: 0.05, y: rearMgSeatY, z: -1.55, cls: 'mag', seed: 53, rotationY: Math.PI });
-    buildChallenger2WeaponTower(P);
+    buildChallenger2WeaponTower(P, { centerX: 0 });
     roofSeats.push(
       { label: `${variant}-loader-cupola`, carrierY: loaderCupolaCarrierY, bottomY: loaderCupolaBaseY },
       { label: `${variant}-commander-cupola`, carrierY: commanderCupolaCarrierY, bottomY: commanderCupolaBaseY },
