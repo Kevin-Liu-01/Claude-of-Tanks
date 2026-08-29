@@ -28,6 +28,20 @@ export interface HorizontalRailState {
   readonly hasRight: boolean;
 }
 
+// Owner-directed showcase order at the far-right edge of the U.S. fleet.
+// These stay after the normal country/tier/name ordering so entering the U.S.
+// nation lands on its intended top-tank run rather than an alphabetical mix.
+export const GARAGE_FINAL_VEHICLE_IDS = Object.freeze([
+  'm3a3_bradley',
+  'm551a1_tts',
+  'm1a2_tusk',
+  'm1a3',
+]);
+
+const GARAGE_FINAL_VEHICLE_RANK = new Map(
+  GARAGE_FINAL_VEHICLE_IDS.map((id, rank) => [id, rank]),
+);
+
 /**
  * Order cards inside one catalog group by country, gameplay tier, then name.
  * The id tie-break keeps the result deterministic if two variants share a
@@ -42,11 +56,32 @@ export function compareCountryThenTierThenName<Spec extends GarageOrderSpec>(
 ): number {
   const nationDelta = (nationRank.get(a.nation) ?? 99) - (nationRank.get(b.nation) ?? 99);
   if (nationDelta) return nationDelta;
+  const aFinalRank = GARAGE_FINAL_VEHICLE_RANK.get(a.id);
+  const bFinalRank = GARAGE_FINAL_VEHICLE_RANK.get(b.id);
+  if (aFinalRank != null || bFinalRank != null) {
+    if (aFinalRank == null) return -1;
+    if (bFinalRank == null) return 1;
+    return aFinalRank - bFinalRank;
+  }
   const tierDelta = tierOf(a.id) - tierOf(b.id);
   if (tierDelta) return tierDelta;
   const nameDelta = NAME_COLLATOR.compare(String(a.name || ''), String(b.name || ''));
   if (nameDelta) return nameDelta;
   return NAME_COLLATOR.compare(String(a.id || ''), String(b.id || ''));
+}
+
+/** Return the top-tank entry at the far-right end of an already-sorted
+ * national fleet. Keeping this choice tied to the canonical card order makes
+ * nation-chip behavior identical on desktop, touch and keyboard layouts. */
+export function topCountrySpec<Spec>(
+  specs: readonly Spec[],
+  countryId: string,
+  countryCodeOf: (spec: Spec) => string,
+): Spec | undefined {
+  for (let index = specs.length - 1; index >= 0; index -= 1) {
+    if (countryCodeOf(specs[index]) === countryId) return specs[index];
+  }
+  return undefined;
 }
 
 /** Unique country groups in the same order as an already-sorted fleet. Era is

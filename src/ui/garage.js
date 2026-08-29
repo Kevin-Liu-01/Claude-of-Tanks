@@ -33,7 +33,7 @@ import {
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import {
   compareCountryThenTierThenName, countryFilterGroups, defaultGarageMapId,
-  horizontalRailState, horizontalRailWheelDelta,
+  horizontalRailState, horizontalRailWheelDelta, topCountrySpec,
 } from './garageOrder.ts';
 import { isGarageVisibleTankId } from '../game/matchmaking.ts';
 import { tankTier, tierNumeral } from '../vehicles/tier.ts';
@@ -1301,12 +1301,10 @@ export function createGarage(opts) {
     chip.addEventListener('click', () => {
       emit('ui:click', {});
       applyCountryFilter(group.id);
-      // Moving to a new country selects its first vehicle so the pedestal,
-      // stats card and highlighted card stay in sync with the visible strip
-      const first = specs.find((spec) => inCountry(spec, group.id));
-      if (first && !inCountry(specById.get(selectedId) || first, group.id)) {
-        api.setSelected(first.id);
-      }
+      // Enter every nation at the highest-tier, far-right end of its fleet so
+      // the pedestal, dossier and visible strip open on its top tanks.
+      const top = topCountrySpec(specs, group.id, countryCodeOf);
+      if (top) api.setSelected(top.id);
     });
     chipsEl.appendChild(chip);
     chipById.set(group.id, chip);

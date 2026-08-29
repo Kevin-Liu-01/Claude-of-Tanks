@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
   compareCountryThenTierThenName, countryFilterGroups, defaultGarageMapId,
-  horizontalRailState, horizontalRailWheelDelta,
+  GARAGE_FINAL_VEHICLE_IDS, horizontalRailState, horizontalRailWheelDelta,
+  topCountrySpec,
 } from './garageOrder.ts';
 
 const garageSource = `${await readFile(new URL('./garage.js', import.meta.url), 'utf8')}\n${
@@ -37,6 +38,28 @@ assert.deepEqual(
   cards.sort((a, b) => compareCountryThenTierThenName(a, b, rank, tierOf)).map((card) => card.id),
   ['m1a1', 'm1a2', 't72bu', 't72b3m', 't90', 'challenger'],
   'garage cards sort by country first, tier second and display name third',
+);
+
+const usTopRun = [
+  { id: 'm1a3', nation: 'USA', name: 'M1A3 Abrams' },
+  { id: 'm1a2_tusk', nation: 'USA', name: 'M1A2 Abrams TUSK' },
+  { id: 'm551a1_tts', nation: 'USA', name: 'M551A1 TTS' },
+  { id: 'm3a3_bradley', nation: 'USA', name: 'M3A3 Bradley CFV' },
+  { id: 'm1a2_sepv3', nation: 'USA', name: 'M1A2 Abrams SEP v3' },
+];
+const topRunTierOf = () => 10;
+const sortedUsTopRun = usTopRun.sort((a, b) => (
+  compareCountryThenTierThenName(a, b, rank, topRunTierOf)
+));
+assert.deepEqual(
+  sortedUsTopRun.slice(-4).map((card) => card.id),
+  GARAGE_FINAL_VEHICLE_IDS,
+  'the U.S. far-right showcase run is Bradley, M551A1 TTS, TUSK, then M1A3',
+);
+assert.equal(
+  topCountrySpec(sortedUsTopRun, 'us', () => 'us')?.id,
+  'm1a3',
+  'nation entry selects the top tank at the far-right end of its sorted fleet',
 );
 
 const combinedEras = [
@@ -99,6 +122,8 @@ assert.match(garageSource,
   'country overflow arrows use compact balanced gutters instead of looking like nation tiles');
 assert.match(garageSource, /\.cot-country-rail\{[^}]*left:50%;[^}]*transform:translateX\(-50%\);/,
   'the desktop nation rail is centered on the Garage stage');
+assert.match(garageSource, /const top = topCountrySpec\(specs, group\.id, countryCodeOf\);[\s\S]*?api\.setSelected\(top\.id\);/,
+  'nation chips always move selection to the highest-tier end of the chosen fleet');
 assert.doesNotMatch(garageSource, /\.cot-dossier-head\{[^}]*border-top:/,
   'the vehicle dossier header uses one consistent neutral border');
 assert.doesNotMatch(garageSource, /\.cot-stat-section::before\{/,
