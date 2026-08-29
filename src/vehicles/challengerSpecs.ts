@@ -1,5 +1,5 @@
 // Boot-light Challenger combat records. Geometry remains in
-// profiles/challenger.js and is loaded only when this family is requested.
+// profiles/challenger.ts and is loaded only when this family is requested.
 // Keeping gameplay registration here lets donor specs and the garage roster
 // initialize without importing Three.js, the UK fitting kit, or any builder.
 

@@ -8,7 +8,7 @@ import { MODERN3_BUILDERS } from './modern3.ts';
 import { FRANCE_BUILDERS } from './france.ts';
 import { MODERN2_BUILDERS } from './modern2.ts';
 import { MODERN1_BUILDERS } from './modern1.ts';
-import { CHALLENGER_BUILDERS } from './profiles/challenger.js';
+import { CHALLENGER_BUILDERS } from './profiles/challenger.ts';
 import { FITTINGS } from './profiles/kit.ts';
 import { PROFILED_BUILDERS } from './profiledProcedurals.ts';
 import { VEHICLE_MARKING_SEATS } from './vehicleMarkingSeats.generated.ts';

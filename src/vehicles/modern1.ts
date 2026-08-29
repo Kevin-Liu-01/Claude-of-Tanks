@@ -3,7 +3,7 @@
 // (Leopard 2A6). Specs per docs/research/modern-roster.md §14 / §21 / §8;
 // visual bar per Appendix B (trapezoidal track runs, silhouette identity,
 // raised ERA, articulated turret+gun, weathering). challenger2/challenger_3
-// moved to profiles/challenger.js (§5.75 family-module split) — that module
+// moved to profiles/challenger.ts (§5.75 family-module split) — that module
 // imports the spec-table helpers exported below.
 //
 // Registration pattern: tankFactory.ts passes MODERN1_BUILDERS through the

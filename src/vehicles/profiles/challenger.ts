@@ -1,4 +1,4 @@
-// src/vehicles/profiles/challenger.js — the Challenger family profile module
+// src/vehicles/profiles/challenger.ts — the Challenger family profile module
 // (§5.75 owner consistency order, 2026-08-08: one family per module; PURE
 // REFACTOR — every moved id hash-proven byte-identical across the split).
 // Residents:
@@ -26,6 +26,201 @@ import {
   box, cylY, cylZ, torus, slab, xform, buildRunningGear, buildGun,
   liftEye, periscope, headlight, pintleMG, smokeCluster, stowage,
 } from './uk.ts';
+import type { UKBuilderPort } from './uk.ts';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+
+type Vec2Tuple = readonly [number, number];
+type Vec3Tuple = readonly [number, number, number];
+type ProfileCurve = readonly Vec2Tuple[];
+type EraPlacer = (...transform: number[]) => void;
+type EquipmentOwner = 'hull' | 'turret';
+
+interface ChallengerContactRise {
+  dzM: number;
+  frontM: number;
+  rearM: number;
+}
+
+interface ChallengerContactGeometry {
+  halfLenM: number;
+  zCenterM: number;
+  halfWidM: number;
+  bottomYM: number;
+  endRise?: ChallengerContactRise;
+}
+
+interface ChallengerTrackHitbox {
+  x0: number;
+  x1: number;
+  poly: Array<[number, number]>;
+}
+
+interface ChallengerGearPort {
+  contactGeom?: ChallengerContactGeometry;
+  trackHitbox?: ChallengerTrackHitbox[];
+  addRoadWheelLayer(
+    geometry: THREE.BufferGeometry,
+    material: THREE.Material,
+    options: { readonly outset: number; readonly name: string },
+  ): void;
+}
+
+interface ChallengerBuilderPort extends UKBuilderPort {
+  readonly spec: {
+    readonly id: string;
+    readonly armor: { readonly turretPivot: Vec3Tuple };
+    readonly visual: {
+      readonly number?: string;
+      bakeDirtDeckEq?: boolean;
+    };
+  };
+  readonly gear: ChallengerGearPort;
+  addEquipment(owner: EquipmentOwner, geometry: unknown, ...transform: number[]): unknown;
+  addMudguard(key: string, slot: string, geometry: unknown, ...transform: number[]): unknown;
+  eraCluster(key: string, build: (place: EraPlacer) => void, turretOwned?: boolean): void;
+  postAssemble?: (assembly: { readonly turretG: THREE.Group }) => void;
+}
+
+interface ChallengerToneOptions {
+  readonly glassHex?: number;
+  readonly cloth?: number;
+  readonly clothEnv?: number;
+  readonly dark?: number;
+  readonly wheelHex?: number;
+  readonly wheelEnv?: number;
+  readonly drumHex?: number;
+  readonly drumEnv?: number;
+  readonly padHex?: number;
+  readonly padEnv?: number;
+  readonly chainHex?: number;
+  readonly chainEnv?: number;
+  readonly ringHex?: number;
+  readonly ringEnv?: number;
+  readonly bandMul?: readonly [number, number, number];
+  readonly bandEnv?: number;
+  readonly spareHex?: number;
+  readonly tireEmissive?: number;
+}
+
+type GearBackerPlate = readonly [number, number, number, number, number, number];
+type SmokeBankSeat = readonly [number, number, number, number, number];
+
+interface Cr2HullSection {
+  readonly z: number;
+  readonly bw: number;
+  readonly tw: number;
+  readonly bot: number;
+  readonly top: number;
+}
+
+interface Cr2TurretSection {
+  readonly z: number;
+  readonly w: number;
+  readonly bot: number;
+  readonly top: number;
+  readonly tw?: number;
+  readonly twL?: number;
+  readonly twR?: number;
+  readonly topL?: number;
+  readonly topR?: number;
+}
+
+interface Cr2FacetedSection {
+  readonly z: number;
+  readonly w: number;
+  readonly inner: number;
+  readonly bot: number;
+  readonly centerBot?: number;
+  readonly tw: number;
+  readonly outer: number;
+  readonly center: number;
+}
+
+interface RoofSeatReceipt {
+  readonly label: string;
+  readonly carrierY: number | null;
+  readonly bottomY: number;
+}
+
+interface SmokeMouthReceipt {
+  readonly side: number;
+  readonly tubeCenter: readonly number[];
+  readonly rotation: readonly number[];
+  readonly mouthOffsetZ: number;
+}
+
+interface Challenger2VariantReceipt {
+  variant: string;
+  baseCheekPanelsRemoved: boolean;
+  baseSightWellsRemoved: boolean;
+  legacyHydrogasGapAssembliesRemoved: boolean;
+  mannedMachineGuns: number;
+  enhancedSkirtPanels: number;
+  glacisEraCassettes: number;
+  turretEraCassettes: number;
+  fuelBarrels: number;
+  cageRails: number;
+  cagePosts: number;
+  cageDeckTiePlates: number;
+  roofAttachmentCount: number;
+  maximumRoofGapM: number;
+  bridgedMachineGunBarrels: number;
+  cheekEraHorizontallyMirrored: boolean;
+  cheekEraNormalAlignmentDot: number;
+  cheekEraColumnsPerSide: number;
+  cheekEraRowsPerSide: number;
+  cheekEraCassetteWidthM: number;
+  cheekEraCassetteHeightM: number;
+  cheekEraHorizontalGapM: number;
+  cheekEraVerticalGapM: number;
+  cheekEraIndividualSquares: boolean;
+  cheekEraSurfaceLoweringM: number;
+  cheekEraVerticalBoundsBySide: {
+    left: [number, number] | null;
+    right: [number, number] | null;
+  };
+  glacisEraNormalAlignmentDot: number;
+  smokeBanks: number;
+  smokeCanisters: number;
+  smokeCarrierMaximumGapM: number | null;
+  smokeCanisterMinimumEmbedM: number;
+  smokeCanistersSurfaceDerived: boolean;
+  canopyMaximumLegGapM: number | null;
+  canopyLoweringM: number;
+}
+
+interface Challenger3XReceipt {
+  variant: string;
+  enhancedSkirtPanels: number;
+  skirtHangers: number;
+  glacisEraCassettes: number;
+  skirtEraCassettes: number;
+  cheekEraCassettes: number;
+  turretSideEraCassettes: number;
+  autocannonStations: number;
+  radarArrays: number;
+  searchlights: number;
+  bustleCageRails: number;
+  stowageItems: number;
+  equipmentSeatsFlush: boolean;
+  totalEraCassettes?: number;
+}
+
+interface Challenger3ShellSection {
+  readonly bottomF: number;
+  readonly bottomR: number;
+  readonly bottomZR?: number;
+  readonly outerF: number;
+  readonly outerR: number;
+  readonly shoulderXF: number;
+  readonly shoulderXR: number;
+  readonly shoulderYF: number;
+  readonly shoulderYR: number;
+  readonly roofXF: number;
+  readonly roofXR: number;
+  readonly roofYF: number;
+  readonly roofYR: number;
+}
 
 // ---------------------------------------------------------------------------
 // Challenger 1 Mk.3 — VERTEX r3 FULL RETUNE (post-warp oracle, law v2
@@ -138,7 +333,7 @@ const CR1_HULL = {
   numberSize: 0.34, numberR: [1.579, 1.15, 0.5], numberL: [-1.579, 1.15, 0.5],
 };
 
-function challenger1Build(P) {
+function challenger1Build(P: ChallengerBuilderPort): void {
   const g = CR1_HULL;
   const { sph, cylX } = KIT;
   ukHull(P, g);
@@ -162,9 +357,15 @@ function challenger1Build(P) {
   // 3.28..3.60, 1.70 fender edge to 3.30, 1.65 wing run to the tip) while
   // the elevation reads one slope. Underside keeps the print's rising
   // 0.99..1.00 wing belly + hanging tip flaps (mask lines unchanged).
-  const rk = (z) => 1.5575 - 0.245 * (z - 2.95);
+  const rk = (z: number): number => 1.5575 - 0.245 * (z - 2.95);
   for (const s of [-1, 1]) {
-    const W = (xi, xo, zf, zr, yb) => {
+    const W = (
+      xi: number,
+      xo: number,
+      zf: number,
+      zr: number,
+      yb: (z: number) => number,
+    ): void => {
       const lo = Math.min(s * xi, s * xo), hi = Math.max(s * xi, s * xo);
       P.add('hull', slab(
         [lo, yb(zf), zf], [hi, yb(zf), zf], [hi, yb(zr), zr], [lo, yb(zr), zr],
@@ -514,7 +715,7 @@ function challenger1Build(P) {
   // overhung box end; flat tops sit at the ref's 2.24 course line (0.635
   // local — the old 0.66 read 0.03 proud) and the dark lid strips are
   // FLUSH (they rode 0.02 proud as a second micro-step).
-  const binNose = (x0, x1, zr, zf) => {
+  const binNose = (x0: number, x1: number, zr: number, zf: number): void => {
     const lo = Math.min(x0, x1), hi = Math.max(x0, x1);
     P.add('turret', slab(
       [lo, 0.195, zf], [hi, 0.195, zf], [hi, 0.195, zr], [lo, 0.195, zr],
@@ -1055,7 +1256,7 @@ function challenger1Build(P) {
     flapMat.onBeforeCompile = vehicleAmbientFloorHook;
     flapMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     P.disposables.push(flapMat);
-    const flapBox = (w, h, d, x, y, z) => {
+    const flapBox = (w: number, h: number, d: number, x: number, y: number, z: number): void => {
       const geo = new THREE.BoxGeometry(w, h, d);
       const mesh = new THREE.Mesh(geo, flapMat);
       mesh.name = 'mudFlapPanel';
@@ -1092,7 +1293,7 @@ function challenger1Build(P) {
   // fragment shader only).
   P.spec.visual.bakeDirtDeckEq = true;
   {
-    const inkLift = (m, key) => {
+    const inkLift = (m: THREE.MeshStandardMaterial, key: string): void => {
       const prev = m.onBeforeCompile;
       m.onBeforeCompile = (shader, rdr) => {
         if (prev) prev(shader, rdr);
@@ -1269,7 +1470,7 @@ function challenger1Build(P) {
 // quarantined visual-reference material only. This original construction uses
 // our primitives, native track system and explicit seats for every fitting;
 // no reference mesh data is imported, sampled, converted or shipped.
-function challenger1Native2026(P) {
+function challenger1Native2026(P: ChallengerBuilderPort): void {
   const {
     cylX, sph, frustum, fenders, cupola,
   } = KIT;
@@ -1621,7 +1822,7 @@ export const CHALLENGER_PROFILES = {
   // in this module plus the fleet-native linked course. No external mesh,
   // sampled vertex stream or converted model payload enters the playable.
   challenger1: { build: challenger1Build },
-};
+} satisfies VehicleProfileRecord;
 
 
 // ===========================================================================
@@ -1637,15 +1838,25 @@ export const CHALLENGER_PROFILES = {
 // BASE-21 helpers (challenger2 rebuild): call-time KIT access.
 // Mirror-safe slab (§C MISSING-SIDE law): s=-1 mirrors x AND swaps corner
 // order so faces stay outward — never a bare x*s mirror.
-const m1MirrX = ([x, y, z]) => [-x, y, z];
-function mslab1(s, b0, b1, b2, b3, t0, t1, t2, t3) {
+const m1MirrX = ([x, y, z]: Vec3Tuple): [number, number, number] => [-x, y, z];
+function mslab1(
+  s: number,
+  b0: Vec3Tuple,
+  b1: Vec3Tuple,
+  b2: Vec3Tuple,
+  b3: Vec3Tuple,
+  t0: Vec3Tuple,
+  t1: Vec3Tuple,
+  t2: Vec3Tuple,
+  t3: Vec3Tuple,
+): THREE.BufferGeometry {
   const { slab } = KIT;
   return s > 0
     ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
     : slab(m1MirrX(b1), m1MirrX(b0), m1MirrX(b3), m1MirrX(b2), m1MirrX(t1), m1MirrX(t0), m1MirrX(t3), m1MirrX(t2));
 }
 // Bow tow hook: bracket block + dark pin.
-function towHook2(P, x, y, z) {
+function towHook2(P: ChallengerBuilderPort, x: number, y: number, z: number): void {
   const { box, cylX } = KIT;
   P.add('hullDetail', box(0.09, 0.12, 0.09), x, y, z);
   P.add('hullDark', cylX(0.02, 0.12, 6), x, y + 0.01, z + 0.03);
@@ -1664,8 +1875,8 @@ function towHook2(P, x, y, z) {
 // the ch1 r8 WHEEL-RING GRAMMAR: pale discs read against DARK-drawn tire
 // rings, never the inverse).
 // ---------------------------------------------------------------------------
-function ch1BaseToneKit(P, o = {}) {
-  const rehook = (m) => {
+function ch1BaseToneKit(P: ChallengerBuilderPort, o: ChallengerToneOptions = {}): void {
+  const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
     m.onBeforeCompile = vehicleAmbientFloorHook;
     m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     return m;
@@ -1687,23 +1898,24 @@ function ch1BaseToneKit(P, o = {}) {
   drumTone.color.setHex(o.drumHex ?? 0x373d2c);
   drumTone.envMapIntensity = o.drumEnv ?? 0.14;
   P.disposables.push(wheelTone, drumTone);
-  P.hullG.traverse((ob) => {
-    if (!ob.isMesh && !ob.isInstancedMesh) return;
+  P.hullG.traverse((ob: THREE.Object3D) => {
+    if (!(ob instanceof THREE.Mesh) && !(ob instanceof THREE.InstancedMesh)) return;
+    const isInstanced = ob instanceof THREE.InstancedMesh;
     const m = ob.material;
     if (!m || !m.color || !m.color.getHex) return;
     const hex = m.color.getHex();
-    if (ob.isInstancedMesh && hex === 0x171614) {
+    if (isInstanced && hex === 0x171614) {
       rehook(m).color.setHex(o.padHex ?? 0x272b20);            // shoe pads
       m.envMapIntensity = o.padEnv ?? 0.18;
-    } else if (ob.isInstancedMesh && hex === 0x27251f) {
+    } else if (isInstanced && hex === 0x27251f) {
       rehook(m).color.setHex(o.chainHex ?? 0x2f3427);          // inner chain/horns
       m.envMapIntensity = o.chainEnv ?? 0.22;
-    } else if (ob.isInstancedMesh && hex === 0x565c50) {
+    } else if (isInstanced && hex === 0x565c50) {
       rehook(m).color.setHex(o.ringHex ?? 0x2b2f1f);           // tire ring (dark-drawn, ch1 r8 grammar)
       m.envMapIntensity = o.ringEnv ?? 0.10;
       if (m.emissive) m.emissive.setHex(0x000000);
     } else if (m === P.mats.wheels) {
-      ob.material = ob.isInstancedMesh ? wheelTone : drumTone; // discs / end-drum spinners
+      ob.material = isInstanced ? wheelTone : drumTone; // discs / end-drum spinners
     }
   });
   const bm = o.bandMul ?? [0.92, 0.98, 0.82];
@@ -1719,7 +1931,11 @@ function ch1BaseToneKit(P, o = {}) {
 // plates inside the gear bays, NAMED /shadow/i so the gate mask pass, the
 // evaluator masks and the critic framing all EXCLUDE them (§C shadow-proxy
 // law). track-clip-audit does NOT skip them — callers thread the envelopes.
-function ch1BaseGearBackers(P, plates, hex = 0x20261c) {
+function ch1BaseGearBackers(
+  P: ChallengerBuilderPort,
+  plates: readonly GearBackerPlate[],
+  hex = 0x20261c,
+): void {
   const m = P.mats.shadow.clone();
   m.color.setHex(hex);
   m.roughness = 0.97;
@@ -1747,7 +1963,7 @@ function ch1BaseGearBackers(P, plates, hex = 0x20261c) {
 // Interior by construction at the callers' seats (caps sit inside each
 // tube's own r 0.038 face circle; the priced turret rows on both ids are
 // print-capped and the deltas are cm-scale on already-authored banks).
-function smokeTubeTips(P, banks) {
+function smokeTubeTips(P: ChallengerBuilderPort, banks: readonly SmokeBankSeat[]): void {
   const { cylZ } = KIT;
   for (const [bx, by, bz, yaw, arc] of banks) {
     for (let k = 0; k < 5; k++) {
@@ -1762,7 +1978,7 @@ function smokeTubeTips(P, banks) {
   }
 }
 
-function buildChallenger2Legacy(P) {
+function buildChallenger2Legacy(P: ChallengerBuilderPort): void {
   const { box, cylX, cylY, cylZ, slab, frustum, fenders, headlight, liftEye,
     periscope, smokeCluster, towCable, stowage, jerryCan, tarpRoll,
     ammoCan, buildGun, buildRunningGear, cupola, torus } = KIT;
@@ -2101,18 +2317,25 @@ function buildChallenger2Legacy(P) {
 // 30-knot side hull, tapered five-band plan, nine-section Dorchester shell,
 // measured ring/bore axes, and six-station Hydrogas running gear.
 // ---------------------------------------------------------------------------
-function cr2At(points, z) {
+function cr2At(points: readonly (readonly number[])[], z: number): number {
   for (let i = 0; i < points.length - 1; i++) {
     const [za, ya] = points[i], [zb, yb] = points[i + 1];
     if ((z <= za && z >= zb) || (z >= za && z <= zb)) {
       return ya + (yb - ya) * ((z - za) / ((zb - za) || 1));
     }
   }
-  return Math.abs(z - points[0][0]) < Math.abs(z - points.at(-1)[0])
-    ? points[0][1] : points.at(-1)[1];
+  const first = points[0]!;
+  const last = points.at(-1)!;
+  return Math.abs(z - first[0]) < Math.abs(z - last[0]) ? first[1] : last[1];
 }
 
-function cr2ProfileStrip(P, x0, x1, top, bottom) {
+function cr2ProfileStrip(
+  P: ChallengerBuilderPort,
+  x0: number,
+  x1: number,
+  top: readonly (readonly number[])[],
+  bottom: readonly (readonly number[])[],
+): void {
   const zs = [...new Set([...top, ...bottom].map((p) => p[0]))].sort((a, b) => a - b);
   for (let i = 0; i < zs.length - 1; i++) {
     const za = zs[i], zb = zs[i + 1];
@@ -2132,7 +2355,7 @@ function cr2ProfileStrip(P, x0, x1, top, bottom) {
 // their side trace but leaves a broad rectangular face in end views.  This
 // closed loft preserves that exact side curve while pulling the lower armor
 // inward at each measured cross-section.
-function cr2HullCrossLoft(P, sections) {
+function cr2HullCrossLoft(P: ChallengerBuilderPort, sections: readonly Cr2HullSection[]): void {
   for (let i = 0; i < sections.length - 1; i++) {
     const a = sections[i], b = sections[i + 1];
     for (const side of [-1, 1]) {
@@ -2147,7 +2370,7 @@ function cr2HullCrossLoft(P, sections) {
   }
 }
 
-function cr2TurretLoft(P, sections) {
+function cr2TurretLoft(P: ChallengerBuilderPort, sections: readonly Cr2TurretSection[]): void {
   for (let i = 0; i < sections.length - 1; i++) {
     const a = sections[i], b = sections[i + 1];
     const atwL = a.twL ?? a.tw ?? a.w, atwR = a.twR ?? a.tw ?? a.w;
@@ -2165,7 +2388,7 @@ function cr2TurretLoft(P, sections) {
 // outer shoulders.  The real 54-triangle component has independent outer
 // cheek heights and a narrow ±.49 m centre course, so author those three
 // contiguous facets explicitly.
-function cr2FacetedShell(P, sections) {
+function cr2FacetedShell(P: ChallengerBuilderPort, sections: readonly Cr2FacetedSection[]): void {
   for (let i = 0; i < sections.length - 1; i++) {
     const a = sections[i], b = sections[i + 1];
     const ab = [-a.w, -a.inner, a.inner, a.w];
@@ -2189,9 +2412,15 @@ function cr2FacetedShell(P, sections) {
 // ring core, two Dorchester cheeks, roof plates and bustle modules are
 // separate solids.  This helper keeps those solids procedural while letting
 // every footprint and roof height follow its own measured plane.
-function cr2CourseGeo(footprint, lowerY, upperY) {
+function cr2CourseGeo(
+  footprint: readonly Vec2Tuple[],
+  lowerY: number | readonly number[],
+  upperY: number | readonly number[],
+): THREE.BufferGeometry {
   const n = footprint.length;
-  const valueAt = (v, i) => Array.isArray(v) ? v[i] : v;
+  const valueAt = (v: number | readonly number[], i: number): number => (
+    typeof v === 'number' ? v : v[i]
+  );
   // Mirrored courses arrive counter-wound. Keep each height attached to its
   // footprint vertex, then normalize to the clockwise convention used by
   // the cap and side indices; otherwise one mirrored roof cap is backface-
@@ -2231,12 +2460,31 @@ function cr2CourseGeo(footprint, lowerY, upperY) {
   return g;
 }
 
-function cr2Course(P, bucket, footprint, lowerY, upperY) {
+function cr2Course(
+  P: ChallengerBuilderPort,
+  bucket: string,
+  footprint: readonly Vec2Tuple[],
+  lowerY: number | readonly number[],
+  upperY: number | readonly number[],
+): void {
   P.add(bucket, cr2CourseGeo(footprint, lowerY, upperY));
 }
 
-function cr2MountedMg(P, { x, y, z, cls = 'mag', seed = 1, rotationY = 0,
-  scale = 1, shield = false }) {
+interface MountedMgOptions {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly cls?: 'mag' | 'm2';
+  readonly seed?: number;
+  readonly rotationY?: number;
+  readonly scale?: number;
+  readonly shield?: boolean;
+}
+
+function cr2MountedMg(
+  P: ChallengerBuilderPort,
+  { x, y, z, cls = 'mag', seed = 1, rotationY = 0, scale = 1, shield = false }: MountedMgOptions,
+): THREE.Object3D {
   const mg = FITTINGS.pintleMG({
     mats: P.mats, cls, tone: 'two-tone', seed, elev: 0.025, scale,
     ammo: true, shield, ring: { r: cls === 'm2' ? 0.23 : 0.18, stubs: 4 },
@@ -2255,11 +2503,34 @@ function cr2MountedMg(P, { x, y, z, cls = 'mag', seed = 1, rotationY = 0,
 /** Challenger 2's source-matched remote weapon tower. Keep this assembly in
  * one builder so the 2E derivatives inherit the open cradle, transverse MAG,
  * optics, and articulated boom while choosing their own roof seat. */
-function buildChallenger2WeaponTower(P, { centerX = 0.7095, seatY = 0.690,
-  roofCarrierY = null } = {}) {
+interface WeaponTowerOptions {
+  readonly centerX?: number;
+  readonly seatY?: number;
+  readonly roofCarrierY?: number | null;
+}
+
+interface WeaponTowerReceipt {
+  readonly centerX: number;
+  readonly centeredOnRoof: boolean;
+  readonly localSeat: readonly number[];
+  readonly baseBottomY: number;
+  readonly roofCarrierY: number | null;
+  readonly roofContactEmbedM: number | null;
+  readonly ringRearZ: number;
+  readonly receiverSupportFrontZ: number;
+  readonly planOverlapM: number;
+  readonly ringTopY: number;
+  readonly receiverSupportBottomY: number;
+  readonly verticalOverlapM: number;
+}
+
+function buildChallenger2WeaponTower(
+  P: ChallengerBuilderPort,
+  { centerX = 0.7095, seatY = 0.690, roofCarrierY = null }: WeaponTowerOptions = {},
+): WeaponTowerReceipt {
   const { box, cylX, cylY, cylZ, torus } = KIT;
-  const stationX = (x) => x + centerX - 0.7095;
-  const stationY = (y) => y + seatY - 0.690;
+  const stationX = (x: number): number => x + centerX - 0.7095;
+  const stationY = (y: number): number => y + seatY - 0.690;
 
   P.add('turretDark', box(0.111, 0.110, 0.110), stationX(0.7095), stationY(0.7126), 0.136);
   P.addEquipment('turret', box(0.081, 0.080, 0.080), stationX(0.7095), stationY(0.7226), 0.136);
@@ -2354,7 +2625,14 @@ function buildChallenger2WeaponTower(P, { centerX = 0.7095, seatY = 0.690,
   return receipt;
 }
 
-function cr2SurfaceFrame(normalValues, horizontalHint) {
+interface Cr2SurfaceFrame {
+  readonly normal: THREE.Vector3;
+  readonly horizontal: THREE.Vector3;
+  readonly vertical: THREE.Vector3;
+  readonly rotation: [number, number, number];
+}
+
+function cr2SurfaceFrame(normalValues: Vec3Tuple, horizontalHint: Vec3Tuple): Cr2SurfaceFrame {
   const normal = new THREE.Vector3(...normalValues).normalize();
   const horizontal = new THREE.Vector3(...horizontalHint);
   horizontal.addScaledVector(normal, -horizontal.dot(normal)).normalize();
@@ -2366,13 +2644,18 @@ function cr2SurfaceFrame(normalValues, horizontalHint) {
 
 /** Variant-only roof and protection packages. The sovereign CR2 hull/turret
  * remains shared, while every fitting below has an explicit seat or carrier. */
-function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
+function buildChallenger2VariantPackage(
+  P: ChallengerBuilderPort,
+  variant: string,
+  roofSeats: RoofSeatReceipt[],
+  smokeMouths: SmokeMouthReceipt[],
+): void {
   const { cylY, cylZ, cupola } = KIT;
   const pivotY = P.spec.armor.turretPivot[1];
   const pivotZ = P.spec.armor.turretPivot[2];
   const enhanced = variant === 'challenger2e' || variant === 'ua_challenger2';
   const ukrainian = variant === 'ua_challenger2';
-  const receipt = {
+  const receipt: Challenger2VariantReceipt = {
     variant,
     baseCheekPanelsRemoved: true,
     baseSightWellsRemoved: true,
@@ -2477,7 +2760,11 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
       for (let c = 0; c < 6; c++) for (let row = 0; row < 3; row++)
         put(-1.905, 0.82 + row * 0.22, 3.00 - c * 0.55, 0, -Math.PI / 2, 0, 1.18, 1.32, 0.72);
     });
-    for (const [name, side] of [['cr2e_glacis_era_R', 1], ['cr2e_glacis_era_L', -1]]) {
+    const glacisEraSides: ReadonlyArray<readonly [string, number]> = [
+      ['cr2e_glacis_era_R', 1],
+      ['cr2e_glacis_era_L', -1],
+    ];
+    for (const [name, side] of glacisEraSides) {
       P.eraCluster(name, (put) => {
         for (let row = 0; row < 3; row++) for (let c = 0; c < 5; c++) {
           // Continuous overlapping courses follow the three marked glacis
@@ -2486,7 +2773,9 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
           const z = [3.57, 3.29, 3.01][row];
           const x = side * [0.11, 0.32, 0.53, 0.74, 0.94][c];
           const centerPlate = c === 0;
-          const normalValues = centerPlate ? [0, 0.94299, 0.33282] : [0, 0.99504, 0.09950];
+          const normalValues: Vec3Tuple = centerPlate
+            ? [0, 0.94299, 0.33282]
+            : [0, 0.99504, 0.09950];
           const surfaceY = centerPlate
             ? [1.3162, 1.3815, 1.4141][row]
             : [1.3643, 1.3810, 1.4116][row];
@@ -2500,9 +2789,13 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
         }
       });
     }
-    for (const [name, side] of [['cr2e_turret_era_R', 1], ['cr2e_turret_era_L', -1]]) {
+    const turretEraSides: ReadonlyArray<readonly [string, number]> = [
+      ['cr2e_turret_era_R', 1],
+      ['cr2e_turret_era_L', -1],
+    ];
+    for (const [name, side] of turretEraSides) {
       P.eraCluster(name, (put) => {
-        const normalValues = [side * 0.3915, 0.6650, 0.6359];
+        const normalValues: Vec3Tuple = [side * 0.3915, 0.6650, 0.6359];
         const frame = cr2SurfaceFrame(normalValues, [side, 0, -0.62]);
         const placementVertical = frame.vertical.clone();
         if (placementVertical.y < 0) placementVertical.multiplyScalar(-1);
@@ -2520,7 +2813,7 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
         const heightScale = 1.46;
         const horizontalPitch = 0.235;
         const verticalPitch = 0.220;
-        const placedYs = [];
+        const placedYs: number[] = [];
         for (let row = 0; row < rows; row++) for (let c = 0; c < columns; c++) {
           const point = planePoint.clone()
             .addScaledVector(frame.horizontal, (c - (columns - 1) * 0.5) * horizontalPitch)
@@ -2611,7 +2904,7 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
           .addScaledVector(frame.horizontal, (column - 0.5) * 0.17)
           .addScaledVector(frame.vertical, (row - 0.5) * 0.13);
         const yaw = side * (0.38 + column * 0.06);
-        const rotation = [-0.30 + row * 0.03, yaw, 0];
+        const rotation: [number, number, number] = [-0.30 + row * 0.03, yaw, 0];
         const axis = new THREE.Vector3(0, 0, 1)
           .applyEuler(new THREE.Euler(...rotation, 'XYZ'));
         const center = seat.clone().addScaledVector(axis, tubeLength * 0.5 - rearEmbed);
@@ -2711,7 +3004,7 @@ function buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths) {
 const CHALLENGER2_FAMILY_SCALE = 1.10;
 const CHALLENGER3_FAMILY_SCALE = 1.10;
 
-function scaleChallenger2Family(P) {
+function scaleChallenger2Family(P: ChallengerBuilderPort): void {
   const scale = CHALLENGER2_FAMILY_SCALE;
 
   // Hull and turret are sibling articulation owners. Scale both in place and
@@ -2727,11 +3020,11 @@ function scaleChallenger2Family(P) {
   // hierarchy. Convert it to the enlarged vehicle frame so movement, damage,
   // AI probes and killcam anatomy continue to follow the visible tracks.
   if (P.gear?.contactGeom) {
-    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM']) {
+    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM'] as const) {
       P.gear.contactGeom[key] *= scale;
     }
     if (P.gear.contactGeom.endRise) {
-      for (const key of ['dzM', 'frontM', 'rearM']) P.gear.contactGeom.endRise[key] *= scale;
+      for (const key of ['dzM', 'frontM', 'rearM'] as const) P.gear.contactGeom.endRise[key] *= scale;
     }
   }
   for (const lane of P.gear?.trackHitbox || []) {
@@ -2750,18 +3043,18 @@ function scaleChallenger2Family(P) {
   P.turretG.userData.challenger2FamilyScaleReceipt = receipt;
 }
 
-function scaleChallenger3Family(P) {
+function scaleChallenger3Family(P: ChallengerBuilderPort): void {
   const scale = CHALLENGER3_FAMILY_SCALE;
   P.hullG.scale.multiplyScalar(scale);
   P.turretG.scale.multiplyScalar(scale);
   P.turretG.position.multiplyScalar(scale);
 
   if (P.gear?.contactGeom) {
-    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM']) {
+    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM'] as const) {
       P.gear.contactGeom[key] *= scale;
     }
     if (P.gear.contactGeom.endRise) {
-      for (const key of ['dzM', 'frontM', 'rearM']) P.gear.contactGeom.endRise[key] *= scale;
+      for (const key of ['dzM', 'frontM', 'rearM'] as const) P.gear.contactGeom.endRise[key] *= scale;
     }
   }
   for (const lane of P.gear?.trackHitbox || []) {
@@ -2780,10 +3073,10 @@ function scaleChallenger3Family(P) {
   P.turretG.userData.challenger3FamilyScaleReceipt = receipt;
 }
 
-function buildChallenger3XPackage(P) {
+function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
   const { box, cylX, cylY, cylZ, frustum, torus, tarpRoll, jerryCan, ammoCan } = KIT;
   const [turretPivotX, turretPivotY, turretPivotZ] = P.spec.armor.turretPivot;
-  const receipt = {
+  const receipt: Challenger3XReceipt = {
     variant: 'challenger_3x',
     enhancedSkirtPanels: 0,
     skirtHangers: 0,
@@ -2950,7 +3243,7 @@ function buildChallenger3XPackage(P) {
   P.turretG.userData.challenger3XReceipt = frozen;
 }
 
-function buildChallenger2(P) {
+function buildChallenger2(P: ChallengerBuilderPort): void {
   const { cylX, cupola, tarpRoll, jerryCan, ammoCan } = KIT;
   const { rng } = P;
   const variant = P.spec.id;
@@ -2996,7 +3289,12 @@ function buildChallenger2(P) {
   P.gear.addRoadWheelLayer(cylX(0.030, 0.030, P.q ? 14 : 10), P.mats.dark,
     { outset: 1.503 - 1.33, name: 'gearRoadWheelHubPlugs' });
   if (P.q) {
-    const radialSet = (count, radius, geometry, phase = 0) => KIT.mergeAll(
+    const radialSet = (
+      count: number,
+      radius: number,
+      geometry: THREE.BufferGeometry,
+      phase = 0,
+    ): THREE.BufferGeometry => KIT.mergeAll(
       Array.from({ length: count }, (_, k) => {
         const a = phase + k * Math.PI * 2 / count;
         return KIT.xform(k === 0 ? geometry : geometry.clone(),
@@ -3158,7 +3456,7 @@ function buildChallenger2(P) {
   // ±1.2 shoulder front 4.08, outer corners 3.69; the stern similarly pulls
   // from -4.06 at the inner band to -2.52 at the track guards.
   for (const side of [-1, 1]) {
-    const sx = (v) => side * v;
+    const sx = (v: number): number => side * v;
     P.add('hull', slab(
       [sx(0.90), 0.90, 3.95], [sx(1.20), 0.90, 3.95], [sx(1.20), 0.55, 3.80], [sx(0.90), 0.55, 3.80],
       [sx(0.90), 1.22, 3.95], [sx(1.20), 1.22, 3.95], [sx(1.20), 1.31, 3.80], [sx(0.90), 1.31, 3.80]));
@@ -3181,12 +3479,12 @@ function buildChallenger2(P) {
     // ±1.755 to the ±1.736 inner-course seam before returning to the
     // published-width course.  It
     // is a real plan notch between bays, not a global width rescale.
-    const skirtOuter = [
+    const skirtOuter: Vec2Tuple[] = [
       [sx(1.735), 4.08], [sx(1.755), 3.69], [sx(1.755), 1.76],
       [sx(1.736), 1.75], [sx(1.736), 1.11], [sx(1.755), 1.10],
       [sx(1.755), -2.52], [sx(1.735), -3.40],
     ];
-    const skirtTopAt = (z) => 1.42 + ((z + 2.52) / 6.21) * (1.25 - 1.42);
+    const skirtTopAt = (z: number): number => 1.42 + ((z + 2.52) / 6.21) * (1.25 - 1.42);
     cr2Course(P, 'hull', skirtOuter,
       [1.17, 1.26, 1.26, 1.26, 1.26, 1.26, 1.26, 1.26],
       [1.25, 1.25, skirtTopAt(1.76), skirtTopAt(1.75), skirtTopAt(1.11), skirtTopAt(1.10), 1.42, 1.42]);
@@ -3212,7 +3510,7 @@ function buildChallenger2(P) {
   // edge-on, not a physical skirt asymmetry; the repaired source front row
   // measures both outer courses at the common 1.54 m datum.
   for (const side of [-1, 1]) {
-    const sx = (v) => side * v;
+    const sx = (v: number): number => side * v;
     const shoulderOuter = side < 0 ? 1.55 : 1.37;
     P.add('hull', slab(
       [sx(1.18), 1.48, -0.55], [sx(shoulderOuter), 1.48, -0.55], [sx(shoulderOuter), 1.48, 0.55], [sx(1.18), 1.48, 0.55],
@@ -3652,7 +3950,7 @@ function buildChallenger2(P) {
     const cheekRotation = new THREE.Euler().setFromRotationMatrix(cheekFrame, 'XYZ');
     const cheekPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(
       cheekNormal, new THREE.Vector3(side * 0.488, -0.03, 1.907));
-    const seat = (x, y, z, clearance) => {
+    const seat = (x: number, y: number, z: number, clearance: number): THREE.Vector3 => {
       const center = new THREE.Vector3(x, y, z);
       cheekPlane.projectPoint(center, center);
       return center.addScaledVector(cheekNormal, clearance);
@@ -3721,7 +4019,7 @@ function buildChallenger2(P) {
     // course; the loader-side copy was the broad block called out in the
     // markup, projecting through the otherwise continuous front casting.
     const cheekOuter = side < 0 ? 1.50 : 1.46;
-    const cheekPlan = [
+    const cheekPlan: Vec2Tuple[] = [
       [side * 0.90, 1.05], [side * cheekOuter, 1.05],
       [side * cheekOuter, 1.38], [side * 0.35, 1.42],
     ];
@@ -3889,8 +4187,8 @@ function buildChallenger2(P) {
   ammoCan(P, 'turretDark', 1.05, 0.32, -3.04, 0.22);
 
   const roofEmbed = 0.010;
-  const roofSeats = [];
-  const smokeMouths = [];
+  const roofSeats: RoofSeatReceipt[] = [];
+  const smokeMouths: SmokeMouthReceipt[] = [];
   if (isBaseChallenger2) {
   // Roof hierarchy from connected components, following the Leclerc
   // method.  The source has ONE flattened loader lid at
@@ -4052,7 +4350,7 @@ function buildChallenger2(P) {
       [1.267, 0.064, 0.165, 0.17, 0.048, -1.01, -0.918],
     ];
     heads.forEach(([x, width, height, depth, glassWidth, z, glassZ], index) => {
-      const carrierY = outboardRoofCarriers[String(side)][index];
+      const carrierY = outboardRoofCarriers[side < 0 ? '-1' : '1'][index];
       const y = carrierY + height * 0.5 - roofEmbed;
       P.addEquipment('turret', box(width, height, depth), side * x, y, z);
       P.add('turretGlass', box(glassWidth, 0.050, 0.012), side * x, y + 0.018, glassZ);
@@ -4199,7 +4497,7 @@ function buildChallenger2(P) {
 // 120 mm L55A1 SMOOTHBORE (evacuator + thermal sleeve + MRS collar +
 // §B3.1 muzzle bore) replacing the rifled L30.
 // ---------------------------------------------------------------------------
-function buildChallenger3(P) {
+function buildChallenger3(P: ChallengerBuilderPort): void {
   const { box, cylY, cylZ, slab, frustum, headlight, liftEye,
     periscope, smokeCluster, stowage, jerryCan, tarpRoll,
     ammoCan, buildGun, buildRunningGear, torus } = KIT;
@@ -4502,7 +4800,11 @@ function buildChallenger3(P) {
   // a tall box in every shaded comparison even though its outer AABB was
   // numerically correct.  Each longitudinal station below therefore owns
   // an outer wall, a sloped flank, and a narrow roof cap independently.
-  const c3ShellSegment = (zF, zR, q) => {
+  const c3ShellSegment = (
+    zF: number,
+    zR: number,
+    q: Challenger3ShellSection,
+  ): void => {
     const bottomZR = q.bottomZR ?? zR;
     for (const s of [-1, 1]) {
       P.add('turret', mslab1(s,
@@ -4905,4 +5207,4 @@ export const CHALLENGER_BUILDERS = {
   ua_challenger2: buildChallenger2,
   challenger_3: buildChallenger3,
   challenger_3x: buildChallenger3,
-};
+} satisfies Record<string, (builder: ChallengerBuilderPort) => void>;

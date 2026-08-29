@@ -8,7 +8,7 @@
 // whole-minus-hull band. Oracles: recovered chieftain5 / challenger1 /
 // fv510 GLBs and the re-repaired m_bergman centurion / comet / charioteer /
 // A30 prints (assembled turrets — the honest curves).
-// challenger1 moved to profiles/challenger.js (§5.75 family-module split) —
+// challenger1 moved to profiles/challenger.ts (§5.75 family-module split) —
 // that module imports this file's shared UK kit (export block at the tail).
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
@@ -109,9 +109,9 @@ interface UKMaterialPort extends UKGeometryPort {
   readonly disposables: Array<{ dispose(): void }>;
 }
 
-interface UKBuilderPort extends UKGunPort, UKMaterialPort {}
+export interface UKBuilderPort extends UKGunPort, UKMaterialPort {}
 
-interface UKBuilderPort {
+export interface UKBuilderPort {
   readonly recoilG: THREE.Group;
   readonly rng: () => number;
   clear(slots: readonly string[] | string, ...rest: string[]): void;
@@ -4575,7 +4575,7 @@ export const UK_PROFILES = {
   fv510_milan: { build: fv510MilanBuild },
 } satisfies VehicleProfileRecord;
 
-// §5.75 family-module split: profiles/challenger.js (challenger1Build moved
+// §5.75 family-module split: profiles/challenger.ts (challenger1Build moved
 // there) imports the UK family kit from this module. The helpers stay OWNED
 // here (the chieftain/centurion/vickers/comet residents use them) and are
 // exported for that one consumer — imported, never duplicated. The kit-proxy

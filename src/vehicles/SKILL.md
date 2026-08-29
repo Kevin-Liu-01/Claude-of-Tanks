@@ -137,6 +137,10 @@ Keep British family geometry and the cross-family Centurion base in
 `profiles/uk.ts`; Swedish callers satisfy its narrow Centurion port rather than
 depending on the full British builder, and kit helpers remain direct static
 bindings instead of a dynamic proxy.
+Keep the complete Challenger family in `profiles/challenger.ts`; extend the
+British builder contract only for Challenger running-gear metadata, ERA,
+equipment, and post-assembly behavior, and keep loft/receipt structures typed
+at their authored owner.
 Use `specContracts.ts` for boot-light fleet combat rows. Family packs may add
 identity-specific metadata, but must satisfy the shared mobility, gun, armor,
 dimensions, and visual contract before mutating the legacy registry. Variant
