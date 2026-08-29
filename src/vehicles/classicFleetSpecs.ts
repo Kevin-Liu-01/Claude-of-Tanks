@@ -1,28 +1,51 @@
-// Recovered m_bergman pack: every distinct tank/assault-gun in part 1 that
-// was not already represented by the earlier BMP/Stryker imports.
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
+// Additional first-party classic tank and assault-gun combat rows. Visual
+// geometry remains in the demand-loaded procedural family builders.
+import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
 import {
   rightCheekPlate as chR,
   leftCheekPlate as chL,
   rightSidePlate as sR,
   leftSidePlate as sL,
+  type ArmorEnvelope,
 } from './specHelpers.ts';
+import type {
+  FleetDimensions,
+  FleetGunSpec,
+  FleetTankSpec,
+  FleetVisualSpec,
+} from './specContracts.ts';
 
-const copy = (v) => JSON.parse(JSON.stringify(v));
-// Reference assets never become playables, including in local development.
-const ALLOW_LOCAL_RECOVERED_MODELS = false;
-const make = (baseId, id, name, nation, patch = {}) => {
-  const s = copy(TANK_SPECS[baseId]);
-  s.id = id; s.name = name; s.nation = nation || s.nation; s.variantOf = baseId;
+type VariantPatch = Omit<Partial<FleetTankSpec>, 'armor' | 'dims' | 'gun' | 'visual'> & {
+  armor?: ArmorEnvelope & Partial<Record<'barrelLenM' | 'tHalfW' | 'tFrontZ' | 'tRearZ', number>>;
+  dims?: Partial<FleetDimensions>;
+  gun?: Partial<FleetGunSpec>;
+  visual?: Partial<FleetVisualSpec>;
+};
+
+const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+const tankSpecs: typeof TANK_SPECS & Record<string, unknown> = TANK_SPECS;
+
+function isFleetSpecRecord(value: unknown): value is FleetTankSpec {
+  return value !== null && typeof value === 'object';
+}
+
+function requireFleetSpec(id: string): FleetTankSpec {
+  const spec = tankSpecs[id];
+  if (!isFleetSpecRecord(spec)) throw new Error(`Classic fleet donor missing or incomplete: ${id}`);
+  return spec;
+}
+
+function make(
+  baseId: string,
+  id: string,
+  name: string,
+  nation: string,
+  patch: VariantPatch = {},
+): FleetTankSpec {
+  const s = copy(requireFleetSpec(baseId));
+  s.id = id; s.name = name; s.nation = nation; s.variantOf = baseId;
   s.publicVisualFallback = baseId;
-  if (ALLOW_LOCAL_RECOVERED_MODELS) {
-    s.community = {
-      author: 'm_bergman', source: 'https://www.thingiverse.com/thing:4718232',
-      license: 'CC BY-NC-SA — LOCAL-ONLY QUARANTINE',
-    };
-  } else {
-    delete s.community;
-  }
+  delete s.community;
   const gun = s.gun, dims = s.dims, visual = s.visual;
   Object.assign(s, patch);
   if (patch.gun) s.gun = { ...gun, ...patch.gun };
@@ -37,10 +60,10 @@ const make = (baseId, id, name, nation, patch = {}) => {
   // resolution agrees with the rendered vehicle (see specs.fitArmorToDims).
   if (patch.dims) fitArmorToDims(s.armor, dims, s.dims);
   return s;
-};
+}
 
-const m60a3Armor = () => {
-  const armor = copy(TANK_SPECS.m60a1.armor);
+function m60a3Armor(): ArmorEnvelope {
+  const armor = copy(requireFleetSpec('m60a1').armor);
   // First-generation Blazer-style protection: a meaningful shaped-charge
   // defeat layer with only a modest kinetic effect.  The broad records are
   // sector hit surfaces; each name maps to a dense visual cassette cluster
@@ -59,9 +82,9 @@ const m60a3Armor = () => {
     ...armor.turretPlates,
   ];
   return armor;
-};
+}
 
-const SPECS = [
+const SPECS: FleetTankSpec[] = [
   make('is3', 'is3_bergman', 'IS-3 (Bergman)', 'USSR', { visual: { number: '703' } }),
   make('sturmtiger', 'isu152', 'ISU-152', 'USSR',
     { hp: 1450, weightTons: 47.3, topSpeedKmh: 37, reverseSpeedKmh: 14, gun: { caliberMm: 152, reloadS: 15.5 },
@@ -87,7 +110,7 @@ const SPECS = [
       gun: { caliberMm: 84, reloadS: 7.0 },
       // Gameplay ancestry supplies balance defaults only; the Charioteer has
       // a rotating turret and must not inherit the Jagdtiger's casemate flag.
-      armor: { ...TANK_SPECS.jagdtiger.armor, turretless: false },
+      armor: { ...requireFleetSpec('jagdtiger').armor, turretless: false },
       dims: { hullLengthM: 6.55, overallLengthM: 9.20, widthM: 3.05, heightM: 2.58 },
     }),
   make('leo2a4', 'leopard2_proto', 'Leopard 2 Prototype', 'Germany',
@@ -97,7 +120,7 @@ const SPECS = [
       // The prototype now owns its elongated visual rig instead of silently
       // inheriting the production A4 pivot and bustle envelope.
       armor: {
-        ...TANK_SPECS.leo2a4.armor,
+        ...requireFleetSpec('leo2a4').armor,
         turretPivot: [0, 1.72, 0.55], gunPivot: [0, 0.26, 1.00],
         barrelLenM: 5.26, tHalfW: 1.22, tFrontZ: 1.18, tRearZ: -2.75,
       },
@@ -135,7 +158,7 @@ const SPECS = [
       hullTraverseDegS: 42, turretTraverseDegS: 40,
       gun: {
         reloadS: 6.4, baseAccuracy: 0.28, aimTimeS: 1.6,
-        shells: TANK_SPECS.m60a1.gun.shells.map((round, index) => ({
+        shells: requireFleetSpec('m60a1').gun.shells.map((round, index) => ({
           ...round,
           ...(index === 0 ? { pen100Mm: 610, pen1000Mm: 570, pen2000Mm: 520, dmg: 450 }
             : index === 1 ? { pen100Mm: 560, pen1000Mm: 560, dmg: 450 }
@@ -146,74 +169,14 @@ const SPECS = [
       dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } }),
 ];
 
-const ROOT = '/models/tanks/community/recovered/';
-const articulated = (id, file = id, cfg = {}) => {
-  MODEL_SOURCE[id] = { source: 'glb', glb: {
-    path: `${ROOT}${file}.glb`, turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
-    ...cfg,
-  } };
-};
-const fixed = (id) => {
-  MODEL_SOURCE[id] = { source: 'glb', glb: { path: `${ROOT}${id}.glb`, fixedMount: true, paintUntextured: true } };
-};
-
-// All balance/spec rows are redistribution-safe code and remain playable in
-// public builds through their procedural family fallbacks. Only the recovered
-// NC model sources below are local/private.
+// Register only first-party procedural gameplay rows. Historical source assets
+// remain offline comparison inputs and have no runtime registration path.
 for (const spec of SPECS) {
-  TANK_SPECS[spec.id] = TANK_SPECS[spec.id] || spec;
+  tankSpecs[spec.id] ||= spec;
   if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
 }
 
-if (ALLOW_LOCAL_RECOVERED_MODELS) {
-  articulated('is3_bergman', 'bergman_is3');
-  // isu152: DUAL-GATE GRADUATE (2026-08-03) — the procedural build is the
-  // model of record everywhere (geometry min 90.2 gatePassed x2, graduation
-  // critic 9.0 on ALL fourteen views at round r6; floor climbed 4.0 -> 7.0
-  // -> 8.0 -> 8.5 -> 9.0 across six builder + four critic rounds). The
-  // recovered GLB (batch-17-warped) stays on disk as the measurement oracle
-  // only (override configs in procedural-fidelity.html + tmp-tank-critic
-  // .html); NO MODEL_SOURCE — freeze hash via tmp-hashgeo.
-  // isu122s: DUAL-GATE GRADUATE (2026-08-03) — the procedural build is the
-  // model of record everywhere (geometry min 90.1 gatePassed, independent
-  // critic 9.0+ on all fourteen views, round 11; floor climbed 4.0 -> 9.0
-  // across eleven visual rounds). The recovered GLB stays on disk as the
-  // measurement oracle only (override configs in procedural-fidelity.html
-  // + tmp-tank-critic.html); NO MODEL_SOURCE — freeze hash via tmp-hashgeo.
-  // m47_patton: DUAL-GATE GRADUATE (2026-08-04, the patton family's first —
-  // geometry 90.5 gatePassed x2, graduation critic 9.0 on ALL fourteen views
-  // at r8; ladder 8.3 -> 8.5 -> 8.8 -> 9.0; commit eeaa462). Registration
-  // retired per §10 — the recovered GLB stays a measurement oracle via the
-  // three override maps; freeze hash 70941de0 via tmp-hashgeo.
-  // FLEET FLIP (owner directive 2026-08-04): centurion3/5, m26/m45/m46
-  // render procedural + CUSTOM; prints stay measurement oracles via the
-  // three maps. comet/cruiser/charioteer keep GLBs (0-row builds).
-  // leopard2_proto: MODEL_SOURCE FLIP 2026-08-06 — the §B8-accepted
-  // procedural build (f1af7ba8, V3 delta + PT turret + cast mantlet,
-  // day-resit PASS) is the model of record; the recovered print stays a
-  // measurement oracle via the three override maps (flip-era mechanics,
-  // Sources group drains by one).
-  for (const id of ['comet', 'challenger_cruiser', 'charioteer']) articulated(id);
-  // The Bergman Abrams exports an empty Turret pivot at the scene origin.
-  // Its authored hull/turret placement is already correct; autoPivot treated
-  // the long fused cannon as the turret footprint and moved the entire upper
-  // vehicle off the pedestal. Keep the neutral placement and rotate it around
-  // the spec's real turret-ring pivot instead.
-  // FLEET FLIP 2026-08-04: m1a1_aim -> procedural + CUSTOM (was articulated autoPivot:false)
-  // m60a3: GRADUATED (third complete dual-gate pass — geometry min 90.0,
-  // visual min 9/10, commit 967be0e). The certified procedural build is the
-  // model of record everywhere; the old m60a1-GLB alias is retired. The
-  // reference file remains a measurement oracle for regression sweeps.
-}
+export const CLASSIC_FLEET_TANK_IDS = SPECS.map((spec) => spec.id);
 
-export const USERDROP6_TANK_IDS = SPECS.map((s) => s.id);
-// Sourced-intent roster for garage bucketing: dual-gate GRADUATES leave this
-// list (they render our builds and chip under CUSTOM), everything else stays
-// in its era bucket even when public builds render procedural fallbacks.
-export const USERDROP6_SOURCED_IDS = USERDROP6_TANK_IDS.filter((id) => !['m60a3', 'isu122s', 'isu152', 'm47_patton', 'centurion3', 'centurion5', 'm46_patton', 'm26_pershing', 'm45_patton'].includes(id));
-
-// USER DROPS wave 8 (scout-gen2 integration): chain-loaded here because
-// tankFactory.ts (the usual registration hook) is frozen during the fleet
-// waves — this import keeps wave-8 rows registered for every consumer that
-// imports the spec chain (game, icons page, fidelity/geometry harnesses).
+// Chain-load the following supplemental rows for every fleet facade.
 import './userdrops7.js';

@@ -23,7 +23,7 @@ import './combatVariantSpecs.ts';
 import './kf51Specs.ts';
 import './abramsConceptSpecs.ts';
 import './additionalFleetSpecs.ts';
-import './userdrops6.js';
+import './classicFleetSpecs.ts';
 import './ukraine.ts';
 import './china.ts';
 import './sweden.ts';

@@ -30,7 +30,7 @@ import './abramsConceptSpecs.ts';
 import './challengerSpecs.ts';
 import './modern3Specs.js';
 import './additionalFleetSpecs.ts';
-import './userdrops6.js';
+import './classicFleetSpecs.ts';
 import './franceSpecs.ts';
 import './ukraine.ts';
 import './china.ts';

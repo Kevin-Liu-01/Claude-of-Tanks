@@ -95,8 +95,8 @@ spotting (spotting.ts).
   mirror) derive every box from `spec.dims` —
   rear-half engine, mid fuel, center-forward ammo, ring band at the roof.
 - **Donor copies re-fitted to dims** (module_hitbox r1): derived variants
-  (`additionalFleetSpecs.ts` and `userdrops6.js`) copy a donor spec and patch
-  `dims`; the armor is
+  (`additionalFleetSpecs.ts` and `classicFleetSpecs.ts`) copy a donor spec and
+  patch `dims`; the armor is
   now refit through `fitArmorToDims(armor, donorDims, dims)` (specs.js) —
   per-axis affine scale of plates/authoring bounds/pivots/barrel. Before the fit the
   m60a1 carried Leopard-1-sized armor 1.2 m shorter and 0.23 m narrower than
