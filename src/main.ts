@@ -47,6 +47,7 @@ import type {
   SoloBattleRequest,
 } from './app/mainContracts.ts';
 import { createMainFrameRuntime } from './app/mainFrameRuntime.ts';
+import { createCombatAimComposition } from './app/combatAimComposition.ts';
 import { createRenderer } from './engine/renderer.ts';
 import { createOffscreenSceneWarmer } from './engine/offscreenWarm.ts';
 import {
@@ -61,7 +62,6 @@ import {
 import { createSky } from './engine/sky.ts';
 import { createLighting } from './engine/lighting.ts';
 import { createPost } from './engine/post.ts';
-import { createCameraRig, type CameraEntity } from './engine/cameraRig.ts';
 import {
   createFrameBudgetYielder,
   createOpaqueLoadingYielder,
@@ -141,7 +141,6 @@ import { createLazyAudio } from './audio/lazyAudio.ts';
 import { createListenerPoseRuntime } from './audio/listenerPoseRuntime.ts';
 import { createInput } from './game/input.ts';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
-import { createBattleClientAccess } from './game/battleClientAccess.ts';
 import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
 import { createPlaySurfaceRuntime } from './game/playSurfaceRuntime.ts';
@@ -1099,26 +1098,17 @@ const audio = await bootStage('audio', () => {
 // bore. Solo, private-room and diagnostic presentation therefore share the
 // same reticle, obstruction and penetration contract.
 let playerBattleActions: PlayerBattleActions | null = null;
-function playerTargetVisible(ent: Pick<MainEntity, 'id'>) {
-  return !game.spotting || game.spotting.isSpotted(ent.id, 'player', game.player);
-}
-function hasActiveTankState(
-  entity: MainEntity | null,
-): entity is MainEntity & { state: NonNullable<MainEntity['state']> } {
-  return entity?.state != null;
-}
-function activeCameraPlayer(): CameraEntity | null {
-  const player = game.player;
-  return hasActiveTankState(player) ? player : null;
-}
-const battleClientAccess = createBattleClientAccess(() => ({
-  getGame: () => game,
-  getRig: () => rig,
-  worldRaycast,
+const {
+  battleClient: battleClientAccess,
+  rig,
   targetVisible: playerTargetVisible,
+} = createCombatAimComposition({
+  camera,
+  heightField: hfProxy,
+  getGame: () => game,
+  worldRaycast,
   getShellCards: () => playerBattleActions?.shellCards || [],
-  computeDispersion: battleClientAccess.computeDispersionRadM,
-}));
+});
 const {
   aimController,
   computeDispersionRadM,
@@ -1134,13 +1124,6 @@ const {
   pickMobileAutoAimTarget,
 } = battleClientAccess;
 const preloadBattleClientRuntime = battleClientAccess.preload;
-
-const rig = createCameraRig(camera, {
-  heightField: hfProxy,
-  raycast: worldRaycast,
-  aimRaycast: aimController.raycast,
-  getPlayer: activeCameraPlayer,
-});
 
 // GARAGE SHOWROOM CAMERA: auto-framed hero pose + damped drag orbit
 // (engine/cameraRig.ts createShowroomOrbit). This adapter owns the on/off

@@ -215,6 +215,12 @@ pacing, Studio/capture branches, camera, world, effects, HUD, audio, lighting,
 postprocessing, and the battle-reveal edge. `src/main.ts` only connects its
 live ports and starts the scheduler.
 
+`src/app/combatAimComposition.ts` constructs the single camera, screen-reticle,
+and physical-bore graph shared by solo and network presentation. It admits the
+Garage and covered-loading states explicitly, exposes no nullable player as a
+live camera subject, and keeps visibility and dispersion bound to the same
+battle-client owner rather than duplicating aim wiring in the composition root.
+
 `src/game/battleHudFrameRuntime.ts` is the corresponding rendered-information
 owner. The frame loop supplies only the battle and replay latches; the runtime
 selects the legal local or spectator focus and publishes spotting, aim, armor
