@@ -35,12 +35,12 @@ assert.equal(
 assert.equal(
   directionalHitValueVisible(false, 522, 'bounce'),
   false,
-  'directional values stay hidden by default even when a blocked amount exists',
+  'blocked pre-mitigation values remain an optional detail beside the outcome word',
 );
 assert.equal(
-  directionalHitValueVisible(true, 417, 'pen'),
+  directionalHitValueVisible(false, 417, 'pen'),
   true,
-  'the Interface opt-in reveals exact applied damage values',
+  'applied damage numbers are always part of the incoming-hit read',
 );
 assert.equal(
   directionalHitValueVisible(true, 0, 'bounce'),
@@ -48,9 +48,14 @@ assert.equal(
   'zero-value indicators never reserve a label',
 );
 assert.equal(
-  directionalHitValueVisible(true, 180, 'he'),
-  false,
-  'splash arcs remain uncluttered even when exact values are enabled',
+  directionalHitValueVisible(false, 180, 'he'),
+  true,
+  'amber splash damage numbers are always part of the incoming-hit read',
+);
+assert.equal(
+  directionalHitValueVisible(true, 522, 'bounce'),
+  true,
+  'the Interface option appends the authoritative value to a blocked outcome',
 );
 
 assert.deepEqual(

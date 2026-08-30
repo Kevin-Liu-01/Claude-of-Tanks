@@ -148,13 +148,15 @@ assert.match(hud,
   'desktop zero-damage results must use the ballistic card only while touch retains one compact impact label');
 assert.doesNotMatch(hud, /d\.textContent = '(?:RICOCHET|NO PENETRATION|ABSORBED)'/,
   'HUD result copy must come from the shared hit-outcome registry');
-assert.doesNotMatch(hud, /ctx\.(?:stroke|fill)Text\(label, tx, ty\)/,
-  'incoming direction wedges must not duplicate result text already owned by the incoming-fire card');
 assert.match(hud,
-  /directionalHitValueVisible\(directionalHitValuesEnabled, e\.amount, e\.kind\)[\s\S]*strokeText\(e\.amountLabel, tx, ty\)[\s\S]*fillText\(e\.amountLabel, tx, ty\)/,
-  'incoming direction wedges must render exact values legibly only after the persisted opt-in');
+  /const valueR = R0 \+ thick \+ \(e\.numeric \? 14 : 16\)[\s\S]*strokeText\(label, tx, ty\)[\s\S]*fillText\(label, tx, ty\)/,
+  'incoming result labels must sit beyond the wedge instead of inside its glow');
 assert.match(hud, /directionalHitAmount\(hit, kind === 'bounce' && outcome\.blocked\)/,
   'gray direction wedges must source blocked damage from the authoritative hit outcome');
+assert.match(hud, /incomingHitFeedbackFor\(hit\)[\s\S]*e\.kind !== kind \|\| e\.mergeKey !== feedback\.mergeKey/,
+  'nearby hits may merge only when their canonical outcomes match');
+assert.match(hud, /fillStyle = e\.labelColor[\s\S]*fillText\(label, tx, ty\)/,
+  'direction labels must retain the canonical damage, splash, and outcome colors');
 assert.match(shotInfo, /const cls = hitOutcomeFor\(ev\)/,
   'shot cards and incoming cards must classify through the shared hit-outcome registry');
 assert.match(shotInfo, /uiIconSVG\(cls\.icon, 11\)[\s\S]*cls\.label/,

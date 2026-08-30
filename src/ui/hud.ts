@@ -284,10 +284,14 @@ interface HitDirection {
   wx: number;
   wz: number;
   kind: 'pen' | 'bounce' | 'he';
+  outcomeId: string;
+  mergeKey: string;
+  label: string;
+  labelColor: string;
+  numeric: boolean;
   crit: boolean;
   dmg: number;
   amount: number;
-  amountLabel: string;
   t0: number;
   re: boolean;
   _screenAng: number | null;
@@ -381,6 +385,8 @@ export interface HudRuntime {
   forceHitMark(bounced?: boolean): void;
   getHitArcs(): Array<{
     kind: string;
+    outcomeId: string;
+    label: string;
     crit: boolean;
     dmg: number;
     amount: number;
@@ -475,13 +481,16 @@ export function directionalHitAmount(
   return Number.isFinite(raw) ? Math.max(0, Math.round(raw || 0)) : 0;
 }
 
-/** Keep exact incoming values behind the player's explicit Interface opt-in. */
+/**
+ * Damage and splash values are core hit feedback. The Interface option adds
+ * the authoritative pre-mitigation roll to blocked outcome words.
+ */
 export function directionalHitValueVisible(
   enabled: boolean,
   amount: number,
   kind: HitDirection['kind'],
 ): boolean {
-  return enabled && amount > 0 && kind !== 'he';
+  return amount > 0 && (kind !== 'bounce' || enabled);
 }
 
 /**
@@ -711,7 +720,7 @@ import { tierNumeral } from '../vehicles/tier.ts';
 // SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,
 // incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.ts.
 import { createShotInfo } from './shotInfo.ts';
-import { hitOutcomeFor } from './hitEventFormat.ts';
+import { hitOutcomeFor, incomingHitFeedbackFor } from './hitEventFormat.ts';
 import {
   SPECIAL_ACTION_KINDS,
   specialActionDescriptor,
@@ -1217,11 +1226,13 @@ body.cot-debug-hud .cot-net{display:none!important;}
 body.cot-spectating .cot-shells,body.cot-spectating .cot-special,body.cot-spectating .cot-dp,
 body.cot-spectating .cot-drive,
 body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !important;}
-.cot-dmgnum{position:absolute;font-weight:700;font-size:18px;color:#ffd166;white-space:nowrap;
-  text-shadow:0 1px 1px rgba(0,0,0,.95),0 0 12px rgba(0,0,0,.5);
+.cot-dmgnum{position:absolute;font-family:${FONT_COND};font-weight:900;font-size:18px;
+  letter-spacing:-.02em;color:#ffd166;white-space:nowrap;text-transform:uppercase;
+  text-shadow:-1px 0 #05080b,1px 0 #05080b,0 -1px #05080b,0 2px #05080b;
   animation:cotFloat 1.7s cubic-bezier(.2,.6,.3,1) forwards;will-change:transform,opacity;}
-.cot-dmgnum.miss{color:#bcc8d2;font-size:13px;font-weight:600;letter-spacing:.12em;}
-.cot-dmgnum .crit{font-size:10px;letter-spacing:.14em;color:#ff8a5c;vertical-align:super;margin-left:4px;}
+.cot-dmgnum.miss{color:#bcc8d2;font-size:13px;font-weight:850;letter-spacing:.1em;}
+.cot-dmgnum .crit{position:absolute;left:50%;bottom:calc(100% + 1px);transform:translateX(-50%);
+  font-size:10px;font-weight:900;letter-spacing:.12em;color:#ff9b72;margin:0;}
 @keyframes cotFloat{0%{opacity:0;transform:translate(-50%,-30%)}10%{opacity:1}
   70%{opacity:.95}100%{opacity:0;transform:translate(-50%,-190%)}}
 .cot-alert{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:23%;max-width:calc(100vw - 32px);min-height:38px;
@@ -2721,7 +2732,9 @@ export function initHud(bus: EventBus): HudRuntime {
       // bright inner rim (the WoT edge): middle ~82% of the span, round caps,
       // dark under-stroke per HUD convention
       const rimHalf = half * 0.82;
-      ctx.lineCap = 'round';
+      // Square-ended keylines keep the indicator in the current hard-edged
+      // combat UI family; the tapered body still carries the bearing.
+      ctx.lineCap = 'butt';
       for (const pass of [
         { col: `rgba(8,11,14,${(0.70 * aEnv).toFixed(3)})`, lw: 4.6 },
         { col: `rgba(${cls.rim},${(cls.rimA * aEnv).toFixed(3)})`, lw: 2.3 },
@@ -2755,27 +2768,49 @@ export function initHud(bus: EventBus): HudRuntime {
         ctx.stroke();
         ctx.globalCompositeOperation = 'source-over';
       }
-      // Exact impact value rides the direction arc: red is applied damage,
-      // steel is authoritative pre-mitigation damage blocked. Result words
-      // remain exclusive to the canonical incoming-fire card.
-      if (directionalHitValueVisible(directionalHitValuesEnabled, e.amount, e.kind)) {
-        const valueR = R0 + thick * 0.56;
-        const tx = cx + Math.cos(c) * valueR;
-        const ty = cy + Math.sin(c) * valueR;
-        const fontPx = Math.round(Math.min(Math.max(minWH * 0.022, 13), 18));
-        const valueRgb = e.kind === 'bounce' ? '241,247,252' : '255,226,218';
-        ctx.save();
-        ctx.font = `900 ${fontPx}px ${FONT_COND}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = 4.2;
-        ctx.strokeStyle = `rgba(5,8,11,${(0.9 * aEnv).toFixed(3)})`;
-        ctx.strokeText(e.amountLabel, tx, ty);
-        ctx.fillStyle = `rgba(${valueRgb},${(0.98 * aEnv).toFixed(3)})`;
-        ctx.fillText(e.amountLabel, tx, ty);
-        ctx.restore();
+      // Historical WoT read: damage/outcome copy sits CLEAR of the wedge,
+      // not buried inside its glow. Applied damage is always exact, including
+      // amber HE splash; blocks keep their canonical word. The existing
+      // Interface option adds the pre-mitigation value to blocked words.
+      const showBlockedAmount = !e.numeric
+        && directionalHitValueVisible(directionalHitValuesEnabled, e.amount, e.kind);
+      const label = showBlockedAmount ? `${e.label} · ${e.amount}` : e.label;
+      const fontPx = e.numeric
+        ? Math.round(Math.min(Math.max(minWH * 0.023, 14), 19))
+        : Math.round(Math.min(Math.max(minWH * (label.length > 13 ? 0.015 : 0.018), 10), 14));
+      const valueR = R0 + thick + (e.numeric ? 14 : 16);
+      ctx.save();
+      ctx.font = `900 ${fontPx}px ${FONT_COND}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'miter';
+      ctx.miterLimit = 2;
+      const labelHalf = ctx.measureText(label).width / 2;
+      const tx = Math.min(Math.max(cx + Math.cos(c) * valueR, labelHalf + 8), w - labelHalf - 8);
+      const ty = Math.min(Math.max(cy + Math.sin(c) * valueR, fontPx + 8), h - fontPx - 8);
+      ctx.globalAlpha = Math.min(1, 0.98 * aEnv);
+      ctx.lineWidth = e.numeric ? 4.6 : 4;
+      ctx.strokeStyle = 'rgba(5,8,11,0.94)';
+      ctx.strokeText(label, tx, ty);
+      ctx.fillStyle = e.labelColor;
+      ctx.fillText(label, tx, ty);
+
+      // A compact CRIT tag continues farther along the same radial bearing.
+      // For a top hit this places it above the number exactly like the legacy
+      // presentation; side and rear hits remain directionally coherent.
+      if (e.crit && e.numeric) {
+        const critR = valueR + fontPx + 5;
+        const critFontPx = Math.max(9, Math.round(fontPx * 0.55));
+        ctx.font = `900 ${critFontPx}px ${FONT_COND}`;
+        const critHalf = ctx.measureText('CRIT').width / 2;
+        const critX = Math.min(Math.max(cx + Math.cos(c) * critR, critHalf + 8), w - critHalf - 8);
+        const critY = Math.min(Math.max(cy + Math.sin(c) * critR, critFontPx + 8), h - critFontPx - 8);
+        ctx.lineWidth = 3.4;
+        ctx.strokeText('CRIT', critX, critY);
+        ctx.fillStyle = '#ffd0a8';
+        ctx.fillText('CRIT', critX, critY);
       }
+      ctx.restore();
     }
     ctx.lineCap = 'butt';
   }
@@ -4420,7 +4455,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const outcome = hitOutcomeFor(hit);
     if (hit.damage > 0) {
       d.textContent = `-${Math.round(hit.damage)}`;
-      if (hit.modulesHit && hit.modulesHit.length) {
+      if ((hit.modulesHit && hit.modulesHit.length) || (hit.crewHit && hit.crewHit.length)) {
         const c = el('span', 'crit', d);
         c.textContent = 'CRIT';
       }
@@ -4501,21 +4536,19 @@ export function initHud(bus: EventBus): HudRuntime {
     // visual language tiers (drawHitIndicators): red damage wedge / thin
     // steel deflect arc / amber splash wedge; crits ride the damage wedge
     // as a hot core flash
-    const dmg = hit.damage || 0;
-    const crit = (hit.modulesHit || []).some((m) => m.newState === 'red' || m.newState === 'yellow')
-      || (hit.crewHit || []).length > 0;
+    const dmg = Number.isFinite(hit.damage) ? Math.max(0, hit.damage || 0) : 0;
     // a 0-damage PENETRATION that cost a module/crewman is still damage-in —
     // it keeps the red wedge (+ crit flash), never the deflect read
     const outcome = hitOutcomeFor(hit);
-    const kind: HitDirection['kind'] = hit.kind === 'he_splash'
-      ? 'he' : (outcome.penetrated || dmg > 0) ? 'pen' : 'bounce';
+    const feedback = incomingHitFeedbackFor(hit);
+    const kind = feedback.kind;
     const amount = directionalHitAmount(hit, kind === 'bounce' && outcome.blocked);
     // repeat fire from (nearly) the same bearing RE-PULSES the existing wedge
     // — refresh its timer, pool the damage weight — instead of stacking a
     // second copy on top (WoT read; ~20° merge window per class)
     const ang = Math.atan2(wx - pp.x, wz - pp.z);
     for (const e of hitDirs) {
-      if (e.kind !== kind) continue;
+      if (e.kind !== kind || e.mergeKey !== feedback.mergeKey) continue;
       const ea = Math.atan2(e.wx - pp.x, e.wz - pp.z);
       let d = Math.abs(ang - ea) % (Math.PI * 2);
       if (d > Math.PI) d = Math.PI * 2 - d;
@@ -4524,15 +4557,22 @@ export function initHud(bus: EventBus): HudRuntime {
         e.wz = wz;
         e.dmg = (e.dmg || 0) + dmg; // pooled total — the wedge number re-pulses with it
         e.amount += amount;
-        e.amountLabel = String(e.amount);
-        e.crit = e.crit || crit;
+        if (e.numeric) e.label = `-${e.amount}`;
+        e.crit = e.crit || feedback.critical;
         e.t0 = lastTimeS; // decay timer restarts
         e.re = true;      // attack re-runs as a flash, not a full re-grow
         return;
       }
     }
     hitDirs.push({
-      wx, wz, kind, crit, dmg, amount, amountLabel: String(amount),
+      wx, wz, kind,
+      outcomeId: feedback.outcomeId,
+      mergeKey: feedback.mergeKey,
+      label: feedback.label,
+      labelColor: feedback.color,
+      numeric: feedback.numeric,
+      crit: feedback.critical,
+      dmg, amount,
       t0: lastTimeS, re: false, _screenAng: null,
     });
     // hard cap: 5 simultaneous wedges — drop the oldest, never visual soup
@@ -4826,11 +4866,13 @@ export function initHud(bus: EventBus): HudRuntime {
      * screenAngRad is the camera-relative bearing the LAST rendered frame
      * used (0 = camera forward, + = screen right) — the known-bearing probe
      * asserts it against an independently computed expectation.
-     * @returns {Array<{kind:string,crit:boolean,dmg:number,amount:number,screenAngRad:?number,ageS:number}>}
+     * @returns {Array<{kind:string,outcomeId:string,label:string,crit:boolean,dmg:number,amount:number,screenAngRad:?number,ageS:number}>}
      */
     getHitArcs() {
       return hitDirs.map((d) => ({
         kind: d.kind,
+        outcomeId: d.outcomeId,
+        label: d.label,
         crit: !!d.crit,
         dmg: d.dmg || 0,
         amount: d.amount || 0,

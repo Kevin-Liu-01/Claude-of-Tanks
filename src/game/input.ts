@@ -256,9 +256,8 @@ const DEFAULT_SETTINGS: InputSettings = {
   // The engineering dashboard is intentionally off for players and lazy-
   // loads only after an explicit Interface toggle or F8 press.
   showDebugHud: false,
-  // Exact numbers on incoming directional damage/block arcs are optional.
-  // Keep the cleaner arc-only presentation for new and existing profiles
-  // unless the player explicitly enables the readout in Settings.
+  // Keep blocked pre-mitigation roll details optional for new profiles;
+  // applied damage and canonical outcome words are always shown by the HUD.
   showDirectionalHitValues: false,
   // Scoped armor flashlight (official WoT/Blitz convention): new profiles
   // start with the shot-dependent red/amber/green surface overlay enabled;

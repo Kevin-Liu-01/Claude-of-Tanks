@@ -7,7 +7,7 @@ import { RUNTIME_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 export interface HitEventPresentation {
   readonly kind?: string;
   readonly damage?: number;
-  readonly modulesHit?: readonly unknown[];
+  readonly modulesHit?: readonly { readonly newState?: string }[];
   readonly crewHit?: readonly unknown[];
   readonly zone?: string;
   readonly shellType?: string;
@@ -35,6 +35,18 @@ export interface HitOutcomePresentation {
   readonly penetrated: boolean;
   readonly blocked: boolean;
   readonly confirmTone: 'damage' | 'deflect';
+}
+
+export type IncomingHitArcKind = 'pen' | 'bounce' | 'he';
+
+export interface IncomingHitFeedbackPresentation {
+  readonly kind: IncomingHitArcKind;
+  readonly outcomeId: HitOutcomeId;
+  readonly label: string;
+  readonly color: string;
+  readonly numeric: boolean;
+  readonly critical: boolean;
+  readonly mergeKey: string;
 }
 
 const HIT_OUTCOMES = {
@@ -82,17 +94,56 @@ const HIT_OUTCOMES = {
  * ricochet cannot become RICOCHET in one surface and NO PENETRATION in another.
  */
 export function hitOutcomeFor(ev: HitEventPresentation): HitOutcomePresentation {
+  const damage = Number.isFinite(ev.damage) ? Math.max(0, ev.damage || 0) : 0;
+  const componentHits = (ev.modulesHit?.length || 0) + (ev.crewHit?.length || 0);
+  // A shell can destroy a track, optic, gun, or crew member without removing
+  // hull HP. Preserve that tactically important result instead of flattening
+  // it into PENETRATION or NO DAMAGE.
+  if (damage <= 0 && componentHits > 0) return HIT_OUTCOMES.module_hit;
   if (ev.kind === 'pen' || ev.kind === 'he_pen') return HIT_OUTCOMES.penetration;
   if (ev.kind === 'ricochet') return HIT_OUTCOMES.ricochet;
   if (ev.kind === 'he_splash') {
-    return (ev.damage || 0) > 0 ? HIT_OUTCOMES.splash : HIT_OUTCOMES.no_damage;
+    return damage > 0 ? HIT_OUTCOMES.splash : HIT_OUTCOMES.no_damage;
   }
-  const componentHits = (ev.modulesHit?.length || 0) + (ev.crewHit?.length || 0);
-  if ((ev.damage || 0) <= 0 && componentHits > 0) return HIT_OUTCOMES.module_hit;
   if (ev.kind === 'era') return HIT_OUTCOMES.era_absorbed;
   if (ev.kind === 'spaced_absorb') return HIT_OUTCOMES.spaced_absorbed;
   if (ev.kind === 'screen_pierce') return HIT_OUTCOMES.passed_through;
   return HIT_OUTCOMES.blocked;
+}
+
+/**
+ * One canonical, always-readable label for the camera-relative incoming-hit
+ * indicator. Positive HP damage uses the historical signed number while every
+ * zero-damage resolution keeps the shared combat-outcome vocabulary.
+ */
+export function incomingHitFeedbackFor(
+  ev: HitEventPresentation,
+): IncomingHitFeedbackPresentation {
+  const damage = Number.isFinite(ev.damage) ? Math.max(0, Math.round(ev.damage || 0)) : 0;
+  const outcome = hitOutcomeFor(ev);
+  const kind: IncomingHitArcKind = ev.kind === 'he_splash'
+    ? 'he'
+    : (outcome.penetrated || damage > 0 || outcome.id === 'module_hit')
+      ? 'pen'
+      : 'bounce';
+  const numeric = damage > 0;
+  const critical = (ev.modulesHit?.length || 0) > 0 || (ev.crewHit?.length || 0) > 0;
+  const label = numeric ? `-${damage}` : outcome.label;
+  // Splash damage is deliberately amber: it is the distinct "yellow one"
+  // from the original HUD. Direct damage stays salmon-red; outcome words use
+  // the registry color consumed by the cards and kill cam.
+  const color = numeric
+    ? kind === 'he' ? '#ffd166' : '#ff8a72'
+    : outcome.color;
+  return {
+    kind,
+    outcomeId: outcome.id,
+    label,
+    color,
+    numeric,
+    critical,
+    mergeKey: numeric ? `damage:${kind}` : `outcome:${outcome.id}`,
+  };
 }
 
 interface PresentationShell {

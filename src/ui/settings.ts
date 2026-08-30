@@ -934,7 +934,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       emitPerfMeter);
     onOffRow(
       iface,
-      'Exact values on directional hit indicators',
+      'Blocked-shot values on directional hit indicators',
       'showDirectionalHitValues',
       emitDirectionalHitValues,
     );
@@ -947,8 +947,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       'ricochet rules, ERA, tracks, and spaced armor.';
     const hitValueNote = el('div', 'cot-set-note', iface);
     hitValueNote.textContent =
-      'Optional exact HP damage and blocked-damage values appear on incoming red and steel arcs. ' +
-      'The cleaner arc-only presentation is used by default.';
+      'Incoming HP damage and outcome words always appear beyond their direction arcs. ' +
+      'Enable this to append the authoritative pre-mitigation value to blocked results.';
     const debugNote = el('div', 'cot-set-note', iface);
     debugNote.textContent =
       'Debug telemetry folds FPS, latency, frame pacing, render load, resolution, simulation, ' +
@@ -988,7 +988,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     emit('ui:debugHud', { on: !!input.getSettings().showDebugHud });
   }
 
-  /** Exact incoming-hit values are opt-in and update the live HUD immediately. */
+  /** Optional blocked-shot values update the live HUD immediately. */
   function emitDirectionalHitValues() {
     emit('ui:directionalHitValues', {
       on: !!input.getSettings().showDirectionalHitValues,
