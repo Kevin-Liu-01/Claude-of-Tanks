@@ -11253,6 +11253,11 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   const { box, cylX, cylY, cylZ, torus, frustum, polyMultiLoft, buildGun, periscope,
     liftEye, headlight, jerryCan } = KIT;
   const slab = orientedSlab;
+  const uniformScale = 1.05;
+  const roadWheelRadiusM = 0.355;
+  const roadWheelCenterYM = 0.395;
+  const roadWheelForwardShiftM = 0.12;
+  const turretPivotZM = 0.42;
 
   // §5.299 kf51b FLEET INTEGRATION (owner order: "make it a lot more inline
   // with our visual aesthetic and tracks and hull and turret"). The
@@ -11275,11 +11280,12 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   // sponson/fender run, family driver station, fan wells, leopard rear
   // plate + grilles) at the kf51b frame: deck 1.615 crease / 1.64 mid /
   // 1.82 power-pack aft — the turret ring remains at y 1.72 while its
-  // complete rotating rig moves 0.28 m forward to z 0.30; nose 3.84,
-  // tail lip -3.82, width anchor ±1.80
-  // (spec widM 3.60, §5.263). Running gear keeps the §5.303 source cadence
-  // with seven 0.385 m wheels, 0.105 fine pitch and §5.262 gear-contrast
-  // tones via the opt-in course passthrough. The formerly low,
+  // complete rotating rig moves forward to z 0.42; nose 3.84,
+  // tail lip -3.82. The authored assembly is enlarged uniformly by 5% after
+  // construction, while the skirt armor intentionally grows farther outboard.
+  // Running gear keeps the §5.303 seven-wheel cadence, but uses smaller
+  // 0.355 m discs shifted 0.12 m forward, a 0.105 fine pitch and §5.262
+  // gear-contrast tones via the opt-in course passthrough. The formerly low,
   // oversized end wheels made the course read as a rounded rectangle;
   // smaller raised Leopard terminals now produce real approach/departure
   // ramps. §B4 walls: tub innerW 1.837 (±0.92, 5 cm off the 0.9685 band
@@ -11302,15 +11308,16 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     fenderFore: { z0: 1.55, z1: 3.30, drop: 0.03 },
     // frontSkirt/rearSkirt OMITTED (§SRCFIX-0808 opt-out): the two-band
     // modular course builds bespoke below at the leopard skirt grammar.
-    wheelR: 0.385, wheelY: 0.425, span: [2.60, -2.30],
+    wheelR: roadWheelRadiusM, wheelY: roadWheelCenterYM,
+    span: [2.60 + roadWheelForwardShiftM, -2.30 + roadWheelForwardShiftM],
     sprocket: { z: -3.16, y: 1.00, r: 0.275 },
     // A small forward reseat keeps the high-resolution idler crown clear of
     // the glacis shoulder while preserving the full wrap inside the 3.84 m nose.
     idler: { z: 3.40, y: 0.98, r: 0.24 },
     topY: 0.95, botY: 0.055, dishR: 0.78,
     rollers: [
-      { z: 2.00, y: 0.94, r: 0.085 }, { z: 0.72, y: 0.94, r: 0.085 },
-      { z: -0.58, y: 0.94, r: 0.085 }, { z: -1.82, y: 0.94, r: 0.085 },
+      { z: 2.10, y: 0.94, r: 0.085 }, { z: 0.82, y: 0.94, r: 0.085 },
+      { z: -0.48, y: 0.94, r: 0.085 }, { z: -1.72, y: 0.94, r: 0.085 },
     ],
     linkPitchM: 0.105, frontArcSteps: 14, rearArcSteps: 14,
     tautFrontSpan: true, tautRearSpan: true, smoothRearTopTangent: true,
@@ -11326,51 +11333,88 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   // (running gear now rides INSIDE the leoHullV3 call above — the KF51B
   // wheel/course refinements and §5.262 tones live there; no second course
   // exists.)
-  // ---- two-band modular skirts at the LEOPARD grammar (the §5.324 course
-  // upgraded to the family read): proud upper armored band hung just under
-  // the fender line + recessed lower panel run to the 0.60 hem, panel
-  // joints, hangers, chamfered leading block. §B9/§B8.1: hem 0.60 leaves
-  // ~68% of the 0.81 wheel disc reading below (family 40-70 band). §5.263:
-  // widest skirt face 1.7975 < the ±1.80 anchor (the cage rails below own
-  // the anchor face EXACT).
+  // ---- KF51B modular skirt jacket. This is a modernized Leopard-family
+  // external armor course rather than a thin cosmetic two-band skirt:
+  // seven broad carrier-backed modules per side, two inset protection faces
+  // per module, deeply readable joints and an armored leading shoulder. The
+  // outboard grille survives as KF51B visual identity, but now occupies the
+  // narrow service band ABOVE the modules instead of obscuring the wheels.
+  const skirtReceipt = {
+    revision: 'kf51b-proportions-armor-r1',
+    panelsPerSide: 7,
+    protectionRows: 2,
+    carrierInnerFaceX: 1.715,
+    armorOuterFaceX: 1.904,
+    grilleOuterFaceX: 1.929,
+    armorBottomY: 0.62,
+    armorTopY: 1.45,
+    grilleY: [1.38, 1.54],
+    continuousUpperCarrier: true,
+    grilleReseatedAboveArmor: true,
+  };
   for (const s of [-1, 1] as const) {
     const z0 = -3.02, z1 = 2.62, n = 7, L = (z1 - z0) / n;
+    // A real continuous upper carrier bridges the sponson/fender to the new
+    // outboard modules. Besides closing the structural load path, its upper
+    // flange prevents the grille and panel joints from enclosing false open
+    // cells in the top-down collision/contiguity silhouette.
+    P.add('hull', box(0.34, 0.040, z1 - z0), s * 1.65, 1.49, (z0 + z1) / 2);
+    // Stop before the high idler crown; the armored leading shoulder and
+    // existing mudguard take over there without entering the animated shoe
+    // sweep.
+    P.add('hull', box(0.34, 0.040, 0.46), s * 1.65, 1.31, 2.85);
+    P.add('hull', box(0.34, 0.035, 0.30), s * 1.65, 1.45, 3.18);
+    // Recessed load-spreading carrier stays clear of the animated outer shoe
+    // face, while overlapping both the fender underside and every module.
+    P.add('hullDark', box(0.10, 0.91, z1 - z0 - 0.02), s * 1.765, 1.075, (z0 + z1) / 2);
+    P.visualEraCluster('kf51b-hull-skirt-era', 'hull', () => {
     for (let k = 0; k < n; k++) {
       const zc = z0 + L * (k + 0.5);
-      if (k === n - 1) {
-        // forward-most upper panel TAPERS with the falling fore-fender line
-        // (a constant 1.50 top poked over the glacis-following fender run)
-        P.add('hull', slab(
-          [s * 1.740, 1.16, z0 + L * k + 0.008], [s * 1.790, 1.16, z0 + L * k + 0.008],
-          [s * 1.790, 1.16, z1 - 0.008], [s * 1.740, 1.16, z1 - 0.008],
-          [s * 1.740, 1.46, z0 + L * k + 0.008], [s * 1.790, 1.46, z0 + L * k + 0.008],
-          [s * 1.790, 1.36, z1 - 0.008], [s * 1.740, 1.36, z1 - 0.008]));
-      } else {
-        P.add('hull', box(0.050, 0.34, L - 0.016), s * 1.765, 1.33, zc);      // proud upper armored band
-        P.add('hullDark', box(0.014, 0.05, L - 0.30), s * 1.7905, 1.445, zc); // band face rib (§5.284 articulation)
+      const topY = k === n - 1 ? 1.35 : 1.45;
+      const bottomY = 0.62;
+      const panelHeight = topY - bottomY;
+      // Thick AMAP/ERA-style backing module. The front station follows the
+      // falling fore-fender instead of projecting through the glacis wing.
+      P.add('hull', box(0.12, panelHeight, L - 0.030), s * 1.82,
+        bottomY + panelHeight * 0.5, zc);
+      const rowGap = 0.045;
+      const rowHeight = (panelHeight - rowGap * 3) * 0.5;
+      for (let row = 0; row < 2; row++) {
+        const rowY = bottomY + rowGap + rowHeight * 0.5
+          + row * (rowHeight + rowGap);
+        // A shallow lid gives each protection cell a layered edge without a
+        // noisy brick-wall silhouette or a second live track course.
+        P.add('hull', box(0.048, rowHeight, L - 0.105), s * 1.88, rowY, zc);
       }
-      P.add('hull', box(0.040, 0.56, L - 0.016), s * 1.750, 0.88, zc);        // recessed lower panel to the hem
     }
+    });
     for (let k = 1; k < n; k++) {
-      P.add('hullDark', box(0.022, 0.86, 0.015), s * 1.772, 1.05, z0 + L * k); // panel joints
+      P.add('hullDark', box(0.026, 0.76, 0.022), s * 1.907, 1.035, z0 + L * k);
     }
-    P.add('hullDark', box(0.022, 0.020, z1 - z0 - 0.02), s * 1.774, 1.16, (z0 + z1) / 2); // two-band joint shadow
+    // Recessed waist shadow preserves the KF51B two-course rhythm while the
+    // protection boxes themselves remain a single mechanically thick jacket.
+    P.add('hullDark', box(0.026, 0.026, z1 - z0 - 0.05), s * 1.907, 1.035, (z0 + z1) / 2);
     for (const zh of [-2.62, -1.55, -0.48, 0.59]) {
-      P.add('hullDetail', box(0.030, 0.14, 0.055), s * 1.760, 1.545, zh);     // hangers into the fender line
+      P.add('hullDetail', box(0.18, 0.12, 0.060), s * 1.79, 1.505, zh);
     }
     for (const zh of [1.66, 2.50]) {
-      P.add('hullDetail', box(0.030, 0.14, 0.055), s * 1.760, 1.475, zh);     // fore hangers into the falling fore-fender
+      P.add('hullDetail', box(0.18, 0.12, 0.060), s * 1.79, 1.435, zh);
     }
-    // chamfered leading block rising toward the idler (family a4 read),
-    // top edge following the fore-fender line down (1.40 -> 1.18)
-    P.add('hull', slab(
-      [s * 1.745, 0.72, 2.64], [s * 1.785, 0.72, 2.64], [s * 1.785, 1.02, 3.32], [s * 1.745, 1.02, 3.32],
-      [s * 1.745, 1.40, 2.64], [s * 1.785, 1.40, 2.64], [s * 1.785, 1.18, 3.32], [s * 1.745, 1.18, 3.32]));
-    // ---- ISAF-class cage accent, hull run (leopard grammar, §5.345
-    // gestalt-balanced: below the deck line, thin rails; rail outer face
-    // ±1.80 EXACT = the width anchor, §5.263)
-    leoSlatRun(P, 'hull', s, { x: 1.79, seat: 1.765, y0: 0.70, y1: 1.12, z0: -2.90, z1: 2.50, sections: 5, rows: 6, railTh: 0.020 });
+    P.visualEraCluster('kf51b-hull-skirt-era', 'hull', () => {
+      // Chamfered armored leading shoulder follows the idler ramp and closes
+      // the protection course into the forward mudguard.
+      P.add('hull', slab(
+        [s * 1.76, 0.70, 2.64], [s * 1.90, 0.70, 2.64], [s * 1.88, 0.98, 3.32], [s * 1.74, 0.98, 3.32],
+        [s * 1.76, 1.35, 2.64], [s * 1.90, 1.35, 2.64], [s * 1.87, 1.17, 3.32], [s * 1.74, 1.17, 3.32]));
+    });
+    // Thin outboard grille retained as a Panther signature, now attached to
+    // the top service band and clear of the wheels/protection faces.
+    leoSlatRun(P, 'hull', s, {
+      x: 1.92, seat: 1.84, y0: 1.38, y1: 1.54,
+      z0: -2.90, z1: 2.38, sections: 5, rows: 4, railTh: 0.018,
+    });
   }
+  P.hullG.userData.kf51bSkirtArmorReceipt = Object.freeze(skirtReceipt);
   // ---- German fender/deck grammar (leo1a5/a6m census set at this frame;
   // deck kit tops <= 1.71 — the low KF51 turret's sweep plane)
   for (const s of [-1, 1] as const) {
@@ -11450,7 +11494,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   // ---- TURRET -------------------------------------------------------------
   // One connected faceted wedge.  The source roof is only ~0.68 m above the
   // shoulder belt; the former profile's stacked crown is intentionally gone.
-  P.turretG.position.set(0, 1.72, 0.30);
+  P.turretG.position.set(0, 1.72, turretPivotZM);
   P.add('turret', cylY(1.00, 1.08, 0.12, P.q ? 24 : 14), 0, -0.08, -0.02);
   const turretPlan: Vec2Tuple[] = [
     [-0.36, 1.95], [0.36, 1.95], [1.48, 1.28], [1.55, 0.18],
@@ -11672,7 +11716,10 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   }
 
   P.hullG.userData.kf51bTrackSeatReceipt = {
-    roadWheelRadiusM: 0.385,
+    roadWheelRadiusM,
+    roadWheelCenterYM,
+    roadWheelForwardShiftM,
+    roadWheelSpanM: [2.60 + roadWheelForwardShiftM, -2.30 + roadWheelForwardShiftM],
     idlerZ: 3.40,
     trackArcSteps: 14,
     deduplicatedLoop: true,
@@ -11686,6 +11733,41 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     sidePanelStations: [0.82, 0.42, -0.04, -0.54, -1.05, -1.56, -2.03]
       .map((z) => ({ z, wallX: turretPanelWallXAt(z) })),
   };
+
+  // The hull and turret are sibling articulation owners, so enlarge both and
+  // scale the turret pivot itself. Contact and hit metadata live outside that
+  // render hierarchy and must be converted to the same installed frame.
+  P.hullG.scale.multiplyScalar(uniformScale);
+  P.turretG.scale.multiplyScalar(uniformScale);
+  P.turretG.position.multiplyScalar(uniformScale);
+  if (P.gear?.contactGeom) {
+    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM'] as const) {
+      P.gear.contactGeom[key] *= uniformScale;
+    }
+    if (P.gear.contactGeom.endRise) {
+      for (const key of ['dzM', 'frontM', 'rearM'] as const) {
+        P.gear.contactGeom.endRise[key] *= uniformScale;
+      }
+    }
+  }
+  for (const lane of P.gear?.trackHitbox || []) {
+    lane.x0 *= uniformScale;
+    lane.x1 *= uniformScale;
+    lane.poly = lane.poly.map(([z, y]) => [z * uniformScale, y * uniformScale]);
+  }
+  const proportionReceipt = Object.freeze({
+    revision: 'kf51b-proportions-armor-r1',
+    uniformScale,
+    turretPivotLocalZ: turretPivotZM,
+    turretPivotInstalledZ: turretPivotZM * uniformScale,
+    installedRoadWheelRadiusM: roadWheelRadiusM * uniformScale,
+    installedRoadWheelForwardShiftM: roadWheelForwardShiftM * uniformScale,
+    turretPivotScaled: true,
+    trackContactMetadataScaled: true,
+    trackHitGeometryScaled: true,
+  });
+  P.hullG.userData.kf51bProportionReceipt = proportionReceipt;
+  P.turretG.userData.kf51bProportionReceipt = proportionReceipt;
 
   P.topY = 1.29;
 }

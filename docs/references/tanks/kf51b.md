@@ -6,6 +6,36 @@ external comparison source only (baked-shading demonstrator read); the id
 carries no geometry-gate row by law (FALSE-0). Evidence class is §5.254
 pixel pairs + structural audits, exactly like leo1a5.
 
+## Proportion and protection revision (2026-08-30)
+Owner-directed `kf51b-proportions-armor-r1` replaces the earlier presentation
+frame while retaining the clean-room KF51B identity described below:
+
+- The complete articulated vehicle hierarchy is uniformly 1.05x larger. The
+  turret pivot, movement contact envelope and track hit geometry are scaled
+  with the visible model; this is not a render-only transform.
+- The turret ring moves from local z 0.30 to 0.42 before scaling (installed
+  z 0.441), placing the wedge farther forward without detaching its gun or
+  roof equipment.
+- Seven road wheels per side use a local 0.355 m radius at y 0.395, preserving
+  the former 0.040 m authored ground clearance. Their cadence moves 0.12 m
+  forward, from z 2.72 through -2.18. Return rollers move 0.10 m forward and
+  the existing high-resolution, deduplicated 0.105 m track course is rebuilt
+  from those revised seats.
+- The thin two-band skirts are retired in favor of seven broad carrier-backed
+  external-armor modules per side. Each module has two layered protection
+  faces; the course spans local y 0.62–1.45 and reaches local x ±1.904. It is
+  registered as static visual external armor, preserving base hull-envelope
+  semantics and adding no per-frame work.
+- The KF51B grille language remains, but the rails are reseated to the upper
+  service band at local y 1.38–1.54 and x ±1.929. Hangers, joints and the
+  armored leading shoulder were rebuilt around the thicker course so the
+  grilles no longer mask or intersect the wheels.
+
+Regression receipt: `kf51bTurretCenter.selftest.mjs` locks the installed scale,
+turret shift, wheel radius/cadence, track course, skirt semantics and grille
+seat. Historical dimensions and skirt statements later in this packet describe
+the earlier evidence frames, not this owner-directed proportion revision.
+
 ## §5.303 OWNER ORDER (verbatim, 2026-08-17; lane E item 3, §5.311 recovery)
 "lets integrate kf51 b. make it a lot more inline with our visual
 aesthetic and tracks and hull and turret."
