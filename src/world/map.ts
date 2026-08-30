@@ -134,7 +134,7 @@ export interface WorldRuntime {
     dx: number,
     dz: number,
     speedMetersPerSecond?: number,
-  ): unknown;
+  ): boolean;
   resetDestructibles(): void;
   spawnPoints: {
     player: { pos: [number, number, number]; yaw?: number };

@@ -5,14 +5,12 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import '../src/vehicles/tankFactory.ts';
 import {
   AuthoritativeMatchRuntime,
-  type MatchSimulation,
   type MatchTransport,
 } from '../src/net/matchRuntime.ts';
 import {
   createAuthoritativeMatch,
   type AuthoritativeMatch,
   type AuthoritativePlayerRecord,
-  type AuthoritativeWorldCollision,
 } from '../src/sim/authoritativeMatch.ts';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.ts';
 
@@ -110,17 +108,12 @@ function randomMatchId(): string {
 function createDedicatedSimulation(options: DedicatedSimulationOptions): AuthoritativeMatch {
   return createAuthoritativeMatch({
     ...options,
-    worldCollision: createDedicatedWorldCollision(options.mapId) as unknown as
-      AuthoritativeWorldCollision,
+    worldCollision: createDedicatedWorldCollision(options.mapId),
   });
 }
 
 function createDedicatedRuntime(simulation: AuthoritativeMatch): AuthoritativeMatchRuntime {
-  // The wire runtime accepts nullable inputs while the deterministic simulation
-  // normalizes them before stepping. Keep that adapter at this single boundary.
-  return new AuthoritativeMatchRuntime({
-    simulation: simulation as unknown as MatchSimulation,
-  });
+  return new AuthoritativeMatchRuntime({ simulation });
 }
 
 /** In-memory lifecycle for dedicated authoritative matches. */

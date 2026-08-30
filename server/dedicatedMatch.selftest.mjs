@@ -135,6 +135,7 @@ await service.close('test_done');
 class NeverOpenSocket {
   constructor() {
     this.binaryType = 'blob';
+    this.readyState = 0;
     this.listeners = new Map();
     this.closed = false;
     NeverOpenSocket.instance = this;
@@ -145,7 +146,7 @@ class NeverOpenSocket {
   }
   removeEventListener(type, listener) { this.listeners.get(type)?.delete(listener); }
   send() { throw new Error('socket never opened'); }
-  close() { this.closed = true; }
+  close() { this.closed = true; this.readyState = 3; }
 }
 const stalled = connectDedicatedMatch({
   url: 'ws://127.0.0.1:9/match',

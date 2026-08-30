@@ -1,16 +1,17 @@
 import { Vector3 } from 'three';
 import { createObstacleGrid, rayCollisionRecord } from './collision.ts';
 import type { CollisionRecord } from './collision.ts';
+import type { HeightField } from './terrain.ts';
 
 type PackedShape =
   | readonly ['o', number, number, number, number, number]
   | readonly ['c', number, number, number]
   | readonly ['v', ...number[]];
 
-interface PackedCollisionRecord {
+export interface PackedCollisionRecord {
   b: readonly [number, number, number, number, number, number];
   s?: PackedShape;
-  q?: boolean;
+  q?: boolean | 0 | 1;
   m?: number | null;
   e?: number | null;
   k?: string | null;
@@ -25,22 +26,15 @@ interface ConcealmentRecord {
   add: number;
 }
 
-interface CollisionManifest {
+export interface CollisionManifest {
   obstacles: PackedCollisionRecord[];
   colliders: PackedCollisionRecord[];
   concealers?: Array<readonly [number, number, number, number]>;
 }
 
-interface HeadlessHeightField {
-  maxY: number;
-  getHeightAt(x: number, z: number): number;
-  getHeightAtFast?(x: number, z: number): number;
-  getNormalAt(x: number, z: number): Vector3;
-}
-
 interface HeadlessCollisionWorldOptions {
   mapId?: string;
-  heightField?: HeadlessHeightField;
+  heightField?: HeightField;
   manifest?: CollisionManifest;
 }
 
@@ -54,7 +48,7 @@ export interface HeadlessRayHit {
 
 export interface HeadlessCollisionWorld {
   mapId?: string;
-  heightField: HeadlessHeightField;
+  heightField: HeightField;
   raycast(origin: Vector3, direction: Vector3, maxDistance: number): HeadlessRayHit | null;
   getObstacles(): CollisionRecord[];
   getColliders(): CollisionRecord[];

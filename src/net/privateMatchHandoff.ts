@@ -1,11 +1,18 @@
 import { resolveMapId } from '../world/maps/index.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
 import { isBotTankId } from '../game/matchmaking.ts';
-import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
+import {
+  createAuthoritativeMatch,
+  type AuthoritativeMatchOptions,
+  type AuthoritativeWorldCollision,
+} from '../sim/authoritativeMatch.ts';
+import type { AiDifficulty } from '../game/ai.ts';
 import { createLoopbackTransportPair } from './loopbackTransport.ts';
 import {
   AuthoritativeMatchRuntime,
   MatchClientRuntime,
+  type MatchSimulation,
+  type MatchTransport,
   type MatchRoomState,
   type RoomChatMessage,
 } from './matchRuntime.ts';
@@ -36,7 +43,7 @@ export interface PrivateMatchPlayer {
   camo?: string;
   equipment?: string[] | null;
   bot?: boolean;
-  difficulty?: string;
+  difficulty?: AiDifficulty;
   ready?: boolean;
   connected?: boolean;
   isHost?: boolean;
@@ -53,24 +60,7 @@ export interface PrivateMatchLobby {
   round?: number;
 }
 
-interface VehicleSpecView {
-  era?: string;
-}
-
-interface MatchTransport {
-  readonly readyState?: string;
-  send(message: unknown): boolean;
-  onMessage(listener: (message: unknown) => void): Unsubscribe;
-  onClose?(listener: (reason: string) => void): Unsubscribe;
-  close?(reason?: string): void;
-}
-
 type MatchClientPort = MatchClientRuntime;
-
-interface MatchSimulation {
-  step(...args: unknown[]): unknown;
-  snapshot(...args: unknown[]): unknown;
-}
 
 interface PersistentRoomController {
   state(): SerializedLobby;
@@ -122,19 +112,18 @@ interface ClientRoomSession {
   close?(reason?: string): void;
 }
 
-interface PrivateSimulationOptions {
+interface PrivateSimulationOptions extends AuthoritativeMatchOptions {
   players: PrivateMatchPlayer[];
   mapId: string;
   seed: number;
-  gameMode?: string;
-  worldCollision: unknown;
+  worldCollision: AuthoritativeWorldCollision | null;
   battleLimitS?: number;
 }
 
 type PrivateSimulationFactory = (options: PrivateSimulationOptions) => MatchSimulation;
 
-const makeAuthoritativeSimulation = createAuthoritativeMatch as unknown as PrivateSimulationFactory;
-const readVehicleSpec = getSpec as unknown as (id: string) => VehicleSpecView;
+const makeAuthoritativeSimulation: PrivateSimulationFactory = createAuthoritativeMatch;
+const readVehicleSpec = getSpec;
 
 function seededUnit(seed: number): () => number {
   let value = seed >>> 0;
@@ -289,7 +278,7 @@ export interface PrivateHostMatch {
   sendRoomChat(text: string): unknown;
   prepareRound(options: {
     lobbyState: unknown;
-    worldCollision?: unknown;
+    worldCollision?: AuthoritativeWorldCollision | null;
   }): { mapId: string; simulation: MatchSimulation };
   advance(
     elapsedMs: number,
@@ -319,7 +308,7 @@ export interface BeginPrivateHostMatchOptions {
   session?: HostRoomSession;
   lobbyState?: unknown;
   simulationFactory?: PrivateSimulationFactory;
-  worldCollision?: unknown;
+  worldCollision?: AuthoritativeWorldCollision | null;
   battleLimitS?: number;
 }
 
@@ -423,7 +412,10 @@ export function beginPrivateHostMatch({
     prepareRound({
       lobbyState: nextLobby,
       worldCollision: nextCollision = null,
-    }: { lobbyState: unknown; worldCollision?: unknown }) {
+    }: {
+      lobbyState: unknown;
+      worldCollision?: AuthoritativeWorldCollision | null;
+    }) {
       const next = validateStartingLobby(nextLobby);
       const nextMapId = resolvePrivateMatchMap(next);
       simulation = simulationFactory({

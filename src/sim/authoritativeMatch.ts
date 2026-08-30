@@ -239,7 +239,7 @@ export interface AuthoritativeEvent extends Record<string, unknown> {
 
 export interface AuthoritativeStepOptions {
   dt: number;
-  inputs: ReadonlyMap<string, AuthoritativePlayerInput | undefined>;
+  inputs: ReadonlyMap<string, AuthoritativePlayerInput | null | undefined>;
 }
 
 export interface AuthoritativeSnapshotOptions {

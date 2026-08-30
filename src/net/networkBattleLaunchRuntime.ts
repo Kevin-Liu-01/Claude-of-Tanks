@@ -12,6 +12,7 @@ import type {
 } from './networkBattlePresentationRuntime.ts';
 import type { NetworkBrowserMatch } from './networkBrowserSessionRuntime.ts';
 import type { DedicatedStatus } from './dedicatedClient.ts';
+import type { AuthoritativeWorldCollision } from '../sim/authoritativeMatch.ts';
 
 interface BattleEntryLifecyclePort {
   run<T>(task: () => Promise<T>, busyValue: T): Promise<T>;
@@ -87,7 +88,7 @@ interface NetworkBattleLaunchOptions {
   audio: AudioLoadingPort;
   getMatch: () => NetworkMatchPort | null;
   getRoomCoordinator: () => NetworkRoomCoordinator | null;
-  getWorldCollision: () => unknown;
+  getWorldCollision: () => AuthoritativeWorldCollision | null;
   getMapPresentation: (mapId: string | null, fallback: string) => MapPresentation;
   rosterRows: (
     state: NetworkRoomState,
