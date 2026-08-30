@@ -215,12 +215,16 @@ function validateRate(tickHz: number, snapshotHz: number): void {
   }
 }
 
+function isMatchSimulation(simulation: unknown): simulation is MatchSimulation {
+  return isRecord(simulation) && typeof simulation.step === 'function' &&
+    typeof simulation.snapshot === 'function';
+}
+
 function validateSimulation(simulation: unknown): MatchSimulation {
-  if (!isRecord(simulation) || typeof simulation.step !== 'function' ||
-      typeof simulation.snapshot !== 'function') {
+  if (!isMatchSimulation(simulation)) {
     throw new TypeError('simulation must implement step() and snapshot()');
   }
-  return simulation as unknown as MatchSimulation;
+  return simulation;
 }
 
 function safeErrorPayload(error: unknown): { code: string; message: string } {

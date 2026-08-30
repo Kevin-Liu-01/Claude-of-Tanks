@@ -77,7 +77,7 @@ export interface NormalizedPlayerInput {
   actionBits: number;
 }
 
-const MESSAGE_TYPE_SET = new Set<MessageType>(Object.values(MESSAGE_TYPES));
+const MESSAGE_TYPE_SET: ReadonlySet<string> = new Set(Object.values(MESSAGE_TYPES));
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_CODE_LENGTH = 6;
 const MAX_SEQUENCE = 0x7fffffff;
@@ -102,6 +102,10 @@ export class ProtocolError extends Error {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isMessageType(value: unknown): value is MessageType {
+  return typeof value === 'string' && MESSAGE_TYPE_SET.has(value);
 }
 
 function assertFiniteNumber(value: unknown, field: string): number {
@@ -199,8 +203,7 @@ export function createEnvelope<TPayload>(
   };
 }
 
-/** Validate untrusted transport data before dispatch. */
-export function validateEnvelope(value: unknown): ProtocolEnvelope {
+function assertProtocolEnvelope(value: unknown): asserts value is ProtocolEnvelope {
   if (!isRecord(value)) {
     throw new ProtocolError('invalid_envelope', 'message must be an object');
   }
@@ -208,7 +211,7 @@ export function validateEnvelope(value: unknown): ProtocolEnvelope {
     throw new ProtocolError('protocol_mismatch',
       `expected protocol ${PROTOCOL_VERSION}, received ${String(value.v)}`);
   }
-  if (typeof value.type !== 'string' || !MESSAGE_TYPE_SET.has(value.type as MessageType)) {
+  if (!isMessageType(value.type)) {
     throw new ProtocolError('unknown_message_type', `unknown message type: ${String(value.type)}`);
   }
   assertSequence(value.seq, 'seq');
@@ -217,7 +220,12 @@ export function validateEnvelope(value: unknown): ProtocolEnvelope {
   if (!Object.hasOwn(value, 'payload')) {
     throw new ProtocolError('invalid_envelope', 'payload field is required');
   }
-  return value as unknown as ProtocolEnvelope;
+}
+
+/** Validate untrusted transport data before dispatch without cloning it. */
+export function validateEnvelope(value: unknown): ProtocolEnvelope {
+  assertProtocolEnvelope(value);
+  return value;
 }
 
 /**

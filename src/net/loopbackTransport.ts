@@ -59,7 +59,7 @@ export class TransportClosedError extends Error {
 
 function cloneMessage<T>(value: T): T {
   if (typeof structuredClone === 'function') return structuredClone(value);
-  return JSON.parse(JSON.stringify(value)) as unknown as T;
+  return JSON.parse(JSON.stringify(value));
 }
 
 function createEndpoint(
