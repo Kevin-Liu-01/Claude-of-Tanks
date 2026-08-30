@@ -80,6 +80,14 @@ try {
     'muzzle anchor follows the counter-shifted physical tube face');
 
   const parts = tank.root.userData.combatGeometryParts;
+  const detachedRightForeWing = parts.find((part) =>
+    part.bucket === 'turret'
+    && Math.abs(part.min[0] - 0.10) < 0.002
+    && Math.abs(part.max[0] - 1.42) < 0.002
+    && Math.abs(part.min[1] - 0.19) < 0.002
+    && Math.abs(part.max[2] - 2.87) < 0.002);
+  assert.equal(detachedRightForeWing, undefined,
+    'the detached right-front turret wing remains removed');
   const turretRingApron = parts.find((part) =>
     part.bucket === 'turret'
     && Math.abs(part.min[1] - 0.035) < 0.002

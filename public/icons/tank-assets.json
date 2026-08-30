@@ -57677,7 +57677,7 @@
           }
         ]
       },
-      "geometryHash": "fc3ee116",
+      "geometryHash": "abaae38f",
       "metadataHash": "88010cb2",
       "presentationAnchor": {
         "xM": 0.0002,
@@ -57736,16 +57736,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30438,
-          "sha256": "a5af317aa8b76dbb41c7d26d5471c98438a53469d993cc8df5437383f92742af"
+          "bytes": 30500,
+          "sha256": "32183dc45cbf1d38de4f6eb77609ef2fc66ff0e99bb604337dcf98673c02c606"
         },
         "top": {
           "file": "leo2_revolution_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 10924,
-          "sha256": "e8cc31615231359b9df93ab97bec16350b1725ecd8281ea72479b5cc2f1b4b5e"
+          "bytes": 10906,
+          "sha256": "9e5fec0f2ad5c177567d6e13d409e344a75e96d3f5bd3b547fafe119642280f7"
         },
         "side": {
           "file": "leo2_revolution_side.webp",

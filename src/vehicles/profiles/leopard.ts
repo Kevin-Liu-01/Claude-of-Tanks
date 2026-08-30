@@ -8608,34 +8608,9 @@ function buildLeo2Revolution(P: TankBuilderPort) {
   P.add('turret', slab(                                                        // mantlet crown 2.16w (w 1.82..2.12)
     [-0.42, 0.51, 2.17], [1.26, 0.51, 2.17], [1.26, 0.51, 2.47], [-0.42, 0.51, 2.47],
     [-0.42, 0.56, 2.17], [1.26, 0.515, 2.17], [1.26, 0.515, 2.47], [-0.42, 0.56, 2.47]));
-  // RIGHT low wing over the bow shelf (y 1.79..2.03, z 2.2..3.55w).
-  // r2: x capped at 1.56 (the ref ±1.63 plan col front is the 2.04 wall
-  // line, not the wing) and the dark cover shaved under the 2.02 lid line
-  // r5: wing lowered to the ledger line — ref side reads 1.917 flat over
-  // w 2.43..3.32 where the old 1.97/1.985 tops printed 2.019 on six columns
-  // r14 CHEEK/WING RE-PLANE: (a) wing x-edge 1.60 -> 1.553 — the 1.60 edge
-  // AA-printed the wing's 3.561 plan front into the plan_turret 1.623 column
-  // where the ref wing has ENDED (ref front 2.035 there; err 0.773, the #1
-  // plan_turret defect — the wall's 2.04 face now owns it). Col 1.512 keeps
-  // 87% wing cover (ref 3.533 held). (b) NOSE LIP: the ref wing RISES to
-  // 1.97 at its front (side_turret ref 1.97@3.42..3.53 vs our flat 1.942+AA)
-  // — a ramp + crest carry both columns at the ref line, and the oblique
-  // top edge now falls from the lip crest down the nose instead of running
-  // dead-flat to a square corner (the frontleft Δ+13.3 pair).
-  // r14-c: the wing top gets the ref's INWARD-LEANING facet (outboard edge
-  // drops 0.075 — side rows keep the inboard 1.90/1.915 max, plan/front
-  // unchanged; the oblique top line now falls instead of running dead-flat
-  // to a square corner). The nose lip narrows to the inboard half so it
-  // reads as the sight housing the tilt flows around.
-  // One rooted cheek wedge replaces the old full rectangular wing.  Its
-  // inboard edge remains buried in the mantlet shoulder, while the outboard
-  // edge sweeps aft and inward so no square card projects beyond the armor.
-  P.add('turret', slab(
-    [0.10, 0.19, 2.57], [1.42, 0.19, 2.61], [1.18, 0.19, 3.46], [0.10, 0.19, 3.82],
-    [0.10, 0.30, 2.57], [1.42, 0.225, 2.61], [1.18, 0.235, 3.43], [0.10, 0.30, 3.82]));
-  // Do not add a second thin cover over this wing.  That former overlapping
-  // slab projected beyond the cheek as a free rectangular card in elevated
-  // views; the structural wing already supplies the complete armor surface.
+  // Keep the right bow shelf clear. The former standalone cheek/wing slab
+  // projected below and ahead of the continuous turret shell as an isolated
+  // triangular card; the closed primary loft already owns this armor run.
   P.add('turret', slab(                                                        // tapered nose lip, buried into the inboard shoulder
     [0.10, 0.28, 3.67], [0.62, 0.28, 3.63], [0.48, 0.28, 3.76], [0.10, 0.28, 3.82],
     [0.10, 0.30, 3.67], [0.62, 0.30, 3.63], [0.48, 0.35, 3.76], [0.10, 0.37, 3.82]));
