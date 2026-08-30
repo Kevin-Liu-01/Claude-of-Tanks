@@ -9,6 +9,9 @@ const modernProfiles = new Map([
   ['leo2a7v', 'leopard-2a7v'],
   ['strv122', 'leopard-2a5'],
 ]);
+const verticalTerminalIds = new Set([
+  'leo2a5', 'strv122', 'leo2a6', 'leo2a6m', 'leo2a6_ua',
+]);
 
 const findMergedMesh = (root, name) => {
   let result = null;
@@ -83,6 +86,10 @@ for (const [id, expectedProfile] of modernProfiles) {
   assert.equal(receipt.roofBridgeVolumes, 2, `${id} uses one continuous roof bridge per cheek`);
   assert.equal(receipt.roofBridgeStructural, true,
     `${id} owns its roof closures in the rotating armor bucket`);
+  assert.equal(receipt.verticalTerminalSideClosure, verticalTerminalIds.has(id),
+    `${id} records whether its outboard cheek ends in a vertical side wall`);
+  assert.equal(receipt.terminalSideClosureVolumes, verticalTerminalIds.has(id) ? 2 : 0,
+    `${id} publishes one terminal cheek closure per applicable side`);
   assert.equal(receipt.legacyInteriorShadowWalls, false,
     `${id} retires the buried pre-chevron shadow walls`);
   assert.equal(receipt.structuralMantletSupportsRetained, true,
@@ -92,6 +99,24 @@ for (const [id, expectedProfile] of modernProfiles) {
   assert.equal(receipt.lowerReturnSolids, receipt.cheekCourseCount,
     `${id} spans every plan course with its continuous lower return`);
   assert.equal(receipt.sides.length, 2, `${id} publishes both cheek sides`);
+  if (verticalTerminalIds.has(id)) {
+    const smokeReceipt = turretRig.userData.leopardSideSmokeReceipt;
+    assert.ok(smokeReceipt, `${id} publishes its turret-side smoke-bank seating`);
+    assert.equal(smokeReceipt.architecture, 'mirrored-two-row-turret-side-banks');
+    assert.equal(smokeReceipt.turretOwned, true, `${id} smoke banks follow turret traverse`);
+    assert.equal(smokeReceipt.banksPerSide, 2, `${id} retains two smoke rows per side`);
+    assert.equal(smokeReceipt.launchersPerSide, 8, `${id} retains eight launchers per side`);
+    assert.deepEqual(smokeReceipt.sides.map(({ side }) => side), ['left', 'right'],
+      `${id} seats smoke canisters on both turret sides`);
+    assert.ok(smokeReceipt.sides.every(({ mountX }) => Math.abs(mountX) >= 1.25),
+      `${id} smoke banks sit externally on the turret side/chamfer`);
+  }
+  if (['leo2a5', 'strv122'].includes(id)) {
+    assert.equal(rootVertexOccurrences(tank.root, [0.2, 0.802, 1.73]), 0,
+      `${id} removes the structural plateau-tail roof tab`);
+    assert.equal(rootVertexOccurrences(tank.root, [0.205, 0.8039, 1.732]), 0,
+      `${id} removes the selected plateau-tail tone skin`);
+  }
   if (['leo2a5', 'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2a7v', 'strv122'].includes(id)) {
     assert.equal(receipt.lowerArmorPanArchitecture, 'cheek-return-owned',
       `${id} removes the separate underride blocker beneath its extended lower cheeks`);
@@ -159,6 +184,35 @@ for (const [id, expectedProfile] of modernProfiles) {
       `${id} ${sideReceipt.side} roof bridge is structural rather than a zero-thickness cover`);
     assert.equal(sideReceipt.surfacePanels.length, 4,
       `${id} ${sideReceipt.side} divides the broad cheek into four readable cassettes`);
+    if (verticalTerminalIds.has(id)) {
+      const closure = sideReceipt.terminalSideClosure;
+      assert.ok(closure, `${id} ${sideReceipt.side} closes the outboard cheek side`);
+      assert.equal(closure.architecture, 'vertical-boxed-terminal-return');
+      assert.equal(closure.triangleCount, 12,
+        `${id} ${sideReceipt.side} terminal fill is a closed solid`);
+      assert.ok(closure.verticalRearHeightM >= 0.35,
+        `${id} ${sideReceipt.side} terminal wall covers the complete cheek height`);
+      assert.ok(closure.bodyWidthOverlapM >= 0.024,
+        `${id} ${sideReceipt.side} terminal wall interlocks with the turret width`);
+      assert.ok(closure.bodyFrontOverlapM >= 0.024,
+        `${id} ${sideReceipt.side} terminal wall interlocks with the turret front course`);
+      const [upper, lower, rearLower, rearUpper] = closure.outerProfile;
+      assert.equal(rearUpper[2], rearLower[2],
+        `${id} ${sideReceipt.side} rear terminal edge is vertical in side profile`);
+      assert.equal(rearUpper[1], upper[1],
+        `${id} ${sideReceipt.side} rear terminal reaches the upper cheek edge`);
+      assert.equal(rearLower[1], lower[1],
+        `${id} ${sideReceipt.side} rear terminal reaches the lower cheek edge`);
+      assert.ok(rearUpper[2] < Math.min(upper[2], lower[2]),
+        `${id} ${sideReceipt.side} adds material behind the former sloping cut-off`);
+      for (const point of closure.outerProfile) {
+        assert.ok(hasVertex(position, point),
+          `${id} ${sideReceipt.side} terminal profile point is authored in merged armor`);
+      }
+    } else {
+      assert.equal(sideReceipt.terminalSideClosure, null,
+        `${id} does not inherit an unrelated A5/A6 terminal wall`);
+    }
     let previousPanelEnd = 0;
     for (const [panelIndex, panel] of sideReceipt.surfacePanels.entries()) {
       assert.ok(panel.from > previousPanelEnd,

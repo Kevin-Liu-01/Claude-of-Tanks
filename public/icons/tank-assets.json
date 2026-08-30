@@ -62103,7 +62103,7 @@
           }
         ]
       },
-      "geometryHash": "f6d89cb5",
+      "geometryHash": "645fa2e1",
       "metadataHash": "c6989442",
       "presentationAnchor": {
         "xM": -0.0002,
@@ -62129,10 +62129,10 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "wheelPaint": 24,
-          "gunmetal": 20,
+          "gunmetal": 24,
           "gearShadow": 38,
           "canvas": 6,
-          "fittingPaint": 14,
+          "fittingPaint": 18,
           "armorPaint": 6,
           "tireRubber": 2,
           "trackSteel": 5,
@@ -62206,24 +62206,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76597,
-          "sha256": "bd644c70dad2c6e66e87b7ded919cde2189501d20d0dce70662566e9c11c0052"
+          "bytes": 76316,
+          "sha256": "53d15dc9d140069e5a9f9c2a1b9fcbaa516d45d358f4dfca2a87c824f9d695e6"
         },
         "armorSide": {
           "file": "leo2a5_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76663,
-          "sha256": "c0701cae962939ce17ede4fb41a04113d1b76f29e90114eb9d00ba11d22f2a9b"
+          "bytes": 76256,
+          "sha256": "5135372bd60a89e937a14bd07d2557d72b623e60f8db91a9d82170c0ba86f827"
         },
         "modulesSide": {
           "file": "leo2a5_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82023,
-          "sha256": "45e63974d8af7dd20bef83f244f8e4a1b49124fc48e5d6435abeecbad6241a2a"
+          "bytes": 81997,
+          "sha256": "d8e9142272f9c5998ae5e01bf08b8b29b26261ff6810c17e6d807708e15fd0e4"
         },
         "markings": {
           "file": "leo2a5_markings.png",
@@ -63300,7 +63300,7 @@
           }
         ]
       },
-      "geometryHash": "1273e04f",
+      "geometryHash": "25841ac0",
       "metadataHash": "2376b659",
       "presentationAnchor": {
         "xM": 0.0003,
@@ -63401,24 +63401,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68238,
-          "sha256": "cc359bfbf93b228af64bedaf04ad94c9f8ca2c2000f14d23c39562c9f1b95ec5"
+          "bytes": 68576,
+          "sha256": "2d1f320a6e459681fe8f53086028edf7b652526b2c3b218e66d82c74b8b54f08"
         },
         "armorSide": {
           "file": "leo2a6_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69182,
-          "sha256": "f9e4812a6b508af128c1d7c3bf4ad6095a94825675b7d2862bfa9ff091d745e9"
+          "bytes": 69142,
+          "sha256": "4a9b89c54da293bb850f0f2b54800482e72fdcdf7df5f92c5e08403e0f7fa854"
         },
         "modulesSide": {
           "file": "leo2a6_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76222,
-          "sha256": "d985f89fe50b650095a830c19b1a7f2bdca99ed7cfcbb531cd73b421e77fba31"
+          "bytes": 76227,
+          "sha256": "b54e0c1cafa7c5caa4369782a1beeaacfdd5ab5cbca2e4242b67e4230cd182f2"
         },
         "markings": {
           "file": "leo2a6_markings.png",
@@ -64721,7 +64721,7 @@
           }
         ]
       },
-      "geometryHash": "5b42d769",
+      "geometryHash": "ba6ef392",
       "metadataHash": "e3fa7f81",
       "presentationAnchor": {
         "xM": 0.0009,
@@ -66035,7 +66035,7 @@
           }
         ]
       },
-      "geometryHash": "ce983eec",
+      "geometryHash": "10ad0d4e",
       "metadataHash": "7aede671",
       "presentationAnchor": {
         "xM": 0,
@@ -66137,24 +66137,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70407,
-          "sha256": "5a010477d83df9ef252c2b3ac799772780457d9abcb2495edf0503f25f4395a2"
+          "bytes": 71007,
+          "sha256": "310d37561c367d8272fa56a5e9b4eb7121f6df5684e5ef259f74b8a6a5b2489c"
         },
         "armorSide": {
           "file": "leo2a6m_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70463,
-          "sha256": "1db09d7aef00f1874eed2d32cd38c2bb941949185841dea4d9acc55b250cbf6a"
+          "bytes": 71014,
+          "sha256": "3466f7271ca6fc94ee1642c953cbb194376dadff0ccbdd032f53d5843433a9fe"
         },
         "modulesSide": {
           "file": "leo2a6m_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76012,
-          "sha256": "5f15ea64133030112476226a3f31fb8a66dd09f86c828f01a1f140081b938b2e"
+          "bytes": 75999,
+          "sha256": "07fe920395e85d6de4639dd8e7c5fccc7814a791b8bf04eb070903c878f35ffa"
         },
         "markings": {
           "file": "leo2a6m_markings.png",
@@ -127261,7 +127261,7 @@
           }
         ]
       },
-      "geometryHash": "9c671afd",
+      "geometryHash": "e8977e0e",
       "metadataHash": "c04f0cf1",
       "presentationAnchor": {
         "xM": -0.0005,
@@ -127287,10 +127287,10 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "wheelPaint": 24,
-          "gunmetal": 25,
+          "gunmetal": 29,
           "gearShadow": 38,
           "canvas": 6,
-          "fittingPaint": 19,
+          "fittingPaint": 23,
           "armorPaint": 6,
           "tireRubber": 2,
           "trackSteel": 5,
@@ -127364,24 +127364,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74719,
-          "sha256": "b5619ee3aab44665acdfed8c948bd9feb7e623b892279940d5eb54158be2acc4"
+          "bytes": 74152,
+          "sha256": "8cd3ab956166392ac773bac2e69d2d530bbe0ca1f0c9e0fae6bf6dff909840ba"
         },
         "armorSide": {
           "file": "strv122_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74176,
-          "sha256": "8d24fe0fc1e8e8e019e1d4f4c8aa0f1d56e22260e78be91c1c5d53a5db59015e"
+          "bytes": 74688,
+          "sha256": "92e21e23d98e3dd75333daabf6083629d02c49e59d16cf406cdc738f4d839829"
         },
         "modulesSide": {
           "file": "strv122_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77405,
-          "sha256": "d873ece0333c2cb33810cb15116f734f10c7890b1172c13266a131882942b247"
+          "bytes": 78005,
+          "sha256": "3101084670078202523d578a4f2561b01e2ef479d87a6e660293987565097b25"
         },
         "markings": {
           "file": "strv122_markings.png",

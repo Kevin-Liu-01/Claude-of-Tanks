@@ -555,6 +555,8 @@ interface LeopardChevronConfig {
   readonly panelRidgeMargin?: number;
   readonly panelRootMargin?: number;
   readonly equalLowerReturnHeight?: boolean;
+  readonly verticalTerminalSideClosure?: boolean;
+  readonly terminalSideBodyOverlapM?: number;
 }
 
 interface LeopardWedgeV3Config {
@@ -778,6 +780,64 @@ function closedLeopardChevronCheek(
     new Array((positions.length / 3) * 2).fill(0), 2));
   geometry.computeVertexNormals();
   return geometry;
+}
+
+// The arrowhead cheek is triangular in direct side view, but the real
+// A5/A6-family module does not leave that triangle hanging in space. Its
+// outboard end grows a boxed rear return that overlaps the core turret side:
+// visually `<|`, not `</`. Keep this as one closed structural fill tucked
+// into both owners instead of stretching the upper/lower armor faces and
+// changing their measured sweep angles.
+function closedLeopardChevronTerminalSideClosure(
+  stations: readonly ChevronClosedStation[],
+  side: Side,
+  options: {
+    readonly bodyHalfWidth: number;
+    readonly bodyFrontZ: number;
+    readonly bodyOverlapM?: number;
+  },
+) {
+  if (stations.length < 2) throw new RangeError('Chevron terminal closure requires two stations');
+  const terminal = stations[stations.length - 1];
+  const bodyOverlapM = options.bodyOverlapM ?? 0.025;
+  const rearZ = Math.min(
+    terminal.upperZ,
+    terminal.lowerZ,
+    options.bodyFrontZ - bodyOverlapM,
+  );
+  const innerX = Math.min(
+    terminal.x - 0.04,
+    options.bodyHalfWidth - bodyOverlapM,
+  );
+  if (innerX <= 0 || innerX >= terminal.x) {
+    throw new RangeError('Chevron terminal closure cannot overlap the turret side');
+  }
+  const profileAt = (x: number): FourPointRing => [
+    [side * x, terminal.upperY, terminal.upperZ],
+    [side * x, terminal.lowerY, terminal.lowerZ],
+    [side * x, terminal.lowerY, rearZ],
+    [side * x, terminal.upperY, rearZ],
+  ];
+  const innerProfile = profileAt(innerX);
+  const outerProfile = profileAt(terminal.x);
+  const geometry = outwardClosedSlab(...innerProfile, ...outerProfile);
+  return Object.freeze({
+    geometry,
+    receipt: Object.freeze({
+      architecture: 'vertical-boxed-terminal-return',
+      triangleCount: 12,
+      innerX,
+      outerX: terminal.x,
+      rearZ,
+      upperY: terminal.upperY,
+      lowerY: terminal.lowerY,
+      verticalRearHeightM: terminal.upperY - terminal.lowerY,
+      bodyWidthOverlapM: options.bodyHalfWidth - innerX,
+      bodyFrontOverlapM: options.bodyFrontZ - rearZ,
+      innerProfile: Object.freeze(innerProfile),
+      outerProfile: Object.freeze(outerProfile),
+    }),
+  });
 }
 
 // Close the roof channel between an A5-family arrowhead cheek and the core
@@ -2178,6 +2238,14 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
         });
       });
       P.add('turret', closedLeopardChevronCheek(stations, s));
+      const terminalSideClosure = chevron.verticalTerminalSideClosure
+        ? closedLeopardChevronTerminalSideClosure(stations, s, {
+          bodyHalfWidth: T.body[0].x,
+          bodyFrontZ: T.body[0].z1,
+          bodyOverlapM: chevron.terminalSideBodyOverlapM,
+        })
+        : null;
+      if (terminalSideClosure) P.add('turret', terminalSideClosure.geometry);
       const roofBridge = closedLeopardChevronRoofBridge(stations, s, {
         bodyHalfWidth: T.body[0].x,
         bodyFrontZ: T.body[0].z1,
@@ -2219,6 +2287,7 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
           rearOverlapM: roofBridge.rearOverlapM,
         }),
         surfacePanels: Object.freeze(surfacePanels),
+        terminalSideClosure: terminalSideClosure?.receipt ?? null,
       }));
     } else {
       for (let i = 0; i < N.length - 1; i++) {
@@ -2318,6 +2387,8 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
       roofSightlineClosed: true,
       roofBridgeVolumes: 2,
       roofBridgeStructural: true,
+      verticalTerminalSideClosure: chevron.verticalTerminalSideClosure === true,
+      terminalSideClosureVolumes: chevronSides.filter((side) => side.terminalSideClosure).length,
       legacyInteriorShadowWalls: false,
       structuralMantletSupportsRetained: true,
       maximumCheekHalfWidthM: Math.max(...N.map(([x]) => x)),
@@ -2498,6 +2569,20 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
       smokeCluster(P, s * (sm.x + 0.02), sm.y - 0.06, sm.z - 0.06, 4, s * 0.95, 0.85);
     }
     liftEye(P, 'turretDetail', s * (T.body[0].x * 0.58), h - 0.02, E.z - 0.5, s * 0.4);
+  }
+  if (T.smoke && P.geometryReceipt) {
+    P.turretG.userData.leopardSideSmokeReceipt = Object.freeze({
+      architecture: 'mirrored-two-row-turret-side-banks',
+      turretOwned: true,
+      banksPerSide: 2,
+      launchersPerSide: 8,
+      sides: Object.freeze(([-1, 1] as const).map((side) => Object.freeze({
+        side: side < 0 ? 'left' : 'right',
+        mountX: side * T.smoke!.x,
+        mountY: T.smoke!.y,
+        mountZ: T.smoke!.z,
+      }))),
+    });
   }
 }
 
@@ -3226,6 +3311,7 @@ function buildLeo2A6(P: TankBuilderPort) {
     chevron: {
       profile: 'leopard-2a6', ridgeInsetM: 0.030, ridgeLiftM: 0.13,
       upperSlopeDeg: 19, upperRootY: 0.66, upperTipY: 0.50, upperTaperStartX: 1.30,
+      verticalTerminalSideClosure: true, terminalSideBodyOverlapM: 0.025,
       // The lower return replaces the former z=1.90 rectangular underride
       // face. It reaches beneath and behind that complete marked plane while
       // rising again at the outboard tip, preserving the swept arrowhead.
@@ -3407,6 +3493,20 @@ function buildLeo2A6(P: TankBuilderPort) {
       // dark backdrop rails on the chamfer under each row
       P.add('turretDark', box(0.020, 0.14, 0.68), s * 1.286, 0.360, -0.61, 0, 0, s * 0.77);
       P.add('turretDark', box(0.020, 0.14, 0.68), s * 1.252, 0.423, -0.68, 0, 0, s * 0.77);
+    }
+    if (P.geometryReceipt) {
+      P.turretG.userData.leopardSideSmokeReceipt = Object.freeze({
+        architecture: 'mirrored-two-row-turret-side-banks',
+        turretOwned: true,
+        banksPerSide: 2,
+        launchersPerSide: 8,
+        sides: Object.freeze(([-1, 1] as const).map((side) => Object.freeze({
+          side: side < 0 ? 'left' : 'right',
+          mountX: side * 1.27,
+          mountY: 0.40,
+          mountZ: -0.65,
+        }))),
+      });
     }
   }
   // r9 CONTIGUITY (owner flag: "empty areas... behind the cheek"): the slot
@@ -4442,6 +4542,7 @@ export function buildLeo2A5(builder: object) {
     chevron: {
       profile: 'leopard-2a5', ridgeInsetM: 0.025, ridgeLiftM: 0.09,
       upperSlopeDeg: 20, upperRootY: 0.74, upperTipY: 0.52, upperTaperStartX: 1.29,
+      verticalTerminalSideClosure: true, terminalSideBodyOverlapM: 0.025,
       // Extend the lower cheek behind the old z=1.91 front wall and below
       // its -0.066 m lower edge; the return itself now closes that area.
       rootDepthM: [1.02, 0.60, 0.34], rootY: [-0.07, -0.07, 0.08],
@@ -4507,7 +4608,6 @@ export function buildLeo2A5(builder: object) {
     ],
     // r6: x pulled 1.20 → 1.14 — the outboard-leaning tube tips lit the
     // ±1.42 front cols at 2.30 where the ref reads its bare 2.17 pad line
-    smoke: { x: 1.14, z: 0.10, y: 0.26 },
   });
   // Seal the narrow central roof channel between the two arrowhead roots.
   // The A5 never carried the later A6 bridge, leaving the marked x=+/-0.30
@@ -4553,56 +4653,46 @@ export function buildLeo2A5(builder: object) {
     P.add('turretDark', box(0.18, 0.125, 0.008), px, 0.777, -0.604);                        // optic surround
     P.add('turretDetail', box(0.10, 0.009, 0.004), -0.285, 0.792, -0.5905, 0, 0, 0.45);     // wiper bar
   }
-  // VISUAL r6 3c SMOKE BANKS READ AS LAUNCHERS (a6 r2 #3 / r3 #7 recipe):
-  // the kit tubes exist but read as featureless slabs — dress each tube
-  // with a dark muzzle cap, a collar ring and a breech cap (co-axial, same
-  // transform math as KIT.smokeCluster so every piece shares the tube's
-  // trace columns) + a dark backdrop plate behind each cheek so the camo
-  // tubes silhouette. Outermost reach: caps 1.380 < the 1.41 col limit
-  // (the r6 smoke-x law); backdrop tops 2.18w stay >=0.03 under the crest.
+  // The inherited merged smoke tubes were buried inside the side wall.
+  // Replace them with complete fitting assemblies on the two fore side
+  // courses. Their bases overlap armor while the tubes and dark mouths stay
+  // visibly outside the turret from both side and quarter views.
   {
-    const rows: Vec2Tuple[] = [[0.36, 0.24], [0.20, 0.04]];
+    const smokeSeats = [];
     for (const s of [-1, 1] as const) {
-      P.add('turretDark', box(0.02, 0.26, 0.56), s * 1.150, 0.27, 0.10, 0, s * 0.20, 0);
-      for (const [ry, rz] of rows) {
-        for (let k = 0; k < 4; k++) {
-          const f = k - 1.5;
-          const a = s * 0.95 + f * (0.85 / 4);
-          const cx = s * 1.16 + Math.cos(s * 0.95) * f * 0.095;
-          const cz = rz - Math.sin(s * 0.95) * f * 0.095;
-          const dir: Vec3Tuple = [0.878 * Math.sin(a), 0.479, 0.878 * Math.cos(a)];
-          const at = (t: number): Vec3Tuple => [cx + dir[0] * t, ry + dir[1] * t, cz + dir[2] * t];
-          // r8 3b LAUNCHER BRISTLE (critic order: tubes read as dressed
-          // slabs from the quarters): muzzle caps push +0.009 along the
-          // tube axis (reach 1.380 -> ~1.388, inside the 1.41 col limit)
-          // and a PALE end ring rides between cap and collar so each tube
-          // silhouettes as a tube against the camo cheek at frontleft/
-          // frontright 2x.
-          // r9 2d HARDEN FROM BOTH QUARTERS (r8 delivered frontleft only):
-          // caps push one more +0.010 (reach ~1.396 — 14 mm AA margin under
-          // the 1.41 col limit per the one-pixel-leak law), the pale end
-          // ring widens/thickens (r 0.0420 th 0.013 — the 2x tube-end cue
-          // on the shaded quarter), and a 1-px TOP-LIT TUBE CROWN strip
-          // rides each tube's world-up tangent (§C pale-refund class; top
-          // 2.175w stays inside the certified 2.1805 tube-top envelope) so
-          // the rows read as CYLINDERS even where cap-vs-cheek contrast
-          // dies on the shaded side.
-          // (cap push 0.122 -> 0.132 REVERTED: the gate's turret-plan x1.41
-          // column read the pushed caps at +0.016 errM on the carried 0.321
-          // — the REAL AA boundary bites at ~1.396, not the verdict's 1.41
-          // nominal; the ring/crown arm carries 2d instead)
-          const [mx, my, mz] = at(0.122);
-          const [px2, py2, pz2] = at(0.098);
-          const [lx, ly, lz] = at(0.042);
-          const [bx, by, bz] = at(-0.110);
-          const [tx, ty2, tz] = at(-0.015);
-          P.add('turretDark', KIT.cylZ(0.0405, 0.016, 10), mx, my, mz, -0.5, a, 0);   // muzzle cap
-          P.add('turretDetail', KIT.cylZ(0.0420, 0.013, 10), px2, py2, pz2, -0.5, a, 0); // pale end ring
-          P.add('turretDark', KIT.cylZ(0.0398, 0.018, 10), lx, ly, lz, -0.5, a, 0);   // collar ring
-          P.add('turretDetail', KIT.cylZ(0.0405, 0.012, 10), bx, by, bz, -0.5, a, 0); // breech cap
-          P.add('turretDetail', KIT.box(0.013, 0.0028, 0.15), tx, ty2 + 0.0395, tz, -0.5, a, 0); // top-lit tube crown
-        }
+      for (const [row, x, y, z] of [
+        ['upper', 1.36, 0.42, 0.22],
+        ['lower', 1.39, 0.24, -0.05],
+      ] as const) {
+        const bank = FITTINGS.smokeBank({
+          mats: P.mats, count: 4, r: 0.043, len: 0.29,
+          splay: s * (row === 'upper' ? 1.03 : 1.16),
+          pitch: row === 'upper' ? -0.42 : -0.47,
+          arc: 0.60, spacing: 0.10, slot: 'detail',
+          seed: 520 + (s > 0 ? 20 : 0) + (row === 'lower' ? 1 : 0),
+        });
+        bank.name = `leopard2A5SmokeBank_${s < 0 ? 'left' : 'right'}_${row}`;
+        bank.position.set(s * x, y, z);
+        P.turretG.add(bank);
+        smokeSeats.push(Object.freeze({
+          side: s < 0 ? 'left' : 'right', row, mountX: s * x, mountY: y, mountZ: z,
+        }));
       }
+    }
+    if (P.geometryReceipt) {
+      P.turretG.userData.leopardSideSmokeReceipt = Object.freeze({
+        architecture: 'mirrored-two-row-turret-side-banks',
+        turretOwned: true,
+        banksPerSide: 2,
+        launchersPerSide: 8,
+        sides: Object.freeze(([-1, 1] as const).map((side) => Object.freeze({
+          side: side < 0 ? 'left' : 'right',
+          mountX: side * 1.375,
+          mountY: 0.33,
+          mountZ: 0.085,
+        }))),
+        seats: Object.freeze(smokeSeats),
+      });
     }
   }
   // r6 loader pintle MG (owner decoration law): thin members riding BELOW
@@ -4739,23 +4829,10 @@ export function buildLeo2A5(builder: object) {
   // r3 mantlet-root bump: warped side 2.538 column reads a 2.358 step over
   // the falling 2.31 nose-cap line (rooted on the cap)
   P.add('turret', box(0.50, 0.05, 0.11), 0, 0.545, 2.235);
-  // r3 plateau tail plate: the warped roof plateau's 2.582 line runs to
-  // 2.145w (col 2.089) where the crest corner AA-read 2.44 — thin plate on
-  // the crest, under every front column's 2.62+ line
-  P.add('turret', box(0.70, 0.025, 0.11), 0.55, 0.7895, 1.785);
-  // r8 3c ROOF-STACK SHROUDS (critic order: daylight slits at close-front —
-  // bg-colored pixels confirmed by mask-method inside the stack at the tail
-  // plate's right end). Two interior fills, both under every certified
-  // front-column line:
-  // - under-plate shroud: closes the see-through lane between the tail
-  //   plate's underside (0.777) and the falling crest surface (top 0.7765,
-  //   0.5 mm shy — sub-pixel; front cols 0.20..0.90 read the 0.775-0.82
-  //   crest line above it).
-  // - dip-zone fill at x 0.90..1.02: the slit past the plate's right edge
-  //   where the cheek folds to the EMES dip; top 0.655L = 2.435w stays
-  //   under the ref's 2.47 dip line (the r3 dip-crossing law); bottom sinks
-  //   0.015 into the apex tier (attached).
-  P.add('turret', box(0.70, 0.038, 0.10), 0.55, 0.7575, 1.785);
+  // The old asymmetric plateau tail plate and its under-plate shroud are
+  // intentionally absent. They duplicated the already-closed crest/roof
+  // volume and read as a loose rectangular tab on both A5-derived tanks.
+  // Keep only the structural dip-zone closure at the cheek/EMES transition.
   P.add('turret', box(0.12, 0.36, 0.26), 0.96, 0.475, 1.72);
   // turret-mask floor: the ref side bottoms 1.628..1.656 over w −0.40..
   // +1.59 (shell fused low) — thin apron under the ring. r3: z1 pulled
@@ -5469,9 +5546,6 @@ export function buildLeo2A5(builder: object) {
       // (r9-b: the 8 cluster-edge dark bands of cycle 1 are REMOVED — the
       // cluster crown is the ref's own bright-roofline analog; darkening
       // its edges inverted the read at view-left, x300 profile evidence)
-      // plateau tail plate: ref-family trim + front step-edge band
-      tPanel(KIT.xform(KIT.box(0.69, 0.0016, 0.106), 0.55, 0.8031, 1.785), 0.97);
-      rimT.push(KIT.xform(KIT.box(0.69, 0.002, 0.016), 0.55, 0.8042, 1.8315));
       // close-front nose-stack rims (each tier's top-front edge fires a
       // >2px lit line at 2x — the "staircase with lit rims" read)
       rimT.push(KIT.xform(KIT.box(1.06, 0.0025, 0.02), 0, 0.503, 2.437, -0.161, 0, 0)); // nose cap front edge
@@ -5505,7 +5579,6 @@ export function buildLeo2A5(builder: object) {
       }
       tPanel(KIT.xform(KIT.box(0.115, 0.34, 0.0035), 0.96, 0.475, 1.8525), 0.95); // dip fill front
       tPanel(KIT.xform(KIT.box(0.0035, 0.34, 0.25), 1.0225, 0.475, 1.72), 0.95);  // dip fill outboard
-      tPanel(KIT.xform(KIT.box(0.69, 0.034, 0.003), 0.55, 0.7575, 1.8367), 0.92); // under-plate shroud front
       // ORDER 2a GLACIS GRAIN PULLBACK (rowmean-sd 7.73 -> <=6.0, med hold):
       // every move stays on its own side of the 65.8 median (bistable law).
       // (r9-b: the cycle-1 beak LIFT panel is REMOVED — the factory hull
@@ -13502,6 +13575,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     chevron: {
       profile: 'leopard-2a6m', ridgeInsetM: 0.030, ridgeLiftM: 0.13,
       upperSlopeDeg: 19, upperRootY: 0.66, upperTipY: 0.50, upperTaperStartX: 1.30,
+      verticalTerminalSideClosure: true, terminalSideBodyOverlapM: 0.025,
       rootDepthM: [0.90, 0.82, 0.68, 0.66, 0.52, 0.34],
       rootY: [-0.07, -0.07, -0.07, -0.07, 0.05, 0.12],
     },
@@ -13661,6 +13735,20 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     });
     bank2.position.set(s * 1.38, 0.30, -1.16);
     P.turretG.add(bank2);
+  }
+  if (P.geometryReceipt) {
+    P.turretG.userData.leopardSideSmokeReceipt = Object.freeze({
+      architecture: 'mirrored-two-row-turret-side-banks',
+      turretOwned: true,
+      banksPerSide: 2,
+      launchersPerSide: 8,
+      sides: Object.freeze(([-1, 1] as const).map((side) => Object.freeze({
+        side: side < 0 ? 'left' : 'right',
+        mountX: side * 1.37,
+        mountY: 0.40,
+        mountZ: -1.04,
+      }))),
+    });
   }
   // ISAF cooler box on the bustle roof (kept under the p95 hardware line)
   P.add('turretCloth', box(0.46, 0.24, 0.34), 0.55, 0.64, -2.70);
