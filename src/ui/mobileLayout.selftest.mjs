@@ -150,8 +150,9 @@ assert.doesNotMatch(hud, /d\.textContent = '(?:RICOCHET|NO PENETRATION|ABSORBED)
   'HUD result copy must come from the shared hit-outcome registry');
 assert.doesNotMatch(hud, /ctx\.(?:stroke|fill)Text\(label, tx, ty\)/,
   'incoming direction wedges must not duplicate result text already owned by the incoming-fire card');
-assert.match(hud, /strokeText\(e\.amountLabel, tx, ty\)[\s\S]*fillText\(e\.amountLabel, tx, ty\)/,
-  'incoming direction wedges must render their exact damage or blocked value legibly');
+assert.match(hud,
+  /directionalHitValueVisible\(directionalHitValuesEnabled, e\.amount, e\.kind\)[\s\S]*strokeText\(e\.amountLabel, tx, ty\)[\s\S]*fillText\(e\.amountLabel, tx, ty\)/,
+  'incoming direction wedges must render exact values legibly only after the persisted opt-in');
 assert.match(hud, /directionalHitAmount\(hit, kind === 'bounce' && outcome\.blocked\)/,
   'gray direction wedges must source blocked damage from the authoritative hit outcome');
 assert.match(shotInfo, /const cls = hitOutcomeFor\(ev\)/,

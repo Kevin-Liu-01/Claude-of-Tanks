@@ -91,6 +91,7 @@ export interface InputSettings {
   aiDifficulty: AiDifficulty;
   showPerfMeter: boolean;
   showDebugHud: boolean;
+  showDirectionalHitValues: boolean;
   armorAimOverlay: boolean;
   volMaster: number;
   volEngine: number;
@@ -255,6 +256,10 @@ const DEFAULT_SETTINGS: InputSettings = {
   // The engineering dashboard is intentionally off for players and lazy-
   // loads only after an explicit Interface toggle or F8 press.
   showDebugHud: false,
+  // Exact numbers on incoming directional damage/block arcs are optional.
+  // Keep the cleaner arc-only presentation for new and existing profiles
+  // unless the player explicitly enables the readout in Settings.
+  showDirectionalHitValues: false,
   // Scoped armor flashlight (official WoT/Blitz convention): new profiles
   // start with the shot-dependent red/amber/green surface overlay enabled;
   // players can opt out in Gameplay → Interface.
@@ -558,6 +563,9 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     }
     if (typeof storedSettings.showPerfMeter === 'boolean') settings.showPerfMeter = storedSettings.showPerfMeter;
     if (typeof storedSettings.showDebugHud === 'boolean') settings.showDebugHud = storedSettings.showDebugHud;
+    if (typeof storedSettings.showDirectionalHitValues === 'boolean') {
+      settings.showDirectionalHitValues = storedSettings.showDirectionalHitValues;
+    }
     if (typeof storedSettings.armorAimOverlay === 'boolean') settings.armorAimOverlay = storedSettings.armorAimOverlay;
     if (typeof storedSettings.alarmHeartbeat === 'boolean') settings.alarmHeartbeat = storedSettings.alarmHeartbeat;
     for (const k of VOLUME_KEYS) {
@@ -1093,7 +1101,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
 
     /** @returns {{sensitivity:number,invertY:boolean,sniperSensScale:number,
      *  aimSmoothing:number,padSensitivity:number,aiDifficulty:string,
-     *  showPerfMeter:boolean,showDebugHud:boolean,armorAimOverlay:boolean,
+     *  showPerfMeter:boolean,showDebugHud:boolean,showDirectionalHitValues:boolean,
+     *  armorAimOverlay:boolean,
      *  rmbMode:('hold'|'toggle'|'freelook')}} live settings object */
     getSettings() { return settings; },
 
@@ -1110,6 +1119,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       if (key === 'invertY') settings.invertY = !!value;
       else if (key === 'showPerfMeter') settings.showPerfMeter = !!value;
       else if (key === 'showDebugHud') settings.showDebugHud = !!value;
+      else if (key === 'showDirectionalHitValues') settings.showDirectionalHitValues = !!value;
       else if (key === 'armorAimOverlay') settings.armorAimOverlay = !!value;
       else if (key === 'alarmHeartbeat') settings.alarmHeartbeat = !!value;
       else if (key === 'sensitivity') settings.sensitivity = num(1, 0.2, 3);

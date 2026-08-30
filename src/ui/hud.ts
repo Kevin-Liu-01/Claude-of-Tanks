@@ -475,6 +475,15 @@ export function directionalHitAmount(
   return Number.isFinite(raw) ? Math.max(0, Math.round(raw || 0)) : 0;
 }
 
+/** Keep exact incoming values behind the player's explicit Interface opt-in. */
+export function directionalHitValueVisible(
+  enabled: boolean,
+  amount: number,
+  kind: HitDirection['kind'],
+): boolean {
+  return enabled && amount > 0 && kind !== 'he';
+}
+
 /**
  * Convert physical aim constraints into one stable, player-facing warning.
  * A blocked bore tints immediately, but its copy appears only after the aim
@@ -2076,6 +2085,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   // --- internal state ---
   let mode: HudMode = 'hidden';
+  let directionalHitValuesEnabled = false;
   let mmLastPaintMs = -1e9; // minimap repaint throttle (PERF: 20 Hz, time-based)
   let mmDirty = true; // force an immediate minimap paint on the next update()
   let mmBuildGeneration = 0;
@@ -2748,7 +2758,7 @@ export function initHud(bus: EventBus): HudRuntime {
       // Exact impact value rides the direction arc: red is applied damage,
       // steel is authoritative pre-mitigation damage blocked. Result words
       // remain exclusive to the canonical incoming-fire card.
-      if (e.amount > 0 && e.kind !== 'he') {
+      if (directionalHitValueVisible(directionalHitValuesEnabled, e.amount, e.kind)) {
         const valueR = R0 + thick * 0.56;
         const tx = cx + Math.cos(c) * valueR;
         const ty = cy + Math.sin(c) * valueR;
@@ -4549,6 +4559,9 @@ export function initHud(bus: EventBus): HudRuntime {
   on('ui:perfMeter', (p) => {
     netOptIn = !!(p && p.on);
     if (!netOptIn) { netEl.style.display = 'none'; netFrames = 0; netLastPaintMs = 0; }
+  });
+  on('ui:directionalHitValues', (p) => {
+    directionalHitValuesEnabled = !!(p && p.on);
   });
   // Live hotkey labels — settings.ts broadcasts at boot and after every
   // rebind/clear/reset, so the tray never lies about the player's keys.

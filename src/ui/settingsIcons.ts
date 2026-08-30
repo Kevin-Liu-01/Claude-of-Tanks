@@ -47,6 +47,7 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   aiDifficulty: { id: 'battleBots', tone: 'red' },
   showPerfMeter: { id: 'performance', tone: 'green' },
   showDebugHud: { id: 'telemetry', tone: 'violet' },
+  showDirectionalHitValues: { id: 'damage', tone: 'red' },
   armorAimOverlay: { id: 'armorFlashlight' },
   volMaster: { id: 'sound', tone: 'cyan' },
   volEngine: { id: 'engine', tone: 'amber' },

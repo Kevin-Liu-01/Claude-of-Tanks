@@ -837,6 +837,9 @@ async function ensureBattleHud() {
   const runtime = await battleHudAccess.preload();
   hud = legacyPort<MainHudRuntime>(runtime.hud);
   damagePanel = legacyPort<MainDamagePanelRuntime>(runtime.damagePanel);
+  bus.emit('ui:directionalHitValues', {
+    on: !!input.getSettings().showDirectionalHitValues,
+  });
   worldRuntime.queueMinimap();
   return runtime;
 }

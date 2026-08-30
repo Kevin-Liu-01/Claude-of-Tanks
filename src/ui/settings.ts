@@ -71,6 +71,7 @@ type BooleanSettingKey =
   | 'invertY'
   | 'showPerfMeter'
   | 'showDebugHud'
+  | 'showDirectionalHitValues'
   | 'armorAimOverlay'
   | 'alarmHeartbeat';
 type ActionDefinition = InputLayer['actionDefs'][number];
@@ -932,6 +933,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     );
     onOffRow(iface, 'FPS / ping readout (top-right · default on)', 'showPerfMeter',
       emitPerfMeter);
+    onOffRow(
+      iface,
+      'Exact values on directional hit indicators',
+      'showDirectionalHitValues',
+      emitDirectionalHitValues,
+    );
     onOffRow(iface, 'Debug telemetry dashboard (top-right)', 'showDebugHud',
       emitDebugHud);
     const armorNote = el('div', 'cot-set-note', iface);
@@ -939,6 +946,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       'In sniper view, aimed enemy armor is shaded from red (blocked) through amber to green ' +
       '(high penetration chance). The calculation follows the selected shell, range, angle, ' +
       'ricochet rules, ERA, tracks, and spaced armor.';
+    const hitValueNote = el('div', 'cot-set-note', iface);
+    hitValueNote.textContent =
+      'Optional exact HP damage and blocked-damage values appear on incoming red and steel arcs. ' +
+      'The cleaner arc-only presentation is used by default.';
     const debugNote = el('div', 'cot-set-note', iface);
     debugNote.textContent =
       'Debug telemetry folds FPS, latency, frame pacing, render load, resolution, simulation, ' +
@@ -976,6 +987,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   /** Lazy engineering telemetry follows one persisted Interface setting. */
   function emitDebugHud() {
     emit('ui:debugHud', { on: !!input.getSettings().showDebugHud });
+  }
+
+  /** Exact incoming-hit values are opt-in and update the live HUD immediately. */
+  function emitDirectionalHitValues() {
+    emit('ui:directionalHitValues', {
+      on: !!input.getSettings().showDirectionalHitValues,
+    });
   }
 
   /** Broadcast the whole mix so the audio graph re-levels its channel buses. */
@@ -1525,6 +1543,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   emitBindings();
   emitVolumes();
   emitPerfMeter(); // HUD net readout follows the persisted preference (default on)
+  emitDirectionalHitValues(); // exact incoming values are persisted and default off
 
   return api;
 }

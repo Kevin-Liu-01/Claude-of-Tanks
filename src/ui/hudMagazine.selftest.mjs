@@ -6,6 +6,7 @@ import {
   autoloaderHudState,
   aimWarningState,
   directionalHitAmount,
+  directionalHitValueVisible,
   hitConfirmVisualState,
   reloadHudFraction,
   resolveReticleAnchor,
@@ -30,6 +31,26 @@ assert.equal(
   directionalHitAmount({ damage: Number.NaN, dmgRoll: -1 }, true),
   0,
   'invalid or negative values never leak into the HUD',
+);
+assert.equal(
+  directionalHitValueVisible(false, 522, 'bounce'),
+  false,
+  'directional values stay hidden by default even when a blocked amount exists',
+);
+assert.equal(
+  directionalHitValueVisible(true, 417, 'pen'),
+  true,
+  'the Interface opt-in reveals exact applied damage values',
+);
+assert.equal(
+  directionalHitValueVisible(true, 0, 'bounce'),
+  false,
+  'zero-value indicators never reserve a label',
+);
+assert.equal(
+  directionalHitValueVisible(true, 180, 'he'),
+  false,
+  'splash arcs remain uncluttered even when exact values are enabled',
 );
 
 assert.deepEqual(

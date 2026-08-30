@@ -22,7 +22,7 @@ assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 23,
 assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
   'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay',
   'graphicsQuality', 'invertY', 'padSensitivity', 'rmbMode', 'sensitivity',
-  'showDebugHud', 'showPerfMeter', 'sniperSensScale', 'volAmbience',
+  'showDebugHud', 'showDirectionalHitValues', 'showPerfMeter', 'sniperSensScale', 'volAmbience',
   'volCombat', 'volEngine', 'volMaster', 'volUi', 'volVoice',
 ].sort(), 'every gameplay, sound, and graphics option has a settings icon');
 
