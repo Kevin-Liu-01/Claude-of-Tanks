@@ -2782,7 +2782,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     try { return new URLSearchParams(window.location.search).get(name); } catch (_) { return null; }
   }
 
-  /** Is the page on the /studio pretty route (vite.config.js rewrite)? */
+  /** Is the page on the /studio pretty route (vite.config.ts rewrite)? */
   function onStudioRoute() {
     try { return /^\/studio\/?$/.test(window.location.pathname); } catch (_) { return false; }
   }

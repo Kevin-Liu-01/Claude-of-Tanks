@@ -232,7 +232,8 @@ consumers resolve that TypeScript owner directly.
 - Type coverage grows monotonically without blocking gameplay work.
 - `src/main.ts` shrinks through tested extractions rather than a rename-only
   conversion.
-- Mixed `.js` and `.ts` imports are expected during the migration.
+- Mixed `.js` and `.ts` application imports were temporary during migration;
+  the terminal graph is strict TypeScript with `allowJs` disabled.
 - Source imports may use explicit `.ts` extensions; `allowImportingTsExtensions`
   is enabled because Vite and the Node self-tests both consume source modules
   directly and the project does not emit JavaScript through TypeScript.

@@ -1,6 +1,6 @@
 // tools/bootgate-probe.mjs — loading-screen completion gate.
 //
-// Regression: the boot bar parked at 85% forever because main.js never
+// Regression: the boot bar parked at 85% forever because main.ts never
 // reported the final 'post'/'ready' stages or called boot.ready(), so the
 // "press any key" gate never armed. Every other harness bypasses the splash
 // (?nosplash / webdriver), which is exactly why nothing caught it.

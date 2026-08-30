@@ -17,7 +17,7 @@ held through the round).
   FLIP-RETIRED convention) in all three maps + vertex REG, PLUS the
   reference-glb-loader off-origin recenter (below). Post-fix instrument:
   overall -2.6%, width -1.8%, body -6.3% — usable near-true print.
-- LOADER FIX (tools/reference-glb-loader.js, byte-identical default): the
+- LOADER FIX (tools/reference-glb-loader.ts, byte-identical default): the
   loader never recentered x/z, so a far-off-origin print blows the shared
   comparison frame apart (both masks collapse to dots), and recentering via
   root.position breaks under the page's origin-anchored gun-forward flip.

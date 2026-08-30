@@ -1,5 +1,90 @@
 import * as THREE from 'three';
 
+type Axis = 0 | 1 | 2;
+type Vec2Tuple = readonly [number, number];
+type Vec3Tuple = readonly [number, number, number];
+
+interface AuditSettings {
+  readonly planeEpsilonM: number;
+  readonly normalEpsilon: number;
+  readonly areaEpsilonM2: number;
+  readonly includeSameObject: boolean;
+}
+
+interface ProjectedTriangle {
+  readonly projected: Vec2Tuple[];
+  readonly minU: number;
+  readonly maxU: number;
+  readonly minV: number;
+  readonly maxV: number;
+}
+
+interface SurfaceDescription {
+  readonly object: string;
+  readonly path: string;
+  readonly material: string;
+  readonly materialIndex: number;
+  readonly depthLayer: number | null;
+}
+
+interface SurfaceTriangle extends ProjectedTriangle {
+  readonly objectId: number;
+  readonly surfaceId: string;
+  readonly object: string;
+  readonly path: string;
+  readonly material: string;
+  readonly materialIndex: number;
+  readonly depthLayer: number | null;
+  readonly depthKey: string;
+  readonly normal: Vec3Tuple;
+  readonly planeNormal: Vec3Tuple;
+  readonly planeDistance: number;
+  readonly objectRef: THREE.Mesh;
+  readonly points: readonly [Vec3Tuple, Vec3Tuple, Vec3Tuple];
+  readonly areaM2: number;
+  readonly droppedAxis: Axis;
+}
+
+interface FindingSample {
+  readonly point: Vec3Tuple;
+  readonly normal: Vec3Tuple;
+}
+
+interface InternalFinding {
+  readonly plane: string;
+  readonly surfaces: SurfaceDescription[];
+  areaM2: number;
+  trianglePairs: number;
+  readonly sampleTriangle: (readonly [Vec3Tuple, Vec3Tuple, Vec3Tuple])[];
+  readonly _objectRefs: THREE.Mesh[];
+  readonly _samples: FindingSample[];
+  readonly depthMitigated: boolean;
+  exteriorSample?: Vec3Tuple | null;
+}
+
+export type CoplanarFinding = Omit<InternalFinding, '_objectRefs' | '_samples'>;
+
+export interface CoplanarAuditResult {
+  readonly settings: AuditSettings;
+  readonly stats: {
+    readonly objects: number;
+    readonly triangles: number;
+    readonly planeGroups: number;
+    readonly candidatePairs: number;
+    readonly findings: number;
+    readonly rawFindings: number;
+    readonly exteriorFindings: number;
+    readonly occludedFindings: number;
+    readonly depthMitigatedFindings: number;
+    readonly depthMitigatedAreaM2: number;
+    readonly visibilityRaycasts: number;
+    readonly overlapAreaM2: number;
+    readonly skipped: { instancedMeshes: number; batchedMeshes: number; mitigatedMaterials: number };
+  };
+  readonly findings: CoplanarFinding[];
+  readonly mitigatedFindings: CoplanarFinding[];
+}
+
 const DEFAULTS = Object.freeze({
   planeEpsilonM: 1e-5,
   normalEpsilon: 1e-5,
@@ -7,30 +92,30 @@ const DEFAULTS = Object.freeze({
   includeSameObject: false,
 });
 
-function objectPath(object, root) {
-  const names = [];
-  for (let node = object; node; node = node.parent) {
+function objectPath(object: THREE.Object3D, root: THREE.Object3D): string {
+  const names: string[] = [];
+  for (let node: THREE.Object3D | null = object; node; node = node.parent) {
     names.push(node.name || node.type || 'Object3D');
     if (node === root) break;
   }
   return names.reverse().join('/');
 }
 
-function effectivelyVisible(object, root) {
-  for (let node = object; node; node = node.parent) {
+function effectivelyVisible(object: THREE.Object3D, root: THREE.Object3D): boolean {
+  for (let node: THREE.Object3D | null = object; node; node = node.parent) {
     if (!node.visible) return false;
     if (node === root) return true;
   }
   return false;
 }
 
-function materialAt(object, materialIndex) {
+function materialAt(object: THREE.Mesh, materialIndex: number): THREE.Material | undefined {
   return Array.isArray(object.material)
     ? object.material[materialIndex] || object.material[0]
     : object.material;
 }
 
-function materialIndexAt(geometry, offset) {
+function materialIndexAt(geometry: THREE.BufferGeometry, offset: number): number {
   if (!geometry.groups?.length) return 0;
   for (const group of geometry.groups) {
     if (offset >= group.start && offset < group.start + group.count) {
@@ -40,12 +125,19 @@ function materialIndexAt(geometry, offset) {
   return 0;
 }
 
-function materialIsRasterRelevant(material) {
+function materialIsRasterRelevant(
+  material: THREE.Material | undefined,
+): material is THREE.Material {
   return !!material && material.visible !== false && material.colorWrite !== false
     && (material.opacity ?? 1) > 0;
 }
 
-function canonicalPlane(normal, point, planeEpsilonM, normalEpsilon) {
+function canonicalPlane(
+  normal: THREE.Vector3,
+  point: THREE.Vector3,
+  planeEpsilonM: number,
+  normalEpsilon: number,
+): { readonly normal: Vec3Tuple; readonly distance: number; readonly key: string } {
   let sign = 1;
   if (Math.abs(normal.x) > normalEpsilon) sign = normal.x < 0 ? -1 : 1;
   else if (Math.abs(normal.y) > normalEpsilon) sign = normal.y < 0 ? -1 : 1;
@@ -54,15 +146,15 @@ function canonicalPlane(normal, point, planeEpsilonM, normalEpsilon) {
   const ny = normal.y * sign;
   const nz = normal.z * sign;
   const distance = -(nx * point.x + ny * point.y + nz * point.z);
-  const q = (value, epsilon) => Math.round(value / epsilon);
+  const q = (value: number, epsilon: number): number => Math.round(value / epsilon);
   return {
-    normal: [nx, ny, nz],
+    normal: [nx, ny, nz] as const,
     distance,
     key: `${q(nx, normalEpsilon)},${q(ny, normalEpsilon)},${q(nz, normalEpsilon)},${q(distance, planeEpsilonM)}`,
   };
 }
 
-function projectionAxis(normal) {
+function projectionAxis(normal: Vec3Tuple): Axis {
   const ax = Math.abs(normal[0]);
   const ay = Math.abs(normal[1]);
   const az = Math.abs(normal[2]);
@@ -71,13 +163,13 @@ function projectionAxis(normal) {
   return 2;
 }
 
-function project(point, droppedAxis) {
+function project(point: Vec3Tuple, droppedAxis: Axis): Vec2Tuple {
   if (droppedAxis === 0) return [point[1], point[2]];
   if (droppedAxis === 1) return [point[0], point[2]];
   return [point[0], point[1]];
 }
 
-function signedArea2D(points) {
+function signedArea2D(points: readonly Vec2Tuple[]): number {
   let twiceArea = 0;
   for (let i = 0; i < points.length; i += 1) {
     const a = points[i];
@@ -87,7 +179,13 @@ function signedArea2D(points) {
   return twiceArea * 0.5;
 }
 
-function lineIntersection(a, b, c, d, epsilon) {
+function lineIntersection(
+  a: Vec2Tuple,
+  b: Vec2Tuple,
+  c: Vec2Tuple,
+  d: Vec2Tuple,
+  epsilon: number,
+): Vec2Tuple {
   const abx = b[0] - a[0];
   const aby = b[1] - a[1];
   const cdx = d[0] - c[0];
@@ -100,14 +198,18 @@ function lineIntersection(a, b, c, d, epsilon) {
   return [a[0] + abx * t, a[1] + aby * t];
 }
 
-export function triangleIntersectionPolygon2D(lhs, rhs, epsilon = 1e-10) {
+export function triangleIntersectionPolygon2D(
+  lhs: readonly Vec2Tuple[],
+  rhs: readonly Vec2Tuple[],
+  epsilon = 1e-10,
+): Vec2Tuple[] {
   let clip = rhs;
   if (signedArea2D(clip) < 0) clip = [rhs[0], rhs[2], rhs[1]];
   let polygon = lhs.slice();
   for (let edge = 0; edge < clip.length && polygon.length; edge += 1) {
     const c = clip[edge];
     const d = clip[(edge + 1) % clip.length];
-    const inside = (point) => (d[0] - c[0]) * (point[1] - c[1])
+    const inside = (point: Vec2Tuple): boolean => (d[0] - c[0]) * (point[1] - c[1])
       - (d[1] - c[1]) * (point[0] - c[0]) >= -epsilon;
     const input = polygon;
     polygon = [];
@@ -126,12 +228,16 @@ export function triangleIntersectionPolygon2D(lhs, rhs, epsilon = 1e-10) {
   return polygon.length >= 3 ? polygon : [];
 }
 
-export function triangleIntersectionArea2D(lhs, rhs, epsilon = 1e-10) {
+export function triangleIntersectionArea2D(
+  lhs: readonly Vec2Tuple[],
+  rhs: readonly Vec2Tuple[],
+  epsilon = 1e-10,
+): number {
   const polygon = triangleIntersectionPolygon2D(lhs, rhs, epsilon);
   return polygon.length ? Math.abs(signedArea2D(polygon)) : 0;
 }
 
-function projectedTriangle(points, droppedAxis) {
+function projectedTriangle(points: readonly Vec3Tuple[], droppedAxis: Axis): ProjectedTriangle {
   const projected = points.map((point) => project(point, droppedAxis));
   const us = projected.map((point) => point[0]);
   const vs = projected.map((point) => point[1]);
@@ -144,7 +250,7 @@ function projectedTriangle(points, droppedAxis) {
   };
 }
 
-function surfaceDescription(triangle) {
+function surfaceDescription(triangle: SurfaceTriangle): SurfaceDescription {
   return {
     object: triangle.object,
     path: triangle.path,
@@ -154,8 +260,13 @@ function surfaceDescription(triangle) {
   };
 }
 
-function liftPoint(point, droppedAxis, normal, planeDistance) {
-  const lifted = [0, 0, 0];
+function liftPoint(
+  point: Vec2Tuple,
+  droppedAxis: Axis,
+  normal: Vec3Tuple,
+  planeDistance: number,
+): Vec3Tuple {
+  const lifted: [number, number, number] = [0, 0, 0];
   if (droppedAxis === 0) {
     lifted[1] = point[0];
     lifted[2] = point[1];
@@ -174,7 +285,12 @@ function liftPoint(point, droppedAxis, normal, planeDistance) {
   return lifted;
 }
 
-function exteriorSamples(root, findings, rasterMeshes, toleranceM) {
+function exteriorSamples(
+  root: THREE.Object3D,
+  findings: InternalFinding[],
+  rasterMeshes: THREE.Object3D[],
+  toleranceM: number,
+): number {
   const raycaster = new THREE.Raycaster();
   raycaster.near = 0;
   raycaster.far = 100;
@@ -193,7 +309,7 @@ function exteriorSamples(root, findings, rasterMeshes, toleranceM) {
       raycasts += 1;
       const hits = raycaster.intersectObjects(rasterMeshes, false);
       const first = hits.find((hit) => hit.distance > 1e-5);
-      if (!first || !finding._objectRefs.includes(first.object)) continue;
+      if (!first || !finding._objectRefs.some((object) => object === first.object)) continue;
       if (first.point.distanceTo(point) > toleranceM) continue;
       finding.exteriorSample = sample.point;
       break;
@@ -202,9 +318,12 @@ function exteriorSamples(root, findings, rasterMeshes, toleranceM) {
   return raycasts;
 }
 
-export function findCoplanarSurfaceOverlaps(root, options = {}) {
+export function findCoplanarSurfaceOverlaps(
+  root: THREE.Object3D,
+  options: Partial<AuditSettings> = {},
+): CoplanarAuditResult {
   const settings = { ...DEFAULTS, ...options };
-  const groups = new Map();
+  const groups = new Map<string, SurfaceTriangle[]>();
   const skipped = { instancedMeshes: 0, batchedMeshes: 0, mitigatedMaterials: 0 };
   const a = new THREE.Vector3();
   const b = new THREE.Vector3();
@@ -214,16 +333,16 @@ export function findCoplanarSurfaceOverlaps(root, options = {}) {
   const faceNormal = new THREE.Vector3();
   let triangleCount = 0;
   let objectOrdinal = 0;
-  const rasterMeshes = [];
+  const rasterMeshes: THREE.Mesh[] = [];
 
   root.updateMatrixWorld(true);
   root.traverse((object) => {
-    if (!object.isMesh || !object.geometry || !effectivelyVisible(object, root)) return;
-    if (object.isInstancedMesh) {
+    if (!(object instanceof THREE.Mesh) || !effectivelyVisible(object, root)) return;
+    if (object instanceof THREE.InstancedMesh) {
       skipped.instancedMeshes += 1;
       return;
     }
-    if (object.isBatchedMesh) {
+    if (object instanceof THREE.BatchedMesh) {
       skipped.batchedMeshes += 1;
       return;
     }
@@ -242,7 +361,7 @@ export function findCoplanarSurfaceOverlaps(root, options = {}) {
     if ((Array.isArray(object.material) ? object.material : [object.material])
       .some(materialIsRasterRelevant)) rasterMeshes.push(object);
     const path = objectPath(object, root);
-    const vertexIndex = (offset) => index ? index.getX(offset) : offset;
+    const vertexIndex = (offset: number): number => index ? index.getX(offset) : offset;
 
     for (let offset = start; offset + 2 < end; offset += 3) {
       const materialIndex = materialIndexAt(geometry, offset);
@@ -261,10 +380,14 @@ export function findCoplanarSurfaceOverlaps(root, options = {}) {
       if (twiceArea <= settings.areaEpsilonM2 * 2) continue;
       faceNormal.multiplyScalar(1 / twiceArea);
       const plane = canonicalPlane(faceNormal, a, settings.planeEpsilonM, settings.normalEpsilon);
-      const points = [[a.x, a.y, a.z], [b.x, b.y, b.z], [c.x, c.y, c.z]];
+      const points: readonly [Vec3Tuple, Vec3Tuple, Vec3Tuple] = [
+        [a.x, a.y, a.z],
+        [b.x, b.y, b.z],
+        [c.x, c.y, c.z],
+      ];
       const droppedAxis = projectionAxis(plane.normal);
       const projected = projectedTriangle(points, droppedAxis);
-      const entry = {
+      const entry: SurfaceTriangle = {
         objectId,
         surfaceId: `${objectId}:${materialIndex}`,
         object: object.name || '(unnamed)',
@@ -293,7 +416,7 @@ export function findCoplanarSurfaceOverlaps(root, options = {}) {
     }
   });
 
-  const overlaps = new Map();
+  const overlaps = new Map<string, InternalFinding>();
   let candidatePairs = 0;
   for (const [planeKey, triangles] of groups) {
     if (triangles.length < 2) continue;
@@ -339,9 +462,16 @@ export function findCoplanarSurfaceOverlaps(root, options = {}) {
         finding.areaM2 += areaM2;
         finding.trianglePairs += 1;
         if (finding._samples.length < 32) {
-          const centroid = intersectionPolygon.reduce((sum, point) => [
-            sum[0] + point[0], sum[1] + point[1],
-          ], [0, 0]).map((value) => value / intersectionPolygon.length);
+          let sumU = 0;
+          let sumV = 0;
+          for (const point of intersectionPolygon) {
+            sumU += point[0];
+            sumV += point[1];
+          }
+          const centroid: Vec2Tuple = [
+            sumU / intersectionPolygon.length,
+            sumV / intersectionPolygon.length,
+          ];
           finding._samples.push({
             point: liftPoint(centroid, current.droppedAxis,
               current.planeNormal, current.planeDistance),
@@ -361,7 +491,9 @@ export function findCoplanarSurfaceOverlaps(root, options = {}) {
   const raycasts = exteriorSamples(root, rawFindings, rasterMeshes,
     Math.max(settings.planeEpsilonM * 8, 1e-4));
   const visibleFindings = rawFindings.filter((finding) => finding.exteriorSample);
-  const cleanFinding = ({ _objectRefs, _samples, ...finding }) => finding;
+  const cleanFinding = (
+    { _objectRefs: _discardedRefs, _samples: _discardedSamples, ...finding }: InternalFinding,
+  ): CoplanarFinding => finding;
   const findings = visibleFindings.filter((finding) => !finding.depthMitigated)
     .map(cleanFinding);
   const mitigatedFindings = visibleFindings.filter((finding) => finding.depthMitigated)

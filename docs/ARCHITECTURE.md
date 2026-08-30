@@ -608,7 +608,7 @@ the eager facade for Node audits and release tools that intentionally sweep the
 whole roster. Geometry-derived combat-anatomy and vehicle-marking receipts use
 the same demand boundary through `combatAnatomyCalibrationLoader.ts` and
 `vehicleMarkingSeatLoader.ts`. Their typed registries validate each generated
-record before publication; grouped payloads remain generator-owned JavaScript
+record before publication; grouped payloads remain generator-owned TypeScript
 and are never imported directly by browser feature code.
 Geometry bar: per tank-roster.md §*.5 visual specs — composed BufferGeometries
 (mergeGeometries), correct silhouettes, road wheels + sprocket/idler + track band,

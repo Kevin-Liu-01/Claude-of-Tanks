@@ -88,17 +88,20 @@ Run strict TypeScript validation for migrated modules:
 
     npm run typecheck
 
-TypeScript migration is incremental and ownership-based. Extract one coherent
-runtime owner, define its strict public contract, add a focused self-test, and
-preserve behavior before widening the boundary. Do not rename a large legacy
-file and suppress checking. The durable policy and completed owner sequence are
-recorded in `docs/decisions/0001-incremental-typescript.md`. The completed
-migration removes `allowJs`; until then, every slice must reduce the runtime
-JavaScript inventory without adding unchecked replacement modules.
-At ADR 0297, one runtime JavaScript owner remains: the Merkava vehicle
-profile. The Leopard family now compiles against the same strict procedural
-builder contract as its German and Swedish derivatives.
-Generators must follow migrations too: `tools/map-thumbs.mjs`, for example,
+The application, Vercel middleware, Vite configuration, and browser tooling
+are strict TypeScript. `allowJs` is disabled, so a JavaScript application module
+cannot silently re-enter the checked graph. The migration remains
+ownership-based: extract one coherent owner, define its public contract, add a
+focused self-test, and preserve behavior before widening the boundary. Do not
+rename a large file and suppress checking. The durable policy and completed
+owner sequence are recorded in `docs/decisions/0001-incremental-typescript.md`;
+ADR 0298 records the terminal checked boundary.
+
+Node CLI, generator, and self-test entrypoints intentionally retain `.mjs`
+where they are executable harnesses rather than shipped application modules.
+They import the checked TypeScript owners directly and are covered by the
+ordered test inventory.
+Generators must preserve typed output: `tools/map-thumbs.mjs`, for example,
 writes `src/ui/mapThumbs.ts` so regeneration cannot restore a deleted `.js`
 owner.
 

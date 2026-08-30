@@ -2196,11 +2196,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   const openDocs = () => {
     emit('ui:click', {});
-    window.location.href = '/docs'; // pretty route (vite.config.js rewrite)
+    window.location.href = '/docs'; // pretty route (vite.config.ts rewrite)
   };
   const openHome = () => {
     emit('ui:click', {});
-    window.location.href = '/home'; // pretty route (vite.config.js rewrite)
+    window.location.href = '/home'; // pretty route (vite.config.ts rewrite)
   };
   requiredElement<HTMLElement>(root, '[data-nav="studio"]').addEventListener('click', openStudio);
   requiredElement<HTMLElement>(root, '[data-nav="gallery"]').addEventListener('click', () => openSelectedInGallery());

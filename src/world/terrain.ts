@@ -165,7 +165,7 @@ interface SplatConfig {
   rippleAmp?: number;
 }
 
-interface TerrainMapConfig extends HorizonMapConfig {
+export interface TerrainMapConfig extends HorizonMapConfig {
   terrain?: Partial<TerrainSettings>;
   spawns?: SpawnConfig;
   splat?: SplatConfig;

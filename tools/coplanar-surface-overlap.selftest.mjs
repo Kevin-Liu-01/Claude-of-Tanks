@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {
   findCoplanarSurfaceOverlaps,
   triangleIntersectionArea2D,
-} from './coplanar-surface-overlap.js';
+} from './coplanar-surface-overlap.ts';
 
 assert.equal(triangleIntersectionArea2D(
   [[0, 0], [2, 0], [0, 2]],

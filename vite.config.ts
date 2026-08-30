@@ -1,4 +1,4 @@
-// vite.config.js — LOADING PERF (boot r9).
+// vite.config.ts — LOADING PERF (boot r9).
 //
 // The dev-server module graph was the single biggest boot item (~1.0 s of the
 // ~3.5 s headless boot): ~76 ES modules discovered one import-depth level at a
@@ -21,6 +21,7 @@
 // and every headless tool that calls createServer() inherits this config.
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve, relative } from 'node:path';
+import { defineConfig, type Connect } from 'vite';
 import { renderProductStats } from './src/productStats.ts';
 
 /**
@@ -31,13 +32,14 @@ import { renderProductStats } from './src/productStats.ts';
  * @param {string} root project root
  * @returns {string[]} root-absolute URL paths, entry first
  */
-function reachableSrcModules(root) {
+function reachableSrcModules(root: string): string[] {
   const entry = resolve(root, 'src/main.ts');
-  const seen = new Set();
-  const queue = [entry];
+  const seen = new Set<string>();
+  const queue: string[] = [entry];
   const specRe = /(?:import|export)\s+(?:[^'"]*?\sfrom\s*)?['"]([^'"]+)['"]/g;
   while (queue.length) {
     const file = queue.pop();
+    if (!file) continue;
     if (seen.has(file)) continue;
     let text;
     try { text = readFileSync(file, 'utf8'); } catch (_) { continue; }
@@ -61,7 +63,7 @@ function reachableSrcModules(root) {
  * same two rewrites for the deployed host). Queries pass through
  * (/studio?map=desert works).
  */
-function rewriteRoutes(req, res, next) {
+const rewriteRoutes: Connect.NextHandleFunction = (req, res, next) => {
   const url = req.url || '';
   const qi = url.indexOf('?');
   const path = qi === -1 ? url : url.slice(0, qi);
@@ -83,9 +85,9 @@ function rewriteRoutes(req, res, next) {
     req.url = `/docs-${topic}.html${query}`;
   }
   next();
-}
+};
 
-export default {
+export default defineConfig({
   plugins: [
     {
       name: 'cot-product-stats',
@@ -165,4 +167,4 @@ export default {
       'three/examples/jsm/geometries/RoundedBoxGeometry.js',
     ],
   },
-};
+});

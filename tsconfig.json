@@ -5,8 +5,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "types": ["node"],
-    "allowJs": true,
-    "checkJs": false,
+    "allowJs": false,
     "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
@@ -14,5 +13,5 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "server/**/*.ts", "api/**/*.ts", "middleware.js"]
+  "include": ["src/**/*.ts", "server/**/*.ts", "api/**/*.ts", "tools/**/*.ts", "vite.config.ts", "middleware.ts"]
 }

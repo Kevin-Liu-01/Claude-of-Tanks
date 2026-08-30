@@ -1,12 +1,68 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const regex = (pattern) => pattern ? new RegExp(pattern) : null;
+type SemanticOwner = 'turret' | 'gun' | 'unclassified';
 
-function matchingNodes(root, pattern) {
+interface ComponentSubsetRule {
+  readonly node: string;
+  readonly owner?: SemanticOwner;
+  readonly minVertices?: number;
+  readonly maxVertices?: number;
+  readonly worldMinY?: number;
+  readonly worldMaxY?: number;
+  readonly excludeRemainderFromHull?: boolean;
+}
+
+interface ReferenceGlbConfig {
+  readonly path: string;
+  readonly fixedMount?: boolean;
+  readonly turretNode?: string;
+  readonly gunNode?: string;
+  readonly turretFollowers?: string;
+  readonly gunFollowers?: string;
+  readonly autoPivot?: boolean;
+  readonly pivot?: readonly [number, number, number];
+  readonly yawOffset?: number;
+  readonly turretYaw?: number;
+  readonly turretComponentSubset?: ComponentSubsetRule;
+  readonly componentSubsets?: readonly ComponentSubsetRule[];
+  readonly maskFloorOracle?: boolean;
+  readonly brightenOracle?: boolean;
+}
+
+export interface ReferenceGlbSource {
+  readonly glb?: ReferenceGlbConfig;
+}
+
+export interface ReferenceVehicleSpec {
+  readonly dims?: { readonly widthM?: number };
+}
+
+interface ConnectedComponent {
+  readonly indices: number[];
+  readonly vertices: Set<number>;
+  readonly bounds: THREE.Box3;
+}
+
+interface ConnectedSubset {
+  readonly subsets: THREE.Mesh[];
+  readonly remainders: THREE.Mesh[];
+}
+
+type EmissiveMaterial = THREE.MeshLambertMaterial | THREE.MeshPhongMaterial
+  | THREE.MeshStandardMaterial | THREE.MeshToonMaterial;
+
+const regex = (pattern: string | null | undefined): RegExp | null => (
+  pattern ? new RegExp(pattern) : null
+);
+
+function matchingNodes(
+  root: THREE.Object3D,
+  pattern: string | null | undefined,
+): THREE.Object3D[] {
   const re = regex(pattern);
   if (!re) return [];
-  const matches = [];
+  const matches: THREE.Object3D[] = [];
   root.traverse((node) => {
     re.lastIndex = 0;
     if (re.test(node.name || '')) matches.push(node);
@@ -14,12 +70,12 @@ function matchingNodes(root, pattern) {
   return matches;
 }
 
-function attachAll(parent, nodes) {
+function attachAll(parent: THREE.Object3D, nodes: readonly THREE.Object3D[]): void {
   // Parents first prevents a selected child from being transformed twice
   // when an oracle pattern names both a complete station and one fitting.
   const selected = new Set(nodes);
   const roots = nodes.filter((node) => {
-    for (let p = node.parent; p; p = p.parent) {
+    for (let p: THREE.Object3D | null = node.parent; p; p = p.parent) {
       if (selected.has(p)) return false;
     }
     return true;
@@ -32,19 +88,24 @@ function attachAll(parent, nodes) {
 // fittings, and interior pieces into a generic Object_N mesh; a node-name
 // regex alone cannot form an honest component mask. This remains strictly in
 // the tool-only oracle loader and never supplies production geometry.
-function extractConnectedSubset(root, rule, label) {
+function extractConnectedSubset(
+  root: THREE.Object3D,
+  rule: ComponentSubsetRule,
+  label: string,
+): ConnectedSubset {
   if (!rule?.node) return { subsets: [], remainders: [] };
-  const subsets = [];
-  const remainders = [];
+  const subsets: THREE.Mesh[] = [];
+  const remainders: THREE.Mesh[] = [];
   const scratch = new THREE.Vector3();
   for (const node of matchingNodes(root, rule.node)) {
-    if (!node.isMesh || !node.geometry?.index || !node.geometry?.attributes?.position) continue;
+    if (!(node instanceof THREE.Mesh) || !node.geometry.index
+      || !node.geometry.attributes.position || !node.parent) continue;
     node.updateWorldMatrix(true, false);
     const geometry = node.geometry;
     const index = geometry.index.array;
     const positions = geometry.attributes.position;
     const parents = Array.from({ length: positions.count }, (_, vertex) => vertex);
-    const find = (vertex) => {
+    const find = (vertex: number): number => {
       let rootVertex = vertex;
       while (parents[rootVertex] !== rootVertex) rootVertex = parents[rootVertex];
       while (parents[vertex] !== vertex) {
@@ -54,7 +115,7 @@ function extractConnectedSubset(root, rule, label) {
       }
       return rootVertex;
     };
-    const union = (left, right) => {
+    const union = (left: number, right: number): void => {
       left = find(left);
       right = find(right);
       if (left !== right) parents[right] = left;
@@ -63,12 +124,12 @@ function extractConnectedSubset(root, rule, label) {
       union(index[cursor], index[cursor + 1]);
       union(index[cursor], index[cursor + 2]);
     }
-    const components = new Map();
+    const components = new Map<number, ConnectedComponent>();
     for (let cursor = 0; cursor < index.length; cursor += 3) {
       const componentRoot = find(index[cursor]);
       let component = components.get(componentRoot);
       if (!component) {
-        component = { indices: [], vertices: new Set(), bounds: new THREE.Box3() };
+        component = { indices: [], vertices: new Set<number>(), bounds: new THREE.Box3() };
         components.set(componentRoot, component);
       }
       for (let offset = 0; offset < 3; offset++) {
@@ -83,8 +144,8 @@ function extractConnectedSubset(root, rule, label) {
         component.bounds.expandByPoint(scratch);
       }
     }
-    const selected = [];
-    const remaining = [];
+    const selected: number[] = [];
+    const remaining: number[] = [];
     for (const component of components.values()) {
       const vertexCount = component.vertices.size;
       const matches = (rule.minVertices == null || vertexCount >= rule.minVertices)
@@ -94,9 +155,11 @@ function extractConnectedSubset(root, rule, label) {
       (matches ? selected : remaining).push(...component.indices);
     }
     if (!selected.length || !remaining.length) continue;
-    const IndexArray = geometry.index.array.constructor;
+    const makeIndex = (values: readonly number[]): Uint16Array | Uint32Array => (
+      positions.count > 0xffff ? new Uint32Array(values) : new Uint16Array(values)
+    );
     const subsetIndexed = geometry.clone();
-    subsetIndexed.setIndex(new THREE.BufferAttribute(IndexArray.from(selected), 1));
+    subsetIndexed.setIndex(new THREE.BufferAttribute(makeIndex(selected), 1));
     // Compact the position stream as well as the index stream. Box3 and
     // BufferGeometry.computeBoundingBox intentionally scan every attribute
     // vertex, including vertices no longer referenced by a subset index. A
@@ -108,7 +171,7 @@ function extractConnectedSubset(root, rule, label) {
     subsetGeometry.computeBoundingBox();
     subsetGeometry.computeBoundingSphere();
     const remainingIndexed = geometry.clone();
-    remainingIndexed.setIndex(new THREE.BufferAttribute(IndexArray.from(remaining), 1));
+    remainingIndexed.setIndex(new THREE.BufferAttribute(makeIndex(remaining), 1));
     const remainingGeometry = remainingIndexed.toNonIndexed();
     remainingIndexed.dispose();
     remainingGeometry.clearGroups();
@@ -134,7 +197,53 @@ function extractConnectedSubset(root, rule, label) {
  * profile, and critic pages. It never enters createTank or a production
  * bundle and it never copies source geometry into an authored vehicle.
  */
-export async function loadReferenceGlb(source, specId, spec) {
+function isEmissiveMaterial(material: THREE.Material): material is EmissiveMaterial {
+  return material instanceof THREE.MeshLambertMaterial
+    || material instanceof THREE.MeshPhongMaterial
+    || material instanceof THREE.MeshStandardMaterial
+    || material instanceof THREE.MeshToonMaterial;
+}
+
+function normalizeOracleMaterial(
+  sourceMaterial: THREE.Material,
+  mode: 'floor' | 'bright',
+): THREE.Material {
+  const material = sourceMaterial.clone();
+  if (isEmissiveMaterial(material)) {
+    if (mode === 'floor') {
+      material.emissive.setRGB(0.24, 0.24, 0.24);
+    } else {
+      material.emissive.setHex(0xffffff);
+      if (material.map) material.emissiveMap = material.map;
+      material.emissiveIntensity = 4;
+    }
+  }
+  if (mode === 'floor') material.side = THREE.DoubleSide;
+  material.transparent = false;
+  material.opacity = 1;
+  material.alphaTest = 0;
+  material.depthWrite = true;
+  material.needsUpdate = true;
+  return material;
+}
+
+function replaceMeshMaterials(
+  root: THREE.Object3D,
+  mode: 'floor' | 'bright',
+): void {
+  root.traverse((node) => {
+    if (!(node instanceof THREE.Mesh)) return;
+    const materials = Array.isArray(node.material) ? node.material : [node.material];
+    const replacements = materials.map((material) => normalizeOracleMaterial(material, mode));
+    node.material = replacements.length === 1 ? replacements[0]! : replacements;
+  });
+}
+
+export async function loadReferenceGlb(
+  source: ReferenceGlbSource | null | undefined,
+  specId: string,
+  spec: ReferenceVehicleSpec | null | undefined,
+): Promise<{ readonly root: THREE.Group; readonly specId: string }> {
   const cfg = source?.glb;
   if (!cfg?.path) throw new Error(`${specId} has no source GLB path`);
 
@@ -183,19 +292,17 @@ export async function loadReferenceGlb(source, specId, spec) {
     // of connected-island rules and route only the selected islands to their
     // honest articulation owner. Remainders stay under authoredFrame (hull)
     // unless the rule explicitly marks them as non-comparable internals.
-    const semanticSubsets = { turret: [], gun: [], unclassified: [] };
-    const subsetRules = [
-      ...(cfg.turretComponentSubset
-        ? [{ ...cfg.turretComponentSubset, owner: 'turret' }]
-        : []),
-      ...(Array.isArray(cfg.componentSubsets) ? cfg.componentSubsets : []),
-    ];
+    const semanticSubsets: Record<SemanticOwner, THREE.Mesh[]> = {
+      turret: [], gun: [], unclassified: [],
+    };
+    const subsetRules: ComponentSubsetRule[] = [];
+    if (cfg.turretComponentSubset) {
+      subsetRules.push({ ...cfg.turretComponentSubset, owner: 'turret' });
+    }
+    if (cfg.componentSubsets) subsetRules.push(...cfg.componentSubsets);
     for (let index = 0; index < subsetRules.length; index++) {
       const rule = subsetRules[index];
-      const owner = rule.owner || 'unclassified';
-      if (!(owner in semanticSubsets)) {
-        throw new Error(`${specId} component subset has invalid owner ${owner}`);
-      }
+      const owner: SemanticOwner = rule.owner || 'unclassified';
       const subset = extractConnectedSubset(
         gltf.scene, rule, `${owner}Subset${index}`);
       semanticSubsets[owner].push(...subset.subsets);
@@ -286,26 +393,10 @@ export async function loadReferenceGlb(source, specId, spec) {
   // authored surface clears the threshold. Opt-in per registration; do not
   // combine with brightenOracle (its emissive×map product would re-darken).
   if (cfg.maskFloorOracle) {
-    root.traverse((node) => {
-      if (!node.isMesh || !node.material) return;
-      const materials = Array.isArray(node.material) ? node.material : [node.material];
-      node.material = materials.map((sourceMaterial) => {
-        const material = sourceMaterial.clone();
-        if (material.emissive) material.emissive.setRGB(0.24, 0.24, 0.24);
-        // Rip-class prints also carry inward-wound faces (aprons / band
-        // bottoms) that FrontSide renders cull into the same hole class —
-        // force DoubleSide so the authored surface is mask-visible from
-        // every gate camera (§C.1 mirrored to the reference side).
-        material.side = THREE.DoubleSide;
-        material.transparent = false;
-        material.opacity = 1;
-        material.alphaTest = 0;
-        material.depthWrite = true;
-        material.needsUpdate = true;
-        return material;
-      });
-      if (node.material.length === 1) [node.material] = node.material;
-    });
+    // Rip-class prints also carry inward-wound faces (aprons / band bottoms)
+    // that FrontSide culls into the same hole class. DoubleSide keeps the
+    // authored surface mask-visible from every gate camera.
+    replaceMeshMaterials(root, 'floor');
   }
 
   // A few legacy source sheets bake almost all illumination into a very dark
@@ -313,23 +404,7 @@ export async function loadReferenceGlb(source, specId, spec) {
   // unreadable. Opt-in emissive reuse reveals the authored texture without
   // replacing it or changing any geometry.
   if (cfg.brightenOracle) {
-    root.traverse((node) => {
-      if (!node.isMesh || !node.material) return;
-      const materials = Array.isArray(node.material) ? node.material : [node.material];
-      node.material = materials.map((sourceMaterial) => {
-        const material = sourceMaterial.clone();
-        if (material.emissive) material.emissive.setHex(0xffffff);
-        if ('emissiveMap' in material && material.map) material.emissiveMap = material.map;
-        if ('emissiveIntensity' in material) material.emissiveIntensity = 4;
-        material.transparent = false;
-        material.opacity = 1;
-        material.alphaTest = 0;
-        material.depthWrite = true;
-        material.needsUpdate = true;
-        return material;
-      });
-      if (node.material.length === 1) [node.material] = node.material;
-    });
+    replaceMeshMaterials(root, 'bright');
   }
 
   root.userData.__glbSwapped = true;

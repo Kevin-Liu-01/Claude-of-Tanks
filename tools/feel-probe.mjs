@@ -114,7 +114,7 @@ try {
       await sleep(400);
     }
     // The splash is the sibling agent's in-flight work (src/ui/bootScreen.ts is
-    // not wired into main.js yet, so nothing removes the inline markup). Force
+    // not wired into main.ts yet, so nothing removes the inline markup). Force
     // it out of the way HERE, in the harness only — never by editing their
     // files — so the probe's screenshots show the actual game.
     results.bootScreenStuck = await page.evaluate(() => {

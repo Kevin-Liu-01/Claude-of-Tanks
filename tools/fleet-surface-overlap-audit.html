@@ -3,7 +3,7 @@
 <title>Fleet coplanar surface overlap audit</title>
 <script type="module">
 import { createTank } from '/src/vehicles/tankFactory.ts';
-import { findCoplanarSurfaceOverlaps } from '/tools/coplanar-surface-overlap.js';
+import { findCoplanarSurfaceOverlaps } from '/tools/coplanar-surface-overlap.ts';
 
 const params = new URLSearchParams(location.search);
 const id = params.get('id') || 'type10b';

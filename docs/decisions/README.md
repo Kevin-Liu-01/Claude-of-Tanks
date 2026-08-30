@@ -306,3 +306,5 @@ runtime documents remain authoritative for behavior.
 - [0294 — The Abrams profile family has a strict TypeScript owner](0294-type-abrams-profile-family.md)
 - [0295 — Garage variants are open map-bound staging areas](0295-open-map-garage-staging.md)
 - [0296 — The procedural tank factory has a strict TypeScript owner](0296-type-procedural-tank-factory.md)
+- [0297 — The Leopard profile family has a strict TypeScript owner](0297-type-leopard-profile-family.md)
+- [0298 — The checked application graph is entirely TypeScript](0298-complete-typescript-application-graph.md)

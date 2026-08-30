@@ -182,9 +182,10 @@ does not reimplement their state machines.
 ## Application lifecycle
 
 `src/main.ts` is the strict TypeScript composition root. It declares startup
-and frame order, narrows DOM state, and connects typed owners. JavaScript
-subsystems that have not migrated yet cross explicit `unknown` adapters at
-this boundary instead of leaking unchecked values into typed code.
+and frame order, narrows DOM state, and connects typed owners. Every shipped
+application subsystem now enters through the checked TypeScript graph;
+`allowJs` is disabled so unchecked runtime modules cannot leak through the
+composition boundary.
 `src/app/mainContracts.ts` contains the root's type-only compatibility ports
 and browser QA globals; it owns no runtime initialization or lifecycle state.
 `src/game/stateCore.ts` is the shared session boundary,
@@ -195,12 +196,11 @@ from live battle entities and gives setup, bot doctrine, collision, shells,
 damage events, match-mode adapters, and fixed-step simulation explicit
 contracts without moving them onto the Garage boot path.
 
-Migration is boundary-first, not extension-first. A JavaScript subsystem moves
-only when its coherent owner and focused behavioral test are clear. A rename
-to `.ts`, broad `any`, or `@ts-nocheck` does not count as migration. The typed
-composition root therefore carries concrete port contracts and fail-fast DOM
-requirements rather than suppressing unresolved values. Refactor commits
-preserve rendering and gameplay; behavior changes land separately.
+Migration remains boundary-first, not extension-first. A rename to `.ts`,
+broad `any`, or `@ts-nocheck` does not count as migration. The typed composition
+root therefore carries concrete port contracts and fail-fast DOM requirements
+rather than suppressing unresolved values. Refactor commits preserve rendering
+and gameplay; behavior changes land separately.
 
 `src/game/battlePresentationRuntime.ts` is the hot rendered-vehicle owner. It
 separates fixed-step solo interpolation from already-smoothed network poses and

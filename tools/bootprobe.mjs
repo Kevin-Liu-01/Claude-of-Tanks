@@ -33,7 +33,7 @@ await cdp.send('Profiler.start');
 
 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
-// __BOOT_MS starts when main.js evaluates; `imports` covers navigation through
+// __BOOT_MS starts when main.ts evaluates; `imports` covers navigation through
 // module graph fetch/evaluation. Their sum is the app's exact ready timestamp
 // on the navigation time origin and cannot miss readiness like the old 25 ms
 // polling interval (which occasionally left this at -1).

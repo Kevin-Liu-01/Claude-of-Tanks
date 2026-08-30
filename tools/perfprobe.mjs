@@ -471,7 +471,7 @@ try {
     { timeout: 30000, polling: 250 },
   ).catch(() => console.error('[perf] GLB queue did not settle within 30 s — window opens anyway'));
   if (sceneMode === 'garage') {
-    // The staged-battle visual pump (main.js pumpStagedVisuals) streams the
+    // The staged-battle visual pump (main.ts pumpStagedVisuals) streams the
     // roster in one-per-idle-slice DURING the garage dwell. Measuring across
     // that pump bills one-time bake cost to the steady-state garage gate, so
     // wait for every staged entity to own a visual (bounded).

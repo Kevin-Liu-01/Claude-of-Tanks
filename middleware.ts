@@ -1,5 +1,3 @@
-// @ts-check
-
 import { next } from '@vercel/functions';
 
 const DEPLOYMENT_COOKIE = '__vdpl';
@@ -18,7 +16,7 @@ export function deploymentResetCookie() {
  * @param {string} requestUrl
  * @returns {string | null}
  */
-export function deploymentResetLocation(requestUrl) {
+export function deploymentResetLocation(requestUrl: string): string | null {
   const url = new URL(requestUrl);
   if (!url.searchParams.has(DEPLOYMENT_RESET_PARAM)) return null;
   url.searchParams.delete(DEPLOYMENT_RESET_PARAM);
@@ -28,15 +26,18 @@ export function deploymentResetLocation(requestUrl) {
 /** Build the official Vercel deployment pin without exposing the deployment
  * identifier to app code or giving preload and import URLs different names.
  *
- * Keep this deployment adapter as checked JavaScript until Vercel's Node
- * builder supports the repository's TypeScript 7 toolchain. Domain modules
- * continue to migrate to strict TypeScript independently of this boundary.
+ * Keep this deployment adapter dependency-light: Vercel discovers the root
+ * TypeScript middleware directly, while application code remains outside the
+ * edge request path.
  *
  * @param {string | null} cookieHeader
  * @param {string | undefined} deploymentId
  * @returns {string | null}
  */
-export function deploymentPinCookie(cookieHeader, deploymentId) {
+export function deploymentPinCookie(
+  cookieHeader: string | null,
+  deploymentId: string | undefined,
+): string | null {
   const id = String(deploymentId || '').trim();
   if (!id || new RegExp(`(?:^|;\\s*)${DEPLOYMENT_COOKIE}=`).test(cookieHeader || '')) {
     return null;
@@ -54,7 +55,7 @@ export const config = {
 };
 
 /** @param {Request} request */
-export default function middleware(request) {
+export default function middleware(request: Request): Response {
   const resetLocation = deploymentResetLocation(request.url);
   if (resetLocation) {
     // A stale __vdpl routes this request to the old deployment first. Expire

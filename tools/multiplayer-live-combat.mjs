@@ -523,7 +523,7 @@ async function beginHostLight(page, lobby) {
       import('/src/net/privateMatchHandoff.ts'),
       import('/server/dedicatedWorldCollision.ts'),
       // Side-effect-only fleet registration. The full app imports this chain
-      // through main.js; the lightweight authority page deliberately does not.
+      // through main.ts; the lightweight authority page deliberately does not.
       import('/src/vehicles/tankFactory.ts'),
     ]);
     state.worldCollision = createDedicatedWorldCollision(lobbyState.mapId);

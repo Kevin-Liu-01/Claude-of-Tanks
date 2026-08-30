@@ -364,7 +364,7 @@ NO live GLB (the main tree's community models are .bak-only right now;
 kv2 had no .bak at all), so the print bytes were restored from the
 committed-build `dist/` copy, md5-verified `8ed9da91023bd5cede54a8f3c0d69834`
 byte-identical across dist/ + two mq-r* worktree copies. Loads clean
-via tools/reference-glb-loader.js (9 meshes, width-normalized box
+via tools/reference-glb-loader.ts (9 meshes, width-normalized box
 x ±1.66 / y 0..3.287 / z ±3.5972). NOTE for the critic:
 tmp-tank-critic.html has NO kv2 override row (MODEL_SOURCE kv2 is
 'procedural' since dual-gate graduation) — pair rigs need the page-local

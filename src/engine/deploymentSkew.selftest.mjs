@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import config from '../../vite.config.js';
+import config from '../../vite.config.ts';
 import middleware, {
   config as middlewareConfig,
   deploymentPinCookie,
   deploymentResetCookie,
   deploymentResetLocation,
-} from '../../middleware.js';
+} from '../../middleware.ts';
 
 for (const route of ['/gallery', '/gallery/', '/gallery.html']) {
   assert.ok(middlewareConfig.matcher.includes(route),
