@@ -26,10 +26,32 @@ const maxFirstVisitWallMs = Math.max(1000,
 const maxFirstVisitAppMs = Math.max(500,
   Number(option('max-app-ms', '2500')) || 2500);
 const compactOutput = option('summary', '0') === '1';
-const browser = await puppeteer.launch({
+const launchBrowser = () => puppeteer.launch({
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });
+let browser = await launchBrowser();
+
+async function resetBrowser() {
+  await browser.close();
+  browser = await launchBrowser();
+}
+
+function reportProgress(result) {
+  const boot = Number.isFinite(result?.bootMs) ? `${Math.round(result.bootMs)}ms app` : 'no app timing';
+  console.error(`[cold-load] ${result?.name || 'unknown'} ready in ${result?.wallMs ?? '?'}ms wall / ${boot}`);
+}
+
+async function createForegroundPage(context) {
+  const page = await context.newPage();
+  // Recovery intentionally defers while a real tab is hidden. Puppeteer can
+  // leave a newly-created page backgrounded after several pristine contexts,
+  // which turns the recovery test into a 120 s visibility wait rather than a
+  // first-visit browser test. Explicitly model the foreground tab a player
+  // just opened before installing interception or network emulation.
+  await page.bringToFront();
+  return page;
+}
 
 async function metrics(page, startedAt) {
   const app = await page.evaluate(() => ({
@@ -83,7 +105,7 @@ async function metrics(page, startedAt) {
 
 async function constrainedColdLoad({ name, noHero }) {
   const context = await browser.createBrowserContext();
-  const page = await context.newPage();
+  const page = await createForegroundPage(context);
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
   await page.setUserAgent('Mozilla/5.0 (Linux; Android 12; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151 Mobile Safari/537.36');
   const errors = [];
@@ -129,7 +151,7 @@ async function constrainedColdLoad({ name, noHero }) {
 
 async function failedMainChunkRecovery() {
   const context = await browser.createBrowserContext();
-  const page = await context.newPage();
+  const page = await createForegroundPage(context);
   await page.setViewport({ width: 1000, height: 700, deviceScaleFactor: 1 });
   let failedMainRequests = 0;
   let navigations = 0;
@@ -165,7 +187,7 @@ async function failedMainChunkRecovery() {
 
 async function failedMainEvaluationRecovery() {
   const context = await browser.createBrowserContext();
-  const page = await context.newPage();
+  const page = await createForegroundPage(context);
   await page.setViewport({ width: 1000, height: 700, deviceScaleFactor: 1 });
   let injectedMainResponses = 0;
   let navigations = 0;
@@ -205,7 +227,7 @@ async function failedMainEvaluationRecovery() {
 
 async function failedSelectedBuilderRecovery() {
   const context = await browser.createBrowserContext();
-  const page = await context.newPage();
+  const page = await createForegroundPage(context);
   await page.setViewport({ width: 1000, height: 700, deviceScaleFactor: 1 });
   let failedBuilderRequests = 0;
   const failedDocumentAttempts = new Set();
@@ -258,19 +280,32 @@ try {
   // and mistaking browser cache reuse for reliability.
   const firstVisits = [];
   for (let i = 0; i < sessionCount; i++) {
-    firstVisits.push(await constrainedColdLoad({
+    const result = await constrainedColdLoad({
       name: i === 0
         ? 'constrained-mobile-first-visit'
         : `constrained-mobile-first-visit-${i + 1}`,
       noHero: false,
-    }));
+    });
+    firstVisits.push(result);
+    reportProgress(result);
   }
   const noHero = await constrainedColdLoad({
     name: 'constrained-mobile-nohero-control', noHero: true,
   });
+  reportProgress(noHero);
+  // Fault injection can leave Chromium's shared module-fetch/evaluation state
+  // tainted for later pages even after their incognito context is closed.
+  // Each recovery case represents a different first-time player, so certify it
+  // in a genuinely independent browser process as well as a pristine context.
+  await resetBrowser();
   const downloadRecovery = await failedMainChunkRecovery();
+  reportProgress(downloadRecovery);
+  await resetBrowser();
   const evaluationRecovery = await failedMainEvaluationRecovery();
+  reportProgress(evaluationRecovery);
+  await resetBrowser();
   const builderRecovery = await failedSelectedBuilderRecovery();
+  reportProgress(builderRecovery);
   const results = [
     ...firstVisits, noHero, downloadRecovery, evaluationRecovery, builderRecovery,
   ];
