@@ -394,6 +394,7 @@ interface OpenYokeMountOptions {
   readonly ammoSide: Side;
   readonly sensorSide: Side;
   readonly yaw?: number;
+  readonly weaponRole?: 'auxiliary' | 'roof-primary';
 }
 
 interface LeopardSkirtRun {
@@ -10015,121 +10016,95 @@ function buildKF51(P: TankBuilderPort) {
   P.add('turret', slab(                                                        // rear underside chamfer (ref bottoms 1.69→1.83 over −0.95..−1.60w)
     [-1.29, -0.02, -1.40], [1.29, -0.02, -1.40], [1.27, 0.12, -2.05], [-1.27, 0.12, -2.05],
     [-1.29, 0.16, -1.40], [1.29, 0.16, -1.40], [1.27, 0.30, -2.05], [-1.27, 0.30, -2.05]));
-  // §B1 TURRET FRONT WEDGE (r11 graduate-change, owner directive "update
-  // the turret front of the kf51"; BUILD-STANDARD §B1 turret extension).
-  // The certified r4-r6 front was a STAIRCASE: a dead-vertical nose slab at
-  // 3.134w over y 1.90..2.06w (0.22 m of 0° face, up to +0.60 forward of
-  // the print's line), a near-horizontal shelf, a second vertical (ledge
-  // front 2.29w), then the recess panels — exactly the §B1 failing read.
-  // The print (kf51_grip420, probe tools/tmp-kf51-frontfacet-probe.mjs,
-  // shots/leopard-r11/probe-kf51-before.json) reads a sharp WEDGE:
-  //   under-chin sweeps forward-up ~81° from vertical to a PROW at world
-  //   y 1.84 / z 3.129, ONE faceted hood plane rakes back-up 70.3° from
-  //   vertical (side fit y 1.84..2.26, resid ~1 cm) to the crown shoulder
-  //   2.227w@2.057w, then the near-vertical cliff/crown band to the roof.
-  //   The prow arc sweeps back in plan (3.13 centre -> 2.88@±1.24 ->
-  //   corner facets to 2.40@±1.48) with a gun notch |x| <= ~0.32.
-  // Re-authored to the print with the abrams §B1 mechanics (chin-split
-  // raked bands INSIDE the certified plan polyline): prow keeps the EXACT
-  // certified plan arc (plan mask unchanged), chin dips 0.20 -> 0.139
-  // (front-mask bottoms 1.86 -> 1.84w = the ref's own prow line), hood
-  // slope 1.136/0.406 = 70.3° per facet strip, hood tops at the y 0.545
-  // crown shoulder (shelf top 2.244w vs ref 2.227w; the old ledge read
-  // 2.209w). Facet strips follow the arc segments -> the angular cheek
-  // facet read; the corner strip twists onto the wall-front plane (the
-  // casting's corner blend). Sloped faces paint station slices (§C: the
-  // sloped zone is one explicit wedge slab; bodies keep frontal faces).
-  const ARC: Vec2Tuple[] = [[0.32, 2.70], [0.46, 2.70], [0.95, 2.52], [1.30, 2.42], [1.415, 2.16]];
-  const AREAR: number[] = [1.85, 1.85, 1.60, 1.15];                            // body rears (certified apron footprint kept)
-  const YP = 0.139, YB = 0.20, YH = 0.545, HK = 2.798;                         // prow y (1.84w), chin base, hood-top y, hood slope
-  const fslab = (
-    bk: string,
-    s: Side,
-    b0: Vec3Tuple,
-    b1: Vec3Tuple,
-    b2: Vec3Tuple,
-    b3: Vec3Tuple,
-    t0: Vec3Tuple,
-    t1: Vec3Tuple,
-    t2: Vec3Tuple,
-    t3: Vec3Tuple,
-  ): void => {                                                                 // mirrored 8-corner slab (abrams sideSlab pattern: mirror x AND swap
-    const mirror = (v: Vec3Tuple): Vec3Tuple => [s * v[0], v[1], v[2]];        // corner order so windings stay outward)
-    P.add(bk, s > 0
-      ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
-      : slab(mirror(b1), mirror(b0), mirror(b3), mirror(b2), mirror(t1), mirror(t0), mirror(t3), mirror(t2)));
-  };
-  // centre (gun notch |x| <= 0.32 — the ref's mantlet slot): chin + prow +
-  // a low hood stub to the notch floor y 0.30; the shroud emerges through
-  // the notch, recess panels + mantlet wall close its back as certified
-  zseg(2.28, 1.60, 2, (a, b) => P.add('turret', slab(                          // notch body (frontal segment planes for the station windows)
-    [-0.32, YB, a], [0.32, YB, a], [0.32, YB, b], [-0.32, YB, b],
-    [-0.32, 0.30, Math.min(a, 2.25)], [0.32, 0.30, Math.min(a, 2.25)], [0.32, 0.30, b], [-0.32, 0.30, b])));
-  P.add('turret', slab(                                                        // centre prow wedge: 81.7° chin under, 70.3° hood stub over
-    [-0.32, YP, 2.70], [0.32, YP, 2.70], [0.32, YB, 2.28], [-0.32, YB, 2.28],
-    [-0.32, 0.145, 2.683], [0.32, 0.145, 2.683], [0.32, 0.30, 2.25], [-0.32, 0.30, 2.25]));
+  // KF51 Panther front architecture. The previous owner-source reconstruction
+  // used many independent shelf and hood slabs, which pinched toward the gun
+  // and left a visibly round trunnion floating in a square recess. Rebuild the
+  // complete front as the same closed-chevron grammar used by the current
+  // Leopard 2 family: two watertight cheek volumes share one swept ridge,
+  // taper continuously into the roof and close against the turret core.
+  const kf51ChevronStations: readonly ChevronClosedStation[] = Object.freeze([
+    Object.freeze({ x: 0.38, upperY: 0.72, upperZ: 1.24, ridgeY: 0.30, ridgeZ: 2.72, lowerY: 0.10, lowerZ: 1.72 }),
+    Object.freeze({ x: 0.62, upperY: 0.73, upperZ: 1.19, ridgeY: 0.31, ridgeZ: 2.66, lowerY: 0.10, lowerZ: 1.68 }),
+    Object.freeze({ x: 0.96, upperY: 0.72, upperZ: 1.13, ridgeY: 0.32, ridgeZ: 2.51, lowerY: 0.11, lowerZ: 1.58 }),
+    Object.freeze({ x: 1.28, upperY: 0.66, upperZ: 1.07, ridgeY: 0.31, ridgeZ: 2.34, lowerY: 0.12, lowerZ: 1.47 }),
+    Object.freeze({ x: 1.47, upperY: 0.56, upperZ: 1.02, ridgeY: 0.29, ridgeZ: 2.15, lowerY: 0.13, lowerZ: 1.36 }),
+  ]);
+  const kf51FrontPanels: ReadonlyArray<readonly [number, number]> = Object.freeze([
+    Object.freeze([0.43, 0.70]),
+    Object.freeze([0.74, 1.04]),
+    Object.freeze([1.08, 1.40]),
+  ]);
+  const kf51FrontSides = [];
   for (const s of [-1, 1] as const) {
-    for (let i = 0; i < 4; i++) {
-      const [xa, Pa] = ARC[i], [xb, Pb] = ARC[i + 1], R = AREAR[i];
-      // hood-top edge: strips 0-2 cap at the y 0.545 crown shoulder; the
-      // corner strip blends onto the retracted wall-front plane (twisted
-      // quad = the casting's corner crease, slab-crossing at ~(0.30, 1.70))
-      const tA: Vec2Tuple = i < 3 ? [YH, Pa - 1.136] : [YH, Pa - 1.136];
-      const tB: Vec2Tuple = i < 3 ? [YH, Pb - 1.136] : [0.30, 1.70];
-      fslab('turret', s,                                                       // prow wedge: chin band + hood facet meeting at the 6 mm prow land
-        [xa, YP, Pa], [xb, YP, Pb], [xb, YB, Pb - 0.42], [xa, YB, Pa - 0.42],
-        [xa, 0.145, Pa - 0.017], [xb, 0.145, Pb - 0.017], [xb, tB[0], tB[1]], [xa, tA[0], tA[1]]);
-      // body top: the ref crown shoulder is NARROW (2.227w over z 1.96..
-      // 2.06w only) — forward of it the ref line keeps FALLING (2.14w @
-      // 2.29w). A1/A2 tops slope from the hood-top edge (0.545 @ 2.00w)
-      // down to 0.443 at their R face (= the ref hood line continued);
-      // A3/corner tops stay under the roof/step columns.
-      const yR = R === 1.85 ? 0.443 : (i < 3 ? YH : tB[0]);
-      fslab('turret', s,                                                       // facet body: certified footprint to the rear, interface plane shared
-        [xa, YB, Pa - 0.42], [xb, YB, Pb - 0.42], [xb, YB, R], [xa, YB, R],
-        [xa, tA[0], tA[1]], [xb, tB[0], tB[1]], [xb, yR, R], [xa, i < 3 ? yR : tA[0], R]);
-    }
-    // crown shoulder shelf at y 0.545 (ref 2.227w@2.057w): from the hood
-    // top polyline back under the brow foot (tucks 4 mm behind 1.3964)
-    fslab('turret', s,
-      [0.32, 0.505, 1.560], [0.46, 0.505, 1.560], [0.46, 0.505, 1.392], [0.32, 0.505, 1.392],
-      [0.32, YH, 1.560], [0.46, YH, 1.560], [0.46, YH, 1.392], [0.32, YH, 1.392]);
-    fslab('turret', s,
-      [0.46, 0.505, 1.560], [0.88, 0.505, 1.4207], [0.88, 0.505, 1.404], [0.46, 0.505, 1.392],
-      [0.46, YH, 1.560], [0.88, YH, 1.4207], [0.88, YH, 1.404], [0.46, YH, 1.392]);
-    // (r11 measurement note: NO eyebrow masses — the ref plan-band values
-    // z 2.33-2.41w at y 2.1-2.3w ARE the hood surface itself (y_ref(z) =
-    // 1.84 + (3.129-z)/2.786 reproduces them); a first-cut 0.585-top hood
-    // pair read +0.07..+0.12 over the ref side cols z 2.24..2.48w and was
-    // deleted on the workorder diff.)
-    P.add('turretDark', box(0.008, 0.15, 0.40), s * 0.316, 0.365, 1.82);       // notch side liner (dark recess flanks, replaces the buried r6 cheeks;
-  }                                                                            //  top 2.139w stays UNDER the ref hood line at every column it spans)
-  // VISUAL r1 #4 — wedge shading planes: the one-plane cheek read slab-flat
-  // from the front. A weld-crease bar ON the surface splits it and an upper
-  // facet plate tilted ~3 deg flatter catches different key light; both are
-  // interior (x inside the ±1.44/±1.50 walls, tops ≥0.03 under the crest at
-  // their columns, z-proud only — front/plan silhouettes untouched).
-  // (r3 crease seam bar deleted — the r4 dip-shadow strip under the brow
-  // foot replaces it; the old bar would poke a dark ridge through the stub)
-  // r4 #2 BROW POLARITY (r11 re-seat): the near-vertical crown band keys
-  // ~x0.7 vs the ramp under the board key — kept, SAME PLANE as certified
-  // (the V-wing transforms and the x0.71 vertex-tint box key off it). §B1
-  // r11 raised its FOOT along that plane 0.450 -> 0.545 (x 1.39 -> 1.358,
-  // z 1.425 -> 1.3964) so it rises from the new crown shoulder instead of
-  // poking through the hood facets; top edge (±1.30, 0.716, 1.345) EXACT.
-  // (The old ledge stub is deleted: its w1.95-2.02 side columns now read
-  // the shelf/hood-top at 2.244w vs ref's own 2.227w shoulder line.)
-  P.add('turret', slab(                                                        // crown band: near-vertical wall over the hood shelf
-    [-1.358, 0.545, 1.3964], [1.358, 0.545, 1.3964], [1.30, 0.716, 1.345], [-1.30, 0.716, 1.345],
-    [-1.358, 0.5477, 1.4055], [1.358, 0.5477, 1.4055], [1.30, 0.7187, 1.3541], [-1.30, 0.7187, 1.3541]));
-  P.add('turretDark', box(2.70, 0.022, 0.014), 0, 0.538, 1.401);               // dip shadow slot under the (raised) brow foot
-  P.add('turretDark', box(0.60, 0.58, 0.015), 0, 0.42, 1.6135);                // mantlet recess frame
-  // The old 4 mm inner panel was only a decal-like back face, so the square
-  // above the Rh-130 still read as an open cavity. This proper camouflaged
-  // armor cassette fills the brow volume while its 2.10 m lower edge stays
-  // above the 2.04 m shroud crown. The 150 mm depth brings the square into
-  // the same front plane family as the surrounding cheek returns.
-  P.add('turret', box(0.54, 0.36, 0.15), 0, 0.57, 1.63);
+    P.add('turret', closedLeopardChevronCheek(kf51ChevronStations, s));
+    const roofBridge = closedLeopardChevronRoofBridge(kf51ChevronStations, s, {
+      bodyHalfWidth: 1.30,
+      bodyFrontZ: 1.48,
+      bodyTopY: 0.79,
+      thickness: 0.10,
+      rearOverlapM: 0.10,
+    });
+    P.add('turret', roofBridge.geometry);
+    const panels = kf51FrontPanels.map(([x0, x1]) => {
+      const a = interpolateChevronStation(kf51ChevronStations, x0);
+      const b = interpolateChevronStation(kf51ChevronStations, x1);
+      const panel = leopardChevronSurfacePanel(a, b, s, {
+        thickness: 0.022,
+        ridgeMargin: 0.10,
+        rootMargin: 0.10,
+      });
+      P.add('turret', panel.geometry);
+      return Object.freeze({ x0, x1, normal: Object.freeze([...panel.normal]) });
+    });
+
+    // Recessed multispectral light/sensor packs sit on—not above—the new
+    // outer cheek plane. A dark armored cassette and inset glass face give the
+    // Panther a dense modern front without adding floating boxes or armor.
+    const lightBaseA = interpolateChevronStation(kf51ChevronStations, 1.00);
+    const lightBaseB = interpolateChevronStation(kf51ChevronStations, 1.31);
+    const lightBase = leopardChevronSurfacePanel(lightBaseA, lightBaseB, s, {
+      thickness: 0.031,
+      ridgeMargin: 0.48,
+      rootMargin: 0.27,
+    });
+    P.addEquipment('turretDark', lightBase.geometry);
+    const lightFaceA = interpolateChevronStation(kf51ChevronStations, 1.06);
+    const lightFaceB = interpolateChevronStation(kf51ChevronStations, 1.25);
+    const lightFace = leopardChevronSurfacePanel(lightFaceA, lightFaceB, s, {
+      thickness: 0.036,
+      ridgeMargin: 0.54,
+      rootMargin: 0.34,
+    });
+    P.addEquipment('turretGlass', lightFace.geometry);
+    kf51FrontSides.push(Object.freeze({
+      side: s < 0 ? 'left' : 'right',
+      roofBridgeTriangles: roofBridge.triangleCount,
+      panels,
+      lightCassette: true,
+    }));
+  }
+  // The narrow center is a real moving-gun opening. Side liners and a low
+  // upper bridge provide a continuous load path while leaving the larger
+  // angular housing free to elevate without clipping static armor.
+  P.add('turretDark', pbox(0.82, 0.61, 0.08), 0, 0.41, 1.52);
+  for (const s of [-1, 1] as const) {
+    P.add('turretDark', pbox(0.035, 0.48, 0.60), s * 0.395, 0.39, 1.82);
+  }
+  P.add('turret', pbox(0.84, 0.13, 0.34), 0, 0.715, 1.24, -0.08, 0, 0);
+  P.turretG.userData.kf51FrontChevronReceipt = Object.freeze({
+    profile: 'kf51-panther-closed-chevron-r1',
+    architecture: 'single-watertight-upper-and-lower-arrowhead',
+    stationCount: kf51ChevronStations.length,
+    cheekVolumes: 2,
+    roofBridgeVolumes: 2,
+    surfacePanelCount: kf51FrontPanels.length * 2,
+    multispectralLightCassettes: 2,
+    centralGunOpeningHalfWidthM: 0.38,
+    sharedRidge: true,
+    closedRearFaces: true,
+    sourceImageUsedAsVisualDirectionOnly: true,
+    sides: Object.freeze(kf51FrontSides),
+  });
   // crown block + drone-bay seams. r5: width 1.70 → 1.40 — the crown is
   // FRONT-INVISIBLE in the ref (plateau 2.95 shadows |x|<0.72; the old
   // ±0.85 edges printed 2.608 over the ref's bare 2.548 left-band cols);
@@ -10250,41 +10225,9 @@ function buildKF51(P: TankBuilderPort) {
   P.add('turret', cylY(0.130, 0.130, 0.005, 18), -0.64, h + 0.0385, -0.65);
   periscope(P, 'turretDetail', 0.62, h + 0.04, -0.45);
   periscope(P, 'turretDetail', -0.40, h + 0.04, -0.40, 0.3);
-  // ---- r8 #1 ROOF MG (owner decoration law, pintle allowance ≤0.4): MG5-
-  // class pintle gun on the commander hatch ring, parked TRANSVERSE (swung
-  // right, +4° elevation) — the pose is the entire budget trick, priced off
-  // the gate's own cost model (12·mean + 0.6·p95 per row):
-  //   SIDE (the 90.4 gating row): every piece z-parks inside WORLD
-  //   −0.30..+0.13 = the SEOSS block's own side-column window (3.02w tops)
-  //   — receiver z −0.2375..−0.1325, barrel ±0.0155 about −0.185, belt-box
-  //   −0.17..−0.086: ZERO new side columns.
-  //   FRONT: butt/receiver/pintle keep x ≤ 0.955 under the bustle tower's
-  //   2.955w columns — only the bare barrel run crosses x 0.955..1.17. The
-  //   front camera is TILTED 4.6° (dir (0,0.08,1) — the r4 cheek-window
-  //   law), so the screen skyline at those columns is the REAR right
-  //   shelf's projected line u = y·0.9968 − z·0.0799 ≈ 2.77 (its 2.532w
-  //   top at z −2.9 rides +0.23 up-screen), NOT the 2.53 roof edge: a
-  //   first cut at axis 2.66 measured ZERO sky (shelf camo behind the
-  //   rod). The mount therefore stands a REAL pintle column: barrel axis
-  //   2.816w at z −0.185 → rod-bottom u 2.815 vs shelf-line 2.771 = a
-  //   true 5 px sky slot under the whole exposed run, muzzle tip in open
-  //   sky. Cost vs the ref's own shelf line: Δtop 0.07-0.09 over ~15
-  //   columns → front_whole ~−0.5, far inside its 3.6-point slack; the
-  //   90.4 headline row is untouched by construction.
-  //   PLAN: muzzle 1.17 < the 1.44 mid-wall line — interior. STATIONS/DIMS:
-  //   top 2.86 << SEOSS 3.02 anchor, slice widths hull-owned.
-  // MG PHYSICS (merkava r5 ruling): barrel/booster/receiver-cap ride the
-  // PALE detail bucket — top-lit rod against sky, not gunmetal-on-camo.
-  P.add('turretDark', KIT.cylY(0.020, 0.020, 0.157, 10), 0.60, 0.9315, -0.635); // pintle column rooted in the hatch drum (w 2.563..2.720)
-  P.add('turretDark', box(0.06, 0.04, 0.05), 0.60, 1.030, -0.635);             // cradle rocker (w 2.720..2.760)
-  P.addEquipment('turret', box(0.34, 0.095, 0.105), 0.565, 1.0814, -0.635, 0, 0, 0.0699); // receiver body (camo; w 2.744..2.851 incl tilt — under the 2.955 tower cols)
-  P.add('turretDark', box(0.05, 0.055, 0.045), 0.375, 1.0814, -0.635);         // butt/spade grip at the inboard end
-  P.add('turretDark', KIT.cylX(0.0205, 0.008, 10), 1.170, 1.1237, -0.635, 0, 0, 0.0699);   // dark muzzle face
-  P.addEquipment('turret', box(0.10, 0.095, 0.085), 0.35, 1.025, -0.578);               // belt-box hung on the receiver's left flank (z −0.128w, inside the SEOSS side window)
-  P.add('turretDark', box(0.06, 0.045, 0.024), 0.43, 1.065, -0.607);           // belt tray into the receiver
-  // (barrel/booster/receiver-cap/belt-lid are mgPale TONE meshes — same
-  // geometry/placement, tone block: mats.detail topped out 70-85 lit vs
-  // the ordered 95-101L M2 class.)
+  // The compact transverse pintle has been retired. A complete powered
+  // open-yoke station is seated on the rear bustle after that structure is
+  // assembled below, keeping the gun, sensor head and feed path coherent.
   // bustle (u = +x + c decoded): plateau 2.94w spans WORLD −0.80..+0.92
   // (offset RIGHT like the print) with the front face at −1.96w; the LEFT
   // side steps down — 2.54 band −0.80..−1.31 with a 2.93 sensor pedestal
@@ -10381,8 +10324,15 @@ function buildKF51(P: TankBuilderPort) {
   P.add('turret', box(0.66, 0.035, 0.035), 0.24, 1.21, -3.482);
   P.add('turretDark', box(0.20, 0.21, 0.02), -0.22, 1.105, -3.564);            // tongue end face
   P.add('turretDark', box(2.20, 0.10, 0.03), -0.03, 0.55, -3.33);              // bustle base shadow seam
-  P.add('turretDark', box(0.46, 0.026, 0.42), 0.30, 1.229, -3.125);            // Natter RWS folded flush INTO the tower rim (top 1.242 — 3 mm under the r4 rim rails, no coplanar fight)
-  P.add('turretDark', cylZ(0.016, 0.40, 8), 0.42, 1.229, -3.12, 0, 0, 0);      // stowed antenna rod lying on the tower top (flush, ≤1.245)
+  // Rear-bustle RWS: identical powered open-yoke architecture and size to
+  // the Leopard 2A6M installation, with a KF51-specific armored brow, twin
+  // optics and light bar. The bearing is flush with the 1.245 m bustle rim.
+  const kf51RoofRws = addLeopardOpenYokeAuxRws(P, {
+    x: 0.35, y: 1.245, z: -3.02,
+    variant: 'kf51-panther', ammoSide: 1, sensorSide: -1, yaw: 0.025,
+    weaponRole: 'roof-primary',
+  });
+  P.turretG.userData.openYokeRwsReceipt = kf51RoofRws;
   // antenna/mast FARM r5 (gate-frame 1024 columns, dAlong now 0 so rods
   // compare RAW): ref SIDE staircase reads 3.221@z−2.06 (pot col, stays
   // capped — a 4th spike would become the heightM anchor at pct 7 = dims
@@ -10449,37 +10399,46 @@ function buildKF51(P: TankBuilderPort) {
   }
   P.decal('turret', 'crossgrey', null, 0.36, [1.36, 0.40, -0.7], Math.PI / 2);
   P.decal('turret', 'crossgrey', null, 0.36, [-1.36, 0.40, -0.7], -Math.PI / 2);
-  // mantlet back wall + dark cheeks behind the shroud (kept under the 2.2 line)
-  // r6 #3b: wall 0.84 -> 0.60 wide (mask-inert — front/plan duty is
-  // cheek/apron-covered, side z-span unchanged): the ref mantlet is a
-  // NARROW collar and the wide wall was occluding the new V-wing plates.
-  P.add('turret', box(0.60, 0.62, 0.08), 0, 0.42, 1.58);
-  // (§B1 r11: the r6 dark flank cheeks at s*0.43/z 1.80 are deleted — they
-  // were already buried inside the old bow solid, and the new notch side
-  // liners at ±0.316 carry the dark-recess duty inside the mantlet slot)
-  // ---- Rh-130 L/52 FGS r4: bare tube r 0.092 (ref side band 1.746..1.926;
-  // the old 0.128 sleeve + 0.1376 rings lit the ±0.166 plan columns all the
-  // way to the muzzle — ref x −0.166 ends at its shroud taper 4.525), root
-  // widened to ±0.31 out to 3.50w (the −0.286 plan col), taper to 4.55w,
-  // muzzle block ±0.095 ending 6.805w (the ref 6.872w side col is EMPTY) ----
+  // ---- Rh-130 angular gun housing -------------------------------------------------
+  // The old visible trunnion roll and elliptical shroud made the Panther's
+  // gun root look round, undersized and disconnected from its angular bow.
+  // The new moving housing is one broad, closed six-plane wedge: it begins
+  // inside the static throat, projects between the converging chevrons and
+  // tapers continuously onto a hexagonal barrel clamp. Because every part is
+  // gun-owned, the housing elevates with the barrel without shearing through
+  // the turret-face armor.
   P.gunG.position.set(0, 0.13, 0.88);
   const gseg = P.q ? 24 : 16;
-  P.addGunExtra(KIT.cylX(0.25, 0.62, P.q ? 18 : 12), 0, 0, 0);                 // trunnion roll
-  // VISUAL r1 #1 (CIRCULARITY — the round's worst violation: box-sectioned
-  // barrel + rectangular muzzle): every shroud/muzzle box → a ROUND section
-  // holding the EXACT certified envelope via per-axis scale. An elliptical
-  // cylinder's side silhouette is the same ±ry rectangle the box drew and
-  // its plan silhouette the same ±rx rectangle — mask-identical, reads
-  // circular in shade from every quarter.
-  P.addGunExtra(xform(cylZ(0.20, 1.64, gseg), 0, 0.05, 1.35, 0, 0, 0, [1.55, 1, 1]));        // shroud root: rx 0.31 (plan cols) / ry 0.20 (band 1.69..2.09w) to 3.50w
-  P.addGunExtra(xform(cylZ(0.1775, 2.26, gseg), 0.15, 0.055, 1.98, 0, 0, 0, [0.8451, 1, 1])); // shroud mid R: rx 0.15 about x +0.15 (plan 0..0.30), ry 0.1775 (ref plan fore 4.44w)
-  P.addGunExtra(cylZ(0.135, 1.40, gseg, 0.175), 0, 0.01, 2.52);                // shroud taper 3.15..4.55w
-  // seam rings (seam-ring law, Ø ≤ 0.36): dark cinch/joint rings at the
-  // section steps — the root's exposed end-face annulus and two sleeve
-  // cinches; every ring stays inside (or ≤3 mm over) the local surface.
-  P.addGunExtraDark(cylZ(0.178, 0.012, gseg), 0, 0.045, 2.1655);               // root end-face ring (≤1.5 mm past the 2.17 root end, r inside the taper step)
-  P.addGunExtraDark(cylZ(0.028, 0.10, 8), 0.25, 0.09, 0.70);                   // coax port
-  KIT.buildGun(P, { len: 5.475, r: 0.092, sleeve: false, collar: false, baseR: 0.17 });
+  const kf51AngularHousing = outwardClosedSlab(
+    [-0.39, -0.285, 0.10], [0.39, -0.285, 0.10], [0.27, -0.18, 1.78], [-0.27, -0.18, 1.78],
+    [-0.35, 0.31, 0.10], [0.35, 0.31, 0.10], [0.24, 0.22, 1.78], [-0.24, 0.22, 1.78],
+  );
+  P.addGunExtra(kf51AngularHousing);
+  // Shallow roof and chin facets give the housing a crisp armored break and
+  // hide the flexible inner joint without stacking coplanar shells.
+  P.addGunExtra(outwardClosedSlab(
+    [-0.31, 0.305, 0.18], [0.31, 0.305, 0.18], [0.215, 0.218, 1.72], [-0.215, 0.218, 1.72],
+    [-0.29, 0.355, 0.24], [0.29, 0.355, 0.24], [0.195, 0.268, 1.68], [-0.195, 0.268, 1.68],
+  ));
+  P.addGunExtraDark(outwardClosedSlab(
+    [-0.31, -0.305, 0.18], [0.31, -0.305, 0.18], [0.215, -0.198, 1.72], [-0.215, -0.198, 1.72],
+    [-0.29, -0.275, 0.24], [0.29, -0.275, 0.24], [0.195, -0.168, 1.68], [-0.195, -0.168, 1.68],
+  ));
+  P.addGunExtraDark(cylZ(0.205, 0.10, 6), 0, 0.015, 1.80);                    // faceted forward clamp
+  P.addGunExtraDark(cylZ(0.029, 0.11, 8), 0.275, 0.055, 1.17);                // recessed coax port
+  KIT.buildGun(P, { len: 5.475, r: 0.092, sleeve: false, collar: false, baseR: 0.105 });
+  P.gunG.userData.kf51AngularGunHousingReceipt = Object.freeze({
+    profile: 'kf51-panther-angular-mantlet-r1',
+    movingWithGun: true,
+    mainHousing: 'closed-tapered-six-plane-wedge',
+    rearWidthM: 0.78,
+    rearHeightM: 0.595,
+    forwardWidthM: 0.54,
+    forwardHeightM: 0.40,
+    housingLengthM: 1.68,
+    forwardClampSides: 6,
+    roundVisibleTrunnionRetired: true,
+  });
   // Keep the primary overlay sleeve concentric with the firing axis; the
   // asymmetric MRS and shroud furniture remain separate components.
   P.add('gun', cylZ(0.115, 4.95, gseg), 0, 0, 2.975);
@@ -10933,16 +10892,6 @@ function buildKF51(P: TankBuilderPort) {
       tone(flapRear16, KIT.xform(KIT.box(0.50, 0.42, 0.024), s * 1.46, 0.60, -3.700));
       tone(flapFront25, KIT.xform(KIT.box(0.50, 0.42, 0.024), s * 1.46, 0.60, 3.756));
     }
-    // ---- r8 #1 MG pale parts (MG PHYSICS: ref pintle guns read as PALE
-    // top-lit rods, M2 class 95-101L where lit — merkava r5 ruling;
-    // mats.detail measured 70-85 on the first cut). Same geometry and
-    // placement as the P.add cut — barrel, booster, receiver cap, belt
-    // lid re-materialed one class up.
-    const mgPale = mkTone(0x60624c, 0.18);
-    tone(mgPale, KIT.xform(KIT.box(0.32, 0.020, 0.088), 0.565, 1.1364, -0.635, 0, 0, 0.0699), true);
-    tone(mgPale, KIT.xform(KIT.cylX(0.0155, 0.365, 10), 0.9175, 1.106, -0.635, 0, 0, 0.0699), true);
-    tone(mgPale, KIT.xform(KIT.cylX(0.020, 0.066, 10), 1.133, 1.1211, -0.635, 0, 0, 0.0699), true);
-    tone(mgPale, KIT.xform(KIT.box(0.102, 0.012, 0.087), 0.35, 1.0785, -0.578), true);
     // ---- r6 #6a turret-side AO grade, geometry half: wall-base shadow
     // shells 1.2mm proud and slope-parallel to the cheek/mid wall frusta
     // (y 0.165..0.30). The deep-shade floor is albedo-normalized, so the
@@ -11224,7 +11173,12 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   const roadWheelRadiusM = 0.355;
   const roadWheelCenterYM = 0.395;
   const roadWheelForwardShiftM = 0.12;
-  const turretPivotZM = 0.42;
+  const turretPivotZM = 0.65;
+  const turretRoofEdgeHeightsM = [
+    0.48, 0.48, 0.58, 0.63, 0.60,
+    0.56, 0.56, 0.60, 0.63, 0.58,
+  ] as const;
+  const turretRoofCenterHeightM = 0.66;
 
   // §5.299 kf51b FLEET INTEGRATION (owner order: "make it a lot more inline
   // with our visual aesthetic and tracks and hull and turret"). The
@@ -11247,7 +11201,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   // sponson/fender run, family driver station, fan wells, leopard rear
   // plate + grilles) at the kf51b frame: deck 1.615 crease / 1.64 mid /
   // 1.82 power-pack aft — the turret ring remains at y 1.72 while its
-  // complete rotating rig moves forward to z 0.42; nose 3.84,
+  // complete rotating rig moves forward to z 0.65; nose 3.84,
   // tail lip -3.82. The authored assembly is enlarged uniformly by 5% after
   // construction, while the skirt armor intentionally grows farther outboard.
   // Running gear keeps the §5.303 seven-wheel cadence, but uses smaller
@@ -11490,11 +11444,23 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     { height: -0.01, inset: 0.93 },
     { height: 0.24, inset: 1.00 },
     {
-      height: [0.27, 0.27, 0.52, 0.61, 0.58, 0.53, 0.53, 0.58, 0.61, 0.52],
+      // The previous 0.27 m forward pair fed a 0.58 m center fan. That
+      // authored a deep triangular valley across the entire fore-roof—the
+      // exact concave patch selected in the gallery markup. Every fan edge
+      // now rises monotonically to a crown above its highest perimeter
+      // station, preserving the Panther wedge without a sunken roof.
+      height: turretRoofEdgeHeightsM,
       inset: [0.78, 0.78, 0.82, 0.84, 0.88, 0.92, 0.92, 0.88, 0.84, 0.82],
-      centerHeight: 0.58,
+      centerHeight: turretRoofCenterHeightM,
     },
   ]));
+  P.turretG.userData.kf51bTurretRoofReceipt = Object.freeze({
+    profile: 'convex-crowned-wedge',
+    edgeHeightsM: Object.freeze([...turretRoofEdgeHeightsM]),
+    centerHeightM: turretRoofCenterHeightM,
+    centerAboveHighestEdgeM: turretRoofCenterHeightM - Math.max(...turretRoofEdgeHeightsM),
+    concaveFanRemoved: true,
+  });
 
   // Buried front cheek undercuts and the narrow central mantlet channel.
   for (const s of [-1, 1] as const) {
@@ -11601,30 +11567,16 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   P.add('turretDark', box(0.40, 0.040, 0.39), -0.56, 1.035, -1.06);
   P.add('turretDark', box(0.34, 0.045, 0.34), -0.56, 1.05, -1.06);
 
-  // Rear-left RWS with source-like split shield and forward-facing MG.
-  P.add('turretDark', cylY(0.31, 0.34, 0.10, P.q ? 22 : 14), 0.28, 0.59, -2.42);
-  P.add('turretDark', box(0.13, 0.48, 0.13), 0.28, 0.84, -2.36);
-  // Open split shield: top bridge and two wings, with daylight through the
-  // center exactly as the owner front/rear renders show.
-  P.add('turretDark', box(0.90, 0.075, 0.22), 0.28, 1.25, -2.12, -0.10, 0, 0);
-  P.add('turretDark', box(0.18, 0.40, 0.30), -0.08, 1.06, -2.12, -0.10, 0, 0);
-  P.add('turretDark', box(0.18, 0.40, 0.30), 0.64, 1.06, -2.12, -0.10, 0, 0);
-  // Canted shield braces close the load path into the pedestal while
-  // preserving the broad daylight aperture between the two armor wings.
-  P.add('turretDark', box(0.055, 0.48, 0.13), 0.01, 1.03, -2.17, 0, 0, -0.48);
-  P.add('turretDark', box(0.055, 0.48, 0.13), 0.55, 1.03, -2.17, 0, 0, 0.48);
-  const rwsGun = FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.92,
-    elev: 0.015, ammo: false, shield: false,
+  // Full remote weapon tower. The old hand-built split shield stood on a
+  // thin post and exposed no coherent feed/sensor mechanism. This shares
+  // the 2A6M's powered open-yoke architecture and scale, while the Panther
+  // variant adds a faceted armored brow, twin apertures and canted cheeks.
+  const kf51bRoofRws = addLeopardOpenYokeAuxRws(P, {
+    x: 0.30, y: 0.55, z: -2.16,
+    variant: 'kf51b-panther', ammoSide: 1, sensorSide: -1, yaw: -0.025,
+    weaponRole: 'roof-primary',
   });
-  // Pull the MG's fitting-foot back onto the pedestal. Its local aft bound
-  // is -0.117 m, so z=-2.18 makes it overlap the post face by ~2 mm.
-  rwsGun.position.set(0.28, 0.79, -2.18);
-  P.turretG.add(rwsGun);
-  P.add('turretDark', box(0.16, 0.13, 0.18), 0.28, 0.88, -2.245, -0.04, 0, 0);
-  P.add('turretDetail', box(0.24, 0.16, 0.30), 0.71, 0.91, -2.03);
-  P.add('turretDark', box(0.20, 0.10, 0.026), 0.71, 0.91, -1.866);
-  P.add('turretGlass', box(0.12, 0.055, 0.018), 0.71, 0.92, -1.850);
+  P.turretG.userData.openYokeRwsReceipt = kf51bRoofRws;
 
   // Low roof seams and lifting hardware visible in the owner top/rear views.
   P.add('turretDetail', box(1.52, 0.025, 0.035), 0, 0.615, -1.72);
@@ -11694,7 +11646,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     spareTrackSeatY: 1.495,
   };
   P.turretG.userData.kf51bAttachmentSeatReceipt = {
-    rwsGunZ: -2.18,
+    roofRws: kf51bRoofRws,
     roofPeriscopeY: 0.615,
     roofSeamY: 0.587,
     sidePanelStations: [0.82, 0.42, -0.04, -0.54, -1.05, -1.56, -2.03]
@@ -11723,7 +11675,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     lane.poly = lane.poly.map(([z, y]) => [z * uniformScale, y * uniformScale]);
   }
   const proportionReceipt = Object.freeze({
-    revision: 'kf51b-proportions-armor-r1',
+    revision: 'kf51b-turret-forward-convex-r1',
     uniformScale,
     turretPivotLocalZ: turretPivotZM,
     turretPivotInstalledZ: turretPivotZM * uniformScale,
@@ -13080,7 +13032,7 @@ function addLeo2A6MRoofRCWS(P: TankBuilderPort) {
 }
 
 function addLeopardOpenYokeAuxRws(P: TankBuilderPort, {
-  x, y, z, variant, ammoSide, sensorSide, yaw = 0,
+  x, y, z, variant, ammoSide, sensorSide, yaw = 0, weaponRole = 'auxiliary',
 }: OpenYokeMountOptions) {
   const station = FITTINGS.openYokeRws({
     mats: P.mats,
@@ -13097,11 +13049,11 @@ function addLeopardOpenYokeAuxRws(P: TankBuilderPort, {
     elev: variant === 'a7v-low' ? 0.035 : 0.050,
     seed: P.spec.id === 'leo2a7v' ? 27027 : 26026,
   });
-  station.name = `${P.spec.id}AuxOpenYokeRws`;
+  station.name = `${P.spec.id}${weaponRole === 'auxiliary' ? 'Aux' : 'Roof'}OpenYokeRws`;
   station.position.set(x, y, z);
   station.rotation.y = yaw;
   station.userData.hostVariant = P.spec.id;
-  station.userData.weaponRole = 'auxiliary';
+  station.userData.weaponRole = weaponRole;
   P.turretG.add(station);
   return Object.freeze({
     host: P.spec.id,
@@ -13115,7 +13067,7 @@ function addLeopardOpenYokeAuxRws(P: TankBuilderPort, {
     caliberMm: station.userData.caliberMm,
     ammoSide,
     sensorSide,
-    weaponRole: 'auxiliary',
+    weaponRole,
     visibleFeedBelt: station.userData.hasVisibleFeedBelt,
     firingAxis: station.userData.firingAxis,
     equipmentOwned: true,

@@ -8,9 +8,9 @@
                     layer never pollute the measurement):
                     - census: counts KIT.fittings marker roots
                       (userData.fittingRoot / userData.fitting) — mg = pintleMG
-                      instances (>=1 required by §B3), dressing = every other
-                      fitting instance. Hand-authored decoration carries no
-                      markers and censuses ZERO by design.
+                      or openYokeRws instances (>=1 required by §B3), dressing
+                      = every other fitting instance. Hand-authored decoration
+                      carries no markers and censuses ZERO by design.
                     - contiguity: top-down orthographic render over the whole
                       plan footprint on a magenta key, downsampled to ~6 cm
                       cells; uncovered cells NOT connected to the frame border
@@ -207,7 +207,7 @@ function censusFittings(root) {
     if (o.userData && o.userData.fittingRoot) {
       const t = o.userData.fitting || '?';
       byType[t] = (byType[t] || 0) + 1;
-      if (t === 'pintleMG') mg++; else dressing++;
+      if (t === 'pintleMG' || t === 'openYokeRws') mg++; else dressing++;
     }
     if ((o.isMesh || o.isInstancedMesh) && o.userData && o.userData.fitting) markedMeshes++;
   });
@@ -274,6 +274,10 @@ async function runFixture() {
     ['pintleMG', { cls: 'dshk', tone: 'pale' }],
     ['pintleMG', { cls: 'nsvt', tone: 'dark' }],
     ['pintleMG', { cls: 'mag', elev: 0.12, ammo: false }],
+    ['openYokeRws', {
+      variant: 'kf51b-panther', scale: 1.12, towerRise: 0.14,
+      ammoSide: 1, sensorSide: -1,
+    }],
     ['stowageRack', {}],
     ['stowageRack', { w: 1.6, fill: 1, rails: 3, seed: 7 }],
     ['stowageRack', { fill: 0 }],

@@ -8,7 +8,7 @@
 //       silhouette are holes; 0 required. FrontSide render truth doubles as
 //       the winding audit.
 //   B3. DECORATION census (v2): KIT.fittings marker roots on the procedural
-//       build — pintleMG instances (mg >= 1 required) + other fitting
+//       build — pintleMG/openYokeRws instances (mg >= 1 required) + other fitting
 //       dressing. Hand-authored decoration carries no markers and censuses
 //       ZERO: migrate the profile to KIT.fittings (kit.js) or carry a packet
 //       justification.

@@ -6,6 +6,33 @@ external comparison source only (baked-shading demonstrator read); the id
 carries no geometry-gate row by law (FALSE-0). Evidence class is §5.254
 pixel pairs + structural audits, exactly like leo1a5.
 
+## Turret crown, forward seat, and roof weapon revision (2026-08-30)
+
+The `kf51b-turret-forward-convex-r1` revision moves the complete articulated
+turret farther forward and removes the apparent cavity in its roof:
+
+- The ring moves from local z 0.42 to 0.65 before the vehicle's 1.05x install
+  scale, producing installed z 0.6825. The gun, roof equipment, cage, sensors,
+  and weapon station remain children of the same turret rig.
+- The cavity was authored geometry, not a normals or shader defect. The old
+  top fan connected two 0.27 m front edge stations directly to a 0.58 m
+  center and formed a broad triangular valley. The rebuilt perimeter rises
+  through 0.48–0.63 m to a 0.66 m crown, so every roof fan face slopes upward
+  rather than folding inward.
+- The retired thin-post split shield is replaced by the Leopard 2A6M shared
+  powered open-yoke tower at the same reduced-tower scale and riser height.
+  Its `kf51b-panther` variant adds twin EO apertures, a low arrow brow,
+  canted armored cheeks, and visible feed hardware while retaining the
+  KF51B palette and turret ownership.
+- The authoritative turret pivot, gun pivot, tube length, and bore radius now
+  use the final installed frame: `[0, 1.806, 0.6825]`,
+  `[0, 0.231, 1.659]`, 5.565 m, and 0.0672 m. The simulated muzzle at z
+  7.9065 therefore coincides with the rendered muzzle instead of lagging it
+  by 0.8265 m.
+
+`kf51bTurretCenter.selftest.mjs` locks the convex crown, installed combat
+frame, forward ring seat, turret ownership, and KF51B open-yoke variant.
+
 ## Proportion and protection revision (2026-08-30)
 Owner-directed `kf51b-proportions-armor-r1` replaces the earlier presentation
 frame while retaining the clean-room KF51B identity described below:
@@ -13,9 +40,9 @@ frame while retaining the clean-room KF51B identity described below:
 - The complete articulated vehicle hierarchy is uniformly 1.05x larger. The
   turret pivot, movement contact envelope and track hit geometry are scaled
   with the visible model; this is not a render-only transform.
-- The turret ring moves from local z 0.30 to 0.42 before scaling (installed
-  z 0.441), placing the wedge farther forward without detaching its gun or
-  roof equipment.
+- The earlier proportion pass moved the turret ring from local z 0.30 to
+  0.42 (installed z 0.441). The newer turret revision above supersedes that
+  intermediate seat with local z 0.65 / installed z 0.6825.
 - Seven road wheels per side use a local 0.355 m radius at y 0.395, preserving
   the former 0.040 m authored ground clearance. Their cadence moves 0.12 m
   forward, from z 2.72 through -2.18. Return rollers move 0.10 m forward and
@@ -99,19 +126,17 @@ and retires only the pre-deepening shader grade + gear hexes.
 ## Identity vs the kf51 resident (B-variant distinctions)
 Both read KF51 Panther (low faceted wedge turret, SEOSS tower, rear-right
 RWS, 130 mm class gun). kf51b distinctions: owner-source proportions
-(z ±3.84 hull, narrow tub + full-width sponson), Rh-130 at the measured
-5.30 tube / 6.88 muzzle (`kf51Specs.ts` armor truth-up: ring 1.72/0.20, gun
-axis 1.94 — the inherited GLB-era 6.63 barrel + 1.86/0.52 pivots were a
-§C shadow proxy 1.33 m too long), full modular two-band skirts vs the
+(z ±3.84 hull, narrow tub + full-width sponson), an installed-scale Rh-130
+frame synchronized to its procedural muzzle, full modular two-band skirts vs the
 resident's own course read, woodland 3-tone (#56573e base, number 52,
 trackWidthM 0.587), b3d15714 flank-panel/roof-cadence grammar. Resident
 kf51 `ffb1144c` byte-held.
 
 ## Spec truth-up (`src/vehicles/kf51Specs.ts`, kf51b row only)
 Fresh communityArmor instance (kf51's shared armor object untouched):
-lenM 7.70 / widM 3.60 / hgtM 2.90, turretPivot [0,1.72,0.20], gunPivot
-[0,0.22,1.58], barrelLenM 5.30, barrelRadM 0.064, visual trackWidthM
-0.587 (the built course width).
+lenM 7.70 / widM 3.60 / hgtM 2.90, installed turretPivot
+[0,1.806,0.6825], installed gunPivot [0,0.231,1.659], barrelLenM 5.565,
+barrelRadM 0.0672, visual trackWidthM 0.587 (the built course width).
 
 ## Evidence (§5.254 pairs, final bytes)
 shots/kf51b-integration/before/ (baseline bytes, 14 views + extras) vs

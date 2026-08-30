@@ -1481,15 +1481,18 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
 
   // Independent EO/thermal head on the opposite cheek.
   const sensorX = sensorSide * 0.30 * s;
-  const sensorY = yokeCenterY + (variant === 'a6m-arctic' ? 0.015 : 0.005) * s;
-  parts.add(body, box(0.215 * s, (variant === 'korean-twin' ? 0.20 : 0.24) * s, 0.215 * s),
+  const classicPanther = variant === 'kf51-panther';
+  const panther = classicPanther || variant === 'kf51b-panther';
+  const twinOptics = variant === 'korean-twin' || panther;
+  const sensorY = yokeCenterY + (variant === 'a6m-arctic' || panther ? 0.015 : 0.005) * s;
+  parts.add(body, box(0.215 * s, (twinOptics ? 0.20 : 0.24) * s, 0.215 * s),
     sensorX, sensorY, 0.055 * s);
   parts.add('dark', box(0.190 * s, 0.024 * s, 0.19 * s),
-    sensorX, sensorY + (variant === 'korean-twin' ? 0.112 : 0.132) * s, 0.055 * s);
-  const opticXs = variant === 'korean-twin' ? [-0.045, 0.045] : [0];
+    sensorX, sensorY + (twinOptics ? 0.112 : 0.132) * s, 0.055 * s);
+  const opticXs = twinOptics ? [-0.045, 0.045] : [0];
   for (const dx of opticXs) {
-    parts.add('glass', box((variant === 'korean-twin' ? 0.065 : 0.125) * s,
-      (variant === 'korean-twin' ? 0.075 : 0.105) * s, 0.014 * s),
+    parts.add('glass', box((twinOptics ? 0.065 : 0.125) * s,
+      (twinOptics ? 0.075 : 0.105) * s, 0.014 * s),
     sensorX + dx * s, sensorY + 0.018 * s, 0.170 * s);
   }
   parts.add('glass', cylZ(0.026 * s, 0.014 * s, 10),
@@ -1531,6 +1534,42 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
         side * 0.255 * s, yokeCenterY - 0.04 * s, 0.045 * s,
         0, 0, side * 0.12);
     }
+  } else if (panther) {
+    // Panther signature: a low arrow brow and two outward-canted armor
+    // cheeks echo the main turret's faceting without hiding the open
+    // mechanism. The base KF51 carries the denser demonstrator package:
+    // three independently readable work lights, an elevated dual-channel
+    // optic hood and two side warning apertures.
+    parts.add(body, box(0.62 * s, 0.035 * s, 0.30 * s),
+      0, yokeCenterY + 0.175 * s, 0.035 * s, 0, 0, 0);
+    parts.add('detail', box(0.44 * s, 0.022 * s, 0.025 * s),
+      0, yokeCenterY + 0.198 * s, 0.188 * s);
+    for (const side of [-1, 1]) {
+      parts.add(body, box(0.040 * s, 0.27 * s, 0.30 * s),
+        side * 0.325 * s, yokeCenterY + 0.035 * s, 0.030 * s,
+        0, -side * 0.10, side * 0.16);
+      parts.add('detail', box(0.026 * s, 0.15 * s, 0.22 * s),
+        side * 0.365 * s, yokeCenterY - 0.015 * s, 0.045 * s,
+        0, -side * 0.10, side * 0.16);
+    }
+    if (classicPanther) {
+      parts.add('dark', box(0.50 * s, 0.105 * s, 0.040 * s),
+        0, yokeCenterY - 0.135 * s, 0.274 * s);
+      for (const x of [-0.155, 0, 0.155]) {
+        parts.add('glass', box(0.105 * s, 0.058 * s, 0.014 * s),
+          x * s, yokeCenterY - 0.135 * s, 0.300 * s);
+      }
+      parts.add(body, box(0.31 * s, 0.075 * s, 0.245 * s),
+        sensorX, sensorY + 0.158 * s, 0.048 * s);
+      for (const side of [-1, 1]) {
+        parts.add('dark', box(0.075 * s, 0.085 * s, 0.032 * s),
+          side * 0.365 * s, yokeCenterY + 0.025 * s, 0.218 * s,
+          0, -side * 0.09, 0);
+        parts.add('glass', box(0.047 * s, 0.050 * s, 0.014 * s),
+          side * 0.365 * s, yokeCenterY + 0.025 * s, 0.239 * s,
+          0, -side * 0.09, 0);
+      }
+    }
   }
 
   // The reference M1A3 station stands on a real powered riser rather than a
@@ -1559,6 +1598,8 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   fitting.userData.ammoSide = ammoSide;
   fitting.userData.sensorSide = sensorSide;
   fitting.userData.hasVisibleFeedBelt = true;
+  fitting.userData.hasWorkLights = panther;
+  fitting.userData.lightCount = classicPanther ? 5 : (panther ? 2 : 0);
   fitting.userData.machineGunFinish = 'gunmetal';
   fitting.userData.firingAxis = '+Z';
   fitting.userData.muzzleLocalZ = 1.295 * s;

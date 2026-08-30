@@ -11,23 +11,45 @@ await Promise.resolve();
 try {
   tank.root.updateMatrixWorld(true);
   const hullRig = tank.root.getObjectByName('rig_hull');
+  const turretRig = tank.root.getObjectByName('rig_turret');
+  const gunRig = tank.root.getObjectByName('rig_gun');
   const turret = tank.root.getObjectByName('turret');
   const turretDetail = tank.root.getObjectByName('turretDetail');
-  assert.ok(hullRig && turret && turretDetail,
-    'KF51 retains canonical hull, turret, and detail geometry');
+  assert.ok(hullRig && turretRig && gunRig && turret && turretDetail,
+    'KF51 retains canonical hull, turret, gun, and detail geometry');
 
-  const frontHits = (mesh, y) => new THREE.Raycaster(
-    new THREE.Vector3(0, y, 4),
-    new THREE.Vector3(0, 0, -1),
-    0,
-    10,
-  ).intersectObject(mesh, false);
+  const chevron = turretRig.userData.kf51FrontChevronReceipt;
+  assert.equal(chevron?.profile, 'kf51-panther-closed-chevron-r1',
+    'KF51 publishes the rebuilt closed-chevron front architecture');
+  assert.equal(chevron.cheekVolumes, 2, 'KF51 front has one closed cheek volume per side');
+  assert.equal(chevron.roofBridgeVolumes, 2,
+    'KF51 front cheeks close smoothly into the turret roof');
+  assert.equal(chevron.surfacePanelCount, 6,
+    'KF51 front keeps six broad chevron panels instead of a noisy shelf stack');
+  assert.equal(chevron.multispectralLightCassettes, 2,
+    'KF51 front carries two recessed multispectral light cassettes');
+  assert.equal(chevron.closedRearFaces, true, 'KF51 chevron volumes remain watertight at the turret');
 
-  const browHit = frontHits(turret, 2.25)[0];
-  assert.ok(browHit && browHit.point.z >= 2.14,
-    `KF51 camouflaged brow cassette closes the square above the gun (${browHit?.point.z} m)`);
-  assert.ok(frontHits(turret, 2.06)[0]?.point.z < 2.14,
-    'KF51 brow cassette remains above the gun-shroud crown');
+  const housing = gunRig.userData.kf51AngularGunHousingReceipt;
+  assert.equal(housing?.profile, 'kf51-panther-angular-mantlet-r1',
+    'KF51 publishes the enlarged angular moving-gun housing');
+  assert.equal(housing.mainHousing, 'closed-tapered-six-plane-wedge',
+    'KF51 gun housing is a faceted closed wedge rather than a round roll');
+  assert.ok(housing.rearWidthM >= 0.78 && housing.rearHeightM >= 0.59,
+    'KF51 angular housing has the requested visual mass at the turret throat');
+  assert.equal(housing.forwardClampSides, 6, 'KF51 forward clamp remains visibly faceted');
+  assert.equal(housing.roundVisibleTrunnionRetired, true,
+    'KF51 no longer exposes the undersized circular trunnion');
+
+  const roofStations = [];
+  turretRig.traverse((node) => {
+    if (node.userData?.fittingRoot && node.userData.fitting === 'openYokeRws') roofStations.push(node);
+  });
+  assert.equal(roofStations.length, 1, 'KF51 carries one full rear open-yoke roof station');
+  assert.equal(roofStations[0].userData.stationVariant, 'kf51-panther',
+    'KF51 rear station uses its Panther-specific equipment package');
+  assert.equal(roofStations[0].userData.lightCount, 5,
+    'KF51 rear station carries its five-aperture work-light suite');
 
   // The upper-glacis surface must now be the merged camouflaged hull mesh,
   // rather than an unnamed, solid-tone comparison shell sitting above it.
@@ -113,4 +135,4 @@ try {
   tank.dispose();
 }
 
-console.log('kf51FrontFinish.selftest: brow closure and camo finish pass');
+console.log('kf51FrontFinish.selftest: closed chevron, angular housing, roof station, and camo finish pass');

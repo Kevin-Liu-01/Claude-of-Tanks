@@ -29,6 +29,17 @@ const TARGETS = Object.freeze({
     variant: 'korean-twin', mount: [0.70, 0.70, -0.68],
     sizeStandard: 'm1a3-full-tower', scale: 1.28, minimumWidth: 0.84, minimumHeight: 0.82,
   }),
+  kf51b: Object.freeze({
+    variant: 'kf51b-panther', mount: [0.30, 0.55, -2.16],
+    sizeStandard: 'leopard-reduced-tower', scale: 1.12, towerRiseM: 0.14,
+    minimumWidth: 0.88, minimumHeight: 0.72, weaponRole: 'roof-primary',
+  }),
+  kf51: Object.freeze({
+    variant: 'kf51-panther', mount: [0.35, 1.245, -3.02],
+    sizeStandard: 'leopard-reduced-tower', scale: 1.12, towerRiseM: 0.14,
+    minimumWidth: 0.88, minimumHeight: 0.72, weaponRole: 'roof-primary',
+    workLightCount: 5,
+  }),
 });
 
 const near = (actual, expected, tolerance, message) => {
@@ -74,8 +85,9 @@ for (const [id, expected] of Object.entries(TARGETS)) {
       `${id}: records AbramsX design ancestry`);
     assert.equal(station.userData.stationVariant, expected.variant,
       `${id}: receives its host-specific treatment`);
-    assert.equal(station.userData.weaponRole,
-      expected.replacesCommanderGun ? 'commander-primary' : 'auxiliary',
+    const expectedWeaponRole = expected.weaponRole
+      || (expected.replacesCommanderGun ? 'commander-primary' : 'auxiliary');
+    assert.equal(station.userData.weaponRole, expectedWeaponRole,
       `${id}: station has the intended roof-weapon role`);
     if (expected.replacesCommanderGun) {
       assert.equal(station.userData.headOnSide, 'left',
@@ -84,6 +96,11 @@ for (const [id, expected] of Object.entries(TARGETS)) {
     assert.equal(station.userData.remoteControlled, true, `${id}: station is remotely operated`);
     assert.equal(station.userData.caliberMm, 12.7, `${id}: station remains machine-gun caliber`);
     assert.equal(station.userData.hasVisibleFeedBelt, true, `${id}: ammunition path is modeled`);
+    if (expected.workLightCount != null) {
+      assert.equal(station.userData.hasWorkLights, true, `${id}: tower exposes its work-light package`);
+      assert.equal(station.userData.lightCount, expected.workLightCount,
+        `${id}: tower records every independently readable work light`);
+    }
     assert.equal(station.userData.firingAxis, '+Z', `${id}: weapon follows vehicle-forward convention`);
     assert.equal(station.userData.sizeStandard, expected.sizeStandard,
       `${id}: uses the intended host tower size standard`);
@@ -130,7 +147,7 @@ for (const [id, expected] of Object.entries(TARGETS)) {
         otherWeaponFittings.push(node);
       }
     });
-    if (!expected.replacesCommanderGun) {
+    if (!expected.replacesCommanderGun && expectedWeaponRole === 'auxiliary') {
       assert.ok(otherWeaponFittings.length >= 1,
         `${id}: auxiliary tower supplements the original roof weapon`);
     }
@@ -175,8 +192,7 @@ for (const [id, expected] of Object.entries(TARGETS)) {
     }
     assert.equal(receipt.equipmentOwned, true, `${id}: receipt excludes station from armor`);
     assert.equal(receipt.turretOwned, true, `${id}: receipt records traverse ownership`);
-    assert.equal(receipt.weaponRole,
-      expected.replacesCommanderGun ? 'commander-primary' : 'auxiliary',
+    assert.equal(receipt.weaponRole, expectedWeaponRole,
       `${id}: receipt records whether the station replaces or supplements the roof gun`);
 
     const localPosition = station.position.clone();
@@ -198,7 +214,7 @@ for (const [id, expected] of Object.entries(TARGETS)) {
   }
 }
 
-assert.equal(new Set(Object.values(TARGETS).map(({ variant }) => variant)).size, 5,
-  'all five hosts receive visibly distinct open-yoke variants');
+assert.equal(new Set(Object.values(TARGETS).map(({ variant }) => variant)).size, 7,
+  'all seven hosts receive visibly distinct open-yoke variants');
 
-console.log('openYokeRwsFleet.selftest: five host-sized AbramsX-style turret stations pass');
+console.log('openYokeRwsFleet.selftest: seven host-sized AbramsX-style turret stations pass');

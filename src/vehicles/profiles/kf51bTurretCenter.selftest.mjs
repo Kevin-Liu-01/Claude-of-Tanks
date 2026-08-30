@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { TANK_SPECS } from '../specs.ts';
 
 const closeTo = (actual, expected, epsilon = 1e-9) => {
   assert.ok(Math.abs(actual - expected) <= epsilon,
@@ -20,8 +21,9 @@ try {
   const skirtArmor = hull?.userData.kf51bSkirtArmorReceipt;
   const proportions = hull?.userData.kf51bProportionReceipt;
   const attachmentSeat = turret?.userData.kf51bAttachmentSeatReceipt;
+  const roofReceipt = turret?.userData.kf51bTurretRoofReceipt;
   const eraFinish = tank.root.userData.eraFinishReceipt;
-  const rws = tank.root.getObjectByName('fitting_pintleMG');
+  const rws = tank.root.getObjectByName('kf51bRoofOpenYokeRws');
   const spareLinks = hull?.children.find((child) => child.userData.fitting === 'spareTrackLinks');
 
   assert.ok(turret, 'KF51B rotating turret rig exists');
@@ -29,8 +31,19 @@ try {
   closeTo(hull.scale.y, 1.05);
   closeTo(hull.scale.z, 1.05);
   closeTo(turret.scale.x, 1.05);
-  closeTo(turret.position.z, 0.441);
-  assert.equal(proportions?.turretPivotLocalZ, 0.42,
+  closeTo(turret.position.z, 0.6825);
+  TANK_SPECS.kf51b.armor.turretPivot.forEach((value, axis) => {
+    closeTo(value, turret.position.getComponent(axis));
+  });
+  assert.deepEqual(TANK_SPECS.kf51b.armor.gunPivot, [0, 0.231, 1.659]);
+  closeTo(TANK_SPECS.kf51b.armor.gunBarrel.lengthM, 5.565);
+  closeTo(
+    TANK_SPECS.kf51b.armor.turretPivot[2]
+      + TANK_SPECS.kf51b.armor.gunPivot[2]
+      + TANK_SPECS.kf51b.armor.gunBarrel.lengthM,
+    7.9065,
+  );
+  assert.equal(proportions?.turretPivotLocalZ, 0.65,
     'KF51B turret ring moves forward before the uniform vehicle scale');
   assert.equal(proportions?.trackContactMetadataScaled, true,
     'KF51B movement contact metadata follows the enlarged visual hierarchy');
@@ -38,6 +51,11 @@ try {
     'KF51B track hit geometry follows the enlarged visual hierarchy');
   assert.equal(gun?.parent, turret,
     'KF51B gun remains owned by the translated turret rig');
+  assert.equal(roofReceipt?.profile, 'convex-crowned-wedge');
+  assert.equal(roofReceipt?.concaveFanRemoved, true,
+    'KF51B roof no longer uses the selected concave center fan');
+  assert.ok(roofReceipt?.centerAboveHighestEdgeM > 0,
+    'KF51B roof center stays above every perimeter station');
 
   assert.equal(runningGear?.wheelR, 0.355,
     'KF51B road wheels use the smaller revised Panther radius');
@@ -60,12 +78,17 @@ try {
   }
 
   assert.equal(rws?.parent, turret,
-    'KF51B remote weapon station remains turret-owned');
-  assert.equal(rws?.position.z, -2.18,
-    'KF51B RWS gun foot is pulled back onto its pedestal');
-  const rwsAft = rws.position.z + rws.userData.aabb.min[2];
-  assert.ok(rwsAft <= -2.295,
-    'KF51B RWS fitting overlaps the pedestal front face');
+    'KF51B open-yoke weapon tower remains turret-owned');
+  assert.equal(rws?.userData.designFamily, 'abramsx-open-yoke-v1',
+    'KF51B tower shares the Leopard 2A6M open-yoke mechanism');
+  assert.equal(rws?.userData.stationVariant, 'kf51b-panther',
+    'KF51B tower retains its faceted Panther armor and twin optics');
+  assert.equal(rws?.userData.sizeStandard, 'leopard-reduced-tower',
+    'KF51B tower uses the same size standard as the Leopard 2A6M');
+  assert.equal(rws?.userData.weaponRole, 'roof-primary',
+    'KF51B open-yoke station replaces the retired split-shield roof gun');
+  assert.deepEqual(attachmentSeat?.roofRws?.mountLocal, [0.30, 0.55, -2.16]);
+  assert.equal(attachmentSeat?.roofRws?.visibleFeedBelt, true);
   assert.equal(spareLinks?.position.y, trackSeat?.spareTrackSeatY,
     'KF51B spare links are bedded into the upper glacis');
 
