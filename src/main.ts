@@ -2592,100 +2592,94 @@ const driveTestController = createDriveTestAccess({
 if (driveTestRequested) await driveTestController.preload();
 
 if (diagnosticsRequested) {
-  const { createCombatTelemetry } = await import('./dev/combatTelemetry.ts');
-  createCombatTelemetry(legacyPort({
-    enabled: true,
-    bus,
-    getGame: () => game,
-    getPinnedTargetId: () => driveTestController.aimTargetId,
-    getAimBlockedDistance: () => frameInfo.aim.blockedDistM,
-    playerShellLog,
-    botPressure,
-  }));
-}
-
-if (diagnosticsRequested) {
-  await perfHud.preload().catch((error) => {
-    console.warn('[diagnostics] optional engineering runtime failed to load', error);
-  });
-}
-if (debugModeRequested() || input.getSettings().showDebugHud) perfHud.setVisible(true);
-if (diagnosticsRequested) {
-  const { installDebugSurface } = await import('./dev/debugSurface.ts');
-  installDebugSurface({
-    scene, camera, renderer, post, lighting, game, rig, bus, input, settings,
-    pauseInfo, garage, flags: debugFlags, frameInfo, playerShellLog, botPressure,
-    killcam, showroom, garageDressing, devTrace,
-    quality: {
-      resolvePresetName, resolveAutoTier, reportSustainedOverload,
-      setPresetName, setMobilePresetName, noteGpuRenderer,
-    },
-    getFx: () => fxRuntimeAccess.current,
-    getPedestalVisual: () => pedestal.current,
-    isPedestalOnStage: () => pedestal.isOnStage(),
-    getSelectedSpecId: () => selectedVehicle.id,
-    getPedestalCacheIds: () => [...pedestal.cacheIds],
-    getWorldCacheIds: () => [...worldCache.keys()],
-    getResidentLimits: () => ({ ...residentLimits }),
-    getBattleVisualPoolStats: () => battleVisualPool.stats(),
-    getGarageFramePacerStats: () => ({ ...garageFramePacer.stats }),
-    getFrameLoopSchedulerStats: () => ({ ...frameLoop.stats }),
-    getPhaseSceneResidency: () => garagePhasePresentation.diagnostics().scene,
-    getGarageGpuResidency: () => garagePhasePresentation.diagnostics().gpu,
-    getLastWorldRelease: () => (worldRuntime.lastRelease
-      ? { ...worldRuntime.lastRelease } : null),
-    isGraphicsContextLost: () => graphicsContextLost,
-    selectGarageTank: (id: string) => garage.setSelected(id),
-    stagePedestalTank: (id: string) => {
-      selectedVehicle.set(id);
-      return pedestal.set(id, true);
-    },
-    getWorld: currentWorld,
-    switchMap,
-    aimAtNearest: driveTestController.aimAtNearest,
-    gunAimError: driveTestController.gunAimError,
-    aimState: driveTestController.aimState,
-    fastForward: driveTestController.fastForward,
-    slayEnemies: driveTestController.slayEnemies,
-    startBattle: debugStartBattle,
-    bakeMinimapForMap: async (mapId: string) => {
-      await ensureBattleHud();
-      const next = await ensureWorld(mapId, null, { precompile: false, services: false });
-      buildWorldMinimap(next, true);
-      return currentHud()?.exportMinimapBackground('image/webp', 0.92) || '';
-    },
-    beginBattleEntry,
-    beginSoloBattle,
-    beginNetworkBattle: (request?: PrivateBattleLaunchRequest) => (
-      networkBattleLauncher.beginPrivate(request)
-    ),
-    enterGarage,
-    leaveBattleToGarage,
-    spawnKillShell: driveTestController.spawnKillShell,
-    getShotMode: () => shotMode,
-    setShotMode: (value: boolean) => { shotMode = !!value; },
-    forceHitMark: async (bounced: boolean) => {
-      await ensureBattleHud();
-      currentHud()?.forceHitMark(!!bounced);
-    },
-    getDamagePanel: () => damagePanel,
-    getNetworkDiagnostics: () => networkSession.diagnostics(),
-    getNetworkPresentationStats: () => (
-      networkSession.bridge?.getPresentationEventStats?.() || null
-    ),
-    collectTelemetry: () => perfHud.collectTelemetry(),
-    sampleShadowContribution: () => perfHud.sampleShadowContribution(),
-    injectNetworkEvents: (events: unknown) => {
-      const latestNetworkSnapshot = networkSession.latestSnapshot;
-      if (!import.meta.env.DEV || !networkSession.bridge || !latestNetworkSnapshot) return false;
-      const batch = Array.isArray(events) ? events : [];
-      const matchEnded = batch.find((event) => event?.type === 'match_ended');
-      const snapshot = matchEnded
-        ? { ...latestNetworkSnapshot,
-          meta: { ...latestNetworkSnapshot.meta, result: matchEnded.result } }
-        : latestNetworkSnapshot;
-      networkSession.bridge.apply(snapshot, 1 / 60, batch);
-      return true;
+  const { installMainDiagnosticsRuntime } = await import('./dev/mainDiagnosticsRuntime.ts');
+  await installMainDiagnosticsRuntime({
+    telemetry: legacyPort({
+      enabled: true,
+      bus,
+      getGame: () => game,
+      getPinnedTargetId: () => driveTestController.aimTargetId,
+      getAimBlockedDistance: () => frameInfo.aim.blockedDistM,
+      playerShellLog,
+      botPressure,
+    }),
+    perfHud,
+    showDebugHud: debugModeRequested() || input.getSettings().showDebugHud,
+    debugSurface: {
+      scene, camera, renderer, post, lighting, game, rig, bus, input, settings,
+      pauseInfo, garage, flags: debugFlags, frameInfo, playerShellLog, botPressure,
+      killcam, showroom, garageDressing, devTrace,
+      quality: {
+        resolvePresetName, resolveAutoTier, reportSustainedOverload,
+        setPresetName, setMobilePresetName, noteGpuRenderer,
+      },
+      getFx: () => fxRuntimeAccess.current,
+      getPedestalVisual: () => pedestal.current,
+      isPedestalOnStage: () => pedestal.isOnStage(),
+      getSelectedSpecId: () => selectedVehicle.id,
+      getPedestalCacheIds: () => [...pedestal.cacheIds],
+      getWorldCacheIds: () => [...worldCache.keys()],
+      getResidentLimits: () => ({ ...residentLimits }),
+      getBattleVisualPoolStats: () => battleVisualPool.stats(),
+      getGarageFramePacerStats: () => ({ ...garageFramePacer.stats }),
+      getFrameLoopSchedulerStats: () => ({ ...frameLoop.stats }),
+      getPhaseSceneResidency: () => garagePhasePresentation.diagnostics().scene,
+      getGarageGpuResidency: () => garagePhasePresentation.diagnostics().gpu,
+      getLastWorldRelease: () => (worldRuntime.lastRelease
+        ? { ...worldRuntime.lastRelease } : null),
+      isGraphicsContextLost: () => graphicsContextLost,
+      selectGarageTank: (id: string) => garage.setSelected(id),
+      stagePedestalTank: (id: string) => {
+        selectedVehicle.set(id);
+        return pedestal.set(id, true);
+      },
+      getWorld: currentWorld,
+      switchMap,
+      aimAtNearest: driveTestController.aimAtNearest,
+      gunAimError: driveTestController.gunAimError,
+      aimState: driveTestController.aimState,
+      fastForward: driveTestController.fastForward,
+      slayEnemies: driveTestController.slayEnemies,
+      startBattle: debugStartBattle,
+      bakeMinimapForMap: async (mapId: string) => {
+        await ensureBattleHud();
+        const next = await ensureWorld(mapId, null, { precompile: false, services: false });
+        buildWorldMinimap(next, true);
+        return currentHud()?.exportMinimapBackground('image/webp', 0.92) || '';
+      },
+      beginBattleEntry,
+      beginSoloBattle,
+      beginNetworkBattle: (request?: PrivateBattleLaunchRequest) => (
+        networkBattleLauncher.beginPrivate(request)
+      ),
+      enterGarage,
+      leaveBattleToGarage,
+      spawnKillShell: driveTestController.spawnKillShell,
+      getShotMode: () => shotMode,
+      setShotMode: (value: boolean) => { shotMode = !!value; },
+      forceHitMark: async (bounced: boolean) => {
+        await ensureBattleHud();
+        currentHud()?.forceHitMark(!!bounced);
+      },
+      getDamagePanel: () => damagePanel,
+      getNetworkDiagnostics: () => networkSession.diagnostics(),
+      getNetworkPresentationStats: () => (
+        networkSession.bridge?.getPresentationEventStats?.() || null
+      ),
+      collectTelemetry: () => perfHud.collectTelemetry(),
+      sampleShadowContribution: () => perfHud.sampleShadowContribution(),
+      injectNetworkEvents: (events: unknown) => {
+        const latestNetworkSnapshot = networkSession.latestSnapshot;
+        if (!import.meta.env.DEV || !networkSession.bridge || !latestNetworkSnapshot) return false;
+        const batch = Array.isArray(events) ? events : [];
+        const matchEnded = batch.find((event) => event?.type === 'match_ended');
+        const snapshot = matchEnded
+          ? { ...latestNetworkSnapshot,
+            meta: { ...latestNetworkSnapshot.meta, result: matchEnded.result } }
+          : latestNetworkSnapshot;
+        networkSession.bridge.apply(snapshot, 1 / 60, batch);
+        return true;
+      },
     },
   });
 }
