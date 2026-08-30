@@ -67,6 +67,10 @@ sequencing.
 neutral showroom sun, mutually exclusive scene membership, renewable dressing
 GPU residency, world-root swaps, and terrain-relative stage placement. Camera
 framing and pedestal pose math remain with their existing owners.
+`garageBattlefieldPresentationRuntime.ts` owns complete outdoor-battlefield
+activation, stale-load cancellation, measured deployment placement, Garage
+camera framing, lifecycle effects, failure state, and diagnostics behind three
+typed operations; `main.ts` only wires its concrete world and presentation ports.
 `garageDressingOptimization.ts` finalizes the fully streamed static workshop,
 bakes descendant transforms, instances exact repeats, merges compatible
 semantic-free opaque surfaces, and collapses only high-return leaf draws inside
@@ -138,6 +142,9 @@ solo/network authority policy in `main.ts`.
 Route every battle/Studio return through `garageReturnRuntime.ts`; do not
 recreate replay/tank/network/world teardown order or a leave-transition latch
 in `main.ts`.
+Route Garage battlefield selection through
+`garageBattlefieldPresentationRuntime.ts`; do not retain world-load generations,
+placement state, or environment-specific camera offsets in `main.ts`.
 Route covered solo warm changes through `soloBattleDeploymentRuntime.ts`; do
 not put shader, effect, shadow, or reveal ordering back into `main.ts`.
 Route covered solo entry changes through `soloBattleLoadingRuntime.ts`; do not

@@ -104,6 +104,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/pointerLockFeedbackRuntime.selftest.mjs',
     'src/game/mobileAutoAimRuntime.selftest.mjs',
     'src/game/garagePhasePresentationRuntime.selftest.mjs',
+    'src/game/garageBattlefieldPresentationRuntime.selftest.mjs',
     'src/game/garageDressingOptimization.selftest.mjs',
     'src/game/garageVariants.selftest.mjs',
     'src/game/garageWallLayout.selftest.mjs',

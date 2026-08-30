@@ -78,6 +78,10 @@ activity. Verdant retains the authored workshop. Every other Garage destination
 mounts its complete cached battlefield and seats the presentation at a measured
 open point with at least 24 m of real obstacle clearance; it must not create a
 parallel proxy terrain, skyline, landmark, wall, roof, or light rig.
+`garageBattlefieldPresentationRuntime.ts` owns that activation transaction,
+including stale-load cancellation, placement state, camera framing, and failure
+diagnostics. The composition root supplies concrete ports but does not retain a
+second Garage/world state machine.
 
 ## Rendering and shadows
 
