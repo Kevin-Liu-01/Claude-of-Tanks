@@ -6,6 +6,7 @@ import {
   FALLBACK_GITHUB_STAR_COUNT,
   formatGitHubStarCount,
   mountGitHubStars,
+  repositoryStatsEndpointAvailable,
 } from '../ui/githubStars.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -39,6 +40,9 @@ const navCss = readFileSync(join(ROOT, 'src/presentation/publicNav.css'), 'utf8'
 const navSource = readFileSync(join(ROOT, 'src/presentation/publicNav.ts'), 'utf8');
 assert.equal(formatGitHubStarCount(999), '999');
 assert.equal(formatGitHubStarCount(1200), '1.2K');
+assert.equal(repositoryStatsEndpointAvailable({ hostname: '127.0.0.1', protocol: 'http:' }), false);
+assert.equal(repositoryStatsEndpointAvailable({ hostname: 'localhost', protocol: 'https:' }), false);
+assert.equal(repositoryStatsEndpointAvailable({ hostname: 'cot.kevinliu.studio', protocol: 'https:' }), true);
 
 // A fresh surface renders its packaged value immediately and refreshes through
 // the same-origin cached endpoint without waiting for pointer or keyboard intent.

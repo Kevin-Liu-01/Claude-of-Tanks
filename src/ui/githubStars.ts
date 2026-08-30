@@ -2,6 +2,7 @@ const REPOSITORY_STATS_ENDPOINT = '/api/github-stars';
 const STAR_CACHE_KEY = 'cot:github-stars';
 const STAR_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 export const FALLBACK_GITHUB_STAR_COUNT = 195;
+const STATIC_PREVIEW_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
 
 const COMPACT_NUMBER = new Intl.NumberFormat('en', {
   notation: 'compact',
@@ -12,6 +13,14 @@ const starNodes = new Set<Element>();
 const intentBoundControls = new WeakSet<HTMLAnchorElement>();
 let activeRequest: Promise<number | null> | null = null;
 let memoryCache: { count: number; savedAt: number } | null = null;
+
+export function repositoryStatsEndpointAvailable(
+  locationLike: Pick<Location, 'hostname' | 'protocol'> | null | undefined = globalThis.location,
+): boolean {
+  if (!locationLike) return true;
+  if (locationLike.protocol === 'file:') return false;
+  return !STATIC_PREVIEW_HOSTS.has(locationLike.hostname.toLowerCase());
+}
 
 export function formatGitHubStarCount(count: number): string {
   return COMPACT_NUMBER.format(count);
@@ -84,6 +93,11 @@ export function refreshGitHubStars(): Promise<number | null> {
     renderGitHubStarCount(cached.count);
     return Promise.resolve(cached.count);
   }
+
+  // Vite's static production preview intentionally has no serverless API
+  // routes. Keep the release-verified fallback and avoid a known 404; real
+  // deployments continue to refresh through the same-origin cached handler.
+  if (!repositoryStatsEndpointAvailable()) return Promise.resolve(null);
 
   if (!activeRequest) {
     activeRequest = fetchGitHubStars().finally(() => { activeRequest = null; });
