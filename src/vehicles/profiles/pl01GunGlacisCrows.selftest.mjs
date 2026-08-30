@@ -45,6 +45,7 @@ for (const id of ['pl01', 'pl01_105']) {
   const hull = tank.root.getObjectByName('rig_hull');
   const turret = tank.root.getObjectByName('rig_turret');
   const gun = tank.root.getObjectByName('rig_gun');
+  const gunMount = gun.getObjectByName('gunMount');
   const turretShell = turret.getObjectByName('turret');
   const roofStowage = tank.root.getObjectByName('pl01_roof_stowage');
   const smokeLeft = tank.root.getObjectByName('pl01_smoke_bank_left');
@@ -121,10 +122,36 @@ for (const id of ['pl01', 'pl01_105']) {
   assert.equal(noseSeat.connected, true,
     `${id} nose cap and gun sleeve must remain connected`);
   assert.deepEqual(gun.userData.pl01MantletReceipt, {
-    revision: 'low-profile-r5', axisWorldY: 2.38104,
+    revision: 'turret-throat-fit-r1', axisWorldY: 2.38104,
     coverMinWorldY: 2.28204, coverMaxWorldY: 2.54304,
-    turretRoofWorldY: 2.69208, aligned: true,
+    turretRoofWorldY: 2.69208,
+    throatRearZ: 0.43, throatBottomY: -0.23328,
+    throatShoulderY: -0.14688, throatTopY: 0.11232,
+    throatHalfWidths: [0.08, 0.34, 0.07], contactGapM: 0,
+    aligned: true,
   }, `${id} gun-root prism must fit within the rebuilt turret envelope`);
+  assert.ok(gunMount?.isMesh,
+    `${id} must retain one merged pitch-owned gun housing`);
+  gunMount.geometry.computeBoundingBox();
+  const gunMountBounds = gunMount.geometry.boundingBox;
+  assert.ok(near(gunMountBounds.min.x, -0.34)
+    && near(gunMountBounds.min.y, -0.23328)
+    && near(gunMountBounds.min.z, 0.43),
+  `${id} gun housing must begin on the turret throat's full lower/shoulder profile`);
+  const housingPositions = gunMount.geometry.getAttribute('position');
+  const rearProfile = new Set();
+  for (let index = 0; index < housingPositions.count; index++) {
+    if (!near(housingPositions.getZ(index), 0.43)) continue;
+    rearProfile.add(`${housingPositions.getX(index).toFixed(5)},${housingPositions.getY(index).toFixed(5)}`);
+  }
+  for (const point of [
+    '-0.08000,-0.23328', '0.08000,-0.23328',
+    '-0.34000,-0.14688', '0.34000,-0.14688',
+    '-0.07000,0.11232', '0.07000,0.11232',
+  ]) {
+    assert.ok(rearProfile.has(point),
+      `${id} gun housing rear profile must contain turret-throat point ${point}`);
+  }
 
   const trackBands = [];
   tank.root.traverse((node) => {

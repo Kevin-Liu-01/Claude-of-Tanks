@@ -1874,9 +1874,32 @@ function buildPL01(P: PolishBuilderPort): void {
 
   // ---- gun: angular thermal cover + bare tube to the published muzzle -----
   // axis world 2.38104 (pivot 2.07 + 0.31104); gun pivot world z 0.55.
-  // The root sleeve now overlaps the turret nose by 10 cm; its cover then
-  // runs forward as one pitch-owned assembly to the bare tube.
-  P.addGunExtra(box(0.56, 0.42 * equipmentHeightScale, 0.90), 0, gunAssemblyY(0.045), 0.80); // root sleeve
+  // The moving root is a two-band faceted transition whose rear ring is the
+  // turret nose's exact three-step profile in gun-local coordinates. The old
+  // bevelled box began 80 mm behind that ring and read as a narrow floating
+  // rectangle. This transition starts on the z=1.88 turret throat, follows
+  // its lower foot / broad shoulder / roof apex, then closes onto the thermal
+  // cover's complete z=1.25 rectangular ring without stretching the barrel.
+  const gunPivotY = P.spec.armor.gunPivot[1];
+  const gunPivotZ = P.spec.armor.gunPivot[2];
+  const throatRearZ = Number((1.88 - gunPivotZ).toFixed(5));
+  const throatBottomY = Number((shellY(0.09) - gunPivotY).toFixed(5));
+  const throatShoulderY = Number((shellY(0.19) - gunPivotY).toFixed(5));
+  const throatTopY = Number((shellY(0.49) - gunPivotY).toFixed(5));
+  const coverRearZ = 1.25;
+  const coverBottomY = gunAssemblyY(-0.12);
+  const coverShoulderY = gunAssemblyY(0.015);
+  const coverTopY = gunAssemblyY(0.27);
+  P.addGunExtra(orientedSlab(
+    [-0.08, throatBottomY, throatRearZ], [0.08, throatBottomY, throatRearZ],
+    [0.34, throatShoulderY, throatRearZ], [-0.34, throatShoulderY, throatRearZ],
+    [-0.235, coverBottomY, coverRearZ], [0.235, coverBottomY, coverRearZ],
+    [0.235, coverShoulderY, coverRearZ], [-0.235, coverShoulderY, coverRearZ]));
+  P.addGunExtra(orientedSlab(
+    [-0.34, throatShoulderY, throatRearZ], [0.34, throatShoulderY, throatRearZ],
+    [0.07, throatTopY, throatRearZ], [-0.07, throatTopY, throatRearZ],
+    [-0.235, coverShoulderY, coverRearZ], [0.235, coverShoulderY, coverRearZ],
+    [0.20, coverTopY, coverRearZ], [-0.20, coverTopY, coverRearZ]));
   P.addGunExtra(orientedSlab(
     [-0.235, gunAssemblyY(-0.12), 1.25], [0.235, gunAssemblyY(-0.12), 1.25], [0.20, gunAssemblyY(-0.115), 3.25], [-0.20, gunAssemblyY(-0.115), 3.25],
     [-0.235, gunAssemblyY(0.27), 1.25], [0.235, gunAssemblyY(0.27), 1.25], [0.20, gunAssemblyY(0.185), 3.25], [-0.20, gunAssemblyY(0.185), 3.25]));
@@ -1890,9 +1913,12 @@ function buildPL01(P: PolishBuilderPort): void {
   P.addGunExtraDark(cylZ(0.016, 0.82, 10), 0.31, gunAssemblyY(0.025), 1.48);
   P.addGunExtraDark(cylZ(0.023, 0.065, 10), 0.31, gunAssemblyY(0.025), 1.91);
   P.gunG.userData.pl01MantletReceipt = {
-    revision: 'low-profile-r5', axisWorldY: 2.38104,
+    revision: 'turret-throat-fit-r1', axisWorldY: 2.38104,
     coverMinWorldY: 2.28204, coverMaxWorldY: 2.54304,
-    turretRoofWorldY: 2.69208, aligned: true,
+    turretRoofWorldY: 2.69208,
+    throatRearZ, throatBottomY, throatShoulderY, throatTopY,
+    throatHalfWidths: [0.08, 0.34, 0.07], contactGapM: 0,
+    aligned: true,
   };
   const mainTubeR = is105 ? 0.086 : 0.098;
   tubeGun(P, [
