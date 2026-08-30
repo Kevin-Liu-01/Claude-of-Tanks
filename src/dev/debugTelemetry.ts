@@ -11,7 +11,7 @@ type DebugRenderer = THREE.WebGLRenderer & {
 };
 
 interface DebugLighting {
-  getShadowTelemetry(): Record<string, unknown>;
+  getShadowTelemetry(): unknown;
   update(force?: boolean): void;
 }
 
@@ -22,7 +22,7 @@ interface DebugPost {
 }
 
 interface DebugTank {
-  combat?: { destroyed?: boolean };
+  combat?: { destroyed?: boolean } | null;
 }
 
 interface DebugGame {
@@ -83,6 +83,12 @@ function collectionSize(value: unknown): number {
   if (Number.isFinite(candidate.length)) return candidate.length as number;
   if (Number.isFinite(candidate.size)) return candidate.size as number;
   return 0;
+}
+
+function recordValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object'
+    ? value as Record<string, unknown>
+    : {};
 }
 
 /** Own the low-frequency engineering dashboard and explicit shadow A/B probe. */
@@ -146,7 +152,7 @@ export function createDebugTelemetryOwner(
   function collect(): Record<string, unknown> {
     const draw = deps.renderer.getDrawingBufferSize(drawSize);
     const outputResolution = deps.renderer.userData.outputResolution ?? null;
-    const shadow = deps.lighting.getShadowTelemetry();
+    const shadow = recordValue(deps.lighting.getShadowTelemetry());
     const shadowCounts = shadowSceneCounts();
     const world = deps.getWorld();
     const loose = world?.getLoosePropStats?.() ?? { total: 0, active: 0 };

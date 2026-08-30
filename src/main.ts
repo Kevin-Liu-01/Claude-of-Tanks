@@ -580,9 +580,9 @@ const perfHud = createPerfDiagnosticsAccess(async () => {
     renderer,
     scene,
     camera,
-    lighting: legacyPort(lighting),
-    post: legacyPort(post),
-    game: legacyPort(game),
+    lighting,
+    post,
+    game,
     getWorld: currentWorld,
     getNetworkTelemetry: () => networkSession.diagnostics(),
     resolvePresetName,
@@ -607,7 +607,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   sunDirection: sky.sunDir,
   getSkyConfig: () => {
     const world = currentWorld();
-    return legacyPort(world ? world.config.sky : getMapConfig(worldRuntime.pendingMapId).sky) || {};
+    return world ? world.config.sky : getMapConfig(worldRuntime.pendingMapId).sky;
   },
   getGroundHeight: (x, z) => hfProxy.getHeightAt(x, z),
   getPhase: () => game.phase,
