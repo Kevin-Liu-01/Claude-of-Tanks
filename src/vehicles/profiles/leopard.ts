@@ -324,6 +324,12 @@ interface LeopardGlacisEraSeat {
   readonly innerFaceOverlapM: number;
 }
 
+interface LeopardCheekEraSeat extends LeopardGlacisEraSeat {
+  readonly side: Side;
+  readonly courseFraction: number;
+  readonly scaleY: number;
+}
+
 interface LeopardUaFrontEraSeat extends LeopardGlacisEraSeat {
   readonly side: Side;
 }
