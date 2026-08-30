@@ -145,6 +145,9 @@ assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
 await import('./imagePreload.selftest.mjs');
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+const mainBattleHudRuntimeSource = await readFile(
+  new URL('../app/mainBattleHudRuntime.ts', import.meta.url), 'utf8',
+);
 const mainFrameSource = await readFile(
   new URL('../app/mainFrameRuntime.ts', import.meta.url), 'utf8');
 const combatWarmCompositionSource = await readFile(
@@ -221,14 +224,17 @@ assert.match(studioSource,
 assert.match(studioSource, /hud\?\.setMode\?\.\('hidden'\)/,
   'a pristine direct Studio visit must not require the battle-only HUD runtime');
 assert.match(mainSource,
-  /clearBattle: \(\) => \{[\s\S]{0,500}hud\?\.setMode\?\.\('hidden'\)/,
+  /clearBattle: \(\) => \{[\s\S]{0,500}currentHud\(\)\?\.setMode\?\.\('hidden'\)/,
   'direct Studio exit cleanup must not require the battle-only HUD runtime');
 assert.match(mainSource,
-  /function veilHud\(on(?::\s*boolean)?\)[\s\S]{0,400}hud\?\.root[\s\S]{0,300}damagePanel\?\.root/,
-  'shared presentation cleanup must tolerate an unloaded battle HUD and damage panel');
+  /function veilHud\(on(?::\s*boolean)?\)[\s\S]{0,180}battleHudRuntime\?\.veil\(on\)/,
+  'shared presentation cleanup must delegate to the optional battle HUD owner');
+assert.match(mainBattleHudRuntimeSource,
+  /const veil = \(hidden: boolean\)[\s\S]{0,500}hud\?\.root[\s\S]{0,500}damagePanel\?\.root/,
+  'the battle HUD owner must atomically veil both optional presentation surfaces');
 assert.match(garageReturnRuntimeSource, /ui\.hideHud\(\)/,
   'the Garage return owner must hide the optional battle HUD');
-assert.match(mainSource, /hideHud: \(\) => hud\?\.setMode\?\.\('hidden'\)/,
+assert.match(mainSource, /hideHud: \(\) => currentHud\(\)\?\.setMode\?\.\('hidden'\)/,
   'returning from pristine Studio must reach the garage without a battle HUD');
 assert.match(studioSource,
   /actors\.push\(a\);[\s\S]{0,260}if \(!loading\) bindStoryboardTracks\(\)/,
@@ -360,7 +366,7 @@ assert.match(worldActivationSource,
   /createMinimapAssetRuntime<World>\(\{[\s\S]{0,700}loadAsset: options\.loadMinimapAsset/,
   'the typed world owner must route exact minimap loading through its injected adapter');
 assert.match(mainSource,
-  /loadMinimapAsset: \(next, url\) => hud\?\.buildMinimapFromAsset\(next\.heightField, url\) \?\? false/,
+  /loadMinimapAsset: \(next, url\) => \([\s\S]{0,120}currentHud\(\)\?\.buildMinimapFromAsset\(next\.heightField, url\) \?\? false/,
   'main composition must connect the HUD asset loader to the typed world owner');
 assert.match(minimapRuntimeSource,
   /const isCurrent[\s\S]{0,1100}await loadAsset[\s\S]{0,700}buildFallback\(world\)/,
