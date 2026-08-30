@@ -266,14 +266,12 @@ function potentialFallbackWarmMeshes(root: Object3D): WreckWarmMesh[] {
  */
 function warmWreckFallbackProbe({
   candidates,
-  renderer,
   scene,
   camera,
   compilePrograms,
   warmRender,
 }: {
   candidates: Array<{ source: WreckWarmMesh; material: Material }>;
-  renderer: WebGLRenderer;
   scene: Scene;
   camera: Camera;
   compilePrograms(root: Object3D): void;
@@ -401,7 +399,6 @@ export async function warmNetworkWrecks({
   if (fallbackProbes.size) {
     warmWreckFallbackProbe({
       candidates: [...fallbackProbes.values()],
-      renderer,
       scene,
       camera,
       compilePrograms,

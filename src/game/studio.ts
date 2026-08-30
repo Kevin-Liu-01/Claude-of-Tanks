@@ -37,7 +37,7 @@ import {
 import { createShell, stepShell } from '../sim/ballistics.ts';
 import { createBus } from './stateCore.ts';
 import {
-  CAMO_CATALOG_PATTERN_IDS, setCamoOverride, clearCamoOverrides, applyCamoPatterns,
+  CAMO_CATALOG_PATTERN_IDS, setCamoOverride, applyCamoPatterns,
   setCamoBiome,
 } from '../vehicles/materials.ts';
 import { MAP_IDS, getMapConfig, resolveMapId } from '../world/maps/index.ts';
@@ -45,7 +45,6 @@ import { createStudioPanel } from '../ui/studioPanel.ts';
 import type {
   StudioActor as StudioPanelActor,
   StudioPanelApi,
-  StudioPanelRuntime,
 } from '../ui/studioPanel.ts';
 import {
   STUDIO_MAX_DURATION_MS,

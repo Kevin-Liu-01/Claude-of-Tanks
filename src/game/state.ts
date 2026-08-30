@@ -1119,22 +1119,9 @@ function refreshContactGeometry(ent: SoloEntity): void {
   }
 }
 
-// gameplay_feel r7 (round critique CRITICAL — resting/rolling FLOAT): the
-// support solve assumed every visual's track bottom runs ±0.45 × hullLengthM
-// (true for tankFactory's procedural gear by construction). GLB swaps do NOT
-// honor that layout — the sourced Abrams' rendered contact run measures only
-// ±2.3 m of its 7.93 m hull (0.29 L), tracks curling UP well before ±0.45 L,
-// so the solve held the hull on ~1.25 m of phantom contact beyond each real
-// track end: median 20-21 cm of daylight under the lowest rendered vertex on
-// rolling ground, 21 cm hover at rest. Fix: scan the swapped visual's LOW
-// BAND exactly like the r7 probe — hull-local vertices within 5 cm of the
-// overall min-Y — and derive the contact half-length/half-width/center from
-// that band. Runs ONCE per swap detection (a few hundred k verts, strided),
-// in the visual root's local frame (== the sim's hull frame: root.position =
-// state.pos, root.rotation = sim attitude, so inv(rootWorld)·meshWorld drops
-// any pose above/at the root).
-const CONTACT_BAND_M = 0.05;      // low band: vertices within 5 cm of min-Y
-const CONTACT_MIN_SAMPLES = 24;   // fewer band samples than this = no trust
+// First-party builders publish their measured track contact geometry once.
+// The simulation validates that receipt against spec dimensions before using
+// it; runtime vertex rescans were removed with the retired external-GLB path.
 const CONTACT_LEN_FRAC_MIN = 0.22; // sanity clamps vs spec dims — a scan that
 const CONTACT_LEN_FRAC_MAX = 0.50; // lands outside these is wrong, not novel
 const CONTACT_WID_FRAC_MIN = 0.30;
@@ -1152,139 +1139,6 @@ const CONTACT_BOTY_MAX = 0.30;
 // the fixed guard rather than trust them.
 const CONTACT_PAN_MIN = 0.12;
 const CONTACT_PAN_MAX = 0.70;
-function measureContactGeom(ent: SoloEntity): MovementContactGeometry | null {
-  const root = ent.visual && ent.visual.root;
-  const spec = ent.spec;
-  if (!root || !spec || !spec.dims) return null;
-  const L = spec.dims.hullLengthM;
-  const W = spec.dims.widthM;
-  try {
-    root.updateMatrixWorld(true);
-    const invRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
-    const rel = new THREE.Matrix4();
-    const meshes: Array<{
-      o: THREE.Mesh;
-      pa: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
-    }> = [];
-    root.traverse((object) => {
-      if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh || !object.geometry) return;
-      const o = object;
-      // skip hidden subtrees (the swapped-out procedural gear) and non-color
-      // helpers (shadow proxies write no color but DO define the cast shadow
-      // silhouette — they clone hidden gear geometry, so keep them out too)
-      const material = Array.isArray(o.material) ? o.material[0] : o.material;
-      if (material && material.colorWrite === false) return;
-      let p: THREE.Object3D | null = o;
-      let vis = true;
-      while (p && p !== root) { if (!p.visible) { vis = false; break; } p = p.parent; }
-      if (!vis) return;
-      const pa = o.geometry.getAttribute && o.geometry.getAttribute('position');
-      if (!pa) return;
-      meshes.push({ o, pa });
-    });
-    if (!meshes.length) return null;
-    // pass 1: hull-local Y of every (strided) vertex. The floor is the FIRST
-    // DENSE SHELL (lowest level with 12 samples inside 1.5 cm), not the
-    // absolute min — a stray low vertex (loose export debris, a tow-hook tip)
-    // would otherwise float the whole seated contact run by its depth, while
-    // a global percentile overshoots sparse-bottomed exports (merkava4b's
-    // track underside holds few verts against a dense upper hull — the 0.4 %
-    // quantile called its floor +0.086 and buried the real one 3.8 cm).
-    // Mirrors tankFactory robustFloorY (MOVEMENT r1).
-    const pts = [];
-    const ys = [];
-    const trackYs = [];
-    const v = new THREE.Vector3();
-    for (const { o, pa } of meshes) {
-      rel.multiplyMatrices(invRoot, o.matrixWorld);
-      const step = Math.max(1, Math.floor(pa.count / 20000));
-      for (let i = 0; i < pa.count; i += step) {
-        v.fromBufferAttribute(pa, i).applyMatrix4(rel);
-        pts.push(v.x, v.y, v.z);
-        ys.push(v.y);
-        // Track contact lives outboard. A dense center keel, mine plough tip,
-        // or low belly plate must not become the load-bearing floor and hold
-        // both visible track runs in the air.
-        if (Math.abs(v.x) >= W * 0.20) trackYs.push(v.y);
-      }
-    }
-    if (!ys.length) return null;
-    const denseFloor = (list: number[]): number => {
-      list.sort((a, b) => a - b);
-      let floor = list[0];
-      if (list.length >= 12) {
-        for (let i = 0; i + 11 < list.length; i++) {
-          if (list[i + 11] - list[i] <= 0.015) { floor = list[i]; break; }
-        }
-      }
-      return floor;
-    };
-    const minY = trackYs.length >= CONTACT_MIN_SAMPLES
-      ? denseFloor(trackYs) : denseFloor(ys);
-    // hull-pan floor for the belly guard — lowest root-local bbox bottom over
-    // meshes whose bbox SPANS the centerline (vertex sampling cannot see a
-    // wide belly plate; mirrors tankFactory measureRestContact). Floored
-    // above the contact plane; see the CONTACT_PAN_* note.
-    let panYM = null;
-    {
-      const corner = new THREE.Vector3();
-      for (const { o } of meshes) {
-        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
-        const bb = o.geometry.boundingBox;
-        if (!bb) continue;
-        rel.multiplyMatrices(invRoot, o.matrixWorld);
-        let mnX = Infinity, mxX = -Infinity, mnY = Infinity;
-        for (const cx of [bb.min.x, bb.max.x]) {
-          for (const cy of [bb.min.y, bb.max.y]) {
-            for (const cz of [bb.min.z, bb.max.z]) {
-              corner.set(cx, cy, cz).applyMatrix4(rel);
-              if (corner.x < mnX) mnX = corner.x;
-              if (corner.x > mxX) mxX = corner.x;
-              if (corner.y < mnY) mnY = corner.y;
-            }
-          }
-        }
-        if (mnX < -0.2 && mxX > 0.2 && (panYM === null || mnY < panYM)) panYM = mnY;
-      }
-      if (panYM !== null) {
-        panYM = Math.max(panYM, minY + 0.05);
-        if (!(panYM >= CONTACT_PAN_MIN && panYM <= CONTACT_PAN_MAX)) panYM = null;
-      }
-    }
-    // pass 2: extents of the low band
-    const band = minY + CONTACT_BAND_M;
-    let zMin = Infinity, zMax = -Infinity, xMin = Infinity, xMax = -Infinity, n = 0;
-    for (let i = 0; i < pts.length; i += 3) {
-      if (pts[i + 1] > band) continue;
-      const x = pts[i], z = pts[i + 2];
-      if (trackYs.length >= CONTACT_MIN_SAMPLES && Math.abs(x) < W * 0.20) continue;
-      if (z < zMin) zMin = z;
-      if (z > zMax) zMax = z;
-      if (x < xMin) xMin = x;
-      if (x > xMax) xMax = x;
-      n++;
-    }
-    if (n < CONTACT_MIN_SAMPLES || zMax - zMin < 1 || xMax - xMin < 0.5) return null;
-    const clamp = (x: number, lo: number, hi: number): number =>
-      (x < lo ? lo : (x > hi ? hi : x));
-    return {
-      halfLenM: clamp((zMax - zMin) / 2, CONTACT_LEN_FRAC_MIN * L, CONTACT_LEN_FRAC_MAX * L),
-      halfWidM: clamp((xMax - xMin) / 2, CONTACT_WID_FRAC_MIN * W, CONTACT_WID_FRAC_MAX * W),
-      zCenterM: clamp((zMax + zMin) / 2, -CONTACT_ZC_FRAC_MAX * L, CONTACT_ZC_FRAC_MAX * L),
-      // MOVEMENT r1: the support solve seats the measured bottom plane on the
-      // terrain. Sourced GLBs are ground-normalized by modelLoader so this is
-      // ~0 for most, but a handful ride their export's floor line (is6b
-      // parked +1.5 cm of daylight before this).
-      bottomYM: clamp(minY, CONTACT_BOTY_MIN, CONTACT_BOTY_MAX),
-      panYM,
-      // GLB wraps curl up right past the measured run — a conservative fixed
-      // rise for the line-end guard samples (procedural rigs export exact)
-      endRise: { dzM: 0.4, frontM: 0.12, rearM: 0.12 },
-    };
-  } catch {
-    return null; // scan is best-effort: fall back to spec fractions
-  }
-}
 
 /**
  * Tank collision layer (gameplay_feel r6 — round critique MAJOR "invisible
@@ -1485,7 +1339,7 @@ function emitHitOutcome(game: SoloGameState, bus: EventBus, ev: SoloHitEvent): v
     bus.emit('tank:fire', { id: ev.targetId, burning: true });
   }
   if (ev.destroyed && isActiveSoloEntity(target) && !target._destroyedAnnounced) {
-    announceDestroyed(game, bus, target, ev.attackerId, ev.ammoRacked ? 'ammorack' : 'shot');
+    announceDestroyed(bus, target, ev.attackerId, ev.ammoRacked ? 'ammorack' : 'shot');
   }
   const shooter = game.tankById.get(ev.attackerId);
   if (shooter && shooter.aiCtl) shooter.aiCtl.notifyShellResult(ev);
@@ -1506,7 +1360,6 @@ function emitHitOutcome(game: SoloGameState, bus: EventBus, ev: SoloHitEvent): v
 }
 
 function announceDestroyed(
-  game: SoloGameState,
   bus: EventBus,
   ent: SoloEntity,
   killerId: string | null,
@@ -2014,10 +1867,10 @@ export function simStep(
         bus.emit('module:state', { id: b.id, module: hit.module, state: 'red', source: 'ram' });
       }
       if (b.combat.destroyed && !bWreck && !b._destroyedAnnounced) {
-        announceDestroyed(game, bus, b, a.id, 'ram');
+        announceDestroyed(bus, b, a.id, 'ram');
       }
       if (a.combat.destroyed && !a._destroyedAnnounced) {
-        announceDestroyed(game, bus, a, bWreck ? null : b.id, 'ram');
+        announceDestroyed(bus, a, bWreck ? null : b.id, 'ram');
       }
       // extra camera bite when the PLAYER is in a damaging ram (the baseline
       // wall-clank trauma from the movement path is tuned for scenery hits)
@@ -2094,7 +1947,7 @@ export function simStep(
       const r = tickFire(ent, game.combatRng);
       if (r.extinguished) bus.emit('tank:fire', { id: ent.id, burning: false });
       if (r.destroyed && !ent._destroyedAnnounced) {
-        announceDestroyed(game, bus, ent, ent.id, 'fire');
+        announceDestroyed(bus, ent, ent.id, 'fire');
       }
     }
   }

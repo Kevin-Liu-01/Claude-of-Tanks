@@ -19,7 +19,6 @@ import {
   SnapshotBuffer,
   createSnapshotDelta,
   type SampledSnapshotFrame,
-  type SnapshotPacket,
   type WorldSnapshot,
 } from './snapshot.ts';
 

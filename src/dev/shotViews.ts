@@ -16,7 +16,6 @@ import type {
 import type { ShotViewName } from './shotContract.ts';
 
 type ShotRecipe = () => void | Promise<void>;
-type Vec3Tuple = [number, number, number];
 
 interface ForcedHudFrame {
   distM: number;

@@ -33,7 +33,6 @@ import type {
 import { createSpecialActionState } from '../sim/specialActions.ts';
 import type { SpecialActionState } from '../sim/specialActionPolicy.ts';
 
-type Unsubscribe = () => void;
 type Team = string | null;
 
 type TankSpec = FleetTankSpec;

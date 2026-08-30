@@ -106,7 +106,6 @@ type PlaybackKind = 'death' | 'victory';
 type PlaybackPhase = 'wreck' | 'approach' | 'firing' | 'flight' | 'contact'
   | 'collision' | 'impact' | 'xray' | 'exit';
 type Disposable = { dispose(): void };
-type XrayMaterial = THREE.MeshBasicMaterial | THREE.MeshLambertMaterial;
 
 interface KillcamModuleBox extends ModuleBox {
   parts?: Array<Pick<ModuleBox, 'min' | 'max'>>;
@@ -2499,17 +2498,11 @@ export function createKillCam(deps: KillcamDeps) {
    * It also re-asserts visibility — dying while scoped hides the player's own
    * hull, and the replay must not open on an invisible tank.
    *
-   * @param {boolean} [prime] force the pose write even when the victim is
-   *   already intact. Re-posing an intact hull is not free — it steps the
-   *   sway decay and resets the track-scroll layer, which would perturb the
-   *   staged `killcam_xray` screenshot contract (whose victim is a LIVE tank
-   *   the harness never wrecks) for no gain. The one caller that needs it
-   *   anyway is the finale: syncFromState is also what PRIMES the visual's
-   *   fx-clock cursor, and that must happen before any re-wreck (see the
-   *   beginImpact note). Left false, an already-intact victim is untouched —
-   *   exact r2 parity.
+   * Re-posing also primes the visual FX clock before any re-wreck; every
+   * caller now follows the same exact path, so the former unused `prime`
+   * switch has been removed.
    */
-  function restageIntact(prime = false): void {
+  function restageIntact(): void {
     const vis = pb && pb.snap.targetEnt && pb.snap.targetEnt.visual;
     if (!vis) return;
     const wrecked = !!(vis.isDestroyed && vis.isDestroyed());
@@ -2697,7 +2690,7 @@ export function createKillCam(deps: KillcamDeps) {
       beginShotFlight();
       return;
     }
-    restageIntact(true);
+    restageIntact();
     restageAttacker();
     const pos = new THREE.Vector3();
     const look = new THREE.Vector3();
@@ -2791,7 +2784,7 @@ export function createKillCam(deps: KillcamDeps) {
     pb.snapPoseState = replayStateFromPose(pb.snap.pose);
     pb.restageModuleStates = pb.snap.moduleStates || null;
     pb.restageEraSpent = pb.snap.eraSpent || [];
-    restageIntact(true);
+    restageIntact();
     if (pb.snap.attackerImpactPose && pb.snap.attackerEnt?.visual) {
       pb.attackerPoseState = replayStateFromPose(pb.snap.attackerImpactPose);
       pb.snap.attackerEnt.visual.syncFromState(pb.attackerPoseState, 0);
@@ -2802,7 +2795,7 @@ export function createKillCam(deps: KillcamDeps) {
 
   function beginCollision() {
     if (!pb || pb.replayKind !== 'collision') return;
-    restageIntact(true);
+    restageIntact();
     restageAttacker();
     const targetFrom = pb.snap.prePose || pb.snap.pose;
     const targetTo = pb.snap.pose;
@@ -3411,7 +3404,7 @@ export function createKillCam(deps: KillcamDeps) {
       // straight past the arc and the replayed turret never left its seat
       // (live probe: impact rise 0.00 m while the wreck-hold rise read 2.9).
       // Priming must happen BEFORE the re-wreck, whichever phase we came from.
-      restageIntact(true);
+      restageIntact();
       vis.setDestroyed({ pop: !!snap.ev.ammoRacked, ageS: 0 });
       pb.impactVis = vis;
     }

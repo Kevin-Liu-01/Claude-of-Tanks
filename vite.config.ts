@@ -20,7 +20,7 @@
 // Build output is unaffected: the plugin only applies to `vite dev`/`serve`,
 // and every headless tool that calls createServer() inherits this config.
 import { readFileSync } from 'node:fs';
-import { dirname, join, resolve, relative } from 'node:path';
+import { dirname, resolve, relative } from 'node:path';
 import { defineConfig, type Connect } from 'vite';
 import { renderProductStats } from './src/productStats.ts';
 

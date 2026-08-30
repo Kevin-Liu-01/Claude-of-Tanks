@@ -8,17 +8,14 @@ import {
 } from './protocol.ts';
 import {
   LOBBY_PHASES,
-  LOBBY_TEAMS,
   addLobbyPlayer,
   applyLobbyCommand,
   removeLobbyPlayer,
   readSerializedLobby,
   serializeLobby,
   type AddLobbyPlayerOptions,
-  type LobbyPhase,
   type LobbyPlayer,
   type LobbyState,
-  type LobbyTeam,
   type SerializedLobby,
 } from './lobby.ts';
 

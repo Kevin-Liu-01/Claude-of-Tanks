@@ -51,7 +51,6 @@ import {
 import type {
   CombatState,
   DamageShell,
-  DamageShellSpec,
   HitEvent,
 } from './damage.ts';
 import { createSpottingSystem } from './spotting.ts';
@@ -312,7 +311,6 @@ const TEAM_BRAVO = 'bravo';
 const TEAM_SPECTATOR = 'spectator';
 
 const _spawn = new Vector3();
-const _push = new Vector3();
 const _contactCenter = new Vector3();
 const _aim = new Vector3();
 const _muzzle = new Vector3();

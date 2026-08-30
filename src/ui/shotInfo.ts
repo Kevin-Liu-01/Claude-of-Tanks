@@ -1036,36 +1036,6 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     return wrap;
   }
 
-  function modChips(ev: ShotHitEvent, parent: HTMLElement): void {
-    const items: Array<{ glyph: string; label: string; col: string }> = [];
-    // ERA chip (r6 major): the payload's eraPlate marks a tile this shell
-    // detonated — without it the card never said WHY the pen roll shrank.
-    // Yellow (spent, did its job), never red: no crew/module was lost.
-    if (ev.eraPlate) {
-      items.push({ glyph: GLYPH.shield, label: 'ERA', col: COL.yellow });
-    }
-    for (const m of ev.modulesHit || []) {
-      // chip color tracks the sim's post-hit state: red destroyed, yellow
-      // damaged, dim for a hit that left the module 'ok' (never imply worse).
-      // State hues come from the shared registry ramp — the same orange/red
-      // the damage panel paints, so one module state reads as ONE color.
-      const col = m.newState === 'red' ? STATE_COLOR.red
-        : m.newState === 'yellow' ? STATE_COLOR.yellow : COL.dim;
-      items.push({ glyph: GLYPH[m.module] || GLYPH.gun, label: registryLabel(MODULE_LABEL, m.module), col });
-    }
-    for (const c of ev.crewHit || []) {
-      items.push({ glyph: GLYPH.crew, label: registryLabel(CREW_LABEL, c), col: COL.red });
-    }
-    if (ev.fireStarted) items.push({ glyph: GLYPH.fuelTank, label: 'Fire', col: '#ff6a3c' });
-    if (!items.length) return;
-    const row = el('div', 'cot-si-mods', parent);
-    for (const it of items) {
-      const chip = el('span', 'cot-si-mod', row);
-      chip.style.color = it.col;
-      chip.innerHTML = `${it.glyph}<span>${it.label}</span>`;
-    }
-  }
-
   // ---------- 1. outgoing shot card ----------
   function buildCard(ev: ShotHitEvent, cls: HitOutcomePresentation): HTMLDivElement {
     const card = el('div', 'cot-si-card');
@@ -1257,7 +1227,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     const t = el('div', 'cot-si-toast', toastHost);
     t.dataset.damage = String(Math.round(ev.damage || 0));
     t.dataset.kind = ev.kind;
-    // Same state-colored policy as the shot card's modChips — never imply
+    // Use the shared state-colored policy — never imply
     // worse: dim for a hit that left the module 'ok', yellow damaged, red
     // destroyed (an 'ok' Track R styled as a red casualty lied, r3 critique).
     // Registry ramp = the damage panel's exact hues (one state, one color).

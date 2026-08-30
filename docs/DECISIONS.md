@@ -40,6 +40,13 @@ that remain for killcam and deterministic capture validate their callable
 surface at runtime before handing staged live entities to the owner. Generic,
 unchecked `legacyPort` casts are prohibited.
 
+The strict gate also enables unused-symbol diagnostics for core runtime owners.
+This removed the retired per-battle vertex scan that supported external GLB
+contact geometry; first-party builders now publish the single validated contact
+receipt used by both solo authority and network prediction. Fleet-profile and
+map-factory signatures remain outside that narrow gate until each family can be
+changed with its visual and geometry proof intact.
+
 ## Fixed-step authority
 
 Movement, ballistics, armor, damage, ERA, spotting, bots, match modes, and

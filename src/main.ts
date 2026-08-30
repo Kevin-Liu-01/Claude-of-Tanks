@@ -39,7 +39,6 @@ import type {
   MainGameState,
   MainGarageRuntime,
   MainHudRuntime,
-  MainInputRuntime,
   MainLightingRuntime,
   MainWorld,
 } from './app/mainContracts.ts';
@@ -257,7 +256,6 @@ const _v1 = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 const _rayO = new THREE.Vector3();
-const _rayD = new THREE.Vector3();
 
 // ---------------------------------------------------------------------------
 // BOOT STAGES (src/ui/bootScreen.ts)

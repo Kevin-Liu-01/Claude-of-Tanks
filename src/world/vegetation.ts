@@ -197,12 +197,6 @@ export interface VegetationRuntime {
   _buildDetail?: Record<string, number>;
 }
 
-interface BuildStageTiming {
-  stage?: string;
-  fine?: boolean;
-  rowEnd?: boolean;
-}
-
 export interface GarageTreeKit {
   species: Species;
   trunk: THREE.BufferGeometry;

@@ -67,7 +67,6 @@ function hash3(x: number, y: number, z: number): number {
 }
 
 const _m = new THREE.Matrix4();
-const _c = new THREE.Color();
 // Static battlefield wrecks are never inspection heroes. Match the proven
 // low-geometry battle handoff used by live tanks beyond 66 m: retain the
 // load-bearing road-wheel/tire silhouettes, but omit sub-wheel recesses,

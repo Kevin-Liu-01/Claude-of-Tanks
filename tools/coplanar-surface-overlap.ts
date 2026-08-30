@@ -286,7 +286,6 @@ function liftPoint(
 }
 
 function exteriorSamples(
-  root: THREE.Object3D,
   findings: InternalFinding[],
   rasterMeshes: THREE.Object3D[],
   toleranceM: number,
@@ -488,7 +487,7 @@ export function findCoplanarSurfaceOverlaps(
     .map((finding) => ({ ...finding, areaM2: Number(finding.areaM2.toFixed(9)) }))
     .filter((finding) => finding.areaM2 > settings.areaEpsilonM2)
     .sort((lhs, rhs) => rhs.areaM2 - lhs.areaM2);
-  const raycasts = exteriorSamples(root, rawFindings, rasterMeshes,
+  const raycasts = exteriorSamples(rawFindings, rasterMeshes,
     Math.max(settings.planeEpsilonM * 8, 1e-4));
   const visibleFindings = rawFindings.filter((finding) => finding.exteriorSample);
   const cleanFinding = (

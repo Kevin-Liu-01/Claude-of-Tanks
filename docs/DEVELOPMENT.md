@@ -102,6 +102,12 @@ terminal checked boundary are recorded in `docs/DECISIONS.md`; completed
 per-file migration receipts remain available in Git history instead of the
 public documentation tree.
 
+The same command also rejects unused symbols in the composition root and the
+application, network, simulation, interface, engine, FX, audio, and top-level
+world owners. Procedural fleet builders and declarative map callbacks remain a
+separate cleanup lane because their intentionally uniform factory signatures
+must be changed family-by-family with geometry receipts, not mechanically.
+
 Node CLI, generator, and self-test entrypoints intentionally retain `.mjs`
 where they are executable harnesses rather than shipped application modules.
 They import the checked TypeScript owners directly and are covered by the

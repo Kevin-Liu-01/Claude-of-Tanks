@@ -1530,11 +1530,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       placeBtn.classList.toggle('on', !!specId);
       placeBtn.textContent = specId ? `CLICK MAP TO PLACE ${specId.toUpperCase()}` : 'CLICK TO PLACE';
     },
-    setSelected(actor) {
+    setSelected(_actor) {
       api.refreshActors();
       api.refreshStoryboard();
     },
-    setSelectedEffect(effect) {
+    setSelectedEffect(_effect) {
       api.refreshEffects();
     },
     refreshActors() {

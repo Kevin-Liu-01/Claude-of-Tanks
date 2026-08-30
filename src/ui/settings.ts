@@ -44,7 +44,6 @@ import type {
   AiDifficulty,
   BindingSlot,
   InputLayer,
-  InputSettings,
   RmbMode,
 } from '../game/input.ts';
 import {

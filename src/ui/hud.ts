@@ -705,7 +705,7 @@ import {
 // kill feed + ambient nameplates. Minimap blips and team-panel rows use the
 // vector vehicle-silhouette/arrow language instead (WoT reads shape + heading, not
 // per-vehicle profiles, at those sizes).
-import { maskIcon, tintedIcon } from './icons.ts';
+import { maskIcon } from './icons.ts';
 import { moduleAlertLabel } from './moduleRegistry.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
 // SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,

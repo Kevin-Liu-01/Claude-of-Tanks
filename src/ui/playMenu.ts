@@ -28,7 +28,7 @@ import {
   normalizeGameMode,
   type GameModeId,
 } from '../sim/matchModes.ts';
-import type { LobbyPlayer, LobbyTeam, SerializedLobby } from '../net/lobby.ts';
+import type { LobbyTeam, SerializedLobby } from '../net/lobby.ts';
 import type {
   RankedQueueState,
   RankedQueueTicket,

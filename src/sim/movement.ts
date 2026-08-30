@@ -592,8 +592,7 @@ const K_INERTIA = 0.006;         // rad of pitch target per m/s² of longitudina
 const INERTIA_CLAMP = 0.1;       // rad — max inertial pitch contribution
 const DVDT_CLAMP = 16;           // m/s² — reject collision-pushback spikes
 const BLOOM_GROW_TAU = 0.05;     // s — bloom-up is effectively instant
-const LN3 = Math.log(3);         // aimTime = time to shrink to 1/3 ⇒ tau = aimTime/ln3
-// controls_gunnery r2: SHRINK tau uses ln6 (grow keeps LN3 semantics via
+// controls_gunnery r2: SHRINK tau uses ln6 (grow uses the fixed
 // BLOOM_GROW_TAU) — pairs with the smaller afterShot multipliers in specs.ts
 // so post-shot re-settle under the fire gate lands ~2.3 s on modern MBTs.
 const LN6 = Math.log(6);

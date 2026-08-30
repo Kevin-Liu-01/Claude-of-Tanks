@@ -87,7 +87,7 @@
     "test:net:entry": "node tools/multiplayer-guest-entry.mjs",
     "net:prod:check": "node tools/production-multiplayer-check.mjs",
     "test:net:render": "node tools/multiplayer-render-perf.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit && node tools/core-unused-check.mjs"
   },
   "keywords": [
     "threejs",
