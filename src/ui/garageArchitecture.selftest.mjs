@@ -16,19 +16,24 @@ for (const variant of GARAGE_VARIANTS) {
     assert.ok(stats.objects >= 6 && stats.triangles > 0,
       'Verdant keeps its authored portal structure');
   } else {
-    assert.equal(stats.mode, 'map-staging');
+    assert.equal(stats.mode, 'garage-environment');
     assert.equal(stats.enclosingSurfaces, 0,
-      `${variant.id} must remain an open battlefield staging area`);
-    assert.equal(stats.source, 'active-battlefield');
-    assert.equal(stats.objects, 0,
-      `${variant.id} must not build substitute garage architecture`);
-    assert.equal(stats.triangles, 0,
-      `${variant.id} must not build a proxy terrain, skyline, or hardstand`);
+      `${variant.id} must remain an open Garage environment`);
+    assert.equal(stats.source, 'custom-garage-environment');
+    assert.ok(stats.objects >= 5,
+      `${variant.id} must build its authored static environment`);
+    assert.ok(stats.triangles > 0 && stats.triangles <= 10_000,
+      `${variant.id} must stay inside the Garage environment geometry budget`);
+    assert.ok(stats.terrainVertices >= 625,
+      `${variant.id} must own a small terrain surface`);
+    assert.ok(stats.sourceStructure && stats.sourceBeat,
+      `${variant.id} must identify its landmark and presentation beat`);
+    assert.deepEqual(stats.sourceLandmarkLocal, [0, 0, -24]);
   }
   signatures.add(stats.signature);
 }
 assert.equal(signatures.size, GARAGE_VARIANTS.length,
-  'every battlefield choice must have a distinct staging signature');
+  'every Garage choice must have a distinct environment signature');
 assert.equal(controller.stats().cached, GARAGE_VARIANTS.length);
 controller.dispose();
 assert.equal(scene.children.length, 0);

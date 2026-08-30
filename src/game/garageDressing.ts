@@ -825,7 +825,7 @@ export function createGarageDressing(
     group.userData.workshopExhibitCount = 4;
     group.userData.sharedMaintenanceBayCount = 4;
     group.userData.sharedMaintenanceBayIds = ['burlak_gantry', 'abrams_welding', 't90m_relikt', 'rolled_k2'];
-    group.userData.workshopSceneMode = isVerdant ? 'verdant-workshop' : 'map-staging';
+    group.userData.workshopSceneMode = isVerdant ? 'verdant-workshop' : 'custom-environment';
     return currentVariant.id;
   }
 

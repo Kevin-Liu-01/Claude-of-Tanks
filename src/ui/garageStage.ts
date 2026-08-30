@@ -1217,8 +1217,8 @@ export function createGarageStage(
     const architectureStats = architecture.setVariant(variant);
     const isVerdant = variant.id === 'verdant_motor_pool';
     for (const object of indoorStageObjects) object.visible = isVerdant;
-    group.userData.garageSceneMode = isVerdant ? 'verdant-workshop' : 'map-staging';
-    group.userData.garageRoofMode = isVerdant ? 'enclosed-original' : 'open-map-staging';
+    group.userData.garageSceneMode = isVerdant ? 'verdant-workshop' : 'custom-environment';
+    group.userData.garageRoofMode = isVerdant ? 'enclosed-original' : 'open-environment';
     group.userData.garageArchitecture = architectureStats;
     return variant.id;
   };

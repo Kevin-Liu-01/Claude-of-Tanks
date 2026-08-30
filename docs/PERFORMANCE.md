@@ -95,29 +95,27 @@ locations; the former second three-tank/three-turret graph and its Leclerc build
 are gone.
 
 Verdant alone mounts the enclosed workshop shell and indoor clutter. Each other
-selection activates the normal cached battlefield and seats the presentation
-in an audited clearing, preferring the authored player deployment. There is no
-second terrain, skyline, landmark, tree, hardstand, or floodlight renderer to
-allocate or compile. Cold
-choices pay the same sliced world build as battle entry; already-resident maps
-remount their exact scene graph. Outdoor garage frames remain paced and update
-the live world's LOD and vegetation only when the garage itself paints.
-Garage-specific outdoor architecture is exactly zero triangles. Existing
-Garage lights remain mounted across selection changes so switching cannot
-change shader light-count defines and relink.
+selection uses a static Garage-only terrain terrace, instanced perimeter detail,
+and one connected themed landmark. The environment path has no world loader,
+collision, destructible, LOD, vegetation-update, or service port; any retained
+battle world stays detached and dormant. The nine environments measure roughly
+1.8K–2.5K triangles each. In the 1280×720 production probe, outdoor selection
+fell from 1.7–4.9 seconds to 0.22–0.45 seconds including a fixed 180 ms
+observation window. Existing Garage lights remain mounted across selection
+changes so switching cannot change shader light-count defines and relink.
 
 Garage selector previews still decode only when demanded. One shared CRT-style
 battle archive screen streams canonical captures one at a time, retains at most
 the current and incoming textures, and stops its timer when the Garage root
 leaves the scene. `npm run qa:garage` enumerates all ten locations and checks
-map bindings, nine live-world placement receipts, zero substitute architecture,
-Verdant's original roof,
+map bindings, nine static-environment receipts, dormant world residency,
+terrain and landmark budgets, Verdant's original roof,
 the four shared exact maintenance bays, selected-hero track contact within one
 millimetre, screen rotation/residency, persistence, preview decode, architecture
 budgets, revealed desktop frame gaps, console health, and the 390×844 selector.
-Cold full-map construction gaps are retained separately as covered-transition
-diagnostics; the 120 ms budget applies after the real map is ready to reveal.
-The same visible-frame gate runs under CDP 4× CPU throttling.
+Every interactive environment switch must complete within 750 ms including the
+probe's observation window, and revealed frame gaps remain under 120 ms. The
+same visible-frame gate runs under CDP 4× CPU throttling.
 
 An opaque transition must be visible before asynchronous battle imports or
 world loading. Hiding the menu before painting the transition can expose one

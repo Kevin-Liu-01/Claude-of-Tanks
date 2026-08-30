@@ -82,7 +82,7 @@ try {
       const stats = window.__GARAGE_WORKSHOP.stats();
       return stats.selected === id
         && stats.architecture?.ready === true
-        && (stats.battlefield?.ready === true || !!stats.battlefield?.error);
+        && stats.environment?.ready === true;
     }, { timeout: 60_000 }, variant.id);
     await page.evaluate(async () => {
       const covered = window.__GARAGE_VARIANT_PROBE;
@@ -153,10 +153,10 @@ try {
   const architectureSignatures = new Set(results.map((result) => result.stats.architecture?.signature));
   const failures = [];
   if (results.length !== 10 || ids.size !== 10 || mapIds.size !== 10) {
-    failures.push('expected ten unique staging ids and ten unique battlefield bindings');
+    failures.push('expected ten unique Garage ids and ten unique environment bindings');
   }
   if (architectureKeys.size !== 10 || architectureSignatures.size !== 10) {
-    failures.push('expected ten unique battlefield staging signatures');
+    failures.push('expected ten unique Garage environment signatures');
   }
   for (const result of results) {
     const isVerdant = result.id === 'verdant_motor_pool';
@@ -214,21 +214,20 @@ try {
           failures.push(`verdant_motor_pool: missing original ${id} set piece`);
         }
       }
-    } else if (result.stats.sceneMode !== 'map-staging'
-        || result.stats.roofMode !== 'open-map-staging'
-        || result.stats.architecture?.mode !== 'map-staging'
+    } else if (result.stats.sceneMode !== 'custom-environment'
+        || result.stats.roofMode !== 'open-environment'
+        || result.stats.architecture?.mode !== 'garage-environment'
         || result.stats.architecture?.enclosingSurfaces !== 0) {
-      failures.push(`${result.id}: expected a wall-free map staging area`);
-    } else if (result.stats.architecture?.source !== 'active-battlefield'
-        || result.stats.architecture.objects !== 0
-        || result.stats.architecture.triangles !== 0
-        || result.stats.battlefield?.mode !== 'active-battlefield'
-        || !result.stats.battlefield?.worldMounted
-        || result.stats.battlefield.currentWorldMapId !== result.stats.mapId
-        || result.stats.battlefield.placement?.source !== 'player-deployment-clearance-scan'
-        || result.stats.battlefield.placement?.clear !== true
-        || result.stats.battlefield.placement?.obstacleClearanceM < 24) {
-      failures.push(`${result.id}: full battlefield staging receipt failed`);
+      failures.push(`${result.id}: expected a wall-free custom environment`);
+    } else if (result.stats.architecture?.source !== 'custom-garage-environment'
+        || result.stats.architecture.objects < 5
+        || result.stats.architecture.triangles <= 0
+        || result.stats.architecture.terrainVertices < 625
+        || !result.stats.architecture.sourceStructure
+        || !result.stats.architecture.sourceBeat
+        || result.stats.environment?.mode !== 'custom-environment'
+        || result.stats.environment?.worldMounted) {
+      failures.push(`${result.id}: custom Garage environment receipt failed`);
     }
     if (!result.stats.verdantOriginalVisible) {
       failures.push(`${result.id}: shared original maintenance bays are not visible`);
@@ -242,6 +241,9 @@ try {
     }
     if (result.gapMaxMs > maxGapMs) {
       failures.push(`${result.id}: ${result.gapMaxMs} ms frame gap exceeds ${maxGapMs} ms`);
+    }
+    if (result.durationMs > 750) {
+      failures.push(`${result.id}: ${result.durationMs} ms environment switch exceeds 750 ms`);
     }
   }
   if (!mobile.open || mobile.cards !== 10 || !mobile.insideViewport || !mobile.scrollable || !mobile.pointerSelect) {

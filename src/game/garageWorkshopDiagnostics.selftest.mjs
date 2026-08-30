@@ -48,10 +48,10 @@ const diagnostics = createGarageWorkshopDiagnostics({
       dispose() {},
     },
   },
-  battlefield: {
+  environment: {
     diagnostics: () => ({
       variantId: selected, mapId: 'verdant', mode: 'verdant-workshop',
-      ready: true, placement: null, error: '',
+      ready: true, anchor: [-1500, 0, -1500],
     }),
   },
   phase: {
@@ -63,7 +63,7 @@ const diagnostics = createGarageWorkshopDiagnostics({
   renderer: { info: { render: { calls: 17, triangles: 2300 } } },
   garagePosition: { y: 0 },
   podiumTopYM: 0.36,
-  getCurrentWorldMapId: () => 'verdant',
+  getRetainedWorldMapId: () => 'verdant',
   invalidatePresentation: () => { invalidations += 1; },
 });
 
@@ -80,8 +80,8 @@ assert.equal(invalidations, 1);
 const stats = diagnostics.stats();
 assert.equal(stats.triangles, 4321);
 assert.equal(stats.heroTrackContactErrorM, 0.14);
-assert.equal(stats.battlefield.worldMounted, true);
-assert.equal(stats.battlefield.currentWorldMapId, 'verdant');
+assert.equal(stats.environment.worldMounted, true);
+assert.equal(stats.environment.retainedWorldMapId, 'verdant');
 assert.deepEqual(stats.families, ['abrams']);
 assert.deepEqual(stats.renderer, { calls: 17, triangles: 2300 });
 

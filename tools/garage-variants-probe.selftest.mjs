@@ -11,9 +11,10 @@ assert.match(source, /verdantOriginalLayoutReceipt !== 'pre-6c7b07533-original'/
 assert.match(source, /expectedExhibits = 4/);
 assert.match(source, /sharedMaintenanceBayCount !== 4/);
 assert.match(source, /heroTrackContactErrorM > 0\.001/);
-assert.match(source, /source !== 'active-battlefield'/);
-assert.match(source, /player-deployment-clearance-scan/);
-assert.match(source, /obstacleClearanceM < 24/);
+assert.match(source, /source !== 'custom-garage-environment'/);
+assert.match(source, /architecture\.terrainVertices < 625/);
+assert.match(source, /environment\?\.worldMounted/);
+assert.match(source, /durationMs > 750/);
 assert.match(source, /stats\.mapImageCount !== 0/);
 assert.match(source, /stats\.battleScreenMode !== 'crt-scroll-slideshow'/);
 assert.match(source, /stats\.battleScreenWallBay !== 'south_location'/);

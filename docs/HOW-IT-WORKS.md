@@ -38,7 +38,7 @@ remain painted while this asynchronous work proceeds, so low-end hardware sees
 progress instead of a blocked black canvas.
 
 The workshop around the selected vehicle is a separate, demand-loaded scene.
-Ten identities are bound to ten real battlefield locations and selected from
+Ten identities are bound to ten battlefield themes and selected from
 the Staging Area control beside Home and Record. The environment choice is
 persisted independently from the next-battle map. Verdant Motor Pool keeps its
 original enclosed workshop, roof-truss run, props, and four maintenance scenes:
@@ -47,19 +47,14 @@ welding gear, T-90M turret/gun/Relikt service, and a rolled K2 hull with its
 actual wheel and track parts. Those same exact four scenes remain present in
 all ten selections.
 
-The other nine choices place the Garage directly inside the complete selected
-battlefield. They prefer a deterministic search around the authored player
-deployment, then use a bounded map-wide grid only on rugged maps with no nearby
-candidate. Every selected point is flat, hard, and has at least 24 m of
-clearance. A runtime receipt checks the built terrain and collision records
-before revealing the staging area. No proxy terrain, fake skyline, substitute
-landmark, access lane, field hardstand, wall, or roof is generated.
-
-World construction still uses the normal asynchronous battlefield path and
-its cache. Switching to a map that is already resident remounts the exact same
-world immediately; a cold map loads through the existing sliced builder. The
-camera sits outside the selected clearing and looks inward so the actual map—not the
-empty boundary beyond it—forms the background. The archive monitor keeps only
+The other nine choices build compact Garage-only interpretations of their maps.
+A 24×24 terrain grid stays flat across the shared service terrace, then carries
+deterministic relief at the perimeter. Rocks and trees are instanced, and each
+theme adds one connected structure such as a drydock gantry, repair bunker,
+roundhouse, rain canopy, recovery frame, or foundry line. These scenes do not
+load battle terrain, collision, destructibles, services, or animated vegetation.
+Any world retained for the next round stays detached and dormant. The archive
+monitor keeps only
 its current and incoming images resident and stops scheduling work while its
 Garage roots are detached for battle.
 

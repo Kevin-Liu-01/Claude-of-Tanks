@@ -880,9 +880,13 @@ Emits `ui:battleStart` and `ui:click` on the bus. Keyboard: ←/→ select, Ente
 
 `src/game/garageVariants.ts` owns the immutable ten-location registry,
 architecture key, and persistence key. `garageStage.ts` owns the first-paint
-shell and palette; `garageArchitecture.ts` retains only Verdant's workshop
-architecture. The other nine destinations mount the complete cached battlefield
-and add zero substitute architecture. `garageDressingAccess.ts` keeps a stable light/root
+shell and palette; `garageArchitecture.ts` retains Verdant's workshop and
+lazy-caches nine purpose-built static environments from
+`garageEnvironmentKit.ts`. Each owns a compact terrain terrace, instanced
+perimeter detail, and one connected map-specific landmark; no battle world is
+transferred or constructed. `garageEnvironmentPresentationRuntime.ts` keeps
+any retained world dormant and owns the fixed Garage anchor and camera.
+`garageDressingAccess.ts` keeps a stable light/root
 while lazily importing `garageDressing.ts`; `garageDressingScheduler.ts` adds
 one optional slice per quiet lease. `garageWallLayout.ts` is the authoritative
 non-overlapping wall-bay contract. `garageDressingAccess.ts` prepares the real

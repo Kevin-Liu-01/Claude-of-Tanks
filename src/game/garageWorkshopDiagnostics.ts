@@ -1,9 +1,9 @@
 import type * as THREE from 'three';
 import type { GarageDressingAccess } from './garageDressingAccess.ts';
 import type {
-  GarageBattlefieldPresentationRuntime,
-  GarageBattlefieldState,
-} from './garageBattlefieldPresentationRuntime.ts';
+  GarageEnvironmentPresentationRuntime,
+  GarageEnvironmentState,
+} from './garageEnvironmentPresentationRuntime.ts';
 import type { GaragePedestalRuntime } from './garagePedestalRuntime.ts';
 import type {
   GaragePhasePresentationDiagnostics,
@@ -27,9 +27,9 @@ export interface GarageWorkshopStats {
   readonly architecture: unknown;
   readonly sceneMode: string;
   readonly roofMode: string;
-  readonly battlefield: Readonly<GarageBattlefieldState> & {
+  readonly environment: Readonly<GarageEnvironmentState> & {
     readonly worldMounted: boolean;
-    readonly currentWorldMapId: string | null;
+    readonly retainedWorldMapId: string | null;
   };
   readonly wallLayout: unknown;
   readonly mapImageCount: number;
@@ -76,12 +76,12 @@ export interface GarageWorkshopDiagnosticsOptions {
   >;
   readonly stage: Pick<GarageStageRuntime, 'group' | 'stats'>;
   readonly pedestal: Pick<GaragePedestalRuntime, 'current'>;
-  readonly battlefield: Pick<GarageBattlefieldPresentationRuntime, 'diagnostics'>;
+  readonly environment: Pick<GarageEnvironmentPresentationRuntime, 'diagnostics'>;
   readonly phase: Pick<GaragePhasePresentationRuntime, 'diagnostics'>;
   readonly renderer: Pick<THREE.WebGLRenderer, 'info'>;
   readonly garagePosition: Readonly<Pick<THREE.Vector3, 'y'>>;
   readonly podiumTopYM: number;
-  readonly getCurrentWorldMapId: () => string | null;
+  readonly getRetainedWorldMapId: () => string | null;
   readonly invalidatePresentation: () => void;
 }
 
@@ -100,12 +100,12 @@ export function createGarageWorkshopDiagnostics({
   dressing,
   stage,
   pedestal,
-  battlefield,
+  environment,
   phase,
   renderer,
   garagePosition,
   podiumTopYM,
-  getCurrentWorldMapId,
+  getRetainedWorldMapId,
   invalidatePresentation,
 }: GarageWorkshopDiagnosticsOptions): GarageWorkshopDiagnostics {
   const variantViews = Object.freeze(variants.map(({ id, mapId, name, architecture }) => (
@@ -136,10 +136,10 @@ export function createGarageWorkshopDiagnostics({
         architecture: stage.stats?.() || stageData.garageArchitecture || {},
         sceneMode: stageData.garageSceneMode || '',
         roofMode: stageData.garageRoofMode || '',
-        battlefield: {
-          ...battlefield.diagnostics(),
+        environment: {
+          ...environment.diagnostics(),
           worldMounted: phaseDiagnostics.scene.worldMounted,
-          currentWorldMapId: getCurrentWorldMapId(),
+          retainedWorldMapId: getRetainedWorldMapId(),
         },
         wallLayout: data.wallLayout || { bays: 0, overlaps: [] },
         mapImageCount: data.mapImageCount ?? -1,

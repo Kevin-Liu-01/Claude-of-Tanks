@@ -130,13 +130,13 @@ dormancy. Callers use that interface instead of retaining parallel map state.
 The Garage and battlefield have exclusive scene residency. The Garage sleeps
 its frame clock after presentation settles and invalidates it only on actual
 activity. Verdant retains the authored workshop. Every other Garage destination
-mounts its complete cached battlefield and seats the presentation at a measured
-open point with at least 24 m of real obstacle clearance; it must not create a
-parallel proxy terrain, skyline, landmark, wall, roof, or light rig.
-`garageBattlefieldPresentationRuntime.ts` owns that activation transaction,
-including stale-load cancellation, placement state, camera framing, and failure
-diagnostics. The composition root supplies concrete ports but does not retain a
-second Garage/world state machine.
+uses a purpose-built Garage-only terrain and one connected map-specific
+landmark. These static environments may borrow palette, relief, vegetation,
+and industrial language from a battlefield, but never import or construct its
+terrain, collision, destructibles, services, or animated vegetation.
+`garageEnvironmentPresentationRuntime.ts` owns the fixed isolated anchor,
+camera framing, battlefield dormancy, and diagnostics. The composition root
+supplies concrete presentation ports but cannot request a world from this path.
 `garageWorkshopDiagnostics.ts` owns the stable engineering surface for Garage
 variant probes. It exposes immutable snapshots and explicit build/select
 commands; `main.ts` does not assemble workshop receipts from scene internals.
@@ -152,6 +152,9 @@ Quality changes presentation cost, never game rules. Static geometry may be
 batched or instanced only when appearance, ownership, transforms, and disposal
 remain equivalent. Visible vehicle silhouette and authored detail are preserved;
 triangle reduction is acceptable only when visual comparison proves parity.
+Garage environment geometry is a distinct presentation asset, not a reduced
+battlefield: its terrain grid, perimeter instances, and landmark are authored
+for the Garage camera and capped by the Garage probe.
 Temporary vehicle materials are not part of static wreck fidelity: once the
 factory output is deterministically collapsed to the world's vertex-colored
 wreck material, the factory uses a typed geometry-only material adapter and
