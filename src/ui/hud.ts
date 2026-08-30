@@ -32,7 +32,7 @@ import {
   orientMinimapYaw,
 } from './minimapOrientation.ts';
 
-type HudMode = 'battle' | 'sniper' | 'hidden';
+export type HudMode = 'battle' | 'sniper' | 'hidden';
 type Vec3Tuple = readonly [number, number, number];
 
 interface ReloadView {
@@ -216,7 +216,7 @@ interface MapBuilding {
   yaw?: number;
   rot?: number;
 }
-interface HudMinimapFeatures {
+export interface HudMinimapFeatures {
   roads?: Array<Array<readonly [number, number]>>;
   buildings?: MapBuilding[];
   tacticalBeats?: MapBuilding[];
@@ -224,10 +224,10 @@ interface HudMinimapFeatures {
   waterOrSoft?: MapDisc[];
 }
 
-interface HudMinimapPalette {
-  base: readonly [number, number, number];
-  hard: readonly [number, number, number];
-  soft: readonly [number, number, number];
+export interface HudMinimapPalette {
+  base: readonly number[];
+  hard: readonly number[];
+  soft: readonly number[];
   forest: string;
   forestStroke: string;
   water: string;

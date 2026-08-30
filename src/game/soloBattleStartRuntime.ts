@@ -1,4 +1,10 @@
+import type { DamagePanelController } from '../ui/damagePanel.ts';
+import type { HudRuntime } from '../ui/hud.ts';
+
 type MaybePromise<T> = T | PromiseLike<T>;
+type DamagePanelSpec = Parameters<DamagePanelController['setTank']>[0];
+type DamagePanelVisual = Parameters<DamagePanelController['setTank']>[1];
+type EquipmentSelection = Parameters<DamagePanelController['setEquipment']>[0];
 
 export interface SoloBattleStartOptions {
   deferVisuals?: boolean;
@@ -10,10 +16,10 @@ export interface SoloBattleStartOptions {
 interface SoloBattlePlayer {
   id: string;
   specId: string;
-  spec: unknown;
-  state: { yaw: number };
-  visual: unknown;
-  equip: unknown;
+  spec: DamagePanelSpec;
+  state: { yaw: number } | null;
+  visual: DamagePanelVisual;
+  equip?: EquipmentSelection;
 }
 
 interface SoloBattleGame {
@@ -83,22 +89,22 @@ export interface SoloBattleStartRuntimeOptions {
     presentation: { primeDeploymentTerrainTiles(): void; resetSoloPoses(): void };
     applyPlayerCamo(specId: string): void;
     applyRosterCamo(options: {
-      priorityIds: string[];
-      onlySpecIds: string[];
+      priorityIds: readonly string[];
+      onlySpecIds: readonly string[];
     }): MaybePromise<unknown>;
   };
   ui: {
     hud: {
       shotInfo: { setPlayer(playerId: string): void };
-      setMode(mode: string): void;
+      setMode: HudRuntime['setMode'];
     };
     playerActions: {
       setTank(spec: unknown): void;
       resetConsumables(): void;
     };
     damagePanel: {
-      setTank(spec: unknown, visual: unknown): void;
-      setEquipment(equipment: unknown): void;
+      setTank: DamagePanelController['setTank'];
+      setEquipment: DamagePanelController['setEquipment'];
     };
     hideGarage(): void;
     hideEndOverlay(): void;
@@ -218,13 +224,13 @@ export function createSoloBattleStartRuntime({
       mark('scheduleRosterCamo');
 
       const player = game.player;
-      if (!player) throw new Error('solo battle setup did not create a player');
+      if (!player?.state) throw new Error('solo battle setup did not create a player with ready state');
       ui.hud.shotInfo.setPlayer(player.id);
       fx.resetAll();
       mark('resetEffects');
       ui.playerActions.setTank(player.spec);
       ui.damagePanel.setTank(player.spec, player.visual);
-      ui.damagePanel.setEquipment(player.equip);
+      ui.damagePanel.setEquipment(player.equip ?? null);
       ui.hideGarage();
       ui.hideEndOverlay();
       ui.resetBattleResult();

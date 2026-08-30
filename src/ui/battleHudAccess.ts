@@ -8,29 +8,21 @@
  */
 
 import type { DamagePanelController } from './damagePanel.ts';
+import type { HudRuntime } from './hud.ts';
 
 export type DamagePanelRuntime = DamagePanelController;
-
-export interface BattleHudRuntime {
-  setDamagePanel(panel: DamagePanelRuntime): void;
-}
+export type BattleHudRuntime = HudRuntime;
 
 export interface BattleHudBundle {
   hud: BattleHudRuntime;
   damagePanel: DamagePanelRuntime;
 }
 
-interface HudModule {
-  initHud(bus: unknown): BattleHudRuntime;
-}
-
-interface DamagePanelModule {
-  createDamagePanel(): DamagePanelRuntime;
-}
-
-interface TankThumbModule {
-  initTopMaskRig(engineCtx: unknown): void;
-}
+type HudModule = Pick<typeof import('./hud.ts'), 'initHud'>;
+type DamagePanelModule = Pick<typeof import('./damagePanel.ts'), 'createDamagePanel'>;
+type TankThumbModule = Pick<typeof import('./tankThumbs.ts'), 'initTopMaskRig'>;
+type HudBus = Parameters<HudModule['initHud']>[0];
+type TankThumbEngineContext = Parameters<TankThumbModule['initTopMaskRig']>[0];
 
 interface BattleHudLoaders {
   hud(): Promise<HudModule>;
@@ -44,17 +36,14 @@ export interface BattleHudAccess {
 }
 
 const DEFAULT_LOADERS: BattleHudLoaders = {
-  // The legacy JS modules intentionally expose broad Function annotations.
-  // This access boundary narrows only the methods it owns and validates by
-  // immediate construction; consumers receive the explicit runtime contract.
-  hud: async () => await import('./hud.ts') as HudModule,
+  hud: () => import('./hud.ts'),
   damagePanel: async () => await import('./damagePanel.ts'),
-  tankThumbs: async () => await import('./tankThumbs.ts') as unknown as TankThumbModule,
+  tankThumbs: () => import('./tankThumbs.ts'),
 };
 
 export function createBattleHudAccess(
-  bus: unknown,
-  engineCtx: unknown,
+  bus: HudBus,
+  engineCtx: TankThumbEngineContext,
   loaders: BattleHudLoaders = DEFAULT_LOADERS,
 ): BattleHudAccess {
   let current: BattleHudBundle | null = null;

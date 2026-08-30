@@ -8,20 +8,20 @@ import {
   residentResourceLimits,
 } from '../engine/resourceLifetime.ts';
 
-interface WorldScene {
+export interface WorldScene {
   group: THREE.Object3D;
 }
 
 type ProgressListener = (fraction: number, label: string) => void;
 type LoadingYield = (force?: boolean) => Promise<void>;
 
-interface WorldMapModule {
+interface WorldMapModule<World extends WorldScene> {
   createMapAsync(
     engineContext: unknown,
     options: { mapId: string; seed: number },
     progress: (label: string, fraction: number) => Promise<void>,
     slicing: { fineSlices: boolean },
-  ): Promise<WorldScene>;
+  ): Promise<World>;
 }
 
 interface GarageActivity {
@@ -47,12 +47,12 @@ interface BackgroundWorkLease {
   release(): void;
 }
 
-interface BuildRecord {
+interface BuildRecord<World extends WorldScene> {
   id: string;
   fraction: number;
   label: string;
   listeners: Set<ProgressListener>;
-  promise: Promise<WorldScene> | null;
+  promise: Promise<World> | null;
   stageTimings: Record<string, number>;
   stageLabel: string | null;
   stageMark: number;
@@ -73,15 +73,15 @@ export interface WorldPrefetchStats {
   active: string | null;
 }
 
-export interface WorldBuildCoordinatorDependencies {
+export interface WorldBuildCoordinatorDependencies<World extends WorldScene = WorldScene> {
   engineContext: unknown;
   scene: THREE.Scene;
   renderer: THREE.WebGLRenderer;
   deviceTier: string;
-  getCurrentWorld(): WorldScene | null;
+  getCurrentWorld(): World | null;
   getGarageActivity(): GarageActivity;
-  releaseShadowMaterial(resource: unknown): void;
-  loadModule?: () => Promise<WorldMapModule>;
+  releaseShadowMaterial(resource: THREE.Material): void;
+  loadModule(): Promise<WorldMapModule<World>>;
   now?: () => number;
   sleep?: (durationMs: number) => Promise<void>;
   foregroundYielder?: () => LoadingYield;
@@ -93,27 +93,27 @@ export interface WorldBuildCoordinatorDependencies {
   resourceLimits?: ResourceLimits;
 }
 
-export interface WorldBuildRequest {
-  promise: Promise<WorldScene>;
+export interface WorldBuildRequest<World extends WorldScene = WorldScene> {
+  promise: Promise<World>;
   listeners: Set<ProgressListener> | null;
   fraction: number;
   label: string;
   stageTimings: Record<string, number>;
 }
 
-export interface WorldBuildCoordinator {
-  readonly cache: Map<string, WorldScene>;
+export interface WorldBuildCoordinator<World extends WorldScene = WorldScene> {
+  readonly cache: Map<string, World>;
   readonly resourceLimits: ResourceLimits;
   readonly stats: WorldPrefetchStats;
   readonly lastRelease: ReleaseReceipt | null;
-  loadModule(): Promise<WorldMapModule>;
+  loadModule(): Promise<WorldMapModule<World>>;
   enforceCacheBudget(): void;
   beginBuild(
     mapId: string,
     onProgress?: ProgressListener | null,
     options?: { background?: boolean; waitForGarageLull?: boolean },
-  ): WorldBuildRequest;
-  prefetch(mapId: string, options?: { intent?: boolean }): Promise<WorldScene | null> | null;
+  ): WorldBuildRequest<World>;
+  prefetch(mapId: string, options?: { intent?: boolean }): Promise<World | null> | null;
   cancelBackgroundExcept(mapId?: string | null): void;
 }
 
@@ -125,20 +125,27 @@ const STAGE_KEYS: Readonly<Record<string, string>> = Object.freeze({
   'Sealing the battlefield': 'assemble',
 });
 
+function isMaterial(resource: unknown): resource is THREE.Material {
+  return typeof resource === 'object'
+    && resource !== null
+    && 'isMaterial' in resource
+    && resource.isMaterial === true;
+}
+
 /**
  * Own map transfer, deterministic construction, background pacing, promotion,
  * cancellation, residency, and eviction. The active-world decision remains
  * with the application composition root; this owner only builds and retains
  * complete world scenes.
  */
-export function createWorldBuildCoordinator(
-  dependencies: WorldBuildCoordinatorDependencies,
-): WorldBuildCoordinator {
+export function createWorldBuildCoordinator<World extends WorldScene = WorldScene>(
+  dependencies: WorldBuildCoordinatorDependencies<World>,
+): WorldBuildCoordinator<World> {
   const now = dependencies.now ?? (() => performance.now());
   const sleep = dependencies.sleep ?? ((durationMs: number) =>
     new Promise<void>((resolve) => setTimeout(resolve, durationMs)));
-  const cache = new Map<string, WorldScene>();
-  const builds = new Map<string, BuildRecord>();
+  const cache = new Map<string, World>();
+  const builds = new Map<string, BuildRecord<World>>();
   const limits = dependencies.resourceLimits
     ?? residentResourceLimits(dependencies.deviceTier) as ResourceLimits;
   const stats: WorldPrefetchStats = {
@@ -152,14 +159,12 @@ export function createWorldBuildCoordinator(
     lastMs: 0,
     active: null,
   };
-  let modulePromise: Promise<WorldMapModule> | null = null;
+  let modulePromise: Promise<WorldMapModule<World>> | null = null;
   let lastRelease: ReleaseReceipt | null = null;
 
-  const loadModule = (): Promise<WorldMapModule> => {
+  const loadModule = (): Promise<WorldMapModule<World>> => {
     if (!modulePromise) {
-      modulePromise = dependencies.loadModule
-        ? dependencies.loadModule()
-        : import('./map.ts') as Promise<WorldMapModule>;
+      modulePromise = dependencies.loadModule();
     }
     return modulePromise;
   };
@@ -176,7 +181,9 @@ export function createWorldBuildCoordinator(
       const released = disposeObject3DResources(cached.group, {
         preserveRoots,
         onDispose: (type: string, resource: unknown) => {
-          if (type === 'material') dependencies.releaseShadowMaterial(resource);
+          if (type === 'material' && isMaterial(resource)) {
+            dependencies.releaseShadowMaterial(resource);
+          }
         },
       });
       dependencies.renderer.renderLists?.dispose?.();
@@ -188,7 +195,7 @@ export function createWorldBuildCoordinator(
     mapId: string,
     onProgress: ProgressListener | null = null,
     options: { background?: boolean; waitForGarageLull?: boolean } = {},
-  ): WorldBuildRequest => {
+  ): WorldBuildRequest<World> => {
     const cached = cache.get(mapId);
     if (cached) {
       return {
@@ -207,7 +214,7 @@ export function createWorldBuildCoordinator(
     }
 
     if (!record) {
-      const created: BuildRecord = {
+      const created: BuildRecord<World> = {
         id: mapId,
         fraction: 0,
         label: 'Surveying terrain',
@@ -323,7 +330,7 @@ export function createWorldBuildCoordinator(
   const prefetch = (
     mapId: string,
     options: { intent?: boolean } = {},
-  ): Promise<WorldScene | null> | null => {
+  ): Promise<World | null> | null => {
     if (!mapId || mapId === 'random' || cache.has(mapId) || builds.has(mapId)) return null;
     if (Number.isFinite(limits.worldScenes) && cache.size >= limits.worldScenes) {
       stats.skippedCapacity += 1;

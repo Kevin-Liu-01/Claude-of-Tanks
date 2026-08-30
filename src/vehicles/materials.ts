@@ -154,8 +154,8 @@ interface CanvasTextureOptions {
 }
 
 interface CamoApplyOptions {
-  priorityIds?: string[];
-  onlySpecIds?: string[];
+  priorityIds?: readonly string[];
+  onlySpecIds?: readonly string[];
 }
 
 interface ShadowEngineContext {

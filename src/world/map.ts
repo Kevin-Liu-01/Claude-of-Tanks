@@ -9,6 +9,7 @@ import {
   buildTerrainMeshes as buildTerrainMeshesLegacy,
   buildTerrainMeshesAsync as buildTerrainMeshesAsyncLegacy,
 } from './terrain.ts';
+import type { HeightField } from './terrain.ts';
 import {
   createVegetation as createVegetationLegacy,
   createVegetationAsync as createVegetationAsyncLegacy,
@@ -52,23 +53,9 @@ interface LayoutDisc {
   x: number;
   z: number;
   r: number;
-  [key: string]: unknown;
 }
 
-interface HeightFieldLayout {
-  spawns: { player: SpawnLayoutPoint; enemies: SpawnLayoutPoint[] };
-  roads: Array<Array<readonly [number, number]>>;
-  marshes: LayoutDisc[];
-  lakes: LayoutDisc[];
-}
-
-export interface WorldHeightField {
-  _layout: HeightFieldLayout;
-  maxY: number;
-  getHeightAt(x: number, z: number): number;
-  getHeightAtFast?(x: number, z: number): number;
-  getNormalAt(x: number, z: number): THREE.Vector3;
-}
+export type WorldHeightField = HeightField;
 
 interface TerrainUserData {
   sourcedTexturesReady?: Promise<unknown>;
@@ -111,6 +98,8 @@ interface VegetationRuntime {
 }
 
 interface MapFeatureRecord {
+  x: number;
+  z: number;
   [key: string]: unknown;
 }
 

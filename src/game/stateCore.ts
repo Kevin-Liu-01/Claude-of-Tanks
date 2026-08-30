@@ -15,15 +15,15 @@ export interface EventBus {
   emit(event: string, payload: unknown): void;
 }
 
-export interface GameState {
+export interface GameState<Entity = unknown, Spotting = unknown> {
   phase: 'garage' | 'battle' | 'ended' | 'shot';
   preBattleS: number;
   mapId: string;
-  tanks: unknown[];
-  allTanks: unknown[];
+  tanks: Entity[];
+  allTanks: Entity[];
   battleCount: number;
-  tankById: Map<string, unknown>;
-  player: unknown | null;
+  tankById: Map<string, Entity>;
+  player: Entity | null;
   shells: unknown[];
   nextShellId: number;
   timeS: number;
@@ -31,7 +31,7 @@ export interface GameState {
   combatRng: RandomSource;
   result: 'victory' | 'defeat' | 'draw' | null;
   resultReason: string | null;
-  spotting: unknown | null;
+  spotting: Spotting | null;
   openingRouteJobs: unknown[];
   gameMode: string;
   matchModeState: unknown | null;
@@ -90,7 +90,7 @@ export function createBus(onEmit: EventRecorder | null = null): EventBus {
 }
 
 /** Create an empty mutable session without loading any battle implementation. */
-export function createGameState(): GameState {
+export function createGameState<Entity = unknown, Spotting = unknown>(): GameState<Entity, Spotting> {
   return {
     phase: 'garage',
     preBattleS: 0,

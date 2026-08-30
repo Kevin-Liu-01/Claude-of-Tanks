@@ -4,9 +4,7 @@ import type { RosterEntity, RosterGameState } from '../game/rosterState.ts';
 import type { KillcamRuntime } from '../game/killcamAccess.ts';
 import type { MobileAutoAimRuntime } from '../game/mobileAutoAimRuntime.ts';
 import type { BattleHudRuntime, DamagePanelRuntime } from '../ui/battleHudAccess.ts';
-import type { HeightField } from '../world/terrain.ts';
-import type { ActiveWorld } from '../world/worldActivationRuntime.ts';
-import type { SkyPreset } from '../engine/sky.ts';
+import type { WorldRuntime } from '../world/map.ts';
 import type { getSpec } from '../vehicles/specs.ts';
 
 export interface MainLightingRuntime {
@@ -46,6 +44,7 @@ export interface MainVisual extends NonNullable<RosterEntity['visual']> {
 export interface MainFxRuntime {
   group: THREE.Object3D;
   bindBus(bus: EventBus): void;
+  preloadTextures?(): Promise<unknown> | unknown;
   setFrozen(frozen: boolean): void;
   resetAll(): void;
   update(...args: unknown[]): void;
@@ -68,7 +67,7 @@ export interface MainEntity extends Omit<RosterEntity, 'spec' | 'state' | 'comba
   spec: ReturnType<typeof getSpec> & { name: string };
   state: ({ yaw: number } & Record<string, unknown>) | null;
   combat: ({ destroyed?: boolean } & Record<string, unknown>) | null;
-  equip?: unknown;
+  equip?: readonly string[] | null;
   visual: MainVisual | null;
 }
 
@@ -88,34 +87,10 @@ export type MainGameState = Omit<
   killcam?: unknown;
 };
 
-export interface MainWorld extends ActiveWorld<Partial<SkyPreset>> {
-  heightField: HeightField;
-  config: ActiveWorld<Partial<SkyPreset>>['config'] & { minimap?: unknown };
-  getMinimapFeatures(): unknown;
-  update(dt: number, cameraPosition: THREE.Vector3, forward?: THREE.Vector3, extra?: unknown): void;
-}
+export type MainWorld = WorldRuntime;
 
-export interface MainHudRuntime extends BattleHudRuntime {
-  root: HTMLElement;
-  shotInfo: {
-    statsRoot?: HTMLElement;
-    setPlayer(playerId: string): void;
-  };
-  buildMinimap(heightField: HeightField, features: unknown, config: unknown, snapshot: unknown): void;
-  buildMinimapFromAsset(heightField: HeightField, url: string): Promise<boolean> | boolean;
-  preloadMinimapAsset(url: string): Promise<unknown>;
-  preBattleCountdown(seconds: number): void;
-  setMode(mode: string): void;
-  warmShotCards(specIds: readonly string[]): unknown;
-  exportMinimapBackground(type: string, quality: number): string;
-  forceHitMark(bounced: boolean): void;
-}
-
-export interface MainDamagePanelRuntime extends DamagePanelRuntime {
-  root: HTMLElement;
-  setTank(spec: unknown, visual: unknown): void;
-  setEquipment(equipment: unknown): void;
-}
+export type MainHudRuntime = BattleHudRuntime;
+export type MainDamagePanelRuntime = DamagePanelRuntime;
 
 export interface SoloBattleRequest {
   specId?: string;
@@ -153,11 +128,14 @@ declare global {
     __GAME_READY?: boolean;
     __GARAGE_ENTRY?: unknown;
     __GARAGE_IDLE_WORK?: unknown;
+    __GARAGE_WORKSHOP?: unknown;
     __MINIMAP_LOAD?: unknown;
     __NETWORK_ENTRY_FAILURE?: unknown;
     __NETWORK_LOAD?: unknown;
     __PERF_HUD?: unknown;
     __SHOTS?: unknown;
+    __SWITCH_TIMINGS?: Array<Record<string, unknown>>;
+    __PED_TRACE?: Array<Record<string, unknown>>;
     __START_BATTLE_TIMINGS?: unknown;
     __STUDIO?: unknown;
     __STUDIO_LOAD?: unknown;

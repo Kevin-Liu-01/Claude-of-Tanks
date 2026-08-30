@@ -182,6 +182,12 @@ import { createCombatFeedbackRuntime } from './game/combatFeedbackRuntime.ts';
 import { createRosterPresentation } from './game/rosterPresentation.ts';
 import { tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
+import type { DamagePanelController } from './ui/damagePanel.ts';
+import type { HudMode } from './ui/hud.ts';
+
+type DamagePanelSpec = Parameters<DamagePanelController['setTank']>[0];
+type DamagePanelVisual = Parameters<DamagePanelController['setTank']>[1];
+type DamagePanelEquipment = Parameters<DamagePanelController['setEquipment']>[0];
 
 /**
  * Explicit boundary for browser modules that have not migrated from JavaScript
@@ -204,6 +210,9 @@ const DEG = Math.PI / 180;
 const SIM_DT = 1 / 60;
 const GARAGE_POS = new THREE.Vector3(-1500, 0, -1500);
 const pendingRoomInvitePromise = startupIntent.pendingRoomInvite;
+const camoPatternLabels: Readonly<Record<string, string>> = CAMO_PATTERN_LABEL;
+const mapHeroes: Readonly<Record<string, string>> = MAP_HEROES;
+const mapThumbs: Readonly<Record<string, string>> = MAP_THUMBS;
 const minimapAssetUrl = (mapId: string): string => (
   `${import.meta.env.BASE_URL || '/'}minimaps/${encodeURIComponent(mapId)}.webp?v=spawn-oriented-v2`
 );
@@ -309,8 +318,9 @@ const sky = await bootStage('sky', () => {
 const bootCloudWarmP = sky.ensureCloudTexturesChunked
   ? sky.ensureCloudTexturesChunked(() => nextFrame()).catch(() => {})
   : Promise.resolve();
-const lighting = legacyPort<MainLightingRuntime>(
-  await bootStage('lighting', () => createLighting(scene, camera, sky.sunDir)),
+const lighting: MainLightingRuntime = await bootStage(
+  'lighting',
+  () => createLighting(scene, camera, sky.sunDir),
 );
 // The sealed garage can only see the near/contact shadow bands. Request far
 // dormancy now; lighting deliberately renders every native CSM depth map once
@@ -374,9 +384,8 @@ worldRuntime = createWorldActivationRuntime<MainWorld, unknown, Partial<SkyPrese
       transitionActive: transition.active,
       lastActivityAt: garageDressingScheduler.getLastActivityAt(),
     }),
-    releaseShadowMaterial: (resource) => lighting.releaseShadowMaterial(
-      legacyPort<THREE.Material>(resource),
-    ),
+    loadModule: () => import('./world/map.ts'),
+    releaseShadowMaterial: (resource) => lighting.releaseShadowMaterial(resource),
     acquireBackgroundWork: (kind, stillValid) =>
       garageIdleWorkCoordinator.acquire(kind, stillValid),
   },
@@ -420,12 +429,7 @@ const cancelBackgroundWorldBuildsExcept = worldRuntime.cancelBackgroundExcept;
 
 /** World raycast that is safe before any battlefield exists. */
 function worldRaycast(origin: THREE.Vector3, direction: THREE.Vector3, maxDistance: number) {
-  return legacyPort<{
-    point: THREE.Vector3;
-    normal: THREE.Vector3;
-    dist: number;
-    kind: string;
-  } | null>(worldRuntime.raycast(origin, direction, maxDistance));
+  return worldRuntime.raycast(origin, direction, maxDistance);
 }
 
 // --- game state + tanks -----------------------------------------------------
@@ -444,9 +448,12 @@ const devTrace = traceRequested
   : null;
 const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
 installBattleRecords(bus);
-const game = legacyPort<MainGameState>(createGameState());
+const game: MainGameState = createGameState<
+  MainEntity,
+  NonNullable<MainGameState['spotting']>
+>();
 const rosterPresentation = createRosterPresentation({
-  getVehicleName: (specId) => legacyPort<MainEntity['spec']>(getSpec(specId))?.name,
+  getVehicleName: (specId) => getSpec(specId)?.name,
   getTier: tierNumeral,
 });
 const playerShellLog: unknown[] = [];
@@ -528,10 +535,13 @@ for (const ent of game.allTanks) {
 
 // De-track visuals: thrown/repaired track bands follow the module state.
 bus.on('module:state', (payload) => {
-  const ev = legacyPort<{ module: string; id: string; state: string }>(payload);
-  if (ev.module !== 'trackL' && ev.module !== 'trackR') return;
-  const t = game.tankById.get(ev.id);
-  if (t?.visual?.setTrackState) t.visual.setTrackState(ev.module, ev.state === 'red');
+  if (typeof payload !== 'object' || payload === null) return;
+  const moduleId = Reflect.get(payload, 'module');
+  const entityId = Reflect.get(payload, 'id');
+  const state = Reflect.get(payload, 'state');
+  if ((moduleId !== 'trackL' && moduleId !== 'trackR') || typeof entityId !== 'string') return;
+  const tank = game.tankById.get(entityId);
+  if (tank?.visual?.setTrackState) tank.visual.setTrackState(moduleId, state === 'red');
 });
 
 // --- garage stage (12 m disc pad + 2 integration-owned spotlights) -----------
@@ -593,7 +603,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   stageRoot: garageStage.group,
   dressingRoot: garageDressing.group,
   garagePosition: GARAGE_POS,
-  lighting: legacyPort(lighting),
+  lighting,
   sunDirection: sky.sunDir,
   getSkyConfig: () => {
     const world = currentWorld();
@@ -642,14 +652,14 @@ const battleIntent = createBattleIntentRuntime({
   prefetchWorld,
   ensureTankBuilders,
   planRoster: (specId) => planBattleParticipantIds(game, specId, true),
-  getSpec: legacyPort(getSpec),
+  getSpec,
   prebakeSharedTextures,
   createBudgetYield: createFrameBudgetYielder,
   anisotropy: engineCtx.anisotropy ?? 4,
   setCamoBiome,
   clearCamoOverrides,
   setCamoOverride,
-  applyCamoPatterns: legacyPort(applyCamoPatternsChunked),
+  applyCamoPatterns: applyCamoPatternsChunked,
   preloadBattleVisuals: () => battleVisualStreamerAccess.preload(),
   preloadAudio: () => audio.preload(),
   preloadSettings: () => settings.preload(),
@@ -659,7 +669,7 @@ const battleIntent = createBattleIntentRuntime({
   preloadSoloBattle: () => preloadSoloBattleRuntime(),
   preloadBattleClient: () => preloadBattleClientRuntime(),
   preloadKillcam: () => preloadKillcamModule(),
-  ensureFxRuntime: legacyPort(ensureFxRuntime),
+  ensureFxRuntime,
   preloadMinimap: (mapId) => ensureBattleHud()
     .then(() => hud?.preloadMinimapAsset(minimapAssetUrl(mapId))),
 });
@@ -675,7 +685,7 @@ const pedestal = createGaragePedestalRuntime({
   residentLimit: residentLimits.pedestalVisuals,
   anisotropy: engineCtx.anisotropy ?? 4,
   createVisual: (specId, options) => createTank(specId, engineCtx, options),
-  getSpec: legacyPort(getSpec),
+  getSpec,
   ensureTankBuilder,
   ensureTankBuilders,
   prebakeSharedTextures,
@@ -698,7 +708,7 @@ const pedestal = createGaragePedestalRuntime({
   acquireBackgroundWork: (kind, stillValid) =>
     garageIdleWorkCoordinator.acquire(kind, stillValid),
   invalidatePresentation: () => invalidateGaragePresentation(),
-  debugTarget: legacyPort(typeof window !== 'undefined' ? window : null),
+  debugTarget: typeof window !== 'undefined' ? window : null,
 });
 
 const noteGarageActivity = () => {
@@ -793,9 +803,9 @@ function ensureBattleStaged() {
   if (!player || !playerBattleActions || !damagePanel) {
     throw new Error('staged battle did not create its player presentation');
   }
-  playerBattleActions.setTank(legacyPort(player.spec));
+  playerBattleActions.setTank(player.spec);
   damagePanel.setTank(player.spec, player.visual);
-  damagePanel.setEquipment(player.equip); // EQUIPMENT SYSTEM: loadout readout
+  damagePanel.setEquipment(player.equip ?? null); // EQUIPMENT SYSTEM: loadout readout
   for (const ent of game.allTanks) {
     if (ent.visual && ent.visual.setGroundSampler) ent.visual.setGroundSampler(groundSampler);
   }
@@ -820,7 +830,9 @@ function setWorldDormant(on: boolean) {
 function minimapSnapCtx() {
   return {
     renderer, scene,
-    exclude: (game.tanks || []).map((t) => t.visual && t.visual.root).filter(Boolean),
+    exclude: (game.tanks || []).flatMap((tank) => (
+      tank.visual ? [tank.visual.root] : []
+    )),
   };
 }
 
@@ -835,8 +847,8 @@ const currentDamagePanel = (): MainDamagePanelRuntime | null => damagePanel;
 const battleHudAccess = createBattleHudAccess(bus, engineCtx);
 async function ensureBattleHud() {
   const runtime = await battleHudAccess.preload();
-  hud = legacyPort<MainHudRuntime>(runtime.hud);
-  damagePanel = legacyPort<MainDamagePanelRuntime>(runtime.damagePanel);
+  hud = runtime.hud;
+  damagePanel = runtime.damagePanel;
   bus.emit('ui:directionalHitValues', {
     on: !!input.getSettings().showDirectionalHitValues,
   });
@@ -875,10 +887,8 @@ const playSurface = createPlaySurfaceRuntime({
       }),
       isVehicleAllowed: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
       isCamoAllowed: (camo: string) => isBuiltInCamoId(camo),
-      getCamoName: (camo: string) => CAMO_PATTERN_LABEL[
-        legacyPort<keyof typeof CAMO_PATTERN_LABEL>(camo)
-      ] || 'Factory',
-      getVehicleName: (specId: string) => legacyPort<MainEntity['spec']>(getSpec(specId)).name,
+      getCamoName: (camo: string) => camoPatternLabels[camo] || 'Factory',
+      getVehicleName: (specId: string) => getSpec(specId).name,
       onNetworkStart: (request) => networkBattleLauncher.beginPrivate(request),
       onNetworkClose: (reason: string) => closeNetworkMatch(reason || 'room_closed'),
       onRankedStart: (request) => networkBattleLauncher.beginRanked(request),
@@ -997,7 +1007,7 @@ const garage = legacyPort<MainGarageRuntime>(await bootStage('ui', () => createG
 // Stable read-only diagnostics plus an explicit QA switch hook. Workshop
 // verification can enumerate all ten environments and measure their lazily
 // built real-fleet exhibits without reaching into scene internals.
-legacyPort<Record<string, unknown>>(window).__GARAGE_WORKSHOP = {
+window.__GARAGE_WORKSHOP = {
   variants: GARAGE_VARIANTS.map(({ id, mapId, name, architecture }) => ({
     id, mapId, name, architecture,
   })),
@@ -1319,7 +1329,9 @@ const battleResultPresentation = createBattleResultPresentationRuntime(legacyPor
 
 const input = createInput({ lockElement: renderer.domElement });
 bus.on('ui:debugHud', (payload) => {
-  perfHud.setVisible(!!legacyPort<{ on?: boolean }>(payload).on);
+  const enabled = typeof payload === 'object' && payload !== null
+    && Reflect.get(payload, 'on') === true;
+  perfHud.setVisible(enabled);
 });
 const armorAimOverlay = createArmorAimOverlayAccess();
 const battleVisualStreamerAccess = createBattleVisualStreamerAccess({
@@ -1552,7 +1564,7 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
   },
 });
 const soloBattleStart = createSoloBattleStartAccess({
-  options: () => legacyPort({
+  options: () => ({
     state: {
       game,
       getPendingMapId: () => worldRuntime.pendingMapId,
@@ -1591,17 +1603,21 @@ const soloBattleStart = createSoloBattleStartAccess({
       combatWarm,
       presentation: battlePresentation,
       applyPlayerCamo: (specId: string) => applyCamoPatterns(specId),
-      applyRosterCamo: (options: unknown) => applyCamoPatternsChunked(legacyPort(options)),
+      applyRosterCamo: applyCamoPatternsChunked,
     },
     ui: {
       hud: {
         shotInfo: { setPlayer: (playerId: string) => hud?.shotInfo.setPlayer(playerId) },
-        setMode: (mode: string) => hud?.setMode(mode),
+        setMode: (mode: HudMode) => hud?.setMode(mode),
       },
       playerActions: playerBattleActions,
       damagePanel: {
-        setTank: (spec: unknown, visual: unknown) => damagePanel?.setTank(spec, visual),
-        setEquipment: (equipment: unknown) => damagePanel?.setEquipment(equipment),
+        setTank: (spec: DamagePanelSpec, visual: DamagePanelVisual) => (
+          damagePanel?.setTank(spec, visual)
+        ),
+        setEquipment: (equipment: DamagePanelEquipment) => (
+          damagePanel?.setEquipment(equipment)
+        ),
       },
       hideGarage: () => garage.hide(),
       hideEndOverlay: endOverlay.hide,
@@ -1632,9 +1648,7 @@ const soloBattleLoading = createSoloBattleLoadingRuntime(legacyPort({
   lifecycle: battleEntryLifecycle,
   getPendingMapId: () => worldRuntime.pendingMapId,
   getMapConfig,
-  getMapThumb: (mapId: string) => MAP_HEROES[
-    legacyPort<keyof typeof MAP_HEROES>(mapId)
-  ] || MAP_THUMBS[legacyPort<keyof typeof MAP_THUMBS>(mapId)] || '',
+  getMapThumb: (mapId: string) => mapHeroes[mapId] || mapThumbs[mapId] || '',
   hasCachedWorld: (mapId: string) => !!worldCache.get(mapId),
   getWorld: () => {
     const world = currentWorld();
@@ -1725,15 +1739,14 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
         const cfg = getMapConfig(mapId);
         return {
           name: cfg.name || mapId,
-          thumb: MAP_HEROES[legacyPort<keyof typeof MAP_HEROES>(mapId)]
-            || MAP_THUMBS[legacyPort<keyof typeof MAP_THUMBS>(mapId)] || '',
+          thumb: mapHeroes[mapId] || mapThumbs[mapId] || '',
           biome: mapId,
         };
       },
       rows: (players: unknown, team: string, viewerId: string) => (
         rosterPresentation.lobbyRows({ players: legacyPort(players) }, team, viewerId)
       ),
-      vehicleName: (specId: string) => legacyPort<MainEntity['spec']>(getSpec(specId))?.name || specId,
+      vehicleName: (specId: string) => getSpec(specId)?.name || specId,
       emitBattleStart: (payload: unknown) => bus.emit('ui:battleStart', payload),
       setCamoBiome,
     },
@@ -1844,8 +1857,7 @@ const networkBattleLauncher = createNetworkBattleLaunchRuntime(legacyPort({
     const cfg = getMapConfig(mapId);
     return {
       name: cfg.name || fallback,
-      thumb: MAP_HEROES[legacyPort<keyof typeof MAP_HEROES>(mapId)]
-        || MAP_THUMBS[legacyPort<keyof typeof MAP_THUMBS>(mapId)] || '',
+      thumb: mapHeroes[mapId] || mapThumbs[mapId] || '',
       biome: mapId,
     };
   },
@@ -2126,8 +2138,9 @@ bus.on('ui:roomOpen', async () => {
 });
 
 bus.on('ui:roomReady', (payload) => {
-  const { ready } = legacyPort<{ ready?: boolean }>(payload);
-  networkRoomCoordinator?.setReady(!!ready);
+  const ready = typeof payload === 'object' && payload !== null
+    && Reflect.get(payload, 'ready') === true;
+  networkRoomCoordinator?.setReady(ready);
 });
 
 bus.on('ui:roomStart', () => networkRoomCoordinator?.startRound());
@@ -2308,8 +2321,12 @@ window.__SHOTS = {
       drainCombatWarm: () => combatWarm.drain(),
       setBattleStaged: (value: boolean) => { battleStaged = value; },
       buildShellCards: playerBattleActions.setTank,
-      setDamagePanelTank: (spec: unknown, visual: unknown) => currentDamagePanel()?.setTank(spec, visual),
-      setDamagePanelEquipment: (equipment: unknown) => currentDamagePanel()?.setEquipment(equipment),
+      setDamagePanelTank: (spec: DamagePanelSpec, visual: DamagePanelVisual) => (
+        currentDamagePanel()?.setTank(spec, visual)
+      ),
+      setDamagePanelEquipment: (equipment: DamagePanelEquipment) => (
+        currentDamagePanel()?.setEquipment(equipment)
+      ),
       groundSampler,
       input,
       settings,
@@ -2359,7 +2376,7 @@ window.__SHOTS = {
 // first world activation (ensureBattleStaged), not at boot — so prime the HUD
 // cards from the SELECTED SPEC here. ensureBattleStaged re-primes from the
 // real player entity when a battle actually stages.
-playerBattleActions.setTank(legacyPort(getSpec(selectedVehicle.id)));
+playerBattleActions.setTank(getSpec(selectedVehicle.id));
 garage.show(selectedVehicle.id);
 garageCameraPose(); // fallback pose until the orbit measures the hero
 showroom.start();

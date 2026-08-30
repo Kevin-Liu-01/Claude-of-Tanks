@@ -13,11 +13,22 @@ import {
 type MaybePromise<T> = T | PromiseLike<T>;
 type ProgressListener = (fraction: number, label: string) => void;
 
+export interface WorldRaycastHit {
+  point: THREE.Vector3;
+  normal: THREE.Vector3;
+  dist: number;
+  kind: string;
+}
+
 export interface ActiveWorld<SkyConfig = unknown> {
   mapId: string;
   group: THREE.Object3D;
   config: { sky?: SkyConfig };
-  raycast(origin: unknown, direction: unknown, maxDistance: unknown): unknown;
+  raycast(
+    origin: THREE.Vector3,
+    direction: THREE.Vector3,
+    maxDistance: number,
+  ): WorldRaycastHit | null;
 }
 
 export interface WorldActivationTrace {
@@ -39,7 +50,10 @@ export interface WorldActivationOptions {
   services?: boolean;
 }
 
-type CoordinatorDependencies = Omit<WorldBuildCoordinatorDependencies, 'getCurrentWorld'>;
+type CoordinatorDependencies<World extends ActiveWorld> = Omit<
+  WorldBuildCoordinatorDependencies<World>,
+  'getCurrentWorld'
+>;
 
 export interface WorldActivationRuntimeOptions<
   World extends ActiveWorld<SkyConfig>,
@@ -47,8 +61,8 @@ export interface WorldActivationRuntimeOptions<
   SkyConfig = unknown,
 > {
   initialMapId: string;
-  coordinator?: WorldBuildCoordinator;
-  coordinatorDependencies?: CoordinatorDependencies;
+  coordinator?: WorldBuildCoordinator<World>;
+  coordinatorDependencies?: CoordinatorDependencies<World>;
   swapSceneWorld(previous: THREE.Object3D | null, next: THREE.Object3D): void;
   setSceneWorldActive(root: THREE.Object3D, active: boolean): void;
   ensureCloudTextures(): void;
@@ -86,15 +100,19 @@ export interface WorldActivationRuntime<
   readonly dormant: boolean;
   readonly servicesMapId: string | null;
   readonly cache: Map<string, World>;
-  readonly resourceLimits: WorldBuildCoordinator['resourceLimits'];
+  readonly resourceLimits: WorldBuildCoordinator<World>['resourceLimits'];
   readonly prefetchStats: WorldPrefetchStats;
-  readonly lastRelease: WorldBuildCoordinator['lastRelease'];
-  loadModule(): ReturnType<WorldBuildCoordinator['loadModule']>;
+  readonly lastRelease: WorldBuildCoordinator<World>['lastRelease'];
+  loadModule(): ReturnType<WorldBuildCoordinator<World>['loadModule']>;
   enforceCacheBudget(): void;
   prefetch(mapId: string, options?: { intent?: boolean }): Promise<World | null> | null;
   cancelBackgroundExcept(mapId?: string | null): void;
   setPendingMapId(mapId: string): void;
-  raycast(origin: unknown, direction: unknown, maxDistance: unknown): unknown;
+  raycast(
+    origin: THREE.Vector3,
+    direction: THREE.Vector3,
+    maxDistance: number,
+  ): WorldRaycastHit | null;
   buildMinimap(world: World, textured?: boolean): void;
   queueMinimap(world?: World | null): Promise<boolean> | null;
   prepareServices(world?: World | null): void;
@@ -131,14 +149,18 @@ export function createWorldActivationRuntime<
   let servicesMapId: string | null = null;
   let skyMapId = options.initialMapId;
 
-  if (!options.coordinator && !options.coordinatorDependencies) {
-    throw new TypeError('world activation requires coordinator dependencies');
+  const coordinatorDependencies = options.coordinatorDependencies;
+  let coordinator = options.coordinator;
+  if (!coordinator) {
+    if (!coordinatorDependencies) {
+      throw new TypeError('world activation requires coordinator dependencies');
+    }
+    coordinator = createWorldBuildCoordinator<World>({
+      ...coordinatorDependencies,
+      getCurrentWorld: () => current,
+    });
   }
-  const coordinator = options.coordinator ?? createWorldBuildCoordinator({
-    ...options.coordinatorDependencies as CoordinatorDependencies,
-    getCurrentWorld: () => current,
-  });
-  const cache = coordinator.cache as unknown as Map<string, World>;
+  const cache = coordinator.cache;
   const baseUrl = options.baseUrl || '/';
   const assetVersion = options.minimapAssetVersion || 'spawn-oriented-v2';
   const assetUrl = (mapId: string): string => (
@@ -217,7 +239,7 @@ export function createWorldActivationRuntime<
     if (!next) {
       const request = coordinator.beginBuild(id, onProgress);
       try {
-        next = await request.promise as unknown as World;
+        next = await request.promise;
         trace.buildDetail = { ...request.stageTimings };
         const built = next as World & {
           _buildDetail?: {
