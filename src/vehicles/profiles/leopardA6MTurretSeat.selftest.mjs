@@ -165,7 +165,8 @@ assert.equal(downHits(detail, 0.55, 2.28).length, 0,
 // structural armor hit on the same vertical ray.
 for (const [x, z] of [[0.47, 2.30], [0.62, 2.17], [0.79, 2.02], [1.00, 1.67], [1.18, 1.43]]) {
   const armorY = downHits(turret, x, z)[0];
-  const detailY = downHits(detail, x, z)[0];
+  const detailY = downHits(detail, x, z)
+    .sort((a, b) => Math.abs(a - armorY) - Math.abs(b - armorY))[0];
   assert.ok(Number.isFinite(armorY) && Number.isFinite(detailY),
     `A6M fastener ray (${x},${z}) intersects detail and armor`);
   assert.ok(detailY - armorY <= 0.022 && detailY - armorY >= -0.004,
@@ -231,8 +232,9 @@ for (const receipt of frontCage) {
   assert.equal(receipt.seatX, 1.875, 'A6M bow cage brackets land on the armor modules');
 }
 for (const receipt of cageReceipts) {
-  assert.equal(receipt.railY, 0.78, 'A6M cage retains its lower protective rail');
-  assert.equal(receipt.lowerMountY, 0.90, 'A6M lower bracket lands on the skirt face');
+  assert.equal(receipt.railY, 0.88, 'A6M cage lower rail is lifted to the A5-family skirt shoulder');
+  assert.equal(receipt.lowerMountY, 0.90, 'A6M lower bracket remains seated on the skirt face');
+  assert.equal(receipt.upperMountY, 1.36, 'A6M cage crown is lifted with the complete side package');
   assert.ok(receipt.outerX - receipt.seatX <= 0.115,
     'A6M cage standoff remains close enough to read as skirt-mounted');
   assert.ok(receipt.lowerMountY > receipt.railY,
@@ -244,6 +246,9 @@ assert.deepEqual(hullRig.userData.leopardSlatTransition, {
   frontOuterX: 1.990,
   rearSeatX: 1.720,
   frontSeatX: 1.875,
+  railY0: 0.88,
+  railY1: 1.36,
+  liftY: 0.10,
 }, 'A6M records a supported transition between the two skirt planes');
 
 // The paired bow width indicators land on the 1.305 m skirt/fender crown

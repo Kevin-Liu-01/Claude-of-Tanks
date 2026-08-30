@@ -105,6 +105,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'Leopard 2A4M', shortName: 'Leopard 2A4M',
     searchAliases: ['Leopard 2A4M CAN', '2A4M'],
   },
+  leo2a5_a5nl: {
+    displayName: 'Leopard 2A5/A5NL', shortName: 'Leopard 2A5/A5NL',
+    searchAliases: ['Leopard 2A5 A5NL', 'Leopard A5NL', '2A5NL', 'A5NL'],
+  },
   leo2a6m: {
     displayName: 'Leopard 2A6M', shortName: 'Leopard 2A6M',
     searchAliases: ['Leopard 2A6M CAN', '2A6M'],

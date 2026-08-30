@@ -13,6 +13,9 @@ const expectedHalfWidths = new Map([
 
 const upperGlacisFillIds = new Set(['leo2a4m', 'leo2a6', 'leo2a6m', 'leo2a6_ua']);
 const upperShoulderFillIds = new Set(['leo2a4m', 'leo2a6', 'leo2a6m', 'leo2a6_ua']);
+const fenderSkirtClosureIds = [
+  'leo2a5', 'strv122', 'leo2a5_a5nl', 'leo2a6', 'leo2a6m', 'leo2a6_ua',
+];
 
 for (const [id, expectedHalfW] of expectedHalfWidths) {
   const tank = createTank(id, null, {
@@ -108,4 +111,60 @@ for (const [id, expectedHalfW] of expectedHalfWidths) {
   }
 }
 
-console.log('leopardHullClosure.selftest: requested Leopard bow undersides are continuous and track-safe');
+for (const id of fenderSkirtClosureIds) {
+  const tank = createTank(id, null, {
+    proceduralOnly: true,
+    quality: 'high',
+    camoSeed: 4242,
+    geometryReceipt: true,
+  });
+  try {
+    tank.root.updateMatrixWorld(true);
+    const hullRig = tank.root.getObjectByName('rig_hull');
+    const hull = hullRig?.getObjectByName('hull');
+    const closure = hullRig?.userData.leopardFenderSkirtClosure;
+    assert.ok(hullRig && hull && closure, `${id}: fender-to-skirt closure is structural hull geometry`);
+    assert.equal(closure.architecture, 'segmented-closed-trapezoidal-carrier',
+      `${id}: uses the shared Leopard transition carrier`);
+    assert.equal(closure.structural, true, `${id}: transition is armor-owned rather than decoration`);
+    assert.equal(closure.mirrored, true, `${id}: transition closes both hull sides`);
+    assert.deepEqual(closure.courses.map(({ course }) => course), ['rear', 'front'],
+      `${id}: rear and bow skirt runs both meet their fenders`);
+    assert.equal(closure.transition?.architecture, 'closed-tapered-course-transition',
+      `${id}: front/rear carrier seam uses a closed tapered transition`);
+    assert.ok(closure.transition.z1 > closure.transition.z0,
+      `${id}: transition spans the authored skirt-course break`);
+    for (const course of closure.courses) {
+      assert.ok(course.segmentCount >= 2,
+        `${id}: ${course.course} carrier follows the deck with multiple closed stations`);
+      assert.ok(course.fenderBottomMinY > course.skirtTopY,
+        `${id}: ${course.course} receipt covers the formerly open vertical slot`);
+      assert.ok(course.upperInnerHalfWidth >= closure.shoeOuterHalfWidth + closure.shoeClearanceM - 1e-9,
+        `${id}: ${course.course} carrier clears the animated track shoe envelope`);
+      assert.ok(course.upperOuterHalfWidth > course.upperInnerHalfWidth,
+        `${id}: ${course.course} carrier has positive fender-seat width`);
+      assert.ok(course.lowerOuterHalfWidth > course.lowerInnerHalfWidth,
+        `${id}: ${course.course} carrier has positive skirt-seat width`);
+      assert.ok(course.upperOuterHalfWidth <= 1.875 + 1e-9
+        && course.lowerOuterHalfWidth <= 1.875 + 1e-9,
+      `${id}: ${course.course} carrier never widens the certified Leopard envelope`);
+
+      const localZ = (course.z0 + course.z1) * 0.5;
+      const localY = (course.skirtTopY + course.fenderBottomMinY) * 0.5;
+      for (const side of [-1, 1]) {
+        const origin = hullRig.localToWorld(new THREE.Vector3(side * 2.08, localY, localZ));
+        const direction = new THREE.Vector3(-side, 0, 0).transformDirection(hullRig.matrixWorld);
+        const hits = new THREE.Raycaster(origin, direction, 0, 0.65).intersectObject(hull, false);
+        assert.ok(hits.length > 0,
+          `${id}: ${course.course} ${side < 0 ? 'left' : 'right'} side sightline cannot see through above the skirt`);
+        const localHit = hullRig.worldToLocal(hits[0].point.clone());
+        assert.ok(Math.abs(localHit.x) >= closure.shoeOuterHalfWidth + closure.shoeClearanceM - 0.02,
+          `${id}: ${course.course} closure remains outside the live track lane`);
+      }
+    }
+  } finally {
+    tank.dispose();
+  }
+}
+
+console.log('leopardHullClosure.selftest: Leopard bow undersides and fender/skirt transitions are continuous and track-safe');

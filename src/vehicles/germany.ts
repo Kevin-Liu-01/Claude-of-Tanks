@@ -23,7 +23,9 @@ import {
 } from './fleetSpecRegistry.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
-const GERMANY_IDS = Object.freeze(['leo2a4_otco', 'leo2a4m', 'leo2a6m'] as const);
+const GERMANY_IDS = Object.freeze([
+  'leo2a4_otco', 'leo2a4m', 'leo2a6m', 'leo2a5_a5nl',
+] as const);
 
 type GermanStatOverrides = Partial<Pick<FleetTankSpec,
   | 'hp'
@@ -129,6 +131,15 @@ const GERMANY_SPECS = {
       reverseSpeedKmh: 31, turretTraverseDegS: 40, gunPitchDegS: 34 },
     reloadS: 5.7, shellName: 'DM63 APFSDS', armorFactor: 1.27,
   }),
+  leo2a5_a5nl: variant('leo2a5_a5nl', 'leo2a5', {
+    name: 'Leopard 2A5/A5NL', number: 'A5NL', scheme: 'stripes',
+    base: '#465041', weather: '#626b58', patches: ['#273229', '#625a42', '#78715c'],
+    camoScale: 0.39,
+    dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.98, heightM: 3.12 },
+    stats: { hp: 2825, enginePowerHp: 1500, weightTons: 63.8, topSpeedKmh: 68,
+      reverseSpeedKmh: 31, turretTraverseDegS: 40, gunPitchDegS: 34 },
+    reloadS: 5.6, shellName: 'DM63A1 APFSDS', armorFactor: 1.30,
+  }),
 } satisfies Record<string, FleetTankSpec>;
 
 registerFleetSpecs(registries, GERMANY_IDS, GERMANY_SPECS);
@@ -156,6 +167,13 @@ const ukrainianNizhSkirt: EraReduction = Object.freeze({ keReduction: 0.12, ceFl
 const eraLayer = (era: EraReduction, keMm: number, ceMm: number): PlateOptions => ({
   kind: 'era', era, keMm, ceMm,
 });
+
+registries.tankSpecs.leo2a5_a5nl.armor.hullPlates.push(
+  rightSidePlate('a5nl_skirt_era_R', 18, 1.95, 0.78, 1.95, 1.49, -3.25, 3.25,
+    eraLayer(ukrainianNizhSkirt, 180, 560)),
+  leftSidePlate('a5nl_skirt_era_L', 18, 1.95, 0.78, 1.95, 1.49, -3.25, 3.25,
+    eraLayer(ukrainianNizhSkirt, 180, 560)),
+);
 
 function addLeopard2A6UAFieldEraSectors(spec: FleetTankSpec): void {
   spec.armor.hullPlates.push(

@@ -1,6 +1,6 @@
 # Claude of Tanks: full public reference
 
-> Canonical, agent-readable reference for the public Claude of Tanks product and technical documentation. Last reviewed 2026-08-25. Canonical site: https://cot.kevinliu.studio/. Creator: Kevin B. Liu, https://github.com/Kevin-Liu-01.
+> Canonical, agent-readable reference for the public Claude of Tanks product and technical documentation. Last reviewed 2026-08-30. Canonical site: https://cot.kevinliu.studio/. Creator: Kevin B. Liu, https://github.com/Kevin-Liu-01.
 
 ## Identity and access
 
@@ -10,9 +10,9 @@ The name is "Claude of Tanks." The creator and copyright holder is Kevin B. Liu.
 
 ## Current public-build facts
 
-- Production-visible fleet: 120 first-party procedural vehicles.
-- Playable saved fleet with the keyed local-development projection: 157 first-party procedural vehicles.
-- Saved vehicle records: 159, including two non-playable reference placeholders.
+- Production-visible fleet: 121 first-party procedural vehicles.
+- Playable saved fleet with the keyed local-development projection: 158 first-party procedural vehicles.
+- Saved vehicle records: 160, including two non-playable reference placeholders.
 - Authored battlefields: 20.
 - Simulation rate: fixed 60 Hz.
 - Standard battle format: teams of up to seven vehicles, presented as 7v7 where the selected mode supports it.
@@ -23,7 +23,7 @@ The name is "Claude of Tanks." The creator and copyright holder is Kevin B. Liu.
 - Account requirement for the public game: none.
 - Public access price: USD 0.
 
-The repository contains additional keyed local-development vehicle records that are intentionally outside the production-visible public fleet. Public summaries should use 120 unless specifically discussing the 157-model development projection or all 159 saved records. Counts are current as of the review date above and should be rechecked against the live site or repository before reuse in time-sensitive copy.
+The repository contains additional keyed local-development vehicle records that are intentionally outside the production-visible public fleet. Public summaries should use 121 unless specifically discussing the 158-model development projection or all 160 saved records. Counts are current as of the review date above and should be rechecked against the live site or repository before reuse in time-sensitive copy.
 
 ## Gameplay and combat model
 

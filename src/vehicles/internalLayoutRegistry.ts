@@ -346,7 +346,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   starship: ['m60a2'],
   arieteManual: ['ariete', 'ariete_c1', 'ariete_c2'],
   westernTwoPart: ['challenger1', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger_3', 'challenger_3x'],
-  leopard: ['leo1a5', 'leopard2_proto', 'leo2a4', 'leo2a4_otco', 'leo2a4m', 'leo2a5', 'leo2a6', 'leo2a6m', 'leo2_revolution', 'leo2a7v', 'strv122', 'leo2a6_ua'],
+  leopard: ['leo1a5', 'leopard2_proto', 'leo2a4', 'leo2a4_otco', 'leo2a4m', 'leo2a5', 'leo2a5_a5nl', 'leo2a6', 'leo2a6m', 'leo2_revolution', 'leo2a7v', 'strv122', 'leo2a6_ua'],
   abrams: ['m1a1', 'm1a2', 'm1a2_tusk', 'm1a2_legacy', 'm1a1ha', 'm1a2_sepv2', 'm1a2_sepv3', 'ua_m1a1'],
   merkava: ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b'],
   sovietManual: ['t62mv1'],

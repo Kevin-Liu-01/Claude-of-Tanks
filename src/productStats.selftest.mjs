@@ -69,7 +69,7 @@ for (const value of [
   assert.match(currentFacts, new RegExp(`\\b${value}\\b`), `current public facts omit ${value}`);
 }
 assert.doesNotMatch(currentFacts,
-  /111 production-visible|148 keyed local-development|150 (?:saved|records)|121 first-party procedural|16 (?:generated and destructible maps|authored battlefields)/,
+  /111 production-visible|148 keyed local-development|150 (?:saved|records)|120 first-party procedural|16 (?:generated and destructible maps|authored battlefields)/,
   'current public facts contain retired fleet or battlefield totals');
 
 console.log(

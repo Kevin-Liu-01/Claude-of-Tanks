@@ -17,8 +17,13 @@ const TARGETS = Object.freeze({
   }),
   leo2a6m: Object.freeze({
     variant: 'a6m-arctic', mount: [-0.72, 0.795, -1.52],
-    sizeStandard: 'leopard-reduced-tower', scale: 1.12, towerRiseM: 0.14,
-    minimumWidth: 0.88, minimumHeight: 0.72,
+    sizeStandard: 'leopard-reduced-tower', scale: 0.92, towerRiseM: 0.10,
+    minimumWidth: 0.80, minimumHeight: 0.60,
+  }),
+  leo2a5_a5nl: Object.freeze({
+    variant: 'a5nl-low', mount: [-0.62, 0.759, -1.35],
+    sizeStandard: 'leopard-reduced-tower', scale: 0.86, towerRiseM: 0.08,
+    minimumWidth: 0.72, minimumHeight: 0.52,
   }),
   leo2a7v: Object.freeze({
     variant: 'a7v-low', mount: [0.72, 0.67, -1.48],
@@ -178,7 +183,8 @@ for (const [id, expected] of Object.entries(TARGETS)) {
 
     const receipt = turretRig.userData.openYokeRwsReceipt
       || turretRig.userData.auxiliaryOpenYokeRwsReceipt
-      || turretRig.userData.leopard2A6MERAReceipt?.auxiliaryOpenYokeRws;
+      || turretRig.userData.leopard2A6MERAReceipt?.auxiliaryOpenYokeRws
+      || turretRig.userData.leopard2A5A5NLReceipt?.auxiliaryOpenYokeRws;
     assert.ok(receipt, `${id}: publishes an open-yoke station receipt`);
     assert.equal(receipt.designFamily, 'abramsx-open-yoke-v1',
       `${id}: receipt exposes the shared mechanical family`);
@@ -214,7 +220,7 @@ for (const [id, expected] of Object.entries(TARGETS)) {
   }
 }
 
-assert.equal(new Set(Object.values(TARGETS).map(({ variant }) => variant)).size, 7,
-  'all seven hosts receive visibly distinct open-yoke variants');
+assert.equal(new Set(Object.values(TARGETS).map(({ variant }) => variant)).size, 8,
+  'all eight hosts receive visibly distinct open-yoke variants');
 
-console.log('openYokeRwsFleet.selftest: seven host-sized AbramsX-style turret stations pass');
+console.log('openYokeRwsFleet.selftest: eight host-sized AbramsX-style turret stations pass');

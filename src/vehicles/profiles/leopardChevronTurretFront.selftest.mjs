@@ -3,6 +3,7 @@ import { createTank } from '../tankFactory.ts';
 
 const modernProfiles = new Map([
   ['leo2a5', 'leopard-2a5'],
+  ['leo2a5_a5nl', 'leopard-2a5'],
   ['leo2a6', 'leopard-2a6'],
   ['leo2a6m', 'leopard-2a6m'],
   ['leo2a6_ua', 'leopard-2a6m'],
@@ -10,7 +11,7 @@ const modernProfiles = new Map([
   ['strv122', 'leopard-2a5'],
 ]);
 const verticalTerminalIds = new Set([
-  'leo2a5', 'strv122', 'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2a7v',
+  'leo2a5', 'leo2a5_a5nl', 'strv122', 'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2a7v',
 ]);
 const receiptsById = new Map();
 
@@ -113,19 +114,19 @@ for (const [id, expectedProfile] of modernProfiles) {
     assert.ok(smokeReceipt.sides.every(({ mountX }) => Math.abs(mountX) >= 1.25),
       `${id} smoke banks sit externally on the turret side/chamfer`);
   }
-  if (['leo2a5', 'strv122'].includes(id)) {
+  if (['leo2a5', 'leo2a5_a5nl', 'strv122'].includes(id)) {
     assert.equal(rootVertexOccurrences(tank.root, [0.2, 0.802, 1.73]), 0,
       `${id} removes the structural plateau-tail roof tab`);
     assert.equal(rootVertexOccurrences(tank.root, [0.205, 0.8039, 1.732]), 0,
       `${id} removes the selected plateau-tail tone skin`);
   }
-  if (['leo2a5', 'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2a7v', 'strv122'].includes(id)) {
+  if (['leo2a5', 'leo2a5_a5nl', 'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2a7v', 'strv122'].includes(id)) {
     assert.equal(receipt.lowerArmorPanArchitecture, 'cheek-return-owned',
       `${id} removes the separate underride blocker beneath its extended lower cheeks`);
     assert.equal(receipt.separateUnderrideFront, false,
       `${id} does not retain a flat front behind the structural lower return`);
   }
-  if (id === 'leo2a5' || id === 'strv122') {
+  if (id === 'leo2a5' || id === 'leo2a5_a5nl' || id === 'strv122') {
     const covered = receipt.sides[0].stations.filter((station) => station.x <= 1.011 + 1e-6);
     assert.ok(covered.length >= 2, `${id} samples the complete owner-marked inner cheek span`);
     assert.ok(covered.every((station) => station.lowerY <= -0.066 + 1e-6),

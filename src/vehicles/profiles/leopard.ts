@@ -395,6 +395,8 @@ interface OpenYokeMountOptions {
   readonly sensorSide: Side;
   readonly yaw?: number;
   readonly weaponRole?: 'auxiliary' | 'roof-primary';
+  readonly scale?: number;
+  readonly towerRise?: number;
 }
 
 interface LeopardSkirtRun {
@@ -412,6 +414,15 @@ interface LeopardSkirtRun {
     readonly z0: number;
     readonly z1: number;
   };
+}
+
+interface LeopardFenderSkirtClosureOptions {
+  /** Structural overlap into both the fender lip and skirt carrier. */
+  readonly overlapM?: number;
+  /** Width retained beneath the fender's outboard edge. */
+  readonly upperSeatWidthM?: number;
+  /** Minimum lateral clearance beyond the animated shoe envelope. */
+  readonly shoeClearanceM?: number;
 }
 
 interface LeopardHullV3Config {
@@ -490,6 +501,7 @@ interface LeopardHullV3Config {
     readonly cutZ0?: number;
     readonly cutX0?: number;
   };
+  readonly fenderSkirtClosure?: boolean | LeopardFenderSkirtClosureOptions;
   readonly frontSkirt?: LeopardSkirtRun;
   readonly rearSkirt?: LeopardSkirtRun;
   readonly wheelR: number;
@@ -2044,6 +2056,148 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
   // thinner rear skirt run, inset under the fender lip
   const RS = H.rearSkirt;
   if (RS) segRun('hull', RS.x, RS.th ?? 0.045, RS.y0, RS.y1, RS.z0, RS.z1);
+
+  // A5/A6-family fender-to-skirt shoulder. The fender and skirt courses are
+  // intentionally authored at different widths, but the old build left the
+  // transition as open air: from a side/low-quarter view the inner tub and
+  // road wheels could be seen through a continuous slot. This segmented,
+  // closed trapezoid is the real carrier between them. Its inner edge stays
+  // beyond the animated shoe envelope, while its upper/lower rings overlap
+  // the fender and skirt respectively so no coplanar daylight seam survives.
+  const FSC = H.fenderSkirtClosure
+    ? (H.fenderSkirtClosure === true ? {} : H.fenderSkirtClosure)
+    : null;
+  if (FSC) {
+    type FourPointRing = readonly [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
+    const overlapM = FSC.overlapM ?? 0.022;
+    const upperSeatWidthM = FSC.upperSeatWidthM ?? 0.036;
+    const shoeOuterHalfWidth = H.xc + H.trackW * 0.5;
+    const shoeClearanceM = FSC.shoeClearanceM ?? 0.008;
+    const fenderThickness = F.y1 - F.y0;
+    const receipts: Array<Readonly<Record<string, number | string>>> = [];
+
+    const fenderBottomYAt = (z: number): number => {
+      const topY = F.followDeck === false
+        ? F.y1
+        : Math.min(F.y1, deckYAt(deck, z) - (F.drop ?? 0.005));
+      return topY - fenderThickness;
+    };
+    const courseSection = (run: LeopardSkirtRun, z: number) => {
+      const runThickness = run.th ?? 0.045;
+      return Object.freeze({
+        z,
+        lowerY: run.y1 - overlapM,
+        lowerInnerX: run.x - runThickness,
+        lowerOuterX: run.x,
+        upperY: fenderBottomYAt(z) + overlapM,
+        upperInnerX: Math.max(
+          shoeOuterHalfWidth + shoeClearanceM,
+          F.x1 - upperSeatWidthM,
+        ),
+        upperOuterX: F.x1,
+      });
+    };
+    const orderedRing = (side: Side, ring: FourPointRing): FourPointRing => {
+      const mirrored = ring.map(([x, y, z]) => [side * x, y, z] as Vec3Tuple) as unknown as FourPointRing;
+      return side < 0
+        ? [mirrored[1], mirrored[0], mirrored[3], mirrored[2]]
+        : mirrored;
+    };
+    const addClosureRun = (course: string, run: LeopardSkirtRun): void => {
+      const z0 = Math.max(F.z0, run.z0);
+      const z1 = Math.min(F.z1, run.z1);
+      if (z1 <= z0 + 0.03) return;
+      const segmentCount = Math.max(2, Math.ceil((z1 - z0) / 0.44));
+      const segmentLength = (z1 - z0) / segmentCount;
+      const runThickness = run.th ?? 0.045;
+      const upperInnerX = Math.max(
+        shoeOuterHalfWidth + shoeClearanceM,
+        F.x1 - upperSeatWidthM,
+      );
+      // Seat inside the already-certified outer faces.  The carrier needs
+      // vertical overlap to eliminate daylight, but an outward X overlap
+      // silently widens the finished tank and makes the armor fitter expand
+      // every hull plate.  Exact outer faces preserve the published Leopard
+      // width while the inner edges remain buried in their adjoining courses.
+      const upperOuterX = F.x1;
+      const lowerInnerX = run.x - runThickness;
+      const lowerOuterX = run.x;
+      for (const side of [-1, 1] as const) {
+        for (let segment = 0; segment < segmentCount; segment++) {
+          const za = z0 + segmentLength * segment;
+          const zb = z0 + segmentLength * (segment + 1);
+          const lowerY = run.y1 - overlapM;
+          const upperYA = fenderBottomYAt(za) + overlapM;
+          const upperYB = fenderBottomYAt(zb) + overlapM;
+          const lower: FourPointRing = [
+            [lowerInnerX, lowerY, za], [lowerOuterX, lowerY, za],
+            [lowerOuterX, lowerY, zb], [lowerInnerX, lowerY, zb],
+          ];
+          const upper: FourPointRing = [
+            [upperInnerX, upperYA, za], [upperOuterX, upperYA, za],
+            [upperOuterX, upperYB, zb], [upperInnerX, upperYB, zb],
+          ];
+          P.add('hull', slab(...orderedRing(side, lower), ...orderedRing(side, upper)));
+        }
+      }
+      receipts.push(Object.freeze({
+        course,
+        z0,
+        z1,
+        segmentCount,
+        skirtTopY: run.y1,
+        fenderBottomMinY: Math.min(fenderBottomYAt(z0), fenderBottomYAt(z1)),
+        upperInnerHalfWidth: upperInnerX,
+        upperOuterHalfWidth: upperOuterX,
+        lowerInnerHalfWidth: lowerInnerX,
+        lowerOuterHalfWidth: lowerOuterX,
+      }));
+    };
+    if (RS) addClosureRun('rear', RS);
+    if (FS) addClosureRun('front', FS);
+    // The A5/A6 courses intentionally change height and width at mid-hull.
+    // Leaving the short station break between them open produced a real
+    // top-down cavity and a visible low-quarter slit. Join the two closed
+    // carriers with one tapered solid, preserving both authored skirt
+    // sections while keeping the upper seat inside the same fender face.
+    let transition: Readonly<Record<string, number | string | boolean>> | null = null;
+    if (RS && FS && FS.z0 > RS.z1 && FS.z0 - RS.z1 <= 0.25) {
+      const rear = courseSection(RS, RS.z1);
+      const front = courseSection(FS, FS.z0);
+      for (const side of [-1, 1] as const) {
+        const lower: FourPointRing = [
+          [rear.lowerInnerX, rear.lowerY, rear.z], [rear.lowerOuterX, rear.lowerY, rear.z],
+          [front.lowerOuterX, front.lowerY, front.z], [front.lowerInnerX, front.lowerY, front.z],
+        ];
+        const upper: FourPointRing = [
+          [rear.upperInnerX, rear.upperY, rear.z], [rear.upperOuterX, rear.upperY, rear.z],
+          [front.upperOuterX, front.upperY, front.z], [front.upperInnerX, front.upperY, front.z],
+        ];
+        P.add('hull', slab(...orderedRing(side, lower), ...orderedRing(side, upper)));
+      }
+      transition = Object.freeze({
+        architecture: 'closed-tapered-course-transition',
+        z0: RS.z1,
+        z1: FS.z0,
+        rearSkirtTopY: RS.y1,
+        frontSkirtTopY: FS.y1,
+        mirrored: true,
+      });
+    }
+    if (P.geometryReceipt) {
+      P.hullG.userData.leopardFenderSkirtClosure = Object.freeze({
+        architecture: 'segmented-closed-trapezoidal-carrier',
+        overlapM,
+        upperSeatWidthM,
+        shoeOuterHalfWidth,
+        shoeClearanceM,
+        courses: Object.freeze(receipts),
+        transition,
+        mirrored: true,
+        structural: true,
+      });
+    }
+  }
   leoGear(P, {
     xc: H.xc, trackW: H.trackW, wheelR: H.wheelR, wheelY: H.wheelY,
     span: H.span, sprocket: H.sprocket, idler: H.idler, topY: H.topY,
@@ -2665,6 +2819,7 @@ function buildLeo2A6(P: TankBuilderPort) {
     // qualification; thinner would silently collapse dims to ~7.5.
     tailFrame: { z0: -3.62, z1: -3.79, yLo: 1.47, yHi: 1.775, w: 2.9, posts: [0.5, 1.38] },
     fender: { x0: 1.56, x1: 1.66, y0: 1.60, y1: 1.665, z0: -3.00, z1: 2.10 },
+    fenderSkirtClosure: true,
     // r4 containment: the last fore-fender segment (z 3.18..3.72) dived
     // through the idler-wrap crest at lane x — it keeps only the outboard
     // 1.63..1.66 sliver (side line x-invariant, vacated front columns are
@@ -4072,6 +4227,7 @@ export function buildLeo2A5(builder: object) {
     // their 1.683 fender-top read via a wide overlay strip parked at
     // z 1.08..2.62 (stations 9-10, where the ref is skirt-wide anyway).
     fender: { x0: 1.622, x1: 1.737, y0: 1.61, y1: 1.675, z0: -3.66, z1: 2.38 },
+    fenderSkirtClosure: true,
     // two-course front skirt: tall inner course (inline below) 0.71..1.52,
     // outer face course 0.87..1.35 at exactly ±1.875 (ref front ±1.887 col
     // reads 1.347..0.871 — no rubber flap, its 0.79 bottoms were proc-only)
@@ -5719,6 +5875,131 @@ export function buildLeo2A5(builder: object) {
     }
   }
   P.topY = 1.24;
+}
+
+// Leopard 2A5/A5NL — owner-directed Tier X field-modernized A5. The base
+// A5 geometry remains intact; this package adds a physically backed skirt
+// ERA course, compact roof RWS, modern optical heads and service lighting.
+// Every attachment is seated on the inherited hull/turret rather than being
+// stretched into the certified A5 silhouette as anonymous filler.
+function buildLeo2A5A5NL(builder: object) {
+  const P = requireTankBuilderPort(builder);
+  const { box, cylX, cylY, cylZ, torus, sph } = KIT;
+  buildLeo2A5(P);
+  P.clearDecals('turret');
+
+  // The A5 donor's rear basket is deliberately an open rail frame.  The
+  // A5NL field package carries a shallow service/stowage tray between those
+  // rails instead: it closes the two plan-view pockets beside the centre
+  // stubs and is parked wholly above the sprocket/shoe sweep.  Its forward
+  // edge overlaps the existing low rail while the end tabs meet the raised
+  // corner rails, so this is supported bodywork rather than a floating cap.
+  P.add('hullDetail', box(2.72, 0.045, 0.22), 0, 1.585, -3.82);
+  for (const side of [-1, 1] as const) {
+    P.add('hullDetail', box(0.12, 0.12, 0.08), side * 1.295, 1.535, -3.88);
+  }
+
+  const skirtEraSeats: Array<Readonly<Record<string, number | string>>> = [];
+  for (const side of [-1, 1] as const) {
+    const suffix = side > 0 ? 'R' : 'L';
+    const sector = `a5nl_skirt_era_${suffix}`;
+    // Continuous backing and upper tie rail bridge the cassettes into the
+    // A5's now-closed fender/skirt shoulder. The inner carrier face remains
+    // outside the track envelope inherited from leoHullV3.
+    P.add('hull', box(0.11, 0.63, 6.18), side * 1.92, 1.13, 0.02);
+    P.add('hullDetail', box(0.26, 0.045, 6.20), side * 1.735, 1.58, 0.02);
+    P.eraCluster(sector, (place) => {
+      for (let row = 0; row < 3; row++) {
+        for (let station = 0; station < 10; station++) {
+          const y = 0.88 + row * 0.205;
+          const z = -2.92 + station * 0.65;
+          place(
+            side * 1.9307, y, z,
+            0, side * Math.PI / 2, 0,
+            1.72, 1.28, 1.38,
+          );
+          skirtEraSeats.push(Object.freeze({ side, row, station, y, z, sector }));
+        }
+      }
+    });
+    // Cassette dividers and four visible load paths prevent the field kit
+    // from reading as a floating wall when viewed from above or behind.
+    for (let station = 0; station <= 10; station++) {
+      const z = -3.245 + station * 0.65;
+      P.add('hullDark', box(0.045, 0.66, 0.025), side * 1.9675, 1.13, z);
+    }
+    for (const z of [-2.72, -0.78, 1.16, 2.78]) {
+      P.add('hullDark', cylX(0.022, 0.25, 10), side * 1.865, 1.43, z);
+    }
+
+    // Three-lens forward lighting block and a guarded IR marker on each
+    // shoulder. These sit immediately above the skirt carrier, not inside
+    // the live idler envelope.
+    P.addEquipment('hull', box(0.34, 0.18, 0.18), side * 1.43, 1.66, 3.34);
+    for (let lamp = 0; lamp < 3; lamp++) {
+      P.addEquipment('hullGlass', cylZ(0.038, 0.024, 12),
+        side * (1.34 + lamp * 0.09), 1.67, 3.444);
+    }
+    P.addEquipment('hullDark', box(0.025, 0.22, 0.22), side * 1.61, 1.66, 3.35);
+
+    // Modern side-awareness pod, recessed glass, and paired smoke bank.
+    const podX = side * 1.35;
+    P.addEquipment('turret', box(0.18, 0.28, 0.40), podX, 0.58, 0.04, 0, 0, side * 0.18);
+    P.addEquipment('turretGlass', box(0.012, 0.17, 0.20),
+      side * 1.445, 0.60, 0.08, 0, 0, side * 0.18);
+    for (let launcher = 0; launcher < 4; launcher++) {
+      P.addEquipment('turretDark', cylZ(0.037, 0.22, 10),
+        side * 1.42, 0.42 + launcher * 0.085, -0.35 - launcher * 0.08,
+        -0.36, side * 0.18, 0);
+    }
+  }
+
+  // Low-profile panoramic day/thermal head on a buried bearing.
+  P.addEquipment('turret', cylY(0.20, 0.22, 0.07, P.q ? 20 : 14), 0.48, 0.895, -0.72);
+  P.addEquipment('turretDark', torus(0.19, 0.018, P.q ? 20 : 14), 0.48, 0.936, -0.72);
+  P.addEquipment('turret', box(0.35, 0.27, 0.31), 0.48, 1.055, -0.72);
+  P.addEquipment('turretGlass', box(0.23, 0.12, 0.016), 0.48, 1.07, -0.548);
+  P.addEquipment('turretGlass', box(0.08, 0.07, 0.017), 0.61, 1.13, -0.548);
+
+  // Compact automated MG tower: visibly more capable than the donor pintle,
+  // but smaller than the already reduced A6M station requested by the owner.
+  const auxiliaryOpenYokeRws = addLeopardOpenYokeAuxRws(P, {
+    x: -0.62, y: 0.759, z: -1.35,
+    variant: 'a5nl-low', ammoSide: -1, sensorSide: 1,
+    yaw: 0, scale: 0.86, towerRise: 0.08,
+  });
+
+  // Roof electronics, warning beacons and whip bases add the requested
+  // modern-service density while remaining attached to broad roof stations.
+  P.addEquipment('turret', box(0.46, 0.14, 0.32), 0.06, 0.91, -1.73);
+  P.addEquipment('turretDark', box(0.40, 0.025, 0.27), 0.06, 0.995, -1.73);
+  for (const side of [-1, 1] as const) {
+    P.addEquipment('turret', cylY(0.055, 0.065, 0.08, 12), side * 0.92, 0.91, -1.96);
+    P.addEquipment('turretGlass', sph(0.048, 10), side * 0.92, 0.985, -1.96);
+    P.addEquipment('turretDark', cylY(0.020, 0.025, 0.07, 10), side * 1.08, 0.92, -2.13);
+    P.addEquipment('turretDark', cylY(0.010, 0.012, 1.18, 8), side * 1.08, 1.53, -2.13);
+  }
+  P.addEquipment('turretDark', cylZ(0.024, 0.30, 10), 0.02, 0.94, -2.04);
+  P.addEquipment('turretGlass', box(0.08, 0.08, 0.012), 0.02, 0.94, -1.882);
+
+  P.decal('turret', 'crossgrey', null, 0.30, [1.46, 0.39, -0.92], Math.PI / 2);
+  P.decal('turret', 'number', 'A5NL', 0.18, [-1.46, 0.39, -0.92], -Math.PI / 2);
+  // `topY` is a turret-local framing hint; the inherited A5 value already
+  // excludes whip antennas and remains correct for the compact A5NL station.
+  if (P.geometryReceipt) {
+    P.turretG.userData.leopard2A5A5NLReceipt = Object.freeze({
+      architecture: 'a5-field-modernization',
+      skirtEraSectors: Object.freeze(['a5nl_skirt_era_R', 'a5nl_skirt_era_L']),
+      skirtEraTilesPerSide: 30,
+      skirtEraSeats: Object.freeze(skirtEraSeats),
+      auxiliaryOpenYokeRws,
+      panoramicSight: true,
+      awarenessPodsPerSide: 1,
+      smokeLaunchersPerSide: 4,
+      forwardLampCount: 6,
+      equipmentOwned: true,
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -12887,15 +13168,17 @@ function leoSlatRear(P: TankBuilderPort, o: LeopardSlatRearOptions): void {
 // 7.18 bore mouth (spec overall 10.97 exactly).
 const LEO2A6M_CHEEK_NOSE: readonly Vec2Tuple[] = Object.freeze([
   [0.26, 2.74], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96],
+  [1.36, 1.60], [1.435, 1.42],
 ]);
-const LEO2A6M_CHEEK_CREST_R: readonly Vec3Tuple[] = Object.freeze([
-  [0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73],
-  [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.32, 0.58, -0.12],
-]);
-const LEO2A6M_CHEEK_CREST_L: readonly Vec3Tuple[] = Object.freeze([
-  [0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73],
-  [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.30, 0.61, -0.10],
-]);
+const LEO2A6M_CHEVRON = Object.freeze({
+  apexY: 0.09,
+  ridgeLift: 0.13,
+  upperRootY: 0.66,
+  upperTipY: 0.50,
+  upperTaperStartX: 1.30,
+  upperTaperEndX: 1.435,
+  upperReturnAngleRad: THREE.MathUtils.degToRad(19),
+});
 
 function sampleLeo2A6MProfile(
   stations: readonly (readonly number[])[], coordinate: number, valueIndex = 1,
@@ -12914,38 +13197,52 @@ function sampleLeo2A6MProfile(
   return stations.at(-1)![valueIndex];
 }
 
-// Point and tangent frame on the real A6M upper-cheek plate. The plate is a
-// ruled surface from the low 2A6 nose line to the asymmetric falling crest;
-// sampling by course fraction keeps the outer cassettes down on the turret
-// instead of letting fixed-y rows drift into the air as the crest falls.
+// Point and tangent frame on the exact closed A6M upper-chevron face. Keep
+// this sampler derived from wedgeTurretV3's chevron equations: decorations
+// must move with the armor rather than retain a stale approximation whenever
+// the cheek ridge or lower return is re-authored.
 function leo2A6MCheekSurface(side: Side, absX: number, courseFraction: number) {
-  const crest = side > 0 ? LEO2A6M_CHEEK_CREST_R : LEO2A6M_CHEEK_CREST_L;
   const fraction = THREE.MathUtils.clamp(courseFraction, 0, 1);
-  const lowerY = 0.235;
-  const noseZ = sampleLeo2A6MProfile(LEO2A6M_CHEEK_NOSE, absX);
-  const crestY = sampleLeo2A6MProfile(crest, absX, 1);
-  const crestZ = sampleLeo2A6MProfile(crest, absX, 2);
+  const ridgeY = LEO2A6M_CHEVRON.apexY + LEO2A6M_CHEVRON.ridgeLift;
+  const ridgeZ = sampleLeo2A6MProfile(LEO2A6M_CHEEK_NOSE, absX) - 0.03;
+  const upperTaper = THREE.MathUtils.clamp(
+    (absX - LEO2A6M_CHEVRON.upperTaperStartX)
+      / (LEO2A6M_CHEVRON.upperTaperEndX - LEO2A6M_CHEVRON.upperTaperStartX),
+    0, 1,
+  );
+  const upperY = THREE.MathUtils.lerp(
+    LEO2A6M_CHEVRON.upperRootY, LEO2A6M_CHEVRON.upperTipY, upperTaper,
+  );
+  const upperZ = ridgeZ - (upperY - ridgeY) / Math.tan(LEO2A6M_CHEVRON.upperReturnAngleRad);
   const point = new THREE.Vector3(
     side * absX,
-    THREE.MathUtils.lerp(lowerY, crestY, fraction),
-    THREE.MathUtils.lerp(noseZ, crestZ, fraction),
+    THREE.MathUtils.lerp(ridgeY, upperY, fraction),
+    THREE.MathUtils.lerp(ridgeZ, upperZ, fraction),
   );
 
   const epsilon = 0.002;
   const framePoint = (x: number): THREE.Vector3 => {
-    const nZ = sampleLeo2A6MProfile(LEO2A6M_CHEEK_NOSE, x);
-    const cY = sampleLeo2A6MProfile(crest, x, 1);
-    const cZ = sampleLeo2A6MProfile(crest, x, 2);
+    const localRidgeZ = sampleLeo2A6MProfile(LEO2A6M_CHEEK_NOSE, x) - 0.03;
+    const localTaper = THREE.MathUtils.clamp(
+      (x - LEO2A6M_CHEVRON.upperTaperStartX)
+        / (LEO2A6M_CHEVRON.upperTaperEndX - LEO2A6M_CHEVRON.upperTaperStartX),
+      0, 1,
+    );
+    const localUpperY = THREE.MathUtils.lerp(
+      LEO2A6M_CHEVRON.upperRootY, LEO2A6M_CHEVRON.upperTipY, localTaper,
+    );
+    const localUpperZ = localRidgeZ
+      - (localUpperY - ridgeY) / Math.tan(LEO2A6M_CHEVRON.upperReturnAngleRad);
     return new THREE.Vector3(
       side * x,
-      THREE.MathUtils.lerp(lowerY, cY, fraction),
-      THREE.MathUtils.lerp(nZ, cZ, fraction),
+      THREE.MathUtils.lerp(ridgeY, localUpperY, fraction),
+      THREE.MathUtils.lerp(localRidgeZ, localUpperZ, fraction),
     );
   };
   const tangentX = framePoint(absX + epsilon).sub(framePoint(absX - epsilon));
   if (side < 0) tangentX.multiplyScalar(-1);
   tangentX.normalize();
-  const tangentCourse = new THREE.Vector3(0, crestY - lowerY, crestZ - noseZ).normalize();
+  const tangentCourse = new THREE.Vector3(0, upperY - ridgeY, upperZ - ridgeZ).normalize();
   const normal = new THREE.Vector3().crossVectors(tangentX, tangentCourse).normalize();
   if (normal.z < 0) normal.multiplyScalar(-1);
   const tangentY = new THREE.Vector3().crossVectors(normal, tangentX).normalize();
@@ -12955,7 +13252,7 @@ function leo2A6MCheekSurface(side: Side, absX: number, courseFraction: number) {
     point,
     normal,
     rotation,
-    courseLength: Math.hypot(crestY - lowerY, crestZ - noseZ),
+    courseLength: Math.hypot(upperY - ridgeY, upperZ - ridgeZ),
   };
 }
 
@@ -13008,9 +13305,9 @@ function addLeo2A6MCheekCage(P: TankBuilderPort) {
     else railSegments++;
   };
 
-  const contourX = [0.40, 0.58, 0.76, 0.94, 1.11, 1.28];
+  const contourX = [0.34, 0.55, 0.76, 0.97, 1.18, 1.39];
   const courseFractions = [0.055, 0.235, 0.415, 0.595, 0.775, 0.955];
-  const uprightX = [0.42, 0.63, 0.84, 1.06, 1.27];
+  const uprightX = [0.36, 0.61, 0.86, 1.11, 1.36];
   for (const side of [-1, 1] as const) {
     for (const fraction of courseFractions) {
       for (let station = 0; station < contourX.length - 1; station++) {
@@ -13028,7 +13325,7 @@ function addLeo2A6MCheekCage(P: TankBuilderPort) {
         'y',
       );
     }
-    for (const absX of [0.46, 0.82, 1.18]) {
+    for (const absX of [0.42, 0.86, 1.30]) {
       for (const fraction of [0.12, 0.88]) {
         addSegment(
           cageSurface(side, absX, fraction, armorTieOffsetM),
@@ -13117,7 +13414,8 @@ function addLeo2A6MRoofRCWS(P: TankBuilderPort) {
 }
 
 function addLeopardOpenYokeAuxRws(P: TankBuilderPort, {
-  x, y, z, variant, ammoSide, sensorSide, yaw = 0, weaponRole = 'auxiliary',
+  x, y, z, variant, ammoSide, sensorSide, yaw = 0,
+  weaponRole = 'auxiliary', scale = 1.12, towerRise = 0.14,
 }: OpenYokeMountOptions) {
   const station = FITTINGS.openYokeRws({
     mats: P.mats,
@@ -13126,8 +13424,8 @@ function addLeopardOpenYokeAuxRws(P: TankBuilderPort, {
     // retain the complete mechanism and feed path, but trim its previously
     // oversized 1.28x battle silhouette on the A6M and A7V.
     sizeStandard: 'leopard-reduced-tower',
-    scale: 1.12,
-    towerRise: 0.14,
+    scale,
+    towerRise,
     variant,
     ammoSide,
     sensorSide,
@@ -13206,7 +13504,7 @@ function addLeo2A6MFrontalERA(P: TankBuilderPort, sectorPrefix: string) {
     P.eraCluster(`${sectorPrefix}_turret_cheek_era_${suffix}`, (place) => {
       for (let row = 0; row < 7; row++) {
         for (let station = 0; station < 8; station++) {
-          const absX = 0.40 + station * (0.88 / 7);
+          const absX = 0.34 + station * (1.05 / 7);
           const courseFraction = (row + 0.5) / 7;
           const surface = leo2A6MCheekSurface(side, absX, courseFraction);
           const coursePitch = surface.courseLength / 7;
@@ -13304,6 +13602,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     rear: { wallZ: -3.62, lipZ: -3.74, yTop: 1.80, yBot: 1.13 },
     tailFrame: { z0: -3.62, z1: -3.79, yLo: 1.47, yHi: 1.775, w: 2.9, posts: [0.5, 1.38] },
     fender: { x0: 1.56, x1: 1.66, y0: 1.60, y1: 1.665, z0: -3.00, z1: 2.10 },
+    fenderSkirtClosure: true,
     fenderFore: { z0: 2.10, z1: 3.18, drop: 0.03 },
     frontSkirt: {
       x: 1.875, z0: 1.52, z1: 3.655, y0: 0.87, y1: 1.305, th: 0.07, flap: false,
@@ -13353,14 +13652,21 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
   // Two supported runs now follow those real seat planes. The short bow run
   // retains the certified 1.99 m width anchor, and transverse links make the
   // 19 cm change of plane one continuous cage rather than an abrupt step.
+  // The complete side package is raised 100 mm from the earlier ISAF fit:
+  // its 0.88..1.36 m band now matches the A5 skirt proportions instead of
+  // hanging below the structural plates. Widths and longitudinal cadence
+  // remain unchanged; every heel and bow-corner support rises with the rails.
+  const hullSlatLiftY = 0.10;
+  const hullSlatY0 = 0.78 + hullSlatLiftY;
+  const hullSlatY1 = 1.26 + hullSlatLiftY;
   for (const s of [-1, 1] as const) {
     leoSlatRun(P, 'hull', s, {
       run: 'rear-skirt',
       x: 1.800,
       seat: 1.720,
       seatY0: 0.90,
-      y0: 0.78,
-      y1: 1.26,
+      y0: hullSlatY0,
+      y1: hullSlatY1,
       z0: -3.05,
       z1: 1.44,
       sections: 4,
@@ -13371,20 +13677,20 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
       x: 1.990,
       seat: 1.875,
       seatY0: 0.90,
-      y0: 0.78,
-      y1: 1.26,
+      y0: hullSlatY0,
+      y1: hullSlatY1,
       z0: 1.44,
       z1: 3.10,
       sections: 2,
       railTh: 0.020,
     });
-    P.add('hullDark', box(0.10, 0.018, 4.45), s * 1.76, 1.26, -0.805);       // rear skirt flange
-    P.add('hullDark', box(0.125, 0.018, 1.62), s * 1.9275, 1.26, 2.27);      // bow-module flange
+    P.add('hullDark', box(0.10, 0.018, 4.45), s * 1.76, hullSlatY1, -0.805);  // rear skirt flange
+    P.add('hullDark', box(0.125, 0.018, 1.62), s * 1.9275, hullSlatY1, 2.27); // bow-module flange
     for (let row = 0; row < 7; row++) {
       P.add('hullDetail', box(0.21, 0.020, 0.026), s * 1.895,
-        0.78 + row * 0.08, 1.44);                                            // cage-plane transition
+        hullSlatY0 + row * 0.08, 1.44);                                      // cage-plane transition
     }
-    P.add('hullDark', box(0.29, 0.018, 0.08), s * 1.855, 1.26, 1.44);        // supported top transition
+    P.add('hullDark', box(0.29, 0.018, 0.08), s * 1.855, hullSlatY1, 1.44);   // supported top transition
   }
   if (P.geometryReceipt) {
     P.hullG.userData.leopardSlatTransition = {
@@ -13393,6 +13699,9 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
       frontOuterX: 1.990,
       rearSeatX: 1.720,
       frontSeatX: 1.875,
+      railY0: hullSlatY0,
+      railY1: hullSlatY1,
+      liftY: hullSlatLiftY,
     };
   }
   leoSlatRear(P, { w: 3.10, y0: 0.72, y1: 1.42, z: -3.80, seatZ: -3.62 });
@@ -13403,14 +13712,14 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
   // envelope (§B4 a4m mudflap-law class) and every extreme stays inside
   // the certified ±2.00 cage extreme (widthM 3.98 anchor untouched).
   for (const s of [-1, 1] as const) {
-    // §5.345: flare rows follow the tightened 0.78..1.26 hull-run band
+    // Flare rows rise with the tightened 0.88..1.36 hull-run band.
     for (let row = 0; row < 7; row++) {
-      P.add('hullDetail', box(0.020, 0.020, 0.40), s * 1.885, 0.78 + row * 0.08, 3.24, 0, s * -0.485, 0);
+      P.add('hullDetail', box(0.020, 0.020, 0.40), s * 1.885, hullSlatY0 + row * 0.08, 3.24, 0, s * -0.485, 0);
     }
-    P.add('hullDetail', box(0.026, 0.53, 0.026), s * 1.972, 1.02, 3.075);    // corner post at the run end
-    P.add('hullDetail', box(0.026, 0.53, 0.026), s * 1.798, 1.02, 3.405);    // forward post
-    P.add('hullDark', box(0.13, 0.040, 0.042), s * 1.9225, 0.95, 3.10);      // bracket into the skirt band
-    P.add('hullDark', box(0.11, 0.040, 0.042), s * 1.8375, 1.22, 3.38);      // forward bracket into the skirt lip
+    P.add('hullDetail', box(0.026, 0.53, 0.026), s * 1.972, 1.12, 3.075);    // corner post at the run end
+    P.add('hullDetail', box(0.026, 0.53, 0.026), s * 1.798, 1.12, 3.405);    // forward post
+    P.add('hullDark', box(0.13, 0.040, 0.042), s * 1.9225, 1.05, 3.10);      // bracket into the skirt band
+    P.add('hullDark', box(0.11, 0.040, 0.042), s * 1.8375, 1.32, 3.38);      // forward bracket into the skirt lip
   }
   // §5.299 finish: rear-wall service grammar BEHIND the stern cage (ref
   // rear view: crossed tow cables over the transom + corner tail-lamp pods
@@ -13707,23 +14016,29 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
   P.add('turretDetail', box(0.36, 0.022, 0.05), 0.66, 0.685, 0.64);
   P.add('turretDark', cylZ(0.028, 0.05, 8), 0.34, 0.34, 1.645);
   P.add('turretDark', cylZ(0.016, 0.012, 8), 0.34, 0.34, 1.675);              // §B3.1-class dark port mouth
-  // Barracuda fasteners follow the actual shallow applique surface.  The
+  // Barracuda fasteners follow the actual closed-chevron surface.  The
   // previous cubes at y=.56-.70 included the exact marked lug at
   // (.55,.695,2.28): roughly 0.27 m above and partly ahead of the armor.
   // Low-profile round heads below are inset into the cheek plane, so they
   // read as attachment hardware rather than a constellation of floaters.
   for (const s of [-1, 1] as const) {
-    for (const [x, y, z, rx] of [
-      [0.47, 0.354, 2.30, 0.08],
-      [0.62, 0.352, 2.17, 0.08],
-      [0.79, 0.360, 2.02, 0.10],
-      // The outboard arrow face climbs into the upper return here.  Seat
-      // these two heads on that rising surface instead of extending the
-      // flatter inboard-row height through the bend.
-      [1.00, 0.422, 1.67, 0.12],
-      [1.18, 0.430, 1.43, 0.12],
+    for (const [x, targetZ] of [
+      [0.47, 2.30], [0.62, 2.17], [0.79, 2.02], [1.00, 1.67], [1.18, 1.43],
     ]) {
-      P.add('turretDetail', cylY(0.018, 0.020, 0.022, 8), s * x, y, z, rx, 0, s * 0.08);
+      const ridge = leo2A6MCheekSurface(s, x, 0).point;
+      const upper = leo2A6MCheekSurface(s, x, 1).point;
+      const courseFraction = THREE.MathUtils.clamp(
+        (targetZ - ridge.z) / (upper.z - ridge.z), 0.04, 0.96,
+      );
+      const surface = leo2A6MCheekSurface(s, x, courseFraction);
+      // The inner three positions cross the visible 20 mm cheek cassette;
+      // lift their heads onto that outer skin. Outboard positions land in
+      // the exposed seams and remain directly on the continuous armor face.
+      const surfaceLiftM = x <= 0.65 ? 0.027 : x <= 0.85 ? 0.015 : 0.004;
+      const center = surface.point.clone().addScaledVector(surface.normal, surfaceLiftM);
+      P.add('turretDetail', cylZ(0.018, 0.020, 8),
+        center.x, center.y, center.z,
+        surface.rotation.x, surface.rotation.y, surface.rotation.z);
     }
     // chamfer hardware studs (soften the long chamfer facet)
     for (const cz of [-1.30, -0.70, -0.10, 0.48]) {
@@ -13749,6 +14064,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     const auxiliaryOpenYokeRws = addLeopardOpenYokeAuxRws(P, {
       x: -0.72, y: 0.795, z: -1.52,
       variant: 'a6m-arctic', ammoSide: -1, sensorSide: 1, yaw: 0.030,
+      scale: 0.92, towerRise: 0.10,
     });
     if (P.geometryReceipt) {
       P.turretG.userData.leopard2A6MERAReceipt = Object.freeze({
@@ -13771,38 +14087,8 @@ function buildLeopard2A6UA(P: TankBuilderPort) {
   buildLeo2A6M(P, { fieldEra: false });
   P.clearDecals('turret');
 
-  const sample = (stations: readonly Vec2Tuple[], x: number): number => {
-    if (x <= stations[0][0]) return stations[0][1];
-    for (let index = 1; index < stations.length; index++) {
-      const [x1, value1] = stations[index];
-      if (x <= x1) {
-        const [x0, value0] = stations[index - 1];
-        return THREE.MathUtils.lerp(value0, value1, (x - x0) / (x1 - x0));
-      }
-    }
-    return stations.at(-1)![1];
-  };
-  const frontLower: readonly Vec2Tuple[] = [[0.32, 2.70], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96]];
-  const frontUpper: readonly Vec2Tuple[] = [[0.32, 2.02], [0.55, 1.87], [0.90, 1.62], [1.08, 1.40], [1.30, 1.16]];
-  const frontSurface = (side: Side, absX: number, y: number) => {
-    const t = THREE.MathUtils.clamp((y - 0.16) / 0.46, 0, 1);
-    const lower = sample(frontLower, absX);
-    const upper = sample(frontUpper, absX);
-    const z = THREE.MathUtils.lerp(lower, upper, t);
-    const epsilon = 0.002;
-    const zLo = THREE.MathUtils.lerp(sample(frontLower, absX - epsilon), sample(frontUpper, absX - epsilon), t);
-    const zHi = THREE.MathUtils.lerp(sample(frontLower, absX + epsilon), sample(frontUpper, absX + epsilon), t);
-    const dzdAbsX = (zHi - zLo) / (epsilon * 2);
-    const dzdY = (upper - lower) / 0.46;
-    const normal = new THREE.Vector3(-side * dzdAbsX, -dzdY, 1).normalize();
-    const tangentX = new THREE.Vector3(1, 0, side * dzdAbsX).normalize();
-    const tangentY = new THREE.Vector3().crossVectors(normal, tangentX).normalize();
-    const basis = new THREE.Matrix4().makeBasis(tangentX, tangentY, normal);
-    const rotation = new THREE.Euler().setFromRotationMatrix(basis, 'YXZ');
-    return { point: new THREE.Vector3(side * absX, y, z), normal, rotation };
-  };
-  const cageSurface = (side: Side, absX: number, y: number, offset = 0.095): SurfaceFrame => {
-    const surface = frontSurface(side, absX, y);
+  const cageSurface = (side: Side, absX: number, courseFraction: number, offset = 0.095): SurfaceFrame => {
+    const surface = leo2A6MCheekSurface(side, absX, courseFraction);
     return {
       point: surface.point.clone().addScaledVector(surface.normal, offset),
       normal: surface.normal,
@@ -13863,9 +14149,9 @@ function buildLeopard2A6UA(P: TankBuilderPort) {
     P.eraCluster(sector, (place) => {
       for (let row = 0; row < 3; row++) {
         for (let station = 0; station < 6; station++) {
-          const absX = 0.44 + station * 0.16;
-          const y = 0.22 + row * 0.17;
-          const surface = frontSurface(side, absX, y);
+          const absX = 0.36 + station * (1.02 / 5);
+          const courseFraction = (row + 0.5) / 3;
+          const surface = leo2A6MCheekSurface(side, absX, courseFraction);
           const scale = { x: 0.72, y: 1.02, z: 1.14 };
           const halfDepth = 0.07 * scale.z * 0.5;
           const overlap = 0.012;
@@ -13978,23 +14264,23 @@ function buildLeopard2A6UA(P: TankBuilderPort) {
     // Front cage rails use the same compound cheek surface as the ERA.
     // Short segments follow the changing tangent instead of bridging the
     // arrowhead with one flat yaw plane; six ties terminate on the armor.
-    const contourX = [0.40, 0.58, 0.76, 0.94, 1.12, 1.30];
-    for (const y of [0.16, 0.275, 0.39, 0.505, 0.62]) {
+    const contourX = [0.34, 0.55, 0.76, 0.97, 1.18, 1.39];
+    for (const courseFraction of [0.04, 0.27, 0.50, 0.73, 0.96]) {
       for (let station = 0; station < contourX.length - 1; station++) {
         addCageSegment(
-          cageSurface(side, contourX[station], y),
-          cageSurface(side, contourX[station + 1], y),
+          cageSurface(side, contourX[station], courseFraction),
+          cageSurface(side, contourX[station + 1], courseFraction),
           'x',
         );
       }
     }
-    for (const absX of [0.43, 0.70, 0.97, 1.24]) {
-      addCageSegment(cageSurface(side, absX, 0.16), cageSurface(side, absX, 0.62), 'y');
+    for (const absX of [0.38, 0.70, 1.02, 1.34]) {
+      addCageSegment(cageSurface(side, absX, 0.04), cageSurface(side, absX, 0.96), 'y');
     }
-    for (const absX of [0.48, 0.84, 1.20]) {
-      for (const y of [0.20, 0.58]) {
-        const armor = cageSurface(side, absX, y, 0.012);
-        const rail = cageSurface(side, absX, y);
+    for (const absX of [0.44, 0.86, 1.28]) {
+      for (const courseFraction of [0.12, 0.88]) {
+        const armor = cageSurface(side, absX, courseFraction, 0.012);
+        const rail = cageSurface(side, absX, courseFraction);
         addCageSegment(armor, rail, 'z');
       }
     }
@@ -14761,6 +15047,7 @@ export const LEOPARD_PROFILES = {
   leo2a4: { build: buildLeo2A4 },
   leo2a6: { build: buildLeo2A6 },
   leo2a5: { build: buildLeo2A5 },
+  leo2a5_a5nl: { build: buildLeo2A5A5NL },
   leo2a7v: { build: buildLeo2A7V },
   leopard2_proto: { build: buildLeo2Proto },
   leo2_revolution: { build: buildLeo2Revolution },

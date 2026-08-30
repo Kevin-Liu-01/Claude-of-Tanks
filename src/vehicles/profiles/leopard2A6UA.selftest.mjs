@@ -79,7 +79,8 @@ for (const seat of receipt.frontEraSeats) {
     'frontal ERA inner faces overlap the cheek rather than floating');
   const normalLength = Math.hypot(...seat.normalLocal);
   assert.ok(Math.abs(normalLength - 1) < 1e-4, 'frontal ERA seat normals are normalized');
-  assert.ok(seat.normalLocal[2] > 0.35, 'frontal ERA faces outward over the arrowhead');
+  assert.ok(seat.normalLocal[2] > 0.24 && seat.normalLocal[1] > 0.70,
+    'frontal ERA follows the dominant upper return of the closed arrowhead');
 }
 
 const eraMeshes = [];

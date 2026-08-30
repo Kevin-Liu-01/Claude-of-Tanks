@@ -190,6 +190,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leopard2_proto: anchor('turret', 'right', 0.42, 0.43, 0.25, -1),
   leo2a4: anchor('turret', 'left', 0.40, 0.44, 0.25, 1),
   leo2a5: anchor('turret', 'right', 0.38, 0.43, 0.25, -1),
+  leo2a5_a5nl: anchor('turret', 'right', 0.34, 0.42, 0.24, -1),
   leo2a6: anchor('turret', 'left', 0.37, 0.45, 0.25, 1),
   // German derivatives use separate, surface-seated stations so their
   // markings remain readable around each distinct applique/slat package.
