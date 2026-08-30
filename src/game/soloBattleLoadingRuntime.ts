@@ -1,6 +1,9 @@
 import type { Object3D } from 'three';
 import { gameModeDefinition, normalizeGameMode } from '../sim/matchModes.ts';
 import type { WorkYielder } from '../engine/frameScheduler.ts';
+import type { BattleLoadRosterRow, BattleLoadScreen } from '../ui/battleLoad.ts';
+import type { WorldRuntime } from '../world/map.ts';
+import type { BattlefieldMapConfig } from '../world/maps/index.ts';
 import type {
   BattleVisualEntity,
   BattleVisualStreamer,
@@ -13,30 +16,6 @@ interface LoadingEntity extends BattleVisualEntity {
 interface LoadingGame {
   tanks: LoadingEntity[];
   player?: LoadingEntity | null;
-}
-
-interface LoadingWorld {
-  mapId: string;
-  group: Object3D;
-}
-
-interface MapConfig {
-  name?: string;
-  props?: { tankWrecks?: { ids?: string[] } };
-}
-
-interface BattleLoadPort {
-  show(options: {
-    mapName: string;
-    thumb: string;
-    biome: string;
-    mode: string;
-    allies: unknown[];
-    enemies: unknown[];
-  }): void;
-  progress(fraction: number, label: string): void;
-  rosters(allies: unknown[], enemies: unknown[]): void;
-  hide(): Promise<unknown>;
 }
 
 interface AudioPort {
@@ -115,16 +94,16 @@ export interface SoloBattleLoadingRuntimeOptions {
   game: LoadingGame;
   post: { setAdaptiveSuspended(suspended: boolean): void };
   battleIntent: BattleIntentPort;
-  battleLoad: BattleLoadPort;
+  battleLoad: BattleLoadScreen;
   audio: AudioPort;
   acquisition: EntryAcquisitionPort;
   deployment: DeploymentPort;
   lifecycle: EntryLifecyclePort;
   getPendingMapId(): string;
-  getMapConfig(mapId: string): MapConfig;
+  getMapConfig(mapId: string): BattlefieldMapConfig;
   getMapThumb(mapId: string): string;
   hasCachedWorld(mapId: string): boolean;
-  getWorld(): LoadingWorld;
+  getWorld(): WorldRuntime;
   ensureWorld(
     mapId: string,
     onProgress: (fraction: number, label: string) => void,
@@ -156,7 +135,7 @@ export interface SoloBattleLoadingRuntimeOptions {
       gameMode?: string;
     },
   ): void;
-  prepareBattleWorldServices(world: LoadingWorld): void;
+  prepareBattleWorldServices(world: WorldRuntime): void;
   getPedestalVisual(): unknown;
   prebakeSharedTextures(
     spec: unknown,
@@ -165,7 +144,7 @@ export interface SoloBattleLoadingRuntimeOptions {
     yieldForBudget: WorkYielder,
   ): Promise<unknown>;
   anisotropy: number;
-  rosterRows(team: string): unknown[];
+  rosterRows(team: string): BattleLoadRosterRow[];
   warmShotCards(specIds: string[]): void;
   getCamoSweep(): PromiseLike<unknown> | unknown;
   prepareRevealCamera(): void;
@@ -188,8 +167,13 @@ export interface SoloBattleLoadingRuntime {
   begin(
     specId: string,
     mapId?: string | null,
-    options?: { randomRoster?: boolean; gameMode?: string },
+    options?: SoloBattleLoadingStartOptions,
   ): Promise<void>;
+}
+
+export interface SoloBattleLoadingStartOptions {
+  randomRoster?: boolean;
+  gameMode?: string;
 }
 
 /**
@@ -329,7 +313,9 @@ export function createSoloBattleLoadingRuntime({
         autoCamoIds: plannedAutoCamoIds,
         yieldForBudget: loadYield,
       });
-      const plannedWorldVehicles = config.props?.tankWrecks?.ids || [];
+      const tankWrecks = config.props?.tankWrecks;
+      const plannedWorldVehicles = tankWrecks && 'ids' in tankWrecks &&
+        Array.isArray(tankWrecks.ids) ? tankWrecks.ids : [];
       const fxTexture = ensureFx().then(async (live) => {
         await live.preloadTextures?.();
         live.warmTextures?.();

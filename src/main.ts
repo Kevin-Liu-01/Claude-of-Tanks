@@ -128,7 +128,10 @@ import { createBattleHudFrameRuntime } from './game/battleHudFrameRuntime.ts';
 import { createMatchModeWorldPresentation } from './game/matchModeWorldPresentation.ts';
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
 import { createSoloBattleDeploymentRuntime } from './game/soloBattleDeploymentRuntime.ts';
-import { createSoloBattleLoadingRuntime } from './game/soloBattleLoadingRuntime.ts';
+import {
+  createSoloBattleLoadingRuntime,
+  type SoloBattleLoadingStartOptions,
+} from './game/soloBattleLoadingRuntime.ts';
 import { createSoloBattleStartAccess } from './game/soloBattleStartAccess.ts';
 import { createBattleVisualPool } from './game/battleVisualPool.ts';
 import { createBattleVisualStreamerAccess } from './game/battleVisualStreamerAccess.ts';
@@ -1773,7 +1776,7 @@ const soloBattleStart = createSoloBattleStartAccess({
     },
   }),
 });
-const soloBattleLoading = createSoloBattleLoadingRuntime(legacyPort({
+const soloBattleLoading = createSoloBattleLoadingRuntime({
   game,
   post,
   battleIntent,
@@ -1830,7 +1833,7 @@ const soloBattleLoading = createSoloBattleLoadingRuntime(legacyPort({
   scheduleDeferredWarm: scheduleDeferredCombatWarm,
   nextFrame,
   createLoadingYielder: createOpaqueLoadingYielder,
-}));
+});
 
 /**
  * Establish the exact camera pose that the loader fade will reveal. Covered
@@ -2037,7 +2040,7 @@ networkRoomCoordinator = createNetworkRoomCoordinator({
   hasResult: () => !!game.result,
   isKillcamActive: () => killcam.isActive(),
   isSpectator: () => networkSession.spectator,
-  input: legacyPort(input),
+  input,
   setGarageStatus: (status) => garage.setRoomStatus(status),
   emitRoomState: (payload) => bus.emit('network:roomState', payload),
   preloadLobbyIntent: networkLobbyPreloader.preload,
@@ -2062,12 +2065,12 @@ function closeNetworkMatch(reason = 'network_match_closed') {
 async function beginBattleEntry(
   specId: string,
   mapId: string | null = null,
-  options: unknown = undefined,
+  options: SoloBattleLoadingStartOptions | undefined = undefined,
 ) {
   return battleEntryLifecycle.run(async () => {
     try {
       battleEntryLifecycle.coverRendering();
-      await soloBattleLoading.begin(specId, mapId, legacyPort(options));
+      await soloBattleLoading.begin(specId, mapId, options);
     } catch (error) {
       console.error('[battle] entry failed', error);
       audio.loadingOn(false);
