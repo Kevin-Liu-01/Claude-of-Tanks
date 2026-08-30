@@ -2537,7 +2537,7 @@ await bootStage('post', async () => {
   // Direct Studio boot has no garage hero or dressing to present. Its own
   // covered entry renders the real world/camera before the boot veil lifts.
   if (STUDIO_BOOT_INTENT) return;
-  await warmGarageGpuPipeline(legacyPort({
+  await warmGarageGpuPipeline({
     renderer,
     scene,
     camera,
@@ -2547,7 +2547,7 @@ await bootStage('post', async () => {
     timings: BOOT_TIMINGS,
     reportProgress: (fraction: number) => boot.sub(fraction),
     simDt: SIM_DT,
-  }));
+  });
 });
 // PERF (performance_budget r1): the combat-pipeline warms below are needed
 // before FIRST COMBAT, not before readiness — they used to run synchronously
@@ -2569,16 +2569,16 @@ function warmStudioPipelineChunked(
   onProgress?: ((fraction: number, label: string) => void) | null,
 ) {
   const fx = requireFxRuntime();
-  return battleWarm.warmStudioEffects(legacyPort({
+  return battleWarm.warmStudioEffects({
     fx,
     post,
     renderer,
     camera,
     initializeForwardPrograms: forwardProgramWarm.initializeSteps,
     isCombatPipelineWarmed: combatWarm.isRareReady,
-    onProgress,
+    onProgress: onProgress ?? undefined,
     onTrace: (trace: unknown) => { window.__STUDIO_WARM = trace; },
-  }));
+  });
 }
 // perf-r5 (owner: "first garage entry laggy"): the warm used to run as ONE
 // idle callback (~1-3 s: volley + every wreck dance + all compiles) the
@@ -2668,7 +2668,7 @@ function createCombatWarmRuntimeContext() {
 // window.__STUDIO (schema in docs/STUDIO.md). main.ts only hands it these
 // integration seams plus the one tick() branch above — entry keys, panel,
 // actors, effects, capture all live in the studio module.
-const studioAccess = createStudioAccess(legacyPort({
+const studioAccess = createStudioAccess({
   loadModule: () => import('./game/studio.ts'),
   preloadFxModule,
   ensureFxRuntime,
@@ -2691,7 +2691,7 @@ const studioAccess = createStudioAccess(legacyPort({
   }),
   getPhase: () => game.phase,
   keyTarget: window,
-}));
+});
 const studio = studioAccess.presentation;
 function preloadStudioIntent() { studioAccess.preloadIntent(); }
 function loadStudioRuntime() { return studioAccess.loadRuntime(); }

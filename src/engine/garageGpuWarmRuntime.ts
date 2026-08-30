@@ -10,7 +10,7 @@ interface GarageLightingWarmPort {
     renderer: WebGLRenderer,
     scene: Scene,
     camera: Camera,
-    yieldForBudget: WarmYield,
+    yieldBeforeCascade: (index: number) => void | Promise<void>,
   ): Promise<number[]>;
 }
 
@@ -20,7 +20,7 @@ interface ForwardProgramWarmPort {
 
 interface GaragePostWarmPort {
   warmFirstFrame(
-    yieldBeforePass?: WarmYield,
+    yieldBeforePass?: (label: string) => Promise<void>,
   ): Promise<Array<{ label: string; ms: number }>>;
   render(dt: number): void;
 }
@@ -80,7 +80,7 @@ export async function warmGarageGpuPipeline({
 
   await yieldGpuWarm(true);
   const shadowPasses = await lighting.primeShadowMaps(
-    renderer, scene, camera, yieldGpuWarm,
+    renderer, scene, camera, async () => { await yieldGpuWarm(true); },
   );
   timings.shadowPassMax = Math.max(0, ...shadowPasses);
   timings.shadowPasses = shadowPasses;
@@ -96,7 +96,7 @@ export async function warmGarageGpuPipeline({
   timings.sceneUploadBatches = sceneUploadBatches;
 
   const postWarmAt = now();
-  const postPasses = await post.warmFirstFrame(yieldGpuWarm);
+  const postPasses = await post.warmFirstFrame(async () => { await yieldGpuWarm(true); });
   timings.postWarm = Math.round(now() - postWarmAt);
   timings.postPassMax = Math.max(0, ...postPasses.map((pass) => pass.ms));
   timings.postPasses = postPasses;
