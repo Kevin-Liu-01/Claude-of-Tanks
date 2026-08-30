@@ -59,7 +59,9 @@ type TankVisual = ReturnType<typeof createTankCore>;
 
 export interface CreateTankOptions {
   camo?: string;
+  geometryQuality?: 'high' | 'low';
   geometryReceipt?: boolean;
+  materialMode?: 'rendered' | 'geometry-only';
   proceduralOnly?: boolean;
   quality?: 'high' | 'ai' | 'low' | 'preview';
   [key: string]: unknown;

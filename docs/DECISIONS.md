@@ -152,6 +152,11 @@ Quality changes presentation cost, never game rules. Static geometry may be
 batched or instanced only when appearance, ownership, transforms, and disposal
 remain equivalent. Visible vehicle silhouette and authored detail are preserved;
 triangle reduction is acceptable only when visual comparison proves parity.
+Temporary vehicle materials are not part of static wreck fidelity: once the
+factory output is deterministically collapsed to the world's vertex-colored
+wreck material, the factory uses a typed geometry-only material adapter and
+must not paint discarded PBR textures. Geometry-stream hashes and bounds, not
+the presence of temporary canvases, prove parity for that optimization.
 The production renderer remains Three.js WebGL. WebGPU/TSL, whole-renderer
 workers, BVH acceleration, and new batching layers require an isolated measured
 win before adoption; none is a default cure for unrelated CPU, shader, or

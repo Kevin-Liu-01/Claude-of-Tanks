@@ -8,7 +8,9 @@
 // (setDestroyed({pop, ageS: large}) — the exact precedent the killcam uses:
 // wreckSeat capture, askew turret, drooped gun), then BAKES the posed
 // hierarchy down to one static merged BufferGeometry with charred/rusted
-// vertex colors and disposes the live visual. A whole map's wrecks render as
+// vertex colors and disposes the live visual. The factory's geometry-only
+// material mode skips every temporary PBR/camouflage canvas because those
+// pixels cannot survive this bake. A whole map's wrecks render as
 // ONE mesh on the props layer's matte vertex-color material — a handful of
 // draw calls total instead of a live tank's dozens, no articulation, no
 // per-frame cost, no tank materials/textures retained.
@@ -118,6 +120,11 @@ export function bakeTankWreck(
       // exact vehicle proportions and wreck choreography while avoiding a
       // permanent hero-mesh tax on every frame of the match.
       geometryQuality: 'low',
+      // The hierarchy is immediately reduced to position/normal/color and
+      // rendered with the props layer's one baked material. Building normal,
+      // roughness, camouflage, track, decal, and burnt maps here was pure
+      // discarded work (nine modern wrecks dominated Ruinspires props time).
+      materialMode: 'geometry-only',
       proceduralOnly: true,    // synchronous, no GLB, decor hard-skips
     });
     // settled wreck pose through the factory's own machinery: ageS far past

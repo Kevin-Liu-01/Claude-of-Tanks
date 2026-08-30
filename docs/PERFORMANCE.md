@@ -369,6 +369,20 @@ near/mid terrain LODs are complete before rollout. Distant terrain remains
 streamed. Dedicated authority uses pre-generated collision manifests and does
 not instantiate Three.js worlds.
 
+Static tank wrecks use the production procedural builders and settled-death
+pose, then collapse to position/normal/vertex-color geometry under the world's
+one baked wreck material. Their factory request therefore uses the explicit
+`geometry-only` material mode: it preserves the normal production builder,
+running gear, batching, articulation, shadow proxy, and final triangle stream,
+but never enters the shared camouflage/normal/roughness/track/burn Canvas2D
+cache and skips presentation-only contact and burn-material scans. A controlled
+2026-08-30 cold-browser comparison across nine representative modern wrecks
+fell from 752.0 ms to 327.4 ms (-56.5%). Every per-vehicle position SHA-256,
+triangle count, bound, and shadow proxy matched the rendered-material baseline.
+The broader Ruinspires loading probe was refused as certification because the
+host GPU was concurrently saturated; retain the isolated parity benchmark as
+the attribution evidence, not as a whole-map release claim.
+
 Deferred combat compilation must receive the FX subtree explicitly. Passing the
 whole scene to an effects-only warm repeats every terrain/tank program and can
 turn a bounded countdown job into a second-scale stall.

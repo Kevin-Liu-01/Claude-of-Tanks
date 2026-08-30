@@ -665,6 +665,7 @@ interface TankFactoryOptions {
   camoPattern?: string | null;
   quality?: 'high' | 'ai' | 'low' | 'preview';
   geometryQuality?: 'high' | 'low';
+  materialMode?: 'rendered' | 'geometry-only';
   proceduralOnly?: boolean;
   geometryReceipt?: boolean;
   batchStatic?: boolean;
@@ -6710,7 +6711,15 @@ function measurePresentationFloor(root: THREE.Object3D): number | null {
   }
 }
 
-function createGeometryReceiptMaterials(): TankMaterials {
+/**
+ * Material-shape adapter for consumers that need production geometry but
+ * never render the temporary tank. It deliberately supplies the same typed
+ * palette, cloneable materials, neutral map handles, and semantic tags as
+ * the rendered path without touching the shared Canvas2D/PBR texture cache.
+ * Geometry receipts and static world-wreck bakes share this adapter; only the
+ * former enables P.geometryReceipt and its additional metrology bookkeeping.
+ */
+function createNonRenderingTankMaterials(): TankMaterials {
   const owned: Array<THREE.Material | THREE.Texture> = [];
   const make = (
     color: THREE.ColorRepresentation,
@@ -6729,7 +6738,7 @@ function createGeometryReceiptMaterials(): TankMaterials {
   const trackTexL = new THREE.Texture();
   const trackTexR = new THREE.Texture();
   // A few first-party profiles clone the armor map for separately shaded
-  // wheel furniture. Geometry-receipt mode does not need pixels, but it must
+  // wheel furniture. Non-rendering modes do not need pixels, but they must
   // still provide the same material interface as the live material set.
   const neutralAlbedo = new THREE.Texture();
   trackTexL.offset.set(0, 0);
@@ -6758,11 +6767,11 @@ function createGeometryReceiptMaterials(): TankMaterials {
     decal: () => mats.detail,
     dispose: () => { for (const resource of owned) resource.dispose(); },
   };
-  tagVehicleMaterial(mats.wheels, 'wheelPaint', 'wheel-paint-receipt');
-  tagVehicleMaterial(mats.wheelsRecessed, 'wheelPaint', 'wheel-paint-recessed-receipt');
-  tagVehicleMaterial(mats.rubber, 'tireRubber', 'tire-rubber-receipt');
-  tagVehicleMaterial(mats.trackLink, 'trackSteel', 'track-steel-receipt');
-  tagVehicleMaterial(mats.spareTrack, 'trackSteel', 'spare-track-steel-receipt');
+  tagVehicleMaterial(mats.wheels, 'wheelPaint', 'wheel-paint-non-rendering');
+  tagVehicleMaterial(mats.wheelsRecessed, 'wheelPaint', 'wheel-paint-recessed-non-rendering');
+  tagVehicleMaterial(mats.rubber, 'tireRubber', 'tire-rubber-non-rendering');
+  tagVehicleMaterial(mats.trackLink, 'trackSteel', 'track-steel-non-rendering');
+  tagVehicleMaterial(mats.spareTrack, 'trackSteel', 'spare-track-steel-non-rendering');
   return mats;
 }
 
@@ -7248,18 +7257,24 @@ export function createTank(
     camoPattern = null,
     quality = 'high',
     geometryQuality = quality === 'low' ? 'low' : 'high',
+    materialMode = 'rendered',
     proceduralOnly = false,
     geometryReceipt = false,
     batchStatic = false,
     battleDetailLod = false,
   } = opts;
+  if (materialMode !== 'rendered' && materialMode !== 'geometry-only') {
+    throw new TypeError(`Unsupported tank material mode '${String(materialMode)}'`);
+  }
+  const geometryOnly = materialMode === 'geometry-only';
   const engineCtx = normalizeTankEngineContext(engineContext);
   const spec = getSpec(specId) as FactoryTankSpec;
   const armor = spec.armor;
   const marking: VehicleMarkingRecord = spec.markings || vehicleMarkingRecord(spec);
-  const mats: TankMaterials = geometryReceipt
-    ? createGeometryReceiptMaterials()
-    : createTankMaterials(spec, engineCtx, camoSeed, quality, camoPattern);
+  const usesSharedMaterialTextures = !geometryReceipt && !geometryOnly;
+  const mats: TankMaterials = usesSharedMaterialTextures
+    ? createTankMaterials(spec, engineCtx, camoSeed, quality, camoPattern)
+    : createNonRenderingTankMaterials();
   const rng = mulberry32((camoSeed | 0) ^ 0x9e37);
 
   const root = new THREE.Group();
@@ -7267,6 +7282,8 @@ export function createTank(
   root.name = `tank_${specId}`;
   root.userData.textureQuality = quality;
   root.userData.geometryQuality = geometryQuality;
+  root.userData.materialMode = usesSharedMaterialTextures ? 'rendered' : 'geometry-only';
+  root.userData.usesSharedMaterialTextures = usesSharedMaterialTextures;
   const hullG = new THREE.Group();
   hullG.name = 'rig_hull';
   const turretG = new THREE.Group();
@@ -8091,7 +8108,7 @@ export function createTank(
   // movement contact metadata normally has no consumer. The full-tree vertex
   // scan was measurable cold-switch work, so defer it until a caller elects
   // to reuse this exact visual for simulation (prepareForSimulation below).
-  const staticPreview = opts.staticPreview === true;
+  const staticPreview = opts.staticPreview === true || geometryOnly;
   const restScan = staticPreview ? null : measureRestContact(root);
   const gearCG = P.gear ? P.gear.contactGeom : null;
   // Canonical neutral-presentation anchor. The articulation rig origin, the
@@ -9010,7 +9027,7 @@ export function createTank(
       // Battle warm normally prepares these exact maps behind the loading
       // cover. Keep setDestroyed self-contained for screenshots, Studio, and
       // any recovery path that intentionally bypasses the warm coordinator.
-      mats.prepareBurnt?.();
+      if (!geometryOnly) mats.prepareBurnt?.();
       // A distant live bot may have its cosmetic hierarchy detached from the
       // scene graph. Restore it before the one-time burn capture so a later
       // close killcam never reveals pristine fittings on a charred wreck.
@@ -9028,13 +9045,15 @@ export function createTank(
       // resurrected the hidden procedural placeholder hull over the GLB on
       // any rematch (giant black/camo box enclosing the real model).
       originalMats.length = 0;
-      root.traverse((o) => {
-        if (!isVehicleMesh(o)) return;
-        // never char meshes that are not currently rendered (hidden
-        // placeholder hulls, retracted proxies) — charring them was harmless
-        // only until any code path toggled their visibility
-        originalMats.push([o, o.material, o.visible]);
-      });
+      if (!geometryOnly) {
+        root.traverse((o) => {
+          if (!isVehicleMesh(o)) return;
+          // never char meshes that are not currently rendered (hidden
+          // placeholder hulls, retracted proxies) — charring them was harmless
+          // only until any code path toggled their visibility
+          originalMats.push([o, o.material, o.visible]);
+        });
+      }
       // r6 SHADER BURN SWEEP (replaces the r4/r5 per-mesh staged swap — that
       // one popped whole meshes from pristine camo to coal black, leaving a
       // "half-and-half wreck split on a mesh seam" at 1.5 s, and could fly a
@@ -9045,28 +9064,30 @@ export function createTank(
       // noise front with a glowing ignition edge (uniforms driven in
       // syncFromState), and ~30% of panels keep desaturated scorched paint.
       // Non-wrappable materials (rare) fall back to the shared burnt swap.
-      for (const rec of originalMats) {
-        const [mesh] = rec;
-        if (!mesh.visible) continue;
-        // r7 CRITICAL (critic: every GLB wreck renders a bone-white-topped /
-        // void-black-bottomed cutout "missing texture" box): the GLB swap's
-        // SHADOW PROXIES (modelLoader buildShadowProxy — merged low-poly
-        // hull/turret/gun silhouettes) are visible-but-colorWrite:false
-        // meshes sharing one module-level MeshBasicMaterial. applyBurnHook
-        // rejects Basic materials, so the old fallback swapped them to the
-        // OPAQUE shared burnt material — the whole procedural silhouette box
-        // rendered over the wreck (cream where sunlit, lightless black in
-        // shade), and the popped turret flew as a black slab with a pale
-        // proxy gun tube. Never touch a mesh that writes no color: it keeps
-        // casting the wreck's shadow exactly as before.
-        const mm = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        if (!mm[0] || mm[0].colorWrite === false) continue;
-        if (mm.length > 1) {
-          // multi-slot meshes (camo alt-material kits): hook each slot in
-          // place — never collapse the array to the shared burnt swap.
-          for (const sm of mm) applyBurnHook(sm, burnU);
-        } else if (!applyBurnHook(mm[0], burnU)) {
-          mesh.material = mats.burnt;
+      if (!geometryOnly) {
+        for (const rec of originalMats) {
+          const [mesh] = rec;
+          if (!mesh.visible) continue;
+          // r7 CRITICAL (critic: every GLB wreck renders a bone-white-topped /
+          // void-black-bottomed cutout "missing texture" box): the GLB swap's
+          // SHADOW PROXIES (modelLoader buildShadowProxy — merged low-poly
+          // hull/turret/gun silhouettes) are visible-but-colorWrite:false
+          // meshes sharing one module-level MeshBasicMaterial. applyBurnHook
+          // rejects Basic materials, so the old fallback swapped them to the
+          // OPAQUE shared burnt material — the whole procedural silhouette box
+          // rendered over the wreck (cream where sunlit, lightless black in
+          // shade), and the popped turret flew as a black slab with a pale
+          // proxy gun tube. Never touch a mesh that writes no color: it keeps
+          // casting the wreck's shadow exactly as before.
+          const mm = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          if (!mm[0] || mm[0].colorWrite === false) continue;
+          if (mm.length > 1) {
+            // multi-slot meshes (camo alt-material kits): hook each slot in
+            // place — never collapse the array to the shared burnt swap.
+            for (const sm of mm) applyBurnHook(sm, burnU);
+          } else if (!applyBurnHook(mm[0], burnU)) {
+            mesh.material = mats.burnt;
+          }
         }
       }
       // world-height window for the top-down front (root sits at track level)

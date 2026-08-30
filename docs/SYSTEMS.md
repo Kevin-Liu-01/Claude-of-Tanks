@@ -134,6 +134,11 @@ strict TypeScript owners:
 - `src/game/battleVisualStreamerAccess.ts` keeps that staging implementation
   out of garage boot and retries it on battle or joined-lobby intent;
 - `src/world/worldBuildCoordinator.ts` owns battlefield build/cache work;
+- `src/world/wrecks.ts` builds authored fleet geometry through the normal tank
+  factory, applies the settled destruction pose, and bakes it into static world
+  geometry. Its typed `geometry-only` material mode bypasses temporary tank
+  pixel work and presentation-only scans without enabling geometry receipts,
+  changing builder decisions, or replacing the factory shadow proxy;
 - `src/world/worldActivationRuntime.ts` owns the one active browser world,
   atmosphere/collider/minimap readiness, covered program and shadow warming,
   dormancy, and activation telemetry;
