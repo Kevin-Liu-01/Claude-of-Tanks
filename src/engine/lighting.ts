@@ -991,9 +991,9 @@ export function createLighting(
   for (let i = 0; i < csm.lights.length; i++) {
     csm.lights[i].shadow.radius = SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)];
     csm.lights[i].color.setHex(SUN_COLOR);
-    // Every cascade is driven explicitly by the coherent-pair scheduler. This
-    // keeps telemetry exact and prevents Three's auto-update path from adding
-    // the near pair on top of a scheduled far-pair frame.
+    // Every cascade is driven explicitly by the coherent scheduler. This keeps
+    // telemetry exact while guaranteeing that the near pair remains current on
+    // frames which also refresh the rate-capped far cohort.
     csm.lights[i].shadow.autoUpdate = false;
     csm.lights[i].shadow.needsUpdate = true; // first frame renders all
   }
@@ -1330,11 +1330,11 @@ export function createLighting(
           }
         }
       } else {
-        // Alternate coherent near/far pairs. The old path left the near pair
-        // on Three's auto-update path, so a far-cohort frame submitted all four
-        // maps and caused a recurring depth-work spike. Manual ownership keeps
-        // ordinary frames at two maps while both maps in each blended pair
-        // retain one camera/tree-LOD timestamp.
+        // The near pair refreshes on every presented frame. The far pair is
+        // rate-capped but refreshes atomically, in addition to the near pair.
+        // A previous mutually-exclusive cohort scheduler withheld the near maps
+        // on each far frame; the foreground then sampled a one-frame-old camera
+        // pose and visibly swapped between dappled light and solid shadow.
         for (let i = 0; i < csm.lights.length; i++) {
           csm.lights[i].shadow.autoUpdate = false;
           csm.lights[i].shadow.needsUpdate = false;
@@ -1352,9 +1352,7 @@ export function createLighting(
         // one atomic pair. Prepare every snapped fit above, but apply a far fit
         // only on its cohort's scheduled render frame. Adjacent far maps move
         // together because the fade overlap samples both in one color frame;
-        // mixing timestamps there was the forest-wide light/shadow flash.
-        // Near fits still follow every presented frame. Cohorting preserves
-        // the old average far-map work (two maps at 30 Hz each).
+        // near fits follow every presented frame, including far refreshes.
         applyStableCascadePoses(csm, lastScheduledMask);
         for (let i = 0; i < csm.lights.length; i++) {
           if (lastScheduledMask & (1 << i)) csm.lights[i].shadow.needsUpdate = true;

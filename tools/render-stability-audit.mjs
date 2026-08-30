@@ -548,9 +548,21 @@ for (const preset of presets) {
       + `(max RGB delta ${result.motionMaxRgbDelta})`,
     );
   }
+  const cascadeCount = result.cascades.length;
+  const allCascadeMask = (2 ** cascadeCount) - 1;
+  const nearCascadeMask = (2 ** Math.min(2, cascadeCount)) - 1;
+  const farCascadeMask = allCascadeMask & ~nearCascadeMask;
+  const missingNearFrame = result.motionSchedule.find((frame) =>
+    (frame.scheduledMask & nearCascadeMask) !== nearCascadeMask);
+  if (missingNearFrame) {
+    reasons.push(
+      `near cascades were withheld at offset ${missingNearFrame.offset} `
+      + `(mask ${missingNearFrame.scheduledMask.toString(2)})`,
+    );
+  }
   const splitFarFrame = result.motionSchedule.find((frame) => {
-    const farMask = frame.scheduledMask & 0b1100;
-    return farMask !== 0 && farMask !== 0b1100;
+    const scheduledFar = frame.scheduledMask & farCascadeMask;
+    return scheduledFar !== 0 && scheduledFar !== farCascadeMask;
   });
   if (splitFarFrame) {
     reasons.push(
@@ -651,27 +663,19 @@ await waitForEvaluation(`(() => ({
   error: '',
 }))()`);
 
-// The bug report is specifically a moving player tank, not an orbiting QA
-// camera. Exercise the real input listeners, fixed-step movement, suspension,
-// player shadow caster, chase rig, GTAO history and destruction/fire path in
-// one live battle. The force-all sweep above is the pixel-level shadow truth;
-// this contract makes sure that truth also covers the actual gameplay path.
 evaluate(`(() => {
   const D = window.__DEBUG;
-  D.quality.setPresetName('high');
+  if (${JSON.stringify(deviceTier)} === 'mobile') {
+    D.quality.setMobilePresetName('mobile-high');
+  } else {
+    D.quality.setPresetName('high');
+  }
   D.post.pinDynScale(1);
   window.__AO_EMA_OFF = false;
-  return true;
-})()`);
-
-evaluate(`(() => {
-  const D = window.__DEBUG;
   const status = { ready: false, error: '' };
   window.__COT_RENDER_STABILITY_BATTLE = status;
   // Enter through the ordinary demand-loaded path. The older startBattle
-  // debug helper intentionally imports the entire fleet for broad QA probes;
-  // that makes a production shadow audit wait on unrelated vehicle families
-  // and no longer represents the player-facing loading architecture.
+  // debug helper imports the full fleet and no longer represents production.
   Promise.resolve(D.beginSoloBattle({
     specId: D.selectedSpecId,
     mapId: 'fjord',
@@ -687,6 +691,192 @@ await waitForEvaluation(`(() => ({
   error: window.__COT_RENDER_STABILITY_BATTLE?.error
     || document.querySelector('.cot-error-overlay:not([hidden])')?.textContent || '',
 }))()`);
+
+// Run the force-all comparison again inside the real forest battlefield for
+// every preset on this device tier. The staged sweep above is deliberately
+// deterministic, but it does not contain the dense canopy-shadow field from
+// the user report. Keeping the world frozen while replaying identical camera
+// poses makes any changed pixel a cascade-cadence defect rather than motion.
+const livePresetMotion = evaluate(`(async () => {
+  const D = window.__DEBUG;
+  const renderer = D.renderer;
+  const camera = D.camera;
+  const gl = renderer.getContext();
+  const width = 320;
+  const height = 180;
+  const bytes = width * height * 4;
+  const makeRect = () => ({
+    x: 0, y: 0, z: 0, w: 0,
+    set(x, y, z, w) { this.x = x; this.y = y; this.z = z; this.w = w; return this; },
+    copy(value) {
+      this.x = value.x; this.y = value.y; this.z = value.z; this.w = value.w;
+      return this;
+    },
+  });
+  const savedTarget = renderer.getRenderTarget();
+  const savedViewport = renderer.getViewport(makeRect());
+  const savedScissor = renderer.getScissor(makeRect());
+  const savedScissorTest = renderer.getScissorTest();
+  const savedAutoClear = renderer.autoClear;
+  const savedShadowDebug = window.__SHADOW_DEBUG;
+  const base = camera.position.clone();
+  const forward = camera.getWorldDirection(camera.position.clone()).normalize();
+  const right = forward.clone().cross(camera.up).normalize();
+  const look = base.clone().addScaledVector(forward, 300);
+  const pos = base.clone();
+  const target = look.clone();
+  const offsets = [
+    0, 0.35, 0.7, 1.05, 1.4, 1.75, 2.1, 2.45, 2.8,
+    3.15, 3.5, 3.85, 4.2, 4.55, 4.9, 5.25, 5.6,
+  ];
+  const capture = (offset, force) => {
+    pos.copy(base).addScaledVector(right, offset);
+    target.copy(look).addScaledVector(right, offset);
+    D.rig.setExternalPose(pos, target, camera.fov);
+    camera.updateMatrixWorld(true);
+    D.lighting.update(force, 1 / 60);
+    renderer.setRenderTarget(null);
+    renderer.setViewport(0, 0, width, height);
+    renderer.setScissorTest(false);
+    renderer.autoClear = true;
+    renderer.clear(true, true, false);
+    renderer.render(D.scene, camera);
+    const pixels = new Uint8Array(bytes);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    return pixels;
+  };
+  const livePresets = ${JSON.stringify(presets)};
+  const liveResults = [];
+  window.__SHADOW_DEBUG = {};
+  try {
+    for (const preset of livePresets) {
+      if (${JSON.stringify(deviceTier)} === 'mobile') {
+        D.quality.setMobilePresetName(preset);
+      } else {
+        D.quality.setPresetName(preset);
+      }
+      D.rig.setExternalPose(base, look, camera.fov);
+      for (let frame = 0; frame < 12; frame++) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+      const reference = offsets.map((offset) => capture(offset, true));
+      capture(0, true);
+      const frames = [];
+      let visiblyChangedSamples = 0;
+      let stronglyChangedSamples = 0;
+      let maxVisiblyChangedSamplesPerFrame = 0;
+      let maxRgbDelta = 0;
+      offsets.forEach((offset, frame) => {
+        const actual = capture(offset, false);
+        const expected = reference[frame];
+        let visibleThisFrame = 0;
+        let strongThisFrame = 0;
+        let frameMaxRgbDelta = 0;
+        for (let i = 0; i < bytes; i += 4) {
+          const delta = Math.abs(actual[i] - expected[i])
+            + Math.abs(actual[i + 1] - expected[i + 1])
+            + Math.abs(actual[i + 2] - expected[i + 2]);
+          // Frame zero is the explicit all-cascade reset at an unchanged pose.
+          // A live preset switch can still retire one old-size render target on
+          // that draw; the moving frames below own cadence stability.
+          if (delta > 3 && frame > 0) {
+            visiblyChangedSamples++;
+            visibleThisFrame++;
+          }
+          if (delta > 24 && frame > 0) {
+            stronglyChangedSamples++;
+            strongThisFrame++;
+          }
+          if (frame > 0) {
+            frameMaxRgbDelta = Math.max(frameMaxRgbDelta, delta);
+            maxRgbDelta = Math.max(maxRgbDelta, delta);
+          }
+        }
+        const shadowState = D.lighting.getShadowTelemetry();
+        frames.push({
+          offset,
+          scheduledMask: shadowState.scheduledMask,
+          visibleThisFrame,
+          strongThisFrame,
+          maxRgbDelta: frameMaxRgbDelta,
+        });
+        maxVisiblyChangedSamplesPerFrame = Math.max(
+          maxVisiblyChangedSamplesPerFrame, visibleThisFrame);
+      });
+      liveResults.push({
+        preset,
+        resolvedPreset: D.telemetry().quality.preset,
+        visiblyChangedSamples,
+        stronglyChangedSamples,
+        maxVisiblyChangedSamplesPerFrame,
+        maxRgbDelta,
+        frames,
+      });
+    }
+  } finally {
+    D.rig.setExternalPose(base, look, camera.fov);
+    camera.updateMatrixWorld(true);
+    D.lighting.update(true, 1 / 60);
+    renderer.setRenderTarget(savedTarget);
+    renderer.setViewport(
+      savedViewport.x, savedViewport.y, savedViewport.z, savedViewport.w);
+    renderer.setScissor(
+      savedScissor.x, savedScissor.y, savedScissor.z, savedScissor.w);
+    renderer.setScissorTest(savedScissorTest);
+    renderer.autoClear = savedAutoClear;
+    window.__SHADOW_DEBUG = savedShadowDebug;
+    D.rig.release();
+  }
+  return liveResults;
+})()`);
+
+for (const result of livePresetMotion) {
+  const reasons = [];
+  if (result.resolvedPreset !== result.preset) {
+    reasons.push(`resolved as ${result.resolvedPreset}`);
+  }
+  const visibleRatio = result.maxVisiblyChangedSamplesPerFrame / (320 * 180);
+  if (visibleRatio > 0.0001) {
+    reasons.push(
+      `${result.maxVisiblyChangedSamplesPerFrame} live forest samples changed in one frame `
+      + `against force-all (max RGB delta ${result.maxRgbDelta})`,
+    );
+  }
+  const cascadeCount = deviceTier === 'mobile' ? 3 : 4;
+  const nearMask = (2 ** Math.min(2, cascadeCount)) - 1;
+  const missingNearFrame = result.frames.find((frame) =>
+    (frame.scheduledMask & nearMask) !== nearMask);
+  if (missingNearFrame) {
+    reasons.push(
+      `live forest near cascades withheld at offset ${missingNearFrame.offset} `
+      + `(mask ${missingNearFrame.scheduledMask.toString(2)})`,
+    );
+  }
+  if (reasons.length) failures.push({ preset: `live-${result.preset}`, reasons });
+  console.log(
+    `${reasons.length ? 'FAIL' : 'PASS'} live-${result.preset.padEnd(11)} `
+    + `visible=${result.visiblyChangedSamples} strong=${result.stronglyChangedSamples} `
+    + `maxFrame=${result.maxVisiblyChangedSamplesPerFrame} maxRgb=${result.maxRgbDelta}`,
+  );
+}
+
+// The bug report is specifically a moving player tank, not an orbiting QA
+// camera. Exercise the real input listeners, fixed-step movement, suspension,
+// player shadow caster, chase rig, GTAO history and destruction/fire path in
+// one live battle. The force-all sweep above is the pixel-level shadow truth;
+// this contract makes sure that truth also covers the actual gameplay path.
+evaluate(`(async () => {
+  const D = window.__DEBUG;
+  if (${JSON.stringify(deviceTier)} === 'mobile') {
+    D.quality.setMobilePresetName('mobile-high');
+  } else {
+    D.quality.setPresetName('high');
+  }
+  for (let frame = 0; frame < 12; frame++) {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  }
+  return true;
+})()`);
 
 evaluate(`(() => {
   const D = window.__DEBUG;
@@ -1073,11 +1263,12 @@ console.log(
 
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify({
-  version: 8,
+  version: 9,
   capturedAt: new Date().toISOString(),
   deviceTier,
   failures,
   results,
+  livePresetMotion,
   liveDrive,
   treeLodShadowTransition,
 }, null, 2));

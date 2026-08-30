@@ -1,13 +1,12 @@
 /**
  * Refresh-rate-invariant CSM scheduler.
  *
- * Near and far cascades refresh as two coherent, mutually exclusive cohorts.
- * CSM fade blends adjacent cascades, so rendering the two far maps from
- * different camera/tree-LOD timestamps produces a visible light/shadow swap.
- * Rendering all four maps together avoids that mismatch but creates the exact
- * doubled shadow-frame spike that stalls modest GPUs. Alternating complete
- * near/far pairs preserves coherent timestamps while bounding every ordinary
- * frame to two shadow maps.
+ * Near cascades refresh on every presented frame. The far cascades refresh as
+ * one coherent cohort at a lower cadence and are added to that frame's near
+ * work. CSM fade blends adjacent cascades, so withholding the near maps on a
+ * far-cohort frame makes the foreground sample an older camera/tree timestamp
+ * for exactly one frame: the resulting light-to-shadow swap is the visible
+ * forest flash this scheduler must prevent.
  */
 
 export const SHADOW_REFRESH_INTERVAL_S = 1 / 60;
@@ -66,7 +65,7 @@ export function createShadowRefreshScheduler(
   const farCount = count - nearCount;
   // Desktop's blended far pair refreshes at 20 Hz; a single mobile far map at
   // 30 Hz. Distant texels move slowly enough for that cadence, while the near
-  // pair retains 40/100/124 Hz on 60/120/144 Hz displays respectively.
+  // pair stays current on every presented frame.
   const farIntervalS = intervalS * Math.max(2, farCount + 1);
   const farMask = farCount > 0
     ? (((2 ** farCount) - 1) << nearCount)
@@ -106,12 +105,14 @@ export function createShadowRefreshScheduler(
       lastMask = 0;
       return 0;
     }
-    // Exactly one coherent cohort renders in an ordinary frame. lighting.ts
-    // drives every map manually so this mask describes actual depth work.
+    // The near pair is never withheld: skipping it for the far cohort leaves
+    // nearby shadows one camera pose behind for a single, visibly flashing
+    // frame. lighting.ts drives every map manually, so this mask describes the
+    // actual depth work rather than Three's implicit auto-update behavior.
     let mask = nearMask;
     if (farCount > 0) farAcc = Math.min(farIntervalS * 2, farAcc + dt);
     if (farCount > 0 && farAcc + epsilonS >= farIntervalS) {
-      mask = farMask;
+      mask |= farMask;
       farAcc = Math.max(0, farAcc - farIntervalS);
     }
 
