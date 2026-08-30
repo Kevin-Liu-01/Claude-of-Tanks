@@ -11,6 +11,9 @@ dressingGroup.userData = {
   workshopFamilies: ['abrams'],
   workshopSourceVehicleIds: ['m1a2_sep_v3'],
   battleScreenVisible: true,
+  optimizationReceipt: { drawCallsRemoved: 22 },
+  optimizedWorkshopTriangleCount: 4321,
+  optimizedWorkshopTriangleParity: true,
 };
 const stageGroup = new THREE.Group();
 stageGroup.userData.garageSceneMode = 'workshop';
@@ -80,6 +83,9 @@ assert.equal(invalidations, 1);
 const stats = diagnostics.stats();
 assert.equal(stats.triangles, 4321);
 assert.equal(stats.heroTrackContactErrorM, 0.14);
+assert.deepEqual(stats.optimization, { drawCallsRemoved: 22 });
+assert.equal(stats.optimizedTriangles, 4321);
+assert.equal(stats.optimizedTriangleParity, true);
 assert.equal(stats.environment.worldMounted, true);
 assert.equal(stats.environment.retainedWorldMapId, 'verdant');
 assert.deepEqual(stats.families, ['abrams']);

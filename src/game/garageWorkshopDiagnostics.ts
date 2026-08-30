@@ -23,6 +23,9 @@ export interface GarageWorkshopStats {
   readonly built: boolean;
   readonly triangles: number;
   readonly buildTimings: readonly unknown[];
+  readonly optimization: Readonly<Record<string, unknown>> | null;
+  readonly optimizedTriangles: number;
+  readonly optimizedTriangleParity: boolean;
   readonly mapId: string;
   readonly architecture: unknown;
   readonly sceneMode: string;
@@ -132,6 +135,10 @@ export function createGarageWorkshopDiagnostics({
         built: dressing.isBuilt(),
         triangles: data.workshopTriangleCount || 0,
         buildTimings: arrayValue(data.buildTimings),
+        optimization: data.optimizationReceipt
+          ? Object.freeze({ ...data.optimizationReceipt }) : null,
+        optimizedTriangles: data.optimizedWorkshopTriangleCount || 0,
+        optimizedTriangleParity: data.optimizedWorkshopTriangleParity === true,
         mapId: data.garageMapId || '',
         architecture: stage.stats?.() || stageData.garageArchitecture || {},
         sceneMode: stageData.garageSceneMode || '',

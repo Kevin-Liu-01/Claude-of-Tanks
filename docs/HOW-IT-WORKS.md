@@ -47,6 +47,11 @@ welding gear, T-90M turret/gun/Relikt service, and a rolled K2 hull with its
 actual wheel and track parts. Those same exact four scenes remain present in
 all ten selections.
 
+Those display tanks retain their complete high-detail geometry and camouflage.
+Once their authored teardown poses are final, compatible opaque leaves share
+static draw owners and tiny fittings leave the shadow pass; an exact before/
+after triangle receipt prevents this optimization from removing visible art.
+
 The other nine choices build compact Garage-only interpretations of their maps.
 A 24×24 terrain grid stays flat across the shared service terrace, then carries
 deterministic relief at the perimeter. Rocks and trees are instanced, and each

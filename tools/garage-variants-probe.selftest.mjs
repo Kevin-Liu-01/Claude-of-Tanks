@@ -5,6 +5,9 @@ const source = fs.readFileSync(new URL('./garage-variants-probe.mjs', import.met
 assert.match(source, /window\.__GARAGE_WORKSHOP\.variants/);
 assert.match(source, /results\.length !== 10/);
 assert.match(source, /stats\.triangles > 450_000/);
+assert.match(source, /optimizedTriangleParity/);
+assert.match(source, /displayDrawCallsRemoved < 300/);
+assert.match(source, /shadowCastersPruned < 100/);
 assert.match(source, /stats\.modelMode !== 'actual-fleet'/);
 assert.match(source, /stats\.roofMode !== 'enclosed-original'/);
 assert.match(source, /verdantOriginalLayoutReceipt !== 'pre-6c7b07533-original'/);

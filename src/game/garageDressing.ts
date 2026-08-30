@@ -7,7 +7,7 @@
 // wall fan, extra hanging work lamps, two partial tanks and a recovered wreck.
 //
 // Contract with the rest of the game:
-//  - FLEET-EXACT EXHIBITS: every staging area carries the same original T-90A
+//  - FLEET-EXACT EXHIBITS: every Garage environment carries the same original T-90A
 //    Burlak, Abrams, T-90M and K2 repair choreography. Every vehicle comes from
 //    the same first-party createTank builders as the playable fleet, loaded
 //    only after the garage becomes quiet.
@@ -33,6 +33,7 @@ import { FEATURED_SHOTS } from '../ui/featuredShots.ts';
 import { DECOR_KITS } from '../vehicles/decorations.ts';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant } from './garageVariants.ts';
+import { VERDANT_GANTRY } from './garageGantry.ts';
 import {
   countWorkshopTriangles,
 } from './workshopParts.ts';
@@ -80,6 +81,15 @@ type TrackedResource = { dispose(): void };
 
 const WORKSHOP_FLEET_IDS = Object.freeze([
   't90a_burlak', 'm1a2', 't90m', 'k2',
+] as const);
+
+// Small whole-workshop offsets keep the inherited maintenance floor composed
+// against each environment's landmark without changing any bay internally.
+const WORKSHOP_LAYOUT_POSES = Object.freeze([
+  [0, 0, 0], [0.7, -0.4, 0.028], [-0.5, 0.4, -0.022],
+  [0.35, 0.55, 0.018], [-0.65, -0.2, -0.026], [0.5, 0.25, 0.022],
+  [-0.4, -0.45, -0.018], [0.55, 0.35, 0.024], [-0.6, 0.2, -0.024],
+  [0.3, -0.55, 0.016],
 ] as const);
 
 // The workshop monitor is a field archive, not a location preview. Reuse the
@@ -798,6 +808,11 @@ export function createGarageDressing(
     group.userData.garageMapId = currentVariant.mapId;
     mat.safety.color.setHex(currentVariant.accent);
     bayFill.color.setHex(currentVariant.lightTint);
+    const [layoutX, layoutZ, layoutYaw] = WORKSHOP_LAYOUT_POSES[currentVariant.layout]
+      || WORKSHOP_LAYOUT_POSES[0];
+    legacyVerdantRoot.position.set(layoutX, 0, layoutZ);
+    legacyVerdantRoot.rotation.y = layoutYaw;
+    legacyVerdantRoot.updateMatrix();
     const isVerdant = currentVariant.id === 'verdant_motor_pool';
     legacyVerdantRoot.visible = true;
     verdantInteriorRoot.visible = isVerdant;
@@ -1272,18 +1287,48 @@ export function createGarageDressing(
     const beamMaterial = track(shadowMat(new THREE.MeshStandardMaterial({
       map: hazardTexture, roughness: 0.6, metalness: 0.3,
     })));
-    const legGeometry = track(new THREE.BoxGeometry(0.14, 4.9, 0.14));
-    for (const [lx, lz] of [[-2.4, -3.2], [2.4, -3.2], [-2.4, 3.2], [2.4, 3.2]]) {
-      put(legGeometry, mat.safety, lx, 2.45, lz,
+    const gantrySpec = VERDANT_GANTRY;
+    const legGeometry = track(new THREE.BoxGeometry(
+      gantrySpec.postWidth, gantrySpec.postHeight, gantrySpec.postWidth,
+    ));
+    for (const [lx, lz] of [
+      [-gantrySpec.postX, -gantrySpec.endZ], [gantrySpec.postX, -gantrySpec.endZ],
+      [-gantrySpec.postX, gantrySpec.endZ], [gantrySpec.postX, gantrySpec.endZ],
+    ]) {
+      const leg = put(legGeometry, mat.safety, lx, gantrySpec.postHeight / 2, lz,
         0, 0, lx > 0 ? -0.06 : 0.06, 1, gantry);
+      leg.name = 'verdant_gantry_connected_post';
+      const foot = put(track(new THREE.BoxGeometry(
+        0.48, gantrySpec.footThickness, 0.48,
+      )), mat.steelDark, lx, gantrySpec.footThickness / 2, lz,
+      0, 0, 0, 1, gantry);
+      foot.name = 'verdant_gantry_ground_foot';
     }
     const braceGeometry = track(new THREE.BoxGeometry(0.09, 2.6, 0.09));
-    for (const lz of [-3.2, 3.2]) {
+    for (const lz of [-gantrySpec.endZ, gantrySpec.endZ]) {
       put(braceGeometry, mat.steelMid, -1.2, 1.3, lz, 0, 0, 1.08, 1, gantry);
       put(braceGeometry, mat.steelMid, 1.2, 1.3, lz, 0, 0, -1.08, 1, gantry);
     }
-    put(track(new THREE.BoxGeometry(0.26, 0.3, 7.1)), beamMaterial,
-      0, 4.92, 0, 0, 0, 0, 1, gantry);
+    const crossheadGeometry = track(new THREE.BoxGeometry(
+      gantrySpec.crossheadWidth, gantrySpec.crossheadHeight, 0.26,
+    ));
+    for (const lz of [-gantrySpec.endZ, gantrySpec.endZ]) {
+      const crosshead = put(crossheadGeometry, mat.steelMid,
+        0, gantrySpec.crossheadY, lz, 0, 0, 0, 1, gantry);
+      crosshead.name = 'verdant_gantry_connected_crosshead';
+    }
+    const sideRailGeometry = track(new THREE.BoxGeometry(
+      0.22, gantrySpec.sideRailHeight, gantrySpec.sideRailLength,
+    ));
+    for (const lx of [-gantrySpec.postX, gantrySpec.postX]) {
+      const sideRail = put(sideRailGeometry, mat.steelMid,
+        lx, gantrySpec.sideRailY, 0, 0, 0, 0, 1, gantry);
+      sideRail.name = 'verdant_gantry_connected_side_rail';
+    }
+    const bridge = put(track(new THREE.BoxGeometry(
+      0.26, gantrySpec.bridgeHeight, gantrySpec.bridgeLength,
+    )), beamMaterial, 0, gantrySpec.bridgeY, 0, 0, 0, 0, 1, gantry);
+    bridge.name = 'verdant_gantry_connected_bridge';
     put(track(new THREE.BoxGeometry(0.4, 0.06, 7.1)), mat.steelDark,
       0, 4.74, 0, 0, 0, 0, 1, gantry);
     put(track(new THREE.BoxGeometry(0.42, 0.3, 0.5)), mat.steelDark,
@@ -1411,8 +1456,8 @@ export function createGarageDressing(
     pool.rotation.x = -Math.PI / 2;
     pool.position.set(15.9, 0.03, 16.6);
     legacyVerdantRoot.add(pool);
-    // This fixture hangs from Verdant's roof. Outdoor staging uses the real
-    // battlefield sun plus the stable hero lights, so never leave it in sky.
+    // This fixture hangs from Verdant's roof. Outdoor environments use the
+    // stable Garage sun and hero lights, so never leave it in open sky.
     workLamp(15.9, 16.6, 0, 7.4, verdantInteriorRoot);
     compileWorkshopObject(tank);
   });
@@ -1651,7 +1696,7 @@ export function createGarageDressing(
     compileWorkshopObject(tank);
   });
 
-  // One canonical four-bay service set now travels with every map staging
+  // One canonical four-bay service set now travels with every Garage environment
   // area. This deletes the prior six-display alternate graph (and its Leclerc
   // builds) instead of paying CPU/GPU/memory for hidden duplicate exhibits.
   chunks.push(function finalizeSharedMaintenanceBays() {
@@ -1674,10 +1719,14 @@ export function createGarageDressing(
   // Finalization remains outside first paint and runs only after the complete
   // shared authored set exists.
   chunks.push(function optimizeWorkshopDisplays() {
+    const sourceTriangles = group.userData.verdantOriginalTriangleCount || 0;
     optimizeGarageDressing(group, {
       staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot],
       additionalResourceRoots: [legacyVerdantRoot, verdantInteriorRoot],
     });
+    const optimizedTriangles = countWorkshopTriangles(legacyVerdantRoot);
+    group.userData.optimizedWorkshopTriangleCount = optimizedTriangles;
+    group.userData.optimizedWorkshopTriangleParity = optimizedTriangles === sourceTriangles;
     compileWorkshopObject(legacyVerdantRoot, true);
   });
 

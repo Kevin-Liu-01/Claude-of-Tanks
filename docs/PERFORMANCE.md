@@ -94,6 +94,12 @@ and weapon racks. The same four already-built scenes are reused across all ten
 locations; the former second three-tank/three-turret graph and its Leclerc build
 are gone.
 
+The four display tanks keep their complete first-party high-detail geometry and
+distinct camouflage. Finalization merges only opaque leaves with identical
+material and render state: 398 leaves become 74 static draw owners, removing
+324 submissions and 102 sub-resolution shadow casters while preserving all
+369,814 source triangles. The Garage probe rejects any triangle-count drift.
+
 Verdant alone mounts the enclosed workshop shell and indoor clutter. Each other
 selection uses a static Garage-only terrain terrace, instanced perimeter detail,
 and one connected themed landmark. The environment path has no world loader,

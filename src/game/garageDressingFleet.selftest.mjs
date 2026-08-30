@@ -28,6 +28,9 @@ for (const signature of [
   'verdant_original_removed_k2_running_gear',
   'track_shoe_pallet',
   'dressing_modern_machine_gun_service_rack',
+  'verdant_gantry_connected_crosshead',
+  'verdant_gantry_connected_side_rail',
+  'verdant_gantry_ground_foot',
 ]) {
   assert.match(dressing, new RegExp(signature));
 }
@@ -40,7 +43,7 @@ assert.match(dressing, /tank\.position\.set\(-6\.6, 0, 20\.5\)/,
 assert.match(dressing, /tank\.position\.set\(-16\.25, 0, -16\.85\)/,
   'K2 teardown retains its original transform');
 assert.match(dressing, /legacyVerdantRoot\.visible = true/,
-  'the original four-bay composition must remain shared across every staging area');
+  'the original four-bay composition must remain shared across every environment');
 assert.match(dressing, /verdantInteriorRoot\.visible = isVerdant/,
   'indoor wall clutter must remain exclusive to Verdant');
 assert.match(dressing,
@@ -68,5 +71,9 @@ assert.match(access, /prepareGarageDressing\?\./,
   'the access boundary prepares fleet builders before the synchronous chunk pump');
 assert.doesNotMatch(stage, /openRoof = new Set\(\['field_shed'/,
   'Verdant must retain the original enclosed ceiling and roof trusses');
+assert.match(stage, /NO SMOKING\|FLAMMABLE\|FIRE/,
+  'hazard signs must use the red safety category');
+assert.match(stage, /\^BAY\\b/,
+  'bay identification signs must use the blue safety category');
 
-console.log('garageDressingFleet.selftest: shared four-bay set, map staging, and Verdant interior pass');
+console.log('garageDressingFleet.selftest: shared four-bay set, themed environments, and Verdant interior pass');

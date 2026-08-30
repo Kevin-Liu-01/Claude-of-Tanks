@@ -892,7 +892,11 @@ one optional slice per quiet lease. `garageWallLayout.ts` is the authoritative
 non-overlapping wall-bay contract. `garageDressingAccess.ts` prepares the real
 `t90a_burlak`, `m1a2`, `t90m`, and `k2` fleet builders behind that quiet boundary;
 `garageDressing.ts` creates their exact maintenance scenes from the same fleet
-builders, sharing geometry and materials. The first
+builders, sharing geometry and materials. Its finalizer preserves the complete
+triangle receipt while merging compatible static tank leaves and pruning only
+sub-resolution fitting shadows. Verdant signage uses blue identification, red
+hazard, green service, and amber caution categories; its turret gantry has an
+audited connected foot/post/crosshead/rail/bridge load path. The first
 garage frame and battle graph therefore stay independent of the optional fleet
 transfer, while workshop displays remain identical to playable vehicle art.
 `workshopParts.ts` remains the source for non-vehicle service racks and props.

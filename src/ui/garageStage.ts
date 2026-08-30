@@ -312,7 +312,9 @@ function makeWallTexture(rng: RandomSource): HTMLCanvasElement {
   return c;
 }
 
-// stenciled bay signage plate (dark steel board, worn yellow stencil)
+// Stenciled workshop signage uses real safety categories instead of painting
+// every board yellow: blue identifies bays, red marks hazards, green marks
+// service equipment, and amber remains the general caution accent.
 // Inter has no condensed cut: bake at 44px but shrink-to-fit against the
 // plate's inner width (the old 79%-width face fit 'NO SMOKING' at 44px flat).
 export const SIGN_FONT = "700 44px 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif";
@@ -327,17 +329,32 @@ export function makeSignTexture(rng: RandomSource, text: string): HTMLCanvasElem
   for (let i = 0; i < 260; i++) {
     wear.push([rng() < 0.6, rng() * W, rng() * H, 1 + rng() * 3, 1 + rng() * 2]);
   }
+  const upper = text.toUpperCase();
+  const ink = /NO SMOKING|FLAMMABLE|FIRE/.test(upper)
+    ? '#c95145'
+    : /^BAY\b/.test(upper)
+      ? '#4d8fb8'
+      : /SERVICE|RELikt|TEARDOWN/i.test(upper)
+        ? '#66a17a'
+        : '#c9a22c';
+  const inkBright = /NO SMOKING|FLAMMABLE|FIRE/.test(upper)
+    ? '#e06a5c'
+    : /^BAY\b/.test(upper)
+      ? '#68a8ce'
+      : /SERVICE|RELikt|TEARDOWN/i.test(upper)
+        ? '#7fba8f'
+        : '#d8b23a';
   const draw = () => {
     g.fillStyle = '#23282c';
     g.fillRect(0, 0, W, H);
-    g.strokeStyle = '#c9a22c';
+    g.strokeStyle = ink;
     g.lineWidth = 6;
     g.strokeRect(7, 7, W - 14, H - 14);
     // hazard chevron strip along the bottom
     g.save();
     g.beginPath(); g.rect(14, H - 34, W - 28, 20); g.clip();
     for (let x = 0; x < W + 40; x += 28) {
-      g.fillStyle = (x / 28) % 2 ? '#c9a22c' : '#1c1e20';
+      g.fillStyle = (x / 28) % 2 ? ink : '#1c1e20';
       g.beginPath();
       g.moveTo(x, H - 14); g.lineTo(x + 14, H - 34); g.lineTo(x + 28, H - 34); g.lineTo(x + 14, H - 14);
       g.closePath(); g.fill();
@@ -352,7 +369,7 @@ export function makeSignTexture(rng: RandomSource, text: string): HTMLCanvasElem
     if (w0 > maxW) {
       g.font = SIGN_FONT.replace('44px', `${Math.max(24, Math.floor((44 * maxW) / w0))}px`);
     }
-    g.fillStyle = '#d8b23a';
+    g.fillStyle = inkBright;
     g.fillText(text, W / 2, 62);
     // wear: chips + grime so the stencil never reads as crisp UI text
     for (const [dark, x, y, w, h] of wear) {

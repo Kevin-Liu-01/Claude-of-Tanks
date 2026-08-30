@@ -68,7 +68,7 @@ interface StaticMergeResult {
 // Merging duplicates CPU-side vertex/index arrays. Keep it for the batches
 // where one extra element buffer replaces many draw owners; a giant hull merge
 // that saves only one call is deliberately left as authored geometry.
-const MAX_DISPLAY_ELEMENTS_PER_REMOVED_DRAW = 1_200;
+const MAX_DISPLAY_ELEMENTS_PER_REMOVED_DRAW = 4_800;
 
 function belongsToFleetExhibit(object: THREE.Object3D, root: THREE.Object3D): boolean {
   for (let owner: THREE.Object3D | null = object; owner && owner !== root; owner = owner.parent) {

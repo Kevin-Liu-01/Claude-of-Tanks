@@ -167,6 +167,12 @@ try {
     if (!result.stats.built || result.stats.triangles <= 0 || result.stats.triangles > 450_000) {
       failures.push(`${result.id}: workshop triangle budget failed (${result.stats.triangles})`);
     }
+    if (!result.stats.optimizedTriangleParity
+        || result.stats.optimizedTriangles !== result.stats.triangles
+        || result.stats.optimization?.displayDrawCallsRemoved < 300
+        || result.stats.optimization?.shadowCastersPruned < 100) {
+      failures.push(`${result.id}: exact static-display optimization receipt failed`);
+    }
     if (result.stats.architecture.triangles > 10_000) {
       failures.push(`${result.id}: architecture geometry budget failed`);
     }
