@@ -155,6 +155,7 @@ import { createNetworkBrowserSessionRuntime } from './net/networkBrowserSessionR
 import { createNetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
 import { createNetworkLobbyPreloader } from './net/networkLobbyPreloader.ts';
 import { createNetworkBattleLaunchRuntime } from './net/networkBattleLaunchRuntime.ts';
+import type { PrivateBattleLaunchRequest } from './net/networkBattleLaunchRuntime.ts';
 import { createNetworkBattleActivationRuntime } from './net/networkBattleActivationRuntime.ts';
 import { createNetworkBattlePresentationAccess } from './net/networkBattlePresentationAccess.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
@@ -2827,7 +2828,9 @@ if (diagnosticsRequested) {
     },
     beginBattleEntry,
     beginSoloBattle,
-    beginNetworkBattle: (request: unknown) => networkBattleLauncher.beginPrivate(legacyPort(request)),
+    beginNetworkBattle: (request?: PrivateBattleLaunchRequest) => (
+      networkBattleLauncher.beginPrivate(request)
+    ),
     enterGarage,
     leaveBattleToGarage,
     spawnKillShell: driveTestController.spawnKillShell,

@@ -6,6 +6,8 @@
  * engineering API, while probes keep the same live getters and actions.
  */
 
+import type { PrivateBattleLaunchRequest } from '../net/networkBattleLaunchRuntime.ts';
+
 type UnknownAction = CallableFunction;
 
 interface DebugInstallTarget {
@@ -57,7 +59,7 @@ export interface DebugSurfaceDependencies {
   bakeMinimapForMap(mapId: string): Promise<unknown>;
   beginBattleEntry: UnknownAction;
   beginSoloBattle: UnknownAction;
-  beginNetworkBattle: UnknownAction;
+  beginNetworkBattle(request?: PrivateBattleLaunchRequest): unknown;
   enterGarage: UnknownAction;
   leaveBattleToGarage: UnknownAction;
   killcam: unknown;
