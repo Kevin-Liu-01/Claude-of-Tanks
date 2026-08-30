@@ -103,7 +103,7 @@ export function createSpecialActionState(
 
 /** True while an engaged ATGM channel owns the shell selector. */
 export function specialActionLocksShell(entity: {
-  specialAction?: { kind?: string; active?: boolean };
+  specialAction?: { kind?: string; active?: boolean } | null;
 } | null | undefined): boolean {
   const action = entity?.specialAction;
   return !!(action?.kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE && action.active);

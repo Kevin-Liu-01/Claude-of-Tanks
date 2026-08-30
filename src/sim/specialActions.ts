@@ -33,12 +33,12 @@ export interface SpecialActionResult {
   active?: boolean;
 }
 
-interface SpecialActionEntity {
-  spec?: SpecialActionSpec & DamageTankSpec;
-  state?: { suspensionAim?: boolean };
-  combat?: CombatState;
+export interface SpecialActionEntity {
+  spec?: (SpecialActionSpec & DamageTankSpec) | null;
+  state?: { suspensionAim?: boolean } | null;
+  combat?: CombatState | null;
   input?: { shellSlot?: number };
-  specialAction?: SpecialActionState;
+  specialAction?: SpecialActionState | null;
 }
 
 interface GuidedShellLike {

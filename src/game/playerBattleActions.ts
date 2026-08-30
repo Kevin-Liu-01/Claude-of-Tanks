@@ -1,4 +1,6 @@
 import type { EventBus } from './stateCore.ts';
+import type { BattleClientAccess } from './battleClientAccess.ts';
+import type { ActionId } from './input.ts';
 
 export interface ShellCard {
   name: string;
@@ -8,64 +10,47 @@ export interface ShellCard {
   count: number;
 }
 
-interface ShellSpec {
-  name: string;
-  type: string;
-  dmg: number;
-  pen100Mm: number;
+type ActionRules = Pick<BattleClientAccess,
+  | 'selectShell'
+  | 'repairAllModules'
+  | 'magazineReloadDenialReason'
+  | 'startMagazineReload'
+  | 'activateSpecialAction'
+  | 'specialActionLocksShell'
+  | 'hasConsumableRule'
+  | 'cooldownRemaining'
+  | 'resetConsumableCooldowns'
+  | 'startConsumableCooldown'
+>;
+type ActionCombat = Parameters<ActionRules['selectShell']>[0];
+type ActionSpec = NonNullable<Parameters<ActionRules['selectShell']>[2]>;
+type ActionShell = NonNullable<ActionSpec['gun']['shells']>[number] & {
   count?: number | null;
+};
+type ActionSpecialEntity = NonNullable<Parameters<ActionRules['activateSpecialAction']>[0]>;
+
+interface BattleActionSpec extends ActionSpec {
+  gun: ActionSpec['gun'] & { shells: ActionShell[] };
 }
 
-interface TankSpec {
-  gun: { shells: ShellSpec[] };
-}
-
-interface CombatState {
-  destroyed?: boolean;
-  shellSlot: number;
-  magazine?: unknown;
-  crew: Record<string, boolean>;
-  fire: {
-    burning: boolean;
-    ticksLeft: number;
-    tickTimer: number;
-  };
-  [key: string]: unknown;
-}
-
-interface PlayerEntity {
+export interface BattleActionEntity extends Omit<
+  ActionSpecialEntity,
+  'id' | 'spec' | 'combat' | 'input'
+> {
   id: string;
-  spec: TankSpec;
-  combat: CombatState;
+  spec: BattleActionSpec;
+  combat: ActionCombat | null;
   input: { shellSlot: number };
-  [key: string]: unknown;
 }
 
-interface BattleActionGame {
+interface BattleActionGame<TEntity extends BattleActionEntity> {
   phase: string;
   timeS: number;
-  player: PlayerEntity | null;
+  player: TEntity | null;
 }
 
 interface ActionInput {
-  onAction(actionId: string, listener: () => void): () => void;
-}
-
-interface ActionRules {
-  selectShell(combat: CombatState, slot: number, spec: TankSpec): void;
-  repairAllModules(combat: CombatState): Iterable<string>;
-  magazineReloadDenialReason?(combat: CombatState): string | null;
-  startMagazineReload(combat: CombatState, spec: TankSpec): boolean;
-  activateSpecialAction(player: PlayerEntity): { ok: boolean; [key: string]: unknown };
-  specialActionLocksShell(player: PlayerEntity): boolean;
-  hasConsumableRule(slot: number): boolean;
-  cooldownRemaining(timeS: number, readyAtS: number): number;
-  resetConsumableCooldowns(readyAt: number[]): void;
-  startConsumableCooldown(
-    readyAt: number[],
-    slot: number,
-    timeS: number,
-  ): Record<string, unknown>;
+  onAction(actionId: ActionId, listener: () => void): () => void;
 }
 
 interface NetworkActionPort {
@@ -74,8 +59,8 @@ interface NetworkActionPort {
   queueAction(action: 'reloadMagazine' | 'specialAction'): void;
 }
 
-export interface PlayerBattleActionsOptions {
-  game: BattleActionGame;
+export interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
+  game: BattleActionGame<TEntity>;
   bus: EventBus;
   input: ActionInput;
   rules: ActionRules;
@@ -85,7 +70,7 @@ export interface PlayerBattleActionsOptions {
 
 export interface PlayerBattleActions {
   readonly shellCards: ShellCard[];
-  setTank(spec: TankSpec): ShellCard[];
+  setTank(spec: BattleActionSpec): ShellCard[];
   hasAmmo(slot: number): boolean;
   resetConsumables(): void;
   dispose(): void;
@@ -98,6 +83,14 @@ const SHELL_LOADOUT: Readonly<Record<string, number>> = Object.freeze({
   HEAT: 16,
   HE: 12,
 });
+const SHELL_ACTIONS = ['shell1', 'shell2', 'shell3'] as const;
+const CONSUMABLE_ACTIONS = ['consumable1', 'consumable2', 'consumable3'] as const;
+
+function hasLiveCombat<TEntity extends BattleActionEntity>(
+  player: TEntity | null,
+): player is TEntity & { combat: ActionCombat } {
+  return !!player?.combat && !player.combat.destroyed;
+}
 
 /**
  * Own the player's ammunition, consumables, and action routing.
@@ -106,14 +99,14 @@ const SHELL_LOADOUT: Readonly<Record<string, number>> = Object.freeze({
  * the multiplayer command lane are ports, so the same public interface can be
  * exercised in Node without importing the battle renderer or authority.
  */
-export function createPlayerBattleActions({
+export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   game,
   bus,
   input,
   rules,
   network,
   isSettingsOpen,
-}: PlayerBattleActionsOptions): PlayerBattleActions {
+}: PlayerBattleActionsOptions<TEntity>): PlayerBattleActions {
   if (!game || !bus || !input || !rules || !network
       || typeof isSettingsOpen !== 'function') {
     throw new TypeError('player battle actions require game, bus, input, rules, and network ports');
@@ -125,19 +118,19 @@ export function createPlayerBattleActions({
   const listen = (event: string, listener: (payload: unknown) => void): void => {
     disposeCallbacks.push(bus.on(event, listener));
   };
-  const onAction = (action: string, listener: () => void): void => {
+  const onAction = (action: ActionId, listener: () => void): void => {
     disposeCallbacks.push(input.onAction(action, listener));
   };
 
   const battleInputAllowed = (): boolean =>
     game.phase === 'battle' && !isSettingsOpen();
-  const livePlayer = (): PlayerEntity | null => {
+  const livePlayer = (): (TEntity & { combat: ActionCombat }) | null => {
     const player = game.player;
-    return player?.combat && !player.combat.destroyed ? player : null;
+    return hasLiveCombat(player) ? player : null;
   };
 
   for (let slot = 0; slot < 3; slot++) {
-    onAction(`shell${slot + 1}`, () => {
+    onAction(SHELL_ACTIONS[slot], () => {
       if (!battleInputAllowed()) return;
       bus.emit('ui:shellSelect', { slot });
       bus.emit('ui:click', {});
@@ -155,7 +148,7 @@ export function createPlayerBattleActions({
   });
 
   for (let slot = 0; slot < 3; slot++) {
-    onAction(`consumable${slot + 1}`, () => {
+    onAction(CONSUMABLE_ACTIONS[slot], () => {
       if (!battleInputAllowed()) return;
       bus.emit('ui:consumable', { slot });
     });

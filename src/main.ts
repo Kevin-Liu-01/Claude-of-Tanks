@@ -1453,9 +1453,9 @@ createPointerLockFeedbackRuntime({
 // Its ports are stable battle-client facades, so garage boot still transfers
 // no combat implementation and input remains inert outside a live battle.
 playerBattleActions = createPlayerBattleActions({
-  game: legacyPort(game),
+  game,
   bus,
-  input: legacyPort(input),
+  input,
   isSettingsOpen: () => settings.isOpen(),
   network: {
     isActive: () => !!networkSession.match,
@@ -1463,16 +1463,16 @@ playerBattleActions = createPlayerBattleActions({
     queueAction: (action) => networkSession.queueAction(action),
   },
   rules: {
-    selectShell: legacyPort(battleClientAccess.selectShell),
-    repairAllModules: legacyPort(battleClientAccess.repairAllModules),
-    magazineReloadDenialReason: legacyPort(battleClientAccess.magazineReloadDenialReason),
-    startMagazineReload: legacyPort(battleClientAccess.startMagazineReload),
-    activateSpecialAction: legacyPort(battleClientAccess.activateSpecialAction),
-    specialActionLocksShell: legacyPort(battleClientAccess.specialActionLocksShell),
+    selectShell: battleClientAccess.selectShell,
+    repairAllModules: battleClientAccess.repairAllModules,
+    magazineReloadDenialReason: battleClientAccess.magazineReloadDenialReason,
+    startMagazineReload: battleClientAccess.startMagazineReload,
+    activateSpecialAction: battleClientAccess.activateSpecialAction,
+    specialActionLocksShell: battleClientAccess.specialActionLocksShell,
     hasConsumableRule: battleClientAccess.hasConsumableRule,
-    cooldownRemaining: legacyPort(battleClientAccess.cooldownRemaining),
-    resetConsumableCooldowns: legacyPort(battleClientAccess.resetConsumableCooldowns),
-    startConsumableCooldown: legacyPort(battleClientAccess.startConsumableCooldown),
+    cooldownRemaining: battleClientAccess.cooldownRemaining,
+    resetConsumableCooldowns: battleClientAccess.resetConsumableCooldowns,
+    startConsumableCooldown: battleClientAccess.startConsumableCooldown,
   },
 });
 const playerFrameInput = createPlayerFrameInput({
