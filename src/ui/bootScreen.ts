@@ -107,8 +107,10 @@ const $ = <ElementType extends HTMLElement = HTMLElement>(id: string): ElementTy
   document.getElementById(id) as ElementType | null;
 
 // Marketing backdrop set (in-engine action stills — tools/marketing-shots).
-// All are lazy-loaded AFTER the splash has painted, so the boot critical
-// path never waits on them (bootgate-probe guards the timing).
+// All are lazy-loaded AFTER the selected Garage vehicle has finished its
+// builder/paint stage. The unchanged image remains visible while the entry
+// gate is present, but it cannot compete with the cold critical path for
+// network, decode, or main-thread time (cold-load-probe guards the timing).
 // r9.5: the list lives in featuredShots.ts — ONE copy shared with the
 // garage gallery and the state-transition screens, because hand-synced
 // copies drifted from disk twice (the r9.1 "same picture every load" bug).
@@ -288,7 +290,13 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   }
   showTip(tipIdx);
   if (root) tipTimer = setInterval(rotateTip, 5200);
-  const stopHero = root ? startBootHero() : () => {};
+  let heroStarted = false;
+  let stopHero = () => {};
+  const ensureHeroStarted = (): void => {
+    if (!root || heroStarted || dismissed) return;
+    heroStarted = true;
+    stopHero = startBootHero();
+  };
 
   function stageLabel(key: string): string {
     const s = stages.find((x) => x[0] === key);
@@ -313,6 +321,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       if (sp && sp[1] > target) target = sp[1];
       const i = stages.findIndex((x) => x[0] === effectiveKey);
       if (i >= 0 && tickEls[i]) tickEls[i].classList.add('on');
+      if (effectiveKey === 'vehicle') ensureHeroStarted();
       schedule();
     },
     /** Sub-progress inside the current stage (0..1) — used by the world build. */
@@ -336,6 +345,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
      * @returns {Promise<void>}
      */
     ready() {
+      ensureHeroStarted();
       finished = true;
       target = 1;
       shown = Math.max(shown, 0.985);

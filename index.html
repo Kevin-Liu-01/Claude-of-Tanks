@@ -527,6 +527,19 @@
         return new RegExp(`${escaped}/(?:assets|src)/[^\\s)]+\\.(?:m?js|ts)(?:[?#:]|$)`, 'i').test(text);
       }
 
+      function isBootDocumentException(event) {
+        if (window.__GAME_READY || event.target !== window || !event.error) return false;
+        const filename = String(event.filename || '');
+        // Browsers may omit filename/stack details for a module that throws
+        // while its entry graph is evaluating. A real Error on the window
+        // before GAME_READY belongs to this document; cross-origin resource
+        // failures expose no Error object and extension URLs are rejected.
+        if (!filename) return true;
+        try {
+          return new URL(filename, location.href).origin === new URL(location.href).origin;
+        } catch (_) { return false; }
+      }
+
       addEventListener('vite:preloadError', () => {
         // Preventing this event tells Vite that the failed import was handled,
         // so it resolves the import as `undefined`. That manufactured the
@@ -538,7 +551,8 @@
         const moduleScript = node && node.tagName === 'SCRIPT' && node.type === 'module';
         const message = String(event.message || '');
         const bootRuntime = !window.__GAME_READY
-          && isSameOriginGameCode(`${event.filename || ''} ${event.error?.stack || ''}`);
+          && (isSameOriginGameCode(`${event.filename || ''} ${event.error?.stack || ''}`)
+            || isBootDocumentException(event));
         if (moduleScript || bootRuntime || /module script|dynamically imported module|module preload/i.test(message)) {
           recover(bootRuntime ? 'boot-runtime' : 'module');
         }
@@ -603,7 +617,7 @@
 
   <div id="cot-boot">
     <!-- marketing backdrop (two crossfade layers; bootScreen.ts lazy-loads
-         the images after first paint — see #cot-boot-hero styles above) -->
+         after the selected vehicle is ready — see #cot-boot-hero styles) -->
     <div id="cot-boot-hero" aria-hidden="true"><div class="hly"></div><div class="hly"></div></div>
     <div class="cot-boot-inner">
       <!-- Brand badge: v4.3 colored crest (master copy public/brand/logo-mark.svg

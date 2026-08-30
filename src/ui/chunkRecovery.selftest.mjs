@@ -92,6 +92,26 @@ const bootExceptionRecovery = firstBoot.timers.find(({ ms }) => ms < 1000);
 assert.ok(bootExceptionRecovery,
   'a same-origin game exception before ready must recover without waiting for the watchdog');
 
+const sourceLessBoot = createHarness(false);
+sourceLessBoot.listeners.get('error')?.({
+  target: sourceLessBoot.window,
+  message: 'Opaque entry evaluation failure',
+  filename: '',
+  error: { message: 'Opaque entry evaluation failure', stack: '' },
+});
+assert.ok(sourceLessBoot.timers.some(({ ms }) => ms < 1000),
+  'a source-less document exception before ready must recover without waiting for inactivity');
+
+const extensionBoot = createHarness(false);
+extensionBoot.listeners.get('error')?.({
+  target: extensionBoot.window,
+  message: 'Extension failure',
+  filename: 'chrome-extension://example/content.js',
+  error: { message: 'Extension failure', stack: 'chrome-extension://example/content.js:1:1' },
+});
+assert.equal(extensionBoot.timers.some(({ ms }) => ms < 1000), false,
+  'an extension exception must not reload a healthy game document');
+
 const stalledBoot = createHarness(false);
 stalledBoot.window.__COT_BOOT_RECOVERY.progress('vehicle');
 const stallNotice = stalledBoot.timers.find(({ ms }) => ms === 8000);
