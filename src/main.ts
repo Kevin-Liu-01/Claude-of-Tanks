@@ -1988,6 +1988,14 @@ const garageReturn = createGarageReturnRuntime({
     setCaptureHidden: (hidden: boolean) => perfHud.setCaptureHidden(hidden),
     unfreezeEffects: () => fxRuntimeAccess.current?.setFrozen(false),
     resetHudFrame: () => battleHudFrame.reset(),
+    settleStaticShadows: () => {
+      // Refit every cascade to the final Garage camera, render those exact
+      // depth maps offscreen, then retain them for the first visible frame.
+      lighting.update(true);
+      warmRender();
+      lighting.setStaticPresentationDormant(true);
+      garagePresentationDirty = false;
+    },
   },
   network: {
     shouldPreserveRoom: () => networkRoomCoordinator?.shouldPreserveAfterResult() ?? false,

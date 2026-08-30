@@ -36,6 +36,7 @@ interface GarageReturnPresentationPort {
   setCaptureHidden(hidden: boolean): void;
   unfreezeEffects(): void;
   resetHudFrame(): void;
+  settleStaticShadows(): void;
 }
 
 interface GarageReturnNetworkPort {
@@ -151,6 +152,7 @@ export function createGarageReturnRuntime<Visual = unknown>({
     presentation?.suspendEffects,
     presentation?.setShotMode, presentation?.setCaptureHidden,
     presentation?.unfreezeEffects, presentation?.resetHudFrame,
+    presentation?.settleStaticShadows,
     network?.shouldPreserveRoom, network?.disposePresentation,
     network?.closeMatch, warm?.invalidate, warm?.cancel, warm?.setPending,
     work?.noteActivity, work?.resetFramePacer, work?.scheduleDressing,
@@ -242,8 +244,15 @@ export function createGarageReturnRuntime<Visual = unknown>({
     audio.ambientOn(false);
     audio.playGarageSting();
     markStage('audio');
-    trace.totalMs = Math.round(nowMs() - startedAt);
     await resumeGarageGpu();
+    // GPU renewal can finish without a normal composed frame. Publish the
+    // exact current Garage cascade maps inside this return transaction, then
+    // freeze them before the veil or a direct debug caller exposes the scene.
+    // Otherwise the five-second watchdog may become the first consumer of a
+    // pending forced refresh, producing one intermittent shadow flash.
+    presentation.settleStaticShadows();
+    markStage('shadowSettle');
+    trace.totalMs = Math.round(nowMs() - startedAt);
   };
 
   const beginTransition = (operation: () => Promise<void>): Promise<void> => {

@@ -109,6 +109,11 @@ second Garage/world state machine.
 `garageWorkshopDiagnostics.ts` owns the stable engineering surface for Garage
 variant probes. It exposes immutable snapshots and explicit build/select
 commands; `main.ts` does not assemble workshop receipts from scene internals.
+Return-to-Garage is not complete until renewable GPU resources and the final
+Garage camera/sun cascade maps have both been rendered offscreen. The return
+transaction then freezes those exact depth maps before its first visible color
+frame; an idle watchdog must never become the first consumer of pending CSM
+work.
 
 ## Rendering and shadows
 

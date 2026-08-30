@@ -30,6 +30,7 @@ function createFixture({ transitionGate = false } = {}) {
       setCaptureHidden: (value) => calls.push(['captureHidden', value]),
       unfreezeEffects: () => calls.push(['unfreezeEffects']),
       resetHudFrame: () => calls.push(['resetHudFrame']),
+      settleStaticShadows: () => calls.push(['settleStaticShadows']),
     },
     network: {
       shouldPreserveRoom: () => preserveRoom,
@@ -142,7 +143,10 @@ assert.ok(direct.calls.findIndex(([name]) => name === 'worldDormant')
 assert.ok(direct.calls.findIndex(([name]) => name === 'emitGaragePhase')
   < direct.calls.findIndex(([name]) => name === 'showGarage'),
   'the Garage phase publishes before its UI is exposed');
-assert.equal(direct.calls.at(-1)[0], 'resumeGarageGpu');
+assert.equal(direct.calls.at(-2)[0], 'resumeGarageGpu');
+assert.equal(direct.calls.at(-1)[0], 'settleStaticShadows');
+assert.ok(direct.runtime.lastTrace.stages.shadowSettle >= 0,
+  'return trace owns the completed static shadow receipt');
 
 const closed = createFixture();
 closed.setPreserveRoom(true);
