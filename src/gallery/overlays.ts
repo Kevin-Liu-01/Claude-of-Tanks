@@ -53,7 +53,6 @@ interface InspectionArmor extends InternalArmorModelPort {
   modules?: AnatomyModuleVolume[];
   crew?: AnatomyCrewVolume[];
   collisionShells?: { hull?: CollisionCell[]; turret?: CollisionCell[] };
-  [key: string]: unknown;
 }
 
 interface InspectionSpec {

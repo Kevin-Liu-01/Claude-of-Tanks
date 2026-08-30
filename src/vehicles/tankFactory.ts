@@ -41,11 +41,9 @@ import {
 } from './specs.ts';
 import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
 
-const tankSpecs = TANK_SPECS as unknown as Record<string, unknown>;
-
 registerCombatAnatomyCalibrations(COMBAT_ANATOMY_CALIBRATIONS);
 finalizeFirstPartyRoster();
-for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(tankSpecs[id]);
+for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(TANK_SPECS[id]);
 registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);
 applyNativeFamilyOrderToCatalogs();
 configureTankFactory({

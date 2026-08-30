@@ -44,11 +44,7 @@ interface WreckBake {
   tris: number;
 }
 
-interface TankWreckVisual {
-  root: THREE.Object3D;
-  setDestroyed(state: { pop: boolean; ageS: number }): void;
-  dispose(): void;
-}
+type TankWreckVisual = ReturnType<typeof createTank>;
 
 type DebrisFamily = 'char' | 'rust' | 'rubber';
 
@@ -123,7 +119,7 @@ export function bakeTankWreck(
       // permanent hero-mesh tax on every frame of the match.
       geometryQuality: 'low',
       proceduralOnly: true,    // synchronous, no GLB, decor hard-skips
-    }) as unknown as TankWreckVisual;
+    });
     // settled wreck pose through the factory's own machinery: ageS far past
     // every timeline => turret settled (popped beside the ring or unseated
     // askew), gun drooped, burn timeline fully aged.

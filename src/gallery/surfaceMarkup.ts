@@ -101,6 +101,14 @@ interface BoxRecord {
   max: number[];
 }
 
+export interface SurfaceInspectionInfo {
+  faceIndex: number;
+  ownership: string;
+  mesh: string;
+  instanceId: number | null;
+  point: number[];
+}
+
 export interface SurfaceMarkupOptions {
   renderer: THREE.WebGLRenderer;
   camera: THREE.PerspectiveCamera;
@@ -109,7 +117,7 @@ export interface SurfaceMarkupOptions {
   getPose(): unknown;
   renderFrame(): void;
   showToast?(message: string): void;
-  onHover?(info: Record<string, unknown> | null): void;
+  onHover?(info: SurfaceInspectionInfo | null): void;
   root?: ParentNode;
 }
 
@@ -655,7 +663,9 @@ export function createSurfaceMarkup({
       ownership: ownershipOf(hit.object),
       mesh: hit.object.name || hit.object.type,
       faceIndex: hit.faceIndex,
-      instanceId: Number.isInteger(hit.instanceId) ? hit.instanceId : null,
+      instanceId: typeof hit.instanceId === 'number' && Number.isInteger(hit.instanceId)
+        ? hit.instanceId
+        : null,
       point: vectorArray(hit.point),
     };
     onHover(info);

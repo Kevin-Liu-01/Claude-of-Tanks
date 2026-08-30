@@ -14,7 +14,13 @@ import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtras } from './maps/mapKits.ts'; // content_breadth r2
 // world-dressing r1: building-catalog extension + destructible small props
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
-import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG, bSandbagBroken } from './maps/inhabitKit.ts';
+import {
+  DESTRUCTIBLE_TYPES,
+  FENCE_SEG,
+  WALL_SEG,
+  bSandbagBroken,
+  type DestructiblePropType,
+} from './maps/inhabitKit.ts';
 import {
   DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS,
 } from './maps/structureKit.ts';
@@ -281,34 +287,11 @@ interface BakedInstanceGroup {
 }
 
 type DestructibleClass = 'break' | 'topple' | 'toss' | 'physics';
-type DestructibleContact = 'ob' | 'loop' | 'none';
 
-interface PropsDestructibleMeta {
+interface PropsDestructibleMeta extends Omit<DestructiblePropType, 'cls' | 'mat'> {
   cls: DestructibleClass;
   mat: string;
-  contact: DestructibleContact;
-  r: number;
-  h: number;
-  build(rng: Rng): THREE.BufferGeometry;
-  broken: ((rng: Rng) => THREE.BufferGeometry) | null;
-  hw?: number;
-  hl?: number;
-  shape?: 'circle';
-  collisionR?: number;
-  groundR?: number;
-  bodyR?: number;
-  mass?: number;
-  bounce?: number;
-  friction?: number;
   airDrag?: number;
-  angularDrag?: number;
-  groundConstrained?: boolean;
-  fence?: boolean;
-  wall?: boolean;
-  collider?: boolean;
-  keep?: number;
-  crushMin?: number;
-  explosive?: boolean;
   instanceTintStrength?: number;
 }
 
@@ -488,7 +471,7 @@ export interface PropsRuntime {
   };
 }
 
-const PROP_TYPE_REGISTRY = DESTRUCTIBLE_TYPES as unknown as Record<string, PropsDestructibleMeta>;
+const PROP_TYPE_REGISTRY: Readonly<Record<string, PropsDestructibleMeta>> = DESTRUCTIBLE_TYPES;
 
 function canvas2d(
   canvas: HTMLCanvasElement,

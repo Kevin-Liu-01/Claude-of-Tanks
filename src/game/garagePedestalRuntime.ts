@@ -37,6 +37,10 @@ interface PedestalDebugTarget {
   __PED_TRACE?: Array<Record<string, unknown>>;
 }
 
+declare global {
+  interface Window extends PedestalDebugTarget {}
+}
+
 interface InitialPedestalOptions {
   builderReady?: Promise<unknown>;
   yieldForBudget?: BudgetYield;
@@ -152,7 +156,7 @@ export function createGaragePedestalRuntime({
   ),
   now = () => performance.now(),
   debugTarget = typeof window !== 'undefined'
-    ? window as unknown as PedestalDebugTarget
+    ? window
     : null,
   warn = (message, error) => console.warn(message, error),
   invalidatePresentation = () => {},

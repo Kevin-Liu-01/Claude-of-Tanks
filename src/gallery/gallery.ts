@@ -12,7 +12,11 @@ import type { GalleryRecord, GalleryVehicleSpec } from './catalog.ts';
 import { compareVehicleEras, VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
 import { createInspectionOverlay, inspectionLegend } from './overlays.ts';
 import type { InspectionMode } from './overlays.ts';
-import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.ts';
+import {
+  createSurfaceMarkup,
+  MARKUP_OPERATIONS,
+  type SurfaceInspectionInfo,
+} from './surfaceMarkup.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
 import { iconUrl } from '../ui/icons.ts';
 import { flagIconUrl } from '../ui/flags.ts';
@@ -30,14 +34,6 @@ interface GalleryVisual {
   centerOnPresentationPoint?(x: number, z: number): void;
   seatOnFloor?(floorY: number): void;
   presentationAnchorWorld?(target: THREE.Vector3): unknown;
-}
-
-interface SurfaceInspectionInfo {
-  faceIndex: number;
-  ownership: string;
-  mesh: string;
-  instanceId: number | null;
-  point: number[];
 }
 
 interface GallerySelectController {
@@ -333,18 +329,17 @@ function poseRecord(): { hullYawDeg: number; turretYawDeg: number; gunPitchDeg: 
   };
 }
 
-function renderSurfaceInspection(info: Record<string, unknown> | null): void {
+function renderSurfaceInspection(info: SurfaceInspectionInfo | null): void {
   const readout = $('#inspectionReadout');
   if (!info) {
     readout.hidden = true;
     return;
   }
-  const surface = info as unknown as SurfaceInspectionInfo;
-  $('#inspectionId').textContent = `F${surface.faceIndex}`;
-  $('#inspectionOwner').textContent = surface.ownership;
-  $('#inspectionTitle').textContent = surface.mesh;
-  const instance = surface.instanceId === null ? '' : ` · instance ${surface.instanceId}`;
-  $('#inspectionDetails').textContent = `Triangle ${surface.faceIndex}${instance} · world [${surface.point.join(', ')}]`;
+  $('#inspectionId').textContent = `F${info.faceIndex}`;
+  $('#inspectionOwner').textContent = info.ownership;
+  $('#inspectionTitle').textContent = info.mesh;
+  const instance = info.instanceId === null ? '' : ` · instance ${info.instanceId}`;
+  $('#inspectionDetails').textContent = `Triangle ${info.faceIndex}${instance} · world [${info.point.join(', ')}]`;
   readout.hidden = false;
 }
 
@@ -539,9 +534,9 @@ function setMode(requestedMode: string | undefined, announce = true): void {
     .includes(requestedMode || '') ? requestedMode as GalleryMode : 'appearance';
   activeMode = nextMode;
   overlay.clear();
-  const spec = selectedId ? getSpec(selectedId) as GalleryVehicleSpec : null;
+  const spec = selectedId ? getSpec(selectedId) : null;
   overlay = createInspectionOverlay(
-    spec as unknown as Parameters<typeof createInspectionOverlay>[0],
+    spec,
     visual,
     activeMode === 'markup' ? 'appearance' : activeMode,
   );
