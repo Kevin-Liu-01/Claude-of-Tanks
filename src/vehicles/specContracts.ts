@@ -21,8 +21,14 @@ export interface HydropneumaticAim {
   droopM: number;
 }
 
+export interface AutoloaderSpec {
+  magazineSize: number;
+  intraClipS: number;
+  fullReloadS?: number;
+}
+
 export interface FleetGunSpec extends Record<string, unknown> {
-  autoloader?: unknown;
+  autoloader?: AutoloaderSpec;
   caliberMm: number;
   reloadS: number;
   baseAccuracy: number;

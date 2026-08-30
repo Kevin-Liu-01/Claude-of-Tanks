@@ -190,9 +190,10 @@ type DamagePanelVisual = Parameters<DamagePanelController['setTank']>[1];
 type DamagePanelEquipment = Parameters<DamagePanelController['setEquipment']>[0];
 
 /**
- * Explicit boundary for browser modules that have not migrated from JavaScript
- * yet. The value remains unknown until the composition root names the exact
- * port it consumes; this keeps legacy breadth from leaking through `any`.
+ * Explicit lifecycle boundary for phase-specific TypeScript contracts. The
+ * complete runtime graph is checked; this assertion is reserved for the few
+ * composition seams where inactive session records are deliberately broader
+ * than the live phase owner that consumes them.
  */
 function legacyPort<T>(value: unknown): T {
   return value as T;
@@ -920,9 +921,7 @@ bus.on('ui:battleStart', () => {
   playSurface.hideForBattle();
 });
 
-const garage = legacyPort<MainGarageRuntime>(await bootStage('ui', () => createGarage(legacyPort<
-  Parameters<typeof createGarage>[0]
->({
+const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   specs: VISIBLE_TANK_IDS.map(getSpec),
   bus,
   onSelect: (specId: string) => {
@@ -933,10 +932,10 @@ const garage = legacyPort<MainGarageRuntime>(await bootStage('ui', () => createG
     networkRoomCoordinator?.syncVehicle(specId);
     networkRoomCoordinator?.syncPendingLobbySelection();
   },
-  onBattle: (specId: string, mapId: string, options: unknown) => (
-    beginBattleEntry(specId, mapId, legacyPort(options))
+  onBattle: (specId, mapId, options) => (
+    beginBattleEntry(specId, mapId, options)
   ), // loading screen owns entry
-  onPlayRequest: (request: unknown) => playSurface.open(legacyPort(request)).catch((error) => {
+  onPlayRequest: (request) => playSurface.open(request).catch((error) => {
     console.error('[play-menu] failed to open', error);
   }),
   onPlayModeIntent: playSurface.preload,
@@ -975,8 +974,8 @@ const garage = legacyPort<MainGarageRuntime>(await bootStage('ui', () => createG
       networkRoomCoordinator?.syncCamo(specId);
       networkRoomCoordinator?.syncPendingLobbySelection();
     },
-    setCustom: (specId: string, value: unknown) => {
-      setCustomCamoSelection(specId, legacyPort(value));
+    setCustom: (specId, value) => {
+      setCustomCamoSelection(specId, value);
       camoSweepP = applyCamoPatternsChunked({
         priorityIds: [specId], onlySpecIds: [specId],
       });
@@ -1002,7 +1001,7 @@ const garage = legacyPort<MainGarageRuntime>(await bootStage('ui', () => createG
     });
     networkRoomCoordinator?.syncPendingLobbySelection();
   },
-}))));
+}));
 
 // Stable read-only diagnostics plus an explicit QA switch hook. Workshop
 // verification can enumerate all ten environments and measure their lazily

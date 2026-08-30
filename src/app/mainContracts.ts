@@ -11,6 +11,7 @@ import type { SpecialActionState } from '../sim/specialActionPolicy.ts';
 import type { WorldRuntime } from '../world/map.ts';
 import type { getSpec } from '../vehicles/specs.ts';
 import type { FxRuntime } from '../fx/effects.ts';
+import type { GarageRuntime } from '../ui/garage.ts';
 
 export interface MainLightingRuntime {
   setupShadowMaterial(material: THREE.Material, extraHook?: unknown): void;
@@ -26,21 +27,7 @@ export interface MainLightingRuntime {
   preservePrimedCascadesForNextFrame(): void;
 }
 
-export interface MainGarageRuntime {
-  readonly root: HTMLElement;
-  readonly isOpen: boolean;
-  show(specId?: string): void;
-  hide(): void;
-  getSelected(): string;
-  getSelectedMap(): string;
-  getSelectedGarageVariant(): string;
-  getNeighborIds(radius?: number): string[];
-  getStageRect(): { x: number; y: number; w: number; h: number };
-  setRoomStatus(status?: unknown): void;
-  attachSettingsControl(control: HTMLElement): void;
-  setSelected(specId: string): void;
-  setSelectedGarageVariant(variantId: string): boolean;
-}
+export type MainGarageRuntime = GarageRuntime;
 
 export type MainVisual = NonNullable<RosterEntity['visual']>;
 

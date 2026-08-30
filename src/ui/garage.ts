@@ -127,7 +127,7 @@ interface PlayRequest {
   readonly startSolo: () => void;
 }
 
-interface GarageOptions {
+export interface GarageOptions {
   readonly specs: GarageTankSpec[];
   readonly bus?: { emit(event: string, payload: unknown): void };
   readonly onSelect?: (specId: string) => void;
@@ -149,7 +149,7 @@ interface GarageOptions {
   readonly onMapSelect?: (mapId: string) => void;
 }
 
-interface GarageRuntime {
+export interface GarageRuntime {
   readonly root: HTMLElement;
   isOpen: boolean;
   show(selected?: string): void;
