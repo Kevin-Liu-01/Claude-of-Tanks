@@ -106,6 +106,9 @@ parallel proxy terrain, skyline, landmark, wall, roof, or light rig.
 including stale-load cancellation, placement state, camera framing, and failure
 diagnostics. The composition root supplies concrete ports but does not retain a
 second Garage/world state machine.
+`garageWorkshopDiagnostics.ts` owns the stable engineering surface for Garage
+variant probes. It exposes immutable snapshots and explicit build/select
+commands; `main.ts` does not assemble workshop receipts from scene internals.
 
 ## Rendering and shadows
 
@@ -154,6 +157,12 @@ player ID reclaims its seat through a new page-session and RTC generation;
 rooms retain their lobby through results and rematches. Reload during a live
 round restores the same protocol epoch when authority already welcomed the new
 transport.
+
+A cold guest acquires its ICE/TURN configuration before its signaling join
+announces membership to the host. WebSocket connection and ICE discovery may
+overlap, but the host cannot start sending SDP and candidates until the guest
+can immediately construct its peer session. Room creation remains parallel
+because a new room code is undiscoverable until creation returns.
 
 Signaling delivery is replayable, duplicate SDP is idempotent, data lanes and
 ICE generations are replaceable, and recovery is bounded. Snapshot clocks slew

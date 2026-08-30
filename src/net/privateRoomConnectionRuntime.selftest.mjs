@@ -25,6 +25,7 @@ function harness({ deferClientReady = false } = {}) {
   let stateListener = null;
 
   const signaling = {
+    connect: () => { calls.push(['signal-connect']); return Promise.resolve(); },
     createRoom: (request) => { calls.push(['create-room', request]); return roomRequest.promise; },
     joinRoom: (request) => { calls.push(['join-room', request]); return roomRequest.promise; },
     close: (reason) => calls.push(['signal-close', reason]),
@@ -162,10 +163,18 @@ const guestPending = guest.runtime.connect({
   roomCode: 'ABC123',
   player: { id: 'player-guest', name: 'Guest' },
 });
+await Promise.resolve();
+assert.ok(guest.calls.some(([name]) => name === 'signal-connect'),
+  'cold guests warm signaling while loading TURN');
+assert.equal(guest.calls.some(([name]) => name === 'join-room'), false,
+  'a guest is not announced to the host before its RTC configuration is ready');
 guest.roomRequest.resolve({
   roomCode: 'ABC123', peerId: 'player-guest', hostId: 'player-host', mode: 'private',
 });
 guest.iceRequest.resolve({ iceServers: [], relayOnly: false, relayAvailable: false, source: 'lan' });
+while (!guest.calls.some(([name]) => name === 'join-room')) {
+  await new Promise((resolve) => setImmediate(resolve));
+}
 const guestConnection = await guestPending;
 assert.equal(guestConnection.role, 'client');
 assert.deepEqual(guest.calls.filter(([name]) => name === 'client-command').map(([, command]) => command.type), [

@@ -83,7 +83,6 @@ declare global {
     __GAME_READY?: boolean;
     __GARAGE_ENTRY?: unknown;
     __GARAGE_IDLE_WORK?: unknown;
-    __GARAGE_WORKSHOP?: unknown;
     __MINIMAP_LOAD?: unknown;
     __NETWORK_ENTRY_FAILURE?: unknown;
     __NETWORK_LOAD?: unknown;

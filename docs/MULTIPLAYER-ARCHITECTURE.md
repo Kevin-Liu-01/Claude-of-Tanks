@@ -58,12 +58,12 @@ its dedicated service explicitly negotiates another ruleset.
 - `src/net/connectionRecovery.ts` owns the single reconnect/failure
   presentation edge while the session rebuilds transport underneath it.
 - `src/net/privateRoomConnectionRuntime.ts` owns private/LAN room acquisition,
-  parallel signaling and ICE discovery, stable-host reload detection, cold
-  guest selection replay, state observation, cancellation generations, and
-  the exact handoff/teardown order. The play menu renders and commands the
-  resulting connection but cannot construct a second transport lifecycle. Its
-  lazy play-surface loader imports the menu's public types rather than
-  maintaining a permissive parallel interface.
+  parallel signaling connection and ICE discovery, pre-announcement cold-guest
+  readiness, stable-host reload detection, selection replay, state observation,
+  cancellation generations, and the exact handoff/teardown order. The play
+  menu renders and commands the resulting connection but cannot construct a
+  second transport lifecycle. Its lazy play-surface loader imports the menu's
+  public types rather than maintaining a permissive parallel interface.
 - `src/net/localSession.ts` provides loopback authority for protocol tests and
   tooling; normal solo play does not load it.
 - `src/net/privateRoomSession.ts` and `privateMatchHandoff.ts` own WebRTC lobby
@@ -285,14 +285,17 @@ explicit disconnected/failed connection state. This prevents a slow first
 load from racing two offer generations while retaining automatic recovery
 from genuine route changes.
 
-Lobby acquisition is generation-guarded too. Signaling room creation/join and
-ICE discovery start in parallel, but a mode change, modal dismissal, or room
-close invalidates the attempt immediately. A late response is closed rather
-than republishing a stale lobby above the Garage. A truly cold guest waits for
-the peer runtime, then replays vehicle, equipment, and camouflage as ordered
-reliable commands before the menu permits readiness. Once the battle room
-coordinator adopts the transport, the menu forgets its acquisition generation
-without closing the handed-off session.
+Lobby acquisition is generation-guarded too. A host creates its undiscoverable
+room in parallel with ICE discovery. A guest connects signaling in parallel
+with ICE discovery but sends `room_join` only after the ICE/TURN generation is
+ready; announcing it earlier lets a fast host send the offer and candidates
+while a cold guest still has no peer-session listener. A mode change, modal
+dismissal, or room close invalidates the attempt immediately. A late response
+is closed rather than republishing a stale lobby above the Garage. After the
+peer runtime opens, the guest replays vehicle, equipment, and camouflage as
+ordered reliable commands before the menu permits readiness. Once the battle
+room coordinator adopts the transport, the menu forgets its acquisition
+generation without closing the handed-off session.
 
 The room-ready promise also survives a bounded replacement of the opening RTC
 generation. A guest that times out before its match client exists rotates its

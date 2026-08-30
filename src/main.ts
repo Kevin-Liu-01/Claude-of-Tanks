@@ -116,6 +116,7 @@ import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createGarageReturnRuntime } from './game/garageReturnRuntime.ts';
 import { createGaragePhasePresentationRuntime } from './game/garagePhasePresentationRuntime.ts';
+import { createGarageWorkshopDiagnostics } from './game/garageWorkshopDiagnostics.ts';
 import { createBattleIntentRuntime } from './game/battleIntentRuntime.ts';
 import { createBattlePhasePolicy } from './game/battlePhasePolicy.ts';
 import { createBattleRolloutRuntime } from './game/battleRolloutRuntime.ts';
@@ -1028,77 +1029,22 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
 }));
 
 // Stable read-only diagnostics plus an explicit QA switch hook. Workshop
-// verification can enumerate all ten environments and measure their lazily
-// built real-fleet exhibits without reaching into scene internals.
-window.__GARAGE_WORKSHOP = {
-  variants: GARAGE_VARIANTS.map(({ id, mapId, name, architecture }) => ({
-    id, mapId, name, architecture,
-  })),
-  async ensureBuilt() {
-    await garageDressing.ensureBuilt();
-    invalidateGaragePresentation();
-  },
-  set(variantId: string) { return garage.setSelectedGarageVariant(variantId); },
-  stats() {
-    return {
-      selected: garage.getSelectedGarageVariant(),
-      built: garageDressing.isBuilt(),
-      triangles: garageDressing.group.userData.workshopTriangleCount || 0,
-      buildTimings: [...(garageDressing.group.userData.buildTimings || [])],
-      mapId: garageDressing.group.userData.garageMapId || '',
-      architecture: garageStage.stats?.() || garageStage.group.userData.garageArchitecture || {},
-      sceneMode: garageStage.group.userData.garageSceneMode || '',
-      roofMode: garageStage.group.userData.garageRoofMode || '',
-      battlefield: {
-        ...garageBattlefieldPresentation.diagnostics(),
-        worldMounted: garagePhasePresentation.diagnostics().scene.worldMounted,
-        currentWorldMapId: currentWorld()?.mapId || null,
-      },
-      wallLayout: garageDressing.group.userData.wallLayout || { bays: 0, overlaps: [] },
-      mapImageCount: garageDressing.group.userData.mapImageCount ?? -1,
-      battleScreenMode: garageDressing.group.userData.battleScreenMode || '',
-      battleScreenWallBay: garageDressing.group.userData.battleScreenWallBay || '',
-      battleScreenImageCount: garageDressing.group.userData.battleScreenImageCount || 0,
-      battleScreenResidentImageLimit:
-        garageDressing.group.userData.battleScreenResidentImageLimit || 0,
-      battleScreenResidentImageCount:
-        garageDressing.group.userData.battleScreenResidentImageCount || 0,
-      battleScreenCurrentImage: garageDressing.group.userData.battleScreenCurrentImage || '',
-      battleScreenVisible: garageDressing.group.userData.battleScreenVisible === true,
-      modelMode: garageDressing.group.userData.workshopModelMode || '',
-      exhibitCount: garageDressing.group.userData.workshopExhibitCount || 0,
-      sharedMaintenanceBayCount:
-        garageDressing.group.userData.sharedMaintenanceBayCount || 0,
-      sharedMaintenanceBayIds: [
-        ...(garageDressing.group.userData.sharedMaintenanceBayIds || []),
-      ],
-      heroTrackContactErrorM: Number.isFinite(pedestal.current?.presentationTrackFloorYM)
-        ? Math.abs(
-          (pedestal.current?.root.position.y || 0)
-          + (pedestal.current?.presentationTrackFloorYM || 0)
-          - (GARAGE_POS.y + GARAGE_PODIUM_TOP_Y_M)
-        )
-        : null,
-      verdantOriginalVisible: garageDressing.group.userData.verdantOriginalVisible === true,
-      verdantOriginalLayoutReceipt:
-        garageDressing.group.userData.verdantOriginalLayoutReceipt || '',
-      verdantOriginalTriangleCount:
-        garageDressing.group.userData.verdantOriginalTriangleCount || 0,
-      verdantOriginalExhibitCount:
-        garageDressing.group.userData.verdantOriginalExhibitCount || 0,
-      verdantOriginalExhibitIds: [
-        ...(garageDressing.group.userData.verdantOriginalExhibitIds || []),
-      ],
-      verdantOriginalSetPieces: [
-        ...(garageDressing.group.userData.verdantOriginalSetPieces || []),
-      ],
-      forwardCorrectionRad: garageDressing.group.userData.workshopForwardCorrectionRad || 0,
-      families: [...(garageDressing.group.userData.workshopFamilies || [])],
-      sourceVehicleIds: [...(garageDressing.group.userData.workshopSourceVehicleIds || [])],
-      renderer: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles },
-    };
-  },
-};
+// verification can enumerate every environment and measure its lazily built
+// real-fleet exhibits without leaking that policy into the composition root.
+window.__GARAGE_WORKSHOP = createGarageWorkshopDiagnostics({
+  variants: GARAGE_VARIANTS,
+  garage,
+  dressing: garageDressing,
+  stage: garageStage,
+  pedestal,
+  battlefield: garageBattlefieldPresentation,
+  phase: garagePhasePresentation,
+  renderer,
+  garagePosition: GARAGE_POS,
+  podiumTopYM: GARAGE_PODIUM_TOP_Y_M,
+  getCurrentWorldMapId: () => currentWorld()?.mapId || null,
+  invalidatePresentation: invalidateGaragePresentation,
+});
 
 // PRE-BATTLE LOADING SCREEN (src/ui/battleLoad.ts): map art + both rosters +
 // real build progress + countdown. Created here so its stylesheet/DOM is warm

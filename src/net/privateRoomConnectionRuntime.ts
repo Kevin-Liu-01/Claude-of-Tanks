@@ -39,7 +39,7 @@ interface RoomInfo {
 
 type SignalingLike = Pick<
   RoomSignalingClient,
-  'createRoom' | 'joinRoom' | 'close' | 'onEvent' | 'sendSignal' |
+  'connect' | 'createRoom' | 'joinRoom' | 'close' | 'onEvent' | 'sendSignal' |
   'restartRoomSession' | 'setEventPollInterval'
 >;
 
@@ -232,17 +232,36 @@ PrivateRoomConnectionRuntime {
     let connection: PrivateRoomConnection | null = null;
 
     try {
-      const roomRequest = request.kind === 'create'
-        ? signaling.createRoom({
-          player: request.player,
-          mode: request.mode,
-          maxPlayers: request.maxPlayers || 14,
-        })
-        : signaling.joinRoom({
+      // A cold invite must have its ICE/TURN generation ready before joining
+      // announces the peer to the host. Previously both operations started at
+      // once; a slow first /api/ice response let the host send its offer and
+      // candidates before the client session installed a signaling listener.
+      // Warm the WebSocket concurrently, then join only when RTC construction
+      // can begin immediately. Hosts retain the faster parallel create path:
+      // nobody can discover their new room code until this operation returns.
+      const iceRequest = loadIce(request.mode);
+      let roomInfo: RoomInfo;
+      let ice: IceConfiguration;
+      if (request.kind === 'join') {
+        [, ice] = await Promise.all([signaling.connect(), iceRequest]);
+        if (!generationIsLive(attemptGeneration) || pending !== attempt) {
+          disposeAttempt(attempt, 'room_connection_superseded');
+          return null;
+        }
+        roomInfo = await signaling.joinRoom({
           roomCode: request.roomCode,
           player: request.player,
         });
-      const [roomInfo, ice] = await Promise.all([roomRequest, loadIce(request.mode)]);
+      } else {
+        [roomInfo, ice] = await Promise.all([
+          signaling.createRoom({
+            player: request.player,
+            mode: request.mode,
+            maxPlayers: request.maxPlayers || 14,
+          }),
+          iceRequest,
+        ]);
+      }
       if (!generationIsLive(attemptGeneration) || pending !== attempt) {
         disposeAttempt(attempt, 'room_connection_superseded');
         return null;
