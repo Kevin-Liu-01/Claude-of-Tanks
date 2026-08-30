@@ -15,6 +15,11 @@ import { mulberry32 } from './stateCore.ts';
 export interface BattleVisual {
   specId: string;
   root: Object3D;
+  boundingRadiusM?: number;
+  turretTopWorld(out: Vector3): unknown;
+  gunPivotWorld(out: Vector3): unknown;
+  gunMuzzleWorld(out: Vector3, muzzleIndex?: number): unknown;
+  gunDirWorld(out: Vector3): unknown;
   setGroundSampler?(sampler: unknown): void;
   syncFromState?(state: unknown): void;
   setVisible(visible: boolean): void;

@@ -140,8 +140,9 @@ interface SoloVisual {
   resetDestroyed?(): void;
   dispose(): void;
   gunMuzzleWorld(out: THREE.Vector3, muzzleIndex?: number): void;
-  gunDirWorld?(out: THREE.Vector3): void;
+  gunDirWorld(out: THREE.Vector3): void;
   gunPivotWorld(out: THREE.Vector3): void;
+  turretTopWorld(out: THREE.Vector3): void;
   recoilKick(amount?: number, scale?: number, muzzleIndex?: number): void;
   setDestroyed(options: { pop: boolean }): void;
 }

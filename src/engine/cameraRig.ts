@@ -97,6 +97,17 @@ export type CameraRaycast = (
   maxDistanceM: number,
 ) => CameraRaycastHit | null;
 
+export interface CameraAimRaycastHit {
+  point: THREE.Vector3;
+  dist: number;
+}
+
+export type CameraAimRaycast = (
+  origin: THREE.Vector3,
+  direction: THREE.Vector3,
+  maxDistanceM: number,
+) => CameraAimRaycastHit | null;
+
 export interface CameraEntityVisual {
   root: THREE.Object3D;
   boundingRadiusM?: number;
@@ -126,7 +137,7 @@ export interface CameraRigDeps {
     getHeightAt(x: number, z: number): number;
   };
   raycast: CameraRaycast;
-  aimRaycast?: CameraRaycast;
+  aimRaycast?: CameraAimRaycast;
   getPlayer(): CameraEntity | null;
 }
 

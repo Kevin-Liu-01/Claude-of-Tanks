@@ -17,6 +17,7 @@ interface AimWorldHit {
 
 interface AimState extends ArmorPoseState {
   speed: number;
+  bloomF: number;
   atGunLimit?: boolean;
   gunLimitSpec?: boolean;
 }
@@ -25,15 +26,15 @@ interface AimCombat {
   destroyed: boolean;
   eraSpent: Set<string>;
   reload: { t: number; totalS: number; kind?: string };
-  magazine?: { rounds?: number; capacity?: number };
+  magazine?: { rounds?: number; capacity?: number } | null;
   shellSlot: number;
 }
 
 interface AimSpec {
-  hydropneumaticAim?: boolean;
+  hydropneumaticAim?: unknown;
   dims: { heightM: number };
   armor: ArmorModel & { boundingRadiusM: number };
-  gun: { shells: DamageShellSpec[] };
+  gun: { baseAccuracy: number; shells: DamageShellSpec[] };
 }
 
 interface ArmorTraceHit {
@@ -58,14 +59,14 @@ interface AimTank {
   id: string;
   team?: string;
   isPlayer?: boolean;
-  state: AimState;
-  combat: AimCombat;
+  state: AimState | null;
+  combat: AimCombat | null;
   spec: AimSpec;
-  visual: AimVisual;
+  visual: AimVisual | null;
 }
 
 interface AimGame {
-  player: AimTank;
+  player: AimTank | null;
   tanks: AimTank[];
 }
 
@@ -228,6 +229,9 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     outDir: THREE.Vector3,
     outTarget: THREE.Vector3,
   ): number {
+    if (!player.visual) {
+      throw new Error('gun-center ray requires an active tank visual');
+    }
     player.visual.gunMuzzleWorld(outOrigin);
     player.visual.gunDirWorld(outDir);
     const rangeM = Math.max(outOrigin.distanceTo(aimPoint), 6);
@@ -239,6 +243,7 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     const game = deps.getGame();
     const player = game.player;
     const rig = deps.getRig();
+    if (!player?.state || !player.combat || !player.visual) return;
     frame.singleReticle = !!(player.spec.hydropneumaticAim && player.spec.armor.turretless);
     frame.point.copy(rig.aimPoint);
     frame.distM = rig.aimDist;

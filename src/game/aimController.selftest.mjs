@@ -112,4 +112,24 @@ const clearBoreController = createAimController({
 assert.equal(clearBoreController.muzzlePathBlockDist(muzzle, target, 8), null,
   'a clear physical bore must not inherit a false warning from shell dispersion');
 
+// The controller can be acquired during covered battle preparation while the
+// shared session still has no live player. That lifecycle edge must stay a
+// harmless no-op instead of requiring a composition-root assertion.
+const idleFrame = { ...frame, point: frame.point.clone(), gunMarker: frame.gunMarker.clone() };
+const idleController = createAimController({
+  getGame: () => ({ player: null, tanks: [] }),
+  getRig: () => rig,
+  worldRaycast: () => null,
+  targetVisible: () => false,
+  getShellCards: () => [],
+  computeDispersion: () => 0,
+});
+assert.doesNotThrow(() => idleController.update(idleFrame),
+  'battle preparation without a live player is a valid lifecycle state');
+assert.throws(
+  () => idleController.gunCenterRay({ ...player, visual: null }, rig.aimPoint, muzzle, bore, target),
+  /active tank visual/,
+  'physical-bore queries still fail clearly when a caller violates the live-visual contract',
+);
+
 console.log('aimController.selftest: shared camera/bore aim owner passed');

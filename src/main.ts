@@ -61,7 +61,7 @@ import {
 import { createSky } from './engine/sky.ts';
 import { createLighting } from './engine/lighting.ts';
 import { createPost } from './engine/post.ts';
-import { createCameraRig, type CameraRigDeps } from './engine/cameraRig.ts';
+import { createCameraRig, type CameraEntity } from './engine/cameraRig.ts';
 import {
   createFrameBudgetYielder,
   createOpaqueLoadingYielder,
@@ -1099,10 +1099,19 @@ const audio = await bootStage('audio', () => {
 // bore. Solo, private-room and diagnostic presentation therefore share the
 // same reticle, obstruction and penetration contract.
 let playerBattleActions: PlayerBattleActions | null = null;
-function playerTargetVisible(ent: MainEntity) {
+function playerTargetVisible(ent: Pick<MainEntity, 'id'>) {
   return !game.spotting || game.spotting.isSpotted(ent.id, 'player', game.player);
 }
-const battleClientAccess = createBattleClientAccess(() => legacyPort({
+function hasActiveTankState(
+  entity: MainEntity | null,
+): entity is MainEntity & { state: NonNullable<MainEntity['state']> } {
+  return entity?.state != null;
+}
+function activeCameraPlayer(): CameraEntity | null {
+  const player = game.player;
+  return hasActiveTankState(player) ? player : null;
+}
+const battleClientAccess = createBattleClientAccess(() => ({
   getGame: () => game,
   getRig: () => rig,
   worldRaycast,
@@ -1126,12 +1135,12 @@ const {
 } = battleClientAccess;
 const preloadBattleClientRuntime = battleClientAccess.preload;
 
-const rig = createCameraRig(camera, legacyPort<CameraRigDeps>({
+const rig = createCameraRig(camera, {
   heightField: hfProxy,
   raycast: worldRaycast,
   aimRaycast: aimController.raycast,
-  getPlayer: () => game.player,
-}));
+  getPlayer: activeCameraPlayer,
+});
 
 // GARAGE SHOWROOM CAMERA: auto-framed hero pose + damped drag orbit
 // (engine/cameraRig.ts createShowroomOrbit). This adapter owns the on/off
