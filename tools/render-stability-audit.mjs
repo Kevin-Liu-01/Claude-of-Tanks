@@ -754,6 +754,8 @@ const liveDrive = evaluate(`(() => {
   let treeFoliageShadowCasters = 0;
   let treeTrunkShadowCasters = 0;
   let treeTrunkShadowReceivers = 0;
+  let treeShadowLodFadeCasters = 0;
+  let treeShadowLodFadeMissing = 0;
   let treeRootDecalMeshes = 0;
   let treeRootDecalReceivers = 0;
   let treeRootDecalTriangles = 0;
@@ -778,6 +780,14 @@ const liveDrive = evaluate(`(() => {
     if (object.userData?.treeTrunk) {
       if (object.castShadow) treeTrunkShadowCasters++;
       if (object.receiveShadow) treeTrunkShadowReceivers++;
+    }
+    if ((object.userData?.canopyShadowProxy || object.userData?.treeTrunk)
+        && object.castShadow) {
+      if (object.customDepthMaterial?.userData?.treeShadowLodFade) {
+        treeShadowLodFadeCasters++;
+      } else {
+        treeShadowLodFadeMissing++;
+      }
     }
     if (object.userData?.treeRootDecal) {
       treeRootDecalMeshes++;
@@ -818,6 +828,8 @@ const liveDrive = evaluate(`(() => {
     treeFoliageShadowCasters,
     treeTrunkShadowCasters,
     treeTrunkShadowReceivers,
+    treeShadowLodFadeCasters,
+    treeShadowLodFadeMissing,
     treeRootDecalMeshes,
     treeRootDecalReceivers,
     treeRootDecalTriangles,
@@ -832,6 +844,130 @@ const liveDrive = evaluate(`(() => {
   };
   delete window.__COT_RENDER_STABILITY_DRIVE;
   return result;
+})()`);
+
+// Hold the presentation camera fixed while moving only the vegetation LOD
+// observer far enough to demote a dense ring of trees. This turns the user's
+// intermittent forest-light flash into a deterministic frame boundary. All
+// cascades are current and instance culling is disabled, so the first frame
+// whose proxy population drops measures only the near-tree caster handoff.
+const treeLodShadowTransition = evaluate(`(() => {
+  const D = window.__DEBUG;
+  const renderer = D.renderer;
+  const camera = D.camera;
+  const gl = renderer.getContext();
+  const width = 320;
+  const height = 180;
+  const bytes = width * height * 4;
+  const savedTarget = renderer.getRenderTarget();
+  const makeRect = () => ({
+    x: 0, y: 0, z: 0, w: 0,
+    set(x, y, z, w) { this.x = x; this.y = y; this.z = z; this.w = w; return this; },
+    copy(value) {
+      this.x = value.x; this.y = value.y; this.z = value.z; this.w = value.w;
+      return this;
+    },
+  });
+  const savedViewport = renderer.getViewport(makeRect());
+  const savedScissor = renderer.getScissor(makeRect());
+  const savedScissorTest = renderer.getScissorTest();
+  const savedAutoClear = renderer.autoClear;
+  const savedShadowDebug = window.__SHADOW_DEBUG;
+  camera.updateMatrixWorld(true);
+  const base = camera.position.clone();
+  const forward = camera.getWorldDirection(camera.position.clone()).normalize();
+  const look = base.clone().addScaledVector(forward, 300);
+  const shifted = base.clone().add({ x: 350, y: 0, z: 0 });
+  D.rig.setExternalPose(base, look, camera.fov);
+  window.__SHADOW_DEBUG = { forceAll: true, noCull: true };
+
+  const proxyCount = () => {
+    let count = 0;
+    D.scene.traverse((object) => {
+      if (object.userData?.canopyShadowProxy) count += object.count || 0;
+    });
+    return count;
+  };
+  const capture = () => {
+    D.lighting.update(true, 1 / 60);
+    renderer.setRenderTarget(null);
+    renderer.setViewport(0, 0, width, height);
+    renderer.setScissorTest(false);
+    renderer.autoClear = true;
+    renderer.clear(true, true, false);
+    renderer.render(D.scene, camera);
+    const pixels = new Uint8Array(bytes);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    return pixels;
+  };
+  const diff = (previous, current) => {
+    let changedSamples = 0;
+    let visiblyChangedSamples = 0;
+    let maxRgbDelta = 0;
+    for (let i = 0; i < current.length; i += 4) {
+      const delta = Math.abs(previous[i] - current[i])
+        + Math.abs(previous[i + 1] - current[i + 1])
+        + Math.abs(previous[i + 2] - current[i + 2]);
+      if (delta > 0) changedSamples++;
+      if (delta > 12) visiblyChangedSamples++;
+      maxRgbDelta = Math.max(maxRgbDelta, delta);
+    }
+    return { changedSamples, visiblyChangedSamples, maxRgbDelta };
+  };
+
+  let proxyCountBefore = 0;
+  let proxyCountPeak = 0;
+  let proxyCountAfter = 0;
+  let removalFrame = -1;
+  let removalChangedSamples = 0;
+  let removalVisiblyChangedSamples = 0;
+  let removalMaxRgbDelta = 0;
+  try {
+    D.world.update(0, base, forward, null);
+    D.world.update(0, base, forward, null);
+    let previousPixels = capture();
+    let previousProxyCount = proxyCount();
+    proxyCountBefore = previousProxyCount;
+    proxyCountPeak = previousProxyCount;
+    for (let frame = 0; frame < 30; frame++) {
+      D.world.update(1 / 60, shifted, forward, null);
+      const currentPixels = capture();
+      const currentProxyCount = proxyCount();
+      proxyCountPeak = Math.max(proxyCountPeak, currentProxyCount);
+      if (removalFrame < 0 && currentProxyCount < previousProxyCount) {
+        const frameDiff = diff(previousPixels, currentPixels);
+        removalFrame = frame;
+        removalChangedSamples = frameDiff.changedSamples;
+        removalVisiblyChangedSamples = frameDiff.visiblyChangedSamples;
+        removalMaxRgbDelta = frameDiff.maxRgbDelta;
+      }
+      previousPixels = currentPixels;
+      previousProxyCount = currentProxyCount;
+    }
+    proxyCountAfter = proxyCount();
+  } finally {
+    D.world.update(0, base, forward, null);
+    D.world.update(0, base, forward, null);
+    D.lighting.update(true, 1 / 60);
+    renderer.setRenderTarget(savedTarget);
+    renderer.setViewport(
+      savedViewport.x, savedViewport.y, savedViewport.z, savedViewport.w);
+    renderer.setScissor(
+      savedScissor.x, savedScissor.y, savedScissor.z, savedScissor.w);
+    renderer.setScissorTest(savedScissorTest);
+    renderer.autoClear = savedAutoClear;
+    window.__SHADOW_DEBUG = savedShadowDebug;
+    D.rig.release();
+  }
+  return {
+    proxyCountBefore,
+    proxyCountPeak,
+    proxyCountAfter,
+    removalFrame,
+    removalChangedSamples,
+    removalVisiblyChangedSamples,
+    removalMaxRgbDelta,
+  };
 })()`);
 
 const liveDriveReasons = [];
@@ -873,6 +1009,11 @@ if (liveDrive.treeTrunkShadowReceivers !== 0) {
     `${liveDrive.treeTrunkShadowReceivers} tree-trunk meshes still receive unstable canopy/self shadows`,
   );
 }
+if (liveDrive.treeShadowLodFadeCasters < 1 || liveDrive.treeShadowLodFadeMissing !== 0) {
+  liveDriveReasons.push(
+    `${liveDrive.treeShadowLodFadeMissing} live tree casters ignore the LOD shadow dissolve`,
+  );
+}
 if (liveDrive.treeRootDecalMeshes !== 1 || liveDrive.treeRootDecalCount < 1) {
   liveDriveReasons.push(
     `expected one active bounded root-contact mesh, found ${liveDrive.treeRootDecalMeshes}`,
@@ -900,22 +1041,31 @@ if (liveDrive.groundContactDecalReceivers !== 0) {
     `${liveDrive.groundContactDecalReceivers} prop contact decals still receive stacked CSM shadows`,
   );
 }
+if (treeLodShadowTransition.removalFrame < 0) {
+  liveDriveReasons.push('tree LOD stress did not exercise a canopy-caster removal');
+} else if (treeLodShadowTransition.removalVisiblyChangedSamples > 800) {
+  liveDriveReasons.push(
+    `tree LOD caster removal changed ${treeLodShadowTransition.removalVisiblyChangedSamples} visible samples`,
+  );
+}
 if (liveDriveReasons.length) failures.push({ preset: 'live-drive', reasons: liveDriveReasons });
 console.log(
   `${liveDriveReasons.length ? 'FAIL' : 'PASS'} live-drive `
   + `tank=${liveDrive.distanceM.toFixed(1)}m camera=${liveDrive.cameraDistanceM.toFixed(1)}m `
   + `frames=${liveDrive.frames} p50=${liveDrive.frameMsP50.toFixed(1)}ms `
-  + `p95=${liveDrive.frameMsP95.toFixed(1)}ms`,
+  + `p95=${liveDrive.frameMsP95.toFixed(1)}ms `
+  + `treeLodRemoval=${treeLodShadowTransition.removalVisiblyChangedSamples}`,
 );
 
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify({
-  version: 7,
+  version: 8,
   capturedAt: new Date().toISOString(),
   deviceTier,
   failures,
   results,
   liveDrive,
+  treeLodShadowTransition,
 }, null, 2));
 console.log(`wrote ${outPath}`);
 
