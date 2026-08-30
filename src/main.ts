@@ -166,7 +166,7 @@ import {
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { createBus, createGameState } from './game/stateCore.ts';
-import { SHOT_VIEWS } from './dev/shotContract.ts';
+import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 import { createBattleEntryAcquisition } from './game/battleEntryAcquisition.ts';
 import { createBattleEntryLifecycle } from './game/battleEntryLifecycle.ts';
@@ -224,6 +224,9 @@ const mapHeroes: Readonly<Record<string, string>> = MAP_HEROES;
 const mapThumbs: Readonly<Record<string, string>> = MAP_THUMBS;
 const minimapAssetUrl = (mapId: string): string => (
   `${import.meta.env.BASE_URL || '/'}minimaps/${encodeURIComponent(mapId)}.webp?v=spawn-oriented-v2`
+);
+const isShotViewName = (value: string): value is ShotViewName => (
+  SHOT_VIEWS.some((name) => name === value)
 );
 
 const {
@@ -2439,10 +2442,11 @@ bus.on('phase:change', () => frameLoop.restart());
 window.__SHOTS = {
   views: [...SHOT_VIEWS],
   async set(name: string) {
-    const shotName = legacyPort<(typeof SHOT_VIEWS)[number]>(name);
-    if (!SHOT_VIEWS.includes(shotName)) throw new Error(`Unknown screenshot view: ${name}`);
+    if (!isShotViewName(name)) {
+      throw new Error(`Unknown screenshot view: ${name}`);
+    }
     const { setShotView } = await import('./dev/shotRuntime.ts');
-    return setShotView(shotName, legacyPort({
+    return setShotView(name, legacyPort({
       preloadSoloBattleRuntime,
       preloadBattleClientRuntime,
       ensureBattleHud,
@@ -2622,7 +2626,7 @@ const deploymentShadowWarm = createDeploymentShadowWarmOwner({
   renderer,
   scene,
   camera,
-  lighting: legacyPort(lighting),
+  lighting,
   warmRender,
   getWorldGroup: () => currentWorld()?.group ?? null,
   noteFovPrimed: mainFrame.noteFovPrimed,
