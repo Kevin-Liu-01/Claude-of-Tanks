@@ -3,6 +3,7 @@
 // Usage:
 //   node tools/phase-resource-probe.mjs [--production] [--seconds 8]
 //     [--garage-settle 16] [--gate] [--out /tmp/cot-phase-resources.json]
+//     [--cpu-profile-out /tmp/cot-battle.cpuprofile]
 //
 // The probe measures retained resources after an explicit GC and samples CDP
 // TaskDuration over a quiet window. taskCoreEquivalent=1 means one CPU core
@@ -24,6 +25,7 @@ const has = (name) => argv.includes(`--${name}`);
 const production = has('production');
 const trace = has('trace');
 const gate = has('gate');
+const cpuProfilePath = option('cpu-profile-out', '');
 const seconds = Math.max(2, Math.min(30, Number(option('seconds', '8')) || 8));
 const garageSettleSeconds = Math.max(
   0,
@@ -72,7 +74,10 @@ const RESOURCE_BUDGETS = Object.freeze({
     triangles: 240_000,
   }),
   battleActive: Object.freeze({
-    taskCoreEquivalent: 0.45,
+    // Gate per-presented-frame main-thread cost. Absolute core residency
+    // scales with the headless compositor's achieved 30/60 Hz cadence and made
+    // identical code alternate between pass and fail on the same host.
+    taskMsPerRender: 11.5,
     heapMB: 300,
     objects: 1150,
     programs: 230,
@@ -84,12 +89,15 @@ const RESOURCE_BUDGETS = Object.freeze({
     sceneMaterials: 220,
     sceneTextures: 120,
     sceneTexturePixels: 27_000_000,
-    // Dynamic explosions and decals move the exact sampled frame by several
-    // submissions; 700 still fails a sustained scene-complexity regression.
-    calls: 660,
-    triangles: 3_850_000,
-    shadowCalls: 235,
-    shadowTriangles: 1_300_000,
+    // Near cascades now remain current on the same frame as the coherent far
+    // pair. That deliberately restores two depth submissions on far-refresh
+    // frames so a moving foreground never samples a stale camera pose. Keep
+    // these ceilings tight around that visually-correct peak rather than the
+    // lower but flashing mutually-exclusive scheduler.
+    calls: 780,
+    triangles: 4_800_000,
+    shadowCalls: 360,
+    shadowTriangles: 2_250_000,
   }),
   garageReturned: Object.freeze({
     taskCoreEquivalent: 0.06,
@@ -420,6 +428,8 @@ const measurePhase = async (name) => {
   });
   const taskSeconds = delta(metricsAfter, metricsBefore, 'TaskDuration');
   const scriptSeconds = delta(metricsAfter, metricsBefore, 'ScriptDuration');
+  const framesRendered = Math.max(
+    0, resourcesAfter.renderCount - resourcesBefore.renderCount);
   const frameLoopBefore = resourcesBefore.caches.frameLoopScheduler || {};
   const frameLoopAfter = resourcesAfter.caches.frameLoopScheduler || {};
   return {
@@ -429,11 +439,16 @@ const measurePhase = async (name) => {
     taskCoreEquivalent: +(taskSeconds / wallSeconds).toFixed(3),
     scriptSeconds: +scriptSeconds.toFixed(3),
     scriptCoreEquivalent: +(scriptSeconds / wallSeconds).toFixed(3),
+    taskMsPerRender: framesRendered > 0
+      ? +((taskSeconds * 1000) / framesRendered).toFixed(3)
+      : null,
+    scriptMsPerRender: framesRendered > 0
+      ? +((scriptSeconds * 1000) / framesRendered).toFixed(3)
+      : null,
     layoutCount: Math.round(delta(metricsAfter, metricsBefore, 'LayoutCount')),
     recalcStyleCount: Math.round(delta(metricsAfter, metricsBefore, 'RecalcStyleCount')),
-    framesRendered: resourcesAfter.renderCount - resourcesBefore.renderCount,
-    rendersPerSecond: +((resourcesAfter.renderCount - resourcesBefore.renderCount) /
-      wallSeconds).toFixed(2),
+    framesRendered,
+    rendersPerSecond: +((framesRendered / wallSeconds).toFixed(2)),
     frameLoopTicks: {
       animation: Math.max(0,
         (frameLoopAfter.animationTicks || 0) - (frameLoopBefore.animationTicks || 0)),
@@ -498,12 +513,12 @@ const evaluateBudgets = (phases) => {
   check('active battle refreshes distant shadow cascades coherently',
     Object.keys(battle?.frameWorkload?.byShadowMask || {}).length === 2
       && battle?.frameWorkload?.byShadowMask?.['3']
-      && battle?.frameWorkload?.byShadowMask?.['12']
+      && battle?.frameWorkload?.byShadowMask?.['15']
       && !battle?.frameWorkload?.byShadowMask?.['7']
       && !battle?.frameWorkload?.byShadowMask?.['11']
-      && !battle?.frameWorkload?.byShadowMask?.['15'],
+      && !battle?.frameWorkload?.byShadowMask?.['12'],
     Object.keys(battle?.frameWorkload?.byShadowMask || {}),
-    'mutually exclusive near mask 3 and atomic far-cohort mask 12');
+    'continuous near mask 3 and atomic all-cascade far-refresh mask 15');
   for (const workload of ['shadowCalls', 'shadowTriangles']) {
     check(`active battle complete-frame ${workload}`,
       battle?.frameWorkload?.[workload]?.max
@@ -528,10 +543,10 @@ const evaluateBudgets = (phases) => {
       && (idle?.resources.caches.workshopOptimization?.sourceGeometriesReleased || 0) >= 90,
     idle?.resources.caches.workshopOptimization || null,
     '>= 175 exact static draws and >= 90 source geometries removed');
-  check('active battle CPU residency',
-    battle?.taskCoreEquivalent <= RESOURCE_BUDGETS.battleActive.taskCoreEquivalent,
-    battle?.taskCoreEquivalent ?? null,
-    `<= ${RESOURCE_BUDGETS.battleActive.taskCoreEquivalent} core equivalent`);
+  check('active battle main-thread cost per rendered frame',
+    battle?.taskMsPerRender <= RESOURCE_BUDGETS.battleActive.taskMsPerRender,
+    battle?.taskMsPerRender ?? null,
+    `<= ${RESOURCE_BUDGETS.battleActive.taskMsPerRender} ms/render`);
   check('active battle JavaScript heap',
     battle?.resources.heapMB <= RESOURCE_BUDGETS.battleActive.heapMB,
     battle?.resources.heapMB ?? null, `<= ${RESOURCE_BUDGETS.battleActive.heapMB} MB`);
@@ -576,8 +591,8 @@ const evaluateBudgets = (phases) => {
   }
   for (const workload of ['calls', 'triangles']) {
     check(`active battle complete-frame ${workload}`,
-      battle?.resources.renderer[workload] <= RESOURCE_BUDGETS.battleActive[workload],
-      battle?.resources.renderer[workload] ?? null,
+      battle?.frameWorkload?.[workload]?.max <= RESOURCE_BUDGETS.battleActive[workload],
+      battle?.frameWorkload?.[workload]?.max ?? null,
       `<= ${RESOURCE_BUDGETS.battleActive[workload]}`);
   }
   check('returned Garage CPU residency',
@@ -733,7 +748,16 @@ try {
     { timeout: 180_000 },
   );
   await sleep(1000);
+  if (cpuProfilePath) {
+    await cdp.send('Profiler.enable');
+    await cdp.send('Profiler.start');
+  }
   const battleActive = await measurePhase('battle-active');
+  if (cpuProfilePath) {
+    const { profile } = await cdp.send('Profiler.stop');
+    writeFileSync(resolve(cpuProfilePath), `${JSON.stringify(profile)}\n`);
+    await cdp.send('Profiler.disable');
+  }
 
   await page.evaluate(() => window.__DEBUG.enterGarage());
   await page.waitForFunction('window.__DEBUG.game.phase === "garage"', {

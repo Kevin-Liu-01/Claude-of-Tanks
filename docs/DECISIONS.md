@@ -153,14 +153,19 @@ win before adoption; none is a default cure for unrelated CPU, shader, or
 readback costs. Deterministic static textures are baked offline when practical,
 while unavoidable runtime pixel work uses bounded workers with local fallback.
 
-Cascaded shadow projection and its depth map are updated atomically. Ordinary
-frames alternate mutually exclusive near and far two-map cohorts; the far pair
-shares one camera and vegetation-LOD timestamp, and every snapped light pose
-moves only with the depth map that owns it. No ordinary frame submits all four
-cascades. CSM fade therefore never blends the far maps from different states,
-and modest GPUs avoid a periodic doubled shadow pass. Bias scales with physical
-texel size. Temporal ambient occlusion rejects disoccluded depth history so
-trees, structures, and overlapping geometry cannot flash stale darkness.
+Cascaded shadow projection and its depth map are updated atomically. The near
+pair refreshes on every presented frame; the rate-capped far pair is added as
+one coherent cohort at 20 Hz and shares one camera and vegetation-LOD
+timestamp. Every snapped light pose moves only with the depth map that owns it.
+Keeping the near maps current on far-refresh frames prevents the foreground
+from sampling a one-frame-old camera pose, while the atomic far pair prevents
+CSM fade from blending two distant shadow states. Bias scales with physical
+texel size. Cascade fitting is dirty-driven by the exact camera world matrix,
+projection matrix, sun direction, and explicit frustum/map-size invalidation.
+Moving casters still redraw on the unchanged production cadence; a stationary
+camera no longer recomputes four identical light-camera fits. Temporal ambient
+occlusion rejects disoccluded depth history so trees, structures, and
+overlapping geometry cannot flash stale darkness.
 
 ## Aiming and vehicle presentation
 

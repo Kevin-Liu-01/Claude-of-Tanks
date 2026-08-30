@@ -258,10 +258,12 @@ Garage paint cadence, and animation-versus-idle clock cadence across initial
 Garage, live battle, and returned Garage. The probe pins one mixed modern 7v7
 roster and waits for all fourteen visuals, preventing random vehicle selection
 from hiding a resource regression. Near shadows remain current while the two
-distant cascades refresh together at 30 Hz. Their shared timestamp matters:
+distant cascades refresh together at 20 Hz. Their shared timestamp matters:
 CSM fade samples both maps in one pixel, so alternating them made a moving
-forest swap between two shadow states. Each distant cascade holds its snapped
-projection until that cohort refresh. Independent shadow-call and
+forest swap between two shadow states. Withholding the near pair on that same
+frame also made the foreground sample a stale camera pose, so far-refresh
+frames intentionally submit all four cascades. Each distant cascade holds its
+snapped projection until that cohort refresh. Independent shadow-call and
 shadow-triangle ceilings remain, and the limits track the measured production
 baseline rather than serving as loose theoretical maxima.
 
@@ -657,8 +659,13 @@ scene-cardinality, complete-frame call, and triangle ceilings were tightened
 around the healthy production envelope. The current battle gate fails above
 300 MB forced-GC heap, 1,150 active scene objects, 230 programs, 600 geometries,
 300 renderer textures, 680 visible geometries, 220 visible materials, 120
-visible textures, 27 million visible texture pixels, 660 complete-frame calls,
-or 3.85 million triangle submissions.
+visible textures, 27 million visible texture pixels, 780 complete-frame calls,
+or 4.8 million triangle submissions. Those peak submission ceilings describe
+the visually-correct all-cascade far-refresh frame; main-thread work retains an
+independent 11.5 ms/render ceiling and ordinary near-only frames remain smaller.
+The probe still reports absolute core residency, but does not gate on it because
+the same work consumes twice the cores when the headless compositor presents at
+60 Hz instead of 30 Hz.
 Returned Garage has independent 215 MB, 1,000-object, 256-program,
 510-geometry, 166-renderer-texture, 475-visible-geometry, 200-visible-material,
 82-visible-texture, 15-million-visible-pixel, and 525-call limits so a high-FPS static screen
@@ -825,6 +832,21 @@ scheduler rather than the retired native `autoUpdate` path. Ultra, High,
 Medium, and Low produced zero visibly changed motion samples against force-all
 cascade rendering; a real Fjord drive passed with no WebGL/shader error, a
 16.7 ms median frame, and stable tree-caster LOD removal.
+
+The cascade light-camera fit is now independently dirty-checked from shadow
+depth submission. A stationary camera retains its exact snapped fit while
+moving tanks continue to redraw the same scheduled depth maps. On the pinned
+14-vehicle production resource route this reduced active-battle CPU residency
+from 0.463–0.499 to 0.401 core equivalent before the near-continuity correction;
+the integrated continuous-near route measured 9.7–9.8 ms of main-thread task
+time per rendered frame (0.294 core at 30 Hz and 0.583 core at 60 Hz). The
+corrected far-refresh frame peaks at 769 calls and 4.76 million triangle
+submissions, while preserving the same resolutions and scene residency. All
+four rendered quality audits and all 20 battlefield shadow audits passed after
+the change.
+`phase-resource-probe.mjs` accepts
+`--cpu-profile-out <path>` when a DevTools CPU profile is needed to attribute a
+future regression without changing the measured workload.
 
 ## Reporting a performance result
 

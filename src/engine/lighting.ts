@@ -19,6 +19,7 @@ import {
   shadowNormalBiasForTexel,
   snapShadowCoordinate,
 } from './shadowStability.ts';
+import { createShadowFitCache } from './shadowFitCache.ts';
 
 interface ShadowDebugOptions {
   noCull?: boolean;
@@ -66,7 +67,7 @@ const CASCADES = 4;
 // them to 60 Hz made the player, nearby vehicles and contact shadows visibly
 // step across surfaces on high-refresh displays — an artifact that reads like
 // texture Z-fighting. Only the genuinely subpixel far pair are rate-capped and
-// refresh together at 30 Hz. `update(true)` still forces every cascade for
+// refresh together at 20 Hz. `update(true)` still forces every cascade for
 // deterministic captures and map switches.
 const FAR_CASCADE_START = 2;
 const _stableCameraToLight = new THREE.Matrix4();
@@ -137,13 +138,6 @@ function applyStableCascadePoses(csm: CSM, mask: number): void {
     light.position.copy(desired);
     light.target.position.copy(desired).add(csm.lightDirection);
   }
-}
-
-/** Prepare and apply every cascade for teleports, sun changes and captures. */
-function updateStableCascades(csm: CSM): number {
-  const changedMask = prepareStableCascades(csm);
-  applyStableCascadePoses(csm, (2 ** csm.lights.length) - 1);
-  return changedMask;
 }
 
 const SHADOW_BIAS = -0.0002;
@@ -531,7 +525,7 @@ const _cullVec = new THREE.Vector3();
 const _cullMat = new THREE.Matrix4();
 let _cullFrusCam: THREE.Camera | null = null;
 let _cullFrusStamp = -1;
-let _cullTick = 0; // bumped once per lighting.update() — invalidates the frustum memo
+let _cullTick = 0; // bumped only when a cascade light-camera fit changes
 
 function geometryTris(geo: THREE.BufferGeometry): number {
   const idx = geo.index;
@@ -934,6 +928,20 @@ export function createLighting(
   }) as ExtendedCsm;
   csm.fade = true;
   csm.updateFrustums(); // required after changing fade
+  const shadowFitCache = createShadowFitCache();
+  const fitLightDirection = [0, 0, 0];
+
+  const prepareCurrentCascadeFits = (force = false): number => {
+    csm.lightDirection.toArray(fitLightDirection);
+    const fitChanged = shadowFitCache.changed({
+      cameraWorld: camera.matrixWorld.elements,
+      projection: camera.projectionMatrix.elements,
+      lightDirection: fitLightDirection,
+    }, force);
+    if (!fitChanged) return 0;
+    _cullTick++; // a new light-camera fit invalidates the culling frustum memo
+    return prepareStableCascades(csm);
+  };
 
   // --- r3 SHADOW DENSITY chunk patch (see SHADOW_AMBIENT_DIM above) --------
   // CSM's constructor just replaced ShaderChunk.lights_fragment_begin with
@@ -969,6 +977,7 @@ export function createLighting(
     );
     if (shadow.mapSize.x !== size) {
       shadow.mapSize.set(size, size);
+      shadowFitCache.invalidate();
       if (shadow.map) {
         shadow.map.dispose();
         shadow.map = null;
@@ -1014,6 +1023,7 @@ export function createLighting(
     if (csm.maxFar !== p.shadowMaxFar) {
       csm.maxFar = p.shadowMaxFar;
       csm.updateFrustums();
+      shadowFitCache.invalidate();
       applyShadowNormalBiases();
     }
   });
@@ -1292,8 +1302,7 @@ export function createLighting(
           break;
         }
       }
-      lastFitChangedMask = prepareStableCascades(csm);
-      _cullTick++; // cascades refit — the per-cascade frustum memo is stale
+      lastFitChangedMask = prepareCurrentCascadeFits(force);
       shFrame++;
       const step = Math.max(0, Math.min(0.05, Number(dt) || 0));
       lastScheduledMask = 0;
@@ -1379,11 +1388,13 @@ export function createLighting(
     updateFov(): void {
       csm._initCascades();
       csm._updateShadowBounds();
+      shadowFitCache.invalidate();
       applyShadowNormalBiases();
     },
 
     updateFrustums(): void {
       csm.updateFrustums();
+      shadowFitCache.invalidate();
       applyShadowNormalBiases();
       forceRateCappedCascades(); // cascade boxes jumped — stale maps would smear
     },
@@ -1426,7 +1437,9 @@ export function createLighting(
       const fx = -dir.x, fz = -dir.z;
       const fl = Math.hypot(fx, fz) || 1;
       fill.position.set((fx / fl) * FILL_HORIZ_M, FILL_ELEV_Y, (fz / fl) * FILL_HORIZ_M);
-      updateStableCascades(csm);
+      shadowFitCache.invalidate();
+      prepareCurrentCascadeFits(true);
+      applyStableCascadePoses(csm, allCascadeMask);
       forceRateCappedCascades(); // sun moved — every cascade must re-render
     },
 
