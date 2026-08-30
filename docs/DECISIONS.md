@@ -64,6 +64,10 @@ playable GLB fallbacks are retired. Inactive Garage, world, battle, Studio, and
 combat-effects resources have explicit residency limits and phase-scoped
 disposal. The reusable FX pool detaches and releases renewable GPU allocations
 outside Battle or Studio, then restores behind the next covered warm.
+Desktop boot does not transfer touch-control or mobile-auto-aim chunks. One
+retryable mobile input access owner joins both dependencies only after a touch
+battle entry and retains the active lock and sound-toggle state outside the
+composition root.
 
 ## World and Garage lifecycle
 

@@ -30,7 +30,6 @@ import type {
 import type { NetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
 import type { PlayerBattleActions } from './game/playerBattleActions.ts';
 import type { BattleVisualStreamer } from './game/battleVisualStreamer.ts';
-import type { TouchControlsRuntime } from './ui/touchControlsAccess.ts';
 import type {
   MainDamagePanelRuntime,
   MainEntity,
@@ -42,7 +41,6 @@ import type {
   MainInputRuntime,
   MainKillcamRuntime,
   MainLightingRuntime,
-  MainMobileAutoAimRuntime,
   MainWorld,
   SoloBattleRequest,
 } from './app/mainContracts.ts';
@@ -161,7 +159,7 @@ import { createNetworkBattleActivationRuntime } from './net/networkBattleActivat
 import { createNetworkBattlePresentationAccess } from './net/networkBattlePresentationAccess.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
-import { createTouchControlsAccess } from './ui/touchControlsAccess.ts';
+import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
 import {
   spawnTanks, ensureStagedVisuals, nextStagedBake, planBattleParticipantIds,
@@ -1417,31 +1415,23 @@ const settings = createSettingsAccess({
   isGamePaused: () => game.phase === 'battle' && !game.result && !killcam.isActive(),
 });
 garage.attachSettingsControl(settings.gear);
-let mobileSoundMuted = false;
-let touchControls: TouchControlsRuntime | null = null;
-let mobileAutoAim: MainMobileAutoAimRuntime | null = null;
-let mobileAutoAimPromise: Promise<MainMobileAutoAimRuntime> | null = null;
-const touchControlsAccess = createTouchControlsAccess({
-  input, bus,
+const mobileBattleInput = createMobileBattleInputAccess<MainEntity>({
+  input,
+  bus,
+  camera,
   isBattleActive: () => game.phase === 'battle',
-  onOpenSettings: () => settings.open(),
-  onToggleSound: () => {
-    mobileSoundMuted = !mobileSoundMuted;
-    audio.mute(mobileSoundMuted);
-    return mobileSoundMuted;
-  },
-  // MOBILE-UX r1: pinch-to-scope needs the live camera mode so a spread
-  // ENTERS the scope (sniperToggle lane) and further spread steps zoomIn.
+  openSettings: () => settings.open(),
+  setSoundMuted: (muted) => audio.mute(muted),
   isSniper: () => rig.mode === 'SNIPER',
+  getPhase: () => game.phase,
+  getTanks: () => game.tanks,
+  getPlayer: () => game.player,
+  getTankById: (id) => game.tankById.get(id) || null,
+  isVisible: playerTargetVisible,
+  pickTarget: pickMobileAutoAimTarget,
+  targetCenter: mobileAutoAimCenter,
 });
-async function ensureTouchControls() {
-  if (!input.isTouchLayout()) return null;
-  [touchControls] = await Promise.all([
-    touchControlsAccess.preload(),
-    ensureMobileAutoAim(),
-  ]);
-  return touchControls;
-}
+const ensureTouchControls = mobileBattleInput.preload;
 devTrace?.configure({
   input,
   getContext: () => ({
@@ -1453,30 +1443,6 @@ devTrace?.configure({
     renderScale: post.dynScale,
   }),
 });
-
-// Mobile target acquisition, loss and retained center-mass sampling have one
-// typed lifecycle owner. Its battle geometry functions remain lazy proxies.
-async function ensureMobileAutoAim() {
-  if (mobileAutoAim) return mobileAutoAim;
-  if (mobileAutoAimPromise) return mobileAutoAimPromise;
-  mobileAutoAimPromise = import('./game/mobileAutoAimRuntime.ts').then((runtime) => {
-    mobileAutoAim = runtime.createMobileAutoAimRuntime({
-      bus,
-      input,
-      camera,
-      getPhase: () => game.phase,
-      getTanks: () => game.tanks,
-      getPlayer: () => game.player,
-      getTankById: (id: string) => game.tankById.get(id) || null,
-      isVisible: playerTargetVisible,
-      pickTarget: pickMobileAutoAimTarget,
-      targetCenter: mobileAutoAimCenter,
-    });
-    return mobileAutoAim;
-  });
-  mobileAutoAimPromise.catch(() => { mobileAutoAimPromise = null; });
-  return mobileAutoAimPromise;
-}
 
 // Pointer-lock denial, recovery gestures, the cursor-aim notice, and touch
 // refresh now have one typed listener/timer owner outside the composition root.
@@ -2290,7 +2256,7 @@ const mainFrame = createMainFrameRuntime({
   battleFrame,
   isBattleLoadCovering: () => battleLoad.covering === true,
   cameraInput: camInput,
-  getMobileAutoAim: () => mobileAutoAim,
+  getMobileAutoAim: mobileBattleInput.getAutoAim,
   rig,
   killcam,
   veilHud,

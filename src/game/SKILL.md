@@ -36,6 +36,9 @@ touch, cursor fallback, zoom, free-look, and sniper-mode sampling;
 the delayed cursor-aim notice, canvas recapture, and battle-start touch refresh;
 `mobileAutoAimRuntime.ts` owns touch target acquisition, loss, UI state and the
 allocation-free center-mass sample consumed by the camera input;
+`mobileBattleInputAccess.ts` keeps touch controls and that auto-aim owner out of
+desktop boot, joins concurrent touch entry, retries failed chunks, and owns the
+mobile sound toggle behind one typed access interface;
 `sniperFillRuntime.ts` owns the retained shadow-free close-cover scope light;
 `combatFeedbackRuntime.ts` owns discrete ERA, hit-confirm, camera-recoil,
 prop-destruction, and Garage-residency reactions on the shared event bus;
@@ -133,6 +136,8 @@ bindings and device modes. Route rendered tank updates through
 `battlePresentationRuntime.ts`; never apply the solo interpolation buffer to
 already-smoothed network poses. Bot changes require both focused AI tests and
 battle probes.
+Route mobile battle UI acquisition through `mobileBattleInputAccess.ts`; do not
+restore touch/auto-aim promise state or sound-toggle state in `main.ts`.
 Route live HUD assembly through `battleHudFrameRuntime.ts`; do not rebuild
 spectator focus, spotting, aim, armor-target filtering, or damage presentation
 inside `main.ts`.
