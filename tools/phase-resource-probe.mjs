@@ -604,6 +604,10 @@ const evaluateBudgets = (phases) => {
       && returned?.resources.caches.phaseSceneResidency?.worldMounted === false,
     returned?.resources.caches.phaseSceneResidency || null,
     'Garage mounted; world detached');
+  check('returned Garage detaches battle-only effects',
+    !returned?.resources.sceneBreakdown?.effects,
+    returned?.resources.sceneBreakdown?.effects || null,
+    'no attached effects scene or pooled battle GPU graph');
   check('returned Garage restores retained workshop GPU resources',
     returned?.resources.caches.garageGpuResidency?.suspended === false
       && (returned?.resources.caches.garageGpuResidency?.resumes || 0) >= 1,

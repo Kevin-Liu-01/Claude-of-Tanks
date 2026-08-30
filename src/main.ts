@@ -175,6 +175,7 @@ import { createCombatWarmCoordinator } from './game/combatWarmCoordinator.ts';
 import { createDeferredCombatWarmRuntime } from './game/deferredCombatWarmRuntime.ts';
 import { createStudioAccess } from './game/studioAccess.ts';
 import { createFxRuntimeAccess } from './fx/fxRuntimeAccess.ts';
+import { releaseObject3DGpuResources } from './engine/resourceLifetime.ts';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
 import { createBootScreen } from './ui/bootScreen.ts';
@@ -515,13 +516,23 @@ const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
   loadModule: async () => legacyPort<MainFxModule>(await import('./fx/effects.ts')),
   initialize: ({ createFx }) => {
     const live = createFx(engineCtx, hfProxy, { seed: 5000 });
-    scene.add(live.group);
     live.bindBus(bus);
     // createPost runs during garage boot, before this demand-loaded graph
     // exists. Hand its late-composite activity/depth state to the existing
     // pass now; otherwise every layer-30 effect is simulated but invisible.
     post.attachLateFxState(live.group.userData.softParticles);
     return live;
+  },
+  activate: (live) => {
+    scene.add(live.group);
+  },
+  suspend: (live) => {
+    live.group.removeFromParent();
+    // The pool graph remains reusable, but the inactive Garage must not retain
+    // its battle-only buffers, textures, or shader programs. Three resources
+    // are renewable after dispose(), and the covered battle warm restores the
+    // exact authored graph before it can become visible again.
+    releaseObject3DGpuResources(live.group, { preserveRoots: [scene] });
   },
 });
 const preloadFxModule = fxRuntimeAccess.preloadModule;
@@ -2211,6 +2222,7 @@ const garageReturn = createGarageReturnRuntime({
       fx: { resetAll: () => fxRuntimeAccess.current?.resetAll() },
       visual: game.player?.visual,
     }),
+    suspendEffects: () => { fxRuntimeAccess.suspendRuntime(); },
     setShotMode: (enabled: boolean) => { shotMode = enabled; },
     setCaptureHidden: (hidden: boolean) => perfHud.setCaptureHidden(hidden),
     unfreezeEffects: () => fxRuntimeAccess.current?.setFrozen(false),

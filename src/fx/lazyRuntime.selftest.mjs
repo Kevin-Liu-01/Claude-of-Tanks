@@ -62,7 +62,9 @@ if (!/if \(modulePromise === request\) modulePromise = null/.test(fxRuntimeAcces
     || !/if \(runtimePromise === request\) runtimePromise = null/.test(fxRuntimeAccess)) {
   throw new Error('FX module and runtime failures must remain independently retryable');
 }
-if (!/scene\.add\(live\.group\)[\s\S]{0,480}post\.attachLateFxState\(live\.group\.userData\.softParticles\)/.test(main)) {
+if (!/post\.attachLateFxState\(live\.group\.userData\.softParticles\)/.test(main)
+    || !/activate:\s*\(live\)\s*=>\s*\{[\s\S]{0,120}scene\.add\(live\.group\)/.test(main)
+    || !/suspend:\s*\(live\)\s*=>\s*\{[\s\S]{0,180}live\.group\.removeFromParent\(\)[\s\S]{0,320}releaseObject3DGpuResources\(live\.group/.test(main)) {
   throw new Error('demand-loaded FX must register with the already-live late composite pass');
 }
 if (post.includes("../fx/particles.ts") || !post.includes("../fx/layers.ts")) {

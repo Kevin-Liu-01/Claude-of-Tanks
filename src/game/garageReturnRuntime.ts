@@ -31,6 +31,7 @@ interface GarageReturnPresentationPort {
   setAdaptiveSuspended(suspended: boolean): void;
   clearBattle(): void;
   resetBattleTank(): void;
+  suspendEffects(): void;
   setShotMode(enabled: boolean): void;
   setCaptureHidden(hidden: boolean): void;
   unfreezeEffects(): void;
@@ -147,6 +148,7 @@ export function createGarageReturnRuntime<Visual = unknown>({
 }: GarageReturnRuntimeOptions<Visual>): GarageReturnRuntime {
   const required = [getSelectedSpecId, presentation?.setAdaptiveSuspended,
     presentation?.clearBattle, presentation?.resetBattleTank,
+    presentation?.suspendEffects,
     presentation?.setShotMode, presentation?.setCaptureHidden,
     presentation?.unfreezeEffects, presentation?.resetHudFrame,
     network?.shouldPreserveRoom, network?.disposePresentation,
@@ -188,6 +190,7 @@ export function createGarageReturnRuntime<Visual = unknown>({
     // to either network disposal or the Garage pedestal cache.
     presentation.clearBattle();
     presentation.resetBattleTank();
+    presentation.suspendEffects();
     markStage('presentationReset');
 
     if (preserveRoom) network.disposePresentation();

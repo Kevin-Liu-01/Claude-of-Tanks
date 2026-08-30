@@ -25,6 +25,7 @@ function createFixture({ transitionGate = false } = {}) {
       setAdaptiveSuspended: (value) => calls.push(['adaptive', value]),
       clearBattle: () => calls.push(['clearPresentation']),
       resetBattleTank: () => calls.push(['resetBattleTank']),
+      suspendEffects: () => calls.push(['suspendEffects']),
       setShotMode: (value) => calls.push(['shotMode', value]),
       setCaptureHidden: (value) => calls.push(['captureHidden', value]),
       unfreezeEffects: () => calls.push(['unfreezeEffects']),
@@ -130,6 +131,9 @@ assert.deepEqual(direct.calls.find(([name]) => name === 'clearBattle'),
 assert.ok(direct.calls.findIndex(([name]) => name === 'resetBattleTank')
   < direct.calls.findIndex(([name]) => name === 'disposeNetworkPresentation'),
   'tank-owned FX and pose state clear before retained network presentation');
+assert.ok(direct.calls.findIndex(([name]) => name === 'resetBattleTank')
+  < direct.calls.findIndex(([name]) => name === 'suspendEffects'),
+  'battle effects reset before their inactive GPU graph is suspended');
 assert.equal(direct.calls.some(([name]) => name === 'closeMatch'), false,
   'default retained rooms dispose only their battle presentation');
 assert.ok(direct.calls.findIndex(([name]) => name === 'worldDormant')

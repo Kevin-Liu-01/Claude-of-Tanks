@@ -13,6 +13,8 @@ const deferred = () => {
   const runtimeGate = deferred();
   let loads = 0;
   let initializations = 0;
+  let activations = 0;
+  let suspensions = 0;
   const access = createFxRuntimeAccess({
     loadModule: () => { loads++; return moduleGate.promise; },
     initialize: async (module) => {
@@ -21,6 +23,8 @@ const deferred = () => {
       await runtimeGate.promise;
       return { id: 'live-fx' };
     },
+    activate: () => { activations++; },
+    suspend: () => { suspensions++; },
   });
 
   const preloadA = access.preloadModule();
@@ -37,7 +41,16 @@ const deferred = () => {
   runtimeGate.resolve();
   const live = await ensureA;
   assert.equal(access.current, live, 'the completed singleton is published through current');
+  assert.equal(access.active, true, 'a completed runtime is active');
   assert.equal(await access.ensureRuntime(), live, 'later entries reuse the live singleton');
+  assert.equal(activations, 1, 'reuse does not reactivate an already-live scene');
+  assert.equal(access.suspendRuntime(), true, 'phase exit suspends the live singleton');
+  assert.equal(access.active, false, 'suspended state is published');
+  assert.equal(access.suspendRuntime(), false, 'suspension is idempotent');
+  assert.equal(suspensions, 1);
+  assert.equal(await access.ensureRuntime(), live, 'phase re-entry reuses the suspended singleton');
+  assert.equal(access.active, true);
+  assert.equal(activations, 2, 'phase re-entry reactivates exactly once');
   assert.equal(loads, 1);
   assert.equal(initializations, 1);
 }
