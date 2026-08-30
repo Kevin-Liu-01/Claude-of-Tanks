@@ -41,6 +41,9 @@ desktop boot, joins concurrent touch entry, retries failed chunks, and owns the
 mobile sound toggle behind one typed access interface;
 `battlePhasePolicy.ts` is the synchronous source of truth for live-battle,
 settings, pointer-lock, disconnect-presentation, and Garage-idle predicates;
+`battleRolloutRuntime.ts` owns countdown/audio release without moving the
+covered reveal camera; `soloBattleEntryRuntime.ts` owns selected solo launch
+and the paint-before-fade Garage recovery transaction for failed cold entry;
 `sniperFillRuntime.ts` owns the retained shadow-free close-cover scope light;
 `combatFeedbackRuntime.ts` owns discrete ERA, hit-confirm, camera-recoil,
 prop-destruction, and Garage-residency reactions on the shared event bus;
@@ -142,6 +145,9 @@ Route mobile battle UI acquisition through `mobileBattleInputAccess.ts`; do not
 restore touch/auto-aim promise state or sound-toggle state in `main.ts`.
 Route phase-sensitive browser predicates through `battlePhasePolicy.ts`; do not
 restate live-battle semantics independently in settings, networking, or input.
+Keep solo launch selection and failed-entry recovery in
+`soloBattleEntryRuntime.ts`; never fade the loader before a restored Garage
+frame has painted.
 Route live HUD assembly through `battleHudFrameRuntime.ts`; do not rebuild
 spectator focus, spotting, aim, armor-target filtering, or damage presentation
 inside `main.ts`.

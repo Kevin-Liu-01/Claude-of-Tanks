@@ -74,13 +74,6 @@ export type MainWorld = WorldRuntime;
 export type MainHudRuntime = BattleHudRuntime;
 export type MainDamagePanelRuntime = DamagePanelRuntime;
 
-export interface SoloBattleRequest {
-  specId?: string;
-  mapId?: string | null;
-  randomRoster?: boolean;
-  gameMode?: string;
-}
-
 export interface MainKillcamRuntime extends KillcamRuntime {
   bindBus(bus: EventBus): void;
 }

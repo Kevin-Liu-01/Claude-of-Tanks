@@ -42,7 +42,6 @@ import type {
   MainKillcamRuntime,
   MainLightingRuntime,
   MainWorld,
-  SoloBattleRequest,
 } from './app/mainContracts.ts';
 import { createMainFrameRuntime } from './app/mainFrameRuntime.ts';
 import { createCombatAimComposition } from './app/combatAimComposition.ts';
@@ -119,6 +118,7 @@ import { createGarageReturnRuntime } from './game/garageReturnRuntime.ts';
 import { createGaragePhasePresentationRuntime } from './game/garagePhasePresentationRuntime.ts';
 import { createBattleIntentRuntime } from './game/battleIntentRuntime.ts';
 import { createBattlePhasePolicy } from './game/battlePhasePolicy.ts';
+import { createBattleRolloutRuntime } from './game/battleRolloutRuntime.ts';
 import { createKillcamAccess } from './game/killcamAccess.ts';
 import { createPlayerBattleActions } from './game/playerBattleActions.ts';
 import { createPlayerFrameInput } from './game/playerFrameInput.ts';
@@ -133,6 +133,10 @@ import {
   type SoloBattleLoadingStartOptions,
 } from './game/soloBattleLoadingRuntime.ts';
 import { createSoloBattleStartAccess } from './game/soloBattleStartAccess.ts';
+import {
+  createSoloBattleEntryRuntime,
+  type SoloBattleEntryRequest,
+} from './game/soloBattleEntryRuntime.ts';
 import { createBattleVisualPool } from './game/battleVisualPool.ts';
 import { createBattleVisualStreamerAccess } from './game/battleVisualStreamerAccess.ts';
 import {
@@ -1559,6 +1563,13 @@ input.onAction('perfHud', () => {
 // WoT-style player-path countdown after the opaque deployment transition.
 const PRE_BATTLE_HOLD_S = 5;
 const MIN_VISIBLE_PRE_BATTLE_S = 2;
+const battleRollout = createBattleRolloutRuntime({
+  game,
+  bus,
+  audio,
+  getHud: currentHud,
+  defaultPreBattleSeconds: PRE_BATTLE_HOLD_S,
+});
 
 // The solo battle loader is an opaque DOM surface. Rendering the newly
 // activated 3D world behind it made ordinary `nextFrame()` budget yields pay
@@ -1648,7 +1659,7 @@ const soloBattleStart = createSoloBattleStartAccess({
       emitConsumableReset: () => bus.emit('ui:consumableReset', {}),
       rig,
       stopShowroom: () => showroom.stop(),
-      openBattle,
+      openBattle: battleRollout.open,
     },
     recordTrace: (trace: unknown) => {
       if (typeof window !== 'undefined') window.__START_BATTLE_TIMINGS = trace;
@@ -1708,7 +1719,7 @@ const soloBattleLoading = createSoloBattleLoadingRuntime({
   resolveVisiblePreBattleSeconds,
   preBattleHoldSeconds: PRE_BATTLE_HOLD_S,
   minimumVisiblePreBattleSeconds: MIN_VISIBLE_PRE_BATTLE_S,
-  openBattle,
+  openBattle: battleRollout.open,
   scheduleDeferredWarm: scheduleDeferredCombatWarm,
   nextFrame,
   createLoadingYielder: createOpaqueLoadingYielder,
@@ -1943,28 +1954,12 @@ function closeNetworkMatch(reason = 'network_match_closed') {
   networkRoomCoordinator?.clear();
 }
 
-async function beginBattleEntry(
+function beginBattleEntry(
   specId: string,
   mapId: string | null = null,
   options: SoloBattleLoadingStartOptions | undefined = undefined,
 ) {
-  return battleEntryLifecycle.run(async () => {
-    try {
-      battleEntryLifecycle.coverRendering();
-      await soloBattleLoading.begin(specId, mapId, options);
-    } catch (error) {
-      console.error('[battle] entry failed', error);
-      audio.loadingOn(false);
-      // Failure exits obey the same covered-frame rule in the opposite
-      // direction: restore and paint the Garage while the loader is opaque,
-      // then let the loader fade. Never expose whichever old WebGL frame was
-      // retained when covered rendering began.
-      enterGarage();
-      battleEntryLifecycle.uncoverRendering();
-      await nextFrame();
-      await battleLoad?.hide?.();
-    }
-  }, undefined);
+  return soloBattleEntry.begin(specId, mapId, options);
 }
 
 function resetNetworkBattleState() {
@@ -2019,9 +2014,8 @@ async function beginSoloBattle({
   mapId,
   randomRoster = true,
   gameMode = 'standard',
-}: SoloBattleRequest = {}) {
-  const selected = specId && VISIBLE_TANK_IDS.includes(specId) ? specId : garage.getSelected();
-  return beginBattleEntry(selected, mapId || garage.getSelectedMap(), { randomRoster, gameMode });
+}: SoloBattleEntryRequest = {}) {
+  return soloBattleEntry.beginSelected({ specId, mapId, randomRoster, gameMode });
 }
 
 /** QA-only cold entry. Production paths already own a loading veil and call
@@ -2049,21 +2043,6 @@ async function debugStartBattle(
   return soloBattleStart.start(specId, resolved, opts);
 }
 
-/** Hand the screen to the battle in an immediately readable chase pose. */
-function openBattle(preBattleSeconds = PRE_BATTLE_HOLD_S) {
-  // battle_countdown r1: the loading screen is down and the world is live —
-  // resolve the entry hold armed at roster spawn into the visible countdown.
-  // Camera look stays free; hulls, turrets and triggers release at zero.
-  if (game.preBattleS === Infinity) {
-    game.preBattleS = preBattleSeconds;
-  }
-  hud?.preBattleCountdown(game.preBattleS);
-  audio.resume(); // the entry-gate keypress already unlocked the context
-  audio.ambientOn(true);
-  // Probe/debug starts skip the visible countdown; they still get one rollout
-  // edge after the AudioContext exists. Player entries emit at countdown zero.
-  if (game.preBattleS <= 0) bus.emit('battle:rollout', {});
-}
 // Returning from battle or Studio is one typed transaction. It owns the
 // teardown order, retained-room policy, transition coalescing, and rematch
 // sequencing while main supplies concrete browser/rendering adapters.
@@ -2150,6 +2129,17 @@ const garageReturn = createGarageReturnRuntime({
 });
 const enterGarage = garageReturn.enter;
 const leaveBattleToGarage = garageReturn.leave;
+const soloBattleEntry = createSoloBattleEntryRuntime({
+  lifecycle: battleEntryLifecycle,
+  loading: soloBattleLoading,
+  battleLoad,
+  audio,
+  enterGarage,
+  nextFrame,
+  isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
+  getSelectedSpecId: () => garage.getSelected(),
+  getSelectedMapId: () => garage.getSelectedMap(),
+});
 
 bus.on('ui:battleAgain', garageReturn.battleAgain);
 

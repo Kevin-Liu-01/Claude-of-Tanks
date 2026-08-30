@@ -196,6 +196,12 @@ const garagePhasePresentationSource = await readFile(
 const battleEntryLifecycleSource = await readFile(
   new URL('../game/battleEntryLifecycle.ts', import.meta.url), 'utf8',
 );
+const battleRolloutSource = await readFile(
+  new URL('../game/battleRolloutRuntime.ts', import.meta.url), 'utf8',
+);
+const soloBattleEntrySource = await readFile(
+  new URL('../game/soloBattleEntryRuntime.ts', import.meta.url), 'utf8',
+);
 assert.match(mainSource,
   /bus\.on\('ui:battleStart', \(\) => \{[\s\S]{0,120}playSurface\.hideForBattle\(\)/,
   'every battle entry must dismiss the play modal without closing a retained room');
@@ -415,14 +421,10 @@ assert.match(battleFrameRuntimeSource,
 assert.match(playerFrameInputSource,
   /input\.consumeMouseDelta\(mouse,[\s\S]{0,180}camera\.mouseDX = paused \|\| cameraLocked \? 0 : mouse\.x;/,
   'queued mouse input must be drained without moving the covered battle camera');
-const openBattleBody = mainSource.slice(
-  mainSource.indexOf('function openBattle()'),
-  mainSource.indexOf('const PRE_BATTLE_HOLD_S'),
-);
-assert.doesNotMatch(openBattleBody, /snapArcade/,
+assert.doesNotMatch(battleRolloutSource, /snapArcade/,
   'openBattle must never visibly re-snap the camera after the loader fade');
-assert.match(mainSource,
-  /enterGarage\(\);\s*battleEntryLifecycle\.uncoverRendering\(\);\s*await nextFrame\(\);\s*await battleLoad\?\.hide\?\.\(\);/,
+assert.match(soloBattleEntrySource,
+  /enterGarage\(\);\s*lifecycle\.uncoverRendering\(\);\s*await nextFrame\(\);\s*await battleLoad\.hide\?\.\(\);/,
   'battle-entry failures must paint the restored Garage before fading the loader');
 const networkEntryBody = networkBattleLaunchSource.slice(
   networkBattleLaunchSource.indexOf('async beginPrivate('),
