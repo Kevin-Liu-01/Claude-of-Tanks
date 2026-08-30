@@ -495,13 +495,14 @@ const evaluateBudgets = (phases) => {
       idle?.resources.renderer[workload] ?? null,
       `<= ${RESOURCE_BUDGETS.garageIdle[workload]}`);
   }
-  check('active battle staggers distant shadow cascades',
+  check('active battle refreshes distant shadow cascades coherently',
     Object.keys(battle?.frameWorkload?.byShadowMask || {}).length === 2
-      && battle?.frameWorkload?.byShadowMask?.['7']
-      && battle?.frameWorkload?.byShadowMask?.['11']
-      && !battle?.frameWorkload?.byShadowMask?.['15'],
+      && battle?.frameWorkload?.byShadowMask?.['3']
+      && battle?.frameWorkload?.byShadowMask?.['15']
+      && !battle?.frameWorkload?.byShadowMask?.['7']
+      && !battle?.frameWorkload?.byShadowMask?.['11'],
     Object.keys(battle?.frameWorkload?.byShadowMask || {}),
-    'alternating masks 7/11; never all four cascades in one frame');
+    'continuous near mask 3 plus atomic far-cohort mask 15');
   for (const workload of ['shadowCalls', 'shadowTriangles']) {
     check(`active battle complete-frame ${workload}`,
       battle?.frameWorkload?.[workload]?.max

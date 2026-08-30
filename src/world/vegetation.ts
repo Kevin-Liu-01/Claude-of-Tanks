@@ -3944,11 +3944,18 @@ function* vegetationBuildSteps(
    * uploads, and seeds the slot bookkeeping the incremental path maintains. */
   function rebuildPartitionFull(camPos: THREE.Vector3): void {
     _partitionBuilt = true;
+    lodTransitions.length = 0;
     for (const sp of speciesList) {
       for (const a of nearSlots[sp]) a.length = 0;
       for (const a of farSlots[sp]) a.length = 0;
     }
     for (const t of trees) {
+      // A full rebuild is an authoritative partition snapshot. Never carry a
+      // half-complete near-LOD dissolve into the new instance layout: stale
+      // aLodF slots make a whole tree shadow change coverage on the next map
+      // refresh even though its visible representation is already settled.
+      t.lodT = false;
+      t.lodF = 0;
       const d = Math.hypot(t.x - camPos.x, t.z - camPos.z);
       t.near = d < treeNearIn || (t.near && d <= treeNearOut) ||
         scopePromoted(t, camPos);
@@ -3961,6 +3968,8 @@ function* vegetationBuildSteps(
           m.setMatrixAt(t.slot, t.mat);
           m.setColorAt(t.slot, t.tint);
           attribute(m.geometry, 'aFadeI').array[t.slot] = t.fade;
+          const lf = m.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
+          if (lf) lf.array[t.slot] = 0;
         }
       } else {
         const slots = farSlots[t.species][t.fv];
@@ -3972,6 +3981,8 @@ function* vegetationBuildSteps(
           m.setColorAt(t.fslot, t.tint);
           const fa = m.geometry.getAttribute('aFadeI') as THREE.BufferAttribute | undefined;
           if (fa) fa.array[t.fslot] = 0;
+          const lf = m.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
+          if (lf) lf.array[t.fslot] = 0;
         }
       }
     }
@@ -3985,6 +3996,8 @@ function* vegetationBuildSteps(
           const fa = attribute(m.geometry, 'aFadeI');
           fa.clearUpdateRanges();
           fa.needsUpdate = true;
+          const lf = m.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
+          if (lf) { lf.clearUpdateRanges(); lf.needsUpdate = true; }
           m.visible = m.count > 0;
         }
       }
@@ -3994,6 +4007,8 @@ function* vegetationBuildSteps(
           m.instanceMatrix.clearUpdateRanges();
           m.instanceMatrix.needsUpdate = true;
           if (m.instanceColor) { m.instanceColor.clearUpdateRanges(); m.instanceColor.needsUpdate = true; }
+          const lf = m.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
+          if (lf) { lf.clearUpdateRanges(); lf.needsUpdate = true; }
           m.visible = m.count > 0;
         }
       }

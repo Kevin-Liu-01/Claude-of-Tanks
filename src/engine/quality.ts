@@ -170,8 +170,8 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   // ultra/high — at 2048 its ~0.15 m texels x the PCF disk radius produced
   // the "wide over-blurred dark stripes" shadow critique; 4096 halves the
   // physical penumbra. Cascade 3 (230-520 m) stays 2048: genuinely subpixel.
-  // Far cascades still re-render round-robin (lighting.ts), so the fill-rate
-  // cost is amortized; the extra RT memory is ultra-only.
+  // Far cascades still re-render as a 30 Hz cohort (lighting.ts), so the
+  // average fill-rate cost is amortized; the extra RT memory is ultra-only.
   // r7 (perf recert): the 4096 cascade 2 is now ULTRA-ONLY. 'high' — the
   // retina DEFAULT — returns to 2048 with a physical-penumbra-preserving PCF
   // radius compensation in lighting.ts (radius scales with mapSize/reference,
@@ -186,7 +186,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   // out to ~500 m, and CSM's fade=true starts dissolving the last cascade
   // well before maxFar — at 520 the far half of the town rendered shadowless.
   // 700 keeps the whole town inside solid shadow range; the far cascades
-  // still re-render round-robin (lighting.ts), so the per-frame fill cost is
+  // still re-render as a 30 Hz cohort (lighting.ts), so average fill cost is
   // amortized, and the r7 penumbra compensation keeps edge softness constant.
   ultra: {
     label: 'Ultra',

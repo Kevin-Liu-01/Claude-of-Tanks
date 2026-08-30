@@ -247,13 +247,13 @@ ownership, complete-frame draw calls/triangles, shadow masks, cache residency,
 Garage paint cadence, and animation-versus-idle clock cadence across initial
 Garage, live battle, and returned Garage. The probe pins one mixed modern 7v7
 roster and waits for all fourteen visuals, preventing random vehicle selection
-from hiding a resource regression. It also rejects a frame that submits all
-four CSM cascades: near shadows remain current while the two distant cascades
-alternate. A distant cascade holds its snapped projection until its matching
-depth-map turn, avoiding a new-matrix/old-depth flash without adding a fourth
-shadow submission. Independent shadow-call and shadow-triangle ceilings remain,
-and the limits track the measured production baseline rather than serving as
-loose theoretical maxima.
+from hiding a resource regression. Near shadows remain current while the two
+distant cascades refresh together at 30 Hz. Their shared timestamp matters:
+CSM fade samples both maps in one pixel, so alternating them made a moving
+forest swap between two shadow states. Each distant cascade holds its snapped
+projection until that cohort refresh. Independent shadow-call and
+shadow-triangle ceilings remain, and the limits track the measured production
+baseline rather than serving as loose theoretical maxima.
 
 The rendered stability audit separately covers raw CSM motion and the final
 post-composed frame. Receiver normal bias scales with each cascade's physical

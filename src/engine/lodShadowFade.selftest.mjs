@@ -40,7 +40,7 @@ assert.equal(usesLodShadowFadeDepth(first), true,
   'runtime audits can identify a completely wired LOD caster');
 
 const shader = {
-  vertexShader: '#include <common>\nvoid main() {\n#include <begin_vertex>\n}',
+  vertexShader: '#include <common>\nvoid main() {\n#include <begin_vertex>\n#include <project_vertex>\n}',
   fragmentShader: '#include <common>\nvoid main() {\n#include <alphatest_fragment>\n}',
 };
 patchLodShadowFadeDepthShader(shader);
@@ -48,8 +48,13 @@ assert.match(shader.vertexShader, /attribute float aLodF;/,
   'shadow vertices receive the same per-instance fade as visible geometry');
 assert.match(shader.fragmentShader, /if \(vLodShadowFade > 0\.0005\)/,
   'shadow fragments progressively dissolve instead of popping');
-assert.match(shader.fragmentShader, /gl_FragCoord\.xy/,
-  'the dissolve remains spatially stable in shadow-map coordinates');
+assert.match(shader.vertexShader,
+  /vLodShadowWorldPosition = \(modelMatrix \* cotLodShadowWorld\)\.xyz/,
+  'shadow vertices anchor the dissolve to world space');
+assert.match(shader.fragmentShader, /floor\(vLodShadowWorldPosition \* 5\.0\)/,
+  'the dissolve samples a quantized world-space pattern');
+assert.doesNotMatch(shader.fragmentShader, /gl_FragCoord/,
+  'cascade texel snaps cannot reseed the dissolve');
 
 const missing = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
 assert.throws(() => applyLodShadowFadeDepth(missing), /requires aLodF geometry data/,

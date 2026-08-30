@@ -68,7 +68,7 @@ const CASCADES = 4;
 // them to 60 Hz made the player, nearby vehicles and contact shadows visibly
 // step across surfaces on high-refresh displays — an artifact that reads like
 // texture Z-fighting. Only the genuinely subpixel far pair are rate-capped and
-// alternate at 30 Hz each. `update(true)` still forces every cascade for
+// refresh together at 30 Hz. `update(true)` still forces every cascade for
 // deterministic captures and map switches.
 const FAR_CASCADE_START = 2;
 const _stableCameraToLight = new THREE.Matrix4();
@@ -451,8 +451,9 @@ function buildCoverageMipmaps(tex: THREE.Texture, cutoff: number): void {
 // cascade — the vegetation casters are built frustumCulled=false with
 // map-spanning instance sets, so even the ~25 m cascade-0 box rasterizes all
 // 373 K vegetation caster tris plus the 150 K merged-facade props mesh, three
-// times per frame (cascade 0 + cascade 1 + one round-robin far cascade) =
-// 2.10 M of the 7.34 M frame total. Mesh-level frustum culling can never help
+// at an average of three maps per 60 Hz frame (two near maps continuously,
+// plus both far maps every other frame) = 2.10 M of the 7.34 M frame total.
+// Mesh-level frustum culling can never help
 // (a map-spanning merged bounding sphere intersects every cascade box); the
 // correct cut is per-INSTANCE cascade culling:
 //  - onBeforeShadow: test each instance's world bounding sphere against the
@@ -470,7 +471,7 @@ function buildCoverageMipmaps(tex: THREE.Texture, cutoff: number): void {
 // misses a cascade's frustum was rasterized fully off that cascade's map and
 // contributed nothing; the test is conservative (per-instance sphere from the
 // geometry bounding sphere x instance scale + SHADOW_CULL_MARGIN covering
-// vertex wind sway and the 1-frame round-robin staleness of far cascades).
+// vertex wind sway and the bounded 30 Hz staleness of the far cohort).
 // Static-ness is DETECTED, not assumed: a mesh qualifies only after its
 // instanceMatrix version sat unchanged across 3 consecutive shadow draws, and
 // any foreign write (vegetation chunk rebuild, map switch, live count change)
@@ -645,7 +646,7 @@ function shadowCullBefore(object: THREE.Object3D, shadowCamera: THREE.Camera): v
   // freezeMask/noCull A/Bs then showed the compaction contributes ZERO
   // measurable flicker (the flash was GTAO boil, see post.ts ao-boil r1/r2),
   // so the box is exact again. SHADOW_CULL_MARGIN already absorbs sway and
-  // round-robin staleness.)
+  // rate-capped far-cascade staleness.)
   if (_cullFrusCam !== shadowCamera || _cullFrusStamp !== _cullTick) {
     _cullProj.multiplyMatrices(shadowCamera.projectionMatrix, shadowCamera.matrixWorldInverse);
     _cullFrustum.setFromProjectionMatrix(_cullProj);
@@ -831,7 +832,7 @@ ${endHead}`);
   // still changed phase whenever a snapped cascade recentered because the
   // same world point moved to a different local atlas texel. A rotation based
   // only on the cascade's fixed radius cannot change during camera motion or
-  // a round-robin refresh, while retaining a different orientation for each
+  // a rate-capped refresh, while retaining a different orientation for each
   // cascade and the same five-sample cost.
   const penAnchor =
     'float phi = interleavedGradientNoise( gl_FragCoord.xy ) * PI2;';
@@ -1026,7 +1027,7 @@ export function createLighting(
   let staticPresentationDormant = false;
   // r4 LP2 (teleport robustness): any event that can move casters or the
   // cascade fit wholesale — map/sun switch, frustum change, __SHOTS restage —
-  // forces FULL cascade redraws for the next 2 frames, so the round-robin
+  // forces FULL cascade redraws for the next 2 frames, so the rate cap
   // staleness optimization can never hold a teleported vehicle out of the
   // far maps for even one presented frame.
   let forceFrames = 0;
@@ -1292,7 +1293,7 @@ export function createLighting(
         }
         if (force) forceFrames = Math.max(forceFrames, 1); // settle 1 extra frame
       } else if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.forceAll) {
-        // bisect hook: every cascade re-renders every frame (no round-robin)
+        // bisect hook: every cascade re-renders every frame (no rate cap)
         lastScheduledMask = shadowScheduler.forceMask();
         applyStableCascadePoses(csm, allCascadeMask);
         for (let i = 0; i < csm.lights.length; i++) csm.lights[i].shadow.needsUpdate = true;
@@ -1315,8 +1316,8 @@ export function createLighting(
         // Near cascades remain continuous at the display cadence; rate-capping
         // them made dynamic contact shadows step at 60 Hz on 120/144 Hz
         // displays. The scheduler still amortizes the far pair, whose texels
-        // are subpixel at gameplay distance, without changing near-field
-        // image stability.
+        // are subpixel at gameplay distance, but refreshes both maps from one
+        // camera/tree-LOD timestamp because CSM fade blends them together.
         for (let i = 0; i < csm.lights.length; i++) {
           const continuous = isContinuousShadowCascade(i, FAR_CASCADE_START);
           csm.lights[i].shadow.autoUpdate = continuous;
@@ -1329,11 +1330,11 @@ export function createLighting(
         }
         // A rate-capped far map must keep its projection and depth texture as
         // one atomic pair. Prepare every snapped fit above, but apply a far fit
-        // only on that cascade's scheduled render frame. The alternate map may
-        // be one frame old, yet it remains internally coherent instead of
-        // sampling stale depth through a newly moved matrix—the visible flash.
-        // Near fits still follow every presented frame. This preserves the
-        // existing two-near/one-far 60 Hz cost ceiling.
+        // only on its cohort's scheduled render frame. Adjacent far maps move
+        // together because the fade overlap samples both in one color frame;
+        // mixing timestamps there was the forest-wide light/shadow flash.
+        // Near fits still follow every presented frame. Cohorting preserves
+        // the old average far-map work (two maps at 30 Hz each).
         applyStableCascadePoses(csm, continuousCascadeMask | lastScheduledMask);
         for (let i = 0; i < csm.lights.length; i++) {
           if (lastScheduledMask & (1 << i)) csm.lights[i].shadow.needsUpdate = true;

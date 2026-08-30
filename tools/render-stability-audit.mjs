@@ -140,10 +140,11 @@ for (const preset of presets) {
 
     // Render the same wide camera sweep twice into a tiny direct-render
     // viewport: first with every cascade refreshed (ground truth), then with
-    // the production far-cascade round robin. This catches filter-phase
-    // changes that are invisible in a frozen shot. The scene cannot advance
-    // while this synchronous block runs, so any changed pixel is rendering
-    // instability, not animation.
+    // the production far-cascade cadence. This catches filter-phase changes
+    // that are invisible in a frozen shot. The scene cannot advance while
+    // this synchronous block runs, so any changed pixel is rendering
+    // instability, not animation. Adjacent far maps are also required to
+    // refresh as one cohort because CSM fade samples them in the same pixel.
     const motionOffsets = [0, 2, 4, 6, 8, 10, 12, 14, 16];
     const directGl = D.renderer.getContext();
     const directWidth = 160;
@@ -544,6 +545,16 @@ for (const preset of presets) {
       + `motion samples in one frame `
       + `differ from force-all `
       + `(max RGB delta ${result.motionMaxRgbDelta})`,
+    );
+  }
+  const splitFarFrame = result.motionSchedule.find((frame) => {
+    const farMask = frame.scheduledMask & 0b1100;
+    return farMask !== 0 && farMask !== 0b1100;
+  });
+  if (splitFarFrame) {
+    reasons.push(
+      `far cascades split across frames at offset ${splitFarFrame.offset} `
+      + `(mask ${splitFarFrame.scheduledMask.toString(2)})`,
     );
   }
   // Baseline before the responsive release was 8,149 strongly over-darkened

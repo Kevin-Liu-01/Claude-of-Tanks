@@ -85,10 +85,12 @@ remain equivalent. Visible vehicle silhouette and authored detail are preserved;
 triangle reduction is acceptable only when visual comparison proves parity.
 
 Cascaded shadow projection and its depth map are updated atomically. Near
-cascades remain continuous; rate-capped far cascades apply a snapped light pose
-only on the frame that renders its matching depth. Bias scales with physical
-texel size. Temporal ambient occlusion rejects disoccluded depth history so
-trees, structures, and overlapping geometry cannot flash stale darkness.
+cascades remain continuous; rate-capped far cascades refresh as one 30 Hz
+cohort and apply snapped light poses only with their matching depth maps. CSM
+fade therefore never blends far maps from different camera or vegetation-LOD
+timestamps. Bias scales with physical texel size. Temporal ambient occlusion
+rejects disoccluded depth history so trees, structures, and overlapping
+geometry cannot flash stale darkness.
 
 ## Aiming and vehicle presentation
 

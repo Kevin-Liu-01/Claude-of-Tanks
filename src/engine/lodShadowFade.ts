@@ -5,7 +5,7 @@ type LodShadowMesh = THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Mat
 
 /** Per-instance fade amount: zero is fully present, one is fully dissolved. */
 export const LOD_SHADOW_FADE_ATTRIBUTE = 'aLodF';
-export const LOD_SHADOW_FADE_PROGRAM_KEY = 'cot-lod-shadow-fade-depth-v1';
+export const LOD_SHADOW_FADE_PROGRAM_KEY = 'cot-lod-shadow-fade-depth-v2';
 
 function replaceShaderAnchor(source: string, anchor: string, replacement: string): string {
   const patched = source.replace(anchor, replacement);
@@ -18,32 +18,56 @@ function replaceShaderAnchor(source: string, anchor: string, replacement: string
 /**
  * Mirror a visible instanced-LOD dissolve in the native shadow pass.
  *
- * The pattern is evaluated in texel-snapped shadow-map coordinates, so it is
- * stable while the presentation camera moves. Blending two spatial scales
- * avoids replacing a whole caster with a fine checkerboard on one frame.
+ * The pattern is evaluated in quantized world coordinates. Shadow-map pixel
+ * coordinates are not stable: when a cascade snaps by one texel, the same
+ * tree surface lands on a different gl_FragCoord and its dissolve pattern
+ * changes in a single frame. A world-anchored pattern is shared by every
+ * cascade and remains fixed while the presentation camera moves.
  */
 export function patchLodShadowFadeDepthShader(shader: MaterialShader): void {
   shader.vertexShader = replaceShaderAnchor(shader.vertexShader, '#include <common>',
     `#include <common>
 attribute float ${LOD_SHADOW_FADE_ATTRIBUTE};
-varying float vLodShadowFade;`);
+varying float vLodShadowFade;
+varying vec3 vLodShadowWorldPosition;`);
   shader.vertexShader = replaceShaderAnchor(shader.vertexShader, '#include <begin_vertex>', `
     #include <begin_vertex>
     vLodShadowFade = ${LOD_SHADOW_FADE_ATTRIBUTE};
   `);
+  shader.vertexShader = replaceShaderAnchor(shader.vertexShader, '#include <project_vertex>', `
+    #include <project_vertex>
+    vec4 cotLodShadowWorld = vec4(transformed, 1.0);
+    #ifdef USE_BATCHING
+      cotLodShadowWorld = batchingMatrix * cotLodShadowWorld;
+    #endif
+    #ifdef USE_INSTANCING
+      cotLodShadowWorld = instanceMatrix * cotLodShadowWorld;
+    #endif
+    vLodShadowWorldPosition = (modelMatrix * cotLodShadowWorld).xyz;
+  `);
   shader.fragmentShader = replaceShaderAnchor(shader.fragmentShader, '#include <common>',
-    '#include <common>\nvarying float vLodShadowFade;');
+    `#include <common>
+varying float vLodShadowFade;
+varying vec3 vLodShadowWorldPosition;
+float cotLodShadowHash(vec3 cell) {
+  cell = fract(cell * 0.1031);
+  cell += dot(cell, cell.yzx + 33.33);
+  return fract((cell.x + cell.y) * cell.z);
+}`);
   shader.fragmentShader = replaceShaderAnchor(
     shader.fragmentShader,
     '#include <alphatest_fragment>',
     `
     #include <alphatest_fragment>
     if (vLodShadowFade > 0.0005) {
-      float d1 = fract(52.9829189 * fract(dot(
-        gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
-      float d2 = fract(52.9829189 * fract(dot(
-        floor(gl_FragCoord.xy / 3.7), vec2(0.06711056, 0.00583715))));
-      if (mix(d1, d2, 0.5) < vLodShadowFade) discard;
+      float d1 = cotLodShadowHash(floor(vLodShadowWorldPosition * 5.0));
+      float d2 = cotLodShadowHash(floor(vLodShadowWorldPosition * 1.7) + 17.0);
+      float d3 = cotLodShadowHash(floor(vLodShadowWorldPosition * 0.73) + 47.0);
+      float d4 = cotLodShadowHash(floor(vLodShadowWorldPosition * 0.31) + 89.0);
+      // Averaging independent scales tapers the last few percent of
+      // coverage. The proxy is visually gone before its instance slot is
+      // retired, avoiding a final-frame shadow pop at fade == 1.
+      if ((d1 + d2 + d3 + d4) * 0.25 < vLodShadowFade) discard;
     }
   `,
   );

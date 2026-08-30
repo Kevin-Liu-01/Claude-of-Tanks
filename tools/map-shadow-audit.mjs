@@ -112,7 +112,7 @@ for (const mapId of requestedMapIds) {
     requestAnimationFrame(sampleFrame);
 
     // Exercise the actual chase camera, tank suspension, GTAO history and
-    // continuously refreshed near cascades. The alternating turn crosses
+    // continuously refreshed near cascades. The reversing turn crosses
     // trunk/prop contact layers from both screen directions instead of only
     // testing a frozen establishing shot.
     try {

@@ -1,10 +1,11 @@
 /**
  * Refresh-rate-invariant CSM scheduler.
  *
- * At 60 Hz both near cascades must refresh every presented frame. At 120+
- * they still need 60 updates/s each, while each far map needs 30. The near
- * pair owns one frame and the alternating far stream owns the next, keeping
- * full target cadence without ever combining all broad + near caster work.
+ * Near cascades refresh every presented frame at every display rate, while
+ * each far map targets 30 updates/s. Far maps refresh as one cohort: CSM fade
+ * blends adjacent cascades, so rendering them from different camera/tree-LOD
+ * timestamps produces a visible light/shadow swap even when each individual
+ * projection remains internally coherent.
  */
 
 export const SHADOW_REFRESH_INTERVAL_S = 1 / 60;
@@ -94,36 +95,25 @@ export function createShadowRefreshScheduler(
   const nearCount = Math.max(0, Math.min(count, opts.nearCount ?? 2));
   const intervalS = Math.max(1 / 240, Number(opts.intervalS) || SHADOW_REFRESH_INTERVAL_S);
   const epsilonS = Math.min(0.001, intervalS * 0.08);
-  // Classify the DISPLAY cadence from a smoothed interval, never one frame.
-  // Otherwise a transient >12.5 ms hitch flips that same frame onto the
-  // three-map 60 Hz path and turns one miss into a self-reinforcing burst.
-  // Once >95 Hz is observed, phase-spread mode stays latched. A 120 Hz panel
-  // does not become a 60 Hz panel merely because the GPU is briefly late;
-  // switching back under load is exactly the positive-feedback failure this
-  // scheduler exists to prevent. A real 60 Hz panel never enters the mode.
-  const highRefreshEnterS = 1 / 95;
-  const cadenceEmaAlpha = 0.08;
-  const nearAcc = new Float64Array(nearCount);
+  const nearMask = nearCount > 0 ? (2 ** nearCount) - 1 : 0;
+  const farCount = count - nearCount;
+  // Preserve the old per-cascade cadence and total map work. Two desktop far
+  // cascades now render together every 1/30 s instead of alternating one map
+  // every 1/60 s; a single mobile far cascade remains a 60 Hz stream.
+  const farIntervalS = intervalS * Math.max(1, farCount);
+  const farMask = farCount > 0
+    ? (((2 ** farCount) - 1) << nearCount)
+    : 0;
   let farAcc = 0;
-  let farCursor = -1;
-  let nearTieCursor = 0;
-  let cadenceEmaS = 0;
-  let highRefreshMode = false;
   let lastMask = 0;
 
-  function reset(resetCadence = false): void {
-    nearAcc.fill(0);
-    // Keep the near pair phase-aligned and offset the alternating far stream.
-    // At 120+ Hz this yields one near-pair frame, then one far-only frame:
-    // identical per-cascade cadence with a much lower peak than pairing a far
-    // map's broad caster set with either near map.
-    farAcc = nearCount > 1 ? intervalS * 0.5 : 0;
-    farCursor = -1;
-    nearTieCursor = 0;
-    if (resetCadence) {
-      cadenceEmaS = 0;
-      highRefreshMode = false;
-    }
+  function reset(_resetCadence = false): void {
+    // forceMask() has just supplied a coherent all-cascade baseline. Seed the
+    // accumulator so normal far cadence resumes promptly without a long cold
+    // gap, while still keeping the pair on one shared timestamp.
+    farAcc = farCount > 1
+      ? Math.max(0, farIntervalS - intervalS * 0.5)
+      : (nearCount > 1 ? intervalS * 0.5 : 0);
     lastMask = 0;
   }
 
@@ -144,84 +134,19 @@ export function createShadowRefreshScheduler(
    * @returns {number} cascade bit mask
    */
   function step(dtS: number): number {
-    const dt = Math.max(0, Math.min(intervalS * 2, Number(dtS) || 0));
+    const dt = Math.max(0, Math.min(farIntervalS, Number(dtS) || 0));
     if (!(dt > 0) || count === 0) {
       lastMask = 0;
       return 0;
     }
-    if (!(cadenceEmaS > 0)) {
-      cadenceEmaS = dt;
-      highRefreshMode = dt <= highRefreshEnterS;
-    } else {
-      cadenceEmaS += (dt - cadenceEmaS) * cadenceEmaAlpha;
-      if (!highRefreshMode && cadenceEmaS <= highRefreshEnterS) {
-        highRefreshMode = true;
-      }
-    }
-    const highRefresh = highRefreshMode;
-    let mask = 0;
-
-    for (let i = 0; i < nearCount; i++) {
-      nearAcc[i] = Math.min(intervalS * 2, nearAcc[i] + dt);
-    }
-    const farCount = count - nearCount;
-    if (farCount > 0) farAcc = Math.min(intervalS * 2, farAcc + dt);
-
-    if (highRefresh) {
-      // Near maps share their frame; the alternating far stream owns a
-      // separate frame. At the 120 Hz target this preserves exact 60/60/30/30
-      // cadence. If throughput falls below 120, far cadence yields before we
-      // recombine broad + near caster sets and amplify the overload.
-      const dueNear = [];
-      for (let i = 0; i < nearCount; i++) {
-        if (nearAcc[i] + epsilonS >= intervalS) dueNear.push(i);
-      }
-      dueNear.sort((a, b) => nearAcc[b] - nearAcc[a]
-        || ((a - nearTieCursor + nearCount) % nearCount)
-          - ((b - nearTieCursor + nearCount) % nearCount));
-      const farDue = farCount > 0 && farAcc + epsilonS >= intervalS;
-      if (dueNear.length >= 2) {
-        for (let job = 0; job < 2; job++) {
-          const i = dueNear[job];
-          mask |= 1 << i;
-          nearAcc[i] = Math.max(0, nearAcc[i] - intervalS);
-          nearTieCursor = (i + 1) % nearCount;
-        }
-      } else if (farDue) {
-        // When one near stream alone is late (normally only after a hitch),
-        // service whichever class is more overdue, still as a one-class
-        // frame. The other catches up next frame without a workload burst.
-        const near = dueNear[0];
-        if (near === undefined || farAcc >= nearAcc[near]) {
-          farCursor = (farCursor + 1) % farCount;
-          mask |= 1 << (nearCount + farCursor);
-          farAcc = Math.max(0, farAcc - intervalS);
-        } else {
-          mask |= 1 << near;
-          nearAcc[near] = Math.max(0, nearAcc[near] - intervalS);
-          nearTieCursor = (near + 1) % nearCount;
-        }
-      } else if (dueNear.length) {
-        const i = dueNear[0];
-        mask |= 1 << i;
-        nearAcc[i] = Math.max(0, nearAcc[i] - intervalS);
-        nearTieCursor = (i + 1) % nearCount;
-      }
-    } else {
-      // 60–80 Hz: preserve the established every-frame near pair exactly.
-      for (let i = 0; i < nearCount; i++) {
-        if (nearAcc[i] + epsilonS < intervalS) continue;
-        mask |= 1 << i;
-        nearAcc[i] = Math.max(0, nearAcc[i] - intervalS);
-      }
-    }
-
-    if (!highRefresh && farCount > 0) {
-      if (farAcc + epsilonS >= intervalS) {
-        farCursor = (farCursor + 1) % farCount;
-        mask |= 1 << (nearCount + farCursor);
-        farAcc = Math.max(0, farAcc - intervalS);
-      }
+    // Near cascades are `autoUpdate=true` in lighting.ts and therefore render
+    // on every presented frame. Keep them in the returned mask so telemetry
+    // describes actual work; the scheduler only rate-limits the far cohort.
+    let mask = nearMask;
+    if (farCount > 0) farAcc = Math.min(farIntervalS * 2, farAcc + dt);
+    if (farCount > 0 && farAcc + epsilonS >= farIntervalS) {
+      mask |= farMask;
+      farAcc = Math.max(0, farAcc - farIntervalS);
     }
 
     lastMask = mask;
