@@ -100,11 +100,13 @@ export interface EquipmentMultipliers {
 
 export interface EquipmentCombatState {
   equip?: string[];
-  equipMults?: EquipmentMultipliers;
-  modules?: Record<string, {
+  /** Replaced atomically by applyEquipmentToCombat; callers may carry a
+   * narrower simulation-facing multiplier view before this boundary. */
+  equipMults?: unknown;
+  modules?: Partial<Record<EquipmentModuleId, {
     maxHp: number;
     hp: number;
-  }>;
+  }>>;
 }
 
 export interface ModifiedEquipmentStat {

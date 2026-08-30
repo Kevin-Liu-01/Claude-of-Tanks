@@ -49,9 +49,9 @@ export interface TankBodyEntity {
   state: TankBodyState;
 }
 
-export type TankBodyImpact = (
-  upper: TankBodyEntity,
-  lower: TankBodyEntity,
+export type TankBodyImpact<Entity extends TankBodyEntity = TankBodyEntity> = (
+  upper: Entity,
+  lower: Entity,
   closingMps: number,
   normalX: number,
   normalZ: number,
@@ -229,10 +229,10 @@ function moveRootY(state: TankBodyState, delta: number): void {
  * Resolve vertical tank-on-tank contacts once after every movement pass.
  * Returns the number of active contacts for probes/telemetry.
  */
-export function resolveTankBodyContacts(
-  entities: readonly TankBodyEntity[],
+export function resolveTankBodyContacts<Entity extends TankBodyEntity>(
+  entities: readonly Entity[],
   _dt: number,
-  onImpact: TankBodyImpact | null = null,
+  onImpact: TankBodyImpact<Entity> | null = null,
 ): number {
   let contacts = 0;
   for (let i = 0; i < entities.length; i++) {

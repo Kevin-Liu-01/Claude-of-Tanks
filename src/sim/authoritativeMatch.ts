@@ -259,7 +259,7 @@ export interface AuthoritativeMatch {
   readonly resultReason: string | null;
   readonly phase: MatchPhase;
   readonly gameMode: GameModeId;
-  readonly modeController: MatchModeController;
+  readonly modeController: MatchModeController<AuthoritativeEntity>;
   onMatchReady(): void;
   onPeerJoin(event: { peerId: string }): void;
   onPeerLeave(event: { peerId: string }): void;
@@ -754,11 +754,10 @@ export function createAuthoritativeMatch({
   }
 
   function reviveForMode(
-    entity: MatchModeEntity,
+    tank: AuthoritativeEntity,
     spawn: MatchModeSpawn,
     healthScale = 1,
   ): void {
-    const tank = entity as AuthoritativeEntity;
     _spawn.set(spawn.x, heightField.getHeightAt(spawn.x, spawn.z), spawn.z);
     tank.state = createTankState(tank.spec, _spawn, spawn.yaw);
     tank.input = makeInput();

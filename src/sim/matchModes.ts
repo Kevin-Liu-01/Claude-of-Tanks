@@ -99,16 +99,17 @@ export interface MatchModeSpawn {
   yaw: number;
 }
 
-interface MatchModeHooks {
-  revive(entity: MatchModeEntity, spawn: MatchModeSpawn, healthScale: number): void;
-  setActive?(entity: MatchModeEntity, active: boolean): void;
+interface MatchModeHooks<Entity extends MatchModeEntity> {
+  revive(entity: Entity, spawn: MatchModeSpawn, healthScale: number): void;
+  setActive?(entity: Entity, active: boolean): void;
   terrainHeight?(x: number, z: number): number;
   emit?(type: string, payload: Record<string, unknown>): void;
 }
 
-interface MatchModeControllerOptions extends MatchModeHooks {
+interface MatchModeControllerOptions<Entity extends MatchModeEntity>
+  extends MatchModeHooks<Entity> {
   mode?: string;
-  entities: MatchModeEntity[];
+  entities: Entity[];
   seed?: number;
 }
 
@@ -192,16 +193,18 @@ export interface MatchModeResult {
   reason: string;
 }
 
-export interface MatchModeController {
+export interface MatchModeController<
+  Entity extends MatchModeEntity = MatchModeEntity,
+> {
   readonly id: GameModeId;
   readonly definition: GameModeDefinition;
   readonly state: MatchModePresentationState;
   readonly usesElimination: boolean;
   step(dt: number, timeS: number): MatchModeResult | null;
-  consumeShot(entity: MatchModeEntity): boolean;
+  consumeShot(entity: Entity): boolean;
   tryHitBall(shell: { dead?: boolean; prevPos: Vec3Like; pos: Vec3Like; vel: Vec3Like;
     shooterId?: string }): boolean;
-  botTarget(entity: MatchModeEntity): { x: number; z: number } | null;
+  botTarget(entity: Entity): { x: number; z: number } | null;
   serialize(viewerId?: string | null): MatchModePresentationState;
 }
 
@@ -256,10 +259,10 @@ function pointSegmentDistanceSq(point: Vec3Like, a: Vec3Like, b: Vec3Like): numb
 }
 
 /** Create one fixed-step objective controller without changing standard combat. */
-export function createMatchModeController({
+export function createMatchModeController<Entity extends MatchModeEntity>({
   mode = 'standard', entities, seed = 6000, revive, setActive = () => {},
   terrainHeight = () => 0, emit = () => {},
-}: MatchModeControllerOptions): MatchModeController {
+}: MatchModeControllerOptions<Entity>): MatchModeController<Entity> {
   if (!Array.isArray(entities) || entities.length < 1 || typeof revive !== 'function') {
     throw new TypeError('match mode controller requires entities and a revive hook');
   }
@@ -267,10 +270,10 @@ export function createMatchModeController({
   const definition = GAME_MODE_DEFINITIONS[id];
   const rng = seededRandom(seed ^ 0x4d4f4445);
   const spawns = new Map<string, MatchModeSpawn>();
-  const entityById = new Map<string, MatchModeEntity>();
+  const entityById = new Map<string, Entity>();
   const destroyed = new Map<string, boolean>();
   const respawnAt = new Map<string, number>();
-  const teams: Record<ObjectiveTeam, MatchModeEntity[]> = { alpha: [], bravo: [] };
+  const teams: Record<ObjectiveTeam, Entity[]> = { alpha: [], bravo: [] };
   const centers: Record<ObjectiveTeam, MatchModeSpawn> = {
     alpha: { x: 0, z: -180, yaw: 0 }, bravo: { x: 0, z: 180, yaw: Math.PI },
   };
@@ -386,7 +389,7 @@ export function createMatchModeController({
     flag.returnAtS = null;
   };
 
-  const reviveAtSpawn = (entity: MatchModeEntity, healthScale = 1): void => {
+  const reviveAtSpawn = (entity: Entity, healthScale = 1): void => {
     const spawn = spawns.get(entity.id);
     if (!spawn) return;
     revive(entity, spawn, healthScale);
@@ -400,7 +403,7 @@ export function createMatchModeController({
     emit('mode_respawn', { id: entity.id, team: teamOf(entity) });
   };
 
-  const deactivate = (entity: MatchModeEntity): void => {
+  const deactivate = (entity: Entity): void => {
     entity.modeActive = false;
     entity.combat.destroyed = true;
     entity.state.speed = 0;
@@ -776,7 +779,7 @@ export function createMatchModeController({
       if (id === 'turbo_ball' && ball) return { x: ball.x, z: ball.z };
       if (id === 'endless_horde') {
         const targets = team === 'bravo' ? teams.alpha : teams.bravo;
-        let nearest: MatchModeEntity | null = null;
+        let nearest: Entity | null = null;
         let nearestDistance = Infinity;
         for (const target of targets) {
           if (target.modeActive === false || target.combat.destroyed) continue;

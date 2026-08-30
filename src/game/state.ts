@@ -27,7 +27,6 @@ import type {
 import type {
   GameModeId,
   MatchModeController,
-  MatchModeEntity,
   MatchModePresentationState,
   MatchModeSpawn,
 } from '../sim/matchModes.ts';
@@ -233,7 +232,7 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   resultReason: string | null;
   gameMode: GameModeId;
   matchModeState: MatchModePresentationState | null;
-  matchModeController: MatchModeController | null;
+  matchModeController: MatchModeController<SoloEntity> | null;
   modeEvents: ModeEvent[];
   player: SoloEntity | null;
   spotting: SpottingSystem | null;
@@ -390,22 +389,10 @@ interface ShellFiredEvent {
   recoilScale: number;
 }
 
-function asModeEntity(entity: SoloEntity): MatchModeEntity {
-  return entity;
-}
-
-function asSoloEntity(entity: MatchModeEntity): SoloEntity {
-  return entity as unknown as SoloEntity;
-}
-
 function isActiveSoloEntity(
   entity: SoloPooledEntity | null | undefined,
 ): entity is SoloEntity {
   return !!(entity?.state && entity.combat && entity.specialAction);
-}
-
-function equipmentCombat(combat: SoloCombatState) {
-  return combat as unknown as Parameters<typeof applyEquipmentToCombat>[0];
 }
 
 interface SoloDebugFlags {
@@ -631,13 +618,13 @@ export function setupBattle(
         minZ: number,
         maxX: number,
         maxZ: number,
-        out: Array<{ min: readonly number[]; max: readonly number[] }>,
+        out: SoloObstacle[],
       ) => world.queryObstacles!(
         minX,
         minZ,
         maxX,
         maxZ,
-        out as unknown as SoloObstacle[],
+        out,
       )
     : null;
   const botNavigation = createBotNavigationGrid({
@@ -856,7 +843,7 @@ export function setupBattle(
     ent.equip = isPlayer
       ? (loadEquipment(ent.specId) || [])
       : defaultLoadoutFor(ent.spec);
-    applyEquipmentToCombat(equipmentCombat(ent.combat), ent.equip, ent.spec);
+    applyEquipmentToCombat(ent.combat, ent.equip, ent.spec);
     ent.input.throttle = 0;
     ent.input.steer = 0;
     ent.input.brake = false;
@@ -1023,17 +1010,15 @@ export function setupBattle(
 
   game.matchModeController = createMatchModeController({
     mode: game.gameMode,
-    entities: game.tanks.map(asModeEntity),
+    entities: game.tanks,
     seed: COMBAT_SEED + game.battleCount,
     terrainHeight: (x, z) => world.heightField.getHeightAt(x, z),
     emit: (type, payload) => game.modeEvents.push({ type, payload }),
     setActive(modeEntity, active) {
-      const ent = asSoloEntity(modeEntity);
-      ent.modeActive = active;
-      ent.visual?.setVisible(active);
+      modeEntity.modeActive = active;
+      modeEntity.visual?.setVisible(active);
     },
-    revive(modeEntity: MatchModeEntity, spawn: MatchModeSpawn, healthScale: number) {
-      const ent = asSoloEntity(modeEntity);
+    revive(ent: SoloEntity, spawn: MatchModeSpawn, healthScale: number) {
       _spawnPos.set(spawn.x, world.heightField.getHeightAt(spawn.x, spawn.z), spawn.z);
       ent.state = createTankState(ent.spec, _spawnPos, spawn.yaw);
       ent.combat = createCombatState(ent.spec);
@@ -1042,7 +1027,7 @@ export function setupBattle(
         ent.combat.hp = ent.combat.maxHp;
       }
       applyEquipmentToCombat(
-        equipmentCombat(ent.combat),
+        ent.combat,
         ent.equip || defaultLoadoutFor(ent.spec),
         ent.spec,
       );
@@ -1573,7 +1558,7 @@ function tryFire(
     if (newBase > oldBase) { startReload(c, ent.spec); return; }
   }
   const shellSpec = ent.spec.gun.shells[c.shellSlot];
-  if (!game.matchModeController?.consumeShot(asModeEntity(ent))) {
+  if (!game.matchModeController?.consumeShot(ent)) {
     bus.emit('mode:ammo_empty', { id: ent.id });
     return;
   }
@@ -1855,7 +1840,7 @@ export function simStep(
     game._nextModeRouteS = game.timeS + (game.gameMode === 'turbo_ball' ? 1.25 : 4);
     for (const ent of game.tanks) {
       if (!ent.aiCtl || ent.modeActive === false || ent.combat?.destroyed) continue;
-      const target = game.matchModeController?.botTarget(asModeEntity(ent));
+      const target = game.matchModeController?.botTarget(ent);
       if (!target) continue;
       const moved = Math.hypot(
         target.x - (ent._modeTargetX ?? Infinity),
@@ -1909,13 +1894,7 @@ export function simStep(
   // airborne roof landings, stacking and off-center rollover impulse.
   resolveTankBodyContacts(game.tanks, dt,
     (upper, lower, closing, nx, nz) =>
-      collider.queueRam(
-        upper as unknown as SoloEntity,
-        lower as unknown as SoloEntity,
-        closing,
-        nx,
-        nz,
-      ));
+      collider.queueRam(upper, lower, closing, nx, nz));
 
   // b2. crushable props (gameplay_feel r6): resolve the hull-overrun crushes
   // the collider queued this tick — mark the record dead for all collision/AI
