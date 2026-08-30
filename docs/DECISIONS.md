@@ -93,6 +93,9 @@ paints Garage state behind opaque coverage before fading the loader.
 Engineering drive controls sit behind an inert typed facade. Ordinary players
 transfer no drive-test implementation; development, automation, and explicit
 debug intent join one retryable import while earlier callbacks remain stable.
+The intentionally exhaustive full-fleet QA entry sequence is itself a
+demand-loaded owner; `main.ts` does not make ordinary players parse its
+parallel acquisition policy.
 
 ## World and Garage lifecycle
 
@@ -167,6 +170,13 @@ player ID reclaims its seat through a new page-session and RTC generation;
 rooms retain their lobby through results and rematches. Reload during a live
 round restores the same protocol epoch when authority already welcomed the new
 transport.
+
+Round cleanup and room teardown are separate operations. Rematch cleanup may
+dispose presentation and clear snapshot/input state while retaining signaling
+and match ownership. A full close must abort an in-flight entry, close its
+transport, and only then clear the room owner. The previous verdict and clocks
+are reset synchronously before either a first round or rematch can publish a
+new presentation frame.
 
 A cold guest acquires its ICE/TURN configuration before its signaling join
 announces membership to the host. WebSocket connection and ICE discovery may

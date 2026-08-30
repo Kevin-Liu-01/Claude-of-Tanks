@@ -28,6 +28,9 @@ const networkPresentationAccess = fs.readFileSync(
 const networkPresentation = fs.readFileSync(
   path.join(here, '..', 'net', 'networkBattlePresentationRuntime.ts'), 'utf8',
 );
+const debugBattleEntry = fs.readFileSync(
+  path.join(here, '..', 'dev', 'debugBattleEntryRuntime.ts'), 'utf8',
+);
 
 const neighborWarm = pedestalPreloader.slice(
   pedestalPreloader.indexOf('const queueNeighbors = () =>'),
@@ -120,7 +123,10 @@ assert.match(networkLaunch, /await loadPrivateMatch\(\)/,
 assert.match(networkLaunch, /await loadDedicatedMatch\(\)/,
   'ranked entry should join the mode-intent preload');
 assert.match(main,
-  /async function debugStartBattle[\s\S]{0,760}preloadSoloBattleRuntime\(\)[\s\S]{0,100}ensureBattleHud\(\)[\s\S]{0,100}ensureTouchControls\(\)[\s\S]{0,100}armorAimOverlay\.preload\(\)/,
+  /async function debugStartBattle[\s\S]{0,240}import\('\.\/dev\/debugBattleEntryRuntime\.ts'\)/,
+  'cold QA entry policy must stay demand-loaded outside the composition root');
+assert.match(debugBattleEntry,
+  /await Promise\.all\(\[[\s\S]{0,420}ports\.preloadSoloAuthority\(\)[\s\S]{0,120}ports\.ensureBattleHud\(\)[\s\S]{0,120}ports\.ensureTouchControls\(\)[\s\S]{0,120}ports\.preloadArmorAim\(\)/,
   'cold QA entry must acquire every battle-only presentation owner before setup');
 
 assert.match(garage, /\[data-nav="studio"\], \[data-mobile-nav="studio"\]/,

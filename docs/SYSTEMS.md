@@ -137,6 +137,9 @@ strict TypeScript owners:
 - `src/net/networkBattleBarrier.ts` owns initial-snapshot and peer-ready
   predicates plus the identity-bound READY retry lease;
 - `src/net/networkRoomCoordinator.ts` owns the persistent room UI lifecycle;
+- `src/net/networkRoundLifecycle.ts` owns the distinction between rematch-safe
+  presentation cleanup and full room teardown, plus the synchronous result and
+  clock reset required before a new network frame can render;
 - `src/net/networkBattleLaunchRuntime.ts` owns private/LAN, retained-room
   rematch, and ranked launch policy plus cold-entry failure cleanup;
 - `src/net/networkBattlePresentationRuntime.ts` owns the shared cold-client
@@ -152,6 +155,9 @@ strict TypeScript owners:
 - `src/net/connectionRecovery.ts` owns the single reconnect presentation edge;
 - `src/dev/debugTelemetry.ts` owns read-only diagnostics;
 - `src/dev/driveTestController.ts` owns deterministic rendered-battle QA input.
+- `src/dev/debugBattleEntryRuntime.ts` owns the exhaustive full-fleet cold
+  acquisition used only by engineering probes; ordinary player entry keeps its
+  exact-roster loading path and never transfers this owner.
 - `src/dev/combatTelemetry.ts` owns debug-only attributable shell and bot
   pressure receipts; ordinary production installs no telemetry listeners.
 - `src/dev/shotContract.ts` exposes only the stable capture view names at boot;
@@ -398,7 +404,9 @@ roster preparation or initial authority fails; it becomes render-visible only
 after both gates pass.
 
 Every new battle resets result and presentation state. A previous verdict must
-not survive into a new network round.
+not survive into a new network round. Rematches call the narrower round cleanup
+and retain their room transport; a full close aborts any in-flight entry before
+closing the match and clearing room presentation.
 
 ### Battle exit
 

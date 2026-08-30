@@ -164,6 +164,7 @@ import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
 import { createPlaySurfaceRuntime } from './game/playSurfaceRuntime.ts';
 import { createNetworkBrowserSessionRuntime } from './net/networkBrowserSessionRuntime.ts';
+import { createNetworkRoundLifecycle } from './net/networkRoundLifecycle.ts';
 import { createNetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
 import { createNetworkLobbyPreloader } from './net/networkLobbyPreloader.ts';
 import { createNetworkBattleLaunchRuntime } from './net/networkBattleLaunchRuntime.ts';
@@ -897,7 +898,9 @@ const playSurface = createPlaySurfaceRuntime({
       getCamoName: (camo: string) => camoPatternLabels[camo] || 'Factory',
       getVehicleName: (specId: string) => getSpec(specId).name,
       onNetworkStart: (request) => networkBattleLauncher.beginPrivate(request),
-      onNetworkClose: (reason: string) => closeNetworkMatch(reason || 'room_closed'),
+      onNetworkClose: (reason: string) => (
+        networkRoundLifecycle.close(reason || 'room_closed')
+      ),
       onRankedStart: (request) => networkBattleLauncher.beginRanked(request),
       onLobbyChange: (context) => networkRoomCoordinator?.handleLobbyChange(context),
   }),
@@ -1686,6 +1689,13 @@ const networkSession = createNetworkBrowserSessionRuntime({
   shouldPresentDisconnect: battlePhase.shouldPresentDisconnect,
   nextFrame,
 });
+let networkBattleLauncher: ReturnType<typeof createNetworkBattleLaunchRuntime>;
+const networkRoundLifecycle = createNetworkRoundLifecycle({
+  game,
+  session: networkSession,
+  getEntryOwner: () => networkBattleLauncher,
+  getRoomOwner: () => networkRoomCoordinator,
+});
 
 // Persistent subject-owned FX resolve against the presentation entity the
 // player actually sees. Network entities take priority during online battles;
@@ -1809,7 +1819,7 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
       },
     },
     presentation: {
-      resetRoundState: resetNetworkBattleState,
+      resetRoundState: networkRoundLifecycle.resetBattleState,
       setGarageLighting: (active: boolean) => {
         setGarageSpots(active);
         setGarageSunTrim(active);
@@ -1820,7 +1830,7 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
   }),
 });
 
-const networkBattleLauncher = createNetworkBattleLaunchRuntime({
+networkBattleLauncher = createNetworkBattleLaunchRuntime({
   lifecycle: battleEntryLifecycle,
   battleLoad,
   audio,
@@ -1838,13 +1848,13 @@ const networkBattleLauncher = createNetworkBattleLaunchRuntime({
   },
   rosterRows: rosterPresentation.lobbyRows,
   emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
-  resetBattleState: resetNetworkBattleState,
+  resetBattleState: networkRoundLifecycle.resetBattleState,
   presentBattle: networkBattlePresentation.present,
   loadPrivateMatch: preloadPrivateMatchHandoffModule,
   loadDedicatedMatch: preloadDedicatedClientModule,
-  disposePresentation: disposeNetworkPresentation,
-  clearNetworkRound: () => networkSession.clearRound(),
-  closeMatch: closeNetworkMatch,
+  disposePresentation: networkRoundLifecycle.disposePresentation,
+  clearNetworkRound: networkRoundLifecycle.clearRound,
+  closeMatch: networkRoundLifecycle.close,
   enterGarage: () => garageReturn.enter(),
   setNetworkStatus: (status) => networkSession.status?.set(status),
   recordEntryFailure: (failure) => {
@@ -1883,20 +1893,10 @@ networkRoomCoordinator = createNetworkRoomCoordinator({
   equipmentFor: (specId: string) => loadSelectedEquipment(specId, getSpec(specId)),
   camoFor: getMultiplayerCamoSelection,
   onRematch: (state) => networkBattleLauncher.beginRematch(state),
-  onClose: (reason) => closeNetworkMatch(reason),
+  onClose: networkRoundLifecycle.close,
 });
 
 bus.on('phase:change', () => networkRoomCoordinator?.syncChatVisibility());
-
-function disposeNetworkPresentation() {
-  networkSession.disposePresentation();
-}
-
-function closeNetworkMatch(reason = 'network_match_closed') {
-  networkBattleLauncher.cancel(reason);
-  networkSession.close(reason);
-  networkRoomCoordinator?.clear();
-}
 
 function beginBattleEntry(
   specId: string,
@@ -1904,16 +1904,6 @@ function beginBattleEntry(
   options: SoloBattleLoadingStartOptions | undefined = undefined,
 ) {
   return soloBattleEntry.begin(specId, mapId, options);
-}
-
-function resetNetworkBattleState() {
-  // The bridge overlays a reusable global game object. Clear the old verdict
-  // synchronously at handoff so a rematch cannot paint or process one frame
-  // of the previous victory/defeat before the first cold import resolves.
-  game.result = null;
-  game.resultReason = null;
-  game.timeS = 0;
-  game.preBattleS = Infinity;
 }
 
 const networkBattleActivation = createNetworkBattleActivationRuntime({
@@ -1969,22 +1959,26 @@ async function debugStartBattle(
   mapId: string | null = null,
   opts: Record<string, unknown> = {},
 ) {
-  const resolved = resolveMapId(mapId || worldRuntime.pendingMapId);
-  await Promise.all([
-    ensureFullFleet(),
-    ensureWorld(resolved, null, { precompile: false }),
-    preloadSoloBattleRuntime(),
-    preloadBattleClientRuntime(),
-    ensureBattleHud(),
-    ensureTouchControls(),
-    armorAimOverlay.preload(),
-    ensureFxRuntime(),
-    ensureKillcamRuntime(),
-    battleWarm.preload(),
-    soloBattleStart.preload(),
-  ]);
-  prepareBattleWorldServices(currentWorld());
-  return soloBattleStart.start(specId, resolved, opts);
+  const { startDebugBattle } = await import('./dev/debugBattleEntryRuntime.ts');
+  return startDebugBattle({
+    getPendingMapId: () => worldRuntime.pendingMapId,
+    resolveMapId,
+    ensureFullFleet,
+    ensureWorld: (nextMapId) => ensureWorld(nextMapId, null, { precompile: false }),
+    preloadSoloAuthority: preloadSoloBattleRuntime,
+    preloadBattleClient: preloadBattleClientRuntime,
+    ensureBattleHud,
+    ensureTouchControls,
+    preloadArmorAim: () => armorAimOverlay.preload(),
+    ensureFx: ensureFxRuntime,
+    ensureKillcam: ensureKillcamRuntime,
+    preloadBattleWarm: () => battleWarm.preload(),
+    preloadBattleStart: () => soloBattleStart.preload(),
+    prepareWorldServices: () => prepareBattleWorldServices(currentWorld()),
+    startBattle: (nextSpecId, nextMapId, options) => (
+      soloBattleStart.start(nextSpecId, nextMapId, options)
+    ),
+  }, specId, mapId, opts);
 }
 
 // Returning from battle or Studio is one typed transaction. It owns the
@@ -2025,8 +2019,8 @@ const garageReturn = createGarageReturnRuntime({
   },
   network: {
     shouldPreserveRoom: () => networkRoomCoordinator?.shouldPreserveAfterResult() ?? false,
-    disposePresentation: disposeNetworkPresentation,
-    closeMatch: closeNetworkMatch,
+    disposePresentation: networkRoundLifecycle.disposePresentation,
+    closeMatch: networkRoundLifecycle.close,
   },
   warm: {
     invalidate: () => { battleWarmGeneration += 1; },

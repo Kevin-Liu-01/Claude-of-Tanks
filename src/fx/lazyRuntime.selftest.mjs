@@ -1,6 +1,9 @@
 import { readFile } from 'node:fs/promises';
 
 const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+const debugBattleEntry = await readFile(
+  new URL('../dev/debugBattleEntryRuntime.ts', import.meta.url), 'utf8',
+);
 const combatWarmComposition = await readFile(
   new URL('../app/combatWarmComposition.ts', import.meta.url), 'utf8',
 );
@@ -79,10 +82,12 @@ if (!/attachLateFxState\(softState(?:\s*:\s*[^)]+)?\)[\s\S]{0,140}lateFx\.setSof
 }
 
 const requiredGates = [
-  ['QA battle', /async function debugStartBattle[\s\S]{0,420}ensureFxRuntime\(\)/],
+  ['QA battle composition', /async function debugStartBattle[\s\S]{0,760}ensureFx:\s*ensureFxRuntime/],
+  ['QA battle owner', /await Promise\.all\(\[[\s\S]{0,520}ports\.ensureFx\(\)/],
 ];
 for (const [name, pattern] of requiredGates) {
-  if (!pattern.test(main)) throw new Error(`${name} can enter without the live effects runtime`);
+  const source = name === 'QA battle owner' ? debugBattleEntry : main;
+  if (!pattern.test(source)) throw new Error(`${name} can enter without the live effects runtime`);
 }
 if (!/const loadRuntime[^=]*=[\s\S]{0,520}Promise\.all\(\[[\s\S]{0,120}preloadModule\(\),[\s\S]{0,80}ensureFxRuntime\(\)/.test(studioAccess)) {
   throw new Error('Studio can enter without its module and live effects runtime');
