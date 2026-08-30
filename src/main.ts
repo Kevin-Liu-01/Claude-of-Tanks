@@ -2170,19 +2170,19 @@ const refreshSpotFrame = battleHudFrame.refreshSpotting;
 // A typed, allocation-free owner samples every device and publishes the one
 // mutable camera-input record consumed by the existing rig.
 const camInput = playerFrameInput.camera;
-const audioListener = createListenerPoseRuntime(legacyPort({ camera, game, rig, killcam, audio }));
-const worldFramePresentation = createWorldFramePresentationRuntime(legacyPort({
+const audioListener = createListenerPoseRuntime({ camera, game, rig, killcam, audio });
+const worldFramePresentation = createWorldFramePresentationRuntime({
   camera,
   rig,
   getWorld: currentWorld,
   isWorldDormant: () => worldRuntime.dormant,
   getCameraFocus: () => game.player ||
     (networkSession.spectator ? rig.spectateTargetEnt : null),
-}));
+});
 // Pause transitions, input sampling, network cadence, pre-battle hold,
 // fixed-step debt, result progression, and presentation interpolation are one
 // typed state machine. The render loop consumes only its stable receipt.
-const battleFrame = createBattleFrameRuntime(legacyPort({
+const battleFrame = createBattleFrameRuntime({
   game,
   settings,
   killcam,
@@ -2208,7 +2208,7 @@ const battleFrame = createBattleFrameRuntime(legacyPort({
   ),
   emitPause: (paused: boolean) => bus.emit('ui:pause', { on: paused }),
   simulationDt: SIM_DT,
-}));
+});
 const pauseInfo = battleFrame.pauseInfo;
 // controls_gunnery r5: true while the current __SHOTS view staged a live HUD
 // frame (player_view / sniper_view) — those views re-run hud.update each

@@ -16,8 +16,8 @@ export interface AudioListenerPose {
 
 interface AudioTank {
   id: string;
-  state?: { pos?: Vector3 };
-  spec?: { dims?: { heightM?: number } };
+  state?: { pos?: Vector3 } | null;
+  spec?: { dims?: { heightM?: number } } | null;
 }
 
 interface AudioGame {

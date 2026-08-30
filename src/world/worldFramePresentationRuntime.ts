@@ -1,9 +1,9 @@
 import { Vector3, type Object3D, type PerspectiveCamera } from 'three';
 
 interface WorldFrameEntity {
-  state?: object;
-  spec?: { dims?: { heightM?: number } };
-  visual?: { root?: Object3D & { visible: boolean } };
+  state?: object | null;
+  spec?: { dims?: { heightM?: number } } | null;
+  visual?: { root?: Object3D & { visible: boolean } } | null;
 }
 
 interface WorldFrameRig {
