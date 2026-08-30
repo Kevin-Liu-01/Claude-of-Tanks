@@ -44,6 +44,16 @@ solo warm: it transfers the selected network handoff instead. Once a room is
 joined, its exact roster families transfer concurrently and a fixed host map
 may build behind the garage-lull gate; Random remains unresolved until start.
 
+The inverse boundary is equally strict: Bots intent does not transfer room
+coordination, network battle launch/activation, bridge, status, or chat code.
+Those owners share one coalesced, retryable access object and load only after a
+Private, LAN, or Ranked signal. In the 2026-08-30 production bundle this moved
+six orchestration owners out of the initial graph, reducing its exact gzip sum
+from 597,724 to 591,306 bytes and the main entry from about 185.4 to 181.1 kB
+gzip. A clean browser trace made zero matching requests through Garage boot and
+Bots hover, then fetched the complete orchestration, bridge, and chat graph on
+Private intent.
+
 The selected battlefield module may preload after the garage settles, but the
 world itself starts only from explicit solo Battle intent or a joined room's
 fixed host-map intent. Combat FX and killcam code are battle/Studio chunks and

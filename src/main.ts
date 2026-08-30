@@ -28,6 +28,8 @@ import type {
   WorldActivationOptions,
 } from './world/worldActivationRuntime.ts';
 import type { NetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
+import type { NetworkRoundLifecycle } from './net/networkRoundLifecycle.ts';
+import type { NetworkBattleLaunchRuntime } from './net/networkBattleLaunchRuntime.ts';
 import type { PlayerBattleActions } from './game/playerBattleActions.ts';
 import type { BattleVisualStreamer } from './game/battleVisualStreamer.ts';
 import type {
@@ -169,13 +171,8 @@ import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
 import { createPlaySurfaceRuntime } from './game/playSurfaceRuntime.ts';
 import { createNetworkBrowserSessionRuntime } from './net/networkBrowserSessionRuntime.ts';
-import { createNetworkRoundLifecycle } from './net/networkRoundLifecycle.ts';
-import { createNetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
-import { createNetworkLobbyPreloader } from './net/networkLobbyPreloader.ts';
-import { createNetworkBattleLaunchRuntime } from './net/networkBattleLaunchRuntime.ts';
+import { createNetworkCompositionAccess } from './net/networkCompositionAccess.ts';
 import type { PrivateBattleLaunchRequest } from './net/networkBattleLaunchRuntime.ts';
-import { createNetworkBattleActivationRuntime } from './net/networkBattleActivationRuntime.ts';
-import { createNetworkBattlePresentationAccess } from './net/networkBattlePresentationAccess.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
@@ -881,7 +878,17 @@ const garageMaps = [
     hero: MAP_HEROES[id] || '',
   })),
 ];
-let networkRoomCoordinator: NetworkRoomCoordinator | null = null;
+interface NetworkCompositionRuntime {
+  readonly room: NetworkRoomCoordinator;
+  readonly round: NetworkRoundLifecycle;
+  readonly launcher: NetworkBattleLaunchRuntime;
+  readonly presentation: { preload(): Promise<unknown> };
+}
+
+const networkComposition = createNetworkCompositionAccess(loadNetworkComposition);
+const currentNetworkRoom = (): NetworkRoomCoordinator | null => (
+  networkComposition.current?.room || null
+);
 const {
   loadPlayMenuModule,
   preloadNetworkBattleModules,
@@ -904,17 +911,31 @@ const playSurface = createPlaySurfaceRuntime({
       isCamoAllowed: (camo: string) => isBuiltInCamoId(camo),
       getCamoName: (camo: string) => camoPatternLabels[camo] || 'Factory',
       getVehicleName: (specId: string) => getSpec(specId).name,
-      onNetworkStart: (request) => networkBattleLauncher.beginPrivate(request),
-      onNetworkClose: (reason: string) => (
-        networkRoundLifecycle.close(reason || 'room_closed')
+      onNetworkStart: async (request) => (
+        (await ensureNetworkComposition()).launcher.beginPrivate(request)
       ),
-      onRankedStart: (request) => networkBattleLauncher.beginRanked(request),
-      onLobbyChange: (context) => networkRoomCoordinator?.handleLobbyChange(context),
+      onNetworkClose: (reason: string) => {
+        const current = networkComposition.current;
+        if (current) current.round.close(reason || 'room_closed');
+        else networkSession.close(reason || 'room_closed');
+      },
+      onRankedStart: async (request) => (
+        (await ensureNetworkComposition()).launcher.beginRanked(request)
+      ),
+      onLobbyChange: (context) => {
+        const current = currentNetworkRoom();
+        if (current) current.handleLobbyChange(context);
+        else if (context) {
+          void ensureNetworkComposition().then((runtime) => (
+            runtime.room.handleLobbyChange(context)
+          ));
+        }
+      },
   }),
   getSelectedSpecId: () => garage.getSelected(),
   getSelectedMapId: () => garage.getSelectedMap(),
   startSolo: (request) => beginSoloBattle(request),
-  showActiveRoom: () => networkRoomCoordinator?.showActiveRoom() || false,
+  showActiveRoom: () => currentNetworkRoom()?.showActiveRoom() || false,
   preloadCommon: [
     ensureBattleHud,
     preloadFxModule,
@@ -922,10 +943,12 @@ const playSurface = createPlaySurfaceRuntime({
     // lazy port itself behind a closure so a pristine browser can finish the
     // composition root without touching its temporal-dead-zone binding.
     () => preloadKillcamModule(),
-    preloadNetworkBattleModules,
-    preloadNetworkRoomChatModule,
   ],
-  preloadNetworkPresentation: () => networkBattlePresentation.preload(),
+  preloadNetworkPresentation: () => Promise.all([
+    ensureNetworkComposition().then((runtime) => runtime.presentation.preload()),
+    preloadNetworkBattleModules(),
+    preloadNetworkRoomChatModule(),
+  ]),
   preloadPrivateMatch: preloadPrivateMatchHandoffModule,
   preloadDedicatedMatch: preloadDedicatedClientModule,
 });
@@ -945,8 +968,8 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     selectedVehicle.select(specId);
     pedestal.set(specId);
     applyCamoPatternsChunked({ priorityIds: [specId], onlySpecIds: [specId] });
-    networkRoomCoordinator?.syncVehicle(specId);
-    networkRoomCoordinator?.syncPendingLobbySelection();
+    currentNetworkRoom()?.syncVehicle(specId);
+    currentNetworkRoom()?.syncPendingLobbySelection();
   },
   onBattle: (specId, mapId, options) => (
     beginBattleEntry(specId, mapId, options)
@@ -1003,8 +1026,8 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
       camoSweepP = applyCamoPatternsChunked({
         priorityIds: [specId], onlySpecIds: [specId],
       });
-      networkRoomCoordinator?.syncCamo(specId);
-      networkRoomCoordinator?.syncPendingLobbySelection();
+      currentNetworkRoom()?.syncCamo(specId);
+      currentNetworkRoom()?.syncPendingLobbySelection();
     },
     setCustom: (specId, value) => {
       setCustomCamoSelection(specId, value);
@@ -1012,8 +1035,8 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
         priorityIds: [specId], onlySpecIds: [specId],
       });
       // Deliberately sends Factory: custom paint is local single-player only.
-      networkRoomCoordinator?.syncCamo(specId);
-      networkRoomCoordinator?.syncPendingLobbySelection();
+      currentNetworkRoom()?.syncCamo(specId);
+      currentNetworkRoom()?.syncPendingLobbySelection();
     },
   },
   // CAMO WIRING (r8): AUTO(map) tanks preview the pattern they will actually
@@ -1031,7 +1054,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     applyCamoPatternsChunked({
       priorityIds: [selectedVehicle.id], onlySpecIds: [selectedVehicle.id],
     });
-    networkRoomCoordinator?.syncPendingLobbySelection();
+    currentNetworkRoom()?.syncPendingLobbySelection();
   },
 }));
 
@@ -1698,13 +1721,6 @@ const networkSession = createNetworkBrowserSessionRuntime({
   shouldPresentDisconnect: battlePhase.shouldPresentDisconnect,
   nextFrame,
 });
-let networkBattleLauncher: ReturnType<typeof createNetworkBattleLaunchRuntime>;
-const networkRoundLifecycle = createNetworkRoundLifecycle({
-  game,
-  session: networkSession,
-  getEntryOwner: () => networkBattleLauncher,
-  getRoomOwner: () => networkRoomCoordinator,
-});
 
 // Persistent subject-owned FX resolve against the presentation entity the
 // player actually sees. Network entities take priority during online battles;
@@ -1713,197 +1729,290 @@ function resolveFxSubject(id: string) {
   return networkSession.resolveEntity(id) || game.tankById.get(id) || null;
 }
 
-const networkBattlePresentation = createNetworkBattlePresentationAccess({
-  options: () => ({
-    load: {
+/**
+ * Acquire the room/lobby/entry policy only after explicit multiplayer intent.
+ * Solo hover and entry stay on the original local path without transferring or
+ * evaluating network orchestration. A failed cold import is retryable, which is
+ * essential for first-visit clients on unstable mobile connections.
+ */
+function ensureNetworkComposition(): Promise<NetworkCompositionRuntime> {
+  return networkComposition.preload();
+}
+
+function loadNetworkComposition(): Promise<NetworkCompositionRuntime> {
+  return Promise.all([
+    import('./net/networkRoundLifecycle.ts'),
+    import('./net/networkBattlePresentationAccess.ts'),
+    import('./net/networkBattleLaunchRuntime.ts'),
+    import('./net/networkLobbyPreloader.ts'),
+    import('./net/networkRoomCoordinator.ts'),
+    import('./net/networkBattleActivationRuntime.ts'),
+  ]).then(([
+    { createNetworkRoundLifecycle },
+    { createNetworkBattlePresentationAccess },
+    { createNetworkBattleLaunchRuntime },
+    { createNetworkLobbyPreloader },
+    { createNetworkRoomCoordinator },
+    { createNetworkBattleActivationRuntime },
+  ]) => {
+    let networkRoomCoordinator: NetworkRoomCoordinator | null = null;
+    let networkBattleLauncher: NetworkBattleLaunchRuntime | null = null;
+    let networkBattleActivation:
+      ReturnType<typeof createNetworkBattleActivationRuntime> | null = null;
+    const networkRoundLifecycle = createNetworkRoundLifecycle({
+      game,
+      session: networkSession,
+      getEntryOwner: () => networkBattleLauncher,
+      getRoomOwner: () => networkRoomCoordinator,
+    });
+
+    const networkBattlePresentation = createNetworkBattlePresentationAccess({
+      options: () => ({
+        load: {
+          battleLoad,
+          audio,
+          lighting,
+          ensureBattleVisuals: ensureBattleVisualStreamer,
+          nextFrame,
+          recordTrace: (trace: unknown) => {
+            if (typeof window !== 'undefined') window.__NETWORK_LOAD = trace;
+          },
+          setAdaptiveSuspended: (value: boolean) => post.setAdaptiveSuspended(value),
+        },
+        roster: {
+          getMap: (mapId: string) => {
+            return {
+              name: getMapName(mapId),
+              thumb: mapHeroes[mapId] || mapThumbs[mapId] || '',
+              biome: mapId,
+            };
+          },
+          rows: (players, team, viewerId) => (
+            rosterPresentation.lobbyRows({ players }, team, viewerId)
+          ),
+          vehicleName: (specId: string) => getSpec(specId)?.name || specId,
+          emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
+          setCamoBiome,
+        },
+        entry: {
+          acquire: (options) => battleEntryAcquisition.acquireNetwork(options),
+          loadModules: () => Promise.all([
+            preloadNetworkBattleModules(),
+            preloadBattleClientRuntime(),
+            ensureBattleHud(),
+            ensureTouchControls(),
+            armorAimOverlay.preload().catch((error) => {
+              console.warn('[loading] Optional armor overlay unavailable:', error);
+              return null;
+            }),
+            ensureFxRuntime(),
+            ensureKillcamRuntime(),
+            battleWarm.preload(),
+            audio.warmBattleEvents(),
+          ]).then(([modules]) => modules),
+          loadWorld: (mapId: string, onProgress: (fraction: number, label: string) => void) => (
+            ensureWorld(mapId, onProgress)
+          ),
+          publishMatch: (match) => networkSession.publishMatch(match),
+          getMatch: () => networkSession.match,
+        },
+        bridge: {
+          installInputRuntime: (factory) => { networkSession.ensureInputRuntime(factory); },
+          createStatus: (factory) => factory(),
+          publishStatus: (status) => networkSession.publishStatus(status),
+          attachRecovery: () => networkSession.attachRecovery(),
+          create: (factory, request, spectator) => factory({
+            engineCtx,
+            game,
+            bus,
+            viewerId: request.viewerId,
+            spectator,
+            worldCollision: currentWorld(),
+            clearVehicleDecals: (visual) => requireFxRuntime().clearVehicleDecals(visual),
+          }),
+          publish: (bridge) => networkSession.publishBridge(bridge),
+          groundSampler,
+          waitForInitialSnapshot: (request) => networkSession.waitForInitialSnapshot(request),
+          waitForPeerReadiness: () => networkSession.waitForPeerReadiness(),
+        },
+        warm: {
+          getFx: requireFxRuntime,
+          terrain: () => {
+            const world = currentWorld();
+            if (!world) throw new Error('network terrain warm requires an active world');
+            return battleWarm.warmBattleTerrainTiles({
+              game, world, yieldForBudget: createFrameBudgetYielder(16),
+            });
+          },
+          wrecks: (bridge) => battleWarm.warmNetworkWrecks({
+            entities: bridge.entities.values(),
+            prebakeBurntSteps,
+            anisotropy: engineCtx.anisotropy ?? 4,
+            renderer,
+            scene,
+            camera,
+            compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
+            warmRender,
+          }),
+          openingEffects: (fx, bridge) => {
+            let decalVisual: { root: THREE.Object3D } | null = null;
+            for (const entity of bridge.entities.values()) {
+              const root = entity.visual?.root;
+              if (root instanceof THREE.Object3D) {
+                decalVisual = { root };
+                break;
+              }
+            }
+            return battleWarm.warmNetworkOpeningEffects({
+              fx,
+              post,
+              camera,
+              shells: game.shells,
+              decalVisual,
+              compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
+              warmRender,
+            });
+          },
+          shotCards: (specIds: readonly string[]) => hud?.warmShotCards(specIds),
+          compile: async () => {
+            forwardProgramWarm.compile(scene);
+            for (const _ of forwardProgramWarm.linkerBreathingSlices(24)) await nextFrame();
+          },
+        },
+        presentation: {
+          resetRoundState: networkRoundLifecycle.resetBattleState,
+          setGarageLighting: (active: boolean) => {
+            setGarageSpots(active);
+            setGarageSunTrim(active);
+          },
+          activate: (request) => {
+            if (!networkBattleActivation) {
+              throw new Error('Network battle activation is unavailable.');
+            }
+            return networkBattleActivation.activate(request);
+          },
+          runBlackWatchdog: () => runSceneBlackWatchdog(renderer, scene, camera),
+        },
+      }),
+    });
+
+    networkBattleLauncher = createNetworkBattleLaunchRuntime({
+      lifecycle: battleEntryLifecycle,
       battleLoad,
       audio,
-      lighting,
-      ensureBattleVisuals: ensureBattleVisualStreamer,
-      nextFrame,
-      recordTrace: (trace: unknown) => {
-        if (typeof window !== 'undefined') window.__NETWORK_LOAD = trace;
-      },
-      setAdaptiveSuspended: (value: boolean) => post.setAdaptiveSuspended(value),
-    },
-    roster: {
-      getMap: (mapId: string) => {
+      getMatch: () => networkSession.match,
+      getRoomCoordinator: () => networkRoomCoordinator,
+      getWorldCollision: currentWorld,
+      getMapPresentation: (mapId: string | null, fallback: string) => {
+        if (!mapId) return { name: fallback, thumb: '', biome: 'none' };
         return {
-          name: getMapName(mapId),
+          name: getMapName(mapId) || fallback,
           thumb: mapHeroes[mapId] || mapThumbs[mapId] || '',
           biome: mapId,
         };
       },
-      rows: (players, team, viewerId) => (
-        rosterPresentation.lobbyRows({ players }, team, viewerId)
-      ),
-      vehicleName: (specId: string) => getSpec(specId)?.name || specId,
+      rosterRows: rosterPresentation.lobbyRows,
       emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
-      setCamoBiome,
-    },
-    entry: {
-      acquire: (options) => battleEntryAcquisition.acquireNetwork(options),
-      loadModules: () => Promise.all([
-        preloadNetworkBattleModules(),
-        preloadBattleClientRuntime(),
-        ensureBattleHud(),
-        ensureTouchControls(),
-        armorAimOverlay.preload().catch((error) => {
-          console.warn('[loading] Optional armor overlay unavailable:', error);
-          return null;
-        }),
-        ensureFxRuntime(),
-        ensureKillcamRuntime(),
-        battleWarm.preload(),
-        audio.warmBattleEvents(),
-      ]).then(([modules]) => modules),
-      loadWorld: (mapId: string, onProgress: (fraction: number, label: string) => void) => (
-        ensureWorld(mapId, onProgress)
-      ),
-      publishMatch: (match) => networkSession.publishMatch(match),
+      resetBattleState: networkRoundLifecycle.resetBattleState,
+      presentBattle: networkBattlePresentation.present,
+      loadPrivateMatch: preloadPrivateMatchHandoffModule,
+      loadDedicatedMatch: preloadDedicatedClientModule,
+      disposePresentation: networkRoundLifecycle.disposePresentation,
+      clearNetworkRound: networkRoundLifecycle.clearRound,
+      closeMatch: networkRoundLifecycle.close,
+      enterGarage: () => garageReturn.enter(),
+      setNetworkStatus: (status) => networkSession.status?.set(status),
+      recordEntryFailure: (failure) => {
+        if (typeof window !== 'undefined') window.__NETWORK_ENTRY_FAILURE = failure;
+      },
+    });
+
+    // Joined-room intent is stronger than browsing the picker but weaker than a
+    // round start. The typed owner coalesces repeated room-state packets, retries
+    // failed optional transfers, and warms only newly introduced vehicle builders.
+    const networkLobbyPreloader = createNetworkLobbyPreloader({
+      getGamePhase: () => game.phase,
+      preloadPresentation: () => networkBattlePresentation.preload(),
+      preloadVisuals: () => battleVisualStreamerAccess.preload(),
+      preloadBattleModules: preloadNetworkBattleModules,
+      preloadChat: preloadNetworkRoomChatModule,
+      ensureTankBuilders,
+      loadWorldModule,
+      cancelBackgroundWorldBuildsExcept,
+      prefetchWorld,
+    });
+
+    networkRoomCoordinator = createNetworkRoomCoordinator({
       getMatch: () => networkSession.match,
-    },
-    bridge: {
-      installInputRuntime: (factory) => { networkSession.ensureInputRuntime(factory); },
-      createStatus: (factory) => factory(),
-      publishStatus: (status) => networkSession.publishStatus(status),
-      attachRecovery: () => networkSession.attachRecovery(),
-      create: (factory, request, spectator) => factory({
-        engineCtx,
-        game,
-        bus,
-        viewerId: request.viewerId,
-        spectator,
-        worldCollision: currentWorld(),
-        clearVehicleDecals: (visual) => requireFxRuntime().clearVehicleDecals(visual),
-      }),
-      publish: (bridge) => networkSession.publishBridge(bridge),
-      groundSampler,
-      waitForInitialSnapshot: (request) => networkSession.waitForInitialSnapshot(request),
-      waitForPeerReadiness: () => networkSession.waitForPeerReadiness(),
-    },
-    warm: {
-      getFx: requireFxRuntime,
-      terrain: () => {
-        const world = currentWorld();
-        if (!world) throw new Error('network terrain warm requires an active world');
-        return battleWarm.warmBattleTerrainTiles({
-          game, world, yieldForBudget: createFrameBudgetYielder(16),
-        });
+      getPlayMenu: playSurface.getMenuPromise,
+      loadRoomChat: preloadNetworkRoomChatModule,
+      getPhase: () => game.phase,
+      isSettingsOpen: () => settings.isOpen(),
+      hasResult: () => !!game.result,
+      isKillcamActive: () => killcam.isActive(),
+      isSpectator: () => networkSession.spectator,
+      input,
+      setGarageStatus: (status) => garage.setRoomStatus(status),
+      emitRoomState: (payload) => bus.emit('network:roomState', payload),
+      preloadLobbyIntent: networkLobbyPreloader.preload,
+      equipmentFor: (specId: string) => loadSelectedEquipment(specId, getSpec(specId)),
+      camoFor: getMultiplayerCamoSelection,
+      onRematch: (state) => {
+        if (!networkBattleLauncher) return false;
+        return networkBattleLauncher.beginRematch(state);
       },
-      wrecks: (bridge) => battleWarm.warmNetworkWrecks({
-        entities: bridge.entities.values(),
-        prebakeBurntSteps,
-        anisotropy: engineCtx.anisotropy ?? 4,
-        renderer,
-        scene,
-        camera,
-      compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
-        warmRender,
-      }),
-      openingEffects: (fx, bridge) => {
-        let decalVisual: { root: THREE.Object3D } | null = null;
-        for (const entity of bridge.entities.values()) {
-          const root = entity.visual?.root;
-          if (root instanceof THREE.Object3D) {
-            decalVisual = { root };
-            break;
-          }
-        }
-        return battleWarm.warmNetworkOpeningEffects({
-          fx,
-          post,
-          camera,
-          shells: game.shells,
-          decalVisual,
-          compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
-          warmRender,
-        });
-      },
-      shotCards: (specIds: readonly string[]) => hud?.warmShotCards(specIds),
-      compile: async () => {
-        forwardProgramWarm.compile(scene);
-        for (const _ of forwardProgramWarm.linkerBreathingSlices(24)) await nextFrame();
-      },
-    },
-    presentation: {
-      resetRoundState: networkRoundLifecycle.resetBattleState,
-      setGarageLighting: (active: boolean) => {
-        setGarageSpots(active);
-        setGarageSunTrim(active);
-      },
-      activate: (request) => networkBattleActivation.activate(request),
-      runBlackWatchdog: () => runSceneBlackWatchdog(renderer, scene, camera),
-    },
-  }),
-});
+      onClose: networkRoundLifecycle.close,
+    });
 
-networkBattleLauncher = createNetworkBattleLaunchRuntime({
-  lifecycle: battleEntryLifecycle,
-  battleLoad,
-  audio,
-  getMatch: () => networkSession.match,
-  getRoomCoordinator: () => networkRoomCoordinator,
-  getWorldCollision: currentWorld,
-  getMapPresentation: (mapId: string | null, fallback: string) => {
-    if (!mapId) return { name: fallback, thumb: '', biome: 'none' };
-    return {
-      name: getMapName(mapId) || fallback,
-      thumb: mapHeroes[mapId] || mapThumbs[mapId] || '',
-      biome: mapId,
+    if (!playerBattleActions) {
+      throw new Error('Network composition requires player battle actions.');
+    }
+    const activePlayerBattleActions = playerBattleActions;
+    networkBattleActivation = createNetworkBattleActivationRuntime({
+      game,
+      settings,
+      killcam,
+      // Engineering-only controller is created after ordinary boot composition;
+      // keep this port lazy so production startup never crosses its TDZ.
+      driveTest: { resetAim: () => driveTestController.resetAim() },
+      getHud: () => hud,
+      playerActions: activePlayerBattleActions,
+      getDamagePanel: () => damagePanel,
+      rig,
+      presentation: {
+        setShotMode: (value: boolean) => { shotMode = value; },
+        setCaptureHidden: (value: boolean) => perfHud.setCaptureHidden(value),
+        setNetworkSpectator: (value: boolean) => networkSession.setSpectator(value),
+        setSelectedSpecId: selectedVehicle.set,
+        rememberSpecId: selectedVehicle.remember,
+        setWorldDormant,
+        getWorld: currentWorld,
+        setCamoBiome,
+        hideGarage: () => garage.hide(),
+        hideEndOverlay: endOverlay.hide,
+        resetBattleResult: () => battleResultPresentation.reset(),
+        setGarageSpots,
+        setGarageSunTrim,
+        emitPhaseChange: (phase: string) => bus.emit('phase:change', { phase }),
+        emitConsumableReset: () => bus.emit('ui:consumableReset', {}),
+        stopShowroom: () => showroom.stop(),
+      },
+    });
+
+    if (!networkRoomCoordinator || !networkBattleLauncher || !networkBattleActivation) {
+      throw new Error('Network composition did not publish every lifecycle owner.');
+    }
+    const runtime: NetworkCompositionRuntime = {
+      room: networkRoomCoordinator,
+      round: networkRoundLifecycle,
+      launcher: networkBattleLauncher,
+      presentation: networkBattlePresentation,
     };
-  },
-  rosterRows: rosterPresentation.lobbyRows,
-  emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
-  resetBattleState: networkRoundLifecycle.resetBattleState,
-  presentBattle: networkBattlePresentation.present,
-  loadPrivateMatch: preloadPrivateMatchHandoffModule,
-  loadDedicatedMatch: preloadDedicatedClientModule,
-  disposePresentation: networkRoundLifecycle.disposePresentation,
-  clearNetworkRound: networkRoundLifecycle.clearRound,
-  closeMatch: networkRoundLifecycle.close,
-  enterGarage: () => garageReturn.enter(),
-  setNetworkStatus: (status) => networkSession.status?.set(status),
-  recordEntryFailure: (failure) => {
-    if (typeof window !== 'undefined') window.__NETWORK_ENTRY_FAILURE = failure;
-  },
-});
+    return runtime;
+  });
+}
 
-// Joined-room intent is stronger than browsing the picker but weaker than a
-// round start. The typed owner coalesces repeated room-state packets, retries
-// failed optional transfers, and warms only newly introduced vehicle builders.
-const networkLobbyPreloader = createNetworkLobbyPreloader({
-  getGamePhase: () => game.phase,
-  preloadPresentation: () => networkBattlePresentation.preload(),
-  preloadVisuals: () => battleVisualStreamerAccess.preload(),
-  preloadBattleModules: preloadNetworkBattleModules,
-  preloadChat: preloadNetworkRoomChatModule,
-  ensureTankBuilders,
-  loadWorldModule,
-  cancelBackgroundWorldBuildsExcept,
-  prefetchWorld,
-});
-
-networkRoomCoordinator = createNetworkRoomCoordinator({
-  getMatch: () => networkSession.match,
-  getPlayMenu: playSurface.getMenuPromise,
-  loadRoomChat: preloadNetworkRoomChatModule,
-  getPhase: () => game.phase,
-  isSettingsOpen: () => settings.isOpen(),
-  hasResult: () => !!game.result,
-  isKillcamActive: () => killcam.isActive(),
-  isSpectator: () => networkSession.spectator,
-  input,
-  setGarageStatus: (status) => garage.setRoomStatus(status),
-  emitRoomState: (payload) => bus.emit('network:roomState', payload),
-  preloadLobbyIntent: networkLobbyPreloader.preload,
-  equipmentFor: (specId: string) => loadSelectedEquipment(specId, getSpec(specId)),
-  camoFor: getMultiplayerCamoSelection,
-  onRematch: (state) => networkBattleLauncher.beginRematch(state),
-  onClose: networkRoundLifecycle.close,
-});
-
-bus.on('phase:change', () => networkRoomCoordinator?.syncChatVisibility());
+bus.on('phase:change', () => currentNetworkRoom()?.syncChatVisibility());
 
 function beginBattleEntry(
   specId: string,
@@ -1912,37 +2021,6 @@ function beginBattleEntry(
 ) {
   return soloBattleEntry.begin(specId, mapId, options);
 }
-
-const networkBattleActivation = createNetworkBattleActivationRuntime({
-  game,
-  settings,
-  killcam,
-  // Engineering-only controller is created after ordinary boot composition;
-  // keep this port lazy so production startup never crosses its TDZ.
-  driveTest: { resetAim: () => driveTestController.resetAim() },
-  getHud: () => hud,
-  playerActions: playerBattleActions,
-  getDamagePanel: () => damagePanel,
-  rig,
-  presentation: {
-    setShotMode: (value: boolean) => { shotMode = value; },
-    setCaptureHidden: (value: boolean) => perfHud.setCaptureHidden(value),
-    setNetworkSpectator: (value: boolean) => networkSession.setSpectator(value),
-    setSelectedSpecId: selectedVehicle.set,
-    rememberSpecId: selectedVehicle.remember,
-    setWorldDormant,
-    getWorld: currentWorld,
-    setCamoBiome,
-    hideGarage: () => garage.hide(),
-    hideEndOverlay: endOverlay.hide,
-    resetBattleResult: () => battleResultPresentation.reset(),
-    setGarageSpots,
-    setGarageSunTrim,
-    emitPhaseChange: (phase: string) => bus.emit('phase:change', { phase }),
-    emitConsumableReset: () => bus.emit('ui:consumableReset', {}),
-    stopShowroom: () => showroom.stop(),
-  },
-});
 
 /**
  * Keep bot play on the original in-page simulation path. Multiplayer's
@@ -2025,9 +2103,13 @@ const garageReturn = createGarageReturnRuntime({
     },
   },
   network: {
-    shouldPreserveRoom: () => networkRoomCoordinator?.shouldPreserveAfterResult() ?? false,
-    disposePresentation: networkRoundLifecycle.disposePresentation,
-    closeMatch: networkRoundLifecycle.close,
+    shouldPreserveRoom: () => currentNetworkRoom()?.shouldPreserveAfterResult() ?? false,
+    disposePresentation: () => networkComposition.current?.round.disposePresentation(),
+    closeMatch: (reason: string) => {
+      const current = networkComposition.current;
+      if (current) current.round.close(reason);
+      else networkSession.close(reason);
+    },
   },
   warm: {
     invalidate: () => { battleWarmGeneration += 1; },
@@ -2103,10 +2185,10 @@ bus.on('ui:roomOpen', async () => {
 bus.on('ui:roomReady', (payload) => {
   const ready = typeof payload === 'object' && payload !== null
     && Reflect.get(payload, 'ready') === true;
-  networkRoomCoordinator?.setReady(ready);
+  currentNetworkRoom()?.setReady(ready);
 });
 
-bus.on('ui:roomStart', () => networkRoomCoordinator?.startRound());
+bus.on('ui:roomStart', () => currentNetworkRoom()?.startRound());
 
 // ---------------------------------------------------------------------------
 // HUD frame assembly (§4 step 7)
@@ -2542,8 +2624,8 @@ if (diagnosticsRequested) {
       },
       beginBattleEntry,
       beginSoloBattle,
-      beginNetworkBattle: (request?: PrivateBattleLaunchRequest) => (
-        networkBattleLauncher.beginPrivate(request)
+      beginNetworkBattle: async (request?: PrivateBattleLaunchRequest) => (
+        (await ensureNetworkComposition()).launcher.beginPrivate(request)
       ),
       enterGarage,
       leaveBattleToGarage,

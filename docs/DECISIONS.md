@@ -82,6 +82,13 @@ loaded behind explicit battle or outdoor-Garage intent. The synchronous full
 registry remains available to headless and authoring consumers, but it must not
 re-enter the initial browser graph merely to label a picker.
 
+The Garage retains only the inert browser-session shell for multiplayer.
+Room coordination, lobby warming, battle launch, activation, and presentation
+orchestration load together behind explicit Private, LAN, or Ranked intent.
+The common Bots preload list must contain no bridge, room-chat, signaling, or
+network-presentation work. A failed first acquisition is retryable and must not
+poison later room attempts in the same page session.
+
 Desktop boot does not transfer touch-control or mobile-auto-aim chunks. One
 retryable mobile input access owner joins both dependencies only after a touch
 battle entry and retains the active lock and sound-toggle state outside the

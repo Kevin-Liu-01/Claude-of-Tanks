@@ -25,6 +25,9 @@ const networkLobbyPreloader = fs.readFileSync(
 const networkPresentationAccess = fs.readFileSync(
   path.join(here, '..', 'net', 'networkBattlePresentationAccess.ts'), 'utf8',
 );
+const networkCompositionAccess = fs.readFileSync(
+  path.join(here, '..', 'net', 'networkCompositionAccess.ts'), 'utf8',
+);
 const networkPresentation = fs.readFileSync(
   path.join(here, '..', 'net', 'networkBattlePresentationRuntime.ts'), 'utf8',
 );
@@ -93,6 +96,38 @@ const playSurfaceComposition = main.slice(
   main.indexOf('const playSurface = createPlaySurfaceRuntime({'),
   main.indexOf("bus.on('ui:battleStart'"),
 );
+const commonPlayPreload = playSurfaceComposition.slice(
+  playSurfaceComposition.indexOf('preloadCommon:'),
+  playSurfaceComposition.indexOf('preloadNetworkPresentation:'),
+);
+assert.doesNotMatch(commonPlayPreload, /preloadNetworkBattleModules|preloadNetworkRoomChatModule/,
+  'solo intent must never transfer multiplayer battle or room-chat modules');
+const networkPlayPreload = playSurfaceComposition.slice(
+  playSurfaceComposition.indexOf('preloadNetworkPresentation:'),
+  playSurfaceComposition.indexOf('preloadPrivateMatch:'),
+);
+assert.match(networkPlayPreload, /ensureNetworkComposition\(\)/,
+  'network intent must acquire its isolated orchestration graph');
+assert.match(networkPlayPreload, /preloadNetworkBattleModules\(\)/,
+  'network intent should still overlap the shared battle bridge transfer');
+assert.match(networkPlayPreload, /preloadNetworkRoomChatModule\(\)/,
+  'network intent should still overlap room-chat transfer');
+for (const runtime of [
+  'networkRoundLifecycle',
+  'networkBattlePresentationAccess',
+  'networkBattleLaunchRuntime',
+  'networkLobbyPreloader',
+  'networkRoomCoordinator',
+  'networkBattleActivationRuntime',
+]) {
+  assert.doesNotMatch(main, new RegExp(`import \\{[^}]*create[^}]*\\} from './net/${runtime}\\.ts'`),
+    `${runtime} must stay out of the pristine Garage graph`);
+  assert.match(main, new RegExp(`import\\('./net/${runtime}\\.ts'\\)`),
+    `${runtime} must remain available behind explicit network intent`);
+}
+assert.match(networkCompositionAccess,
+  /pending = request[\s\S]{0,180}pending === request[\s\S]{0,80}pending = null/,
+  'a failed first-visit network composition transfer must remain retryable');
 assert.doesNotMatch(playSurfaceComposition, /^\s*preloadKillcamModule,$/m,
   'cold composition must not read the later killcam binding from its temporal dead zone');
 assert.match(playSurfaceComposition, /\(\) => preloadKillcamModule\(\)/,
