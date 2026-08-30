@@ -52,8 +52,12 @@ try {
       '--enable-webgl',
     ],
   });
-  const hostPage = await browser.newPage();
-  const guestPage = await browser.newPage();
+  // Model two actual first-time machines: no shared cookies, storage,
+  // service workers, HTTP cache, credentials, or player identity.
+  const hostContext = await browser.createBrowserContext();
+  const guestContext = await browser.createBrowserContext();
+  const hostPage = await hostContext.newPage();
+  const guestPage = await guestContext.newPage();
   observe(hostPage, 'host');
   observe(guestPage, 'guest');
   await hostPage.goto(`${origin}/tools/multiplayer-browser-soak.html`, {
@@ -110,6 +114,7 @@ try {
   inviteUrl.searchParams.set('gfxreset', '1');
   inviteUrl.searchParams.set('room', room.roomCode);
   inviteUrl.searchParams.set('host', 'Entry Host');
+  await guestPage.bringToFront();
   await guestPage.goto(inviteUrl.href, {
     waitUntil: 'domcontentloaded', timeout: 180_000,
   });
@@ -118,11 +123,47 @@ try {
     { timeout: 240_000 },
   );
 
-  await guestPage.waitForFunction(() => {
-    const status = document.querySelector('.cot-play .status');
-    return document.querySelector('.cot-play .lobby.show .players')?.children.length === 2 ||
-      status?.classList.contains('err');
-  }, { timeout: 15_000 });
+  let lobbyEntryError = null;
+  try {
+    await guestPage.waitForFunction(() => {
+      const status = document.querySelector('.cot-play .status');
+      return document.querySelector('.cot-play .lobby.show .players')?.children.length === 2 ||
+        status?.classList.contains('err');
+    }, { timeout: 15_000 });
+  } catch (error) {
+    lobbyEntryError = error;
+  }
+  if (lobbyEntryError) {
+    const diagnostics = await Promise.all([
+      hostPage.evaluate(() => {
+        const state = globalThis.__COT_GUEST_ENTRY_HOST;
+        return {
+          lobby: state?.lobby || null,
+          startError: state?.startError || null,
+          signalingState: state?.signaling?.state || null,
+          peers: [...(state?.session?.peers?.entries?.() || [])].map(([id, peer]) => ({
+            id,
+            connectionState: peer.connectionState,
+            sessionId: peer.sessionId,
+          })),
+        };
+      }),
+      guestPage.evaluate(() => ({
+        url: location.href,
+        title: document.title,
+        gameReady: window.__GAME_READY === true,
+        phase: window.__DEBUG?.game?.phase || null,
+        menuVisible: document.querySelector('.cot-play')?.classList.contains('show') || false,
+        lobbyVisible: document.querySelector('.cot-play .lobby')?.classList.contains('show') || false,
+        playerCount: document.querySelector('.cot-play .lobby .players')?.children.length || 0,
+        status: document.querySelector('.cot-play .status')?.textContent || '',
+        statusError: document.querySelector('.cot-play .status')?.classList.contains('err') || false,
+      })),
+      errors,
+    ]);
+    console.error('initial lobby entry diagnostics', JSON.stringify(diagnostics, null, 2));
+    throw lobbyEntryError;
+  }
   const joinError = await guestPage.evaluate(() => {
     const status = document.querySelector('.cot-play .status');
     return status?.classList.contains('err') ? status.textContent : '';
