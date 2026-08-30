@@ -6,6 +6,10 @@ import type {
 import type { createBrowserInputRuntime } from './browserInputRuntime.ts';
 import type { SampledSnapshotFrame } from './snapshot.ts';
 import type { createNetworkStatus } from '../ui/networkStatus.ts';
+import type { BattleLoadRosterRow, BattleLoadScreen } from '../ui/battleLoad.ts';
+import type { OpeningEffectsWarmOptions } from '../game/battleWarmRuntime.ts';
+import type { NetworkBrowserMatch } from './networkBrowserSessionRuntime.ts';
+import type { NetworkBattleActivationRequest } from './networkBattleActivationRuntime.ts';
 
 type MaybePromise<T> = T | PromiseLike<T>;
 
@@ -39,17 +43,13 @@ export interface NetworkBattleLoadTrace {
   totalMs?: number;
 }
 
-interface NetworkMatchPort {
-  client?: unknown;
-  close?(reason?: string): unknown;
-}
+type NetworkMatchPort = NetworkBrowserMatch;
 
 type NetworkBridgePort = BrowserBattleBridge;
+type NetworkBattleFxPort = OpeningEffectsWarmOptions['fx'] &
+  NetworkBattleActivationRequest['fx'];
 
-interface NetworkStatusPort {
-  set?(status: unknown): void;
-  dispose?(): void;
-}
+type NetworkStatusPort = ReturnType<typeof createNetworkStatus>;
 
 interface BrowserBattleBridgeModulePort {
   createBrowserBattleBridge: typeof createBrowserBattleBridge;
@@ -69,23 +69,9 @@ type NetworkEntryModules = readonly [
   BrowserInputRuntimeModulePort,
 ];
 
-interface BattleLoadPort {
-  show(options: {
-    mapName: string;
-    thumb: string;
-    biome: string;
-    mode: string;
-    allies: unknown[];
-    enemies: unknown[];
-  }): void;
-  rosters(allies: unknown[], enemies: unknown[]): void;
-  progress(fraction: number, label: string): void;
-  hide(): MaybePromise<unknown>;
-}
-
 export interface NetworkBattlePresentationOptions {
   load: {
-    battleLoad: BattleLoadPort;
+    battleLoad: BattleLoadScreen;
     audio: {
       resume(): unknown;
       loadingOn(active: boolean): unknown;
@@ -104,7 +90,7 @@ export interface NetworkBattlePresentationOptions {
       players: NetworkBattlePresentationPlayer[],
       team: string,
       viewerId: string,
-    ): unknown[];
+    ): BattleLoadRosterRow[];
     vehicleName(specId: string): string;
     emitBattleStart(payload: { playerId: string; specId: string; mapId: string }): void;
     setCamoBiome(mapId: string): void;
@@ -144,24 +130,20 @@ export interface NetworkBattlePresentationOptions {
     waitForPeerReadiness(): Promise<unknown>;
   };
   warm: {
-    getFx(): unknown;
+    getFx(): NetworkBattleFxPort;
     terrain(bridge: NetworkBridgePort): MaybePromise<unknown>;
     wrecks(bridge: NetworkBridgePort): MaybePromise<unknown>;
-    openingEffects(fx: unknown, bridge: NetworkBridgePort): MaybePromise<unknown>;
+    openingEffects(
+      fx: NetworkBattleFxPort,
+      bridge: NetworkBridgePort,
+    ): MaybePromise<unknown>;
     shotCards(specIds: string[]): void;
     compile(): MaybePromise<unknown>;
   };
   presentation: {
     resetRoundState(): void;
     setGarageLighting(active: boolean): void;
-    activate(request: {
-      viewerId: string;
-      own: NetworkBattlePresentationPlayer;
-      spectator: boolean;
-      mapId: string;
-      bridge: NetworkBridgePort;
-      fx: unknown;
-    }): void;
+    activate(request: NetworkBattleActivationRequest): void;
     runBlackWatchdog(): unknown;
   };
 }

@@ -1,4 +1,4 @@
-import { Vector3 } from 'three';
+import { Vector3, type Object3D } from 'three';
 import { createCombatState } from '../sim/damage.ts';
 import { createTankState, shotRecoilScale } from '../sim/movement.ts';
 import type {
@@ -39,6 +39,7 @@ type Unsubscribe = () => void;
 type Team = string | null;
 
 interface ShellSpec extends Record<string, unknown> {
+  velocityMps: number;
   name?: string;
   type?: string;
   soundProfile?: string;
@@ -75,7 +76,7 @@ interface BridgeSpecialActionState {
 }
 
 interface TankVisual {
-  root: unknown;
+  root: Object3D;
   contactGeom?: MovementContactGeometry | null;
   setVisible(visible: boolean): void;
   syncFromState(state: BridgeTankState, dt: number): void;
@@ -176,13 +177,13 @@ interface SpottingFacade {
   getConcealment(): Record<string, number | boolean>;
 }
 
-interface BrowserGameState {
-  tanks: BridgeEntity[];
-  tankById: Map<string, BridgeEntity>;
-  player: BridgeEntity | null;
-  shells: BridgeShell[];
-  spotting: SpottingFacade | null;
-  allTanks?: Array<{ visual?: TankVisual | null }>;
+interface BrowserGameState<TLegacyEntity, TLegacyShell, TLegacySpotting> {
+  tanks: TLegacyEntity[] | BridgeEntity[];
+  tankById: Map<string, TLegacyEntity> | Map<string, BridgeEntity>;
+  player: TLegacyEntity | BridgeEntity | null;
+  shells: TLegacyShell[] | BridgeShell[];
+  spotting: TLegacySpotting | SpottingFacade | null;
+  allTanks?: Array<{ visual?: { setVisible?(visible: boolean): void } | null }>;
   timeS: number;
   preBattleS: number;
   result?: string | null;
@@ -209,13 +210,10 @@ interface BridgeShell {
   spawnedAtS?: number;
 }
 
-interface LegacyGameState {
-  tanks: BridgeEntity[];
-  tankById: Map<string, BridgeEntity>;
-  player: BridgeEntity | null;
-  shells: BridgeShell[];
-  spotting: SpottingFacade | null;
-}
+type LegacyGameState<TLegacyEntity, TLegacyShell, TLegacySpotting> = Pick<
+  BrowserGameState<TLegacyEntity, TLegacyShell, TLegacySpotting>,
+  'tanks' | 'tankById' | 'player' | 'shells' | 'spotting'
+>;
 
 interface BridgeEvent extends PresentationEvent {
   id?: string;
@@ -277,9 +275,13 @@ type PrepareVisualTextures = (
   camo: string,
 ) => Promise<unknown>;
 
-export interface BrowserBattleBridgeOptions {
+export interface BrowserBattleBridgeOptions<
+  TLegacyEntity = unknown,
+  TLegacyShell = unknown,
+  TLegacySpotting = unknown,
+> {
   engineCtx: EngineContext;
-  game: BrowserGameState;
+  game: BrowserGameState<TLegacyEntity, TLegacyShell, TLegacySpotting>;
   bus: EventBus;
   viewerId: unknown;
   spectator?: boolean;
@@ -344,7 +346,11 @@ function nextFrame(): Promise<void> {
  * No local gameplay is simulated here; interpolation output is presentation
  * state only and every combat value comes from authority.
  */
-export function createBrowserBattleBridge({
+export function createBrowserBattleBridge<
+  TLegacyEntity,
+  TLegacyShell,
+  TLegacySpotting,
+>({
   engineCtx,
   game,
   bus,
@@ -354,7 +360,11 @@ export function createBrowserBattleBridge({
   createTankVisual = defaultCreateTankVisual,
   prepareVisualTextures = defaultPrepareVisualTextures,
   clearVehicleDecals = null,
-}: BrowserBattleBridgeOptions): BrowserBattleBridge {
+}: BrowserBattleBridgeOptions<
+  TLegacyEntity,
+  TLegacyShell,
+  TLegacySpotting
+>): BrowserBattleBridge {
   if (!engineCtx || !engineCtx.scene || !game) throw new TypeError('engineCtx and game are required');
   const id = String(viewerId || '');
   if (!id) throw new TypeError('viewerId is required');
@@ -367,7 +377,11 @@ export function createBrowserBattleBridge({
   let perspectiveTeam: Team = null;
   let snapshotPhase: string | null = null;
   let mounted = false;
-  let legacyState: LegacyGameState | null = null;
+  let legacyState: LegacyGameState<
+    TLegacyEntity,
+    TLegacyShell,
+    TLegacySpotting
+  > | null = null;
   const destructionCause = new Map<string, string>();
   const nearbyPredictionObstacles: CollisionObstacle[] = [];
   let appliedDestructibleRevision = -1;
@@ -923,7 +937,7 @@ export function createBrowserBattleBridge({
       spotting: game.spotting,
     };
     for (const entity of game.allTanks || []) {
-      if (entity.visual) entity.visual.setVisible(false);
+      entity.visual?.setVisible?.(false);
     }
     visibleRoster.length = 0;
     for (const entity of entities.values()) visibleRoster.push(entity);
@@ -1056,7 +1070,7 @@ export function createBrowserBattleBridge({
     game.shells = legacyState.shells;
     game.spotting = legacyState.spotting;
     for (const entity of game.allTanks || []) {
-      if (entity.visual) entity.visual.setVisible(true);
+      entity.visual?.setVisible?.(true);
     }
     mounted = false;
     legacyState = null;

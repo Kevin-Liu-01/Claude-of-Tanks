@@ -76,7 +76,7 @@ export function createNetworkBattleBarrier({
           const entities = Array.isArray(snapshot.entities) ? snapshot.entities : [];
           return spectator
             ? entities.length > 0
-            : entities.some((entity) => entity
+            : entities.some((entity: unknown) => entity
               && typeof entity === 'object'
               && 'id' in entity
               && entity.id === viewerId);

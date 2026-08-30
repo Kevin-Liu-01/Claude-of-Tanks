@@ -2,13 +2,17 @@ import type { NetworkRecoveryOwner } from './connectionRecovery.ts';
 
 export interface NetworkSnapshot {
   tick: number;
-  meta?: Record<string, unknown>;
-  [key: string]: unknown;
+  serverTimeMs?: unknown;
+  ackInputSeq?: unknown;
+  entities?: unknown;
+  shells?: unknown;
+  events?: unknown;
+  immediateAuthority?: unknown;
+  meta?: Record<string, unknown> | null;
 }
 
 export interface NetworkInputFrame {
   actionBits?: number;
-  [key: string]: unknown;
 }
 
 export interface NetworkClientLike {
@@ -32,7 +36,7 @@ export interface NetworkBridgeLike {
   apply(snapshot: NetworkSnapshot, dt: number, events?: unknown[]): void;
   recordInput(input: NetworkInputFrame, elapsedS: number, sequence: number | null): void;
   endDisconnected?(): void;
-  getPredictionStats?(): Record<string, unknown> | null;
+  getPredictionStats?(): object | null;
 }
 
 export interface NetworkStatusLike {

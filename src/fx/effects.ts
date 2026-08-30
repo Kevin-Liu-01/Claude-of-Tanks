@@ -105,6 +105,10 @@ interface FxVisual {
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
 }
 
+export interface FxDecalVisual {
+  root: THREE.Object3D;
+}
+
 interface FxEntity {
   visual: FxVisual;
   state: {
@@ -313,7 +317,7 @@ export interface FxRuntime {
     caliberMm: number,
   ): void;
   impactDecalStats(): object;
-  clearVehicleDecals(visual: FxVisual): void;
+  clearVehicleDecals(visual: FxDecalVisual): void;
   destruction(
     pos: THREE.Vector3,
     visual: FxVisual | null,
@@ -4000,7 +4004,7 @@ export function createFx(
      * clears the warm marks with this before the battle opens.
      * @param {object} visual TankVisual
      */
-    clearVehicleDecals(visual: FxVisual): void { impactDecals.clearVehicle(visual); },
+    clearVehicleDecals(visual: FxDecalVisual): void { impactDecals.clearVehicle(visual); },
 
     /**
      * Vehicle destruction: fireball, debris, persistent smoke column; calls

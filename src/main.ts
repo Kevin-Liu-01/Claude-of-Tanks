@@ -1846,12 +1846,12 @@ function prepareBattleRevealCamera() {
   rig.release();
   rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
 }
-const networkSession = createNetworkBrowserSessionRuntime(legacyPort({
+const networkSession = createNetworkBrowserSessionRuntime({
   getPlayer: () => game.player,
   isBattleActive: () => game.phase === 'battle',
   shouldPresentDisconnect: () => game.phase === 'battle' && !game.result,
   nextFrame,
-}));
+});
 
 // Persistent subject-owned FX resolve against the presentation entity the
 // player actually sees. Network entities take priority during online battles;
@@ -1861,7 +1861,7 @@ function resolveFxSubject(id: string) {
 }
 
 const networkBattlePresentation = createNetworkBattlePresentationAccess({
-  options: () => legacyPort({
+  options: () => ({
     load: {
       battleLoad,
       audio,
@@ -1882,17 +1882,15 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
           biome: mapId,
         };
       },
-      rows: (players: unknown, team: string, viewerId: string) => (
-        rosterPresentation.lobbyRows({ players: legacyPort(players) }, team, viewerId)
+      rows: (players, team, viewerId) => (
+        rosterPresentation.lobbyRows({ players }, team, viewerId)
       ),
       vehicleName: (specId: string) => getSpec(specId)?.name || specId,
-      emitBattleStart: (payload: unknown) => bus.emit('ui:battleStart', payload),
+      emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
       setCamoBiome,
     },
     entry: {
-      acquire: (options: unknown) => battleEntryAcquisition.acquireNetwork(
-        legacyPort<Parameters<typeof battleEntryAcquisition.acquireNetwork>[0]>(options),
-      ),
+      acquire: (options) => battleEntryAcquisition.acquireNetwork(options),
       loadModules: () => Promise.all([
         preloadNetworkBattleModules(),
         preloadBattleClientRuntime(),
@@ -1910,28 +1908,26 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
       loadWorld: (mapId: string, onProgress: (fraction: number, label: string) => void) => (
         ensureWorld(mapId, onProgress)
       ),
-      publishMatch: (match: unknown) => networkSession.publishMatch(legacyPort(match)),
+      publishMatch: (match) => networkSession.publishMatch(match),
       getMatch: () => networkSession.match,
     },
     bridge: {
-      installInputRuntime: (factory: unknown) => networkSession.ensureInputRuntime(legacyPort(factory)),
-      createStatus: (factory: () => unknown) => factory(),
-      publishStatus: (status: unknown) => networkSession.publishStatus(legacyPort(status)),
+      installInputRuntime: (factory) => { networkSession.ensureInputRuntime(factory); },
+      createStatus: (factory) => factory(),
+      publishStatus: (status) => networkSession.publishStatus(status),
       attachRecovery: () => networkSession.attachRecovery(),
-      create: (factory: (options: unknown) => unknown, request: Record<string, unknown>, spectator: boolean) => factory({
+      create: (factory, request, spectator) => factory({
         engineCtx,
         game,
         bus,
         viewerId: request.viewerId,
         spectator,
         worldCollision: currentWorld(),
-      clearVehicleDecals: (visual: unknown) => legacyPort<{
-        clearVehicleDecals(target: unknown): void;
-      }>(requireFxRuntime()).clearVehicleDecals(visual),
+        clearVehicleDecals: (visual) => requireFxRuntime().clearVehicleDecals(visual),
       }),
-      publish: (bridge: unknown) => networkSession.publishBridge(legacyPort(bridge)),
+      publish: (bridge) => networkSession.publishBridge(bridge),
       groundSampler,
-      waitForInitialSnapshot: (request: unknown) => networkSession.waitForInitialSnapshot(legacyPort(request)),
+      waitForInitialSnapshot: (request) => networkSession.waitForInitialSnapshot(request),
       waitForPeerReadiness: () => networkSession.waitForPeerReadiness(),
     },
     warm: {
@@ -1939,24 +1935,30 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
       terrain: () => {
         const world = currentWorld();
         if (!world) throw new Error('network terrain warm requires an active world');
-        return battleWarm.warmBattleTerrainTiles(legacyPort({
+        return battleWarm.warmBattleTerrainTiles({
           game, world, yieldForBudget: createFrameBudgetYielder(16),
-        }));
+        });
       },
-      wrecks: (bridge: { entities: Map<string, unknown> }) => battleWarm.warmNetworkWrecks(legacyPort({
+      wrecks: (bridge) => battleWarm.warmNetworkWrecks({
         entities: bridge.entities.values(),
-        prebakeBurntSteps: legacyPort(prebakeBurntSteps),
+        prebakeBurntSteps,
         anisotropy: engineCtx.anisotropy ?? 4,
         renderer,
         scene,
         camera,
       compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
         warmRender,
-      })),
-      openingEffects: (fx: unknown, bridge: { entities: Map<string, { visual?: { root?: THREE.Object3D } }> }) => {
-        const decalVisual = [...bridge.entities.values()]
-          .find((entity) => entity.visual?.root)?.visual || null;
-        return battleWarm.warmNetworkOpeningEffects(legacyPort({
+      }),
+      openingEffects: (fx, bridge) => {
+        let decalVisual: { root: THREE.Object3D } | null = null;
+        for (const entity of bridge.entities.values()) {
+          const root = entity.visual?.root;
+          if (root instanceof THREE.Object3D) {
+            decalVisual = { root };
+            break;
+          }
+        }
+        return battleWarm.warmNetworkOpeningEffects({
           fx,
           post,
           camera,
@@ -1964,7 +1966,7 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
           decalVisual,
           compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
           warmRender,
-        }));
+        });
       },
       shotCards: (specIds: readonly string[]) => hud?.warmShotCards(specIds),
       compile: async () => {
@@ -1978,7 +1980,7 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
         setGarageSpots(active);
         setGarageSunTrim(active);
       },
-      activate: (request: unknown) => networkBattleActivation.activate(legacyPort(request)),
+      activate: (request) => networkBattleActivation.activate(request),
       runBlackWatchdog: () => runSceneBlackWatchdog(renderer, scene, camera),
     },
   }),

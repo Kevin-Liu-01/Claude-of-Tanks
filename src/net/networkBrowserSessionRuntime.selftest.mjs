@@ -85,4 +85,28 @@ assert.deepEqual(events.slice(-4), [
 
 assert.throws(() => createNetworkBrowserSessionRuntime({}), /requires player, phase, and frame ports/);
 
+const incompleteRuntime = createNetworkBrowserSessionRuntime({
+  getPlayer: () => null,
+  isBattleActive: () => false,
+  shouldPresentDisconnect: () => false,
+  nextFrame: async () => {},
+});
+incompleteRuntime.publishMatch({
+  ...match('incomplete'),
+  update: () => ({
+    tick: 1,
+    entities: [{ id: 'viewer' }],
+    meta: { phase: 'playing' },
+  }),
+});
+incompleteRuntime.pump(1 / 60, 0);
+await assert.rejects(
+  incompleteRuntime.waitForInitialSnapshot({ viewerId: 'viewer' }),
+  /incomplete sampled snapshot/,
+  'cold entry rejects a partial transport sample before bridge activation',
+);
+assert.equal(incompleteRuntime.latestSnapshot, null,
+  'partial snapshots are never exposed through the typed presentation view');
+incompleteRuntime.close('test_complete');
+
 console.log('networkBrowserSessionRuntime.selftest: single ownership and teardown order passed');

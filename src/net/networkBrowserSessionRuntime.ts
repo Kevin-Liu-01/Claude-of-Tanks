@@ -8,6 +8,7 @@ import {
   type NetworkSnapshot,
   type NetworkStatusLike,
 } from './networkFramePump.ts';
+import type { SampledSnapshotFrame } from './snapshot.ts';
 
 export interface NetworkBrowserMatch extends NetworkMatchLike {
   playerId?: string;
@@ -43,8 +44,10 @@ export interface NetworkBrowserSessionRuntime {
   queueAction(action: string): void;
   queueConsumable(slot: number): void;
   pump(dt: number, nowMs: number): void;
-  waitForInitialSnapshot(request: { viewerId: string; spectator?: boolean }): Promise<NetworkSnapshot>;
-  waitForPeerReadiness(): Promise<NetworkSnapshot>;
+  waitForInitialSnapshot(
+    request: { viewerId: string; spectator?: boolean },
+  ): Promise<SampledSnapshotFrame>;
+  waitForPeerReadiness(): Promise<SampledSnapshotFrame>;
   clearRound(): void;
   disposePresentation(): void;
   close(reason?: string): void;
@@ -55,7 +58,29 @@ export interface NetworkBrowserSessionRuntime {
   readonly bridge: NetworkBrowserBridge | null;
   readonly status: NetworkBrowserStatus | null;
   readonly spectator: boolean;
-  readonly latestSnapshot: NetworkSnapshot | null;
+  readonly latestSnapshot: SampledSnapshotFrame | null;
+}
+
+function isSampledSnapshotFrame(
+  snapshot: NetworkSnapshot | null,
+): snapshot is SampledSnapshotFrame {
+  return !!snapshot && Number.isSafeInteger(snapshot.tick) && snapshot.tick >= 0 &&
+    Number.isFinite(snapshot.serverTimeMs) &&
+    (snapshot.ackInputSeq === null || Number.isSafeInteger(snapshot.ackInputSeq)) &&
+    Array.isArray(snapshot.entities) && Array.isArray(snapshot.shells) &&
+    Array.isArray(snapshot.events) &&
+    (snapshot.meta === null ||
+      (typeof snapshot.meta === 'object' && !Array.isArray(snapshot.meta))) &&
+    (snapshot.immediateAuthority === null ||
+      (typeof snapshot.immediateAuthority === 'object' &&
+        !Array.isArray(snapshot.immediateAuthority)));
+}
+
+function requireSampledSnapshot(snapshot: NetworkSnapshot): SampledSnapshotFrame {
+  if (!isSampledSnapshotFrame(snapshot)) {
+    throw new TypeError('network session received an incomplete sampled snapshot');
+  }
+  return snapshot;
 }
 
 /**
@@ -149,8 +174,10 @@ export function createNetworkBrowserSessionRuntime({
     queueAction: (action) => framePump.queueAction(action),
     queueConsumable: (slot) => framePump.queueConsumable(slot),
     pump: (dt, nowMs) => framePump.pump(dt, nowMs),
-    waitForInitialSnapshot: (request) => barrier.waitForInitialSnapshot(request),
-    waitForPeerReadiness: () => barrier.waitForPeerReadiness(),
+    waitForInitialSnapshot: async (request) =>
+      requireSampledSnapshot(await barrier.waitForInitialSnapshot(request)),
+    waitForPeerReadiness: async () =>
+      requireSampledSnapshot(await barrier.waitForPeerReadiness()),
     clearRound: () => framePump.clearRound(),
     disposePresentation,
 
@@ -169,6 +196,9 @@ export function createNetworkBrowserSessionRuntime({
     get bridge() { return bridge; },
     get status() { return status; },
     get spectator() { return spectator; },
-    get latestSnapshot() { return framePump.latestSnapshot; },
+    get latestSnapshot() {
+      const snapshot = framePump.latestSnapshot;
+      return isSampledSnapshotFrame(snapshot) ? snapshot : null;
+    },
   };
 }
