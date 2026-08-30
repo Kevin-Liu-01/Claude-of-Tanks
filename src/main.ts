@@ -2783,7 +2783,7 @@ if (diagnosticsRequested) {
 if (debugModeRequested() || input.getSettings().showDebugHud) perfHud.setVisible(true);
 if (diagnosticsRequested) {
   const { installDebugSurface } = await import('./dev/debugSurface.ts');
-  installDebugSurface(legacyPort({
+  installDebugSurface({
     scene, camera, renderer, post, lighting, game, rig, bus, input, settings,
     pauseInfo, garage, flags: debugFlags, frameInfo, playerShellLog, botPressure,
     killcam, showroom, garageDressing, devTrace,
@@ -2856,7 +2856,7 @@ if (diagnosticsRequested) {
       networkSession.bridge.apply(snapshot, 1 / 60, batch);
       return true;
     },
-  }));
+  });
 }
 await bootStage('ready', null);
 // perf-r2: the boot pipeline is compiled and error-checked; battle-time

@@ -6,7 +6,7 @@
  * engineering API, while probes keep the same live getters and actions.
  */
 
-type UnknownAction = (...args: unknown[]) => unknown;
+type UnknownAction = CallableFunction;
 
 interface DebugInstallTarget {
   __DEBUG?: unknown;
