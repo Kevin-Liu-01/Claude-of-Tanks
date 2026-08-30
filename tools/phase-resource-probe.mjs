@@ -498,11 +498,12 @@ const evaluateBudgets = (phases) => {
   check('active battle refreshes distant shadow cascades coherently',
     Object.keys(battle?.frameWorkload?.byShadowMask || {}).length === 2
       && battle?.frameWorkload?.byShadowMask?.['3']
-      && battle?.frameWorkload?.byShadowMask?.['15']
+      && battle?.frameWorkload?.byShadowMask?.['12']
       && !battle?.frameWorkload?.byShadowMask?.['7']
-      && !battle?.frameWorkload?.byShadowMask?.['11'],
+      && !battle?.frameWorkload?.byShadowMask?.['11']
+      && !battle?.frameWorkload?.byShadowMask?.['15'],
     Object.keys(battle?.frameWorkload?.byShadowMask || {}),
-    'continuous near mask 3 plus atomic far-cohort mask 15');
+    'mutually exclusive near mask 3 and atomic far-cohort mask 12');
   for (const workload of ['shadowCalls', 'shadowTriangles']) {
     check(`active battle complete-frame ${workload}`,
       battle?.frameWorkload?.[workload]?.max

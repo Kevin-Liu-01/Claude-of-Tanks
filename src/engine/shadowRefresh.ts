@@ -1,21 +1,16 @@
 /**
  * Refresh-rate-invariant CSM scheduler.
  *
- * Near cascades refresh every presented frame at every display rate, while
- * each far map targets 30 updates/s. Far maps refresh as one cohort: CSM fade
- * blends adjacent cascades, so rendering them from different camera/tree-LOD
- * timestamps produces a visible light/shadow swap even when each individual
- * projection remains internally coherent.
+ * Near and far cascades refresh as two coherent, mutually exclusive cohorts.
+ * CSM fade blends adjacent cascades, so rendering the two far maps from
+ * different camera/tree-LOD timestamps produces a visible light/shadow swap.
+ * Rendering all four maps together avoids that mismatch but creates the exact
+ * doubled shadow-frame spike that stalls modest GPUs. Alternating complete
+ * near/far pairs preserves coherent timestamps while bounding every ordinary
+ * frame to two shadow maps.
  */
 
 export const SHADOW_REFRESH_INTERVAL_S = 1 / 60;
-
-/** Near cascades follow the display cadence; farther cascades may be scheduled. */
-export function isContinuousShadowCascade(cascadeIndex: number, nearCount = 2): boolean {
-  const index = cascadeIndex | 0;
-  const count = Math.max(0, nearCount | 0);
-  return index >= 0 && index < count;
-}
 
 /**
  * A PCF shadow sampler may only be left dormant after Three has created its
@@ -44,34 +39,6 @@ export function canDormantShadowCascades(
 }
 
 /**
- * Add one required cascade job without letting a live transition exceed the
- * high-refresh per-frame map budget. Existing scheduled work keeps its bit
- * order; a required bit replaces excess work instead of stacking onto it.
- */
-export function mergeRequiredShadowWork(
-  scheduledMask: number,
-  requiredIndex: number,
-  cascadeCount: number,
-  maxJobs = 2,
-): number {
-  const count = Math.max(0, Math.min(30, cascadeCount | 0));
-  if (requiredIndex < 0 || requiredIndex >= count || maxJobs <= 0) return 0;
-  const validMask = count > 0 ? (2 ** count) - 1 : 0;
-  const requiredBit = 1 << requiredIndex;
-  let pending = (scheduledMask & validMask) & ~requiredBit;
-  let result = requiredBit;
-  let jobs = 1;
-  for (let i = 0; i < count && jobs < maxJobs; i++) {
-    const bit = 1 << i;
-    if (!(pending & bit)) continue;
-    result |= bit;
-    pending &= ~bit;
-    jobs++;
-  }
-  return result;
-}
-
-/**
  * @param {number} cascadeCount
  * @param {{nearCount?:number, intervalS?:number}} [opts]
  */
@@ -97,10 +64,10 @@ export function createShadowRefreshScheduler(
   const epsilonS = Math.min(0.001, intervalS * 0.08);
   const nearMask = nearCount > 0 ? (2 ** nearCount) - 1 : 0;
   const farCount = count - nearCount;
-  // Preserve the old per-cascade cadence and total map work. Two desktop far
-  // cascades now render together every 1/30 s instead of alternating one map
-  // every 1/60 s; a single mobile far cascade remains a 60 Hz stream.
-  const farIntervalS = intervalS * Math.max(1, farCount);
+  // Desktop's blended far pair refreshes at 20 Hz; a single mobile far map at
+  // 30 Hz. Distant texels move slowly enough for that cadence, while the near
+  // pair retains 40/100/124 Hz on 60/120/144 Hz displays respectively.
+  const farIntervalS = intervalS * Math.max(2, farCount + 1);
   const farMask = farCount > 0
     ? (((2 ** farCount) - 1) << nearCount)
     : 0;
@@ -111,9 +78,9 @@ export function createShadowRefreshScheduler(
     // forceMask() has just supplied a coherent all-cascade baseline. Seed the
     // accumulator so normal far cadence resumes promptly without a long cold
     // gap, while still keeping the pair on one shared timestamp.
-    farAcc = farCount > 1
+    farAcc = farCount > 0
       ? Math.max(0, farIntervalS - intervalS * 0.5)
-      : (nearCount > 1 ? intervalS * 0.5 : 0);
+      : 0;
     lastMask = 0;
   }
 
@@ -139,13 +106,12 @@ export function createShadowRefreshScheduler(
       lastMask = 0;
       return 0;
     }
-    // Near cascades are `autoUpdate=true` in lighting.ts and therefore render
-    // on every presented frame. Keep them in the returned mask so telemetry
-    // describes actual work; the scheduler only rate-limits the far cohort.
+    // Exactly one coherent cohort renders in an ordinary frame. lighting.ts
+    // drives every map manually so this mask describes actual depth work.
     let mask = nearMask;
     if (farCount > 0) farAcc = Math.min(farIntervalS * 2, farAcc + dt);
     if (farCount > 0 && farAcc + epsilonS >= farIntervalS) {
-      mask |= farMask;
+      mask = farMask;
       farAcc = Math.max(0, farAcc - farIntervalS);
     }
 

@@ -14,8 +14,6 @@ import { getDeviceTier, getPreset, onPresetChange } from './quality.ts';
 import {
   canDormantShadowCascades,
   createShadowRefreshScheduler,
-  isContinuousShadowCascade,
-  mergeRequiredShadowWork,
 } from './shadowRefresh.ts';
 import {
   shadowNormalBiasForTexel,
@@ -993,13 +991,11 @@ export function createLighting(
   for (let i = 0; i < csm.lights.length; i++) {
     csm.lights[i].shadow.radius = SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)];
     csm.lights[i].color.setHex(SUN_COLOR);
-    // Near maps stay on Three's continuous update path so moving contact
-    // shadows cannot lag the visible tank. Only the far pair are driven
-    // through the bounded needsUpdate scheduler below.
-    if (!isContinuousShadowCascade(i, FAR_CASCADE_START)) {
-      csm.lights[i].shadow.autoUpdate = false;
-      csm.lights[i].shadow.needsUpdate = true; // first frame renders all
-    }
+    // Every cascade is driven explicitly by the coherent-pair scheduler. This
+    // keeps telemetry exact and prevents Three's auto-update path from adding
+    // the near pair on top of a scheduled far-pair frame.
+    csm.lights[i].shadow.autoUpdate = false;
+    csm.lights[i].shadow.needsUpdate = true; // first frame renders all
   }
   // PERF: per-cascade map size (before the first render allocates the RTs)
   applyShadowSizes(preset.shadowMapSizes);
@@ -1026,6 +1022,7 @@ export function createLighting(
   });
   const allCascadeMask = (2 ** csm.lights.length) - 1;
   const continuousCascadeMask = (2 ** Math.min(FAR_CASCADE_START, csm.lights.length)) - 1;
+  const farCascadeMask = allCascadeMask & ~continuousCascadeMask;
   let shFrame = 0;
   let lastScheduledMask = 0;
   let lastFitChangedMask = 0;
@@ -1305,6 +1302,7 @@ export function createLighting(
         lastScheduledMask = shadowScheduler.forceMask();
         applyStableCascadePoses(csm, allCascadeMask);
         for (let i = 0; i < csm.lights.length; i++) {
+          csm.lights[i].shadow.autoUpdate = false;
           csm.lights[i].shadow.needsUpdate = true;
         }
         if (force) forceFrames = Math.max(forceFrames, 1); // settle 1 extra frame
@@ -1312,7 +1310,10 @@ export function createLighting(
         // bisect hook: every cascade re-renders every frame (no rate cap)
         lastScheduledMask = shadowScheduler.forceMask();
         applyStableCascadePoses(csm, allCascadeMask);
-        for (let i = 0; i < csm.lights.length; i++) csm.lights[i].shadow.needsUpdate = true;
+        for (let i = 0; i < csm.lights.length; i++) {
+          csm.lights[i].shadow.autoUpdate = false;
+          csm.lights[i].shadow.needsUpdate = true;
+        }
       } else if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.freezeMask !== undefined) {
         // bisect hook: masked cascades stop re-rendering entirely (matrix
         // freezes with content — consistent stale shadows); unmasked near
@@ -1323,26 +1324,29 @@ export function createLighting(
         for (let i = 0; i < csm.lights.length; i++) {
           const sh = csm.lights[i].shadow;
           if (mask & (1 << i)) { sh.autoUpdate = false; sh.needsUpdate = false; } else {
-            sh.autoUpdate = i < FAR_CASCADE_START;
+            sh.autoUpdate = false;
             sh.needsUpdate = true;
             lastScheduledMask |= 1 << i;
           }
         }
       } else {
-        // Near cascades remain continuous at the display cadence; rate-capping
-        // them made dynamic contact shadows step at 60 Hz on 120/144 Hz
-        // displays. The scheduler still amortizes the far pair, whose texels
-        // are subpixel at gameplay distance, but refreshes both maps from one
-        // camera/tree-LOD timestamp because CSM fade blends them together.
+        // Alternate coherent near/far pairs. The old path left the near pair
+        // on Three's auto-update path, so a far-cohort frame submitted all four
+        // maps and caused a recurring depth-work spike. Manual ownership keeps
+        // ordinary frames at two maps while both maps in each blended pair
+        // retain one camera/tree-LOD timestamp.
         for (let i = 0; i < csm.lights.length; i++) {
-          const continuous = isContinuousShadowCascade(i, FAR_CASCADE_START);
-          csm.lights[i].shadow.autoUpdate = continuous;
-          if (!continuous) csm.lights[i].shadow.needsUpdate = false;
+          csm.lights[i].shadow.autoUpdate = false;
+          csm.lights[i].shadow.needsUpdate = false;
         }
         lastScheduledMask = shadowScheduler.step(step);
+        if (farCascadeDormant && (lastScheduledMask & ~continuousCascadeMask)) {
+          lastScheduledMask = continuousCascadeMask;
+        }
         if (transitionCascade >= 0) {
-          lastScheduledMask = mergeRequiredShadowWork(
-            lastScheduledMask, transitionCascade, csm.lights.length, 1);
+          lastScheduledMask = transitionCascade < FAR_CASCADE_START
+            ? continuousCascadeMask
+            : farCascadeMask;
         }
         // A rate-capped far map must keep its projection and depth texture as
         // one atomic pair. Prepare every snapped fit above, but apply a far fit
@@ -1351,7 +1355,7 @@ export function createLighting(
         // mixing timestamps there was the forest-wide light/shadow flash.
         // Near fits still follow every presented frame. Cohorting preserves
         // the old average far-map work (two maps at 30 Hz each).
-        applyStableCascadePoses(csm, continuousCascadeMask | lastScheduledMask);
+        applyStableCascadePoses(csm, lastScheduledMask);
         for (let i = 0; i < csm.lights.length; i++) {
           if (lastScheduledMask & (1 << i)) csm.lights[i].shadow.needsUpdate = true;
         }

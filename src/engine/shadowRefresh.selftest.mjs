@@ -4,14 +4,7 @@ import {
   SHADOW_REFRESH_INTERVAL_S,
   canDormantShadowCascades,
   createShadowRefreshScheduler,
-  isContinuousShadowCascade,
-  mergeRequiredShadowWork,
 } from './shadowRefresh.ts';
-
-assert.equal(isContinuousShadowCascade(0), true, 'hero cascade refreshes every presented frame');
-assert.equal(isContinuousShadowCascade(1), true, 'contact cascade refreshes every presented frame');
-assert.equal(isContinuousShadowCascade(2), false, 'far cascade is eligible for rate limiting');
-assert.equal(isContinuousShadowCascade(-1), false, 'invalid cascade is never continuous');
 
 {
   const depth = () => ({ shadow: { map: { depthTexture: { isDepthTexture: true } } } });
@@ -37,8 +30,8 @@ assert.match(lightingSource,
   /setStaticPresentationDormant\(on[^)]*\)[\s\S]{0,700}else forceRateCappedCascades\(\)/,
   'releasing static dormancy must force a complete cascade refresh');
 assert.match(lightingSource,
-  /applyStableCascadePoses\(csm, continuousCascadeMask \| lastScheduledMask\)/,
-  'a far-cascade fit must move only with the depth-map frame that owns it');
+  /applyStableCascadePoses\(csm, lastScheduledMask\)/,
+  'each cascade fit must move only with the coherent depth-map cohort that owns it');
 
 function sample(hz, seconds = 2, cascades = 4) {
   const scheduler = createShadowRefreshScheduler(cascades);
@@ -66,31 +59,31 @@ function assertFarCohort(hz, seconds = 2) {
 
 {
   const r = sample(120);
-  assert.equal(r.hits[0], 240, `120 Hz near-0 cadence ${r.hits[0]}`);
-  assert.equal(r.hits[1], 240, `120 Hz near-1 cadence ${r.hits[1]}`);
-  assert.ok(Math.abs(r.hits[2] - 60) <= 1, `120 Hz far-2 cadence ${r.hits[2]}`);
-  assert.ok(Math.abs(r.hits[3] - 60) <= 1, `120 Hz far-3 cadence ${r.hits[3]}`);
-  assert.equal(r.maxPerFrame, 4, `120 Hz scheduled ${r.maxPerFrame} cascades on one frame`);
+  assert.ok(Math.abs(r.hits[0] - 200) <= 1, `120 Hz near-0 cadence ${r.hits[0]}`);
+  assert.ok(Math.abs(r.hits[1] - 200) <= 1, `120 Hz near-1 cadence ${r.hits[1]}`);
+  assert.ok(Math.abs(r.hits[2] - 40) <= 1, `120 Hz far-2 cadence ${r.hits[2]}`);
+  assert.ok(Math.abs(r.hits[3] - 40) <= 1, `120 Hz far-3 cadence ${r.hits[3]}`);
+  assert.equal(r.maxPerFrame, 2, `120 Hz scheduled ${r.maxPerFrame} cascades on one frame`);
   assertFarCohort(120);
 }
 
 {
   const r = sample(144);
-  assert.equal(r.hits[0], 288, `144 Hz near-0 cadence ${r.hits[0]}`);
-  assert.equal(r.hits[1], 288, `144 Hz near-1 cadence ${r.hits[1]}`);
-  assert.ok(Math.abs(r.hits[2] - 60) <= 2, `144 Hz far-2 cadence ${r.hits[2]}`);
-  assert.ok(Math.abs(r.hits[3] - 60) <= 2, `144 Hz far-3 cadence ${r.hits[3]}`);
-  assert.equal(r.maxPerFrame, 4, `144 Hz scheduled ${r.maxPerFrame} cascades on one frame`);
+  assert.ok(Math.abs(r.hits[0] - 248) <= 2, `144 Hz near-0 cadence ${r.hits[0]}`);
+  assert.ok(Math.abs(r.hits[1] - 248) <= 2, `144 Hz near-1 cadence ${r.hits[1]}`);
+  assert.ok(Math.abs(r.hits[2] - 40) <= 2, `144 Hz far-2 cadence ${r.hits[2]}`);
+  assert.ok(Math.abs(r.hits[3] - 40) <= 2, `144 Hz far-3 cadence ${r.hits[3]}`);
+  assert.equal(r.maxPerFrame, 2, `144 Hz scheduled ${r.maxPerFrame} cascades on one frame`);
   assertFarCohort(144);
 }
 
 {
   const r = sample(100);
-  assert.equal(r.hits[0], 200, `100 Hz near-0 cadence ${r.hits[0]}`);
-  assert.equal(r.hits[1], 200, `100 Hz near-1 cadence ${r.hits[1]}`);
-  assert.ok(Math.abs(r.hits[2] - 60) <= 2, `100 Hz far-2 cadence ${r.hits[2]}`);
-  assert.ok(Math.abs(r.hits[3] - 60) <= 2, `100 Hz far-3 cadence ${r.hits[3]}`);
-  assert.equal(r.maxPerFrame, 4, `100 Hz scheduled ${r.maxPerFrame} cascades on one frame`);
+  assert.ok(Math.abs(r.hits[0] - 160) <= 2, `100 Hz near-0 cadence ${r.hits[0]}`);
+  assert.ok(Math.abs(r.hits[1] - 160) <= 2, `100 Hz near-1 cadence ${r.hits[1]}`);
+  assert.ok(Math.abs(r.hits[2] - 40) <= 2, `100 Hz far-2 cadence ${r.hits[2]}`);
+  assert.ok(Math.abs(r.hits[3] - 40) <= 2, `100 Hz far-3 cadence ${r.hits[3]}`);
+  assert.equal(r.maxPerFrame, 2, `100 Hz scheduled ${r.maxPerFrame} cascades on one frame`);
   assertFarCohort(100);
 }
 
@@ -106,17 +99,8 @@ function assertFarCohort(hz, seconds = 2) {
     for (let i = 0; i < 4; i++) if (mask & (1 << i)) jobs++;
     maxPerFrame = Math.max(maxPerFrame, jobs);
   }
-  assert.equal(maxPerFrame, 4,
+  assert.equal(maxPerFrame, 2,
     `isolated high-refresh hitches scheduled ${maxPerFrame} cascades on one frame`);
-}
-
-{
-  assert.equal(mergeRequiredShadowWork(0b0110, 3, 4), 0b1010,
-    'required live-resize cascade replaces excess scheduled work');
-  assert.equal(mergeRequiredShadowWork(0b0110, 2, 4), 0b0110,
-    'required cascade already in the schedule preserves its companion');
-  assert.equal(mergeRequiredShadowWork(0b1111, 1, 4), 0b0011,
-    'live transition never emits more than two cascade jobs');
 }
 
 {
@@ -131,17 +115,17 @@ function assertFarCohort(hz, seconds = 2) {
     for (let i = 0; i < 4; i++) if (mask & (1 << i)) jobs++;
     maxAfterDrop = Math.max(maxAfterDrop, jobs);
   }
-  assert.equal(maxAfterDrop, 4,
+  assert.equal(maxAfterDrop, 2,
     `render pressure lost the coherent far refresh with ${maxAfterDrop} map frames`);
 }
 
 {
   const r = sample(60);
-  assert.equal(r.hits[0], 120, '60 Hz keeps near cascade 0 every frame');
-  assert.equal(r.hits[1], 120, '60 Hz keeps near cascade 1 every frame');
-  assert.equal(r.hits[2], 60, '60 Hz keeps far cascade 2 at 30 updates/s');
-  assert.equal(r.hits[3], 60, '60 Hz keeps far cascade 3 at 30 updates/s');
-  assert.equal(r.maxPerFrame, 4, '60 Hz refreshes the blended far cohort atomically');
+  assert.ok(Math.abs(r.hits[0] - 80) <= 1, '60 Hz keeps near cascade 0 at 40 updates/s');
+  assert.ok(Math.abs(r.hits[1] - 80) <= 1, '60 Hz keeps near cascade 1 at 40 updates/s');
+  assert.ok(Math.abs(r.hits[2] - 40) <= 1, '60 Hz keeps far cascade 2 at 20 updates/s');
+  assert.ok(Math.abs(r.hits[3] - 40) <= 1, '60 Hz keeps far cascade 3 at 20 updates/s');
+  assert.equal(r.maxPerFrame, 2, '60 Hz refreshes at most one coherent pair');
   assertFarCohort(60);
 }
 
@@ -149,12 +133,10 @@ function assertFarCohort(hz, seconds = 2) {
   const scheduler = createShadowRefreshScheduler(4);
   assert.equal(scheduler.forceMask(), 0b1111, 'force refreshes every cascade');
   const first = scheduler.step(SHADOW_REFRESH_INTERVAL_S / 2);
-  assert.equal(first & 0b1100, 0b1100,
+  assert.equal(first, 0b1100,
     'post-force phase schedules the complete far cohort');
-  assert.equal(first & 0b0011, 0b0011,
-    'continuous near cascades remain represented on a far-cohort frame');
   const second = scheduler.step(SHADOW_REFRESH_INTERVAL_S / 2);
   assert.equal(second, 0b0011, 'post-force near pair remains continuous');
 }
 
-console.log('shadowRefresh.selftest: coherent far cohorts and 60/120/144 Hz cadence passed');
+console.log('shadowRefresh.selftest: bounded coherent pairs and 60/120/144 Hz cadence passed');
