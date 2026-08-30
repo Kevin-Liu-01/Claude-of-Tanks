@@ -7,6 +7,7 @@ import type {
   DamageShellSpec,
   PlateHit,
 } from '../sim/damage.ts';
+import type { ShellCard } from './playerBattleActions.ts';
 
 interface AimWorldHit {
   point: THREE.Vector3;
@@ -87,7 +88,7 @@ export interface AimFrame {
   reload: { t: number; totalS: number; kind?: string };
   magazine: { rounds: number; capacity: number };
   shellSlot: number;
-  shells: unknown;
+  shells: ShellCard[];
   zoom: number;
   gunDistM: number;
   gunTargetId: string | null;
@@ -102,7 +103,7 @@ export interface AimControllerDependencies {
   getRig(): AimRig;
   worldRaycast(origin: THREE.Vector3, dir: THREE.Vector3, maxDist: number): AimWorldHit | null;
   targetVisible(target: AimTank): boolean;
-  getShellCards(): unknown;
+  getShellCards(): ShellCard[];
   computeDispersion(spec: AimSpec, state: AimState, distanceM: number): number;
   now?: () => number;
 }

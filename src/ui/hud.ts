@@ -106,7 +106,7 @@ interface HudShellCard {
   count?: number;
 }
 
-interface HudAimInput {
+export interface HudAimInput {
   point?: THREE.Vector3 | null;
   distM?: number | null;
   dispersionRadM?: number | null;
@@ -147,35 +147,35 @@ interface HudAimView {
   dispRadM: number | null;
 }
 
-interface HudTankVisual {
+export interface HudTankVisual {
   turretTopWorld?(out: THREE.Vector3): void;
 }
 
-interface HudTank {
+export interface HudTank {
   id: string;
   team?: string;
   isPlayer?: boolean;
   displayName?: string;
-  state?: TankState;
-  combat?: CombatState;
-  spec?: FleetTankSpec & SpecialActionSpec;
-  visual?: HudTankVisual;
-  specialAction?: SpecialActionState;
+  state?: TankState | null;
+  combat?: CombatState | null;
+  spec?: (FleetTankSpec & SpecialActionSpec) | null;
+  visual?: HudTankVisual | null;
+  specialAction?: SpecialActionState | null;
 }
 
-interface ConcealmentView {
+export interface ConcealmentView {
   spotted?: boolean;
   inBush?: boolean;
   fired?: boolean;
   camo?: number;
 }
 
-interface HudSpottingView {
+export interface HudSpottingView {
   player?: ConcealmentView | null;
   isSpotted(id: string): boolean;
 }
 
-interface HudMatchModeState {
+export interface HudMatchModeState {
   id?: string;
   label?: string;
   perspectiveTeam?: 'alpha' | 'bravo';
@@ -186,7 +186,7 @@ interface HudMatchModeState {
   horde?: { wave?: number; alive?: number; nextWaveInS?: number } | null;
 }
 
-interface HudFrame {
+export interface HudFrame {
   timeS: number;
   pingMs?: number;
   mode?: HudMode;

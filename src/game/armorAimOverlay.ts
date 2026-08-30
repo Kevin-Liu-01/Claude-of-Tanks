@@ -46,7 +46,7 @@ export interface ArmorOverlayTarget {
     eraSpent?: Set<string>;
   } | null;
   visual?: ArmorOverlayVisual | null;
-  spec?: { armor?: ArmorOverlayModel };
+  spec?: { armor?: ArmorOverlayModel } | null;
 }
 
 interface ArmorOverlaySample {

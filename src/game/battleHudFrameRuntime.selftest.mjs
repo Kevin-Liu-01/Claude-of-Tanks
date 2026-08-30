@@ -41,7 +41,7 @@ let aimUpdates = 0;
 let perspective = null;
 let wallMs = 400;
 const networkSession = {
-  match: { client: { rttMs: 73 } },
+  match: { client: { getStats: () => ({ rttMs: 73 }) } },
   spectator: false,
   bridge: {
     entities: new Map(),

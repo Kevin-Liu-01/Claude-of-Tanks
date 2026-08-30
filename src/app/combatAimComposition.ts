@@ -11,6 +11,7 @@ import {
   type BattleClientAccess,
 } from '../game/battleClientAccess.ts';
 import type { AimControllerDependencies } from '../game/aimController.ts';
+import type { ShellCard } from '../game/playerBattleActions.ts';
 import type { MainEntity, MainGameState } from './mainContracts.ts';
 
 type CombatRaycast = CameraRaycast & AimControllerDependencies['worldRaycast'];
@@ -20,7 +21,7 @@ export interface CombatAimCompositionOptions {
   heightField: CameraRigDeps['heightField'];
   getGame(): MainGameState;
   worldRaycast: CombatRaycast;
-  getShellCards(): unknown;
+  getShellCards(): ShellCard[];
 }
 
 export interface CombatAimComposition {

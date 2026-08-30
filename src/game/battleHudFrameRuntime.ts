@@ -3,43 +3,43 @@ import { Object3D, PerspectiveCamera, Vector3 } from 'three';
 import type { AimController, AimFrame } from './aimController.ts';
 import type {
   ArmorAimOverlayRuntime,
-  ArmorOverlayModel,
   ArmorOverlayTarget,
 } from './armorAimOverlay.ts';
 import type { GameState } from './stateCore.ts';
-import type { DamageShellSpec } from '../sim/damage.ts';
+import type { DamagePanelController } from '../ui/damagePanel.ts';
+import type {
+  ConcealmentView,
+  HudFrame,
+  HudMatchModeState,
+  HudMode,
+  HudRuntime,
+  HudSpottingView,
+  HudTank,
+} from '../ui/hud.ts';
 
-interface HudTankEntity extends ArmorOverlayTarget {
+type HudTankEntity = HudTank & ArmorOverlayTarget & {
   team: string;
-  combat?: { destroyed?: boolean; shellSlot?: number; eraSpent?: Set<string> } | null;
-  visual?: { root: Object3D };
-  spec?: {
-    armor?: ArmorOverlayModel;
-    gun?: { shells?: DamageShellSpec[] };
-  };
+  visual?: (NonNullable<HudTank['visual']> & { root: Object3D }) | null;
+};
+
+interface HudSpottingState<TEntity extends HudTankEntity> {
+  isSpotted(id: string, team: string, receiver: TEntity | null): boolean;
+  getConcealment(entity: TEntity, timeS: number): ConcealmentView;
 }
 
-interface HudSpottingState {
-  isSpotted(id: string, team: string, receiver: HudTankEntity | null): boolean;
-  getConcealment(entity: HudTankEntity, timeS: number): unknown;
-}
-
-interface HudRuntime {
-  update(frame: BattleHudFrameInfo): void;
-}
-
-interface DamagePanelRuntime {
-  update(combat: unknown): void;
-}
+type HudUpdateRuntime = Pick<HudRuntime, 'update'>;
+type DamagePanelRuntime = Pick<DamagePanelController, 'update'>;
 
 interface NetworkBridgeView {
-  entities: Map<string, HudTankEntity>;
-  roster: unknown[];
-  setPerspective(entityId: string): void;
+  entities: ReadonlyMap<string, unknown>;
+  roster?: HudTank[];
+  setPerspective?(entityId: string): unknown;
 }
 
 interface NetworkSessionView {
-  match: { client?: { rttMs?: number } | null } | null;
+  match: {
+    client?: { getStats?(): Record<string, unknown> | null } | null;
+  } | null;
   spectator: boolean;
   bridge: NetworkBridgeView | null;
 }
@@ -57,29 +57,50 @@ interface CameraRigView {
   mode: string;
 }
 
-export interface BattleHudSpotFrame {
-  receiver: HudTankEntity | null;
-  isSpotted(id: string): boolean;
-  player: unknown;
+function isHudTankEntity(value: unknown): value is HudTankEntity {
+  return !!value && typeof value === 'object'
+    && typeof Reflect.get(value, 'id') === 'string'
+    && typeof Reflect.get(value, 'team') === 'string'
+    && (Reflect.get(value, 'state') == null
+      || typeof Reflect.get(value, 'state') === 'object')
+    && (Reflect.get(value, 'combat') == null
+      || typeof Reflect.get(value, 'combat') === 'object')
+    && (Reflect.get(value, 'spec') == null
+      || typeof Reflect.get(value, 'spec') === 'object')
+    && (Reflect.get(value, 'visual') == null
+      || typeof Reflect.get(value, 'visual') === 'object');
 }
 
-export interface BattleHudFrameInfo {
+export interface BattleHudSpotFrame<TEntity extends HudTankEntity = HudTankEntity>
+  extends HudSpottingView {
+  receiver: TEntity | null;
+  isSpotted(id: string): boolean;
+  player: ConcealmentView | null;
+}
+
+export interface BattleHudFrameInfo<TEntity extends HudTankEntity = HudTankEntity>
+  extends HudFrame {
   timeS: number;
   pingMs: number;
-  mode: string;
+  mode: HudMode;
   camera: PerspectiveCamera;
-  player: HudTankEntity | null;
-  tanks: unknown[];
-  rosterTanks?: unknown[];
+  player: TEntity | null;
+  tanks: TEntity[];
+  rosterTanks?: HudTank[];
   shells: unknown[];
   aim: AimFrame;
   killfeedHandledByBus: boolean;
-  spotting: BattleHudSpotFrame | null;
-  matchModeState: unknown | null;
+  spotting: BattleHudSpotFrame<TEntity> | null;
+  matchModeState: HudMatchModeState | null;
 }
 
-export interface BattleHudFrameRuntimeOptions {
-  game: GameState;
+type BattleHudGameState<TEntity extends HudTankEntity> = Omit<
+  GameState<TEntity, HudSpottingState<TEntity>>,
+  'matchModeState'
+> & { matchModeState: HudMatchModeState | null };
+
+export interface BattleHudFrameRuntimeOptions<TEntity extends HudTankEntity> {
+  game: BattleHudGameState<TEntity>;
   camera: PerspectiveCamera;
   rig: CameraRigView;
   input: InputView;
@@ -88,14 +109,14 @@ export interface BattleHudFrameRuntimeOptions {
   networkSession: NetworkSessionView;
   killcam: KillcamView;
   muzzleScratch: Vector3;
-  getHud(): HudRuntime;
-  getDamagePanel(): DamagePanelRuntime;
+  getHud(): HudUpdateRuntime | null;
+  getDamagePanel(): DamagePanelRuntime | null;
   now?: () => number;
 }
 
-export interface BattleHudFrameRuntime {
-  readonly frameInfo: BattleHudFrameInfo;
-  refreshSpotting(focus?: unknown): void;
+export interface BattleHudFrameRuntime<TEntity extends HudTankEntity = HudTankEntity> {
+  readonly frameInfo: BattleHudFrameInfo<TEntity>;
+  refreshSpotting(): void;
   redrawFrozen(): void;
   reset(): void;
   update(inBattle: boolean, killcamActive: boolean): void;
@@ -107,7 +128,7 @@ export interface BattleHudFrameRuntime {
  * allocation-free update operation instead of rebuilding presentation policy
  * inside the renderer loop.
  */
-export function createBattleHudFrameRuntime({
+export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
   game,
   camera,
   rig,
@@ -120,14 +141,25 @@ export function createBattleHudFrameRuntime({
   getHud,
   getDamagePanel,
   now = () => performance.now(),
-}: BattleHudFrameRuntimeOptions): BattleHudFrameRuntime {
+}: BattleHudFrameRuntimeOptions<TEntity>): BattleHudFrameRuntime<TEntity> {
   const required = [aimController?.update, armorAimOverlay?.update,
     armorAimOverlay?.hide, killcam?.isActive, getHud, getDamagePanel, now];
   if (required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('battle HUD frame runtime requires every presentation port');
   }
 
-  const frameInfo: BattleHudFrameInfo = {
+  const requireHud = (): HudUpdateRuntime => {
+    const runtime = getHud();
+    if (!runtime) throw new Error('battle HUD runtime has not been acquired');
+    return runtime;
+  };
+  const requireDamagePanel = (): DamagePanelRuntime => {
+    const runtime = getDamagePanel();
+    if (!runtime) throw new Error('battle damage panel has not been acquired');
+    return runtime;
+  };
+
+  const frameInfo: BattleHudFrameInfo<TEntity> = {
     timeS: 0,
     pingMs: 0,
     mode: 'battle',
@@ -159,11 +191,11 @@ export function createBattleHudFrameRuntime({
     matchModeState: null,
   };
 
-  const armorTargets: HudTankEntity[] = [];
-  const spotFrame: BattleHudSpotFrame = {
+  const armorTargets: TEntity[] = [];
+  const spotFrame: BattleHudSpotFrame<TEntity> = {
     receiver: null,
     isSpotted(id) {
-      const spotting = game.spotting as HudSpottingState | null;
+      const spotting = game.spotting;
       return spotting
         ? spotting.isSpotted(id, 'player', spotFrame.receiver || player())
         : true;
@@ -171,12 +203,18 @@ export function createBattleHudFrameRuntime({
     player: null,
   };
 
-  const tanks = (): HudTankEntity[] => game.tanks as HudTankEntity[];
-  const player = (): HudTankEntity | null => game.player as HudTankEntity | null;
+  const tanks = (): TEntity[] => game.tanks;
+  const player = (): TEntity | null => game.player;
 
-  const refreshSpotting = (focus: unknown = game.player): void => {
-    const entity = focus as HudTankEntity | null;
-    const spotting = game.spotting as HudSpottingState | null;
+  const bridgeEntity = (value: unknown): TEntity | null => {
+    // Network presentation entities implement the same HUD contract as the
+    // local roster. Validate that contract at the transport boundary; the
+    // generic identity itself cannot be recovered from erased wire data.
+    return isHudTankEntity(value) ? value as TEntity : null;
+  };
+
+  const updateSpotting = (entity: TEntity | null): void => {
+    const spotting = game.spotting;
     spotFrame.receiver = entity;
     spotFrame.player = spotting && entity?.state
       ? spotting.getConcealment(entity, game.timeS)
@@ -194,10 +232,10 @@ export function createBattleHudFrameRuntime({
   const update = (inBattle: boolean, killcamActive: boolean): void => {
     const bridge = networkSession.bridge;
     const observerFocus = networkSession.spectator && killcam.spectate.active
-      ? bridge?.entities.get(killcam.spectate.targetId || '') || null
+      ? bridgeEntity(bridge?.entities.get(killcam.spectate.targetId || ''))
       : null;
     const focus = player() || observerFocus;
-    if (observerFocus) bridge?.setPerspective(observerFocus.id);
+    if (observerFocus) bridge?.setPerspective?.(observerFocus.id);
 
     // Use both the frame-top latch and the live state. A replay can begin in
     // the simulation step immediately before this operation.
@@ -207,20 +245,19 @@ export function createBattleHudFrameRuntime({
     }
 
     frameInfo.timeS = game.timeS;
-    frameInfo.pingMs = networkSession.match
-      ? networkSession.match.client?.rttMs ?? 0
-      : 0;
+    const rttMs = networkSession.match?.client?.getStats?.()?.rttMs;
+    frameInfo.pingMs = Number.isFinite(Number(rttMs)) ? Number(rttMs) : 0;
     frameInfo.mode = rig.mode === 'SNIPER' ? 'sniper' : 'battle';
     frameInfo.player = focus;
     frameInfo.tanks = game.tanks;
     frameInfo.rosterTanks = bridge?.roster || game.tanks;
     frameInfo.shells = game.shells;
     frameInfo.matchModeState = game.matchModeState;
-    refreshSpotting(focus);
+    updateSpotting(focus);
 
     const localPlayer = player();
     if (localPlayer) aimController.update(frameInfo.aim);
-    getHud().update(frameInfo);
+    requireHud().update(frameInfo);
 
     if (localPlayer) {
       const armorEnabled = !!input.getSettings().armorAimOverlay;
@@ -245,13 +282,13 @@ export function createBattleHudFrameRuntime({
     } else {
       armorAimOverlay.hide();
     }
-    getDamagePanel().update(focus.combat);
+    if (focus.combat) requireDamagePanel().update(focus.combat);
   };
 
   return {
     frameInfo,
-    refreshSpotting,
-    redrawFrozen: () => { getHud().update(frameInfo); },
+    refreshSpotting: () => { updateSpotting(game.player); },
+    redrawFrozen: () => { requireHud().update(frameInfo); },
     reset,
     update,
   };

@@ -53,6 +53,7 @@ export interface ShellSpec extends Record<string, unknown> {
   moduleDmg: number;
   reloadS?: number;
   tracer: string;
+  guided?: boolean;
 }
 
 export interface ArmorEnvelope {

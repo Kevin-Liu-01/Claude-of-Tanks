@@ -185,7 +185,7 @@ import { createRosterPresentation } from './game/rosterPresentation.ts';
 import { tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
 import type { DamagePanelController } from './ui/damagePanel.ts';
-import type { HudMode } from './ui/hud.ts';
+import type { HudMatchModeState, HudMode } from './ui/hud.ts';
 
 type DamagePanelSpec = Parameters<DamagePanelController['setTank']>[0];
 type DamagePanelVisual = Parameters<DamagePanelController['setTank']>[1];
@@ -463,7 +463,8 @@ const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : 
 installBattleRecords(bus);
 const game: MainGameState = createGameState<
   MainEntity,
-  NonNullable<MainGameState['spotting']>
+  NonNullable<MainGameState['spotting']>,
+  HudMatchModeState
 >();
 const rosterPresentation = createRosterPresentation({
   getVehicleName: (specId) => getSpec(specId)?.name,
@@ -2285,7 +2286,7 @@ bus.on('ui:roomStart', () => networkRoomCoordinator?.startRound());
 // Spectator perspective, spotting disclosure, aiming, armor inspection, and
 // damage presentation share one allocation-free typed transaction. Capture
 // tooling receives the same retained frame instead of building a second HUD.
-const battleHudFrame = createBattleHudFrameRuntime(legacyPort({
+const battleHudFrame = createBattleHudFrameRuntime({
   game,
   camera,
   rig,
@@ -2297,7 +2298,7 @@ const battleHudFrame = createBattleHudFrameRuntime(legacyPort({
   muzzleScratch: _rayO,
   getHud: () => hud,
   getDamagePanel: () => damagePanel,
-}));
+});
 const frameInfo = battleHudFrame.frameInfo;
 const refreshSpotFrame = battleHudFrame.refreshSpotting;
 

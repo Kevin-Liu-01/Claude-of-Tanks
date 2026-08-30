@@ -13,6 +13,7 @@ import type { getSpec } from '../vehicles/specs.ts';
 import type { FxRuntime } from '../fx/effects.ts';
 import type { GarageRuntime } from '../ui/garage.ts';
 import type { createLighting } from '../engine/lighting.ts';
+import type { ConcealmentView, HudMatchModeState } from '../ui/hud.ts';
 
 export type MainLightingRuntime = ReturnType<typeof createLighting>;
 
@@ -52,17 +53,19 @@ export interface MainEntity extends Omit<
 
 interface MainSpottingRuntime {
   isSpotted(entityId: string, observerId: string, observer: MainEntity | null): boolean;
+  getConcealment(entity: MainEntity, timeS: number): ConcealmentView;
 }
 
 export type MainGameState = Omit<
   GameState,
-  'tanks' | 'allTanks' | 'tankById' | 'player' | 'spotting'
+  'tanks' | 'allTanks' | 'tankById' | 'player' | 'spotting' | 'matchModeState'
 > & Omit<RosterGameState, 'tanks' | 'allTanks' | 'tankById'> & {
   tanks: MainEntity[];
   allTanks: MainEntity[];
   tankById: Map<string, MainEntity>;
   player: MainEntity | null;
   spotting: MainSpottingRuntime | null;
+  matchModeState: HudMatchModeState | null;
   killcam?: unknown;
 };
 
