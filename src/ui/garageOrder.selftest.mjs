@@ -140,6 +140,15 @@ assert.doesNotMatch(garageSource, /\.cot-dossier-head\{[^}]*border-top:/,
   'the vehicle dossier header uses one consistent neutral border');
 assert.doesNotMatch(garageSource, /\.cot-stat-section::before\{/,
   'dossier sections do not draw stray orange rules across their top edges');
+assert.match(garageSource,
+  /Technical schematics[\s\S]*?role="tablist"[\s\S]*?data-technical-image/,
+  'every selected vehicle exposes its generated technical diagrams directly in the garage dossier');
+assert.match(garageSource,
+  /\['ArrowLeft', 'ArrowRight', 'Home', 'End'\][\s\S]*?activateTechnicalTab/,
+  'technical schematic tabs support standard keyboard navigation');
+assert.match(garageSource,
+  /\.cot-technical-figure img\{[^}]*aspect-ratio:2\/1;[^}]*object-fit:contain;/,
+  'technical diagrams preserve their authored two-to-one frame at every dossier width');
 await import('./topAccentBorders.selftest.mjs');
 
 console.log('garageOrder.selftest: ordering, map default, filters and hidden horizontal rail verified');

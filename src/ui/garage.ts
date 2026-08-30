@@ -30,6 +30,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import { shellIconSVG } from './shellIcons.ts';
 import {
   garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageStatGroup,
+  garageTechnicalViews,
 } from './garageDossier.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import {
@@ -1376,6 +1377,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // slot boxes are re-created by every renderStats — delegate their clicks
   statsEl.addEventListener('click', (e) => {
     const target = eventElement(e);
+    const technicalTab = target?.closest<HTMLButtonElement>('[data-technical-view]');
+    if (technicalTab) {
+      activateTechnicalTab(technicalTab);
+      return;
+    }
     const galleryLink = target?.closest<HTMLElement>('[data-gallery-layer]');
     if (galleryLink) {
       openSelectedInGallery(galleryLink.dataset.galleryLayer || 'appearance');
@@ -1387,6 +1393,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const idx = Number(slot.dataset.slot);
     if (idx === eqOpenSlot) closeEqPicker();
     else openEqPicker(idx);
+  });
+
+  statsEl.addEventListener('keydown', (e) => {
+    const tab = eventElement(e)?.closest<HTMLButtonElement>('[data-technical-view]');
+    if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+    const tabs = [...(tab.closest('[role="tablist"]')?.querySelectorAll<HTMLButtonElement>('[role="tab"]') || [])];
+    if (!tabs.length) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const current = Math.max(0, tabs.indexOf(tab));
+    const next = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1
+      : (current + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+    tabs[next].focus();
+    activateTechnicalTab(tabs[next]);
   });
 
   /** Tank switch: the card re-renders its own slots; just drop a stale picker. */
@@ -1704,6 +1724,25 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }));
   }
 
+  function activateTechnicalTab(tab: HTMLButtonElement): void {
+    const section = tab.closest<HTMLElement>('.cot-technical-section');
+    const image = section?.querySelector<HTMLImageElement>('[data-technical-image]');
+    const caption = section?.querySelector<HTMLElement>('[data-technical-caption-output]');
+    const galleryLink = section?.querySelector<HTMLElement>('[data-technical-gallery]');
+    if (!section || !image || !caption || !galleryLink) return;
+    section.querySelectorAll<HTMLButtonElement>('[role="tab"]').forEach((candidate) => {
+      const active = candidate === tab;
+      candidate.setAttribute('aria-selected', active ? 'true' : 'false');
+      candidate.tabIndex = active ? 0 : -1;
+    });
+    const src = tab.dataset.technicalSrc;
+    if (src && image.getAttribute('src') !== src) image.src = src;
+    image.alt = `${specById.get(selectedId || '')?.label?.displayName ||
+      specById.get(selectedId || '')?.name || 'Selected vehicle'} ${tab.dataset.technicalAlt || 'technical schematic'}`;
+    caption.textContent = tab.dataset.technicalCaption || '';
+    galleryLink.dataset.galleryLayer = tab.dataset.technicalLayer || 'appearance';
+  }
+
   let statsFor: string | null = null; // last spec rendered — gates the swap micro-fade
   function renderStats(spec: GarageTankSpec): void {
     statsEl.querySelectorAll<HTMLElement>('.cot-info-trigger').forEach((button) => {
@@ -1782,6 +1821,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         `<div class="cot-special-copy"><b>${special.label}</b><p>${special.detail}</p>` +
         `<small>${special.meta}</small></div><kbd>E</kbd></div></section>`
       : '';
+    const technicalViews = garageTechnicalViews();
+    const initialTechnicalView = technicalViews[0];
+    const technicalTabs = technicalViews.map((view, index) =>
+      `<button class="cot-technical-tab" type="button" role="tab" ` +
+      `aria-selected="${index === 0 ? 'true' : 'false'}" ` +
+      `aria-controls="cot-technical-schematic-panel" tabindex="${index === 0 ? '0' : '-1'}" ` +
+      `data-technical-view="${view.id}" data-technical-src="${iconUrl(spec.id, view.assetView)}" ` +
+      `data-technical-caption="${view.caption}" data-technical-alt="${view.caption.toLowerCase()}" ` +
+      `data-technical-layer="${view.galleryLayer}">${view.label}</button>`).join('');
+    const technicalSection =
+      `<section class="cot-stat-section cot-technical-section">` +
+      statSectionTitle('gallery', 'Technical schematics', `${technicalViews.length} views`) +
+      `<div class="cot-technical-tabs" role="tablist" aria-label="Vehicle technical schematics">${technicalTabs}</div>` +
+      `<figure class="cot-technical-figure" id="cot-technical-schematic-panel" role="tabpanel" ` +
+      `aria-label="Selected vehicle technical schematic">` +
+      `<img src="${iconUrl(spec.id, initialTechnicalView.assetView)}" alt="" ` +
+      `data-technical-image draggable="false" decoding="async">` +
+      `<figcaption data-technical-caption-output>${initialTechnicalView.caption}</figcaption></figure>` +
+      `<button class="cot-layer-link cot-technical-gallery" type="button" ` +
+      `data-gallery-layer="${initialTechnicalView.galleryLayer}" data-technical-gallery>` +
+      `${uiIconSVG('gallery', 13)}Inspect this layer in Tank Gallery</button></section>`;
     const moduleRows = garageModuleRows(spec);
     const crewRows = garageCrewRows(spec);
     const moduleChips = moduleRows.map((row) =>
@@ -1805,6 +1865,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${vehicleEraLabel(spec.era)}</span></div>` +
       `<button class="cot-gallery-link" type="button" data-gallery-layer="appearance">` +
       `${uiIconSVG('gallery', 15)}<span>Open in Tank Gallery</span><span class="go">&#8250;</span></button></div>` +
+      technicalSection +
       `<section class="cot-stat-section">${statSectionTitle('speed', 'Performance', `${spec.weightTons.toFixed(1)} t`)}` +
       `<div class="cot-performance-grid">` +
       statBar('Hit points', `${spec.hp}`, statFrac(grp, 'hp', spec.hp), { icon: 'shield' }) +
@@ -1849,6 +1910,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="eqhead"><span>${uiIconSVG('repair', 13)} Equipment</span><i>${eqIds.length}/${EQUIP_SLOTS}</i></div>` +
       `<div class="eqrow">${slotBoxes}</div></section>`;
     requiredElement<HTMLElement>(statsEl, 'h3').textContent = spec.label?.displayName || spec.name;
+    const technicalImage = statsEl.querySelector<HTMLImageElement>('[data-technical-image]');
+    if (technicalImage) technicalImage.alt = `${spec.label?.displayName || spec.name} ${initialTechnicalView.caption.toLowerCase()}`;
     const dossierHead = statsEl.querySelector('.cot-dossier-head');
     dossierHead?.appendChild(createInfoButton({
       label: 'About the vehicle dossier',

@@ -58,6 +58,31 @@ export interface GarageSpecialSystem {
   readonly meta: string;
 }
 
+export type GarageTechnicalViewId = 'armor' | 'zones' | 'systems';
+
+export interface GarageTechnicalView {
+  readonly id: GarageTechnicalViewId;
+  readonly label: string;
+  readonly caption: string;
+  readonly assetView: 'armor_side' | 'hit_zones_side' | 'modules_side';
+  readonly galleryLayer: 'armor' | 'modules';
+}
+
+const GARAGE_TECHNICAL_VIEWS: readonly GarageTechnicalView[] = Object.freeze([
+  Object.freeze({
+    id: 'armor', label: 'Armor', caption: 'Effective armor by protection zone',
+    assetView: 'armor_side', galleryLayer: 'armor',
+  }),
+  Object.freeze({
+    id: 'zones', label: 'Hit zones', caption: 'Authoritative collision-plate layout',
+    assetView: 'hit_zones_side', galleryLayer: 'armor',
+  }),
+  Object.freeze({
+    id: 'systems', label: 'Systems', caption: 'Damageable modules and crew stations',
+    assetView: 'modules_side', galleryLayer: 'modules',
+  }),
+]);
+
 const MODULE_LABEL_BY_ID: Readonly<Record<string, string>> = MODULE_LABEL;
 const CREW_LABEL_BY_ID: Readonly<Record<string, string>> = CREW_LABEL;
 
@@ -134,4 +159,9 @@ export function garageGalleryHref(specId: string, layer = 'appearance'): string 
   if (layer && layer !== 'appearance') params.set('layer', layer);
   const query = params.toString();
   return `/gallery${query ? `?${query}` : ''}`;
+}
+
+/** First-class generated schematics shown in every playable vehicle dossier. */
+export function garageTechnicalViews(): readonly GarageTechnicalView[] {
+  return GARAGE_TECHNICAL_VIEWS;
 }

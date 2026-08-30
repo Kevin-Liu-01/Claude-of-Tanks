@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {
-  garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem,
+  garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageTechnicalViews,
 } from './garageDossier.ts';
 import { shellIconSVG, shellIconTypes } from './shellIcons.ts';
 
@@ -37,10 +37,17 @@ assert.match(magazine.meta, /3 rounds.*2\.5 s cycle.*17\.2 s reload/);
 assert.equal(garageGalleryHref('m1a1'), '/gallery?id=m1a1');
 assert.equal(garageGalleryHref('m1a1', 'modules'), '/gallery?id=m1a1&layer=modules');
 
+const technicalViews = garageTechnicalViews();
+assert.deepEqual(technicalViews.map((view) => view.id), ['armor', 'zones', 'systems']);
+assert.deepEqual(technicalViews.map((view) => view.assetView),
+  ['armor_side', 'hit_zones_side', 'modules_side']);
+assert.deepEqual(technicalViews.map((view) => view.galleryLayer), ['armor', 'armor', 'modules']);
+assert(Object.isFrozen(technicalViews), 'garage schematic catalog is immutable');
+
 const silhouettes = shellIconTypes().map((type) => shellIconSVG(type));
 assert.equal(new Set(silhouettes).size, shellIconTypes().length, 'each ammunition class has distinct art');
 for (const type of ['AP', 'APCR', 'APFSDS', 'HEAT', 'HE']) {
   assert.match(shellIconSVG(type), new RegExp(`data-shell-type="${type}"`));
 }
 
-console.log('garageDossier.selftest: modules, crew, special systems, gallery links, and shell art passed');
+console.log('garageDossier.selftest: modules, crew, technical schematics, gallery links, and shell art passed');
