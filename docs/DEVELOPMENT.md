@@ -228,6 +228,22 @@ The transition gate fails independently on total load duration and the worst
 main-thread frame gap, and refuses certification under detected host/GPU
 contention. Run the exhaustive route matrix with `npm run perf:loading`.
 
+Rendered shadow and temporal-stability release audit:
+
+    npm run build
+    npx vite preview --host 127.0.0.1 --port 5173 --strictPort
+    agent-browser --session cot-shadow-audit open \
+      'http://127.0.0.1:5173/?nosplash=1&tier=desktop&diagforce=1'
+    node tools/render-stability-audit.mjs cot-shadow-audit
+    node tools/map-shadow-audit.mjs cot-shadow-audit
+    agent-browser --session cot-shadow-audit close
+
+The first probe drives a live tank and camera through every quality preset and
+checks snapped cascade alignment plus the post-composed temporal-occlusion
+frame. The second visits every battlefield and rejects stale shadow depth,
+tree-fade/contact regressions, compile frames, and unstable frame tails. Audit
+receipts are transient `.qa-dev` evidence and must not be committed.
+
 Development flight recorder:
 
     npm run perf:dev
