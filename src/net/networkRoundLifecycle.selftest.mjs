@@ -45,7 +45,10 @@ assert.deepEqual(calls.slice(2), [
 ], 'full close must abort entry before transport and room teardown');
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
-assert.match(mainSource, /createNetworkRoundLifecycle\(\{/,
+const compositionSource = await readFile(
+  new URL('./networkBattleComposition.ts', import.meta.url), 'utf8',
+);
+assert.match(compositionSource, /createRound\(\{/,
   'the composition root must install the shared round lifecycle');
 assert.doesNotMatch(mainSource, /function closeNetworkMatch\(/,
   'network close ordering must not drift back into main');

@@ -85,6 +85,10 @@ re-enter the initial browser graph merely to label a picker.
 The Garage retains only the inert browser-session shell for multiplayer.
 Room coordination, lobby warming, battle launch, activation, and presentation
 orchestration load together behind explicit Private, LAN, or Ranked intent.
+Their circular lifecycle links are assembled only by
+`networkBattleComposition.ts`: round teardown, rematch, lobby preparation,
+presentation activation, and transport closure cannot be rewired independently
+inside `main.ts`.
 The common Bots preload list must contain no bridge, room-chat, signaling, or
 network-presentation work. A failed first acquisition is retryable and must not
 poison later room attempts in the same page session.

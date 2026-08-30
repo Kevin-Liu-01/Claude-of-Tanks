@@ -28,6 +28,9 @@ const networkPresentationAccess = fs.readFileSync(
 const networkCompositionAccess = fs.readFileSync(
   path.join(here, '..', 'net', 'networkCompositionAccess.ts'), 'utf8',
 );
+const networkBattleComposition = fs.readFileSync(
+  path.join(here, '..', 'net', 'networkBattleComposition.ts'), 'utf8',
+);
 const networkPresentation = fs.readFileSync(
   path.join(here, '..', 'net', 'networkBattlePresentationRuntime.ts'), 'utf8',
 );
@@ -77,13 +80,13 @@ assert.match(soloLoading,
   /\(\) => preloadBattleStart\(\)[\s\S]{0,900}startBattle\(specId, resolved/,
   'covered loading must acquire the activation owner before its synchronous handoff');
 
-assert.match(main, /createNetworkLobbyPreloader\(\{/,
+assert.match(networkBattleComposition, /createLobby\(\{/,
   'joined rooms need one typed lobby-intent owner');
 assert.match(networkLobbyPreloader, /for \(const player of state\.players \|\| \[\]\)[\s\S]{0,260}missingBuilders\.push\(specId\)[\s\S]{0,280}ensureTankBuilders\(missingBuilders\)/,
   'joined rooms should transfer only missing roster builders');
 assert.match(networkLobbyPreloader, /if \(nextMapId\) prefetchWorld\(nextMapId\);/,
   'fixed host maps should use the quiet background world path');
-assert.match(main, /createNetworkBattlePresentationAccess\(\{/,
+assert.match(networkBattleComposition, /createPresentation\(\{/,
   'main should compose one intent-loaded network presentation owner');
 assert.doesNotMatch(main, /async function presentNetworkBattle\(/,
   'the cold network lifecycle must not return to the composition root');
@@ -122,9 +125,11 @@ for (const runtime of [
 ]) {
   assert.doesNotMatch(main, new RegExp(`import \\{[^}]*create[^}]*\\} from './net/${runtime}\\.ts'`),
     `${runtime} must stay out of the pristine Garage graph`);
-  assert.match(main, new RegExp(`import\\('./net/${runtime}\\.ts'\\)`),
-    `${runtime} must remain available behind explicit network intent`);
+  assert.match(networkBattleComposition, new RegExp(`from './${runtime}\\.ts'`),
+    `${runtime} must remain owned by the isolated network composition`);
 }
+assert.match(main, /import\('\.\/net\/networkBattleComposition\.ts'\)/,
+  'the complete network composition must remain behind explicit network intent');
 assert.match(networkCompositionAccess,
   /pending = request[\s\S]{0,180}pending === request[\s\S]{0,80}pending = null/,
   'a failed first-visit network composition transfer must remain retryable');
@@ -136,8 +141,8 @@ assert.doesNotMatch(main, /function preloadPlayMode\(/,
   'mode preload and retry policy must not return to the composition root');
 assert.match(playSurface, /export interface PlaySurfaceRuntime/,
   'play intent should cross a stable typed interface');
-assert.match(main,
-  /preloadPresentation: \(\) => networkBattlePresentation\.preload\(\)/,
+assert.match(networkBattleComposition,
+  /preloadPresentation: presentation\.preload/,
   'a joined waiting room should keep the presentation runtime warm');
 assert.match(networkPresentation,
   /entry\.acquire\(\{[\s\S]{0,180}loadModules: entry\.loadModules/,

@@ -236,6 +236,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/net/networkBrowserSessionRuntime.selftest.mjs',
     'src/net/networkRoundLifecycle.selftest.mjs',
     'src/net/networkCompositionAccess.selftest.mjs',
+    'src/net/networkBattleComposition.selftest.mjs',
     'src/net/networkBattlePresentationAccess.selftest.mjs',
     'src/net/networkBattlePresentationRuntime.selftest.mjs',
     'src/net/networkRoomCoordinator.selftest.mjs',

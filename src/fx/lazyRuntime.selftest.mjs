@@ -123,9 +123,10 @@ if (/from\s+['"]three['"]/.test(playerFrameInput)
     || /document\.|window\.|setTimeout\(/.test(playerFrameInput)) {
   throw new Error('frame input must remain allocation-free and independent from browser presentation');
 }
+const networkCompositionAt = main.indexOf('function loadNetworkComposition()');
 const networkBattleAdapters = main.slice(
-  main.indexOf('const networkBattlePresentation = createNetworkBattlePresentationAccess('),
-  main.indexOf('const networkBattleLauncher = createNetworkBattleLaunchRuntime('),
+  networkCompositionAt,
+  main.indexOf("bus.on('phase:change'", networkCompositionAt),
 );
 if (!/loadModules:[\s\S]{0,700}ensureFxRuntime\(\)/.test(networkBattleAdapters)
     || !/entry\.acquire\(\{[\s\S]{0,220}loadModules: entry\.loadModules/.test(networkBattlePresentation)) {

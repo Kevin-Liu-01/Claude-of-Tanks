@@ -1,6 +1,6 @@
 import type { NetworkRoomState } from './networkRoomCoordinator.ts';
 
-interface NetworkLobbyPreloaderOptions {
+export interface NetworkLobbyPreloaderOptions {
   getGamePhase(): string;
   preloadPresentation(): Promise<unknown>;
   preloadVisuals(): Promise<unknown>;

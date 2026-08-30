@@ -82,7 +82,7 @@ export interface NetworkEntryFailure {
   }>;
 }
 
-interface NetworkBattleLaunchOptions {
+export interface NetworkBattleLaunchOptions {
   lifecycle: BattleEntryLifecyclePort;
   battleLoad: BattleLoadScreen;
   audio: AudioLoadingPort;

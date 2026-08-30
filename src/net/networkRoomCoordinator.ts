@@ -66,7 +66,7 @@ interface GarageRoomStatus {
   total: number;
 }
 
-interface NetworkRoomCoordinatorOptions {
+export interface NetworkRoomCoordinatorOptions {
   getMatch: () => NetworkRoomMatch | null;
   getPlayMenu: () => Promise<PlayMenuRuntime> | null;
   loadRoomChat: () => Promise<RoomChatModule>;
