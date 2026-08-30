@@ -122,13 +122,15 @@ for (const id of ['pl01', 'pl01_105']) {
   assert.equal(noseSeat.connected, true,
     `${id} nose cap and gun sleeve must remain connected`);
   assert.deepEqual(gun.userData.pl01MantletReceipt, {
-    revision: 'turret-throat-fit-r1', axisWorldY: 2.38104,
-    coverMinWorldY: 2.28204, coverMaxWorldY: 2.54304,
+    revision: 'continuous-cheek-loft-r2', axisWorldY: 2.38104,
+    coverMinWorldY: 2.14776, coverMaxWorldY: 2.5452,
     turretRoofWorldY: 2.69208,
     throatRearZ: 0.43, throatBottomY: -0.23328,
-    throatShoulderY: -0.14688, throatTopY: 0.11232,
-    throatHalfWidths: [0.08, 0.34, 0.07], contactGapM: 0,
-    aligned: true,
+    throatShoulderY: -0.03456, throatTopY: 0.16416,
+    throatHalfWidths: [0.34, 0.28, 0.22],
+    stationDepths: [0.43, 1.18, 2.18, 3.25],
+    turretNoseOverlapM: 0.14, contactGapM: 0,
+    singleClosedHousing: true, aligned: true,
   }, `${id} gun-root prism must fit within the rebuilt turret envelope`);
   assert.ok(gunMount?.isMesh,
     `${id} must retain one merged pitch-owned gun housing`);
@@ -145,12 +147,20 @@ for (const id of ['pl01', 'pl01_105']) {
     rearProfile.add(`${housingPositions.getX(index).toFixed(5)},${housingPositions.getY(index).toFixed(5)}`);
   }
   for (const point of [
-    '-0.08000,-0.23328', '0.08000,-0.23328',
-    '-0.34000,-0.14688', '0.34000,-0.14688',
-    '-0.07000,0.11232', '0.07000,0.11232',
+    '-0.34000,-0.23328', '0.34000,-0.23328',
+    '-0.28000,-0.03456', '0.28000,-0.03456',
+    '-0.22000,0.16416', '0.22000,0.16416',
   ]) {
     assert.ok(rearProfile.has(point),
       `${id} gun housing rear profile must contain turret-throat point ${point}`);
+  }
+  for (const depth of [1.18, 2.18, 3.25]) {
+    let stationVertices = 0;
+    for (let index = 0; index < housingPositions.count; index++) {
+      if (near(housingPositions.getZ(index), depth)) stationVertices += 1;
+    }
+    assert.ok(stationVertices >= 12,
+      `${id} gun housing must carry a connected faceted station at z ${depth}`);
   }
 
   const trackBands = [];
