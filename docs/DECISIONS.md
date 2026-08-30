@@ -99,6 +99,10 @@ inside `main.ts`.
 The common Bots preload list must contain no bridge, room-chat, signaling, or
 network-presentation work. A failed first acquisition is retryable and must not
 poison later room attempts in the same page session.
+The demand-loaded battle HUD and damage panel are one phase-owned application
+runtime. Every acquisition reapplies the current directional-hit setting and
+queues the active minimap; replay veiling changes both surfaces atomically.
+The composition root must not retain a second set of HUD lifecycle latches.
 
 Desktop boot does not transfer touch-control or mobile-auto-aim chunks. One
 retryable mobile input access owner joins both dependencies only after a touch

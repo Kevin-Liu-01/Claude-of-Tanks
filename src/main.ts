@@ -32,16 +32,18 @@ import type { NetworkBattleCompositionRuntime } from './net/networkBattleComposi
 import type { PlayerBattleActions } from './game/playerBattleActions.ts';
 import type { BattleVisualStreamer } from './game/battleVisualStreamer.ts';
 import type {
-  MainDamagePanelRuntime,
   MainEntity,
   MainFxModule,
   MainFxRuntime,
   MainGameState,
   MainGarageRuntime,
-  MainHudRuntime,
   MainLightingRuntime,
   MainWorld,
 } from './app/mainContracts.ts';
+import {
+  createMainBattleHudRuntime,
+  type MainBattleHudRuntime,
+} from './app/mainBattleHudRuntime.ts';
 import { createMainFrameRuntime } from './app/mainFrameRuntime.ts';
 import { createCombatAimComposition } from './app/combatAimComposition.ts';
 import { checkedIntegrationPort } from './app/checkedIntegrationPort.ts';
@@ -96,7 +98,6 @@ import {
   clearCamoOverrides, warmWreckTextures,
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.ts';
-import { createBattleHudAccess } from './ui/battleHudAccess.ts';
 import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
 import './ui/garage.css';
@@ -374,7 +375,10 @@ const engineCtx = {
 let shotMode = false;
 const _upNormal = new THREE.Vector3(0, 1, 0);
 let worldRuntime: WorldActivationRuntime<MainWorld, unknown>;
+let battleHudRuntime: MainBattleHudRuntime | null = null;
 const currentWorld = () => worldRuntime?.current ?? null;
+const currentHud = () => battleHudRuntime?.currentHud() ?? null;
+const currentDamagePanel = () => battleHudRuntime?.currentDamagePanel() ?? null;
 const hfProxy = createLiveHeightFieldProxy({
   getWorld: currentWorld,
   useExactHeight: () => shotMode,
@@ -421,13 +425,16 @@ worldRuntime = createWorldActivationRuntime<
   canCreateCollider: () => isSoloBattleRuntimeReady(),
   createCollider: (next) => createCollider(game, next),
   placeGarage: () => garagePhasePresentation.place(),
-  isMinimapReady: () => !!hud,
+  isMinimapReady: () => !!currentHud(),
   buildMinimap: (next, textured) => {
+    const hud = currentHud();
     if (!hud) return;
     hud.buildMinimap(next.heightField, next.getMinimapFeatures(), next.config.minimap,
       textured ? minimapSnapCtx() : null);
   },
-  loadMinimapAsset: (next, url) => hud?.buildMinimapFromAsset(next.heightField, url) ?? false,
+  loadMinimapAsset: (next, url) => (
+    currentHud()?.buildMinimapFromAsset(next.heightField, url) ?? false
+  ),
   compilePrograms: (root) => forwardProgramWarm.compile(root),
   linkerBreathingSlices: (maxSlices) => forwardProgramWarm.linkerBreathingSlices(maxSlices),
   updateShadowFrustums: () => lighting.updateFrustums?.(),
@@ -708,7 +715,7 @@ const battleIntent = createBattleIntentRuntime({
   preloadKillcam: () => preloadKillcamModule(),
   ensureFxRuntime,
   preloadMinimap: (mapId) => ensureBattleHud()
-    .then(() => hud?.preloadMinimapAsset(minimapAssetUrl(mapId))),
+    .then(() => currentHud()?.preloadMinimapAsset(minimapAssetUrl(mapId))),
 });
 
 // Garage vehicle selection now crosses one typed lifecycle boundary. The
@@ -838,20 +845,15 @@ function minimapSnapCtx() {
 // boot r8: the minimap build (a real orthographic top-down capture of the
 // battlefield) moved to activateWorld — the HUD is hidden in the garage, so
 // nothing on the boot path can see it.
-let hud: MainHudRuntime | null = null;
-let damagePanel: MainDamagePanelRuntime | null = null;
-const currentHud = (): MainHudRuntime | null => hud;
-const currentDamagePanel = (): MainDamagePanelRuntime | null => damagePanel;
-const battleHudAccess = createBattleHudAccess(bus, engineCtx);
+battleHudRuntime = createMainBattleHudRuntime({
+  bus,
+  engineContext: engineCtx,
+  directionalHitValuesEnabled: () => !!input.getSettings().showDirectionalHitValues,
+  queueMinimap: () => { worldRuntime.queueMinimap(); },
+});
 async function ensureBattleHud() {
-  const runtime = await battleHudAccess.preload();
-  hud = runtime.hud;
-  damagePanel = runtime.damagePanel;
-  bus.emit('ui:directionalHitValues', {
-    on: !!input.getSettings().showDirectionalHitValues,
-  });
-  worldRuntime.queueMinimap();
-  return runtime;
+  if (!battleHudRuntime) throw new Error('battle HUD runtime is not initialized');
+  return battleHudRuntime.preload();
 }
 // Preserve the staged progress contract without transferring battle-only UI
 // into a garage first visit. Battle intent/entry joins ensureBattleHud().
@@ -1160,10 +1162,7 @@ game.killcam = killcam;
  */
 function veilHud(on: boolean) {
   // Studio and garage are valid before the battle-only HUD graph exists.
-  if (hud?.root) hud.root.style.display = on ? 'none' : '';
-  const sr = hud?.shotInfo?.statsRoot;
-  if (sr) sr.style.visibility = on ? 'hidden' : '';
-  if (damagePanel?.root) damagePanel.root.style.visibility = on ? 'hidden' : '';
+  battleHudRuntime?.veil(on);
 }
 
 // Discrete shell, ERA, camera-recoil, prop and Garage-residency reactions have
@@ -1591,16 +1590,16 @@ const soloBattleStart = createSoloBattleStartAccess({
     },
     ui: {
       hud: {
-        shotInfo: { setPlayer: (playerId: string) => hud?.shotInfo.setPlayer(playerId) },
-        setMode: (mode: HudMode) => hud?.setMode(mode),
+        shotInfo: { setPlayer: (playerId: string) => currentHud()?.shotInfo.setPlayer(playerId) },
+        setMode: (mode: HudMode) => currentHud()?.setMode(mode),
       },
       playerActions: playerBattleActions,
       damagePanel: {
         setTank: (spec: DamagePanelSpec, visual: DamagePanelVisual) => (
-          damagePanel?.setTank(spec, visual)
+          currentDamagePanel()?.setTank(spec, visual)
         ),
         setEquipment: (equipment: DamagePanelEquipment) => (
-          damagePanel?.setEquipment(equipment)
+          currentDamagePanel()?.setEquipment(equipment)
         ),
       },
       hideGarage: () => garage.hide(),
@@ -1650,7 +1649,7 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     },
     ensureBattleHud,
     preloadMinimap: (mapId: string) => ensureBattleHud()
-      .then(() => hud?.preloadMinimapAsset(minimapAssetUrl(mapId))),
+      .then(() => currentHud()?.preloadMinimapAsset(minimapAssetUrl(mapId))),
     ensureTouchControls,
     preloadSettings: () => settings.preload(),
     preloadArmorAim: () => armorAimOverlay.preload(),
@@ -1671,7 +1670,7 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     prebakeSharedTextures,
     anisotropy: engineCtx.anisotropy ?? 4,
     rosterRows: (team: string) => rosterPresentation.battleRows(game.tanks, team),
-    warmShotCards: (specIds: readonly string[]) => hud?.warmShotCards(specIds),
+    warmShotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
     getCamoSweep: () => camoSweepP,
     prepareRevealCamera: prepareBattleRevealCamera,
     resolveVisiblePreBattleSeconds,
@@ -1855,7 +1854,7 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
               warmRender,
             });
           },
-          shotCards: (specIds: readonly string[]) => hud?.warmShotCards(specIds),
+          shotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
           compile: async () => {
             forwardProgramWarm.compile(scene);
             for (const _ of forwardProgramWarm.linkerBreathingSlices(24)) await nextFrame();
@@ -1927,9 +1926,9 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
         // Engineering-only controller is created after ordinary boot
         // composition; keep this port lazy so startup never crosses its TDZ.
         driveTest: { resetAim: () => driveTestController.resetAim() },
-        getHud: () => hud,
+        getHud: currentHud,
         playerActions: playerBattleActions,
-        getDamagePanel: () => damagePanel,
+        getDamagePanel: currentDamagePanel,
         rig,
         presentation: {
           setShotMode: (value: boolean) => { shotMode = value; },
@@ -2024,7 +2023,7 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
       if (killcam.spectate?.active) killcam.spectate.stop(true);
       veilHud(false);
       // cancel() can flush a buffered report, so hide battle UI afterward.
-      hud?.setMode?.('hidden');
+      currentHud()?.setMode?.('hidden');
       endOverlay.hide();
     },
     resetBattleTank: () => resetBattleTankForGarage({
@@ -2091,7 +2090,7 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     emitGaragePhase: () => bus.emit('phase:change', { phase: 'garage' }),
     hideEndOverlay: endOverlay.hide,
     exitPointerLock: () => { if (document.exitPointerLock) document.exitPointerLock(); },
-    hideHud: () => hud?.setMode?.('hidden'),
+    hideHud: () => currentHud()?.setMode?.('hidden'),
     showGarage: (specId: string) => garage.show(specId),
     poseGarageCamera: garageEnvironmentPresentation.poseCamera,
     startShowroom: () => showroom.start(),
@@ -2148,8 +2147,8 @@ const battleHudFrame = createBattleHudFrameRuntime({
   networkSession,
   killcam,
   muzzleScratch: _rayO,
-  getHud: () => hud,
-  getDamagePanel: () => damagePanel,
+  getHud: currentHud,
+  getDamagePanel: currentDamagePanel,
 });
 const frameInfo = battleHudFrame.frameInfo;
 const refreshSpotFrame = battleHudFrame.refreshSpotting;
@@ -2184,7 +2183,7 @@ const battleFrame = createBattleFrameRuntime({
   countdown: {
     isWarmPending: () => battleWarmPending,
     advance: advancePreBattleCountdown,
-    show: (seconds: number) => hud?.preBattleCountdown(seconds),
+    show: (seconds: number) => currentHud()?.preBattleCountdown(seconds),
     rollout: () => bus.emit('battle:rollout', {}),
   },
   presentation: {
@@ -2330,7 +2329,7 @@ window.__SHOTS = {
       setLastFov: mainFrame.noteFovPrimed,
       refreshSpotFrame,
       getWorld: currentWorld,
-      getHud: () => hud,
+      getHud: currentHud,
       getFx: () => fxRuntimeAccess.current,
       getKillcam: () => killcam,
       getShellCards: () => playerBattleActions.shellCards,
@@ -2431,7 +2430,7 @@ const studioAccess = createStudioAccess({
   ensureFxRuntime,
   prepareRuntime: () => lighting.setFarCascadeDormant(false),
   createContext: (studioFx: unknown) => ({
-    renderer, scene, camera, post, lighting, game, hud, garage, showroom,
+    renderer, scene, camera, post, lighting, game, hud: currentHud(), garage, showroom,
     hfProxy, getWorld: currentWorld,
     ensureWorld: (id: string, onProgress: (fraction: number, label: string) => void) => ensureWorld(id, onProgress, {
       precompile: false,
@@ -2576,7 +2575,7 @@ if (diagnosticsRequested) {
         await ensureBattleHud();
         currentHud()?.forceHitMark(!!bounced);
       },
-      getDamagePanel: () => damagePanel,
+      getDamagePanel: currentDamagePanel,
       getNetworkDiagnostics: () => networkSession.diagnostics(),
       getNetworkPresentationStats: () => (
         networkSession.bridge?.getPresentationEventStats?.() || null
