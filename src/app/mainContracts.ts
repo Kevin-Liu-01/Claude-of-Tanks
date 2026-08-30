@@ -12,20 +12,9 @@ import type { WorldRuntime } from '../world/map.ts';
 import type { getSpec } from '../vehicles/specs.ts';
 import type { FxRuntime } from '../fx/effects.ts';
 import type { GarageRuntime } from '../ui/garage.ts';
+import type { createLighting } from '../engine/lighting.ts';
 
-export interface MainLightingRuntime {
-  setupShadowMaterial(material: THREE.Material, extraHook?: unknown): void;
-  releaseShadowMaterial(material: THREE.Material): unknown;
-  setFarCascadeDormant(dormant: boolean): void;
-  setStaticPresentationDormant(dormant: boolean): void;
-  setSun(direction: THREE.Vector3, config?: unknown): void;
-  update(force?: boolean, dt?: number): void;
-  updateFov(): void;
-  updateFrustums(): void;
-  getShadowTelemetry(): unknown;
-  primeShadowMaps(...args: unknown[]): unknown;
-  preservePrimedCascadesForNextFrame(): void;
-}
+export type MainLightingRuntime = ReturnType<typeof createLighting>;
 
 export type MainGarageRuntime = GarageRuntime;
 

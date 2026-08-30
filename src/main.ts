@@ -27,7 +27,6 @@ import type {
   WorldActivationRuntime,
   WorldActivationOptions,
 } from './world/worldActivationRuntime.ts';
-import type { SkyPreset } from './engine/sky.ts';
 import type { NetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
 import type { PlayerBattleActions } from './game/playerBattleActions.ts';
 import type { BattleVisualStreamer } from './game/battleVisualStreamer.ts';
@@ -334,7 +333,10 @@ const engineCtx = {
   renderer,
   scene,
   camera,
-  setupShadowMaterial: (mat: THREE.Material, extraHook: unknown = null) => (
+  setupShadowMaterial: (
+    mat: THREE.Material,
+    extraHook: THREE.Material['onBeforeCompile'] | null = null,
+  ) => (
     lighting.setupShadowMaterial(mat, extraHook)
   ),
   releaseShadowMaterial: (mat: THREE.Material) => lighting.releaseShadowMaterial(mat),
@@ -373,7 +375,11 @@ const garageFramePacer = createGarageFramePacer();
 let garagePresentationDirty = true;
 let invalidateGaragePresentation = () => { garagePresentationDirty = true; };
 if (typeof window !== 'undefined') window.__GARAGE_IDLE_WORK = garageIdleWorkCoordinator.stats;
-worldRuntime = createWorldActivationRuntime<MainWorld, unknown, Partial<SkyPreset>>({
+worldRuntime = createWorldActivationRuntime<
+  MainWorld,
+  unknown,
+  MainWorld['config']['sky']
+>({
   initialMapId: 'verdant',
   coordinatorDependencies: {
     engineContext: engineCtx,
