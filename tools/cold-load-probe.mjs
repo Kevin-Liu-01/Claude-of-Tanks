@@ -63,7 +63,8 @@ async function metrics(page, startedAt) {
     sourceChunks: performance.getEntriesByType('resource')
       .filter((row) => row.name.includes('source-geometry')).length,
     diagnosticChunks: performance.getEntriesByType('resource')
-      .filter((row) => /\/(?:perfHud|debugTelemetry)-[^/]+\.js(?:\?|$)/.test(row.name))
+      .filter((row) => /\/(?:perfHud|debugTelemetry|driveTestController|debugSurface|combatTelemetry)-[^/]+\.js(?:\?|$)/
+        .test(row.name))
       .map((row) => new URL(row.name).pathname),
     captureChunks: performance.getEntriesByType('resource')
       .filter((row) => /\/shotViews-[^/]+\.js(?:\?|$)/.test(row.name))

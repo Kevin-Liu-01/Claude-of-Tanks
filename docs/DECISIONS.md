@@ -74,6 +74,9 @@ covered loader cannot acquire subtly different meanings across browser owners.
 Solo rollout never adjusts the reveal camera. A separate typed entry owner
 selects the requested vehicle/map and, on any cold-load failure, restores and
 paints Garage state behind opaque coverage before fading the loader.
+Engineering drive controls sit behind an inert typed facade. Ordinary players
+transfer no drive-test implementation; development, automation, and explicit
+debug intent join one retryable import while earlier callbacks remain stable.
 
 ## World and Garage lifecycle
 

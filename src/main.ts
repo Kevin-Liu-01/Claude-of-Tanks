@@ -147,6 +147,7 @@ import {
 // facade transfers the exact HUD/telemetry runtime only for explicit QA,
 // development, or automation sessions.
 import { debugModeRequested } from './dev/debugIntent.ts';
+import { createDriveTestAccess } from './dev/driveTestAccess.ts';
 import { createPerfDiagnosticsAccess } from './dev/perfDiagnosticsAccess.ts';
 import { createLazyAudio } from './audio/lazyAudio.ts';
 import { createListenerPoseRuntime } from './audio/listenerPoseRuntime.ts';
@@ -2602,8 +2603,9 @@ if (!STUDIO_BOOT_INTENT && selectedGarageVariantId !== 'verdant_motor_pool') {
 const driveTestRequested = import.meta.env.DEV
   || debugModeRequested()
   || navigator.webdriver;
-const driveTestController = driveTestRequested
-  ? (await import('./dev/driveTestController.ts')).createDriveTestController(legacyPort({
+const driveTestController = createDriveTestAccess({
+  enabled: driveTestRequested,
+  options: () => legacyPort({
     getGame: () => game,
     getWorld: currentWorld,
     getRig: () => rig,
@@ -2617,17 +2619,9 @@ const driveTestController = driveTestRequested
     simStep,
     resetPresentationPoses: battlePresentation.resetSoloPoses,
     resetSimAccumulator: battleFrame.resetSimulationAccumulator,
-  }))
-  : {
-    aimTargetId: null,
-    aimAtNearest: () => null,
-    gunAimError: () => Infinity,
-    aimState: () => null,
-    fastForward: () => 0,
-    spawnKillShell: () => false,
-    slayEnemies: () => {},
-    resetAim: () => {},
-  };
+  }),
+});
+if (driveTestRequested) await driveTestController.preload();
 
 if (diagnosticsRequested) {
   const { createCombatTelemetry } = await import('./dev/combatTelemetry.ts');
