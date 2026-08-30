@@ -216,4 +216,4 @@ export default {
   // over the shallows looking up the coastline: surf + strand run the frame
   // diagonal, village + lighthouse mid-left, uplands behind
   shot: { pos: [356, 40, -300], look: [96, -10, 190] },
-};
+} satisfies import('../terrain.ts').TerrainMapConfig & Record<string, unknown>;

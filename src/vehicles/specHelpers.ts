@@ -66,6 +66,7 @@ export interface ArmorEnvelope {
   turretPlates: ArmorPlate[];
   modules: ModuleBox[];
   crew: CrewBox[];
+  bodyContactPoints?: { hull: number[]; turret: number[] };
 }
 
 export function plate(

@@ -9,6 +9,7 @@
 
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
 import { getSpec } from '../vehicles/specs.ts';
+import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getMapConfig } from '../world/maps/index.ts';
 import type { BattlefieldMapConfig } from '../world/maps/index.ts';
 import { createHeightField, createLayout } from '../world/terrain.ts';
@@ -20,13 +21,7 @@ import {
   fireRecoil,
   updateTank,
 } from './movement.ts';
-import type {
-  MovementArmorSpec,
-  MovementCombatState,
-  MovementGunSpec,
-  MovementSpec,
-  TankState,
-} from './movement.ts';
+import type { MovementCombatState, TankState } from './movement.ts';
 import {
   prefersVerticalTankContact,
   resolveTankBodyContacts,
@@ -37,7 +32,7 @@ import {
   applyDispersion, createShell, guideShellToward, stepShell,
 } from './ballistics.ts';
 import { tankPoseFromState, traceTank } from './armor.ts';
-import type { ArmorIntersection, ArmorModel } from './armor.ts';
+import type { ArmorIntersection } from './armor.ts';
 import {
   createCombatState,
   isHeClass,
@@ -57,14 +52,12 @@ import type {
   CombatState,
   DamageShell,
   DamageShellSpec,
-  DamageTankSpec,
   HitEvent,
 } from './damage.ts';
 import { createSpottingSystem } from './spotting.ts';
 import type {
   ConcealerDisc,
   SpottingRayHit,
-  SpottingTankSpec,
   SpottingVector3,
 } from './spotting.ts';
 import { captureWorldSnapshot } from '../net/snapshot.ts';
@@ -77,11 +70,9 @@ import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
 import type { CollisionRecord } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.ts';
-import type {
-  EquipmentCombatState,
-  EquipmentSpecLike,
-} from '../game/equipment.ts';
+import type { EquipmentCombatState } from '../game/equipment.ts';
 import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.ts';
+import type { AiDifficulty } from '../game/ai.ts';
 import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.ts';
 import type { BotRoutePoint } from './botRoutePlanner.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from '../game/consumables.ts';
@@ -126,7 +117,7 @@ export interface AuthoritativePlayerRecord {
   spawn?: AuthoritativeSpawn;
   bot?: boolean;
   equipment?: readonly string[] | null;
-  difficulty?: string;
+  difficulty?: AiDifficulty;
 }
 
 export interface AuthoritativePlayerInput extends AimIntentInput {
@@ -151,25 +142,7 @@ interface AuthoritativeInput {
   [name: string]: unknown;
 }
 
-type AuthoritativeGunSpec = MovementGunSpec & DamageTankSpec['gun'] & {
-  shells: DamageShellSpec[];
-  soundProfile?: string;
-  primaryGuided?: boolean;
-};
-
-type AuthoritativeArmorSpec = ArmorModel & MovementArmorSpec;
-
-export type AuthoritativeSpec = Omit<MovementSpec, 'armor' | 'gun'> &
-  Omit<DamageTankSpec, 'armor' | 'dims' | 'gun'> &
-  EquipmentSpecLike & SpottingTankSpec & {
-    id: string;
-    name: string;
-    era: string;
-    hp: number;
-    dims: MovementSpec['dims'];
-    gun: AuthoritativeGunSpec;
-    armor: AuthoritativeArmorSpec;
-  };
+export type AuthoritativeSpec = FleetTankSpec;
 
 type AuthoritativeCombatState = CombatState & EquipmentCombatState &
   MovementCombatState & MatchModeEntity['combat'];
@@ -326,54 +299,6 @@ interface PendingRam {
   closing: number;
 }
 
-const readSpec = getSpec as unknown as (id: string) => AuthoritativeSpec | null;
-const buildHeightField = createHeightField as unknown as (
-  seed: number,
-  config: BattlefieldMapConfig,
-) => HeightField;
-const buildLayout = createLayout as unknown as (
-  config: BattlefieldMapConfig,
-) => TerrainLayout;
-const attachEquipment = applyEquipmentToCombat as unknown as (
-  combat: AuthoritativeCombatState,
-  ids: readonly string[] | null | undefined,
-  spec: AuthoritativeSpec,
-) => string[];
-const makeAI = createAI as unknown as (
-  entity: AuthoritativeEntity,
-  options: {
-    difficulty: string;
-    rng: Rng;
-    deps: {
-      heightField: HeightField;
-      raycast: (
-        origin: SpottingVector3,
-        direction: SpottingVector3,
-        maxDistance: number,
-      ) => SpottingRayHit | null;
-      getEnemies: () => AuthoritativeEntity[];
-      getAllies: () => AuthoritativeEntity[];
-      getObstacles: () => AuthoritativeObstacle[];
-      queryObstacles: AuthoritativeWorldCollision['queryObstacles'] | null;
-      spotting: {
-        isSpotted: (targetId: string, receiver?: AuthoritativeEntity | null) => boolean;
-      };
-    };
-  },
-) => AuthoritativeAIController;
-const classifyRole = roleOf as unknown as (spec: AuthoritativeSpec) => string;
-const friendlyFireRisk = botFriendlyFireRisk as unknown as (
-  entity: AuthoritativeEntity,
-  aimPoint: Vector3,
-  shell: DamageShellSpec,
-  entities: readonly AuthoritativeEntity[],
-) => AIFriendlyRisk | null;
-const makeBotNavigationGrid = createBotNavigationGrid as unknown as (options: {
-  heightField: HeightField;
-  queryObstacles: AuthoritativeWorldCollision['queryObstacles'] | null;
-  getObstacles: () => AuthoritativeObstacle[];
-}) => ReturnType<typeof createBotNavigationGrid>;
-
 const BATTLE_LIMIT_S = 15 * 60;
 const FIRE_TICK_S = 0.5;
 const MAX_EVENTS = 128;
@@ -415,8 +340,8 @@ function sharedTerrain(mapId: string): SharedTerrain {
     ? configuredSeed : 1337;
   cached = {
     config,
-    heightField: buildHeightField(terrainSeed, config),
-    layout: buildLayout(config),
+    heightField: createHeightField(terrainSeed, config),
+    layout: createLayout(config),
   };
   terrainCache.set(key, cached);
   return cached;
@@ -516,7 +441,7 @@ function botOpeningGoal(
   // Deploy into distinct lanes on our side of the battlefield instead of
   // plotting every bot straight through a random enemy spawn. Roles shape
   // the opening, but both teams use the exact same deterministic doctrine.
-  const role = classifyRole(entity.spec);
+  const role = roleOf(entity.spec);
   // Keep a genuine deployment line between the teams.  The former fixed
   // fraction sent both sides toward the same point on compact maps, so the
   // opening regularly became an 80 m ram-fight inside 30 seconds.  Advance
@@ -713,7 +638,7 @@ export function createAuthoritativeMatch({
     ids.add(id);
     const team = normalizeTeam(record.team);
     if (team === TEAM_SPECTATOR) continue;
-    const spec = readSpec(String(record.specId || ''));
+    const spec = getSpec(String(record.specId || ''));
     if (!spec) throw new TypeError(`unknown vehicle spec: ${String(record.specId)}`);
     const pad = spawnFor(teamIndex[team]++, team, layout, record.spawn);
     _spawn.set(pad.x, heightField.getHeightAt(pad.x, pad.z), pad.z);
@@ -724,7 +649,7 @@ export function createAuthoritativeMatch({
     const bot = !!record.bot;
     const loadout = Array.isArray(record.equipment)
       ? record.equipment.slice() : defaultLoadoutFor(spec);
-    const equipment = attachEquipment(
+    const equipment = applyEquipmentToCombat(
       combat,
       loadout,
       spec,
@@ -778,7 +703,7 @@ export function createAuthoritativeMatch({
     teams: [TEAM_ALPHA, TEAM_BRAVO],
   });
   const botNavigation = entities.some((entity) => entity.bot)
-    ? makeBotNavigationGrid({
+    ? createBotNavigationGrid({
       heightField,
       queryObstacles: worldCollision?.queryObstacles || null,
       getObstacles: () => staticObstacles,
@@ -791,7 +716,7 @@ export function createAuthoritativeMatch({
     const opponents = entities.filter((entry) => entry.team !== entity.team);
     const allies = entities.filter((entry) => entry !== entity && entry.team === entity.team);
     const botRng = mulberry32(seed + 41000 + index * 997);
-    entity.aiCtl = makeAI(entity, {
+    entity.aiCtl = createAI(entity, {
       difficulty: players.find((record) => String(record.id) === entity.id)?.difficulty || 'normal',
       rng: botRng,
       deps: {
@@ -802,7 +727,7 @@ export function createAuthoritativeMatch({
         getObstacles: () => staticObstacles,
         queryObstacles: worldCollision?.queryObstacles || null,
         spotting: {
-          isSpotted: (targetId: string, receiver?: AuthoritativeEntity | null) =>
+          isSpotted: (targetId, receiver) =>
             spotting.isSpotted(targetId, entity.team, receiver || entity),
         },
       },
@@ -817,7 +742,7 @@ export function createAuthoritativeMatch({
         goal,
         navigation: botNavigation,
         rng: botRng,
-        role: classifyRole(entity.spec),
+        role: roleOf(entity.spec),
         spec: entity.spec,
       }), { loop: false });
     }
@@ -843,7 +768,7 @@ export function createAuthoritativeMatch({
       tank.combat.maxHp = Math.max(1, Math.round(tank.combat.maxHp * healthScale));
       tank.combat.hp = tank.combat.maxHp;
     }
-    tank.equip = attachEquipment(
+    tank.equip = applyEquipmentToCombat(
       tank.combat, tank.loadout || defaultLoadoutFor(tank.spec), tank.spec,
     );
     tank.consumableReadyAt = [0, 0, 0];
@@ -1162,7 +1087,7 @@ export function createAuthoritativeMatch({
     const guidedSpecial = !!(shellSpec.guided && entity.specialAction?.active &&
       entity.specialAction.pendingFire && combat.shellSlot === entity.specialAction.missileSlot);
     if (entity.bot) {
-      const friendlyRisk = friendlyFireRisk(
+      const friendlyRisk = botFriendlyFireRisk(
         entity, entity.input.aimPoint, shellSpec, entities,
       );
       if (friendlyRisk) {

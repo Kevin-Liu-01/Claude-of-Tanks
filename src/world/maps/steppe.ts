@@ -191,4 +191,4 @@ export default {
   // behind the spawn looking down the long axis: ally tanks near-field, the
   // fold country + windbreak lines + hamlet running away to the dust haze
   shot: { pos: [320, 30, -420], look: [-40, 6, 140] },
-};
+} satisfies import('../terrain.ts').TerrainMapConfig & Record<string, unknown>;

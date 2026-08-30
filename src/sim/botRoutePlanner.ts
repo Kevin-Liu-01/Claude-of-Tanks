@@ -39,9 +39,9 @@ interface NavigationObstacle {
   crushable?: boolean;
 }
 
-type ObstacleQuery = (
-  minX: number, minZ: number, maxX: number, maxZ: number, out: NavigationObstacle[],
-) => NavigationObstacle[];
+type ObstacleQuery<T extends NavigationObstacle = NavigationObstacle> = (
+  minX: number, minZ: number, maxX: number, maxZ: number, out: T[],
+) => T[];
 
 export interface BotNavigationGrid {
   readonly heights: Float32Array;
@@ -49,10 +49,10 @@ export interface BotNavigationGrid {
   readonly groundTypes: Uint8Array;
 }
 
-interface BotNavigationGridOptions {
+interface BotNavigationGridOptions<T extends NavigationObstacle = NavigationObstacle> {
   heightField?: NavigationHeightField;
-  queryObstacles?: ObstacleQuery | null;
-  getObstacles?: () => NavigationObstacle[];
+  queryObstacles?: ObstacleQuery<T> | null;
+  getObstacles?: () => T[];
 }
 
 interface BotRouteOptions extends BotNavigationGridOptions {
@@ -158,18 +158,18 @@ function roleOffset(role: string, rng: () => number) {
 }
 
 /** Build the immutable terrain/cover grid once for every bot in a match. */
-export function createBotNavigationGrid({
+export function createBotNavigationGrid<T extends NavigationObstacle>({
   heightField,
   queryObstacles = null,
   getObstacles = () => [],
-}: BotNavigationGridOptions = {}): Readonly<BotNavigationGrid> {
+}: BotNavigationGridOptions<T> = {}): Readonly<BotNavigationGrid> {
   if (!heightField || typeof heightField.getHeightAt !== 'function') {
     throw new TypeError('heightField is required');
   }
   const heights = new Float32Array(GRID_N * GRID_N);
   const blocked = new Uint8Array(GRID_N * GRID_N);
   const groundTypes = new Uint8Array(GRID_N * GRID_N);
-  const candidates: NavigationObstacle[] = [];
+  const candidates: T[] = [];
   const obstacles = getObstacles() || [];
   for (let iz = 0; iz < GRID_N; iz++) {
     for (let ix = 0; ix < GRID_N; ix++) {

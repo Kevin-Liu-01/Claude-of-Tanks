@@ -189,4 +189,4 @@ export default {
 
   // elevated SW: siding fan + container ranks mid-frame, stacks on the sky
   shot: { pos: [-170, 40, -240], look: [60, 0, 60] },
-};
+} satisfies import('../terrain.ts').TerrainMapConfig & Record<string, unknown>;

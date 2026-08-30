@@ -25,6 +25,7 @@
 // }
 
 import * as THREE from 'three';
+import type { SkyPreset } from '../../engine/sky.ts';
 import { SimplexNoise } from '../../engine/simplexFast.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../../engine/quality.ts';
@@ -46,14 +47,16 @@ export interface HorizonConfig {
   grain?: number;
 }
 
+export interface MapSkyConfig extends Partial<SkyPreset> {
+  sunIntensity?: number;
+  sunColorHex?: number;
+  hemiIntensity?: number;
+}
+
 export interface HorizonMapConfig {
   id?: string;
   horizon?: HorizonConfig;
-  sky?: {
-    fogTintHex?: number;
-    sunAzimuthDeg?: number;
-    sunElevationDeg?: number;
-  };
+  sky?: MapSkyConfig;
 }
 
 interface HorizonProfileRow {

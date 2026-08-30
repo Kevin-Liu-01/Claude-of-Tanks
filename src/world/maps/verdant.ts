@@ -163,4 +163,4 @@ export default {
   },
 
   shot: { pos: [-64, 34, -148], look: [80, 0, 156] },
-};
+} satisfies import('../terrain.ts').TerrainMapConfig & Record<string, unknown>;

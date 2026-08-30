@@ -318,4 +318,4 @@ export default {
   // slightly raised and shifted vs the old [16,42,-302] which caught the
   // sheet at a few pixels of near-grazing sliver
   shot: { pos: [40, 52, -288], look: [175, -4, -75] },
-};
+} satisfies import('../terrain.ts').TerrainMapConfig & Record<string, unknown>;
