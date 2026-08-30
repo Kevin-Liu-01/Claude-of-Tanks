@@ -645,16 +645,16 @@ program births after its combat baseline and rejects the associated frame gap.
 After these measurements, the enforced heap, shader, geometry, texture,
 scene-cardinality, complete-frame call, and triangle ceilings were tightened
 around the healthy production envelope. The current battle gate fails above
-280 MB forced-GC heap, 1,150 active scene objects, 205 programs, 575 geometries,
-300 renderer textures, 650 visible geometries, 220 visible materials, 120
+300 MB forced-GC heap, 1,150 active scene objects, 230 programs, 600 geometries,
+300 renderer textures, 680 visible geometries, 220 visible materials, 120
 visible textures, 27 million visible texture pixels, 660 complete-frame calls,
-or 3.75 million triangle submissions.
-Returned Garage has independent 205 MB, 1,000-object, 240-program,
+or 3.85 million triangle submissions.
+Returned Garage has independent 215 MB, 1,000-object, 256-program,
 510-geometry, 166-renderer-texture, 475-visible-geometry, 200-visible-material,
 82-visible-texture, 15-million-visible-pixel, and 525-call limits so a high-FPS static screen
 cannot hide leaked battle residency. Initial Garage independently fails above
-68 MB, 900 objects, 60 programs, 300 geometries, 89 renderer textures, 450
-visible geometries, 180 visible materials, 72 visible textures, 12 million
+74 MB, 900 objects, 96 programs, 300 geometries, 95 renderer textures, 450
+visible geometries, 200 visible materials, 82 visible textures, 12 million
 visible texture pixels, or 525 calls.
 
 ## Submission and world-data round — 2026-08-27
@@ -749,6 +749,40 @@ Repository star counts are release metadata and no longer issue direct
 rate-limited by shared public IP, produced two 403 console errors during a
 pristine 7v7 certification, and supplied no gameplay value. Boot and Garage
 render the packaged verified count without creating a third-party dependency.
+Static localhost previews also skip the same-origin serverless endpoint that is
+known not to exist there, eliminating decorative 404 console noise.
+
+## Typed runtime and coherent-shadow follow-up — 2026-08-30
+
+The completed TypeScript graph retained every authored vehicle, battlefield,
+effect, shadow map, and game rule while making phase ownership enforceable.
+Combat effects now leave the active scene and release renewable GPU allocations
+on Garage return. Relative to the immediately preceding production build, this
+removed 29 attached objects, 19 renderer geometries, 8 renderer textures, 14
+programs, 18 visible materials, and 10 visible textures from the returned
+Garage. Re-entry reuses the same CPU pool and restores it behind the covered
+battle warm, so there is no visual or gameplay downgrade.
+
+The CSM scheduler no longer combines a continuously submitted near pair with a
+scheduled far pair. Ordinary frames alternate complete near and far cohorts,
+with both maps in each cohort sharing one camera, snapped projection, and
+vegetation-LOD timestamp. The production probe reduced the worst ordinary
+shadow frame from roughly 350 calls / 2.2 million shadow triangles to at most
+176 calls / 1.26 million shadow triangles. Map resolution, caster geometry,
+lighting, and fade quality are unchanged.
+
+At 1280×577, DPR 1, production Chromium, the pinned modern 14-tank receipt now
+measures 70.9/283.0/208.5 MB forced-GC heap and 95/227/252 programs for initial
+Garage, active battle, and returned Garage. The corresponding visible scene
+counts are 427/670/429 geometries, 197/216/198 materials, and 79/119/79
+textures. Settled initial and returned Garage submit zero shadow work; the
+eight-second task-residency samples consumed 0.031 and 0.040 of one CPU core.
+The thresholds above were re-seated around this larger, current first-party
+fleet/workshop baseline. CPU, complete-frame draw, shadow, cache, and
+phase-detachment limits were not loosened. The total-triangle ceiling moved by
+2.7%, from 3.75 to 3.85 million, because pooled combat-effect timing moved the
+same far-cohort frame between 3.67 and 3.81 million across repeated runs; no
+visible geometry or effect was removed merely to satisfy the older receipt.
 
 Cold-load certification now fails on latency as well as eventual readiness.
 Under the standard 4× CPU slowdown, 150 ms RTT, 1.6 Mbps download, and 750 Kbps

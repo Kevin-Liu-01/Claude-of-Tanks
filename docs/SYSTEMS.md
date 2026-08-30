@@ -348,6 +348,13 @@ roots. It detaches the inactive phase from the scene graph without disposing
 it, removing hidden descendants from projection and matrix traversal while
 preserving exact state and immediate remounts for returns and rematches.
 
+`fx/fxRuntimeAccess.ts` applies the same rule to the demand-loaded combat FX
+pool. Battle and Studio entry reactivate the singleton; Garage return first
+clears every decal, particle, tracer, timer, emitter, and light, then detaches
+the FX root and releases its renewable buffers, textures, and material program
+allocations. The next covered combat warm re-uploads the unchanged authored
+pool before reveal.
+
 `garageShowroomRuntime.ts` presents one phase-scoped camera interface to the
 composition root. It owns primary-pointer capture, drag cancellation, wheel
 consumption, and listener lifetime. The existing engine orbit still computes

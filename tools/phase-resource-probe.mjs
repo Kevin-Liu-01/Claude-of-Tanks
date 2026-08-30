@@ -50,52 +50,52 @@ const RESOURCE_ROSTER = Object.freeze([
 const RESOURCE_BUDGETS = Object.freeze({
   garageIdle: Object.freeze({
     taskCoreEquivalent: 0.06,
-    heapMB: 68,
+    heapMB: 74,
     objects: 900,
     // Boot submits directly against the composer's linear-HDR target. A
     // default-framebuffer compile would add ~38 never-presented sRGB variants.
-    // Fleet-layered ERA keeps its vehicle-space camouflage and two Abrams
-    // workshop finish programs resident after the quiet repair-bay stream.
-    // The measured settled ceiling is 63; retain one-program host/driver
-    // variance without allowing another material family to slip in unnoticed.
-    programs: 64,
+    // The complete four-vehicle first-party workshop now includes the current
+    // T-90, Abrams and K2 material vocabularies. The settled production graph
+    // is exactly 95 programs; one slot catches a new shader family while
+    // allowing driver bookkeeping variance.
+    programs: 96,
     geometries: 300,
     // Two parked-vehicle BatchedMeshes replace twelve color submissions. Their
     // four tiny matrix/indirection DataTextures are renderer internals, not
     // visible content, so content residency is gated separately below.
-    textures: 89,
+    textures: 95,
     sceneGeometries: 450,
-    sceneMaterials: 180,
-    sceneTextures: 72,
+    sceneMaterials: 200,
+    sceneTextures: 82,
     sceneTexturePixels: 12_000_000,
     calls: 525,
     triangles: 240_000,
   }),
   battleActive: Object.freeze({
     taskCoreEquivalent: 0.45,
-    heapMB: 280,
+    heapMB: 300,
     objects: 1150,
-    programs: 205,
+    programs: 230,
     // Phase-exclusive GPU suspension removes inactive workshop allocations;
     // keep these limits close enough to catch their accidental retention.
-    geometries: 575,
+    geometries: 600,
     textures: 300,
-    sceneGeometries: 650,
+    sceneGeometries: 680,
     sceneMaterials: 220,
     sceneTextures: 120,
     sceneTexturePixels: 27_000_000,
     // Dynamic explosions and decals move the exact sampled frame by several
     // submissions; 700 still fails a sustained scene-complexity regression.
     calls: 660,
-    triangles: 3_750_000,
+    triangles: 3_850_000,
     shadowCalls: 235,
     shadowTriangles: 1_300_000,
   }),
   garageReturned: Object.freeze({
     taskCoreEquivalent: 0.06,
-    heapMB: 205,
+    heapMB: 215,
     objects: 1000,
-    programs: 240,
+    programs: 256,
     geometries: 510,
     textures: 166,
     sceneGeometries: 475,

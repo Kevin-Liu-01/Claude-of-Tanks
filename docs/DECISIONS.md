@@ -60,8 +60,10 @@ retryable without a refresh loop. Public first-visit performance is measured in
 multiple cache-disabled sessions under constrained network and CPU conditions.
 
 Fleet acquisition is exact-family demand loading. Regional bundle modules and
-playable GLB fallbacks are retired. Inactive Garage, world, battle, and Studio
-resources have explicit residency limits and phase-scoped disposal.
+playable GLB fallbacks are retired. Inactive Garage, world, battle, Studio, and
+combat-effects resources have explicit residency limits and phase-scoped
+disposal. The reusable FX pool detaches and releases renewable GPU allocations
+outside Battle or Studio, then restores behind the next covered warm.
 
 ## World and Garage lifecycle
 
@@ -84,13 +86,14 @@ batched or instanced only when appearance, ownership, transforms, and disposal
 remain equivalent. Visible vehicle silhouette and authored detail are preserved;
 triangle reduction is acceptable only when visual comparison proves parity.
 
-Cascaded shadow projection and its depth map are updated atomically. Near
-cascades remain continuous; rate-capped far cascades refresh as one 30 Hz
-cohort and apply snapped light poses only with their matching depth maps. CSM
-fade therefore never blends far maps from different camera or vegetation-LOD
-timestamps. Bias scales with physical texel size. Temporal ambient occlusion
-rejects disoccluded depth history so trees, structures, and overlapping
-geometry cannot flash stale darkness.
+Cascaded shadow projection and its depth map are updated atomically. Ordinary
+frames alternate mutually exclusive near and far two-map cohorts; the far pair
+shares one camera and vegetation-LOD timestamp, and every snapped light pose
+moves only with the depth map that owns it. No ordinary frame submits all four
+cascades. CSM fade therefore never blends the far maps from different states,
+and modest GPUs avoid a periodic doubled shadow pass. Bias scales with physical
+texel size. Temporal ambient occlusion rejects disoccluded depth history so
+trees, structures, and overlapping geometry cannot flash stale darkness.
 
 ## Aiming and vehicle presentation
 
