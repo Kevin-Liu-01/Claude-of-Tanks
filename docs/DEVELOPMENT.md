@@ -106,6 +106,11 @@ Node CLI, generator, and self-test entrypoints intentionally retain `.mjs`
 where they are executable harnesses rather than shipped application modules.
 They import the checked TypeScript owners directly and are covered by the
 ordered test inventory.
+Root-level standalone tools must be invoked by a package command, cited by the
+development manuals or another tool, or included in the small maintained-rig
+set enforced by `public-repo-hygiene.selftest.mjs`. One-off visual experiments
+and superseded probes remain available through Git history instead of shipping
+in every public checkout.
 Generators must preserve typed output: `tools/map-thumbs.mjs`, for example,
 writes `src/ui/mapThumbs.ts` so regeneration cannot restore a deleted `.js`
 owner.

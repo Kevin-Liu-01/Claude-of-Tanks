@@ -30,6 +30,55 @@ assert.deepEqual(orphanedSelftests, [],
 assert.deepEqual(missingSelftests, [],
   `self-test registry references missing public files:\n${missingSelftests.join('\n')}`);
 
+// Standalone probe scripts are easy to abandon after one visual round. Keep
+// only tools that are reachable from package/docs/another tool, or a small
+// explicit set of reusable engineering rigs whose CLI surface is intentionally
+// independent. Historical experiments belong in Git history, not the public
+// checkout.
+const maintainedStandaloneTools = new Set([
+  'tools/atgm-guidance-probe.mjs',
+  'tools/bot-combat-probe.mjs',
+  'tools/fleet-battle-views.mjs',
+  'tools/fleet-geometry-audit.mjs',
+  'tools/fleet-visual-compare.mjs',
+  'tools/garage-switch-probe.mjs',
+  'tools/gunnery_gate.mjs',
+  'tools/ifv-recoil-probe.mjs',
+  'tools/mobile-dynamic-aim-probe.mjs',
+  'tools/qa-evidence-manifest.mjs',
+  'tools/reviveprobe.mjs',
+  'tools/switch-latency-probe.mjs',
+  'tools/voice-smoke.mjs',
+  'tools/winding-audit.mjs',
+  'tools/world-pole-visual-audit.mjs',
+  'tools/world-wreck-visual-audit.mjs',
+]);
+const standaloneTools = tracked.filter((file) => (
+  /^tools\/[^/]+\.mjs$/.test(file) && !file.endsWith('.selftest.mjs')
+));
+const toolReferenceFiles = tracked.filter((file) => (
+  file !== 'tools/public-repo-hygiene.selftest.mjs' && (
+    /\.(?:md|json|html|ts|mjs)$/.test(file)
+  )
+));
+const toolReferenceText = new Map(toolReferenceFiles.map((file) => [
+  file,
+  fs.readFileSync(file, 'utf8'),
+]));
+const orphanedTools = standaloneTools.filter((file) => {
+  if (maintainedStandaloneTools.has(file)) return false;
+  const basename = file.slice('tools/'.length);
+  return !toolReferenceFiles.some((owner) => (
+    owner !== file && toolReferenceText.get(owner)?.includes(basename)
+  ));
+});
+const missingMaintainedTools = [...maintainedStandaloneTools]
+  .filter((file) => !tracked.includes(file));
+assert.deepEqual(orphanedTools, [],
+  `standalone tools must be referenced, explicitly maintained, or removed:\n${orphanedTools.join('\n')}`);
+assert.deepEqual(missingMaintainedTools, [],
+  `maintained standalone tool list contains missing files:\n${missingMaintainedTools.join('\n')}`);
+
 const ownedSkillDocs = new Set([
   '.agents/skills/improve-threejs/SKILL.md',
   'SKILL.md',
@@ -75,5 +124,6 @@ assert.deepEqual(orphanedCritiques, [],
 console.log(
   `public-repo-hygiene.selftest: ${tracked.length} tracked paths; ` +
   `${trackedSelftests.length} registered tests; ${ownedSkillDocs.size} owned skills; ` +
+  `${standaloneTools.length} governed standalone tools; ` +
   `${critiqueFiles.length} cited visual receipts; no generated reports or transient artifacts`,
 );
