@@ -880,15 +880,15 @@ Emits `ui:battleStart` and `ui:click` on the bus. Keyboard: ←/→ select, Ente
 
 `src/game/garageVariants.ts` owns the immutable ten-location registry,
 architecture key, and persistence key. `garageStage.ts` owns the first-paint
-shell and palette; `garageArchitecture.ts` lazily builds and caches the ten
-distinct macro structures. `garageDressingAccess.ts` keeps a stable light/root
+shell and palette; `garageArchitecture.ts` retains only Verdant's workshop
+architecture. The other nine destinations mount the complete cached battlefield
+and add zero substitute architecture. `garageDressingAccess.ts` keeps a stable light/root
 while lazily importing `garageDressing.ts`; `garageDressingScheduler.ts` adds
 one optional slice per quiet lease. `garageWallLayout.ts` is the authoritative
 non-overlapping wall-bay contract. `garageDressingAccess.ts` prepares the real
-`m1a2`, `t90m`, and `leclerc` fleet builders behind that quiet boundary;
-`garageDressing.ts` creates one complete high-detail static preview from each
-and derives each service turret/gun exhibit by cloning the exact turret rig from
-its already-built tank. Those clones share geometry and materials. The first
+`t90a_burlak`, `m1a2`, `t90m`, and `k2` fleet builders behind that quiet boundary;
+`garageDressing.ts` creates their exact maintenance scenes from the same fleet
+builders, sharing geometry and materials. The first
 garage frame and battle graph therefore stay independent of the optional fleet
 transfer, while workshop displays remain identical to playable vehicle art.
 `workshopParts.ts` remains the source for non-vehicle service racks and props.
@@ -1126,7 +1126,7 @@ zero tank inputs, then camera placement, `camera.updateProjectionMatrix()`,
 | `tank_closeup_ww2` | same recipe around the tiger1 entity | hud hidden | vehicles, engine |
 | `combat_firing` | `setExternalPose` 3/4 front-side of player, 12 m | `fx.composeFiringMoment({muzzlePos: player.visual.gunMuzzleWorld(), dir, caliberMm:120, tracerType:'APFSDS', ageS:0.05})`; hud hidden | fx, vehicles, engine |
 | `explosion` | `setExternalPose` 25 m from enemy[2] | `fx.composeExplosionMoment({pos, ageS:0.4})` + `enemy[2].visual.setDestroyed()` | fx, vehicles, engine |
-| `garage` | `setExternalPose` at garage stage: integration places a dedicated `createTank(selected)` visual on a 12 m disc pad at **(-1500, 0, -1500)** (outside map; fog gives the backdrop) with 2 extra static spotlights integration owns | `garage.show('m1a2')` | hud (garage), vehicles, engine |
+| `garage` | `setExternalPose` at the Garage stage: Verdant uses the enclosed workshop at **(-1500, 0, -1500)**; outdoor choices activate the complete selected battlefield and move the same stage to a measured open point, preferring its player deployment | `garage.show('m1a2')` | hud (garage), vehicles, engine, world |
 
 `window.__SHOTS.views` lists exactly these 8 (more may be appended). `__GAME_READY`
 only after the §4 startup sequence completes. Determinism: everything seeded (§1.4),

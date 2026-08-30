@@ -107,8 +107,12 @@ import {
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
 import {
-  GARAGE_VARIANTS, loadGarageVariantId, saveGarageVariantId,
+  GARAGE_VARIANTS, getGarageVariant, loadGarageVariantId, saveGarageVariantId,
 } from './game/garageVariants.ts';
+import {
+  resolveGarageBattlefieldPlacement,
+  type GarageBattlefieldPlacement,
+} from './game/garageBattlefieldPlacement.ts';
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
@@ -207,7 +211,10 @@ const STUDIO_BOOT_MAP = startupIntent.studioMapId;
 
 const DEG = Math.PI / 180;
 const SIM_DT = 1 / 60;
-const GARAGE_POS = new THREE.Vector3(-1500, 0, -1500);
+const VERDANT_GARAGE_POS = Object.freeze({ x: -1500, z: -1500 });
+const GARAGE_POS = new THREE.Vector3(VERDANT_GARAGE_POS.x, 0, VERDANT_GARAGE_POS.z);
+let garageCameraOffsetX = 7.4;
+let garageCameraOffsetZ = 8.0;
 const pendingRoomInvitePromise = startupIntent.pendingRoomInvite;
 const camoPatternLabels: Readonly<Record<string, string>> = CAMO_PATTERN_LABEL;
 const mapHeroes: Readonly<Record<string, string>> = MAP_HEROES;
@@ -627,6 +634,108 @@ const setGarageSpots = garagePhasePresentation.setActive;
 const setGarageSunTrim = garagePhasePresentation.setSunTrim;
 const placeGarage = garagePhasePresentation.place;
 
+type GarageBattlefieldState = {
+  variantId: string;
+  mapId: string;
+  mode: 'verdant-workshop' | 'active-battlefield';
+  ready: boolean;
+  placement: GarageBattlefieldPlacement | null;
+  error: string;
+};
+
+let garageBattlefieldGeneration = 0;
+let garageBattlefieldState: GarageBattlefieldState = {
+  variantId: selectedGarageVariantId,
+  mapId: getGarageVariant(selectedGarageVariantId).mapId,
+  mode: selectedGarageVariantId === 'verdant_motor_pool'
+    ? 'verdant-workshop' : 'active-battlefield',
+  ready: selectedGarageVariantId === 'verdant_motor_pool',
+  placement: null,
+  error: '',
+};
+
+/**
+ * Outdoor Garage choices are not miniature reconstructions. Activate the
+ * complete cached battlefield, then place the showroom in a measured clear
+ * area around its authored player deployment.
+ */
+async function activateGarageBattlefield(variantId: string): Promise<void> {
+  const generation = ++garageBattlefieldGeneration;
+  const variant = getGarageVariant(variantId);
+  if (variant.id === 'verdant_motor_pool') {
+    garageBattlefieldState = {
+      variantId: variant.id,
+      mapId: variant.mapId,
+      mode: 'verdant-workshop',
+      ready: true,
+      placement: null,
+      error: '',
+    };
+    GARAGE_POS.set(VERDANT_GARAGE_POS.x, 0, VERDANT_GARAGE_POS.z);
+    garageCameraOffsetX = 7.4;
+    garageCameraOffsetZ = 8.0;
+    setWorldDormant(true);
+    placeGarage();
+    setGarageSunTrim(true);
+    invalidateGaragePresentation();
+    return;
+  }
+
+  garageBattlefieldState = {
+    variantId: variant.id,
+    mapId: variant.mapId,
+    mode: 'active-battlefield',
+    ready: false,
+    placement: null,
+    error: '',
+  };
+  invalidateGaragePresentation();
+  try {
+    const world = await ensureWorld(variant.mapId, null, {
+      precompile: false,
+      services: false,
+    });
+    if (generation !== garageBattlefieldGeneration
+        || selectedGarageVariantId !== variant.id) return;
+    const placement = resolveGarageBattlefieldPlacement(world);
+    if (!placement.clear) {
+      throw new Error(
+        `${variant.mapId} deployment failed Garage clearance `
+        + `(obstacle ${placement.obstacleClearanceM} m, relief ${placement.reliefM} m, `
+        + `normal ${placement.minNormalY})`,
+      );
+    }
+    GARAGE_POS.set(placement.x, placement.y, placement.z);
+    const cameraDistance = Math.hypot(7.4, 8.0);
+    garageCameraOffsetX = placement.cameraX * cameraDistance;
+    garageCameraOffsetZ = placement.cameraZ * cameraDistance;
+    setWorldDormant(false);
+    placeGarage();
+    setGarageSunTrim(true);
+    world.update(0, camera.position);
+    garageBattlefieldState = {
+      variantId: variant.id,
+      mapId: variant.mapId,
+      mode: 'active-battlefield',
+      ready: true,
+      placement,
+      error: '',
+    };
+    invalidateGaragePresentation();
+  } catch (error) {
+    if (generation !== garageBattlefieldGeneration) return;
+    garageBattlefieldState = {
+      variantId: variant.id,
+      mapId: variant.mapId,
+      mode: 'active-battlefield',
+      ready: false,
+      placement: null,
+      error: String(error),
+    };
+    console.error(`[garageBattlefield] ${variant.mapId} activation failed`, error);
+  }
+}
+
 // The repair bays and component displays remain normal garage content, but
 // their complete visual stream is owned by a typed quiet-window scheduler.
 const requestQuietIdle = (callback: IdleRequestCallback) => {
@@ -768,7 +877,11 @@ function garageCameraPose() {
   // garage r9 (owner: "keep the camera in one place"): the per-hull length
   // scale that used to stretch this offset is GONE — the fallback pose is a
   // constant, matching the fixed showroom framing that takes over below.
-  _v1.set(GARAGE_POS.x + 7.4, GARAGE_POS.y + 2.75, GARAGE_POS.z + 8.0);
+  _v1.set(
+    GARAGE_POS.x + garageCameraOffsetX,
+    GARAGE_POS.y + 2.75,
+    GARAGE_POS.z + garageCameraOffsetZ,
+  );
   _v2.set(GARAGE_POS.x, GARAGE_POS.y + GARAGE_LOOK_Y, GARAGE_POS.z);
   rig.setExternalPose(_v1, _v2, 42);
 }
@@ -957,8 +1070,24 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   selectedGarageVariantId,
   onGarageVariantSelect: (variantId: string) => {
     selectedGarageVariantId = saveGarageVariantId(variantId);
+    const variant = getGarageVariant(selectedGarageVariantId);
     garageStage.setVariant(selectedGarageVariantId);
     garageDressing.setVariant(selectedGarageVariantId);
+    if (variant.id === 'verdant_motor_pool') {
+      void activateGarageBattlefield(variant.id);
+    } else {
+      void transition.run(
+        () => activateGarageBattlefield(variant.id),
+        {
+          kicker: 'Battlefield staging',
+          title: variant.name,
+          sub: 'Opening the real map',
+          mapId: variant.mapId,
+          progress: false,
+          minShowMs: 320,
+        },
+      );
+    }
     garageDressingScheduler.noteActivity();
     invalidateGaragePresentation();
   },
@@ -1030,6 +1159,14 @@ window.__GARAGE_WORKSHOP = {
       architecture: garageStage.stats?.() || garageStage.group.userData.garageArchitecture || {},
       sceneMode: garageStage.group.userData.garageSceneMode || '',
       roofMode: garageStage.group.userData.garageRoofMode || '',
+      battlefield: {
+        ...garageBattlefieldState,
+        placement: garageBattlefieldState.placement
+          ? { ...garageBattlefieldState.placement }
+          : null,
+        worldMounted: garagePhasePresentation.diagnostics().scene.worldMounted,
+        currentWorldMapId: currentWorld()?.mapId || null,
+      },
       wallLayout: garageDressing.group.userData.wallLayout || { bays: 0, overlaps: [] },
       mapImageCount: garageDressing.group.userData.mapImageCount ?? -1,
       battleScreenMode: garageDressing.group.userData.battleScreenMode || '',
@@ -1040,6 +1177,7 @@ window.__GARAGE_WORKSHOP = {
       battleScreenResidentImageCount:
         garageDressing.group.userData.battleScreenResidentImageCount || 0,
       battleScreenCurrentImage: garageDressing.group.userData.battleScreenCurrentImage || '',
+      battleScreenVisible: garageDressing.group.userData.battleScreenVisible === true,
       modelMode: garageDressing.group.userData.workshopModelMode || '',
       exhibitCount: garageDressing.group.userData.workshopExhibitCount || 0,
       sharedMaintenanceBayCount:
@@ -2085,11 +2223,10 @@ const garageReturn = createGarageReturnRuntime(legacyPort({
   },
   world: {
     currentMapId: () => currentWorld()?.mapId || null,
-    ensureGaragePlacement: () => {
-      const activeWorld = currentWorld();
-      if (activeWorld && worldRuntime.servicesMapId !== activeWorld.mapId) placeGarage();
-    },
-    setDormant: setWorldDormant,
+    ensureGaragePlacement: () => activateGarageBattlefield(selectedGarageVariantId),
+    setDormant: (dormant: boolean) => setWorldDormant(
+      dormant && selectedGarageVariantId === 'verdant_motor_pool',
+    ),
     setFarCascadeDormant: (dormant: boolean) => lighting.setFarCascadeDormant(dormant),
     clearCamoOverrides,
   },
@@ -2570,6 +2707,11 @@ if (STUDIO_BOOT_INTENT) {
 
 bootComplete = true;
 frameLoop.schedule();
+if (!STUDIO_BOOT_INTENT && selectedGarageVariantId !== 'verdant_motor_pool') {
+  // Keep the normal Verdant boot fast. A persisted outdoor choice hydrates
+  // after readiness and never presents the removed synthetic map diorama.
+  void activateGarageBattlefield(selectedGarageVariantId);
+}
 
 // ---------------------------------------------------------------------------
 // Debug / drive-test hooks (not part of the screenshot contract).

@@ -10,16 +10,20 @@ for (const variant of GARAGE_VARIANTS) {
   const stats = controller.setVariant(variant);
   assert.equal(stats.key, variant.architecture);
   assert.equal(stats.mapId, variant.mapId);
-  assert.ok(stats.objects >= 6, `${variant.architecture} needs a readable staging shell`);
-  assert.ok(stats.triangles > 0 && stats.triangles < 10_000,
-    `${variant.architecture} synchronous shell must stay bounded`);
   if (variant.id === 'verdant_motor_pool') {
     assert.equal(stats.mode, 'verdant-workshop');
     assert.ok(stats.enclosingSurfaces > 0, 'Verdant preserves its original enclosed motor pool');
+    assert.ok(stats.objects >= 6 && stats.triangles > 0,
+      'Verdant keeps its authored portal structure');
   } else {
     assert.equal(stats.mode, 'map-staging');
     assert.equal(stats.enclosingSurfaces, 0,
       `${variant.id} must remain an open battlefield staging area`);
+    assert.equal(stats.source, 'active-battlefield');
+    assert.equal(stats.objects, 0,
+      `${variant.id} must not build substitute garage architecture`);
+    assert.equal(stats.triangles, 0,
+      `${variant.id} must not build a proxy terrain, skyline, or hardstand`);
   }
   signatures.add(stats.signature);
 }

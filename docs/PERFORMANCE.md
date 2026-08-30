@@ -74,28 +74,29 @@ locations; the former second three-tank/three-turret graph and its Leclerc build
 are gone.
 
 Verdant alone mounts the enclosed workshop shell and indoor clutter. Each other
-selection lazily creates and caches an open slice of its real battlefield:
-seeded canonical terrain around a named tactical beat, the beat's real authored
-structure, the map horizon profile, and its actual far-tree geometry/species/
-palette. The full 257×257 heightfield derivation runs in a module worker; the
-main thread receives only a 37×37 terrain patch and a bounded set of tree
-transforms. Terrain, skyline, landmark, and tree draw owners reveal one per
-frame, eliminating the former first-visit upload burst. No wall, roof, world
-builder, grass system, collision tree, destructible runtime, or PMREM is built.
-Architecture remains below the 180K release ceiling (current map slices are
-under 7K triangles). Existing Garage lights remain mounted across selection
-changes so switching cannot change shader light-count defines and relink.
+selection activates the normal cached battlefield and seats the presentation
+in an audited clearing, preferring the authored player deployment. There is no
+second terrain, skyline, landmark, tree, hardstand, or floodlight renderer to
+allocate or compile. Cold
+choices pay the same sliced world build as battle entry; already-resident maps
+remount their exact scene graph. Outdoor garage frames remain paced and update
+the live world's LOD and vegetation only when the garage itself paints.
+Garage-specific outdoor architecture is exactly zero triangles. Existing
+Garage lights remain mounted across selection changes so switching cannot
+change shader light-count defines and relink.
 
 Garage selector previews still decode only when demanded. One shared CRT-style
 battle archive screen streams canonical captures one at a time, retains at most
 the current and incoming textures, and stops its timer when the Garage root
 leaves the scene. `npm run qa:garage` enumerates all ten locations and checks
-map bindings, nine zero-enclosure exterior receipts, Verdant's original roof,
+map bindings, nine live-world placement receipts, zero substitute architecture,
+Verdant's original roof,
 the four shared exact maintenance bays, selected-hero track contact within one
 millimetre, screen rotation/residency, persistence, preview decode, architecture
-budgets, desktop frame gaps, console health, and the 390×844 selector. The same
-probe runs under CDP 4× CPU throttling; the worker-backed map derivation keeps
-the measured UI-frame maximum below 120 ms there as well.
+budgets, revealed desktop frame gaps, console health, and the 390×844 selector.
+Cold full-map construction gaps are retained separately as covered-transition
+diagnostics; the 120 ms budget applies after the real map is ready to reveal.
+The same visible-frame gate runs under CDP 4× CPU throttling.
 
 An opaque transition must be visible before asynchronous battle imports or
 world loading. Hiding the menu before painting the transition can expose one

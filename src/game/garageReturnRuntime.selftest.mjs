@@ -47,7 +47,7 @@ function createFixture({ transitionGate = false } = {}) {
     },
     world: {
       currentMapId: () => 'urban',
-      ensureGaragePlacement: () => calls.push(['garagePlacement']),
+      ensureGaragePlacement: async () => calls.push(['garagePlacement']),
       setDormant: (value) => calls.push(['worldDormant', value]),
       setFarCascadeDormant: (value) => calls.push(['farDormant', value]),
       clearCamoOverrides: () => calls.push(['clearCamoOverrides']),
@@ -86,10 +86,11 @@ function createFixture({ transitionGate = false } = {}) {
     transition: {
       run: async (work, options) => {
         calls.push(['transitionStart', options]);
-        work();
-        if (transitionGate) {
-          await new Promise((resolve) => { releaseTransition = resolve; });
-        }
+        const gate = transitionGate
+          ? new Promise((resolve) => { releaseTransition = resolve; })
+          : null;
+        await work();
+        if (gate) await gate;
         calls.push(['transitionEnd']);
       },
     },

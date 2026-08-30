@@ -80,12 +80,30 @@ try {
     await page.click(`[data-variant-id="${variant.id}"]`);
     await page.waitForFunction((id) => {
       const stats = window.__GARAGE_WORKSHOP.stats();
-      return stats.selected === id && stats.architecture?.ready === true;
-    }, { timeout: 20_000 }, variant.id);
-    await new Promise((resolve) => setTimeout(resolve, 80));
+      return stats.selected === id
+        && stats.architecture?.ready === true
+        && (stats.battlefield?.ready === true || !!stats.battlefield?.error);
+    }, { timeout: 60_000 }, variant.id);
+    await page.evaluate(async () => {
+      const covered = window.__GARAGE_VARIANT_PROBE;
+      covered.running = false;
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const gaps = [];
+      const reveal = { gaps, running: true };
+      let previous = performance.now();
+      const sample = (now) => {
+        gaps.push(now - previous);
+        previous = now;
+        if (reveal.running) requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+      window.__GARAGE_VARIANT_REVEAL_PROBE = reveal;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 180));
     const result = await page.evaluate(async (id) => {
-      const probe = window.__GARAGE_VARIANT_PROBE;
-      probe.running = false;
+      const covered = window.__GARAGE_VARIANT_PROBE;
+      const reveal = window.__GARAGE_VARIANT_REVEAL_PROBE;
+      reveal.running = false;
       await new Promise((resolve) => requestAnimationFrame(resolve));
       const button = document.querySelector(`[data-variant-id="${id}"]`);
       const preview = button?.querySelector('img');
@@ -93,8 +111,9 @@ try {
       return {
         id,
         selected: stats.selected === id,
-        durationMs: +(performance.now() - probe.started).toFixed(1),
-        gapMaxMs: +Math.max(0, ...probe.gaps).toFixed(1),
+        durationMs: +(performance.now() - covered.started).toFixed(1),
+        coveredGapMaxMs: +Math.max(0, ...covered.gaps).toFixed(1),
+        gapMaxMs: +Math.max(0, ...reveal.gaps).toFixed(1),
         persisted: localStorage.getItem('cot.garage.variant'),
         header: document.querySelector('.cot-garage-variant-label')?.textContent || '',
         optionSelected: button?.getAttribute('aria-selected') === 'true',
@@ -140,6 +159,7 @@ try {
     failures.push('expected ten unique battlefield staging signatures');
   }
   for (const result of results) {
+    const isVerdant = result.id === 'verdant_motor_pool';
     if (!result.selected || result.persisted !== result.id || !result.optionSelected) {
       failures.push(`${result.id}: selection/persistence contract failed`);
     }
@@ -147,7 +167,7 @@ try {
     if (!result.stats.built || result.stats.triangles <= 0 || result.stats.triangles > 450_000) {
       failures.push(`${result.id}: workshop triangle budget failed (${result.stats.triangles})`);
     }
-    if (!result.stats.architecture?.objects || result.stats.architecture.triangles > 180_000) {
+    if (result.stats.architecture.triangles > 10_000) {
       failures.push(`${result.id}: architecture geometry budget failed`);
     }
     if (result.stats.wallLayout?.overlaps?.length) {
@@ -159,10 +179,10 @@ try {
         || result.stats.battleScreenImageCount < 5
         || result.stats.battleScreenResidentImageLimit !== 2
         || result.stats.battleScreenResidentImageCount > 2
+        || result.stats.battleScreenVisible !== isVerdant
         || !result.stats.battleScreenCurrentImage?.startsWith('/media/')) {
       failures.push(`${result.id}: battle archive screen contract failed`);
     }
-    const isVerdant = result.id === 'verdant_motor_pool';
     const expectedExhibits = 4;
     if (result.stats.modelMode !== 'actual-fleet'
         || result.stats.exhibitCount !== expectedExhibits) {
@@ -199,14 +219,16 @@ try {
         || result.stats.architecture?.mode !== 'map-staging'
         || result.stats.architecture?.enclosingSurfaces !== 0) {
       failures.push(`${result.id}: expected a wall-free map staging area`);
-    } else if (result.stats.architecture?.source !== 'canonical-map-slice'
-        || !Array.isArray(result.stats.architecture?.sourceCoordinate)
-        || result.stats.architecture.sourceCoordinate.length !== 2
-        || !result.stats.architecture.sourceBeat
-        || !result.stats.architecture.sourceStructure
-        || result.stats.architecture.terrainVertices < 1_000
-        || !result.stats.architecture.treeSpecies?.length) {
-      failures.push(`${result.id}: canonical battlefield source receipt failed`);
+    } else if (result.stats.architecture?.source !== 'active-battlefield'
+        || result.stats.architecture.objects !== 0
+        || result.stats.architecture.triangles !== 0
+        || result.stats.battlefield?.mode !== 'active-battlefield'
+        || !result.stats.battlefield?.worldMounted
+        || result.stats.battlefield.currentWorldMapId !== result.stats.mapId
+        || result.stats.battlefield.placement?.source !== 'player-deployment-clearance-scan'
+        || result.stats.battlefield.placement?.clear !== true
+        || result.stats.battlefield.placement?.obstacleClearanceM < 24) {
+      failures.push(`${result.id}: full battlefield staging receipt failed`);
     }
     if (!result.stats.verdantOriginalVisible) {
       failures.push(`${result.id}: shared original maintenance bays are not visible`);

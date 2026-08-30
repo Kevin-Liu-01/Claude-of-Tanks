@@ -59,7 +59,7 @@ interface GarageReturnWorkPort {
 
 interface GarageReturnWorldPort {
   currentMapId(): string | null;
-  ensureGaragePlacement(): void;
+  ensureGaragePlacement(): Promise<void> | void;
   setDormant(dormant: boolean): void;
   setFarCascadeDormant(dormant: boolean): void;
   clearCamoOverrides(): void;
@@ -164,7 +164,7 @@ export function createGarageReturnRuntime({
   let activeTransition: Promise<void> | null = null;
   let lastTrace: GarageReturnTrace | null = null;
 
-  const enter = (options: GarageReturnOptions = {}): Promise<void> => {
+  const enter = async (options: GarageReturnOptions = {}): Promise<void> => {
     const preserveRoom = options.preserveRoom ?? network.shouldPreserveRoom();
     const selectedSpecId = getSelectedSpecId();
     const trace: GarageReturnTrace = { stages: {} };
@@ -202,7 +202,7 @@ export function createGarageReturnRuntime({
     work.noteActivity();
     work.resetFramePacer(nowMs());
     work.scheduleDressing();
-    world.ensureGaragePlacement();
+    await world.ensureGaragePlacement();
     markStage('worldServices');
 
     if (settings.isOpen()) settings.close({ noRelock: true });
@@ -236,7 +236,7 @@ export function createGarageReturnRuntime({
     audio.playGarageSting();
     markStage('audio');
     trace.totalMs = Math.round(nowMs() - startedAt);
-    return resumeGarageGpu();
+    await resumeGarageGpu();
   };
 
   const beginTransition = (operation: () => Promise<void>): Promise<void> => {
@@ -265,7 +265,7 @@ export function createGarageReturnRuntime({
   const leave = (): Promise<void> => beginTransition(async () => {
     // Input state releases immediately; the scene swap remains under the veil.
     presentation.clearBattle();
-    await transition.run(() => { void enter(); }, {
+    await transition.run(() => enter(), {
       kicker: 'Leaving battle',
       title: 'Garage',
       mapId: world.currentMapId() || game.mapId,
@@ -281,7 +281,7 @@ export function createGarageReturnRuntime({
       while (isBattleEntryPending() && nowMs() - waitStartedAt < 15_000) {
         await sleep(150);
       }
-      await transition.run(() => { void enter(); }, {
+      await transition.run(() => enter(), {
         kicker: 'Regrouping',
         title: 'Next battle',
         mapId: world.currentMapId() || game.mapId,

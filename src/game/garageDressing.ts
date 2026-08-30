@@ -709,6 +709,7 @@ export function createGarageDressing(
       // battle. Stop here instead of polling; onBeforeRender restarts the
       // archive on the first garage-return frame, preserving zero battle cost.
       if (!group.parent || !group.visible || document.hidden) return;
+      if (currentVariant.id !== 'verdant_motor_pool') return;
       void advanceBattleScreen();
     }, delay);
   }
@@ -729,7 +730,8 @@ export function createGarageDressing(
     group.userData.battleScreenResidentImageCount = 1;
     group.userData.battleScreenCurrentImage =
       GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex]?.img || '';
-    if (group.parent && group.visible && !document.hidden) scheduleBattleScreenAdvance();
+    if (group.parent && group.visible && !document.hidden
+        && currentVariant.id === 'verdant_motor_pool') scheduleBattleScreenAdvance();
   }
 
   function animateBattleScreenTransition(now: number, nextIndex: number): void {
@@ -762,7 +764,8 @@ export function createGarageDressing(
     const texture = await loadBattleScreenTexture(nextIndex);
     battleScreenLoading = false;
     if (!texture || !battleScreenMaterial) {
-      if (group.parent && group.visible && !document.hidden) scheduleBattleScreenAdvance(1_500);
+      if (group.parent && group.visible && !document.hidden
+          && currentVariant.id === 'verdant_motor_pool') scheduleBattleScreenAdvance(1_500);
       return;
     }
     battleScreenNextTexture = texture;
@@ -786,7 +789,7 @@ export function createGarageDressing(
     battleScreenMaterial.uniforms.uImageB.value = texture;
     group.userData.battleScreenResidentImageCount = 1;
     group.userData.battleScreenCurrentImage = GARAGE_BATTLE_SCREEN_SHOTS[0].img;
-    scheduleBattleScreenAdvance();
+    if (currentVariant.id === 'verdant_motor_pool') scheduleBattleScreenAdvance();
   }
 
   function setVariant(variantId: string): string {
@@ -798,6 +801,24 @@ export function createGarageDressing(
     const isVerdant = currentVariant.id === 'verdant_motor_pool';
     legacyVerdantRoot.visible = true;
     verdantInteriorRoot.visible = isVerdant;
+    group.userData.battleScreenVisible = isVerdant;
+    if (!isVerdant) {
+      if (battleScreenTimer !== null) window.clearTimeout(battleScreenTimer);
+      if (battleScreenFrame !== null) window.cancelAnimationFrame(battleScreenFrame);
+      battleScreenTimer = null;
+      battleScreenFrame = null;
+      if (battleScreenNextTexture) {
+        battleScreenNextTexture.dispose();
+        battleScreenNextTexture = null;
+        if (battleScreenMaterial && battleScreenCurrentTexture) {
+          battleScreenMaterial.uniforms.uImageB.value = battleScreenCurrentTexture;
+          battleScreenMaterial.uniforms.uTransition.value = 0;
+        }
+        group.userData.battleScreenResidentImageCount = battleScreenCurrentTexture ? 1 : 0;
+      }
+    } else if (battleScreenCurrentTexture) {
+      scheduleBattleScreenAdvance();
+    }
     compileWorkshopObject(legacyVerdantRoot);
     group.userData.verdantOriginalVisible = legacyVerdantRoot.children.length > 0;
     group.userData.workshopTriangleCount = group.userData.verdantOriginalTriangleCount || 0;
@@ -828,7 +849,7 @@ export function createGarageDressing(
     screenRoot.position.set(screenBay.x + 2.0, screenBay.y, screenBay.z - 0.10);
     screenRoot.rotation.y = screenBay.yaw;
     screenRoot.userData.wallBayId = screenBay.id;
-    group.add(screenRoot);
+    verdantInteriorRoot.add(screenRoot);
 
     put(track(new THREE.BoxGeometry(6.8, 3.82, 0.22)), mat.steelDark,
       0, 0, 0, 0, 0, 0, 1, screenRoot, false);
@@ -1390,8 +1411,8 @@ export function createGarageDressing(
     pool.rotation.x = -Math.PI / 2;
     pool.position.set(15.9, 0.03, 16.6);
     legacyVerdantRoot.add(pool);
-    // This fixture hangs from Verdant's roof. Outdoor staging areas use their
-    // freestanding flood masts, so never leave the cable/lamp in empty sky.
+    // This fixture hangs from Verdant's roof. Outdoor staging uses the real
+    // battlefield sun plus the stable hero lights, so never leave it in sky.
     workLamp(15.9, 16.6, 0, 7.4, verdantInteriorRoot);
     compileWorkshopObject(tank);
   });

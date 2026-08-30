@@ -72,8 +72,10 @@ dormancy. Callers use that interface instead of retaining parallel map state.
 
 The Garage and battlefield have exclusive scene residency. The Garage sleeps
 its frame clock after presentation settles and invalidates it only on actual
-activity. Open Garage variants use bounded map-derived staging cuts; they never
-build or retain a complete battlefield.
+activity. Verdant retains the authored workshop. Every other Garage destination
+mounts its complete cached battlefield and seats the presentation at a measured
+open point with at least 24 m of real obstacle clearance; it must not create a
+parallel proxy terrain, skyline, landmark, wall, roof, or light rig.
 
 ## Rendering and shadows
 
@@ -141,4 +143,3 @@ Rendering work also needs current browser evidence and resource/performance
 gates. Multiplayer claims require pristine browser contexts, impaired delivery,
 disconnect/reload recovery, a complete match, and production TURN verification
 when restrictive-NAT connectivity is claimed.
-

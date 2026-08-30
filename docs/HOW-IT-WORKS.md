@@ -47,23 +47,21 @@ welding gear, T-90M turret/gun/Relikt service, and a rolled K2 hull with its
 actual wheel and track parts. Those same exact four scenes remain present in
 all ten selections.
 
-The other nine choices are open battlefield staging areas rather than alternate
-garage interiors. Each one is a bounded cut from the real selected map. It uses
-that map's seeded heightfield around a named tactical beat, preserves the
-beat's authored structure at its real map coordinate, and reuses the canonical
-horizon profile, tree geometry, species, and palette. Only the immediate
-hardstand is graded to a service datum so a nearby slope cannot rise through
-the selected tank. The four shared maintenance scenes, access lane,
-freestanding lights, and field-record monitor are then placed in that exterior.
+The other nine choices place the Garage directly inside the complete selected
+battlefield. They prefer a deterministic search around the authored player
+deployment, then use a bounded map-wide grid only on rugged maps with no nearby
+candidate. Every selected point is flat, hard, and has at least 24 m of
+clearance. A runtime receipt checks the built terrain and collision records
+before revealing the staging area. No proxy terrain, fake skyline, substitute
+landmark, access lane, field hardstand, wall, or roof is generated.
 
-The canonical heightfield grid is sampled in a module worker. Only the small
-terrain patch, tree transforms, and source receipt return to the renderer, and
-terrain, landmark, and vegetation owners reveal across separate frames. The
-Garage therefore does not construct a full world, grass field, collision tree,
-destruction runtime, or environment map—and even a throttled CPU never blocks
-the selector while deriving the authentic map area. The archive monitor keeps
-only its current and incoming images resident and stops scheduling work while
-the Garage scene is detached for battle.
+World construction still uses the normal asynchronous battlefield path and
+its cache. Switching to a map that is already resident remounts the exact same
+world immediately; a cold map loads through the existing sliced builder. The
+camera sits outside the selected clearing and looks inward so the actual map—not the
+empty boundary beyond it—forms the background. The archive monitor keeps only
+its current and incoming images resident and stops scheduling work while its
+Garage roots are detached for battle.
 
 The selected hero uses authored running gear as its Garage support surface.
 Decorative tow hooks, mud flaps, and other underside attachments may hang below
