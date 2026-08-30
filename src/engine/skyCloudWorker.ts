@@ -15,7 +15,16 @@ interface CloudWorkerScope {
   postMessage(message: Record<string, unknown>, transfer: Transferable[]): void;
 }
 
-const workerScope = globalThis as unknown as CloudWorkerScope;
+function isCloudWorkerScope(value: unknown): value is CloudWorkerScope {
+  return value !== null && typeof value === 'object' &&
+    'postMessage' in value && typeof value.postMessage === 'function' &&
+    'onmessage' in value;
+}
+
+const workerScope: unknown = globalThis;
+if (!isCloudWorkerScope(workerScope)) {
+  throw new TypeError('cloud bake worker requires a WorkerGlobalScope');
+}
 
 workerScope.onmessage = ({ data }) => {
   const { cumulusSize, cirrusSize, config } = data;

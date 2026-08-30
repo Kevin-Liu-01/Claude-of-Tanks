@@ -355,6 +355,21 @@ const FILL_INTENSITY = 0.66;
 const FILL_ELEV_Y = 70;
 const FILL_HORIZ_M = 230;
 
+type DrawableImage = CanvasImageSource & { width: number; height: number };
+
+function isDrawableImage(value: unknown): value is DrawableImage {
+  if (!value || typeof value !== 'object' ||
+      !('width' in value) || typeof value.width !== 'number' ||
+      !('height' in value) || typeof value.height !== 'number') return false;
+  return (typeof HTMLCanvasElement !== 'undefined' && value instanceof HTMLCanvasElement) ||
+    (typeof OffscreenCanvas !== 'undefined' && value instanceof OffscreenCanvas) ||
+    (typeof HTMLImageElement !== 'undefined' && value instanceof HTMLImageElement) ||
+    (typeof ImageBitmap !== 'undefined' && value instanceof ImageBitmap) ||
+    (typeof HTMLVideoElement !== 'undefined' && value instanceof HTMLVideoElement) ||
+    (typeof SVGImageElement !== 'undefined' && value instanceof SVGImageElement) ||
+    (typeof VideoFrame !== 'undefined' && value instanceof VideoFrame);
+}
+
 /**
  * Build a coverage-preserving mip chain for an alpha-tested foliage texture.
  *
@@ -371,7 +386,8 @@ const FILL_HORIZ_M = 230;
  * @returns {void}
  */
 function buildCoverageMipmaps(tex: THREE.Texture, cutoff: number): void {
-  const img = tex.image as { width?: number; height?: number } | undefined;
+  const img: unknown = tex.image;
+  if (!isDrawableImage(img)) return;
   if (!img || !img.width || (tex.mipmaps && tex.mipmaps.length > 0)) return;
   const size = img.width;
   if (size !== img.height || (size & (size - 1)) !== 0) return; // square POT only
@@ -381,7 +397,7 @@ function buildCoverageMipmaps(tex: THREE.Texture, cutoff: number): void {
   cnv.height = size;
   const ctx = cnv.getContext('2d', { willReadFrequently: true });
   if (!ctx) return;
-  ctx.drawImage(img as unknown as CanvasImageSource, 0, 0);
+  ctx.drawImage(img, 0, 0);
   const level0 = ctx.getImageData(0, 0, size, size);
 
   const cutByte = Math.round(cutoff * 255);

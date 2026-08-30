@@ -95,6 +95,10 @@ function isTexture(value: unknown): value is Texture {
     && (value as { isTexture?: boolean }).isTexture === true;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 function collectMaterialTextures(material: Material | null | undefined, out: Set<Texture>): void {
   if (!material) return;
   for (const value of Object.values(material)) {
@@ -103,11 +107,10 @@ function collectMaterialTextures(material: Material | null | undefined, out: Set
       for (const item of value) if (isTexture(item)) out.add(item);
     }
   }
-  const uniforms = (material as unknown as {
-    uniforms?: Record<string, { value?: unknown } | null | undefined>;
-  }).uniforms;
+  const uniforms = 'uniforms' in material && isRecord(material.uniforms)
+    ? material.uniforms : null;
   for (const uniform of Object.values(uniforms || {})) {
-    const value = uniform?.value;
+    const value = isRecord(uniform) ? uniform.value : null;
     if (isTexture(value)) out.add(value);
     else if (Array.isArray(value)) {
       for (const item of value) if (isTexture(item)) out.add(item);
