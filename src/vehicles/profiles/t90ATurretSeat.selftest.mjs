@@ -71,9 +71,9 @@ try {
   assert.ok(receipt.shtoraSupportBodyOverlapM >= 0.10,
     'advanced Shtora bodies remain physically embedded in their support shoes');
   near(receipt.gunRadiusScale, 1.08, 'cannon cross-section grows by eight percent');
-  near(receipt.gunAssemblyRaiseM, 0.04,
-    'complete cannon and recoil housing rise together by 40 mm');
-  near(receipt.gunAxisY, 0.205,
+  near(receipt.gunAssemblyRaiseM, 0.08,
+    'complete cannon and recoil housing rise together by 80 mm');
+  near(receipt.gunAxisY, 0.245,
     'raised cannon trunnion is published in turret-local space');
   assert.equal(receipt.cupolaCount, 2, 'RU-112 carries two complete roof cupolas');
   assert.deepEqual(receipt.leftCupola, [-0.35, -0.48], 'left cupola occupies the left roof station');
@@ -89,16 +89,24 @@ try {
     'marked asymmetric bustle has a positive bridge overlap');
   assert.deepEqual([gun.position.x, gun.position.z], [0, 0.825],
     'complete cannon trunnion retains its accepted horizontal seat');
-  near(gun.position.y, 0.205,
+  near(gun.position.y, 0.245,
     'complete cannon trunnion occupies the raised turret-local seat');
 
   barrel.geometry.computeBoundingBox();
   barrelDark.geometry.computeBoundingBox();
-  near(barrel.geometry.boundingBox.max.y, 0.098 * 1.08,
-    'visible cannon sleeve keeps its enlarged circular radius', 2e-6);
-  near(barrelDark.geometry.boundingBox.max.y, 0.100 * 1.08,
-    'cannon collars grow with the circular tube', 2e-6);
-  near(barrel.geometry.boundingBox.max.z, 4.816, 'cannon length remains unchanged while its diameter grows', 2e-6);
+  const familyGun = gun.userData.t90FamilyGunReceipt;
+  assert.ok(familyGun, 'T-90A publishes its T-90M-derived cannon receipt');
+  assert.equal(familyGun.referenceFamily, 't90m-2a46m5-thermal-jacket-r1');
+  near(familyGun.sleeveRadiusM, 0.108, 'cannon uses the T-90M thermal sleeve radius');
+  near(familyGun.forwardRadiusM, 0.102, 'forward tube uses the T-90M jacket radius');
+  near(familyGun.boreRadiusM, 0.062, 'muzzle bore follows the T-90M proportion');
+  near(familyGun.muzzleZ, 4.92, 'cannon reaches the T-90M-family muzzle station');
+  near(familyGun.assemblyRaiseM, 0.08, 'family receipt records the complete assembly lift');
+  assert.ok(barrel.geometry.boundingBox.max.y >= 0.124,
+    'visible cannon includes the substantial T-90M muzzle collar');
+  assert.ok(barrelDark.geometry.boundingBox.max.y >= 0.129,
+    'cannon collars remain substantial around the jacketed tube');
+  near(barrel.geometry.boundingBox.max.z, 4.92, 'cannon length reaches the updated muzzle station', 2e-6);
   const barrelCircularity = measureTurretBarrelCircularity(tank);
   assert.equal(barrelCircularity.pass, true, 'T-90A cannon cross-sections remain circular');
   assert.ok(barrelCircularity.worst?.aspectRatio <= 1.03,

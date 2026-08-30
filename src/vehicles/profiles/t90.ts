@@ -99,6 +99,21 @@ interface T90BuilderPort {
 
 const KIT = UNTYPED_KIT;
 
+// The production T-90M's 2A46M-5 establishes the family cannon's visible
+// thermal-jacket section. Keep this datum shared by related variants so
+// their tubes cannot drift back to thin, unrelated profiles. Longitudinal
+// stations remain variant-specific because each turret seats its trunnion
+// at a different fore/aft datum.
+const T90M_2A46M5_VISUAL_DATUM = Object.freeze({
+  family: 't90m-2a46m5-thermal-jacket-r1',
+  sleeveRadiusM: 0.108,
+  forwardRadiusM: 0.102,
+  muzzleCollarRadiusXM: 0.124 * 0.839,
+  muzzleCollarRadiusYM: 0.124,
+  boreRadiusM: 0.062,
+  fumeExtractorRadiusM: 0.128,
+});
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object';
 }
@@ -833,7 +848,7 @@ const T90A_SHTORA_SUPPORT_FRONT_Z_M = T90A_SHTORA_EYE_Z_M - 0.04;
 const T90A_CHEVRON_FORWARD_M = 0.24;
 const T90A_NSVT_RAISE_M = 0.08;
 const T90A_GUN_RADIUS_SCALE = 1.08;
-const T90A_GUN_ASSEMBLY_RAISE_M = 0.04;
+const T90A_GUN_ASSEMBLY_RAISE_M = 0.08;
 
 interface T90ALegacyOptions {
   turretSeatZ?: number;
@@ -845,6 +860,7 @@ interface T90ALegacyOptions {
   nsvtRaiseM?: number;
   gunRadiusScale?: number;
   gunAssemblyRaiseM?: number;
+  adoptT90MFamilyGun?: boolean;
   recordSeatReceipt?: boolean;
 }
 
@@ -858,6 +874,7 @@ function buildT90ALegacy(P: T90BuilderPort, {
   nsvtRaiseM = T90A_NSVT_RAISE_M,
   gunRadiusScale = T90A_GUN_RADIUS_SCALE,
   gunAssemblyRaiseM = T90A_GUN_ASSEMBLY_RAISE_M,
+  adoptT90MFamilyGun = true,
   recordSeatReceipt = true,
 }: T90ALegacyOptions = {}): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret } = KIT;
@@ -865,8 +882,8 @@ function buildT90ALegacy(P: T90BuilderPort, {
   // to docs/references/vertex/t90a.json — hull mask +-3.43 (6.865), deck
   // plateau 1.29-1.37 with the rear stack bumps 1.44-1.49 @ -3.16..-3.32,
   // glacis 1.15@3.11 -> 0.85@3.43; roof plateau 2.16-2.22 over z -0.01..0.69
-  // (the old print's 2.54-2.66 band is GONE); gun axis 1.50, tube r 0.117
-  // sleeve / 0.096 forward, muzzle +6.10. Orientation asserts: glacis +z,
+  // (the old print's 2.54-2.66 band is GONE); gun axis 1.58, tube r 0.108
+  // sleeve / 0.102 forward, muzzle +5.69. Orientation asserts: glacis +z,
   // gun +z, agree (descent runs 1.29 / 0).
   // r4 (fresh workorder 2026-08-02): loft rear pulled to -2.95 — the ref
   // hull rear is -3.43 only at |x|<=0.31 with a CENTER NOTCH to -2.95 at
@@ -1264,7 +1281,7 @@ function buildT90ALegacy(P: T90BuilderPort, {
     left: { x: -0.35, z: -0.48 },
     right: { x: 0.52, z: -0.42 },
   };
-  if (recordSeatReceipt) {
+  if (adoptT90MFamilyGun) {
     for (const station of Object.values(t90aRoofStations)) {
       P.addCupola('turret', cylY(0.255, 0.285, 0.18, 18), station.x, 0.575, station.z);
       P.addCupola('turret', cylY(0.235, 0.255, 0.055, 18), station.x, 0.685, station.z);
@@ -1501,18 +1518,53 @@ function buildT90ALegacy(P: T90BuilderPort, {
   P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0, [0.60, 0.21, 1]), 0, -0.008, 0.36);
   P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0, [0.60, 0.21, 1]), 0, -0.008, 0.52);
   P.addGunExtraDark(KIT.xform(cylZ(0.150 * gunRadiusScale, 0.04, 14), 0, 0, 0), 0, 0, 0.645);
-  tubeGun(P, [
-  // The longitudinal breaks and gun axis remain exact while every course
-  // uses one radial dimension. The former independent plan radii made the
-  // cannon read as a horizontally stretched oval from the muzzle.
-    [0.65, 1.47, 0.085 * gunRadiusScale],
-    [1.47, 3.17, 0.090 * gunRadiusScale],
-    [3.17, 4.72, 0.045 * gunRadiusScale, 0.045 * gunRadiusScale, 0, 0.005],
-    [4.72, 4.816, 0.045 * gunRadiusScale, 0.045 * gunRadiusScale, 0, 0.005],
-  ], { rings: [[1.47, 0.092 * gunRadiusScale], [2.12, 0.093 * gunRadiusScale], [3.17, 0.072 * gunRadiusScale], [3.87, 0.050 * gunRadiusScale], [4.30, 0.050 * gunRadiusScale]], muzzle: 4.816 });  // T3A-b4: 4.90 trial broke overallLengthM grace (dims 95.5) — the end cover col is cheaper (dims sovereign)
-  muzzleBore(P, { r: 0.045 * gunRadiusScale, y: 0.005 });  // §B3.1 (shadow-named, mask/frame-neutral)
-  P.add('gun', cylZ(0.098 * gunRadiusScale, 0.42, 14, 0.090 * gunRadiusScale), 0, 0, 2.88);   // bore-evacuator swell
-  P.add('gunDark', cylZ(0.100 * gunRadiusScale, 0.04, 14), 0, 0, 3.09);
+  if (recordSeatReceipt) {
+    // T-90M-family 2A46M-5 thermal-jacket profile. The A-model keeps its
+    // accepted cast collar and mantlet, while the exposed tube now carries
+    // the production M's substantial 108/102-mm courses instead of
+    // collapsing to a 49-mm pencil barrel after the evacuator.
+    const t90aMuzzleZ = 4.92;
+    tubeGun(P, [
+      [0.65, 1.47, T90M_2A46M5_VISUAL_DATUM.sleeveRadiusM],
+      [1.47, 3.17, T90M_2A46M5_VISUAL_DATUM.sleeveRadiusM],
+      [3.17, 4.72, T90M_2A46M5_VISUAL_DATUM.forwardRadiusM,
+        T90M_2A46M5_VISUAL_DATUM.forwardRadiusM, 0, 0.005],
+      [4.72, t90aMuzzleZ, T90M_2A46M5_VISUAL_DATUM.forwardRadiusM,
+        T90M_2A46M5_VISUAL_DATUM.forwardRadiusM, 0, 0.005],
+    ], { rings: [[1.47, 0.112], [2.12, 0.112], [3.17, 0.106], [3.87, 0.106], [4.30, 0.106]], muzzle: t90aMuzzleZ });
+    P.add('gun', KIT.xform(cylZ(T90M_2A46M5_VISUAL_DATUM.muzzleCollarRadiusYM, 0.15, 14),
+      0, 0, 0, 0, 0, 0, [0.839, 1, 1]), 0, 0.033, t90aMuzzleZ - 0.155);
+    muzzleBore(P, {
+      z: t90aMuzzleZ,
+      r: T90M_2A46M5_VISUAL_DATUM.forwardRadiusM,
+      boreR: T90M_2A46M5_VISUAL_DATUM.boreRadiusM,
+      y: 0.005,
+    });
+    P.add('gun', cylZ(T90M_2A46M5_VISUAL_DATUM.fumeExtractorRadiusM, 0.46, 14, 0.116), 0, 0, 2.88);
+    P.add('gunDark', cylZ(0.130, 0.04, 14), 0, 0, 3.11);
+    P.gunG.userData.t90FamilyGunReceipt = Object.freeze({
+      referenceFamily: T90M_2A46M5_VISUAL_DATUM.family,
+      sleeveRadiusM: T90M_2A46M5_VISUAL_DATUM.sleeveRadiusM,
+      forwardRadiusM: T90M_2A46M5_VISUAL_DATUM.forwardRadiusM,
+      muzzleCollarRadiusXM: T90M_2A46M5_VISUAL_DATUM.muzzleCollarRadiusXM,
+      muzzleCollarRadiusYM: T90M_2A46M5_VISUAL_DATUM.muzzleCollarRadiusYM,
+      boreRadiusM: T90M_2A46M5_VISUAL_DATUM.boreRadiusM,
+      muzzleZ: t90aMuzzleZ,
+      assemblyRaiseM: gunAssemblyRaiseM,
+    });
+  } else {
+    // Burlak deliberately retains its already accepted prototype cannon. It
+    // calls this builder only as a donor before replacing the complete turret.
+    tubeGun(P, [
+      [0.65, 1.47, 0.085 * gunRadiusScale],
+      [1.47, 3.17, 0.090 * gunRadiusScale],
+      [3.17, 4.72, 0.045 * gunRadiusScale, 0.045 * gunRadiusScale, 0, 0.005],
+      [4.72, 4.816, 0.045 * gunRadiusScale, 0.045 * gunRadiusScale, 0, 0.005],
+    ], { rings: [[1.47, 0.092 * gunRadiusScale], [2.12, 0.093 * gunRadiusScale], [3.17, 0.072 * gunRadiusScale], [3.87, 0.050 * gunRadiusScale], [4.30, 0.050 * gunRadiusScale]], muzzle: 4.816 });
+    muzzleBore(P, { r: 0.045 * gunRadiusScale, y: 0.005 });
+    P.add('gun', cylZ(0.098 * gunRadiusScale, 0.42, 14, 0.090 * gunRadiusScale), 0, 0, 2.88);
+    P.add('gunDark', cylZ(0.100 * gunRadiusScale, 0.04, 14), 0, 0, 3.09);
+  }
   if (recordSeatReceipt) {
     P.turretG.userData.t90aSeatReceipt = {
       turretSeatZ,
@@ -2022,7 +2074,7 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
   // grow out of the planted K-5 shoulders and enter the rear half of each
   // enlarged housing; the round lenses stay fully open and the complete
   // station remains turret-owned through yaw.
-  const gunAssemblyRaiseM = 0.04;
+  const gunAssemblyRaiseM = 0.08;
   const gunAxisY = 0.16 + gunAssemblyRaiseM;
   const shtoraCenterY = 0.28;
   const shtoraSupportY = shtoraCenterY - 0.08;
@@ -2275,7 +2327,7 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
   // Raise the complete articulated gun seat, including its saddle and root,
   // rather than lifting only the visible tube away from the mantlet.
   P.gunG.position.set(0, gunAxisY, 1.05);
-  ruSaddle(P, { rollR: 0.15, rollW: 0.70, tubeR: 0.078, rootL: 0.78, rootR: 0.105 });
+  ruSaddle(P, { rollR: 0.17, rollW: 0.70, tubeR: T90M_2A46M5_VISUAL_DATUM.sleeveRadiusM, rootL: 0.78, rootR: 0.125 });
   // A broad cast root and tapered accordion boot give the 2A46M a deliberate
   // load path into the taller cheeks.  Every section intersects the next;
   // the gun remains one elevating rig rather than a tube floating in a slit.
@@ -2285,22 +2337,42 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
       [0.58, 0.34, 0.21, 0.005], [0.84, 0.23, 0.17, 0]],
     creaseD: 0.032,
   });
+  const vladimirMuzzleZ = 5.32;
   tubeGun(P, [
-    [0.52, 2.30, 0.078, 0.078], [2.30, 2.87, 0.078, 0.076],
-    [2.87, 3.90, 0.064], [3.90, 4.475, 0.060],
-  ], { rings: [[0.90, 0.083], [1.50, 0.083], [2.30, 0.082], [2.95, 0.068], [3.60, 0.066], [4.20, 0.064]], muzzle: 4.475 });
-  P.add('gun', cylZ(0.105, 0.48, 14, 0.098), 0, 0, 2.06);
-  P.add('gunDark', cylZ(0.108, 0.04, 14), 0, 0, 2.31);
-  muzzleBore(P, { r: 0.060 });
+    [0.52, 1.62, T90M_2A46M5_VISUAL_DATUM.sleeveRadiusM],
+    [1.62, 3.26, 0.116],
+    [3.26, 5.02, T90M_2A46M5_VISUAL_DATUM.forwardRadiusM],
+    [5.02, vladimirMuzzleZ, T90M_2A46M5_VISUAL_DATUM.forwardRadiusM],
+  ], { rings: [[1.10, 0.114], [1.62, 0.118], [2.35, 0.118], [3.26, 0.106], [3.98, 0.106], [4.68, 0.106]], muzzle: vladimirMuzzleZ });
+  P.add('gun', KIT.xform(cylZ(T90M_2A46M5_VISUAL_DATUM.muzzleCollarRadiusYM, 0.15, 14),
+    0, 0, 0, 0, 0, 0, [0.839, 1, 1]), 0, 0.033, vladimirMuzzleZ - 0.155);
+  P.add('gun', cylZ(T90M_2A46M5_VISUAL_DATUM.fumeExtractorRadiusM, 0.46, 14, 0.116), 0, 0, 2.64);
+  P.add('gunDark', cylZ(0.130, 0.04, 14), 0, 0, 2.41);
+  P.add('gunDark', cylZ(0.130, 0.04, 14), 0, 0, 2.87);
+  muzzleBore(P, {
+    z: vladimirMuzzleZ,
+    r: T90M_2A46M5_VISUAL_DATUM.forwardRadiusM,
+    boreR: T90M_2A46M5_VISUAL_DATUM.boreRadiusM,
+  });
   P.gunG.userData.t90aVladimirGunReceipt = {
     gunAxisY,
     gunAssemblyRaiseM,
-    sleeveRadiusM: 0.078,
-    muzzleRadiusM: 0.060,
-    fumeExtractorRadiusM: 0.105,
-    muzzleZ: 4.475,
+    sleeveRadiusM: T90M_2A46M5_VISUAL_DATUM.sleeveRadiusM,
+    muzzleRadiusM: T90M_2A46M5_VISUAL_DATUM.forwardRadiusM,
+    fumeExtractorRadiusM: T90M_2A46M5_VISUAL_DATUM.fumeExtractorRadiusM,
+    muzzleZ: vladimirMuzzleZ,
     sealedBoot: true,
   };
+  P.gunG.userData.t90FamilyGunReceipt = Object.freeze({
+    referenceFamily: T90M_2A46M5_VISUAL_DATUM.family,
+    sleeveRadiusM: T90M_2A46M5_VISUAL_DATUM.sleeveRadiusM,
+    forwardRadiusM: T90M_2A46M5_VISUAL_DATUM.forwardRadiusM,
+    muzzleCollarRadiusXM: T90M_2A46M5_VISUAL_DATUM.muzzleCollarRadiusXM,
+    muzzleCollarRadiusYM: T90M_2A46M5_VISUAL_DATUM.muzzleCollarRadiusYM,
+    boreRadiusM: T90M_2A46M5_VISUAL_DATUM.boreRadiusM,
+    muzzleZ: vladimirMuzzleZ,
+    assemblyRaiseM: gunAssemblyRaiseM,
+  });
   const dxV = ringSkin(rings, 0.32) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dxV, 0.28, -0.35], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-dxV, 0.28, -0.35], -Math.PI / 2);
@@ -4733,14 +4805,33 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
   // T3R-b5: outer tube slimmed to the ref's own taper (side 3.6-3.8 cols
   // read the ref band 1.611..1.748 = r 0.068 about a 1.68 line; the flat
   // 0.097 run printed 1.802 on three cols).
+  const t90smMuzzleZ = 4.97;
   tubeGun(P, [
-    [0.72, 2.42, 0.082], [2.42, 2.72, 0.0685, 0.0685, 0, -0.02], [2.72, 4.97, 0.073, 0.073, 0, -0.012],
-  ], { rings: [[1.20, 0.086], [1.90, 0.086], [2.40, 0.082], [3.20, 0.082], [3.80, 0.082], [4.45, 0.082]], muzzle: 4.97 });
-  // §B3.1 muzzle bore (shadow-named, mask/frame-neutral by construction)
-  muzzleBore(P, { r: 0.089, y: -0.012 });
-  P.add('gun', cylZ(0.126, 1.85, 16, 0.118), 0, 0, 2.625);  // M-5 evacuator / thermal-jacket swell
-  P.add('gunDark', cylZ(0.128, 0.035, 16), 0, 0, 1.70);
-  P.add('gunDark', cylZ(0.128, 0.035, 16), 0, 0, 3.55);
+    [0.72, 1.92, T90M_2A46M5_VISUAL_DATUM.sleeveRadiusM],
+    [1.92, 2.16, T90M_2A46M5_VISUAL_DATUM.forwardRadiusM],
+    [2.16, t90smMuzzleZ, T90M_2A46M5_VISUAL_DATUM.forwardRadiusM, T90M_2A46M5_VISUAL_DATUM.forwardRadiusM, 0, -0.012],
+  ], { rings: [[1.20, 0.112], [1.90, 0.112], [2.40, 0.106], [3.20, 0.106], [3.80, 0.106], [4.45, 0.106]], muzzle: t90smMuzzleZ });
+  P.add('gun', KIT.xform(cylZ(T90M_2A46M5_VISUAL_DATUM.muzzleCollarRadiusYM, 0.15, 14),
+    0, 0, 0, 0, 0, 0, [0.839, 1, 1]), 0, 0.021, t90smMuzzleZ - 0.155);
+  muzzleBore(P, {
+    z: t90smMuzzleZ,
+    r: T90M_2A46M5_VISUAL_DATUM.forwardRadiusM,
+    boreR: T90M_2A46M5_VISUAL_DATUM.boreRadiusM,
+    y: -0.012,
+  });
+  P.add('gun', cylZ(T90M_2A46M5_VISUAL_DATUM.fumeExtractorRadiusM, 0.46, 16, 0.116), 0, 0, 2.64);
+  P.add('gunDark', cylZ(0.130, 0.035, 16), 0, 0, 2.41);
+  P.add('gunDark', cylZ(0.130, 0.035, 16), 0, 0, 2.87);
+  P.gunG.userData.t90FamilyGunReceipt = Object.freeze({
+    referenceFamily: T90M_2A46M5_VISUAL_DATUM.family,
+    sleeveRadiusM: T90M_2A46M5_VISUAL_DATUM.sleeveRadiusM,
+    forwardRadiusM: T90M_2A46M5_VISUAL_DATUM.forwardRadiusM,
+    muzzleCollarRadiusXM: T90M_2A46M5_VISUAL_DATUM.muzzleCollarRadiusXM,
+    muzzleCollarRadiusYM: T90M_2A46M5_VISUAL_DATUM.muzzleCollarRadiusYM,
+    boreRadiusM: T90M_2A46M5_VISUAL_DATUM.boreRadiusM,
+    muzzleZ: t90smMuzzleZ,
+    assemblyRaiseM: 0,
+  });
   // §5.331: numeral seats moved forward z -0.32 -> -0.05 (§5.266 clip law —
   // the auto-reseat pinned them 10 cm deeper on the pitched transition
   // wedge, and the cage's front post/rails eclipsed the rear digit from
@@ -8793,6 +8884,7 @@ function buildT90BurlakHybridNative2026(P: T90BuilderPort): void {
     nsvtRaiseM: 0,
     gunRadiusScale: 1,
     gunAssemblyRaiseM: 0,
+    adoptT90MFamilyGun: false,
     recordSeatReceipt: false,
   });
   // Burlak's hull shoulders sit inside the common T-90A track lanes.  Keep

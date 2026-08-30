@@ -170,7 +170,7 @@ try {
   assert.ok(near(proportion.shtoraCenterY, 0.28), 'Shtora optical centres sit at the mantlet-side station');
   assert.ok(near(proportion.shtoraSupportY, 0.20), 'Shtora support shoes move with the complete eye assembly');
   assert.ok(near(proportion.shtoraLoweredM, 0.208), 'Shtora package drops by the former cheek-rise inheritance');
-  assert.ok(near(proportion.shtoraToGunAxisM, 0.08), 'Shtora optical centres sit 80 mm above the raised gun axis');
+  assert.ok(near(proportion.shtoraToGunAxisM, 0.04), 'Shtora optical centres sit 40 mm above the raised gun axis');
   assert.ok(near(proportion.shtoraCenterY - gunRig.position.y, proportion.shtoraToGunAxisM),
     'Shtora-to-gun alignment receipt matches the articulated gun rig');
   assert.ok(near(proportion.chevronForwardM, 0.12),
@@ -198,16 +198,22 @@ try {
 
   const gun = gunRig.userData.t90aVladimirGunReceipt;
   assert.ok(gun, 'T-90A Vladimir exposes its cannon proportion receipt');
-  assert.ok(near(gun.gunAssemblyRaiseM, 0.04),
-    'complete Vladimir cannon and recoil housing rise together by 40 mm');
-  assert.ok(near(gun.gunAxisY, 0.20),
+  assert.ok(near(gun.gunAssemblyRaiseM, 0.08),
+    'complete Vladimir cannon and recoil housing rise together by 80 mm');
+  assert.ok(near(gun.gunAxisY, 0.24),
     'raised Vladimir trunnion is published in turret-local space');
-  assert.ok(near(gun.sleeveRadiusM, 0.078), 'cannon carries the enlarged 78-mm sleeve radius');
-  assert.ok(near(gun.muzzleRadiusM, 0.060), 'muzzle remains a substantial 60-mm radius');
-  assert.ok(near(gun.fumeExtractorRadiusM, 0.105), 'fume extractor is enlarged with the sleeve');
-  assert.ok(near(gun.muzzleZ, 4.475), 'accepted cannon length is preserved');
+  assert.ok(near(gun.sleeveRadiusM, 0.108), 'cannon carries the T-90M 108-mm sleeve radius');
+  assert.ok(near(gun.muzzleRadiusM, 0.102), 'muzzle carries the T-90M 102-mm jacket radius');
+  assert.ok(near(gun.fumeExtractorRadiusM, 0.128), 'fume extractor follows the T-90M family scale');
+  assert.ok(near(gun.muzzleZ, 5.32), 'long cannon reaches the corrected family muzzle station');
   assert.equal(gun.sealedBoot, true, 'cannon root is sealed by a tapered boot');
   assert.ok(gunRig.getObjectByName('muzzleBoreShadowDisc'), 'cannon has a recessed muzzle bore');
+  const familyGun = gunRig.userData.t90FamilyGunReceipt;
+  assert.equal(familyGun?.referenceFamily, 't90m-2a46m5-thermal-jacket-r1');
+  assert.ok(near(familyGun?.forwardRadiusM, 0.102),
+    'Vladimir forward tube is locked to the T-90M visual datum');
+  assert.ok(near(familyGun?.boreRadiusM, 0.062),
+    'Vladimir bore remains proportionate to the heavier jacket');
 
   const equipment = turretRig.userData.t90aVladimirEquipmentReceipt;
   assert.ok(equipment, 'T-90A Vladimir exposes its cheek and RWS equipment receipt');

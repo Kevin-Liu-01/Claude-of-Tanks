@@ -15,6 +15,20 @@ try {
   const turretDark = turretRig?.getObjectByName('turretDark');
   assert.ok(turretRig && turret?.isMesh && turretDark?.isMesh,
     'T-90SM keeps its structural and dark turret geometry under rig_turret');
+  const gunRig = tank.root.getObjectByName('rig_gun');
+  const familyGun = gunRig?.userData.t90FamilyGunReceipt;
+  assert.equal(familyGun?.referenceFamily, 't90m-2a46m5-thermal-jacket-r1',
+    'T-90SM adopts the T-90M 2A46M-5 visual family');
+  assert.ok(Math.abs(familyGun?.sleeveRadiusM - 0.108) < 1e-6,
+    'T-90SM thermal sleeve uses the T-90M radius');
+  assert.ok(Math.abs(familyGun?.forwardRadiusM - 0.102) < 1e-6,
+    'T-90SM no longer collapses to a pencil-thin forward tube');
+  assert.ok(Math.abs(familyGun?.boreRadiusM - 0.062) < 1e-6,
+    'T-90SM muzzle bore follows the shared family proportion');
+  assert.ok(Math.abs(familyGun?.muzzleZ - 4.97) < 1e-6,
+    'T-90SM retains its accepted longitudinal muzzle station');
+  assert.equal(familyGun?.assemblyRaiseM, 0,
+    'T-90SM keeps its accepted trunnion height while adopting the heavier tube');
 
   const collectVertices = (mesh) => {
     const position = mesh.geometry.attributes.position;
