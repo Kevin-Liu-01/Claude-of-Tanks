@@ -56,7 +56,7 @@ function createHarness(overrides = {}) {
     loadDedicatedMatch: async () => ({
       beginDedicatedClientMatch: (request) => {
         calls.push(['dedicatedConnect', request.url]);
-        request.onStatus('connected');
+        request.onStatus({ state: 'connected' });
         return { playerId: request.ticket.playerId, role: 'client' };
       },
     }),
@@ -93,13 +93,26 @@ const state = {
 const host = createHarness();
 const runtime = createNetworkBattleLaunchRuntime(host.options);
 assert.equal(await runtime.beginPrivate({
-  role: 'host', session: { roomInfo: { peerId: 'host' } }, lobbyState: state,
+  role: 'host',
+  session: { roomInfo: { peerId: 'host' }, takeMatchChannels: () => [] },
+  lobbyState: state,
 }), true);
 assert.equal(host.match.role, 'host');
 assert.ok(host.calls.some(([name]) => name === 'battleStart'));
 assert.ok(host.calls.some(([name, world]) => name === 'hostConnect' && world === 'world-collision'));
 assert.ok(host.calls.some(([name]) => name === 'attach'),
   'successful private entry retains the room coordinator');
+
+const invalidHandoff = createHarness();
+const invalidHandoffRuntime = createNetworkBattleLaunchRuntime(invalidHandoff.options);
+assert.equal(await invalidHandoffRuntime.beginPrivate({
+  role: 'host', session: { roomInfo: { peerId: 'host' } }, lobbyState: state,
+}), false);
+assert.match(
+  invalidHandoff.calls.find(([name, value]) => name === 'failure' && value)?.[1]?.message || '',
+  /host session cannot enter match mode/,
+  'a weak cold-session adapter fails visibly before match publication',
+);
 
 const rematchState = { ...state, round: 2 };
 assert.equal(await runtime.beginRematch(rematchState), true);
@@ -124,7 +137,8 @@ await runtime.beginRanked({
 });
 assert.ok(host.calls.some(([name, url]) =>
   name === 'dedicatedConnect' && url === 'wss://ranked.example'));
-assert.ok(host.calls.some(([name, status]) => name === 'status' && status === 'connected'));
+assert.ok(host.calls.some(([name, status]) =>
+  name === 'status' && status.state === 'connected'));
 
 const failed = createHarness({
   loadPrivateMatch: async () => { throw new Error('cold chunk unavailable'); },

@@ -7,6 +7,8 @@ import {
   MatchClientRuntime,
   type MatchClientOptions,
 } from './matchRuntime.ts';
+import type { SampledSnapshotFrame } from './snapshot.ts';
+import type { NetworkInputFrame } from './networkFramePump.ts';
 
 type Unsubscribe = () => void;
 type SocketListener = (event: SocketEvent) => void;
@@ -76,8 +78,8 @@ export interface DedicatedClientMatch {
   readonly socket: SocketLike | null;
   readonly reconnecting: boolean;
   ready(): boolean;
-  update(nowMs: number): unknown;
-  submitInput(input: Record<string, unknown>, clientTick?: number): boolean;
+  update(nowMs: number): SampledSnapshotFrame | null;
+  submitInput(input: NetworkInputFrame, clientTick?: number): boolean;
   close(reason?: string): void;
 }
 
@@ -218,7 +220,9 @@ export async function beginDedicatedClientMatch({
       readySent = true;
       return connection?.client.readyForMatch() || false;
     },
-    update(nowMs: number): unknown { return connection?.client.update(nowMs) || null; },
+    update(nowMs: number): SampledSnapshotFrame | null {
+      return connection?.client.update(nowMs) || null;
+    },
     submitInput(input: Record<string, unknown>, clientTick?: number): boolean {
       return connection?.client.submitInput(input, clientTick) || false;
     },

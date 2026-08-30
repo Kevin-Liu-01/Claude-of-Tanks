@@ -7,13 +7,13 @@ export interface RosterPresentationRow {
 
 interface LobbyPlayer {
   id: string;
-  specId?: string;
+  specId?: string | null;
   name?: string;
   team?: string;
 }
 
 interface LobbyState {
-  players: LobbyPlayer[];
+  players: readonly LobbyPlayer[];
 }
 
 interface BattleRosterEntity {

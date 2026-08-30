@@ -5,7 +5,7 @@ interface ReadyClientLike {
 }
 
 interface ReadyMatchLike {
-  readonly client?: ReadyClientLike;
+  readonly client?: ReadyClientLike | null;
   ready(): unknown;
 }
 

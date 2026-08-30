@@ -5,16 +5,17 @@ import type {
 } from './networkRoomCoordinator.ts';
 import type { RankedQueueState } from './rankedServiceClient.ts';
 import { isNetworkBattleEntryAbortError } from './networkBattleEntryAbort.ts';
+import type { BattleLoadRosterRow, BattleLoadScreen } from '../ui/battleLoad.ts';
+import type {
+  NetworkBattlePresentationPlayer,
+  NetworkBattlePresentationRequest,
+} from './networkBattlePresentationRuntime.ts';
+import type { NetworkBrowserMatch } from './networkBrowserSessionRuntime.ts';
+import type { DedicatedStatus } from './dedicatedClient.ts';
 
 interface BattleEntryLifecyclePort {
   run<T>(task: () => Promise<T>, busyValue: T): Promise<T>;
   readonly pending: boolean;
-}
-
-interface BattleLoadPort {
-  show(options: Record<string, unknown>): void;
-  progress(fraction: number, label: string): void;
-  hide(): Promise<unknown> | unknown;
 }
 
 interface AudioLoadingPort {
@@ -22,10 +23,7 @@ interface AudioLoadingPort {
   loadingOn(active: boolean): unknown;
 }
 
-interface NetworkMatchPort {
-  playerId?: string;
-  role?: string;
-  client?: { connected?: boolean; readySent?: boolean };
+type NetworkMatchPort = NetworkBrowserMatch & {
   host?: {
     matchStarted?: boolean;
     peers?: Map<string, {
@@ -38,35 +36,33 @@ interface NetworkMatchPort {
     }>;
   };
   prepareRound?(options: Record<string, unknown>): unknown;
-}
+};
 
-interface PrivateMatchModule {
-  beginPrivateHostMatch(options: Record<string, unknown>): unknown;
-  beginPrivateClientMatch(options: Record<string, unknown>): unknown;
-  buildPrivateMatchPlayers(state: NetworkRoomState): NetworkRoomPlayer[];
-  resolvePrivateMatchMap(state: NetworkRoomState): string;
-}
+type PrivateMatchModule = Pick<
+  typeof import('./privateMatchHandoff.ts'),
+  | 'beginPrivateHostMatch'
+  | 'beginPrivateClientMatch'
+  | 'buildPrivateMatchPlayers'
+  | 'resolvePrivateMatchMap'
+>;
 
-interface DedicatedMatchModule {
-  beginDedicatedClientMatch(options: Record<string, unknown>): unknown;
-}
+type DedicatedMatchModule = Pick<
+  typeof import('./dedicatedClient.ts'),
+  'beginDedicatedClientMatch'
+>;
+
+type PrivateHostSession = NonNullable<
+  NonNullable<Parameters<PrivateMatchModule['beginPrivateHostMatch']>[0]>['session']
+>;
+type PrivateClientOptions = NonNullable<
+  Parameters<PrivateMatchModule['beginPrivateClientMatch']>[0]
+>;
+type PrivateClientSession = NonNullable<PrivateClientOptions['session']>;
 
 interface MapPresentation {
   name: string;
   thumb: string;
   biome: string;
-}
-
-interface PresentNetworkBattleRequest {
-  viewerId: string;
-  own: NetworkRoomPlayer;
-  mapId: string;
-  matchPlayers: NetworkRoomPlayer[];
-  modeLabel: string;
-  transitionShown: boolean;
-  signal?: AbortSignal;
-  connectAfterWorld?: boolean;
-  connectMatch: () => unknown;
 }
 
 export interface NetworkEntryFailure {
@@ -87,23 +83,27 @@ export interface NetworkEntryFailure {
 
 interface NetworkBattleLaunchOptions {
   lifecycle: BattleEntryLifecyclePort;
-  battleLoad: BattleLoadPort;
+  battleLoad: BattleLoadScreen;
   audio: AudioLoadingPort;
   getMatch: () => NetworkMatchPort | null;
   getRoomCoordinator: () => NetworkRoomCoordinator | null;
   getWorldCollision: () => unknown;
   getMapPresentation: (mapId: string | null, fallback: string) => MapPresentation;
-  rosterRows: (state: NetworkRoomState, team: string, viewerId: string) => unknown[];
+  rosterRows: (
+    state: NetworkRoomState,
+    team: string,
+    viewerId: string,
+  ) => BattleLoadRosterRow[];
   emitBattleStart: (payload: { playerId: string; specId?: string; mapId?: string }) => void;
   resetBattleState: () => void;
-  presentBattle: (request: PresentNetworkBattleRequest) => Promise<unknown>;
+  presentBattle: (request: NetworkBattlePresentationRequest) => Promise<unknown>;
   loadPrivateMatch: () => Promise<PrivateMatchModule>;
   loadDedicatedMatch: () => Promise<DedicatedMatchModule>;
   disposePresentation: () => void;
   clearNetworkRound: () => void;
   closeMatch: (reason: string) => void;
   enterGarage: () => void;
-  setNetworkStatus: (status: unknown) => void;
+  setNetworkStatus: (status: DedicatedStatus) => void;
   recordEntryFailure: (failure: NetworkEntryFailure | null) => void;
   reportError?: (scope: string, error: unknown) => void;
 }
@@ -129,6 +129,40 @@ export interface NetworkBattleLaunchRuntime {
 
 function messageFor(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function isPrivateHostSession(value: unknown): value is PrivateHostSession {
+  if (!value || typeof value !== 'object') return false;
+  const session = value as {
+    roomInfo?: { peerId?: unknown };
+    takeMatchChannels?: unknown;
+  };
+  return typeof session.roomInfo?.peerId === 'string' &&
+    typeof session.takeMatchChannels === 'function';
+}
+
+function isPrivateClientSession(value: unknown): value is PrivateClientSession {
+  if (!value || typeof value !== 'object') return false;
+  const session = value as {
+    takeMatchClient?: unknown;
+    takeMatchTransport?: unknown;
+  };
+  return typeof session.takeMatchClient === 'function' ||
+    typeof session.takeMatchTransport === 'function';
+}
+
+function presentationPlayer(
+  player: NetworkRoomPlayer | null | undefined,
+): NetworkBattlePresentationPlayer {
+  if (!player?.id || !player.specId) {
+    throw new Error('The lobby vehicle selection is unavailable.');
+  }
+  return {
+    id: player.id,
+    specId: player.specId,
+    team: player.team,
+    name: player.name,
+  };
 }
 
 /** Own private/LAN, rematch, and ranked entry policy above the renderer seam. */
@@ -266,20 +300,32 @@ export function createNetworkBattleLaunchRuntime({
           const privateMatch = await loadPrivateMatch();
           const mapId = privateMatch.resolvePrivateMatchMap(lobbyState);
           const matchPlayers = privateMatch.buildPrivateMatchPlayers(lobbyState);
+          const presentationOwn = presentationPlayer(own);
           await presentBattle({
             viewerId,
-            own,
+            own: presentationOwn,
             mapId,
             matchPlayers,
             modeLabel,
             transitionShown: true,
             signal: entryController.signal,
             connectAfterWorld: role === 'host',
-            connectMatch: () => role === 'host'
-              ? privateMatch.beginPrivateHostMatch({
-                session, lobbyState, worldCollision: getWorldCollision(), battleLimitS,
-              })
-              : privateMatch.beginPrivateClientMatch({ session, playerId: viewerId, lobbyState }),
+            connectMatch: () => {
+              if (role === 'host') {
+                if (!isPrivateHostSession(session)) {
+                  throw new Error('The private host session cannot enter match mode.');
+                }
+                return privateMatch.beginPrivateHostMatch({
+                  session, lobbyState, worldCollision: getWorldCollision(), battleLimitS,
+                });
+              }
+              if (!isPrivateClientSession(session)) {
+                throw new Error('The private client session cannot enter match mode.');
+              }
+              return privateMatch.beginPrivateClientMatch({
+                session, playerId: viewerId, lobbyState,
+              });
+            },
           });
           coordinator().attach(lobbyState);
           entered = true;
@@ -321,9 +367,10 @@ export function createNetworkBattleLaunchRuntime({
           const privateMatch = await loadPrivateMatch();
           const mapId = privateMatch.resolvePrivateMatchMap(lobbyState);
           const matchPlayers = privateMatch.buildPrivateMatchPlayers(lobbyState);
+          const presentationOwn = presentationPlayer(own);
           await presentBattle({
             viewerId,
-            own,
+            own: presentationOwn,
             mapId,
             matchPlayers,
             modeLabel,

@@ -46,7 +46,7 @@ export interface NetworkLobbyContext {
 interface NetworkRoomMatch {
   playerId?: string;
   role?: string;
-  client?: { closed?: boolean };
+  client?: { closed?: boolean } | null;
   roomCommand?(command: Record<string, unknown>): unknown;
   onRoomState?(listener: (state: NetworkRoomState) => void): (() => void) | void;
   onRoomChat?(listener: (message: unknown) => void): (() => void) | void;

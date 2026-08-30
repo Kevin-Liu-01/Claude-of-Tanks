@@ -9,6 +9,8 @@ import {
   type MatchRoomState,
   type RoomChatMessage,
 } from './matchRuntime.ts';
+import type { SampledSnapshotFrame } from './snapshot.ts';
+import type { NetworkInputFrame } from './networkFramePump.ts';
 import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.ts';
 import {
   applyLobbyCommand,
@@ -63,18 +65,7 @@ interface MatchTransport {
   close?(reason?: string): void;
 }
 
-interface MatchClientPort {
-  connect(metadata?: Record<string, unknown>): void;
-  readyForMatch(): boolean;
-  onRoomState(listener: (state: MatchRoomState) => void): Unsubscribe;
-  submitRoomCommand(command: Record<string, unknown>): unknown;
-  onRoomChat(listener: (message: RoomChatMessage) => void): Unsubscribe;
-  getRoomChatHistory(): RoomChatMessage[];
-  sendRoomChat(text: string): unknown;
-  submitInput(input: Record<string, unknown>, clientTick?: number): unknown;
-  update(nowMs: number): unknown;
-  close(reason?: string): void;
-}
+type MatchClientPort = MatchClientRuntime;
 
 interface MatchSimulation {
   step(...args: unknown[]): unknown;
@@ -300,7 +291,10 @@ export interface PrivateHostMatch {
     lobbyState: unknown;
     worldCollision?: unknown;
   }): { mapId: string; simulation: MatchSimulation };
-  advance(elapsedMs: number, input?: Record<string, unknown> | null): unknown;
+  advance(
+    elapsedMs: number,
+    input?: NetworkInputFrame | null,
+  ): SampledSnapshotFrame | null;
   close(reason?: string): void;
 }
 
@@ -316,8 +310,8 @@ export interface PrivateClientMatch {
   onRoomChat(listener: (message: RoomChatMessage) => void): Unsubscribe;
   getRoomChatHistory(): RoomChatMessage[];
   sendRoomChat(text: string): unknown;
-  update(nowMs: number): unknown;
-  submitInput(input: Record<string, unknown>, clientTick: number): unknown;
+  update(nowMs: number): SampledSnapshotFrame | null;
+  submitInput(input: NetworkInputFrame, clientTick?: number): boolean;
   close(reason?: string): void;
 }
 
@@ -501,7 +495,7 @@ export async function beginPrivateClientMatch({
     getRoomChatHistory() { return client.getRoomChatHistory(); },
     sendRoomChat(text: string) { return client.sendRoomChat(text); },
     update(nowMs: number) { return client.update(nowMs); },
-    submitInput(input: Record<string, unknown>, clientTick: number) {
+    submitInput(input: Record<string, unknown>, clientTick?: number) {
       return client.submitInput(input, clientTick);
     },
     close(reason = 'private_match_closed') {

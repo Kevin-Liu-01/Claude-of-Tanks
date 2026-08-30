@@ -1986,7 +1986,7 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
   }),
 });
 
-const networkBattleLauncher = createNetworkBattleLaunchRuntime(legacyPort({
+const networkBattleLauncher = createNetworkBattleLaunchRuntime({
   lifecycle: battleEntryLifecycle,
   battleLoad,
   audio,
@@ -2003,7 +2003,7 @@ const networkBattleLauncher = createNetworkBattleLaunchRuntime(legacyPort({
     };
   },
   rosterRows: rosterPresentation.lobbyRows,
-  emitBattleStart: (payload: unknown) => bus.emit('ui:battleStart', payload),
+  emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
   resetBattleState: resetNetworkBattleState,
   presentBattle: networkBattlePresentation.present,
   loadPrivateMatch: preloadPrivateMatchHandoffModule,
@@ -2012,11 +2012,11 @@ const networkBattleLauncher = createNetworkBattleLaunchRuntime(legacyPort({
   clearNetworkRound: () => networkSession.clearRound(),
   closeMatch: closeNetworkMatch,
   enterGarage: () => garageReturn.enter(),
-  setNetworkStatus: (status: unknown) => networkSession.status?.set(legacyPort(status)),
-  recordEntryFailure: (failure: unknown) => {
+  setNetworkStatus: (status) => networkSession.status?.set(status),
+  recordEntryFailure: (failure) => {
     if (typeof window !== 'undefined') window.__NETWORK_ENTRY_FAILURE = failure;
   },
-}));
+});
 
 // Joined-room intent is stronger than browsing the picker but weaker than a
 // round start. The typed owner coalesces repeated room-state packets, retries

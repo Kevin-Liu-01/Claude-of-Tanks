@@ -10,11 +10,11 @@ import {
 } from './networkFramePump.ts';
 import type { SampledSnapshotFrame } from './snapshot.ts';
 
-export interface NetworkBrowserMatch extends NetworkMatchLike {
+export type NetworkBrowserMatch = NetworkMatchLike & {
   playerId?: string;
   ready(): unknown;
   close(reason?: string): unknown;
-}
+};
 
 export interface NetworkBrowserBridge extends NetworkBridgeLike {
   entities: Map<string, unknown>;

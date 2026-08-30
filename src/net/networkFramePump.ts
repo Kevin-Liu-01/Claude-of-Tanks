@@ -18,19 +18,29 @@ export interface NetworkInputFrame {
 export interface NetworkClientLike {
   closed: boolean;
   connected: boolean;
+  readySent?: boolean;
   lastSubmittedInputSeq: number | null;
   onConnection?(listener: (connected: boolean) => void): (() => void) | void;
-  drainEventsThrough?(tick: number, target: unknown[]): void;
+  drainEventsThrough?(tick: number, target: Record<string, unknown>[]): void;
   getStats?(): Record<string, unknown> | null;
 }
 
-export interface NetworkMatchLike {
-  role: string;
-  client: NetworkClientLike;
+interface NetworkMatchBase {
+  client: NetworkClientLike | null;
+}
+
+export interface NetworkHostMatchLike extends NetworkMatchBase {
+  role: 'host';
   advance(dtMs: number, input: NetworkInputFrame | null): NetworkSnapshot | null;
+}
+
+export interface NetworkClientMatchLike extends NetworkMatchBase {
+  role: 'client';
   update(nowMs: number): NetworkSnapshot | null;
   submitInput(input: NetworkInputFrame): boolean;
 }
+
+export type NetworkMatchLike = NetworkHostMatchLike | NetworkClientMatchLike;
 
 export interface NetworkBridgeLike {
   apply(snapshot: NetworkSnapshot, dt: number, events?: unknown[]): void;
@@ -109,7 +119,7 @@ export function createNetworkFramePump({
 
   let inputRuntime: NetworkInputRuntimeLike | null = null;
   let latestSnapshot: NetworkSnapshot | null = null;
-  const pendingEvents: unknown[] = [];
+  const pendingEvents: Record<string, unknown>[] = [];
 
   const acceptSnapshot = (snapshot: NetworkSnapshot | null, dt: number) => {
     if (!snapshot) return;
@@ -164,13 +174,14 @@ export function createNetworkFramePump({
         }
       } else {
         inputRuntime?.advance(dt);
-        if (playerInput && match.client.connected && inputRuntime?.shouldSend(playerInput)) {
+        const client = match.client;
+        if (playerInput && client?.connected && inputRuntime?.shouldSend(playerInput)) {
           if (match.submitInput(playerInput)) {
             const predictionElapsedS = inputRuntime.commit(playerInput);
             bridge?.recordInput(
               playerInput,
               predictionElapsedS,
-              match.client.lastSubmittedInputSeq,
+              client.lastSubmittedInputSeq,
             );
           }
         } else if (!playerInput) {
