@@ -66,7 +66,8 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   // Bundeswehr finishes explicitly retained alongside Leopard 2A6M.
   'service_usa_desert',
   'service_marder1a3', 'service_leo2a4m', 'service_leo2a6m',
-  'service_t90m', 'service_challenger_3', 'service_leclerc_xlr',
+  'service_soviet_ww2', 'service_soviet_coldwar', 'service_t90m',
+  'service_challenger_3', 'service_leclerc_xlr',
   'service_type99a', 'service_ariete_c1', 'service_type10',
   'service_pl01', 'service_bmp3_rok', 'service_strv122',
   'service_merkava2d', 'service_ua_m2a3_bradley',
@@ -74,7 +75,8 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   // own named preset by default, but every preset can be worn by every tank.
   'sig_abramsx', 'sig_m551_sheridan',
   'sig_leo2a4_otco', 'sig_mbt70', 'sig_kf51b',
-  'sig_bmpt_t90', 'sig_t90a_burlak', 'sig_t90m', 'sig_t90m_proryv',
+  'sig_bmpt_t90', 'sig_t90', 'sig_t90sm', 'sig_t90ms',
+  'sig_t90a_burlak', 'sig_t90m', 'sig_t90m_proryv',
   'sig_t90a', 'sig_t90a_vladimir',
   'sig_challenger2e', 'sig_challenger_3x',
   'sig_amx56', 'sig_leclerc', 'sig_ariete_c2',
@@ -120,7 +122,9 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   service_marder1a3: 'Marder Bundeswehr',
   service_leo2a4m: 'Leopard 2A4M Service',
   service_leo2a6m: 'Leopard 2A6M Service',
-  service_t90m: 'T-90M Service Green',
+  service_soviet_ww2: 'Soviet 4BO Field Blotch',
+  service_soviet_coldwar: 'Soviet Cold War Amoeba',
+  service_t90m: 'Modern Russian Service Digital',
   service_challenger_3: 'Challenger 3 Service',
   service_leclerc_xlr: 'Leclerc XLR Service',
   service_type99a: 'Type 99A Service Digital',
@@ -137,6 +141,9 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   sig_mbt70: 'MBT-70 Flecktarn',
   sig_kf51b: 'KF51B Panther',
   sig_bmpt_t90: 'BMPT T-90 Digital',
+  sig_t90: 'T-90 obr. 1992 Field',
+  sig_t90sm: 'T-90SM Export Digital',
+  sig_t90ms: 'T-90MS Tagil Demonstrator',
   sig_t90a_burlak: 'T-90A Burlak Digital',
   sig_t90m: 'T-90M Field Digital',
   sig_t90m_proryv: 'T-90M Proryv Digital',
@@ -280,8 +287,14 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'stripes', base: '#4a5141', weather: '#656b58', patches: ['#2b3329', '#625941', '#77705b'], camoScale: 0.42 }),
   preset('service_leo2a6m', 'leo2a6m', serviceTags('de', 'woodland', 'stripes'),
     { scheme: 'stripes', base: '#48503f', weather: '#626956', patches: ['#293128', '#605640', '#746d58'], camoScale: 0.4 }),
-  preset('service_t90m', 't90m', serviceTags('ru', 'woodland', 'organic'),
-    { scheme: 'solid', base: '#3f5138', weather: '#4a5c42', patches: [], camoScale: 0.46, solidWeatheringIntensity: 0.72 }),
+  preset('service_soviet_ww2', null,
+    Object.freeze(['ru', 'woodland', 'organic', 'historical', 'factory']),
+    { scheme: 'blotch', base: '#4a5635', weather: '#596343', patches: ['#2e3828', '#6b6044', '#34322a'], camoScale: 0.62 }),
+  preset('service_soviet_coldwar', null,
+    Object.freeze(['ru', 'woodland', 'organic', 'historical', 'factory']),
+    { scheme: 'amoeba', base: '#465238', weather: '#586048', patches: ['#273128', '#71664a', '#343a30'], camoScale: 0.52, patchK: 1.22 }),
+  preset('service_t90m', 't90m', serviceTags('ru', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#40513a', weather: '#566149', patches: ['#263228', '#6d7154', '#84785a'], camoScale: 0.42, digitalCellK: 1.35 }),
   preset('service_challenger_3', 'challenger_3', serviceTags('uk', 'woodland', 'stripes'),
     { scheme: 'stripes', base: '#414c38', weather: '#4a5540', patches: ['#1e201d'], camoScale: 0.48 }),
   preset('service_leclerc_xlr', 'leclerc_xlr', serviceTags('fr', 'woodland', 'organic'),
@@ -315,6 +328,12 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'nato', base: '#56573e', weather: '#51533f', patches: ['#303c30', '#473729'], camoScale: 0.34, patchK: 1.28 }),
   preset('sig_bmpt_t90', 'bmpt_t90', signatureTags('ru', 'woodland', 'digital'),
     { scheme: 'digital', base: '#414c39', weather: '#565f48', patches: ['#2b3329', '#615a43', '#6f6852'], camoScale: 0.5 }),
+  preset('sig_t90', 't90', signatureTags('ru', 'woodland', 'stripes'),
+    { scheme: 'stripes', base: '#48563a', weather: '#5b644a', patches: ['#242c25', '#75664a', '#394431'], camoScale: 0.55, patchK: 1.28 }),
+  preset('sig_t90sm', 't90sm', signatureTags('ru', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#46533b', weather: '#5c654b', patches: ['#252f27', '#75694d', '#8b7d5c'], camoScale: 0.36, digitalCellK: 1.18 }),
+  preset('sig_t90ms', 't90ms', signatureTags('ru', 'desert', 'geometric'),
+    { scheme: 'desert', base: '#8b805f', weather: '#9b8d69', patches: ['#514b39', '#667054', '#b0a078'], camoScale: 0.46, patchK: 1.18 }),
   // The T-90 personalities deliberately use separate digital field recipes.
   // They must not collapse back into variations of the national green service coat.
   preset('sig_t90a_burlak', 't90a_burlak', signatureTags('ru', 'woodland', 'digital'),
@@ -421,6 +440,18 @@ export const FACTORY_CAMO_PATTERN_BY_NATION: Readonly<Record<string, CamoPattern
   Ukraine: 'service_ua_m2a3_bradley',
 });
 
+/** Era-aware Factory owner. Soviet vehicles retain period-specific field paint. */
+export function factoryCamoPatternIdFor(nation: unknown, era: unknown): CamoPatternId | null {
+  const nationKey = nation === 'USSR' || nation === 'USSR/Russia' || nation === 'Russia'
+    ? 'Russia'
+    : typeof nation === 'string' ? nation : '';
+  if (nationKey === 'Russia') {
+    if (era === 'ww2' || era === 'interwar') return 'service_soviet_ww2';
+    if (era === 'cold-war') return 'service_soviet_coldwar';
+  }
+  return FACTORY_CAMO_PATTERN_BY_NATION[nationKey] || null;
+}
+
 const CAMO_PATTERN_TAGS: Readonly<Partial<Record<CamoPatternId, readonly CamoTagId[]>>> = Object.freeze({
   auto: ['adaptive'],
   factory: ['factory'],
@@ -511,7 +542,8 @@ export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   // Germany
   'leo2a4_otco', 'mbt70', 'kf51b',
   // Russia / USSR
-  'bmpt_t90', 't90a_burlak', 't90m', 't90m_proryv', 't90a', 't90a_vladimir',
+  'bmpt_t90', 't90', 't90sm', 't90ms', 't90a_burlak', 't90m', 't90m_proryv',
+  't90a', 't90a_vladimir',
   // United Kingdom
   'challenger2e', 'challenger_3x',
   // France

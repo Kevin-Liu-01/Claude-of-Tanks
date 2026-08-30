@@ -8,7 +8,9 @@ import {
   SIGNATURE_CAMO_TANK_IDS,
   camoMatchesTag,
   defaultCamoPatternId,
+  factoryCamoPatternIdFor,
   hasSignatureCamo,
+  sharedCamoPreset,
   signatureCamoPatternId,
 } from './camoPolicy.ts';
 import { getCamoSelection, resolveCamoVisual } from './materials.ts';
@@ -16,7 +18,6 @@ import { getCamoSelection, resolveCamoVisual } from './materials.ts';
 const standards = {
   USA: ['desert', '#b09466', '#c4ad7d', ['#7a5f43', '#947c52', '#cbb489']],
   Germany: ['stripes', '#48503f', '#626956', ['#293128', '#605640', '#746d58']],
-  Russia: ['solid', '#3f5138', '#4a5c42', []],
   UK: ['stripes', '#414c38', '#4a5540', ['#1e201d']],
   France: ['nato', '#3e4d3a', '#48573f', ['#5b4a38', '#1d1f1c']],
   China: ['digital', '#4d573f', '#57614a', ['#6f684c', '#39412f', '#23261e']],
@@ -39,14 +40,20 @@ const paletteKey = (visual) => JSON.stringify([
 let standardized = 0;
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);
-  const standard = standards[nationKey(spec.nation)];
+  const normalizedNation = nationKey(spec.nation);
+  const russianFactory = normalizedNation === 'Russia'
+    ? sharedCamoPreset(factoryCamoPatternIdFor(spec.nation, spec.era))?.visual
+    : null;
+  const standard = russianFactory
+    ? [russianFactory.scheme, russianFactory.base, russianFactory.weather, russianFactory.patches]
+    : standards[normalizedNation];
   const resolved = resolveCamoVisual(spec, 'factory');
   if (!standard) continue;
   standardized += 1;
   assert.deepEqual(
     [resolved.scheme, resolved.base, resolved.weather, resolved.patches || []],
     standard,
-    `${id} must use the ${nationKey(spec.nation)} national Factory recipe`,
+    `${id} must use the ${normalizedNation} period-correct Factory recipe`,
   );
 }
 
@@ -72,13 +79,40 @@ for (const id of SIGNATURE_CAMO_TANK_IDS) {
 }
 
 const russianDigitalSignatures = [
-  'bmpt_t90', 't90a_burlak', 't90m', 't90m_proryv', 't90a', 't90a_vladimir',
+  'bmpt_t90', 't90sm', 't90a_burlak', 't90m', 't90m_proryv', 't90a', 't90a_vladimir',
 ];
 for (const id of russianDigitalSignatures) {
   const patternId = signatureCamoPatternId(id);
   assert.ok(patternId, `${id} must own a named Russian Signature finish`);
   assert.equal(resolveCamoVisual(getSpec(id), patternId).scheme, 'digital',
     `${id} must retain the requested Russian digital camouflage identity`);
+}
+
+assert.equal(resolveCamoVisual(getSpec('t90'), defaultCamoPatternId('t90')).scheme, 'stripes',
+  'the base T-90 restores its broad field-stripe identity');
+assert.equal(resolveCamoVisual(getSpec('t90ms'), defaultCamoPatternId('t90ms')).scheme, 'desert',
+  'T-90MS Tagil restores its sand demonstrator identity as a real pattern');
+
+const russianTankIds = ALL_TANK_IDS.filter((id) => nationKey(getSpec(id).nation) === 'Russia');
+for (const id of russianTankIds) {
+  const spec = getSpec(id);
+  const factory = resolveCamoVisual(spec, 'factory');
+  const initial = resolveCamoVisual(spec, defaultCamoPatternId(id));
+  assert.notEqual(factory.scheme, 'solid', `${id} Russian Factory paint must not collapse to plain green`);
+  assert.ok((factory.patches || []).length >= 2, `${id} Russian Factory paint must remain multi-tone`);
+  assert.notEqual(initial.scheme, 'solid', `${id} Russian initial paint must not collapse to plain green`);
+  assert.ok((initial.patches || []).length >= 2, `${id} Russian initial paint must remain multi-tone`);
+}
+
+for (const id of russianTankIds.filter((tankId) => getSpec(tankId).era === 'cold-war')) {
+  assert.equal(factoryCamoPatternIdFor(getSpec(id).nation, getSpec(id).era), 'service_soviet_coldwar',
+    `${id} must use the distinct Soviet Cold War camouflage family`);
+  assert.equal(resolveCamoVisual(getSpec(id), 'factory').scheme, 'amoeba',
+    `${id} Cold War Factory paint must retain its broad amoeba field pattern`);
+}
+for (const id of russianTankIds.filter((tankId) => getSpec(tankId).era === 'modern')) {
+  assert.equal(resolveCamoVisual(getSpec(id), 'factory').scheme, 'digital',
+    `${id} modern Russian Factory paint must use the modern digital family`);
 }
 
 const specialPatternIds = CAMO_CATALOG_PATTERN_IDS.filter((patternId) => (

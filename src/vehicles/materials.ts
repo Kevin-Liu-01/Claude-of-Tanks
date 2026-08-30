@@ -12,9 +12,9 @@ import {
   CAMO_CATALOG_PATTERN_IDS,
   CAMO_PATTERN_LABEL,
   CUSTOM_CAMO_ID,
-  FACTORY_CAMO_PATTERN_BY_NATION,
   customCamoPatternId,
   defaultCamoPatternId,
+  factoryCamoPatternIdFor,
   hasSignatureCamo,
   isBuiltInCamoId,
   networkCamoId,
@@ -3862,11 +3862,6 @@ export function hasCamoPaint(specId: string): boolean {
     || (BIOME_PATTERN[activeBiome] || []).includes(pat);
 }
 
-function factoryNationKey(nation: unknown): string {
-  const key = String(nation || '');
-  return key === 'USSR' || key === 'USSR/Russia' || key === 'Russia' ? 'Russia' : key;
-}
-
 function applySharedCamoVisual(
   authored: MaterialVisual,
   patternId: MaterialPatternId,
@@ -3894,7 +3889,7 @@ function applySharedCamoVisual(
 }
 
 function factoryVisual(spec: MaterialTankSpec, authored: MaterialVisual): MaterialVisual {
-  const patternId = FACTORY_CAMO_PATTERN_BY_NATION[factoryNationKey(spec.nation)];
+  const patternId = factoryCamoPatternIdFor(spec.nation, spec.era);
   return patternId ? applySharedCamoVisual(authored, patternId) || authored : authored;
 }
 

@@ -13,6 +13,7 @@ import {
   camoPatternTags,
   customCamoPatternId,
   defaultCamoPatternId,
+  factoryCamoPatternIdFor,
   isBuiltInCamoId,
   networkCamoId,
   normalizeCustomCamo,
@@ -33,6 +34,9 @@ assert.equal(CAMO_CATALOG_PATTERN_IDS.includes('signature'), false,
   'the legacy generic Signature id stays out of the named player catalog');
 assert.equal(CAMO_CATALOG_PATTERN_IDS.length, CAMO_PATTERN_IDS.length - 1);
 assert.equal(defaultCamoPatternId('abramsx'), 'sig_abramsx');
+assert.equal(defaultCamoPatternId('t90'), 'sig_t90');
+assert.equal(defaultCamoPatternId('t90sm'), 'sig_t90sm');
+assert.equal(defaultCamoPatternId('t90ms'), 'sig_t90ms');
 assert.equal(defaultCamoPatternId('m1a2'), 'factory');
 for (const id of ['m46_patton', 'm47_patton', 'm48', 'm2a2_bradley']) {
   assert.equal(defaultCamoPatternId(id), 'summer', `${id} should initially wear Summer camouflage`);
@@ -58,6 +62,9 @@ for (const tankId of SIGNATURE_CAMO_TANK_IDS) {
 assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.USA, 'service_usa_desert');
 assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Germany, 'service_leo2a6m');
 assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Russia, 'service_t90m');
+assert.equal(factoryCamoPatternIdFor('USSR', 'ww2'), 'service_soviet_ww2');
+assert.equal(factoryCamoPatternIdFor('USSR/Russia', 'cold-war'), 'service_soviet_coldwar');
+assert.equal(factoryCamoPatternIdFor('Russia', 'modern'), 'service_t90m');
 assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.France, 'service_leclerc_xlr');
 
 const camoTagIds = new Set(CAMO_TAG_IDS);
@@ -76,6 +83,8 @@ assert.deepEqual(camoPatternTags('signature', 'Ukraine'), ['ua', 'signature', 's
 assert.deepEqual(camoPatternTags('service_leo2a6m'), ['de', 'woodland', 'stripes', 'factory']);
 assert.deepEqual(camoPatternTags('sig_ua_t80bv'), ['ua', 'woodland', 'digital', 'signature', 'special']);
 assert.deepEqual(camoPatternTags('sig_t90a_burlak'), ['ru', 'woodland', 'digital', 'signature', 'special']);
+assert.deepEqual(camoPatternTags('service_soviet_coldwar'), ['ru', 'woodland', 'organic', 'historical', 'factory']);
+assert.deepEqual(camoPatternTags('sig_t90ms'), ['ru', 'desert', 'geometric', 'signature', 'special']);
 assert.deepEqual(camoPatternTags('sig_merkava3c'), ['il', 'desert', 'digital', 'signature', 'special']);
 assert.equal(camoMatchesTag('merdc', 'France', 'usa'), true,
   'historical national association remains independent of selected tank');
