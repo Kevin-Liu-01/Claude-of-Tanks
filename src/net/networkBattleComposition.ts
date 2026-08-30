@@ -33,8 +33,9 @@ type PresentationLifecyclePorts = Pick<
 
 export type NetworkBattleCompositionPresentationOptions = Omit<
   NetworkBattlePresentationOptions,
-  'presentation'
+  'presentation' | 'load'
 > & {
+  load: Omit<NetworkBattlePresentationOptions['load'], 'primeReveal'>;
   presentation: PresentationLifecyclePorts;
 };
 
@@ -111,6 +112,10 @@ export function createNetworkBattleComposition(
   const presentation = factories.createPresentation({
     options: () => ({
       ...options.presentation,
+      load: {
+        ...options.presentation.load,
+        primeReveal: options.launcher.lifecycle.primeReveal,
+      },
       presentation: {
         ...options.presentation.presentation,
         resetRoundState: round.resetBattleState,

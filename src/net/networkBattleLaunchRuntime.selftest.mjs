@@ -25,6 +25,9 @@ function createHarness(overrides = {}) {
     lifecycle: {
       pending: false,
       run: async (task) => task(),
+      coverRendering: () => calls.push(['cover']),
+      uncoverRendering: () => calls.push(['uncover']),
+      primeReveal: async () => calls.push(['primeReveal']),
     },
     battleLoad: {
       show: (value) => calls.push(['show', value]),
@@ -98,6 +101,8 @@ assert.equal(await runtime.beginPrivate({
   lobbyState: state,
 }), true);
 assert.equal(host.match.role, 'host');
+assert.equal(host.calls[0]?.[0], 'cover',
+  'private entry covers rendering before its first lazy acquisition');
 assert.ok(host.calls.some(([name]) => name === 'battleStart'));
 assert.ok(host.calls.some(([name, world]) => name === 'hostConnect' && world === 'world-collision'));
 assert.ok(host.calls.some(([name]) => name === 'attach'),
@@ -120,6 +125,8 @@ assert.ok(host.calls.some(([name]) => name === 'disposePresentation'));
 assert.ok(host.calls.some(([name]) => name === 'clearRound'));
 assert.ok(host.calls.some(([name, world]) => name === 'prepareRound' && world === 'world-collision'));
 assert.ok(host.calls.some(([name]) => name === 'finishRematch'));
+assert.ok(host.calls.filter(([name]) => name === 'cover').length >= 2,
+  'rematch entry reacquires the covered rendering owner');
 
 host.match = null;
 await runtime.beginRanked({
@@ -139,6 +146,8 @@ assert.ok(host.calls.some(([name, url]) =>
   name === 'dedicatedConnect' && url === 'wss://ranked.example'));
 assert.ok(host.calls.some(([name, status]) =>
   name === 'status' && status.state === 'connected'));
+assert.ok(host.calls.filter(([name]) => name === 'cover').length >= 3,
+  'ranked entry shares the covered rendering owner');
 
 const failed = createHarness({
   loadPrivateMatch: async () => { throw new Error('cold chunk unavailable'); },
@@ -154,6 +163,8 @@ assert.deepEqual(diagnostic.peers, []);
 assert.ok(failed.calls.some(([name, reason]) => name === 'close' && reason === 'entry_failed'));
 assert.ok(failed.calls.some(([name]) => name === 'hide'));
 assert.ok(failed.calls.some(([name]) => name === 'garage'));
+assert.ok(failed.calls.some(([name]) => name === 'uncover'),
+  'failed cold entry releases the render cover before restoring Garage');
 
 let cancelSignal = null;
 let presentStarted;

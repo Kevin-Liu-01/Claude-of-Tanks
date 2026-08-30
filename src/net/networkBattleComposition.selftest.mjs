@@ -32,7 +32,11 @@ const room = {
 const runtime = createNetworkBattleComposition({
   round: { game: {}, session: {} },
   presentation: { presentation: {} },
-  launcher: {},
+  launcher: {
+    lifecycle: {
+      primeReveal: () => Promise.resolve('revealed'),
+    },
+  },
   lobby: {},
   room: {},
   activation: {},
@@ -69,6 +73,7 @@ assert.equal(seen.room.onRematch, launcher.beginRematch);
 assert.equal(seen.room.onClose, round.close);
 
 const presentationOptions = seen.presentation.options();
+assert.equal(presentationOptions.load.primeReveal, seen.launcher.lifecycle.primeReveal);
 assert.equal(presentationOptions.presentation.resetRoundState, round.resetBattleState);
 assert.equal(presentationOptions.presentation.activate, activation.activate);
 

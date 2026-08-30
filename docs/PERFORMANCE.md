@@ -725,6 +725,14 @@ snaps, and no browser errors. These receipts measure CPU, heap,
 shader/texture/geometry residency, and complete-frame work in addition to
 display rate.
 
+The 2026-08-30 cold-entry lifecycle gate repeated two complete natural 7v7
+matches after separating opaque render cover from network progress. The
+host-rendered run fired 56 shots from all 14 actors at 16.7 ms p95 / 30.7 ms
+maximum frame gap; the remote-rendered run fired 55 at 16.6 ms p95 / 18.7 ms
+maximum. Both recorded zero pre-combat and live hard snaps, retained all room
+members after the result, cleared readiness, and required no shared browser
+storage or warmed participant profile.
+
 The first-ever GPU-process path now passes the same cold gate. At 1.6 Mbps,
 150 ms latency, and 4× CPU slowdown, four cache-disabled profiles reached the
 complete Garage in 6.210–6.267 seconds wall time / 1.712–1.770 seconds app boot

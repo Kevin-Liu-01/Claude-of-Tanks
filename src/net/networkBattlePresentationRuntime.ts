@@ -80,6 +80,7 @@ export interface NetworkBattlePresentationOptions {
     lighting: { setFarCascadeDormant(dormant: boolean): void };
     ensureBattleVisuals(): MaybePromise<unknown>;
     nextFrame(): MaybePromise<unknown>;
+    primeReveal(): Promise<unknown>;
     now?: () => number;
     recordTrace?: (trace: NetworkBattleLoadTrace) => void;
     setAdaptiveSuspended(suspended: boolean): void;
@@ -169,7 +170,8 @@ export function createNetworkBattlePresentationRuntime({
     load?.battleLoad?.progress, load?.battleLoad?.hide, load?.audio?.resume,
     load?.audio?.loadingOn, load?.audio?.ambientOn,
     load?.lighting?.setFarCascadeDormant, load?.ensureBattleVisuals,
-    load?.nextFrame, load?.setAdaptiveSuspended, roster?.getMap, roster?.rows,
+    load?.nextFrame, load?.primeReveal, load?.setAdaptiveSuspended,
+    roster?.getMap, roster?.rows,
     roster?.vehicleName, roster?.emitBattleStart, roster?.setCamoBiome,
     entry?.acquire, entry?.loadModules, entry?.loadWorld, entry?.publishMatch,
     entry?.getMatch, bridge?.installInputRuntime, bridge?.createStatus,
@@ -374,6 +376,10 @@ export function createNetworkBattlePresentationRuntime({
       load.audio.ambientOn(true);
       load.battleLoad.progress(1, 'Ready');
       load.setAdaptiveSuspended(false);
+      // Uncover only after one complete battle frame has presented from the
+      // final camera/world pose. This is the same reveal barrier as solo entry
+      // and prevents both black flashes and a first-frame shader hitch.
+      await load.primeReveal();
       await load.battleLoad.hide();
       mark('reveal');
       trace.totalMs = Math.round(now() - loadStartedAt);

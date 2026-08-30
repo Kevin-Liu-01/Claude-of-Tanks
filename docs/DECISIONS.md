@@ -228,3 +228,10 @@ Rendering work also needs current browser evidence and resource/performance
 gates. Multiplayer claims require pristine browser contexts, impaired delivery,
 disconnect/reload recovery, a complete match, and production TURN verification
 when restrictive-NAT connectivity is claimed.
+
+An opaque battle-entry cover suppresses incomplete or redundant scene renders;
+it never suspends signaling, RTC, authority, or snapshot progress. Private,
+LAN, rematch, and ranked entry acquire that cover synchronously before their
+first asynchronous dependency. The cover releases only after one complete
+battle frame has presented from the final world and camera pose. A cold import
+failure releases the cover before the loading veil leaves or Garage resumes.

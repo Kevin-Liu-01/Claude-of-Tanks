@@ -70,6 +70,7 @@ function createHarness(failAt = '', pauseAt = '') {
       lighting: { setFarCascadeDormant: (value) => events.push(`far:${value}`) },
       ensureBattleVisuals: async () => events.push('visuals'),
       nextFrame: async () => events.push('frame'),
+      primeReveal: async () => events.push('primeReveal'),
       now: () => (clock += 10),
       recordTrace: (value) => { trace = value; },
       setAdaptiveSuspended: (value) => events.push(`adaptive:${value}`),
@@ -182,6 +183,9 @@ function createHarness(failAt = '', pauseAt = '') {
     'peer readiness is the final activation barrier');
   assert.ok(harness.events.indexOf('activate') < harness.events.indexOf('hide'),
     'activation completes while the opaque loader still owns the screen');
+  assert.ok(harness.events.indexOf('activate') < harness.events.indexOf('primeReveal') &&
+    harness.events.indexOf('primeReveal') < harness.events.indexOf('hide'),
+  'one complete battle frame is presented before the opaque loader exits');
   assert.deepEqual(harness.trace.blackCheck, { ok: true });
   assert.ok(harness.trace.totalMs > 0, 'the complete network entry is timed');
   assert.ok(harness.progress.some(([fraction, label]) =>

@@ -130,7 +130,8 @@ assert.equal(battle.calls.filter((entry) => entry === 'entry:frame').length, 2);
 const covered = createFixture({ phase: 'battle' });
 covered.battleEntryLifecycle.renderingCovered = true;
 covered.runtime.tick(1000);
-assert.deepEqual(covered.calls, ['schedule']);
+assert.deepEqual(covered.calls, ['schedule', 'network'],
+  'covered entry skips scene work but keeps the multiplayer handshake alive');
 
 assert.throws(() => createMainFrameRuntime({}), /requires every live frame port/);
 

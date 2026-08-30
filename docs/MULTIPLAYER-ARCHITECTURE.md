@@ -336,6 +336,15 @@ successfully opened match immediately, ensuring a later world/module failure
 closes the transport through the normal cleanup path. Cached rematches use the
 same barrier and may return an existing match owner synchronously.
 
+The battle-entry render cover is deliberately narrower than a game pause. It
+skips expensive or incomplete scene frames while the opaque briefing is
+visible, but the browser network pump continues every frame so first-time
+guests can finish `WELCOME`, `READY`, and initial-snapshot exchange. When the
+multiplayer composition itself is cold, a boot-safe intent owner presents the
+real map and team briefing synchronously before the import starts. The normal
+launcher then assumes the same surface, and a failed import unwinds both the
+cover and veil without requiring a page refresh.
+
 Before the ready barrier opens, network presentation switches to the exact
 battlefield light set and warms the fielded roster rather than a generic
 vehicle. The hidden pass submits pursuit dust/exhaust and every impact family,
@@ -370,6 +379,12 @@ the production 900-second safety cap. Production room limits are unchanged. The
 gate requires every session to receive the result, retain the room in its
 waiting phase, and clear readiness; it also enforces transport, prediction,
 frame-pacing, shadow, and presentation budgets throughout the match.
+On 2026-08-30 the gate passed both rendered roles with 28 pristine browser
+profiles. The host-rendered match produced 56 shots from all 14 commanders,
+16.7 ms p95 / 30.7 ms maximum frame gaps, and zero hard prediction snaps. The
+remote-client-rendered match produced 55 shots from all 14 commanders,
+16.6 ms p95 / 18.7 ms maximum gaps, and zero hard snaps. Both results completed
+naturally and returned every session to the retained waiting room.
 The artifact records exact frame rows around any 40 ms gap and renderer
 programs created after the combat baseline, so first-use shader and texture
 hitches are attributable rather than hidden by aggregate FPS.

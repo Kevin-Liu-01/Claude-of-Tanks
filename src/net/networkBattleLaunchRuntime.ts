@@ -16,6 +16,9 @@ import type { AuthoritativeWorldCollision } from '../sim/authoritativeMatch.ts';
 
 interface BattleEntryLifecyclePort {
   run<T>(task: () => Promise<T>, busyValue: T): Promise<T>;
+  coverRendering(): void;
+  uncoverRendering(): void;
+  primeReveal(): Promise<unknown>;
   readonly pending: boolean;
 }
 
@@ -250,6 +253,7 @@ export function createNetworkBattleLaunchRuntime({
   const stopLoading = async (reason: string) => {
     audio.loadingOn(false);
     closeMatch(reason);
+    lifecycle.uncoverRendering();
     await battleLoad.hide();
     enterGarage();
   };
@@ -282,6 +286,11 @@ export function createNetworkBattleLaunchRuntime({
     async beginPrivate({ role, session, lobbyState, battleLimitS } = {}) {
       if (getMatch()) return false;
       return lifecycle.run(async () => {
+        // The launcher is invoked synchronously once multiplayer intent has
+        // acquired the composition. Cover before the first lazy import so a
+        // cold host cannot present an unbuilt world or charge its first draw
+        // to an ordinary loading-screen frame.
+        lifecycle.coverRendering();
         const entryController = beginEntry();
         let entered = false;
         recordEntryFailure(null);
@@ -351,6 +360,7 @@ export function createNetworkBattleLaunchRuntime({
       const existingMatch = getMatch();
       if (!existingMatch || !room.claimRematch(lobbyState, lifecycle.pending)) return false;
       return lifecycle.run(async () => {
+        lifecycle.coverRendering();
         const entryController = beginEntry();
         const viewerId = String(existingMatch.playerId || '');
         const own = lobbyState.players.find((player) => player.id === viewerId);
@@ -403,6 +413,7 @@ export function createNetworkBattleLaunchRuntime({
     async beginRanked({ serviceUrl, state } = {}) {
       if (getMatch()) return;
       await lifecycle.run(async () => {
+        lifecycle.coverRendering();
         const entryController = beginEntry();
         const ticket = state?.match;
         const viewerId = String(ticket?.playerId || '');

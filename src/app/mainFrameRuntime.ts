@@ -158,7 +158,15 @@ export function createMainFrameRuntime({
     let dtR = Math.min(0.1, frameWallDtS);
     lastMs = nowMs;
     trace?.frame(dtR * 1000);
-    if (isGraphicsContextLost() || battleEntryLifecycle.renderingCovered) return;
+    if (isGraphicsContextLost()) return;
+    if (battleEntryLifecycle.renderingCovered) {
+      // The opaque entry veil suppresses expensive/incomplete scene frames,
+      // not transport progress. Fresh peers still need the browser network
+      // pump to exchange welcome, ready and first-snapshot messages while the
+      // world and roster are warming behind that veil.
+      networkSession.pump(dtR, nowMs);
+      return;
+    }
 
     const fx = getFx();
     const world = getWorld();

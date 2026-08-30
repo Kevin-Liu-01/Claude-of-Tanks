@@ -171,6 +171,7 @@ import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
 import { createPlaySurfaceRuntime } from './game/playSurfaceRuntime.ts';
 import { createNetworkBrowserSessionRuntime } from './net/networkBrowserSessionRuntime.ts';
 import { createNetworkCompositionAccess } from './net/networkCompositionAccess.ts';
+import { createNetworkBattleIntentCover } from './net/networkBattleIntentCover.ts';
 import type { PrivateBattleLaunchRequest } from './net/networkBattleLaunchRuntime.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
@@ -903,9 +904,7 @@ const playSurface = createPlaySurfaceRuntime({
       isCamoAllowed: (camo: string) => isBuiltInCamoId(camo),
       getCamoName: (camo: string) => camoPatternLabels[camo] || 'Factory',
       getVehicleName: (specId: string) => getSpec(specId).name,
-      onNetworkStart: async (request) => (
-        (await ensureNetworkComposition()).launcher.beginPrivate(request)
-      ),
+      onNetworkStart: beginNetworkBattle,
       onNetworkClose: (reason: string) => {
         const current = networkComposition.current;
         if (current) current.round.close(reason || 'room_closed');
@@ -1562,6 +1561,17 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
     if (typeof window !== 'undefined') window.__BATTLE_REVEAL = receipt;
   },
 });
+const networkBattleIntentCover = createNetworkBattleIntentCover({
+  battleLoad,
+  rosterRows: rosterPresentation.lobbyRows,
+  getMapPresentation: (mapId, fallback) => ({
+    name: mapId ? getMapName(mapId) : fallback,
+    thumb: mapId ? mapHeroes[mapId] || mapThumbs[mapId] || '' : '',
+    biome: mapId || 'none',
+  }),
+  coverRendering: battleEntryLifecycle.coverRendering,
+  uncoverRendering: battleEntryLifecycle.uncoverRendering,
+});
 const soloBattleStart = createSoloBattleStartAccess({
   options: () => ({
     state: {
@@ -1729,6 +1739,24 @@ function resolveFxSubject(id: string) {
  */
 function ensureNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
   return networkComposition.preload();
+}
+
+/**
+ * Preserve the launcher's synchronous cover-before-first-await contract when
+ * the composition was already acquired by room intent. Avoiding an `async`
+ * wrapper here is deliberate: even awaiting an already-resolved promise would
+ * defer the loading veil by one microtask and expose a Garage frame.
+ */
+function beginNetworkBattle(request?: PrivateBattleLaunchRequest): Promise<boolean> {
+  const current = networkComposition.current;
+  if (current) return current.launcher.beginPrivate(request);
+  networkBattleIntentCover.show(request);
+  return ensureNetworkComposition()
+    .then((runtime) => runtime.launcher.beginPrivate(request))
+    .catch(async (error) => {
+      await networkBattleIntentCover.releaseAfterFailure();
+      throw error;
+    });
 }
 
 function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
@@ -2560,9 +2588,7 @@ if (diagnosticsRequested) {
       },
       beginBattleEntry,
       beginSoloBattle,
-      beginNetworkBattle: async (request?: PrivateBattleLaunchRequest) => (
-        (await ensureNetworkComposition()).launcher.beginPrivate(request)
-      ),
+      beginNetworkBattle,
       enterGarage,
       leaveBattleToGarage,
       spawnKillShell: driveTestController.spawnKillShell,
