@@ -133,15 +133,14 @@ adapter change.
 `src/main.ts` is the strict TypeScript composition root. It should remain
 surgical: subsystem policy belongs in the owner module, not in the boot file.
 
-The runtime is undergoing an incremental strict-TypeScript migration. Stable
-boundaries are extracted into `.ts` owner modules with focused tests. The
-application entry now compiles under the strict project configuration and
-describes its browser, rendering, UI, world, and gameplay ports explicitly.
-Remaining `.js` implementations cross that root only through narrow `unknown`
-adapters; they do not weaken the typed owners with `any` or compiler
-suppressions. This avoids a risky big-bang rewrite and lets each migrated
-boundary ship with behavioral parity evidence. JavaScript interoperability is
-a temporary migration mechanism, not a permanent module tier.
+The shipped application graph has completed its strict-TypeScript migration.
+Application, server, API, middleware, Vite configuration, and browser-tool
+owners are `.ts`/`.tsx`, compile with `allowJs` disabled, and expose explicit
+browser, rendering, UI, world, and gameplay contracts. Node command,
+generator, and self-test entrypoints intentionally remain `.mjs`; they execute
+the checked owners but are not an unchecked application tier. New behavior
+must enter through a typed owner and focused parity test rather than a
+JavaScript facade or compiler suppression.
 Boot and transition screens now depend on strict shared DOM, font, icon,
 image-preload, featured-media, map-art, and tier-metadata contracts rather than
 crossing back into unchecked presentation helpers.
