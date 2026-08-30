@@ -83,6 +83,50 @@ assert.equal(turretRig.position.z, 0.15,
 assert.ok(tank.root.getObjectByName('m1a3RemoteWeaponTower'),
   'AbramsX-inspired roof weapon tower is independently identifiable');
 
+const turretShell = tank.root.getObjectByName('turret');
+assert.ok(turretShell?.isMesh, 'M1A3 structural turret shell is independently inspectable');
+const turretPositions = turretShell.geometry.attributes.position;
+const turretVertexY = (x, z) => {
+  const ys = [];
+  for (let i = 0; i < turretPositions.count; i++) {
+    if (Math.abs(turretPositions.getX(i) - x) < 1e-4
+      && Math.abs(turretPositions.getZ(i) - z) < 1e-4) {
+      ys.push(turretPositions.getY(i));
+    }
+  }
+  assert.ok(ys.length > 0, `M1A3 turret vertex exists at x=${x}, z=${z}`);
+  return Math.max(...ys);
+};
+const roofRampY = (z) => 0.68 + (0.76 - 0.68) * ((z - 1.08) / (-0.54 - 1.08));
+const near = (actual, expected, label) => assert.ok(Math.abs(actual - expected) < 1e-4,
+  `${label}: expected ${expected.toFixed(4)}, got ${actual.toFixed(4)}`);
+assert.ok(Math.abs(turretVertexY(-1.42, 1.08) - 0.68) < 1e-4,
+  'left shoulder retains the broad front-plane roof seam');
+assert.ok(Math.abs(turretVertexY(1.42, 1.08) - 0.68) < 1e-4,
+  'right shoulder retains the broad front-plane roof seam');
+near(turretVertexY(-0.36, 1.74), 0.50,
+  'left cheek preserves the low mantlet brow');
+near(turretVertexY(0.36, 1.74), 0.50,
+  'right cheek preserves the low mantlet brow');
+near(turretVertexY(-0.3672, 1.66), 0.47,
+  'center throat preserves the low mantlet brow');
+near(turretVertexY(-0.36, 1.03), roofRampY(1.03),
+  'left cheek rear edge rises into the existing roof plane');
+near(turretVertexY(0.36, 1.03), roofRampY(1.03),
+  'right cheek rear edge rises into the existing roof plane');
+near(turretVertexY(1.42, 0.38), roofRampY(0.38),
+  'outer cheek rear edge rises into the existing roof plane');
+near(turretVertexY(0.3672, 0.72), roofRampY(0.72),
+  'center throat rear edge rises into the existing roof plane');
+
+const expectedMantletRoofRamp = {
+  cheekFrontY: 0.50,
+  throatFrontY: 0.47,
+  cheekInnerRearY: roofRampY(1.03),
+  cheekOuterRearY: roofRampY(0.38),
+  throatRearY: roofRampY(0.72),
+};
+
 const receipt = turretRig.userData.m1a3DesignReceipt;
 assert.deepEqual(receipt, {
   family: 'first-party-m1a3-concept',
@@ -103,6 +147,7 @@ assert.deepEqual(receipt, {
   rwsTowerStyle: 'abramsx-inspired-open-yoke',
   turretForwardShiftM: 0.30,
   turretRingZ: 0.15,
+  mantletRoofRamp: expectedMantletRoofRamp,
 }, 'the visible M1A3 feature receipt remains complete');
 
 function geometryStats(root) {

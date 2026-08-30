@@ -194,6 +194,9 @@ interface AbramsTurretConfig {
   readonly roofWide: number;
   readonly roofMain: number;
   readonly roofRear: number;
+  readonly roofCheekInnerRearY?: number;
+  readonly roofCheekOuterRearY?: number;
+  readonly roofThroatRearY?: number;
   readonly faceRake?: number;
   readonly yBotKnees?: readonly Vec2Tuple[];
   readonly inset: number;
@@ -1519,6 +1522,9 @@ function abramsShell(P: AbramsBuilderPort, t: AbramsShellConfig): void {
   const zMain = t.zMain ?? (t.zWide - 1.2);
   const faceRake = t.faceRake ?? 0.34;           // cheek face lean-back at the roof
   const yBotRear = t.yBotRear ?? t.yBot;
+  const roofCheekInnerRearY = t.roofCheekInnerRearY ?? (t.roofTip + 0.06);
+  const roofCheekOuterRearY = t.roofCheekOuterRearY ?? t.roofWide;
+  const roofThroatRearY = t.roofThroatRearY ?? (t.roofTip + 0.05);
 
   // Cheek wedges: bottom sweeps throat->shoulder, top edge falls to the tip.
   // Opt-in asymmetry (t.zTipR / t.zWideR — per-side plan sweep) and tip
@@ -1529,7 +1535,8 @@ function abramsShell(P: AbramsBuilderPort, t: AbramsShellConfig): void {
     const bx = side > 0 ? (t.twTipR ?? tw) : tw;   // right wide-corner pull-in
     sideSlab(P, 'turret', side,
       [thr, t.yBotTip ?? t.yBot, zT], [bx, t.yBot, zW + 0.12], [tw, t.yBot, t.zWide - 0.7], [thr, t.yBot, zT - 1.05],
-      [thr, t.roofTip, zT - faceRake], [Math.min(bx, tw - inset), t.roofWide, zW], [tw - inset, t.roofWide, t.zWide - 0.7], [thr, t.roofTip + 0.06, zT - 1.15]);
+      [thr, t.roofTip, zT - faceRake], [Math.min(bx, tw - inset), t.roofWide, zW],
+      [tw - inset, roofCheekOuterRearY, t.zWide - 0.7], [thr, roofCheekInnerRearY, zT - 1.15]);
   }
   // Throat block between the cheeks: recessed face carries the embrasure.
   // t.yBotFace chamfers the block's front bottom edge with the cheeks;
@@ -1545,7 +1552,7 @@ function abramsShell(P: AbramsBuilderPort, t: AbramsShellConfig): void {
   P.add('turret', slab(
     [-thr * 1.02, yBF, zFace], [thr * 1.02, yBF, zFace - skew], [thr * 1.02, t.yBot, t.zTip - thD], [-thr * 1.02, t.yBot, t.zTip - thD],
     [-thr * 1.02, t.roofTip - 0.03, zFace - faceRake], [thr * 1.02, t.roofTip - 0.03, zFace - skew - faceRake],
-    [thr * 1.02, t.roofTip + 0.05, t.zTip - thD], [-thr * 1.02, t.roofTip + 0.05, t.zTip - thD]));
+    [thr * 1.02, roofThroatRearY, t.zTip - thD], [-thr * 1.02, roofThroatRearY, t.zTip - thD]));
   // t.slotW (visual r3 item 1, opt-in): the default thr*1.9 dark embrasure
   // plate reads as a wide plain recessed BAY beside the mantlet — the M1's
   // iconic front is raked cheek planes converging on a NARROW slot. slotW
@@ -10157,6 +10164,25 @@ function buildAbramsX(P: AbramsBuilderPort): void {
 // ---------------------------------------------------------------------------
 function buildM1A3(P: AbramsBuilderPort): void {
   const turretForwardShiftM = 0.30;
+  const turretZTip = 2.18;
+  const turretZWide = 1.08;
+  const turretZMain = -0.54;
+  const turretRoofWideY = 0.68;
+  const turretRoofMainY = 0.76;
+  const throatDepth = 1.46;
+  const turretRoofAt = (z: number): number => lineAt(
+    [[turretZWide, turretRoofWideY], [turretZMain, turretRoofMainY]], z);
+  // Preserve the distinctive low mantlet brow, but make its three roof
+  // facets rise until each rear corner lands on the existing shoulder/main
+  // roof plane. The old shared defaults stopped those corners below that
+  // plane, which produced the visible inward cave around the gun opening.
+  const mantletRoofRamp = Object.freeze({
+    cheekFrontY: 0.50,
+    throatFrontY: 0.47,
+    cheekInnerRearY: turretRoofAt(turretZTip - 1.15),
+    cheekOuterRearY: turretRoofAt(turretZWide - 0.70),
+    throatRearY: turretRoofAt(turretZTip - throatDepth),
+  });
   const g: AbramsHullConfig = {
     ...TEJAS_HULL,
     bodyHalfW: 1.78,
@@ -10216,19 +10242,22 @@ function buildM1A3(P: AbramsBuilderPort): void {
   const t = {
     tw: 1.60,
     throat: 0.36,
-    zTip: 2.18,
-    zWide: 1.08,
-    zMain: -0.54,
+    zTip: turretZTip,
+    zWide: turretZWide,
+    zMain: turretZMain,
     zRear: -3.14,
     zFaceOff: 0.08,
-    throatDepth: 1.46,
+    throatDepth,
     yBot: -0.10,
     yBotRear: 0.04,
     yBotKnees: [[-1.54, -0.06], [-2.48, 0.02]],
-    roofTip: 0.50,
-    roofWide: 0.68,
-    roofMain: 0.76,
+    roofTip: mantletRoofRamp.cheekFrontY,
+    roofWide: turretRoofWideY,
+    roofMain: turretRoofMainY,
     roofRear: 0.70,
+    roofCheekInnerRearY: mantletRoofRamp.cheekInnerRearY,
+    roofCheekOuterRearY: mantletRoofRamp.cheekOuterRearY,
+    roofThroatRearY: mantletRoofRamp.throatRearY,
     faceRake: 0.44,
     inset: 0.18,
     wedgePull: 0.05,
@@ -10482,6 +10511,7 @@ function buildM1A3(P: AbramsBuilderPort): void {
     rwsTowerStyle: 'abramsx-inspired-open-yoke',
     turretForwardShiftM,
     turretRingZ: t.ring[2],
+    mantletRoofRamp,
   });
   P.hullG.userData.m1a3DesignReceipt = receipt;
   P.turretG.userData.m1a3DesignReceipt = receipt;
