@@ -13,6 +13,7 @@ interface ChannelEvent {
 }
 
 interface ChannelLike {
+  [eventHandler: `on${string}`]: unknown;
   readyState: number | string;
   bufferedAmount?: number;
   bufferedAmountLowThreshold?: number;
@@ -91,18 +92,31 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function isChannelLike(value: unknown): value is ChannelLike {
+  return isRecord(value)
+    && (typeof value.readyState === 'number' || typeof value.readyState === 'string')
+    && typeof value.send === 'function'
+    && typeof value.close === 'function';
+}
+
 function readChannel(value: unknown): ChannelLike {
-  if (!isRecord(value) || typeof value.send !== 'function' || typeof value.close !== 'function') {
-    throw new TypeError('channel must implement send() and close()');
+  if (!isChannelLike(value)) {
+    throw new TypeError('channel must expose readyState and implement send() and close()');
   }
-  return value as unknown as ChannelLike;
+  return value;
+}
+
+function isWireCodec(value: unknown): value is WireCodec {
+  return isRecord(value)
+    && typeof value.encode === 'function'
+    && typeof value.decode === 'function';
 }
 
 function readCodec(value: unknown, label: string): WireCodec {
-  if (!isRecord(value) || typeof value.encode !== 'function' || typeof value.decode !== 'function') {
+  if (!isWireCodec(value)) {
     throw new TypeError(`${label} must implement encode() and decode()`);
   }
-  return value as unknown as WireCodec;
+  return value;
 }
 
 function utf8Size(value: unknown): number {
@@ -131,12 +145,11 @@ function addListener(
     target.addEventListener(type, listener);
     return () => target.removeEventListener?.(type, listener);
   }
-  const key = `on${type}`;
-  const slots = target as unknown as Record<string, unknown>;
-  const previous = slots[key];
-  slots[key] = listener;
+  const key: `on${string}` = `on${type}`;
+  const previous = target[key];
+  target[key] = listener;
   return () => {
-    if (slots[key] === listener) slots[key] = previous || null;
+    if (target[key] === listener) target[key] = previous || null;
   };
 }
 
