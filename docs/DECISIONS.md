@@ -82,6 +82,11 @@ composition root.
 Settings, pointer recapture, disconnect presentation, and Garage frame pacing
 read one synchronous battle-phase policy so a result, dead player, killcam, or
 covered loader cannot acquire subtly different meanings across browser owners.
+Renderer-lifetime combat warming has one owner in
+`app/combatWarmComposition.ts`. Opening and rare shader generators, the private
+HDR target, deployment-shadow preparation, Studio FX warming, and deferred
+rollout work reset and cancel together after context loss or phase exit; the
+composition root must not recreate those latches independently.
 Solo rollout never adjusts the reveal camera. A separate typed entry owner
 selects the requested vehicle/map and, on any cold-load failure, restores and
 paints Garage state behind opaque coverage before fading the loader.

@@ -45,8 +45,8 @@ import type {
 import { createMainFrameRuntime } from './app/mainFrameRuntime.ts';
 import { createCombatAimComposition } from './app/combatAimComposition.ts';
 import { checkedIntegrationPort } from './app/checkedIntegrationPort.ts';
+import { createCombatWarmComposition } from './app/combatWarmComposition.ts';
 import { createRenderer } from './engine/renderer.ts';
-import { createOffscreenSceneWarmer } from './engine/offscreenWarm.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
   mountDiagOverlay, runSceneBlackWatchdog, reclaimShadows,
@@ -71,7 +71,6 @@ import { createGarageFramePacer } from './engine/garageFramePacer.ts';
 import { createForwardProgramWarmOwner } from './engine/programWarm.ts';
 import { warmGarageGpuPipeline } from './engine/garageGpuWarmRuntime.ts';
 import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
-import { createDeploymentShadowWarmOwner } from './engine/deploymentShadowWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.ts';
@@ -184,8 +183,6 @@ import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 import { createBattleEntryAcquisition } from './game/battleEntryAcquisition.ts';
 import { createBattleEntryLifecycle } from './game/battleEntryLifecycle.ts';
-import { createCombatWarmCoordinator } from './game/combatWarmCoordinator.ts';
-import { createDeferredCombatWarmRuntime } from './game/deferredCombatWarmRuntime.ts';
 import { createStudioAccess } from './game/studioAccess.ts';
 import { createFxRuntimeAccess } from './fx/fxRuntimeAccess.ts';
 import { releaseObject3DGpuResources } from './engine/resourceLifetime.ts';
@@ -1205,16 +1202,48 @@ const forwardProgramWarm = createForwardProgramWarmOwner({
   camera,
   getTarget: () => post?.composer?.renderTarget1 || null,
 });
-// Renderer-lifetime warm state is declared before context recovery is armed:
-// a mobile device can lose and restore WebGL while the async boot pipeline is
-// still running, before the later warm-owner functions are reached.
-const combatWarm = createCombatWarmCoordinator({
-  createOpening: () => battleWarm.requireRuntime()
-    .createCombatOpeningWarmSteps(createCombatWarmRuntimeContext()),
-  createRare: () => battleWarm.requireRuntime()
-    .createCombatRareWarmSteps(createCombatWarmRuntimeContext()),
+// Shader, FX, shadow, private-render-target, and deferred rollout warm state
+// share one renderer-lifetime owner. Its lazy ports preserve the boot order:
+// battle visuals and the frame owner may be declared later, but are only read
+// behind covered Battle/Studio entry after the complete graph exists.
+const combatWarmComposition = createCombatWarmComposition({
+  game,
+  renderer,
+  scene,
+  camera,
+  post,
+  lighting,
+  battleWarm,
+  forwardProgramWarm,
+  getFx: requireFxRuntime,
+  getWorld: currentWorld,
+  getBattleVisuals: () => {
+    if (!battleVisuals) throw new Error('battle visual streamer was not loaded');
+    return battleVisuals;
+  },
+  getGeneration: () => battleWarmGeneration,
+  setPending: (pending: boolean) => { battleWarmPending = pending; },
+  prepareNextOpeningRoute: () => Boolean(prepareNextOpeningRoute(game)),
+  ensureStagedVisuals: (count: number) => ensureStagedVisuals(game, count),
+  prebakeBurntSteps,
+  warmWreckTextures,
+  createIsolatedForwardWarmBatches,
+  scratch1: _v1,
+  scratch2: _v2,
+  scratch3: _v3,
+  anisotropy: engineCtx.anisotropy ?? 4,
+  noteFovPrimed: (fov: number) => mainFrame.noteFovPrimed(fov),
+  simDt: SIM_DT,
+  publishStudioTrace: (trace: unknown) => { window.__STUDIO_WARM = trace; },
+  devTrace,
 });
-let combatDestructionEffectsWarmed = false;
+const {
+  combatWarm,
+  warmRender,
+  deploymentShadowWarm,
+} = combatWarmComposition;
+const cancelDeferredCombatWarm = combatWarmComposition.cancelDeferred;
+const scheduleDeferredCombatWarm = combatWarmComposition.scheduleDeferred;
 // WebGL context restoration is recoverable in place. Three rebuilds its GL
 // state first; we then step mobile down to the safe preset, trim optional
 // residents, resize the post targets and redraw the shadow set. The sim stays
@@ -1230,10 +1259,7 @@ renderer.userData.contextRecovery = {
     // even though the JavaScript-side warm receipts survive. Invalidate every
     // renderer-lifetime combat latch so the next covered transition rebuilds
     // the exact production variants instead of trusting stale GPU state.
-    combatDestructionEffectsWarmed = false;
-    battleWarm.invalidate();
-    forwardProgramWarm.invalidate();
-    combatWarm.reset();
+    combatWarmComposition.resetRendererWarmState();
     if (getDeviceTier() === 'mobile') {
       setMobilePresetName('mobile-low');
       pedestal.trim(1);
@@ -1463,7 +1489,7 @@ const soloBattleDeployment = createSoloBattleDeploymentRuntime({
   getGeneration: () => battleWarmGeneration,
   advanceGeneration: () => ++battleWarmGeneration,
   setPending: (pending: boolean) => { battleWarmPending = pending; },
-  setDestructionWarmed: (value: boolean) => { combatDestructionEffectsWarmed = value; },
+  setDestructionWarmed: combatWarmComposition.setDestructionWarmed,
   devTrace,
 });
 // The same persisted setting owns both F8 and the Interface switch. The lazy
@@ -2361,102 +2387,9 @@ await bootStage('post', async () => {
 //   view-independent, so compiling against the garage-staged pool is valid.
 // - fx warm: flipbook/atlas textures otherwise upload inside the
 //   first-contact combat frame (muzzle flash, tracer, impact, smoke).
-// - light-set warm (r4): garage spots hidden changes the program hash (see
-//   setGarageSpots), so entering battle swaps programs instead of compiling
-//   ~70 of them inside the opening frames.
-function warmStudioPipelineChunked(
-  onProgress?: ((fraction: number, label: string) => void) | null,
-) {
-  const fx = requireFxRuntime();
-  return battleWarm.warmStudioEffects({
-    fx,
-    post,
-    renderer,
-    camera,
-    initializeForwardPrograms: forwardProgramWarm.initializeSteps,
-    isCombatPipelineWarmed: combatWarm.isRareReady,
-    onProgress: onProgress ?? undefined,
-    onTrace: (trace: unknown) => { window.__STUDIO_WARM = trace; },
-  });
-}
-// perf-r5 (owner: "first garage entry laggy"): the warm used to run as ONE
-// idle callback (~1-3 s: volley + every wreck dance + all compiles) the
-// moment the staged pump finished — exactly when the player starts touching
-// the garage. Generator core with per-step yields; the sync wrapper (battle
-// load / __SHOTS — the screen owns those frames) drains it whole, the
-// chunked owner gives the garage a painted frame between steps. A battle
-// entered mid-chunk drains the remaining generator synchronously.
-
-const deferredCombatWarm = createDeferredCombatWarmRuntime({
-  game,
-  renderer,
-  camera,
-  getBattleVisuals: () => {
-    if (!battleVisuals) throw new Error('battle visual streamer was not loaded');
-    return battleVisuals;
-  },
-  combatWarm,
-  warmBattleTerrainTiles: (yieldForBudget) => battleWarm.warmBattleTerrainTiles({
-    game,
-    world: currentWorld(),
-    yieldForBudget,
-    primePresentation: false,
-  }),
-  getWorld: currentWorld,
-  getGeneration: () => battleWarmGeneration,
-  setPending: (pending: boolean) => { battleWarmPending = pending; },
-  prepareNextOpeningRoute: () => Boolean(prepareNextOpeningRoute(game)),
-  devTrace,
-});
-function cancelDeferredCombatWarm() { deferredCombatWarm.cancel(); }
-function scheduleDeferredCombatWarm(generation: number) {
-  return deferredCombatWarm.schedule(generation);
-}
-// Shared private HDR warmer for covered battle entry and the demand-loaded
-// fallback combat owner. Its one-eighth scale touches identical programs,
-// textures and depth state without presenting partial frames or paying the
-// full-resolution fragment bill.
-const warmRender = createOffscreenSceneWarmer(renderer, scene, camera, 0.125);
-const deploymentShadowWarm = createDeploymentShadowWarmOwner({
-  renderer,
-  scene,
-  camera,
-  lighting,
-  warmRender,
-  getWorldGroup: () => currentWorld()?.group ?? null,
-  noteFovPrimed: mainFrame.noteFovPrimed,
-  simDt: SIM_DT,
-});
-
-function createCombatWarmRuntimeContext() {
-  return {
-    game,
-    fx: requireFxRuntime(),
-    post,
-    renderer,
-    camera,
-    scene,
-    world: currentWorld,
-    warmRender,
-    deploymentShadowWarm,
-    forwardProgramWarm,
-    lighting,
-    scratch1: _v1,
-    scratch2: _v2,
-    scratch3: _v3,
-    anisotropy: engineCtx.anisotropy ?? 4,
-    ensureStagedVisuals: (count: number) => ensureStagedVisuals(game, count),
-    prebakeBurntSteps,
-    warmWreckTextures,
-    createIsolatedForwardWarmBatches,
-    isOpeningReady: () => combatWarm.isOpeningReady(),
-    isRareReady: () => combatWarm.isRareReady(),
-    markOpeningReady: () => combatWarm.markOpeningReady(),
-    markRareReady: () => combatWarm.markRareReady(),
-    isDestructionWarmed: () => combatDestructionEffectsWarmed,
-    setDestructionWarmed: (value: boolean) => { combatDestructionEffectsWarmed = value; },
-  };
-}
+// Light-set, shared FX, private HDR target, and deployment shadow warming are
+// owned by combatWarmComposition. Heavy combat caches remain absent from the
+// interactive Garage and Studio only prepares effects it can actually use.
 
 // Heavy combat caches intentionally do not warm in the interactive garage or
 // the Studio. Battles own the complete roster/wreck/shadow warm; Studio uses
@@ -2482,7 +2415,7 @@ const studioAccess = createStudioAccess({
     }),
     setWorldDormant,
     setGarageSpots, setGarageSunTrim, enterGarage,
-    warmStudioPipeline: warmStudioPipelineChunked,
+    warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.
     autoEnter: false,

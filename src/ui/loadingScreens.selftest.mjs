@@ -147,6 +147,8 @@ await import('./imagePreload.selftest.mjs');
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const mainFrameSource = await readFile(
   new URL('../app/mainFrameRuntime.ts', import.meta.url), 'utf8');
+const combatWarmCompositionSource = await readFile(
+  new URL('../app/combatWarmComposition.ts', import.meta.url), 'utf8');
 const networkBattleLaunchSource = await readFile(
   new URL('../net/networkBattleLaunchRuntime.ts', import.meta.url), 'utf8');
 const battlePresentationSource = await readFile(
@@ -205,9 +207,11 @@ const soloBattleEntrySource = await readFile(
 assert.match(mainSource,
   /bus\.on\('ui:battleStart', \(\) => \{[\s\S]{0,120}playSurface\.hideForBattle\(\)/,
   'every battle entry must dismiss the play modal without closing a retained room');
-assert.match(mainSource,
-  /function warmStudioPipelineChunked[\s\S]{0,600}battleWarm\.warmStudioEffects\(/,
+assert.match(combatWarmCompositionSource,
+  /const warmStudioPipeline[\s\S]{0,600}battleWarm\.warmStudioEffects\(/,
   'Studio entry must delegate FX preparation to the lazy typed warm owner');
+assert.match(mainSource, /createCombatWarmComposition\(\{/,
+  'main must compose one renderer-lifetime combat warm owner');
 assert.match(battleWarmSource,
   /function warmStudioEffects[\s\S]{0,1400}createOpaqueLoadingYielder\(10, 64\)[\s\S]{0,1400}warmTexturesChunked\(yieldForLoad\)/,
   'direct Studio entry must prepare full-quality FX through the opaque frame-budget scheduler');
@@ -320,7 +324,7 @@ assert.ok(deferredEnemyAt >= 0
   && deferredTerrainAt > deferredNavigationAt
   && deferredRareAt > deferredTerrainAt,
 'opponent receipts and fallback opening/rare work must retain countdown order');
-assert.match(mainSource,
+assert.match(combatWarmCompositionSource,
   /warmBattleTerrainTiles:\s*\(yieldForBudget\)\s*=>\s*battleWarm\.warmBattleTerrainTiles\(\{[\s\S]{0,220}primePresentation:\s*false/,
   'the composition adapter must retain non-presenting terrain warm semantics');
 const coveredFxBody = soloDeploymentSource.slice(

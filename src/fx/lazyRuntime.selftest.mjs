@@ -1,6 +1,9 @@
 import { readFile } from 'node:fs/promises';
 
 const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+const combatWarmComposition = await readFile(
+  new URL('../app/combatWarmComposition.ts', import.meta.url), 'utf8',
+);
 const battleVisualStreamer = await readFile(
   new URL('../game/battleVisualStreamer.ts', import.meta.url), 'utf8',
 );
@@ -199,7 +202,7 @@ if (!hiddenVariants.includes('yield* compileAll(entity.visual.root)')
 if (!/deferOpeningRoutes: deferVisuals/.test(soloStart)
   || !(navigationAt >= 0 && terrainAt > navigationAt)
   || !/await warmBattleTerrainTiles\(guardedYield\)/.test(deferredWarm)
-  || !/warmBattleTerrainTiles:\s*\(yieldForBudget\)\s*=>\s*battleWarm\.warmBattleTerrainTiles\(\{[\s\S]{0,220}primePresentation:\s*false/.test(main)
+  || !/warmBattleTerrainTiles:\s*\(yieldForBudget\)\s*=>\s*battleWarm\.warmBattleTerrainTiles\(\{[\s\S]{0,220}primePresentation:\s*false/.test(combatWarmComposition)
   || !/opts\.deferOpeningRoutes\) game\.openingRouteJobs\.push\(prepareOpeningRoute\)/.test(state)) {
   throw new Error('solo A* routes and their terrain tiles must finish in the bounded deployment queue');
 }
