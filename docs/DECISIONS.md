@@ -107,6 +107,11 @@ Quality changes presentation cost, never game rules. Static geometry may be
 batched or instanced only when appearance, ownership, transforms, and disposal
 remain equivalent. Visible vehicle silhouette and authored detail are preserved;
 triangle reduction is acceptable only when visual comparison proves parity.
+The production renderer remains Three.js WebGL. WebGPU/TSL, whole-renderer
+workers, BVH acceleration, and new batching layers require an isolated measured
+win before adoption; none is a default cure for unrelated CPU, shader, or
+readback costs. Deterministic static textures are baked offline when practical,
+while unavoidable runtime pixel work uses bounded workers with local fallback.
 
 Cascaded shadow projection and its depth map are updated atomically. Ordinary
 frames alternate mutually exclusive near and far two-map cohorts; the far pair
