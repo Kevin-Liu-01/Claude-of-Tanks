@@ -1636,7 +1636,7 @@ const battlePresentation = createBattlePresentationRuntime({
 // The opaque deployment transition has one typed owner. main.ts coordinates
 // acquisition and phase changes; this runtime owns the exact shader, shadow,
 // terrain, FX and first-frame warm order plus cancellation/fallback policy.
-const soloBattleDeployment = createSoloBattleDeploymentRuntime(legacyPort({
+const soloBattleDeployment = createSoloBattleDeploymentRuntime({
   game,
   scene,
   camera,
@@ -1663,7 +1663,7 @@ const soloBattleDeployment = createSoloBattleDeploymentRuntime(legacyPort({
   setPending: (pending: boolean) => { battleWarmPending = pending; },
   setDestructionWarmed: (value: boolean) => { combatDestructionEffectsWarmed = value; },
   devTrace,
-}));
+});
 // The same persisted setting owns both F8 and the Interface switch. The lazy
 // facade makes this available in production without adding ordinary-player
 // transfer or per-frame work.

@@ -324,7 +324,9 @@ const revealWarmBody = soloDeploymentSource.slice(
   soloDeploymentSource.indexOf('revealPrimed = true'),
 );
 const shadowWarmAt = revealWarmBody.indexOf('getDeploymentShadowWarm().prime(coveredYield)');
-const postWarmAt = revealWarmBody.indexOf('post.warmFirstFrame(coveredYield)');
+const postWarmAt = revealWarmBody.indexOf(
+  'post.warmFirstFrame(() => coveredYield(true))',
+);
 const revealFrameAt = revealWarmBody.indexOf('entryLifecycle.primeReveal()');
 assert.ok(shadowWarmAt >= 0 && postWarmAt > shadowWarmAt && revealFrameAt > postWarmAt,
   'solo entry must split cascade and post warming before the first full deployment frame');

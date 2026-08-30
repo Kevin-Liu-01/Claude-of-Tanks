@@ -588,6 +588,7 @@ export function warmStudioEffects({
 }
 
 interface ShellSpecLike {
+  velocityMps: number;
   caliberMm?: number;
 }
 

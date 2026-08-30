@@ -9,26 +9,34 @@ import {
   createIsolatedForwardWarmBatches,
 } from '../engine/deploymentWarm.ts';
 import type { DeploymentShadowWarmOwner } from '../engine/deploymentShadowWarm.ts';
+import type { PostRuntime } from '../engine/post.ts';
 import type { ForwardProgramWarmOwner } from '../engine/programWarm.ts';
 import type { BattleEntryLifecycle } from './battleEntryLifecycle.ts';
+import type {
+  CombatFxSubmission,
+  CombatFxSubmissionOptions,
+  TerrainWarmOptions,
+} from './battleWarmRuntime.ts';
 import type { BattleVisualEntity, BattleVisualStreamer } from './battleVisualStreamer.ts';
 import type { CombatWarmCoordinator } from './combatWarmCoordinator.ts';
 
-interface DeploymentEntity extends BattleVisualEntity {
+type BattleWarmEntity = TerrainWarmOptions['game']['tanks'][number];
+
+type DeploymentEntity = BattleVisualEntity & BattleWarmEntity & {
   team?: string;
   isPlayer?: boolean;
-}
+};
 
-interface DeploymentGame {
+type DeploymentGame = Omit<TerrainWarmOptions['game'], 'tanks' | 'player'> & {
   phase?: string;
   preBattleS?: number;
   tanks: DeploymentEntity[];
   player?: DeploymentEntity | null;
-}
+};
 
-interface DeploymentWorld {
+type DeploymentWorld = NonNullable<TerrainWarmOptions['world']> & {
   group?: Object3D | null;
-}
+};
 
 interface BattleLoadPort {
   progress(fraction: number, label: string): void;
@@ -38,34 +46,15 @@ interface ArmorWarmPort {
   warm(): () => void;
 }
 
-interface FxPort {
-  group: Object3D;
-}
-
-interface CombatFxSubmission {
-  staged: boolean;
-  restore(): void;
-}
-
 interface BattleWarmPort {
-  warmBattleTerrainTiles(options: {
-    game: DeploymentGame;
-    world: DeploymentWorld | null;
-    yieldForBudget: WorkYielder;
-  }): Promise<unknown>;
-  stageCombatFxProgramSubmission(options: {
-    game: DeploymentGame;
-    fx: FxPort;
-    post: PostWarmPort;
-    camera: Camera;
-    createShell: unknown;
-  }): Promise<CombatFxSubmission>;
+  warmBattleTerrainTiles(options: TerrainWarmOptions): Promise<unknown>;
+  stageCombatFxProgramSubmission(
+    options: CombatFxSubmissionOptions,
+  ): Promise<CombatFxSubmission> | CombatFxSubmission;
 }
 
-interface PostWarmPort {
-  setAdaptiveSuspended(suspended: boolean): void;
-  warmFirstFrame(yieldForBudget: WorkYielder): Promise<unknown>;
-}
+type PostWarmPort = Pick<PostRuntime, 'setAdaptiveSuspended' | 'warmFirstFrame'> &
+  CombatFxSubmissionOptions['post'];
 
 type DeploymentCsmLights = Parameters<
   typeof createDeploymentForwardWarmBatches
@@ -124,10 +113,10 @@ export interface SoloBattleDeploymentRuntimeOptions {
   combatWarm: Pick<CombatWarmCoordinator, 'markOpeningReady'>;
   post: PostWarmPort;
   lighting: LightingPort;
-  createShell: unknown;
+  createShell: CombatFxSubmissionOptions['createShell'];
   getWorld(): DeploymentWorld | null;
   getBattleVisuals(): BattleVisualStreamer;
-  getFx(): FxPort;
+  getFx(): CombatFxSubmissionOptions['fx'];
   getWarmRender(): () => void;
   getDeploymentShadowWarm(): DeploymentShadowWarmOwner;
   getEntryLifecycle(): BattleEntryLifecycle;
@@ -336,7 +325,7 @@ export function createSoloBattleDeploymentRuntime({
         };
         mark('forwardPrograms');
 
-        trace.deploymentPostWarm = await post.warmFirstFrame(coveredYield);
+        trace.deploymentPostWarm = await post.warmFirstFrame(() => coveredYield(true));
         mark('postPasses');
         battleLoad.progress(0.97, 'Priming deployment view');
         const entryLifecycle = getEntryLifecycle();

@@ -57,8 +57,10 @@ function createHarness({ failAllies = false } = {}) {
     },
     post: {
       setAdaptiveSuspended: (value) => calls.push(['adaptive', value]),
-      warmFirstFrame: async () => {
+      warmFirstFrame: async (yieldBeforePass) => {
         calls.push(['postWarm']);
+        await yieldBeforePass('post-pass');
+        calls.push(['postYielded']);
         return { passes: 1 };
       },
     },
@@ -130,6 +132,7 @@ for (const [before, after] of [
   ['terrain', 'camera'],
   ['camera', 'shadowWarm'],
   ['shadowWarm', 'postWarm'],
+  ['postWarm', 'postYielded'],
   ['postWarm', 'reveal'],
   ['reveal', 'cover'],
 ]) {
