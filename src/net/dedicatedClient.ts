@@ -18,6 +18,7 @@ interface SocketEvent {
 }
 
 interface SocketLike {
+  readyState: number | string;
   binaryType: string;
   send(data: string): void;
   close(): void;
@@ -25,10 +26,6 @@ interface SocketLike {
   removeEventListener?(type: string, listener: SocketListener, options?: EventListenerOptions): void;
   on?(type: string, listener: SocketListener): void;
   off?(type: string, listener: SocketListener): void;
-}
-
-interface SocketConstructor {
-  new(url: string | URL): SocketLike;
 }
 
 export interface DedicatedMatchTicket extends Record<string, unknown> {
@@ -44,7 +41,7 @@ export interface DedicatedConnectionOptions extends Partial<MatchClientOptions> 
   matchId?: string;
   playerId?: string;
   token?: string;
-  WebSocketImpl?: SocketConstructor;
+  WebSocketImpl?: unknown;
   timeoutMs?: number;
   clientOptions?: MatchClientOptions;
 }
@@ -63,7 +60,7 @@ export interface DedicatedStatus extends Record<string, unknown> {
 export interface DedicatedClientMatchOptions {
   url?: unknown;
   ticket?: DedicatedMatchTicket;
-  WebSocketImpl?: SocketConstructor;
+  WebSocketImpl?: unknown;
   onStatus?: ((status: DedicatedStatus) => void) | null;
   reconnectDelaysMs?: number[];
 }
@@ -105,6 +102,28 @@ function asError(value: unknown, fallback: string): Error {
   return new Error(fallback);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isSocketLike(value: unknown): value is SocketLike {
+  return isRecord(value) &&
+    (typeof value.readyState === 'number' || typeof value.readyState === 'string') &&
+    typeof value.binaryType === 'string' && typeof value.send === 'function' &&
+    typeof value.close === 'function';
+}
+
+function createSocket(constructorValue: unknown, endpoint: URL): SocketLike {
+  if (typeof constructorValue !== 'function') throw new Error('WebSocket is unavailable');
+  const socket: unknown = Reflect.construct(constructorValue, [endpoint]);
+  if (!isSocketLike(socket)) {
+    throw new TypeError(
+      'WebSocket must expose readyState/binaryType and implement send() and close()',
+    );
+  }
+  return socket;
+}
+
 function closeFailedConnection(
   socket: SocketLike,
   transport: ChannelTransport | AdverseNetworkTransport,
@@ -119,16 +138,15 @@ export function connectDedicatedMatch({
   matchId,
   playerId,
   token,
-  WebSocketImpl = globalThis.WebSocket as unknown as SocketConstructor,
+  WebSocketImpl = globalThis.WebSocket,
   timeoutMs = 8000,
   clientOptions = {},
 }: DedicatedConnectionOptions = {}): DedicatedConnection {
-  if (typeof WebSocketImpl !== 'function') throw new Error('WebSocket is unavailable');
   const endpoint = new URL(String(url));
   if (endpoint.protocol !== 'ws:' && endpoint.protocol !== 'wss:') {
     throw new TypeError('dedicated match URL must use ws or wss');
   }
-  const socket = new WebSocketImpl(endpoint);
+  const socket = createSocket(WebSocketImpl, endpoint);
   socket.binaryType = 'arraybuffer';
   const transport = maybeCreateAdverseNetworkTransport(createWebSocketTransport(socket, {
     maxMessageBytes: 64 * 1024,

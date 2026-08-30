@@ -12,6 +12,7 @@ interface SocketEvent {
 }
 
 interface SignalingSocket {
+  [eventHandler: `on${string}`]: unknown;
   readonly readyState: number | string;
   send(value: string): void;
   close(code?: number, reason?: string): void;
@@ -19,7 +20,7 @@ interface SignalingSocket {
   removeEventListener?(type: string, listener: (event: SocketEvent) => void): void;
 }
 
-type SignalingSocketConstructor = new (url: string) => SignalingSocket;
+type SignalingSocketFactory = (url: string) => SignalingSocket;
 
 interface PendingRequest {
   resolve(value: unknown): void;
@@ -110,10 +111,22 @@ function errorCode(error: unknown, fallback: string): string {
   return error.code;
 }
 
-function websocketConstructor(injected: unknown): SignalingSocketConstructor {
+function isSignalingSocket(value: unknown): value is SignalingSocket {
+  return isRecord(value) &&
+    (typeof value.readyState === 'number' || typeof value.readyState === 'string') &&
+    typeof value.send === 'function' && typeof value.close === 'function';
+}
+
+function websocketFactory(injected: unknown): SignalingSocketFactory {
   const Ctor = injected || globalThis.WebSocket;
   if (typeof Ctor !== 'function') throw new Error('WebSocket is unavailable');
-  return Ctor as unknown as SignalingSocketConstructor;
+  return (url: string) => {
+    const socket: unknown = Reflect.construct(Ctor, [url]);
+    if (!isSignalingSocket(socket)) {
+      throw new TypeError('WebSocket must expose readyState and implement send() and close()');
+    }
+    return socket;
+  };
 }
 
 function createSessionId(): string {
@@ -143,12 +156,11 @@ function addListener(
     target.addEventListener(type, listener);
     return () => target.removeEventListener?.(type, listener);
   }
-  const key = `on${type}`;
-  const slots = target as unknown as Record<string, unknown>;
-  const previous = slots[key];
-  slots[key] = listener;
+  const key: `on${string}` = `on${type}`;
+  const previous = target[key];
+  target[key] = listener;
   return () => {
-    if (slots[key] === listener) slots[key] = previous || null;
+    if (target[key] === listener) target[key] = previous || null;
   };
 }
 
@@ -212,7 +224,7 @@ function delay(ms: number): Promise<void> {
 /** Rendezvous only: gameplay never traverses this signaling socket. */
 export class RoomSignalingClient {
   readonly url: string;
-  readonly WebSocketImpl: SignalingSocketConstructor;
+  readonly createSocket: SignalingSocketFactory;
   readonly connectTimeoutMs: number;
   readonly requestTimeoutMs: number;
   eventPollIntervalMs: number;
@@ -263,7 +275,7 @@ export class RoomSignalingClient {
       throw new TypeError('signaling request timeout must be positive');
     }
     this.url = endpoint;
-    this.WebSocketImpl = websocketConstructor(WebSocketImpl);
+    this.createSocket = websocketFactory(WebSocketImpl);
     this.connectTimeoutMs = connectTimeoutMs;
     this.requestTimeoutMs = requestTimeoutMs;
     if (!Number.isFinite(eventPollIntervalMs) || eventPollIntervalMs < 10) {
@@ -286,7 +298,7 @@ export class RoomSignalingClient {
     if (this.state === 'open') return Promise.resolve();
     if (this.connectPromise) return this.connectPromise;
     this.state = 'connecting';
-    const socket = new this.WebSocketImpl(this.url);
+    const socket = this.createSocket(this.url);
     this.socket = socket;
     this.connectPromise = new Promise<void>((resolve, reject) => {
       let settled = false;
@@ -441,7 +453,7 @@ export class RoomSignalingClient {
       return;
     }
     if (!isRecord(parsed) || typeof parsed.type !== 'string') return;
-    const message = parsed as SignalingEvent;
+    const message: SignalingEvent = { ...parsed, type: parsed.type };
     const requestId = parsed.requestId == null ? '' : String(parsed.requestId);
     if (requestId && this.pending.has(requestId)) {
       const pending = this.pending.get(requestId);
