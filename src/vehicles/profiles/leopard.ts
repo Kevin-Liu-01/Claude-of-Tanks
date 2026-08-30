@@ -9326,7 +9326,7 @@ function mudflapRect(P: TankBuilderPort, x: number, y: number, z: number) {
 // p95 roof anchored by SEOSS top 3.03 (mast is the 1-2 spike-col budget).
 // ---------------------------------------------------------------------------
 function buildKF51(P: TankBuilderPort) {
-  const { box, cylY, cylZ, frustum, torus, periscope, xform } = KIT;
+  const { box, cylX, cylY, cylZ, frustum, torus, periscope, xform } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   // VISUAL r1 helper — plain-faced box via slab (centered at origin, so it
   // takes P.add's placement like box()). The KIT box() auto-bevels anything
@@ -9886,6 +9886,75 @@ function buildKF51(P: TankBuilderPort) {
     // every side row, min 90.6 → 89.4) and was REVERTED: the saw-tooth read
     // is treated by pad/band tone instead, certified pad phase untouched.
     dishR: 0.78,
+  });
+  // Modern Panther road-wheel faces.  Keep the canonical radial-eight wheel
+  // and suspension instances as the mechanical source, then add one shallow
+  // forged face stack through that same gear unit so every ring, rib, hub,
+  // and fastener follows wheel travel, spin, and thrown-wheel state.  The
+  // earlier generic face was readable only as a dark disc beneath the deep
+  // skirts; this stepped stack gives the exposed lower arcs a machined rim,
+  // eight structural ribs, and a properly recessed service hub without
+  // introducing a duplicate wheel course.
+  if (!P.gear) throw new Error('KF51 running gear must exist before wheel-face finishing');
+  const wheelFaceOutsetM = 0.152;
+  const wheelFaceSegments = P.q ? 30 : 20;
+  P.gear.addRoadWheelLayer(
+    torus(0.292, 0.018, wheelFaceSegments).rotateZ(Math.PI / 2),
+    P.mats.wheels,
+    { outset: wheelFaceOutsetM, name: 'gearRoadWheelForgedOuterRims', appearanceRole: 'wheelDish' },
+  );
+  P.gear.addRoadWheelLayer(
+    torus(0.226, 0.014, P.q ? 26 : 18).rotateZ(Math.PI / 2),
+    P.mats.dark,
+    { outset: wheelFaceOutsetM + 0.004, name: 'gearRoadWheelRecessRings', appearanceRole: 'wheelInset' },
+  );
+  const wheelFaceRibs = KIT.mergeAll(Array.from({ length: 8 }, (_, index) => {
+    const angle = index * Math.PI / 4;
+    return xform(
+      box(0.022, 0.052, 0.138),
+      0,
+      Math.sin(angle) * 0.205,
+      Math.cos(angle) * 0.205,
+      -angle,
+    );
+  }));
+  P.gear.addRoadWheelLayer(wheelFaceRibs, P.mats.wheels, {
+    outset: wheelFaceOutsetM + 0.008,
+    name: 'gearRoadWheelForgedRibs',
+    appearanceRole: 'wheelDish',
+  });
+  P.gear.addRoadWheelLayer(cylX(0.122, 0.040, P.q ? 22 : 16), P.mats.wheels, {
+    outset: wheelFaceOutsetM + 0.012,
+    name: 'gearRoadWheelServiceHubs',
+    appearanceRole: 'wheelDish',
+  });
+  P.gear.addRoadWheelLayer(cylX(0.068, 0.046, P.q ? 16 : 12), P.mats.dark, {
+    outset: wheelFaceOutsetM + 0.016,
+    name: 'gearRoadWheelHubCaps',
+    appearanceRole: 'wheelInset',
+  });
+  const wheelFaceBolts = KIT.mergeAll(Array.from({ length: 10 }, (_, index) => {
+    const angle = index * Math.PI / 5 + 0.16;
+    return xform(
+      cylX(0.012, 0.034, P.q ? 8 : 6),
+      0,
+      Math.sin(angle) * 0.143,
+      Math.cos(angle) * 0.143,
+    );
+  }));
+  P.gear.addRoadWheelLayer(wheelFaceBolts, P.mats.dark, {
+    outset: wheelFaceOutsetM + 0.021,
+    name: 'gearRoadWheelServiceBolts',
+    appearanceRole: 'wheelInset',
+  });
+  P.hullG.userData.kf51RoadWheelFinishReceipt = Object.freeze({
+    profile: 'kf51-forged-radial-eight-r1',
+    stationCountPerSide: 7,
+    structuralRibsPerWheel: 8,
+    serviceBoltsPerWheel: 10,
+    dynamicLayerCount: 6,
+    suspensionBound: true,
+    duplicateWheelCourse: false,
   });
   // VISUAL r1 #2 dressing (all inside certified unions — the gate's mask
   // pass renders a white override material, so tone/bucket carries nothing):

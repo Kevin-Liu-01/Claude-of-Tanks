@@ -48770,25 +48770,25 @@
           }
         ]
       },
-      "geometryHash": "091bf37a",
+      "geometryHash": "1e348636",
       "metadataHash": "ecedee10",
       "presentationAnchor": {
         "xM": 0.0001,
-        "zM": -0.0153
+        "zM": -0.0177
       },
-      "presentationHash": "8b2e9604",
+      "presentationHash": "6986dcc2",
       "presentationProjection": {
         "centerYM": 2.5309,
-        "topHalfM": 7.3569,
-        "sideHalfM": 3.6785
+        "topHalfM": 7.3595,
+        "sideHalfM": 3.6798
       },
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
           "wheelTire": 2,
-          "wheelDish": 7,
-          "wheelInset": 1,
+          "wheelDish": 10,
+          "wheelInset": 4,
           "suspensionLink": 1,
           "suspensionJoint": 1,
           "trackHardware": 4,
@@ -48829,64 +48829,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27138,
-          "sha256": "83b9794936f947ec6e2d2fa37cf86fc776f4b83c10b3bc8037a97ee518d87fdc"
+          "bytes": 27418,
+          "sha256": "d6290b923c7113a8f3c1c13cf12d5e5640dcc09b690f7599a578bd0a0f8f7ed4"
         },
         "top": {
           "file": "kf51_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 7920,
-          "sha256": "87950cfe403af2802302e01cc2f412bebb506e3f6689675901da2eab5a0dd5ca"
+          "bytes": 8186,
+          "sha256": "f387ce0e33a21d4b3699a9d49f8f43e71fab950704cd9c6e8262b8e7a7cd0cc3"
         },
         "side": {
           "file": "kf51_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8086,
-          "sha256": "ad080d6437e1c16c5cd5c06adc471905d03f5d8738f3b6994b448e2fd41c12be"
+          "bytes": 8360,
+          "sha256": "9f418c9b5a8baed5383c846ac69c8277877196569da82a72995350615ddd6ddc"
         },
         "topSilhouette": {
           "file": "kf51_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1233,
-          "sha256": "8f1ca8cf164669386110a1b50a1b89e5295b481ac126f6869ca997606d054dbf"
+          "bytes": 1222,
+          "sha256": "0f818ad4ec637a8ccc34286dcfb83cb30fd7b428309683b8f5cd3e9ad0824c5e"
         },
         "sideSilhouette": {
           "file": "kf51_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3950,
-          "sha256": "cbf477d02ad3a2d83b5d4427b7fd5dd5be9a8511e40c9f860ecc6493a4f2e98e"
+          "bytes": 3902,
+          "sha256": "7f1d99d67dc09a407533408253e90999f5c9be7b7f70f7b9e84c93236dfd566c"
         },
         "hitZonesSide": {
           "file": "kf51_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 63491,
-          "sha256": "5d761a23a3b68d33d0300a3fbf2fafbd0f9535b38abeab39f0814d02571e47b7"
+          "bytes": 64489,
+          "sha256": "4ba62f7b1bdbd4d1c75d5f9080bd5e64de8f5b66c2de0485b069b0c626e3e6c7"
         },
         "armorSide": {
           "file": "kf51_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65788,
-          "sha256": "b8fc4fd9503a608e013d8deaf1fffaec9cc7b8e5b3c233738aa8d17e79eaf682"
+          "bytes": 67049,
+          "sha256": "dfd30da223d53c3cce4d83179f4370691df95b52b353a08241146f0d1538a610"
         },
         "modulesSide": {
           "file": "kf51_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73626,
-          "sha256": "5cccce581a6ffd1ba66da537caf6a2347be0124629e473045dda3bd2284e2f4f"
+          "bytes": 74701,
+          "sha256": "044b50b6d7dd598fa77121cc2f92af71303fcdde60dbaea715b5eea31143bd03"
         },
         "markings": {
           "file": "kf51_markings.png",
@@ -62120,10 +62120,10 @@
       "geometryHash": "645fa2e1",
       "metadataHash": "c6989442",
       "presentationAnchor": {
-        "xM": -0.0002,
+        "xM": 0.0001,
         "zM": 0.1375
       },
-      "presentationHash": "93171972",
+      "presentationHash": "163f3066",
       "presentationProjection": {
         "centerYM": 1.8414,
         "topHalfM": 6.3344,

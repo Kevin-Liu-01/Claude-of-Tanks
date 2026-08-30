@@ -72,6 +72,25 @@ try {
   assert.equal(roofStations[0].userData.lightCount, 5,
     'KF51 rear station carries its five-aperture work-light suite');
 
+  const wheelFinish = hullRig.userData.kf51RoadWheelFinishReceipt;
+  assert.deepEqual(wheelFinish, {
+    profile: 'kf51-forged-radial-eight-r1',
+    stationCountPerSide: 7,
+    structuralRibsPerWheel: 8,
+    serviceBoltsPerWheel: 10,
+    dynamicLayerCount: 6,
+    suspensionBound: true,
+    duplicateWheelCourse: false,
+  }, 'KF51 road wheels publish one suspension-bound forged-face package');
+  const dynamicWheelLayers = [];
+  hullRig.traverse((node) => {
+    if (node.userData?.dynamicWheelFace) dynamicWheelLayers.push(node);
+  });
+  assert.equal(dynamicWheelLayers.length, wheelFinish.dynamicLayerCount,
+    'KF51 wheel face rings, ribs, hubs, and bolts all use canonical gear instances');
+  assert.equal(hullRig.userData.runningGearUnitCount, 1,
+    'KF51 wheel refinement does not add a duplicate running-gear course');
+
   // The upper-glacis surface must now be the merged camouflaged hull mesh,
   // rather than an unnamed, solid-tone comparison shell sitting above it.
   const topHullHit = (x, z) => new THREE.Raycaster(
@@ -156,4 +175,4 @@ try {
   tank.dispose();
 }
 
-console.log('kf51FrontFinish.selftest: closed chevron, angular housing, roof station, and camo finish pass');
+console.log('kf51FrontFinish.selftest: chevrons, gun housing, roof station, forged wheels, and camo finish pass');
