@@ -318,7 +318,7 @@ interface GroundSupportRecord {
   mode: 'pitched' | 'obb' | 'disc';
 }
 
-interface CrushableRecord {
+export interface CrushableRecord {
   x: number;
   y: number;
   z: number;

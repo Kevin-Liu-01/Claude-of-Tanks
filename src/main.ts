@@ -1622,7 +1622,7 @@ const playerFrameInput = createPlayerFrameInput({
   hasAmmo: playerBattleActions.hasAmmo,
   forceFire: () => !!debugFlags.forceFire,
 });
-const battlePresentation = createBattlePresentationRuntime(legacyPort({
+const battlePresentation = createBattlePresentationRuntime({
   game,
   camera,
   scene,
@@ -1632,7 +1632,7 @@ const battlePresentation = createBattlePresentationRuntime(legacyPort({
   isNetworkMatchActive: () => !!networkSession.match,
   getPedestalVisual: () => pedestal.current,
   isCinematicActive: () => rig.cinematicActive,
-}));
+});
 // The opaque deployment transition has one typed owner. main.ts coordinates
 // acquisition and phase changes; this runtime owns the exact shader, shadow,
 // terrain, FX and first-frame warm order plus cancellation/fallback policy.

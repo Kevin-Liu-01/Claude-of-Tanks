@@ -102,7 +102,7 @@ export interface BattlePresentationRuntimeOptions {
   getFx(): VehicleFx | null;
   getWorld(): PresentationWorld | null;
   isNetworkMatchActive(): boolean;
-  getPedestalVisual(): TankVisual | null;
+  getPedestalVisual(): object | null;
   isCinematicActive(): boolean;
 }
 

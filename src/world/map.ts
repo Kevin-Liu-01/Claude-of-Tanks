@@ -19,6 +19,7 @@ import {
   createPropsAsync as createPropsAsyncLegacy,
   preloadPropModels,
 } from './props.ts';
+import type { CrushableRecord } from './props.ts';
 import { getMapConfig, type BattlefieldMapConfig } from './maps/index.ts';
 import {
   createObstacleGrid,
@@ -112,13 +113,13 @@ interface PropsRuntime {
     buildings: MapFeatureRecord[];
     tacticalBeats: MapFeatureRecord[];
   };
-  crushables?: unknown[];
+  crushables?: CrushableRecord[];
   destructibles?: unknown[];
   looseRecords?: unknown[];
   tankWreckSpots?: unknown[];
   utilityPolePlacements?: unknown[];
   decorationGroundingReceipts?: unknown[];
-  crushProp?(index: number, dx: number, dz: number, speedMetersPerSecond: number): unknown;
+  crushProp(index: number, dx: number, dz: number, speedMetersPerSecond: number): boolean;
   crushDestructible?(
     index: number,
     dx: number,
@@ -149,8 +150,8 @@ export interface WorldRuntime {
   getColliders(): CollisionRecord[];
   queryObstacles: ObstacleQuery;
   getConcealment(): ConcealmentDisc[];
-  crushables: unknown[];
-  crushProp(index: number, dx: number, dz: number, speedMetersPerSecond?: number): unknown;
+  crushables: CrushableRecord[];
+  crushProp(index: number, dx: number, dz: number, speedMetersPerSecond?: number): boolean;
   destructibles: unknown[];
   looseProps: unknown[];
   getLoosePropStats(): { total: number; active: number };
@@ -506,7 +507,7 @@ function assembleWorld(
     // crushProp (hinge-topple / debris swap) + fx.propCrush splinters.
     crushables: props.crushables || [],
     crushProp: (i: number, dx: number, dz: number, speedMps = 0) => (
-      props.crushProp?.(i, dx, dz, speedMps)
+      props.crushProp(i, dx, dz, speedMps)
     ),
     // world-dressing r1: destructible small-prop records (probes/debug —
     // gameplay paths run through crushObstacle/crushProp/the fx seam)
