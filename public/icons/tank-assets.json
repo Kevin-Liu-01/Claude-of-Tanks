@@ -48306,22 +48306,22 @@
               [
                 -1.202,
                 -0.02,
-                2.72
+                2.56
               ],
               [
                 1.202,
                 -0.02,
-                2.72
+                2.56
               ],
               [
                 1.202,
                 0.7972,
-                2.4129
+                2.2607
               ],
               [
                 -1.202,
                 0.7972,
-                2.4129
+                2.2607
               ]
             ]
           },
@@ -48337,22 +48337,22 @@
               [
                 1.5025,
                 -0.02,
-                2.2594
+                2.1111
               ],
               [
                 1.5025,
                 -0.02,
-                -3.4215
+                -3.4254
               ],
               [
                 1.3823,
                 0.7972,
-                -3.4215
+                -3.4254
               ],
               [
                 1.3823,
                 0.7972,
-                2.2594
+                2.1111
               ]
             ]
           },
@@ -48368,22 +48368,22 @@
               [
                 -1.5025,
                 -0.02,
-                -3.4215
+                -3.4254
               ],
               [
                 -1.5025,
                 -0.02,
-                2.2594
+                2.1111
               ],
               [
                 -1.3823,
                 0.7972,
-                2.2594
+                2.1111
               ],
               [
                 -1.3823,
                 0.7972,
-                -3.4215
+                -3.4254
               ]
             ]
           },
@@ -48399,12 +48399,12 @@
               [
                 1.2771,
                 -0.02,
-                -3.4215
+                -3.4254
               ],
               [
                 -1.2771,
                 -0.02,
-                -3.4215
+                -3.4254
               ],
               [
                 -1.2771,
@@ -48430,22 +48430,22 @@
               [
                 -1.5025,
                 0.815,
-                2.2594
+                2.1111
               ],
               [
                 1.5025,
                 0.815,
-                2.2594
+                2.1111
               ],
               [
                 1.5025,
                 0.815,
-                -3.4215
+                -3.4254
               ],
               [
                 -1.5025,
                 0.815,
-                -3.4215
+                -3.4254
               ]
             ]
           },
@@ -48461,22 +48461,22 @@
               [
                 -0.4249,
                 -0.0111,
-                2.8301
+                2.6673
               ],
               [
                 0.4249,
                 -0.0111,
-                2.8301
+                2.6673
               ],
               [
                 0.4249,
                 0.4863,
-                2.72
+                2.56
               ],
               [
                 -0.4249,
                 0.4863,
-                2.72
+                2.56
               ]
             ]
           }
@@ -48488,12 +48488,12 @@
             "min": [
               -0.255,
               0.0422,
-              -1.579
+              -1.6298
             ],
             "max": [
               0.255,
               0.4863,
-              2.72
+              2.56
             ],
             "turretLocal": true
           },
@@ -48518,12 +48518,12 @@
             "min": [
               -0.7232,
               0.4925,
-              -2.8804
+              -2.9156
             ],
             "max": [
               0.7232,
               0.7146,
-              -1.4998
+              -1.535
             ],
             "turretLocal": true
           },
@@ -48578,12 +48578,12 @@
             "min": [
               -1.0044,
               0.3521,
-              -3.1489
+              -3.1841
             ],
             "max": [
               1.0044,
               0.815,
-              -1.2313
+              -1.2666
             ],
             "turretLocal": true
           },
@@ -48606,14 +48606,14 @@
             "volumeId": "M09",
             "name": "optics",
             "min": [
-              -1.2573,
-              0.5025,
+              -1.2574,
+              0.5412,
               -0.501
             ],
             "max": [
-              1.2573,
+              1.2574,
               1.267,
-              1.7399
+              1.6841
             ],
             "parts": [
               {
@@ -48666,26 +48666,26 @@
               },
               {
                 "min": [
-                  -1.2573,
-                  0.5025,
-                  1.5109
+                  -1.2574,
+                  0.5412,
+                  1.4815
                 ],
                 "max": [
                   -1.06,
-                  0.6045,
-                  1.7399
+                  0.6368,
+                  1.6841
                 ]
               },
               {
                 "min": [
                   1.06,
-                  0.5025,
-                  1.5109
+                  0.5412,
+                  1.4815
                 ],
                 "max": [
-                  1.2573,
-                  0.6045,
-                  1.7399
+                  1.2574,
+                  0.6368,
+                  1.6841
                 ]
               }
             ],
@@ -48744,12 +48744,12 @@
             "min": [
               -1.2771,
               0.0066,
-              -1.272
+              -1.3305
             ],
             "max": [
               -0.2254,
               0.672,
-              1.1846
+              1.0637
             ],
             "turretLocal": true
           },
@@ -48759,28 +48759,28 @@
             "min": [
               0.2254,
               0.0066,
-              -3.1144
+              -3.1261
             ],
             "max": [
               1.2771,
               0.7137,
-              -0.6578
+              -0.732
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "f02c58d4",
-      "metadataHash": "4bad628f",
+      "geometryHash": "091bf37a",
+      "metadataHash": "ecedee10",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.0153
       },
       "presentationHash": "8b2e9604",
       "presentationProjection": {
-        "centerYM": 2.1375,
-        "topHalfM": 7.3355,
-        "sideHalfM": 3.6678
+        "centerYM": 2.5309,
+        "topHalfM": 7.3569,
+        "sideHalfM": 3.6785
       },
       "appearance": {
         "version": 1,
@@ -48795,7 +48795,7 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "unclassified": 62,
+          "unclassified": 63,
           "gearShadow": 179,
           "armorPaint": 6,
           "gunmetal": 7,
@@ -48829,64 +48829,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27814,
-          "sha256": "380a61ab673708f1360a40e2061fd546c81501a86397fd2570d6f6dae76aa573"
+          "bytes": 27138,
+          "sha256": "83b9794936f947ec6e2d2fa37cf86fc776f4b83c10b3bc8037a97ee518d87fdc"
         },
         "top": {
           "file": "kf51_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 7774,
-          "sha256": "ba45acab0b9235dad45e36d52d40dc22437e16354780fb36065bf1a6a1763ff6"
+          "bytes": 7920,
+          "sha256": "87950cfe403af2802302e01cc2f412bebb506e3f6689675901da2eab5a0dd5ca"
         },
         "side": {
           "file": "kf51_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 7588,
-          "sha256": "ffe80401d1a1fdcb3fcff92db58c2fbd94a834e4e489a075e2282343645fa7ed"
+          "bytes": 8086,
+          "sha256": "ad080d6437e1c16c5cd5c06adc471905d03f5d8738f3b6994b448e2fd41c12be"
         },
         "topSilhouette": {
           "file": "kf51_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1163,
-          "sha256": "9d717e003e7d848c85fdd0b81b91ce9be69604f655e30ed0cf3f7be1eceafb4b"
+          "bytes": 1233,
+          "sha256": "8f1ca8cf164669386110a1b50a1b89e5295b481ac126f6869ca997606d054dbf"
         },
         "sideSilhouette": {
           "file": "kf51_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3806,
-          "sha256": "52081fe71930e01a20a0d952abda037a798e946f2d7d9aa1bd0455ffdd482531"
+          "bytes": 3950,
+          "sha256": "cbf477d02ad3a2d83b5d4427b7fd5dd5be9a8511e40c9f860ecc6493a4f2e98e"
         },
         "hitZonesSide": {
           "file": "kf51_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 62936,
-          "sha256": "eb4866521f850ac0a4bf75eddfc99360df585159de3a61fdd22803e16fccbbaf"
+          "bytes": 63491,
+          "sha256": "5d761a23a3b68d33d0300a3fbf2fafbd0f9535b38abeab39f0814d02571e47b7"
         },
         "armorSide": {
           "file": "kf51_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65196,
-          "sha256": "bc607d395c5685cbe8a9e1c083508169e509800488abbbf3493a7dc203de6311"
+          "bytes": 65788,
+          "sha256": "b8fc4fd9503a608e013d8deaf1fffaec9cc7b8e5b3c233738aa8d17e79eaf682"
         },
         "modulesSide": {
           "file": "kf51_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73945,
-          "sha256": "e021ea93ee63d09311ed394e0d216f26d135b6b8460af105a236f4956d21e070"
+          "bytes": 73626,
+          "sha256": "5cccce581a6ffd1ba66da537caf6a2347be0124629e473045dda3bd2284e2f4f"
         },
         "markings": {
           "file": "kf51_markings.png",

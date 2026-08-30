@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { TANK_SPECS } from '../specs.ts';
 
 const tank = createTank('kf51', null, {
   proceduralOnly: true,
@@ -19,7 +20,7 @@ try {
     'KF51 retains canonical hull, turret, gun, and detail geometry');
 
   const chevron = turretRig.userData.kf51FrontChevronReceipt;
-  assert.equal(chevron?.profile, 'kf51-panther-closed-chevron-r1',
+  assert.equal(chevron?.profile, 'kf51-panther-closed-chevron-r2',
     'KF51 publishes the rebuilt closed-chevron front architecture');
   assert.equal(chevron.cheekVolumes, 2, 'KF51 front has one closed cheek volume per side');
   assert.equal(chevron.roofBridgeVolumes, 2,
@@ -29,9 +30,19 @@ try {
   assert.equal(chevron.multispectralLightCassettes, 2,
     'KF51 front carries two recessed multispectral light cassettes');
   assert.equal(chevron.closedRearFaces, true, 'KF51 chevron volumes remain watertight at the turret');
+  assert.equal(chevron.upperLowerHeightMatched, true,
+    'KF51 upper cheek and lower return publish an equal-height contract');
+  for (const side of chevron.sides) {
+    for (const station of side.stations) {
+      assert.ok(Math.abs(station.upperRiseM - station.lowerDropM) < 1e-9,
+        `KF51 ${side.side} cheek station ${station.x} has equal upper and lower height`);
+    }
+  }
+  assert.ok(chevron.maximumRidgeProjectionM <= 2.56,
+    'KF51 chevron ridge remains retracted onto the turret-front envelope');
 
   const housing = gunRig.userData.kf51AngularGunHousingReceipt;
-  assert.equal(housing?.profile, 'kf51-panther-angular-mantlet-r1',
+  assert.equal(housing?.profile, 'kf51-panther-angular-mantlet-r2',
     'KF51 publishes the enlarged angular moving-gun housing');
   assert.equal(housing.mainHousing, 'closed-tapered-six-plane-wedge',
     'KF51 gun housing is a faceted closed wedge rather than a round roll');
@@ -40,12 +51,22 @@ try {
   assert.equal(housing.forwardClampSides, 6, 'KF51 forward clamp remains visibly faceted');
   assert.equal(housing.roundVisibleTrunnionRetired, true,
     'KF51 no longer exposes the undersized circular trunnion');
+  assert.deepEqual(housing.visualGunPivotLocal, [0, 0.46, 0.90],
+    'KF51 visible gun is raised onto the authoritative firing axis');
+  const gunWorld = gunRig.getWorldPosition(new THREE.Vector3());
+  const authoritativeGunWorld = new THREE.Vector3(
+    TANK_SPECS.kf51.armor.turretPivot[0] + TANK_SPECS.kf51.armor.gunPivot[0],
+    TANK_SPECS.kf51.armor.turretPivot[1] + TANK_SPECS.kf51.armor.gunPivot[1],
+    TANK_SPECS.kf51.armor.turretPivot[2] + TANK_SPECS.kf51.armor.gunPivot[2],
+  );
+  assert.ok(gunWorld.distanceTo(authoritativeGunWorld) < 1e-9,
+    'KF51 visible and authoritative gun pivots coincide in the neutral pose');
 
   const roofStations = [];
   turretRig.traverse((node) => {
     if (node.userData?.fittingRoot && node.userData.fitting === 'openYokeRws') roofStations.push(node);
   });
-  assert.equal(roofStations.length, 1, 'KF51 carries one full rear open-yoke roof station');
+  assert.equal(roofStations.length, 1, 'KF51 carries one full open-yoke turret-roof station');
   assert.equal(roofStations[0].userData.stationVariant, 'kf51-panther',
     'KF51 rear station uses its Panther-specific equipment package');
   assert.equal(roofStations[0].userData.lightCount, 5,

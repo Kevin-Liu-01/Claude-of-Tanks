@@ -10021,17 +10021,20 @@ function buildKF51(P: TankBuilderPort) {
   // and left a visibly round trunnion floating in a square recess. Rebuild the
   // complete front as the same closed-chevron grammar used by the current
   // Leopard 2 family: two watertight cheek volumes share one swept ridge,
-  // taper continuously into the roof and close against the turret core.
+  // taper continuously into the roof and close against the turret core. The
+  // ridge is the exact vertical midpoint of every station so the upper plate
+  // and lower return have the same visible height, while the retracted plan
+  // line follows the turret bow instead of projecting as a separate prow.
   const kf51ChevronStations: readonly ChevronClosedStation[] = Object.freeze([
-    Object.freeze({ x: 0.38, upperY: 0.72, upperZ: 1.24, ridgeY: 0.30, ridgeZ: 2.72, lowerY: 0.10, lowerZ: 1.72 }),
-    Object.freeze({ x: 0.62, upperY: 0.73, upperZ: 1.19, ridgeY: 0.31, ridgeZ: 2.66, lowerY: 0.10, lowerZ: 1.68 }),
-    Object.freeze({ x: 0.96, upperY: 0.72, upperZ: 1.13, ridgeY: 0.32, ridgeZ: 2.51, lowerY: 0.11, lowerZ: 1.58 }),
-    Object.freeze({ x: 1.28, upperY: 0.66, upperZ: 1.07, ridgeY: 0.31, ridgeZ: 2.34, lowerY: 0.12, lowerZ: 1.47 }),
-    Object.freeze({ x: 1.47, upperY: 0.56, upperZ: 1.02, ridgeY: 0.29, ridgeZ: 2.15, lowerY: 0.13, lowerZ: 1.36 }),
+    Object.freeze({ x: 0.43, upperY: 0.72, upperZ: 1.26, ridgeY: 0.40, ridgeZ: 2.56, lowerY: 0.08, lowerZ: 1.80 }),
+    Object.freeze({ x: 0.66, upperY: 0.73, upperZ: 1.21, ridgeY: 0.41, ridgeZ: 2.50, lowerY: 0.09, lowerZ: 1.76 }),
+    Object.freeze({ x: 0.98, upperY: 0.72, upperZ: 1.14, ridgeY: 0.41, ridgeZ: 2.36, lowerY: 0.10, lowerZ: 1.66 }),
+    Object.freeze({ x: 1.29, upperY: 0.66, upperZ: 1.10, ridgeY: 0.39, ridgeZ: 2.19, lowerY: 0.12, lowerZ: 1.52 }),
+    Object.freeze({ x: 1.47, upperY: 0.56, upperZ: 1.12, ridgeY: 0.35, ridgeZ: 2.02, lowerY: 0.14, lowerZ: 1.40 }),
   ]);
   const kf51FrontPanels: ReadonlyArray<readonly [number, number]> = Object.freeze([
-    Object.freeze([0.43, 0.70]),
-    Object.freeze([0.74, 1.04]),
+    Object.freeze([0.47, 0.72]),
+    Object.freeze([0.76, 1.04]),
     Object.freeze([1.08, 1.40]),
   ]);
   const kf51FrontSides = [];
@@ -10081,26 +10084,34 @@ function buildKF51(P: TankBuilderPort) {
       roofBridgeTriangles: roofBridge.triangleCount,
       panels,
       lightCassette: true,
+      stations: Object.freeze(kf51ChevronStations.map((station) => Object.freeze({
+        x: station.x,
+        upperRiseM: station.upperY - station.ridgeY,
+        lowerDropM: station.ridgeY - station.lowerY,
+        ridgeZ: station.ridgeZ,
+      }))),
     }));
   }
-  // The narrow center is a real moving-gun opening. Side liners and a low
-  // upper bridge provide a continuous load path while leaving the larger
-  // angular housing free to elevate without clipping static armor.
-  P.add('turretDark', pbox(0.82, 0.61, 0.08), 0, 0.41, 1.52);
+  // The narrow center is a real moving-gun opening. Its dark rear and side
+  // liners terminate at the roof plane; omitting the old cross-opening cap
+  // leaves room for the raised moving housing instead of intersecting it.
+  P.add('turretDark', pbox(0.86, 0.76, 0.08), 0, 0.42, 1.52);
   for (const s of [-1, 1] as const) {
-    P.add('turretDark', pbox(0.035, 0.48, 0.60), s * 0.395, 0.39, 1.82);
+    P.add('turretDark', pbox(0.035, 0.62, 0.60), s * 0.415, 0.48, 1.82);
   }
-  P.add('turret', pbox(0.84, 0.13, 0.34), 0, 0.715, 1.24, -0.08, 0, 0);
   P.turretG.userData.kf51FrontChevronReceipt = Object.freeze({
-    profile: 'kf51-panther-closed-chevron-r1',
+    profile: 'kf51-panther-closed-chevron-r2',
     architecture: 'single-watertight-upper-and-lower-arrowhead',
     stationCount: kf51ChevronStations.length,
     cheekVolumes: 2,
     roofBridgeVolumes: 2,
     surfacePanelCount: kf51FrontPanels.length * 2,
     multispectralLightCassettes: 2,
-    centralGunOpeningHalfWidthM: 0.38,
+    centralGunOpeningHalfWidthM: 0.40,
     sharedRidge: true,
+    upperLowerHeightMatched: true,
+    turretFrontAligned: true,
+    maximumRidgeProjectionM: 2.56,
     closedRearFaces: true,
     sourceImageUsedAsVisualDirectionOnly: true,
     sides: Object.freeze(kf51FrontSides),
@@ -10324,11 +10335,12 @@ function buildKF51(P: TankBuilderPort) {
   P.add('turret', box(0.66, 0.035, 0.035), 0.24, 1.21, -3.482);
   P.add('turretDark', box(0.20, 0.21, 0.02), -0.22, 1.105, -3.564);            // tongue end face
   P.add('turretDark', box(2.20, 0.10, 0.03), -0.03, 0.55, -3.33);              // bustle base shadow seam
-  // Rear-bustle RWS: identical powered open-yoke architecture and size to
-  // the Leopard 2A6M installation, with a KF51-specific armored brow, twin
-  // optics and light bar. The bearing is flush with the 1.245 m bustle rim.
+  // Roof RWS: identical powered open-yoke architecture and size to the
+  // Leopard 2A6M installation, with a KF51-specific armored brow, twin
+  // optics and light bar. Seat the bearing directly on the structural turret
+  // roof rather than the detached rear-bustle rim.
   const kf51RoofRws = addLeopardOpenYokeAuxRws(P, {
-    x: 0.35, y: 1.245, z: -3.02,
+    x: 0.42, y: 0.815, z: -1.72,
     variant: 'kf51-panther', ammoSide: 1, sensorSide: -1, yaw: 0.025,
     weaponRole: 'roof-primary',
   });
@@ -10407,7 +10419,9 @@ function buildKF51(P: TankBuilderPort) {
   // tapers continuously onto a hexagonal barrel clamp. Because every part is
   // gun-owned, the housing elevates with the barrel without shearing through
   // the turret-face armor.
-  P.gunG.position.set(0, 0.13, 0.88);
+  // The visual trunnion now coincides with the authoritative firing frame:
+  // turret (1.71, 0.45) + gun (0.46, 0.90) = world (2.17, 1.35).
+  P.gunG.position.set(0, 0.46, 0.90);
   const gseg = P.q ? 24 : 16;
   const kf51AngularHousing = outwardClosedSlab(
     [-0.39, -0.285, 0.10], [0.39, -0.285, 0.10], [0.27, -0.18, 1.78], [-0.27, -0.18, 1.78],
@@ -10428,7 +10442,7 @@ function buildKF51(P: TankBuilderPort) {
   P.addGunExtraDark(cylZ(0.029, 0.11, 8), 0.275, 0.055, 1.17);                // recessed coax port
   KIT.buildGun(P, { len: 5.475, r: 0.092, sleeve: false, collar: false, baseR: 0.105 });
   P.gunG.userData.kf51AngularGunHousingReceipt = Object.freeze({
-    profile: 'kf51-panther-angular-mantlet-r1',
+    profile: 'kf51-panther-angular-mantlet-r2',
     movingWithGun: true,
     mainHousing: 'closed-tapered-six-plane-wedge',
     rearWidthM: 0.78,
@@ -10438,6 +10452,8 @@ function buildKF51(P: TankBuilderPort) {
     housingLengthM: 1.68,
     forwardClampSides: 6,
     roundVisibleTrunnionRetired: true,
+    visualGunPivotLocal: Object.freeze([0, 0.46, 0.90]),
+    authoritativeWorldAxisMatched: true,
   });
   // Keep the primary overlay sleeve concentric with the firing axis; the
   // asymmetric MRS and shroud furniture remain separate components.
