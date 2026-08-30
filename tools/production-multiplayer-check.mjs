@@ -110,19 +110,125 @@ export async function checkProductionMultiplayer({
   };
 }
 
+/**
+ * Prove that a pristine browser can turn the issued credentials into an
+ * actual relay candidate. URL validation alone cannot detect expired,
+ * revoked, unreachable, or provider-rejected TURN credentials.
+ */
+export async function verifyProductionTurnAllocation({
+  baseUrl = 'https://cot.kevinliu.studio',
+  timeoutMs = 15_000,
+  launchBrowser = null,
+} = {}) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new TypeError('TURN allocation timeout must be positive');
+  }
+  const launch = launchBrowser || (async () => {
+    const { default: puppeteer } = await import('puppeteer');
+    return puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+  });
+  const browser = await launch();
+  let context = null;
+  try {
+    context = await browser.createBrowserContext();
+    const page = await context.newPage();
+    await page.setCacheEnabled?.(false);
+    const probeUrl = new URL('/robots.txt?cot-turn-allocation-probe=1', baseUrl).href;
+    await page.goto(probeUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: timeoutMs,
+    });
+    const receipt = await page.evaluate(async (allocationTimeoutMs) => {
+      const response = await fetch('/api/ice', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`ICE endpoint returned HTTP ${response.status}`);
+      const config = await response.json();
+      if (!Array.isArray(config?.iceServers)) {
+        throw new Error('ICE endpoint returned no server list');
+      }
+
+      const peer = new RTCPeerConnection({
+        iceServers: config.iceServers,
+        iceTransportPolicy: 'relay',
+      });
+      const protocols = new Set();
+      let relayCandidateCount = 0;
+      let gatheringTimer = 0;
+      try {
+        const gathering = new Promise((resolve, reject) => {
+          gatheringTimer = setTimeout(() => reject(new Error('TURN allocation timed out')),
+            allocationTimeoutMs);
+          peer.addEventListener('icecandidate', (event) => {
+            const candidate = event.candidate;
+            if (!candidate) {
+              clearTimeout(gatheringTimer);
+              resolve(undefined);
+              return;
+            }
+            if (candidate.type !== 'relay') return;
+            relayCandidateCount++;
+            if (candidate.protocol) protocols.add(candidate.protocol);
+          });
+        });
+        peer.createDataChannel('cot-turn-allocation-probe');
+        await peer.setLocalDescription(await peer.createOffer());
+        await gathering;
+      } finally {
+        clearTimeout(gatheringTimer);
+        peer.close();
+      }
+      if (relayCandidateCount < 1) throw new Error('TURN returned no relay candidate');
+      return {
+        relayCandidateCount,
+        protocols: [...protocols].sort(),
+      };
+    }, timeoutMs);
+    if (!receipt || !Number.isInteger(receipt.relayCandidateCount) ||
+        receipt.relayCandidateCount < 1 || !Array.isArray(receipt.protocols)) {
+      throw new Error('browser returned an invalid TURN allocation receipt');
+    }
+    return {
+      ok: true,
+      relayCandidateCount: receipt.relayCandidateCount,
+      protocols: receipt.protocols.map(String),
+      pristineBrowserContext: true,
+    };
+  } catch (error) {
+    const wrapped = new Error(`production TURN allocation failed: ${error?.message || error}`);
+    wrapped.code = 'turn_allocation_failed';
+    throw wrapped;
+  } finally {
+    await context?.close?.().catch(() => {});
+    await browser?.close?.().catch(() => {});
+  }
+}
+
 const isCli = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isCli) {
   const baseUrl = process.argv.find((arg) => arg.startsWith('--url='))?.slice(6)
     || 'https://cot.kevinliu.studio';
+  let dependencyReceipt = null;
   try {
-    console.log(JSON.stringify(await checkProductionMultiplayer({ baseUrl }), null, 2));
+    dependencyReceipt = await checkProductionMultiplayer({ baseUrl });
+    const allocation = process.argv.includes('--dependency-only')
+      ? null
+      : await verifyProductionTurnAllocation({ baseUrl });
+    console.log(JSON.stringify({
+      ...dependencyReceipt,
+      ...(allocation ? { allocation } : {}),
+    }, null, 2));
   } catch (error) {
     console.error(JSON.stringify({
       ok: false,
       code: error?.code || 'production_multiplayer_check_failed',
       message: error?.message || String(error),
       detail: error?.detail || null,
-      dependencies: error?.dependencies || null,
+      dependencies: error?.dependencies || (dependencyReceipt ? {
+        signal: { ok: true },
+        ice: { ok: true },
+      } : null),
     }, null, 2));
     process.exitCode = 1;
   }

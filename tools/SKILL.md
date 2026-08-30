@@ -40,9 +40,11 @@ natural authority result and proves that every participant retains the same
 waiting room with readiness reset. It uses the existing 60-second simulation
 limit only inside the certification authority; production keeps its 900-second
 safety cap. Use `--only=host` or `--only=client` for targeted diagnosis.
-`npm run net:prod:check` probes distributed signaling and TURN independently;
-failure output must retain both dependency results so one outage cannot mask
-the other.
+`npm run net:prod:check` probes distributed signaling and TURN independently,
+then uses a pristine browser context with relay-only ICE policy to require a
+real relay candidate. URL presence is not allocation proof. Use
+`--dependency-only` only to diagnose endpoint health; failure output must
+retain both dependency results so one outage cannot mask the other.
 Cold-start claims require `npm run perf:cold`; use `--sessions` for repeated
 cache-disabled contexts and record `--cpu`, `--down-kbps`, `--up-kbps`, and
 `--latency` so a warm navigation cannot masquerade as first-visit reliability.

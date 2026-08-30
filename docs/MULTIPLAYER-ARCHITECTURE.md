@@ -430,10 +430,13 @@ the unsent suffix before reconnecting, so a handover cannot lose negotiation
 messages or emit browser console errors.
 
 STUN-only fallback keeps room creation non-blocking, but cannot traverse every
-NAT. A production release must receive HTTP 200 from `/api/ice` and verify that
-its `iceServers` contains a `turn:` or `turns:` URL. HTTP 503 or a STUN-only
-response is a degraded deployment, even when `/api/signal` is healthy.
-`npm run net:prod:check` enforces both requirements without printing credentials.
+NAT. A production release must receive HTTP 200 from `/api/ice`, verify that
+its `iceServers` contains a `turn:` or `turns:` URL, and gather a relay
+candidate from a pristine browser using relay-only ICE policy. HTTP 503, a
+STUN-only response, or syntactically valid but unusable credentials are a
+degraded deployment even when `/api/signal` is healthy.
+`npm run net:prod:check` enforces all requirements without printing credentials;
+`--dependency-only` is an endpoint diagnostic, not a release gate.
 
 LAN setup is automatic. Public deployments use their same-origin secure
 signaling endpoint for rendezvous, while pages served from localhost or an
