@@ -293,7 +293,9 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   let heroStarted = false;
   let stopHero = () => {};
   const ensureHeroStarted = (): void => {
-    if (!root || heroStarted || dismissed) return;
+    // Automation and explicit no-splash entry remove this surface at ready;
+    // never start a decorative request that cannot become visible.
+    if (!root || heroStarted || dismissed || bootGateSkipped()) return;
     heroStarted = true;
     stopHero = startBootHero();
   };

@@ -278,11 +278,14 @@ try {
     Number.isFinite(row.wallMs) && row.wallMs <= maxFirstVisitWallMs);
   const firstVisitAppPass = firstVisits.every((row) =>
     Number.isFinite(row.bootMs) && row.bootMs <= maxFirstVisitAppMs);
+  const skippedSplashTransferPass = firstVisits.every((row) =>
+    row.featuredImages.length === 0 && row.featuredImageTransferBytes === 0);
   const printable = compactOutput
     ? results.map(({ scripts: _scripts, ...row }) => row)
     : results;
   console.log(JSON.stringify({
-    ok: results.every((row) => row.ready) && firstVisitWallPass && firstVisitAppPass,
+    ok: results.every((row) => row.ready) && firstVisitWallPass && firstVisitAppPass
+      && skippedSplashTransferPass,
     conditions: {
       sessions: sessionCount, cpuRate, latencyMs, downloadKbps, uploadKbps,
     },
@@ -291,6 +294,7 @@ try {
       maxFirstVisitAppMs,
       firstVisitWallPass,
       firstVisitAppPass,
+      skippedSplashTransferPass,
     },
     results: printable,
   }, null, 2));
@@ -311,9 +315,7 @@ try {
       || builderRecovery.navigations < 3) {
     process.exitCode = 7;
   }
-  if (firstVisits.some((row) => row.featuredImages.length !== 1
-      || !row.featuredImages[0].path.endsWith('.boot.webp')
-      || row.featuredImageTransferBytes > 100_000)) process.exitCode = 5;
+  if (!skippedSplashTransferPass) process.exitCode = 5;
   if (noHero.featuredImageTransferBytes !== 0) process.exitCode = 6;
 } finally {
   await browser.close();
