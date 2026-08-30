@@ -11,6 +11,9 @@ const REST_TILT_DEADZONE_RAD = 0.0035;
 const DELAY_ATTACK_FRACTION = 0.5;
 const DELAY_RELEASE_FRACTION = 0.1;
 const MAX_SAMPLE_DELTA_MS = 250;
+const IMMEDIATE_CORRECTION_RATE_MPS = 6;
+const IMMEDIATE_CORRECTION_STEP_M = 0.2;
+const IMMEDIATE_TELEPORT_M = 8;
 const REST_POSE = Symbol('networkRestPose');
 const ENTITY_DELTA_FIELDS = Object.freeze([
   'id', 'specId', 'team',
@@ -625,6 +628,51 @@ function extrapolateEntity(
   return entity;
 }
 
+/**
+ * Keep a non-rendering client's owned sample continuous when a newly arrived
+ * authority packet corrects the prior extrapolation. The full browser runtime
+ * adds deterministic local prediction on top of this sample, but lightweight
+ * consumers (lobby probes, spectators promoted into a seat, and headless
+ * clients) otherwise expose the entire 20 Hz packet correction in one frame.
+ * The untouched raw pose remains available through `immediateAuthority` for
+ * reconciliation and anti-cheat decisions.
+ */
+function limitImmediatePresentation(
+  target: DecodedEntitySnapshot,
+  presentation: DecodedEntitySnapshot,
+  elapsedMs: number,
+  initialized: boolean,
+): void {
+  const priorX = presentation.x;
+  const priorY = presentation.y;
+  const priorZ = presentation.z;
+  const priorSpeed = initialized
+    ? Math.hypot(presentation.vx || 0, presentation.vy || 0, presentation.vz || 0)
+    : 0;
+  Object.assign(presentation, target);
+  if (!initialized) return;
+
+  const dx = target.x - priorX;
+  const dy = target.y - priorY;
+  const dz = target.z - priorZ;
+  const distanceM = Math.hypot(dx, dy, dz);
+  if (!(distanceM > 0) || distanceM >= IMMEDIATE_TELEPORT_M) return;
+
+  const elapsedS = Math.max(0, Math.min(MAX_SAMPLE_DELTA_MS, elapsedMs)) / 1000;
+  const targetSpeed = Math.hypot(target.vx || 0, target.vy || 0, target.vz || 0);
+  const expectedMotionM = Math.max(priorSpeed, targetSpeed) * elapsedS;
+  const correctionM = Math.min(
+    IMMEDIATE_CORRECTION_STEP_M,
+    IMMEDIATE_CORRECTION_RATE_MPS * elapsedS,
+  );
+  const maxStepM = expectedMotionM + correctionM;
+  if (distanceM <= maxStepM) return;
+  const scale = maxStepM / distanceM;
+  presentation.x = priorX + dx * scale;
+  presentation.y = priorY + dy * scale;
+  presentation.z = priorZ + dz * scale;
+}
+
 function stabilizeRestPose(entity: DecodedEntitySnapshot): DecodedEntitySnapshot {
   let rest = entity[REST_POSE];
   if (!rest) {
@@ -730,6 +778,10 @@ export class SnapshotBuffer {
   private readonly olderById = new Map<string, QuantizedEntitySnapshot>();
   private readonly decodeScratchA = {} as DecodedEntitySnapshot;
   private readonly decodeScratchB = {} as DecodedEntitySnapshot;
+  private readonly immediateScratch = {} as DecodedEntitySnapshot;
+  private readonly immediatePresentation = {} as DecodedEntitySnapshot;
+  private immediatePresentationReady = false;
+  private lastImmediatePresentationTimeMs: number | null = null;
   private readonly immediateAuthority: ImmediateAuthoritySnapshot;
 
   constructor({
@@ -824,6 +876,8 @@ export class SnapshotBuffer {
     this.lastRenderTimeMs = null;
     this.sampleEntities.clear();
     this.olderById.clear();
+    this.immediatePresentationReady = false;
+    this.lastImmediatePresentationTimeMs = null;
   }
 
   getStats(): SnapshotBufferStats {
@@ -934,7 +988,18 @@ export class SnapshotBuffer {
           this.maxExtrapolationMs,
           localServerTimeMs - latest.serverTimeMs,
         ));
-        const immediate = extrapolateEntity(raw, extraMs / 1000, this.sampleEntity(raw.id));
+        const target = extrapolateEntity(raw, extraMs / 1000, this.immediateScratch);
+        const elapsedMs = this.lastImmediatePresentationTimeMs == null
+          ? 0 : localServerTimeMs - this.lastImmediatePresentationTimeMs;
+        limitImmediatePresentation(
+          target,
+          this.immediatePresentation,
+          elapsedMs,
+          this.immediatePresentationReady,
+        );
+        this.immediatePresentationReady = true;
+        this.lastImmediatePresentationTimeMs = localServerTimeMs;
+        const immediate = this.immediatePresentation;
         const index = entities.findIndex((entity) => entity.id === this.immediateEntityId);
         if (index >= 0) entities[index] = immediate;
         else entities.push(immediate);
@@ -943,6 +1008,9 @@ export class SnapshotBuffer {
         immediateAuthority.serverTimeMs = latest.serverTimeMs;
         immediateAuthority.ackInputSeq = latest.ackInputSeq;
         decodeEntitySnapshot(raw, immediateAuthority.entity);
+      } else {
+        this.immediatePresentationReady = false;
+        this.lastImmediatePresentationTimeMs = null;
       }
     }
     frame.tick = newer.tick;

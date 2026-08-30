@@ -1241,6 +1241,44 @@ assert.ok(Math.abs(responsiveFrame.entities[0].x - 1) < 0.03,
 assert.ok(Math.abs(responsiveFrame.immediateAuthority.entity.x - 0.5) < 0.03,
   'owned prediction receives the raw authority pose instead of its display extrapolation');
 
+// A packet can correct the last extrapolated pose by several decimeters after
+// contact or jitter. Lightweight clients do not install the browser predictor,
+// so the sampled owned pose itself must release that correction over bounded
+// frames while preserving the raw authority receipt for reconciliation.
+{
+  const corrected = new SnapshotBuffer({
+    interpolationDelayMs: 100,
+    maxExtrapolationMs: 250,
+    immediateEntityId: 'driver',
+  });
+  corrected.push(captureWorldSnapshot({
+    tick: 0,
+    serverTimeMs: 0,
+    entities: [entity('driver', 'm1a2', 'alpha', 0, {
+      yaw: Math.PI / 2,
+      speed: 10,
+    })],
+    viewerId: 'driver',
+  }));
+  corrected.sample(0);
+  const priorX = corrected.sample(48).entities[0].x;
+  corrected.push(captureWorldSnapshot({
+    tick: 3,
+    serverTimeMs: 50,
+    entities: [entity('driver', 'm1a2', 'alpha', 0.75, {
+      yaw: Math.PI / 2,
+      speed: 10,
+    })],
+    viewerId: 'driver',
+  }));
+  const correctedFrame = corrected.sample(50);
+  const stepM = correctedFrame.entities[0].x - priorX;
+  assert.ok(stepM < 0.04,
+    `owned packet correction is released continuously (${stepM.toFixed(3)} m)`);
+  assert.ok(Math.abs(correctedFrame.immediateAuthority.entity.x - 0.75) < 0.03,
+    'correction limiter does not rewrite the raw authority receipt');
+}
+
 const jitter = new SnapshotBuffer({ interpolationDelayMs: 100, maxExtrapolationMs: 250 });
 for (const [tickValue, serverTimeMs] of [[0, 0], [3, 50], [6, 100], [12, 200], [15, 250]]) {
   jitter.push(captureWorldSnapshot({
