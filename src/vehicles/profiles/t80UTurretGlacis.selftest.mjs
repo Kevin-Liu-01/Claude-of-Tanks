@@ -172,6 +172,34 @@ try {
   assert.equal(mantlet.materialBucketMerged, true,
     'mantlet detail remains merged into existing material buckets');
 
+  const cannon = gunRig.userData.t80uCannonScaleReceipt;
+  assert.ok(cannon, 'T-80U exposes its canonical T-80 cannon-scale receipt');
+  assert.equal(cannon.referenceProfile, 't80');
+  assert.equal(cannon.weapon, '2A46M-1');
+  assert.equal(cannon.tubeRadiusM, 0.128);
+  assert.equal(cannon.sleeveRadiusM, 0.130);
+  assert.equal(cannon.seamRadiusM, 0.132);
+  assert.equal(cannon.muzzleZM, 5.67);
+  assert.equal(cannon.boreRadiusM, cannon.tubeRadiusM);
+  assert.equal(cannon.trueCircularTube, true);
+
+  const gun = gunRig.getObjectByName('gun');
+  assert.ok(gun?.isMesh, 'T-80U exposes merged cannon geometry');
+  const gunPosition = gun.geometry.getAttribute('position');
+  let cannonMaxZ = -Infinity;
+  let muzzleRadiusM = 0;
+  for (let index = 0; index < gunPosition.count; index += 1) {
+    const x = gunPosition.getX(index);
+    const y = gunPosition.getY(index);
+    const z = gunPosition.getZ(index);
+    cannonMaxZ = Math.max(cannonMaxZ, z);
+    if (z >= 5.20) muzzleRadiusM = Math.max(muzzleRadiusM, Math.hypot(x, y + 0.054));
+  }
+  assert.ok(Math.abs(cannonMaxZ - cannon.muzzleZM) <= 1e-6,
+    'T-80U cannon reaches the canonical T-80 muzzle station');
+  assert.ok(Math.abs(muzzleRadiusM - cannon.tubeRadiusM) <= 1e-6,
+    'T-80U muzzle segment carries the full canonical T-80 tube radius');
+
   tank.root.updateMatrixWorld(true);
   const gunAxisWorld = gunRig.getWorldPosition(new THREE.Vector3());
   assert.ok(Math.abs(gunRig.position.y - 0.30) < 1e-6,

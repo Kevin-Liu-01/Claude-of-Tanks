@@ -26,7 +26,7 @@ import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT, FITTINGS } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
-import { buildT80CastTurret, domeBoxPlanSeat } from './russia.ts';
+import { buildT80CastTurret, domeBoxPlanSeat, tubeGun } from './russia.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec2Tuple = readonly [number, number];
@@ -2333,7 +2333,7 @@ function buildT80UNative2026(P: MiscBuilderPort): void {
   // First-party runtime geometry only. The local javanilga GLB is a visual
   // and measurement oracle; no source vertices, indices, meshes, materials,
   // rig data or converted payload enter this authored KIT/loft builder.
-  const { box, cylY, cylX, cylZ, frustum, torus, polyLoft, buildGun, buildRunningGear,
+  const { box, cylY, cylX, cylZ, frustum, torus, polyLoft, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, spareTrackStrip, cupola } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
@@ -2981,15 +2981,41 @@ function buildT80UNative2026(P: MiscBuilderPort): void {
     gunOwned: true,
     materialBucketMerged: true,
   };
-  // muzzle at REAR+9.65 (dims sovereign — the print's tube is 1.5% short,
-  // certified; the normalize plan stretches its barrel zone to match).
+  // Match the canonical T-80 2A46M-1 barrel envelope exactly. The former
+  // generic tube was nearly the right length but only 68 mm in radius, so it
+  // read as a light autocannon beside the full-size 128–130 mm T-80 tube.
+  // Keep the T-80U rocking mask and asymmetric clamp, but share the reference
+  // tube staging, seams, and muzzle station.
+  const cannonTubeRadiusM = 0.128;
+  const cannonSleeveRadiusM = 0.130;
+  const cannonSeamRadiusM = 0.132;
+  const cannonMuzzleZM = 5.67;
   // Right-offset sleeve clamp = the print's asymmetric evac-zone bulge
   // (plan col +0.18 to z 4.09).
   P.addGunExtraDark(cylZ(0.05, 0.50, 8), 0.16, 0.02, 3.15);
-  // (r3e fat root-sleeve segment REMOVED — the gun renders into the turret
-  // row and the 0.115 band at z 2.6-3.2 moved that row's registration)
-  buildGun(P, { len: 5.51, r: 0.068, sleeve: true, evac: 0.47, evacR: 1.45, collar: false, baseR: 0.15 });
-  muzzleBore(P, 0.068, 5.49);                                                  // §B3.1 muzzle bore (shadow-named)
+  tubeGun(P, [
+    [0.55, 2.03, cannonTubeRadiusM, cannonTubeRadiusM, 0, -0.040],
+    [2.03, 2.78, cannonSleeveRadiusM, cannonSleeveRadiusM, 0, -0.048],
+    [2.78, cannonMuzzleZM, cannonTubeRadiusM, cannonTubeRadiusM, 0, -0.054],
+  ], {
+    rings: [
+      [3.60, cannonSeamRadiusM, 0, -0.054],
+      [4.40, cannonSeamRadiusM, 0, -0.054],
+      [5.10, cannonSeamRadiusM, 0, -0.054],
+    ],
+    muzzle: cannonMuzzleZM,
+  });
+  muzzleBore(P, cannonTubeRadiusM, cannonMuzzleZM);                             // §B3.1 muzzle bore (shadow-named)
+  P.gunG.userData.t80uCannonScaleReceipt = Object.freeze({
+    referenceProfile: 't80',
+    weapon: '2A46M-1',
+    tubeRadiusM: cannonTubeRadiusM,
+    sleeveRadiusM: cannonSleeveRadiusM,
+    seamRadiusM: cannonSeamRadiusM,
+    muzzleZM: cannonMuzzleZM,
+    boreRadiusM: cannonTubeRadiusM,
+    trueCircularTube: true,
+  });
   P.topY = 1.15;
 }
 
