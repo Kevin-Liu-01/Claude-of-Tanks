@@ -1,15 +1,12 @@
 import { Vector3, type Object3D } from 'three';
-import { createCombatState } from '../sim/damage.ts';
+import { createCombatState, type CombatState } from '../sim/damage.ts';
 import { createTankState, shotRecoilScale } from '../sim/movement.ts';
 import type {
-  MovementArmorSpec,
-  MovementCombatState,
   MovementContactGeometry,
-  MovementGunSpec,
   MovementHeightField,
-  MovementSpec,
 } from '../sim/movement.ts';
 import { getSpec } from '../vehicles/specs.ts';
+import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { prebakeSharedTextures } from '../vehicles/materials.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
@@ -34,46 +31,16 @@ import type {
   PredictionTankState,
 } from './localTankPrediction.ts';
 import { createSpecialActionState } from '../sim/specialActions.ts';
+import type { SpecialActionState } from '../sim/specialActionPolicy.ts';
 
 type Unsubscribe = () => void;
 type Team = string | null;
 
-interface ShellSpec extends Record<string, unknown> {
-  velocityMps: number;
-  name?: string;
-  type?: string;
-  soundProfile?: string;
-  guided?: boolean;
-  reloadS?: number;
-}
-
-interface TankSpec extends MovementSpec, Record<string, unknown> {
-  id: string;
-  name?: string;
-  armor?: MovementArmorSpec;
-  gun: MovementGunSpec & {
-    shells?: ShellSpec[];
-    soundProfile?: string;
-  };
-}
+type TankSpec = FleetTankSpec;
 
 type BridgeTankState = PredictionTankState;
-
-interface BridgeCombatState extends MovementCombatState {
-  hp: number;
-  maxHp: number;
-  destroyed: boolean;
-  shellSlot: number;
-  reload: { t: number; totalS: number; kind: string };
-  magazine: { rounds: number; capacity: number } | null;
-  fire: { burning: boolean };
-}
-
-interface BridgeSpecialActionState {
-  kind?: string;
-  active: boolean;
-  pendingFire: boolean;
-}
+type BridgeCombatState = CombatState;
+type BridgeSpecialActionState = SpecialActionState;
 
 interface TankVisual {
   root: Object3D;
@@ -264,7 +231,11 @@ interface BridgeEvent extends PresentationEvent {
 type CreateTankVisual = (
   specId: string,
   engineCtx: EngineContext,
-  options: { camoSeed: number; camoPattern: string; quality: string },
+  options: {
+    camoSeed: number;
+    camoPattern: string;
+    quality: 'high' | 'ai' | 'low' | 'preview';
+  },
 ) => TankVisual;
 
 type PrepareVisualTextures = (
@@ -309,16 +280,13 @@ export interface BrowserBattleBridge {
   dispose(): void;
 }
 
-const readSpec = getSpec as unknown as (id: string) => TankSpec;
+const readSpec = getSpec;
 const makeTankState = createTankState;
-const makeCombatState = createCombatState as unknown as (spec: TankSpec) => BridgeCombatState;
+const makeCombatState = createCombatState;
 const makeSpecialActionState = createSpecialActionState;
-const defaultCreateTankVisual = createTank as unknown as CreateTankVisual;
-const defaultPrepareVisualTextures = prebakeSharedTextures as unknown as PrepareVisualTextures;
-const recoilScale = shotRecoilScale as unknown as (
-  spec: TankSpec,
-  shell: ShellSpec | null,
-) => number;
+const defaultCreateTankVisual: CreateTankVisual = createTank;
+const defaultPrepareVisualTextures: PrepareVisualTextures = prebakeSharedTextures;
+const recoilScale = shotRecoilScale;
 
 const POS_SCALE = 100;
 const VEL_SCALE = 100;
@@ -396,7 +364,7 @@ export function createBrowserBattleBridge<
     outPush: Vector3,
   ): boolean {
     outPush.set(0, 0, 0);
-    const contactRect = tankContactRect(entity.spec as unknown as TankSpec);
+    const contactRect = tankContactRect(entity.spec);
     const halfL = contactRect.halfLength;
     const halfW = contactRect.halfWidth;
     const yaw = entity.state.yaw;
