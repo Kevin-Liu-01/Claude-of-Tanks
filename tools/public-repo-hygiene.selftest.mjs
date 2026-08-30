@@ -13,6 +13,7 @@ const forbidden = tracked.filter((file) => (
   /^public\/media\/.*\.gif$/i.test(file) ||
   /^docs\/(?:model-quality-report|procedural-fidelity-report|perf-after|perf-trend)(?:\.|$)/i.test(file) ||
   /^docs\/(?:DEVELOPMENT-EVOLUTION|IMPROVEMENT-PROGRAM|MOBILE-QA|native-fleet-restoration)(?:[-_.]|$)/i.test(file) ||
+  /^docs\/decisions\//i.test(file) ||
   /(?:^|\/)(?:node_modules|dist|\.qa-dev|\.qa-device)(?:\/|$)/.test(file)
 ));
 assert.deepEqual(forbidden, [],

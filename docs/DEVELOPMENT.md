@@ -93,9 +93,10 @@ are strict TypeScript. `allowJs` is disabled, so a JavaScript application module
 cannot silently re-enter the checked graph. The migration remains
 ownership-based: extract one coherent owner, define its public contract, add a
 focused self-test, and preserve behavior before widening the boundary. Do not
-rename a large file and suppress checking. The durable policy and completed
-owner sequence are recorded in `docs/decisions/0001-incremental-typescript.md`;
-ADR 0298 records the terminal checked boundary.
+rename a large file and suppress checking. The durable migration policy and
+terminal checked boundary are recorded in `docs/DECISIONS.md`; completed
+per-file migration receipts remain available in Git history instead of the
+public documentation tree.
 
 Node CLI, generator, and self-test entrypoints intentionally retain `.mjs`
 where they are executable harnesses rather than shipped application modules.

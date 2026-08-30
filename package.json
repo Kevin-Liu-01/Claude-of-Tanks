@@ -2,11 +2,7 @@
   "name": "claude-of-tanks",
   "private": true,
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
+  "description": "A browser-native Three.js armored combat simulator with plate-level armor, first-party procedural vehicles, destructible battlefields, and persistent multiplayer.",
   "scripts": {
     "agent-docs": "node scripts/run-agent-docs.ts",
     "fx:textures:bake": "node tools/bake-fx-textures.mjs",
@@ -93,7 +89,13 @@
     "test:net:render": "node tools/multiplayer-render-perf.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "keywords": [],
+  "keywords": [
+    "threejs",
+    "browser-game",
+    "tank-simulator",
+    "multiplayer",
+    "typescript"
+  ],
   "author": "Kevin B. Liu",
   "license": "SEE LICENSE IN LICENSE-POLICY.md",
   "type": "module",

@@ -1,0 +1,144 @@
+# Architecture decisions
+
+This file records the small set of decisions that still constrain the current
+game. It replaces the former directory of per-file migration receipts. Those
+receipts described completed work, not alternative designs; Git history keeps
+them available without making contributors read hundreds of obsolete steps.
+
+Current behavior is defined by `SYSTEMS.md`, `MULTIPLAYER-ARCHITECTURE.md`,
+`PERFORMANCE.md`, `GAME-MODES.md`, and the source code. Add an entry here only
+when future work must preserve a non-obvious choice or deliberately reverse it.
+
+## Product scope
+
+Claude of Tanks is a first-party browser armored-combat game, not a loader for
+third-party playable models. Every playable vehicle is procedural runtime
+geometry owned by this repository. Comparison meshes may support authoring and
+review, but public builds and gameplay do not load them.
+
+Multicrew is not a planned mode. One player owns one vehicle input seat. New
+multiplayer work should improve rooms, teams, objective modes, persistence,
+prediction, authority, and reliability without introducing multiple player
+roles inside one tank.
+
+## Checked application graph
+
+The shipped application, server, API, middleware, Vite configuration, and
+browser tooling are strict TypeScript. `allowJs` is disabled. `.mjs` is retained
+only for Node command, generator, and self-test entrypoints around checked
+owners. New runtime JavaScript, type suppressions, and unchecked compatibility
+facades are not acceptable substitutes for defining a real interface.
+
+The composition root declares construction order and connects capabilities. A
+phase-owned state machine belongs in a focused module with a narrow port and a
+Node-runnable self-test. Renderer-free simulation and network authority must
+not import browser or Three.js presentation state.
+
+## Fixed-step authority
+
+Movement, ballistics, armor, damage, ERA, spotting, bots, match modes, and
+results advance on a deterministic 60 Hz authority clock. Rendering is
+variable-rate presentation. Randomness is seeded or injected, and clients never
+decide hits, damage, reload completion, hidden-enemy disclosure, or match
+results.
+
+Solo, browser-hosted private/LAN rooms, and dedicated matches share the same
+headless combat rules. Player identity is separate from vehicle identity, so
+duplicate tank selections remain valid.
+
+## Loading and resource ownership
+
+Garage readiness does not require a battlefield, solo-authority graph, combat
+effects graph, complete fleet, or multiplayer presentation graph. Battle intent
+may transfer exact dependencies, but construction of heavy visible resources
+belongs behind the covered loading transition.
+
+Visible work yields within a small frame budget. Work under an opaque loader
+uses cooperative task yields and guarantees periodic real paints. Slow progress
+is not treated as failure; failed imports and graphics-context loss remain
+retryable without a refresh loop. Public first-visit performance is measured in
+multiple cache-disabled sessions under constrained network and CPU conditions.
+
+Fleet acquisition is exact-family demand loading. Regional bundle modules and
+playable GLB fallbacks are retired. Inactive Garage, world, battle, and Studio
+resources have explicit residency limits and phase-scoped disposal.
+
+## World and Garage lifecycle
+
+`worldBuildCoordinator.ts` owns transfer, chunked construction, cancellation,
+cache limits, and eviction. `worldActivationRuntime.ts` exclusively owns the
+active world, atmosphere, collider/minimap readiness, covered GPU warming, and
+dormancy. Callers use that interface instead of retaining parallel map state.
+
+The Garage and battlefield have exclusive scene residency. The Garage sleeps
+its frame clock after presentation settles and invalidates it only on actual
+activity. Open Garage variants use bounded map-derived staging cuts; they never
+build or retain a complete battlefield.
+
+## Rendering and shadows
+
+Quality changes presentation cost, never game rules. Static geometry may be
+batched or instanced only when appearance, ownership, transforms, and disposal
+remain equivalent. Visible vehicle silhouette and authored detail are preserved;
+triangle reduction is acceptable only when visual comparison proves parity.
+
+Cascaded shadow projection and its depth map are updated atomically. Near
+cascades remain continuous; rate-capped far cascades apply a snapped light pose
+only on the frame that renders its matching depth. Bias scales with physical
+texel size. Temporal ambient occlusion rejects disoccluded depth history so
+trees, structures, and overlapping geometry cannot flash stale darkness.
+
+## Aiming and vehicle presentation
+
+The screen aim request, camera reticle, turret solution, and physical gun bore
+share one typed controller. Traverse, elevation, and depression limits constrain
+the solution; multiplayer presentation consumes the same requested aim as solo
+instead of inventing a second camera-relative target.
+
+Turret, gun, recoil, wheels, track links, suspension, modules, crew, armor, and
+ERA have explicit articulation owners. Track geometry conforms to terrain while
+authority preserves rigid-body airborne motion, rollover, stacking, and contact.
+ERA is consumed once by authority and its matching tile presents a destructive
+activation effect.
+
+## Multiplayer connectivity and persistence
+
+Private internet rooms use same-origin durable signaling plus direct ICE with
+TURN fallback. STUN-only operation is degraded service, not proof that arbitrary
+friends can connect. TURN credentials are short-lived and issued from server
+secrets; long-lived relay credentials never ship to browsers. LAN rooms avoid
+internet ICE services.
+
+Room membership survives transient transport loss and page reload. A stable
+player ID reclaims its seat through a new page-session and RTC generation;
+rooms retain their lobby through results and rematches. Reload during a live
+round restores the same protocol epoch when authority already welcomed the new
+transport.
+
+Signaling delivery is replayable, duplicate SDP is idempotent, data lanes and
+ICE generations are replaceable, and recovery is bounded. Snapshot clocks slew
+toward new offset estimates instead of jumping. Local prediction replays shared
+movement rules and applies bounded role-aware correction; remote presentation
+interpolates without revealing hidden state.
+
+## Public repository evidence
+
+Tracked tests are release contracts and must be registered in the ordered test
+inventory. Generated audits, traces, screenshots, task notes, and agent handoffs
+belong in ignored QA directories or external artifacts. Repository-level and
+subsystem skill documents are retained only when indexed and when they define a
+real ownership boundary.
+
+Maintain one current document per subject. Raw benchmark runs and completed
+migration narration belong in Git history; current docs state the invariant,
+the reproduction command, and the evidence required to change it.
+
+## Required proof
+
+Every architectural change runs the nearest focused self-test, strict
+typechecking, the ordered test suite, and the relevant public/private build.
+Rendering work also needs current browser evidence and resource/performance
+gates. Multiplayer claims require pristine browser contexts, impaired delivery,
+disconnect/reload recovery, a complete match, and production TURN verification
+when restrictive-NAT connectivity is claimed.
+

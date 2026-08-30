@@ -108,6 +108,7 @@ worktree and never stage generated tank work wholesale.
   them; spotting filters snapshots before serialization.
 - Never make a client authoritative for hits, damage, reloads, or match result.
 - Do not import full fleet builders into a new boot-critical module.
+- Do not add multicrew roles or multiple player seats inside one vehicle.
 
 ## Extending this project's agent system
 <!-- agent-docs:fill:extending -->

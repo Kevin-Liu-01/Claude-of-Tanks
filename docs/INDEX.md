@@ -19,7 +19,7 @@ GEOMETRY-GATE.md own vehicle-authoring acceptance.
 | GAME-MODES.md | Players and engineers | Standard, flag, zone, Turbo Ball, and Horde rules, authority, presentation, and tests |
 | SYSTEMS.md | Engineers | Current subsystem ownership, data flow, lifecycle, and invariants |
 | DEVELOPMENT.md | Engineers and release owners | Local setup, services, test matrix, tools, and release procedure |
-| decisions/ | Contributors | Architecture decisions and migration constraints |
+| DECISIONS.md | Contributors | Current architecture decisions, non-goals, and proof requirements |
 
 The public browser field manual is available at
 https://cot.kevinliu.studio/docs and is sourced from ../docs.html.
@@ -97,7 +97,7 @@ benchmarks, and superseded program ledgers are intentionally excluded.
 | DESIGN.md | Tank-generation program architecture |
 | LESSONS.md | Incidents that informed vehicle build law |
 | POSTMORTEM-RUNNING-GEAR-REGRESSION-2026-08-13.md | Running-gear incident record |
-| decisions/ | Durable implementation choices and migration constraints |
+| DECISIONS.md | Maintained implementation choices and migration constraints |
 
 Historical counts and architecture claims may differ from the current runtime.
 
@@ -140,8 +140,9 @@ When behavior changes:
 3. Update docs.html if the public technical reference changed, and GALLERY.md
    when the Tank Gallery contract changed.
 4. Update the source-level module comment when ownership or invariants changed.
-5. Record a durable architecture choice in `decisions/`; keep raw run output in
-   `.qa-*` or external artifacts rather than adding a new handoff document.
+5. Record only a durable, still-binding architecture choice in `DECISIONS.md`;
+   keep migration narration and raw run output in Git history, `.qa-*`, or
+   external artifacts.
 6. Verify every relative link and referenced path.
 
 Machine-generated audits, performance trends, traces, screenshots, and critic

@@ -13,7 +13,8 @@ fidelity, smooth low-end performance, and reproducible visual/test evidence.
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
 `src/main.ts` is the shrinking composition root; extracted lifecycle owners
-are strict TypeScript modules documented in `docs/SYSTEMS.md` and the ADRs.
+are strict TypeScript modules documented in `docs/SYSTEMS.md` and
+`docs/DECISIONS.md`.
 `src/game/state.ts` owns solo integration, `src/sim/` owns gameplay
 truth, `src/net/` owns transport-independent multiplayer, and `tools/` contains
 performance, fleet, screenshot, and release gates. Start with `docs/SYSTEMS.md`
