@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { MapSkyConfig } from '../world/maps/horizon.ts';
 
 import {
   createRetainedPhaseGpuResidency,
@@ -9,11 +10,7 @@ import {
   type PhaseSceneResidency,
 } from '../engine/phaseSceneResidency.ts';
 
-export interface GarageSkyConfig {
-  sunColorHex?: number;
-  sunIntensity?: number;
-  [key: string]: unknown;
-}
+export type GarageSkyConfig = MapSkyConfig;
 
 interface GarageLightingPort {
   setFarCascadeDormant(dormant: boolean): void;

@@ -93,7 +93,8 @@ const runtime = createSoloBattleLoadingRuntime({
   },
   lifecycle: { primeReveal: async () => { events.push('reveal:fallback'); } },
   getPendingMapId: () => 'random',
-  getMapConfig: () => ({
+  getMapName: () => 'Verdant Fields',
+  loadMapConfig: async () => ({
     name: 'Verdant Fields',
     props: { tankWrecks: { ids: ['wreck'] } },
   }),

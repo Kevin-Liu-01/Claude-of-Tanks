@@ -3,6 +3,8 @@
 // hardcoded map exactly: every field left undefined falls back to the
 // defaults baked into terrain/vegetation/props.
 
+import { DEFAULT_GARAGE_SKY } from './catalog.ts';
+
 export default {
   id: 'verdant',
   name: 'Verdant Fields',
@@ -146,13 +148,7 @@ export default {
     forestHex: 0x33502e, rockHex: 0x77725f, haze: 0.95, grain: 0.7,
   },
 
-  sky: {
-    sunElevationDeg: 32, sunAzimuthDeg: 115,
-    turbidity: 4, rayleigh: 1.2, mieCoefficient: 0.006, mieDirectionalG: 0.82,
-    fogDensity: 0.00074, fogTintHex: 0x7e97b8, fogMix: 0.55, envIntensity: 0.2,
-    cloudOpacity: 1.0, cloudOpacity2: 0.6, cloudTintHex: 0xffffff,
-    sunIntensity: 4.5, sunColorHex: 0xfff1dc, hemiIntensity: 0.32,
-  },
+  sky: DEFAULT_GARAGE_SKY,
 
   minimap: {
     base: [70, 94, 52], hard: [104, 96, 78], soft: [48, 70, 54],

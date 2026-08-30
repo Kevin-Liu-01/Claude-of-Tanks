@@ -100,7 +100,8 @@ export interface SoloBattleLoadingRuntimeOptions {
   deployment: DeploymentPort;
   lifecycle: EntryLifecyclePort;
   getPendingMapId(): string;
-  getMapConfig(mapId: string): BattlefieldMapConfig;
+  getMapName(mapId: string): string;
+  loadMapConfig(mapId: string): Promise<BattlefieldMapConfig>;
   getMapThumb(mapId: string): string;
   hasCachedWorld(mapId: string): boolean;
   getWorld(): WorldRuntime;
@@ -191,7 +192,8 @@ export function createSoloBattleLoadingRuntime({
   deployment,
   lifecycle,
   getPendingMapId,
-  getMapConfig,
+  getMapName,
+  loadMapConfig,
   getMapThumb,
   hasCachedWorld,
   getWorld,
@@ -235,7 +237,7 @@ export function createSoloBattleLoadingRuntime({
     battleIntent?.prepareRoster, battleLoad?.show, battleLoad?.progress,
     battleLoad?.rosters, battleLoad?.hide, audio?.resume, audio?.loadingOn,
     audio?.ambientOn, audio?.warmBattleEvents, acquisition?.acquireSolo,
-    deployment?.warm, lifecycle?.primeReveal, getPendingMapId, getMapConfig,
+    deployment?.warm, lifecycle?.primeReveal, getPendingMapId, getMapName, loadMapConfig,
     getMapThumb, hasCachedWorld, getWorld, ensureWorld, ensureBattleVisuals,
     getBattleVisuals, ensureBattleHud, preloadMinimap, ensureTouchControls, preloadSettings,
     preloadArmorAim, planRoster, planCamoOverrides, ensureTankBuilders,
@@ -265,7 +267,8 @@ export function createSoloBattleLoadingRuntime({
       const requestedMapId = mapId || getPendingMapId();
       const normalizedGameMode = normalizeGameMode(gameMode);
       const resolved = battleIntent.consumeMap(specId, requestedMapId);
-      const config = getMapConfig(resolved);
+      const mapName = getMapName(resolved);
+      const mapConfigPromise = loadMapConfig(resolved);
       const trace: BattleLoadTrace = {
         map: resolved,
         worldCached: hasCachedWorld(resolved),
@@ -279,7 +282,7 @@ export function createSoloBattleLoadingRuntime({
       };
 
       battleLoad.show({
-        mapName: config.name || resolved,
+        mapName: mapName || resolved,
         thumb: getMapThumb(resolved),
         biome: resolved,
         mode: normalizedGameMode === 'standard'
@@ -313,9 +316,6 @@ export function createSoloBattleLoadingRuntime({
         autoCamoIds: plannedAutoCamoIds,
         yieldForBudget: loadYield,
       });
-      const tankWrecks = config.props?.tankWrecks;
-      const plannedWorldVehicles = tankWrecks && 'ids' in tankWrecks &&
-        Array.isArray(tankWrecks.ids) ? tankWrecks.ids : [];
       const fxTexture = ensureFx().then(async (live) => {
         await live.preloadTextures?.();
         live.warmTextures?.();
@@ -333,7 +333,13 @@ export function createSoloBattleLoadingRuntime({
           (fraction, label) => battleLoad.progress(0.02 + fraction * 0.53, label),
           { precompile: false, services: false },
         ),
-        () => ensureTankBuilders([...plannedRoster, ...plannedWorldVehicles]),
+        async () => {
+          const mapConfig = await mapConfigPromise;
+          const tankWrecks = mapConfig.props?.tankWrecks;
+          const plannedWorldVehicles = tankWrecks && 'ids' in tankWrecks &&
+            Array.isArray(tankWrecks.ids) ? tankWrecks.ids : [];
+          return ensureTankBuilders([...plannedRoster, ...plannedWorldVehicles]);
+        },
         () => preloadSoloAuthority(),
         () => preloadBattleClient(),
         () => preloadBattleWarm(),

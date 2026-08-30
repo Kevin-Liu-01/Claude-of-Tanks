@@ -336,6 +336,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/killcamAccess.selftest.mjs',
     'src/world/propGeometry.selftest.mjs',
     'src/world/randomBattleMaps.selftest.mjs',
+    'src/world/mapCatalog.selftest.mjs',
     'src/world/mapQuality.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
     'src/world/structureKit.selftest.mjs',

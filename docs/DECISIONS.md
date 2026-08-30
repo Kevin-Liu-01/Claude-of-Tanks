@@ -75,6 +75,13 @@ playable GLB fallbacks are retired. Inactive Garage, world, battle, Studio, and
 combat-effects resources have explicit residency limits and phase-scoped
 disposal. The reusable FX pool detaches and releases renewable GPU allocations
 outside Battle or Studio, then restores behind the next covered warm.
+
+Garage boot imports only the lightweight battlefield catalog: stable ids,
+display names, and the exact neutral fallback sky. Full battlefield configs are
+loaded behind explicit battle or outdoor-Garage intent. The synchronous full
+registry remains available to headless and authoring consumers, but it must not
+re-enter the initial browser graph merely to label a picker.
+
 Desktop boot does not transfer touch-control or mobile-auto-aim chunks. One
 retryable mobile input access owner joins both dependencies only after a touch
 battle entry and retains the active lock and sound-toggle state outside the

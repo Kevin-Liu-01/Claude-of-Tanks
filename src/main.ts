@@ -73,7 +73,12 @@ import { warmGarageGpuPipeline } from './engine/garageGpuWarmRuntime.ts';
 import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
-import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.ts';
+import {
+  DEFAULT_GARAGE_SKY,
+  MAP_IDS,
+  getMapName,
+  resolveMapId,
+} from './world/maps/catalog.ts';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
 import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';
 import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
@@ -638,7 +643,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   sunDirection: sky.sunDir,
   getSkyConfig: () => {
     const world = currentWorld();
-    return world ? world.config.sky : getMapConfig(worldRuntime.pendingMapId).sky;
+    return world ? world.config.sky : DEFAULT_GARAGE_SKY;
   },
   getGroundHeight: (x, z) => hfProxy.getHeightAt(x, z),
   getPhase: () => game.phase,
@@ -869,10 +874,12 @@ await bootStage('hud');
 
 const garageMaps = [
   { id: 'random', name: 'Random', thumb: '', hero: '' },
-  ...MAP_IDS.map((id) => {
-    const c = getMapConfig(id);
-    return { id, name: c.name, thumb: MAP_THUMBS[id] || '', hero: MAP_HEROES[id] || '' };
-  }),
+  ...MAP_IDS.map((id) => ({
+    id,
+    name: getMapName(id),
+    thumb: MAP_THUMBS[id] || '',
+    hero: MAP_HEROES[id] || '',
+  })),
 ];
 let networkRoomCoordinator: NetworkRoomCoordinator | null = null;
 const {
@@ -1623,7 +1630,9 @@ const soloBattleLoading = createSoloBattleLoadingRuntime({
   deployment: soloBattleDeployment,
   lifecycle: battleEntryLifecycle,
   getPendingMapId: () => worldRuntime.pendingMapId,
-  getMapConfig,
+  getMapName,
+  loadMapConfig: (mapId: string) => import('./world/maps/index.ts')
+    .then(({ getMapConfig }) => getMapConfig(mapId)),
   getMapThumb: (mapId: string) => mapHeroes[mapId] || mapThumbs[mapId] || '',
   hasCachedWorld: (mapId: string) => !!worldCache.get(mapId),
   getWorld: () => {
@@ -1719,9 +1728,8 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
     },
     roster: {
       getMap: (mapId: string) => {
-        const cfg = getMapConfig(mapId);
         return {
-          name: cfg.name || mapId,
+          name: getMapName(mapId),
           thumb: mapHeroes[mapId] || mapThumbs[mapId] || '',
           biome: mapId,
         };
@@ -1839,9 +1847,8 @@ networkBattleLauncher = createNetworkBattleLaunchRuntime({
   getWorldCollision: currentWorld,
   getMapPresentation: (mapId: string | null, fallback: string) => {
     if (!mapId) return { name: fallback, thumb: '', biome: 'none' };
-    const cfg = getMapConfig(mapId);
     return {
-      name: cfg.name || fallback,
+      name: getMapName(mapId) || fallback,
       thumb: mapHeroes[mapId] || mapThumbs[mapId] || '',
       biome: mapId,
     };
