@@ -1,7 +1,11 @@
 import { MAX_PLAYERS, MAX_SPECTATORS, normalizeRoomCode } from './protocol.ts';
 import { normalizePlayerName, uniquePlayerName } from './playerNames.ts';
 import { networkCamoId } from '../vehicles/camoPolicy.ts';
-import { normalizeGameMode, type GameModeId } from '../sim/matchModes.ts';
+import {
+  GAME_MODE_IDS,
+  normalizeGameMode,
+  type GameModeId,
+} from '../sim/matchModes.ts';
 
 export const LOBBY_PHASES = {
   WAITING: 'waiting',
@@ -62,6 +66,108 @@ export interface SerializedLobby extends Omit<LobbyState, 'players' | 'updatedAt
   players: LobbyPlayer[];
 }
 
+const LOBBY_PHASE_SET = new Set<string>(Object.values(LOBBY_PHASES));
+const LOBBY_TEAM_SET = new Set<string>(Object.values(LOBBY_TEAMS));
+const GAME_MODE_SET = new Set<string>(GAME_MODE_IDS);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isSafeUnsigned(value: unknown): value is number {
+  return Number.isSafeInteger(value) && Number(value) >= 0;
+}
+
+function isLobbyPhase(value: unknown): value is LobbyPhase {
+  return typeof value === 'string' && LOBBY_PHASE_SET.has(value);
+}
+
+function isSerializedLobbyTeam(value: unknown): value is LobbyTeam {
+  return typeof value === 'string' && LOBBY_TEAM_SET.has(value);
+}
+
+function isGameMode(value: unknown): value is GameModeId {
+  return typeof value === 'string' && GAME_MODE_SET.has(value);
+}
+
+function isSerializedLobbyPlayer(value: unknown): value is LobbyPlayer {
+  if (!isRecord(value)) return false;
+  return typeof value.id === 'string' && value.id.length > 0 &&
+    typeof value.name === 'string' && value.name.length > 0 &&
+    isSerializedLobbyTeam(value.team) &&
+    (value.specId === null || typeof value.specId === 'string') &&
+    Array.isArray(value.equipment) && value.equipment.every(
+      (entry) => typeof entry === 'string',
+    ) &&
+    typeof value.camo === 'string' &&
+    typeof value.ready === 'boolean' &&
+    typeof value.connected === 'boolean' &&
+    typeof value.isHost === 'boolean' &&
+    (value.rating === null || Number.isFinite(value.rating));
+}
+
+function isLobbyResult(value: unknown): value is LobbyResult | null {
+  if (value === null) return true;
+  if (!isRecord(value)) return false;
+  return isSafeUnsigned(value.round) &&
+    (value.result === null || typeof value.result === 'string') &&
+    (value.reason === null || typeof value.reason === 'string');
+}
+
+function invalidLobbyState(message: string): Error & { code: string } {
+  return Object.assign(new Error(message), { code: 'invalid_lobby_state' });
+}
+
+/** Validate a complete lobby snapshot before it reaches UI or match state. */
+export function readSerializedLobby(value: unknown): SerializedLobby {
+  if (!isRecord(value)) throw invalidLobbyState('lobby state must be an object');
+  const players = value.players;
+  if (typeof value.roomCode !== 'string' || value.roomCode.length !== 6 ||
+      typeof value.mode !== 'string' ||
+      !isGameMode(value.gameMode) ||
+      !isLobbyPhase(value.phase) ||
+      typeof value.hostId !== 'string' || value.hostId.length === 0 ||
+      !isSafeUnsigned(value.maxPlayers) ||
+      !isSafeUnsigned(value.maxSpectators) ||
+      typeof value.allowTeamSwitch !== 'boolean' ||
+      typeof value.locked !== 'boolean' ||
+      typeof value.mapId !== 'string' ||
+      !Number.isSafeInteger(value.teamSize) || Number(value.teamSize) < 1 ||
+      Number(value.teamSize) > 7 ||
+      !isSafeUnsigned(value.revision) ||
+      !isSafeUnsigned(value.round) ||
+      !Array.isArray(players) || !players.every(isSerializedLobbyPlayer)) {
+    throw invalidLobbyState('lobby state contains invalid fields');
+  }
+  const matchSeed = value.matchSeed;
+  const lastResult = value.lastResult;
+  if ((matchSeed !== null && !isSafeUnsigned(matchSeed)) || !isLobbyResult(lastResult)) {
+    throw invalidLobbyState('lobby state contains invalid fields');
+  }
+  const ids = new Set(players.map((player) => player.id));
+  if (ids.size !== players.length || !ids.has(value.hostId)) {
+    throw invalidLobbyState('lobby state contains invalid player identity');
+  }
+  return {
+    roomCode: value.roomCode,
+    mode: value.mode,
+    gameMode: value.gameMode,
+    phase: value.phase,
+    hostId: value.hostId,
+    maxPlayers: value.maxPlayers,
+    maxSpectators: value.maxSpectators,
+    allowTeamSwitch: value.allowTeamSwitch,
+    locked: value.locked,
+    mapId: value.mapId,
+    teamSize: Number(value.teamSize),
+    revision: value.revision,
+    matchSeed,
+    round: value.round,
+    lastResult,
+    players,
+  };
+}
+
 interface LobbyPlayerInput {
   id?: unknown;
   name?: unknown;
@@ -120,17 +226,14 @@ export interface FinishLobbyRoundOptions {
   reason?: unknown;
 }
 
-const normalizeName = normalizePlayerName as unknown as (value: unknown) => string;
-const allocateUniqueName = uniquePlayerName as unknown as (
-  requested: string,
-  existingNames: string[],
-) => string;
-const normalizeCamo = networkCamoId as unknown as (value: string) => string;
+const normalizeName = normalizePlayerName;
+const allocateUniqueName = uniquePlayerName;
+const normalizeCamo = networkCamoId;
 
-const TEAM_SET = new Set<LobbyTeam>(Object.values(LOBBY_TEAMS));
+const TEAM_SET = new Set<string>(Object.values(LOBBY_TEAMS));
 
 function isLobbyTeam(value: unknown): value is LobbyTeam {
-  return typeof value === 'string' && TEAM_SET.has(value as LobbyTeam);
+  return typeof value === 'string' && TEAM_SET.has(value);
 }
 
 export class LobbyError extends Error {
@@ -422,10 +525,10 @@ export function applyLobbyCommand(
   assertWaiting(lobby);
   const id = cleanId(playerId);
   const player = requirePlayer(lobby, id);
-  if (!rawCommand || typeof rawCommand !== 'object') {
+  if (!isRecord(rawCommand)) {
     throw new LobbyError('invalid_command', 'lobby command must be an object');
   }
-  const command = rawCommand as LobbyCommand;
+  const command: LobbyCommand = rawCommand;
 
   switch (command.type) {
     case 'set_name':

@@ -25,6 +25,10 @@ import {
   RtcIceLease,
   type RtcIceLeaseConfiguration,
 } from './rtcIceLease.ts';
+import {
+  RoomSignalingClient,
+  type SignalingEvent,
+} from './signalingClient.ts';
 
 type Unsubscribe = () => void;
 type RoomCommand = Record<string, unknown>;
@@ -62,18 +66,10 @@ interface SignalPayload extends Partial<RoomPeer> {
   peers?: RoomPeer[];
 }
 
-interface SignalingEvent {
-  type: string;
-  payload?: SignalPayload;
-}
-
-interface SignalingPort {
-  onEvent(listener: (message: SignalingEvent) => void): Unsubscribe;
-  sendSignal(peerId: string, signal: RtcSignal, toSessionId: string): unknown;
-  restartRoomSession(reason: string): Promise<unknown>;
-  setEventPollInterval?(intervalMs: number): void;
-  close(reason: string): void;
-}
+type SignalingPort = Pick<
+  RoomSignalingClient,
+  'onEvent' | 'sendSignal' | 'restartRoomSession' | 'setEventPollInterval' | 'close'
+>;
 
 type RoomState = MatchRoomState;
 
@@ -156,6 +152,79 @@ export interface PrivateRoomClientOptions {
   failedRebuildDelayMs?: number;
   connectTimeoutMs?: number;
   initialRebuildDelaysMs?: number[];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readRtcSignal(value: unknown): RtcSignal | undefined {
+  if (!isRecord(value)) return undefined;
+  if (value.kind === 'restart') return { kind: 'restart' };
+  if (value.kind === 'ice' && isRecord(value.candidate)) {
+    const raw = value.candidate;
+    const candidate: RTCIceCandidateInit = {};
+    if (typeof raw.candidate === 'string') candidate.candidate = raw.candidate;
+    if (typeof raw.sdpMid === 'string' || raw.sdpMid === null) candidate.sdpMid = raw.sdpMid;
+    if (typeof raw.sdpMLineIndex === 'number' && Number.isInteger(raw.sdpMLineIndex)) {
+      candidate.sdpMLineIndex = raw.sdpMLineIndex;
+    } else if (raw.sdpMLineIndex === null) candidate.sdpMLineIndex = null;
+    if (typeof raw.usernameFragment === 'string' || raw.usernameFragment === null) {
+      candidate.usernameFragment = raw.usernameFragment;
+    }
+    return { kind: 'ice', candidate };
+  }
+  if (value.kind === 'description' && isRecord(value.description)) {
+    const raw = value.description;
+    if (raw.type !== 'answer' && raw.type !== 'offer' && raw.type !== 'pranswer' &&
+        raw.type !== 'rollback') return undefined;
+    if (raw.sdp !== undefined && typeof raw.sdp !== 'string') return undefined;
+    return {
+      kind: 'description',
+      description: { type: raw.type, ...(raw.sdp === undefined ? {} : { sdp: raw.sdp }) },
+    };
+  }
+  return undefined;
+}
+
+function readRoomPeer(value: unknown): RoomPeer | null {
+  if (!isRecord(value) || typeof value.peerId !== 'string' || !value.peerId) return null;
+  const rawPlayer = isRecord(value.player) ? value.player : null;
+  const player = rawPlayer ? {
+    ...(typeof rawPlayer.id === 'string' ? { id: rawPlayer.id } : {}),
+    ...(typeof rawPlayer.name === 'string' ? { name: rawPlayer.name } : {}),
+    ...(typeof rawPlayer.specId === 'string' ? { specId: rawPlayer.specId } : {}),
+    ...(Array.isArray(rawPlayer.equipment) && rawPlayer.equipment.every(
+      (entry) => typeof entry === 'string',
+    ) ? { equipment: rawPlayer.equipment } : {}),
+    ...(typeof rawPlayer.camo === 'string' ? { camo: rawPlayer.camo } : {}),
+    ...(typeof rawPlayer.team === 'string' ? { team: rawPlayer.team } : {}),
+  } : undefined;
+  return {
+    peerId: value.peerId,
+    ...(player ? { player } : {}),
+    ...(typeof value.sessionId === 'string' ? { sessionId: value.sessionId } : {}),
+  };
+}
+
+function readSignalPayload(value: unknown): SignalPayload | null {
+  if (!isRecord(value)) return null;
+  const peers = Array.isArray(value.peers)
+    ? value.peers.map(readRoomPeer).filter((peer): peer is RoomPeer => peer !== null)
+    : undefined;
+  const signal = readRtcSignal(value.signal);
+  return {
+    ...(typeof value.roomCode === 'string' ? { roomCode: value.roomCode } : {}),
+    ...(typeof value.peerId === 'string' ? { peerId: value.peerId } : {}),
+    ...(typeof value.fromPeerId === 'string' ? { fromPeerId: value.fromPeerId } : {}),
+    ...(typeof value.fromSessionId === 'string' ? { fromSessionId: value.fromSessionId } : {}),
+    ...(typeof value.sessionId === 'string' ? { sessionId: value.sessionId } : {}),
+    ...(typeof value.reason === 'string' ? { reason: value.reason } : {}),
+    ...(isRecord(value.player) && typeof value.player.name === 'string'
+      ? { player: { name: value.player.name } } : {}),
+    ...(signal ? { signal } : {}),
+    ...(peers ? { peers } : {}),
+  };
 }
 
 function errorCode(error: unknown, fallback: string): string {
@@ -251,11 +320,11 @@ export class PrivateRoomHostSession {
   }
 
   #event(message: SignalingEvent): void {
-    const payload = message?.payload;
+    const payload = readSignalPayload(message?.payload);
     if (!payload || payload.roomCode !== this.roomInfo.roomCode) return;
     if (message.type === 'peer_joined') {
       if (!payload.peerId) return;
-      this.#joinPeer(payload as RoomPeer).catch((error) => this.#fail(error));
+      this.#joinPeer({ ...payload, peerId: payload.peerId }).catch((error) => this.#fail(error));
     } else if (message.type === 'room_signal') {
       const session = payload.fromPeerId ? this.peers.get(payload.fromPeerId) : null;
       if (session && payload.signal && payload.fromSessionId === session.sessionId) {
@@ -300,14 +369,13 @@ export class PrivateRoomHostSession {
     }
     if (this.iceLease.needsRefresh()) await this.iceLease.refreshIfNeeded();
     const ice = this.iceLease.current();
-    const session = createWebRTCPeer({
+    const session: SessionPeer = Object.assign(createWebRTCPeer({
       role: 'host',
       iceServers: ice.iceServers,
       relayOnly: ice.relayOnly,
       RTCPeerConnectionImpl: this.RTCPeerConnectionImpl,
       onSignal: (signal) => this.signaling.sendSignal(peerId, signal, sessionId),
-    }) as SessionPeer;
-    session.sessionId = sessionId;
+    }), { sessionId });
     this.peers.set(peerId, session);
     await session.start();
     const transport = await session.transportReady;
@@ -399,7 +467,7 @@ export class PrivateRoomClientSession {
       throw new TypeError('signaling and joined room info are required');
     }
     this.signaling = signaling;
-    this.roomInfo = roomInfo as RoomInfo & { hostId: string };
+    this.roomInfo = { ...roomInfo, hostId: roomInfo.hostId };
     this.onError = onError;
     this.onClose = typeof onClose === 'function' ? onClose : null;
     this.iceLease = new RtcIceLease({
@@ -426,7 +494,7 @@ export class PrivateRoomClientSession {
     );
     this.peer = this.#createPeer();
     this.unsubscribeSignal = signaling.onEvent((message: SignalingEvent) => {
-      const payload = message?.payload;
+      const payload = readSignalPayload(message?.payload);
       if (message && message.type === 'room_signal' && payload?.signal &&
           payload.roomCode === roomInfo.roomCode &&
           payload.fromPeerId === roomInfo.hostId &&

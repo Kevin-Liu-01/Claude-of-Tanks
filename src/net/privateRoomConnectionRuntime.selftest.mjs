@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createPrivateRoomConnectionRuntime } from './privateRoomConnectionRuntime.ts';
+import { createLobby, serializeLobby } from './lobby.ts';
 
 function deferred() {
   let resolve;
@@ -31,9 +32,16 @@ function harness({ deferClientReady = false } = {}) {
   const hostRuntime = {
     onState(listener) { stateListener = listener; return () => { stateListener = null; }; },
   };
+  const clientState = serializeLobby(createLobby({
+    roomCode: 'ABC123', hostId: 'player-host', hostName: 'Host', hostSpecId: 'm1a2',
+  }));
+  clientState.roomCode = 'ABC123';
   const clientRuntime = {
-    roomState: { roomCode: 'ABC123', phase: 'waiting', players: [] },
-    onState(listener) { stateListener = listener; return () => { stateListener = null; }; },
+    onState(listener) {
+      stateListener = listener;
+      queueMicrotask(() => listener(clientState));
+      return () => { stateListener = null; };
+    },
   };
   const hostSession = {
     roomInfo: null,
@@ -165,6 +173,7 @@ assert.deepEqual(guest.calls.filter(([name]) => name === 'client-command').map((
 ], 'cold guests replay the complete selection in reliable command order');
 const guestStates = [];
 guest.runtime.observe((state) => guestStates.push(state));
+await Promise.resolve();
 assert.equal(guestStates[0].roomCode, 'ABC123');
 guest.clientOptions.onClose('host_closed');
 assert.deepEqual(guest.clientCloses, ['host_closed']);

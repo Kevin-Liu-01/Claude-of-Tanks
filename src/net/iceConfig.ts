@@ -1,12 +1,8 @@
-export interface IceServerConfig {
-  urls: string | readonly string[];
-  username?: string;
-  credential?: string;
-}
+import type { RtcIceLeaseConfiguration } from './rtcIceLease.ts';
 
-export interface IceConfiguration {
-  iceServers: IceServerConfig[];
-  relayOnly: boolean;
+export type IceServerConfig = RTCIceServer;
+
+export interface IceConfiguration extends RtcIceLeaseConfiguration {
   relayAvailable: boolean;
   source: 'lan' | 'service' | 'stun-fallback';
   degradedReason?: string;
@@ -30,22 +26,32 @@ interface IceConfigurationOptions {
 }
 
 export const PUBLIC_STUN_SERVERS: readonly IceServerConfig[] = Object.freeze([{
-  urls: Object.freeze([
+  urls: [
     'stun:stun.cloudflare.com:3478',
     'stun:stun.cloudflare.com:53',
     'stun:stun.l.google.com:19302',
-  ]),
+  ],
 }]);
 
 function serverUrls(server: IceServerConfig): string[] {
-  return Array.isArray(server.urls) ? [...server.urls] : [server.urls as string];
+  return typeof server.urls === 'string' ? [server.urls] : [...server.urls];
 }
 
-function validServer(value: unknown): value is IceServerConfig {
-  if (!value || typeof value !== 'object') return false;
-  const server = value as Partial<IceServerConfig>;
-  const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
-  return urls.length > 0 && urls.every((url) => typeof url === 'string' && /^(?:stun|turns?):/i.test(url));
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readServer(value: unknown): IceServerConfig | null {
+  if (!isRecord(value)) return null;
+  const urls = typeof value.urls === 'string' ? [value.urls]
+    : Array.isArray(value.urls) && value.urls.every((url) => typeof url === 'string')
+      ? value.urls : [];
+  if (urls.length === 0 || urls.some((url) => !/^(?:stun|turns?):/i.test(url))) return null;
+  return {
+    urls: urls.length === 1 ? urls[0] : [...urls],
+    ...(typeof value.username === 'string' ? { username: value.username } : {}),
+    ...(typeof value.credential === 'string' ? { credential: value.credential } : {}),
+  };
 }
 
 function hasTurn(servers: IceServerConfig[]): boolean {
@@ -75,7 +81,13 @@ function waitFor(delayMs: number): Promise<void> {
 async function responseBody(response: Response): Promise<IceServiceBody> {
   try {
     const value: unknown = await response.json();
-    return value && typeof value === 'object' ? value as IceServiceBody : {};
+    if (!isRecord(value)) return {};
+    return {
+      iceServers: value.iceServers,
+      relayOnly: value.relayOnly,
+      expiresInSeconds: value.expiresInSeconds,
+      error: value.error,
+    };
   } catch {
     return {};
   }
@@ -132,15 +144,19 @@ export async function loadIceConfiguration({
         await wait(retryDelayMs);
         continue;
       }
-      if (!Array.isArray(body.iceServers) || !body.iceServers.every(validServer)) {
+      if (!Array.isArray(body.iceServers)) {
         return stunFallback('turn_service_invalid');
       }
-      const servers = body.iceServers.map((server) => ({ ...server })) as IceServerConfig[];
-      const relayAvailable = hasTurn(servers);
+      const servers = body.iceServers.map(readServer);
+      if (servers.some((server) => server === null)) {
+        return stunFallback('turn_service_invalid');
+      }
+      const validServers = servers.filter((server): server is IceServerConfig => server !== null);
+      const relayAvailable = hasTurn(validServers);
       const relayOnly = body.relayOnly === true;
       if (relayOnly && !relayAvailable) return stunFallback('turn_service_missing_relay');
       return {
-        iceServers: servers,
+        iceServers: validServers,
         relayOnly,
         relayAvailable,
         source: 'service',

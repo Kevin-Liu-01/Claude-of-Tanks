@@ -6,13 +6,13 @@ import {
   validateEnvelope,
   type MessageType,
 } from './protocol.ts';
-import { GAME_MODE_IDS, type GameModeId } from '../sim/matchModes.ts';
 import {
   LOBBY_PHASES,
   LOBBY_TEAMS,
   addLobbyPlayer,
   applyLobbyCommand,
   removeLobbyPlayer,
+  readSerializedLobby,
   serializeLobby,
   type AddLobbyPlayerOptions,
   type LobbyPhase,
@@ -74,70 +74,8 @@ const MATCH_HANDOFF_TYPES = new Set<MessageType>([
   MESSAGE_TYPES.LEAVE,
 ]);
 const MAX_PENDING_HANDOFF_MESSAGES = 64;
-const LOBBY_PHASE_SET = new Set<string>(Object.values(LOBBY_PHASES));
-const LOBBY_TEAM_SET = new Set<string>(Object.values(LOBBY_TEAMS));
-const GAME_MODE_SET = new Set<string>(GAME_MODE_IDS);
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isSafeUnsigned(value: unknown): value is number {
-  return Number.isSafeInteger(value) && Number(value) >= 0;
-}
-
-function invalidLobbyState(message: string): Error {
-  return Object.assign(new Error(message), { code: 'invalid_lobby_state' });
-}
-
-function isLobbyPlayer(value: unknown): value is LobbyPlayer {
-  if (!isRecord(value)) return false;
-  return typeof value.id === 'string' && value.id.length > 0 &&
-    typeof value.name === 'string' && value.name.length > 0 &&
-    typeof value.team === 'string' && LOBBY_TEAM_SET.has(value.team) &&
-    (value.specId === null || typeof value.specId === 'string') &&
-    Array.isArray(value.equipment) && value.equipment.every((entry) => typeof entry === 'string') &&
-    typeof value.camo === 'string' &&
-    typeof value.ready === 'boolean' &&
-    typeof value.connected === 'boolean' &&
-    typeof value.isHost === 'boolean' &&
-    (value.rating === null || Number.isFinite(value.rating));
-}
-
-function isLobbyResult(value: unknown): boolean {
-  if (value === null) return true;
-  if (!isRecord(value)) return false;
-  return isSafeUnsigned(value.round) &&
-    (value.result === null || typeof value.result === 'string') &&
-    (value.reason === null || typeof value.reason === 'string');
-}
-
-function readSerializedLobby(value: unknown): SerializedLobby {
-  if (!isRecord(value)) throw invalidLobbyState('lobby state must be an object');
-  const players = value.players;
-  const valid = typeof value.roomCode === 'string' && value.roomCode.length === 6 &&
-    typeof value.mode === 'string' &&
-    typeof value.gameMode === 'string' && GAME_MODE_SET.has(value.gameMode) &&
-    typeof value.phase === 'string' && LOBBY_PHASE_SET.has(value.phase) &&
-    typeof value.hostId === 'string' && value.hostId.length > 0 &&
-    isSafeUnsigned(value.maxPlayers) &&
-    isSafeUnsigned(value.maxSpectators) &&
-    typeof value.allowTeamSwitch === 'boolean' &&
-    typeof value.locked === 'boolean' &&
-    typeof value.mapId === 'string' &&
-    Number.isSafeInteger(value.teamSize) && Number(value.teamSize) >= 1 &&
-    Number(value.teamSize) <= 7 &&
-    isSafeUnsigned(value.revision) &&
-    (value.matchSeed === null || isSafeUnsigned(value.matchSeed)) &&
-    isSafeUnsigned(value.round) &&
-    isLobbyResult(value.lastResult) &&
-    Array.isArray(players) && players.every(isLobbyPlayer);
-  if (!valid) throw invalidLobbyState('lobby state contains invalid fields');
-  const ids = new Set(players.map((player) => player.id));
-  if (ids.size !== players.length || !ids.has(value.hostId as string)) {
-    throw invalidLobbyState('lobby state contains invalid player identity');
-  }
-  return value as unknown as SerializedLobby;
 }
 
 function errorPayload(error: unknown): LobbyRuntimeError {
@@ -397,7 +335,8 @@ export class LobbyClientRuntime {
 
   onState(listener: (state: SerializedLobby) => void): Unsubscribe {
     this.listeners.add(listener);
-    if (this.state) queueMicrotask(() => listener(this.state as SerializedLobby));
+    const state = this.state;
+    if (state) queueMicrotask(() => listener(state));
     return () => this.listeners.delete(listener);
   }
 

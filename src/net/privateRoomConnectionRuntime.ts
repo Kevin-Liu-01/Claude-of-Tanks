@@ -1,5 +1,6 @@
 import {
   serializeLobby,
+  readSerializedLobby,
   type LobbyState as LobbyModel,
   type SerializedLobby,
 } from './lobby.ts';
@@ -7,6 +8,9 @@ import { RoomSignalingClient } from './signalingClient.ts';
 import {
   PrivateRoomClientSession,
   PrivateRoomHostSession,
+  type PrivateRoomAdapter,
+  type PrivateRoomClientOptions,
+  type PrivateRoomHostOptions,
 } from './privateRoomSession.ts';
 import type { IceConfiguration } from './iceConfig.ts';
 
@@ -33,41 +37,31 @@ interface RoomInfo {
   mode?: string;
 }
 
-interface SignalingLike {
-  createRoom(request: Record<string, unknown>): Promise<RoomInfo>;
-  joinRoom(request: Record<string, unknown>): Promise<RoomInfo>;
-  close(reason?: string): void;
-}
+type SignalingLike = Pick<
+  RoomSignalingClient,
+  'createRoom' | 'joinRoom' | 'close' | 'onEvent' | 'sendSignal' |
+  'restartRoomSession' | 'setEventPollInterval'
+>;
 
 interface RoomStateRuntime {
-  roomState?: LobbyState | null;
   onState(listener: (state: LobbyState) => void): Unsubscribe;
 }
 
-interface HostSessionLike {
-  roomInfo: RoomInfo;
-  lobby: unknown;
-  runtime: RoomStateRuntime;
-  command(command: Record<string, unknown>): unknown;
-  close(reason?: string): void;
-}
+type HostSessionLike = Pick<
+  PrivateRoomHostSession,
+  'roomInfo' | 'lobby' | 'runtime' | 'command' | 'close'
+>;
 
-interface ClientRoomAdapter extends RoomStateRuntime {
-  errors?: unknown[];
-}
-
-interface ClientSessionLike {
-  roomInfo: RoomInfo;
-  ready: Promise<ClientRoomAdapter>;
-  submit(command: Record<string, unknown>): unknown;
-  close(reason?: string): void;
-}
+type ClientSessionLike = Pick<
+  PrivateRoomClientSession,
+  'roomInfo' | 'ready' | 'submit' | 'close'
+>;
 
 interface ConnectionAdapters {
   createSignaling(url: string): SignalingLike;
-  createHostSession(options: Record<string, unknown>): HostSessionLike;
-  createClientSession(options: Record<string, unknown>): ClientSessionLike;
-  serializeLobby(lobby: unknown): LobbyState;
+  createHostSession(options: PrivateRoomHostOptions): HostSessionLike;
+  createClientSession(options: PrivateRoomClientOptions): ClientSessionLike;
+  serializeLobby(lobby: LobbyModel): LobbyState;
 }
 
 export interface PrivateRoomConnectRequest {
@@ -81,16 +75,26 @@ export interface PrivateRoomConnectRequest {
   maxPlayers?: number;
 }
 
-export interface PrivateRoomConnection {
+interface PrivateRoomConnectionBase {
   readonly generation: number;
-  readonly role: 'host' | 'client';
   readonly mode: string;
   readonly signaling: SignalingLike;
-  readonly session: HostSessionLike | ClientSessionLike;
   readonly roomInfo: RoomInfo;
   readonly ice: IceConfiguration;
   readonly runtime: RoomStateRuntime;
 }
+
+export interface PrivateRoomHostConnection extends PrivateRoomConnectionBase {
+  readonly role: 'host';
+  readonly session: HostSessionLike;
+}
+
+export interface PrivateRoomClientConnection extends PrivateRoomConnectionBase {
+  readonly role: 'client';
+  readonly session: ClientSessionLike;
+}
+
+export type PrivateRoomConnection = PrivateRoomHostConnection | PrivateRoomClientConnection;
 
 interface PrivateRoomConnectionOptions {
   loadIce(mode: string): Promise<IceConfiguration>;
@@ -120,12 +124,16 @@ export interface PrivateRoomConnectionRuntime {
 
 const DEFAULT_ADAPTERS: ConnectionAdapters = {
   createSignaling: (url) => new RoomSignalingClient({ url }),
-  createHostSession: (options) =>
-    new PrivateRoomHostSession(options) as unknown as HostSessionLike,
-  createClientSession: (options) =>
-    new PrivateRoomClientSession(options) as unknown as ClientSessionLike,
-  serializeLobby: (lobby) => serializeLobby(lobby as LobbyModel),
+  createHostSession: (options) => new PrivateRoomHostSession(options),
+  createClientSession: (options) => new PrivateRoomClientSession(options),
+  serializeLobby,
 };
+
+function observeClientRoom(adapter: PrivateRoomAdapter): RoomStateRuntime {
+  return {
+    onState: (listener) => adapter.onState((state) => listener(readSerializedLobby(state))),
+  };
+}
 
 /**
  * Own one private/LAN room acquisition generation.
@@ -307,7 +315,7 @@ PrivateRoomConnectionRuntime {
           onClose: sessionClosed,
         });
         attempt.session = clientSession;
-        const runtime = await clientSession.ready;
+        const runtime = observeClientRoom(await clientSession.ready);
         if (!generationIsLive(attemptGeneration) || pending !== attempt) {
           disposeAttempt(attempt, 'room_connection_superseded');
           return null;
@@ -363,9 +371,7 @@ PrivateRoomConnectionRuntime {
       };
       unsubscribeState = observed.runtime.onState(guarded);
       if (observed.role === 'host') {
-        guarded(adapters.serializeLobby((observed.session as HostSessionLike).lobby));
-      } else if (observed.runtime.roomState) {
-        guarded(observed.runtime.roomState);
+        guarded(adapters.serializeLobby(observed.session.lobby));
       }
       return () => {
         if (current !== observed) return;
