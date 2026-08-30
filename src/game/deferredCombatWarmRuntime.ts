@@ -8,6 +8,10 @@ import {
   warmNewRendererProgramUniforms,
   type RendererWithPrograms,
 } from '../engine/programWarm.ts';
+import type {
+  BattleVisualEntity,
+  BattleVisualStreamer,
+} from './battleVisualStreamer.ts';
 
 interface BattleEntity {
   team?: string;
@@ -18,28 +22,10 @@ interface BattleGame {
   preBattleS?: number;
 }
 
-interface BattleVisualStreamer {
-  stream(
-    predicate: (entity: BattleEntity) => boolean,
-    yieldForBudget: WorkYielder,
-    onProgress?: ((fraction: number) => void) | null,
-    keepDetached?: boolean,
-  ): Promise<unknown>;
-}
-
 interface CombatWarmCoordinator {
   cancelRare(): void;
   warmOpeningChunked(budgetMs: number, yielder: WorkYielder): Promise<void>;
   warmRareChunked(budgetMs: number, yielder: WorkYielder): Promise<void>;
-}
-
-interface BattleWarmRuntime {
-  warmBattleTerrainTiles(options: {
-    game: BattleGame;
-    world: unknown;
-    yieldForBudget: WorkYielder;
-    primePresentation: boolean;
-  }): Promise<unknown>;
 }
 
 interface WarmableWorld {
@@ -69,17 +55,21 @@ type DeferredWarmHost = typeof globalThis & {
   __COMBAT_RARE_WARM?: { stages?: Record<string, number> };
 };
 
-export interface DeferredCombatWarmRuntimeOptions {
-  game: BattleGame;
+export interface DeferredCombatWarmRuntimeOptions<
+  Game extends BattleGame,
+  Entity extends BattleVisualEntity & BattleEntity,
+  World extends WarmableWorld,
+> {
+  game: Game;
   renderer: RendererWithPrograms;
   camera: { position: unknown };
-  getBattleVisuals(): BattleVisualStreamer;
+  getBattleVisuals(): BattleVisualStreamer<Entity>;
   combatWarm: CombatWarmCoordinator;
-  battleWarm: BattleWarmRuntime;
-  getWorld(): WarmableWorld | null;
+  warmBattleTerrainTiles(yieldForBudget: WorkYielder): Promise<unknown>;
+  getWorld(): World | null;
   getGeneration(): number;
   setPending(pending: boolean): void;
-  prepareNextOpeningRoute(game: BattleGame): boolean;
+  prepareNextOpeningRoute(): boolean;
   devTrace?: TraceSink | null;
   now?: () => number;
   yieldFrame?: () => Promise<void>;
@@ -100,13 +90,17 @@ export interface DeferredCombatWarmRuntime {
  * simulation or changes a visible pose. A newer battle generation owns the
  * slot immediately, so a stale rematch cannot clear or publish its successor.
  */
-export function createDeferredCombatWarmRuntime({
+export function createDeferredCombatWarmRuntime<
+  Game extends BattleGame,
+  Entity extends BattleVisualEntity & BattleEntity,
+  World extends WarmableWorld,
+>({
   game,
   renderer,
   camera,
   getBattleVisuals,
   combatWarm,
-  battleWarm,
+  warmBattleTerrainTiles,
   getWorld,
   getGeneration,
   setPending,
@@ -115,7 +109,7 @@ export function createDeferredCombatWarmRuntime({
   now = () => performance.now(),
   yieldFrame = nextFrame,
   createYielder = createFrameBudgetYielder,
-}: DeferredCombatWarmRuntimeOptions): DeferredCombatWarmRuntime {
+}: DeferredCombatWarmRuntimeOptions<Game, Entity, World>): DeferredCombatWarmRuntime {
   const host = globalThis as DeferredWarmHost;
   let pendingPromise: Promise<void> | null = null;
 
@@ -169,7 +163,7 @@ export function createDeferredCombatWarmRuntime({
       trace.navigationJobs = [];
       for (;;) {
         const jobStartedAt = now();
-        const consumed = prepareNextOpeningRoute(game);
+        const consumed = prepareNextOpeningRoute();
         const jobMs = Math.round(now() - jobStartedAt);
         if (!consumed) break;
         trace.navigationJobs.push(jobMs);
@@ -177,12 +171,7 @@ export function createDeferredCombatWarmRuntime({
       }
 
       const world = getWorld();
-      await battleWarm.warmBattleTerrainTiles({
-        game,
-        world,
-        yieldForBudget: guardedYield,
-        primePresentation: false,
-      });
+      await warmBattleTerrainTiles(guardedYield);
       trace.stages.navigation = Math.round(now() - navigationStartedAt);
 
       const terrainLookaheadStartedAt = now();

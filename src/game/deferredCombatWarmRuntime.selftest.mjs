@@ -35,12 +35,9 @@ const owner = createDeferredCombatWarmRuntime({
       await yieldForBudget(true);
     },
   },
-  battleWarm: {
-    async warmBattleTerrainTiles({ primePresentation, yieldForBudget }) {
-      assert.equal(primePresentation, false);
-      events.push('terrain-grid');
-      await yieldForBudget(true);
-    },
+  async warmBattleTerrainTiles(yieldForBudget) {
+    events.push('terrain-grid');
+    await yieldForBudget(true);
   },
   getWorld: () => ({
     warmTerrainLookahead() {
@@ -91,7 +88,7 @@ const revisionOwner = createDeferredCombatWarmRuntime({
     async warmOpeningChunked() {},
     async warmRareChunked() {},
   },
-  battleWarm: { async warmBattleTerrainTiles() {} },
+  async warmBattleTerrainTiles() {},
   getWorld: () => null,
   getGeneration: () => generation,
   setPending() {},

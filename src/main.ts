@@ -1489,7 +1489,7 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
     if (typeof window !== 'undefined') (window.__VISUAL_LOAD_TIMINGS ||= []).push(timing);
   },
 });
-let battleVisuals: BattleVisualStreamer | null = null;
+let battleVisuals: BattleVisualStreamer<MainEntity> | null = null;
 async function ensureBattleVisualStreamer() {
   battleVisuals = await battleVisualStreamerAccess.preload();
   return battleVisuals;
@@ -2588,7 +2588,7 @@ function warmStudioPipelineChunked(
 // chunked owner gives the garage a painted frame between steps. A battle
 // entered mid-chunk drains the remaining generator synchronously.
 
-const deferredCombatWarm = createDeferredCombatWarmRuntime(legacyPort({
+const deferredCombatWarm = createDeferredCombatWarmRuntime({
   game,
   renderer,
   camera,
@@ -2597,13 +2597,18 @@ const deferredCombatWarm = createDeferredCombatWarmRuntime(legacyPort({
     return battleVisuals;
   },
   combatWarm,
-  battleWarm,
+  warmBattleTerrainTiles: (yieldForBudget) => battleWarm.warmBattleTerrainTiles({
+    game,
+    world: currentWorld(),
+    yieldForBudget,
+    primePresentation: false,
+  }),
   getWorld: currentWorld,
   getGeneration: () => battleWarmGeneration,
   setPending: (pending: boolean) => { battleWarmPending = pending; },
-  prepareNextOpeningRoute,
+  prepareNextOpeningRoute: () => Boolean(prepareNextOpeningRoute(game)),
   devTrace,
-}));
+});
 function cancelDeferredCombatWarm() { deferredCombatWarm.cancel(); }
 function scheduleDeferredCombatWarm(generation: number) {
   return deferredCombatWarm.schedule(generation);
