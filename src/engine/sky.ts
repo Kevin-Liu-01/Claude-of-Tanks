@@ -14,6 +14,7 @@
  * against it, for any sky parameter tweak, deterministically.
  */
 import * as THREE from 'three';
+import { createDeferredDeadline } from './deferredDeadline.ts';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged);
 // read inside the bake functions (post-renderer), never at module eval.
@@ -787,25 +788,39 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   let cloudWorkerSettled = false;
   const cloudWorkerPromise: Promise<CloudWorkerResults | null> | null = typeof Worker === 'undefined'
     ? null
-    : new Promise((resolve) => {
+    : (() => {
       let worker: Worker;
       try {
         worker = new Worker(new URL('./skyCloudWorker.ts', import.meta.url), { type: 'module' });
       } catch (error) {
         cloudWorkerSettled = true;
         console.warn('[sky] cloud worker unavailable; using synchronous fallback:', errorMessage(error));
-        resolve(null);
-        return;
+        return Promise.resolve(null);
       }
       const result: CloudWorkerResults = {};
-      let finished = false;
-      const finish = (value: CloudWorkerResults | null): void => {
-        if (finished) return;
-        finished = true;
+      const partialResult = (): CloudWorkerResults | null => (
+        Object.keys(result).length ? result : null
+      );
+      const finalize = (value: CloudWorkerResults | null): CloudWorkerResults | null => {
         worker.terminate();
         cloudWorkerResults = cirrusBaked && cumulusBaked ? null : value;
         cloudWorkerSettled = true;
-        resolve(value);
+        return value;
+      };
+      // Worker errors normally report through onerror, but process pressure,
+      // background throttling, and WebKit worker-start failures can leave a
+      // module worker alive without ever dispatching a message or error. The
+      // cloud bake is an optional acceleration; it must never hold a first
+      // battle behind the loading veil indefinitely.
+      const deadline = createDeferredDeadline<CloudWorkerResults | null>(
+        3000,
+        () => {
+          console.warn('[sky] cloud worker timed out; using synchronous fallback');
+          return finalize(partialResult());
+        },
+      );
+      const finish = (value: CloudWorkerResults | null): void => {
+        if (deadline.settle(value)) finalize(value);
       };
       worker.onmessage = ({ data }: MessageEvent<CloudWorkerMessage>) => {
         result[data.kind] = { size: data.size, pixels: data.pixels };
@@ -813,14 +828,24 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       };
       worker.onerror = (error) => {
         console.warn('[sky] cloud worker failed; using synchronous fallback:', error.message);
-        finish(Object.keys(result).length ? result : null);
+        finish(partialResult());
       };
-      worker.postMessage({
-        cumulusSize: texSize(CLOUD_TEX),
-        cirrusSize: texSize(CIRRUS_TEX),
-        config: CLOUD_BAKE_CONFIG,
-      });
-    });
+      worker.onmessageerror = () => {
+        console.warn('[sky] cloud worker message failed; using synchronous fallback');
+        finish(partialResult());
+      };
+      try {
+        worker.postMessage({
+          cumulusSize: texSize(CLOUD_TEX),
+          cirrusSize: texSize(CIRRUS_TEX),
+          config: CLOUD_BAKE_CONFIG,
+        });
+      } catch (error) {
+        console.warn('[sky] cloud worker could not start; using synchronous fallback:', errorMessage(error));
+        finish(partialResult());
+      }
+      return deadline.promise;
+    })();
 
   // Per-deck flags keep a mid-flight synchronous activation idempotent.
   let cirrusBaked = false;

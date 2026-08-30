@@ -157,6 +157,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/battlefieldBounds.selftest.mjs',
     'tools/coplanar-surface-overlap.selftest.mjs',
     'src/engine/frameScheduler.selftest.mjs',
+    'src/engine/deferredDeadline.selftest.mjs',
     'src/engine/programWarm.selftest.mjs',
     'src/engine/deploymentWarm.selftest.mjs',
     'src/engine/deploymentShadowWarm.selftest.mjs',

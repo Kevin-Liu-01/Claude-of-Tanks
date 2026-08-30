@@ -58,6 +58,11 @@ uses cooperative task yields and guarantees periodic real paints. Slow progress
 is not treated as failure; failed imports and graphics-context loss remain
 retryable without a refresh loop. Public first-visit performance is measured in
 multiple cache-disabled sessions under constrained network and CPU conditions.
+Optional workers are accelerators, never lifecycle dependencies. Each worker
+task has a bounded deadline and an equivalent local fallback, so a browser that
+neither starts the worker nor reports an error cannot strand boot or battle
+entry. The cloud-texture worker currently yields to the exact synchronous bake
+after three seconds measured from worker creation.
 
 Fleet acquisition is exact-family demand loading. Regional bundle modules and
 playable GLB fallbacks are retired. Inactive Garage, world, battle, Studio, and

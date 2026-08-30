@@ -78,15 +78,16 @@ for (const preset of presets) {
     D.lighting.update(false);
 
     // Regression for the live-only shadow flash: the old adaptive trim path
-    // switched both near cascades to half/third-rate manual updates. Static
-    // screenshots remained perfect, while camera motion presented large
-    // lighting steps. Force the maximum trim rung and prove cadence stays
-    // continuous before running the ordinary texel/frozen-frame contracts.
+    // changed cascade ownership and presented large lighting steps. The
+    // current scheduler deliberately keeps every native shadow auto-update
+    // disabled and submits mutually exclusive near/far pairs itself. Force
+    // the maximum trim rung and prove that ownership remains manual before
+    // running the ordinary texel/frozen-frame contracts.
     D.post.forcePerfTrim(99);
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const trimTelemetry = D.telemetry();
-    const trimmedNearAutoUpdate = trimTelemetry.shadows.cascades
-      .slice(0, 2).map((cascade) => cascade.autoUpdate);
+    const trimmedCascadeAutoUpdate = trimTelemetry.shadows.cascades
+      .map((cascade) => cascade.autoUpdate);
     D.post.forcePerfTrim(0);
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
@@ -504,7 +505,7 @@ for (const preset of presets) {
       aoRepeatMaxStrongSamplesPerFrame,
       aoRepeatMaxRgbDelta,
       trimShadowThrottle: trimTelemetry.shadows.throttle,
-      trimmedNearAutoUpdate,
+      trimmedCascadeAutoUpdate,
       lods,
       zeroHysteresisLevels,
       invalidInstancedBounds,
@@ -597,8 +598,8 @@ for (const preset of presets) {
   if (result.trimShadowThrottle !== 0) {
     reasons.push(`adaptive trim enabled shadow throttle ${result.trimShadowThrottle}`);
   }
-  if (result.trimmedNearAutoUpdate.some((enabled) => !enabled)) {
-    reasons.push('adaptive trim disabled continuous near-cascade refresh');
+  if (result.trimmedCascadeAutoUpdate.some(Boolean)) {
+    reasons.push('adaptive trim escaped the coherent manual-cascade scheduler');
   }
   if (result.glError !== 0) reasons.push(`WebGL error ${result.glError}`);
   if (result.shaderErrors !== 0) reasons.push(`${result.shaderErrors} shader errors`);
@@ -852,8 +853,8 @@ const liveDrive = evaluate(`(() => {
     groundContactDecalMeshes,
     groundContactDecalReceivers,
     shadowThrottle: telemetry.shadows.throttle,
-    nearAutoUpdate: telemetry.shadows.cascades
-      .slice(0, 2).map((cascade) => cascade.autoUpdate),
+    cascadeAutoUpdate: telemetry.shadows.cascades
+      .map((cascade) => cascade.autoUpdate),
   };
   delete window.__COT_RENDER_STABILITY_DRIVE;
   return result;
@@ -999,8 +1000,8 @@ if (liveDrive.cameraDistanceM < 15) {
 if (liveDrive.shadowThrottle !== 0) {
   liveDriveReasons.push(`live drive enabled shadow throttle ${liveDrive.shadowThrottle}`);
 }
-if (liveDrive.nearAutoUpdate.some((enabled) => !enabled)) {
-  liveDriveReasons.push('live drive disabled a near-cascade refresh');
+if (liveDrive.cascadeAutoUpdate.some(Boolean)) {
+  liveDriveReasons.push('live drive escaped the coherent manual-cascade scheduler');
 }
 if (liveDrive.glError !== 0) liveDriveReasons.push(`live WebGL error ${liveDrive.glError}`);
 if (liveDrive.shaderErrors !== 0) {
