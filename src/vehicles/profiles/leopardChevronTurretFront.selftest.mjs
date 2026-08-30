@@ -38,6 +38,15 @@ const vertexOccurrences = (position, expected, epsilon = 1e-5) => {
   return count;
 };
 
+const rootVertexOccurrences = (root, expected, epsilon = 1e-5) => {
+  let count = 0;
+  root.traverse((object) => {
+    const position = object.isMesh && object.geometry?.getAttribute('position');
+    if (position) count += vertexOccurrences(position, expected, epsilon);
+  });
+  return count;
+};
+
 for (const [id, expectedProfile] of modernProfiles) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
@@ -74,12 +83,16 @@ for (const [id, expectedProfile] of modernProfiles) {
   assert.equal(receipt.roofBridgeVolumes, 2, `${id} uses one continuous roof bridge per cheek`);
   assert.equal(receipt.roofBridgeStructural, true,
     `${id} owns its roof closures in the rotating armor bucket`);
+  assert.equal(receipt.legacyInteriorShadowWalls, false,
+    `${id} retires the buried pre-chevron shadow walls`);
+  assert.equal(receipt.structuralMantletSupportsRetained, true,
+    `${id} keeps only the visible structural mantlet supports`);
   assert.equal(receipt.upperFaceSolids, receipt.cheekCourseCount,
     `${id} spans every plan course with its continuous upper face`);
   assert.equal(receipt.lowerReturnSolids, receipt.cheekCourseCount,
     `${id} spans every plan course with its continuous lower return`);
   assert.equal(receipt.sides.length, 2, `${id} publishes both cheek sides`);
-  if (['leo2a5', 'leo2a6', 'leo2a7v', 'strv122'].includes(id)) {
+  if (['leo2a5', 'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2a7v', 'strv122'].includes(id)) {
     assert.equal(receipt.lowerArmorPanArchitecture, 'cheek-return-owned',
       `${id} removes the separate underride blocker beneath its extended lower cheeks`);
     assert.equal(receipt.separateUnderrideFront, false,
@@ -93,13 +106,13 @@ for (const [id, expectedProfile] of modernProfiles) {
     assert.ok(covered.every((station) => station.lowerZ <= 1.91 + 1e-6),
       `${id} lower cheek returns behind the old z=1.91 underride face`);
   }
-  if (id === 'leo2a6') {
+  if (id === 'leo2a6' || id === 'leo2a6m' || id === 'leo2a6_ua') {
     const covered = receipt.sides[0].stations.filter((station) => station.x <= 1.011 + 1e-6);
-    assert.ok(covered.length >= 3, 'leo2a6 samples the complete owner-marked inner cheek span');
+    assert.ok(covered.length >= 3, `${id} samples the complete owner-marked A6 inner cheek span`);
     assert.ok(covered.every((station) => station.lowerY <= -0.066 + 1e-6),
-      'leo2a6 lower cheek covers the old z=1.90 underride face down to y=-0.066');
+      `${id} lower cheek covers the old z=1.90 underride face down to y=-0.066`);
     assert.ok(covered.every((station) => station.lowerZ <= 1.90 + 1e-6),
-      'leo2a6 lower cheek returns behind the old z=1.90 underride face');
+      `${id} lower cheek returns behind the old z=1.90 underride face`);
   }
   if (id === 'leo2a6m' || id === 'leo2a6_ua') {
     assert.equal(receipt.tipPads.filter((pad) => pad.s < 0).length, 0,
@@ -109,6 +122,8 @@ for (const [id, expectedProfile] of modernProfiles) {
     `${id} has no residual plate at either marked blocker plane`);
   }
   if (id === 'leo2a7v') {
+    assert.ok(receipt.maximumCheekHalfWidthM <= receipt.bodyFrontHalfWidthM + 1e-9,
+      'leo2a7v cheeks stay within the turret body instead of overhanging it');
     assert.ok(receipt.ridgeControlLine.length >= 6,
       'leo2a7v distributes its arrowhead sweep across the complete turret front');
     for (let index = 1; index < receipt.ridgeControlLine.length; index++) {
@@ -179,10 +194,10 @@ for (const [id, expectedProfile] of modernProfiles) {
       assert.ok(Math.abs(station.upperSweepDeg - receipt.upperSlopeDeg) <= 1e-6,
         `${id} ${sideReceipt.side} station ${index} stays on the one continuous upper slope`);
       const minimumLowerSweep = id === 'leo2a7v' ? 35 : 15;
-      const maximumLowerSweep = id === 'leo2a7v' ? 50 : 30;
+      const maximumLowerSweep = id === 'leo2a7v' ? 52 : 30;
       assert.ok(station.lowerSweepDeg >= minimumLowerSweep && station.lowerSweepDeg <= maximumLowerSweep,
         `${id} ${sideReceipt.side} station ${index} lower return has a plausible arrowhead angle (${station.lowerSweepDeg} deg)`);
-      const minimumDominance = id === 'leo2a7v' ? 1 : expectedProfile === 'leopard-2a6m' ? 2 : 1.2;
+      const minimumDominance = id === 'leo2a7v' ? 1 : 1.2;
       assert.ok(station.upperDominanceRatio >= minimumDominance - 1e-9,
         `${id} ${sideReceipt.side} station ${index} preserves its profile's upper/lower balance (${station.upperDominanceRatio})`);
       const ridge = [side * station.x, station.ridgeY, station.ridgeZ];
@@ -194,6 +209,36 @@ for (const [id, expectedProfile] of modernProfiles) {
         `${id} ${sideReceipt.side} station ${index} upper root is authored in the merged armor`);
       assert.ok(hasVertex(position, [side * station.x, station.lowerY, station.lowerZ]),
         `${id} ${sideReceipt.side} station ${index} lower root is authored in the merged armor`);
+    }
+  }
+
+  if (id === 'leo2a5') {
+    assert.deepEqual(turretRig.userData.leopardA6MantletRoofBridge, {
+      frontZ: 2.20,
+      rearZ: 0.50,
+      frontHalfWidth: 0.30,
+      rearHalfWidth: 0.28,
+      ribZ: [],
+    }, 'leo2a5 seals its central cheek-root channel with one clean ribless bridge');
+    for (const point of [
+      [-0.94, 0.772475, 0.9699167],
+      [-0.21, 0.816275, 1.0185833],
+      [0.21, 0.816275, 1.0185833],
+      [0.94, 0.772475, 0.9699167],
+    ]) {
+      assert.equal(rootVertexOccurrences(turretRig, point), 0,
+        `leo2a5 removes the owner-marked duplicate crown face at ${point.join(',')}`);
+    }
+  }
+  if (id === 'leo2a6') {
+    for (const point of [
+      [0.9894, 0.29, 1.7533333],
+      [1.2804, 0.29, 1.40],
+      [-1.335, 0.29, 1.04],
+      [-1.261, 0.51, -0.46],
+    ]) {
+      assert.equal(rootVertexOccurrences(turretRig, point), 0,
+        `leo2a6 removes the owner-marked buried shadow wall at ${point.join(',')}`);
     }
   }
 

@@ -119,6 +119,12 @@ assert.equal(externalParts.filter((part) => part.bucket === 'hullExternalArmor')
 
 const hullEra = externalArmorMeshes.find((mesh) => mesh.name === 'hullExternalArmor');
 const turretEra = externalArmorMeshes.find((mesh) => mesh.name === 'turretExternalArmor');
+turretEra.geometry.computeBoundingBox();
+assert.ok(Math.max(
+  Math.abs(turretEra.geometry.boundingBox.min.x),
+  Math.abs(turretEra.geometry.boundingBox.max.x),
+) <= turretRig.userData.leopardChevronFrontReceipt.bodyFrontHalfWidthM + 1e-6,
+  'turret ERA stays fully supported by the narrowed cheek/body envelope');
 const hullBeforeStrip = hullEra.geometry.getAttribute('position').array.slice();
 const turretBeforeStrip = turretEra.geometry.getAttribute('position').array.slice();
 assert.equal(visual.stripEra('a7v_upper_glacis_era'), true,

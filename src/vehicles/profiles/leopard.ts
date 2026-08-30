@@ -1340,7 +1340,7 @@ function leoMantletGun(P: TankBuilderPort, G: LeopardMantletGunConfig): void {
 // optional front width lets applique packages meet their own cheek opening.
 function leopardA6MantletRoofBridge(
   P: TankBuilderPort,
-  o: { readonly frontHalfWidth?: number } = {},
+  o: { readonly frontHalfWidth?: number; readonly ribs?: boolean } = {},
 ): void {
   const { box, polyMultiLoft } = KIT;
   const frontZ = 2.20;
@@ -1365,7 +1365,8 @@ function leopardA6MantletRoofBridge(
     rearHalfWidth
     + (z - rearZ) * ((frontHalfWidth - rearHalfWidth) / (frontZ - rearZ))
   );
-  for (const z of [0.82, 1.14, 1.46]) {
+  const ribZ = o.ribs === false ? [] : [0.82, 1.14, 1.46];
+  for (const z of ribZ) {
     P.add('turret', box(widthAt(z) - 0.08, 0.028, 0.13),
       0, topAt(z) + 0.013, z, rise, 0, 0);
     P.add('turretDark', box(widthAt(z) - 0.14, 0.010, 0.020),
@@ -1378,7 +1379,7 @@ function leopardA6MantletRoofBridge(
       rearZ,
       frontHalfWidth,
       rearHalfWidth,
-      ribZ: [0.82, 1.14, 1.46],
+      ribZ,
     };
   }
 }
@@ -2280,12 +2281,20 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
       // rows were never wall-carried in any trace: side projection there is
       // wall/chamfer-covered at every (y,z), front is cheek-plate-covered,
       // plan cells belonged to the wall's own certified footprint.
-      const wD = T.wallDrop ?? 0.06;
-      const wxCap = T.wallShadowXCap ?? Infinity;
-      const wx0 = Math.min(cx0 * 0.97, wxCap), wx1 = Math.min(cx1 * 0.97, wxCap);
-      if (wx0 !== wx1 || wx0 < wxCap) P.add('turretDark', slab(
-        [s * wx0, aB + 0.2, nz(cx0) - 0.44], [s * wx1, aB + 0.2, nz(cx1) - 0.44], [s * wx1, aB + 0.2, nz(cx1) - 0.52], [s * wx0, aB + 0.2, nz(cx0) - 0.52],
-        [s * wx0, cy0 - wD, cz0 - 0.36], [s * wx1, cy1 - wD, cz1 - 0.36], [s * wx1, cy1 - wD - 0.04, cz1 - 0.44], [s * wx0, cy0 - wD - 0.04, cz0 - 0.44]));
+      // Closed A5-family cheeks already own the complete upper face, lower
+      // return and buried rear closure.  Keeping this legacy dark wall behind
+      // them duplicated several square metres of fully occluded geometry and
+      // left coplanar/intersecting faces inside the new shell.  Earlier wedge
+      // profiles still need the wall because their open slab construction has
+      // no rear closure of its own.
+      if (!chevron) {
+        const wD = T.wallDrop ?? 0.06;
+        const wxCap = T.wallShadowXCap ?? Infinity;
+        const wx0 = Math.min(cx0 * 0.97, wxCap), wx1 = Math.min(cx1 * 0.97, wxCap);
+        if (wx0 !== wx1 || wx0 < wxCap) P.add('turretDark', slab(
+          [s * wx0, aB + 0.2, nz(cx0) - 0.44], [s * wx1, aB + 0.2, nz(cx1) - 0.44], [s * wx1, aB + 0.2, nz(cx1) - 0.52], [s * wx0, aB + 0.2, nz(cx0) - 0.52],
+          [s * wx0, cy0 - wD, cz0 - 0.36], [s * wx1, cy1 - wD, cz1 - 0.36], [s * wx1, cy1 - wD - 0.04, cz1 - 0.44], [s * wx0, cy0 - wD - 0.04, cz0 - 0.44]));
+      }
     }
   }
   if (chevron && P.geometryReceipt) {
@@ -2309,6 +2318,10 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
       roofSightlineClosed: true,
       roofBridgeVolumes: 2,
       roofBridgeStructural: true,
+      legacyInteriorShadowWalls: false,
+      structuralMantletSupportsRetained: true,
+      maximumCheekHalfWidthM: Math.max(...N.map(([x]) => x)),
+      bodyFrontHalfWidthM: T.body[0].x,
       ridgeControlLine: Object.freeze(N.map(([x, z]) => Object.freeze([x, z]))),
       lowerArmorPanArchitecture: T.underride === false
         ? 'cheek-return-owned'
@@ -4496,6 +4509,11 @@ export function buildLeo2A5(builder: object) {
     // ±1.42 front cols at 2.30 where the ref reads its bare 2.17 pad line
     smoke: { x: 1.14, z: 0.10, y: 0.26 },
   });
+  // Seal the narrow central roof channel between the two arrowhead roots.
+  // The A5 never carried the later A6 bridge, leaving the marked x=+/-0.30
+  // inner faces open to one another.  A clean ribless bridge overlaps the
+  // cheek roots and core roof without reintroducing hidden surface dressing.
+  leopardA6MantletRoofBridge(P, { frontHalfWidth: 0.30, ribs: false });
   // r3 tip-pad riser strips: the warped ref front ±1.45 columns read
   // 2.16-2.17 where the bare 2.04 pad tops sat 0.12 low — one-col strips
   // (x 1.42..1.462, clear of the ±1.49 col's bare 2.036 read) rooted on
@@ -5372,31 +5390,6 @@ export function buildLeo2A5(builder: object) {
       // the ref's own bright-roofline family — only its EDGES band.
       const rimT: THREE.BufferGeometry[] = [];            // rimBand geos (turret)
       const litT: THREE.BufferGeometry[] = [];            // litKit geos (turret)
-      // crest-slab top surface parameterization (the roof plateau): x along
-      // the crest table 0.20..0.95 (y 0.82->0.775, z 1.75->1.70), d back
-      // over the 0.79 crestTail (y -0.005). Quads ride +1.5mm off the slab.
-      const crestSurf = (
-        s: Side,
-        xa: number,
-        xb: number,
-        d0: number,
-        d1: number,
-        mat: THREE.Material | null,
-        tint: number,
-      ): void => {
-        const cy = (x: number): number => 0.82 - 0.045 * ((x - 0.20) / 0.75);
-        const cz = (x: number): number => 1.75 - 0.05 * ((x - 0.20) / 0.75);
-        const point = (x: number, d: number): Vec3Tuple => [s * x, cy(x) - 0.005 * d + 0.0015, cz(x) - 0.79 * d];
-        const bot: FourPointRing = [point(xa, d0), point(xb, d0), point(xb, d1), point(xa, d1)];
-        const top: FourPointRing = bot.map(
-          (p): Vec3Tuple => [p[0], p[1] + 0.0018, p[2]],
-        ) as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
-        const ord = (ring: FourPointRing): FourPointRing => (
-          s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
-        );
-        const g = outwardClosedSlab(...ord(bot), ...ord(top));
-        if (mat) rimT.push(g); else tPanel(g, tint);
-      };
       // chamfer face (wall shoulder -> roof edge) down-tint quad
       const chamQuad = (
         s: Side,
@@ -5430,8 +5423,10 @@ export function buildLeo2A5(builder: object) {
       // reading as a bright band on a dark wall. Edge bands stay ONLY on
       // real step edges (bustle tiers, tail plate, nose stack).
       for (const s of [-1, 1] as const) {
-        // plateau: mild trim, ref-bright family
-        crestSurf(s, 0.21, 0.94, 0.03, 0.925, null, 0.97);
+        // The old full-plate tint duplicated the complete crown surface only
+        // 1.5 mm above the structural roof.  It is the owner-marked hidden
+        // Mesh inside the rebuilt cheeks; retire it instead of carrying a
+        // second coplanar roof solely for tone adjustment.
         // tail->roof apron: bridges the crest-tail step (covers the shadow
         // wall's dark top strip + the step's CSM seam; reads as the ref's
         // one smooth crown falling to the roof)
@@ -6790,12 +6785,13 @@ export function buildLeo2A4(builder: object) {
   P.topY = 1.24;
 }
 
-const LEO2A7V_CHEEK_NOSE: readonly Vec2Tuple[] = Object.freeze([
-  [0.30, 1.90], [1.38, 1.86], [1.57, 0.98],
+const LEO2A7V_CHEVRON_NOSE: readonly Vec2Tuple[] = Object.freeze([
+  [0.30, 2.04], [0.54, 1.96], [0.80, 1.80],
+  [1.04, 1.60], [1.25, 1.34], [1.41, 1.03],
 ]);
-const LEO2A7V_CHEEK_CREST: readonly Vec3Tuple[] = Object.freeze([
+const LEO2A7V_CHEVRON_CREST: readonly Vec3Tuple[] = Object.freeze([
   [0.20, 0.80, 0.44], [1.03, 0.775, 0.40], [1.08, 0.67, -0.55],
-  [1.40, 0.66, -0.95], [1.53, 0.32, -1.10],
+  [1.28, 0.66, -0.95], [1.41, 0.32, -1.10],
 ]);
 const LEO2A7V_GLACIS: readonly Vec2Tuple[] = Object.freeze([
   [2.05, 1.60], [2.45, 1.50], [2.95, 1.44], [3.55, 1.40], [3.86, 1.26],
@@ -6820,20 +6816,24 @@ function sampleLeo2A7VSurface(
   return stations.at(-1)?.[valueIndex] ?? 0;
 }
 
-// Point and tangent frame on the A7V's real ruled upper-cheek plate. ERA
-// courses use this surface directly so their inner faces follow the falling
-// crest and arrowhead sweep rather than bridging it with a flat tile wall.
+// Point and tangent frame on the exact upper face emitted by
+// wedgeTurretV3. ERA courses sample the same ridge, slope and taper constants
+// as the structural cheek, preventing the old independently approximated ERA
+// surface from hanging beyond or cutting through the armor below it.
 function leo2A7VCheekSurface(side: Side, absX: number, courseFraction: number) {
   const fraction = THREE.MathUtils.clamp(courseFraction, 0, 1);
-  const lowerY = 0.35;
+  const ridgeY = 0.22 + 0.09;
+  const upperSlopeTan = Math.tan(THREE.MathUtils.degToRad(18));
   const surfacePoint = (x: number): THREE.Vector3 => {
-    const noseZ = sampleLeo2A7VSurface(LEO2A7V_CHEEK_NOSE, x);
-    const crestY = sampleLeo2A7VSurface(LEO2A7V_CHEEK_CREST, x, 1);
-    const crestZ = sampleLeo2A7VSurface(LEO2A7V_CHEEK_CREST, x, 2);
+    const noseZ = sampleLeo2A7VSurface(LEO2A7V_CHEVRON_NOSE, x);
+    const ridgeZ = noseZ - 0.040;
+    const taper = THREE.MathUtils.clamp((x - 1.24) / (1.41 - 1.24), 0, 1);
+    const upperY = THREE.MathUtils.lerp(0.76, 0.54, taper);
+    const upperZ = ridgeZ - (upperY - ridgeY) / upperSlopeTan;
     return new THREE.Vector3(
       side * x,
-      THREE.MathUtils.lerp(lowerY, crestY, fraction),
-      THREE.MathUtils.lerp(noseZ, crestZ, fraction),
+      THREE.MathUtils.lerp(ridgeY, upperY, fraction),
+      THREE.MathUtils.lerp(ridgeZ, upperZ, fraction),
     );
   };
   const point = surfacePoint(absX);
@@ -6841,10 +6841,16 @@ function leo2A7VCheekSurface(side: Side, absX: number, courseFraction: number) {
   const tangentX = surfacePoint(absX + epsilon).sub(surfacePoint(absX - epsilon));
   if (side < 0) tangentX.multiplyScalar(-1);
   tangentX.normalize();
-  const noseZ = sampleLeo2A7VSurface(LEO2A7V_CHEEK_NOSE, absX);
-  const crestY = sampleLeo2A7VSurface(LEO2A7V_CHEEK_CREST, absX, 1);
-  const crestZ = sampleLeo2A7VSurface(LEO2A7V_CHEEK_CREST, absX, 2);
-  const tangentCourse = new THREE.Vector3(0, crestY - lowerY, crestZ - noseZ).normalize();
+  const lower = surfacePoint(absX);
+  const upper = surfacePoint(absX);
+  lower.setY(ridgeY);
+  lower.setZ(sampleLeo2A7VSurface(LEO2A7V_CHEVRON_NOSE, absX) - 0.040);
+  const taper = THREE.MathUtils.clamp((absX - 1.24) / (1.41 - 1.24), 0, 1);
+  const upperY = THREE.MathUtils.lerp(0.76, 0.54, taper);
+  const upperZ = lower.z - (upperY - ridgeY) / upperSlopeTan;
+  upper.setY(upperY);
+  upper.setZ(upperZ);
+  const tangentCourse = upper.sub(lower).normalize();
   const normal = new THREE.Vector3().crossVectors(tangentX, tangentCourse).normalize();
   if (normal.z < 0) normal.multiplyScalar(-1);
   const tangentY = new THREE.Vector3().crossVectors(normal, tangentX).normalize();
@@ -6855,7 +6861,7 @@ function leo2A7VCheekSurface(side: Side, absX: number, courseFraction: number) {
     point,
     normal,
     rotation,
-    courseLength: Math.hypot(crestY - lowerY, crestZ - noseZ),
+    courseLength: Math.hypot(upperY - ridgeY, upperZ - lower.z),
   };
 }
 
@@ -7174,7 +7180,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
     // The owner source's top view is a continuous arrowhead: the ridge
     // begins beside the gun and sweeps rearward at every outboard station.
     // A nearly-flat 0.30..1.42 m run was the remaining square-front defect.
-    nose: [[0.30, 2.04], [0.62, 1.94], [0.96, 1.76], [1.26, 1.50], [1.48, 1.22], [1.62, 1.03]],
+    nose: LEO2A7V_CHEVRON_NOSE,
     // The A7V keeps a dominant upper face and a shorter lower return, but
     // carries a sharper six-station plan than the A5/A6 family members.
     chevron: {
@@ -7183,8 +7189,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
       rootDepthM: [0.54, 0.52, 0.49, 0.44, 0.39, 0.34],
       equalLowerReturnHeight: true,
     },
-    noseUpper: [[0.30, 1.90], [0.62, 1.82], [0.96, 1.66], [1.26, 1.43], [1.48, 1.16], [1.57, 0.98]],
-    crest: [[0.20, 0.80, 0.44], [1.03, 0.775, 0.40], [1.08, 0.67, -0.55], [1.40, 0.66, -0.95], [1.53, 0.32, -1.10]],
+    crest: LEO2A7V_CHEVRON_CREST,
     // The A7V outboard armor is carried by the continuous cheek and side
     // cassette below; do not restore the old rectangular fore tip pads.
     sideMods: [
@@ -13414,13 +13419,9 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     ],
     seatRing: { r0: 1.08, r1: 1.12, h: 0.18, y: -0.06, z: -0.30 },
     chamferY: 0.42, roofX: 1.02, wallShadowXCap: 1.335,
-    // §5.345 front re-loft (owner: "the turret front is jsut incomplete and
-    // misshapen"): the default 1.95-wide underride bridge painted a flat
-    // full-width wall under the gun to z 1.85 — narrowed to the mantlet
-    // channel (±0.39, tucked flush behind the 1.60 slot wall) so the two
-    // wedge cheeks meet the mantlet instead of a slab. The vacated front
-    // pixels are body-wall-covered (frustum walls at z<=0.55 own them).
-    underride: { wScale: 0.60, d: 1.50, zOffset: 0.30 },
+    // The corrected A6 lower returns own the entire lower front.  Retaining
+    // even the earlier narrowed underride left a fully hidden box inside the
+    // closed M/UA cheeks, so the shared A6 architecture suppresses it here.
     // §5.345: embrasure cheeks tight to the mantlet (0.30 deep, rear edge
     // held at the 1.555 slot line) — the 0.65 planks floated ahead of the
     // re-lofted walls.
@@ -13444,9 +13445,10 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     chevron: {
       profile: 'leopard-2a6m', ridgeInsetM: 0.030, ridgeLiftM: 0.13,
       upperSlopeDeg: 19, upperRootY: 0.66, upperTipY: 0.50, upperTaperStartX: 1.30,
-      rootDepthM: [0.58, 0.56, 0.51, 0.46, 0.40, 0.34],
-      rootY: [0.07, 0.075, 0.08, 0.09, 0.10, 0.12],
+      rootDepthM: [0.90, 0.82, 0.68, 0.66, 0.52, 0.34],
+      rootY: [-0.07, -0.07, -0.07, -0.07, 0.05, 0.12],
     },
+    underride: false,
     // Keep the compact right tip support. The two left-side plates at
     // x=-1.53/-1.44 were the exact owner-marked blockers and are retired so
     // the continuous chevron remains the visible armor surface.
