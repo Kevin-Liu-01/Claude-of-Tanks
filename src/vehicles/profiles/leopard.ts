@@ -10102,9 +10102,9 @@ function buildKF51(P: TankBuilderPort) {
     Object.freeze({ x: 1.47, upperY: 0.56, upperZ: 1.12, ridgeY: 0.35, ridgeZ: 2.02, lowerY: 0.14, lowerZ: 1.40 }),
   ]);
   const kf51FrontPanels: ReadonlyArray<readonly [number, number]> = Object.freeze([
-    Object.freeze([0.47, 0.72]),
-    Object.freeze([0.76, 1.04]),
-    Object.freeze([1.08, 1.40]),
+    Object.freeze([0.47, 0.72] as const),
+    Object.freeze([0.76, 1.04] as const),
+    Object.freeze([1.08, 1.40] as const),
   ]);
   const kf51FrontSides = [];
   for (const s of [-1, 1] as const) {
