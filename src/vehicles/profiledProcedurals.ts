@@ -12,7 +12,7 @@ import { T80_PROFILES } from './profiles/t80.ts';
 import { UK_PROFILES } from './profiles/uk.ts';
 import { CHALLENGER_PROFILES } from './profiles/challenger.ts';
 import { LEOPARD_PROFILES } from './profiles/leopard.ts';
-import { MERKAVA_PROFILES } from './profiles/merkava.js';
+import { MERKAVA_PROFILES } from './profiles/merkava.ts';
 import { PATTON_PROFILES } from './profiles/patton.ts';
 import { MISC_PROFILES } from './profiles/misc.ts';
 import { ITALY_PROFILES } from './profiles/italy.ts';

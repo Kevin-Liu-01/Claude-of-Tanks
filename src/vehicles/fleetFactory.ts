@@ -54,10 +54,6 @@ import {
   type VehicleProfileRecord,
 } from './profileBuilderAdapter.ts';
 
-interface ProfileKit extends ProfileBuildFunctions {
-  readonly FITTINGS: unknown;
-}
-
 type GroupLoader = () => Promise<unknown>;
 type TankVisual = ReturnType<typeof createTankCore>;
 
@@ -72,7 +68,7 @@ export interface CreateTankOptions {
 finalizeFirstPartyRoster();
 applyNativeFamilyOrderToCatalogs();
 
-let profileKit: ProfileKit | null = null;
+let profileKit: ProfileBuildFunctions | null = null;
 let factoryReady = false;
 let factoryReadyPromise: Promise<void> | null = null;
 
@@ -85,7 +81,7 @@ function ensureFactoryReady(): Promise<void> {
         profiledBuilders: {},
         fittings: kit.FITTINGS,
       });
-      profileKit = kit as unknown as ProfileKit;
+      profileKit = kit;
       factoryReady = true;
     }).catch((error) => {
       factoryReadyPromise = null;
@@ -133,7 +129,7 @@ const GROUP_LOADERS = Object.freeze({
     const { strv103: _swedenOwnsStrv103, ...profiles } = mod.CASEMATE_PROFILES;
     registerProfiles(profiles);
   }),
-  merkava: () => import('./profiles/merkava.js').then((mod) => registerProfiles(mod.MERKAVA_PROFILES)),
+  merkava: () => import('./profiles/merkava.ts').then((mod) => registerProfiles(mod.MERKAVA_PROFILES)),
   afv: () => import('./profiles/afvFamily.ts').then((mod) => registerProfiles(mod.AFV_FAMILY_PROFILES)),
   korea: () => import('./profiles/korea.ts').then((mod) => registerProfiles(mod.KOREA_PROFILES)),
   japan: () => import('./profiles/japan.ts').then((mod) => registerProfiles(mod.JAPAN_PROFILES)),
@@ -142,7 +138,7 @@ const GROUP_LOADERS = Object.freeze({
 } satisfies Record<FleetGroup, GroupLoader>);
 const groupPromises = new Map<FleetGroup, Promise<void>>();
 const readyGroups = new Set<FleetGroup>();
-const tankSpecs = TANK_SPECS as unknown as Record<string, unknown>;
+const tankSpecs = TANK_SPECS;
 
 function ensureGroup(group: FleetGroup | undefined): Promise<void> {
   if (!group || readyGroups.has(group)) return ensureFactoryReady();

@@ -18,12 +18,426 @@
 import * as THREE from 'three';
 import { KIT, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+
+type Side = -1 | 1;
+type Vec2Tuple = readonly [number, number];
+type Vec3Tuple = readonly [number, number, number];
+interface Vec3Point {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+type RoofStation = readonly [number, number, number?];
+type BucketName = string;
+
+function hasOwnKey<Obj extends object>(obj: Obj, key: PropertyKey): key is keyof Obj {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function normalizedSide(value: number): Side {
+  return value < 0 ? -1 : 1;
+}
+
+type UnionKeys<Value> = Value extends Value ? keyof Value : never;
+type UnionValue<Value, Key extends PropertyKey> = Value extends Value
+  ? Key extends keyof Value ? Value[Key] : undefined
+  : never;
+type DefinedValue<Value> = NonNullable<Value>;
+type NullablePart<Value> = Extract<Value, null | undefined>;
+type DeepMergedArray<Value extends readonly unknown[]> = [Value[number]] extends [readonly unknown[]]
+  ? Value
+  : [Value[number]] extends [object]
+    ? readonly DeepMergedUnion<Value[number]>[]
+    : Value;
+type DeepMergedValue<Value> = [DefinedValue<Value>] extends [never]
+  ? undefined
+  : [DefinedValue<Value>] extends [(...args: never[]) => unknown]
+    ? DefinedValue<Value> | NullablePart<Value>
+    : [DefinedValue<Value>] extends [readonly unknown[]]
+      ? DeepMergedArray<DefinedValue<Value>> | NullablePart<Value>
+      : [DefinedValue<Value>] extends [object]
+        ? DeepMergedUnion<DefinedValue<Value>> | NullablePart<Value>
+        : Value;
+type DeepMergedUnion<Value> = {
+  readonly [Key in UnionKeys<Value>]: DeepMergedValue<UnionValue<Value, Key>>;
+};
+type DeepDefined<Value> = Value extends (...args: never[]) => unknown
+  ? Value
+  : Value extends readonly (infer Item)[]
+    ? readonly DeepDefined<Item>[]
+    : Value extends object
+      ? { readonly [Key in keyof Value]-?: DeepDefined<NonNullable<Value[Key]>> }
+      : NonNullable<Value>;
+type MerkavaProfileData = DeepDefined<DeepMergedUnion<
+  (typeof MERKAVA_PROFILE_DATA)[keyof typeof MERKAVA_PROFILE_DATA]
+>>;
+type ProfileAntenna = AntennaConfig;
+
+interface LoftStation {
+  readonly z: number;
+  readonly yT: number;
+  readonly yB: number;
+  readonly wT: number;
+  readonly wB: number;
+  readonly x?: number;
+}
+
+interface TrackClearance {
+  readonly hw: number;
+  readonly y: number;
+}
+
+interface GearEndpoint {
+  readonly z: number;
+  readonly y: number;
+  readonly r: number;
+}
+
+interface MerkavaKeel {
+  readonly toeZ: number;
+  readonly toeY: number;
+  readonly toeHW: number;
+  readonly midZ: number;
+  readonly midY: number;
+  readonly groundZ: number;
+  readonly bellyY: number;
+  readonly tailLowZ: number;
+  readonly hwClamp?: number;
+  readonly bellySideY?: number;
+  readonly bellyMidY?: number;
+  readonly bellyMidX?: number;
+}
+
+interface RectSpan {
+  readonly x?: number;
+  readonly y?: number;
+  readonly z?: number;
+  readonly x0?: number;
+  readonly x1?: number;
+  readonly z0: number;
+  readonly z1: number;
+  readonly top?: number;
+  readonly bot?: number;
+  readonly base?: number;
+  readonly hw?: number;
+  readonly w?: number;
+  readonly h?: number;
+  readonly d?: number;
+}
+
+interface FenderDrops {
+  readonly x?: number | readonly [number, number];
+  readonly z: readonly number[];
+  readonly bot: number;
+  readonly mat?: string;
+}
+
+interface FenderPlank {
+  readonly x0: number;
+  readonly x1: number;
+  readonly z0: number | readonly [number, number];
+  readonly z1: number | readonly [number, number];
+  readonly y: number;
+  readonly drops?: FenderDrops;
+}
+
+interface FenderLip {
+  readonly x: number;
+  readonly w: number;
+  readonly z0: number;
+  readonly z1: number;
+  readonly y: number;
+}
+
+interface FenderHorn {
+  readonly x0: number;
+  readonly x1: number;
+  readonly z0: number;
+  readonly z1: number;
+  readonly top: number;
+  readonly bot: number;
+}
+
+interface MerkavaSkirt extends RectSpan {
+  readonly top: number;
+  readonly bot: number;
+  readonly x?: number;
+  readonly scallop?: boolean;
+  readonly flaps?: boolean;
+  readonly idlerFlapY?: number;
+  readonly plain?: boolean;
+  readonly backH?: number;
+  readonly backZ0?: number;
+  readonly lipFill?: boolean;
+  readonly cutHem?: boolean;
+  readonly archH?: number;
+  readonly archW?: number;
+  readonly flatW?: number;
+  readonly lobeBot?: number;
+  readonly lobeIn?: number;
+  readonly lintelBot?: number;
+  readonly lintelJit?: readonly number[];
+  readonly round?: boolean;
+  readonly soft?: boolean;
+  readonly wallClamp?: readonly [number, number];
+  readonly fillerClamp?: readonly [number, number];
+  readonly runFiller?: boolean;
+  readonly fillerTop?: number;
+  readonly lowCurtain?: number;
+  readonly wavy?: boolean;
+  readonly flush?: number;
+}
+
+interface MerkavaTailRack extends RectSpan {
+  readonly top: number;
+  readonly bot: number;
+  readonly hw: number;
+  readonly x0: number;
+  readonly wings?: readonly RectSpan[];
+}
+
+interface MerkavaTailRackWing {
+  readonly x0: number;
+  readonly x1: number;
+  readonly z1: number | Vec2Tuple;
+  readonly top: number;
+  readonly bot: number;
+  readonly tarp?: boolean;
+  readonly liftBot?: number;
+}
+
+interface MerkavaTailRackConfig {
+  readonly z0: number;
+  readonly z1: number;
+  readonly top: number;
+  readonly bot: number;
+  readonly hw: number;
+  readonly x0?: number;
+  readonly fall?: readonly Vec2Tuple[];
+  readonly dips?: readonly Vec3Tuple[];
+  readonly wrapClear?: { readonly x: number; readonly bot: number; readonly z: number };
+  readonly frontClear?: { readonly z: number; readonly bot: number };
+  readonly wall?: { readonly top: number; readonly bot: number; readonly endBot?: number };
+  readonly railZ?: number;
+  readonly midShelf?: { readonly x1: number; readonly z1: number; readonly top?: number };
+  readonly wings?: MerkavaTailRackWing | readonly MerkavaTailRackWing[];
+}
+
+interface MerkavaHatchRing {
+  readonly x: number;
+  readonly z: number;
+  readonly r: number;
+  readonly top: number;
+  readonly base: number;
+  readonly solid: boolean;
+  readonly collar?: { readonly r: number; readonly y: number };
+  readonly scopes: number;
+}
+
+function isMerkavaTailRackConfig(value: object): value is MerkavaTailRackConfig {
+  return 'z0' in value && typeof value.z0 === 'number'
+    && 'z1' in value && typeof value.z1 === 'number'
+    && 'top' in value && typeof value.top === 'number'
+    && 'bot' in value && typeof value.bot === 'number'
+    && 'hw' in value && typeof value.hw === 'number';
+}
+
+function requireMerkavaTailRackConfig(value: object): MerkavaTailRackConfig {
+  if (!isMerkavaTailRackConfig(value)) throw new TypeError('Merkava tail-rack profile is incomplete');
+  return value;
+}
+
+interface MerkavaGlacisClosure {
+  readonly z0: number;
+  readonly z1: number;
+  readonly lower0: number;
+  readonly lower1: number;
+  readonly upper0: number;
+  readonly upper1: number;
+  readonly hw0: number;
+  readonly hw1: number;
+}
+
+type MerkavaChassisConfig = MerkavaProfileData;
+
+interface MachineGunRod {
+  readonly dy?: number;
+  readonly dz?: number;
+  readonly len?: number;
+}
+
+interface PlinthMachineGun {
+  readonly x: number;
+  readonly xIn: number;
+  readonly rodY: number;
+  readonly rodZ0: number;
+  readonly rodZ1: number;
+  readonly recTop: number;
+  readonly recZ0: number;
+  readonly recZ1: number;
+  readonly slotTop: number;
+  readonly rodZf?: number;
+  readonly tipDrop?: number;
+  readonly recW?: number;
+  readonly pale?: boolean;
+  readonly gunmetal?: boolean;
+}
+
+interface SurfaceFrame {
+  readonly side?: Side;
+  readonly worldZ?: number;
+  readonly heightFraction?: number;
+  readonly point: THREE.Vector3;
+  readonly normal: THREE.Vector3;
+  readonly tangent: THREE.Vector3;
+  readonly up: THREE.Vector3;
+  readonly eulerXYZ: THREE.Euler;
+  readonly eulerYXZ: THREE.Euler;
+  readonly supportLayer?: number;
+  readonly courseIndex?: number;
+}
+
+interface SmokeClusterOptions {
+  readonly pitch?: number;
+  readonly recessed?: boolean;
+  readonly pale?: boolean;
+  readonly soft?: boolean;
+  readonly frame?: SurfaceFrame;
+}
+
+interface AntennaConfig {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly h: number;
+  readonly stem?: number;
+  readonly potTop?: number;
+  readonly thin?: number;
+  readonly bright?: boolean;
+}
+
+interface MerkavaBasketConfig {
+  readonly z0: number;
+  readonly z1: number;
+  readonly top: number;
+  readonly bot: number;
+  readonly hw: number;
+  readonly topRear?: number;
+  readonly xoff?: number;
+  readonly railTopL?: number;
+  readonly rimJit?: readonly number[];
+  readonly soft?: boolean;
+  readonly shelf?: boolean;
+  readonly voids?: boolean;
+  readonly pale?: boolean;
+  readonly openPack?: boolean;
+  readonly coil?: number;
+  readonly chainHW?: number;
+  readonly chainGap?: number;
+  readonly chainDrop?: number;
+  readonly fine?: boolean;
+}
+
+interface MerkavaCombatFit {
+  readonly rows: number;
+  readonly cols: number;
+  readonly xOut: number;
+  readonly cheekRise: number;
+  readonly z: number;
+  readonly side: number;
+  readonly roof: number;
+  readonly roofArmor: number;
+  readonly sideY: number;
+  readonly sideZ: Vec2Tuple;
+  readonly sideFace: readonly Vec2Tuple[];
+  readonly shield: Vec3Tuple;
+  readonly customSidePanels?: boolean;
+}
+
+interface MerkavaEraCell {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly tileW: number;
+  readonly tileH: number;
+  readonly tileD: number;
+  readonly sourceConformal?: boolean;
+  readonly yaw?: number;
+  readonly roll?: number;
+  readonly rx?: number;
+  readonly ry?: number;
+  readonly rz?: number;
+  readonly boxRx?: number;
+  readonly boxRy?: number;
+  readonly boxRz?: number;
+  readonly nx?: number;
+  readonly ny?: number;
+  readonly nz?: number;
+  readonly surface?: THREE.Vector3;
+  readonly sourceSurface?: THREE.Vector3;
+  readonly support?: THREE.Vector3;
+  readonly supportLayer?: string | number;
+  readonly mountCenter?: THREE.Vector3 | null;
+  readonly courseIndex?: number;
+  readonly worldZ?: number;
+}
+
+interface MerkavaCheekPod {
+  readonly x0: number;
+  readonly x1: number;
+  readonly top: number;
+  readonly bot: number;
+  readonly z0: number;
+  readonly z1: number;
+}
+
+interface MerkavaWallSeam {
+  readonly x: number;
+  readonly y: number;
+  readonly h: number;
+  readonly zs?: readonly number[];
+  readonly bz?: readonly number[];
+  readonly hz?: readonly Vec3Tuple[];
+}
+
+interface Merkava3KitOptions {
+  readonly pale?: boolean;
+  readonly m2?: boolean;
+  readonly ringMGs?: boolean;
+  readonly loaderDrop?: number;
+  readonly noMGs?: boolean;
+}
+
+function isTankBuilderPort(value: object): value is TankBuilderPort {
+  return 'spec' in value
+    && 'hullG' in value
+    && 'turretG' in value
+    && 'gunG' in value
+    && 'mats' in value
+    && 'add' in value && typeof value.add === 'function'
+    && 'addEquipment' in value && typeof value.addEquipment === 'function'
+    && 'decal' in value && typeof value.decal === 'function';
+}
+
+function requireTankBuilderPort(value: object): TankBuilderPort {
+  if (!isTankBuilderPort(value)) {
+    throw new TypeError('Merkava profile requires a complete procedural tank builder');
+  }
+  return value;
+}
 
 // ---------------------------------------------------------------------------
 // Loft machinery: bands of 8-corner slabs that follow measured polylines.
 // Stations run FRONT (+z) to REAR; each entry {z, yT, yB, wT, wB}.
 // ---------------------------------------------------------------------------
-function loftBand(P, bucket, sts, trackClear = null) {
+function loftBand(
+  P: TankBuilderPort,
+  bucket: BucketName,
+  sts: readonly LoftStation[],
+  trackClear: TrackClearance | null = null,
+): void {
   const slab = orientedSlab;                                // §C.1 winding guard
   for (let i = 0; i < sts.length - 1; i++) {
     const a = sts[i], b = sts[i + 1];
@@ -62,10 +476,13 @@ function loftBand(P, bucket, sts, trackClear = null) {
 // while every supplied reference resolves two backed radiator/service bays,
 // unequal access doors, marker lamps and low recovery hardware. Every piece
 // overlaps the last hull station so it cannot become a stand-off panel.
-function merkavaSourceRearFinish(P, c) {
+function merkavaSourceRearFinish(P: TankBuilderPort, c: MerkavaChassisConfig): void {
   if (!['merkava1b', 'merkava2b', 'merkava2d', 'merkava3b', 'merkava3c', 'merkava3d', 'merkava4b'].includes(P.spec.id)) return;
   const { box, cylZ, torus } = KIT;
-  const rear = c.body.reduce((best, station) => station.z < best.z ? station : best, c.body[0]);
+  const rear = c.body.reduce(
+    (best: LoftStation, station: LoftStation) => station.z < best.z ? station : best,
+    c.body[0],
+  );
   const zFace = rear.z - 0.026;
   const top = rear.yT;
   const bot = rear.yB;
@@ -112,7 +529,7 @@ function merkavaSourceRearFinish(P, c) {
 // c.body: loft stations for the sponson band (nose tip -> tail plate).
 // c.keel: [[z,y]...] lower-glacis/belly line for the center body.
 // ---------------------------------------------------------------------------
-function merkavaChassis(P, c) {
+function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
   const { box, headlight, towCable, liftEye, periscope } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const w = c.width, hw = w / 2;
@@ -143,11 +560,11 @@ function merkavaChassis(P, c) {
   const bpY = bpOn ? -(c.deckY + 0.02) : 0;
   const bpZ = bpOn ? -c.pivotZ : 0;
   const bpB = bpOn
-    ? (b) => (b === 'hull' ? 'turret'
+    ? (b: string) => (b === 'hull' ? 'turret'
       : b === 'hullCloth' ? 'turretCloth'
       : b === 'hullDark' ? 'turretDark'
       : b === 'hullDetail' ? 'turretDetail' : b)
-    : (b) => b;
+    : (b: string) => b;
 
   // Upper body: one continuous loft following the measured deck/glacis top
   // line and the plan half-width curve. With tailNotch the FINAL segment
@@ -162,7 +579,7 @@ function merkavaChassis(P, c) {
     for (const s of [-1, 1]) {
       // corners in slab plan order (-x,+z),(+x,+z),(+x,-z),(-x,-z); front
       // pair at station a, rear pair at the true tail station b2
-      const pts = s > 0
+      const pts: Array<[number, number, LoftStation]> = s > 0
         ? [[nhw, a.z, a], [a.wB, a.z, a], [b2.wB, b2.z, b2], [nhw, b2.z, b2]]
         : [[-a.wB, a.z, a], [-nhw, a.z, a], [-nhw, b2.z, b2], [-b2.wB, b2.z, b2]];
       const tailFloor = c.bodyTrackClear?.y;
@@ -523,7 +940,7 @@ function merkavaChassis(P, c) {
   // with brush guards (the measured plan bulges past the prow at |x|~0.6),
   // clevis tow brackets on the toe, tow cable.
   const g = c.glacis; // { z0(top/deck end), z1(toe), yAt(z) via top line }
-  const gTop = (z) => {
+  const gTop = (z: number) => {
     const b = c.body;
     for (let i = 0; i < b.length - 1; i++) {
       if (z <= b[i].z && z >= b[i + 1].z) {
@@ -536,7 +953,7 @@ function merkavaChassis(P, c) {
   // LOCAL slope per fitting: the whole-glacis average rake made flat-deck
   // fittings pitch nose-down and poke their edges 0.15 above the surface
   // (the side-hull trace caught the louvre-bank corner at 1.73).
-  const rxAt = (z) => -Math.atan2(gTop(z + 0.28) - gTop(z - 0.28), 0.56);
+  const rxAt = (z: number) => -Math.atan2(gTop(z + 0.28) - gTop(z - 0.28), 0.56);
   const dhZ = g.z0 + (g.z1 - g.z0) * 0.28;
   const dhY = gTop(dhZ), dhRx = rxAt(dhZ);
   P.add('hull', box(0.52, 0.05, 0.58), -w * 0.20, dhY + 0.01, dhZ, dhRx, 0, 0);
@@ -672,15 +1089,6 @@ function merkavaChassis(P, c) {
     P.add(grdM, box(grdW, 0.13, 0.16), hx - 0.085, hy + 0.01, hz - 0.03, -0.3, 0, 0);
     P.add(grdM, box(grdW, 0.13, 0.16), hx + 0.085, hy + 0.01, hz - 0.03, -0.3, 0, 0);
     P.add(grdM, box(0.185, c.towLit ? 0.013 : 0.016, 0.16), hx, hy + 0.075, hz - 0.03, -0.3, 0, 0);
-    if (c.podGuard) { // tall brush-guard hoop: the pods are the bow's body
-      // columns for the dims hullLength read — the hoop carries the band.
-      const pg = c.podGuard; // { top, bot }
-      for (const gx of [hx - 0.10, hx + 0.10]) {
-        P.add('hullDark', box(0.016, pg.top - pg.bot, 0.03), gx, (pg.top + pg.bot) / 2, hz + 0.035);
-      }
-      P.add('hullDark', box(0.21, 0.016, 0.03), hx, pg.top - 0.008, hz + 0.035);
-      P.add('hullDark', box(0.21, 0.016, 0.03), hx, (pg.top + pg.bot) / 2, hz + 0.035);
-    }
     const tx = s * c.keel.toeHW * 0.82, tyE = c.keel.toeY + 0.09;
     P.add('hullDetail', box(0.11, 0.08, 0.045), tx, tyE, c.keel.toeZ - 0.045);
     for (const ls of [-1, 1]) {
@@ -725,16 +1133,6 @@ function merkavaChassis(P, c) {
         // forward rim's ~0.04 plan poke on 1-2 cols is AA mask-bleed class.
         P.add('hullDetail', KIT.torus(0.058, 0.020, 18, 10),
           tx, tyE + 0.13, c.keel.toeZ + 0.05, 0.35, 0, s * -0.5);
-        if (s > 0 && c.towHang) {
-          // (camera-ray criterion: under-toe content prints against the
-          // background only where y < 0.88 - 1.573*(2.89 - z) — the 27-deg
-          // sight-line under the toe edge outruns the keel ramp. The loop's
-          // low-forward rim crosses it by ~5 cm; its y-min 0.81 stays above
-          // the existing 0.715 bottom envelope at these columns (workorder),
-          // z-max 2.92 is a ~1 px AA-class plan graze on one column.)
-          P.add('hullDetail', KIT.torus(0.095, 0.024, 20, 10),
-            0.42, tyE - 0.085, c.keel.toeZ - 0.07, 0.35, 0, -0.5);
-        }
       }
       if (s > 0) {
         // r8 cheap polish (critic r7: "3d bow bracket/hanger row"): a row
@@ -840,11 +1238,11 @@ function merkavaChassis(P, c) {
     // WORLD Y near-constant instead — the z of each point is chosen so the
     // cable runs level along the panel line (sag 12 mm max), the true
     // "glacis-hugging" read; shackles stay.
-    const cy = (z, lift) => gTop(z) + lift;
+    const cy = (z: number, lift: number) => gTop(z) + lift;
     if (c.bowFlat) {
       const yEnd = gTop(g.z1 - 0.50) + 0.022;
       // walk z inward until gTop(z)+lift matches yEnd (glacis rises aft)
-      const zFor = (yT) => {
+      const zFor = (yT: number) => {
         let z = g.z1 - 0.30;
         for (let i = 0; i < 40; i++) { if (gTop(z) + 0.028 >= yT) break; z -= 0.02; }
         return z;
@@ -902,7 +1300,7 @@ function merkavaChassis(P, c) {
   // certified side/front column moves. Cable staples sit under the cable's
   // own certified +0.02..0.034 line.
   if (c.glacisKit) {
-    const gk = (z) => gTop(z), gRx = (z) => rxAt(z);
+    const gk = (z: number) => gTop(z), gRx = (z: number) => rxAt(z);
     // periscope/wiper plates flanking the driver line
     for (const s of [-1, 1]) {
       P.add('hullDetail', box(0.15, 0.016, 0.11), s * 0.42, gk(1.30) + 0.004, 1.30, gRx(1.30), 0, 0);
@@ -1051,7 +1449,7 @@ function merkavaChassis(P, c) {
     wheelZs: c.wheelZs,
     sprocket: { z: c.sprocket.z, y: c.sprocket.y, r: c.sprocket.r },
     idler: { z: c.idler.z, y: c.idler.y, r: c.idler.r },
-    rollers: c.rollers.map((z) => ({ z, y: c.trackTop - 0.10, r: 0.075 })),
+    rollers: c.rollers.map((z: number) => ({ z, y: c.trackTop - 0.10, r: 0.075 })),
     trackW: c.trackW, trackTh: c.trackTh ?? 0.078,
     topY: c.trackTop - 0.02, paintedEnds: true,
     coveredTop: c.skirt ? true : c.trackTop - 0.04, arms: !c.skirt,
@@ -1062,13 +1460,9 @@ function merkavaChassis(P, c) {
     linkPitchM: c.linkPitchM ?? 0.11,
     shoeRadialScale: c.shoeRadialScale ?? 0.92,
     shoeWidthScale: c.shoeWidthScale ?? 1.00,
-    // Source-measured terminal geometry may need a tighter loaded contact
-    // patch; shoe placement still comes only from the canonical live loop.
-    contactZF: c.contactZF,
-    contactZR: c.contactZR,
     dishR: c.dishR ?? 0.78,
     chainHex: c.chainHex, padHex: c.padHex, gearFloor: c.gearFloor,
-    tireHex: c.tireHex, wheelHex: c.wheelHex, endWheelHex: c.endWheelHex, // r12 order 2 (3D): arch-window gear floor to the ref's shade class
+    wheelHex: c.wheelHex, // r12 order 2 (3D): arch-window gear floor to the ref's shade class
     armBucket: c.runningGearBuckets ? 'hullRunningGearDetail' : undefined,
     wheelFaceLayers,
   });
@@ -1253,7 +1647,7 @@ function merkavaChassis(P, c) {
       // makes the arch openings read as shadow depth over the (dark) wheels.
       let lobes = null;
       if (sk.cutHem) {
-        const archW = sk.archW ?? 0.54, flatW = sk.flatW ?? 0.22;
+        const archW = 0.54, flatW = 0.22;
         const slope = (archW - flatW) / 2;
         const edges = [];
         for (const wz of c.wheelZs) edges.push([wz + archW / 2, wz - archW / 2]);
@@ -1503,7 +1897,6 @@ function merkavaChassis(P, c) {
       // sub-60 through the steep views' arch line (3D was the only
       // cutHem-without-wavy mark; every sibling keeps its exact path).
       if (!sk.wavy && !sk.cutHem) P.add('hullRubber', box(0.024, 0.12, z0 - z1), s * (sx + 0.012), sk.bot + 0.04, (z0 + z1) / 2);
-      if (sk.fringe) P.add('hullRubber', box(0.026, 0.10, z0 - z1), s * (sx + 0.008), sk.bot - 0.10, (z0 + z1) / 2);
       // End flares: the measured skirts run ~+-1.83 mid-hull (stations read
       // 3.66) but flare at BOTH ends (front mud-guard ~1.844, rear guard
       // ~1.855 — the end station windows read 3.69-3.72).
@@ -1556,8 +1949,8 @@ function merkavaChassis(P, c) {
       // the default offset stood coincident with the idler-wrap rear face
       // (§B4 120 exact voxels) — it steps rearward, clear of the band.
       P.addMudguard(`merkava-idler-flap-${s}`, sk.flapMat ?? 'hullRubber',
-        box(sk.idlerFlapW ?? 0.30, sk.idlerFlapH ?? 0.30, 0.035),
-        s * (sk.idlerFlapX ?? xc), sk.idlerFlapY ?? (sk.bot + 0.02),
+        box(0.30, 0.30, 0.035),
+        s * xc, sk.idlerFlapY ?? (sk.bot + 0.02),
         c.idler.z - c.idler.r - (sk.idlerFlapDz ?? 0.12), 0.12, 0, 0);
       // rear mud flaps behind the idler: the measured tail bottoms keep
       // rising 0.43->0.61 between the idler wrap and the rack wall
@@ -1604,48 +1997,10 @@ function merkavaChassis(P, c) {
         }
       }
     }
-  } else if (c.fenderY) {
-    for (const s of [-1, 1]) {
-      P.add('hull', box(0.07, 0.075, c.fenderZ0 - c.fenderZ1), s * (hw - 0.05), c.fenderY, (c.fenderZ0 + c.fenderZ1) / 2);
-      for (let i = 0; i < 5; i++) {
-        P.add('hullDetail', box(0.075, 0.05, 0.14), s * (hw - 0.05), c.fenderY - 0.05, c.fenderZ0 - 0.4 - i * 1.05);
-      }
-    }
   }
 
-  // Rear hull racks. rearShelf: low stowage row on the rear deck edge.
-  // tailRack: the measured tall rear rack band flanking the clamshell door
-  // (3-series oracles carry a packed stowage stack behind the bustle).
-  // r2 post-repair: the shelf hugs the measured deck line (the old raised
-  // mid-rail at deckY+0.10 topped the repaired refs' bare 1.63-1.73 decks).
-  if (c.rearShelf) {
-    const rs = c.rearShelf; // { z0, z1, top, hw }
-    P.add('hull', box(rs.hw * 2, 0.035, rs.z0 - rs.z1), 0, rs.top - 0.02, (rs.z0 + rs.z1) / 2);
-    P.add('hull', box(rs.hw * 2, 0.035, rs.z0 - rs.z1), 0, deckY + 0.04, (rs.z0 + rs.z1) / 2);
-    for (let i = 0; i < 5; i++) {
-      P.add('hull', box(0.035, rs.top - deckY - 0.06, 0.035),
-        -rs.hw + 0.05 + i * ((rs.hw * 2 - 0.1) / 4), (rs.top + deckY) / 2, rs.z1 + 0.03);
-    }
-  }
-  // Per-side rear bins + low center rails: gives the hull mask its measured
-  // rear-deck band WITHOUT erasing the turret basket from the rear view (the
-  // subtraction lesson: full-width tall hull furniture deletes every turret
-  // pixel it covers from our own component mask).
-  if (c.rearBins) {
-    const rb = c.rearBins; // { z0, z1, top, x0, x1 }
-    const mid = (rb.z0 + rb.z1) / 2, len = rb.z0 - rb.z1;
-    for (const s of [-1, 1]) {
-      const xm = s * (rb.x0 + rb.x1) / 2;
-      P.add('hull', box(rb.x1 - rb.x0, rb.top - deckY - 0.16, len), xm, (rb.top + deckY + 0.16) / 2, mid);
-      P.add('hullCloth', box((rb.x1 - rb.x0) * 0.9, 0.10, len * 0.9), xm, rb.top + 0.03, mid);
-      P.add('hullDark', box(rb.x1 - rb.x0 + 0.02, rb.top - deckY - 0.2, 0.022), xm, (rb.top + deckY + 0.16) / 2, mid);
-    }
-    P.add('hull', box((rb.x0 - 0.02) * 2, 0.035, 0.035), 0, deckY + 0.06, rb.z1 + 0.05);
-    P.add('hull', box((rb.x0 - 0.02) * 2, 0.035, 0.035), 0, deckY + 0.14, rb.z1 + 0.05);
-    if (rb.shelf) { // low full-width stowage shelf between the bins
-      P.add('hullCloth', box(rb.shelf.hw * 2, rb.shelf.top - deckY - 0.14, len * 0.9), 0, (rb.shelf.top + deckY + 0.14) / 2, mid);
-    }
-  }
+  // The measured tall rear rack band flanks the clamshell door. Legacy
+  // `rearShelf` and `rearBins` branches had no profile owners and are removed.
   // r7 3D REAR-BAND STOW SLIVERS (critic r6/r7 item a: hull-side columns
   // med 84.2 vs ref 93.7 at rear rows y 336-392; row-SD says texture
   // richness — "the ref stacks bright stow there"). The band is the
@@ -1674,7 +2029,7 @@ function merkavaChassis(P, c) {
     // { x0, x1, z1, top, bot } are the outboard frames running further aft
     // (they set hullLengthM / overallLengthM without widening the plan
     // center columns).
-    const tr = c.tailRack;
+    const tr = requireMerkavaTailRackConfig(c.tailRack);
     const mid = (tr.z0 + tr.z1) / 2, len = tr.z0 - tr.z1;
     const x0 = tr.x0 ?? 0;
     // §B5-r2 (tr.fall, 3B/3C — coupled with c.bustlePackTurret): with the
@@ -1683,8 +2038,9 @@ function merkavaChassis(P, c) {
     // breaks in tr.fall: [[zRearOf, top]...] front->rear). Every rack
     // dressing top that used to hide under the pile caps to fallCap(z).
     // Absent (every sibling): identity — byte-identical geometry.
-    const fallCap = tr.fall
-      ? (z) => { let t9 = tr.top; for (const [zf9, ft9] of tr.fall) if (z <= zf9) t9 = ft9; return t9; }
+    const fall = tr.fall;
+    const fallCap = fall
+      ? (z: number) => { let t9 = tr.top; for (const [zf9, ft9] of fall) if (z <= zf9) t9 = ft9; return t9; }
       : () => tr.top;
     const fTop = fallCap(tr.z1); // tail-face cap (rear-face dressing plane)
     if (x0 > 0) {
@@ -1717,7 +2073,7 @@ function merkavaChassis(P, c) {
           // either direction, so the certified-adjacent top stays put and
           // only the notch dips render)
           const bodyDrop = 0;
-          const segs = [];
+          const segs: Vec3Tuple[] = [];
           let cx0 = x0;
           for (const [dx0, dx1, drop] of tr.dips) {
             if (dx0 > cx0) segs.push([cx0, dx0, 0]);
@@ -1739,12 +2095,12 @@ function merkavaChassis(P, c) {
           for (const [sx0, sx1, drop] of segs) {
             const th = (tr.top - tr.bot) * 0.94 - bodyDrop - drop;
             const yBase = tr.bot + (tr.top - tr.bot) * 0.03;
-            const parts = wc && sx1 > wc.x
+            const parts: readonly (readonly [number, number, boolean])[] = wc && sx1 > wc.x
               ? (sx0 < wc.x ? [[sx0, wc.x, false], [wc.x, sx1, true]] : [[sx0, sx1, true]])
               : [[sx0, sx1, false]];
             for (const [px0, px1, lifted] of parts) {
               const sw = px1 - px0, sxm = s * (px0 + px1) / 2;
-              const pb = lifted ? wc.bot : yBase;
+              const pb = lifted ? (wc?.bot ?? yBase) : yBase;
               P.add(rackMat, box(sw, yBase + th - pb, len * 0.94), sxm, (yBase + th + pb) / 2, mid);
             }
           }
@@ -1772,7 +2128,7 @@ function merkavaChassis(P, c) {
             // (cuts at every fall break + the frontClear plane); the §B4
             // front-segment bottom lift is preserved exactly through the
             // frontClear plane.
-            const cuts9 = [...new Set([...tr.fall.map((f9) => f9[0]), tr.frontClear.z])].sort((a9, b9) => b9 - a9);
+            const cuts9 = [...new Set([...tr.fall.map((f9: readonly [number, number]) => f9[0]), tr.frontClear.z])].sort((a9, b9) => b9 - a9);
             let bz9 = zF9;
             for (const zc9 of [...cuts9, zR9]) {
               const ze9 = Math.max(zc9, zR9);
@@ -1898,7 +2254,7 @@ function merkavaChassis(P, c) {
             // line chunk-wise (same certified x planes and z reach).
             let hz9 = mid + len * 0.43;
             const hEnd9 = mid - len * 0.43;
-            for (const zc9 of [...tr.fall.map((f9) => f9[0]), hEnd9]) {
+            for (const zc9 of [...tr.fall.map((f9: readonly [number, number]) => f9[0]), hEnd9]) {
               const zb9 = Math.max(zc9, hEnd9);
               if (zb9 < hz9 - 0.02) {
                 const cm9 = fallCap((hz9 + zb9) / 2);
@@ -1989,7 +2345,7 @@ function merkavaChassis(P, c) {
             } else if (tr.fall && topRail9) {
               // §B5-r2: the side top rail follows the falling band line.
               let rz9 = tr.z0;
-              for (const zc9 of [...tr.fall.map((f9) => f9[0]), tr.z1]) {
+              for (const zc9 of [...tr.fall.map((f9: readonly [number, number]) => f9[0]), tr.z1]) {
                 if (zc9 < rz9) {
                   P.add('hullDark', box(0.04, 0.04, rz9 - zc9), s * railX,
                     Math.min(ry, fallCap((rz9 + zc9) / 2) - 0.02), (rz9 + zc9) / 2);
@@ -2094,7 +2450,7 @@ function merkavaChassis(P, c) {
     for (const wg of (Array.isArray(tr.wings) ? tr.wings : tr.wings ? [tr.wings] : [])) {
       // { x0, x1, z1|[L,R], top, bot }
       for (const s of [-1, 1]) {
-        const wz1 = Array.isArray(wg.z1) ? wg.z1[s < 0 ? 0 : 1] : wg.z1;
+        const wz1 = typeof wg.z1 === 'number' ? wg.z1 : wg.z1[s < 0 ? 0 : 1];
         // §B5 (see bpOn above): only the TALL tarp wings ride the bustle —
         // the low outboard/tail frames stay hull registration carriers.
         const wOn = bpOn && wg.tarp === true;
@@ -2111,7 +2467,7 @@ function merkavaChassis(P, c) {
         const xm = s * (wg.x0 + wx1) / 2, wd = wx1 - wg.x0;
         const wFz = wOn && s > 0 ? 0.148 : 0; // right outer-corner forward pull
         const wY = wOn ? bpY : 0, wZ = wOn ? bpZ : 0;
-        const wB = wOn ? bpB : (b) => b;
+        const wB = wOn ? bpB : (b: string) => b;
         const wmid = (tr.z1 + wz1) / 2, wlen = tr.z1 - wz1;
         // r6: tarp wings pull the flat plate's rear face 26 mm forward so
         // the pitched drape facets below own the visible surface (a flat
@@ -2557,29 +2913,13 @@ function merkavaChassis(P, c) {
         const fx = rx + s2 * (rp.hw - 0.006);
         const sLen = bpOn ? (s2 > 0 ? 0.28 : 0.36) : (rp.z0 - rp.z1) * 0.80;
         const sLen2 = bpOn ? (s2 > 0 ? 0.26 : 0.33) : (rp.z0 - rp.z1) * 0.74;
-        const sMid = (l9) => bpOn ? rp.z0 - 0.05 - l9 / 2 : (rp.z0 + rp.z1) / 2;
+        const sMid = (l9: number) => bpOn ? rp.z0 - 0.05 - l9 / 2 : (rp.z0 + rp.z1) / 2;
         P.add(bpB('hullDark'), box(0.012, 0.016, sLen), fx, rp.top - 0.28 + bpY, sMid(sLen) + bpZ);
         P.add(bpB('hullDark'), box(0.012, 0.016, sLen2), fx, (bpOn ? rpb + 0.075 : rp.bot + 0.38) + bpY, sMid(sLen2) + bpZ);
         const dx = rx + s2 * (rp.hw - 0.009);
         P.add(bpB('hullDetail'), KIT.cylX(0.085, 0.020, 12), dx, rp.top - 0.115 + bpY, rp.z0 - (bpOn ? 0.28 : 0.42) + bpZ);
         P.add(bpB('hullDark'), KIT.cylX(0.036, 0.024, 8), dx, rp.top - 0.115 + bpY, rp.z0 - (bpOn ? 0.28 : 0.42) + bpZ);
       }
-    }
-  }
-  // THIN hull rail rack (2-series rig split): the repaired prints keep only
-  // sub-body-band rails in the hull node (the tall rack wall rides
-  // rig_turret) — all rail geometry stays inside a ~0.18 m y-window so the
-  // hull registration's rear body column is unaffected, while the plan
-  // footprint keeps the full rear reach.
-  if (c.railRack) {
-    const rr = c.railRack; // { z0, z1, y, hw, x0 }
-    const mid = (rr.z0 + rr.z1) / 2, len = rr.z0 - rr.z1;
-    for (const s of [-1, 1]) {
-      P.add('hullDark', box(0.04, 0.05, len), s * rr.hw, rr.y, mid);
-      P.add('hullDark', box(0.04, 0.04, len * 0.96), s * (rr.x0 + 0.02), rr.y + 0.02, mid);
-    }
-    for (const rz of [rr.z1 + 0.02, mid, rr.z0 - 0.02]) {
-      P.add('hullDark', box(rr.hw * 2, 0.045, 0.045), 0, rr.y + 0.04, rz);
     }
   }
   // Trailing tow-pintle rods: HAIRLINE tail elements (band far below the
@@ -2697,7 +3037,7 @@ function merkavaChassis(P, c) {
     // engine shoulders, with visible shoes and straps returning into armor.
     for (let i = 0; i < hullUpgrade.rear; i++) {
       const s = i % 2 ? 1 : -1;
-      const z = Math.max(c.body.at(-2).z + 0.25, c.rearDeckZ - 0.24 - Math.floor(i / 2) * 0.34);
+    const z = Math.max(c.body.at(-2)!.z + 0.25, c.rearDeckZ - 0.24 - Math.floor(i / 2) * 0.34);
       const x = s * (0.52 + (i % 3) * 0.22);
       const y = gTop(z);
       P.add('hull', box(0.34, 0.045, 0.30), x, y + 0.008, z, rxAt(z), s * 0.05, 0);
@@ -2723,7 +3063,15 @@ function merkavaChassis(P, c) {
 // ---------------------------------------------------------------------------
 // Fittings shared across marks (board-proven helpers, re-anchored per mark).
 // ---------------------------------------------------------------------------
-function merkavaMG(P, x, y, z, s = 1, wide = false, rod = null) {
+function merkavaMG(
+  P: TankBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  s = 1,
+  wide = false,
+  rod: MachineGunRod | null = null,
+): void {
   const { box, cylZ } = KIT;
   P.add('turretDark', box((wide ? 0.05 : 0.035) * s, 0.20 * s, (wide ? 0.05 : 0.035) * s), x, y + 0.10 * s, z);
   P.add('turretDark', box((wide ? 0.15 : 0.09) * s, 0.09 * s, 0.44 * s), x, y + 0.24 * s, z);
@@ -2774,7 +3122,7 @@ function merkavaMG(P, x, y, z, s = 1, wide = false, rod = null) {
 // tray carries the ref's 2.66 columns AND every front column across the
 // band's x-width, and the pintle posts keep the assembly connected to the
 // slot base curb (floater law).
-function merkavaPlinthMG(P, m) {
+function merkavaPlinthMG(P: TankBuilderPort, m: PlinthMachineGun): void {
   // m: { x, xIn, rodY(center), rodZ0(front), rodZ1(rear), recTop, recZ0,
   //      recZ1, slotTop, rodZf?, tipDrop?, pale? }
   // r7 rodZf/tipDrop: DROOPING forward barrel run past rodZ0 — the ref's own
@@ -2896,7 +3244,15 @@ function merkavaPlinthMG(P, m) {
 // Compact CL-3030 smoke rosette snugged onto the PORT cheek plane.
 // opts.pale: monochrome-sand refs — the near-black base plate read as a
 // blockout rectangle on the cheek from the top views (3B/3C visual round).
-function merkavaSmokeCluster(P, x, y, z, yaw = 0, n = 5, opts = {}) {
+function merkavaSmokeCluster(
+  P: TankBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  yaw = 0,
+  n = 5,
+  opts: SmokeClusterOptions = {},
+): void {
   const { box, cylY } = KIT;
   const pitch = opts.pitch ?? -0.30;
   // r6 (pale marks): discharger pods stand PROUD as small boxes — the r5
@@ -2981,7 +3337,17 @@ function merkavaSmokeCluster(P, x, y, z, yaw = 0, n = 5, opts = {}) {
 // the camo bucket, per-rod pitch jitter (±28%), drop jitter (±18%), slight
 // lean, skipped rods (gaps), tiny dark balls only every other rod. Default
 // path is byte-identical for the frozen 3B/3C graduates.
-function chainCurtain(P, halfW, z, topY, drop, backZ, fine, soft, extraSkips) {
+function chainCurtain(
+  P: TankBuilderPort,
+  halfW: number,
+  z: number,
+  topY: number,
+  drop: number,
+  backZ: number,
+  fine = false,
+  soft = false,
+  extraSkips?: readonly number[],
+): void {
   const { box, sph } = KIT;
   // r6 (soft marks): the full-width dark hanger rail was the darkest line
   // in both rears' rim bands (ref rim pipes read ~95, tone-on-tone) — soft
@@ -3042,7 +3408,7 @@ function chainCurtain(P, halfW, z, topY, drop, backZ, fine, soft, extraSkips) {
 
 // Open pipe-frame stowage basket + packed cloth kit + chain curtain.
 // top/topRear allow the measured falling rim line at the tail.
-function merkavaBasket(P, b) {
+function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
   const { box, cylZ } = KIT;
   const bx = b.xoff ?? 0; // measured baskets sit slightly left of center
   const mid = (b.z0 + b.z1) / 2, len = b.z0 - b.z1;
@@ -3437,7 +3803,7 @@ function merkavaBasket(P, b) {
     P.add('turretTrack', box(b.hw * 0.34, 0.006, len * 0.18), bx - b.hw * 0.30, b.bot + bH * packH + 0.028, b.z0 - 0.02 - len * 0.30);
   }
   if (b.soft) {
-    const rimAt = (z) => b.top + (topR - b.top) * (b.z0 - z) / Math.max(0.01, len);
+    const rimAt = (z: number) => b.top + (topR - b.top) * (b.z0 - z) / Math.max(0.01, len);
     // b.shelf: lumps only over the shortened front pack (the rear third is
     // the open pot shelf — lumps there would float in the relay's air)
     const lumps = b.shelf
@@ -3474,7 +3840,7 @@ function merkavaBasket(P, b) {
 // costs TWO worst-list columns per whip (crossfire), so whip z is authored
 // to the measured reference column center. potTop draws the chunky
 // spring-can pot under the whip (capped under published height).
-function merkavaAntennas(P, list) {
+function merkavaAntennas(P: TankBuilderPort, list: readonly AntennaConfig[]): void {
   const { box } = KIT;
   for (const a of list) { // { x, y, z, h, stem, potTop? }
     P.add('turretDetail', box(0.10, 0.08, 0.10), a.x, a.y - 0.04, a.z);
@@ -3520,7 +3886,7 @@ function merkavaAntennas(P, list) {
 // path (3B/3C freeze-hash safe) so the small-turret marks (1B) can carry
 // their own measured tub. Solid closed volume (fill rule): two ramp slabs +
 // one flat-bottom box, flush to the shell base.
-function merkavaRingTub(P, t) {
+function merkavaRingTub(P: TankBuilderPort, t: MerkavaTurretConfig): void {
   const { box } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const rt = t.ringTub; // { z0, zF0, zF1, z1, top, bot, hw, stepY? } local
@@ -3564,7 +3930,7 @@ function merkavaRingTub(P, t) {
 // its front edge and the basket root at its rear edge.  Its dimensions are
 // derived from each mark's authored basket, so it stays family-specific and
 // cannot widen the certified turret envelope.
-function merkavaRearTurretBulkhead(P, t) {
+function merkavaRearTurretBulkhead(P: TankBuilderPort, t: MerkavaTurretConfig): void {
   if (!t.basket || !Number.isFinite(t.basketHW)) return;
   const { box } = KIT;
   const id = P.spec.id;
@@ -3642,7 +4008,7 @@ function merkavaRearTurretBulkhead(P, t) {
 // that lower ring down to the deck without moving the turret pivot or changing
 // the gun articulation. The collar is solid armor rather than a decorative
 // torus so low side views cannot see through the turret race.
-function merkavaThirdGenTurretSeat(P, p) {
+function merkavaThirdGenTurretSeat(P: TankBuilderPort, p: MerkavaProfileData): void {
   if (!['merkava3c', 'merkava3d'].includes(P.spec.id)) return;
   const pivotY = p.deckY + 0.02;
   const verticalScale = p.turretScale?.y ?? 1;
@@ -3676,7 +4042,7 @@ function merkavaThirdGenTurretSeat(P, p) {
   });
 }
 
-function merkavaSmallTurret(P, t) {
+function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
   const { box, cylY, polyTurret, lathe, xform } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const apex = t.apexZ, gy = t.apexY;
@@ -3801,7 +4167,7 @@ function merkavaSmallTurret(P, t) {
   // 413px, world y 1.89-2.00 over z -1.7..-2.05). A casting rear-wall
   // underfill closes it: interior — the column bottoms stay the shell
   // base / stow lines, plan sits inside the roof/stow footprints.
-  if (t.roofSolid && t.roofSolid.rear) {
+  if (typeof t.roofSolid === 'object' && t.roofSolid.rear) {
     const rr = t.roofSolid.rear; // { z0, z1, top, bot, hw } local
     P.add('turret', box(rr.hw * 2, rr.top - rr.bot, rr.z0 - rr.z1), 0, (rr.top + rr.bot) / 2, (rr.z0 + rr.z1) / 2);
   }
@@ -3831,7 +4197,7 @@ function merkavaSmallTurret(P, t) {
   // p95 of column tops, so the whole band caps at cs.top (dims-governed):
   // a flat-topped drum, not a tall dome. Cupola lid + MG stay below cs.top.
   const cs = t.station; // { x, z0, z1, top }
-  const roofAt = (z) => {
+  const roofAt = (z: number) => {
     for (let i = 0; i < rf.length - 1; i++) {
       if (z <= rf[i][0] && z >= rf[i + 1][0]) {
         const f = (rf[i][0] - z) / Math.max(0.001, rf[i][0] - rf[i + 1][0]);
@@ -4025,42 +4391,6 @@ function merkavaSmallTurret(P, t) {
     P.add('turretDark', box(0.016, mg.rodY - roofAt(mg.rodZ0 - 0.005) + 0.02, 0.018),
       mg.x + 0.012, (mg.rodY + roofAt(mg.rodZ0 - 0.005)) / 2 - 0.005, mg.rodZ0 - 0.005);     // FRONT support post at the sky-window edge (inside the ref's own 2.557 stair col)
     P.add('turretDark', box(0.09, 0.055, 0.13), mg.x - 0.075, mg.rodY - 0.010, mg.recZ0 - 0.02); // ammo can
-  } else if (cs.roundTwin) {
-    // Mk.2 family: two shallow circular crew stations planted directly
-    // into the rising cast roof. The old rectangular commander prism read
-    // as a shipping crate and erased the reference's low organic crown.
-    const rt = cs.roundTwin;
-    const addRoundStation = (st, commander = false) => {
-      const deck = roofAt(st.z);
-      const baseY = deck - 0.035;
-      const rimY = Math.min(cs.top - (commander ? 0.055 : 0.085), deck + (commander ? 0.135 : 0.105));
-      P.add('turret', cylY(st.r * 1.10, st.r * 1.15, rimY - baseY, 24), st.x, (rimY + baseY) / 2, st.z);
-      P.add('turretDark', KIT.torus(st.r, 0.020, 24), st.x, rimY - 0.004, st.z);
-      P.add('turret', cylY(st.r * 0.72, st.r * 0.74, 0.026, 24), st.x, rimY + 0.005, st.z);
-      P.add('turretDark', KIT.torus(st.r * 0.73, 0.009, 24), st.x, rimY + 0.018, st.z);
-      P.add('turretDetail', box(0.065, 0.040, 0.095), st.x - st.r * 0.88, rimY - 0.010, st.z);
-      const scopes = commander ? 5 : 3;
-      for (let k = 0; k < scopes; k++) {
-        const a = -1.05 + k * (2.10 / Math.max(1, scopes - 1));
-        const px = st.x + Math.sin(a) * st.r * 0.92;
-        const pz = st.z + Math.cos(a) * st.r * 0.92;
-        P.add('turretDetail', box(0.065, 0.055, 0.040), px, rimY + 0.020, pz, 0, a, 0);
-        P.add(glassMat, box(0.046, 0.022, 0.010), px, rimY + 0.036, pz + 0.022, 0, a, 0);
-      }
-      return rimY;
-    };
-    const cmdY = addRoundStation(rt.commander, true);
-    addRoundStation(rt.loader, false);
-    // Receiver, barrel, ammunition box, and posts all terminate on the
-    // commander ring; no roof weapon is left over empty air.
-    merkavaMG(P, rt.commander.x + 0.18, cmdY - 0.15, rt.commander.z + 0.18, rt.mgScale ?? 0.78);
-    P.add('turretDetail', box(0.18, 0.16, 0.20), rt.commander.x - 0.22, cmdY + 0.01, rt.commander.z - 0.02);
-    P.add('turretDark', box(0.14, 0.018, 0.16), rt.commander.x - 0.22, cmdY + 0.098, rt.commander.z - 0.02);
-    if (rt.sight) {
-      const sy = roofAt(rt.sight.z);
-      P.addEquipment('turret', box(rt.sight.w, rt.sight.top - sy, rt.sight.d), rt.sight.x, (rt.sight.top + sy) / 2, rt.sight.z);
-      P.add(glassMat, box(rt.sight.w * 0.62, rt.sight.h ?? 0.08, 0.018), rt.sight.x, rt.sight.top - 0.07, rt.sight.z + rt.sight.d / 2 + 0.005);
-    }
   } else {
     P.add('turret', box(csHW * 2, cs.top - 0.03 - csBase, csLen * 0.94), cs.x, (cs.top - 0.03 + csBase) / 2, csMid);
     P.add('turret', box(csHW * 1.8, 0.03, csLen * 0.80), cs.x, cs.top - 0.015, csMid);
@@ -4070,12 +4400,6 @@ function merkavaSmallTurret(P, t) {
     ], 18, 1.15), cs.x, csBase, csMid));
     KIT.cupola(P, 'turret', cs.x, cs.top - 0.16, csMid - 0.05, cs.cupR ?? 0.24, 0.09, 6); // crown cs.top-0.01
     merkavaMG(P, cs.x + 0.34, cs.top - 0.24, csMid - 0.22, 0.8);              // top cs.top-0.01
-  }
-  if (cs.peak) { // true-height spike: the real MG/periscope head crests the
-    // published-height line only in this single trace column (dims p95
-    // excludes it; stations and the side curve get the measured max).
-    P.add('turretDark', box(0.05, cs.peak.top - cs.top + 0.24, 0.05), cs.x + 0.10, (cs.peak.top + cs.top - 0.24) / 2, cs.peak.z);
-    P.add('turretDark', box(0.16, 0.10, 0.09), cs.x + 0.10, cs.peak.top - 0.05, cs.peak.z);
   }
   // gunner sight hood (right-front) + loader hatch disc (right-rear); the
   // hood hugs the roofline (the measured plateau IS the roof slabs now)
@@ -4169,7 +4493,7 @@ function merkavaSmallTurret(P, t) {
       P.add('turretDark', box(0.016, stemH, 0.018), lrx, lr.mgBot - stemH / 2 + 0.012, lrMidZ); // pintle stem under the receiver
     }
     P.add('turretDark', box(0.075, 0.045, 0.10), lrx - 0.09, lr.rodY - 0.020, (lr.mgZ0 + lr.mgZ1) / 2); // ammo tray
-  } else if (!cs.roundTwin && !cs.sourceFinishOnly) {
+  } else if (!cs.sourceFinishOnly) {
     P.add('turret', cylY(0.19, 0.19, 0.045, 12), -cs.x * 0.9, roofAt(csMid) + 0.01, csMid + 0.02);
     // mgLoaderDy (optional, 1B batch-18): the warped 1B ref roof reads 2.46
     // where the default loader-MG crown rode 2.63 — drop it under the local
@@ -4370,7 +4694,7 @@ function merkavaSmallTurret(P, t) {
         hwR * 0.50, tv.bot + vH9 * 0.29, tv.z1 - 0.001, -0.35, 0, 0);
       for (const [pf9, pw9, ph9, py9, pm9] of [
         [0.09, 0.11, 0.14, 0.40, 'turretTrack'], [-0.86, 0.08, 0.10, 0.28, clothMat], [0.83, 0.07, 0.11, 0.35, 'turretTrack'],
-      ]) { // pits: small tilted recess squares, unequal, off-grid
+      ] satisfies ReadonlyArray<readonly [number, number, number, number, string]>) { // pits: small tilted recess squares, unequal, off-grid
         P.add(pm9, box(hwR * pw9, vH9 * ph9, 0.004),
           hwR * pf9, tv.bot + vH9 * py9, tv.z1 - 0.001, -0.35, 0, 0);
       }
@@ -4378,7 +4702,7 @@ function merkavaSmallTurret(P, t) {
         -hwR * 0.02, tv.bot + vH9 * 0.575, tv.z1 - 0.003, 0.10, 0, 0.012);   // rolled hem lip over the pockets
       P.add(clothMat, box(0.13, 0.070, 0.010),
         -hwR * 0.12, tv.bot + vH9 * 0.70, tv.z1 + 0.004, 0.58, 0, 0.06);
-      const flankAt = (z) => tv.hw + (hwR - tv.hw) * (tv.z0 - z) / Math.max(0.01, tv.z0 - tv.z1);
+      const flankAt = (z: number) => tv.hw + (hwR - tv.hw) * (tv.z0 - z) / Math.max(0.01, tv.z0 - tv.z1);
       for (const s2 of [-1, 1]) {
         for (let k2 = 0; k2 < 7; k2++) {
           // t.softGoods (1B structure r3): pitch/length jitter + lean +
@@ -4428,25 +4752,6 @@ function merkavaSmallTurret(P, t) {
     merkavaSmokeCluster(P, -hwM * 0.42, gy + 0.40, apex - 0.85, -0.55, 5, { pitch: -0.34, soft: t.softGoods });
   }
 
-  // TURRET-NODE rear rack: the repaired 2-series rigs carry the low tail
-  // rack under rig_turret (their hull body masks END at the shelf crest) —
-  // matching the masks requires the same split. { z0, z1, top, bot, hw, x0 }
-  if (t.turretRack) {
-    const tr = t.turretRack;
-    const mid = (tr.z0 + tr.z1) / 2, len = tr.z0 - tr.z1;
-    for (const s of [-1, 1]) {
-      const xm = s * (tr.x0 + tr.hw) / 2, wd = tr.hw - tr.x0;
-      P.add('turretCloth', box(wd, (tr.top - tr.bot) * 0.94, len * 0.94), xm, (tr.top + tr.bot) / 2, mid);
-      P.add('turretDark', box(wd + 0.02, (tr.top - tr.bot) * 0.9, 0.022), xm, (tr.top + tr.bot) / 2 - 0.01, mid + 0.28 * len);
-      for (const ry of [tr.bot + 0.04, tr.top - 0.04]) {
-        P.add('turretDark', box(0.04, 0.04, len), s * tr.hw, ry, mid);
-        P.add('turretDark', box(wd, 0.04, 0.04), xm, ry, tr.z1 + 0.02);
-      }
-      P.add('turretDark', box(0.038, tr.top - tr.bot, 0.038), s * tr.hw, (tr.top + tr.bot) / 2, tr.z1 + 0.02);
-      P.add('turretDark', box(0.038, tr.top - tr.bot, 0.038), s * tr.x0 + (s > 0 ? 0.02 : -0.02), (tr.top + tr.bot) / 2, tr.z1 + 0.02);
-    }
-    P.add('turretDark', box(tr.x0 * 2, 0.035, 0.035), 0, tr.bot + 0.04, tr.z1 + 0.30);
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -4459,7 +4764,7 @@ function merkavaSmallTurret(P, t) {
 // ASYMMETRIC roof (left sight plinth at the dims cap, LOW right deck); a
 // rear-deck dip then a pot/stowage bump; and a low-riding bustle.
 // ---------------------------------------------------------------------------
-function merkavaModularTurret(P, t) {
+function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
   const { box, cylY, polyTurret, frustum, xform } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const hwM = t.hwMax, gy = t.apexY;
@@ -4471,7 +4776,7 @@ function merkavaModularTurret(P, t) {
   // glassTiles false (3B/3C): the periscope/sight tiles read as bright blue
   // squares against the monochrome sand ref — route them to the dark bucket.
   const glassMat = t.glassTiles === false ? 'turretDark' : 'turretGlass';
-  const deckAt = (z) => { // roof DECK line y at local z
+  const deckAt = (z: number) => { // roof DECK line y at local z
     for (let i = 0; i < rf.length - 1; i++) {
       if (z <= rf[i][0] && z >= rf[i + 1][0]) {
         const f = (rf[i][0] - z) / Math.max(0.001, rf[i][0] - rf[i + 1][0]);
@@ -4905,26 +5210,12 @@ function merkavaModularTurret(P, t) {
   // the CAMO bucket instead: each mesh samples its own patch tone (±10), so
   // the boxes read as soft tone-on-tone panels; box edges + AA carry the seam.
   const rbPlate = t.pale ? 'turret' : 'turretDark';
-  for (const rb of t.roofBoxes ?? []) { // { x0, x1, z0, z1, top, bot, ch?, chR? }
+  for (const rb of t.roofBoxes ?? []) { // { x0, x1, z0, z1, top, bot }
     const rbBot = rb.bot ?? (rearRoof[1] - 0.12);
-    if (rb.ch || rb.chR) {
-      // r3 second-story taper: raked (not vertical) end walls — the top face
-      // pulls back ch/chR from the z ends so the step reads as a chamfered
-      // transition, not a cabinet cliff. Sub-column (<= 5 cm): the side trace
-      // sees at most a half-pixel ramp at each end.
-      const xA = Math.min(rb.x0, rb.x1), xB = Math.max(rb.x0, rb.x1);
-      const zT0 = rb.z0 - (rb.ch ?? 0), zT1 = rb.z1 + (rb.chR ?? 0);
-      P.add('turretDetail', slab(
-        [xA, rbBot, rb.z0], [xB, rbBot, rb.z0], [xB, rbBot, rb.z1], [xA, rbBot, rb.z1],
-        [xA, rb.top - 0.02, zT0], [xB, rb.top - 0.02, zT0], [xB, rb.top - 0.02, zT1], [xA, rb.top - 0.02, zT1]));
-      P.add(rbPlate, box((xB - xA) * 0.86, 0.03, (zT0 - zT1) * 0.82),
-        (xA + xB) / 2, rb.top - 0.008, (zT0 + zT1) / 2);
-    } else {
-      P.add('turretDetail', box(Math.abs(rb.x1 - rb.x0), rb.top - 0.02 - rbBot, rb.z0 - rb.z1),
-        (rb.x0 + rb.x1) / 2, (rb.top - 0.02 + rbBot) / 2, (rb.z0 + rb.z1) / 2);
-      P.add(rbPlate, box(Math.abs(rb.x1 - rb.x0) * 0.86, 0.03, (rb.z0 - rb.z1) * 0.82),
-        (rb.x0 + rb.x1) / 2, rb.top - 0.008, (rb.z0 + rb.z1) / 2);
-    }
+    P.add('turretDetail', box(Math.abs(rb.x1 - rb.x0), rb.top - 0.02 - rbBot, rb.z0 - rb.z1),
+      (rb.x0 + rb.x1) / 2, (rb.top - 0.02 + rbBot) / 2, (rb.z0 + rb.z1) / 2);
+    P.add(rbPlate, box(Math.abs(rb.x1 - rb.x0) * 0.86, 0.03, (rb.z0 - rb.z1) * 0.82),
+      (rb.x0 + rb.x1) / 2, rb.top - 0.008, (rb.z0 + rb.z1) / 2);
   }
   // Center roof spine (r3 flip-item): a low raked deck bridging the saddle
   // to the rear plateau BETWEEN the left plinth band and the right hatch
@@ -4956,7 +5247,7 @@ function merkavaModularTurret(P, t) {
   // frustum read 0.15-0.3 deep across ten turret-side columns.
   if (t.bustleSegs) {
     const segs = t.bustleSegs;
-    const topAt = (z) => {
+    const topAt = (z: number) => {
       for (let i = 0; i < rf.length - 1; i++) {
         if (z <= rf[i][0] && z >= rf[i + 1][0]) {
           const f = (rf[i][0] - z) / Math.max(0.001, rf[i][0] - rf[i + 1][0]);
@@ -5265,7 +5556,7 @@ function merkavaModularTurret(P, t) {
         {
           const eD9 = tv.endDrop ?? 0.085;
           const zC9 = (zW + tv.z1) / 2;
-          const railRun = (xA, yA, xB, yB, zC) => {
+          const railRun = (xA: number, yA: number, xB: number, yB: number, zC: number): void => {
             const dl9 = Math.hypot(xB - xA, yB - yA);
             const an9 = Math.atan2(yB - yA, xB - xA);
             P.add(vaneMat, box(dl9, 0.034, 0.030), (xA + xB) / 2, (yA + yB) / 2, zC, 0, 0, an9);
@@ -5525,10 +5816,10 @@ function merkavaModularTurret(P, t) {
       // fringe out to the bustle width — rods + hem balls riding the flank
       // surfaces (<= 4 mm proud: plan-taper columns must not move), plus a
       // hanger-rail shadow line under the basket overhang.
-      const flankX = (z) => (z >= zM
+      const flankX = (z: number) => (z >= zM
         ? tv.hw + (hwM2 - tv.hw) * (tv.z0 - z) / Math.max(0.01, tv.z0 - zM)
         : hwM2 + (hwR - hwM2) * (zM - z) / Math.max(0.01, zM - tv.z1));
-      const topAtV = (z) => (z >= zM
+      const topAtV = (z: number) => (z >= zM
         ? tv.top + (topM - tv.top) * (tv.z0 - z) / Math.max(0.01, tv.z0 - zM)
         : topM + ((tv.top - 0.085) - topM) * (zM - z) / Math.max(0.01, zM - tv.z1));
       for (const s of [-1, 1]) {
@@ -5659,7 +5950,7 @@ function merkavaModularTurret(P, t) {
   // buried inside the right roof band and the loader hatch was a flush disc.
   // Ring assemblies live inside the certified band footprints (the right
   // pad keeps the plan; the ring carries the 2.60 front-column tops).
-  const ringAsm = (rg) => { // { x, z, r, top, base, scopes, solid, collar? }
+  const ringAsm = (rg: MerkavaHatchRing): void => { // { x, z, r, top, base, scopes, solid, collar? }
     const cs = P.q ? 24 : 14;
     // rg.collar { r, y } (3D r4 CIRC order: "rings x2 toward ref plan
     // diameter"): a wide FLAT hatch collar around the raised drum — a fat
@@ -5759,13 +6050,6 @@ function merkavaModularTurret(P, t) {
     P.addEquipment('turret', KIT.sph(0.13, 12, Math.PI * 0.55), t.pano.x, py + 0.15, t.pano.z);
     P.add(glassMat, box(0.13, 0.06, 0.02), t.pano.x, py + 0.13, t.pano.z + 0.125);
     }
-    if (t.pano.peak) { // true-height periscope/relay head, <=1 trace column
-      P.add('turretDark', box(0.05, t.pano.peak.top - t.pano.top + 0.30, 0.05), t.pano.x + 0.08, (t.pano.peak.top + t.pano.top - 0.30) / 2, t.pano.peak.z);
-      P.add('turretDark', box(0.14, 0.09, 0.09), t.pano.x + 0.08, t.pano.peak.top - 0.045, t.pano.peak.z);
-    }
-    if (t.pano.mast) { // comm sight mast stubs beside the pano head
-      P.add('turretDetail', box(0.10, t.pano.top - h - 0.05, 0.10), t.pano.x + 0.55, (t.pano.top + h) / 2 - 0.02, t.pano.z - 0.15);
-    }
   }
   P.addEquipment('turret', box(0.32, 0.13, 0.30), t.sightX ?? 0.42, h - 0.045, roofF - 0.14);
   P.add(glassMat, box(0.18, 0.05, 0.02), t.sightX ?? 0.42, h - 0.03, roofF + 0.015);
@@ -5774,25 +6058,25 @@ function merkavaModularTurret(P, t) {
 // ---------------------------------------------------------------------------
 // Family assembler: chassis + turret + rig seating + gun + insignia.
 // ---------------------------------------------------------------------------
-function buildMerkavaMark(P, p) {
-  const { box, cylZ } = KIT;
-  merkavaChassis(P, p);
-
+function createMerkavaTurretConfig(p: MerkavaProfileData) {
   const pivotY = p.deckY + 0.02;
-  P.turretG.position.set(0, pivotY, p.pivotZ);
-  const L = (z) => z - p.pivotZ;
-  const V = (y) => y - pivotY;
+  const L = (z: number) => z - p.pivotZ;
+  const V = (y: number) => y - pivotY;
   const gunFrame = {
     x: p.gunXoff ?? 0,
     y: V(p.gunAxisY),
     z: p.gunZL ?? 0.32,
   };
-
-  const t = {
+  const roofLine = p.roofLine as readonly RoofStation[];
+  const apron = p.apron as readonly RoofStation[];
+  const planPts = p.planPts as readonly Vec2Tuple[];
+  const cheekPts = p.cheek?.pts as readonly Vec2Tuple[];
+  const cheekPtsLeft = p.cheek?.ptsL as readonly Vec2Tuple[];
+  return {
     apexZ: L(p.apexZ), apexY: V(p.gunAxisY),
     notchHW: p.notchHW ?? 0.30,
     hwMax: p.hwMax, roofHW: p.roofHW, roofInset: p.roofInset, rearWide: p.rearWide,
-    roof: p.roofLine.map(([z, y, w]) => (w !== undefined ? [L(z), V(y), w] : [L(z), V(y)])),
+    roof: roofLine.map(([z, y, w]) => (w !== undefined ? [L(z), V(y), w] : [L(z), V(y)])),
     maxWZ: p.maxWZ !== undefined ? L(p.maxWZ) : undefined,
     shellRearZ: L(p.shellRearZ),
     shellFrontZ: p.shellFrontZ !== undefined ? L(p.shellFrontZ) : undefined,
@@ -5800,7 +6084,7 @@ function buildMerkavaMark(P, p) {
     bustleZ1: p.bustleZ1 !== undefined ? L(p.bustleZ1) : undefined,
     bustleBot: p.bustleBot !== undefined ? V(p.bustleBot) : 0.04,
     bustleHW: p.bustleHW,
-    bustleSegs: p.bustleSegs ? p.bustleSegs.map((s) => ({ z: L(s.z), bot: V(s.bot), hw: s.hw })) : undefined,
+    bustleSegs: p.bustleSegs ? p.bustleSegs.map((s: { readonly z: number; readonly bot: number; readonly hw: number }) => ({ z: L(s.z), bot: V(s.bot), hw: s.hw })) : undefined,
     rearRoofHW: p.rearRoofHW,
     chainHW: p.chainHW,
     basket: p.basket ? { z0: L(p.basket.z0), z1: L(p.basket.z1), top: V(p.basket.top), topRear: p.basket.topRear !== undefined ? V(p.basket.topRear) : undefined, bot: V(p.basket.bot) } : undefined,
@@ -5810,23 +6094,13 @@ function buildMerkavaMark(P, p) {
     station: p.station ? { x: p.station.x, z0: L(p.station.z0), z1: L(p.station.z1), top: V(p.station.top), hw: p.station.hw,
       sourceFinishOnly: p.station.sourceFinishOnly,
       drumR: p.station.drumR, cupR: p.station.cupR,
-      roundTwin: p.station.roundTwin ? {
-        commander: { ...p.station.roundTwin.commander, z: L(p.station.roundTwin.commander.z) },
-        loader: { ...p.station.roundTwin.loader, z: L(p.station.roundTwin.loader.z) },
-        sight: p.station.roundTwin.sight ? {
-          ...p.station.roundTwin.sight,
-          z: L(p.station.roundTwin.sight.z),
-          top: V(p.station.roundTwin.sight.top),
-        } : undefined,
-        mgScale: p.station.roundTwin.mgScale,
-      } : undefined,
-      peak: p.station.peak ? { z: L(p.station.peak.z), top: V(p.station.peak.top) } : undefined,
-      dome: p.station.dome ? (({ rx, ry, z0, z1, capF, capR, rimY, ring, scope, kit, mg, loader, pad }) => ({
+      dome: p.station.dome ? (({ rx, ry, z0, z1, capF, capR, rimY, ring, scope, kit, mg, loader, pad }: NonNullable<NonNullable<MerkavaProfileData['station']>['dome']>) => ({
         rx, ry, z0: L(z0), z1: L(z1), capF, capR, rimY: V(rimY),
         pad: pad ? { x: pad.x, z: L(pad.z), rx: pad.rx, rz: pad.rz, ry: pad.ry, base: V(pad.base) } : undefined,
         ring: { x: ring.x, z: L(ring.z), r: ring.r, top: V(ring.top), base: V(ring.base) },
         scope: scope ? { x: scope.x, z: L(scope.z), top: V(scope.top), w: scope.w, d: scope.d } : undefined,
-        kit: (kit ?? []).map(([kx, kz0, kz1, ktop]) => [kx, L(kz0), L(kz1), V(ktop)]),
+        kit: ((kit ?? []) as readonly (readonly [number, number, number, number])[])
+          .map(([kx, kz0, kz1, ktop]) => [kx, L(kz0), L(kz1), V(ktop)]),
         mg: { x: mg.x, rodY: V(mg.rodY), rodZ0: L(mg.rodZ0), rodZ1: L(mg.rodZ1),
           recX0: mg.recX0, recX1: mg.recX1, recTop: V(mg.recTop), recZ0: L(mg.recZ0), recZ1: L(mg.recZ1) },
         loader: loader ? { ringX: loader.ringX, ringZ: L(loader.ringZ), ringR: loader.ringR,
@@ -5847,7 +6121,6 @@ function buildMerkavaMark(P, p) {
     stow: p.stow ? { z0: L(p.stow.z0), z1: L(p.stow.z1), top: V(p.stow.top), bot: V(p.stow.bot), hw: p.stow.hw, xoff: p.stow.xoff } : undefined,
     stowTell: p.stowTell, stowLoose: p.stowLoose, // §B3 strapped-soft-goods identity (2026-08-05)
     stow2: p.stow2 ? { z0: L(p.stow2.z0), z1: L(p.stow2.z1), top: V(p.stow2.top), bot: V(p.stow2.bot), hw: p.stow2.hw, xoff: p.stow2.xoff } : undefined,
-    turretRack: p.turretRack ? { z0: L(p.turretRack.z0), z1: L(p.turretRack.z1), top: V(p.turretRack.top), bot: V(p.turretRack.bot), hw: p.turretRack.hw, x0: p.turretRack.x0 } : undefined,
     tailVane: p.tailVane ? { z0: L(p.tailVane.z0), z1: L(p.tailVane.z1),
       zMid: p.tailVane.zMid !== undefined ? L(p.tailVane.zMid) : undefined,
       top: V(p.tailVane.top), bot: V(p.tailVane.bot), hw: p.tailVane.hw,
@@ -5857,7 +6130,7 @@ function buildMerkavaMark(P, p) {
       midFall: p.tailVane.midFall, fall: p.tailVane.fall,
       endDrop: p.tailVane.endDrop, dips: p.tailVane.dips,
       cloth: p.tailVane.cloth, lattice: p.tailVane.lattice } : undefined,
-    apron: p.apron ? p.apron.map(([z, y, w]) => (w !== undefined ? [L(z), V(y), w] : [L(z), V(y)])) : undefined,
+    apron: p.apron ? apron.map(([z, y, w]) => (w !== undefined ? [L(z), V(y), w] : [L(z), V(y)])) : undefined,
     apronHW: p.apronHW,
     capY: p.kitCapY !== undefined ? V(p.kitCapY) : undefined,
     brow: p.brow ? { z0: L(p.brow.z0), z1: L(p.brow.z1), top: V(p.brow.top) } : undefined,
@@ -5866,7 +6139,6 @@ function buildMerkavaMark(P, p) {
       top0: p.crest.top0 !== undefined ? V(p.crest.top0) : undefined,
       top1: p.crest.top1 !== undefined ? V(p.crest.top1) : undefined,
       bot: p.crest.bot !== undefined ? V(p.crest.bot) : undefined,
-      top: p.crest.top !== undefined ? V(p.crest.top) : undefined, hw: p.crest.hw,
       // r5 3D low-crest params (barrel-as-wall misread fix)
       low: p.crest.low,
       zW2: p.crest.zW2 !== undefined ? L(p.crest.zW2) : undefined,
@@ -5875,11 +6147,11 @@ function buildMerkavaMark(P, p) {
       rakeTop: p.crest.rakeTop, rakeTop1: p.crest.rakeTop1,
       shelfTop: p.crest.shelfTop !== undefined ? V(p.crest.shelfTop) : undefined } : undefined,
     noseHW: p.noseHW, noseZ: p.noseZ !== undefined ? L(p.noseZ) : undefined,
-    planPts: p.planPts ? p.planPts.map(([x, z]) => [x, L(z)]) : undefined,
+    planPts: p.planPts ? planPts.map(([x, z]) => [x, L(z)]) : undefined,
     shellBotY: p.shellBotY !== undefined ? V(p.shellBotY) : undefined,
     shellTopY: p.shellTopY !== undefined ? V(p.shellTopY) : undefined,
-    cheek: p.cheek ? { pts: p.cheek.pts.map(([x, z]) => [x, L(z)]),
-      ptsL: p.cheek.ptsL ? p.cheek.ptsL.map(([x, z]) => [x, L(z)]) : undefined,
+    cheek: p.cheek ? { pts: cheekPts.map(([x, z]) => [x, L(z)]),
+      ptsL: p.cheek.ptsL ? cheekPtsLeft.map(([x, z]) => [x, L(z)]) : undefined,
       topIn: V(p.cheek.topIn), topOut: V(p.cheek.topOut),
       botIn: V(p.cheek.botIn), botOut: V(p.cheek.botOut) } : undefined,
     plinth: p.plinth ? { x0: p.plinth.x0, x1: p.plinth.x1, z0: L(p.plinth.z0), z1: L(p.plinth.z1), top: V(p.plinth.top),
@@ -5889,7 +6161,7 @@ function buildMerkavaMark(P, p) {
     // §B2 under-roof closure switches (owner order 2026-08-07): solid roof
     // wedges (2B/2D), crest->deck saddle (3C), under-cheek fill (3D).
     roofSolid: p.roofSolid
-      ? (p.roofSolid.rear
+      ? (typeof p.roofSolid === 'object'
         ? { rear: { z0: L(p.roofSolid.rear.z0), z1: L(p.roofSolid.rear.z1), top: V(p.roofSolid.rear.top), bot: V(p.roofSolid.rear.bot), hw: p.roofSolid.rear.hw } }
         : true)
       : undefined,
@@ -5906,16 +6178,15 @@ function buildMerkavaMark(P, p) {
     ringTub: p.ringTub ? { z0: L(p.ringTub.z0), zF0: L(p.ringTub.zF0), zF1: L(p.ringTub.zF1), z1: L(p.ringTub.z1),
       top: V(p.ringTub.top), bot: V(p.ringTub.bot), hw: p.ringTub.hw,
       stepY: p.ringTub.stepY !== undefined ? V(p.ringTub.stepY) : undefined } : undefined,
-    roofBoxes: p.roofBoxes ? p.roofBoxes.map((rb) => ({ x0: rb.x0, x1: rb.x1, z0: L(rb.z0), z1: L(rb.z1),
+    roofBoxes: p.roofBoxes ? p.roofBoxes.map((rb: NonNullable<MerkavaProfileData['roofBoxes']>[number]) => ({ x0: rb.x0, x1: rb.x1, z0: L(rb.z0), z1: L(rb.z1),
       top: V(rb.top), bot: rb.bot !== undefined ? V(rb.bot) : undefined })) : undefined,
     sightZ: p.sightZ !== undefined ? L(p.sightZ) : undefined,
     noLoaderHatch: p.noLoaderHatch,
     cupolaX: p.cupolaX ?? -0.52,
-    cupolaZ: L(p.cupolaZ ?? (p.roofLine.at(-1)[0] + 0.1)),
+    cupolaZ: L(p.cupolaZ ?? (roofLine.at(-1)![0] + 0.1)),
     cupolaR: p.cupolaR,
     cupolaRaise: p.cupolaRaise,
-    pano: p.pano ? { x: p.pano.x, z: L(p.pano.z), top: V(p.pano.top), mast: p.pano.mast, plinth: p.pano.plinth, seat: p.pano.seat,
-      peak: p.pano.peak ? { z: L(p.pano.peak.z), top: V(p.pano.peak.top) } : undefined } : null,
+    pano: p.pano ? { x: p.pano.x, z: L(p.pano.z), top: V(p.pano.top), plinth: p.pano.plinth, seat: p.pano.seat } : null,
     sightX: p.sightX,
     // 3B/3C visual-round switches (all optional — siblings untouched)
     wedgeFront: p.wedgeFront, cheekRake: p.cheekRake, wedgeRake: p.wedgeRake,
@@ -5939,6 +6210,31 @@ function buildMerkavaMark(P, p) {
       top: V(p.loaderRing.top), base: V(p.loaderRing.base), solid: p.loaderRing.solid,
       collar: p.loaderRing.collar ? { r: p.loaderRing.collar.r, y: V(p.loaderRing.collar.y) } : undefined } : undefined,
   };
+}
+
+// A mark selects only the construction path whose required fields its frozen
+// profile supplies.  The union-shaped authoring table cannot preserve that
+// correlation after the shared coordinate transform, so the builder-facing
+// contract makes the selected path's data total. Runtime profile gates and the
+// focused family self-tests enforce the corresponding per-mark invariant.
+type MerkavaTurretConfig = DeepDefined<ReturnType<typeof createMerkavaTurretConfig>>;
+
+function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
+  const P = requireTankBuilderPort(builder);
+  const { box, cylZ } = KIT;
+  merkavaChassis(P, p);
+
+  const pivotY = p.deckY + 0.02;
+  P.turretG.position.set(0, pivotY, p.pivotZ);
+  const L = (z: number) => z - p.pivotZ;
+  const V = (y: number) => y - pivotY;
+  const gunFrame = {
+    x: p.gunXoff ?? 0,
+    y: V(p.gunAxisY),
+    z: p.gunZL ?? 0.32,
+  };
+
+  const t = createMerkavaTurretConfig(p) as MerkavaTurretConfig;
   const sourceOracleTurret = p.sourceOracleTurret && merkavaSourceOracleTurret(P, p, t);
   if (!sourceOracleTurret) {
     if (p.turretStyle === 'small') merkavaSmallTurret(P, t);
@@ -5952,7 +6248,7 @@ function buildMerkavaMark(P, p) {
   // mimicked the pre-repair oracles' fused crew-tunnel interiors; the
   // repaired references carve at the ring plane (repair 86d1071), so the
   // casting apron above carries the measured turret-mask bottoms instead.
-  if (!sourceOracleTurret && p.turretKit) p.turretKit(P, p, t);
+  if (!sourceOracleTurret) applyMerkavaTurretKit(P, p, t);
   merkavaSourceFinish(P, p, t);
 
   // Mk.3D rear chain-mat tip past the hull tail (raw-bounds gun metric keys
@@ -6084,12 +6380,14 @@ function buildMerkavaMark(P, p) {
 
   // Whip antennas: measured ref trace columns + whip tops (short pots on
   // the Mk.4); potTop caps under published height.
-  merkavaAntennas(P, p.antennas.map((a) => ({ x: a.x, y: V(a.y), z: L(a.z), h: a.h, stem: a.stem, thin: a.thin, bright: a.bright, potTop: a.potTop !== undefined ? V(a.potTop) : undefined })));
+  merkavaAntennas(P, p.antennas.map((a: ProfileAntenna) => ({ x: a.x, y: V(a.y), z: L(a.z), h: a.h, stem: a.stem, thin: a.thin, bright: a.bright, potTop: a.potTop !== undefined ? V(a.potTop) : undefined })));
   // Free-standing roof pots/cans (measured 1-2 column bumps beside the
   // whips; tops capped under the published-height p95 line).
   if (p.pots) {
     const tankId = P.spec.id;
-    const earlyOracle = MERKAVA_EARLY_ORACLE[tankId];
+    const earlyOracle = hasOwnKey(MERKAVA_EARLY_ORACLE, tankId)
+      ? MERKAVA_EARLY_ORACLE[tankId]
+      : null;
     const isMk1B = tankId === 'merkava1b';
     const earlyPotSeats = [];
     for (const pot of p.pots) { // { x, z, top, base?, w?, d?, bin? }
@@ -6099,15 +6397,15 @@ function buildMerkavaMark(P, p) {
       const surfacePanel = pot.surfacePanel || (!!earlyOracle && !isMk1B && pot.bin);
       const oracleRoof = earlyOracle ? merkavaEarlyOracleRoofAt(tankId, pot.z) : null;
       const base = seatRoof
-        ? Math.min(authoredBase, oracleRoof - 0.012)
+        ? Math.min(authoredBase, (oracleRoof ?? authoredBase) - 0.012)
         : authoredBase;
       const top = base + authoredHeight;
       const potW = pot.w ?? 0.18;
       const potD = pot.d ?? 0.18;
       const surfaceFrame = surfacePanel
         ? merkavaEarlySurfaceFrame(P, p, {
-          side: Math.sign(pot.x) || 1,
-          worldY: Math.min((top + base) / 2, oracleRoof - 0.035),
+          side: normalizedSide(pot.x),
+          worldY: Math.min((top + base) / 2, (oracleRoof ?? top) - 0.035),
           worldZ: pot.z,
         })
         : null;
@@ -6128,7 +6426,7 @@ function buildMerkavaMark(P, p) {
         }
         earlyPotSeats.push(Object.freeze({
           kind: 'side-panel',
-          side: Math.sign(pot.x) || 1,
+          side: normalizedSide(pot.x),
           worldZ: pot.z,
           centerLocal: Object.freeze(center.toArray()),
           normalLocal: Object.freeze(surfaceFrame.normal.toArray()),
@@ -6207,7 +6505,7 @@ function buildMerkavaMark(P, p) {
       // both side and plan silhouettes on a round drum (cos45 * (r+3mm)
       // < r) — mask-free. Seam ring marks the seat collar joint.
       const drumZ0 = apexG - 0.06 - m.len / 2;              // drum rear face
-      const drumR = (fr) => m.r0 * 1.08 - (m.r0 * 0.08) * fr; // local taper radius
+      const drumR = (fr: number) => m.r0 * 1.08 - (m.r0 * 0.08) * fr; // local taper radius
       for (const fr of [0.25, 0.62]) {
         P.addGunExtraDark(cylZ(drumR(fr) + 0.003, 0.035, 16), 0, mDrop, drumZ0 + m.len * fr);
       }
@@ -6253,7 +6551,7 @@ function buildMerkavaMark(P, p) {
     // housing box beveled ALL extents ~24 mm at its z ends, and un-inset
     // corner rims held full radius to the flat end (measured: 3c stations
     // 92.3 -> 92.2 on the first cut).
-    const RR = (hw, hh, rr, len, yc, zc, dark = false, endIn = 0.024) => {
+    const RR = (hw: number, hh: number, rr: number, len: number, yc: number, zc: number, dark = false, endIn = 0.024): void => {
       const A = dark ? 'addGunExtraDark' : 'addGunExtra';
       P[A](box(2 * (hw - rr), 2 * hh, len), 0, yc, zc);
       P[A](box(2 * hw, 2 * (hh - rr), len), 0, yc, zc);
@@ -6360,7 +6658,8 @@ function buildMerkavaMark(P, p) {
     // rAdd: boot radius over the collar (default the full fabric roll;
     // 4b runs slim — its sparse-turret print prices every proud mm:
     // measured -0.9 turretCurves at +0.045).
-    const rB = m.r0 + (p.gunBoot.rAdd ?? 0.045);
+    const bootRadiusAdd = typeof p.gunBoot === 'object' ? p.gunBoot.rAdd : undefined;
+    const rB = m.r0 + (bootRadiusAdd ?? 0.045);
     // NO PROUD RINGS on the boot (floater lesson, 4b yaw-180): a cinch
     // strap 1.5 mm proud of the roll islanded >400 px once the raked hood
     // stopped bridging its crest — the cinch read now comes from the
@@ -6524,15 +6823,6 @@ function buildMerkavaMark(P, p) {
       if (P.mats.spareTrack.emissive) P.mats.spareTrack.emissive.setHex(0x181712);
       P.mats.spareTrack.needsUpdate = true;
     }
-    // p.rubberHex (3D r13 order 1a): the tire treads + rubber hem/flap kit
-    // read 51-57 through the hem windows at the close-roof angle where the
-    // ref keeps its gear shade in the 60-68 band (gear-band census 4691 vs
-    // 3408). One notch up from the stock 0x2e2d2a — the retone rides the
-    // ORIGINAL material (hook kept; the clone()-drops-hook law is why this
-    // is not a clone), so tires, plank hems and mud flaps lift together.
-    // Side-window gates re-verified (p5 rises AWAY from the 45/42 floors;
-    // the med-56 mass lives on the wheelHex dish faces, untouched).
-    if (p.rubberHex) P.mats.rubber.color.setHex(p.rubberHex);
     // p.grilleBright (1B r4 minor: "louvre +14L — the ref's oddly-bright
     // panel reads 97, ours 83"): the glass material is otherwise unused on
     // this mark (glassTiles false routes every tile dark), so the glacis
@@ -6554,7 +6844,7 @@ function buildMerkavaMark(P, p) {
       P.mats.glass.metalness = 0.02;
       P.mats.glass.envMapIntensity = 0.4;
     }
-    const rehook = (m) => {
+    const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
       m.onBeforeCompile = vehicleAmbientFloorHook;
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       return m;
@@ -6573,8 +6863,8 @@ function buildMerkavaMark(P, p) {
     darkDrum.envMapIntensity = 0.2;
     P.disposables.push(darkDish, darkDrum);
     P.hullG.traverse((ob) => {
-      if (!(ob.isMesh || ob.isInstancedMesh)) return;
-      if (ob.material === P.mats.wheels) ob.material = ob.isInstancedMesh ? darkDish : darkDrum;
+      if (!(ob instanceof THREE.Mesh || ob instanceof THREE.InstancedMesh)) return;
+      if (ob.material === P.mats.wheels) ob.material = ob instanceof THREE.InstancedMesh ? darkDish : darkDrum;
     });
     // r4 "mute the track teeth tone": the near-black band/teeth pixels read
     // LOUDER than the ref's dusty gear wherever the hem exposes them — a
@@ -6616,7 +6906,8 @@ function buildMerkavaMark(P, p) {
     const padHx9 = p.beadKeep ? (p.padHex ?? 0x171614) : 0x171614;
     const chainHx9 = p.beadKeep ? (p.chainHex ?? 0x27251f) : 0x27251f;
     P.hullG.traverse((ob) => {
-      if (!(ob.isMesh || ob.isInstancedMesh) || !ob.material || !ob.material.color || !ob.material.emissive) return;
+      if (!(ob instanceof THREE.Mesh || ob instanceof THREE.InstancedMesh)
+        || !(ob.material instanceof THREE.MeshStandardMaterial)) return;
       const hx = ob.material.color.getHex();
       if (hx === padHx9 && !p.gearFloor) ob.material.emissive.setHex(0x2a2315);
       else if (hx === chainHx9 && !p.gearFloor) ob.material.emissive.setHex(0x201a0e);
@@ -6625,9 +6916,9 @@ function buildMerkavaMark(P, p) {
       // the per-build shoe geometry ALONG-RUN only (z) — radial extents are
       // untouched so the ground line, wrap crests and every silhouette
       // extreme stay bit-identical; the pitch gaps read as finer links.
-      if ((hx === padHx9 || hx === chainHx9) && ob.isInstancedMesh && !ob.geometry.__mk3BeadScaled) {
+      if ((hx === padHx9 || hx === chainHx9) && ob instanceof THREE.InstancedMesh && !ob.geometry.userData.mk3BeadScaled) {
         ob.geometry.scale(1, 1, 0.88);
-        ob.geometry.__mk3BeadScaled = true;
+        ob.geometry.userData.mk3BeadScaled = true;
       }
     });
     // r13b order 1a (p.gearDarkLift, 1B-only): the close-front 24.4-class
@@ -6642,9 +6933,9 @@ function buildMerkavaMark(P, p) {
     // the family floor hook. Target: shade floor ~35 = the ref's own
     // darkest close-front gear-cell class (35.2-35.5).
     if (p.gearDarkLift) {
-      let gdlMat = null;
+      let gdlMat: THREE.MeshStandardMaterial | null = null;
       P.hullG.traverse((ob) => {
-        if (!ob.isMesh || ob.material !== P.mats.spareTrack) return;
+        if (!(ob instanceof THREE.Mesh) || ob.material !== P.mats.spareTrack) return;
         const zNear = Math.abs(ob.position.z - p.sprocket.z) < 0.12 || Math.abs(ob.position.z - p.idler.z) < 0.12;
         if (!zNear || Math.abs(ob.position.x) < 0.8) return;
         if (!gdlMat) {
@@ -6674,7 +6965,7 @@ function buildMerkavaMark(P, p) {
     // whatever hook the material already carries (CSM-safe) with a distinct
     // program cache key so sibling marks never share the lifted program.
     // Factors iterated BY SAMPLE (sRGB law) on the top-view roof rect.
-    const roofLift = (mm, k, kDn = 1) => {
+    const roofLift = (mm: THREE.MeshStandardMaterial, k: number, kDn = 1): void => {
       if (!mm) return;
       const prev = mm.onBeforeCompile;
       const prevKey = typeof mm.customProgramCacheKey === 'function' ? mm.customProgramCacheKey.bind(mm) : () => '';
@@ -6720,9 +7011,9 @@ function buildMerkavaMark(P, p) {
       [p.hwMax * 0.9, t.roof[0][1] * 0.42, t.shellRearZ + 0.6], Math.PI / 2);
   }
   if (p.turretScale) {
-    const sx = p.turretScale.x ?? 1;
+    const sx = 1;
     const sy = p.turretScale.y ?? 1;
-    const sz = p.turretScale.z ?? 1;
+    const sz = 1;
     const gunWorld = {
       x: P.turretG.position.x + P.gunG.position.x * P.turretG.scale.x,
       y: P.turretG.position.y + P.gunG.position.y * P.turretG.scale.y,
@@ -6737,11 +7028,11 @@ function buildMerkavaMark(P, p) {
       (gunWorld.z - P.turretG.position.z) / sz,
     );
   }
-  P.topY = (t.roof.at(-1)[1] + 0.45) * (p.turretScale?.y ?? 1);
+  P.topY = (t.roof.at(-1)![1] + 0.45) * (p.turretScale?.y ?? 1);
 }
 
 // Point ON the modular beak cheek plane (f: 0 notch -> 1 shoulder).
-function merkavaCheekPoint(t, f, spread = 0.78) {
+function merkavaCheekPoint(t: MerkavaTurretConfig, f: number, spread = 0.78): Vec3Point {
   const apex = t.apexZ, sf = t.shellFrontZ ?? apex * 0.5;
   const xo = (t.notchHW + 0.03) + (t.roofHW - (t.notchHW + 0.03)) * f;
   const yo = (t.apexY + 0.19) + ((t.roof[0][1] - 0.02) - (t.apexY + 0.19)) * f;
@@ -6750,7 +7041,12 @@ function merkavaCheekPoint(t, f, spread = 0.78) {
 
 // Flush modular side panels (Trophy zone on the 4-series): thin plates lying
 // ON the sloped shell walls with seam strips + launcher wedge + radar face.
-function merkavaSidePanels(P, p, t, opts = {}) {
+function merkavaSidePanels(
+  P: TankBuilderPort,
+  p: MerkavaProfileData,
+  t: MerkavaTurretConfig,
+  opts: { readonly radar?: boolean } = {},
+): void {
   const { box } = KIT;
   const hwM = t.hwMax, h = t.roof[0][1];
   const inset = t.roofInset ?? 0.72;
@@ -6759,7 +7055,7 @@ function merkavaSidePanels(P, p, t, opts = {}) {
   const wx = hwM * (1 - fMid * (1 - inset)) + 0.045;
   const wy = h * fMid;
   const pz = (t.maxWZ ?? -0.4) - 0.30;
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     const rz = s * phi;
     P.add('turretDetail', box(0.07, 0.60, 1.30), s * wx, wy, pz, 0, 0, rz);
     P.add('turretDark', box(0.075, 0.62, 0.022), s * wx, wy, pz + 0.66, 0, 0, rz);
@@ -6810,12 +7106,67 @@ const MERKAVA4B_PANEL_COURSES = Object.freeze([
   Object.freeze({ zF: -0.72, zR: -1.63, yBF: 1.99, yBR: 2.00, yTF: 2.56, yTR: 2.54, thick: 0.10 }),
   Object.freeze({ zF: -1.58, zR: -2.72, yBF: 2.00, yBR: 2.03, yTF: 2.54, yTR: 2.47, thick: 0.09 }),
 ]);
+type Merkava4bPanelCourse = (typeof MERKAVA4B_PANEL_COURSES)[number];
 
-function merkava4bPanelFrame(P, side, worldZ, heightFraction = 0.5) {
-  const receipt = P.turretG.userData.merkava4bFlankPanelReceipt;
+interface Merkava4bPanelReceiptStation {
+  readonly worldZ: number;
+  readonly bottomSurfaceLocal: Vec3Tuple;
+  readonly topSurfaceLocal: Vec3Tuple;
+  readonly bottomNormalLocal: Vec3Tuple;
+  readonly topNormalLocal: Vec3Tuple;
+  readonly bottomInnerLocal: Vec3Tuple;
+  readonly topInnerLocal: Vec3Tuple;
+  readonly bottomOuterLocal: Vec3Tuple;
+  readonly topOuterLocal: Vec3Tuple;
+  readonly extendedSupport: boolean;
+}
+
+interface Merkava4bPanelReceiptSeat {
+  readonly side: Side;
+  readonly courseIndex: number;
+  readonly zFrontWorldM: number;
+  readonly zRearWorldM: number;
+  readonly thicknessM: number;
+  readonly innerFaceOverlapM: number;
+  readonly segmentCount: number;
+  readonly backedSegments: number;
+  readonly stations: readonly Merkava4bPanelReceiptStation[];
+}
+
+interface Merkava4bPanelReceipt {
+  readonly seats: readonly Merkava4bPanelReceiptSeat[];
+}
+
+interface Merkava4bPanelSurfaceSample {
+  readonly point: THREE.Vector3;
+  readonly normal: THREE.Vector3;
+  readonly extended: boolean;
+}
+
+interface Merkava4bPanelBuildStation {
+  readonly worldZ: number;
+  readonly bottom: Merkava4bPanelSurfaceSample;
+  readonly top: Merkava4bPanelSurfaceSample;
+  readonly bottomInner: THREE.Vector3;
+  readonly topInner: THREE.Vector3;
+  readonly bottomOuter: THREE.Vector3;
+  readonly topOuter: THREE.Vector3;
+}
+
+function vectorTuple(vector: THREE.Vector3): Vec3Tuple {
+  return [vector.x, vector.y, vector.z];
+}
+
+function merkava4bPanelFrame(
+  P: TankBuilderPort,
+  side: Side,
+  worldZ: number,
+  heightFraction = 0.5,
+): SurfaceFrame | null {
+  const receipt = P.turretG.userData.merkava4bFlankPanelReceipt as Merkava4bPanelReceipt | undefined;
   if (!receipt?.seats?.length) return null;
   const candidates = receipt.seats.filter(seat => seat.side === side);
-  const seat = candidates.reduce((best, candidate) => {
+  const seat = candidates.reduce<{ readonly seat: Merkava4bPanelReceiptSeat; readonly score: number } | null>((best, candidate) => {
     const inRange = worldZ <= candidate.zFrontWorldM + 1e-6 && worldZ >= candidate.zRearWorldM - 1e-6;
     const distance = inRange ? 0 : Math.min(
       Math.abs(worldZ - candidate.zFrontWorldM),
@@ -6841,7 +7192,8 @@ function merkava4bPanelFrame(P, side, worldZ, heightFraction = 0.5) {
     0,
     1,
   );
-  const lerpVector = (key) => new THREE.Vector3(...a[key]).lerp(new THREE.Vector3(...b[key]), mix);
+  type VectorKey = 'bottomOuterLocal' | 'topOuterLocal' | 'bottomNormalLocal' | 'topNormalLocal';
+  const lerpVector = (key: VectorKey) => new THREE.Vector3(...a[key]).lerp(new THREE.Vector3(...b[key]), mix);
   const bottom = lerpVector('bottomOuterLocal');
   const top = lerpVector('topOuterLocal');
   const bottomNormal = lerpVector('bottomNormalLocal');
@@ -6867,7 +7219,16 @@ function merkava4bPanelFrame(P, side, worldZ, heightFraction = 0.5) {
   };
 }
 
-function addMerkava4bFrameBox(P, bucket, frame, width, height, depth, outwardOffset = 0, equipment = false) {
+function addMerkava4bFrameBox(
+  P: TankBuilderPort,
+  bucket: string,
+  frame: SurfaceFrame,
+  width: number,
+  height: number,
+  depth: number,
+  outwardOffset = 0,
+  equipment = false,
+): THREE.Vector3 {
   const center = frame.point.clone().addScaledVector(frame.normal, outwardOffset);
   const add = equipment ? P.addEquipment : P.add;
   add(bucket, KIT.box(width, height, depth), center.x, center.y, center.z,
@@ -6875,17 +7236,28 @@ function addMerkava4bFrameBox(P, bucket, frame, width, height, depth, outwardOff
   return center;
 }
 
+function requireMerkava4bPanelFrame(
+  P: TankBuilderPort,
+  side: Side,
+  worldZ: number,
+  heightFraction = 0.5,
+): SurfaceFrame {
+  const frame = merkava4bPanelFrame(P, side, worldZ, heightFraction);
+  if (!frame) throw new Error(`Missing Merkava 4B panel frame at side=${side} z=${worldZ}`);
+  return frame;
+}
+
 // Mk.4B source-specific modular armor.  The supplied reference does not use
 // the tall rectangular Trophy-era side doors fitted by `merkavaSidePanels`;
 // it has a continuous arrowhead cheek followed by two swept side courses.
 // Build those courses as closed prisms whose inner faces bury into the core,
 // so the silhouette stays faceted without stand-off plates or sky seams.
-function merkava4bArmorPanels(P, p) {
-  const L = (z) => z - p.pivotZ;
-  const V = (y) => y - (p.deckY + 0.02);
+function merkava4bArmorPanels(P: TankBuilderPort, p: MerkavaProfileData): void {
+  const L = (z: number) => z - p.pivotZ;
+  const V = (y: number) => y - (p.deckY + 0.02);
   const slab = orientedSlab;
   const flankPanelEmbedM = 0.012;
-  const flankPanelSeats = [];
+  const flankPanelSeats: Merkava4bPanelReceiptSeat[] = [];
   const extensionBackerDepthM = 0.18;
 
   // Build the same structural surfaces the visible modules must touch: the
@@ -6940,7 +7312,7 @@ function merkava4bArmorPanels(P, p) {
     L(p.shellRearZ) + 0.26,
     L(p.bustleZ1) + 0.05,
     V(p.bustleBot),
-    V(p.roofLine.at(-1)[1]) - 0.02,
+    V(p.roofLine.at(-1)![1]) - 0.02,
   ));
   const supportMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
   const supportMeshes = supportGeometries.map(geometry => {
@@ -6951,10 +7323,10 @@ function merkava4bArmorPanels(P, p) {
   const raycaster = new THREE.Raycaster();
   const rayOrigin = new THREE.Vector3();
   const rayDirection = new THREE.Vector3();
-  const sampleSupport = (side, worldY, worldZ) => {
+  const sampleSupport = (side: Side, worldY: number, worldZ: number): Merkava4bPanelSurfaceSample => {
     const desiredY = V(Math.min(worldY, p.shellTopY));
     const desiredZ = L(worldZ);
-    const cast = (sampleY, sampleZ) => {
+    const cast = (sampleY: number, sampleZ: number) => {
       rayOrigin.set(side * 4.5, sampleY, sampleZ);
       rayDirection.set(-side, 0, 0);
       raycaster.set(rayOrigin, rayDirection);
@@ -6982,9 +7354,9 @@ function merkava4bArmorPanels(P, p) {
     return { point, normal, extended };
   };
 
-  const panel = (side, course, courseIndex) => {
+  const panel = (side: Side, course: Merkava4bPanelCourse, courseIndex: number): void => {
     const segments = Math.max(2, Math.ceil(Math.abs(course.zF - course.zR) / 0.18));
-    const stations = [];
+    const stations: Merkava4bPanelBuildStation[] = [];
     for (let stationIndex = 0; stationIndex <= segments; stationIndex++) {
       const f = stationIndex / segments;
       const worldZ = THREE.MathUtils.lerp(course.zF, course.zR, f);
@@ -7010,8 +7382,8 @@ function merkava4bArmorPanels(P, p) {
         const bTopBack = b.top.point.clone().addScaledVector(b.top.normal, -extensionBackerDepthM);
         const aTopBack = a.top.point.clone().addScaledVector(a.top.normal, -extensionBackerDepthM);
         P.add('turret', slab(
-          aBottomBack.toArray(), bBottomBack.toArray(), bTopBack.toArray(), aTopBack.toArray(),
-          a.bottom.point.toArray(), b.bottom.point.toArray(), b.top.point.toArray(), a.top.point.toArray(),
+          vectorTuple(aBottomBack), vectorTuple(bBottomBack), vectorTuple(bTopBack), vectorTuple(aTopBack),
+          vectorTuple(a.bottom.point), vectorTuple(b.bottom.point), vectorTuple(b.top.point), vectorTuple(a.top.point),
         ));
       }
     }
@@ -7026,20 +7398,20 @@ function merkava4bArmorPanels(P, p) {
       backedSegments,
       stations: Object.freeze(stations.map(station => Object.freeze({
         worldZ: station.worldZ,
-        bottomSurfaceLocal: Object.freeze(station.bottom.point.toArray()),
-        topSurfaceLocal: Object.freeze(station.top.point.toArray()),
-        bottomNormalLocal: Object.freeze(station.bottom.normal.toArray()),
-        topNormalLocal: Object.freeze(station.top.normal.toArray()),
-        bottomInnerLocal: Object.freeze(station.bottomInner.toArray()),
-        topInnerLocal: Object.freeze(station.topInner.toArray()),
-        bottomOuterLocal: Object.freeze(station.bottomOuter.toArray()),
-        topOuterLocal: Object.freeze(station.topOuter.toArray()),
+        bottomSurfaceLocal: vectorTuple(station.bottom.point),
+        topSurfaceLocal: vectorTuple(station.top.point),
+        bottomNormalLocal: vectorTuple(station.bottom.normal),
+        topNormalLocal: vectorTuple(station.top.normal),
+        bottomInnerLocal: vectorTuple(station.bottomInner),
+        topInnerLocal: vectorTuple(station.topInner),
+        bottomOuterLocal: vectorTuple(station.bottomOuter),
+        topOuterLocal: vectorTuple(station.topOuter),
         extendedSupport: station.bottom.extended || station.top.extended,
       }))),
     }));
   };
 
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // Five shorter interlocking armor modules reproduce the Mk.4B's swept
     // arrowhead and stepped rear flank.  The former three long rectangular
     // courses read as storage doors and dominated the turret; these pieces
@@ -7063,7 +7435,7 @@ function merkava4bArmorPanels(P, p) {
   });
   P.turretG.userData.merkava4bFlankPanelReceipt = receipt;
 
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     // Course seams and keepers inherit the panel's compound surface frame;
     // no axis-aligned detail strip can hang clear when the turret is viewed
     // from above or when a course crosses a casting facet.
@@ -7075,14 +7447,14 @@ function merkava4bArmorPanels(P, p) {
       for (let index = 0; index < seat.stations.length - 1; index++) {
         const za = seat.stations[index].worldZ;
         const zb = seat.stations[index + 1].worldZ;
-        const frameA = merkava4bPanelFrame(P, s, za, 0.34);
-        const frameB = merkava4bPanelFrame(P, s, zb, 0.34);
-        const frame = merkava4bPanelFrame(P, s, (za + zb) * 0.5, 0.34);
+        const frameA = requireMerkava4bPanelFrame(P, s, za, 0.34);
+        const frameB = requireMerkava4bPanelFrame(P, s, zb, 0.34);
+        const frame = requireMerkava4bPanelFrame(P, s, (za + zb) * 0.5, 0.34);
         addMerkava4bFrameBox(P, 'turretDark', frame,
           frameA.point.distanceTo(frameB.point) * 0.92, 0.012, 0.008, 0.004);
       }
       for (const f of [0.18, 0.50, 0.82]) {
-        const frame = merkava4bPanelFrame(P, s, THREE.MathUtils.lerp(course.zF, course.zR, f), 0.78);
+        const frame = requireMerkava4bPanelFrame(P, s, THREE.MathUtils.lerp(course.zF, course.zR, f), 0.78);
         addMerkava4bFrameBox(P, 'turretDark', frame, 0.022, 0.022, 0.012, 0.006);
       }
     }
@@ -7092,9 +7464,9 @@ function merkava4bArmorPanels(P, p) {
     // spanning the course as one floating world-aligned beam.
     const railZ = [0.34, 0.02, -0.34, -0.72, -1.10, -1.48, -1.88];
     for (let index = 0; index < railZ.length - 1; index++) {
-      const a = merkava4bPanelFrame(P, s, railZ[index], 0.14);
-      const b = merkava4bPanelFrame(P, s, railZ[index + 1], 0.14);
-      const frame = merkava4bPanelFrame(P, s, (railZ[index] + railZ[index + 1]) * 0.5, 0.14);
+      const a = requireMerkava4bPanelFrame(P, s, railZ[index], 0.14);
+      const b = requireMerkava4bPanelFrame(P, s, railZ[index + 1], 0.14);
+      const frame = requireMerkava4bPanelFrame(P, s, (railZ[index] + railZ[index + 1]) * 0.5, 0.14);
       const width = a.point.distanceTo(b.point) * 0.96;
       addMerkava4bFrameBox(P, 'turret', frame, width, 0.10, 0.075, 0.0255);
       addMerkava4bFrameBox(P, 'turretDark', frame, width * 0.88, 0.040, 0.012, 0.069);
@@ -7102,10 +7474,10 @@ function merkava4bArmorPanels(P, p) {
 
     // Rear bin, face plate, shoe and lifting eye all use the same rear-course
     // frame. They are semantic equipment and do not enlarge combat armor.
-    const binFrame = merkava4bPanelFrame(P, s, -2.18, 0.48);
+    const binFrame = requireMerkava4bPanelFrame(P, s, -2.18, 0.48);
     addMerkava4bFrameBox(P, 'turret', binFrame, 0.36, 0.24, 0.22, 0.098, true);
     addMerkava4bFrameBox(P, 'turretDark', binFrame, 0.30, 0.18, 0.020, 0.208, true);
-    const lugFrame = merkava4bPanelFrame(P, s, -2.56, 0.90);
+    const lugFrame = requireMerkava4bPanelFrame(P, s, -2.56, 0.90);
     addMerkava4bFrameBox(P, 'turret', lugFrame, 0.16, 0.045, 0.040, 0.008, true);
     const lugCenter = lugFrame.point.clone()
       .addScaledVector(lugFrame.normal, 0.035)
@@ -7119,75 +7491,83 @@ function merkava4bArmorPanels(P, p) {
   }
 }
 
-const MERKAVA1B_ORACLE_PLAN = Object.freeze([
-  Object.freeze([-0.30, 1.10]), Object.freeze([0.30, 1.10]),
-  Object.freeze([0.72, 0.66]), Object.freeze([1.10, 0.12]),
-  Object.freeze([1.29, -0.55]), Object.freeze([1.18, -2.12]),
-  Object.freeze([0.90, -2.38]), Object.freeze([-0.90, -2.38]),
-  Object.freeze([-1.18, -2.12]), Object.freeze([-1.29, -0.55]),
-  Object.freeze([-1.10, 0.12]), Object.freeze([-0.72, 0.66]),
+const MERKAVA1B_ORACLE_PLAN: readonly Vec2Tuple[] = Object.freeze([
+  Object.freeze<Vec2Tuple>([-0.30, 1.10]), Object.freeze<Vec2Tuple>([0.30, 1.10]),
+  Object.freeze<Vec2Tuple>([0.72, 0.66]), Object.freeze<Vec2Tuple>([1.10, 0.12]),
+  Object.freeze<Vec2Tuple>([1.29, -0.55]), Object.freeze<Vec2Tuple>([1.18, -2.12]),
+  Object.freeze<Vec2Tuple>([0.90, -2.38]), Object.freeze<Vec2Tuple>([-0.90, -2.38]),
+  Object.freeze<Vec2Tuple>([-1.18, -2.12]), Object.freeze<Vec2Tuple>([-1.29, -0.55]),
+  Object.freeze<Vec2Tuple>([-1.10, 0.12]), Object.freeze<Vec2Tuple>([-0.72, 0.66]),
 ]);
-const MERKAVA1B_ORACLE_ROOF = Object.freeze([
-  Object.freeze([1.10, 2.10]), Object.freeze([0.55, 2.18]),
-  Object.freeze([-0.20, 2.28]), Object.freeze([-1.20, 2.34]),
-  Object.freeze([-2.38, 2.31]),
+const MERKAVA1B_ORACLE_ROOF: readonly Vec2Tuple[] = Object.freeze([
+  Object.freeze<Vec2Tuple>([1.10, 2.10]), Object.freeze<Vec2Tuple>([0.55, 2.18]),
+  Object.freeze<Vec2Tuple>([-0.20, 2.28]), Object.freeze<Vec2Tuple>([-1.20, 2.34]),
+  Object.freeze<Vec2Tuple>([-2.38, 2.31]),
 ]);
 const MERKAVA1B_ORACLE_BASE_Y = 1.62;
 const MERKAVA1B_ORACLE_INSET = 0.62;
 const MERKAVA1B_ORACLE_SHOULDER_RISE = 0.12;
-const MERKAVA2B_ORACLE_PLAN = Object.freeze([
-  Object.freeze([-0.28, 1.60]), Object.freeze([0.28, 1.60]),
-  Object.freeze([0.82, 1.02]), Object.freeze([1.22, 0.34]),
-  Object.freeze([1.33, -0.48]), Object.freeze([1.24, -1.78]),
-  Object.freeze([0.98, -2.30]), Object.freeze([-0.98, -2.30]),
-  Object.freeze([-1.24, -1.78]), Object.freeze([-1.33, -0.48]),
-  Object.freeze([-1.22, 0.34]), Object.freeze([-0.82, 1.02]),
+const MERKAVA2B_ORACLE_PLAN: readonly Vec2Tuple[] = Object.freeze([
+  Object.freeze<Vec2Tuple>([-0.28, 1.60]), Object.freeze<Vec2Tuple>([0.28, 1.60]),
+  Object.freeze<Vec2Tuple>([0.82, 1.02]), Object.freeze<Vec2Tuple>([1.22, 0.34]),
+  Object.freeze<Vec2Tuple>([1.33, -0.48]), Object.freeze<Vec2Tuple>([1.24, -1.78]),
+  Object.freeze<Vec2Tuple>([0.98, -2.30]), Object.freeze<Vec2Tuple>([-0.98, -2.30]),
+  Object.freeze<Vec2Tuple>([-1.24, -1.78]), Object.freeze<Vec2Tuple>([-1.33, -0.48]),
+  Object.freeze<Vec2Tuple>([-1.22, 0.34]), Object.freeze<Vec2Tuple>([-0.82, 1.02]),
 ]);
-const MERKAVA2B_ORACLE_ROOF = Object.freeze([
-  Object.freeze([1.60, 2.08]), Object.freeze([0.82, 2.17]),
-  Object.freeze([0.05, 2.31]), Object.freeze([-0.70, 2.40]),
-  Object.freeze([-1.55, 2.46]), Object.freeze([-2.30, 2.42]),
+const MERKAVA2B_ORACLE_ROOF: readonly Vec2Tuple[] = Object.freeze([
+  Object.freeze<Vec2Tuple>([1.60, 2.08]), Object.freeze<Vec2Tuple>([0.82, 2.17]),
+  Object.freeze<Vec2Tuple>([0.05, 2.31]), Object.freeze<Vec2Tuple>([-0.70, 2.40]),
+  Object.freeze<Vec2Tuple>([-1.55, 2.46]), Object.freeze<Vec2Tuple>([-2.30, 2.42]),
 ]);
-const MERKAVA2D_ORACLE_PLAN = Object.freeze([
-  Object.freeze([-0.30, 1.61]), Object.freeze([0.30, 1.61]),
-  Object.freeze([0.94, 1.05]), Object.freeze([1.46, 0.35]),
-  Object.freeze([1.66, -0.52]), Object.freeze([1.48, -2.25]),
-  Object.freeze([1.02, -2.66]), Object.freeze([-1.02, -2.66]),
-  Object.freeze([-1.48, -2.25]), Object.freeze([-1.66, -0.52]),
-  Object.freeze([-1.46, 0.35]), Object.freeze([-0.94, 1.05]),
+const MERKAVA2D_ORACLE_PLAN: readonly Vec2Tuple[] = Object.freeze([
+  Object.freeze<Vec2Tuple>([-0.30, 1.61]), Object.freeze<Vec2Tuple>([0.30, 1.61]),
+  Object.freeze<Vec2Tuple>([0.94, 1.05]), Object.freeze<Vec2Tuple>([1.46, 0.35]),
+  Object.freeze<Vec2Tuple>([1.66, -0.52]), Object.freeze<Vec2Tuple>([1.48, -2.25]),
+  Object.freeze<Vec2Tuple>([1.02, -2.66]), Object.freeze<Vec2Tuple>([-1.02, -2.66]),
+  Object.freeze<Vec2Tuple>([-1.48, -2.25]), Object.freeze<Vec2Tuple>([-1.66, -0.52]),
+  Object.freeze<Vec2Tuple>([-1.46, 0.35]), Object.freeze<Vec2Tuple>([-0.94, 1.05]),
 ]);
-const MERKAVA2D_ORACLE_ROOF = Object.freeze([
-  Object.freeze([1.61, 2.09]), Object.freeze([0.92, 2.18]),
-  Object.freeze([0.12, 2.31]), Object.freeze([-0.72, 2.39]),
-  Object.freeze([-1.62, 2.44]), Object.freeze([-2.66, 2.38]),
+const MERKAVA2D_ORACLE_ROOF: readonly Vec2Tuple[] = Object.freeze([
+  Object.freeze<Vec2Tuple>([1.61, 2.09]), Object.freeze<Vec2Tuple>([0.92, 2.18]),
+  Object.freeze<Vec2Tuple>([0.12, 2.31]), Object.freeze<Vec2Tuple>([-0.72, 2.39]),
+  Object.freeze<Vec2Tuple>([-1.62, 2.44]), Object.freeze<Vec2Tuple>([-2.66, 2.38]),
 ]);
-const MERKAVA3C_ORACLE_PLAN = Object.freeze([
-  Object.freeze([-0.26, 0.94]), Object.freeze([0.26, 0.94]),
-  Object.freeze([0.84, 0.58]), Object.freeze([1.30, -0.10]),
-  Object.freeze([1.39, -1.28]), Object.freeze([1.30, -2.74]),
-  Object.freeze([1.06, -3.28]), Object.freeze([-1.06, -3.28]),
-  Object.freeze([-1.30, -2.74]), Object.freeze([-1.39, -1.28]),
-  Object.freeze([-1.30, -0.10]), Object.freeze([-0.84, 0.58]),
+const MERKAVA3C_ORACLE_PLAN: readonly Vec2Tuple[] = Object.freeze([
+  Object.freeze<Vec2Tuple>([-0.26, 0.94]), Object.freeze<Vec2Tuple>([0.26, 0.94]),
+  Object.freeze<Vec2Tuple>([0.84, 0.58]), Object.freeze<Vec2Tuple>([1.30, -0.10]),
+  Object.freeze<Vec2Tuple>([1.39, -1.28]), Object.freeze<Vec2Tuple>([1.30, -2.74]),
+  Object.freeze<Vec2Tuple>([1.06, -3.28]), Object.freeze<Vec2Tuple>([-1.06, -3.28]),
+  Object.freeze<Vec2Tuple>([-1.30, -2.74]), Object.freeze<Vec2Tuple>([-1.39, -1.28]),
+  Object.freeze<Vec2Tuple>([-1.30, -0.10]), Object.freeze<Vec2Tuple>([-0.84, 0.58]),
 ]);
-const MERKAVA3C_ORACLE_ROOF = Object.freeze([
-  Object.freeze([0.94, 2.16]), Object.freeze([0.42, 2.27]),
-  Object.freeze([-0.20, 2.36]), Object.freeze([-1.25, 2.42]),
-  Object.freeze([-2.45, 2.40]), Object.freeze([-3.28, 2.31]),
+const MERKAVA3C_ORACLE_ROOF: readonly Vec2Tuple[] = Object.freeze([
+  Object.freeze<Vec2Tuple>([0.94, 2.16]), Object.freeze<Vec2Tuple>([0.42, 2.27]),
+  Object.freeze<Vec2Tuple>([-0.20, 2.36]), Object.freeze<Vec2Tuple>([-1.25, 2.42]),
+  Object.freeze<Vec2Tuple>([-2.45, 2.40]), Object.freeze<Vec2Tuple>([-3.28, 2.31]),
 ]);
-const MERKAVA3D_ORACLE_PLAN = Object.freeze([
-  Object.freeze([-0.28, 0.93]), Object.freeze([0.28, 0.93]),
-  Object.freeze([0.96, 0.60]), Object.freeze([1.54, -0.10]),
-  Object.freeze([1.79, -0.92]), Object.freeze([1.64, -2.52]),
-  Object.freeze([1.30, -3.20]), Object.freeze([-1.30, -3.20]),
-  Object.freeze([-1.64, -2.52]), Object.freeze([-1.79, -0.92]),
-  Object.freeze([-1.54, -0.10]), Object.freeze([-0.96, 0.60]),
+const MERKAVA3D_ORACLE_PLAN: readonly Vec2Tuple[] = Object.freeze([
+  Object.freeze<Vec2Tuple>([-0.28, 0.93]), Object.freeze<Vec2Tuple>([0.28, 0.93]),
+  Object.freeze<Vec2Tuple>([0.96, 0.60]), Object.freeze<Vec2Tuple>([1.54, -0.10]),
+  Object.freeze<Vec2Tuple>([1.79, -0.92]), Object.freeze<Vec2Tuple>([1.64, -2.52]),
+  Object.freeze<Vec2Tuple>([1.30, -3.20]), Object.freeze<Vec2Tuple>([-1.30, -3.20]),
+  Object.freeze<Vec2Tuple>([-1.64, -2.52]), Object.freeze<Vec2Tuple>([-1.79, -0.92]),
+  Object.freeze<Vec2Tuple>([-1.54, -0.10]), Object.freeze<Vec2Tuple>([-0.96, 0.60]),
 ]);
-const MERKAVA3D_ORACLE_ROOF = Object.freeze([
-  Object.freeze([0.93, 2.15]), Object.freeze([0.42, 2.26]),
-  Object.freeze([-0.20, 2.36]), Object.freeze([-1.20, 2.42]),
-  Object.freeze([-2.36, 2.41]), Object.freeze([-3.20, 2.30]),
+const MERKAVA3D_ORACLE_ROOF: readonly Vec2Tuple[] = Object.freeze([
+  Object.freeze<Vec2Tuple>([0.93, 2.15]), Object.freeze<Vec2Tuple>([0.42, 2.26]),
+  Object.freeze<Vec2Tuple>([-0.20, 2.36]), Object.freeze<Vec2Tuple>([-1.20, 2.42]),
+  Object.freeze<Vec2Tuple>([-2.36, 2.41]), Object.freeze<Vec2Tuple>([-3.20, 2.30]),
 ]);
-const MERKAVA_EARLY_ORACLE = Object.freeze({
+interface MerkavaEarlyOracleConfig {
+  readonly plan: readonly Vec2Tuple[];
+  readonly roof: readonly Vec2Tuple[];
+  readonly base: number;
+  readonly inset: number;
+  readonly shoulderRise: number;
+}
+
+const MERKAVA_EARLY_ORACLE: Readonly<Record<string, MerkavaEarlyOracleConfig>> = Object.freeze({
   merkava1b: Object.freeze({
     plan: MERKAVA1B_ORACLE_PLAN,
     roof: MERKAVA1B_ORACLE_ROOF,
@@ -7229,36 +7609,38 @@ const MERKAVA_EARLY_ORACLE = Object.freeze({
 // casting underneath it.  Keeping these measured corners in one table lets
 // both the rendered armor and the authoring-only contact oracle use exactly
 // the same surface.
-const MERKAVA_EARLY_SECONDARY_ARMOR = Object.freeze({
+const MERKAVA_EARLY_SECONDARY_ARMOR: Readonly<Record<string, readonly Vec3Tuple[]>> = Object.freeze({
   merkava2d: Object.freeze([
-    Object.freeze([0.22, 1.72, 1.48]), Object.freeze([1.58, 1.62, 0.10]),
-    Object.freeze([1.52, 1.70, -1.85]), Object.freeze([0.70, 1.80, -1.95]),
-    Object.freeze([0.28, 2.36, 1.43]), Object.freeze([1.50, 2.25, 0.08]),
-    Object.freeze([1.42, 2.28, -1.82]), Object.freeze([0.66, 2.39, -1.92]),
+    Object.freeze<Vec3Tuple>([0.22, 1.72, 1.48]), Object.freeze<Vec3Tuple>([1.58, 1.62, 0.10]),
+    Object.freeze<Vec3Tuple>([1.52, 1.70, -1.85]), Object.freeze<Vec3Tuple>([0.70, 1.80, -1.95]),
+    Object.freeze<Vec3Tuple>([0.28, 2.36, 1.43]), Object.freeze<Vec3Tuple>([1.50, 2.25, 0.08]),
+    Object.freeze<Vec3Tuple>([1.42, 2.28, -1.82]), Object.freeze<Vec3Tuple>([0.66, 2.39, -1.92]),
   ]),
   merkava3c: Object.freeze([
-    Object.freeze([0.18, 1.80, 0.88]), Object.freeze([1.34, 1.75, -0.02]),
-    Object.freeze([1.48, 1.79, -1.62]), Object.freeze([0.72, 1.84, -1.72]),
-    Object.freeze([0.22, 2.36, 0.84]), Object.freeze([1.34, 2.30, -0.05]),
-    Object.freeze([1.32, 2.31, -1.58]), Object.freeze([0.66, 2.39, -1.68]),
+    Object.freeze<Vec3Tuple>([0.18, 1.80, 0.88]), Object.freeze<Vec3Tuple>([1.34, 1.75, -0.02]),
+    Object.freeze<Vec3Tuple>([1.48, 1.79, -1.62]), Object.freeze<Vec3Tuple>([0.72, 1.84, -1.72]),
+    Object.freeze<Vec3Tuple>([0.22, 2.36, 0.84]), Object.freeze<Vec3Tuple>([1.34, 2.30, -0.05]),
+    Object.freeze<Vec3Tuple>([1.32, 2.31, -1.58]), Object.freeze<Vec3Tuple>([0.66, 2.39, -1.68]),
   ]),
   merkava3d: Object.freeze([
-    Object.freeze([0.18, 1.80, 0.88]), Object.freeze([1.34, 1.75, -0.02]),
-    Object.freeze([1.48, 1.79, -1.62]), Object.freeze([0.72, 1.84, -1.72]),
-    Object.freeze([0.22, 2.36, 0.84]), Object.freeze([1.68, 2.30, -0.05]),
-    Object.freeze([1.58, 2.31, -1.58]), Object.freeze([0.66, 2.39, -1.68]),
+    Object.freeze<Vec3Tuple>([0.18, 1.80, 0.88]), Object.freeze<Vec3Tuple>([1.34, 1.75, -0.02]),
+    Object.freeze<Vec3Tuple>([1.48, 1.79, -1.62]), Object.freeze<Vec3Tuple>([0.72, 1.84, -1.72]),
+    Object.freeze<Vec3Tuple>([0.22, 2.36, 0.84]), Object.freeze<Vec3Tuple>([1.68, 2.30, -0.05]),
+    Object.freeze<Vec3Tuple>([1.58, 2.31, -1.58]), Object.freeze<Vec3Tuple>([0.66, 2.39, -1.68]),
   ]),
 });
-const merkavaSurfaceOracleCache = new WeakMap();
-const merkavaEraCarrierOracleCache = new WeakMap();
+const merkavaSurfaceOracleCache = new WeakMap<THREE.Group, THREE.Mesh>();
+const merkavaEraCarrierOracleCache = new WeakMap<THREE.Group, THREE.Group>();
 
-function merkavaEarlySecondaryArmorPoints(id, side) {
-  const points = MERKAVA_EARLY_SECONDARY_ARMOR[id];
-  return points?.map(([x, y, z]) => [side * x, y, z]) ?? null;
+function merkavaEarlySecondaryArmorPoints(id: string, side: Side): readonly Vec3Tuple[] | null {
+  if (!hasOwnKey(MERKAVA_EARLY_SECONDARY_ARMOR, id)) return null;
+  return MERKAVA_EARLY_SECONDARY_ARMOR[id].map(
+    ([x, y, z]: Vec3Tuple): Vec3Tuple => [side * x, y, z],
+  );
 }
 
-function merkavaCourseAt(stations, z) {
-  if (z >= stations[0][0]) return stations[0][1];
+function merkavaCourseAt(stations: readonly RoofStation[], z: number): number {
+  if (z >= stations[0]![0]) return stations[0]![1];
   for (let index = 0; index < stations.length - 1; index++) {
     const [za, ya] = stations[index];
     const [zb, yb] = stations[index + 1];
@@ -7267,30 +7649,33 @@ function merkavaCourseAt(stations, z) {
       return THREE.MathUtils.lerp(ya, yb, f);
     }
   }
-  return stations.at(-1)[1];
+  return stations.at(-1)![1];
 }
 
-function merkavaEarlyOracleRoofAt(id, zWorld) {
-  const cfg = MERKAVA_EARLY_ORACLE[id];
-  return cfg ? merkavaCourseAt(cfg.roof, zWorld) : null;
+function merkavaEarlyOracleRoofAt(id: string, zWorld: number): number | null {
+  return hasOwnKey(MERKAVA_EARLY_ORACLE, id)
+    ? merkavaCourseAt(MERKAVA_EARLY_ORACLE[id].roof, zWorld)
+    : null;
 }
 
 // Authoring-only copy of each early source-oracle casting. Ray hits on this
 // support mesh give side armor, bins and ERA the actual sloped surface
 // point/normal instead of the old constant-X approximation.  It never enters
 // the scene graph or the playable geometry buckets.
-function merkavaEarlySurfaceOracle(P, p) {
-  const cfg = MERKAVA_EARLY_ORACLE[P.spec.id];
+function merkavaEarlySurfaceOracle(P: TankBuilderPort, p: MerkavaProfileData): THREE.Mesh | null {
+  const cfg = hasOwnKey(MERKAVA_EARLY_ORACLE, P.spec.id)
+    ? MERKAVA_EARLY_ORACLE[P.spec.id]
+    : null;
   if (!cfg) return null;
   let support = merkavaSurfaceOracleCache.get(P.turretG);
   if (support) return support;
   const pivotY = p.deckY + 0.02;
-  const plan = cfg.plan.map(([x, z]) => [x, z - p.pivotZ]);
-  const roof = cfg.plan.map(([, z]) => merkavaCourseAt(cfg.roof, z) - pivotY);
-  const zMin = Math.min(...cfg.plan.map(([, z]) => z));
-  const zMax = Math.max(...cfg.plan.map(([, z]) => z));
-  const maxX = Math.max(...cfg.plan.map(([x]) => Math.abs(x)));
-  const shoulder = cfg.plan.map(([x, z]) => {
+  const plan = cfg.plan.map(([x, z]: Vec2Tuple): Vec2Tuple => [x, z - p.pivotZ]);
+  const roof = cfg.plan.map(([, z]: Vec2Tuple) => merkavaCourseAt(cfg.roof, z) - pivotY);
+  const zMin = Math.min(...cfg.plan.map(([, z]: Vec2Tuple) => z));
+  const zMax = Math.max(...cfg.plan.map(([, z]: Vec2Tuple) => z));
+  const maxX = Math.max(...cfg.plan.map(([x]: Vec2Tuple) => Math.abs(x)));
+  const shoulder = cfg.plan.map(([x, z]: Vec2Tuple) => {
     const fore = THREE.MathUtils.clamp((z - zMin) / Math.max(0.01, zMax - zMin), 0, 1);
     const flank = Math.min(1, Math.abs(x) / maxX);
     return cfg.base + cfg.shoulderRise
@@ -7312,7 +7697,7 @@ function merkavaEarlySurfaceOracle(P, p) {
 // armor course.  This is the critical distinction from the r1 fit, which
 // attached ERA to the hidden casting and allowed the secondary shell to draw
 // over it.
-function merkavaEarlyEraCarrierOracle(P, p) {
+function merkavaEarlyEraCarrierOracle(P: TankBuilderPort, p: MerkavaProfileData): THREE.Group | null {
   let support = merkavaEraCarrierOracleCache.get(P.turretG);
   if (support) return support;
   const pivotY = p.deckY + 0.02;
@@ -7324,10 +7709,10 @@ function merkavaEarlyEraCarrierOracle(P, p) {
     shellMesh.userData.merkavaSupportLayer = 'source-shell';
     support.add(shellMesh);
   }
-  for (const side of [-1, 1]) {
+  for (const side of [-1, 1] as const) {
     const points = merkavaEarlySecondaryArmorPoints(P.spec.id, side);
     if (!points) continue;
-    const local = points.map(([x, y, z]) => [x, y - pivotY, z - p.pivotZ]);
+    const local = points.map(([x, y, z]: Vec3Tuple): Vec3Tuple => [x, y - pivotY, z - p.pivotZ]);
     const armorMesh = new THREE.Mesh(orientedSlab(...local), material);
     armorMesh.userData.merkavaSupportLayer = 'secondary-armor';
     support.add(armorMesh);
@@ -7337,10 +7722,18 @@ function merkavaEarlyEraCarrierOracle(P, p) {
   return support;
 }
 
-function merkavaEarlySurfaceFrame(P, p, {
+interface EarlySurfaceFrameOptions {
+  readonly side: Side;
+  readonly worldY: number;
+  readonly worldZ: number;
+  readonly nominalX?: number | null;
+  readonly outermost?: boolean;
+}
+
+function merkavaEarlySurfaceFrame(P: TankBuilderPort, p: MerkavaProfileData, {
   side, worldY, worldZ, nominalX = null, outermost = false,
-}) {
-  if (!MERKAVA_EARLY_ORACLE[P.spec.id]) return null;
+}: EarlySurfaceFrameOptions): SurfaceFrame | null {
+  if (!hasOwnKey(MERKAVA_EARLY_ORACLE, P.spec.id)) return null;
   const support = outermost
     ? merkavaEarlyEraCarrierOracle(P, p)
     : merkavaEarlySurfaceOracle(P, p);
@@ -7355,7 +7748,7 @@ function merkavaEarlySurfaceFrame(P, p, {
     direction = new THREE.Vector3(-side, 0, 0);
   } else {
     const shellGeometry = merkavaEarlySurfaceOracle(P, p)?.geometry;
-    const centerZ = support.geometry?.boundingSphere?.center.z
+    const centerZ = (support instanceof THREE.Mesh ? support.geometry.boundingSphere?.center.z : null)
       ?? shellGeometry?.boundingSphere?.center.z ?? 0;
     const radial = new THREE.Vector3(nominalX, 0, localZ - centerZ).normalize();
     origin = new THREE.Vector3(0, localY, centerZ).addScaledVector(radial, 4);
@@ -7384,7 +7777,16 @@ function merkavaEarlySurfaceFrame(P, p, {
   };
 }
 
-function addMerkavaEarlyFrameBox(P, bucket, frame, width, height, depth, outwardOffset = 0, equipment = false) {
+function addMerkavaEarlyFrameBox(
+  P: TankBuilderPort,
+  bucket: BucketName,
+  frame: SurfaceFrame,
+  width: number,
+  height: number,
+  depth: number,
+  outwardOffset = 0,
+  equipment = false,
+): THREE.Vector3 {
   const center = frame.point.clone().addScaledVector(frame.normal, outwardOffset);
   const add = equipment ? P.addEquipment : P.add;
   add(bucket, KIT.box(width, height, depth), center.x, center.y, center.z,
@@ -7401,15 +7803,23 @@ function addMerkavaEarlyFrameBox(P, bucket, frame, width, height, depth, outward
 // roof rise and rear termination.  No source vertices are copied and no GLB is
 // loaded at runtime; the values are independently-authored stations measured
 // from the reference renders/component bounds.
-function merkavaSourceOracleTurret(P, p, t) {
+function merkavaSourceOracleTurret(
+  P: TankBuilderPort,
+  p: MerkavaProfileData,
+  t: MerkavaTurretConfig,
+): boolean {
   const { box, polyMultiLoft, polyTurret } = KIT;
   const slab = orientedSlab;
   const id = P.spec.id;
   const pivotY = p.deckY + 0.02;
-  const L = (z) => z - p.pivotZ;
-  const V = (y) => y - pivotY;
-  const M = (pt) => [pt[0], V(pt[1]), L(pt[2])];
-  const profiles = {
+  const L = (z: number) => z - p.pivotZ;
+  const V = (y: number) => y - pivotY;
+  const M = (point: Vec3Tuple): Vec3Tuple => [point[0], V(point[1]), L(point[2])];
+  const profiles: Readonly<Record<string, MerkavaEarlyOracleConfig & {
+    readonly applique?: boolean;
+    readonly modular?: boolean;
+    readonly mk4?: boolean;
+  }>> = {
     merkava1b: {
       plan: MERKAVA1B_ORACLE_PLAN,
       base: MERKAVA1B_ORACLE_BASE_Y,
@@ -7465,8 +7875,8 @@ function merkavaSourceOracleTurret(P, p, t) {
   };
   const cfg = profiles[id];
   if (!cfg) return false;
-  const yAt = (stations, z) => {
-    if (z >= stations[0][0]) return stations[0][1];
+  const yAt = (stations: readonly Vec2Tuple[], z: number): number => {
+    if (z >= stations[0]![0]) return stations[0]![1];
     for (let i = 0; i < stations.length - 1; i++) {
       const [za, ya] = stations[i], [zb, yb] = stations[i + 1];
       if (z <= za && z >= zb) {
@@ -7474,11 +7884,11 @@ function merkavaSourceOracleTurret(P, p, t) {
         return ya + (yb - ya) * f;
       }
     }
-    return stations.at(-1)[1];
+    return stations.at(-1)![1];
   };
-  const plan = cfg.plan.map(([x, z]) => [x, L(z)]);
+  const plan = cfg.plan.map(([x, z]): Vec2Tuple => [x, L(z)]);
   const roof = cfg.plan.map(([, z]) => V(yAt(cfg.roof, z)));
-  const shoulder = cfg.plan.map(([, z], i) => {
+  const shoulder = cfg.plan.map(([, z], i: number) => {
     // The source castings leave the ring almost immediately.  Tying this
     // intermediate course to the roof (the old implementation) produced a
     // tall vertical drum under an otherwise-correct roof.  Keep the course
@@ -7497,13 +7907,14 @@ function merkavaSourceOracleTurret(P, p, t) {
   // A closed, shallow ring apron overlaps the hull deck and the casting
   // floor.  It prevents the turret from appearing perched while preserving
   // the deep undercuts visible on the supplied references.
-  const apronPlan = cfg.plan.map(([x, z]) => [x * 0.72, L(z * 0.72 + p.pivotZ * 0.28)]);
+  const apronPlan = cfg.plan.map(([x, z]): Vec2Tuple => [x * 0.72, L(z * 0.72 + p.pivotZ * 0.28)]);
   P.add('turretDark', polyTurret(apronPlan, 0.15, 0.98, 0.94), 0, V(cfg.base - 0.10), 0);
 
-  const addArmorSlab = (pts) => P.add('turret', slab(...pts.map(M)));
+  const addArmorSlab = (points: readonly Vec3Tuple[]): void => P.add('turret', slab(...points.map(M)));
   if (cfg.applique || cfg.modular) {
-    for (const side of [-1, 1]) {
-      addArmorSlab(merkavaEarlySecondaryArmorPoints(id, side));
+    for (const side of [-1, 1] as const) {
+      const armorPoints = merkavaEarlySecondaryArmorPoints(id, side);
+      if (armorPoints) addArmorSlab(armorPoints);
     }
   }
 
@@ -7516,7 +7927,7 @@ function merkavaSourceOracleTurret(P, p, t) {
     const faceX = cfg.applique ? 1.405 : (id === 'merkava3d' ? 1.555 : 1.305);
     const seamY = cfg.applique ? 2.10 : 2.12;
     const seamZs = cfg.applique ? [0.46, -0.18, -0.82, -1.43] : [0.28, -0.30, -0.90, -1.46];
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       if (id === 'merkava3c' || id === 'merkava3d') {
         // The Mk.3 service rails used to sit on one constant-X plane even
         // though their modular carrier sweeps inward fore/aft and upward at
@@ -7617,13 +8028,14 @@ function merkavaSourceOracleTurret(P, p, t) {
     }
     for (const x of [-0.72, 0, 0.72]) P.add('turretDark', box(0.045, 0.045, 0.58), x, V(2.54), L(-3.20));
   } else if (t.basket) {
-    const rearTarget = {
+    const rearTargets = {
       merkava1b: -3.62,
       merkava2b: -3.69,
       merkava2d: -3.66,
       merkava3c: -3.96,
       merkava3d: -3.91,
-    }[id];
+    } as const;
+    const rearTarget = hasOwnKey(rearTargets, id) ? rearTargets[id] : t.basket.z1 + p.pivotZ;
     merkavaBasket(P, {
       hw: t.basketHW, z0: t.basket.z0, z1: L(rearTarget), xoff: t.basketXoff,
       top: t.basket.top, topRear: t.basket.topRear, bot: t.basket.bot,
@@ -7644,18 +8056,20 @@ function merkavaSourceOracleTurret(P, p, t) {
 // Connected axial loft for gun masks. Faces are oriented independently
 // against the solid centroid to keep FrontSide winding valid even when a
 // mark carries a small asymmetric x offset.
-function merkavaAxialLoft(rings) {
-  const verts = [];
+function merkavaAxialLoft(rings: readonly (readonly Vec3Tuple[])[]): THREE.BufferGeometry {
+  const verts: number[] = [];
   const all = rings.flat();
-  const center = [0, 1, 2].map((k) => all.reduce((sum, p) => sum + p[k], 0) / all.length);
-  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-  const cross = (a, b) => [
+  const center: Vec3Tuple = [0, 1, 2].map(
+    (k) => all.reduce((sum, point) => sum + point[k], 0) / all.length,
+  ) as [number, number, number];
+  const sub = (a: Vec3Tuple, b: Vec3Tuple): Vec3Tuple => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const cross = (a: Vec3Tuple, b: Vec3Tuple): Vec3Tuple => [
     a[1] * b[2] - a[2] * b[1],
     a[2] * b[0] - a[0] * b[2],
     a[0] * b[1] - a[1] * b[0],
   ];
-  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-  const tri = (a, b, c, faceCenter = [
+  const dot = (a: Vec3Tuple, b: Vec3Tuple) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const tri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple, faceCenter: Vec3Tuple = [
     (a[0] + b[0] + c[0]) / 3,
     (a[1] + b[1] + c[1]) / 3,
     (a[2] + b[2] + c[2]) / 3,
@@ -7664,19 +8078,19 @@ function merkavaAxialLoft(rings) {
     if (dot(n, sub(faceCenter, center)) >= 0) verts.push(...a, ...b, ...c);
     else verts.push(...c, ...b, ...a);
   };
-  const sides = rings[0].length;
+  const sides = rings[0]!.length;
   for (let r = 0; r < rings.length - 1; r++) {
     const rear = rings[r], front = rings[r + 1];
     for (let i = 0; i < sides; i++) {
       const j = (i + 1) % sides;
       const faceCenter = [0, 1, 2].map((k) =>
-        (rear[i][k] + rear[j][k] + front[j][k] + front[i][k]) / 4);
+        (rear[i][k] + rear[j][k] + front[j][k] + front[i][k]) / 4) as [number, number, number];
       tri(rear[i], rear[j], front[j], faceCenter);
       tri(rear[i], front[j], front[i], faceCenter);
     }
   }
-  for (const ring of [rings[0], rings.at(-1)]) {
-    const cap = [
+  for (const ring of [rings[0]!, rings.at(-1)!]) {
+    const cap: Vec3Tuple = [
       ring.reduce((sum, p) => sum + p[0], 0) / sides,
       ring.reduce((sum, p) => sum + p[1], 0) / sides,
       ring.reduce((sum, p) => sum + p[2], 0) / sides,
@@ -7700,7 +8114,12 @@ function merkavaAxialLoft(rings) {
 // casting; the forward oval tunnel intentionally overlaps the boot.  That
 // makes the visual attachment structural rather than a pipe parked in front
 // of a flat cheek or a long triangular beam pasted onto it.
-function merkavaSourceGunCradle(P, p, gunZL, L) {
+function merkavaSourceGunCradle(
+  P: TankBuilderPort,
+  p: MerkavaProfileData,
+  gunZL: number,
+  L: (value: number) => number,
+): boolean {
   const id = P.spec.id;
   const cfg = {
     merkava1b: { rootZ: 0.18, mouthZ: 1.55, rootHW: 0.30, rootHH: 0.28, mouthHW: 0.20, mouthHH: 0.18, bootLen: 0.39, seatDepth: 0.52, x: -0.02 },
@@ -7723,7 +8142,7 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
   const span = mouthZ - rootZ;
   const x0 = cfg.x;
 
-  const addMask = (geo, dark = false) => {
+  const addMask = (geo: THREE.BufferGeometry, dark = false): void => {
     (dark ? P.addGunExtraDark : P.addGunExtra)(geo, x0, 0, 0);
   };
 
@@ -7732,7 +8151,7 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
   // chamfers. The first two equal rings form a constant-section socket inside
   // the cheek. From the actual turret face onward, width and height taper
   // linearly to the mouth, so there are no shelf-like shoulder flares.
-  const ring = (hw, hh, z) => {
+  const ring = (hw: number, hh: number, z: number): Vec3Tuple[] => {
     const c = 0.88;
     return [
       [-hw * c, -hh, z], [hw * c, -hh, z],
@@ -7770,12 +8189,12 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
   // follows both turret yaw and cannon elevation. Nothing sits more than a
   // few millimetres off the square-frustum skin, preserving the compact
   // silhouette while breaking the former featureless slab read.
-  const hwAt = (f) => cfg.rootHW + (cfg.mouthHW - cfg.rootHW) * f;
-  const hhAt = (f) => cfg.rootHH + (cfg.mouthHH - cfg.rootHH) * f;
-  const zAt = (f) => rootZ + span * f + 0.035;
+  const hwAt = (f: number) => cfg.rootHW + (cfg.mouthHW - cfg.rootHW) * f;
+  const hhAt = (f: number) => cfg.rootHH + (cfg.mouthHH - cfg.rootHH) * f;
+  const zAt = (f: number) => rootZ + span * f + 0.035;
   const topPitch = Math.atan2(cfg.rootHH - cfg.mouthHH, span);
   const sideAngle = Math.atan2(cfg.rootHW - cfg.mouthHW, span);
-  const addSkin = (geo, x, y, z, rx = 0, ry = 0, rz = 0, dark = false) => {
+  const addSkin = (geo: THREE.BufferGeometry, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0, dark = false): void => {
     const transformed = xform(geo, 0, 0, 0, rx, ry, rz);
     (dark ? P.addGunExtraDark : P.addGunExtra)(transformed, x0 + x, y, z);
   };
@@ -7844,10 +8263,12 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
   // Mark-specific stamped service code on the right mask face. The tiny
   // seven-segment strokes are dark inlays seated directly on the armor (not
   // a floating canvas label), giving every mark a legible engraved identity.
-  const serviceCode = {
+  const serviceCodes = {
     merkava1b: '1B', merkava2b: '2B', merkava2d: '2D',
     merkava3c: '3C', merkava3d: '3D', merkava4b: '4B',
-  }[id];
+  } as const;
+  if (!hasOwnKey(serviceCodes, id)) return false;
+  const serviceCode = serviceCodes[id];
   const glyphs = {
     '1': ['ur', 'lr'],
     '2': ['t', 'ur', 'm', 'll', 'b'],
@@ -7856,7 +8277,7 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
     B: ['t', 'ul', 'm', 'ur', 'll', 'lr', 'b'],
     C: ['t', 'ul', 'll', 'b'],
     D: ['t', 'ul', 'll', 'ur', 'lr', 'b'],
-  };
+  } as const;
   const stampF = 0.69;
   const stampH = Math.min(0.10, cfg.mouthHH * 0.46);
   const stampW = stampH * 0.54;
@@ -7864,7 +8285,7 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
   const advance = stampW + 0.020;
   const stampZ = zAt(stampF);
   const stampYaw = -sideAngle;
-  const segment = (name, charZ) => {
+  const segment = (name: string, charZ: number): void => {
     const horizontal = name === 't' || name === 'm' || name === 'b';
     const y = name === 't' ? stampH * 0.5 : name === 'b' ? -stampH * 0.5
       : name === 'm' ? 0 : name.startsWith('u') ? stampH * 0.25 : -stampH * 0.25;
@@ -7876,6 +8297,7 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
   };
   [...serviceCode].forEach((char, index) => {
     const charZ = stampZ + (index - (serviceCode.length - 1) * 0.5) * advance;
+    if (!hasOwnKey(glyphs, char)) return;
     for (const name of glyphs[char]) segment(name, charZ);
   });
 
@@ -7889,7 +8311,7 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
     addSkin(box(0.052, 0.027, 0.052), lugX, hhAt(f) + 0.028, zAt(f), topPitch);
   }
 
-  const oval = (r, len, z, scaleY = 1, taper = undefined, dark = false) => {
+  const oval = (r: number, len: number, z: number, scaleY = 1, taper: number | undefined = undefined, dark = false): void => {
     const geo = xform(cylZ(r, len, P.q ? 24 : 16, taper), 0, 0, 0, 0, 0, 0,
       [1, scaleY, 1]);
     (dark ? P.addGunExtraDark : P.addGunExtra)(geo, x0, 0, z);
@@ -7932,13 +8354,17 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
 // courses, sight shoes and basket brackets.  Keep this as a final detail pass
 // on the existing authored shell.  It never cuts a hull/skirt/track surface
 // and every added item begins on, or slightly inside, its local roof datum.
-function merkavaSourceFinish(P, p, t) {
+function merkavaSourceFinish(
+  P: TankBuilderPort,
+  p: MerkavaProfileData,
+  t: MerkavaTurretConfig,
+): void {
   const id = P.spec.id;
   if (!['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b'].includes(id)) return;
   const { box, cylX, cylY, cylZ, torus } = KIT;
   const pivotY = p.deckY + 0.02;
-  const L = (z) => z - p.pivotZ;
-  const V = (y) => y - pivotY;
+  const L = (z: number) => z - p.pivotZ;
+  const V = (y: number) => y - pivotY;
   // Mk.4B's source height includes a real roof weapon/optic crown at 3.12 m.
   // The former 2.655 m profile cap silently crushed that equipment into the
   // turret and was the main reason the authored roof looked bare.
@@ -7956,16 +8382,17 @@ function merkavaSourceFinish(P, p, t) {
   // elevated roof course. Mk.4B deliberately rejected that shell and uses
   // `merkavaModularTurret`; treating `mk4bRebuild` as an oracle nevertheless
   // seated its hatches, optics and rack cases 10-20 cm over the real roof.
-  const oracleRoof = p.sourceOracleTurret ? {
+  const sourceRoofCourses: Readonly<Record<string, readonly Vec2Tuple[]>> = {
     merkava1b: MERKAVA1B_ORACLE_ROOF,
     merkava2b: MERKAVA2B_ORACLE_ROOF,
     merkava2d: MERKAVA2D_ORACLE_ROOF,
     merkava3c: MERKAVA3C_ORACLE_ROOF,
     merkava3d: MERKAVA3D_ORACLE_ROOF,
     merkava4b: [[0.66, 2.58], [0.10, 2.67], [-0.82, 2.73], [-1.86, 2.70], [-2.72, 2.64], [-3.36, 2.54]],
-  }[id] : null;
+  };
+  const oracleRoof = p.sourceOracleTurret ? sourceRoofCourses[id] ?? null : null;
   const roofCourse = oracleRoof ?? p.roofLine;
-  const roofAt = (zWorld) => {
+  const roofAt = (zWorld: number): number => {
     if (zWorld >= roofCourse[0][0]) return roofCourse[0][1];
     for (let i = 0; i < roofCourse.length - 1; i++) {
       const [za, ya] = roofCourse[i], [zb, yb] = roofCourse[i + 1];
@@ -7974,10 +8401,16 @@ function merkavaSourceFinish(P, p, t) {
         return ya + (yb - ya) * f;
       }
     }
-    return roofCourse.at(-1)[1];
+    return roofCourse.at(-1)![1];
   };
 
-  const hatch = (x, z, r, roofWorld, opts = {}) => {
+  const hatch = (
+    x: number,
+    z: number,
+    r: number,
+    roofWorld: number,
+    opts: { readonly raise?: number; readonly periscopes?: number } = {},
+  ): number => {
     const topWorld = Math.min(capWorld, roofWorld + (opts.raise ?? 0.105));
     const h = Math.max(0.045, topWorld - roofWorld + 0.018);
     const y = V(roofWorld + h / 2 - 0.010);
@@ -8000,7 +8433,7 @@ function merkavaSourceFinish(P, p, t) {
     return topWorld;
   };
 
-  const sight = (x, z, roofWorld, w = 0.27, h = 0.28, d = 0.24, yaw = 0) => {
+  const sight = (x: number, z: number, roofWorld: number, w = 0.27, h = 0.28, d = 0.24, yaw = 0): void => {
     const top = Math.min(capWorld, roofWorld + h);
     const actualH = Math.max(0.10, top - roofWorld);
     // Broad tapered shoe prevents the familiar stand-off-box failure.
@@ -8010,7 +8443,7 @@ function merkavaSourceFinish(P, p, t) {
     P.add('turretGlass', box(w * 0.52, actualH * 0.25, 0.012), x, V(roofWorld + actualH * 0.67), L(z + d * 0.53), -0.08, yaw, 0);
   };
 
-  const deckRod = (pts, mat = 'turretDark', width = 0.022, lift = 0.028) => {
+  const deckRod = (pts: readonly Vec3Tuple[], mat = 'turretDark', width = 0.022, lift = 0.028): void => {
     for (let i = 0; i < pts.length - 1; i++) {
       const [ax, ay, az] = pts[i], [bx, by, bz] = pts[i + 1];
       const dx = bx - ax, dz = bz - az, dy = by - ay;
@@ -8023,7 +8456,7 @@ function merkavaSourceFinish(P, p, t) {
     }
   };
 
-  const addEarlyRoof = (mark) => {
+  const addEarlyRoof = (mark: string): void => {
     const is1 = mark === 'merkava1b';
     const is2d = mark === 'merkava2d';
     const zCmd = is1 ? -1.43 : -1.05;
@@ -8073,7 +8506,7 @@ function merkavaSourceFinish(P, p, t) {
     P.add('turretDark', box(0.50, 0.020, 0.36), 0, V(rackTop - 0.05), L(rackZ - 0.08), 0.05, 0.08, 0);
   };
 
-  const addThirdGenRoof = (mark) => {
+  const addThirdGenRoof = (mark: string): void => {
     const isD = mark === 'merkava3d';
     const cmd = isD ? { x: 0.40, z: -1.50, r: 0.34, top: 2.520 } : { x: 1.115, z: -1.45, r: 0.29, top: 2.60 };
     const load = isD ? { x: -0.33, z: -1.52, r: 0.32, top: 2.512 } : { x: -0.79, z: -2.05, r: 0.27, top: 2.53 };
@@ -8161,7 +8594,7 @@ function merkavaSourceFinish(P, p, t) {
       [0.10, -3.24, 0.30, 0.24, 0.34, 'turretDetail', -0.04],
       [0.54, -3.16, 0.46, 0.28, 0.40, 'turretCloth', 0.08],
       [0.98, -3.00, 0.26, 0.20, 0.34, 'turretDetail', -0.10],
-    ]) {
+    ] satisfies ReadonlyArray<readonly [number, number, number, number, number, string, number]>) {
       const supportY = 2.17;
       P.add('turret', box(w * 1.04, 0.045, d * 1.05), x, V(supportY - 0.08), L(z), 0, yaw, 0);
       P.add(mat, box(w, h, d), x, V(supportY + h * 0.5 - 0.06), L(z), 0.03, yaw, 0);
@@ -8196,14 +8629,14 @@ function merkavaSourceFinish(P, p, t) {
       ? { x: 1.18, y: 2.13, z: -0.12, n: 6, pitch: -0.34 }
       : { x: 1.08, y: 2.04, z: 0.02, n: 6, pitch: -0.32 });
   const mk4bPanelEquipmentSeats = [];
-  for (const s of [-1, 1]) {
+  for (const s of [-1, 1] as const) {
     if (id === 'merkava4b') {
-      const frame = merkava4bPanelFrame(P, s, smoke.z, 0.52);
+      const frame = requireMerkava4bPanelFrame(P, s, smoke.z, 0.52);
       merkavaSmokeCluster(P, frame.point.x, frame.point.y, frame.point.z, 0, smoke.n,
         { frame, pitch: smoke.pitch, soft: true });
-      const jointFrame = merkava4bPanelFrame(P, s, smoke.z - 0.34, 0.26);
+      const jointFrame = requireMerkava4bPanelFrame(P, s, smoke.z - 0.34, 0.26);
       addMerkava4bFrameBox(P, 'turretDark', jointFrame, 0.46, 0.040, 0.018, 0.009);
-      const keeperFrame = merkava4bPanelFrame(P, s, smoke.z - 0.16, 0.68);
+      const keeperFrame = requireMerkava4bPanelFrame(P, s, smoke.z - 0.16, 0.68);
       addMerkava4bFrameBox(P, 'turretDetail', keeperFrame, 0.23, 0.055, 0.022, 0.011);
       mk4bPanelEquipmentSeats.push(Object.freeze({
         side: s,
@@ -8238,7 +8671,7 @@ function merkavaSourceFinish(P, p, t) {
   // one armor kit.  Each set below varies cheek cadence, flank depth, roof
   // stowage and weapon-shield position while using the existing cast shell
   // as its load-bearing surface.
-  const combatFit = {
+  const combatFits: Readonly<Record<string, MerkavaCombatFit>> = {
     merkava1b: {
       rows: 2, cols: 4, xOut: 1.16, cheekRise: 0.065, z: 0.72, side: 5, roof: 4, roofArmor: 4,
       sideY: 2.05, sideZ: [0.10, -1.64], sideFace: [[0.12, 1.10], [-0.55, 1.29], [-2.12, 1.18]],
@@ -8273,11 +8706,13 @@ function merkavaSourceFinish(P, p, t) {
       sideY: 2.30, sideZ: [0.04, -2.44], sideFace: [[0.10, 1.58], [-2.00, 1.48], [-2.72, 1.46]],
       shield: [-0.62, -0.82, -0.12],
     },
-  }[id];
+  };
+  const combatFit = combatFits[id];
+  if (!combatFit) return;
 
-  const sideFaceAt = (z) => {
+  const sideFaceAt = (z: number): number => {
     const stations = combatFit.sideFace;
-    if (z >= stations[0][0]) return stations[0][1];
+    if (z >= stations[0]![0]) return stations[0]![1];
     for (let i = 0; i < stations.length - 1; i++) {
       const [za, xa] = stations[i], [zb, xb] = stations[i + 1];
       if (z <= za && z >= zb) {
@@ -8285,7 +8720,7 @@ function merkavaSourceFinish(P, p, t) {
         return xa + (xb - xa) * f;
       }
     }
-    return stations.at(-1)[1];
+    return stations.at(-1)![1];
   };
 
   const mk4bEraEmbedM = 0.014;
@@ -8304,13 +8739,13 @@ function merkavaSourceFinish(P, p, t) {
   const earlySidePanelSeats = [];
   const earlyOracle = MERKAVA_EARLY_ORACLE[id];
   const restoresVisibleEraRing = ['merkava2b', 'merkava2d', 'merkava3c', 'merkava3d'].includes(id);
-  const mk4bEraCells = (side) => {
+  const mk4bEraCells = (side: Side): MerkavaEraCell[] | null => {
     if (id !== 'merkava4b') return null;
-    const cells = [];
+    const cells: MerkavaEraCell[] = [];
     const zStations = [1.34, 1.08, 0.82, 0.56, 0.28];
     for (const heightFraction of [0.48, 0.76]) {
       for (const worldZ of zStations) {
-        const frame = merkava4bPanelFrame(P, side, worldZ, heightFraction);
+        const frame = requireMerkava4bPanelFrame(P, side, worldZ, heightFraction);
         const surface = frame.point.clone();
         const normal = frame.normal.clone();
         const depth = 0.078;
@@ -8323,6 +8758,7 @@ function merkavaSourceFinish(P, p, t) {
           nx: normal.x, ny: normal.y, nz: normal.z,
           surface,
           support,
+          sourceConformal: true,
           courseIndex: frame.courseIndex,
           worldZ,
           tileW: 0.20, tileH: 0.15, tileD: depth,
@@ -8338,16 +8774,16 @@ function merkavaSourceFinish(P, p, t) {
   // of restarting on each 28 cm instance. The inset cover shares its base's
   // destructible sector, preserving strip/reset behavior with one draw bucket
   // and no per-frame work.
-  const addLayeredEraCassette = (cell) => {
+  const addLayeredEraCassette = (cell: MerkavaEraCell): void => {
     const sourceConformal = id === 'merkava4b' || (earlyOracle && cell.sourceConformal);
     const center = sourceConformal
       ? new THREE.Vector3(cell.x, cell.y, cell.z)
       : new THREE.Vector3(cell.x, V(cell.y), L(cell.z));
     const rotation = sourceConformal
-      ? new THREE.Euler(cell.boxRx, cell.boxRy, cell.boxRz)
-      : new THREE.Euler(-0.18, cell.yaw, cell.roll);
+      ? new THREE.Euler(cell.boxRx ?? 0, cell.boxRy ?? 0, cell.boxRz ?? 0)
+      : new THREE.Euler(-0.18, cell.yaw ?? 0, cell.roll ?? 0);
     const normal = sourceConformal
-      ? new THREE.Vector3(cell.nx, cell.ny, cell.nz).normalize()
+      ? new THREE.Vector3(cell.nx ?? 0, cell.ny ?? 0, cell.nz ?? 1).normalize()
       : new THREE.Vector3(0, 0, 1).applyEuler(rotation).normalize();
 
     P.addExternalArmor('turret',
@@ -8374,8 +8810,8 @@ function merkavaSourceFinish(P, p, t) {
   // Faceted cheek arrays follow the Mk.4B's newly seated flank-panel courses.
   // Each module overlaps its local panel plane; the visible dark lower seam
   // is a panel-aligned hinge/retainer, not a floating world-space plate.
-  for (const s of [-1, 1]) {
-    const eraCells = mk4bEraCells(s) ?? [];
+  for (const s of [-1, 1] as const) {
+    const eraCells: MerkavaEraCell[] = mk4bEraCells(s) ?? [];
     if (id !== 'merkava4b') {
       for (let row = 0; row < combatFit.rows; row++) {
         for (let col = 0; col < combatFit.cols; col++) {
@@ -8392,7 +8828,7 @@ function merkavaSourceFinish(P, p, t) {
           const yaw = s * (-0.12 - f * 0.24);
           const roll = s * (0.04 + f * 0.08);
           if (earlyOracle) {
-            const shellRoof = merkavaEarlyOracleRoofAt(id, z);
+            const shellRoof = merkavaEarlyOracleRoofAt(id, z) ?? roofAt(z);
             const heightFractions = combatFit.rows === 3 ? [0.79, 0.58, 0.37] : [0.73, 0.47];
             const surfaceY = THREE.MathUtils.lerp(
               earlyOracle.base + earlyOracle.shoulderRise,
@@ -8421,7 +8857,7 @@ function merkavaSourceFinish(P, p, t) {
               // cell into the armor beneath it.  They sit below the cassette
               // face so the connection remains readable instead of being
               // swallowed between the outer armor and the ERA block.
-              let mountCenter = null;
+              let mountCenter: THREE.Vector3 | null = null;
               if (restoresVisibleEraRing) {
                 const mountFrame = {
                   ...frame,
@@ -8474,23 +8910,24 @@ function merkavaSourceFinish(P, p, t) {
         mk4bEraSeats.push(Object.freeze({
           side: s,
           center: Object.freeze([cell.x, cell.y, cell.z]),
-          surface: Object.freeze(cell.surface.toArray()),
-          normal: Object.freeze([cell.nx, cell.ny, cell.nz]),
-          rotation: Object.freeze([cell.rx, cell.ry, cell.rz]),
+          surface: Object.freeze(cell.surface?.toArray() ?? [cell.x, cell.y, cell.z]),
+          normal: Object.freeze([cell.nx ?? 0, cell.ny ?? 0, cell.nz ?? 1]),
+          rotation: Object.freeze([cell.rx ?? 0, cell.ry ?? 0, cell.rz ?? 0]),
           cassetteDepthM: cell.tileD,
           centerProudM: cell.tileD / 2 - mk4bEraEmbedM,
           innerFaceOverlapM: mk4bEraEmbedM,
-          panelCourseIndex: cell.courseIndex,
-          worldZ: cell.worldZ,
+          panelCourseIndex: cell.courseIndex ?? -1,
+          worldZ: cell.worldZ ?? cell.z,
         }));
         P.add('turretDark', box(cell.tileW * 0.70, cell.tileH * 0.42, 0.028),
-          cell.support.x, cell.support.y, cell.support.z,
-          cell.boxRx, cell.boxRy, cell.boxRz);
+          cell.support?.x ?? cell.x, cell.support?.y ?? cell.y, cell.support?.z ?? cell.z,
+          cell.boxRx ?? 0, cell.boxRy ?? 0, cell.boxRz ?? 0);
       }
     }
     if (earlyOracle) {
       for (const cell of eraCells.filter((candidate) => candidate.sourceConformal)) {
-        const seat = {
+        if (!cell.surface || !cell.sourceSurface) continue;
+        const seat: Record<string, unknown> = {
           side: s,
           centerLocal: Object.freeze([cell.x, cell.y, cell.z]),
           surfaceLocal: Object.freeze(cell.surface.toArray()),
@@ -8499,20 +8936,20 @@ function merkavaSourceFinish(P, p, t) {
           contactEmbedM: earlyEraEmbedM,
           worldZ: cell.worldZ,
         };
-        if (restoresVisibleEraRing) {
+        if (restoresVisibleEraRing && cell.mountCenter) {
           Object.assign(seat, {
             supportLayer: cell.supportLayer,
             sourceSurfaceLocal: Object.freeze(cell.sourceSurface.toArray()),
             carrierProudOfSourceM: cell.surface.clone().sub(cell.sourceSurface)
-              .dot(new THREE.Vector3(cell.nx, cell.ny, cell.nz)),
+              .dot(new THREE.Vector3(cell.nx ?? 0, cell.ny ?? 0, cell.nz ?? 1)),
             mountCenterLocal: Object.freeze(cell.mountCenter.toArray()),
           });
           earlyEraMountSeats.push(Object.freeze({
             side: s,
             centerLocal: Object.freeze(cell.mountCenter.toArray()),
             supportLocal: Object.freeze(cell.surface.toArray()),
-            normalLocal: Object.freeze([cell.nx, cell.ny, cell.nz]),
-            supportLayer: cell.supportLayer,
+            normalLocal: Object.freeze([cell.nx ?? 0, cell.ny ?? 0, cell.nz ?? 1]),
+            supportLayer: cell.supportLayer ?? 'source-shell',
             structuralOverlapM: 0.012,
             cleats: 2,
           }));
@@ -8689,7 +9126,10 @@ function merkavaSourceFinish(P, p, t) {
 
     // Additional radio/ammunition cases on the bustle shoulders.  Each case
     // has a painted shoe and a dark transverse strap returning into the roof.
-    for (const [s, z, yaw, cloth] of [[-1, -2.42, -0.10, false], [1, -2.62, 0.08, true]]) {
+    for (const [s, z, yaw, cloth] of [
+      [-1, -2.42, -0.10, false],
+      [1, -2.62, 0.08, true],
+    ] satisfies ReadonlyArray<readonly [Side, number, number, boolean]>) {
       const roof = Math.min(capWorld - 0.24, roofAt(z));
       const x = s * 0.82;
       P.add('turret', box(0.42, 0.045, 0.34), x, V(roof + 0.004), L(z), 0, yaw, 0);
@@ -8755,7 +9195,12 @@ function merkavaSourceFinish(P, p, t) {
 // precedent class), far inside the 15 mm envelope the existing certified
 // glass strip already occupies on the modular marks. Downward/inward only;
 // no piece rises above cp.top or leads cp.z0 beyond the lens line.
-function merkavaPodTell(P, cp, glassMat, hasLens) {
+function merkavaPodTell(
+  P: TankBuilderPort,
+  cp: MerkavaCheekPod,
+  glassMat: BucketName,
+  hasLens: boolean,
+): void {
   const { box } = KIT;
   const w = Math.abs(cp.x1 - cp.x0), cx = (cp.x0 + cp.x1) / 2;
   const h = cp.top - cp.bot, cy = (cp.top + cp.bot) / 2;
@@ -8791,7 +9236,16 @@ function merkavaPodTell(P, cp, glassMat, hasLens) {
 
 // Cloth kit bundle with cinch straps. mat: 'turret' for the monochrome-sand
 // refs (3B/3C visual round — olive canvas blocks read as a second paint).
-function merkavaKitBundle(P, x, y, z, w, h, d, mat = 'turretCloth') {
+function merkavaKitBundle(
+  P: TankBuilderPort,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  mat: BucketName = 'turretCloth',
+): void {
   const { box } = KIT;
   P.add(mat, box(w, h, d), x, y, z);
   P.add(mat, box(w * 1.04, h * 0.2, d * 1.04), x, y + h * 0.44, z);
@@ -8807,7 +9261,16 @@ function merkavaKitBundle(P, x, y, z, w, h, d, mat = 'turretCloth') {
 // included) — callers put it AT the certified side-band line. ry yaws the
 // whole lump so plan edges stop being axis-aligned; callers leave >= 6 cm
 // x/z margin for the rotated corners.
-function merkavaTarpLump(P, x, topY, z, w, d, mat = 'turret', ry = 0) {
+function merkavaTarpLump(
+  P: TankBuilderPort,
+  x: number,
+  topY: number,
+  z: number,
+  w: number,
+  d: number,
+  mat: BucketName = 'turret',
+  ry = 0,
+): void {
   const { box } = KIT;
   // r6 shading calibration: the r4 crown tilts (0.026-0.034) rendered the
   // whole field one flat sun tone — the board's sun term needs ±0.06-0.10
@@ -8827,7 +9290,7 @@ function merkavaTarpLump(P, x, topY, z, w, d, mat = 'turret', ry = 0) {
 // band walls (plinth/pad/crest flanks) so the raised deck reads as bolted
 // modular armor instead of a smooth cabinet. All strips are <= 5 mm proud
 // and sit strictly inside their wall's y/z band.
-function merkavaWallSeams(P, walls) {
+function merkavaWallSeams(P: TankBuilderPort, walls: readonly MerkavaWallSeam[]): void {
   const { box } = KIT;
   for (const wl of walls) { // { x(face, signed), y, h, zs: [seam z...], bz: [bolt z...], hz: [[z0,z1,y]...] }
     const sgn = Math.sign(wl.x);
@@ -8849,19 +9312,37 @@ function merkavaWallSeams(P, walls) {
 // thick so they read as armor planes, not paper. All placements stay inside
 // the certified envelope: apex edges tie AT band-top lines, base edges land
 // on the roof deck, spans hug the measured ref column targets per mark.
-function merkavaRakeZ(P, x0, x1, zA, yA, zB, yB, mat = 'turret') {
+function merkavaRakeZ(
+  P: TankBuilderPort,
+  x0: number,
+  x1: number,
+  zA: number,
+  yA: number,
+  zB: number,
+  yB: number,
+  mat: BucketName = 'turret',
+): void {
   P.add(mat, orientedSlab(                                    // §C.1 winding guard
     [x0, yA - 0.10, zA], [x1, yA - 0.10, zA], [x1, yB - 0.10, zB], [x0, yB - 0.10, zB],
     [x0, yA, zA], [x1, yA, zA], [x1, yB, zB], [x0, yB, zB]));
 }
-function merkavaRakeX(P, z0, z1, xA, yA, xB, yB, mat = 'turret') {
+function merkavaRakeX(
+  P: TankBuilderPort,
+  z0: number,
+  z1: number,
+  xA: number,
+  yA: number,
+  xB: number,
+  yB: number,
+  mat: BucketName = 'turret',
+): void {
   P.add(mat, orientedSlab(                                    // §C.1 winding guard
     [xA, yA - 0.09, z0], [xB, yB - 0.09, z0], [xB, yB - 0.09, z1], [xA, yA - 0.09, z1],
     [xA, yA, z0], [xB, yB, z0], [xB, yB, z1], [xA, yA, z1]));
 }
 
 // ---- per-mark turret kits ---------------------------------------------------
-function merkava4Kit(P, p, t) {
+function merkava4Kit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurretConfig): void {
   // MG crowns capped under the dims p95 height line (low pintles, Mk.4M).
   const cap = t.capY ?? (t.roof[0][1] + 0.04);
   merkavaSidePanels(P, p, t, { radar: true });
@@ -8869,10 +9350,10 @@ function merkava4Kit(P, p, t) {
   merkavaMG(P, -t.cupolaX, cap - 0.22, t.cupolaZ - 0.30, 0.7);
   const sc = merkavaCheekPoint(t, 0.58, 0.80);
   merkavaSmokeCluster(P, -sc.x, sc.y - 0.01, sc.z, -0.30, 4, { recessed: true, pitch: -0.24 });
-  KIT.tarpRoll(P, 'turretCloth', -0.28, t.roof.at(-1)[1] - 0.07, t.roof.at(-1)[0] + 0.25, 0.85, 0.105);
+  KIT.tarpRoll(P, 'turretCloth', -0.28, t.roof.at(-1)![1] - 0.07, t.roof.at(-1)![0] + 0.25, 0.85, 0.105);
 }
 
-function merkava4bKit(P, p, t) {
+function merkava4bKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurretConfig): void {
   // Mk.4B-specific structure only. Roof weapons, smoke and optics are owned
   // by `addFourthGenRoof`/the source-finish pass below; keeping duplicates in
   // both places produced five MGs and three overlapping smoke banks.
@@ -8880,7 +9361,7 @@ function merkava4bKit(P, p, t) {
 }
 
 // Mk.2D cheek appliqué wedges riding the cast beak planes.
-function merkava2dKit(P, p, t) {
+function merkava2dKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurretConfig): void {
   const { box } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const sf = t.shoulderZ;
@@ -8896,13 +9377,14 @@ function merkava2dKit(P, p, t) {
 }
 
 // Mk.1B cast-turret jewelry.
-function merkava1bKit(P, p, t) {
+function merkava1bKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurretConfig): void {
   for (const s of [-1, 1]) {
     KIT.liftEye(P, 'turretDetail', s * t.hwMax * 0.68, t.roof[0][1] * 0.62, t.shoulderZ - 0.45, s * 0.5);
   }
-  KIT.liftEye(P, 'turretDetail', 0, t.roof.at(-1)[1] - 0.10, t.shellRearZ + 0.30, Math.PI / 2);
+  KIT.liftEye(P, 'turretDetail', 0, t.roof.at(-1)![1] - 0.10, t.shellRearZ + 0.30, Math.PI / 2);
   if (!p.softGoods) return;
-  const L = (z) => z - p.pivotZ, V = (y) => y - (p.deckY + 0.02);
+  const L = (z: number): number => z - p.pivotZ;
+  const V = (y: number): number => y - (p.deckY + 0.02);
   // ---- r4 COMMANDER M2 (the MG-physics identity fix): the 1B ref's only
   // side-readable gun is a big pale .50 riding the GUN NODE, floating over
   // the crest/saddle at ~2.50-2.53, z -0.02..+1.54, visible from BOTH side
@@ -8927,8 +9409,8 @@ function merkava1bKit(P, p, t) {
   // of sky under it (the fwd roof is reclassified low to open that sky).
   // Still on the GUN NODE — elevates like the print's.
   {
-    const gy9 = (y) => y - p.gunAxisY;                 // gun-local y
-    const gz9 = (z) => z + (-p.pivotZ) - (p.gunZL ?? 0.32); // gun-local z
+    const gy9 = (y: number): number => y - p.gunAxisY;                 // gun-local y
+    const gz9 = (z: number): number => z + (-p.pivotZ) - (p.gunZL ?? 0.32); // gun-local z
     // r6 RODS -> GUNS (critic r5 shared order 2): the receiver gains real
     // MASS — body/crown widened ~45% plus a cradle side plate so the top
     // and hero angles read a weapon cluster, not a rail. Tops unchanged
@@ -9131,11 +9613,16 @@ function merkava1bKit(P, p, t) {
 // MG crowns anchor to t.capY (published-height p95 cap) — with the r2
 // re-lined roofs riding near the cap, roof-relative anchors would blow
 // the dims heightM read.
-function merkava3Kit(P, p, t, opts = {}) {
+function merkava3Kit(
+  P: TankBuilderPort,
+  p: MerkavaProfileData,
+  t: MerkavaTurretConfig,
+  opts: Merkava3KitOptions = {},
+): void {
   const { box } = KIT;
   const cap = t.capY ?? (t.roof[0][1] + 0.24);
   if (t.crest) {
-    const crTop = t.crest.top1 ?? t.crest.top;
+    const crTop = t.crest.top1;
     // r7 roof tone-on-tone (pale marks): the 0.30x0.44 near-black crest box
     // was the loudest top-view plate — detail housing + dark bore only.
     // r8 (crown flat-run break, pale marks): both crest-kit boxes' ruled top
@@ -9226,7 +9713,12 @@ function merkava3Kit(P, p, t, opts = {}) {
       // tint (the ref's own jacket mixes 58-101 albedos; the darkest-only
       // mix pulled both shade-side medians under). L-med parity (82.2 vs
       // 81.9) lives on the rod columns — untouched.
-      for (const [sz, sl, mt] of [[-0.26, 0.10, 'turretDark'], [-0.05, 0.07, 'turretDark'], [0.14, 0.09, 'turretDark'], [0.33, 0.06, 'turretDetail']]) {
+      for (const [sz, sl, mt] of [
+        [-0.26, 0.10, 'turretDark'],
+        [-0.05, 0.07, 'turretDark'],
+        [0.14, 0.09, 'turretDark'],
+        [0.33, 0.06, 'turretDetail'],
+      ] satisfies ReadonlyArray<readonly [number, number, BucketName]>) {
         P.add(mt, KIT.cylZ(0.011, sl, 10), 0.142, crTop - 0.023 - 0.042 * sz, zb + 1.01 + sz, 0.042, 0, 0);
       }
       // booster ends z 1.505: covers station s11 + side col 1.53 like the
@@ -9289,14 +9781,15 @@ function merkava3Kit(P, p, t, opts = {}) {
   merkavaSmokeCluster(P, -sc.x, sc.y - 0.06, sc.z, -0.45, 5, { recessed: true, pitch: -0.28, pale: opts.pale, soft: opts.m2 });
 }
 
-function merkava3dKit(P, p, t) {
+function merkava3dKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurretConfig): void {
   merkava3Kit(P, p, t, { pale: p.paleKit, noMGs: p.paleKit, m2: p.softGoods });
-  const L = (z) => z - p.pivotZ, V = (y) => y - (p.deckY + 0.02);
+  const L = (z: number): number => z - p.pivotZ;
+  const V = (y: number): number => y - (p.deckY + 0.02);
   const km = p.paleKit ? 'turret' : 'turretCloth';
   // r4: the old mid-cheek applique wedges (x ~0.7, poking to z +1.4) owned
   // four t_plan front worst rows — the print's Dor-Dalet armor is the SIDE
   // plate run (x 1.30-1.58 to z -2.55), authored via roofBoxes.
-  KIT.tarpRoll(P, km, -0.15, t.roof.at(-1)[1] - 0.06, t.roof.at(-1)[0] + 0.28, 1.1, 0.09);
+  KIT.tarpRoll(P, km, -0.15, t.roof.at(-1)![1] - 0.06, t.roof.at(-1)![0] + 0.28, 1.1, 0.09);
   if (!p.paleKit) return;
   const { box } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
@@ -9716,9 +10209,10 @@ function merkava3dKit(P, p, t) {
   merkavaTarpLump(P, 0.66, V(2.438), L(-3.36), 0.34, 0.18, km, -0.12);
 }
 
-function merkava3bKit(P, p, t) {
+function merkava3bKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurretConfig): void {
   merkava3Kit(P, p, t, { pale: p.paleKit, ringMGs: !!p.cupolaRing, loaderDrop: 0.24 });
-  const L = (z) => z - p.pivotZ, V = (y) => y - (p.deckY + 0.02);
+  const L = (z: number): number => z - p.pivotZ;
+  const V = (y: number): number => y - (p.deckY + 0.02);
   const km = p.paleKit ? 'turret' : 'turretCloth';
   // Warped-ref rear-roof stack: hump 2.57-2.59 over z -2.45..-2.53 + the
   // low 2.46-2.49 bundle across the bustle root. Visual round: strapped
@@ -9915,9 +10409,10 @@ function merkava3bKit(P, p, t) {
   }
 }
 
-function merkava3cKit(P, p, t) {
+function merkava3cKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurretConfig): void {
   merkava3Kit(P, p, t, { pale: p.paleKit, ringMGs: !!p.cupolaRing, loaderDrop: 0.21 });
-  const L = (z) => z - p.pivotZ, V = (y) => y - (p.deckY + 0.02);
+  const L = (z: number): number => z - p.pivotZ;
+  const V = (y: number): number => y - (p.deckY + 0.02);
   const km = p.paleKit ? 'turret' : 'turretCloth';
   // Warped-ref Kasag stack: the 2.65 hump now sits at z -2.56..-2.61 (the
   // pre-warp 2.76@-2.24 band was compressed + shifted); low bundle rides
@@ -10097,6 +10592,27 @@ function merkava3cKit(P, p, t) {
   }
 }
 
+function applyMerkavaTurretKit(
+  P: TankBuilderPort,
+  p: MerkavaProfileData,
+  turret: unknown,
+): void {
+  // This dispatcher is only called with createMerkavaTurretConfig's frozen
+  // result. Keeping the boundary opaque avoids coupling profile-table union
+  // expansion to every kit call while the named kit helpers remain strict.
+  const typedTurret = turret as MerkavaTurretConfig;
+  switch (P.spec.id) {
+    case 'merkava1b': merkava1bKit(P, p, typedTurret); break;
+    case 'merkava2d': merkava2dKit(P, p, typedTurret); break;
+    case 'merkava3b': merkava3bKit(P, p, typedTurret); break;
+    case 'merkava3c': merkava3cKit(P, p, typedTurret); break;
+    case 'merkava3d': merkava3dKit(P, p, typedTurret); break;
+    case 'merkava4': merkava4Kit(P, p, typedTurret); break;
+    case 'merkava4b': merkava4bKit(P, p, typedTurret); break;
+    default: break;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Per-mark parameter tables — every number is read off the measured curves
 // (docs/references/profiles/<id>.json decoded to world meters; see packets).
@@ -10127,19 +10643,51 @@ const MK1B_TRACK_COURSE = {
   beadKeep: true, gearDarkLift: 0x544e42,
 };
 
-function scaleMerkavaCourse(course, {
+interface ScalableMerkavaCourse {
+  readonly trackW: number;
+  readonly trackTop: number;
+  readonly trackTh: number;
+  readonly gearOut: number;
+  readonly wheelR: number;
+  readonly wheelFace: boolean;
+  readonly runningGearBuckets: boolean;
+  readonly wheelZs: readonly number[];
+  readonly sprocket: GearEndpoint;
+  readonly idler: GearEndpoint;
+  readonly idlerForwardM?: number;
+  readonly rollers: readonly number[];
+  readonly linkPitchM: number;
+  readonly shoeRadialScale: number;
+  readonly shoeWidthScale: number;
+  readonly dishR: number;
+  readonly chainHex: number;
+  readonly padHex: number;
+  readonly gearFloor: boolean;
+  readonly beadKeep: boolean;
+  readonly gearDarkLift: number;
+}
+
+interface MerkavaCourseScale {
+  readonly frontZ: number;
+  readonly rearZ: number;
+  readonly outerX: number;
+  readonly hullWidth: number;
+  readonly donorHullWidth?: number;
+}
+
+function scaleMerkavaCourse(course: ScalableMerkavaCourse, {
   frontZ, rearZ, outerX, hullWidth, donorHullWidth = 3.70,
-}) {
+}: MerkavaCourseScale): ScalableMerkavaCourse {
   const donorFront = course.sprocket.z;
   const donorRear = course.idler.z;
   const zScale = (frontZ - rearZ) / (donorFront - donorRear);
   const donorMid = (donorFront + donorRear) / 2;
   const targetMid = (frontZ + rearZ) / 2;
-  const zMap = (z) => targetMid + (z - donorMid) * zScale;
+  const zMap = (z: number): number => targetMid + (z - donorMid) * zScale;
   const wheelR = course.wheelR * zScale;
   const donorWheelY = course.wheelR + 0.07;
   const targetWheelY = wheelR + 0.07;
-  const yMap = (y) => targetWheelY + (y - donorWheelY) * zScale;
+  const yMap = (y: number): number => targetWheelY + (y - donorWheelY) * zScale;
   return {
     ...course,
     trackW: course.trackW * (hullWidth / donorHullWidth),
@@ -10180,13 +10728,13 @@ const MK4B_MK1B_TRACK_COURSE = {
     ...MK4B_BASE_TRACK_COURSE.sprocket,
     y: MK4B_BASE_TRACK_COURSE.sprocket.y + MK4B_SPROCKET_RAISE_M,
   },
-  wheelZs: MK4B_BASE_TRACK_COURSE.wheelZs.map((z) => z - MK4B_TRACK_REAR_SHIFT_M),
+  wheelZs: MK4B_BASE_TRACK_COURSE.wheelZs.map((z: number) => z - MK4B_TRACK_REAR_SHIFT_M),
   idler: {
     ...MK4B_BASE_TRACK_COURSE.idler,
     z: MK4B_BASE_TRACK_COURSE.idler.z - MK4B_TRACK_REAR_SHIFT_M
       + MK4B_IDLER_FORWARD_M,
   },
-  rollers: MK4B_BASE_TRACK_COURSE.rollers.map((z) => z - MK4B_TRACK_REAR_SHIFT_M),
+  rollers: MK4B_BASE_TRACK_COURSE.rollers.map((z: number) => z - MK4B_TRACK_REAR_SHIFT_M),
 };
 // Mk.3 shared running gear. r2: the refs' rear track RISES from the last
 // road wheel (~-2.6) to a high tail idler — the wheel row ends earlier and
@@ -10204,7 +10752,7 @@ const MK3_GEAR = {
   rollers: [1.30, 0.45, -0.40, -1.25, -2.10],
 };
 
-export const MERKAVA_PROFILES = {
+const MERKAVA_PROFILE_DATA = {
   // ---- Mk.1B: exposed gear, small rising-roof casting, huge rear basket ----
   // Curves: nose toe (3.05, 0.90..1.05); glacis knee (2.5, 1.53); deck 1.68;
   // plan full width |x|1.71..1.81 back to -3.93, prow ~±0.95, pods to 3.18;
@@ -10214,7 +10762,7 @@ export const MERKAVA_PROFILES = {
   // tapering 2.28 at -3.8; mantlet sleeve band [1.86..2.11] out to z 2.45;
   // gun axis 1.97 tip 4.06; whips at -2.15/-2.80 to y 4.8.
   merkava1b: {
-    build: buildMerkavaMark, ...MK12_GEAR, sourceOracleTurret: true,
+    ...MK12_GEAR, sourceOracleTurret: true,
     turretScale: { y: 0.78 },
     ...MK1B_TRACK_COURSE,
     // r10 gear read (official-pair measure): ref wheel dia ~0.72 with 9-12px
@@ -10622,7 +11170,6 @@ export const MERKAVA_PROFILES = {
     // 1.50..1.53 = its gun; z 1.55+ bare 2.121) — now a LOW hood under the
     // barrel's sky window; the gun itself carries the 2.51-2.534 line.
     brow: { z0: 1.50, z1: 0.92, top: 2.30 },
-    turretKit: merkava1bKit,
   },
 
   // ---- Mk.2B: skirted Mk.2, small turret, dome station, long chain tail ---
@@ -10633,7 +11180,7 @@ export const MERKAVA_PROFILES = {
   // rising cast roof 2.16@0.9 -> 2.38@-0.4, dome band drum (capped 2.66),
   // whips -2.85/-2.27 tops 4.83/4.91 with 3.0 pot bands beside them.
   merkava2b: {
-    build: buildMerkavaMark, ...MK12_GEAR, sourceOracleTurret: true,
+    ...MK12_GEAR, sourceOracleTurret: true,
     turretScale: { y: 0.80 },
     bodyTrackClear: { hw: 1.11, y: 1.12 },
     deckY: 1.68, rearDeckZ: -2.55,
@@ -10730,7 +11277,7 @@ export const MERKAVA_PROFILES = {
   // Print defect note: the 2D cheek wedges ride the oracle HULL node (front
   // hull trace tops 2.34-2.48 center) — small certified hullCurves residue.
   merkava2d: {
-    build: buildMerkavaMark, ...MK12_GEAR, sourceOracleTurret: true,
+    ...MK12_GEAR, sourceOracleTurret: true,
     turretScale: { y: 0.80 },
     bodyTrackClear: { hw: 1.11, y: 1.12 },
     deckY: 1.72, rearDeckZ: -2.55,
@@ -10802,7 +11349,6 @@ export const MERKAVA_PROFILES = {
     // the gate crossfire pairing.
     antennas: [{ x: 0.80, y: 2.51, z: -2.94, h: 2.29, stem: 0.45 }, { x: 0.84, y: 2.51, z: -2.19, h: 2.36, stem: 0.45 }],
     pots: [{ x: 0.82, z: -2.70, top: 2.64, base: 2.40, w: 0.16, d: 0.20 }],
-    turretKit: merkava2dKit,
   },
 
   // ---- Mk.3B: modular turret at the measured FORWARD face (z 1.75), proud
@@ -10815,7 +11361,7 @@ export const MERKAVA_PROFILES = {
   // -0.35..-1.55, rear roof 2.42, bustle 2.40 to -2.7, basket 2.38 to -3.22,
   // whips -2.95/-3.25; gun axis 1.95 r 0.08 tip 4.14.
   merkava3b: {
-    build: buildMerkavaMark, ...MK3_GEAR,
+    ...MK3_GEAR,
     // §B5 flip (owner chimney report; coupled with the three maps'
     // ex_decor followers extension — see the packet §B5 section): the
     // rearPack pile + tarp wings ride the turret and yaw with it.
@@ -11101,7 +11647,6 @@ export const MERKAVA_PROFILES = {
     pots: [{ x: 0.19, z: -3.545, top: 2.70, base: 2.30, w: 0.030, d: 0.06 },
       { x: 0.19, z: -3.601, top: 2.531, base: 2.30, w: 0.030, d: 0.030 },
       { x: 1.015, z: -3.319, top: 2.575, base: 2.38, w: 0.05, d: 0.030 }],
-    turretKit: merkava3bKit,
   },
 
   // ---- Mk.3C: 3B sculpt + Kasag roof clutter --------------------------------
@@ -11109,7 +11654,7 @@ export const MERKAVA_PROFILES = {
   // HULL node (hull trace tops 2.48-2.55 over z -0.7..-2.2) — small
   // hullCurves residue no articulated build can copy.
   merkava3c: {
-    build: buildMerkavaMark, ...MK3_GEAR, sourceOracleTurret: true,
+    ...MK3_GEAR, sourceOracleTurret: true,
     turretScale: { y: 0.80 },
     bodyTrackClear: { hw: 1.13, y: 1.17 },
     // §B5 flip (owner chimney report; coupled with the three maps'
@@ -11302,7 +11847,6 @@ export const MERKAVA_PROFILES = {
     pots: [{ x: -0.635, z: -3.545, top: 2.90, base: 2.30, w: 0.030, d: 0.06 },
       { x: -0.635, z: -3.601, top: 2.531, base: 2.30, w: 0.030, d: 0.030 },
       { x: 1.02, z: -3.319, top: 2.607, base: 2.38, w: 0.05, d: 0.030 }],
-    turretKit: merkava3cKit,
   },
 
   // ---- Mk.3D: Dor-Dalet — wider turret, bulged cheeks, rear chain tip ------
@@ -11311,7 +11855,7 @@ export const MERKAVA_PROFILES = {
   // tall whip (-3.05, top 4.80) + one short pot (-2.60, top 2.59).
   // Print note (certified): bustle band in the HULL node like 3C.
   merkava3d: {
-    build: buildMerkavaMark, ...MK3_GEAR, sourceOracleTurret: true,
+    ...MK3_GEAR, sourceOracleTurret: true,
     turretScale: { y: 0.80 },
     bodyTrackClear: { hw: 1.09, y: 1.17 },
     // BATCH-18 PUSH (2026-08-02): authored in the WARPED-REF world frame
@@ -11720,7 +12264,6 @@ export const MERKAVA_PROFILES = {
       { x: -0.14, z: -2.92, top: 2.52, base: 2.40, w: 0.05, d: 0.06 },    // rear-roof step (1024 ref -2.92 col 2.526)
       { x: -1.165, z: -1.30, top: 2.644, base: 2.35, w: 0.05, d: 0.05 }, // left band pot (front -1.14..-1.19 @ 2.644)
     ],
-    turretKit: merkava3dKit,
   },
 
   // ---- Mk.4M Windbreaker — PUBLISHED-DIMENSION rebuild ---------------------
@@ -11734,7 +12277,6 @@ export const MERKAVA_PROFILES = {
   // 4B chassis with Mk.4M turret furniture. hullCurves/wholeCurves/
   // turretCurves/stations vs the tiny yawed print are certified caps.
   merkava4: {
-    build: buildMerkavaMark,
     width: 3.72, trackW: 0.62, trackTop: 1.05, wheelR: 0.42, gearOut: 1.76,
     deckY: 1.76, rearDeckZ: -2.75,
     body: [
@@ -11828,7 +12370,6 @@ export const MERKAVA_PROFILES = {
       { x: 0.85, y: 2.50, z: -2.55, h: 0.13, stem: 0.35 },
       { x: 0.40, y: 2.48, z: -2.90, h: 0.12, stem: 0.30 },
     ],
-    turretKit: merkava4Kit,
   },
 
   // ---- Mk.4B (no Trophy; tall 1.313x width-normalized oracle) --------------
@@ -11849,7 +12390,7 @@ export const MERKAVA_PROFILES = {
     // modular shell below is materially closer in front, side and rear
     // silhouettes; source-measured roof fittings still run in the shared
     // finish pass.
-    build: buildMerkavaMark, sourceOracleTurret: false, mk4bRebuild: true,
+    sourceOracleTurret: false, mk4bRebuild: true,
     gunOwnedCrestFront: true,
     turretScale: { y: 0.86 },
     // Owner-directed donor law: Mk.4B uses Mk.1B's complete smart track and
@@ -11980,6 +12521,12 @@ export const MERKAVA_PROFILES = {
       { x: -1.04, y: 2.55, z: -3.10, h: 0.92, stem: 0.32 },
       { x: 1.02, y: 2.55, z: -3.06, h: 0.86, stem: 0.32 },
     ],
-    turretKit: merkava4bKit,
   },
-};
+} as const;
+
+export const MERKAVA_PROFILES = Object.fromEntries(
+  Object.entries(MERKAVA_PROFILE_DATA).map(([id, profile]) => [
+    id,
+    { ...profile, build: buildMerkavaMark },
+  ]),
+) satisfies VehicleProfileRecord;
