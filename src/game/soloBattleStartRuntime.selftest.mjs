@@ -26,7 +26,6 @@ function createHarness({ playerCreated = true } = {}) {
       setShotMode: (value) => events.push(`shot:${value}`),
       setCaptureHidden: (value) => events.push(`capture:${value}`),
       setSimulationAccumulator: (value) => events.push(`sim:${value}`),
-      setBattleStaged: (value) => events.push(`staged:${value}`),
       setCamoSweep: (work) => { camoSweep = work; events.push('camo:sweep'); },
     },
     world: {

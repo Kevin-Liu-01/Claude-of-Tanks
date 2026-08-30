@@ -175,7 +175,6 @@ interface ShotRuntimeContext {
   setupBattle(game: ShotRuntimeGame, playerSpecId: string, world: RuntimeShotWorld): void;
   resetCombatWarm(): void;
   drainCombatWarm(): void;
-  setBattleStaged(staged: boolean): void;
   buildShellCards(spec: ShotEntity['spec']): void;
   setDamagePanelTank(spec: ShotEntity['spec'], visual: ShotVisual): void;
   setDamagePanelEquipment(equipment: unknown): void;
@@ -247,7 +246,6 @@ async function ensureShotWorld(
   context.applyCamoPatterns();
   context.setupBattle(context.game, playerSpecId, world);
   context.resetCombatWarm();
-  context.setBattleStaged(true);
   context.buildShellCards(context.game.player.spec);
   context.setDamagePanelTank(context.game.player.spec, context.game.player.visual);
   context.setDamagePanelEquipment(context.game.player.equip);

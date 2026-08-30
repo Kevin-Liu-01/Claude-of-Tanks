@@ -55,7 +55,6 @@ export interface SoloBattleStartRuntimeOptions {
     setShotMode(active: boolean): void;
     setCaptureHidden(hidden: boolean): void;
     setSimulationAccumulator(value: number): void;
-    setBattleStaged(staged: boolean): void;
     setCamoSweep(work: MaybePromise<unknown>): void;
   };
   world: {
@@ -139,7 +138,7 @@ export function createSoloBattleStartRuntime({
 }: SoloBattleStartRuntimeOptions): SoloBattleStartRuntime {
   const required = [state?.getPendingMapId, state?.setSelectedSpecId,
     state?.rememberSpecId, state?.setShotMode, state?.setCaptureHidden,
-    state?.setSimulationAccumulator, state?.setBattleStaged, state?.setCamoSweep,
+    state?.setSimulationAccumulator, state?.setCamoSweep,
     world?.resolveMapId, world?.switchMap, world?.getActive, world?.setDormant,
     world?.scheduleBlackWatchdog, round?.getFx, round?.settings?.isOpen,
     round?.settings?.close, round?.killcam?.cancel, round?.armorAim?.clear,
@@ -213,7 +212,6 @@ export function createSoloBattleStartRuntime({
       mark('terrainTiles');
       state.setSimulationAccumulator(0);
       round.presentation.resetSoloPoses();
-      state.setBattleStaged(true);
 
       round.applyPlayerCamo(specId);
       mark('playerCamo');

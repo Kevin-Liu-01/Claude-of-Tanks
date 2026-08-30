@@ -494,12 +494,6 @@ const battleVisualPool = createBattleVisualPool<BattleVisual>({
 game._battleVisualPool = battleVisualPool;
 devTrace?.configure({ game });
 spawnTanks(game, engineCtx);
-// The staged default battle (screenshot contract + first BATTLE press) needs a
-// world for its spawn points, so it is staged by ensureWorld() rather than
-// here. PERF r3: deferVisuals still keeps the 7 enemy texture bakes off the
-// critical path — warmCombatPipeline / the post-ready idle pump stream them in
-// before any battle or screenshot frame can render the battlefield.
-let battleStaged = false;
 // perf-r2f: handle of the in-flight chunked camo sweep startBattle kicks —
 // The covered entry warm awaits it before the wreck dances (burnt bakes copy
 // the camo canvases, so paint must be final first).
@@ -822,29 +816,6 @@ function ensureWorld(
   opts?: WorldActivationOptions | null,
 ) {
   return worldRuntime.ensure(mapId, onProgress, opts);
-}
-
-/**
- * Stage the deterministic default battle (screenshot contract + the very first
- * BATTLE press). Needs a world for its spawn points, so it runs on first world
- * activation rather than at boot.
- * @returns {void}
- */
-function ensureBattleStaged() {
-  const world = currentWorld();
-  if (battleStaged || !world) return;
-  battleStaged = true;
-  setupBattle(game, selectedVehicle.id, world, { deferVisuals: true });
-  const player = game.player;
-  if (!player || !playerBattleActions || !damagePanel) {
-    throw new Error('staged battle did not create its player presentation');
-  }
-  playerBattleActions.setTank(player.spec);
-  damagePanel.setTank(player.spec, player.visual);
-  damagePanel.setEquipment(player.equip ?? null); // EQUIPMENT SYSTEM: loadout readout
-  for (const ent of game.allTanks) {
-    if (ent.visual && ent.visual.setGroundSampler) ent.visual.setGroundSampler(groundSampler);
-  }
 }
 
 /**
@@ -1603,7 +1574,6 @@ const soloBattleStart = createSoloBattleStartAccess({
       setShotMode: (value: boolean) => { shotMode = value; },
       setCaptureHidden: (value: boolean) => perfHud.setCaptureHidden(value),
       setSimulationAccumulator: () => { battleFrame.resetSimulationAccumulator(); },
-      setBattleStaged: (value: boolean) => { battleStaged = value; },
       setCamoSweep: (work: Promise<void> | void) => { camoSweepP = Promise.resolve(work); },
     },
     world: {
@@ -2331,7 +2301,6 @@ window.__SHOTS = {
       setupBattle,
       resetCombatWarm: () => combatWarm.reset(),
       drainCombatWarm: () => combatWarm.drain(),
-      setBattleStaged: (value: boolean) => { battleStaged = value; },
       buildShellCards: playerBattleActions.setTank,
       setDamagePanelTank: (spec: DamagePanelSpec, visual: DamagePanelVisual) => (
         currentDamagePanel()?.setTank(spec, visual)
@@ -2384,10 +2353,9 @@ window.__SHOTS = {
 // ---------------------------------------------------------------------------
 // Boot: garage first, warm the pipeline, then declare readiness.
 // ---------------------------------------------------------------------------
-// BOOT DEFERRAL seam: battle staging (and with it game.player) now happens on
-// first world activation (ensureBattleStaged), not at boot — so prime the HUD
-// cards from the SELECTED SPEC here. ensureBattleStaged re-primes from the
-// real player entity when a battle actually stages.
+// No battle roster or player entity exists on the Garage boot path. Prime the
+// shell-card presentation from the selected spec; the solo/network start
+// owners replace it with the real player after covered roster construction.
 playerBattleActions.setTank(getSpec(selectedVehicle.id));
 garage.show(selectedVehicle.id);
 garageBattlefieldPresentation.poseCamera(); // fallback pose until the orbit measures the hero
