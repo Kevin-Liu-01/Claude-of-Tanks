@@ -54,6 +54,17 @@ gzip. A clean browser trace made zero matching requests through Garage boot and
 Bots hover, then fetched the complete orchestration, bridge, and chat graph on
 Private intent.
 
+Solo loading, covered deployment, and Garage return/rematch also use stable
+typed access facades backed by one retryable lazy owner. Their implementation
+modules and large concrete adapter objects are created only on first use. The
+2026-08-30 production build moved the main entry from 485.11 kB raw / 181.51 kB
+gzip to 474.05 kB raw / 177.28 kB gzip and emitted the three owners as separate
+1.39-2.31 kB gzip chunks. Cache-disabled constrained diagnostics moved from
+6.98 s wall / 2.28 s app readiness to 6.20 s / 1.64 s on the same host; timing
+is diagnostic because host/network noise remains, while the bundle boundary is
+deterministic. Failed-main, failed-evaluation, and selected-builder recovery all
+completed without a refresh loop.
+
 The selected battlefield module may preload after the garage settles, but the
 world itself starts only from explicit solo Battle intent or a joined room's
 fixed host-map intent. Combat FX and killcam code are battle/Studio chunks and

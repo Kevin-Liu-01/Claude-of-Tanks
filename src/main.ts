@@ -119,7 +119,7 @@ import {
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
-import { createGarageReturnRuntime } from './game/garageReturnRuntime.ts';
+import { createGarageReturnAccess } from './game/garageReturnAccess.ts';
 import { createGaragePhasePresentationRuntime } from './game/garagePhasePresentationRuntime.ts';
 import { createGarageWorkshopDiagnostics } from './game/garageWorkshopDiagnostics.ts';
 import { createBattleIntentRuntime } from './game/battleIntentRuntime.ts';
@@ -133,11 +133,9 @@ import { createBattlePresentationRuntime } from './game/battlePresentationRuntim
 import { createBattleHudFrameRuntime } from './game/battleHudFrameRuntime.ts';
 import { createMatchModeWorldPresentation } from './game/matchModeWorldPresentation.ts';
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
-import { createSoloBattleDeploymentRuntime } from './game/soloBattleDeploymentRuntime.ts';
-import {
-  createSoloBattleLoadingRuntime,
-  type SoloBattleLoadingStartOptions,
-} from './game/soloBattleLoadingRuntime.ts';
+import { createSoloBattleDeploymentAccess } from './game/soloBattleDeploymentAccess.ts';
+import { createSoloBattleLoadingAccess } from './game/soloBattleLoadingAccess.ts';
+import type { SoloBattleLoadingStartOptions } from './game/soloBattleLoadingRuntime.ts';
 import { createSoloBattleStartAccess } from './game/soloBattleStartAccess.ts';
 import {
   createSoloBattleEntryRuntime,
@@ -1488,33 +1486,35 @@ const battlePresentation = createBattlePresentationRuntime({
 // The opaque deployment transition has one typed owner. main.ts coordinates
 // acquisition and phase changes; this runtime owns the exact shader, shadow,
 // terrain, FX and first-frame warm order plus cancellation/fallback policy.
-const soloBattleDeployment = createSoloBattleDeploymentRuntime({
-  game,
-  scene,
-  camera,
-  battleLoad,
-  battleWarm,
-  armorAimOverlay,
-  forwardProgramWarm,
-  combatWarm,
-  post,
-  lighting,
-  createShell,
-  getWorld: currentWorld,
-  getBattleVisuals: () => {
-    if (!battleVisuals) throw new Error('battle visual streamer was not loaded');
-    return battleVisuals;
-  },
-  getFx: requireFxRuntime,
-  getWarmRender: () => warmRender,
-  getDeploymentShadowWarm: () => deploymentShadowWarm,
-  getEntryLifecycle: () => battleEntryLifecycle,
-  prepareRevealCamera: prepareBattleRevealCamera,
-  getGeneration: () => battleWarmGeneration,
-  advanceGeneration: () => ++battleWarmGeneration,
-  setPending: (pending: boolean) => { battleWarmPending = pending; },
-  setDestructionWarmed: combatWarmComposition.setDestructionWarmed,
-  devTrace,
+const soloBattleDeployment = createSoloBattleDeploymentAccess({
+  options: () => ({
+    game,
+    scene,
+    camera,
+    battleLoad,
+    battleWarm,
+    armorAimOverlay,
+    forwardProgramWarm,
+    combatWarm,
+    post,
+    lighting,
+    createShell,
+    getWorld: currentWorld,
+    getBattleVisuals: () => {
+      if (!battleVisuals) throw new Error('battle visual streamer was not loaded');
+      return battleVisuals;
+    },
+    getFx: requireFxRuntime,
+    getWarmRender: () => warmRender,
+    getDeploymentShadowWarm: () => deploymentShadowWarm,
+    getEntryLifecycle: () => battleEntryLifecycle,
+    prepareRevealCamera: prepareBattleRevealCamera,
+    getGeneration: () => battleWarmGeneration,
+    advanceGeneration: () => ++battleWarmGeneration,
+    setPending: (pending: boolean) => { battleWarmPending = pending; },
+    setDestructionWarmed: combatWarmComposition.setDestructionWarmed,
+    devTrace,
+  }),
 });
 // The same persisted setting owns both F8 and the Interface switch. The lazy
 // facade makes this available in production without adding ordinary-player
@@ -1645,65 +1645,67 @@ const soloBattleStart = createSoloBattleStartAccess({
     },
   }),
 });
-const soloBattleLoading = createSoloBattleLoadingRuntime({
-  game,
-  post,
-  battleIntent,
-  battleLoad,
-  audio,
-  acquisition: battleEntryAcquisition,
-  deployment: soloBattleDeployment,
-  lifecycle: battleEntryLifecycle,
-  getPendingMapId: () => worldRuntime.pendingMapId,
-  getMapName,
-  loadMapConfig: (mapId: string) => import('./world/maps/index.ts')
-    .then(({ getMapConfig }) => getMapConfig(mapId)),
-  getMapThumb: (mapId: string) => mapHeroes[mapId] || mapThumbs[mapId] || '',
-  hasCachedWorld: (mapId: string) => !!worldCache.get(mapId),
-  getWorld: () => {
-    const world = currentWorld();
-    if (!world) throw new Error('solo battle loading requires an active world');
-    return world;
-  },
-  ensureWorld,
-  ensureBattleVisuals: ensureBattleVisualStreamer,
-  getBattleVisuals: () => {
-    if (!battleVisuals) throw new Error('battle visual streamer was not loaded');
-    return battleVisuals;
-  },
-  ensureBattleHud,
-  preloadMinimap: (mapId: string) => ensureBattleHud()
-    .then(() => hud?.preloadMinimapAsset(minimapAssetUrl(mapId))),
-  ensureTouchControls,
-  preloadSettings: () => settings.preload(),
-  preloadArmorAim: () => armorAimOverlay.preload(),
-  planRoster: (specId: string, randomRoster: boolean) =>
-    planBattleParticipantIds(game, specId, randomRoster),
-  planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean) =>
-    planBattleCamoOverrides(game, specId, mapId, randomRoster),
-  ensureTankBuilders,
-  preloadSoloAuthority: preloadSoloBattleRuntime,
-  preloadBattleClient: preloadBattleClientRuntime,
-  preloadBattleWarm: () => battleWarm.preload(),
-  preloadBattleStart: () => soloBattleStart.preload(),
-  ensureKillcam: ensureKillcamRuntime,
-  ensureFx: ensureFxRuntime,
-  startBattle: soloBattleStart.start,
-  prepareBattleWorldServices,
-  getPedestalVisual: () => pedestal.current,
-  prebakeSharedTextures,
-  anisotropy: engineCtx.anisotropy ?? 4,
-  rosterRows: (team: string) => rosterPresentation.battleRows(game.tanks, team),
-  warmShotCards: (specIds: readonly string[]) => hud?.warmShotCards(specIds),
-  getCamoSweep: () => camoSweepP,
-  prepareRevealCamera: prepareBattleRevealCamera,
-  resolveVisiblePreBattleSeconds,
-  preBattleHoldSeconds: PRE_BATTLE_HOLD_S,
-  minimumVisiblePreBattleSeconds: MIN_VISIBLE_PRE_BATTLE_S,
-  openBattle: battleRollout.open,
-  scheduleDeferredWarm: scheduleDeferredCombatWarm,
-  nextFrame,
-  createLoadingYielder: createOpaqueLoadingYielder,
+const soloBattleLoading = createSoloBattleLoadingAccess({
+  options: () => ({
+    game,
+    post,
+    battleIntent,
+    battleLoad,
+    audio,
+    acquisition: battleEntryAcquisition,
+    deployment: soloBattleDeployment,
+    lifecycle: battleEntryLifecycle,
+    getPendingMapId: () => worldRuntime.pendingMapId,
+    getMapName,
+    loadMapConfig: (mapId: string) => import('./world/maps/index.ts')
+      .then(({ getMapConfig }) => getMapConfig(mapId)),
+    getMapThumb: (mapId: string) => mapHeroes[mapId] || mapThumbs[mapId] || '',
+    hasCachedWorld: (mapId: string) => !!worldCache.get(mapId),
+    getWorld: () => {
+      const world = currentWorld();
+      if (!world) throw new Error('solo battle loading requires an active world');
+      return world;
+    },
+    ensureWorld,
+    ensureBattleVisuals: ensureBattleVisualStreamer,
+    getBattleVisuals: () => {
+      if (!battleVisuals) throw new Error('battle visual streamer was not loaded');
+      return battleVisuals;
+    },
+    ensureBattleHud,
+    preloadMinimap: (mapId: string) => ensureBattleHud()
+      .then(() => hud?.preloadMinimapAsset(minimapAssetUrl(mapId))),
+    ensureTouchControls,
+    preloadSettings: () => settings.preload(),
+    preloadArmorAim: () => armorAimOverlay.preload(),
+    planRoster: (specId: string, randomRoster: boolean) =>
+      planBattleParticipantIds(game, specId, randomRoster),
+    planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean) =>
+      planBattleCamoOverrides(game, specId, mapId, randomRoster),
+    ensureTankBuilders,
+    preloadSoloAuthority: preloadSoloBattleRuntime,
+    preloadBattleClient: preloadBattleClientRuntime,
+    preloadBattleWarm: () => battleWarm.preload(),
+    preloadBattleStart: () => soloBattleStart.preload(),
+    ensureKillcam: ensureKillcamRuntime,
+    ensureFx: ensureFxRuntime,
+    startBattle: soloBattleStart.start,
+    prepareBattleWorldServices,
+    getPedestalVisual: () => pedestal.current,
+    prebakeSharedTextures,
+    anisotropy: engineCtx.anisotropy ?? 4,
+    rosterRows: (team: string) => rosterPresentation.battleRows(game.tanks, team),
+    warmShotCards: (specIds: readonly string[]) => hud?.warmShotCards(specIds),
+    getCamoSweep: () => camoSweepP,
+    prepareRevealCamera: prepareBattleRevealCamera,
+    resolveVisiblePreBattleSeconds,
+    preBattleHoldSeconds: PRE_BATTLE_HOLD_S,
+    minimumVisiblePreBattleSeconds: MIN_VISIBLE_PRE_BATTLE_S,
+    openBattle: battleRollout.open,
+    scheduleDeferredWarm: scheduleDeferredCombatWarm,
+    nextFrame,
+    createLoadingYielder: createOpaqueLoadingYielder,
+  }),
 });
 
 /**
@@ -2033,7 +2035,8 @@ async function debugStartBattle(
 // Returning from battle or Studio is one typed transaction. It owns the
 // teardown order, retained-room policy, transition coalescing, and rematch
 // sequencing while main supplies concrete browser/rendering adapters.
-const garageReturn = createGarageReturnRuntime({
+const garageReturn = createGarageReturnAccess<BattleVisual>({
+  options: () => ({
   game,
   getSelectedSpecId: () => selectedVehicle.id,
   presentation: {
@@ -2096,7 +2099,7 @@ const garageReturn = createGarageReturnRuntime({
   },
   roster: {
     adoptBattlePlayer: (specId: string) => pedestal.adoptBattlePlayer(specId)
-      ? pedestal.current
+      ? pedestal.current as BattleVisual
       : null,
     clearBattle: (preservedVisual: BattleVisual | null) => clearBattleAfterExit<BattleVisual>({
       game,
@@ -2124,7 +2127,8 @@ const garageReturn = createGarageReturnRuntime({
   transition,
   resumeGarageGpu: () => garagePhasePresentation.resumeGpu(),
   isBattleEntryPending: () => battleEntryLifecycle.pending,
-  publishTrace: (trace: unknown) => { window.__GARAGE_ENTRY = trace; },
+    publishTrace: (trace: unknown) => { window.__GARAGE_ENTRY = trace; },
+  }),
 });
 const enterGarage = garageReturn.enter;
 const leaveBattleToGarage = garageReturn.leave;

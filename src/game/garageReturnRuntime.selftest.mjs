@@ -185,7 +185,9 @@ assert.doesNotMatch(mainSource, /function enterGarage\(/,
   'main must not own the Garage return transaction');
 assert.doesNotMatch(mainSource, /let leavingBattle\s*=/,
   'main must not retain transition-coalescing state');
-assert.match(mainSource, /const garageReturn = createGarageReturnRuntime\(/,
-  'the composition root must delegate Garage return ownership');
+assert.match(mainSource, /const garageReturn = createGarageReturnAccess(?:<[^>]+>)?\(\{/,
+  'the composition root must delegate Garage return ownership through the lazy facade');
+assert.doesNotMatch(mainSource, /import \{ createGarageReturnRuntime \}/,
+  'Garage return implementation must remain outside the boot-critical graph');
 
 console.log('garageReturnRuntime.selftest: room preservation, teardown, leave, and rematch pass');

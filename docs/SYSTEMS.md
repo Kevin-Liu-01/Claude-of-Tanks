@@ -110,6 +110,10 @@ strict TypeScript owners:
 - `src/game/garageReturnRuntime.ts` owns replay/tank teardown, retained-room
   preservation or match closure, warm cancellation, world dormancy, hero
   adoption, Garage exposure, leave-transition coalescing, and rematch order;
+- `src/app/lazyRuntimeOwner.ts` provides the shared retryable, coalesced owner
+  used by the solo loading, deployment, and Garage-return access facades; their
+  implementation modules and option factories stay cold until battle or return
+  intent instead of entering the first-Garage graph;
 - `src/game/battleIntentRuntime.ts` owns explicit Battle preloading, concrete
   Random-map reservation, intent-only world scheduling, exact-roster texture
   coalescing, and the camouflage-safe handoff into covered entry;
@@ -241,7 +245,10 @@ and reveal receipt; it must not duplicate warm ordering or shader/shadow policy.
 world, exact-roster, battle-interface, FX and authority acquisition share one
 barrier; then player upload, deployment warm, loader dwell, reveal fallback,
 countdown calculation and diagnostics run in one typed order. `src/main.ts`
-connects its ports and no longer implements that loading state machine.
+connects its ports through `soloBattleLoadingAccess.ts` and no longer implements
+or eagerly imports that loading state machine. `soloBattleDeploymentAccess.ts`
+and `garageReturnAccess.ts` apply the same retryable boundary to the covered
+deployment and return/rematch transactions.
 
 `src/game/soloBattleStartRuntime.ts` owns the synchronous activation inside
 that covered transition: replay/FX/aim reset, map and destructible activation,

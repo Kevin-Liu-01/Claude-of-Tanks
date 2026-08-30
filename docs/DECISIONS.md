@@ -114,6 +114,11 @@ debug intent join one retryable import while earlier callbacks remain stable.
 The intentionally exhaustive full-fleet QA entry sequence is itself a
 demand-loaded owner; `main.ts` does not make ordinary players parse its
 parallel acquisition policy.
+Solo loading, exact deployment warming, and Garage return/rematch are likewise
+accessed through stable typed facades backed by `app/lazyRuntimeOwner.ts`.
+Concurrent first callers must coalesce, a rejected acquisition must remain
+retryable, and their concrete option graphs must not be constructed during
+ordinary Garage boot.
 
 ## World and Garage lifecycle
 
