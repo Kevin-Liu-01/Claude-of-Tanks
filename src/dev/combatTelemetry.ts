@@ -34,10 +34,15 @@ interface CombatTelemetryEventMap {
 }
 
 interface EventBus {
-  on<EventName extends keyof CombatTelemetryEventMap>(
-    event: EventName,
-    listener: (payload: CombatTelemetryEventMap[EventName]) => void,
-  ): unknown;
+  on(event: string, listener: (payload: unknown) => void): unknown;
+}
+
+function onCombatEvent<EventName extends keyof CombatTelemetryEventMap>(
+  bus: EventBus,
+  event: EventName,
+  listener: (payload: CombatTelemetryEventMap[EventName]) => void,
+): unknown {
+  return bus.on(event, (payload) => listener(payload as CombatTelemetryEventMap[EventName]));
 }
 
 interface CombatEntity {
@@ -165,14 +170,14 @@ export function createCombatTelemetry({
     return null;
   };
 
-  bus.on('phase:change', (event) => {
+  onCombatEvent(bus, 'phase:change', (event) => {
     if (event.phase !== 'battle') return;
     botPressure.enemyShells = 0;
     botPressure.aimedAtPlayer = 0;
     botPressure.hitsOnPlayer = 0;
     botPressure.dmgOnPlayer = 0;
   });
-  bus.on('shell:fired', (event) => {
+  onCombatEvent(bus, 'shell:fired', (event) => {
     const game = getGame();
     if (!event.isPlayer) {
       const player = game.player;
@@ -206,7 +211,7 @@ export function createCombatTelemetry({
     });
     if (playerShellLog.length > 64) playerShellLog.shift();
   });
-  bus.on('shell:hit', (event) => {
+  onCombatEvent(bus, 'shell:hit', (event) => {
     const game = getGame();
     if (game.player && event.targetId === game.player.id) {
       botPressure.hitsOnPlayer += 1;
@@ -221,7 +226,7 @@ export function createCombatTelemetry({
     record.damage = Math.round(event.damage || 0);
     record.missM = missDistanceM(record, event.pos);
   });
-  bus.on('shell:expired', (event) => {
+  onCombatEvent(bus, 'shell:expired', (event) => {
     const record = recordFor(event.shellId);
     if (!record || record.terminal) return;
     record.terminal = event.hitTerrain ? 'terrain' : 'air';

@@ -73,6 +73,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/local-import-integrity.selftest.mjs',
     'tools/production-multiplayer-check.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',
+    'src/app/checkedIntegrationPort.selftest.mjs',
     'src/dev/debugSurface.selftest.mjs',
     'src/dev/debugTelemetry.selftest.mjs',
     'src/dev/driveTestAccess.selftest.mjs',

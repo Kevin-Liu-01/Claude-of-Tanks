@@ -34,6 +34,12 @@ phase-owned state machine belongs in a focused module with a narrow port and a
 Node-runnable self-test. Renderer-free simulation and network authority must
 not import browser or Three.js presentation state.
 
+Lazy modules derive their integration types from the loaded owner rather than
+duplicating broad compatibility interfaces. The two phase-narrowing bridges
+that remain for killcam and deterministic capture validate their callable
+surface at runtime before handing staged live entities to the owner. Generic,
+unchecked `legacyPort` casts are prohibited.
+
 ## Fixed-step authority
 
 Movement, ballistics, armor, damage, ERA, spotting, bots, match modes, and

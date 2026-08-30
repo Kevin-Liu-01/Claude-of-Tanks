@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { createShell } from '../sim/ballistics.ts';
+import type { DamageShellSpec } from '../sim/damage.ts';
 import { computeDispersionRadM, SIM_DT } from '../sim/movement.ts';
 
-interface DriveTestShellSpec {
+interface DriveTestShellSpec extends DamageShellSpec {
   type: string;
   name: string;
   caliberMm: number;
@@ -21,7 +22,8 @@ interface DriveTestState {
   speed: number;
   turretYaw: number;
   gunPitch: number;
-  visualPitch?: number;
+  visualRoll: number;
+  visualPitch: number;
   bloomF: number;
   atGunLimit?: boolean;
   gunLimitSpec?: boolean;
@@ -30,16 +32,17 @@ interface DriveTestState {
 interface DriveTestCombat {
   destroyed: boolean;
   shellSlot: number;
-  reload: { t: number };
+  reload: { t: number; totalS: number; kind?: string };
   hp: number;
   fire: { burning: boolean };
+  eraSpent: Set<string>;
 }
 
 interface DriveTestVisual {
   gunPivotWorld(out: THREE.Vector3): void;
   gunMuzzleWorld(out: THREE.Vector3): void;
   gunDirWorld(out: THREE.Vector3): void;
-  syncFromState(state: DriveTestState, dt?: number): void;
+  syncFromState?(state: DriveTestState, dt?: number): void;
   setDestroyed?(): void;
 }
 
@@ -48,12 +51,21 @@ interface DriveTestTank {
   specId?: string;
   team?: string;
   isPlayer?: boolean;
-  state: DriveTestState;
-  combat: DriveTestCombat;
+  state: DriveTestState | null;
+  combat: DriveTestCombat | null;
   spec: DriveTestSpec;
   visual: DriveTestVisual | null;
   input: { aimPoint: THREE.Vector3; fire: boolean };
   _destroyedAnnounced?: boolean;
+}
+
+interface LiveDriveTestTank extends DriveTestTank {
+  state: DriveTestState;
+  combat: DriveTestCombat;
+}
+
+function isLiveDriveTestTank(tank: DriveTestTank | null | undefined): tank is LiveDriveTestTank {
+  return !!tank?.state && !!tank.combat;
 }
 
 interface DriveTestGame {
@@ -82,7 +94,7 @@ interface DriveTestRig {
 
 interface DriveTestAimController {
   gunCenterRay(
-    player: DriveTestTank,
+    player: LiveDriveTestTank,
     aimPoint: THREE.Vector3,
     outOrigin: THREE.Vector3,
     outDirection: THREE.Vector3,
@@ -176,8 +188,8 @@ export function createDriveTestController({
   let leadLatchTargetId: string | null = null;
 
   function debugLeadPoint(
-    player: DriveTestTank,
-    target: DriveTestTank,
+    player: LiveDriveTestTank,
+    target: LiveDriveTestTank,
     out: THREE.Vector3,
   ): THREE.Vector3 {
     const world = getWorld();
@@ -286,7 +298,7 @@ export function createDriveTestController({
 
   function gunAimError(): number {
     const player = getGame().player;
-    if (!player?.state || player.combat.destroyed || !player.visual) return Infinity;
+    if (!isLiveDriveTestTank(player) || player.combat.destroyed || !player.visual) return Infinity;
     player.visual.gunMuzzleWorld(v1);
     player.visual.gunDirWorld(v3);
     v2.copy(player.input.aimPoint).sub(v1).normalize();
@@ -296,7 +308,7 @@ export function createDriveTestController({
   function aimState(): Record<string, unknown> | null {
     const game = getGame();
     const player = game.player;
-    if (!player?.state || player.combat.destroyed || !player.visual) return null;
+    if (!isLiveDriveTestTank(player) || player.combat.destroyed || !player.visual) return null;
     const rig = getRig();
     // Preserve the original scratch order: gunAimError uses v2. Resolve it
     // before gunCenterRay writes the muzzle-path target into that vector.
@@ -332,12 +344,12 @@ export function createDriveTestController({
     const game = getGame();
     const world = getWorld();
     const player = game.player;
-    if (!world || !player?.state || player.combat.destroyed || !player.visual) return null;
+    if (!world || !isLiveDriveTestTank(player) || player.combat.destroyed || !player.visual) return null;
     player.visual.gunPivotWorld(v1);
-    let best: DriveTestTank | null = null;
+    let best: LiveDriveTestTank | null = null;
     let bestDistanceM = Infinity;
     for (const entity of game.tanks) {
-      if (entity.team !== 'enemy' || !entity.state || !entity.combat
+      if (entity.team !== 'enemy' || !isLiveDriveTestTank(entity)
           || entity.combat.destroyed) continue;
       v2.copy(entity.state.pos);
       v2.y += entity.spec.dims.heightM * 0.5;
@@ -392,17 +404,19 @@ export function createDriveTestController({
     for (let step = 0; step < steps; step++) {
       if (game.phase !== 'battle') break;
       const player = game.player;
-      if (player && !player.combat.destroyed) {
+      if (isLiveDriveTestTank(player) && !player.combat.destroyed) {
         player.input.fire = debugFlags.forceFire
           || (player.input.fire && input.isDown('fire'));
         const target = aimTargetId ? game.tankById.get(aimTargetId) : null;
-        if (target?.state && target.combat && !target.combat.destroyed) {
+        if (isLiveDriveTestTank(target) && !target.combat.destroyed) {
           debugLeadPoint(player, target, player.input.aimPoint);
         }
       }
       simStep(game, bus, world, rig, getCollider());
       for (const entity of game.tanks) {
-        if (entity.state && entity.visual) entity.visual.syncFromState(entity.state);
+        if (entity.state && entity.visual?.syncFromState) {
+          entity.visual.syncFromState(entity.state);
+        }
       }
     }
     resetPresentationPoses();
@@ -414,14 +428,14 @@ export function createDriveTestController({
     const game = getGame();
     const world = getWorld();
     const player = game.player;
-    if (!world || !player?.state || player.combat.destroyed) return false;
+    if (!world || !isLiveDriveTestTank(player) || player.combat.destroyed) return false;
     const preferred = game.tankById.get('t90m');
-    const shooter = preferred?.team === 'enemy' && preferred.combat
+    const shooter = preferred?.team === 'enemy' && isLiveDriveTestTank(preferred)
       && !preferred.combat.destroyed
       ? preferred
       : game.tanks.find((tank) => tank.team === 'enemy'
-        && tank.combat && !tank.combat.destroyed);
-    if (!shooter?.visual) return false;
+        && isLiveDriveTestTank(tank) && !tank.combat.destroyed);
+    if (!isLiveDriveTestTank(shooter) || !shooter.visual?.syncFromState) return false;
     player.combat.hp = Math.min(player.combat.hp, 1);
     v2.copy(player.state.pos);
     v2.y += player.spec.dims.heightM * aimYFrac;
@@ -497,7 +511,7 @@ export function createDriveTestController({
   function slayEnemies(): void {
     const game = getGame();
     for (const entity of game.tanks) {
-      if (entity.isPlayer || entity.team !== 'enemy' || !entity.combat
+      if (entity.isPlayer || entity.team !== 'enemy' || !isLiveDriveTestTank(entity)
           || entity.combat.destroyed) continue;
       entity.combat.hp = 0;
       entity.combat.destroyed = true;

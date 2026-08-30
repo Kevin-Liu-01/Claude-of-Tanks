@@ -124,10 +124,15 @@ interface FxDebugSurface {
 }
 
 interface FxEventBus {
-  on<EventName extends keyof FxEventMap>(
-    event: EventName,
-    listener: (payload: FxEventMap[EventName]) => void,
-  ): unknown;
+  on(event: string, listener: (payload: unknown) => void): unknown;
+}
+
+function onFxEvent<EventName extends keyof FxEventMap>(
+  bus: FxEventBus,
+  event: EventName,
+  listener: (payload: FxEventMap[EventName]) => void,
+): unknown {
+  return bus.on(event, (payload) => listener(payload as FxEventMap[EventName]));
 }
 
 interface LightState {
@@ -3547,7 +3552,7 @@ export function createFx(
      * @param {object} bus injected event bus
      */
     bindBus(bus: FxEventBus): void {
-      bus.on('shell:fired', (e) => {
+      onFxEvent(bus, 'shell:fired', (e) => {
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
         fx.muzzleFlash(_v3, _v4, e.caliberMm);
@@ -3561,7 +3566,7 @@ export function createFx(
         shellKinds.set(e.shellId, e.shellType);
         sweepTails.set(e.shellId, [e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]]);
       });
-      bus.on('shell:hit', (e) => {
+      onFxEvent(bus, 'shell:hit', (e) => {
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
         _v4.set(e.normal[0], e.normal[1], e.normal[2]);
         if (e.targetId) lastKnownPos.set(e.targetId, [e.pos[0], e.pos[1], e.pos[2]]);
@@ -3591,7 +3596,7 @@ export function createFx(
         const ent = decalEntityFor(e.targetId);
         if (ent) impactDecals.stampFromEvent(e, ent);
       });
-      bus.on('shell:expired', (e) => {
+      onFxEvent(bus, 'shell:expired', (e) => {
         // world-dressing r1: close out the shell's destructible-prop story —
         // (1) sweep the UNSWEPT remainder of its flight (tail -> expiry
         // point; a fast shell can live for fewer sim ticks than one render
@@ -3619,7 +3624,7 @@ export function createFx(
         }
         if (e.hitTerrain) dirtPlume(_v3, e.caliberMm || 76, false);
       });
-      bus.on('tank:destroyed', (e) => {
+      onFxEvent(bus, 'tank:destroyed', (e) => {
         // Transition from a moving live-tank emitter to one world-fixed wreck
         // emitter. Fire deaths otherwise left both columns alive for 40 s.
         retireSubjectColumn(e.id);
@@ -3633,7 +3638,7 @@ export function createFx(
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
         fx.destruction(_v3, null, e.cause || 'shot');
       });
-      bus.on('module:state', (e) => {
+      onFxEvent(bus, 'module:state', (e) => {
         // de-track moment: thrown link fragments, a grinding spark burst and a
         // heavy dust kick at the running gear (the thrown-track ribbon, band
         // slump and road-wheel scatter live on the visual — tankFactory
@@ -3680,7 +3685,7 @@ export function createFx(
           }
         }
       });
-      bus.on('tank:fire', (e) => {
+      onFxEvent(bus, 'tank:fire', (e) => {
         if (e.burning) {
           const p = lastKnownPos.get(e.id);
           if (!p) return;

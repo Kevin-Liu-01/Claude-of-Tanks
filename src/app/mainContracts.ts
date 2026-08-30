@@ -1,7 +1,6 @@
 import type * as THREE from 'three';
 import type { EventBus, GameState } from '../game/stateCore.ts';
 import type { RosterEntity, RosterGameState } from '../game/rosterState.ts';
-import type { KillcamRuntime } from '../game/killcamAccess.ts';
 import type { InputLayer } from '../game/input.ts';
 import type { MobileAutoAimRuntime } from '../game/mobileAutoAimRuntime.ts';
 import type { BattleHudRuntime, DamagePanelRuntime } from '../ui/battleHudAccess.ts';
@@ -35,9 +34,7 @@ export interface MainFxRuntime extends Omit<
   ): void;
 }
 
-export interface MainFxModule {
-  createFx(...args: unknown[]): MainFxRuntime;
-}
+export type MainFxModule = Pick<typeof import('../fx/effects.ts'), 'createFx'>;
 
 export interface MainEntity extends Omit<
   RosterEntity,
@@ -73,10 +70,6 @@ export type MainWorld = WorldRuntime;
 
 export type MainHudRuntime = BattleHudRuntime;
 export type MainDamagePanelRuntime = DamagePanelRuntime;
-
-export interface MainKillcamRuntime extends KillcamRuntime {
-  bindBus(bus: EventBus): void;
-}
 
 export type MainInputRuntime = InputLayer;
 

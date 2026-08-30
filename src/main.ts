@@ -39,12 +39,12 @@ import type {
   MainGarageRuntime,
   MainHudRuntime,
   MainInputRuntime,
-  MainKillcamRuntime,
   MainLightingRuntime,
   MainWorld,
 } from './app/mainContracts.ts';
 import { createMainFrameRuntime } from './app/mainFrameRuntime.ts';
 import { createCombatAimComposition } from './app/combatAimComposition.ts';
+import { checkedIntegrationPort } from './app/checkedIntegrationPort.ts';
 import { createRenderer } from './engine/renderer.ts';
 import { createOffscreenSceneWarmer } from './engine/offscreenWarm.ts';
 import {
@@ -147,7 +147,14 @@ import {
 // facade transfers the exact HUD/telemetry runtime only for explicit QA,
 // development, or automation sessions.
 import { debugModeRequested } from './dev/debugIntent.ts';
+import type {
+  BotPressureTelemetry,
+  CombatTelemetryOptions,
+  PlayerShellTelemetryRecord,
+} from './dev/combatTelemetry.ts';
+import type { DebugSurfaceDependencies } from './dev/debugSurface.ts';
 import { createDriveTestAccess } from './dev/driveTestAccess.ts';
+import type { DriveTestControllerOptions } from './dev/driveTestController.ts';
 import { createPerfDiagnosticsAccess } from './dev/perfDiagnosticsAccess.ts';
 import { createLazyAudio } from './audio/lazyAudio.ts';
 import { createListenerPoseRuntime } from './audio/listenerPoseRuntime.ts';
@@ -200,16 +207,6 @@ import type { HudMatchModeState, HudMode } from './ui/hud.ts';
 type DamagePanelSpec = Parameters<DamagePanelController['setTank']>[0];
 type DamagePanelVisual = Parameters<DamagePanelController['setTank']>[1];
 type DamagePanelEquipment = Parameters<DamagePanelController['setEquipment']>[0];
-
-/**
- * Explicit lifecycle boundary for phase-specific TypeScript contracts. The
- * complete runtime graph is checked; this assertion is reserved for the few
- * composition seams where inactive session records are deliberately broader
- * than the live phase owner that consumes them.
- */
-function legacyPort<T>(value: unknown): T {
-  return value as T;
-}
 
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
 // reveal it, then start a second load".  The intent is captured before any
@@ -481,8 +478,13 @@ const rosterPresentation = createRosterPresentation({
   getVehicleName: (specId) => getSpec(specId)?.name,
   getTier: tierNumeral,
 });
-const playerShellLog: unknown[] = [];
-const botPressure = { enemyShells: 0, aimedAtPlayer: 0, hitsOnPlayer: 0, dmgOnPlayer: 0 };
+const playerShellLog: PlayerShellTelemetryRecord[] = [];
+const botPressure: BotPressureTelemetry = {
+  enemyShells: 0,
+  aimedAtPlayer: 0,
+  hitsOnPlayer: 0,
+  dmgOnPlayer: 0,
+};
 // Randomized rosters made the two-entry detached bot cache a poor hit-rate
 // trade: it retained complete procedural tank graphs, paint canvases and GPU
 // programs throughout the mostly-static Garage, yet usually missed the next
@@ -510,7 +512,7 @@ let battleWarmGeneration = 0;
 // intent separate from GPU construction and makes either failure retryable
 // without a page refresh.
 const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
-  loadModule: async () => legacyPort<MainFxModule>(await import('./fx/effects.ts')),
+  loadModule: () => import('./fx/effects.ts'),
   initialize: ({ createFx }) => {
     const live = createFx(engineCtx, hfProxy, { seed: 5000 });
     live.bindBus(bus);
@@ -1185,18 +1187,17 @@ const sniperFill = createSniperFillRuntime(scene, camera, rig);
 // module breakdown. Capture hooks live in the KILL-CAM sections of state.ts
 // (game.killcam); the camera is driven only via rig.setExternalPose.
 const killcamAccess = createKillcamAccess({
-  loadModule: async () => legacyPort<{ createKillCam: (...args: unknown[]) => MainKillcamRuntime }>(
-    await import('./game/killcam.ts'),
-  ),
+  loadModule: () => import('./game/killcam.ts'),
   initialize: ({ createKillCam }) => {
-    const live = createKillCam(legacyPort({
+    type KillcamDependencies = Parameters<typeof createKillCam>[0];
+    const live = createKillCam(checkedIntegrationPort<KillcamDependencies>({
       scene, camera, rig, heightField: hfProxy, getPlayer: () => game.player,
       getGame: () => game,
       getEntity: (id: string) => game.tankById.get(id),
       getWorld: currentWorld, // r6: flight-cam LOS solve (foliage/terrain/props)
       // Replay impact uses the real pooled destruction effects.
       getFx: () => fxRuntimeAccess.current,
-    }));
+    }, 'killcam', ['getPlayer', 'getGame', 'getEntity', 'getWorld', 'getFx']));
     live.bindBus(bus);
     // Solo fixed-step capture gets the direct implementation after entry;
     // main/debug consumers keep the stable access facade below.
@@ -2284,7 +2285,8 @@ window.__SHOTS = {
       throw new Error(`Unknown screenshot view: ${name}`);
     }
     const { setShotView } = await import('./dev/shotRuntime.ts');
-    return setShotView(name, legacyPort({
+    type ShotRuntimeContext = Parameters<typeof setShotView>[1];
+    return setShotView(name, checkedIntegrationPort<ShotRuntimeContext>({
       preloadSoloBattleRuntime,
       preloadBattleClientRuntime,
       ensureBattleHud,
@@ -2346,7 +2348,10 @@ window.__SHOTS = {
       createShell,
       resolveShellHit,
       createCombatState,
-    }));
+    }, 'shot runtime', [
+      'ensureFullFleet', 'ensureFxRuntime', 'ensureKillcamRuntime',
+      'switchMap', 'setupBattle', 'getWorld', 'getHud', 'getFx', 'getKillcam',
+    ]));
   },
 };
 
@@ -2573,7 +2578,7 @@ const driveTestRequested = import.meta.env.DEV
   || navigator.webdriver;
 const driveTestController = createDriveTestAccess({
   enabled: driveTestRequested,
-  options: () => legacyPort({
+  options: () => ({
     getGame: () => game,
     getWorld: currentWorld,
     getRig: () => rig,
@@ -2587,14 +2592,14 @@ const driveTestController = createDriveTestAccess({
     simStep,
     resetPresentationPoses: battlePresentation.resetSoloPoses,
     resetSimAccumulator: battleFrame.resetSimulationAccumulator,
-  }),
+  } satisfies DriveTestControllerOptions),
 });
 if (driveTestRequested) await driveTestController.preload();
 
 if (diagnosticsRequested) {
   const { installMainDiagnosticsRuntime } = await import('./dev/mainDiagnosticsRuntime.ts');
   await installMainDiagnosticsRuntime({
-    telemetry: legacyPort({
+    telemetry: {
       enabled: true,
       bus,
       getGame: () => game,
@@ -2602,7 +2607,7 @@ if (diagnosticsRequested) {
       getAimBlockedDistance: () => frameInfo.aim.blockedDistM,
       playerShellLog,
       botPressure,
-    }),
+    } satisfies CombatTelemetryOptions,
     perfHud,
     showDebugHud: debugModeRequested() || input.getSettings().showDebugHud,
     debugSurface: {
@@ -2680,7 +2685,7 @@ if (diagnosticsRequested) {
         networkSession.bridge.apply(snapshot, 1 / 60, batch);
         return true;
       },
-    },
+    } satisfies DebugSurfaceDependencies,
   });
 }
 await bootStage('ready', null);

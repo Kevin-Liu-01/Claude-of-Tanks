@@ -26,20 +26,16 @@ export interface KillcamRuntime {
   onRam(...args: unknown[]): void;
 }
 
-interface KillcamModule {
-  createKillCam?: (...args: unknown[]) => KillcamRuntime;
-}
-
-export interface KillcamAccessOptions<TModule extends KillcamModule = KillcamModule> {
+export interface KillcamAccessOptions<TModule, TRuntime extends KillcamRuntime> {
   loadModule(): MaybePromise<TModule>;
-  initialize(module: TModule): MaybePromise<KillcamRuntime>;
+  initialize(module: TModule): MaybePromise<TRuntime>;
 }
 
-export interface KillcamAccess<TModule extends KillcamModule = KillcamModule> {
-  readonly current: KillcamRuntime | null;
+export interface KillcamAccess<TModule, TRuntime extends KillcamRuntime> {
+  readonly current: TRuntime | null;
   readonly presentation: KillcamRuntime;
   preloadModule(): Promise<TModule>;
-  ensureRuntime(): Promise<KillcamRuntime>;
+  ensureRuntime(): Promise<TRuntime>;
 }
 
 const DORMANT_SPECTATE: KillcamSpectateAccess = Object.freeze({
@@ -52,17 +48,17 @@ const DORMANT_SPECTATE: KillcamSpectateAccess = Object.freeze({
 });
 
 /** Retryable lazy ownership for the replay chunk and its live presentation. */
-export function createKillcamAccess<TModule extends KillcamModule>({
+export function createKillcamAccess<TModule, TRuntime extends KillcamRuntime>({
   loadModule,
   initialize,
-}: KillcamAccessOptions<TModule>): KillcamAccess<TModule> {
+}: KillcamAccessOptions<TModule, TRuntime>): KillcamAccess<TModule, TRuntime> {
   if (typeof loadModule !== 'function' || typeof initialize !== 'function') {
     throw new TypeError('killcam access requires module and initializer ports');
   }
 
-  let runtime: KillcamRuntime | null = null;
+  let runtime: TRuntime | null = null;
   let modulePromise: Promise<TModule> | null = null;
-  let runtimePromise: Promise<KillcamRuntime> | null = null;
+  let runtimePromise: Promise<TRuntime> | null = null;
 
   const preloadModule = (): Promise<TModule> => {
     if (modulePromise) return modulePromise;
@@ -74,7 +70,7 @@ export function createKillcamAccess<TModule extends KillcamModule>({
     return request;
   };
 
-  const ensureRuntime = (): Promise<KillcamRuntime> => {
+  const ensureRuntime = (): Promise<TRuntime> => {
     if (runtime) return Promise.resolve(runtime);
     if (runtimePromise) return runtimePromise;
     const request = preloadModule()

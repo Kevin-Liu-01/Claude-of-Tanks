@@ -30,7 +30,7 @@ if (shellHitListener.includes('.armorScar(')) {
 }
 
 const effectsSource = await readFile(new URL('./effects.ts', import.meta.url), 'utf8');
-if (!/bus\.on\('shell:hit',[\s\S]{0,1800}impactDecals\.stampFromEvent\(e, ent\)/.test(effectsSource)) {
+if (!/onFxEvent\(bus, 'shell:hit',[\s\S]{0,1800}impactDecals\.stampFromEvent\(e, ent\)/.test(effectsSource)) {
   throw new Error('authoritative shell:hit impact-decal ownership left effects.ts');
 }
 
