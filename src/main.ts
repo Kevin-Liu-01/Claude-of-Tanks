@@ -1412,7 +1412,7 @@ async function ensureMobileAutoAim() {
   if (mobileAutoAim) return mobileAutoAim;
   if (mobileAutoAimPromise) return mobileAutoAimPromise;
   mobileAutoAimPromise = import('./game/mobileAutoAimRuntime.ts').then((runtime) => {
-    mobileAutoAim = runtime.createMobileAutoAimRuntime(legacyPort({
+    mobileAutoAim = runtime.createMobileAutoAimRuntime({
       bus,
       input,
       camera,
@@ -1423,7 +1423,7 @@ async function ensureMobileAutoAim() {
       isVisible: playerTargetVisible,
       pickTarget: pickMobileAutoAimTarget,
       targetCenter: mobileAutoAimCenter,
-    }));
+    });
     return mobileAutoAim;
   });
   mobileAutoAimPromise.catch(() => { mobileAutoAimPromise = null; });

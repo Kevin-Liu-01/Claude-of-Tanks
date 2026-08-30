@@ -1,10 +1,22 @@
 import { Vector3, type Camera } from 'three';
 
-export interface MobileAutoAimEntity {
+export interface MobileAutoAimCandidate {
   team?: unknown;
-  state: { pos: Vector3 };
+  state: { pos: Vector3 } | null;
   spec: { dims: { heightM: number } };
+  combat: { destroyed?: boolean } | null;
+}
+
+export interface MobileAutoAimEntity extends MobileAutoAimCandidate {
+  state: { pos: Vector3 };
   combat: { destroyed?: boolean };
+}
+
+/** Narrow a garage-safe roster record to a live battle target. */
+export function isMobileAutoAimEntity<T extends MobileAutoAimCandidate>(
+  entity: T | null | undefined,
+): entity is T & MobileAutoAimEntity {
+  return !!entity?.state && !!entity.combat;
 }
 
 const _center = new Vector3();
@@ -21,19 +33,19 @@ export function mobileAutoAimCenter(
 }
 
 /** Pick the closest-to-reticle visible enemy inside a generous lock window. */
-export function pickMobileAutoAimTarget<T extends MobileAutoAimEntity>(
+export function pickMobileAutoAimTarget<T extends MobileAutoAimCandidate>(
   tanks: readonly T[] | null | undefined,
   player: T | null | undefined,
   camera: Camera | null | undefined,
   isVisible: (entity: T) => boolean = () => true,
 ): T | null {
-  if (!player || !camera || !Array.isArray(tanks)) return null;
+  if (!isMobileAutoAimEntity(player) || !camera || !Array.isArray(tanks)) return null;
   camera.updateMatrixWorld(true);
   let best: T | null = null;
   let bestScore = Infinity;
   for (const ent of tanks) {
-    if (!ent || ent === player || ent.team === player.team || !ent.state || !ent.spec ||
-        !ent.combat || ent.combat.destroyed || !isVisible(ent)) continue;
+    if (!isMobileAutoAimEntity(ent) || ent === player || ent.team === player.team ||
+        !ent.spec || ent.combat.destroyed || !isVisible(ent)) continue;
     mobileAutoAimCenter(ent, _center);
     _ndc.copy(_center).project(camera);
     if (_ndc.z < -1 || _ndc.z > 1 || Math.abs(_ndc.x) > 0.72 || Math.abs(_ndc.y) > 0.66) continue;

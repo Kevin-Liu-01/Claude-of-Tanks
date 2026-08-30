@@ -1,36 +1,36 @@
 import { Vector3, type Camera } from 'three';
 import type { EventBus } from './stateCore.ts';
-import type { MobileAutoAimEntity } from './mobileAutoAim.ts';
+import {
+  isMobileAutoAimEntity,
+  type MobileAutoAimCandidate,
+  type MobileAutoAimEntity,
+} from './mobileAutoAim.ts';
 
-interface AutoAimTank extends MobileAutoAimEntity {
+interface AutoAimTank extends MobileAutoAimCandidate {
   id: string;
-  spec: MobileAutoAimEntity['spec'] & { name?: string };
-}
-
-interface AutoAimPlayer extends AutoAimTank {
-  combat: AutoAimTank['combat'] & { destroyed?: boolean };
+  spec: MobileAutoAimCandidate['spec'] & { name?: string };
 }
 
 interface MobileAutoAimInput {
   isTouchLayout(): boolean;
 }
 
-export interface MobileAutoAimRuntimeOptions {
+export interface MobileAutoAimRuntimeOptions<TTank extends AutoAimTank = AutoAimTank> {
   bus: EventBus;
   input: MobileAutoAimInput;
   camera: Camera;
   getPhase(): string;
-  getTanks(): readonly AutoAimTank[];
-  getPlayer(): AutoAimPlayer | null;
-  getTankById(id: string): AutoAimTank | null;
-  isVisible(entity: AutoAimTank): boolean;
+  getTanks(): readonly TTank[];
+  getPlayer(): TTank | null;
+  getTankById(id: string): TTank | null;
+  isVisible(entity: TTank): boolean;
   pickTarget(
-    tanks: readonly AutoAimTank[],
-    player: AutoAimPlayer,
+    tanks: readonly TTank[],
+    player: TTank & MobileAutoAimEntity,
     camera: Camera,
-    isVisible: (entity: AutoAimTank) => boolean,
-  ): AutoAimTank | null;
-  targetCenter(entity: AutoAimTank, out: Vector3): Vector3;
+    isVisible: (entity: TTank) => boolean,
+  ): TTank | null;
+  targetCenter(entity: TTank & MobileAutoAimEntity, out: Vector3): Vector3;
 }
 
 export interface MobileAutoAimRuntime {
@@ -57,7 +57,7 @@ function eventPhase(payload: unknown): string | null {
  * Acquisition and target geometry stay injected so this lifecycle does not
  * pull the battle client graph into Garage boot.
  */
-export function createMobileAutoAimRuntime({
+export function createMobileAutoAimRuntime<TTank extends AutoAimTank>({
   bus,
   input,
   camera,
@@ -68,12 +68,12 @@ export function createMobileAutoAimRuntime({
   isVisible,
   pickTarget,
   targetCenter,
-}: MobileAutoAimRuntimeOptions): MobileAutoAimRuntime {
+}: MobileAutoAimRuntimeOptions<TTank>): MobileAutoAimRuntime {
   let disposed = false;
   let targetId: string | null = null;
   const point = new Vector3();
 
-  const publish = (target: AutoAimTank | null, reason = ''): void => {
+  const publish = (target: TTank | null, reason = ''): void => {
     targetId = target?.id ?? null;
     bus.emit('ui:autoAimState', {
       on: target !== null,
@@ -91,8 +91,8 @@ export function createMobileAutoAimRuntime({
   const stopToggle = bus.on('ui:autoAimToggle', () => {
     if (disposed) return;
     const player = getPlayer();
-    if (getPhase() !== 'battle' || !input.isTouchLayout() || !player ||
-        !player.combat || player.combat.destroyed) return;
+    if (getPhase() !== 'battle' || !input.isTouchLayout()
+        || !isMobileAutoAimEntity(player) || player.combat.destroyed) return;
     if (targetId !== null) {
       clear('AUTO-AIM OFF');
       return;
@@ -118,8 +118,8 @@ export function createMobileAutoAimRuntime({
       // those states and resumed the same target afterwards.
       if (!active) return null;
       const target = getTankById(targetId);
-      if (!input.isTouchLayout() || !target || !target.combat ||
-          target.combat.destroyed || !isVisible(target)) {
+      if (!input.isTouchLayout() || !isMobileAutoAimEntity(target)
+          || target.combat.destroyed || !isVisible(target)) {
         clear('TARGET LOST');
         return null;
       }

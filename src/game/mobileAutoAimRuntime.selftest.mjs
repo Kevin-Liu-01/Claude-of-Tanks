@@ -16,6 +16,7 @@ const enemy = {
 const tanks = [player, enemy];
 const byId = new Map(tanks.map((tank) => [tank.id, tank]));
 let phase = 'battle';
+let currentPlayer = player;
 let touch = true;
 let visible = true;
 let picks = 0;
@@ -28,7 +29,7 @@ const runtime = createMobileAutoAimRuntime({
   camera,
   getPhase: () => phase,
   getTanks: () => tanks,
-  getPlayer: () => player,
+  getPlayer: () => currentPlayer,
   getTankById: (id) => byId.get(id) ?? null,
   isVisible: () => visible,
   pickTarget: () => { picks += 1; return enemy; },
@@ -47,6 +48,13 @@ assert.deepEqual(point?.toArray(), [2, 1.5, 20], 'sample follows target center m
 assert.equal(runtime.sample(true), point, 'sample reuses one retained vector');
 assert.equal(runtime.sample(false), null, 'paused camera ownership yields no aim point');
 assert.equal(runtime.targetId, enemy.id, 'temporary camera ownership loss retains the lock');
+
+runtime.clear();
+currentPlayer = { ...player, state: null, combat: null };
+bus.emit('ui:autoAimToggle', {});
+assert.equal(runtime.targetId, null, 'garage-safe player records cannot acquire a target');
+currentPlayer = player;
+bus.emit('ui:autoAimToggle', {});
 
 visible = false;
 assert.equal(runtime.sample(true), null, 'a hidden target is released');
