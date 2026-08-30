@@ -149,6 +149,12 @@ for (const mapId of requestedMapIds) {
       treeRootDecalMaxRadiusM: 0,
       groundContactDecalMeshes: 0,
       groundContactDecalReceivers: 0,
+      canopyShadowProxyCasters: 0,
+      treeFoliageShadowCasters: 0,
+      treeTrunkShadowCasters: 0,
+      treeShadowLodFadeCasters: 0,
+      treeShadowLodFadeMissing: 0,
+      treeShadowLodAttributeMissing: 0,
       terrainDecalKinds: {},
     };
     D.world.group.traverse((object) => {
@@ -172,6 +178,27 @@ for (const mapId of requestedMapIds) {
       if (object.userData?.groundContactDecal) {
         contact.groundContactDecalMeshes++;
         if (object.receiveShadow) contact.groundContactDecalReceivers++;
+      }
+      if (object.userData?.treeFoliage && object.castShadow) {
+        contact.treeFoliageShadowCasters++;
+      }
+      if (object.userData?.treeTrunk && object.castShadow) {
+        contact.treeTrunkShadowCasters++;
+      }
+      if (object.userData?.canopyShadowProxy && object.castShadow) {
+        contact.canopyShadowProxyCasters++;
+      }
+      if ((object.userData?.treeTrunk || object.userData?.canopyShadowProxy)
+          && object.castShadow) {
+        if (!object.geometry?.getAttribute?.('aLodF')) {
+          contact.treeShadowLodAttributeMissing++;
+        }
+        if (object.userData?.lodShadowFadeCaster
+            && object.customDepthMaterial?.userData?.lodShadowFade) {
+          contact.treeShadowLodFadeCasters++;
+        } else {
+          contact.treeShadowLodFadeMissing++;
+        }
       }
       if (object.userData?.terrainDecal) {
         const kind = object.userData.terrainDecalKind || 'surface';
@@ -309,6 +336,28 @@ for (const mapId of requestedMapIds) {
       `${contact.groundContactDecalReceivers} prop contact layers still receive CSM shadows`,
     );
   }
+  const activeTreeShadowCasters = contact.treeTrunkShadowCasters
+    + contact.canopyShadowProxyCasters;
+  if (activeTreeShadowCasters < 1) {
+    reasons.push('no active stable tree-shadow casters');
+  }
+  if (contact.treeFoliageShadowCasters !== 0) {
+    reasons.push(
+      `${contact.treeFoliageShadowCasters} alpha-tested tree-card shadow casters remain`,
+    );
+  }
+  if (contact.treeShadowLodFadeMissing !== 0
+      || contact.treeShadowLodFadeCasters !== activeTreeShadowCasters) {
+    reasons.push(
+      `${contact.treeShadowLodFadeMissing} of ${activeTreeShadowCasters} tree casters `
+      + 'bypass the shared LOD shadow fade',
+    );
+  }
+  if (contact.treeShadowLodAttributeMissing !== 0) {
+    reasons.push(
+      `${contact.treeShadowLodAttributeMissing} tree casters lack per-instance LOD fade data`,
+    );
+  }
   if (performanceReasons.length) performanceFindings.push({ mapId, reasons: performanceReasons });
   if (reasons.length) failures.push({ mapId, reasons });
   const status = reasons.length ? 'FAIL' : performanceReasons.length ? 'PERF' : 'PASS';
@@ -319,7 +368,8 @@ for (const mapId of requestedMapIds) {
     `changed=${sample.changedPixelRatio != null ? `${(sample.changedPixelRatio * 100).toFixed(1)}%` : '—'} ` +
     `p95=${result.steadyFrameMsP95.toFixed(1)}ms p99=${result.steadyFrameMsP99.toFixed(1)}ms ` +
     `compileFrames=${result.compileAffectedFrames} ` +
-    `roots=${contact.treeRootDecalCount ?? '—'} contactRx=${contact.groundContactDecalReceivers ?? '—'}`,
+    `roots=${contact.treeRootDecalCount ?? '—'} contactRx=${contact.groundContactDecalReceivers ?? '—'} `
+    + `treeFade=${contact.treeShadowLodFadeCasters}/${activeTreeShadowCasters}`,
   );
 }
 
@@ -337,7 +387,7 @@ if (!machineContended) {
 
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify({
-  version: 4,
+  version: 5,
   capturedAt: new Date().toISOString(),
   maps: requestedMapIds,
   machine: {

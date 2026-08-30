@@ -783,7 +783,9 @@ const liveDrive = evaluate(`(() => {
     }
     if ((object.userData?.canopyShadowProxy || object.userData?.treeTrunk)
         && object.castShadow) {
-      if (object.customDepthMaterial?.userData?.treeShadowLodFade) {
+      if (object.customDepthMaterial?.userData?.lodShadowFade
+          && object.userData?.lodShadowFadeCaster
+          && object.geometry?.getAttribute?.('aLodF')) {
         treeShadowLodFadeCasters++;
       } else {
         treeShadowLodFadeMissing++;

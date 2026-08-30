@@ -16,6 +16,7 @@ import { TREE_ARCHETYPES, type TreeSpecies } from './treeSpecies.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
+import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
 
 type RandomSource = () => number;
 type ToneFunction = (
@@ -3340,45 +3341,10 @@ function* vegetationBuildSteps(
     toneMapped: false,
   });
   // The visible near tree dissolves through aLodF while its far stand-in is
-  // already present. Shadow-only proxies do not run the visible material hook,
-  // so Three's default depth pass used to ignore aLodF: a newly promoted crown
-  // cast its full shadow immediately, and every demoted crown vanished together
-  // on the final 0.35 s transition frame. In a dense stand that toggled broad
-  // ground patches between sun and full shade even with all CSM cascades forced
-  // current. Thin trunk casters had the same discontinuity, so both trunk and
-  // crown proxies share this depth material. Apply the same spatially stable
-  // dissolve in shadow-map space so caster coverage enters and leaves
-  // progressively with the visible LOD.
-  const treeLodShadowDepthMat = new THREE.MeshDepthMaterial({
-    name: 'TreeLodShadowDepth',
-    depthPacking: THREE.RGBADepthPacking,
-  });
-  treeLodShadowDepthMat.onBeforeCompile = (shader: MaterialShader): void => {
-    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nattribute float aLodF;\nvarying float vCanopyShadowLodF;');
-    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`
-      #include <begin_vertex>
-      vCanopyShadowLodF = aLodF;
-    `);
-    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nvarying float vCanopyShadowLodF;');
-    shader.fragmentShader = _mustReplace(
-      shader.fragmentShader,
-      '#include <alphatest_fragment>',
-      /* glsl */`
-      #include <alphatest_fragment>
-      if (vCanopyShadowLodF > 0.0005) {
-        float d1 = fract(52.9829189 * fract(dot(
-          gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
-        float d2 = fract(52.9829189 * fract(dot(
-          floor(gl_FragCoord.xy / 3.7), vec2(0.06711056, 0.00583715))));
-        if (mix(d1, d2, 0.5) < vCanopyShadowLodF) discard;
-      }
-    `,
-    );
-  };
-  treeLodShadowDepthMat.customProgramCacheKey = () => 'world-tree-shadow-lod-depth-v1';
-  treeLodShadowDepthMat.userData.treeShadowLodFade = true;
+  // already present. The shared engine shadow policy mirrors that dissolve for
+  // every compatible caster on every battlefield. Without it, a promoted crown
+  // casts its full shadow immediately and demoted trunks/crowns vanish together
+  // on the final transition frame, flashing broad ground patches in dense stands.
   const SHADOW_LOBES = [
     [ 0.00,  0.02,  0.00, 0.27, 0.24, 0.27],
     [-0.27, -0.05, -0.10, 0.22, 0.20, 0.22],
@@ -3473,7 +3439,7 @@ function* vegetationBuildSteps(
       // trunk as a ground shadow CASTER without letting canopy/self shadows
       // crawl across its visible surface.
       trunk.receiveShadow = false;
-      trunk.customDepthMaterial = treeLodShadowDepthMat;
+      applyLodShadowFadeDepth(trunk);
       trunk.userData.treeTrunk = true;
       const foliage = makeTreeMesh(g.cards, foliageMats[sp], sp, true);
       // The visible alpha cards no longer enter the shadow pass; their
@@ -3482,7 +3448,7 @@ function* vegetationBuildSteps(
       const shadowProxy = makeTreeMesh(
         buildCanopyShadowProxy(g.cards), canopyShadowMat, sp, false);
       shadowProxy.receiveShadow = false;
-      shadowProxy.customDepthMaterial = treeLodShadowDepthMat;
+      applyLodShadowFadeDepth(shadowProxy);
       markShadowOnly(shadowProxy);
       shadowProxy.userData.canopyShadowProxy = true;
       return [trunk, foliage, shadowProxy];
