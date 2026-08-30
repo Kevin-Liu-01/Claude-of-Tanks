@@ -86,9 +86,9 @@ export interface NetworkBattleActivationOptions {
   settings: SettingsPort;
   killcam: KillcamPort;
   driveTest: { resetAim(): void };
-  getHud(): HudPort;
+  getHud(): HudPort | null;
   playerActions: PlayerActionsPort;
-  getDamagePanel(): DamagePanelPort;
+  getDamagePanel(): DamagePanelPort | null;
   rig: CameraRigPort;
   presentation: ActivationPresentationPorts;
   arcadeDistance?: number;

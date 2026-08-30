@@ -2098,7 +2098,7 @@ function resetNetworkBattleState() {
   game.preBattleS = Infinity;
 }
 
-const networkBattleActivation = createNetworkBattleActivationRuntime(legacyPort({
+const networkBattleActivation = createNetworkBattleActivationRuntime({
   game,
   settings,
   killcam,
@@ -2127,7 +2127,7 @@ const networkBattleActivation = createNetworkBattleActivationRuntime(legacyPort(
     emitConsumableReset: () => bus.emit('ui:consumableReset', {}),
     stopShowroom: () => showroom.stop(),
   },
-}));
+});
 
 /**
  * Keep bot play on the original in-page simulation path. Multiplayer's
