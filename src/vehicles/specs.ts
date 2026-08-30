@@ -814,7 +814,7 @@ TANK_SPECS.m1a2.visual.number = '23';
   // Re-place the single glacis ERA quad as two side-by-side tiles.
   const mk = (name: string, x0: number, x1: number): ArmorPlate => par(name, 15,
     [x0, 0.95, 3.42], [x1, 0.95, 3.42], [x0, 1.42, 2.02],
-    { kind: 'era', era: l.era });
+    { kind: 'era', era: l.era ?? undefined });
   t90.hullPlates.splice(0, 1, mk('glacis_era_L', -1.5, -0.02), mk('glacis_era_R', 0.02, 1.5));
 }
 

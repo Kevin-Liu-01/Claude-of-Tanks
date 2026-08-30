@@ -1,13 +1,14 @@
 /** Retryable owner for the battle-only mobile control surface. */
+import type { ActionId } from '../game/input.ts';
 import type { EventBus } from '../game/stateCore.ts';
 
 export interface TouchControlsInput {
   isTouchLayout(): boolean;
   setVirtualMove(x: number, y: number): void;
   addVirtualAim(dx: number, dy: number): void;
-  pressVirtual(action: string): void;
-  releaseVirtual(action: string): void;
-  tapVirtual(action: string): void;
+  pressVirtual(action: ActionId): void;
+  releaseVirtual(action: ActionId): void;
+  tapVirtual(action: ActionId): void;
 }
 
 export interface TouchControlsRuntime {

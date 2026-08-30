@@ -1,3 +1,6 @@
+import type { EraProtection } from '../sim/armor.ts';
+import type { ModuleId } from '../sim/moduleCatalog.ts';
+
 // Pure constructors shared by fleet spec packs. Keep this module free of
 // registry imports so extension packs can use it without creating cycles.
 
@@ -6,11 +9,11 @@ export type MutableVec3Tuple = [number, number, number];
 
 export interface PlateOptions {
   ceMm?: number;
-  era?: unknown;
+  era?: EraProtection;
   gunFollow?: boolean;
   keMm?: number;
   kind?: string;
-  moduleLink?: string;
+  moduleLink?: ModuleId;
 }
 
 export interface ArmorPlate {
@@ -20,13 +23,13 @@ export interface ArmorPlate {
   keMm: number;
   ceMm: number;
   kind: string;
-  era: unknown | null;
-  moduleLink: string | null;
+  era: EraProtection | null;
+  moduleLink: ModuleId | null;
   gunFollow: boolean;
 }
 
 export interface ModuleBox {
-  module: string;
+  module: ModuleId;
   min: Vec3Tuple;
   max: Vec3Tuple;
   turretLocal: boolean;
@@ -48,6 +51,7 @@ export interface ShellSpec extends Record<string, unknown> {
   dmg: number;
   velocityMps: number;
   moduleDmg: number;
+  reloadS?: number;
   tracer: string;
 }
 
@@ -126,7 +130,7 @@ export const leftCheekPlate = (
   plate(name, mm, [-xOut, y0, zOut], [-xIn, y0, zIn], [-xOut + xi, y1, zOut - tb], o);
 
 export const moduleBox = (
-  module: string, min: Vec3Tuple, max: Vec3Tuple, turretLocal = false,
+  module: ModuleId, min: Vec3Tuple, max: Vec3Tuple, turretLocal = false,
 ): ModuleBox => ({ module, min, max, turretLocal });
 export const crewBox = (
   crew: string, min: Vec3Tuple, max: Vec3Tuple, turretLocal = false,

@@ -16,6 +16,7 @@ import type {
   PlateOptions,
   Vec3Tuple,
 } from '../specHelpers.ts';
+import type { ModuleId } from '../../sim/moduleCatalog.ts';
 
 type MutableVec3 = [number, number, number];
 type Quad = [MutableVec3, MutableVec3, MutableVec3, MutableVec3];
@@ -134,7 +135,7 @@ function splitFace(
 }
 
 function moduleBox(
-  module: string,
+  module: ModuleId,
   min: Vec3Tuple,
   max: Vec3Tuple,
   turretLocal = false,
@@ -201,7 +202,7 @@ function type99AArmor(): ArmorEnvelope {
     // from the six-wheel running gear before live shell tracing.
     ...sidePlatePair('track', 20,
       [3.45, 0.03, 1.28, 1.77], [-3.47, 0.03, 1.28, 1.77],
-      { kind: 'external', moduleLink: 'trackR' }).map((plate, index) => ({
+      { kind: 'external', moduleLink: 'trackR' }).map((plate, index): ArmorPlate => ({
         ...plate,
         name: index ? 'track_L' : 'track_R',
         moduleLink: index ? 'trackL' : 'trackR',
@@ -320,7 +321,7 @@ function ztz99A2Armor(): ArmorEnvelope {
       { kind: 'spaced' }),
     ...sidePlatePair('track', 20,
       [3.40, 0.03, 1.24, 1.78], [-3.48, 0.03, 1.24, 1.78],
-      { kind: 'external', moduleLink: 'trackR' }).map((plate, index) => ({
+      { kind: 'external', moduleLink: 'trackR' }).map((plate, index): ArmorPlate => ({
         ...plate,
         name: index ? 'track_L' : 'track_R',
         moduleLink: index ? 'trackL' : 'trackR',

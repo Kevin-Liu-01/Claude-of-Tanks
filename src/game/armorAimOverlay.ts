@@ -40,12 +40,12 @@ interface ArmorOverlayVisual {
 
 export interface ArmorOverlayTarget {
   id: string;
-  state?: ArmorPoseState;
+  state?: ArmorPoseState | null;
   combat?: {
     destroyed?: boolean;
     eraSpent?: Set<string>;
   } | null;
-  visual?: ArmorOverlayVisual;
+  visual?: ArmorOverlayVisual | null;
   spec?: { armor?: ArmorOverlayModel };
 }
 

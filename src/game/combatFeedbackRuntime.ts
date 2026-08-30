@@ -1,17 +1,17 @@
 import * as THREE from 'three';
+import type { MovementShellSpec, MovementSpec } from '../sim/movement.ts';
 import type { EventBus } from './stateCore.ts';
 import { stripActivatedEra, type EraVisual } from './eraActivation.ts';
 
-interface FeedbackShellSpec {
+interface FeedbackShellSpec extends MovementShellSpec {
   name: string;
   type: string;
   caliberMm?: number;
 }
 
-interface FeedbackTankSpec {
-  gun: {
+interface FeedbackTankSpec extends MovementSpec {
+  gun: MovementSpec['gun'] & {
     shells?: readonly FeedbackShellSpec[];
-    caliberMm: number;
   };
 }
 
@@ -22,7 +22,7 @@ interface FeedbackTankVisual extends EraVisual {
 interface FeedbackTank {
   id: string;
   spec: FeedbackTankSpec;
-  state?: { yaw?: number };
+  state?: { yaw?: number } | null;
   visual?: FeedbackTankVisual | null;
 }
 

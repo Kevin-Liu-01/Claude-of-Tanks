@@ -1,9 +1,8 @@
+import type { WebGLProgram as ThreeWebGLProgram } from 'three';
+
 type WarmYield = () => Promise<void>;
 
-interface LinkedProgram {
-  getUniforms?: () => unknown;
-  program?: WebGLProgram | null;
-}
+type LinkedProgram = Pick<ThreeWebGLProgram, 'getUniforms' | 'program'>;
 
 interface RendererProgramInfo {
   programs?: readonly LinkedProgram[] | null;
@@ -25,6 +24,10 @@ interface ForwardWarmObject {
 
 interface ParallelShaderCompileExtension {
   COMPLETION_STATUS_KHR: number;
+}
+
+function isWebGLProgram(value: unknown): value is WebGLProgram {
+  return typeof value === 'object' && value !== null;
 }
 
 interface ForwardWarmRenderer extends RendererWithPrograms, RendererWithTargets {
@@ -231,7 +234,7 @@ export function createForwardProgramWarmOwner({
         let pending = false;
         for (; cursor < programs.length; cursor += 1) {
           const program = programs[cursor]?.program;
-          if (program && gl.getProgramParameter(
+          if (isWebGLProgram(program) && gl.getProgramParameter(
             program,
             parallelCompile.COMPLETION_STATUS_KHR,
           ) === false) {

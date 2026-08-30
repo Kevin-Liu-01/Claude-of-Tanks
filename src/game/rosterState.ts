@@ -12,7 +12,7 @@ import { isBotTankId, rankMatchCandidates } from './matchmaking.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { mulberry32 } from './stateCore.ts';
 
-interface BattleVisual {
+export interface BattleVisual {
   specId: string;
   root: Object3D;
   setGroundSampler?(sampler: unknown): void;
@@ -21,6 +21,9 @@ interface BattleVisual {
   prepareForSimulation?(): void;
   resetForGaragePresentation?(): void;
   resetDestroyed?(): void;
+  hitFlinch?(normalX: number, normalZ: number, strength: number, yaw?: number): void;
+  setTrackState?(module: string, destroyed: boolean): void;
+  stripEra?(plateName: string): void;
   dispose(): void;
 }
 
@@ -55,10 +58,10 @@ export interface RosterEntity {
   _destroyedAnnounced: boolean;
 }
 
-export interface RosterGameState {
-  allTanks: RosterEntity[];
-  tankById: Map<string, RosterEntity>;
-  tanks: RosterEntity[];
+export interface RosterGameState<Entity extends RosterEntity = RosterEntity> {
+  allTanks: Entity[];
+  tankById: Map<string, Entity>;
+  tanks: Entity[];
   battleCount: number;
   _engineCtx?: EngineContext;
   _groundSampler?: unknown;
@@ -67,7 +70,7 @@ export interface RosterGameState {
   };
 }
 
-type RosterPredicate = (entity: RosterEntity) => boolean;
+type RosterPredicate<Entity extends RosterEntity = RosterEntity> = (entity: Entity) => boolean;
 
 interface DebugFlags {
   forceRoster?: string[];
@@ -170,10 +173,10 @@ export function spawnTanks(game: RosterGameState, engineCtx: EngineContext) {
  * @param {?function(object):boolean} [predicate] optional roster subset
  * @returns {boolean} true when every staged participant has a visual
  */
-export function ensureStagedVisuals(
-  game: RosterGameState,
+export function ensureStagedVisuals<Entity extends RosterEntity>(
+  game: RosterGameState<Entity>,
   limit = Infinity,
-  predicate: RosterPredicate | null = null,
+  predicate: RosterPredicate<Entity> | null = null,
 ) {
   let built = 0;
   for (const ent of game.tanks) {
@@ -190,9 +193,9 @@ export function ensureStagedVisuals(
  * loop prebakes that exact entry chunked before the build acquires it.
  * @param {?function(object):boolean} [predicate] optional roster subset
  * @returns {?{ent: object, quality: string}} */
-export function nextStagedBake(
-  game: RosterGameState,
-  predicate: RosterPredicate | null = null,
+export function nextStagedBake<Entity extends RosterEntity>(
+  game: RosterGameState<Entity>,
+  predicate: RosterPredicate<Entity> | null = null,
 ) {
   const ent = game.tanks.find((e) => !e.visual && (!predicate || predicate(e)));
   if (!ent) return null;

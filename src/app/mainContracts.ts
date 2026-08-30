@@ -2,8 +2,12 @@ import type * as THREE from 'three';
 import type { EventBus, GameState } from '../game/stateCore.ts';
 import type { RosterEntity, RosterGameState } from '../game/rosterState.ts';
 import type { KillcamRuntime } from '../game/killcamAccess.ts';
+import type { InputLayer } from '../game/input.ts';
 import type { MobileAutoAimRuntime } from '../game/mobileAutoAimRuntime.ts';
 import type { BattleHudRuntime, DamagePanelRuntime } from '../ui/battleHudAccess.ts';
+import type { CombatState } from '../sim/damage.ts';
+import type { TankState } from '../sim/movement.ts';
+import type { SpecialActionState } from '../sim/specialActionPolicy.ts';
 import type { WorldRuntime } from '../world/map.ts';
 import type { getSpec } from '../vehicles/specs.ts';
 
@@ -37,9 +41,7 @@ export interface MainGarageRuntime {
   setSelectedGarageVariant(variantId: string): boolean;
 }
 
-export interface MainVisual extends NonNullable<RosterEntity['visual']> {
-  setTrackState?(module: string, destroyed: boolean): void;
-}
+export type MainVisual = NonNullable<RosterEntity['visual']>;
 
 export interface MainFxRuntime {
   group: THREE.Object3D;
@@ -63,10 +65,14 @@ export interface MainFxModule {
   createFx(...args: unknown[]): MainFxRuntime;
 }
 
-export interface MainEntity extends Omit<RosterEntity, 'spec' | 'state' | 'combat' | 'visual'> {
+export interface MainEntity extends Omit<
+  RosterEntity,
+  'spec' | 'state' | 'combat' | 'specialAction' | 'visual'
+> {
   spec: ReturnType<typeof getSpec> & { name: string };
-  state: ({ yaw: number } & Record<string, unknown>) | null;
-  combat: ({ destroyed?: boolean } & Record<string, unknown>) | null;
+  state: TankState | null;
+  combat: CombatState | null;
+  specialAction: SpecialActionState | null;
   equip?: readonly string[] | null;
   visual: MainVisual | null;
 }
@@ -103,20 +109,7 @@ export interface MainKillcamRuntime extends KillcamRuntime {
   bindBus(bus: EventBus): void;
 }
 
-export interface MainInputRuntime {
-  actionDefs?: Array<{ id: string }>;
-  onAction(action: string, listener: () => void): () => void;
-  getSettings(): { showDebugHud: boolean; [key: string]: unknown };
-  isTouchLayout(): boolean;
-  isLocked(): boolean;
-  isDown(action: string): boolean;
-  requestLock(): void;
-  onLockDenied(listener: () => void): () => void;
-  onLockRestored(listener: () => void): () => void;
-  setEnabled?(enabled: boolean): void;
-  setSetting(name: string, value: unknown): void;
-  [key: string]: unknown;
-}
+export type MainInputRuntime = InputLayer;
 
 export type MainMobileAutoAimRuntime = MobileAutoAimRuntime;
 

@@ -1,7 +1,10 @@
 import type { Material, Object3D, Scene, Texture } from 'three';
+import type { ArmorOverlayTarget } from './armorAimOverlay.ts';
 
 export type VisualBudgetYield = (covered?: boolean) => Promise<void>;
-export type VisualPredicate = (entity: BattleVisualEntity) => boolean;
+export type VisualPredicate<Entity extends BattleVisualEntity = BattleVisualEntity> = (
+  entity: Entity
+) => boolean;
 
 interface BattleVisualRoot extends Object3D {
   userData: Record<string, unknown>;
@@ -15,14 +18,14 @@ interface BattleVisual {
   getWreckFallbackMaterial?: () => Material | null;
 }
 
-export interface BattleVisualEntity {
+export interface BattleVisualEntity extends ArmorOverlayTarget {
   specId: string;
-  visual?: BattleVisual | null;
-  state?: unknown;
+  visual?: (BattleVisual & NonNullable<ArmorOverlayTarget['visual']>) | null;
+  state?: ArmorOverlayTarget['state'];
 }
 
-interface StagedBake {
-  ent: BattleVisualEntity;
+interface StagedBake<Entity extends BattleVisualEntity> {
+  ent: Entity;
   quality: string;
 }
 
@@ -44,8 +47,8 @@ interface TextureUploadRenderer {
   initTexture(texture: Texture): void;
 }
 
-interface ArmorAimWarmOwner {
-  prime(entity: BattleVisualEntity): void;
+interface ArmorAimWarmOwner<Entity extends BattleVisualEntity> {
+  prime(entity: Entity): unknown;
   warm(): () => void;
 }
 
@@ -67,8 +70,15 @@ export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisual
   renderer: TextureUploadRenderer;
   anisotropy: number;
   ensureTankBuilders(specIds: readonly string[]): Promise<unknown>;
-  nextStagedBake(game: TGame, predicate?: VisualPredicate | null): StagedBake | null;
-  ensureStagedVisuals(game: TGame, count: number, predicate?: VisualPredicate | null): unknown;
+  nextStagedBake(
+    game: TGame,
+    predicate?: VisualPredicate<TGame['tanks'][number]> | null,
+  ): StagedBake<TGame['tanks'][number]> | null;
+  ensureStagedVisuals(
+    game: TGame,
+    count: number,
+    predicate?: VisualPredicate<TGame['tanks'][number]> | null,
+  ): unknown;
   getSpec(specId: string): unknown;
   prebakeSharedTextures(
     spec: unknown,
@@ -76,15 +86,15 @@ export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisual
     quality: string,
     tick: () => Promise<void>,
   ): Promise<unknown>;
-  armorAimOverlay: ArmorAimWarmOwner;
+  armorAimOverlay: ArmorAimWarmOwner<TGame['tanks'][number]>;
   forwardProgramWarm: ForwardCompileOwner;
   recordTiming?: (timing: VisualLoadTiming) => void;
   now?: () => number;
 }
 
-export interface BattleVisualStreamer {
+export interface BattleVisualStreamer<Entity extends BattleVisualEntity = BattleVisualEntity> {
   stream(
-    predicate: VisualPredicate | null,
+    predicate: VisualPredicate<Entity> | null,
     yieldForBudget: VisualBudgetYield,
     onProgress?: ((fraction: number) => void) | null,
     initiallyHidden?: boolean,
@@ -94,7 +104,7 @@ export interface BattleVisualStreamer {
     yieldForBudget?: VisualBudgetYield | null,
   ): Promise<{ textures: number; totalMs: number }>;
   stageBattleVisualReveal(
-    entity: BattleVisualEntity,
+    entity: Entity,
     yieldForBudget: VisualBudgetYield,
     initiallyHidden?: boolean,
   ): Promise<BattleVisualStageReceipt>;
@@ -119,7 +129,8 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
   forwardProgramWarm,
   recordTiming = () => {},
   now = () => performance.now(),
-}: BattleVisualStreamerOptions<TGame>): BattleVisualStreamer {
+}: BattleVisualStreamerOptions<TGame>): BattleVisualStreamer<TGame['tanks'][number]> {
+  type Entity = TGame['tanks'][number];
   const stageRootTextureUploads = async (
     root: Object3D | null | undefined,
     yieldForBudget: VisualBudgetYield | null = null,
@@ -133,7 +144,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
         ? candidate.material : (candidate.material ? [candidate.material] : []);
       for (const material of materials) {
         for (const key of Object.keys(material)) {
-          const value = (material as unknown as Record<string, unknown>)[key];
+          const value = Reflect.get(material, key) as unknown;
           if ((value as Texture | undefined)?.isTexture) textures.add(value as Texture);
         }
       }
@@ -146,7 +157,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
   };
 
   const stageBattleVisualReveal = async (
-    entity: BattleVisualEntity,
+    entity: Entity,
     yieldForBudget: VisualBudgetYield,
     initiallyHidden = false,
   ): Promise<BattleVisualStageReceipt> => {
@@ -198,7 +209,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
   };
 
   const stream = async (
-    predicate: VisualPredicate | null,
+    predicate: VisualPredicate<Entity> | null,
     yieldForBudget: VisualBudgetYield,
     onProgress: ((fraction: number) => void) | null = null,
     initiallyHidden = false,

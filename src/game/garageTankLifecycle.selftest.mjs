@@ -128,7 +128,7 @@ const adoptAt = garageReturn.indexOf('const adoptedVisual = roster.adoptBattlePl
 const clearAt = garageReturn.indexOf('roster.clearBattle(adoptedVisual)', adoptAt);
 assert.ok(adoptAt >= 0 && clearAt > adoptAt,
   'garage entry transfers its hero before clearing the completed battle');
-const adapterAt = main.indexOf('clearBattle: (preservedVisual: unknown) => clearBattleAfterExit({');
+const adapterAt = main.indexOf('clearBattle: (preservedVisual: unknown) => clearBattleAfterExit<BattleVisual>({');
 const preserveAt = main.indexOf('preservedVisual: legacyPort(preservedVisual),', adapterAt);
 const poolAt = main.indexOf('visualPool: battleVisualPool', preserveAt);
 assert.ok(adapterAt >= 0 && preserveAt > adapterAt && poolAt > preserveAt,

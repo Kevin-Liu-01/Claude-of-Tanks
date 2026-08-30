@@ -8,7 +8,6 @@ import type {
 
 interface LoadingEntity extends BattleVisualEntity {
   isPlayer?: boolean;
-  spec?: unknown;
 }
 
 interface LoadingGame {

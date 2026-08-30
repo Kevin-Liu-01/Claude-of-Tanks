@@ -1,3 +1,5 @@
+import type { ActionId, InputSettings } from './input.ts';
+
 interface Point2 {
   x: number;
   y: number;
@@ -19,7 +21,7 @@ interface DigitalInputState {
 }
 
 interface FrameInputPort {
-  onAction(actionId: string, listener: () => void): () => void;
+  onAction(actionId: ActionId, listener: () => void): () => void;
   getState(): DigitalInputState;
   getVirtualMove(out: Point2): boolean;
   isLocked(): boolean;
@@ -28,8 +30,8 @@ interface FrameInputPort {
   virtualActive(): boolean;
   consumeMouseDelta(out: Point2, dtSeconds: number, sniper: boolean): Point2;
   getCursorNdc(out: Point2): Point2;
-  getSettings(): { rmbMode?: string };
-  isDown(actionId: string): boolean;
+  getSettings(): Pick<InputSettings, 'rmbMode'>;
+  isDown(actionId: ActionId): boolean;
 }
 
 interface TankInput {

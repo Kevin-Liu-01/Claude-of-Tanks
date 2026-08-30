@@ -158,7 +158,7 @@ import { createTouchControlsAccess } from './ui/touchControlsAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
 import {
   spawnTanks, ensureStagedVisuals, nextStagedBake, planBattleParticipantIds,
-  planBattleCamoOverrides,
+  planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { createBus, createGameState } from './game/stateCore.ts';
 import { SHOT_VIEWS } from './dev/shotContract.ts';
@@ -441,7 +441,7 @@ const diagnosticsRequested = import.meta.env.DEV || debugModeRequested() || navi
 const traceRequested = import.meta.env.DEV || debugModeRequested();
 const devTrace = traceRequested
   ? (await import('./dev/perfTrace.ts')).createDevTrace({
-    renderer: legacyPort(renderer),
+    renderer,
     enabled: true,
     traceMode: import.meta.env.DEV ? 'development' : 'production-qa',
   })
@@ -463,11 +463,11 @@ const botPressure = { enemyShells: 0, aimedAtPlayer: 0, hitsOnPlayer: 0, dmgOnPl
 // programs throughout the mostly-static Garage, yet usually missed the next
 // battle's exact roster. The selected player visual still transfers directly
 // into the pedestal; all other battle actors now release at the phase edge.
-const battleVisualPool = createBattleVisualPool({
+const battleVisualPool = createBattleVisualPool<BattleVisual>({
   capacity: 0,
 });
-game._battleVisualPool = legacyPort(battleVisualPool);
-devTrace?.configure({ game: legacyPort(game) });
+game._battleVisualPool = battleVisualPool;
+devTrace?.configure({ game });
 spawnTanks(game, engineCtx);
 // The staged default battle (screenshot contract + first BATTLE press) needs a
 // world for its spawn points, so it is staged by ensureWorld() rather than
@@ -1207,7 +1207,7 @@ function veilHud(on: boolean) {
 // Discrete shell, ERA, camera-recoil, prop and Garage-residency reactions have
 // one typed owner. Its callbacks resolve the late network session lazily, so
 // the pristine composition root keeps the existing startup order.
-createCombatFeedbackRuntime(legacyPort({
+createCombatFeedbackRuntime({
   bus,
   game,
   rig,
@@ -1218,7 +1218,7 @@ createCombatFeedbackRuntime(legacyPort({
   setDestroyedEventSink,
   trimGarageTanks: (capacity: number) => pedestal.trim(capacity),
   getDeviceTier,
-}));
+});
 
 sky.applyFog(scene);
 // High-zoom de-fog (WoT sniper behavior): remember the base density so the
@@ -1229,11 +1229,11 @@ const viewport = createViewportRuntime({
   container,
   renderer,
   camera,
-  post: legacyPort(post),
-  lighting: legacyPort(lighting),
+  post,
+  lighting,
 });
 const forwardProgramWarm = createForwardProgramWarmOwner({
-  renderer: legacyPort(renderer),
+  renderer,
   scene,
   camera,
   getTarget: () => post?.composer?.renderTarget1 || null,
@@ -1316,7 +1316,7 @@ const endOverlay = createEndOverlayRuntime({
 // the settings panel (src/ui/settings.ts). Zoom is the zoomIn/zoomOut actions (wheel by default).
 // ---------------------------------------------------------------------------
 const debugFlags: { forceFire: boolean; lastEndFlow?: unknown } = { forceFire: false };
-const battleResultPresentation = createBattleResultPresentationRuntime(legacyPort({
+const battleResultPresentation = createBattleResultPresentationRuntime({
   game,
   killcam,
   rig,
@@ -1325,7 +1325,7 @@ const battleResultPresentation = createBattleResultPresentationRuntime(legacyPor
   emitPresented: (result: unknown) => bus.emit('battle:presented', { result }),
   exitPointerLock: () => { document.exitPointerLock?.(); },
   recordFlow: (receipt: unknown) => { debugFlags.lastEndFlow = receipt; },
-}));
+});
 
 const input = createInput({ lockElement: renderer.domElement });
 bus.on('ui:debugHud', (payload) => {
@@ -1334,18 +1334,18 @@ bus.on('ui:debugHud', (payload) => {
   perfHud.setVisible(enabled);
 });
 const armorAimOverlay = createArmorAimOverlayAccess();
-const battleVisualStreamerAccess = createBattleVisualStreamerAccess({
+const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameState>({
   game,
   scene,
-  renderer: legacyPort(renderer),
+  renderer,
   anisotropy: engineCtx.anisotropy ?? 4,
   ensureTankBuilders,
-  nextStagedBake: legacyPort(nextStagedBake),
-  ensureStagedVisuals: legacyPort(ensureStagedVisuals),
-  getSpec: legacyPort(getSpec),
+  nextStagedBake,
+  ensureStagedVisuals,
+  getSpec,
   prebakeSharedTextures,
-  armorAimOverlay: legacyPort(armorAimOverlay),
-  forwardProgramWarm: legacyPort(forwardProgramWarm),
+  armorAimOverlay,
+  forwardProgramWarm,
   recordTiming(timing) {
     if (typeof window !== 'undefined') (window.__VISUAL_LOAD_TIMINGS ||= []).push(timing);
   },
@@ -1377,7 +1377,7 @@ let touchControls: TouchControlsRuntime | null = null;
 let mobileAutoAim: MainMobileAutoAimRuntime | null = null;
 let mobileAutoAimPromise: Promise<MainMobileAutoAimRuntime> | null = null;
 const touchControlsAccess = createTouchControlsAccess({
-  input: legacyPort(input), bus,
+  input, bus,
   isBattleActive: () => game.phase === 'battle',
   onOpenSettings: () => settings.open(),
   onToggleSound: () => {
@@ -1398,7 +1398,7 @@ async function ensureTouchControls() {
   return touchControls;
 }
 devTrace?.configure({
-  input: legacyPort(input),
+  input,
   getContext: () => ({
     paused: settings.isOpen(),
     killcam: killcam.isActive(),
@@ -1436,7 +1436,7 @@ async function ensureMobileAutoAim() {
 // Pointer-lock denial, recovery gestures, the cursor-aim notice, and touch
 // refresh now have one typed listener/timer owner outside the composition root.
 createPointerLockFeedbackRuntime({
-  input: legacyPort(input),
+  input,
   bus,
   canvas: renderer.domElement,
   audioResume: () => audio.resume(),
@@ -1479,7 +1479,7 @@ playerBattleActions = createPlayerBattleActions({
   },
 });
 const playerFrameInput = createPlayerFrameInput({
-  input: legacyPort(input),
+  input,
   hasAmmo: playerBattleActions.hasAmmo,
   forceFire: () => !!debugFlags.forceFire,
 });
@@ -2100,7 +2100,7 @@ const garageReturn = createGarageReturnRuntime(legacyPort({
     adoptBattlePlayer: (specId: string) => pedestal.adoptBattlePlayer(specId)
       ? pedestal.current
       : null,
-    clearBattle: (preservedVisual: unknown) => clearBattleAfterExit({
+    clearBattle: (preservedVisual: unknown) => clearBattleAfterExit<BattleVisual>({
       game: legacyPort(game),
       preservedVisual: legacyPort(preservedVisual),
       visualPool: battleVisualPool,

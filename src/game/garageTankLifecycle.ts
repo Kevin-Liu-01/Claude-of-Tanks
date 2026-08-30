@@ -24,8 +24,8 @@ interface LifecycleInput {
   aimPoint?: { set?(x: number, y: number, z: number): unknown };
 }
 
-interface LifecycleEntity {
-  visual: LifecycleVisual | null;
+interface LifecycleEntity<Visual extends LifecycleVisual = LifecycleVisual> {
+  visual: Visual | null;
   state: unknown;
   combat: unknown;
   specialAction: unknown;
@@ -48,8 +48,8 @@ interface LifecycleEntity {
   input?: LifecycleInput | null;
 }
 
-export interface BattleExitState {
-  allTanks?: LifecycleEntity[];
+export interface BattleExitState<Visual extends LifecycleVisual = LifecycleVisual> {
+  allTanks?: LifecycleEntity<Visual>[];
   tanks: unknown[];
   shells: unknown[];
   player: unknown | null;
@@ -95,14 +95,14 @@ export function resetBattleTankForGarage({
  * survives the phase boundary.
  *
  */
-export function clearBattleAfterExit({
+export function clearBattleAfterExit<Visual extends LifecycleVisual>({
   game,
   preservedVisual = null,
   visualPool = null,
 }: {
-  game: BattleExitState;
-  preservedVisual?: LifecycleVisual | null;
-  visualPool?: { release(visual: LifecycleVisual): boolean } | null;
+  game: BattleExitState<Visual>;
+  preservedVisual?: Visual | null;
+  visualPool?: { release(visual: Visual): boolean } | null;
 }): void {
   if (!game) throw new TypeError('garage lifecycle requires battle state');
 

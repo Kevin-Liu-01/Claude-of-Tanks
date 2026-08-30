@@ -1,3 +1,6 @@
+import type { WebGLRenderer } from 'three';
+import type { InputLayer } from '../game/input.ts';
+
 // Bounded gameplay/performance flight recorder. Development enables it by
 // default; optimized production builds load it only for the explicit
 // `?debug=1` device-QA path selected in main.ts.
@@ -6,28 +9,17 @@
 // not manufacture the GC stalls it is meant to find. Normal production never
 // imports this module and therefore installs no observers/listeners.
 
-interface TraceRenderer {
-  getContext?(): WebGLRenderingContext | WebGL2RenderingContext;
-  info?: {
-    programs?: unknown[];
-    memory?: { geometries?: number; textures?: number };
-    render?: { frame?: number; calls?: number; triangles?: number };
-  };
-  domElement?: HTMLCanvasElement;
-}
+type TraceRenderer = Pick<WebGLRenderer, 'getContext' | 'info' | 'domElement'>;
 
 interface TraceGame {
   phase?: string;
   timeS?: number;
   preBattleS?: number;
   result?: unknown;
-  player?: { input?: { throttle?: number; steer?: number; fire?: boolean } };
+  player?: { input?: { throttle?: number; steer?: number; fire?: boolean } } | null;
 }
 
-interface TraceInput {
-  actionDefs?: Array<{ id: string }>;
-  onAction?(id: string, listener: (code: unknown) => void): void;
-}
+type TraceInput = Pick<InputLayer, 'actionDefs' | 'onAction'>;
 
 interface TraceContext {
   paused?: boolean;
