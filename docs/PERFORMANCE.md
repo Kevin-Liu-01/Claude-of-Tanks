@@ -788,10 +788,10 @@ Cold-load certification now fails on latency as well as eventual readiness.
 Under the standard 4× CPU slowdown, 150 ms RTT, 1.6 Mbps download, and 750 Kbps
 upload profile, every cache-disabled first visit must reach `__GAME_READY`
 within 8 seconds and spend no more than 2.5 seconds in post-transfer
-application work. A three-profile production run completed in 6.426–6.430
-seconds wall and 1.675–1.692 seconds of application work; separate injected main
-download, main evaluation, and selected-builder failures recovered without a
-manual refresh.
+application work. A three-profile deployed-production run completed in
+6.119–6.444 seconds wall and 1.473–1.512 seconds of application work. Separate
+injected main-download, main-evaluation, and selected-builder failures
+recovered without a manual refresh.
 
 Optional off-main work is also bounded. A module worker that never posts a
 result or error previously left the deferred cloud promise pending forever;
