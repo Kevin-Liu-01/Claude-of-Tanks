@@ -5,18 +5,19 @@
 
 import * as THREE from 'three';
 import {
-  createHeightField as createHeightFieldLegacy,
-  buildTerrainMeshes as buildTerrainMeshesLegacy,
-  buildTerrainMeshesAsync as buildTerrainMeshesAsyncLegacy,
+  createHeightField,
+  buildTerrainMeshes,
+  buildTerrainMeshesAsync,
 } from './terrain.ts';
 import type { HeightField } from './terrain.ts';
 import {
-  createVegetation as createVegetationLegacy,
-  createVegetationAsync as createVegetationAsyncLegacy,
+  createVegetation,
+  createVegetationAsync,
 } from './vegetation.ts';
+import type { TreeObstacle } from './vegetation.ts';
 import {
-  createProps as createPropsLegacy,
-  createPropsAsync as createPropsAsyncLegacy,
+  createProps,
+  createPropsAsync,
   preloadPropModels,
 } from './props.ts';
 import type { CrushableRecord } from './props.ts';
@@ -28,9 +29,11 @@ import {
   type ObstacleQuery,
 } from './collision.ts';
 
-interface EngineContext {
+type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
+  Parameters<typeof createVegetation>[1] &
+  Parameters<typeof createProps>[1] & {
   scene: THREE.Scene;
-}
+};
 
 interface WorldOptions {
   mapId?: string;
@@ -66,7 +69,22 @@ interface TerrainUserData {
   [key: string]: unknown;
 }
 
-type TerrainRoot = THREE.Object3D & { userData: TerrainUserData };
+type TerrainRoot = ReturnType<typeof buildTerrainMeshes> & { userData: TerrainUserData };
+
+function isTerrainRoot(root: ReturnType<typeof buildTerrainMeshes>): root is TerrainRoot {
+  return typeof root.userData.updateLOD === 'function';
+}
+
+function requireTerrainRoot(root: ReturnType<typeof buildTerrainMeshes>): TerrainRoot {
+  if (!isTerrainRoot(root)) {
+    throw new TypeError('terrain root is missing its LOD update contract');
+  }
+  return root;
+}
+
+function isTreeObstacle(record: CollisionRecord): record is TreeObstacle {
+  return Number.isInteger(record.treeIdx);
+}
 
 export interface ConcealmentDisc {
   x: number;
@@ -75,28 +93,7 @@ export interface ConcealmentDisc {
   add: number;
 }
 
-interface VegetationRuntime {
-  group: THREE.Object3D;
-  treeObstacles: CollisionRecord[];
-  concealers?: ConcealmentDisc[];
-  _clusters: Array<{ x: number; z: number; r: number }>;
-  _buildDetail?: unknown;
-  update(
-    deltaSeconds: number,
-    cameraPosition: THREE.Vector3,
-    cameraForward?: THREE.Vector3 | null,
-    focusPosition?: THREE.Vector3 | null,
-  ): void;
-  setWindTime(timeSeconds: number): void;
-  setSniperFade(
-    fraction: number,
-    immediate?: boolean,
-    fovDegrees?: number | null,
-    aimDistanceMeters?: number | null,
-  ): void;
-  crushTree?(record: CollisionRecord, dx: number, dz: number): unknown;
-  resetToppled?(): void;
-}
+type VegetationRuntime = ReturnType<typeof createVegetation>;
 
 interface MapFeatureRecord {
   x: number;
@@ -104,33 +101,7 @@ interface MapFeatureRecord {
   [key: string]: unknown;
 }
 
-interface PropsRuntime {
-  group: THREE.Object3D;
-  obstacles: CollisionRecord[];
-  colliders: CollisionRecord[];
-  sourcedTexturesReady?: Promise<unknown>;
-  features: {
-    buildings: MapFeatureRecord[];
-    tacticalBeats: MapFeatureRecord[];
-  };
-  crushables?: CrushableRecord[];
-  destructibles?: unknown[];
-  looseRecords?: unknown[];
-  tankWreckSpots?: unknown[];
-  utilityPolePlacements?: unknown[];
-  decorationGroundingReceipts?: unknown[];
-  crushProp(index: number, dx: number, dz: number, speedMetersPerSecond: number): boolean;
-  crushDestructible?(
-    index: number,
-    dx: number,
-    dz: number,
-    speedMetersPerSecond: number,
-    cause: string,
-  ): unknown;
-  getLoosePropStats?(): { total: number; active: number };
-  resetDestructibles?(): void;
-  updateProps?(deltaSeconds: number, cameraPosition: THREE.Vector3): void;
-}
+type PropsRuntime = ReturnType<typeof createProps>;
 
 export interface WorldRayHit {
   point: THREE.Vector3;
@@ -194,52 +165,6 @@ export interface WorldRuntime {
   _buildDetail?: { vegetation: unknown; terrain: unknown };
 }
 
-const createHeightField = createHeightFieldLegacy as unknown as (
-  seed: number,
-  config: BattlefieldMapConfig,
-) => WorldHeightField;
-const buildTerrainMeshes = buildTerrainMeshesLegacy as unknown as (
-  heightField: WorldHeightField,
-  engineContext: EngineContext,
-  config: BattlefieldMapConfig,
-) => TerrainRoot;
-const buildTerrainMeshesAsync = buildTerrainMeshesAsyncLegacy as unknown as (
-  heightField: WorldHeightField,
-  engineContext: EngineContext,
-  config: BattlefieldMapConfig,
-  onProgress: BuildSliceProgress,
-  fineSlices: boolean,
-  options: { streamFarLods: boolean; focus: SpawnLayoutPoint },
-) => Promise<TerrainRoot>;
-const createVegetation = createVegetationLegacy as unknown as (
-  heightField: WorldHeightField,
-  engineContext: EngineContext,
-  seed: number,
-  config: BattlefieldMapConfig,
-) => VegetationRuntime;
-const createVegetationAsync = createVegetationAsyncLegacy as unknown as (
-  heightField: WorldHeightField,
-  engineContext: EngineContext,
-  seed: number,
-  config: BattlefieldMapConfig,
-  onProgress: BuildSliceProgress,
-  fineSlices: boolean,
-) => Promise<VegetationRuntime>;
-const createProps = createPropsLegacy as unknown as (
-  heightField: WorldHeightField,
-  engineContext: EngineContext,
-  seed: number,
-  config: BattlefieldMapConfig,
-) => PropsRuntime;
-const createPropsAsync = createPropsAsyncLegacy as unknown as (
-  heightField: WorldHeightField,
-  engineContext: EngineContext,
-  seed: number,
-  config: BattlefieldMapConfig,
-  onProgress: BuildSliceProgress,
-  fineSlices: boolean,
-) => Promise<PropsRuntime>;
-
 const _pt = new THREE.Vector3();
 const _bisA = new THREE.Vector3();
 
@@ -256,7 +181,7 @@ export function createMap(
   const engineCtx = engineContext as EngineContext;
   const config = getMapConfig(mapId);
   const heightField = createHeightField(seed, config);
-  const terrain = buildTerrainMeshes(heightField, engineCtx, config);
+  const terrain = requireTerrainRoot(buildTerrainMeshes(heightField, engineCtx, config));
   const vegetation = createVegetation(heightField, engineCtx, 2001, config);
   const props = createProps(heightField, engineCtx, 2002, config);
   return assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
@@ -303,7 +228,7 @@ export async function createMapAsync(
   await step('Surveying terrain', 0.0);
   const heightField = createHeightField(seed, config);
   await step('Building terrain meshes', 0.34);
-  const terrain = await buildTerrainMeshesAsync(heightField, engineCtx, config,
+  const terrain = requireTerrainRoot(await buildTerrainMeshesAsync(heightField, engineCtx, config,
     sub('Building terrain meshes', 0.34, 0.58), fineSlices, {
       // The deployment view gets exact near/mid detail and every other chunk
       // gets its exact visible coarse level. Missing levels grow one geometry
@@ -311,7 +236,7 @@ export async function createMapAsync(
       // Heightfield/collision/spotting data remains complete and deterministic.
       streamFarLods: true,
       focus: heightField._layout.spawns.player,
-    });
+    }));
   await step('Planting vegetation', 0.58);
   const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
     sub('Planting vegetation', 0.58, 0.82), fineSlices);
@@ -538,7 +463,7 @@ function assembleWorld(
       speedMps = 0,
     ) => {
       if (!ob) return false;
-      if (ob.treeIdx != null && vegetation.crushTree) {
+      if (isTreeObstacle(ob)) {
         const toppled = vegetation.crushTree(ob, dx, dz);
         if (toppled) {
           ob.crushed = true;
@@ -563,8 +488,8 @@ function assembleWorld(
       roads: layout.roads.map((nodes: Array<readonly [number, number]>) => (
         nodes.map(([x, z]: readonly [number, number]) => [x, z] as [number, number])
       )),
-      buildings: props.features.buildings.map((building: MapFeatureRecord) => ({ ...building })),
-      tacticalBeats: props.features.tacticalBeats.map((beat: MapFeatureRecord) => ({ ...beat })),
+      buildings: props.features.buildings.map((building) => ({ ...building })),
+      tacticalBeats: props.features.tacticalBeats.map((beat) => ({ ...beat })),
       treeClusters: vegetation._clusters.map((cluster: { x: number; z: number; r: number }) => ({
         x: cluster.x, z: cluster.z, r: cluster.r,
       })),

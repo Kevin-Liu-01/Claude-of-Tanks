@@ -239,7 +239,7 @@ interface PropsSettings {
   extraKits?: readonly string[] | null;
 }
 
-interface PropsMapConfig {
+export interface PropsMapConfig {
   id: string;
   props?: Partial<PropsSettings>;
 }
@@ -250,6 +250,15 @@ interface PlacedBuilding {
   w: number;
   d: number;
   rot: number;
+}
+
+interface TacticalBeatFeature {
+  id?: string;
+  role?: string;
+  x: number;
+  z: number;
+  structurePlaced: boolean;
+  redoubt: boolean;
 }
 
 interface PlacedRadius {
@@ -450,7 +459,7 @@ interface WreckBake {
   tris: number;
 }
 
-interface PropsRuntime {
+export interface PropsRuntime {
   group: THREE.Group;
   obstacles: PropsCollisionRecord[];
   colliders: CollisionRecord[];
@@ -475,7 +484,7 @@ interface PropsRuntime {
   getLoosePropStats(): { total: number; active: number };
   features: {
     buildings: PlacedBuilding[];
-    tacticalBeats: Array<Record<string, unknown>>;
+    tacticalBeats: TacticalBeatFeature[];
   };
 }
 
@@ -1994,7 +2003,7 @@ ${snowCap ? `
   }
 
   const buildingFeatures: PlacedBuilding[] = [];
-  const tacticalBeatFeatures: Array<Record<string, unknown>> = [];
+  const tacticalBeatFeatures: TacticalBeatFeature[] = [];
   // sourced-model instancing: name -> { geo, list: [Matrix4, ...] }
   const bakedInstances = new Map<string, BakedInstanceGroup>();
   function addBakedInstance(

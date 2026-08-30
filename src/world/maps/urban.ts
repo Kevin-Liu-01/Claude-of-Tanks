@@ -242,4 +242,4 @@ export default {
   // the establishing frame was the empty grass approach field; the town brief
   // is "street grid, rowhouses, rubble", so the grid should fill the frame
   shot: { pos: [-48, 34, -208], look: [46, 2, 20] },
-} satisfies import('../terrain.ts').TerrainMapConfig & Record<string, unknown>;
+} satisfies import('./contracts.ts').MapCompositionConfig;

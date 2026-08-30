@@ -209,4 +209,4 @@ export default {
   // behind the player cluster looking across the river valley to the village:
   // ally tanks near-field, water + ford mid-frame, gold forest beyond
   shot: { pos: [150, 32, -428], look: [10, 4, 40] },
-} satisfies import('../terrain.ts').TerrainMapConfig & Record<string, unknown>;
+} satisfies import('./contracts.ts').MapCompositionConfig;

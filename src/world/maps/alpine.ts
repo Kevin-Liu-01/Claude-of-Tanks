@@ -79,7 +79,7 @@ export default {
     sandbagLines: 20, hedgehogs: 18,
     tankWrecks: { era: 'modern', count: 6, debris: true },
     inhabit: {
-      stalls: 2, benches: 3, coreClutter: 20, sleds: 14, firewood: 10,
+      stalls: 2, benches: 3, coreClutter: 20, sleds: 14,
       trucks: 5, jeeps: 4, drumClusters: 4, camps: 3, modernClutter: 18,
       // Populate the pass with recoverable tools/cans/roadside hardware.
       // Existing instanced loose-prop families absorb these extra sleepers,
@@ -106,4 +106,4 @@ export default {
     roadCasing: 'rgba(63,69,75,.94)', roadFill: 'rgba(187,194,199,.96)', buildingFill: '#d5d9dc',
   },
   shot: { pos: [-238, 54, -252], look: [62, -3, 54] },
-} satisfies import('../terrain.ts').TerrainMapConfig & Record<string, unknown>;
+} satisfies import('./contracts.ts').MapCompositionConfig;

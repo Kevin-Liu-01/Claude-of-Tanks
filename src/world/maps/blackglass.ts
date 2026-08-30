@@ -118,4 +118,4 @@ export default {
     roadCasing: 'rgba(20,25,29,.96)', roadFill: 'rgba(91,101,107,.95)', buildingFill: '#b9b8b4',
   },
   shot: { pos: [-344, 48, -308], look: [18, 12, 46] },
-} satisfies import('../terrain.ts').TerrainMapConfig & Record<string, unknown>;
+} satisfies import('./contracts.ts').MapCompositionConfig;

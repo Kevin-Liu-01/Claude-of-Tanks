@@ -358,4 +358,4 @@ export default {
   },
 
   shot: { pos: [-85, 46, -162], look: [60, 10, 172] },
-} satisfies import('../terrain.ts').TerrainMapConfig & Record<string, unknown>;
+} satisfies import('./contracts.ts').MapCompositionConfig;

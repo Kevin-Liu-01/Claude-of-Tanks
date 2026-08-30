@@ -121,7 +121,7 @@ interface VegetationConfig {
   clusterScrub?: number;
 }
 
-interface VegetationMapConfig {
+export interface VegetationMapConfig {
   vegetation?: Partial<VegetationConfig>;
 }
 
@@ -164,7 +164,7 @@ interface TreeRecord {
   uprightMat?: THREE.Matrix4;
 }
 
-interface TreeObstacle extends CollisionRecord {
+export interface TreeObstacle extends CollisionRecord {
   treeIdx: number;
   _pressS?: number;
   _pressT?: number;
@@ -174,7 +174,7 @@ interface ConcealmentDisc extends VegetationDisc {
   add: number;
 }
 
-interface VegetationRuntime {
+export interface VegetationRuntime {
   group: THREE.Group;
   update(
     deltaSeconds: number,
