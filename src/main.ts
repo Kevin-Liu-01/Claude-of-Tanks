@@ -2188,7 +2188,7 @@ function openBattle(preBattleSeconds = PRE_BATTLE_HOLD_S) {
 // Returning from battle or Studio is one typed transaction. It owns the
 // teardown order, retained-room policy, transition coalescing, and rematch
 // sequencing while main supplies concrete browser/rendering adapters.
-const garageReturn = createGarageReturnRuntime(legacyPort({
+const garageReturn = createGarageReturnRuntime({
   game,
   getSelectedSpecId: () => selectedVehicle.id,
   presentation: {
@@ -2204,7 +2204,7 @@ const garageReturn = createGarageReturnRuntime(legacyPort({
       endOverlay.hide();
     },
     resetBattleTank: () => resetBattleTankForGarage({
-      fx: legacyPort(fxRuntimeAccess.current),
+      fx: { resetAll: () => fxRuntimeAccess.current?.resetAll() },
       visual: game.player?.visual,
     }),
     setShotMode: (enabled: boolean) => { shotMode = enabled; },
@@ -2240,9 +2240,9 @@ const garageReturn = createGarageReturnRuntime(legacyPort({
     adoptBattlePlayer: (specId: string) => pedestal.adoptBattlePlayer(specId)
       ? pedestal.current
       : null,
-    clearBattle: (preservedVisual: unknown) => clearBattleAfterExit<BattleVisual>({
-      game: legacyPort(game),
-      preservedVisual: legacyPort(preservedVisual),
+    clearBattle: (preservedVisual: BattleVisual | null) => clearBattleAfterExit<BattleVisual>({
+      game,
+      preservedVisual,
       visualPool: battleVisualPool,
     }),
     repaintHero: (specId: string) => applyCamoPatternsChunked({
@@ -2267,7 +2267,7 @@ const garageReturn = createGarageReturnRuntime(legacyPort({
   resumeGarageGpu: () => garagePhasePresentation.resumeGpu(),
   isBattleEntryPending: () => battleEntryLifecycle.pending,
   publishTrace: (trace: unknown) => { window.__GARAGE_ENTRY = trace; },
-}));
+});
 const enterGarage = garageReturn.enter;
 const leaveBattleToGarage = garageReturn.leave;
 

@@ -26,17 +26,17 @@ interface LifecycleInput {
 
 interface LifecycleEntity<Visual extends LifecycleVisual = LifecycleVisual> {
   visual: Visual | null;
-  state: unknown;
-  combat: unknown;
-  specialAction: unknown;
-  equip: unknown;
-  ai: unknown;
-  aiCtl: unknown;
+  state?: unknown;
+  combat?: unknown;
+  specialAction?: unknown;
+  equip?: unknown;
+  ai?: unknown;
+  aiCtl?: unknown;
   team: string;
   isPlayer: boolean;
-  rigidGear: boolean;
-  contactGeom: unknown;
-  _destroyedAnnounced: boolean;
+  rigidGear?: boolean;
+  contactGeom?: unknown;
+  _destroyedAnnounced?: boolean;
   _glbContactStampedVisual?: unknown;
   _openingRoute?: unknown;
   _lastImpactT?: number;

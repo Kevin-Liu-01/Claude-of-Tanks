@@ -1,5 +1,3 @@
-import type { GameState } from './stateCore.ts';
-
 export interface GarageReturnTrace {
   stages: Record<string, number>;
   totalMs?: number;
@@ -65,9 +63,9 @@ interface GarageReturnWorldPort {
   clearCamoOverrides(): void;
 }
 
-interface GarageReturnRosterPort {
-  adoptBattlePlayer(specId: string): unknown | null;
-  clearBattle(preservedVisual: unknown | null): void;
+interface GarageReturnRosterPort<Visual> {
+  adoptBattlePlayer(specId: string): Visual | null;
+  clearBattle(preservedVisual: Visual | null): void;
   repaintHero(specId: string): void;
 }
 
@@ -89,15 +87,21 @@ interface GarageReturnAudioPort {
   playGarageSting(): void;
 }
 
-export interface GarageReturnRuntimeOptions {
-  game: GameState;
+interface GarageReturnGameState {
+  phase: 'garage' | 'battle' | 'ended' | 'shot';
+  preBattleS: number;
+  mapId: string;
+}
+
+export interface GarageReturnRuntimeOptions<Visual = unknown> {
+  game: GarageReturnGameState;
   getSelectedSpecId(): string;
   presentation: GarageReturnPresentationPort;
   network: GarageReturnNetworkPort;
   warm: GarageReturnWarmPort;
   work: GarageReturnWorkPort;
   world: GarageReturnWorldPort;
-  roster: GarageReturnRosterPort;
+  roster: GarageReturnRosterPort<Visual>;
   settings: GarageReturnSettingsPort;
   ui: GarageReturnUiPort;
   audio: GarageReturnAudioPort;
@@ -122,7 +126,7 @@ export interface GarageReturnRuntime {
  * callers ignorant of teardown ordering while injected ports keep this state
  * machine independent from DOM, WebGL, Three.js, and the network transport.
  */
-export function createGarageReturnRuntime({
+export function createGarageReturnRuntime<Visual = unknown>({
   game,
   getSelectedSpecId,
   presentation,
@@ -140,7 +144,7 @@ export function createGarageReturnRuntime({
   nowMs = () => performance.now(),
   sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
   publishTrace = () => {},
-}: GarageReturnRuntimeOptions): GarageReturnRuntime {
+}: GarageReturnRuntimeOptions<Visual>): GarageReturnRuntime {
   const required = [getSelectedSpecId, presentation?.setAdaptiveSuspended,
     presentation?.clearBattle, presentation?.resetBattleTank,
     presentation?.setShotMode, presentation?.setCaptureHidden,
