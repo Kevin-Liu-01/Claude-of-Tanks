@@ -577,7 +577,7 @@ interface LeopardWedgeV3Config {
   readonly body: readonly WedgeBodyCourse[];
   readonly chamferY?: number;
   readonly roofX?: number;
-  readonly underride?: {
+  readonly underride?: false | {
     readonly plan?: readonly Vec2Tuple[];
     readonly rings?: readonly PolyMultiLoftRing[];
     readonly h?: number;
