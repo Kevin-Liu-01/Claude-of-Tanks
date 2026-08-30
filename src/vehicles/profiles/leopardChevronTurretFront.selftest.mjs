@@ -10,8 +10,9 @@ const modernProfiles = new Map([
   ['strv122', 'leopard-2a5'],
 ]);
 const verticalTerminalIds = new Set([
-  'leo2a5', 'strv122', 'leo2a6', 'leo2a6m', 'leo2a6_ua',
+  'leo2a5', 'strv122', 'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2a7v',
 ]);
+const receiptsById = new Map();
 
 const findMergedMesh = (root, name) => {
   let result = null;
@@ -62,6 +63,7 @@ for (const [id, expectedProfile] of modernProfiles) {
   assert.ok(turretRig, `${id} retains the canonical rotating turret rig`);
   const receipt = turretRig.userData.leopardChevronFrontReceipt;
   assert.ok(receipt, `${id} publishes a turret-front geometry receipt`);
+  receiptsById.set(id, receipt);
   assert.equal(receipt.profile, expectedProfile, `${id} uses its measured family profile`);
   assert.equal(receipt.architecture, 'single-watertight-upper-and-lower-arrowhead',
     `${id} uses one closed volume for both faces of each chevron course`);
@@ -147,8 +149,8 @@ for (const [id, expectedProfile] of modernProfiles) {
     `${id} has no residual plate at either marked blocker plane`);
   }
   if (id === 'leo2a7v') {
-    assert.ok(receipt.maximumCheekHalfWidthM <= receipt.bodyFrontHalfWidthM + 1e-9,
-      'leo2a7v cheeks stay within the turret body instead of overhanging it');
+    assert.ok(receipt.maximumCheekHalfWidthM <= receipt.bodyFrontHalfWidthM + 0.04,
+      'leo2a7v cheek terminal uses only the narrow A6-family armor overhang');
     assert.ok(receipt.ridgeControlLine.length >= 6,
       'leo2a7v distributes its arrowhead sweep across the complete turret front');
     for (let index = 1; index < receipt.ridgeControlLine.length; index++) {
@@ -158,14 +160,24 @@ for (const [id, expectedProfile] of modernProfiles) {
       assert.ok(current[1] < previous[1] - 0.075,
         `leo2a7v ridge station ${index} sweeps rearward instead of forming a square brow`);
     }
-    assert.ok(receipt.ridgeControlLine[0][1] - receipt.ridgeControlLine.at(-1)[1] >= 0.95,
+    assert.ok(receipt.ridgeControlLine[0][1] - receipt.ridgeControlLine.at(-1)[1] >= 1.25,
       'leo2a7v carries a deep gun-root-to-outboard plan chevron');
     for (const sideReceipt of receipt.sides) {
       for (const station of sideReceipt.stations) {
-        assert.ok(Math.abs(station.upperRiseM - station.lowerDropM) <= 1e-9,
-          'leo2a7v lower cheek matches the upper cheek height at every station');
+        assert.ok(station.upperDominanceRatio >= 1.45,
+          'leo2a7v keeps the A6-family dominant upper cheek and shorter lower return');
       }
     }
+    assert.deepEqual(turretRig.userData.leopard2A7VLineageReceipt, {
+      architecture: 'leopard-2a6-family-evolution',
+      baselineProfile: 'leopard-2a6',
+      independentCrownLofts: 0,
+      bodyFrontHalfWidthM: 1.38,
+      verticalTerminalSideClosure: true,
+      dominantUpperChevron: true,
+      a7vSpecificProtectionRetained: true,
+      a7vSpecificRoofEquipmentRetained: true,
+    }, 'leo2a7v records an A6-family shell with its A7V protection and equipment retained');
   }
 
   const turret = findMergedMesh(turretRig, 'turret');
@@ -247,11 +259,11 @@ for (const [id, expectedProfile] of modernProfiles) {
         `${id} ${sideReceipt.side} station ${index} lower root drops from the ridge`);
       assert.ok(Math.abs(station.upperSweepDeg - receipt.upperSlopeDeg) <= 1e-6,
         `${id} ${sideReceipt.side} station ${index} stays on the one continuous upper slope`);
-      const minimumLowerSweep = id === 'leo2a7v' ? 35 : 15;
-      const maximumLowerSweep = id === 'leo2a7v' ? 52 : 30;
+      const minimumLowerSweep = 15;
+      const maximumLowerSweep = 30;
       assert.ok(station.lowerSweepDeg >= minimumLowerSweep && station.lowerSweepDeg <= maximumLowerSweep,
         `${id} ${sideReceipt.side} station ${index} lower return has a plausible arrowhead angle (${station.lowerSweepDeg} deg)`);
-      const minimumDominance = id === 'leo2a7v' ? 1 : 1.2;
+      const minimumDominance = 1.2;
       assert.ok(station.upperDominanceRatio >= minimumDominance - 1e-9,
         `${id} ${sideReceipt.side} station ${index} preserves its profile's upper/lower balance (${station.upperDominanceRatio})`);
       const ridge = [side * station.x, station.ridgeY, station.ridgeZ];
@@ -297,6 +309,24 @@ for (const [id, expectedProfile] of modernProfiles) {
   }
 
   tank.dispose();
+}
+
+{
+  const a6 = receiptsById.get('leo2a6');
+  const a7v = receiptsById.get('leo2a7v');
+  assert.ok(a6 && a7v, 'A6 and A7V lineage receipts are available');
+  assert.ok(Math.abs(a7v.bodyFrontHalfWidthM - a6.bodyFrontHalfWidthM) <= 0.01,
+    'A7V keeps the A6 fighting-compartment width');
+  assert.equal(a7v.ridgeControlLine.length, a6.ridgeControlLine.length,
+    'A7V retains the A6 arrowhead station cadence');
+  for (let index = 0; index < a6.ridgeControlLine.length; index++) {
+    const [a6x, a6z] = a6.ridgeControlLine[index];
+    const [a7x, a7z] = a7v.ridgeControlLine[index];
+    assert.ok(Math.abs(a7x - a6x) <= 0.03,
+      `A7V station ${index} stays aligned with the A6 cheek width`);
+    assert.ok(Math.abs(a7z - a6z) <= 0.05,
+      `A7V station ${index} remains an incremental A6 plan evolution`);
+  }
 }
 
 const otco = createTank('leo2a4_otco', null, {

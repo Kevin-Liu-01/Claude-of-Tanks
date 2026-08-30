@@ -189,17 +189,19 @@ registries.tankSpecs.leo2a6m.armor.turretPlates.push(
     0.05, 0.78, 0.16, 0, eraLayer(ukrainianNizh, 780, 1280)),
 );
 
-// A7V's fitted package follows its native arrowhead cheeks and upper glacis;
-// sector names match procedural clusters so stripEra removes the same area.
+// The A7V turret front is permanent layered arrowhead armor, not ERA. Keep
+// the separate fitted upper-glacis ERA sector, but model the two broad cheek
+// layers as non-consumable spaced armor so damage, gallery overlays and the
+// procedural panel geometry all describe the same construction.
 registries.tankSpecs.leo2a7v.armor.hullPlates.push(
   frontPlate('a7v_upper_glacis_era', 18, 1.50, 1.60, 2.10, 1.43, 2.84,
     eraLayer(ukrainianNizh, 620, 1120)),
 );
 registries.tankSpecs.leo2a7v.armor.turretPlates.push(
-  rightCheekPlate('a7v_turret_cheek_era_R', 18, 0.36, 1.90, 1.40, 1.02,
-    0.30, 0.80, 0.82, 0, eraLayer(ukrainianNizh, 780, 1280)),
-  leftCheekPlate('a7v_turret_cheek_era_L', 18, 0.36, 1.90, 1.40, 1.02,
-    0.30, 0.80, 0.82, 0, eraLayer(ukrainianNizh, 780, 1280)),
+  rightCheekPlate('a7v_turret_cheek_layer_R', 34, 0.36, 2.58, 1.40, 1.42,
+    0.09, 0.66, 0.78, 0, { kind: 'spaced', keMm: 420, ceMm: 760 }),
+  leftCheekPlate('a7v_turret_cheek_layer_L', 34, 0.36, 2.58, 1.40, 1.42,
+    0.09, 0.66, 0.78, 0, { kind: 'spaced', keMm: 420, ceMm: 760 }),
 );
 addLeopard2A6UAFieldEraSectors(leopard2A6UA);
 

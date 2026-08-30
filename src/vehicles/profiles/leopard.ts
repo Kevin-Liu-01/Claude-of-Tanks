@@ -315,18 +315,6 @@ interface EraCassetteScale {
   readonly z: number;
 }
 
-interface LeopardCheekEraSeat {
-  readonly side: Side;
-  readonly row: number;
-  readonly station: number;
-  readonly courseFraction: number;
-  readonly surfaceLocal: number[];
-  readonly centerLocal: number[];
-  readonly normalLocal: number[];
-  readonly scaleY: number;
-  readonly innerFaceOverlapM: number;
-}
-
 interface LeopardGlacisEraSeat {
   readonly row: number;
   readonly station: number;
@@ -6859,12 +6847,16 @@ export function buildLeo2A4(builder: object) {
 }
 
 const LEO2A7V_CHEVRON_NOSE: readonly Vec2Tuple[] = Object.freeze([
-  [0.30, 2.04], [0.54, 1.96], [0.80, 1.80],
-  [1.04, 1.60], [1.25, 1.34], [1.41, 1.03],
+  // A7V is an A6-family turret evolution, not a new short triangular shell.
+  // Keep the A6's long gun-root arrowhead and make only the final outboard
+  // course marginally fuller for the newer applique package.
+  [0.26, 2.70], [0.40, 2.60], [0.94, 2.24],
+  [1.28, 1.94], [1.35, 1.61], [1.41, 1.42],
 ]);
 const LEO2A7V_CHEVRON_CREST: readonly Vec3Tuple[] = Object.freeze([
-  [0.20, 0.80, 0.44], [1.03, 0.775, 0.40], [1.08, 0.67, -0.55],
-  [1.28, 0.66, -0.95], [1.41, 0.32, -1.10],
+  [0.20, 0.72, 1.60], [0.55, 0.74, 1.42], [0.90, 0.72, 0.72],
+  [0.94, 0.62, 0.68], [1.02, 0.61, 0.05], [1.28, 0.60, -0.08],
+  [1.35, 0.35, -0.14], [1.41, 0.23, -0.18],
 ]);
 const LEO2A7V_GLACIS: readonly Vec2Tuple[] = Object.freeze([
   [2.05, 1.60], [2.45, 1.50], [2.95, 1.44], [3.55, 1.40], [3.86, 1.26],
@@ -6889,56 +6881,7 @@ function sampleLeo2A7VSurface(
   return stations.at(-1)?.[valueIndex] ?? 0;
 }
 
-// Point and tangent frame on the exact upper face emitted by
-// wedgeTurretV3. ERA courses sample the same ridge, slope and taper constants
-// as the structural cheek, preventing the old independently approximated ERA
-// surface from hanging beyond or cutting through the armor below it.
-function leo2A7VCheekSurface(side: Side, absX: number, courseFraction: number) {
-  const fraction = THREE.MathUtils.clamp(courseFraction, 0, 1);
-  const ridgeY = 0.22 + 0.09;
-  const upperSlopeTan = Math.tan(THREE.MathUtils.degToRad(18));
-  const surfacePoint = (x: number): THREE.Vector3 => {
-    const noseZ = sampleLeo2A7VSurface(LEO2A7V_CHEVRON_NOSE, x);
-    const ridgeZ = noseZ - 0.040;
-    const taper = THREE.MathUtils.clamp((x - 1.24) / (1.41 - 1.24), 0, 1);
-    const upperY = THREE.MathUtils.lerp(0.76, 0.54, taper);
-    const upperZ = ridgeZ - (upperY - ridgeY) / upperSlopeTan;
-    return new THREE.Vector3(
-      side * x,
-      THREE.MathUtils.lerp(ridgeY, upperY, fraction),
-      THREE.MathUtils.lerp(ridgeZ, upperZ, fraction),
-    );
-  };
-  const point = surfacePoint(absX);
-  const epsilon = 0.002;
-  const tangentX = surfacePoint(absX + epsilon).sub(surfacePoint(absX - epsilon));
-  if (side < 0) tangentX.multiplyScalar(-1);
-  tangentX.normalize();
-  const lower = surfacePoint(absX);
-  const upper = surfacePoint(absX);
-  lower.setY(ridgeY);
-  lower.setZ(sampleLeo2A7VSurface(LEO2A7V_CHEVRON_NOSE, absX) - 0.040);
-  const taper = THREE.MathUtils.clamp((absX - 1.24) / (1.41 - 1.24), 0, 1);
-  const upperY = THREE.MathUtils.lerp(0.76, 0.54, taper);
-  const upperZ = lower.z - (upperY - ridgeY) / upperSlopeTan;
-  upper.setY(upperY);
-  upper.setZ(upperZ);
-  const tangentCourse = upper.sub(lower).normalize();
-  const normal = new THREE.Vector3().crossVectors(tangentX, tangentCourse).normalize();
-  if (normal.z < 0) normal.multiplyScalar(-1);
-  const tangentY = new THREE.Vector3().crossVectors(normal, tangentX).normalize();
-  const rotation = new THREE.Euler().setFromRotationMatrix(
-    new THREE.Matrix4().makeBasis(tangentX, tangentY, normal), 'YXZ',
-  );
-  return {
-    point,
-    normal,
-    rotation,
-    courseLength: Math.hypot(upperY - ridgeY, upperZ - lower.z),
-  };
-}
-
-function addLeo2A7VFrontalERA(P: TankBuilderPort) {
+function addLeo2A7VFrontalProtection(P: TankBuilderPort) {
   const cassette = Object.freeze({
     widthM: 0.28,
     heightM: 0.13,
@@ -6947,19 +6890,12 @@ function addLeo2A7VFrontalERA(P: TankBuilderPort) {
     coverDepthM: 0.014,
     coverOverlapM: 0.003,
   });
-  const cheekSeats: LeopardCheekEraSeat[] = [];
   const glacisSeats: LeopardGlacisEraSeat[] = [];
-  const sectors = [
-    'a7v_turret_cheek_era_R', 'a7v_turret_cheek_era_L',
-    'a7v_upper_glacis_era',
-  ];
+  const sectors = ['a7v_upper_glacis_era'];
 
-  // Author both layers into the semantic external-armor buckets. Their UVs
-  // are projected only after the complete hull/turret bucket is transformed
-  // and merged, so the camouflage remains one vehicle-scale field instead of
-  // restarting its full 0..1 pattern on every tiny cassette instance. The
-  // inset cover is captured by the same destructible sector as its charge
-  // body, preserving one-shot strip/reset behavior without another draw call.
+  // The only consumable package is on the upper glacis. The turret cheeks are
+  // the broad permanent panels emitted by wedgeTurretV3, avoiding both false
+  // ERA semantics and a dense layer of tiny boxes over the arrowhead shape.
   const addLayeredCassette = (
     bucket: string,
     center: THREE.Vector3,
@@ -6990,36 +6926,6 @@ function addLeo2A7VFrontalERA(P: TankBuilderPort) {
       rotation.x, rotation.y, rotation.z,
     );
   };
-
-  for (const side of [-1, 1] as const) {
-    const sector = `a7v_turret_cheek_era_${side > 0 ? 'R' : 'L'}`;
-    P.destructibleCluster(sector, () => {
-      for (let row = 0; row < 6; row++) {
-        for (let station = 0; station < 7; station++) {
-          const absX = 0.42 + station * 0.15;
-          const courseFraction = (row + 0.5) / 6;
-          const surface = leo2A7VCheekSurface(side, absX, courseFraction);
-          const scale = {
-            x: 0.47,
-            y: (surface.courseLength / 6) * 0.93 / 0.13,
-            z: 0.86,
-          };
-          const overlap = 0.022;
-          const halfDepth = 0.07 * scale.z * 0.5;
-          const center = surface.point.clone().addScaledVector(surface.normal, halfDepth - overlap);
-          addLayeredCassette('turret', center, surface.normal, surface.rotation, scale);
-          cheekSeats.push(Object.freeze({
-            side, row, station, courseFraction,
-            surfaceLocal: surface.point.toArray().map((value) => Number(value.toFixed(5))),
-            centerLocal: center.toArray().map((value) => Number(value.toFixed(5))),
-            normalLocal: surface.normal.toArray().map((value) => Number(value.toFixed(5))),
-            scaleY: Number(scale.y.toFixed(5)),
-            innerFaceOverlapM: overlap,
-          }));
-        }
-      }
-    });
-  }
 
   // Four rows occupy only the broad upper plate behind the A7V's lane cut.
   // They sample the exact five-station profile and sink their backs 18 mm,
@@ -7059,22 +6965,24 @@ function addLeo2A7VFrontalERA(P: TankBuilderPort) {
   });
 
   return Object.freeze({
-    cheekTilesPerSide: 42,
+    turretCheekEraTiles: 0,
+    permanentCheekPanelLayers: 1,
+    permanentCheekPanels: 8,
+    turretFrontConstruction: 'broad-permanent-layered-chevron-armor',
+    turretFrontProtectionKind: 'spaced',
     glacisTiles: 44,
-    totalTiles: 128,
+    totalTiles: 44,
     cassetteLayers: 2,
-    coverTiles: 128,
-    totalAuthoredParts: 256,
+    coverTiles: 44,
+    totalAuthoredParts: 88,
     sectors: Object.freeze(sectors),
-    cheekSeats: Object.freeze(cheekSeats),
     glacisSeats: Object.freeze(glacisSeats),
-    cheekInnerFaceOverlapM: 0.022,
     glacisInnerFaceOverlapM: 0.018,
     coverInset: cassette.coverInset,
     coverDepthM: cassette.coverDepthM,
     coverOverlapM: cassette.coverOverlapM,
     camoProjection: 'vehicle-scale-box-uv',
-    destructibleConstruction: 'authored-layered-cluster',
+    destructibleConstruction: 'glacis-only-authored-layered-cluster',
     staticMergedProtection: true,
   });
 }
@@ -7099,7 +7007,7 @@ function addLeo2A7VFrontalERA(P: TankBuilderPort) {
 // sensor pods on the roof corners (photo class).
 // ---------------------------------------------------------------------------
 function buildLeo2A7V(P: TankBuilderPort) {
-  const { box, cylY, cylZ, polyMultiLoft } = KIT;
+  const { box, cylY, cylZ } = KIT;
   leoHullV3(P, {
     bodyHW: 1.76, sponsonY: 1.24, trackW: 0.66, xc: 1.53,
     deck: [[2.05, 1.60], [0.5, 1.62], [-1.0, 1.68], [-2.6, 1.69], [-3.40, 1.69], [-3.78, 1.69]],
@@ -7216,51 +7124,47 @@ function buildLeo2A7V(P: TankBuilderPort) {
   P.decal('hull', 'soot', null, 0.30, [-1.24, 1.83, -3.79], Math.PI);
   P.decal('hull', 'number', 'Y-877', 0.26, [0.62, 1.24, -3.795], Math.PI, 0);
 
-  // ---- turret: §5.09 STRUCTURAL REWORK (the §B8.1-4 merge alarm: the old
-  // wedgeTurretShell fit read turretMass ~77% of hull length — apex world
-  // 3.25 + rack -2.75 — and swung as a hull-length lid at yaw). Re-laid on
-  // the FAMILY V3 WEDGE (wedgeTurretV3 param delta — the a5/a6 grammar the
-  // packet's own residual named "finer"): apex world 1.90, rack rear world
-  // -2.23 -> turretMass ~4.13 m = 53.5% of the 7.72 hull (< the 55% alarm).
-  // dims anchors preserved: EMES lid ~2.66w = the heightM anchor, PERI head
-  // 2.90w (z-depth 0.12 = 1-2 spike columns), width inside ±2.00, muzzle
-  // +7.09 / tail -3.86 untouched (registration-anchor law).
-  // Restore the first-party A7V combat-height datum.  The later clearance
-  // experiment lowered the whole rotating package by 0.26 m and shaved a
-  // further 0.10 m from the shell, leaving a 2.44 m broad silhouette against
-  // the published 2.87 m vehicle.  The native track fix never required that
-  // collapse: the deep undercut below remains seated above the fixed deck.
-  // The first de-fusion pass over-corrected the datum to 1.98 m and exposed
-  // a tall cylindrical neck in side/quarter views.  Keep the complete
-  // authored rotating package above the deck, but lower it to a restrained
-  // combat-height datum where the shallow bearing overlaps the ring seat.
+  // ---- turret: preserve the A6-family welded shell as the unmistakable
+  // baseline, then add only A7V protection and roof equipment. The previous
+  // short nose, equal-height lower return and independent broad crown turned
+  // the turret into a tall triangular shell unrelated to the 2A5/2A6 line.
+  // The ring datum stays 10 cm over the local deck, matching the family seat.
   P.turretG.position.set(0, 1.72, 0.35);
   wedgeTurretV3(P, {
-    h: 0.64, apexY: 0.22, gunW: 0.36, slotZ: 1.18,
-    chamferY: 0.55, roofX: 1.06, crestTail: 0.62, crestTailDrop: 0.005,
-    // The full-height lower cheek is the front's structural return. Retire
-    // the separate pointed pan whose low roof and side faces protruded in
-    // front of it at the owner's exact marked coordinates.
+    h: 0.75, apexY: 0.09, gunW: 0.36, slotZ: 1.55,
+    chamferY: 0.55, roofX: 1.05, crestTail: 0.05, crestTailDrop: 0.005,
+    wallDrop: 0.10, wallShadowXCap: 1.335,
+    underbodyRings: [
+      { height: -0.12, inset: 0.90 },
+      { height: 0.055, inset: 1.00 },
+    ],
+    seatRing: { r0: 1.08, r1: 1.12, h: 0.16, y: -0.045, z: -0.30 },
     underride: false,
+    // Same stepped side wall and roof trough grammar as the A6. The aft
+    // bustle remains A7V-specific below; only the fighting compartment is
+    // standardized to the real family progression.
     body: [
-      { x: 1.41, z0: -0.10, z1: 0.55, cY: 0.55 },
-      { x: 1.41, z0: -0.75, z1: -0.10, cY: 0.55 },
-      { x: 1.40, z0: -1.30, z1: -0.75, y0: 0.05, cY: 0.55 },
-      { x: 1.37, z0: -1.72, z1: -1.30, xt: 1.10, y0: 0.05 },
-      { x: 1.31, z0: -2.35, z1: -1.72, xt: 1.06, y0: 0.085, top: 0.72 },
+      { x: 1.38, z0: 0.05, z1: 0.60, top: 0.62, cY: 0.30 },
+      { x: 1.38, z0: -0.60, z1: 0.05, top: 0.62, cY: 0.30, y0: -0.045 },
+      { x: 1.38, z0: -1.52, z1: -0.60, top: 0.62, cY: 0.30, y0: 0.045 },
+      { x: 1.06, z0: -0.90, z1: 0.03, top: 0.80, xt: 0.92, vT: 0.735, y0: 0.30 },
+      { x: 1.06, z0: -1.50, z1: -0.90, top: 0.835, xt: 0.88, vT: 0.735, y0: 0.30 },
+      { x: 1.29, z0: -2.06, z1: -1.52, top: 0.62, y0: 0.07 },
+      { x: 0.98, z0: -1.77, z1: -1.54, top: 0.82, xt: 0.86, vT: 0.64, y0: 0.30 },
+      { x: 1.10, z0: -2.43, z1: -2.06, top: 0.62, y0: 0.07 },
+      { x: 0.94, z0: -2.38, z1: -1.77, top: 0.76, xt: 0.86, vT: 0.64, y0: 0.30 },
     ],
     rack: { x: 1.22, z0: -2.30, z1: -3.30, top: 0.60, bot: 0.15, wall: true },
-    // The owner source's top view is a continuous arrowhead: the ridge
-    // begins beside the gun and sweeps rearward at every outboard station.
-    // A nearly-flat 0.30..1.42 m run was the remaining square-front defect.
+    // A7V keeps the long A6 gun-root arrowhead. Its incremental protection
+    // changes the surface package, not the underlying plan lineage.
     nose: LEO2A7V_CHEVRON_NOSE,
-    // The A7V keeps a dominant upper face and a shorter lower return, but
-    // carries a sharper six-station plan than the A5/A6 family members.
     chevron: {
-      profile: 'leopard-2a7v', ridgeInsetM: 0.040, ridgeLiftM: 0.09,
-      upperSlopeDeg: 18, upperRootY: 0.76, upperTipY: 0.54, upperTaperStartX: 1.24,
-      rootDepthM: [0.54, 0.52, 0.49, 0.44, 0.39, 0.34],
-      equalLowerReturnHeight: true,
+      profile: 'leopard-2a7v', ridgeInsetM: 0.030, ridgeLiftM: 0.13,
+      upperSlopeDeg: 19, upperRootY: 0.66, upperTipY: 0.50, upperTaperStartX: 1.30,
+      rootDepthM: [0.90, 0.82, 0.68, 0.66, 0.52, 0.34],
+      rootY: [-0.07, -0.07, -0.07, -0.07, 0.05, 0.12],
+      panelThicknessM: 0.028,
+      verticalTerminalSideClosure: true, terminalSideBodyOverlapM: 0.025,
     },
     crest: LEO2A7V_CHEVRON_CREST,
     // The A7V outboard armor is carried by the continuous cheek and side
@@ -7288,37 +7192,11 @@ function buildLeo2A7V(P: TankBuilderPort) {
       { x: -1.00, baseY: 0.66, z: -2.35, top: 3.06 },
       { x: 1.00, baseY: 0.66, z: -2.35, top: 2.44 },
     ],
-    smoke: { x: 1.22, y: 0.40, z: -1.35 },
+    smoke: { x: 1.28, y: 0.40, z: -1.35 },
   });
-  // The flattened revision left a broad empty roof between the wedge
-  // shoulders.  Restore the missing combat volume as one connected native
-  // shoulder/crown loft: its lower ring is buried in the existing armor,
-  // then the shell falls inward continuously instead of becoming a tall
-  // rectangular wall.  These are our authored stations, not source mesh.
-  const a7vCrownPlan = [
-    [-0.30, 1.34], [0.30, 1.34], [0.82, 1.08], [1.30, 0.68], [1.38, -0.42],
-    [1.24, -1.62], [0.94, -1.96], [-0.94, -1.96], [-1.24, -1.62],
-    [-1.38, -0.42], [-1.30, 0.68], [-0.82, 1.08],
-  ];
-  const a7vCrownInset = a7vCrownPlan.map(() => 0.60);
-  P.add('turret', polyMultiLoft(a7vCrownPlan, [
-    { height: 0.46, inset: 1.00 },
-    { height: 0.60, inset: 0.84 },
-    { height: 0.76, inset: a7vCrownInset },
-  ]));
-  // The A7V roof is not a uniformly raised bustle.  Its combat-height
-  // volume is a compact welded plateau over the forward/central stations,
-  // while the aft crown falls away.  This connected loft restores that
-  // profile without turning the complete turret rear into a tall wall.
-  const a7vRoofPlateau = [
-    [-0.70, 0.64], [0.70, 0.64], [0.88, 0.34], [0.86, -0.68],
-    [0.64, -0.92], [-0.64, -0.92], [-0.86, -0.68], [-0.88, 0.34],
-  ];
-  P.add('turret', polyMultiLoft(a7vRoofPlateau, [
-    { height: 0.68, inset: 1.00 },
-    { height: 0.78, inset: 0.92 },
-    { height: 0.82, inset: 0.82 },
-  ]));
+  // No independent crown loft: wedgeTurretV3's A6-family roof trough is the
+  // structural roof. Removing the second broad shell eliminates the swollen
+  // triangular silhouette and the buried overlapping geometry beneath it.
   // EMES is a raised armored sight, not a glass box in free space.  Carry
   // its housing down into the crown through a broad native pedestal; this
   // also makes the height datum mechanically honest at every turret yaw.
@@ -7444,10 +7322,10 @@ function buildLeo2A7V(P: TankBuilderPort) {
       P.add('turretDark', box(0.022, 0.022, 0.16), s * 1.05, 0.752, pz - 0.10, 0, 0, 0);
     }
   }
-  // cross decals ON the side-module outer faces (§C decals-are-mask-
-  // geometry — pinned to the V3 sideMods planes at ±1.53).
-  P.decal('turret', 'crossgrey', null, 0.36, [1.536, 0.18, -0.65], Math.PI / 2);
-  P.decal('turret', 'crossgrey', null, 0.36, [-1.536, 0.18, -0.65], -Math.PI / 2);
+  // Crosses sit on the real A6-family side-module faces instead of floating
+  // at the obsolete broad-crown width.
+  P.decal('turret', 'crossgrey', null, 0.36, [1.346, 0.18, -0.65], Math.PI / 2);
+  P.decal('turret', 'crossgrey', null, 0.36, [-1.346, 0.18, -0.65], -Math.PI / 2);
   // L/55A1: trunnion world z 1.55, axis 1.98, tube tip world 7.09 over the
   // -3.86 tail = overall 10.95 (published 10.97, 0.18%). The v1 len 5.45
   // predates the honest ±3.86 hull and read overall 10.84 (-1.8 dims).
@@ -7463,7 +7341,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
   P.addGunExtraDark(box(0.36, 0.045, 0.52), 0, -0.190, 0.91);                 // flexible boot lower seam
   P.addGunExtraDark(KIT.cylZ(0.160, 0.045, P.q ? 20 : 14), 0, 0, 1.34);      // forward boot clamp
   leoMantletGun(P, { rollR: 0.23, rollW: 0.52, plateW: 0.48, plateH: 0.36, len: 5.53, r: 0.073, evac: 0.58, evacR: 1.75 });
-  const eraReceipt = addLeo2A7VFrontalERA(P);
+  const protectionReceipt = addLeo2A7VFrontalProtection(P);
   if (P.geometryReceipt) {
     P.gunG.userData.leopard2A7VGunHousingReceipt = Object.freeze({
       rearWidthM: 0.56,
@@ -7478,7 +7356,17 @@ function buildLeo2A7V(P: TankBuilderPort) {
       trunnionRollDiameterM: 0.46,
       gunOwned: true,
     });
-    P.turretG.userData.leopard2A7VProtectionReceipt = eraReceipt;
+    P.turretG.userData.leopard2A7VProtectionReceipt = protectionReceipt;
+    P.turretG.userData.leopard2A7VLineageReceipt = Object.freeze({
+      architecture: 'leopard-2a6-family-evolution',
+      baselineProfile: 'leopard-2a6',
+      independentCrownLofts: 0,
+      bodyFrontHalfWidthM: 1.38,
+      verticalTerminalSideClosure: true,
+      dominantUpperChevron: true,
+      a7vSpecificProtectionRetained: true,
+      a7vSpecificRoofEquipmentRetained: true,
+    });
   }
   P.topY = 1.24;
 }

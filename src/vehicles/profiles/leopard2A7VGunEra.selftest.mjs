@@ -3,19 +3,29 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 
-const eraSectorNames = [
-  'a7v_turret_cheek_era_R', 'a7v_turret_cheek_era_L',
-  'a7v_upper_glacis_era',
+const eraSectorNames = ['a7v_upper_glacis_era'];
+const permanentCheekNames = [
+  'a7v_turret_cheek_layer_R', 'a7v_turret_cheek_layer_L',
 ];
 const spec = getSpec('leo2a7v');
 const eraSectors = [...spec.armor.hullPlates, ...spec.armor.turretPlates]
   .filter((plate) => eraSectorNames.includes(plate.name));
 assert.deepEqual(new Set(eraSectors.map((plate) => plate.name)), new Set(eraSectorNames),
-  'Leopard 2A7V visual ERA maps one-to-one to combat sectors');
+  'Leopard 2A7V keeps ERA only on the upper glacis');
 for (const plate of eraSectors) {
   assert.equal(plate.kind, 'era', `${plate.name} is consumable ERA`);
   assert.ok(plate.era?.ceFlatMm >= 400, `${plate.name} has a chemical protection payload`);
 }
+const permanentCheeks = spec.armor.turretPlates
+  .filter((plate) => permanentCheekNames.includes(plate.name));
+assert.deepEqual(new Set(permanentCheeks.map((plate) => plate.name)), new Set(permanentCheekNames),
+  'both turret cheeks publish permanent layered-armor sectors');
+for (const plate of permanentCheeks) {
+  assert.equal(plate.kind, 'spaced', `${plate.name} is permanent spaced armor`);
+  assert.equal(plate.era, null, `${plate.name} carries no explosive payload`);
+}
+assert.equal(spec.armor.turretPlates.some((plate) => /a7v_turret_cheek_era/.test(plate.name)), false,
+  'obsolete turret-cheek ERA sectors are absent');
 
 const visual = createTank('leo2a7v', null, {
   proceduralOnly: true,
@@ -29,16 +39,22 @@ assert.ok(turretRig && gunRig, 'Leopard 2A7V keeps canonical turret and gun rigs
 
 const protection = turretRig.userData.leopard2A7VProtectionReceipt;
 assert.ok(protection, 'Leopard 2A7V publishes its fitted protection receipt');
-assert.equal(protection.totalTiles, 128, 'complete cheek and glacis package is authored');
-assert.equal(protection.cheekSeats.length, 84, 'six courses cover both turret cheeks');
+assert.equal(protection.turretCheekEraTiles, 0, 'turret front carries no ERA tiles');
+assert.equal(protection.permanentCheekPanelLayers, 1,
+  'turret cheek protection is one permanent applique layer over the structural arrowhead');
+assert.equal(protection.permanentCheekPanels, 8,
+  'four broad permanent panels protect each turret cheek');
+assert.equal(protection.turretFrontConstruction, 'broad-permanent-layered-chevron-armor');
+assert.equal(protection.turretFrontProtectionKind, 'spaced');
 assert.equal(protection.glacisSeats.length, 44, 'four courses cover the upper glacis');
 assert.equal(protection.cassetteLayers, 2, 'every cassette has a charge body and inset cover');
-assert.equal(protection.coverTiles, 128, 'every ERA charge body receives one cover layer');
-assert.equal(protection.totalAuthoredParts, 256, 'the full two-layer package is authored');
+assert.equal(protection.totalTiles, 44, 'only the upper-glacis ERA tiles remain');
+assert.equal(protection.coverTiles, 44, 'every glacis charge body receives one cover layer');
+assert.equal(protection.totalAuthoredParts, 88, 'the glacis two-layer package is authored');
 assert.equal(protection.camoProjection, 'vehicle-scale-box-uv',
   'ERA camouflage is projected once at vehicle scale');
-assert.equal(protection.destructibleConstruction, 'authored-layered-cluster',
-  'both ERA layers participate in gameplay strip/reset behavior');
+assert.equal(protection.destructibleConstruction, 'glacis-only-authored-layered-cluster',
+  'only the glacis layers participate in gameplay strip/reset behavior');
 assert.deepEqual(new Set(protection.sectors), new Set(eraSectorNames),
   'receipt sectors match destructible armor sectors');
 assert.equal(protection.staticMergedProtection, true,
@@ -56,9 +72,6 @@ const assertSurfaceSeat = (seat, halfDepth, expectedOverlap, label) => {
     `${label} inner face overlaps its armor seat by ${expectedOverlap} m`);
   assert.equal(seat.innerFaceOverlapM, expectedOverlap, `${label} records its overlap`);
 };
-for (const seat of protection.cheekSeats) {
-  assertSurfaceSeat(seat, 0.07 * 0.86 * 0.5, 0.022, 'cheek ERA');
-}
 for (const seat of protection.glacisSeats) {
   assertSurfaceSeat(seat, 0.07 * 0.5, 0.018, 'glacis ERA');
 }
@@ -80,11 +93,11 @@ visual.root.traverse((object) => {
 });
 assert.equal(obsoleteInstancedEra.length, 0,
   'ERA no longer repeats one full 0..1 camouflage island per cassette instance');
-assert.equal(externalArmorMeshes.length, 2,
-  'layered protection adds only the hull and turret external-armor draw buckets');
+assert.equal(externalArmorMeshes.length, 1,
+  'layered ERA adds only the upper-glacis hull draw bucket');
 assert.deepEqual(new Set(externalArmorMeshes.map((mesh) => mesh.name)),
-  new Set(['hullExternalArmor', 'turretExternalArmor']),
-  'layered ERA remains merged into exactly two semantic armor draw buckets');
+  new Set(['hullExternalArmor']),
+  'no turret external-armor draw bucket remains');
 for (const mesh of externalArmorMeshes) {
   assert.equal(mesh.userData.combatHitboxRole, 'externalArmor',
     `${mesh.name} stays outside the primary shell envelope`);
@@ -106,38 +119,41 @@ for (const mesh of externalArmorMeshes) {
     `${mesh.name} UVs are not confined to a miniature repeated 0..1 island`);
 }
 assert.ok(externalArmorMeshes.reduce((total, mesh) =>
-  total + mesh.geometry.getAttribute('position').count, 0) <= 9216,
-  'two-layer protection stays within the crisp-box static vertex budget');
+  total + mesh.geometry.getAttribute('position').count, 0) <= 4608,
+  'glacis protection stays within the crisp-box static vertex budget');
 
 const externalParts = visual.root.userData.combatGeometryParts
   .filter((part) => part.bucket === 'hullExternalArmor'
     || part.bucket === 'turretExternalArmor');
-assert.equal(externalParts.filter((part) => part.bucket === 'turretExternalArmor').length, 168,
-  '84 turret cassettes contribute one base and one cover each');
+assert.equal(externalParts.filter((part) => part.bucket === 'turretExternalArmor').length, 0,
+  'permanent cheek panels are merged into the turret rather than a destructible ERA bucket');
 assert.equal(externalParts.filter((part) => part.bucket === 'hullExternalArmor').length, 88,
   '44 glacis cassettes contribute one base and one cover each');
 
 const hullEra = externalArmorMeshes.find((mesh) => mesh.name === 'hullExternalArmor');
-const turretEra = externalArmorMeshes.find((mesh) => mesh.name === 'turretExternalArmor');
-turretEra.geometry.computeBoundingBox();
-assert.ok(Math.max(
-  Math.abs(turretEra.geometry.boundingBox.min.x),
-  Math.abs(turretEra.geometry.boundingBox.max.x),
-) <= turretRig.userData.leopardChevronFrontReceipt.bodyFrontHalfWidthM + 1e-6,
-  'turret ERA stays fully supported by the narrowed cheek/body envelope');
+const chevron = turretRig.userData.leopardChevronFrontReceipt;
+assert.equal(chevron.surfacePanelCount, 8,
+  'the A7V turret front retains eight broad armor panels');
+assert.equal(chevron.surfacePanelLayerCount, 1,
+  'broad panels form one permanent layer over the structural cheek');
+for (const side of chevron.sides) {
+  assert.equal(side.surfacePanels.length, 4, `${side.side} cheek has four broad panels`);
+  for (const panel of side.surfacePanels) {
+    assert.equal(panel.thicknessM, 0.028, `${side.side} cheek panel has A7V applique depth`);
+  }
+}
 const hullBeforeStrip = hullEra.geometry.getAttribute('position').array.slice();
-const turretBeforeStrip = turretEra.geometry.getAttribute('position').array.slice();
 assert.equal(visual.stripEra('a7v_upper_glacis_era'), true,
   'upper-glacis sector is destructible');
 assert.ok(hullEra.geometry.getAttribute('position').array.some((value) => value < -999),
   'a glacis ERA hit removes both authored layers from the rendered hull bucket');
-assert.deepEqual(turretEra.geometry.getAttribute('position').array, turretBeforeStrip,
-  'a glacis ERA hit leaves turret ERA untouched');
+assert.equal(visual.stripEra('a7v_turret_cheek_layer_R'), false,
+  'permanent turret armor cannot be stripped as ERA');
+assert.equal(visual.stripEra('a7v_turret_cheek_era_R'), false,
+  'obsolete turret ERA sector no longer exists');
 visual.resetEra();
 assert.deepEqual(hullEra.geometry.getAttribute('position').array, hullBeforeStrip,
   'round reset restores both glacis ERA layers exactly');
-assert.deepEqual(turretEra.geometry.getAttribute('position').array, turretBeforeStrip,
-  'round reset preserves the untouched turret package');
 
 const housing = gunRig.userData.leopard2A7VGunHousingReceipt;
 assert.ok(housing, 'Leopard 2A7V publishes its compact gun-housing receipt');
