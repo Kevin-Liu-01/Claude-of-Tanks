@@ -2501,7 +2501,7 @@ function createCombatWarmRuntimeContext() {
     scratch2: _v2,
     scratch3: _v3,
     anisotropy: engineCtx.anisotropy ?? 4,
-    ensureStagedVisuals,
+    ensureStagedVisuals: (count: number) => ensureStagedVisuals(game, count),
     prebakeBurntSteps,
     warmWreckTextures,
     createIsolatedForwardWarmBatches,

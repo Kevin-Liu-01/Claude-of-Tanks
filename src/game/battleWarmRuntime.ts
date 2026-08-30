@@ -3,9 +3,16 @@ import {
   type Camera,
   type Material,
   type Object3D,
+  type PerspectiveCamera,
   type Scene,
   type WebGLRenderer,
 } from 'three';
+import type {
+  DeploymentForwardWarmBatch,
+  IsolatedForwardWarmOptions,
+} from '../engine/deploymentWarm.ts';
+import type { DeploymentShadowWarmOwner } from '../engine/deploymentShadowWarm.ts';
+import type { ForwardProgramWarmOwner } from '../engine/programWarm.ts';
 import {
   createFrameBudgetYielder,
   createOpaqueLoadingYielder,
@@ -29,23 +36,27 @@ interface BattleWarmVisual {
   prewarmBurn?(): Object3D[] | void;
   getWreckFallbackMaterial?(): Material | null;
   stageBattleDetailsForWarm?(): () => void;
+  setDestroyed?(options?: { pop?: boolean; ageS?: number }): void;
+  resetDestroyed?(): void;
+  setTrackState?(module: string, destroyed: boolean): void;
 }
 
 interface BattleWarmEntity {
   specId?: string;
   camo?: string;
   isPlayer?: boolean;
-  state?: BattleWarmState;
-  visual?: BattleWarmVisual;
+  state?: BattleWarmState | null;
+  visual?: BattleWarmVisual | null;
   _openingRoute?: unknown[];
   spec?: {
+    dims?: { heightM?: number };
     gun?: {
       shells?: ShellSpecLike[];
     };
   };
   combat?: {
     shellSlot?: number;
-  };
+  } | null;
 }
 
 interface BattleWarmGame {
@@ -68,7 +79,7 @@ interface BattleWarmWorld {
     dt: number,
     cameraPosition: Vector3,
     cameraForward: Vector3,
-    focusPosition: Vec3Like,
+    focusPosition: Vector3,
   ): void;
 }
 
@@ -147,7 +158,12 @@ export async function warmBattleTerrainTiles({
       focus.state.pos.z - Math.cos(yaw) * 12,
     );
     const warmForward = new Vector3(Math.sin(yaw), -0.16, Math.cos(yaw)).normalize();
-    world.update(0, warmCamera, warmForward, focus.state.pos);
+    const warmFocus = new Vector3(
+      focus.state.pos.x,
+      focus.state.pos.y,
+      focus.state.pos.z,
+    );
+    world.update(0, warmCamera, warmForward, warmFocus);
     if (yieldForBudget) await yieldForBudget(true);
   }
 }
@@ -421,7 +437,7 @@ interface BattleFxPort {
 
 interface StudioFxPort extends BattleFxPort {
   warmTexturesChunked?(yieldForBudget: WorkYielder): Promise<void>;
-  preloadTextures?(): Promise<void>;
+  preloadTextures?(): Promise<unknown>;
   impact(kind: string, position: Vector3, normal: Vector3, caliberMm: number): void;
   dust(position: Vector3, direction: Vector3, scale: number): void;
   exhaust(position: Vector3, scale: number, moving: boolean): void;
@@ -738,33 +754,70 @@ export function invalidateBattleWarmRuntime(): void {
 
 type WarmGenerator = Generator<unknown, unknown, unknown>;
 
+interface CombatWarmFxPort extends StudioFxPort {
+  muzzleFlash(position: Vector3, direction: Vector3, caliberMm: number): void;
+  armorScar(
+    visual: { root: Object3D },
+    position: Vector3,
+    normal: Vector3,
+    caliberMm: number,
+  ): void;
+}
+
+interface CombatWarmWorld extends BattleWarmWorld {
+  group?: Object3D;
+}
+
+interface CombatWarmLightingPort {
+  updateFrustums?(): void;
+}
+
+interface CombatWarmTrace {
+  stages: Record<string, number>;
+  effectDetail?: Record<string, unknown>;
+  hiddenDetail?: Record<string, unknown>;
+  totalMs?: number;
+}
+
+interface CombatWarmWindow extends Window {
+  __COMBAT_OPENING_WARM?: CombatWarmTrace;
+  __COMBAT_RARE_WARM?: CombatWarmTrace;
+  __COMBAT_WARM?: {
+    opening: CombatWarmTrace | null;
+    rare: CombatWarmTrace;
+    totalMs: number;
+  };
+}
+
 /**
- * Legacy integration ports used by the fallback solo/capture warm path. The
+ * Exact integration ports used by the fallback solo/capture warm path. The
  * owner is loaded only after Battle or deterministic-capture intent, while
- * retaining the exact existing generators and their synchronous drain
- * contract. These broad ports are deliberately contained at the main.ts
- * migration seam; the warm implementation itself is now typed and isolated.
+ * retaining the existing generators and their synchronous drain contract.
+ * Main supplies renderer-owned services without leaking its composition-root
+ * state into this isolated battle-only module.
  */
 export interface CombatWarmRuntimeContext {
-  game: any;
-  fx: any;
-  post: any;
-  renderer: any;
-  camera: any;
-  scene: any;
-  world(): any;
+  game: BattleWarmGame;
+  fx: CombatWarmFxPort;
+  post: BattlePostPort;
+  renderer: WebGLRenderer;
+  camera: PerspectiveCamera;
+  scene: Scene;
+  world(): CombatWarmWorld | null;
   warmRender(): unknown;
-  deploymentShadowWarm: any;
-  forwardProgramWarm: any;
-  lighting: any;
+  deploymentShadowWarm: DeploymentShadowWarmOwner;
+  forwardProgramWarm: ForwardProgramWarmOwner;
+  lighting: CombatWarmLightingPort;
   scratch1: Vector3;
   scratch2: Vector3;
   scratch3: Vector3;
   anisotropy: number;
-  ensureStagedVisuals(game: any, count: number): boolean;
+  ensureStagedVisuals(count: number): boolean;
   prebakeBurntSteps(specId: string, anisotropy: number): Iterable<unknown>;
-  warmWreckTextures(renderer: any): void;
-  createIsolatedForwardWarmBatches(options: any): Iterable<any>;
+  warmWreckTextures(renderer: WebGLRenderer): void;
+  createIsolatedForwardWarmBatches(
+    options: IsolatedForwardWarmOptions,
+  ): Iterable<DeploymentForwardWarmBatch>;
   isOpeningReady(): boolean;
   isRareReady(): boolean;
   markOpeningReady(): void;
@@ -779,7 +832,7 @@ function* warmDestroyedRosterVariantsSteps(
   const { game, renderer, forwardProgramWarm } = context;
   for (const entity of game.tanks.slice()) {
     const visual = entity?.visual;
-    if (!visual?.root || !visual.setDestroyed || !visual.resetDestroyed) continue;
+    if (!entity.specId || !visual?.root || !visual.setDestroyed || !visual.resetDestroyed) continue;
     try {
       yield* context.prebakeBurntSteps(entity.specId, context.anisotropy);
     } catch (_) { /* warm only */ }
@@ -811,15 +864,21 @@ function* warmDestroyedRosterVariantsSteps(
 
 function* compileHiddenVariantsSteps(
   context: CombatWarmRuntimeContext,
-  detail: Record<string, any> | null = null,
+  detail: Record<string, unknown> | null = null,
 ): WarmGenerator {
   const {
     game, renderer, camera, forwardProgramWarm, lighting,
   } = context;
-  const compileAll = function* (root: any): WarmGenerator {
-    const objects: any[] = [];
-    root.traverse((object: any) => {
-      if (object.isMesh || object.isPoints || object.isLine || object.isSprite) {
+  const compileAll = function* (root: Object3D): WarmGenerator {
+    const objects: Object3D[] = [];
+    root.traverse((object) => {
+      const renderable = object as Object3D & {
+        isMesh?: boolean;
+        isPoints?: boolean;
+        isLine?: boolean;
+        isSprite?: boolean;
+      };
+      if (renderable.isMesh || renderable.isPoints || renderable.isLine || renderable.isSprite) {
         objects.push(object);
       }
     });
@@ -858,12 +917,12 @@ function* compileHiddenVariantsSteps(
     yield* forwardProgramWarm.linkerBreathingSlices(40);
   }
 
-  const flips: any[] = [];
+  const flips: Object3D[] = [];
   const collectFlips = (): void => {
     flips.length = 0;
     for (const entity of game.tanks) {
       if (!entity.visual?.root) continue;
-      entity.visual.root.traverse((object: any) => {
+      entity.visual.root.traverse((object) => {
         if (object.visible === false) {
           flips.push(object);
           object.visible = true;
@@ -910,7 +969,7 @@ export function* createCombatOpeningWarmSteps(
 ): WarmGenerator {
   if (context.isOpeningReady()) return;
   const { game, fx, post, renderer, camera, scene } = context;
-  const warmTrace: Record<string, any> = { stages: {} };
+  const warmTrace: CombatWarmTrace = { stages: {} };
   const warmStartedAt = performance.now();
   let warmMarkedAt = warmStartedAt;
   const markWarmStage = (name: string): void => {
@@ -920,13 +979,13 @@ export function* createCombatOpeningWarmSteps(
   };
 
   fx.warmTextures?.();
-  while (!context.ensureStagedVisuals(game, 1)) yield;
+  while (!context.ensureStagedVisuals(1)) yield;
   yield;
   markWarmStage('visuals');
   for (const entity of game.tanks) entity.visual?.prewarmBurn?.();
   markWarmStage('rosterHooks');
 
-  const effectDetail: Record<string, any> = {};
+  const effectDetail: Record<string, unknown> = {};
   let effectDetailAt = performance.now();
   const markEffectDetail = (name: string): void => {
     const now = performance.now();
@@ -954,7 +1013,7 @@ export function* createCombatOpeningWarmSteps(
       fx.exhaust(position, 1, true);
       yield;
       markEffectDetail('openingEffects');
-      try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
+      try { fx.update(0.016, game.shells ?? [], camera); } catch (_) { /* warm only */ }
       const softParticlesAt = performance.now();
       post.prepareSoftParticles();
       effectDetail.softParticles = Math.round(performance.now() - softParticlesAt);
@@ -963,7 +1022,7 @@ export function* createCombatOpeningWarmSteps(
       try {
         const before = (renderer.info.programs || []).length;
         const forwardAt = performance.now();
-        const batches: any[] = [];
+        const batches: DeploymentForwardWarmBatch[] = [];
         for (const batch of context.createIsolatedForwardWarmBatches({
           scene, root: fx.group, warmRender: context.warmRender, cohortSize: 1,
         })) {
@@ -990,16 +1049,12 @@ export function* createCombatOpeningWarmSteps(
   warmTrace.effectDetail = effectDetail;
   markWarmStage('effects');
   if (!fx.group.userData.battleTexturesStaged) {
-    fx.group.traverse((object: any) => {
-      const materials = Array.isArray(object.material)
-        ? object.material : (object.material ? [object.material] : []);
+    fx.group.traverse((object) => {
+      const renderable = object as Object3D & { material?: Material | Material[] };
+      const materials = Array.isArray(renderable.material)
+        ? renderable.material : (renderable.material ? [renderable.material] : []);
       for (const material of materials) {
-        for (const key of Object.keys(material)) {
-          const value = material[key];
-          if (value?.isTexture) {
-            try { renderer.initTexture(value); } catch (_) { /* warm only */ }
-          }
-        }
+        initializeMaterialTextures(renderer, material);
       }
     });
   }
@@ -1007,7 +1062,9 @@ export function* createCombatOpeningWarmSteps(
   markWarmStage('textures');
   context.markOpeningReady();
   warmTrace.totalMs = Math.round(performance.now() - warmStartedAt);
-  if (typeof window !== 'undefined') (window as any).__COMBAT_OPENING_WARM = warmTrace;
+  if (typeof window !== 'undefined') {
+    (window as CombatWarmWindow).__COMBAT_OPENING_WARM = warmTrace;
+  }
 }
 
 function* warmCombatDestructionEffectSteps(
@@ -1037,7 +1094,7 @@ function* warmCombatDestructionEffectSteps(
     }
     fx.propCrush(position, context.scratch3, 7);
     yield;
-    try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
+    try { fx.update(0.016, game.shells ?? [], camera); } catch (_) { /* warm only */ }
     post.prepareSoftParticles();
     const mask = camera.layers.mask;
     camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
@@ -1075,7 +1132,7 @@ export function* createCombatRareWarmSteps(
   if (context.isRareReady()) return;
   if (!context.isOpeningReady()) yield* createCombatOpeningWarmSteps(context);
   const { game, fx, renderer } = context;
-  const rareTrace: Record<string, any> = { stages: {} };
+  const rareTrace: CombatWarmTrace = { stages: {} };
   const startedAt = performance.now();
   let markedAt = startedAt;
   const mark = (name: string): void => {
@@ -1091,7 +1148,7 @@ export function* createCombatRareWarmSteps(
     context.scratch1.copy(entity.state.pos);
     context.scratch1.y += (entity.spec?.dims?.heightM || 2.4) * 0.5;
     context.scratch2.set(0, 0, 1);
-    try { fx.armorScar(entity.visual, context.scratch1, context.scratch2, 100); }
+    try { fx.armorScar({ root: entity.visual.root }, context.scratch1, context.scratch2, 100); }
     catch (_) { /* warm only */ }
     yield;
   }
@@ -1100,16 +1157,12 @@ export function* createCombatRareWarmSteps(
   mark('destructionEffects');
 
   context.warmWreckTextures(renderer);
-  fx.group.traverse((object: any) => {
-    const materials = Array.isArray(object.material)
-      ? object.material : (object.material ? [object.material] : []);
+  fx.group.traverse((object) => {
+    const renderable = object as Object3D & { material?: Material | Material[] };
+    const materials = Array.isArray(renderable.material)
+      ? renderable.material : (renderable.material ? [renderable.material] : []);
     for (const material of materials) {
-      for (const key of Object.keys(material)) {
-        const value = material[key];
-        if (value?.isTexture) {
-          try { renderer.initTexture(value); } catch (_) { /* warm only */ }
-        }
-      }
+      initializeMaterialTextures(renderer, material);
     }
   });
   yield;
@@ -1123,7 +1176,7 @@ export function* createCombatRareWarmSteps(
   context.markRareReady();
   rareTrace.totalMs = Math.round(performance.now() - startedAt);
   if (typeof window !== 'undefined') {
-    const runtimeWindow = window as any;
+    const runtimeWindow = window as CombatWarmWindow;
     runtimeWindow.__COMBAT_RARE_WARM = rareTrace;
     runtimeWindow.__COMBAT_WARM = {
       opening: runtimeWindow.__COMBAT_OPENING_WARM || null,

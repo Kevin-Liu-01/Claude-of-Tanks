@@ -10,6 +10,7 @@ import type { TankState } from '../sim/movement.ts';
 import type { SpecialActionState } from '../sim/specialActionPolicy.ts';
 import type { WorldRuntime } from '../world/map.ts';
 import type { getSpec } from '../vehicles/specs.ts';
+import type { FxRuntime } from '../fx/effects.ts';
 
 export interface MainLightingRuntime {
   setupShadowMaterial(material: THREE.Material, extraHook?: unknown): void;
@@ -43,22 +44,18 @@ export interface MainGarageRuntime {
 
 export type MainVisual = NonNullable<RosterEntity['visual']>;
 
-export interface MainFxRuntime {
-  group: THREE.Object3D;
+export interface MainFxRuntime extends Omit<
+  FxRuntime,
+  'bindBus' | 'preloadTextures' | 'update'
+> {
   bindBus(bus: EventBus): void;
-  preloadTextures?(): Promise<unknown> | unknown;
-  setFrozen(frozen: boolean): void;
-  resetAll(): void;
-  update(...args: unknown[]): void;
-  clearVehicleDecals(target: unknown): void;
-  impact(...args: unknown[]): unknown;
-  dust(...args: unknown[]): unknown;
-  exhaust(...args: unknown[]): unknown;
-  propBreak(...args: unknown[]): unknown;
-  propCrush(...args: unknown[]): unknown;
-  warmOpeningEffects(...args: unknown[]): unknown;
-  destruction: unknown;
-  [key: string]: unknown;
+  preloadTextures(): Promise<unknown>;
+  update(
+    dt: number,
+    shells: unknown[],
+    camera: THREE.Camera,
+    resolveSubject?: ((id: string) => unknown) | null,
+  ): void;
 }
 
 export interface MainFxModule {

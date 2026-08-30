@@ -1,7 +1,43 @@
 import { Vector3 } from 'three';
 
+interface PhaseChangeEvent {
+  phase: string;
+}
+
+interface ShellFiredEvent {
+  shellId: string | number;
+  isPlayer?: boolean;
+  muzzlePos: readonly number[];
+  dir: readonly number[];
+}
+
+interface ShellHitEvent {
+  shellId: string | number;
+  targetId: string;
+  attackerId: string;
+  damage?: number;
+  kind: string;
+  pos?: readonly number[] | null;
+}
+
+interface ShellExpiredEvent {
+  shellId: string | number;
+  hitTerrain?: boolean;
+  pos?: readonly number[] | null;
+}
+
+interface CombatTelemetryEventMap {
+  'phase:change': PhaseChangeEvent;
+  'shell:fired': ShellFiredEvent;
+  'shell:hit': ShellHitEvent;
+  'shell:expired': ShellExpiredEvent;
+}
+
 interface EventBus {
-  on(event: string, listener: (payload: any) => void): unknown;
+  on<EventName extends keyof CombatTelemetryEventMap>(
+    event: EventName,
+    listener: (payload: CombatTelemetryEventMap[EventName]) => void,
+  ): unknown;
 }
 
 interface CombatEntity {
