@@ -155,8 +155,8 @@ if (!/export function stageCombatFxProgramSubmission\([\s\S]*fx\.warmOpeningEffe
 }
 const enemyAt = deferredWarm.indexOf('getBattleVisuals().stream(');
 const openingAt = deferredWarm.indexOf('combatWarm.warmOpeningChunked(6, guardedYield)');
-const navigationAt = deferredWarm.indexOf('prepareNextOpeningRoute(game)');
-const terrainAt = deferredWarm.indexOf('battleWarm.warmBattleTerrainTiles({');
+const navigationAt = deferredWarm.indexOf('const consumed = prepareNextOpeningRoute();');
+const terrainAt = deferredWarm.indexOf('await warmBattleTerrainTiles(guardedYield)');
 const rareAt = deferredWarm.indexOf('combatWarm.warmRareChunked(6, guardedYield)');
 if (!(enemyAt >= 0 && openingAt > enemyAt && navigationAt > openingAt
     && terrainAt > navigationAt && rareAt > terrainAt)) {
@@ -196,7 +196,8 @@ if (!hiddenVariants.includes('yield* compileAll(entity.visual.root)')
 }
 if (!/deferOpeningRoutes: deferVisuals/.test(soloStart)
   || !(navigationAt >= 0 && terrainAt > navigationAt)
-  || !/battleWarm\.warmBattleTerrainTiles\(\{[\s\S]{0,180}primePresentation: false/.test(deferredWarm)
+  || !/await warmBattleTerrainTiles\(guardedYield\)/.test(deferredWarm)
+  || !/warmBattleTerrainTiles:\s*\(yieldForBudget\)\s*=>\s*battleWarm\.warmBattleTerrainTiles\(\{[\s\S]{0,220}primePresentation:\s*false/.test(main)
   || !/opts\.deferOpeningRoutes\) game\.openingRouteJobs\.push\(prepareOpeningRoute\)/.test(state)) {
   throw new Error('solo A* routes and their terrain tiles must finish in the bounded deployment queue');
 }

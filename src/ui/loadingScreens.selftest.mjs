@@ -299,8 +299,12 @@ const deferredEnemyAt = deferredWarmSource.indexOf('getBattleVisuals().stream(')
 const deferredOpeningAt = deferredWarmSource.indexOf(
   'combatWarm.warmOpeningChunked(6, guardedYield)',
 );
-const deferredNavigationAt = deferredWarmSource.indexOf('prepareNextOpeningRoute(game)');
-const deferredTerrainAt = deferredWarmSource.indexOf('battleWarm.warmBattleTerrainTiles({');
+const deferredNavigationAt = deferredWarmSource.indexOf(
+  'const consumed = prepareNextOpeningRoute();',
+);
+const deferredTerrainAt = deferredWarmSource.indexOf(
+  'await warmBattleTerrainTiles(guardedYield)',
+);
 const deferredRareAt = deferredWarmSource.indexOf(
   'combatWarm.warmRareChunked(6, guardedYield)',
 );
@@ -310,6 +314,9 @@ assert.ok(deferredEnemyAt >= 0
   && deferredTerrainAt > deferredNavigationAt
   && deferredRareAt > deferredTerrainAt,
 'opponent receipts and fallback opening/rare work must retain countdown order');
+assert.match(mainSource,
+  /warmBattleTerrainTiles:\s*\(yieldForBudget\)\s*=>\s*battleWarm\.warmBattleTerrainTiles\(\{[\s\S]{0,220}primePresentation:\s*false/,
+  'the composition adapter must retain non-presenting terrain warm semantics');
 const coveredFxBody = soloDeploymentSource.slice(
   soloDeploymentSource.indexOf(
     'const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({',
