@@ -39,6 +39,8 @@ const player = {
   combat: {
     destroyed: false,
     shellSlot: 0,
+    ammo: [24, 3, 20],
+    ammoCapacity: [24, 3, 20],
     magazine: null,
     crew: { commander: true, driver: true },
     fire: { burning: false, ticksLeft: 0, tickTimer: 0 },
@@ -63,7 +65,15 @@ const rules = {
     localCalls.push('special');
     return { ok: true, action: 'siege' };
   },
-  specialActionLocksShell(entity) { return !!entity.shellLocked; },
+  guidedMissileSlot() { return 1; },
+  specialActionKind(actionSpec) {
+    return actionSpec.guidedAction ? 'guided_missile' : 'none';
+  },
+  hasAmmunition(combat, slot) { return (combat.ammo[slot] || 0) > 0; },
+  shellAmmunitionCapacity(shell) {
+    if (shell.count != null) return shell.count;
+    return ({ APFSDS: 24, HE: 12 }[shell.type] ?? 20);
+  },
   hasConsumableRule(slot) { return slot >= 0 && slot < 3; },
   cooldownRemaining(timeS, readyAtS) { return Math.max(0, readyAtS - timeS); },
   resetConsumableCooldowns(readyAt) { readyAt.fill(0); },
@@ -99,10 +109,10 @@ game.phase = 'battle';
 input.press('shell2');
 assert.deepEqual(localCalls, ['shell:1']);
 assert.equal(player.input.shellSlot, 1);
-bus.emit('shell:fired', { isPlayer: true });
-bus.emit('shell:fired', { isPlayer: true });
-bus.emit('shell:fired', { isPlayer: true });
-bus.emit('shell:fired', { isPlayer: true });
+for (let shot = 0; shot < 4; shot++) {
+  player.combat.ammo[1] = Math.max(0, player.combat.ammo[1] - 1);
+  bus.emit('shell:fired', { isPlayer: true });
+}
 assert.equal(actions.shellCards[1].count, 0, 'ammo reaches zero but never becomes negative');
 assert.equal(actions.hasAmmo(1), false);
 
@@ -117,10 +127,8 @@ assert.ok(events.some(({ event, payload }) =>
 player.combat.magazineReason = null;
 player.combat.magazine = null;
 
-player.shellLocked = true;
 input.press('shell1');
-assert.equal(player.combat.shellSlot, 1, 'special-action shell locks reject slot changes');
-player.shellLocked = false;
+assert.equal(player.combat.shellSlot, 0, 'numbered ammunition remains selectable after ATGM use');
 
 player.combat.damagedModule = 'engine';
 input.press('consumable1');
@@ -150,6 +158,16 @@ bus.emit('ui:magazineReload', {});
 bus.emit('ui:specialAction', {});
 assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction']);
 assert.equal(player.combat.damagedModule, 'trackL', 'network authority owns state mutation');
+
+spec.guidedAction = true;
+bus.emit('ui:specialAction', {});
+assert.equal(player.input.shellSlot, 1,
+  'E selects the guided ammunition through the ordinary shell-select path');
+assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction'],
+  'guided E does not enqueue a separate network action mode');
+assert(events.some(({ event, payload }) =>
+  event === 'ui:specialActionResult' && payload.kind === 'guided_missile' && payload.slot === 1));
+spec.guidedAction = false;
 
 settingsOpen = true;
 input.press('reloadMagazine');

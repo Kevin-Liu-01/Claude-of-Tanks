@@ -22,7 +22,7 @@ assert.match(missile.name, /MGM-51C Shillelagh/i);
 assert.equal(missile.count, 13, 'Starship carries its dedicated missile allotment');
 assert.equal(missile.soundProfile, 'shillelagh-launch');
 assert.equal(specialActionKind(spec), SPECIAL_ACTION_KINDS.GUIDED_MISSILE,
-  'the existing ATGM action arms the Starship missile channel');
+  'the ATGM action selects the Starship missile channel');
 assert.equal(createSpecialActionState(spec).missileSlot, missileSlot);
 assert.ok(spec.armor.modules.some((module) => module.module === 'missileRack'),
   'combat anatomy exposes the launcher missile stowage as a damageable module');

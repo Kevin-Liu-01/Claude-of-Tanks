@@ -265,6 +265,10 @@ const LAYOUTS = Object.freeze({
     ['loader', 'turret', 'frontRight'],
   ), systems: systems({ ammoRack: { placement: 'hull', form: 'wetHullRacks' } }) },
   westernManualHullAmmo: { confidence: 'platform-inferred', sources: ['britishChallenger'], crew: FOUR_MAN_TURRET, systems: systems({ ammoRack: { placement: 'hull', form: 'hullBins' } }) },
+  starship: { confidence: 'platform-inferred', sources: ['usArmySheridan'], crew: FOUR_MAN_TURRET, systems: systems({
+    ammoRack: { placement: 'hull', form: 'mixed152mmStowage' },
+    missileRack: { placement: 'hull', form: 'gunLaunchedRounds' },
+  }) },
   westernTwoPart: { confidence: 'documented', sources: ['britishChallenger'], crew: FOUR_MAN_TURRET, systems: systems({ ammoRack: { placement: 'hull', form: 'twoPartStowage' } }) },
   leopard: { confidence: 'documented', sources: ['bundeswehrLeopard', 'bundeswehrLeopardVersions'], crew: crew(
     ['driver', 'hull', 'frontRight'], ['gunner', 'turret', 'frontRight'],
@@ -338,7 +342,8 @@ const IDS_BY_LAYOUT = Object.freeze({
   casemateFour: ['jpz_e100', 't95'],
   casemateFive: ['sturmtiger', 'isu152', 'isu122s'],
   pershingFive: ['m26_pershing', 'm45_patton', 'm46_patton', 'm47_patton'],
-  westernManualHullAmmo: ['strv81', 'chieftain5', 'chieftain_mk10', 'k1a1', 'stb1', 'type74', 'amx40', 'type59', 'ztz85_iii', 'm60a1', 'amx30', 'amx30b2', 'm48', 'm60a2', 'vickers_mk1', 'centurion3', 'centurion5', 'm60a3'],
+  westernManualHullAmmo: ['strv81', 'chieftain5', 'chieftain_mk10', 'k1a1', 'stb1', 'type74', 'amx40', 'type59', 'ztz85_iii', 'm60a1', 'amx30', 'amx30b2', 'm48', 'vickers_mk1', 'centurion3', 'centurion5', 'm60a3'],
+  starship: ['m60a2'],
   arieteManual: ['ariete', 'ariete_c1', 'ariete_c2'],
   westernTwoPart: ['challenger1', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger_3', 'challenger_3x'],
   leopard: ['leo1a5', 'leopard2_proto', 'leo2a4', 'leo2a4_otco', 'leo2a4m', 'leo2a5', 'leo2a6', 'leo2a6m', 'leo2_revolution', 'leo2a7v', 'strv122', 'leo2a6_ua'],

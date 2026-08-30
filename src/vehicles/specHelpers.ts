@@ -52,6 +52,7 @@ export interface ShellSpec extends Record<string, unknown> {
   velocityMps: number;
   moduleDmg: number;
   reloadS?: number;
+  count?: number;
   tracer: string;
   guided?: boolean;
 }

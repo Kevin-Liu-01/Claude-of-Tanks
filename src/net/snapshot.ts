@@ -20,7 +20,9 @@ const ENTITY_DELTA_FIELDS = Object.freeze([
   'x', 'y', 'z', 'vx', 'vy', 'vz',
   'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
   'hp', 'maxHp', 'reloadMs', 'reloadTotalMs', 'reloadKind',
-  'magazineRounds', 'magazineCapacity', 'shellSlot', 'flags', 'eraSpent',
+  'gunReloadMs', 'gunReloadTotalMs', 'gunReloadKind',
+  'magazineRounds', 'magazineCapacity', 'shellSlot',
+  'ammo0', 'ammo1', 'ammo2', 'flags', 'eraSpent',
 ] as const);
 
 const SNAPSHOT_RELOAD_KINDS = Object.freeze({
@@ -65,8 +67,10 @@ interface SnapshotCombatSource {
   hp?: unknown;
   maxHp?: unknown;
   reload?: { t?: unknown; totalS?: unknown; kind?: unknown } | null;
+  gunReload?: { t?: unknown; totalS?: unknown; kind?: unknown } | null;
   magazine?: { rounds?: unknown; capacity?: unknown } | null;
   shellSlot?: unknown;
+  ammo?: unknown[] | null;
   eraSpent?: Set<string> | null;
 }
 
@@ -79,11 +83,7 @@ export interface SnapshotEntitySource {
   state?: SnapshotStateSource | null;
   combat?: SnapshotCombatSource | null;
   input?: { fire?: boolean } | null;
-  specialAction?: {
-    active?: boolean;
-    pendingFire?: boolean;
-    inFlightShellId?: unknown;
-  } | null;
+  specialAction?: { active?: boolean } | null;
 }
 
 export interface SnapshotShellSource {
@@ -115,9 +115,15 @@ export interface QuantizedEntitySnapshot {
   reloadMs: number;
   reloadTotalMs: number;
   reloadKind: number;
+  gunReloadMs: number;
+  gunReloadTotalMs: number;
+  gunReloadKind: number;
   magazineRounds: number;
   magazineCapacity: number;
   shellSlot: number;
+  ammo0: number;
+  ammo1: number;
+  ammo2: number;
   flags: number;
   eraSpent?: string[];
 }
@@ -170,9 +176,15 @@ export interface DecodedEntitySnapshot {
   reloadS: number;
   reloadTotalS: number;
   reloadKind: ReloadKindName;
+  gunReloadS: number;
+  gunReloadTotalS: number;
+  gunReloadKind: ReloadKindName;
   magazineRounds: number;
   magazineCapacity: number;
   shellSlot: number;
+  ammo0: number;
+  ammo1: number;
+  ammo2: number;
   flags: number;
   eraSpent: string[];
   [REST_POSE]?: RestPose;
@@ -252,9 +264,6 @@ function entityFlags(entity: SnapshotEntitySource): number {
   if (entity.input && entity.input.fire) flags |= SNAPSHOT_FLAGS.FIRING;
   if (entity.spotted) flags |= SNAPSHOT_FLAGS.SPOTTED;
   if (entity.specialAction?.active) flags |= SNAPSHOT_FLAGS.SPECIAL_ACTIVE;
-  if (entity.specialAction?.pendingFire || entity.specialAction?.inFlightShellId != null) {
-    flags |= SNAPSHOT_FLAGS.SPECIAL_PENDING;
-  }
   if (entity.state?.grounded === false) flags |= SNAPSHOT_FLAGS.AIRBORNE;
   return flags;
 }
@@ -270,6 +279,8 @@ export function captureEntitySnapshot(
   const reloadKind = typeof entity.combat.reload?.kind === 'string'
     ? entity.combat.reload.kind
     : 'ready';
+  const gunReload = entity.combat.gunReload || entity.combat.reload;
+  const gunReloadKind = typeof gunReload?.kind === 'string' ? gunReload.kind : 'ready';
   const snapshot: QuantizedEntitySnapshot = {
     id: String(entity.id),
     specId: String(entity.specId || (entity.spec && entity.spec.id) || ''),
@@ -292,9 +303,16 @@ export function captureEntitySnapshot(
       entity.combat.reload && entity.combat.reload.totalS,
     ) * 1000)),
     reloadKind: SNAPSHOT_RELOAD_KINDS[reloadKind as keyof typeof SNAPSHOT_RELOAD_KINDS] ?? 0,
+    gunReloadMs: Math.max(0, Math.round(finite(gunReload?.t) * 1000)),
+    gunReloadTotalMs: Math.max(0, Math.round(finite(gunReload?.totalS) * 1000)),
+    gunReloadKind:
+      SNAPSHOT_RELOAD_KINDS[gunReloadKind as keyof typeof SNAPSHOT_RELOAD_KINDS] ?? 0,
     magazineRounds: Math.max(0, Number(entity.combat.magazine?.rounds) | 0),
     magazineCapacity: Math.max(0, Number(entity.combat.magazine?.capacity) | 0),
     shellSlot: Math.max(0, Math.min(2, Number(entity.combat.shellSlot) | 0)),
+    ammo0: Math.max(0, Number(entity.combat.ammo?.[0]) | 0),
+    ammo1: Math.max(0, Number(entity.combat.ammo?.[1]) | 0),
+    ammo2: Math.max(0, Number(entity.combat.ammo?.[2]) | 0),
     flags: entityFlags(entity),
   };
   if (entity.combat.eraSpent?.size) {
@@ -520,9 +538,20 @@ export function decodeEntitySnapshot(
   out.reloadS = finite(entity.reloadMs) / 1000;
   out.reloadTotalS = finite(entity.reloadTotalMs, entity.reloadMs) / 1000;
   out.reloadKind = SNAPSHOT_RELOAD_KIND_NAMES[entity.reloadKind | 0] || 'ready';
+  out.gunReloadS = finite(entity.gunReloadMs, entity.reloadMs) / 1000;
+  out.gunReloadTotalS = finite(
+    entity.gunReloadTotalMs,
+    entity.gunReloadMs ?? entity.reloadTotalMs,
+  ) / 1000;
+  out.gunReloadKind = SNAPSHOT_RELOAD_KIND_NAMES[
+    (entity.gunReloadKind ?? entity.reloadKind) | 0
+  ] || 'ready';
   out.magazineRounds = Math.max(0, entity.magazineRounds | 0);
   out.magazineCapacity = Math.max(0, entity.magazineCapacity | 0);
   out.shellSlot = entity.shellSlot;
+  out.ammo0 = Math.max(0, entity.ammo0 | 0);
+  out.ammo1 = Math.max(0, entity.ammo1 | 0);
+  out.ammo2 = Math.max(0, entity.ammo2 | 0);
   out.flags = entity.flags;
   out.eraSpent = Array.isArray(entity.eraSpent) ? entity.eraSpent : [];
   return out;

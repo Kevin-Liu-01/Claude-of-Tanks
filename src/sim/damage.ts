@@ -37,6 +37,7 @@ import type {
 import { CORE_MODULE_IDS, MODULE_DEFS, MODULE_IDS } from './moduleCatalog.ts';
 import type { ModuleId } from './moduleCatalog.ts';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
+import { createAmmunitionState } from './ammunition.ts';
 
 type Rng = () => number;
 type Vec3Tuple = [number, number, number];
@@ -62,6 +63,7 @@ export interface DamageShellSpec extends BallisticShellSpec {
   dmg: number;
   moduleDmg?: number;
   reloadS?: number;
+  count?: number | null;
   effectiveOvermatchCaliberMm?: number;
   tandem?: boolean;
   soundProfile?: string;
@@ -99,6 +101,12 @@ export interface CombatModuleState {
   repairT: number;
 }
 
+export interface ReloadState {
+  t: number;
+  totalS: number;
+  kind: ReloadKind;
+}
+
 export interface CombatState {
   hp: number;
   maxHp: number;
@@ -107,9 +115,15 @@ export interface CombatState {
   crew: Record<string, boolean>;
   fire: { burning: boolean; tickTimer: number; ticksLeft: number };
   eraSpent: Set<string>;
-  reload: { t: number; totalS: number; kind: ReloadKind };
+  reload: ReloadState;
+  /** Shared cannon/feed channel, even while an auxiliary launcher is selected. */
+  gunReload?: ReloadState;
+  /** Conventional shells share one gun cycle; each guided launcher owns one. */
+  reloadChannels?: ReloadState[];
   magazine: { rounds: number; capacity: number } | null;
   shellSlot: number;
+  ammo: number[];
+  ammoCapacity: number[];
   equipMults?: Partial<Record<string, number>>;
 }
 
@@ -375,6 +389,11 @@ export function createCombatState(spec: DamageTankSpec): CombatState {
   const magazineSize = autoloader
     ? Math.max(1, Math.floor(Number(autoloader.magazineSize) || 1))
     : 0;
+  const ammunition = createAmmunitionState(spec.gun.shells || []);
+  const gunReload: ReloadState = { t: 0, totalS: spec.gun.reloadS, kind: 'ready' };
+  const reloadChannels = (spec.gun.shells || []).map((round) => round.guided === true
+    ? { t: 0, totalS: round.reloadS || spec.gun.reloadS, kind: 'ready' as ReloadKind }
+    : gunReload);
   return {
     hp: spec.hp,
     maxHp: spec.hp,
@@ -383,9 +402,13 @@ export function createCombatState(spec: DamageTankSpec): CombatState {
     crew,
     fire: { burning: false, tickTimer: 0, ticksLeft: 0 },
     eraSpent: new Set(),
-    reload: { t: 0, totalS: spec.gun.reloadS, kind: 'ready' },
+    reload: reloadChannels[0] || gunReload,
+    gunReload,
+    reloadChannels,
     magazine: autoloader ? { rounds: magazineSize, capacity: magazineSize } : null,
     shellSlot: 0,
+    ammo: ammunition.ammo,
+    ammoCapacity: ammunition.ammoCapacity,
   };
 }
 
@@ -1815,10 +1838,10 @@ export function repairAllModules(combat: CombatState | null | undefined): string
 }
 
 /**
- * Switch the loaded shell slot. Changing ammunition restarts the load using
- * the NEW shell's duration (WoT behavior) — with per-shell reloads (IFV
- * autocannon bursts vs. ATGM rails) the restart must price the incoming
- * shell, or a 0.4 s burst timer would hand out instant missile loads.
+ * Switch the loaded shell slot. Conventional ammunition changes restart the
+ * shared gun load using the NEW shell's duration. A guided launcher is a
+ * separate preloaded channel: switching to or from it exposes its preserved
+ * cooldown without borrowing the autocannon timer or discarding a magazine.
  * @param {object} combatState CombatState
  * @param {0|1|2} slot shell slot
  * @param {object} [spec] TankSpec — when given, the restart re-derives the
@@ -1833,13 +1856,27 @@ export function selectShell(
 ): void {
   if (spec && spec.gun.shells) slot = Math.max(0, Math.min(spec.gun.shells.length - 1, slot | 0));
   if (slot === combatState.shellSlot) return;
+  const priorReload = combatState.reload;
   combatState.shellSlot = slot;
+  const nextReload = combatState.reloadChannels?.[slot];
+  if (nextReload) combatState.reload = nextReload;
+  // A launcher is a separate preloaded weapon. Moving between it and the
+  // cannon exposes the preserved channel state; it does not discard a cannon
+  // magazine or reset an ATGM cooldown already progressing in the background.
+  if (nextReload && nextReload !== priorReload) return;
+  // Changing the desired cannon round during an existing full magazine load
+  // must not discard elapsed work and restart the same feed cycle.
+  if (nextReload?.kind === 'magazine' && nextReload.t > 0) return;
   if (spec) startReload(combatState, spec);
   else combatState.reload.t = combatState.reload.totalS;
 }
 
 /** Shared crew, module, and equipment multiplier for a new load cycle. */
-function reloadMultiplier(combatState: CombatState, spec: DamageTankSpec): number {
+function reloadMultiplier(
+  combatState: CombatState,
+  spec: DamageTankSpec,
+  loaded = spec.gun.shells && spec.gun.shells[combatState.shellSlot],
+): number {
   let mult = 1;
   if ('loader' in combatState.crew && combatState.crew.loader === false) mult *= 1.5;
   const rack = combatState.modules && combatState.modules.ammoRack;
@@ -1850,7 +1887,6 @@ function reloadMultiplier(combatState: CombatState, spec: DamageTankSpec): numbe
   else if (loaderMechanism?.state === 'red') mult *= 2;
   mult *= equipMult(combatState, 'reload');
 
-  const loaded = spec.gun.shells && spec.gun.shells[combatState.shellSlot];
   const missileRack = combatState.modules && combatState.modules.missileRack;
   // HEAT is a warhead type, not a delivery system: conventional rounds such
   // as the M60A2's M409A1 must not inherit launcher-rack damage penalties.
@@ -1865,11 +1901,13 @@ function beginMagazineReload(combatState: CombatState, spec: DamageTankSpec): bo
   const autoloader = spec.gun && spec.gun.autoloader;
   if (!magazine || !autoloader) return false;
   magazine.rounds = 0;
+  const channel = combatState.gunReload || combatState.reload;
+  const cannonRound = spec.gun.shells?.find((round) => round.guided !== true);
   const totalS = Math.max(0.05, Number(autoloader.fullReloadS) || spec.gun.reloadS)
-    * reloadMultiplier(combatState, spec);
-  combatState.reload.totalS = totalS;
-  combatState.reload.t = totalS;
-  combatState.reload.kind = 'magazine';
+    * reloadMultiplier(combatState, spec, cannonRound);
+  channel.totalS = totalS;
+  channel.t = totalS;
+  channel.kind = 'magazine';
   return true;
 }
 
@@ -1879,7 +1917,8 @@ export function magazineReloadDenialReason(
 ): 'NO_MAGAZINE' | 'MAGAZINE_RELOADING' | 'MAGAZINE_FULL' | null {
   const magazine = combatState?.magazine;
   if (!magazine) return 'NO_MAGAZINE';
-  if (combatState.reload?.kind === 'magazine' && combatState.reload.t > 0) {
+  const channel = combatState.gunReload || combatState.reload;
+  if (channel?.kind === 'magazine' && channel.t > 0) {
     return 'MAGAZINE_RELOADING';
   }
   if (magazine.rounds >= magazine.capacity) return 'MAGAZINE_FULL';
@@ -1901,14 +1940,37 @@ export function startMagazineReload(combatState: CombatState, spec: DamageTankSp
  * @returns {boolean} true only on the ready edge
  */
 export function tickReload(combatState: CombatState | null | undefined, dt: number): boolean {
-  if (!combatState || combatState.reload.t <= 0) return false;
-  const remaining = combatState.reload.t - dt;
-  combatState.reload.t = remaining <= 1e-9 ? 0 : remaining;
-  if (combatState.reload.t > 0) return false;
-  if (combatState.reload.kind === 'magazine' && combatState.magazine) {
+  if (!combatState) return false;
+  const active = combatState.reload;
+  let activeReady = false;
+  const channels = combatState.reloadChannels;
+  if (Array.isArray(channels) && channels.length) {
+    for (let index = 0; index < channels.length; index++) {
+      const channel = channels[index];
+      let duplicate = false;
+      for (let prior = 0; prior < index; prior++) {
+        if (channels[prior] === channel) { duplicate = true; break; }
+      }
+      if (duplicate || channel.t <= 0) continue;
+      const remaining = channel.t - dt;
+      channel.t = remaining <= 1e-9 ? 0 : remaining;
+      if (channel.t > 0) continue;
+      if (channel.kind === 'magazine' && combatState.magazine) {
+        combatState.magazine.rounds = combatState.magazine.capacity;
+      }
+      channel.kind = 'ready';
+      if (channel === active) activeReady = true;
+    }
+    return activeReady;
+  }
+  if (active.t <= 0) return false;
+  const remaining = active.t - dt;
+  active.t = remaining <= 1e-9 ? 0 : remaining;
+  if (active.t > 0) return false;
+  if (active.kind === 'magazine' && combatState.magazine) {
     combatState.magazine.rounds = combatState.magazine.capacity;
   }
-  combatState.reload.kind = 'ready';
+  active.kind = 'ready';
   return true;
 }
 
@@ -1918,6 +1980,14 @@ export function tickReload(combatState: CombatState | null | undefined, dt: numb
  * retain their one-shell reload behavior.
  */
 export function startPostShotReload(combatState: CombatState, spec: DamageTankSpec): void {
+  const loaded = spec.gun.shells?.[combatState.shellSlot];
+  // Guided rounds use their external launcher channel even on a vehicle whose
+  // cannon has an autoloader. They neither consume nor wait on cannon-magazine
+  // state; their authored per-shell duration is the complete launcher cycle.
+  if (loaded?.guided === true) {
+    beginShellReload(combatState, spec, loaded);
+    return;
+  }
   const magazine = combatState.magazine;
   const autoloader = spec.gun && spec.gun.autoloader;
   if (!magazine || !autoloader) {
@@ -1946,16 +2016,24 @@ export function startPostShotReload(combatState: CombatState, spec: DamageTankSp
  * @returns {void}
  */
 export function startReload(combatState: CombatState, spec: DamageTankSpec): void {
-  if (combatState.magazine && spec.gun.autoloader) {
+  const loaded = spec.gun.shells && spec.gun.shells[combatState.shellSlot];
+  if (combatState.magazine && spec.gun.autoloader && loaded?.guided !== true) {
     beginMagazineReload(combatState, spec);
     return;
   }
-  const mult = reloadMultiplier(combatState, spec);
+  beginShellReload(combatState, spec, loaded);
+}
+
+function beginShellReload(
+  combatState: CombatState,
+  spec: DamageTankSpec,
+  loaded: DamageShellSpec | undefined,
+): void {
+  const mult = reloadMultiplier(combatState, spec, loaded);
   // PER-SHELL RELOAD (IFV support role): a shell carrying its own reloadS
   // governs its slot — autocannon belts cycle in fractions of a second while
-  // the ATGM rail on the same vehicle takes its full 14-18 s. Vehicles
+  // the ATGM rail on the same vehicle keeps its own 2-3 s cycle. Vehicles
   // without per-shell data keep the single gun-level duration.
-  const loaded = spec.gun.shells && spec.gun.shells[combatState.shellSlot];
   const baseS = (loaded && loaded.reloadS) || spec.gun.reloadS;
   const totalS = baseS * mult;
   combatState.reload.totalS = totalS;

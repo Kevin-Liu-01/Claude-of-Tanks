@@ -556,6 +556,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   for (let i = 0; i < spec.gun.shells.length; i++) {
     if (spec.gun.shells[i] && isHeClass(spec.gun.shells[i].type)) { heSlot = i; break; }
   }
+  const slotHasAmmo = (slot: number): boolean =>
+    !Array.isArray(entity.combat?.ammo) || (entity.combat!.ammo[slot] || 0) > 0;
+  const firstAvailableSlot = (): number => {
+    for (let slot = 0; slot < spec.gun.shells.length; slot++) {
+      if (slotHasAmmo(slot)) return slot;
+    }
+    return -1;
+  };
   const angleRad = casemate ? 0 : tune.angle;
   const roleEngageR = () => tier.engageRangeM * tune.engage;
   const roleHoldR = () =>
@@ -1163,7 +1171,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!target) return;
     const armor = target.spec && target.spec.armor;
     if (!armor) { // headless fixtures without armor models: aim center, assume pen
-      aimHFrac = 0.48; aimLatFrac = 0; chosenSlot = 0; cachedPenRatio = 1; penGateOk = true;
+      aimHFrac = 0.48;
+      aimLatFrac = 0;
+      chosenSlot = firstAvailableSlot();
+      cachedPenRatio = 1;
+      penGateOk = chosenSlot >= 0;
       return;
     }
     const st = entity.state;
@@ -1180,9 +1192,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const set = PROBE_SETS[tier.probeLevel];
     let bestScore = -Infinity, bestRatio = 0, bestH = 0.48, bestLat = 0, bestSlot = 0;
 
-    for (let slot = 0; slot <= 1; slot++) {
+    for (let slot = 0; slot < spec.gun.shells.length; slot++) {
       const shell = spec.gun.shells[slot];
-      if (!shell) continue;
+      if (!shell || !slotHasAmmo(slot)) continue;
       for (let i = 0; i < set.length; i++) {
         const h = set[i][0], lat = set[i][1];
         const cx = tp.x + px * lat * tw;
@@ -1211,7 +1223,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       cachedPenRatio = bestRatio; penGateOk = true;
     } else if (bestScore > -Infinity) {
       // Nothing penetrates reliably: lob HE at center mass (splash needs no pen gate).
-      aimHFrac = 0.5; aimLatFrac = 0; chosenSlot = heSlot;
+      aimHFrac = 0.5;
+      aimLatFrac = 0;
+      chosenSlot = slotHasAmmo(heSlot) ? heSlot : firstAvailableSlot();
       cachedPenRatio = bestRatio; penGateOk = false;
     } else {
       // All probes missed the hull — the target is HULL-DOWN (only the
@@ -1221,7 +1235,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // a mutual 380 m stare-down (steppe probe: ready+aligned bots parked
       // silent for 60+ s exactly here). driveEngage escalates to a better
       // firing angle when the probes stay blind (probeMissT).
-      aimHFrac = 0.82; aimLatFrac = 0; chosenSlot = heSlot;
+      aimHFrac = 0.82;
+      aimLatFrac = 0;
+      chosenSlot = slotHasAmmo(heSlot) ? heSlot : firstAvailableSlot();
       cachedPenRatio = 0; penGateOk = false;
       probeMiss = true;
       return;
@@ -2444,6 +2460,22 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let px = tp.z - ez, pz = -(tp.x - ex);
     const pl = Math.hypot(px, pz) || 1;
     px /= pl; pz /= pl;
+
+    // Commit to the shell already being loaded. Re-evaluating armor every
+    // frame can nominate another conventional type; feeding that directly to
+    // authority repeatedly restarts the shared gun/autoloader cycle and can
+    // leave a bot permanently unloaded. Empty channels are still abandoned
+    // immediately so the vehicle can use its remaining ammunition.
+    const loadingSlot = cb?.shellSlot;
+    if ((cb?.reload?.t ?? 0) > 1e-3 && loadingSlot != null && slotHasAmmo(loadingSlot)) {
+      chosenSlot = loadingSlot;
+    } else if (!slotHasAmmo(chosenSlot)) {
+      chosenSlot = firstAvailableSlot();
+    }
+    if (chosenSlot < 0) {
+      input.fire = false;
+      return;
+    }
 
     // Base aim point on the chosen zone.
     _vC.set(tp.x + px * aimLatFrac * tw, tp.y + aimHFrac * th, tp.z + pz * aimLatFrac * tw);

@@ -17,12 +17,6 @@ export interface SpecialActionState {
   kind: SpecialActionKind;
   missileSlot: number;
   active: boolean;
-  pendingFire: boolean;
-  inFlightShellId: string | number | null;
-  returnShellSlot: number;
-  returnReloadT: number;
-  returnReloadTotalS: number;
-  returnReloadKind: 'ready' | 'shell' | 'intraClip' | 'magazine';
 }
 
 const DESCRIPTOR_NONE = Object.freeze({
@@ -30,7 +24,7 @@ const DESCRIPTOR_NONE = Object.freeze({
 });
 const DESCRIPTOR_MISSILE = Object.freeze({
   kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE,
-  label: 'ATGM Guidance',
+  label: 'Select ATGM',
   shortLabel: 'ATGM',
 });
 const DESCRIPTOR_SUSPENSION = Object.freeze({
@@ -66,9 +60,8 @@ export function guidedMissileSlot(spec: SpecialActionSpec | null | undefined): n
 /** Resolve the single primary action presented by garage and battle UI. */
 export function specialActionKind(spec: SpecialActionSpec | null | undefined): SpecialActionKind {
   if (!spec) return SPECIAL_ACTION_KINDS.NONE;
-  if (spec.hydropneumaticAim) return SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM;
-  if (spec.gun?.primaryGuided === true) return SPECIAL_ACTION_KINDS.NONE;
   if (guidedMissileSlot(spec) >= 0) return SPECIAL_ACTION_KINDS.GUIDED_MISSILE;
+  if (spec.hydropneumaticAim) return SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM;
   if (spec.gun?.autoloader) return SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD;
   return SPECIAL_ACTION_KINDS.NONE;
 }
@@ -92,19 +85,5 @@ export function createSpecialActionState(
     kind: specialActionKind(spec),
     missileSlot: guidedMissileSlot(spec),
     active: false,
-    pendingFire: false,
-    inFlightShellId: null,
-    returnShellSlot: 0,
-    returnReloadT: 0,
-    returnReloadTotalS: 0,
-    returnReloadKind: 'ready',
   };
-}
-
-/** True while an engaged ATGM channel owns the shell selector. */
-export function specialActionLocksShell(entity: {
-  specialAction?: { kind?: string; active?: boolean } | null;
-} | null | undefined): boolean {
-  const action = entity?.specialAction;
-  return !!(action?.kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE && action.active);
 }

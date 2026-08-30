@@ -12,7 +12,13 @@ function entity(id, team, x, z, { bot = false } = {}) {
     team,
     bot,
     state: { pos: { x, y: 0, z }, yaw: team === 'alpha' ? 0 : Math.PI, speed: 0 },
-    combat: { hp: 100, maxHp: 100, destroyed: false },
+    combat: {
+      hp: 100,
+      maxHp: 100,
+      destroyed: false,
+      ammo: [24, 16, 6],
+      ammoCapacity: [24, 16, 6],
+    },
   };
 }
 
@@ -133,9 +139,8 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   assert.equal(run.match.state.horde.wave, 1);
   assert.equal(run.match.state.horde.total, 3);
   assert.equal(enemies.filter((target) => target.modeActive !== false).length, 3);
-  assert.equal(player.combat.modeAmmo, 30);
-  for (let shot = 0; shot < 30; shot++) assert.equal(run.match.consumeShot(player), true);
-  assert.equal(run.match.consumeShot(player), false);
+  assert.deepEqual(player.combat.ammo, [24, 16, 6]);
+  player.combat.ammo = [0, 0, 0];
   for (const target of enemies) {
     if (target.modeActive !== false) target.combat.destroyed = true;
   }
@@ -145,9 +150,35 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   run.match.step(1 / 60, 7.01);
   assert.equal(run.match.state.horde.wave, 2);
   assert.ok(run.match.state.horde.healChance < waveOneHealChance);
-  const snapshot = run.match.serialize('player');
+  let snapshot = run.match.serialize('player');
   assert.equal(snapshot.playerAmmo, 0);
-  assert.equal(snapshot.playerAmmoCapacity, 30);
+  assert.equal(snapshot.playerAmmoCapacity, 46);
+
+  let clock = 7.01;
+  let collectedAmmo = false;
+  for (let cycle = 0; cycle < 20 && !collectedAmmo; cycle++) {
+    const cache = run.match.state.pickups.find((pickup) => pickup.active && pickup.kind === 'ammo');
+    if (cache) {
+      player.state.pos.x = cache.x;
+      player.state.pos.z = cache.z;
+      run.match.step(1 / 60, clock + 0.01);
+      collectedAmmo = true;
+      break;
+    }
+    for (const target of enemies) {
+      if (target.modeActive !== false) target.combat.destroyed = true;
+    }
+    clock += 0.5;
+    run.match.step(1 / 60, clock);
+    clock += 6.01;
+    run.match.step(1 / 60, clock);
+  }
+  assert.equal(collectedAmmo, true, 'deterministic Horde sequence produces an ammo cache');
+  assert.deepEqual(player.combat.ammo, [5, 4, 2],
+    'ammo cache replenishes 20% of each real authored channel');
+  snapshot = run.match.serialize('player');
+  assert.equal(snapshot.playerAmmo, 11);
+  assert.equal(snapshot.playerAmmoCapacity, 46);
 }
 
 console.log('matchModes.selftest: standard, flags, zones, turbo ball, horde, respawns, and loot passed');

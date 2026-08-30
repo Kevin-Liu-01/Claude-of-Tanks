@@ -19,8 +19,11 @@ reaches the room's enemy roster. Enemy hit points increase by 16% per wave and
 mobility increases by 4.5% per wave, capped at 55%. Clearing a wave starts a
 six-second intermission and places one deterministic floating cache. Repair
 cache probability begins at 62%, falls by 5.5 percentage points per wave, and
-never falls below 8%; the remaining caches replenish ammunition. At most 12
-uncollected caches remain active, preventing an endless session from growing
+never falls below 8%; the remaining caches replenish 20% of every non-full
+authored ammunition channel (with a minimum of one round per channel). Horde
+uses the vehicle's normal per-shell loadout from the first wave onward; it does
+not replace that loadout with a separate mode-only pool. At most 12 uncollected
+caches remain active, preventing an endless session from growing
 scene or state cost without bound.
 
 ## Authority and determinism
@@ -37,7 +40,7 @@ handed into every rematch. Clients receive viewer-specific mode presentation
 state alongside the ordinary authoritative snapshot.
 
 The controller owns scores, capture progress, flags, the ball, goals, waves,
-caches, respawn timers, mode-specific speed and ammunition, deterministic bot
+caches, respawn timers, mode-specific speed, deterministic bot
 objective points, and objective completion. Movement, shells, penetration,
 damage, and tank contacts remain in the shared simulation. Turbo Ball therefore
 accepts both hull impulse and shell impulse without introducing second physics.
@@ -50,7 +53,8 @@ the current mode and reuses a fixed pool of 12 Horde cache markers. Standard
 battles and the Garage hide the root and add no marker traversal or geometry.
 
 The HUD presents one compact objective line beneath the score plate. Reliable
-mode events drive capture, goal, wave, cache, and empty-ammunition feedback.
+mode events drive capture, goal, wave, and cache feedback. Empty ammunition is
+reported by the shared combat authority in every mode.
 The lobby and Garage use the same dedicated icon vocabulary as the battle HUD.
 
 ## Verification
@@ -64,4 +68,5 @@ The lobby and Garage use the same dedicated icon vocabulary as the battle HUD.
 
 The focused mode test covers standard-rule compatibility, flag captures,
 respawns, the 1,000-point sector limit, armed ball impulse and scoring, Horde
-wave growth, decreasing repair-cache probability, and finite ammunition.
+wave growth, decreasing repair-cache probability, authored finite ammunition,
+and cache replenishment of the real per-shell inventory.

@@ -423,7 +423,7 @@ const SPECS: FleetTankSpec[] = [
         reloadS: 0.78,
       })),
       shell('MILAN 2', 'HEAT', 115, 800, 800, 480, 130, {
-        pen2000Mm: 800, reloadS: 12.5, count: 6, guided: true,
+        pen2000Mm: 800, reloadS: 2.4, count: 6, guided: true,
         soundProfile: 'milan-launch',
       }),
     ],

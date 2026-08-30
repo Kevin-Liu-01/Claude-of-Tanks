@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-// Rendered ATGM lifecycle gate:
-//   E engages/selects without firing, click launches, later cursor movement
-//   steers the live missile, and projectile death restores normal gunnery.
+// Rendered ATGM ammunition gate:
+//   E equals the numbered missile slot, click launches and consumes one round,
+//   cursor movement steers the missile, and its launcher reloads independently.
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { existsSync } from 'node:fs';
 
 const port = 7860 + Math.floor(Math.random() * 80);
 const server = await createServer({
@@ -31,8 +32,10 @@ try {
   await server.listen();
   const url = `http://localhost:${server.config.server.port}/?nogate&nosplash`;
   console.log(`[atgm-guidance] vite up at ${url}`);
+  const systemChrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
   browser = await puppeteer.launch({
     headless: 'new',
+    ...(existsSync(systemChrome) ? { executablePath: systemChrome } : {}),
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
   });
   const page = await browser.newPage();
@@ -48,7 +51,7 @@ try {
   });
 
   // Use the real desktop input path. The first canvas click acquires pointer
-  // lock; ATGM engagement and launch below must arrive through KeyE + LMB.
+  // lock; ATGM selection and launch below must arrive through KeyE + LMB.
   await page.click('canvas');
   await page.waitForFunction(
     () => window.__DEBUG.input.isLocked() || window.__DEBUG.input.isCursorAim(),
@@ -66,10 +69,12 @@ try {
     return Math.hypot(dx, dz) > 250 && D.gunAimError() < 0.025;
   }, { timeout: 5000 });
 
-  const originalSlot = await page.evaluate(() => window.__DEBUG.game.player.combat.shellSlot);
+  await page.keyboard.press('Digit2');
+  const numberedSlot = await page.evaluate(() => window.__DEBUG.game.player.combat.shellSlot);
+  await page.keyboard.press('Digit1');
   await page.keyboard.press('KeyE');
 
-  const engaged = await page.evaluate(async () => {
+  const selected = await page.evaluate(async () => {
     const D = window.__DEBUG;
     const p = D.game.player;
     p.input.fire = false;
@@ -78,22 +83,27 @@ try {
       selectedSlot: p.combat.shellSlot,
       missileSlot: p.specialAction.missileSlot,
       active: p.specialAction.active,
-      pendingFire: p.specialAction.pendingFire,
+      ammo: p.combat.ammo[p.combat.shellSlot],
+      reloadS: p.combat.reload.t,
+      label: document.querySelector('.cot-special .sl')?.textContent || '',
       shellCount: D.game.shells.filter((shell) => shell.shooterId === p.id).length,
     };
   });
-  if (!engaged.active || !engaged.pendingFire) fail('E did not engage the ATGM channel');
-  if (engaged.selectedSlot !== engaged.missileSlot) fail('E did not select the guided round');
-  if (engaged.shellCount !== 0) fail('E auto-fired instead of waiting for a click');
-  const buttonEngaged = await page.waitForFunction(
-    () => document.querySelector('.cot-special')?.classList.contains('active'),
-    { timeout: 3000 },
-  ).then(() => true).catch(() => false);
-  if (!buttonEngaged) fail('HUD did not show ATGM guidance as engaged');
+  if (selected.selectedSlot !== selected.missileSlot || selected.selectedSlot !== numberedSlot) {
+    fail('E and the numbered ammunition key did not select the same guided round');
+  }
+  if (selected.active) fail('E incorrectly entered a hidden ATGM mode');
+  if (selected.reloadS !== 0) fail('preloaded missile channel was not ready after selection');
+  if (selected.shellCount !== 0) fail('E auto-fired instead of only selecting ammunition');
+  if (selected.label !== 'Select ATGM') fail(`HUD exposed the wrong ATGM action: ${selected.label}`);
 
   await page.mouse.click(640, 360);
   await page.waitForFunction(
-    () => window.__DEBUG.game.player.specialAction.inFlightShellId != null,
+    () => {
+      const D = window.__DEBUG;
+      const p = D.game.player;
+      return D.game.shells.some((shell) => shell.shooterId === p.id && shell.spec.guided);
+    },
     { timeout: 3000 },
   );
   await new Promise((resolve) => setTimeout(resolve, 80));
@@ -101,13 +111,13 @@ try {
   const launched = await page.evaluate(() => {
     const D = window.__DEBUG;
     const p = D.game.player;
-    const shell = D.game.shells.find((entry) => entry.id === p.specialAction.inFlightShellId);
+    const shell = D.game.shells.find((entry) => entry.shooterId === p.id && entry.spec.guided);
     return shell ? {
       id: shell.id,
       guided: shell.spec.guided === true,
-      active: p.specialAction.active,
-      pendingFire: p.specialAction.pendingFire,
-      inFlightShellId: p.specialAction.inFlightShellId,
+      selectedSlot: p.combat.shellSlot,
+      ammo: p.combat.ammo[p.combat.shellSlot],
+      launcherReloadS: p.combat.reload.t,
       vx: shell.vel.x,
       vy: shell.vel.y,
       vz: shell.vel.z,
@@ -121,9 +131,12 @@ try {
       },
     } : null;
   });
-  if (!launched) fail('click did not launch the engaged ATGM');
-  if (!launched.guided || launched.pendingFire || !launched.active) {
-    fail('ATGM did not enter its guided in-flight state');
+  if (!launched) fail('click did not launch the selected ATGM');
+  if (!launched.guided || launched.ammo !== selected.ammo - 1) {
+    fail('ATGM launch did not consume exactly one selected missile');
+  }
+  if (!(launched.launcherReloadS > 2 && launched.launcherReloadS <= 3)) {
+    fail(`ATGM launcher did not enter its 2-3 second cycle: ${launched.launcherReloadS}`);
   }
   if (!launched.visual || launched.visual.bodies < 1 || launched.visual.trailSegments < 2) {
     fail(`ATGM is not visibly rendered with a sustained trail: ${JSON.stringify(launched.visual)}`);
@@ -135,21 +148,35 @@ try {
 
   await page.mouse.move(900, 160, { steps: 10 });
   await new Promise((resolve) => setTimeout(resolve, 180));
-  const steered = await page.evaluate(() => {
+  await page.keyboard.press('Digit1');
+  const cannon = await page.evaluate(() => {
+    const p = window.__DEBUG.game.player;
+    return {
+      selectedSlot: p.combat.shellSlot,
+      reloadS: p.combat.reload.t,
+      magazineRounds: p.combat.magazine?.rounds ?? null,
+      launcherReloadS: p.combat.reloadChannels[p.specialAction.missileSlot].t,
+    };
+  });
+  if (cannon.selectedSlot !== 0 || cannon.reloadS !== 0) {
+    fail(`switching away from the ATGM blocked the cannon: ${JSON.stringify(cannon)}`);
+  }
+  if (!(cannon.launcherReloadS > 0)) fail('launcher cooldown was lost after selecting the cannon');
+
+  const steered = await page.evaluate((shellId) => {
     const D = window.__DEBUG;
     const p = D.game.player;
-    const shell = D.game.shells.find((entry) => entry.id === p.specialAction.inFlightShellId);
+    const shell = D.game.shells.find((entry) => entry.id === shellId);
     if (!shell) return null;
     return {
       vx: shell.vel.x,
       vy: shell.vel.y,
       vz: shell.vel.z,
       speed: shell.vel.length(),
-      active: p.specialAction.active,
       aim: [p.input.aimPoint.x, p.input.aimPoint.y, p.input.aimPoint.z],
       visual: D.fx.getGuidedMissileDebug?.() || null,
     };
-  });
+  }, launched.id);
   if (!steered) fail('missile completed before the real cursor-guidance sample');
   console.log('[atgm-guidance] launch/steer:', JSON.stringify({ launched, steered }));
   const velocityDelta = Math.hypot(
@@ -159,38 +186,47 @@ try {
   );
   if (!(velocityDelta > 1)) fail('missile velocity did not follow the moved cursor');
   if (Math.abs(steered.speed - launched.speed) > 1e-6) fail('guidance changed missile speed');
-  if (!steered.active) fail('guidance disengaged before projectile completion');
-
-  const completed = await page.evaluate(async (originalSlot) => {
+  const completed = await page.evaluate(async () => {
     const D = window.__DEBUG;
     const p = D.game.player;
-    const shell = D.game.shells.find((entry) => entry.id === p.specialAction.inFlightShellId);
-    // The live render loop keeps advancing between evaluate calls, so a missile
-    // aimed into nearby terrain may complete naturally before this forced edge.
-    // If it is still alive, deterministically exercise the same shared death path.
-    if (shell) {
-      shell.dead = true;
-      D.fastForward(1 / 60);
-    }
+    await new Promise((resolve) => setTimeout(resolve, 3200));
+    const phaseBefore = D.game.phase;
+    const timeBefore = D.game.timeS;
+    const fastReturn = D.fastForward(3.2);
+    const cannonSlot = p.combat.shellSlot;
+    const cannonReloadS = p.combat.reload.t;
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', bubbles: true }));
+    document.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyE', bubbles: true }));
     await new Promise((resolve) => requestAnimationFrame(resolve));
     return {
-      originalSlot,
+      cannonSlot,
+      cannonReloadS,
+      phaseBefore,
+      phaseAfter: D.game.phase,
+      timeBefore,
+      timeAfter: D.game.timeS,
+      fastReturn,
+      destroyed: p.combat.destroyed,
       selectedSlot: p.combat.shellSlot,
+      missileSlot: p.specialAction.missileSlot,
+      missileReloadS: p.combat.reload.t,
       active: p.specialAction.active,
-      inFlightShellId: p.specialAction.inFlightShellId,
     };
-  }, originalSlot);
-  if (completed.active || completed.inFlightShellId != null) fail('projectile death did not disengage E');
-  if (completed.selectedSlot !== completed.originalSlot) fail('normal weapon was not restored');
-  const buttonDisengaged = await page.waitForFunction(
-    () => !document.querySelector('.cot-special')?.classList.contains('active'),
-    { timeout: 3000 },
-  ).then(() => true).catch(() => false);
-  if (!buttonDisengaged) fail('HUD still showed ATGM guidance as engaged');
+  });
+  if (completed.cannonSlot !== 0 || completed.cannonReloadS !== 0) {
+    fail('cannon channel did not stay ready while the launcher cycled');
+  }
+  if (completed.selectedSlot !== completed.missileSlot || completed.missileReloadS !== 0) {
+    fail(`launcher did not finish reloading in the background: ${JSON.stringify(completed)}`);
+  }
+  if (completed.active) fail('reselecting ammunition incorrectly engaged a special mode');
   if (pageErrors.length) fail(`browser errors: ${pageErrors.join(' | ')}`);
 
-  console.log('[atgm-guidance] GREEN', JSON.stringify({ engaged, launched, steered, completed }));
+  console.log('[atgm-guidance] GREEN', JSON.stringify({ selected, launched, cannon, steered, completed }));
 } finally {
   if (browser) await browser.close().catch(() => {});
-  await server.close().catch(() => {});
+  await Promise.race([
+    server.close().catch(() => {}),
+    new Promise((resolve) => setTimeout(resolve, 3000)),
+  ]);
 }

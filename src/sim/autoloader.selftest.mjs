@@ -109,6 +109,48 @@ function makeSpec(overrides = {}) {
 }
 
 {
+  const spec = makeSpec({
+    gun: {
+      shells: [
+        { name: 'APFSDS', type: 'APFSDS', caliberMm: 120 },
+        { name: 'HEAT', type: 'HEAT', caliberMm: 120 },
+        { name: 'ATGM', type: 'HEAT', caliberMm: 120, guided: true, reloadS: 2.5 },
+      ],
+    },
+  });
+  const combat = createCombatState(spec);
+  startPostShotReload(combat, spec);
+  tickReload(combat, 2.5);
+  assert.equal(combat.magazine.rounds, 2);
+  selectShell(combat, 2, spec);
+  startPostShotReload(combat, spec);
+  const launcher = combat.reload;
+  assert.equal(launcher.t, 2.5);
+  assert.equal(combat.magazine.rounds, 2,
+    'an auxiliary missile never consumes the cannon magazine');
+
+  assert.equal(startMagazineReload(combat, spec), true,
+    'a partial cannon magazine can reload while the missile remains selected');
+  assert.equal(combat.reload, launcher,
+    'manual cannon reload does not replace the selected launcher');
+  assert.equal(combat.gunReload.kind, 'magazine');
+  assert.equal(magazineReloadDenialReason(combat), 'MAGAZINE_RELOADING');
+  tickReload(combat, 2.5);
+  assert.equal(launcher.t, 0, 'launcher and cannon channels advance together');
+  assert.equal(combat.gunReload.t, 18.5);
+
+  selectShell(combat, 0, spec);
+  assert.equal(combat.reload, combat.gunReload);
+  const elapsedReload = combat.reload.t;
+  selectShell(combat, 1, spec);
+  assert.equal(combat.reload.t, elapsedReload,
+    'changing cannon ammo during a full magazine reload preserves elapsed time');
+  tickReload(combat, elapsedReload);
+  assert.equal(combat.magazine.rounds, 3);
+  assert.equal(combat.reload.kind, 'ready');
+}
+
+{
   const spec = makeSpec({ gun: { autoloader: undefined } });
   const combat = createCombatState(spec);
   assert.equal(combat.magazine, null);

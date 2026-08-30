@@ -104,7 +104,7 @@ export function garageSpecialSystem(
     return {
       ...descriptor,
       icon: 'missileRack',
-      detail: 'Press E to engage, click to launch, then guide the missile with the cursor.',
+      detail: 'Press E or its numbered ammo slot to select, click to launch, then guide with the cursor.',
       meta: missile ? `${missile.name} · ${Math.round(missile.velocityMps || 0)} m/s` : 'Cursor-guided missile',
     };
   }

@@ -188,10 +188,11 @@ ShellSpec = {
   tracer: 'AP'|'APCR'|'HEAT'|'HE'|'APFSDS', // fx preset key (shells doc §10)
   reloadS?: number,              // PER-SHELL reload (IFV autocannon belt vs. ATGM
                                  // rail) — governs this slot in startReload;
-                                 // absent ⇒ gun.reloadS. Switching INTO a slower
-                                 // slot restarts the full new-slot load.
+                                 // absent ⇒ gun.reloadS. Conventional shells
+                                 // share the gun channel; guided launchers keep
+                                 // independent background reload channels.
   count?: number,                // rounds carried — overrides the type-level
-                                 // SHELL_LOADOUT table (belts vs. missile racks)
+                                 // default loadout (belts vs. missile racks)
 }
 ```
 Modern roster pens are quoted @2 km: encode as `pen1000Mm = quoted2kmPen / (1 - lossPer100m*10) `
@@ -962,6 +963,14 @@ inside its rendered-frame update.
 `src/game/killcamAccess.ts` applies the same retry contract to replay code and
 publishes a stable inactive presentation facade. After construction, solo
 fixed-step capture is wired directly to the live killcam implementation.
+
+`src/sim/ammunition.ts` owns the authoritative per-shell inventory used by solo,
+dedicated authority, snapshots, bots, and Horde caches. `CombatState.reloadChannels`
+maps conventional ammunition onto one gun cycle and each guided round onto an
+independent launcher cycle. The selected channel remains projected through the
+legacy `reload` field for HUD consumers; `gunReload` keeps an autoloader's feed
+cycle explicit while an auxiliary launcher is selected. Network snapshots carry
+both the selected cycle and background cannon cycle.
 
 `src/game/playerBattleActions.ts` owns live ammunition cards, shell selection,
 consumable cooldowns/effects, special actions, and multiplayer command routing.

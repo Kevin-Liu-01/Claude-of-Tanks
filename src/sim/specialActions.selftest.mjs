@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import '../vehicles/tankFactory.ts'; // register the full authored fleet
 import { getSpec } from '../vehicles/specs.ts';
-import { createCombatState, startPostShotReload } from './damage.ts';
+import { createCombatState, selectShell, startPostShotReload, tickReload } from './damage.ts';
 import { createTankState, SIM_DT, updateTank } from './movement.ts';
 import {
   GUIDED_MISSILE_TURN_RATE_RAD_S,
@@ -15,12 +15,9 @@ import { captureEntitySnapshot, SNAPSHOT_FLAGS } from '../net/snapshot.ts';
 import {
   SPECIAL_ACTION_KINDS,
   activateSpecialAction,
-  completeGuidedMissileFlight,
   createSpecialActionState,
-  finishSpecialActionFire,
   specialActionGuidesShell,
   specialActionKind,
-  specialActionLocksShell,
 } from './specialActions.ts';
 
 function entityFor(id) {
@@ -47,38 +44,58 @@ assert.equal(specialActionKind(ifv.spec), SPECIAL_ACTION_KINDS.GUIDED_MISSILE);
 const originalSlot = ifv.combat.shellSlot;
 const missileResult = activateSpecialAction(ifv);
 assert.equal(missileResult.ok, true);
+assert.equal(missileResult.slot, ifv.specialAction.missileSlot);
 assert.equal(ifv.combat.shellSlot, ifv.specialAction.missileSlot);
-assert.equal(ifv.combat.reload.t, 0, 'E arms the ATGM for the next click immediately');
-assert.equal(specialActionLocksShell(ifv), true);
+assert.equal(ifv.input.shellSlot, ifv.specialAction.missileSlot);
+assert.equal(ifv.combat.reload.t, 0,
+  'E selects the same preloaded ATGM channel as its numbered ammunition slot');
+assert.equal(ifv.specialAction.active, false, 'ammunition selection is not a hidden mode');
 startPostShotReload(ifv.combat, ifv.spec);
-assert.equal(finishSpecialActionFire(ifv, 41), true);
-assert.equal(ifv.specialAction.inFlightShellId, 41);
-assert.equal(ifv.specialAction.active, true, 'guidance remains engaged during flight');
-assert.equal(completeGuidedMissileFlight(ifv, 41), true);
-assert.equal(ifv.combat.shellSlot, originalSlot, 'impact restores the pre-E weapon immediately');
-assert.equal(specialActionLocksShell(ifv), false);
+assert.equal(ifv.combat.reload.t, 2.6, 'the launcher owns its post-shot cycle');
+assert.notEqual(ifv.combat.shellSlot, originalSlot,
+  'a missile impact never silently restores a different ammunition type');
+
+const m1a3 = entityFor('m1a3');
+const cannonMagazineRounds = m1a3.combat.magazine.rounds;
+assert.equal(activateSpecialAction(m1a3).ok, true);
+assert.equal(m1a3.combat.reload.t, 0);
+startPostShotReload(m1a3.combat, m1a3.spec);
+assert.equal(m1a3.combat.magazine.rounds, cannonMagazineRounds,
+  'an external guided launcher never consumes the cannon autoloader magazine');
+assert.equal(m1a3.combat.reload.kind, 'shell');
+selectShell(m1a3.combat, 0, m1a3.spec);
+assert.equal(m1a3.combat.reload.t, 0,
+  'switching back to the cannon exposes its preserved ready channel');
+assert.equal(m1a3.combat.magazine.rounds, cannonMagazineRounds);
+for (let tick = 0; tick < Math.ceil(2.8 / SIM_DT) + 1; tick++) {
+  tickReload(m1a3.combat, SIM_DT);
+}
+selectShell(m1a3.combat, m1a3.specialAction.missileSlot, m1a3.spec);
+assert.equal(m1a3.combat.reload.t, 0,
+  'the guided launcher reloads in the background while the cannon is selected');
 
 const mbt70 = entityFor('mbt70');
 assert.equal(mbt70.spec.gun.shells.length, 1,
   'MBT-70 exposes only its primary ATGM ammunition');
 assert.equal(mbt70.spec.gun.shells[0].guided, true);
-assert.equal(specialActionKind(mbt70.spec), SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM,
-  'primary missile guidance leaves the suspension action available');
+assert.equal(specialActionKind(mbt70.spec), SPECIAL_ACTION_KINDS.GUIDED_MISSILE,
+  'every missile vehicle maps E to its guided ammunition slot');
+const mbt70Selection = activateSpecialAction(mbt70);
+assert.equal(mbt70Selection.ok, true);
+assert.equal(mbt70Selection.slot, 0,
+  'a primary-guided vehicle uses the same slot-selection rule as an IFV');
 const mbt70Shell = createShell(
   mbt70.spec.gun.shells[0], 'mbt70', true, new Vector3(), new Vector3(0, 0, 1), 70,
 );
 assert.equal(specialActionGuidesShell(mbt70, mbt70Shell), true,
   'MBT-70 primary fire guides immediately without the IFV selector action');
 
-const toggled = entityFor('bwp1');
-assert.equal(activateSpecialAction(toggled).active, true);
-assert.equal(activateSpecialAction(toggled).active, false,
-  'a second E press disengages an armed missile before launch');
-
-const guidedSpec = toggled.spec.gun.shells[toggled.specialAction.missileSlot];
+const guidedSpec = ifv.spec.gun.shells[ifv.specialAction.missileSlot];
 const guidedShell = createShell(
   guidedSpec, 'ifv', true, new Vector3(), new Vector3(0, 0, 1), 77,
 );
+assert.equal(specialActionGuidesShell(ifv, guidedShell), true,
+  'every guided round uses cursor steering without an armed-mode exception');
 const guidedSpeed = guidedShell.vel.length();
 assert.equal(guideShellToward(guidedShell, new Vector3(80, 0, 120), SIM_DT), true);
 assert.ok(guidedShell.vel.x > 0, 'cursor guidance turns the missile toward the new sight point');
@@ -121,9 +138,8 @@ assert.equal(activateSpecialAction(autoloader).reason, 'MAGAZINE_FULL',
 assert.equal(specialActionKind(getSpec('m1a2')), SPECIAL_ACTION_KINDS.NONE,
   'vehicles without a modeled system do not receive a fake ability');
 
-// The network action remains fully authoritative: E only engages/selects the
-// launcher; a later ordinary fire frame launches and subsequent aim frames
-// steer the missile on the server.
+// The network action remains fully authoritative: E and slot 2 both select
+// the launcher; a later ordinary fire frame launches after the launcher load.
 const match = createAuthoritativeMatch({
   mapId: 'verdant',
   countdownS: 0,
@@ -133,14 +149,14 @@ const match = createAuthoritativeMatch({
   ],
 });
 match.onMatchReady();
-const input = (actionBits = 0) => ({
+const input = (actionBits = 0, shellSlot = 0) => ({
   throttle: 0,
   steer: 0,
   brake: false,
   fire: false,
   aimYaw: 0,
   aimPitch: 0,
-  shellSlot: 0,
+  shellSlot,
   actionBits,
 });
 match.step({
@@ -151,34 +167,33 @@ match.step({
   ]),
 });
 const authoritativeIfv = match.entityById.get('ifv');
-assert.equal(authoritativeIfv.specialAction.pendingFire, true);
 assert.equal(authoritativeIfv.combat.shellSlot, authoritativeIfv.specialAction.missileSlot);
+assert.equal(authoritativeIfv.combat.reload.kind, 'ready',
+  'separate missile channel is preloaded before its first shot');
 let snapshot = match.snapshot({ tick: 1, serverTimeMs: 17, viewerId: 'ifv', ackInputSeq: 1 });
 assert.ok(snapshot.events.some((event) => event.type === 'special_action' && event.id === 'ifv'));
 assert.ok(!snapshot.events.some((event) => event.type === 'shell_fired'),
-  'E engages ATGM guidance without auto-firing');
+  'E selects the ATGM without auto-firing');
 match.afterSnapshotBroadcast();
+for (let tick = 0; tick < Math.ceil(2.6 / SIM_DT) + 1; tick++) {
+  match.step({
+    dt: SIM_DT,
+    inputs: new Map([
+      ['ifv', input(0, authoritativeIfv.specialAction.missileSlot)],
+      ['target', input()],
+    ]),
+  });
+}
 match.step({
   dt: SIM_DT,
   inputs: new Map([
-    ['ifv', input()],
+    ['ifv', { ...input(0, authoritativeIfv.specialAction.missileSlot), fire: true }],
     ['target', input()],
   ]),
 });
-snapshot = match.snapshot({ tick: 2, serverTimeMs: 34, viewerId: 'ifv', ackInputSeq: 2 });
-assert.ok(!snapshot.events.some((event) => event.type === 'shell_fired'),
-  'a ready launcher still waits for the player click');
-match.afterSnapshotBroadcast();
-match.step({
-  dt: SIM_DT,
-  inputs: new Map([
-    ['ifv', { ...input(), fire: true }],
-    ['target', input()],
-  ]),
-});
-snapshot = match.snapshot({ tick: 3, serverTimeMs: 51, viewerId: 'ifv', ackInputSeq: 3 });
+snapshot = match.snapshot({ tick: 160, serverTimeMs: 2700, viewerId: 'ifv', ackInputSeq: 160 });
 assert.ok(snapshot.events.some((event) => event.type === 'shell_fired' && event.shooterId === 'ifv'),
-  'the click launches the engaged ATGM through the authoritative firing path');
+  'the click launches the selected ATGM through the authoritative firing path');
 assert.equal(snapshot.shells.length, 1);
 assert.equal(snapshot.shells[0].guided, true, 'network snapshots preserve the yellow ATGM tracer identity');
 const launchVx = snapshot.shells[0].vx;
@@ -187,12 +202,12 @@ for (let i = 0; i < 6; i++) {
   match.step({
     dt: SIM_DT,
     inputs: new Map([
-      ['ifv', { ...input(), aimYaw: 0.45, aimDistance: 800 }],
+      ['ifv', { ...input(0, authoritativeIfv.specialAction.missileSlot), aimYaw: 0.45, aimDistance: 800 }],
       ['target', input()],
     ]),
   });
 }
-snapshot = match.snapshot({ tick: 9, serverTimeMs: 153, viewerId: 'ifv', ackInputSeq: 9 });
+snapshot = match.snapshot({ tick: 166, serverTimeMs: 2800, viewerId: 'ifv', ackInputSeq: 166 });
 assert.ok(snapshot.shells[0].vx > launchVx,
   'authoritative missile velocity follows subsequent cursor aim frames');
 

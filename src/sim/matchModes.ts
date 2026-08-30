@@ -4,6 +4,11 @@
  * All positions are meters and every timer advances from the caller's fixed
  * simulation step.
  */
+import {
+  replenishAmmunition,
+  totalAmmunition,
+  totalAmmunitionCapacity,
+} from './ammunition.ts';
 
 export const GAME_MODE_IDS = Object.freeze([
   'standard',
@@ -70,8 +75,6 @@ const BALL_LINEAR_DRAG = 0.992;
 const BALL_GRAVITY_MPS2 = 9.81;
 const HORDE_INTERMISSION_S = 6;
 const HORDE_INITIAL_ACTIVE = 3;
-const HORDE_AMMO_CAPACITY = 30;
-const HORDE_AMMO_PICKUP = 12;
 const PICKUP_RADIUS_M = 7;
 const WORLD_MARGIN_M = 420;
 
@@ -86,8 +89,8 @@ export interface MatchModeEntity {
     hp: number;
     maxHp: number;
     destroyed: boolean;
-    modeAmmo?: number | null;
-    modeAmmoCapacity?: number | null;
+    ammo: number[];
+    ammoCapacity: number[];
   };
   modeActive?: boolean;
   modeSpeedMultiplier?: number;
@@ -201,7 +204,6 @@ export interface MatchModeController<
   readonly state: MatchModePresentationState;
   readonly usesElimination: boolean;
   step(dt: number, timeS: number): MatchModeResult | null;
-  consumeShot(entity: Entity): boolean;
   tryHitBall(shell: { dead?: boolean; prevPos: Vec3Like; pos: Vec3Like; vel: Vec3Like;
     shooterId?: string }): boolean;
   botTarget(entity: Entity): { x: number; z: number } | null;
@@ -472,15 +474,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     emit('mode_pickup_spawned', { ...next });
   };
 
-  if (id === 'endless_horde') {
-    for (const ally of teams.alpha) {
-      if (!ally.bot) {
-        ally.combat.modeAmmo = HORDE_AMMO_CAPACITY;
-        ally.combat.modeAmmoCapacity = HORDE_AMMO_CAPACITY;
-      }
-    }
-    startHordeWave();
-  }
+  if (id === 'endless_horde') startHordeWave();
 
   const finish = (winner: ObjectiveTeam | 'draw', reason: string): MatchModeResult => {
     if (!result) {
@@ -693,9 +687,18 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         if (pickup.kind === 'heal') {
           const restored = Math.max(1, Math.round(entity.combat.maxHp * 0.35));
           entity.combat.hp = Math.min(entity.combat.maxHp, entity.combat.hp + restored);
-        } else if (entity.combat.modeAmmoCapacity != null) {
-          entity.combat.modeAmmo = Math.min(entity.combat.modeAmmoCapacity,
-            (entity.combat.modeAmmo || 0) + HORDE_AMMO_PICKUP);
+        } else {
+          const refill = replenishAmmunition(entity.combat);
+          if (refill.totalAdded <= 0) continue;
+          emit('mode_pickup_collected', {
+            id: pickup.id,
+            kind: pickup.kind,
+            by: entity.id,
+            ammoAdded: refill.totalAdded,
+            addedBySlot: refill.added,
+          });
+          pickup.active = false;
+          break;
         }
         pickup.active = false;
         emit('mode_pickup_collected', { id: pickup.id, kind: pickup.kind, by: entity.id });
@@ -720,8 +723,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       goals: goals.map((goal) => ({ ...goal })),
       horde: state.horde ? { ...state.horde } : null,
       pickups: pickups.filter((pickup) => pickup.active).map((pickup) => ({ ...pickup })),
-      playerAmmo: viewer?.combat.modeAmmo ?? null,
-      playerAmmoCapacity: viewer?.combat.modeAmmoCapacity ?? null,
+      playerAmmo: viewer ? totalAmmunition(viewer.combat) : null,
+      playerAmmoCapacity: viewer ? totalAmmunitionCapacity(viewer.combat) : null,
     };
   };
 
@@ -738,12 +741,6 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (id === 'turbo_ball') return stepBall(dt, timeS);
       if (id === 'endless_horde') return stepHorde(timeS);
       return null;
-    },
-    consumeShot(entity) {
-      if (id !== 'endless_horde' || entity.bot || entity.combat.modeAmmo == null) return true;
-      if (entity.combat.modeAmmo <= 0) return false;
-      entity.combat.modeAmmo--;
-      return true;
     },
     tryHitBall(shell) {
       if (!ball || shell.dead || pointSegmentDistanceSq(ball, shell.prevPos, shell.pos)

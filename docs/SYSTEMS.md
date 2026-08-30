@@ -81,9 +81,11 @@ strict TypeScript owners:
 - `src/game/killcamAccess.ts` owns replay code preload, singleton construction,
   failure retry, and the stable no-op presentation facade used before battle;
   the fixed-step simulation receives the direct live capture implementation;
-- `src/game/playerBattleActions.ts` owns ammunition, shell selection,
-  consumable cooldowns, special actions, and the local-versus-network command
-  split without importing Three.js or the demand-loaded combat implementation;
+- `src/sim/ammunition.ts` owns canonical per-shell capacity, consumption, and
+  cache replenishment for solo and network authority;
+- `src/game/playerBattleActions.ts` owns ammunition-card projection, shell
+  selection, consumable cooldowns, special actions, and the local-versus-network
+  command split without importing Three.js or the demand-loaded combat implementation;
 - `src/game/playerFrameInput.ts` owns allocation-free per-frame keyboard,
   mouse, gamepad, touch, cursor-fallback, zoom, and RMB-mode sampling and
   publishes the stable movement/fire and camera input records;

@@ -29,6 +29,7 @@ interface AimCombat {
   reload: { t: number; totalS: number; kind?: string };
   magazine?: { rounds?: number; capacity?: number } | null;
   shellSlot: number;
+  ammo?: number[];
 }
 
 interface AimSpec {
@@ -258,6 +259,11 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     frame.magazine.capacity = player.combat.magazine?.capacity || 0;
     frame.shellSlot = player.combat.shellSlot;
     frame.shells = deps.getShellCards();
+    for (let slot = 0; slot < frame.shells.length; slot++) {
+      if (Array.isArray(player.combat.ammo)) {
+        frame.shells[slot].count = Math.max(0, Math.floor(player.combat.ammo[slot] || 0));
+      }
+    }
     frame.zoom = rig.mode === 'SNIPER' ? rig.zoom : 1;
 
     frame.gunDistM = gunCenterRay(player, frame.point, muzzle, bore, gunTarget);

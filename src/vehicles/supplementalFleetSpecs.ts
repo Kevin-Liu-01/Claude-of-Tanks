@@ -226,8 +226,8 @@ const SPECS: FleetTankSpec[] = [
   make('m60a1', 'm60a2', 'M60A2 Starship', 'USA',
     { hp: 2250, enginePowerHp: 750, weightTons: 52, reverseSpeedKmh: 18,
       turretTraverseDegS: 38,
-      // 152 mm M162 gun/launcher: conventional ammunition stays the default
-      // while E arms the slower MGM-51C guidance channel for the next shot.
+      // 152 mm M162 gun/launcher: conventional ammunition stays the default,
+      // while E selects the MGM-51C slot exactly like its numbered shell key.
       // Per-round counts keep the Starship's compact mixed stowage explicit.
       gun: { caliberMm: 152, reloadS: 9.6, baseAccuracy: 0.32, aimTimeS: 1.8, shells: [
         shell('M409A1 HEAT-MP', 'HEAT', 152, 560, 560, 650, 689,
@@ -235,7 +235,7 @@ const SPECS: FleetTankSpec[] = [
         shell('MGM-51C Shillelagh ATGM', 'HEAT', 152, 900, 900, 780, 208, {
           guided: true,
           guidanceTurnRateRadS: 0.72,
-          reloadS: 11.5,
+          reloadS: 3.0,
           count: 13,
           soundProfile: 'shillelagh-launch',
         }),

@@ -99,8 +99,10 @@ function entity(id, specId, team, x, {
       destroyed: false,
       fire: { burning: false },
       reload: { t: 1.25, totalS: 18.5, kind: 'magazine' },
+      gunReload: { t: 9, totalS: 21, kind: 'magazine' },
       magazine: { rounds: 1, capacity: 3 },
       shellSlot: 1,
+      ammo: [8, 4, 2],
     },
   };
 }
@@ -1013,9 +1015,18 @@ assert.equal(decodedVisible.x, 20);
 assert.equal(decodedVisible.reloadTotalS, 18.5,
   'snapshot carries the authoritative total reload duration');
 assert.equal(decodedVisible.reloadKind, 'magazine');
+assert.equal(decodedVisible.gunReloadS, 9,
+  'snapshot preserves a background cannon/autoloader reload');
+assert.equal(decodedVisible.gunReloadTotalS, 21);
+assert.equal(decodedVisible.gunReloadKind, 'magazine');
 assert.equal(decodedVisible.magazineRounds, 1);
 assert.equal(decodedVisible.magazineCapacity, 3,
   'snapshot carries ready-rack count and capacity');
+assert.deepEqual(
+  [decodedVisible.ammo0, decodedVisible.ammo1, decodedVisible.ammo2],
+  [8, 4, 2],
+  'snapshot carries authoritative per-shell ammunition counts',
+);
 const airborne = decodeEntitySnapshot(captureEntitySnapshot(entity(
   'airborne', 'm1a2', 'alpha', 5,
   { y: 8.25, verticalSpeed: -4.5, grounded: false },

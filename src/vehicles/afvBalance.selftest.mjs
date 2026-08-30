@@ -62,7 +62,8 @@ for (const id of ifvIds) {
     assert.ok(guided, `${id}: guided weapon exists`);
     assert.equal(guided.dmg, expected.missile[0], `${id}: guided damage`);
     assert.equal(guided.soundProfile, expected.missile[1], `${id}: launcher report`);
-    assert.ok(guided.reloadS >= 12, `${id}: guided round pays its own long reload`);
+    assert.ok(guided.reloadS >= 2 && guided.reloadS <= 3,
+      `${id}: guided launcher cycles independently in 2-3 seconds`);
     missileDamage.add(guided.dmg);
   } else {
     assert.equal(guided, undefined, `${id}: gun-only vehicle stays gun-only`);

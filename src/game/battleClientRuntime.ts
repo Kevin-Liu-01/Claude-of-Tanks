@@ -18,8 +18,13 @@ export {
 export { createShell } from '../sim/ballistics.ts';
 export {
   activateSpecialAction,
-  specialActionLocksShell,
+  guidedMissileSlot,
+  specialActionKind,
 } from '../sim/specialActions.ts';
+export {
+  hasAmmunition,
+  shellAmmunitionCapacity,
+} from '../sim/ammunition.ts';
 export { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
 export {
   cooldownRemaining,

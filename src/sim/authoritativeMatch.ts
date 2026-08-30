@@ -80,12 +80,10 @@ import { decodeAimIntent } from '../net/aimIntent.ts';
 import type { AimIntentInput } from '../net/aimIntent.ts';
 import {
   activateSpecialAction,
-  completeGuidedMissileFlight,
   createSpecialActionState,
-  finishSpecialActionFire,
   specialActionGuidesShell,
-  specialActionLocksShell,
 } from './specialActions.ts';
+import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import type {
   GameModeId,
@@ -804,11 +802,9 @@ export function createAuthoritativeMatch({
     entity.input.fire = input.fire;
     entity.input.aimLocked = !!input.aimLocked;
     entity.input.actionBits = input.actionBits | 0;
-    if (!specialActionLocksShell(entity)) {
-      const shellSlot = Math.min(entity.spec.gun.shells.length - 1, input.shellSlot);
-      if (shellSlot !== entity.combat.shellSlot) selectShell(entity.combat, shellSlot, entity.spec);
-      entity.input.shellSlot = shellSlot;
-    }
+    const shellSlot = Math.min(entity.spec.gun.shells.length - 1, input.shellSlot);
+    if (shellSlot !== entity.combat.shellSlot) selectShell(entity.combat, shellSlot, entity.spec);
+    entity.input.shellSlot = shellSlot;
     decodeAimIntent(input, entity.state.pos, _aim);
     entity.input.aimPoint.copy(_aim);
   }
@@ -1031,6 +1027,7 @@ export function createAuthoritativeMatch({
         id: entity.id,
         kind: result.kind,
         active: !!result.active,
+        slot: result.slot ?? null,
         reason: result.reason || null,
       });
     }
@@ -1077,12 +1074,14 @@ export function createAuthoritativeMatch({
   function tryFire(entity: AuthoritativeEntity): void {
     const combat = entity.combat;
     if (!entity.input.fire || combat.destroyed || combat.reload.t > 0) return;
-    if (combat.magazine && combat.magazine.rounds <= 0) return;
     if (combat.modules.gun && combat.modules.gun.state === 'red') return;
     const shellSpec = entity.spec.gun.shells[combat.shellSlot];
     if (!shellSpec) return;
-    const guidedSpecial = !!(shellSpec.guided && entity.specialAction?.active &&
-      entity.specialAction.pendingFire && combat.shellSlot === entity.specialAction.missileSlot);
+    if (shellSpec.guided !== true && combat.magazine && combat.magazine.rounds <= 0) return;
+    if (!hasAmmunition(combat, combat.shellSlot)) {
+      if (!entity.bot) emit('ammo_empty', { id: entity.id, slot: combat.shellSlot });
+      return;
+    }
     if (entity.bot) {
       const friendlyRisk = botFriendlyFireRisk(
         entity, entity.input.aimPoint, shellSpec, entities,
@@ -1094,14 +1093,11 @@ export function createAuthoritativeMatch({
         return;
       }
     }
-    if (!modeController.consumeShot(entity)) {
-      emit('mode_ammo_empty', { id: entity.id });
-      return;
-    }
     const gun = gunWorldPose(entity);
     _gunDir.copy(gun.direction);
     const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
     applyDispersion(_gunDir, sigma, rng);
+    if (!consumeAmmunition(combat, combat.shellSlot)) return;
     const shell = createShell(shellSpec, entity.id, true, gun.muzzle, _gunDir, nextShellId++);
     shells.push(shell);
     startPostShotReload(combat, entity.spec);
@@ -1132,7 +1128,6 @@ export function createAuthoritativeMatch({
       dy: _gunDir.y,
       dz: _gunDir.z,
     });
-    if (guidedSpecial) finishSpecialActionFire(entity, shell.id);
   }
 
   function recordShellHit(
@@ -1260,18 +1255,6 @@ export function createAuthoritativeMatch({
         recordShellHit(shell, hit, wasDestroyed);
       }
     }
-    for (const shell of shells) {
-      if (!shell.dead) continue;
-      const shooter = entityById.get(shell.shooterId);
-      if (shooter && completeGuidedMissileFlight(shooter, shell.id)) {
-        emit('special_action', {
-          id: shooter.id,
-          kind: shooter.specialAction.kind,
-          active: false,
-          reason: 'IMPACT',
-        });
-      }
-    }
     let live = 0;
     for (const shell of shells) if (!shell.dead) shells[live++] = shell;
     shells.length = live;
@@ -1387,8 +1370,20 @@ export function createAuthoritativeMatch({
       }
       for (const entity of entities) {
         if (entity.modeActive === false) continue;
-        if (entity.bot) entity.aiCtl?.update(dt, timeS);
-        else applyNetworkInput(entity, inputs.get(entity.id));
+        if (entity.bot) {
+          entity.aiCtl?.update(dt, timeS);
+          // Bot controllers write the same input shell slot as clients, but
+          // do not pass through applyNetworkInput. Reconcile it here so the
+          // authoritative combat state can leave a depleted type and load the
+          // remaining ammunition instead of holding fire on an empty slot.
+          const shellSlot = Math.max(0, Math.min(
+            entity.spec.gun.shells.length - 1,
+            entity.input.shellSlot | 0,
+          ));
+          if (shellSlot !== entity.combat.shellSlot) {
+            selectShell(entity.combat, shellSlot, entity.spec);
+          }
+        } else applyNetworkInput(entity, inputs.get(entity.id));
         useConsumables(entity);
       }
       for (const entity of entities) {
@@ -1415,9 +1410,10 @@ export function createAuthoritativeMatch({
       }
       for (const entity of entities) {
         if (entity.modeActive === false || entity.combat.destroyed) continue;
-        if (entity.combat.reload.t > 0) {
-          tickReload(entity.combat, dt);
-        }
+        // Every weapon channel advances even when it is not selected. This is
+        // what lets an external missile launcher reload in the background
+        // while the crew returns to the cannon.
+        tickReload(entity.combat, dt);
         tryFire(entity);
       }
       stepShells(dt);

@@ -2,6 +2,10 @@ import type {
   AimController,
   AimControllerDependencies,
 } from './aimController.ts';
+import {
+  hasAmmunition,
+  shellAmmunitionCapacity,
+} from '../sim/ammunition.ts';
 
 type RuntimeModule = typeof import('./battleClientRuntime.ts');
 type RuntimeLoader = () => Promise<RuntimeModule>;
@@ -22,7 +26,10 @@ export interface BattleClientAccess {
   readonly startMagazineReload: RuntimeModule['startMagazineReload'];
   readonly createShell: RuntimeModule['createShell'];
   readonly activateSpecialAction: RuntimeModule['activateSpecialAction'];
-  readonly specialActionLocksShell: RuntimeModule['specialActionLocksShell'];
+  readonly guidedMissileSlot: RuntimeModule['guidedMissileSlot'];
+  readonly specialActionKind: RuntimeModule['specialActionKind'];
+  readonly hasAmmunition: RuntimeModule['hasAmmunition'];
+  readonly shellAmmunitionCapacity: RuntimeModule['shellAmmunitionCapacity'];
   readonly isPostwarVehicleEra: RuntimeModule['isPostwarVehicleEra'];
   readonly hasConsumableRule: (slot: number) => boolean;
   readonly cooldownRemaining: RuntimeModule['cooldownRemaining'];
@@ -108,7 +115,12 @@ export function createBattleClientAccess(
     startMagazineReload: (...args) => requireRuntime().startMagazineReload(...args),
     createShell: (...args) => requireRuntime().createShell(...args),
     activateSpecialAction: (...args) => requireRuntime().activateSpecialAction(...args),
-    specialActionLocksShell: (...args) => requireRuntime().specialActionLocksShell(...args),
+    guidedMissileSlot: (...args) => requireRuntime().guidedMissileSlot(...args),
+    specialActionKind: (...args) => requireRuntime().specialActionKind(...args),
+    // These two helpers are deliberately tiny and pure. Action-card setup runs
+    // in the Garage before the full Battle runtime has been demand-loaded.
+    hasAmmunition,
+    shellAmmunitionCapacity,
     isPostwarVehicleEra: (...args) => requireRuntime().isPostwarVehicleEra(...args),
     hasConsumableRule: (slot) => !!requireRuntime().CONSUMABLE_RULES[slot],
     cooldownRemaining: (...args) => requireRuntime().cooldownRemaining(...args),

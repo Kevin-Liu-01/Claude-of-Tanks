@@ -16,7 +16,10 @@ type ActionRules = Pick<BattleClientAccess,
   | 'magazineReloadDenialReason'
   | 'startMagazineReload'
   | 'activateSpecialAction'
-  | 'specialActionLocksShell'
+  | 'guidedMissileSlot'
+  | 'specialActionKind'
+  | 'hasAmmunition'
+  | 'shellAmmunitionCapacity'
   | 'hasConsumableRule'
   | 'cooldownRemaining'
   | 'resetConsumableCooldowns'
@@ -76,13 +79,6 @@ export interface PlayerBattleActions {
   dispose(): void;
 }
 
-const SHELL_LOADOUT: Readonly<Record<string, number>> = Object.freeze({
-  AP: 24,
-  APCR: 20,
-  APFSDS: 24,
-  HEAT: 16,
-  HE: 12,
-});
 const SHELL_ACTIONS = ['shell1', 'shell2', 'shell3'] as const;
 const CONSUMABLE_ACTIONS = ['consumable1', 'consumable2', 'consumable3'] as const;
 
@@ -127,6 +123,13 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   const livePlayer = (): (TEntity & { combat: ActionCombat }) | null => {
     const player = game.player;
     return hasLiveCombat(player) ? player : null;
+  };
+  const syncShellCards = (): void => {
+    const combat = game.player?.combat;
+    if (!combat || !Array.isArray(combat.ammo)) return;
+    for (let slot = 0; slot < shellCards.length; slot++) {
+      shellCards[slot].count = Math.max(0, Math.floor(combat.ammo[slot] || 0));
+    }
   };
 
   for (let slot = 0; slot < 3; slot++) {
@@ -210,8 +213,8 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     const slot = Number((payload as { slot?: unknown } | null)?.slot);
     const player = livePlayer();
     if (!player || !Number.isInteger(slot) || slot < 0) return;
-    if (rules.specialActionLocksShell(player)) return;
-    if (slot === player.combat.shellSlot && player.combat.magazine) {
+    if (slot === player.combat.shellSlot && player.combat.magazine &&
+        player.spec.gun.shells[slot]?.guided !== true) {
       bus.emit('ui:magazineReload', {});
       return;
     }
@@ -236,7 +239,17 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   listen('ui:specialAction', () => {
     const player = battleInputAllowed() ? livePlayer() : null;
     if (!player) return;
-    if (network.isActive()) network.queueAction('specialAction');
+    if (rules.specialActionKind(player.spec) === 'guided_missile') {
+      const slot = rules.guidedMissileSlot(player.spec);
+      if (slot < 0) return;
+      bus.emit('ui:shellSelect', { slot, source: 'specialAction' });
+      bus.emit('ui:specialActionResult', {
+        ok: true,
+        kind: 'guided_missile',
+        active: false,
+        slot,
+      });
+    } else if (network.isActive()) network.queueAction('specialAction');
     else {
       const result = rules.activateSpecialAction(player);
       bus.emit(result.ok ? 'ui:specialActionResult' : 'ui:specialActionDenied', result);
@@ -246,9 +259,9 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
 
   listen('shell:fired', (payload) => {
     if (!(payload as { isPlayer?: unknown } | null)?.isPlayer || !game.player?.combat) return;
-    const card = shellCards[game.player.combat.shellSlot];
-    if (card && card.count > 0) card.count -= 1;
+    syncShellCards();
   });
+  listen('mode:pickup_collected', syncShellCards);
 
   return {
     shellCards,
@@ -260,14 +273,17 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
           type: shell.type,
           dmg: shell.dmg,
           penLabel: `${Math.round(shell.pen100Mm)} mm`,
-          count: shell.count != null
-            ? shell.count
-            : (SHELL_LOADOUT[shell.type] ?? 20),
+          count: rules.shellAmmunitionCapacity(shell),
         });
       }
       return shellCards;
     },
     hasAmmo(slot) {
+      const combat = game.player?.combat;
+      if (combat) {
+        syncShellCards();
+        return rules.hasAmmunition(combat, slot);
+      }
       const card = shellCards[slot];
       return shellCards.length === 0 || ((card?.count ?? 0) | 0) > 0;
     },

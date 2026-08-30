@@ -312,8 +312,8 @@ assert.deepEqual([starshipHeat.dmg, starshipHeat.pen100Mm, starshipHeat.reloadS]
   [650, 560, 9.6], 'Starship conventional HEAT-MP is the faster general-purpose channel');
 assert.deepEqual(
   [starshipMissile.dmg, starshipMissile.pen100Mm, starshipMissile.reloadS],
-  [780, 900, 11.5],
-  'Starship Shillelagh is the slower high-penetration Tier IX channel',
+  [780, 900, 3],
+  'Starship Shillelagh is the high-penetration independent launcher channel',
 );
 assert.equal(garageStatGroup(starship), '9/cold-war',
   'garage compares the Starship against its Tier IX peers');
@@ -329,7 +329,7 @@ assert.deepEqual(
   'M3A3 owns a Tier X scout/autocannon envelope',
 );
 assert.deepEqual([m3a3Missile.dmg, m3a3Missile.pen100Mm, m3a3Missile.reloadS],
-  [700, 1050, 12], 'M3A3 TOW-2B is its Tier X anti-armor channel');
+  [700, 1050, 2.8], 'M3A3 TOW-2B is its independent Tier X anti-armor channel');
 assert.ok(m3a3.hp < TANK_SPECS.bmpt_t90.hp,
   'M3A3 remains a lighter glass-cannon scout than the Tier X Terminator');
 assert.equal(garageStatGroup(m3a3), '10/modern',

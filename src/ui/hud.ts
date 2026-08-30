@@ -273,6 +273,7 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   remainingS?: number;
   targetName?: string;
   by?: string;
+  ammoAdded?: number;
   wave?: number;
   team?: string;
   module?: string;
@@ -1951,8 +1952,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     const action = player?.specialAction;
     specialButton.classList.toggle('active', !!action?.active);
-    specialButton.classList.toggle('pending', !!(action?.pendingFire ||
-      action?.inFlightShellId != null));
+    specialButton.classList.remove('pending');
     specialButton.disabled = !player || !!player.combat?.destroyed;
     specialButton.setAttribute('aria-pressed', action?.active ? 'true' : 'false');
   }
@@ -4623,8 +4623,9 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   on('ui:specialActionResult', ({ kind, active }) => {
     if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {
-      showAlert(active ? 'ATGM GUIDANCE ENGAGED · CLICK TO FIRE'
-        : 'ATGM GUIDANCE DISENGAGED', { icon: 'missileRack', tone: active ? 'success' : 'info' });
+      showAlert('ATGM AMMUNITION SELECTED · CLICK TO FIRE', {
+        icon: 'missileRack', tone: 'success',
+      });
     }
     else if (kind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM) {
       showAlert(active ? 'SUSPENSION AIM ENGAGED' : 'SUSPENSION AIM DISENGAGED',
@@ -4634,8 +4635,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
   });
   on('ui:specialActionDenied', ({ reason }) => {
-    showAlert(reason === 'BUSY' ? 'SPECIAL ACTION IN PROGRESS'
-      : reason === 'MAGAZINE_RELOADING' ? 'MAGAZINE RELOAD IN PROGRESS'
+    showAlert(reason === 'MAGAZINE_RELOADING' ? 'MAGAZINE RELOAD IN PROGRESS'
         : reason === 'MAGAZINE_FULL' ? 'MAGAZINE ALREADY FULL'
           : 'SPECIAL ACTION UNAVAILABLE', { icon: 'clock', tone: 'info' });
   });
@@ -4682,14 +4682,18 @@ export function initHud(bus: EventBus): HudRuntime {
       { icon: 'autoAim', tone: 'success' });
     else if (reason) showAlert(reason, { icon: 'autoAim', tone: 'info' });
   });
-  on('mode:ammo_empty', ({ id }) => {
+  on('ammo:empty', ({ id }) => {
     if (playerId == null || id === playerId) {
-      showAlert('AMMUNITION EMPTY · FIND A CACHE', { icon: 'shell', tone: 'danger' });
+      showAlert('AMMUNITION TYPE EMPTY · SELECT ANOTHER TYPE', {
+        icon: 'shell', tone: 'danger',
+      });
     }
   });
-  on('mode:pickup_collected', ({ by, kind }) => {
+  on('mode:pickup_collected', ({ by, kind, ammoAdded }) => {
     if (playerId != null && by !== playerId) return;
-    showAlert(kind === 'heal' ? 'FIELD REPAIR ACQUIRED' : 'AMMUNITION ACQUIRED', {
+    const amount = Math.max(0, Number(ammoAdded) || 0);
+    showAlert(kind === 'heal' ? 'FIELD REPAIR ACQUIRED'
+      : `AMMUNITION ACQUIRED${amount > 0 ? ` · +${amount}` : ''}`, {
       icon: kind === 'heal' ? 'repair' : 'shell', tone: 'success',
     });
   });

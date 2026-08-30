@@ -548,9 +548,6 @@ export function createBrowserBattleBridge<
     const combat = entity.combat;
     combat.hp = snapshot.hp;
     combat.maxHp = snapshot.maxHp;
-    combat.reload.t = snapshot.reloadS;
-    combat.reload.totalS = Math.max(snapshot.reloadTotalS || 0, snapshot.reloadS);
-    combat.reload.kind = snapshot.reloadKind || 'ready';
     if (snapshot.magazineCapacity > 0) {
       if (!combat.magazine) combat.magazine = { rounds: 0, capacity: 0 };
       combat.magazine.rounds = snapshot.magazineRounds;
@@ -558,14 +555,30 @@ export function createBrowserBattleBridge<
     } else {
       combat.magazine = null;
     }
+    const gunReload = combat.gunReload || combat.reload;
+    const gunReloadS = Number.isFinite(snapshot.gunReloadS)
+      ? snapshot.gunReloadS : snapshot.reloadS;
+    const gunReloadTotalS = Number.isFinite(snapshot.gunReloadTotalS)
+      ? snapshot.gunReloadTotalS : snapshot.reloadTotalS;
+    gunReload.t = gunReloadS;
+    gunReload.totalS = Math.max(gunReloadTotalS || 0, gunReloadS);
+    gunReload.kind = snapshot.gunReloadKind || snapshot.reloadKind || 'ready';
     combat.shellSlot = snapshot.shellSlot;
+    if (combat.reloadChannels?.[snapshot.shellSlot]) {
+      combat.reload = combat.reloadChannels[snapshot.shellSlot];
+    }
+    combat.reload.t = snapshot.reloadS;
+    combat.reload.totalS = Math.max(snapshot.reloadTotalS || 0, snapshot.reloadS);
+    combat.reload.kind = snapshot.reloadKind || 'ready';
+    combat.ammo[0] = snapshot.ammo0;
+    combat.ammo[1] = snapshot.ammo1;
+    combat.ammo[2] = snapshot.ammo2;
     combat.fire.burning = !!(snapshot.flags & SNAPSHOT_FLAGS.BURNING);
     const destroyed = !!(snapshot.flags & SNAPSHOT_FLAGS.DESTROYED);
     combat.destroyed = destroyed;
     entity.input.fire = !!(snapshot.flags & SNAPSHOT_FLAGS.FIRING);
     entity.input.shellSlot = snapshot.shellSlot;
     entity.specialAction.active = !!(snapshot.flags & SNAPSHOT_FLAGS.SPECIAL_ACTIVE);
-    entity.specialAction.pendingFire = !!(snapshot.flags & SNAPSHOT_FLAGS.SPECIAL_PENDING);
     state.suspensionAim = entity.specialAction.kind === 'hydropneumatic_aim' &&
       entity.specialAction.active;
     const spentEra = Array.isArray(snapshot.eraSpent) ? snapshot.eraSpent : [];
@@ -816,6 +829,8 @@ export function createBrowserBattleBridge<
           kind: event.kind,
           reason: event.reason,
         });
+    } else if (event.type === 'ammo_empty' && event.id === id) {
+        bus.emit('ammo:empty', event);
     } else if (event.type === 'module_state') {
         bus.emit('module:state', {
           id: event.id,

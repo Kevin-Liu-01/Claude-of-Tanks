@@ -142,7 +142,7 @@ const m1a3: AbramsConceptSpec = {
         { pen2000Mm: apfsdsPens(840)[2], count: 24 }),
       shell('XM1210 MRM-H Hypersonic GATGM', 'HEAT', 130,
         1050, 1050, 650, 2050,
-        { guided: true, guidanceTurnRateRadS: 0.34, reloadS: 17.5, count: 6, soundProfile: 'spike-launch' }),
+        { guided: true, guidanceTurnRateRadS: 0.34, reloadS: 2.8, count: 6, soundProfile: 'spike-launch' }),
       shell('XM1302 AMP', 'HE', 130, 82, 82, 760, 1050, { count: 18 }),
     ],
   },

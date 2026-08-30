@@ -54,14 +54,18 @@ import {
 import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
-  selectShell, startPostShotReload, startReload, tickReload, isHeClass, ramDamage,
+  selectShell, startPostShotReload, tickReload, isHeClass, ramDamage,
 } from '../sim/damage.ts';
 import {
-  completeGuidedMissileFlight,
   createSpecialActionState,
-  finishSpecialActionFire,
   specialActionGuidesShell,
 } from '../sim/specialActions.ts';
+import {
+  consumeAmmunition,
+  hasAmmunition,
+  totalAmmunition,
+  totalAmmunitionCapacity,
+} from '../sim/ammunition.ts';
 import { createAI, roleOf } from './ai.ts';
 import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
@@ -111,8 +115,6 @@ type SoloSpec = FleetTankSpec & Omit<MovementSpec, 'gun' | 'armor'> &
   };
 
 interface SoloCombatState extends CombatState {
-  modeAmmo?: number | null;
-  modeAmmoCapacity?: number | null;
   muzzleCursor?: number;
 }
 
@@ -1387,7 +1389,6 @@ function tryFire(
 ): void {
   const c = ent.combat;
   if (!ent.input.fire || c.destroyed || c.reload.t > 0) return;
-  if (c.magazine && c.magazine.rounds <= 0) return;
   if (c.modules.gun && c.modules.gun.state === 'red') return;
   // BATTLE-AI r7 hardening: clamp to the spec's REAL magazine — a slot index
   // past shells.length (2-shell loadouts like the sturmtiger) fed an
@@ -1395,28 +1396,17 @@ function tryFire(
   const maxSlot = ent.spec.gun.shells.length - 1;
   const slot = Math.max(0, Math.min(Math.min(2, maxSlot), ent.input.shellSlot | 0));
   if (slot !== c.shellSlot) {
-    if (c.magazine) {
-      selectShell(c, slot, ent.spec);
-      return;
-    }
-    // PER-SHELL RELOAD guard: switching INTO a slower slot at fire time must
-    // pay the incoming shell's load first (an IFV bot flipping its 0.4 s
-    // autocannon timer onto the ATGM rail would otherwise fire the missile
-    // instantly). Switching down to an equal/faster shell stays free — the
-    // longer load already waited covers it.
-    const sh = ent.spec.gun.shells;
-    const newBase = (sh[slot] && sh[slot].reloadS) || ent.spec.gun.reloadS;
-    const oldBase = (sh[c.shellSlot] && sh[c.shellSlot].reloadS) || ent.spec.gun.reloadS;
-    c.shellSlot = slot;
-    if (newBase > oldBase) { startReload(c, ent.spec); return; }
+    selectShell(c, slot, ent.spec);
+    // Conventional ammunition changes begin a new gun load. Separate guided
+    // launchers expose their own preserved channel and may already be ready.
+    if (c.reload.t > 0) return;
   }
   const shellSpec = ent.spec.gun.shells[c.shellSlot];
-  if (!game.matchModeController?.consumeShot(ent)) {
-    bus.emit('mode:ammo_empty', { id: ent.id });
+  if (shellSpec.guided !== true && c.magazine && c.magazine.rounds <= 0) return;
+  if (!hasAmmunition(c, c.shellSlot)) {
+    if (ent.isPlayer) bus.emit('ammo:empty', { id: ent.id, slot: c.shellSlot });
     return;
   }
-  const guidedSpecial = !!(shellSpec.guided && ent.specialAction?.active &&
-    ent.specialAction.pendingFire && c.shellSlot === ent.specialAction.missileSlot);
 
   // Barrel direction from the visual (already chasing input.aimPoint).
   // controls_gunnery r3 CRITICAL: use the articulated bore AXIS (recoil-group
@@ -1452,6 +1442,7 @@ function tryFire(
   if (c.modules.gun && c.modules.gun.state === 'yellow') sigmaRad *= 2;
   applyDispersion(_dir, sigmaRad, game.combatRng);
 
+  if (!consumeAmmunition(c, c.shellSlot)) return;
   const shell = acquireShell(shellSpec, ent.id, ent.isPlayer, _muzzle, _dir, game.nextShellId++);
   game.shells.push(shell);
   // The actual shell matters for IFVs: rapid autocannon belt rounds should
@@ -1489,7 +1480,6 @@ function tryFire(
   _firedEv.dir[0] = _dir.x; _firedEv.dir[1] = _dir.y; _firedEv.dir[2] = _dir.z;
   bus.emit('shell:fired', _firedEv);
   startPostShotReload(c, ent.spec);
-  if (guidedSpecial) finishSpecialActionFire(ent, shell.id);
   // SPOTTING WIRING: firing blooms the shooter's camo (with decay) and lights
   // up any concealing foliage within 15 m (see src/sim/spotting.ts).
   if (game.spotting) game.spotting.notifyFired(ent.id, game.timeS);
@@ -1626,14 +1616,6 @@ function stepShells(game: SoloGameState, bus: EventBus, world: SoloWorld): void 
   for (let i = shells.length - 1; i >= 0; i--) {
     if (shells[i].dead) {
       const shell = shells[i];
-      const shooter = game.tankById.get(shell.shooterId);
-      if (isActiveSoloEntity(shooter) && completeGuidedMissileFlight(shooter, shell.id)) {
-        bus.emit('ui:specialActionResult', {
-          kind: shooter.specialAction.kind,
-          active: false,
-          reason: 'IMPACT',
-        });
-      }
       if (_shellPool.length < 64) _shellPool.push(shell);
       shells.splice(i, 1);
     }
@@ -1898,33 +1880,33 @@ export function simStep(
     const c = ent.combat;
     if (ent.modeActive === false || !c || c.destroyed) continue;
     const reload = c.reload;
-    if (reload.t > 0) {
-      const wasReloading = reload.t;
-      const reloadKind = reload.kind;
-      const done = tickReload(c, dt);
-      if (ent.isPlayer) {
-        // This is a 60 Hz presentation event while a load is active. Reuse one
-        // payload per entity instead of allocating hundreds of short-lived
-        // objects during every long-calibre reload.
-        const ev = ent._reloadEvent || (ent._reloadEvent = {
-          t: 0, total: 0, progress: 0, kind: 'ready', caliberMm: 0,
-          magazineRounds: 0, magazineCapacity: 0, done: false,
-        });
-        const shell = ent.spec.gun.shells[c.shellSlot] || ent.spec.gun.shells[0];
-        ev.t = reload.t;
-        ev.total = reload.totalS;
-        ev.progress = reload.totalS > 0
-          ? Math.max(0, Math.min(1, 1 - reload.t / reload.totalS)) : 1;
-        // tickReload changes kind to "ready" on the terminal edge. Preserve
-        // the cycle that actually completed so presentation can distinguish
-        // a shell load, an autoloader index, and a magazine replenishment.
-        ev.kind = reloadKind;
-        ev.caliberMm = (shell && shell.caliberMm) || ent.spec.gun.caliberMm || 100;
-        ev.magazineRounds = c.magazine ? c.magazine.rounds : 0;
-        ev.magazineCapacity = c.magazine ? c.magazine.capacity : 0;
-        ev.done = wasReloading > 0 && done;
-        bus.emit('player:reload', ev);
-      }
+    const wasReloading = reload.t;
+    const reloadKind = reload.kind;
+    // Always tick: an unselected launcher may be cooling down while the
+    // selected cannon is already ready.
+    const done = tickReload(c, dt);
+    if (wasReloading > 0 && ent.isPlayer) {
+      // This is a 60 Hz presentation event while a load is active. Reuse one
+      // payload per entity instead of allocating hundreds of short-lived
+      // objects during every long-calibre reload.
+      const ev = ent._reloadEvent || (ent._reloadEvent = {
+        t: 0, total: 0, progress: 0, kind: 'ready', caliberMm: 0,
+        magazineRounds: 0, magazineCapacity: 0, done: false,
+      });
+      const shell = ent.spec.gun.shells[c.shellSlot] || ent.spec.gun.shells[0];
+      ev.t = reload.t;
+      ev.total = reload.totalS;
+      ev.progress = reload.totalS > 0
+        ? Math.max(0, Math.min(1, 1 - reload.t / reload.totalS)) : 1;
+      // tickReload changes kind to "ready" on the terminal edge. Preserve
+      // the cycle that actually completed so presentation can distinguish
+      // a shell load, an autoloader index, and a magazine replenishment.
+      ev.kind = reloadKind;
+      ev.caliberMm = (shell && shell.caliberMm) || ent.spec.gun.caliberMm || 100;
+      ev.magazineRounds = c.magazine ? c.magazine.rounds : 0;
+      ev.magazineCapacity = c.magazine ? c.magazine.capacity : 0;
+      ev.done = wasReloading > 0 && done;
+      bus.emit('player:reload', ev);
     }
     tryFire(game, ent, bus, rig);
   }
@@ -1955,8 +1937,8 @@ export function simStep(
 
   const modeOutcome = game.matchModeController?.step(dt, game.timeS) || null;
   if (game.matchModeState && game.player?.combat) {
-    game.matchModeState.playerAmmo = game.player.combat.modeAmmo ?? null;
-    game.matchModeState.playerAmmoCapacity = game.player.combat.modeAmmoCapacity ?? null;
+    game.matchModeState.playerAmmo = totalAmmunition(game.player.combat);
+    game.matchModeState.playerAmmoCapacity = totalAmmunitionCapacity(game.player.combat);
   }
   for (const event of game.modeEvents) {
     bus.emit(event.type.replace(/^mode_/, 'mode:'), event.payload);

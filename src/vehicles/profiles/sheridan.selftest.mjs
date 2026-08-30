@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createShell, guideShellToward } from '../../sim/ballistics.ts';
+import { createCombatState } from '../../sim/damage.ts';
 import { specialActionGuidesShell } from '../../sim/specialActions.ts';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
@@ -38,7 +39,7 @@ assert.deepEqual({
   turretTraverseDegS: 46,
   gunPitchDegS: 36,
   terrainResistance: { hard: 0.58, medium: 0.72, soft: 1.12 },
-  reloadS: 8.6,
+  reloadS: 3.0,
   baseAccuracy: 0.28,
   aimTimeS: 1.45,
   bloom: { move: 0.06, hullRot: 0.07, turret: 0.05, afterShot: 1.8 },
@@ -57,7 +58,7 @@ assert.deepEqual({
   dmg: 800,
   velocityMps: 208,
   guidanceTurnRateRadS: 0.84,
-  reloadS: 8.6,
+  reloadS: 3.0,
   count: 14,
 }, 'dedicated Shillelagh channel is competitive at Tier IX');
 assert.equal(garageStatGroup(spec), '9/cold-war',
@@ -67,8 +68,9 @@ const starshipMissile = starship.gun.shells.find((round) => round.guided === tru
 assert.ok(spec.hp < starship.hp, 'Sheridan remains less durable than the M60A2 Starship');
 assert.ok(spec.enginePowerHp / spec.weightTons > starship.enginePowerHp / starship.weightTons,
   'Sheridan retains its light-tank mobility advantage over the Starship');
-assert.ok(spec.gun.reloadS < starshipMissile.reloadS,
-  'missile-only Sheridan cycles faster than the Starship secondary missile channel');
+assert.ok(spec.gun.reloadS >= 2 && spec.gun.reloadS <= 3 &&
+  starshipMissile.reloadS >= 2 && starshipMissile.reloadS <= 3,
+  'missile-only Sheridan and Starship use the shared low launcher-cycle envelope');
 assert.ok(spec.armor.modules.some((module) => module.module === 'missileRack'),
   'damageable combat anatomy includes the missile stowage');
 assert.equal(tankTier(ttsSpec.id), 10, 'M551A1 TTS is the Tier X Sheridan variant');
@@ -87,7 +89,7 @@ assert.deepEqual({
   enginePowerHp: 520,
   weightTons: 24.8,
   reverseSpeedKmh: 28,
-  reloadS: 7.4,
+  reloadS: 3.0,
   accuracy: 0.24,
   aimTimeS: 1.25,
 }, 'TTS owns an explicit Tier X light-missile balance envelope');
@@ -123,8 +125,8 @@ const missile = createShell(
   new THREE.Vector3(), new THREE.Vector3(0, 0, 1), 60,
 );
 const initialSpeed = missile.vel.length();
-assert.equal(specialActionGuidesShell({ spec }, missile), true,
-  'the primary Shillelagh remains continuously guided without a secondary-weapon mode');
+assert.equal(specialActionGuidesShell({ spec, combat: createCombatState(spec) }, missile), true,
+  'the selected primary Shillelagh remains guided without a secondary-weapon mode');
 assert.equal(guideShellToward(missile, new THREE.Vector3(18, 2, 80), 1 / 60), true);
 assert.ok(missile.vel.x > 0, 'Shillelagh steers toward the sight-owned target');
 assert.ok(Math.abs(missile.vel.length() - initialSpeed) < 1e-9,

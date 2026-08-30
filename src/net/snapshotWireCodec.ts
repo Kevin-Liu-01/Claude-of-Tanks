@@ -32,7 +32,9 @@ const ENTITY_FIELDS = Object.freeze([
   'x', 'y', 'z', 'vx', 'vy', 'vz',
   'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
   'hp', 'maxHp', 'reloadMs', 'reloadTotalMs', 'reloadKind',
-  'magazineRounds', 'magazineCapacity', 'shellSlot', 'flags', 'eraSpent',
+  'gunReloadMs', 'gunReloadTotalMs', 'gunReloadKind',
+  'magazineRounds', 'magazineCapacity', 'shellSlot',
+  'ammo0', 'ammo1', 'ammo2', 'flags', 'eraSpent',
 ] as const);
 const SHELL_FIELDS = Object.freeze([
   'id', 'shooterId', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'type',

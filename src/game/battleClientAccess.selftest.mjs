@@ -27,8 +27,9 @@ const runtime = {
   startMagazineReload: () => 9,
   createShell: () => 10,
   activateSpecialAction: () => 13,
-  specialActionLocksShell: () => 14,
-  isPostwarVehicleEra: () => 15,
+  guidedMissileSlot: () => 14,
+  specialActionKind: () => 15,
+  isPostwarVehicleEra: () => 16,
 };
 const access = createBattleClientAccess(
   () => dependencies,
@@ -53,6 +54,9 @@ assert.equal(access.isReady(), true);
 assert.equal(access.computeDispersionRadM(), 1);
 assert.equal(access.magazineReloadDenialReason(), 'MAGAZINE_FULL');
 assert.equal(access.createShell(), 10);
+assert.equal(access.guidedMissileSlot(), 14);
+assert.equal(access.shellAmmunitionCapacity({ type: 'HE' }), 12);
+assert.equal(access.hasAmmunition({ ammo: [0, 2] }, 1), true);
 assert.equal(access.aimController.raycast(
   new THREE.Vector3(), new THREE.Vector3(0, 0, 1), 10,
 ).kind, 'tank');

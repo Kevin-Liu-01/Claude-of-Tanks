@@ -127,12 +127,12 @@ const spec: FleetTankSpec = {
   pivotStyle: 'neutral', turretTraverseDegS: 46, gunPitchDegS: 36,
   gunElevationDeg: 19, gunDepressionDeg: 8,
   gun: {
-    caliberMm: 152, reloadS: 8.6, baseAccuracy: 0.28, aimTimeS: 1.45,
+    caliberMm: 152, reloadS: 3.0, baseAccuracy: 0.28, aimTimeS: 1.45,
     bloom: { move: 0.06, hullRot: 0.07, turret: 0.05, afterShot: 1.8 },
     primaryGuided: true,
     shells: [
       shell('MGM-51C Shillelagh ATGM', 'HEAT', 152, 900, 900, 800, 208, {
-        guided: true, guidanceTurnRateRadS: 0.84, reloadS: 8.6, count: 14,
+        guided: true, guidanceTurnRateRadS: 0.84, reloadS: 3.0, count: 14,
         soundProfile: 'shillelagh-launch',
       }),
     ],
@@ -208,13 +208,13 @@ const ttsSpec: FleetTankSpec = {
   pivotStyle: 'neutral', turretTraverseDegS: 50, gunPitchDegS: 40,
   gunElevationDeg: 22, gunDepressionDeg: 10,
   gun: {
-    caliberMm: 152, reloadS: 7.4, baseAccuracy: 0.24, aimTimeS: 1.25,
+    caliberMm: 152, reloadS: 3.0, baseAccuracy: 0.24, aimTimeS: 1.25,
     bloom: { move: 0.045, hullRot: 0.055, turret: 0.04, afterShot: 1.55 },
     primaryGuided: true,
     shells: [
       shell('MGM-51E TTS Shillelagh ATGM', 'HEAT', 152, 1050, 1050, 880,
         240.5, {
-          guided: true, guidanceTurnRateRadS: 0.98, reloadS: 7.4, count: 18,
+          guided: true, guidanceTurnRateRadS: 0.98, reloadS: 3.0, count: 18,
           soundProfile: 'shillelagh-launch',
         }),
     ],
