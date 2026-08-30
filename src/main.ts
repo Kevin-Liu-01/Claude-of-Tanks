@@ -118,6 +118,7 @@ import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinato
 import { createGarageReturnRuntime } from './game/garageReturnRuntime.ts';
 import { createGaragePhasePresentationRuntime } from './game/garagePhasePresentationRuntime.ts';
 import { createBattleIntentRuntime } from './game/battleIntentRuntime.ts';
+import { createBattlePhasePolicy } from './game/battlePhasePolicy.ts';
 import { createKillcamAccess } from './game/killcamAccess.ts';
 import { createPlayerBattleActions } from './game/playerBattleActions.ts';
 import { createPlayerFrameInput } from './game/playerFrameInput.ts';
@@ -1369,6 +1370,15 @@ const battleResultPresentation = createBattleResultPresentationRuntime({
   exitPointerLock: () => { document.exitPointerLock?.(); },
   recordFlow: (receipt: unknown) => { debugFlags.lastEndFlow = receipt; },
 });
+const battlePhase = createBattlePhasePolicy({
+  getPhase: () => game.phase,
+  hasResult: () => !!game.result,
+  hasControllablePlayer: () => !!(
+    game.player?.combat && !game.player.combat.destroyed
+  ),
+  isKillcamActive: () => killcam.isActive(),
+  isBattleLoadVisible: () => !!document.querySelector('.cot-bl.on'),
+});
 
 const input = createInput({ lockElement: renderer.domElement });
 bus.on('ui:debugHud', (payload) => {
@@ -1403,23 +1413,22 @@ const settings = createSettingsAccess({
   bus,
   // A dead player is spectating even though the team battle continues. This
   // keeps pointer-unlock from opening settings over the death camera.
-  isBattleActive: () => game.phase === 'battle' && !game.result &&
-    !!(game.player && game.player.combat && !game.player.combat.destroyed),
-  canLeaveBattle: () => game.phase === 'battle',
+  isBattleActive: battlePhase.canOpenBattleSettings,
+  canLeaveBattle: battlePhase.canLeaveBattle,
   onLeaveBattle: () => leaveBattleToGarage(),
-  gearVisible: () => game.phase === 'garage',
+  gearVisible: battlePhase.isGarage,
   // PAUSE: the overlay shows its PAUSED treatment exactly when opening it
   // freezes a live battle — same predicate the tick() pause gate derives its
   // livePaused from (kill-cam replays close the panel themselves; the end
   // overlay keeps the old non-paused Esc behavior).
-  isGamePaused: () => game.phase === 'battle' && !game.result && !killcam.isActive(),
+  isGamePaused: battlePhase.isPauseEligible,
 });
 garage.attachSettingsControl(settings.gear);
 const mobileBattleInput = createMobileBattleInputAccess<MainEntity>({
   input,
   bus,
   camera,
-  isBattleActive: () => game.phase === 'battle',
+  isBattleActive: battlePhase.isBattle,
   openSettings: () => settings.open(),
   setSoundMuted: (muted) => audio.mute(muted),
   isSniper: () => rig.mode === 'SNIPER',
@@ -1451,13 +1460,11 @@ createPointerLockFeedbackRuntime({
   bus,
   canvas: renderer.domElement,
   audioResume: () => audio.resume(),
-  isBattleStageVisible: () => game.phase === 'battle' &&
-    !document.querySelector('.cot-bl.on'),
-  canRecapturePointer: () => {
-    const combat = game.player?.combat;
-    return game.phase === 'battle' && !game.result && !!combat && !combat.destroyed &&
-      !settings.isOpen() && !killcam.isActive() && !killcam.spectate?.active;
-  },
+  isBattleStageVisible: battlePhase.isBattleStageVisible,
+  canRecapturePointer: () => battlePhase.canRecapturePointer({
+    settingsOpen: settings.isOpen(),
+    spectating: !!killcam.spectate?.active,
+  }),
   ensureTouchControls,
   nextFrame,
 });
@@ -1720,8 +1727,8 @@ function prepareBattleRevealCamera() {
 }
 const networkSession = createNetworkBrowserSessionRuntime({
   getPlayer: () => game.player,
-  isBattleActive: () => game.phase === 'battle',
-  shouldPresentDisconnect: () => game.phase === 'battle' && !game.result,
+  isBattleActive: battlePhase.isBattle,
+  shouldPresentDisconnect: battlePhase.shouldPresentDisconnect,
   nextFrame,
 });
 
@@ -2291,7 +2298,7 @@ const frameLoop = createFrameLoopScheduler({
   // browser-owned; the complete Three.js clock wakes for camera motion,
   // vehicle swaps, transition coverage, loading, input, or retained network
   // authority, and otherwise runs only its five-second safety paint.
-  shouldUseIdleCadence: () => bootComplete && game.phase === 'garage' &&
+  shouldUseIdleCadence: () => bootComplete && battlePhase.isGarage() &&
     !battleEntryLifecycle.renderingCovered && !transition.active &&
     !studio.active && !shotMode && !showroom.moving &&
     !pedestal.switchPending && !networkSession.match,

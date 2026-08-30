@@ -68,6 +68,9 @@ Desktop boot does not transfer touch-control or mobile-auto-aim chunks. One
 retryable mobile input access owner joins both dependencies only after a touch
 battle entry and retains the active lock and sound-toggle state outside the
 composition root.
+Settings, pointer recapture, disconnect presentation, and Garage frame pacing
+read one synchronous battle-phase policy so a result, dead player, killcam, or
+covered loader cannot acquire subtly different meanings across browser owners.
 
 ## World and Garage lifecycle
 
