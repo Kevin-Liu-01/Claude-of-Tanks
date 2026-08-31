@@ -94,6 +94,15 @@ try {
 
   assert.equal(attachmentSeat?.roofPeriscopeY, 0.615,
     'KF51B forward roof optics are lowered into the roof skin');
+  assert.deepEqual(attachmentSeat?.multispectralSight?.centerLocal, [-0.74, 0.52, 1.27],
+    'KF51B multispectral sight housing rises above the fore-roof skin');
+  closeTo(attachmentSeat?.multispectralSight?.apertureCenterY, 0.57);
+  assert.ok(attachmentSeat?.multispectralSight?.apertureCenterY > 0.56,
+    'KF51B multispectral apertures rise with their armored housing');
+  assert.equal(attachmentSeat?.multispectralSight?.liftM, 0.18,
+    'KF51B sight lift remains an explicit local-frame seating adjustment');
+  assert.equal(attachmentSeat?.multispectralSight?.rigidApertureLift, true,
+    'KF51B sight glass cannot detach from its raised housing');
   assert.equal(attachmentSeat?.sidePanelStations.length, 7,
     'KF51B carries a complete seven-station flank panel course');
   for (let i = 1; i < attachmentSeat.sidePanelStations.length; i++) {

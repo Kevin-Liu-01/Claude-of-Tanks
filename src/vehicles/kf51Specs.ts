@@ -46,7 +46,7 @@ const KF51_SPEC = {
     dims: { hullLengthM: 7.70, overallLengthM: 10.73, widthM: 3.60, heightM: 3.00 },
     armor: communityArmor({
       lenM: 7.70, widM: 3.60, hgtM: 2.90, turretPivot: [0, 1.86, 0.52],
-      gunPivot: [0, 0.31, 0.83], barrelLenM: 6.63, barrelRadM: 0.07,
+      gunPivot: [0, 0.23, 0.83], barrelLenM: 6.63, barrelRadM: 0.07,
       frontMm: 650, sideMm: 90, rearMm: 45, roofMm: 45,
       tFrontMm: 750, tSideMm: 320, tRearMm: 70, mantletMm: 500,
     }),

@@ -20,7 +20,7 @@ try {
     'KF51 retains canonical hull, turret, gun, and detail geometry');
 
   const chevron = turretRig.userData.kf51FrontChevronReceipt;
-  assert.equal(chevron?.profile, 'kf51-panther-closed-chevron-r2',
+  assert.equal(chevron?.profile, 'kf51-panther-closed-chevron-r3',
     'KF51 publishes the rebuilt closed-chevron front architecture');
   assert.equal(chevron.cheekVolumes, 2, 'KF51 front has one closed cheek volume per side');
   assert.equal(chevron.roofBridgeVolumes, 2,
@@ -32,17 +32,44 @@ try {
   assert.equal(chevron.closedRearFaces, true, 'KF51 chevron volumes remain watertight at the turret');
   assert.equal(chevron.upperLowerHeightMatched, true,
     'KF51 upper cheek and lower return publish an equal-height contract');
+  assert.equal(chevron.verticalRearPlane, true,
+    'KF51 cheek modules publish the requested vertical-backed side profile');
+  assert.equal(chevron.rearPlaneZ, 1.10,
+    'KF51 cheek roots align to the turret-front wall instead of overextending');
+  assert.equal(chevron.coreFrontPlaneZ, chevron.rearPlaneZ,
+    'KF51 ring fill terminates behind the cheek roots');
+  assert.equal(chevron.foreRoofStepAlignedToRearPlane, true,
+    'KF51 fore roof step no longer protrudes through the upper cheek');
   for (const side of chevron.sides) {
     for (const station of side.stations) {
       assert.ok(Math.abs(station.upperRiseM - station.lowerDropM) < 1e-9,
         `KF51 ${side.side} cheek station ${station.x} has equal upper and lower height`);
+      assert.ok(Math.abs(station.upperRearZ - station.lowerRearZ) < 1e-9,
+        `KF51 ${side.side} cheek station ${station.x} has a vertical rear edge`);
+      assert.equal(station.upperRearZ, chevron.rearPlaneZ,
+        `KF51 ${side.side} cheek station ${station.x} meets the shared rear plane`);
+      assert.ok(station.ridgeZ > station.upperRearZ,
+        `KF51 ${side.side} cheek station ${station.x} projects as |>`);
     }
   }
-  assert.ok(chevron.maximumRidgeProjectionM <= 2.56,
+  assert.ok(chevron.maximumRidgeProjectionM <= 2.48,
     'KF51 chevron ridge remains retracted onto the turret-front envelope');
 
+  const firstTurretHit = (origin, direction) => new THREE.Raycaster(
+    new THREE.Vector3(...origin),
+    new THREE.Vector3(...direction),
+    0,
+    10,
+  ).intersectObject(turretRig, true).find((hit) => hit.object.name === 'turret');
+  const lowerCheekHit = firstTurretHit([0.8, 1.9, 5], [0, 0, -1]);
+  assert.ok(lowerCheekHit && lowerCheekHit.point.z < 2.05,
+    'KF51 lower cheek hides the retired 2.30 m-world core face');
+  const upperCheekHit = firstTurretHit([1.1, 5, 1.85], [0, -1, 0]);
+  assert.ok(upperCheekHit && upperCheekHit.point.y < 2.38,
+    'KF51 upper cheek hides the retired 2.45 m-world roof shelf');
+
   const housing = gunRig.userData.kf51AngularGunHousingReceipt;
-  assert.equal(housing?.profile, 'kf51-panther-angular-mantlet-r2',
+  assert.equal(housing?.profile, 'kf51-panther-angular-mantlet-r3',
     'KF51 publishes the enlarged angular moving-gun housing');
   assert.equal(housing.mainHousing, 'closed-tapered-six-plane-wedge',
     'KF51 gun housing is a faceted closed wedge rather than a round roll');
@@ -51,8 +78,10 @@ try {
   assert.equal(housing.forwardClampSides, 6, 'KF51 forward clamp remains visibly faceted');
   assert.equal(housing.roundVisibleTrunnionRetired, true,
     'KF51 no longer exposes the undersized circular trunnion');
-  assert.deepEqual(housing.visualGunPivotLocal, [0, 0.46, 0.90],
-    'KF51 visible gun is raised onto the authoritative firing axis');
+  assert.deepEqual(housing.visualGunPivotLocal, [0, 0.38, 0.90],
+    'KF51 visible gun is centered lower in the turret opening');
+  assert.equal(housing.centeredLowerByM, 0.08,
+    'KF51 publishes the complete gun-rig lowering distance');
   const gunWorld = gunRig.getWorldPosition(new THREE.Vector3());
   const authoritativeGunWorld = new THREE.Vector3(
     TANK_SPECS.kf51.armor.turretPivot[0] + TANK_SPECS.kf51.armor.gunPivot[0],
@@ -126,11 +155,9 @@ try {
     kf51HullTurretSeatBridge: 14,
     kf51GlacisShoulderBridge: 4,
     kf51DeckPaletteHardware: 3,
-    kf51TurretRoofBridge: 1,
     kf51TurretLowerCollar: 2,
     kf51TrackShoulderL: 2,
     kf51TrackShoulderR: 2,
-    kf51TurretCheekBaseArmor: 1,
     kf51TurretMidwallBaseArmor: 1,
     kf51LowerGlacisCamo: 1,
   }, 'KF51 structural finish receipt records every palette-aware shell');

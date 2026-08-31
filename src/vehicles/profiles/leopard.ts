@@ -10343,16 +10343,21 @@ function buildKF51(P: TankBuilderPort) {
     const L = (zF - zR) / n;
     for (let i = 0; i < n; i++) fn(zF - L * i, zF - L * (i + 1));
   };
-  P.add('turret', slab(                                                        // sloped cheek front (one wedge — a zseg here TWISTED the top ring).
-    [-1.50, 0.16, 1.88], [1.50, 0.16, 1.88], [1.50, 0.16, 1.10], [-1.50, 0.16, 1.10],  // §B1 r11: retracted 0.12 (base 2.00→1.88, top 1.12→1.00) so the plane
-    [-1.31, 0.72, 1.00], [1.31, 0.72, 1.00], [1.31, 0.72, 0.96], [-1.31, 0.72, 0.96]));// tucks INSIDE the new hood facets everywhere (it was fully occluded by
-  // the old staircase; plan cols ±1.31..1.50 stay lip-owned at 2.43w —
-  // measured interior both before and after, x/y corners untouched)
+  // The old full-width sloped front wedge is intentionally gone. Its broad
+  // face remained exposed in front of the lower chevron and intersected the
+  // moving housing at oblique angles. The closed |>-cheeks below now provide
+  // the entire visible bow and close directly against this core wall.
   zseg(1.10, -1.00, 5, (a, b) => P.add('turret', frustum(1.50, a, b, 1.31, a, b, 0.16, 0.72)));   // fore cheek block
   zseg(0.70, -2.73, 8, (a, b) => P.add('turret', frustum(1.44, a, b, 1.30, Math.min(a, 0.60), Math.max(b, -2.71), 0.16, 0.72))); // mid walls
-  zseg(1.46, -0.80, 5, (a, b) => P.add('turret', frustum(1.30, a, b, 1.24, Math.min(a, 1.34), b, 0.72, 0.79)));   // fore roof step (2.50w)
+  // The former 1.46 m roof-step prow sat in front of the 1.10 m turret
+  // wall and poked through the upper chevron. Pull the complete step back
+  // onto that wall plane; the closed cheek now owns the visible bow.
+  zseg(1.10, -0.80, 5, (a, b) => P.add('turret', frustum(1.30, a, b, 1.24, a, b, 0.72, 0.79)));   // aligned fore roof step
   zseg(1.49, -2.49, 9, (a, b) => P.add('turret', frustum(1.02, a, b, 0.95, Math.min(a, 1.47), Math.max(b, -2.47), 0.79, h))); // roof course (2.525w over −2.04..1.94w)
-  P.add('turret', box(2.20, 0.30, 2.6), 0, 0.16, 0.55);                        // underride fill to the ring
+  // Keep the ring fill behind the shared 1.10 m cheek-root plane. Its old
+  // 1.85 m front face was the flat rectangle visible through the lower
+  // chevrons in the markup view.
+  P.add('turret', box(2.20, 0.30, 1.85), 0, 0.16, 0.175);                      // underride fill to the ring
   // KF51 front-finish round: these wall-foot lips are structural armor
   // returns, not exposed grey trim. Keep the proven geometry and contact
   // line, but paint it through the turret camo bucket so the two long rails
@@ -10374,13 +10379,16 @@ function buildKF51(P: TankBuilderPort) {
   // taper continuously into the roof and close against the turret core. The
   // ridge is the exact vertical midpoint of every station so the upper plate
   // and lower return have the same visible height, while the retracted plan
-  // line follows the turret bow instead of projecting as a separate prow.
+  // upper and lower roots now share one constant rear plane. In direct side
+  // view that makes a true |>-profile instead of the previous \>-profile,
+  // while the ridge remains the exact vertical midpoint at every station.
+  const kf51ChevronRearPlaneZ = 1.10;
   const kf51ChevronStations: readonly ChevronClosedStation[] = Object.freeze([
-    Object.freeze({ x: 0.43, upperY: 0.72, upperZ: 1.26, ridgeY: 0.40, ridgeZ: 2.56, lowerY: 0.08, lowerZ: 1.80 }),
-    Object.freeze({ x: 0.66, upperY: 0.73, upperZ: 1.21, ridgeY: 0.41, ridgeZ: 2.50, lowerY: 0.09, lowerZ: 1.76 }),
-    Object.freeze({ x: 0.98, upperY: 0.72, upperZ: 1.14, ridgeY: 0.41, ridgeZ: 2.36, lowerY: 0.10, lowerZ: 1.66 }),
-    Object.freeze({ x: 1.29, upperY: 0.66, upperZ: 1.10, ridgeY: 0.39, ridgeZ: 2.19, lowerY: 0.12, lowerZ: 1.52 }),
-    Object.freeze({ x: 1.47, upperY: 0.56, upperZ: 1.12, ridgeY: 0.35, ridgeZ: 2.02, lowerY: 0.14, lowerZ: 1.40 }),
+    Object.freeze({ x: 0.43, upperY: 0.72, upperZ: kf51ChevronRearPlaneZ, ridgeY: 0.40, ridgeZ: 2.48, lowerY: 0.08, lowerZ: kf51ChevronRearPlaneZ }),
+    Object.freeze({ x: 0.66, upperY: 0.73, upperZ: kf51ChevronRearPlaneZ, ridgeY: 0.41, ridgeZ: 2.43, lowerY: 0.09, lowerZ: kf51ChevronRearPlaneZ }),
+    Object.freeze({ x: 0.98, upperY: 0.72, upperZ: kf51ChevronRearPlaneZ, ridgeY: 0.41, ridgeZ: 2.32, lowerY: 0.10, lowerZ: kf51ChevronRearPlaneZ }),
+    Object.freeze({ x: 1.29, upperY: 0.66, upperZ: kf51ChevronRearPlaneZ, ridgeY: 0.39, ridgeZ: 2.16, lowerY: 0.12, lowerZ: kf51ChevronRearPlaneZ }),
+    Object.freeze({ x: 1.47, upperY: 0.56, upperZ: kf51ChevronRearPlaneZ, ridgeY: 0.35, ridgeZ: 1.98, lowerY: 0.14, lowerZ: kf51ChevronRearPlaneZ }),
   ]);
   const kf51FrontPanels: ReadonlyArray<readonly [number, number]> = Object.freeze([
     Object.freeze([0.47, 0.72] as const),
@@ -10438,6 +10446,8 @@ function buildKF51(P: TankBuilderPort) {
         x: station.x,
         upperRiseM: station.upperY - station.ridgeY,
         lowerDropM: station.ridgeY - station.lowerY,
+        upperRearZ: station.upperZ,
+        lowerRearZ: station.lowerZ,
         ridgeZ: station.ridgeZ,
       }))),
     }));
@@ -10450,8 +10460,8 @@ function buildKF51(P: TankBuilderPort) {
     P.add('turretDark', pbox(0.035, 0.62, 0.60), s * 0.415, 0.48, 1.82);
   }
   P.turretG.userData.kf51FrontChevronReceipt = Object.freeze({
-    profile: 'kf51-panther-closed-chevron-r2',
-    architecture: 'single-watertight-upper-and-lower-arrowhead',
+    profile: 'kf51-panther-closed-chevron-r3',
+    architecture: 'single-watertight-vertical-backed-arrowhead',
     stationCount: kf51ChevronStations.length,
     cheekVolumes: 2,
     roofBridgeVolumes: 2,
@@ -10460,8 +10470,13 @@ function buildKF51(P: TankBuilderPort) {
     centralGunOpeningHalfWidthM: 0.40,
     sharedRidge: true,
     upperLowerHeightMatched: true,
+    verticalRearPlane: true,
+    rearPlaneZ: kf51ChevronRearPlaneZ,
+    coreFrontPlaneZ: kf51ChevronRearPlaneZ,
+    coversFormerLowerFrontPlane: true,
+    foreRoofStepAlignedToRearPlane: true,
     turretFrontAligned: true,
-    maximumRidgeProjectionM: 2.56,
+    maximumRidgeProjectionM: 2.48,
     closedRearFaces: true,
     sourceImageUsedAsVisualDirectionOnly: true,
     sides: Object.freeze(kf51FrontSides),
@@ -10770,8 +10785,10 @@ function buildKF51(P: TankBuilderPort) {
   // gun-owned, the housing elevates with the barrel without shearing through
   // the turret-face armor.
   // The visual trunnion now coincides with the authoritative firing frame:
-  // turret (1.71, 0.45) + gun (0.46, 0.90) = world (2.17, 1.35).
-  P.gunG.position.set(0, 0.46, 0.90);
+  // turret (1.71, 0.45) + gun (0.38, 0.90) = world (2.09, 1.35).
+  // Lowering the complete gun-owned assembly by 80 mm centers the Rh-130
+  // within the cheek opening while preserving one continuous elevation rig.
+  P.gunG.position.set(0, 0.38, 0.90);
   const gseg = P.q ? 24 : 16;
   const kf51AngularHousing = outwardClosedSlab(
     [-0.39, -0.285, 0.10], [0.39, -0.285, 0.10], [0.27, -0.18, 1.78], [-0.27, -0.18, 1.78],
@@ -10792,7 +10809,7 @@ function buildKF51(P: TankBuilderPort) {
   P.addGunExtraDark(cylZ(0.029, 0.11, 8), 0.275, 0.055, 1.17);                // recessed coax port
   KIT.buildGun(P, { len: 5.475, r: 0.092, sleeve: false, collar: false, baseR: 0.105 });
   P.gunG.userData.kf51AngularGunHousingReceipt = Object.freeze({
-    profile: 'kf51-panther-angular-mantlet-r2',
+    profile: 'kf51-panther-angular-mantlet-r3',
     movingWithGun: true,
     mainHousing: 'closed-tapered-six-plane-wedge',
     rearWidthM: 0.78,
@@ -10802,7 +10819,8 @@ function buildKF51(P: TankBuilderPort) {
     housingLengthM: 1.68,
     forwardClampSides: 6,
     roundVisibleTrunnionRetired: true,
-    visualGunPivotLocal: Object.freeze([0, 0.46, 0.90]),
+    visualGunPivotLocal: Object.freeze([0, 0.38, 0.90]),
+    centeredLowerByM: 0.08,
     authoritativeWorldAxisMatched: true,
   });
   // Keep the primary overlay sleeve concentric with the firing axis; the
@@ -10949,13 +10967,9 @@ function buildKF51(P: TankBuilderPort) {
     // camouflaged, so no separate comparison strip belongs here.
     armorShell('kf51DeckPaletteHardware', KIT.xform(KIT.box(1.10, 0.008, 0.12), 0, 1.816, -2.98));
 
-    // Close the shallow slit where the forward cheek roof meets the upper
-    // turret course. This is a sloped armor bridge rather than a box cap, so
-    // the KF51 keeps its low wedge while the two marked surfaces share a
-    // continuous watertight-looking roof line.
-    armorShell('kf51TurretRoofBridge', KIT.slab(
-      [-1.30, 0.690, 1.48], [1.30, 0.690, 1.48], [1.25, 0.705, 0.92], [-1.25, 0.705, 0.92],
-      [-1.30, 0.738, 1.48], [1.30, 0.738, 1.48], [1.25, 0.753, 0.92], [-1.25, 0.753, 0.92]), true);
+    // The closed per-side roof bridges above now own this transition. The
+    // former full-width bridge crossed over both upper cheeks and was still
+    // visible as an independently selectable shelf.
 
     // Side collars close the daylight slit between the turret cheeks and
     // the stepped hull roof. They taper inward at the top and stop outboard
@@ -11266,7 +11280,10 @@ function buildKF51(P: TankBuilderPort) {
     // banked r4 mechanism. Front cols: 0.165..0.30 sits inside the walls'
     // certified 0.16..0.72 bands; z-spans inside the wall runs; plan
     // slivers sub-raster.
-    armorShell('kf51TurretCheekBaseArmor', KIT.frustum(1.4995, 1.98, -0.98, 1.4537, 1.98, -0.98, 0.165, 0.30), true);
+    // The fore cheek already closes against the core. The former broad
+    // 1.4995..1.4537 side overlay duplicated that surface and remained an
+    // independently selectable strip, so remove it instead of hiding it in
+    // another material bucket.
     armorShell('kf51TurretMidwallBaseArmor', KIT.frustum(1.4400, 0.68, -2.71, 1.4062, 0.68, -2.71, 0.165, 0.30), true);
     // ---- r6 #1b THE SPONSON LIGHT BAND (the inverted relationship): the
     // ref's band y 0.63..0.98 reads 76-80 (unlit side) / 62-66 (lit) as
@@ -11545,6 +11562,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     0.56, 0.56, 0.60, 0.63, 0.58,
   ] as const;
   const turretRoofCenterHeightM = 0.66;
+  const multispectralSightLiftM = 0.18;
 
   // §5.299 kf51b FLEET INTEGRATION (owner order: "make it a lot more inline
   // with our visual aesthetic and tracks and hull and turret"). The
@@ -11845,11 +11863,15 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   }
 
   // Large recessed multispectral sight on the owner's left-front cheek.
-  // Its two apertures are backed by the dark housing and the whole box is
-  // buried into the wedge instead of floating from the roof.
-  P.add('turretDark', box(0.44, 0.34, 0.18), -0.74, 0.34, 1.27, -0.20, 0, 0);
+  // Keep the pitched housing rooted in the wedge, but expose its upper body:
+  // the former 0.34 m center buried nearly the complete marked front face
+  // beneath the rising fore-roof. Lift the housing and both apertures as one
+  // rigid assembly so the glass never separates from its armored surround.
+  P.add('turretDark', box(0.44, 0.34, 0.18),
+    -0.74, 0.34 + multispectralSightLiftM, 1.27, -0.20, 0, 0);
   for (const dx of [-0.09, 0.09]) {
-    P.add('turretGlass', box(0.10, 0.10, 0.018), -0.74 + dx, 0.39, 1.366, -0.20, 0, 0);
+    P.add('turretGlass', box(0.10, 0.10, 0.018),
+      -0.74 + dx, 0.39 + multispectralSightLiftM, 1.366, -0.20, 0, 0);
   }
 
   // Rh-130: source axis ~1.94 m and muzzle z 6.88 m.  The compact mantlet
@@ -12015,6 +12037,12 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     roofRws: kf51bRoofRws,
     roofPeriscopeY: 0.615,
     roofSeamY: 0.587,
+    multispectralSight: Object.freeze({
+      centerLocal: Object.freeze([-0.74, 0.34 + multispectralSightLiftM, 1.27]),
+      apertureCenterY: 0.39 + multispectralSightLiftM,
+      liftM: multispectralSightLiftM,
+      rigidApertureLift: true,
+    }),
     sidePanelStations: [0.82, 0.42, -0.04, -0.54, -1.05, -1.56, -2.03]
       .map((z) => ({ z, wallX: turretPanelWallXAt(z) })),
   };
