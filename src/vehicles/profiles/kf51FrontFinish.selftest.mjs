@@ -19,6 +19,46 @@ try {
   assert.ok(hullRig && turretRig && gunRig && turret && turretDetail,
     'KF51 retains canonical hull, turret, gun, and detail geometry');
 
+  assert.deepEqual(turretRig.userData.kf51TurretSeatReceipt, {
+    profile: 'kf51-panther-turret-seat-r1',
+    forwardShiftM: 0.10,
+    visualPivotLocal: [0, 1.71, 0.55],
+    completeRigMoved: true,
+  }, 'KF51 complete rotating assembly publishes its forward seating datum');
+  assert.equal(turretRig.position.z, 0.55,
+    'KF51 turret rig moves 100 mm forward as one hierarchy');
+  assert.equal(TANK_SPECS.kf51.armor.turretPivot[2], 0.62,
+    'KF51 authoritative turret frame follows the visible forward move');
+
+  assert.deepEqual(turretRig.userData.kf51SideReturnReceipt, {
+    profile: 'kf51-panther-side-return-r1',
+    cheekBaseArmorReturns: 0,
+    midWallArmorReturns: 2,
+    selectedOuterFacesRemoved: [-1.5025, 1.5025],
+  }, 'KF51 removes only the selected mirrored cheek-base side strips');
+  const turretPosition = turret.geometry.getAttribute('position');
+  let selectedStripFaceCount = 0;
+  for (let index = 0; index < turretPosition.count; index += 3) {
+    let onSelectedOuterPlane = true;
+    let inSelectedHeightBand = true;
+    let minimumZ = Infinity;
+    let maximumZ = -Infinity;
+    for (let offset = 0; offset < 3; offset++) {
+      const vertex = index + offset;
+      const x = turretPosition.getX(vertex);
+      const y = turretPosition.getY(vertex);
+      const z = turretPosition.getZ(vertex);
+      onSelectedOuterPlane &&= Math.abs(Math.abs(x) - 1.5025) < 1e-6;
+      inSelectedHeightBand &&= y >= 0.16 - 1e-6 && y <= 0.187 + 1e-6;
+      minimumZ = Math.min(minimumZ, z);
+      maximumZ = Math.max(maximumZ, z);
+    }
+    const spansSelectedLength = maximumZ - minimumZ > 2.9;
+    if (onSelectedOuterPlane && inSelectedHeightBand && spansSelectedLength) selectedStripFaceCount++;
+  }
+  assert.equal(selectedStripFaceCount, 0,
+    'KF51 merged turret geometry contains no remnant of either selected side strip');
+
   const chevron = turretRig.userData.kf51FrontChevronReceipt;
   assert.equal(chevron?.profile, 'kf51-panther-closed-chevron-r4',
     'KF51 publishes the rebuilt closed-chevron front architecture');
@@ -185,7 +225,8 @@ try {
   }
 
   // These exact side rays used to hit the two long turretDetail rails at
-  // x=1.5025/1.4425. Structural returns now live in the camo turret bucket.
+  // x=1.5025/1.4425. The remaining deep return lives in the camo turret
+  // bucket; the selected ±1.5025 cheek-base strips are now absent entirely.
   for (const z of [0.95, -0.565]) {
     const detailHits = new THREE.Raycaster(
       new THREE.Vector3(3, 1.8835, z),

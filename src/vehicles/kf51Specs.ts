@@ -45,7 +45,10 @@ const KF51_SPEC = {
     // after the offline antenna compress — under the 1.30x clamp headroom)
     dims: { hullLengthM: 7.70, overallLengthM: 10.73, widthM: 3.60, heightM: 3.00 },
     armor: communityArmor({
-      lenM: 7.70, widM: 3.60, hgtM: 2.90, turretPivot: [0, 1.86, 0.52],
+      // The procedural turret rig moves forward 100 mm as one assembly. The
+      // authoritative pivot follows it so armor, modules, shot origins, and
+      // wreck/replay poses remain registered with the visible vehicle.
+      lenM: 7.70, widM: 3.60, hgtM: 2.90, turretPivot: [0, 1.86, 0.62],
       gunPivot: [0, 0.23, 0.83], barrelLenM: 6.63, barrelRadM: 0.07,
       frontMm: 650, sideMm: 90, rearMm: 45, roofMm: 45,
       tFrontMm: 750, tSideMm: 320, tRearMm: 70, mantletMm: 500,

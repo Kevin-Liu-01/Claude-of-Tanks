@@ -10548,8 +10548,11 @@ function buildKF51(P: TankBuilderPort) {
     P.add('hullDark', box(0.024, 0.425, 0.060), s * 1.538, 0.9325, 3.25);      // outer return post
   }
 
-  // ---- turret r4 re-lay from the fresh 96-col workorder, pivot (1.71,
-  // 0.45). Ref reads (world): roof 2.528 over z −2.04..+1.94, crown 2.615
+  // ---- turret r4 re-lay from the fresh 96-col workorder. The complete
+  // rotating assembly now sits 100 mm farther forward at local z 0.55; the
+  // gun, armor, roof fittings, bustle, decals, and damage anatomy all inherit
+  // this one rig transform instead of being offset independently. Ref reads
+  // (world): roof 2.528 over z −2.04..+1.94, crown 2.615
   // @ 0.37..0.905, CLIFF at z≈2.0 down to a 2.13-2.22 apron ledge, bowed
   // apron nose (plan 3.14@±0.45 → 2.99@±0.9 → 2.87@±1.28 → 2.72@±1.4),
   // cheeks flaring to ±1.50 at the base (plan ±1.49 col spans −0.62..
@@ -10558,7 +10561,13 @@ function buildKF51(P: TankBuilderPort) {
   // SEOSS x −0.72..−0.28 top 3.07 (carried 3.02 = heightM anchor), TWO
   // whips (L x −1.03 z −2.28, R x +0.99 z −2.16, tops 3.50 = the 2-col
   // spike budget), turret-mask floor 1.445 over −0.50..+1.55w.
-  P.turretG.position.set(0, 1.71, 0.45);
+  P.turretG.position.set(0, 1.71, 0.55);
+  P.turretG.userData.kf51TurretSeatReceipt = Object.freeze({
+    profile: 'kf51-panther-turret-seat-r1',
+    forwardShiftM: 0.10,
+    visualPivotLocal: Object.freeze([0, 1.71, 0.55]),
+    completeRigMoved: true,
+  });
   const h = 0.815;
   // WALL-STEP-ROOF: cheek walls 1.50→1.31 (plan corner at local z 2.00),
   // mid walls 1.44→1.30 back to −2.73, fore roof step with a near-vertical
@@ -10593,14 +10602,19 @@ function buildKF51(P: TankBuilderPort) {
   // 1.85 m front face was the flat rectangle visible through the lower
   // chevrons in the markup view.
   P.add('turret', box(2.20, 0.30, 1.85), 0, 0.16, 0.175);                      // underride fill to the ring
-  // KF51 front-finish round: these wall-foot lips are structural armor
-  // returns, not exposed grey trim. Keep the proven geometry and contact
-  // line, but paint it through the turret camo bucket so the two long rails
-  // no longer read as unpainted fallback strips in the garage heroes.
+  // Keep the deep mid-wall return that closes the bustle-side structure. The
+  // former mirrored 12 x 27 x 2960 mm cheek-base strips are intentionally
+  // absent: their outer faces were the selected x=±1.5025 panels and merely
+  // doubled the already-closed cheek/core joint, producing a thin side rail.
   for (const s of [-1, 1] as const) {
-    P.add('turret', box(0.012, 0.027, 2.96), s * 1.4965, 0.1735, 0.50);        // cheek-base armor return
     P.add('turret', box(0.012, 0.027, 3.39), s * 1.4365, 0.1735, -1.015);      // mid-wall armor return
   }
+  P.turretG.userData.kf51SideReturnReceipt = Object.freeze({
+    profile: 'kf51-panther-side-return-r1',
+    cheekBaseArmorReturns: 0,
+    midWallArmorReturns: 2,
+    selectedOuterFacesRemoved: Object.freeze([-1.5025, 1.5025]),
+  });
   P.add('turretDark', box(1.30, 0.26, 1.927), 0, -0.13, 0.0135);               // basket tub (mask floor 1.45 to 1.42w; r5: the ref floor RISES to 1.617 at the 1.55w column — the tub retreats so the trunnion roll's 1.585 line reads there instead)
   P.add('turretDark', box(1.50, 0.11, 1.30), 0, -0.05, -0.75);                 // ring shelf (1.605 bottoms −0.50..−0.95w)
   P.add('turret', slab(                                                        // rear underside chamfer (ref bottoms 1.69→1.83 over −0.95..−1.60w)
@@ -11049,7 +11063,7 @@ function buildKF51(P: TankBuilderPort) {
   // gun-owned, the housing elevates with the barrel without shearing through
   // the turret-face armor.
   // The visual trunnion now coincides with the authoritative firing frame:
-  // turret (1.71, 0.45) + gun (0.38, 0.90) = world (2.09, 1.35).
+  // turret (1.71, 0.55) + gun (0.38, 0.90) = world (2.09, 1.45).
   // Lowering the complete gun-owned assembly by 80 mm centers the Rh-130
   // within the cheek opening while preserving one continuous elevation rig.
   P.gunG.position.set(0, 0.38, 0.90);
