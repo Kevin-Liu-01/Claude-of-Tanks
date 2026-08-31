@@ -574,6 +574,7 @@ interface LeopardChevronConfig {
   readonly panelRidgeMargin?: number;
   readonly panelRootMargin?: number;
   readonly equalLowerReturnHeight?: boolean;
+  readonly alignTerminalToBodySide?: boolean;
   readonly verticalTerminalSideClosure?: boolean;
   readonly terminalSideBodyOverlapM?: number;
 }
@@ -752,11 +753,15 @@ function closedLeopardChevronCheek(
   side: Side,
 ): THREE.BufferGeometry {
   if (stations.length < 2) throw new RangeError('Chevron cheek requires two stations');
-  const point = (station: ChevronClosedStation, key: 'upper' | 'ridge' | 'lower'): Vec3Tuple => [
-    side * (station[`${key}X` as keyof ChevronClosedStation] as number | undefined ?? station.x),
-    station[`${key}Y` as keyof ChevronClosedStation],
-    station[`${key}Z` as keyof ChevronClosedStation],
-  ];
+  const point = (station: ChevronClosedStation, key: 'upper' | 'ridge' | 'lower'): Vec3Tuple => {
+    if (key === 'upper') {
+      return [side * (station.upperX ?? station.x), station.upperY, station.upperZ];
+    }
+    if (key === 'ridge') {
+      return [side * (station.ridgeX ?? station.x), station.ridgeY, station.ridgeZ];
+    }
+    return [side * (station.lowerX ?? station.x), station.lowerY, station.lowerZ];
+  };
   const positions: number[] = [];
   const tri = (p0: Vec3Tuple, p1: Vec3Tuple, p2: Vec3Tuple): void => {
     positions.push(...p0, ...p1, ...p2);
@@ -812,6 +817,7 @@ function closedLeopardChevronTerminalSideClosure(
   side: Side,
   options: {
     readonly bodyHalfWidth: number;
+    readonly bodyRoofHalfWidth: number;
     readonly bodyFrontZ: number;
     readonly bodyOverlapM?: number;
   },
@@ -824,6 +830,62 @@ function closedLeopardChevronTerminalSideClosure(
     terminal.lowerZ,
     options.bodyFrontZ - bodyOverlapM,
   );
+  const upperX = terminal.upperX ?? terminal.x;
+  const ridgeX = terminal.ridgeX ?? terminal.x;
+  const lowerX = terminal.lowerX ?? terminal.x;
+  const compoundSide = Math.abs(upperX - lowerX) > 1e-6
+    || Math.abs(ridgeX - upperX) > 1e-6
+    || Math.abs(ridgeX - lowerX) > 1e-6;
+  if (compoundSide) {
+    // The roof-side root can sit behind the body-front course once it follows
+    // the real compound turret shoulder. Give the return its own buried rear
+    // course instead of collapsing that upper edge onto itself.
+    const compoundRearZ = Math.min(
+      terminal.upperZ,
+      terminal.lowerZ,
+      options.bodyFrontZ,
+    ) - bodyOverlapM;
+    const innerUpperX = upperX - bodyOverlapM;
+    const innerLowerX = lowerX - bodyOverlapM;
+    if (innerUpperX <= 0 || innerLowerX <= 0
+        || innerUpperX >= upperX || innerLowerX >= lowerX) {
+      throw new RangeError('Chevron compound terminal cannot overlap the turret side');
+    }
+    const profileAt = (topX: number, bottomX: number): FourPointRing => [
+      [side * topX, terminal.upperY, terminal.upperZ],
+      [side * bottomX, terminal.lowerY, terminal.lowerZ],
+      [side * bottomX, terminal.lowerY, compoundRearZ],
+      [side * topX, terminal.upperY, compoundRearZ],
+    ];
+    const innerProfile = profileAt(innerUpperX, innerLowerX);
+    const outerProfile = profileAt(upperX, lowerX);
+    const geometry = outwardClosedSlab(...innerProfile, ...outerProfile);
+    return Object.freeze({
+      geometry,
+      receipt: Object.freeze({
+        architecture: 'compound-sloped-terminal-return',
+        triangleCount: 12,
+        innerX: Math.max(innerUpperX, innerLowerX),
+        outerX: Math.max(upperX, ridgeX, lowerX),
+        innerUpperX,
+        innerLowerX,
+        upperX,
+        ridgeX,
+        lowerX,
+        rearZ: compoundRearZ,
+        upperY: terminal.upperY,
+        lowerY: terminal.lowerY,
+        verticalRearHeightM: terminal.upperY - terminal.lowerY,
+        bodyWidthOverlapM: Math.min(
+          options.bodyRoofHalfWidth - innerUpperX,
+          options.bodyHalfWidth - innerLowerX,
+        ),
+        bodyFrontOverlapM: options.bodyFrontZ - compoundRearZ,
+        innerProfile: Object.freeze(innerProfile),
+        outerProfile: Object.freeze(outerProfile),
+      }),
+    });
+  }
   const innerX = Math.min(
     terminal.x - 0.04,
     options.bodyHalfWidth - bodyOverlapM,
@@ -2390,10 +2452,20 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
     const C = (s < 0 && T.crestL) ? T.crestL : T.crest;
     if (chevron) {
       const minimumX = N[0][0], maximumX = N[N.length - 1][0];
-      const xs = [...new Set([
-        ...N.map(([x]) => x),
-        ...C.map(([x]) => x).filter((x) => x > minimumX && x < maximumX),
-      ])].sort((a, b) => a - b);
+      const forwardBodyCourse = T.body[0];
+      const bodyRoofHalfWidth = (s < 0 ? forwardBodyCourse.xtL : undefined)
+        ?? forwardBodyCourse.xt
+        ?? Math.min(forwardBodyCourse.x, T.roofX ?? forwardBodyCourse.x * 0.76);
+      const bodyTopY = (s < 0 ? forwardBodyCourse.topL : undefined)
+        ?? forwardBodyCourse.top
+        ?? h;
+      const bodyLowerY = forwardBodyCourse.y0 ?? T.baseY ?? 0.02;
+      const stationXs = new Set<number>();
+      for (const [x] of N) stationXs.add(x);
+      for (const [x] of C) {
+        if (x > minimumX && x < maximumX) stationXs.add(x);
+      }
+      const xs = [...stationXs].sort((a, b) => a - b);
       const lowerDepthRows = N.map(([x], index) => [
         x, stationValue(chevron.rootDepthM, index, 0.75),
       ]);
@@ -2415,21 +2487,43 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
         const ridgeZ = noseZ - ridgeInsetM;
         const upperTaper = THREE.MathUtils.clamp(
           (x - upperTaperStartX) / Math.max(1e-6, maximumX - upperTaperStartX), 0, 1);
-        const upperY = THREE.MathUtils.lerp(upperRootY, upperTipY, upperTaper);
+        // A compound turret shoulder cannot be formed by pulling only the
+        // final, narrow tip course inboard: that makes the upper root reverse
+        // direction and folds the armor face over itself. Fan the roots from
+        // the center station to their measured roof/wall corners instead.
+        // A single monotonic fan keeps every intermediate root inboard of its
+        // ridge and avoids a late kink at the terminal shoulder.
+        const terminalSideBlend = chevron.alignTerminalToBodySide
+          ? THREE.MathUtils.clamp(
+            (x - minimumX) / Math.max(1e-6, maximumX - minimumX), 0, 1)
+          : 0;
+        const upperY = chevron.alignTerminalToBodySide
+          ? THREE.MathUtils.lerp(upperRootY, bodyTopY, upperTaper)
+          : THREE.MathUtils.lerp(upperRootY, upperTipY, upperTaper);
         const upperZ = ridgeZ - (upperY - ridgeY) / upperSlopeTan;
         const configuredLowerY = interpolate(lowerYRows, x, 1);
         // The A7V source and marked front-quarter view show a genuinely
         // full-height lower cheek: its return drops by the same vertical
         // amount that the upper plate rises from the shared ridge. Keep the
         // option profile-local because the A5/A6 returns remain asymmetric.
-        const lowerY = chevron.equalLowerReturnHeight
+        const profileLowerY = chevron.equalLowerReturnHeight
           ? ridgeY - (upperY - ridgeY)
           : configuredLowerY;
+        const lowerY = chevron.alignTerminalToBodySide
+          ? THREE.MathUtils.lerp(profileLowerY, bodyLowerY, upperTaper)
+          : profileLowerY;
         const lowerZ = noseZ - interpolate(lowerDepthRows, x, 1);
         const upperRiseM = upperY - ridgeY;
         const lowerDropM = ridgeY - lowerY;
+        const upperX = chevron.alignTerminalToBodySide
+          ? THREE.MathUtils.lerp(minimumX, bodyRoofHalfWidth, terminalSideBlend)
+          : undefined;
+        const lowerX = chevron.alignTerminalToBodySide
+          ? THREE.MathUtils.lerp(minimumX, forwardBodyCourse.x, terminalSideBlend)
+          : undefined;
         return Object.freeze({
-          x, upperY, upperZ, ridgeY, ridgeZ, lowerY, lowerZ,
+          x, upperX, ridgeX: chevron.alignTerminalToBodySide ? x : undefined,
+          lowerX, upperY, upperZ, ridgeY, ridgeZ, lowerY, lowerZ,
           upperRiseM, lowerDropM,
           upperDominanceRatio: upperRiseM / Math.max(0.001, lowerDropM),
           upperSweepDeg: THREE.MathUtils.radToDeg(Math.atan2(
@@ -2445,6 +2539,7 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
       const terminalSideClosure = chevron.verticalTerminalSideClosure
         ? closedLeopardChevronTerminalSideClosure(stations, s, {
           bodyHalfWidth: T.body[0].x,
+          bodyRoofHalfWidth,
           bodyFrontZ: T.body[0].z1,
           bodyOverlapM: chevron.terminalSideBodyOverlapM,
         })
@@ -2615,6 +2710,7 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
         })
         : null,
       verticalTerminalSideClosure: chevron.verticalTerminalSideClosure === true,
+      terminalSideSlopeAligned: chevron.alignTerminalToBodySide === true,
       terminalSideClosureVolumes: chevronSides.filter((side) => side.terminalSideClosure).length,
       legacyInteriorShadowWalls: false,
       structuralMantletSupportsRetained: true,
@@ -3539,6 +3635,7 @@ function buildLeo2A6(P: TankBuilderPort) {
     chevron: {
       profile: 'leopard-2a6', ridgeInsetM: 0.030, ridgeLiftM: 0.13,
       upperSlopeDeg: 19, upperRootY: 0.66, upperTipY: 0.50, upperTaperStartX: 1.30,
+      alignTerminalToBodySide: true,
       verticalTerminalSideClosure: true, terminalSideBodyOverlapM: 0.025,
       // The lower return replaces the former z=1.90 rectangular underride
       // face. It reaches beneath and behind that complete marked plane while
@@ -4771,6 +4868,7 @@ export function buildLeo2A5(builder: object) {
     chevron: {
       profile: 'leopard-2a5', ridgeInsetM: 0.025, ridgeLiftM: 0.09,
       upperSlopeDeg: 20, upperRootY: 0.74, upperTipY: 0.52, upperTaperStartX: 1.29,
+      alignTerminalToBodySide: true,
       verticalTerminalSideClosure: true, terminalSideBodyOverlapM: 0.025,
       // Extend the lower cheek behind the old z=1.91 front wall and below
       // its -0.066 m lower edge; the return itself now closes that area.
@@ -13368,10 +13466,11 @@ const LEO2A6M_CHEVRON = Object.freeze({
   apexY: 0.09,
   ridgeLift: 0.13,
   upperRootY: 0.66,
-  upperTipY: 0.50,
-  upperTaperStartX: 1.30,
+  sideBlendStartX: LEO2A6M_CHEEK_NOSE[0][0],
   upperTaperEndX: 1.435,
   upperReturnAngleRad: THREE.MathUtils.degToRad(19),
+  terminalUpperX: 1.02,
+  terminalUpperY: 0.66,
 });
 
 function sampleLeo2A6MProfile(
@@ -13400,16 +13499,19 @@ function leo2A6MCheekSurface(side: Side, absX: number, courseFraction: number) {
   const ridgeY = LEO2A6M_CHEVRON.apexY + LEO2A6M_CHEVRON.ridgeLift;
   const ridgeZ = sampleLeo2A6MProfile(LEO2A6M_CHEEK_NOSE, absX) - 0.03;
   const upperTaper = THREE.MathUtils.clamp(
-    (absX - LEO2A6M_CHEVRON.upperTaperStartX)
-      / (LEO2A6M_CHEVRON.upperTaperEndX - LEO2A6M_CHEVRON.upperTaperStartX),
+    (absX - LEO2A6M_CHEVRON.sideBlendStartX)
+      / (LEO2A6M_CHEVRON.upperTaperEndX - LEO2A6M_CHEVRON.sideBlendStartX),
     0, 1,
   );
   const upperY = THREE.MathUtils.lerp(
-    LEO2A6M_CHEVRON.upperRootY, LEO2A6M_CHEVRON.upperTipY, upperTaper,
+    LEO2A6M_CHEVRON.upperRootY, LEO2A6M_CHEVRON.terminalUpperY, upperTaper,
+  );
+  const upperX = THREE.MathUtils.lerp(
+    LEO2A6M_CHEVRON.sideBlendStartX, LEO2A6M_CHEVRON.terminalUpperX, upperTaper,
   );
   const upperZ = ridgeZ - (upperY - ridgeY) / Math.tan(LEO2A6M_CHEVRON.upperReturnAngleRad);
   const point = new THREE.Vector3(
-    side * absX,
+    THREE.MathUtils.lerp(side * absX, side * upperX, fraction),
     THREE.MathUtils.lerp(ridgeY, upperY, fraction),
     THREE.MathUtils.lerp(ridgeZ, upperZ, fraction),
   );
@@ -13418,17 +13520,22 @@ function leo2A6MCheekSurface(side: Side, absX: number, courseFraction: number) {
   const framePoint = (x: number): THREE.Vector3 => {
     const localRidgeZ = sampleLeo2A6MProfile(LEO2A6M_CHEEK_NOSE, x) - 0.03;
     const localTaper = THREE.MathUtils.clamp(
-      (x - LEO2A6M_CHEVRON.upperTaperStartX)
-        / (LEO2A6M_CHEVRON.upperTaperEndX - LEO2A6M_CHEVRON.upperTaperStartX),
+      (x - LEO2A6M_CHEVRON.sideBlendStartX)
+        / (LEO2A6M_CHEVRON.upperTaperEndX - LEO2A6M_CHEVRON.sideBlendStartX),
       0, 1,
     );
     const localUpperY = THREE.MathUtils.lerp(
-      LEO2A6M_CHEVRON.upperRootY, LEO2A6M_CHEVRON.upperTipY, localTaper,
+      LEO2A6M_CHEVRON.upperRootY, LEO2A6M_CHEVRON.terminalUpperY, localTaper,
+    );
+    const localUpperX = THREE.MathUtils.lerp(
+      LEO2A6M_CHEVRON.sideBlendStartX,
+      LEO2A6M_CHEVRON.terminalUpperX,
+      localTaper,
     );
     const localUpperZ = localRidgeZ
       - (localUpperY - ridgeY) / Math.tan(LEO2A6M_CHEVRON.upperReturnAngleRad);
     return new THREE.Vector3(
-      side * x,
+      THREE.MathUtils.lerp(side * x, side * localUpperX, fraction),
       THREE.MathUtils.lerp(ridgeY, localUpperY, fraction),
       THREE.MathUtils.lerp(localRidgeZ, localUpperZ, fraction),
     );
@@ -13436,7 +13543,9 @@ function leo2A6MCheekSurface(side: Side, absX: number, courseFraction: number) {
   const tangentX = framePoint(absX + epsilon).sub(framePoint(absX - epsilon));
   if (side < 0) tangentX.multiplyScalar(-1);
   tangentX.normalize();
-  const tangentCourse = new THREE.Vector3(0, upperY - ridgeY, upperZ - ridgeZ).normalize();
+  const tangentCourse = new THREE.Vector3(
+    side * (upperX - absX), upperY - ridgeY, upperZ - ridgeZ,
+  ).normalize();
   const normal = new THREE.Vector3().crossVectors(tangentX, tangentCourse).normalize();
   if (normal.z < 0) normal.multiplyScalar(-1);
   const tangentY = new THREE.Vector3().crossVectors(normal, tangentX).normalize();
@@ -13446,8 +13555,37 @@ function leo2A6MCheekSurface(side: Side, absX: number, courseFraction: number) {
     point,
     normal,
     rotation,
-    courseLength: Math.hypot(upperY - ridgeY, upperZ - ridgeZ),
+    courseLength: Math.hypot(upperX - absX, upperY - ridgeY, upperZ - ridgeZ),
   };
+}
+
+// Resolve a requested plan coordinate back onto the fanned chevron. Once the
+// upper root turns inboard, using targetAbsX as the ridge station would pull
+// every fitting inward by a fraction of the face depth. A short monotonic
+// solve preserves the authored x/z layout while retaining the exact compound
+// surface normal and rotation.
+function leo2A6MCheekSurfaceAtPlanPoint(side: Side, targetAbsX: number, targetZ: number) {
+  const surfaceAtStation = (stationX: number) => {
+    const ridge = leo2A6MCheekSurface(side, stationX, 0).point;
+    const upper = leo2A6MCheekSurface(side, stationX, 1).point;
+    const courseFraction = THREE.MathUtils.clamp(
+      (targetZ - ridge.z) / (upper.z - ridge.z), 0.04, 0.96,
+    );
+    return leo2A6MCheekSurface(side, stationX, courseFraction);
+  };
+  let lowerX = THREE.MathUtils.clamp(
+    targetAbsX, LEO2A6M_CHEVRON.sideBlendStartX, LEO2A6M_CHEVRON.upperTaperEndX,
+  );
+  let upperX: number = LEO2A6M_CHEVRON.upperTaperEndX;
+  let surface = surfaceAtStation(lowerX);
+  for (let iteration = 0; iteration < 18; iteration++) {
+    const stationX = (lowerX + upperX) * 0.5;
+    const candidate = surfaceAtStation(stationX);
+    if (Math.abs(candidate.point.x) < targetAbsX) lowerX = stationX;
+    else upperX = stationX;
+    surface = candidate;
+  }
+  return surface;
 }
 
 function addLeo2A6MCheekCage(P: TankBuilderPort) {
@@ -14009,6 +14147,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     chevron: {
       profile: 'leopard-2a6m', ridgeInsetM: 0.030, ridgeLiftM: 0.13,
       upperSlopeDeg: 19, upperRootY: 0.66, upperTipY: 0.50, upperTaperStartX: 1.30,
+      alignTerminalToBodySide: true,
       verticalTerminalSideClosure: true, terminalSideBodyOverlapM: 0.025,
       rootDepthM: [0.90, 0.82, 0.68, 0.66, 0.52, 0.34],
       rootY: [-0.07, -0.07, -0.07, -0.07, 0.05, 0.12],
@@ -14219,16 +14358,11 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     for (const [x, targetZ] of [
       [0.47, 2.30], [0.62, 2.17], [0.79, 2.02], [1.00, 1.67], [1.18, 1.43],
     ]) {
-      const ridge = leo2A6MCheekSurface(s, x, 0).point;
-      const upper = leo2A6MCheekSurface(s, x, 1).point;
-      const courseFraction = THREE.MathUtils.clamp(
-        (targetZ - ridge.z) / (upper.z - ridge.z), 0.04, 0.96,
-      );
-      const surface = leo2A6MCheekSurface(s, x, courseFraction);
+      const surface = leo2A6MCheekSurfaceAtPlanPoint(s, x, targetZ);
       // The inner three positions cross the visible 20 mm cheek cassette;
       // lift their heads onto that outer skin. Outboard positions land in
       // the exposed seams and remain directly on the continuous armor face.
-      const surfaceLiftM = x <= 0.65 ? 0.027 : x <= 0.85 ? 0.015 : 0.004;
+      const surfaceLiftM = x <= 0.65 ? 0.028 : x <= 0.85 ? 0.017 : 0.004;
       const center = surface.point.clone().addScaledVector(surface.normal, surfaceLiftM);
       P.add('turretDetail', cylZ(0.018, 0.020, 8),
         center.x, center.y, center.z,

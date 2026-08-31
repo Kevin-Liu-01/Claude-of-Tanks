@@ -13,6 +13,17 @@ const modernProfiles = new Map([
 const verticalTerminalIds = new Set([
   'leo2a5', 'leo2a5_a5nl', 'strv122', 'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2a7v',
 ]);
+const compoundTerminalIds = new Set([
+  'leo2a5', 'leo2a5_a5nl', 'strv122', 'leo2a6', 'leo2a6m', 'leo2a6_ua',
+]);
+const compoundTerminalExpectations = new Map([
+  ['leo2a5', { upper: [1.06, 0.76], ridge: [1.44, 0.25], lower: [1.38, 0.02] }],
+  ['leo2a5_a5nl', { upper: [1.06, 0.76], ridge: [1.44, 0.25], lower: [1.38, 0.02] }],
+  ['strv122', { upper: [1.06, 0.76], ridge: [1.44, 0.25], lower: [1.38, 0.02] }],
+  ['leo2a6', { upper: [1.05, 0.62], ridge: [1.435, 0.22], lower: [1.38, 0.02] }],
+  ['leo2a6m', { upper: [1.02, 0.66], ridge: [1.435, 0.22], lower: [1.30, 0.02] }],
+  ['leo2a6_ua', { upper: [1.02, 0.66], ridge: [1.435, 0.22], lower: [1.30, 0.02] }],
+]);
 const receiptsById = new Map();
 
 const findMergedMesh = (root, name) => {
@@ -98,6 +109,8 @@ for (const [id, expectedProfile] of modernProfiles) {
     `${id} publishes center roof geometry only when its profile requests it`);
   assert.equal(receipt.verticalTerminalSideClosure, verticalTerminalIds.has(id),
     `${id} records whether its outboard cheek ends in a vertical side wall`);
+  assert.equal(receipt.terminalSideSlopeAligned, compoundTerminalIds.has(id),
+    `${id} records whether its cheek terminal follows the compound turret side`);
   assert.equal(receipt.terminalSideClosureVolumes, verticalTerminalIds.has(id) ? 2 : 0,
     `${id} publishes one terminal cheek closure per applicable side`);
   assert.equal(receipt.legacyInteriorShadowWalls, false,
@@ -228,7 +241,9 @@ for (const [id, expectedProfile] of modernProfiles) {
     if (verticalTerminalIds.has(id)) {
       const closure = sideReceipt.terminalSideClosure;
       assert.ok(closure, `${id} ${sideReceipt.side} closes the outboard cheek side`);
-      assert.equal(closure.architecture, 'vertical-boxed-terminal-return');
+      assert.equal(closure.architecture, compoundTerminalIds.has(id)
+        ? 'compound-sloped-terminal-return'
+        : 'vertical-boxed-terminal-return');
       assert.equal(closure.triangleCount, 12,
         `${id} ${sideReceipt.side} terminal fill is a closed solid`);
       assert.ok(closure.verticalRearHeightM >= 0.35,
@@ -237,6 +252,45 @@ for (const [id, expectedProfile] of modernProfiles) {
         `${id} ${sideReceipt.side} terminal wall interlocks with the turret width`);
       assert.ok(closure.bodyFrontOverlapM >= 0.024,
         `${id} ${sideReceipt.side} terminal wall interlocks with the turret front course`);
+      if (compoundTerminalIds.has(id)) {
+        const expected = compoundTerminalExpectations.get(id);
+        const terminal = sideReceipt.stations.at(-1);
+        assert.ok(expected, `${id} publishes its family terminal target`);
+        assert.deepEqual(
+          [terminal.upperX, terminal.upperY], expected.upper,
+          `${id} ${sideReceipt.side} upper root meets the narrow roof-side corner`,
+        );
+        assert.deepEqual(
+          [terminal.ridgeX, terminal.ridgeY], expected.ridge,
+          `${id} ${sideReceipt.side} ridge preserves the arrowhead shoulder`,
+        );
+        assert.deepEqual(
+          [terminal.lowerX, terminal.lowerY], expected.lower,
+          `${id} ${sideReceipt.side} lower root meets the wider vertical wall`,
+        );
+        assert.equal(closure.upperX, expected.upper[0]);
+        assert.equal(closure.ridgeX, expected.ridge[0]);
+        assert.equal(closure.lowerX, expected.lower[0]);
+        const transition = sideReceipt.stations.filter((station) => station.x >= 1.29 - 1e-6);
+        assert.ok(transition.length >= 3,
+          `${id} ${sideReceipt.side} distributes the side alignment across multiple stations`);
+        assert.ok(transition.slice(1).some((station, index) => (
+          Math.abs(station.upperX - transition[index].upperX) > 1e-4
+          && Math.abs(station.lowerX - transition[index].lowerX) > 1e-4
+        )), `${id} ${sideReceipt.side} transitions both roots instead of snapping one end cap`);
+        for (let index = 1; index < sideReceipt.stations.length; index++) {
+          const previous = sideReceipt.stations[index - 1];
+          const current = sideReceipt.stations[index];
+          assert.ok(current.upperX > previous.upperX,
+            `${id} ${sideReceipt.side} upper root advances monotonically without a folded course`);
+          assert.ok(current.lowerX > previous.lowerX,
+            `${id} ${sideReceipt.side} lower root advances monotonically without a folded course`);
+          assert.ok(current.upperX <= current.ridgeX + 1e-9,
+            `${id} ${sideReceipt.side} upper root stays behind its outboard ridge`);
+          assert.ok(current.lowerX <= current.ridgeX + 1e-9,
+            `${id} ${sideReceipt.side} lower root stays behind its outboard ridge`);
+        }
+      }
       const [upper, lower, rearLower, rearUpper] = closure.outerProfile;
       assert.equal(rearUpper[2], rearLower[2],
         `${id} ${sideReceipt.side} rear terminal edge is vertical in side profile`);
@@ -271,7 +325,7 @@ for (const [id, expectedProfile] of modernProfiles) {
     for (const [index, station] of sideReceipt.stations.entries()) {
       const bridgeStation = sideReceipt.roofBridge.stations[index];
       assert.deepEqual(bridgeStation.frontTop,
-        [side * station.x, station.upperY, station.upperZ],
+        [side * (station.upperX ?? station.x), station.upperY, station.upperZ],
         `${id} ${sideReceipt.side} bridge station ${index} shares the exact visible cheek-root edge`);
       assert.ok(bridgeStation.rearTop[2] <= sideReceipt.roofBridge.bodyFrontZ
           - sideReceipt.roofBridge.rearOverlapM + 1e-9,
@@ -289,20 +343,20 @@ for (const [id, expectedProfile] of modernProfiles) {
       assert.ok(Math.abs(station.upperSweepDeg - receipt.upperSlopeDeg) <= 1e-6,
         `${id} ${sideReceipt.side} station ${index} stays on the one continuous upper slope`);
       const minimumLowerSweep = 15;
-      const maximumLowerSweep = 30;
+      const maximumLowerSweep = compoundTerminalIds.has(id) ? 40 : 30;
       assert.ok(station.lowerSweepDeg >= minimumLowerSweep && station.lowerSweepDeg <= maximumLowerSweep,
         `${id} ${sideReceipt.side} station ${index} lower return has a plausible arrowhead angle (${station.lowerSweepDeg} deg)`);
       const minimumDominance = 1.2;
       assert.ok(station.upperDominanceRatio >= minimumDominance - 1e-9,
         `${id} ${sideReceipt.side} station ${index} preserves its profile's upper/lower balance (${station.upperDominanceRatio})`);
-      const ridge = [side * station.x, station.ridgeY, station.ridgeZ];
+      const ridge = [side * (station.ridgeX ?? station.x), station.ridgeY, station.ridgeZ];
       assert.ok(hasVertex(position, ridge),
         `${id} ${sideReceipt.side} station ${index} ridge is authored in the merged armor`);
       assert.ok(vertexOccurrences(position, ridge) >= 4,
         `${id} ${sideReceipt.side} station ${index} ridge is shared by upper, lower and closure triangles`);
-      assert.ok(hasVertex(position, [side * station.x, station.upperY, station.upperZ]),
+      assert.ok(hasVertex(position, [side * (station.upperX ?? station.x), station.upperY, station.upperZ]),
         `${id} ${sideReceipt.side} station ${index} upper root is authored in the merged armor`);
-      assert.ok(hasVertex(position, [side * station.x, station.lowerY, station.lowerZ]),
+      assert.ok(hasVertex(position, [side * (station.lowerX ?? station.x), station.lowerY, station.lowerZ]),
         `${id} ${sideReceipt.side} station ${index} lower root is authored in the merged armor`);
     }
   }
