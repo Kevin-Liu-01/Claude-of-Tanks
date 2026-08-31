@@ -4,7 +4,8 @@
 //              (nearest-neighbor upscaled so pixel-level mud is visible) on the
 //              game's dark background, plus a light-bg sanity patch.
 //   export: node tools/brand-render.mjs export <svg> <out.png> <width> [height] [bg]
-//           -> single PNG at exact size; bg 'transparent' (default) or a CSS color.
+//           -> single PNG at exact size; bg 'transparent' (default), a CSS
+//              color, or 'cot-dark' for the official social-card gradient.
 // SVGs are rasterized via data-URI <img> onto <canvas>, so only pure-path SVGs
 // (no <text>) are size-faithful; brand marks here are pure paths by design.
 import puppeteer from 'puppeteer';
@@ -88,7 +89,22 @@ if (mode === 'sheet') {
       const c = document.createElement('canvas'); c.width = W; c.height = H;
       const g = c.getContext('2d');
       const bg = ${JSON.stringify(bg)};
-      if (bg !== 'transparent') { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
+      if (bg === 'cot-dark') {
+        const field = g.createLinearGradient(0, 0, 0, H);
+        field.addColorStop(0, '#101a24');
+        field.addColorStop('.56', '#0c131b');
+        field.addColorStop(1, '#0b0f12');
+        g.fillStyle = field;
+        g.fillRect(0, 0, W, H);
+        const glow = g.createRadialGradient(W * .42, H * .18, 0, W * .42, H * .18, W * .58);
+        glow.addColorStop(0, 'rgba(48, 68, 85, .18)');
+        glow.addColorStop(1, 'rgba(11, 15, 18, 0)');
+        g.fillStyle = glow;
+        g.fillRect(0, 0, W, H);
+      } else if (bg !== 'transparent') {
+        g.fillStyle = bg;
+        g.fillRect(0, 0, W, H);
+      }
       // contain-fit
       const s = Math.min(W / img.naturalWidth, H / img.naturalHeight);
       const dw = img.naturalWidth * s, dh = img.naturalHeight * s;

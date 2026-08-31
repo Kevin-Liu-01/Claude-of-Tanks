@@ -48,16 +48,24 @@ served locally from `public/`, no CDN or network fetches in game code.
 The game logo is a hand-authored original flat-vector composition (stylized
 modern MBT, side profile, original art — not based on any specific real
 vehicle or third-party tank art) with the **Claude Code mascot** seated in the
-commander's hatch wearing a tanker helmet. v3 (2026-07-31, owner-directed):
-the approved composition moved from the v2 circular roundel into a
-chamfer-top crest SHIELD (one midline path stroked as band + pinstripe +
-field; the gun muzzle breaks the shield wall), in three treatments —
+commander's hatch wearing a tanker helmet. v5 (2026-08-31, owner-directed)
+retains the approved v3 chamfer-top crest shield while cleaning the vehicle
+into a balanced, fully contained modern-MBT silhouette: the hull is shifted
+right, the bow and track loop are closed, and the vehicle uses restrained,
+small-size-safe component detailing. The exposed hull side has recessed access
+plates and fasteners; the turret uses an articulated cheek, roof facet, and
+integrated raised bustle; and the gun is a coherent stepped assembly. The
+tapered side skirt overlays the lower hull seam while remaining entirely below
+the upper glacis and retaining visible road-wheel arcs. The antenna and raised,
+finished flag mast terminate in visible deck mounts. It ships in
+three treatments —
 `logo-mark.svg` is the COLORED PRIMARY used by all game surfaces (dark steel
 field #151f29, steel-blue two-tone tank, mascot #D97757, amber #f5b64b
 pinstripe/pennant/dashes), `logo-mark-bw.svg` is the black-and-white sticker
 treatment, and `logo-mark-metal.svg` is the embossed brushed-steel/gunmetal
-badge (the only variant using gradients). `favicon.svg`/`logo-mark-simple.svg`
-are the fat-shape 16–32 px simplification (amber band, helmet-dome commander).
+badge (the only variant using gradients). `favicon.svg` is synchronized from
+the metal crest; `logo-mark-simple.svg` remains the archived fat-shape
+16–32 px simplification (amber band, helmet-dome commander).
 The v1 steel-blue set is archived under `public/brand/v1/`, the v2 B/W
 roundel set under `public/brand/v2-roundel/`.
 Only the mascot glyph is a sourced asset; everything else in `public/brand/`
@@ -65,7 +73,7 @@ is first-party:
 
 | Asset | Author | Source | License | Files |
 |---|---|---|---|---|
-| Claude Code mascot icon (pristine 24×24 path; `color.svg` and `default.svg` on the source CDN are byte-identical, fill `#D97757`). Used verbatim inside the brand marks via `translate(...) scale(...)` with the legs clipped below the hatch ring — the glyph geometry itself is unmodified; the helmet/goggles are drawn as separate first-party shapes layered on top. | Anthropic (Claude Code branding; icon page curated by theSVG) | https://thesvg.org/icon/claude-code (file: https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/claude-code/color.svg) | Anthropic trademark/branding, © Anthropic. Not covered by either project license; no endorsement is implied and no reuse permission is granted. Any use must comply with Anthropic's then-current trademark and brand terms. | pristine source: `public/brand/claude-code-source.svg`; composed into `public/brand/logo-mark.svg` (colored crest primary), `logo-mark-bw.svg`, `logo-mark-metal.svg`, `logo-full.svg` (v3 crest marks; `logo-mark-simple.svg`/`favicon.svg` drop the mascot to a helmet dome; PNG exports `favicon-32.png`, `favicon-192.png`, `apple-touch-icon.png`, `og-logo.png`, `og-logo-transparent.png`; v1 set archived in `public/brand/v1/`, v2 roundel set — incl. the retired `logo-mark-accent.svg` — in `public/brand/v2-roundel/`), and inlined in `index.html` boot splash |
+| Claude Code mascot icon (pristine 24×24 path; `color.svg` and `default.svg` on the source CDN are byte-identical, fill `#D97757`). Used verbatim inside the brand marks via `translate(...) scale(...)` with the legs clipped below the hatch ring — the glyph geometry itself is unmodified; the helmet/goggles are drawn as separate first-party shapes layered on top. | Anthropic (Claude Code branding; icon page curated by theSVG) | https://thesvg.org/icon/claude-code (file: https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/claude-code/color.svg) | Anthropic trademark/branding, © Anthropic. Not covered by either project license; no endorsement is implied and no reuse permission is granted. Any use must comply with Anthropic's then-current trademark and brand terms. | pristine source: `public/brand/claude-code-source.svg`; composed into the v5 crest masters `public/brand/logo-mark.svg`, `logo-mark-bw.svg`, and `logo-mark-metal.svg`; synchronized into `favicon.svg`, `logo-full.svg`, `logo-full-metal.svg`, and the `index.html` boot splash by `tools/sync-brand-marks.mjs`; raster exports are `favicon-32.png`, `favicon-192.png`, `apple-touch-icon.png`, `og-logo.png`, and `og-logo-transparent.png`; historical v1/v2/v3 sets remain archived. |
 | Inter wordmark subsets inside `logo-full.svg` / `logo-full-metal.svg` (two static instances of the repo's Inter variable font — wght 800 and 700 at opsz 32 — subset to the 13 glyphs of "CLAUDE OF TANKS" with fontTools and embedded as ~1.5 KB woff2 data URIs so the lockup renders correctly standalone). | Rasmus Andersson (The Inter Project Authors) | derived from `public/fonts/inter/InterVariable.woff2` (see Inter row above) | SIL OFL 1.1 — modification/subsetting and embedding permitted; license at `public/fonts/inter/OFL.txt` | embedded in `public/brand/logo-full.svg`, `public/brand/logo-full-metal.svg` |
 | Claude spark mark (verbatim 24×24 path) used as an in-game camouflage print motif — the `spark` pattern (camo r4, owner ask) stamps it across hull textures; the Claude Code mark above is likewise stamped by the `claude` pattern (camo r5: the creature IS that pattern's whole print). The Anthropic logogram briefly shipped as an `anthropic` pattern in camo r4 and was removed the same day (camo r5, owner ask). Geometry unmodified; only fill color/scale/rotation vary. | Anthropic (brand marks; paths as published by the simple-icons project) | https://github.com/simple-icons/simple-icons (`icons/claude.svg`) | Anthropic trademark/branding, © Anthropic. Same terms as the mascot row above: not covered by either project license; no reuse permission is granted, and any use must comply with Anthropic's then-current trademark and brand terms. | inline path constants `CLAUDE_SPARK_MARK` / `CLAUDE_CODE_MARK` in `src/vehicles/materials.ts` (hull painters + `src/ui/garage.ts` picker swatches) |
 
