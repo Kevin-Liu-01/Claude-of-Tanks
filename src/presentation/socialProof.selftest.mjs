@@ -43,6 +43,20 @@ assert.equal((home.match(/src="\/media\/social-proof\/basedketsu\.png"/g) || [])
   'every Reddit card must show the posting account avatar');
 assert.equal((home.match(/target="_blank" rel="noopener noreferrer"/g) || []).length, 10,
   'every external social card must isolate its browsing context');
+const xWall = home.match(/<div class="shell v5-social-proof__x-grid">([\s\S]*?)<div class="shell v5-social-proof__reddit">/)?.[1] ?? '';
+assert.ok(xWall.indexOf('@hakimieiqbal') < xWall.indexOf('@VaibhavSisinty'),
+  'Hakimi must appear before Vaibhav in the X proof wall');
+for (const quote of [
+  'A solo dev just shipped what would take a game studio months.',
+  'The breakthrough wasn’t one giant prompt.',
+  'The prompt wasn’t the system. The workflow was.',
+  'Proves how agentic coding tools can scaffold interactive 3D multiplayer games from scratch in hours.',
+]) {
+  assert.ok(home.includes(quote), `missing requested social-proof quote: ${quote}`);
+}
+assert.ok(!home.includes('The engine behind the game'), 'removed Three.js kicker must stay absent');
+assert.ok(!home.includes('shared the full game showcase with its community'),
+  'removed Three.js supporting sentence must stay absent');
 
 for (const value of ['396K', '77.8K', '1,453', '269', '19.5K', '37.9K', '162K', '112K']) {
   assert.ok(home.includes(value), `missing verified engagement value ${value}`);
@@ -76,6 +90,12 @@ assert.match(styles, /\.v5-social-proof__x-grid\{[^}]*grid-template-columns:repe
   'desktop social proof must use the authored card grid');
 assert.match(styles, /\.v5-social-proof h2 span\{[^}]*display:block;white-space:nowrap/,
   'social-proof headline rows must not wrap internally');
+for (const icon of ['view', 'like', 'comment', 'repost', 'bookmark']) {
+  assert.match(styles, new RegExp(`\\.v5-social-metric-icon--${icon}\\{[^}]*color:#`),
+    `${icon} metric icon must have a distinct high-visibility color`);
+}
+assert.match(styles, /\.v5-social-metric-icon\{[^}]*width:18px;height:18px/,
+  'primary social metric icons must use the enlarged presentation size');
 assert.match(styles, /\.v5-reddit-grid\{[^}]*grid-template-columns:repeat\(5/,
   'desktop Reddit proof must expose all five discussions');
 
