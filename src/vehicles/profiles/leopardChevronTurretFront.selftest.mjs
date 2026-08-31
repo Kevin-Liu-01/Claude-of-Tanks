@@ -89,6 +89,13 @@ for (const [id, expectedProfile] of modernProfiles) {
   assert.equal(receipt.roofBridgeVolumes, 2, `${id} uses one continuous roof bridge per cheek`);
   assert.equal(receipt.roofBridgeStructural, true,
     `${id} owns its roof closures in the rotating armor bucket`);
+  const closesCenterRoofGap = id === 'leo2a7v';
+  assert.equal(receipt.roofCenterGapClosed, closesCenterRoofGap,
+    `${id} records whether its two cheek-root bridges join across the centerline`);
+  assert.equal(receipt.roofCenterClosureVolumes, closesCenterRoofGap ? 1 : 0,
+    `${id} publishes exactly the required center roof closure count`);
+  assert.equal(receipt.roofCenterClosure == null, !closesCenterRoofGap,
+    `${id} publishes center roof geometry only when its profile requests it`);
   assert.equal(receipt.verticalTerminalSideClosure, verticalTerminalIds.has(id),
     `${id} records whether its outboard cheek ends in a vertical side wall`);
   assert.equal(receipt.terminalSideClosureVolumes, verticalTerminalIds.has(id) ? 2 : 0,
@@ -179,6 +186,24 @@ for (const [id, expectedProfile] of modernProfiles) {
       a7vSpecificProtectionRetained: true,
       a7vSpecificRoofEquipmentRetained: true,
     }, 'leo2a7v records an A6-family shell with its A7V protection and equipment retained');
+    const centerClosure = receipt.roofCenterClosure;
+    assert.equal(centerClosure.architecture, 'single-watertight-center-roof-span');
+    assert.equal(centerClosure.triangleCount, 12,
+      'leo2a7v closes the complete center gap with one six-sided structural span');
+    assert.ok(Math.abs(centerClosure.gapWidthM - 0.52) <= 1e-9,
+      'leo2a7v closes the marked 520 mm gap between its cheek-root bridges');
+    assert.equal(centerClosure.leftX, -0.26);
+    assert.equal(centerClosure.rightX, 0.26);
+    assert.equal(centerClosure.sideBridgeInnerCapsRetained, false,
+      'leo2a7v removes the old opposing caps instead of stacking the closure over them');
+    assert.deepEqual(turretRig.userData.leopard2A7VRoofAttachmentReceipt, {
+      roofCenterGapClosed: true,
+      roofCenterGapWidthM: 0.52,
+      emesPedestalBaseY: 0.61,
+      emesSupportingRoofY: 0.62,
+      emesPedestalRoofOverlapM: 0.01,
+      emesPedestalTopY: 0.88,
+    }, 'leo2a7v records the closed center roof and the seated EMES pedestal');
   }
 
   const turret = findMergedMesh(turretRig, 'turret');
@@ -189,8 +214,11 @@ for (const [id, expectedProfile] of modernProfiles) {
       `${id} ${sideReceipt.side} spans every adjacent plan station`);
     assert.equal(sideReceipt.triangleCount, sideReceipt.courseCount * 6 + 2,
       `${id} ${sideReceipt.side} has only two end caps around one continuous cheek volume`);
-    assert.equal(sideReceipt.roofBridge.triangleCount, sideReceipt.courseCount * 8 + 4,
-      `${id} ${sideReceipt.side} roof bridge has only two end caps around one continuous volume`);
+    assert.equal(sideReceipt.roofBridge.triangleCount,
+      sideReceipt.courseCount * 8 + (closesCenterRoofGap ? 2 : 4),
+      `${id} ${sideReceipt.side} roof bridge keeps only the caps not owned by a center closure`);
+    assert.equal(sideReceipt.roofBridge.innerEndCapped, !closesCenterRoofGap,
+      `${id} ${sideReceipt.side} avoids a coincident inward cap when the center span is present`);
     assert.equal(sideReceipt.roofBridge.stations.length, sideReceipt.stations.length,
       `${id} ${sideReceipt.side} roof bridge follows every cheek plan station`);
     assert.ok(sideReceipt.roofBridge.thicknessM >= 0.08,
@@ -277,6 +305,27 @@ for (const [id, expectedProfile] of modernProfiles) {
       assert.ok(hasVertex(position, [side * station.x, station.lowerY, station.lowerZ]),
         `${id} ${sideReceipt.side} station ${index} lower root is authored in the merged armor`);
     }
+  }
+
+  if (id === 'leo2a7v') {
+    const closure = receipt.roofCenterClosure;
+    for (const point of [
+      closure.left.frontTop,
+      closure.left.frontBottom,
+      closure.left.rearTop,
+      closure.left.rearBottom,
+      closure.right.frontTop,
+      closure.right.frontBottom,
+      closure.right.rearTop,
+      closure.right.rearBottom,
+    ]) {
+      assert.ok(hasVertex(position, point),
+        `leo2a7v center roof closure owns boundary point ${point.join(',')}`);
+    }
+    assert.ok(hasVertex(position, [-1.12, 0.61, 0.45]),
+      'leo2a7v EMES pedestal reaches down into the supporting turret roof');
+    assert.equal(rootVertexOccurrences(turretRig, [-1.12, 0.74, 0.45]), 0,
+      'leo2a7v removes the former floating EMES pedestal underside');
   }
 
   if (id === 'leo2a5') {

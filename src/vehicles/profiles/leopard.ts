@@ -98,6 +98,14 @@ interface ChevronRoofBridgeOptions {
   readonly thickness?: number;
   readonly rearOverlapM?: number;
   readonly frontEmbedM?: number;
+  readonly capInnerEnd?: boolean;
+}
+
+interface ChevronRoofBridgeSection {
+  readonly frontTop: Vec3Tuple;
+  readonly frontBottom: Vec3Tuple;
+  readonly rearTop: Vec3Tuple;
+  readonly rearBottom: Vec3Tuple;
 }
 
 interface ChevronSurfacePanelOptions {
@@ -560,6 +568,7 @@ interface LeopardChevronConfig {
   readonly upperTaperStartX?: number;
   readonly roofBridgeThicknessM?: number;
   readonly roofBridgeOverlapM?: number;
+  readonly closeRoofCenterGap?: boolean;
   readonly panelBands?: readonly Vec2Tuple[];
   readonly panelThicknessM?: number;
   readonly panelRidgeMargin?: number;
@@ -868,11 +877,12 @@ function closedLeopardChevronRoofBridge(
   const thickness = options.thickness ?? 0.11;
   const rearOverlapM = options.rearOverlapM ?? 0.08;
   const frontEmbedM = options.frontEmbedM ?? 0.012;
+  const capInnerEnd = options.capInnerEnd ?? true;
   const positions: number[] = [];
   const tri = (p0: Vec3Tuple, p1: Vec3Tuple, p2: Vec3Tuple): void => {
     positions.push(...p0, ...p1, ...p2);
   };
-  const points = stations.map((station) => {
+  const points: readonly ChevronRoofBridgeSection[] = stations.map((station) => {
     const frontTopX = station.upperX ?? station.x;
     const frontTop: Vec3Tuple = [side * frontTopX, station.upperY, station.upperZ];
     const closureSpan = Math.max(1e-6, station.upperY - station.lowerY);
@@ -898,8 +908,10 @@ function closedLeopardChevronRoofBridge(
     tri(a.rearTop, b.rearTop, b.rearBottom); tri(a.rearTop, b.rearBottom, a.rearBottom);
   }
   const first = points[0], last = points[points.length - 1];
-  tri(first.frontTop, first.rearTop, first.rearBottom);
-  tri(first.frontTop, first.rearBottom, first.frontBottom);
+  if (capInnerEnd) {
+    tri(first.frontTop, first.rearTop, first.rearBottom);
+    tri(first.frontTop, first.rearBottom, first.frontBottom);
+  }
   tri(last.frontTop, last.frontBottom, last.rearBottom);
   tri(last.frontTop, last.rearBottom, last.rearTop);
 
@@ -930,10 +942,46 @@ function closedLeopardChevronRoofBridge(
   return Object.freeze({
     geometry,
     stations: Object.freeze(points),
-    triangleCount: (points.length - 1) * 8 + 4,
+    triangleCount: (points.length - 1) * 8 + (capInnerEnd ? 4 : 2),
+    innerEndCapped: capInnerEnd,
     thicknessM: thickness,
     bodyFrontZ,
     rearOverlapM,
+  });
+}
+
+// Join the mirrored inner roof-bridge profiles as one closed span. The two
+// side bridges deliberately omit their inward caps when this is present, so
+// every seam owns a single face and cannot z-fight while the former daylight
+// channel becomes structural turret armor.
+function closedLeopardChevronCenterRoofBridge(
+  left: ChevronRoofBridgeSection,
+  right: ChevronRoofBridgeSection,
+) {
+  const epsilon = 1e-6;
+  if (left.frontTop[0] >= right.frontTop[0]) {
+    throw new RangeError('Chevron center roof bridge profiles must run left to right');
+  }
+  for (const key of ['frontTop', 'frontBottom', 'rearTop', 'rearBottom'] as const) {
+    if (Math.abs(left[key][1] - right[key][1]) > epsilon
+        || Math.abs(left[key][2] - right[key][2]) > epsilon) {
+      throw new RangeError('Chevron center roof bridge profiles must share their Y/Z section');
+    }
+  }
+  const geometry = outwardClosedSlab(
+    left.frontTop, left.rearTop, left.rearBottom, left.frontBottom,
+    right.frontTop, right.rearTop, right.rearBottom, right.frontBottom,
+  );
+  return Object.freeze({
+    geometry,
+    architecture: 'single-watertight-center-roof-span',
+    triangleCount: 12,
+    gapWidthM: right.frontTop[0] - left.frontTop[0],
+    leftX: left.frontTop[0],
+    rightX: right.frontTop[0],
+    sideBridgeInnerCapsRetained: false,
+    left: Object.freeze(left),
+    right: Object.freeze(right),
   });
 }
 
@@ -2335,6 +2383,7 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
     return rows[rows.length - 1][column];
   };
   const chevronSides = [];
+  const roofBridgeInnerProfiles: ChevronRoofBridgeSection[] = [];
   for (const s of [-1, 1] as const) {
     // per-side crest tables (T.crestL): the a6 print's LEFT cheek crests
     // ~0.3 taller than the right — a mirrored table cannot match both
@@ -2407,8 +2456,10 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
         bodyTopY: T.body[0].top ?? h,
         thickness: chevron.roofBridgeThicknessM ?? 0.11,
         rearOverlapM: chevron.roofBridgeOverlapM ?? 0.08,
+        capInnerEnd: chevron.closeRoofCenterGap !== true,
       });
       P.add('turret', roofBridge.geometry);
+      if (chevron.closeRoofCenterGap) roofBridgeInnerProfiles.push(roofBridge.stations[0]);
       const panelBands = chevron.panelBands ?? LEO_CHEVRON_PANEL_BANDS;
       const panelThicknessM = chevron.panelThicknessM ?? 0.022;
       const surfacePanels = panelBands.map(([from, to]) => {
@@ -2440,6 +2491,7 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
           thicknessM: roofBridge.thicknessM,
           bodyFrontZ: roofBridge.bodyFrontZ,
           rearOverlapM: roofBridge.rearOverlapM,
+          innerEndCapped: roofBridge.innerEndCapped,
         }),
         surfacePanels: Object.freeze(surfacePanels),
         terminalSideClosure: terminalSideClosure?.receipt ?? null,
@@ -2521,6 +2573,12 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
       }
     }
   }
+  const roofCenterClosure = chevron?.closeRoofCenterGap
+    ? closedLeopardChevronCenterRoofBridge(
+      roofBridgeInnerProfiles[0], roofBridgeInnerProfiles[1],
+    )
+    : null;
+  if (roofCenterClosure) P.add('turret', roofCenterClosure.geometry);
   if (chevron && P.geometryReceipt) {
     const cheekCourseCount = chevronSides.reduce((sum, side) => sum + side.courseCount, 0);
     P.turretG.userData.leopardChevronFrontReceipt = Object.freeze({
@@ -2542,6 +2600,20 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
       roofSightlineClosed: true,
       roofBridgeVolumes: 2,
       roofBridgeStructural: true,
+      roofCenterGapClosed: roofCenterClosure != null,
+      roofCenterClosureVolumes: roofCenterClosure ? 1 : 0,
+      roofCenterClosure: roofCenterClosure
+        ? Object.freeze({
+          architecture: roofCenterClosure.architecture,
+          triangleCount: roofCenterClosure.triangleCount,
+          gapWidthM: roofCenterClosure.gapWidthM,
+          leftX: roofCenterClosure.leftX,
+          rightX: roofCenterClosure.rightX,
+          sideBridgeInnerCapsRetained: roofCenterClosure.sideBridgeInnerCapsRetained,
+          left: roofCenterClosure.left,
+          right: roofCenterClosure.right,
+        })
+        : null,
       verticalTerminalSideClosure: chevron.verticalTerminalSideClosure === true,
       terminalSideClosureVolumes: chevronSides.filter((side) => side.terminalSideClosure).length,
       legacyInteriorShadowWalls: false,
@@ -7504,6 +7576,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
       rootDepthM: [0.90, 0.82, 0.68, 0.66, 0.52, 0.34],
       rootY: [-0.07, -0.07, -0.07, -0.07, 0.05, 0.12],
       panelThicknessM: 0.028,
+      closeRoofCenterGap: true,
       verticalTerminalSideClosure: true, terminalSideBodyOverlapM: 0.025,
     },
     crest: LEO2A7V_CHEVRON_CREST,
@@ -7537,10 +7610,10 @@ function buildLeo2A7V(P: TankBuilderPort) {
   // No independent crown loft: wedgeTurretV3's A6-family roof trough is the
   // structural roof. Removing the second broad shell eliminates the swollen
   // triangular silhouette and the buried overlapping geometry beneath it.
-  // EMES is a raised armored sight, not a glass box in free space.  Carry
-  // its housing down into the crown through a broad native pedestal; this
-  // also makes the height datum mechanically honest at every turret yaw.
-  P.add('turret', KIT.frustum(0.44, 0.17, -0.17, 0.28, 0.12, -0.12, 0.74, 0.88),
+  // EMES is a raised armored sight, not a glass box in free space. Carry its
+  // housing through the 0.62 m crown with a 10 mm structural overlap; the
+  // previous 0.74 m base left a visible 120 mm gap beneath this pedestal.
+  P.add('turret', KIT.frustum(0.44, 0.17, -0.17, 0.28, 0.12, -0.12, 0.61, 0.88),
     -0.68, 0, 0.62);
   // Recover the strongest readable details from our earlier authored A7V
   // without restoring its oversized 77-point primary silhouette.  These
@@ -7697,6 +7770,14 @@ function buildLeo2A7V(P: TankBuilderPort) {
       gunOwned: true,
     });
     P.turretG.userData.leopard2A7VProtectionReceipt = protectionReceipt;
+    P.turretG.userData.leopard2A7VRoofAttachmentReceipt = Object.freeze({
+      roofCenterGapClosed: true,
+      roofCenterGapWidthM: 0.52,
+      emesPedestalBaseY: 0.61,
+      emesSupportingRoofY: 0.62,
+      emesPedestalRoofOverlapM: 0.01,
+      emesPedestalTopY: 0.88,
+    });
     P.turretG.userData.leopard2A7VLineageReceipt = Object.freeze({
       architecture: 'leopard-2a6-family-evolution',
       baselineProfile: 'leopard-2a6',
