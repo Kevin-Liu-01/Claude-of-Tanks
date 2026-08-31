@@ -9088,12 +9088,8 @@ function buildLeo2Revolution(P: TankBuilderPort) {
   P.add('turret', slab(                                                        // mantlet crown 2.16w (w 1.82..2.12)
     [-0.42, 0.51, 2.17], [1.26, 0.51, 2.17], [1.26, 0.51, 2.47], [-0.42, 0.51, 2.47],
     [-0.42, 0.56, 2.17], [1.26, 0.515, 2.17], [1.26, 0.515, 2.47], [-0.42, 0.56, 2.47]));
-  // Keep the right bow shelf clear. The former standalone cheek/wing slab
-  // projected below and ahead of the continuous turret shell as an isolated
-  // triangular card; the closed primary loft already owns this armor run.
-  P.add('turret', slab(                                                        // tapered nose lip, buried into the inboard shoulder
-    [0.10, 0.28, 3.67], [0.62, 0.28, 3.63], [0.48, 0.28, 3.76], [0.10, 0.28, 3.82],
-    [0.10, 0.30, 3.67], [0.62, 0.30, 3.63], [0.48, 0.35, 3.76], [0.10, 0.37, 3.82]));
+  // Owner-selected right bow lip removed. The connected primary shell owns
+  // this run without the separate tapered card or a matching paint overlay.
   // LEFT cheek: nose line (-0.1,2.35w)->(-0.43,2.23w), step 1.79w at
   // -0.43..-0.54, notch at -0.54..-0.93 (1.33w)
   // r5: cheek rear pulled to 1.7405L (world 1.39) — its 1.79 underside read
@@ -9714,10 +9710,8 @@ function buildLeo2Revolution(P: TankBuilderPort) {
     {
       const wing = [];
       wing.push(prepCamo(KIT.xform(box(0.62, 0.004, 0.52), 0.52, 0.3195, 3.05), 1.78, 0.5, 1.07));
-      // Owner studio deletion: the isolated right-aft wing tint patch was
-      // selected as a complete top surface.  It was cosmetic overlay only;
-      // the closed structural wing beneath remains intact.
-      wing.push(prepCamo(KIT.xform(box(0.40, 0.004, 0.34), 0.38, 0.3195, 3.62), 1.78, 0.5, 1.03));
+      // The owner-selected right bow lip and its matching tint patch are
+      // intentionally absent; the continuous shell below supplies the face.
       wing.push(prepCamo(KIT.xform(box(0.55, 0.004, 0.60), -0.30, 0.6640, -0.70), 1.78, 0.5, 1.06));
       wing.push(prepCamo(KIT.xform(box(0.50, 0.004, 0.55), 0.45, 0.6640, -1.30), 1.78, 0.5, 0.96));
       wing.push(prepCamo(KIT.xform(box(0.44, 0.004, 0.40), -0.70, 0.6640, -1.55), 1.78, 0.5, 1.04));

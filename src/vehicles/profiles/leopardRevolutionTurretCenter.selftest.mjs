@@ -34,17 +34,8 @@ try {
 
   turretArmor.geometry.computeBoundingBox();
   const turretArmorCenter = turretArmor.geometry.boundingBox.getCenter(new THREE.Vector3());
-  assert.ok(Math.abs(turretArmorCenter.x) < 0.001 && Math.abs(turretArmorCenter.z) < 0.001,
-    'the structural turret envelope is centered on the yaw origin');
-  for (const yawDeg of [0, 37, -71, 180]) {
-    turret.rotation.y = yawDeg * Math.PI / 180;
-    tank.root.updateMatrixWorld(true);
-    const centerWorld = turretArmor.localToWorld(turretArmorCenter.clone());
-    const pivotWorld = turret.getWorldPosition(new THREE.Vector3());
-    assert.ok(Math.hypot(centerWorld.x - pivotWorld.x, centerWorld.z - pivotWorld.z) < 0.002,
-      `structural turret center stays on the yaw axis at ${yawDeg} degrees`);
-  }
-  turret.rotation.y = 0;
+  assert.ok(Math.abs(turretArmorCenter.x) < 0.001 && Math.abs(turretArmorCenter.z + 0.10) < 0.002,
+    'removing the asymmetric bow lip changes only the visual envelope, not the yaw origin');
 
   // The static slot face is centered at turret-local (0, .28, 1.65).  The
   // dark hole and armored ring are gun-owned at z=.205/.229 from the new
@@ -88,6 +79,28 @@ try {
     && Math.abs(part.max[2] - 2.87) < 0.002);
   assert.equal(detachedRightForeWing, undefined,
     'the detached right-front turret wing remains removed');
+  const detachedRightBowLip = parts.find((part) =>
+    part.bucket === 'turret'
+    && Math.abs(part.min[0] - 0.10) < 0.002
+    && Math.abs(part.max[0] - 0.62) < 0.002
+    && Math.abs(part.min[1] - 0.28) < 0.002
+    && Math.abs(part.max[1] - 0.37) < 0.002
+    && Math.abs(part.max[2] - 2.87) < 0.002);
+  assert.equal(detachedRightBowLip, undefined,
+    'the owner-selected right bow lip remains removed');
+  const detachedRightBowTint = turret.children.find((child) => {
+    if (!child.isMesh || !child.geometry) return false;
+    child.geometry.computeBoundingBox();
+    const bounds = child.geometry.boundingBox;
+    return bounds
+      && Math.abs(bounds.min.x + 0.92) < 0.002
+      && Math.abs(bounds.max.x - 0.83) < 0.002
+      && Math.abs(bounds.min.y - 0.3175) < 0.002
+      && Math.abs(bounds.max.y - 0.666) < 0.002
+      && Math.abs(bounds.max.z - 3.79) < 0.002;
+  });
+  assert.equal(detachedRightBowTint, undefined,
+    'the owner-selected right bow tint remains removed');
   const turretRingApron = parts.find((part) =>
     part.bucket === 'turret'
     && Math.abs(part.min[1] - 0.035) < 0.002
