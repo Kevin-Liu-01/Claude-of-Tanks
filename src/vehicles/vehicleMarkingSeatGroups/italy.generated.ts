@@ -132,9 +132,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          1.2801499,
-          0.3454113,
-          -0.7168
+          1.407565,
+          0.3799413,
+          -0.5332799
         ],
         "quaternion": [
           -0.0065578,
@@ -154,9 +154,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          1.241,
-          0.42078,
-          -1.2272
+          1.3645,
+          0.462858,
+          -1.3499199
         ],
         "quaternion": [
           0,
@@ -181,9 +181,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          -1.2803833,
-          0.3328313,
-          -0.624
+          -1.4078217,
+          0.3661033,
+          -0.6863999
         ],
         "quaternion": [
           -0.0065578,
@@ -203,9 +203,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          -1.366,
-          0.4082,
-          -1.1344
+          -1.5020001,
+          0.44902,
+          -1.2478399
         ],
         "quaternion": [
           0,

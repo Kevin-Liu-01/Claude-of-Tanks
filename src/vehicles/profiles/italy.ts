@@ -41,10 +41,22 @@ type ArieteMark = 'c1' | 'c2';
 interface ItalyBuilderPort {
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
+  readonly gunG: THREE.Group;
   readonly mats: unknown;
   readonly rng: unknown;
   readonly q?: boolean;
   readonly geometryReceipt?: boolean;
+  readonly gear?: {
+    contactGeom: {
+      halfLenM: number;
+      zCenterM: number;
+      halfWidM: number;
+      bottomYM: number;
+      endRise?: { dzM: number; frontM: number; rearM: number };
+    };
+    trackHitbox: Array<{ x0: number; x1: number; poly: Array<[number, number]> }>;
+  } | null;
+  muzzleZ: number;
   topY?: number;
   add(slot: string, geometry: unknown, ...transform: number[]): unknown;
   addCupola(
@@ -68,6 +80,8 @@ interface ItalyBuilderPort {
     position: Vec3Tuple,
     ...orientation: number[]
   ): unknown;
+  scaleAllBuckets(x?: number, y?: number, z?: number): void;
+  scaleDecals(scale: number): void;
   offsetBuckets(names: readonly string[], x: number, y: number, z: number): unknown;
   visualEraCluster(
     key: string,
@@ -222,8 +236,8 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   } : null;
   // The supplied Arrafi reference carries a 1.06 m running-gear envelope
   // and ~0.60 m shoes. Keep that mechanical course rooted at the terrain,
-  // then raise the armored body on its suspension instead of globally
-  // scaling the tank (which previously damaged skirts and gun proportions).
+  // then raise the armored body on its suspension before applying the final
+  // uniform owner scale; this preserves the corrected body/course relation.
   const BODY_RIDE_LIFT = 0.10;
   // Establish the articulation frame before adding the C2's marked shoulder
   // modules.  They used to be authored into hull buckets, so their boxes
@@ -234,7 +248,11 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   const localY = (yWorldBeforeLift: number): number => yWorldBeforeLift - 1.30;
 
   // ---- hull tub + sponsons -------------------------------------------------
-  P.add('hull', box(1.90, 0.90, 6.30), 0, 0.85, 0.05);                         // tub x ±0.95 (inner band plane 1.017, audit dilates 2), belly 0.40
+  // Narrow buried belly core: the former ±0.95 m face occupied the linked
+  // shoe guide-horn sweep (68 strict voxels before the owner scale, 80
+  // after). The visible sponsons/skirts and armor frame retain their exact
+  // reviewed widths; only this hidden inner tub clears the animated course.
+  P.add('hull', box(1.60, 0.90, 6.30), 0, 0.85, 0.05);                         // tub x ±0.80, belly 0.40
   P.add('hull', box(3.07, 0.15, 5.24), 0, 1.435, -0.95);                       // hull side walls ±1.535 (stations st0-5 w 3.04-3.07), y 1.36..1.51 —
   // §5.299: walls END at the driver line +1.67 (the old +2.87 overshoot
   // painted a flat 1.51 shelf over the whole glacis; the print's own side
@@ -840,7 +858,52 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     'hullTrackGuardL', 'hullTrackGuardR', 'hullTrackTrimL', 'hullTrackTrimR',
     'hullTrackDetailL', 'hullTrackDetailR',
   ], 0, BODY_RIDE_LIFT, 0);
-  P.topY = 2.55 + BODY_RIDE_LIFT;
+
+  // Owner scale pass: bake the full C1/C2 family into a genuinely 10%
+  // larger authored frame. Geometry buckets, direct smart-running-gear and
+  // fitting children, decals, pivots, muzzle/top anchors, and collision
+  // metadata all move together; the articulation rigs themselves stay at
+  // identity scale so downstream anatomy and metrology see actual metres.
+  const scale = 1.10;
+  P.scaleAllBuckets(scale);
+  P.scaleDecals(scale);
+  for (const child of [...P.hullG.children]) {
+    child.position.multiplyScalar(scale);
+    child.scale.multiplyScalar(scale);
+  }
+  for (const child of [...P.turretG.children]) {
+    if (child === P.gunG) continue;
+    child.position.multiplyScalar(scale);
+    child.scale.multiplyScalar(scale);
+  }
+  P.turretG.position.multiplyScalar(scale);
+  if (P.gear?.contactGeom) {
+    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM'] as const) {
+      P.gear.contactGeom[key] *= scale;
+    }
+    if (P.gear.contactGeom.endRise) {
+      for (const key of ['dzM', 'frontM', 'rearM'] as const) {
+        P.gear.contactGeom.endRise[key] *= scale;
+      }
+    }
+  }
+  for (const lane of P.gear?.trackHitbox || []) {
+    lane.x0 *= scale;
+    lane.x1 *= scale;
+    lane.poly = lane.poly.map(([z, y]) => [z * scale, y * scale]);
+  }
+  P.muzzleZ *= scale;
+  P.topY = (2.55 + BODY_RIDE_LIFT) * scale;
+  const scaleReceipt = Object.freeze({
+    uniformScale: scale,
+    bakedGeometry: true,
+    armorFrameScaled: true,
+    turretPivotScaled: true,
+    trackContactMetadataScaled: true,
+    trackHitGeometryScaled: true,
+  });
+  P.hullG.userData.arieteFamilyScaleReceipt = scaleReceipt;
+  P.turretG.userData.arieteFamilyScaleReceipt = scaleReceipt;
 }
 
 function buildArieteC1(P: ItalyBuilderPort): void { buildArieteMk(P, 'c1'); }

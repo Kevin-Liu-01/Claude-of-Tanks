@@ -4,13 +4,13 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { vehicleMarkingAnchor } from '../vehicleMarkings.ts';
 
-function countPanelCarrierFaces(mesh) {
+function countPanelCarrierFaces(mesh, carrierXM = 1.115) {
   const position = mesh.geometry.getAttribute('position');
   let count = 0;
   for (let i = 0; i < position.count; i += 3) {
     const vertices = [0, 1, 2].map((offset) => new THREE.Vector3(
       position.getX(i + offset), position.getY(i + offset), position.getZ(i + offset)));
-    if (!vertices.every((vertex) => Math.abs(Math.abs(vertex.x) - 1.115) < 1e-5)) continue;
+    if (!vertices.every((vertex) => Math.abs(Math.abs(vertex.x) - carrierXM) < 1e-5)) continue;
     const centroid = vertices[0].clone().add(vertices[1]).add(vertices[2]).multiplyScalar(1 / 3);
     if (centroid.y > 0.15 && centroid.y < 0.58
         && centroid.z > -2.45 && centroid.z < -1.10) count += 1;
@@ -58,11 +58,18 @@ function countPreserieGlacisRearFaces(mesh, rearStationZM) {
 for (const id of ['ariete_c1', 'ariete_c2']) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   const spec = getSpec(id);
-  assert.equal(spec.visual.trackWidthM, 0.60, `${id}: source-width shoe course`);
-  assert.equal(spec.armor.turretPivot[1], 1.40, `${id}: body and turret rise together`);
+  assert.deepEqual(spec.dims, {
+    hullLengthM: 8.349,
+    overallLengthM: 10.637,
+    widthM: 3.96,
+    heightM: id === 'ariete_c1' ? 2.805 : 2.827,
+  }, `${id}: registered dimensions are exactly ten percent larger`);
+  assert.equal(spec.visual.trackWidthM, 0.66, `${id}: shoe course scales by ten percent`);
+  assert(Math.abs(spec.armor.turretPivot[1] - 1.54) < 1e-12,
+    `${id}: armor and turret rise together in the enlarged frame`);
   const trackPlate = spec.armor.hullPlates.find((plate) => plate.name === 'track_R');
-  assert.equal(Math.max(...trackPlate.verts.map((vertex) => vertex[1])), 1.06,
-    `${id}: combat course follows the taller rendered track envelope`);
+  assert(Math.abs(Math.max(...trackPlate.verts.map((vertex) => vertex[1])) - 1.166) < 1e-12,
+    `${id}: combat course follows the enlarged rendered track envelope`);
 
   const leftBand = tank.root.getObjectByName('gearTrackBandL');
   const turret = tank.root.getObjectByName('rig_turret');
@@ -71,13 +78,26 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
   const hullRig = tank.root.getObjectByName('rig_hull');
   assert.ok(leftBand?.geometry, `${id}: one native smart track band exists`);
   leftBand.geometry.computeBoundingBox();
-  assert(leftBand.geometry.boundingBox.max.x - leftBand.geometry.boundingBox.min.x >= 0.59,
-    `${id}: rendered band preserves the 0.60 m shoe width`);
-  assert(Math.abs(turret.position.y - 1.40) < 1e-9,
-    `${id}: articulated turret is seated on the raised hull`);
+  const bandWorldBounds = new THREE.Box3().setFromObject(leftBand);
+  assert(bandWorldBounds.max.x - bandWorldBounds.min.x >= 0.649,
+    `${id}: rendered band carries the enlarged 0.66 m shoe width`);
+  assert(Math.abs(turret.position.y - 1.54) < 1e-9,
+    `${id}: articulated turret is seated in the enlarged frame`);
   hull.geometry.computeBoundingBox();
-  assert(hull.geometry.boundingBox.min.y >= 0.49,
+  assert(hull.geometry.boundingBox.min.y >= 0.539,
     `${id}: armor floor rises above the terrain-seated course`);
+  assert.deepEqual(hullRig.scale.toArray(), [1, 1, 1],
+    `${id}: baked enlargement leaves the hull articulation rig at identity scale`);
+  assert.deepEqual(turret.scale.toArray(), [1, 1, 1],
+    `${id}: baked enlargement leaves the turret articulation rig at identity scale`);
+  assert.deepEqual(hullRig.userData.arieteFamilyScaleReceipt, {
+    uniformScale: 1.1,
+    bakedGeometry: true,
+    armorFrameScaled: true,
+    turretPivotScaled: true,
+    trackContactMetadataScaled: true,
+    trackHitGeometryScaled: true,
+  }, `${id}: render, armor and external movement metadata share one enlarged frame`);
   assert.equal(hullRig.userData.nativeRoadWheelStations, 7,
     `${id}: exactly seven suspension-driven road-wheel stations`);
   const gear = hullRig.userData.runningGearReceipts.at(-1);
@@ -98,7 +118,7 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
   assert.equal(panel.maxSupportGapM, 0, `${id}: no daylight remains below either panel`);
   assert.equal(panel.rackSupportArmsPerSide, 3, `${id}: outer rack is tied to the re-seated panel`);
   assert.equal(panel.rearBasketBridgesPerSide, 1, `${id}: aft panel is returned into the basket frame`);
-  assert.ok(countPanelCarrierFaces(turretArmor) >= 4,
+  assert.ok(countPanelCarrierFaces(turretArmor, 1.115 * 1.1) >= 4,
     `${id}: both panel inner faces exist on the recorded carrier plane`);
 
   const equipment = turret.userData.arieteEquipmentReceipt;
@@ -130,8 +150,8 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
     const hullExternalArmor = hullRig.getObjectByName('hullExternalArmor');
     assert.ok(hullExternalArmor?.geometry, 'C2 skirt ERA uses the hull external-armor mesh');
     hullExternalArmor.geometry.computeBoundingBox();
-    assert.ok(Math.abs(hullExternalArmor.geometry.boundingBox.min.x + 1.812) < 1e-5
-      && Math.abs(hullExternalArmor.geometry.boundingBox.max.x - 1.812) < 1e-5,
+    assert.ok(Math.abs(hullExternalArmor.geometry.boundingBox.min.x + 1.812 * 1.1) < 1e-5
+      && Math.abs(hullExternalArmor.geometry.boundingBox.max.x - 1.812 * 1.1) < 1e-5,
     'C2 layered skirt lids finish 12 mm proud of the published cassette plane');
     for (const yaw of [0, Math.PI / 3]) {
       turret.rotation.y = yaw;
@@ -145,4 +165,4 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
   tank.dispose();
 }
 
-console.log('arieteProportions.selftest: Preserie glacis seat and C1/C2 source-width courses verified');
+console.log('arieteProportions.selftest: Preserie glacis seat and C1/C2 ten-percent enlargement verified');

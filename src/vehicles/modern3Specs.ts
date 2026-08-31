@@ -20,6 +20,42 @@ const BLOOM_MODERN: Readonly<AimBloom> = {
   afterShot: 2.2,
 };
 
+const ARIETE_C1_C2_SCALE = 1.10;
+
+// Enlarge only the spatial armor/anatomy frame. Protection thickness and
+// shell performance remain gameplay values in millimetres and do not scale.
+function scaleArmorFrame(armor: ArmorEnvelope, scale: number): ArmorEnvelope {
+  const point = (value: readonly number[]): [number, number, number] => [
+    value[0] * scale,
+    value[1] * scale,
+    value[2] * scale,
+  ];
+  armor.boundingRadiusM *= scale;
+  armor.turretPivot = point(armor.turretPivot);
+  armor.gunPivot = point(armor.gunPivot);
+  armor.gunBarrel.lengthM *= scale;
+  armor.gunBarrel.radiusM *= scale;
+  for (const plate of [...armor.hullPlates, ...armor.turretPlates]) {
+    plate.verts = [
+      point(plate.verts[0]),
+      point(plate.verts[1]),
+      point(plate.verts[2]),
+      point(plate.verts[3]),
+    ];
+  }
+  for (const volume of [...armor.modules, ...armor.crew]) {
+    volume.min = point(volume.min);
+    volume.max = point(volume.max);
+  }
+  if (armor.bodyContactPoints) {
+    armor.bodyContactPoints = {
+      hull: armor.bodyContactPoints.hull.map((value) => value * scale),
+      turret: armor.bodyContactPoints.turret.map((value) => value * scale),
+    };
+  }
+  return armor;
+}
+
 function offsetTurretRing(armor: ArmorEnvelope, offsetX: number): void {
   const ring = armor.modules.find((module) => module.module === 'turretRing');
   if (!ring) throw new Error('Modern armor envelope is missing its turret ring');
@@ -517,12 +553,12 @@ export const MODERN3_SPECS = {
         shell('DM11 HE-FRAG', 'HE', 120, 55, 55, 590, 1010),
       ],
     },
-    // §5.248 ground-up true-up: published production C1 plan dimensions
-    // (7.59 hull, 3.61 over skirts, 9.67 overall). The authored envelope is
-    // 0.10 m taller than the 2.45 m roof datum because this round restores the
-    // compressed suspension/track course and raises the supported body with it.
-    dims: { hullLengthM: 7.59, overallLengthM: 9.67, widthM: 3.60, heightM: 2.55 },
-    armor: modernArmor({
+    // §5.248 ground-up true-up used the published production C1 plan
+    // dimensions (7.59 hull, 3.61 over skirts, 9.67 overall). This row now
+    // records the owner's exact ×1.10 gameplay enlargement; protection mm
+    // stays unchanged while every spatial armor/anatomy coordinate scales.
+    dims: { hullLengthM: 8.349, overallLengthM: 10.637, widthM: 3.96, heightM: 2.805 },
+    armor: scaleArmorFrame(modernArmor({
       // geometric FRAME params re-seated on the arrafi-print measured build
       // (profiles/italy.ts buildArieteMk); every RHAe VALUE byte-identical.
       hl: 3.8, hw: 1.80, inW: 1.22, floor: 0.50, trkTop: 1.06, roofY: 1.59,
@@ -533,11 +569,11 @@ export const MODERN3_SPECS = {
       tw: 1.28, tFrontZ: 2.12, tRearZ: -2.40, tH: 0.86,
       cheek: [560, 620, 850], tSide: [320, 380, 560], tRear: 90, tRoof: 45,
       mantlet: [420, 500, 680], loader: true, bustleAmmo: true,
-    }),
+    }), ARIETE_C1_C2_SCALE),
     visual: {
       scheme: 'stripes', base: '#48533e', weather: '#53604a',
       patches: ['#384431', '#2c3529'], marking: 'number', number: 'C1 32',
-      trackWidthM: 0.60, camoScale: 0.56,
+      trackWidthM: 0.66, camoScale: 0.56,
     },
   },
 
@@ -559,10 +595,10 @@ export const MODERN3_SPECS = {
       ],
     },
     // §5.248 true-up: the AMV/C2 package rides the SAME C1 chassis (same
-    // hull, same 120/44). Its 2.57 m authored envelope carries the same 0.10 m
-    // course/body correction, with the remaining height in its armor package.
-    dims: { hullLengthM: 7.59, overallLengthM: 9.67, widthM: 3.60, heightM: 2.57 },
-    armor: modernArmor({
+    // hull, same 120/44). This row records the same owner-directed ×1.10
+    // gameplay enlargement, including its slightly taller armor package.
+    dims: { hullLengthM: 8.349, overallLengthM: 10.637, widthM: 3.96, heightM: 2.827 },
+    armor: scaleArmorFrame(modernArmor({
       // frame re-seated on the shared buildArieteMk base; RHAe VALUES
       // byte-identical (the C2 package keeps its uparmored rows).
       hl: 3.8, hw: 1.80, inW: 1.22, floor: 0.50, trkTop: 1.06, roofY: 1.59,
@@ -573,11 +609,11 @@ export const MODERN3_SPECS = {
       tw: 1.28, tFrontZ: 2.12, tRearZ: -2.40, tH: 0.86,
       cheek: [650, 760, 1050], tSide: [420, 520, 760], tRear: 110, tRoof: 55,
       mantlet: [500, 600, 820], loader: true, bustleAmmo: true,
-    }),
+    }), ARIETE_C1_C2_SCALE),
     visual: {
       scheme: 'stripes', base: '#3f4d3b', weather: '#4b5945',
       patches: ['#2e3b2d', '#5b5140'], marking: 'number', number: 'C2 01',
-      trackWidthM: 0.60, camoScale: 0.50,
+      trackWidthM: 0.66, camoScale: 0.50,
     },
   },
 

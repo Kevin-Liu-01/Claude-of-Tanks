@@ -607,6 +607,8 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
   addExternalArmor(bucket: string, geometry: THREE.BufferGeometry, ...transform: TransformNumbers): void;
   clear(...names: Array<string | string[]>): void;
   clearDecals(...parents: Array<string | string[]>): void;
+  scaleAllBuckets(x?: number, y?: number, z?: number): void;
+  scaleDecals(scale: number): void;
   scaleBuckets(names: string | string[], x?: number, y?: number, z?: number): void;
   offsetBuckets(names: string | string[], x?: number, y?: number, z?: number): void;
   forEachBucketPart(
@@ -7520,6 +7522,21 @@ export function createTank(
       const remove = new Set(parents.flat());
       for (let i = decals.length - 1; i >= 0; i--) {
         if (remove.has(decals[i].parent)) decals.splice(i, 1);
+      }
+    },
+    // Whole-vehicle proportion changes need every authored material bucket
+    // and pending decal in the same frame. Keeping this operation on the
+    // still-unmerged source geometry avoids a permanent render-parent scale
+    // that simulation and anatomy tools would otherwise have to infer.
+    scaleAllBuckets(x = 1, y = x, z = x) {
+      for (const list of Object.values(buckets)) {
+        for (const geo of list) geo.scale(x, y, z);
+      }
+    },
+    scaleDecals(scale) {
+      for (const decal of decals) {
+        decal.size *= scale;
+        for (let axis = 0; axis < decal.pos.length; axis++) decal.pos[axis] *= scale;
       }
     },
     // Section-correction utility for authored family variants. Bucket
