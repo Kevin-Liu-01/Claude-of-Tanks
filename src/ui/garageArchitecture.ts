@@ -1,28 +1,32 @@
-// Verdant keeps the authored indoor motor pool. Every other selection uses a
-// purpose-built static environment that evokes its battlefield without loading
-// battle terrain, collision, vegetation simulation, or world services.
 import * as THREE from 'three';
+
 import type { GarageVariant } from '../game/garageVariants.ts';
-import {
-  buildGarageEnvironment,
-  type GarageEnvironmentBuild,
+import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
+import type {
+  GarageEnvironmentAssetLibrary,
+  GarageEnvironmentBuild,
 } from './garageEnvironmentKit.ts';
 
 interface ArchitectureEngineContext {
+  anisotropy?: number;
   setupShadowMaterial?(material: THREE.Material): void;
 }
 
 export interface GarageArchitectureStats {
   key: GarageVariant['architecture'];
   mapId: string;
-  mode: 'verdant-workshop' | 'garage-environment';
+  mode: 'garage-environment';
   signature: string;
   objects: number;
+  drawCalls: number;
   triangles: number;
   cached: number;
+  cacheLimit: number;
+  residentTextureSets: number;
+  referencedTextureSets: number;
   enclosingSurfaces: number;
   ready: boolean;
-  source: 'verdant-workshop' | 'custom-garage-environment';
+  source: 'authentic-garage-scene-pack';
   sourceBeat: string;
   sourceStructure: string;
   sourceLandmarkLocal: readonly [number, number, number] | null;
@@ -30,189 +34,190 @@ export interface GarageArchitectureStats {
   landmarkHeightM: number;
   serviceFrame: string;
   terrainProfile: string;
+  terrainSourceAnchor: readonly [number, number] | null;
   terrainVertices: number;
+  textureSets: readonly string[];
   treeSpecies: readonly string[];
   trees: number;
+  lastBuildMs: number;
 }
 
+const CACHE_LIMIT = 2;
+const loadEnvironmentKit = () => import('./garageEnvironmentKit.ts');
+
+/**
+ * Own the bounded Garage scene-pack cache. Loading the real world-asset
+ * builders is intentionally outside the boot-critical Garage chunk; packs
+ * stream behind the existing cover and stale rapid-switch completions never
+ * become visible.
+ */
 export function createGarageArchitectureController(
   engineCtx: ArchitectureEngineContext,
   parent: THREE.Object3D,
-  _requestRender: () => void = () => {},
+  requestRender: () => void = () => {},
 ) {
   const group = new THREE.Group();
   group.name = 'garage_variant_architecture';
   group.userData.perfOwner = 'garage/architecture';
   parent.add(group);
 
-  const disposables: Array<{ dispose(): void }> = [];
-  const track = <T extends { dispose(): void }>(value: T): T => {
-    disposables.push(value);
-    return value;
+  const cache = new Map<GarageVariant['architecture'], GarageEnvironmentBuild>();
+  const pending = new Map<GarageVariant['architecture'], Promise<GarageEnvironmentBuild | null>>();
+  let assets: GarageEnvironmentAssetLibrary | null = null;
+  let active: GarageEnvironmentBuild | null = null;
+  let selected: GarageVariant | null = null;
+  let lastBuildMs = 0;
+  let textureWarmScheduled = false;
+  let disposed = false;
+
+  const touch = (key: GarageVariant['architecture'], build: GarageEnvironmentBuild): void => {
+    cache.delete(key);
+    cache.set(key, build);
   };
-  const shadow = <T extends THREE.Material>(material: T): T => {
-    engineCtx.setupShadowMaterial?.(material);
-    return material;
+
+  const trim = (): void => {
+    while (cache.size > CACHE_LIMIT) {
+      const oldest = cache.entries().next().value as
+        [GarageVariant['architecture'], GarageEnvironmentBuild] | undefined;
+      if (!oldest) return;
+      const [key, build] = oldest;
+      if (build === active) {
+        touch(key, build);
+        continue;
+      }
+      cache.delete(key);
+      build.dispose();
+    }
   };
-  const material = {
-    frame: track(shadow(new THREE.MeshStandardMaterial({ color: 0x46535c, roughness: 0.55, metalness: 0.58 }))),
-    accent: track(shadow(new THREE.MeshStandardMaterial({ color: 0xc99b35, roughness: 0.60, metalness: 0.25 }))),
-  };
-  const geometry = {
-    box: track(new THREE.BoxGeometry(1, 1, 1)),
-  };
-  const cache = new Map<GarageVariant['architecture'], THREE.Group>();
-  const environmentBuilds: GarageEnvironmentBuild[] = [];
-  let active: THREE.Group | null = null;
 
-  function put(
-    root: THREE.Object3D, name: string, mat: THREE.Material,
-    x: number, y: number, z: number,
-    sx: number, sy: number, sz: number,
-    rx = 0, ry = 0, rz = 0,
-    source: THREE.BufferGeometry = geometry.box,
-  ): THREE.Mesh {
-    const object = new THREE.Mesh(source, mat);
-    object.name = name;
-    object.position.set(x, y, z);
-    object.scale.set(sx, sy, sz);
-    object.rotation.set(rx, ry, rz);
-    object.castShadow = true;
-    object.receiveShadow = true;
-    root.add(object);
-    return object;
-  }
-
-  function build(variant: GarageVariant): THREE.Group {
-    const key = variant.architecture;
-    if (key !== 'field_shed') {
-      const environment = buildGarageEnvironment(engineCtx, variant);
-      environmentBuilds.push(environment);
-      environment.root.userData.architectureKey = key;
-      return environment.root;
-    }
-    const root = new THREE.Group();
-    root.name = `garage_architecture_${key}`;
-    root.userData.architectureKey = key;
-    root.userData.mode = 'verdant-workshop';
-    root.userData.enclosingSurfaces = 4;
-    root.userData.ready = true;
-    root.userData.source = 'verdant-workshop';
-    root.userData.sourceBeat = 'authored-field-workshop';
-    root.userData.sourceStructure = 'field_shed';
-    root.userData.distinctiveElements = [
-      'enclosed workshop shell',
-      'connected service portals',
-      'four authored maintenance bays',
-    ];
-    root.userData.landmarkHeightM = 8.8;
-    root.userData.serviceFrame = 'enclosed motor-pool workshop';
-    root.userData.terrainProfile = 'sealed concrete maintenance floor';
-    for (const x of [-20.6, -14.1, 14.9, 20.6]) {
-      put(root, 'field_portal_post', material.frame, x, 4.4, 21.65, 0.30, 8.8, 0.30);
-    }
-    put(root, 'field_portal_header', material.frame, 0, 8.8, 21.65, 42, 0.30, 0.30);
-    for (const x of [-19, -10, 0, 10, 19]) {
-      put(root, 'field_shed_column', material.frame, x, 3.7, -20.8, 0.28, 7.4, 0.28);
-    }
-    put(root, 'field_shed_header', material.frame, 0, 7.4, -20.8, 43, 0.32, 0.36);
-    for (const x of [-20.6, -14.1, 14.9, 20.6]) {
-      put(root, 'field_portal_brace', material.accent,
-        x + (x < 0 ? 1.5 : -1.5), 6.8, 21.25,
-        0.20, 0.20, 4.2, 0, 0, x < 0 ? -0.72 : 0.72);
-    }
-
-    refreshRootStats(root, key);
-    return root;
-  }
-
-  function refreshRootStats(root: THREE.Group, key: GarageVariant['architecture']): void {
-    let objects = 0;
-    let triangles = 0;
-    const names = new Set<string>();
-    root.traverse((object) => {
-      if (!(object instanceof THREE.Mesh)) return;
-      objects++;
-      names.add(object.name);
-      const geo = object.geometry;
-      const one = (geo.index ? geo.index.count : geo.attributes.position?.count || 0) / 3;
-      triangles += one * (object instanceof THREE.InstancedMesh ? object.count : 1);
-    });
-    root.userData.objects = objects;
-    root.userData.triangles = Math.round(triangles);
-    root.userData.signature = `${key}:${objects}:${[...names].sort().join(',')}`;
-  }
-
-  function setVariant(variant: GarageVariant): GarageArchitectureStats {
-    if (active) active.visible = false;
-    let next = cache.get(variant.architecture);
-    if (!next) {
-      next = build(variant);
-      cache.set(variant.architecture, next);
-      group.add(next);
-    }
-    active = next;
-    active.visible = true;
-    active.userData.mapId = variant.mapId;
-    material.accent.color.setHex(variant.accent);
-    const stats: GarageArchitectureStats = {
-      key: variant.architecture,
-      mapId: variant.mapId,
-      mode: active.userData.mode,
-      signature: String(active.userData.signature),
-      objects: Number(active.userData.objects),
-      triangles: Number(active.userData.triangles),
+  const collectStats = (): GarageArchitectureStats => {
+    const root = active?.root;
+    const textureStats = assets?.diagnostics() || { residentSets: 0, referencedSets: 0 };
+    const selectedReady = !!selected && root?.userData.architectureKey === selected.architecture;
+    return {
+      key: selected?.architecture || 'field_shed',
+      mapId: selected?.mapId || 'verdant',
+      mode: 'garage-environment',
+      signature: selectedReady ? String(root?.userData.signature || '') : '',
+      objects: selectedReady ? Number(root?.userData.objects || 0) : 0,
+      drawCalls: selectedReady ? Number(root?.userData.drawCalls || root?.userData.objects || 0) : 0,
+      triangles: selectedReady ? Number(root?.userData.triangles || 0) : 0,
       cached: cache.size,
-      enclosingSurfaces: Number(active.userData.enclosingSurfaces || 0),
-      ready: active.userData.ready === true,
-      source: active.userData.source || 'custom-garage-environment',
-      sourceBeat: active.userData.sourceBeat || '',
-      sourceStructure: active.userData.sourceStructure || '',
-      sourceLandmarkLocal: active.userData.sourceLandmarkLocal || null,
-      distinctiveElements: active.userData.distinctiveElements || [],
-      landmarkHeightM: Number(active.userData.landmarkHeightM || 0),
-      serviceFrame: active.userData.serviceFrame || '',
-      terrainProfile: active.userData.terrainProfile || '',
-      terrainVertices: Number(active.userData.terrainVertices || 0),
-      treeSpecies: active.userData.treeSpecies || [],
-      trees: Number(active.userData.trees || 0),
+      cacheLimit: CACHE_LIMIT,
+      residentTextureSets: textureStats.residentSets,
+      referencedTextureSets: textureStats.referencedSets,
+      enclosingSurfaces: 0,
+      ready: selectedReady && root?.userData.ready === true,
+      source: 'authentic-garage-scene-pack',
+      sourceBeat: selectedReady ? String(root?.userData.sourceBeat || '') : '',
+      sourceStructure: selectedReady ? String(root?.userData.sourceStructure || '') : '',
+      sourceLandmarkLocal: selectedReady ? root?.userData.sourceLandmarkLocal || null : null,
+      distinctiveElements: selectedReady ? root?.userData.distinctiveElements || [] : [],
+      landmarkHeightM: selectedReady ? Number(root?.userData.landmarkHeightM || 0) : 0,
+      serviceFrame: selectedReady ? String(root?.userData.serviceFrame || '') : '',
+      terrainProfile: selectedReady ? String(root?.userData.terrainProfile || '') : '',
+      terrainSourceAnchor: selectedReady ? root?.userData.terrainSourceAnchor || null : null,
+      terrainVertices: selectedReady ? Number(root?.userData.terrainVertices || 0) : 0,
+      textureSets: selectedReady ? root?.userData.textureSets || [] : [],
+      treeSpecies: selectedReady ? root?.userData.treeSpecies || [] : [],
+      trees: selectedReady ? Number(root?.userData.trees || 0) : 0,
+      lastBuildMs,
     };
+  };
+
+  const publish = (): GarageArchitectureStats => {
+    const stats = collectStats();
     Object.assign(group.userData, stats);
     return stats;
+  };
+
+  const show = (variant: GarageVariant, build: GarageEnvironmentBuild): void => {
+    if (active && active !== build) active.root.visible = false;
+    active = build;
+    active.root.visible = true;
+    active.root.userData.architectureKey = variant.architecture;
+    active.root.userData.mapId = variant.mapId;
+    touch(variant.architecture, build);
+    trim();
+    publish();
+    requestRender();
+    if (!textureWarmScheduled && assets) {
+      textureWarmScheduled = true;
+      // The active pack already acquired six of nine tiny surface sets. Start
+      // the remaining six image requests in the same bounded construction
+      // transaction, before interactive readiness. A later timer can collide
+      // with the first selector click and turn otherwise-async image decode
+      // into a visible long frame on 4x-throttled CPUs.
+      assets.warmAll(requestRender);
+    }
+  };
+
+  const ensure = (variant: GarageVariant): Promise<GarageEnvironmentBuild | null> => {
+    const cached = cache.get(variant.architecture);
+    if (cached) return Promise.resolve(cached);
+    const inFlight = pending.get(variant.architecture);
+    if (inFlight) return inFlight;
+    const task = loadEnvironmentKit().then((kit) => {
+      if (disposed) return null;
+      if (!assets) {
+        assets = kit.createGarageEnvironmentAssetLibrary(engineCtx);
+        // Warmed surface sets are intentionally not all attached to the active
+        // pack. Declare them on the architecture owner so phase suspension can
+        // evict every Garage-only GPU texture before battle and re-upload only
+        // the active materials under the covered return frame.
+        registerRetainedObject3DResources(group, { textures: assets.retainedTextures() });
+      }
+      const startedAt = performance.now();
+      const build = kit.buildGarageEnvironment(engineCtx, assets, variant, requestRender);
+      lastBuildMs = performance.now() - startedAt;
+      if (disposed) {
+        build.dispose();
+        return null;
+      }
+      build.root.userData.architectureKey = variant.architecture;
+      build.root.userData.mapId = variant.mapId;
+      build.root.visible = false;
+      group.add(build.root);
+      touch(variant.architecture, build);
+      trim();
+      if (selected?.architecture === variant.architecture) show(variant, build);
+      return build;
+    }).finally(() => pending.delete(variant.architecture));
+    pending.set(variant.architecture, task);
+    return task;
+  };
+
+  function setVariant(variant: GarageVariant): GarageArchitectureStats {
+    selected = variant;
+    const cached = cache.get(variant.architecture);
+    if (cached) {
+      lastBuildMs = 0;
+      show(variant, cached);
+    } else {
+      publish();
+      void ensure(variant);
+    }
+    return collectStats();
   }
 
   return {
     group,
     setVariant,
-    stats: (): GarageArchitectureStats => ({
-      key: group.userData.key || 'field_shed',
-      mapId: group.userData.mapId || 'verdant',
-      mode: group.userData.mode || 'verdant-workshop',
-      signature: group.userData.signature || '',
-      objects: group.userData.objects || 0,
-      triangles: group.userData.triangles || 0,
-      cached: cache.size,
-      enclosingSurfaces: group.userData.enclosingSurfaces || 0,
-      ready: group.userData.ready === true,
-      source: group.userData.source || 'custom-garage-environment',
-      sourceBeat: group.userData.sourceBeat || '',
-      sourceStructure: group.userData.sourceStructure || '',
-      sourceLandmarkLocal: group.userData.sourceLandmarkLocal || null,
-      distinctiveElements: group.userData.distinctiveElements || [],
-      landmarkHeightM: group.userData.landmarkHeightM || 0,
-      serviceFrame: group.userData.serviceFrame || '',
-      terrainProfile: group.userData.terrainProfile || '',
-      terrainVertices: group.userData.terrainVertices || 0,
-      treeSpecies: group.userData.treeSpecies || [],
-      trees: group.userData.trees || 0,
-    }),
+    stats: collectStats,
+    async whenReady(): Promise<GarageArchitectureStats> {
+      if (selected) await ensure(selected);
+      return collectStats();
+    },
     dispose() {
+      disposed = true;
       group.removeFromParent();
-      for (const environment of environmentBuilds) environment.dispose();
-      environmentBuilds.length = 0;
-      for (const value of disposables) value.dispose?.();
-      disposables.length = 0;
+      for (const build of cache.values()) build.dispose();
       cache.clear();
+      pending.clear();
+      active = null;
+      assets?.dispose();
+      assets = null;
+      group.clear();
     },
   };
 }

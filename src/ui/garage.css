@@ -1058,7 +1058,7 @@ body[data-cot-panels='overlay'] .cot-carousel{
   right:max(var(--cot-overlay-edge),env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));
   width:auto;height:var(--cot-roster-height);max-width:none;transform:none;gap:5px;
 }
-body[data-cot-panels='overlay'] .cot-garage.enter .cot-carousel{animation-name:cot-g-rise}
+body[data-cot-panels='overlay'] .cot-garage.enter .cot-carousel{animation-name:cot-g-fade}
 body[data-cot-panels='overlay'] .cot-car-arrow{width:36px;flex:0 0 36px}
 body[data-cot-panels='overlay'] .cot-cards{min-width:0;flex:1 1 auto;gap:5px}
 body[data-cot-panels='overlay'] .cot-card{

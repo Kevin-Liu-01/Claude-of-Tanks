@@ -5,52 +5,60 @@ import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { createGarageArchitectureController } from './garageArchitecture.ts';
 
 const kitSource = await readFile(new URL('./garageEnvironmentKit.ts', import.meta.url), 'utf8');
-assert.doesNotMatch(kitSource, /from ['"]\.\.\/world\//,
-  'Garage environments must never import battlefield terrain or world services');
-assert.doesNotMatch(kitSource, /getMapConfig|buildWorld|createTerrain|createVegetation/,
-  'Garage environments must remain self-contained presentation vignettes');
+const recipeSource = await readFile(new URL('./garageEnvironmentRecipes.ts', import.meta.url), 'utf8');
+assert.doesNotMatch(`${kitSource}\n${recipeSource}`,
+  /\b(createWorld|createMap|createVegetation|createProps)\s*\(|heightField\.update|from ['"]\.\.\/world\/terrain/i,
+  'Garage packs may reuse renderer assets, never battlefield runtime services');
+assert.match(kitSource, /garageTerrainPatches\.generated\.ts/,
+  'Garage terrain must use build-time battlefield excerpts');
+assert.match(recipeSource, /world\/maps\/(structureKit|railKit|villageKit|urbanKit)/,
+  'Garage recipes must use the real connected map structure builders');
 
 const scene = new THREE.Group();
 const controller = createGarageArchitectureController({}, scene);
 const signatures = new Set();
+let maxBuildMs = 0;
 for (const variant of GARAGE_VARIANTS) {
-  const stats = controller.setVariant(variant);
+  const startedAt = performance.now();
+  controller.setVariant(variant);
+  const stats = await controller.whenReady();
+  maxBuildMs = Math.max(maxBuildMs, performance.now() - startedAt);
   assert.equal(stats.key, variant.architecture);
   assert.equal(stats.mapId, variant.mapId);
-  if (variant.id === 'verdant_motor_pool') {
-    assert.equal(stats.mode, 'verdant-workshop');
-    assert.ok(stats.enclosingSurfaces > 0, 'Verdant preserves its original enclosed motor pool');
-    assert.ok(stats.objects >= 6 && stats.triangles > 0,
-      'Verdant keeps its authored portal structure');
-  } else {
-    assert.equal(stats.mode, 'garage-environment');
-    assert.equal(stats.enclosingSurfaces, 0,
-      `${variant.id} must remain an open Garage environment`);
-    assert.equal(stats.source, 'custom-garage-environment');
-    assert.ok(stats.objects >= 5,
-      `${variant.id} must build its authored static environment`);
-    assert.ok(stats.triangles > 0 && stats.triangles <= 10_000,
-      `${variant.id} must stay inside the Garage environment geometry budget`);
-    assert.ok(stats.terrainVertices >= 625,
-      `${variant.id} must own a small terrain surface`);
-    assert.ok(stats.sourceStructure && stats.sourceBeat,
-      `${variant.id} must identify its landmark and presentation beat`);
-    assert.equal(typeof stats.terrainProfile, 'string');
-    assert.ok(stats.terrainProfile.length > 12,
-      `${variant.id} must describe its map-specific terrain profile`);
-    assert.ok(stats.serviceFrame.length > 8,
-      `${variant.id} must identify its service-frame composition`);
-    assert.ok(stats.distinctiveElements.length >= 4,
-      `${variant.id} must expose at least four recognizable visual cues`);
-    assert.ok(stats.landmarkHeightM >= 7,
-      `${variant.id} landmark must frame the hero tank at Garage scale`);
-    assert.equal(stats.sourceLandmarkLocal?.[1], stats.landmarkHeightM);
-  }
+  assert.equal(stats.mode, 'garage-environment');
+  assert.equal(stats.enclosingSurfaces, 0,
+    `${variant.id} must remain an open Garage environment`);
+  assert.equal(stats.source, 'authentic-garage-scene-pack');
+  assert.ok(stats.objects >= 8 && stats.drawCalls <= 20,
+    `${variant.id} must merge its scene into a bounded draw-call graph`);
+  assert.ok(stats.triangles > 0 && stats.triangles <= 350_000,
+    `${variant.id} must stay inside the Garage environment geometry budget`);
+  assert.equal(stats.terrainVertices, 41 * 37,
+    `${variant.id} must use its compact battlefield-derived terrain excerpt`);
+  assert.equal(stats.terrainSourceAnchor?.length, 2);
+  assert.ok(stats.sourceStructure && stats.sourceBeat,
+    `${variant.id} must identify its real landmark and presentation beat`);
+  assert.ok(stats.terrainProfile.length > 24,
+    `${variant.id} must identify the battlefield-derived terrain`);
+  assert.ok(stats.serviceFrame.length > 16);
+  assert.ok(stats.distinctiveElements.length >= 4);
+  assert.ok(stats.landmarkHeightM >= 7);
+  assert.equal(stats.sourceLandmarkLocal?.[1], stats.landmarkHeightM);
+  assert.ok(stats.textureSets.length >= 6,
+    `${variant.id} must use real PBR surface sets`);
+  assert.ok(stats.treeSpecies.length >= 2 && stats.trees >= 5,
+    `${variant.id} must use battlefield tree geometry`);
+  assert.ok(stats.cached <= stats.cacheLimit && stats.cacheLimit === 2,
+    `${variant.id} must obey the two-pack transition cache`);
   signatures.add(stats.signature);
 }
 assert.equal(signatures.size, GARAGE_VARIANTS.length,
   'every Garage choice must have a distinct environment signature');
-assert.equal(controller.stats().cached, GARAGE_VARIANTS.length);
+assert.equal(controller.stats().cached, 2);
+assert.ok(controller.stats().residentTextureSets <= 9,
+  'PBR residency must remain bounded after visiting every environment');
+assert.ok(maxBuildMs < 250,
+  `headless environment construction exceeded transition budget (${maxBuildMs.toFixed(1)} ms)`);
 controller.dispose();
 assert.equal(scene.children.length, 0);
 

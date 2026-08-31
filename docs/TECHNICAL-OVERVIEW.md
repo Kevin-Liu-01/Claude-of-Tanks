@@ -232,8 +232,14 @@ ready. Development-only Vite warmup and module preload flatten the static
 ### 5.2 Garage
 
 The garage constructs only presentation needed for selection and session
-entry. The battlefield remains dormant. Optional network code and high-cost
-tooling remain dynamically reachable.
+entry. The battlefield remains dormant. Each of the ten environments is a
+bounded renderer-only scene pack built from a generated excerpt of its real
+battlefield terrain plus the shared connected structure and vegetation kits.
+The active and previous packs are the only cached scene graphs, and Garage-only
+textures and geometry leave GPU residency during battle. One immutable
+Verdant-style presentation pose owns hero heading, camera offset, look height,
+and FOV in every location. Optional network code and high-cost tooling remain
+dynamically reachable.
 
 ### 5.3 Battle activation
 

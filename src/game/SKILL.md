@@ -76,17 +76,16 @@ neutral showroom sun, mutually exclusive scene membership, renewable dressing
 GPU residency, world-root swaps, and terrain-relative stage placement. Camera
 framing and pedestal pose math remain with their existing owners.
 `garageEnvironmentPresentationRuntime.ts` owns the isolated Garage anchor,
-battlefield dormancy, camera framing, lifecycle effects, and diagnostics.
-`garageEnvironmentKit.ts` owns the compact static terrain, instances, and
-connected landmark for each non-Verdant theme; never add a world-loading port
-to either Garage environment module.
-`garageDressingOptimization.ts` finalizes the fully streamed static workshop,
-bakes descendant transforms, instances exact repeats, merges compatible
-semantic-free opaque surfaces, and collapses only high-return leaf draws inside
-explicitly immutable display owners. The movable bay owners, authored shadow
-proxies, materials, and all color geometry remain exact. Only the selected
-workshop layout stays attached; detached layouts remain CPU-only until their
-post-boot quiet warm or explicit selection.
+battlefield dormancy, lifecycle effects, and diagnostics.
+`garagePresentationPose.ts` is the only owner of hero heading, camera offset,
+look height, and FOV; stage, pedestal, activation, and return paths must consume
+it without variant-specific branches. `garageEnvironmentKit.ts` owns all ten
+bounded scene packs: generated real-terrain excerpts, connected real structure
+builders, static tree geometry, Garage-sized PBR derivatives, and the closed
+sky/horizon. Never add a world-loading or per-frame update port to a Garage
+environment module. `garageDressingAccess.ts` is a temporary zero-geometry
+compatibility boundary; do not restore the retired hidden multi-vehicle
+workshop or its fleet imports.
 `battleIntentRuntime.ts` owns the explicit Battle hover/focus lifecycle:
 concrete Random-map reservation, exact-roster texture coalescing, stale intent
 cancellation, and the camouflage-safe handoff into covered loading. Passive
@@ -174,11 +173,12 @@ keep partial bridges private until roster preparation and initial authority
 succeed.
 Route result, death-beat, and replay-handoff changes through
 `battleResultPresentationRuntime.ts`; keep those latches out of `tick()`.
-Workshop changes must preserve the typed optimization receipt and pass the
-phase resource gate. Keep display merging bounded by elements saved per draw,
-and stream detached-layout GPU warm one bay per quiet lease so an environment
-switch cannot link the whole workshop in one frame. Do not re-enable shadows
-on every tiny static fitting.
+Garage scene-pack changes must pass the architecture, terrain-generation,
+transition, and phase-resource gates. Preserve the two-pack cache, reject stale
+switch completions, start only the bounded Garage derivative texture set in the
+initial-pack transaction, and keep all environment identity out of the
+canonical pose. Do not add
+small-prop shadow casters or duplicate Garage lights.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

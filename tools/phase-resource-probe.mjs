@@ -540,15 +540,14 @@ const evaluateBudgets = (phases) => {
       <= (idle?.resources.caches.residentLimits?.pedestalVisuals ?? 0),
     idle?.resources.caches.pedestalIds?.length ?? null,
     idle?.resources.caches.residentLimits?.pedestalVisuals ?? null);
-  check('static workshop shadows are resolution-budgeted',
-    (idle?.resources.caches.workshopOptimization?.shadowCastersPruned || 0) > 0,
+  check('retired hidden workshop performs no shadow optimization work',
+    idle?.resources.caches.workshopOptimization == null,
     idle?.resources.caches.workshopOptimization || null,
-    'authored proxy-safe pruning receipt');
-  check('static workshop props are submission-batched',
-    (idle?.resources.caches.workshopOptimization?.drawCallsRemoved || 0) >= 175
-      && (idle?.resources.caches.workshopOptimization?.sourceGeometriesReleased || 0) >= 90,
+    'no invisible workshop receipt');
+  check('retired hidden workshop performs no batching work',
+    idle?.resources.caches.workshopOptimization == null,
     idle?.resources.caches.workshopOptimization || null,
-    '>= 175 exact static draws and >= 90 source geometries removed');
+    'no invisible workshop receipt');
   check('active battle main-thread cost per rendered frame',
     battle?.taskMsPerRender <= RESOURCE_BUDGETS.battleActive.taskMsPerRender,
     battle?.taskMsPerRender ?? null,
@@ -574,12 +573,12 @@ const evaluateBudgets = (phases) => {
       && battle?.resources.caches.phaseSceneResidency?.worldMounted === true,
     battle?.resources.caches.phaseSceneResidency || null,
     'Garage detached; world mounted');
-  check('active battle releases hidden workshop GPU residency',
+  check('active battle releases authentic Garage GPU residency',
     battle?.resources.caches.garageGpuResidency?.suspended === true
-      && (battle?.resources.caches.garageGpuResidency?.lastRelease?.geometries || 0) >= 200
-      && (battle?.resources.caches.garageGpuResidency?.lastRelease?.textures || 0) >= 20,
+      && (battle?.resources.caches.garageGpuResidency?.lastRelease?.geometries || 0) >= 12
+      && (battle?.resources.caches.garageGpuResidency?.lastRelease?.textures || 0) >= 18,
     battle?.resources.caches.garageGpuResidency || null,
-    'suspended with >= 200 geometries and >= 20 textures released');
+    'suspended with the active scene pack and all warmed PBR sets released');
   for (const resource of ['programs', 'geometries', 'textures']) {
     check(`active battle renderer ${resource}`,
       battle?.resources.renderer[resource] <= RESOURCE_BUDGETS.battleActive[resource],
@@ -634,11 +633,11 @@ const evaluateBudgets = (phases) => {
     !returned?.resources.sceneBreakdown?.effects,
     returned?.resources.sceneBreakdown?.effects || null,
     'no attached effects scene or pooled battle GPU graph');
-  check('returned Garage restores retained workshop GPU resources',
+  check('returned Garage restores retained scene-pack GPU resources',
     returned?.resources.caches.garageGpuResidency?.suspended === false
       && (returned?.resources.caches.garageGpuResidency?.resumes || 0) >= 1,
     returned?.resources.caches.garageGpuResidency || null,
-    'workshop resumed once behind the return transition');
+    'scene pack resumed once behind the return transition');
   for (const resource of ['programs', 'geometries', 'textures']) {
     check(`returned Garage renderer ${resource}`,
       returned?.resources.renderer[resource] <= RESOURCE_BUDGETS.garageReturned[resource],

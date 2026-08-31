@@ -1,5 +1,5 @@
-// Ten Garage destinations. Verdant retains the authored workshop; every other
-// choice names a small static environment derived from its battlefield mood.
+// Ten Garage destinations. Every choice owns a compact scene pack derived
+// from its real battlefield terrain, structures, materials, and vegetation.
 // This registry is deliberately renderer-free so UI, probes and persistence can
 // consume the same immutable contract without importing a world or tank builder.
 

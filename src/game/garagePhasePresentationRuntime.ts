@@ -114,7 +114,7 @@ export function createGaragePhasePresentationRuntime({
     garageRoots: [stageRoot, dressingRoot, spotTarget, spotA, spotB],
   });
   const gpuResidency = createRetainedPhaseGpuResidency({
-    root: dressingRoot,
+    root: stageRoot,
     preserveRoots: [scene],
     warmRender,
     nextFrame,

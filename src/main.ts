@@ -116,6 +116,10 @@ import {
   GARAGE_CAMERA_LOOK_HEIGHT_M,
   type GarageEnvironmentPresentationRuntime,
 } from './game/garageEnvironmentPresentationRuntime.ts';
+import {
+  GARAGE_CAMERA_AZIMUTH_RAD,
+  GARAGE_CAMERA_PITCH_RAD,
+} from './game/garagePresentationPose.ts';
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
@@ -631,6 +635,10 @@ if (typeof window !== 'undefined') window.__PERF_HUD = perfHud;
 // residency under the return veil, and re-seats every stage root together.
 // Existing camera and pedestal owners remain the only pose solvers.
 let garageEnvironmentPresentation: GarageEnvironmentPresentationRuntime;
+// Before the showroom exists, the environment owner supplies one deterministic
+// boot fallback. Afterwards every placement/variant/return transaction resets
+// the same UI-aware showroom solver; no second camera path can win a frame.
+let resetGarageShowroom: (() => boolean) | null = null;
 const garagePhasePresentation = createGaragePhasePresentationRuntime({
   scene,
   stageRoot: garageStage.group,
@@ -645,7 +653,9 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   getGroundHeight: () => 0,
   getPhase: () => game.phase,
   posePedestal: () => pedestal.poseCurrent(),
-  poseCamera: () => garageEnvironmentPresentation.poseCamera(),
+  poseCamera: () => {
+    if (!resetGarageShowroom?.()) garageEnvironmentPresentation.poseCamera();
+  },
   // Both bindings are initialized before either covered return can run.
   warmRender: () => warmRender(),
   nextFrame,
@@ -1107,14 +1117,15 @@ const showroom = createGarageShowroomRuntime({
   // Classic front-right three-quarter hero framing. All dimensions and camera
   // math remain owned by the existing engine solver; this root supplies only
   // scene anchors and the canonical vehicle-independent frame.
-  heroYawRad: GARAGE_TRACK_AXIS_YAW_RAD + 45 * DEG,
-  heroPitchRad: Math.atan2(1.2, Math.hypot(7.4, 8.0)),
+  heroYawRad: GARAGE_CAMERA_AZIMUTH_RAD,
+  heroPitchRad: GARAGE_CAMERA_PITCH_RAD,
   fixedFrame: () => ({
     x: GARAGE_POS.x, y: GARAGE_POS.y + GARAGE_CAMERA_LOOK_HEIGHT_M, z: GARAGE_POS.z,
     hw: GARAGE_FRAME_BOX.hw, hh: GARAGE_FRAME_BOX.hh, hd: GARAGE_FRAME_BOX.hd,
   }),
   floorY: () => GARAGE_POS.y,
 });
+resetGarageShowroom = () => showroom.reset();
 
 // Sniper close-quarters fill (gameplay_feel r1): with the camera at the gun
 // trunnion, aiming into nearby shadowed/backfacing geometry (a bush wall, a

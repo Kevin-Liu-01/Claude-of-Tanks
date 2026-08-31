@@ -1,15 +1,14 @@
 import * as THREE from 'three';
 
 import { getGarageVariant } from './garageVariants.ts';
+import {
+  GARAGE_CAMERA_LOOK_HEIGHT_M,
+  GARAGE_PRESENTATION_POSE,
+} from './garagePresentationPose.ts';
 
-const WORKSHOP_VARIANT_ID = 'verdant_motor_pool';
 const GARAGE_X = -1500;
 const GARAGE_Z = -1500;
-const DEFAULT_CAMERA_X = 7.4;
-const DEFAULT_CAMERA_Z = 8;
-const CAMERA_HEIGHT_M = 2.75;
-export const GARAGE_CAMERA_LOOK_HEIGHT_M = 1.6;
-const CAMERA_FOV_DEG = 42;
+export { GARAGE_CAMERA_LOOK_HEIGHT_M } from './garagePresentationPose.ts';
 
 export interface GarageEnvironmentPresentationOptions {
   garagePosition: THREE.Vector3;
@@ -24,7 +23,7 @@ export interface GarageEnvironmentPresentationOptions {
 export interface GarageEnvironmentState {
   readonly variantId: string;
   readonly mapId: string;
-  readonly mode: 'verdant-workshop' | 'custom-environment';
+  readonly mode: 'authentic-scene-pack';
   readonly ready: true;
   readonly anchor: readonly [number, number, number];
 }
@@ -60,8 +59,7 @@ export function createGarageEnvironmentPresentationRuntime({
   let state: GarageEnvironmentState = {
     variantId: initialVariant.id,
     mapId: initialVariant.mapId,
-    mode: initialVariant.id === WORKSHOP_VARIANT_ID
-      ? 'verdant-workshop' : 'custom-environment',
+    mode: 'authentic-scene-pack',
     ready: true,
     anchor: [GARAGE_X, 0, GARAGE_Z],
   };
@@ -70,16 +68,16 @@ export function createGarageEnvironmentPresentationRuntime({
 
   const poseCamera = (): void => {
     cameraPose.set(
-      garagePosition.x + DEFAULT_CAMERA_X,
-      garagePosition.y + CAMERA_HEIGHT_M,
-      garagePosition.z + DEFAULT_CAMERA_Z,
+      garagePosition.x + GARAGE_PRESENTATION_POSE.cameraOffsetM[0],
+      garagePosition.y + GARAGE_PRESENTATION_POSE.cameraOffsetM[1],
+      garagePosition.z + GARAGE_PRESENTATION_POSE.cameraOffsetM[2],
     );
     cameraTarget.set(
       garagePosition.x,
       garagePosition.y + GARAGE_CAMERA_LOOK_HEIGHT_M,
       garagePosition.z,
     );
-    setCameraPose(cameraPose, cameraTarget, CAMERA_FOV_DEG);
+    setCameraPose(cameraPose, cameraTarget, GARAGE_PRESENTATION_POSE.cameraFovDeg);
   };
 
   const activate = async (variantId: string): Promise<void> => {
@@ -88,8 +86,7 @@ export function createGarageEnvironmentPresentationRuntime({
     state = {
       variantId: variant.id,
       mapId: variant.mapId,
-      mode: variant.id === WORKSHOP_VARIANT_ID
-        ? 'verdant-workshop' : 'custom-environment',
+      mode: 'authentic-scene-pack',
       ready: true,
       anchor: [GARAGE_X, 0, GARAGE_Z],
     };
@@ -98,7 +95,6 @@ export function createGarageEnvironmentPresentationRuntime({
     setWorldDormant(true);
     placeGarage();
     setGarageSunTrim(true);
-    poseCamera();
     invalidatePresentation();
   };
 

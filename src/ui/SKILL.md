@@ -13,8 +13,10 @@ Present game and session state with fast, legible desktop/mobile interactions.
 <!-- agent-docs:fill:model -->
 `garage.ts` owns roster/loadout presentation; its intent-loaded
 `camoSwatchPainter.ts` owns deterministic exact camouflage cards;
-`garageStage.ts` owns the typed procedural hangar, canvas textures, podium,
-lighting, tracked GPU resources, and environment-variant bridge;
+`garageStage.ts` owns the typed visible hero podium and environment bridge;
+`garageArchitecture.ts` owns the two-pack async cache and phase-tracked assets;
+`garageEnvironmentKit.ts` owns all ten bounded authentic terrain, structure,
+vegetation, PBR, sky, and horizon packs;
 `playMenu.ts` owns direct Solo,
 Private, LAN, and Ranked deployment; `networkStatus.ts` owns reconnect feedback;
 `hud.ts` owns live battle chrome; `minimapAssetRuntime.ts` owns baked-map load

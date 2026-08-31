@@ -880,27 +880,30 @@ colored badge, tier, era), right-side stats card (HP, top speed, hp/t, pen/dmg o
 Emits `ui:battleStart` and `ui:click` on the bus. Keyboard: ←/→ select, Enter battle.
 
 `src/game/garageVariants.ts` owns the immutable ten-location registry,
-architecture key, and persistence key. `garageStage.ts` owns the first-paint
-shell and palette; `garageArchitecture.ts` retains Verdant's workshop and
-lazy-caches nine purpose-built static environments from
-`garageEnvironmentKit.ts`. Each owns a compact terrain terrace, instanced
-perimeter detail, and one connected map-specific landmark; no battle world is
-transferred or constructed. `garageEnvironmentPresentationRuntime.ts` keeps
-any retained world dormant and owns the fixed Garage anchor and camera.
-`garageDressingAccess.ts` keeps a stable light/root
-while lazily importing `garageDressing.ts`; `garageDressingScheduler.ts` adds
-one optional slice per quiet lease. `garageWallLayout.ts` is the authoritative
-non-overlapping wall-bay contract. `garageDressingAccess.ts` prepares the real
-`t90a_burlak`, `m1a2`, `t90m`, and `k2` fleet builders behind that quiet boundary;
-`garageDressing.ts` creates their exact maintenance scenes from the same fleet
-builders, sharing geometry and materials. Its finalizer preserves the complete
-triangle receipt while merging compatible static tank leaves and pruning only
-sub-resolution fitting shadows. Verdant signage uses blue identification, red
-hazard, green service, and amber caution categories; its turret gantry has an
-audited connected foot/post/crosshead/rail/bridge load path. The first
-garage frame and battle graph therefore stay independent of the optional fleet
-transfer, while workshop displays remain identical to playable vehicle art.
-`workshopParts.ts` remains the source for non-vehicle service racks and props.
+architecture key, and persistence key. `garagePresentationPose.ts` is the one
+Garage composition contract: every location uses the same Verdant-style hero
+heading, three-quarter camera offset, look height, and FOV. Environment identity
+may change terrain, structures, materials, and atmosphere, but it may never
+change tank orientation or framing.
+
+`garageStage.ts` owns only the visible hero podium and delegates its scene pack
+to `garageArchitecture.ts`. That controller demand-loads
+`garageEnvironmentKit.ts`, retains at most the active and previous pack, rejects
+stale switch completions, and starts nine small Garage-only PBR surface sets in
+the bounded initial-pack transaction before interactive readiness. All ten packs use generated 41x37 height excerpts from their
+real battlefield spawn terrain plus the connected structure and vegetation
+builders already used by the maps. A small self-contained sky and horizon close
+the composition without a white world background. No battlefield runtime,
+collision service, update loop, or full map is constructed in the Garage.
+
+`garageEnvironmentPresentationRuntime.ts` keeps any retained battle world
+dormant and applies the fixed anchor and canonical camera pose.
+`garagePhasePresentationRuntime.ts` owns the only Garage lights and the complete
+GPU residency transaction: Garage-only geometry and textures leave VRAM before
+battle, then restore behind the covered return frame. The former hidden
+four-vehicle workshop has been retired; `garageDressingAccess.ts` now exposes a
+zero-geometry compatibility owner while callers migrate. It never imports fleet
+builders, schedules quiet work, or adds a second set of scene resources.
 
 ### 3.8 fx — `src/fx/`
 

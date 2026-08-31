@@ -73,7 +73,7 @@ compete with a background terrain, vegetation, or shader build.
 
 Optional garage construction shares one typed idle-work coordinator. Explicit
 exact-map intent, adjacent-card texture paint, Battle-intent world generation,
-and workshop dressing are mutually exclusive main-thread lanes with
+and Garage surface warming are mutually exclusive main-thread lanes with
 deterministic priority.
 Each producer retains its own cancellation and frame-budget policy, but it must
 release the shared lease before waiting for the next construction slice. This
@@ -85,43 +85,40 @@ profile-family chunks. Studio transfers its route chunk on nav hover/focus/
 touch but does not construct the authoring runtime until entry. These boundaries
 keep demand loading without making a card or route click pay the cold parse.
 
-Garage workshop scenery uses only the real first-party `t90a_burlak`, `m1a2`,
-`t90m`, and `k2` builders behind `garageDressingAccess` and the shared
-garage-lull gate. Verdant Motor Pool preserves the pre-multi-garage repair floor
-exactly: Burlak under the turret gantry, skirt-off Abrams beside the welder,
-T-90M turret/Relikt service line, and rolled K2 teardown with its wheel, shoe,
-and weapon racks. The same four already-built scenes are reused across all ten
-locations; the former second three-tank/three-turret graph and its Leclerc build
-are gone.
+All ten locations are bounded authentic scene packs. Their 41x37 terrain grids
+are generated from exact battlefield spawn heightfields, then consumed without
+importing a terrain or map runtime. Connected landmarks come from the same
+first-party structure kits as the battlefields, distant vegetation uses the real
+tree kit, and nine 512px Garage-specific albedo/normal pairs preserve material
+identity without decoding the full map texture set. A low-cost vertex-color sky
+and terrain silhouette close the horizon so every camera ray resolves to a
+deliberate background rather than the renderer clear color.
 
-The four display tanks keep their complete first-party high-detail geometry and
-distinct camouflage. Finalization merges only opaque leaves with identical
-material and render state: 398 leaves become 74 static draw owners, removing
-324 submissions and 102 sub-resolution shadow casters while preserving all
-369,814 source triangles. The Garage probe rejects any triangle-count drift.
+The active pack stays between 13 and 15 draws and approximately 5.6K–8.3K
+triangles. The controller retains only the active and previous packs. The first
+pack starts all nine small texture sets before interactive readiness; this
+bounded ~18 MiB decoded residency removes first-switch texture stalls on weak
+CPUs without a later timer colliding with the first click. Stale rapid-switch
+promises never become visible. The former hidden
+four-tank workshop and its hundreds of thousands of triangles are retired, and
+the compatibility owner builds zero geometry.
 
-Verdant alone mounts the enclosed workshop shell and indoor clutter. Each other
-selection uses a static Garage-only terrain terrace, instanced perimeter detail,
-and one connected themed landmark. The environment path has no world loader,
-collision, destructible, LOD, vegetation-update, or service port; any retained
-battle world stays detached and dormant. The nine environments measure roughly
-1.8K–2.5K triangles each. In the 1280×720 production probe, outdoor selection
-fell from 1.7–4.9 seconds to 0.22–0.45 seconds including a fixed 180 ms
-observation window. Existing Garage lights remain mounted across selection
-changes so switching cannot change shader light-count defines and relink.
+One frozen presentation pose is shared by the stage, hero pedestal, return path,
+and camera runtime. There are no per-location heading or camera branches. The
+Garage phase owns one stable light set so switching cannot relink shaders through
+a changing light count. On battle entry, phase residency releases every scene-
+pack geometry and warmed Garage texture; return restores only the selected pack
+behind the opaque transition.
 
-Garage selector previews still decode only when demanded. One shared CRT-style
-battle archive screen streams canonical captures one at a time, retains at most
-the current and incoming textures, and stops its timer when the Garage root
-leaves the scene. `npm run qa:garage` enumerates all ten locations and checks
-map bindings, nine static-environment receipts, dormant world residency,
-terrain and landmark budgets, Verdant's original roof,
-the four shared exact maintenance bays, selected-hero track contact within one
-millimetre, screen rotation/residency, persistence, preview decode, architecture
-budgets, revealed desktop frame gaps, console health, and the 390×844 selector.
-Every interactive environment switch must complete within 750 ms including the
-probe's observation window, and revealed frame gaps remain under 120 ms. The
-same visible-frame gate runs under CDP 4× CPU throttling.
+Garage selector previews still decode only when demanded. `npm run qa:garage`
+enumerates all ten locations and checks map bindings, authentic source receipts,
+dormant world residency, terrain/landmark/draw budgets, canonical hero contact
+and pose, persistence, preview decode, console health, rapid intent convergence,
+thirty complete cache cycles, and responsive 1180x820 plus 390x844 layouts.
+Revealed frame gaps remain under 120 ms under CDP 4x CPU throttling.
+`npm run garage:terrain:check` rejects generated excerpt drift, while
+`npm run perf:resources:gate` proves Garage resources leave GPU residency during
+battle and return behind cover.
 
 An opaque transition must be visible before asynchronous battle imports or
 world loading. Hiding the menu before painting the transition can expose one

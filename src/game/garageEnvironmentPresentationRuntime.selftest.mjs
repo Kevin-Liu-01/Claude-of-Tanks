@@ -24,7 +24,7 @@ const runtime = createGarageEnvironmentPresentationRuntime({
 assert.deepEqual(runtime.diagnostics(), {
   variantId: 'verdant_motor_pool',
   mapId: 'verdant',
-  mode: 'verdant-workshop',
+  mode: 'authentic-scene-pack',
   ready: true,
   anchor: [-1500, 0, -1500],
 });
@@ -34,6 +34,9 @@ assert.deepEqual(garagePosition.toArray(), [-1500, 0, -1500]);
 assert.deepEqual(calls.slice(-4), [
   ['dormant', true], ['place'], ['sun', true], ['invalidate'],
 ]);
+assert.equal(poses.length, 0,
+  'variant activation must not overwrite the active showroom camera solver');
+runtime.poseCamera();
 assert.deepEqual(poses.at(-1), {
   position: [-1492.6, 2.75, -1492],
   target: [-1500, 1.6, -1500],
@@ -45,7 +48,7 @@ await runtime.activate(selectedVariantId);
 assert.deepEqual(runtime.diagnostics(), {
   variantId: 'desert_forward_depot',
   mapId: 'desert',
-  mode: 'custom-environment',
+  mode: 'authentic-scene-pack',
   ready: true,
   anchor: [-1500, 0, -1500],
 });
