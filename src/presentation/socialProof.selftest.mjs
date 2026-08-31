@@ -11,8 +11,10 @@ assert.match(home, /<header class="v5-hero">[\s\S]*?<\/header>\s*<section class=
   'social proof must be the first landing-page section after the hero');
 assert.match(home, /Public engagement snapshot captured August 31, 2026/,
   'static platform counts must disclose their capture date');
-assert.match(home, /<h2 id="social-proof-title"><span>Featured by Three\.js<\/span><span>Shared across the web<\/span><\/h2>/,
+assert.match(home, /<h2 id="social-proof-title"><span>Featured by <em>Three\.js<\/em><\/span><span>Shared across the web<\/span><\/h2>/,
   'social-proof headline must preserve the authored two-line lockup');
+assert.ok(!home.includes('Community signal // August 2026'),
+  'the retired social-proof eyebrow must stay absent');
 assert.doesNotMatch(home, /platform\.twitter\.com|embed\.reddit\.com|twitter-tweet|reddit-embed-bq/,
   'social proof must not load third-party embed scripts');
 
@@ -43,6 +45,8 @@ assert.equal((home.match(/src="\/media\/social-proof\/basedketsu\.png"/g) || [])
   'every Reddit card must show the posting account avatar');
 assert.equal((home.match(/target="_blank" rel="noopener noreferrer"/g) || []).length, 10,
   'every external social card must isolate its browsing context');
+assert.equal((home.match(/<dt><span class="v5-social-metric-icon v5-social-metric-icon--(?:view|like|bookmark)" aria-hidden="true"><\/span>/g) || []).length, 4,
+  'all four engagement-summary tiles must carry a matching metric icon');
 const xWall = home.match(/<div class="shell v5-social-proof__x-grid">([\s\S]*?)<div class="shell v5-social-proof__reddit">/)?.[1] ?? '';
 assert.ok(xWall.indexOf('@hakimieiqbal') < xWall.indexOf('@VaibhavSisinty'),
   'Hakimi must appear before Vaibhav in the X proof wall');
@@ -90,6 +94,10 @@ assert.match(styles, /\.v5-social-proof__x-grid\{[^}]*grid-template-columns:repe
   'desktop social proof must use the authored card grid');
 assert.match(styles, /\.v5-social-proof h2 span\{[^}]*display:block;white-space:nowrap/,
   'social-proof headline rows must not wrap internally');
+assert.match(styles, /\.v5-social-proof h2 em\{[^}]*color:var\(--gold\)/,
+  'only the Three.js name in the social-proof headline must use the gold accent');
+assert.match(styles, /\.v5-social-card--threejs \.v5-social-card__body blockquote\{[^}]*color:var\(--gold\)/,
+  'the Three.js feature-card title must use the gold accent');
 for (const icon of ['view', 'like', 'comment', 'repost', 'bookmark']) {
   assert.match(styles, new RegExp(`\\.v5-social-metric-icon--${icon}\\{[^}]*color:#`),
     `${icon} metric icon must have a distinct high-visibility color`);
