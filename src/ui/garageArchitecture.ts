@@ -39,6 +39,10 @@ export interface GarageArchitectureStats {
   textureSets: readonly string[];
   treeSpecies: readonly string[];
   trees: number;
+  backdropLayers: number;
+  groundCover: number;
+  structures: number;
+  wrecks: number;
   lastBuildMs: number;
 }
 
@@ -121,6 +125,10 @@ export function createGarageArchitectureController(
       textureSets: selectedReady ? root?.userData.textureSets || [] : [],
       treeSpecies: selectedReady ? root?.userData.treeSpecies || [] : [],
       trees: selectedReady ? Number(root?.userData.trees || 0) : 0,
+      backdropLayers: selectedReady ? Number(root?.userData.backdropLayers || 0) : 0,
+      groundCover: selectedReady ? Number(root?.userData.groundCover || 0) : 0,
+      structures: selectedReady ? Number(root?.userData.structures || 0) : 0,
+      wrecks: selectedReady ? Number(root?.userData.wrecks || 0) : 0,
       lastBuildMs,
     };
   };

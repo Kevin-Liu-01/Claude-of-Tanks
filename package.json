@@ -12,6 +12,8 @@
     "qa:garage": "node tools/garage-variants-probe.mjs",
     "garage:terrain:update": "node tools/generate-garage-terrain-patches.mjs",
     "garage:terrain:check": "node tools/generate-garage-terrain-patches.mjs --check",
+    "garage:wreck:update": "node tools/generate-garage-wreck-asset.mjs",
+    "garage:wreck:check": "node tools/generate-garage-wreck-asset.mjs --check",
     "test:public-copy": "node src/presentation/publicCopy.selftest.mjs",
     "test:social-proof": "node src/presentation/socialProof.selftest.mjs",
     "test:analytics": "node src/presentation/analytics.selftest.mjs",

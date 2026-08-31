@@ -88,14 +88,20 @@ keep demand loading without making a card or route click pay the cold parse.
 All ten locations are bounded authentic scene packs. Their 41x37 terrain grids
 are generated from exact battlefield spawn heightfields, then consumed without
 importing a terrain or map runtime. Connected landmarks come from the same
-first-party structure kits as the battlefields, distant vegetation uses the real
-tree kit, and nine 512px Garage-specific albedo/normal pairs preserve material
-identity without decoding the full map texture set. A low-cost vertex-color sky
-and terrain silhouette close the horizon so every camera ray resolves to a
-deliberate background rather than the renderer clear color.
+first-party structure kits as the battlefields and are composed in canonical
+camera space so they cannot disappear behind the hero or side panels. Distant
+vegetation uses the real tree kits; ground cover is one immutable instanced
+draw; two wrecks reuse a generated 208-triangle proxy of the real first-party
+M1A2 silhouette; and nine 512px Garage-specific albedo/normal pairs preserve
+material identity without decoding the full map texture set. A low-cost finite
+vertex-color sky and three terrain-derived relief bands close the horizon so
+every camera ray resolves to a deliberate background rather than the renderer
+clear color.
 
-The active pack stays between 13 and 15 draws and approximately 5.6K–8.3K
-triangles. The controller retains only the active and previous packs. The first
+The active pack stays between 15 and 17 draws and approximately 7.9K–13.7K
+triangles, including 10–28 real trees, 48–240 static ground-cover instances,
+five connected structures, two wreck silhouettes, and three horizon layers.
+The controller retains only the active and previous packs. The first
 pack starts all nine small texture sets before interactive readiness; this
 bounded ~18 MiB decoded residency removes first-switch texture stalls on weak
 CPUs without a later timer colliding with the first click. Stale rapid-switch
@@ -116,7 +122,8 @@ dormant world residency, terrain/landmark/draw budgets, canonical hero contact
 and pose, persistence, preview decode, console health, rapid intent convergence,
 thirty complete cache cycles, and responsive 1180x820 plus 390x844 layouts.
 Revealed frame gaps remain under 120 ms under CDP 4x CPU throttling.
-`npm run garage:terrain:check` rejects generated excerpt drift, while
+`npm run garage:terrain:check` rejects generated excerpt drift and
+`npm run garage:wreck:check` rejects first-party wreck-proxy drift, while
 `npm run perf:resources:gate` proves Garage resources leave GPU residency during
 battle and return behind cover.
 

@@ -13,6 +13,7 @@ import {
   getGarageTerrainPatch,
   type GarageTerrainPatch,
 } from './garageTerrainPatches.generated.ts';
+import { GARAGE_WRECK_ASSET } from './garageWreckGeometry.generated.ts';
 
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
@@ -36,6 +37,10 @@ export interface GarageEnvironmentStats {
   readonly textureSets: readonly string[];
   readonly treeSpecies: readonly string[];
   readonly trees: number;
+  readonly backdropLayers: number;
+  readonly groundCover: number;
+  readonly structures: number;
+  readonly wrecks: number;
   readonly triangles: number;
 }
 
@@ -212,11 +217,13 @@ function hashVariant(id: string): number {
   return hash >>> 0;
 }
 
-function atmospherePalette(weather: GarageVariant['weather']): {
+interface GarageAtmospherePalette {
   readonly zenith: number;
   readonly horizon: number;
   readonly silhouette: number;
-} {
+}
+
+function atmospherePalette(weather: GarageVariant['weather']): GarageAtmospherePalette {
   switch (weather) {
     case 'dust': return { zenith: 0x302923, horizon: 0x634c3b, silhouette: 0x49352b };
     case 'snow': return { zenith: 0x1e3444, horizon: 0x526978, silhouette: 0x354955 };
@@ -227,10 +234,10 @@ function atmospherePalette(weather: GarageVariant['weather']): {
 }
 
 function createSkyGeometry(zenithHex: number, horizonHex: number): THREE.BufferGeometry {
-  // Keep the dome just beyond the 57 m silhouette. The post stack applies
+  // Keep the dome just beyond the 65 m relief skyline. The post stack applies
   // distance atmosphere from depth, so an infinite/no-depth sky is bleached
   // toward the clear color on bright presets.
-  const geometry = new THREE.SphereGeometry(68, 24, 12);
+  const geometry = new THREE.SphereGeometry(76, 24, 12);
   const positions = geometry.getAttribute('position');
   const colors = new Float32Array(positions.count * 3);
   const zenith = new THREE.Color(zenithHex);
@@ -247,29 +254,92 @@ function createSkyGeometry(zenithHex: number, horizonHex: number): THREE.BufferG
   return geometry;
 }
 
-function createHorizonGeometry(seed: number): THREE.BufferGeometry {
+function createBackdropGeometry(
+  patch: GarageTerrainPatch,
+  values: Float32Array,
+  seed: number,
+  atmosphere: GarageAtmospherePalette,
+): THREE.BufferGeometry {
+  // Three map-derived relief bands replace the old single procedural wall.
+  // They use perimeter samples from the exact Garage terrain excerpt, then
+  // progressively exaggerate that map's broad shape into a near ridge,
+  // midground shoulder and distant skyline. All three layers share one mesh,
+  // one material and no runtime updates.
   const segments = 64;
-  const radius = 57;
-  const random = mulberry32(seed ^ 0x51f15e);
-  const positions = new Float32Array((segments + 1) * 2 * 3);
-  const indices = new Uint16Array(segments * 6);
-  let cursor = 0;
-  for (let segment = 0; segment <= segments; segment += 1) {
-    const angle = (segment / segments) * Math.PI * 2;
-    const shoulder = 4.5 + Math.sin(angle * 3 + 0.8) * 1.6
-      + Math.sin(angle * 7 - 0.4) * 0.9 + random() * 1.2;
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
-    positions[cursor++] = x; positions[cursor++] = -4; positions[cursor++] = z;
-    positions[cursor++] = x; positions[cursor++] = shoulder; positions[cursor++] = z;
-    if (segment === segments) continue;
-    const base = segment * 2;
-    indices.set([base, base + 1, base + 2, base + 2, base + 1, base + 3], segment * 6);
+  const layers = [
+    { radius: 43, base: -5.5, lift: 2.2, relief: 0.34 },
+    { radius: 54, base: -6.0, lift: 5.2, relief: 0.52 },
+    { radius: 65, base: -7.0, lift: 8.0, relief: 0.72 },
+  ] as const;
+  const verticesPerLayer = (segments + 1) * 2;
+  const positions = new Float32Array(verticesPerLayer * layers.length * 3);
+  const colors = new Float32Array(verticesPerLayer * layers.length * 3);
+  const indices = new Uint16Array(segments * layers.length * 6);
+  const phase = ((seed >>> 8) % 6283) / 1000;
+  const low = new THREE.Color(atmosphere.silhouette).multiplyScalar(0.60);
+  const high = new THREE.Color(atmosphere.silhouette);
+  const horizon = new THREE.Color(atmosphere.horizon);
+  let vertex = 0;
+  let indexCursor = 0;
+  layers.forEach((layer, layerIndex) => {
+    const crest = high.clone().lerp(horizon, 0.10 + layerIndex * 0.10)
+      .multiplyScalar(0.88 + layerIndex * 0.04);
+    for (let segment = 0; segment <= segments; segment += 1) {
+      const angle = (segment / segments) * Math.PI * 2;
+      const sourceX = Math.cos(angle) * patch.sizeXM * 0.48;
+      const sourceZ = Math.sin(angle) * patch.sizeZM * 0.48;
+      const sampled = samplePatch(patch, values, sourceX, sourceZ);
+      const broad = Math.sin(angle * 2 + phase) * (0.55 + layerIndex * 0.35)
+        + Math.sin(angle * 5 - phase * 0.6) * (0.28 + layerIndex * 0.18);
+      const shoulder = layer.lift + sampled * layer.relief + broad;
+      const x = Math.cos(angle) * layer.radius;
+      const z = Math.sin(angle) * layer.radius;
+      positions.set([x, layer.base, z, x, shoulder, z], vertex * 3);
+      low.toArray(colors, vertex * 3);
+      crest.toArray(colors, (vertex + 1) * 3);
+      if (segment < segments) {
+        const base = layerIndex * verticesPerLayer + segment * 2;
+        indices.set([base, base + 1, base + 2, base + 2, base + 1, base + 3], indexCursor);
+        indexCursor += 6;
+      }
+      vertex += 2;
+    }
+  });
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function createGroundCoverGeometry(): THREE.BufferGeometry {
+  const positions: number[] = [];
+  for (let blade = 0; blade < 3; blade += 1) {
+    const angle = blade * Math.PI / 3;
+    const dx = Math.cos(angle) * 0.12;
+    const dz = Math.sin(angle) * 0.12;
+    positions.push(-dx, 0, -dz, dx, 0, dz, 0, 0.72, 0);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function decodeGarageWreckGeometry(): THREE.BufferGeometry {
+  const binary = globalThis.atob(GARAGE_WRECK_ASSET.millimetersBase64);
+  const positions = new Float32Array(binary.length / 2);
+  for (let index = 0; index < positions.length; index += 1) {
+    const raw = binary.charCodeAt(index * 2) | (binary.charCodeAt(index * 2 + 1) << 8);
+    positions[index] = (raw & 0x8000 ? raw - 0x10000 : raw) / 1000;
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
   geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return geometry;
 }
@@ -418,10 +488,10 @@ export function buildGarageEnvironment(
     return track(material);
   };
 
-  // One shared composition for every variant: only atmosphere colors change.
-  // The sky and distant silhouette close the terrain patch without loading a
-  // battlefield horizon, and cost two tiny static draws with no lights,
-  // textures, shadows, updates, or per-frame work.
+  // One shared composition for every variant: atmosphere color and the exact
+  // sampled terrain profile change, but the draw graph stays fixed. The sky
+  // and three-layer terrain skyline close the excerpt without constructing a
+  // battlefield horizon service or adding any per-frame work.
   const atmosphere = atmospherePalette(variant.weather);
   const sky = new THREE.Mesh(
     track(createSkyGeometry(atmosphere.zenith, atmosphere.horizon)),
@@ -441,9 +511,9 @@ export function buildGarageEnvironment(
   root.add(sky);
 
   const horizon = new THREE.Mesh(
-    track(createHorizonGeometry(seed)),
+    track(createBackdropGeometry(patch, heights, seed, atmosphere)),
     track(new THREE.MeshBasicMaterial({
-      color: atmosphere.silhouette,
+      vertexColors: true,
       side: THREE.DoubleSide,
       depthWrite: true,
       fog: false,
@@ -460,23 +530,29 @@ export function buildGarageEnvironment(
   const combined = createBuckets();
   const rng = mulberry32(seed);
   const structureRecords = recipe.structures.map((placement) => {
+    // Convert semantic camera-space composition into world X/Z. This keeps
+    // each environment's different buildings inside the same readable
+    // Verdant-style frame instead of letting raw map axes hide them behind the
+    // hero or send them under the side panels.
+    const x = (placement.side - placement.depth) * Math.SQRT1_2;
+    const z = (-placement.side - placement.depth) * Math.SQRT1_2;
     const local = createBuckets();
     const dimensions = placement.builder(rng, local);
-    const y = samplePatch(patch, heights, placement.x, placement.z);
-    return { placement, local, dimensions, y };
+    const y = samplePatch(patch, heights, x, z);
+    return { placement, local, dimensions, x, z, y };
   });
 
   // Cut a compact, feathered service terrace beneath each real structure.
   // This preserves the sampled battlefield relief between buildings while
   // preventing a wide hall from bridging a steep slope or floating at one end.
-  for (const { placement, dimensions, y } of structureRecords) {
+  for (const { placement, dimensions, x: structureX, z: structureZ, y } of structureRecords) {
     const radiusX = Math.max(3.5, dimensions.w * placement.scale * 0.58 + 1.6);
     const radiusZ = Math.max(3.5, dimensions.d * placement.scale * 0.58 + 1.6);
     for (let row = 0; row < patch.height; row += 1) {
       const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
       for (let column = 0; column < patch.width; column += 1) {
         const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
-        const distance = Math.hypot((x - placement.x) / radiusX, (z - placement.z) / radiusZ);
+        const distance = Math.hypot((x - structureX) / radiusX, (z - structureZ) / radiusZ);
         if (distance >= 1.42) continue;
         const blend = THREE.MathUtils.smoothstep(distance, 0.92, 1.42);
         const index = row * patch.width + column;
@@ -504,10 +580,79 @@ export function buildGarageEnvironment(
   hardstand.updateMatrix();
   root.add(hardstand);
 
-  for (const { placement, local, y } of structureRecords) {
+  // Static battlefield ground cover sits outside the service hardstand. A
+  // single three-triangle tuft is instanced across the real terrain and color
+  // graded to the selected biome. It is intentionally windless in Garage:
+  // one draw, no alpha sorting, no animation wake-up and no shadow shimmer.
+  const groundCoverCount = recipe.terrainSurface === 'grass' ? 240
+    : recipe.terrainSurface === 'snow' ? 112
+      : recipe.terrainSurface === 'cobble' ? 48 : 96;
+  const groundCoverGeometry = track(createGroundCoverGeometry());
+  const groundCoverMaterial = plainMaterial({
+    color: 0xffffff,
+    roughness: 1,
+    metalness: 0,
+    vertexColors: true,
+    side: THREE.DoubleSide,
+  });
+  const groundCover = new THREE.InstancedMesh(
+    groundCoverGeometry,
+    groundCoverMaterial,
+    groundCoverCount,
+  );
+  groundCover.name = 'static_battlefield_ground_cover';
+  const coverBase = recipe.terrainSurface === 'grass' ? new THREE.Color(recipe.terrainTint).offsetHSL(0.02, 0.08, -0.22)
+    : recipe.terrainSurface === 'snow' ? new THREE.Color(0x716d58)
+      : recipe.terrainSurface === 'sand' ? new THREE.Color(0x8d744d)
+        : recipe.terrainSurface === 'rock' ? new THREE.Color(0x705d49)
+          : new THREE.Color(0x59604d);
+  const coverMatrix = new THREE.Matrix4();
+  const coverPosition = new THREE.Vector3();
+  const coverQuaternion = new THREE.Quaternion();
+  const coverScale = new THREE.Vector3();
+  const coverUp = new THREE.Vector3(0, 1, 0);
+  let groundCoverIndex = 0;
+  let groundCoverAttempts = 0;
+  while (groundCoverIndex < groundCoverCount && groundCoverAttempts < groundCoverCount * 12) {
+    groundCoverAttempts += 1;
+    const angle = rng() * Math.PI * 2;
+    const radius = Math.sqrt(17 * 17 + rng() * (44 * 44 - 17 * 17));
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    const insideStructure = structureRecords.some((record) => (
+      Math.abs(x - record.x) < record.dimensions.w * record.placement.scale * 0.62 + 0.8
+      && Math.abs(z - record.z) < record.dimensions.d * record.placement.scale * 0.62 + 0.8
+    ));
+    if (insideStructure) continue;
+    const y = samplePatch(patch, heights, x, z);
+    const size = (recipe.terrainSurface === 'grass' ? 0.52 : 0.34) * (0.68 + rng() * 0.62);
+    coverPosition.set(x, y + 0.01, z);
+    coverQuaternion.setFromAxisAngle(coverUp, rng() * Math.PI * 2);
+    coverScale.set(size * (0.72 + rng() * 0.45), size, size * (0.72 + rng() * 0.45));
+    groundCover.setMatrixAt(groundCoverIndex, coverMatrix.compose(coverPosition, coverQuaternion, coverScale));
+    groundCover.setColorAt(groundCoverIndex, coverBase.clone().offsetHSL(
+      (rng() - 0.5) * 0.035,
+      (rng() - 0.5) * 0.08,
+      (rng() - 0.5) * 0.09,
+    ));
+    groundCoverIndex += 1;
+  }
+  groundCover.count = groundCoverIndex;
+  groundCover.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  groundCover.instanceMatrix.needsUpdate = true;
+  if (groundCover.instanceColor) groundCover.instanceColor.needsUpdate = true;
+  groundCover.castShadow = false;
+  groundCover.receiveShadow = true;
+  groundCover.computeBoundingBox();
+  groundCover.computeBoundingSphere();
+  groundCover.matrixAutoUpdate = false;
+  groundCover.updateMatrix();
+  root.add(groundCover);
+
+  for (const { placement, local, x, z, y } of structureRecords) {
     const uniformScale = placement.scale;
     const transform = new THREE.Matrix4().compose(
-      new THREE.Vector3(placement.x, y, placement.z),
+      new THREE.Vector3(x, y, z),
       new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), placement.yaw),
       new THREE.Vector3(uniformScale, uniformScale, uniformScale),
     );
@@ -556,6 +701,38 @@ export function buildGarageEnvironment(
     root.add(mesh);
   }
 
+  // Two distant hulks reuse the exact 208-triangle shadow proxy baked from
+  // our first-party M1A2. The generated asset preserves the authored vehicle
+  // silhouette while keeping every fleet builder and live wreck system out of
+  // Garage loading. Both instances share one immutable draw call.
+  const wreckGeometry = track(decodeGarageWreckGeometry());
+  const wreckMaterial = plainMaterial({ color: 0x24201c, roughness: 0.96, metalness: 0.14 });
+  const wrecks = new THREE.InstancedMesh(wreckGeometry, wreckMaterial, 2);
+  wrecks.name = 'first_party_m1a2_background_wrecks';
+  const wreckPlacements = [
+    [-21, 24, 0.82, 0.76],
+    [21, 24, -0.68, 0.70],
+  ] as const;
+  wreckPlacements.forEach(([side, depth, yaw, size], index) => {
+    const x = (side - depth) * Math.SQRT1_2;
+    const z = (-side - depth) * Math.SQRT1_2;
+    const y = samplePatch(patch, heights, x, z);
+    wrecks.setMatrixAt(index, new THREE.Matrix4().compose(
+      new THREE.Vector3(x, y + 0.02, z),
+      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw),
+      new THREE.Vector3(size, size, size),
+    ));
+  });
+  wrecks.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  wrecks.instanceMatrix.needsUpdate = true;
+  wrecks.castShadow = false;
+  wrecks.receiveShadow = true;
+  wrecks.computeBoundingBox();
+  wrecks.computeBoundingSphere();
+  wrecks.matrixAutoUpdate = false;
+  wrecks.updateMatrix();
+  root.add(wrecks);
+
   const treeKits = recipe.treeSpecies.map((species, index) => createGarageTreeKit(
     engineCtx, null, species as TreeSpecies, seed + index * 97, index,
   ));
@@ -567,12 +744,16 @@ export function buildGarageEnvironment(
   const position = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);
   for (let index = 0; index < recipe.treeCount; index += 1) {
-    const side = index % 2 ? 1 : -1;
-    const lane = Math.floor(index / 2);
-    const x = side * (29 + (lane % 3) * 6 + rng() * 3);
-    const z = -29 - lane * 4.5 - rng() * 3;
+    // The canonical camera sits on the +X/+Z diagonal, so distribute the real
+    // tree kits across the opposite quadrant as a readable forest line rather
+    // than sending alternating lanes outside the camera frustum.
+    const t = recipe.treeCount <= 1 ? 0.5 : index / (recipe.treeCount - 1);
+    const side = THREE.MathUtils.lerp(-23, 23, t) + (rng() - 0.5) * 2.8;
+    const depth = 27 + (index % 4) * 3.7 + rng() * 2.8;
+    const x = (side - depth) * Math.SQRT1_2;
+    const z = (-side - depth) * Math.SQRT1_2;
     const y = samplePatch(patch, heights, x, z);
-    const size = 0.60 + rng() * 0.28;
+    const size = 0.84 + rng() * 0.30;
     position.set(x, y, z);
     quaternion.setFromAxisAngle(up, rng() * Math.PI * 2);
     scale.set(size, size * (0.94 + rng() * 0.12), size);
@@ -610,7 +791,13 @@ export function buildGarageEnvironment(
   });
 
   const stats: GarageEnvironmentStats = Object.freeze({
-    distinctiveElements: Object.freeze([...recipe.distinctiveElements]),
+    distinctiveElements: Object.freeze([
+      ...recipe.distinctiveElements,
+      'three-layer map-derived terrain horizon',
+      'first-party M1A2 wreck silhouettes',
+      'static biome ground cover',
+    ]),
+    backdropLayers: 3,
     drawCalls: objects,
     enclosingSurfaces: 0,
     landmarkHeightM: recipe.landmark[1],
@@ -626,6 +813,9 @@ export function buildGarageEnvironment(
     textureSets: Object.freeze([recipe.terrainSurface, 'cobble', 'plaster', 'brick', 'roof', 'wood']),
     treeSpecies: Object.freeze([...recipe.treeSpecies]),
     trees: recipe.treeCount,
+    groundCover: groundCoverIndex,
+    structures: recipe.structures.length,
+    wrecks: wreckPlacements.length,
     triangles: Math.round(triangles),
   });
   Object.assign(root.userData, stats);

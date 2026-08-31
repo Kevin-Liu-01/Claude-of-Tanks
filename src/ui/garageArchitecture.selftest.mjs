@@ -3,16 +3,24 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { createGarageArchitectureController } from './garageArchitecture.ts';
+import { GARAGE_WRECK_ASSET } from './garageWreckGeometry.generated.ts';
 
 const kitSource = await readFile(new URL('./garageEnvironmentKit.ts', import.meta.url), 'utf8');
 const recipeSource = await readFile(new URL('./garageEnvironmentRecipes.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(`${kitSource}\n${recipeSource}`,
-  /\b(createWorld|createMap|createVegetation|createProps)\s*\(|heightField\.update|from ['"]\.\.\/world\/terrain/i,
+  /\b(createWorld|createMap|createVegetation|createProps)\s*\(|heightField\.update|from ['"]\.\.\/world\/terrain|fleetFactory|tankFactory|world\/wrecks/i,
   'Garage packs may reuse renderer assets, never battlefield runtime services');
 assert.match(kitSource, /garageTerrainPatches\.generated\.ts/,
   'Garage terrain must use build-time battlefield excerpts');
+assert.match(kitSource, /garageWreckGeometry\.generated\.ts/,
+  'Garage wrecks must use a build-time first-party proxy instead of a fleet runtime');
 assert.match(recipeSource, /world\/maps\/(structureKit|railKit|villageKit|urbanKit)/,
   'Garage recipes must use the real connected map structure builders');
+assert.equal(GARAGE_WRECK_ASSET.sourceSpecId, 'm1a2');
+assert.ok(GARAGE_WRECK_ASSET.sourceTriangles > 30_000,
+  'the tiny Garage wreck proxy must originate from a complete first-party vehicle');
+assert.ok(GARAGE_WRECK_ASSET.triangles > 100 && GARAGE_WRECK_ASSET.triangles < 500,
+  'the generated Garage wreck silhouette must remain deliberately tiny');
 
 const scene = new THREE.Group();
 const controller = createGarageArchitectureController({}, scene);
@@ -48,6 +56,14 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} must use real PBR surface sets`);
   assert.ok(stats.treeSpecies.length >= 2 && stats.trees >= 5,
     `${variant.id} must use battlefield tree geometry`);
+  assert.equal(stats.backdropLayers, 3,
+    `${variant.id} must close the view with three map-derived terrain bands`);
+  assert.ok(stats.groundCover >= 48,
+    `${variant.id} must retain bounded static biome ground cover`);
+  assert.equal(stats.wrecks, 2,
+    `${variant.id} must stage two first-party background wrecks`);
+  assert.equal(stats.structures, 5,
+    `${variant.id} must frame the hero with five connected map structures`);
   assert.ok(stats.cached <= stats.cacheLimit && stats.cacheLimit === 2,
     `${variant.id} must obey the two-pack transition cache`);
   signatures.add(stats.signature);

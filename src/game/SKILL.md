@@ -80,9 +80,10 @@ battlefield dormancy, lifecycle effects, and diagnostics.
 `garagePresentationPose.ts` is the only owner of hero heading, camera offset,
 look height, and FOV; stage, pedestal, activation, and return paths must consume
 it without variant-specific branches. `garageEnvironmentKit.ts` owns all ten
-bounded scene packs: generated real-terrain excerpts, connected real structure
-builders, static tree geometry, Garage-sized PBR derivatives, and the closed
-sky/horizon. Never add a world-loading or per-frame update port to a Garage
+bounded scene packs: generated real-terrain excerpts, camera-space connected
+structure builders, static tree/ground-cover instances, a generated first-party
+wreck proxy, Garage-sized PBR derivatives, and the finite sky plus three-layer
+terrain horizon. Never add a world-loading or per-frame update port to a Garage
 environment module. `garageDressingAccess.ts` is a temporary zero-geometry
 compatibility boundary; do not restore the retired hidden multi-vehicle
 workshop or its fleet imports.
@@ -173,7 +174,7 @@ keep partial bridges private until roster preparation and initial authority
 succeed.
 Route result, death-beat, and replay-handoff changes through
 `battleResultPresentationRuntime.ts`; keep those latches out of `tick()`.
-Garage scene-pack changes must pass the architecture, terrain-generation,
+Garage scene-pack changes must pass the architecture, terrain- and wreck-generation,
 transition, and phase-resource gates. Preserve the two-pack cache, reject stale
 switch completions, start only the bounded Garage derivative texture set in the
 initial-pack transaction, and keep all environment identity out of the

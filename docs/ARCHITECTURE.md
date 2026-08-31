@@ -890,10 +890,13 @@ change tank orientation or framing.
 to `garageArchitecture.ts`. That controller demand-loads
 `garageEnvironmentKit.ts`, retains at most the active and previous pack, rejects
 stale switch completions, and starts nine small Garage-only PBR surface sets in
-the bounded initial-pack transaction before interactive readiness. All ten packs use generated 41x37 height excerpts from their
-real battlefield spawn terrain plus the connected structure and vegetation
-builders already used by the maps. A small self-contained sky and horizon close
-the composition without a white world background. No battlefield runtime,
+the bounded initial-pack transaction before interactive readiness. All ten packs
+use generated 41x37 height excerpts from their real battlefield spawn terrain,
+camera-space staged connected map structures, real instanced tree kits, static
+biome ground cover, and three terrain-derived relief bands. Two background hulks
+reuse a 208-triangle proxy generated from the first-party M1A2 wreck pose; no
+fleet builder enters the Garage graph. A finite vertex-color sky closes the
+composition without a white world background. No battlefield runtime,
 collision service, update loop, or full map is constructed in the Garage.
 
 `garageEnvironmentPresentationRuntime.ts` keeps any retained battle world
@@ -1146,7 +1149,7 @@ zero tank inputs, then camera placement, `camera.updateProjectionMatrix()`,
 | `tank_closeup_ww2` | same recipe around the tiger1 entity | hud hidden | vehicles, engine |
 | `combat_firing` | `setExternalPose` 3/4 front-side of player, 12 m | `fx.composeFiringMoment({muzzlePos: player.visual.gunMuzzleWorld(), dir, caliberMm:120, tracerType:'APFSDS', ageS:0.05})`; hud hidden | fx, vehicles, engine |
 | `explosion` | `setExternalPose` 25 m from enemy[2] | `fx.composeExplosionMoment({pos, ageS:0.4})` + `enemy[2].visual.setDestroyed()` | fx, vehicles, engine |
-| `garage` | `setExternalPose` at the Garage stage: Verdant uses the enclosed workshop at **(-1500, 0, -1500)**; outdoor choices activate the complete selected battlefield and move the same stage to a measured open point, preferring its player deployment | `garage.show('m1a2')` | hud (garage), vehicles, engine, world |
+| `garage` | `garagePresentationPose.ts` applies one immutable Verdant-style front three-quarter pose at the isolated **(-1500, 0, -1500)** Garage stage; all ten bounded scene packs change only environment identity | `garage.show('m1a2')` | hud (garage), vehicles, engine |
 
 `window.__SHOTS.views` lists exactly these 8 (more may be appended). `__GAME_READY`
 only after the §4 startup sequence completes. Determinism: everything seeded (§1.4),
