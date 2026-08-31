@@ -2,13 +2,25 @@ import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 
 const CASES = Object.freeze({
-  t90: 't90Ru417AutomatedKord',
-  t90ms: 't90msTagilRemoteKord',
-  t90m: 't90mProryvRemoteKord',
-  t90m_proryv: 't90mProryvRemoteKord',
+  t90: Object.freeze({
+    weaponName: 't90Ru417AutomatedKord',
+    stationReceipt: 't90Ru417AutomatedStationReceipt',
+  }),
+  t90ms: Object.freeze({
+    weaponName: 't90msTagilRemoteKord',
+    stationReceipt: 't90msTagilWeaponTowerReceipt',
+  }),
+  t90m: Object.freeze({
+    weaponName: 't90mProryvRemoteKord',
+    stationReceipt: 't90mProryvAutomatedStationReceipt',
+  }),
+  t90m_proryv: Object.freeze({
+    weaponName: 't90mProryvRemoteKord',
+    stationReceipt: 't90mProryvAutomatedStationReceipt',
+  }),
 });
 
-for (const [id, weaponName] of Object.entries(CASES)) {
+for (const [id, { weaponName, stationReceipt }] of Object.entries(CASES)) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',
@@ -20,9 +32,19 @@ for (const [id, weaponName] of Object.entries(CASES)) {
     const turret = tank.root.getObjectByName('rig_turret');
     const weapon = turret?.getObjectByName(weaponName);
     assert.ok(weapon, `${id}: exposes its named roof machine gun`);
-    assert.equal(weapon.parent, turret, `${id}: machine gun remains turret-owned`);
+    let owner = weapon.parent;
+    while (owner && owner !== turret) owner = owner.parent;
+    assert.equal(owner, turret, `${id}: machine gun remains turret-owned`);
     assert.ok(Math.abs(weapon.rotation.y) <= Number.EPSILON,
       `${id}: machine-gun barrel faces local +Z without sideways yaw`);
+    const station = turret?.userData[stationReceipt];
+    assert.ok(station, `${id}: publishes its roof weapon-station receipt`);
+    assert.ok(Math.abs(station.stationYaw) <= Number.EPSILON,
+      `${id}: armored weapon tower faces local +Z with its gun`);
+    if ('weaponYaw' in station) {
+      assert.ok(Math.abs(station.weaponYaw) <= Number.EPSILON,
+        `${id}: station receipt confirms the gun faces local +Z`);
+    }
 
     const machineGuns = [];
     turret.traverse((node) => {

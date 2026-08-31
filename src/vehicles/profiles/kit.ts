@@ -960,15 +960,18 @@ function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): T
     merged.setAttribute('color', new THREE.BufferAttribute(
       new Float32Array(merged.attributes.position.count * 3).fill(1), 3));
     const mesh = new THREE.Mesh(merged, fitMat(mats, slot));
+    mesh.name = `fitting_${type}_${slot}`;
     mesh.castShadow = mesh.receiveShadow = shadows;
     mesh.userData.fitting = type;
     mesh.userData.fittingSlot = slot;
     mesh.userData.combatHitboxRole = 'equipment';
+    mesh.userData.surfaceMarkupSelectable = true;
     g.add(mesh);
   }
   g.userData.fitting = type;
   g.userData.fittingRoot = true;
   g.userData.combatHitboxRole = 'equipment';
+  g.userData.surfaceMarkupSelectable = true;
   if (opts.rotation) g.rotation.set(opts.rotation[0] || 0, opts.rotation[1] || 0, opts.rotation[2] || 0);
   const bb = new THREE.Box3().setFromObject(g);
   g.userData.aabb = { min: [bb.min.x, bb.min.y, bb.min.z], max: [bb.max.x, bb.max.y, bb.max.z] };
@@ -1895,9 +1898,11 @@ function fittingMarkExact(group: THREE.Group, type: string): THREE.Group {
     const material = Array.isArray(object.material) ? object.material[0] : object.material;
     if (material?.colorWrite === false) return;
     meshCount++;
+    if (!object.name) object.name = `fitting_${type}_part_${meshCount}`;
     object.userData.fitting = type;
     object.userData.fittingExact = true;
     object.userData.combatHitboxRole = 'equipment';
+    object.userData.surfaceMarkupSelectable = true;
   });
   if (!meshCount) throw new Error('KIT.fittings.markExact: group must contain visible mesh geometry');
   group.name = `fitting_${type}_exact`;
@@ -1905,6 +1910,7 @@ function fittingMarkExact(group: THREE.Group, type: string): THREE.Group {
   group.userData.fittingRoot = true;
   group.userData.fittingExact = true;
   group.userData.combatHitboxRole = 'equipment';
+  group.userData.surfaceMarkupSelectable = true;
   const bb = new THREE.Box3().setFromObject(group);
   group.userData.aabb = { min: bb.min.toArray(), max: bb.max.toArray() };
   return group;

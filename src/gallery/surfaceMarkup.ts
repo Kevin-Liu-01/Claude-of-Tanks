@@ -23,7 +23,8 @@ interface GeometryAdjacency {
 }
 
 type PositionAttribute = THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
-type PickTarget = THREE.Mesh | THREE.InstancedMesh;
+export type SurfacePickTarget = THREE.Mesh | THREE.InstancedMesh;
+type PickTarget = SurfacePickTarget;
 type SurfaceHit = THREE.Intersection<PickTarget> & {
   face: THREE.Face;
   faceIndex: number;
@@ -128,6 +129,30 @@ export function effectiveVisible(object: THREE.Object3D): boolean {
     if (!node.visible) return false;
   }
   return true;
+}
+
+/**
+ * Return every visible triangle surface authored beneath a tank root.
+ *
+ * Gallery Studio used to infer non-pickable helpers from object names. That
+ * made ordinary primitive fittings disappear from markup whenever a builder
+ * used a name containing "shadow", while unnamed fitting meshes were hard to
+ * audit. Pickability now follows render semantics instead: visible geometry is
+ * selectable; only explicit markup overlays and authored colorless shadow
+ * proxies are excluded.
+ */
+export function collectSurfacePickTargets(root: THREE.Object3D): SurfacePickTarget[] {
+  const targets: SurfacePickTarget[] = [];
+  root.updateMatrixWorld(true);
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || !object.geometry?.getAttribute('position')) return;
+    if (!effectiveVisible(object) || object.userData.gallerySurfaceMarkup) return;
+    if (object.userData.authoredShadowProxy || object.userData.shadowOnly) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    if (materials.length && materials.every((material) => material?.colorWrite === false)) return;
+    targets.push(object as SurfacePickTarget);
+  });
+  return targets;
 }
 
 export function ownershipOf(object: THREE.Object3D): string {
@@ -403,15 +428,7 @@ export function createSurfaceMarkup({
   }
 
   function makePickTargets(): void {
-    pickTargets = [];
-    if (!tankRoot) return;
-    tankRoot.updateMatrixWorld(true);
-    tankRoot.traverse((object) => {
-      if (!(object instanceof THREE.Mesh) || !object.geometry) return;
-      if (!effectiveVisible(object) || object.userData.gallerySurfaceMarkup) return;
-      if (object.name.startsWith('gallery_') || /shadow/i.test(object.name || '')) return;
-      pickTargets.push(object as PickTarget);
-    });
+    pickTargets = tankRoot ? collectSurfacePickTargets(tankRoot) : [];
   }
 
   function rayHit(clientX: number, clientY: number): SurfaceHit | null {

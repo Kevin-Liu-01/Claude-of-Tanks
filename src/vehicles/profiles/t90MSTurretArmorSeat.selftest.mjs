@@ -81,6 +81,22 @@ try {
     roofPlates: 5,
     maxBackGapM: 0.004,
   }, 't90ms: every non-frontal turret ERA part is projected onto its carrier facet');
+
+  const towerReceipt = turretRig?.userData.t90msTagilWeaponTowerReceipt;
+  assert.deepEqual(towerReceipt, {
+    revision: 'aligned-detailed-equipment-r1',
+    owner: 'rig_turret',
+    firingAxis: '+Z',
+    stationYaw: 0,
+    foundationTopY: 0.98,
+    supportInterfaceCenter: [-0.64, 0.98, -1.195],
+    supportInterfaceSize: [0.32, 0, 0.33],
+    optics: 2,
+    workLights: 1,
+    ammoBoxes: 1,
+    feedLinks: 7,
+    armorHitboxExpanded: false,
+  }, 't90ms: Tagil tower is forward-facing, detailed, and aligned to the marked roof plate');
 } finally {
   tank.dispose();
 }

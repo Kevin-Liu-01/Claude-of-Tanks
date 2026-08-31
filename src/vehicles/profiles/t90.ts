@@ -823,6 +823,25 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   return weapon;
 }
 
+function seatFittingOnHorizontalPlate(
+  fitting: THREE.Object3D,
+  plateY: number,
+  embed = 0.006,
+): number {
+  fitting.updateMatrixWorld(true);
+  const localBounds = new THREE.Box3().setFromObject(fitting);
+  const seatedY = plateY - localBounds.min.y - embed;
+  fitting.position.y = seatedY;
+  fitting.userData.horizontalPlateSeatReceipt = Object.freeze({
+    planeY: plateY,
+    embedM: embed,
+    sourceBottomY: localBounds.min.y,
+    seatedPositionY: seatedY,
+    seatedBottomY: localBounds.min.y + seatedY,
+  });
+  return seatedY;
+}
+
 function seatArmorOnHorizontalPlane(
   planeY: number,
   height: number,
@@ -1071,9 +1090,10 @@ function buildT90ALegacy(P: T90BuilderPort, {
     });
     P.hullG.add(cable);
     // spare track-link run laid flat on the forward deck right of the ring
-    // (top 1.375 ON the 1.375 deck line)
+    // (underside seated into the 1.375 deck line)
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
-    links.position.set(0.55, 1.325, 0.55);
+    links.position.set(0.55, 0, 0.55);
+    seatFittingOnHorizontalPlate(links, 1.375);
     P.hullG.add(links);
   }
   // r10c: log slimmed to the ref's x +-1.0 / top 1.39 line (the 2.55-long
@@ -3479,7 +3499,8 @@ function buildT90MProryv(P: T90BuilderPort): void {
   // 1.38 deck lines (t84 recipe — no proud deck kit, t90a lesson).
   {
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
-    links.position.set(0.60, 1.319, 0.40);
+    links.position.set(0.60, 0, 0.40);
+    seatFittingOnHorizontalPlate(links, 1.38);
     P.hullG.add(links);
     const cable = FITTINGS.towCable({
       mats: P.mats, eyes: false, r: 0.018,
@@ -4131,7 +4152,10 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
     wUp: [[-2.92, 1.20], [-2.79, 1.60], [2.88, 1.60], [3.02, 1.55]],
     // The recovered front section carries the V-belly to |x|~1.13 through
     // the long center run, then pulls it inboard only under the end pockets.
-    wLo: [[-2.92, 1.00], [-2.12, 1.12], [2.48, 1.12], [3.02, 1.00]],
+    // Keep the V-belly inside the inner shoe faces.  The former 1.12 m
+    // half-width reached about 45 mm into the live shoe solids along the
+    // centre run even though the abstract track band itself remained clear.
+    wLo: [[-2.92, 1.00], [-2.12, 1.07], [2.48, 1.07], [3.02, 1.00]],
     // T5H-e: sprocket window roof 1.18 -> 1.21 — the exact shoe audit
     // found the wrap shoes 23mm INSIDE the 1.18 roof at z -2.44..-2.40
     // (full width, the m1a1ha blind-spot class: band 0 while shoes hit).
@@ -4278,7 +4302,8 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
     log.position.set(0, 1.28, -2.90);
     P.hullG.add(log);
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
-    links.position.set(0.62, 1.363, 0.60);
+    links.position.set(0.62, 0, 0.60);
+    seatFittingOnHorizontalPlate(links, 1.40);
     P.hullG.add(links);
     const cable = FITTINGS.towCable({
       mats: P.mats, eyes: false, r: 0.018,
@@ -4331,11 +4356,10 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
     // strict hull-vs-shoe corridor class.
     armBucket: 'hullRunningGearDetail',
   });
-  // The recovered loop holds one loaded shoe flat at the rear contact knee
-  // before climbing to the sprocket.  Bed the paired shoes through the
-  // continuous band (top 0.09 over its 0.05 centreline) so the brief ground
-  // datum is physical track structure, not a detached silhouette patch.
-  for (const s of [-1, 1]) P.add('hullTrack', box(0.44, 0.07, 0.12), s * 1.405, 0.055, -1.70);
+  // buildRunningGear owns the complete linked course, including the loaded
+  // shoe at the rear contact knee.  Do not layer a second static hullTrack
+  // slab over its animated instances; that creates coincident/overlapping
+  // track geometry and fails Studio's exact sweep audit.
   // skirt bottom at the ref's 0.946 line (its shallow front skirts).
   // r9: the WIDE Relikt course sits at the +-1.86-1.91 plan columns
   // (z -0.89..-2.80), split y: lower 0.59..0.94 at 1.885 (the ref's +-1.9
@@ -4622,6 +4646,7 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
     P.add('turretGlass', xform(box(0.065, 0.075, 0.008), 0.19, 0.10, 0.318), ax, ay, az, 0, yaw, 0); // lens
     P.add('turretDark', xform(KIT.cylX(0.05, 0.06, 10), -0.185, 0.145, 0.05), ax, ay, az, 0, yaw, 0); // elevation drum
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev, ammo: true });
+    mg.name = 't90smRemoteNsvt';
     mg.position.set(ax, ay, az);
     mg.rotation.y = yaw;
     P.turretG.add(mg);
@@ -4961,7 +4986,8 @@ function buildT90(P: T90BuilderPort): void {
   {
     // spare track links flat on the forward deck (flush-recess law)
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
-    links.position.set(0.55, 1.495, 0.55);
+    links.position.set(0.55, 0, 0.55);
+    seatFittingOnHorizontalPlate(links, 1.545);
     P.hullG.add(links);
   }
   const t90Gear = {
@@ -5348,7 +5374,7 @@ function finishT90BaseAuthored(P: T90BuilderPort): void {
     x: -0.64,
     z: -0.58,
     seatY: 0.60,
-    yaw: 0.28,
+    yaw: 0,
     scale: 0.98,
     heightScale: 1.10,
     weaponScale: 1.12,
@@ -6486,7 +6512,7 @@ function buildT90SM(P: T90BuilderPort): void {
   // T6SM-d: narrow longitudinal belly-edge channels reproduce the recovered
   // front-view drop at |x|=1.13.  They lap the 0.44-m loft floor, remain
   // 6 mm inboard of the track lane, and are invisible in side/plan bounds.
-  for (const s of [-1, 1]) P.add('hull', KIT.box(0.035, 0.12, 4.40), s * 1.145, 0.39, 0);
+  for (const s of [-1, 1]) P.add('hull', KIT.box(0.035, 0.12, 4.40), s * 1.09, 0.39, 0);
   // The center keel and right inner skirt lug are likewise source-visible
   // front stations, seated into existing structure rather than free details.
   P.add('hull', KIT.box(0.09, 0.05, 4.40), 0, 0.425, 0);
@@ -6501,6 +6527,12 @@ function buildT90SM(P: T90BuilderPort): void {
   P.add('hullDark', KIT.box(1.32, 0.012, 0.032), 0.20, 1.532, -2.81);
   for (const [x, z] of [[-1.14, 3.05], [1.14, 3.05], [-1.68, 0.83], [1.68, 0.83]]) {
     P.add('hull', KIT.box(0.18, 0.08, 0.18), x, z > 3 ? 1.13 : 1.18, z);
+  }
+  // Lap the two forward modules into the falling bow plate.  Without this
+  // short cap their aft edges enclose a single 6 cm sky cell apiece in the
+  // plan silhouette, making visibly seated modules read as disconnected.
+  for (const x of [-1.14, 1.14]) {
+    P.add('hull', KIT.box(0.18, 0.025, 0.12), x, 1.18, 2.92);
   }
 }
 
@@ -6606,7 +6638,8 @@ function buildT90MS(P: T90BuilderPort): void {
     log.position.set(0, 1.42, -3.05);
     P.hullG.add(log);
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
-    links.position.set(0.62, 1.495, 0.60);
+    links.position.set(0.62, 0, 0.60);
+    seatFittingOnHorizontalPlate(links, 1.545);
     P.hullG.add(links);
   }
   buildRunningGear(P, {
@@ -7384,32 +7417,113 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
   P.add('turretGlass', box(0.28, 0.075, 0.016), 0.32, 0.62, 0.642);
   P.add('turretDark', box(0.40, 0.025, 0.065), 0.32, 0.68, 0.60);
 
-  // Dominant offset panoramic/RWS tower.  The source station is not a thin
-  // periscope: it has a 0.47 m-wide armored head on a broad, low carrier.
-  // Its tall AABB still contains mostly air around an open yoke, so the
-  // carrier stays below the published roof datum and only the compact head
-  // owns the 3.0 m spike.  Every course overlaps the one below it.
-  P.add('turret', box(0.50, 0.18, 0.72), -0.55, 0.63, -1.20);
-  P.add('turret', box(0.44, 0.34, 0.38), -0.48, 0.86, -1.20, -0.05, -0.10, 0);
-  P.add('turretDark', box(0.32, 0.025, 0.27), -0.48, 1.035, -1.20, -0.05, -0.10, 0);
-  P.add('turret', box(0.28, 0.30, 0.24), -0.57, 1.10, -1.20, -0.04, -0.08, 0);
-  P.add('turretDetail', weldedStationLoft([
-    [-1.36, 0.98, 1.54, -0.87, -0.41, -0.80, -0.48, -0.71, -0.55],
-    [-1.03, 0.98, 1.54, -0.85, -0.43, -0.79, -0.49, -0.70, -0.56],
-  ]));
-  P.add('turretDark', box(0.34, 0.18, 0.016), -0.64, 1.39, -1.014, -0.08, 0, 0);
-  P.add('turretGlass', box(0.28, 0.12, 0.010), -0.64, 1.39, -1.004, -0.08, 0, 0);
-  P.add('turret', box(0.32, 0.040, 0.31), -0.63, 1.56, -1.20, -0.10, -0.08, 0);
+  // Dominant offset panoramic/RWS tower. The former stack mixed structural
+  // turret buckets with a detached faceted cap, leaving the marked rear face
+  // beside (rather than directly below) its 0.32 x 0.33 m roof plate. Build
+  // the complete powered station as one named equipment assembly. The broad
+  // foundation enters the bustle crown, its top footprint is byte-aligned to
+  // the marked plate, and every yoke/sensor/ammunition member overlaps the
+  // course below it. None of this equipment expands the turret armor volume.
+  const tagilTower = new THREE.Group();
+  tagilTower.name = 't90msTagilWeaponTower';
+  tagilTower.position.set(-0.64, 0, -1.195);
+  tagilTower.userData.combatHitboxRole = 'equipment';
+  tagilTower.userData.surfaceMarkupAssembly = 'remoteWeaponTower';
+  tagilTower.userData.surfaceMarkupSelectable = true;
+  const towerPart = (
+    name: string,
+    geometry: THREE.BufferGeometry,
+    material: THREE.MeshStandardMaterial,
+    x: number,
+    y: number,
+    z: number,
+    rx = 0,
+    ry = 0,
+    rz = 0,
+  ): THREE.Mesh => {
+    if (material.vertexColors && !geometry.getAttribute('color')) {
+      geometry.setAttribute('color', new THREE.BufferAttribute(
+        new Float32Array(geometry.getAttribute('position').count * 3).fill(1), 3));
+    }
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = name;
+    mesh.position.set(x, y, z);
+    mesh.rotation.set(rx, ry, rz);
+    mesh.castShadow = mesh.receiveShadow = true;
+    mesh.userData.combatHitboxRole = 'equipment';
+    mesh.userData.surfaceMarkupSelectable = true;
+    tagilTower.add(mesh);
+    P.disposables.push(geometry);
+    return mesh;
+  };
+
+  // Foundation top y=0.98. Its upper footprint spans x -0.80..-0.48 and
+  // z -1.36..-1.03 exactly, so the owner's selected armored tower rises from
+  // a matching support instead of hanging beside it. The broader buried foot
+  // spreads into the bustle crown without producing a duplicate/z-fighting
+  // roof plate.
+  towerPart('t90msTagilTowerFoundation', orientedSlab(
+    [-0.25, 0.70, -0.29], [0.25, 0.70, -0.29], [0.25, 0.70, 0.29], [-0.25, 0.70, 0.29],
+    [-0.16, 0.98, -0.165], [0.16, 0.98, -0.165], [0.16, 0.98, 0.165], [-0.16, 0.98, 0.165],
+  ), P.mats.hull, 0, 0, 0);
+  towerPart('t90msTagilTowerAlignedArmoredHead', weldedStationLoft([
+    [-0.165, 0.98, 1.54, -0.23, 0.23, -0.16, 0.16, -0.07, 0.09],
+    [0.165, 0.98, 1.54, -0.21, 0.21, -0.15, 0.15, -0.06, 0.08],
+  ]), P.mats.hull, 0, 0, 0);
+  towerPart('t90msTagilTowerCradle', box(0.30, 0.045, 0.15), P.mats.dark,
+    0.02, 1.50, 0.035);
+  towerPart('t90msTagilTowerBrow', box(0.34, 0.025, 0.29), P.mats.detail,
+    0.01, 1.555, 0.015);
+
+  // Independent day/thermal optic, protected work light and unequal
+  // ammunition coffin. Recessed lenses stay glass; receiver/feed hardware
+  // stays neutral gunmetal instead of inheriting camouflage.
+  towerPart('t90msTagilTowerOpticHousing', box(0.19, 0.27, 0.22), P.mats.hull,
+    0.245, 1.285, 0.055);
+  towerPart('t90msTagilTowerThermalWindow', box(0.115, 0.105, 0.012), P.mats.glass,
+    0.245, 1.315, 0.171);
+  towerPart('t90msTagilTowerDayWindow', KIT.cylZ(0.034, 0.014, 12), P.mats.glass,
+    0.20, 1.225, 0.174);
+  towerPart('t90msTagilTowerLightHousing', KIT.cylZ(0.072, 0.10, 14), P.mats.dark,
+    -0.245, 1.25, 0.10);
+  towerPart('t90msTagilTowerWorkLight', KIT.cylZ(0.057, 0.012, 14), P.mats.glass,
+    -0.245, 1.25, 0.156);
+  towerPart('t90msTagilTowerAmmoBox', box(0.23, 0.21, 0.29), P.mats.dark,
+    -0.255, 1.105, -0.035);
+  towerPart('t90msTagilTowerAmmoLid', box(0.245, 0.022, 0.305), P.mats.detail,
+    -0.255, 1.221, -0.035);
+  towerPart('t90msTagilTowerAmmoRetainer', box(0.025, 0.23, 0.31), P.mats.dark,
+    -0.385, 1.105, -0.035);
+  for (let index = 0; index < 7; index++) {
+    const t = index / 6;
+    towerPart(`t90msTagilTowerFeedLink${index + 1}`, box(0.032, 0.038, 0.026), P.mats.detail,
+      -0.25 + 0.18 * t, 1.225 + 0.035 * t, 0.09 + 0.10 * t, 0, 0, -0.18);
+  }
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'kord', tone: 'dark', elev: -0.10, ammo: true, shield: true, scale: 1.16 });
     // The Kord is carried by the top yoke, not buried beside the bustle.  Its
     // foot enters the faceted station above and the receiver/barrel now own
     // the reference-height horizontal combat silhouette.
-    mg.position.set(-0.55, 1.12, -1.12);
+    mg.position.set(0.09, 1.12, 0.075);
     mg.rotation.y = 0;
     mg.name = 't90msTagilRemoteKord';
-    P.turretG.add(mg);
+    tagilTower.add(mg);
   }
+  P.turretG.add(tagilTower);
+  P.turretG.userData.t90msTagilWeaponTowerReceipt = Object.freeze({
+    revision: 'aligned-detailed-equipment-r1',
+    owner: 'rig_turret',
+    firingAxis: '+Z',
+    stationYaw: 0,
+    foundationTopY: 0.98,
+    supportInterfaceCenter: Object.freeze([-0.64, 0.98, -1.195]),
+    supportInterfaceSize: Object.freeze([0.32, 0, 0.33]),
+    optics: 2,
+    workLights: 1,
+    ammoBoxes: 1,
+    feedLinks: 7,
+    armorHitboxExpanded: false,
+  });
 
   // Shoulder smoke banks follow the recovered source AABB (x to +/-1.48,
   // world y 1.93..2.26, z -0.44..+0.03).  The former anchors at +/-1.38
@@ -7693,6 +7807,7 @@ function buildT90Burlak(P: T90BuilderPort): void {
     // (shield dropped — its 2.40w top became the heightM p95 driver, dims
     // 75 -> 51.9 measured; receiver/cradle mass carries the defect-16 fix)
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: -0.08, ammo: true, scale: 1.25 });
+    mg.name = 't90aBurlakCommanderNsvt';
     mg.position.set(-0.54, 0.52, -0.88);
     mg.rotation.y = 0.32;
     P.turretG.add(mg);
@@ -8155,7 +8270,7 @@ function replaceT90MProryvTurret(P: T90BuilderPort): void {
     x: -0.58,
     z: -0.88,
     seatY: roofSeat.panoRoofBottomY,
-    yaw: 0.12,
+    yaw: 0,
     scale: 1.04,
     heightScale: 1.42,
     weaponScale: 1.12,
@@ -8798,6 +8913,7 @@ function finishT90BurlakNative2026(P: T90BuilderPort): void {
     fitBustle(0.35), fitBustle(0.710), fitBustleZ(-2.19));
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: -0.07, ammo: true, shield: true, scale: 0.67 });
+    mg.name = 't90aBurlakCommanderNsvt';
     mg.position.set(-0.46, 0.75, -0.42);
     mg.rotation.y = 0.27;
     P.turretG.add(mg);
