@@ -83,6 +83,8 @@ try {
       selectedSlot: p.combat.shellSlot,
       missileSlot: p.specialAction.missileSlot,
       active: p.specialAction.active,
+      latched: document.querySelector('.cot-special')?.classList.contains('active') || false,
+      pressed: document.querySelector('.cot-special')?.getAttribute('aria-pressed') || '',
       ammo: p.combat.ammo[p.combat.shellSlot],
       reloadS: p.combat.reload.t,
       label: document.querySelector('.cot-special .sl')?.textContent || '',
@@ -92,7 +94,9 @@ try {
   if (selected.selectedSlot !== selected.missileSlot || selected.selectedSlot !== numberedSlot) {
     fail('E and the numbered ammunition key did not select the same guided round');
   }
-  if (selected.active) fail('E incorrectly entered a hidden ATGM mode');
+  if (selected.active || !selected.latched || selected.pressed !== 'true') {
+    fail(`E did not remain visibly latched on the selected ATGM: ${JSON.stringify(selected)}`);
+  }
   if (selected.reloadS !== 0) fail('preloaded missile channel was not ready after selection');
   if (selected.shellCount !== 0) fail('E auto-fired instead of only selecting ammunition');
   if (selected.label !== 'Select ATGM') fail(`HUD exposed the wrong ATGM action: ${selected.label}`);
@@ -149,6 +153,12 @@ try {
   await page.mouse.move(900, 160, { steps: 10 });
   await new Promise((resolve) => setTimeout(resolve, 180));
   await page.keyboard.press('Digit1');
+  await page.waitForFunction(() => {
+    const button = document.querySelector('.cot-special');
+    return window.__DEBUG.game.player.combat.shellSlot === 0
+      && !button?.classList.contains('active')
+      && button?.getAttribute('aria-pressed') === 'false';
+  }, { timeout: 3000 });
   const cannon = await page.evaluate(() => {
     const p = window.__DEBUG.game.player;
     return {
@@ -156,10 +166,15 @@ try {
       reloadS: p.combat.reload.t,
       magazineRounds: p.combat.magazine?.rounds ?? null,
       launcherReloadS: p.combat.reloadChannels[p.specialAction.missileSlot].t,
+      latched: document.querySelector('.cot-special')?.classList.contains('active') || false,
+      pressed: document.querySelector('.cot-special')?.getAttribute('aria-pressed') || '',
     };
   });
   if (cannon.selectedSlot !== 0 || cannon.reloadS !== 0) {
     fail(`switching away from the ATGM blocked the cannon: ${JSON.stringify(cannon)}`);
+  }
+  if (cannon.latched || cannon.pressed !== 'false') {
+    fail(`numbered cannon selection did not release the ATGM latch: ${JSON.stringify(cannon)}`);
   }
   if (!(cannon.launcherReloadS > 0)) fail('launcher cooldown was lost after selecting the cannon');
 
@@ -211,6 +226,8 @@ try {
       missileSlot: p.specialAction.missileSlot,
       missileReloadS: p.combat.reload.t,
       active: p.specialAction.active,
+      latched: document.querySelector('.cot-special')?.classList.contains('active') || false,
+      pressed: document.querySelector('.cot-special')?.getAttribute('aria-pressed') || '',
     };
   });
   if (completed.cannonSlot !== 0 || completed.cannonReloadS !== 0) {
@@ -219,7 +236,9 @@ try {
   if (completed.selectedSlot !== completed.missileSlot || completed.missileReloadS !== 0) {
     fail(`launcher did not finish reloading in the background: ${JSON.stringify(completed)}`);
   }
-  if (completed.active) fail('reselecting ammunition incorrectly engaged a special mode');
+  if (completed.active || !completed.latched || completed.pressed !== 'true') {
+    fail(`reselecting the ATGM did not restore its visible latch: ${JSON.stringify(completed)}`);
+  }
   if (pageErrors.length) fail(`browser errors: ${pageErrors.join(' | ')}`);
 
   console.log('[atgm-guidance] GREEN', JSON.stringify({ selected, launched, cannon, steered, completed }));

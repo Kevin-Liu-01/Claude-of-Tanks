@@ -10,8 +10,15 @@ for (const spec of Object.values(TANK_SPECS)) {
     const round = spec.gun.shells[slot];
     if (!round.guided) continue;
     guidedRounds.push({ spec, round, slot });
-    assert.ok(round.reloadS >= 2 && round.reloadS <= 3,
-      `${spec.id} slot ${slot + 1}: guided launcher reload is 2-3 seconds`);
+    if (spec.gun.primaryGuided) {
+      assert.equal(round.reloadS, spec.gun.reloadS,
+        `${spec.id} slot ${slot + 1}: primary missile follows the main-gun reload`);
+      assert.ok(round.reloadS >= 6 && round.reloadS <= 10,
+        `${spec.id} slot ${slot + 1}: primary missile uses a standard tank reload`);
+    } else {
+      assert.ok(round.reloadS >= 2 && round.reloadS <= 3,
+        `${spec.id} slot ${slot + 1}: auxiliary missile reload is 2-3 seconds`);
+    }
   }
 }
 assert.equal(guidedRounds.length, 19, 'the complete guided-ammunition fleet is covered');

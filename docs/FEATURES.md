@@ -106,8 +106,10 @@ loader state remain authority-owned.
 
 Every shell slot carries its own finite authored count and can be selected and
 fired while rounds remain. Guided missiles are ammunition, not a hidden weapon
-mode: the E action selects the vehicle's ATGM slot exactly like its numbered
-slot. External missile launchers retain independent 2–3 second reload channels,
+mode: on a mixed-weapon vehicle, E selects and visibly latches the ATGM slot
+exactly like its numbered slot until another type is chosen. Missile-primary
+vehicles fire normally without a redundant E selector and use a standard main-
+gun reload. External missile launchers retain independent 2–3 second channels,
 so their cooldown neither empties nor blocks an autoloader magazine. Partial
 autoloader clips can refill while an auxiliary launcher is selected, and
 changing the desired cannon round does not restart a refill already underway.

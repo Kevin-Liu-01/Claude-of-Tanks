@@ -725,6 +725,7 @@ import { hitOutcomeFor, incomingHitFeedbackFor } from './hitEventFormat.ts';
 import {
   SPECIAL_ACTION_KINDS,
   specialActionDescriptor,
+  specialActionIsActive,
 } from '../sim/specialActions.ts';
 
 // module-scope scratch (no per-frame allocation)
@@ -1951,10 +1952,14 @@ export function initHud(bus: EventBus): HudRuntime {
       specialButton.classList.toggle('show', specialKind !== SPECIAL_ACTION_KINDS.NONE);
     }
     const action = player?.specialAction;
-    specialButton.classList.toggle('active', !!action?.active);
+    // Missile selection is ordinary ammunition state. Keep the E shortcut
+    // visibly latched for as long as that slot remains selected; 1/2/3 are
+    // the only actions that clear it. True modes continue to use action.active.
+    const active = specialActionIsActive(action, player?.combat?.shellSlot);
+    specialButton.classList.toggle('active', active);
     specialButton.classList.remove('pending');
     specialButton.disabled = !player || !!player.combat?.destroyed;
-    specialButton.setAttribute('aria-pressed', action?.active ? 'true' : 'false');
+    specialButton.setAttribute('aria-pressed', active ? 'true' : 'false');
   }
 
   const shellBox = el('div', 'cot-shells', root);

@@ -24,6 +24,7 @@ export {
   createSpecialActionState,
   guidedMissileSlot,
   specialActionDescriptor,
+  specialActionIsActive,
   specialActionKind,
 } from './specialActionPolicy.ts';
 
@@ -91,7 +92,9 @@ export function activateSpecialAction(
     return Object.freeze({
       ok: true,
       kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE,
-      active: false,
+      // `active` describes the visible selected state, not a second hidden
+      // missile mode. The canonical state remains combat.shellSlot.
+      active: true,
       slot,
     });
   }

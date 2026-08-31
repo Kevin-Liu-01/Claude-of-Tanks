@@ -166,7 +166,11 @@ assert.equal(player.input.shellSlot, 1,
 assert.deepEqual(networkCalls, ['consumable:0', 'reloadMagazine', 'specialAction'],
   'guided E does not enqueue a separate network action mode');
 assert(events.some(({ event, payload }) =>
-  event === 'ui:specialActionResult' && payload.kind === 'guided_missile' && payload.slot === 1));
+  event === 'ui:specialActionResult' && payload.kind === 'guided_missile' &&
+    payload.slot === 1 && payload.active === true));
+bus.emit('ui:specialAction', {});
+assert.equal(player.input.shellSlot, 1,
+  'repeating E keeps the guided ammunition selected instead of toggling back');
 spec.guidedAction = false;
 
 settingsOpen = true;

@@ -30,7 +30,7 @@ assert.equal(spec.gun.caliberMm, 152);
 assert.equal(spec.gun.primaryGuided, true, 'launcher ATGM is the normal primary weapon');
 assert.equal(spec.gun.shells.length, 1, 'no fictional conventional selector round');
 assert.equal(spec.gun.shells[0].guided, true);
-assert.equal(spec.gun.reloadS, 3.0, 'primary launcher headline matches its ATGM cycle');
+assert.equal(spec.gun.reloadS, 9.8, 'primary gun-launched ATGM uses the normal 152 mm feed cycle');
 assert.equal(typeof spec.hydropneumaticAim, 'object',
   'MBT-70 suspension aim owns an explicit physical travel envelope');
 assert.ok(spec.hydropneumaticAim.compressionM >= 0.60 && spec.hydropneumaticAim.droopM >= 0.60,

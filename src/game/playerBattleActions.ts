@@ -246,7 +246,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
       bus.emit('ui:specialActionResult', {
         ok: true,
         kind: 'guided_missile',
-        active: false,
+        active: true,
         slot,
       });
     } else if (network.isActive()) network.queueAction('specialAction');

@@ -15,11 +15,19 @@ assert.deepEqual(garageCrewRows(anatomy).map((row) => row.label), ['Driver', 'Co
 assert.equal(garageModuleRows(anatomy)[1].icon, 'track');
 
 const guided = garageSpecialSystem({
-  gun: { shells: [{ name: 'TOW-2A', type: 'HEAT', guided: true, velocityMps: 340 }] },
+  gun: { shells: [
+    { name: 'M919', type: 'APFSDS', velocityMps: 1385 },
+    { name: 'TOW-2A', type: 'HEAT', guided: true, velocityMps: 340 },
+  ] },
 });
 assert.equal(guided.icon, 'missileRack');
 assert.match(guided.detail, /click to launch/i);
 assert.match(guided.detail, /cursor/i);
+assert.equal(garageSpecialSystem({
+  gun: { primaryGuided: true, shells: [
+    { name: 'Shillelagh', type: 'HEAT', guided: true, velocityMps: 208 },
+  ] },
+}), null, 'missile-primary tanks do not advertise a redundant E selector');
 
 const suspension = garageSpecialSystem({
   hydropneumaticAim: { noseDownDeg: 14, noseUpDeg: 20 },

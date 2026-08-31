@@ -17,6 +17,7 @@ import {
   activateSpecialAction,
   createSpecialActionState,
   specialActionGuidesShell,
+  specialActionIsActive,
   specialActionKind,
 } from './specialActions.ts';
 
@@ -45,6 +46,8 @@ const originalSlot = ifv.combat.shellSlot;
 const missileResult = activateSpecialAction(ifv);
 assert.equal(missileResult.ok, true);
 assert.equal(missileResult.slot, ifv.specialAction.missileSlot);
+assert.equal(missileResult.active, true,
+  'E reports the guided ammunition as selected until another slot is chosen');
 assert.equal(ifv.combat.shellSlot, ifv.specialAction.missileSlot);
 assert.equal(ifv.input.shellSlot, ifv.specialAction.missileSlot);
 assert.equal(ifv.combat.reload.t, 0,
@@ -54,6 +57,15 @@ startPostShotReload(ifv.combat, ifv.spec);
 assert.equal(ifv.combat.reload.t, 2.6, 'the launcher owns its post-shot cycle');
 assert.notEqual(ifv.combat.shellSlot, originalSlot,
   'a missile impact never silently restores a different ammunition type');
+const repeatedMissileResult = activateSpecialAction(ifv);
+assert.equal(repeatedMissileResult.active, true, 'repeating E is idempotent, never a toggle-off');
+assert.equal(ifv.combat.shellSlot, ifv.specialAction.missileSlot,
+  'the IFV remains locked to its missile ammunition after repeated E presses');
+assert.equal(specialActionIsActive(ifv.specialAction, ifv.combat.shellSlot), true,
+  'the E control remains visibly latched while its ammunition slot is selected');
+selectShell(ifv.combat, originalSlot, ifv.spec);
+assert.equal(specialActionIsActive(ifv.specialAction, ifv.combat.shellSlot), false,
+  'choosing another numbered shell clears the visible E latch');
 
 const m1a3 = entityFor('m1a3');
 const cannonMagazineRounds = m1a3.combat.magazine.rounds;
@@ -78,17 +90,17 @@ const mbt70 = entityFor('mbt70');
 assert.equal(mbt70.spec.gun.shells.length, 1,
   'MBT-70 exposes only its primary ATGM ammunition');
 assert.equal(mbt70.spec.gun.shells[0].guided, true);
-assert.equal(specialActionKind(mbt70.spec), SPECIAL_ACTION_KINDS.GUIDED_MISSILE,
-  'every missile vehicle maps E to its guided ammunition slot');
-const mbt70Selection = activateSpecialAction(mbt70);
-assert.equal(mbt70Selection.ok, true);
-assert.equal(mbt70Selection.slot, 0,
-  'a primary-guided vehicle uses the same slot-selection rule as an IFV');
+assert.equal(specialActionKind(mbt70.spec), SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM,
+  'a default-missile tank does not waste E reselecting its only ammunition');
+assert.equal(activateSpecialAction(mbt70).active, true,
+  'MBT-70 keeps E for its real suspension mode while missiles remain ordinary primary fire');
 const mbt70Shell = createShell(
   mbt70.spec.gun.shells[0], 'mbt70', true, new Vector3(), new Vector3(0, 0, 1), 70,
 );
 assert.equal(specialActionGuidesShell(mbt70, mbt70Shell), true,
   'MBT-70 primary fire guides immediately without the IFV selector action');
+assert.equal(specialActionKind(entityFor('m551_sheridan').spec), SPECIAL_ACTION_KINDS.NONE,
+  'missile-only tanks without a true vehicle mode do not show a redundant E button');
 
 const guidedSpec = ifv.spec.gun.shells[ifv.specialAction.missileSlot];
 const guidedShell = createShell(

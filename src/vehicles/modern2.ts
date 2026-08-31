@@ -505,7 +505,7 @@ const MODERN2_SPECS: TankSpecRegistry = {
     },
     turretTraverseDegS: 40, gunPitchDegS: 28, gunElevationDeg: 20, gunDepressionDeg: 10,
     gun: {
-      caliberMm: 152, reloadS: 3.0, baseAccuracy: 0.30, aimTimeS: 1.9,
+      caliberMm: 152, reloadS: 9.8, baseAccuracy: 0.30, aimTimeS: 1.9,
       bloom: { move: 0.07, hullRot: 0.08, turret: 0.06, afterShot: 2.0 },
       // Owner directive: missiles are the normal primary weapon, not a
       // special-action ammunition swap.  Keeping exactly one shell also
@@ -513,7 +513,7 @@ const MODERN2_SPECS: TankSpecRegistry = {
       primaryGuided: true,
       shells: [
         shell('XMGM-51C Shillelagh ATGM', 'HEAT', 152, 800, 800, 750, 208, {
-          guided: true, guidanceTurnRateRadS: 0.72, reloadS: 3.0,
+          guided: true, guidanceTurnRateRadS: 0.72, reloadS: 9.8,
           soundProfile: 'shillelagh-launch',
         }),
       ],
