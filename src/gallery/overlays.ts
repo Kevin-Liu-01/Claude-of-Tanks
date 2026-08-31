@@ -84,7 +84,7 @@ const CREW_COLORS: Readonly<Record<string, number>> = Object.freeze({
   weaponOperatorLeft: 0xd8a4ff, weaponOperatorRight: 0xc28cff,
 });
 
-function armorColor(plate: ArmorPlate): number {
+function armorThicknessColor(plate: ArmorPlate): number {
   if (plate.kind === 'era' || plate.era) return 0xc18cff;
   if (plate.kind === 'spaced') return 0x4fc7d9;
   if (plate.kind === 'external') return 0x8b9aa4;
@@ -194,7 +194,7 @@ function addPlate(
 ): void {
   const geometry = sourceGeometry || plateGeometry(plate);
   if (!geometry) return;
-  const color = armorColor(plate);
+  const color = armorThicknessColor(plate);
   const material = inspectionMaterial(color, 0.38);
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `gallery_armor_${turretLocal ? 'turret' : 'hull'}_${index}`;
@@ -409,12 +409,18 @@ export function createInspectionOverlay(
       addPlate(hullContainer, plate, index, false, resources, pickables, geometry));
     exactTurret.forEach(({ plate, geometry }, index) =>
       addPlate(turretContainer, plate, index, true, resources, pickables, geometry));
-    hullPlates.filter((plate) => (plate.kind || 'main') !== 'main'
-      || /_(?:cupola|hatch)_/i.test(plate.name || '')).forEach((plate, index) =>
-      addPlate(hullContainer, plate, exactHull.length + index, false, resources, pickables));
-    turretPlates.filter((plate) => (plate.kind || 'main') !== 'main'
-      || /_(?:cupola|hatch)_/i.test(plate.name || '')).forEach((plate, index) =>
-      addPlate(turretContainer, plate, exactTurret.length + index, true, resources, pickables));
+    let hullDetailIndex = 0;
+    for (const plate of hullPlates) {
+      if ((plate.kind || 'main') === 'main' && !/_(?:cupola|hatch)_/i.test(plate.name || '')) continue;
+      addPlate(hullContainer, plate, exactHull.length + hullDetailIndex, false, resources, pickables);
+      hullDetailIndex += 1;
+    }
+    let turretDetailIndex = 0;
+    for (const plate of turretPlates) {
+      if ((plate.kind || 'main') === 'main' && !/_(?:cupola|hatch)_/i.test(plate.name || '')) continue;
+      addPlate(turretContainer, plate, exactTurret.length + turretDetailIndex, true, resources, pickables);
+      turretDetailIndex += 1;
+    }
   } else if (mode === 'modules') {
     addModuleModels(spec, hullContainer, turretContainer, resources, pickables);
   } else if (mode === 'crew') {

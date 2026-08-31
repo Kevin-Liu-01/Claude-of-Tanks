@@ -246,7 +246,7 @@ Public builds strip quarantined comparison assets. Historical source models
 remain research inputs only and do not replace playable geometry.
 
 The generated package for each vehicle includes shaded portraits, top and side
-silhouettes, hit-zone maps, armor diagrams, and module diagrams. The manifest
+silhouettes, armor diagrams, separate module and crew diagrams, and markings. The manifest
 stores fingerprints and hashes so stale presentation assets fail verification.
 
 See docs/TANK-ASSET-PIPELINE.md and docs/BUILD-STANDARD.md.

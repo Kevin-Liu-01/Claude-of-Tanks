@@ -303,8 +303,8 @@ restricted comparison assets.
 
 ### 6.4 Generated asset record
 
-The asset pipeline renders hero, side, top, silhouette, armor, module,
-hit-zone, and marking views from the live rig. A manifest binds these outputs
+The asset pipeline renders hero, side, top, silhouette, armor, module, crew,
+and marking views from the live rig. A manifest binds these outputs
 to metadata and geometry fingerprints. A fleet or geometry change therefore
 makes stale presentation assets detectable.
 

@@ -117,7 +117,7 @@ side/top views, run focused geometry gates, then fleet/family/assets checks.
 For every added or changed playable tank, run this required sequence:
 
 1. `npm run tank:anatomy:update` — remeasure the complete playable fleet and
-   regenerate every tank's hit-zone, armor and systems/crew cards.
+   regenerate every tank's armor, module, and crew cards.
 2. `npm run tank:anatomy:check` — fail on stale receipts or visual drift.
 3. `npm run tank:release:check -- --ids=<changed ids> --gate` — assets,
    tracks, muzzle, geometry, full tests and private build.

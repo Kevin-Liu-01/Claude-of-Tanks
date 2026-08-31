@@ -112,8 +112,9 @@ function mountGalleryInfo(): void {
   appendGalleryInfo(document.querySelector('.mode-dock > p'), {
     label: 'About diagnostic layers', title: 'Diagnostic layers',
     text: 'Switch between rendered appearance, armor volumes, internal modules, crew stations, and exact triangle markup.',
-    image: () => galleryVehicleImage(activeMode === 'modules' || activeMode === 'crew'
-      ? 'modules_side' : (activeMode === 'armor' ? 'armor_side' : 'angle'), 'Active diagnostic layer'),
+    image: () => galleryVehicleImage(activeMode === 'modules' ? 'modules_side'
+      : (activeMode === 'crew' ? 'crew_side'
+        : (activeMode === 'armor' ? 'armor_side' : 'angle')), 'Active diagnostic layer'),
   });
   document.querySelectorAll('.section-label').forEach((heading) => {
     const label = heading.querySelector('span')?.textContent.trim();

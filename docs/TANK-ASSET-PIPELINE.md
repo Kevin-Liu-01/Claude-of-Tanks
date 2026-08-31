@@ -6,7 +6,7 @@ second hand-authored source of truth.
 
 ## Required outputs
 
-`public/icons/tank-assets.json` records all registered ids and these eight files:
+`public/icons/tank-assets.json` records all registered ids and these nine files:
 
 | Output | Purpose |
 | --- | --- |
@@ -15,9 +15,10 @@ second hand-authored source of truth.
 | `<id>_side.webp` | side shaded view |
 | `<id>_top_silhouette.png` | minimap mask |
 | `<id>_side_silhouette.png` | team-panel / damage-panel mask |
-| `<id>_hit_zones_side.png` | actual collision-plate hit areas |
 | `<id>_armor_side.png` | effective KE armor values + best-shell penetration reference |
-| `<id>_modules_side.png` | actual module and crew damage volumes |
+| `<id>_modules_side.png` | actual module damage volumes |
+| `<id>_crew_side.png` | actual crew damage volumes |
+| `<id>_markings.png` | national insignia and tactical designation |
 
 The manifest also stores the official flag country code, tier, caliber, shell
 penetration values, plate/module data, live geometry fingerprint, metadata

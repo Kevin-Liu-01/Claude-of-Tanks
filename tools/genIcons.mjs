@@ -1,12 +1,12 @@
 // Fleet tank-asset generator. Each tank receives the five gameplay views plus
-// data-driven hit-zone, armor/penetration and module diagrams. A checked
+// data-driven armor/penetration, module, crew, and markings diagrams. A checked
 // manifest binds every file to the exact rendered geometry and gameplay data.
 //
 // Usage:
 //   node tools/genIcons.mjs
 //   node tools/genIcons.mjs --tanks m1a2,bmp2
 //   node tools/genIcons.mjs --ids=m1a2,bmp2   (compatibility alias)
-//   node tools/genIcons.mjs --views hitZonesSide,armorSide,modulesSide
+//   node tools/genIcons.mjs --views armorSide,modulesSide,crewSide
 //   node tools/genIcons.mjs --metadata-only  (refresh manifest, preserve images)
 //   node tools/genIcons.mjs --out /tmp/icons --ids=m1a2 --allow-partial
 
@@ -30,7 +30,7 @@ const outDir = resolve(opt('out', 'public/icons'));
 const selected = opt('tanks') || opt('ids');
 const onlyTanks = selected ? selected.split(',').map((id) => id.trim()).filter(Boolean) : [];
 const metadataOnly = args.includes('--metadata-only');
-const selectedViews = metadataOnly ? [] : opt('views')
+let selectedViews = metadataOnly ? [] : opt('views')
   ? opt('views').split(',').map((view) => view.trim()).filter(Boolean)
   : Object.keys(TANK_ASSET_VIEWS);
 const allowPartial = args.includes('--allow-partial');
@@ -47,6 +47,7 @@ function readManifest() {
 }
 
 let startingManifest = readManifest();
+const priorManifest = startingManifest;
 for (const view of selectedViews) {
   if (!TANK_ASSET_VIEWS[view]) {
     console.error(`[tank-assets] Unknown view '${view}'. Expected one of: ${Object.keys(TANK_ASSET_VIEWS).join(', ')}`);
@@ -71,6 +72,7 @@ if (startingManifest && startingManifest.schemaVersion !== TANK_ASSET_SCHEMA_VER
   } else {
     console.log(`[tank-assets] schema ${startingManifest.schemaVersion} -> ${TANK_ASSET_SCHEMA_VERSION}; regenerating the complete fleet`);
     startingManifest = null;
+    selectedViews = Object.keys(TANK_ASSET_VIEWS);
   }
 }
 
@@ -172,18 +174,18 @@ try {
       tanks: sortedTanks,
     };
     // A full generation is also the authoritative fleet-pruning pass. Remove
-    // only files named by the previous manifest for tanks that are no longer
-    // registered; never glob the icon directory, where unrelated UI art may
-    // live. Selective runs intentionally preserve every other manifest row.
-    if (!onlyTanks.length && previous && previous.tanks) {
-      const active = new Set(Object.keys(sortedTanks));
-      for (const [retiredId, retired] of Object.entries(previous.tanks)) {
-        if (active.has(retiredId)) continue;
-        for (const asset of Object.values(retired.assets || {})) {
-          if (!asset || !asset.file) continue;
+    // only obsolete files named by the previous manifest; never glob the icon
+    // directory, where unrelated UI art may live. This also retires assets
+    // removed by a schema migration, such as the former hit-zone duplicate.
+    if (!onlyTanks.length && priorManifest?.tanks) {
+      const activeFiles = new Set(Object.values(sortedTanks).flatMap((tank) =>
+        Object.values(tank.assets || {}).map((asset) => asset?.file).filter(Boolean)));
+      for (const prior of Object.values(priorManifest.tanks)) {
+        for (const asset of Object.values(prior.assets || {})) {
+          if (!asset?.file || activeFiles.has(asset.file)) continue;
           rmSync(resolve(outDir, asset.file), { force: true });
+          console.log(`[tank-assets] pruned obsolete ${asset.file}`);
         }
-        console.log(`[tank-assets] pruned retired tank ${retiredId}`);
       }
     }
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);

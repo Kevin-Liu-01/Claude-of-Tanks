@@ -1705,13 +1705,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const name = spec.label?.displayName || spec.name;
     const technicalViews: Readonly<Record<string, readonly (readonly [string, string])[]>> = {
       'Vehicle dossier': [
-        ['angle', 'Procedural vehicle render'], ['armor_side', 'Armor protection diagram'], ['modules_side', 'Internal module diagram'],
+        ['angle', 'Procedural vehicle render'], ['armor_side', 'Armor protection diagram'],
+        ['modules_side', 'Internal module diagram'], ['crew_side', 'Crew-station diagram'],
       ],
       Performance: [['angle', 'Vehicle profile'], ['side', 'Mobility silhouette']],
       'Special system': [['modules_side', 'Special system placement'], ['angle', 'Vehicle profile']],
-      Protection: [['armor_side', 'Armor protection diagram'], ['hit_zones_side', 'Hit-zone layout']],
-      Modules: [['modules_side', 'Internal module diagram'], ['hit_zones_side', 'Damage-zone layout']],
-      Crew: [['modules_side', 'Crew and module diagram'], ['side', 'Crew platform profile']],
+      Protection: [['armor_side', 'Armor protection diagram'], ['side', 'Protection profile']],
+      Modules: [['modules_side', 'Internal module diagram'], ['crew_side', 'Crew-station context']],
+      Crew: [['crew_side', 'Crew-station diagram'], ['modules_side', 'Internal module context']],
       Armament: [['side', 'Armament profile'], ['top', 'Weapon plan view']],
       Ammunition: [['side', 'Ammunition platform profile'], ['modules_side', 'Ammunition and module layout']],
       Equipment: [['modules_side', 'Equipment integration diagram'], ['angle', 'Vehicle profile']],

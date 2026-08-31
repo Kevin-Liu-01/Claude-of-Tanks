@@ -148,7 +148,7 @@ shared-module WIP moves EVERY family's hash, so clean-room worktrees (HEAD + you
 are the honest frame for freeze proofs, and handover sweeps can legitimately commit
 mid-round builder snapshots. Tank assets have the same shape: they render the LIVE
 tree, so graduates regenerate from a clean landing-candidate worktree with
-`npm run tank:assets -- --ids=<id>`, then prove the exact eight files and manifest
+`npm run tank:assets -- --ids=<id>`, then prove the exact nine files and manifest
 row against live geometry with `npm run tank:release:check -- --ids=<id>`.
 
 ## Measurement discipline: numbers with provenance or nothing

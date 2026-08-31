@@ -322,12 +322,12 @@ never excuses missing it.
    `node tools/tmp-hashgeo.mjs --ids=<graduates>` before reporting;
    shared-helper edits are opt-in params with byte-identical defaults.
    Do-not-gate list: m60a1, m60a3, kv2.
-3. Every round ends with: gate line ×2, regenerate that tank's eight asset
+3. Every round ends with: gate line ×2, regenerate that tank's nine asset
    outputs from the clean landing candidate
    (`npm run tank:assets -- --ids=<id>`), then the unified release check
    (`npm run tank:release:check -- --ids=<id>`). The release check requires
-   current hashed hero/top/side views, both silhouettes, hit-zone/armor/module
-   diagrams, one valid I-X tier, penetration + module metadata, and a visible
+   current hashed hero/top/side views, both silhouettes, armor/module/crew
+   diagrams, markings, one valid I-X tier, penetration + module metadata, and a visible
    machine-tagged muzzle bore. It also renders and ray-tests that bore
    straight-on, then runs the existing standard-check, `npm test`, and the
    private production build. Packet round section is

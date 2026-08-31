@@ -14,7 +14,7 @@ import {
 } from '/src/vehicles/tankAssets.ts';
 import { auditTankAppearance } from '/src/vehicles/appearanceAudit.ts';
 import { drawNationalInsignia, drawVehicleDesignation } from '/src/vehicles/vehicleMarkings.ts';
-import { MODULE_LABEL } from '/src/sim/moduleCatalog.ts';
+import { createInspectionOverlay, inspectionLegend } from '/src/gallery/overlays.ts';
 
 const BASE = 512;
 const SS = 2;
@@ -311,555 +311,264 @@ function assetProjection(box, anchor) {
   };
 }
 
-function sideProjection(center, size, extentZ = size.z / 2) {
-  const aspect = 2;
-  const halfH = Math.max(size.y / 2, extentZ / aspect) * MARGIN;
-  const halfW = halfH * aspect;
+const TECHNICAL_WIDTH = BASE;
+const TECHNICAL_HEIGHT = BASE / 2;
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function sideInspectionCamera(center, size, extentZ) {
+  const halfHeight = Math.max(size.y / 2, extentZ / 2) * MARGIN;
+  return orthoCam(center, size, [-1, 0, 0], [0, 1, 0], halfHeight * 2, halfHeight);
+}
+
+function visibleInspectionBounds(object, root) {
+  const box = new THREE.Box3().makeEmpty();
+  object.updateMatrixWorld(true);
+  object.traverse((child) => {
+    if (!(child.isMesh || child.isInstancedMesh) || !child.geometry
+        || !visibleInTree(child, root)) return;
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    const renderless = materials.length > 0 && materials.every((material) => material
+      && (material.colorWrite === false || material.visible === false || material.opacity <= 0));
+    if (renderless) return;
+    if (child.isInstancedMesh) {
+      child.computeBoundingBox();
+      if (child.boundingBox && !child.boundingBox.isEmpty()) {
+        box.union(child.boundingBox.clone().applyMatrix4(child.matrixWorld));
+      }
+      return;
+    }
+    if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
+    if (child.geometry.boundingBox) {
+      box.union(child.geometry.boundingBox.clone().applyMatrix4(child.matrixWorld));
+    }
+  });
+  return box;
+}
+
+function projectedInspectionBounds(box, camera) {
+  if (box.isEmpty()) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const x of [box.min.x, box.max.x]) {
+    for (const y of [box.min.y, box.max.y]) {
+      for (const z of [box.min.z, box.max.z]) {
+        const point = new THREE.Vector3(x, y, z).project(camera);
+        const px = (point.x + 1) * 0.5 * TECHNICAL_WIDTH;
+        const py = (1 - point.y) * 0.5 * TECHNICAL_HEIGHT;
+        minX = Math.min(minX, px);
+        minY = Math.min(minY, py);
+        maxX = Math.max(maxX, px);
+        maxY = Math.max(maxY, py);
+      }
+    }
+  }
   return {
-    halfW, halfH,
-    point(point, turretLocal, turretPivot = [0, 0, 0]) {
-      const z = point[2] + (turretLocal ? turretPivot[2] : 0);
-      const y = point[1] + (turretLocal ? turretPivot[1] : 0);
-      return [
-        BASE / 2 + ((z - center.z) / (halfW * 2)) * BASE,
-        BASE / 4 - ((y - center.y) / (halfH * 2)) * (BASE / 2),
-      ];
-    },
+    anchor: [(minX + maxX) * 0.5, (minY + maxY) * 0.5],
+    weight: Math.max(1, (maxX - minX) * (maxY - minY)),
   };
 }
 
-function technicalBase(sideCanvas, metadata, title, note) {
+function inspectionPickerColor(picker) {
+  let color = null;
+  const visual = picker.userData?.inspectionVisual || picker;
+  visual.traverse((object) => {
+    if (color || (!object.isMesh && !object.isLineSegments)) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    const material = materials.find((entry) => entry?.color
+      && (entry.userData?.galleryAnatomyLine || entry.userData?.galleryAnatomyFill
+        || entry.colorWrite !== false));
+    if (material) color = `#${material.color.getHexString()}`;
+  });
+  return color || '#9dafbd';
+}
+
+function compactInspectionTitle(title) {
+  return String(title || '')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replaceAll('_', ' ')
+    .toUpperCase()
+    .slice(0, 13);
+}
+
+function inspectionCallout(picker, camera, root, kind) {
+  const inspection = picker.userData?.inspection || {};
+  const visual = picker.userData?.inspectionVisual || picker;
+  const projected = projectedInspectionBounds(visibleInspectionBounds(visual, root), camera);
+  if (!projected) return null;
+  const id = String(inspection.id || '');
+  const suffix = kind === 'armor'
+    ? `${Math.round(Number(inspection.keMm || 0))}MM`
+    : compactInspectionTitle(inspection.title);
+  return {
+    ...projected,
+    label: `${id} ${suffix}`.trim(),
+    color: inspectionPickerColor(picker),
+  };
+}
+
+function renderInspectionStage(spec, visual, camera, kind) {
+  const overlayMode = kind === 'modules' || kind === 'crew' ? kind : 'armor';
+  const overlays = [createInspectionOverlay(spec, visual, overlayMode)];
+  try {
+    visual.root.updateMatrixWorld(true);
+    camera.updateMatrixWorld(true);
+    const callouts = [];
+    for (const overlay of overlays) {
+      for (const picker of overlay.pickables) {
+        const callout = inspectionCallout(picker, camera, visual.root, kind);
+        if (callout) callouts.push(callout);
+      }
+    }
+    return {
+      canvas: capture(camera, TECHNICAL_WIDTH, TECHNICAL_HEIGHT),
+      callouts,
+    };
+  } finally {
+    for (let index = overlays.length - 1; index >= 0; index--) overlays[index].clear();
+  }
+}
+
+function drawTechnicalLegend(c, entries) {
+  const rows = entries.length > 6 ? 2 : 1;
+  const columns = Math.ceil(entries.length / rows);
+  const left = 12;
+  const width = 488;
+  const cellWidth = width / columns;
+  c.save();
+  c.font = '700 7px system-ui, sans-serif';
+  c.textAlign = 'left';
+  entries.forEach(([label, color], index) => {
+    const row = Math.floor(index / columns);
+    const column = index % columns;
+    const y = rows === 1 ? 244 : 232 + row * 13;
+    const labelWidth = c.measureText(label).width;
+    const contentWidth = 9 + 4 + labelWidth;
+    const x = left + column * cellWidth + Math.max(0, (cellWidth - contentWidth) / 2);
+    c.fillStyle = color;
+    c.fillRect(x, y - 5, 9, 5);
+    c.fillStyle = '#c8d2da';
+    c.fillText(label.toUpperCase(), x + 13, y);
+  });
+  c.restore();
+}
+
+function drawInspectionCallouts(c, callouts) {
+  const rails = [
+    { side: 'left', x: 5, textX: 9, edgeX: 87, elbowX: 90, align: 'left' },
+    { side: 'right', x: 425, textX: 503, edgeX: 425, elbowX: 422, align: 'right' },
+  ];
+  c.save();
+  c.font = '800 7px ui-monospace, monospace';
+  c.lineWidth = 0.8;
+  for (const rail of rails) {
+    const left = rail.side === 'left';
+    const candidates = callouts.filter((item) => (item.anchor[0] < 256) === left)
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, 6)
+      .sort((a, b) => a.anchor[1] - b.anchor[1]);
+    const gap = 14;
+    candidates.forEach((item, index) => {
+      item.labelY = clamp(item.anchor[1], 56 + index * gap, 210 - (candidates.length - 1 - index) * gap);
+    });
+    for (const item of candidates) {
+      c.strokeStyle = item.color;
+      c.beginPath();
+      c.moveTo(item.anchor[0], item.anchor[1]);
+      c.lineTo(rail.elbowX, item.labelY);
+      c.lineTo(rail.edgeX, item.labelY);
+      c.stroke();
+      c.beginPath();
+      c.arc(item.anchor[0], item.anchor[1], 1.5, 0, Math.PI * 2);
+      c.fillStyle = item.color;
+      c.fill();
+      c.fillStyle = 'rgba(5,11,15,.94)';
+      c.fillRect(rail.x, item.labelY - 6, 82, 11);
+      c.strokeStyle = 'rgba(182,203,217,.14)';
+      c.strokeRect(rail.x + 0.5, item.labelY - 5.5, 81, 10);
+      c.fillStyle = '#f6f8fa';
+      c.textAlign = rail.align;
+      c.fillText(item.label, rail.textX, item.labelY + 2.5);
+    }
+  }
+  c.restore();
+}
+
+function technicalDiagram(stage, metadata, kind) {
   const out = document.createElement('canvas');
-  out.width = BASE; out.height = BASE / 2;
+  out.width = TECHNICAL_WIDTH;
+  out.height = TECHNICAL_HEIGHT;
   const c = out.getContext('2d');
   const background = c.createLinearGradient(0, 0, 0, out.height);
   background.addColorStop(0, '#0c171f');
   background.addColorStop(0.56, '#071118');
   background.addColorStop(1, '#050a0e');
-  c.fillStyle = background; c.fillRect(0, 0, out.width, out.height);
-
-  // Keep the actual procedural vehicle readable beneath the gameplay data.
-  // The old 28% ghost made the diagrams look like disconnected colored
-  // polygons; the restrained monochrome render now supplies visible anatomy
-  // without competing with the authored plate/module colors.
-  c.save();
-  c.filter = 'saturate(.35) brightness(1.34) contrast(1.08)';
-  c.globalAlpha = 0.54;
-  c.drawImage(sideCanvas, 0, 0);
-  c.restore();
-  const fade = c.createLinearGradient(0, 0, 0, out.height);
-  fade.addColorStop(0, 'rgba(4,9,13,.9)');
-  fade.addColorStop(0.19, 'rgba(4,9,13,.18)');
-  fade.addColorStop(0.83, 'rgba(4,9,13,.08)');
-  fade.addColorStop(1, 'rgba(4,9,13,.92)');
-  c.fillStyle = fade;
+  c.fillStyle = background;
   c.fillRect(0, 0, out.width, out.height);
+  c.drawImage(stage.canvas, 0, 0);
 
-  // A strict header/grid keeps identity, reference data, annotations, and the
-  // legend from competing with each other. Every technical card uses these
-  // same datums so fleet browsing feels like one coherent field manual.
   c.fillStyle = 'rgba(3,8,11,.78)';
   c.fillRect(0, 0, out.width, 43);
-  c.beginPath(); c.moveTo(0, 42.5); c.lineTo(out.width, 42.5);
-  c.strokeStyle = 'rgba(155,180,196,.18)'; c.lineWidth = 1; c.stroke();
-
-  // Dedicated annotation rails keep copy off the vehicle. The subtle center
-  // frame gives all three diagrams the same inspection-stage hierarchy.
   c.fillStyle = 'rgba(3,8,11,.7)';
-  c.fillRect(0, 43, 92, 181); c.fillRect(420, 43, 92, 181);
-  c.strokeStyle = 'rgba(155,180,196,.13)'; c.lineWidth = 1;
+  c.fillRect(0, 43, 92, 181);
+  c.fillRect(420, 43, 92, 181);
+  c.fillStyle = 'rgba(3,8,11,.86)';
+  c.fillRect(0, 224, out.width, 32);
+  c.strokeStyle = 'rgba(155,180,196,.18)';
+  c.lineWidth = 1;
+  c.beginPath();
+  c.moveTo(0, 42.5);
+  c.lineTo(out.width, 42.5);
+  c.moveTo(0, 223.5);
+  c.lineTo(out.width, 223.5);
+  c.stroke();
+  c.strokeStyle = 'rgba(155,180,196,.13)';
   c.strokeRect(92.5, 43.5, 327, 180);
-  c.beginPath(); c.moveTo(256.5, 44); c.lineTo(256.5, 223);
-  c.strokeStyle = 'rgba(155,180,196,.065)'; c.stroke();
 
-  const vehicleName = metadata.label?.shortName || metadata.name;
-  c.font = '750 12px system-ui, sans-serif';
-  c.fillStyle = '#f4f7f9';
+  const records = {
+    armor: {
+      title: 'Armor / penetration reference',
+      note: 'LIVE EFFECTIVE THICKNESS',
+      legend: inspectionLegend('armor'),
+    },
+    modules: {
+      title: 'Internal module layout',
+      note: 'LIVE DAMAGE MODULES',
+      legend: inspectionLegend('modules'),
+    },
+    crew: {
+      title: 'Crew station layout',
+      note: 'LIVE CREW ANATOMY',
+      legend: inspectionLegend('crew'),
+    },
+  };
+  const record = records[kind];
+
   drawNationalInsignia(c, metadata.markings.insignia, 19, 20, 18);
-  c.fillText(vehicleName, 34, 17);
-  c.font = '800 7.5px system-ui, sans-serif';
+  c.fillStyle = '#f4f7f9';
+  c.font = '750 12px system-ui, sans-serif';
+  c.fillText(metadata.label?.shortName || metadata.name, 34, 17);
   c.fillStyle = '#dca652';
-  c.fillText(`TIER ${metadata.tierNumeral} · ${title}`.toUpperCase(), 34, 32);
+  c.font = '800 7.5px system-ui, sans-serif';
+  c.fillText(`TIER ${metadata.tierNumeral} · ${record.title}`.toUpperCase(), 34, 32);
+
   c.textAlign = 'right';
   c.fillStyle = '#9dafbd';
+  c.font = '800 7.5px system-ui, sans-serif';
   c.fillText(metadata.markings.designation.toUpperCase(), out.width - 13, 17);
+  c.fillStyle = '#6fd6c5';
   c.font = '750 7px system-ui, sans-serif';
-  c.fillStyle = '#80929f';
-  c.fillText(note.toUpperCase(), out.width - 13, 32);
+  c.fillText(record.note, out.width - 13, 32);
   c.textAlign = 'left';
+
+  drawInspectionCallouts(c, stage.callouts);
+  drawTechnicalLegend(c, record.legend);
   return out;
 }
-
-function polygonPath(c, points) {
-  if (!points.length) return;
-  c.beginPath();
-  c.moveTo(points[0][0], points[0][1]);
-  for (let i = 1; i < points.length; i++) c.lineTo(points[i][0], points[i][1]);
-  c.closePath();
-}
-
-function polygonArea(points) {
-  let area = 0;
-  for (let i = 0; i < points.length; i++) {
-    const a = points[i], b = points[(i + 1) % points.length];
-    area += a[0] * b[1] - b[0] * a[1];
-  }
-  return Math.abs(area / 2);
-}
-
-function plateCenter(points) {
-  return points.reduce((acc, p) => [acc[0] + p[0] / points.length, acc[1] + p[1] / points.length], [0, 0]);
-}
-
-function convexHull2d(points) {
-  const unique = [...new Map(points.map((point) => [`${point[0]},${point[1]}`, point])).values()]
-    .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  if (unique.length <= 2) return unique;
-  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-  const lower = [];
-  for (const point of unique) {
-    while (lower.length >= 2 && cross(lower.at(-2), lower.at(-1), point) <= 0) lower.pop();
-    lower.push(point);
-  }
-  const upper = [];
-  for (let i = unique.length - 1; i >= 0; i--) {
-    const point = unique[i];
-    while (upper.length >= 2 && cross(upper.at(-2), upper.at(-1), point) <= 0) upper.pop();
-    upper.push(point);
-  }
-  lower.pop(); upper.pop();
-  return lower.concat(upper);
-}
-
-function projectedPlateKey(points) {
-  return points.map((point) => `${Math.round(point[0])},${Math.round(point[1])}`).sort().join('|');
-}
-
-function compactPlateName(name) {
-  return name
-    .replace(/_[LR](?=_|$)/g, '')
-    .replace(/_[AB]$/g, '')
-    .replace(/^hull_side_/i, '')
-    .replace(/^turret_side_/i, 'side_')
-    .replace(/^(hull|turret)_/i, '')
-    .replace(/_screen$/i, '')
-    .replace(/_/g, ' ')
-    .toUpperCase()
-    .slice(0, 13);
-}
-
-function armorColor(mm) {
-  if (mm < 50) return 'rgba(61,188,156,.50)';
-  if (mm < 120) return 'rgba(127,196,79,.50)';
-  if (mm < 250) return 'rgba(232,177,65,.54)';
-  if (mm < 450) return 'rgba(230,103,58,.56)';
-  return 'rgba(198,52,63,.60)';
-}
-
-function zoneColor(plate) {
-  const name = plate.name.toLowerCase();
-  if (plate.kind === 'external' || /track|screen/.test(name)) return 'rgba(67,157,211,.50)';
-  if (plate.turretLocal || /turret|mantlet|cheek/.test(name)) return 'rgba(170,104,222,.50)';
-  if (/front|glacis|nose/.test(name)) return 'rgba(224,83,68,.52)';
-  if (/rear|engine/.test(name)) return 'rgba(64,182,166,.48)';
-  if (/roof|deck/.test(name)) return 'rgba(150,162,174,.42)';
-  return 'rgba(224,163,55,.48)';
-}
-
-function penetrationReference(metadata) {
-  const shells = (metadata.gun && metadata.gun.shells || [])
-    .filter((shell) => Number.isFinite(shell.pen100Mm) && shell.pen100Mm > 0)
-    .sort((a, b) => b.pen100Mm - a.pen100Mm);
-  const shell = shells[0];
-  if (!shell) return 'effective mm · no penetration row';
-  const has2k = Number.isFinite(shell.pen2000Mm);
-  const has1k = Number.isFinite(shell.pen1000Mm);
-  const far = has2k ? shell.pen2000Mm : has1k ? shell.pen1000Mm : shell.pen100Mm;
-  const farRange = has2k ? '2km' : has1k ? '1km' : '100m';
-  return `${shell.type || shell.name} ${Math.round(shell.pen100Mm)}→${Math.round(far)} mm · 100m→${farRange}`;
-}
-
-function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
-
-function compactHitboxIds(ids) {
-  const unique = [...new Set(ids)].sort();
-  if (unique.length <= 2) return unique.join('/');
-  const parsed = unique.map((id) => /^([A-Z-]+)(\d+)$/.exec(id));
-  if (parsed.every(Boolean) && parsed.every((entry) => entry[1] === parsed[0][1])) {
-    return `${parsed[0][1]}${parsed[0][2]}–${parsed.at(-1)[2]}`;
-  }
-  return `${unique[0]}–${unique.at(-1)}`;
-}
-
-function coalescePlateLabels(items, armorMode) {
-  const groups = new Map();
-  for (const item of items) {
-    const key = `${item.name}|${item.value}|${item.color}`;
-    const previous = groups.get(key);
-    if (!previous) {
-      groups.set(key, { ...item, ids: [...item.ids], weight: item.area });
-      continue;
-    }
-    const weight = previous.weight + item.area;
-    previous.center = [
-      (previous.center[0] * previous.weight + item.center[0] * item.area) / weight,
-      (previous.center[1] * previous.weight + item.center[1] * item.area) / weight,
-    ];
-    previous.weight = weight;
-    previous.ids.push(...item.ids);
-    if (item.anchorLeft[0] < previous.anchorLeft[0]) previous.anchorLeft = item.anchorLeft;
-    if (item.anchorRight[0] > previous.anchorRight[0]) previous.anchorRight = item.anchorRight;
-  }
-  return [...groups.values()].map((item) => ({
-    center: item.center,
-    anchor: item.center[0] < BASE / 2 ? item.anchorLeft : item.anchorRight,
-    weight: item.weight,
-    color: item.color,
-    label: armorMode
-      ? `${compactHitboxIds(item.ids)} ${item.value}MM`
-      : `${compactHitboxIds(item.ids)} ${item.name}`,
-  }));
-}
-
-function distributeCalloutYs(items, minY = 55, maxY = 215) {
-  if (!items.length) return;
-  items.sort((a, b) => a.center[1] - b.center[1]);
-  const gap = items.length > 1 ? Math.min(14, (maxY - minY) / (items.length - 1)) : 0;
-  for (let i = 0; i < items.length; i++) {
-    const min = i ? items[i - 1].labelY + gap : minY;
-    items[i].labelY = clamp(items[i].center[1], min, maxY);
-  }
-  if (items.at(-1).labelY > maxY) items.at(-1).labelY = maxY;
-  for (let i = items.length - 2; i >= 0; i--) {
-    items[i].labelY = Math.min(items[i].labelY, items[i + 1].labelY - gap);
-  }
-}
-
-function drawCalloutLabels(c, items) {
-  c.save();
-  c.font = '800 7px ui-monospace, monospace';
-  c.lineWidth = 0.8;
-  for (const side of ['left', 'right']) {
-    let list = items.filter((item) => item.center[0] < 256 ? side === 'left' : side === 'right');
-    // Dense modern armor arrays can expose dozens of collision plates. The
-    // drawing carries all of them; callouts name only the largest six per
-    // side so the card remains a diagram instead of becoming a wiring map.
-    if (list.length > 6) list = [...list].sort((a, b) => b.weight - a.weight).slice(0, 6);
-    distributeCalloutYs(list);
-    for (const item of list) {
-      const left = side === 'left';
-      const textX = left ? 9 : 503;
-      const width = 82;
-      const boxX = left ? 5 : 425;
-      const edgeX = left ? boxX + width : boxX;
-      const elbowX = left ? 88 : 424;
-      const anchor = item.anchor || item.center;
-      c.strokeStyle = item.color || 'rgba(235,242,247,.72)';
-      c.beginPath(); c.moveTo(anchor[0], anchor[1]);
-      c.lineTo(elbowX, item.labelY); c.lineTo(edgeX, item.labelY); c.stroke();
-      c.beginPath(); c.arc(anchor[0], anchor[1], 1.6, 0, Math.PI * 2); c.fillStyle = c.strokeStyle; c.fill();
-      c.fillStyle = 'rgba(5,11,15,.94)';
-      c.fillRect(boxX, item.labelY - 6, width, 11);
-      c.strokeStyle = 'rgba(182,203,217,.14)'; c.strokeRect(boxX + .5, item.labelY - 5.5, width - 1, 10);
-      c.fillStyle = '#f6f8fa';
-      c.textAlign = left ? 'left' : 'right';
-      c.fillText(item.label, textX, item.labelY + 2.5);
-    }
-  }
-  c.restore();
-}
-
-function drawTechnicalLegend(c, entries) {
-  const left = 14, right = 498, swatchW = 12, gap = 5;
-  const cellW = (right - left) / entries.length;
-  c.save();
-  c.textAlign = 'left';
-  c.font = '700 8px system-ui, sans-serif';
-  entries.forEach(([label, color], index) => {
-    const labelW = c.measureText(label).width;
-    const contentW = swatchW + gap + labelW;
-    const x = left + index * cellW + (cellW - contentW) / 2;
-    c.fillStyle = color; c.fillRect(x, 238, swatchW, 6);
-    c.fillStyle = '#c8d2da'; c.fillText(label, x + swatchW + gap, 244);
-  });
-  c.restore();
-}
-
-function drawPlateDiagram(sideCanvas, metadata, projection, mode, trackShapes = []) {
-  const armorMode = mode === 'armor';
-  const out = technicalBase(
-    sideCanvas, metadata,
-    armorMode ? 'Armor / penetration reference' : 'Hit-area map',
-    armorMode ? penetrationReference(metadata) : 'actual collision plates',
-  );
-  const c = out.getContext('2d');
-  c.lineJoin = 'round';
-  c.lineWidth = 1.25;
-  c.font = '800 8px ui-monospace, monospace';
-  const projected = new Map();
-  for (const plate of metadata.armor.plates) {
-    // Live createTank builds replace these legacy rectangles with convex
-    // prisms derived from the actual linked-track course. Do not keep lying
-    // about them in the technical card once that richer shape is available.
-    if (trackShapes.length && /^track_[LR]$/.test(plate.name)) continue;
-    const points = plate.verts.map((point) => projection.point(point, plate.turretLocal, metadata.armor.turretPivot));
-    if (points.length < 3) continue;
-    const key = projectedPlateKey(points);
-    const previous = projected.get(key);
-    if (!previous) projected.set(key, { plate, points, plates: [plate] });
-    else {
-      previous.plates.push(plate);
-      if (plate.keMm > previous.plate.keMm) previous.plate = plate;
-    }
-  }
-  if (trackShapes.length) {
-    const legacyTrackIds = new Map(metadata.armor.plates
-      .filter((plate) => /^track_[LR]$/.test(plate.name))
-      .map((plate) => [plate.name, plate.hitboxId]));
-    for (const shape of trackShapes) {
-      if (!shape || !Array.isArray(shape.poly) || shape.poly.length < 3) continue;
-      const points = shape.poly.map(([z, y]) => projection.point([0, y, z], false));
-      const key = projectedPlateKey(points);
-      const name = shape.module === 'trackL' ? 'track_L' : 'track_R';
-      const plate = {
-        ...shape.plate,
-        name,
-        hitboxId: legacyTrackIds.get(name) || (shape.module === 'trackL' ? 'TRACK-L' : 'TRACK-R'),
-        turretLocal: false,
-      };
-      const previous = projected.get(key);
-      if (!previous) projected.set(key, { plate, points, plates: [plate] });
-      else previous.plates.push(plate);
-    }
-  }
-  const labels = [];
-  const outlines = new Map();
-  for (const { plate, points, plates } of projected.values()) {
-    polygonPath(c, points);
-    c.fillStyle = armorMode ? armorColor(plate.keMm) : zoneColor(plate);
-    c.fill();
-    // Mirrored sides and planar triangle pairs are separate live hit
-    // surfaces but one readable zone in side projection. Stroke their outer
-    // hull once so the diagram does not invent a giant X through the turret.
-    const outlineKey = plate.name.replace(/_[LR](?=_|$)/g, '').replace(/_[AB]$/g, '');
-    const outline = outlines.get(outlineKey) || [];
-    outline.push(...points);
-    outlines.set(outlineKey, outline);
-    const area = polygonArea(points);
-    // Roofs, front plates and rears collapse to lines in a pure side view.
-    // Keep their boundary strokes, but do not route unreadable callouts to a
-    // zero-area projection; top/front cards own those surfaces.
-    if (area >= 8) labels.push({
-      center: plateCenter(points),
-      anchorLeft: points.reduce((best, point) => point[0] < best[0] ? point : best, points[0]),
-      anchorRight: points.reduce((best, point) => point[0] > best[0] ? point : best, points[0]),
-      ids: plates.map((entry) => entry.hitboxId),
-      name: compactPlateName(plate.name),
-      value: Math.round(plate.keMm),
-      area,
-      color: armorMode ? armorColor(plate.keMm) : zoneColor(plate),
-    });
-  }
-  c.strokeStyle = 'rgba(235,242,247,.72)';
-  for (const points of outlines.values()) {
-    const hull = convexHull2d(points);
-    if (hull.length < 2) continue;
-    polygonPath(c, hull);
-    c.stroke();
-  }
-  drawCalloutLabels(c, coalescePlateLabels(labels, armorMode));
-  c.textAlign = 'left';
-  c.font = '700 8px system-ui, sans-serif';
-  if (armorMode) {
-    const legend = [['<50', '#3dbc9c'], ['50–119', '#7fc44f'], ['120–249', '#e8b141'], ['250–449', '#e6673a'], ['450+', '#c6343f']];
-    drawTechnicalLegend(c, legend);
-  } else {
-    const legend = [['HULL', '#e0a337'], ['FRONT', '#e05344'], ['TURRET', '#aa68de'], ['EXTERNAL', '#439dd3']];
-    drawTechnicalLegend(c, legend);
-  }
-  return out;
-}
-
-const MODULE_COLOR = {
-  engine: '#e9753b', fuelTank: '#d5a23e', ammoRack: '#d94c54', turretRing: '#9f70db',
-  radio: '#54a8d8', optics: '#69c8b3', gun: '#d9dce0', trackL: '#84929e', trackR: '#84929e',
-  transmission: '#ef8c48', autoloader: '#e45b77', feedSystem: '#d06bd9', missileRack: '#c73f67',
-  gunMount: '#8f78c8',
-};
-const CREW_COLOR = '#e9c47c';
-const CREW_FIGURE_HEIGHT_PX = 30;
-const CREW_FIGURE_WIDTH_PX = 20;
-
-function moduleLabel(name) {
-  const fixed = {
-    ammoRack: 'AMMO', fuelTank: 'FUEL', turretRing: 'TURRET',
-    trackL: 'TRACK', trackR: 'TRACK', commander: 'COMMANDER',
-  };
-  return fixed[name] || MODULE_LABEL[name]?.toUpperCase()
-    || name.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').toUpperCase();
-}
-
-function drawBox(c, box, projection, turretPivot, color) {
-  if (!box.min || !box.max) return null;
-  const shapes = Array.isArray(box.parts) && box.parts.length ? box.parts : [box];
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  let labelRect = null;
-  for (const shape of shapes) {
-    const a = projection.point(shape.min, box.turretLocal, turretPivot);
-    const b = projection.point(shape.max, box.turretLocal, turretPivot);
-    const x = Math.min(a[0], b[0]), y = Math.min(a[1], b[1]);
-    const w = Math.max(3, Math.abs(b[0] - a[0])), h = Math.max(3, Math.abs(b[1] - a[1]));
-    c.fillStyle = `${color}99`;
-    c.fillRect(x, y, w, h);
-    c.strokeStyle = color;
-    c.lineWidth = 1.2;
-    c.strokeRect(x, y, w, h);
-    x0 = Math.min(x0, x); y0 = Math.min(y0, y);
-    x1 = Math.max(x1, x + w); y1 = Math.max(y1, y + h);
-    if (!labelRect || w * h > labelRect.w * labelRect.h) labelRect = { x, y, w, h };
-  }
-  const inlineLabel = !!labelRect && labelRect.w > 24 && labelRect.h > 11;
-  if (inlineLabel) {
-    c.fillStyle = '#fff';
-    c.textAlign = 'center';
-    c.fillText(box.volumeId,
-      labelRect.x + labelRect.w / 2, labelRect.y + labelRect.h / 2 + 3);
-  }
-  return {
-    center: [(x0 + x1) / 2, (y0 + y1) / 2],
-    anchor: (x0 + x1) / 2 < BASE / 2 ? [x0, (y0 + y1) / 2] : [x1, (y0 + y1) / 2],
-    weight: (x1 - x0) * (y1 - y0),
-    label: `${box.volumeId} ${moduleLabel(box.name)}`,
-    color,
-    inlineLabel,
-  };
-}
-
-function crewScreenRect(box, projection, turretPivot) {
-  const a = projection.point(box.min, box.turretLocal, turretPivot);
-  const b = projection.point(box.max, box.turretLocal, turretPivot);
-  const x = Math.min(a[0], b[0]), y = Math.min(a[1], b[1]);
-  const w = Math.max(5, Math.abs(b[0] - a[0])), h = Math.max(8, Math.abs(b[1] - a[1]));
-  return { x, y, w, h, centerX: x + w / 2, floorY: y + h - 1 };
-}
-
-function crewPlacements(boxes, projection, turretPivot) {
-  const placements = boxes.map((box) => crewScreenRect(box, projection, turretPivot));
-  const claimed = new Set();
-  for (let start = 0; start < placements.length; start++) {
-    if (claimed.has(start)) continue;
-    const group = [start];
-    claimed.add(start);
-    for (let cursor = 0; cursor < group.length; cursor++) {
-      const base = placements[group[cursor]];
-      for (let candidate = 0; candidate < placements.length; candidate++) {
-        if (claimed.has(candidate)) continue;
-        const other = placements[candidate];
-        if (Math.abs(base.centerX - other.centerX) < CREW_FIGURE_WIDTH_PX * 0.9
-            && Math.abs(base.floorY - other.floorY) < 8) {
-          claimed.add(candidate);
-          group.push(candidate);
-        }
-      }
-    }
-    if (group.length < 2) continue;
-    group.sort((a, b) => placements[a].centerX - placements[b].centerX
-      || boxes[a].name.localeCompare(boxes[b].name));
-    const centerX = group.reduce((sum, index) => sum + placements[index].centerX, 0) / group.length;
-    const floorY = group.reduce((sum, index) => sum + placements[index].floorY, 0) / group.length;
-    const spacing = CREW_FIGURE_WIDTH_PX * 0.9;
-    group.forEach((index, rank) => {
-      placements[index].figureCenterX = centerX + (rank - (group.length - 1) / 2) * spacing;
-      placements[index].figureFloorY = floorY;
-    });
-  }
-  return placements;
-}
-
-function drawCrew(c, box, projection, turretPivot, placement = null) {
-  if (!box.min || !box.max) return null;
-  const rect = placement || crewScreenRect(box, projection, turretPivot);
-  const { x, y, w, h } = rect;
-  const color = CREW_COLOR;
-  c.save();
-  c.fillStyle = `${color}0d`; c.fillRect(x, y, w, h);
-
-  // Crew volumes legitimately vary by vehicle, but the human pictogram must
-  // not. Every role uses this exact 20 × 30 px seated profile, centered on the
-  // station and planted on its lower datum. The volume remains visible behind
-  // it as the gameplay truth; the person is a consistent presentation layer.
-  const figureH = CREW_FIGURE_HEIGHT_PX;
-  const figureW = CREW_FIGURE_WIDTH_PX;
-  const ox = (rect.figureCenterX ?? rect.centerX) - figureW / 2;
-  const oy = (rect.figureFloorY ?? rect.floorY) - figureH;
-  const px = (u) => ox + u * figureW;
-  const py = (v) => oy + v * figureH;
-  const limbW = 2.35;
-
-  // Quiet seat datum: one back, one cushion, one support.
-  c.strokeStyle = `${color}50`; c.lineWidth = 1;
-  c.lineCap = 'round'; c.lineJoin = 'round';
-  c.beginPath();
-  c.moveTo(px(0.16), py(0.34)); c.lineTo(px(0.16), py(0.66));
-  c.lineTo(px(0.52), py(0.66));
-  c.moveTo(px(0.20), py(0.66)); c.lineTo(px(0.18), py(0.94));
-  c.stroke();
-
-  // Compact upright torso—no lean, no secondary limbs, no role-specific pose.
-  c.fillStyle = color;
-  c.beginPath();
-  c.moveTo(px(0.27), py(0.29));
-  c.quadraticCurveTo(px(0.39), py(0.25), px(0.48), py(0.31));
-  c.lineTo(px(0.49), py(0.55));
-  c.quadraticCurveTo(px(0.42), py(0.60), px(0.32), py(0.57));
-  c.lineTo(px(0.26), py(0.43));
-  c.closePath(); c.fill();
-
-  c.beginPath(); c.arc(px(0.37), py(0.14), 3.1, 0, Math.PI * 2); c.fill();
-  c.strokeStyle = color; c.lineWidth = limbW;
-  c.beginPath();
-  c.moveTo(px(0.37), py(0.24)); c.lineTo(px(0.37), py(0.29));
-  c.moveTo(px(0.43), py(0.35)); c.lineTo(px(0.61), py(0.47));
-  c.lineTo(px(0.74), py(0.47));
-  c.moveTo(px(0.42), py(0.58)); c.lineTo(px(0.71), py(0.62));
-  c.lineTo(px(0.71), py(0.87)); c.lineTo(px(0.89), py(0.87));
-  c.stroke();
-  c.restore();
-  c.strokeStyle = `${color}52`; c.lineWidth = 0.8;
-  c.strokeRect(x, y, w, h);
-  return {
-    center: [x + w / 2, y + h / 2],
-    anchor: x + w / 2 < BASE / 2 ? [x, y + h / 2] : [x + w, y + h / 2],
-    weight: w * h,
-    label: `${box.volumeId} ${moduleLabel(box.name)}`,
-    color,
-  };
-}
-
-function drawModuleDiagram(sideCanvas, metadata, projection) {
-  const out = technicalBase(sideCanvas, metadata, 'Systems and crew layout', 'gameplay volumes • seated crew');
-  const c = out.getContext('2d');
-  c.font = '800 6.5px ui-monospace, monospace';
-  const labels = [];
-  for (const box of metadata.armor.modules) {
-    const label = drawBox(c, box, projection, metadata.armor.turretPivot, MODULE_COLOR[box.name] || '#8aa1b2');
-    // A legible in-volume ID plus the color key is enough for large systems;
-    // reserve external callouts for boxes too small to identify themselves.
-    if (label && !label.inlineLabel) labels.push(label);
-  }
-  const placements = crewPlacements(metadata.armor.crew, projection, metadata.armor.turretPivot);
-  metadata.armor.crew.forEach((box, index) => {
-    const label = drawCrew(c, box, projection, metadata.armor.turretPivot, placements[index]);
-    if (label) labels.push(label);
-  });
-  drawCalloutLabels(c, labels);
-  c.textAlign = 'left';
-  c.font = '700 8px system-ui, sans-serif';
-  const legend = [['AMMO', MODULE_COLOR.ammoRack], ['POWER', MODULE_COLOR.engine], ['FEED', MODULE_COLOR.feedSystem], ['GUN', MODULE_COLOR.gun], ['CREW', CREW_COLOR]];
-  drawTechnicalLegend(c, legend);
-  return out;
-}
-
 function drawMarkingsDiagram(metadata) {
   const out = document.createElement('canvas');
   out.width = 256; out.height = 128;
@@ -952,7 +661,8 @@ function inspectOne(id, renderFiles, requestedViews = null) {
     // the ballistic-card projection receipt.
     const projection = assetProjection(box, visual.presentationAnchor);
     const { center, size, extentX, extentZ } = projection;
-    const metadata = tankAssetMetadata(getSpec(id));
+    const spec = getSpec(id);
+    const metadata = tankAssetMetadata(spec);
     const geometryHash = geometryFingerprint(root);
     const presentationAnchor = {
       xM: Number(visual.presentationAnchor.xM.toFixed(4)),
@@ -986,17 +696,29 @@ function inspectOne(id, renderFiles, requestedViews = null) {
       if (wants('topSilhouette')) files[tankAssetFile(id, 'topSilhouette')] = silhouette(topCanvas, 128, 128).toDataURL('image/png');
     }
 
-    if (wants('side') || wants('sideSilhouette') || wants('hitZonesSide')
-        || wants('armorSide') || wants('modulesSide')) {
-      const projection = sideProjection(center, size, extentZ);
-      const sideCam = orthoCam(center, size, [-1, 0, 0], [0, 1, 0], projection.halfW, projection.halfH);
+    if (wants('side') || wants('sideSilhouette')) {
+      const sideCam = sideInspectionCamera(center, size, extentZ);
       const sideCanvas = capture(sideCam, BASE, BASE / 2);
       if (wants('side')) files[tankAssetFile(id, 'side')] = sideCanvas.toDataURL('image/webp', 0.9);
       if (wants('sideSilhouette')) files[tankAssetFile(id, 'sideSilhouette')] = silhouette(sideCanvas, 256, 128).toDataURL('image/png');
-      const trackShapes = getSpec(id).armor.trackShapes || [];
-      if (wants('hitZonesSide')) files[tankAssetFile(id, 'hitZonesSide')] = drawPlateDiagram(sideCanvas, metadata, projection, 'zones', trackShapes).toDataURL('image/png');
-      if (wants('armorSide')) files[tankAssetFile(id, 'armorSide')] = drawPlateDiagram(sideCanvas, metadata, projection, 'armor', trackShapes).toDataURL('image/png');
-      if (wants('modulesSide')) files[tankAssetFile(id, 'modulesSide')] = drawModuleDiagram(sideCanvas, metadata, projection).toDataURL('image/png');
+    }
+    if (wants('armorSide') || wants('modulesSide') || wants('crewSide')) {
+      const sideCam = sideInspectionCamera(center, size, extentZ);
+      if (wants('armorSide')) {
+        const stage = renderInspectionStage(spec, visual, sideCam, 'armor');
+        files[tankAssetFile(id, 'armorSide')] = technicalDiagram(stage, metadata, 'armor')
+          .toDataURL('image/png');
+      }
+      if (wants('modulesSide')) {
+        const stage = renderInspectionStage(spec, visual, sideCam, 'modules');
+        files[tankAssetFile(id, 'modulesSide')] = technicalDiagram(stage, metadata, 'modules')
+          .toDataURL('image/png');
+      }
+      if (wants('crewSide')) {
+        const stage = renderInspectionStage(spec, visual, sideCam, 'crew');
+        files[tankAssetFile(id, 'crewSide')] = technicalDiagram(stage, metadata, 'crew')
+          .toDataURL('image/png');
+      }
     }
     if (wants('markings')) files[tankAssetFile(id, 'markings')] = drawMarkingsDiagram(metadata).toDataURL('image/png');
 

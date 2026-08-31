@@ -85,9 +85,9 @@ export interface GeometryRootLike {
   traverse(visitor: (object: GeometryObjectLike) => void): void;
 }
 
-// v4 retires the public vehicle-class field and expands era metadata to the
-// canonical five-era taxonomy. Image formats and dimensions are unchanged.
-export const TANK_ASSET_SCHEMA_VERSION = 4;
+// v5 removes the redundant hit-zone rendering (the armor diagram already uses
+// the exact collision plates) and gives crew a dedicated technical view.
+export const TANK_ASSET_SCHEMA_VERSION = 5;
 
 export const TANK_ASSET_VIEWS = Object.freeze({
   angle: Object.freeze({ suffix: 'angle', ext: 'webp', width: 512, height: 512, role: 'garage hero' }),
@@ -95,9 +95,9 @@ export const TANK_ASSET_VIEWS = Object.freeze({
   side: Object.freeze({ suffix: 'side', ext: 'webp', width: 512, height: 256, role: 'side view' }),
   topSilhouette: Object.freeze({ suffix: 'top_silhouette', ext: 'png', width: 128, height: 128, role: 'top silhouette' }),
   sideSilhouette: Object.freeze({ suffix: 'side_silhouette', ext: 'png', width: 256, height: 128, role: 'side silhouette' }),
-  hitZonesSide: Object.freeze({ suffix: 'hit_zones_side', ext: 'png', width: 512, height: 256, role: 'hit-area diagram' }),
   armorSide: Object.freeze({ suffix: 'armor_side', ext: 'png', width: 512, height: 256, role: 'penetration/armor diagram' }),
   modulesSide: Object.freeze({ suffix: 'modules_side', ext: 'png', width: 512, height: 256, role: 'module diagram' }),
+  crewSide: Object.freeze({ suffix: 'crew_side', ext: 'png', width: 512, height: 256, role: 'crew diagram' }),
   markings: Object.freeze({ suffix: 'markings', ext: 'png', width: 256, height: 128, role: 'national insignia and tactical designation' }),
 });
 

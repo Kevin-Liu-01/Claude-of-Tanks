@@ -38,10 +38,10 @@ assert.equal(garageGalleryHref('m1a1'), '/gallery?id=m1a1');
 assert.equal(garageGalleryHref('m1a1', 'modules'), '/gallery?id=m1a1&layer=modules');
 
 const technicalViews = garageTechnicalViews();
-assert.deepEqual(technicalViews.map((view) => view.id), ['armor', 'zones', 'systems']);
+assert.deepEqual(technicalViews.map((view) => view.id), ['armor', 'modules', 'crew']);
 assert.deepEqual(technicalViews.map((view) => view.assetView),
-  ['armor_side', 'hit_zones_side', 'modules_side']);
-assert.deepEqual(technicalViews.map((view) => view.galleryLayer), ['armor', 'armor', 'modules']);
+  ['armor_side', 'modules_side', 'crew_side']);
+assert.deepEqual(technicalViews.map((view) => view.galleryLayer), ['armor', 'modules', 'crew']);
 assert(Object.isFrozen(technicalViews), 'garage schematic catalog is immutable');
 
 const silhouettes = shellIconTypes().map((type) => shellIconSVG(type));

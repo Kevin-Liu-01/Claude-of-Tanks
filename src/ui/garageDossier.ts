@@ -58,14 +58,14 @@ export interface GarageSpecialSystem {
   readonly meta: string;
 }
 
-export type GarageTechnicalViewId = 'armor' | 'zones' | 'systems';
+export type GarageTechnicalViewId = 'armor' | 'modules' | 'crew';
 
 export interface GarageTechnicalView {
   readonly id: GarageTechnicalViewId;
   readonly label: string;
   readonly caption: string;
-  readonly assetView: 'armor_side' | 'hit_zones_side' | 'modules_side';
-  readonly galleryLayer: 'armor' | 'modules';
+  readonly assetView: 'armor_side' | 'modules_side' | 'crew_side';
+  readonly galleryLayer: 'armor' | 'modules' | 'crew';
 }
 
 const GARAGE_TECHNICAL_VIEWS: readonly GarageTechnicalView[] = Object.freeze([
@@ -74,12 +74,12 @@ const GARAGE_TECHNICAL_VIEWS: readonly GarageTechnicalView[] = Object.freeze([
     assetView: 'armor_side', galleryLayer: 'armor',
   }),
   Object.freeze({
-    id: 'zones', label: 'Hit zones', caption: 'Authoritative collision-plate layout',
-    assetView: 'hit_zones_side', galleryLayer: 'armor',
+    id: 'modules', label: 'Modules', caption: 'Damageable internal module layout',
+    assetView: 'modules_side', galleryLayer: 'modules',
   }),
   Object.freeze({
-    id: 'systems', label: 'Systems', caption: 'Damageable modules and crew stations',
-    assetView: 'modules_side', galleryLayer: 'modules',
+    id: 'crew', label: 'Crew', caption: 'Canonical crew-station layout',
+    assetView: 'crew_side', galleryLayer: 'crew',
   }),
 ]);
 

@@ -20,7 +20,27 @@ import {
 import { isKillcamGhostSurface } from '../game/killcamGhostPolicy.ts';
 import { FIRST_PARTY_LICENSE } from '../authorship.ts';
 
-assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9, 'release contract includes nine views/diagrams');
+const technicalGenerator = readFileSync(
+  new URL('../../tools/icons-page.html', import.meta.url),
+  'utf8',
+);
+assert.match(technicalGenerator, /const overlayMode = kind === 'modules' \|\| kind === 'crew' \? kind : 'armor'/,
+  'each technical card selects its matching live Studio/Gallery diagnostic layer');
+assert.match(technicalGenerator, /createInspectionOverlay\(spec, visual, overlayMode\)/,
+  'technical cards render through the shared Studio/Gallery overlay implementation');
+assert.match(technicalGenerator, /tankAssetFile\(id, 'modulesSide'\).*'modules'/s,
+  'module cards render only recognizable canonical module models');
+assert.match(technicalGenerator, /tankAssetFile\(id, 'crewSide'\).*'crew'/s,
+  'crew cards render only canonical seated crew models');
+assert.match(technicalGenerator,
+  /orthoCam\(center, size, \[-1, 0, 0\], \[0, 1, 0\], halfHeight \* 2, halfHeight\)/,
+  'technical diagrams preserve the established exact side projection');
+assert.doesNotMatch(technicalGenerator,
+  /drawPlateDiagram|drawModuleDiagram|sideProjection|plate\.verts\.map|hitZonesSide|hit_zones_side|kind === 'zones'/,
+  'retired metadata reconstruction and redundant hit-zone rendering are absent');
+
+assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9,
+  'release contract includes five views plus separate armor, module, crew, and markings diagrams');
 assert.equal(Object.keys(TANK_PRESENTATION_ANCHORS).length, DEVELOPMENT_TANK_IDS.length,
   'rendered-pixel presentation receipt count matches the development fleet');
 assert.equal(Object.keys(TANK_PRESENTATION_PROJECTIONS).length, DEVELOPMENT_TANK_IDS.length,

@@ -654,10 +654,10 @@ combined work regardless of the remix's own label. The t84 is therefore
 treated as CC BY-NC-SA (local-only NC quarantine), exactly like its
 bergman-derived siblings above.
 
-- `public/icons/*.{png,webp}` — 8 generated assets per roster tank (three
-  shaded views, two silhouettes, and hit-zone/armor/module diagrams) rendered
+- `public/icons/*.{png,webp}` — 9 generated assets per roster tank (three
+  shaded views, two silhouettes, armor/module/crew diagrams, and markings) rendered
   from the shipped models and their gameplay armor volumes by
-  `npm run tank:assets` (tools/icons-page.html studio scene). The eight
+  `npm run tank:assets` (tools/icons-page.html studio scene). The nine
   `m1a2_*` assets are
   DERIVATIVE RENDERS of the CC-BY-4.0 "Abrams M1A2 SEPv3" by dannzjs, and the
   community-vehicle icons (`strv103_*`, `is3_*`, `t34_85_cad_*`,
