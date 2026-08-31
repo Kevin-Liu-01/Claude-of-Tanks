@@ -180,6 +180,21 @@ try {
   await sleep(120);
   const cancelHot = await page.$eval('.cot-touch', (el) => el.classList.contains('fire-cancel-hot'));
   if (!cancelHot) fail('cancel target did not highlight');
+  const cancelOverlap = await page.evaluate(() => {
+    const cancel = document.querySelector('.cot-touch .fire-cancel')?.getBoundingClientRect();
+    if (!cancel) return ['missing cancel target'];
+    const visible = (node) => {
+      const style = getComputedStyle(node);
+      return style.display !== 'none' && style.visibility !== 'hidden' && node.getClientRects().length > 0;
+    };
+    const intersects = (a, b) => Math.min(a.right, b.right) > Math.max(a.left, b.left)
+      && Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top);
+    return [...document.querySelectorAll(
+      '.cot-con,.cot-shell,.cot-special,.cot-touch .scope,.cot-touch .autoaim,.cot-touch .mobile-chrome button',
+    )].filter(visible).filter((node) => intersects(cancel, node.getBoundingClientRect()))
+      .map((node) => node.className || node.getAttribute('aria-label') || node.tagName);
+  });
+  if (cancelOverlap.length) fail(`cancel target overlaps live controls: ${cancelOverlap.join(', ')}`);
   if (SCREENSHOT) await page.screenshot({ path: SCREENSHOT });
   await touch('touchEnd', []);
   await sleep(350);

@@ -311,6 +311,15 @@ assert.match(responsiveSurfaces,
   /body\[data-cot-width='phone'\] #cot-perfhud \[data-grid\]\{grid-template-columns:1fr!important\}/,
   'the opt-in performance dashboard must remain readable on narrow devices');
 assert.match(responsiveSurfaces,
+  /body\[data-cot-width='phone'\] #cot-perfhud\{[\s\S]*top:auto!important;bottom:max\(8px,[\s\S]*z-index:70!important[\s\S]*#cot-perfhud:not\(\.mobile-expanded\) \[data-grid\][\s\S]*display:none!important/,
+  'phone diagnostics must start collapsed at the bottom instead of covering navigation');
+assert.match(perfHud,
+  /ph-mobile-toggle[\s\S]*aria-expanded="false"[\s\S]*classList\.toggle\('mobile-expanded'\)/,
+  'the compact diagnostics header must expose an accessible expand/collapse control');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width='phone'\] \.cot-set-tab\{[\s\S]*flex:1 1 0;min-width:0;[\s\S]*font-size:9px/,
+  'all four Settings tabs must fit at once on phone widths');
+assert.match(responsiveSurfaces,
   /body\[data-cot-width='phone'\] #cot-diag\{[\s\S]*max-height:62dvh!important;overflow:auto!important/,
   'the compatibility diagnostics panel must stay bounded and scrollable on phones');
 assert.match(responsiveSurfaces,

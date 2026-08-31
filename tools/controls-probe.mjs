@@ -414,6 +414,163 @@ async function runMode(mode, { stubNoLock, width, height }) {
   await page.keyboard.up('KeyS');
   check(mode, 'S brakes/reverses', speedS < speedW - 0.2, `speed ${speedW.toFixed(2)} -> ${speedS.toFixed(2)}`);
 
+  // --- every remaining rebindable desktop action reaches the live layer ---
+  // The behavior-heavy paths above cover aiming, fire and movement. This
+  // matrix catches the quieter controls that regress easily because their UI
+  // only appears on demand: ammunition, consumables, free-look, minimap size,
+  // shot log, diagnostics and Settings. Use real CDP keyboard/mouse/wheel
+  // events; the action observer is diagnostic only and does not invoke them.
+  if (!stubNoLock) {
+    await page.evaluate(() => {
+      window.__PROBE.actions = {};
+      for (const { id } of window.__DEBUG.input.actionDefs) {
+        window.__DEBUG.input.onAction(id, () => {
+          window.__PROBE.actions[id] = (window.__PROBE.actions[id] || 0) + 1;
+        });
+      }
+    });
+    const keyboardRoutes = [
+      ['forward', 'KeyW'], ['back', 'KeyS'], ['left', 'KeyA'], ['right', 'KeyD'],
+      ['handbrake', 'Space'], ['sniperToggle', 'ShiftLeft'],
+      ['shell1', 'Digit1'], ['shell2', 'Digit2'], ['shell3', 'Digit3'],
+      ['specialAction', 'KeyE'], ['reloadMagazine', 'KeyC'],
+      ['consumable1', 'Digit4'], ['consumable2', 'Digit5'], ['consumable3', 'Digit6'],
+      ['freeLook', 'CapsLock'],
+    ];
+    for (const [, key] of keyboardRoutes) {
+      await page.keyboard.down(key); await sleep(45); await page.keyboard.up(key); await sleep(35);
+    }
+    // Secondary arrow/Alt bindings must travel through the same action IDs.
+    for (const key of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'AltLeft']) {
+      await page.keyboard.down(key); await sleep(35); await page.keyboard.up(key); await sleep(25);
+    }
+    // Physical mouse/wheel lanes complete the rebindable action table.
+    await page.mouse.down(); await sleep(35); await page.mouse.up();
+    await page.mouse.down({ button: 'right' }); await sleep(35); await page.mouse.up({ button: 'right' });
+    await page.mouse.wheel({ deltaY: -120 }); await sleep(80);
+    await page.mouse.wheel({ deltaY: 120 }); await sleep(80);
+
+    const minimapBefore = await page.$eval('.cot-minimap', (node) => node.getBoundingClientRect().width);
+    await page.keyboard.press('KeyM'); await sleep(120);
+    const minimapAfter = await page.$eval('.cot-minimap', (node) => node.getBoundingClientRect().width);
+    check(mode, 'M cycles the visible minimap size', Math.abs(minimapAfter - minimapBefore) > 20,
+      `${minimapBefore.toFixed(0)}px -> ${minimapAfter.toFixed(0)}px`);
+    // Return the three-step minimap cycle to its starting size.
+    await page.keyboard.press('KeyM'); await page.keyboard.press('KeyM');
+
+    await page.keyboard.press('KeyL'); await sleep(100);
+    const logOpen = await page.$eval('.cot-si-log', (node) => node.classList.contains('open'));
+    check(mode, 'L opens the shot information log', logOpen);
+    await page.keyboard.press('KeyL');
+
+    const debugBefore = await page.$eval('#cot-perfhud', (node) => getComputedStyle(node).display !== 'none');
+    await page.keyboard.press('F8'); await sleep(100);
+    const debugAfter = await page.$eval('#cot-perfhud', (node) => getComputedStyle(node).display !== 'none');
+    check(mode, 'F8 toggles the diagnostics dashboard', debugAfter !== debugBefore,
+      `${debugBefore} -> ${debugAfter}`);
+    await page.keyboard.press('F8');
+
+    await page.keyboard.press('Escape'); await sleep(120);
+    const settingsOpen = await page.evaluate(() => window.__DEBUG.settings.isOpen());
+    check(mode, 'Esc opens Settings from battle', settingsOpen);
+    await page.evaluate(() => window.__DEBUG.settings.close({ noRelock: true }));
+
+    const actionCoverage = await page.evaluate(() => ({
+      counts: { ...window.__PROBE.actions },
+      missing: window.__DEBUG.input.actionDefs.map(({ id }) => id)
+        .filter((id) => !(window.__PROBE.actions[id] > 0)),
+      held: window.__DEBUG.input.actionDefs.map(({ id }) => id)
+        .filter((id) => window.__DEBUG.input.isDown(id)),
+    }));
+    check(mode, 'all 23 desktop actions receive real input events', actionCoverage.missing.length === 0,
+      actionCoverage.missing.length ? `missing ${actionCoverage.missing.join(', ')}` : '23/23');
+    check(mode, 'desktop action matrix leaves no stuck controls', actionCoverage.held.length === 0,
+      actionCoverage.held.length ? `held ${actionCoverage.held.join(', ')}` : 'clean');
+
+    // --- standard-mapping gamepad: fixed sticks + every shipped button ----
+    // Chromium has no CDP gamepad injection API. Install a standards-shaped
+    // navigator.getGamepads result, dispatch the real connection event, and
+    // let the production rAF poller consume it exactly as it would hardware.
+    const padInstalled = await page.evaluate(() => {
+      const buttons = Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 }));
+      const pad = {
+        id: 'QA standard gamepad', index: 0, connected: true, mapping: 'standard',
+        timestamp: performance.now(), axes: [0, 0, 0, 0], buttons,
+        vibrationActuator: null,
+      };
+      try {
+        Object.defineProperty(navigator, 'getGamepads', {
+          configurable: true, value: () => [pad],
+        });
+      } catch (_) { return false; }
+      window.__QA_PAD = pad;
+      window.__PROBE.actions = {};
+      window.dispatchEvent(new Event('gamepadconnected'));
+      return true;
+    });
+    check(mode, 'standard gamepad can connect to the live input poller', padInstalled);
+    if (padInstalled) {
+      // Let the first neutral poll establish the connected pad before the
+      // first edge. Real hardware emits gamepadconnected while its buttons
+      // are neutral; without this beat the synthetic A edge can race the
+      // listener installation and make the first route appear absent.
+      await sleep(120);
+      const padSetButton = async (index, pressed) => {
+        await page.evaluate((i, down) => {
+          const b = window.__QA_PAD.buttons[i];
+          b.pressed = down; b.touched = down; b.value = down ? 1 : 0;
+          window.__QA_PAD.timestamp = performance.now();
+        }, index, pressed);
+        await sleep(85);
+      };
+      const padRoutes = [
+        ['handbrake', 0], ['consumable3', 1], ['consumable1', 2], ['consumable2', 3],
+        ['specialAction', 4], ['freeLook', 5], ['sniperToggle', 6], ['fire', 7],
+        ['minimapZoom', 8], ['shell1', 12], ['reloadMagazine', 13],
+        ['shell2', 14], ['shell3', 15],
+      ];
+      for (const [, index] of padRoutes) {
+        await padSetButton(index, true); await padSetButton(index, false);
+      }
+      await page.evaluate(() => { window.__QA_PAD.axes[0] = 0.85; window.__QA_PAD.axes[1] = -0.9; });
+      await sleep(180);
+      const padMove = await page.evaluate(() => {
+        const out = { x: 0, y: 0 }; window.__DEBUG.input.getPadMove(out); return out;
+      });
+      check(mode, 'left gamepad stick drives both movement axes', padMove.x > 0.3 && padMove.y < -0.3,
+        `x=${padMove.x.toFixed(2)} y=${padMove.y.toFixed(2)}`);
+      await page.evaluate(() => { window.__QA_PAD.axes[0] = 0; window.__QA_PAD.axes[1] = 0; });
+
+      const padYaw0 = await page.evaluate(() => window.__DEBUG.game.player.state.turretYaw);
+      await page.evaluate(() => { window.__QA_PAD.axes[2] = 0.9; });
+      await sleep(650);
+      await page.evaluate(() => { window.__QA_PAD.axes[2] = 0; });
+      const padYaw1 = await page.evaluate(() => window.__DEBUG.game.player.state.turretYaw);
+      check(mode, 'right gamepad stick moves the live gun aim', Math.abs(wrapAngle(padYaw1 - padYaw0)) > 0.02,
+        `dYaw=${wrapAngle(padYaw1 - padYaw0).toFixed(3)}`);
+
+      await padSetButton(9, true); await padSetButton(9, false);
+      const padResult = await page.evaluate((expected) => ({
+        active: window.__DEBUG.input.padActive(),
+        settings: window.__DEBUG.settings.isOpen(),
+        missing: expected.filter(([id]) => !(window.__PROBE.actions[id] > 0)).map(([id]) => id),
+      }), [...padRoutes, ['settingsMenu', 9]]);
+      check(mode, 'all configured gamepad buttons reach their actions', padResult.missing.length === 0,
+        padResult.missing.length ? `missing ${padResult.missing.join(', ')}` : `${padRoutes.length + 1}/${padRoutes.length + 1}`);
+      check(mode, 'START opens Settings and marks the pad active', padResult.settings && padResult.active,
+        `settings=${padResult.settings} active=${padResult.active}`);
+      // Resume through the real footer button. That click is the user gesture
+      // which production uses to regain pointer lock; a programmatic
+      // noRelock close leaves keyboard Fire intentionally gated off.
+      const resume = await page.$eval('.cot-settings .resume', (node) => {
+        const r = node.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+      await page.mouse.click(resume.x, resume.y);
+      await sleep(350);
+    }
+  }
+
   // --- rebind persistence (gunnery r1; lock mode only to keep runtime sane) --
   // Rebind fire onto KeyF through the input API (the settings chips call the
   // same setBinding), assert the new key actually fires a shell, then reload
@@ -427,6 +584,35 @@ async function runMode(mode, { stubNoLock, width, height }) {
       'window.__DEBUG.game.player?.combat?.reload?.t <= 0',
       { timeout: 20000 },
     );
+    // The exhaustive action matrix deliberately visits every ammunition
+    // slot. Re-anchor this independent rebind assertion on a loaded ready
+    // cannon channel so it cannot inherit an empty/independently reloading
+    // slot from the preceding coverage pass.
+    await page.evaluate(() => {
+      const p = window.__DEBUG.game.player;
+      p.input.shellSlot = 0;
+      p.combat.shellSlot = 0;
+      // The gamepad matrix fires once, visits the independent launcher, and
+      // can leave a cannon magazine loading in the background. Restore a
+      // fully ready cannon fixture so this assertion measures the rebound F
+      // route, not whichever weapon-channel cooldown the matrix exercised.
+      for (const channel of p.combat.reloadChannels || []) {
+        channel.t = 0;
+        channel.kind = 'ready';
+      }
+      if (p.combat.gunReload) {
+        p.combat.gunReload.t = 0;
+        p.combat.gunReload.kind = 'ready';
+        p.combat.reload = p.combat.gunReload;
+      } else {
+        p.combat.reload.t = 0;
+        p.combat.reload.kind = 'ready';
+      }
+      if (p.combat.magazine) p.combat.magazine.rounds = p.combat.magazine.capacity;
+      if (p.combat.ammo?.[0] <= 0 && p.combat.ammoCapacity?.[0] > 0) {
+        p.combat.ammo[0] = 1;
+      }
+    });
     await page.evaluate(() => window.__DEBUG.input.setBinding('fire', 'KeyF', 0));
     const firedBefore = await page.evaluate(() => window.__PROBE.fired.length);
     await page.keyboard.down('KeyF');

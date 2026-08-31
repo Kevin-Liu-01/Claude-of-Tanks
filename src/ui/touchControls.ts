@@ -594,8 +594,11 @@ export function createTouchControls({
   function parkFireCancel(button: HTMLButtonElement): void {
     const r = button.getBoundingClientRect();
     const side = r.left + r.width / 2 > innerWidth / 2 ? -1 : 1;
-    const x = r.left + r.width / 2 + side * Math.max(112, r.width * 1.25);
-    const y = r.top + r.height / 2 - Math.max(66, r.height * 0.82);
+    const x = r.left + r.width / 2 + side * Math.max(190, r.width * 2.1);
+    // Keep the release-to-cancel target above the ammo/equipment action row.
+    // The old 66 px rise parked it directly on top of Repair Kit on short
+    // landscape phones, so an aiming affordance obscured a live control.
+    const y = r.top + r.height / 2 - Math.max(132, r.height * 1.65);
     fireCancel.style.left = `${Math.max(32, Math.min(innerWidth - 32, x)).toFixed(1)}px`;
     fireCancel.style.top = `${Math.max(32, Math.min(innerHeight - 32, y)).toFixed(1)}px`;
   }

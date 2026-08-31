@@ -137,7 +137,7 @@ const PERF_HUD_CSS = `
   text-shadow:0 1px 2px #000;pointer-events:none;}
 #cot-perfhud *{box-sizing:border-box}
 #cot-perfhud .ph-head{position:sticky;top:0;z-index:2;display:grid;
-  grid-template-columns:32px minmax(0,1fr) auto;align-items:center;min-height:48px;padding:7px 10px;
+  grid-template-columns:32px minmax(0,1fr) auto auto;align-items:center;min-height:48px;padding:7px 10px;
   background:linear-gradient(180deg,#151e24,#091015);border-bottom:1px solid rgba(177,196,210,.22);}
 #cot-perfhud .ph-icon{width:28px;height:28px;display:grid;place-items:center;color:#f0b04a;
   border:1px solid rgba(240,176,74,.3);background:rgba(240,160,48,.07)}
@@ -150,6 +150,13 @@ const PERF_HUD_CSS = `
   font-weight:800;letter-spacing:.14em;color:#9ee0b0}
 #cot-perfhud .ph-state::before{content:"";width:6px;height:6px;background:#78d491;
   box-shadow:0 0 8px rgba(120,212,145,.5)}
+#cot-perfhud .ph-mobile-toggle{display:none;width:44px;height:44px;margin:-5px -8px -5px 4px;
+  place-items:center;border:0;border-left:1px solid rgba(177,196,210,.2);background:transparent;
+  color:#ffd27a;cursor:pointer;pointer-events:auto}
+#cot-perfhud .ph-mobile-toggle::before{content:"";width:9px;height:9px;border-right:2px solid currentColor;
+  border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform 120ms ease}
+#cot-perfhud.mobile-expanded .ph-mobile-toggle::before{transform:translateY(2px) rotate(225deg)}
+#cot-perfhud .ph-mobile-toggle:focus-visible{outline:2px solid #ffd27a;outline-offset:-3px}
 #cot-perfhud.has-error .ph-state{color:#ff9b91}#cot-perfhud.has-error .ph-state::before{background:#ef6157}
 #cot-perfhud [data-grid]{display:grid;grid-template-columns:1fr 1fr;gap:1px;padding:1px;
   background:rgba(177,196,210,.1)}
@@ -217,13 +224,20 @@ export function createPerfHud({
   el.innerHTML = `
     <header class="ph-head"><span class="ph-icon" aria-hidden="true">${uiIconSVG('graphics', 18)}</span>
       <div><div class="ph-title">Battle Diagnostics</div><div class="ph-sub">F8 · Settings → Interface</div></div>
-      <span class="ph-state" data-status>LIVE</span></header>
-    <div data-grid></div>`;
+      <span class="ph-state" data-status>LIVE</span>
+      <button class="ph-mobile-toggle" type="button" aria-label="Expand diagnostics" aria-expanded="false" aria-controls="cot-perfhud-grid"></button></header>
+    <div id="cot-perfhud-grid" data-grid></div>`;
   const gridNode = el.querySelector<HTMLElement>('[data-grid]');
   const statusNode = el.querySelector<HTMLElement>('[data-status]');
-  if (!gridNode || !statusNode) throw new Error('performance HUD template is incomplete');
+  const mobileToggle = el.querySelector<HTMLButtonElement>('.ph-mobile-toggle');
+  if (!gridNode || !statusNode || !mobileToggle) throw new Error('performance HUD template is incomplete');
   const grid: HTMLElement = gridNode;
   const statusEl: HTMLElement = statusNode;
+  mobileToggle.addEventListener('click', () => {
+    const expanded = el.classList.toggle('mobile-expanded');
+    mobileToggle.setAttribute('aria-expanded', String(expanded));
+    mobileToggle.setAttribute('aria-label', expanded ? 'Collapse diagnostics' : 'Expand diagnostics');
+  });
   const sectionEls = new Map<string, HTMLElement>();
   const sectionValue = (id: string): HTMLElement => {
     const value = sectionEls.get(id);

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { PerspectiveCamera, Scene } from 'three';
 
 import { createMainFrameRuntime } from './mainFrameRuntime.ts';
@@ -134,5 +135,14 @@ assert.deepEqual(covered.calls, ['schedule', 'network'],
   'covered entry skips scene work but keeps the multiplayer handshake alive');
 
 assert.throws(() => createMainFrameRuntime({}), /requires every live frame port/);
+
+const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+const inertStudioAt = mainSource.indexOf("let studio: ReturnType<typeof createStudioAccess>['presentation']");
+const mainFrameAt = mainSource.indexOf('const mainFrame = createMainFrameRuntime({');
+const liveStudioAt = mainSource.indexOf('studio = studioAccess.presentation;');
+assert.ok(inertStudioAt >= 0 && inertStudioAt < mainFrameAt,
+  'an inert Studio presentation must exist before the frame scheduler can tick');
+assert.ok(liveStudioAt > mainFrameAt,
+  'the lazy Studio presentation replaces the inert owner after composition');
 
 console.log('mainFrameRuntime.selftest: retained Garage, studio, shot, and battle frames pass');

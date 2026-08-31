@@ -1,8 +1,8 @@
 // Regression probe for the owner-reported gun firing above the reticle.
 //
-// It parks the physical barrel 1.25 degrees off the requested camera point,
-// then verifies that the visible gun marker and zero-dispersion launch both
-// remain on that exact articulated bore. Traverse/elevation/depression limits
+// It seeds the physical barrel away from the requested camera point, then
+// verifies that the visible gun marker and zero-dispersion launch both remain
+// on that exact articulated bore. Traverse/elevation/depression limits
 // may keep the two reticles apart; trigger-time code may never steer a shell
 // toward (or ballistically above) the camera marker.
 //
@@ -93,8 +93,15 @@ try {
     p.input.aimPoint.copy(picked.point);
     D.fastForward(4); // settle the articulated gun onto the chosen static lay
 
+    // Seed a deterministic camera/bore disagreement from the settled physical
+    // barrel. The live frame owner may reacquire a nearer center-ray surface
+    // before the HUD sample; either way the fixture only requires a visible
+    // disagreement because marker/bore collinearity is the invariant below.
     p.visual.gunMuzzleWorld(muzzle);
-    dir.copy(picked.point).sub(muzzle).normalize();
+    p.visual.gunDirWorld(dir).normalize();
+    const sightDir = dir.clone().applyAxisAngle(new V(0, 1, 0), 1.25 * Math.PI / 180);
+    const sightPoint = muzzle.clone().addScaledVector(sightDir, picked.dist);
+    p.input.aimPoint.copy(sightPoint);
     // Pause owns the next frames, so neither the sim nor the rig can rewrite
     // the controlled aim pose while the HUD samples it.
     D.settings.open();
@@ -102,27 +109,25 @@ try {
     if (settingsRoot) settingsRoot.style.visibility = 'hidden';
     D.camera.position.copy(muzzle).addScaledVector(dir, -1.2);
     D.camera.position.y += 0.25;
-    D.camera.lookAt(picked.point);
+    D.camera.lookAt(sightPoint);
     D.camera.updateMatrixWorld(true);
     D.camera.updateProjectionMatrix();
-    D.rig.aimPoint.copy(picked.point);
-    D.rig.aimDist = D.camera.position.distanceTo(picked.point);
-    p.input.aimPoint.copy(picked.point);
+    D.rig.aimPoint.copy(sightPoint);
+    D.rig.aimDist = D.camera.position.distanceTo(sightPoint);
     return { distM: picked.dist };
   });
   await sleep(350);
 
-  // Freeze the simulation but keep the camera/HUD render loop live. Skewing
-  // state (instead of an arbitrary mesh) keeps this an honest articulated-gun
-  // pose and lets computeAimInfo read exactly what a player sees.
+  // Freeze the simulation but keep the camera/HUD render loop live. The
+  // initial camera point is deliberately off the settled physical bore. Do
+  // not call syncFromState here: that resets the interpolated presentation
+  // pose and manufactures a second, unrelated disagreement.
   await page.evaluate(async () => {
     const D = window.__DEBUG;
     const p = D.game.player;
     D.game.preBattleS = Infinity;
-    p.state.turretYaw += 1.25 * Math.PI / 180;
     p.state.atGunLimit = false;
     p.state.gunLimitSpec = false;
-    p.visual.syncFromState(p.state);
   });
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(
     () => requestAnimationFrame(resolve))));
@@ -157,23 +162,22 @@ try {
 
     // Falsification: push the bore farther away. The marker must remain
     // collinear with the real articulated bore at every error magnitude.
-    const insideTurretYaw = p.state.turretYaw;
-    p.state.turretYaw = insideTurretYaw + 2 * Math.PI / 180;
-    p.visual.syncFromState(p.state);
+    const insideAimPoint = p.input.aimPoint.clone();
+    const outsideAimDir = bore.clone().applyAxisAngle(new V(0, 1, 0), 3.25 * Math.PI / 180);
+    p.input.aimPoint.copy(muzzle).addScaledVector(outsideAimDir, muzzle.distanceTo(insideAimPoint));
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const outsideMuzzle = new V();
     const outsideBore = new V();
     p.visual.gunMuzzleWorld(outsideMuzzle);
     p.visual.gunDirWorld(outsideBore).normalize();
-    const outsideAimDir = p.input.aimPoint.clone().sub(outsideMuzzle).normalize();
+    const sampledOutsideAimDir = p.input.aimPoint.clone().sub(outsideMuzzle).normalize();
     const outsideMarkerDir = D.frameInfo.aim.gunMarker.clone().sub(outsideMuzzle).normalize();
     const outside = {
-      boreErrorDeg: outsideBore.angleTo(outsideAimDir) * 180 / Math.PI,
+      boreErrorDeg: outsideBore.angleTo(sampledOutsideAimDir) * 180 / Math.PI,
       markerToBoreDeg: outsideMarkerDir.angleTo(outsideBore) * 180 / Math.PI,
       hudGunOffsetPx: window.__HUD_DEBUG.getReticleState().gunOffsetPx,
     };
-    p.state.turretYaw = insideTurretYaw;
-    p.visual.syncFromState(p.state);
+    p.input.aimPoint.copy(insideAimPoint);
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     let fired = null;
@@ -297,7 +301,8 @@ try {
   });
 
   const checks = [
-    ['fixture preserves a visible turret-lag offset', report.rawBoreErrorDeg > 0.35 && report.rawBoreErrorDeg < 1.95],
+    ['fixture preserves a visible bore/reticle disagreement',
+      report.rawBoreErrorDeg > 0.35 && report.rawBoreErrorDeg < 60],
     ['zero-dispersion shot leaves exactly on the articulated bore', report.launchToBoreDeg < 0.00001],
     ['visible gun marker lies exactly on the articulated bore', report.markerToBoreDeg < 0.00001],
     ['gun marker honestly remains separate from camera marker', report.markerToDesiredPx > 5],

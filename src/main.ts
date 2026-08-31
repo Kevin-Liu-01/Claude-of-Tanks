@@ -1387,6 +1387,14 @@ const mobileBattleInput = createMobileBattleInputAccess<MainEntity>({
   targetCenter: mobileAutoAimCenter,
 });
 const ensureTouchControls = mobileBattleInput.preload;
+// The frame scheduler is created before the lazy Studio access boundary below
+// and may deliver its first callback immediately (especially after Vite HMR).
+// Keep a fully initialized inert presentation in place until that boundary is
+// wired so frame/dev-trace getters can never cross a temporal dead zone.
+let studio: ReturnType<typeof createStudioAccess>['presentation'] = Object.freeze({
+  active: false,
+  tick(_deltaSeconds: number) {},
+});
 devTrace?.configure({
   input,
   getContext: () => ({
@@ -2451,7 +2459,7 @@ const studioAccess = createStudioAccess({
   getPhase: () => game.phase,
   keyTarget: window,
 });
-const studio = studioAccess.presentation;
+studio = studioAccess.presentation;
 function preloadStudioIntent() { studioAccess.preloadIntent(); }
 function loadStudioRuntime() { return studioAccess.loadRuntime(); }
 

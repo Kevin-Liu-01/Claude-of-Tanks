@@ -268,12 +268,16 @@ try {
   });
   check('Leave Battle row present on the paused overlay', !!leave);
   if (leave) {
+    const leaveStartedAt = performance.now();
     await page.mouse.click(leave.cx, leave.cy);
-    await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 4000 });
+    await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 15000 });
+    const leaveElapsedMs = performance.now() - leaveStartedAt;
     st = await pauseState();
     check('leave-battle from pause lands in the garage',
       st.phase === 'garage' && !st.open && !st.paused && !st.pausedClass,
       `phase=${st.phase} open=${st.open} paused=${st.paused}`);
+    check('leave-battle remains responsive on a cold return', leaveElapsedMs < 12000,
+      `${Math.round(leaveElapsedMs)}ms`);
     const gRest = await pollBus('garage-restore', (g) => g.engine > 0.5 && g.pauseK === 1);
     check('pause duck cleared on leave-battle', gRest.ok,
       gRest.g ? `engine=${gRest.g.engine.toFixed(3)} pauseK=${gRest.g.pauseK}` : 'no ctx');

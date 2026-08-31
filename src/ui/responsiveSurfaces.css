@@ -175,6 +175,11 @@ body[data-cot-width='phone'] .cot-set-tabs{
 }
 body[data-cot-width='compact'] .cot-set-tab,
 body[data-cot-width='phone'] .cot-set-tab{min-height:var(--cot-control-floor);white-space:nowrap;flex:0 0 auto}
+body[data-cot-width='phone'] .cot-set-tabs{overflow-x:hidden}
+body[data-cot-width='phone'] .cot-set-tab{
+  flex:1 1 0;min-width:0;padding-inline:4px;font-size:9px;letter-spacing:.11em;
+}
+body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:8px}
 body[data-cot-width='compact'] .cot-set-body,
 body[data-cot-width='phone'] .cot-set-body{min-height:0;flex:1 1 auto;padding:0 var(--cot-edge) 14px}
 body[data-cot-width='compact'] .cot-set-ftr,
@@ -807,11 +812,18 @@ body[data-cot-width='phone'] .cot-lock-toast{
 /* Opt-in engineering panels remain operable on the device being diagnosed. */
 body[data-cot-width='compact'] #cot-perfhud,
 body[data-cot-width='phone'] #cot-perfhud{
-  top:max(8px,env(safe-area-inset-top))!important;right:max(8px,env(safe-area-inset-right))!important;
+  top:auto!important;bottom:max(8px,env(safe-area-inset-bottom))!important;
+  right:max(8px,env(safe-area-inset-right))!important;
   left:max(8px,env(safe-area-inset-left))!important;width:auto!important;
   max-height:64dvh!important;font-size:10px!important;
-  pointer-events:auto!important;touch-action:pan-y;overscroll-behavior:contain;
+  z-index:70!important;pointer-events:auto!important;touch-action:pan-y;overscroll-behavior:contain;
 }
+body[data-cot-width='compact'] #cot-perfhud:not(.mobile-expanded),
+body[data-cot-width='phone'] #cot-perfhud:not(.mobile-expanded){max-height:48px!important;overflow:hidden!important}
+body[data-cot-width='compact'] #cot-perfhud:not(.mobile-expanded) [data-grid],
+body[data-cot-width='phone'] #cot-perfhud:not(.mobile-expanded) [data-grid]{display:none!important}
+body[data-cot-width='compact'] #cot-perfhud .ph-mobile-toggle,
+body[data-cot-width='phone'] #cot-perfhud .ph-mobile-toggle{display:grid}
 body[data-cot-width='phone'] #cot-perfhud [data-grid]{grid-template-columns:1fr!important}
 body[data-cot-width='compact'] #cot-diag,
 body[data-cot-width='phone'] #cot-diag{
