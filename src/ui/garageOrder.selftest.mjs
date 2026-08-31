@@ -149,6 +149,15 @@ assert.match(garageSource,
 assert.match(garageSource,
   /\.cot-technical-figure img\{[^}]*aspect-ratio:2\/1;[^}]*object-fit:contain;/,
   'technical diagrams preserve their authored two-to-one frame at every dossier width');
+assert.match(garageSource,
+  /data-technical-expand[^]*?aria-haspopup="dialog"[^]*?aria-controls="cot-technical-viewer-dialog"/,
+  'every compact technical diagram exposes an accessible expanded-view trigger');
+assert.match(garageSource,
+  /createModal\(\{[^]*?className: 'cot-technical-viewer'[^]*?data-technical-modal-view/,
+  'the expanded schematic reuses the shared accessible modal and all three technical views');
+assert.match(garageSource,
+  /cot-technical-viewer-figure img\{[^}]*aspect-ratio:2\/1;[^}]*object-fit:contain;/,
+  'expanded schematics preserve the authored two-to-one frame instead of cropping the diagram');
 await import('./topAccentBorders.selftest.mjs');
 
 console.log('garageOrder.selftest: ordering, map default, filters and hidden horizontal rail verified');

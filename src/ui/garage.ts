@@ -17,6 +17,7 @@ import {
   camoMatchesTag, camoPatternTags, customCamoPatternId,
 } from '../vehicles/camoPolicy.ts';
 import { createInfoButton } from './contextInfo.ts';
+import { createModal } from './modal.ts';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
 // white-silhouette icon set (equipIcons.ts), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
@@ -32,6 +33,7 @@ import {
   garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageStatGroup,
   garageTechnicalViews,
 } from './garageDossier.ts';
+import type { GarageTechnicalViewId } from './garageDossier.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import {
   compareCountryThenTierThenName, countryFilterGroups, defaultGarageMapId,
@@ -337,6 +339,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     label: representative.markings?.filterLabel || NATION_LABEL[representative.nation] || id.toUpperCase(),
     name: representative.markings?.countryLabel || representative.nation,
   }));
+  const technicalViews = garageTechnicalViews();
+  const technicalViewById = new Map(technicalViews.map((view) => [view.id, view]));
   ensureFonts();
   const root = document.createElement('div');
   root.className = 'cot-garage';
@@ -824,6 +828,85 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       queueCountryRailAffordances();
     });
   };
+  let technicalExpandTrigger: HTMLButtonElement | null = null;
+  const technicalModal = createModal({
+    title: 'Technical schematic',
+    eyebrow: 'Vehicle dossier',
+    subtitle: 'Expanded generated vehicle diagram',
+    size: 'wide',
+    className: 'cot-technical-viewer',
+    closeLabel: 'Close expanded technical schematic',
+    onClose: () => {
+      technicalExpandTrigger?.setAttribute('aria-expanded', 'false');
+      technicalExpandTrigger = null;
+    },
+  });
+  technicalModal.panel.id = 'cot-technical-viewer-dialog';
+  technicalModal.body.innerHTML =
+    `<div class="cot-technical-viewer-tabs" role="tablist" aria-label="Expanded vehicle technical schematics">` +
+    technicalViews.map((view, index) =>
+      `<button class="cot-technical-viewer-tab" type="button" role="tab" ` +
+      `id="cot-technical-viewer-tab-${view.id}" aria-controls="cot-technical-viewer-panel" ` +
+      `aria-selected="${index === 0 ? 'true' : 'false'}" tabindex="${index === 0 ? '0' : '-1'}" ` +
+      `data-technical-modal-view="${view.id}">${view.label}</button>`).join('') + `</div>` +
+    `<figure class="cot-technical-viewer-figure" id="cot-technical-viewer-panel" role="tabpanel" ` +
+    `aria-labelledby="cot-technical-viewer-tab-armor">` +
+    `<img data-technical-modal-image alt="" draggable="false" decoding="async">` +
+    `<figcaption><span data-technical-modal-caption></span>` +
+    `<small>Generated from the playable vehicle anatomy</small></figcaption></figure>`;
+  const technicalModalImage = requiredElement<HTMLImageElement>(technicalModal.body, '[data-technical-modal-image]');
+  const technicalModalCaption = requiredElement<HTMLElement>(technicalModal.body, '[data-technical-modal-caption]');
+  const technicalModalPanel = requiredElement<HTMLElement>(technicalModal.body, '#cot-technical-viewer-panel');
+  const technicalModalTabs = [...technicalModal.body.querySelectorAll<HTMLButtonElement>('[data-technical-modal-view]')];
+
+  const selectTechnicalModalView = (viewId: GarageTechnicalViewId): void => {
+    const view = technicalViewById.get(viewId);
+    const spec = specById.get(selectedId);
+    if (!view || !spec) return;
+    const name = spec.label?.displayName || spec.name;
+    technicalModal.setTitle(`${name} — ${view.label}`);
+    technicalModal.setSubtitle(view.caption);
+    technicalModalImage.src = iconUrl(spec.id, view.assetView);
+    technicalModalImage.alt = `${name} ${view.caption.toLowerCase()}`;
+    technicalModalCaption.textContent = view.caption;
+    technicalModalPanel.setAttribute('aria-labelledby', `cot-technical-viewer-tab-${view.id}`);
+    for (const tab of technicalModalTabs) {
+      const active = tab.dataset.technicalModalView === view.id;
+      tab.setAttribute('aria-selected', String(active));
+      tab.tabIndex = active ? 0 : -1;
+      tab.toggleAttribute('autofocus', active);
+    }
+  };
+  const openTechnicalViewer = (viewId: GarageTechnicalViewId, trigger: HTMLButtonElement): void => {
+    closeGarageTools();
+    closeGarageVariantMenu();
+    closeMobileNavigation();
+    closeBattleMenu();
+    setGaragePanel('');
+    technicalExpandTrigger?.setAttribute('aria-expanded', 'false');
+    technicalExpandTrigger = trigger;
+    technicalExpandTrigger.setAttribute('aria-expanded', 'true');
+    selectTechnicalModalView(viewId);
+    technicalModal.open({ trigger });
+  };
+  for (const tab of technicalModalTabs) {
+    tab.addEventListener('click', () => {
+      const viewId = tab.dataset.technicalModalView as GarageTechnicalViewId | undefined;
+      if (!viewId) return;
+      emit('ui:click', {});
+      selectTechnicalModalView(viewId);
+    });
+  }
+  technicalModal.body.addEventListener('keydown', (event) => {
+    const tab = eventElement(event)?.closest<HTMLButtonElement>('[data-technical-modal-view]');
+    if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const current = Math.max(0, technicalModalTabs.indexOf(tab));
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? technicalModalTabs.length - 1
+      : (current + (event.key === 'ArrowRight' ? 1 : -1) + technicalModalTabs.length) % technicalModalTabs.length;
+    technicalModalTabs[next].focus();
+    selectTechnicalModalView(technicalModalTabs[next].dataset.technicalModalView as GarageTechnicalViewId);
+  });
   garagePanelButtons.forEach((button) => button.addEventListener('click', () => {
     emit('ui:click', {});
     const panel = button.dataset.garagePanel;
@@ -1377,6 +1460,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // slot boxes are re-created by every renderStats — delegate their clicks
   statsEl.addEventListener('click', (e) => {
     const target = eventElement(e);
+    const technicalExpand = target?.closest<HTMLButtonElement>('[data-technical-expand]');
+    if (technicalExpand) {
+      const viewId = technicalExpand.dataset.technicalExpand as GarageTechnicalViewId | undefined;
+      if (!viewId || !technicalViewById.has(viewId)) return;
+      emit('ui:click', {});
+      openTechnicalViewer(viewId, technicalExpand);
+      return;
+    }
     const technicalTab = target?.closest<HTMLButtonElement>('[data-technical-view]');
     if (technicalTab) {
       activateTechnicalTab(technicalTab);
@@ -1730,7 +1821,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const image = section?.querySelector<HTMLImageElement>('[data-technical-image]');
     const caption = section?.querySelector<HTMLElement>('[data-technical-caption-output]');
     const galleryLink = section?.querySelector<HTMLElement>('[data-technical-gallery]');
-    if (!section || !image || !caption || !galleryLink) return;
+    const expandButton = section?.querySelector<HTMLButtonElement>('[data-technical-expand]');
+    if (!section || !image || !caption || !galleryLink || !expandButton) return;
     section.querySelectorAll<HTMLButtonElement>('[role="tab"]').forEach((candidate) => {
       const active = candidate === tab;
       candidate.setAttribute('aria-selected', active ? 'true' : 'false');
@@ -1738,14 +1830,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     });
     const src = tab.dataset.technicalSrc;
     if (src && image.getAttribute('src') !== src) image.src = src;
-    image.alt = `${specById.get(selectedId || '')?.label?.displayName ||
-      specById.get(selectedId || '')?.name || 'Selected vehicle'} ${tab.dataset.technicalAlt || 'technical schematic'}`;
+    const name = specById.get(selectedId || '')?.label?.displayName ||
+      specById.get(selectedId || '')?.name || 'Selected vehicle';
+    image.alt = `${name} ${tab.dataset.technicalAlt || 'technical schematic'}`;
     caption.textContent = tab.dataset.technicalCaption || '';
     galleryLink.dataset.galleryLayer = tab.dataset.technicalLayer || 'appearance';
+    expandButton.dataset.technicalExpand = tab.dataset.technicalView || 'armor';
+    expandButton.setAttribute('aria-label', `Expand ${name} ${tab.textContent || 'technical'} schematic`);
   }
 
   let statsFor: string | null = null; // last spec rendered — gates the swap micro-fade
   function renderStats(spec: GarageTankSpec): void {
+    if (technicalModal.isOpen()) technicalModal.close({ restoreFocus: false, immediate: true });
     statsEl.querySelectorAll<HTMLElement>('.cot-info-trigger').forEach((button) => {
       const trigger: DisposableInfoTrigger = button;
       trigger.disposeInfo?.();
@@ -1822,7 +1918,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         `<div class="cot-special-copy"><b>${special.label}</b><p>${special.detail}</p>` +
         `<small>${special.meta}</small></div><kbd>E</kbd></div></section>`
       : '';
-    const technicalViews = garageTechnicalViews();
     const initialTechnicalView = technicalViews[0];
     const technicalTabs = technicalViews.map((view, index) =>
       `<button class="cot-technical-tab" type="button" role="tab" ` +
@@ -1837,8 +1932,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="cot-technical-tabs" role="tablist" aria-label="Vehicle technical schematics">${technicalTabs}</div>` +
       `<figure class="cot-technical-figure" id="cot-technical-schematic-panel" role="tabpanel" ` +
       `aria-label="Selected vehicle technical schematic">` +
+      `<button class="cot-technical-expand" type="button" data-technical-expand="${initialTechnicalView.id}" ` +
+      `aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-technical-viewer-dialog" ` +
+      `aria-label="Expand ${spec.label?.displayName || spec.name} ${initialTechnicalView.label} schematic">` +
       `<img src="${iconUrl(spec.id, initialTechnicalView.assetView)}" alt="" ` +
       `data-technical-image draggable="false" decoding="async">` +
+      `<span class="cot-technical-expand-label">${uiIconSVG('zoomIn', 14)}Expand view</span></button>` +
       `<figcaption data-technical-caption-output>${initialTechnicalView.caption}</figcaption></figure>` +
       `<button class="cot-layer-link cot-technical-gallery" type="button" ` +
       `data-gallery-layer="${initialTechnicalView.galleryLayer}" data-technical-gallery>` +
@@ -2376,6 +2475,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     /** Close the garage screen. */
     hide() {
       customCamoStudioAccess?.peek()?.close({ restoreFocus: false, immediate: true });
+      technicalModal.close({ restoreFocus: false, immediate: true });
       closeServiceRecord({ restoreFocus: false });
       closeMobileNavigation();
       closeGarageTools();

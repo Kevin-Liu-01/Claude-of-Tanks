@@ -410,12 +410,41 @@
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.012),0 8px 20px rgba(0,0,0,.28);}
 .cot-technical-figure::after{content:'';position:absolute;inset:0;pointer-events:none;
   box-shadow:inset 0 0 24px rgba(0,0,0,.2);}
+.cot-technical-expand{position:relative;display:block;width:100%;padding:0;overflow:hidden;cursor:zoom-in;
+  color:#d5e0e8;background:#071016;border:0;text-align:inherit;}
+.cot-technical-expand:focus-visible{outline:2px solid #ffd27a;outline-offset:-2px;}
 .cot-technical-figure img{display:block;width:100%;height:auto;aspect-ratio:2/1;object-fit:contain;
   background:#071016;transition:opacity .12s ease-out;}
+.cot-technical-expand-label{position:absolute;right:7px;bottom:7px;display:flex;align-items:center;gap:5px;
+  min-height:23px;padding:0 7px;color:#d9e4eb;background:rgba(4,8,11,.88);border:1px solid rgba(190,207,219,.35);
+  font:900 6px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.12em;text-transform:uppercase;box-shadow:0 3px 12px rgba(0,0,0,.38);
+  transition:color .14s,border-color .14s,background .14s;}
+.cot-technical-expand-label svg{width:13px;height:13px;color:#f0b04a;}
+.cot-technical-expand:hover .cot-technical-expand-label,.cot-technical-expand:focus-visible .cot-technical-expand-label{
+  color:#fff0d7;background:rgba(39,27,11,.94);border-color:rgba(240,176,74,.72);}
 .cot-technical-figure figcaption{min-height:26px;padding:7px 8px;color:#95a5b1;background:rgba(13,18,23,.94);
   border-top:1px solid rgba(146,164,180,.14);font:800 6.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
   letter-spacing:.09em;line-height:1.3;text-transform:uppercase;}
 .cot-technical-gallery{margin-top:6px;color:#aebbc4;}
+.cot-technical-viewer .cot-modal__body{padding:clamp(12px,2vw,22px);background:#05090c;}
+.cot-technical-viewer-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px;}
+.cot-technical-viewer-tab{min-height:38px;padding:0 12px;color:#9dabb5;background:rgba(13,19,24,.9);
+  border:1px solid rgba(146,164,180,.22);cursor:pointer;
+  font:900 8px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.14em;text-transform:uppercase;transition:color .14s,border-color .14s,background .14s;}
+.cot-technical-viewer-tab[aria-selected='true']{color:#fff0d7;border-color:rgba(240,176,74,.7);
+  background:linear-gradient(180deg,rgba(240,160,48,.2),rgba(42,27,10,.42));box-shadow:inset 0 -2px #e79c34;}
+.cot-technical-viewer-tab:hover,.cot-technical-viewer-tab:focus-visible{color:#ffd79a;border-color:#e5a542;outline:none;}
+.cot-technical-viewer-figure{margin:0;border:1px solid rgba(166,184,199,.3);background:#061016;
+  box-shadow:0 16px 44px rgba(0,0,0,.4);}
+.cot-technical-viewer-figure img{display:block;width:100%;max-height:calc(88vh - 250px);aspect-ratio:2/1;
+  object-fit:contain;background:#071016;}
+.cot-technical-viewer-figure figcaption{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  min-height:40px;padding:9px 12px;color:#d8e2e9;background:rgba(13,18,23,.97);border-top:1px solid rgba(146,164,180,.18);
+  font:900 8px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.1em;text-transform:uppercase;}
+.cot-technical-viewer-figure figcaption small{color:#778894;font-size:6.5px;letter-spacing:.12em;text-align:right;}
 .cot-special-card{position:relative;display:grid;grid-template-columns:40px minmax(0,1fr) 25px;gap:9px;
   align-items:start;padding:10px;background:linear-gradient(120deg,rgba(240,160,48,.13),rgba(15,20,26,.86) 55%);
   border:1px solid rgba(240,176,74,.25);border-left:2px solid #f0a030;}
@@ -1084,6 +1113,11 @@ body[data-cot-width='phone'] .cot-record-body{padding:14px}
 body[data-cot-width='phone'] .cot-record-ring{width:116px}
 body[data-cot-width='phone'] .cot-record-metrics,
 body[data-cot-width='phone'] .cot-last-battle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+body[data-cot-width='phone'] .cot-technical-viewer-tabs{gap:3px;margin-bottom:7px}
+body[data-cot-width='phone'] .cot-technical-viewer-tab{min-height:36px;padding:0 5px;font-size:7px}
+body[data-cot-width='phone'] .cot-technical-viewer-figure img{max-height:calc(100dvh - 245px)}
+body[data-cot-width='phone'] .cot-technical-viewer-figure figcaption{align-items:flex-start;flex-direction:column;gap:3px}
+body[data-cot-width='phone'] .cot-technical-viewer-figure figcaption small{text-align:left}
 body[data-cot-width='laptop'] .cot-header-nav .cot-garage-variant-trigger{
   width:34px;min-width:34px;max-width:34px;padding:0 4px;gap:3px;justify-content:center;
 }
