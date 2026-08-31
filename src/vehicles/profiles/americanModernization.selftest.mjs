@@ -130,6 +130,17 @@ for (const [id, expectedVariant, expectedLoader, expectedShield] of [
   assert.equal(loader[0].userData.shieldVariant, expectedShield);
   assert.ok(loader[0].position.x > 0,
     `${id}: Browning stays on the right in a head-on view`);
+  const paintedShield = loader[0].children.find(
+    (object) => object.userData.fittingSlot === 'hull');
+  if (expectedShield === 'open') {
+    assert.equal(paintedShield, undefined, `${id}: open Browning does not invent an armor shield`);
+  } else {
+    assert.equal(paintedShield?.userData.camoProjection, 'continuous-fitting-box-uv',
+      `${id}: Browning shield receives one natural-scale camouflage projection`);
+    assert.equal(paintedShield?.userData.camoUvScale,
+      paintedShield?.material.userData.camoUvScale,
+      `${id}: Browning shield matches the host vehicle's camouflage density`);
+  }
   loader[0].traverse((object) => {
     if (object.isMesh) assert.equal(object.userData.combatHitboxRole, 'equipment',
       `${id}: Browning and shield remain equipment-owned`);

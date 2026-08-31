@@ -52,6 +52,35 @@ const near = (actual, expected, tolerance, message) => {
     `${message}: expected ${expected}, received ${actual}`);
 };
 
+function assertContinuousCamoProjection(mesh, id) {
+  assert.ok(mesh?.isMesh, `${id}: exposes one merged tank-painted tower shell`);
+  assert.equal(mesh.userData.camoProjection, 'continuous-fitting-box-uv',
+    `${id}: tower armor uses one continuous fitting-scale camouflage projection`);
+  const scale = mesh.userData.camoUvScale;
+  assert.ok(Number.isFinite(scale) && scale > 0,
+    `${id}: tower publishes its repeats-per-metre camouflage density`);
+  assert.equal(mesh.material.userData.camoProjection, 'vehicle-scale-box-uv',
+    `${id}: tower inherits the host vehicle's camouflage projection contract`);
+  assert.equal(mesh.material.userData.camoUvScale, scale,
+    `${id}: fitting and host paint use the same physical pattern density`);
+
+  const position = mesh.geometry.getAttribute('position');
+  const normal = mesh.geometry.getAttribute('normal');
+  const uv = mesh.geometry.getAttribute('uv');
+  assert.ok(position && normal && uv, `${id}: projected tower shell has position, normal and UV data`);
+  for (let index = 0; index < position.count; index++) {
+    const nx = Math.abs(normal.getX(index));
+    const ny = Math.abs(normal.getY(index));
+    const nz = Math.abs(normal.getZ(index));
+    const expectedU = (ny >= nx && ny >= nz ? position.getX(index)
+      : nx >= nz ? position.getZ(index) : position.getX(index)) * scale;
+    const expectedV = (ny >= nx && ny >= nz ? position.getZ(index)
+      : nx >= nz ? position.getY(index) : position.getY(index)) * scale;
+    near(uv.getX(index), expectedU, 1e-6, `${id}: projected camo u at vertex ${index}`);
+    near(uv.getY(index), expectedV, 1e-6, `${id}: projected camo v at vertex ${index}`);
+  }
+}
+
 function structuralRoofTopAt(turretRig, x, z) {
   const structuralMeshes = [];
   turretRig.traverse((node) => {
@@ -144,6 +173,8 @@ for (const [id, expected] of Object.entries(TARGETS)) {
       && materialSlots.has('detail') && materialSlots.has('glass')
       && materialSlots.has('hull'),
     `${id}: tank-painted armor, metal accents, and EO glass survive fitting merge`);
+    assertContinuousCamoProjection(
+      station.children.find((node) => node.userData.fittingSlot === 'hull'), id);
 
     const otherWeaponFittings = [];
     turretRig.traverse((node) => {

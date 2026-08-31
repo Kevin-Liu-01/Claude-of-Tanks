@@ -5169,6 +5169,22 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   tagVehicleMaterial(trackL, 'trackBand', 'track-band-left');
   tagVehicleMaterial(trackR, 'trackBand', 'track-band-right');
 
+  // Fittings are assembled after the material set is created, outside the
+  // main hull/turret merge that normally owns boxUV(). Publish the authored
+  // repeats-per-metre density on every mapped paint material so a fitting can
+  // project one continuous, physically scaled camouflage field over its
+  // complete merged shell. Without this contract each primitive retained its
+  // stock 0..1 UV island, squeezing the entire camouflage atlas onto every
+  // roof-tower plate, fork arm and bearing drum.
+  const camoUvScale = spec.visual.camoScale ?? 0.34;
+  for (const material of [hull, barrel]) {
+    material.userData = {
+      ...(material.userData || {}),
+      camoProjection: 'vehicle-scale-box-uv',
+      camoUvScale,
+    };
+  }
+
   return {
     hull, wheels, wheelsRecessed, rubber, detail, dark, shadow, trackLink, spareTrack, glass, barrel,
     canvasCloth, wood, burnt,

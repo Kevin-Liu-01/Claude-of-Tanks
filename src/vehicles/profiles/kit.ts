@@ -955,17 +955,29 @@ function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): T
   for (const [slot, geos] of Object.entries(parts.bySlot)) {
     if (!geos.length) continue;
     const merged = KIT.mergeAll(geos);
+    const material = fitMat(mats, slot);
+    const camoUvScale = Number(material.userData?.camoUvScale);
+    if (Number.isFinite(camoUvScale) && camoUvScale > 0) {
+      // Project after all authored transforms have been merged. This keeps a
+      // single metres-based pattern across complete RWS/tower armor instead
+      // of restarting the full 0..1 camouflage atlas on every tiny primitive.
+      KIT.boxUV(merged, camoUvScale);
+    }
     // Camo slots (hull/barrel) sample vertexColors; a missing attribute reads
     // (0,0,0) in WebGL and renders BLACK — bake neutral white (ERA precedent).
     merged.setAttribute('color', new THREE.BufferAttribute(
       new Float32Array(merged.attributes.position.count * 3).fill(1), 3));
-    const mesh = new THREE.Mesh(merged, fitMat(mats, slot));
+    const mesh = new THREE.Mesh(merged, material);
     mesh.name = `fitting_${type}_${slot}`;
     mesh.castShadow = mesh.receiveShadow = shadows;
     mesh.userData.fitting = type;
     mesh.userData.fittingSlot = slot;
     mesh.userData.combatHitboxRole = 'equipment';
     mesh.userData.surfaceMarkupSelectable = true;
+    if (Number.isFinite(camoUvScale) && camoUvScale > 0) {
+      mesh.userData.camoProjection = 'continuous-fitting-box-uv';
+      mesh.userData.camoUvScale = camoUvScale;
+    }
     g.add(mesh);
   }
   g.userData.fitting = type;

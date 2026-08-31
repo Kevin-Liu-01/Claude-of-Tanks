@@ -4382,7 +4382,7 @@ function buildCanonicalPublic(builder: object, id: string): void {
 export const KIT = {
   xform, box, cylX, cylY, cylZ, sph, torus, lathe, slab, frustum, polyTurret, polyLoft, polyMultiLoft,
   straightRidgeGunMask,
-  mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometry,
+  boxUV, mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometry,
   simplifiedTrackShoeGeometry, trackHitboxHull,
   runningGearContactPatch,
   buildRunningGear: buildRunningGearPublic, buildGun,
@@ -6719,7 +6719,7 @@ function measurePresentationFloor(root: THREE.Object3D): number | null {
  * Geometry receipts and static world-wreck bakes share this adapter; only the
  * former enables P.geometryReceipt and its additional metrology bookkeeping.
  */
-function createNonRenderingTankMaterials(): TankMaterials {
+function createNonRenderingTankMaterials(camoUvScale = 0.34): TankMaterials {
   const owned: Array<THREE.Material | THREE.Texture> = [];
   const make = (
     color: THREE.ColorRepresentation,
@@ -6772,6 +6772,13 @@ function createNonRenderingTankMaterials(): TankMaterials {
   tagVehicleMaterial(mats.rubber, 'tireRubber', 'tire-rubber-non-rendering');
   tagVehicleMaterial(mats.trackLink, 'trackSteel', 'track-steel-non-rendering');
   tagVehicleMaterial(mats.spareTrack, 'trackSteel', 'spare-track-steel-non-rendering');
+  for (const material of [mats.hull, mats.barrel]) {
+    material.userData = {
+      ...(material.userData || {}),
+      camoProjection: 'vehicle-scale-box-uv',
+      camoUvScale,
+    };
+  }
   return mats;
 }
 
@@ -7274,7 +7281,7 @@ export function createTank(
   const usesSharedMaterialTextures = !geometryReceipt && !geometryOnly;
   const mats: TankMaterials = usesSharedMaterialTextures
     ? createTankMaterials(spec, engineCtx, camoSeed, quality, camoPattern)
-    : createNonRenderingTankMaterials();
+    : createNonRenderingTankMaterials(spec.visual.camoScale ?? 0.34);
   const rng = mulberry32((camoSeed | 0) ^ 0x9e37);
 
   const root = new THREE.Group();
