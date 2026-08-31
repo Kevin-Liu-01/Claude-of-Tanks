@@ -138,8 +138,16 @@ const SPECS: FleetTankSpec[] = [
     // Type 69 print remains the registered measurement oracle; its gate
     // deltas vs this owner-decreed redesign are documented divergence
     // (docs/references/tanks/type59.md §5.304), never chased back.
-    { hp: 1580, enginePowerHp: 520, weightTons: 36, topSpeedKmh: 50,
-      gun: { caliberMm: 100, reloadS: 8.8 },
+    { hp: 1650, enginePowerHp: 520, weightTons: 36, topSpeedKmh: 50,
+      gun: {
+        caliberMm: 100, reloadS: 7.6,
+        shells: requireFleetSpec('t62mv1').gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0 ? { dmg: 410, pen100Mm: 500, pen1000Mm: 450, pen2000Mm: 390 }
+            : index === 1 ? { dmg: 410, pen100Mm: 430, pen1000Mm: 430 }
+              : { dmg: 490 }),
+        })),
+      },
       dims: { hullLengthM: 5.67, overallLengthM: 8.14, widthM: 3.11, heightM: 2.23,
         // gate-measured authored envelope (§5.304 run receipts: 12%-band
         // body trace includes the base's drum/fender tail like t62mv1's;
@@ -267,15 +275,31 @@ const SPECS: FleetTankSpec[] = [
   // its OWN procedural build (profiles/russia.ts, RUSSIA_PROFILES).
   // t90: base 1992 obr. — V-84MS 840 hp, cast turret, K-5 clamshell, NSVT.
   make('t90a', 't90', 'T-90', 'USSR/Russia',
-    { hp: 2150, enginePowerHp: 840, weightTons: 46.5,
-      gun: { reloadS: 7.5 },
+    { hp: 2350, enginePowerHp: 840, weightTons: 46.5,
+      gun: {
+        reloadS: 6.6,
+        shells: requireFleetSpec('t90a').gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0 ? { dmg: 530, pen100Mm: 806, pen1000Mm: 748, pen2000Mm: 650 }
+            : index === 1 ? { dmg: 490, pen100Mm: 700, pen1000Mm: 700 }
+              : { dmg: 590 }),
+        })),
+      },
       visual: { number: '417' } }),
   // t90ms: Tagil export demonstrator — V-92S2F 1130 hp, welded turret with
   // the big bustle + rear cage + UDP T05BV-1 RWS; desert-sand factory paint
   // (the export-demo look; also the garage tell vs the green t90sm).
   make('t90a', 't90ms', 'T-90MS Tagil', 'USSR/Russia',
-    { hp: 2300, enginePowerHp: 1130, weightTons: 48, topSpeedKmh: 65,
-      gun: { reloadS: 6.8 },
+    { hp: 2550, enginePowerHp: 1130, weightTons: 48, topSpeedKmh: 65,
+      gun: {
+        reloadS: 6.1,
+        shells: requireFleetSpec('t90a').gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0 ? { dmg: 540, pen100Mm: 830, pen1000Mm: 770, pen2000Mm: 675 }
+            : index === 1 ? { dmg: 500, pen100Mm: 720, pen1000Mm: 720 }
+              : { dmg: 600 }),
+        })),
+      },
       visual: { scheme: 'solid', base: '#6a6047', weather: '#75694e', patches: [], number: '340' } }),
   // t90a_burlak: experimental Burlak bustle-autoloader turret on the T-90A
   // hull (t90a stats; height to the taller bustle roof; the rear-rack
@@ -284,7 +308,15 @@ const SPECS: FleetTankSpec[] = [
   // (print -3.66 corroborates) — 9.76 is the variant's honest gun-forward
   // total (ASK-OWNER note in the packet; §5.38 named only heightM 2.30).
   make('t90a', 't90a_burlak', 'T-90A Burlak', 'USSR/Russia',
-    { hp: 2250, gun: { reloadS: 6.7 },
+    { hp: 2500, gun: {
+        reloadS: 6.0,
+        shells: requireFleetSpec('t90a').gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0 ? { dmg: 540, pen100Mm: 830, pen1000Mm: 770, pen2000Mm: 675 }
+            : index === 1 ? { dmg: 500, pen100Mm: 720, pen1000Mm: 720 }
+              : { dmg: 600 }),
+        })),
+      },
       dims: { heightM: 2.30, overallLengthM: 9.76 },
       visual: { number: '059' } }),
 ];

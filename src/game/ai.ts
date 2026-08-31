@@ -21,6 +21,7 @@ import { solveBallisticGunLay } from '../sim/ballistics.ts';
 import { tankPoseFromState, queryAimArmor } from '../sim/armor.ts';
 import { blastRadiusM, estimatePenRatio, isHeClass } from '../sim/damage.ts';
 import { terrainTravelCostFactor } from '../sim/terrainMobility.ts';
+import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
 import type { ArmorModel } from '../sim/armor.ts';
 import type { DamageShellSpec, CombatState, HitEvent } from '../sim/damage.ts';
 import type {
@@ -47,6 +48,7 @@ interface AiInput extends MovementInput {
   fire: boolean;
   aimPoint: Vector3;
   shellSlot: number;
+  actionBits: number;
 }
 
 interface AiGunSpec extends MovementGunSpec {
@@ -94,9 +96,65 @@ export interface AiEntity {
   spec: AiSpec;
   state: TankState;
   combat?: CombatState;
+  consumableReadyAt?: number[];
+  specialAction?: { kind: string; active: boolean } | null;
   input: AiInput;
   ai?: unknown;
   aiCtl?: unknown;
+}
+
+interface AiSupportContext {
+  safeToReloadMagazine?: boolean;
+  wantsSuspensionAim?: boolean;
+}
+
+const CRITICAL_REPAIR_MODULES = new Set([
+  'trackL', 'trackR', 'engine', 'gun', 'turretRing', 'gunMount',
+  'ammoRack', 'autoloader', 'feedSystem', 'missileRack',
+]);
+
+/** Pick one validated, edge-triggered support action from the bot's own state. */
+export function chooseAiSupportActionBits(
+  entity: AiEntity | null | undefined,
+  timeS: number,
+  context: AiSupportContext = {},
+): number {
+  const combat = entity?.combat;
+  if (!combat || combat.destroyed) return 0;
+  const readyAt = entity?.consumableReadyAt;
+  const ready = (slot: number): boolean =>
+    !Array.isArray(readyAt) || (Number(readyAt[slot]) || 0) <= timeS;
+
+  if (combat.fire?.burning && ready(2)) return PLAYER_ACTION_BITS.EXTINGUISHER;
+
+  let damagedModules = 0;
+  let criticalRed = false;
+  for (const [name, module] of Object.entries(combat.modules || {})) {
+    if (!module || module.state === 'ok') continue;
+    damagedModules += 1;
+    if (module.state === 'red' && CRITICAL_REPAIR_MODULES.has(name)) criticalRed = true;
+  }
+  if ((criticalRed || damagedModules >= 2) && ready(0)) return PLAYER_ACTION_BITS.REPAIR;
+
+  if (Object.values(combat.crew || {}).some((alive) => alive === false) && ready(1)) {
+    return PLAYER_ACTION_BITS.FIRST_AID;
+  }
+
+  const action = entity?.specialAction;
+  if (action?.kind === 'hydropneumatic_aim' &&
+      action.active !== !!context.wantsSuspensionAim) {
+    return PLAYER_ACTION_BITS.SPECIAL_ACTION;
+  }
+
+  const magazine = combat.magazine;
+  if (context.safeToReloadMagazine && magazine && magazine.rounds > 0 &&
+      magazine.rounds <= Math.ceil(magazine.capacity / 2)) {
+    const channel = combat.gunReload || combat.reload;
+    if (!(channel.kind === 'magazine' && channel.t > 0)) {
+      return PLAYER_ACTION_BITS.RELOAD_MAGAZINE;
+    }
+  }
+  return 0;
 }
 
 interface AiObstacle {
@@ -177,10 +235,10 @@ const DIFFICULTY_TIERS = {
   // trade: r7 raised normal 330→400 and hard 420→500 so a known contact is
   // always worth advancing on at full throttle.
   easy:   { fireFactor: 0.55, reactionS: 1.65, aimErrMult: 5.0, playerSpreadMult: 1.5, probeLevel: 0, engageRangeM: 300, holdRangeM: 180, coverIQ: 0.35, trackLagS: 0.46, leadSigma: 0.34 },
-  // Shared-combat r1: normal is the default live battle tier. Faster target
-  // confirmation, tighter lays and stronger reload-cover discipline make
-  // both allied and enemy bots competent without hard-tier perfect aim.
-  normal: { fireFactor: 0.85, reactionS: 1.3, aimErrMult: 4.0, playerSpreadMult: 1.0, probeLevel: 1, engageRangeM: 450, holdRangeM: 260, coverIQ: 0.82, trackLagS: 0.36, leadSigma: 0.28 },
+  // Normal is the live-battle default: competent target confirmation and
+  // cover discipline, with deliberately imperfect tracking/lead so a moving
+  // opponent is threatened rather than hit with robotic consistency.
+  normal: { fireFactor: 0.80, reactionS: 1.35, aimErrMult: 4.25, playerSpreadMult: 1.1, probeLevel: 1, engageRangeM: 450, holdRangeM: 260, coverIQ: 0.82, trackLagS: 0.38, leadSigma: 0.30 },
   hard:   { fireFactor: 1.0, reactionS: 0.8, aimErrMult: 2.5, playerSpreadMult: 0.4, probeLevel: 2, engageRangeM: 500, holdRangeM: 300, coverIQ: 1.0, trackLagS: 0.18, leadSigma: 0.16 },
 };
 
@@ -477,7 +535,7 @@ export function botFriendlyFireRisk(
  * Create the shared AI controller for one non-player tank on either team.
  *
  * @param {object} entity TankEntity (§2.4) — `{ id, spec, state, combat, input, ai }`.
- *   The controller writes `entity.input` (throttle/steer/brake/fire/aimPoint/shellSlot)
+ *   The controller writes `entity.input` (movement, fire, aim, shell slot and action bits)
  *   and nothing else; it also claims `entity.ai` as its opaque state slot.
  * @param {object} opts
  * @param {'easy'|'normal'|'hard'} [opts.difficulty='normal'] behavior tier
@@ -537,10 +595,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   // Ensure the shared input record exists (integration normally creates it).
   if (!entity.input) {
-    entity.input = { throttle: 0, steer: 0, brake: false, fire: false, aimPoint: new Vector3(), shellSlot: 0 };
+    entity.input = {
+      throttle: 0, steer: 0, brake: false, fire: false,
+      aimPoint: new Vector3(), shellSlot: 0, actionBits: 0,
+    };
   } else if (!entity.input.aimPoint) {
     entity.input.aimPoint = new Vector3();
   }
+  entity.input.actionBits = 0;
 
   const spec = entity.spec;
   // BATTLE-AI r7 doctrine wiring (see roleOf/ROLE_TUNE above).
@@ -2813,6 +2875,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     allyYielding = false;
     allyAvoidingId = null;
     allyClosestM = Infinity;
+    input.actionBits = 0;
 
     if (cb && cb.destroyed) {
       input.throttle = 0; input.steer = 0; input.brake = false; input.fire = false;
@@ -3169,6 +3232,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // Last movement authority: applies to ordinary routes, fallback reverse,
     // and generic unstick bursts alike.
     avoidAllies(input, dt);
+    input.actionBits = chooseAiSupportActionBits(entity, timeS, {
+      safeToReloadMagazine: !target || !losClear || mode === 'seekCover',
+      wantsSuspensionAim: !!target && losClear && Math.abs(st.speed) < 1.5 &&
+        Math.abs(input.throttle) < 0.2,
+    });
     aimAndFire(input, dt, timeS);
     controller.state = mode;
   }

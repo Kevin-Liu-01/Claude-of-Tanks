@@ -94,9 +94,9 @@ const t72m1Jaguar = variant('t72m1_jaguar', 't72b_1987', {
   // published overall line without moving the turret off its ring.
   turretPivot: [0, 1.40, -0.02], gunPivot: [0, 0.24, 0.52],
   gunBarrel: { lengthM: 5.74, radiusM: 0.112 },
-  stats: { hp: 1850, enginePowerHp: 1000, weightTons: 45.5, topSpeedKmh: 60,
+  stats: { hp: 2050, enginePowerHp: 1000, weightTons: 45.5, topSpeedKmh: 60,
     reverseSpeedKmh: 18, turretTraverseDegS: 34, gunPitchDegS: 27 },
-  reloadS: 7.1, shellName: 'Pronit APFSDS', armorFactor: 1.06,
+  reloadS: 6.7, shellName: 'Pronit APFSDS', armorFactor: 1.06,
 });
 
 const pt91Twardy = variant('pt91_twardy', 'pt91m', {
@@ -108,9 +108,9 @@ const pt91Twardy = variant('pt91_twardy', 'pt91m', {
   // overall line with the turret fixed to its authored ring.
   turretPivot: [0, 1.38, 0.02], gunPivot: [0, 0.32, 0.50],
   gunBarrel: { lengthM: 5.73, radiusM: 0.115 },
-  stats: { hp: 2150, enginePowerHp: 1000, weightTons: 47.5, topSpeedKmh: 60,
+  stats: { hp: 2250, enginePowerHp: 1000, weightTons: 47.5, topSpeedKmh: 60,
     reverseSpeedKmh: 20, turretTraverseDegS: 36, gunPitchDegS: 29 },
-  reloadS: 6.8, shellName: 'Pronit 125 APFSDS', armorFactor: 1.08,
+  reloadS: 6.4, shellName: 'Pronit 125 APFSDS', armorFactor: 1.08,
 });
 
 const pl01 = variant('pl01', 'k2', {
@@ -122,12 +122,17 @@ const pl01 = variant('pl01', 'k2', {
   // turret nose and remains buried in the thermal sleeve.
   turretPivot: [0, 2.07, -0.90], gunPivot: [0, 0.31104, 1.45],
   gunBarrel: { lengthM: 4.71, radiusM: 0.098 },
-  stats: { hp: 2300, enginePowerHp: 1000, weightTons: 35.0, topSpeedKmh: 70,
+  stats: { hp: 2400, enginePowerHp: 1000, weightTons: 35.0, topSpeedKmh: 70,
     reverseSpeedKmh: 30, turretTraverseDegS: 44, gunPitchDegS: 36 },
-  reloadS: 20.0,
-  autoloader: { magazineSize: 3, intraClipS: 2.4, fullReloadS: 20.0 },
+  reloadS: 15.0,
+  autoloader: { magazineSize: 3, intraClipS: 2.2, fullReloadS: 15.0 },
   shellName: 'DM63A1 APFSDS', armorFactor: 1.10,
 });
+Object.assign(pl01.gun.shells[0], {
+  pen100Mm: 891, pen1000Mm: 830, pen2000Mm: 730, dmg: 550,
+});
+Object.assign(pl01.gun.shells[1], { pen100Mm: 650, pen1000Mm: 650, dmg: 500 });
+Object.assign(pl01.gun.shells[2], { dmg: 600 });
 
 // OBRUM offered its modular fire-support turret around 120 mm and 105 mm
 // autoloading guns. The 105 trades single-shot damage for a four-round clip.
@@ -139,23 +144,23 @@ pl01_105.dims = { ...pl01_105.dims, silhouetteHeightM: 3.22368 };
 pl01_105.gun = {
   ...pl01_105.gun,
   caliberMm: 105,
-  reloadS: 18.0,
-  autoloader: { magazineSize: 4, intraClipS: 2.0, fullReloadS: 18.0 },
+  reloadS: 13.5,
+  autoloader: { magazineSize: 4, intraClipS: 1.8, fullReloadS: 13.5 },
   shells: [
     {
       name: 'DM63 105 APFSDS', type: 'APFSDS', caliberMm: 105,
-      pen100Mm: 720, pen1000Mm: 655, pen2000Mm: 590,
-      dmg: 400, velocityMps: 1555, moduleDmg: 105, tracer: 'APFSDS',
+      pen100Mm: 855, pen1000Mm: 790, pen2000Mm: 690,
+      dmg: 430, velocityMps: 1555, moduleDmg: 110, tracer: 'APFSDS',
     },
     {
       name: 'M456A2 HEAT-T', type: 'HEAT', caliberMm: 105,
       pen100Mm: 450, pen1000Mm: 450,
-      dmg: 390, velocityMps: 1173, moduleDmg: 105, tracer: 'HEAT',
+      dmg: 420, velocityMps: 1173, moduleDmg: 110, tracer: 'HEAT',
     },
     {
       name: 'DM12 105 HE', type: 'HE', caliberMm: 105,
       pen100Mm: 40, pen1000Mm: 40,
-      dmg: 480, velocityMps: 732, moduleDmg: 105, tracer: 'HE',
+      dmg: 510, velocityMps: 732, moduleDmg: 110, tracer: 'HE',
     },
   ] satisfies ShellSpec[],
 };

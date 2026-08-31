@@ -139,7 +139,23 @@ const SPECS: FleetTankSpec[] = [
       dims: { hullLengthM: 6.33, overallLengthM: 8.51, widthM: 3.51, heightM: 3.35 },
       visual: { bakeDirtDeckEq: true } }),
   make('m4a3e8', 'm26_pershing', 'M26 Pershing', 'USA',
-    { hp: 1450, weightTons: 41.9, topSpeedKmh: 40, gun: { caliberMm: 90, reloadS: 7.5 },
+    { hp: 1600, weightTons: 41.9, topSpeedKmh: 40,
+      gun: {
+        caliberMm: 90, reloadS: 6.8, baseAccuracy: 0.34, aimTimeS: 2.2,
+        shells: requireFleetSpec('m4a3e8').gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0 ? {
+            name: 'M82 APCBC', caliberMm: 90, pen100Mm: 190, pen1000Mm: 160,
+            dmg: 240, moduleDmg: 90, velocityMps: 853,
+          } : index === 1 ? {
+            name: 'M304 HVAP', caliberMm: 90, pen100Mm: 245, pen1000Mm: 205,
+            dmg: 220, moduleDmg: 90, velocityMps: 1021,
+          } : {
+            name: 'M71 HE', caliberMm: 90, pen100Mm: 45, pen1000Mm: 45,
+            dmg: 320, moduleDmg: 105, velocityMps: 823,
+          }),
+        })),
+      },
       // heightM uses the over-mounted-M2 convention (matching the m46/m47
       // rows): published 2.78 is the no-MG datum, but the gate measures the
       // build's roof INCLUDING the pintle M2 (~14 body columns) — batch-8
@@ -148,7 +164,24 @@ const SPECS: FleetTankSpec[] = [
       // above 3.0 are real mounted-M2 print geometry; lands with batch-42).
       dims: { hullLengthM: 6.33, overallLengthM: 8.65, widthM: 3.51, heightM: 3.08 } }),
   make('m4a3e8', 'm45_patton', 'M45 Patton', 'USA',
-    { hp: 1500, weightTons: 42, topSpeedKmh: 40, gun: { caliberMm: 105, reloadS: 9.0 },
+    { hp: 1650, weightTons: 42, topSpeedKmh: 40,
+      gun: {
+        caliberMm: 105, reloadS: 8.4, baseAccuracy: 0.39, aimTimeS: 2.6,
+        shells: requireFleetSpec('m4a3e8').gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0 ? {
+            name: 'T32 AP', caliberMm: 105, pen100Mm: 175, pen1000Mm: 145,
+            dmg: 370, moduleDmg: 125, velocityMps: 731,
+          } : index === 1 ? {
+            name: 'T29E3 HEAT', type: 'HEAT', caliberMm: 105,
+            pen100Mm: 230, pen1000Mm: 230, dmg: 350, moduleDmg: 125,
+            velocityMps: 853,
+          } : {
+            name: 'M1 HE', caliberMm: 105, pen100Mm: 53, pen1000Mm: 53,
+            dmg: 460, moduleDmg: 150, velocityMps: 472,
+          }),
+        })),
+      },
       // stub 105mm howitzer barely clears the bow; the seated oracle's muzzle
       // reads ~6.6 overall (batch-8 packet), not the earlier 6.4 estimate.
       // heightM: over-mounted-M2 convention, same ruling as m26 above.

@@ -4671,17 +4671,17 @@
         "caliberMm": 120,
         "shells": [
           {
-            "name": "OFL 120 F2 APFSDS",
+            "name": "OFL 120 F3 APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 781,
-            "pen1000Mm": 711,
-            "pen2000Mm": 640
+            "pen100Mm": 916,
+            "pen1000Mm": 850,
+            "pen2000Mm": 750
           },
           {
             "name": "OECC 120 F1 HEAT",
             "type": "HEAT",
-            "pen100Mm": 600,
-            "pen1000Mm": 600,
+            "pen100Mm": 700,
+            "pen1000Mm": 700,
             "pen2000Mm": null
           },
           {
@@ -6070,7 +6070,7 @@
         ]
       },
       "geometryHash": "a172378e",
-      "metadataHash": "9bf30387",
+      "metadataHash": "5d2797a4",
       "presentationAnchor": {
         "xM": 0.0028,
         "zM": 0.1171
@@ -39739,15 +39739,15 @@
           {
             "name": "BR-482 APCBC (130mm S-70)",
             "type": "AP",
-            "pen100Mm": 240,
-            "pen1000Mm": 210,
+            "pen100Mm": 520,
+            "pen1000Mm": 450,
             "pen2000Mm": null
           },
           {
             "name": "BR-482B APCR",
             "type": "APCR",
-            "pen100Mm": 280,
-            "pen1000Mm": 245,
+            "pen100Mm": 620,
+            "pen1000Mm": 540,
             "pen2000Mm": null
           },
           {
@@ -40480,7 +40480,7 @@
         ]
       },
       "geometryHash": "d464d279",
-      "metadataHash": "7f87b8a0",
+      "metadataHash": "10f6f72d",
       "presentationAnchor": {
         "xM": 0.0006,
         "zM": -1.6693
@@ -50952,15 +50952,15 @@
           {
             "name": "OFL 120 F2 APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 781,
-            "pen1000Mm": 711,
-            "pen2000Mm": 640
+            "pen100Mm": 806,
+            "pen1000Mm": 733,
+            "pen2000Mm": 660
           },
           {
             "name": "OECC 120 F1 HEAT",
             "type": "HEAT",
-            "pen100Mm": 600,
-            "pen1000Mm": 600,
+            "pen100Mm": 620,
+            "pen1000Mm": 620,
             "pen2000Mm": null
           },
           {
@@ -51848,7 +51848,7 @@
         ]
       },
       "geometryHash": "7185836c",
-      "metadataHash": "c1a84cda",
+      "metadataHash": "5889d8d4",
       "presentationAnchor": {
         "xM": 0.0031,
         "zM": 0.1097
@@ -52014,17 +52014,17 @@
         "caliberMm": 120,
         "shells": [
           {
-            "name": "OFL 120 F2 APFSDS",
+            "name": "OFL 120 F2-B APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 781,
-            "pen1000Mm": 711,
-            "pen2000Mm": 640
+            "pen100Mm": 891,
+            "pen1000Mm": 830,
+            "pen2000Mm": 730
           },
           {
             "name": "OECC 120 F1 HEAT",
             "type": "HEAT",
-            "pen100Mm": 600,
-            "pen1000Mm": 600,
+            "pen100Mm": 680,
+            "pen1000Mm": 680,
             "pen2000Mm": null
           },
           {
@@ -53413,7 +53413,7 @@
         ]
       },
       "geometryHash": "34cc7f25",
-      "metadataHash": "83cc154e",
+      "metadataHash": "65818dff",
       "presentationAnchor": {
         "xM": 0.0031,
         "zM": 0.1018
@@ -84056,24 +84056,24 @@
         "caliberMm": 90,
         "shells": [
           {
-            "name": "M62 APCBC",
+            "name": "M82 APCBC",
             "type": "AP",
-            "pen100Mm": 128,
-            "pen1000Mm": 96,
+            "pen100Mm": 190,
+            "pen1000Mm": 160,
             "pen2000Mm": null
           },
           {
-            "name": "M93 HVAP",
+            "name": "M304 HVAP",
             "type": "APCR",
-            "pen100Mm": 208,
-            "pen1000Mm": 150,
+            "pen100Mm": 245,
+            "pen1000Mm": 205,
             "pen2000Mm": null
           },
           {
-            "name": "M42A1 HE",
+            "name": "M71 HE",
             "type": "HE",
-            "pen100Mm": 38,
-            "pen1000Mm": 38,
+            "pen100Mm": 45,
+            "pen1000Mm": 45,
             "pen2000Mm": null
           }
         ]
@@ -85105,7 +85105,7 @@
         ]
       },
       "geometryHash": "045841be",
-      "metadataHash": "d1a783af",
+      "metadataHash": "e448bc8f",
       "presentationAnchor": {
         "xM": -0.0003,
         "zM": -1.2087
@@ -85210,8 +85210,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 89146,
-          "sha256": "5e9334914def1dc491a31b104d55d6fdeaee1181e71ba951d85ba8c7de1ba454"
+          "bytes": 89127,
+          "sha256": "c43811bafd92791865ec9f51a21a4a7b9cc13d26be68b736b43025568cf2a766"
         },
         "crewSide": {
           "file": "m26_pershing_crew_side.png",
@@ -87715,24 +87715,24 @@
         "caliberMm": 105,
         "shells": [
           {
-            "name": "M62 APCBC",
+            "name": "T32 AP",
             "type": "AP",
-            "pen100Mm": 128,
-            "pen1000Mm": 96,
+            "pen100Mm": 175,
+            "pen1000Mm": 145,
             "pen2000Mm": null
           },
           {
-            "name": "M93 HVAP",
-            "type": "APCR",
-            "pen100Mm": 208,
-            "pen1000Mm": 150,
+            "name": "T29E3 HEAT",
+            "type": "HEAT",
+            "pen100Mm": 230,
+            "pen1000Mm": 230,
             "pen2000Mm": null
           },
           {
-            "name": "M42A1 HE",
+            "name": "M1 HE",
             "type": "HE",
-            "pen100Mm": 38,
-            "pen1000Mm": 38,
+            "pen100Mm": 53,
+            "pen1000Mm": 53,
             "pen2000Mm": null
           }
         ]
@@ -88549,7 +88549,7 @@
         ]
       },
       "geometryHash": "12123d67",
-      "metadataHash": "bd9e06d5",
+      "metadataHash": "5977e892",
       "presentationAnchor": {
         "xM": -0.0001,
         "zM": -0.1068
@@ -88654,8 +88654,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 138301,
-          "sha256": "22d7759a930239f673f43913033cb30e62516900c8e0ff07e2f097cd6f298457"
+          "bytes": 138269,
+          "sha256": "2adbca14e3df07ea63564853a45f276d014a77349c4b68f47905c7b25f1f1a7a"
         },
         "crewSide": {
           "file": "m45_patton_crew_side.png",
@@ -113528,15 +113528,15 @@
           {
             "name": "BR-482M APCBC (130mm M-65)",
             "type": "AP",
-            "pen100Mm": 258,
-            "pen1000Mm": 225,
+            "pen100Mm": 550,
+            "pen1000Mm": 480,
             "pen2000Mm": null
           },
           {
             "name": "BR-482P APCR",
             "type": "APCR",
-            "pen100Mm": 305,
-            "pen1000Mm": 265,
+            "pen100Mm": 650,
+            "pen1000Mm": 565,
             "pen2000Mm": null
           },
           {
@@ -114269,7 +114269,7 @@
         ]
       },
       "geometryHash": "43df4dfa",
-      "metadataHash": "b6a07c83",
+      "metadataHash": "e915fc19",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": -1.6482
@@ -115674,15 +115674,15 @@
           {
             "name": "DM63A1 APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 855,
-            "pen1000Mm": 778,
-            "pen2000Mm": 700
+            "pen100Mm": 891,
+            "pen1000Mm": 830,
+            "pen2000Mm": 730
           },
           {
             "name": "K280 HEAT-MP",
             "type": "HEAT",
-            "pen100Mm": 610,
-            "pen1000Mm": 610,
+            "pen100Mm": 650,
+            "pen1000Mm": 650,
             "pen2000Mm": null
           },
           {
@@ -117156,7 +117156,7 @@
         ]
       },
       "geometryHash": "77cdebce",
-      "metadataHash": "9a8caa74",
+      "metadataHash": "554c3aae",
       "presentationAnchor": {
         "xM": -0.0006,
         "zM": -0.0466
@@ -117326,9 +117326,9 @@
           {
             "name": "DM63 105 APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 720,
-            "pen1000Mm": 655,
-            "pen2000Mm": 590
+            "pen100Mm": 855,
+            "pen1000Mm": 790,
+            "pen2000Mm": 690
           },
           {
             "name": "M456A2 HEAT-T",
@@ -118808,7 +118808,7 @@
         ]
       },
       "geometryHash": "15158de1",
-      "metadataHash": "eb4807a1",
+      "metadataHash": "8b4ce575",
       "presentationAnchor": {
         "xM": -0.0007,
         "zM": -0.045
@@ -118978,9 +118978,9 @@
           {
             "name": "Pronit 125 APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 696,
-            "pen1000Mm": 633,
-            "pen2000Mm": 570
+            "pen100Mm": 720,
+            "pen1000Mm": 665,
+            "pen2000Mm": 590
           },
           {
             "name": "3BK29 HEAT",
@@ -120012,7 +120012,7 @@
         ]
       },
       "geometryHash": "e88b650f",
-      "metadataHash": "006fa9e4",
+      "metadataHash": "a7b9b44f",
       "presentationAnchor": {
         "xM": 0.0014,
         "zM": 0.0811
@@ -120179,9 +120179,9 @@
           {
             "name": "3BM46 Svinets",
             "type": "APFSDS",
-            "pen100Mm": 696,
-            "pen1000Mm": 633,
-            "pen2000Mm": 570
+            "pen100Mm": 720,
+            "pen1000Mm": 665,
+            "pen2000Mm": 590
           },
           {
             "name": "3BK29 HEAT",
@@ -121535,7 +121535,7 @@
         ]
       },
       "geometryHash": "f7820af8",
-      "metadataHash": "e1ae6023",
+      "metadataHash": "7da5f48e",
       "presentationAnchor": {
         "xM": 0.0017,
         "zM": 0.0601
@@ -136185,15 +136185,15 @@
           {
             "name": "DM63 (105) APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 476,
-            "pen1000Mm": 433,
-            "pen2000Mm": 390
+            "pen100Mm": 520,
+            "pen1000Mm": 470,
+            "pen2000Mm": 410
           },
           {
             "name": "DM512 HEAT",
             "type": "HEAT",
-            "pen100Mm": 400,
-            "pen1000Mm": 400,
+            "pen100Mm": 440,
+            "pen1000Mm": 440,
             "pen2000Mm": null
           },
           {
@@ -137019,7 +137019,7 @@
         ]
       },
       "geometryHash": "b53749e0",
-      "metadataHash": "0b5bba94",
+      "metadataHash": "b9e57d50",
       "presentationAnchor": {
         "xM": -0.0001,
         "zM": -0.0731
@@ -137185,15 +137185,15 @@
           {
             "name": "DM63 (105) APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 476,
-            "pen1000Mm": 433,
-            "pen2000Mm": 390
+            "pen100Mm": 520,
+            "pen1000Mm": 470,
+            "pen2000Mm": 410
           },
           {
             "name": "DM512 HEAT",
             "type": "HEAT",
-            "pen100Mm": 400,
-            "pen1000Mm": 400,
+            "pen100Mm": 440,
+            "pen1000Mm": 440,
             "pen2000Mm": null
           },
           {
@@ -138105,7 +138105,7 @@
         ]
       },
       "geometryHash": "ccfcc106",
-      "metadataHash": "d996da49",
+      "metadataHash": "81d836d5",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0594
@@ -152126,15 +152126,15 @@
           {
             "name": "3BM42M Lekalo",
             "type": "APFSDS",
-            "pen100Mm": 720,
-            "pen1000Mm": 656,
-            "pen2000Mm": 590
+            "pen100Mm": 806,
+            "pen1000Mm": 748,
+            "pen2000Mm": 650
           },
           {
             "name": "3BK29M HEAT",
             "type": "HEAT",
-            "pen100Mm": 650,
-            "pen1000Mm": 650,
+            "pen100Mm": 700,
+            "pen1000Mm": 700,
             "pen2000Mm": null
           },
           {
@@ -153504,7 +153504,7 @@
         ]
       },
       "geometryHash": "989310cb",
-      "metadataHash": "3030bd1b",
+      "metadataHash": "a8485a7b",
       "presentationAnchor": {
         "xM": 0.0029,
         "zM": -0.0421
@@ -155634,15 +155634,15 @@
           {
             "name": "3BM42M Lekalo",
             "type": "APFSDS",
-            "pen100Mm": 720,
-            "pen1000Mm": 656,
-            "pen2000Mm": 590
+            "pen100Mm": 830,
+            "pen1000Mm": 770,
+            "pen2000Mm": 675
           },
           {
             "name": "3BK29M HEAT",
             "type": "HEAT",
-            "pen100Mm": 650,
-            "pen1000Mm": 650,
+            "pen100Mm": 720,
+            "pen1000Mm": 720,
             "pen2000Mm": null
           },
           {
@@ -156833,7 +156833,7 @@
         ]
       },
       "geometryHash": "3901fe42",
-      "metadataHash": "a2a6179c",
+      "metadataHash": "6efdfc27",
       "presentationAnchor": {
         "xM": 0.002,
         "zM": 0.0535
@@ -161836,15 +161836,15 @@
           {
             "name": "3BM42M Lekalo",
             "type": "APFSDS",
-            "pen100Mm": 720,
-            "pen1000Mm": 656,
-            "pen2000Mm": 590
+            "pen100Mm": 830,
+            "pen1000Mm": 770,
+            "pen2000Mm": 675
           },
           {
             "name": "3BK29M HEAT",
             "type": "HEAT",
-            "pen100Mm": 650,
-            "pen1000Mm": 650,
+            "pen100Mm": 720,
+            "pen1000Mm": 720,
             "pen2000Mm": null
           },
           {
@@ -163071,7 +163071,7 @@
         ]
       },
       "geometryHash": "93e344c0",
-      "metadataHash": "f3f9ac86",
+      "metadataHash": "1719e081",
       "presentationAnchor": {
         "xM": -0.001,
         "zM": 0.0199
@@ -169784,15 +169784,15 @@
           {
             "name": "DM63 (105) APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 476,
-            "pen1000Mm": 433,
+            "pen100Mm": 500,
+            "pen1000Mm": 450,
             "pen2000Mm": 390
           },
           {
             "name": "DM512 HEAT",
             "type": "HEAT",
-            "pen100Mm": 400,
-            "pen1000Mm": 400,
+            "pen100Mm": 430,
+            "pen1000Mm": 430,
             "pen2000Mm": null
           },
           {
@@ -170644,7 +170644,7 @@
         ]
       },
       "geometryHash": "8dae29f1",
-      "metadataHash": "e92c12ef",
+      "metadataHash": "db334ee0",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": 0.0518

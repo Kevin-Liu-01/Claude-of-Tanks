@@ -208,7 +208,15 @@ const SPECS: FleetTankSpec[] = [
       publicVisualFallback: null, community: null,
       dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } }),
   make('t72b3', 'pt91m', 'PT-91M Pendekar', 'Poland',
-    { hp: 2050, weightTons: 48.5, topSpeedKmh: 70, reverseSpeedKmh: 20,
+    { hp: 2150, weightTons: 48.5, topSpeedKmh: 70, reverseSpeedKmh: 20,
+      gun: {
+        reloadS: 7.0,
+        shells: requireFleetSpec('t72b3').gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0 ? { dmg: 520, pen100Mm: 720, pen1000Mm: 665, pen2000Mm: 590 }
+            : index === 1 ? { dmg: 480 } : { dmg: 585 }),
+        })),
+      },
       visual: {
         scheme: 'stripes', base: '#394b3c', weather: '#53604a',
         patches: ['#202820', '#4a3b30', '#70634a'], camoScale: 0.42,
@@ -292,7 +300,16 @@ const SPECS: FleetTankSpec[] = [
       publicVisualFallback: null, community: null,
       dims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 } }),
   make('leo1a5', 't62mv1', 'T-62 obr. 1975', 'USSR/Russia',
-    { hp: 1650, weightTons: 38, topSpeedKmh: 50, reverseSpeedKmh: 8, gun: { reloadS: 8.2 },
+    { hp: 1750, weightTons: 38, topSpeedKmh: 50, reverseSpeedKmh: 8,
+      gun: {
+        reloadS: 7.2,
+        shells: requireFleetSpec('leo1a5').gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0 ? { dmg: 420, pen100Mm: 520, pen1000Mm: 470, pen2000Mm: 410 }
+            : index === 1 ? { dmg: 420, pen100Mm: 440, pen1000Mm: 440 }
+              : { dmg: 500 }),
+        })),
+      },
       dims: {
         // widthM 3.30 -> 3.63 (§5.304 OWNER ORDER 2026-08-17, verbatim:
         // "update our t62 obr 1975 10% wider ..."): owner-decreed spec

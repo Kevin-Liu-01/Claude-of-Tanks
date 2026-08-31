@@ -8,6 +8,7 @@ const MAPS = process.env.COT_PACING_MAPS
   ? process.env.COT_PACING_MAPS.split(',').filter((id) => MAP_IDS.includes(id))
   : MAP_IDS;
 const durations = [];
+const resultReasons = [];
 
 // Four deterministic default private-lobby rosters per battlefield.  The
 // human remains idle deliberately: this is the historical worst case where
@@ -39,14 +40,16 @@ for (let mapIndex = 0; mapIndex < MAPS.length; mapIndex++) {
       match.step({ dt: 1 / 60, inputs: new Map() });
     }
     assert.ok(match.result, `${mapId}/${sample}: match resolves by the 15 minute cap`);
-    if (match.timeS >= 899) {
-      assert.equal(match.resultReason, 'time_limit',
-        `${mapId}/${sample}: cap result is identified as time_limit`);
+    if (match.resultReason === 'time_limit') {
+      assert.ok(match.timeS >= 899,
+        `${mapId}/${sample}: time-limit result occurs at the configured cap`);
     }
     durations.push(match.timeS);
+    resultReasons.push(match.resultReason);
     mapDurations.push(match.timeS);
   }
-  const mapTimeouts = mapDurations.filter((duration) => duration >= 899).length;
+  const mapTimeouts = resultReasons.slice(-mapDurations.length)
+    .filter((reason) => reason === 'time_limit').length;
   console.log(`${mapId}: ${mapDurations.map((v) => v.toFixed(0)).join('/')}s ` +
     `timeouts=${mapTimeouts}/4`);
 }
@@ -55,7 +58,7 @@ durations.sort((a, b) => a - b);
 const medianS = durations[Math.floor(durations.length / 2)];
 const p10S = durations[Math.floor(durations.length * 0.1)];
 const subTwoMinute = durations.filter((duration) => duration < 120).length;
-const timeouts = durations.filter((duration) => duration >= 899).length;
+const timeouts = resultReasons.filter((reason) => reason === 'time_limit').length;
 
 assert.ok(medianS >= 300 && medianS <= 480,
   `default bot match median must stay in the 5-8 minute band (got ${medianS.toFixed(1)} s)`);

@@ -458,15 +458,15 @@ const MODERN2_SPECS: TankSpecRegistry = {
     terrainResistance: MODERN_TR, pivotStyle: 'neutral',
     turretTraverseDegS: 42, gunPitchDegS: 32, gunElevationDeg: 15, gunDepressionDeg: 8,
     gun: {
-      caliberMm: 120, reloadS: 18.5, baseAccuracy: 0.30, aimTimeS: 1.9,
+      caliberMm: 120, reloadS: 16.5, baseAccuracy: 0.29, aimTimeS: 1.8,
       // Three-round ready rack: rapid presentation from the Leclerc bustle
       // conveyor, followed by an all-or-nothing magazine replenishment.
-      autoloader: { magazineSize: 3, intraClipS: 2.5, fullReloadS: 18.5 },
+      autoloader: { magazineSize: 3, intraClipS: 2.4, fullReloadS: 16.5 },
       bloom: BLOOM_MODERN,
       shells: [
-        apfsds('OFL 120 F2 APFSDS', 120, 640, 520, 1790),
-        shell('OECC 120 F1 HEAT', 'HEAT', 120, 600, 600, 470, 1100),
-        shell('OE 120 F1 HE', 'HE', 120, 45, 45, 570, 950),
+        apfsds('OFL 120 F2 APFSDS', 120, 660, 530, 1790),
+        shell('OECC 120 F1 HEAT', 'HEAT', 120, 620, 620, 480, 1100),
+        shell('OE 120 F1 HE', 'HE', 120, 45, 45, 580, 950),
       ],
     },
     dims: { hullLengthM: 6.88, overallLengthM: 9.87, widthM: 3.60, heightM: 2.53 },
@@ -727,8 +727,21 @@ const MODERN2_SPECS: TankSpecRegistry = {
   const xlrArmor = cloneArmor(base.armor);
   MODERN2_SPECS.leclerc_xlr = {
     ...base,
-    id: 'leclerc_xlr', name: 'Leclerc XLR', hp: 2550,
+    id: 'leclerc_xlr', name: 'Leclerc XLR', hp: 2650,
     weightTons: 57.4, topSpeedKmh: 70,
+    gun: {
+      ...base.gun,
+      reloadS: 15.5,
+      autoloader: { magazineSize: 3, intraClipS: 2.2, fullReloadS: 15.5 },
+      shells: base.gun.shells.map((round, index) => ({
+        ...round,
+        ...(index === 0 ? {
+          name: 'OFL 120 F2-B APFSDS', pen100Mm: 891, pen1000Mm: 830,
+          pen2000Mm: 730, dmg: 540,
+        } : index === 1 ? { pen100Mm: 680, pen1000Mm: 680, dmg: 500 }
+          : { dmg: 600 }),
+      })),
+    },
     dims: { ...base.dims, widthM: 3.64, heightM: 2.78 },
     armor: {
       ...xlrArmor,
@@ -754,9 +767,21 @@ const MODERN2_SPECS: TankSpecRegistry = {
   const amx56Armor = cloneArmor(base.armor);
   MODERN2_SPECS.amx56 = {
     ...base,
-    id: 'amx56', name: 'AMX 56', hp: 2650,
+    id: 'amx56', name: 'AMX 56', hp: 2750,
     enginePowerHp: 1550, weightTons: 58.8, topSpeedKmh: 68,
-    gun: { ...base.gun, reloadS: 4.8, aimTimeS: 1.7 },
+    gun: {
+      ...base.gun,
+      reloadS: 14.5, aimTimeS: 1.6,
+      autoloader: { magazineSize: 3, intraClipS: 2.0, fullReloadS: 14.5 },
+      shells: base.gun.shells.map((round, index) => ({
+        ...round,
+        ...(index === 0 ? {
+          name: 'OFL 120 F3 APFSDS', pen100Mm: 916, pen1000Mm: 850,
+          pen2000Mm: 750, dmg: 550,
+        } : index === 1 ? { pen100Mm: 700, pen1000Mm: 700, dmg: 510 }
+          : { dmg: 610 }),
+      })),
+    },
     dims: { ...base.dims, widthM: 3.72, heightM: 2.88 },
     armor: {
       ...amx56Armor,

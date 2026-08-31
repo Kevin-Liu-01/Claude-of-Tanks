@@ -55,8 +55,10 @@ import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
   selectShell, startPostShotReload, tickReload, isHeClass, ramDamage,
+  repairAllModules, startMagazineReload,
 } from '../sim/damage.ts';
 import {
+  activateSpecialAction,
   createSpecialActionState,
   specialActionGuidesShell,
 } from '../sim/specialActions.ts';
@@ -82,6 +84,8 @@ import {
 } from './equipment.ts';
 import { mulberry32 } from './stateCore.ts';
 import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
+import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
+import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
 import {
   autoCamoIdsForBattle,
   ensureTankVisual,
@@ -126,6 +130,7 @@ interface SoloInput extends MovementInput {
   aimLocked: boolean;
   shellSlot: number;
   aimPoint: THREE.Vector3;
+  actionBits: number;
 }
 
 interface SoloVisualContactGeometry extends MovementContactGeometry {
@@ -179,6 +184,7 @@ type SoloPooledEntity = Omit<RosterEntity,
     visual: SoloVisual | null;
     contactGeom: MovementContactGeometry | null;
     aiCtl: SoloAiController | null;
+    consumableReadyAt?: number[];
     bot?: boolean;
     modeActive?: boolean;
     equip?: string[];
@@ -851,7 +857,9 @@ export function setupBattle(
     ent.input.brake = false;
     ent.input.fire = false;
     ent.input.shellSlot = 0;
+    ent.input.actionBits = 0;
     ent.input.aimPoint.copy(ent.state.aimPoint);
+    ent.consumableReadyAt = [0, 0, 0];
     ent._destroyedAnnounced = false;
     ent._openingRoute = null;
     ent._lastImpactT = -1; // impact-event cooldown must not carry across battles
@@ -1690,6 +1698,44 @@ export function simStep(
   for (const ent of game.tanks) {
     if (ent.modeActive !== false && ent.aiCtl && !ent.combat.destroyed) {
       ent.aiCtl.update(dt, game.timeS);
+    }
+  }
+
+  // Apply bot support requests before movement/fire through the same action
+  // semantics as network players. Allied and enemy bots share this path.
+  for (const ent of game.tanks) {
+    if (!ent.aiCtl || ent.modeActive === false || !ent.combat || ent.combat.destroyed) continue;
+    const bits = ent.input.actionBits | 0;
+    ent.input.actionBits = 0;
+    if (!bits) continue;
+    if (bits & PLAYER_ACTION_BITS.RELOAD_MAGAZINE) {
+      startMagazineReload(ent.combat, ent.spec);
+    }
+    if (bits & PLAYER_ACTION_BITS.SPECIAL_ACTION) activateSpecialAction(ent);
+    const readyAt = ent.consumableReadyAt || (ent.consumableReadyAt = [0, 0, 0]);
+    for (let slot = 0; slot < CONSUMABLE_RULES.length; slot++) {
+      const bit = 1 << slot;
+      if (!(bits & bit) || cooldownRemaining(game.timeS, readyAt[slot]) > 0) continue;
+      let used = false;
+      if (bit === PLAYER_ACTION_BITS.REPAIR) {
+        for (const module of repairAllModules(ent.combat)) {
+          used = true;
+          bus.emit('module:state', { id: ent.id, module, state: 'ok', source: 'repair-kit' });
+        }
+      } else if (bit === PLAYER_ACTION_BITS.FIRST_AID) {
+        for (const crew of Object.keys(ent.combat.crew)) {
+          if (ent.combat.crew[crew] !== false) continue;
+          ent.combat.crew[crew] = true;
+          used = true;
+        }
+      } else if (bit === PLAYER_ACTION_BITS.EXTINGUISHER && ent.combat.fire.burning) {
+        ent.combat.fire.burning = false;
+        ent.combat.fire.ticksLeft = 0;
+        ent.combat.fire.tickTimer = 0;
+        used = true;
+        bus.emit('tank:fire', { id: ent.id, burning: false });
+      }
+      if (used) readyAt[slot] = game.timeS + CONSUMABLE_RULES[slot].cooldownS;
     }
   }
 

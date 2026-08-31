@@ -411,6 +411,39 @@ assert.ok(kitEvents.some((event) => event.type === 'consumable_used' && event.sl
 assert.ok(kitEvents.some((event) => event.type === 'consumable_denied' &&
   event.reason === 'COOLDOWN'), 'authority enforces reusable-kit cooldowns');
 
+const botSupportMatch = createAuthoritativeMatch({
+  countdownS: 0,
+  players: [
+    { id: 'support-a', specId: 'm1a2', team: 'alpha', bot: true,
+      spawn: { x: -100, z: -350, yaw: 0 } },
+    { id: 'support-b', specId: 'm1a2', team: 'bravo', bot: true,
+      spawn: { x: 100, z: 350, yaw: Math.PI } },
+  ],
+});
+botSupportMatch.onMatchReady();
+for (const id of ['support-a', 'support-b']) {
+  const bot = botSupportMatch.entityById.get(id);
+  bot.combat.fire = { burning: true, tickTimer: 0, ticksLeft: 5 };
+  bot.combat.modules.engine.hp = 0;
+  bot.combat.modules.engine.state = 'red';
+  bot.combat.crew.gunner = false;
+}
+botSupportMatch.step({ dt: 1 / 60, inputs: new Map() });
+for (const id of ['support-a', 'support-b']) {
+  const bot = botSupportMatch.entityById.get(id);
+  assert.equal(bot.combat.fire.burning, false, `${id}: bot authority consumes extinguisher request`);
+  assert.ok(bot.consumableReadyAt[2] > 0, `${id}: extinguisher cooldown is authority-owned`);
+}
+botSupportMatch.step({ dt: 1 / 60, inputs: new Map() });
+botSupportMatch.step({ dt: 1 / 60, inputs: new Map() });
+for (const id of ['support-a', 'support-b']) {
+  const bot = botSupportMatch.entityById.get(id);
+  assert.equal(bot.combat.modules.engine.state, 'ok', `${id}: bot authority consumes repair request`);
+  assert.equal(bot.combat.crew.gunner, true, `${id}: bot authority consumes first-aid request`);
+  assert.ok(bot.consumableReadyAt[0] > 0 && bot.consumableReadyAt[1] > 0,
+    `${id}: support cooldowns are symmetric and authoritative`);
+}
+
 const autoloaderMatch = createAuthoritativeMatch({
   countdownS: 0,
   players: [

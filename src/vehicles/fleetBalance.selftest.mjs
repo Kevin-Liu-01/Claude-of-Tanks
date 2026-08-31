@@ -10,6 +10,9 @@ import { penAtDistanceMm } from '../sim/ballistics.ts';
 import { traceTank } from '../sim/armor.ts';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
 import { garageStatGroup } from '../ui/garageDossier.ts';
+import {
+  auditFleetBalance, FLEET_BALANCE_REVISION, sustainedPrimaryDpm,
+} from './balanceAudit.ts';
 
 const REQUIRED_NUMBERS = [
   'hp', 'enginePowerHp', 'weightTons', 'topSpeedKmh', 'reverseSpeedKmh',
@@ -98,6 +101,20 @@ for (const id of SAVED_TANK_IDS) {
   const combat = createCombatState(spec);
   assert.equal(combat.hp, spec.hp, `${id}: local combat reads canonical HP`);
   assert.equal(combat.maxHp, spec.hp, `${id}: local max HP reads canonical HP`);
+  if (spec.gun.autoloader) {
+    assert.equal(spec.gun.reloadS, spec.gun.autoloader.fullReloadS,
+      `${id}: headline reload and complete magazine cycle cannot disagree`);
+  }
+}
+
+assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier), [],
+  'production peers have no severe HP, sustained-output or penetration troughs');
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 17,
+  'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
+for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
+  assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);
+  assert.ok(sustainedPrimaryDpm(TANK_SPECS[id]) > 0,
+    `${id}: revised sustained output is measurable`);
 }
 
 const missileVelocityByVehicle = new Map([

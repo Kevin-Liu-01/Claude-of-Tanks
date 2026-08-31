@@ -48,20 +48,20 @@ assert.match(sample.brief.join(' '), new RegExp(sample.displayName.replace(/[.*+
 const magazineRecord = createGalleryRecord(getSpec('pl01_105'));
 assert.equal(magazineRecord.metrics.autoloader, true);
 assert.equal(magazineRecord.metrics.magazineSize, 4);
-assert.equal(magazineRecord.metrics.intraClipS, 2);
-assert.equal(magazineRecord.metrics.reloadS, 18);
-assert.equal(magazineRecord.metrics.burstDamage, 1600);
-assert.equal(magazineRecord.metrics.dpm, 4000);
+assert.equal(magazineRecord.metrics.intraClipS, 1.8);
+assert.equal(magazineRecord.metrics.reloadS, 13.5);
+assert.equal(magazineRecord.metrics.burstDamage, 1720);
+assert.equal(magazineRecord.metrics.dpm, 5460);
 assert.match(magazineRecord.brief.join(' '), /4-round magazine autoloader/);
-assert.match(magazineRecord.highlights.join(' '), /1,600 burst damage/);
+assert.match(magazineRecord.highlights.join(' '), /1,720 burst damage/);
 
 const serializedMagazine = serializeGallerySpec(getSpec('pl01_105'));
 assert.deepEqual(serializedMagazine.gun.autoloader, {
   magazineSize: 4,
-  intraMagazineCycleS: 2,
-  fullReloadS: 18,
-  burstDamage: 1600,
-  sustainedDamagePerMinute: 4000,
+  intraMagazineCycleS: 1.8,
+  fullReloadS: 13.5,
+  burstDamage: 1720,
+  sustainedDamagePerMinute: 5460,
 });
 
 console.log(`tank gallery catalog self-test passed (${records.length} vehicles)`);

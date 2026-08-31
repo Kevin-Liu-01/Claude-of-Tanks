@@ -105,6 +105,6 @@ assert.ok(calibrationShots >= 50,
 // The selected authoritative round now matches the velocity used by the
 // controller's lead solution. Keep a narrow non-robotic ceiling while no
 // longer budgeting for the former cross-ammunition ballistic mismatch.
-assert.ok(movingHitRate >= 0.12 && movingHitRate <= 0.66,
+assert.ok(movingHitRate >= 0.12 && movingHitRate <= 0.58,
   `moving-battle hit rate stays useful but non-robotic (${(movingHitRate * 100).toFixed(1)}%)`);
 console.log(`authoritativeBots.selftest: route/ally/aim gates passed; live moving-battle hit rate ${(movingHitRate * 100).toFixed(1)}% (${calibrationHits}/${calibrationShots})`);

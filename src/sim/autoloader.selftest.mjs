@@ -164,10 +164,12 @@ function makeSpec(overrides = {}) {
 await import('../vehicles/tankFactory.ts');
 const { getSpec } = await import('../vehicles/specs.ts');
 for (const [id, capacity, cycleS, reloadS] of [
-  ['leclerc', 3, 2.5, 18.5],
+  ['leclerc', 3, 2.4, 16.5],
+  ['leclerc_xlr', 3, 2.2, 15.5],
+  ['amx56', 3, 2.0, 14.5],
   ['type90', 3, 2.2, 18.5],
-  ['pl01', 3, 2.4, 20],
-  ['pl01_105', 4, 2.0, 18],
+  ['pl01', 3, 2.2, 15],
+  ['pl01_105', 4, 1.8, 13.5],
   ['carro45t', 4, 2.5, 21],
 ]) {
   const spec = getSpec(id);

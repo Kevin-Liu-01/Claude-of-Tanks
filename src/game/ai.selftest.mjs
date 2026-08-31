@@ -2,7 +2,10 @@ import { Vector3 } from 'three';
 import './rosterPlanning.selftest.mjs';
 import { getSpec } from '../vehicles/specs.ts';
 import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
-import { botFriendlyFireRisk, createAI, mulberry32 } from './ai.ts';
+import {
+  botFriendlyFireRisk, chooseAiSupportActionBits, createAI, mulberry32,
+} from './ai.ts';
+import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
 
 let failures = 0;
 function ok(cond, label) {
@@ -23,12 +26,13 @@ function entity(id, specId, team, x, z, yaw = 0) {
     id, specId, spec, team, state,
     combat: {
       hp: 1000, maxHp: 1000, destroyed: false,
-      reload: { t: 0, totalS: spec.gun.reloadS }, shellSlot: 0,
-      modules: {},
+      reload: { t: 0, totalS: spec.gun.reloadS, kind: 'ready' }, shellSlot: 0,
+      modules: {}, crew: {}, fire: { burning: false, tickTimer: 0, ticksLeft: 0 },
+      magazine: null,
     },
     input: {
       throttle: 0, steer: 0, brake: false, fire: false,
-      aimPoint: new Vector3(), shellSlot: 0,
+      aimPoint: new Vector3(), shellSlot: 0, actionBits: 0,
     },
     aiCtl: null,
   };
@@ -203,6 +207,45 @@ console.log('[8] humanized fire-control estimate');
   ok(held.targetTrackLagS === first.targetTrackLagS &&
       held.targetLeadScale === first.targetLeadScale,
     'one imperfect estimate persists instead of jittering every frame');
+}
+
+console.log('[9] current-feature support actions are team invariant');
+function supportActions(team) {
+  const bot = entity(`support-${team}`, 'strv103', team, 0, 0);
+  bot.consumableReadyAt = [0, 0, 0];
+  bot.combat.modules.engine = { hp: 0, maxHp: 100, state: 'red', repairT: 0 };
+  bot.combat.crew = { driver: true, gunner: false };
+  bot.combat.fire = { burning: true, tickTimer: 0, ticksLeft: 5 };
+  bot.specialAction = { kind: 'hydropneumatic_aim', active: false };
+  const fire = chooseAiSupportActionBits(bot, 10);
+  bot.combat.fire.burning = false;
+  const repair = chooseAiSupportActionBits(bot, 10);
+  bot.combat.modules.engine.state = 'ok';
+  const aid = chooseAiSupportActionBits(bot, 10);
+  bot.combat.crew.gunner = true;
+  const suspension = chooseAiSupportActionBits(bot, 10, { wantsSuspensionAim: true });
+  return [fire, repair, aid, suspension];
+}
+const alliedSupport = supportActions('player');
+const hostileSupport = supportActions('enemy');
+ok(JSON.stringify(alliedSupport) === JSON.stringify(hostileSupport),
+  'allied and enemy bots choose identical recovery actions from identical state');
+ok(JSON.stringify(alliedSupport) === JSON.stringify([
+  PLAYER_ACTION_BITS.EXTINGUISHER,
+  PLAYER_ACTION_BITS.REPAIR,
+  PLAYER_ACTION_BITS.FIRST_AID,
+  PLAYER_ACTION_BITS.SPECIAL_ACTION,
+]), 'support priorities cover fires, modules, crew and suspension aim');
+
+{
+  const loader = entity('loader', 'pl01_105', 'player', 0, 0);
+  loader.combat.magazine = { rounds: 2, capacity: 4 };
+  loader.combat.gunReload = { t: 0, totalS: 0, kind: 'ready' };
+  ok(chooseAiSupportActionBits(loader, 10, { safeToReloadMagazine: true }) ===
+    PLAYER_ACTION_BITS.RELOAD_MAGAZINE,
+  'autoloaders refill a depleted ready rack while safely out of contact');
+  ok(chooseAiSupportActionBits(loader, 10, { safeToReloadMagazine: false }) === 0,
+    'autoloaders do not discard a partial magazine during an exposed duel');
 }
 {
   const allied = survival('player', 'enemy');
