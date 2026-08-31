@@ -6426,8 +6426,10 @@ function leo2A4FullGhillie(P: TankBuilderPort) {
   };
   const hullBlanketOutline: Vec2Tuple[] = [
     [-0.94, -3.80], [0.94, -3.80], [1.02, -3.42], [1.68, -3.12],
-    [1.71, -2.62], [1.72, 2.18], [1.57, 2.72], [0.96, 3.42],
-    [0.88, 3.82], [-0.88, 3.82], [-0.96, 3.42], [-1.57, 2.72],
+    // Pull the bow shoulders in before the idler arc; the previous 0.96 m
+    // station left seven cloth voxels inside the animated terminal shoes.
+    [1.71, -2.62], [1.72, 2.18], [1.57, 2.72], [0.84, 3.42],
+    [0.88, 3.82], [-0.88, 3.82], [-0.84, 3.42], [-1.57, 2.72],
     [-1.72, 2.18], [-1.71, -2.62], [-1.68, -3.12], [-1.02, -3.42],
   ];
   hullNet.push(clothTop({
@@ -6445,7 +6447,11 @@ function leo2A4FullGhillie(P: TankBuilderPort) {
     return 1.71;
   };
   const hullSideTop = (z: number): number => hullBlanketY(0, z) - 0.015;
-  const hullSideBottom = (z: number): number => 0.625
+  // The physical skirt course moved up 100 mm, so its tailored camouflage
+  // carrier must follow that supported hem instead of remaining in the old
+  // shoe sweep.  Preserve the same irregular drape, simply re-seat it on the
+  // new 0.62/0.64 m armor bottoms with a safe cloth offset.
+  const hullSideBottom = (z: number): number => 0.725
     + Math.sin(z * 3.1) * 0.035 + Math.cos(z * 5.7) * 0.020;
   for (const side of [-1, 1] as const) {
     hullNet.push(clothSide({
@@ -6725,59 +6731,83 @@ export function buildLeo2A4(builder: object) {
   // (the 2A4's diagonal lower cut rising toward the idler — the identity
   // read the segRun curtain could not carry). AFT z -3.60..1.55: six flat
   // panels — proud upper mounting band (face 1.80) over a 13 mm recessed
-  // lower band with a horizontal joint shadow at 0.84 (the real two-band
-  // panel read), dark vertical joints. Same y0/y1/x lines as the certified
-  // §B8 rework (bottoms 0.38/0.44 hub-line class, §B4 x-clear unchanged).
-  // Bottom lines RAISED vs the §B8 hub-line cut (0.38/0.44 -> 0.46/0.52):
-  // calibrated against the owner-ACCEPTED a5 graduate read — at the hub line
-  // only sub-hub slivers showed and the garage counted zero wheels; at 0.52
-  // the lower wheel arcs + pale hubs read like the real 2A4 photo class
-  // (skirt covers the upper ~third of the wheel; §B8.1 exposure 67%/59%,
-  // inside the real 40-70% family band).
+  // lower band with a horizontal joint shadow (the real two-band panel
+  // read), dark vertical joints. The complete course is lifted 100 mm to
+  // the accepted Leopard prototype / A5-family mounting datum. The rail and
+  // its hangers move outboard with the curtain, so the hardware laps the
+  // armor face instead of floating in the newly closed strip above it.
+  const sideSkirtLiftY = 0.10;
+  const sideSkirtTopY = 1.26 + sideSkirtLiftY;
+  const outerRailX = 1.7975;
+  const outerRailY = sideSkirtTopY - 0.0275;
   for (const s of [-1, 1] as const) {
     // The armor curtain lives outboard of the linked-shoe envelope.  A
     // former inboard face at |x| 1.62 crossed the suspension sweep even
     // though the static course happened to clear; the upper root now
     // overlaps the fender edge at 1.735 while the full plate remains clear.
     const taperedForePanel = (za: number, zb: number): THREE.BufferGeometry => slab(
-      [s * 1.735, 0.52, za], [s * 1.775, 0.52, za], [s * 1.775, 0.52, zb], [s * 1.735, 0.52, zb],
-      [s * 1.735, 1.26, za], [s * 1.775, 1.26, za], [s * 1.775, 1.26, zb], [s * 1.735, 1.26, zb]);
+      [s * 1.735, 0.62, za], [s * 1.775, 0.62, za], [s * 1.775, 0.62, zb], [s * 1.735, 0.62, zb],
+      [s * 1.735, sideSkirtTopY, za], [s * 1.775, sideSkirtTopY, za], [s * 1.775, sideSkirtTopY, zb], [s * 1.735, sideSkirtTopY, zb]);
     for (const [za, zb] of [[1.60, 2.28], [2.30, 2.96]]) {
       P.add('hull', taperedForePanel(za, zb));
     }
     P.add('hull', taperedForePanel(2.98, 3.18));                               // third block, terminal-safe rect part
-    P.add('hull', slab(                                                        // chamfered leader: bottom rises 0.52 -> 0.86 at the idler
-      [s * 1.735, 0.52, 3.18], [s * 1.775, 0.52, 3.18], [s * 1.775, 0.86, 3.26], [s * 1.735, 0.86, 3.26],
-      [s * 1.735, 1.26, 3.18], [s * 1.775, 1.26, 3.18], [s * 1.775, 1.26, 3.26], [s * 1.735, 1.26, 3.26]));
+    P.add('hull', slab(                                                        // chamfered leader: bottom rises 0.62 -> 0.96 at the idler
+      [s * 1.735, 0.62, 3.18], [s * 1.775, 0.62, 3.18], [s * 1.775, 0.96, 3.26], [s * 1.735, 0.96, 3.26],
+      [s * 1.735, sideSkirtTopY, 3.18], [s * 1.775, sideSkirtTopY, 3.18], [s * 1.775, sideSkirtTopY, 3.26], [s * 1.735, sideSkirtTopY, 3.26]));
     for (const zj of [2.29, 2.97]) {
-      P.add('hullDark', box(0.030, 0.72, 0.016), s * 1.755, 0.89, zj);         // full-depth fore block joints
+      P.add('hullDark', box(0.030, 0.72, 0.016), s * 1.755, 0.99, zj);         // full-depth fore block joints
     }
     const z0 = -3.10, z1 = 1.55, n = 6, L = (z1 - z0) / n;
     for (let k = 0; k < n; k++) {
       const zc = z0 + L * (k + 0.5);
       P.add('hull', slab(
-        [s * 1.740, 0.94, zc - (L - 0.014) / 2], [s * 1.780, 0.94, zc - (L - 0.014) / 2], [s * 1.780, 0.94, zc + (L - 0.014) / 2], [s * 1.740, 0.94, zc + (L - 0.014) / 2],
-        [s * 1.735, 1.26, zc - (L - 0.014) / 2], [s * 1.775, 1.26, zc - (L - 0.014) / 2], [s * 1.775, 1.26, zc + (L - 0.014) / 2], [s * 1.735, 1.26, zc + (L - 0.014) / 2]));
+        [s * 1.740, 1.04, zc - (L - 0.014) / 2], [s * 1.780, 1.04, zc - (L - 0.014) / 2], [s * 1.780, 1.04, zc + (L - 0.014) / 2], [s * 1.740, 1.04, zc + (L - 0.014) / 2],
+        [s * 1.735, sideSkirtTopY, zc - (L - 0.014) / 2], [s * 1.775, sideSkirtTopY, zc - (L - 0.014) / 2], [s * 1.775, sideSkirtTopY, zc + (L - 0.014) / 2], [s * 1.735, sideSkirtTopY, zc + (L - 0.014) / 2]));
       P.add('hull', slab(
-        [s * 1.745, 0.54, zc - (L - 0.014) / 2], [s * 1.780, 0.54, zc - (L - 0.014) / 2], [s * 1.780, 0.54, zc + (L - 0.014) / 2], [s * 1.745, 0.54, zc + (L - 0.014) / 2],
-        [s * 1.740, 0.96, zc - (L - 0.014) / 2], [s * 1.775, 0.96, zc - (L - 0.014) / 2], [s * 1.775, 0.96, zc + (L - 0.014) / 2], [s * 1.740, 0.96, zc + (L - 0.014) / 2]));
+        [s * 1.745, 0.64, zc - (L - 0.014) / 2], [s * 1.780, 0.64, zc - (L - 0.014) / 2], [s * 1.780, 0.64, zc + (L - 0.014) / 2], [s * 1.745, 0.64, zc + (L - 0.014) / 2],
+        [s * 1.740, 1.06, zc - (L - 0.014) / 2], [s * 1.775, 1.06, zc - (L - 0.014) / 2], [s * 1.775, 1.06, zc + (L - 0.014) / 2], [s * 1.740, 1.06, zc + (L - 0.014) / 2]));
     }
     for (let k = 1; k < n; k++) {
-      P.add('hullDark', box(0.026, 0.34, 0.015), s * 1.755, 1.09, z0 + L * k);
-      P.add('hullDark', box(0.024, 0.40, 0.015), s * 1.76, 0.75, z0 + L * k);
+      P.add('hullDark', box(0.026, 0.34, 0.015), s * 1.755, 1.19, z0 + L * k);
+      P.add('hullDark', box(0.024, 0.40, 0.015), s * 1.76, 0.85, z0 + L * k);
     }
-    P.add('hullDark', box(0.026, 0.022, z1 - z0 - 0.02), s * 1.76, 0.955, (z0 + z1) / 2); // horizontal band joint
-    // A narrow fender rail and localized hangers carry the outboard skirt
-    // across the 24 cm mechanical service gap.  This keeps the return run
-    // visible and collision-free without making the skirt look suspended.
-    P.add('hullDetail', box(0.035, 0.055, 7.02), s * 1.755, 1.49, 0.06);
+    P.add('hullDark', box(0.026, 0.022, z1 - z0 - 0.02), s * 1.76, 1.055, (z0 + z1) / 2); // horizontal band joint
+    // The outer rail's inner face lands exactly on the panel face at
+    // |x|=1.780. Its hangers climb from the raised armor into the fender,
+    // leaving no exposed/floating rail course above the curtain.
+    P.add('hullDetail', box(0.035, 0.055, 7.02), s * outerRailX, outerRailY, 0.06);
     for (const zh of [-3.10, -2.325, -1.55, -0.775, 0.00, 0.775, 1.55, 2.29, 2.97, 3.22]) {
-      P.add('hullDetail', box(0.030, 0.27, 0.055), s * 1.755, 1.375, zh);
+      P.add('hullDetail', box(0.030, 0.27, 0.055), s * outerRailX, 1.36, zh);
     }
     // Thin full-width fender bead: this carries the published 3.70 m
     // envelope while the armor panels themselves sit inboard, as on the
     // vehicle.  It is a supported edge course, not an invisible scale peg.
-    P.add('hullDetail', box(0.025, 0.055, 7.18), s * 1.8375, 1.29, 0.0);
+    P.add('hullDetail', box(0.025, 0.055, 7.18), s * 1.8375, 1.375, 0.0);
+  }
+  if (P.geometryReceipt) {
+    P.hullG.userData.leopard2A4SideSkirtReceipt = Object.freeze({
+      architecture: 'raised-two-band-curtain-with-face-mounted-rails',
+      liftY: sideSkirtLiftY,
+      topY: sideSkirtTopY,
+      foreBottomY: 0.62,
+      aftBottomY: 0.64,
+      panelOuterHalfWidth: 1.78,
+      outerRailCenterHalfWidth: outerRailX,
+      outerRailInnerHalfWidth: outerRailX - 0.035 / 2,
+      outerRailY,
+      outerRailTopY: outerRailY + 0.055 / 2,
+      hangerBottomY: 1.36 - 0.27 / 2,
+      hangerTopY: 1.36 + 0.27 / 2,
+      envelopeBeadY: 1.375,
+      frontMudguardCapInnerHalfWidth: 1.585,
+      frontMudguardCapOuterHalfWidth: 1.775,
+      frontMudguardCapZMin: 3.61,
+      frontMudguardCapZMax: 3.99,
+      ghillieHemBaseY: 0.725,
+      ghillieBowShoulderHalfWidth: 0.84,
+      mirrored: true,
+    });
   }
   // The under-nose lower plate and belly return are now authored by the
   // shared leoHullV3 closure above so every requested Leopard hull uses the
@@ -6822,11 +6852,11 @@ export function buildLeo2A4(builder: object) {
     P.hullG.add(st);
   }
   // rubber lower lip under the aft skirt run (the A4's wavy rubber edge),
-  // segmented per the station law. §SRCFIX-0808: rides the raised 0.52 run
+  // segmented per the station law. §SRCFIX-0808: rides the raised 0.64 run
   // (top 2 cm behind the band bottom — no slit); the wheels read below it.
   for (const s of [-1, 1] as const) {
     for (let k = 0; k < 6; k++) {
-      P.add('hullRubber', box(0.020, 0.05, 0.80), s * 1.785, 0.515, -3.45 + 0.858 * k + 0.42);
+      P.add('hullRubber', box(0.020, 0.05, 0.80), s * 1.785, 0.615, -3.45 + 0.858 * k + 0.42);
     }
   }
   // Keep the seven readable pale hub caps as a layer of the canonical
@@ -6872,7 +6902,7 @@ export function buildLeo2A4(builder: object) {
     // Supported top cap over the outboard post/lip junction.  This closes
     // the enclosed plan pocket at the front corner while staying outboard
     // of the terminal shoes and above their upper orbit.
-    P.add('hull', box(0.07, 0.030, 0.38), s * 1.740, 1.49, 3.80);
+    P.add('hull', box(0.19, 0.030, 0.38), s * 1.680, 1.49, 3.80);
     // wing band FULLY past the shoe-orbit far edge (idler orbit r 0.425 ->
     // z 3.905; a first cut at z 3.84..3.92 ate 126 shoe voxels x -1.54..
     // +1.54 y 1.06..1.12 — the exact-audit box). Widened to the post so
@@ -7126,10 +7156,26 @@ export function buildLeo2A4(builder: object) {
   leoFLW200(P, { x: 0.78, y: 0.69, z: -1.12, s: 0.54, widthScale: 0.12, gunY: 0.77, shields: true, seed: 13 });
   // ---- Rh 120 L/44 (§B3.1: tube cylinder + thermal sleeve segments with
   // clamp rings + mid-tube bore evacuator + MRS collar; plate mantlet on a
-  // trunnion roll — never a prism). Trunnion world (0, 2.00, 0.87); muzzle
-  // world +6.26 = the extended 10.12 overall over the -3.86 tail.
-  P.gunG.position.set(0, 0.27, 1.13);
+  // trunnion roll — never a prism). The complete gun rig is seated 90 mm
+  // higher than the old A4 datum, matching the prototype's 1.98 m world
+  // bore axis. At y 0.36 the 0.26 m mantlet roll lands between the existing
+  // chin (top 0.10) and brow (bottom 0.50), so the housing stays supported
+  // while barrel, recoil axis, muzzle and OTCO derivative move together.
+  P.gunG.position.set(0, 0.36, 1.13);
   leoMantletGun(P, { rollR: 0.26, rollW: 0.62, plateW: 0.56, plateH: 0.44, len: 4.95, r: 0.084, evac: 0.56, evacR: 1.78 });
+  if (P.geometryReceipt) {
+    P.gunG.userData.leopard2A4GunSeatReceipt = Object.freeze({
+      architecture: 'prototype-height-complete-gun-rig',
+      localY: 0.36,
+      worldY: 1.98,
+      liftY: 0.09,
+      chinTopY: 0.10,
+      mantletBottomY: 0.10,
+      mantletTopY: 0.62,
+      browBottomY: 0.50,
+      inheritedByOtco: true,
+    });
+  }
   leo2A4FullGhillie(P);
   P.topY = 1.24;
 }

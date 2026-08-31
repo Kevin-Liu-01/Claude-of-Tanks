@@ -154,7 +154,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "parent": "hull",
         "size": 0.25,
         "pos": [
-          -1.782075,
+          -1.7836375,
           1.1912438,
           -0.7159999
         ],
@@ -167,16 +167,16 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "surfaceMesh": "hull",
         "anchorProfile": "leo2a4",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0150881
+        "visibilityClearSamples": 7,
+        "visibilityRatio": 0.7777778,
+        "maximumSurfaceErrorM": 0.0359597
       },
       {
         "kind": "designation",
         "parent": "hull",
         "size": 0.25,
         "pos": [
-          -1.782075,
+          -1.7836375,
           1.1912438,
           0.5416
         ],
@@ -189,9 +189,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, unknown>> = Object.f
         "surfaceMesh": "hull",
         "anchorProfile": "leo2a4",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 8,
-        "visibilityRatio": 0.8888889,
-        "maximumSurfaceErrorM": 0.027834
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.000688
       }
     ]
   },

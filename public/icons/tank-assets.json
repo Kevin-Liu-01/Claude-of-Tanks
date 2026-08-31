@@ -58735,17 +58735,17 @@
           }
         ]
       },
-      "geometryHash": "1551831c",
+      "geometryHash": "d33555ff",
       "metadataHash": "57d0dfae",
       "presentationAnchor": {
         "xM": -0.0001,
-        "zM": 0.0471
+        "zM": 0.0548
       },
-      "presentationHash": "0674fd19",
+      "presentationHash": "ca0a3158",
       "presentationProjection": {
         "centerYM": 2.0707,
-        "topHalfM": 6.7979,
-        "sideHalfM": 3.399
+        "topHalfM": 6.7897,
+        "sideHalfM": 3.3948
       },
       "appearance": {
         "version": 1,
@@ -58785,7 +58785,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.8888889,
+        "minimumVisibilityRatio": 0.7777778,
         "codes": [
           "DE:de-cross:414"
         ]
@@ -58836,24 +58836,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85048,
-          "sha256": "ccaa00a9ad6a342f9389709461d3a47954221dc645e0da6e378ad2bdc0ccd7b4"
+          "bytes": 85027,
+          "sha256": "1ced7e5243bc972cad8fdf77ce382e174f76f416bb90e228c2efe7d16d453884"
         },
         "armorSide": {
           "file": "leo2a4_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85038,
-          "sha256": "294a15a17c6dc921e0ad0d13dab745c87519c63de779f2d6443c2d2e676fbcfc"
+          "bytes": 85349,
+          "sha256": "185ed952c16dacbe359eccee86bf76e706421047bf4ff18a2206f633ba785cbb"
         },
         "modulesSide": {
           "file": "leo2a4_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80203,
-          "sha256": "5b3a67df72ff5faf78d43f0e52414d9583d45c28e51416bb3f7284927714f7eb"
+          "bytes": 79958,
+          "sha256": "e7bc22b1c5fcc92135fcdaaf844844dcabd66e46873acbdf10b0abd9a6f577b4"
         },
         "markings": {
           "file": "leo2a4_markings.png",
@@ -59814,17 +59814,17 @@
           }
         ]
       },
-      "geometryHash": "175ec6af",
+      "geometryHash": "1be2884b",
       "metadataHash": "812e9cbf",
       "presentationAnchor": {
-        "xM": -0.0003,
-        "zM": 0.0302
+        "xM": -0.0002,
+        "zM": 0.0419
       },
-      "presentationHash": "78a2019e",
+      "presentationHash": "3b988ea0",
       "presentationProjection": {
         "centerYM": 1.8648,
-        "topHalfM": 6.816,
-        "sideHalfM": 3.408
+        "topHalfM": 6.8035,
+        "sideHalfM": 3.4017
       },
       "appearance": {
         "version": 1,
@@ -59915,24 +59915,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77853,
-          "sha256": "061c304465e4d0d76000fb0c0b837dca1fdc1a6b2b2266774861dbb14940e212"
+          "bytes": 77738,
+          "sha256": "d4c8986f2c7c6a7aad22f2baa2669311f6da20daaf09b3b6a9ed483cdd14d2ab"
         },
         "armorSide": {
           "file": "leo2a4_otco_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78635,
-          "sha256": "6bf38747e1e0a8fd378af81adb569fdc86f1b9dcc5ad31a7ebcbd1a2b4ce3b07"
+          "bytes": 78464,
+          "sha256": "9f56af2b2fc020a67bc2e8b7dc4fe56cea63193929043b5ae469b890d172e8b7"
         },
         "modulesSide": {
           "file": "leo2a4_otco_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72905,
-          "sha256": "dc1a62964a3e7323c629a93d7d08b656072c5bf0e53cd466bfae4d27bf36b819"
+          "bytes": 73324,
+          "sha256": "5e1ff06a5943cb9e172353b58d6a43bce2158335a7488e07b7ca3724b342c04c"
         },
         "markings": {
           "file": "leo2a4_otco_markings.png",
