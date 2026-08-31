@@ -227,7 +227,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   k1a1: Object.freeze({ centerYM: 1.9368, topHalfM: 6.3717, sideHalfM: 3.1858 }),
   k2: Object.freeze({ centerYM: 2.2754, topHalfM: 7.5499, sideHalfM: 3.775 }),
   k2b: Object.freeze({ centerYM: 2.2754, topHalfM: 7.537, sideHalfM: 3.7685 }),
-  kf51: Object.freeze({ centerYM: 2.5309, topHalfM: 7.4637, sideHalfM: 3.7319 }),
+  kf51: Object.freeze({ centerYM: 2.5309, topHalfM: 7.5493, sideHalfM: 3.7747 }),
   kf51b: Object.freeze({ centerYM: 1.8423, topHalfM: 8.4427, sideHalfM: 4.2214 }),
   kv2: Object.freeze({ centerYM: 2.2054, topHalfM: 4.1901, sideHalfM: 2.3583 }),
   leclerc: Object.freeze({ centerYM: 2.0158, topHalfM: 6.6342, sideHalfM: 3.3171 }),

@@ -742,6 +742,59 @@ function outwardClosedSlab(
   return g;
 }
 
+// Closed longitudinal loft for armor rails whose cross-section is not a
+// horizontal box. Every station carries the same four corners in perimeter
+// order; joining the rings as one mesh avoids an internal cap at the cheek
+// seam and gives the side armor one uninterrupted normal field.
+function closedFourPointLoft(rings: readonly FourPointRing[]): THREE.BufferGeometry {
+  if (rings.length < 2) throw new RangeError('Four-point loft requires two rings');
+  const positions: number[] = [];
+  const tri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): void => {
+    positions.push(...a, ...b, ...c);
+  };
+  for (let station = 0; station < rings.length - 1; station++) {
+    const current = rings[station];
+    const next = rings[station + 1];
+    for (let edge = 0; edge < 4; edge++) {
+      const after = (edge + 1) % 4;
+      tri(current[edge], current[after], next[after]);
+      tri(current[edge], next[after], next[edge]);
+    }
+  }
+  const first = rings[0];
+  const last = rings[rings.length - 1];
+  tri(first[0], first[2], first[1]);
+  tri(first[0], first[3], first[2]);
+  tri(last[0], last[1], last[2]);
+  tri(last[0], last[2], last[3]);
+
+  let volume6 = 0;
+  for (let index = 0; index < positions.length; index += 9) {
+    const ax = positions[index], ay = positions[index + 1], az = positions[index + 2];
+    const bx = positions[index + 3], by = positions[index + 4], bz = positions[index + 5];
+    const cx = positions[index + 6], cy = positions[index + 7], cz = positions[index + 8];
+    volume6 += ax * (by * cz - bz * cy)
+      + ay * (bz * cx - bx * cz)
+      + az * (bx * cy - by * cx);
+  }
+  if (volume6 < 0) {
+    for (let index = 0; index < positions.length; index += 9) {
+      for (let axis = 0; axis < 3; axis++) {
+        const value = positions[index + 3 + axis];
+        positions[index + 3 + axis] = positions[index + 6 + axis];
+        positions[index + 6 + axis] = value;
+      }
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(
+    new Array((positions.length / 3) * 2).fill(0), 2));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 // One watertight Leopard 2A5-family cheek. The source-study meshes make the
 // construction unambiguous in direct side view: one dominant upper armor
 // slope and a shorter lower return meet at one forward ridge, then close
@@ -10542,8 +10595,8 @@ function buildKF51(P: TankBuilderPort) {
     P.add('hullDark', box(0.024, 0.425, 0.060), s * 1.538, 0.9325, 3.25);      // outer return post
   }
 
-  // ---- turret r4 re-lay from the fresh 96-col workorder. The complete
-  // rotating assembly now sits 100 mm farther forward at local z 0.55; the
+  // ---- turret r5 re-lay from the fresh 96-col workorder. The complete
+  // rotating assembly now sits 180 mm farther forward at local z 0.63; the
   // gun, armor, roof fittings, bustle, decals, and damage anatomy all inherit
   // this one rig transform instead of being offset independently. Ref reads
   // (world): roof 2.528 over z −2.04..+1.94, crown 2.615
@@ -10555,11 +10608,11 @@ function buildKF51(P: TankBuilderPort) {
   // SEOSS x −0.72..−0.28 top 3.07 (carried 3.02 = heightM anchor), TWO
   // whips (L x −1.03 z −2.28, R x +0.99 z −2.16, tops 3.50 = the 2-col
   // spike budget), turret-mask floor 1.445 over −0.50..+1.55w.
-  P.turretG.position.set(0, 1.71, 0.55);
+  P.turretG.position.set(0, 1.71, 0.63);
   P.turretG.userData.kf51TurretSeatReceipt = Object.freeze({
-    profile: 'kf51-panther-turret-seat-r1',
-    forwardShiftM: 0.10,
-    visualPivotLocal: Object.freeze([0, 1.71, 0.55]),
+    profile: 'kf51-panther-turret-seat-r2',
+    forwardShiftM: 0.18,
+    visualPivotLocal: Object.freeze([0, 1.71, 0.63]),
     completeRigMoved: true,
   });
   const h = 0.815;
@@ -11244,17 +11297,46 @@ function buildKF51(P: TankBuilderPort) {
     // visible as an independently selectable shelf.
 
     // Side collars close the daylight slit between the turret cheeks and
-    // the stepped hull roof. They taper inward at the top and stop outboard
-    // of the mantlet, preserving gun travel while seating the turret through
-    // yaw instead of leaving one long black background stripe.
+    // the stepped hull roof. The old collar was a generic flat-topped slab,
+    // so its front cap met the lower cheek as a visible kink. Give the whole
+    // longitudinal rail the cheek terminal's exact diagonal upper edge and
+    // offset its lower edge 80 mm along the inward/downward normal. The two
+    // pieces now share a watertight-looking seam at z=1.10 and keep that
+    // section through the side run instead of twisting back into a prism.
+    const lowerCheekInner = Object.freeze({ x: 1.29, y: 0.04 });
+    const lowerCheekOuter = Object.freeze({ x: 1.50, y: 0.16 });
+    const lowerCheekDx = lowerCheekOuter.x - lowerCheekInner.x;
+    const lowerCheekDy = lowerCheekOuter.y - lowerCheekInner.y;
+    const lowerCheekLength = Math.hypot(lowerCheekDx, lowerCheekDy);
+    const lowerCollarNormalThicknessM = 0.08;
+    const lowerCollarOffsetX = -(lowerCheekDy / lowerCheekLength) * lowerCollarNormalThicknessM;
+    const lowerCollarOffsetY = -(lowerCheekDx / lowerCheekLength) * lowerCollarNormalThicknessM;
+    const lowerCollarRearZ = -2.45;
     for (const s of [-1, 1] as const) {
-      const ord = (ring: FourPointRing): FourPointRing => (
-        s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
-      );
-      armorShell('kf51TurretLowerCollar', KIT.slab(
-        ...ord([[s * 1.18, 0.075, kf51TurretFrontPlaneZ], [s * 1.46, 0.075, kf51TurretFrontPlaneZ], [s * 1.46, 0.075, -2.45], [s * 1.18, 0.075, -2.45]]),
-        ...ord([[s * 1.16, 0.190, kf51TurretFrontPlaneZ], [s * 1.44, 0.190, kf51TurretFrontPlaneZ], [s * 1.44, 0.190, -2.45], [s * 1.16, 0.190, -2.45]])), true);
+      const ringAt = (z: number): FourPointRing => [
+        [s * (lowerCheekInner.x + lowerCollarOffsetX), lowerCheekInner.y + lowerCollarOffsetY, z],
+        [s * (lowerCheekOuter.x + lowerCollarOffsetX), lowerCheekOuter.y + lowerCollarOffsetY, z],
+        [s * lowerCheekOuter.x, lowerCheekOuter.y, z],
+        [s * lowerCheekInner.x, lowerCheekInner.y, z],
+      ];
+      armorShell('kf51TurretLowerCollar', closedFourPointLoft([
+        ringAt(kf51TurretFrontPlaneZ),
+        ringAt(lowerCollarRearZ),
+      ]), true);
     }
+    P.turretG.userData.kf51LowerCollarReceipt = Object.freeze({
+      profile: 'kf51-panther-lower-collar-cheek-seam-r1',
+      frontPlaneZ: kf51TurretFrontPlaneZ,
+      rearPlaneZ: lowerCollarRearZ,
+      upperEdgeAbs: Object.freeze([
+        Object.freeze([lowerCheekInner.x, lowerCheekInner.y, kf51TurretFrontPlaneZ]),
+        Object.freeze([lowerCheekOuter.x, lowerCheekOuter.y, kf51TurretFrontPlaneZ]),
+      ]),
+      upperEdgeSlopeYPerX: lowerCheekDy / lowerCheekDx,
+      normalThicknessM: lowerCollarNormalThicknessM,
+      constantCrossSection: true,
+      cheekSeamAligned: true,
+    });
 
     // Front track shoulders: a top ramp meets the existing corner mudguard
     // at y=.81 and a side return climbs to the fender tip. Both pieces sit

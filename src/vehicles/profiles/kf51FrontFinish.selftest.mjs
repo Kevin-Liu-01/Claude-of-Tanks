@@ -20,15 +20,29 @@ try {
     'KF51 retains canonical hull, turret, gun, and detail geometry');
 
   assert.deepEqual(turretRig.userData.kf51TurretSeatReceipt, {
-    profile: 'kf51-panther-turret-seat-r1',
-    forwardShiftM: 0.10,
-    visualPivotLocal: [0, 1.71, 0.55],
+    profile: 'kf51-panther-turret-seat-r2',
+    forwardShiftM: 0.18,
+    visualPivotLocal: [0, 1.71, 0.63],
     completeRigMoved: true,
   }, 'KF51 complete rotating assembly publishes its forward seating datum');
-  assert.equal(turretRig.position.z, 0.55,
-    'KF51 turret rig moves 100 mm forward as one hierarchy');
-  assert.equal(TANK_SPECS.kf51.armor.turretPivot[2], 0.62,
+  assert.equal(turretRig.position.z, 0.63,
+    'KF51 turret rig moves 180 mm forward as one hierarchy');
+  assert.equal(TANK_SPECS.kf51.armor.turretPivot[2], 0.70,
     'KF51 authoritative turret frame follows the visible forward move');
+
+  const lowerCollar = turretRig.userData.kf51LowerCollarReceipt;
+  assert.deepEqual(lowerCollar?.upperEdgeAbs, [
+    [1.29, 0.04, 1.10],
+    [1.50, 0.16, 1.10],
+  ], 'KF51 lower collar shares the exact lower-cheek terminal edge');
+  assert.equal(lowerCollar?.upperEdgeSlopeYPerX, (0.16 - 0.04) / (1.50 - 1.29),
+    'KF51 lower collar preserves the cheek edge angle');
+  assert.equal(lowerCollar?.normalThicknessM, 0.08,
+    'KF51 lower collar keeps a real armor section beneath the shared seam');
+  assert.equal(lowerCollar?.constantCrossSection, true,
+    'KF51 lower collar carries the aligned angle through the complete side run');
+  assert.equal(lowerCollar?.cheekSeamAligned, true,
+    'KF51 lower collar publishes its smooth cheek transition contract');
 
   assert.deepEqual(turretRig.userData.kf51SideReturnReceipt, {
     profile: 'kf51-panther-side-return-r1',
@@ -150,7 +164,10 @@ try {
   const lowerCheekHit = firstTurretHit([0.8, 1.9, 5], [0, 0, -1]);
   assert.ok(lowerCheekHit && lowerCheekHit.point.z > 2.05 && lowerCheekHit.point.z < 2.5,
     'KF51 extended lower cheek intercepts the complete ring-fill face before the core');
-  const upperCheekHit = firstTurretHit([1.1, 5, 1.85], [0, -1, 0]);
+  const upperCheekHit = firstTurretHit(
+    [1.1, 5, turretRig.position.z + 1.30],
+    [0, -1, 0],
+  );
   assert.ok(upperCheekHit && upperCheekHit.point.y < 2.45,
     'KF51 raised upper cheek hides the retired roof shelf beneath its slope');
 
