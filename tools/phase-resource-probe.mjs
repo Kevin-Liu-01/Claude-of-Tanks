@@ -456,6 +456,12 @@ const measurePhase = async (name) => {
         (frameLoopAfter.idleTicks || 0) - (frameLoopBefore.idleTicks || 0)),
       inputWakeups: Math.max(0,
         (frameLoopAfter.inputWakeups || 0) - (frameLoopBefore.inputWakeups || 0)),
+      frameRateLimitedCallbacks: Math.max(0,
+        (frameLoopAfter.frameRateLimitedCallbacks || 0)
+          - (frameLoopBefore.frameRateLimitedCallbacks || 0)),
+      backgroundSuspensions: Math.max(0,
+        (frameLoopAfter.backgroundSuspensions || 0)
+          - (frameLoopBefore.backgroundSuspensions || 0)),
     },
     frameWorkload,
     resources: resourcesAfter,
@@ -547,6 +553,11 @@ const evaluateBudgets = (phases) => {
     battle?.taskMsPerRender <= RESOURCE_BUDGETS.battleActive.taskMsPerRender,
     battle?.taskMsPerRender ?? null,
     `<= ${RESOURCE_BUDGETS.battleActive.taskMsPerRender} ms/render`);
+  check('active battle presentation clock is bounded',
+    (battle?.frameLoopTicks?.animation || 0) / (battle?.wallSeconds || 1) <= 61,
+    +((battle?.frameLoopTicks?.animation || 0) /
+      (battle?.wallSeconds || 1)).toFixed(2),
+    '<= 61 animation ticks/s');
   check('active battle JavaScript heap',
     battle?.resources.heapMB <= RESOURCE_BUDGETS.battleActive.heapMB,
     battle?.resources.heapMB ?? null, `<= ${RESOURCE_BUDGETS.battleActive.heapMB} MB`);

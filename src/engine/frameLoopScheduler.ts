@@ -4,6 +4,8 @@ type InputListener = () => void;
 interface DocumentState {
   readonly hidden: boolean;
   hasFocus(): boolean;
+  addEventListener?(type: 'visibilitychange', listener: InputListener): void;
+  removeEventListener?(type: 'visibilitychange', listener: InputListener): void;
 }
 
 interface InputTarget {
@@ -26,6 +28,8 @@ export interface FrameLoopSchedulerOptions {
   shouldUseIdleCadence?(): boolean;
   /** Watchdog cadence for an otherwise event-driven visible phase. */
   idleIntervalMs?: number;
+  /** Upper bound for presented animation ticks. Simulation remains fixed-step. */
+  maximumFrameRate?: number;
   requestFrame?(callback: FrameCallback): number;
   cancelFrame?(id: number): void;
   now?(): number;
@@ -45,6 +49,8 @@ export interface FrameLoopScheduler {
     animationTicks: number;
     idleTicks: number;
     inputWakeups: number;
+    frameRateLimitedCallbacks: number;
+    backgroundSuspensions: number;
     queued: 'animation' | 'idle' | 'none';
   };
 }
@@ -72,6 +78,7 @@ export function createFrameLoopScheduler({
   isBootComplete,
   shouldUseIdleCadence = () => false,
   idleIntervalMs = 1000,
+  maximumFrameRate = 60,
   requestFrame = (callback) => requestAnimationFrame(callback),
   cancelFrame = (id) => cancelAnimationFrame(id),
   now = () => performance.now(),
@@ -87,13 +94,33 @@ export function createFrameLoopScheduler({
   let frameId: number | null = null;
   let idleHandle: unknown = null;
   let disposed = false;
+  let backgroundSuspended = false;
+  let nextAnimationTickMs = -Infinity;
   const idleDelayMs = Math.max(100, Math.min(5000, idleIntervalMs));
+  const animationIntervalMs = Number.isFinite(maximumFrameRate) && maximumFrameRate > 0
+    ? 1000 / Math.min(240, maximumFrameRate)
+    : 0;
+  // Browser rAF timestamps can land fractionally before the nominal display
+  // boundary. This tolerance keeps a 59.94/60 Hz panel from being mistaken
+  // for a 30 Hz target while still rejecting the intermediate callback on a
+  // 120 Hz / ProMotion display.
+  const animationToleranceMs = animationIntervalMs > 0
+    ? Math.min(0.75, animationIntervalMs * 0.08)
+    : 0;
   const stats = {
     animationTicks: 0,
     idleTicks: 0,
     inputWakeups: 0,
+    frameRateLimitedCallbacks: 0,
+    backgroundSuspensions: 0,
     queued: 'none' as 'animation' | 'idle' | 'none',
   };
+
+  // Focus is the reliable discriminator for this app: embedded Codex panes
+  // can report `hidden` while they are visibly focused, whereas an occluded
+  // browser window can remain `visible` after the user switches apps. In both
+  // ordinary tab switches and window blur, no presentation work is useful.
+  const isBackgrounded = () => !documentState.hasFocus();
 
   const runTick = (timestampMs: number) => {
     lastTickWallMs = now();
@@ -102,12 +129,42 @@ export function createFrameLoopScheduler({
 
   const scheduleAnimation = () => {
     if (disposed || frameQueued) return;
+    if (isBackgrounded()) {
+      if (!backgroundSuspended) stats.backgroundSuspensions += 1;
+      backgroundSuspended = true;
+      nextAnimationTickMs = -Infinity;
+      return;
+    }
     frameQueued = true;
     stats.queued = 'animation';
     frameId = requestFrame((timestampMs) => {
       frameId = null;
       frameQueued = false;
       stats.queued = 'none';
+      if (isBackgrounded()) {
+        if (!backgroundSuspended) stats.backgroundSuspensions += 1;
+        backgroundSuspended = true;
+        nextAnimationTickMs = -Infinity;
+        return;
+      }
+      backgroundSuspended = false;
+      if (animationIntervalMs > 0 &&
+          timestampMs + animationToleranceMs < nextAnimationTickMs) {
+        stats.frameRateLimitedCallbacks += 1;
+        scheduleAnimation();
+        return;
+      }
+      if (animationIntervalMs > 0) {
+        if (!Number.isFinite(nextAnimationTickMs)) {
+          nextAnimationTickMs = timestampMs + animationIntervalMs;
+        } else {
+          const behindMs = timestampMs - nextAnimationTickMs;
+          const intervals = behindMs >= 0
+            ? Math.floor(behindMs / animationIntervalMs) + 1
+            : 1;
+          nextAnimationTickMs += intervals * animationIntervalMs;
+        }
+      }
       stats.animationTicks += 1;
       runTick(timestampMs);
     });
@@ -142,6 +199,7 @@ export function createFrameLoopScheduler({
   const restart = () => {
     if (disposed) return;
     cancelQueued();
+    nextAnimationTickMs = -Infinity;
     // A wake is always immediate. The resulting tick chooses idle cadence
     // again only after input/phase owners have had a chance to mutate state.
     scheduleAnimation();
@@ -152,6 +210,7 @@ export function createFrameLoopScheduler({
     const timestampMs = now();
     if (timestampMs - lastTickWallMs > 200 &&
         documentState.hasFocus() && documentState.hidden) {
+      backgroundSuspended = false;
       runTick(timestampMs);
     }
   };
@@ -163,8 +222,37 @@ export function createFrameLoopScheduler({
       restart();
     }
     if (!documentState.hidden) return;
+    if (!documentState.hasFocus()) return;
+    backgroundSuspended = false;
     const timestampMs = now();
     if (timestampMs - lastTickWallMs > 100) runTick(timestampMs);
+  };
+
+  const onVisibilityChange = () => {
+    if (disposed) return;
+    if (isBackgrounded()) {
+      if (!backgroundSuspended) stats.backgroundSuspensions += 1;
+      backgroundSuspended = true;
+      nextAnimationTickMs = -Infinity;
+      cancelQueued();
+      return;
+    }
+    backgroundSuspended = false;
+    restart();
+  };
+
+  const onWindowBlur = () => {
+    if (disposed) return;
+    if (!backgroundSuspended) stats.backgroundSuspensions += 1;
+    backgroundSuspended = true;
+    nextAnimationTickMs = -Infinity;
+    cancelQueued();
+  };
+
+  const onWindowFocus = () => {
+    if (disposed) return;
+    backgroundSuspended = false;
+    restart();
   };
 
   const timerHandle = setRecurring(rescueFromTimer, 100);
@@ -172,6 +260,9 @@ export function createFrameLoopScheduler({
   for (const eventName of INPUT_EVENTS) {
     inputTarget.addEventListener(eventName, rescueFromInput, passiveOptions);
   }
+  inputTarget.addEventListener('blur', onWindowBlur);
+  inputTarget.addEventListener('focus', onWindowFocus);
+  documentState.addEventListener?.('visibilitychange', onVisibilityChange);
 
   return {
     schedule,
@@ -182,9 +273,12 @@ export function createFrameLoopScheduler({
       disposed = true;
       cancelQueued();
       clearRecurring(timerHandle);
+      documentState.removeEventListener?.('visibilitychange', onVisibilityChange);
       for (const eventName of INPUT_EVENTS) {
         inputTarget.removeEventListener(eventName, rescueFromInput);
       }
+      inputTarget.removeEventListener('blur', onWindowBlur);
+      inputTarget.removeEventListener('focus', onWindowFocus);
     },
   };
 }

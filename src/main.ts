@@ -2271,6 +2271,10 @@ const mainFrame = createMainFrameRuntime({
 const frameLoop = createFrameLoopScheduler({
   tick: mainFrame.tick,
   isBootComplete: () => bootComplete,
+  // The authoritative simulation is fixed at 60 Hz. Presenting the complete
+  // post/shadow pipeline above that rate only doubles GPU work on 120 Hz /
+  // ProMotion displays without creating additional simulation states.
+  maximumFrameRate: 60,
   // A settled, room-free Garage is event-driven. CSS/UI transitions remain
   // browser-owned; the complete Three.js clock wakes for camera motion,
   // vehicle swaps, transition coverage, loading, input, or retained network

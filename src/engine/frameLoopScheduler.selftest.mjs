@@ -16,6 +16,7 @@ function createHarness() {
   const cancelled = [];
   const ticks = [];
   const listeners = new Map();
+  const documentListeners = new Map();
   const removed = [];
   let clearedTimer = null;
 
@@ -53,10 +54,12 @@ function createHarness() {
     documentState: {
       get hidden() { return hidden; },
       hasFocus: () => focused,
+      addEventListener(name, listener) { documentListeners.set(name, listener); },
+      removeEventListener(name) { documentListeners.delete(name); },
     },
     inputTarget: {
       addEventListener(name, listener, options) {
-        assert.equal(options.passive, true);
+        if (options) assert.equal(options.passive, true);
         listeners.set(name, listener);
       },
       removeEventListener(name) { removed.push(name); },
@@ -69,6 +72,7 @@ function createHarness() {
     cancelled,
     ticks,
     listeners,
+    documentListeners,
     removed,
     setNow(value) { nowMs = value; },
     setBoot(value) { bootComplete = value; },
@@ -123,12 +127,49 @@ function createHarness() {
 {
   const harness = createHarness();
   harness.scheduler.schedule();
+  harness.fireFrame(1, 0);
+  harness.scheduler.schedule();
+  harness.fireFrame(2, 1000 / 120);
+  assert.deepEqual(harness.ticks, [0],
+    'a 120 Hz callback between simulation frames does not present duplicate work');
+  assert.equal(harness.scheduler.stats.frameRateLimitedCallbacks, 1);
+  harness.fireFrame(3, 1000 / 60);
+  assert.deepEqual(harness.ticks, [0, 1000 / 60],
+    'the next 60 Hz boundary presents normally');
+}
+
+{
+  const harness = createHarness();
+  harness.scheduler.schedule();
   harness.scheduler.schedule();
   assert.equal(harness.frames.size, 1, 'schedule coalesces duplicate requests');
   harness.fireFrame(1, 17);
   assert.deepEqual(harness.ticks, [17]);
   harness.scheduler.schedule();
   assert.equal(harness.frames.size, 1, 'completed callbacks release the queue latch');
+}
+
+{
+  const harness = createHarness();
+  harness.scheduler.schedule();
+  harness.setHidden(true);
+  harness.setFocused(false);
+  harness.listeners.get('blur')();
+  assert.deepEqual(harness.cancelled, [1],
+    'a real background tab cancels its outstanding GPU callback');
+  assert.equal(harness.frames.size, 0);
+  assert.equal(harness.scheduler.stats.backgroundSuspensions, 1);
+  harness.scheduler.schedule();
+  assert.equal(harness.frames.size, 0,
+    'background scheduling remains fully suspended');
+  harness.setHidden(false);
+  harness.setFocused(true);
+  harness.listeners.get('focus')();
+  assert.equal(harness.frames.size, 1,
+    'returning to the tab starts exactly one fresh animation frame');
+  harness.fireFrame(2, 1000);
+  assert.deepEqual(harness.ticks, [1000],
+    'resume does not replay any hidden wall-clock frames');
 }
 
 {
@@ -179,9 +220,12 @@ function createHarness() {
   harness.scheduler.dispose();
   assert.deepEqual(harness.cancelled, [1]);
   assert.equal(harness.clearedTimer, 41);
-  assert.equal(harness.removed.length, 8, 'dispose removes every recovery listener');
+  assert.equal(harness.removed.length, 10,
+    'dispose removes every recovery and focus listener');
+  assert.equal(harness.documentListeners.size, 0,
+    'dispose removes the visibility lifecycle listener');
   harness.scheduler.schedule();
   assert.equal(harness.frames.size, 0, 'disposed schedulers cannot re-arm');
 }
 
-console.log('frameLoopScheduler.selftest: rAF coalescing and hidden-pane recovery passed');
+console.log('frameLoopScheduler.selftest: 60 Hz pacing, background suspension, and hidden-pane recovery passed');

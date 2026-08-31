@@ -262,6 +262,16 @@ are reused. At 120 Hz, allocating a new scene-state graph every frame would
 create avoidable garbage collection pressure even if the simulation itself is
 fast.
 
+The browser presentation clock is capped at 60 Hz, matching the authoritative
+simulation. A 120 Hz or ProMotion display therefore cannot submit the complete
+scene, post stack, and near shadow cascades twice for the same simulation
+cadence. The cap advances against the browser timestamp rather than sleeping,
+so non-divisible refresh rates remain phase-correct without accumulating drift.
+Real background tabs and unfocused browser windows cancel their outstanding
+animation callback and perform no presentation work. A focused embedded pane
+that reports itself hidden retains the bounded recovery path required for live
+controls; that exception never applies to an unfocused tab.
+
 Diagnostics remain dormant unless requested. F3 panels and traces must not
 become hidden always-on observers in production play.
 
@@ -900,6 +910,8 @@ regression record.
 - No network stack in solo unless explicitly requested.
 - No duplicate tank visual synchronization in one frame.
 - No unbounded catch-up loop after a long pause.
+- No presentation cadence above the 60 Hz simulation clock.
+- No animation or render work in an unfocused tab/window.
 - No replaceable snapshot backlog.
 - No expensive event burst monopolizing a frame.
 - No trace in ordinary production; optimized QA recording requires explicit
