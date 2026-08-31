@@ -128,6 +128,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/rosterPlanning.selftest.mjs',
     'src/game/rosterPresentation.selftest.mjs',
     'src/presentation/publicCopy.selftest.mjs',
+    'src/presentation/socialProof.selftest.mjs',
     'src/presentation/publicLoading.selftest.mjs',
     'src/presentation/publicNav.selftest.mjs',
     'src/presentation/seoMetadata.selftest.mjs',

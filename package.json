@@ -11,6 +11,7 @@
     "qa:maps": "node tools/map-environment-audit.mjs",
     "qa:garage": "node tools/garage-variants-probe.mjs",
     "test:public-copy": "node src/presentation/publicCopy.selftest.mjs",
+    "test:social-proof": "node src/presentation/socialProof.selftest.mjs",
     "test:analytics": "node src/presentation/analytics.selftest.mjs",
     "test:stats": "node src/productStats.selftest.mjs",
     "test:seo": "node src/productStats.selftest.mjs && node src/presentation/seoMetadata.selftest.mjs",
