@@ -60,7 +60,7 @@ assert.equal(crows.lowerArmorCollar, true,
 assert.equal(crows.equipmentOwnedShielding, true,
 'commander shielding remains equipment-owned for combat anatomy');
 
-assert.equal(loader.americanWeaponStandard, 'sheridan-m2hb-v1',
+assert.equal(loader.americanWeaponStandard, 'sheridan-m2hb-v2',
   'loader retains the detailed Browning M2HB family');
 assert.equal(loader.shieldVariant, 'low',
   'loader Browning retains its low SEPv3 guard');

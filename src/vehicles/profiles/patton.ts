@@ -2983,7 +2983,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     electronics.rotation.y = Math.PI;
     P.turretG.add(electronics);
     P.turretG.userData.americanModernizationReceipt = {
-      standardMachineGun: 'sheridan-m2hb-v1',
+      standardMachineGun: 'sheridan-m2hb-v2',
       guardedLightClusters: 2,
       antennaWhips: 2,
       equipmentRack: true,
@@ -3885,7 +3885,7 @@ function finishM60Variant(P: PattonBuilderPort, variant: string): void {
   rack.rotation.y = Math.PI;
   P.turretG.add(rack);
   P.turretG.userData.americanModernizationReceipt = {
-    standardMachineGun: 'sheridan-m2hb-v1',
+    standardMachineGun: 'sheridan-m2hb-v2',
     stationVariant: m2.userData.hostVariant,
     guardedAuxiliaryLights: 2,
     antennaWhips: 2,
@@ -4387,7 +4387,7 @@ function finishM60A2Variant(P: PattonBuilderPort, muzzleZ: number): void {
   serviceRack.rotation.y = Math.PI;
   P.turretG.add(serviceRack);
   P.turretG.userData.americanModernizationReceipt = {
-    standardMachineGun: 'sheridan-m2hb-v1',
+    standardMachineGun: 'sheridan-m2hb-v2',
     stationFamily: 'm551a1-tts-derived-v1',
     stationVariant: 'hunter',
     guardedAuxiliaryLights: 2,

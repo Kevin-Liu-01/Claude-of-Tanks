@@ -2562,14 +2562,47 @@ function buildChallenger2WeaponTower(
   P.add('turretDark', cylX(0.034, 0.065, P.q ? 16 : 10), stationX(1.16), stationY(0.830), 0.20);
 
   const stationMg = new THREE.Group();
-  const stationReceiver = new THREE.Mesh(box(0.18, 0.080, 0.15), P.mats.dark);
-  stationReceiver.position.set(stationX(0.775), stationY(0.905), 0.20);
-  stationReceiver.castShadow = stationReceiver.receiveShadow = true;
-  stationMg.add(stationReceiver);
-  const stationTube = new THREE.Mesh(cylX(0.018, 0.62, P.q ? 16 : 10), P.mats.dark);
-  stationTube.position.set(stationX(0.84), stationY(0.925), 0.20);
-  stationTube.castShadow = stationTube.receiveShadow = true;
-  stationMg.add(stationTube);
+  const stationPart = (
+    geometry: THREE.BufferGeometry,
+    px: number,
+    py: number,
+    pz: number,
+    material: THREE.Material = P.mats.dark,
+    name = 'challenger2BrowningDerivedPart',
+  ): THREE.Mesh => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = name;
+    mesh.position.set(stationX(px), stationY(py), pz);
+    mesh.castShadow = mesh.receiveShadow = true;
+    stationMg.add(mesh);
+    return mesh;
+  };
+  stationPart(box(0.18, 0.080, 0.15), 0.775, 0.905, 0.20,
+    P.mats.dark, 'challenger2BrowningDerivedReceiver');
+  stationPart(box(0.16, 0.014, 0.13), 0.775, 0.952, 0.205);
+  stationPart(box(0.014, 0.056, 0.10), 0.868, 0.905, 0.20);
+  stationPart(box(0.055, 0.020, 0.085), 0.665, 0.918, 0.20);
+  stationPart(cylX(0.018, 0.62, P.q ? 16 : 12), 0.84, 0.925, 0.20,
+    P.mats.dark, 'challenger2BrowningDerivedBarrel');
+  for (const sleeveX of [0.62, 0.69, 0.76]) {
+    stationPart(cylX(0.022, 0.020, P.q ? 16 : 12), sleeveX, 0.925, 0.20);
+  }
+  // Neutral ammunition box and a visible linked feed terminating at the
+  // receiver. These remain gunmetal even when the Challenger camo changes.
+  stationPart(box(0.13, 0.12, 0.16), 0.755, 0.892, 0.33);
+  stationPart(box(0.12, 0.012, 0.15), 0.755, 0.958, 0.33);
+  for (let i = 0; i < 5; i++) {
+    const t = i / 4;
+    stationPart(box(0.024, 0.022, 0.018), 0.785,
+      0.928 - Math.sin(t * Math.PI) * 0.010, 0.285 - t * 0.065);
+  }
+  for (const side of [-1, 1]) {
+    stationPart(box(0.020, 0.020, 0.095), 0.650,
+      0.887, 0.20 + side * 0.052);
+  }
+  stationMg.userData.hasConnectedFeed = true;
+  stationMg.userData.hasEngineeredCradle = true;
+  stationMg.userData.weaponClass = 'mag58';
   FITTINGS.markExact(stationMg, 'pintleMG');
   P.turretG.add(stationMg);
 

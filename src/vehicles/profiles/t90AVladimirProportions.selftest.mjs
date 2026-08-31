@@ -221,11 +221,22 @@ try {
   assert.equal(equipment.smokeCanistersPerBank, 6, 'each cheek bank carries six canisters');
   assert.equal(equipment.remoteWeapon, 'kord', 'roof station uses a Kord-class machine gun');
   assert.equal(equipment.remoteControlled, true, 'Kord is an automated controlled station');
+  assert.equal(equipment.armoredTower, true, 'Kord is carried by a complete armored tower');
+  assert.equal(equipment.forwardAligned, true, 'tower and weapon face vehicle-forward local +Z');
+  assert.equal(equipment.separateManualWeaponStations, 0,
+    'Vladimir carries no second exposed hand-served roof weapon');
   const smokeLeft = turretRig.getObjectByName('t90aVladimirSmokeBankL');
   const smokeRight = turretRig.getObjectByName('t90aVladimirSmokeBankR');
   const remoteKord = turretRig.getObjectByName('t90aVladimirRemoteKord');
   assert.ok(smokeLeft && smokeRight, 'mirrored cheek smoke-bank groups are present');
   assert.ok(remoteKord, 'remote Kord group is present');
+  assert.ok(near(remoteKord.rotation.y, 0), 'remote Kord faces forward');
+  const automatedStation = turretRig.userData.t90aVladimirAutomatedStationReceipt;
+  assert.equal(automatedStation?.family, 'tagil-integrated-automated-station-r1',
+    'Vladimir uses the shared armored weapon-tower grammar');
+  assert.equal(automatedStation?.weapon, 'kord', 'tower receipt records its Kord weapon');
+  assert.equal(automatedStation?.panoramicIntegrated, true,
+    'tower receipt binds weapon, optic, and armored head into one station');
 
   const sideRails = turretRig.userData.t90aVladimirSideRailReceipt;
   assert.ok(sideRails, 'Vladimir exposes the articulated side-rail receipt');

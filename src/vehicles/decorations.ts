@@ -694,39 +694,76 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     const parts: DecorPartList = [];
     const steel = (geo: THREE.BufferGeometry, t = 0.6) => parts.push({ mat: 'steel', geo: bakeShade(geo, t + rng() * 0.06) });
     const kit = (geo: THREE.BufferGeometry, t = 0.95) => parts.push({ mat: 'kit', geo: bakeShade(geo, t) });
-    const H = 0.30;                          // pintle head height above seat
-    if (ring) {                              // ring mount: rail + 3 standoffs
-      steel(xform(torus(0.33, 0.016, 16, 4), 0, 0.10, 0), 0.55);
-      for (let i = 0; i < 3; i++) {
-        const a = i * (Math.PI * 2 / 3) + 0.5;
-        steel(xform(cylY(0.014, 0.014, 0.10, 5), Math.sin(a) * 0.33, 0.05, Math.cos(a) * 0.33), 0.5);
+    const H = 0.30;                          // trunnion height above seat
+    if (ring) {                              // ring mount: rail + 4 standoffs
+      steel(xform(torus(0.33, 0.016, 20, 5), 0, 0.10, 0), 0.55);
+      for (let i = 0; i < 4; i++) {
+        const a = i * (Math.PI * 2 / 4) + 0.5;
+        steel(xform(cylY(0.014, 0.014, 0.10, 6), Math.sin(a) * 0.33, 0.05, Math.cos(a) * 0.33), 0.5);
       }
     }
-    steel(xform(cylY(0.03, 0.038, H, 8), 0, H / 2, 0), 0.5);                  // pintle post
-    steel(xform(cylX(0.028, 0.09, 6), 0, H, 0), 0.55);                        // cradle trunnion
+    // Flanged slew bearing, spindle, bridge, fork arms and trunnion form a
+    // visible load path. This decoration path used to be the last fleet-wide
+    // source of a receiver floating on a single rod.
+    steel(xform(cylY(0.050, 0.060, 0.024, 12), 0, 0.012, 0), 0.54);
+    steel(xform(torus(0.050, 0.008, 16, 5), 0, 0.026, 0), 0.48);
+    steel(xform(cylY(0.025, 0.032, H - 0.06, 10), 0, H / 2 - 0.015, 0), 0.5);
+    steel(xform(box(0.145, 0.045, 0.13), 0, H - 0.055, 0.02), 0.53);
+    for (const side of [-1, 1]) {
+      steel(xform(box(0.022, 0.095, 0.105), side * 0.055, H - 0.015, 0.055,
+        side * 0.05), 0.52);
+    }
+    steel(xform(cylX(0.029, 0.145, 10), 0, H, 0.07), 0.55);
     const recY = H + 0.055;
     const gunFrom = parts.length;            // parts from here ride the cradle
     if (v === 'dshk') {
-      steel(xform(box(0.11, 0.12, 0.42), 0, recY, -0.05), 0.62);              // receiver
-      steel(xform(cylZ(0.026, 0.62, 8), 0, recY + 0.01, 0.48), 0.58);         // barrel
-      steel(xform(cylZ(0.042, 0.20, 8), 0, recY + 0.01, 0.28), 0.5);          // finned sleeve
-      steel(xform(cylZ(0.055, 0.075, 8, 0.028), 0, recY + 0.01, 0.80), 0.55); // muzzle booster
+      steel(xform(box(0.11, 0.12, 0.42), 0, recY, -0.05), 0.62);               // receiver
+      steel(xform(box(0.10, 0.018, 0.37), 0, recY + 0.069, -0.04), 0.58);      // top cover
+      steel(xform(box(0.020, 0.075, 0.22), 0.066, recY, -0.06), 0.52);         // service plate
+      for (let i = 0; i < 5; i++) {
+        steel(xform(cylZ(0.040, 0.020, 10), 0, recY + 0.01, 0.205 + i * 0.031), 0.50);
+      }
+      steel(xform(cylZ(0.026, 0.62, 10), 0, recY + 0.01, 0.48), 0.58);         // barrel
+      steel(xform(cylZ(0.055, 0.075, 10, 0.028), 0, recY + 0.01, 0.80), 0.55);// muzzle booster
       steel(xform(box(0.05, 0.14, 0.05), 0, recY - 0.12, -0.24, 0.5), 0.5);   // spade grips
-      kit(xform(box(0.09, 0.12, 0.24), -0.115, recY + 0.01, 0.02), 0.7);      // drum/belt box
+      steel(xform(box(0.095, 0.12, 0.24), -0.115, recY + 0.01, 0.02), 0.58);  // belt box
     } else {                                  // Browning M2HB
-      steel(xform(box(0.095, 0.115, 0.46), 0, recY, -0.02), 0.62);            // receiver
-      steel(xform(cylZ(0.021, 0.56, 8), 0, recY + 0.012, 0.46), 0.58);        // barrel
-      steel(xform(cylZ(0.034, 0.24, 8), 0, recY + 0.012, 0.29), 0.52);        // barrel jacket
-      steel(xform(box(0.032, 0.05, 0.07), 0, recY + 0.09, -0.20), 0.5);       // buffer/rear sight
-      steel(xform(box(0.05, 0.11, 0.045), 0, recY - 0.11, -0.23, 0.55), 0.5); // grips
-      kit(xform(box(0.075, 0.11, 0.24), 0.10, recY - 0.01, 0.03), 0.72);      // ammo can
+      steel(xform(box(0.105, 0.115, 0.46), 0, recY, -0.02), 0.62);            // receiver
+      steel(xform(box(0.097, 0.018, 0.405), 0, recY + 0.066, -0.015), 0.58);  // hinged cover
+      steel(xform(box(0.020, 0.070, 0.23), 0.064, recY, -0.045), 0.52);       // side plate
+      steel(xform(box(0.050, 0.017, 0.075), -0.080, recY + 0.02, -0.04), 0.5);// charge handle
+      steel(xform(cylZ(0.034, 0.24, 12), 0, recY + 0.012, 0.29), 0.52);       // barrel jacket
+      for (let i = 0; i < 5; i++) {
+        steel(xform(torus(0.0345, 0.004, 10, 4), 0, recY + 0.012, 0.19 + i * 0.042), 0.48);
+      }
+      steel(xform(cylZ(0.021, 0.56, 10), 0, recY + 0.012, 0.46), 0.58);       // barrel
+      steel(xform(cylZ(0.034, 0.075, 12), 0, recY + 0.012, 0.778), 0.54);     // flash hider
+      steel(xform(box(0.032, 0.05, 0.07), 0, recY + 0.09, -0.20), 0.5);       // rear sight
+      for (const side of [-1, 1]) {
+        steel(xform(box(0.022, 0.026, 0.10), side * 0.034, recY - 0.02, -0.255,
+          side * 0.08), 0.5);
+      }
+      steel(xform(box(0.095, 0.12, 0.24), -0.115, recY - 0.01, 0.03), 0.58); // ammo can
+    }
+    // Connected disintegrating-link run. Ammunition stays steel/gunmetal and
+    // never samples the host camouflage.
+    for (let index = 0; index < 5; index++) {
+      const t = index / 4;
+      steel(xform(box(0.018, 0.026, 0.024), -0.112 + t * 0.075,
+        recY + 0.025 + t * 0.010, 0.11 + t * 0.08, 0, 0, -0.10 + t * 0.15),
+      index % 2 ? 0.52 : 0.61);
     }
     if (shield) {
-      kit(xform(box(0.5, 0.32, 0.022), 0, recY + 0.09, 0.15), 0.9);
-      kit(xform(box(0.16, 0.12, 0.02), 0, recY + 0.30, 0.15), 0.9);           // sight riser
-      for (const s of [-1, 1]) {      // mounting struts back to the cradle
-        steel(xform(box(0.024, 0.024, 0.16), s * 0.14, recY + 0.04, 0.06), 0.5);
+      // Split, shallow-chevron shield with edge ribs and real lower braces.
+      for (const side of [-1, 1]) {
+        kit(xform(box(0.235, 0.30, 0.026), side * 0.14, recY + 0.09, 0.15,
+          0, -side * 0.055, side * 0.035), 0.9);
+        steel(xform(box(0.022, 0.275, 0.034), side * 0.262, recY + 0.08, 0.135), 0.5);
+        steel(xform(box(0.024, 0.024, 0.18), side * 0.14, recY - 0.03, 0.06,
+          -0.26, 0, side * 0.08), 0.5);
       }
+      kit(xform(box(0.32, 0.036, 0.034), 0, recY + 0.255, 0.145), 0.9);
+      steel(xform(box(0.15, 0.10, 0.028), 0, recY + 0.12, 0.175), 0.52);      // sight cutout frame
     }
     // gun + shield stowed muzzle-up ~7 deg about the trunnion; mount stays plumb
     for (let i = gunFrom; i < parts.length; i++) {

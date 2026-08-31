@@ -19,7 +19,7 @@ const fittings = (root, predicate) => {
 for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']) {
   const tank = make(id);
   const guns = fittings(tank.root,
-    (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v1');
+    (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v2');
   assert.ok(guns.length >= 1, `${id}: uses the Sheridan-derived American M2HB standard`);
   for (const gun of guns) {
     assert.equal(gun.userData.weaponName, 'Browning M2HB');
@@ -42,7 +42,7 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
   }
   if (id !== 'm551_sheridan') {
     const receipt = tank.root.getObjectByName('rig_turret')?.userData.americanModernizationReceipt;
-    assert.equal(receipt?.standardMachineGun, 'sheridan-m2hb-v1',
+    assert.equal(receipt?.standardMachineGun, 'sheridan-m2hb-v2',
       `${id}: publishes its American modernization receipt`);
     assert.equal(receipt?.guardedAuxiliaryLights ?? receipt?.guardedLightClusters, 2,
       `${id}: carries a paired guarded light upgrade`);
@@ -124,7 +124,7 @@ for (const [id, expectedVariant, expectedLoader, expectedShield] of [
       `${id}: command station is flush-seated into the existing roof carrier`);
   }
   const loader = fittings(tank.root,
-    (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v1');
+    (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v2');
   assert.equal(loader.length, 1, `${id}: has one standardized crew-served Browning`);
   assert.equal(loader[0].userData.installationVariant, expectedLoader);
   assert.equal(loader[0].userData.shieldVariant, expectedShield);
@@ -167,7 +167,7 @@ for (const [id, expectedLoader, expectedShield] of [
 ]) {
   const tank = make(id);
   const loader = fittings(tank.root,
-    (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v1');
+    (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v2');
   assert.equal(loader.length, 1, `${id}: has one standardized crew-served Browning`);
   assert.equal(loader[0].userData.installationVariant, expectedLoader);
   assert.equal(loader[0].userData.shieldVariant, expectedShield);

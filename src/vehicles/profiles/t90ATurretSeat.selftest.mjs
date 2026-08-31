@@ -23,13 +23,6 @@ const assertOverlaps = (a, b, message, epsilon = 1e-5) => {
       `${message} on ${['x', 'y', 'z'][axis]} (${overlapM(a, b, axis).toFixed(6)} m)`);
   }
 };
-const meshPartInParent = (mesh) => {
-  mesh.geometry.computeBoundingBox();
-  mesh.updateMatrix();
-  const bounds = mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrix);
-  return { min: bounds.min.toArray(), max: bounds.max.toArray() };
-};
-
 const tank = createTank('t90a', null, {
   proceduralOnly: true,
   quality: 'high',
@@ -79,8 +72,10 @@ try {
   assert.deepEqual(receipt.leftCupola, [-0.35, -0.48], 'left cupola occupies the left roof station');
   assert.deepEqual(receipt.rightCupola, [0.52, -0.42], 'right cupola occupies the right roof station');
   assert.equal(receipt.rightCupolaLightCount, 2, 'right cupola carries two forward lights');
-  assert.equal(receipt.leftCupolaMannedMg, 'nsvt', 'left cupola carries the manually served NSVT');
-  near(receipt.nsvtRaiseM, 0.08, 'complete NSVT station is raised by 80 mm');
+  assert.equal(receipt.leftCupolaMannedMg, null, 'left cupola no longer carries an exposed hand-served gun');
+  assert.equal(receipt.leftCupolaRemoteWeapon, 'nsvt', 'left cupola carries a remote NSVT tower');
+  assert.equal(receipt.leftCupolaArmoredTower, true, 'left roof weapon is protected by an armored tower');
+  near(receipt.nsvtRaiseM, 0.08, 'remote NSVT supersedes the earlier 80-mm exposed-gun lift');
   near(receipt.roofHousingPedestalOverlapM, 0.12,
     'marked roof housing has a positive pedestal overlap');
   near(receipt.aftSensorPedestalOverlapM, 0.015,
@@ -156,8 +151,8 @@ try {
 
   const cupolaParts = parts.filter((part) => part.bucket === 'turretCupola');
   const hatchParts = parts.filter((part) => part.bucket === 'turretHatch');
-  assert.equal(cupolaParts.length, 4,
-    'each roof station has a structural cupola base and upper rim');
+  assert.equal(cupolaParts.length, 6,
+    'crew stations retain four cupola members and the remote tower adds two structural foundation members');
   assert.equal(hatchParts.length, 2,
     'each cupola is closed by its own structural hatch lid');
 
@@ -173,33 +168,31 @@ try {
   assert.equal(rightLampLenses.length, 2,
     'two recessed lenses physically occupy the right cupola lamp housings');
 
-  const exactMg = turret.children.find((child) => child.userData?.fittingRoot
-    && child.userData.fitting === 'pintleMG'
-    && child.getObjectByName('t90a_nsvt_barrel'));
-  assert.ok(exactMg, 'the T-90A-specific NSVT is published as one exact fitting');
-  assert.equal(exactMg.userData.fittingExact, true,
-    'the exact NSVT is recognized without replacing it with generic geometry');
-  assert.equal(exactMg.parent, turret, 'the complete NSVT assembly is turret-owned');
-  assert.equal(exactMg.children.filter((child) => child.isMesh).length, 9,
-    'the exact NSVT retains its nine connected visible members');
-  const raisedBarrel = meshPartInParent(exactMg.getObjectByName('t90a_nsvt_barrel'));
-  near(raisedBarrel.max[0] - raisedBarrel.min[0], 0.058,
-    'the exact fitting retains the full-length NSVT barrel diameter', 2e-4);
-  near(raisedBarrel.max[2] - raisedBarrel.min[2], 0.64,
-    'the exact fitting retains the full-length forward NSVT barrel');
-  near((raisedBarrel.min[1] + raisedBarrel.max[1]) * 0.5, 0.955,
-    'the full-length NSVT barrel follows the raised weapon station');
-  const raisedPintle = meshPartInParent(exactMg.getObjectByName('t90a_nsvt_pintle'));
-  const raisedCradle = meshPartInParent(exactMg.getObjectByName('t90a_nsvt_cradle'));
-  const raisedReceiver = meshPartInParent(exactMg.getObjectByName('t90a_nsvt_receiver'));
+  const remoteNsvt = turret.getObjectByName('t90aRemoteNsvt');
+  assert.ok(remoteNsvt, 'T-90A exposes one named remote NSVT fitting');
+  assert.equal(remoteNsvt.userData.fittingRoot, true,
+    'remote NSVT remains one semantic fitting assembly');
+  assert.equal(remoteNsvt.parent, turret, 'complete remote NSVT remains turret-owned');
+  near(remoteNsvt.rotation.y, 0, 'remote NSVT faces vehicle-forward local +Z');
+  const station = turret.userData.t90aAutomatedStationReceipt;
+  assert.equal(station?.family, 'tagil-integrated-automated-station-r1',
+    'T-90A uses the shared armored weapon-tower grammar');
+  assert.equal(station?.weapon, 'nsvt', 'armored tower carries the correct NSVT class');
+  assert.equal(station?.includeRace, false,
+    'tower reuses the existing structural cupola instead of duplicating its slew race');
+  assert.equal(station?.separateManualWeaponStations, 0,
+    'T-90A has no additional exposed hand-served roof gun');
   const leftHatch = findPartAt(parts, 'turretHatch', [-0.35, 0.718, -0.48],
-    'left structural hatch remains beneath the NSVT station');
-  assert.ok(overlapM(leftHatch, raisedPintle, 1) > 0,
-    'elongated NSVT pintle remains buried in the left hatch station');
-  assertOverlaps(raisedPintle, raisedCradle,
-    'elongated NSVT pintle overlaps the raised cradle');
-  assertOverlaps(raisedCradle, raisedReceiver,
-    'raised cradle overlaps the NSVT receiver');
+    'left structural hatch remains beneath the armored NSVT station');
+  const towerFoundation = cupolaParts.find((part) => {
+    const center = partCenter(part);
+    return Math.abs(center[0] + 0.35) < 2e-4
+      && Math.abs(center[2] + 0.4584) < 2e-4
+      && part.min[1] < leftHatch.max[1];
+  });
+  assert.ok(towerFoundation, 'faceted NSVT tower foundation is present on the left hatch');
+  assertOverlaps(leftHatch, towerFoundation,
+    'armored NSVT tower penetrates its structural hatch support');
 
   const shtoraBodies = parts.filter((part) => {
     if (part.bucket !== 'turretDark') return false;
@@ -245,9 +238,12 @@ try {
     'Burlak preserves its independently accepted turret seat');
   assert.equal(burlakTurret.userData.t90aSeatReceipt, undefined,
     'RU-112 adjustment receipt does not leak into Burlak');
-  assert.equal(burlak.root.userData.combatGeometryParts.some((part) =>
-    part.bucket === 'turretCupola' || part.bucket === 'turretHatch'), false,
-  'RU-112 structural roof buckets do not leak through Burlak rebuild');
+  const burlakRoofParts = burlak.root.userData.combatGeometryParts.filter((part) =>
+    part.bucket === 'turretCupola' || part.bucket === 'turretHatch');
+  assert.equal(burlakRoofParts.filter((part) => part.bucket === 'turretHatch').length, 0,
+    'RU-112 crew-hatch buckets do not leak through the Burlak rebuild');
+  assert.equal(burlakRoofParts.filter((part) => part.bucket === 'turretCupola').length, 2,
+    'Burlak owns only the two structural members of its new armored weapon tower');
 } finally {
   burlak.dispose();
 }

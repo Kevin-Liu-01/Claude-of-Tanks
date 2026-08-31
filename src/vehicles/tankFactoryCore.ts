@@ -4219,10 +4219,63 @@ function periscope(
 function pintleMG(builder: object, x: number, y: number, z: number, big = true): void {
   const P = requireGeometryAddPort(builder);
   const s = big ? 1 : 0.75;
-  P.add('turretDark', cylY(0.02 * s, 0.02 * s, 0.22), x, y + 0.11, z);
-  P.add('turretDark', box(0.09 * s, 0.09 * s, 0.5 * s), x, y + 0.27, z);
-  P.add('turretDark', xform(cylZ(0.022 * s, 0.62 * s, 8), 0, 0, 0), x, y + 0.29, z + 0.5 * s, -0.08, 0, 0);
-  if (big) P.add('turretDark', box(0.16, 0.05, 0.12), x, y + 0.2, z - 0.28);
+  const trunnionY = y + 0.235 * s;
+  const receiverY = trunnionY + 0.035 * s;
+  const receiverZ = z + 0.055 * s;
+
+  // Compact Browning-derived fallback used by the generic profile builder.
+  // It deliberately mirrors the authored fitting's bearing -> bridge -> fork
+  // -> trunnion load path so no tank falls back to the old block-on-a-stick.
+  P.add('turretDark', cylY(0.040 * s, 0.050 * s, 0.022 * s, 12), x, y + 0.011 * s, z);
+  P.add('turretDark', torus(0.041 * s, 0.007 * s, 16), x, y + 0.024 * s, z);
+  P.add('turretDark', cylY(0.020 * s, 0.026 * s, 0.155 * s, 10), x, y + 0.1015 * s, z);
+  P.add('turretDark', box(0.125 * s, 0.040 * s, 0.130 * s), x, y + 0.196 * s, z + 0.012 * s);
+  for (const side of [-1, 1]) {
+    P.add('turretDark', box(0.020 * s, 0.085 * s, 0.095 * s),
+      x + side * 0.048 * s, y + 0.217 * s, z + 0.044 * s, side * 0.05, 0, 0);
+  }
+  P.add('turretDark', cylX(0.026 * s, 0.130 * s, 10), x, trunnionY, z + 0.060 * s);
+
+  P.add('turretDark', box(0.115 * s, 0.095 * s, 0.46 * s), x, receiverY, receiverZ);
+  P.add('turretDark', box(0.106 * s, 0.018 * s, 0.405 * s),
+    x, receiverY + 0.0565 * s, receiverZ + 0.004 * s);
+  P.add('turretDark', box(0.020 * s, 0.065 * s, 0.245 * s),
+    x + 0.068 * s, receiverY, receiverZ - 0.025 * s);
+  P.add('turretDark', box(0.052 * s, 0.017 * s, 0.075 * s),
+    x - 0.083 * s, receiverY + 0.018 * s, receiverZ - 0.018 * s);
+  for (const side of [-1, 1]) {
+    P.add('turretDark', box(0.018 * s, 0.024 * s, 0.095 * s),
+      x + side * 0.035 * s, receiverY - 0.018 * s, receiverZ - 0.29 * s,
+      side * 0.08, 0, 0);
+  }
+
+  const jacketZ = receiverZ + 0.300 * s;
+  P.add('turretDark', cylZ(0.034 * s, 0.16 * s, 12),
+    x, receiverY + 0.005 * s, jacketZ, -0.08, 0, 0);
+  for (let index = 0; index < 4; index++) {
+    P.add('turretDark', torus(0.0345 * s, 0.004 * s, 10),
+      x, receiverY + (0.010 + index * 0.003) * s,
+      jacketZ - 0.050 * s + index * 0.038 * s, -0.08, 0, 0);
+  }
+  P.add('turretDark', cylZ(0.020 * s, 0.54 * s, 10),
+    x, receiverY + 0.030 * s, receiverZ + 0.650 * s, -0.08, 0, 0);
+  P.add('turretDark', cylZ(0.034 * s, 0.080 * s, 12),
+    x, receiverY + 0.052 * s, receiverZ + 0.960 * s, -0.08, 0, 0);
+
+  if (big) {
+    const ammoX = x - 0.125 * s;
+    P.add('turretDark', box(0.115 * s, 0.120 * s, 0.230 * s),
+      ammoX, receiverY - 0.010 * s, receiverZ - 0.005 * s);
+    P.add('turretDark', box(0.120 * s, 0.015 * s, 0.240 * s),
+      ammoX, receiverY + 0.057 * s, receiverZ - 0.005 * s);
+    for (let index = 0; index < 5; index++) {
+      const t = index / 4;
+      P.add('turretDark', box(0.018 * s, 0.026 * s, 0.024 * s),
+        ammoX + (0.020 + t * 0.072) * s,
+        receiverY + (0.025 + t * 0.010) * s,
+        receiverZ + (0.075 + t * 0.070) * s, 0, 0, -0.10 + t * 0.15);
+    }
+  }
 }
 
 function smokeCluster(

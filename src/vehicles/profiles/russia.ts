@@ -815,14 +815,50 @@ export function ruBoot(P: RussiaGunMountPort, o: BootOptions): void {
 // NSVT/DShK pintle with a real cradle, receiver, finned barrel and ammo box
 // (r1 bullet 8: "AA MGs are stick-blocks on posts") — turret frame.
 export function nsvt(P: RussiaGeometryPort, x: number, y: number, z: number, shield = false): void {
-  const { box, cylY, cylZ } = KIT;
-  P.add('turretDark', cylY(0.025, 0.032, 0.16, 8), x, y + 0.08, z);          // pintle post
-  P.add('turretDark', box(0.10, 0.06, 0.16), x, y + 0.19, z);                // cradle yoke
-  P.add('turretDark', box(0.09, 0.10, 0.42), x, y + 0.27, z + 0.06);         // receiver
-  P.add('turretDark', cylZ(0.024, 0.55, 8), x, y + 0.28, z + 0.50, -0.06, 0, 0); // barrel
-  P.add('turretDark', cylZ(0.035, 0.10, 8), x, y + 0.295, z + 0.76, -0.06, 0, 0); // flash hider
-  P.add('turretDetail', box(0.09, 0.11, 0.16), x - 0.11, y + 0.24, z - 0.04); // ammo box
-  if (shield) P.add('turretDetail', box(0.34, 0.22, 0.025), x, y + 0.30, z + 0.20);
+  const { box, cylX, cylY, cylZ, torus } = KIT;
+  // Compact legacy-path derivative of the canonical Browning-family load
+  // path. The NSVT keeps its unsleeved barrel and muzzle device, but no
+  // longer degrades to a rectangular receiver balanced on a single post.
+  P.add('turretDark', cylY(0.042, 0.052, 0.022, 12), x, y + 0.011, z);
+  P.add('turretDark', torus(0.043, 0.007, 16), x, y + 0.024, z);
+  P.add('turretDark', cylY(0.023, 0.030, 0.16, 10), x, y + 0.104, z);
+  P.add('turretDark', box(0.13, 0.045, 0.14), x, y + 0.202, z + 0.01);
+  for (const side of [-1, 1]) {
+    P.add('turretDark', box(0.020, 0.090, 0.10),
+      x + side * 0.050, y + 0.225, z + 0.05, side * 0.05, 0, 0);
+  }
+  P.add('turretDark', cylX(0.028, 0.14, 12), x, y + 0.265, z + 0.07);
+  P.add('turretDark', box(0.095, 0.10, 0.42), x, y + 0.28, z + 0.06);
+  P.add('turretDark', box(0.087, 0.018, 0.36), x, y + 0.339, z + 0.065);
+  P.add('turretDark', box(0.018, 0.065, 0.22), x + 0.058, y + 0.28, z + 0.035);
+  P.add('turretDark', box(0.045, 0.017, 0.070), x - 0.068, y + 0.30, z + 0.02);
+  for (const side of [-1, 1]) {
+    P.add('turretDark', box(0.017, 0.024, 0.09),
+      x + side * 0.031, y + 0.258, z - 0.195, side * 0.08, 0, 0);
+  }
+  P.add('turretDark', cylZ(0.024, 0.55, 10), x, y + 0.28, z + 0.50, -0.06, 0, 0);
+  P.add('turretDark', cylZ(0.035, 0.10, 12), x, y + 0.295, z + 0.76, -0.06, 0, 0);
+  const ammoX = x - 0.11;
+  P.add('turretDark', box(0.10, 0.11, 0.17), ammoX, y + 0.24, z - 0.04);
+  P.add('turretDark', box(0.104, 0.014, 0.176), ammoX, y + 0.302, z - 0.04);
+  for (let index = 0; index < 5; index++) {
+    const t = index / 4;
+    P.add('turretDark', box(0.018, 0.026, 0.024),
+      ammoX + (0.020 + t * 0.065), y + 0.277 + t * 0.010,
+      z + 0.030 + t * 0.070, 0, 0, -0.10 + t * 0.15);
+  }
+  if (shield) {
+    for (const side of [-1, 1]) {
+      P.add('turretDetail', box(0.155, 0.22, 0.025),
+        x + side * 0.095, y + 0.30, z + 0.20,
+        0, -side * 0.055, side * 0.035);
+      P.add('turretDark', box(0.018, 0.19, 0.030),
+        x + side * 0.18, y + 0.295, z + 0.185);
+      P.add('turretDark', box(0.020, 0.020, 0.15),
+        x + side * 0.095, y + 0.205, z + 0.12, -0.26, 0, side * 0.08);
+    }
+    P.add('turretDetail', box(0.23, 0.032, 0.032), x, y + 0.425, z + 0.195);
+  }
 }
 // Thin roof mast (met mast / antenna base / pano tower stem) — turret frame.
 export function mast(P: RussiaGeometryPort, x: number, yBase: number, z: number, yTop: number, r = 0.028, head = 0.11): void {

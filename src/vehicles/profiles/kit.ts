@@ -882,14 +882,12 @@ export function buildDonorVariant(builder: unknown, profile: unknown): void {
 //    fixture mode renders each fitting top-down with FrontSide materials and
 //    asserts non-zero coverage.
 //  * MG PHYSICS (banked law): pintleMG builds a receiver MASS (never a
-//    stick), a barrel that can break the roofline, and tone options — dark
-//    body + pale top caps ('two-tone', the abrams/merkava proven recipe),
-//    all-pale ('pale', the casemate sky-silhouette recipe: pale top-lit over
-//    sky), or all-dark ('dark': pale-deck roof guns invert to dark
-//    crown-riding lines). Callers pick tone by their deck polarity. Pintle
-//    silhouette allowance stays within the ≤0.4 gate-pt law when the caller
-//    keeps the envelope inside certified bins (see the casemate/abrams
-//    packets).
+//    stick), a connected feed and engineered cradle, plus a barrel that can
+//    break the roofline. The complete weapon and ammunition path always use
+//    neutral gunmetal. `tone` changes only the roof bearing/shield support so
+//    host camouflage can never turn the gun into a miniature green/tan prop.
+//    Pintle silhouette allowance stays within the ≤0.4 gate-pt law when the
+//    caller keeps the envelope inside certified bins.
 //  * Shadows: castShadow/receiveShadow default true (fittings replace
 //    bucket-authored greebles which cast); pass `shadows:false` to opt out.
 //
@@ -990,12 +988,20 @@ function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): T
   return g;
 }
 
-// MG class table (era/caliber families). rec = [w,h,d] receiver mass.
+// Browning-derived MG family table. Every class keeps the same authored load
+// path and receiver grammar (bearing -> fork -> trunnion -> receiver ->
+// jacket/barrel) while caliber-specific dimensions, jackets and muzzle devices
+// preserve national identity. `pintleMG` is the fleet default; exact hero props
+// may add detail, but must not fall back to anonymous rods or floating boxes.
+// rec = [w,h,d] receiver mass.
 const MG_CLASSES = {
-  m2:   { s: 1.00, rec: [0.115, 0.095, 0.46], barrelR: 0.0165, barrelL: 0.52, jacket: 'sleeve', flashR: 0.021, flashL: 0.07 },
-  dshk: { s: 1.02, rec: [0.100, 0.100, 0.44], barrelR: 0.0155, barrelL: 0.50, jacket: 'fins',   flashR: 0.035, flashL: 0.10 },
-  nsvt: { s: 0.98, rec: [0.090, 0.100, 0.42], barrelR: 0.0240, barrelL: 0.55, jacket: 'none',   flashR: 0.035, flashL: 0.10 },
-  mag:  { s: 0.78, rec: [0.100, 0.045, 0.34], barrelR: 0.0120, barrelL: 0.46, jacket: 'none',   flashR: 0.017, flashL: 0.06 },
+  m2:    { s: 1.00, rec: [0.115, 0.095, 0.46], barrelR: 0.0165, barrelL: 0.52, jacket: 'sleeve', flashR: 0.021, flashL: 0.07, caliber: 12.7, name: 'Browning M2HB' },
+  heavy: { s: 1.00, rec: [0.115, 0.095, 0.46], barrelR: 0.0165, barrelL: 0.52, jacket: 'sleeve', flashR: 0.021, flashL: 0.07, caliber: 12.7, name: 'Browning-pattern HMG' },
+  dshk:  { s: 1.02, rec: [0.105, 0.105, 0.44], barrelR: 0.0155, barrelL: 0.50, jacket: 'fins',   flashR: 0.035, flashL: 0.10, caliber: 12.7, name: 'DShK-pattern HMG' },
+  nsvt:  { s: 0.98, rec: [0.095, 0.100, 0.42], barrelR: 0.0240, barrelL: 0.55, jacket: 'none',   flashR: 0.035, flashL: 0.10, caliber: 12.7, name: 'NSVT-pattern HMG' },
+  kord:  { s: 0.99, rec: [0.100, 0.105, 0.43], barrelR: 0.0220, barrelL: 0.57, jacket: 'ribbed', flashR: 0.033, flashL: 0.10, caliber: 12.7, name: 'Kord-pattern HMG' },
+  mag:   { s: 0.78, rec: [0.100, 0.050, 0.34], barrelR: 0.0120, barrelL: 0.46, jacket: 'none',   flashR: 0.017, flashL: 0.06, caliber: 7.62, name: 'Browning-derived GPMG' },
+  mag58: { s: 0.80, rec: [0.105, 0.052, 0.35], barrelR: 0.0125, barrelL: 0.47, jacket: 'ribbed', flashR: 0.018, flashL: 0.06, caliber: 7.62, name: 'MAG 58 GPMG' },
 };
 
 function isMgClass(value: string | undefined): value is keyof typeof MG_CLASSES {
@@ -1012,47 +1018,72 @@ function fittingRing(options: FittingOptions): { r?: number; stubs?: number } | 
  * Origin: pintle FOOT on the roof plate (caller seats it on the deck/cupola).
  * @param {object} opts
  *   mats     family material set (required — normally P.mats)
- *   cls      'm2' | 'dshk' | 'nsvt' | 'mag'                  (default 'm2')
+ *   cls      'm2' | 'heavy' | 'dshk' | 'nsvt' | 'kord' |
+ *            'mag' | 'mag58'                                  (default 'm2')
  *   scale    extra uniform scale on the class                (default 1)
  *   tone     'two-tone' | 'pale' | 'dark'                    (default 'two-tone')
  *   elev     barrel elevation in radians, up positive        (default 0.06)
  *   ring     AA ring around the foot: true | {r, stubs}      (default false)
  *   ammo     ammo can on the receiver's left                 (default true)
- *   shield   small gun shield ahead of the receiver          (default false)
+ *   shield   false | true | 'low' | 'armored'                (default false)
  *   seed, shadows, rotation
  * Envelope (m2/scale 1, no ring): x ±0.17, y 0..0.36, z -0.30..+0.93 —
  * authoritative per-build box in group.userData.aabb.
  */
 function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylY, cylZ, torus, xform } = KIT;
-  const cls = MG_CLASSES[isMgClass(opts.cls) ? opts.cls : 'm2'];
+  const { box, cylX, cylY, cylZ, torus, xform } = KIT;
+  const classKey = isMgClass(opts.cls) ? opts.cls : 'm2';
+  const cls = MG_CLASSES[classKey];
   const s = (opts.scale || 1) * cls.s;
   const tone = opts.tone || 'two-tone';
   const elev = opts.elev ?? 0.06;
-  const B = tone === 'pale' ? 'detail' : 'dark';   // body slot
-  const CAP = tone === 'dark' ? null : 'detail';   // pale top caps
-  const ammoSlot = opts.ammoSlot || 'detail';
+  // Weapons and ammunition stay neutral gunmetal. Tone now controls only the
+  // support/shield finish; letting the host camouflage color receiver caps and
+  // ammo cans produced the miniature green/tan guns the fleet pass removes.
+  const B = 'dark';
+  const SUPPORT = tone === 'pale' ? 'detail' : 'dark';
+  const ammoSlot = opts.ammoSlot || 'gunmetalAmmo';
   const parts = fitParts();
   const [rw, rh, rd] = cls.rec.map((v) => v * s);
 
-  // pintle column: flanged foot -> tapered post -> cradle yoke (real column,
-  // never a floating gun — casemate r10 law).
+  // Flanged bearing, spindle, bridge, fork and cross-shaft form one visible
+  // load path. The old single post made every gun look like a block on a rod.
   const colH = 0.16 * s;
-  parts.add(B, cylY(0.030 * s, 0.038 * s, 0.014, 12), 0, 0.007, 0);
-  parts.add(B, cylY(0.016 * s, 0.021 * s, colH, 10), 0, 0.014 + colH / 2, 0);
+  parts.add(SUPPORT, cylY(0.030 * s, 0.038 * s, 0.014, 14), 0, 0.007, 0);
+  parts.add(B, torus(0.031 * s, 0.006 * s, 18), 0, 0.015, 0);
+  parts.add(B, cylY(0.018 * s, 0.023 * s, colH, 12), 0, 0.014 + colH / 2, 0);
   const colTop = 0.014 + colH;
-  parts.add(B, box(0.10 * s, 0.05 * s, 0.15 * s), 0, colTop + 0.025 * s, 0.01);
+  parts.add(B, box(0.115 * s, 0.045 * s, 0.15 * s), 0, colTop + 0.0225 * s, 0.01);
+  for (const side of [-1, 1]) {
+    parts.add(B, box(0.020 * s, 0.095 * s, 0.105 * s),
+      side * 0.052 * s, colTop + 0.070 * s, 0.045 * s, side * 0.05, 0, 0);
+  }
+  parts.add(B, cylX(0.025 * s, 0.130 * s, 12), 0, colTop + 0.105 * s, 0.065 * s);
 
-  // receiver MASS (not a stick) + top-cover ridge + pale cap.
-  const recY = colTop + 0.05 * s + rh / 2 - 0.01;
+  // Browning-family receiver: service box, hinged top cover, side plate,
+  // buffer head, charging handle, rear sight and dual spade grips.
+  const recY = colTop + 0.080 * s + rh / 2;
   const recZ = 0.06 * s;
   parts.add(B, box(rw, rh, rd), 0, recY, recZ);
-  parts.add(B, box(rw * 0.44, 0.016 * s, rd * 0.9), 0, recY + rh / 2 + 0.008 * s, recZ);
-  if (CAP) parts.add(CAP, box(rw * 0.9, 0.008, rd * 0.88), 0, recY + rh / 2 + 0.020 * s, recZ);
-  // spade grips + charging handle (dark accents in every tone).
-  parts.add('dark', box(0.016 * s, 0.020 * s, 0.05 * s), -0.03 * s, recY - 0.01, recZ - rd / 2 - 0.02 * s);
-  parts.add('dark', box(0.016 * s, 0.020 * s, 0.05 * s), 0.03 * s, recY - 0.01, recZ - rd / 2 - 0.02 * s);
-  parts.add('dark', box(0.044 * s, 0.016 * s, 0.016 * s), 0, recY - 0.028 * s, recZ - rd / 2 - 0.045 * s);
+  parts.add(B, box(rw * 0.92, 0.018 * s, rd * 0.88),
+    0, recY + rh / 2 + 0.009 * s, recZ + 0.005 * s);
+  parts.add(B, box(0.020 * s, rh * 0.70, rd * 0.54),
+    rw / 2 + 0.010 * s, recY, recZ - 0.025 * s);
+  parts.add(B, box(rw * 0.72, rh * 0.58, 0.050 * s),
+    0, recY - 0.005 * s, recZ - rd / 2 - 0.025 * s);
+  parts.add(B, box(0.052 * s, 0.017 * s, 0.075 * s),
+    -rw / 2 - 0.026 * s, recY + 0.018 * s, recZ - 0.015 * s);
+  parts.add(B, box(0.044 * s, 0.045 * s, 0.018 * s),
+    0, recY + rh / 2 + 0.030 * s, recZ - rd * 0.22);
+  for (const side of [-1, 1]) {
+    parts.add(B, box(0.018 * s, 0.026 * s, 0.095 * s),
+      side * 0.036 * s, recY - 0.012 * s, recZ - rd / 2 - 0.080 * s,
+      side * 0.08, 0, 0);
+    parts.add(B, box(0.035 * s, 0.018 * s, 0.018 * s),
+      side * 0.045 * s, recY - 0.042 * s, recZ - rd / 2 - 0.122 * s);
+  }
+  parts.add(B, box(0.012 * s, 0.020 * s, 0.020 * s),
+    0, recY + rh / 2 + 0.022 * s, recZ + rd * 0.28);
 
   // barrel group, elevated about the trunnion at the receiver front.
   const trunY = recY + 0.004;
@@ -1060,10 +1091,20 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
   const aim = (geo: THREE.BufferGeometry, dz: number, dy = 0): THREE.BufferGeometry =>
     xform(xform(geo, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
   if (cls.jacket === 'sleeve') {
-    parts.add(B, aim(cylZ(cls.barrelR * s * 1.7, 0.10 * s, 10), 0.05 * s), 0, trunY, trunZ);
+    parts.add(B, aim(cylZ(cls.barrelR * s * 1.85, 0.15 * s, 14), 0.075 * s), 0, trunY, trunZ);
+    for (let k = 0; k < 4; k++) {
+      parts.add(B, aim(torus(cls.barrelR * s * 1.88, 0.0035 * s, 12),
+        (0.030 + k * 0.034) * s), 0, trunY, trunZ);
+    }
   } else if (cls.jacket === 'fins') {
     for (let k = 0; k < 5; k++) {
       parts.add(B, aim(cylZ(cls.barrelR * s * 1.5, 0.020 * s, 12), (0.03 + k * 0.028) * s), 0, trunY, trunZ);
+    }
+  } else if (cls.jacket === 'ribbed') {
+    parts.add(B, aim(cylZ(cls.barrelR * s * 1.32, 0.13 * s, 12), 0.065 * s), 0, trunY, trunZ);
+    for (let k = 0; k < 4; k++) {
+      parts.add(B, aim(torus(cls.barrelR * s * 1.34, 0.003 * s, 12),
+        (0.026 + k * 0.030) * s), 0, trunY, trunZ);
     }
   } else if (opts.barrelBridge) {
     // Some slim, unsleeved weapons otherwise begin their barrel 100 mm ahead
@@ -1072,19 +1113,49 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
     parts.add(B, aim(cylZ(cls.barrelR * s * 1.12, 0.105 * s, 10), 0.0525 * s), 0, trunY, trunZ);
   }
   const bl = cls.barrelL * s;
-  parts.add(B, aim(cylZ(cls.barrelR * s, bl, 8), 0.10 * s + bl / 2), 0, trunY, trunZ);
-  if (CAP) parts.add(CAP, aim(box(0.012 * s, 0.006, bl * 0.8), 0.10 * s + bl / 2, cls.barrelR * s + 0.003), 0, trunY, trunZ);
-  parts.add(B, aim(cylZ(cls.flashR * s, cls.flashL * s, 8), 0.10 * s + bl + cls.flashL * s / 2), 0, trunY, trunZ);
-  parts.add('dark', aim(cylZ(cls.barrelR * s * 0.55, 0.008, 8), 0.10 * s + bl + cls.flashL * s + 0.005), 0, trunY, trunZ);
-  parts.add('dark', box(0.012 * s, 0.017 * s, 0.015 * s), 0, trunY + cls.barrelR * s + 0.012, trunZ + 0.14 * s);
+  parts.add(B, aim(cylZ(cls.barrelR * s, bl, 10), 0.10 * s + bl / 2), 0, trunY, trunZ);
+  parts.add(B, aim(cylZ(cls.flashR * s, cls.flashL * s, 12), 0.10 * s + bl + cls.flashL * s / 2), 0, trunY, trunZ);
+  parts.add(B, aim(cylZ(cls.barrelR * s * 0.55, 0.010, 10), 0.10 * s + bl + cls.flashL * s + 0.006), 0, trunY, trunZ);
+  parts.add(B, aim(box(0.012 * s, 0.026 * s, 0.015 * s), 0.18 * s,
+    cls.barrelR * s + 0.014 * s), 0, trunY, trunZ);
 
   if (opts.ammo !== false) {
     const ax = -(rw / 2 + 0.055 * s);
     parts.add(ammoSlot, box(0.085 * s, 0.11 * s, 0.17 * s), ax, recY - 0.005, recZ - 0.02);
-    parts.add('dark', box(0.075 * s, 0.006, 0.15 * s), ax, recY + 0.055 * s, recZ - 0.02);
+    parts.add(B, box(0.079 * s, 0.008 * s, 0.158 * s), ax, recY + 0.058 * s, recZ - 0.02);
+    parts.add(B, box(0.018 * s, 0.060 * s, 0.020 * s),
+      ax - 0.050 * s, recY + 0.002 * s, recZ - 0.020 * s);
+    // Short visible feed run; links stay gunmetal and terminate at the
+    // receiver instead of floating between unrelated boxes.
+    for (let index = 0; index < 5; index++) {
+      const t = index / 4;
+      parts.add(B, box(0.018 * s, 0.026 * s, 0.024 * s),
+        ax * (1 - t) - rw * 0.36 * t, recY + (0.020 + t * 0.012) * s,
+        recZ + (0.065 + t * 0.070) * s, 0, 0, -0.10 + t * 0.16);
+    }
   }
-  if (opts.shield) {
-    parts.add(tone === 'pale' ? 'detail' : 'dark', box(0.34 * s, 0.22 * s, 0.02), 0, recY + 0.02, trunZ + 0.03);
+  const shieldVariant = opts.shield === true ? 'standard' : opts.shield;
+  if (shieldVariant) {
+    const shieldSlot = tone === 'dark' ? 'dark' : 'detail';
+    const shieldZ = trunZ + 0.035 * s;
+    const sideW = shieldVariant === 'armored' ? 0.18 : 0.145;
+    const shieldH = shieldVariant === 'low' ? 0.14 : shieldVariant === 'armored' ? 0.27 : 0.22;
+    for (const side of [-1, 1]) {
+      parts.add(shieldSlot, box(sideW * s, shieldH * s, 0.022 * s),
+        side * (0.075 + sideW / 2) * s, recY + 0.018 * s, shieldZ,
+        0, -side * 0.055, side * 0.035);
+      parts.add(B, box(0.018 * s, shieldH * 0.82 * s, 0.030 * s),
+        side * (0.148 + sideW * 0.45) * s, recY + 0.006 * s, shieldZ - 0.020 * s);
+      parts.add(B, box(0.020 * s, 0.020 * s, 0.14 * s),
+        side * 0.115 * s, recY - shieldH * 0.30 * s, shieldZ - 0.060 * s,
+        -0.22, 0, side * 0.08);
+    }
+    parts.add(shieldSlot, box(0.19 * s, 0.032 * s, 0.026 * s),
+      0, recY + shieldH * 0.48 * s, shieldZ);
+    if (shieldVariant === 'armored') {
+      parts.add(shieldSlot, box(0.34 * s, 0.035 * s, 0.18 * s),
+        0, recY + shieldH * 0.58 * s, shieldZ - 0.070 * s);
+    }
   }
   const ring = fittingRing(opts);
   if (ring) {
@@ -1098,15 +1169,28 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
     }
   }
   const fitting = fitAssemble('pintleMG', parts, opts);
+  fitting.name = `fitting_browningDerived_${classKey}`;
   fitting.userData.barrelBridge = Boolean(opts.barrelBridge);
-  if (opts.machineGunFinish) fitting.userData.machineGunFinish = opts.machineGunFinish;
+  fitting.userData.browningDerivedStandard = 'cot-browning-family-v2';
+  fitting.userData.weaponClass = classKey;
+  fitting.userData.weaponName = cls.name;
+  fitting.userData.caliberMm = cls.caliber;
+  fitting.userData.shieldVariant = shieldVariant || 'open';
+  fitting.userData.hasConnectedFeed = opts.ammo !== false;
+  fitting.userData.hasEngineeredCradle = true;
+  fitting.userData.machineGunFinish = opts.machineGunFinish || 'gunmetal';
+  const weaponMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
+  if (weaponMesh) {
+    weaponMesh.name = 'browningDerivedMachineGunBody';
+    weaponMesh.userData.appearanceRole = 'machineGun';
+  }
   return fitting;
 }
 
 /**
  * Detailed US M2HB installation shared by the Sheridan, Patton and M60
- * families.  The generic `pintleMG({ cls: 'm2' })` remains the inexpensive
- * fleet fitting; this version is the American hero-prop standard with the
+ * families. The generic `pintleMG({ cls: 'm2' })` is the compact fleet
+ * standard; this version is the American hero-prop installation with the
  * receiver, feed path, ammunition chest, cradle and perforated jacket all
  * reading as separate connected members.
  *
@@ -1163,6 +1247,14 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
     parts.add('dark', box(0.115 * s, 0.070 * s, 0.125 * s),
       ammoSide * 0.115 * s, recY + 0.035 * s, recZ + 0.155 * s,
       0, -ammoSide * 0.18, 0);
+    for (let index = 0; index < 7; index++) {
+      const t = index / 6;
+      parts.add(index % 2 ? 'shadow' : 'dark', box(0.030 * s, 0.040 * s, 0.027 * s),
+        ammoSide * (0.168 - t * 0.155) * s,
+        recY + (0.052 + t * 0.015) * s,
+        recZ + (0.120 + t * 0.095) * s,
+        0, 0, ammoSide * (0.10 - t * 0.16));
+    }
   }
 
   // Jacket, barrel and flash hider share the receiver trunnion and elevation.
@@ -1193,8 +1285,13 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
   }
   const shieldVariant = opts.shield === true ? 'standard' : opts.shield;
   if (shieldVariant === 'low') {
-    parts.add('hull', box(0.46 * s, 0.21 * s, 0.030 * s),
-      0, recY - 0.015 * s, trunZ + 0.085 * s);
+    for (const side of [-1, 1]) {
+      parts.add('hull', box(0.215 * s, 0.21 * s, 0.030 * s),
+        side * 0.125 * s, recY - 0.015 * s, trunZ + 0.085 * s,
+        0, -side * 0.045, side * 0.025);
+      parts.add('dark', box(0.022 * s, 0.175 * s, 0.034 * s),
+        side * 0.235 * s, recY - 0.018 * s, trunZ + 0.072 * s);
+    }
     parts.add('dark', box(0.15 * s, 0.075 * s, 0.035 * s),
       0, recY - 0.015 * s, trunZ + 0.108 * s);
   } else if (shieldVariant === 'split') {
@@ -1220,8 +1317,18 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
     parts.add('dark', box(0.18 * s, 0.115 * s, 0.045 * s),
       0, recY, trunZ + 0.120 * s);
   } else if (shieldVariant) {
-    parts.add('hull', box(0.52 * s, 0.30 * s, 0.035 * s),
-      0, recY + 0.015 * s, trunZ + 0.090 * s);
+    for (const side of [-1, 1]) {
+      parts.add('hull', box(0.245 * s, 0.30 * s, 0.035 * s),
+        side * 0.145 * s, recY + 0.015 * s, trunZ + 0.090 * s,
+        0, -side * 0.055, side * 0.035);
+      parts.add('dark', box(0.023 * s, 0.268 * s, 0.040 * s),
+        side * 0.274 * s, recY + 0.005 * s, trunZ + 0.076 * s);
+      parts.add('dark', box(0.024 * s, 0.024 * s, 0.18 * s),
+        side * 0.175 * s, recY - 0.115 * s, trunZ + 0.005 * s,
+        -0.28, 0, side * 0.08);
+    }
+    parts.add('hull', box(0.36 * s, 0.038 * s, 0.040 * s),
+      0, recY + 0.178 * s, trunZ + 0.085 * s);
     parts.add('dark', box(0.17 * s, 0.11 * s, 0.040 * s),
       0, recY, trunZ + 0.115 * s);
   }
@@ -1238,13 +1345,16 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
     bodyMesh.name = 'americanM2HBBody';
     bodyMesh.userData.appearanceRole = 'machineGun';
   }
-  fitting.userData.americanWeaponStandard = 'sheridan-m2hb-v1';
+  fitting.userData.americanWeaponStandard = 'sheridan-m2hb-v2';
+  fitting.userData.browningDerivedStandard = 'cot-browning-family-v2';
   fitting.userData.weaponName = 'Browning M2HB';
   fitting.userData.caliberMm = 12.7;
   fitting.userData.ammoSide = ammoSide;
   fitting.userData.shieldVariant = shieldVariant || 'open';
   fitting.userData.installationVariant = opts.installationVariant || 'open-cradle';
   fitting.userData.machineGunFinish = 'gunmetal';
+  fitting.userData.hasConnectedFeed = opts.ammo !== false;
+  fitting.userData.hasEngineeredCradle = true;
   return fitting;
 }
 
@@ -1391,6 +1501,7 @@ function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
   const fitting = fitAssemble('pintleMG', parts, opts);
   fitting.name = `fitting_americanRws_${variant}`;
   fitting.userData.americanRwsFamily = 'm551a1-tts-derived-v1';
+  fitting.userData.browningDerivedStandard = 'cot-browning-family-v2';
   fitting.userData.stationVariant = variant;
   fitting.userData.remoteControlled = true;
   fitting.userData.weaponName = 'Browning M2HB';
@@ -1400,6 +1511,8 @@ function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
   fitting.userData.hasWorkLights = true;
   fitting.userData.hasSteelReceiverGuard = true;
   fitting.userData.machineGunFinish = 'gunmetal';
+  fitting.userData.hasConnectedFeed = true;
+  fitting.userData.hasEngineeredCradle = true;
   const weaponMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
   if (weaponMesh) {
     weaponMesh.name = 'americanRwsMachineGun';
@@ -1606,6 +1719,7 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   const fitting = fitAssemble('openYokeRws', parts, opts);
   fitting.name = `fitting_openYokeRws_${variant}`;
   fitting.userData.designFamily = 'abramsx-open-yoke-v1';
+  fitting.userData.browningDerivedStandard = 'cot-browning-family-v2';
   fitting.userData.stationVariant = variant;
   fitting.userData.remoteControlled = true;
   fitting.userData.weaponName = opts.weaponName || '12.7 mm remote machine gun';
@@ -1613,6 +1727,8 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   fitting.userData.ammoSide = ammoSide;
   fitting.userData.sensorSide = sensorSide;
   fitting.userData.hasVisibleFeedBelt = true;
+  fitting.userData.hasConnectedFeed = true;
+  fitting.userData.hasEngineeredCradle = true;
   fitting.userData.hasWorkLights = panther;
   fitting.userData.lightCount = classicPanther ? 5 : (panther ? 2 : 0);
   fitting.userData.machineGunFinish = 'gunmetal';
@@ -1923,6 +2039,15 @@ function fittingMarkExact(group: THREE.Group, type: string): THREE.Group {
   group.userData.fittingExact = true;
   group.userData.combatHitboxRole = 'equipment';
   group.userData.surfaceMarkupSelectable = true;
+  if (type === 'pintleMG') {
+    // Exact hero weapons retain their source-measured exterior, but still
+    // participate in the fleet-wide Browning-family quality/finish contract.
+    // Do not claim feed/cradle capabilities here: exact builders stamp those
+    // only when their authored geometry actually contains them.
+    group.userData.browningDerivedStandard = 'cot-browning-family-v2-exact';
+    group.userData.machineGunFinish = 'gunmetal';
+    group.userData.sourceMeasuredMachineGun = true;
+  }
   const bb = new THREE.Box3().setFromObject(group);
   group.userData.aabb = { min: bb.min.toArray(), max: bb.max.toArray() };
   return group;

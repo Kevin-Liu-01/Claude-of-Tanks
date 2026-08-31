@@ -17,6 +17,22 @@ const OPERATION_CSS: Readonly<Record<MarkupOperation, string>> = Object.freeze({
   add: '#43d6b5',
 });
 
+/**
+ * Markup must identify a surface without replacing its authored appearance.
+ * In particular, an always-on-top double-sided fill turns compact roof guns
+ * and spare links into a flat color card. Keep the overlay depth-aware and
+ * translucent enough that the source primitive remains readable underneath.
+ */
+export const SURFACE_MARKUP_OVERLAY_STYLE = Object.freeze({
+  hoverOpacity: 0.16,
+  selectionOpacity: 0.28,
+  depthTest: true,
+  depthWrite: false,
+  polygonOffset: true,
+  polygonOffsetFactor: -1,
+  polygonOffsetUnits: -3,
+});
+
 interface GeometryAdjacency {
   neighbors: number[][];
   normals: THREE.Vector3[];
@@ -149,7 +165,11 @@ export function collectSurfacePickTargets(root: THREE.Object3D): SurfacePickTarg
     if (!effectiveVisible(object) || object.userData.gallerySurfaceMarkup) return;
     if (object.userData.authoredShadowProxy || object.userData.shadowOnly) return;
     const materials = Array.isArray(object.material) ? object.material : [object.material];
-    if (materials.length && materials.every((material) => material?.colorWrite === false)) return;
+    const hasRenderedMaterial = materials.some((material) => material
+      && material.visible !== false
+      && material.colorWrite !== false
+      && (!material.transparent || material.opacity > 0));
+    if (!hasRenderedMaterial) return;
     targets.push(object as SurfacePickTarget);
   });
   return targets;
@@ -372,10 +392,15 @@ export function createSurfaceMarkup({
     const material = new THREE.MeshBasicMaterial({
       color: OPERATION_COLORS[nextOperation] || OPERATION_COLORS.inspect,
       transparent: true,
-      opacity: hover ? 0.34 : 0.53,
+      opacity: hover
+        ? SURFACE_MARKUP_OVERLAY_STYLE.hoverOpacity
+        : SURFACE_MARKUP_OVERLAY_STYLE.selectionOpacity,
       side: THREE.DoubleSide,
-      depthTest: false,
-      depthWrite: false,
+      depthTest: SURFACE_MARKUP_OVERLAY_STYLE.depthTest,
+      depthWrite: SURFACE_MARKUP_OVERLAY_STYLE.depthWrite,
+      polygonOffset: SURFACE_MARKUP_OVERLAY_STYLE.polygonOffset,
+      polygonOffsetFactor: SURFACE_MARKUP_OVERLAY_STYLE.polygonOffsetFactor,
+      polygonOffsetUnits: SURFACE_MARKUP_OVERLAY_STYLE.polygonOffsetUnits,
       toneMapped: false,
     });
     materials.set(key, material);

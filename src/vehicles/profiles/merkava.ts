@@ -3063,6 +3063,26 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
 // ---------------------------------------------------------------------------
 // Fittings shared across marks (board-proven helpers, re-anchored per mark).
 // ---------------------------------------------------------------------------
+function markMerkavaMachineGunFitting(
+  P: TankBuilderPort,
+  weaponClass: 'm2' | 'mag58',
+  label: string,
+): void {
+  // These source-measured guns deliberately keep their mark-specific geometry
+  // instead of instantiating the generic fitting.  Publish the same semantic
+  // root contract so Studio, Gallery and the fleet standard census treat the
+  // exact assembly as a machine-gun fitting rather than anonymous decoration.
+  const marker = new THREE.Group();
+  marker.name = `fitting_browningDerived_merkava_${label}`;
+  marker.userData.fittingRoot = true;
+  marker.userData.fitting = 'pintleMG';
+  marker.userData.browningDerivedStandard = 'cot-browning-family-v2-exact';
+  marker.userData.weaponClass = weaponClass;
+  marker.userData.machineGunFinish = 'gunmetal';
+  marker.userData.sourceMeasuredMachineGun = true;
+  P.turretG.add(marker);
+}
+
 function merkavaMG(
   P: TankBuilderPort,
   x: number,
@@ -3072,26 +3092,90 @@ function merkavaMG(
   wide = false,
   rod: MachineGunRod | null = null,
 ): void {
-  const { box, cylZ } = KIT;
-  P.add('turretDark', box((wide ? 0.05 : 0.035) * s, 0.20 * s, (wide ? 0.05 : 0.035) * s), x, y + 0.10 * s, z);
-  P.add('turretDark', box((wide ? 0.15 : 0.09) * s, 0.09 * s, 0.44 * s), x, y + 0.24 * s, z);
-  P.add('turretDark', box((wide ? 0.16 : 0.12) * s, (wide ? 0.11 : 0.10) * s, (wide ? 0.20 : 0.16) * s), x - (wide ? 0.13 : 0.09) * s, y + 0.23 * s, z - 0.06 * s);
+  const { box, cylY, cylZ } = KIT;
+  markMerkavaMachineGunFitting(P, 'mag58', wide ? 'wideRoof' : 'roof');
+  const receiverW = (wide ? 0.15 : 0.09) * s;
+  const receiverH = 0.09 * s;
+  const receiverL = 0.44 * s;
+
+  // Browning-family v2 mechanical grammar, compressed into the source-tuned
+  // Merkava envelope: flanged bearing -> bridge -> fork -> trunnion ->
+  // receiver.  The weapon and its feed remain neutral gunmetal regardless of
+  // the vehicle camouflage; only the armored shield is allowed to be painted.
+  P.add('turretDark', cylY(0.045 * s, 0.052 * s, 0.035 * s, 12), x, y + 0.018 * s, z);
+  P.add('turretDark', cylY(0.024 * s, 0.027 * s, 0.15 * s, 10), x, y + 0.105 * s, z);
+  P.add('turretDark', box((wide ? 0.25 : 0.17) * s, 0.035 * s, 0.075 * s), x, y + 0.165 * s, z);
+  for (const side of [-1, 1]) {
+    P.add('turretDark', box(0.028 * s, 0.105 * s, 0.045 * s),
+      x + side * (wide ? 0.105 : 0.065) * s, y + 0.205 * s, z + 0.015 * s);
+    P.add('turretDark', cylY(0.026 * s, 0.026 * s, 0.025 * s, 10),
+      x + side * (wide ? 0.105 : 0.065) * s, y + 0.247 * s, z + 0.015 * s);
+  }
+
+  P.add('turretDark', box(receiverW, receiverH, receiverL), x, y + 0.24 * s, z);
+  // Receiver top cover, removable side plate, rear buffer and charging handle
+  // give the gun a manufactured silhouette instead of a block-and-tube read.
+  P.add('turretDark', box(receiverW * 0.91, 0.016 * s, receiverL * 0.76),
+    x, y + 0.292 * s, z + 0.018 * s);
+  P.add('turretDark', box(0.012 * s, receiverH * 0.70, receiverL * 0.54),
+    x + receiverW * 0.55, y + 0.238 * s, z + 0.015 * s);
+  P.add('turretDark', box(receiverW * 0.82, receiverH * 0.70, 0.045 * s),
+    x, y + 0.238 * s, z - receiverL * 0.54);
+  P.add('turretDark', cylY(0.014 * s, 0.014 * s, 0.075 * s, 8),
+    x + receiverW * 0.72, y + 0.282 * s, z + 0.035 * s, 0, 0, Math.PI / 2);
+  // Rear sight and paired spade grips remain inside the old crown envelope.
+  P.add('turretDark', box(0.012 * s, 0.060 * s, 0.018 * s),
+    x, y + 0.318 * s, z - receiverL * 0.25);
+  P.add('turretDark', box(0.070 * s, 0.012 * s, 0.018 * s),
+    x, y + 0.342 * s, z - receiverL * 0.25);
+  for (const side of [-1, 1]) {
+    P.add('turretDark', box(0.018 * s, 0.070 * s, 0.018 * s),
+      x + side * 0.052 * s, y + 0.250 * s, z - receiverL * 0.62, -0.18, 0, side * 0.10);
+  }
+
+  const ammoX = x - (wide ? 0.13 : 0.09) * s;
+  const ammoW = (wide ? 0.16 : 0.12) * s;
+  const ammoH = (wide ? 0.11 : 0.10) * s;
+  const ammoL = (wide ? 0.20 : 0.16) * s;
+  P.add('turretDark', box(ammoW, ammoH, ammoL), ammoX, y + 0.23 * s, z - 0.06 * s);
+  P.add('turretDark', box(ammoW * 0.92, 0.012 * s, ammoL * 0.90),
+    ammoX, y + (wide ? 0.291 : 0.286) * s, z - 0.06 * s);
+  P.add('turretDark', box(0.012 * s, ammoH * 0.62, 0.026 * s),
+    ammoX - ammoW * 0.52, y + 0.23 * s, z - 0.03 * s);
+  // Five exposed rounds visibly bridge the ammunition box and receiver.
+  for (let i = 0; i < 5; i++) {
+    const t = i / 4;
+    P.add('turretDark', cylZ(0.009 * s, 0.045 * s, 8),
+      ammoX + (x - receiverW * 0.50 - ammoX) * t,
+      y + (0.278 - Math.sin(t * Math.PI) * 0.012) * s,
+      z - 0.005 * s + t * 0.018 * s,
+      0, Math.PI / 2, 0);
+  }
   if (wide) {
     // r3 "bulk the pintle MGs LATERALLY at ring level" — heights untouched
     // (crowns stay under the p95 cap); width is free. Ammo tray on the far
     // side + cradle arms + a low shield plate give the gameplay-distance mass.
     P.add('turretDark', box(0.10 * s, 0.08 * s, 0.15 * s), x + 0.125 * s, y + 0.22 * s, z - 0.03 * s);
-    P.add('turretDark', box(0.26 * s, 0.028 * s, 0.05 * s), x, y + 0.165 * s, z + 0.05 * s);
-    P.add('turretDark', box(0.24 * s, 0.085 * s, 0.022 * s), x, y + 0.225 * s, z + 0.215 * s);
+    // Split, canted shield panels leave a deliberate barrel/feed opening.
+    // Edge ribs and lower braces make the shield read as supported armor, not
+    // a floating slab.  The extents stay within the prior certified envelope.
+    P.add('turretDark', box(0.115 * s, 0.085 * s, 0.018 * s), x - 0.063 * s, y + 0.225 * s, z + 0.215 * s, 0, 0.08, 0);
+    P.add('turretDark', box(0.115 * s, 0.085 * s, 0.018 * s), x + 0.063 * s, y + 0.225 * s, z + 0.215 * s, 0, -0.08, 0);
+    for (const side of [-1, 1]) {
+      P.add('turretDark', box(0.012 * s, 0.092 * s, 0.026 * s),
+        x + side * 0.119 * s, y + 0.225 * s, z + 0.214 * s, 0, -side * 0.08, 0);
+      P.add('turretDark', box(0.018 * s, 0.095 * s, 0.018 * s),
+        x + side * 0.085 * s, y + 0.185 * s, z + 0.115 * s, -0.55, 0, side * 0.12);
+    }
     P.add('turretDetail', box(0.05 * s, 0.05 * s, 0.09 * s), x - 0.125 * s, y + 0.235 * s, z + 0.10 * s);
     // r7 roof tone-on-tone (fused-surface law): detail-tone lids on the
     // receiver/ammo/tray top faces — from the top the wide MGs read as
     // near-black slabs where the ref's roof is fused low-contrast. The lids
     // are 1 cm plates riding the dark boxes' crowns; every SIDE face stays
     // gunmetal dark (the elevation rod reads depend on it).
-    P.add('turretDetail', box(0.15 * s * 0.92, 0.010, 0.44 * s * 0.92), x, y + 0.281 * s, z);
-    P.add('turretDetail', box(0.16 * s * 0.90, 0.010, 0.20 * s * 0.90), x - 0.13 * s, y + 0.281 * s, z - 0.06 * s);
-    P.add('turretDetail', box(0.10 * s * 0.88, 0.010, 0.15 * s * 0.88), x + 0.125 * s, y + 0.256 * s, z - 0.03 * s);
+    P.add('turretDark', box(0.15 * s * 0.92, 0.010, 0.44 * s * 0.92), x, y + 0.281 * s, z);
+    P.add('turretDark', box(0.16 * s * 0.90, 0.010, 0.20 * s * 0.90), x - 0.13 * s, y + 0.281 * s, z - 0.06 * s);
+    P.add('turretDark', box(0.10 * s * 0.88, 0.010, 0.15 * s * 0.88), x + 0.125 * s, y + 0.256 * s, z - 0.03 * s);
   }
   if (wide) {
     // r4 "MG barrel silhouettes in elevations": the 0.5s barrel read as a
@@ -3107,12 +3191,19 @@ function merkavaMG(
     // ring's own 2.60/2.618 top clutter in the right elevation (still under
     // the plinth line in the gate's max-over-x side mask).
     const rdy = rod?.dy ?? 0.246, rdz = rod?.dz ?? 0.51, rl = rod?.len ?? 0.74;
-    P.add('turretDark', cylZ(0.022 * s, rl * s, 8), x, y + rdy * s, z + rdz * s);
-    P.add('turretDark', cylZ(0.030 * s, 0.09 * s, 8), x, y + (rdy - 0.008) * s, z + (rdz + rl / 2 - 0.06) * s);
+    P.add('turretDark', cylZ(0.022 * s, rl * s, 12), x, y + rdy * s, z + rdz * s);
+    for (let i = 0; i < 4; i++) {
+      P.add('turretDark', cylZ(0.026 * s, 0.020 * s, 12), x, y + rdy * s,
+        z + (rdz - rl * 0.28 + i * rl * 0.12) * s);
+    }
+    P.add('turretDark', cylZ(0.030 * s, 0.09 * s, 12), x, y + (rdy - 0.008) * s, z + (rdz + rl / 2 - 0.06) * s);
     P.add('turretDark', box(0.012 * s, 0.034 * s, 0.02 * s), x, y + (rdy + 0.016) * s, z + (rdz + rl / 2 - 0.16) * s);
   } else {
-    P.add('turretDark', cylZ(0.02 * s, 0.5 * s, 8), x, y + 0.26 * s, z + 0.42 * s);
-    P.add('turretDark', cylZ(0.028 * s, 0.07 * s, 8), x, y + 0.26 * s, z + 0.64 * s);
+    P.add('turretDark', cylZ(0.02 * s, 0.5 * s, 12), x, y + 0.26 * s, z + 0.42 * s);
+    for (let i = 0; i < 3; i++) {
+      P.add('turretDark', cylZ(0.024 * s, 0.018 * s, 12), x, y + 0.26 * s, z + (0.26 + i * 0.075) * s);
+    }
+    P.add('turretDark', cylZ(0.028 * s, 0.07 * s, 12), x, y + 0.26 * s, z + 0.64 * s);
   }
 }
 
@@ -3130,22 +3221,18 @@ function merkavaPlinthMG(P: TankBuilderPort, m: PlinthMachineGun): void {
   // the 2.65 band IS this drooping run; the measured left-elevation float
   // w13 @ 2.63-2.65 lives here). Tip top stays under the local station
   // police line (3B s7 2.622 — the droop crosses s7 only below it).
-  // m.pale (3D/1B r4 MG-PHYSICS pass, critic shared order 1b: "ref guns are
-  // PALE TOP-LIT lines against dark sky; proc rods are dark-on-dark"): the
-  // barrel becomes TWO-TONE — a sand 'turret' top strip whose TOP lands
-  // exactly at the old certified rod-top line (side cols unchanged) over a
-  // slimmed dark rod dropped under it, and the receiver crown swaps its
-  // 10 mm detail lids for a 30 mm PALE cap (sampled ref receivers read
-  // p50 84 / p95 100 — pale top-lit masses, not gunmetal). Default path is
-  // byte-identical for the frozen 3B/3C graduates.
+  // `pale` preserves the source-tuned silhouette dimensions only. Fleet-wide
+  // weapon finish law keeps the rod, receiver, feed and lids neutral
+  // gunmetal; the vehicle camouflage may color the mounting plinth beneath.
   const { box, cylZ } = KIT;
+  markMerkavaMachineGunFitting(P, 'm2', 'plinth');
   // m.gunmetal (r7, GUN-METAL LUMA LAW — 3D opt-in only, the pale path stays
   // byte-identical for the frozen 3B/3C graduates): the bare rod thins to
   // the ref's own AA-coverage pixel class (the ref rod reads 58-88 because
   // its ~0.6px line blends with the 25.8 sky — our 3px full-coverage rod
   // read 95.0) and rides the detail tint; TOP stays on the certified line.
   // Receiver masses stay pale — the ref's own receiver humps read 81-101.
-  const rodBucket = m.gunmetal ? 'turretDetail' : 'turret'; // thin rod + droop + detail tint = the measured ref rod distribution
+  const rodBucket = 'turretDark';
   const rodR = m.gunmetal ? 0.010 : 0.024;
   if (m.pale) {
     // r5 PINTLE-GUN ALLOWANCE (orchestrator ruling): the r4 two-tone rod
@@ -3176,15 +3263,14 @@ function merkavaPlinthMG(P: TankBuilderPort, m: PlinthMachineGun): void {
     const pitch = Math.atan2(drop, fLen); // +rx tips the +z (muzzle) end DOWN
     P.add('turretDark', cylZ(0.024, Math.hypot(fLen, drop) + 0.02, 10),
       m.x, m.rodY - drop / 2, (m.rodZ0 + m.rodZf) / 2, pitch, 0, 0);
-    if (m.pale) { // lit top line rides the drooping run too
-      P.add('turret', box(0.026, 0.024, Math.hypot(fLen, drop)),
+    if (m.pale) { // top line rides the drooping run too, in gunmetal
+      P.add('turretDark', box(0.026, 0.024, Math.hypot(fLen, drop)),
         m.x, m.rodY - drop / 2 + 0.026, (m.rodZ0 + m.rodZf) / 2, pitch, 0, 0);
     }
     P.add('turretDark', cylZ(0.025, 0.085, 10), m.x, m.rodY - drop * 0.62 + 0.002, m.rodZf - 0.055, pitch, 0, 0); // muzzle booster (high/slim: its fat r 0.028 bottom AA-closed the float's sky gap at 640)
     P.add('turretDark', box(0.014, 0.018, 0.016), m.x, m.rodY - drop * 0.40 + 0.022, m.rodZf - 0.16);             // front sight
   } else if (m.pale) {
-    // r5: pale booster (the ref muzzle mass is the bright end of the line)
-    P.add('turret', cylZ(0.028, 0.09, 10), m.x, m.rodY + 0.002, m.rodZ0 - 0.065);
+    P.add('turretDark', cylZ(0.028, 0.09, 10), m.x, m.rodY + 0.002, m.rodZ0 - 0.065);
     P.add('turretDark', box(0.014, 0.020, 0.016), m.x, m.rodY + 0.020, m.rodZ0 - 0.17); // front sight
   } else {
     P.add('turretDark', cylZ(0.029, 0.10, 10), m.x, m.rodY - 0.004, m.rodZ0 - 0.07);   // muzzle booster
@@ -3198,26 +3284,17 @@ function merkavaPlinthMG(P: TankBuilderPort, m: PlinthMachineGun): void {
   // x-run still reads 2.64+ everywhere.
   const recW = m.recW ?? Math.abs(m.x - m.xIn);   // r5: explicit hump width
   const sgn9 = Math.sign(m.x - m.xIn);
-  // r5 (pale marks): the receiver body rides the SAND bucket — the ref
-  // receiver hump is a top-lit pale mass (95-101L class), not gunmetal.
-  const recMat = m.pale ? 'turret' : 'turretDark';
+  const recMat = 'turretDark';
   P.add(recMat, box(recW * 0.52, m.recTop - recY0, m.recZ0 - m.recZ1),
     m.xIn + sgn9 * recW * 0.26, (m.recTop + recY0) / 2, (m.recZ0 + m.recZ1) / 2);
   P.add(recMat, box(recW * 0.48, m.recTop - 0.020 - recY0, m.recZ0 - m.recZ1),
     m.xIn + sgn9 * recW * 0.76, (m.recTop - 0.020 + recY0) / 2, (m.recZ0 + m.recZ1) / 2);
-  // r7 roof tone-on-tone: detail lid on the receiver crown (top view fuses;
-  // side faces stay dark for the elevation read)
-  // m.pale (r4): the lids thicken to a 28 mm PALE cap — the receiver reads
-  // as a top-lit mass (ref p50 84) instead of a gunmetal slab; cap tops sit
-  // AT the same certified crowns.
+  // Receiver lids keep their source-measured thickness and certified crown,
+  // but use the same gunmetal finish as the body in every camouflage.
   const lidH = m.pale ? 0.028 : 0.010;
-  const lidMat = m.pale ? 'turret' : 'turretDetail';
+  const lidMat = 'turretDark';
   if (m.gunmetal) {
-    // r11 TOP-DOWN GUN FOOTPRINT (critic r9 defect F-ii — the plinth MG was
-    // invisible from above: 32 dark px in its lane): each pale cap splits
-    // into a pale lower band + a DARK receiver top plate at the same
-    // certified crowns (union identical; gunmetal = 3D-only, siblings
-    // byte-exact).
+    // Preserve the stepped top-down footprint at the same certified crowns.
     P.add(lidMat, box(recW * 0.48, lidH - 0.010, (m.recZ0 - m.recZ1) * 0.90),
       m.xIn + sgn9 * recW * 0.26, m.recTop - lidH / 2 - 0.004, (m.recZ0 + m.recZ1) / 2);
     P.add('turretTrack', box(recW * 0.48, 0.010, (m.recZ0 - m.recZ1) * 0.90),

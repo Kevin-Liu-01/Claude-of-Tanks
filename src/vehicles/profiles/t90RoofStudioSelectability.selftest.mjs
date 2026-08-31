@@ -5,9 +5,14 @@ import { createTank } from '../tankFactory.ts';
 const EPSILON = 1e-6;
 
 const ROOF_WEAPONS = Object.freeze({
+  t90: 't90Ru417AutomatedKord',
+  t90a: 't90aRemoteNsvt',
   t90sm: 't90smRemoteNsvt',
   t90a_vladimir: 't90aVladimirRemoteKord',
   t90a_burlak: 't90aBurlakCommanderNsvt',
+  t90ms: 't90msTagilRemoteKord',
+  t90m: 't90mProryvRemoteKord',
+  t90m_proryv: 't90mProryvRemoteKord',
 });
 
 for (const [id, weaponName] of Object.entries(ROOF_WEAPONS)) {
@@ -25,7 +30,7 @@ for (const [id, weaponName] of Object.entries(ROOF_WEAPONS)) {
     assert.equal(weapon?.userData.fittingRoot, true,
       `${id}: roof weapon remains one semantic fitting assembly`);
     assert.equal(weapon?.userData.surfaceMarkupSelectable, true,
-      `${id}: roof weapon assembly opts into Studio surface markup`);
+      `${id}: roof weapon assembly opts into Gallery surface markup`);
 
     const pickTargets = new Set(collectSurfacePickTargets(tank.root));
     const weaponMeshes = [];
@@ -38,9 +43,9 @@ for (const [id, weaponName] of Object.entries(ROOF_WEAPONS)) {
       assert.ok(mesh.name && mesh.name !== 'Mesh',
         `${id}: every roof weapon primitive has a stable semantic name`);
       assert.equal(mesh.userData.surfaceMarkupSelectable, true,
-        `${id}: ${mesh.name} is explicitly marked as a Studio surface`);
+        `${id}: ${mesh.name} is explicitly marked as a Gallery surface`);
       assert.ok(pickTargets.has(mesh),
-        `${id}: ${mesh.name} is present in the live Studio raycast target set`);
+        `${id}: ${mesh.name} is present in the live Gallery raycast target set`);
     }
   } finally {
     tank.dispose();
@@ -70,7 +75,7 @@ for (const id of ['t90', 't90a', 't90a_burlak', 't90sm', 't90ms']) {
         `${id}: spare-track underside is seated into its supporting plate`);
       trackRun.traverse((node) => {
         if (!node.isMesh || !node.visible) return;
-        assert.ok(pickTargets.has(node), `${id}: spare-track primitive is Studio-selectable`);
+        assert.ok(pickTargets.has(node), `${id}: spare-track primitive is Gallery-selectable`);
         assert.equal(node.userData.surfaceMarkupSelectable, true,
           `${id}: spare-track primitive carries explicit markup semantics`);
       });
@@ -117,4 +122,4 @@ for (const id of ['t90', 't90a', 't90a_burlak', 't90sm', 't90ms']) {
   }
 }
 
-console.log('t90RoofStudioSelectability.selftest: roof weapons, spare tracks, and Tagil tower are seated and Studio-selectable');
+console.log('t90RoofStudioSelectability.selftest: roof weapons, spare tracks, and Tagil tower are seated and Gallery-selectable');

@@ -730,6 +730,8 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   heightScale = 1,
   weaponScale = 1,
   weaponYaw = 0,
+  weaponClass = 'kord',
+  includeRace = true,
   weaponName,
   receiptKey,
 }: {
@@ -741,6 +743,8 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   heightScale?: number;
   weaponScale?: number;
   weaponYaw?: number;
+  weaponClass?: 'kord' | 'nsvt';
+  includeRace?: boolean;
   weaponName: string;
   receiptKey: string;
 }): THREE.Group {
@@ -748,14 +752,16 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   const fit = (value: number): number => value * scale;
   const fitY = (value: number): number => value * scale * heightScale;
   const raceBottomY = seatY;
-  const raceTopY = seatY + fitY(0.24);
+  const raceTopY = seatY + (includeRace ? fitY(0.24) : 0);
   const foundationTopY = raceTopY + fitY(0.15);
   const headCenterY = foundationTopY + fitY(0.18);
   const weaponFootY = foundationTopY + fitY(0.04);
 
-  P.addCupola('turret', cylY(fit(0.24), fit(0.27), raceTopY - raceBottomY, 18),
-    x, (raceBottomY + raceTopY) * 0.5, z);
-  P.add('turretDark', torus(fit(0.255), fit(0.022), 20), x, raceTopY + fit(0.01), z);
+  if (includeRace) {
+    P.addCupola('turret', cylY(fit(0.24), fit(0.27), raceTopY - raceBottomY, 18),
+      x, (raceBottomY + raceTopY) * 0.5, z);
+    P.add('turretDark', torus(fit(0.255), fit(0.022), 20), x, raceTopY + fit(0.01), z);
+  }
   P.addCupola('turret', box(fit(0.62), fitY(0.18), fit(0.58)),
     x, raceTopY + fitY(0.08), z + fit(0.03), 0, yaw, 0);
   P.addCupola('turret', orientedSlab(
@@ -780,10 +786,17 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
     x + fit(0.27), headCenterY, z + fit(0.328), 0, yaw, 0);
   P.addEquipment('turret', box(fit(0.22), fitY(0.18), fit(0.28)),
     x - fit(0.27), headCenterY - fitY(0.04), z - fit(0.01), 0, yaw, 0);
+  // A protected coaxial work light gives every family station a readable
+  // purpose at gallery distance without turning its weapon or optic into a
+  // camouflage-painted lump. The housing and lens remain external equipment.
+  P.add('turretDark', KIT.cylZ(fit(0.070), fit(0.075), 14),
+    x - fit(0.25), headCenterY + fitY(0.08), z + fit(0.25), 0, yaw, 0);
+  P.add('turretGlass', KIT.cylZ(fit(0.054), fit(0.012), 14),
+    x - fit(0.25), headCenterY + fitY(0.08), z + fit(0.294), 0, yaw, 0);
 
   const weapon = FITTINGS.pintleMG({
     mats: P.mats,
-    cls: 'kord',
+    cls: weaponClass,
     // The weapon and yoke stay dark against the painted armored head so the
     // single automated package remains legible in the normal three-quarter
     // gallery view. A camouflage-painted receiver made the consolidated
@@ -807,13 +820,14 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
     automated: true,
     remoteControlled: true,
     panoramicIntegrated: true,
-    weapon: 'kord',
+    weapon: weaponClass,
     weaponName,
     stationYaw: yaw,
     weaponYaw,
     seat: Object.freeze([x, seatY, z]),
     raceBottomY,
     raceTopY,
+    includeRace,
     foundationTopY,
     weaponFootY,
     heightScale,
@@ -1324,62 +1338,24 @@ function buildT90ALegacy(P: T90BuilderPort, {
       P.addEquipment('turretGlass', cylZ(0.043, 0.012, 14), x, 0.76, 0.021);
     }
 
-    // Left manually served NSVT. Keep the source-specific receiver, heavy
-    // jacket and cupola seat, but publish them as one exact fitting instead
-    // of nine unrelated bucket parts. The fitting root is turret-owned, so
-    // the complete station follows yaw; markExact keeps it equipment-only
-    // while making the real visible assembly legible to the decoration gate.
-    const leftMgX = t90aRoofStations.left.x;
-    const exactNsvt = new THREE.Group();
-    const nsvtPart = (
-      name: string,
-      geometry: THREE.BufferGeometry,
-      material: THREE.MeshStandardMaterial,
-      x: number,
-      y: number,
-      z: number,
-      rx = 0,
-      ry = 0,
-      rz = 0,
-    ): THREE.Mesh => {
-      // Painted vehicle materials sample vertex colors. Bucket geometry
-      // normally receives this neutral channel during merge; exact fittings
-      // need the same channel before they become direct scene meshes.
-      if (material?.vertexColors && !geometry.getAttribute('color')) {
-        geometry.setAttribute('color', new THREE.BufferAttribute(
-          new Float32Array(geometry.getAttribute('position').count * 3).fill(1), 3));
-      }
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.name = name;
-      mesh.position.set(x, y, z);
-      mesh.rotation.set(rx, ry, rz);
-      mesh.castShadow = mesh.receiveShadow = true;
-      exactNsvt.add(mesh);
-      return mesh;
-    };
-    // Lift the complete weapon, not only its barrel. A taller pintle retains
-    // the accepted lower cupola overlap while carrying the raised receiver,
-    // ammunition box, grips and tube as one physically connected station.
-    nsvtPart('t90a_nsvt_pintle', cylY(0.052, 0.066, 0.17 + nsvtRaiseM, 12), P.mats.dark,
-      leftMgX, 0.765 + nsvtRaiseM * 0.5, -0.28);
-    nsvtPart('t90a_nsvt_cradle', box(0.30, 0.065, 0.12), P.mats.dark,
-      leftMgX, 0.83 + nsvtRaiseM, -0.25);
-    nsvtPart('t90a_nsvt_receiver', box(0.22, 0.15, 0.43), P.mats.dark,
-      leftMgX, 0.865 + nsvtRaiseM, -0.035);
-    nsvtPart('t90a_nsvt_jacket', cylZ(0.055, 0.40, 14), P.mats.dark,
-      leftMgX, 0.875 + nsvtRaiseM, 0.33);
-    nsvtPart('t90a_nsvt_barrel', cylZ(0.029, 0.64, 12), P.mats.dark,
-      leftMgX, 0.875 + nsvtRaiseM, 0.84);
-    nsvtPart('t90a_nsvt_flash_hider', cylZ(0.052, 0.13, 14), P.mats.dark,
-      leftMgX, 0.875 + nsvtRaiseM, 1.225);
-    nsvtPart('t90a_nsvt_ammo_box', box(0.24, 0.21, 0.28), P.mats.hull,
-      leftMgX - 0.22, 0.835 + nsvtRaiseM, -0.04);
-    nsvtPart('t90a_nsvt_left_grip', box(0.055, 0.12, 0.24), P.mats.dark,
-      leftMgX - 0.10, 0.80 + nsvtRaiseM, -0.32, -0.22);
-    nsvtPart('t90a_nsvt_right_grip', box(0.055, 0.12, 0.24), P.mats.dark,
-      leftMgX + 0.10, 0.80 + nsvtRaiseM, -0.32, -0.22);
-    FITTINGS.markExact(exactNsvt, 'pintleMG');
-    P.turretG.add(exactNsvt);
+    // Replace the exposed hand-served receiver forest with a compact NSVT
+    // weapon tower. The existing left cupola remains the structural slew
+    // race; the faceted foundation overlaps its hatch and carries the optic,
+    // light, ammunition coffin, yoke and forward-aligned gun as one package.
+    addT90AutomatedCommanderStation(P, {
+      x: t90aRoofStations.left.x,
+      z: t90aRoofStations.left.z,
+      seatY: 0.705,
+      yaw: 0,
+      scale: 0.72,
+      heightScale: 0.72,
+      weaponScale: 0.82,
+      weaponYaw: 0,
+      weaponClass: 'nsvt',
+      includeRace: false,
+      weaponName: 't90aRemoteNsvt',
+      receiptKey: 't90aAutomatedStationReceipt',
+    });
   } else {
     // Legacy derivatives replace these ordinary buckets wholesale. Preserve
     // their old donor roof so RU-112's semantic cupola buckets cannot leak
@@ -1604,7 +1580,9 @@ function buildT90ALegacy(P: T90BuilderPort, {
       leftCupola: [t90aRoofStations.left.x, t90aRoofStations.left.z],
       rightCupola: [t90aRoofStations.right.x, t90aRoofStations.right.z],
       rightCupolaLightCount: 2,
-      leftCupolaMannedMg: 'nsvt',
+      leftCupolaMannedMg: null,
+      leftCupolaRemoteWeapon: 'nsvt',
+      leftCupolaArmoredTower: true,
       nsvtRaiseM,
       roofHousingPedestalOverlapM: 0.12,
       aftSensorPedestalOverlapM: 0.015,
@@ -2281,29 +2259,30 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
     smoke.rotation.y = s * 1.04;
     P.turretG.add(smoke);
   }
-  // Automated commander's Kord. A buried slew ring, armored cradle and
-  // forward optic make this a controlled T-90-style station rather than an
-  // exposed hand pintle. Its exact fitting remains turret-owned through yaw.
-  {
-    const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'kord', tone: 'two-tone', elev: -0.07,
-      ammo: true, scale: 0.86, shield: true,
-    });
-    mg.name = 't90aVladimirRemoteKord';
-    mg.position.set(0.38, 0.67, -0.45);
-    mg.rotation.y = 0.10;
-    P.turretG.add(mg);
-    P.add('turret', cylY(0.19, 0.22, 0.11, 16), 0.38, 0.60, -0.45);
-    P.add('turretDark', cylY(0.16, 0.16, 0.025, 14), 0.38, 0.6675, -0.45);
-    P.add('turret', box(0.34, 0.18, 0.24), 0.38, 0.72, -0.35, -0.05, 0.10, 0);
-    P.add('turretDetail', box(0.12, 0.14, 0.13), 0.61, 0.79, -0.24, -0.05, 0.10, 0);
-    P.add('turretGlass', box(0.085, 0.085, 0.012), 0.62, 0.80, -0.168, -0.05, 0.10, 0);
-  }
+  // Vladimir receives the taller armored Kord tower rather than the former
+  // gun floating above a ring and three disconnected boxes. Its foundation
+  // penetrates the crown and the complete station fires on local +Z.
+  addT90AutomatedCommanderStation(P, {
+    x: 0.38,
+    z: -0.45,
+    seatY: 0.52,
+    yaw: 0,
+    scale: 0.78,
+    heightScale: 0.88,
+    weaponScale: 0.86,
+    weaponYaw: 0,
+    weaponClass: 'kord',
+    weaponName: 't90aVladimirRemoteKord',
+    receiptKey: 't90aVladimirAutomatedStationReceipt',
+  });
   P.turretG.userData.t90aVladimirEquipmentReceipt = {
     smokeBanks: 2,
     smokeCanistersPerBank: 6,
     remoteWeapon: 'kord',
     remoteControlled: true,
+    armoredTower: true,
+    forwardAligned: true,
+    separateManualWeaponStations: 0,
   };
   // rear bin stack + basket (ref rows 1.86-1.97 over -1.49..-2.29)
   const rearBin = (x: number, w: number, zRear: number, h: number): void => {
@@ -4622,37 +4601,30 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
   P.add('turretDetail', box(0.18, 0.285, 0.18), 0.24, 0.6625, -1.28);
   P.add('turretDark', box(0.14, 0.08, 0.012), 0.24, 0.745, -1.184);
   P.add('turretGlass', box(0.10, 0.055, 0.008), 0.24, 0.745, -1.181);
-  // T05BV-1 RWS: base drum + slew ring on the shelf, armored shroud box
-  // around the census Kord (receiver top 2.22, shroud crown 2.235 = the
-  // rear half of the ref band), sensor pod, ammo bin — one CONNECTED
-  // station, yawed right (ry +1.45: scanning the right flank, never
-  // dead-forward per the abrams CROWS laws) with the barrel DROOPED
-  // (elev -0.26) so its line falls 2.17 -> 2.0 along the ref's own
-  // right-shoulder falloff instead of riding 2.2 flat across eight cols.
-  {
-    const { torus, xform } = KIT;
-    const ax = 0.40, ay = 0.47, az = -0.95, yaw = 1.45, elev = -0.26;
-    P.add('turret', cylY(0.17, 0.19, 0.10, 14), ax, 0.575, az);          // slew base drum on the shelf
-    P.add('turretDark', torus(0.185, 0.014, 18), ax, 0.545, az);         // slew ring
-    P.add('turretDark', xform(box(0.05, 0.17, 0.06), -0.15, 0.19, 0), ax, ay, az, 0, yaw, 0);  // yoke posts
-    P.add('turretDark', xform(box(0.05, 0.17, 0.06), 0.15, 0.19, 0), ax, ay, az, 0, yaw, 0);
-    P.add('turretDark', xform(box(0.32, 0.05, 0.10), 0, 0.10, 0.02), ax, ay, az, 0, yaw, 0);   // cradle beam
-    P.add('turretDetail', xform(box(0.018, 0.20, 0.40), -0.135, 0.235, 0.10), ax, ay, az, 0, yaw, 0); // shroud cheeks
-    P.add('turretDetail', xform(box(0.018, 0.20, 0.40), 0.135, 0.235, 0.10), ax, ay, az, 0, yaw, 0);
-    P.add('turretDetail', xform(box(0.29, 0.20, 0.018), 0, 0.235, -0.095), ax, ay, az, 0, yaw, 0);   // shroud rear
-    P.add('turretDetail', xform(box(0.27, 0.016, 0.38), 0, 0.327, 0.10), ax, ay, az, 0, yaw, 0);     // shroud crown 2.235
-    P.add('turretDetail', xform(box(0.10, 0.14, 0.10), 0.19, 0.10, 0.26), ax, ay, az, 0, yaw, 0);    // sensor pod
-    P.add('turretDark', xform(box(0.085, 0.10, 0.012), 0.19, 0.10, 0.315), ax, ay, az, 0, yaw, 0);   // sensor slot
-    P.add('turretGlass', xform(box(0.065, 0.075, 0.008), 0.19, 0.10, 0.318), ax, ay, az, 0, yaw, 0); // lens
-    P.add('turretDark', xform(KIT.cylX(0.05, 0.06, 10), -0.185, 0.145, 0.05), ax, ay, az, 0, yaw, 0); // elevation drum
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev, ammo: true });
-    mg.name = 't90smRemoteNsvt';
-    mg.position.set(ax, ay, az);
-    mg.rotation.y = yaw;
-    P.turretG.add(mg);
-    const fwd = 0.91 * Math.cos(-elev);
-    muzzleTipDot(P, ax + fwd * Math.sin(yaw), ay + 0.33 + 0.91 * Math.sin(elev), az + fwd * Math.cos(yaw), 0.014, { ry: yaw });
-  }
+  // T05BV-1 RWS: the former sideways open yoke is replaced by the same
+  // connected armored-station grammar as RU-417 and Proryv, compressed to
+  // the T-90SM roof court. The NSVT, optic, light and ammunition box now
+  // face local +Z together instead of reading as unrelated roof clutter.
+  addT90AutomatedCommanderStation(P, {
+    x: 0.40,
+    z: -0.95,
+    seatY: 0.50,
+    yaw: 0,
+    scale: 0.68,
+    heightScale: 0.78,
+    weaponScale: 0.72,
+    weaponYaw: 0,
+    weaponClass: 'nsvt',
+    weaponName: 't90smRemoteNsvt',
+    receiptKey: 't90smAutomatedStationReceipt',
+  });
+  P.turretG.userData.t90smRoofWeaponReceipt = Object.freeze({
+    weapon: 'nsvt',
+    remoteControlled: true,
+    armoredTower: true,
+    forwardAligned: true,
+    separateManualWeaponStations: 0,
+  });
   // squared removable bustle: full depth only to |x| 0.91 (ref plan rear
   // staircase -2.43 center / -1.99 @1.0 / -1.31 @1.15 / -1.0 @1.23).
   // r9: the ref bustle UNDERSIDE rises rearward (1.654@-2.16 ->
@@ -7800,18 +7772,23 @@ function buildT90Burlak(P: T90BuilderPort): void {
   P.add('turret', box(0.30, 0.16, 0.30), 0.38, 0.85, 0.28);
   P.add('turretDark', box(0.26, 0.10, 0.016), 0.38, 0.86, 0.435);
   P.add('turret', box(0.32, 0.03, 0.06), 0.38, 0.915, 0.42);
-  // Kord on the commander cupola — CRITIC FIX (defect 16 "L-bracket"):
-  // scaled receiver/cradle mass + shield; pintle stays sunk so the
-  // receiver rides the 2.31w grace line (t90a Kord recipe)
-  {
-    // (shield dropped — its 2.40w top became the heightM p95 driver, dims
-    // 75 -> 51.9 measured; receiver/cradle mass carries the defect-16 fix)
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: -0.08, ammo: true, scale: 1.25 });
-    mg.name = 't90aBurlakCommanderNsvt';
-    mg.position.set(-0.54, 0.52, -0.88);
-    mg.rotation.y = 0.32;
-    P.turretG.add(mg);
-  }
+  // Compact armored NSVT tower on the existing commander cupola. The
+  // prototype keeps its low silhouette while eliminating the exposed
+  // L-bracket and side-biased firing axis.
+  addT90AutomatedCommanderStation(P, {
+    x: -0.62,
+    z: -0.72,
+    seatY: 0.895,
+    yaw: 0,
+    scale: 0.58,
+    heightScale: 0.62,
+    weaponScale: 0.58,
+    weaponYaw: 0,
+    weaponClass: 'nsvt',
+    includeRace: false,
+    weaponName: 't90aBurlakCommanderNsvt',
+    receiptKey: 't90aBurlakAutomatedStationReceipt',
+  });
   // right-cheek smoke bank (§B3 decoration minimum; family grammar)
   {
     const sb = FITTINGS.smokeBank({ mats: P.mats, count: 5, r: 0.040, len: 0.26, pitch: -0.42, splay: 0.30, arc: 0.55, spacing: 0.10 });
@@ -8911,23 +8888,20 @@ function finishT90BurlakNative2026(P: T90BuilderPort): void {
     fitBustle(-0.31), fitBustle(0.710), fitBustleZ(-2.19));
   P.add('turretDetail', box(fitBustle(0.030), fitBustle(0.022), fitBustle(1.42)),
     fitBustle(0.35), fitBustle(0.710), fitBustleZ(-2.19));
-  {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: -0.07, ammo: true, shield: true, scale: 0.67 });
-    mg.name = 't90aBurlakCommanderNsvt';
-    mg.position.set(-0.46, 0.75, -0.42);
-    mg.rotation.y = 0.27;
-    P.turretG.add(mg);
-    P.add('turret', cylY(0.28, 0.31, 0.09, 18), -0.46, 0.72, -0.42);
-    P.add('turretDark', cylY(0.245, 0.245, 0.020, 16), -0.46, 0.775, -0.42);
-    // Unequal shield returns and yokes reproduce the earlier native command
-    // station without restoring its tall box tower.  Both leaves enter the
-    // armored ring and bracket the exact MG cradle.
-    P.add('turret', box(0.075, 0.21, 0.32), -0.70, 0.88, -0.44, 0, 0.18, 0);
-    P.add('turret', box(0.070, 0.18, 0.27), -0.22, 0.86, -0.43, 0, -0.20, 0);
-    P.add('turretDark', box(0.40, 0.055, 0.075), -0.46, 0.80, -0.57);
-    P.add('turretDark', box(0.040, 0.040, 0.28), -0.63, 0.86, -0.28, -0.18, -0.04, 0);
-    P.add('turretDark', box(0.040, 0.040, 0.24), -0.29, 0.84, -0.30, -0.16, 0.05, 0);
-  }
+  addT90AutomatedCommanderStation(P, {
+    x: -0.46,
+    z: -0.42,
+    seatY: 0.80,
+    yaw: 0,
+    scale: 0.58,
+    heightScale: 0.65,
+    weaponScale: 0.58,
+    weaponYaw: 0,
+    weaponClass: 'nsvt',
+    includeRace: false,
+    weaponName: 't90aBurlakCommanderNsvt',
+    receiptKey: 't90aBurlakAutomatedStationReceipt',
+  });
   // Unequal cheek smoke fans are a defining Burlak/T-90 station.  Their
   // broad local shoes overlap the shoulder carrier; the launchers then grow
   // outboard/upward from those seats instead of intersecting the roof.

@@ -6,6 +6,22 @@ const CASES = Object.freeze({
     weaponName: 't90Ru417AutomatedKord',
     stationReceipt: 't90Ru417AutomatedStationReceipt',
   }),
+  t90a: Object.freeze({
+    weaponName: 't90aRemoteNsvt',
+    stationReceipt: 't90aAutomatedStationReceipt',
+  }),
+  t90a_vladimir: Object.freeze({
+    weaponName: 't90aVladimirRemoteKord',
+    stationReceipt: 't90aVladimirAutomatedStationReceipt',
+  }),
+  t90a_burlak: Object.freeze({
+    weaponName: 't90aBurlakCommanderNsvt',
+    stationReceipt: 't90aBurlakAutomatedStationReceipt',
+  }),
+  t90sm: Object.freeze({
+    weaponName: 't90smRemoteNsvt',
+    stationReceipt: 't90smAutomatedStationReceipt',
+  }),
   t90ms: Object.freeze({
     weaponName: 't90msTagilRemoteKord',
     stationReceipt: 't90msTagilWeaponTowerReceipt',
@@ -59,4 +75,4 @@ for (const [id, { weaponName, stationReceipt }] of Object.entries(CASES)) {
   }
 }
 
-console.log('t90MachineGunForward.selftest: RU-417, Tagil, T-90M, and Proryv roof machine guns face forward');
+console.log('t90MachineGunForward.selftest: every T-90-family roof weapon and armored station faces forward');

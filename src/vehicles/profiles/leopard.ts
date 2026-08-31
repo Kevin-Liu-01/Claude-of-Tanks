@@ -5099,6 +5099,9 @@ export function buildLeo2A5(builder: object) {
       receiver.receiveShadow = true;
       receiver.userData.appearanceRole = 'machineGun';
       exactLoaderMg.add(receiver);
+      exactLoaderMg.userData.hasConnectedFeed = true;
+      exactLoaderMg.userData.hasEngineeredCradle = true;
+      exactLoaderMg.userData.weaponClass = 'mag58';
       FITTINGS.markExact(exactLoaderMg, 'pintleMG');
       exactLoaderMg.name = 'leo2a5_loader_machine_gun';
       P.turretG.add(exactLoaderMg);
@@ -5109,9 +5112,25 @@ export function buildLeo2A5(builder: object) {
     // columns — p95 anchor slid to 2.70, dims -10; the r5 anchor law
     // generalizes: any above-anchor member must fit ONE column of z).
     P.add('turretDark', cylZ(0.019, 0.40, 8), -0.50, 0.846, 0.27);            // barrel to 0.77w (clear of the 0.86 col)
+    for (const z of [0.12, 0.20, 0.28]) {
+      P.add('turretDark', cylZ(0.023, 0.018, 12), -0.50, 0.846, z);           // jacket reinforcing rings
+    }
     P.add('turretDark', box(0.045, 0.045, 0.07), -0.50, 0.846, 0.455);        // flash hider (stays inside 0.79w)
-    P.add('turretDetail', box(0.11, 0.09, 0.14), -0.615, 0.822, -0.02);       // ammo box
+    P.add('turretDark', box(0.068, 0.012, 0.39), -0.50, 0.861, 0.02);         // hinged receiver top cover
+    P.add('turretDark', box(0.012, 0.045, 0.25), -0.457, 0.824, 0.01);        // removable receiver side plate
+    P.add('turretDark', box(0.11, 0.09, 0.14), -0.615, 0.822, -0.02);         // neutral gunmetal ammo box
+    P.add('turretDark', box(0.10, 0.010, 0.13), -0.615, 0.872, -0.02);        // ammo lid
+    for (let i = 0; i < 5; i++) {
+      const t = i / 4;
+      P.add('turretDark', box(0.022, 0.020, 0.018),
+        -0.590 + t * 0.070, 0.850 - Math.sin(t * Math.PI) * 0.010,
+        0.030 + t * 0.035, 0, 0, -0.10 + t * 0.14);                           // connected feed
+    }
     P.add('turretDark', box(0.024, 0.11, 0.18), -0.50, 0.80, -0.21);          // grip frame + stock
+    for (const side of [-1, 1]) {
+      P.add('turretDark', box(0.018, 0.060, 0.018), -0.50 + side * 0.034,
+        0.798, -0.305, -0.18, 0, side * 0.08);                                // paired spade grips
+    }
     P.add('turretDark', box(0.03, 0.032, 0.03), -0.50, 0.852, 0.10);          // rear sight block (top 0.868L < the 0.873 anchor line)
     // VISUAL r6 3a STOWED MG3 on the certified mount (top 2.55w) — the ref's
     // own spare gun reads from rear/left. Laid TRANSVERSE (along x) so the
@@ -13803,7 +13822,11 @@ function addLeo2A6MRoofRCWS(P: TankBuilderPort) {
     sensorX, 0.93, sensorZ + 0.082);
 
   const machineGunScale = 0.72;
-  const weaponFootY = 0.99;
+  // The shared Browning-family receiver now carries its complete top cover,
+  // sight and feed furniture.  Sink the mounting feet into the RCWS bridge so
+  // that richer crown remains below the A6M PERI silhouette budget while the
+  // gun still bears directly on the station housing.
+  const weaponFootY = 0.945;
   const remoteMachineGun = FITTINGS.pintleMG({
     mats: P.mats,
     cls: 'm2',

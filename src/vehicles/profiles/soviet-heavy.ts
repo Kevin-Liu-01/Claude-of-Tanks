@@ -242,16 +242,37 @@ function saddle(P: SovietHeavyBuilderPort, o: SaddleOptions): void {
 // Detail buckets are mask-safe since the LOD fix, so the receiver/barrels can
 // live in turretDark; only the pintle post stays scheme-painted.
 function aaMG(P: SovietHeavyBuilderPort, x: number, y: number, z: number, twin = false): void {
-  const { box, cylY, cylZ } = KIT;
-  P.addEquipment('turret', cylY(0.045, 0.058, 0.30, 8), x, y + 0.15, z);
-  P.add('turretDark', box(0.05, 0.15, 0.05), x, y + 0.35, z - 0.05);          // cradle yoke
-  for (const dx of twin ? [-0.055, 0.055] : [0]) {
-    P.add('turretDark', box(0.085, 0.105, 0.44), x + dx * 1.7, y + 0.44, z + 0.02); // receiver
-    P.add('turretDark', cylZ(0.021, 0.60, 8), x + dx, y + 0.485, z + 0.50, -0.06, 0, 0); // barrel
-    P.add('turretDark', cylZ(0.031, 0.09, 8), x + dx, y + 0.503, z + 0.79, -0.06, 0, 0); // muzzle
+  const { box, cylX, cylY, cylZ, torus } = KIT;
+  P.addEquipment('turret', cylY(0.055, 0.065, 0.030, 12), x, y + 0.015, z);
+  P.add('turretDark', torus(0.055, 0.008, 16), x, y + 0.035, z);
+  P.add('turretDark', cylY(0.032, 0.042, 0.27, 10), x, y + 0.17, z);
+  P.add('turretDark', box(0.16, 0.05, 0.14), x, y + 0.32, z + 0.02);
+  for (const side of [-1, 1]) {
+    P.add('turretDark', box(0.024, 0.12, 0.11),
+      x + side * 0.065, y + 0.365, z + 0.05, side * 0.05, 0, 0);
   }
-  P.add('turretDark', cylY(0.055, 0.055, 0.09, 10), x + 0.11, y + 0.41, z + 0.08, 0, 0, 1.35); // ammo drum
-  P.add('turretDark', box(0.03, 0.13, 0.09), x, y + 0.35, z - 0.22);          // spade grips
+  P.add('turretDark', cylX(0.032, 0.18, 12), x, y + 0.42, z + 0.08);
+  for (const dx of twin ? [-0.055, 0.055] : [0]) {
+    const gunX = x + dx * 1.7;
+    P.add('turretDark', box(0.09, 0.105, 0.44), gunX, y + 0.44, z + 0.02);
+    P.add('turretDark', box(0.083, 0.018, 0.38), gunX, y + 0.501, z + 0.025);
+    P.add('turretDark', box(0.018, 0.07, 0.23), gunX + 0.054, y + 0.44, z - 0.005);
+    P.add('turretDark', cylZ(0.021, 0.60, 10), x + dx, y + 0.485, z + 0.50, -0.06, 0, 0);
+    P.add('turretDark', cylZ(0.031, 0.09, 12), x + dx, y + 0.503, z + 0.79, -0.06, 0, 0);
+    for (const side of [-1, 1]) {
+      P.add('turretDark', box(0.017, 0.024, 0.09),
+        gunX + side * 0.028, y + 0.415, z - 0.245, side * 0.08, 0, 0);
+    }
+  }
+  const ammoX = x + (twin ? 0.18 : 0.12);
+  P.add('turretDark', box(0.11, 0.13, 0.18), ammoX, y + 0.41, z + 0.02);
+  P.add('turretDark', box(0.115, 0.014, 0.185), ammoX, y + 0.482, z + 0.02);
+  for (let index = 0; index < 5; index++) {
+    const t = index / 4;
+    P.add('turretDark', box(0.018, 0.026, 0.024),
+      ammoX - (0.020 + t * 0.075), y + 0.45 + t * 0.010,
+      z + 0.09 + t * 0.065, 0, 0, 0.10 - t * 0.15);
+  }
 }
 
 // Turret-side grab rail: thin rod held off the dome skin by short posts.

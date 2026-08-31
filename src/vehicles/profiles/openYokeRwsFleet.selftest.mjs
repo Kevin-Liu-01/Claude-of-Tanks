@@ -200,7 +200,7 @@ for (const [id, expected] of Object.entries(TARGETS)) {
       const retainedLoaderGuns = [];
       turretRig.traverse((node) => {
         if (node.userData?.fittingRoot
-          && node.userData.americanWeaponStandard === 'sheridan-m2hb-v1') {
+          && node.userData.americanWeaponStandard === 'sheridan-m2hb-v2') {
           retainedLoaderGuns.push(node);
         }
       });

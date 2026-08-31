@@ -5,6 +5,7 @@ import {
   coplanarPatch,
   faceCount,
   ownershipOf,
+  SURFACE_MARKUP_OVERLAY_STYLE,
 } from './surfaceMarkup.ts';
 
 const geometry = new THREE.BufferGeometry();
@@ -57,6 +58,21 @@ shadowProxy.name = 'procShadow_turret';
 shadowProxy.userData.authoredShadowProxy = true;
 turret.add(shadowProxy);
 
+const hiddenMaterialPrimitive = new THREE.Mesh(
+  new THREE.BoxGeometry(0.2, 0.2, 0.2),
+  new THREE.MeshBasicMaterial(),
+);
+hiddenMaterialPrimitive.material.visible = false;
+turret.add(hiddenMaterialPrimitive);
+
+const transparentPrimitive = new THREE.Mesh(
+  new THREE.BoxGeometry(0.2, 0.2, 0.2),
+  new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }),
+);
+turret.add(transparentPrimitive);
+
+const primitiveParent = selectablePrimitive.parent;
+const primitiveVisible = selectablePrimitive.visible;
 const targets = collectSurfacePickTargets(hull);
 assert.ok(targets.includes(selectablePrimitive),
   'nested fitting primitives are selectable Studio surfaces');
@@ -64,6 +80,18 @@ assert.ok(targets.includes(legacyNamedPrimitive),
   'visible primitives are selected by render semantics rather than name exceptions');
 assert.ok(!targets.includes(shadowProxy),
   'explicit colorless shadow proxies stay outside Studio surface picking');
+assert.ok(!targets.includes(hiddenMaterialPrimitive),
+  'material-hidden primitives stay outside Studio surface picking');
+assert.ok(!targets.includes(transparentPrimitive),
+  'fully transparent primitives stay outside Studio surface picking');
+assert.equal(selectablePrimitive.parent, primitiveParent,
+  'surface collection never reparents a visible fitting');
+assert.equal(selectablePrimitive.visible, primitiveVisible,
+  'surface collection never mutates source visibility');
+assert.equal(SURFACE_MARKUP_OVERLAY_STYLE.depthTest, true,
+  'markup overlays respect source depth instead of painting through fittings');
+assert.ok(SURFACE_MARKUP_OVERLAY_STYLE.selectionOpacity < 0.3,
+  'selection tint preserves visible source detail');
 
 geometry.dispose();
 mesh.geometry.dispose();
@@ -74,5 +102,9 @@ legacyNamedPrimitive.geometry.dispose();
 legacyNamedPrimitive.material.dispose();
 shadowProxy.geometry.dispose();
 shadowProxy.material.dispose();
+hiddenMaterialPrimitive.geometry.dispose();
+hiddenMaterialPrimitive.material.dispose();
+transparentPrimitive.geometry.dispose();
+transparentPrimitive.material.dispose();
 
-console.log('surfaceMarkup.selftest: patch grouping, rig ownership, and primitive fitting selection passed');
+console.log('surfaceMarkup.selftest: patch grouping, rig ownership, visible fitting selection, and source-preserving overlays passed');

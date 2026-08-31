@@ -2085,7 +2085,7 @@ function addAbramsBrowning(P: AbramsBuilderPort, {
       y,
       z,
       scale,
-      americanWeaponStandard: 'sheridan-m2hb-v1',
+      americanWeaponStandard: 'sheridan-m2hb-v2',
     }),
   ]);
   return gun;
@@ -2743,7 +2743,7 @@ function tejasRoofKit(
       pintleTopY: baseY + 0.330 * scale,
       receiverBottomY: baseY + (0.345 - 0.0725) * scale,
       receiverY,
-      americanWeaponStandard: 'sheridan-m2hb-v1',
+      americanWeaponStandard: 'sheridan-m2hb-v2',
       shieldVariant: tallStation ? 'armored' : 'low',
     };
   } else if (!reactiveLeftWeapons && tallStation) {
@@ -2796,7 +2796,7 @@ function tejasRoofKit(
         pintleTopY,
         receiverBottomY: pintleBottomY + (0.345 - 0.0725) * scale,
         receiverY: pintleBottomY + 0.345 * scale,
-        americanWeaponStandard: 'sheridan-m2hb-v1',
+        americanWeaponStandard: 'sheridan-m2hb-v2',
         shieldVariant: 'split',
       };
     }
