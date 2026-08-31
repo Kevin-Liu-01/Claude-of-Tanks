@@ -15,6 +15,8 @@ assert.match(home, /<h2 id="social-proof-title"><span>Featured by <em>Three\.js<
   'social-proof headline must preserve the authored two-line lockup');
 assert.ok(!home.includes('Community signal // August 2026'),
   'the retired social-proof eyebrow must stay absent');
+assert.match(home, /<div class="v5-social-proof__platforms" aria-hidden="true"><span class="v5-social-platform-icon v5-social-platform-icon--x"><\/span><span class="v5-social-platform-icon v5-social-platform-icon--reddit"><\/span><\/div>/,
+  'the social-proof intro must restore the icon-only X and Reddit signal row');
 assert.doesNotMatch(home, /platform\.twitter\.com|embed\.reddit\.com|twitter-tweet|reddit-embed-bq/,
   'social proof must not load third-party embed scripts');
 
@@ -62,7 +64,7 @@ assert.ok(!home.includes('The engine behind the game'), 'removed Three.js kicker
 assert.ok(!home.includes('shared the full game showcase with its community'),
   'removed Three.js supporting sentence must stay absent');
 
-for (const value of ['396K', '77.8K', '1,453', '269', '19.5K', '37.9K', '162K', '112K']) {
+for (const value of ['396K', '77.8K', '1,566', '393 comments', '269', '19.5K', '37.9K', '162K', '112K']) {
   assert.ok(home.includes(value), `missing verified engagement value ${value}`);
 }
 for (const label of ['views', 'likes', 'replies', 'reposts and quotes', 'bookmarks', 'upvotes', 'comments']) {
@@ -98,9 +100,13 @@ assert.match(styles, /\.v5-social-proof h2 em\{[^}]*color:var\(--gold\)/,
   'only the Three.js name in the social-proof headline must use the gold accent');
 assert.match(styles, /\.v5-social-card--threejs \.v5-social-card__body blockquote\{[^}]*color:var\(--gold\)/,
   'the Three.js feature-card title must use the gold accent');
-for (const icon of ['view', 'like', 'comment', 'repost', 'bookmark']) {
+for (const icon of ['view', 'like']) {
   assert.match(styles, new RegExp(`\\.v5-social-metric-icon--${icon}\\{[^}]*color:#`),
-    `${icon} metric icon must have a distinct high-visibility color`);
+    `${icon} metric icon must retain its high-visibility color`);
+}
+for (const icon of ['comment', 'repost', 'bookmark']) {
+  assert.match(styles, new RegExp(`\\.v5-social-metric-icon--${icon}\\{[^}]*color:#91a1ac`),
+    `${icon} metric icon must use the shared neutral gray`);
 }
 assert.match(styles, /\.v5-social-metric-icon\{[^}]*width:18px;height:18px/,
   'primary social metric icons must use the enlarged presentation size');
