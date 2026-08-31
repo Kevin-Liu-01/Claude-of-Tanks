@@ -189,15 +189,20 @@ try {
         || !result.stats.battleScreenCurrentImage?.startsWith('/media/')) {
       failures.push(`${result.id}: battle archive screen contract failed`);
     }
-    const expectedExhibits = 4;
+    const expectedExhibits = isVerdant ? 4 : 0;
     if (result.stats.modelMode !== 'actual-fleet'
         || result.stats.exhibitCount !== expectedExhibits) {
       failures.push(`${result.id}: expected ${expectedExhibits} visible actual-fleet exhibits`);
     }
-    if (result.stats.sharedMaintenanceBayCount !== 4
-        || !['burlak_gantry', 'abrams_welding', 't90m_relikt', 'rolled_k2']
-          .every((id) => result.stats.sharedMaintenanceBayIds?.includes(id))) {
-      failures.push(`${result.id}: shared four-bay maintenance set is incomplete`);
+    if (result.stats.sharedMaintenanceBayCount !== expectedExhibits
+        || (isVerdant && !['burlak_gantry', 'abrams_welding', 't90m_relikt', 'rolled_k2']
+          .every((id) => result.stats.sharedMaintenanceBayIds?.includes(id)))) {
+      failures.push(`${result.id}: active maintenance-bay ownership is incorrect`);
+    }
+    const expectedActiveWorkshopTriangles = isVerdant
+      ? result.stats.verdantOriginalTriangleCount : 0;
+    if (result.stats.activeWorkshopTriangles !== expectedActiveWorkshopTriangles) {
+      failures.push(`${result.id}: inactive workshop geometry remains render-resident`);
     }
     if (result.stats.heroTrackContactErrorM === null
         || result.stats.heroTrackContactErrorM > 0.001) {
@@ -231,12 +236,16 @@ try {
         || result.stats.architecture.terrainVertices < 625
         || !result.stats.architecture.sourceStructure
         || !result.stats.architecture.sourceBeat
+        || !result.stats.architecture.terrainProfile
+        || !result.stats.architecture.serviceFrame
+        || result.stats.architecture.landmarkHeightM < 7
+        || result.stats.architecture.distinctiveElements?.length < 4
         || result.stats.environment?.mode !== 'custom-environment'
         || result.stats.environment?.worldMounted) {
       failures.push(`${result.id}: custom Garage environment receipt failed`);
     }
-    if (!result.stats.verdantOriginalVisible) {
-      failures.push(`${result.id}: shared original maintenance bays are not visible`);
+    if (result.stats.verdantOriginalVisible !== isVerdant) {
+      failures.push(`${result.id}: Verdant workshop visibility leaked across environments`);
     }
     if (!['burlak', 'abrams', 't90', 'k2'].every((family) => result.stats.families?.includes(family))) {
       failures.push(`${result.id}: missing family-specific actual fleet exhibit`);

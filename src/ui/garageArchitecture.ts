@@ -26,6 +26,10 @@ export interface GarageArchitectureStats {
   sourceBeat: string;
   sourceStructure: string;
   sourceLandmarkLocal: readonly [number, number, number] | null;
+  distinctiveElements: readonly string[];
+  landmarkHeightM: number;
+  serviceFrame: string;
+  terrainProfile: string;
   terrainVertices: number;
   treeSpecies: readonly string[];
   trees: number;
@@ -96,6 +100,14 @@ export function createGarageArchitectureController(
     root.userData.source = 'verdant-workshop';
     root.userData.sourceBeat = 'authored-field-workshop';
     root.userData.sourceStructure = 'field_shed';
+    root.userData.distinctiveElements = [
+      'enclosed workshop shell',
+      'connected service portals',
+      'four authored maintenance bays',
+    ];
+    root.userData.landmarkHeightM = 8.8;
+    root.userData.serviceFrame = 'enclosed motor-pool workshop';
+    root.userData.terrainProfile = 'sealed concrete maintenance floor';
     for (const x of [-20.6, -14.1, 14.9, 20.6]) {
       put(root, 'field_portal_post', material.frame, x, 4.4, 21.65, 0.30, 8.8, 0.30);
     }
@@ -157,6 +169,10 @@ export function createGarageArchitectureController(
       sourceBeat: active.userData.sourceBeat || '',
       sourceStructure: active.userData.sourceStructure || '',
       sourceLandmarkLocal: active.userData.sourceLandmarkLocal || null,
+      distinctiveElements: active.userData.distinctiveElements || [],
+      landmarkHeightM: Number(active.userData.landmarkHeightM || 0),
+      serviceFrame: active.userData.serviceFrame || '',
+      terrainProfile: active.userData.terrainProfile || '',
       terrainVertices: Number(active.userData.terrainVertices || 0),
       treeSpecies: active.userData.treeSpecies || [],
       trees: Number(active.userData.trees || 0),
@@ -182,6 +198,10 @@ export function createGarageArchitectureController(
       sourceBeat: group.userData.sourceBeat || '',
       sourceStructure: group.userData.sourceStructure || '',
       sourceLandmarkLocal: group.userData.sourceLandmarkLocal || null,
+      distinctiveElements: group.userData.distinctiveElements || [],
+      landmarkHeightM: group.userData.landmarkHeightM || 0,
+      serviceFrame: group.userData.serviceFrame || '',
+      terrainProfile: group.userData.terrainProfile || '',
       terrainVertices: group.userData.terrainVertices || 0,
       treeSpecies: group.userData.treeSpecies || [],
       trees: group.userData.trees || 0,

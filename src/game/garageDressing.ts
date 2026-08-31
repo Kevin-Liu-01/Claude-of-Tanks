@@ -814,7 +814,10 @@ export function createGarageDressing(
     legacyVerdantRoot.rotation.y = layoutYaw;
     legacyVerdantRoot.updateMatrix();
     const isVerdant = currentVariant.id === 'verdant_motor_pool';
-    legacyVerdantRoot.visible = true;
+    // The authored four-tank maintenance exhibit belongs to Verdant. Keeping
+    // it alive behind every outdoor vignette made all nine environments look
+    // like reskins and retained hundreds of thousands of needless triangles.
+    legacyVerdantRoot.visible = isVerdant;
     verdantInteriorRoot.visible = isVerdant;
     group.userData.battleScreenVisible = isVerdant;
     if (!isVerdant) {
@@ -834,12 +837,17 @@ export function createGarageDressing(
     } else if (battleScreenCurrentTexture) {
       scheduleBattleScreenAdvance();
     }
-    compileWorkshopObject(legacyVerdantRoot);
-    group.userData.verdantOriginalVisible = legacyVerdantRoot.children.length > 0;
+    if (isVerdant) compileWorkshopObject(legacyVerdantRoot);
+    group.userData.verdantOriginalVisible = isVerdant && legacyVerdantRoot.children.length > 0;
     group.userData.workshopTriangleCount = group.userData.verdantOriginalTriangleCount || 0;
-    group.userData.workshopExhibitCount = 4;
-    group.userData.sharedMaintenanceBayCount = 4;
-    group.userData.sharedMaintenanceBayIds = ['burlak_gantry', 'abrams_welding', 't90m_relikt', 'rolled_k2'];
+    group.userData.activeWorkshopTriangleCount = isVerdant
+      ? group.userData.verdantOriginalTriangleCount || 0
+      : 0;
+    group.userData.workshopExhibitCount = isVerdant ? 4 : 0;
+    group.userData.sharedMaintenanceBayCount = isVerdant ? 4 : 0;
+    group.userData.sharedMaintenanceBayIds = isVerdant
+      ? ['burlak_gantry', 'abrams_welding', 't90m_relikt', 'rolled_k2']
+      : [];
     group.userData.workshopSceneMode = isVerdant ? 'verdant-workshop' : 'custom-environment';
     return currentVariant.id;
   }
@@ -1696,9 +1704,9 @@ export function createGarageDressing(
     compileWorkshopObject(tank);
   });
 
-  // One canonical four-bay service set now travels with every Garage environment
-  // area. This deletes the prior six-display alternate graph (and its Leclerc
-  // builds) instead of paying CPU/GPU/memory for hidden duplicate exhibits.
+  // One canonical four-bay service set remains exclusive to Verdant. Outdoor
+  // environments use their own service composition and never render these
+  // additional fleet models.
   chunks.push(function finalizeSharedMaintenanceBays() {
     group.userData.verdantOriginalTriangleCount = countWorkshopTriangles(legacyVerdantRoot);
     group.userData.verdantOriginalExhibitCount = 4;

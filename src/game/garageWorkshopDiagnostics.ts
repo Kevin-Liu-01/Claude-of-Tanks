@@ -22,6 +22,7 @@ export interface GarageWorkshopStats {
   readonly selected: string;
   readonly built: boolean;
   readonly triangles: number;
+  readonly activeWorkshopTriangles: number;
   readonly buildTimings: readonly unknown[];
   readonly optimization: Readonly<Record<string, unknown>> | null;
   readonly optimizedTriangles: number;
@@ -134,6 +135,7 @@ export function createGarageWorkshopDiagnostics({
         selected: garage.getSelectedGarageVariant(),
         built: dressing.isBuilt(),
         triangles: data.workshopTriangleCount || 0,
+        activeWorkshopTriangles: data.activeWorkshopTriangleCount || 0,
         buildTimings: arrayValue(data.buildTimings),
         optimization: data.optimizationReceipt
           ? Object.freeze({ ...data.optimizationReceipt }) : null,

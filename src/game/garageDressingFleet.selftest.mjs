@@ -42,14 +42,14 @@ assert.match(dressing, /tank\.position\.set\(-6\.6, 0, 20\.5\)/,
   'T-90M component bay retains its original transform');
 assert.match(dressing, /tank\.position\.set\(-16\.25, 0, -16\.85\)/,
   'K2 teardown retains its original transform');
-assert.match(dressing, /legacyVerdantRoot\.visible = true/,
-  'the original four-bay composition must remain shared across every environment');
+assert.match(dressing, /legacyVerdantRoot\.visible = isVerdant/,
+  'the original four-bay composition must be visible only in Verdant');
 assert.match(dressing, /verdantInteriorRoot\.visible = isVerdant/,
   'indoor wall clutter must remain exclusive to Verdant');
 assert.match(dressing,
   /staticDisplayOwners:\s*\[legacyVerdantRoot, verdantInteriorRoot\]/,
   'the shared bays and Verdant-only interior collapse static leaf draws independently');
-assert.match(dressing, /sharedMaintenanceBayCount = 4/);
+assert.match(dressing, /sharedMaintenanceBayCount = isVerdant \? 4 : 0/);
 for (const bay of ['burlak_gantry', 'abrams_welding', 't90m_relikt', 'rolled_k2']) {
   assert.match(dressing, new RegExp(bay));
 }
@@ -76,4 +76,4 @@ assert.match(stage, /NO SMOKING\|FLAMMABLE\|FIRE/,
 assert.match(stage, /\^BAY\\b/,
   'bay identification signs must use the blue safety category');
 
-console.log('garageDressingFleet.selftest: shared four-bay set, themed environments, and Verdant interior pass');
+console.log('garageDressingFleet.selftest: Verdant-only four-bay set and independent themed environments pass');
