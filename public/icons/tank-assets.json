@@ -48577,13 +48577,13 @@
             "name": "optics",
             "min": [
               -1.2567,
-              0.5412,
+              0.5777,
               -0.501
             ],
             "max": [
               1.2567,
               1.267,
-              1.6509
+              1.653
             ],
             "parts": [
               {
@@ -48637,25 +48637,25 @@
               {
                 "min": [
                   -1.2567,
-                  0.5412,
+                  0.5777,
                   1.4674
                 ],
                 "max": [
                   -1.06,
-                  0.6369,
-                  1.6509
+                  0.68,
+                  1.653
                 ]
               },
               {
                 "min": [
                   1.06,
-                  0.5412,
+                  0.5777,
                   1.4674
                 ],
                 "max": [
                   1.2567,
-                  0.6369,
-                  1.6509
+                  0.68,
+                  1.653
                 ]
               }
             ],
@@ -48740,8 +48740,8 @@
           }
         ]
       },
-      "geometryHash": "01e40ee4",
-      "metadataHash": "5fe0507f",
+      "geometryHash": "055e3c13",
+      "metadataHash": "46f5d429",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.0177
@@ -48799,24 +48799,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27396,
-          "sha256": "54c9afe1039e385a4bd4ff5cff8560ab50edabbdfe0f399a345530b11fcbfbaf"
+          "bytes": 27640,
+          "sha256": "539d9436b345b8d2a033513ce2bdb81ddf69622c591f8f9a52774fa0191985cd"
         },
         "top": {
           "file": "kf51_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8226,
-          "sha256": "e6f7bea3aa23908ab23d014493317979776c09feb2e0d682aecde65a109a151a"
+          "bytes": 8270,
+          "sha256": "9adbd8d5065d3543acb87512a6fe24ed8c634d25fd2d0ec8a54b31d4ecf0f548"
         },
         "side": {
           "file": "kf51_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8444,
-          "sha256": "7a4e0b38fa1b84c1871e12b7a38ca1d579470207a7e9202b769be3b30b4ffecd"
+          "bytes": 8400,
+          "sha256": "68fcb734b9806b866924971d08fd109be2614e4ec79b57917bfae90134583f88"
         },
         "topSilhouette": {
           "file": "kf51_top_silhouette.png",
@@ -48831,32 +48831,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3954,
-          "sha256": "98837c3a45e709694f017d47fa89402a0d30ad9dee6e537beba70ea7bdb43b12"
+          "bytes": 4004,
+          "sha256": "4aadf624deed8d70f7bb8afc1b9bbc3edc4fc46b7c254490ff533349ddfe7de3"
         },
         "hitZonesSide": {
           "file": "kf51_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74749,
-          "sha256": "116c61453d6fb9f97533265e04d5b2c5f1f0f2ec5b4270b2877292ec05da246d"
+          "bytes": 75049,
+          "sha256": "4b4930057c4a58efac985793dc5136826dfa06b2679f5f1eafbd3d436ddfcf12"
         },
         "armorSide": {
           "file": "kf51_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76100,
-          "sha256": "bc56ece426eddeb9fbc890de88d14b094ee3da1bfcbcd2b94d41d40e1b8a2a23"
+          "bytes": 76317,
+          "sha256": "fb8c47f9fa93a05af0da7a39822c7c4955911e8e574f1790eac587afbd07d6c7"
         },
         "modulesSide": {
           "file": "kf51_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73673,
-          "sha256": "2674d46108c9e8099998590607a2acc2ba10cf4ac7ef076a65934a82ad8f8a5c"
+          "bytes": 73297,
+          "sha256": "a9da21594c9170bfd70314798ede845b7403b245d1012b8dc420cb2e350552a2"
         },
         "markings": {
           "file": "kf51_markings.png",

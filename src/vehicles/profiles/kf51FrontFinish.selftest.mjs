@@ -20,7 +20,7 @@ try {
     'KF51 retains canonical hull, turret, gun, and detail geometry');
 
   const chevron = turretRig.userData.kf51FrontChevronReceipt;
-  assert.equal(chevron?.profile, 'kf51-panther-closed-chevron-r3',
+  assert.equal(chevron?.profile, 'kf51-panther-closed-chevron-r4',
     'KF51 publishes the rebuilt closed-chevron front architecture');
   assert.equal(chevron.cheekVolumes, 2, 'KF51 front has one closed cheek volume per side');
   assert.equal(chevron.roofBridgeVolumes, 2,
@@ -40,6 +40,26 @@ try {
     'KF51 ring fill terminates behind the cheek roots');
   assert.equal(chevron.foreRoofStepAlignedToRearPlane, true,
     'KF51 fore roof step no longer protrudes through the upper cheek');
+  assert.equal(chevron.roofCourseFrontPlaneZ, chevron.rearPlaneZ,
+    'KF51 crown course terminates on the turret-front datum');
+  assert.equal(chevron.lowerCollarFrontPlaneZ, chevron.rearPlaneZ,
+    'KF51 lower side collars terminate on the turret-front datum');
+  assert.equal(chevron.upperRootRoofEdgeY, 0.79,
+    'KF51 upper cheek roots reach the complete roof-step face');
+  assert.equal(chevron.lowerRootFloorY, 0.01,
+    'KF51 lower cheek roots extend below the rounded ring-fill edge');
+  assert.equal(chevron.upperCoreFaceCovered, true,
+    'KF51 upper cheek closes the roof-step front face');
+  assert.equal(chevron.lowerCoreFaceCovered, true,
+    'KF51 lower cheek closes the ring-fill front face');
+  assert.equal(chevron.terminalSideSlopeAligned, true,
+    'KF51 cheek terminals transition onto the sloped turret sides');
+  assert.deepEqual(chevron.terminalUpperRoot, [1.31, 0.72, 1.10],
+    'KF51 terminal upper root meets the narrow roof-side corner');
+  assert.deepEqual(chevron.terminalRidge, [1.47, 0.44, 1.98],
+    'KF51 terminal ridge preserves the armored shoulder projection');
+  assert.deepEqual(chevron.terminalLowerRoot, [1.50, 0.16, 1.10],
+    'KF51 terminal lower root meets the wide lower-side corner');
   for (const side of chevron.sides) {
     for (const station of side.stations) {
       assert.ok(Math.abs(station.upperRiseM - station.lowerDropM) < 1e-9,
@@ -55,6 +75,32 @@ try {
   assert.ok(chevron.maximumRidgeProjectionM <= 2.48,
     'KF51 chevron ridge remains retracted onto the turret-front envelope');
 
+  const turretPositions = turret.geometry.getAttribute('position');
+  let roofCourseFrontZ = -Infinity;
+  let collarFrontZ = -Infinity;
+  for (let index = 0; index < turretPositions.count; index++) {
+    const x = Math.abs(turretPositions.getX(index));
+    const y = turretPositions.getY(index);
+    const z = turretPositions.getZ(index);
+    if (x <= 0.951 && Math.abs(y - 0.815) < 1e-6) roofCourseFrontZ = Math.max(roofCourseFrontZ, z);
+    if (x >= 1.439 && x <= 1.461 && y >= 0.074 && y <= 0.191) collarFrontZ = Math.max(collarFrontZ, z);
+  }
+  assert.ok(Math.abs(roofCourseFrontZ - chevron.rearPlaneZ) < 1e-6,
+    'KF51 generated roof course has no tongue ahead of the front plane');
+  assert.ok(Math.abs(collarFrontZ - chevron.rearPlaneZ) < 1e-6,
+    'KF51 generated side collar has no tongue ahead of the front plane');
+  const innerStations = chevron.sides[0].stations.filter((station) => station.x <= 0.98);
+  assert.ok(innerStations.every((station) => Math.abs(station.upperRootY - 0.79) < 1e-9),
+    'KF51 upper cheek spans the full inboard roof-edge height');
+  assert.ok(innerStations.every((station) => Math.abs(station.lowerRootY - 0.01) < 1e-9),
+    'KF51 lower cheek spans the full inboard ring-fill depth');
+  const terminal = chevron.sides[0].stations.at(-1);
+  assert.deepEqual(
+    [terminal.upperRootX, terminal.upperRootY, terminal.ridgeX, terminal.lowerRootX, terminal.lowerRootY],
+    [1.31, 0.72, 1.47, 1.50, 0.16],
+    'KF51 generated cheek endpoint shares the compound slope of the core turret side',
+  );
+
   const firstTurretHit = (origin, direction) => new THREE.Raycaster(
     new THREE.Vector3(...origin),
     new THREE.Vector3(...direction),
@@ -62,11 +108,11 @@ try {
     10,
   ).intersectObject(turretRig, true).find((hit) => hit.object.name === 'turret');
   const lowerCheekHit = firstTurretHit([0.8, 1.9, 5], [0, 0, -1]);
-  assert.ok(lowerCheekHit && lowerCheekHit.point.z < 2.05,
-    'KF51 lower cheek hides the retired 2.30 m-world core face');
+  assert.ok(lowerCheekHit && lowerCheekHit.point.z > 2.05 && lowerCheekHit.point.z < 2.5,
+    'KF51 extended lower cheek intercepts the complete ring-fill face before the core');
   const upperCheekHit = firstTurretHit([1.1, 5, 1.85], [0, -1, 0]);
-  assert.ok(upperCheekHit && upperCheekHit.point.y < 2.38,
-    'KF51 upper cheek hides the retired 2.45 m-world roof shelf');
+  assert.ok(upperCheekHit && upperCheekHit.point.y < 2.45,
+    'KF51 raised upper cheek hides the retired roof shelf beneath its slope');
 
   const housing = gunRig.userData.kf51AngularGunHousingReceipt;
   assert.equal(housing?.profile, 'kf51-panther-angular-mantlet-r3',

@@ -77,6 +77,8 @@ interface GearEndpoint {
 
 interface ChevronSurfaceStation {
   readonly x: number;
+  readonly upperX?: number;
+  readonly ridgeX?: number;
   readonly upperY: number;
   readonly upperZ: number;
   readonly ridgeY: number;
@@ -84,6 +86,7 @@ interface ChevronSurfaceStation {
 }
 
 interface ChevronClosedStation extends ChevronSurfaceStation {
+  readonly lowerX?: number;
   readonly lowerY: number;
   readonly lowerZ: number;
 }
@@ -741,7 +744,7 @@ function closedLeopardChevronCheek(
 ): THREE.BufferGeometry {
   if (stations.length < 2) throw new RangeError('Chevron cheek requires two stations');
   const point = (station: ChevronClosedStation, key: 'upper' | 'ridge' | 'lower'): Vec3Tuple => [
-    side * station.x,
+    side * (station[`${key}X` as keyof ChevronClosedStation] as number | undefined ?? station.x),
     station[`${key}Y` as keyof ChevronClosedStation],
     station[`${key}Z` as keyof ChevronClosedStation],
   ];
@@ -870,15 +873,16 @@ function closedLeopardChevronRoofBridge(
     positions.push(...p0, ...p1, ...p2);
   };
   const points = stations.map((station) => {
-    const frontTop: Vec3Tuple = [side * station.x, station.upperY, station.upperZ];
+    const frontTopX = station.upperX ?? station.x;
+    const frontTop: Vec3Tuple = [side * frontTopX, station.upperY, station.upperZ];
     const closureSpan = Math.max(1e-6, station.upperY - station.lowerY);
     const embedT = THREE.MathUtils.clamp(thickness / closureSpan, 0, 0.92);
     const frontBottom: Vec3Tuple = [
-      side * station.x,
+      side * frontTopX,
       station.upperY - thickness,
       THREE.MathUtils.lerp(station.upperZ, station.lowerZ, embedT) - frontEmbedM,
     ];
-    const rearX = Math.min(station.x, Math.max(0.01, bodyHalfWidth - 0.012));
+    const rearX = Math.min(frontTopX, Math.max(0.01, bodyHalfWidth - 0.012));
     const rearZ = Math.min(bodyFrontZ - rearOverlapM, station.upperZ - rearOverlapM);
     const rearY = Math.min(bodyTopY, station.upperY + 0.08);
     const rearTop: Vec3Tuple = [side * rearX, rearY, rearZ];
@@ -952,6 +956,8 @@ function interpolateChevronStation(
     const t = THREE.MathUtils.clamp((x - a.x) / Math.max(1e-6, b.x - a.x), 0, 1);
     return {
       x,
+      upperX: THREE.MathUtils.lerp(a.upperX ?? a.x, b.upperX ?? b.x, t),
+      ridgeX: THREE.MathUtils.lerp(a.ridgeX ?? a.x, b.ridgeX ?? b.x, t),
       upperY: THREE.MathUtils.lerp(a.upperY, b.upperY, t),
       upperZ: THREE.MathUtils.lerp(a.upperZ, b.upperZ, t),
       ridgeY: THREE.MathUtils.lerp(a.ridgeY, b.ridgeY, t),
@@ -976,7 +982,7 @@ function leopardChevronSurfacePanel(
   const rootMargin = options.rootMargin ?? 0.085;
   const thickness = options.thickness ?? 0.022;
   const point = (station: ChevronSurfaceStation, key: 'upper' | 'ridge') => new THREE.Vector3(
-    side * station.x,
+    side * (station[`${key}X` as keyof ChevronSurfaceStation] as number | undefined ?? station.x),
     station[`${key}Y`],
     station[`${key}Z`],
   );
@@ -10389,17 +10395,21 @@ function buildKF51(P: TankBuilderPort) {
     const L = (zF - zR) / n;
     for (let i = 0; i < n; i++) fn(zF - L * i, zF - L * (i + 1));
   };
+  const kf51TurretFrontPlaneZ = 1.10;
   // The old full-width sloped front wedge is intentionally gone. Its broad
   // face remained exposed in front of the lower chevron and intersected the
   // moving housing at oblique angles. The closed |>-cheeks below now provide
   // the entire visible bow and close directly against this core wall.
-  zseg(1.10, -1.00, 5, (a, b) => P.add('turret', frustum(1.50, a, b, 1.31, a, b, 0.16, 0.72)));   // fore cheek block
+  zseg(kf51TurretFrontPlaneZ, -1.00, 5, (a, b) => P.add('turret', frustum(1.50, a, b, 1.31, a, b, 0.16, 0.72)));   // fore cheek block
   zseg(0.70, -2.73, 8, (a, b) => P.add('turret', frustum(1.44, a, b, 1.30, Math.min(a, 0.60), Math.max(b, -2.71), 0.16, 0.72))); // mid walls
   // The former 1.46 m roof-step prow sat in front of the 1.10 m turret
   // wall and poked through the upper chevron. Pull the complete step back
   // onto that wall plane; the closed cheek now owns the visible bow.
-  zseg(1.10, -0.80, 5, (a, b) => P.add('turret', frustum(1.30, a, b, 1.24, a, b, 0.72, 0.79)));   // aligned fore roof step
-  zseg(1.49, -2.49, 9, (a, b) => P.add('turret', frustum(1.02, a, b, 0.95, Math.min(a, 1.47), Math.max(b, -2.47), 0.79, h))); // roof course (2.525w over −2.04..1.94w)
+  zseg(kf51TurretFrontPlaneZ, -0.80, 5, (a, b) => P.add('turret', frustum(1.30, a, b, 1.24, a, b, 0.72, 0.79)));   // aligned fore roof step
+  // The narrow crown course used to continue 390 mm beyond the front wall.
+  // Stop both its bottom and top skins on the same datum so no roof tongue
+  // remains visible through the upper arrowhead.
+  zseg(kf51TurretFrontPlaneZ, -2.49, 8, (a, b) => P.add('turret', frustum(1.02, a, b, 0.95, a, Math.max(b, -2.47), 0.79, h))); // roof course (2.525w aft of the front plane)
   // Keep the ring fill behind the shared 1.10 m cheek-root plane. Its old
   // 1.85 m front face was the flat rectangle visible through the lower
   // chevrons in the markup view.
@@ -10428,13 +10438,27 @@ function buildKF51(P: TankBuilderPort) {
   // upper and lower roots now share one constant rear plane. In direct side
   // view that makes a true |>-profile instead of the previous \>-profile,
   // while the ridge remains the exact vertical midpoint at every station.
-  const kf51ChevronRearPlaneZ = 1.10;
+  // The inboard roots now span the complete core faces as well: the upper
+  // root rises to the 0.79 m roof edge and the lower root drops below the
+  // 0.034 m rounded edge of the ring fill.  The x=1.29 station follows the
+  // roof-step side taper exactly before the outboard tip returns to the
+  // Panther's established shoulder height.
+  const kf51ChevronRearPlaneZ = kf51TurretFrontPlaneZ;
   const kf51ChevronStations: readonly ChevronClosedStation[] = Object.freeze([
-    Object.freeze({ x: 0.43, upperY: 0.72, upperZ: kf51ChevronRearPlaneZ, ridgeY: 0.40, ridgeZ: 2.48, lowerY: 0.08, lowerZ: kf51ChevronRearPlaneZ }),
-    Object.freeze({ x: 0.66, upperY: 0.73, upperZ: kf51ChevronRearPlaneZ, ridgeY: 0.41, ridgeZ: 2.43, lowerY: 0.09, lowerZ: kf51ChevronRearPlaneZ }),
-    Object.freeze({ x: 0.98, upperY: 0.72, upperZ: kf51ChevronRearPlaneZ, ridgeY: 0.41, ridgeZ: 2.32, lowerY: 0.10, lowerZ: kf51ChevronRearPlaneZ }),
-    Object.freeze({ x: 1.29, upperY: 0.66, upperZ: kf51ChevronRearPlaneZ, ridgeY: 0.39, ridgeZ: 2.16, lowerY: 0.12, lowerZ: kf51ChevronRearPlaneZ }),
-    Object.freeze({ x: 1.47, upperY: 0.56, upperZ: kf51ChevronRearPlaneZ, ridgeY: 0.35, ridgeZ: 1.98, lowerY: 0.14, lowerZ: kf51ChevronRearPlaneZ }),
+    Object.freeze({ x: 0.43, upperY: 0.79, upperZ: kf51ChevronRearPlaneZ, ridgeY: 0.40, ridgeZ: 2.48, lowerY: 0.01, lowerZ: kf51ChevronRearPlaneZ }),
+    Object.freeze({ x: 0.66, upperY: 0.79, upperZ: kf51ChevronRearPlaneZ, ridgeY: 0.40, ridgeZ: 2.43, lowerY: 0.01, lowerZ: kf51ChevronRearPlaneZ }),
+    Object.freeze({ x: 0.98, upperY: 0.79, upperZ: kf51ChevronRearPlaneZ, ridgeY: 0.40, ridgeZ: 2.32, lowerY: 0.01, lowerZ: kf51ChevronRearPlaneZ }),
+    Object.freeze({ x: 1.29, upperY: 0.732, upperZ: kf51ChevronRearPlaneZ, ridgeY: 0.386, ridgeZ: 2.16, lowerY: 0.04, lowerZ: kf51ChevronRearPlaneZ }),
+    // The terminal root follows the core side itself: 1.50 m at the lower
+    // corner and 1.31 m at the roof corner. The ridge remains outboard at
+    // 1.47 m, producing a continuous compound shoulder instead of a
+    // parallel vertical fin beside the sloped turret wall.
+    Object.freeze({
+      x: 1.47,
+      upperX: 1.31, upperY: 0.72, upperZ: kf51ChevronRearPlaneZ,
+      ridgeX: 1.47, ridgeY: 0.44, ridgeZ: 1.98,
+      lowerX: 1.50, lowerY: 0.16, lowerZ: kf51ChevronRearPlaneZ,
+    }),
   ]);
   const kf51FrontPanels: ReadonlyArray<readonly [number, number]> = Object.freeze([
     Object.freeze([0.47, 0.72] as const),
@@ -10490,6 +10514,11 @@ function buildKF51(P: TankBuilderPort) {
       lightCassette: true,
       stations: Object.freeze(kf51ChevronStations.map((station) => Object.freeze({
         x: station.x,
+        upperRootX: station.upperX ?? station.x,
+        upperRootY: station.upperY,
+        ridgeX: station.ridgeX ?? station.x,
+        lowerRootX: station.lowerX ?? station.x,
+        lowerRootY: station.lowerY,
         upperRiseM: station.upperY - station.ridgeY,
         lowerDropM: station.ridgeY - station.lowerY,
         upperRearZ: station.upperZ,
@@ -10506,7 +10535,7 @@ function buildKF51(P: TankBuilderPort) {
     P.add('turretDark', pbox(0.035, 0.62, 0.60), s * 0.415, 0.48, 1.82);
   }
   P.turretG.userData.kf51FrontChevronReceipt = Object.freeze({
-    profile: 'kf51-panther-closed-chevron-r3',
+    profile: 'kf51-panther-closed-chevron-r4',
     architecture: 'single-watertight-vertical-backed-arrowhead',
     stationCount: kf51ChevronStations.length,
     cheekVolumes: 2,
@@ -10521,6 +10550,16 @@ function buildKF51(P: TankBuilderPort) {
     coreFrontPlaneZ: kf51ChevronRearPlaneZ,
     coversFormerLowerFrontPlane: true,
     foreRoofStepAlignedToRearPlane: true,
+    roofCourseFrontPlaneZ: kf51TurretFrontPlaneZ,
+    lowerCollarFrontPlaneZ: kf51TurretFrontPlaneZ,
+    upperRootRoofEdgeY: 0.79,
+    lowerRootFloorY: 0.01,
+    upperCoreFaceCovered: true,
+    lowerCoreFaceCovered: true,
+    terminalSideSlopeAligned: true,
+    terminalUpperRoot: Object.freeze([1.31, 0.72, kf51ChevronRearPlaneZ]),
+    terminalRidge: Object.freeze([1.47, 0.44, 1.98]),
+    terminalLowerRoot: Object.freeze([1.50, 0.16, kf51ChevronRearPlaneZ]),
     turretFrontAligned: true,
     maximumRidgeProjectionM: 2.48,
     closedRearFaces: true,
@@ -11026,8 +11065,8 @@ function buildKF51(P: TankBuilderPort) {
         s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
       );
       armorShell('kf51TurretLowerCollar', KIT.slab(
-        ...ord([[s * 1.18, 0.075, 1.78], [s * 1.46, 0.075, 1.78], [s * 1.46, 0.075, -2.45], [s * 1.18, 0.075, -2.45]]),
-        ...ord([[s * 1.16, 0.190, 1.78], [s * 1.44, 0.190, 1.78], [s * 1.44, 0.190, -2.45], [s * 1.16, 0.190, -2.45]])), true);
+        ...ord([[s * 1.18, 0.075, kf51TurretFrontPlaneZ], [s * 1.46, 0.075, kf51TurretFrontPlaneZ], [s * 1.46, 0.075, -2.45], [s * 1.18, 0.075, -2.45]]),
+        ...ord([[s * 1.16, 0.190, kf51TurretFrontPlaneZ], [s * 1.44, 0.190, kf51TurretFrontPlaneZ], [s * 1.44, 0.190, -2.45], [s * 1.16, 0.190, -2.45]])), true);
     }
 
     // Front track shoulders: a top ramp meets the existing corner mudguard
