@@ -303,7 +303,7 @@
 .cot-garage .stats{position:absolute;right:22px;top:86px;width:var(--cot-garage-sidebar-width);padding:0;pointer-events:auto;
   background:transparent;border:0;box-shadow:none;}
 .cot-garage .stats::before{display:none;}
-.cot-dossier-head{position:relative;padding:14px 16px 13px;min-height:104px;margin-bottom:8px;
+.cot-dossier-head{position:relative;padding:14px 16px 13px;min-height:70px;margin-bottom:8px;
   background:linear-gradient(150deg,rgba(22,28,34,.97),rgba(8,11,14,.97) 72%);
   border:1px solid rgba(166,184,199,.3);
   box-shadow:0 14px 36px rgba(0,0,0,.48),inset 0 0 0 1px rgba(255,255,255,.015);}
@@ -426,7 +426,7 @@
 .cot-technical-figure figcaption{min-height:26px;padding:7px 8px;color:#95a5b1;background:rgba(13,18,23,.94);
   border-top:1px solid rgba(146,164,180,.14);font:800 6.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
   letter-spacing:.09em;line-height:1.3;text-transform:uppercase;}
-.cot-technical-gallery{margin-top:6px;color:#aebbc4;}
+.cot-technical-gallery{margin-top:6px;}
 .cot-technical-viewer .cot-modal__body{padding:clamp(12px,2vw,22px);background:#05090c;}
 .cot-technical-viewer-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px;}
 .cot-technical-viewer-tab{min-height:38px;padding:0 12px;color:#9dabb5;background:rgba(13,19,24,.9);

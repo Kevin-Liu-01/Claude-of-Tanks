@@ -1939,9 +1939,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `data-technical-image draggable="false" decoding="async">` +
       `<span class="cot-technical-expand-label">${uiIconSVG('zoomIn', 14)}Expand view</span></button>` +
       `<figcaption data-technical-caption-output>${initialTechnicalView.caption}</figcaption></figure>` +
-      `<button class="cot-layer-link cot-technical-gallery" type="button" ` +
+      `<button class="cot-gallery-link cot-technical-gallery" type="button" ` +
       `data-gallery-layer="${initialTechnicalView.galleryLayer}" data-technical-gallery>` +
-      `${uiIconSVG('gallery', 13)}Inspect this layer in Tank Gallery</button></section>`;
+      `${uiIconSVG('gallery', 15)}<span>Inspect this layer in Tank Gallery</span>` +
+      `<span class="go">&#8250;</span></button></section>`;
     const moduleRows = garageModuleRows(spec);
     const crewRows = garageCrewRows(spec);
     const moduleChips = moduleRows.map((row) =>
@@ -1962,9 +1963,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="cot-dossier-head">` +
       `<img class="stats-ti" src="${iconUrl(spec.id, 'side_silhouette')}" alt="">` +
       `<div class="cot-dossier-title"><span class="cot-tier-plate">${tierNumeral(spec.id) || '&mdash;'}</span><h3></h3></div>` +
-      `<div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${vehicleEraLabel(spec.era)}</span></div>` +
-      `<button class="cot-gallery-link" type="button" data-gallery-layer="appearance">` +
-      `${uiIconSVG('gallery', 15)}<span>Open in Tank Gallery</span><span class="go">&#8250;</span></button></div>` +
+      `<div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${vehicleEraLabel(spec.era)}</span></div></div>` +
       technicalSection +
       `<section class="cot-stat-section">${statSectionTitle('speed', 'Performance', `${spec.weightTons.toFixed(1)} t`)}` +
       `<div class="cot-performance-grid">` +
