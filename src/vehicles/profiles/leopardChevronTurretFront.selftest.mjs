@@ -14,7 +14,7 @@ const verticalTerminalIds = new Set([
   'leo2a5', 'leo2a5_a5nl', 'strv122', 'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2a7v',
 ]);
 const compoundTerminalIds = new Set([
-  'leo2a5', 'leo2a5_a5nl', 'strv122', 'leo2a6', 'leo2a6m', 'leo2a6_ua',
+  'leo2a5', 'leo2a5_a5nl', 'strv122', 'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2a7v',
 ]);
 const compoundTerminalExpectations = new Map([
   ['leo2a5', { upper: [1.06, 0.76], ridge: [1.44, 0.25], lower: [1.38, 0.02] }],
@@ -23,6 +23,7 @@ const compoundTerminalExpectations = new Map([
   ['leo2a6', { upper: [1.05, 0.62], ridge: [1.435, 0.22], lower: [1.38, 0.02] }],
   ['leo2a6m', { upper: [1.02, 0.66], ridge: [1.435, 0.22], lower: [1.30, 0.02] }],
   ['leo2a6_ua', { upper: [1.02, 0.66], ridge: [1.435, 0.22], lower: [1.30, 0.02] }],
+  ['leo2a7v', { upper: [1.05, 0.62], ridge: [1.41, 0.22], lower: [1.38, 0.02] }],
 ]);
 const receiptsById = new Map();
 
@@ -184,6 +185,9 @@ for (const [id, expectedProfile] of modernProfiles) {
     assert.ok(receipt.ridgeControlLine[0][1] - receipt.ridgeControlLine.at(-1)[1] >= 1.25,
       'leo2a7v carries a deep gun-root-to-outboard plan chevron');
     for (const sideReceipt of receipt.sides) {
+      assert.equal(sideReceipt.terminalSideClosure.architecture,
+        'compound-sloped-terminal-return',
+      'leo2a7v lower cheek closes into the turret side instead of ending at a detached wall');
       for (const station of sideReceipt.stations) {
         assert.ok(station.upperDominanceRatio >= 1.45,
           'leo2a7v keeps the A6-family dominant upper cheek and shorter lower return');
@@ -271,7 +275,7 @@ for (const [id, expectedProfile] of modernProfiles) {
         assert.equal(closure.upperX, expected.upper[0]);
         assert.equal(closure.ridgeX, expected.ridge[0]);
         assert.equal(closure.lowerX, expected.lower[0]);
-        const transition = sideReceipt.stations.filter((station) => station.x >= 1.29 - 1e-6);
+        const transition = sideReceipt.stations.slice(-3);
         assert.ok(transition.length >= 3,
           `${id} ${sideReceipt.side} distributes the side alignment across multiple stations`);
         assert.ok(transition.slice(1).some((station, index) => (

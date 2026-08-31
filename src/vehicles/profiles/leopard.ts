@@ -7724,6 +7724,12 @@ function buildLeo2A7V(P: TankBuilderPort) {
     chevron: {
       profile: 'leopard-2a7v', ridgeInsetM: 0.030, ridgeLiftM: 0.13,
       upperSlopeDeg: 19, upperRootY: 0.66, upperTipY: 0.50, upperTaperStartX: 1.30,
+      // Carry both cheek roots into the compound turret side instead of
+      // ending them together at the outboard ridge plane. The upper root
+      // lands on the roof shoulder and the lower return reaches the main
+      // wall, closing the marked daylight gap on both sides while burying
+      // the underbody pan that is no longer part of the visible silhouette.
+      alignTerminalToBodySide: true,
       rootDepthM: [0.90, 0.82, 0.68, 0.66, 0.52, 0.34],
       rootY: [-0.07, -0.07, -0.07, -0.07, 0.05, 0.12],
       panelThicknessM: 0.028,
