@@ -54,8 +54,7 @@ assert.ok(xWall.indexOf('@hakimieiqbal') < xWall.indexOf('@VaibhavSisinty'),
   'Hakimi must appear before Vaibhav in the X proof wall');
 for (const quote of [
   'A solo dev just shipped what would take a game studio months.',
-  'The breakthrough wasn’t one giant prompt.',
-  'The prompt wasn’t the system. The workflow was.',
+  'Someone built a multiplayer browser tank game with 100+ vehicles in four weeks using Claude Code and Codex.',
   'Proves how agentic coding tools can scaffold interactive 3D multiplayer games from scratch in hours.',
 ]) {
   assert.ok(home.includes(quote), `missing requested social-proof quote: ${quote}`);
