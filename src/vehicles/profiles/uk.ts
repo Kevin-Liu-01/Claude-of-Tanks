@@ -4262,7 +4262,10 @@ const CHIEFTAIN_UPPER_BUCKETS = [
 
 const CHIEFTAIN_TURRET_BUCKETS = CHIEFTAIN_UPPER_BUCKETS.filter((bucket) =>
   !bucket.startsWith('gun'));
-const CHIEFTAIN_TURRET_HEIGHT_SCALE = 0.68;
+// The r9 fidelity pass deliberately compressed the turret to 68% of its
+// authored height.  Raise that finished envelope by an exact ten percent,
+// still pivoting about the buried ring seat so the turret does not float.
+const CHIEFTAIN_TURRET_HEIGHT_SCALE = 0.68 * 1.10;
 const CHIEFTAIN_TURRET_SEAT_Y = -0.18;
 
 function compressedChieftainTurretY(y: number): number {
@@ -4394,14 +4397,14 @@ function buildChieftainUpper2026(
   const shellOutboard = stillbrew ? 0.13 : 0.07;
   const shellForward = stillbrew ? 0.15 : 0.09;
   const shellLift = stillbrew ? 0.055 : 0.025;
-  const mirrorPanel = (panel: ArmorPanel, side: number): ArmorPanel => {
-    const mirrored = panel.map(([x, y, z]) => [side * x, y + shellLift, z] as const);
+  const mirrorPanel = (panel: ArmorPanel, side: number, yOffset = 0): ArmorPanel => {
+    const mirrored = panel.map(([x, y, z]) => [side * x, y + shellLift + yOffset, z] as const);
     if (side > 0) return mirrored as unknown as ArmorPanel;
     return [mirrored[0], mirrored[3], mirrored[2], mirrored[1],
       mirrored[4], mirrored[7], mirrored[6], mirrored[5]] as ArmorPanel;
   };
-  const addArmorPanel = (panel: ArmorPanel, side = 1): void => {
-    const points = mirrorPanel(panel, side);
+  const addArmorPanel = (panel: ArmorPanel, side = 1, yOffset = 0): void => {
+    const points = mirrorPanel(panel, side, yOffset);
     const backing = points.map(([x, y, z]) => [x, y - 0.038, z] as const) as unknown as ArmorPanel;
     P.add('turretDark', slab(...backing));
     P.add('turretExternalArmor', slab(...points));
@@ -4424,8 +4427,14 @@ function buildChieftainUpper2026(
     [0.45, 0.54, -0.68], [1.19 + shellOutboard, 0.62, -0.52],
     [0.93 + shellOutboard, 0.53, -1.21], [0.33, 0.50, -1.25],
   ];
+  // The two forward shells were centered on the roof package instead of the
+  // gun mask.  Their selected face spans source Y 0.38..0.75, while the
+  // mantlet spans 0.074..0.486; removing the variant lift and dropping the
+  // shared 0.285 m center offset puts both faces on one vertical datum.  Keep
+  // the remaining shell panels high so the armor still reads as a layered cap.
+  const frontShellDrop = shellLift + 0.285;
   for (const s of [-1, 1]) {
-    addArmorPanel(frontCheekPanel, s);
+    addArmorPanel(frontCheekPanel, s, -frontShellDrop);
     addArmorPanel(shoulderPanel, s);
     addArmorPanel(rearCrownPanel, s);
     // Three exposed joints prevent the panels from visually dissolving back
@@ -4481,7 +4490,7 @@ function buildChieftainUpper2026(
     [-0.11, 0.56, 1.02], [0.11, 0.56, 1.02], [0.21, 0.64, 0.43], [-0.21, 0.64, 0.43]));
 
   P.turretG.userData.chieftainArmorShellReceipt = Object.freeze({
-    revision: 'low-angular-layered-shell-r9',
+    revision: 'low-angular-layered-shell-r10',
     sourceAxes: 'x,z,-y',
     primaryEnvelopeCount: 2,
     primaryConstruction: 'low-faceted-core',
@@ -4495,6 +4504,11 @@ function buildChieftainUpper2026(
     upperShellRearZ: -1.25,
     upperShellStandOffM: shellOutboard,
     upperShellRetainingSeamM: 0.038,
+    frontShellDropM: frontShellDrop,
+    frontShellDatumSourceY: 0.28,
+    mantletDatumSourceY: 0.28,
+    turretHeightScale: CHIEFTAIN_TURRET_HEIGHT_SCALE,
+    turretHeightGain: 1.10,
     frontSetbackM: 0.73,
     gunAxisLocalY: 0.15,
   });

@@ -76,13 +76,17 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
   const gunRig = tank.root.getObjectByName('rig_gun');
   turret.geometry.computeBoundingBox();
   turretHeights.set(id, turret.geometry.boundingBox.max.y - turret.geometry.boundingBox.min.y);
-  assert(Math.abs(gunRig.position.y - 0.0444) < 1e-9,
-    `${id}: L11 assembly follows the compressed armored-throat datum`);
+  assert(Math.abs(gunRig.position.y - 0.06684) < 1e-9,
+    `${id}: L11 assembly follows the ten-percent-taller armored-throat datum`);
   receipts.set(id, turret.geometry.attributes.position.count);
   const shellReceipt = turretRig.userData.chieftainArmorShellReceipt;
   shellReceipts.set(id, shellReceipt);
-  assert.equal(shellReceipt.revision, 'low-angular-layered-shell-r9',
+  assert.equal(shellReceipt.revision, 'low-angular-layered-shell-r10',
     `${id}: low angular core and fitted armor-shell rebuild remains active`);
+  assert(Math.abs(shellReceipt.turretHeightScale - 0.748) < 1e-12,
+    `${id}: turret envelope is exactly ten percent taller than the r9 geometry`);
+  assert.equal(shellReceipt.turretHeightGain, 1.10,
+    `${id}: turret-height change retains its explicit ten-percent contract`);
   assert.equal(shellReceipt.sourceAxes, 'x,z,-y',
     `${id}: comparison source axes stay documented and canonicalized`);
   assert.equal(shellReceipt.primaryEnvelopeCount, 2,
@@ -103,7 +107,7 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
   const primaryLobes = combatParts.filter((part) =>
     part.bucket === 'turret'
     && part.min[2] < -1.50 && part.max[2] > 1.52
-    && part.max[1] > 0.40 && part.max[1] < 0.43
+    && part.max[1] > 0.46 && part.max[1] < 0.50
     && (part.max[0] < -0.15 || part.min[0] > 0.15));
   assert.equal(primaryLobes.length, 2,
     `${id}: paired halves retain one continuous low structural core`);
@@ -115,7 +119,7 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
     minY: -0.18, maxY: 0.05, minAbsX: 1.00, maxAbsX: 1.46,
   });
   const upperTurretFrontZ = forwardEdgeInBand(turret, {
-    minY: 0.30, maxY: 0.43, minAbsX: 1.00, maxAbsX: 1.46,
+    minY: 0.34, maxY: 0.50, minAbsX: 1.00, maxAbsX: 1.46,
   });
   assert(lowerTurretFrontZ - upperTurretFrontZ > 0.27,
     `${id}: actual outer-cheek vertices form a reclined face before the gun throat`);
@@ -123,7 +127,7 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
   const gunJambs = combatParts.filter((part) =>
     part.bucket === 'turret'
     && part.min[2] >= 0.57 && part.max[2] >= 1.47
-    && part.max[1] > 0.34 && part.max[1] < 0.38
+    && part.max[1] > 0.40 && part.max[1] < 0.43
     && (part.max[0] < -0.12 || part.min[0] > 0.12));
   assert.equal(gunJambs.length, 2,
     `${id}: the reclined cheeks reform as two tighter square gun-aperture jambs`);
@@ -142,13 +146,13 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
   assert.equal(shellPanels.length, shellReceipt.upperShellPanelCount,
     `${id}: no hidden or duplicate shell plates survive outside the seven authored panels`);
   const primaryCrownY = Math.max(...primaryLobes.map((part) => part.max[1]));
-  assert(externalArmor.geometry.boundingBox.max.y - primaryCrownY > 0.045,
-    `${id}: upper armor visibly rises above the compressed structural crown`);
+  assert(externalArmor.geometry.boundingBox.max.y - primaryCrownY > 0.015,
+    `${id}: shoulder armor still rises above the taller structural crown`);
   const lowerShellFrontZ = forwardEdgeInBand(externalArmor, {
-    minY: 0.18, maxY: 0.30, minAbsX: 0.16, maxAbsX: 1.55,
+    minY: -0.01, maxY: 0.10, minAbsX: 0.16, maxAbsX: 1.55,
   });
   const upperShellFrontZ = forwardEdgeInBand(externalArmor, {
-    minY: 0.42, maxY: 0.51, minAbsX: 0.16, maxAbsX: 1.55,
+    minY: 0.20, maxY: 0.31, minAbsX: 0.16, maxAbsX: 1.55,
   });
   assert(lowerShellFrontZ - upperShellFrontZ > 0.24,
     `${id}: fitted cheek plates preserve the Chieftain's reclined front slope`);
@@ -157,6 +161,16 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
     && (part.max[0] < -0.15 || part.min[0] > 0.15));
   assert.equal(forwardShellPanels.length, 2,
     `${id}: one visibly thick forward armor plate caps each cheek`);
+  assert(Math.abs(shellReceipt.frontShellDatumSourceY - shellReceipt.mantletDatumSourceY) < 1e-12,
+    `${id}: both forward shells are centered on the mantlet datum`);
+  assert(Math.abs(shellReceipt.frontShellDropM - (id === 'chieftain_mk10' ? 0.34 : 0.31)) < 1e-12,
+    `${id}: variant shell lift is removed before the mantlet alignment drop`);
+  const forwardShellMinY = Math.min(...forwardShellPanels.map((part) => part.min[1]));
+  const forwardShellMaxY = Math.max(...forwardShellPanels.map((part) => part.max[1]));
+  const forwardShellCenterY = (forwardShellMinY + forwardShellMaxY) * 0.5;
+  const mantletDatumY = -0.18 + (0.28 + 0.18) * shellReceipt.turretHeightScale;
+  assert(Math.abs(forwardShellCenterY - mantletDatumY) < 0.02,
+    `${id}: moved cheek-shell envelope remains vertically centered on the gun mask`);
 
   const sideFairings = combatParts.filter((part) =>
     part.bucket === 'turret'
@@ -204,8 +218,8 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
       pintleGpmg = object;
     }
   });
-  assert(pintleGpmg && pintleGpmg.position.y > 0.68 && pintleGpmg.position.y < 0.72,
-    `${id}: pintle GPMG remains seated on the compressed roof shell`);
+  assert(pintleGpmg && pintleGpmg.position.y > 0.78 && pintleGpmg.position.y < 0.81,
+    `${id}: pintle GPMG remains seated on the ten-percent-taller roof shell`);
   const radioWhips = combatParts.filter((part) =>
     part.bucket === 'turretDark'
     && part.max[1] > 0.90
@@ -246,8 +260,8 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
 }
 
 for (const [id, height] of turretHeights) {
-  assert(height > 0.98 && height < 1.02,
-    `${id}: structural turret remains visibly lower than the former tall crown`);
+  assert(height > 1.08 && height < 1.12,
+    `${id}: structural turret is exactly ten percent taller while retaining its low crown`);
 }
 assert(Math.abs(turretHeights.get('chieftain5') - turretHeights.get('chieftain_mk10')) < 1e-6,
   'Mk.5 and Mk.10 retain one shared primary turret family datum');
